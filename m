@@ -1,16 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v3 0/8] Add OnePlus 6T display (Samsung S6E3FC2X01 DDIC
- with AMS641RW panel)
-Date: Thu, 16 Oct 2025 18:16:55 +0200
-Message-Id: <20251016-s6e3fc2x01-v3-0-ce0f3566b903@ixit.cz>
+Date: Thu, 16 Oct 2025 18:16:56 +0200
+Subject: [PATCH v3 1/8] dt-bindings: panel: Add Samsung S6E3FC2X01 DDIC
+ with panel
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAHca8WgC/1XMyw6CMBCF4VcxXVsznabQuvI9jAssU5kNmJY0K
- OHdLSTeluck/zeLRJEpieNuFpEyJx76MvR+J3zX9DeS3JYtENCAQy1TRTp4nEDJ4IyBq0UMZEQ
- J7pECTxt2vpTdcRqH+NjsrNb3zZhfJisJ0qHToKq6sqE+8cTjwT/FimT8hArA/oVYQlTkG9Uaj
- 9Z9w2VZXr1PJaTbAAAA
-X-Change-ID: 20250923-s6e3fc2x01-f9550b822fe5
+Message-Id: <20251016-s6e3fc2x01-v3-1-ce0f3566b903@ixit.cz>
+References: <20251016-s6e3fc2x01-v3-0-ce0f3566b903@ixit.cz>
+In-Reply-To: <20251016-s6e3fc2x01-v3-0-ce0f3566b903@ixit.cz>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
  Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
@@ -24,99 +21,144 @@ To: Neil Armstrong <neil.armstrong@linaro.org>,
  Jessica Zhang <jesszhan0024@gmail.com>
 Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3365; i=david@ixit.cz;
- h=from:subject:message-id; bh=zvd05p0ExbkaGmxBTuCfy3Mb9KA9l3VBNuCLsOtci1I=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBo8Rp5WmQMaKk6HyPBsIVaXQcl59yziiTdiMgfM
- CQlZwALQ9eJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaPEaeQAKCRBgAj/E00kg
- crbXEACZWdPmxPaRBqbdU1NfmbFxDrwwcfrqGw+tPoZoYv/LmbZo4wY0pQ0/uWv9RovOaAZOUMM
- Hx+M/InPH2G0cD3x9bgVnhuNIM8vVyyurpHUBvcQtwfJMgXisU+E2vYQgdybvbhwAtZ2UvAfjUP
- EM6EL3bg1364NftAT34swngxGt8A6QgP1pv5xPFBJDTflzuVu9ZBYYVKE54HAdtkHzhMk3DAYjt
- FN++37tWQ2fShAMbXJCCFGxLpOoZOySHH6w7nZk6IGfy/94gxjyvJ5PR/kRrhi0zU0GyGYFBGl4
- P+813tE5f1hSgcszBgsMY9nBYbjLQyyqsv6Jdd68H7lhYdA2mhoo05nlUWvQx16yJSkhH8/Zgaf
- mpazc1rqISzlkPdBOSy/8+ODbQOWuXeEEhNO3GHff/noXDXmCZFvXGl/kv8iihHfOgJrh+TOsxz
- A4FgLNOuLiseUI7JlfQRTYwCEUDEluWnewfoMj1DQbeH3HMvgg+fQ4C5soNmKfRXzakz1J3LwfK
- CquoJ4AjAFQyasjbPdCxbJWKIj/tjVrOw30mUHQiaMTOZXK0LWZdNJ7UCipL9AwTZF3bIPZB9cn
- RfBsJmQ0PMmA3Sk+X3XHHg3UxVIKbbR8lJhcS47WeHtUfOo7kKJfGkfhjiUnNi0nCPoeFuDN/SF
- Dqd0PCX7jUo90SQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3282; i=david@ixit.cz;
+ h=from:subject:message-id; bh=Sb4b37DxYW3GNWkR8ByZZP12N7nY3x9gmVU7fcdXF6o=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBo8Rp50NSlifCBwThrfHb5PQbAS3p84TC/e56ri
+ cTQ9h5m5CyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaPEaeQAKCRBgAj/E00kg
+ cqp7D/9kbCvdPNQOq5UcWkFNL38MMOk3pdCq0sNYeD7/7RkYutfvJYtW3C7y4Oo1EsC6XHliT9X
+ dmPzaTOdXkr3wg3c0L01Ws1pQTgNqdeXWA20fzYjjOFzK0pvK+LDAwIpElMmSeq/N5kR4XTP8rZ
+ Sjcp0PFd3NWgvLV5kv3pIG+J9U34K6XbasdNUZUSKRsehuKGXcR5yK7Kg44cukias7u6E/6IM5J
+ TU2s2oiKrwSQ6V68Hrm1hpBAtcLqb3ULLlct1CI0zzVa2IStkGh9bQzjr3o/tEVv9GNQSI7Zkoe
+ bRW70QEFELa8GRaO9AAVQJ5Nq3rJgI4xJpBDIIG9wT5h3ZHN+kwMCxHwtqZdhkckGksLWLJoo9S
+ dcYuWYvR08fswaUqS6WEwSEXueyBcBu0fkSVQq2UeBclCugP5L2NJf+bUhbxZdwLVW6V1IziOF+
+ RrbUk3I3ecZGPOJ3hVI/H39g8VTHzKPDjJvyCjaXPwNRomCQPrdCeT6um7yOCsgN1+LZA/z1Yqq
+ K5jWASmsNwP8/8nuR2RRmTe25qDUTYbZtzm6D576sW9p7rdPhEW++TZjMZ7zpCEhXcdjhKpoVcd
+ hNLswPSRRtiBDYG8kpabvhz1WqtXeCxBAVp2BnVlfehUtpMiMB3rsp5FCO7aqR6ePUqL17WlLkC
+ iqFWgE3LfY9UN4g==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-First, proper bindings for the DDIC and panel are added.
+Basic description for S6E3FC2X01 DDIC with attached panel AMS641RW.
 
-Next, the VCI and POC supplies are introduced for the OnePlus 6 and 6T
-phones, and the OnePlus 6T device tree is extended with more precise
-compatible string.
+Samsung AMS641RW is 6.41 inch, 1080x2340 pixels, 19.5:9 ratio panel
 
-Finally, a new DDIC driver is introduced along with the AMS641RW panel
-initialization sequences.
-
-This patchset enables the display on the OnePlus 6T smartphone.
-
-Since the display node is shared between the OnePlus 6 and 6T,
-the following warning appears:
-
-..sdm845-oneplus-enchilada.dtb: panel@0 (samsung,sofef00): 'poc-supply', 'te-gpios', 'vci-supply' do not match any of the regexes: '^pinctrl-[0-9]+$'
-
-This will be addressed in a follow-up patch, as the SOFEF00 DDIC also
-requires additional overhaul to properly initialize and function in mainline.
-
-Last two patches are not needed for panel to work, it's up to maintainer
-decision to merge them with the series or not.
+panel-simple-dsi cannot be used because it's limited to one
+power-supply, while we use three.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v3:
-- Use mipi_dsi_dcs_set_display_brightness_large (Konrad)
-- added legacy compatible samsung,s6e3fc2x01 into the driver (Dmitry)
-- extended compatible string to
-  "samsung,s6e3fc2x01-ams641rw", "samsung,s6e3fc2x01" (Dmitry)
-- Brought back
-  "dt-bindings: display: panel-simple-dsi: Remove Samsung S6E3FC2 compatible"
-- Link to v2: https://lore.kernel.org/r/20251008-s6e3fc2x01-v2-0-21eca1d5c289@ixit.cz
+ .../bindings/display/panel/samsung,s6e3fc2x01.yaml | 81 ++++++++++++++++++++++
+ MAINTAINERS                                        |  5 ++
+ 2 files changed, 86 insertions(+)
 
-Changes in v2:
-- Dropped the gpio reset polarity change as suggested (Jens and Dmitry).
-- Fixed unused warnings (kernel test robot).
-- Added a pinctrl config for the VCI and POC supply.
-- Removed patch "dt-bindings: display: panel-simple-dsi: Remove Samsung S6E3FC2 compatible"
-  while the compatible is used in device-tree, but without any driver
-  serving it, do not touch it (Rob)
-- Added more details into the device-tree about the OnePlus 6T panel properties
-- Put display gpio -pins into one -state block.
-- Link to v1: https://lore.kernel.org/r/20250925-s6e3fc2x01-v1-0-9293016768f7@ixit.cz
+diff --git a/Documentation/devicetree/bindings/display/panel/samsung,s6e3fc2x01.yaml b/Documentation/devicetree/bindings/display/panel/samsung,s6e3fc2x01.yaml
+new file mode 100644
+index 0000000000000..d48354fb52ea0
+--- /dev/null
++++ b/Documentation/devicetree/bindings/display/panel/samsung,s6e3fc2x01.yaml
+@@ -0,0 +1,81 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/display/panel/samsung,s6e3fc2x01.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Samsung S6E3FC2X01 AMOLED DDIC
++
++description: The S6E3FC2X01 is display driver IC with connected panel.
++
++maintainers:
++  - David Heidelberg <david@ixit.cz>
++
++allOf:
++  - $ref: panel-common.yaml#
++
++properties:
++  compatible:
++    items:
++      - enum:
++            # Samsung 6.41 inch, 1080x2340 pixels, 19.5:9 ratio
++          - samsung,s6e3fc2x01-ams641rw
++      - const: samsung,s6e3fc2x01
++
++  reg:
++    maxItems: 1
++
++  reset-gpios: true
++
++  port: true
++
++  vddio-supply:
++    description: VDD regulator
++
++  vci-supply:
++    description: VCI regulator
++
++  poc-supply:
++    description: POC regulator
++
++required:
++  - compatible
++  - reset-gpios
++  - vddio-supply
++  - vci-supply
++  - poc-supply
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++
++    dsi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        panel@0 {
++            compatible = "samsung,s6e3fc2x01-ams641rw", "samsung,s6e3fc2x01";
++            reg = <0>;
++
++            vddio-supply = <&vreg_l14a_1p88>;
++            vci-supply = <&s2dos05_buck1>;
++            poc-supply = <&s2dos05_ldo1>;
++
++            te-gpios = <&tlmm 10 GPIO_ACTIVE_HIGH>;
++            reset-gpios = <&tlmm 6 GPIO_ACTIVE_HIGH>;
++
++            pinctrl-0 = <&sde_dsi_active &sde_te_active_sleep>;
++            pinctrl-1 = <&sde_dsi_suspend &sde_te_active_sleep>;
++            pinctrl-names = "default", "sleep";
++
++            port {
++                panel_in: endpoint {
++                    remote-endpoint = <&mdss_dsi0_out>;
++                };
++            };
++        };
++    };
++
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 4250ceabf6ff4..d11dd6c7a6b27 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -8056,6 +8056,11 @@ S:	Maintained
+ F:	Documentation/devicetree/bindings/display/panel/samsung,s6d7aa0.yaml
+ F:	drivers/gpu/drm/panel/panel-samsung-s6d7aa0.c
+ 
++DRM DRIVER FOR SAMSUNG S6E3FC2X01 DDIC
++M:	David Heidelberg <david@ixit.cz>
++S:	Maintained
++F:	Documentation/devicetree/bindings/display/panel/samsung,s6e3fc2x01.yaml
++
+ DRM DRIVER FOR SAMSUNG S6E3HA8 PANELS
+ M:	Dzmitry Sankouski <dsankouski@gmail.com>
+ S:	Maintained
 
----
-Casey Connolly (1):
-      arm64: dts: qcom: sdm845-oneplus: Describe panel vci and poc supplies
-
-David Heidelberg (7):
-      dt-bindings: panel: Add Samsung S6E3FC2X01 DDIC with panel
-      arm64: dts: qcom: sdm845-oneplus-fajita: Compatible describing both DDIC and panel
-      drm/panel: Add Samsung S6E3FC2X01 DDIC with AMS641RW panel
-      arm64: dts: qcom: sdm845-oneplus: Group panel pinctrl
-      arm64: dts: qcom: sdm845-oneplus: Implement panel sleep pinctrl
-      arm64: dts: qcom: sdm845-oneplus: Describe TE gpio
-      dt-bindings: display: panel-simple-dsi: Remove Samsung S6E3FC2 compatible
-
- .../bindings/display/panel/panel-simple-dsi.yaml   |   2 -
- .../bindings/display/panel/samsung,s6e3fc2x01.yaml |  81 +++++
- MAINTAINERS                                        |   6 +
- .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 113 ++++--
- arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts |   2 +-
- drivers/gpu/drm/panel/Kconfig                      |  13 +
- drivers/gpu/drm/panel/Makefile                     |   1 +
- drivers/gpu/drm/panel/panel-samsung-s6e3fc2x01.c   | 399 +++++++++++++++++++++
- 8 files changed, 593 insertions(+), 24 deletions(-)
----
-base-commit: 2433b84761658ef123ae683508bc461b07c5b0f0
-change-id: 20250923-s6e3fc2x01-f9550b822fe5
-
-Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+2.51.0
 
