@@ -1,68 +1,99 @@
-From: Rohan G Thomas <rohan.g.thomas@altera.com>
-Date: Fri, 17 Oct 2025 14:11:21 +0800
-Subject: [PATCH net v3 3/3] net: stmmac: est: Fix GCL bounds checks
+From: Joel Granados <joel.granados@kernel.org>
+Subject: [PATCH 0/7] sysctl: Move jiffies converters out of kernel/sysctl.c
+Date: Fri, 17 Oct 2025 10:32:10 +0200
+Message-Id: <20251017-jag-sysctl_jiffies-v1-0-175d81dfdf82@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251017-qbv-fixes-v3-3-d3a42e32646a@altera.com>
-References: <20251017-qbv-fixes-v3-0-d3a42e32646a@altera.com>
-In-Reply-To: <20251017-qbv-fixes-v3-0-d3a42e32646a@altera.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Jose Abreu <Jose.Abreu@synopsys.com>, 
- Rohan G Thomas <rohan.g.thomas@intel.com>, 
- Boon Khai Ng <boon.khai.ng@altera.com>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Rohan G Thomas <rohan.g.thomas@altera.com>, 
- Matthew Gerlach <matthew.gerlach@altera.com>
+X-B4-Tracking: v=1; b=H4sIAAr/8WgC/x2M0QpAQBAAf0X77MrJEb8iibPLSuhWIvl3m8dpm
+ nlAMDAKVNEDAU8W3lYFG0fgp24d0fCgDGmSOpvYzMzdaOQWfyztzETamoJUOKSydzlouAckvv5
+ p3bzvB7mTV4xkAAAA
+X-Change-ID: 20251014-jag-sysctl_jiffies-7f0145ef9b56
+To: Kees Cook <kees@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760681491; l=1340;
- i=rohan.g.thomas@altera.com; s=20250815; h=from:subject:message-id;
- bh=mX5G4ROq0gDY4G0a4Qm/T3N17XaJr2mEhgFfcjCdoJk=;
- b=z8V58A1VlIr5ekLOqI6PBxwoKAM5sCuB+v2xtlazP8QRxqeoIu3e4AOJzUJiniz/MDLjGmNFn
- YWFLDF9+3quBrbhbs5cVU0EvUePkFdXCjLg7rESERbIkmMEmkC4wGuz
-X-Developer-Key: i=rohan.g.thomas@altera.com; a=ed25519;
- pk=5yZXkXswhfUILKAQwoIn7m6uSblwgV5oppxqde4g4TY=
-X-Endpoint-Received: by B4 Relay for rohan.g.thomas@altera.com/20250815 with auth_id=494
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2447;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=ALPubsE7iL0y6ckYIsK2z8DnJSwyHG1uWAH3bkMSxcA=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGjx/zMz6r0/GrkigbyDYiU3B7C56XjyMs54l
+ W5ZjFYJ9dlr5IkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJo8f8zAAoJELqXzVK3
+ lkFPYB0L/AitYQV44fDBP/FpA+Cme8q1tS7K8z482NOTlJAE0ZWj5gNCdtqcK4fVlZWe0+GrgKp
+ 4pYvnzaU7HuJ8i1kyHCwEEC4OO31OuCm6S78wLP5Cr33mfYSe/vbPIHEHZoGgf5fFDlTjHHQzHm
+ tcvuuZGFb1J9W6jGizn6AvzR1dMKFc7p7qblDL1jcwzaUREvsbNsJ3SgN0yyiNWbvoqPH1Vp/c2
+ VktCzVhqeUue0fSkNTeQyCBIVmKWuSQBFdAarbbqDmvX4t7LWQkGv7F2pBtGRlKQyYHtMCrTsRA
+ cOFdVPZVQCnrXAnYP91OpOc4A0UlYIpG/64HKtbJcij0RuezfBRGLL/I/u7KQnDyGGOd9LBghWG
+ zYoU+FmML952xC7pJ1AZbxrPXe4AiNf7zRHP++eC6JVtxQ9/CrlKYXVJzbwMGarWqby32x04jCr
+ QHtxcitHVHoGTgfvD2jS99GFC2jsPOAdUt28i1Rfqp+YrYUTiC43iyEhbd5jRJTC68qybT6Fmn7
+ UQ=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix the bounds checks for the hw supported maximum GCL entry
-count and gate interval time.
+Move the jiffies converters into kernel/time/jiffies.c and replace the
+pipe-max-size proc_handler converter with a macro based version. This is
+all part of the effort to relocate non-sysctl logic out of
+kernel/sysctl.c into more relevant subsystems. And is based on the
+preparation series in [1].
 
-Fixes: b60189e0392f ("net: stmmac: Integrate EST with TAPRIO scheduler API")
-Signed-off-by: Rohan G Thomas <rohan.g.thomas@altera.com>
-Reviewed-by: Matthew Gerlach <matthew.gerlach@altera.com>
+What was done?
+==============
+
+* Moved converter macros (SYSCTL_USER_TO_KERN{,_INT_CONV,UINT_CONV},
+  SYSCTL_KERN_TO_USER{,INT_CONV} & SYSCTL_{,U}INT_CONV_CUSTOM) to
+  sysctl.h so they can be used in jiffies.c and pipe.c.
+
+* Moved jiffie converters (proc_dointvec_ms_jiffies{,_minmax},
+  proc_dointvec{_,_userhz_}jiffies & proc_doulongvec_ms_jiffies_minmax)
+  to kernel/time/jiffies.c.
+
+* Replaced do_proc_dopipe_max_size_conv in fs/pipe.c with a macro
+  version; no functional changes intended.
+
+Why it is done?
+===============
+
+Motivation is to move non-sysctl logic out of kernel/sysctl.c which had
+become a dumping ground for ctl_tables until this trend was changed by
+the commits leading to (and including) 73184c8e4ff4 ("sysctl: rename
+kern_table -> sysctl_subsys_table"). Same motivation as in [1].
+
+Testing
+=======
+
+Tested by running sysctl kunit tests and selftests on x86_64 architecture
+to ensure no functional regressions.
+
+Comments are greatly appreciated
+
+Best
+
+[1] https://lore.kernel.org/20251016-jag-sysctl_conv-v2-0-a2f16529acc4@kernel.org
+
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Joel Granados (7):
+      sysctl: Allow custom converters from outside sysctl
+      sysctl: Move INT converter macros to sysctl header
+      sysctl: Move UINT converter macros to sysctl header
+      sysctl: Move jiffies converters to kernel/time/jiffies.c
+      sysctl: Move proc_doulongvec_ms_jiffies_minmax to kernel/time/jiffies.c
+      sysctl: Create pipe-max-size converter using sysctl UINT macros
+      sysctl: Wrap do_proc_douintvec with the public function proc_douintvec_conv
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
-index 97e89a604abd7a01bb8e904c38f10716e0a911c1..3b4d4696afe96afe58e0c936429f51c22ae145be 100644
---- a/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
-@@ -981,7 +981,7 @@ static int tc_taprio_configure(struct stmmac_priv *priv,
- 	if (qopt->cmd == TAPRIO_CMD_DESTROY)
- 		goto disable;
- 
--	if (qopt->num_entries >= dep)
-+	if (qopt->num_entries > dep)
- 		return -EINVAL;
- 	if (!qopt->cycle_time)
- 		return -ERANGE;
-@@ -1012,7 +1012,7 @@ static int tc_taprio_configure(struct stmmac_priv *priv,
- 		s64 delta_ns = qopt->entries[i].interval;
- 		u32 gates = qopt->entries[i].gate_mask;
- 
--		if (delta_ns > GENMASK(wid, 0))
-+		if (delta_ns > GENMASK(wid - 1, 0))
- 			return -ERANGE;
- 		if (gates > GENMASK(31 - wid, 0))
- 			return -ERANGE;
+ fs/pipe.c               |  28 ++---
+ include/linux/jiffies.h |  11 ++
+ include/linux/sysctl.h  | 145 +++++++++++++++++++---
+ kernel/sysctl.c         | 312 +++++++-----------------------------------------
+ kernel/time/jiffies.c   | 125 +++++++++++++++++++
+ 5 files changed, 314 insertions(+), 307 deletions(-)
+---
+base-commit: 130e5390ba572bffa687f32ed212dac1105b654a
+change-id: 20251014-jag-sysctl_jiffies-7f0145ef9b56
 
+Best regards,
 -- 
-2.43.7
+Joel Granados <joel.granados@kernel.org>
 
