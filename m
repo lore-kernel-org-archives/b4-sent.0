@@ -1,137 +1,92 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Fri, 17 Oct 2025 10:32:17 +0200
-Subject: [PATCH 7/7] sysctl: Wrap do_proc_douintvec with the public
- function proc_douintvec_conv
+From: Shubhang Kaushik <shubhang@os.amperecomputing.com>
+Date: Fri, 17 Oct 2025 16:00:44 -0700
+Subject: [PATCH] sched/fair: Prefer cache-hot prev_cpu for wakeup
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251017-jag-sysctl_jiffies-v1-7-175d81dfdf82@kernel.org>
-References: <20251017-jag-sysctl_jiffies-v1-0-175d81dfdf82@kernel.org>
-In-Reply-To: <20251017-jag-sysctl_jiffies-v1-0-175d81dfdf82@kernel.org>
-To: Kees Cook <kees@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
- Joel Granados <joel.granados@kernel.org>
+Message-Id: <20251017-b4-sched-cfs-refactor-propagate-v1-1-1eb0dc5b19b3@os.amperecomputing.com>
+X-B4-Tracking: v=1; b=H4sIAJvK8mgC/x2NQQqDQAwAvyI5N7C7rFT7ldJDGqPm4i6JFEH8e
+ xePA8PMCS6m4vDqTjD5qWvZGsRHB7zStgjq1BhSSH0M8YnfjM6rTMizo8lMvBfDaqXSQrtg4kx
+ DCuM4UIZWqc3R4z68P9f1ByI6ub1xAAAA
+X-Change-ID: 20251017-b4-sched-cfs-refactor-propagate-2c4a820998a4
+To: Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, 
+ Juri Lelli <juri.lelli@redhat.com>, 
+ Vincent Guittot <vincent.guittot@linaro.org>, 
+ Dietmar Eggemann <dietmar.eggemann@arm.com>, 
+ Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
+ Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>, 
+ Shubhang Kaushik <sh@gentwo.org>, 
+ Shijie Huang <Shijie.Huang@amperecomputing.com>, 
+ Frank Wang <zwang@amperecomputing.com>
+Cc: Christopher Lameter <cl@gentwo.org>, 
+ Adam Li <adam.li@amperecomputing.com>, linux-kernel@vger.kernel.org, 
+ Shubhang Kaushik <shubhang@os.amperecomputing.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4508;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=mWqfj7aYT75N2bYxpf3Zo3oTUcwgYuFyt3SBJHq02zU=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGjx/0NSnPuToqzCq4T5K/jyOYgldzU5gArb+
- vrMeqWF6yqYZYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJo8f9DAAoJELqXzVK3
- lkFPDCML/jLcbIA2ClNcrGBP7q/cygtYLu+PcglKO4jiAc1Ay3kVzqDBAHJ5gFZYBPgt2WI5oxa
- tEkZ8rJAS7RgDHZ0jeTmZ9S33WGhNpq5SJmXWxKA9y5jzDGMic/CcynRnWVoV9nTTjlB2zuC2kX
- U54r0bz2Ke13wavvnofxB2WOEZSFMQ8fwhztwbqY2PrYstl/2/qTOefj/8SIMI38FuUVGsn0IV6
- G7DUmQ55oB/A0Lj7T28aSp7QvZ7WKEEcZILTIircuoXN/ABUBv5YpW1KZD5T4Ig/Tp3EcfDLj6q
- sueCceVRPkHvT57cuJM0gI7AltS//2+0J7zPVGqhyBB/s7stZ0h+Wby4yxTcFzVdKq+FAU2lGTu
- e0L6ujAkwE6JhdZ94SlSqNigWqNRWB6WrHyGFgfu2d8i4wXC9DRTp1gCLqsP9O9fPrkprPxPgCK
- bGWMepboVTVxIMw8eEA7R/rmOpZYdcRmzH3CCvr3pPlJVBDfqHOxhLGfLTNNCtWVOHN/KNFaaW6
- gM=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760742065; l=2401;
+ i=shubhang@os.amperecomputing.com; s=20251010; h=from:subject:message-id;
+ bh=mj055oq7WnkP9xwqfOm87rkrgswcSedbXUDF3DZAKlo=;
+ b=bJTba887Ti8Qb2WO6yKDozWXzUjJtMwujM4S3dNIgzpHADDvqmk1ZZ9NbcIOjdy2fE3S0QR4p
+ oq32R7Aq8eUAM/AMMH9D/h59bRGmdPKGSYXuBiAgSGVgsOrR014ZsyN
+X-Developer-Key: i=shubhang@os.amperecomputing.com; a=ed25519;
+ pk=jc8YIRvxPSyJaBRe5y+a4N0RXKBUEcAh8+OFhlROXPY=
+X-Endpoint-Received: by B4 Relay for shubhang@os.amperecomputing.com/20251010 with auth_id=539
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make do_proc_douintvec static and export proc_douintvec_conv wrapper
-function for external use. This is to keep with the design in sysctl.c.
-Update fs/pipe.c to use the new public API.
+Modify the wakeup path in `select_task_rq_fair()` to prioritize cache
+locality for waking tasks. The previous fast path always attempted to
+find an idle sibling, even if the task's prev CPU was not truly busy.
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+The original problem was that under some circumstances, this could lead
+to unnecessary task migrations away from a cache-hot core, even when
+the task's prev CPU was a suitable candidate. The scheduler's internal
+mechanism `cpu_overutilized()` provide an evaluation of CPU load.
+
+To address this, the wakeup heuristic is updated to check the status of
+the task's `prev_cpu` first:
+- If the `prev_cpu` is  not overutilized (as determined by
+  `cpu_overutilized()`, via PELT), the task is woken up on
+  its previous CPU. This leverages cache locality and avoids
+  a potentially unnecessary migration.
+- If the `prev_cpu` is considered busy or overutilized, the scheduler
+  falls back to the existing behavior of searching for an idle sibling.
+
+Signed-off-by: Shubhang Kaushik <shubhang@os.amperecomputing.com>
 ---
- fs/pipe.c              |  4 ++--
- include/linux/sysctl.h | 13 +++++++------
- kernel/sysctl.c        | 18 ++++++++++++++----
- 3 files changed, 23 insertions(+), 12 deletions(-)
+This patch optimizes the scheduler's wakeup path to prioritize cache 
+locality by keeping a task on its previous CPU if it is not overutilized,
+falling back to a sibling search only when necessary.
+---
+ kernel/sched/fair.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
 
-diff --git a/fs/pipe.c b/fs/pipe.c
-index 974faf06a3136fff7a382e575514d84fcf86183c..59b60a9374e671f7e129f5ebfde066c1756c00b3 100644
---- a/fs/pipe.c
-+++ b/fs/pipe.c
-@@ -1487,8 +1487,8 @@ static SYSCTL_UINT_CONV_CUSTOM(_pipe_maxsz,
- static int proc_dopipe_max_size(const struct ctl_table *table, int write,
- 				void *buffer, size_t *lenp, loff_t *ppos)
- {
--	return do_proc_douintvec(table, write, buffer, lenp, ppos,
--				 do_proc_uint_conv_pipe_maxsz);
-+	return proc_douintvec_conv(table, write, buffer, lenp, ppos,
-+				   do_proc_uint_conv_pipe_maxsz);
- }
- 
- static const struct ctl_table fs_pipe_sysctls[] = {
-diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
-index ee5e2b3f47db834b084ac0fc4108bf28177b6949..727dfc7771de1b7a562e9b930f6851873574b532 100644
---- a/include/linux/sysctl.h
-+++ b/include/linux/sysctl.h
-@@ -183,14 +183,20 @@ int proc_dostring(const struct ctl_table *, int, void *, size_t *, loff_t *);
- int proc_dobool(const struct ctl_table *table, int write, void *buffer,
- 		size_t *lenp, loff_t *ppos);
- int proc_dointvec(const struct ctl_table *, int, void *, size_t *, loff_t *);
-+int proc_dointvec_minmax(const struct ctl_table *table, int dir, void *buffer,
-+			 size_t *lenp, loff_t *ppos);
- int proc_dointvec_conv(const struct ctl_table *table, int dir, void *buffer,
- 		       size_t *lenp, loff_t *ppos,
- 		       int (*conv)(bool *negp, unsigned long *u_ptr, int *k_ptr,
- 				   int dir, const struct ctl_table *table));
- int proc_douintvec(const struct ctl_table *, int, void *, size_t *, loff_t *);
--int proc_dointvec_minmax(const struct ctl_table *, int, void *, size_t *, loff_t *);
- int proc_douintvec_minmax(const struct ctl_table *table, int write, void *buffer,
- 		size_t *lenp, loff_t *ppos);
-+int proc_douintvec_conv(const struct ctl_table *table, int write, void *buffer,
-+			size_t *lenp, loff_t *ppos,
-+			int (*conv)(unsigned long *lvalp, unsigned int *valp,
-+				    int write, const struct ctl_table *table));
+diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
+index bc0b7ce8a65d6bbe616953f530f7a02bb619537c..bb0d28d7d9872642cb5a4076caeb3ac9d8fe7bcd 100644
+--- a/kernel/sched/fair.c
++++ b/kernel/sched/fair.c
+@@ -8618,7 +8618,16 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int wake_flags)
+ 		new_cpu = sched_balance_find_dst_cpu(sd, p, cpu, prev_cpu, sd_flag);
+ 	} else if (wake_flags & WF_TTWU) { /* XXX always ? */
+ 		/* Fast path */
+-		new_cpu = select_idle_sibling(p, prev_cpu, new_cpu);
 +
- int proc_dou8vec_minmax(const struct ctl_table *table, int write, void *buffer,
- 			size_t *lenp, loff_t *ppos);
- int proc_doulongvec_minmax(const struct ctl_table *, int, void *, size_t *, loff_t *);
-@@ -349,11 +355,6 @@ extern struct ctl_table_header *register_sysctl_mount_point(const char *path);
++		/*
++		 * Avoid wakeup on an overutilized CPU.
++		 * If the previous CPU is not overloaded, retain the same for cache locality.
++		 * Otherwise, search for an idle sibling.
++		 */
++		if (!cpu_overutilized(prev_cpu))
++			new_cpu = prev_cpu;
++		else
++			new_cpu = select_idle_sibling(p, prev_cpu, new_cpu);
+ 	}
+ 	rcu_read_unlock();
  
- void do_sysctl_args(void);
- bool sysctl_is_alias(char *param);
--int do_proc_douintvec(const struct ctl_table *table, int write,
--		      void *buffer, size_t *lenp, loff_t *ppos,
--		      int (*conv)(unsigned long *lvalp,
--				  unsigned int *valp, int write,
--				  const struct ctl_table *table));
- 
- extern int unaligned_enabled;
- extern int no_unaligned_warning;
-diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index d2e756ee3717b07fd848871267656ee0ed7d9268..b7c0c78417020d9c7525d4e542be79e8e61bb88a 100644
---- a/kernel/sysctl.c
-+++ b/kernel/sysctl.c
-@@ -534,10 +534,11 @@ static int do_proc_douintvec_r(const struct ctl_table *table, void *buffer,
- 	return err;
- }
- 
--int do_proc_douintvec(const struct ctl_table *table, int dir, void *buffer,
--		      size_t *lenp, loff_t *ppos,
--		      int (*conv)(unsigned long *u_ptr, unsigned int *k_ptr,
--				  int dir, const struct ctl_table *table))
-+static int do_proc_douintvec(const struct ctl_table *table, int dir,
-+			     void *buffer, size_t *lenp, loff_t *ppos,
-+			      int (*conv)(unsigned long *u_ptr,
-+					  unsigned int *k_ptr, int dir,
-+					  const struct ctl_table *table))
- {
- 	unsigned int vleft;
- 
-@@ -566,6 +567,15 @@ int do_proc_douintvec(const struct ctl_table *table, int dir, void *buffer,
- 	return do_proc_douintvec_r(table, buffer, lenp, ppos, conv);
- }
- 
-+int proc_douintvec_conv(const struct ctl_table *table, int dir, void *buffer,
-+			size_t *lenp, loff_t *ppos,
-+			int (*conv)(unsigned long *u_ptr, unsigned int *k_ptr,
-+				    int dir, const struct ctl_table *table))
-+{
-+	return do_proc_douintvec(table, dir, buffer, lenp, ppos, conv);
-+}
-+
-+
- /**
-  * proc_dobool - read/write a bool
-  * @table: the sysctl table
 
+---
+base-commit: 9b332cece987ee1790b2ed4c989e28162fa47860
+change-id: 20251017-b4-sched-cfs-refactor-propagate-2c4a820998a4
+
+Best regards,
 -- 
-2.50.1
+Shubhang Kaushik <shubhang@os.amperecomputing.com>
 
