@@ -1,72 +1,76 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Thu, 16 Oct 2025 18:17:03 +0200
-Subject: [PATCH v3 8/8] dt-bindings: display: panel-simple-dsi: Remove
- Samsung S6E3FC2 compatible
+From: Rohan G Thomas <rohan.g.thomas@altera.com>
+Subject: [PATCH net v3 0/3] net: stmmac: Fixes for stmmac Tx VLAN insert
+ and EST
+Date: Fri, 17 Oct 2025 14:11:18 +0800
+Message-Id: <20251017-qbv-fixes-v3-0-d3a42e32646a@altera.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251016-s6e3fc2x01-v3-8-ce0f3566b903@ixit.cz>
-References: <20251016-s6e3fc2x01-v3-0-ce0f3566b903@ixit.cz>
-In-Reply-To: <20251016-s6e3fc2x01-v3-0-ce0f3566b903@ixit.cz>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, Sam Ravnborg <sam@ravnborg.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1158; i=david@ixit.cz;
- h=from:subject:message-id; bh=4+Nx6clkhCkST//F+2BMd0nBGtyNIXUCEfb23utzTYI=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBo8Rp5wt2y0Xc1+GKJ2t1MY4XOuvPZTZP7bPEqj
- ByfvV+qXciJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaPEaeQAKCRBgAj/E00kg
- clAqEACCZWBWo0npnp0kidoPHG1Pd/dBw56Sdxumg+7kDxKkJfyDDdLxF/y48pxHpeBvbyINosc
- 5v3HFOzDHjiBQRQMcg/sP2rr18XF6B0U4h03JqtLbaT7F6+C9UpUz+mxNmePtIz2rvn4mzNa/Ln
- gATpba3HePKXgXnGiIvBavkGW7EsQsSjiu4x2o9NbqSdE73w3tfbyCMVpdst6iXhWJLpyfH8iX5
- vxhNnr6zMZLUKidz2R/FwC0HnYE1yFU5XtUFt7bWJYh9O8SmneXpnLPKrBTH95GJVJEmvFQgtoO
- KXWLDfk2p5ZOAvIF977zt0GHzmljRvFkdhRwhXq1qfMN+HaO9IzqyIaAV8igUB548ujoguRn2Gs
- FlcN4XDl+EqaCGYZp4WjzbKwou57szMjuvFypcXxIyrIwhOR+/HPw8b7kRH1L8Sg2+FuOeEZAq4
- fgPYxtYbEaWi/dMNvJe3Bid/uymgELyqAbBhpL1gjLwznIxqJ6RGPOOjvLUU/Uk3pPwgsx1Brm4
- Cd209RKQxjTwKL8OfnBwqd1Krts46M4FPDyZXdZmgkHFRl5XFBgDXGa4A8WY80U0nHkoOvQGV3J
- KmQ/mcJenWBqi2NgUszoRJAiPBCbQCmEDF/Yfs+StH5zzoyVn1iZ51fuPyO6eQGT1MGgFCgcdAW
- KRMl6fLfDTNCrNg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIAAbe8WgC/22MSw7CIBRFt2LeWAzQD8WR+zAOKL21JNoqNETTd
+ O8io5o4vJ9zFgrwDoGOu4U8ogtuGlMo9juygxmvYK5LmSSXFddCsGcbWe9eCKw0qMsOTQ0oSv+
+ HRx7S/UwjZrqkcnBhnvw7+6PI0x9VFIwzNAK60sr2oj+Z2wxvDna6Z02UW7TaovKLWs1rVbSt6
+ sofdF3XD9HhEPXjAAAA
+X-Change-ID: 20250911-qbv-fixes-4ae64de86ee7
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>, 
+ Jose Abreu <Jose.Abreu@synopsys.com>, 
+ Rohan G Thomas <rohan.g.thomas@intel.com>, 
+ Boon Khai Ng <boon.khai.ng@altera.com>
+Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Rohan G Thomas <rohan.g.thomas@altera.com>, 
+ Matthew Gerlach <matthew.gerlach@altera.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760681491; l=1667;
+ i=rohan.g.thomas@altera.com; s=20250815; h=from:subject:message-id;
+ bh=cErZl+Aef5mADFNSRF/CqGvdSUgsvsLw4QmBcD8g+xk=;
+ b=tRc0k49q8CDclLGLO8HNDIxA1auXJjd1G977SPRKTM0FDT3tlempIlYU7PezAgMqrysJSBVVv
+ sqfIJaS6wkUDmvWgknuvKjgJnkl44nHVL3pEswrkq2bEt3YogBF5+rW
+X-Developer-Key: i=rohan.g.thomas@altera.com; a=ed25519;
+ pk=5yZXkXswhfUILKAQwoIn7m6uSblwgV5oppxqde4g4TY=
+X-Endpoint-Received: by B4 Relay for rohan.g.thomas@altera.com/20250815 with auth_id=494
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Samsung S6E3FC2X01 DDIC isn't Simple DSI panel.
+This patchset includes following fixes for stmmac Tx VLAN insert and
+EST implementations:
+   1. Disable STAG insertion offloading, as DWMAC IPs doesn't support
+      offload of STAG for double VLAN packets and CTAG for single VLAN
+      packets when using the same register configuration. The current
+      configuration in the driver is undocumented and is adding an
+      additional 802.1Q tag with VLAN ID 0 for double VLAN packets.
+   2. Consider Tx VLAN offload tag length for maxSDU estimation.
+   3. Fix GCL bounds check
 
-This panel has three supplies, while panel-simple-dsi is limited to one.
-There is no user of this compatible, nor the compatible make sense.
-Remove it.
-
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Rohan G Thomas <rohan.g.thomas@altera.com>
 ---
- Documentation/devicetree/bindings/display/panel/panel-simple-dsi.yaml | 2 --
- 1 file changed, 2 deletions(-)
+Changes in v3:
+- Commit for disabling 802.1AD tag insertion offload is introduced in
+  to this patchset
+- Add just VLAN_HLEN to sdu_len when 802.1Q tag offload is requested
+- Link to v2: https://lore.kernel.org/r/20250915-qbv-fixes-v2-0-ec90673bb7d4@altera.com
 
-diff --git a/Documentation/devicetree/bindings/display/panel/panel-simple-dsi.yaml b/Documentation/devicetree/bindings/display/panel/panel-simple-dsi.yaml
-index 9b92a05791ccf..6c1249a224c8a 100644
---- a/Documentation/devicetree/bindings/display/panel/panel-simple-dsi.yaml
-+++ b/Documentation/devicetree/bindings/display/panel/panel-simple-dsi.yaml
-@@ -56,8 +56,6 @@ properties:
-       - panasonic,vvx10f034n00
-         # Samsung s6e3fa7 1080x2220 based AMS559NK06 AMOLED panel
-       - samsung,s6e3fa7-ams559nk06
--        # Samsung s6e3fc2x01 1080x2340 AMOLED panel
--      - samsung,s6e3fc2x01
-         # Samsung sofef00 1080x2280 AMOLED panel
-       - samsung,sofef00
-         # Shangai Top Display Optoelectronics 7" TL070WSH30 1024x600 TFT LCD panel
+Changes in v2:
+- Use GENMASK instead of BIT for clarity and consistency
+- Link to v1: https://lore.kernel.org/r/20250911-qbv-fixes-v1-0-e81e9597cf1f@altera.com
 
+---
+Rohan G Thomas (3):
+      net: stmmac: vlan: Disable 802.1AD tag insertion offload
+      net: stmmac: Consider Tx VLAN offload tag length for maxSDU
+      net: stmmac: est: Fix GCL bounds checks
+
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 37 ++++++++++-------------
+ drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c   |  4 +--
+ drivers/net/ethernet/stmicro/stmmac/stmmac_vlan.c |  2 +-
+ 3 files changed, 19 insertions(+), 24 deletions(-)
+---
+base-commit: cb85ca4c0a349e246cd35161088aa3689ae5c580
+change-id: 20250911-qbv-fixes-4ae64de86ee7
+
+Best regards,
 -- 
-2.51.0
+Rohan G Thomas <rohan.g.thomas@altera.com>
 
