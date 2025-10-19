@@ -1,15 +1,15 @@
 From: Federico Amedeo Izzo <federico@izzo.pro>
-Date: Sun, 19 Oct 2025 11:16:28 +0200
-Subject: [PATCH v2] drm/msm/dpu: Add DSPP GC driver to provide GAMMA_LUT
+Date: Sun, 19 Oct 2025 12:06:32 +0200
+Subject: [PATCH v3] drm/msm/dpu: Add DSPP GC driver to provide GAMMA_LUT
  DRM property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20251019-dpu-add-dspp-gc-driver-v2-1-30c8cb79cb17@izzo.pro>
-X-B4-Tracking: v=1; b=H4sIAGus9GgC/3WNMQ7CMAxFr4IyYxQHSgsT90AdSmxaL03kQASte
- ndCJUbG96T//mwSq3Ay581slLMkCWMBt90YP3RjzyBU2DjrKrRYA8UndERAKUboPZBKZgVfEXr
- b3LiurSnjqHyX1xq+toUHSY+g7/Un49f+ks2/ZEZAYLL748nhwVXuItMUdlGDaZdl+QBhUMJ7u
- wAAAA==
+Message-Id: <20251019-dpu-add-dspp-gc-driver-v3-1-840491934e56@izzo.pro>
+X-B4-Tracking: v=1; b=H4sIACe49GgC/3XNQQ6CMBCF4auQrh3TFrHgynsYF9AZYTa2abVRC
+ He3kJiwYfm/ZL6ZRKTAFMWlmESgxJHdM0d5KIQd2mdPwJhbaKkrJZUB9G9oEQGj99BbwMCJAtg
+ KlZV1R8ZIkY99oAd/Vvh2zz1wfLnwXf8ktax/st4jkwIFhLI8N1qddKWvPI7u6IMTi5j0Vml2F
+ Z2VUtradqaxnTIbZZ7nH0h6BOEBAQAA
 X-Change-ID: 20251017-dpu-add-dspp-gc-driver-c5d1c08be770
 To: Rob Clark <robin.clark@oss.qualcomm.com>, 
  Dmitry Baryshkov <lumag@kernel.org>, 
@@ -24,11 +24,11 @@ Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org,
  =?utf-8?q?Guido_G=C3=BCnther?= <agx@sigxcpu.org>, 
  Federico Amedeo Izzo <federico@izzo.pro>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760865410; l=12991;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760868393; l=13130;
  i=federico@izzo.pro; s=20251017; h=from:subject:message-id;
- bh=0jwji8NBq90nq460VC442NPqFPHuaa70zVMpKEzuJqs=;
- b=TYTNfH59d/bFEzPQZJdxcWkVm7sEUd6oM9gkdP3va+gKPLAFomFIsDf2bUhxJE03clZXOdRCD
- UDjzo7UWiEKCjEH/qAbfBbH6Y15p6u3niZSlwsCA60ImIM4B1kf0Rfz
+ bh=sGyLQADlCgm+S2ot+5F46BMiy9lWRv+mg/a7BnD79xM=;
+ b=ex//RqaFYyymVQ+b3MpmlkTkJj+sDAmDZcfor7VDvw84VMgCZvKjyGC6bBAOZVH+DrfoF+YwX
+ +4PNpal81cDDxlPXSLygrPA4ovcAYnXkB0LBpT38Gymh9OzewAhDuvc
 X-Developer-Key: i=federico@izzo.pro; a=ed25519;
  pk=XfmNfpH48k8jLbId5NKrp0yoKoFb/uLjr97qIxBImBw=
 X-Endpoint-Received: by B4 Relay for federico@izzo.pro/20251017 with auth_id=544
@@ -66,24 +66,30 @@ The patch was reviewed by postmarketOS contributors here:
 https://gitlab.com/sdm845-mainline/linux/-/merge_requests/137
 During review the patch was tested successfully on hamoa (X1E).
 ---
+Changes in v3:
+- Remove memset() after kzalloc() in dpu_crtc.c
+- Simplify error messages in dpu_crtc.c and dpu_hw_dspp.c
+- Use 0 for DPU_REG_WRITE() instead of reg = 0 in dpu_hw_dspp.c
+- Link to v2: https://lore.kernel.org/r/20251019-dpu-add-dspp-gc-driver-v2-1-30c8cb79cb17@izzo.pro
+
 Changes in v2:
 - Fix gc register .len and .version in dpu_hw_catalog.c
 - Apply coding style suggestions
 - Link to v1: https://lore.kernel.org/r/20251018-dpu-add-dspp-gc-driver-v1-1-ed0369214252@izzo.pro
 ---
- drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c       | 90 ++++++++++++++++++++++----
+ drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c       | 86 +++++++++++++++++++++-----
  drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.c |  4 ++
  drivers/gpu/drm/msm/disp/dpu1/dpu_hw_catalog.h |  4 ++
  drivers/gpu/drm/msm/disp/dpu1/dpu_hw_ctl.c     |  3 +
- drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dspp.c    | 55 ++++++++++++++++
+ drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dspp.c    | 54 ++++++++++++++++
  drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dspp.h    | 26 ++++++++
- 6 files changed, 168 insertions(+), 14 deletions(-)
+ 6 files changed, 163 insertions(+), 14 deletions(-)
 
 diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c
-index 4b970a59deaf..8e7e9a334cf4 100644
+index 4b970a59deaf..94445144971e 100644
 --- a/drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c
 +++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c
-@@ -812,12 +812,44 @@ static void _dpu_crtc_get_pcc_coeff(struct drm_crtc_state *state,
+@@ -812,12 +812,42 @@ static void _dpu_crtc_get_pcc_coeff(struct drm_crtc_state *state,
  	cfg->b.b = CONVERT_S3_15(ctm->matrix[8]);
  }
  
@@ -93,8 +99,6 @@ index 4b970a59deaf..8e7e9a334cf4 100644
 +	struct drm_color_lut *lut;
 +	int i;
 +	u32 val_even, val_odd;
-+
-+	memset(gc_lut, 0, sizeof(struct dpu_hw_gc_lut));
 +
 +	lut = (struct drm_color_lut *)state->gamma_lut->data;
 +
@@ -128,7 +132,7 @@ index 4b970a59deaf..8e7e9a334cf4 100644
  	struct dpu_hw_ctl *ctl;
  	struct dpu_hw_dspp *dspp;
  	int i;
-@@ -830,19 +862,40 @@ static void _dpu_crtc_setup_cp_blocks(struct drm_crtc *crtc)
+@@ -830,19 +860,38 @@ static void _dpu_crtc_setup_cp_blocks(struct drm_crtc *crtc)
  		ctl = mixer[i].lm_ctl;
  		dspp = mixer[i].hw_dspp;
  
@@ -162,10 +166,8 @@ index 4b970a59deaf..8e7e9a334cf4 100644
 +				dspp->ops.setup_gc(dspp, NULL);
 +			} else {
 +				gc_lut = kzalloc(sizeof(*gc_lut), GFP_KERNEL);
-+				if (!gc_lut) {
-+					DRM_ERROR("failed to allocate gc_lut\n");
++				if (!gc_lut)
 +					continue;
-+				}
 +				_dpu_crtc_get_gc_lut(state, gc_lut);
 +				dspp->ops.setup_gc(dspp, gc_lut);
 +				kfree(gc_lut);
@@ -178,7 +180,7 @@ index 4b970a59deaf..8e7e9a334cf4 100644
  	}
  }
  
-@@ -1340,7 +1393,7 @@ static struct msm_display_topology dpu_crtc_get_topology(
+@@ -1340,7 +1389,7 @@ static struct msm_display_topology dpu_crtc_get_topology(
  	 *
  	 * If DSC is enabled, use 2 LMs for 2:2:1 topology
  	 *
@@ -187,7 +189,7 @@ index 4b970a59deaf..8e7e9a334cf4 100644
  	 *
  	 * Only hardcode num_lm to 2 for cases where num_intf == 2 and CWB is not
  	 * enabled. This is because in cases where CWB is enabled, num_intf will
-@@ -1359,7 +1412,7 @@ static struct msm_display_topology dpu_crtc_get_topology(
+@@ -1359,7 +1408,7 @@ static struct msm_display_topology dpu_crtc_get_topology(
  	else
  		topology.num_lm = 1;
  
@@ -196,7 +198,7 @@ index 4b970a59deaf..8e7e9a334cf4 100644
  		topology.num_dspp = topology.num_lm;
  
  	return topology;
-@@ -1471,7 +1524,8 @@ static int dpu_crtc_atomic_check(struct drm_crtc *crtc,
+@@ -1471,7 +1520,8 @@ static int dpu_crtc_atomic_check(struct drm_crtc *crtc,
  	bool needs_dirtyfb = dpu_crtc_needs_dirtyfb(crtc_state);
  
  	/* don't reallocate resources if only ACTIVE has beeen changed */
@@ -206,7 +208,7 @@ index 4b970a59deaf..8e7e9a334cf4 100644
  		rc = dpu_crtc_assign_resources(crtc, crtc_state);
  		if (rc < 0)
  			return rc;
-@@ -1831,8 +1885,16 @@ struct drm_crtc *dpu_crtc_init(struct drm_device *dev, struct drm_plane *plane,
+@@ -1831,8 +1881,16 @@ struct drm_crtc *dpu_crtc_init(struct drm_device *dev, struct drm_plane *plane,
  
  	drm_crtc_helper_add(crtc, &dpu_crtc_helper_funcs);
  
@@ -288,7 +290,7 @@ index ac834db2e4c1..36a497f1d6c1 100644
  		return;
  	}
 diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dspp.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dspp.c
-index 54b20faa0b69..7ebe7d8a5382 100644
+index 54b20faa0b69..188ee0af2c90 100644
 --- a/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dspp.c
 +++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_hw_dspp.c
 @@ -24,6 +24,18 @@
@@ -310,7 +312,7 @@ index 54b20faa0b69..7ebe7d8a5382 100644
  static void dpu_setup_dspp_pcc(struct dpu_hw_dspp *ctx,
  		struct dpu_hw_pcc_cfg *cfg)
  {
-@@ -63,6 +75,47 @@ static void dpu_setup_dspp_pcc(struct dpu_hw_dspp *ctx,
+@@ -63,6 +75,46 @@ static void dpu_setup_dspp_pcc(struct dpu_hw_dspp *ctx,
  	DPU_REG_WRITE(&ctx->hw, base, PCC_EN);
  }
  
@@ -321,14 +323,14 @@ index 54b20faa0b69..7ebe7d8a5382 100644
 +	u32 base, reg;
 +
 +	if (!ctx) {
-+		DRM_ERROR("invalid ctx %pK\n", ctx);
++		DRM_ERROR("invalid ctx\n");
 +		return;
 +	}
 +
 +	base = ctx->cap->sblk->gc.base;
 +
 +	if (!base) {
-+		DRM_ERROR("invalid ctx %pK gc base 0x%x\n", ctx, base);
++		DRM_ERROR("invalid ctx %pK gc base\n", ctx);
 +		return;
 +	}
 +
@@ -338,10 +340,9 @@ index 54b20faa0b69..7ebe7d8a5382 100644
 +		return;
 +	}
 +
-+	reg = 0;
-+	DPU_REG_WRITE(&ctx->hw, base + GC_C0_INDEX_OFF, reg);
-+	DPU_REG_WRITE(&ctx->hw, base + GC_C1_INDEX_OFF, reg);
-+	DPU_REG_WRITE(&ctx->hw, base + GC_C2_INDEX_OFF, reg);
++	DPU_REG_WRITE(&ctx->hw, base + GC_C0_INDEX_OFF, 0);
++	DPU_REG_WRITE(&ctx->hw, base + GC_C1_INDEX_OFF, 0);
++	DPU_REG_WRITE(&ctx->hw, base + GC_C2_INDEX_OFF, 0);
 +
 +	for (i = 0; i < PGC_TBL_LEN; i++) {
 +		DPU_REG_WRITE(&ctx->hw, base + GC_C0_OFF, gc_lut->c0[i]);
@@ -358,7 +359,7 @@ index 54b20faa0b69..7ebe7d8a5382 100644
  /**
   * dpu_hw_dspp_init() - Initializes the DSPP hw driver object.
   * should be called once before accessing every DSPP.
-@@ -92,6 +145,8 @@ struct dpu_hw_dspp *dpu_hw_dspp_init(struct drm_device *dev,
+@@ -92,6 +144,8 @@ struct dpu_hw_dspp *dpu_hw_dspp_init(struct drm_device *dev,
  	c->cap = cfg;
  	if (c->cap->sblk->pcc.base)
  		c->ops.setup_pcc = dpu_setup_dspp_pcc;
