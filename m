@@ -1,49 +1,59 @@
 From: George Chan <gchan9527@gmail.com>
-Date: Tue, 21 Oct 2025 00:23:58 +0800
-Subject: [PATCH 1/2] iommu: qcom-smmu: Introduce sc7180 compatible string
+Date: Tue, 21 Oct 2025 00:23:59 +0800
+Subject: [PATCH 2/2] usb: gadget: Introduce usb gadget vendor/product
+ default id for ARCH_QCOM
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251021-sc7180-minor-v1-1-9fe33c73365e@gmail.com>
+Message-Id: <20251021-sc7180-minor-v1-2-9fe33c73365e@gmail.com>
 References: <20251021-sc7180-minor-v1-0-9fe33c73365e@gmail.com>
 In-Reply-To: <20251021-sc7180-minor-v1-0-9fe33c73365e@gmail.com>
 To: u-boot@lists.denx.de
 Cc: George Chan <gchan9527@gmail.com>, 
- Vitalii Skorkin <nikroks@mainlining.org>, 
- Casey Connolly <casey.connolly@linaro.org>
+ Mattijs Korpershoek <mkorpershoek@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760977468; l=870;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1760977468; l=1201;
  i=gchan9527@gmail.com; s=20241015; h=from:subject:message-id;
- bh=42TwfPn6+UwUrF0bHJRtbT/XxJmf4Tq0MSQfLwkdXQg=;
- b=mLucF3kpxtdM/+LDjmZAbW1EPCXbNKH2a04t+swRguDbad5RzhiadW+J7py5cOzyoeBe8olCd
- V9FwvR5o5iSALUE8jkDw1itb9HbOJHmFjfp7JevCDkXrmnNJjvsTbeA
+ bh=ldgJNz2wHJliI43avdl9F3gBvhVbCT7sU2a1+PlLkQc=;
+ b=yzwIYFFhQ1s/v9g4wNlMCn99XpUcUK5n3AxzYTZVS/XFBa4kw2ryZF57xIvV34V+KnzRiwQKD
+ fxbVWxXiulgBX2efE9WwRLVwlxyC3OQnpLVfpxZQbz3ssR+GyYIRELc
 X-Developer-Key: i=gchan9527@gmail.com; a=ed25519;
  pk=dscYWhT+BiQOBMpPE19NFQAjBBmcpipc6zdf2MTze/U=
 X-Endpoint-Received: by B4 Relay for gchan9527@gmail.com/20241015 with auth_id=248
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add basic compatible string for sc7180 family soc.
+Currently vendor/product id are both 0, and that might not as we want.
+Set to some arbitary known value that we can make it work more smoothly.
 
-Signed-off-by: Vitalii Skorkin <nikroks@mainlining.org>
-Co-developed-by: George Chan <gchan9527@gmail.com>
+Reviewed-by: Mattijs Korpershoek <mkorpershoek@kernel.org>
+Acked-by: Mattijs Korpershoek <mkorpershoek@kernel.org>
+Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
 Signed-off-by: George Chan <gchan9527@gmail.com>
-Reviewed-by: Casey Connolly <casey.connolly@linaro.org>
 ---
- drivers/iommu/qcom-hyp-smmu.c | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/usb/gadget/Kconfig | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/iommu/qcom-hyp-smmu.c b/drivers/iommu/qcom-hyp-smmu.c
-index 2e51ce4f242..519e7f4e7b2 100644
---- a/drivers/iommu/qcom-hyp-smmu.c
-+++ b/drivers/iommu/qcom-hyp-smmu.c
-@@ -389,6 +389,7 @@ static struct iommu_ops qcom_smmu_ops = {
- 
- static const struct udevice_id qcom_smmu500_ids[] = {
- 	{ .compatible = "qcom,sdm845-smmu-500" },
-+	{ .compatible = "qcom,sc7180-smmu-500" },
- 	{ .compatible = "qcom,sc7280-smmu-500" },
- 	{ .compatible = "qcom,smmu-500", },
- 	{ /* sentinel */ }
+diff --git a/drivers/usb/gadget/Kconfig b/drivers/usb/gadget/Kconfig
+index e845e46e0b7..008f8c99a58 100644
+--- a/drivers/usb/gadget/Kconfig
++++ b/drivers/usb/gadget/Kconfig
+@@ -60,6 +60,7 @@ config USB_GADGET_VENDOR_NUM
+ 	default 0x0955 if ARCH_TEGRA
+ 	default 0x1f3a if ARCH_SUNXI
+ 	default 0x2207 if ARCH_ROCKCHIP
++	default 0x18d1 if ARCH_QCOM
+ 	default 0x0
+ 	help
+ 	  Vendor ID of the USB device emulated, reported to the host device.
+@@ -87,6 +88,7 @@ config USB_GADGET_PRODUCT_NUM
+ 	default 0x350b if ROCKCHIP_RK3588
+ 	default 0x350c if ROCKCHIP_RK3528
+ 	default 0x350e if ROCKCHIP_RK3576
++	default 0x4ee0 if ARCH_QCOM
+ 	default 0x0
+ 	help
+ 	  Product ID of the USB device emulated, reported to the host device.
 
 -- 
 2.43.0
