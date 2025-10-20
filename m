@@ -1,150 +1,137 @@
-From: Maud Spierings <maud_spierings@hotmail.com>
-Date: Mon, 20 Oct 2025 19:34:06 +0200
-Subject: [PATCH v2] parted: add max option to mkpart <end>
+From: David Heidelberg <david@ixit.cz>
+Date: Mon, 20 Oct 2025 23:12:56 +0200
+Subject: [PATCH] arm64: dts: qcom: sdm845: Define guard pages within the
+ rmtfs region
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251020-parted-v2-1-63b8490ec9f4@hotmail.com>
-X-B4-Tracking: v=1; b=H4sIAI1y9mgC/2XMQQ6CMBCF4auQWVszA1apK+9hWBQ6yiRCSds0G
- sLdrWxd/i8v3wqRg3CEa7VC4CxR/FyiPlQwjHZ+shJXGmqsNSEZtdiQ2Kke3bm56Ba5RSjnJfB
- D3jt070qPEpMPn93N9Fv/iEyKlGl61Ej9CZ25jT5NVl7HwU/Qbdv2Bd39dIKeAAAA
-X-Change-ID: 20251019-parted-b0d637580e80
-To: Sascha Hauer <s.hauer@pengutronix.de>, 
- BAREBOX <barebox@lists.infradead.org>
-Cc: Maud Spierings <maud_spierings@hotmail.com>
+Message-Id: <20251020-sdm845-use-guard-pages-v1-1-64d714f8bd73@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIANel9mgC/x3MSQqAMAxA0atI1gbaoDhcRVy0NtYsHGhQBPHuF
+ pdv8f8DyklYoS8eSHyJyr5l2LKAaXFbZJSQDWSotoYMaljbqsZTGePpUsDDRVbsJvI0O+Mby5D
+ jI/Es9z8exvf9ANN3t0RoAAAA
+X-Change-ID: 20251020-sdm845-use-guard-pages-9c2b2fa0b71e
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Paul Sajna <sajattack@postmarketos.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1760981648; l=3588;
- i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=vKyxeMOFHKeRteYbOIinQ83si/JuCrpetNr2ni6B0BE=;
- b=JXc+B8SfltPukohjANtkXBvIsvyvG7SN27hVjRNiZsm3pJi0QXME/K1yQXSFLQTDi/qQ6qDK8
- WR6pGjpZAk/BgGC9mw95dZ5L5JJmlvaMY9HwXgxfNgHPwGxCy6pjugo
-X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
- pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
-X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2915; i=david@ixit.cz;
+ h=from:subject:message-id; bh=E2eVtp9CZo235rNLq7eCdbNC0gKfjdqyqcrfaduc4TA=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBo9qXdl3mY7plSvTx0oldYpigYKjtk6zobkvdyJ
+ cbZnG1oJDuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaPal3QAKCRBgAj/E00kg
+ chXkD/9f5U607VemeAM2+jdhdbFPYzpHwX7OZtx3hLqgJkBJN1dC0xGvHiG8H0K4EUHbCQkhRxv
+ QwdSeKNbcJmUs8xH8KxYUiLo3jHCeaAyp1keRtpIdDlFBZ5L1pR+vK9LN4blahQM4bLI7ZB1W0b
+ MxurXBTOm3AGlwAhRpBv0kV7b/4N+gQnbI646YbQtobSx3glV46lXUj3BmbsLC6OcFAuRnpFU+7
+ OzNOkX2Zc9nd+ftZ1nCr4IWACQ2xXxjJWJ3upw7pk5SoLc+mrJmo0+7rpZxDtVJ0SyFsb1xoBLs
+ PaqkliW6Ncalr4WSghdwrVJ1E6n52lD3Pw5n553/CG1JD6TM5YWSCAZaeVOgXhlIdoquZL7ATeC
+ YT5jTDo0C8O4sSsvBSfgW28XtNFZJvP8EIshF1KTww8/fo+v5pxkgvpdHJVO8hG1IVgeHJC2eck
+ EYR9wcVX35nG4YQ4OyOsAX6zDrIBRhgq9C/yRJtj4kSYiNdbTFfkzU2oFQ3Q3WVSEzASkxsQtNc
+ pa/Hce6ETuvOEHLJWDk5rRfjvt/Y/BuNCAZgYU6wvHNx7ghZFuWFZJ5qffWsiJLLwIndUeH3Dpr
+ 5qbOA7GXDqXdkN0uQe5lajrqiopiU6fwLCXlCGzfzrdD2TcWftF9oCuUybgIamLwQgZzOxuAz/6
+ 1Fw6sSftNiMU1ew==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the option to specify "max" as the end location, this will fill the
-block device up to the end of its available space.
+Use qcom,use-guard-pages property instead of polluting device-tree with
+lower and upper rmtfs guard nodes.
 
-A secondary effect is that it is now possible to use two different size
-units for start and end
+No functional change intended.
 
-mkpart root ext4 66MiB 3866111KiB
+cosmetic: set name the node rmtfs-region.
 
-previously it would read 66MiB as 66KiB as it only used the last read
-unit.
-
-Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v2:
-- Remove rounding down of the end point to the nearest MiB boundary
-- remove the else if and make it the else continue to get rid of
-  assignment in if condition.
-- Link to v1: https://lore.kernel.org/r/20251019-parted-v1-1-93b0501b40d9@hotmail.com
+Tested on OnePlus 6T.
 ---
- commands/parted.c | 55 +++++++++++++++++++++++++++++++++++--------------------
- 1 file changed, 35 insertions(+), 20 deletions(-)
+ arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi      | 17 +++--------------
+ arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 18 +++---------------
+ 2 files changed, 6 insertions(+), 29 deletions(-)
 
-diff --git a/commands/parted.c b/commands/parted.c
-index 7ec56da4c15f..f03dc37c05b3 100644
---- a/commands/parted.c
-+++ b/commands/parted.c
-@@ -138,6 +138,10 @@ static int do_mkpart(struct block_device *blk, int argc, char *argv[])
- 	int ret;
- 	uint64_t mult;
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi
+index 99dafc6716e76..83b98bad19dd2 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi
+@@ -99,26 +99,15 @@ memory@9d400000 {
+ 			no-map;
+ 		};
  
-+	pdesc = pdesc_get(blk);
-+	if (!pdesc)
-+		return -EINVAL;
-+
- 	if (argc < 5) {
- 		printf("Error: Missing required arguments\n");
- 		return -EINVAL;
-@@ -150,40 +154,50 @@ static int do_mkpart(struct block_device *blk, int argc, char *argv[])
- 	if (ret)
- 		return ret;
- 
--	ret = parted_strtoull(argv[4], &end, &mult);
--	if (ret)
--		return ret;
+-		/* rmtfs lower guard */
+-		memory@f0800000 {
+-			reg = <0 0xf0800000 0 0x1000>;
+-			no-map;
+-		};
 -
- 	if (!mult)
- 		mult = gunit;
+-		rmtfs_mem: memory@f0801000 {
++		rmtfs_mem: rmtfs-region@f0800000 {
+ 			compatible = "qcom,rmtfs-mem";
+-			reg = <0 0xf0801000 0 0x200000>;
++			reg = <0 0xf0800000 0 0x202000>;
++			qcom,use-guard-pages;
+ 			no-map;
+ 
+ 			qcom,client-id = <1>;
+ 			qcom,vmid = <QCOM_SCM_VMID_MSS_MSA>;
+ 		};
 -
- 	start *= mult;
--	end *= mult;
+-		/* rmtfs upper guard */
+-		memory@f0a01000 {
+-			reg = <0 0xf0a01000 0 0x1000>;
+-			no-map;
+-		};
+ 	};
  
--	/* If not on sector boundaries move start up and end down */
-+	/* If not on sector boundaries round start up */
- 	start = ALIGN(start, SZ_1M);
--	end = ALIGN_DOWN(end, SZ_1M);
+ 	gpio-keys {
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
+index dcfffb271fcf3..61d63003fa371 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
+@@ -75,32 +75,20 @@ key-vol-up {
+ 	};
  
- 	/* convert to LBA */
- 	start >>= SECTOR_SHIFT;
--	end >>= SECTOR_SHIFT;
-+
-+	if (!strcmp(argv[4], "max")) {
-+		/* gpt requires 34 blocks at the end */
-+		if (pdesc->parser->type == filetype_gpt)
-+			end = blk->num_blocks - 35;
-+		else if (pdesc->parser->type == filetype_mbr)
-+			end = blk->num_blocks - 1;
-+		else
-+			return -ENOSYS;
-+	} else {
-+		ret = parted_strtoull(argv[4], &end, &mult);
-+		if (ret)
-+			return ret;
-+
-+		if (!mult)
-+			mult = gunit;
-+		end *= mult;
-+
-+		/* convert to LBA */
-+		end >>= SECTOR_SHIFT;
-+
-+		/*
-+		 * When unit is >= KB then subtract one sector for user
-+		 * convenience. It allows to start the next partition where the
-+		 * previous ends
-+		 */
-+		if (mult >= 1000)
-+			end -= 1;
-+	}
+ 	reserved-memory {
+-		/*
+-		 * The rmtfs_mem needs to be guarded due to "XPU limitations"
+-		 * it is otherwise possible for an allocation adjacent to the
+-		 * rmtfs_mem region to trigger an XPU violation, causing a crash.
+-		 */
+-		rmtfs_lower_guard: rmtfs-lower-guard@f5b00000 {
+-			no-map;
+-			reg = <0 0xf5b00000 0 0x1000>;
+-		};
+ 		/*
+ 		 * The rmtfs memory region in downstream is 'dynamically allocated'
+ 		 * but given the same address every time. Hard code it as this address is
+ 		 * where the modem firmware expects it to be.
+ 		 */
+-		rmtfs_mem: rmtfs-mem@f5b01000 {
++		rmtfs_mem: rmtfs-region@f5b00000 {
+ 			compatible = "qcom,rmtfs-mem";
+-			reg = <0 0xf5b01000 0 0x200000>;
++			reg = <0 0xf5b00000 0 0x202000>;
++			qcom,use-guard-pages;
+ 			no-map;
  
- 	if (end == start) {
- 		printf("Error: After alignment the partition has zero size\n");
- 		return -EINVAL;
- 	}
+ 			qcom,client-id = <1>;
+ 			qcom,vmid = <QCOM_SCM_VMID_MSS_MSA>;
+ 		};
+-		rmtfs_upper_guard: rmtfs-upper-guard@f5d01000 {
+-			no-map;
+-			reg = <0 0xf5d01000 0 0x1000>;
+-		};
  
--	/*
--	 * When unit is >= KB then substract one sector for user convenience.
--	 * It allows to start the next partition where the previous ends
--	 */
--	if (mult >= 1000)
--		end -= 1;
--
--	pdesc = pdesc_get(blk);
--	if (!pdesc)
--		return -EINVAL;
--
- 	ret = partition_create(pdesc, name, fs_type, start, end);
- 
- 	if (!ret)
-@@ -424,6 +438,7 @@ BAREBOX_CMD_HELP_TEXT("<type> must be \"gpt\" or \"msdos\"")
- BAREBOX_CMD_HELP_TEXT("<fstype> can be one of  \"ext2\", \"ext3\", \"ext4\", \"fat16\", \"fat32\" or \"bbenv\"")
- BAREBOX_CMD_HELP_TEXT("<name> for MBR partition tables can be one of \"primary\", \"extended\" or")
- BAREBOX_CMD_HELP_TEXT("\"logical\". For GPT this is a name string.")
-+BAREBOX_CMD_HELP_TEXT("<end> can be \"max\" it will take all remaining space")
- BAREBOX_CMD_HELP_END
- 
- BAREBOX_CMD_START(parted)
+ 		/*
+ 		 * It seems like reserving the old rmtfs_mem region is also needed to prevent
 
 ---
-base-commit: 8defba1d0ab1aef9dd5d57710e18d0d02e2c48e2
-change-id: 20251019-parted-b0d637580e80
+base-commit: 606da5bb165594c052ee11de79bf05bc38bc1aa6
+change-id: 20251020-sdm845-use-guard-pages-9c2b2fa0b71e
 
 Best regards,
 -- 
-Maud Spierings <maud_spierings@hotmail.com>
+David Heidelberg <david@ixit.cz>
 
