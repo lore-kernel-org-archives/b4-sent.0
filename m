@@ -1,80 +1,293 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Tue, 21 Oct 2025 13:53:07 +0200
-Subject: [PATCH v4 7/7] dt-bindings: display: panel-simple-dsi: Remove
- Samsung S6E3FC2 compatible
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Tue, 21 Oct 2025 13:28:05 -0500
+Subject: [PATCH] cpufreq: tegra186: add OPP support and set bandwidth
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251021-s6e3fc2x01-v4-7-5e3ee21c688a@ixit.cz>
-References: <20251021-s6e3fc2x01-v4-0-5e3ee21c688a@ixit.cz>
-In-Reply-To: <20251021-s6e3fc2x01-v4-0-5e3ee21c688a@ixit.cz>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, Sam Ravnborg <sam@ravnborg.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1344; i=david@ixit.cz;
- h=from:subject:message-id; bh=c5fkR2jWk5YkcniO/SxqMzx6Ew0swnPogltZcHFgTB8=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBo93QiJGeCP+WQuzYRJI4TdEzwLRxRfVymzu3Yy
- cuKKbXLmCSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaPd0IgAKCRBgAj/E00kg
- clZmEADEDrhcdx28UjTgVPkdnxtUE00Vgeygf8rFA5JPmVtgqJ/0bAE7X0IJJekrhjppGEngSlL
- H2TwD14xpMLAdFV+wu4oFEtudEJXFyeI156Ze2AkBWH6Tc1XHjWgh89KJjsZKmTA9IAY8gd2S3t
- hJ3xgLrQFXMOtaGu7MoI7rrKUU43o3LoHRXg+CF0FHq1K2ck4nXWaqy9sQtJ2pc+zLHTSFud2na
- UC90C2/VxwoVaRugoeTBwCwLwAZM/TxNXjBiNjYlV0Gv7JIiNCp8tKavFcyC6ZCB+T7Af+8SJPv
- pDLLitGYpppyGdi28MAT+juOy/jhKAmI7EAV72gQETQQsiUH1nliO0ENssGwphfhQmOUwijAWKg
- YNrKCRjtLqUai9y0t2TOUGNpyegyj1LCuy5DWzLNTdpwCKIXew7yvVjcr+v3dAUryGYnba6dzI+
- witeJRPxU77NiCLYb7aTd7RqBwH2V+JSb/lsc4WEOVREszMvLmxwew8ATVGXbfH0PJtsSLG9o0R
- 1J3+QrJ9hAsgsGwM7zUBfCecb+vNajXCCh5x7HHKHwk8R0VlqEqokY3CGaXYsLXxnY2YBZMhCH9
- 4Fwt1ALHkk/zI7OlRa/I/AcCQCUnRXpDtWytxzbAvBiHm1/eX+nBJaRmXwDBYqPugKA3ATLqjjn
- zbk/08wWYl0x0jg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Message-Id: <20251021-tegra186-icc-p1-v1-1-0d8eede5cc50@gmail.com>
+X-B4-Tracking: v=1; b=H4sIALTQ92gC/x3MQQqAIBBA0avErBtwTEW6SrQInWw2FhoRRHdPW
+ r7F/w9ULsIVxu6BwpdU2XMD9R2EbcmJUWIzaKUtKU14cioLeYcSAh6E3ljLjqKxQ4RWHYVXuf/
+ jNL/vB1qTW3phAAAA
+X-Change-ID: 20251021-tegra186-icc-p1-8455e61d453d
+To: "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Viresh Kumar <viresh.kumar@linaro.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: linux-pm@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761071294; l=8546;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=qWPRTxCCx08WIx7xdW9SGGyovJKa82Ei3y1cUQPJ9Z8=;
+ b=U90KdYLoqGRMn7mIuUKRzIO3P36Xacvd8/6Uu0g4TvorWE8yZtvjL4bl19sEENSxO0QTU672F
+ bKOZvOLBkEKAizW0ChjRxUJBe0xhilHJfiKZDbUboHcy1q4AEkFp7uQ
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Samsung S6E3FC2X01 DDIC isn't Simple DSI panel.
+Add support to use OPP table from DT in Tegra186 cpufreq driver.
+Tegra SoC's receive the frequency lookup table (LUT) from BPMP-FW.
+Cross check the OPP's present in DT against the LUT from BPMP-FW
+and enable only those DT OPP's which are present in LUT also.
 
-This panel has three supplies, while panel-simple-dsi is limited to one.
-There is no user of this compatible, nor the compatible make sense.
-Remove it.
+The OPP table in DT has CPU Frequency to bandwidth mapping where
+the bandwidth value is per MC channel. DRAM bandwidth depends on the
+number of MC channels which can vary as per the boot configuration.
+This per channel bandwidth from OPP table will be later converted by
+MC driver to final bandwidth value by multiplying with number of
+channels before being handled in the EMC driver.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+If OPP table is not present in DT, then use the LUT from BPMP-FW
+directy as the CPU frequency table and not do the DRAM frequency
+scaling which is same as the current behavior.
+
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- Documentation/devicetree/bindings/display/panel/panel-simple-dsi.yaml | 3 ---
- 1 file changed, 3 deletions(-)
+ drivers/cpufreq/tegra186-cpufreq.c | 152 +++++++++++++++++++++++++++++++++++--
+ 1 file changed, 145 insertions(+), 7 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/display/panel/panel-simple-dsi.yaml b/Documentation/devicetree/bindings/display/panel/panel-simple-dsi.yaml
-index 9b92a05791ccf..ac2db8cf5eb76 100644
---- a/Documentation/devicetree/bindings/display/panel/panel-simple-dsi.yaml
-+++ b/Documentation/devicetree/bindings/display/panel/panel-simple-dsi.yaml
-@@ -56,8 +56,6 @@ properties:
-       - panasonic,vvx10f034n00
-         # Samsung s6e3fa7 1080x2220 based AMS559NK06 AMOLED panel
-       - samsung,s6e3fa7-ams559nk06
--        # Samsung s6e3fc2x01 1080x2340 AMOLED panel
--      - samsung,s6e3fc2x01
-         # Samsung sofef00 1080x2280 AMOLED panel
-       - samsung,sofef00
-         # Shangai Top Display Optoelectronics 7" TL070WSH30 1024x600 TFT LCD panel
-@@ -80,7 +78,6 @@ allOf:
-       properties:
-         compatible:
-           enum:
--            - samsung,s6e3fc2x01
-             - samsung,sofef00
-     then:
-       properties:
+diff --git a/drivers/cpufreq/tegra186-cpufreq.c b/drivers/cpufreq/tegra186-cpufreq.c
+index 136ab102f636aa57741639ed1909d095881c14d3..35f1c1371f6a1688c35f3ba012b9f008fba83d74 100644
+--- a/drivers/cpufreq/tegra186-cpufreq.c
++++ b/drivers/cpufreq/tegra186-cpufreq.c
+@@ -8,6 +8,7 @@
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/platform_device.h>
++#include <linux/units.h>
+ 
+ #include <soc/tegra/bpmp.h>
+ #include <soc/tegra/bpmp-abi.h>
+@@ -58,7 +59,7 @@ static const struct tegra186_cpufreq_cpu tegra186_cpus[] = {
+ };
+ 
+ struct tegra186_cpufreq_cluster {
+-	struct cpufreq_frequency_table *table;
++	struct cpufreq_frequency_table *bpmp_lut;
+ 	u32 ref_clk_khz;
+ 	u32 div;
+ };
+@@ -66,16 +67,121 @@ struct tegra186_cpufreq_cluster {
+ struct tegra186_cpufreq_data {
+ 	void __iomem *regs;
+ 	const struct tegra186_cpufreq_cpu *cpus;
++	bool icc_dram_bw_scaling;
+ 	struct tegra186_cpufreq_cluster clusters[];
+ };
+ 
++static int tegra_cpufreq_set_bw(struct cpufreq_policy *policy, unsigned long freq_khz)
++{
++	struct tegra186_cpufreq_data *data = cpufreq_get_driver_data();
++	struct device *dev;
++	int ret;
++
++	dev = get_cpu_device(policy->cpu);
++	if (!dev)
++		return -ENODEV;
++
++	struct dev_pm_opp *opp __free(put_opp) =
++		dev_pm_opp_find_freq_exact(dev, freq_khz * HZ_PER_KHZ, true);
++	if (IS_ERR(opp))
++		return PTR_ERR(opp);
++
++	ret = dev_pm_opp_set_opp(dev, opp);
++	if (ret)
++		data->icc_dram_bw_scaling = false;
++
++	return ret;
++}
++
++static int tegra_cpufreq_init_cpufreq_table(struct cpufreq_policy *policy,
++					    struct cpufreq_frequency_table *bpmp_lut,
++					    struct cpufreq_frequency_table **opp_table)
++{
++	struct tegra186_cpufreq_data *data = cpufreq_get_driver_data();
++	struct cpufreq_frequency_table *freq_table = NULL;
++	struct cpufreq_frequency_table *pos;
++	struct device *cpu_dev;
++	unsigned long rate;
++	int ret, max_opps;
++	int j = 0;
++
++	cpu_dev = get_cpu_device(policy->cpu);
++	if (!cpu_dev) {
++		pr_err("%s: failed to get cpu%d device\n", __func__, policy->cpu);
++		return -ENODEV;
++	}
++
++	/* Initialize OPP table mentioned in operating-points-v2 property in DT */
++	ret = dev_pm_opp_of_add_table_indexed(cpu_dev, 0);
++	if (ret) {
++		dev_err(cpu_dev, "Invalid or empty opp table in device tree\n");
++		data->icc_dram_bw_scaling = false;
++		return ret;
++	}
++
++	max_opps = dev_pm_opp_get_opp_count(cpu_dev);
++	if (max_opps <= 0) {
++		dev_err(cpu_dev, "Failed to add OPPs\n");
++		return max_opps;
++	}
++
++	/* Disable all opps and cross-validate against LUT later */
++	for (rate = 0; ; rate++) {
++		struct dev_pm_opp *opp __free(put_opp);
++
++		opp = dev_pm_opp_find_freq_ceil(cpu_dev, &rate);
++		if (IS_ERR(opp))
++			break;
++
++		dev_pm_opp_disable(cpu_dev, rate);
++	}
++
++	freq_table = kcalloc((max_opps + 1), sizeof(*freq_table), GFP_KERNEL);
++	if (!freq_table)
++		return -ENOMEM;
++
++	/*
++	 * Cross check the frequencies from BPMP-FW LUT against the OPP's present in DT.
++	 * Enable only those DT OPP's which are present in LUT also.
++	 */
++	cpufreq_for_each_valid_entry(pos, bpmp_lut) {
++		struct dev_pm_opp *opp __free(put_opp);
++
++		opp = dev_pm_opp_find_freq_exact(cpu_dev, pos->frequency * HZ_PER_KHZ, false);
++		if (IS_ERR(opp))
++			continue;
++
++		ret = dev_pm_opp_enable(cpu_dev, pos->frequency * HZ_PER_KHZ);
++		if (ret < 0)
++			return ret;
++
++		freq_table[j].driver_data = pos->driver_data;
++		freq_table[j].frequency = pos->frequency;
++		j++;
++	}
++
++	freq_table[j].driver_data = pos->driver_data;
++	freq_table[j].frequency = CPUFREQ_TABLE_END;
++
++	*opp_table = &freq_table[0];
++
++	dev_pm_opp_set_sharing_cpus(cpu_dev, policy->cpus);
++
++	/* Prime interconnect data */
++	tegra_cpufreq_set_bw(policy, freq_table[j - 1].frequency);
++
++	return ret;
++}
++
+ static int tegra186_cpufreq_init(struct cpufreq_policy *policy)
+ {
+ 	struct tegra186_cpufreq_data *data = cpufreq_get_driver_data();
+ 	unsigned int cluster = data->cpus[policy->cpu].bpmp_cluster_id;
++	struct cpufreq_frequency_table *freq_table;
++	struct cpufreq_frequency_table *bpmp_lut;
+ 	u32 cpu;
++	int ret;
+ 
+-	policy->freq_table = data->clusters[cluster].table;
+ 	policy->cpuinfo.transition_latency = 300 * 1000;
+ 	policy->driver_data = NULL;
+ 
+@@ -85,6 +191,20 @@ static int tegra186_cpufreq_init(struct cpufreq_policy *policy)
+ 			cpumask_set_cpu(cpu, policy->cpus);
+ 	}
+ 
++	bpmp_lut = data->clusters[cluster].bpmp_lut;
++
++	if (data->icc_dram_bw_scaling) {
++		ret = tegra_cpufreq_init_cpufreq_table(policy, bpmp_lut, &freq_table);
++		if (!ret) {
++			policy->freq_table = freq_table;
++			return 0;
++		}
++	}
++
++	data->icc_dram_bw_scaling = false;
++	policy->freq_table = bpmp_lut;
++	pr_info("OPP tables missing from DT, EMC frequency scaling disabled\n");
++
+ 	return 0;
+ }
+ 
+@@ -102,6 +222,10 @@ static int tegra186_cpufreq_set_target(struct cpufreq_policy *policy,
+ 		writel(edvd_val, data->regs + edvd_offset);
+ 	}
+ 
++	if (data->icc_dram_bw_scaling)
++		tegra_cpufreq_set_bw(policy, tbl->frequency);
++
++
+ 	return 0;
+ }
+ 
+@@ -134,7 +258,7 @@ static struct cpufreq_driver tegra186_cpufreq_driver = {
+ 	.init = tegra186_cpufreq_init,
+ };
+ 
+-static struct cpufreq_frequency_table *init_vhint_table(
++static struct cpufreq_frequency_table *tegra_cpufreq_bpmp_read_lut(
+ 	struct platform_device *pdev, struct tegra_bpmp *bpmp,
+ 	struct tegra186_cpufreq_cluster *cluster, unsigned int cluster_id,
+ 	int *num_rates)
+@@ -229,6 +353,7 @@ static int tegra186_cpufreq_probe(struct platform_device *pdev)
+ {
+ 	struct tegra186_cpufreq_data *data;
+ 	struct tegra_bpmp *bpmp;
++	struct device *cpu_dev;
+ 	unsigned int i = 0, err, edvd_offset;
+ 	int num_rates = 0;
+ 	u32 edvd_val, cpu;
+@@ -254,9 +379,9 @@ static int tegra186_cpufreq_probe(struct platform_device *pdev)
+ 	for (i = 0; i < TEGRA186_NUM_CLUSTERS; i++) {
+ 		struct tegra186_cpufreq_cluster *cluster = &data->clusters[i];
+ 
+-		cluster->table = init_vhint_table(pdev, bpmp, cluster, i, &num_rates);
+-		if (IS_ERR(cluster->table)) {
+-			err = PTR_ERR(cluster->table);
++		cluster->bpmp_lut = tegra_cpufreq_bpmp_read_lut(pdev, bpmp, cluster, i, &num_rates);
++		if (IS_ERR(cluster->bpmp_lut)) {
++			err = PTR_ERR(cluster->bpmp_lut);
+ 			goto put_bpmp;
+ 		} else if (!num_rates) {
+ 			err = -EINVAL;
+@@ -265,7 +390,7 @@ static int tegra186_cpufreq_probe(struct platform_device *pdev)
+ 
+ 		for (cpu = 0; cpu < ARRAY_SIZE(tegra186_cpus); cpu++) {
+ 			if (data->cpus[cpu].bpmp_cluster_id == i) {
+-				edvd_val = cluster->table[num_rates - 1].driver_data;
++				edvd_val = cluster->bpmp_lut[num_rates - 1].driver_data;
+ 				edvd_offset = data->cpus[cpu].edvd_offset;
+ 				writel(edvd_val, data->regs + edvd_offset);
+ 			}
+@@ -274,6 +399,19 @@ static int tegra186_cpufreq_probe(struct platform_device *pdev)
+ 
+ 	tegra186_cpufreq_driver.driver_data = data;
+ 
++	/* Check for optional OPPv2 and interconnect paths on CPU0 to enable ICC scaling */
++	cpu_dev = get_cpu_device(0);
++	if (!cpu_dev) {
++		err = -EPROBE_DEFER;
++		goto put_bpmp;
++	}
++
++	if (dev_pm_opp_of_get_opp_desc_node(cpu_dev)) {
++		err = dev_pm_opp_of_find_icc_paths(cpu_dev, NULL);
++		if (!err)
++			data->icc_dram_bw_scaling = true;
++	}
++
+ 	err = cpufreq_register_driver(&tegra186_cpufreq_driver);
+ 
+ put_bpmp:
 
+---
+base-commit: 211ddde0823f1442e4ad052a2f30f050145ccada
+change-id: 20251021-tegra186-icc-p1-8455e61d453d
+
+Best regards,
 -- 
-2.51.0
+Aaron Kling <webgeek1234@gmail.com>
 
