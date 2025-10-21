@@ -1,748 +1,155 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Tue, 21 Oct 2025 13:31:28 -0500
-Subject: [PATCH 2/2] arm64: tegra: Add CPU OPP tables for Tegra194
+From: Joel Selvaraj <foss@joelselvaraj.com>
+Date: Tue, 21 Oct 2025 13:53:06 -0500
+Subject: [PATCH v2] backlight: qcom-wled: fix unbalanced ovp irq enable
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251021-tegra186-icc-p3-v1-2-0c313968b77b@gmail.com>
-References: <20251021-tegra186-icc-p3-v1-0-0c313968b77b@gmail.com>
-In-Reply-To: <20251021-tegra186-icc-p3-v1-0-0c313968b77b@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+Message-Id: <20251021-qcom-wled-fix-unbalanced-ovp-irq-enable-v2-1-7ff115b4ffe7@joelselvaraj.com>
+X-B4-Tracking: v=1; b=H4sIAJHW92gC/5WNQQ7CIBBFr9KwdgxgIdGV9zBdDGW0NAgtKGqa3
+ l3sDVy+n/z3FpYpOcrs1CwsUXHZxVBB7hrWDxhuBM5WZpJLJbgUMPfxDi9PFq7uDc9g0GPoK8Y
+ ygUszUEDjCVTbaiO4RnvUrNqmRPWwlS5d5cHlR0yfLVzEb/2/UQQIIGsPvLVCK1TnMZLP5AsmH
+ PfVwrp1Xb+2OdUg5QAAAA==
+X-Change-ID: 20251021-qcom-wled-fix-unbalanced-ovp-irq-enable-5446b106ad96
+To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
+ Jingoo Han <jingoohan1@gmail.com>, Helge Deller <deller@gmx.de>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ linux-fbdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Joel Selvaraj <foss@joelselvaraj.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761071492; l=16615;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=rO4CQGLvV2bo0tcNNwbixLW81fdzEyzii59svxI1Uyw=;
- b=WVu6DGV7WWEWMGkJB5x/pvBIsPkCeeCDua8vNQ/qIygniaXmLqhRiuMoRdywsUBcO/rLkohvz
- /1TwcTMjBBDBhmsGMXBEsLqNOhzd1TWlTKTMce30sg9SY6As4EsSNju
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761072806; l=4368;
+ i=foss@joelselvaraj.com; s=20250919; h=from:subject:message-id;
+ bh=+zxsXoGdLJQYgRVd89LWEBBj6NGtlp3Yp8wwgEWlx8w=;
+ b=5LCIDELJydjgakfLZUSdmtVysbCZBFc51OM6rE+/GwWadfxB/8xX6wtr4L6MMAreYmFRTKba8
+ p0+GvI2mgiIBg6NHMuFOHjhwfHWdPlAXUjEJPXkualGFTiWWFQXE7gA
+X-Developer-Key: i=foss@joelselvaraj.com; a=ed25519;
+ pk=BBMos4ph15apUFh2AkG9rLZIrBWl5LD4egPOhEv63X0=
+X-Endpoint-Received: by B4 Relay for foss@joelselvaraj.com/20250919 with auth_id=529
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add OPP table and interconnects property to scale DDR frequency with
-CPU frequency for better performance. Each operating point entry of
-the OPP table has CPU freq to per MC channel bandwidth mapping.
-One table is added for each cluster even though the table data is
-same because the bandwidth request is per cluster. This is done
-because the OPP framework creates a single icc path and hence single
-bandwidth request if the table is marked as 'opp-shared' and shared
-among all clusters. For us, the OPP table data is same but the MC
-Client ID argument to interconnects property is different for each
-cluster. So, having per cluster tables makes different icc paths for
-each cluster and helps to make per cluster BW requests.
+In Xiaomi Poco F1 and at least few other devices, the qcom wled driver
+triggers unbalanced ovp irq enable warning like the following during
+boot up.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+[    1.151677] ------------[ cut here ]------------
+[    1.151680] Unbalanced enable for IRQ 176
+[    1.151693] WARNING: CPU: 0 PID: 160 at kernel/irq/manage.c:774 __enable_irq+0x50/0x80
+[    1.151710] Modules linked in:
+[    1.151717] CPU: 0 PID: 160 Comm: kworker/0:11 Not tainted 5.17.0-sdm845 #4
+[    1.151724] Hardware name: Xiaomi Pocophone F1 (DT)
+[    1.151728] Workqueue: events wled_ovp_work
+...<snip>...
+[    1.151833] Call trace:
+[    1.151836]  __enable_irq+0x50/0x80
+[    1.151841]  enable_irq+0x48/0xa0
+[    1.151846]  wled_ovp_work+0x18/0x24
+[    1.151850]  process_one_work+0x1d0/0x350
+[    1.151858]  worker_thread+0x13c/0x460
+[    1.151862]  kthread+0x110/0x114
+[    1.151868]  ret_from_fork+0x10/0x20
+[    1.151876] ---[ end trace 0000000000000000 ]---
+
+Fix it by storing and checking the state of ovp irq before enabling and
+disabling it.
+
+Signed-off-by: Joel Selvaraj <foss@joelselvaraj.com>
 ---
- arch/arm64/boot/dts/nvidia/tegra194.dtsi | 636 +++++++++++++++++++++++++++++++
- 1 file changed, 636 insertions(+)
+I was able to debug the issue a little further. This happens mainly because
+devm_request_threaded_irq already enables the ovp irq during probe. Then ovp
+work gets scheduled when update_status happens and in turn enables the irq again.
+Tracking the status makes it easy to avoid the double irq enable. But I am
+open to try a different approach if there is any suggestion.
+---
+Changes in v2:
+- Track ovp irq status using ovp_irq_enabled flag instead of ovp_irq_disabled. (Konrad Dybcio)
+- Use short wrapper functions for ovp irq enable and disable. (Konrad Dybcio)
+- Link to v1: https://lore.kernel.org/r/20251021-qcom-wled-fix-unbalanced-ovp-irq-enable-v1-1-edd304d165a5@joelselvaraj.com
+---
+ drivers/video/backlight/qcom-wled.c | 27 +++++++++++++++++++++++----
+ 1 file changed, 23 insertions(+), 4 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/nvidia/tegra194.dtsi b/arch/arm64/boot/dts/nvidia/tegra194.dtsi
-index 1399342f23e1c4f73b278adc66dfb948fc30d326..a6c4c6c73707354f62f778bbea5afaec3fdbe22d 100644
---- a/arch/arm64/boot/dts/nvidia/tegra194.dtsi
-+++ b/arch/arm64/boot/dts/nvidia/tegra194.dtsi
-@@ -2890,6 +2890,8 @@ cpu0_0: cpu@0 {
- 			device_type = "cpu";
- 			reg = <0x000>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl0_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER0 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -2904,6 +2906,8 @@ cpu0_1: cpu@1 {
- 			device_type = "cpu";
- 			reg = <0x001>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl0_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER0 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -2918,6 +2922,8 @@ cpu1_0: cpu@100 {
- 			device_type = "cpu";
- 			reg = <0x100>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl1_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER1 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -2932,6 +2938,8 @@ cpu1_1: cpu@101 {
- 			device_type = "cpu";
- 			reg = <0x101>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl1_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER1 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -2946,6 +2954,8 @@ cpu2_0: cpu@200 {
- 			device_type = "cpu";
- 			reg = <0x200>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl2_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER2 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -2960,6 +2970,8 @@ cpu2_1: cpu@201 {
- 			device_type = "cpu";
- 			reg = <0x201>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl2_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER2 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -2974,6 +2986,8 @@ cpu3_0: cpu@300 {
- 			device_type = "cpu";
- 			reg = <0x300>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl3_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER3 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -2988,6 +3002,8 @@ cpu3_1: cpu@301 {
- 			device_type = "cpu";
- 			reg = <0x301>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl3_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER3 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -3181,4 +3197,624 @@ timer {
- 		interrupt-parent = <&gic>;
- 		always-on;
- 	};
-+
-+	cl0_opp_tbl: opp-table-cluster0 {
-+		compatible = "operating-points-v2";
-+		opp-shared;
-+
-+		opp-115200000 {
-+			  opp-hz = /bits/ 64 <115200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-192000000 {
-+			  opp-hz = /bits/ 64 <192000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-268800000 {
-+			  opp-hz = /bits/ 64 <268800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-345600000 {
-+			  opp-hz = /bits/ 64 <345600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-422400000 {
-+			  opp-hz = /bits/ 64 <422400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-499200000 {
-+			  opp-hz = /bits/ 64 <499200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-576000000 {
-+			  opp-hz = /bits/ 64 <576000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-652800000 {
-+			  opp-hz = /bits/ 64 <652800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-729600000 {
-+			  opp-hz = /bits/ 64 <729600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-806400000 {
-+			  opp-hz = /bits/ 64 <806400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-883200000 {
-+			  opp-hz = /bits/ 64 <883200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-960000000 {
-+			  opp-hz = /bits/ 64 <960000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1036800000 {
-+			  opp-hz = /bits/ 64 <1036800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1113600000 {
-+			  opp-hz = /bits/ 64 <1113600000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1190400000 {
-+			  opp-hz = /bits/ 64 <1190400000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1267200000 {
-+			  opp-hz = /bits/ 64 <1267200000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1344000000 {
-+			  opp-hz = /bits/ 64 <1344000000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1420800000 {
-+			  opp-hz = /bits/ 64 <1420800000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1497600000 {
-+			  opp-hz = /bits/ 64 <1497600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1574400000 {
-+			  opp-hz = /bits/ 64 <1574400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1651200000 {
-+			  opp-hz = /bits/ 64 <1651200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1728000000 {
-+			  opp-hz = /bits/ 64 <1728000000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1804800000 {
-+			  opp-hz = /bits/ 64 <1804800000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1881600000 {
-+			  opp-hz = /bits/ 64 <1881600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1907200000 {
-+			  opp-hz = /bits/ 64 <1907200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1958400000 {
-+			  opp-hz = /bits/ 64 <1958400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2035200000 {
-+			  opp-hz = /bits/ 64 <2035200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2112000000 {
-+			  opp-hz = /bits/ 64 <2112000000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2188800000 {
-+			  opp-hz = /bits/ 64 <2188800000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2265600000 {
-+			  opp-hz = /bits/ 64 <2265600000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+	};
-+
-+	cl1_opp_tbl: opp-table-cluster1 {
-+		compatible = "operating-points-v2";
-+		opp-shared;
-+
-+		opp-115200000 {
-+			  opp-hz = /bits/ 64 <115200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-192000000 {
-+			  opp-hz = /bits/ 64 <192000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-268800000 {
-+			  opp-hz = /bits/ 64 <268800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-345600000 {
-+			  opp-hz = /bits/ 64 <345600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-422400000 {
-+			  opp-hz = /bits/ 64 <422400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-499200000 {
-+			  opp-hz = /bits/ 64 <499200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-576000000 {
-+			  opp-hz = /bits/ 64 <576000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-652800000 {
-+			  opp-hz = /bits/ 64 <652800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-729600000 {
-+			  opp-hz = /bits/ 64 <729600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-806400000 {
-+			  opp-hz = /bits/ 64 <806400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-883200000 {
-+			  opp-hz = /bits/ 64 <883200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-960000000 {
-+			  opp-hz = /bits/ 64 <960000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1036800000 {
-+			  opp-hz = /bits/ 64 <1036800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1113600000 {
-+			  opp-hz = /bits/ 64 <1113600000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1190400000 {
-+			  opp-hz = /bits/ 64 <1190400000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1267200000 {
-+			  opp-hz = /bits/ 64 <1267200000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1344000000 {
-+			  opp-hz = /bits/ 64 <1344000000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1420800000 {
-+			  opp-hz = /bits/ 64 <1420800000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1497600000 {
-+			  opp-hz = /bits/ 64 <1497600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1574400000 {
-+			  opp-hz = /bits/ 64 <1574400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1651200000 {
-+			  opp-hz = /bits/ 64 <1651200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1728000000 {
-+			  opp-hz = /bits/ 64 <1728000000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1804800000 {
-+			  opp-hz = /bits/ 64 <1804800000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1881600000 {
-+			  opp-hz = /bits/ 64 <1881600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1907200000 {
-+			  opp-hz = /bits/ 64 <1907200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1958400000 {
-+			  opp-hz = /bits/ 64 <1958400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2035200000 {
-+			  opp-hz = /bits/ 64 <2035200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2112000000 {
-+			  opp-hz = /bits/ 64 <2112000000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2188800000 {
-+			  opp-hz = /bits/ 64 <2188800000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2265600000 {
-+			  opp-hz = /bits/ 64 <2265600000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+	};
-+
-+	cl2_opp_tbl: opp-table-cluster2 {
-+		compatible = "operating-points-v2";
-+		opp-shared;
-+
-+		opp-115200000 {
-+			  opp-hz = /bits/ 64 <115200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-192000000 {
-+			  opp-hz = /bits/ 64 <192000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-268800000 {
-+			  opp-hz = /bits/ 64 <268800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-345600000 {
-+			  opp-hz = /bits/ 64 <345600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-422400000 {
-+			  opp-hz = /bits/ 64 <422400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-499200000 {
-+			  opp-hz = /bits/ 64 <499200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-576000000 {
-+			  opp-hz = /bits/ 64 <576000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-652800000 {
-+			  opp-hz = /bits/ 64 <652800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-729600000 {
-+			  opp-hz = /bits/ 64 <729600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-806400000 {
-+			  opp-hz = /bits/ 64 <806400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-883200000 {
-+			  opp-hz = /bits/ 64 <883200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-960000000 {
-+			  opp-hz = /bits/ 64 <960000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1036800000 {
-+			  opp-hz = /bits/ 64 <1036800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1113600000 {
-+			  opp-hz = /bits/ 64 <1113600000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1190400000 {
-+			  opp-hz = /bits/ 64 <1190400000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1267200000 {
-+			  opp-hz = /bits/ 64 <1267200000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1344000000 {
-+			  opp-hz = /bits/ 64 <1344000000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1420800000 {
-+			  opp-hz = /bits/ 64 <1420800000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1497600000 {
-+			  opp-hz = /bits/ 64 <1497600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1574400000 {
-+			  opp-hz = /bits/ 64 <1574400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1651200000 {
-+			  opp-hz = /bits/ 64 <1651200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1728000000 {
-+			  opp-hz = /bits/ 64 <1728000000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1804800000 {
-+			  opp-hz = /bits/ 64 <1804800000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1881600000 {
-+			  opp-hz = /bits/ 64 <1881600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1907200000 {
-+			  opp-hz = /bits/ 64 <1907200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1958400000 {
-+			  opp-hz = /bits/ 64 <1958400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2035200000 {
-+			  opp-hz = /bits/ 64 <2035200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2112000000 {
-+			  opp-hz = /bits/ 64 <2112000000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2188800000 {
-+			  opp-hz = /bits/ 64 <2188800000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2265600000 {
-+			  opp-hz = /bits/ 64 <2265600000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+	};
-+
-+	cl3_opp_tbl: opp-table-cluster3 {
-+		compatible = "operating-points-v2";
-+		opp-shared;
-+
-+		opp-115200000 {
-+			  opp-hz = /bits/ 64 <115200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-192000000 {
-+			  opp-hz = /bits/ 64 <192000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-268800000 {
-+			  opp-hz = /bits/ 64 <268800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-345600000 {
-+			  opp-hz = /bits/ 64 <345600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-422400000 {
-+			  opp-hz = /bits/ 64 <422400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-499200000 {
-+			  opp-hz = /bits/ 64 <499200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-576000000 {
-+			  opp-hz = /bits/ 64 <576000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-652800000 {
-+			  opp-hz = /bits/ 64 <652800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-729600000 {
-+			  opp-hz = /bits/ 64 <729600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-806400000 {
-+			  opp-hz = /bits/ 64 <806400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-883200000 {
-+			  opp-hz = /bits/ 64 <883200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-960000000 {
-+			  opp-hz = /bits/ 64 <960000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1036800000 {
-+			  opp-hz = /bits/ 64 <1036800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1113600000 {
-+			  opp-hz = /bits/ 64 <1113600000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1190400000 {
-+			  opp-hz = /bits/ 64 <1190400000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1267200000 {
-+			  opp-hz = /bits/ 64 <1267200000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1344000000 {
-+			  opp-hz = /bits/ 64 <1344000000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1420800000 {
-+			  opp-hz = /bits/ 64 <1420800000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1497600000 {
-+			  opp-hz = /bits/ 64 <1497600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1574400000 {
-+			  opp-hz = /bits/ 64 <1574400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1651200000 {
-+			  opp-hz = /bits/ 64 <1651200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1728000000 {
-+			  opp-hz = /bits/ 64 <1728000000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1804800000 {
-+			  opp-hz = /bits/ 64 <1804800000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1881600000 {
-+			  opp-hz = /bits/ 64 <1881600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1907200000 {
-+			  opp-hz = /bits/ 64 <1907200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1958400000 {
-+			  opp-hz = /bits/ 64 <1958400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2035200000 {
-+			  opp-hz = /bits/ 64 <2035200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2112000000 {
-+			  opp-hz = /bits/ 64 <2112000000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2188800000 {
-+			  opp-hz = /bits/ 64 <2188800000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2265600000 {
-+			  opp-hz = /bits/ 64 <2265600000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+	};
- };
+diff --git a/drivers/video/backlight/qcom-wled.c b/drivers/video/backlight/qcom-wled.c
+index a63bb42c8f8b0333cd6d0ddc5bda93916da3fef3..3f49e4b3cdeb12541c057e56bac871a8ff680283 100644
+--- a/drivers/video/backlight/qcom-wled.c
++++ b/drivers/video/backlight/qcom-wled.c
+@@ -197,6 +197,7 @@ struct wled {
+ 	bool disabled_by_short;
+ 	bool has_short_detect;
+ 	bool cabc_disabled;
++	bool ovp_irq_enabled;
+ 	int short_irq;
+ 	int ovp_irq;
+ 
+@@ -290,11 +291,27 @@ static int wled5_set_brightness(struct wled *wled, u16 brightness)
+ 	return rc;
+ }
+ 
++static void wled_enable_ovp_irq(struct wled *wled)
++{
++	if (!wled->ovp_irq_enabled) {
++		enable_irq(wled->ovp_irq);
++		wled->ovp_irq_enabled = true;
++	}
++}
++
++static void wled_disable_ovp_irq(struct wled *wled)
++{
++	if (wled->ovp_irq_enabled) {
++		disable_irq(wled->ovp_irq);
++		wled->ovp_irq_enabled = false;
++	}
++}
++
+ static void wled_ovp_work(struct work_struct *work)
+ {
+ 	struct wled *wled = container_of(work,
+ 					 struct wled, ovp_work.work);
+-	enable_irq(wled->ovp_irq);
++	wled_enable_ovp_irq(wled);
+ }
+ 
+ static int wled_module_enable(struct wled *wled, int val)
+@@ -322,7 +339,7 @@ static int wled_module_enable(struct wled *wled, int val)
+ 			schedule_delayed_work(&wled->ovp_work, HZ / 100);
+ 		} else {
+ 			if (!cancel_delayed_work_sync(&wled->ovp_work))
+-				disable_irq(wled->ovp_irq);
++				wled_disable_ovp_irq(wled);
+ 		}
+ 	}
+ 
+@@ -1607,6 +1624,8 @@ static int wled_configure_ovp_irq(struct wled *wled,
+ 		return 0;
+ 	}
+ 
++	wled->ovp_irq_enabled = true;
++
+ 	rc = regmap_read(wled->regmap, wled->ctrl_addr +
+ 			 WLED3_CTRL_REG_MOD_EN, &val);
+ 	if (rc < 0)
+@@ -1614,7 +1633,7 @@ static int wled_configure_ovp_irq(struct wled *wled,
+ 
+ 	/* Keep OVP irq disabled until module is enabled */
+ 	if (!(val & WLED3_CTRL_REG_MOD_EN_MASK))
+-		disable_irq(wled->ovp_irq);
++		wled_disable_ovp_irq(wled);
+ 
+ 	return 0;
+ }
+@@ -1726,7 +1745,7 @@ static void wled_remove(struct platform_device *pdev)
+ 	mutex_destroy(&wled->lock);
+ 	cancel_delayed_work_sync(&wled->ovp_work);
+ 	disable_irq(wled->short_irq);
+-	disable_irq(wled->ovp_irq);
++	wled_disable_ovp_irq(wled);
+ }
+ 
+ static const struct of_device_id wled_match_table[] = {
 
+---
+base-commit: fe45352cd106ae41b5ad3f0066c2e54dbb2dfd70
+change-id: 20251021-qcom-wled-fix-unbalanced-ovp-irq-enable-5446b106ad96
+
+Best regards,
 -- 
-2.51.0
+Joel Selvaraj <foss@joelselvaraj.com>
 
