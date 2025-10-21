@@ -1,11 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Tue, 21 Oct 2025 13:53:05 +0200
-Subject: [PATCH v4 5/7] arm64: dts: qcom: sdm845-oneplus: Implement panel
- sleep pinctrl
+Date: Tue, 21 Oct 2025 13:53:06 +0200
+Subject: [PATCH v4 6/7] arm64: dts: qcom: sdm845-oneplus: Describe TE gpio
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251021-s6e3fc2x01-v4-5-5e3ee21c688a@ixit.cz>
+Message-Id: <20251021-s6e3fc2x01-v4-6-5e3ee21c688a@ixit.cz>
 References: <20251021-s6e3fc2x01-v4-0-5e3ee21c688a@ixit.cz>
 In-Reply-To: <20251021-s6e3fc2x01-v4-0-5e3ee21c688a@ixit.cz>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -21,85 +20,46 @@ To: Neil Armstrong <neil.armstrong@linaro.org>,
  Jessica Zhang <jesszhan0024@gmail.com>
 Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1553; i=david@ixit.cz;
- h=from:subject:message-id; bh=ojFoQ3nmgXFa6brSu0i4y7xk0ivDDVrkpAAIpMNxPBQ=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBo93QhGUWPwsDLQX/S4Ji9ihyCdz32C3uI7IHz7
- Ec7HIEqTquJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaPd0IQAKCRBgAj/E00kg
- cgMgD/9TkrWg/mJUQaXp3FmThwVY5VV227lcdjmNTnPhmymZAA30WGukQfNt2vZCk+rCrR+RExp
- j4W1AZ+kIObqR4zqfEvP6Hsi7IeWM8a7RLbRxE6Zhm0XzdvGyZHTh/gss3oTv52aqOMFcugFrAm
- kJGTb3nxQrvq0oxlvtomkDyctnjStgdWsAg7wN+LSZibq1X7Wb3z0Cu9WoF0+k/2ZUbHmxDCOgC
- eTrSCHq9/XgnCPn89jfEKWWolfIGU1JS/MYF16zhyCjvq7RzgyJSeqWkDkHngJUqlYO9Zo6lA1m
- f0l+RPesMKt3LOjwrUvTxtZDcaa1FFCAfRpGDyhMXvEPBFIQscpiwko15+UeJopcujKVS7GEwWc
- Q2NEwhm1Yk4eW6Fniev1JRkVn5fmtT+luk3TCzyfkzw3R5zr4kul3lFbUnVx70OrRGB49B+xsuL
- P1IdimovTumVt9TFy6OsakUsrTEeWxAVLhEuO/tj9F2YpgwtM40sp+cO/97mQC+lJXoaEkTBeM4
- s+lEA3peBRifYBjHvd4P5cdA3Kaj+4Ib6LQNHUcB+3FTxhUmNJVXORR1f5tUQgkIVx5JOY7bYRY
- YIR2gsPVl1bkXpfof4P7uldLMl67znsw1KVnnw0dwHSaU0yKd1swuPZ3yXzU4I9gLbAGM3KfJxc
- hjhoaoShycK0cQA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=744; i=david@ixit.cz;
+ h=from:subject:message-id; bh=4HlzjaWbltHovpW/x3csoBFsnc7NUcuYDQwYcmmZFrE=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBo93Qh8qZOMkmBNVijDAoQ1Q6Qg+1c4buWwc5AM
+ M+Vqm/GnOyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaPd0IQAKCRBgAj/E00kg
+ csZBEADPO5B99OhdousRGVcs4eB/tkJL/81Gj2Pkrn/gy4BEIOCxqjmp7yzWxY2llWqtL162T0g
+ oivf2adFLgpVuf3UtS/1I1ZMw0adJlQVjqW7JaHZ1BzD4H8mLPF6kjsUyPBXHOw+hW5mP7ByrnV
+ gHHxxdtz6e4UXHPwSJmyU51n+iC4qUXwBtUIeZeWv/WsWdj9yygPP8H8X2ggoZgiuE5h/M+nFsF
+ 4J9BrY55qDvyBfEcSqEWHmelIZBX8JCc5nhcwBs/4irG7CXBA0tATdknjuTxLEExmku/3wqF81g
+ TJ+eZBMJm+7sFc2NOHWG2163anq/CGjx7m98TYBZvSsk1CG2YR4k9Cwt2NsF/ujMC5oj8Jv9nn7
+ 6GyELU5ywbiJCmjKz8Osdkzj/k50EcBbdZokkC+BccO4+pNe20dMQpBuKj/39GGb/Ig22DR4vFQ
+ SpIrucuM+IwgCRzu3yi29u1kDizmq9By76CEganh8/W50c8sZLlu225iPbvDDDbfELP+GdvuT2i
+ 9BgFpwIVMqbIUjJpqP36Z4uBdbjcd2sNwAbYNzcPajPg5gkCGv2PPClDh/269/WRT1XtOUhK8hn
+ s9FYq9ndlkuQzja5FCiUBAP3wh5ID4OYziN/Yho442G+wn45dnjWOcuHBSbRDul7UvC8U0SULRf
+ 2I2pd1VyCZ4asOg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-We can DSI pin from 8mA to 2mA while suspend, do it.
+Describe panel Tearing Effect (TE) GPIO line.
 
-In theory, should give us extra 2 hours of idle battery life.
-
-cosmetic: sort pinctrl properties.
-
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 26 +++++++++++++++++++++-
- 1 file changed, 25 insertions(+), 1 deletion(-)
+ arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-index 9b571fab9c80c..a8e87507d667b 100644
+index a8e87507d667b..8ccf93dec557a 100644
 --- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
 +++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-@@ -462,8 +462,9 @@ display_panel: panel@0 {
+@@ -460,6 +460,7 @@ display_panel: panel@0 {
+ 		vci-supply = <&panel_vci_3v3>;
+ 		poc-supply = <&panel_vddi_poc_1p8>;
  
++		te-gpios = <&tlmm 10 GPIO_ACTIVE_HIGH>;
  		reset-gpios = <&tlmm 6 GPIO_ACTIVE_LOW>;
  
--		pinctrl-names = "default";
  		pinctrl-0 = <&panel_default>;
-+		pinctrl-1 = <&panel_sleep>;
-+		pinctrl-names = "default", "sleep";
- 
- 		port {
- 			panel_in: endpoint {
-@@ -870,6 +871,29 @@ te-pins {
- 		};
- 	};
- 
-+	panel_sleep: panel-sleep-state {
-+		esd-pins {
-+			pins = "gpio30";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-pull-down;
-+		};
-+
-+		reset-pins {
-+			pins = "gpio6";
-+			function = "gpio";
-+			drive-strength = <2>;
-+			bias-pull-down;
-+		};
-+
-+		te-pins {
-+			pins = "gpio10";
-+			function = "mdp_vsync";
-+			drive-strength = <2>;
-+			bias-disable;
-+		};
-+	};
-+
- 	tri_state_key_default: tri-state-key-default-state {
- 		pins = "gpio40", "gpio42", "gpio26";
- 		function = "gpio";
 
 -- 
 2.51.0
