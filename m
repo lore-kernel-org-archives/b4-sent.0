@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Tue, 21 Oct 2025 13:53:03 +0200
-Subject: [PATCH v4 3/7] arm64: dts: qcom: sdm845-oneplus: Update
- compatbible and add DDIC supplies
+Date: Tue, 21 Oct 2025 13:53:04 +0200
+Subject: [PATCH v4 4/7] arm64: dts: qcom: sdm845-oneplus: Group panel
+ pinctrl
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251021-s6e3fc2x01-v4-3-5e3ee21c688a@ixit.cz>
+Message-Id: <20251021-s6e3fc2x01-v4-4-5e3ee21c688a@ixit.cz>
 References: <20251021-s6e3fc2x01-v4-0-5e3ee21c688a@ixit.cz>
 In-Reply-To: <20251021-s6e3fc2x01-v4-0-5e3ee21c688a@ixit.cz>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -24,139 +24,104 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
  Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3556; i=david@ixit.cz;
- h=from:subject:message-id; bh=5dCLbwr33VzKhLnq/J0O1v2W9AA33R5EWabu34Rbafs=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBo93Qhsaotx4/EuvX6eblhCyscFpkXCwOWWmsRo
- 3inlH1OfniJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaPd0IQAKCRBgAj/E00kg
- cvkIEACNAQnLzL7pPu1zgNkra79JhYJg3shkb4SULdSqtRdDrbG56r2672ZwzPHPWECzlcCxN6q
- QWCvJjWGQp95vs+13TDKJVDghttYOWRw53fjGR3q7W3rYC4ADdHwLSXZBMdPsRHSelJbKvw+JoG
- pxt4xW/uLPvmtEHbi5/RQzMwCXWl7V3t85N2z+Brna5y4Gc3q0xMvWz4akCWhiYqEiYHM9UlC4b
- sKsfFDBcuht7aLtr6L5/9xOARs1GVocNyF7/tB5lPhkGHNBa0v+3gcA66iWRHmI57YnOWb7Yb3N
- w7mXCmY+aE9UAuGgHr8Z7t3E9oBLiNOjTqQnBnye70ibtlZPtqR2Ic+ww5H6g9COWBd6JS+4gax
- nZFDbU259SaI0zVHqVteYfK1f41XGzWhIzy43h9qQmqNM0KLszdu8rx+pbGm48qIdcj32dZsLE0
- um7w4PDcDFM2AuwAEbFwFxWzo+lZCxscmeQ2aAA95Qs95YHjk/LAOR7jF9NURvPYBPGnMGFVJge
- 5vczSnZlwySzSV8DpqmgDkJlL7BsFpR2B/oiVPLKxB1Jl97VHyXN3k+x2FapWsJ0BUSde3vX9Xj
- m7Z8MdDEvnjTB4noXqPHjcrZ03vstEqdeB5HlO0Q0Fhd2nm1LUqnlIzt2Qpdbg2zXfJQ1qKesl0
- FgzoOq0UYd6JlSQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2066; i=david@ixit.cz;
+ h=from:subject:message-id; bh=KTrLESxmqDJURSGJs44NIqxmLK4hwbD8ph2DGEQH+CE=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBo93QhYI72W+xL1iYR88xJCffoEAu642WnVDrao
+ s6SRRtq/dOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaPd0IQAKCRBgAj/E00kg
+ clv6EACVHWSXf8INehHmARalnfS2d8uET3mOQRebSwlbgVKmeQntR6cmrg9LGNOck6cod4zRIzC
+ ZSB0DUjS1eKC+Dy6HM6gxpNI9F1NWIlv8cC6X6tj4isG+wUXeu6fGvTXrJk9m67fh0ZxFjSRSbd
+ o7BBbzrWtgqpGbjtLpxLu0tRnhaULOF/5lHWcCvTMUHcSjcx99arDFSVd8/+4QPUtdjBhVCcLwP
+ Naqj3RIad4j5qHt1t9uiowVqpvxQ0K1hYjn64AAajW9+5mAEPkOD7ZbspRc6njSAQpb0yktcpbL
+ LNUTS6cXL6IV7R0GlSMFkTEYMy6s1TS/fBz18y+/iMcm0ZEuL0n72OOK3Palr34WOjf3M+UsQ7j
+ HkTfK1mWg5HbSPCrVx+JlpboizW8Z6zexy/3xPkIgaMSZ2iSJH7s0UhAQhlGie5JYWdqwXM4oNK
+ 9KOn/Jl1kz0VYLneK4yuSO0W4F6CKEbOpstc9T5iMwwX8THJ0sZ+o/Kn9ty1Gk1sFTou6VHleYo
+ aIJ7NrWw0lLtlsUw1zSTyLzBWrjXOYOzHiriR5iFIZNhMjIrdw5DalOo2Px9hQKVu/ZBATfSkyM
+ lAvI518j9mmulDWEEzi0cpU7ek08GELVHfoK+H5xdejDqPcZwFEhdItAjCoZF90n3mFeH2808qg
+ WCAHQYlKOUi/xFg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Casey Connolly <casey.connolly@linaro.org>
+As these pins won't be used outside the group, let's group them.
 
-Update the compatible to reflect combination of DDIC and panel.
-
-Original compatible describing only the DDIC used, but omit describing
-the panel used (Samsung AMS641RW), which we have no way to detect.
-
-There are two additional supplies used by the panel, both are GPIO
-controlled and are left enabled by the bootloader for continuous splash.
-
-Previously these were (incorrectly) modelled as pinctrl. Describe them
-properly so that the panel can control them.
-
-Fixes: 288ef8a42612 ("arm64: dts: sdm845: add oneplus6/6t devices")
-Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
 Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
-Co-developed-by: David Heidelberg <david@ixit.cz>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 46 +++++++++++++++++++++-
- arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts |  2 +-
- 2 files changed, 46 insertions(+), 2 deletions(-)
+ .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 46 +++++++++++-----------
+ 1 file changed, 24 insertions(+), 22 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-index dcfffb271fcf3..1cf03047dd7ae 100644
+index 1cf03047dd7ae..9b571fab9c80c 100644
 --- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
 +++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-@@ -162,6 +162,34 @@ ts_1p8_supply: ts-1p8-regulator {
- 		enable-active-high;
- 		regulator-boot-on;
- 	};
-+
-+	panel_vci_3v3: panel-vci-3v3-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "LCD_VCI_3V";
-+
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+
-+		gpio = <&tlmm 26 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+		pinctrl-0 = <&panel_vci_default>;
-+		pinctrl-names = "default";
-+		regulator-boot-on;
-+	};
-+
-+	panel_vddi_poc_1p8: panel-vddi-poc-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "VDDI_POC";
-+
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+
-+		gpio = <&tlmm 25 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+		pinctrl-0 = <&panel_poc_default>;
-+		pinctrl-names = "default";
-+		regulator-boot-on;
-+	};
- };
- 
- &adsp_pas {
-@@ -429,6 +457,8 @@ display_panel: panel@0 {
- 		reg = <0>;
- 
- 		vddio-supply = <&vreg_l14a_1p88>;
-+		vci-supply = <&panel_vci_3v3>;
-+		poc-supply = <&panel_vddi_poc_1p8>;
- 
+@@ -463,7 +463,7 @@ display_panel: panel@0 {
  		reset-gpios = <&tlmm 6 GPIO_ACTIVE_LOW>;
  
-@@ -803,6 +833,20 @@ hall_sensor_default: hall-sensor-default-state {
+ 		pinctrl-names = "default";
+-		pinctrl-0 = <&panel_reset_pins &panel_te_pin &panel_esd_pin>;
++		pinctrl-0 = <&panel_default>;
+ 
+ 		port {
+ 			panel_in: endpoint {
+@@ -847,6 +847,29 @@ panel_poc_default: poc-state {
  		bias-disable;
  	};
  
-+	panel_vci_default: vci-state {
-+		pins = "gpio26";
-+		function = "gpio";
-+		drive-strength = <8>;
-+		bias-disable;
-+	};
++	panel_default: panel-default-state {
++		esd-pins {
++			pins = "gpio30";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-pull-down;
++		};
 +
-+	panel_poc_default: poc-state {
-+		pins = "gpio25";
-+		function = "gpio";
-+		drive-strength = <8>;
-+		bias-disable;
++		reset-pins {
++			pins = "gpio6";
++			function = "gpio";
++			drive-strength = <8>;
++			bias-disable;
++		};
++
++		te-pins {
++			pins = "gpio10";
++			function = "mdp_vsync";
++			drive-strength = <2>;
++			bias-disable;
++		};
 +	};
 +
  	tri_state_key_default: tri-state-key-default-state {
  		pins = "gpio40", "gpio42", "gpio26";
  		function = "gpio";
-@@ -818,7 +862,7 @@ ts_default_pins: ts-int-state {
+@@ -861,27 +884,6 @@ ts_default_pins: ts-int-state {
+ 		bias-pull-up;
  	};
  
- 	panel_reset_pins: panel-reset-state {
--		pins = "gpio6", "gpio25", "gpio26";
-+		pins = "gpio6";
+-	panel_reset_pins: panel-reset-state {
+-		pins = "gpio6";
+-		function = "gpio";
+-		drive-strength = <8>;
+-		bias-disable;
+-	};
+-
+-	panel_te_pin: panel-te-state {
+-		pins = "gpio10";
+-		function = "mdp_vsync";
+-		drive-strength = <2>;
+-		bias-disable;
+-	};
+-
+-	panel_esd_pin: panel-esd-state {
+-		pins = "gpio30";
+-		function = "gpio";
+-		drive-strength = <2>;
+-		bias-pull-down;
+-	};
+-
+ 	speaker_default: speaker-default-state {
+ 		pins = "gpio69";
  		function = "gpio";
- 		drive-strength = <8>;
- 		bias-disable;
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts b/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
-index 7e75decfda052..d6cd873aef0de 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-fajita.dts
-@@ -32,7 +32,7 @@ battery: battery {
- &display_panel {
- 	status = "okay";
- 
--	compatible = "samsung,s6e3fc2x01";
-+	compatible = "samsung,s6e3fc2x01-ams641rw", "samsung,s6e3fc2x01";
- };
- 
- &i2c4 {
 
 -- 
 2.51.0
