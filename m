@@ -1,104 +1,69 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Wed, 22 Oct 2025 14:58:53 +0800
-Subject: [PATCH 3/3] clk: amlogic: Correct l_detect bit control
+From: Maud Spierings <maudspierings@gocontroll.com>
+Subject: [PATCH v2 0/5] arm64: dts: freescale: add support for the
+ GOcontroll Moduline IV/Mini
+Date: Wed, 22 Oct 2025 09:22:36 +0200
+Message-Id: <20251022-mini_iv-v2-0-20af8f9aac14@gocontroll.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251022-optimize_pll_driver-v1-3-a275722fb6f4@amlogic.com>
-References: <20251022-optimize_pll_driver-v1-0-a275722fb6f4@amlogic.com>
-In-Reply-To: <20251022-optimize_pll_driver-v1-0-a275722fb6f4@amlogic.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jerome Brunet <jbrunet@baylibre.com>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Kevin Hilman <khilman@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Chuan Liu <chuan.liu@amlogic.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761116340; l=2616;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=Dv3cPzZdf9Puk7bgGlGkCfNCiEdGxmv1X3Nj/+D8POg=;
- b=BHhN2TDgNFvv/uGPJJpyLvmLNfv+ZEmzL2S9sXilJFfhJvBFD6R+79Z2raY7XQiQGmLbIXNag
- V96WVa094xKBAJKEsbT4Kw52S5AzhIJN0wziJopr6yAfXB1pIQvlO+K
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+X-B4-Tracking: v=1; b=H4sIADyG+GgC/2XMQQqDMBCF4avIrJuSjIZqV71HkSLpqAOaKYmEF
+ sndm7rt8n88vh0iBaYI12qHQIkjiy+BpwrcPPiJFD9LA2q0RutOrez5wUkN2pJ16AxiDeX9CjT
+ y+5DufemZ4ybhc8DJ/NZ/Ixml1Vi3beeaDht7uU3ixG9BluXsZIU+5/wFvo3v0aMAAAA=
+X-Change-ID: 20251009-mini_iv-a05e5c2c1223
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ Maud Spierings <maudspierings@gocontroll.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761117763; l=1486;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=6MxoejU7iKxp9mf2s8THn5c4jDLFtHOP5ivmjYnDox0=;
+ b=8EDC4BIHHluETyJsGoyj3Ub5ZCMaVm7eZYUrj9HEkXC3ILQwIrUDvDuWDi3lD+10vmAFhAPht
+ fbrq37zJBZJCz9pkBRodQSo996DWROXX/di837e4v0DP/zUj/N4dKZ4
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-l_detect controls the enable/disable of the PLL lock-detect module.
+Add initial support for the Moduline IV and Moduline Mini embedded
+controllers.
 
-For A1, the l_detect signal is active-low:
-0 -> Enable lock-detect module;
-1 -> Disable lock-detect module.
+These systems are powered by the Ka-Ro Electronics tx8m-1610 COM, which
+features an imx8mm SoC.
 
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- drivers/clk/meson/a1-pll.c  |  1 +
- drivers/clk/meson/clk-pll.c | 16 ++++++++++++----
- drivers/clk/meson/clk-pll.h |  2 ++
- 3 files changed, 15 insertions(+), 4 deletions(-)
+Changes in v2:
+- Fix allignment issue in imx8mm-tx8m-1610.dtsi (fec1)
+- Move phy-reset into fec (works better in barebox)
+- Make the gpio-line-names groups of four on every line
+- Link to v1: https://lore.kernel.org/r/20251009-mini_iv-v1-0-f3889c492457@gocontroll.com
 
-diff --git a/drivers/clk/meson/a1-pll.c b/drivers/clk/meson/a1-pll.c
-index 1f82e9c7c14e..bfe559c71402 100644
---- a/drivers/clk/meson/a1-pll.c
-+++ b/drivers/clk/meson/a1-pll.c
-@@ -137,6 +137,7 @@ static struct clk_regmap a1_hifi_pll = {
- 		.range = &a1_hifi_pll_range,
- 		.init_regs = a1_hifi_pll_init_regs,
- 		.init_count = ARRAY_SIZE(a1_hifi_pll_init_regs),
-+		.flags = CLK_MESON_PLL_L_DETECT_N
- 	},
- 	.hw.init = &(struct clk_init_data){
- 		.name = "hifi_pll",
-diff --git a/drivers/clk/meson/clk-pll.c b/drivers/clk/meson/clk-pll.c
-index 26c83db487e8..602c93aba3cc 100644
---- a/drivers/clk/meson/clk-pll.c
-+++ b/drivers/clk/meson/clk-pll.c
-@@ -384,8 +384,12 @@ static int meson_clk_pll_enable(struct clk_hw *hw)
- 		meson_parm_write(clk->map, &pll->rst, 1);
- 
- 	/* Disable the PLL lock-detect module */
--	if (MESON_PARM_APPLICABLE(&pll->l_detect))
--		meson_parm_write(clk->map, &pll->l_detect, 1);
-+	if (MESON_PARM_APPLICABLE(&pll->l_detect)) {
-+		if (pll->flags & CLK_MESON_PLL_L_DETECT_N)
-+			meson_parm_write(clk->map, &pll->l_detect, 1);
-+		else
-+			meson_parm_write(clk->map, &pll->l_detect, 0);
-+	}
- 
- 	/* Enable the pll */
- 	meson_parm_write(clk->map, &pll->en, 1);
-@@ -413,8 +417,12 @@ static int meson_clk_pll_enable(struct clk_hw *hw)
- 	udelay(20);
- 
- 	/* Enable the lock-detect module */
--	if (MESON_PARM_APPLICABLE(&pll->l_detect))
--		meson_parm_write(clk->map, &pll->l_detect, 0);
-+	if (MESON_PARM_APPLICABLE(&pll->l_detect)) {
-+		if (pll->flags & CLK_MESON_PLL_L_DETECT_N)
-+			meson_parm_write(clk->map, &pll->l_detect, 0);
-+		else
-+			meson_parm_write(clk->map, &pll->l_detect, 1);
-+	}
- 
- 	if (meson_clk_pll_wait_lock(hw)) {
- 		/* disable PLL when PLL lock failed. */
-diff --git a/drivers/clk/meson/clk-pll.h b/drivers/clk/meson/clk-pll.h
-index 949157fb7bf5..83295a24721f 100644
---- a/drivers/clk/meson/clk-pll.h
-+++ b/drivers/clk/meson/clk-pll.h
-@@ -29,6 +29,8 @@ struct pll_mult_range {
- 
- #define CLK_MESON_PLL_ROUND_CLOSEST	BIT(0)
- #define CLK_MESON_PLL_NOINIT_ENABLED	BIT(1)
-+/* l_detect signal is active-low */
-+#define CLK_MESON_PLL_L_DETECT_N	BIT(2)
- 
- struct meson_clk_pll_data {
- 	struct parm en;
+---
+Maud Spierings (5):
+      dt-bindings: arm: fsl: Add GOcontroll Moduline IV/Mini
+      arm64: dts: imx8mm: Add pinctrl config definitions
+      arm64: dts: freescale: add Ka-Ro Electronics tx8m-1610 COM
+      arm64: dts: freescale: Add the GOcontroll Moduline IV
+      arm64: dts: freescale: Add the GOcontroll Moduline Mini
 
+ Documentation/devicetree/bindings/arm/fsl.yaml     |   2 +
+ arch/arm64/boot/dts/freescale/Makefile             |   3 +
+ arch/arm64/boot/dts/freescale/imx8mm-pinfunc.h     |  33 +
+ .../imx8mm-tx8m-1610-moduline-iv-306-d.dts         | 801 +++++++++++++++++++++
+ .../imx8mm-tx8m-1610-moduline-mini-111.dts         | 691 ++++++++++++++++++
+ .../arm64/boot/dts/freescale/imx8mm-tx8m-1610.dtsi | 439 +++++++++++
+ 6 files changed, 1969 insertions(+)
+---
+base-commit: 7c3ba4249a3604477ea9c077e10089ba7ddcaa03
+change-id: 20251009-mini_iv-a05e5c2c1223
+
+Best regards,
 -- 
-2.42.0
+Maud Spierings <maudspierings@gocontroll.com>
 
