@@ -1,136 +1,304 @@
-From: Dominique Martinet <asmadeus@codewreck.org>
-Date: Wed, 22 Oct 2025 07:09:57 +0900
-Subject: [PATCH] fs/9p: don't use cached metadata in revalidate for
- cache=mmap
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Tue, 21 Oct 2025 20:08:36 -0500
+Subject: [PATCH v3] cpufreq: tegra186: add OPP support and set bandwidth
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251022-mmap-regression-v1-1-980365ee524e@codewreck.org>
-X-B4-Tracking: v=1; b=H4sIALQE+GgC/x2MQQqAIBBFryKzTlCxFl0lWkiONgtNRohAvHvW8
- vHffw0qMmGFVTRgvKnSlQfoScBxuhxRkh8MRplZK2NkSq5IxshYP1cGFazyY7OLh/EqjIGev7j
- tvb8F6eibYQAAAA==
-X-Change-ID: 20251022-mmap-regression-f0f40d51046d
-To: Song Liu <song@kernel.org>, Andrii Nakryiko <andrii.nakryiko@gmail.com>, 
- Eric Van Hensbergen <ericvh@kernel.org>, 
- Latchesar Ionkov <lucho@ionkov.net>, 
- Christian Schoenebeck <linux_oss@crudebyte.com>, 
- Tingmao Wang <m@maowtm.org>, Alexei Starovoitov <ast@kernel.org>
-Cc: linux-kernel@vger.kernel.org, v9fs@lists.linux.dev, bpf@vger.kernel.org, 
- Dominique Martinet <asmadeus@codewreck.org>
-X-Mailer: b4 0.15-dev-7be4f
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3352;
- i=asmadeus@codewreck.org; h=from:subject:message-id;
- bh=8U+bVWiUxykgXibHegqG5mO5sNY1PawdwUE7RKEEVBk=;
- b=owEBbQKS/ZANAwAKAatOm+xqmOZwAcsmYgBo+AS5EQJpnOD9lVhx8INJrvPAzWuAa4BAmWa0L
- wUP5lB9mkeJAjMEAAEKAB0WIQT8g9txgG5a3TOhiE6rTpvsapjmcAUCaPgEuQAKCRCrTpvsapjm
- cGyND/9j8uDuBNg3l93/NCpqQWdWjeMkPuaYEIlTz00a0mCP54AnDbbaHQQHeWg/Z+WHhIFkTCN
- IoH/1Zl5ku/UEbg3wjx6EicDxlL0Ocav1HYdIG4Wd3TnkZLmJ15mB896XSh4VUxL2aqzhdf1vzl
- 5TVDMGsrveXJX9s+gY08iFOtltpegOJ07J01tFeIUlOd1k5J/AnRIGd6gl5JRJCm6EtGLc/m81w
- xZG4Q3ByYjqySviFBo9KqGPLvdKbpeBYSdcHOb2OKoJCuTohGg2ALdksvfQhflPxwV93p4ky30a
- RXptszZVc3lDeLx+fATTWXAp6LFgkNwUsMBnP0FfBltXkko/qblVv0f5jfCdv4JwGK/2qCqT/mA
- lihhGkrkyJ38ttDGU1Uw9ZLix80UhXmhCONL08aqr0CjY5z2i/unSwJEvBlJfjnFaVJ+bD0kbX1
- dnrtdCLrjTv9K9iT9dFwdNZjIl5wKP+zr7CZeGvlRFQLsNgSG/GDIdd6BaRgZXZK9T6PY4mihZj
- GHY4PGt+o+DfWKEi/XLuxcGgjNlXan8UBnH9W7MIqqeUvNKQIcZxpnulseHktuTFInBElzUiGZl
- TptoO9SWgR4TaDpEaRvtaxulhg8tijguOub3t5G5TB8pJWRkhRrKVpc/PD5PHaXMZaom+bBbOqz
- qTFMDNOj8T92FvA==
-X-Developer-Key: i=asmadeus@codewreck.org; a=openpgp;
- fpr=B894379F662089525B3FB1B9333F1F391BBBB00A
-X-Endpoint-Received: by B4 Relay for asmadeus@codewreck.org/default with auth_id=435
+Message-Id: <20251021-tegra186-icc-p1-v3-1-7e6db3b070c4@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAJMu+GgC/3WNywqDMBBFf0Vm3SmZaES66n8UFzKZ6kB9kEhok
+ fx7U/ddngP33AOiBJUIt+qAIEmjrkuB+lIBT8MyCqovDNZYR8YS7jKGgboWlRk3wq5xTlryjas
+ 9lNUW5Knvs/joC08a9zV8zoNEP/u/lQgJje9EvDhmZ+7jPOjryusMfc75C7vDOR6uAAAA
+X-Change-ID: 20251021-tegra186-icc-p1-8455e61d453d
+To: "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Viresh Kumar <viresh.kumar@linaro.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: linux-pm@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761095337; l=8972;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=S1v1h669mNaikq9IaG/GwbWV/RhBYWkR1lb/b9m9HfE=;
+ b=suTUluNoiw1PqMYvHig+n4rIsv6b7vC9P4YjZKbEO8GLSNKE3YGtXNHb8Qfxh95qhKEa2XfCW
+ tBH1cQumWyyBmYC587fy2KFq6MArvurg/BW5UEFEBkQ73yReVP41XOe
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-cache=mmap is a mode that doesn't cache metadata, but still has
-writeback cache.
-In commit 290434474c33 ("fs/9p: Refresh metadata in d_revalidate
-for uncached mode too") we considered metadata cache to be enough to
-not look at the server, but in writeback cache too looking at the server
-size would make the vfs consider the file has been truncated before the
-data has been flushed out, making the following repro fail (nothing is
-ever read back, the resulting file ends up with no data written)
+Add support to use OPP table from DT in Tegra186 cpufreq driver.
+Tegra SoC's receive the frequency lookup table (LUT) from BPMP-FW.
+Cross check the OPP's present in DT against the LUT from BPMP-FW
+and enable only those DT OPP's which are present in LUT also.
 
+The OPP table in DT has CPU Frequency to bandwidth mapping where
+the bandwidth value is per MC channel. DRAM bandwidth depends on the
+number of MC channels which can vary as per the boot configuration.
+This per channel bandwidth from OPP table will be later converted by
+MC driver to final bandwidth value by multiplying with number of
+channels before being handled in the EMC driver.
+
+If OPP table is not present in DT, then use the LUT from BPMP-FW
+directy as the CPU frequency table and not do the DRAM frequency
+scaling which is same as the current behavior.
+
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-I was suspecting cache=mmap when I saw vmtest used that, and it's
-confirmed with Song's reproducer...
-This makes the repro work, would one of you be able to confirm this?
-Once confirmed I'll send this to Linus directly
+Changes in v3:
+- Split series
+- Fix potential free of an uninitialized pointer
+- Link to v2: https://lore.kernel.org/r/20250909-tegra186-icc-v2-0-09413724e781@gmail.com
 
-Thanks again and sorry for lack of cache=mmap tests :/
-
-Signed-off-by: Dominique Martinet <asmadeus@codewreck.org>
+Changes in v2:
+- Use opp scoped free in patch 3
+- Cleanup as requested in patch 3
+- Move patch 3 to the start of the series to keep subsystems grouped
+- Link to v1: https://lore.kernel.org/r/20250831-tegra186-icc-v1-0-607ddc53b507@gmail.com
 ---
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
+ drivers/cpufreq/tegra186-cpufreq.c | 152 +++++++++++++++++++++++++++++++++++--
+ 1 file changed, 145 insertions(+), 7 deletions(-)
 
-char buf[4096];
-
-int main(int argc, char *argv[])
-{
-        int ret, i;
-        int fdw, fdr;
-
-        if (argc < 2)
-                return 1;
-
-        fdw = openat(AT_FDCWD, argv[1], O_RDWR|O_CREAT|O_EXCL|O_CLOEXEC, 0600);
-        if (fdw < 0) {
-                fprintf(stderr, "cannot open fdw\n");
-                return 1;
-        }
-        write(fdw, buf, sizeof(buf));
-
-        fdr = openat(AT_FDCWD, argv[1], O_RDONLY|O_CLOEXEC);
-
-        if (fdr < 0) {
-                fprintf(stderr, "cannot open fdr\n");
-                close(fdw);
-                return 1;
-        }
-
-        for (i = 0; i < 10; i++) {
-                ret = read(fdr, buf, sizeof(buf));
-                fprintf(stderr, "i: %d, read returns %d\n", i, ret);
-        }
-
-        close(fdr);
-        close(fdw);
-        return 0;
-}
----
-
-Reported-by: Song Liu <song@kernel.org>
-Link: https://lkml.kernel.org/r/CAHzjS_u_SYdt5=2gYO_dxzMKXzGMt-TfdE_ueowg-Hq5tRCAiw@mail.gmail.com
-Reported-by: Andrii Nakryiko <andrii.nakryiko@gmail.com>
-Link: https://lore.kernel.org/bpf/CAEf4BzZbCE4tLoDZyUf_aASpgAGFj75QMfSXX4a4dLYixnOiLg@mail.gmail.com/
-Fixes: 290434474c33 ("fs/9p: Refresh metadata in d_revalidate for uncached mode too")
-Signed-off-by: Dominique Martinet <asmadeus@codewreck.org>
----
- fs/9p/vfs_dentry.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
-
-diff --git a/fs/9p/vfs_dentry.c b/fs/9p/vfs_dentry.c
-index f3248a3e54023489054337bf98e87a1d7b1fbafc..2f3654bf6275ffa802dc25b9a84bd61a62d5723c 100644
---- a/fs/9p/vfs_dentry.c
-+++ b/fs/9p/vfs_dentry.c
-@@ -78,7 +78,11 @@ static int __v9fs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 	v9inode = V9FS_I(inode);
- 	struct v9fs_session_info *v9ses = v9fs_inode2v9ses(inode);
+diff --git a/drivers/cpufreq/tegra186-cpufreq.c b/drivers/cpufreq/tegra186-cpufreq.c
+index 136ab102f636aa57741639ed1909d095881c14d3..35f1c1371f6a1688c35f3ba012b9f008fba83d74 100644
+--- a/drivers/cpufreq/tegra186-cpufreq.c
++++ b/drivers/cpufreq/tegra186-cpufreq.c
+@@ -8,6 +8,7 @@
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/platform_device.h>
++#include <linux/units.h>
  
--	cached = v9ses->cache & (CACHE_META | CACHE_LOOSE);
-+	/* We also don't want to refresh attr here in writeback cache mode,
-+	 * otherwise a write that hasn't been propagated to server would
-+	 * incorrectly get the old size back and truncate the file before
-+	 * the write happens */
-+	cached = v9ses->cache & (CACHE_META | CACHE_WRITEBACK | CACHE_LOOSE);
+ #include <soc/tegra/bpmp.h>
+ #include <soc/tegra/bpmp-abi.h>
+@@ -58,7 +59,7 @@ static const struct tegra186_cpufreq_cpu tegra186_cpus[] = {
+ };
  
- 	if (!cached || v9inode->cache_validity & V9FS_INO_INVALID_ATTR) {
- 		int retval;
+ struct tegra186_cpufreq_cluster {
+-	struct cpufreq_frequency_table *table;
++	struct cpufreq_frequency_table *bpmp_lut;
+ 	u32 ref_clk_khz;
+ 	u32 div;
+ };
+@@ -66,16 +67,121 @@ struct tegra186_cpufreq_cluster {
+ struct tegra186_cpufreq_data {
+ 	void __iomem *regs;
+ 	const struct tegra186_cpufreq_cpu *cpus;
++	bool icc_dram_bw_scaling;
+ 	struct tegra186_cpufreq_cluster clusters[];
+ };
+ 
++static int tegra_cpufreq_set_bw(struct cpufreq_policy *policy, unsigned long freq_khz)
++{
++	struct tegra186_cpufreq_data *data = cpufreq_get_driver_data();
++	struct device *dev;
++	int ret;
++
++	dev = get_cpu_device(policy->cpu);
++	if (!dev)
++		return -ENODEV;
++
++	struct dev_pm_opp *opp __free(put_opp) =
++		dev_pm_opp_find_freq_exact(dev, freq_khz * HZ_PER_KHZ, true);
++	if (IS_ERR(opp))
++		return PTR_ERR(opp);
++
++	ret = dev_pm_opp_set_opp(dev, opp);
++	if (ret)
++		data->icc_dram_bw_scaling = false;
++
++	return ret;
++}
++
++static int tegra_cpufreq_init_cpufreq_table(struct cpufreq_policy *policy,
++					    struct cpufreq_frequency_table *bpmp_lut,
++					    struct cpufreq_frequency_table **opp_table)
++{
++	struct tegra186_cpufreq_data *data = cpufreq_get_driver_data();
++	struct cpufreq_frequency_table *freq_table = NULL;
++	struct cpufreq_frequency_table *pos;
++	struct device *cpu_dev;
++	unsigned long rate;
++	int ret, max_opps;
++	int j = 0;
++
++	cpu_dev = get_cpu_device(policy->cpu);
++	if (!cpu_dev) {
++		pr_err("%s: failed to get cpu%d device\n", __func__, policy->cpu);
++		return -ENODEV;
++	}
++
++	/* Initialize OPP table mentioned in operating-points-v2 property in DT */
++	ret = dev_pm_opp_of_add_table_indexed(cpu_dev, 0);
++	if (ret) {
++		dev_err(cpu_dev, "Invalid or empty opp table in device tree\n");
++		data->icc_dram_bw_scaling = false;
++		return ret;
++	}
++
++	max_opps = dev_pm_opp_get_opp_count(cpu_dev);
++	if (max_opps <= 0) {
++		dev_err(cpu_dev, "Failed to add OPPs\n");
++		return max_opps;
++	}
++
++	/* Disable all opps and cross-validate against LUT later */
++	for (rate = 0; ; rate++) {
++		struct dev_pm_opp *opp __free(put_opp);
++
++		opp = dev_pm_opp_find_freq_ceil(cpu_dev, &rate);
++		if (IS_ERR(opp))
++			break;
++
++		dev_pm_opp_disable(cpu_dev, rate);
++	}
++
++	freq_table = kcalloc((max_opps + 1), sizeof(*freq_table), GFP_KERNEL);
++	if (!freq_table)
++		return -ENOMEM;
++
++	/*
++	 * Cross check the frequencies from BPMP-FW LUT against the OPP's present in DT.
++	 * Enable only those DT OPP's which are present in LUT also.
++	 */
++	cpufreq_for_each_valid_entry(pos, bpmp_lut) {
++		struct dev_pm_opp *opp __free(put_opp);
++
++		opp = dev_pm_opp_find_freq_exact(cpu_dev, pos->frequency * HZ_PER_KHZ, false);
++		if (IS_ERR(opp))
++			continue;
++
++		ret = dev_pm_opp_enable(cpu_dev, pos->frequency * HZ_PER_KHZ);
++		if (ret < 0)
++			return ret;
++
++		freq_table[j].driver_data = pos->driver_data;
++		freq_table[j].frequency = pos->frequency;
++		j++;
++	}
++
++	freq_table[j].driver_data = pos->driver_data;
++	freq_table[j].frequency = CPUFREQ_TABLE_END;
++
++	*opp_table = &freq_table[0];
++
++	dev_pm_opp_set_sharing_cpus(cpu_dev, policy->cpus);
++
++	/* Prime interconnect data */
++	tegra_cpufreq_set_bw(policy, freq_table[j - 1].frequency);
++
++	return ret;
++}
++
+ static int tegra186_cpufreq_init(struct cpufreq_policy *policy)
+ {
+ 	struct tegra186_cpufreq_data *data = cpufreq_get_driver_data();
+ 	unsigned int cluster = data->cpus[policy->cpu].bpmp_cluster_id;
++	struct cpufreq_frequency_table *freq_table;
++	struct cpufreq_frequency_table *bpmp_lut;
+ 	u32 cpu;
++	int ret;
+ 
+-	policy->freq_table = data->clusters[cluster].table;
+ 	policy->cpuinfo.transition_latency = 300 * 1000;
+ 	policy->driver_data = NULL;
+ 
+@@ -85,6 +191,20 @@ static int tegra186_cpufreq_init(struct cpufreq_policy *policy)
+ 			cpumask_set_cpu(cpu, policy->cpus);
+ 	}
+ 
++	bpmp_lut = data->clusters[cluster].bpmp_lut;
++
++	if (data->icc_dram_bw_scaling) {
++		ret = tegra_cpufreq_init_cpufreq_table(policy, bpmp_lut, &freq_table);
++		if (!ret) {
++			policy->freq_table = freq_table;
++			return 0;
++		}
++	}
++
++	data->icc_dram_bw_scaling = false;
++	policy->freq_table = bpmp_lut;
++	pr_info("OPP tables missing from DT, EMC frequency scaling disabled\n");
++
+ 	return 0;
+ }
+ 
+@@ -102,6 +222,10 @@ static int tegra186_cpufreq_set_target(struct cpufreq_policy *policy,
+ 		writel(edvd_val, data->regs + edvd_offset);
+ 	}
+ 
++	if (data->icc_dram_bw_scaling)
++		tegra_cpufreq_set_bw(policy, tbl->frequency);
++
++
+ 	return 0;
+ }
+ 
+@@ -134,7 +258,7 @@ static struct cpufreq_driver tegra186_cpufreq_driver = {
+ 	.init = tegra186_cpufreq_init,
+ };
+ 
+-static struct cpufreq_frequency_table *init_vhint_table(
++static struct cpufreq_frequency_table *tegra_cpufreq_bpmp_read_lut(
+ 	struct platform_device *pdev, struct tegra_bpmp *bpmp,
+ 	struct tegra186_cpufreq_cluster *cluster, unsigned int cluster_id,
+ 	int *num_rates)
+@@ -229,6 +353,7 @@ static int tegra186_cpufreq_probe(struct platform_device *pdev)
+ {
+ 	struct tegra186_cpufreq_data *data;
+ 	struct tegra_bpmp *bpmp;
++	struct device *cpu_dev;
+ 	unsigned int i = 0, err, edvd_offset;
+ 	int num_rates = 0;
+ 	u32 edvd_val, cpu;
+@@ -254,9 +379,9 @@ static int tegra186_cpufreq_probe(struct platform_device *pdev)
+ 	for (i = 0; i < TEGRA186_NUM_CLUSTERS; i++) {
+ 		struct tegra186_cpufreq_cluster *cluster = &data->clusters[i];
+ 
+-		cluster->table = init_vhint_table(pdev, bpmp, cluster, i, &num_rates);
+-		if (IS_ERR(cluster->table)) {
+-			err = PTR_ERR(cluster->table);
++		cluster->bpmp_lut = tegra_cpufreq_bpmp_read_lut(pdev, bpmp, cluster, i, &num_rates);
++		if (IS_ERR(cluster->bpmp_lut)) {
++			err = PTR_ERR(cluster->bpmp_lut);
+ 			goto put_bpmp;
+ 		} else if (!num_rates) {
+ 			err = -EINVAL;
+@@ -265,7 +390,7 @@ static int tegra186_cpufreq_probe(struct platform_device *pdev)
+ 
+ 		for (cpu = 0; cpu < ARRAY_SIZE(tegra186_cpus); cpu++) {
+ 			if (data->cpus[cpu].bpmp_cluster_id == i) {
+-				edvd_val = cluster->table[num_rates - 1].driver_data;
++				edvd_val = cluster->bpmp_lut[num_rates - 1].driver_data;
+ 				edvd_offset = data->cpus[cpu].edvd_offset;
+ 				writel(edvd_val, data->regs + edvd_offset);
+ 			}
+@@ -274,6 +399,19 @@ static int tegra186_cpufreq_probe(struct platform_device *pdev)
+ 
+ 	tegra186_cpufreq_driver.driver_data = data;
+ 
++	/* Check for optional OPPv2 and interconnect paths on CPU0 to enable ICC scaling */
++	cpu_dev = get_cpu_device(0);
++	if (!cpu_dev) {
++		err = -EPROBE_DEFER;
++		goto put_bpmp;
++	}
++
++	if (dev_pm_opp_of_get_opp_desc_node(cpu_dev)) {
++		err = dev_pm_opp_of_find_icc_paths(cpu_dev, NULL);
++		if (!err)
++			data->icc_dram_bw_scaling = true;
++	}
++
+ 	err = cpufreq_register_driver(&tegra186_cpufreq_driver);
+ 
+ put_bpmp:
 
 ---
 base-commit: 211ddde0823f1442e4ad052a2f30f050145ccada
-change-id: 20251022-mmap-regression-f0f40d51046d
+change-id: 20251021-tegra186-icc-p1-8455e61d453d
 
 Best regards,
 -- 
-Dominique Martinet <asmadeus@codewreck.org>
+Aaron Kling <webgeek1234@gmail.com>
 
