@@ -1,748 +1,100 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Tue, 21 Oct 2025 20:13:42 -0500
-Subject: [PATCH v3 2/2] arm64: tegra: Add CPU OPP tables for Tegra194
+Date: Tue, 21 Oct 2025 22:09:26 -0500
+Subject: [PATCH v5] dt-bindings: devfreq: tegra30-actmon: Add Tegra124
+ fallback for Tegra210
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251021-tegra186-icc-p3-v3-2-68184ee8a89c@gmail.com>
-References: <20251021-tegra186-icc-p3-v3-0-68184ee8a89c@gmail.com>
-In-Reply-To: <20251021-tegra186-icc-p3-v3-0-68184ee8a89c@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+Message-Id: <20251021-t210-actmon-p1-v5-1-1bc8f9221917@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAOVK+GgC/x3MPQqAMAxA4atIZgNJsIJeRRz8iZrBKq2IULy7x
+ fEb3ksQNZhGaIsEQW+LdvgMVxYwbYNfFW3OBiFxTMJ4CRMO07UfHk9GXWRsuK6I3Aw5OoMu9vz
+ Drn/fDx9QEj9gAAAA
+X-Change-ID: 20251021-t210-actmon-p1-ef2b9164005d
+To: MyungJoo Ham <myungjoo.ham@samsung.com>, 
+ Kyungmin Park <kyungmin.park@samsung.com>, 
+ Chanwoo Choi <cw00.choi@samsung.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
  Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+ Jonathan Hunter <jonathanh@nvidia.com>, Dmitry Osipenko <digetx@gmail.com>
+Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Chanwoo Choi <cw00c.choi@samsung.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>, 
+ Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761095624; l=16615;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761102585; l=2361;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=rO4CQGLvV2bo0tcNNwbixLW81fdzEyzii59svxI1Uyw=;
- b=5JrZhl+Cq/uvWCct7p+kv/5nCiXkRg0zhidXtKT9G3tu4wVYQkmXomzePkl3Z9y5bGEU33byT
- APmFwrxaopCAyAY4fO8V2tqmDvC3ta8jLkV3gYn+tHCS4UQdfExvHHE
+ bh=mg8XT9vcS48SE8URDi3TR+Wy+mQQFKQFXQRT3zUHsb0=;
+ b=mZx+g9VaQ/AsA+KvIG57AVILTDDkK1rY9Hsjnu4uds6noRNEOI4n7Ahs955iTc0FLF1yOPed9
+ Oe1DAewlGE2BjBWI2ikc0sssC7WV59ThWK0tx3j8IyvZ+X4tsBVmUKR
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add OPP table and interconnects property to scale DDR frequency with
-CPU frequency for better performance. Each operating point entry of
-the OPP table has CPU freq to per MC channel bandwidth mapping.
-One table is added for each cluster even though the table data is
-same because the bandwidth request is per cluster. This is done
-because the OPP framework creates a single icc path and hence single
-bandwidth request if the table is marked as 'opp-shared' and shared
-among all clusters. For us, the OPP table data is same but the MC
-Client ID argument to interconnects property is different for each
-cluster. So, having per cluster tables makes different icc paths for
-each cluster and helps to make per cluster BW requests.
+The Tegra210 actmon is compatible with the existing Tegra124 driver.
+Describe the compatibles as such.
 
+Acked-by: Chanwoo Choi <cw00c.choi@samsung.com>
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- arch/arm64/boot/dts/nvidia/tegra194.dtsi | 636 +++++++++++++++++++++++++++++++
- 1 file changed, 636 insertions(+)
+Changes in v5:
+- Split series
+- Link to v4: https://lore.kernel.org/r/20250923-t210-actmon-v4-0-442d1eb6377c@gmail.com
 
-diff --git a/arch/arm64/boot/dts/nvidia/tegra194.dtsi b/arch/arm64/boot/dts/nvidia/tegra194.dtsi
-index 1399342f23e1c4f73b278adc66dfb948fc30d326..a6c4c6c73707354f62f778bbea5afaec3fdbe22d 100644
---- a/arch/arm64/boot/dts/nvidia/tegra194.dtsi
-+++ b/arch/arm64/boot/dts/nvidia/tegra194.dtsi
-@@ -2890,6 +2890,8 @@ cpu0_0: cpu@0 {
- 			device_type = "cpu";
- 			reg = <0x000>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl0_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER0 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -2904,6 +2906,8 @@ cpu0_1: cpu@1 {
- 			device_type = "cpu";
- 			reg = <0x001>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl0_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER0 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -2918,6 +2922,8 @@ cpu1_0: cpu@100 {
- 			device_type = "cpu";
- 			reg = <0x100>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl1_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER1 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -2932,6 +2938,8 @@ cpu1_1: cpu@101 {
- 			device_type = "cpu";
- 			reg = <0x101>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl1_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER1 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -2946,6 +2954,8 @@ cpu2_0: cpu@200 {
- 			device_type = "cpu";
- 			reg = <0x200>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl2_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER2 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -2960,6 +2970,8 @@ cpu2_1: cpu@201 {
- 			device_type = "cpu";
- 			reg = <0x201>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl2_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER2 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -2974,6 +2986,8 @@ cpu3_0: cpu@300 {
- 			device_type = "cpu";
- 			reg = <0x300>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl3_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER3 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -2988,6 +3002,8 @@ cpu3_1: cpu@301 {
- 			device_type = "cpu";
- 			reg = <0x301>;
- 			enable-method = "psci";
-+			operating-points-v2 = <&cl3_opp_tbl>;
-+			interconnects = <&mc TEGRA_ICC_MC_CPU_CLUSTER3 &emc>;
- 			i-cache-size = <131072>;
- 			i-cache-line-size = <64>;
- 			i-cache-sets = <512>;
-@@ -3181,4 +3197,624 @@ timer {
- 		interrupt-parent = <&gic>;
- 		always-on;
- 	};
-+
-+	cl0_opp_tbl: opp-table-cluster0 {
-+		compatible = "operating-points-v2";
-+		opp-shared;
-+
-+		opp-115200000 {
-+			  opp-hz = /bits/ 64 <115200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-192000000 {
-+			  opp-hz = /bits/ 64 <192000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-268800000 {
-+			  opp-hz = /bits/ 64 <268800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-345600000 {
-+			  opp-hz = /bits/ 64 <345600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-422400000 {
-+			  opp-hz = /bits/ 64 <422400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-499200000 {
-+			  opp-hz = /bits/ 64 <499200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-576000000 {
-+			  opp-hz = /bits/ 64 <576000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-652800000 {
-+			  opp-hz = /bits/ 64 <652800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-729600000 {
-+			  opp-hz = /bits/ 64 <729600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-806400000 {
-+			  opp-hz = /bits/ 64 <806400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-883200000 {
-+			  opp-hz = /bits/ 64 <883200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-960000000 {
-+			  opp-hz = /bits/ 64 <960000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1036800000 {
-+			  opp-hz = /bits/ 64 <1036800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1113600000 {
-+			  opp-hz = /bits/ 64 <1113600000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1190400000 {
-+			  opp-hz = /bits/ 64 <1190400000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1267200000 {
-+			  opp-hz = /bits/ 64 <1267200000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1344000000 {
-+			  opp-hz = /bits/ 64 <1344000000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1420800000 {
-+			  opp-hz = /bits/ 64 <1420800000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1497600000 {
-+			  opp-hz = /bits/ 64 <1497600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1574400000 {
-+			  opp-hz = /bits/ 64 <1574400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1651200000 {
-+			  opp-hz = /bits/ 64 <1651200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1728000000 {
-+			  opp-hz = /bits/ 64 <1728000000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1804800000 {
-+			  opp-hz = /bits/ 64 <1804800000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1881600000 {
-+			  opp-hz = /bits/ 64 <1881600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1907200000 {
-+			  opp-hz = /bits/ 64 <1907200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1958400000 {
-+			  opp-hz = /bits/ 64 <1958400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2035200000 {
-+			  opp-hz = /bits/ 64 <2035200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2112000000 {
-+			  opp-hz = /bits/ 64 <2112000000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2188800000 {
-+			  opp-hz = /bits/ 64 <2188800000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2265600000 {
-+			  opp-hz = /bits/ 64 <2265600000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+	};
-+
-+	cl1_opp_tbl: opp-table-cluster1 {
-+		compatible = "operating-points-v2";
-+		opp-shared;
-+
-+		opp-115200000 {
-+			  opp-hz = /bits/ 64 <115200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-192000000 {
-+			  opp-hz = /bits/ 64 <192000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-268800000 {
-+			  opp-hz = /bits/ 64 <268800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-345600000 {
-+			  opp-hz = /bits/ 64 <345600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-422400000 {
-+			  opp-hz = /bits/ 64 <422400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-499200000 {
-+			  opp-hz = /bits/ 64 <499200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-576000000 {
-+			  opp-hz = /bits/ 64 <576000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-652800000 {
-+			  opp-hz = /bits/ 64 <652800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-729600000 {
-+			  opp-hz = /bits/ 64 <729600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-806400000 {
-+			  opp-hz = /bits/ 64 <806400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-883200000 {
-+			  opp-hz = /bits/ 64 <883200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-960000000 {
-+			  opp-hz = /bits/ 64 <960000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1036800000 {
-+			  opp-hz = /bits/ 64 <1036800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1113600000 {
-+			  opp-hz = /bits/ 64 <1113600000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1190400000 {
-+			  opp-hz = /bits/ 64 <1190400000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1267200000 {
-+			  opp-hz = /bits/ 64 <1267200000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1344000000 {
-+			  opp-hz = /bits/ 64 <1344000000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1420800000 {
-+			  opp-hz = /bits/ 64 <1420800000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1497600000 {
-+			  opp-hz = /bits/ 64 <1497600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1574400000 {
-+			  opp-hz = /bits/ 64 <1574400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1651200000 {
-+			  opp-hz = /bits/ 64 <1651200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1728000000 {
-+			  opp-hz = /bits/ 64 <1728000000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1804800000 {
-+			  opp-hz = /bits/ 64 <1804800000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1881600000 {
-+			  opp-hz = /bits/ 64 <1881600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1907200000 {
-+			  opp-hz = /bits/ 64 <1907200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1958400000 {
-+			  opp-hz = /bits/ 64 <1958400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2035200000 {
-+			  opp-hz = /bits/ 64 <2035200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2112000000 {
-+			  opp-hz = /bits/ 64 <2112000000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2188800000 {
-+			  opp-hz = /bits/ 64 <2188800000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2265600000 {
-+			  opp-hz = /bits/ 64 <2265600000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+	};
-+
-+	cl2_opp_tbl: opp-table-cluster2 {
-+		compatible = "operating-points-v2";
-+		opp-shared;
-+
-+		opp-115200000 {
-+			  opp-hz = /bits/ 64 <115200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-192000000 {
-+			  opp-hz = /bits/ 64 <192000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-268800000 {
-+			  opp-hz = /bits/ 64 <268800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-345600000 {
-+			  opp-hz = /bits/ 64 <345600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-422400000 {
-+			  opp-hz = /bits/ 64 <422400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-499200000 {
-+			  opp-hz = /bits/ 64 <499200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-576000000 {
-+			  opp-hz = /bits/ 64 <576000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-652800000 {
-+			  opp-hz = /bits/ 64 <652800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-729600000 {
-+			  opp-hz = /bits/ 64 <729600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-806400000 {
-+			  opp-hz = /bits/ 64 <806400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-883200000 {
-+			  opp-hz = /bits/ 64 <883200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-960000000 {
-+			  opp-hz = /bits/ 64 <960000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1036800000 {
-+			  opp-hz = /bits/ 64 <1036800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1113600000 {
-+			  opp-hz = /bits/ 64 <1113600000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1190400000 {
-+			  opp-hz = /bits/ 64 <1190400000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1267200000 {
-+			  opp-hz = /bits/ 64 <1267200000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1344000000 {
-+			  opp-hz = /bits/ 64 <1344000000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1420800000 {
-+			  opp-hz = /bits/ 64 <1420800000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1497600000 {
-+			  opp-hz = /bits/ 64 <1497600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1574400000 {
-+			  opp-hz = /bits/ 64 <1574400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1651200000 {
-+			  opp-hz = /bits/ 64 <1651200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1728000000 {
-+			  opp-hz = /bits/ 64 <1728000000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1804800000 {
-+			  opp-hz = /bits/ 64 <1804800000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1881600000 {
-+			  opp-hz = /bits/ 64 <1881600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1907200000 {
-+			  opp-hz = /bits/ 64 <1907200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1958400000 {
-+			  opp-hz = /bits/ 64 <1958400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2035200000 {
-+			  opp-hz = /bits/ 64 <2035200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2112000000 {
-+			  opp-hz = /bits/ 64 <2112000000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2188800000 {
-+			  opp-hz = /bits/ 64 <2188800000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2265600000 {
-+			  opp-hz = /bits/ 64 <2265600000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+	};
-+
-+	cl3_opp_tbl: opp-table-cluster3 {
-+		compatible = "operating-points-v2";
-+		opp-shared;
-+
-+		opp-115200000 {
-+			  opp-hz = /bits/ 64 <115200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-192000000 {
-+			  opp-hz = /bits/ 64 <192000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-268800000 {
-+			  opp-hz = /bits/ 64 <268800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-345600000 {
-+			  opp-hz = /bits/ 64 <345600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-422400000 {
-+			  opp-hz = /bits/ 64 <422400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-499200000 {
-+			  opp-hz = /bits/ 64 <499200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-576000000 {
-+			  opp-hz = /bits/ 64 <576000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-652800000 {
-+			  opp-hz = /bits/ 64 <652800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-729600000 {
-+			  opp-hz = /bits/ 64 <729600000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-806400000 {
-+			  opp-hz = /bits/ 64 <806400000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-883200000 {
-+			  opp-hz = /bits/ 64 <883200000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-960000000 {
-+			  opp-hz = /bits/ 64 <960000000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1036800000 {
-+			  opp-hz = /bits/ 64 <1036800000>;
-+			  opp-peak-kBps = <816000>;
-+		};
-+
-+		opp-1113600000 {
-+			  opp-hz = /bits/ 64 <1113600000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1190400000 {
-+			  opp-hz = /bits/ 64 <1190400000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1267200000 {
-+			  opp-hz = /bits/ 64 <1267200000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1344000000 {
-+			  opp-hz = /bits/ 64 <1344000000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1420800000 {
-+			  opp-hz = /bits/ 64 <1420800000>;
-+			  opp-peak-kBps = <1600000>;
-+		};
-+
-+		opp-1497600000 {
-+			  opp-hz = /bits/ 64 <1497600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1574400000 {
-+			  opp-hz = /bits/ 64 <1574400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1651200000 {
-+			  opp-hz = /bits/ 64 <1651200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1728000000 {
-+			  opp-hz = /bits/ 64 <1728000000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1804800000 {
-+			  opp-hz = /bits/ 64 <1804800000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1881600000 {
-+			  opp-hz = /bits/ 64 <1881600000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1907200000 {
-+			  opp-hz = /bits/ 64 <1907200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-1958400000 {
-+			  opp-hz = /bits/ 64 <1958400000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2035200000 {
-+			  opp-hz = /bits/ 64 <2035200000>;
-+			  opp-peak-kBps = <3200000>;
-+		};
-+
-+		opp-2112000000 {
-+			  opp-hz = /bits/ 64 <2112000000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2188800000 {
-+			  opp-hz = /bits/ 64 <2188800000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+
-+		opp-2265600000 {
-+			  opp-hz = /bits/ 64 <2265600000>;
-+			  opp-peak-kBps = <4266000>;
-+		};
-+	};
- };
+Changes in v4:
+- Various cleanups in patch 5 as requested by review
+- Fix a couple typos in patch 4
+- Link to v3: https://lore.kernel.org/r/20250906-t210-actmon-v3-0-1403365d571e@gmail.com
 
+Changes in v3:
+- In patch 5, don't fail mc probe if opp tables are missing
+- Add more mc bindings to patch 1
+- Add patch to use tegra210-mc bindings in the mc driver
+- Re-order series to align patches within a subsystem to each other
+- Link to v2: https://lore.kernel.org/r/20250903-t210-actmon-v2-0-e0d534d4f8ea@gmail.com
+
+Changes in v2:
+- Assume 64-bit dram bus width in patch 4
+- Add dt-bindings patch to document the new properties on the
+  tegra210-emc node.
+- Link to v1: https://lore.kernel.org/r/20250828-t210-actmon-v1-0-aeb19ec1f244@gmail.com
+---
+ .../devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml  | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/Documentation/devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml b/Documentation/devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml
+index e3379d1067283e36d1bee303187c0205b410f610..ea1dc86bc31f635f91a0e36f908f5c0c4f9a804c 100644
+--- a/Documentation/devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml
++++ b/Documentation/devicetree/bindings/devfreq/nvidia,tegra30-actmon.yaml
+@@ -19,11 +19,14 @@ description: |
+ 
+ properties:
+   compatible:
+-    enum:
+-      - nvidia,tegra30-actmon
+-      - nvidia,tegra114-actmon
+-      - nvidia,tegra124-actmon
+-      - nvidia,tegra210-actmon
++    oneOf:
++      - enum:
++          - nvidia,tegra30-actmon
++          - nvidia,tegra114-actmon
++          - nvidia,tegra124-actmon
++      - items:
++          - const: nvidia,tegra210-actmon
++          - const: nvidia,tegra124-actmon
+ 
+   reg:
+     maxItems: 1
+
+---
+base-commit: 211ddde0823f1442e4ad052a2f30f050145ccada
+change-id: 20251021-t210-actmon-p1-ef2b9164005d
+
+Best regards,
 -- 
-2.51.0
+Aaron Kling <webgeek1234@gmail.com>
 
