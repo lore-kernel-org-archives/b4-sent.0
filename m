@@ -1,78 +1,134 @@
-From: Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
-Date: Wed, 22 Oct 2025 18:40:42 +0800
-Subject: [PATCH] Input: atkbd - skip deactivate for HONOR FMB-P's internal
- keyboard
+From: ymodlin <yogev.modlin@realsenseai.com>
+Date: Wed, 22 Oct 2025 14:15:18 +0300
+Subject: [PATCH] change: drop 'Intel' from RealSense camera comments
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251022-honor-v1-1-ff894ed271a9@linux.dev>
-X-B4-Tracking: v=1; b=H4sIAKq0+GgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDAyMj3Yz8vPwiXYukZMuk1DSL1KREcyWg2oKi1LTMCrA50bG1tQCjEZU
- DVwAAAA==
-X-Change-ID: 20251022-honor-8bc9bef8eba7
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Hans de Goede <hansg@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@kernel.org, zhanjun@uniontech.com, niecheng1@uniontech.com, 
- cryolitia@uniontech.com, Mingcong Bai <jeffbai@aosc.io>, 
- Kexy Biscuit <kexybiscuit@aosc.io>, Hans de Goede <hansg@kernel.org>, 
- Mikura Kyouka <mikurakyouka@aosc.io>, 
- "foad.elkhattabi" <foad.elkhattabi@gmail.com>, 
- Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761129670; l=1646;
- i=cryolitia.pukngae@linux.dev; s=20250730; h=from:subject:message-id;
- bh=Y4XRWqk30UFx8XFg5iSytvbhCXlPHqHCtntZ18Rvdek=;
- b=fb54gBCoYQovO+qnMoj2w8LSCLTtg/nOUcNHVdOCnOqERcMLdLRUH+co3MkgsyKtoUWgWVa5r
- Nergjot7GtUCDD2oH+CFBMJ7oHtvHi3UgY6/xrvaqA0sn2oxIUzJ0Zv
-X-Developer-Key: i=cryolitia.pukngae@linux.dev; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia.pukngae@linux.dev/20250730 with auth_id=540
+Message-Id: <20251022-fix-uvc-v1-1-e4cd03606735@realsenseai.com>
+X-B4-Tracking: v=1; b=H4sIAMW8+GgC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1NDAyMj3bTMCt3SsmRdI0tj85QkY8PkREtjJaDqgqJUoBTYpOjY2loAC6v
+ 3y1kAAAA=
+To: Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Hans de Goede <hansg@kernel.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Yogev Modlin <yogev.modlin@realsenseai.com>, 
+ ymodlin <yogev.modlin@realsenseai.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761131725; l=4253;
+ i=yogev.modlin@realsenseai.com; s=20251022; h=from:subject:message-id;
+ bh=vetAyfvSfxHLKMYbudFyIvkX+DxlHNbHORbyaU7GB68=;
+ b=V4VF3vBAhDjxk2g8/UoqJxHvcjLmAvIG5RVjBE63QjfyQNu8PT48l/NlCpz5bSeMh0bw2REvf
+ zK8A6tZA4hNDCNZphFS0jtoDnlFruXffHlBut5tudGEO2tVU0CcIled
+X-Developer-Key: i=yogev.modlin@realsenseai.com; a=ed25519;
+ pk=V3EENbzJJO6YkqjrHtGmN67ulKS2b5TU7Ze0hVi1G1o=
+X-Endpoint-Received: by B4 Relay for yogev.modlin@realsenseai.com/20251022 with auth_id=549
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After commit 9cf6e24c9fbf17e52de9fff07f12be7565ea6d61 ("Input: atkbd -
-do not skip atkbd_deactivate() when skipping ATKBD_CMD_GETID"), HONOR
-FMB-P, aka HONOR MagicBook Pro 14 2025's internal keyboard stops
-working. Adding the atkbd_deactivate_fixup quirk fixes it.
+RealSense branding is now independent of Intel. Update all driver
+comments referencing "Intel RealSense" to just "RealSense" to reflect
+current ownership. No code logic changes.
 
-DMI: HONOR FMB-P/FMB-P-PCB, BIOS 1.13 05/08/2025
-
-Fixes: 9cf6e24c9fbf17e52de9fff07f12be7565ea6d61 ("Input: atkbd - do not skip atkbd_deactivate() when skipping ATKBD_CMD_GETID")
-Reported-by: Mikura Kyouka <mikurakyouka@aosc.io>
-Link: https://www.xiaohongshu.com/explore/68738d0a0000000012015a79
-Link: https://club.honor.com/cn/thread-29463529-1-1.html
-Link: https://club.honor.com/cn/thread-29490444-1-1.html
-Reported-by: foad.elkhattabi <foad.elkhattabi@gmail.com>
-Link: https://bugzilla.kernel.org/show_bug.cgi?id=220384
-Signed-off-by: Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+Signed-off-by: Yogev Modlin <yogev.modlin@realsenseai.com>
 ---
- drivers/input/keyboard/atkbd.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+Since Realsense has been spin-off Intel, the comment should be change.
 
-diff --git a/drivers/input/keyboard/atkbd.c b/drivers/input/keyboard/atkbd.c
-index 6c999d89ee4b..422e28ad1e8e 100644
---- a/drivers/input/keyboard/atkbd.c
-+++ b/drivers/input/keyboard/atkbd.c
-@@ -1937,6 +1937,13 @@ static const struct dmi_system_id atkbd_dmi_quirk_table[] __initconst = {
- 		},
- 		.callback = atkbd_deactivate_fixup,
- 	},
-+	{
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "HONOR"),
-+			DMI_MATCH(DMI_PRODUCT_NAME, "FMB-P"),
-+		},
-+		.callback = atkbd_deactivate_fixup,
-+	},
- 	{ }
- };
- 
+Signed-off-by: ymodlin <yogev.modlin@realsenseai.com>
+---
+ drivers/media/usb/uvc/uvc_driver.c | 18 +++++++++---------
+ 1 file changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/media/usb/uvc/uvc_driver.c b/drivers/media/usb/uvc/uvc_driver.c
+index fb6afb8e84f0..b1457678833e 100644
+--- a/drivers/media/usb/uvc/uvc_driver.c
++++ b/drivers/media/usb/uvc/uvc_driver.c
+@@ -3142,7 +3142,7 @@ static const struct usb_device_id uvc_ids[] = {
+ 	  .bInterfaceSubClass	= 1,
+ 	  .bInterfaceProtocol	= 0,
+ 	  .driver_info		= UVC_INFO_QUIRK(UVC_QUIRK_DISABLE_AUTOSUSPEND) },
+-	/* Intel D410/ASR depth camera */
++	/* Realsense D410/ASR depth camera */
+ 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
+ 				| USB_DEVICE_ID_MATCH_INT_INFO,
+ 	  .idVendor		= 0x8086,
+@@ -3151,7 +3151,7 @@ static const struct usb_device_id uvc_ids[] = {
+ 	  .bInterfaceSubClass	= 1,
+ 	  .bInterfaceProtocol	= 0,
+ 	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
+-	/* Intel D415/ASRC depth camera */
++	/* Realsense D415/ASRC depth camera */
+ 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
+ 				| USB_DEVICE_ID_MATCH_INT_INFO,
+ 	  .idVendor		= 0x8086,
+@@ -3160,7 +3160,7 @@ static const struct usb_device_id uvc_ids[] = {
+ 	  .bInterfaceSubClass	= 1,
+ 	  .bInterfaceProtocol	= 0,
+ 	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
+-	/* Intel D430/AWG depth camera */
++	/* Realsense D430/AWG depth camera */
+ 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
+ 				| USB_DEVICE_ID_MATCH_INT_INFO,
+ 	  .idVendor		= 0x8086,
+@@ -3169,7 +3169,7 @@ static const struct usb_device_id uvc_ids[] = {
+ 	  .bInterfaceSubClass	= 1,
+ 	  .bInterfaceProtocol	= 0,
+ 	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
+-	/* Intel RealSense D4M */
++	/* Realsense RealSense D4M */
+ 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
+ 				| USB_DEVICE_ID_MATCH_INT_INFO,
+ 	  .idVendor		= 0x8086,
+@@ -3178,7 +3178,7 @@ static const struct usb_device_id uvc_ids[] = {
+ 	  .bInterfaceSubClass	= 1,
+ 	  .bInterfaceProtocol	= 0,
+ 	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
+-	/* Intel D435/AWGC depth camera */
++	/* Realsense D435/AWGC depth camera */
+ 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
+ 				| USB_DEVICE_ID_MATCH_INT_INFO,
+ 	  .idVendor		= 0x8086,
+@@ -3187,7 +3187,7 @@ static const struct usb_device_id uvc_ids[] = {
+ 	  .bInterfaceSubClass	= 1,
+ 	  .bInterfaceProtocol	= 0,
+ 	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
+-	/* Intel D435i depth camera */
++	/* Realsense D435i depth camera */
+ 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
+ 				| USB_DEVICE_ID_MATCH_INT_INFO,
+ 	  .idVendor		= 0x8086,
+@@ -3196,7 +3196,7 @@ static const struct usb_device_id uvc_ids[] = {
+ 	  .bInterfaceSubClass	= 1,
+ 	  .bInterfaceProtocol	= 0,
+ 	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
+-	/* Intel D405 Depth Camera */
++	/* Realsense D405 Depth Camera */
+ 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
+ 				| USB_DEVICE_ID_MATCH_INT_INFO,
+ 	  .idVendor		= 0x8086,
+@@ -3205,7 +3205,7 @@ static const struct usb_device_id uvc_ids[] = {
+ 	  .bInterfaceSubClass	= 1,
+ 	  .bInterfaceProtocol	= 0,
+ 	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
+-	/* Intel D455 Depth Camera */
++	/* Realsense D455 Depth Camera */
+ 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
+ 				| USB_DEVICE_ID_MATCH_INT_INFO,
+ 	  .idVendor		= 0x8086,
+@@ -3214,7 +3214,7 @@ static const struct usb_device_id uvc_ids[] = {
+ 	  .bInterfaceSubClass	= 1,
+ 	  .bInterfaceProtocol	= 0,
+ 	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
+-	/* Intel D421 Depth Module */
++	/* Realsense D421 Depth Module */
+ 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
+ 				| USB_DEVICE_ID_MATCH_INT_INFO,
+ 	  .idVendor		= 0x8086,
 
 ---
 base-commit: 552c50713f273b494ac6c77052032a49bc9255e2
-change-id: 20251022-honor-8bc9bef8eba7
+change-id: 20251022-fix-uvc-2937db31ca93
 
 Best regards,
 -- 
-Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+ymodlin <yogev.modlin@realsenseai.com>
 
