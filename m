@@ -1,105 +1,60 @@
-From: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
-Date: Fri, 24 Oct 2025 13:21:04 +0800
-Subject: [PATCH v6 4/4] arm64: dts: qcom: qcs615-ride: Enable DisplayPort
+From: ymodlin <yogev.modlin@realsenseai.com>
+Subject: [PATCH v3 0/3] Since Realsense has been spin-off Intel, the
+ comment should be change.
+Date: Fri, 24 Oct 2025 08:49:45 +0300
+Message-Id: <20251024-fix-uvc-v3-0-b7f83c012ca7@realsenseai.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251024-add-displayport-support-to-qcs615-devicetree-v6-4-c4316975dd0e@oss.qualcomm.com>
-References: <20251024-add-displayport-support-to-qcs615-devicetree-v6-0-c4316975dd0e@oss.qualcomm.com>
-In-Reply-To: <20251024-add-displayport-support-to-qcs615-devicetree-v6-0-c4316975dd0e@oss.qualcomm.com>
-To: Rob Clark <robin.clark@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, fange.zhang@oss.qualcomm.com, 
- yongxing.mou@oss.qualcomm.com, li.liu@oss.qualcomm.com, 
- Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761283306; l=1609;
- i=xiangxu.yin@oss.qualcomm.com; s=20241125; h=from:subject:message-id;
- bh=JmlkVx4dUAhZ5F1vLUkFJ0Z5DidCHic/hFr/kjEqXbo=;
- b=Iwn5UbKhK6yMWWnfDCu4c4XoOCSF5jK/xYy0o/gmZBiF7b2rAmakFSzEfOJd6oncL+hJ4IzPq
- QOjseqh2BBgAwhR4IC4jI9dGx09WiLJTOjA9Dx5/kdQDpGakKZTpiq3
-X-Developer-Key: i=xiangxu.yin@oss.qualcomm.com; a=ed25519;
- pk=F1TwipJzpywfbt3n/RPi4l/A4AVF+QC89XzCHgZYaOc=
-X-Endpoint-Received: by B4 Relay for xiangxu.yin@oss.qualcomm.com/20241125 with auth_id=542
+X-B4-Tracking: v=1; b=H4sIAHkT+2gC/2WMMQ7CMAxFr1JlxiixSUuZuAdiCI6hkaBFCUSgq
+ ncn7QIS47P/e6NKEoMktatGFSWHFIa+AK0qxZ3rLwLBF1ao0RqNCOfwgmdmwJYafyLDriVV1vc
+ o5bWUDsfCXUiPIb6XcDbz9b+RDRiQDXtNta4bsvso7pqkT+LCmoebmksZf2362ggaDLe0tYS28
+ fxvT9P0AT6nBRXiAAAA
+To: Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Hans de Goede <hansg@kernel.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ ymodlin <yogev.modlin@realsenseai.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761284988; l=1124;
+ i=yogev.modlin@realsenseai.com; s=20251022; h=from:subject:message-id;
+ bh=1WfFvzYHcSDCH+B4HhPvJNCEBqTW4nPE8Kyf9KkINlQ=;
+ b=1Zx2wW+eD4XJ3ZaGki86OeNxnYyV7T4kL1wmAS3vBtcEI4vsuwSfZ+FJYtfQLDn/5ZAk57JiF
+ S6rqnwGByFkAUTVednIvUFZTR2TjS91ZLubkm8LdFa2fEZd5SJMKhpc
+X-Developer-Key: i=yogev.modlin@realsenseai.com; a=ed25519;
+ pk=V3EENbzJJO6YkqjrHtGmN67ulKS2b5TU7Ze0hVi1G1o=
+X-Endpoint-Received: by B4 Relay for yogev.modlin@realsenseai.com/20251022 with auth_id=549
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add DP connector node and configure MDSS DisplayPort controller for
-QCS615 Ride platform. Include PHY supply settings to support DP output.
-
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
+Signed-off-by: ymodlin <yogev.modlin@realsenseai.com>
 ---
- arch/arm64/boot/dts/qcom/qcs615-ride.dts | 30 ++++++++++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+Changes in v3:
+- Add metadata support for D436 and D555 cameras.
+- Realsense D555 has been released to the market earlier this year.
+- Realsense D436 will soon be official it's currenly being supplied to
+  beta users.
+- Link to v2: https://lore.kernel.org/r/20251023-fix-uvc-v2-0-1c93853257dc@realsenseai.com
 
-diff --git a/arch/arm64/boot/dts/qcom/qcs615-ride.dts b/arch/arm64/boot/dts/qcom/qcs615-ride.dts
-index 9ac1dd3483b56f9d1652f8a38f62d759efa92b6a..bb0f4b8265e4807e50d067aed8b21557d97b20dd 100644
---- a/arch/arm64/boot/dts/qcom/qcs615-ride.dts
-+++ b/arch/arm64/boot/dts/qcom/qcs615-ride.dts
-@@ -39,6 +39,20 @@ xo_board_clk: xo-board-clk {
- 		};
- 	};
- 
-+	dp0-connector {
-+		compatible = "dp-connector";
-+		label = "DP0";
-+		type = "mini";
-+
-+		hpd-gpios = <&io_expander 8 GPIO_ACTIVE_HIGH>;
-+
-+		port {
-+			dp0_connector_in: endpoint {
-+				remote-endpoint = <&mdss_dp0_out>;
-+			};
-+		};
-+	};
-+
- 	dp-dsi0-connector {
- 		compatible = "dp-connector";
- 		label = "DSI0";
-@@ -423,6 +437,15 @@ &mdss {
- 	status = "okay";
- };
- 
-+&mdss_dp0 {
-+	status = "okay";
-+};
-+
-+&mdss_dp0_out {
-+	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000>;
-+	remote-endpoint = <&dp0_connector_in>;
-+};
-+
- &mdss_dsi0 {
- 	vdda-supply = <&vreg_l11a>;
- 	status = "okay";
-@@ -623,6 +646,13 @@ &usb_qmpphy {
- 	status = "okay";
- };
- 
-+&usb_qmpphy_2 {
-+	vdda-phy-supply = <&vreg_l5a>;
-+	vdda-pll-supply = <&vreg_l12a>;
-+
-+	status = "okay";
-+};
-+
- &usb_1 {
- 	status = "okay";
- };
+Changes in v2:
+- Fixed commit message formatting
+- Write 'Intel RealSense' for D400 family of depth camera comments
+- Link to v1: https://lore.kernel.org/r/20251022-fix-uvc-v1-1-e4cd03606735@realsenseai.com
 
+---
+Yogev Modlin (1):
+      media: uvc: Add D436 and D555 cameras metadata support
+
+ymodlin (2):
+      change: drop 'Intel' from RealSense camera comments
+      media: uvc: Add RealSense vendor prefix to Intel camera comments
+
+ drivers/media/usb/uvc/uvc_driver.c | 36 +++++++++++++++++++++++++++---------
+ 1 file changed, 27 insertions(+), 9 deletions(-)
+---
+base-commit: 552c50713f273b494ac6c77052032a49bc9255e2
+change-id: 20251022-fix-uvc-2937db31ca93
+
+Best regards,
 -- 
-2.34.1
+Yogev Modlin <yogev.modlin@realsenseai.com>
 
