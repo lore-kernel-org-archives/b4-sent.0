@@ -1,11 +1,11 @@
 From: ymodlin <yogev.modlin@realsenseai.com>
-Date: Sun, 26 Oct 2025 18:43:02 +0200
-Subject: [PATCH v4 1/2] media: uvcvideo: change comment to 'Intel
- RealSense'
+Date: Sun, 26 Oct 2025 18:43:03 +0200
+Subject: [PATCH v4 2/2] media: uvcvideo: Add D436 and D555 cameras metadata
+ support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251026-fix-uvc-v4-1-610eb1329600@realsenseai.com>
+Message-Id: <20251026-fix-uvc-v4-2-610eb1329600@realsenseai.com>
 References: <20251026-fix-uvc-v4-0-610eb1329600@realsenseai.com>
 In-Reply-To: <20251026-fix-uvc-v4-0-610eb1329600@realsenseai.com>
 To: Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
@@ -14,110 +14,65 @@ To: Laurent Pinchart <laurent.pinchart@ideasonboard.com>,
 Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
  ymodlin <yogev.modlin@realsenseai.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761496986; l=4008;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761496986; l=2146;
  i=yogev.modlin@realsenseai.com; s=20251022; h=from:subject:message-id;
- bh=ndrm/crXnofzSIO0p9N13VOCq1E5U1cvAgBjUj5sjDI=;
- b=6+loy8ajxUqqrxV99Dyo9y9BkBCExn6PJef7LFJdmB3BpdF//0p1HoQi7vGKzziiC7Ht48phz
- MzCLZp0vGztD2NHQU70kqhGcdBsLIcjHMtw717SfixskeoLvTA26Nhg
+ bh=LCH5BFHjgpXxKtpVI2rPauvqh8gfX8golDGVFeO1zks=;
+ b=t9WjTvoIFI9zSj/8De/p2yRdiPneTRjAkyq116kWzA71j0gnf+qQ3tdT8H6/kuTfUDXzCfKkl
+ A27JXbKZKrDD8atBIb88o5ah3L8v1aa/78BhCipMMOOOPOevW+VYeSy
 X-Developer-Key: i=yogev.modlin@realsenseai.com; a=ed25519;
  pk=V3EENbzJJO6YkqjrHtGmN67ulKS2b5TU7Ze0hVi1G1o=
 X-Endpoint-Received: by B4 Relay for yogev.modlin@realsenseai.com/20251022 with auth_id=549
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-RealSense branding is now independent of Intel. Update all driver
-comments referencing "Intel" to "Intel RealSense" to reflect
-current ownership. No code logic changes.
+Add support for Intel RealSense D436 and D555 depth cameras metadata.
+These cameras use the D4XX metadata format for transmitting depth and
+sensor information.
+
+The D555 camera uses UVC protocol version 1.5, while the D436 uses
+an undefined protocol version. Both cameras require the D4XX metadata
+format flag to properly handle their metadata streams.
 
 Signed-off-by: ymodlin <yogev.modlin@realsenseai.com>
 ---
- drivers/media/usb/uvc/uvc_driver.c | 18 +++++++++---------
- 1 file changed, 9 insertions(+), 9 deletions(-)
+ drivers/media/usb/uvc/uvc_driver.c | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
 
 diff --git a/drivers/media/usb/uvc/uvc_driver.c b/drivers/media/usb/uvc/uvc_driver.c
-index fb6afb8e84f0..dbdacc64ea6b 100644
+index dbdacc64ea6b..cf3ee33cdfd4 100644
 --- a/drivers/media/usb/uvc/uvc_driver.c
 +++ b/drivers/media/usb/uvc/uvc_driver.c
-@@ -3142,7 +3142,7 @@ static const struct usb_device_id uvc_ids[] = {
- 	  .bInterfaceSubClass	= 1,
- 	  .bInterfaceProtocol	= 0,
- 	  .driver_info		= UVC_INFO_QUIRK(UVC_QUIRK_DISABLE_AUTOSUSPEND) },
--	/* Intel D410/ASR depth camera */
-+	/* Intel Realsense D410/ASR depth camera */
- 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
- 				| USB_DEVICE_ID_MATCH_INT_INFO,
- 	  .idVendor		= 0x8086,
-@@ -3151,7 +3151,7 @@ static const struct usb_device_id uvc_ids[] = {
+@@ -3196,6 +3196,15 @@ static const struct usb_device_id uvc_ids[] = {
  	  .bInterfaceSubClass	= 1,
  	  .bInterfaceProtocol	= 0,
  	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
--	/* Intel D415/ASRC depth camera */
-+	/* Intel Realsense D415/ASRC depth camera */
++	/* Intel Realsense D555 Depth Camera */
++	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
++				| USB_DEVICE_ID_MATCH_INT_INFO,
++	  .idVendor		= 0x8086,
++	  .idProduct		= 0x0b56,
++	  .bInterfaceClass	= USB_CLASS_VIDEO,
++	  .bInterfaceSubClass	= 1,
++	  .bInterfaceProtocol	= UVC_PC_PROTOCOL_15,
++	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
+ 	/* Intel Realsense D405 Depth Camera */
  	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
  				| USB_DEVICE_ID_MATCH_INT_INFO,
- 	  .idVendor		= 0x8086,
-@@ -3160,7 +3160,7 @@ static const struct usb_device_id uvc_ids[] = {
+@@ -3223,6 +3232,15 @@ static const struct usb_device_id uvc_ids[] = {
  	  .bInterfaceSubClass	= 1,
  	  .bInterfaceProtocol	= 0,
  	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
--	/* Intel D430/AWG depth camera */
-+	/* Intel Realsense D430/AWG depth camera */
- 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
- 				| USB_DEVICE_ID_MATCH_INT_INFO,
- 	  .idVendor		= 0x8086,
-@@ -3169,7 +3169,7 @@ static const struct usb_device_id uvc_ids[] = {
- 	  .bInterfaceSubClass	= 1,
- 	  .bInterfaceProtocol	= 0,
- 	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
--	/* Intel RealSense D4M */
-+	/* Intel Realsense RealSense D4M */
- 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
- 				| USB_DEVICE_ID_MATCH_INT_INFO,
- 	  .idVendor		= 0x8086,
-@@ -3178,7 +3178,7 @@ static const struct usb_device_id uvc_ids[] = {
- 	  .bInterfaceSubClass	= 1,
- 	  .bInterfaceProtocol	= 0,
- 	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
--	/* Intel D435/AWGC depth camera */
-+	/* Intel Realsense D435/AWGC depth camera */
- 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
- 				| USB_DEVICE_ID_MATCH_INT_INFO,
- 	  .idVendor		= 0x8086,
-@@ -3187,7 +3187,7 @@ static const struct usb_device_id uvc_ids[] = {
- 	  .bInterfaceSubClass	= 1,
- 	  .bInterfaceProtocol	= 0,
- 	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
--	/* Intel D435i depth camera */
-+	/* Intel Realsense D435i depth camera */
- 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
- 				| USB_DEVICE_ID_MATCH_INT_INFO,
- 	  .idVendor		= 0x8086,
-@@ -3196,7 +3196,7 @@ static const struct usb_device_id uvc_ids[] = {
- 	  .bInterfaceSubClass	= 1,
- 	  .bInterfaceProtocol	= 0,
- 	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
--	/* Intel D405 Depth Camera */
-+	/* Intel Realsense D405 Depth Camera */
- 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
- 				| USB_DEVICE_ID_MATCH_INT_INFO,
- 	  .idVendor		= 0x8086,
-@@ -3205,7 +3205,7 @@ static const struct usb_device_id uvc_ids[] = {
- 	  .bInterfaceSubClass	= 1,
- 	  .bInterfaceProtocol	= 0,
- 	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
--	/* Intel D455 Depth Camera */
-+	/* Intel Realsense D455 Depth Camera */
- 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
- 				| USB_DEVICE_ID_MATCH_INT_INFO,
- 	  .idVendor		= 0x8086,
-@@ -3214,7 +3214,7 @@ static const struct usb_device_id uvc_ids[] = {
- 	  .bInterfaceSubClass	= 1,
- 	  .bInterfaceProtocol	= 0,
- 	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
--	/* Intel D421 Depth Module */
-+	/* Intel Realsense D421 Depth Module */
- 	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
- 				| USB_DEVICE_ID_MATCH_INT_INFO,
- 	  .idVendor		= 0x8086,
++	/* Intel Realsense D436 Camera */
++	{ .match_flags		= USB_DEVICE_ID_MATCH_DEVICE
++				| USB_DEVICE_ID_MATCH_INT_INFO,
++	  .idVendor		= 0x8086,
++	  .idProduct		= 0x1156,
++	  .bInterfaceClass	= USB_CLASS_VIDEO,
++	  .bInterfaceSubClass	= 1,
++	  .bInterfaceProtocol	= UVC_PC_PROTOCOL_UNDEFINED,
++	  .driver_info		= UVC_INFO_META(V4L2_META_FMT_D4XX) },
+ 	/* Generic USB Video Class */
+ 	{ USB_INTERFACE_INFO(USB_CLASS_VIDEO, 1, UVC_PC_PROTOCOL_UNDEFINED) },
+ 	{ USB_INTERFACE_INFO(USB_CLASS_VIDEO, 1, UVC_PC_PROTOCOL_15) },
 
 -- 
 2.43.0
