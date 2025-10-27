@@ -1,119 +1,104 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Mon, 27 Oct 2025 13:55:19 -0500
-Subject: [PATCH v4 5/5] memory: tegra194: Support icc scaling
+From: Dave Vasilevsky <dave@vasilevsky.ca>
+Date: Mon, 27 Oct 2025 19:21:47 -0400
+Subject: [PATCH] powerpc: Fix mprotect on book3s32
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251027-tegra186-icc-p2-v4-5-e4e4f57e2103@gmail.com>
-References: <20251027-tegra186-icc-p2-v4-0-e4e4f57e2103@gmail.com>
-In-Reply-To: <20251027-tegra186-icc-p2-v4-0-e4e4f57e2103@gmail.com>
-To: Krzysztof Kozlowski <krzk@kernel.org>, Rob Herring <robh@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-tegra@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+Message-Id: <20251027-vasi-mprotect-g3-v1-1-3c5187085f9a@vasilevsky.ca>
+X-B4-Tracking: v=1; b=H4sIAIr+/2gC/x3MQQqAIBBA0avErBtQS5SuEi0ix5pFKhoRhHdPW
+ r7F/y8UykwFpu6FTDcXjqFB9h1sxxp2QnbNoITSUiiD91oYz5TjRduF+4Deeq2MdaMcBbQsZfL
+ 8/Mt5qfUDcHtzDGIAAAA=
+X-Change-ID: 20251027-vasi-mprotect-g3-f8f5278d4140
+To: Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ Christophe Leroy <christophe.leroy@csgroup.eu>, 
+ Nadav Amit <nadav.amit@gmail.com>, 
+ "Peter Zijlstra (Intel)" <peterz@infradead.org>, 
+ Andrew Morton <akpm@linux-foundation.org>
+Cc: linuxppc-dev@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Dave Vasilevsky <dave@vasilevsky.ca>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761591315; l=2712;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=LQh6Wx9w2ZA6cjZPbhQTpnWCKJr1fmEA9mYm4DrdFjk=;
- b=Rx3/OKGXqFR0gOR+EgGjdrRz/S3bwge/fsOM5HqFAej3que/1YSMYDFUcFGPL06GDc9/N26BR
- jWuxSfriEO4D1NrVRKvakafdwycRzo3xsKJUwb2ln7l9+lYpqHQoLEY
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761607334; l=2972;
+ i=dave@vasilevsky.ca; s=20251027; h=from:subject:message-id;
+ bh=E1aBGzZxrKFyEjSh5tyf0kwyoQ+SazFw/xbQmkHQC8c=;
+ b=stXn+ddNorVpT4m4xv4DpE0jTKLzbB53xuvhLM3AsQqN7nWd+GkbidV1wVWZ/ynrPTQgsSvxj
+ RF8akzSsGFIAuOfxrGVn1gCyHKBiUqsfRdMLRLPFG2DkjhzYuR0HhW/
+X-Developer-Key: i=dave@vasilevsky.ca; a=ed25519;
+ pk=Jsd1btZeqqg6x6y73Dx0YrleQb3A3pCBnUeE0qmoKq4=
+X-Endpoint-Received: by B4 Relay for dave@vasilevsky.ca/20251027 with auth_id=556
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Interconnect framework support to dynamically set the DRAM
-bandwidth from different clients. The MC driver is added as an ICC
-provider and the EMC driver is already a provider.
+On 32-bit book3s with hash-MMUs, tlb_flush() was a no-op. This was
+unnoticed because all uses until recently were for unmaps, and thus
+handled by __tlb_remove_tlb_entry().
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+After commit 4a18419f71cd ("mm/mprotect: use mmu_gather") in kernel 5.19,
+tlb_gather_mmu() started being used for mprotect as well. This caused
+mprotect to simply not work on these machines:
+
+  int *ptr = mmap(NULL, 4096, PROT_READ|PROT_WRITE,
+                  MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+  *ptr = 1; // force HPTE to be created
+  mprotect(ptr, 4096, PROT_READ);
+  *ptr = 2; // should segfault, but succeeds
+
+Fixed by making tlb_flush() actually flush TLB pages. This finally
+agrees with the behaviour of boot3s64's tlb_flush().
+
+Fixes: 4a18419f71cd ("mm/mprotect: use mmu_gather")
+Signed-off-by: Dave Vasilevsky <dave@vasilevsky.ca>
 ---
- drivers/memory/tegra/tegra194.c | 59 ++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 58 insertions(+), 1 deletion(-)
+ arch/powerpc/include/asm/book3s/32/tlbflush.h | 8 ++++++--
+ arch/powerpc/mm/book3s32/tlb.c                | 6 ++++++
+ 2 files changed, 12 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/memory/tegra/tegra194.c b/drivers/memory/tegra/tegra194.c
-index 26035ac3a1eb51a3d8ce3830427b4412b48baf3c..e478587586e7f01afd41ff74d26a9a3f1d881347 100644
---- a/drivers/memory/tegra/tegra194.c
-+++ b/drivers/memory/tegra/tegra194.c
-@@ -1340,9 +1340,66 @@ static const struct tegra_mc_client tegra194_mc_clients[] = {
- 				.security = 0x7fc,
- 			},
- 		},
-+	}, {
-+		.id = TEGRA_ICC_MC_CPU_CLUSTER0,
-+		.name = "sw_cluster0",
-+		.type = TEGRA_ICC_NISO,
-+	}, {
-+		.id = TEGRA_ICC_MC_CPU_CLUSTER1,
-+		.name = "sw_cluster1",
-+		.type = TEGRA_ICC_NISO,
-+	}, {
-+		.id = TEGRA_ICC_MC_CPU_CLUSTER2,
-+		.name = "sw_cluster2",
-+		.type = TEGRA_ICC_NISO,
-+	}, {
-+		.id = TEGRA_ICC_MC_CPU_CLUSTER3,
-+		.name = "sw_cluster3",
-+		.type = TEGRA_ICC_NISO,
- 	},
- };
+diff --git a/arch/powerpc/include/asm/book3s/32/tlbflush.h b/arch/powerpc/include/asm/book3s/32/tlbflush.h
+index e43534da5207aa3b0cb3c07b78e29b833c141f3f..b8c587ad2ea954f179246a57d6e86e45e91dcfdc 100644
+--- a/arch/powerpc/include/asm/book3s/32/tlbflush.h
++++ b/arch/powerpc/include/asm/book3s/32/tlbflush.h
+@@ -11,6 +11,7 @@
+ void hash__flush_tlb_mm(struct mm_struct *mm);
+ void hash__flush_tlb_page(struct vm_area_struct *vma, unsigned long vmaddr);
+ void hash__flush_range(struct mm_struct *mm, unsigned long start, unsigned long end);
++void hash__flush_gather(struct mmu_gather *tlb);
  
-+static int tegra194_mc_icc_set(struct icc_node *src, struct icc_node *dst)
-+{
-+	/* TODO: program PTSA */
-+	return 0;
-+}
-+
-+static int tegra194_mc_icc_aggregate(struct icc_node *node, u32 tag, u32 avg_bw,
-+				     u32 peak_bw, u32 *agg_avg, u32 *agg_peak)
-+{
-+	struct icc_provider *p = node->provider;
-+	struct tegra_mc *mc = icc_provider_to_tegra_mc(p);
-+
-+	if (node->id == TEGRA_ICC_MC_CPU_CLUSTER0 ||
-+	    node->id == TEGRA_ICC_MC_CPU_CLUSTER1 ||
-+	    node->id == TEGRA_ICC_MC_CPU_CLUSTER2 ||
-+	    node->id == TEGRA_ICC_MC_CPU_CLUSTER3) {
-+		if (mc)
-+			peak_bw = peak_bw * mc->num_channels;
+ #ifdef CONFIG_SMP
+ void _tlbie(unsigned long address);
+@@ -28,9 +29,12 @@ void _tlbia(void);
+  */
+ static inline void tlb_flush(struct mmu_gather *tlb)
+ {
+-	/* 603 needs to flush the whole TLB here since it doesn't use a hash table. */
+-	if (!mmu_has_feature(MMU_FTR_HPTE_TABLE))
++	if (mmu_has_feature(MMU_FTR_HPTE_TABLE)) {
++		hash__flush_gather(tlb);
++	} else {
++		/* 603 needs to flush the whole TLB here since it doesn't use a hash table. */
+ 		_tlbia();
 +	}
+ }
+ 
+ static inline void flush_range(struct mm_struct *mm, unsigned long start, unsigned long end)
+diff --git a/arch/powerpc/mm/book3s32/tlb.c b/arch/powerpc/mm/book3s32/tlb.c
+index 9ad6b56bfec96e989b96f027d075ad5812500854..3da95ecfbbb296303082e378425e92a5fbdbfac8 100644
+--- a/arch/powerpc/mm/book3s32/tlb.c
++++ b/arch/powerpc/mm/book3s32/tlb.c
+@@ -105,3 +105,9 @@ void hash__flush_tlb_page(struct vm_area_struct *vma, unsigned long vmaddr)
+ 		flush_hash_pages(mm->context.id, vmaddr, pmd_val(*pmd), 1);
+ }
+ EXPORT_SYMBOL(hash__flush_tlb_page);
 +
-+	*agg_avg += avg_bw;
-+	*agg_peak = max(*agg_peak, peak_bw);
-+
-+	return 0;
-+}
-+
-+static int tegra194_mc_icc_get_init_bw(struct icc_node *node, u32 *avg, u32 *peak)
++void hash__flush_gather(struct mmu_gather *tlb)
 +{
-+	*avg = 0;
-+	*peak = 0;
-+
-+	return 0;
++	hash__flush_range(tlb->mm, tlb->start, tlb->end);
 +}
-+
-+static const struct tegra_mc_icc_ops tegra194_mc_icc_ops = {
-+	.xlate = tegra_mc_icc_xlate,
-+	.aggregate = tegra194_mc_icc_aggregate,
-+	.get_bw = tegra194_mc_icc_get_init_bw,
-+	.set = tegra194_mc_icc_set,
-+};
-+
- const struct tegra_mc_soc tegra194_mc_soc = {
- 	.num_clients = ARRAY_SIZE(tegra194_mc_clients),
- 	.clients = tegra194_mc_clients,
-@@ -1355,7 +1412,7 @@ const struct tegra_mc_soc tegra194_mc_soc = {
- 		   MC_INT_SECURITY_VIOLATION | MC_INT_DECERR_EMEM,
- 	.has_addr_hi_reg = true,
- 	.ops = &tegra186_mc_ops,
--	.icc_ops = &tegra_mc_icc_ops,
-+	.icc_ops = &tegra194_mc_icc_ops,
- 	.ch_intmask = 0x00000f00,
- 	.global_intstatus_channel_shift = 8,
- };
++EXPORT_SYMBOL(hash__flush_gather);
 
+---
+base-commit: dcb6fa37fd7bc9c3d2b066329b0d27dedf8becaa
+change-id: 20251027-vasi-mprotect-g3-f8f5278d4140
+
+Best regards,
 -- 
-2.51.0
+Dave Vasilevsky <dave@vasilevsky.ca>
 
