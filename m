@@ -1,11 +1,10 @@
 From: Rohan G Thomas <rohan.g.thomas@altera.com>
-Date: Tue, 28 Oct 2025 11:18:44 +0800
-Subject: [PATCH net v4 2/3] net: stmmac: Consider Tx VLAN offload tag
- length for maxSDU
+Date: Tue, 28 Oct 2025 11:18:45 +0800
+Subject: [PATCH net v4 3/3] net: stmmac: est: Fix GCL bounds checks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251028-qbv-fixes-v4-2-26481c7634e3@altera.com>
+Message-Id: <20251028-qbv-fixes-v4-3-26481c7634e3@altera.com>
 References: <20251028-qbv-fixes-v4-0-26481c7634e3@altera.com>
 In-Reply-To: <20251028-qbv-fixes-v4-0-26481c7634e3@altera.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -21,66 +20,48 @@ Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
  Rohan G Thomas <rohan.g.thomas@altera.com>, 
  Matthew Gerlach <matthew.gerlach@altera.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761621544; l=2209;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761621544; l=1340;
  i=rohan.g.thomas@altera.com; s=20250815; h=from:subject:message-id;
- bh=CO26pwlKR66OKT0ufmF/QwQbSxoYj3sToTSLa+5EzgI=;
- b=Gx526F+k/ZNMujmfc2ZDc8kjxctS/U7dvX8WX5u1qa+DoeQOX4uMPftUDysPHK0eIcXFcqg6f
- z96MVfr+AWPA9DUEipfGr9/X2Y0tjgBGEbyththa8HqFWE+xwgXnZb4
+ bh=k4E9iK4RiPK/MUr6aNRMEoxEsNmOvrcMsNQIhLkPefA=;
+ b=HfSDPmgRlDitrbNjivy6sUn+fYyJqUgImrklCz+82NoRqDphaIwBDiBGGyY0CrBJWNiQZSNVn
+ MX41EgUgcl5BCokGi0lBGPv+Zq16SiugloP3OYI08P9v3VN9Ixl2ObO
 X-Developer-Key: i=rohan.g.thomas@altera.com; a=ed25519;
  pk=5yZXkXswhfUILKAQwoIn7m6uSblwgV5oppxqde4g4TY=
 X-Endpoint-Received: by B4 Relay for rohan.g.thomas@altera.com/20250815 with auth_id=494
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Queue maxSDU requirement of 802.1 Qbv standard requires mac to drop
-packets that exceeds maxSDU length and maxSDU doesn't include
-preamble, destination and source address, or FCS but includes
-ethernet type and VLAN header.
+Fix the bounds checks for the hw supported maximum GCL entry
+count and gate interval time.
 
-On hardware with Tx VLAN offload enabled, VLAN header length is not
-included in the skb->len, when Tx VLAN offload is requested. This
-leads to incorrect length checks and allows transmission of
-oversized packets. Add the VLAN_HLEN to the skb->len before checking
-the Qbv maxSDU if Tx VLAN offload is requested for the packet.
-
-Fixes: c5c3e1bfc9e0 ("net: stmmac: Offload queueMaxSDU from tc-taprio")
+Fixes: b60189e0392f ("net: stmmac: Integrate EST with TAPRIO scheduler API")
 Signed-off-by: Rohan G Thomas <rohan.g.thomas@altera.com>
 Reviewed-by: Matthew Gerlach <matthew.gerlach@altera.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 14 ++++++++++----
- 1 file changed, 10 insertions(+), 4 deletions(-)
+ drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-index 0e2dc0a464d5516b8aabe2f9afc60c6e37f0209e..042c823bbced88070fa26003c6b513257c0f2bb6 100644
---- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-@@ -4518,6 +4518,7 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
- 	bool has_vlan, set_ic;
- 	int entry, first_tx;
- 	dma_addr_t des;
-+	u32 sdu_len;
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
+index ef65cf511f3e25eb512187d52775bb363bb83902..d786527185999db6bb6a18a29eee5ff5282b8ef4 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_tc.c
+@@ -981,7 +981,7 @@ static int tc_taprio_configure(struct stmmac_priv *priv,
+ 	if (qopt->cmd == TAPRIO_CMD_DESTROY)
+ 		goto disable;
  
- 	tx_q = &priv->dma_conf.tx_queue[queue];
- 	txq_stats = &priv->xstats.txq_stats[queue];
-@@ -4536,10 +4537,15 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
- 	}
+-	if (qopt->num_entries >= dep)
++	if (qopt->num_entries > dep)
+ 		return -EINVAL;
+ 	if (!qopt->cycle_time)
+ 		return -ERANGE;
+@@ -1012,7 +1012,7 @@ static int tc_taprio_configure(struct stmmac_priv *priv,
+ 		s64 delta_ns = qopt->entries[i].interval;
+ 		u32 gates = qopt->entries[i].gate_mask;
  
- 	if (priv->est && priv->est->enable &&
--	    priv->est->max_sdu[queue] &&
--	    skb->len > priv->est->max_sdu[queue]){
--		priv->xstats.max_sdu_txq_drop[queue]++;
--		goto max_sdu_err;
-+	    priv->est->max_sdu[queue]) {
-+		sdu_len = skb->len;
-+		/* Add VLAN tag length if VLAN tag insertion offload is requested */
-+		if (priv->dma_cap.vlins && skb_vlan_tag_present(skb))
-+			sdu_len += VLAN_HLEN;
-+		if (sdu_len > priv->est->max_sdu[queue]) {
-+			priv->xstats.max_sdu_txq_drop[queue]++;
-+			goto max_sdu_err;
-+		}
- 	}
- 
- 	if (unlikely(stmmac_tx_avail(priv, queue) < nfrags + 1)) {
+-		if (delta_ns > GENMASK(wid, 0))
++		if (delta_ns > GENMASK(wid - 1, 0))
+ 			return -ERANGE;
+ 		if (gates > GENMASK(31 - wid, 0))
+ 			return -ERANGE;
 
 -- 
 2.43.7
