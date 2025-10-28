@@ -1,106 +1,151 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Tue, 28 Oct 2025 17:52:34 +0800
-Subject: [PATCH v4 8/8] arm64: dts: amlogic: A5: Add peripheral clock
- controller node
+From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
+Subject: [PATCH v7 0/4] Add CAMSS support for MSM8939
+Date: Tue, 28 Oct 2025 22:30:41 +0100
+Message-Id: <20251028-camss-8x39-vbif-v7-0-91ee8becda85@apitzsch.eu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251028-a5-clk-v4-8-e62ca0aae243@amlogic.com>
-References: <20251028-a5-clk-v4-0-e62ca0aae243@amlogic.com>
-In-Reply-To: <20251028-a5-clk-v4-0-e62ca0aae243@amlogic.com>
-To: Chuan Liu <chuan.liu@amlogic.com>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAI2AWkC/23Oza7CIBAF4FcxrMXw47TFle9x44IyYCdRMeAle
+ k3f/dLGRY0uzyTznfNk2Sfyme1WT5Z8oUzxUkO7XjE32MvRc8KamRIKBMiWO3vOmXd3bXjpKXD
+ TQgjQSSNNx+rXNflA91n8OdQ8UL7F9JgLipyuL0uJD6tILriVymEjRGOD2Z8tnWLcxHSc7PnRi
+ O77Y6gLnAkocIt7e6XbX3bDxv+yaUZRy2r4FFQVGtQIDmzYQrOsngG9APSX7Xqa4IxECX0P+A6
+ M4/gPwDZX7WsBAAA=
+X-Change-ID: 20250517-camss-8x39-vbif-975ff5819198
+To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jerome Brunet <jbrunet@baylibre.com>, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>, 
- Kevin Hilman <khilman@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-amlogic@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761645153; l=2041;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=YYbjhOqv9sLsKL9/6kFNdkCYIVZ6AE4KPrWobMyqnNo=;
- b=DoeEFqJNWBpzx0tOSYR8gEBcxicBskuvYLQGtd01Z114H7ZbIhZKnIz5tz0HrMXe+cYzQKes8
- 1r2vICflcg9DNe+Vi2WNxfemF/EvYsC2b1LUoPNmBkr2nN8uRFH3H/B
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Vincent Knecht <vincent.knecht@mailoo.org>, 
+ =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Krzysztof Kozlowski <krzk@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761687132; l=4718;
+ i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
+ bh=2EEnmO6EhTOklvUkgMyvvlbcjjuWC8fHPgl82CQfRBQ=;
+ b=I+25c++9OwHTEcTYPssguogzhJJOpAF/xdE47WVyuaw1jC0UcXnukhX5n78ghEm0ZcYLoJMPL
+ nj/MzQ95NivC8HHrEO+rGX7+it8aoJMGro6h8FzvyRYB+/GTuH/SRZe
+X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
+ pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
+X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add peripheral clock controller node for A5 SoC family.
+This series adds CAMSS support for MSM8939.  It's mostly identical to
+MSM8916, except for some clocks and an additional CSI.
 
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+To fix black stripes across sensor output, and garbage in CSID TPG
+output, 2 VFE VBIF register settings are needed.  So the 2nd patch adds
+helper functions to do just that.
+
+Patch 1: documents qcom,msm8939-camss DT bindings
+Patch 2: adds helper for VFE VBIF settings
+Patch 3: adds CAMSS_8x39 version in CAMSS driver
+Patch 4: adds camss and cci in msm8939.dtsi
+
+Signed-off-by: Vincent Knecht <vincent.knecht@mailoo.org>
+[André: Apply reviewer comments]
+Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi | 43 +++++++++++++++++++++++++++++
- 1 file changed, 43 insertions(+)
+Changes in v7:
+- Fix revision (previous submission was wrongly labelled v1)
+- Pick up tags
+- Rebase on latest next/master
+- Link to v6: https://lore.kernel.org/r/20250908-camss-8x39-vbif-v1-0-f198c9fd0d4d@apitzsch.eu
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-index 70deeab220e0..7324e427ed39 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-@@ -9,6 +9,7 @@
- #include <dt-bindings/power/amlogic,a5-pwrc.h>
- #include <dt-bindings/clock/amlogic,a5-scmi-clkc.h>
- #include <dt-bindings/clock/amlogic,a5-pll-clkc.h>
-+#include <dt-bindings/clock/amlogic,a5-peripherals-clkc.h>
- 
- / {
- 	cpus {
-@@ -83,6 +84,48 @@ scmi_clk: protocol@14 {
- };
- 
- &apb {
-+	clkc_periphs: clock-controller@0 {
-+		compatible = "amlogic,a5-peripherals-clkc";
-+		reg = <0x0 0x0 0x0 0x224>;
-+		#clock-cells = <1>;
-+		clocks = <&xtal>,
-+			 <&scmi_clk CLKID_OSC>,
-+			 <&scmi_clk CLKID_FIXED_PLL>,
-+			 <&scmi_clk CLKID_FCLK_DIV2>,
-+			 <&scmi_clk CLKID_FCLK_DIV2P5>,
-+			 <&scmi_clk CLKID_FCLK_DIV3>,
-+			 <&scmi_clk CLKID_FCLK_DIV4>,
-+			 <&scmi_clk CLKID_FCLK_DIV5>,
-+			 <&scmi_clk CLKID_FCLK_DIV7>,
-+			 <&clkc_pll CLKID_MPLL2>,
-+			 <&clkc_pll CLKID_MPLL3>,
-+			 <&clkc_pll CLKID_GP0_PLL>,
-+			 <&scmi_clk CLKID_GP1_PLL>,
-+			 <&clkc_pll CLKID_HIFI_PLL>,
-+			 <&scmi_clk CLKID_SYS_CLK>,
-+			 <&scmi_clk CLKID_AXI_CLK>,
-+			 <&scmi_clk CLKID_SYS_PLL_DIV16>,
-+			 <&scmi_clk CLKID_CPU_CLK_DIV16>;
-+		clock-names = "xtal",
-+			      "oscin",
-+			      "fix",
-+			      "fdiv2",
-+			      "fdiv2p5",
-+			      "fdiv3",
-+			      "fdiv4",
-+			      "fdiv5",
-+			      "fdiv7",
-+			      "mpll2",
-+			      "mpll3",
-+			      "gp0",
-+			      "gp1",
-+			      "hifi",
-+			      "sysclk",
-+			      "axiclk",
-+			      "sysplldiv16",
-+			      "cpudiv16";
-+	};
-+
- 	reset: reset-controller@2000 {
- 		compatible = "amlogic,a5-reset",
- 			     "amlogic,meson-s4-reset";
+Changes in v6 (was wrongly labelled v1):
+- Move bindings patch to the beginning
+- Make the order of {reg, clock, interrupt} items the same as in 8916 +
+  append additional items
+- Drop R-b tags from bindings and dts patches as order of items was
+  changed
+- Link to v5: https://lore.kernel.org/r/20250613-camss-8x39-vbif-v5-0-a002301a7730@mailoo.org
 
+Changes in v5:
+- Patch 1: no change
+- Patch 2: no change
+- Patch 3: (bindings)
+  - Fix alphanumerical ordering wrt. underscore (Vladimir)
+  - Add 1.2V mention to vdda-supply description (Vladimir)
+  - Correct vdda-supply regulator name for 1.2V in example
+  - Add empty line between properties and child node (Vladimir)
+  - Remove clock-lanes property in example (Vladimir)
+- Patch 4: (dtsi)
+  - Apply ordering and isp node unit address changes from patch 3.
+- Link to v4: https://lore.kernel.org/r/20250602-camss-8x39-vbif-v4-0-32c277d8f9bf@mailoo.org
+
+Changes in v4:
+- Picked up tags
+- Patch 1:
+  - Fix alignment to match opening parenthesis (Bryan)
+- Patch 2: no change
+- Patch 3:
+  - Wrap line at 80 chars (Krzysztof)
+- Patch 4: no change
+- Link to v3: https://lore.kernel.org/r/20250530-camss-8x39-vbif-v3-0-fc91d15bb5d6@mailoo.org
+
+Changes in v3:
+- Patch 1:
+  - Use braces around multiline (Bryan)
+  - Rename vfe_vbif_reg_write to vfe_vbif_write_reg (Bryan)
+  - Get rid of switch block on CAMSS version (Bryan)
+- Patch 2:
+  - Get rid of switch block on CAMSS version (Bryan)
+- Patch 3: no change
+- Patch 4: no change
+  - Tried to get rid of CCI camss_ahb but this resulted in device
+    freeze+reboot (Konrad)
+- Link to v2: https://lore.kernel.org/r/20250525-camss-8x39-vbif-v2-0-6d3d5c5af456@mailoo.org
+
+Changes in v2:
+- Patch 1:
+  - Fix devm_platform_ioremap_resource_byname line to not end with
+    opening parenthesis (media-ci/1-checkpatch)
+  - Move camss-vfe-4-1.c handling of VBIF previously in patch 2 here
+    (Dmitry)
+- Patch 2:
+  - Declare regulators in PHY entries, not CSID ones (Bryan)
+- Patch 3: (bindings)
+  - Fix bindings checks for new errors (Rob)
+  - Fix properties ordering, code-style and example (Krzysztof)
+  - Sort reg-names, clock-names and interrupt-names alphanumerically (Bryan)
+- Patch 4: (dtsi)
+  - Move #address/#size cells before status (Konrad)
+  - Aligned CCI with msm8916, thus removing ispif_ahb mention (Konrad)
+    If "camss_ahb should be unnecessary", it's still required by qcom,i2c-cci.yaml
+- Link to v1: https://lore.kernel.org/r/20250520-camss-8x39-vbif-v1-0-a12cd6006af9@mailoo.org
+
+---
+Vincent Knecht (4):
+      media: dt-bindings: Add qcom,msm8939-camss
+      media: qcom: camss: vfe: Add VBIF setting support
+      media: qcom: camss: Add support for MSM8939
+      arm64: dts: qcom: msm8939: Add camss and cci
+
+ .../bindings/media/qcom,msm8939-camss.yaml         | 254 +++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi       |   4 +
+ arch/arm64/boot/dts/qcom/msm8939.dtsi              | 146 ++++++++++++
+ drivers/media/platform/qcom/camss/Makefile         |   1 +
+ drivers/media/platform/qcom/camss/camss-csiphy.c   |   1 +
+ drivers/media/platform/qcom/camss/camss-ispif.c    |   8 +-
+ drivers/media/platform/qcom/camss/camss-vfe-4-1.c  |  12 +
+ drivers/media/platform/qcom/camss/camss-vfe-vbif.c |  31 +++
+ drivers/media/platform/qcom/camss/camss-vfe-vbif.h |  19 ++
+ drivers/media/platform/qcom/camss/camss-vfe.c      |  10 +
+ drivers/media/platform/qcom/camss/camss-vfe.h      |   3 +
+ drivers/media/platform/qcom/camss/camss.c          | 157 +++++++++++++
+ drivers/media/platform/qcom/camss/camss.h          |   1 +
+ 13 files changed, 645 insertions(+), 2 deletions(-)
+---
+base-commit: f7d2388eeec24966fc4d5cf32d706f0514f29ac5
+change-id: 20250517-camss-8x39-vbif-975ff5819198
+
+Best regards,
 -- 
-2.42.0
+André Apitzsch <git@apitzsch.eu>
 
