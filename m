@@ -1,14 +1,12 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Subject: [PATCH 0/6] wifi: ath11k: Add support for QCN6122
-Date: Wed, 29 Oct 2025 18:26:21 +0400
-Message-Id: <20251029-ath11k-qcn6122-v1-0-58ed68eba333@outlook.com>
+Date: Wed, 29 Oct 2025 18:26:22 +0400
+Subject: [PATCH 1/6] dt: bindings: net: add bindings for QCN6122
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAA0kAmkC/x3MwQpAQBCA4VfRnG2ZWVa8ihwmBpNa7EpK3t3m+
- B3+/4EoQSVCmz0Q5NKom0/APINhYT+L0TEZqKAKC2oMnwviao7BOyQy9VhZy1yW7BykaA8y6f0
- Pu/59P6+nsdZgAAAA
-X-Change-ID: 20251029-ath11k-qcn6122-7d533aa44a66
+Message-Id: <20251029-ath11k-qcn6122-v1-1-58ed68eba333@outlook.com>
+References: <20251029-ath11k-qcn6122-v1-0-58ed68eba333@outlook.com>
+In-Reply-To: <20251029-ath11k-qcn6122-v1-0-58ed68eba333@outlook.com>
 To: Johannes Berg <johannes@sipsolutions.net>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Jeff Johnson <jjohnson@kernel.org>
@@ -16,11 +14,11 @@ Cc: linux-wireless@vger.kernel.org, devicetree@vger.kernel.org,
  ath11k@lists.infradead.org, linux-kernel@vger.kernel.org, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761747997; l=2267;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761747997; l=4199;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=UnCFoCnku8yVyQzP5inxRUrpnnVudgKfryjNsjn3tsQ=;
- b=khlFtybL94Ksk1micyaAESgIiFeSykKJI1T1PK4DjQeDaaEqLTDeRC3rjlObASVjWDqqhcfxH
- oVwjXKuaOMuCDgLpEjM6jJAquDkPOrU1UXsfcE01gVcWSb/DXn88qda
+ bh=8oCgkx2tBE/XoLjt2QmaWVlpynCUGOtanyX8ad9w9XQ=;
+ b=+Lg/GmnlljSyRRhc0gmBi4zkwu92ultczCM8t+AFO50E/X2H02QHzXOZ5sQq/NWMTJ4ecsWAg
+ BpYCx8WZCEsAmjBNYcHAARzuXPOGOojbgr8hchE+sS28bDo9FeHSEGM
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
@@ -33,44 +31,108 @@ Though it is a PCIe device, since it is not attached to APSS processor
 (Application Processor SubSystem), APSS will be unaware of such a decice
 so it is registered to the APSS processor as a platform device(AHB).
 Because of this hybrid nature, it is called as a hybrid bus device as
-introduced by WCN6750.
+introduced by WCN6750. It has 5 CE and 8 DP rings.
 
-This chip is similar to WCN6750 and follows the same codepath as for
-WCN6750 to bring up the radio and communicate with the firmware.
-
-QCN6122 is an IPQ5018 SoC specific solution and uses shared
-IPQ5018/QCN6122 firmware.
-
-This patch series is a much simplified version of below vendor patch:
-Download from https://git.codelinaro.org/clo/qsdk/oss/system/feeds/wlan-open/-/blob/NHSS.QSDK.12.4.5.r2/mac80211/patches/232-ath11k-qcn6122-support.patch
+QCN6122 is similar to WCN6750 and follows the same codepath as for
+WCN6750.
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
-George Moussalem (6):
-      dt: bindings: net: add bindings for QCN6122
-      wifi: ath11k: add hw params for QCN6122
-      wifi: ath11k: add hw ring mask for QCN6122
-      wifi: ath11k: update hif and pci ops for QCN6122
-      wifi: ath11k: add multipd support for QCN6122
-      wifi: ath11k: add QCN6122 device support
+ .../bindings/net/wireless/qcom,ath11k.yaml         | 57 +++++++++++++++++++++-
+ 1 file changed, 56 insertions(+), 1 deletion(-)
 
- .../bindings/net/wireless/qcom,ath11k.yaml         | 57 +++++++++++++++++-
- drivers/net/wireless/ath/ath11k/ahb.c              | 68 ++++++++++++++++++++++
- drivers/net/wireless/ath/ath11k/core.c             | 68 ++++++++++++++++++++++
- drivers/net/wireless/ath/ath11k/core.h             |  5 ++
- drivers/net/wireless/ath/ath11k/hif.h              |  9 +++
- drivers/net/wireless/ath/ath11k/hw.c               | 37 ++++++++++++
- drivers/net/wireless/ath/ath11k/hw.h               |  1 +
- drivers/net/wireless/ath/ath11k/pci.c              |  1 +
- drivers/net/wireless/ath/ath11k/pcic.c             |  9 +++
- drivers/net/wireless/ath/ath11k/qmi.c              |  2 +
- drivers/net/wireless/ath/ath11k/qmi.h              |  3 +-
- 11 files changed, 258 insertions(+), 2 deletions(-)
----
-base-commit: 88de08348af8ce15dc563e0ebb5553eddd821c06
-change-id: 20251029-ath11k-qcn6122-7d533aa44a66
+diff --git a/Documentation/devicetree/bindings/net/wireless/qcom,ath11k.yaml b/Documentation/devicetree/bindings/net/wireless/qcom,ath11k.yaml
+index c089677702cf17f3016b054d21494d2a7706ce5d..4b0b282bb9231c8bc496fed42e0917b9d7d106d2 100644
+--- a/Documentation/devicetree/bindings/net/wireless/qcom,ath11k.yaml
++++ b/Documentation/devicetree/bindings/net/wireless/qcom,ath11k.yaml
+@@ -21,12 +21,13 @@ properties:
+       - qcom,ipq6018-wifi
+       - qcom,wcn6750-wifi
+       - qcom,ipq5018-wifi
++      - qcom,qcn6122-wifi
+ 
+   reg:
+     maxItems: 1
+ 
+   interrupts:
+-    minItems: 32
++    minItems: 13
+     maxItems: 52
+ 
+   interrupt-names:
+@@ -87,6 +88,14 @@ properties:
+     items:
+       - const: wlan-smp2p-out
+ 
++  qcom,userpd:
++    $ref: /schemas/types.yaml#/definitions/uint32
++    enum: [2, 3]
++    description: instance ID of user PD (protection domain) in multi-PD
++                 architectures to distinguish between multiple instances
++                 of the same wifi chip used by QMI in its interface with
++                 the firmware running on Q6.
++
+ required:
+   - compatible
+   - reg
+@@ -268,6 +277,31 @@ allOf:
+             - description: interrupt event for ring DP20
+             - description: interrupt event for ring DP21
+             - description: interrupt event for ring DP22
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - qcom,qcn6122-wifi
++    then:
++      required:
++        - qcom,userpd
++      properties:
++        interrupts:
++          items:
++            - description: interrupt event for ring CE1
++            - description: interrupt event for ring CE2
++            - description: interrupt event for ring CE3
++            - description: interrupt event for ring CE4
++            - description: interrupt event for ring CE5
++            - description: interrupt event for ring DP1
++            - description: interrupt event for ring DP2
++            - description: interrupt event for ring DP3
++            - description: interrupt event for ring DP4
++            - description: interrupt event for ring DP5
++            - description: interrupt event for ring DP6
++            - description: interrupt event for ring DP7
++            - description: interrupt event for ring DP8
+ 
+ examples:
+   - |
+@@ -467,3 +501,24 @@ examples:
+             iommus = <&apps_smmu 0x1c02 0x1>;
+         };
+     };
++
++  - |
++    wifi1: wifi@b00a040 {
++        reg = <0x0b00a040 0x0>;
++        compatible = "qcom,qcn6122-wifi";
++        interrupts = <GIC_SPI 416 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 417 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 418 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 419 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 420 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 421 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 422 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 423 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 424 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 425 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 426 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 427 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 428 IRQ_TYPE_EDGE_RISING>;
++        qcom,rproc = <&q6v5_wcss_pd2>;
++        qcom,userpd = <2>;
++    };
 
-Best regards,
 -- 
-George Moussalem <george.moussalem@outlook.com>
+2.51.1
 
