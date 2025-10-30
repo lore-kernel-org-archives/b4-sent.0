@@ -1,16 +1,12 @@
 From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Subject: [PATCH v8 0/4] Add CAMSS support for MSM8939
-Date: Thu, 30 Oct 2025 08:59:11 +0100
-Message-Id: <20251030-camss-8x39-vbif-v8-0-754834937f5c@apitzsch.eu>
+Date: Thu, 30 Oct 2025 08:59:12 +0100
+Subject: [PATCH v8 1/4] media: dt-bindings: Add qcom,msm8939-camss
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAM8aA2kC/23PwW7DIAwG4FepOI8KQ53ATn2PqgeCoUFaSwVd1
- K3Ku49E05QpOdqSv//3ixWfoy/sffdi2Q+xxHSrg37bMdfb28XzSHVmUkgUCC139loK109l+ND
- FwE2LIaAGA0azenXPPsTnLJ7Ode5jeaT8NQcMMG1/LSlW1gBccAvSUSNEY4M5Xm38SGmf8mWy5
- 0Mj9PZhqA2cCSToQEd7j4/v4vq9/2RTjUEuo3EtyCo0pAgd2nDAZhk9A2oBqI3uaqrgDBBg1yG
- tgfYPACE3fmgrYMB73XlHVuP/H8Zx/AFxKkm5rQEAAA==
-X-Change-ID: 20250517-camss-8x39-vbif-975ff5819198
+Message-Id: <20251030-camss-8x39-vbif-v8-1-754834937f5c@apitzsch.eu>
+References: <20251030-camss-8x39-vbif-v8-0-754834937f5c@apitzsch.eu>
+In-Reply-To: <20251030-camss-8x39-vbif-v8-0-754834937f5c@apitzsch.eu>
 To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
  Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
  Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
@@ -23,134 +19,293 @@ Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Vincent Knecht <vincent.knecht@mailoo.org>, 
  =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
  Krzysztof Kozlowski <krzk@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761811160; l=4991;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761811160; l=7957;
  i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=MTSlg3MqWMLxjcmpJKaEYt34xVvKmmIHf4SBxsc/wP8=;
- b=ewUiU+ovxCNwLiUzBLCNT/cKy5mhWkBw3WzItMF7BZqz/UbUyJ2/v13BxPbF/yT08OH9zqT0y
- SO1DC4wOiNbBamuNmRTei2ajBcmqztJ/aHhRdpKQTTqYTdKc0ET4l0Y
+ bh=l8JUjYkCXPnuBo5q8bU+IKbrnKrXX8otllKkjKJF1dM=;
+ b=n315Ioei+nzEAUZt5z8OSvWobPzbIdPXs2bGiJVNFyUnzHR0lUff1P/DRSItD3uhPuXBUeI+S
+ FAXyuwQlX2SBghU1KSZLsmwNtm5ke2yeiserb63K3D649WRFws6fg8o
 X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
  pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
 X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds CAMSS support for MSM8939.  It's mostly identical to
-MSM8916, except for some clocks and an additional CSI.
+From: Vincent Knecht <vincent.knecht@mailoo.org>
 
-To fix black stripes across sensor output, and garbage in CSID TPG
-output, 2 VFE VBIF register settings are needed.  So the 2nd patch adds
-helper functions to do just that.
-
-Patch 1: documents qcom,msm8939-camss DT bindings
-Patch 2: adds helper for VFE VBIF settings
-Patch 3: adds CAMSS_8x39 version in CAMSS driver
-Patch 4: adds camss and cci in msm8939.dtsi
+Add bindings for qcom,msm8939-camss in order to support the camera
+subsystem for MSM8939.
 
 Signed-off-by: Vincent Knecht <vincent.knecht@mailoo.org>
-[André: Apply reviewer comments]
+[André: Make order of items the same as in 8916]
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Reviewed-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
 Signed-off-by: André Apitzsch <git@apitzsch.eu>
 ---
-Changes in v8:
-- Remove unavailable .link_entities callback [1] to fix build error
-  [1] https://lore.kernel.org/all/20250903002255.346026-2-vladimir.zapolskiy@linaro.org/
-- Link to v7: https://lore.kernel.org/r/20251028-camss-8x39-vbif-v7-0-91ee8becda85@apitzsch.eu
-
-Changes in v7:
-- Fix revision (previous submission was wrongly labelled v1)
-- Pick up tags
-- Rebase on latest next/master
-- Link to v6: https://lore.kernel.org/r/20250908-camss-8x39-vbif-v1-0-f198c9fd0d4d@apitzsch.eu
-
-Changes in v6 (was wrongly labelled v1):
-- Move bindings patch to the beginning
-- Make the order of {reg, clock, interrupt} items the same as in 8916 +
-  append additional items
-- Drop R-b tags from bindings and dts patches as order of items was
-  changed
-- Link to v5: https://lore.kernel.org/r/20250613-camss-8x39-vbif-v5-0-a002301a7730@mailoo.org
-
-Changes in v5:
-- Patch 1: no change
-- Patch 2: no change
-- Patch 3: (bindings)
-  - Fix alphanumerical ordering wrt. underscore (Vladimir)
-  - Add 1.2V mention to vdda-supply description (Vladimir)
-  - Correct vdda-supply regulator name for 1.2V in example
-  - Add empty line between properties and child node (Vladimir)
-  - Remove clock-lanes property in example (Vladimir)
-- Patch 4: (dtsi)
-  - Apply ordering and isp node unit address changes from patch 3.
-- Link to v4: https://lore.kernel.org/r/20250602-camss-8x39-vbif-v4-0-32c277d8f9bf@mailoo.org
-
-Changes in v4:
-- Picked up tags
-- Patch 1:
-  - Fix alignment to match opening parenthesis (Bryan)
-- Patch 2: no change
-- Patch 3:
-  - Wrap line at 80 chars (Krzysztof)
-- Patch 4: no change
-- Link to v3: https://lore.kernel.org/r/20250530-camss-8x39-vbif-v3-0-fc91d15bb5d6@mailoo.org
-
-Changes in v3:
-- Patch 1:
-  - Use braces around multiline (Bryan)
-  - Rename vfe_vbif_reg_write to vfe_vbif_write_reg (Bryan)
-  - Get rid of switch block on CAMSS version (Bryan)
-- Patch 2:
-  - Get rid of switch block on CAMSS version (Bryan)
-- Patch 3: no change
-- Patch 4: no change
-  - Tried to get rid of CCI camss_ahb but this resulted in device
-    freeze+reboot (Konrad)
-- Link to v2: https://lore.kernel.org/r/20250525-camss-8x39-vbif-v2-0-6d3d5c5af456@mailoo.org
-
-Changes in v2:
-- Patch 1:
-  - Fix devm_platform_ioremap_resource_byname line to not end with
-    opening parenthesis (media-ci/1-checkpatch)
-  - Move camss-vfe-4-1.c handling of VBIF previously in patch 2 here
-    (Dmitry)
-- Patch 2:
-  - Declare regulators in PHY entries, not CSID ones (Bryan)
-- Patch 3: (bindings)
-  - Fix bindings checks for new errors (Rob)
-  - Fix properties ordering, code-style and example (Krzysztof)
-  - Sort reg-names, clock-names and interrupt-names alphanumerically (Bryan)
-- Patch 4: (dtsi)
-  - Move #address/#size cells before status (Konrad)
-  - Aligned CCI with msm8916, thus removing ispif_ahb mention (Konrad)
-    If "camss_ahb should be unnecessary", it's still required by qcom,i2c-cci.yaml
-- Link to v1: https://lore.kernel.org/r/20250520-camss-8x39-vbif-v1-0-a12cd6006af9@mailoo.org
-
----
-Vincent Knecht (4):
-      media: dt-bindings: Add qcom,msm8939-camss
-      media: qcom: camss: vfe: Add VBIF setting support
-      media: qcom: camss: Add support for MSM8939
-      arm64: dts: qcom: msm8939: Add camss and cci
-
  .../bindings/media/qcom,msm8939-camss.yaml         | 254 +++++++++++++++++++++
- arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi       |   4 +
- arch/arm64/boot/dts/qcom/msm8939.dtsi              | 146 ++++++++++++
- drivers/media/platform/qcom/camss/Makefile         |   1 +
- drivers/media/platform/qcom/camss/camss-csiphy.c   |   1 +
- drivers/media/platform/qcom/camss/camss-ispif.c    |   8 +-
- drivers/media/platform/qcom/camss/camss-vfe-4-1.c  |  12 +
- drivers/media/platform/qcom/camss/camss-vfe-vbif.c |  31 +++
- drivers/media/platform/qcom/camss/camss-vfe-vbif.h |  19 ++
- drivers/media/platform/qcom/camss/camss-vfe.c      |  10 +
- drivers/media/platform/qcom/camss/camss-vfe.h      |   3 +
- drivers/media/platform/qcom/camss/camss.c          | 156 +++++++++++++
- drivers/media/platform/qcom/camss/camss.h          |   1 +
- 13 files changed, 644 insertions(+), 2 deletions(-)
----
-base-commit: 131f3d9446a6075192cdd91f197989d98302faa6
-change-id: 20250517-camss-8x39-vbif-975ff5819198
+ 1 file changed, 254 insertions(+)
 
-Best regards,
+diff --git a/Documentation/devicetree/bindings/media/qcom,msm8939-camss.yaml b/Documentation/devicetree/bindings/media/qcom,msm8939-camss.yaml
+new file mode 100644
+index 000000000000..77b389d76a43
+--- /dev/null
++++ b/Documentation/devicetree/bindings/media/qcom,msm8939-camss.yaml
+@@ -0,0 +1,254 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/media/qcom,msm8939-camss.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Qualcomm MSM8939 Camera Subsystem (CAMSS)
++
++maintainers:
++  - Vincent Knecht <vincent.knecht@mailoo.org>
++
++description:
++  The CAMSS IP is a CSI decoder and ISP present on Qualcomm platforms
++
++properties:
++  compatible:
++    const: qcom,msm8939-camss
++
++  reg:
++    maxItems: 11
++
++  reg-names:
++    items:
++      - const: csiphy0
++      - const: csiphy0_clk_mux
++      - const: csiphy1
++      - const: csiphy1_clk_mux
++      - const: csid0
++      - const: csid1
++      - const: ispif
++      - const: csi_clk_mux
++      - const: vfe0
++      - const: csid2
++      - const: vfe0_vbif
++
++  clocks:
++    maxItems: 24
++
++  clock-names:
++    items:
++      - const: top_ahb
++      - const: ispif_ahb
++      - const: csiphy0_timer
++      - const: csiphy1_timer
++      - const: csi0_ahb
++      - const: csi0
++      - const: csi0_phy
++      - const: csi0_pix
++      - const: csi0_rdi
++      - const: csi1_ahb
++      - const: csi1
++      - const: csi1_phy
++      - const: csi1_pix
++      - const: csi1_rdi
++      - const: ahb
++      - const: vfe0
++      - const: csi_vfe0
++      - const: vfe_ahb
++      - const: vfe_axi
++      - const: csi2_ahb
++      - const: csi2
++      - const: csi2_phy
++      - const: csi2_pix
++      - const: csi2_rdi
++
++  interrupts:
++    maxItems: 7
++
++  interrupt-names:
++    items:
++      - const: csiphy0
++      - const: csiphy1
++      - const: csid0
++      - const: csid1
++      - const: ispif
++      - const: vfe0
++      - const: csid2
++
++  iommus:
++    maxItems: 1
++
++  power-domains:
++    items:
++      - description: VFE GDSC - Video Front End, Global Distributed Switch
++          Controller.
++
++  vdda-supply:
++    description:
++      Definition of the regulator used as 1.2V analog power supply.
++
++  ports:
++    $ref: /schemas/graph.yaml#/properties/ports
++
++    description:
++      CSI input ports.
++
++    patternProperties:
++      "^port@[0-1]$":
++        $ref: /schemas/graph.yaml#/$defs/port-base
++        unevaluatedProperties: false
++
++        description:
++          Input port for receiving CSI data.
++
++        properties:
++          endpoint:
++            $ref: video-interfaces.yaml#
++            unevaluatedProperties: false
++
++            properties:
++              data-lanes:
++                minItems: 1
++                maxItems: 4
++
++              bus-type:
++                enum:
++                  - 4 # MEDIA_BUS_TYPE_CSI2_DPHY
++
++            required:
++              - data-lanes
++
++required:
++  - compatible
++  - reg
++  - reg-names
++  - clocks
++  - clock-names
++  - interrupts
++  - interrupt-names
++  - iommus
++  - power-domains
++  - vdda-supply
++  - ports
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++    #include <dt-bindings/clock/qcom,gcc-msm8939.h>
++
++    isp@1b0ac00 {
++        compatible = "qcom,msm8939-camss";
++
++        reg = <0x01b0ac00 0x200>,
++              <0x01b00030 0x4>,
++              <0x01b0b000 0x200>,
++              <0x01b00038 0x4>,
++              <0x01b08000 0x100>,
++              <0x01b08400 0x100>,
++              <0x01b0a000 0x500>,
++              <0x01b00020 0x10>,
++              <0x01b10000 0x1000>,
++              <0x01b08800 0x100>,
++              <0x01b40000 0x200>;
++
++        reg-names = "csiphy0",
++                    "csiphy0_clk_mux",
++                    "csiphy1",
++                    "csiphy1_clk_mux",
++                    "csid0",
++                    "csid1",
++                    "ispif",
++                    "csi_clk_mux",
++                    "vfe0",
++                    "csid2",
++                    "vfe0_vbif";
++
++        clocks = <&gcc GCC_CAMSS_TOP_AHB_CLK>,
++                 <&gcc GCC_CAMSS_ISPIF_AHB_CLK>,
++                 <&gcc GCC_CAMSS_CSI0PHYTIMER_CLK>,
++                 <&gcc GCC_CAMSS_CSI1PHYTIMER_CLK>,
++                 <&gcc GCC_CAMSS_CSI0_AHB_CLK>,
++                 <&gcc GCC_CAMSS_CSI0_CLK>,
++                 <&gcc GCC_CAMSS_CSI0PHY_CLK>,
++                 <&gcc GCC_CAMSS_CSI0PIX_CLK>,
++                 <&gcc GCC_CAMSS_CSI0RDI_CLK>,
++                 <&gcc GCC_CAMSS_CSI1_AHB_CLK>,
++                 <&gcc GCC_CAMSS_CSI1_CLK>,
++                 <&gcc GCC_CAMSS_CSI1PHY_CLK>,
++                 <&gcc GCC_CAMSS_CSI1PIX_CLK>,
++                 <&gcc GCC_CAMSS_CSI1RDI_CLK>,
++                 <&gcc GCC_CAMSS_AHB_CLK>,
++                 <&gcc GCC_CAMSS_VFE0_CLK>,
++                 <&gcc GCC_CAMSS_CSI_VFE0_CLK>,
++                 <&gcc GCC_CAMSS_VFE_AHB_CLK>,
++                 <&gcc GCC_CAMSS_VFE_AXI_CLK>,
++                 <&gcc GCC_CAMSS_CSI2_AHB_CLK>,
++                 <&gcc GCC_CAMSS_CSI2_CLK>,
++                 <&gcc GCC_CAMSS_CSI2PHY_CLK>,
++                 <&gcc GCC_CAMSS_CSI2PIX_CLK>,
++                 <&gcc GCC_CAMSS_CSI2RDI_CLK>;
++
++        clock-names = "top_ahb",
++                      "ispif_ahb",
++                      "csiphy0_timer",
++                      "csiphy1_timer",
++                      "csi0_ahb",
++                      "csi0",
++                      "csi0_phy",
++                      "csi0_pix",
++                      "csi0_rdi",
++                      "csi1_ahb",
++                      "csi1",
++                      "csi1_phy",
++                      "csi1_pix",
++                      "csi1_rdi",
++                      "ahb",
++                      "vfe0",
++                      "csi_vfe0",
++                      "vfe_ahb",
++                      "vfe_axi",
++                      "csi2_ahb",
++                      "csi2",
++                      "csi2_phy",
++                      "csi2_pix",
++                      "csi2_rdi";
++
++        interrupts = <GIC_SPI 78 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 79 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 51 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 52 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 55 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 57 IRQ_TYPE_EDGE_RISING>,
++                     <GIC_SPI 153 IRQ_TYPE_EDGE_RISING>;
++
++        interrupt-names = "csiphy0",
++                          "csiphy1",
++                          "csid0",
++                          "csid1",
++                          "ispif",
++                          "vfe0",
++                          "csid2";
++
++        iommus = <&apps_iommu 3>;
++
++        power-domains = <&gcc VFE_GDSC>;
++
++        vdda-supply = <&reg_1v2>;
++
++        ports {
++            #address-cells = <1>;
++            #size-cells = <0>;
++
++            port@1 {
++                reg = <1>;
++
++                csiphy1_ep: endpoint {
++                    data-lanes = <0 2>;
++                    remote-endpoint = <&sensor_ep>;
++                };
++            };
++        };
++    };
+
 -- 
-André Apitzsch <git@apitzsch.eu>
+2.51.2
 
