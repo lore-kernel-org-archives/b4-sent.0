@@ -1,78 +1,73 @@
-From: Per Larsen <perlarsen@google.com>
-Date: Thu, 30 Oct 2025 15:49:17 +0000
-Subject: [PATCH v2 2/2] KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in
- host handler
+From: Moritz Zielke <moritz.zielke@gmail.com>
+Date: Thu, 30 Oct 2025 17:44:31 +0100
+Subject: [PATCH] rust: of: replace `core::mem::zeroed` with
+ `pin_init::zeroed`
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251030-host-direct-messages-v2-2-9f27cef36730@google.com>
-References: <20251030-host-direct-messages-v2-0-9f27cef36730@google.com>
-In-Reply-To: <20251030-host-direct-messages-v2-0-9f27cef36730@google.com>
-To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oliver.upton@linux.dev>, 
- Joey Gouly <joey.gouly@arm.com>, Suzuki K Poulose <suzuki.poulose@arm.com>, 
- Zenghui Yu <yuzenghui@huawei.com>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Yeoreum Yun <yeoreum.yun@arm.com>, Ben Horgan <ben.horgan@arm.com>
-Cc: Armelle Laine <armellel@google.com>, 
- Sebastien Ene <sebastianene@google.com>, 
- linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Per Larsen <perlarsen@google.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761839365; l=1929;
- i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
- bh=9bdBd6zR/vrzbrRhnFCq/xFlDZJ4V6WRjWnGzzMGAW0=;
- b=fG8i5Y3uwvHySl80k0XI5clMqz5JSg7rKU3ajXxZfswA/pf/+18oowHhiWp9GDxpEj81j2R12
- FXSlsvmovVXBV1SqfaJrQPEUeDiy1M2myGl0aMx/64ORRnQZPWX/1fG
-X-Developer-Key: i=perlarsen@google.com; a=ed25519;
- pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
-X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
+Message-Id: <20251030-zeroed-of-rs-v1-1-1c46d025128e@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAO6VA2kC/x2MSQqAMAwAvyI5G+iCCn5FPGibai5WUhCx+HeDx
+ xmYqVBImAqMTQWhiwvnQ8G2DYR9OTZCjsrgjOus8QYfkkwRc0IpuPS0qrc++AE0OYUS3/9umt/
+ 3A1BRE05eAAAA
+X-Change-ID: 20251030-zeroed-of-rs-a6eb25113c37
+To: Rob Herring <robh@kernel.org>, Saravana Kannan <saravanak@google.com>, 
+ Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
+ Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Andreas Hindborg <a.hindborg@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
+ Trevor Gross <tmgross@umich.edu>, Danilo Krummrich <dakr@kernel.org>
+Cc: Benno Lossin <lossin@kernel.org>, devicetree@vger.kernel.org, 
+ rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Moritz Zielke <moritz.zielke@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761842708; l=1541;
+ i=moritz.zielke@gmail.com; s=20251030; h=from:subject:message-id;
+ bh=oIbp+tyuhn5HEWfpBG4m5GYtbBRXvFJksWeRXP7Pve8=;
+ b=nVSJxWlhTP77ybCN9R8/EXC779jPXMDH3CHQznrpLng3wflemW1OpE5FHX1dszUuUZPcvV7ls
+ 7MUgAXipLVRBqnYWafoFPWmnacrNmYI5nTBq92cthKH57XvAS0Vo+Q9
+X-Developer-Key: i=moritz.zielke@gmail.com; a=ed25519;
+ pk=TFwYpZ0YPwD8idGzvlafpvAW4DDA0FrkMEjcfZVXkN0=
+X-Endpoint-Received: by B4 Relay for moritz.zielke@gmail.com/20251030 with auth_id=558
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-FF-A 1.2 adds the DIRECT_REQ2 messaging interface which is similar to
-the existing FFA_MSG_SEND_DIRECT_{REQ,RESP} functions and can use the
-existing handler function. Add support for FFA_MSG_SEND_DIRECT_REQ2 in
-the host ffa handler.
+All types in `bindings` implement `Zeroable` if they can, so use
+`pin_init::zeroed` instead of relying on `unsafe` code.
 
-Signed-off-by: Per Larsen <perlarsen@google.com>
+If this ends up not compiling in the future, something in bindgen or on
+the C side changed and is most likely incorrect.
+
 ---
- arch/arm64/kvm/hyp/nvhe/ffa.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+This patch was suggested in the linked issue. It's my first attempt
+of sending a patch to the kernel mailing list.
 
-diff --git a/arch/arm64/kvm/hyp/nvhe/ffa.c b/arch/arm64/kvm/hyp/nvhe/ffa.c
-index bb38ee7c86bad1646c16c562127eb3bef6297a84..956c408bdae45b087286d9d35348ef599b83e392 100644
---- a/arch/arm64/kvm/hyp/nvhe/ffa.c
-+++ b/arch/arm64/kvm/hyp/nvhe/ffa.c
-@@ -678,8 +678,10 @@ static bool ffa_call_supported(u64 func_id)
- 	case FFA_NOTIFICATION_SET:
- 	case FFA_NOTIFICATION_GET:
- 	case FFA_NOTIFICATION_INFO_GET:
-+		return false;
- 	/* Optional interfaces added in FF-A 1.2 */
- 	case FFA_MSG_SEND_DIRECT_REQ2:		/* Optional per 7.5.1 */
-+		return hyp_ffa_version >= FFA_VERSION_1_2;
- 	case FFA_MSG_SEND_DIRECT_RESP2:		/* Optional per 7.5.1 */
- 	case FFA_CONSOLE_LOG:			/* Optional per 13.1: not in Table 13.1 */
- 	case FFA_PARTITION_INFO_GET_REGS:	/* Optional for virtual instances per 13.1 */
-@@ -924,6 +926,10 @@ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
- 	case FFA_PARTITION_INFO_GET:
- 		do_ffa_part_get(&res, host_ctxt);
- 		goto out_handled;
-+	case FFA_MSG_SEND_DIRECT_REQ2:
-+		if (!ffa_call_supported(func_id))
-+			goto out_not_supported;
-+		fallthrough;
- 	case FFA_MSG_SEND_DIRECT_REQ:
- 	case FFA_FN64_MSG_SEND_DIRECT_REQ:
- 		do_ffa_direct_msg(&res, host_ctxt, HOST_FFA_ID);
-@@ -933,6 +939,7 @@ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
- 	if (ffa_call_supported(func_id))
- 		return false; /* Pass through */
+Link: https://github.com/Rust-for-Linux/linux/issues/1189
+Suggested-by: Benno Lossin <lossin@kernel.org>
+Signed-off-by: Moritz Zielke <moritz.zielke@gmail.com>
+---
+ rust/kernel/of.rs | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/rust/kernel/of.rs b/rust/kernel/of.rs
+index 58b20c367..cfcfbb1fd 100644
+--- a/rust/kernel/of.rs
++++ b/rust/kernel/of.rs
+@@ -35,9 +35,7 @@ impl DeviceId {
+     /// Create a new device id from an OF 'compatible' string.
+     pub const fn new(compatible: &'static CStr) -> Self {
+         let src = compatible.to_bytes_with_nul();
+-        // Replace with `bindings::of_device_id::default()` once stabilized for `const`.
+-        // SAFETY: FFI type is valid to be zero-initialized.
+-        let mut of: bindings::of_device_id = unsafe { core::mem::zeroed() };
++        let mut of: bindings::of_device_id = pin_init::zeroed();
  
-+out_not_supported:
- 	ffa_to_smccc_error(&res, FFA_RET_NOT_SUPPORTED);
- out_handled:
- 	ffa_set_retval(host_ctxt, &res);
+         // TODO: Use `copy_from_slice` once stabilized for `const`.
+         let mut i = 0;
 
+---
+base-commit: 3b1728b74a52e8489f0c7bfd3d682572dd9901de
+change-id: 20251030-zeroed-of-rs-a6eb25113c37
+
+Best regards,
 -- 
-2.51.1.851.g4ebd6896fd-goog
+Moritz Zielke <moritz.zielke@gmail.com>
 
