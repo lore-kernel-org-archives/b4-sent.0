@@ -1,78 +1,141 @@
-From: Per Larsen <perlarsen@google.com>
-Date: Thu, 30 Oct 2025 12:29:40 +0000
-Subject: [PATCH 2/2] KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in host
- handler
+From: Cryolitia PukNgae <cryolitia@uniontech.com>
+Date: Thu, 30 Oct 2025 22:30:06 +0800
+Subject: [PATCH] hwmon: (gpd-fan) initialize EC on driver load for Win 4
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251030-host-direct-messages-v1-2-463e57871c8f@google.com>
-References: <20251030-host-direct-messages-v1-0-463e57871c8f@google.com>
-In-Reply-To: <20251030-host-direct-messages-v1-0-463e57871c8f@google.com>
-To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oliver.upton@linux.dev>, 
- Joey Gouly <joey.gouly@arm.com>, Suzuki K Poulose <suzuki.poulose@arm.com>, 
- Zenghui Yu <yuzenghui@huawei.com>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Yeoreum Yun <yeoreum.yun@arm.com>, Ben Horgan <ben.horgan@arm.com>
-Cc: Armelle Laine <armellel@google.com>, 
- Sebastien Ene <sebastianene@google.com>, 
- linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Per Larsen <perlarsen@google.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761827390; l=1942;
- i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
- bh=QxZkKMqi/Ka/Bt8dEMac3ymGIIZGsPQ1NfjGo7wQEis=;
- b=8ywtiCGB8mwprQrthoWa0O24bMcir1Z+Rys+iIdKk3OinyjZdaGqelVpLnYljjaZxQ0pRmQc1
- ewIm3YUglCmBIqfRVA4Hde/e8HWuzXQ7TIS2E1RKeB5DniGk315YOZS
-X-Developer-Key: i=perlarsen@google.com; a=ed25519;
- pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
-X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
+Message-Id: <20251030-win4-v1-1-c374dcb86985@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIAG12A2kC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1NDA2MD3fLMPBNds2RzS/M0c0Njy2RjJaDSgqLUtMwKsDHRsbW1AFWYAzx
+ WAAAA
+X-Change-ID: 20251030-win4-6c797f7139c3
+To: Guenter Roeck <linux@roeck-us.net>
+Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ niecheng1@uniontech.com, zhanjun@uniontech.com, 
+ kylon <3252255+kylon@users.noreply.github.com>, 
+ Cryolitia PukNgae <cryolitia@uniontech.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761834613; l=3221;
+ i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
+ bh=t9JHAfOJItGPrnrOdS2gWLJmFHa2xGmsXuMmQl261Mc=;
+ b=VJe5rhI5SINpl2JRyT2gfD/kTIfCcZhnjPEjVNBEvAczGJAK/pU/tvII8a51AFt+LFH0z1wcm
+ bLoGxuRsI5LB0OLOsb8G1ZQ3O7RQXL7XEZZzgzFtqera1QEDHc9FF2k
+X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
+ pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
+X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-FF-A 1.2 adds the DIRECT_REQ2 messaging interface which is similar to
-the existing FFA_MSG_SEND_DIRECT_{REQ,RESP} functions and can use the
-existing handler function. Add support for FFA_MSG_SEND_DIRECT_REQ2 in
-the host ffa handler.
+The original implement will re-init the EC when it reports a zero
+value, and it's a workaround for the black box buggy firmware.
 
-Signed-off-by: Per Larsen <perlarsen@google.com>
+Now a contributer test and report that, the bug is that, the firmware
+won't initialize the EC on boot, so the EC ramains in unusable status.
+And it won't need to re-init it during runtime. The original implement
+is not perfect, any write command will be ignored until we first read
+it. Just re-init it unconditionally when the driver load could work.
+
+Fixes: 0ab88e239439 ("hwmon: add GPD devices sensor driver")
+Co-developed-by: kylon <3252255+kylon@users.noreply.github.com>
+Signed-off-by: kylon <3252255+kylon@users.noreply.github.com>
+Link: https://github.com/Cryolitia/gpd-fan-driver/pull/20
+Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
- arch/arm64/kvm/hyp/nvhe/ffa.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ drivers/hwmon/gpd-fan.c | 52 ++++++++++++++++++++++++-------------------------
+ 1 file changed, 25 insertions(+), 27 deletions(-)
 
-diff --git a/arch/arm64/kvm/hyp/nvhe/ffa.c b/arch/arm64/kvm/hyp/nvhe/ffa.c
-index 191dcb301cca3986758fb6a49f15f1799de9f1d1..0d91411fd1d0d3fc48d725c51a7f3c77372374be 100644
---- a/arch/arm64/kvm/hyp/nvhe/ffa.c
-+++ b/arch/arm64/kvm/hyp/nvhe/ffa.c
-@@ -678,8 +678,10 @@ static bool ffa_call_supported(u64 func_id)
- 	case FFA_NOTIFICATION_SET:
- 	case FFA_NOTIFICATION_GET:
- 	case FFA_NOTIFICATION_INFO_GET:
-+		return false;
- 	/* Optional interfaces added in FF-A 1.2 */
- 	case FFA_MSG_SEND_DIRECT_REQ2:		/* Optional per 7.5.1 */
-+		return hyp_ffa_version >= FFA_VERSION_1_2;
- 	case FFA_MSG_SEND_DIRECT_RESP2:		/* Optional per 7.5.1 */
- 	case FFA_CONSOLE_LOG:			/* Optional per 13.1: not in Table 13.1 */
- 	case FFA_PARTITION_INFO_GET_REGS:	/* Optional for virtual instances per 13.1 */
-@@ -927,6 +929,10 @@ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
- 	case FFA_ID_GET:
- 		ffa_to_smccc_res_prop(&res, FFA_RET_SUCCESS, HOST_FFA_ID);
- 		goto out_handled;
-+	case FFA_MSG_SEND_DIRECT_REQ2:
-+		if (!ffa_call_supported(func_id))
-+			goto out_not_supported;
-+		fallthrough;
- 	case FFA_MSG_SEND_DIRECT_REQ:
- 	case FFA_FN64_MSG_SEND_DIRECT_REQ:
- 		do_ffa_direct_msg(&res, host_ctxt, HOST_FFA_ID);
-@@ -936,6 +942,7 @@ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
- 	if (ffa_call_supported(func_id))
- 		return false; /* Pass through */
+diff --git a/drivers/hwmon/gpd-fan.c b/drivers/hwmon/gpd-fan.c
+index 57caae9a23eb..43ec092fc26e 100644
+--- a/drivers/hwmon/gpd-fan.c
++++ b/drivers/hwmon/gpd-fan.c
+@@ -273,31 +273,6 @@ static int gpd_generic_read_rpm(void)
+ 	return (u16)high << 8 | low;
+ }
  
-+out_not_supported:
- 	ffa_to_smccc_error(&res, FFA_RET_NOT_SUPPORTED);
- out_handled:
- 	ffa_set_retval(host_ctxt, &res);
+-static void gpd_win4_init_ec(void)
+-{
+-	u8 chip_id, chip_ver;
+-
+-	gpd_ecram_read(0x2000, &chip_id);
+-
+-	if (chip_id == 0x55) {
+-		gpd_ecram_read(0x1060, &chip_ver);
+-		gpd_ecram_write(0x1060, chip_ver | 0x80);
+-	}
+-}
+-
+-static int gpd_win4_read_rpm(void)
+-{
+-	int ret;
+-
+-	ret = gpd_generic_read_rpm();
+-
+-	if (ret == 0)
+-		// Re-init EC when speed is 0
+-		gpd_win4_init_ec();
+-
+-	return ret;
+-}
+-
+ static int gpd_wm2_read_rpm(void)
+ {
+ 	for (u16 pwm_ctr_offset = GPD_PWM_CTR_OFFSET;
+@@ -317,11 +292,10 @@ static int gpd_wm2_read_rpm(void)
+ static int gpd_read_rpm(void)
+ {
+ 	switch (gpd_driver_priv.drvdata->board) {
++	case win4_6800u:
+ 	case win_mini:
+ 	case duo:
+ 		return gpd_generic_read_rpm();
+-	case win4_6800u:
+-		return gpd_win4_read_rpm();
+ 	case win_max_2:
+ 		return gpd_wm2_read_rpm();
+ 	}
+@@ -577,6 +551,28 @@ static struct hwmon_chip_info gpd_fan_chip_info = {
+ 	.info = gpd_fan_hwmon_channel_info
+ };
+ 
++static void gpd_win4_init_ec(void)
++{
++	u8 chip_id, chip_ver;
++
++	gpd_ecram_read(0x2000, &chip_id);
++
++	if (chip_id == 0x55) {
++		gpd_ecram_read(0x1060, &chip_ver);
++		gpd_ecram_write(0x1060, chip_ver | 0x80);
++	}
++}
++
++static void gpd_init_ec(void)
++{
++	// The buggy firmware won't initialize EC properly on boot.
++	// Before its initialization, reading RPM will always return 0,
++	// and writing PWM will have no effect.
++	// Initialize it manually on driver load.
++	if (gpd_driver_priv.drvdata->board == win4_6800u)
++		gpd_win4_init_ec();
++}
++
+ static int gpd_fan_probe(struct platform_device *pdev)
+ {
+ 	struct device *dev = &pdev->dev;
+@@ -604,6 +600,8 @@ static int gpd_fan_probe(struct platform_device *pdev)
+ 		return dev_err_probe(dev, PTR_ERR(region),
+ 				     "Failed to register hwmon device\n");
+ 
++	gpd_init_ec();
++
+ 	return 0;
+ }
+ 
 
+---
+base-commit: 65bc97a5e49ea4174ba7e89afdada3e30e6e39c0
+change-id: 20251030-win4-6c797f7139c3
+
+Best regards,
 -- 
-2.51.1.851.g4ebd6896fd-goog
+Cryolitia PukNgae <cryolitia@uniontech.com>
 
