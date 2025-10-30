@@ -1,111 +1,85 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Thu, 30 Oct 2025 13:24:15 +0800
-Subject: [PATCH v2 5/5] clk: amlogic: Change the active level of l_detect
+From: Maud Spierings <maudspierings@gocontroll.com>
+Subject: [PATCH v3 0/6] arm64: dts: freescale: add support for the
+ GOcontroll Moduline IV/Mini
+Date: Thu, 30 Oct 2025 07:35:36 +0100
+Message-Id: <20251030-mini_iv-v3-0-ef56c4d9f219@gocontroll.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251030-optimize_pll_driver-v2-5-37273f5b25ab@amlogic.com>
-References: <20251030-optimize_pll_driver-v2-0-37273f5b25ab@amlogic.com>
-In-Reply-To: <20251030-optimize_pll_driver-v2-0-37273f5b25ab@amlogic.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jerome Brunet <jbrunet@baylibre.com>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Kevin Hilman <khilman@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Chuan Liu <chuan.liu@amlogic.com>, da@libre.computer
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761801855; l=2920;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=EZQlp+ntQWH8wulP13OMEjecr2IO8R7gTLRrdJNlJqE=;
- b=tkTJCiK33Lo/TFJ+LelyksSbZKnetVKLe70d7ctvoJhRiAucDH840dF3/2GnHDeDNQika1syG
- p2IuaWbAkHsB2RTAIEHlBjlOt/J8081nbUxgd6kHxUu9KBv1e/jPZwI
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+X-B4-Tracking: v=1; b=H4sIADgHA2kC/2WMwQqDMBAFf0X23JRkNdT01P8opYQ00QVNJJHQI
+ v57o5cWPM7jzSyQbCSb4FotEG2mRMEXqE8VmF77zjJ6FQbkKAXnio3k6UmZaS6tNGgEYg3lPUX
+ r6L2X7o/CPaU5xM8ezmJbj40sGGeubltlGoWNvNy6YIKfYxiGswkjbKGMfzLiT8YiI9eudUprI
+ 5qDvK7rF7GCyXHgAAAA
+X-Change-ID: 20251009-mini_iv-a05e5c2c1223
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, 
+ Matti Vaittinen <mazziesaccount@gmail.com>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ Maud Spierings <maudspierings@gocontroll.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761806140; l=2171;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=U7srSnWzfH6yj+mfSTGf2OP0Gg/vZlzbpPNFl8Dk7XQ=;
+ b=dUk+8sCZB3oHVtlOsJveFBg7XJlVdMloMj3tLjhulGXp3ipCK3pKsZ3y9+/ItK5lwGpdeSH5w
+ w8ba6dfY5LSB1w1EJjYBMGOe9hQZkJEhiH4z1nI3D8f52VgHf6f8MpU
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-l_detect controls the enable/disable of the PLL lock-detect module.
+Add initial support for the Moduline IV and Moduline Mini embedded
+controllers.
 
-The enable signal is normally active-high. This design ensures that
-the module remains disabled during the power-on process, preventing
-power fluctuations from affecting its operating state.
+These systems are powered by the Ka-Ro Electronics tx8m-1610 COM, which
+features an imx8mm SoC.
 
-For A1, the l_detect signal is active-low:
-0 -> Enable lock-detect module;
-1 -> Disable lock-detect module.
-
-Here, a flag CLK_MESON_PLL_L_DETECT_N is added to handle cases like
-A1, where the signal is active-low.
-
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- drivers/clk/meson/a1-pll.c  |  1 +
- drivers/clk/meson/clk-pll.c | 16 ++++++++++++----
- drivers/clk/meson/clk-pll.h |  2 ++
- 3 files changed, 15 insertions(+), 4 deletions(-)
+Changes in v3:
+- Add patch fixing the pmic driver
+- Use the proper feedback properties for BUCK6
+- Slightly rework the compatibles, acked by conor dropped
+- Add missing CAN interface supplies, remove the leftover comment
+- Add missing vled-supply
+- Add missing ethernet phy interrupt (doesn't work)
+- Fix the cs-gpios properties in all spi interfaces
+- Fix the order of properties in all spi interfaces
+- Remove unused labels for regulators of the PMIC
+- Link to v2: https://lore.kernel.org/r/20251022-mini_iv-v2-0-20af8f9aac14@gocontroll.com
 
-diff --git a/drivers/clk/meson/a1-pll.c b/drivers/clk/meson/a1-pll.c
-index 1f82e9c7c14e..bfe559c71402 100644
---- a/drivers/clk/meson/a1-pll.c
-+++ b/drivers/clk/meson/a1-pll.c
-@@ -137,6 +137,7 @@ static struct clk_regmap a1_hifi_pll = {
- 		.range = &a1_hifi_pll_range,
- 		.init_regs = a1_hifi_pll_init_regs,
- 		.init_count = ARRAY_SIZE(a1_hifi_pll_init_regs),
-+		.flags = CLK_MESON_PLL_L_DETECT_N
- 	},
- 	.hw.init = &(struct clk_init_data){
- 		.name = "hifi_pll",
-diff --git a/drivers/clk/meson/clk-pll.c b/drivers/clk/meson/clk-pll.c
-index c6eebde1f516..d729e933aa1c 100644
---- a/drivers/clk/meson/clk-pll.c
-+++ b/drivers/clk/meson/clk-pll.c
-@@ -384,8 +384,12 @@ static int meson_clk_pll_enable(struct clk_hw *hw)
- 		meson_parm_write(clk->map, &pll->rst, 1);
- 
- 	/* Disable the PLL lock-detect module */
--	if (MESON_PARM_APPLICABLE(&pll->l_detect))
--		meson_parm_write(clk->map, &pll->l_detect, 1);
-+	if (MESON_PARM_APPLICABLE(&pll->l_detect)) {
-+		if (pll->flags & CLK_MESON_PLL_L_DETECT_N)
-+			meson_parm_write(clk->map, &pll->l_detect, 1);
-+		else
-+			meson_parm_write(clk->map, &pll->l_detect, 0);
-+	}
- 
- 	/* Enable the pll */
- 	meson_parm_write(clk->map, &pll->en, 1);
-@@ -413,8 +417,12 @@ static int meson_clk_pll_enable(struct clk_hw *hw)
- 	udelay(20);
- 
- 	/* Enable the lock-detect module */
--	if (MESON_PARM_APPLICABLE(&pll->l_detect))
--		meson_parm_write(clk->map, &pll->l_detect, 0);
-+	if (MESON_PARM_APPLICABLE(&pll->l_detect)) {
-+		if (pll->flags & CLK_MESON_PLL_L_DETECT_N)
-+			meson_parm_write(clk->map, &pll->l_detect, 0);
-+		else
-+			meson_parm_write(clk->map, &pll->l_detect, 1);
-+	}
- 
- 	if (meson_clk_pll_wait_lock(hw)) {
- 		/* disable PLL when PLL lock failed. */
-diff --git a/drivers/clk/meson/clk-pll.h b/drivers/clk/meson/clk-pll.h
-index 949157fb7bf5..83295a24721f 100644
---- a/drivers/clk/meson/clk-pll.h
-+++ b/drivers/clk/meson/clk-pll.h
-@@ -29,6 +29,8 @@ struct pll_mult_range {
- 
- #define CLK_MESON_PLL_ROUND_CLOSEST	BIT(0)
- #define CLK_MESON_PLL_NOINIT_ENABLED	BIT(1)
-+/* l_detect signal is active-low */
-+#define CLK_MESON_PLL_L_DETECT_N	BIT(2)
- 
- struct meson_clk_pll_data {
- 	struct parm en;
+Changes in v2:
+- Fix allignment issue in imx8mm-tx8m-1610.dtsi (fec1)
+- Move phy-reset into fec (works better in barebox)
+- Make the gpio-line-names groups of four on every line
+- Link to v1: https://lore.kernel.org/r/20251009-mini_iv-v1-0-f3889c492457@gocontroll.com
 
+---
+Maud Spierings (6):
+      dt-bindings: arm: fsl: Add GOcontroll Moduline IV/Mini
+      regulator: bd718x7: Fix voltages scaled by resistor divider
+      arm64: dts: imx8mm: Add pinctrl config definitions
+      arm64: dts: freescale: add Ka-Ro Electronics tx8m-1610 COM
+      arm64: dts: freescale: Add the GOcontroll Moduline IV
+      arm64: dts: freescale: Add the GOcontroll Moduline Mini
+
+ Documentation/devicetree/bindings/arm/fsl.yaml     |   8 +
+ arch/arm64/boot/dts/freescale/Makefile             |   3 +
+ arch/arm64/boot/dts/freescale/imx8mm-pinfunc.h     |  33 +
+ .../imx8mm-tx8m-1610-moduline-iv-306-d.dts         | 800 +++++++++++++++++++++
+ .../imx8mm-tx8m-1610-moduline-mini-111.dts         | 688 ++++++++++++++++++
+ .../arm64/boot/dts/freescale/imx8mm-tx8m-1610.dtsi | 444 ++++++++++++
+ drivers/regulator/bd718x7-regulator.c              |   2 +
+ 7 files changed, 1978 insertions(+)
+---
+base-commit: 7c3ba4249a3604477ea9c077e10089ba7ddcaa03
+change-id: 20251009-mini_iv-a05e5c2c1223
+
+Best regards,
 -- 
-2.42.0
+Maud Spierings <maudspierings@gocontroll.com>
 
