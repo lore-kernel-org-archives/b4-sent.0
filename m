@@ -1,146 +1,129 @@
-From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Thu, 30 Oct 2025 08:07:42 +0100
-Subject: [PATCH] net: can: mcp251x: use dev_err_probe() in probe
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v2 0/2] Add support for Pixel 3 and Pixel 3 XL
+Date: Thu, 30 Oct 2025 08:24:28 +0100
+Message-Id: <20251030-pixel-3-v2-0-8caddbe072c9@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251030-mcp_err-v1-1-eecf737823b7@gocontroll.com>
-X-B4-Tracking: v=1; b=H4sIAL4OA2kC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDA2MD3dzkgvjUoiLdNLNEY8PUpKRUE/NEJaDqgqLUtMwKsEnRsbW1ADw
- ycApZAAAA
-X-Change-ID: 20251030-mcp_err-f6a31ebbe47a
-To: Marc Kleine-Budde <mkl@pengutronix.de>, 
- Vincent Mailhol <mailhol@kernel.org>
-Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Maud Spierings <maudspierings@gocontroll.com>
+X-B4-Tracking: v=1; b=H4sIAK0SA2kC/0XOSW7DMAwF0KsYWpeFZste9R5FFrJE1gKa2JVUI
+ wNy9ygO0C4/STz+GyuYExY2djeWcUslLacW5FvHwuxPXwgptswkl4ZrMcCazvgNCowQGIP02vK
+ etes1I7XVU/o8tDynUpd82eFNPKe7ITg3f8YmgIOf3OQMWaEUfaRzqu/hyg73F5nx57d1qi/3v
+ 1JruGPSQaxw9SuU2UfMEKkP0jiyRGFsfxsz+YIQluMx1bGjPkrlHCIGqQdrKehoAikZe26JG6F
+ JDj6Y1uD+AKU6euUdAQAA
+X-Change-ID: 20250419-pixel-3-511edc2a4607
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: phodina@protonmail.com, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
+ Amit Pundir <amit.pundir@linaro.org>, Casey Connolly <casey@connolly.tech>, 
+ Joel Selvaraj <foss@joelselvaraj.com>, 
+ Sumit Semwal <sumit.semwal@linaro.org>, Vinod Koul <vkoul@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761808076; l=3745;
- i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=7SQx5+xuTmbRP2jC1wr5GUv3U4vwif5G7XletYOqjvM=;
- b=ajEC4nBLTA9I/eM7uEBSr4UY3zwgPURL28Oc1vZrtNHrN+r1aYzTOc0fCUk3mcDsIkoLu1vBm
- nxT+mb8Zr9bCRo61rJ+jIATfekBzhDYcYITa6yj7nAhslll9CFMEwYC
-X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
- pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
-X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3373; i=david@ixit.cz;
+ h=from:subject:message-id; bh=0GI+RXqQiTErAdEzgskdBRk3bXKy3i+/0wcYrcqI0lA=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpAxKx/aC3TjOUiHTJgeiWXSedWFuEw7byLOkB2
+ +J9v2wuZB6JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaQMSsQAKCRBgAj/E00kg
+ cp6uEADRJjf+khkFIOe95a6MLunuI93bagSMw3bt11Lq+Fm7s9cPWCgS1yyOfQ1b3j7fhSBLacf
+ AXNtcOTNgDlceEyknFduBQiYLqJNWLKysJqNYX9UDQtyAHG8r1LWsbE98SyaUhKoMswiBf/7JKO
+ qrXnELhDJkcInz33OLXaYKxSuSR9RGmwcvyWM0yktbXnd6EhAr5IDMldP2IsIEhkjWBUqo6Nvdo
+ twXWtfGgxIyg6mlvHJgFF4LmyzZvqKAtj8KncycaL/dQRe2bLeZcwjyjlQHIboW5JkPVnxApTdk
+ ISLfpxbnJFz0v18lpnq/ItaYS8N+VGUMIdV+vpzQ1HsdpBvoot/iTgohDDtQeB9//Mm2kIFjX96
+ Z3Nm5+SRZkJiGidiL0KvPHjSa2Ez5brQR47RsyyE31jkmdkP5SfZYnGClsDEIbSrZoPYVXnEHzZ
+ 8fGl9Ro6OYQVXGwDO/Fvxz1JceEqhkxBwn633saMq1PWoRgGY2xwDgKLqkC+8YBdm8W1lmTbQuN
+ PrS215m97EQf1pTAHvgVQ8snY9W3DthLuZnogzRF/ocDIv95u4qukUiRzXSLEUAU6lY9Qeh486v
+ K1r6bZP6yaC2PeU6/pHxQlFJCcJVfqv6h/032XIsbybgq5rNgbsTwM3uW1dy/fkPE4egk1pU/2f
+ /wx8MqynRgKbAOg==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The currently used combination of dev_err plus return leaves a loud
-error in dmesg even when the error is a deferred probe which gets
-resolved later. For example a supply that has not been probed yet.
+This adds initial device tree support for the following phones:
 
-Use dev_err_probe to improve the handling/display of errors.
+ - Google Pixel 3 (blueline)
+ - Google Pixel 3 XL (crosshatch)
 
-Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
+Both phone boards use the same identifiers and differ only slightly
+in their connected peripherals.
+
+This is mainly focused to get the base functionality of the board and
+being able to use the upstream DTS within Linux and u-boot.
+
+Booting
+-------
+For older Pixel 3 bootloaders, bootloader-compatible board and MSM IDs are
+required for the kernel to boot, so these have been added.
+
+For recent Pixel 3 bootloaders,
+a) you want chainloaded proper bootloader (f.e. u-boot),
+b) you can also boot kernel when adding back TEXT_OFFSET
+   (partial revert of 120dc60d).
+
+This series is a beggining of cleaning up and transitioning support from
+sdm845 close to mainline tree to the mainline.
+
+Note: I assume this won't get merged yet, but all or at least most of
+initial feedback to v1 should be incorporated.
+
+Depends on:
+- "[PATCH 0/7] arm64: dts: qcom: cleanup GPU's zap-shader node" series.
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/net/can/spi/mcp251x.c | 31 ++++++++++++++++++++-----------
- 1 file changed, 20 insertions(+), 11 deletions(-)
-
-diff --git a/drivers/net/can/spi/mcp251x.c b/drivers/net/can/spi/mcp251x.c
-index 1e54e1a22702..fa97adf25b73 100644
---- a/drivers/net/can/spi/mcp251x.c
-+++ b/drivers/net/can/spi/mcp251x.c
-@@ -1320,7 +1320,7 @@ static int mcp251x_can_probe(struct spi_device *spi)
- 
- 	clk = devm_clk_get_optional(&spi->dev, NULL);
- 	if (IS_ERR(clk))
--		return PTR_ERR(clk);
-+		return dev_err_probe(&spi->dev, PTR_ERR(clk), "Cannot get clock\n");
- 
- 	freq = clk_get_rate(clk);
- 	if (freq == 0)
-@@ -1328,7 +1328,7 @@ static int mcp251x_can_probe(struct spi_device *spi)
- 
- 	/* Sanity check */
- 	if (freq < 1000000 || freq > 25000000)
--		return -ERANGE;
-+		return dev_err_probe(&spi->dev, -ERANGE, "clock frequency out of range\n");
- 
- 	/* Allocate can/net device */
- 	net = alloc_candev(sizeof(struct mcp251x_priv), TX_ECHO_SKB_MAX);
-@@ -1336,8 +1336,10 @@ static int mcp251x_can_probe(struct spi_device *spi)
- 		return -ENOMEM;
- 
- 	ret = clk_prepare_enable(clk);
--	if (ret)
-+	if (ret) {
-+		dev_err_probe(&spi->dev, ret, "Cannot enable clock\n");
- 		goto out_free;
-+	}
- 
- 	net->netdev_ops = &mcp251x_netdev_ops;
- 	net->ethtool_ops = &mcp251x_ethtool_ops;
-@@ -1362,20 +1364,25 @@ static int mcp251x_can_probe(struct spi_device *spi)
- 	else
- 		spi->max_speed_hz = spi->max_speed_hz ? : 10 * 1000 * 1000;
- 	ret = spi_setup(spi);
--	if (ret)
-+	if (ret) {
-+		dev_err_probe(&spi->dev, ret, "Cannot set up spi\n");
- 		goto out_clk;
-+	}
- 
- 	priv->power = devm_regulator_get_optional(&spi->dev, "vdd");
- 	priv->transceiver = devm_regulator_get_optional(&spi->dev, "xceiver");
- 	if ((PTR_ERR(priv->power) == -EPROBE_DEFER) ||
- 	    (PTR_ERR(priv->transceiver) == -EPROBE_DEFER)) {
- 		ret = -EPROBE_DEFER;
-+		dev_err_probe(&spi->dev, ret, "supply deferred\n");
- 		goto out_clk;
- 	}
- 
- 	ret = mcp251x_power_enable(priv->power, 1);
--	if (ret)
-+	if (ret) {
-+		dev_err_probe(&spi->dev, ret, "Cannot enable power\n");
- 		goto out_clk;
-+	}
- 
- 	priv->wq = alloc_workqueue("mcp251x_wq",
- 				   WQ_FREEZABLE | WQ_MEM_RECLAIM | WQ_PERCPU,
-@@ -1409,21 +1416,24 @@ static int mcp251x_can_probe(struct spi_device *spi)
- 	/* Here is OK to not lock the MCP, no one knows about it yet */
- 	ret = mcp251x_hw_probe(spi);
- 	if (ret) {
--		if (ret == -ENODEV)
--			dev_err(&spi->dev, "Cannot initialize MCP%x. Wrong wiring?\n",
--				priv->model);
-+		dev_err_probe(&spi->dev, ret, "Cannot initialize MCP%x. Wrong wiring?\n",
-+			      priv->model);
- 		goto error_probe;
- 	}
- 
- 	mcp251x_hw_sleep(spi);
- 
- 	ret = register_candev(net);
--	if (ret)
-+	if (ret) {
-+		dev_err_probe(&spi->dev, ret, "Cannot register CAN device\n");
- 		goto error_probe;
-+	}
- 
- 	ret = mcp251x_gpio_setup(priv);
--	if (ret)
-+	if (ret) {
-+		dev_err_probe(&spi->dev, ret, "Cannot set up gpios\n");
- 		goto out_unregister_candev;
-+	}
- 
- 	netdev_info(net, "MCP%x successfully initialized.\n", priv->model);
- 	return 0;
-@@ -1442,7 +1452,6 @@ static int mcp251x_can_probe(struct spi_device *spi)
- out_free:
- 	free_candev(net);
- 
--	dev_err(&spi->dev, "Probe failed, err=%d\n", -ret);
- 	return ret;
- }
- 
+Changes in v2:
+- rebased on next-20251030
+- generalize chosen to -common (Dmitry)
+- demystify rmtfs_mem qcom,vmid
+- use qcom,use-guard-pages instead of lower/upper guard block
+- merge port@1 endpoint into label mdss_dsi0_out
+- sort pinctrl
+- sorted the nodes inside root
+- put status as a last property into mdss_dsi0 block
+- rename volume-keys to gpio-keys   
+- removed LS-UART1 label
+- removed gmu block, already enabled
+- removed accidentally introduced WIP crosshatch panel support
+- removed useless panel_pmgpio_pins (Dmitry)
+- removed usb_2 as it's unused on production units (only devkit)
+- move mdss node into the -common and disable in crosshatch (Dmitry)
+- move battery node into the -commonm
+- move framebuffer into the -common (Dmitry)
+- add all firmwares (Dmitry)
+- add Wi-Fi support
+- add Bluetooth support
+- add missing gpi_dma1 node
+- renamed regulators to follow regulator-foo-bar BCP (Dmitry)
+- adapt to recent cleanup GPU's zap-shader node
+- Link to v1: https://lore.kernel.org/r/20251005-pixel-3-v1-0-ab8b85f6133f@ixit.cz
 
 ---
-base-commit: 131f3d9446a6075192cdd91f197989d98302faa6
-change-id: 20251030-mcp_err-f6a31ebbe47a
+David Heidelberg (2):
+      Documentation: dt-bindings: arm: qcom: Add Pixel 3 and 3 XL
+      arm64: dts: qcom: Add support for Pixel 3 and Pixel 3 XL
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   2 +
+ arch/arm64/boot/dts/qcom/Makefile                  |   2 +
+ .../arm64/boot/dts/qcom/sdm845-google-blueline.dts |  94 ++++
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 522 +++++++++++++++++++++
+ .../boot/dts/qcom/sdm845-google-crosshatch.dts     |  39 ++
+ 5 files changed, 659 insertions(+)
+---
+base-commit: f7d2388eeec24966fc4d5cf32d706f0514f29ac5
+change-id: 20250419-pixel-3-511edc2a4607
+prerequisite-change-id: 20251028-dt-zap-shader-df7c258f6ffc:v1
+prerequisite-patch-id: 0f0f709c9a638ec48be64bf357975cf75bc144ad
+prerequisite-patch-id: 495544e8cb329eff420e1134292446ed7ccd018f
+prerequisite-patch-id: 55c07e275cc46d1dc5a279fd0e3a789f67eec02d
+prerequisite-patch-id: 707a86a8dd82384f31847a6790d988b7896140bc
+prerequisite-patch-id: d8852b1c3dd3e8a16d391824c41b71bcb8a30c3a
+prerequisite-patch-id: 06dd1f88f5f076795a2e602582c0c9026aba01ba
+prerequisite-patch-id: 8b13202f3d3fef85bbe6d63b81d15c08c54b584f
 
 Best regards,
 -- 
-Maud Spierings <maudspierings@gocontroll.com>
+David Heidelberg <david@ixit.cz>
 
