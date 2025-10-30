@@ -1,16 +1,13 @@
 From: Per Larsen <perlarsen@google.com>
-Subject: [PATCH v2 0/2] KVM: arm64: Support FF-A direct messaging
- interfaces
-Date: Thu, 30 Oct 2025 15:49:15 +0000
-Message-Id: <20251030-host-direct-messages-v2-0-9f27cef36730@google.com>
+Date: Thu, 30 Oct 2025 15:49:16 +0000
+Subject: [PATCH v2 1/2] KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ in host
+ handler
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPuIA2kC/22NQQ6CMBBFr0Jm7Zi2WEFX3sOwwHYokwglHUI0h
- LtbiUuX7yX//RWEEpPAtVgh0cLCccxgDgW4vh0DIfvMYJSxWpkL9lFm9JzIzTiQSBtI0BqlfdV
- Z2z485OmUqOPXnr03mXuWOab3/rLor/0FS/U/uGhUeDqXZKu60q7ubiHG8KSjiwM027Z9AFX+C
- wa5AAAA
-X-Change-ID: 20251029-host-direct-messages-5201d7f55abd
+Message-Id: <20251030-host-direct-messages-v2-1-9f27cef36730@google.com>
+References: <20251030-host-direct-messages-v2-0-9f27cef36730@google.com>
+In-Reply-To: <20251030-host-direct-messages-v2-0-9f27cef36730@google.com>
 To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oliver.upton@linux.dev>, 
  Joey Gouly <joey.gouly@arm.com>, Suzuki K Poulose <suzuki.poulose@arm.com>, 
  Zenghui Yu <yuzenghui@huawei.com>, 
@@ -21,51 +18,58 @@ Cc: Armelle Laine <armellel@google.com>,
  linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
  linux-kernel@vger.kernel.org, Per Larsen <perlarsen@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761839364; l=1188;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761839364; l=1403;
  i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
- bh=8s1gw4zxVz4gFDdlU/JyqSmtBI+GywyPiSCpoHCeD+A=;
- b=9LSJoD3lZA0ogsX7LA0xU+vNMbRxY6n7pTFWh3e/JFxXdDlXTr4KtfUhi61CMD8w5FrWi1l4E
- vmPTjkBVwR0B0wYyH1/mV+O0LauiIy68LWToplSP+/9mmOsGl6fa4Jk
+ bh=0LYGXDdF4rmG4qPqoYjpVqiYwow3EdKdfM03tgJvlB8=;
+ b=98ShcxNmKo+TYyhHfNO6sEe4kutfeS5ubK1MWanjdr47EqL8e72h8ydRgWSNEFMlqezCsPBO9
+ gQxfzEzc+yRB6NQGIqnuuGjJdqC1lk/wC4Dw7WTINrm0H3gWSPOvvH7
 X-Developer-Key: i=perlarsen@google.com; a=ed25519;
  pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
 X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Support FFA_MSG_SEND_DIRECT_REQ unconditionally.
-Support FFA_MSG_SEND_DIRECT_REQ2 if hypervisor negotiated version 1.2+.
+From: Sebastian Ene <sebastianene@google.com>
 
-The second patch was part of a previous patch set [0] but was dropped
-since the use case was unclear. A clear use case has now appeared [1].
+Allow direct messages to be forwarded from the host.
 
-Tested by booting Android under QEMU.
-
-Best Regards,
-Per
-
-[0]: https://lore.kernel.org/all/20250730-virtio-msg-ffa-v9-0-7f1b55c8d149@google.com/
-[1]: https://lore.kernel.org/all/20251027191729.1704744-1-yeoreum.yun@arm.com/
- 
-
+Signed-off-by: Sebastian Ene <sebastianene@google.com>
 Signed-off-by: Per Larsen <perlarsen@google.com>
 ---
-Changes in v2:
-- 1/2: Drop support for FFA_ID_GET interface in host handler.
-- Link to v1: https://lore.kernel.org/r/20251030-host-direct-messages-v1-0-463e57871c8f@google.com
+ arch/arm64/kvm/hyp/nvhe/ffa.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
----
-Per Larsen (1):
-      KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in host handler
+diff --git a/arch/arm64/kvm/hyp/nvhe/ffa.c b/arch/arm64/kvm/hyp/nvhe/ffa.c
+index 4e16f9b96f637599873b16148c6e40cf1210aa3e..bb38ee7c86bad1646c16c562127eb3bef6297a84 100644
+--- a/arch/arm64/kvm/hyp/nvhe/ffa.c
++++ b/arch/arm64/kvm/hyp/nvhe/ffa.c
+@@ -857,6 +857,15 @@ static void do_ffa_part_get(struct arm_smccc_1_2_regs *res,
+ 	hyp_spin_unlock(&host_buffers.lock);
+ }
+ 
++static void do_ffa_direct_msg(struct arm_smccc_1_2_regs *res,
++			      struct kvm_cpu_context *ctxt,
++			      u64 vm_handle)
++{
++	struct arm_smccc_1_2_regs *args = (void *)&ctxt->regs.regs[0];
++
++	arm_smccc_1_2_smc(args, res);
++}
++
+ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
+ {
+ 	struct arm_smccc_1_2_regs res;
+@@ -915,6 +924,10 @@ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
+ 	case FFA_PARTITION_INFO_GET:
+ 		do_ffa_part_get(&res, host_ctxt);
+ 		goto out_handled;
++	case FFA_MSG_SEND_DIRECT_REQ:
++	case FFA_FN64_MSG_SEND_DIRECT_REQ:
++		do_ffa_direct_msg(&res, host_ctxt, HOST_FFA_ID);
++		goto out_handled;
+ 	}
+ 
+ 	if (ffa_call_supported(func_id))
 
-Sebastian Ene (1):
-      KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ in host handler
-
- arch/arm64/kvm/hyp/nvhe/ffa.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
----
-base-commit: e53642b87a4f4b03a8d7e5f8507fc3cd0c595ea6
-change-id: 20251029-host-direct-messages-5201d7f55abd
-
-Best regards,
 -- 
-Per Larsen <perlarsen@google.com>
+2.51.1.851.g4ebd6896fd-goog
 
