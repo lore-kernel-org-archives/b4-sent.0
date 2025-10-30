@@ -1,141 +1,71 @@
-From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Thu, 30 Oct 2025 22:30:06 +0800
-Subject: [PATCH] hwmon: (gpd-fan) initialize EC on driver load for Win 4
+From: Per Larsen <perlarsen@google.com>
+Subject: [PATCH v2 0/2] KVM: arm64: Support FF-A direct messaging
+ interfaces
+Date: Thu, 30 Oct 2025 15:49:15 +0000
+Message-Id: <20251030-host-direct-messages-v2-0-9f27cef36730@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251030-win4-v1-1-c374dcb86985@uniontech.com>
-X-B4-Tracking: v=1; b=H4sIAG12A2kC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDA2MD3fLMPBNds2RzS/M0c0Njy2RjJaDSgqLUtMwKsDHRsbW1AFWYAzx
- WAAAA
-X-Change-ID: 20251030-win4-6c797f7139c3
-To: Guenter Roeck <linux@roeck-us.net>
-Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
- niecheng1@uniontech.com, zhanjun@uniontech.com, 
- kylon <3252255+kylon@users.noreply.github.com>, 
- Cryolitia PukNgae <cryolitia@uniontech.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761834613; l=3221;
- i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=t9JHAfOJItGPrnrOdS2gWLJmFHa2xGmsXuMmQl261Mc=;
- b=VJe5rhI5SINpl2JRyT2gfD/kTIfCcZhnjPEjVNBEvAczGJAK/pU/tvII8a51AFt+LFH0z1wcm
- bLoGxuRsI5LB0OLOsb8G1ZQ3O7RQXL7XEZZzgzFtqera1QEDHc9FF2k
-X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
+X-B4-Tracking: v=1; b=H4sIAPuIA2kC/22NQQ6CMBBFr0Jm7Zi2WEFX3sOwwHYokwglHUI0h
+ LtbiUuX7yX//RWEEpPAtVgh0cLCccxgDgW4vh0DIfvMYJSxWpkL9lFm9JzIzTiQSBtI0BqlfdV
+ Z2z485OmUqOPXnr03mXuWOab3/rLor/0FS/U/uGhUeDqXZKu60q7ubiHG8KSjiwM027Z9AFX+C
+ wa5AAAA
+X-Change-ID: 20251029-host-direct-messages-5201d7f55abd
+To: Marc Zyngier <maz@kernel.org>, Oliver Upton <oliver.upton@linux.dev>, 
+ Joey Gouly <joey.gouly@arm.com>, Suzuki K Poulose <suzuki.poulose@arm.com>, 
+ Zenghui Yu <yuzenghui@huawei.com>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
+ Yeoreum Yun <yeoreum.yun@arm.com>, Ben Horgan <ben.horgan@arm.com>
+Cc: Armelle Laine <armellel@google.com>, 
+ Sebastien Ene <sebastianene@google.com>, 
+ linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Per Larsen <perlarsen@google.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761839364; l=1188;
+ i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
+ bh=8s1gw4zxVz4gFDdlU/JyqSmtBI+GywyPiSCpoHCeD+A=;
+ b=9LSJoD3lZA0ogsX7LA0xU+vNMbRxY6n7pTFWh3e/JFxXdDlXTr4KtfUhi61CMD8w5FrWi1l4E
+ vmPTjkBVwR0B0wYyH1/mV+O0LauiIy68LWToplSP+/9mmOsGl6fa4Jk
+X-Developer-Key: i=perlarsen@google.com; a=ed25519;
+ pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
+X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The original implement will re-init the EC when it reports a zero
-value, and it's a workaround for the black box buggy firmware.
+Support FFA_MSG_SEND_DIRECT_REQ unconditionally.
+Support FFA_MSG_SEND_DIRECT_REQ2 if hypervisor negotiated version 1.2+.
 
-Now a contributer test and report that, the bug is that, the firmware
-won't initialize the EC on boot, so the EC ramains in unusable status.
-And it won't need to re-init it during runtime. The original implement
-is not perfect, any write command will be ignored until we first read
-it. Just re-init it unconditionally when the driver load could work.
+The second patch was part of a previous patch set [0] but was dropped
+since the use case was unclear. A clear use case has now appeared [1].
 
-Fixes: 0ab88e239439 ("hwmon: add GPD devices sensor driver")
-Co-developed-by: kylon <3252255+kylon@users.noreply.github.com>
-Signed-off-by: kylon <3252255+kylon@users.noreply.github.com>
-Link: https://github.com/Cryolitia/gpd-fan-driver/pull/20
-Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
+Tested by booting Android under QEMU.
+
+Best Regards,
+Per
+
+[0]: https://lore.kernel.org/all/20250730-virtio-msg-ffa-v9-0-7f1b55c8d149@google.com/
+[1]: https://lore.kernel.org/all/20251027191729.1704744-1-yeoreum.yun@arm.com/
+ 
+
+Signed-off-by: Per Larsen <perlarsen@google.com>
 ---
- drivers/hwmon/gpd-fan.c | 52 ++++++++++++++++++++++++-------------------------
- 1 file changed, 25 insertions(+), 27 deletions(-)
-
-diff --git a/drivers/hwmon/gpd-fan.c b/drivers/hwmon/gpd-fan.c
-index 57caae9a23eb..43ec092fc26e 100644
---- a/drivers/hwmon/gpd-fan.c
-+++ b/drivers/hwmon/gpd-fan.c
-@@ -273,31 +273,6 @@ static int gpd_generic_read_rpm(void)
- 	return (u16)high << 8 | low;
- }
- 
--static void gpd_win4_init_ec(void)
--{
--	u8 chip_id, chip_ver;
--
--	gpd_ecram_read(0x2000, &chip_id);
--
--	if (chip_id == 0x55) {
--		gpd_ecram_read(0x1060, &chip_ver);
--		gpd_ecram_write(0x1060, chip_ver | 0x80);
--	}
--}
--
--static int gpd_win4_read_rpm(void)
--{
--	int ret;
--
--	ret = gpd_generic_read_rpm();
--
--	if (ret == 0)
--		// Re-init EC when speed is 0
--		gpd_win4_init_ec();
--
--	return ret;
--}
--
- static int gpd_wm2_read_rpm(void)
- {
- 	for (u16 pwm_ctr_offset = GPD_PWM_CTR_OFFSET;
-@@ -317,11 +292,10 @@ static int gpd_wm2_read_rpm(void)
- static int gpd_read_rpm(void)
- {
- 	switch (gpd_driver_priv.drvdata->board) {
-+	case win4_6800u:
- 	case win_mini:
- 	case duo:
- 		return gpd_generic_read_rpm();
--	case win4_6800u:
--		return gpd_win4_read_rpm();
- 	case win_max_2:
- 		return gpd_wm2_read_rpm();
- 	}
-@@ -577,6 +551,28 @@ static struct hwmon_chip_info gpd_fan_chip_info = {
- 	.info = gpd_fan_hwmon_channel_info
- };
- 
-+static void gpd_win4_init_ec(void)
-+{
-+	u8 chip_id, chip_ver;
-+
-+	gpd_ecram_read(0x2000, &chip_id);
-+
-+	if (chip_id == 0x55) {
-+		gpd_ecram_read(0x1060, &chip_ver);
-+		gpd_ecram_write(0x1060, chip_ver | 0x80);
-+	}
-+}
-+
-+static void gpd_init_ec(void)
-+{
-+	// The buggy firmware won't initialize EC properly on boot.
-+	// Before its initialization, reading RPM will always return 0,
-+	// and writing PWM will have no effect.
-+	// Initialize it manually on driver load.
-+	if (gpd_driver_priv.drvdata->board == win4_6800u)
-+		gpd_win4_init_ec();
-+}
-+
- static int gpd_fan_probe(struct platform_device *pdev)
- {
- 	struct device *dev = &pdev->dev;
-@@ -604,6 +600,8 @@ static int gpd_fan_probe(struct platform_device *pdev)
- 		return dev_err_probe(dev, PTR_ERR(region),
- 				     "Failed to register hwmon device\n");
- 
-+	gpd_init_ec();
-+
- 	return 0;
- }
- 
+Changes in v2:
+- 1/2: Drop support for FFA_ID_GET interface in host handler.
+- Link to v1: https://lore.kernel.org/r/20251030-host-direct-messages-v1-0-463e57871c8f@google.com
 
 ---
-base-commit: 65bc97a5e49ea4174ba7e89afdada3e30e6e39c0
-change-id: 20251030-win4-6c797f7139c3
+Per Larsen (1):
+      KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in host handler
+
+Sebastian Ene (1):
+      KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ in host handler
+
+ arch/arm64/kvm/hyp/nvhe/ffa.c | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+---
+base-commit: e53642b87a4f4b03a8d7e5f8507fc3cd0c595ea6
+change-id: 20251029-host-direct-messages-5201d7f55abd
 
 Best regards,
 -- 
-Cryolitia PukNgae <cryolitia@uniontech.com>
+Per Larsen <perlarsen@google.com>
 
