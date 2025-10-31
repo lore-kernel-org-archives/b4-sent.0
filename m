@@ -1,62 +1,71 @@
-From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Fri, 31 Oct 2025 12:31:31 +0000
-Subject: [PATCH v3 10/10] iio: dac: ad5446: Add AD5542 to the spi id table
+From: Remi Buisson <remi.buisson@tdk.com>
+Date: Fri, 31 Oct 2025 13:57:06 +0000
+Subject: [PATCH v2] iio: imu: inv_icm45600: Initializes
+ inv_icm45600_buffer_postdisable sleep
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20251031-dev-add-ad5542-v3-10-d3541036c0e6@analog.com>
-References: <20251031-dev-add-ad5542-v3-0-d3541036c0e6@analog.com>
-In-Reply-To: <20251031-dev-add-ad5542-v3-0-d3541036c0e6@analog.com>
-To: linux-iio@vger.kernel.org
-Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251031-icm45600_fix_buffer_sleep_init-v2-1-5cdc04e1bcba@tdk.com>
+X-B4-Tracking: v=1; b=H4sIADHABGkC/42NWw7CIBBFt9LMtxhAwOqX+zANsXSwE+0jgI2mY
+ e9iV+Dnubk5Z4WIgTDCuVoh4EKRprGA3FXg+tt4R0ZdYZBcasEPgpEblDacW09v2768x2DjE3G
+ 2NFJiNTfSG+RHXysokjlgOW6Ba1O4p5im8Nl6i/itf6sXwQQ7SYW+bYXRWF9S99i7aYAm5/wFw
+ ETtacoAAAA=
+X-Change-ID: 20251031-icm45600_fix_buffer_sleep_init-8062f6e07f84
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
  Andy Shevchenko <andy@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761913895; l=1707;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=/OfQFB0/UcOV1OFJoyHe7o8DYKnhhHQOcnOWnnCI1R4=;
- b=dDgW35FgKe1VnCQUTlWgGLcTZtPpheOgVbI1ADIVZGFMM+TMZ50k02iAT+UkF2JOjPOAMf5cl
- XJlnVSlE/p1BgGgWXj8YvKk76s8fHlPdz5Qgpra2o4WRNugpozaOLd+
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
+ linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Remi Buisson <remi.buisson@tdk.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761919051; l=1575;
+ i=remi.buisson@tdk.com; s=20250411; h=from:subject:message-id;
+ bh=Rx62rT5vGu7kFWtOCrCoEMC+ZXlR39elZof20ubLlDA=;
+ b=kfjGhVBUaoE4027tfvZxjjDZqatcfqnxl2+OfuvbAz4md8gbYTd6AV3AOtULR8I2Q6O73oLj3
+ bI93bDRmPAtCIrCRr1FreWPjr7Pj0TR9Oy9983/Xja55wM8eDT0fbpP
+X-Developer-Key: i=remi.buisson@tdk.com; a=ed25519;
+ pk=yDVMi4C7RpXN4dififo42A7fDDt3THYzoZoNq9lUZuo=
+X-Endpoint-Received: by B4 Relay for remi.buisson@tdk.com/20250411 with auth_id=372
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Michael Hennerich <michael.hennerich@analog.com>
+The sleep variable in inv_icm45600_buffer_postdisable could be used without
+being assigned in case of error. It must be initialized to 0 by default.
 
-This adds support for the AD5542 single channel Current Source and
-Voltage Output DACs.
+Fixes: 06674a72cf7a ("iio: imu: inv_icm45600: add buffer support in iio devices")
+Smatch static checker warning:
 
-It is similar to the AD5542A model so just use the same id.
+	drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c:377 inv_icm45600_buffer_postdisable()
+	error: uninitialized symbol 'sleep'.
 
-Signed-off-by: Michael Hennerich <michael.hennerich@analog.com>
-Co-developed-by: Nuno Sá <nuno.sa@analog.com>
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
+Signed-off-by: Remi Buisson <remi.buisson@tdk.com>
 ---
- drivers/iio/dac/ad5446-spi.c | 2 ++
- 1 file changed, 2 insertions(+)
+Changes in v2:
+- Moving pacth description from cover-letter to single commit
+- Link to v1: https://lore.kernel.org/r/20251031-icm45600_fix_buffer_sleep_init-v1-1-924efbb165e8@tdk.com
+---
+ drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/iio/dac/ad5446-spi.c b/drivers/iio/dac/ad5446-spi.c
-index 7419b17a455f..34d4a737156d 100644
---- a/drivers/iio/dac/ad5446-spi.c
-+++ b/drivers/iio/dac/ad5446-spi.c
-@@ -177,6 +177,7 @@ static const struct spi_device_id ad5446_spi_ids[] = {
- 	{"ad5453", (kernel_ulong_t)&ad5446_chip_info}, /* ad5453 is compatible to the ad5446 */
- 	{"ad5512a", (kernel_ulong_t)&ad5512a_chip_info},
- 	{"ad5541a", (kernel_ulong_t)&ad5541a_chip_info},
-+	{"ad5542", (kernel_ulong_t)&ad5541a_chip_info}, /* ad5541a and ad5542 are compatible */
- 	{"ad5542a", (kernel_ulong_t)&ad5541a_chip_info}, /* ad5541a and ad5542a are compatible */
- 	{"ad5543", (kernel_ulong_t)&ad5541a_chip_info}, /* ad5541a and ad5543 are compatible */
- 	{"ad5553", (kernel_ulong_t)&ad5553_chip_info},
-@@ -213,6 +214,7 @@ static const struct of_device_id ad5446_of_ids[] = {
- 	{ .compatible = "adi,ad5453", .data = &ad5446_chip_info },
- 	{ .compatible = "adi,ad5512a", .data = &ad5512a_chip_info },
- 	{ .compatible = "adi,ad5541a", .data = &ad5541a_chip_info },
-+	{ .compatible = "adi,ad5542", .data = &ad5541a_chip_info },
- 	{ .compatible = "adi,ad5542a", .data = &ad5541a_chip_info },
- 	{ .compatible = "adi,ad5543", .data = &ad5541a_chip_info },
- 	{ .compatible = "adi,ad5553", .data = &ad5553_chip_info },
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
+index 2efcc177f9d60a6a2509e448c0ddaf4b9e1fd755..bb8382feddc0fd882a6be2ce5e4fe77ab68f13fd 100644
+--- a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
+@@ -357,7 +357,7 @@ static int inv_icm45600_buffer_postdisable(struct iio_dev *indio_dev)
+ 	struct device *dev = regmap_get_device(st->map);
+ 	unsigned int sensor;
+ 	unsigned int *watermark;
+-	unsigned int sleep;
++	unsigned int sleep = 0;
+ 	int ret;
+ 
+ 	if (indio_dev == st->indio_gyro) {
 
+---
+base-commit: 70437bbd7529e9860fb7f0c92a89e0e6abaa994e
+change-id: 20251031-icm45600_fix_buffer_sleep_init-8062f6e07f84
+
+Best regards,
 -- 
-2.51.0
+Remi Buisson <remi.buisson@tdk.com>
 
