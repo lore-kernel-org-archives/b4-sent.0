@@ -1,71 +1,340 @@
-From: Remi Buisson <remi.buisson@tdk.com>
-Date: Fri, 31 Oct 2025 13:57:06 +0000
-Subject: [PATCH v2] iio: imu: inv_icm45600: Initializes
- inv_icm45600_buffer_postdisable sleep
+From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
+Date: Fri, 31 Oct 2025 15:06:17 +0100
+Subject: [PATCH v2] arm64: dts: freescale: Add GMAC Ethernet for S32G2 EVB
+ and RDB2 and S32G3 RDB3
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251031-icm45600_fix_buffer_sleep_init-v2-1-5cdc04e1bcba@tdk.com>
-X-B4-Tracking: v=1; b=H4sIADHABGkC/42NWw7CIBBFt9LMtxhAwOqX+zANsXSwE+0jgI2mY
- e9iV+Dnubk5Z4WIgTDCuVoh4EKRprGA3FXg+tt4R0ZdYZBcasEPgpEblDacW09v2768x2DjE3G
- 2NFJiNTfSG+RHXysokjlgOW6Ba1O4p5im8Nl6i/itf6sXwQQ7SYW+bYXRWF9S99i7aYAm5/wFw
- ETtacoAAAA=
-X-Change-ID: 20251031-icm45600_fix_buffer_sleep_init-8062f6e07f84
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
- linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Remi Buisson <remi.buisson@tdk.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761919051; l=1575;
- i=remi.buisson@tdk.com; s=20250411; h=from:subject:message-id;
- bh=Rx62rT5vGu7kFWtOCrCoEMC+ZXlR39elZof20ubLlDA=;
- b=kfjGhVBUaoE4027tfvZxjjDZqatcfqnxl2+OfuvbAz4md8gbYTd6AV3AOtULR8I2Q6O73oLj3
- bI93bDRmPAtCIrCRr1FreWPjr7Pj0TR9Oy9983/Xja55wM8eDT0fbpP
-X-Developer-Key: i=remi.buisson@tdk.com; a=ed25519;
- pk=yDVMi4C7RpXN4dififo42A7fDDt3THYzoZoNq9lUZuo=
-X-Endpoint-Received: by B4 Relay for remi.buisson@tdk.com/20250411 with auth_id=372
+Message-Id: <20251031-nxp-s32g-boards-v2-1-6e214f247f4e@oss.nxp.com>
+X-B4-Tracking: v=1; b=H4sIAFjCBGkC/3WNwQ6DIBBEf8XsuWtgG8T21P9oPKCAcigYtjE2h
+ n8v9d7jm8y8OYBdDo7h3hyQ3RY4pFiBLg1Mi4mzw2ArAwlSUogO474iX2nGMZlsGclK1ZFSo7o
+ R1NWanQ/7aXwOlZfA75Q/58Emf+l/1yZRotfCKD32otf+kZjb2mqn9IKhlPIFhRSidrAAAAA=
+To: Chester Lin <chester62515@gmail.com>, 
+ Matthias Brugger <mbrugger@suse.com>, 
+ Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>, 
+ NXP S32 Linux Team <s32@nxp.com>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Richard Cochran <richardcochran@gmail.com>
+Cc: linux-arm-kernel@lists.infradead.org, imx@lists.linux.dev, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ netdev@vger.kernel.org, Enric Balletbo i Serra <eballetb@redhat.com>, 
+ "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761919608; l=7502;
+ i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
+ bh=Su3BAxA6SBNR4XfbrIKIFNt01TOwYKZFUS6VmQVlP1U=;
+ b=i3rydhtY1bWZ9jK1kaeVX90I4TK0PoPRydjO74xv6L9E+8tKUzx7wXKuU/AmDteIv2jnv0hC9
+ ip0irIpy+MWCB5GbjNgoRGyXDJ4jXenMIIQ6EYfvwIfB37Aps4SUTOi
+X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
+ pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
+X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The sleep variable in inv_icm45600_buffer_postdisable could be used without
-being assigned in case of error. It must be initialized to 0 by default.
+Add support for the Ethernet connection over GMAC controller connected to
+the Micrel KSZ9031 Ethernet RGMII PHY located on the boards.
 
-Fixes: 06674a72cf7a ("iio: imu: inv_icm45600: add buffer support in iio devices")
-Smatch static checker warning:
+The mentioned GMAC controller is one of two network controllers
+embedded on the NXP Automotive SoCs S32G2 and S32G3.
 
-	drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c:377 inv_icm45600_buffer_postdisable()
-	error: uninitialized symbol 'sleep'.
+The supported boards:
+ * EVB:  S32G-VNP-EVB with S32G2 SoC
+ * RDB2: S32G-VNP-RDB2
+ * RDB3: S32G-VNP-RDB3
 
-Signed-off-by: Remi Buisson <remi.buisson@tdk.com>
+Tested-by: Enric Balletbo i Serra <eballetb@redhat.com>
+Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
 Changes in v2:
-- Moving pacth description from cover-letter to single commit
-- Link to v1: https://lore.kernel.org/r/20251031-icm45600_fix_buffer_sleep_init-v1-1-924efbb165e8@tdk.com
+ - fixed correct instance orders, include blank lines
+ - Link to v1: https://lore.kernel.org/r/20251006-nxp-s32g-boards-v1-1-f70a57b8087f@oss.nxp.com
 ---
- drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ arch/arm64/boot/dts/freescale/s32g2.dtsi        | 58 ++++++++++++++++++++++++-
+ arch/arm64/boot/dts/freescale/s32g274a-evb.dts  | 21 ++++++++-
+ arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts | 19 ++++++++
+ arch/arm64/boot/dts/freescale/s32g3.dtsi        | 58 ++++++++++++++++++++++++-
+ arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts | 21 ++++++++-
+ 5 files changed, 173 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
-index 2efcc177f9d60a6a2509e448c0ddaf4b9e1fd755..bb8382feddc0fd882a6be2ce5e4fe77ab68f13fd 100644
---- a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
-+++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
-@@ -357,7 +357,7 @@ static int inv_icm45600_buffer_postdisable(struct iio_dev *indio_dev)
- 	struct device *dev = regmap_get_device(st->map);
- 	unsigned int sensor;
- 	unsigned int *watermark;
--	unsigned int sleep;
-+	unsigned int sleep = 0;
- 	int ret;
+diff --git a/arch/arm64/boot/dts/freescale/s32g2.dtsi b/arch/arm64/boot/dts/freescale/s32g2.dtsi
+index d167624d1f0c..6f0a307fbab1 100644
+--- a/arch/arm64/boot/dts/freescale/s32g2.dtsi
++++ b/arch/arm64/boot/dts/freescale/s32g2.dtsi
+@@ -3,7 +3,7 @@
+  * NXP S32G2 SoC family
+  *
+  * Copyright (c) 2021 SUSE LLC
+- * Copyright 2017-2021, 2024 NXP
++ * Copyright 2017-2021, 2024-2025 NXP
+  */
  
- 	if (indio_dev == st->indio_gyro) {
+ #include <dt-bindings/interrupt-controller/arm-gic.h>
+@@ -727,6 +727,62 @@ usdhc0: mmc@402f0000 {
+ 			status = "disabled";
+ 		};
+ 
++		gmac0: ethernet@4033c000 {
++			compatible = "nxp,s32g2-dwmac";
++			reg = <0x4033c000 0x2000>, /* gmac IP */
++			      <0x4007c004 0x4>;    /* GMAC_0_CTRL_STS */
++			interrupt-parent = <&gic>;
++			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "macirq";
++			snps,mtl-rx-config = <&mtl_rx_setup>;
++			snps,mtl-tx-config = <&mtl_tx_setup>;
++			status = "disabled";
++
++			mtl_rx_setup: rx-queues-config {
++				snps,rx-queues-to-use = <5>;
++
++				queue0 {
++				};
++
++				queue1 {
++				};
++
++				queue2 {
++				};
++
++				queue3 {
++				};
++
++				queue4 {
++				};
++			};
++
++			mtl_tx_setup: tx-queues-config {
++				snps,tx-queues-to-use = <5>;
++
++				queue0 {
++				};
++
++				queue1 {
++				};
++
++				queue2 {
++				};
++
++				queue3 {
++				};
++
++				queue4 {
++				};
++			};
++
++			gmac0mdio: mdio {
++				#address-cells = <1>;
++				#size-cells = <0>;
++				compatible = "snps,dwmac-mdio";
++			};
++		};
++
+ 		gic: interrupt-controller@50800000 {
+ 			compatible = "arm,gic-v3";
+ 			reg = <0x50800000 0x10000>,
+diff --git a/arch/arm64/boot/dts/freescale/s32g274a-evb.dts b/arch/arm64/boot/dts/freescale/s32g274a-evb.dts
+index c4a195dd67bf..fb4002a2aa67 100644
+--- a/arch/arm64/boot/dts/freescale/s32g274a-evb.dts
++++ b/arch/arm64/boot/dts/freescale/s32g274a-evb.dts
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+ /*
+  * Copyright (c) 2021 SUSE LLC
+- * Copyright 2019-2021, 2024 NXP
++ * Copyright 2019-2021, 2024-2025 NXP
+  */
+ 
+ /dts-v1/;
+@@ -14,6 +14,7 @@ / {
+ 	compatible = "nxp,s32g274a-evb", "nxp,s32g2";
+ 
+ 	aliases {
++		ethernet0 = &gmac0;
+ 		serial0 = &uart0;
+ 	};
+ 
+@@ -43,3 +44,21 @@ &usdhc0 {
+ 	no-1-8-v;
+ 	status = "okay";
+ };
++
++&gmac0 {
++	clocks = <&clks 24>, <&clks 19>, <&clks 18>, <&clks 15>;
++	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
++	phy-mode = "rgmii-id";
++	phy-handle = <&rgmiiaphy4>;
++	status = "okay";
++};
++
++&gmac0mdio {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	/* KSZ 9031 on RGMII */
++	rgmiiaphy4: ethernet-phy@4 {
++		reg = <4>;
++	};
++};
+diff --git a/arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts b/arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts
+index 4f58be68c818..b632b0ffd6a8 100644
+--- a/arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts
++++ b/arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts
+@@ -14,6 +14,7 @@ / {
+ 	compatible = "nxp,s32g274a-rdb2", "nxp,s32g2";
+ 
+ 	aliases {
++		ethernet0 = &gmac0;
+ 		serial0 = &uart0;
+ 		serial1 = &uart1;
+ 	};
+@@ -77,3 +78,21 @@ &usdhc0 {
+ 	no-1-8-v;
+ 	status = "okay";
+ };
++
++&gmac0 {
++	clocks = <&clks 24>, <&clks 19>, <&clks 18>, <&clks 15>;
++	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
++	phy-mode = "rgmii-id";
++	phy-handle = <&rgmiiaphy1>;
++	status = "okay";
++};
++
++&gmac0mdio {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	/* KSZ 9031 on RGMII */
++	rgmiiaphy1: ethernet-phy@1 {
++		reg = <1>;
++	};
++};
+diff --git a/arch/arm64/boot/dts/freescale/s32g3.dtsi b/arch/arm64/boot/dts/freescale/s32g3.dtsi
+index be3a582ebc1b..ccb761137273 100644
+--- a/arch/arm64/boot/dts/freescale/s32g3.dtsi
++++ b/arch/arm64/boot/dts/freescale/s32g3.dtsi
+@@ -1,6 +1,6 @@
+ // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+ /*
+- * Copyright 2021-2024 NXP
++ * Copyright 2021-2025 NXP
+  *
+  * Authors: Ghennadi Procopciuc <ghennadi.procopciuc@nxp.com>
+  *          Ciprian Costea <ciprianmarian.costea@nxp.com>
+@@ -804,6 +804,62 @@ usdhc0: mmc@402f0000 {
+ 			status = "disabled";
+ 		};
+ 
++		gmac0: ethernet@4033c000 {
++			compatible = "nxp,s32g2-dwmac";
++			reg = <0x4033c000 0x2000>, /* gmac IP */
++			      <0x4007c004 0x4>;    /* GMAC_0_CTRL_STS */
++			interrupt-parent = <&gic>;
++			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
++			interrupt-names = "macirq";
++			snps,mtl-rx-config = <&mtl_rx_setup>;
++			snps,mtl-tx-config = <&mtl_tx_setup>;
++			status = "disabled";
++
++			mtl_rx_setup: rx-queues-config {
++				snps,rx-queues-to-use = <5>;
++
++				queue0 {
++				};
++
++				queue1 {
++				};
++
++				queue2 {
++				};
++
++				queue3 {
++				};
++
++				queue4 {
++				};
++			};
++
++			mtl_tx_setup: tx-queues-config {
++				snps,tx-queues-to-use = <5>;
++
++				queue0 {
++				};
++
++				queue1 {
++				};
++
++				queue2 {
++				};
++
++				queue3 {
++				};
++
++				queue4 {
++				};
++			};
++
++			gmac0mdio: mdio {
++				#address-cells = <1>;
++				#size-cells = <0>;
++				compatible = "snps,dwmac-mdio";
++			};
++		};
++
+ 		swt8: watchdog@40500000 {
+ 			compatible = "nxp,s32g3-swt", "nxp,s32g2-swt";
+ 			reg = <40500000 0x1000>;
+diff --git a/arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts b/arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts
+index e94f70ad82d9..d7213d2872a4 100644
+--- a/arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts
++++ b/arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts
+@@ -1,6 +1,6 @@
+ // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+ /*
+- * Copyright 2021-2024 NXP
++ * Copyright 2021-2025 NXP
+  *
+  * NXP S32G3 Reference Design Board 3 (S32G-VNP-RDB3)
+  */
+@@ -15,6 +15,7 @@ / {
+ 	compatible = "nxp,s32g399a-rdb3", "nxp,s32g3";
+ 
+ 	aliases {
++		ethernet0 = &gmac0;
+ 		mmc0 = &usdhc0;
+ 		serial0 = &uart0;
+ 		serial1 = &uart1;
+@@ -93,3 +94,21 @@ &usdhc0 {
+ 	disable-wp;
+ 	status = "okay";
+ };
++
++&gmac0 {
++	clocks = <&clks 24>, <&clks 19>, <&clks 18>, <&clks 15>;
++	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
++	phy-mode = "rgmii-id";
++	phy-handle = <&rgmiiaphy1>;
++	status = "okay";
++};
++
++&gmac0mdio {
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	/* KSZ 9031 on RGMII */
++	rgmiiaphy1: ethernet-phy@1 {
++		reg = <1>;
++	};
++};
 
 ---
-base-commit: 70437bbd7529e9860fb7f0c92a89e0e6abaa994e
-change-id: 20251031-icm45600_fix_buffer_sleep_init-8062f6e07f84
+base-commit: fd94619c43360eb44d28bd3ef326a4f85c600a07
+change-id: 20251006-nxp-s32g-boards-2d156255b592
 
 Best regards,
 -- 
-Remi Buisson <remi.buisson@tdk.com>
+Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 
