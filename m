@@ -1,96 +1,140 @@
-From: Shubhang Kaushik <shubhang@os.amperecomputing.com>
-Date: Thu, 30 Oct 2025 12:19:29 -0700
-Subject: [PATCH v2] sched/fair: Prefer cache locality for EAS wakeup
+From: Chuan Liu <chuan.liu@amlogic.com>
+Subject: [PATCH v3 0/4] clk: amlogic: optimize the PLL driver
+Date: Fri, 31 Oct 2025 16:10:07 +0800
+Message-Id: <20251031-optimize_pll_driver-v3-0-92f3b2f36a83@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251030-b4-follow-up-v2-1-19a23c83b837@os.amperecomputing.com>
-X-B4-Tracking: v=1; b=H4sIAEC6A2kC/02Myw6CMBBFf8V07ZDSQoyu/A/joo8pNAGmmRY0I
- fy71ZW5m3sW5+wiI0fM4nbaBeMWc6SlgjqfhBvNMiBEX1koqfpWagm2g0DTRC9YE4Qgte16rY3
- yoiqJMcT3L/d4Vg5MM5SR0fxF2ss3kt2IHlzIUB3jCjEkpmQGUxC2FurQSu96216tvlNuzJyQ0
- dGc1hKXoalPHMcHLdrE38IAAAA=
-X-Change-ID: 20251030-b4-follow-up-ff03b4533a2d
-To: Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, 
- Juri Lelli <juri.lelli@redhat.com>, 
- Vincent Guittot <vincent.guittot@linaro.org>, 
- Dietmar Eggemann <dietmar.eggemann@arm.com>, 
- Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
- Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>, 
- Shubhang Kaushik <sh@gentwo.org>, 
- Shijie Huang <Shijie.Huang@amperecomputing.com>, 
- Frank Wang <zwang@amperecomputing.com>
-Cc: Christopher Lameter <cl@gentwo.org>, 
- Adam Li <adam.li@amperecomputing.com>, linux-kernel@vger.kernel.org, 
- Shubhang Kaushik <shubhang@os.amperecomputing.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761851978; l=2430;
- i=shubhang@os.amperecomputing.com; s=20251010; h=from:subject:message-id;
- bh=q1httNTq42jPnpET+Sx8sWschV5NJ0NnZZCoUwuq6j4=;
- b=LVoAUrJlhLEI/Uwv5GFzSfwnnGQrFv7lbdagNGPHLpvykljZEFL7Rxiwv3UJIV49hTGokc4sh
- synCF+87bmECw/RLhxZGyqs3O3U+1YMQs38BlLtpLk0OcK+nJWnNvio
-X-Developer-Key: i=shubhang@os.amperecomputing.com; a=ed25519;
- pk=jc8YIRvxPSyJaBRe5y+a4N0RXKBUEcAh8+OFhlROXPY=
-X-Endpoint-Received: by B4 Relay for shubhang@os.amperecomputing.com/20251010 with auth_id=539
+X-B4-Tracking: v=1; b=H4sIAN9uBGkC/23O2wqDMAyA4VeRXq/DxkO3Xe09xpC2phpQK1XKN
+ vHdV4XBBrv8A/mShU3oCSd2SRbmMdBEboiRHRJmWjU0yKmOzSCFQqSQcjfO1NMLq7HrqtpTQM+
+ lRnsWJ1maXLC4OXq09NjV2z12S9Ps/HM/EsQ2/Xjw1wuCp1yBLCSA1aXNr6rvXEPmaFzPNjHAl
+ 5L9/ypAVDIJMrOFhkLpX2Vd1zf3oyAs/gAAAA==
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jerome Brunet <jbrunet@baylibre.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Chuan Liu <chuan.liu@amlogic.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761898227; l=3924;
+ i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
+ bh=EIXHJpDNgd4/dzJhbSBB4YpUTUTgFGHOzNPZSvMfSdo=;
+ b=E2xrDs0kzXWia5FQI+8iHPTNFBraPMo5rij9PqIA1dpWE4C4gew9KKfjOfDZ6+XiSjBgfC21D
+ mHNmULzDasbDVbyPXl/SLksCIf31EvxUgsOkalRBhrslYxPNjPNqJHj
+X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
+ pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
+X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When Energy Aware Scheduling (EAS) is enabled, a task waking up on a
-sibling CPU might migrate away from its previous CPU even if that CPU
-is not overutilized. This sacrifices cache locality and introduces
-unnecessary migration overhead.
+This patch series consists of four topics involving the amlogic PLL
+driver:
+- Fix out-of-range PLL frequency setting.
+- Improve the issue of PLL lock failures.
+- Add handling for PLL lock failure.
+- Optimize PLL enable timing.
 
-This patch refines the wakeup heuristic in `select_idle_sibling()`. If
-EAS is active and the task's previous CPU (`prev`) is not overutilized,
-the scheduler will prioritize waking the task on `prev`, avoiding an
-unneeded migration and preserving cache-hotness.
+For easier review and management, these are submitted as a single
+patch series.
+
+The PLL timing optimization changes were merged into our internal
+repository quite some time ago and have been verified on a large
+number of SoCs:
+- Already supported upstream: G12A, G12B, SM1, S4, A1, C3.
+- Planned for upstream support: T7, A5, A4, S7, S7D, S6, etc.
+
+Based on the upstream code base, I have performed functional testing
+on G12A, A1, A5, A4, T7, S7, S7D, and S6, all of which passed.
+
+Additionally, stress testing using scripts was conducted on A5 and
+A1, with over 40,000 and 50,000 iterations respectively, and no
+abnormalities were observed. Below is a portion of the stress test
+log (CLOCK_ALLOW_WRITE_DEBUGFS has been manually enabled):
+
+- For A5:
+  # echo 491520000 > /sys/kernel/debug/clk/hifi_pll/clk_rate
+  # cnt=0
+  # while true; do
+  >     echo "------------ cnt=$cnt -----------"
+  >     echo 1 > /sys/kernel/debug/clk/hifi_pll/clk_prepare_enable
+  >     en=$(cat /sys/kernel/debug/clk/hifi_pll/clk_prepare_enable 2>/dev/null)
+  >     if [ "$en" != "1" ]; then
+  >         echo "[ERROR] PLL enable test failed! (clk_prepare_enable=$en)"
+  >         break
+  >     fi
+  > 
+  >     echo 0 > /sys/kernel/debug/clk/hifi_pll/clk_prepare_enable
+  >     cnt=$((cnt + 1))
+  >     echo -e "sleep time: 1 s."
+  >     sleep 1
+  > done &
+  # ------------ cnt=0 -----------
+  sleep time: 1 s.
+  ------------ cnt=1 -----------
+  sleep time: 1 s.
+  ------------ cnt=2 -----------
+  sleep time: 1 s.
+  ...
+  ------------ cnt=42076 -----------
+  sleep time: 1 s.
+
+- For A1:
+  # echo 983040000 > /sys/kernel/debug/clk/hifi_pll/clk_rate
+  # cnt=0
+  # while true; do
+  >     echo "------------ cnt=$cnt -----------"
+  >     echo 1 > /sys/kernel/debug/clk/hifi_pll/clk_prepare_enable
+  >     en=$(cat /sys/kernel/debug/clk/hifi_pll/clk_prepare_enable 2>/dev/null)
+  >     if [ "$en" != "1" ]; then
+  >         echo "[ERROR] PLL enable test failed! (clk_prepare_enable=$en)"
+  >         break
+  >     fi
+  > 
+  >     echo 0 > /sys/kernel/debug/clk/hifi_pll/clk_prepare_enable
+  >     cnt=$((cnt + 1))
+  >     echo -e "sleep time: 1 s."
+  >     sleep 1
+  > done &
+  # ------------ cnt=0 -----------
+  sleep time: 1 s.
+  ------------ cnt=1 -----------
+  sleep time: 1 s.
+  ------------ cnt=2 -----------
+  sleep time: 1 s.
+  ...
+  ------------ cnt=55051 -----------
+  sleep time: 1 s.
+
+Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+---
+Changes in v3:
+- Fix some formatting issues.
+- Move the 20 us delay after reset into the corresponding if
+condition (no delay is needed if there is no reset).
+- Move the code that releases rst back to execute before current_en.
+- Remove the patch that changes the active level of l_detect.
+- Link to v2: https://lore.kernel.org/r/20251030-optimize_pll_driver-v2-0-37273f5b25ab@amlogic.com
+
+Changes in v2:
+- Modify the judgment condition of 'm' out of range.
+- Split the PLL timing optimization patch to make it easier to review.
+- Link to v1: https://lore.kernel.org/r/20251022-optimize_pll_driver-v1-0-a275722fb6f4@amlogic.com
 
 ---
-v2:
-- Addressed reviewer comments to handle this special condition
-  within the selection logic, prioritizing the
-  previous CPU if not overutilized for EAS.
-- Link to v1: https://lore.kernel.org/all/20251017-b4-sched-cfs-refactor-propagate-v1-1-1eb0dc5b19b3@os.amperecomputing.com/
+Chuan Liu (4):
+      clk: amlogic: Fix out-of-range PLL frequency setting
+      clk: amlogic: Improve the issue of PLL lock failures
+      clk: amlogic: Add handling for PLL lock failure
+      clk: amlogic: Optimize PLL enable timing
 
-Signed-off-by: Shubhang Kaushik <shubhang@os.amperecomputing.com>
+ drivers/clk/meson/clk-pll.c | 64 +++++++++++++++++++++++++++------------------
+ 1 file changed, 39 insertions(+), 25 deletions(-)
 ---
- kernel/sched/fair.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
-
-diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
-index 25970dbbb27959bc130d288d5f80677f75f8db8b..ac94463627778f09522fb5420f67b903a694ad4d 100644
---- a/kernel/sched/fair.c
-+++ b/kernel/sched/fair.c
-@@ -7847,9 +7847,7 @@ static int select_idle_sibling(struct task_struct *p, int prev, int target)
- 	    asym_fits_cpu(task_util, util_min, util_max, target))
- 		return target;
- 
--	/*
--	 * If the previous CPU is cache affine and idle, don't be stupid:
--	 */
-+	/* Reschedule on an idle, cache-sharing sibling to preserve affinity: */
- 	if (prev != target && cpus_share_cache(prev, target) &&
- 	    (available_idle_cpu(prev) || sched_idle_cpu(prev)) &&
- 	    asym_fits_cpu(task_util, util_min, util_max, prev)) {
-@@ -7861,6 +7859,14 @@ static int select_idle_sibling(struct task_struct *p, int prev, int target)
- 		prev_aff = prev;
- 	}
- 
-+	/*
-+	 * If the previous CPU is not overutilized, prefer it for cache locality.
-+	 * This prevents migration away from a cache-hot CPU that can still
-+	 * handle the task without causing an overload.
-+	 */
-+	if (sched_energy_enabled() && !cpu_overutilized(prev))
-+		return prev;
-+
- 	/*
- 	 * Allow a per-cpu kthread to stack with the wakee if the
- 	 * kworker thread and the tasks previous CPUs are the same.
-
----
-base-commit: e53642b87a4f4b03a8d7e5f8507fc3cd0c595ea6
-change-id: 20251030-b4-follow-up-ff03b4533a2d
+base-commit: 01f3a6d1d59b8e25a6de243b0d73075cf0415eaf
+change-id: 20251020-optimize_pll_driver-7bef91876c41
 
 Best regards,
 -- 
-Shubhang Kaushik <shubhang@os.amperecomputing.com>
+Chuan Liu <chuan.liu@amlogic.com>
 
