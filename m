@@ -1,73 +1,111 @@
-From: Moritz Zielke <moritz.zielke@gmail.com>
-Date: Fri, 31 Oct 2025 10:51:41 +0100
-Subject: [PATCH v2] rust: of: replace `core::mem::zeroed` with
- `pin_init::zeroed`
+From: Hrishabh Rajput <hrishabh.rajput@oss.qualcomm.com>
+Subject: [PATCH v4 0/2] Add support for Gunyah Watchdog
+Date: Fri, 31 Oct 2025 10:18:12 +0000
+Message-Id: <20251031-gunyah_watchdog-v4-0-7abb1ee11315@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251031-zeroed-of-rs-v2-1-f89ff71e943e@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAKyGBGkC/3WMzQrCMBCEX6Xs2ZX8aBVPvof0EJNtu2Ab2UhQS
- 97dtHeZ0zfDfAskEqYEl2YBocyJ41zB7Brwo5sHQg6VwShz1Moq/JJEChh7lISupXvttfX2BPX
- yFOr5veluXeWR0yvKZ7NnvbZ/RFljjT+0YZ3Nma7D5Pix93GCrpTyA1wqvbyoAAAA
-X-Change-ID: 20251030-zeroed-of-rs-a6eb25113c37
-To: Rob Herring <robh@kernel.org>, Saravana Kannan <saravanak@google.com>, 
- Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
- Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Andreas Hindborg <a.hindborg@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
- Trevor Gross <tmgross@umich.edu>, Danilo Krummrich <dakr@kernel.org>
-Cc: Benno Lossin <lossin@kernel.org>, devicetree@vger.kernel.org, 
- rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Moritz Zielke <moritz.zielke@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761904321; l=1602;
- i=moritz.zielke@gmail.com; s=20251030; h=from:subject:message-id;
- bh=OnB3GPr22kqGecRkpj0YRj3co22bJtrQhNK1vieBomQ=;
- b=Tufu5yszhlo2brG2pyeFgV4tCFZzPlNkr6s0GwoPI8AGFxG3XMtjYWQHPa0vo82qs48v2pVfR
- FfQiIru0qadDaT+DakTg6GW4g6dhFxWCKILAYH/bdgswfukqVuONS4W
-X-Developer-Key: i=moritz.zielke@gmail.com; a=ed25519;
- pk=TFwYpZ0YPwD8idGzvlafpvAW4DDA0FrkMEjcfZVXkN0=
-X-Endpoint-Received: by B4 Relay for moritz.zielke@gmail.com/20251030 with auth_id=558
+X-B4-Tracking: v=1; b=H4sIAOSMBGkC/3XPTQqDMBAF4KtI1o1MfhTTVe9RSolmqoFqWqO2I
+ t690UUpWDcDb+B9w0zEY2vRk2M0kRYH661rQpCHiBSVbkqk1oRMOPAEFAha9s2oq+tLd0VlXEm
+ 54alUUmTIFQmtR4s3+17F8yXkyvrOteN6YGDLdt8aGAUqNKYKEgEo85PzPn72+l64uo7DIAs58
+ C/DANItwymjuVJGMiMTmcAOI34Ynm0ZERhMDUMd3suZ+cPM8/wB4e0TOUMBAAA=
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Wim Van Sebroeck <wim@linux-watchdog.org>, 
+ Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-watchdog@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Pavan Kondeti <pavan.kondeti@oss.qualcomm.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Hrishabh Rajput <hrishabh.rajput@oss.qualcomm.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761906073; l=3387;
+ i=hrishabh.rajput@oss.qualcomm.com; s=20250903; h=from:subject:message-id;
+ bh=acn91U54LoPQMMs8xoiZSrTiOMoYJO9PhIpHKdmkwoM=;
+ b=CwgQim5PY7Ls6s+OyZ5Ux3KurdQGoNnBd4uhwbVzoWN6aJ53nJaD/E9VIOR2f+T9z/rDWeagV
+ bCSaMaypllnD/eOew5BNZtCoDf6O4jopKNE2BDSjsKl+lsjU7/VxMFm
+X-Developer-Key: i=hrishabh.rajput@oss.qualcomm.com; a=ed25519;
+ pk=syafMitrjr3b/OYAtA2Im06AUb3fxZY2vJ/t4iCPmgw=
+X-Endpoint-Received: by B4 Relay for hrishabh.rajput@oss.qualcomm.com/20250903 with auth_id=509
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-All types in `bindings` implement `Zeroable` if they can, so use
-`pin_init::zeroed` instead of relying on `unsafe` code.
+Gunyah is a Type-I hypervisor which was introduced in the patch series
+[1]. It is an open source hypervisor. The source repo is available at
+[2].
 
-If this ends up not compiling in the future, something in bindgen or on
-the C side changed and is most likely incorrect.
+The Gunyah Hypervisor doesn't allow its Virtual Machines to directly
+access the MMIO watchdog. It either provides the fully emulated MMIO
+based watchdog interface or the SMC-based watchdog interface depending
+on the hypervisor configuration.
+The SMC-based watchdog follows ARM's SMC Calling Convention (SMCCC)
+version 1.1 and uses Vendor Specific Hypervisor Service Calls space.
 
-Link: https://github.com/Rust-for-Linux/linux/issues/1189
-Suggested-by: Benno Lossin <lossin@kernel.org>
-Signed-off-by: Moritz Zielke <moritz.zielke@gmail.com>
+This patch series adds support for the SMC-based watchdog interface
+provided by the Gunyah Hypervisor.
+
+This series is tested on SM8750 platform.
+
+[1]
+https://lore.kernel.org/all/20240222-gunyah-v17-0-1e9da6763d38@quicinc.com/
+
+[2]
+https://github.com/quic/gunyah-hypervisor
+
+Signed-off-by: Hrishabh Rajput <hrishabh.rajput@oss.qualcomm.com>
 ---
+Changes in v4:
+- Move the contents of gunyah_wdt_init() to qcom_smem_probe() to make
+  sure we're registering the watchdog only on the Qualcomm devices.
+- Link to v3: https://lore.kernel.org/r/20251028-gunyah_watchdog-v3-1-e6d1ea438b1d@oss.qualcomm.com
+
+Changes in v3:
+- Move back to platform driver model. In module init, determine if we're
+  running on a Qualcomm device and there is no supported memory-mapped
+  watchdog present. Then proceed to register platform device and driver
+  for SMC-based Gunyah watchdog.
+- To determine if we're running on a Qualcomm device we're checking the
+  presence of "qcom,smem" compatible devicetree node. As an alternative,
+  we also tried using socinfo for the same purpose. When both
+  gunyah_wdt and socinfo drivers were made built-in, it couldn't be
+  ensured that the socinfo driver probed successfully before gunyah_wdt
+  init was called. Hence, we resorted to the devicetree node approach.
+- Limit the errors listed in gunyah_error to the ones that can be
+  produced by the driver.
+- Link to v2: https://lore.kernel.org/r/20251006-gunyah_watchdog-v2-1-b99d41d45450@oss.qualcomm.com
+
 Changes in v2:
-- Rearrange tags and `---` so tags don't get lost when patch is applied
-- Link to v1: https://lore.kernel.org/r/20251030-zeroed-of-rs-v1-1-1c46d025128e@gmail.com
----
- rust/kernel/of.rs | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
-
-diff --git a/rust/kernel/of.rs b/rust/kernel/of.rs
-index 58b20c367..cfcfbb1fd 100644
---- a/rust/kernel/of.rs
-+++ b/rust/kernel/of.rs
-@@ -35,9 +35,7 @@ impl DeviceId {
-     /// Create a new device id from an OF 'compatible' string.
-     pub const fn new(compatible: &'static CStr) -> Self {
-         let src = compatible.to_bytes_with_nul();
--        // Replace with `bindings::of_device_id::default()` once stabilized for `const`.
--        // SAFETY: FFI type is valid to be zero-initialized.
--        let mut of: bindings::of_device_id = unsafe { core::mem::zeroed() };
-+        let mut of: bindings::of_device_id = pin_init::zeroed();
- 
-         // TODO: Use `copy_from_slice` once stabilized for `const`.
-         let mut i = 0;
+- Move away from platform driver model since the devicetree overlay does
+  not happen by default.
+  See https://lore.kernel.org/all/91002189-9d9e-48a2-8424-c42705fed3f8@quicinc.com/
+- Only when MMIO-based watchdog device is absent in the devicetree,
+  proceed to detect SMC-based watchdog using GUNYAH_WDT_STATUS SMC and
+  initialize if SMC returns success.
+- Implement pm notifiers as gunyah_wdt is no longer a platform driver so
+  dev_pm_ops cannot be used.
+- Pretimeout IRQ is no longer supported.
+- Remove struct gunyah_wdt since it is not required.
+- Move the contents of gunyah_errno.h to gunyah_wdt.c.
+- Link to v1: https://lore.kernel.org/r/20250903-gunyah_watchdog-v1-0-3ae690530e4b@oss.qualcomm.com
 
 ---
-base-commit: 3b1728b74a52e8489f0c7bfd3d682572dd9901de
-change-id: 20251030-zeroed-of-rs-a6eb25113c37
+Hrishabh Rajput (2):
+      soc: qcom: smem: Register gunyah watchdog device
+      watchdog: Add driver for Gunyah Watchdog
+
+ MAINTAINERS                   |   1 +
+ drivers/soc/qcom/smem.c       |  37 +++++++
+ drivers/watchdog/Kconfig      |  14 +++
+ drivers/watchdog/Makefile     |   1 +
+ drivers/watchdog/gunyah_wdt.c | 249 ++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 302 insertions(+)
+---
+base-commit: 038d61fd642278bab63ee8ef722c50d10ab01e8f
+change-id: 20250903-gunyah_watchdog-2d2649438e29
 
 Best regards,
 -- 
-Moritz Zielke <moritz.zielke@gmail.com>
+Hrishabh Rajput <hrishabh.rajput@oss.qualcomm.com>
 
