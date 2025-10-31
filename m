@@ -1,62 +1,78 @@
-From: Remi Buisson <remi.buisson@tdk.com>
-Date: Fri, 31 Oct 2025 10:58:02 +0000
-Subject: [PATCH] iio: imu: inv_icm45600: Initializes
- inv_icm45600_buffer_postdisable sleep
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH v3 00/10] iio: dac: ad5446: Refactor and add support for
+ AD5542
+Date: Fri, 31 Oct 2025 12:31:21 +0000
+Message-Id: <20251031-dev-add-ad5542-v3-0-d3541036c0e6@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251031-icm45600_fix_buffer_sleep_init-v1-1-924efbb165e8@tdk.com>
-X-B4-Tracking: v=1; b=H4sIADmWBGkC/x2NUQqDMBAFryL73cAmaiq9SilB7dt2oU0lqSKId
- zf4OTDMbJSRFJlu1UYJi2b9xQL2UtH47uMLRp+FybFrLdfW6PhtWs8cRNcwzCJIIX+AKWjUv+n
- YO/Hgq3QNlciUUMRzcH/s+wHd5zjpcAAAAA==
-X-Change-ID: 20251031-icm45600_fix_buffer_sleep_init-8062f6e07f84
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIABmsBGkC/3WMvQ7CIBRGX6Vh9hr+2oKT72EcKNy2JAoGDNE0f
+ XdpJx0cvuF8yTkLyZg8ZnJqFpKw+OxjqCAODbGzCROCd5UJp7xllElwWMA4V9e2koOySgvpUFF
+ EUqVHwtG/9uDlWnn2+RnTe+8Xtr1/U4UBAzs6pns3UGHo2QRzi9PRxjvZWoV/+VxsnpQdDD44H
+ 6YMhQMF3o9m0EozVN1PYF3XD1d62QvuAAAA
+X-Change-ID: 20251014-dev-add-ad5542-8c8934de80ee
+To: linux-iio@vger.kernel.org
+Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
  Andy Shevchenko <andy@kernel.org>
-Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
- linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Remi Buisson <remi.buisson@tdk.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761908285; l=1222;
- i=remi.buisson@tdk.com; s=20250411; h=from:subject:message-id;
- bh=VpdMvsXgKn/COc93uRlwlfHH10F/tvvmLU5wsUZM+qk=;
- b=88NM6IdkF46e5D0ne2znApGOCl5VOkNTq5eKGAlANfUloG09rdBKjBok1Q/3dI34AXfq+nl2o
- SuVaGkLinm2BoJReF8U0Pu5E0VLPHGBQbhxDkzb/zzK+jvBIHl6m1FJ
-X-Developer-Key: i=remi.buisson@tdk.com; a=ed25519;
- pk=yDVMi4C7RpXN4dififo42A7fDDt3THYzoZoNq9lUZuo=
-X-Endpoint-Received: by B4 Relay for remi.buisson@tdk.com/20250411 with auth_id=372
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761913895; l=2096;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=jWiOqwF7DWrzPKoJfUyuoXIXrfNLEtkDJ9x6KviWuyA=;
+ b=HdkM0cxlCm7NuBbo9wGO1HJgCRkwWc5wkUaHkJt+OFwAO9XQM9LcDX4iQ7IQ/v36fkuElw8aS
+ Ot1UkRIHWfjAFYDMrhM9iDZ1Y0Gt4xM1v5yfiWjzYKmV5ZPLOMqDEzs
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fixes: 06674a72cf7a ("iio: imu: inv_icm45600: add buffer support in iio devices")
----
-The sleep variable in inv_icm45600_buffer_postdisable could be used without being
-assigned in case f error. It must be initialized to 0 by default.
+Alright, what was suposed to be a simple one liner patch ended up being
+a full refactor (modernization) of the whole thing :). I think the
+changes are anyways fairly simple so hopefully nothing was broken.
 
-Signed-off-by: Remi Buisson <remi.buisson@tdk.com>
----
- drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
-index 2efcc177f9d60a6a2509e448c0ddaf4b9e1fd755..bb8382feddc0fd882a6be2ce5e4fe77ab68f13fd 100644
---- a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
-+++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
-@@ -357,7 +357,7 @@ static int inv_icm45600_buffer_postdisable(struct iio_dev *indio_dev)
- 	struct device *dev = regmap_get_device(st->map);
- 	unsigned int sensor;
- 	unsigned int *watermark;
--	unsigned int sleep;
-+	unsigned int sleep = 0;
- 	int ret;
- 
- 	if (indio_dev == st->indio_gyro) {
+I'm also aware of the checkpatch failure in Patch 6 ("iio: dac: ad5446:
+Separate I2C/SPI into different drivers") but I'm really not seeing the
+added value of adding the kconfig help text to the core symbol. 
 
 ---
-base-commit: 70437bbd7529e9860fb7f0c92a89e0e6abaa994e
-change-id: 20251031-icm45600_fix_buffer_sleep_init-8062f6e07f84
+Changes in v3:
+- Patch 1:
+   * Changed commit message as suggested by Conor;
+   * Dropped formatting on the binding description;
+   * Used typical Analog title in MAINTAINERS entry.
+- Patch 2-4, 6-9
+   * New patches.
+- Link to v2: https://lore.kernel.org/r/20251023-ad5446-bindings-v2-0-27fab9891e86@analog.com
 
-Best regards,
--- 
-Remi Buisson <remi.buisson@tdk.com>
+---
+Michael Hennerich (1):
+      iio: dac: ad5446: Add AD5542 to the spi id table
+
+Nuno Sá (9):
+      dt-bindings: iio: dac: Document AD5446 and similar devices
+      iio: dac: ad5446: Use DMA safe buffer for transfers
+      iio: dac: ad5446: Don't ignore missing regulator
+      iio: dac: ad5446: Move to single chip_info structures
+      iio: dac: ad5456: Add missing DT compatibles
+      iio: dac: ad5446: Separate I2C/SPI into different drivers
+      iio: dac: ad5446: Make use of devm_mutex_init()
+      iio: dac: ad5446: Make use of the cleanup helpers
+      iio: dac: ad5446: Fix coding style issues
+
+ .../devicetree/bindings/iio/dac/adi,ad5446.yaml    | 138 ++++++
+ MAINTAINERS                                        |  12 +
+ drivers/iio/dac/Kconfig                            |  31 +-
+ drivers/iio/dac/Makefile                           |   2 +
+ drivers/iio/dac/ad5446-i2c.c                       |  99 ++++
+ drivers/iio/dac/ad5446-spi.c                       | 254 +++++++++++
+ drivers/iio/dac/ad5446.c                           | 498 +++------------------
+ drivers/iio/dac/ad5446.h                           |  76 ++++
+ 8 files changed, 663 insertions(+), 447 deletions(-)
+---
+base-commit: 4b17a60d1e1c2d9d2ccbd58642f6f4ac2fa364ba
+change-id: 20251014-dev-add-ad5542-8c8934de80ee
+--
+
+Thanks!
+- Nuno Sá
 
