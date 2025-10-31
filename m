@@ -1,78 +1,207 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Subject: [PATCH v3 00/10] iio: dac: ad5446: Refactor and add support for
- AD5542
-Date: Fri, 31 Oct 2025 12:31:21 +0000
-Message-Id: <20251031-dev-add-ad5542-v3-0-d3541036c0e6@analog.com>
+Date: Fri, 31 Oct 2025 12:31:22 +0000
+Subject: [PATCH v3 01/10] dt-bindings: iio: dac: Document AD5446 and
+ similar devices
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIABmsBGkC/3WMvQ7CIBRGX6Vh9hr+2oKT72EcKNy2JAoGDNE0f
- XdpJx0cvuF8yTkLyZg8ZnJqFpKw+OxjqCAODbGzCROCd5UJp7xllElwWMA4V9e2koOySgvpUFF
- EUqVHwtG/9uDlWnn2+RnTe+8Xtr1/U4UBAzs6pns3UGHo2QRzi9PRxjvZWoV/+VxsnpQdDD44H
- 6YMhQMF3o9m0EozVN1PYF3XD1d62QvuAAAA
-X-Change-ID: 20251014-dev-add-ad5542-8c8934de80ee
+Message-Id: <20251031-dev-add-ad5542-v3-1-d3541036c0e6@analog.com>
+References: <20251031-dev-add-ad5542-v3-0-d3541036c0e6@analog.com>
+In-Reply-To: <20251031-dev-add-ad5542-v3-0-d3541036c0e6@analog.com>
 To: linux-iio@vger.kernel.org
 Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
  Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
  Andy Shevchenko <andy@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761913895; l=2096;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761913895; l=5117;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=jWiOqwF7DWrzPKoJfUyuoXIXrfNLEtkDJ9x6KviWuyA=;
- b=HdkM0cxlCm7NuBbo9wGO1HJgCRkwWc5wkUaHkJt+OFwAO9XQM9LcDX4iQ7IQ/v36fkuElw8aS
- Ot1UkRIHWfjAFYDMrhM9iDZ1Y0Gt4xM1v5yfiWjzYKmV5ZPLOMqDEzs
+ bh=ilsaRzkJ8yfckQSj+fp3nBx94rCUsN0wDViEmHKqLcY=;
+ b=LW+YfTsxc66zAfFngVgjqxsnZge7ZEacFrgQfSweDqr7iazsWVFUv1z9wTitpxAVSxrwQy1Cl
+ pGC4lexVyEyD5goBvOC6bEEuhHkZL9L2nmNtm8+256MLM6R0c1wN8Y0
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Alright, what was suposed to be a simple one liner patch ended up being
-a full refactor (modernization) of the whole thing :). I think the
-changes are anyways fairly simple so hopefully nothing was broken.
+Add device tree binding documentation for the Analog Devices AD5446
+family of Digital-to-Analog Converters and derivative devices from
+Texas Instruments. There's both SPI and I2C interfaces and feature
+resolutions ranging from 8-bit to 16-bit.
 
-I'm also aware of the checkpatch failure in Patch 6 ("iio: dac: ad5446:
-Separate I2C/SPI into different drivers") but I'm really not seeing the
-added value of adding the kconfig help text to the core symbol. 
+The binding covers 29 derivatives devices including the AD5446 series,
+AD5600 series, AD5620/5640/5660 variants with different voltage ranges,
+and TI DAC081s101/DAC101s101/DAC121s101 devices.
 
+Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
-Changes in v3:
-- Patch 1:
-   * Changed commit message as suggested by Conor;
-   * Dropped formatting on the binding description;
-   * Used typical Analog title in MAINTAINERS entry.
-- Patch 2-4, 6-9
-   * New patches.
-- Link to v2: https://lore.kernel.org/r/20251023-ad5446-bindings-v2-0-27fab9891e86@analog.com
+ .../devicetree/bindings/iio/dac/adi,ad5446.yaml    | 138 +++++++++++++++++++++
+ MAINTAINERS                                        |   8 ++
+ 2 files changed, 146 insertions(+)
 
----
-Michael Hennerich (1):
-      iio: dac: ad5446: Add AD5542 to the spi id table
+diff --git a/Documentation/devicetree/bindings/iio/dac/adi,ad5446.yaml b/Documentation/devicetree/bindings/iio/dac/adi,ad5446.yaml
+new file mode 100644
+index 000000000000..2669d2c4948b
+--- /dev/null
++++ b/Documentation/devicetree/bindings/iio/dac/adi,ad5446.yaml
+@@ -0,0 +1,138 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/iio/dac/adi,ad5446.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Analog Devices AD5446 and similar DACs
++
++maintainers:
++  - Michael Hennerich <michael.hennerich@analog.com>
++  - Nuno Sá <nuno.sa@analog.com>
++
++description:
++  Digital to Analog Converter devices supporting both SPI and I2C interfaces.
++  These devices feature a range of resolutions from 8-bit to 16-bit.
++
++properties:
++  compatible:
++    oneOf:
++      - description: SPI DACs
++        enum:
++          - adi,ad5300
++          - adi,ad5310
++          - adi,ad5320
++          - adi,ad5444
++          - adi,ad5446
++          - adi,ad5450
++          - adi,ad5451
++          - adi,ad5452
++          - adi,ad5453
++          - adi,ad5512a
++          - adi,ad5541a
++          - adi,ad5542
++          - adi,ad5542a
++          - adi,ad5543
++          - adi,ad5553
++          - adi,ad5600
++          - adi,ad5601
++          - adi,ad5611
++          - adi,ad5621
++          - adi,ad5641
++          - adi,ad5620-2500
++          - adi,ad5620-1250
++          - adi,ad5640-2500
++          - adi,ad5640-1250
++          - adi,ad5660-2500
++          - adi,ad5660-1250
++          - adi,ad5662
++          - ti,dac081s101
++          - ti,dac101s101
++          - ti,dac121s101
++      - description: I2C DACs
++        enum:
++          - adi,ad5301
++          - adi,ad5311
++          - adi,ad5321
++          - adi,ad5602
++          - adi,ad5612
++          - adi,ad5622
++
++  reg:
++    maxItems: 1
++
++  vcc-supply:
++    description:
++      Reference voltage supply. If not supplied, devices with internal
++      voltage reference will use that.
++
++required:
++  - compatible
++  - reg
++
++allOf:
++  - if:
++      properties:
++        compatible:
++          contains:
++            enum:
++              - adi,ad5300
++              - adi,ad5310
++              - adi,ad5320
++              - adi,ad5444
++              - adi,ad5446
++              - adi,ad5450
++              - adi,ad5451
++              - adi,ad5452
++              - adi,ad5453
++              - adi,ad5512a
++              - adi,ad5541a
++              - adi,ad5542
++              - adi,ad5542a
++              - adi,ad5543
++              - adi,ad5553
++              - adi,ad5600
++              - adi,ad5601
++              - adi,ad5611
++              - adi,ad5621
++              - adi,ad5641
++              - adi,ad5620-2500
++              - adi,ad5620-1250
++              - adi,ad5640-2500
++              - adi,ad5640-1250
++              - adi,ad5660-2500
++              - adi,ad5660-1250
++              - adi,ad5662
++              - ti,dac081s101
++              - ti,dac101s101
++              - ti,dac121s101
++    then:
++      allOf:
++        - $ref: /schemas/spi/spi-peripheral-props.yaml#
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    spi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        dac@0 {
++            compatible = "adi,ad5446";
++            reg = <0>;
++            vcc-supply = <&dac_vref>;
++        };
++    };
++  - |
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        dac@42 {
++            compatible = "adi,ad5622";
++            reg = <0x42>;
++            vcc-supply = <&dac_vref>;
++        };
++    };
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 8082081ea742..9654f0c25423 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -440,6 +440,14 @@ W:	http://wiki.analog.com/AD5398
+ W:	https://ez.analog.com/linux-software-drivers
+ F:	drivers/regulator/ad5398.c
+ 
++AD5446	ANALOG DEVICES INC AD5446 DAC DRIVER
++M:	Michael Hennerich <michael.hennerich@analog.com>
++M:	Nuno Sá <nuno.sa@analog.com>
++L:	linux-iio@vger.kernel.org
++S:	Supported
++W:	https://ez.analog.com/linux-software-drivers
++F:	Documentation/devicetree/bindings/iio/dac/adi,ad5446.yaml
++
+ AD714X CAPACITANCE TOUCH SENSOR DRIVER (AD7142/3/7/8/7A)
+ M:	Michael Hennerich <michael.hennerich@analog.com>
+ S:	Supported
 
-Nuno Sá (9):
-      dt-bindings: iio: dac: Document AD5446 and similar devices
-      iio: dac: ad5446: Use DMA safe buffer for transfers
-      iio: dac: ad5446: Don't ignore missing regulator
-      iio: dac: ad5446: Move to single chip_info structures
-      iio: dac: ad5456: Add missing DT compatibles
-      iio: dac: ad5446: Separate I2C/SPI into different drivers
-      iio: dac: ad5446: Make use of devm_mutex_init()
-      iio: dac: ad5446: Make use of the cleanup helpers
-      iio: dac: ad5446: Fix coding style issues
-
- .../devicetree/bindings/iio/dac/adi,ad5446.yaml    | 138 ++++++
- MAINTAINERS                                        |  12 +
- drivers/iio/dac/Kconfig                            |  31 +-
- drivers/iio/dac/Makefile                           |   2 +
- drivers/iio/dac/ad5446-i2c.c                       |  99 ++++
- drivers/iio/dac/ad5446-spi.c                       | 254 +++++++++++
- drivers/iio/dac/ad5446.c                           | 498 +++------------------
- drivers/iio/dac/ad5446.h                           |  76 ++++
- 8 files changed, 663 insertions(+), 447 deletions(-)
----
-base-commit: 4b17a60d1e1c2d9d2ccbd58642f6f4ac2fa364ba
-change-id: 20251014-dev-add-ad5542-8c8934de80ee
---
-
-Thanks!
-- Nuno Sá
+-- 
+2.51.0
 
