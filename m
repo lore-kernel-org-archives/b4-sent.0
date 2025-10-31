@@ -1,340 +1,71 @@
-From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Fri, 31 Oct 2025 15:06:17 +0100
-Subject: [PATCH v2] arm64: dts: freescale: Add GMAC Ethernet for S32G2 EVB
- and RDB2 and S32G3 RDB3
+From: Rohan G Thomas <rohan.g.thomas@altera.com>
+Subject: [PATCH net-next v2 0/4] net: stmmac: socfpga: Add Agilex5 platform
+ support and enhancements
+Date: Sat, 01 Nov 2025 01:27:06 +0800
+Message-Id: <20251101-agilex5_ext-v2-0-a6b51b4dca4d@altera.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251031-nxp-s32g-boards-v2-1-6e214f247f4e@oss.nxp.com>
-X-B4-Tracking: v=1; b=H4sIAFjCBGkC/3WNwQ6DIBBEf8XsuWtgG8T21P9oPKCAcigYtjE2h
- n8v9d7jm8y8OYBdDo7h3hyQ3RY4pFiBLg1Mi4mzw2ArAwlSUogO474iX2nGMZlsGclK1ZFSo7o
- R1NWanQ/7aXwOlZfA75Q/58Emf+l/1yZRotfCKD32otf+kZjb2mqn9IKhlPIFhRSidrAAAAA=
-To: Chester Lin <chester62515@gmail.com>, 
- Matthias Brugger <mbrugger@suse.com>, 
- Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>, 
- NXP S32 Linux Team <s32@nxp.com>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Richard Cochran <richardcochran@gmail.com>
-Cc: linux-arm-kernel@lists.infradead.org, imx@lists.linux.dev, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- netdev@vger.kernel.org, Enric Balletbo i Serra <eballetb@redhat.com>, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761919608; l=7502;
- i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=Su3BAxA6SBNR4XfbrIKIFNt01TOwYKZFUS6VmQVlP1U=;
- b=i3rydhtY1bWZ9jK1kaeVX90I4TK0PoPRydjO74xv6L9E+8tKUzx7wXKuU/AmDteIv2jnv0hC9
- ip0irIpy+MWCB5GbjNgoRGyXDJ4jXenMIIQ6EYfvwIfB37Aps4SUTOi
-X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
- pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
-X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
+X-B4-Tracking: v=1; b=H4sIAGrxBGkC/22NwQqDMBBEf0X23JRsxEp66n8UKWmy6oKNkgRJk
+ fx7g+cehzfz5oBIgSnCvTkg0M6RV1+DujRgZ+MnEuxqBiVVh1JpYSZeKHcvyklY7N+u77V1NEJ
+ dbIFGzqftCZ6S8LUFQyUzx7SG73mz48n/GncUUqBuEVtVze72MEuiYK52/cBQSvkBxwC0UbEAA
+ AA=
+X-Change-ID: 20251029-agilex5_ext-c17bd779cdef
+To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>, 
+ Richard Cochran <richardcochran@gmail.com>, 
+ Steffen Trumtrar <s.trumtrar@pengutronix.de>
+Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Rohan G Thomas <rohan.g.thomas@altera.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1761931634; l=1421;
+ i=rohan.g.thomas@altera.com; s=20250815; h=from:subject:message-id;
+ bh=t4zIx4Z11X9zS02u+s0yDHEllOpDAKEqSMdLm4SCIRU=;
+ b=8tiYGEzN7w19aqajaofQRjkGf2F3m3eiOWWkDj28bjUqjQj6UIaO4zBm5kbVZIxDz1VNq8w2i
+ dSp1UujxJ92AuHoJwtCC4A5HU1kp3nuDde1lw7H3PS28n7NfeQi3Q6x
+X-Developer-Key: i=rohan.g.thomas@altera.com; a=ed25519;
+ pk=5yZXkXswhfUILKAQwoIn7m6uSblwgV5oppxqde4g4TY=
+X-Endpoint-Received: by B4 Relay for rohan.g.thomas@altera.com/20250815 with auth_id=494
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the Ethernet connection over GMAC controller connected to
-the Micrel KSZ9031 Ethernet RGMII PHY located on the boards.
+This patch series adds support for the Agilex5 EMAC platform to the
+dwmac-socfpga driver.
 
-The mentioned GMAC controller is one of two network controllers
-embedded on the NXP Automotive SoCs S32G2 and S32G3.
+The series includes:
+   - Platform configuration for Agilex5 EMAC
+   - Enabling Time-Based Scheduling (TBS) for Tx queues 6 and 7
+   - Enabling TCP Segmentation Offload(TSO)
+   - Adding hardware-supported cross timestamping using the SMTG IP,
+     allowing precise synchronization between MAC and system time via
+     PTP_SYS_OFFSET_PRECISE.
 
-The supported boards:
- * EVB:  S32G-VNP-EVB with S32G2 SoC
- * RDB2: S32G-VNP-RDB2
- * RDB3: S32G-VNP-RDB3
-
-Tested-by: Enric Balletbo i Serra <eballetb@redhat.com>
-Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+Signed-off-by: Rohan G Thomas <rohan.g.thomas@altera.com>
 ---
 Changes in v2:
- - fixed correct instance orders, include blank lines
- - Link to v1: https://lore.kernel.org/r/20251006-nxp-s32g-boards-v1-1-f70a57b8087f@oss.nxp.com
----
- arch/arm64/boot/dts/freescale/s32g2.dtsi        | 58 ++++++++++++++++++++++++-
- arch/arm64/boot/dts/freescale/s32g274a-evb.dts  | 21 ++++++++-
- arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts | 19 ++++++++
- arch/arm64/boot/dts/freescale/s32g3.dtsi        | 58 ++++++++++++++++++++++++-
- arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts | 21 ++++++++-
- 5 files changed, 173 insertions(+), 4 deletions(-)
-
-diff --git a/arch/arm64/boot/dts/freescale/s32g2.dtsi b/arch/arm64/boot/dts/freescale/s32g2.dtsi
-index d167624d1f0c..6f0a307fbab1 100644
---- a/arch/arm64/boot/dts/freescale/s32g2.dtsi
-+++ b/arch/arm64/boot/dts/freescale/s32g2.dtsi
-@@ -3,7 +3,7 @@
-  * NXP S32G2 SoC family
-  *
-  * Copyright (c) 2021 SUSE LLC
-- * Copyright 2017-2021, 2024 NXP
-+ * Copyright 2017-2021, 2024-2025 NXP
-  */
- 
- #include <dt-bindings/interrupt-controller/arm-gic.h>
-@@ -727,6 +727,62 @@ usdhc0: mmc@402f0000 {
- 			status = "disabled";
- 		};
- 
-+		gmac0: ethernet@4033c000 {
-+			compatible = "nxp,s32g2-dwmac";
-+			reg = <0x4033c000 0x2000>, /* gmac IP */
-+			      <0x4007c004 0x4>;    /* GMAC_0_CTRL_STS */
-+			interrupt-parent = <&gic>;
-+			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
-+			interrupt-names = "macirq";
-+			snps,mtl-rx-config = <&mtl_rx_setup>;
-+			snps,mtl-tx-config = <&mtl_tx_setup>;
-+			status = "disabled";
-+
-+			mtl_rx_setup: rx-queues-config {
-+				snps,rx-queues-to-use = <5>;
-+
-+				queue0 {
-+				};
-+
-+				queue1 {
-+				};
-+
-+				queue2 {
-+				};
-+
-+				queue3 {
-+				};
-+
-+				queue4 {
-+				};
-+			};
-+
-+			mtl_tx_setup: tx-queues-config {
-+				snps,tx-queues-to-use = <5>;
-+
-+				queue0 {
-+				};
-+
-+				queue1 {
-+				};
-+
-+				queue2 {
-+				};
-+
-+				queue3 {
-+				};
-+
-+				queue4 {
-+				};
-+			};
-+
-+			gmac0mdio: mdio {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+				compatible = "snps,dwmac-mdio";
-+			};
-+		};
-+
- 		gic: interrupt-controller@50800000 {
- 			compatible = "arm,gic-v3";
- 			reg = <0x50800000 0x10000>,
-diff --git a/arch/arm64/boot/dts/freescale/s32g274a-evb.dts b/arch/arm64/boot/dts/freescale/s32g274a-evb.dts
-index c4a195dd67bf..fb4002a2aa67 100644
---- a/arch/arm64/boot/dts/freescale/s32g274a-evb.dts
-+++ b/arch/arm64/boot/dts/freescale/s32g274a-evb.dts
-@@ -1,7 +1,7 @@
- // SPDX-License-Identifier: GPL-2.0-or-later OR MIT
- /*
-  * Copyright (c) 2021 SUSE LLC
-- * Copyright 2019-2021, 2024 NXP
-+ * Copyright 2019-2021, 2024-2025 NXP
-  */
- 
- /dts-v1/;
-@@ -14,6 +14,7 @@ / {
- 	compatible = "nxp,s32g274a-evb", "nxp,s32g2";
- 
- 	aliases {
-+		ethernet0 = &gmac0;
- 		serial0 = &uart0;
- 	};
- 
-@@ -43,3 +44,21 @@ &usdhc0 {
- 	no-1-8-v;
- 	status = "okay";
- };
-+
-+&gmac0 {
-+	clocks = <&clks 24>, <&clks 19>, <&clks 18>, <&clks 15>;
-+	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
-+	phy-mode = "rgmii-id";
-+	phy-handle = <&rgmiiaphy4>;
-+	status = "okay";
-+};
-+
-+&gmac0mdio {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	/* KSZ 9031 on RGMII */
-+	rgmiiaphy4: ethernet-phy@4 {
-+		reg = <4>;
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts b/arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts
-index 4f58be68c818..b632b0ffd6a8 100644
---- a/arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts
-+++ b/arch/arm64/boot/dts/freescale/s32g274a-rdb2.dts
-@@ -14,6 +14,7 @@ / {
- 	compatible = "nxp,s32g274a-rdb2", "nxp,s32g2";
- 
- 	aliases {
-+		ethernet0 = &gmac0;
- 		serial0 = &uart0;
- 		serial1 = &uart1;
- 	};
-@@ -77,3 +78,21 @@ &usdhc0 {
- 	no-1-8-v;
- 	status = "okay";
- };
-+
-+&gmac0 {
-+	clocks = <&clks 24>, <&clks 19>, <&clks 18>, <&clks 15>;
-+	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
-+	phy-mode = "rgmii-id";
-+	phy-handle = <&rgmiiaphy1>;
-+	status = "okay";
-+};
-+
-+&gmac0mdio {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	/* KSZ 9031 on RGMII */
-+	rgmiiaphy1: ethernet-phy@1 {
-+		reg = <1>;
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/freescale/s32g3.dtsi b/arch/arm64/boot/dts/freescale/s32g3.dtsi
-index be3a582ebc1b..ccb761137273 100644
---- a/arch/arm64/boot/dts/freescale/s32g3.dtsi
-+++ b/arch/arm64/boot/dts/freescale/s32g3.dtsi
-@@ -1,6 +1,6 @@
- // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
- /*
-- * Copyright 2021-2024 NXP
-+ * Copyright 2021-2025 NXP
-  *
-  * Authors: Ghennadi Procopciuc <ghennadi.procopciuc@nxp.com>
-  *          Ciprian Costea <ciprianmarian.costea@nxp.com>
-@@ -804,6 +804,62 @@ usdhc0: mmc@402f0000 {
- 			status = "disabled";
- 		};
- 
-+		gmac0: ethernet@4033c000 {
-+			compatible = "nxp,s32g2-dwmac";
-+			reg = <0x4033c000 0x2000>, /* gmac IP */
-+			      <0x4007c004 0x4>;    /* GMAC_0_CTRL_STS */
-+			interrupt-parent = <&gic>;
-+			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
-+			interrupt-names = "macirq";
-+			snps,mtl-rx-config = <&mtl_rx_setup>;
-+			snps,mtl-tx-config = <&mtl_tx_setup>;
-+			status = "disabled";
-+
-+			mtl_rx_setup: rx-queues-config {
-+				snps,rx-queues-to-use = <5>;
-+
-+				queue0 {
-+				};
-+
-+				queue1 {
-+				};
-+
-+				queue2 {
-+				};
-+
-+				queue3 {
-+				};
-+
-+				queue4 {
-+				};
-+			};
-+
-+			mtl_tx_setup: tx-queues-config {
-+				snps,tx-queues-to-use = <5>;
-+
-+				queue0 {
-+				};
-+
-+				queue1 {
-+				};
-+
-+				queue2 {
-+				};
-+
-+				queue3 {
-+				};
-+
-+				queue4 {
-+				};
-+			};
-+
-+			gmac0mdio: mdio {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+				compatible = "snps,dwmac-mdio";
-+			};
-+		};
-+
- 		swt8: watchdog@40500000 {
- 			compatible = "nxp,s32g3-swt", "nxp,s32g2-swt";
- 			reg = <40500000 0x1000>;
-diff --git a/arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts b/arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts
-index e94f70ad82d9..d7213d2872a4 100644
---- a/arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts
-+++ b/arch/arm64/boot/dts/freescale/s32g399a-rdb3.dts
-@@ -1,6 +1,6 @@
- // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
- /*
-- * Copyright 2021-2024 NXP
-+ * Copyright 2021-2025 NXP
-  *
-  * NXP S32G3 Reference Design Board 3 (S32G-VNP-RDB3)
-  */
-@@ -15,6 +15,7 @@ / {
- 	compatible = "nxp,s32g399a-rdb3", "nxp,s32g3";
- 
- 	aliases {
-+		ethernet0 = &gmac0;
- 		mmc0 = &usdhc0;
- 		serial0 = &uart0;
- 		serial1 = &uart1;
-@@ -93,3 +94,21 @@ &usdhc0 {
- 	disable-wp;
- 	status = "okay";
- };
-+
-+&gmac0 {
-+	clocks = <&clks 24>, <&clks 19>, <&clks 18>, <&clks 15>;
-+	clock-names = "stmmaceth", "tx", "rx", "ptp_ref";
-+	phy-mode = "rgmii-id";
-+	phy-handle = <&rgmiiaphy1>;
-+	status = "okay";
-+};
-+
-+&gmac0mdio {
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	/* KSZ 9031 on RGMII */
-+	rgmiiaphy1: ethernet-phy@1 {
-+		reg = <1>;
-+	};
-+};
+- Fixed reduntant leftover tsis irq and use_ns changes from smtg_crosststamp
+- Keep common platform config for socfpga platforms in socfpga_dwmac_probe
+- Link to v1: https://lore.kernel.org/r/20251029-agilex5_ext-v1-0-1931132d77d6@altera.com
 
 ---
-base-commit: fd94619c43360eb44d28bd3ef326a4f85c600a07
-change-id: 20251006-nxp-s32g-boards-2d156255b592
+Rohan G Thomas (4):
+      net: stmmac: socfpga: Agilex5 EMAC platform configuration
+      net: stmmac: socfpga: Enable TBS support for Agilex5
+      net: stmmac: socfpga: Enable TSO for Agilex5 platform
+      net: stmmac: socfpga: Add hardware supported cross-timestamp
+
+ .../net/ethernet/stmicro/stmmac/dwmac-socfpga.c    | 166 ++++++++++++++++++++-
+ drivers/net/ethernet/stmicro/stmmac/dwxgmac2.h     |   5 +
+ 2 files changed, 168 insertions(+), 3 deletions(-)
+---
+base-commit: 0d0eb186421d0886ac466008235f6d9eedaf918e
+change-id: 20251029-agilex5_ext-c17bd779cdef
 
 Best regards,
 -- 
-Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+Rohan G Thomas <rohan.g.thomas@altera.com>
 
