@@ -1,17 +1,13 @@
 From: Maud Spierings <maud_spierings@hotmail.com>
-Subject: [PATCH 0/6] arm64: dts: qcom: x1e80100-vivobook-s15: add more
- missing features
-Date: Sat, 01 Nov 2025 13:54:11 +0100
-Message-Id: <20251101-asus_usbc_dp-v1-0-9fd4eb9935e8@hotmail.com>
+Date: Sat, 01 Nov 2025 13:54:12 +0100
+Subject: [PATCH 1/6] dt-bindings: display: bridge: simple: document the
+ Parade PS185HDM DP-to-HDMI bridge
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPMCBmkC/yWN24rCMBRFf6Xk2SO5tDEpg/gfg0iac6IB23SSV
- gTx3yfVx7Vhr/VihXKkwvrmxTI9YolpqiB2DfM3N10JIlZmksuOa9GCK2u5rGXwF5yBS66cbKX
- X1rB6mTOF+Pzofs9fzvS3VuvyHdlIpbiPtW9+NqngQsGS5ujhKchwwTnccIzw0MBBOetNONQ06
- tM9Ti6nfcrX4xYbXCHwaRzj0jfWDGgGoR11BzJBdt522FodPJLCgGikVNgKdn6//wG1sxP+9QA
- AAA==
-X-Change-ID: 20250614-asus_usbc_dp-0203a242c698
+Message-Id: <20251101-asus_usbc_dp-v1-1-9fd4eb9935e8@hotmail.com>
+References: <20251101-asus_usbc_dp-v1-0-9fd4eb9935e8@hotmail.com>
+In-Reply-To: <20251101-asus_usbc_dp-v1-0-9fd4eb9935e8@hotmail.com>
 To: Andrzej Hajda <andrzej.hajda@intel.com>, 
  Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
  Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
@@ -26,50 +22,36 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Maud Spierings <maud_spierings@hotmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762001681; l=1678;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762001681; l=812;
  i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=u8wLUW6Z9fiKj5eOJYtlEh+2BUk0OgRlOVt2xpH117E=;
- b=zZCnXRfNh5ObdUMoRA0mRNkebgUnURd3FVRw3ClZhVV36UkJPFZ1zarismFBaXyve+lPr+fvc
- kaeH65WFNenAPU5QkTPWLPNiEoi1BjmzdZOjk+cYd85IxnBzVV8D7Zi
+ bh=OQShTopki2aCGWcGKpxk+5iRM+E9syn+/c170E3+gpU=;
+ b=v10KXQFzQ1p49KCoi11KOfvf7wV76/VOoc6mzZMj5sAEC8d30AiU1ywFBJ9hoarSb3yPYwiGU
+ zTGPqM+DFYwCLykcz91aTgzKiveMXc/u8fJKJhjguItS/L7YHoI0uZ9
 X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
  pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
 X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There are still many missing features on this machine, add the ps8830
-retimers for display over usb-c, the simple bridge/HDMI port and set up
-to use IRIS.
-
-Currently IRIS gives a ETIMEDOUT, not sure what that is coming from.
-
-lots of these patches are very strongly based on the work of other
-maintainers of these snapdragon machines, like the HDMI part on that of
-Neil Armstrong, many thanks to those who laid the baseline for me to
-follow.
+The Parade PS185HDM is a transparent Displayport to HDMI bridge.
 
 Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
-Maud Spierings (6):
-      dt-bindings: display: bridge: simple: document the Parade PS185HDM DP-to-HDMI bridge
-      drm/bridge: simple: add the Parade PS185HDM DP-to-HDMI bridge
-      arm64: dts: qcom: x1e80100-vivobook-s15: enable ps8830 retimers
-      arm64: dts: qcom: x1e80100-vivobook-s15: add HDMI port
-      arm64: dts: qcom: x1e80100-vivobook-s15: add charge limit nvmem
-      arm64: dts: qcom: x1e80100-vivobook-s15: enable IRIS
+ Documentation/devicetree/bindings/display/bridge/simple-bridge.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
- .../bindings/display/bridge/simple-bridge.yaml     |   1 +
- .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 402 ++++++++++++++++++++-
- drivers/gpu/drm/bridge/simple-bridge.c             |   5 +
- 3 files changed, 400 insertions(+), 8 deletions(-)
----
-base-commit: 98bd8b16ae57e8f25c95d496fcde3dfdd8223d41
-change-id: 20250614-asus_usbc_dp-0203a242c698
-prerequisite-message-id: <20251013-topic-x1e80100-hdmi-v6-0-3a9c8f7506d6@linaro.org>
-prerequisite-patch-id: 5af0a76cad087e18b0a2f771a78d030f9bf3bd68
-prerequisite-patch-id: 5b908c1f0c5a0c52da384a181a75f17c5e2d19b5
-prerequisite-patch-id: ed40af8d7e99a3f1bcb33b4c678b5f21b0618612
+diff --git a/Documentation/devicetree/bindings/display/bridge/simple-bridge.yaml b/Documentation/devicetree/bindings/display/bridge/simple-bridge.yaml
+index 9ef587d46506..950268632370 100644
+--- a/Documentation/devicetree/bindings/display/bridge/simple-bridge.yaml
++++ b/Documentation/devicetree/bindings/display/bridge/simple-bridge.yaml
+@@ -28,6 +28,7 @@ properties:
+       - enum:
+           - adi,adv7123
+           - dumb-vga-dac
++          - parade,ps185hdm
+           - radxa,ra620
+           - realtek,rtd2171
+           - ti,opa362
 
-Best regards,
 -- 
-Maud Spierings <maud_spierings@hotmail.com>
+2.51.1
 
