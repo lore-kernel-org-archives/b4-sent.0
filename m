@@ -1,10 +1,11 @@
 From: Maud Spierings <maud_spierings@hotmail.com>
-Date: Sat, 01 Nov 2025 13:54:15 +0100
-Subject: [PATCH 4/6] arm64: dts: qcom: x1e80100-vivobook-s15: add HDMI port
+Date: Sat, 01 Nov 2025 13:54:16 +0100
+Subject: [PATCH 5/6] arm64: dts: qcom: x1e80100-vivobook-s15: add charge
+ limit nvmem
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251101-asus_usbc_dp-v1-4-9fd4eb9935e8@hotmail.com>
+Message-Id: <20251101-asus_usbc_dp-v1-5-9fd4eb9935e8@hotmail.com>
 References: <20251101-asus_usbc_dp-v1-0-9fd4eb9935e8@hotmail.com>
 In-Reply-To: <20251101-asus_usbc_dp-v1-0-9fd4eb9935e8@hotmail.com>
 To: Andrzej Hajda <andrzej.hajda@intel.com>, 
@@ -21,139 +22,41 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Maud Spierings <maud_spierings@hotmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762001681; l=2707;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762001681; l=986;
  i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=51ChukPmXGBnOI0T2MGucihV6F0O7TpLIggF7/V/cv8=;
- b=DzGOYKDXsMKtY2NOTEogYLywRlwWo4kkom12CpnQRqmEpV+aW9ZMlnsEOZOqL2oj9gHZyuSP/
- v9+SJGH7jDmCjsnxMrpctr4x2jbA45bb2ClM5ib7ZpprOI4LPdCs76N
+ bh=aBmU+MBpzJDOfvhbJRvLf5MrSRONaR0yduU16nAFvRY=;
+ b=fNTrArf6yUIrnwZEDY1VbngDIfndS5BkP8O+OFYSIg4GuDntgl3xwROZuWW00awAUwOEY8HAu
+ e0qY+2A/MF6DoKaD6aIslS6bhjQme8d/DkFxgXlD7opk0UOL9Ks+bys
 X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
  pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
 X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the HDMI port on left side of the laptop.
-
-The display signal is routed through a simple Displayport to HDMI
-bridge.
+Add nvmem cells for getting charge control thresholds if they have
+been set previously.
 
 Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
- .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 81 ++++++++++++++++++++++
- 1 file changed, 81 insertions(+)
+ arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-index 7f1824f39042..ad648fcd414a 100644
+index ad648fcd414a..7dd0d7999fe5 100644
 --- a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
 +++ b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-@@ -37,6 +37,45 @@ switch-lid {
- 		};
- 	};
+@@ -82,6 +82,12 @@ pmic-glink {
+ 			     "qcom,pmic-glink";
+ 		orientation-gpios = <&tlmm 121 GPIO_ACTIVE_HIGH>,
+ 				    <&tlmm 123 GPIO_ACTIVE_HIGH>;
++		nvmem-cells = <&charge_limit_en>,
++			      <&charge_limit_end>,
++			      <&charge_limit_delta>;
++		nvmem-cell-names = "charge_limit_en",
++				   "charge_limit_end",
++				   "charge_limit_delta";
+ 		#address-cells = <1>;
+ 		#size-cells = <0>;
  
-+	hdmi-bridge {
-+		compatible = "parade,ps185hdm";
-+
-+		pinctrl-0 = <&hdmi_hpd_default>;
-+		pinctrl-names = "default";
-+
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			port@0 {
-+				reg = <0>;
-+
-+				hdmi_bridge_dp_in: endpoint {
-+					remote-endpoint = <&usb_1_ss2_qmpphy_out_dp>;
-+				};
-+			};
-+
-+			port@1 {
-+				reg = <1>;
-+
-+				hdmi_bridge_tmds_out: endpoint {
-+					remote-endpoint = <&hdmi_con>;
-+				};
-+			};
-+		};
-+	};
-+
-+	hdmi-connector {
-+		compatible = "hdmi-connector";
-+		type = "a";
-+
-+		port {
-+			hdmi_con: endpoint {
-+				remote-endpoint = <&hdmi_bridge_tmds_out>;
-+			};
-+		};
-+	};
-+
- 	pmic-glink {
- 		compatible = "qcom,x1e80100-pmic-glink",
- 			     "qcom,sm8550-pmic-glink",
-@@ -814,6 +853,14 @@ &mdss_dp1_out {
- 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
- };
- 
-+&mdss_dp2 {
-+	status = "okay";
-+};
-+
-+&mdss_dp2_out {
-+	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
-+};
-+
- &mdss_dp3 {
- 	/delete-property/ #sound-dai-cells;
- 
-@@ -1047,6 +1094,12 @@ hall_int_n_default: hall-int-n-state {
- 		bias-disable;
- 	};
- 
-+	hdmi_hpd_default: hdmi-hpd-default-state {
-+		pins = "gpio126";
-+		function = "usb2_dp";
-+		bias-disable;
-+	};
-+
- 	kybd_default: kybd-default-state {
- 		pins = "gpio67";
- 		function = "gpio";
-@@ -1243,6 +1296,34 @@ &usb_1_ss1_qmpphy_out {
- 	remote-endpoint = <&retimer_ss1_ss_in>;
- };
- 
-+&usb_1_ss2_qmpphy {
-+	vdda-phy-supply = <&vreg_l2j_1p2>;
-+	vdda-pll-supply = <&vreg_l2d_0p9>;
-+
-+	/delete-property/ mode-switch;
-+	/delete-property/ orientation-switch;
-+
-+	status = "okay";
-+
-+	ports {
-+		port@0 {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			/delete-node/ endpoint;
-+
-+			usb_1_ss2_qmpphy_out_dp: endpoint@0 {
-+				reg = <0>;
-+
-+				data-lanes = <3 2 1 0>;
-+				remote-endpoint = <&hdmi_bridge_dp_in>;
-+			};
-+
-+			/* No USB3 lanes connected */
-+		};
-+	};
-+};
-+
- &usb_2 {
- 	status = "okay";
- };
 
 -- 
 2.51.1
