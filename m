@@ -1,63 +1,48 @@
-From: Maud Spierings <maud_spierings@hotmail.com>
-Date: Sat, 01 Nov 2025 13:54:17 +0100
-Subject: [PATCH 6/6] arm64: dts: qcom: x1e80100-vivobook-s15: enable IRIS
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH 0/2] arm64: tegra: Enable mmu on Tegra194 display
+ controllers
+Date: Sat, 01 Nov 2025 18:01:09 -0500
+Message-Id: <20251101-tegra194-dc-mmu-v1-0-8401c45d8f13@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251101-asus_usbc_dp-v1-6-9fd4eb9935e8@hotmail.com>
-References: <20251101-asus_usbc_dp-v1-0-9fd4eb9935e8@hotmail.com>
-In-Reply-To: <20251101-asus_usbc_dp-v1-0-9fd4eb9935e8@hotmail.com>
-To: Andrzej Hajda <andrzej.hajda@intel.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
- Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
- Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- Maud Spierings <maud_spierings@hotmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762001681; l=945;
- i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=Ma+VW+zOVD4YEG8QCXRYgRPYDOrXI0NLtiHYjm6xOrk=;
- b=xO+Oa6PMId8jDgzFrfUiJlQAwYKQ27GM6E5hHPHHrF4SbgFZhlOfm/41SDoFh9AcSEZHPUS9p
- OXwj7byAHwSBZ+nBKliCJBI2AG+UumfJZBMxvvuh1y69WG1BFZM3Qc6
-X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
- pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
-X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
+X-B4-Tracking: v=1; b=H4sIADWRBmkC/x3MPQqAMAxA4atIZgNNtYNeRRwkTTWDP7QqQvHuF
+ sdveC9DkqiSoK8yRLk16b4VUF0BL9M2C6ovBmusIzKEp8xxoq5Fz7iuF7J01nFofMsBSnVECfr
+ 8x2F83w+5kEo3YQAAAA==
+X-Change-ID: 20251101-tegra194-dc-mmu-ce925cf3d4cf
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762038074; l=612;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=24ZR53rGFlS9aCl+cwrC35kW0ffMoIyXJnJR8Fkzos4=;
+ b=qoKvxUZlk1keasy7Yzs1Er5PafaKd65ytc2MeyLgvp4vKYmZSTeWrLaxizj19b+88vFthzZFn
+ JJPZb/5aUiNA7MIIYICOzjKu/lByTWzdpQKcSdzQGZNO7ypdpbvuYwa
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable IRIS to allow using the hardware-accelerated video codecs. The
-firmware is not upstream in linux-firmware yet, so users need to copy it
-from Windows to qcom/x1e80100/ASUSTeK/vivobook-s15/qcvss8380.mbn (just like
-GPU/ADSP/CDSP firmware).
+This involves reverting a commit that explicitly disabled the associated
+smmu, then wiring that to unit to the display controllers.
 
-Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts | 5 +++++
- 1 file changed, 5 insertions(+)
+Aaron Kling (2):
+      Revert "arm64: tegra: Disable ISO SMMU for Tegra194"
+      arm64: tegra: Enable mmu on Tegra194 display controllers
 
-diff --git a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-index 7dd0d7999fe5..219c0b05fe27 100644
---- a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-+++ b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-@@ -839,6 +839,11 @@ retimer_ss1_con_sbu_out: endpoint {
- 	};
- };
- 
-+&iris {
-+	firmware-name = "qcom/x1e80100/ASUSTeK/vivobook-s15/qcvss8380.mbn";
-+	status = "okay";
-+};
-+
- &mdss {
- 	status = "okay";
- };
+ arch/arm64/boot/dts/nvidia/tegra194.dtsi | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+---
+base-commit: dcb6fa37fd7bc9c3d2b066329b0d27dedf8becaa
+change-id: 20251101-tegra194-dc-mmu-ce925cf3d4cf
 
+Best regards,
 -- 
-2.51.1
+Aaron Kling <webgeek1234@gmail.com>
 
