@@ -1,245 +1,75 @@
-From: Rohan G Thomas <rohan.g.thomas@altera.com>
-Date: Sat, 01 Nov 2025 01:27:10 +0800
-Subject: [PATCH net-next v2 4/4] net: stmmac: socfpga: Add hardware
- supported cross-timestamp
+From: Maud Spierings <maud_spierings@hotmail.com>
+Subject: [PATCH 0/6] arm64: dts: qcom: x1e80100-vivobook-s15: add more
+ missing features
+Date: Sat, 01 Nov 2025 13:54:11 +0100
+Message-Id: <20251101-asus_usbc_dp-v1-0-9fd4eb9935e8@hotmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251101-agilex5_ext-v2-4-a6b51b4dca4d@altera.com>
-References: <20251101-agilex5_ext-v2-0-a6b51b4dca4d@altera.com>
-In-Reply-To: <20251101-agilex5_ext-v2-0-a6b51b4dca4d@altera.com>
-To: Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Richard Cochran <richardcochran@gmail.com>, 
- Steffen Trumtrar <s.trumtrar@pengutronix.de>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Rohan G Thomas <rohan.g.thomas@altera.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1761931634; l=7078;
- i=rohan.g.thomas@altera.com; s=20250815; h=from:subject:message-id;
- bh=9EkvKknTEFMhFgiG4guzPV0b/EvK3DNx3dlBmCIhiac=;
- b=uOn4rWvTDMcdAQ1HyyZkaYCxtJBnVLAs8rfsa590bz7r8rgMCrSuY56YVXV7Ee82E4rG1yhuk
- 3ix7Ne28jO4Do5xeB7MLMu5HdpyewAFibr4FJBycKZ5nKY1qKwg/Dji
-X-Developer-Key: i=rohan.g.thomas@altera.com; a=ed25519;
- pk=5yZXkXswhfUILKAQwoIn7m6uSblwgV5oppxqde4g4TY=
-X-Endpoint-Received: by B4 Relay for rohan.g.thomas@altera.com/20250815 with auth_id=494
+X-B4-Tracking: v=1; b=H4sIAPMCBmkC/yWN24rCMBRFf6Xk2SO5tDEpg/gfg0iac6IB23SSV
+ gTx3yfVx7Vhr/VihXKkwvrmxTI9YolpqiB2DfM3N10JIlZmksuOa9GCK2u5rGXwF5yBS66cbKX
+ X1rB6mTOF+Pzofs9fzvS3VuvyHdlIpbiPtW9+NqngQsGS5ujhKchwwTnccIzw0MBBOetNONQ06
+ tM9Ti6nfcrX4xYbXCHwaRzj0jfWDGgGoR11BzJBdt522FodPJLCgGikVNgKdn6//wG1sxP+9QA
+ AAA==
+X-Change-ID: 20250614-asus_usbc_dp-0203a242c698
+To: Andrzej Hajda <andrzej.hajda@intel.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
+ Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
+ Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ Maud Spierings <maud_spierings@hotmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762001681; l=1678;
+ i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
+ bh=u8wLUW6Z9fiKj5eOJYtlEh+2BUk0OgRlOVt2xpH117E=;
+ b=zZCnXRfNh5ObdUMoRA0mRNkebgUnURd3FVRw3ClZhVV36UkJPFZ1zarismFBaXyve+lPr+fvc
+ kaeH65WFNenAPU5QkTPWLPNiEoi1BjmzdZOjk+cYd85IxnBzVV8D7Zi
+X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
+ pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
+X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Cross timestamping is supported on Agilex5 platform with Synchronized
-Multidrop Timestamp Gathering(SMTG) IP. The hardware cross-timestamp
-result is made available the applications through the ioctl call
-PTP_SYS_OFFSET_PRECISE, which inturn calls stmmac_getcrosststamp().
+There are still many missing features on this machine, add the ps8830
+retimers for display over usb-c, the simple bridge/HDMI port and set up
+to use IRIS.
 
-Device time is stored in the MAC Auxiliary register. The 64-bit System
-time (ARM_ARCH_COUNTER) is stored in SMTG IP. SMTG IP is an MDIO device
-with 0xC - 0xF MDIO register space holds 64-bit system time.
+Currently IRIS gives a ETIMEDOUT, not sure what that is coming from.
 
-This commit is similar to following commit for Intel platforms:
-Commit 341f67e424e5 ("net: stmmac: Add hardware supported cross-timestamp")
+lots of these patches are very strongly based on the work of other
+maintainers of these snapdragon machines, like the HDMI part on that of
+Neil Armstrong, many thanks to those who laid the baseline for me to
+follow.
 
-Signed-off-by: Rohan G Thomas <rohan.g.thomas@altera.com>
+Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
- .../net/ethernet/stmicro/stmmac/dwmac-socfpga.c    | 120 +++++++++++++++++++++
- drivers/net/ethernet/stmicro/stmmac/dwxgmac2.h     |   5 +
- 2 files changed, 125 insertions(+)
+Maud Spierings (6):
+      dt-bindings: display: bridge: simple: document the Parade PS185HDM DP-to-HDMI bridge
+      drm/bridge: simple: add the Parade PS185HDM DP-to-HDMI bridge
+      arm64: dts: qcom: x1e80100-vivobook-s15: enable ps8830 retimers
+      arm64: dts: qcom: x1e80100-vivobook-s15: add HDMI port
+      arm64: dts: qcom: x1e80100-vivobook-s15: add charge limit nvmem
+      arm64: dts: qcom: x1e80100-vivobook-s15: enable IRIS
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-socfpga.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-socfpga.c
-index 1837346ca2d438018ae161a233f415fe0181c78d..49d651948e2bd41faeecaebb37121aef757a66a7 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-socfpga.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-socfpga.c
-@@ -5,6 +5,7 @@
-  */
- 
- #include <linux/mfd/altera-sysmgr.h>
-+#include <linux/clocksource_ids.h>
- #include <linux/of.h>
- #include <linux/of_address.h>
- #include <linux/of_net.h>
-@@ -15,8 +16,10 @@
- #include <linux/reset.h>
- #include <linux/stmmac.h>
- 
-+#include "dwxgmac2.h"
- #include "stmmac.h"
- #include "stmmac_platform.h"
-+#include "stmmac_ptp.h"
- 
- #define SYSMGR_EMACGRP_CTRL_PHYSEL_ENUM_GMII_MII 0x0
- #define SYSMGR_EMACGRP_CTRL_PHYSEL_ENUM_RGMII 0x1
-@@ -41,6 +44,13 @@
- #define SGMII_ADAPTER_ENABLE		0x0000
- #define SGMII_ADAPTER_DISABLE		0x0001
- 
-+#define SMTG_MDIO_ADDR		0x15
-+#define SMTG_TSC_WORD0		0xC
-+#define SMTG_TSC_WORD1		0xD
-+#define SMTG_TSC_WORD2		0xE
-+#define SMTG_TSC_WORD3		0xF
-+#define SMTG_TSC_SHIFT		16
-+
- struct socfpga_dwmac;
- struct socfpga_dwmac_ops {
- 	int (*set_phy_mode)(struct socfpga_dwmac *dwmac_priv);
-@@ -269,6 +279,112 @@ static int socfpga_set_phy_mode_common(int phymode, u32 *val)
- 	return 0;
- }
- 
-+static void get_smtgtime(struct mii_bus *mii, int smtg_addr, u64 *smtg_time)
-+{
-+	u64 ns;
-+
-+	ns = mdiobus_read(mii, smtg_addr, SMTG_TSC_WORD3);
-+	ns <<= SMTG_TSC_SHIFT;
-+	ns |= mdiobus_read(mii, smtg_addr, SMTG_TSC_WORD2);
-+	ns <<= SMTG_TSC_SHIFT;
-+	ns |= mdiobus_read(mii, smtg_addr, SMTG_TSC_WORD1);
-+	ns <<= SMTG_TSC_SHIFT;
-+	ns |= mdiobus_read(mii, smtg_addr, SMTG_TSC_WORD0);
-+
-+	*smtg_time = ns;
-+}
-+
-+static int smtg_crosststamp(ktime_t *device, struct system_counterval_t *system,
-+			    void *ctx)
-+{
-+	struct stmmac_priv *priv = (struct stmmac_priv *)ctx;
-+	u32 num_snapshot, gpio_value, acr_value;
-+	void __iomem *ptpaddr = priv->ptpaddr;
-+	void __iomem *ioaddr = priv->hw->pcsr;
-+	unsigned long flags;
-+	u64 smtg_time = 0;
-+	u64 ptp_time = 0;
-+	int i, ret;
-+	u32 v;
-+
-+	/* Both internal crosstimestamping and external triggered event
-+	 * timestamping cannot be run concurrently.
-+	 */
-+	if (priv->plat->flags & STMMAC_FLAG_EXT_SNAPSHOT_EN)
-+		return -EBUSY;
-+
-+	mutex_lock(&priv->aux_ts_lock);
-+	/* Enable Internal snapshot trigger */
-+	acr_value = readl(ptpaddr + PTP_ACR);
-+	acr_value &= ~PTP_ACR_MASK;
-+	switch (priv->plat->int_snapshot_num) {
-+	case AUX_SNAPSHOT0:
-+		acr_value |= PTP_ACR_ATSEN0;
-+		break;
-+	case AUX_SNAPSHOT1:
-+		acr_value |= PTP_ACR_ATSEN1;
-+		break;
-+	case AUX_SNAPSHOT2:
-+		acr_value |= PTP_ACR_ATSEN2;
-+		break;
-+	case AUX_SNAPSHOT3:
-+		acr_value |= PTP_ACR_ATSEN3;
-+		break;
-+	default:
-+		mutex_unlock(&priv->aux_ts_lock);
-+		return -EINVAL;
-+	}
-+	writel(acr_value, ptpaddr + PTP_ACR);
-+
-+	/* Clear FIFO */
-+	acr_value = readl(ptpaddr + PTP_ACR);
-+	acr_value |= PTP_ACR_ATSFC;
-+	writel(acr_value, ptpaddr + PTP_ACR);
-+	/* Release the mutex */
-+	mutex_unlock(&priv->aux_ts_lock);
-+
-+	/* Trigger Internal snapshot signal. Create a rising edge by just toggle
-+	 * the GPO0 to low and back to high.
-+	 */
-+	gpio_value = readl(ioaddr + XGMAC_GPIO_STATUS);
-+	gpio_value &= ~XGMAC_GPIO_GPO0;
-+	writel(gpio_value, ioaddr + XGMAC_GPIO_STATUS);
-+	gpio_value |= XGMAC_GPIO_GPO0;
-+	writel(gpio_value, ioaddr + XGMAC_GPIO_STATUS);
-+
-+	/* Poll for time sync operation done */
-+	ret = readl_poll_timeout(priv->ioaddr + XGMAC_INT_STATUS, v,
-+				 (v & XGMAC_INT_TSIS), 100, 10000);
-+	if (ret) {
-+		netdev_err(priv->dev, "%s: Wait for time sync operation timeout\n",
-+			   __func__);
-+		return ret;
-+	}
-+
-+	*system = (struct system_counterval_t) {
-+		.cycles = 0,
-+		.cs_id = CSID_ARM_ARCH_COUNTER,
-+		.use_nsecs = false,
-+	};
-+
-+	num_snapshot = (readl(ioaddr + XGMAC_TIMESTAMP_STATUS) &
-+			XGMAC_TIMESTAMP_ATSNS_MASK) >>
-+			XGMAC_TIMESTAMP_ATSNS_SHIFT;
-+
-+	/* Repeat until the timestamps are from the FIFO last segment */
-+	for (i = 0; i < num_snapshot; i++) {
-+		read_lock_irqsave(&priv->ptp_lock, flags);
-+		stmmac_get_ptptime(priv, ptpaddr, &ptp_time);
-+		*device = ns_to_ktime(ptp_time);
-+		read_unlock_irqrestore(&priv->ptp_lock, flags);
-+	}
-+
-+	get_smtgtime(priv->mii, SMTG_MDIO_ADDR, &smtg_time);
-+	system->cycles = smtg_time;
-+
-+	return 0;
-+}
-+
- static int socfpga_gen5_set_phy_mode(struct socfpga_dwmac *dwmac)
- {
- 	struct regmap *sys_mgr_base_addr = dwmac->sys_mgr_base_addr;
-@@ -473,6 +589,10 @@ static void socfpga_agilex5_setup_plat_dat(struct socfpga_dwmac *dwmac)
- 		/* Tx Queues 0 - 5 doesn't support TBS on Agilex5 */
- 		break;
- 	}
-+
-+	/* Hw supported cross-timestamp */
-+	plat_dat->int_snapshot_num = AUX_SNAPSHOT0;
-+	plat_dat->crosststamp = smtg_crosststamp;
- }
- 
- static int socfpga_dwmac_probe(struct platform_device *pdev)
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwxgmac2.h b/drivers/net/ethernet/stmicro/stmmac/dwxgmac2.h
-index 0d408ee17f337851502cbcba8e82d2b839b9db02..e48cfa05000c07ed9194de786efa530a61a9dbfa 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwxgmac2.h
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwxgmac2.h
-@@ -79,6 +79,7 @@
- #define XGMAC_PSRQ(x)			GENMASK((x) * 8 + 7, (x) * 8)
- #define XGMAC_PSRQ_SHIFT(x)		((x) * 8)
- #define XGMAC_INT_STATUS		0x000000b0
-+#define XGMAC_INT_TSIS			BIT(12)
- #define XGMAC_LPIIS			BIT(5)
- #define XGMAC_PMTIS			BIT(4)
- #define XGMAC_INT_EN			0x000000b4
-@@ -173,6 +174,8 @@
- #define XGMAC_MDIO_ADDR			0x00000200
- #define XGMAC_MDIO_DATA			0x00000204
- #define XGMAC_MDIO_C22P			0x00000220
-+#define XGMAC_GPIO_STATUS		0x0000027c
-+#define XGMAC_GPIO_GPO0			BIT(16)
- #define XGMAC_ADDRx_HIGH(x)		(0x00000300 + (x) * 0x8)
- #define XGMAC_ADDR_MAX			32
- #define XGMAC_AE			BIT(31)
-@@ -220,6 +223,8 @@
- #define XGMAC_OB			BIT(0)
- #define XGMAC_RSS_DATA			0x00000c8c
- #define XGMAC_TIMESTAMP_STATUS		0x00000d20
-+#define XGMAC_TIMESTAMP_ATSNS_MASK	GENMASK(29, 25)
-+#define XGMAC_TIMESTAMP_ATSNS_SHIFT	25
- #define XGMAC_TXTSC			BIT(15)
- #define XGMAC_TXTIMESTAMP_NSEC		0x00000d30
- #define XGMAC_TXTSSTSLO			GENMASK(30, 0)
+ .../bindings/display/bridge/simple-bridge.yaml     |   1 +
+ .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 402 ++++++++++++++++++++-
+ drivers/gpu/drm/bridge/simple-bridge.c             |   5 +
+ 3 files changed, 400 insertions(+), 8 deletions(-)
+---
+base-commit: 98bd8b16ae57e8f25c95d496fcde3dfdd8223d41
+change-id: 20250614-asus_usbc_dp-0203a242c698
+prerequisite-message-id: <20251013-topic-x1e80100-hdmi-v6-0-3a9c8f7506d6@linaro.org>
+prerequisite-patch-id: 5af0a76cad087e18b0a2f771a78d030f9bf3bd68
+prerequisite-patch-id: 5b908c1f0c5a0c52da384a181a75f17c5e2d19b5
+prerequisite-patch-id: ed40af8d7e99a3f1bcb33b4c678b5f21b0618612
 
+Best regards,
 -- 
-2.43.7
+Maud Spierings <maud_spierings@hotmail.com>
 
