@@ -1,11 +1,10 @@
 From: Maud Spierings <maud_spierings@hotmail.com>
-Date: Sat, 01 Nov 2025 13:54:16 +0100
-Subject: [PATCH 5/6] arm64: dts: qcom: x1e80100-vivobook-s15: add charge
- limit nvmem
+Date: Sat, 01 Nov 2025 13:54:17 +0100
+Subject: [PATCH 6/6] arm64: dts: qcom: x1e80100-vivobook-s15: enable IRIS
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251101-asus_usbc_dp-v1-5-9fd4eb9935e8@hotmail.com>
+Message-Id: <20251101-asus_usbc_dp-v1-6-9fd4eb9935e8@hotmail.com>
 References: <20251101-asus_usbc_dp-v1-0-9fd4eb9935e8@hotmail.com>
 In-Reply-To: <20251101-asus_usbc_dp-v1-0-9fd4eb9935e8@hotmail.com>
 To: Andrzej Hajda <andrzej.hajda@intel.com>, 
@@ -22,41 +21,42 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Maud Spierings <maud_spierings@hotmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762001681; l=986;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762001681; l=945;
  i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=aBmU+MBpzJDOfvhbJRvLf5MrSRONaR0yduU16nAFvRY=;
- b=fNTrArf6yUIrnwZEDY1VbngDIfndS5BkP8O+OFYSIg4GuDntgl3xwROZuWW00awAUwOEY8HAu
- e0qY+2A/MF6DoKaD6aIslS6bhjQme8d/DkFxgXlD7opk0UOL9Ks+bys
+ bh=Ma+VW+zOVD4YEG8QCXRYgRPYDOrXI0NLtiHYjm6xOrk=;
+ b=xO+Oa6PMId8jDgzFrfUiJlQAwYKQ27GM6E5hHPHHrF4SbgFZhlOfm/41SDoFh9AcSEZHPUS9p
+ OXwj7byAHwSBZ+nBKliCJBI2AG+UumfJZBMxvvuh1y69WG1BFZM3Qc6
 X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
  pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
 X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add nvmem cells for getting charge control thresholds if they have
-been set previously.
+Enable IRIS to allow using the hardware-accelerated video codecs. The
+firmware is not upstream in linux-firmware yet, so users need to copy it
+from Windows to qcom/x1e80100/ASUSTeK/vivobook-s15/qcvss8380.mbn (just like
+GPU/ADSP/CDSP firmware).
 
 Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
- arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts | 6 ++++++
- 1 file changed, 6 insertions(+)
+ arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts | 5 +++++
+ 1 file changed, 5 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-index ad648fcd414a..7dd0d7999fe5 100644
+index 7dd0d7999fe5..219c0b05fe27 100644
 --- a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
 +++ b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
-@@ -82,6 +82,12 @@ pmic-glink {
- 			     "qcom,pmic-glink";
- 		orientation-gpios = <&tlmm 121 GPIO_ACTIVE_HIGH>,
- 				    <&tlmm 123 GPIO_ACTIVE_HIGH>;
-+		nvmem-cells = <&charge_limit_en>,
-+			      <&charge_limit_end>,
-+			      <&charge_limit_delta>;
-+		nvmem-cell-names = "charge_limit_en",
-+				   "charge_limit_end",
-+				   "charge_limit_delta";
- 		#address-cells = <1>;
- 		#size-cells = <0>;
+@@ -839,6 +839,11 @@ retimer_ss1_con_sbu_out: endpoint {
+ 	};
+ };
  
++&iris {
++	firmware-name = "qcom/x1e80100/ASUSTeK/vivobook-s15/qcvss8380.mbn";
++	status = "okay";
++};
++
+ &mdss {
+ 	status = "okay";
+ };
 
 -- 
 2.51.1
