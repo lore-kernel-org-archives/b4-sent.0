@@ -1,321 +1,919 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sat, 01 Nov 2025 18:15:17 -0500
-Subject: [PATCH] drm/tegra: Enable cmu for Tegra186 and Tegra194
+From: Patrick Vogelaar <patrick.vogelaar@belden.com>
+Date: Sun, 02 Nov 2025 22:33:37 +0100
+Subject: [PATCH ][meta-netowrking][scarthgap] unbound: patch CVE-2024-33655
+ and CVE-2025-11411
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251101-tegra-drm-cmu-v1-1-211799755ab8@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAISUBmkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDA2ND3ZLU9KJE3ZSiXN3k3FJdM0vzVItUA2MDS3MLJaCegqLUtMwKsHn
- RsbW1AMhK3QpfAAAA
-X-Change-ID: 20251031-tegra-drm-cmu-697e8e030978
-To: Thierry Reding <thierry.reding@gmail.com>, 
- Mikko Perttunen <mperttunen@nvidia.com>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, Jonathan Hunter <jonathanh@nvidia.com>
-Cc: dri-devel@lists.freedesktop.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
+Message-Id: <20251102-unbound_cve_fixes-v1-1-2b30f2bd0e48@belden.com>
+X-B4-Tracking: v=1; b=H4sIADDOB2kC/x3LQQrDIBBA0auEWVdQsVB6FZEwMRMzlI5BTVoIu
+ Xuly8fnn1CpMFV4DicUOrhylg5zGyCuKIkUz91gtb0bo63aZcq7zGM8aFz4S1U5RG2Mc2iXB/R
+ vK/QPffMQ/JsaKqGWP+XFkoKvEUtbE24QrusHBRKdEIEAAAA=
+X-Change-ID: 20251102-unbound_cve_fixes-4aa01144a2f8
+To: openembedded-devel@lists.openembedded.org
+Cc: Patrick Vogelaar <patrick.vogelaar@belden.com>, 
+ Armin Kuster <akuster808@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762038924; l=13192;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=NSrrID1EFfOslnWnlsXzn3Vc1iMWToevJVp1+XOkCIY=;
- b=F34uGpLkd0+hQcaVdC61A8NbbbExx1BZ+BnDUHouEmf5qe2Uzh4rIaQj+FHbnGZEo7UppWTmp
- L1e8wwcJQJwCDx2juzP37rw8SpV6MaNsgAW7JqgumgMr+WTK9bgKNzo
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762119237; l=35306;
+ i=patrick.vogelaar@belden.com; s=20240201; h=from:subject:message-id;
+ bh=vuv5eDywDbnaBsRxM2H/uyngZSiswQa3Vu4CWp1k5x0=;
+ b=iLOJ590cniK0IqcrDCfPwghz7sSoNbMU99VdB1aD9jDJOvBDmCpJvP9mIlDpLl4HyYWi8pCxk
+ 0Sn8/Cj0adzAZ0G1kHw4fpp6vt1RjaVb3tdmwPskjr7q3M69ojfr6+p
+X-Developer-Key: i=patrick.vogelaar@belden.com; a=ed25519;
+ pk=w0QU8RmOR3hQv1DxMcz6KmySeE8yqbvO0xC1ZSSUNqY=
+X-Endpoint-Received: by B4 Relay for patrick.vogelaar@belden.com/20240201 with auth_id=125
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Without the cmu, nvdisplay will display colors that are notably darker
-than intended. The vendor bootloader and the downstream display driver
-enable the cmu and sets a sRGB table. Loading that table here results in
-the intended colors.
+For CVE-2024-33655 applied patch [1] mentioned in [2].
+For CVE-2025-11411 applied minimal patch [3] mentioned in [4]. (Slightly
+adjustments were required to apply properly)
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+[1] https://nlnetlabs.nl/downloads/unbound/patch_CVE-2024-33655.diff
+[2] https://www.nlnetlabs.nl/downloads/unbound/CVE-2024-33655.txt
+[3] https://nlnetlabs.nl/downloads/unbound/patch_CVE-2025-11411.diff
+[4] https://www.nlnetlabs.nl/downloads/unbound/CVE-2025-11411.txt
+
+Signed-off-by: Patrick Vogelaar <patrick.vogelaar@belden.com>
 ---
- drivers/gpu/drm/tegra/dc.h  |  13 +++
- drivers/gpu/drm/tegra/sor.c | 206 ++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 219 insertions(+)
+To: openembedded-devel@lists.openembedded.org
+To: Armin Kuster <akuster808@gmail.com>
+---
+ .../unbound/unbound/CVE-2024-33655.patch           | 792 +++++++++++++++++++++
+ .../unbound/unbound/CVE-2025-11411.patch           |  48 ++
+ .../recipes-support/unbound/unbound_1.19.3.bb      |   2 +
+ 3 files changed, 842 insertions(+)
 
-diff --git a/drivers/gpu/drm/tegra/dc.h b/drivers/gpu/drm/tegra/dc.h
-index 0559fa6b1bf70416e51d5067cc04a6ae6572de23..286eddd89a28f7ea9e64c00f03af76f6c68ae9d8 100644
---- a/drivers/gpu/drm/tegra/dc.h
-+++ b/drivers/gpu/drm/tegra/dc.h
-@@ -447,11 +447,24 @@ int tegra_dc_rgb_exit(struct tegra_dc *dc);
- #define BASE_COLOR_SIZE_888    (  8 << 0)
- #define BASE_COLOR_SIZE_101010 ( 10 << 0)
- #define BASE_COLOR_SIZE_121212 ( 12 << 0)
-+#define CMU_ENABLE_MASK        (1 << 20)
-+#define CMU_ENABLE_DISABLE     (0 << 20)
-+#define CMU_ENABLE_ENABLE      (1 << 20)
+diff --git a/meta-networking/recipes-support/unbound/unbound/CVE-2024-33655.patch b/meta-networking/recipes-support/unbound/unbound/CVE-2024-33655.patch
+new file mode 100644
+index 0000000000000000000000000000000000000000..9431b0e0c6d6a7f6e5cc3bdb9d6b64bcb86e15bc
+--- /dev/null
++++ b/meta-networking/recipes-support/unbound/unbound/CVE-2024-33655.patch
+@@ -0,0 +1,792 @@
++From e386c19bfb79e42910704b7f152693aa996a5da5 Mon Sep 17 00:00:00 2001
++From: Patrick Vogelaar <patrick.vogelaar@belden.com>
++Date: Sun, 2 Nov 2025 21:23:18 +0100
++Subject: [PATCH] Fix CVE-2024-33655 (DNSBomb attack)
++
++This fixes CVE-2024-33655 by applying a patch [1] listed in [2]
++
++[1] https://nlnetlabs.nl/downloads/unbound/patch_CVE-2024-33655.diff
++[2] https://www.nlnetlabs.nl/downloads/unbound/CVE-2024-33655.txt
++
++CVE: CVE-2024-33655
++Upstream-Status: Backport [https://nlnetlabs.nl/downloads/unbound/patch_CVE-2024-33655.diff]
++
++Signed-off-by: Patrick Vogelaar <patrick.vogelaar@belden.com>
++---
++ doc/example.conf.in                           |  15 ++
++ doc/unbound.conf.5.in                         |  30 ++++
++ services/cache/infra.c                        | 170 +++++++++++++++++-
++ services/cache/infra.h                        |  28 +++
++ services/mesh.c                               |  65 +++++++
++ .../doh_downstream.tdir/doh_downstream.conf   |   1 +
++ .../doh_downstream_notls.conf                 |   1 +
++ .../doh_downstream_post.conf                  |   1 +
++ .../fwd_three_service.conf                    |   1 +
++ testdata/iter_ghost_timewindow.rpl            |   1 +
++ .../ssl_req_order.tdir/ssl_req_order.conf     |   1 +
++ .../tcp_req_order.tdir/tcp_req_order.conf     |   1 +
++ testdata/tcp_sigpipe.tdir/tcp_sigpipe.conf    |   3 +-
++ util/config_file.c                            |  15 ++
++ util/config_file.h                            |  15 ++
++ util/configlexer.lex                          |   5 +
++ util/configparser.y                           |  55 ++++++
++ 17 files changed, 405 insertions(+), 3 deletions(-)
++
++diff --git a/doc/example.conf.in b/doc/example.conf.in
++index 1ac155b7..67047980 100644
++--- a/doc/example.conf.in
+++++ b/doc/example.conf.in
++@@ -191,6 +191,21 @@ server:
++ 	# are behind a slow satellite link, to eg. 1128.
++ 	# unknown-server-time-limit: 376
++ 
+++	# msec before recursion replies are dropped. The work item continues.
+++	# discard-timeout: 1900
+++
+++	# Max number of replies waiting for recursion per IP address.
+++	# wait-limit: 1000
+++
+++	# Max replies waiting for recursion for IP address with cookie.
+++	# wait-limit-cookie: 10000
+++
+++	# Apart from the default, the wait limit can be set for a netblock.
+++	# wait-limit-netblock: 192.0.2.0/24 50000
+++
+++	# Apart from the default, the wait limit with cookie can be adjusted.
+++	# wait-limit-cookie-netblock: 192.0.2.0/24 50000
+++
++ 	# the amount of memory to use for the RRset cache.
++ 	# plain value in bytes or you can append k, m or G. default is "4Mb".
++ 	# rrset-cache-size: 4m
++diff --git a/doc/unbound.conf.5.in b/doc/unbound.conf.5.in
++index 84eddd94..cc5fd64d 100644
++--- a/doc/unbound.conf.5.in
+++++ b/doc/unbound.conf.5.in
++@@ -302,6 +302,36 @@ Increase this if you are behind a slow satellite link, to eg. 1128.
++ That would then avoid re\-querying every initial query because it times out.
++ Default is 376 msec.
++ .TP
+++.B discard\-timeout: \fI<msec>
+++The wait time in msec where recursion requests are dropped. This is
+++to stop a large number of replies from accumulating. They receive
+++no reply, the work item continues to recurse. It is nice to be a bit
+++larger than serve\-expired\-client\-timeout if that is enabled.
+++A value of 1900 msec is suggested. The value 0 disables it.
+++Default 1900 msec.
+++.TP
+++.B wait\-limit: \fI<number>
+++The number of replies that can wait for recursion, for an IP address.
+++This makes a ratelimit per IP address of waiting replies for recursion.
+++It stops very large amounts of queries waiting to be returned to one
+++destination. The value 0 disables wait limits. Default is 1000.
+++.TP
+++.B wait\-limit\-cookie: \fI<number>
+++The number of replies that can wait for recursion, for an IP address
+++that sent the query with a valid DNS cookie. Since the cookie validates
+++the client address, the limit can be higher. Default is 10000.
+++.TP
+++.B wait\-limit\-netblock: \fI<netblock> <number>
+++The wait limit for the netblock. If not given the wait\-limit value is
+++used. The most specific netblock is used to determine the limit. Useful for
+++overriding the default for a specific, group or individual, server.
+++The value -1 disables wait limits for the netblock.
+++.TP
+++.B wait\-limit\-cookie\-netblock: \fI<netblock> <number>
+++The wait limit for the netblock, when the query has a DNS cookie.
+++If not given, the wait\-limit\-cookie value is used.
+++The value -1 disables wait limits for the netblock.
+++.TP
++ .B so\-rcvbuf: \fI<number>
++ If not 0, then set the SO_RCVBUF socket option to get more buffer
++ space on UDP port 53 incoming queries.  So that short spikes on busy
++diff --git a/services/cache/infra.c b/services/cache/infra.c
++index 31462d13..457685ab 100644
++--- a/services/cache/infra.c
+++++ b/services/cache/infra.c
++@@ -234,6 +234,81 @@ setup_domain_limits(struct infra_cache* infra, struct config_file* cfg)
++ 	return 1;
++ }
++ 
+++/** find or create element in wait limit netblock tree */
+++static struct wait_limit_netblock_info*
+++wait_limit_netblock_findcreate(struct infra_cache* infra, char* str,
+++	int cookie)
+++{
+++	rbtree_type* tree;
+++	struct sockaddr_storage addr;
+++	int net;
+++	socklen_t addrlen;
+++	struct wait_limit_netblock_info* d;
+++
+++	if(!netblockstrtoaddr(str, 0, &addr, &addrlen, &net)) {
+++		log_err("cannot parse wait limit netblock '%s'", str);
+++		return 0;
+++	}
+++
+++	/* can we find it? */
+++	if(cookie)
+++		tree = &infra->wait_limits_cookie_netblock;
+++	else
+++		tree = &infra->wait_limits_netblock;
+++	d = (struct wait_limit_netblock_info*)addr_tree_find(tree, &addr,
+++		addrlen, net);
+++	if(d)
+++		return d;
+++
+++	/* create it */
+++	d = (struct wait_limit_netblock_info*)calloc(1, sizeof(*d));
+++	if(!d)
+++		return NULL;
+++	d->limit = -1;
+++	if(!addr_tree_insert(tree, &d->node, &addr, addrlen, net)) {
+++		log_err("duplicate element in domainlimit tree");
+++		free(d);
+++		return NULL;
+++	}
+++	return d;
+++}
+++
+++
+++/** insert wait limit information into lookup tree */
+++static int
+++infra_wait_limit_netblock_insert(struct infra_cache* infra,
+++	struct config_file* cfg)
+++{
+++	struct config_str2list* p;
+++	struct wait_limit_netblock_info* d;
+++	for(p = cfg->wait_limit_netblock; p; p = p->next) {
+++		d = wait_limit_netblock_findcreate(infra, p->str, 0);
+++		if(!d)
+++			return 0;
+++		d->limit = atoi(p->str2);
+++	}
+++	for(p = cfg->wait_limit_cookie_netblock; p; p = p->next) {
+++		d = wait_limit_netblock_findcreate(infra, p->str, 1);
+++		if(!d)
+++			return 0;
+++		d->limit = atoi(p->str2);
+++	}
+++	return 1;
+++}
+++
+++/** setup wait limits tree (0 on failure) */
+++static int
+++setup_wait_limits(struct infra_cache* infra, struct config_file* cfg)
+++{
+++	addr_tree_init(&infra->wait_limits_netblock);
+++	addr_tree_init(&infra->wait_limits_cookie_netblock);
+++	if(!infra_wait_limit_netblock_insert(infra, cfg))
+++		return 0;
+++	addr_tree_init_parents(&infra->wait_limits_netblock);
+++	addr_tree_init_parents(&infra->wait_limits_cookie_netblock);
+++	return 1;
+++}
+++
++ struct infra_cache* 
++ infra_create(struct config_file* cfg)
++ {
++@@ -267,6 +342,10 @@ infra_create(struct config_file* cfg)
++ 		infra_delete(infra);
++ 		return NULL;
++ 	}
+++	if(!setup_wait_limits(infra, cfg)) {
+++		infra_delete(infra);
+++		return NULL;
+++	}
++ 	infra_ip_ratelimit = cfg->ip_ratelimit;
++ 	infra->client_ip_rates = slabhash_create(cfg->ip_ratelimit_slabs,
++ 	    INFRA_HOST_STARTSIZE, cfg->ip_ratelimit_size, &ip_rate_sizefunc,
++@@ -287,6 +366,12 @@ static void domain_limit_free(rbnode_type* n, void* ATTR_UNUSED(arg))
++ 	}
++ }
++ 
+++/** delete wait_limit_netblock_info entries */
+++static void wait_limit_netblock_del(rbnode_type* n, void* ATTR_UNUSED(arg))
+++{
+++	free(n);
+++}
+++
++ void 
++ infra_delete(struct infra_cache* infra)
++ {
++@@ -296,6 +381,10 @@ infra_delete(struct infra_cache* infra)
++ 	slabhash_delete(infra->domain_rates);
++ 	traverse_postorder(&infra->domain_limits, domain_limit_free, NULL);
++ 	slabhash_delete(infra->client_ip_rates);
+++	traverse_postorder(&infra->wait_limits_netblock,
+++		wait_limit_netblock_del, NULL);
+++	traverse_postorder(&infra->wait_limits_cookie_netblock,
+++		wait_limit_netblock_del, NULL);
++ 	free(infra);
++ }
++ 
++@@ -880,7 +969,8 @@ static void infra_create_ratedata(struct infra_cache* infra,
++ 
++ /** create rate data item for ip address */
++ static void infra_ip_create_ratedata(struct infra_cache* infra,
++-	struct sockaddr_storage* addr, socklen_t addrlen, time_t timenow)
+++	struct sockaddr_storage* addr, socklen_t addrlen, time_t timenow,
+++	int mesh_wait)
++ {
++ 	hashvalue_type h = hash_addr(addr, addrlen, 0);
++ 	struct ip_rate_key* k = (struct ip_rate_key*)calloc(1, sizeof(*k));
++@@ -898,6 +988,7 @@ static void infra_ip_create_ratedata(struct infra_cache* infra,
++ 	k->entry.data = d;
++ 	d->qps[0] = 1;
++ 	d->timestamp[0] = timenow;
+++	d->mesh_wait = mesh_wait;
++ 	slabhash_insert(infra->client_ip_rates, h, &k->entry, d, NULL);
++ }
++ 
++@@ -1121,6 +1212,81 @@ int infra_ip_ratelimit_inc(struct infra_cache* infra,
++ 	}
++ 
++ 	/* create */
++-	infra_ip_create_ratedata(infra, addr, addrlen, timenow);
+++	infra_ip_create_ratedata(infra, addr, addrlen, timenow, 0);
++ 	return 1;
++ }
+++
+++int infra_wait_limit_allowed(struct infra_cache* infra, struct comm_reply* rep,
+++	int cookie_valid, struct config_file* cfg)
+++{
+++	struct lruhash_entry* entry;
+++	if(cfg->wait_limit == 0)
+++		return 1;
+++
+++	entry = infra_find_ip_ratedata(infra, &rep->client_addr,
+++		rep->client_addrlen, 0);
+++	if(entry) {
+++		rbtree_type* tree;
+++		struct wait_limit_netblock_info* w;
+++		struct rate_data* d = (struct rate_data*)entry->data;
+++		int mesh_wait = d->mesh_wait;
+++		lock_rw_unlock(&entry->lock);
+++
+++		/* have the wait amount, check how much is allowed */
+++		if(cookie_valid)
+++			tree = &infra->wait_limits_cookie_netblock;
+++		else	tree = &infra->wait_limits_netblock;
+++		w = (struct wait_limit_netblock_info*)addr_tree_lookup(tree,
+++			&rep->client_addr, rep->client_addrlen);
+++		if(w) {
+++			if(w->limit != -1 && mesh_wait > w->limit)
+++				return 0;
+++		} else {
+++			/* if there is no IP netblock specific information,
+++			 * use the configured value. */
+++			if(mesh_wait > (cookie_valid?cfg->wait_limit_cookie:
+++				cfg->wait_limit))
+++				return 0;
+++		}
+++	}
+++	return 1;
+++}
+++
+++void infra_wait_limit_inc(struct infra_cache* infra, struct comm_reply* rep,
+++	time_t timenow, struct config_file* cfg)
+++{
+++	struct lruhash_entry* entry;
+++	if(cfg->wait_limit == 0)
+++		return;
+++
+++	/* Find it */
+++	entry = infra_find_ip_ratedata(infra, &rep->client_addr,
+++		rep->client_addrlen, 1);
+++	if(entry) {
+++		struct rate_data* d = (struct rate_data*)entry->data;
+++		d->mesh_wait++;
+++		lock_rw_unlock(&entry->lock);
+++		return;
+++	}
+++
+++	/* Create it */
+++	infra_ip_create_ratedata(infra, &rep->client_addr,
+++		rep->client_addrlen, timenow, 1);
+++}
+++
+++void infra_wait_limit_dec(struct infra_cache* infra, struct comm_reply* rep,
+++	struct config_file* cfg)
+++{
+++	struct lruhash_entry* entry;
+++	if(cfg->wait_limit == 0)
+++		return;
+++
+++	entry = infra_find_ip_ratedata(infra, &rep->client_addr,
+++		rep->client_addrlen, 1);
+++	if(entry) {
+++		struct rate_data* d = (struct rate_data*)entry->data;
+++		if(d->mesh_wait > 0)
+++			d->mesh_wait--;
+++		lock_rw_unlock(&entry->lock);
+++	}
+++}
++diff --git a/services/cache/infra.h b/services/cache/infra.h
++index 525073bf..ee6f384d 100644
++--- a/services/cache/infra.h
+++++ b/services/cache/infra.h
++@@ -122,6 +122,10 @@ struct infra_cache {
++ 	rbtree_type domain_limits;
++ 	/** hash table with query rates per client ip: ip_rate_key, ip_rate_data */
++ 	struct slabhash* client_ip_rates;
+++	/** tree of addr_tree_node, with wait_limit_netblock_info information */
+++	rbtree_type wait_limits_netblock;
+++	/** tree of addr_tree_node, with wait_limit_netblock_info information */
+++	rbtree_type wait_limits_cookie_netblock;
++ };
++ 
++ /** ratelimit, unless overridden by domain_limits, 0 is off */
++@@ -184,10 +188,22 @@ struct rate_data {
++ 	/** what the timestamp is of the qps array members, counter is
++ 	 * valid for that timestamp.  Usually now and now-1. */
++ 	time_t timestamp[RATE_WINDOW];
+++	/** the number of queries waiting in the mesh */
+++	int mesh_wait;
++ };
++ 
++ #define ip_rate_data rate_data
++ 
+++/**
+++ * Data to store the configuration per netblock for the wait limit
+++ */
+++struct wait_limit_netblock_info {
+++	/** The addr tree node, this must be first. */
+++	struct addr_tree_node node;
+++	/** the limit on the amount */
+++	int limit;
+++};
+++
++ /** infra host cache default hash lookup size */
++ #define INFRA_HOST_STARTSIZE 32
++ /** bytes per zonename reserved in the hostcache, dnamelen(zonename.com.) */
++@@ -474,4 +490,16 @@ void ip_rate_delkeyfunc(void* d, void* arg);
++ /* delete data */
++ #define ip_rate_deldatafunc rate_deldatafunc
++ 
+++/** See if the IP address can have another reply in the wait limit */
+++int infra_wait_limit_allowed(struct infra_cache* infra, struct comm_reply* rep,
+++	int cookie_valid, struct config_file* cfg);
+++
+++/** Increment number of waiting replies for IP */
+++void infra_wait_limit_inc(struct infra_cache* infra, struct comm_reply* rep,
+++	time_t timenow, struct config_file* cfg);
+++
+++/** Decrement number of waiting replies for IP */
+++void infra_wait_limit_dec(struct infra_cache* infra, struct comm_reply* rep,
+++	struct config_file* cfg);
+++
++ #endif /* SERVICES_CACHE_INFRA_H */
++diff --git a/services/mesh.c b/services/mesh.c
++index 47cfb042..2b06957d 100644
++--- a/services/mesh.c
+++++ b/services/mesh.c
++@@ -47,6 +47,7 @@
++ #include "services/outbound_list.h"
++ #include "services/cache/dns.h"
++ #include "services/cache/rrset.h"
+++#include "services/cache/infra.h"
++ #include "util/log.h"
++ #include "util/net_help.h"
++ #include "util/module.h"
++@@ -415,6 +416,14 @@ void mesh_new_client(struct mesh_area* mesh, struct query_info* qinfo,
++ 	if(rep->c->tcp_req_info) {
++ 		r_buffer = rep->c->tcp_req_info->spool_buffer;
++ 	}
+++	if(!infra_wait_limit_allowed(mesh->env->infra_cache, rep,
+++		edns->cookie_valid, mesh->env->cfg)) {
+++		verbose(VERB_ALGO, "Too many queries waiting from the IP. "
+++			"dropping incoming query.");
+++		comm_point_drop_reply(rep);
+++		mesh->stats_dropped++;
+++		return;
+++	}
++ 	if(!unique)
++ 		s = mesh_area_find(mesh, cinfo, qinfo, qflags&(BIT_RD|BIT_CD), 0, 0);
++ 	/* does this create a new reply state? */
++@@ -511,6 +520,8 @@ void mesh_new_client(struct mesh_area* mesh, struct query_info* qinfo,
++ 		log_err("mesh_new_client: out of memory initializing serve expired");
++ 		goto servfail_mem;
++ 	}
+++	infra_wait_limit_inc(mesh->env->infra_cache, rep, *mesh->env->now,
+++		mesh->env->cfg);
++ 	/* update statistics */
++ 	if(was_detached) {
++ 		log_assert(mesh->num_detached_states > 0);
++@@ -930,6 +941,8 @@ mesh_state_cleanup(struct mesh_state* mstate)
++ 		 * takes no time and also it does not do the mesh accounting */
++ 		mstate->reply_list = NULL;
++ 		for(; rep; rep=rep->next) {
+++			infra_wait_limit_dec(mesh->env->infra_cache,
+++				&rep->query_reply, mesh->env->cfg);
++ 			comm_point_drop_reply(&rep->query_reply);
++ 			log_assert(mesh->num_reply_addrs > 0);
++ 			mesh->num_reply_addrs--;
++@@ -1413,6 +1426,8 @@ mesh_send_reply(struct mesh_state* m, int rcode, struct reply_info* rep,
++ 		comm_point_send_reply(&r->query_reply);
++ 		m->reply_list = rlist;
++ 	}
+++	infra_wait_limit_dec(m->s.env->infra_cache, &r->query_reply,
+++		m->s.env->cfg);
++ 	/* account */
++ 	log_assert(m->s.env->mesh->num_reply_addrs > 0);
++ 	m->s.env->mesh->num_reply_addrs--;
++@@ -1470,6 +1485,28 @@ void mesh_query_done(struct mesh_state* mstate)
++ 		}
++ 	}
++ 	for(r = mstate->reply_list; r; r = r->next) {
+++		struct timeval old;
+++		timeval_subtract(&old, mstate->s.env->now_tv, &r->start_time);
+++		if(mstate->s.env->cfg->discard_timeout != 0 &&
+++			((int)old.tv_sec)*1000+((int)old.tv_usec)/1000 >
+++			mstate->s.env->cfg->discard_timeout) {
+++			/* Drop the reply, it is too old */
+++			/* briefly set the reply_list to NULL, so that the
+++			 * tcp req info cleanup routine that calls the mesh
+++			 * to deregister the meshstate for it is not done
+++			 * because the list is NULL and also accounting is not
+++			 * done there, but instead we do that here. */
+++			struct mesh_reply* reply_list = mstate->reply_list;
+++			verbose(VERB_ALGO, "drop reply, it is older than discard-timeout");
+++			infra_wait_limit_dec(mstate->s.env->infra_cache,
+++				&r->query_reply, mstate->s.env->cfg);
+++			mstate->reply_list = NULL;
+++			comm_point_drop_reply(&r->query_reply);
+++			mstate->reply_list = reply_list;
+++			mstate->s.env->mesh->stats_dropped++;
+++			continue;
+++		}
+++
++ 		i++;
++ 		tv = r->start_time;
++ 
++@@ -1493,6 +1530,8 @@ void mesh_query_done(struct mesh_state* mstate)
++ 			 * because the list is NULL and also accounting is not
++ 			 * done there, but instead we do that here. */
++ 			struct mesh_reply* reply_list = mstate->reply_list;
+++			infra_wait_limit_dec(mstate->s.env->infra_cache,
+++				&r->query_reply, mstate->s.env->cfg);
++ 			mstate->reply_list = NULL;
++ 			comm_point_drop_reply(&r->query_reply);
++ 			mstate->reply_list = reply_list;
++@@ -2025,6 +2064,8 @@ void mesh_state_remove_reply(struct mesh_area* mesh, struct mesh_state* m,
++ 			/* delete it, but allocated in m region */
++ 			log_assert(mesh->num_reply_addrs > 0);
++ 			mesh->num_reply_addrs--;
+++			infra_wait_limit_dec(mesh->env->infra_cache,
+++				&n->query_reply, mesh->env->cfg);
++ 
++ 			/* prev = prev; */
++ 			n = n->next;
++@@ -2165,6 +2206,28 @@ mesh_serve_expired_callback(void* arg)
++ 		log_dns_msg("Serve expired lookup", &qstate->qinfo, msg->rep);
++ 
++ 	for(r = mstate->reply_list; r; r = r->next) {
+++		struct timeval old;
+++		timeval_subtract(&old, mstate->s.env->now_tv, &r->start_time);
+++		if(mstate->s.env->cfg->discard_timeout != 0 &&
+++			((int)old.tv_sec)*1000+((int)old.tv_usec)/1000 >
+++			mstate->s.env->cfg->discard_timeout) {
+++			/* Drop the reply, it is too old */
+++			/* briefly set the reply_list to NULL, so that the
+++			 * tcp req info cleanup routine that calls the mesh
+++			 * to deregister the meshstate for it is not done
+++			 * because the list is NULL and also accounting is not
+++			 * done there, but instead we do that here. */
+++			struct mesh_reply* reply_list = mstate->reply_list;
+++			verbose(VERB_ALGO, "drop reply, it is older than discard-timeout");
+++			infra_wait_limit_dec(mstate->s.env->infra_cache,
+++				&r->query_reply, mstate->s.env->cfg);
+++			mstate->reply_list = NULL;
+++			comm_point_drop_reply(&r->query_reply);
+++			mstate->reply_list = reply_list;
+++			mstate->s.env->mesh->stats_dropped++;
+++			continue;
+++		}
+++
++ 		i++;
++ 		tv = r->start_time;
++ 
++@@ -2192,6 +2255,8 @@ mesh_serve_expired_callback(void* arg)
++ 			r, r_buffer, prev, prev_buffer);
++ 		if(r->query_reply.c->tcp_req_info)
++ 			tcp_req_info_remove_mesh_state(r->query_reply.c->tcp_req_info, mstate);
+++		infra_wait_limit_dec(mstate->s.env->infra_cache,
+++			&r->query_reply, mstate->s.env->cfg);
++ 		prev = r;
++ 		prev_buffer = r_buffer;
++ 	}
++diff --git a/testdata/doh_downstream.tdir/doh_downstream.conf b/testdata/doh_downstream.tdir/doh_downstream.conf
++index f0857bb5..222c2159 100644
++--- a/testdata/doh_downstream.tdir/doh_downstream.conf
+++++ b/testdata/doh_downstream.tdir/doh_downstream.conf
++@@ -11,6 +11,7 @@ server:
++ 	chroot: ""
++ 	username: ""
++ 	do-not-query-localhost: no
+++	discard-timeout: 3000  # testns uses sleep=2
++ 	http-query-buffer-size: 1G
++ 	http-response-buffer-size: 1G
++ 	http-max-streams: 200
++diff --git a/testdata/doh_downstream_notls.tdir/doh_downstream_notls.conf b/testdata/doh_downstream_notls.tdir/doh_downstream_notls.conf
++index bdca4564..161c3555 100644
++--- a/testdata/doh_downstream_notls.tdir/doh_downstream_notls.conf
+++++ b/testdata/doh_downstream_notls.tdir/doh_downstream_notls.conf
++@@ -11,6 +11,7 @@ server:
++ 	chroot: ""
++ 	username: ""
++ 	do-not-query-localhost: no
+++	discard-timeout: 3000  # testns uses sleep=2
++ 	http-query-buffer-size: 1G
++ 	http-response-buffer-size: 1G
++ 	http-max-streams: 200
++diff --git a/testdata/doh_downstream_post.tdir/doh_downstream_post.conf b/testdata/doh_downstream_post.tdir/doh_downstream_post.conf
++index f0857bb5..222c2159 100644
++--- a/testdata/doh_downstream_post.tdir/doh_downstream_post.conf
+++++ b/testdata/doh_downstream_post.tdir/doh_downstream_post.conf
++@@ -11,6 +11,7 @@ server:
++ 	chroot: ""
++ 	username: ""
++ 	do-not-query-localhost: no
+++	discard-timeout: 3000  # testns uses sleep=2
++ 	http-query-buffer-size: 1G
++ 	http-response-buffer-size: 1G
++ 	http-max-streams: 200
++diff --git a/testdata/fwd_three_service.tdir/fwd_three_service.conf b/testdata/fwd_three_service.tdir/fwd_three_service.conf
++index 05fafe01..d6c9a205 100644
++--- a/testdata/fwd_three_service.tdir/fwd_three_service.conf
+++++ b/testdata/fwd_three_service.tdir/fwd_three_service.conf
++@@ -11,6 +11,7 @@ server:
++ 	num-queries-per-thread: 1024
++ 	use-syslog: no
++ 	do-not-query-localhost: no
+++	discard-timeout: 3000  # testns uses sleep=2
++ forward-zone:
++ 	name: "."
++ 	forward-addr: "127.0.0.1@@TOPORT@"
++diff --git a/testdata/iter_ghost_timewindow.rpl b/testdata/iter_ghost_timewindow.rpl
++index 566be82a..9e304628 100644
++--- a/testdata/iter_ghost_timewindow.rpl
+++++ b/testdata/iter_ghost_timewindow.rpl
++@@ -3,6 +3,7 @@ server:
++ 	target-fetch-policy: "0 0 0 0 0"
++ 	qname-minimisation: "no"
++ 	minimal-responses: no
+++	discard-timeout: 86400
++ 
++ stub-zone:
++ 	name: "."
++diff --git a/testdata/ssl_req_order.tdir/ssl_req_order.conf b/testdata/ssl_req_order.tdir/ssl_req_order.conf
++index 3b2e2b1b..ec39d3ab 100644
++--- a/testdata/ssl_req_order.tdir/ssl_req_order.conf
+++++ b/testdata/ssl_req_order.tdir/ssl_req_order.conf
++@@ -9,6 +9,7 @@ server:
++ 	chroot: ""
++ 	username: ""
++ 	do-not-query-localhost: no
+++	discard-timeout: 3000  # testns uses sleep=2
++ 	ssl-port: @PORT@
++ 	ssl-service-key: "unbound_server.key"
++ 	ssl-service-pem: "unbound_server.pem"
++diff --git a/testdata/tcp_req_order.tdir/tcp_req_order.conf b/testdata/tcp_req_order.tdir/tcp_req_order.conf
++index 40d6f55c..b2804e8e 100644
++--- a/testdata/tcp_req_order.tdir/tcp_req_order.conf
+++++ b/testdata/tcp_req_order.tdir/tcp_req_order.conf
++@@ -9,6 +9,7 @@ server:
++ 	chroot: ""
++ 	username: ""
++ 	do-not-query-localhost: no
+++	discard-timeout: 3000  # testns uses sleep=2
++ 
++ 	local-zone: "example.net" static
++ 	local-data: "www1.example.net. IN A 1.2.3.1"
++diff --git a/testdata/tcp_sigpipe.tdir/tcp_sigpipe.conf b/testdata/tcp_sigpipe.tdir/tcp_sigpipe.conf
++index 384f16b0..4f1ff9b0 100644
++--- a/testdata/tcp_sigpipe.tdir/tcp_sigpipe.conf
+++++ b/testdata/tcp_sigpipe.tdir/tcp_sigpipe.conf
++@@ -1,5 +1,5 @@
++ server:
++-	verbosity: 2
+++	verbosity: 4
++ 	# num-threads: 1
++ 	interface: 127.0.0.1
++ 	port: @PORT@
++@@ -9,6 +9,7 @@ server:
++ 	chroot: ""
++ 	username: ""
++ 	do-not-query-localhost: no
+++	discard-timeout: 3000  # testns uses sleep=2
++ 
++ forward-zone:
++ 	name: "."
++diff --git a/util/config_file.c b/util/config_file.c
++index 26185da0..147f41e8 100644
++--- a/util/config_file.c
+++++ b/util/config_file.c
++@@ -308,6 +308,11 @@ config_create(void)
++ 	cfg->minimal_responses = 1;
++ 	cfg->rrset_roundrobin = 1;
++ 	cfg->unknown_server_time_limit = 376;
+++	cfg->discard_timeout = 1900; /* msec */
+++	cfg->wait_limit = 1000;
+++	cfg->wait_limit_cookie = 10000;
+++	cfg->wait_limit_netblock = NULL;
+++	cfg->wait_limit_cookie_netblock = NULL;
++ 	cfg->max_udp_size = 1232; /* value taken from edns_buffer_size */
++ 	if(!(cfg->server_key_file = strdup(RUN_DIR"/unbound_server.key")))
++ 		goto error_exit;
++@@ -722,6 +727,9 @@ int config_set_option(struct config_file* cfg, const char* opt,
++ 	else S_YNO("minimal-responses:", minimal_responses)
++ 	else S_YNO("rrset-roundrobin:", rrset_roundrobin)
++ 	else S_NUMBER_OR_ZERO("unknown-server-time-limit:", unknown_server_time_limit)
+++	else S_NUMBER_OR_ZERO("discard-timeout:", discard_timeout)
+++	else S_NUMBER_OR_ZERO("wait-limit:", wait_limit)
+++	else S_NUMBER_OR_ZERO("wait-limit-cookie:", wait_limit_cookie)
++ 	else S_STRLIST("local-data:", local_data)
++ 	else S_YNO("unblock-lan-zones:", unblock_lan_zones)
++ 	else S_YNO("insecure-lan-zones:", insecure_lan_zones)
++@@ -1201,6 +1209,11 @@ config_get_option(struct config_file* cfg, const char* opt,
++ 	else O_YNO(opt, "minimal-responses", minimal_responses)
++ 	else O_YNO(opt, "rrset-roundrobin", rrset_roundrobin)
++ 	else O_DEC(opt, "unknown-server-time-limit", unknown_server_time_limit)
+++	else O_DEC(opt, "discard-timeout", discard_timeout)
+++	else O_DEC(opt, "wait-limit", wait_limit)
+++	else O_DEC(opt, "wait-limit-cookie", wait_limit_cookie)
+++	else O_LS2(opt, "wait-limit-netblock", wait_limit_netblock)
+++	else O_LS2(opt, "wait-limit-cookie-netblock", wait_limit_cookie_netblock)
++ #ifdef CLIENT_SUBNET
++ 	else O_LST(opt, "send-client-subnet", client_subnet)
++ 	else O_LST(opt, "client-subnet-zone", client_subnet_zone)
++@@ -1671,6 +1684,8 @@ config_delete(struct config_file* cfg)
++ 	config_deltrplstrlist(cfg->interface_tag_actions);
++ 	config_deltrplstrlist(cfg->interface_tag_datas);
++ 	config_delstrlist(cfg->control_ifs.first);
+++	config_deldblstrlist(cfg->wait_limit_netblock);
+++	config_deldblstrlist(cfg->wait_limit_cookie_netblock);
++ 	free(cfg->server_key_file);
++ 	free(cfg->server_cert_file);
++ 	free(cfg->control_key_file);
++diff --git a/util/config_file.h b/util/config_file.h
++index 49110983..7ded3c24 100644
++--- a/util/config_file.h
+++++ b/util/config_file.h
++@@ -535,6 +535,21 @@ struct config_file {
++ 	/* wait time for unknown server in msec */
++ 	int unknown_server_time_limit;
++ 
+++	/** Wait time to drop recursion replies */
+++	int discard_timeout;
+++
+++	/** Wait limit for number of replies per IP address */
+++	int wait_limit;
+++
+++	/** Wait limit for number of replies per IP address with cookie */
+++	int wait_limit_cookie;
+++
+++	/** wait limit per netblock */
+++	struct config_str2list* wait_limit_netblock;
+++
+++	/** wait limit with cookie per netblock */
+++	struct config_str2list* wait_limit_cookie_netblock;
+++
++ 	/* maximum UDP response size */
++ 	size_t max_udp_size;
++ 
++diff --git a/util/configlexer.lex b/util/configlexer.lex
++index e1ab76e2..7455f50c 100644
++--- a/util/configlexer.lex
+++++ b/util/configlexer.lex
++@@ -463,6 +463,11 @@ domain-insecure{COLON}		{ YDVAR(1, VAR_DOMAIN_INSECURE) }
++ minimal-responses{COLON}	{ YDVAR(1, VAR_MINIMAL_RESPONSES) }
++ rrset-roundrobin{COLON}		{ YDVAR(1, VAR_RRSET_ROUNDROBIN) }
++ unknown-server-time-limit{COLON} { YDVAR(1, VAR_UNKNOWN_SERVER_TIME_LIMIT) }
+++discard-timeout{COLON}		{ YDVAR(1, VAR_DISCARD_TIMEOUT) }
+++wait-limit{COLON}		{ YDVAR(1, VAR_WAIT_LIMIT) }
+++wait-limit-cookie{COLON}	{ YDVAR(1, VAR_WAIT_LIMIT_COOKIE) }
+++wait-limit-netblock{COLON}	{ YDVAR(1, VAR_WAIT_LIMIT_NETBLOCK) }
+++wait-limit-cookie-netblock{COLON} { YDVAR(1, VAR_WAIT_LIMIT_COOKIE_NETBLOCK) }
++ max-udp-size{COLON}		{ YDVAR(1, VAR_MAX_UDP_SIZE) }
++ dns64-prefix{COLON}		{ YDVAR(1, VAR_DNS64_PREFIX) }
++ dns64-synthall{COLON}		{ YDVAR(1, VAR_DNS64_SYNTHALL) }
++diff --git a/util/configparser.y b/util/configparser.y
++index 0e4cd596..7d95690e 100644
++--- a/util/configparser.y
+++++ b/util/configparser.y
++@@ -188,6 +188,8 @@ extern struct config_parser_state* cfg_parser;
++ %token VAR_ANSWER_COOKIE VAR_COOKIE_SECRET VAR_IP_RATELIMIT_COOKIE
++ %token VAR_FORWARD_NO_CACHE VAR_STUB_NO_CACHE VAR_LOG_SERVFAIL VAR_DENY_ANY
++ %token VAR_UNKNOWN_SERVER_TIME_LIMIT VAR_LOG_TAG_QUERYREPLY
+++%token VAR_DISCARD_TIMEOUT VAR_WAIT_LIMIT VAR_WAIT_LIMIT_COOKIE
+++%token VAR_WAIT_LIMIT_NETBLOCK VAR_WAIT_LIMIT_COOKIE_NETBLOCK
++ %token VAR_STREAM_WAIT_SIZE VAR_TLS_CIPHERS VAR_TLS_CIPHERSUITES VAR_TLS_USE_SNI
++ %token VAR_IPSET VAR_IPSET_NAME_V4 VAR_IPSET_NAME_V6
++ %token VAR_TLS_SESSION_TICKET_KEYS VAR_RPZ VAR_TAGS VAR_RPZ_ACTION_OVERRIDE
++@@ -325,6 +327,8 @@ content_server: server_num_threads | server_verbosity | server_port |
++ 	server_fast_server_permil | server_fast_server_num  | server_tls_win_cert |
++ 	server_tcp_connection_limit | server_log_servfail | server_deny_any |
++ 	server_unknown_server_time_limit | server_log_tag_queryreply |
+++	server_discard_timeout | server_wait_limit | server_wait_limit_cookie |
+++	server_wait_limit_netblock | server_wait_limit_cookie_netblock |
++ 	server_stream_wait_size | server_tls_ciphers |
++ 	server_tls_ciphersuites | server_tls_session_ticket_keys |
++ 	server_answer_cookie | server_cookie_secret | server_ip_ratelimit_cookie |
++@@ -2366,6 +2370,57 @@ server_unknown_server_time_limit: VAR_UNKNOWN_SERVER_TIME_LIMIT STRING_ARG
++ 		free($2);
++ 	}
++ 	;
+++server_discard_timeout: VAR_DISCARD_TIMEOUT STRING_ARG
+++	{
+++		OUTYY(("P(server_discard_timeout:%s)\n", $2));
+++		cfg_parser->cfg->discard_timeout = atoi($2);
+++		free($2);
+++	}
+++	;
+++server_wait_limit: VAR_WAIT_LIMIT STRING_ARG
+++	{
+++		OUTYY(("P(server_wait_limit:%s)\n", $2));
+++		cfg_parser->cfg->wait_limit = atoi($2);
+++		free($2);
+++	}
+++	;
+++server_wait_limit_cookie: VAR_WAIT_LIMIT_COOKIE STRING_ARG
+++	{
+++		OUTYY(("P(server_wait_limit_cookie:%s)\n", $2));
+++		cfg_parser->cfg->wait_limit_cookie = atoi($2);
+++		free($2);
+++	}
+++	;
+++server_wait_limit_netblock: VAR_WAIT_LIMIT_NETBLOCK STRING_ARG STRING_ARG
+++	{
+++		OUTYY(("P(server_wait_limit_netblock:%s %s)\n", $2, $3));
+++		if(atoi($3) == 0 && strcmp($3, "0") != 0) {
+++			yyerror("number expected");
+++			free($2);
+++			free($3);
+++		} else {
+++			if(!cfg_str2list_insert(&cfg_parser->cfg->
+++				wait_limit_netblock, $2, $3))
+++				fatal_exit("out of memory adding "
+++					"wait-limit-netblock");
+++		}
+++	}
+++	;
+++server_wait_limit_cookie_netblock: VAR_WAIT_LIMIT_COOKIE_NETBLOCK STRING_ARG STRING_ARG
+++	{
+++		OUTYY(("P(server_wait_limit_cookie_netblock:%s %s)\n", $2, $3));
+++		if(atoi($3) == 0 && strcmp($3, "0") != 0) {
+++			yyerror("number expected");
+++			free($2);
+++			free($3);
+++		} else {
+++			if(!cfg_str2list_insert(&cfg_parser->cfg->
+++				wait_limit_cookie_netblock, $2, $3))
+++				fatal_exit("out of memory adding "
+++					"wait-limit-cookie-netblock");
+++		}
+++	}
+++	;
++ server_max_udp_size: VAR_MAX_UDP_SIZE STRING_ARG
++ 	{
++ 		OUTYY(("P(server_max_udp_size:%s)\n", $2));
++-- 
++2.34.1
++
+diff --git a/meta-networking/recipes-support/unbound/unbound/CVE-2025-11411.patch b/meta-networking/recipes-support/unbound/unbound/CVE-2025-11411.patch
+new file mode 100644
+index 0000000000000000000000000000000000000000..a6530907706a3629efda6bb6109436952c7c2e94
+--- /dev/null
++++ b/meta-networking/recipes-support/unbound/unbound/CVE-2025-11411.patch
+@@ -0,0 +1,48 @@
++From 98fac0b396e1e85a6345baa59fc178b1f51759b8 Mon Sep 17 00:00:00 2001
++From: Patrick Vogelaar <patrick.vogelaar@belden.com>
++Date: Wed, 29 Oct 2025 13:33:23 +0100
++Subject: [PATCH] Fix CVE-2025-11411 (possible domain hijacking attack)
++
++This fixes CVE-2025-11411 by applying the minimal patch [1] listed in [2]
++
++[1] https://nlnetlabs.nl/downloads/unbound/patch_CVE-2025-11411.diff
++[2] https://www.nlnetlabs.nl/downloads/unbound/CVE-2025-11411.txt
++
++CVE: CVE-2025-11411
++Upstream-Status: Backport [minimal backport of https://github.com/NLnetLabs/unbound/commit/a33f0638e1dacf2633cf2292078a674576bca852]
++
++Signed-off-by: Patrick Vogelaar <patrick.vogelaar@belden.com>
++---
++ iterator/iter_scrub.c | 16 ++++++++++++++++
++ 1 file changed, 16 insertions(+)
++
++diff --git a/iterator/iter_scrub.c b/iterator/iter_scrub.c
++index 48867e50..5beaa048 100644
++--- a/iterator/iter_scrub.c
+++++ b/iterator/iter_scrub.c
++@@ -571,6 +571,22 @@ scrub_normalize(sldns_buffer* pkt, struct msg_parse* msg,
++ 					"RRset:", pkt, msg, prev, &rrset);
++ 				continue;
++ 			}
+++			/* If the NS set is a promiscuous NS set, scrub that
+++			 * to remove potential for poisonous contents that
+++			 * affects other names in the same zone. Remove
+++			 * promiscuous NS sets in positive answers, that
+++			 * thus have records in the answer section. Nodata
+++			 * and nxdomain promiscuous NS sets have been removed
+++			 * already. Since the NS rrset is scrubbed, its
+++			 * address records are also not marked to be allowed
+++			 * and are removed later. */
+++			if(FLAGS_GET_RCODE(msg->flags) == LDNS_RCODE_NOERROR &&
+++				msg->an_rrsets != 0 &&
+++				1 /* env->cfg->iter_scrub_promiscuous */) {
+++				remove_rrset("normalize: removing promiscuous "
+++					"RRset:", pkt, msg, prev, &rrset);
+++				continue;
+++			}
++ 			if(nsset == NULL) {
++ 				nsset = rrset;
++ 			} else {
++-- 
++2.34.1
++
+diff --git a/meta-networking/recipes-support/unbound/unbound_1.19.3.bb b/meta-networking/recipes-support/unbound/unbound_1.19.3.bb
+index 6f54038c6ce0bc512c1c1e13204589f5b5c78227..e48d76ea5977b6b2df3350e091808c4259f4781a 100644
+--- a/meta-networking/recipes-support/unbound/unbound_1.19.3.bb
++++ b/meta-networking/recipes-support/unbound/unbound_1.19.3.bb
+@@ -11,6 +11,8 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=5308494bc0590c0cb036afd781d78f06"
  
- #define DC_DISP_SHIFT_CLOCK_OPTIONS		0x431
- #define  SC1_H_QUALIFIER_NONE	(1 << 16)
- #define  SC0_H_QUALIFIER_NONE	(1 <<  0)
+ SRC_URI = "git://github.com/NLnetLabs/unbound.git;protocol=https;branch=branch-1.19.3 \
+            file://CVE-2024-8508.patch \
++           file://CVE-2024-33655.patch \
++           file://CVE-2025-11411.patch \
+            "
+ SRCREV = "48b6c60a24e9a5d6d369a7a37c9fe2a767f26abd"
  
-+/* Nvdisplay */
-+#define DC_DISP_CORE_HEAD_SET_CONTROL_OUTPUT_LUT	0x431
-+#define  OUTPUT_LUT_MODE_MASK        (3 << 5)
-+#define  OUTPUT_LUT_MODE_INTERPOLATE (1 << 5)
-+#define  OUTPUT_LUT_SIZE_MASK        (3 << 1)
-+#define  OUTPUT_LUT_SIZE_SIZE_1025   (2 << 1)
-+
-+#define DC_DISP_COREPVT_HEAD_SET_OUTPUT_LUT_BASE	0x432
-+#define DC_DISP_COREPVT_HEAD_SET_OUTPUT_LUT_BASE_HI	0x433
-+
- #define DC_DISP_DATA_ENABLE_OPTIONS		0x432
- #define DE_SELECT_ACTIVE_BLANK  (0 << 0)
- #define DE_SELECT_ACTIVE        (1 << 0)
-diff --git a/drivers/gpu/drm/tegra/sor.c b/drivers/gpu/drm/tegra/sor.c
-index 21f3dfdcc5c9576580b9aa9990dd1bedcdeb4482..a381cb35113c0f3191d7204302f4024f33141622 100644
---- a/drivers/gpu/drm/tegra/sor.c
-+++ b/drivers/gpu/drm/tegra/sor.c
-@@ -443,6 +443,9 @@ struct tegra_sor {
- 	bool scdc_enabled;
- 
- 	struct tegra_hda_format format;
-+
-+	u64 *cmu_output_lut;
-+	dma_addr_t cmu_output_phys;
- };
- 
- struct tegra_sor_state {
-@@ -483,6 +486,180 @@ static inline struct tegra_sor *to_sor(struct tegra_output *output)
- 	return container_of(output, struct tegra_sor, output);
- }
- 
-+static u16 default_srgb_lut[] = {
-+		0x6000, 0x60CE, 0x619D, 0x626C, 0x632D, 0x63D4,
-+		0x6469, 0x64F0, 0x656B, 0x65DF, 0x664A, 0x66B0,
-+		0x6711, 0x676D, 0x67C4, 0x6819, 0x686A, 0x68B8,
-+		0x6904, 0x694D, 0x6994, 0x69D8, 0x6A1B, 0x6A5D,
-+		0x6A9C, 0x6ADA, 0x6B17, 0x6B52, 0x6B8C, 0x6BC5,
-+		0x6BFD, 0x6C33, 0x6C69, 0x6C9E, 0x6CD1, 0x6D04,
-+		0x6D36, 0x6D67, 0x6D98, 0x6DC7, 0x6DF6, 0x6E25,
-+		0x6E52, 0x6E7F, 0x6EAC, 0x6ED7, 0x6F03, 0x6F2D,
-+		0x6F58, 0x6F81, 0x6FAA, 0x6FD3, 0x6FFB, 0x7023,
-+		0x704B, 0x7071, 0x7098, 0x70BE, 0x70E4, 0x7109,
-+		0x712E, 0x7153, 0x7177, 0x719B, 0x71BF, 0x71E2,
-+		0x7205, 0x7227, 0x724A, 0x726C, 0x728E, 0x72AF,
-+		0x72D0, 0x72F1, 0x7312, 0x7333, 0x7353, 0x7373,
-+		0x7392, 0x73B2, 0x73D1, 0x73F0, 0x740F, 0x742D,
-+		0x744C, 0x746A, 0x7488, 0x74A6, 0x74C3, 0x74E0,
-+		0x74FE, 0x751B, 0x7537, 0x7554, 0x7570, 0x758D,
-+		0x75A9, 0x75C4, 0x75E0, 0x75FC, 0x7617, 0x7632,
-+		0x764D, 0x7668, 0x7683, 0x769E, 0x76B8, 0x76D3,
-+		0x76ED, 0x7707, 0x7721, 0x773B, 0x7754, 0x776E,
-+		0x7787, 0x77A0, 0x77B9, 0x77D2, 0x77EB, 0x7804,
-+		0x781D, 0x7835, 0x784E, 0x7866, 0x787E, 0x7896,
-+		0x78AE, 0x78C6, 0x78DD, 0x78F5, 0x790D, 0x7924,
-+		0x793B, 0x7952, 0x796A, 0x7981, 0x7997, 0x79AE,
-+		0x79C5, 0x79DB, 0x79F2, 0x7A08, 0x7A1F, 0x7A35,
-+		0x7A4B, 0x7A61, 0x7A77, 0x7A8D, 0x7AA3, 0x7AB8,
-+		0x7ACE, 0x7AE3, 0x7AF9, 0x7B0E, 0x7B24, 0x7B39,
-+		0x7B4E, 0x7B63, 0x7B78, 0x7B8D, 0x7BA2, 0x7BB6,
-+		0x7BCB, 0x7BE0, 0x7BF4, 0x7C08, 0x7C1D, 0x7C31,
-+		0x7C45, 0x7C59, 0x7C6E, 0x7C82, 0x7C96, 0x7CA9,
-+		0x7CBD, 0x7CD1, 0x7CE5, 0x7CF8, 0x7D0C, 0x7D1F,
-+		0x7D33, 0x7D46, 0x7D59, 0x7D6D, 0x7D80, 0x7D93,
-+		0x7DA6, 0x7DB9, 0x7DCC, 0x7DDF, 0x7DF2, 0x7E04,
-+		0x7E17, 0x7E2A, 0x7E3C, 0x7E4F, 0x7E61, 0x7E74,
-+		0x7E86, 0x7E98, 0x7EAB, 0x7EBD, 0x7ECF, 0x7EE1,
-+		0x7EF3, 0x7F05, 0x7F17, 0x7F29, 0x7F3B, 0x7F4D,
-+		0x7F5E, 0x7F70, 0x7F82, 0x7F93, 0x7FA5, 0x7FB6,
-+		0x7FC8, 0x7FD9, 0x7FEB, 0x7FFC, 0x800D, 0x801E,
-+		0x8030, 0x8041, 0x8052, 0x8063, 0x8074, 0x8085,
-+		0x8096, 0x80A7, 0x80B7, 0x80C8, 0x80D9, 0x80EA,
-+		0x80FA, 0x810B, 0x811C, 0x812C, 0x813D, 0x814D,
-+		0x815D, 0x816E, 0x817E, 0x818E, 0x819F, 0x81AF,
-+		0x81BF, 0x81CF, 0x81DF, 0x81EF, 0x81FF, 0x820F,
-+		0x821F, 0x822F, 0x823F, 0x824F, 0x825F, 0x826F,
-+		0x827E, 0x828E, 0x829E, 0x82AD, 0x82BD, 0x82CC,
-+		0x82DC, 0x82EB, 0x82FB, 0x830A, 0x831A, 0x8329,
-+		0x8338, 0x8348, 0x8357, 0x8366, 0x8375, 0x8385,
-+		0x8394, 0x83A3, 0x83B2, 0x83C1, 0x83D0, 0x83DF,
-+		0x83EE, 0x83FD, 0x840C, 0x841A, 0x8429, 0x8438,
-+		0x8447, 0x8455, 0x8464, 0x8473, 0x8481, 0x8490,
-+		0x849F, 0x84AD, 0x84BC, 0x84CA, 0x84D9, 0x84E7,
-+		0x84F5, 0x8504, 0x8512, 0x8521, 0x852F, 0x853D,
-+		0x854B, 0x855A, 0x8568, 0x8576, 0x8584, 0x8592,
-+		0x85A0, 0x85AE, 0x85BC, 0x85CA, 0x85D8, 0x85E6,
-+		0x85F4, 0x8602, 0x8610, 0x861E, 0x862C, 0x8639,
-+		0x8647, 0x8655, 0x8663, 0x8670, 0x867E, 0x868C,
-+		0x8699, 0x86A7, 0x86B5, 0x86C2, 0x86D0, 0x86DD,
-+		0x86EB, 0x86F8, 0x8705, 0x8713, 0x8720, 0x872E,
-+		0x873B, 0x8748, 0x8756, 0x8763, 0x8770, 0x877D,
-+		0x878B, 0x8798, 0x87A5, 0x87B2, 0x87BF, 0x87CC,
-+		0x87D9, 0x87E6, 0x87F3, 0x8801, 0x880E, 0x881A,
-+		0x8827, 0x8834, 0x8841, 0x884E, 0x885B, 0x8868,
-+		0x8875, 0x8882, 0x888E, 0x889B, 0x88A8, 0x88B5,
-+		0x88C1, 0x88CE, 0x88DB, 0x88E7, 0x88F4, 0x8900,
-+		0x890D, 0x891A, 0x8926, 0x8933, 0x893F, 0x894C,
-+		0x8958, 0x8965, 0x8971, 0x897D, 0x898A, 0x8996,
-+		0x89A3, 0x89AF, 0x89BB, 0x89C8, 0x89D4, 0x89E0,
-+		0x89EC, 0x89F9, 0x8A05, 0x8A11, 0x8A1D, 0x8A29,
-+		0x8A36, 0x8A42, 0x8A4E, 0x8A5A, 0x8A66, 0x8A72,
-+		0x8A7E, 0x8A8A, 0x8A96, 0x8AA2, 0x8AAE, 0x8ABA,
-+		0x8AC6, 0x8AD2, 0x8ADE, 0x8AEA, 0x8AF5, 0x8B01,
-+		0x8B0D, 0x8B19, 0x8B25, 0x8B31, 0x8B3C, 0x8B48,
-+		0x8B54, 0x8B60, 0x8B6B, 0x8B77, 0x8B83, 0x8B8E,
-+		0x8B9A, 0x8BA6, 0x8BB1, 0x8BBD, 0x8BC8, 0x8BD4,
-+		0x8BDF, 0x8BEB, 0x8BF6, 0x8C02, 0x8C0D, 0x8C19,
-+		0x8C24, 0x8C30, 0x8C3B, 0x8C47, 0x8C52, 0x8C5D,
-+		0x8C69, 0x8C74, 0x8C80, 0x8C8B, 0x8C96, 0x8CA1,
-+		0x8CAD, 0x8CB8, 0x8CC3, 0x8CCF, 0x8CDA, 0x8CE5,
-+		0x8CF0, 0x8CFB, 0x8D06, 0x8D12, 0x8D1D, 0x8D28,
-+		0x8D33, 0x8D3E, 0x8D49, 0x8D54, 0x8D5F, 0x8D6A,
-+		0x8D75, 0x8D80, 0x8D8B, 0x8D96, 0x8DA1, 0x8DAC,
-+		0x8DB7, 0x8DC2, 0x8DCD, 0x8DD8, 0x8DE3, 0x8DEE,
-+		0x8DF9, 0x8E04, 0x8E0E, 0x8E19, 0x8E24, 0x8E2F,
-+		0x8E3A, 0x8E44, 0x8E4F, 0x8E5A, 0x8E65, 0x8E6F,
-+		0x8E7A, 0x8E85, 0x8E90, 0x8E9A, 0x8EA5, 0x8EB0,
-+		0x8EBA, 0x8EC5, 0x8ECF, 0x8EDA, 0x8EE5, 0x8EEF,
-+		0x8EFA, 0x8F04, 0x8F0F, 0x8F19, 0x8F24, 0x8F2E,
-+		0x8F39, 0x8F43, 0x8F4E, 0x8F58, 0x8F63, 0x8F6D,
-+		0x8F78, 0x8F82, 0x8F8C, 0x8F97, 0x8FA1, 0x8FAC,
-+		0x8FB6, 0x8FC0, 0x8FCB, 0x8FD5, 0x8FDF, 0x8FEA,
-+		0x8FF4, 0x8FFE, 0x9008, 0x9013, 0x901D, 0x9027,
-+		0x9031, 0x903C, 0x9046, 0x9050, 0x905A, 0x9064,
-+		0x906E, 0x9079, 0x9083, 0x908D, 0x9097, 0x90A1,
-+		0x90AB, 0x90B5, 0x90BF, 0x90C9, 0x90D3, 0x90DD,
-+		0x90E7, 0x90F1, 0x90FB, 0x9105, 0x910F, 0x9119,
-+		0x9123, 0x912D, 0x9137, 0x9141, 0x914B, 0x9155,
-+		0x915F, 0x9169, 0x9173, 0x917D, 0x9186, 0x9190,
-+		0x919A, 0x91A4, 0x91AE, 0x91B8, 0x91C1, 0x91CB,
-+		0x91D5, 0x91DF, 0x91E9, 0x91F2, 0x91FC, 0x9206,
-+		0x9210, 0x9219, 0x9223, 0x922D, 0x9236, 0x9240,
-+		0x924A, 0x9253, 0x925D, 0x9267, 0x9270, 0x927A,
-+		0x9283, 0x928D, 0x9297, 0x92A0, 0x92AA, 0x92B3,
-+		0x92BD, 0x92C6, 0x92D0, 0x92DA, 0x92E3, 0x92ED,
-+		0x92F6, 0x9300, 0x9309, 0x9313, 0x931C, 0x9325,
-+		0x932F, 0x9338, 0x9342, 0x934B, 0x9355, 0x935E,
-+		0x9367, 0x9371, 0x937A, 0x9384, 0x938D, 0x9396,
-+		0x93A0, 0x93A9, 0x93B2, 0x93BC, 0x93C5, 0x93CE,
-+		0x93D7, 0x93E1, 0x93EA, 0x93F3, 0x93FC, 0x9406,
-+		0x940F, 0x9418, 0x9421, 0x942B, 0x9434, 0x943D,
-+		0x9446, 0x944F, 0x9459, 0x9462, 0x946B, 0x9474,
-+		0x947D, 0x9486, 0x948F, 0x9499, 0x94A2, 0x94AB,
-+		0x94B4, 0x94BD, 0x94C6, 0x94CF, 0x94D8, 0x94E1,
-+		0x94EA, 0x94F3, 0x94FC, 0x9505, 0x950E, 0x9517,
-+		0x9520, 0x9529, 0x9532, 0x953B, 0x9544, 0x954D,
-+		0x9556, 0x955F, 0x9568, 0x9571, 0x957A, 0x9583,
-+		0x958C, 0x9595, 0x959D, 0x95A6, 0x95AF, 0x95B8,
-+		0x95C1, 0x95CA, 0x95D3, 0x95DB, 0x95E4, 0x95ED,
-+		0x95F6, 0x95FF, 0x9608, 0x9610, 0x9619, 0x9622,
-+		0x962B, 0x9633, 0x963C, 0x9645, 0x964E, 0x9656,
-+		0x965F, 0x9668, 0x9671, 0x9679, 0x9682, 0x968B,
-+		0x9693, 0x969C, 0x96A5, 0x96AD, 0x96B6, 0x96BF,
-+		0x96C7, 0x96D0, 0x96D9, 0x96E1, 0x96EA, 0x96F2,
-+		0x96FB, 0x9704, 0x970C, 0x9715, 0x971D, 0x9726,
-+		0x972E, 0x9737, 0x9740, 0x9748, 0x9751, 0x9759,
-+		0x9762, 0x976A, 0x9773, 0x977B, 0x9784, 0x978C,
-+		0x9795, 0x979D, 0x97A6, 0x97AE, 0x97B6, 0x97BF,
-+		0x97C7, 0x97D0, 0x97D8, 0x97E1, 0x97E9, 0x97F1,
-+		0x97FA, 0x9802, 0x980B, 0x9813, 0x981B, 0x9824,
-+		0x982C, 0x9834, 0x983D, 0x9845, 0x984D, 0x9856,
-+		0x985E, 0x9866, 0x986F, 0x9877, 0x987F, 0x9888,
-+		0x9890, 0x9898, 0x98A0, 0x98A9, 0x98B1, 0x98B9,
-+		0x98C1, 0x98CA, 0x98D2, 0x98DA, 0x98E2, 0x98EB,
-+		0x98F3, 0x98FB, 0x9903, 0x990B, 0x9914, 0x991C,
-+		0x9924, 0x992C, 0x9934, 0x993C, 0x9945, 0x994D,
-+		0x9955, 0x995D, 0x9965, 0x996D, 0x9975, 0x997D,
-+		0x9986, 0x998E, 0x9996, 0x999E, 0x99A6, 0x99AE,
-+		0x99B6, 0x99BE, 0x99C6, 0x99CE, 0x99D6, 0x99DE,
-+		0x99E6, 0x99EE, 0x99F6, 0x99FE, 0x9A06, 0x9A0E,
-+		0x9A16, 0x9A1E, 0x9A26, 0x9A2E, 0x9A36, 0x9A3E,
-+		0x9A46, 0x9A4E, 0x9A56, 0x9A5E, 0x9A66, 0x9A6E,
-+		0x9A76, 0x9A7E, 0x9A86, 0x9A8E, 0x9A96, 0x9A9D,
-+		0x9AA5, 0x9AAD, 0x9AB5, 0x9ABD, 0x9AC5, 0x9ACD,
-+		0x9AD5, 0x9ADC, 0x9AE4, 0x9AEC, 0x9AF4, 0x9AFC,
-+		0x9B04, 0x9B0C, 0x9B13, 0x9B1B, 0x9B23, 0x9B2B,
-+		0x9B33, 0x9B3A, 0x9B42, 0x9B4A, 0x9B52, 0x9B59,
-+		0x9B61, 0x9B69, 0x9B71, 0x9B79, 0x9B80, 0x9B88,
-+		0x9B90, 0x9B97, 0x9B9F, 0x9BA7, 0x9BAF, 0x9BB6,
-+		0x9BBE, 0x9BC6, 0x9BCD, 0x9BD5, 0x9BDD, 0x9BE5,
-+		0x9BEC, 0x9BF4, 0x9BFC, 0x9C03, 0x9C0B, 0x9C12,
-+		0x9C1A, 0x9C22, 0x9C29, 0x9C31, 0x9C39, 0x9C40,
-+		0x9C48, 0x9C50, 0x9C57, 0x9C5F, 0x9C66, 0x9C6E,
-+		0x9C75, 0x9C7D, 0x9C85, 0x9C8C, 0x9C94, 0x9C9B,
-+		0x9CA3, 0x9CAA, 0x9CB2, 0x9CBA, 0x9CC1, 0x9CC9,
-+		0x9CD0, 0x9CD8, 0x9CDF, 0x9CE7, 0x9CEE, 0x9CF6,
-+		0x9CFD, 0x9D05, 0x9D0C, 0x9D14, 0x9D1B, 0x9D23,
-+		0x9D2A, 0x9D32, 0x9D39, 0x9D40, 0x9D48, 0x9D4F,
-+		0x9D57, 0x9D5E, 0x9D66, 0x9D6D, 0x9D75, 0x9D7C,
-+		0x9D83, 0x9D8B, 0x9D92, 0x9D9A, 0x9DA1, 0x9DA8,
-+		0x9DB0, 0x9DB7, 0x9DBE, 0x9DC6, 0x9DCD, 0x9DD5,
-+		0x9DDC, 0x9DE3, 0x9DEB, 0x9DF2, 0x9DF9, 0x9E01,
-+		0x9E08, 0x9E0F, 0x9E17, 0x9E1E, 0x9E25, 0x9E2D,
-+		0x9E34, 0x9E3B, 0x9E43, 0x9E4A, 0x9E51, 0x9E58,
-+		0x9E60, 0x9E67, 0x9E6E, 0x9E75, 0x9E7D, 0x9E84,
-+		0x9E8B, 0x9E92, 0x9E9A, 0x9EA1, 0x9EA8, 0x9EAF,
-+		0x9EB7, 0x9EBE, 0x9EC5, 0x9ECC, 0x9ED4, 0x9EDB,
-+		0x9EE2, 0x9EE9, 0x9EF0, 0x9EF7, 0x9EFF, 0x9F06,
-+		0x9F0D, 0x9F14, 0x9F1B, 0x9F23, 0x9F2A, 0x9F31,
-+		0x9F38, 0x9F3F, 0x9F46, 0x9F4D, 0x9F55, 0x9F5C,
-+		0x9F63, 0x9F6A, 0x9F71, 0x9F78, 0x9F7F, 0x9F86,
-+		0x9F8D, 0x9F95, 0x9F9C, 0x9FA3, 0x9FAA, 0x9FB1,
-+		0x9FB8, 0x9FBF, 0x9FC6, 0x9FCD, 0x9FD4, 0x9FDB,
-+		0x9FE2, 0x9FE9, 0x9FF0, 0x9FF7, 0x9FFF,
-+};
-+
- static inline u32 tegra_sor_readl(struct tegra_sor *sor, unsigned int offset)
- {
- 	u32 value = readl(sor->regs + (offset << 2));
-@@ -2241,6 +2418,13 @@ static void tegra_sor_hdmi_disable(struct drm_encoder *encoder)
- 		dev_err(sor->dev, "failed to power off I/O pad: %d\n", err);
- 
- 	host1x_client_suspend(&sor->client);
-+
-+	if (sor->soc->has_nvdisplay) {
-+		dma_free_coherent(dc->dev, ARRAY_SIZE(default_srgb_lut) * sizeof(u64),
-+				  sor->cmu_output_lut, sor->cmu_output_phys);
-+		sor->cmu_output_lut = NULL;
-+		sor->cmu_output_phys = 0;
-+	}
- }
- 
- static void tegra_sor_hdmi_enable(struct drm_encoder *encoder)
-@@ -2255,6 +2439,7 @@ static void tegra_sor_hdmi_enable(struct drm_encoder *encoder)
- 	unsigned long rate, pclk;
- 	unsigned int div, i;
- 	u32 value;
-+	u64 r;
- 	int err;
- 
- 	state = to_sor_state(output->connector.state);
-@@ -2557,6 +2742,27 @@ static void tegra_sor_hdmi_enable(struct drm_encoder *encoder)
- 	value &= ~DITHER_CONTROL_MASK;
- 	value &= ~BASE_COLOR_SIZE_MASK;
- 
-+	if (dc->soc->has_nvdisplay) {
-+		sor->cmu_output_lut =
-+			dma_alloc_coherent(dc->dev, ARRAY_SIZE(default_srgb_lut) * sizeof(u64),
-+					   &sor->cmu_output_phys, GFP_KERNEL);
-+
-+		for (i = 0; i < ARRAY_SIZE(default_srgb_lut); i++) {
-+			r = default_srgb_lut[i];
-+			sor->cmu_output_lut[i] = (r << 32) | (r << 16) | r;
-+		}
-+
-+		tegra_dc_writel(dc, (u32)(sor->cmu_output_phys & 0xffffffff),
-+				DC_DISP_COREPVT_HEAD_SET_OUTPUT_LUT_BASE);
-+		tegra_dc_writel(dc, (u32)(sor->cmu_output_phys >> 32),
-+				DC_DISP_COREPVT_HEAD_SET_OUTPUT_LUT_BASE_HI);
-+
-+		tegra_dc_writel(dc, OUTPUT_LUT_MODE_INTERPOLATE | OUTPUT_LUT_SIZE_SIZE_1025,
-+				DC_DISP_CORE_HEAD_SET_CONTROL_OUTPUT_LUT);
-+
-+		value |= CMU_ENABLE_ENABLE;
-+	}
-+
- 	switch (state->bpc) {
- 	case 6:
- 		value |= BASE_COLOR_SIZE_666;
 
 ---
-base-commit: dcb6fa37fd7bc9c3d2b066329b0d27dedf8becaa
-change-id: 20251031-tegra-drm-cmu-697e8e030978
+base-commit: c29a18fa39ede952f3f6108ec007c1906e2d9a0d
+change-id: 20251102-unbound_cve_fixes-4aa01144a2f8
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Patrick Vogelaar <patrick.vogelaar@belden.com>
 
