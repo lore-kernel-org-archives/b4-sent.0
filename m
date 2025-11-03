@@ -1,66 +1,61 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 03 Nov 2025 12:45:53 +0100
-Subject: [PATCH v6 4/4] arm64: dts: qcom: sdm845-oneplus: Describe TE gpio
+From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Date: Mon, 03 Nov 2025 16:05:48 +0100
+Subject: [PATCH] riscv: Update MIPS vendor id to 0x127.
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251103-s6e3fc2x01-v6-4-d4eb4abaefa4@ixit.cz>
-References: <20251103-s6e3fc2x01-v6-0-d4eb4abaefa4@ixit.cz>
-In-Reply-To: <20251103-s6e3fc2x01-v6-0-d4eb4abaefa4@ixit.cz>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@gmail.com>, Sam Ravnborg <sam@ravnborg.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=744; i=david@ixit.cz;
- h=from:subject:message-id; bh=QDFx8txawxUA4NQVuvt5zOeKxx/QkLilb2g7UEm0IH0=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpCJXuEzEiUcskISWH6ZZ4EhzYICTEATVcbv9Mu
- m1e+qHI4xaJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaQiV7gAKCRBgAj/E00kg
- cj0jD/98YZnd6jOSxFHP/wV2DBx01s/B68H3a8riT2SeM/CG3+1MqkXzjIGumzwIjI296JN0D3n
- X4Dfxl+JTY5JOglHv59/9YqbNfiQyyzxAqfK9n+jfWFi0mv9GRpfgHqSKoQ0TTUiMUPZtntDyc1
- L+BobYGnNTM00oY5RhMo/y5eAJP6/glAlGonw7M8ligK2FWrRfJWEM9HDYVBYyLjWHTt7eymBSO
- nBW5dVrZgc0Bj6JdqkF5oqF4IWzDVQ9STD5Bq0krpQSSJPC8RdMm+fK8TFKA/QAIfQGDFr3Waf/
- uogDcwdMkR6lQ36LhW9puguJOHyLwdaawhf/LjegKxKCMW2SZ2Jd+aynqYPcjVabSxhpcubCtBE
- sAkFhWZ1TlwH77pOORx+416iMXWnT7CCU+La+CUPOWqV2FKalp+0nzgDsiHCXR1wSe+wNaEPYbW
- GLomUrkg961mJgDp6SZc1dxyBAcz9LBL45Hk/+GOv40yzGHX4+8Y/47iSi12/l0oC7ROh/d0Vrm
- rSQj+QfXjEL0nAmZ0YJKBe/Ngq9q6F4Lfz4mRGb1yp6ybCAWNyM4PKE2pOLIsvqsWEBVXe8yE/g
- OJ84f+AyQIIgmlH+ywGj2P+gKN/G3nUF4lr5ja8mK1/fqcJpvqYCz7G25N2dUMrudSFQaMfK7ck
- QGyY/BofAZDIBUQ==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Message-Id: <20251103-mips-vendorid-v1-1-4fcb5f4d53fe@htecgroup.com>
+X-B4-Tracking: v=1; b=H4sIAMvECGkC/x2MQQqAIBBFryKzbkCNCLpKtJAcaxapKEgg3r2h1
+ eM9+L9DpcJUYVMdCjWunKKImRSct4sXIXtxsNouRs8GH84VG0WfCnv0QaIjgVlBNrlQ4Pf/248
+ xPmYzIjhfAAAA
+X-Change-ID: 20251031-mips-vendorid-df103aedf117
+To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
+ Albert Ou <aou@eecs.berkeley.edu>, Alexandre Ghiti <alex@ghiti.fr>
+Cc: Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
+ linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Chao-ying Fu <cfu@wavecomp.com>, 
+ Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762182369; l=1072;
+ i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
+ bh=3SOEHxo/iLuGukJm8WAmBVDY7Kaj7mnCfvYaKbPje/c=;
+ b=4Kkbdn4PPtXv972XSyF6kf21wrzTj1bJorDUmNmTyjB4IwTbb7oxuMvedD8ZLszZ2g9Nqoo7u
+ scJ+8ITMU60CBZIIxKx9oqKbZ2ibIQMpBlaBbdfTKqGsbYUHHuWe1DK
+X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
+ pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
+X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Describe panel Tearing Effect (TE) GPIO line.
+From: Chao-ying Fu <cfu@wavecomp.com>
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+[1] defines MIPS vendor id as 0x127.
+
+[1] https://mips.com/wp-content/uploads/2025/06/P8700_Programmers_Reference_Manual_Rev1.84_5-31-2025.pdf
+
+Fixes: a8fed1bc03ace27902338e4f0d318335883ac847 ("riscv: Add xmipsexectl as a vendor extension")
+Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 1 +
- 1 file changed, 1 insertion(+)
+ arch/riscv/include/asm/vendorid_list.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-index f00dbc0fff3d4..db6dd04c51bb5 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-@@ -447,6 +447,7 @@ display_panel: panel@0 {
- 		vci-supply = <&panel_vci_3v3>;
- 		poc-supply = <&panel_vddi_poc_1p8>;
+diff --git a/arch/riscv/include/asm/vendorid_list.h b/arch/riscv/include/asm/vendorid_list.h
+index 3b09874d7a6dfb8f8aa45b0be41c20711d539e78..55205f7938055ba2b744dba5118bba935bcac008 100644
+--- a/arch/riscv/include/asm/vendorid_list.h
++++ b/arch/riscv/include/asm/vendorid_list.h
+@@ -9,6 +9,6 @@
+ #define MICROCHIP_VENDOR_ID	0x029
+ #define SIFIVE_VENDOR_ID	0x489
+ #define THEAD_VENDOR_ID		0x5b7
+-#define MIPS_VENDOR_ID		0x722
++#define MIPS_VENDOR_ID		0x127
  
-+		te-gpios = <&tlmm 10 GPIO_ACTIVE_HIGH>;
- 		reset-gpios = <&tlmm 6 GPIO_ACTIVE_LOW>;
- 
- 		pinctrl-0 = <&panel_default>;
+ #endif
 
+---
+base-commit: dcb6fa37fd7bc9c3d2b066329b0d27dedf8becaa
+change-id: 20251031-mips-vendorid-df103aedf117
+
+Best regards,
 -- 
-2.51.0
+Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 
