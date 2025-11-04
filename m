@@ -1,105 +1,97 @@
-From: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
-Date: Tue, 04 Nov 2025 09:33:26 +0800
-Subject: [PATCH v7 4/4] arm64: dts: qcom: qcs615-ride: Enable DisplayPort
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH v3 0/3] hwmon: Add support for the LTC4283 Hot Swap
+ Controller
+Date: Tue, 04 Nov 2025 10:32:27 +0000
+Message-Id: <20251104-ltc4283-support-v3-0-4bea496f791d@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251104-add-displayport-support-to-qcs615-devicetree-v7-4-e51669170a6f@oss.qualcomm.com>
-References: <20251104-add-displayport-support-to-qcs615-devicetree-v7-0-e51669170a6f@oss.qualcomm.com>
-In-Reply-To: <20251104-add-displayport-support-to-qcs615-devicetree-v7-0-e51669170a6f@oss.qualcomm.com>
-To: Rob Clark <robin.clark@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, fange.zhang@oss.qualcomm.com, 
- yongxing.mou@oss.qualcomm.com, li.liu@oss.qualcomm.com, 
- Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762220025; l=1609;
- i=xiangxu.yin@oss.qualcomm.com; s=20241125; h=from:subject:message-id;
- bh=UefwVFw5JL4lAwuEgs1CevP0v8Ntkh5qwaIuq5AJOpU=;
- b=vWo74HSLzDxGqV9nALtuOvNxJ4/G6KqBt8qKUbQ0evnO2cCkUudGnXfRgqCXmmitkHWsywbpJ
- cQdzLxao6hwC55cLwalIAZrLlQOdiEDXToatSwUMs193Eq5xlaFBkja
-X-Developer-Key: i=xiangxu.yin@oss.qualcomm.com; a=ed25519;
- pk=F1TwipJzpywfbt3n/RPi4l/A4AVF+QC89XzCHgZYaOc=
-X-Endpoint-Received: by B4 Relay for xiangxu.yin@oss.qualcomm.com/20241125 with auth_id=542
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIADvWCWkC/2XNTQrCMBCG4atI1kaSSX9SV95DXLTjpA3UpiQ1K
+ KV3Ny2ISJfvB/PMzAJ5S4GdDzPzFG2wbkihjgeGXT20xO09NQMBudASeD9hBlrx8BxH5ycOJWr
+ MqKiwaFi6Gj0Z+9rE6y11Z8Pk/Ht7EOW6fq1sZ0XJBde6ASRTlsrApR7q3rUndA+2YhF+QCXUH
+ oAEFA2SqGQuRWP+gGVZPpcyOkfwAAAA
+X-Change-ID: 20250812-ltc4283-support-27c8c4e69c6b
+To: linux-hwmon@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-doc@vger.kernel.org
+Cc: Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jean Delvare <jdelvare@suse.com>, 
+ Guenter Roeck <linux@roeck-us.net>, Jonathan Corbet <corbet@lwn.net>, 
+ Linus Walleij <linus.walleij@linaro.org>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>, "Rob Herring (Arm)" <robh@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762252353; l=2772;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=lqrX3VJKmck4F8Oum/ghWQkXbfNnSJQYqQa2Z2DOAIo=;
+ b=ShNcElYKzU+ApENVMNTC4KT4zE/bT4YDejGBzaFtFiH7nu18fGZ5syvmOBHN0BdZUkcA7jV1c
+ smsJ2KU86ZXCTJgNNIkygRTmt23vRQSU3tlFZeHj7XbawvmRzB0d0Mo
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add DP connector node and configure MDSS DisplayPort controller for
-QCS615 Ride platform. Include PHY supply settings to support DP output.
+This is v3 for the LTC4283 how swap controller. Main change is that I'm
+now using the auxiliary bus for adding the GPIO device (done depending
+on FW properties).
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
+Similar to the LTC4282 device, we're clearing some fault logs in the
+reset_history attributes.
+
+Guenter, in [1] you can find some replies for some questions you had in
+v2 that likely you don't remember anymore.
+
+Linus, I did looked into gpio-regmap and even add support for
+init_valid_mask but the register layout is just so different that using
+the gpio-regmap is not feasible. We could maybe use it for ADIO (if we
+used to different gpiochips in the driver) but the drivers is fairly
+small anyways so IMO not worth it.
+
+Also note the driver uses some non constant field_prep/get() that should
+go away as soon as [2] get's merged (hopefully before this).
+
+[1]: https://lore.kernel.org/linux-hwmon/0765a0b89779331c62a3f136ef030f7f2f40ea47.camel@gmail.com/
+[2]: https://lore.kernel.org/linux-iio/cover.1761588465.git.geert+renesas@glider.be/
+
 ---
- arch/arm64/boot/dts/qcom/qcs615-ride.dts | 30 ++++++++++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+Changes in v3:
+- Patch 1:
+  * Changed -if conditionals as suggested by Rob;
+  * Fixed typo in commit subject.
+- Patch 2:
+  * Add ltc4283 entry to index.rst;
+  * Remove lock under energy_enable read;
+  * Make use of the new energy64 standard attribute;
+  * Fix always false comparison in __ltc4283_write_in_history();
+  * Add missing reset_history for VIN;
+  * Remove energy label. Not useful.
+- Patch 3:
+  * Add AUXBUS menu entry in gpiolib kconfig as suggested by Linus.
+- Link to v2: https://lore.kernel.org/r/20250903-ltc4283-support-v2-0-6bce091510bf@analog.com
 
-diff --git a/arch/arm64/boot/dts/qcom/qcs615-ride.dts b/arch/arm64/boot/dts/qcom/qcs615-ride.dts
-index be67eb173046f9e4ac58157f282c3af41e53d374..5a24c19c415e3fa92e3b543ed48b2fcd6b20c6ca 100644
---- a/arch/arm64/boot/dts/qcom/qcs615-ride.dts
-+++ b/arch/arm64/boot/dts/qcom/qcs615-ride.dts
-@@ -39,6 +39,20 @@ xo_board_clk: xo-board-clk {
- 		};
- 	};
- 
-+	dp0-connector {
-+		compatible = "dp-connector";
-+		label = "DP0";
-+		type = "mini";
-+
-+		hpd-gpios = <&io_expander 8 GPIO_ACTIVE_HIGH>;
-+
-+		port {
-+			dp0_connector_in: endpoint {
-+				remote-endpoint = <&mdss_dp0_out>;
-+			};
-+		};
-+	};
-+
- 	dp-dsi0-connector {
- 		compatible = "dp-connector";
- 		label = "DSI0";
-@@ -423,6 +437,15 @@ &mdss {
- 	status = "okay";
- };
- 
-+&mdss_dp0 {
-+	status = "okay";
-+};
-+
-+&mdss_dp0_out {
-+	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000>;
-+	remote-endpoint = <&dp0_connector_in>;
-+};
-+
- &mdss_dsi0 {
- 	vdda-supply = <&vreg_l11a>;
- 	status = "okay";
-@@ -624,6 +647,13 @@ &usb_qmpphy {
- 	status = "okay";
- };
- 
-+&usb_qmpphy_2 {
-+	vdda-phy-supply = <&vreg_l5a>;
-+	vdda-pll-supply = <&vreg_l12a>;
-+
-+	status = "okay";
-+};
-+
- &usb_1 {
- 	status = "okay";
- };
+Changes in v2:
+- Link to v1: https://lore.kernel.org/r/20250814-ltc4283-support-v1-0-88b2cef773f2@analog.com
 
--- 
-2.34.1
+---
+Nuno Sá (3):
+      dt-bindings: hwmon: Document the LTC4283 Swap Controller
+      hwmon: ltc4283: Add support for the LTC4283 Swap Controller
+      gpio: gpio-ltc4283: Add support for the LTC4283 Swap Controller
+
+ .../devicetree/bindings/hwmon/adi,ltc4283.yaml     |  272 +++
+ Documentation/hwmon/index.rst                      |    1 +
+ Documentation/hwmon/ltc4283.rst                    |  266 +++
+ MAINTAINERS                                        |    9 +
+ drivers/gpio/Kconfig                               |   15 +
+ drivers/gpio/Makefile                              |    1 +
+ drivers/gpio/gpio-ltc4283.c                        |  217 +++
+ drivers/hwmon/Kconfig                              |   12 +
+ drivers/hwmon/Makefile                             |    1 +
+ drivers/hwmon/ltc4283.c                            | 1749 ++++++++++++++++++++
+ 10 files changed, 2543 insertions(+)
+---
+base-commit: 65bc97a5e49ea4174ba7e89afdada3e30e6e39c0
+change-id: 20250812-ltc4283-support-27c8c4e69c6b
+--
+
+Thanks!
+- Nuno Sá
 
