@@ -1,11 +1,10 @@
 From: Richard Leitner <richard.leitner@linux.dev>
-Date: Tue, 04 Nov 2025 15:30:58 +0100
-Subject: [PATCH v8 7/8] media: i2c: ov9282: implement try_ctrl for
- strobe_duration
+Date: Tue, 04 Nov 2025 15:30:59 +0100
+Subject: [PATCH v8 8/8] media: i2c: ov9282: dynamic flash_duration maximum
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20251104-ov9282-flash-strobe-v8-7-b91dfef1c65a@linux.dev>
+Message-Id: <20251104-ov9282-flash-strobe-v8-8-b91dfef1c65a@linux.dev>
 References: <20251104-ov9282-flash-strobe-v8-0-b91dfef1c65a@linux.dev>
 In-Reply-To: <20251104-ov9282-flash-strobe-v8-0-b91dfef1c65a@linux.dev>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
@@ -17,118 +16,109 @@ Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-leds@vger.kernel.org, Richard Leitner <richard.leitner@linux.dev>, 
  Hans Verkuil <hverkuil@kernel.org>
 X-Mailer: b4 0.15-dev-509f5
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762266668; l=3578;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762266668; l=3530;
  i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
- bh=jlqi2q+tTuXwGck80ZW2V1ed+JWeA2LUWlef2Ygh8QE=;
- b=GJOrayd8RROomQ2ExqSQeVFO9XHgz0Z8LVc4MaiKAQyC2iJgEjwv0N9GdBqfm+JHDjHG3qz7H
- 853xb3YBY6FDdSr1vUQnBZ5IvpSr5ERmq7HlsBAu59qR7e7yaS3mtCj
+ bh=m+ILLZqDdrgoDSCjpAkn2Jfpr2nfySLB45UiCiBZVTs=;
+ b=bz35NYgvXCLxLYYilEeqnsmM6a1+Wkr9uPlsazdEs/NUQUpkNqeoogHmTsWEu8y4lb4fZgac1
+ btUMBDJ5+0PDaaaNPevR0MlwayAWyVi/h8RiRR+wIgvjebrv17yo9RF
 X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
  pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
 X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As the granularity of the hardware supported values is lower than the
-control value, implement a try_ctrl() function for
-V4L2_CID_FLASH_DURATION. This function calculates the nearest possible
-µs strobe duration for the given value and returns it back to the
-caller.
+This patch sets the current exposure time as maximum for the
+flash_duration control. As Flash/Strobes which are longer than the
+exposure time have no effect.
 
 Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
- drivers/media/i2c/ov9282.c | 55 +++++++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 52 insertions(+), 3 deletions(-)
+ drivers/media/i2c/ov9282.c | 30 ++++++++++++++++++++++++++----
+ 1 file changed, 26 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/media/i2c/ov9282.c b/drivers/media/i2c/ov9282.c
-index 26296dc1d1b95..7aa74feb3ee44 100644
+index 7aa74feb3ee44..df7beedba0b9e 100644
 --- a/drivers/media/i2c/ov9282.c
 +++ b/drivers/media/i2c/ov9282.c
-@@ -128,6 +128,8 @@
- #define OV9282_REG_MIN		0x00
- #define OV9282_REG_MAX		0xfffff
- 
-+#define OV9282_STROBE_SPAN_FACTOR	192
-+
- static const char * const ov9282_supply_names[] = {
- 	"avdd",		/* Analog power */
- 	"dovdd",	/* Digital I/O power */
-@@ -691,9 +693,8 @@ static int ov9282_set_ctrl_flash_strobe_oe(struct ov9282 *ov9282, bool enable)
- 	return ov9282_write_reg(ov9282, OV9282_REG_OUTPUT_ENABLE6, 1, current_val);
+@@ -198,6 +198,7 @@ struct ov9282_mode {
+  * @exp_ctrl: Pointer to exposure control
+  * @again_ctrl: Pointer to analog gain control
+  * @pixel_rate: Pointer to pixel rate control
++ * @flash_duration: Pointer to flash duration control
+  * @vblank: Vertical blanking in lines
+  * @noncontinuous_clock: Selection of CSI2 noncontinuous clock mode
+  * @cur_mode: Pointer to current selected sensor mode
+@@ -220,6 +221,7 @@ struct ov9282 {
+ 		struct v4l2_ctrl *again_ctrl;
+ 	};
+ 	struct v4l2_ctrl *pixel_rate;
++	struct v4l2_ctrl *flash_duration;
+ 	u32 vblank;
+ 	bool noncontinuous_clock;
+ 	const struct ov9282_mode *cur_mode;
+@@ -611,6 +613,15 @@ static int ov9282_update_controls(struct ov9282 *ov9282,
+ 					mode->vblank_max, 1, mode->vblank);
  }
  
--static int ov9282_set_ctrl_flash_duration(struct ov9282 *ov9282, u32 value)
-+static u32 ov9282_us_to_flash_duration(struct ov9282 *ov9282, u32 value)
- {
--	int ret;
- 	/*
- 	 * Calculate "strobe_frame_span" increments from a given value (µs).
- 	 * This is quite tricky as "The step width of shift and span is
-@@ -703,7 +704,28 @@ static int ov9282_set_ctrl_flash_duration(struct ov9282 *ov9282, u32 value)
- 	 * The formula below is interpolated from different modes/framerates
- 	 * and should work quite well for most settings.
- 	 */
--	u32 val = value * 192 / (ov9282->cur_mode->width + ov9282->hblank_ctrl->val);
++static u32 ov9282_exposure_to_us(struct ov9282 *ov9282, u32 exposure)
++{
++	/* calculate exposure time in µs */
 +	u32 frame_width = ov9282->cur_mode->width + ov9282->hblank_ctrl->val;
++	u32 trow_us = frame_width * 1000000UL / ov9282->pixel_rate->val;
 +
-+	return value * OV9282_STROBE_SPAN_FACTOR / frame_width;
++	return exposure * trow_us;
 +}
 +
-+static u32 ov9282_flash_duration_to_us(struct ov9282 *ov9282, u32 value)
-+{
-+	/*
-+	 * As the calculation in ov9282_us_to_flash_duration uses an integer
-+	 * divison calculate in ns here to get more precision. Then check if
-+	 * we need to compensate that divison by incrementing the µs result.
-+	 */
-+	u32 frame_width = ov9282->cur_mode->width + ov9282->hblank_ctrl->val;
-+	u64 ns = value * 1000 * frame_width / OV9282_STROBE_SPAN_FACTOR;
-+
-+	return DIV_ROUND_UP(ns, 1000);
-+}
-+
-+static int ov9282_set_ctrl_flash_duration(struct ov9282 *ov9282, u32 value)
-+{
-+	int ret;
-+	u32 val = ov9282_us_to_flash_duration(ov9282, value);
- 
- 	ret = ov9282_write_reg(ov9282, OV9282_REG_STROBE_FRAME_SPAN, 1,
- 			       (val >> 24) & 0xff);
-@@ -798,9 +820,36 @@ static int ov9282_set_ctrl(struct v4l2_ctrl *ctrl)
- 	return ret;
- }
- 
-+static int ov9282_try_ctrl(struct v4l2_ctrl *ctrl)
-+{
-+	struct ov9282 *ov9282 =
-+		container_of_const(ctrl->handler, struct ov9282, ctrl_handler);
-+
-+	if (ctrl->id == V4L2_CID_FLASH_DURATION) {
-+		u32 us = ctrl->val;
-+		u32 fd = ov9282_us_to_flash_duration(ov9282, us);
-+
-+		/* get nearest strobe_duration value */
-+		u32 us0 = ov9282_flash_duration_to_us(ov9282, fd);
-+		u32 us1 = ov9282_flash_duration_to_us(ov9282, fd + 1);
-+
-+		if (abs(us1 - us) < abs(us - us0))
-+			ctrl->val = us1;
-+		else
-+			ctrl->val = us0;
-+
-+		if (us != ctrl->val)
-+			dev_dbg(ov9282->dev, "using next valid strobe_duration %u instead of %u\n",
-+				ctrl->val, us);
-+	}
-+
-+	return 0;
-+}
-+
- /* V4l2 subdevice control ops*/
- static const struct v4l2_ctrl_ops ov9282_ctrl_ops = {
- 	.s_ctrl = ov9282_set_ctrl,
-+	.try_ctrl = ov9282_try_ctrl,
- };
- 
  /**
+  * ov9282_update_exp_gain() - Set updated exposure and gain
+  * @ov9282: pointer to ov9282 device
+@@ -622,9 +633,10 @@ static int ov9282_update_controls(struct ov9282 *ov9282,
+ static int ov9282_update_exp_gain(struct ov9282 *ov9282, u32 exposure, u32 gain)
+ {
+ 	int ret;
++	u32 exposure_us = ov9282_exposure_to_us(ov9282, exposure);
+ 
+-	dev_dbg(ov9282->dev, "Set exp %u, analog gain %u",
+-		exposure, gain);
++	dev_dbg(ov9282->dev, "Set exp %u (~%u us), analog gain %u",
++		exposure, exposure_us, gain);
+ 
+ 	ret = ov9282_write_reg(ov9282, OV9282_REG_HOLD, 1, 1);
+ 	if (ret)
+@@ -635,6 +647,12 @@ static int ov9282_update_exp_gain(struct ov9282 *ov9282, u32 exposure, u32 gain)
+ 		goto error_release_group_hold;
+ 
+ 	ret = ov9282_write_reg(ov9282, OV9282_REG_AGAIN, 1, gain);
++	if (ret)
++		goto error_release_group_hold;
++
++	ret = __v4l2_ctrl_modify_range(ov9282->flash_duration,
++				       0, exposure_us, 1,
++				       OV9282_STROBE_FRAME_SPAN_DEFAULT);
+ 
+ error_release_group_hold:
+ 	ov9282_write_reg(ov9282, OV9282_REG_HOLD, 1, 0);
+@@ -1423,6 +1441,7 @@ static int ov9282_init_controls(struct ov9282 *ov9282)
+ 	const struct ov9282_mode *mode = ov9282->cur_mode;
+ 	struct v4l2_fwnode_device_properties props;
+ 	u32 hblank_min;
++	u32 exposure_us;
+ 	u32 lpfr;
+ 	int ret;
+ 
+@@ -1495,8 +1514,11 @@ static int ov9282_init_controls(struct ov9282 *ov9282)
+ 	v4l2_ctrl_new_std(ctrl_hdlr, &ov9282_ctrl_ops,
+ 			  V4L2_CID_FLASH_STROBE_OE, 0, 1, 1, 0);
+ 
+-	v4l2_ctrl_new_std(ctrl_hdlr, &ov9282_ctrl_ops, V4L2_CID_FLASH_DURATION,
+-			  0, 13900, 1, 8);
++	exposure_us = ov9282_exposure_to_us(ov9282, OV9282_EXPOSURE_DEFAULT);
++	ov9282->flash_duration = v4l2_ctrl_new_std(ctrl_hdlr,
++						   &ov9282_ctrl_ops, V4L2_CID_FLASH_DURATION,
++						   0, exposure_us,
++						   1, OV9282_STROBE_FRAME_SPAN_DEFAULT);
+ 
+ 	ret = v4l2_fwnode_device_parse(ov9282->dev, &props);
+ 	if (!ret) {
 
 -- 
 2.47.3
