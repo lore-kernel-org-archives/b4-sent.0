@@ -1,11 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Tue, 04 Nov 2025 23:16:17 +0100
-Subject: [PATCH 09/12] drm/panel: sofef00: Name of compatible should
- correspond to the panel used
+Date: Tue, 04 Nov 2025 23:16:18 +0100
+Subject: [PATCH 10/12] drm/panel: sofef00: Simplify get_modes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251104-sofef00-rebuild-v1-9-dfcfa17eb176@ixit.cz>
+Message-Id: <20251104-sofef00-rebuild-v1-10-dfcfa17eb176@ixit.cz>
 References: <20251104-sofef00-rebuild-v1-0-dfcfa17eb176@ixit.cz>
 In-Reply-To: <20251104-sofef00-rebuild-v1-0-dfcfa17eb176@ixit.cz>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -23,66 +22,85 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1576; i=david@ixit.cz;
- h=from:subject:message-id; bh=Q1+rieBGQ6VeDwGqVLQ0Szo7yx1/bCpLNjnwi01dWXI=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpCnssjt1R0WlC9R9CBT7rMfF1j9rawbA1vgPw5
- uF09VOMmhWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaQp7LAAKCRBgAj/E00kg
- ciIjEACdLKpaSOqpuNGJ6mcYFlJ/2DUTm7OCUG17xINWOVjF0L1sPhuNVtoA0DHr4P+0yAp56is
- kHxWCa6Mq3ggsm37Oz0NSg5U4M+7+PpUycKv4EMIBuThrGtKeTR+Pnq1UbcjPfQKuYFCQduC7Jq
- d8XeGsC+rb2FDqmhbF5CRzUZWbhs0XoAFh1wJb4TUNAzJ1pI1WAcbDyQnVUA0ISyV69ceVq6Yqd
- tqGRCj5UKf5RRUQh2HwIHDclrvH52UiWXYuRcSAEyPAGKpK+94wrWDDVX4WA7yTHWyGUBjveY+i
- Toy/fRW5vXowSJSYPE2gxDCWL3cLw4vIWorLpRqboJ6PIUHR7RRyRTUajRaETtJ8r6AyjIjxA55
- CPXvbsPFbeWqiuam7PZTTPomDAw7e+xHSES4rkPOGE7oq/f7X3ot/gSKgvHCsDEfMUnK9dIzAqb
- dlupjSQ19/upqeygiGnbZ00TvaW4oiTF+NY51R5UPOuqxg7oYAWuWd3D1TngiGfKZQ2ogbubbOg
- xHVowEPtSQXM/JpBA5tEKDa32c9dA7fA7s9xet1eKixQLMxssoT1ukkh6zbXD1knL340Yw0DsQv
- rHEj7kkL+tiTVWEvzPZdtsQ3sESa3lZrZoWDQp51pWpYcD9OdfUbyFeVZ09YO3fwg9twNYrO8Rn
- cdiSK2g2Wcwn94g==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1958; i=david@ixit.cz;
+ h=from:subject:message-id; bh=8diXpj4flXvL6PBJCymDKTVmS7jlHjaf2gFdGCxh2WA=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpCnssTJrYITqvXoSfOpO1N/xmq6B/uzeG9TnlS
+ DqYQuDIxfeJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaQp7LAAKCRBgAj/E00kg
+ csOfD/92fqAeLGJR+XZi2fUT8DBSLFFuuY+d02H9N1VyZMdNS49uTPInJ2tXxfoaPXH6okErM6c
+ jAhM9x4Jc12U+BA6h3RrWMseOYi4cdusav8PngmIbRCX1xHqrgmCVuFq08k71IFo5VWGsVw9nSz
+ NSGLIFi+9JNr0uNXatGNHziS/31y4aiU+qDIWooJni1IHpYIILL+1dI32t41gqdAzT80rNi89kM
+ E61JOFvwez//Cbu6a7i1rEFAp/sI2BTs6966n0i99mL2a5DdX5dW5g082+QgNJ5oP1r1k8uaHC9
+ 4QVYgOwusiCgd7FnHg7KVVxkmfJ83AjcnjGPImLPeeTVx46iTkHAYieD9umEBPJ8he8wVw+Hz1D
+ LPQTxG5Hm1tcoOUT59XHBboB5cF5u0JNFgX6lbCA87B/uGa75uzgplwH3lKMz7AbAcOXqyGntOc
+ fKZwFXGAvZEsUxEAzdKR9Xe2BugFoO5uQWsgJ2+nJC1KYCDIAgYJPxNHPEgCfmqls0zGbqk4g18
+ 3ugHyWRctJtD013BG82UTU2r6b9oNCSkViKwcoRAf2Wb0mdPHKBA8pC/HKXKrLZwPnCtUd85WVu
+ otN8XtLJoiHtLRRr4d1Y48C0kB49ns1guGqlMuV5EcIFO7t8w+KBe3lKA+GsOb73Onbikb3q9MR
+ 88oF6RPjtYEyjCQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-At this moment we support only AMS628NW01 panel.
-
-Adapt also the internal driver structures to reflect the name.
+Levearage drm_connector_helper_get_modes_fixed helper function.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/gpu/drm/panel/panel-samsung-sofef00.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ drivers/gpu/drm/panel/panel-samsung-sofef00.c | 21 +++++++--------------
+ 1 file changed, 7 insertions(+), 14 deletions(-)
 
 diff --git a/drivers/gpu/drm/panel/panel-samsung-sofef00.c b/drivers/gpu/drm/panel/panel-samsung-sofef00.c
-index d1e5340d7e337..7947adf908772 100644
+index 7947adf908772..e69a28628b656 100644
 --- a/drivers/gpu/drm/panel/panel-samsung-sofef00.c
 +++ b/drivers/gpu/drm/panel/panel-samsung-sofef00.c
-@@ -141,7 +141,7 @@ static int sofef00_panel_unprepare(struct drm_panel *panel)
- 	return 0;
- }
+@@ -16,6 +16,7 @@
+ #include <drm/drm_mipi_dsi.h>
+ #include <drm/drm_modes.h>
+ #include <drm/drm_panel.h>
++#include <drm/drm_probe_helper.h>
  
--static const struct drm_display_mode enchilada_panel_mode = {
-+static const struct drm_display_mode ams628nw01_panel_mode = {
+ struct sofef00_panel {
+ 	struct drm_panel panel;
+@@ -143,34 +144,26 @@ static int sofef00_panel_unprepare(struct drm_panel *panel)
+ 
+ static const struct drm_display_mode ams628nw01_panel_mode = {
  	.clock = (1080 + 112 + 16 + 36) * (2280 + 36 + 8 + 12) * 60 / 1000,
++
  	.hdisplay = 1080,
  	.hsync_start = 1080 + 112,
-@@ -159,7 +159,7 @@ static int sofef00_panel_get_modes(struct drm_panel *panel, struct drm_connector
+ 	.hsync_end = 1080 + 112 + 16,
+ 	.htotal = 1080 + 112 + 16 + 36,
++
+ 	.vdisplay = 2280,
+ 	.vsync_start = 2280 + 36,
+ 	.vsync_end = 2280 + 36 + 8,
+ 	.vtotal = 2280 + 36 + 8 + 12,
++
+ 	.width_mm = 68,
+ 	.height_mm = 145,
++
++	.type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED,
+ };
+ 
+ static int sofef00_panel_get_modes(struct drm_panel *panel, struct drm_connector *connector)
  {
- 	struct drm_display_mode *mode;
- 
--	mode = drm_mode_duplicate(connector->dev, &enchilada_panel_mode);
-+	mode = drm_mode_duplicate(connector->dev, &ams628nw01_panel_mode);
- 	if (!mode)
- 		return -ENOMEM;
- 
-@@ -274,7 +274,9 @@ static void sofef00_panel_remove(struct mipi_dsi_device *dsi)
+-	struct drm_display_mode *mode;
+-
+-	mode = drm_mode_duplicate(connector->dev, &ams628nw01_panel_mode);
+-	if (!mode)
+-		return -ENOMEM;
+-
+-	drm_mode_set_name(mode);
+-
+-	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
+-	connector->display_info.width_mm = mode->width_mm;
+-	connector->display_info.height_mm = mode->height_mm;
+-	drm_mode_probed_add(connector, mode);
+-
+-	return 1;
++	return drm_connector_helper_get_modes_fixed(connector, &ams628nw01_panel_mode);
  }
  
- static const struct of_device_id sofef00_panel_of_match[] = {
-+	/* legacy compatible */
- 	{ .compatible = "samsung,sofef00" },
-+	{ .compatible = "samsung,sofef00-ams628nw01" },
- 	{ /* sentinel */ }
- };
- MODULE_DEVICE_TABLE(of, sofef00_panel_of_match);
+ static const struct drm_panel_funcs sofef00_panel_panel_funcs = {
 
 -- 
 2.51.0
