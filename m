@@ -1,10 +1,10 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 05 Nov 2025 17:45:35 +0800
-Subject: [PATCH 4/5] arm64: dts: Add gpio_intc node for Amlogic S7 SoCs
+Date: Wed, 05 Nov 2025 17:45:36 +0800
+Subject: [PATCH 5/5] arm64: dts: Add gpio_intc node for Amlogic S7D SoCs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251105-irqchip-gpio-s6-s7-s7d-v1-4-b4d1fe4781c1@amlogic.com>
+Message-Id: <20251105-irqchip-gpio-s6-s7-s7d-v1-5-b4d1fe4781c1@amlogic.com>
 References: <20251105-irqchip-gpio-s6-s7-s7d-v1-0-b4d1fe4781c1@amlogic.com>
 In-Reply-To: <20251105-irqchip-gpio-s6-s7-s7d-v1-0-b4d1fe4781c1@amlogic.com>
 To: Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
@@ -18,11 +18,11 @@ Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762336003; l=916;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762336003; l=922;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=epwwC+3IrP75yFrjS6QYa+JuNwM3q8u7ctb1sF519+k=;
- b=9g12a7vCOUn6deBMg7xiDglM5u2DDjHNnX7gk6tSKw3Oz6vdJimIXuAuJ7zb4mu6Jgvs0PGe4
- DRwarPvJw0sCrFT3VpNbh5xHGHAVXNjVelV/aI6s1rM4aDdcNy2ansG
+ bh=2AYFwRRhMKaUI5x+oJaokYbcjNo1luvhZzq4ySuPuPs=;
+ b=+EosMo/CxCiQsNno/KnRUjzh/vq1pZfPr6Q1/RpifdI+hS7YvwZOYvznaTxnMv5sjiqBthCgb
+ IxDWULNQCA3BjPo4FyxUUr5oujNzZ8hXdcJW25GrzOhkH6eZye74rjR
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
@@ -32,20 +32,20 @@ Add GPIO interrupt controller device.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi | 10 ++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi | 10 ++++++++++
  1 file changed, 10 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi
-index d0b63d3fc953..aef7aad95667 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi
-@@ -221,6 +221,16 @@ gpiocc: gpio@300 {
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
+index f1c2e91ec6c5..74f98fae7dac 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
+@@ -194,6 +194,16 @@ gpiocc: gpio@300 {
  					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_CC<<8) 2>;
  				};
  			};
 +
 +			gpio_intc: interrupt-controller@4080 {
-+				compatible = "amlogic,s7-gpio-intc",
++				compatible = "amlogic,s7d-gpio-intc",
 +					     "amlogic,meson-gpio-intc";
 +				reg = <0x0 0x4080 0x0 0x20>;
 +				interrupt-controller;
