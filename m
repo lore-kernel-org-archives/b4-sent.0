@@ -1,14 +1,14 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Thu, 06 Nov 2025 11:36:59 +0100
-Subject: [PATCH] dt-bindings: panel: s6e3fc2x01: Sort and remove
+Date: Thu, 06 Nov 2025 11:53:40 +0100
+Subject: [PATCH v2] dt-bindings: panel: s6e3fc2x01: Sort and remove
  unnecessary properties
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251106-dt-s6e3fc2x01-v1-1-0479f2d8b53f@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAEp6DGkC/x3MPQqAMAxA4atIZgNNxRa8ijj0J9UsKq1IQby7x
- fEb3nugcBYuMHUPZL6lyLE3UN9B2Ny+MkpsBq30SKQMxguL4SEFXRVhtM7GwbAnH6A1Z+Yk9f/
- Ny/t+ZW1ET18AAAA=
+Message-Id: <20251106-dt-s6e3fc2x01-v2-1-deb87727152e@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIADN+DGkC/3XMQQ6CMBCF4auQWTumUwSUlfcwLKCdymzAtKSpk
+ t7dyt7l/5L37RDYCwfoqx08RwmyLiX0qQIzj8uTUWxp0Eo3RKpFu2FouXZGJ0Vou7GzdcsTTQb
+ K5+XZSTq8x1B6lrCt/n3wkX7rPykSEqpLd3PaXqemdndJsp3NB4ac8xdv7k+jqAAAAA==
 X-Change-ID: 20251106-dt-s6e3fc2x01-d7a7d36eb1bc
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
  Jessica Zhang <jesszhan0024@gmail.com>, 
@@ -21,30 +21,36 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  Krzysztof Kozlowski <krzk@kernel.org>, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1829; i=david@ixit.cz;
- h=from:subject:message-id; bh=1KDAH+YpEy+rZDz3Q9O9UwxUiZX+yY2cR18RR7GgY04=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpDHpVj6JEO0HK+rGxbwLrFh6Q5T+5Su7vWvL6Q
- YB4nrdnyaCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaQx6VQAKCRBgAj/E00kg
- ctirD/sFPN0KSNSsj6NjI0HjAusuMkskUFWozdEH0DEJzGpPp5FXfvb1yiwv4TMxUXvIM7flRvF
- z7y/NUWcL16HBT/UJlHMWMkcd+55OQd1VCysHfS7b1q1+KxQeO7y2EghSP84zxpP8/NR6rDJ4bg
- lETYEbTkMNwNcqh1hWlUZ2gLgRmkQwf3TeoCoInrAL8AHgsU3Vtc4Ny6879DHE9+e4L5rLrE5EQ
- lDp33CeG1S2/DzTBjhiBV8K4Oa+HL+CiQtDh6pWMTvn4LY1FRFLxUfpPTy+kbdKnK/xN7OYHXhn
- t/4TPSH49yqSzyCHKLwnwi9RxC8jmgyVxBY5x6IloN3AJ29BTHY+kcaU03fK+0LC4rOL6HGguEW
- muOErDYBn4LuLO6xVGqDZsSk3AsnLPTP7/ApvIkP/fBM+XUFLKmqqe4BllNPDjVCR7IYNRDyEfC
- ai1Es6Oe50TOcI2vFEK6pabYAgKLC8JdaBUpHDNqX8uChHhqbmR8yyBsfgX0cZu7ph/kwJBqOSJ
- Ogi3oRWErubwyxPvRvdLrZ3g/DJtCFdm+wfNW2lJysXMBRXyzm73HWI1yYe6SXv+ym6XU0o2zOr
- SMFwtCsolWmapxkyeWAPn6hU0yeXrokWCNO504tYPXww9oRt1iCPH3LENGCIUnS/VFPm4fcmEOd
- pfwfTRMsIP8v5Tw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2065; i=david@ixit.cz;
+ h=from:subject:message-id; bh=pgClw84QtPBlwZV86TtKjb3RNNcrtweHBH9CMqAbjKE=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpDH41wJI/LnkhayCRRmgDzx03QNQa6cdxF8slQ
+ dKBnyNcL7uJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaQx+NQAKCRBgAj/E00kg
+ ci3IEAC6oNsRTnliM3ysSAzlOLeGie3TdehlTDk9zxe8oXnRlWr3K1iggTxVxBtAS1nt3qnPVCp
+ HscEX8BlvYYfiazFqGECPsaIEJ4twkzjTwaE9o70IYj1psxeQV+pRe64oTrbIAt9UWBzdwMvkfK
+ 9kZCuX8QfPRCyLGNRd98IiALZhC7FCmc6f8v6esKbVPc+n3lQoQhcXUZC8voUpigfZGRkVo3xHH
+ 5E2UDfBfjXUBEQ5B5jOKMmmxajCc7yb6YOvjQaiHcQHuOqJjOQ0+HbxN3v5phSQe288HUGYPxFC
+ ggJv8ZrNcGbf7BjuimnoDDIMAbRgpAEQ8qbHcSyf+e5OCDblIE4ioLs654uD8dSV0RWpIJpxjVj
+ QOjYMxTiaLazF/W3F7AllbJiTpFzXf80w0bOmfN5iVGZ+cZ6qC+oEtPiO4fRVEVZS8a0IcIuTWO
+ xVHbGcd+C2MgJkEnKKwMIl2dJMlumNCQAimB7DGDV3x67WXroXBGWJg3JxrvaGLXA77+FQq5Bsd
+ IsiEzwfaFV1TXNZN5flIYkd8jt//XdENYG4+HcPRPHNHJmlrDmXvq9z2JXtlnF/boh0jQnOoTb8
+ /ajqXY9QfOmfcuDl6CdUA+Y8eYZ/UY+AtAC6QzBnfDF5BnoR+pSsGCK0EI5v8fsU39KRt+d7Syz
+ jUH+8WIQia5VODw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Properties are now sorted, reset-gpio and port property dropped.
+Properties are now sorted, reset-gpio and port property dropped because
+they are already accepted here as part of panel-common and usage of
+unevaluatedProperties.
 
-Fixes: 986f28f3a71e ("dt-bindings: panel: Add Samsung S6E3FC2X01 DDIC with panel")
 Suggested-by: Krzysztof Kozlowski <krzk@kernel.org>
 Signed-off-by: David Heidelberg <david@ixit.cz>
+---
+Changes in v2:
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v1: https://lore.kernel.org/r/20251106-dt-s6e3fc2x01-v1-1-0479f2d8b53f@ixit.cz
 ---
  .../bindings/display/panel/samsung,s6e3fc2x01.yaml   | 20 ++++++++------------
  1 file changed, 8 insertions(+), 12 deletions(-)
