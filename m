@@ -1,69 +1,109 @@
-From: Kimi Chen <kimi.zy.chen@fii-foxconn.com>
-Date: Fri, 07 Nov 2025 00:58:39 +0800
-Subject: [PATCH v2] ARM: dts: aspeed: clemente: add gpio line name to io
- expander
+From: Shubhang Kaushik <shubhang@os.amperecomputing.com>
+Date: Thu, 06 Nov 2025 23:32:02 -0800
+Subject: [PATCH RESEND] sched/fair: Add helper to handle leaf cfs_rq
+ addition
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251107-dts-add-gpio-to-io-expander-v2-1-585d48845546@fii-foxconn.com>
-X-B4-Tracking: v=1; b=H4sIAL7TDGkC/42NQQ6CMBBFr2Jm7RhaAaMr72FYlOkUZmGHtIRgC
- He3cgI3P3l/8d4GmZNwhsdpg8SLZNFYwJ5PQKOLA6P4wmAr2xhTtejnjM57HCZRnBXL8jq56Dm
- hq+lqiULTOgfFMCUOsh72V1d4lDxr+hyxxfze/7yLQYN9fWsbqu6We34GEQy6ksZ4IX1Dt+/7F
- 3ryuuvMAAAA
-X-Change-ID: 20251106-dts-add-gpio-to-io-expander-a4c32ccf56aa
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
- Andrew Jeffery <andrew@codeconstruct.com.au>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
- george.kw.lee@fii-foxconn.com, Kimi Chen <kimi.zy.chen@fii-foxconn.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762448350; l=1406;
- i=kimi.zy.chen@fii-foxconn.com; s=20251105; h=from:subject:message-id;
- bh=q3Hjka33GAqrC98JfV2gHVz/SyvVpQc9OOGcXtH2A3s=;
- b=NrYZXH/6ZM0K5uh1E4Dpz9BEY/90j+EqlD+xpSNYCWBMgYSWb8gU3AUlhgA9eKPNOTBjBQ8xF
- hI/8nERMKFgDSBf2fbZg1SHASISyBZ14VLdDlX6u4mgFSYLGXe1XLtL
-X-Developer-Key: i=kimi.zy.chen@fii-foxconn.com; a=ed25519;
- pk=3zHetsW/3CYYIgQlYV9dqSS7aW7aZXLUaIvc+OKr3NM=
-X-Endpoint-Received: by B4 Relay for kimi.zy.chen@fii-foxconn.com/20251105 with auth_id=559
+Message-Id: <20251106-20251010_shubhang_os_amperecomputing_com-v1-1-7535957d8ac6@os.amperecomputing.com>
+X-B4-Tracking: v=1; b=H4sIAHGgDWkC/x2NwQqDMBBEf0X2bGA30CL9FZGgyVr3oAlZLQXx3
+ 7v19t4wzJygXIUVXs0JlT+ikjcTahuIy7i92UkyB4/+QYRPdwMSBl2O6d8IWcO4Fq4c81qOXSw
+ ycp66lOIU584j2FypPMv3vuqH6/oBb0UK2HoAAAA=
+X-Change-ID: 20251106-20251010_shubhang_os_amperecomputing_com-218ddcbcf820
+To: Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, 
+ Juri Lelli <juri.lelli@redhat.com>, 
+ Vincent Guittot <vincent.guittot@linaro.org>, 
+ Dietmar Eggemann <dietmar.eggemann@arm.com>, 
+ Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
+ Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ Aaron Lu <ziqianlu@bytedance.com>, Josh Don <joshdon@google.com>, 
+ Ben Segall <bsegall@google.com>, Shubhang Kaushik <sh@gentwo.org>, 
+ "Christoph Lameter (Ampere)" <cl@gentwo.org>
+Cc: linux-kernel@vger.kernel.org, 
+ Shubhang Kaushik <shubhang@os.amperecomputing.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762500755; l=2695;
+ i=shubhang@os.amperecomputing.com; s=20251010; h=from:subject:message-id;
+ bh=aKWrfbrWZwZxexxzXXzIOYzVUS/84glWsxcQQQBhEVQ=;
+ b=f7GhnM6dkbGAobj4iPP8Pbqq/tKTG2Le/PfAq2IgU5t8nEwTUwhBeTUpu6ZGpqlZTCQbOy8L8
+ 1G8L4yN8GFTByz2LYufKFG+++ycr/G9YbuZQ36Oq+yhmsRPMrWZyRTp
+X-Developer-Key: i=shubhang@os.amperecomputing.com; a=ed25519;
+ pk=jc8YIRvxPSyJaBRe5y+a4N0RXKBUEcAh8+OFhlROXPY=
+X-Endpoint-Received: by B4 Relay for shubhang@os.amperecomputing.com/20251010 with auth_id=539
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The chassis power cycle process requires a forced shutdown before
-cutting off the standby power. Therefore, SCM CPLD adds a hard shutdown
-host function and triggers it via the IO expander in Clemente platform.
+Refactor the logic for adding a cfs_rq to the leaf list into a helper
+function.
 
-Thus, a new GPIO line named "hard_shutdown_host" is added to the
-PCA9555 IO expander at line 10 to notify the CPLD to execute the hard
-shutdown host function.
+The existing code repeated the logic to check if the cfs_rq was
+throttled and added it to the leaf list. This change extracts that
+logic into the static inline helper `__cfs_rq_maybe_add_leaf()`, which
+is a more robust naming convention for an internal helper.
 
-Signed-off-by: Kimi Chen <kimi.zy.chen@fii-foxconn.com>
+This refactoring removes code duplication and makes the parent function,
+`propagate_entity_cfs_rq()`, cleaner and easier to read.
+
+Signed-off-by: Shubhang Kaushik <shubhang@os.amperecomputing.com>
 ---
-Changes in v2:
-- Add "hard_shutdown_host" GPIO line name to PCA9555 IO expander for Clemente platform.
-- Link to v1: https://lore.kernel.org/r/20251106-dts-add-gpio-to-io-expander-v1-1-b4765c092ebe@fii-foxconn.com
----
- arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-clemente.dts | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ kernel/sched/fair.c | 24 ++++++++++++++----------
+ 1 file changed, 14 insertions(+), 10 deletions(-)
 
-diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-clemente.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-clemente.dts
-index 450446913e36..0eafd8ea04ac 100644
---- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-clemente.dts
-+++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-clemente.dts
-@@ -983,7 +983,7 @@ io_expander4: gpio@4f {
- 			"",
- 			"",
- 			"",
--			"",
-+			"hard_shutdown_host",
- 			"",
- 			"",
- 			"",
+diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
+index 25970dbbb27959bc130d288d5f80677f75f8db8b..13140fab37ce7870f8079e789ff24c409747e27d 100644
+--- a/kernel/sched/fair.c
++++ b/kernel/sched/fair.c
+@@ -13169,6 +13169,18 @@ prio_changed_fair(struct rq *rq, struct task_struct *p, int oldprio)
+ }
+ 
+ #ifdef CONFIG_FAIR_GROUP_SCHED
++/*
++ * If a task gets attached to this cfs_rq and, before being queued,
++ * it gets migrated to another CPU (e.g., due to reasons like affinity change),
++ * this cfs_rq must remain on leaf cfs_rq list. This allows the
++ * removed load to decay properly; otherwise, it can cause a fairness problem.
++ */
++static inline void __cfs_rq_maybe_add_leaf(struct cfs_rq *cfs_rq)
++{
++	if (!cfs_rq_pelt_clock_throttled(cfs_rq))
++		list_add_leaf_cfs_rq(cfs_rq);
++}
++
+ /*
+  * Propagate the changes of the sched_entity across the tg tree to make it
+  * visible to the root
+@@ -13177,14 +13189,7 @@ static void propagate_entity_cfs_rq(struct sched_entity *se)
+ {
+ 	struct cfs_rq *cfs_rq = cfs_rq_of(se);
+ 
+-	/*
+-	 * If a task gets attached to this cfs_rq and before being queued,
+-	 * it gets migrated to another CPU due to reasons like affinity
+-	 * change, make sure this cfs_rq stays on leaf cfs_rq list to have
+-	 * that removed load decayed or it can cause faireness problem.
+-	 */
+-	if (!cfs_rq_pelt_clock_throttled(cfs_rq))
+-		list_add_leaf_cfs_rq(cfs_rq);
++	__cfs_rq_maybe_add_leaf(cfs_rq);
+ 
+ 	/* Start to propagate at parent */
+ 	se = se->parent;
+@@ -13194,8 +13199,7 @@ static void propagate_entity_cfs_rq(struct sched_entity *se)
+ 
+ 		update_load_avg(cfs_rq, se, UPDATE_TG);
+ 
+-		if (!cfs_rq_pelt_clock_throttled(cfs_rq))
+-			list_add_leaf_cfs_rq(cfs_rq);
++		__cfs_rq_maybe_add_leaf(cfs_rq);
+ 	}
+ 
+ 	assert_list_leaf_cfs_rq(rq_of(cfs_rq));
 
 ---
-base-commit: 6953afcd81a2cc73784e3dd23faa0a1aaf97441a
-change-id: 20251106-dts-add-gpio-to-io-expander-a4c32ccf56aa
+base-commit: 6146a0f1dfae5d37442a9ddcba012add260bceb0
+change-id: 20251106-20251010_shubhang_os_amperecomputing_com-218ddcbcf820
 
 Best regards,
 -- 
-Kimi Chen <kimi.zy.chen@fii-foxconn.com>
+Shubhang Kaushik <shubhang@os.amperecomputing.com>
 
