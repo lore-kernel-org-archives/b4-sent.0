@@ -1,75 +1,113 @@
-From: Remi Buisson <remi.buisson@tdk.com>
-Date: Fri, 07 Nov 2025 09:13:58 +0000
-Subject: [PATCH v4] iio: imu: inv_icm45600: Initializes
- inv_icm45600_buffer_postdisable sleep
+From: Maud Spierings <maudspierings@gocontroll.com>
+Subject: [PATCH v5 0/4] backlight: add new max25014 backlight driver
+Date: Fri, 07 Nov 2025 13:49:57 +0100
+Message-Id: <20251107-max25014-v5-0-9a6aa57306bf@gocontroll.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251107-icm45600_fix_buffer_sleep_init-v4-1-5648fbfb57ad@tdk.com>
-X-B4-Tracking: v=1; b=H4sIAFW4DWkC/5XNQQ7CIBCF4asY1mIYoFhdeQ9jGqCDTrStgdpoT
- O8u7ca4Upf/ZPK9J0sYCRPbLp4s4kCJujaHXi6YP9n2iJzq3EwKWYBQwMk3ujBCVIHulbuFgLF
- KF8RrRS31vBRGBoNiHUrNMnKNmB/ngf0h94lS38XHvDfAdP2ZHoAD30iNwTkwBZa7vj6vfNewC
- R7kf5jMWOFrLzSC885+YuqNgTBfMZUxtMoGU1qFBt7YOI4vu8A4cWQBAAA=
-X-Change-ID: 20251031-icm45600_fix_buffer_sleep_init-8062f6e07f84
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Remi Buisson <remi.buisson@tdk.com>
-Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
- linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762506840; l=1865;
- i=remi.buisson@tdk.com; s=20250411; h=from:subject:message-id;
- bh=KHYZL4PBkFcdTzaWag6cVizPSRawbM+rQCJdwDIqyec=;
- b=LJrkBuBn+oJJ4i6+c9a1Glm0edUU8D+kxrkVzMQbuHuC6IkPGp5tssgL2dXIty231dS0qARbJ
- Z6v8TApjoFpDqyt4gKR2tKvzRy9Ggs1UlGsYuN5dYrIvtKHizzqTyO4
-X-Developer-Key: i=remi.buisson@tdk.com; a=ed25519;
- pk=yDVMi4C7RpXN4dififo42A7fDDt3THYzoZoNq9lUZuo=
-X-Endpoint-Received: by B4 Relay for remi.buisson@tdk.com/20250411 with auth_id=372
+X-B4-Tracking: v=1; b=H4sIAPXqDWkC/23NS47CMAyA4augrAmy8+hjVnOPEQs3dSASNKMUV
+ SDUu49hJFoJdnHk7/ddjVwSj+prc1eFpzSmPMjgtxsVjjQcWKdeZmXAeKhMpc90lRc67QzUvkV
+ Gil7J+m/hmK7P1M9e5mMaL7ncnuUJH7//kdr4JTKhBg3chMCt9Br+PuSQh0vJp9Mu5LN6lCaz6
+ AbblTaifexr4g4dMn3UdtEt4kpb0T3Y6LgjW/vPt91LI8D6thNdUd8ZAiLr45ue5/kPQ42L+F8
+ BAAA=
+X-Change-ID: 20250626-max25014-4207591e1af5
+To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
+ Jingoo Han <jingoohan1@gmail.com>, Pavel Machek <pavel@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Helge Deller <deller@gmx.de>, 
+ Shawn Guo <shawnguo@kernel.org>, Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-fbdev@vger.kernel.org, imx@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, 
+ Maud Spierings <maudspierings@gocontroll.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762519811; l=3392;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=aMU6lI+FXL9SA5HsmuUzM3T7gQp8a2xCL/Hf/lasg3A=;
+ b=tHu4Cu2n2geb7CXzMfQZdheXEYSEHLIEAHda4GTiB9rSeI4w1XX8+DhtQ6cGKxl6Pk6zCuWEa
+ 5iC7I71JaikDQXYf6oiFrknLfgaFfSZNdahLsuimPV+N1iJRv6RdxHQ
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The sleep variable in inv_icm45600_buffer_postdisable could be used without
-being assigned in case of error. It must be initialized to 0 by default.
+The Maxim MAX25014 is an automotive grade backlight driver IC. Its
+datasheet can be found at [1].
 
-Fixes: 06674a72cf7a ("iio: imu: inv_icm45600: add buffer support in iio devices")
-Closes: https://lore.kernel.org/linux-iio/aPi6Xw-ZoUkW76zR@stanley.mountain/
-Signed-off-by: Remi Buisson <remi.buisson@tdk.com>
+With its integrated boost controller, it can power 4 channels (led
+strings) and has a number of different modes using pwm and or i2c.
+Currently implemented is only i2c control.
+
+link: https://www.analog.com/media/en/technical-documentation/data-sheets/MAX25014.pdf [1]
+
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
+Changes in v5:
+- moved comment about current functions of the driver to the actual
+  comment section of the commit
+- fixed the led@0 property, regex patternProperty is not needed as of
+  now
+- added extra clarification about the ISET field/register
+- moved #address-cells and #size-cells to the correct location
+- remove leftover default-brightness in backlight nodes
+- Link to v4: https://lore.kernel.org/r/20251009-max25014-v4-0-6adb2a0aa35f@gocontroll.com
+
 Changes in v4:
-- Add space in closse tag in commit message
-- Remove extra blank line in commit message
-- Link to v3: https://lore.kernel.org/r/20251106-icm45600_fix_buffer_sleep_init-v3-1-ea3af68a3e61@tdk.com
+- use a led node to describe the backlight
+- use led-sources to enable specific channels
+- also wait 2ms when there is a supply but no enable
+- change dev_warn() to dev_err() in error path in max25014_check_errors()
+- set backlight_properties.scale to BACKLIGHT_SCALE_LINEAR
+- rebase latest next
+- add address-cells and size-cells to i2c4 in av101hdt-a10.dtso
+- Link to v3: https://lore.kernel.org/r/20250911-max25014-v3-0-d03f4eba375e@gocontroll.com
 
 Changes in v3:
-- Fix commit message: fix and closes moved to SoB
-- Fix assignement of sleep variable after declaration.
-- Link to v2: https://lore.kernel.org/r/20251031-icm45600_fix_buffer_sleep_init-v2-1-5cdc04e1bcba@tdk.com
+- fixed commit message type intgrated -> integrated
+- added maximum and description to maxim,iset-property
+- dropped unused labels and pinctrl in bindings example
+- put the compatible first in the bindings example and dts
+- removed brackets around defines
+- removed the leftover pdata struct field
+- removed the initial_brightness struct field
+- Link to v2: https://lore.kernel.org/r/20250819-max25014-v2-0-5fd7aeb141ea@gocontroll.com
 
 Changes in v2:
-- Moving pacth description from cover-letter to single commit
-- Link to v1: https://lore.kernel.org/r/20251031-icm45600_fix_buffer_sleep_init-v1-1-924efbb165e8@tdk.com
----
- drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
-index 2efcc177f9d60a6a2509e448c0ddaf4b9e1fd755..2b9ea317385ceb680f013c4c1b2a6a74fbe5d7e7 100644
---- a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
-+++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
-@@ -370,6 +370,7 @@ static int inv_icm45600_buffer_postdisable(struct iio_dev *indio_dev)
- 		return -EINVAL;
- 	}
- 
-+	sleep = 0;
- 	scoped_guard(mutex, &st->lock)
- 		ret = _inv_icm45600_buffer_postdisable(st, sensor, watermark, &sleep);
- 
+- Remove leftover unused property from the bindings example
+- Complete the bindings example with all properties
+- Remove some double info from the maxim,iset property
+- Remove platform_data header, fold its data into the max25014 struct
+- Don't force defines to be unsigned
+- Remove stray struct max25014 declaration
+- Remove chipname and device from the max25014 struct
+- Inline the max25014_backlight_register() and strings_mask() functions
+- Remove CONFIG_OF ifdef
+- Link to v1: https://lore.kernel.org/r/20250725-max25014-v1-0-0e8cce92078e@gocontroll.com
 
 ---
-base-commit: 70437bbd7529e9860fb7f0c92a89e0e6abaa994e
-change-id: 20251031-icm45600_fix_buffer_sleep_init-8062f6e07f84
+Maud Spierings (4):
+      dt-bindings: backlight: Add max25014 support
+      backlight: add max25014atg backlight
+      arm64: dts: freescale: moduline-display-av101hdt-a10: add backlight
+      arm64: dts: freescale: moduline-display-av123z7m-n17: add backlight
+
+ .../bindings/leds/backlight/maxim,max25014.yaml    | 107 ++++++
+ MAINTAINERS                                        |   6 +
+ ...x8p-ml81-moduline-display-106-av101hdt-a10.dtso |  30 ++
+ ...x8p-ml81-moduline-display-106-av123z7m-n17.dtso |  25 +-
+ drivers/video/backlight/Kconfig                    |   7 +
+ drivers/video/backlight/Makefile                   |   1 +
+ drivers/video/backlight/max25014.c                 | 409 +++++++++++++++++++++
+ 7 files changed, 584 insertions(+), 1 deletion(-)
+---
+base-commit: 9c0826a5d9aa4d52206dd89976858457a2a8a7ed
+change-id: 20250626-max25014-4207591e1af5
 
 Best regards,
 -- 
-Remi Buisson <remi.buisson@tdk.com>
+Maud Spierings <maudspierings@gocontroll.com>
 
