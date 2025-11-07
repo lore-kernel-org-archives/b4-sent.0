@@ -1,109 +1,75 @@
-From: Shubhang Kaushik <shubhang@os.amperecomputing.com>
-Date: Thu, 06 Nov 2025 23:32:02 -0800
-Subject: [PATCH RESEND] sched/fair: Add helper to handle leaf cfs_rq
- addition
+From: Remi Buisson <remi.buisson@tdk.com>
+Date: Fri, 07 Nov 2025 09:13:58 +0000
+Subject: [PATCH v4] iio: imu: inv_icm45600: Initializes
+ inv_icm45600_buffer_postdisable sleep
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251106-20251010_shubhang_os_amperecomputing_com-v1-1-7535957d8ac6@os.amperecomputing.com>
-X-B4-Tracking: v=1; b=H4sIAHGgDWkC/x2NwQqDMBBEf0X2bGA30CL9FZGgyVr3oAlZLQXx3
- 7v19t4wzJygXIUVXs0JlT+ikjcTahuIy7i92UkyB4/+QYRPdwMSBl2O6d8IWcO4Fq4c81qOXSw
- ycp66lOIU584j2FypPMv3vuqH6/oBb0UK2HoAAAA=
-X-Change-ID: 20251106-20251010_shubhang_os_amperecomputing_com-218ddcbcf820
-To: Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, 
- Juri Lelli <juri.lelli@redhat.com>, 
- Vincent Guittot <vincent.guittot@linaro.org>, 
- Dietmar Eggemann <dietmar.eggemann@arm.com>, 
- Steven Rostedt <rostedt@goodmis.org>, Ben Segall <bsegall@google.com>, 
- Mel Gorman <mgorman@suse.de>, Valentin Schneider <vschneid@redhat.com>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- Aaron Lu <ziqianlu@bytedance.com>, Josh Don <joshdon@google.com>, 
- Ben Segall <bsegall@google.com>, Shubhang Kaushik <sh@gentwo.org>, 
- "Christoph Lameter (Ampere)" <cl@gentwo.org>
-Cc: linux-kernel@vger.kernel.org, 
- Shubhang Kaushik <shubhang@os.amperecomputing.com>
+Message-Id: <20251107-icm45600_fix_buffer_sleep_init-v4-1-5648fbfb57ad@tdk.com>
+X-B4-Tracking: v=1; b=H4sIAFW4DWkC/5XNQQ7CIBCF4asY1mIYoFhdeQ9jGqCDTrStgdpoT
+ O8u7ca4Upf/ZPK9J0sYCRPbLp4s4kCJujaHXi6YP9n2iJzq3EwKWYBQwMk3ujBCVIHulbuFgLF
+ KF8RrRS31vBRGBoNiHUrNMnKNmB/ngf0h94lS38XHvDfAdP2ZHoAD30iNwTkwBZa7vj6vfNewC
+ R7kf5jMWOFrLzSC885+YuqNgTBfMZUxtMoGU1qFBt7YOI4vu8A4cWQBAAA=
+X-Change-ID: 20251031-icm45600_fix_buffer_sleep_init-8062f6e07f84
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Remi Buisson <remi.buisson@tdk.com>
+Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
+ linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762500755; l=2695;
- i=shubhang@os.amperecomputing.com; s=20251010; h=from:subject:message-id;
- bh=aKWrfbrWZwZxexxzXXzIOYzVUS/84glWsxcQQQBhEVQ=;
- b=f7GhnM6dkbGAobj4iPP8Pbqq/tKTG2Le/PfAq2IgU5t8nEwTUwhBeTUpu6ZGpqlZTCQbOy8L8
- 1G8L4yN8GFTByz2LYufKFG+++ycr/G9YbuZQ36Oq+yhmsRPMrWZyRTp
-X-Developer-Key: i=shubhang@os.amperecomputing.com; a=ed25519;
- pk=jc8YIRvxPSyJaBRe5y+a4N0RXKBUEcAh8+OFhlROXPY=
-X-Endpoint-Received: by B4 Relay for shubhang@os.amperecomputing.com/20251010 with auth_id=539
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762506840; l=1865;
+ i=remi.buisson@tdk.com; s=20250411; h=from:subject:message-id;
+ bh=KHYZL4PBkFcdTzaWag6cVizPSRawbM+rQCJdwDIqyec=;
+ b=LJrkBuBn+oJJ4i6+c9a1Glm0edUU8D+kxrkVzMQbuHuC6IkPGp5tssgL2dXIty231dS0qARbJ
+ Z6v8TApjoFpDqyt4gKR2tKvzRy9Ggs1UlGsYuN5dYrIvtKHizzqTyO4
+X-Developer-Key: i=remi.buisson@tdk.com; a=ed25519;
+ pk=yDVMi4C7RpXN4dififo42A7fDDt3THYzoZoNq9lUZuo=
+X-Endpoint-Received: by B4 Relay for remi.buisson@tdk.com/20250411 with auth_id=372
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Refactor the logic for adding a cfs_rq to the leaf list into a helper
-function.
+The sleep variable in inv_icm45600_buffer_postdisable could be used without
+being assigned in case of error. It must be initialized to 0 by default.
 
-The existing code repeated the logic to check if the cfs_rq was
-throttled and added it to the leaf list. This change extracts that
-logic into the static inline helper `__cfs_rq_maybe_add_leaf()`, which
-is a more robust naming convention for an internal helper.
-
-This refactoring removes code duplication and makes the parent function,
-`propagate_entity_cfs_rq()`, cleaner and easier to read.
-
-Signed-off-by: Shubhang Kaushik <shubhang@os.amperecomputing.com>
+Fixes: 06674a72cf7a ("iio: imu: inv_icm45600: add buffer support in iio devices")
+Closes: https://lore.kernel.org/linux-iio/aPi6Xw-ZoUkW76zR@stanley.mountain/
+Signed-off-by: Remi Buisson <remi.buisson@tdk.com>
 ---
- kernel/sched/fair.c | 24 ++++++++++++++----------
- 1 file changed, 14 insertions(+), 10 deletions(-)
+Changes in v4:
+- Add space in closse tag in commit message
+- Remove extra blank line in commit message
+- Link to v3: https://lore.kernel.org/r/20251106-icm45600_fix_buffer_sleep_init-v3-1-ea3af68a3e61@tdk.com
 
-diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
-index 25970dbbb27959bc130d288d5f80677f75f8db8b..13140fab37ce7870f8079e789ff24c409747e27d 100644
---- a/kernel/sched/fair.c
-+++ b/kernel/sched/fair.c
-@@ -13169,6 +13169,18 @@ prio_changed_fair(struct rq *rq, struct task_struct *p, int oldprio)
- }
- 
- #ifdef CONFIG_FAIR_GROUP_SCHED
-+/*
-+ * If a task gets attached to this cfs_rq and, before being queued,
-+ * it gets migrated to another CPU (e.g., due to reasons like affinity change),
-+ * this cfs_rq must remain on leaf cfs_rq list. This allows the
-+ * removed load to decay properly; otherwise, it can cause a fairness problem.
-+ */
-+static inline void __cfs_rq_maybe_add_leaf(struct cfs_rq *cfs_rq)
-+{
-+	if (!cfs_rq_pelt_clock_throttled(cfs_rq))
-+		list_add_leaf_cfs_rq(cfs_rq);
-+}
-+
- /*
-  * Propagate the changes of the sched_entity across the tg tree to make it
-  * visible to the root
-@@ -13177,14 +13189,7 @@ static void propagate_entity_cfs_rq(struct sched_entity *se)
- {
- 	struct cfs_rq *cfs_rq = cfs_rq_of(se);
- 
--	/*
--	 * If a task gets attached to this cfs_rq and before being queued,
--	 * it gets migrated to another CPU due to reasons like affinity
--	 * change, make sure this cfs_rq stays on leaf cfs_rq list to have
--	 * that removed load decayed or it can cause faireness problem.
--	 */
--	if (!cfs_rq_pelt_clock_throttled(cfs_rq))
--		list_add_leaf_cfs_rq(cfs_rq);
-+	__cfs_rq_maybe_add_leaf(cfs_rq);
- 
- 	/* Start to propagate at parent */
- 	se = se->parent;
-@@ -13194,8 +13199,7 @@ static void propagate_entity_cfs_rq(struct sched_entity *se)
- 
- 		update_load_avg(cfs_rq, se, UPDATE_TG);
- 
--		if (!cfs_rq_pelt_clock_throttled(cfs_rq))
--			list_add_leaf_cfs_rq(cfs_rq);
-+		__cfs_rq_maybe_add_leaf(cfs_rq);
+Changes in v3:
+- Fix commit message: fix and closes moved to SoB
+- Fix assignement of sleep variable after declaration.
+- Link to v2: https://lore.kernel.org/r/20251031-icm45600_fix_buffer_sleep_init-v2-1-5cdc04e1bcba@tdk.com
+
+Changes in v2:
+- Moving pacth description from cover-letter to single commit
+- Link to v1: https://lore.kernel.org/r/20251031-icm45600_fix_buffer_sleep_init-v1-1-924efbb165e8@tdk.com
+---
+ drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
+index 2efcc177f9d60a6a2509e448c0ddaf4b9e1fd755..2b9ea317385ceb680f013c4c1b2a6a74fbe5d7e7 100644
+--- a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
+@@ -370,6 +370,7 @@ static int inv_icm45600_buffer_postdisable(struct iio_dev *indio_dev)
+ 		return -EINVAL;
  	}
  
- 	assert_list_leaf_cfs_rq(rq_of(cfs_rq));
++	sleep = 0;
+ 	scoped_guard(mutex, &st->lock)
+ 		ret = _inv_icm45600_buffer_postdisable(st, sensor, watermark, &sleep);
+ 
 
 ---
-base-commit: 6146a0f1dfae5d37442a9ddcba012add260bceb0
-change-id: 20251106-20251010_shubhang_os_amperecomputing_com-218ddcbcf820
+base-commit: 70437bbd7529e9860fb7f0c92a89e0e6abaa994e
+change-id: 20251031-icm45600_fix_buffer_sleep_init-8062f6e07f84
 
 Best regards,
 -- 
-Shubhang Kaushik <shubhang@os.amperecomputing.com>
+Remi Buisson <remi.buisson@tdk.com>
 
