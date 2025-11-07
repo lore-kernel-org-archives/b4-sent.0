@@ -1,91 +1,83 @@
-From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Fri, 07 Nov 2025 13:50:01 +0100
-Subject: [PATCH v5 4/4] arm64: dts: freescale:
- moduline-display-av123z7m-n17: add backlight
+From: Remi Buisson <remi.buisson@tdk.com>
+Date: Fri, 07 Nov 2025 13:49:56 +0000
+Subject: [PATCH v5] iio: imu: inv_icm45600: Initializes
+ inv_icm45600_buffer_postdisable sleep
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251107-max25014-v5-4-9a6aa57306bf@gocontroll.com>
-References: <20251107-max25014-v5-0-9a6aa57306bf@gocontroll.com>
-In-Reply-To: <20251107-max25014-v5-0-9a6aa57306bf@gocontroll.com>
-To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
- Jingoo Han <jingoohan1@gmail.com>, Pavel Machek <pavel@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Helge Deller <deller@gmx.de>, 
- Shawn Guo <shawnguo@kernel.org>, Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Liam Girdwood <lgirdwood@gmail.com>, 
- Mark Brown <broonie@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-fbdev@vger.kernel.org, imx@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, 
- Maud Spierings <maudspierings@gocontroll.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762519811; l=1603;
- i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=W3+O65MLK+QQ45G6UQnntYqpahuzB8Ny+hes04KZ2tw=;
- b=ezpjtjsv6GgTUKTj7VIN8Ol7x+BVdwyWUUs+AXJaY5Qg3P1dzkwOkW9zWLzP2vTxhen37C8V2
- EGi+m0I9ldbD7r5Bw0/dGwM/b7StU0TVUcAQqEYBAqeDlohud8dP0sb
-X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
- pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
-X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
+Message-Id: <20251107-icm45600_fix_buffer_sleep_init-v5-1-45581918ea63@tdk.com>
+X-B4-Tracking: v=1; b=H4sIAAP5DWkC/5XOTU7DMBAF4KtUXmPk8V9MV9wDoch2ZugImlR2i
+ EBV7o7TTemqsHxPo+/NWVQsjFXsd2dRcOHK09iCe9iJfIjjG0oeWhZaaQfKgOR8tM4r1RN/9em
+ TCEtfPxBPPY88y6C8Jo+qo2BFQ04F2+Fl4OW15QPXeSrfl70FtvbP9AIS5JO2SCmBdxie5+H9M
+ U9HscGL/h+mG+bykJVFSDnFW8xcMVD+LmYahtFE8iEa9HCL2d9Ydxez22feBkqUXBeHK7au6w+
+ UKvD6sQEAAA==
+X-Change-ID: 20251031-icm45600_fix_buffer_sleep_init-8062f6e07f84
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Remi Buisson <remi.buisson@tdk.com>
+Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
+ linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Andy Shevchenko <andriy.shevchenko@intel.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762523397; l=2135;
+ i=remi.buisson@tdk.com; s=20250411; h=from:subject:message-id;
+ bh=v52ZqvJfSOkOyp0ViAifF442SwvXQu+wDMWWMy7Pi4I=;
+ b=4HSGmUqYEyslnZV/k5FGQ3NsiLYEY0vzSbfuuyOFVuz2CTSZTankBePjUNLDe5l+mOPm3BA/C
+ Q8sf3TM3lxtDQc/QCkKECDjG4YCr1UmHRqk7JZQtTWxRv35/JmN+JWH
+X-Developer-Key: i=remi.buisson@tdk.com; a=ed25519;
+ pk=yDVMi4C7RpXN4dififo42A7fDDt3THYzoZoNq9lUZuo=
+X-Endpoint-Received: by B4 Relay for remi.buisson@tdk.com/20250411 with auth_id=372
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the missing backlight.
+The sleep variable in inv_icm45600_buffer_postdisable() could be used without
+being assigned in case of error. It must be initialized to 0 by default.
 
-Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
+Fixes: 06674a72cf7a ("iio: imu: inv_icm45600: add buffer support in iio devices")
+Closes: https://lore.kernel.org/linux-iio/aPi6Xw-ZoUkW76zR@stanley.mountain/
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
+Signed-off-by: Remi Buisson <remi.buisson@tdk.com>
 ---
- ...x8p-ml81-moduline-display-106-av123z7m-n17.dtso | 25 +++++++++++++++++++++-
- 1 file changed, 24 insertions(+), 1 deletion(-)
+Changes in v5:
+- Adding parenthesis to function name in commit message
+- Adding Reviewed-by tag
+- Link to v4: https://lore.kernel.org/r/20251107-icm45600_fix_buffer_sleep_init-v4-1-5648fbfb57ad@tdk.com
 
-diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso
-index 3eb665ce9d5d..786a04ef40c8 100644
---- a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso
-+++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso
-@@ -16,6 +16,7 @@
- 
- 	panel {
- 		compatible = "boe,av123z7m-n17";
-+		backlight = <&backlight>;
- 		enable-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;
- 		pinctrl-0 = <&pinctrl_panel>;
- 		pinctrl-names = "default";
-@@ -91,10 +92,32 @@ lvds1_out: endpoint {
- 		};
- 	};
- 
--	/* max25014 @ 0x6f */
-+	backlight: backlight@6f {
-+		compatible = "maxim,max25014";
-+		reg = <0x6f>;
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+		enable-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&pinctrl_backlight>;
-+		maxim,iset = <7>;
-+
-+		led@0 {
-+			reg = <0>;
-+			led-sources = <0 1 2 3>;
-+			default-brightness = <50>;
-+		};
-+	};
- };
- 
- &iomuxc {
-+	pinctrl_backlight: backlightgrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_GPIO1_IO04__GPIO1_IO04
-+				(MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+		>;
-+	};
-+
- 	pinctrl_lvds_bridge: lvdsbridgegrp {
- 		fsl,pins = <
- 			MX8MP_IOMUXC_SAI1_TXD2__GPIO4_IO14
+Changes in v4:
+- Add space in closse tag in commit message
+- Remove extra blank line in commit message
+- Link to v3: https://lore.kernel.org/r/20251106-icm45600_fix_buffer_sleep_init-v3-1-ea3af68a3e61@tdk.com
 
+Changes in v3:
+- Fix commit message: fix and closes moved to SoB
+- Fix assignement of sleep variable after declaration.
+- Link to v2: https://lore.kernel.org/r/20251031-icm45600_fix_buffer_sleep_init-v2-1-5cdc04e1bcba@tdk.com
+
+Changes in v2:
+- Moving pacth description from cover-letter to single commit
+- Link to v1: https://lore.kernel.org/r/20251031-icm45600_fix_buffer_sleep_init-v1-1-924efbb165e8@tdk.com
+---
+ drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
+index 2efcc177f9d60a6a2509e448c0ddaf4b9e1fd755..2b9ea317385ceb680f013c4c1b2a6a74fbe5d7e7 100644
+--- a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
+@@ -370,6 +370,7 @@ static int inv_icm45600_buffer_postdisable(struct iio_dev *indio_dev)
+ 		return -EINVAL;
+ 	}
+ 
++	sleep = 0;
+ 	scoped_guard(mutex, &st->lock)
+ 		ret = _inv_icm45600_buffer_postdisable(st, sensor, watermark, &sleep);
+ 
+
+---
+base-commit: 70437bbd7529e9860fb7f0c92a89e0e6abaa994e
+change-id: 20251031-icm45600_fix_buffer_sleep_init-8062f6e07f84
+
+Best regards,
 -- 
-2.51.2
+Remi Buisson <remi.buisson@tdk.com>
 
