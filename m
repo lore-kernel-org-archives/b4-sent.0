@@ -1,10 +1,11 @@
 From: Dang Huynh <dang.huynh@mainlining.org>
-Date: Sat, 08 Nov 2025 12:38:06 +0700
-Subject: [PATCH v6 10/12] video: rockchip: Add HDMI support for RK3568
+Date: Sat, 08 Nov 2025 12:38:07 +0700
+Subject: [PATCH v6 11/12] configs: pinetab2-rk3566: Enable video and USB
+ keyboard
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251108-vop2-pt2-v6-10-d04c699262fb@mainlining.org>
+Message-Id: <20251108-vop2-pt2-v6-11-d04c699262fb@mainlining.org>
 References: <20251108-vop2-pt2-v6-0-d04c699262fb@mainlining.org>
 In-Reply-To: <20251108-vop2-pt2-v6-0-d04c699262fb@mainlining.org>
 To: u-boot@lists.denx.de
@@ -24,114 +25,57 @@ Cc: Anatolij Gustschin <ag.dev.uboot@gmail.com>,
  Piotr Zalewski <pZ010001011111@proton.me>, 
  Dang Huynh <dang.huynh@mainlining.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762580305; l=3057;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762580305; l=1337;
  i=dang.huynh@mainlining.org; s=20250917; h=from:subject:message-id;
- bh=HcwcQsOZwDtIzK0lURcjerdicekXC6tCgRYLSXj8rhY=;
- b=DzOmvAkQYvE8/trv228yAo0NkqCi0TVSYYJwLzeDG5I342dgJQv2CMKVxkvLx3vor8W/lBmzY
- 6yr8jwX9lSLBzPraP6PFoNzFogdZHIaZXj87Ql+E5f8Qv9zUT3gPFaN
+ bh=3LybyD7S09myln8IiJzG5hWDfGyKNQvXKWnOZhFSv0k=;
+ b=YfuVJPfXPVGxQ2OOySv0Kw2dgEEc4OA+znQsb/QW37DskKfEqKNc5svM6QD4RLI+58ODks4+W
+ 8D9SgHosqEiB0nK+VbudY0GCLnC4utaDw6/DP9/lqhnMWbICbfWZ1GF
 X-Developer-Key: i=dang.huynh@mainlining.org; a=ed25519;
  pk=RyzH4CL4YU/ItXYUurA51EVBidfx4lIy8/E4EKRJCUk=
 X-Endpoint-Received: by B4 Relay for dang.huynh@mainlining.org/20250917 with auth_id=526
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-HDMI on RK3568 is mostly simplified, all this does is enabling
-DDC for display timings and HPD.
+Now that we have VOP2 support, let's enable it and support the
+built in USB keyboard.
 
 Signed-off-by: Dang Huynh <dang.huynh@mainlining.org>
 ---
- drivers/video/rockchip/Makefile      |  1 +
- drivers/video/rockchip/rk3568_hdmi.c | 71 ++++++++++++++++++++++++++++++++++++
- 2 files changed, 72 insertions(+)
+ configs/pinetab2-rk3566_defconfig | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff --git a/drivers/video/rockchip/Makefile b/drivers/video/rockchip/Makefile
-index 2f89a979a28..b751c969b46 100644
---- a/drivers/video/rockchip/Makefile
-+++ b/drivers/video/rockchip/Makefile
-@@ -14,6 +14,7 @@ obj-$(CONFIG_DISPLAY_ROCKCHIP_LVDS) += rk_lvds.o
- obj-hdmi-$(CONFIG_ROCKCHIP_RK3288) += rk3288_hdmi.o
- obj-hdmi-$(CONFIG_ROCKCHIP_RK3328) += rk3328_hdmi.o
- obj-hdmi-$(CONFIG_ROCKCHIP_RK3399) += rk3399_hdmi.o
-+obj-hdmi-$(CONFIG_ROCKCHIP_RK3568) += rk3568_hdmi.o
- obj-$(CONFIG_DISPLAY_ROCKCHIP_HDMI) += rk_hdmi.o $(obj-hdmi-y)
- obj-mipi-$(CONFIG_ROCKCHIP_RK3288) += rk3288_mipi.o
- obj-mipi-$(CONFIG_ROCKCHIP_RK3399) += rk3399_mipi.o
-diff --git a/drivers/video/rockchip/rk3568_hdmi.c b/drivers/video/rockchip/rk3568_hdmi.c
-new file mode 100644
-index 00000000000..c3f4504ca8f
---- /dev/null
-+++ b/drivers/video/rockchip/rk3568_hdmi.c
-@@ -0,0 +1,71 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+/*
-+ * Copyright (c) 2024 - 2025 Dang Huynh <dang.huynh@mainlining.org>
-+ */
-+
-+#include <display.h>
-+#include <dm.h>
-+#include <dw_hdmi.h>
-+#include <edid.h>
-+#include <asm/arch-rockchip/hardware.h>
-+#include <asm/arch-rockchip/grf_rk3568.h>
-+#include "rk_hdmi.h"
-+
-+#define RK3568_IO_DDC_IN_MSK             ((3 << 14) | (3 << (14 + 16)))
-+
-+static int rk3568_hdmi_enable(struct udevice *dev, int panel_bpp,
-+			      const struct display_timing *edid)
-+{
-+	struct rk_hdmi_priv *priv = dev_get_priv(dev);
-+
-+	return dw_hdmi_enable(&priv->hdmi, edid);
-+}
-+
-+static int rk3568_hdmi_of_to_plat(struct udevice *dev)
-+{
-+	struct rk_hdmi_priv *priv = dev_get_priv(dev);
-+	struct dw_hdmi *hdmi = &priv->hdmi;
-+
-+	hdmi->i2c_clk_high = 0x6c;
-+	hdmi->i2c_clk_low = 0x7d;
-+
-+	return rk_hdmi_of_to_plat(dev);
-+}
-+
-+static const char * const rk3568_hdmi_reg_names[] = {
-+	"avdd-0v9",
-+	"avdd-1v8"
-+};
-+
-+static int rk3568_hdmi_probe(struct udevice *dev)
-+{
-+	struct rk_hdmi_priv *priv = dev_get_priv(dev);
-+	struct rk3568_grf *grf = priv->grf;
-+
-+	rk_hdmi_probe_regulators(dev, rk3568_hdmi_reg_names,
-+				 ARRAY_SIZE(rk3568_hdmi_reg_names));
-+
-+	writel(RK3568_IO_DDC_IN_MSK, &grf->vo_con1);
-+
-+	return rk_hdmi_probe(dev);
-+}
-+
-+static const struct dm_display_ops rk3568_hdmi_ops = {
-+	.read_edid = rk_hdmi_read_edid,
-+	.enable = rk3568_hdmi_enable,
-+};
-+
-+static const struct udevice_id rk3568_hdmi_ids[] = {
-+	{ .compatible = "rockchip,rk3568-dw-hdmi" },
-+	{ }
-+};
-+
-+U_BOOT_DRIVER(rk3568_hdmi_rockchip) = {
-+	.name = "rk3568_hdmi_rockchip",
-+	.id = UCLASS_DISPLAY,
-+	.of_match = rk3568_hdmi_ids,
-+	.ops = &rk3568_hdmi_ops,
-+	.of_to_plat = rk3568_hdmi_of_to_plat,
-+	.probe = rk3568_hdmi_probe,
-+	.priv_auto = sizeof(struct rk_hdmi_priv),
-+};
+diff --git a/configs/pinetab2-rk3566_defconfig b/configs/pinetab2-rk3566_defconfig
+index 6e5fde591d0..3b8441e3552 100644
+--- a/configs/pinetab2-rk3566_defconfig
++++ b/configs/pinetab2-rk3566_defconfig
+@@ -68,6 +68,7 @@ CONFIG_MMC_SDHCI_SDMA=y
+ CONFIG_MMC_SDHCI_ROCKCHIP=y
+ CONFIG_SPI_FLASH_SFDP_SUPPORT=y
+ CONFIG_SPI_FLASH_SILICONKAISER=y
++CONFIG_PHY_ROCKCHIP_INNO_DSIDPHY=y
+ CONFIG_PHY_ROCKCHIP_INNO_USB2=y
+ CONFIG_PHY_ROCKCHIP_NANENG_COMBOPHY=y
+ CONFIG_SPL_PINCTRL=y
+@@ -93,6 +94,7 @@ CONFIG_USB_OHCI_HCD=y
+ CONFIG_USB_OHCI_GENERIC=y
+ CONFIG_USB_DWC3=y
+ CONFIG_USB_DWC3_GENERIC=y
++CONFIG_USB_KEYBOARD=y
+ CONFIG_USB_HOST_ETHER=y
+ CONFIG_USB_ETHER_ASIX=y
+ CONFIG_USB_ETHER_ASIX88179=y
+@@ -100,4 +102,12 @@ CONFIG_USB_ETHER_RTL8152=y
+ CONFIG_USB_GADGET=y
+ CONFIG_USB_GADGET_DOWNLOAD=y
+ CONFIG_USB_FUNCTION_ROCKUSB=y
++CONFIG_VIDEO=y
++CONFIG_VIDEO_LCD_BOE_TH101MB31IG002_28A=y
++CONFIG_DISPLAY=y
++CONFIG_VIDEO_ROCKCHIP=y
++CONFIG_DISPLAY_ROCKCHIP_HDMI=y
++CONFIG_DISPLAY_ROCKCHIP_DW_MIPI=y
++CONFIG_VIDEO_BRIDGE=y
++CONFIG_VIDEO_REMOVE=y
+ CONFIG_ERRNO_STR=y
 
 -- 
 2.51.2
