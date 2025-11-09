@@ -1,71 +1,153 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sun, 09 Nov 2025 10:39:51 +0100
-Subject: [PATCH RFC 8/8] media: qcom: camss: Remove D-PHY-only endpoint
- restriction
+From: Kairui Song <kasong@tencent.com>
+Date: Mon, 10 Nov 2025 02:06:03 +0800
+Subject: [PATCH] Revert "mm, swap: avoid redundant swap device pinning"
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251109-qcom-cphy-v1-8-165f7e79b0e1@ixit.cz>
-References: <20251109-qcom-cphy-v1-0-165f7e79b0e1@ixit.cz>
-In-Reply-To: <20251109-qcom-cphy-v1-0-165f7e79b0e1@ixit.cz>
-To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Luca Weiss <luca.weiss@fairphone.com>, Petr Hodina <phodina@protonmail.com>, 
- Casey Connolly <casey.connolly@linaro.org>, "Dr. Git" <drgitx@gmail.com>
-Cc: Joel Selvaraj <foss@joelselvaraj.com>, linux-media@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+Message-Id: <20251110-revert-78524b05f1a3-v1-1-88313f2b9b20@tencent.com>
+X-B4-Tracking: v=1; b=H4sIAArYEGkC/x2MQQqAIBAAvxJ7TnAtSftKdNBaay8WGhGEf086D
+ szMC5kSU4axeSHRzZmPWAHbBpbdxY0Er5VBSaURpRVVonSJwWjVe6kDuk7I3qGy2lMwDmp5Jgr
+ 8/NdpLuUDy1WRSmUAAAA=
+X-Change-ID: 20251109-revert-78524b05f1a3-04a1295bef8a
+To: linux-mm@kvack.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, 
+ Kemeng Shi <shikemeng@huaweicloud.com>, Nhat Pham <nphamcs@gmail.com>, 
+ Baoquan He <bhe@redhat.com>, Barry Song <baohua@kernel.org>, 
+ Chris Li <chrisl@kernel.org>, Johannes Weiner <hannes@cmpxchg.org>, 
+ Yosry Ahmed <yosry.ahmed@linux.dev>, 
+ Chengming Zhou <chengming.zhou@linux.dev>, 
+ Youngjun Park <youngjun.park@lge.com>, Kairui Song <ryncsn@gmail.com>, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=959; i=david@ixit.cz;
- h=from:subject:message-id; bh=zDsFzpKtJmk7KEk5h22OnNp/nXx6STTnT1WeAcZBwYA=;
- b=owEBbAKT/ZANAwAIAWACP8TTSSByAcsmYgBpEGFzR5ywwp3YOPFsLYzk5y09hMnyI69rHKk2T
- p7r1//BEMmJAjIEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRBhcwAKCRBgAj/E00kg
- cu0MD/dBQ5LH7bVr49IyfhX1vXrMkQzuBHMIUfDpVDGWKWzVVznV9CcopTkNZbdz6lfcbfl/D3p
- dF2G68aYGuo79pBTTsX5LycIJZqqrYLl3CmMM/CA2YqpDydDlw0/O2zwCx67lb6Ir6JZ/knCX08
- IGInYTQD9FsrfdRhxjYJ+rkoJLefYTgA1MBY42O2KzyFVymbdf5bR5VnfY78E3vHCb4PGvny6+q
- tD+luO9u8EWKmKjY9lHE5Ybs5eINa+q+I7gGue99qaWb7MFtoK0NevIZ9ZObMMiKLSxxvp2T138
- c4n13yoIPaQ2tDX26Gb16hp+Vv2pP1pbXZnlv65xgRb0v99atQdoeOQX4UT/h+sYP52ldYfy2va
- CBQnxizONrKdhpNS1j0d34qhOLXu0fzipXASRvJdutGPITHfUG6NQTK1BVHAr+H5KuDxXGRmOyu
- TdIknVTiCm0MKYvM7Z/4InX0aV1g2uSmlmyJMG9BjCfFlEjurO7SQBI+69BOEzVMhujZa8LEIVj
- 9NDVrOjJjagF1UEdFUhBW1Y2C9Eb7s7n3oSLFmv+tE6z7I7vlF04HH6U4Z/I1M9VDedMe2fzYh1
- uc3FIkug3CIzlP/CpYGDuPr241go4qkqSs5Sg0vT2aaNtSX80LqDUAbmAvz6KauHOsFHK/jy3ry
- 7Qjq8E6v5qi1B
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762711563; l=4133;
+ i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
+ bh=alE+X02rbk4jwNfT7auzmxmmmbItfQDo8i+kaNeAHjY=;
+ b=y+ozs+sm7ni2QmqCYkgxfgsn49ITpx52INQ0Dq+5Kq9kcCBk7gA/JGdd6qZOmhRbyTjalAn2s
+ R3zWuGKIM3zBS6pl2r1pQbcyZsst8HOxUqBN0/qrRpv0I1JrjRU40Ny
+X-Developer-Key: i=kasong@tencent.com; a=ed25519;
+ pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
+X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-C-PHY mode is now supported, so the endpoint bus-type restriction to
-D-PHY can be removed.
+This reverts commit 78524b05f1a3e16a5d00cc9c6259c41a9d6003ce.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+While reviewing recent leaf entry changes, I noticed that commit
+78524b05f1a3 ("mm, swap: avoid redundant swap device pinning") isn't
+correct. It's true that most all callers of __read_swap_cache_async are
+already holding a swap entry reference, so the repeated swap device
+pinning isn't needed on the same swap device, but it is possible that
+VMA readahead (swap_vma_readahead()) may encounter swap entries from a
+different swap device when there are multiple swap devices, and call
+__read_swap_cache_async without holding a reference to that swap device.
+
+So it is possible to cause a UAF if swapoff of device A raced with
+swapin on device B, and VMA readahead tries to read swap entries from
+device A. It's not easy to trigger but in theory possible to cause real
+issues. And besides, that commit made swap more vulnerable to issues
+like corrupted page tables.
+
+Just revert it. __read_swap_cache_async isn't that sensitive to
+performance after all, as it's mostly used for SSD/HDD swap devices with
+readahead. SYNCHRONOUS_IO devices may fallback onto it for swap count >
+1 entries, but very soon we will have a new helper and routine for
+such devices, so they will never touch this helper or have redundant
+swap device reference overhead.
+
+Fixes: 78524b05f1a3 ("mm, swap: avoid redundant swap device pinning")
+Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- drivers/media/platform/qcom/camss/camss.c | 9 ---------
- 1 file changed, 9 deletions(-)
+ mm/swap_state.c | 14 ++++++--------
+ mm/zswap.c      |  8 +-------
+ 2 files changed, 7 insertions(+), 15 deletions(-)
 
-diff --git a/drivers/media/platform/qcom/camss/camss.c b/drivers/media/platform/qcom/camss/camss.c
-index 248aa6b21b5ad..1408e8a03f0bd 100644
---- a/drivers/media/platform/qcom/camss/camss.c
-+++ b/drivers/media/platform/qcom/camss/camss.c
-@@ -4044,15 +4044,6 @@ static int camss_of_parse_endpoint_node(struct device *dev,
- 	if (ret)
- 		return ret;
+diff --git a/mm/swap_state.c b/mm/swap_state.c
+index 3f85a1c4cfd9..0c25675de977 100644
+--- a/mm/swap_state.c
++++ b/mm/swap_state.c
+@@ -406,13 +406,17 @@ struct folio *__read_swap_cache_async(swp_entry_t entry, gfp_t gfp_mask,
+ 		struct mempolicy *mpol, pgoff_t ilx, bool *new_page_allocated,
+ 		bool skip_if_exists)
+ {
+-	struct swap_info_struct *si = __swap_entry_to_info(entry);
++	struct swap_info_struct *si;
+ 	struct folio *folio;
+ 	struct folio *new_folio = NULL;
+ 	struct folio *result = NULL;
+ 	void *shadow = NULL;
  
--	/*
--	 * Most SoCs support both D-PHY and C-PHY standards, but currently only
--	 * D-PHY is supported in the driver.
--	 */
--	if (vep.bus_type != V4L2_MBUS_CSI2_DPHY) {
--		dev_err(dev, "Unsupported bus type %d\n", vep.bus_type);
--		return -EINVAL;
--	}
+ 	*new_page_allocated = false;
++	si = get_swap_device(entry);
++	if (!si)
++		return NULL;
++
+ 	for (;;) {
+ 		int err;
+ 
+@@ -499,6 +503,7 @@ struct folio *__read_swap_cache_async(swp_entry_t entry, gfp_t gfp_mask,
+ 	put_swap_folio(new_folio, entry);
+ 	folio_unlock(new_folio);
+ put_and_return:
++	put_swap_device(si);
+ 	if (!(*new_page_allocated) && new_folio)
+ 		folio_put(new_folio);
+ 	return result;
+@@ -518,16 +523,11 @@ struct folio *read_swap_cache_async(swp_entry_t entry, gfp_t gfp_mask,
+ 		struct vm_area_struct *vma, unsigned long addr,
+ 		struct swap_iocb **plug)
+ {
+-	struct swap_info_struct *si;
+ 	bool page_allocated;
+ 	struct mempolicy *mpol;
+ 	pgoff_t ilx;
+ 	struct folio *folio;
+ 
+-	si = get_swap_device(entry);
+-	if (!si)
+-		return NULL;
 -
- 	csd->interface.csiphy_id = vep.base.port;
+ 	mpol = get_vma_policy(vma, addr, 0, &ilx);
+ 	folio = __read_swap_cache_async(entry, gfp_mask, mpol, ilx,
+ 					&page_allocated, false);
+@@ -535,8 +535,6 @@ struct folio *read_swap_cache_async(swp_entry_t entry, gfp_t gfp_mask,
  
- 	mipi_csi2 = &vep.bus.mipi_csi2;
+ 	if (page_allocated)
+ 		swap_read_folio(folio, plug);
+-
+-	put_swap_device(si);
+ 	return folio;
+ }
+ 
+diff --git a/mm/zswap.c b/mm/zswap.c
+index 5d0f8b13a958..aefe71fd160c 100644
+--- a/mm/zswap.c
++++ b/mm/zswap.c
+@@ -1005,18 +1005,12 @@ static int zswap_writeback_entry(struct zswap_entry *entry,
+ 	struct folio *folio;
+ 	struct mempolicy *mpol;
+ 	bool folio_was_allocated;
+-	struct swap_info_struct *si;
+ 	int ret = 0;
+ 
+ 	/* try to allocate swap cache folio */
+-	si = get_swap_device(swpentry);
+-	if (!si)
+-		return -EEXIST;
+-
+ 	mpol = get_task_policy(current);
+ 	folio = __read_swap_cache_async(swpentry, GFP_KERNEL, mpol,
+-			NO_INTERLEAVE_INDEX, &folio_was_allocated, true);
+-	put_swap_device(si);
++				NO_INTERLEAVE_INDEX, &folio_was_allocated, true);
+ 	if (!folio)
+ 		return -ENOMEM;
+ 
 
+---
+base-commit: 02dafa01ec9a00c3758c1c6478d82fe601f5f1ba
+change-id: 20251109-revert-78524b05f1a3-04a1295bef8a
+
+Best regards,
 -- 
-2.51.0
+Kairui Song <kasong@tencent.com>
 
