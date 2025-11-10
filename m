@@ -1,67 +1,81 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 10 Nov 2025 16:37:48 +0100
-Subject: [PATCH 3/3] arm64: dts: qcom: sdm845-shift-axolotl: Add ath10k
- calibration variant
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH 0/3] ADF41513/ADF41510 PLL frequency synthesizers
+Date: Mon, 10 Nov 2025 15:44:43 +0000
+Message-Id: <20251110-adf41513-iio-driver-v1-0-2df8be0fdc6e@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251110-sdm845-calibration-variants-v1-3-2c536ada77c2@ixit.cz>
-References: <20251110-sdm845-calibration-variants-v1-0-2c536ada77c2@ixit.cz>
-In-Reply-To: <20251110-sdm845-calibration-variants-v1-0-2c536ada77c2@ixit.cz>
-To: Dylan Van Assche <me@dylanvanassche.be>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAGsIEmkC/x3MPQqAMAxA4atIZgONP1i8ijgEm2qWVlIQQby7x
+ fEb3nugiKkUmJsHTC4tmlMFtQ1sB6ddUEM1dK4bicghhzjQSD2qZgymlxgyb+x5it55gVqeJlH
+ v/7qs7/sBBLFJPWUAAAA=
+X-Change-ID: 20251110-adf41513-iio-driver-aaca8a7f808e
+To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-doc@vger.kernel.org
+Cc: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1017; i=david@ixit.cz;
- h=from:subject:message-id; bh=NFlBpnPvvQv4gFu7fKwiLMSzZXMqQk9CkNwxThzgmB0=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpEgbKmTImf9MgJ76yKNIEDZ4YVhpk2S1bgqqGc
- FiWfWc4i/CJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRIGygAKCRBgAj/E00kg
- cgT/D/9INaLxQeMVxyCU7OkDIVPZsT1+GxivrO5PLlvaSsr51iMfu0sNf4N5HsrtIo1iwWoo8kV
- kBp4ELPhF09ZofT1El1ZBB/7gh6SZsDpOaGpDuZATSbS3OlA9iJpDDW99UZAqlgS+jxWmpnaZkq
- zml1bjNM9cV1YWcUlS59+BALKrbWI4hAQUwTMeo/oqiYJOHX4/1iQRYnqIOKZCYzyx6iRMnwoVJ
- yLyY7QMKad2cruPO5VFfQTw/CC2nptTtAgu72EK4V1/L5LRaabkg0vPLE1STjEoRnv4k1oensGO
- +evcibZEqfatXs2DGCmXabxE5/XRh7hXhJZNhurWtyug63DCrbKzpsvV88YOCLQL6HgyB/Kag+X
- h1KwzKMD2MsuTbyB78dCFpC9pAJFIhZ5H7ALQmrcNcIhxAj00MZaYU57rP6tQ7cXU1n2hR+5794
- pNk4jXsozzKh+cAODdiK/j4jW3XtG4JWRNiV1kmCZXeKp3QD3XLIz0bC7hJth0Qz2glStAD9/pF
- V6KHYr/VaJUnnuASiRztedBabuNvuNctoZYwDJMhKQMiILkuh3R55bhjj+yPh2Rn7lSn9Qc/0wn
- Mtu8wS2Rj9qnf+96S5ShqbUYgqp5XTSC7R5pV7qKdBEC6iXctQQziUfMjQlf2DGPERd8xdQg+mq
- YGy5xxv5NSZly7Q==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762789528; l=2258;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=9poQJZ13bmkoyTIkEY6uFwCthMZYSqe1hiLBYCBG2RQ=;
+ b=ph+VaieH/2Z1pTAj3636B8hO3V/PMBRLThavszgki4+Kc7lATv3vHdTtOy5DCLCeHLVYoUdj5
+ 1s4e+RFUqZ1BT0haeDUEgzR6apGngS/46uTGDhIOb5nODT6XVMdV5mY
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Dylan Van Assche <me@dylanvanassche.be>
+This patch series adds support for the Analog Devices ADF41513 and ADF41510
+ultralow noise PLL frequency synthesizers. These devices are designed for
+implementing local oscillators (LOs) in high-frequency applications.
 
-SDM845-based SHIFTPHONES SHIFT6mq has its own calibration files
-for the WCN3990 WiFi/Bluetooth radio with the ath10k driver.
-Add the calibration variant name to the DTS to reflect this to
-allow using the calibration files from linux-firmware.
+The ADF41513 covers frequencies from 1 GHz to 26.5 GHz, while the ADF41510
+operates from 1 GHz to 10 GHz. Both devices feature exceptional phase noise
+performance and flexible frequency synthesis capabilities.
 
-[David] Adjust the compatible as ath10k-calibration-variant is deprecated
-Signed-off-by: Dylan Van Assche <me@dylanvanassche.be>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Key features supported by this driver:
+- Integer-N and fractional-N operation modes
+- Ultra-low phase noise (-235 dBc/Hz integer-N, -231 dBc/Hz fractional-N)
+- High maximum PFD frequency (250 MHz integer-N, 125 MHz fractional-N)
+- 25-bit fixed modulus or 49-bit variable modulus fractional modes
+- Programmable charge pump currents with 16x range
+- Digital lock detect functionality
+- Phase resync capability for consistent output phase
+- Clock framework integration for system clock generation
+
+The series includes:
+1. Core driver implementation with full register programming support
+2. Device tree bindings documentation
+3. IIO subsystem documentation with usage examples
+
+The driver integrates with both the IIO subsystem (for direct hardware control)
+and the Linux clock framework (for use as a system clock source), providing
+flexibility for different use cases.
+
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 1 +
- 1 file changed, 1 insertion(+)
+Rodrigo Alencar (3):
+      iio: frequency: adf41513: driver implementation
+      dt-bindings: iio: frequency: add adf41513
+      docs: iio: add documentation for adf41513 driver
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-index ddc2b3ca3bc57..7aae5edfec26d 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-@@ -740,5 +740,6 @@ &wifi {
- 	vdd-3.3-ch0-supply = <&vreg_l25a_3p3>;
- 	vdd-3.3-ch1-supply = <&vreg_l23a_3p3>;
- 
-+	qcom,calibration-variant = "shift_axolotl";
- 	qcom,snoc-host-cap-8bit-quirk;
- };
+ .../bindings/iio/frequency/adi,adf41513.yaml       |  268 ++++
+ Documentation/iio/adf41513.rst                     |  377 +++++
+ Documentation/iio/index.rst                        |    1 +
+ MAINTAINERS                                        |    9 +
+ drivers/iio/frequency/Kconfig                      |   11 +
+ drivers/iio/frequency/Makefile                     |    1 +
+ drivers/iio/frequency/adf41513.c                   | 1435 ++++++++++++++++++++
+ 7 files changed, 2102 insertions(+)
+---
+base-commit: d16d1c2553248f9b859b86c94344d8b81f0297cd
+change-id: 20251110-adf41513-iio-driver-aaca8a7f808e
 
+Best regards,
 -- 
-2.51.0
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
