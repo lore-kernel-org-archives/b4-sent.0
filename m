@@ -1,82 +1,72 @@
-From: Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
-Date: Mon, 10 Nov 2025 16:52:16 +0800
-Subject: [PATCH RESEND] Input: atkbd - skip deactivate for HONOR FMB-P's
- internal keyboard
+From: Cryolitia PukNgae <cryolitia@uniontech.com>
+Date: Mon, 10 Nov 2025 16:55:59 +0800
+Subject: [PATCH RESEND] checkpatch: Suppress warnings when Reported-by: is
+ followed by Link:
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251110-honor-v1-1-c6fa244d2a8b@linux.dev>
-X-B4-Tracking: v=1; b=H4sIAL+nEWkC/12MsQrCMBRFf6W82UhfUNo4OdjVQUfp0DQv5kFJJ
- NFQKf13Q0fHc+/hLJAoMiU4VQtEypw4+AK4q2B0g3+SYFMYZC2PWEspXPAhilaPSpNtSQ8NFPc
- VyfK8dR5w6+7d9QJ92R2nd4jfLZ9xe/9KGQUKa1t1ICMbHNR5Yv+Z94Yy9Ou6/gDVxd9WogAAA
- A==
-X-Change-ID: 20251022-honor-8bc9bef8eba7
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Hans de Goede <hansg@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@kernel.org, zhanjun@uniontech.com, niecheng1@uniontech.com, 
- cryolitia@uniontech.com, Mingcong Bai <jeffbai@aosc.io>, 
- Kexy Biscuit <kexybiscuit@aosc.io>, Hans de Goede <hansg@kernel.org>, 
- Mikura Kyouka <mikurakyouka@aosc.io>, 
- "foad.elkhattabi" <foad.elkhattabi@gmail.com>, 
- Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+Message-Id: <20251110-checkpatch-v1-1-d7ae9d46a376@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIAJ6oEWkC/3WOsQ6CMBiEX8X8szVt0ZY6OcjqoKNhoO1f2xiBA
+ BIN4d0tjKLj3eW7uwFabAK2sF8N0GAf2lCVUbD1CowvyhuSYKMGTvmOKqaI8WjuddEZTyiXQqY
+ StdMIEagbdOE1l13hnF2y0xHy6PvQdlXznjd6Nqe/6npGGLFpqpRMVMJdcXiW8U2Hxm9M9ZgWJ
+ oxRusR04SgKttVK/MV4ssCckwnaGEkrvrB8HMcPSpY1Vh4BAAA=
+X-Change-ID: 20250919-checkpatch-0276787ebfbe
+To: Andy Whitcroft <apw@canonical.com>, Joe Perches <joe@perches.com>, 
+ Dwaipayan Ray <dwaipayanray1@gmail.com>, 
+ Lukas Bulwahn <lukas.bulwahn@gmail.com>, 
+ Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-kernel@vger.kernel.org, niecheng1@uniontech.com, 
+ zhanjun@uniontech.com, Cryolitia PukNgae <cryolitia@uniontech.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762764740; l=1781;
- i=cryolitia.pukngae@linux.dev; s=20250730; h=from:subject:message-id;
- bh=dDOq3UaFkFzKOUAwy6Vt2xf7bR4f29gMNu4AHKX58gI=;
- b=/NMHIn/AzlcBr/Uqra5zyQEmXRzq9r45qdvhasb8cZwMBmkJnWR+wg9Wrt8/JaB3yMr0rW1LZ
- PJaxqqNRoCdCtrdpXCQw5OXAKKgF83tOtVSwRPCCFFQrGeV+Wt3nqAA
-X-Developer-Key: i=cryolitia.pukngae@linux.dev; a=ed25519;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762764959; l=1809;
+ i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
+ bh=FjYTg08j4724SsqIOglF1kA+dOmAY6fiyRP1YcvJG9I=;
+ b=rTvKvZXykNbHXYZkAOi1/37E0BNa04HyXdwPxvJxULHtnHBMqRXBqkel1I8P7CuwO3SzW+Ttp
+ tPm8Xlw/g+HA94YOXxKws9sUiKkG7agt8m5MCv3sAdyAW2Szwtp7uy6
+X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
  pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia.pukngae@linux.dev/20250730 with auth_id=540
+X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After commit 9cf6e24c9fbf17e52de9fff07f12be7565ea6d61 ("Input: atkbd -
-do not skip atkbd_deactivate() when skipping ATKBD_CMD_GETID"), HONOR
-FMB-P, aka HONOR MagicBook Pro 14 2025's internal keyboard stops
-working. Adding the atkbd_deactivate_fixup quirk fixes it.
+> The tag should be followed by a Closes: tag pointing to the report,
+> unless the report is not available on the web. The Link: tag can be
+> used instead of Closes: if the patch fixes a part of the issue(s)
+> being reported.
 
-DMI: HONOR FMB-P/FMB-P-PCB, BIOS 1.13 05/08/2025
+Accroding to Documentation/process/submitting-patches.rst , Link: is
+also acceptable to followed a Reported-by:
 
-Fixes: 9cf6e24c9fbf17e52de9fff07f12be7565ea6d61 ("Input: atkbd - do not skip atkbd_deactivate() when skipping ATKBD_CMD_GETID")
-Reported-by: Mikura Kyouka <mikurakyouka@aosc.io>
-Link: https://www.xiaohongshu.com/explore/68738d0a0000000012015a79
-Link: https://club.honor.com/cn/thread-29463529-1-1.html
-Link: https://club.honor.com/cn/thread-29490444-1-1.html
-Reported-by: foad.elkhattabi <foad.elkhattabi@gmail.com>
-Link: https://bugzilla.kernel.org/show_bug.cgi?id=220384
-Signed-off-by: Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
-Reviewed-by: Hans de Goede <hansg@kernel.org>
+Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
-Previous: https://lore.kernel.org/all/20251022-honor-v1-1-ff894ed271a9@linux.dev/
+Link to previous: https://lore.kernel.org/r/20251023-checkpatch-v1-1-ff73ed1027d6@uniontech.com
 ---
- drivers/input/keyboard/atkbd.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ scripts/checkpatch.pl | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/input/keyboard/atkbd.c b/drivers/input/keyboard/atkbd.c
-index 6c999d89ee4b..422e28ad1e8e 100644
---- a/drivers/input/keyboard/atkbd.c
-+++ b/drivers/input/keyboard/atkbd.c
-@@ -1937,6 +1937,13 @@ static const struct dmi_system_id atkbd_dmi_quirk_table[] __initconst = {
- 		},
- 		.callback = atkbd_deactivate_fixup,
- 	},
-+	{
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "HONOR"),
-+			DMI_MATCH(DMI_PRODUCT_NAME, "FMB-P"),
-+		},
-+		.callback = atkbd_deactivate_fixup,
-+	},
- 	{ }
- };
- 
+diff --git a/scripts/checkpatch.pl b/scripts/checkpatch.pl
+index 92669904eecc..01c4e70b19a0 100755
+--- a/scripts/checkpatch.pl
++++ b/scripts/checkpatch.pl
+@@ -3205,10 +3205,10 @@ sub process {
+ 			if ($sign_off =~ /^reported(?:|-and-tested)-by:$/i) {
+ 				if (!defined $lines[$linenr]) {
+ 					WARN("BAD_REPORTED_BY_LINK",
+-					     "Reported-by: should be immediately followed by Closes: with a URL to the report\n" . $herecurr . "\n");
+-				} elsif ($rawlines[$linenr] !~ /^closes:\s*/i) {
++					     "Reported-by: should be immediately followed by Closes: or Link: with a URL to the report\n" . $herecurr . "\n");
++				} elsif ($rawlines[$linenr] !~ /^(closes|link):\s*/i) {
+ 					WARN("BAD_REPORTED_BY_LINK",
+-					     "Reported-by: should be immediately followed by Closes: with a URL to the report\n" . $herecurr . $rawlines[$linenr] . "\n");
++					     "Reported-by: should be immediately followed by Closes: or Link: with a URL to the report\n" . $herecurr . $rawlines[$linenr] . "\n");
+ 				}
+ 			}
+ 		}
 
 ---
-base-commit: 552c50713f273b494ac6c77052032a49bc9255e2
-change-id: 20251022-honor-8bc9bef8eba7
+base-commit: 98ac9cc4b4452ed7e714eddc8c90ac4ae5da1a09
+change-id: 20250919-checkpatch-0276787ebfbe
 
 Best regards,
 -- 
-Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+Cryolitia PukNgae <cryolitia@uniontech.com>
 
