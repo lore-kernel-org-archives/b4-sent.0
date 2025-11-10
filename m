@@ -1,128 +1,82 @@
-From: Xin Wang <xwang@ddn.com>
-Date: Mon, 10 Nov 2025 08:31:02 +0000
-Subject: [PATCH] fuse: Umask handling problem if FUSE_CAP_DONT_MASK is
- disabled
+From: Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+Date: Mon, 10 Nov 2025 16:52:16 +0800
+Subject: [PATCH RESEND] Input: atkbd - skip deactivate for HONOR FMB-P's
+ internal keyboard
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20251110-fuse_acl_umask-v1-1-cf1d431cae06@ddn.com>
-X-B4-Tracking: v=1; b=H4sIAMWiEWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDQ0MD3bTS4tT4xOSc+NLcxOJs3cQ08yQTkxQjYzNTCyWgpoKi1LTMCrC
- B0bG1tQDNpDN+YAAAAA==
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: linux-fsdevel@vger.kernel.org, bschubert@ddn.com, gwu@ddn.com, 
- Xin Wang <xwang@ddn.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762763481; l=3412;
- i=xwang@ddn.com; s=20251110; h=from:subject:message-id;
- bh=Gy+2d2kF9z2hAE/298jrIqc0SMibW2BMrzDNvDUnckQ=;
- b=+417Hkhu3M6dN87YbsEfWVcZkOiooZmV3ZhyYKQoM6kunPcwS3jmKn786NUOHGw9tryaItxAz
- U8kxgK3C1JeAL4OzZUFLuy2tAWGV8VNgO+/Qdgbzpp9GENc0DhSZmpE
-X-Developer-Key: i=xwang@ddn.com; a=ed25519;
- pk=2NZ7S3gXVdveRFk4yNU1Q6JCNiAedXyGWBm7ipgv5kE=
-X-Endpoint-Received: by B4 Relay for xwang@ddn.com/20251110 with auth_id=563
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251110-honor-v1-1-c6fa244d2a8b@linux.dev>
+X-B4-Tracking: v=1; b=H4sIAL+nEWkC/12MsQrCMBRFf6W82UhfUNo4OdjVQUfp0DQv5kFJJ
+ NFQKf13Q0fHc+/hLJAoMiU4VQtEypw4+AK4q2B0g3+SYFMYZC2PWEspXPAhilaPSpNtSQ8NFPc
+ VyfK8dR5w6+7d9QJ92R2nd4jfLZ9xe/9KGQUKa1t1ICMbHNR5Yv+Z94Yy9Ou6/gDVxd9WogAAA
+ A==
+X-Change-ID: 20251022-honor-8bc9bef8eba7
+To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Hans de Goede <hansg@kernel.org>
+Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@kernel.org, zhanjun@uniontech.com, niecheng1@uniontech.com, 
+ cryolitia@uniontech.com, Mingcong Bai <jeffbai@aosc.io>, 
+ Kexy Biscuit <kexybiscuit@aosc.io>, Hans de Goede <hansg@kernel.org>, 
+ Mikura Kyouka <mikurakyouka@aosc.io>, 
+ "foad.elkhattabi" <foad.elkhattabi@gmail.com>, 
+ Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762764740; l=1781;
+ i=cryolitia.pukngae@linux.dev; s=20250730; h=from:subject:message-id;
+ bh=dDOq3UaFkFzKOUAwy6Vt2xf7bR4f29gMNu4AHKX58gI=;
+ b=/NMHIn/AzlcBr/Uqra5zyQEmXRzq9r45qdvhasb8cZwMBmkJnWR+wg9Wrt8/JaB3yMr0rW1LZ
+ PJaxqqNRoCdCtrdpXCQw5OXAKKgF83tOtVSwRPCCFFQrGeV+Wt3nqAA
+X-Developer-Key: i=cryolitia.pukngae@linux.dev; a=ed25519;
+ pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
+X-Endpoint-Received: by B4 Relay for cryolitia.pukngae@linux.dev/20250730 with auth_id=540
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-According to umask manpage, it should be ignored if the parent has a
-default ACL.  But currently, if FUSE_CAP_DONT_MASK is disabled, fuse
-always applies umask no matter if the parent has a default ACL or not.
-This behaviior is not consistent with the behavior described in the
-manpage.
+After commit 9cf6e24c9fbf17e52de9fff07f12be7565ea6d61 ("Input: atkbd -
+do not skip atkbd_deactivate() when skipping ATKBD_CMD_GETID"), HONOR
+FMB-P, aka HONOR MagicBook Pro 14 2025's internal keyboard stops
+working. Adding the atkbd_deactivate_fixup quirk fixes it.
 
-Fix the problem by checking if the parent has a default ACL before
-applying umask if FUSE_CAP_DONT_MASK is disabled.
+DMI: HONOR FMB-P/FMB-P-PCB, BIOS 1.13 05/08/2025
+
+Fixes: 9cf6e24c9fbf17e52de9fff07f12be7565ea6d61 ("Input: atkbd - do not skip atkbd_deactivate() when skipping ATKBD_CMD_GETID")
+Reported-by: Mikura Kyouka <mikurakyouka@aosc.io>
+Link: https://www.xiaohongshu.com/explore/68738d0a0000000012015a79
+Link: https://club.honor.com/cn/thread-29463529-1-1.html
+Link: https://club.honor.com/cn/thread-29490444-1-1.html
+Reported-by: foad.elkhattabi <foad.elkhattabi@gmail.com>
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=220384
+Signed-off-by: Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+Reviewed-by: Hans de Goede <hansg@kernel.org>
+---
+Previous: https://lore.kernel.org/all/20251022-honor-v1-1-ff894ed271a9@linux.dev/
+---
+ drivers/input/keyboard/atkbd.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/input/keyboard/atkbd.c b/drivers/input/keyboard/atkbd.c
+index 6c999d89ee4b..422e28ad1e8e 100644
+--- a/drivers/input/keyboard/atkbd.c
++++ b/drivers/input/keyboard/atkbd.c
+@@ -1937,6 +1937,13 @@ static const struct dmi_system_id atkbd_dmi_quirk_table[] __initconst = {
+ 		},
+ 		.callback = atkbd_deactivate_fixup,
+ 	},
++	{
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "HONOR"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "FMB-P"),
++		},
++		.callback = atkbd_deactivate_fixup,
++	},
+ 	{ }
+ };
+ 
 
 ---
-We found that there may be a problem about umask handling in fuse code.
-According to umask manpage, it should be ignored if the parent has a
-default ACL. But currently, if FUSE_CAP_DONT_MASK is disabled, fuse always
-applies umask no matter if the parent has a default ACL or not. So, we
-think this may be a problem because it is not consistent with the behavior
-described in the manpage.
-
-umask manpage:
-       Alternatively, if the parent directory has a default ACL
-       (see acl(5)), the umask is ignored, the default ACL is inherited,
-       the permission bits are set based on the inherited ACL, …
-
-Signed-off-by: Xin Wang <xwang@ddn.com>
----
- fs/fuse/dir.c | 42 ++++++++++++++++++++++++++++++++++++------
- 1 file changed, 36 insertions(+), 6 deletions(-)
-
-diff --git a/fs/fuse/dir.c b/fs/fuse/dir.c
-index ecaec0fea3a1..f8ab6d76ae35 100644
---- a/fs/fuse/dir.c
-+++ b/fs/fuse/dir.c
-@@ -645,8 +645,18 @@ static int fuse_create_open(struct mnt_idmap *idmap, struct inode *dir,
- 	if (!ff)
- 		goto out_put_forget_req;
- 
--	if (!fm->fc->dont_mask)
--		mode &= ~current_umask();
-+	if (!fm->fc->dont_mask) {
-+		/*
-+		 * If the parent has a default ACL, the umask is
-+		 * ignored, the default ACL is inherited, the
-+		 * permission bits are set based on the inherited
-+		 * default ACL
-+		 */
-+		struct posix_acl *p =
-+			get_inode_acl(dir, ACL_TYPE_DEFAULT);
-+		if (!p || p == ERR_PTR(-EOPNOTSUPP))
-+			mode &= ~current_umask();
-+	}
- 
- 	flags &= ~O_NOCTTY;
- 	memset(&inarg, 0, sizeof(inarg));
-@@ -872,8 +882,18 @@ static int fuse_mknod(struct mnt_idmap *idmap, struct inode *dir,
- 	struct fuse_mount *fm = get_fuse_mount(dir);
- 	FUSE_ARGS(args);
- 
--	if (!fm->fc->dont_mask)
--		mode &= ~current_umask();
-+	if (!fm->fc->dont_mask) {
-+		/*
-+		 * If the parent has a default ACL, the umask is
-+		 * ignored, the default ACL is inherited, the
-+		 * permission bits are set based on the inherited
-+		 * default ACL
-+		 */
-+		struct posix_acl *p =
-+			get_inode_acl(dir, ACL_TYPE_DEFAULT);
-+		if (!p || p == ERR_PTR(-EOPNOTSUPP))
-+			mode &= ~current_umask();
-+	}
- 
- 	memset(&inarg, 0, sizeof(inarg));
- 	inarg.mode = mode;
-@@ -919,8 +939,18 @@ static struct dentry *fuse_mkdir(struct mnt_idmap *idmap, struct inode *dir,
- 	struct fuse_mount *fm = get_fuse_mount(dir);
- 	FUSE_ARGS(args);
- 
--	if (!fm->fc->dont_mask)
--		mode &= ~current_umask();
-+	if (!fm->fc->dont_mask) {
-+		/*
-+		 * If the parent has a default ACL, the umask is
-+		 * ignored, the default ACL is inherited, the
-+		 * permission bits are set based on the inherited
-+		 * default ACL
-+		 */
-+		struct posix_acl *p =
-+			get_inode_acl(dir, ACL_TYPE_DEFAULT);
-+		if (!p || p == ERR_PTR(-EOPNOTSUPP))
-+			mode &= ~current_umask();
-+	}
- 
- 	memset(&inarg, 0, sizeof(inarg));
- 	inarg.mode = mode;
-
----
-base-commit: 4a0c9b3391999818e2c5b93719699b255be1f682
-change-id: 20251110-fuse_acl_umask-af7b44d23658
+base-commit: 552c50713f273b494ac6c77052032a49bc9255e2
+change-id: 20251022-honor-8bc9bef8eba7
 
 Best regards,
 -- 
-Xin Wang <xwang@ddn.com>
+Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
 
