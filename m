@@ -1,66 +1,60 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Mon, 10 Nov 2025 15:26:26 +0100
-Subject: [PATCH v2 3/3] arm64: dts: qcom: sdm845-xiaomi-beryllium: Enable
- ath10k host-cap skip quirk
+Subject: [PATCH 0/3] ath10k calibration variants for sdm845 phones
+Date: Mon, 10 Nov 2025 16:37:45 +0100
+Message-Id: <20251110-sdm845-calibration-variants-v1-0-2c536ada77c2@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251110-skip-host-cam-qmi-req-v2-3-0daf485a987a@ixit.cz>
-References: <20251110-skip-host-cam-qmi-req-v2-0-0daf485a987a@ixit.cz>
-In-Reply-To: <20251110-skip-host-cam-qmi-req-v2-0-0daf485a987a@ixit.cz>
-To: Johannes Berg <johannes@sipsolutions.net>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jeff Johnson <jjohnson@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAMkGEmkC/x3MQQqDQAxA0atI1g0YqzL0KtJFOpNpAzqVREQQ7
+ 96hyweff4KLqTg8mhNMdnX9lgq6NRA/XN6Cmqqha7uBiFr0tIR+wMizvoy3muPOplw2x3HkdKe
+ cQ4gM9bCaZD3+9+l5XT80qa2rbQAAAA==
+X-Change-ID: 20251110-sdm845-calibration-variants-66ad31ff88ca
+To: Dylan Van Assche <me@dylanvanassche.be>, 
  Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-wireless@vger.kernel.org, devicetree@vger.kernel.org, 
- ath10k@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>, Amit Pundir <amit.pundir@linaro.org>
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=905; i=david@ixit.cz;
- h=from:subject:message-id; bh=qy5oPva7pVvXCU0lnaBR4INc65V2QzpyRC5geVzLuhk=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpEfYSEyRzkJmvfgAJpvXUzBxVbAyessE/n2pdK
- BpH66Qw9QKJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRH2EgAKCRBgAj/E00kg
- cuppD/9p2jsuLrWlZBehPEygW/swom728kSdtf3yvGUsD0T0LsJjNgjlZJcamWHr4Bq+LpDxGwL
- ERet9rdAVOH8F/8HBztFeOQz0FPcDcazFT2gru/awNWAJTgfCt/iR/lDGI+Tq59VfUTOzQFfWcj
- wn0ybPhxtjfggD/Rrx3Lb3cD+5G/ye+XXrox3BuhdrKozco5K0qqBIxthDsNb/dXHbRNBX8MMDl
- T7EeTMJKbMoWN3WEOrhUAnfgFAFsMNgXBp+LGmn68Pxft3d5822gIl0nYcawSgDHABfcmB1frGk
- LK21JVcx8cuC/Ap9vpxjx3U0+h9jea3utHU/mEE5+9ZUKc93I5SQ+9Qwi8TlIlV8WC7zSNTLeMs
- jKdVwjel7DJi4d3ppS9V3+cRPW6vaANpQHgnK5K27WzNEcMGyC731H4eat4+g/S4QqwhpRzVuCd
- EQxs9bnHztUmYLOvrahgnuvv7yii4tzb/hmmim2VEI3RteCq2DipwHRpVKkgBRHfZLktY8p3zv4
- aAqM4yhMRLtjmCMAGZLM1gQRZ1HdqEgVJk8DNqC5+DATVQpkJAaBcQDYhb1ezAAziBIrp4fWNvs
- 9gQ8T3LgXsCNgWlQ+XshICR+/5/Xfr8RCOipx6fDIAKbit4tdvVqnc3/y2C8TlInlHh9wEhMLc8
- r8aH0c4r7KRkbrw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=808; i=david@ixit.cz;
+ h=from:subject:message-id; bh=SA6xGNbHN6b9mWUXMWX+xDVjRNsrYUlySOFnrE7Xc90=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpEgbJg4ACLHbh+CbhUqCU1Iqlj6FH3DtSXLTrq
+ fQ3jFDg3mOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRIGyQAKCRBgAj/E00kg
+ clmpEACAIlVRtrvTyYZp+9rq6kTrYLEedExOTvk2bp+o5P41RWmS/9UPBatSv/Llu4740RzC4LM
+ Uod9xCjWeiiSHpGdmRSD4IBWI9eXofqAHBK+saxCYTB9j8DsgASFQkvcSl3bgkl4VTE8py3jN7n
+ mmX18oBN3AnEtRH0sa9btpNZExZHZtJNKQPdRqf/pCdxBaFYzdjS2OaOu6rnYdotONo/m85eQP2
+ fhcjq4/nhgX7ZM3OSaOLOEQ3SgJhjXnRSueHftxQNria+eI0XMbtDIGW+YYpvouB2x/R5t4NuZm
+ jCRNkxih6eaJitx3JHvLpO65wuyDaQafZ92+hJUGoM00k+50U8DBje/absmmoH/Zti0IhtTMLBf
+ q9DORt/Q0SAovdjlITnU8/Y/W61887SEwQZMEXiKFiFycygkjdJPUNqHZWassdhCq6Ids7OytwJ
+ dLY8HC0Nl2u+ADIsOUo8FQLC1EvmZtcBHXZkdSTsdD53iFt1Ke44lT7tqfAQ2wLUpnfbxwdqda2
+ nwtKrzeMiS1dQH7Oee7UZ/oo3ogyGL9AV+hPJxgMfbrozSunPI6mhqEGcAToDEEBXR2KrwIVjNA
+ RIo7NzFQnni8m2noT0iQNywfD0JYxB5vTHZSaw/iX41A/KTjS5Ix2WAqETaDeW4NCsa/Dya1mE3
+ a6TxPt8EfDfjShg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Amit Pundir <amit.pundir@linaro.org>
+Let's leaverage linux-firmware and use calibration from the board-2.bin.
 
-The WiFi firmware used on Xiaomi PocoPhone F1 (beryllium) phone
-doesn't support the host-capability QMI request, hence enable
-the skip quirk for this device.
-
-Signed-off-by: Amit Pundir <amit.pundir@linaro.org>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi | 2 ++
- 1 file changed, 2 insertions(+)
+Dylan Van Assche (3):
+      arm64: dts: qcom: sdm845-oneplus: add ath10k calibration variant
+      arm64: dts: qcom: sdm845-xiaomi-beryllium: Add ath10k calibration variant
+      arm64: dts: qcom: sdm845-shift-axolotl: Add ath10k calibration variant
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-index 785006a15e979..a3bfcf56ad3c8 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-@@ -636,4 +636,6 @@ &wifi {
- 	vdd-1.3-rfa-supply = <&vreg_l17a_1p3>;
- 	vdd-3.3-ch0-supply = <&vreg_l25a_3p3>;
- 	vdd-3.3-ch1-supply = <&vreg_l23a_3p3>;
-+
-+	qcom,snoc-host-cap-skip-quirk;
- };
+ arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi          | 1 +
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts            | 1 +
+ arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi | 3 +++
+ 3 files changed, 5 insertions(+)
+---
+base-commit: ab40c92c74c6b0c611c89516794502b3a3173966
+change-id: 20251110-sdm845-calibration-variants-66ad31ff88ca
 
+Best regards,
 -- 
-2.51.0
+David Heidelberg <david@ixit.cz>
 
