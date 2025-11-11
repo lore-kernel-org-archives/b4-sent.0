@@ -1,451 +1,509 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Mon, 10 Nov 2025 15:44:46 +0000
-Subject: [PATCH 3/3] docs: iio: add documentation for adf41513 driver
+From: Ye He <ye.he@amlogic.com>
+Date: Tue, 11 Nov 2025 17:23:07 +0800
+Subject: [PATCH bluez] bearer: Implement Connect/Disconnect methods
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20251110-adf41513-iio-driver-v1-3-2df8be0fdc6e@analog.com>
-References: <20251110-adf41513-iio-driver-v1-0-2df8be0fdc6e@analog.com>
-In-Reply-To: <20251110-adf41513-iio-driver-v1-0-2df8be0fdc6e@analog.com>
-To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-doc@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762789528; l=14078;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=CEa06klTzZWnce6W7y6zRpHzUOeheQBfElqFjN0BVzI=;
- b=iC9yExOVFcygBYJh3TAf6aNBHoT5k7tZiO6SmiaFu1LpccECSfgw9+9b6OGgZfOAWJScpcQRT
- dcgqjr6BLvPAqHxQ0oeY10AwVW79fdySIxct3NWJN31FIfozidu424u
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251111-bearer-impl-v1-1-f41585144218@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAHoAE2kC/x2MOwqAMBAFryJbGzB+0auIRdQXXfDHBkWU3N3gd
+ FPMvOQgDEdN9JLgYsf7FkTHEQ2z2SYoHoNTmqSFDqgeRiCK12NRha2Q1aWucmMoFIfA8v3fWuq
+ XEw913n8NcUxCZAAAAA==
+X-Change-ID: 20251111-bearer-impl-5f7e396174aa
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Ye He <ye.he@amlogic.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1762852990; l=14662;
+ i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
+ bh=rhIgq2xsZL88Z2/EdnmF1TvqzpT/NLQVrty6zPntBnU=;
+ b=SLOMiRc0Kct/k5gDFhSlfRfuOAAfYS5x43QUS5WBGL07p3vSPXwH6Cn8Hu7aCpyodzJ1tiS3T
+ dPd9xY9HcMsAA0h/w8R6iktilYja+8olu/eefa62HtyDhYSWPPAWO+O
+X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
+ pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
+X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-add documentation for adf41513 driver which describes the device
-driver files and shows how userspace may consume the ABI for various
-tasks
+This patch provides implementations for the Connect and Disconnect
+methods of the org.bluez.Bearer.LE1 and org.bluez.Bearer.BREDR1
+interfaces.
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Signed-off-by: Ye He <ye.he@amlogic.com>
 ---
- Documentation/iio/adf41513.rst | 377 +++++++++++++++++++++++++++++++++++++++++
- Documentation/iio/index.rst    |   1 +
- MAINTAINERS                    |   1 +
- 3 files changed, 379 insertions(+)
+ src/bearer.c |  52 +++++++++++-
+ src/device.c | 265 ++++++++++++++++++++++++++++++++++++++++++++++++-----------
+ src/device.h |   4 +
+ 3 files changed, 269 insertions(+), 52 deletions(-)
 
-diff --git a/Documentation/iio/adf41513.rst b/Documentation/iio/adf41513.rst
-new file mode 100644
-index 000000000000..a2d5425d49c9
---- /dev/null
-+++ b/Documentation/iio/adf41513.rst
-@@ -0,0 +1,377 @@
-+.. SPDX-License-Identifier: GPL-2.0
-+
-+===============
-+ADF41513 driver
-+===============
-+
-+This driver supports Analog Devices' ADF41513 and ADF41510 PLL frequency
-+synthesizers on SPI bus.
-+
-+1. Supported devices
-+====================
-+
-+* `ADF41510 <https://www.analog.com/ADF41510>`_
-+* `ADF41513 <https://www.analog.com/ADF41513>`_
-+
-+The ADF41513 is an ultralow noise frequency synthesizer that can be used to
-+implement local oscillators (LOs) as high as 26.5 GHz in the upconversion and
-+downconversion sections of wireless receivers and transmitters. The ADF41510
-+is a similar device that supports frequencies up to 10 GHz.
-+
-+Both devices support integer-N and fractional-N operation modes, providing
-+excellent phase noise performance and flexible frequency generation
-+capabilities.
-+
-+Key Features:
-+
-+- **ADF41513**: 1 GHz to 26.5 GHz frequency range
-+- **ADF41510**: 1 GHz to 10 GHz frequency range
-+- Integer-N and fractional-N operation modes
-+- Ultra-low phase noise (-235 dBc/Hz integer-N, -231 dBc/Hz fractional-N)
-+- High maximum PFD frequency (250 MHz integer-N, 125 MHz fractional-N)
-+- 25-bit fixed modulus or 49-bit variable modulus fractional modes
-+- Programmable charge pump currents with 16x range
-+- Digital lock detect functionality
-+- Phase resync capability for consistent output phase
-+- Clock framework integration for system clock generation
-+
-+2. Device attributes
-+====================
-+
-+The ADF41513 driver provides the following IIO extended attributes for
-+frequency control and monitoring:
-+
-+Each IIO device has a device folder under ``/sys/bus/iio/devices/iio:deviceX``,
-+where X is the IIO index of the device. Under these folders reside a set of
-+device files that provide access to the synthesizer's functionality.
-+
-+The following table shows the ADF41513 related device files:
-+
-++----------------------+-------------------------------------------------------+
-+| Device file          | Description                                           |
-++======================+=======================================================+
-+| frequency            | RF output frequency control and readback (Hz)         |
-++----------------------+-------------------------------------------------------+
-+| frequency_resolution | Target frequency resolution control (Hz)              |
-++----------------------+-------------------------------------------------------+
-+| refin_frequency      | Reference input frequency control and readback (Hz)   |
-++----------------------+-------------------------------------------------------+
-+| powerdown            | Power management control (0=active, 1=power down)     |
-++----------------------+-------------------------------------------------------+
-+
-+2.1 Frequency Control
-+----------------------
-+
-+The ``frequency`` attribute controls the RF output frequency with sub-Hz precision.
-+The driver automatically selects between integer-N and fractional-N modes to
-+achieve the requested frequency with the best possible phase noise performance.
-+
-+**Supported ranges:**
-+
-+- **ADF41513**: 1,000,000,000 Hz to 26,500,000,000 Hz (1 GHz to 26.5 GHz)
-+- **ADF41510**: 1,000,000,000 Hz to 10,000,000,000 Hz (1 GHz to 10 GHz)
-+
-+The frequency is specified in Hz, for sub-Hz precision use decimal notation.
-+For example, 12.102000000 GHz would be written as "12102000000.000000".
-+
-+2.2 Frequency Resolution Control
-+--------------------------------
-+
-+The ``frequency_resolution`` attribute controls the target frequency resolution
-+that the driver attempts to achieve. This affects the choice between fixed
-+modulus (25-bit) and variable modulus (49-bit) fractional-N modes:
-+
-+- **Fixed modulus**: Resolution = f_PFD / 2^25 (typically ~3 Hz with 100 MHz PFD)
-+- **Variable modulus**: Resolution = f_PFD / 2^49 (µHz resolution possible)
-+
-+Default resolution is 1 Hz (1,000,000 µHz).
-+
-+2.3 Reference Input Control
-+---------------------------
-+
-+The ``refin_frequency`` attribute allows control of the reference input frequency
-+when using a programmable reference clock. The supported range is 10 MHz to
-+800 MHz.
-+
-+2.4 Power Management
-+--------------------
-+
-+The ``powerdown`` attribute provides software power control:
-+
-+- **0**: Device active and operational
-+- **1**: Device in power-down mode (low power consumption)
-+
-+3. Operating modes
-+==================
-+
-+3.1 Integer-N Mode
-+------------------
-+
-+When the requested frequency can be achieved as an integer multiple of the PFD
-+frequency (within the specified resolution tolerance), the driver automatically
-+selects integer-N mode for optimal phase noise performance.
-+
-+In integer-N mode:
-+
-+- Phase noise: -235 dBc/Hz normalized floor
-+- Frequency resolution: f_PFD (same as PFD frequency)
-+- Maximum PFD frequency: 250 MHz
-+- Bleed current: Disabled for best performance
-+
-+3.2 Fractional-N Mode
-+---------------------
-+
-+When sub-integer frequency steps are required, the driver automatically selects
-+fractional-N mode using either fixed or variable modulus.
-+
-+**Fixed Modulus (25-bit)**:
-+
-+- Used when variable modulus is not required
-+- Resolution: f_PFD / 2^25
-+- Simpler implementation, faster settling
-+
-+**Variable Modulus (49-bit)**:
-+
-+- Used for maximum resolution requirements
-+- Resolution: f_PFD / 2^49 (theoretical)
-+- Exact frequency synthesis capability
-+
-+In fractional-N mode:
-+
-+- Phase noise: -231 dBc/Hz normalized floor
-+- Maximum PFD frequency: 125 MHz
-+- Bleed current: Automatically enabled and optimized
-+- Dithering: Enabled to reduce fractional spurs
-+
-+3.3 Automatic Mode Selection
-+----------------------------
-+
-+The driver automatically selects the optimal operating mode based on:
-+
-+1. **Frequency accuracy requirements**: Determined by frequency_resolution setting
-+2. **Phase noise optimization**: Integer-N preferred when possible
-+3. **PFD frequency constraints**: Different limits for integer vs fractional modes
-+4. **Prescaler selection**: Automatic 4/5 vs 8/9 prescaler selection based on frequency
-+
-+4. Clock framework integration
-+==============================
-+
-+The ADF41513 driver integrates with the Linux Common Clock Framework (CCF) when
-+the device tree includes clock provider properties (``#clock-cells = <0>``).
-+
-+When enabled, the driver registers as a clock provider, allowing other kernel
-+drivers to use the synthesizer output as a system clock source.
-+
-+**Device tree configuration for clock provider**:
-+
-+.. code-block:: dts
-+
-+    adf41513@0 {
-+        compatible = "adi,adf41513";
-+        reg = <0>;
-+        /* ... other properties ... */
-+        #clock-cells = <0>;
-+        clock-output-names = "adf41513_clk";
-+    };
-+
-+**Clock consumer example**:
-+
-+.. code-block:: dts
-+
-+    some_device {
-+        clocks = <&adf41513>;
-+        clock-names = "ref_clk";
-+    };
-+
-+5. Device tree configuration
-+============================
-+
-+See ``Documentation/devicetree/bindings/iio/frequency/adi,adf41513.yaml`` for
-+complete device tree binding documentation.
-+
-+**Basic configuration example**:
-+
-+.. code-block:: dts
-+
-+    adf41513@0 {
-+        compatible = "adi,adf41513";
-+        reg = <0>;
-+        spi-max-frequency = <10000000>;
-+        clocks = <&ref_clk>;
-+        clock-names = "clkin";
-+        vcc-supply = <&vcc_3v3>;
-+
-+        adi,power-up-frequency = /bits/ 64 <12000000000>;
-+    };
-+
-+6. Performance characteristics
-+==============================
-+
-+6.1 Phase Noise Performance
-+----------------------------
-+
-+The ADF41513 provides excellent phase noise performance:
-+
-+**Integer-N mode**:
-+
-+- Normalized phase noise floor: -235 dBc/Hz
-+- 1/f noise corner: Typically around 10 kHz offset
-+- Best performance mode for integer frequency multiples
-+
-+**Fractional-N mode**:
-+
-+- Normalized phase noise floor: -231 dBc/Hz
-+- Additional fractional spurs may be present
-+- Optimized with automatic bleed current and dithering
-+
-+6.2 Frequency Ranges and Prescalers
-+------------------------------------
-+
-+The driver automatically selects the appropriate prescaler based on frequency:
-+
-+**4/5 Prescaler**:
-+
-+- RF frequency range: 1 GHz to 16 GHz
-+- Integer-N: N = 20 to 511
-+- Fractional-N: N = 23 to 511
-+
-+**8/9 Prescaler** (ADF41513 only):
-+
-+- RF frequency range: 1 GHz to 26.5 GHz
-+- Integer-N: N = 64 to 1023
-+- Fractional-N: N = 75 to 1023
-+
-+6.3 Reference Input Requirements
-+---------------------------------
-+
-+- Frequency range: 10 MHz to 800 MHz
-+- Input sensitivity: -10 dBm to +8 dBm
-+- Slew rate requirement: >320 V/µs (>500 V/µs recommended)
-+- With doubler enabled: Maximum 225 MHz reference frequency
-+
-+7. Usage examples
-+=================
-+
-+7.1 Basic Frequency Setting
-+----------------------------
-+
-+Set output frequency to 12.102 GHz:
-+
-+.. code-block:: bash
-+
-+    root:/sys/bus/iio/devices/iio:device0> echo 12102000000 > out_altvoltage0_frequency
-+
-+Read current frequency:
-+
-+.. code-block:: bash
-+
-+    root:/sys/bus/iio/devices/iio:device0> cat out_altvoltage0_frequency
-+    12101999999.582767
-+
-+7.2 High Resolution Frequency Control
-+-------------------------------------
-+
-+Configure for sub-Hz resolution and set a precise frequency:
-+
-+.. code-block:: bash
-+
-+    # Set resolution to 0.1 Hz (100,000 µHz)
-+    root:/sys/bus/iio/devices/iio:device0> echo 0.1 > out_altvoltage0_frequency_resolution
-+
-+    # Set frequency to 12.102 GHz (1 µHz precision)
-+    root:/sys/bus/iio/devices/iio:device0> echo 12102000000 > out_altvoltage0_frequency
-+    root:/sys/bus/iio/devices/iio:device0> cat out_altvoltage0_frequency
-+    12101999999.980131
-+
-+7.3 Reference Frequency Control
-+-------------------------------
-+
-+Change reference input frequency (if using programmable reference):
-+
-+.. code-block:: bash
-+
-+    # Set reference to 122.88 MHz
-+    root:/sys/bus/iio/devices/iio:device0> echo 122880000 > out_altvoltage0_refin_frequency
-+
-+    # Verify the change
-+    root:/sys/bus/iio/devices/iio:device0> cat out_altvoltage0_refin_frequency
-+    122880000
-+
-+7.4 Power Management
-+--------------------
-+
-+Power down the device:
-+
-+.. code-block:: bash
-+
-+    root:/sys/bus/iio/devices/iio:device0> echo 1 > out_altvoltage0_powerdown
-+
-+    # Power back up
-+    root:/sys/bus/iio/devices/iio:device0> echo 0 > out_altvoltage0_powerdown
-+
-+7.5 Monitor Lock Status
-+-----------------------
-+
-+When lock detect GPIO is configured, check if PLL is locked:
-+
-+.. code-block:: bash
-+
-+    # Read frequency - will return error if not locked
-+    root:/sys/bus/iio/devices/iio:device0> cat out_altvoltage0_frequency
-+
-+If the PLL is not locked, the frequency read will return ``-EBUSY`` (Device or resource busy).
-+
-+8. Advanced features
-+====================
-+
-+8.1 Phase Resync
-+-----------------
-+
-+When enabled in device tree (``adi,phase-resync-enable``), the phase resync
-+feature provides a consistent output phase relationship to the reference input.
-+This is particularly useful for beamforming applications where phase coherence
-+across multiple synthesizers is required.
-+
-+8.2 Charge Pump Optimization
-+-----------------------------
-+
-+The driver automatically optimizes charge pump settings:
-+
-+- **Current**: Programmable from 0.45 mA to 7.2 mA
-+- **Bleed current**: Automatically calculated and enabled in fractional-N mode
-+- **Loop filter integration**: Works with external passive loop filters
-+
-+8.3 Spurious Performance
-+------------------------
-+
-+The driver includes automatic spur reduction techniques:
-+
-+- **Integer boundary spur avoidance**: Automatic PFD frequency optimization
-+- **Fractional spur reduction**: Automatic dithering and bleed current
-+- **Reference spur suppression**: High PFD frequency operation when possible
-+
-+9. Troubleshooting
-+==================
-+
-+9.1 Common Issues
-+-----------------
-+
-+**"PLL un-locked" errors**:
-+
-+- Check reference input signal quality and level
-+- Verify loop filter design matches charge pump current
-+- Ensure VCO tuning range covers target frequency
-+- Check power supply voltage and stability
-+
-+**Frequency accuracy issues**:
-+
-+- Verify reference frequency accuracy
-+- Check frequency_resolution setting
-+- Ensure target frequency is within device range
-+
-+**High spurious content**:
-+
-+- Verify PCB layout follows ADI recommendations
-+- Check loop filter component values and quality
-+- Ensure adequate power supply decoupling
-+- Verify reference input signal purity
-diff --git a/Documentation/iio/index.rst b/Documentation/iio/index.rst
-index 315ae37d6fd4..420669af60db 100644
---- a/Documentation/iio/index.rst
-+++ b/Documentation/iio/index.rst
-@@ -29,6 +29,7 @@ Industrial I/O Kernel Drivers
-    ad7625
-    ad7944
-    ade9000
-+   adf41513
-    adis16475
-    adis16480
-    adis16550
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 1bbcff826238..833020f01c3c 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1607,6 +1607,7 @@ L:	linux-iio@vger.kernel.org
- S:	Supported
- W:	https://ez.analog.com/linux-software-drivers
- F:	Documentation/devicetree/bindings/iio/frequency/adi,adf41513.yaml
-+F:	Documentation/iio/adf41513.rst
- F:	drivers/iio/frequency/adf41513.c
+diff --git a/src/bearer.c b/src/bearer.c
+index 9723b59e2e7b39b2974e258363aa0ace95862651..2ceea7abecebbd4a592111be96af1ce9daac827a 100644
+--- a/src/bearer.c
++++ b/src/bearer.c
+@@ -40,6 +40,8 @@ struct btd_bearer {
+ 	struct btd_device *device;
+ 	uint8_t type;
+ 	const char *path;
++	GSList *disconnects; /* disconnects message */
++	GSList *connects; /* connects message */
+ };
  
- ANALOG DEVICES INC ADF4377 DRIVER
+ static void bearer_free(void *data)
+@@ -52,14 +54,46 @@ static void bearer_free(void *data)
+ static DBusMessage *bearer_connect(DBusConnection *conn, DBusMessage *msg,
+ 							void *user_data)
+ {
+-	/* TODO */
++	struct btd_bearer *bearer = user_data;
++
++	if (btd_device_bdaddr_type_connected(bearer->device, bearer->type)) {
++		if (msg)
++			return btd_error_already_connected(msg);
++		return NULL;
++	}
++
++	if (bearer->connects) {
++		if (msg)
++			return btd_error_in_progress(msg);
++		return NULL;
++	}
++
++	if (msg)
++		bearer->connects = g_slist_append(bearer->connects,
++						dbus_message_ref(msg));
++
++	device_request_connect_bearer(bearer->device, bearer->type, msg);
++
+ 	return NULL;
+ }
+ 
+ static DBusMessage *bearer_disconnect(DBusConnection *conn, DBusMessage *msg,
+ 							void *user_data)
+ {
+-	/* TODO */
++	struct btd_bearer *bearer = user_data;
++
++	if (!btd_device_bdaddr_type_connected(bearer->device, bearer->type)) {
++		if (msg)
++			return btd_error_not_connected(msg);
++		return NULL;
++	}
++
++	if (msg)
++		bearer->disconnects = g_slist_append(bearer->disconnects,
++						dbus_message_ref(msg));
++
++	device_request_disconnect_bearer(bearer->device, bearer->type, msg);
++
+ 	return NULL;
+ }
+ 
+@@ -203,6 +237,13 @@ void btd_bearer_connected(struct btd_bearer *bearer)
+ 	if (!bearer || !bearer->path)
+ 		return;
+ 
++	while (bearer->connects) {
++		DBusMessage *msg = bearer->connects->data;
++		g_dbus_send_reply(btd_get_dbus_connection(), msg, DBUS_TYPE_INVALID);
++		bearer->connects = g_slist_remove(bearer->connects, msg);
++		dbus_message_unref(msg);
++	}
++
+ 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
+ 					bearer_interface(bearer->type),
+ 					"Connected");
+@@ -216,6 +257,13 @@ void btd_bearer_disconnected(struct btd_bearer *bearer, uint8_t reason)
+ 	if (!bearer || !bearer->path)
+ 		return;
+ 
++	while (bearer->disconnects) {
++		DBusMessage *msg = bearer->disconnects->data;
++		g_dbus_send_reply(btd_get_dbus_connection(), msg, DBUS_TYPE_INVALID);
++		bearer->disconnects = g_slist_remove(bearer->disconnects, msg);
++		dbus_message_unref(msg);
++	}
++
+ 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
+ 					bearer_interface(bearer->type),
+ 					"Connected");
+diff --git a/src/device.c b/src/device.c
+index 91b6cc0c65eaae8058cd445c0942ffee57289f0d..4956e6f84df918c4ae7e7c9dd2f65652854f4f43 100644
+--- a/src/device.c
++++ b/src/device.c
+@@ -250,7 +250,8 @@ struct btd_device {
+ 	bool		temporary;
+ 	bool		connectable;
+ 	bool		cable_pairing;
+-	unsigned int	disconn_timer;
++	unsigned int 	disconn_bredr_timer;
++	unsigned int 	disconn_le_timer;
+ 	unsigned int	discov_timer;
+ 	unsigned int	temporary_timer;	/* Temporary/disappear timer */
+ 	struct browse_req *browse;		/* service discover request */
+@@ -315,8 +316,13 @@ static const uint16_t uuid_list[] = {
+ 	0
+ };
+ 
++static bool disconnect_le(gpointer user_data);
++static bool disconnect_bredr(gpointer user_data);
+ static int device_browse_gatt(struct btd_device *device, DBusMessage *msg);
+ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg);
++static void device_set_auto_connect(struct btd_device *device, gboolean enable);
++static DBusMessage *connect_profiles(struct btd_device *dev, uint8_t bdaddr_type,
++					DBusMessage *msg, const char *uuid);
+ 
+ static struct bearer_state *get_state(struct btd_device *dev,
+ 							uint8_t bdaddr_type)
+@@ -922,8 +928,11 @@ static void device_free(gpointer user_data)
+ 		sdp_list_free(device->tmp_records,
+ 					(sdp_free_func_t) sdp_record_free);
+ 
+-	if (device->disconn_timer)
+-		timeout_remove(device->disconn_timer);
++	if (device->disconn_bredr_timer)
++		timeout_remove(device->disconn_bredr_timer);
++
++	if (device->disconn_le_timer)
++		timeout_remove(device->disconn_le_timer);
+ 
+ 	if (device->discov_timer)
+ 		timeout_remove(device->discov_timer);
+@@ -1903,23 +1912,6 @@ static gboolean dev_property_set_exists(const GDBusPropertyTable *property,
+ 	return !queue_isempty(device->sirks);
+ }
+ 
+-static bool disconnect_all(gpointer user_data)
+-{
+-	struct btd_device *device = user_data;
+-
+-	device->disconn_timer = 0;
+-
+-	if (device->bredr_state.connected)
+-		btd_adapter_disconnect_device(device->adapter, &device->bdaddr,
+-								BDADDR_BREDR);
+-
+-	if (device->le_state.connected)
+-		btd_adapter_disconnect_device(device->adapter, &device->bdaddr,
+-							device->bdaddr_type);
+-
+-	return FALSE;
+-}
+-
+ int device_block(struct btd_device *device, gboolean update_only)
+ {
+ 	int err = 0;
+@@ -1927,10 +1919,15 @@ int device_block(struct btd_device *device, gboolean update_only)
+ 	if (device->blocked)
+ 		return 0;
+ 
+-	if (device->disconn_timer > 0)
+-		timeout_remove(device->disconn_timer);
++	if (device->disconn_le_timer > 0)
++		timeout_remove(device->disconn_le_timer);
++
++	if (device->disconn_bredr_timer > 0)
++		timeout_remove(device->disconn_bredr_timer);
+ 
+-	disconnect_all(device);
++	disconnect_bredr(device);
++
++	disconnect_le(device);
+ 
+ 	while (device->services != NULL) {
+ 		struct btd_service *service = device->services->data;
+@@ -2022,6 +2019,28 @@ static void dev_disconn_service(gpointer a, gpointer b)
+ 	btd_service_disconnect(a);
+ }
+ 
++static void dev_disconnect_watches_notify(struct btd_device *device)
++{
++	if (!device || !device->watches)
++		return;
++
++	while (device->watches) {
++		struct btd_disconnect_data *data = device->watches->data;
++
++		if (data->watch)
++			/* temporary is set if device is going to be removed */
++			data->watch(device, device->temporary,
++							data->user_data);
++
++		/* Check if the watch has been removed by callback function */
++		if (!g_slist_find(device->watches, data))
++			continue;
++
++		device->watches = g_slist_remove(device->watches, data);
++		g_free(data);
++	}
++}
++
+ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
+ {
+ 	if (device->bonding)
+@@ -2055,7 +2074,7 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
+ 		device->disconnects = g_slist_append(device->disconnects,
+ 						dbus_message_ref(msg));
+ 
+-	if (device->disconn_timer)
++	if (device->disconn_bredr_timer && device->disconn_le_timer)
+ 		return;
+ 
+ 	g_slist_foreach(device->services, dev_disconn_service, NULL);
+@@ -2063,21 +2082,7 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
+ 	g_slist_free(device->pending);
+ 	device->pending = NULL;
+ 
+-	while (device->watches) {
+-		struct btd_disconnect_data *data = device->watches->data;
+-
+-		if (data->watch)
+-			/* temporary is set if device is going to be removed */
+-			data->watch(device, device->temporary,
+-							data->user_data);
+-
+-		/* Check if the watch has been removed by callback function */
+-		if (!g_slist_find(device->watches, data))
+-			continue;
+-
+-		device->watches = g_slist_remove(device->watches, data);
+-		g_free(data);
+-	}
++	dev_disconnect_watches_notify(device);
+ 
+ 	if (!btd_device_is_connected(device)) {
+ 		if (msg)
+@@ -2085,14 +2090,160 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
+ 		return;
+ 	}
+ 
+-	device->disconn_timer = timeout_add_seconds(DISCONNECT_TIMER,
+-							disconnect_all,
++	if (!device->disconn_bredr_timer)
++		device->disconn_bredr_timer = timeout_add_seconds(DISCONNECT_TIMER,
++							disconnect_bredr,
++							device, NULL);
++
++	if (!device->disconn_le_timer)
++		device->disconn_le_timer = timeout_add_seconds(DISCONNECT_TIMER,
++							disconnect_le,
+ 							device, NULL);
+ }
+ 
+ bool device_is_disconnecting(struct btd_device *device)
+ {
+-	return device->disconn_timer > 0;
++	return (device->disconn_le_timer > 0) ||
++				(device->disconn_bredr_timer > 0);
++}
++
++static void dev_disconn_bearer_service(gpointer a, gpointer b)
++{
++	struct btd_service *service = a;
++	uint8_t type = *(uint8_t *)b;
++	struct btd_profile *profile;
++	bt_uuid_t uuid;
++
++	profile = btd_service_get_profile(service);
++	if (!profile)
++		return;
++
++	if (!profile->remote_uuid)
++		return;
++
++	if (bt_string_to_uuid(&uuid, profile->remote_uuid) != 0)
++		return;
++
++	uint16_t uuid16 = uuid.value.u16;
++
++	switch (type) {
++	case BDADDR_BREDR:
++		if (uuid16 < 0x1100 || uuid16 > 0x11FF)
++			return;
++		break;
++	case BDADDR_LE_PUBLIC:
++	case BDADDR_LE_RANDOM:
++		if (uuid16 < 0x1800 || uuid16 > 0x18FF)
++			return;
++		break;
++	default:
++		DBG("Unsupported bearer addr type: %u", type);
++		return;
++	}
++
++	DBG("Disconnecting profile %s (UUID 0x%04x) for bearer type %u",
++	    profile->name ?: "(unknown)", uuid16, type);
++
++	btd_service_disconnect(service);
++}
++
++static bool disconnect_bredr(gpointer user_data)
++{
++	struct btd_device *device = user_data;
++
++	device->disconn_bredr_timer = 0;
++
++	if (device->bredr_state.connected)
++		btd_adapter_disconnect_device(device->adapter, &device->bdaddr,
++								BDADDR_BREDR);
++
++	return FALSE;
++}
++
++static bool disconnect_le(gpointer user_data)
++{
++	struct btd_device *device = user_data;
++
++	device->disconn_le_timer = 0;
++
++	if (device->le_state.connected)
++		btd_adapter_disconnect_device(device->adapter, &device->bdaddr,
++							device->bdaddr_type);
++
++	return FALSE;
++}
++
++void device_request_disconnect_bearer(struct btd_device *device, uint8_t bdaddr_type, DBusMessage *msg)
++{
++	if (device->bonding)
++		bonding_request_cancel(device->bonding);
++
++	if (device->browse) {
++		if ((device->browse->type == BROWSE_SDP && bdaddr_type == BDADDR_BREDR) ||
++			(device->browse->type == BROWSE_GATT && bdaddr_type != BDADDR_BREDR))
++				browse_request_cancel(device->browse);
++	}
++
++	g_slist_foreach(device->services, dev_disconn_bearer_service, &bdaddr_type);
++
++	dev_disconnect_watches_notify(device);
++
++	if (bdaddr_type == BDADDR_BREDR) {
++		g_slist_free(device->pending);
++		device->pending = NULL;
++
++		if (device->disconn_bredr_timer)
++			return;
++
++		device->disconn_bredr_timer = timeout_add_seconds(DISCONNECT_TIMER,
++							disconnect_bredr,
++							device, NULL);
++	} else {
++		if (device->att_io) {
++			g_io_channel_shutdown(device->att_io, FALSE, NULL);
++			g_io_channel_unref(device->att_io);
++			device->att_io = NULL;
++		}
++
++		if (device->disconn_le_timer)
++			return;
++
++		device->disconn_le_timer = timeout_add_seconds(DISCONNECT_TIMER,
++							disconnect_le,
++							device, NULL);
++	}
++}
++
++void device_request_connect_bearer(struct btd_device *device, uint8_t bdaddr_type, DBusMessage *msg)
++{
++	int err;
++
++	if (device->bonding) {
++		g_dbus_send_message(dbus_conn, btd_error_in_progress(msg));
++		return;
++	}
++
++	if (bdaddr_type == BDADDR_BREDR)
++		connect_profiles(device, bdaddr_type, msg, NULL);
++	else {
++		if (device->le_state.connected) {
++			dbus_message_new_method_return(msg);
++			return;
++		}
++
++		btd_device_set_temporary(device, false);
++
++		if (device->disable_auto_connect) {
++			device->disable_auto_connect = FALSE;
++			device_set_auto_connect(device, TRUE);
++		}
++
++		err = device_connect_le(device);
++		if (err < 0) {
++			g_dbus_send_message(dbus_conn, btd_error_failed(msg, strerror(-err)));
++			return;
++		}
++	}
+ }
+ 
+ static void add_set(void *data, void *user_data)
+@@ -3880,17 +4031,24 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
+ 	if (!state->connected)
+ 		return;
+ 
++	if (bdaddr_type == BDADDR_BREDR) {
++		if (device->disconn_bredr_timer > 0) {
++			timeout_remove(device->disconn_bredr_timer);
++			device->disconn_bredr_timer = 0;
++		}
++	} else {
++		if (device->disconn_le_timer > 0) {
++			timeout_remove(device->disconn_le_timer);
++			device->disconn_le_timer = 0;
++		}
++	}
++
+ 	state->connected = false;
+ 	state->initiator = false;
+ 	device->general_connect = FALSE;
+ 
+ 	device_set_svc_refreshed(device, false);
+ 
+-	if (device->disconn_timer > 0) {
+-		timeout_remove(device->disconn_timer);
+-		device->disconn_timer = 0;
+-	}
+-
+ 	/* This could be executed while the client is waiting for Connect() but
+ 	 * att_connect_cb has not been invoked.
+ 	 * In that case reply the client that the connection failed.
+@@ -5359,9 +5517,16 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
+ 	device->pending = NULL;
+ 
+ 	if (btd_device_is_connected(device)) {
+-		if (device->disconn_timer > 0)
+-			timeout_remove(device->disconn_timer);
+-		disconnect_all(device);
++		if (device->disconn_bredr_timer > 0) {
++			timeout_remove(device->disconn_bredr_timer);
++			device->disconn_bredr_timer = 0;
++		}
++		if (device->disconn_le_timer > 0) {
++			timeout_remove(device->disconn_le_timer);
++			device->disconn_le_timer = 0;
++		}
++		disconnect_bredr(device);
++		disconnect_le(device);
+ 	}
+ 
+ 	clear_temporary_timer(device);
+diff --git a/src/device.h b/src/device.h
+index 6ed8affa0d4a9274d30cac9b48e8a6826edefd64..ebf30f551f4b9b6f559202c5454255b790b279d0 100644
+--- a/src/device.h
++++ b/src/device.h
+@@ -141,6 +141,10 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
+ 							uint8_t reason);
+ void device_request_disconnect(struct btd_device *device, DBusMessage *msg);
+ bool device_is_disconnecting(struct btd_device *device);
++void device_request_disconnect_bearer(struct btd_device *device, uint8_t bdaddr_type,
++							DBusMessage *msg);
++void device_request_connect_bearer(struct btd_device *device, uint8_t bdaddr_type,
++							DBusMessage *msg);
+ void device_set_ltk(struct btd_device *device, const uint8_t val[16],
+ 				bool central, uint8_t enc_size);
+ bool btd_device_get_ltk(struct btd_device *device, uint8_t val[16],
 
+---
+base-commit: 5e41d1e1d361e7288964e4c2c5ed90736025662f
+change-id: 20251111-bearer-impl-5f7e396174aa
+
+Best regards,
 -- 
-2.43.0
+Ye He <ye.he@amlogic.com>
 
