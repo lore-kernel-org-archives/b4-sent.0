@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Wed, 12 Nov 2025 20:15:15 +0530
-Subject: [PATCH 3/9] serdev: Allow passing the serdev device name to
- serdev_device_add()
+Date: Wed, 12 Nov 2025 20:15:16 +0530
+Subject: [PATCH 4/9] serdev: Add an API to find the serdev controller
+ associated with the devicetree node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251112-pci-m2-e-v1-3-97413d6bf824@oss.qualcomm.com>
+Message-Id: <20251112-pci-m2-e-v1-4-97413d6bf824@oss.qualcomm.com>
 References: <20251112-pci-m2-e-v1-0-97413d6bf824@oss.qualcomm.com>
 In-Reply-To: <20251112-pci-m2-e-v1-0-97413d6bf824@oss.qualcomm.com>
 To: Rob Herring <robh@kernel.org>, 
@@ -28,133 +28,75 @@ Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org,
  Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5251;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2067;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=c+ZfFChOiwPXrgBo3Hm41yJ4twgPMWwihL2KydIW2hU=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpFJ2GuH9bSE/qLpnlL7qfWYHEJ9kMMpDh2IkZg
- ioAcrCMP6WJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaRSdhgAKCRBVnxHm/pHO
- 9V4xCACpKggi0h5EsAbWmO1W3x1wepvdIQr3nk0oqB8ZQCGLntg+/dBH3YvESuNvQx+eHq1ecDy
- cJEs6hUol9p8HzY4e/wBOxnCvBmvD0cUlixShwOQUIpKslW2fiIJhdYuXOu1524VGYS85GWtRk2
- QT1cJ+1IpsxSmCTXiqPCoAICGWgZ4xU3/K3lIvJlXzGoyew4LMK3K6crX/RCr5B2KYcwfNa2A68
- 0mP9nGlvNLw+cKNCFfP2jv2rt9HNRAwgdJZYTQoVgn3qbsO/i0Zt5GhuGWqYxd97xkdp78VtW+v
- NOpygSfJ3jQK71/T0iPfQ1Dm5UDNO0u+7B4QBKl41P6CqrMR
+ bh=3pwzkJmlXdBFxxGS+RaMwatS2zudeS9caO7fvQLIo5w=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpFJ2GI3r/6TwqdIifoUBAM4qi4EMRgZaCdsyWL
+ PH1oUP9u8yJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaRSdhgAKCRBVnxHm/pHO
+ 9Us5CACN1KOmM1rzu6sdAAnL/OTe84uXCKe+E0PGnLOCIAl6PrhySDsebbMIqIYklB41ba8SbvK
+ FpKt7oODtjLdgzulqVewmUdfOTegPDSmnrG+Fl2U9PYehjU7wIpwaRA/zD9K7p3GMyczrBHYFuk
+ TbwpO49bAKtfeFBhlf4/2D3in0rLgLtTSLDW2WyRic2vlStpo1O8cty0cCOAFjWBDWZGsMOXRjn
+ kQb5lYhds4vksbnQRKpZvMl2erofXcWpfRqqs58TUqiuiIME9sNuYKvKyXk5boI0FbFGifgTJY8
+ qPFQ+rdrPbrcXWDvumdkRZN3PLpNCOmi+oTleNL3Jn2sY9C4
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Instead of always setting the serdev device name from 'struct device' name,
-allow the callers to pass an optional name and set it as the serdev device
-name.
-
-This will be used by the future callers passing the serdev device ID as the
-name.
+Add of_find_serdev_controller_by_node() API to find the serdev controller
+device associated with the devicetree node.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/platform/x86/dell/dell-uart-backlight.c             |  2 +-
- .../platform/x86/lenovo/yoga-tab2-pro-1380-fastcharger.c    |  2 +-
- drivers/platform/x86/x86-android-tablets/core.c             |  2 +-
- drivers/tty/serdev/core.c                                   | 13 +++++++++----
- include/linux/serdev.h                                      |  2 +-
- 5 files changed, 13 insertions(+), 8 deletions(-)
+ drivers/tty/serdev/core.c | 16 ++++++++++++++++
+ include/linux/serdev.h    |  9 +++++++++
+ 2 files changed, 25 insertions(+)
 
-diff --git a/drivers/platform/x86/dell/dell-uart-backlight.c b/drivers/platform/x86/dell/dell-uart-backlight.c
-index f323a667dc2d2c7dec9fb284515bc3b6b984b7b9..f076cfac2bc5ec14899d6622d084bae2ffecfa3c 100644
---- a/drivers/platform/x86/dell/dell-uart-backlight.c
-+++ b/drivers/platform/x86/dell/dell-uart-backlight.c
-@@ -354,7 +354,7 @@ static int dell_uart_bl_pdev_probe(struct platform_device *pdev)
- 	if (!serdev)
- 		return -ENOMEM;
- 
--	ret = serdev_device_add(serdev);
-+	ret = serdev_device_add(serdev, NULL);
- 	if (ret) {
- 		dev_err(&pdev->dev, "error %d adding serdev\n", ret);
- 		serdev_device_put(serdev);
-diff --git a/drivers/platform/x86/lenovo/yoga-tab2-pro-1380-fastcharger.c b/drivers/platform/x86/lenovo/yoga-tab2-pro-1380-fastcharger.c
-index 8551ab4d2c7dbc3a8d0b2f50071d4460a3ee65e9..5e568fe1162d1563183713f8d5c71c59ff7667a1 100644
---- a/drivers/platform/x86/lenovo/yoga-tab2-pro-1380-fastcharger.c
-+++ b/drivers/platform/x86/lenovo/yoga-tab2-pro-1380-fastcharger.c
-@@ -260,7 +260,7 @@ static int yt2_1380_fc_pdev_probe(struct platform_device *pdev)
- 	/* The fwnode is a managed node, so it will be auto-put on serdev_device_put() */
- 	fwnode_handle_get(dev_fwnode(&serdev->dev));
- 
--	ret = serdev_device_add(serdev);
-+	ret = serdev_device_add(serdev, NULL);
- 	if (ret) {
- 		serdev_device_put(serdev);
- 		return dev_err_probe(&pdev->dev, ret, "adding serdev\n");
-diff --git a/drivers/platform/x86/x86-android-tablets/core.c b/drivers/platform/x86/x86-android-tablets/core.c
-index 6588fae303562b7dc9a1a8d281b167e44f0d3e84..96140f5d4f79240f44cb4530ee63777f783c6aaf 100644
---- a/drivers/platform/x86/x86-android-tablets/core.c
-+++ b/drivers/platform/x86/x86-android-tablets/core.c
-@@ -316,7 +316,7 @@ static __init int x86_instantiate_serdev(const struct x86_dev_info *dev_info, in
- 	ACPI_COMPANION_SET(&serdev->dev, serdev_adev);
- 	acpi_device_set_enumerated(serdev_adev);
- 
--	ret = serdev_device_add(serdev);
-+	ret = serdev_device_add(serdev, NULL);
- 	if (ret) {
- 		dev_err(&serdev->dev, "error %d adding serdev\n", ret);
- 		serdev_device_put(serdev);
 diff --git a/drivers/tty/serdev/core.c b/drivers/tty/serdev/core.c
-index 2b5582cd5063a87c9a6c99f83a8ab071637eae57..76b89dd0720f89dbe34e205b905ef24d9f94d770 100644
+index 76b89dd0720f89dbe34e205b905ef24d9f94d770..f90095cb778f2374303f98809d1639a000e0d9e0 100644
 --- a/drivers/tty/serdev/core.c
 +++ b/drivers/tty/serdev/core.c
-@@ -121,14 +121,19 @@ static int serdev_device_match(struct device *dev, const struct device_driver *d
- /**
-  * serdev_device_add() - add a device previously constructed via serdev_device_alloc()
-  * @serdev:	serdev_device to be added
-+ * @name:	name of the serdev device (optional)
-  */
--int serdev_device_add(struct serdev_device *serdev)
-+int serdev_device_add(struct serdev_device *serdev, const char *name)
+@@ -530,6 +530,22 @@ struct serdev_controller *serdev_controller_alloc(struct device *host,
+ }
+ EXPORT_SYMBOL_GPL(serdev_controller_alloc);
+ 
++/**
++ * of_find_serdev_controller_by_node() - Find the serdev controller associated
++ *					 with the devicetree node
++ * @node:	Devicetree node
++ *
++ * Return: Pointer to the serdev controller associated with the node. NULL if
++ * the controller is not found.
++ */
++struct serdev_controller *of_find_serdev_controller_by_node(struct device_node *node)
++{
++	struct device *dev = bus_find_device_by_of_node(&serdev_bus_type, node);
 +
++	return (dev && dev->type == &serdev_ctrl_type) ? to_serdev_controller(dev) : NULL;
++}
++EXPORT_SYMBOL_GPL(of_find_serdev_controller_by_node);
++
+ static int of_serdev_register_devices(struct serdev_controller *ctrl)
  {
- 	struct serdev_controller *ctrl = serdev->ctrl;
- 	struct device *parent = serdev->dev.parent;
- 	int err;
- 
--	dev_set_name(&serdev->dev, "%s-%d", dev_name(parent), serdev->nr);
-+	if (name)
-+		dev_set_name(&serdev->dev, "%s", name);
-+	else
-+		dev_set_name(&serdev->dev, "%s-%d", dev_name(parent), serdev->nr);
- 
- 	/* Only a single slave device is currently supported. */
- 	if (ctrl->serdev) {
-@@ -544,7 +549,7 @@ static int of_serdev_register_devices(struct serdev_controller *ctrl)
- 
- 		device_set_node(&serdev->dev, of_fwnode_handle(node));
- 
--		err = serdev_device_add(serdev);
-+		err = serdev_device_add(serdev, NULL);
- 		if (err) {
- 			dev_err(&serdev->dev,
- 				"failure adding device. status %pe\n",
-@@ -692,7 +697,7 @@ static acpi_status acpi_serdev_register_device(struct serdev_controller *ctrl,
- 	ACPI_COMPANION_SET(&serdev->dev, adev);
- 	acpi_device_set_enumerated(adev);
- 
--	err = serdev_device_add(serdev);
-+	err = serdev_device_add(serdev, NULL);
- 	if (err) {
- 		dev_err(&serdev->dev,
- 			"failure adding ACPI serdev device. status %pe\n",
+ 	struct device_node *node;
 diff --git a/include/linux/serdev.h b/include/linux/serdev.h
-index ee42e293445d928a311bd3c120e609214f89a5dd..3b87909b199af74d619b4fe548c5c9c994e7bc15 100644
+index 3b87909b199af74d619b4fe548c5c9c994e7bc15..ee483f6b11b09ef4c8ad6f98718aa79afda6e826 100644
 --- a/include/linux/serdev.h
 +++ b/include/linux/serdev.h
-@@ -163,7 +163,7 @@ static inline void serdev_controller_put(struct serdev_controller *ctrl)
+@@ -340,4 +340,13 @@ static inline bool serdev_acpi_get_uart_resource(struct acpi_resource *ares,
  }
+ #endif /* CONFIG_ACPI */
  
- struct serdev_device *serdev_device_alloc(struct serdev_controller *);
--int serdev_device_add(struct serdev_device *);
-+int serdev_device_add(struct serdev_device *serdev, const char *name);
- void serdev_device_remove(struct serdev_device *);
- 
- struct serdev_controller *serdev_controller_alloc(struct device *host,
++#ifdef CONFIG_OF
++struct serdev_controller *of_find_serdev_controller_by_node(struct device_node *node);
++#else
++struct serdev_controller *of_find_serdev_controller_by_node(struct device_node *node)
++{
++	return NULL;
++}
++#endif /* CONFIG_OF */
++
+ #endif /*_LINUX_SERDEV_H */
 
 -- 
 2.48.1
