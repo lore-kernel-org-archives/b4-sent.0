@@ -1,848 +1,532 @@
-From: Deepak Gupta <debug@rivosinc.com>
-Date: Wed, 12 Nov 2025 16:43:26 -0800
-Subject: [PATCH v23 28/28] kselftest/riscv: kselftest for user mode cfi
+From: Ye He <ye.he@amlogic.com>
+Date: Thu, 13 Nov 2025 11:29:56 +0800
+Subject: [PATCH bluez v2] bearer: Implement Connect/Disconnect methods
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251112-v5_user_cfi_series-v23-28-b55691eacf4f@rivosinc.com>
-References: <20251112-v5_user_cfi_series-v23-0-b55691eacf4f@rivosinc.com>
-In-Reply-To: <20251112-v5_user_cfi_series-v23-0-b55691eacf4f@rivosinc.com>
-To: Thomas Gleixner <tglx@linutronix.de>, Ingo Molnar <mingo@redhat.com>, 
- Borislav Petkov <bp@alien8.de>, Dave Hansen <dave.hansen@linux.intel.com>, 
- x86@kernel.org, "H. Peter Anvin" <hpa@zytor.com>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- "Liam R. Howlett" <Liam.Howlett@oracle.com>, 
- Vlastimil Babka <vbabka@suse.cz>, 
- Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, 
- Paul Walmsley <paul.walmsley@sifive.com>, 
- Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
- Conor Dooley <conor@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, Arnd Bergmann <arnd@arndb.de>, 
- Christian Brauner <brauner@kernel.org>, 
- Peter Zijlstra <peterz@infradead.org>, Oleg Nesterov <oleg@redhat.com>, 
- Eric Biederman <ebiederm@xmission.com>, Kees Cook <kees@kernel.org>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <shuah@kernel.org>, 
- Jann Horn <jannh@google.com>, Conor Dooley <conor+dt@kernel.org>, 
- Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
- Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Andreas Hindborg <a.hindborg@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
- Trevor Gross <tmgross@umich.edu>, Benno Lossin <lossin@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
- linux-mm@kvack.org, linux-riscv@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-arch@vger.kernel.org, 
- linux-doc@vger.kernel.org, linux-kselftest@vger.kernel.org, 
- alistair.francis@wdc.com, richard.henderson@linaro.org, jim.shu@sifive.com, 
- andybnac@gmail.com, kito.cheng@sifive.com, charlie@rivosinc.com, 
- atishp@rivosinc.com, evan@rivosinc.com, cleger@rivosinc.com, 
- alexghiti@rivosinc.com, samitolvanen@google.com, broonie@kernel.org, 
- rick.p.edgecombe@intel.com, rust-for-linux@vger.kernel.org, 
- Deepak Gupta <debug@rivosinc.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1762994618; l=22788;
- i=debug@rivosinc.com; s=20251023; h=from:subject:message-id;
- bh=TRx4ZLWV61l7mSSrHVorWcTZpF657jUbWXNcRL00g5k=;
- b=62qzS2FxgpIVdajB67iKvyJjFVF2QCuLIbZ+pu2mgm6IYSzYwR6oUKLH53ehTUsGLxOftjqxK
- PC/IEuTrA4gCQOocTtRBLzlaUTBsn85YpiDQyVtJwWj7Ah2dO3D1UIY
-X-Developer-Key: i=debug@rivosinc.com; a=ed25519;
- pk=O37GQv1thBhZToXyQKdecPDhtWVbEDRQ0RIndijvpjk=
-X-Endpoint-Received: by B4 Relay for debug@rivosinc.com/20251023 with auth_id=553
+Message-Id: <20251113-bearer-impl-v2-1-c3e825cc6758@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIALNQFWkC/22NwQ6CMBBEf4Xs2Rq3toKc/A/DodQtbAKUtNqoh
+ H+36dm5vZnMzAaRAlOEttogUOLIfskgDxXY0SwDCX5kBnmSGrNETyZQEDyvk9CupvP1grUyBnJ
+ jDeT4Xdbu0E8v+kKX7ZHj04dP+UhYwr9zCQUKp1A3GpWS2NzMPPmB7dH6Gbp933+PLojhrwAAA
+ A==
+X-Change-ID: 20251111-bearer-impl-5f7e396174aa
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Ye He <ye.he@amlogic.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763004596; l=15002;
+ i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
+ bh=hNHGJvcpXD9wDN1qUcdMvd+4HK/iTnxK4ndsvBXkdk0=;
+ b=MrZakhildC2u53ynJoWPOQKqwNsHXJMse2lQRPsvisM9Q8Xr9JH6ThJHtzUfz11pP1ugdvad4
+ V5dPTZ2sTpnCz5Nw3/1TUR+9D4aT0UTQ9gjepjP/2Y/UQADPJn7G1Sw
+X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
+ pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
+X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds kselftest for RISC-V control flow integrity implementation for user
-mode. There is not a lot going on in kernel for enabling landing pad for
-user mode. cfi selftest are intended to be compiled with zicfilp and
-zicfiss enabled compiler. Thus kselftest simply checks if landing pad /
-shadow stack for the process are enabled or not and executes ptrace
-selftests on cfi. selftest then register a signal handler for SIGSEGV.
-Any control flow violation are reported as SIGSEGV with si_code =
-SEGV_CPERR. Test will fail on receiving any SEGV_CPERR. Shadow stack part
-has more changes in kernel and thus there are separate tests for that
+This patch provides implementations for the Connect and Disconnect
+methods of the org.bluez.Bearer.LE1 and org.bluez.Bearer.BREDR1
+interfaces.
 
-- Exercise `map_shadow_stack` syscall
-- `fork` test to make sure COW works for shadow stack pages
-- gup tests
-  Kernel uses FOLL_FORCE when access happens to memory via
-  /proc/<pid>/mem. Not breaking that for shadow stack.
-- signal test. Make sure signal delivery results in token creation on
-  shadow stack and consumes (and verifies) token on sigreturn
-- shadow stack protection test. attempts to write using regular store
-  instruction on shadow stack memory must result in access faults
-- ptrace test: adds landing pad violation, clears ELP and continues
-
-In case toolchain doesn't support cfi extension, cfi kselftest wont
-get built.
-
-Test outut
-==========
-
-"""
-TAP version 13
-1..5
-  This is to ensure shadow stack is indeed enabled and working
-  This is to ensure shadow stack is indeed enabled and working
-ok 1 shstk fork test
-ok 2 map shadow stack syscall
-ok 3 shadow stack gup tests
-ok 4 shadow stack signal tests
-ok 5 memory protections of shadow stack memory
-"""
-
-Suggested-by: Charlie Jenkins <charlie@rivosinc.com>
-Signed-off-by: Charlie Jenkins <charlie@rivosinc.com>
-Signed-off-by: Deepak Gupta <debug@rivosinc.com>
+Signed-off-by: Ye He <ye.he@amlogic.com>
 ---
- tools/testing/selftests/riscv/Makefile          |   2 +-
- tools/testing/selftests/riscv/cfi/.gitignore    |   2 +
- tools/testing/selftests/riscv/cfi/Makefile      |  23 ++
- tools/testing/selftests/riscv/cfi/cfi_rv_test.h |  82 +++++
- tools/testing/selftests/riscv/cfi/cfitests.c    | 173 +++++++++++
- tools/testing/selftests/riscv/cfi/shadowstack.c | 385 ++++++++++++++++++++++++
- tools/testing/selftests/riscv/cfi/shadowstack.h |  27 ++
- 7 files changed, 693 insertions(+), 1 deletion(-)
+Changes in v2:
+- Fix build error & warning.
+- Link to v1: https://patch.msgid.link/20251111-bearer-impl-v1-1-f41585144218@amlogic.com
+---
+ src/bearer.c |  57 ++++++++++++-
+ src/device.c | 271 ++++++++++++++++++++++++++++++++++++++++++++++++-----------
+ src/device.h |   4 +
+ 3 files changed, 280 insertions(+), 52 deletions(-)
 
-diff --git a/tools/testing/selftests/riscv/Makefile b/tools/testing/selftests/riscv/Makefile
-index 099b8c1f46f8..5671b4405a12 100644
---- a/tools/testing/selftests/riscv/Makefile
-+++ b/tools/testing/selftests/riscv/Makefile
-@@ -5,7 +5,7 @@
- ARCH ?= $(shell uname -m 2>/dev/null || echo not)
+diff --git a/src/bearer.c b/src/bearer.c
+index 9723b59e2e7b39b2974e258363aa0ace95862651..c18d134e5783108ce048e3f52f17da835387b245 100644
+--- a/src/bearer.c
++++ b/src/bearer.c
+@@ -40,6 +40,8 @@ struct btd_bearer {
+ 	struct btd_device *device;
+ 	uint8_t type;
+ 	const char *path;
++	GSList *disconnects; /* disconnects message */
++	GSList *connects; /* connects message */
+ };
  
- ifneq (,$(filter $(ARCH),riscv))
--RISCV_SUBTARGETS ?= abi hwprobe mm sigreturn vector
-+RISCV_SUBTARGETS ?= abi hwprobe mm sigreturn vector cfi
- else
- RISCV_SUBTARGETS :=
- endif
-diff --git a/tools/testing/selftests/riscv/cfi/.gitignore b/tools/testing/selftests/riscv/cfi/.gitignore
-new file mode 100644
-index 000000000000..c1faf7ca4346
---- /dev/null
-+++ b/tools/testing/selftests/riscv/cfi/.gitignore
-@@ -0,0 +1,2 @@
-+cfitests
-+shadowstack
-diff --git a/tools/testing/selftests/riscv/cfi/Makefile b/tools/testing/selftests/riscv/cfi/Makefile
-new file mode 100644
-index 000000000000..96a4dc4b69c3
---- /dev/null
-+++ b/tools/testing/selftests/riscv/cfi/Makefile
-@@ -0,0 +1,23 @@
-+CFLAGS += $(KHDR_INCLUDES)
-+CFLAGS += -I$(top_srcdir)/tools/include
+ static void bearer_free(void *data)
+@@ -52,14 +54,46 @@ static void bearer_free(void *data)
+ static DBusMessage *bearer_connect(DBusConnection *conn, DBusMessage *msg,
+ 							void *user_data)
+ {
+-	/* TODO */
++	struct btd_bearer *bearer = user_data;
 +
-+CFLAGS += -march=rv64gc_zicfilp_zicfiss -fcf-protection=full
-+
-+# Check for zicfi* extensions needs cross compiler
-+# which is not set until lib.mk is included
-+ifeq ($(LLVM)$(CC),cc)
-+CC := $(CROSS_COMPILE)gcc
-+endif
-+
-+
-+ifeq ($(shell $(CC) $(CFLAGS) -nostdlib -xc /dev/null -o /dev/null > /dev/null 2>&1; echo $$?),0)
-+TEST_GEN_PROGS := cfitests
-+
-+$(OUTPUT)/cfitests: cfitests.c shadowstack.c
-+	$(CC) -o$@ $(CFLAGS) $(LDFLAGS) $^
-+else
-+
-+$(shell echo "Toolchain doesn't support CFI, skipping CFI kselftest." >&2)
-+endif
-+
-+include ../../lib.mk
-diff --git a/tools/testing/selftests/riscv/cfi/cfi_rv_test.h b/tools/testing/selftests/riscv/cfi/cfi_rv_test.h
-new file mode 100644
-index 000000000000..1c8043f2b778
---- /dev/null
-+++ b/tools/testing/selftests/riscv/cfi/cfi_rv_test.h
-@@ -0,0 +1,82 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
-+
-+#ifndef SELFTEST_RISCV_CFI_H
-+#define SELFTEST_RISCV_CFI_H
-+#include <stddef.h>
-+#include <sys/types.h>
-+#include "shadowstack.h"
-+
-+#define CHILD_EXIT_CODE_SSWRITE		10
-+#define CHILD_EXIT_CODE_SIG_TEST	11
-+
-+#define my_syscall5(num, arg1, arg2, arg3, arg4, arg5)			\
-+({									\
-+	register long _num  __asm__ ("a7") = (num);			\
-+	register long _arg1 __asm__ ("a0") = (long)(arg1);		\
-+	register long _arg2 __asm__ ("a1") = (long)(arg2);		\
-+	register long _arg3 __asm__ ("a2") = (long)(arg3);		\
-+	register long _arg4 __asm__ ("a3") = (long)(arg4);		\
-+	register long _arg5 __asm__ ("a4") = (long)(arg5);		\
-+									\
-+	__asm__ volatile(						\
-+		"ecall\n"						\
-+		: "+r"							\
-+		(_arg1)							\
-+		: "r"(_arg2), "r"(_arg3), "r"(_arg4), "r"(_arg5),	\
-+		  "r"(_num)						\
-+		: "memory", "cc"					\
-+	);								\
-+	_arg1;								\
-+})
-+
-+#define my_syscall3(num, arg1, arg2, arg3)				\
-+({									\
-+	register long _num  __asm__ ("a7") = (num);			\
-+	register long _arg1 __asm__ ("a0") = (long)(arg1);		\
-+	register long _arg2 __asm__ ("a1") = (long)(arg2);		\
-+	register long _arg3 __asm__ ("a2") = (long)(arg3);		\
-+									\
-+	__asm__ volatile(						\
-+		"ecall\n"						\
-+		: "+r" (_arg1)						\
-+		: "r"(_arg2), "r"(_arg3),				\
-+		  "r"(_num)						\
-+		: "memory", "cc"					\
-+	);								\
-+	_arg1;								\
-+})
-+
-+#ifndef __NR_prctl
-+#define __NR_prctl 167
-+#endif
-+
-+#ifndef __NR_map_shadow_stack
-+#define __NR_map_shadow_stack 453
-+#endif
-+
-+#define CSR_SSP 0x011
-+
-+#ifdef __ASSEMBLY__
-+#define __ASM_STR(x)    x
-+#else
-+#define __ASM_STR(x)    #x
-+#endif
-+
-+#define csr_read(csr)							\
-+({									\
-+	register unsigned long __v;					\
-+	__asm__ __volatile__ ("csrr %0, " __ASM_STR(csr)		\
-+				: "=r" (__v) :				\
-+				: "memory");				\
-+	__v;								\
-+})
-+
-+#define csr_write(csr, val)						\
-+({									\
-+	unsigned long __v = (unsigned long)(val);			\
-+	__asm__ __volatile__ ("csrw " __ASM_STR(csr) ", %0"		\
-+				: : "rK" (__v)				\
-+				: "memory");				\
-+})
-+
-+#endif
-diff --git a/tools/testing/selftests/riscv/cfi/cfitests.c b/tools/testing/selftests/riscv/cfi/cfitests.c
-new file mode 100644
-index 000000000000..79aaa75f25d4
---- /dev/null
-+++ b/tools/testing/selftests/riscv/cfi/cfitests.c
-@@ -0,0 +1,173 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+
-+#include "../../kselftest.h"
-+#include <sys/signal.h>
-+#include <asm/ucontext.h>
-+#include <linux/prctl.h>
-+#include <errno.h>
-+#include <linux/ptrace.h>
-+#include <sys/wait.h>
-+#include <linux/elf.h>
-+#include <sys/uio.h>
-+#include <asm-generic/unistd.h>
-+
-+#include "cfi_rv_test.h"
-+
-+/* do not optimize cfi related test functions */
-+#pragma GCC push_options
-+#pragma GCC optimize("O0")
-+
-+void sigsegv_handler(int signum, siginfo_t *si, void *uc)
-+{
-+	struct ucontext *ctx = (struct ucontext *)uc;
-+
-+	if (si->si_code == SEGV_CPERR) {
-+		ksft_print_msg("Control flow violation happened somewhere\n");
-+		ksft_print_msg("PC where violation happened %lx\n", ctx->uc_mcontext.gregs[0]);
-+		exit(-1);
++	if (btd_device_bdaddr_type_connected(bearer->device, bearer->type)) {
++		if (msg)
++			return btd_error_already_connected(msg);
++		return NULL;
 +	}
 +
-+	/* all other cases are expected to be of shadow stack write case */
-+	exit(CHILD_EXIT_CODE_SSWRITE);
++	if (bearer->connects) {
++		if (msg)
++			return btd_error_in_progress(msg);
++		return NULL;
++	}
++
++	if (msg)
++		bearer->connects = g_slist_append(bearer->connects,
++						dbus_message_ref(msg));
++
++	device_request_connect_bearer(bearer->device, bearer->type, msg);
++
+ 	return NULL;
+ }
+ 
+ static DBusMessage *bearer_disconnect(DBusConnection *conn, DBusMessage *msg,
+ 							void *user_data)
+ {
+-	/* TODO */
++	struct btd_bearer *bearer = user_data;
++
++	if (!btd_device_bdaddr_type_connected(bearer->device, bearer->type)) {
++		if (msg)
++			return btd_error_not_connected(msg);
++		return NULL;
++	}
++
++	if (msg)
++		bearer->disconnects = g_slist_append(bearer->disconnects,
++						dbus_message_ref(msg));
++
++	device_request_disconnect_bearer(bearer->device, bearer->type, msg);
++
+ 	return NULL;
+ }
+ 
+@@ -200,9 +234,19 @@ void btd_bearer_bonded(struct btd_bearer *bearer)
+ 
+ void btd_bearer_connected(struct btd_bearer *bearer)
+ {
++	DBusMessage *msg;
++
+ 	if (!bearer || !bearer->path)
+ 		return;
+ 
++	while (bearer->connects) {
++		msg = bearer->connects->data;
++		g_dbus_send_reply(btd_get_dbus_connection(), msg,
++						DBUS_TYPE_INVALID);
++		bearer->connects = g_slist_remove(bearer->connects, msg);
++		dbus_message_unref(msg);
++	}
++
+ 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
+ 					bearer_interface(bearer->type),
+ 					"Connected");
+@@ -212,10 +256,19 @@ void btd_bearer_disconnected(struct btd_bearer *bearer, uint8_t reason)
+ {
+ 	const char *name;
+ 	const char *message;
++	DBusMessage *msg;
+ 
+ 	if (!bearer || !bearer->path)
+ 		return;
+ 
++	while (bearer->disconnects) {
++		msg = bearer->disconnects->data;
++		g_dbus_send_reply(btd_get_dbus_connection(), msg,
++						DBUS_TYPE_INVALID);
++		bearer->disconnects = g_slist_remove(bearer->disconnects, msg);
++		dbus_message_unref(msg);
++	}
++
+ 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
+ 					bearer_interface(bearer->type),
+ 					"Connected");
+diff --git a/src/device.c b/src/device.c
+index 91b6cc0c65eaae8058cd445c0942ffee57289f0d..b05c508674f194c3c6b0cef96f6ac3bc6a300d9a 100644
+--- a/src/device.c
++++ b/src/device.c
+@@ -250,7 +250,8 @@ struct btd_device {
+ 	bool		temporary;
+ 	bool		connectable;
+ 	bool		cable_pairing;
+-	unsigned int	disconn_timer;
++	unsigned int	disconn_bredr_timer;
++	unsigned int	disconn_le_timer;
+ 	unsigned int	discov_timer;
+ 	unsigned int	temporary_timer;	/* Temporary/disappear timer */
+ 	struct browse_req *browse;		/* service discover request */
+@@ -315,8 +316,13 @@ static const uint16_t uuid_list[] = {
+ 	0
+ };
+ 
++static bool disconnect_le(gpointer user_data);
++static bool disconnect_bredr(gpointer user_data);
+ static int device_browse_gatt(struct btd_device *device, DBusMessage *msg);
+ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg);
++static void device_set_auto_connect(struct btd_device *device, gboolean enable);
++static DBusMessage *connect_profiles(struct btd_device *dev,
++			uint8_t bdaddr_type, DBusMessage *msg, const char *uuid);
+ 
+ static struct bearer_state *get_state(struct btd_device *dev,
+ 							uint8_t bdaddr_type)
+@@ -922,8 +928,11 @@ static void device_free(gpointer user_data)
+ 		sdp_list_free(device->tmp_records,
+ 					(sdp_free_func_t) sdp_record_free);
+ 
+-	if (device->disconn_timer)
+-		timeout_remove(device->disconn_timer);
++	if (device->disconn_bredr_timer)
++		timeout_remove(device->disconn_bredr_timer);
++
++	if (device->disconn_le_timer)
++		timeout_remove(device->disconn_le_timer);
+ 
+ 	if (device->discov_timer)
+ 		timeout_remove(device->discov_timer);
+@@ -1903,23 +1912,6 @@ static gboolean dev_property_set_exists(const GDBusPropertyTable *property,
+ 	return !queue_isempty(device->sirks);
+ }
+ 
+-static bool disconnect_all(gpointer user_data)
+-{
+-	struct btd_device *device = user_data;
+-
+-	device->disconn_timer = 0;
+-
+-	if (device->bredr_state.connected)
+-		btd_adapter_disconnect_device(device->adapter, &device->bdaddr,
+-								BDADDR_BREDR);
+-
+-	if (device->le_state.connected)
+-		btd_adapter_disconnect_device(device->adapter, &device->bdaddr,
+-							device->bdaddr_type);
+-
+-	return FALSE;
+-}
+-
+ int device_block(struct btd_device *device, gboolean update_only)
+ {
+ 	int err = 0;
+@@ -1927,10 +1919,15 @@ int device_block(struct btd_device *device, gboolean update_only)
+ 	if (device->blocked)
+ 		return 0;
+ 
+-	if (device->disconn_timer > 0)
+-		timeout_remove(device->disconn_timer);
++	if (device->disconn_le_timer > 0)
++		timeout_remove(device->disconn_le_timer);
++
++	if (device->disconn_bredr_timer > 0)
++		timeout_remove(device->disconn_bredr_timer);
++
++	disconnect_bredr(device);
+ 
+-	disconnect_all(device);
++	disconnect_le(device);
+ 
+ 	while (device->services != NULL) {
+ 		struct btd_service *service = device->services->data;
+@@ -2022,6 +2019,28 @@ static void dev_disconn_service(gpointer a, gpointer b)
+ 	btd_service_disconnect(a);
+ }
+ 
++static void dev_disconnect_watches_notify(struct btd_device *device)
++{
++	if (!device || !device->watches)
++		return;
++
++	while (device->watches) {
++		struct btd_disconnect_data *data = device->watches->data;
++
++		if (data->watch)
++			/* temporary is set if device is going to be removed */
++			data->watch(device, device->temporary,
++							data->user_data);
++
++		/* Check if the watch has been removed by callback function */
++		if (!g_slist_find(device->watches, data))
++			continue;
++
++		device->watches = g_slist_remove(device->watches, data);
++		g_free(data);
++	}
 +}
 +
-+bool register_signal_handler(void)
-+{
-+	struct sigaction sa = {};
+ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
+ {
+ 	if (device->bonding)
+@@ -2055,7 +2074,7 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
+ 		device->disconnects = g_slist_append(device->disconnects,
+ 						dbus_message_ref(msg));
+ 
+-	if (device->disconn_timer)
++	if (device->disconn_bredr_timer && device->disconn_le_timer)
+ 		return;
+ 
+ 	g_slist_foreach(device->services, dev_disconn_service, NULL);
+@@ -2063,21 +2082,7 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
+ 	g_slist_free(device->pending);
+ 	device->pending = NULL;
+ 
+-	while (device->watches) {
+-		struct btd_disconnect_data *data = device->watches->data;
+-
+-		if (data->watch)
+-			/* temporary is set if device is going to be removed */
+-			data->watch(device, device->temporary,
+-							data->user_data);
+-
+-		/* Check if the watch has been removed by callback function */
+-		if (!g_slist_find(device->watches, data))
+-			continue;
+-
+-		device->watches = g_slist_remove(device->watches, data);
+-		g_free(data);
+-	}
++	dev_disconnect_watches_notify(device);
+ 
+ 	if (!btd_device_is_connected(device)) {
+ 		if (msg)
+@@ -2085,14 +2090,166 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
+ 		return;
+ 	}
+ 
+-	device->disconn_timer = timeout_add_seconds(DISCONNECT_TIMER,
+-							disconnect_all,
++	if (!device->disconn_bredr_timer)
++		device->disconn_bredr_timer = timeout_add_seconds(
++							DISCONNECT_TIMER,
++							disconnect_bredr,
++							device, NULL);
 +
-+	sa.sa_sigaction = sigsegv_handler;
-+	sa.sa_flags = SA_SIGINFO;
-+	if (sigaction(SIGSEGV, &sa, NULL)) {
-+		ksft_print_msg("Registering signal handler for landing pad violation failed\n");
-+		return false;
-+	}
-+
-+	return true;
++	if (!device->disconn_le_timer)
++		device->disconn_le_timer = timeout_add_seconds(
++							DISCONNECT_TIMER,
++							disconnect_le,
+ 							device, NULL);
+ }
+ 
+ bool device_is_disconnecting(struct btd_device *device)
+ {
+-	return device->disconn_timer > 0;
++	return (device->disconn_le_timer > 0) ||
++				(device->disconn_bredr_timer > 0);
 +}
 +
-+long ptrace(int request, pid_t pid, void *addr, void *data);
-+
-+bool cfi_ptrace_test(void)
++static void dev_disconn_bearer_service(gpointer a, gpointer b)
 +{
-+	pid_t pid;
-+	int status, ret = 0;
-+	unsigned long ptrace_test_num = 0, total_ptrace_tests = 2;
++	struct btd_service *service = a;
++	uint8_t type = *(uint8_t *)b;
++	struct btd_profile *profile;
++	bt_uuid_t uuid;
 +
-+	struct user_cfi_state cfi_reg;
-+	struct iovec iov;
++	profile = btd_service_get_profile(service);
++	if (!profile)
++		return;
 +
-+	pid = fork();
++	if (!profile->remote_uuid)
++		return;
 +
-+	if (pid == -1) {
-+		ksft_exit_fail_msg("%s: fork failed\n", __func__);
-+		exit(1);
++	if (bt_string_to_uuid(&uuid, profile->remote_uuid) != 0)
++		return;
++
++	switch (type) {
++	case BDADDR_BREDR:
++		if (uuid.value.u16 < 0x1100 || uuid.value.u16 > 0x11FF)
++			return;
++		break;
++	case BDADDR_LE_PUBLIC:
++	case BDADDR_LE_RANDOM:
++		if (uuid.value.u16 < 0x1800 || uuid.value.u16 > 0x18FF)
++			return;
++		break;
++	default:
++		DBG("Unsupported bearer addr type: %u", type);
++		return;
 +	}
 +
-+	if (pid == 0) {
-+		/* allow to be traced */
-+		ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-+		raise(SIGSTOP);
-+		asm volatile ("la a5, 1f\n"
-+			      "jalr a5\n"
-+			      "nop\n"
-+			      "nop\n"
-+			      "1: nop\n"
-+			      : : : "a5");
-+		exit(11);
-+		/* child shouldn't go beyond here */
++	DBG("Disconnecting profile %s (UUID 0x%04x) for bearer addr type %u",
++	    profile->name ?: "(unknown)", uuid.value.u16, type);
++
++	btd_service_disconnect(service);
++}
++
++static bool disconnect_bredr(gpointer user_data)
++{
++	struct btd_device *device = user_data;
++
++	device->disconn_bredr_timer = 0;
++
++	if (device->bredr_state.connected)
++		btd_adapter_disconnect_device(device->adapter, &device->bdaddr,
++								BDADDR_BREDR);
++
++	return FALSE;
++}
++
++static bool disconnect_le(gpointer user_data)
++{
++	struct btd_device *device = user_data;
++
++	device->disconn_le_timer = 0;
++
++	if (device->le_state.connected)
++		btd_adapter_disconnect_device(device->adapter, &device->bdaddr,
++							device->bdaddr_type);
++
++	return FALSE;
++}
++
++void device_request_disconnect_bearer(struct btd_device *device,
++				uint8_t bdaddr_type, DBusMessage *msg)
++{
++	if (device->bonding)
++		bonding_request_cancel(device->bonding);
++
++	if (device->browse) {
++		if ((device->browse->type == BROWSE_SDP &&
++			bdaddr_type == BDADDR_BREDR) ||
++			(device->browse->type == BROWSE_GATT &&
++			bdaddr_type != BDADDR_BREDR))
++			browse_request_cancel(device->browse);
 +	}
 +
-+	/* parent's code goes here */
-+	iov.iov_base = &cfi_reg;
-+	iov.iov_len = sizeof(cfi_reg);
++	g_slist_foreach(device->services, dev_disconn_bearer_service,
++					&bdaddr_type);
 +
-+	while (ptrace_test_num < total_ptrace_tests) {
-+		memset(&cfi_reg, 0, sizeof(cfi_reg));
-+		waitpid(pid, &status, 0);
-+		if (WIFSTOPPED(status)) {
-+			errno = 0;
-+			ret = ptrace(PTRACE_GETREGSET, pid, (void *)NT_RISCV_USER_CFI, &iov);
-+			if (ret == -1 && errno)
-+				ksft_exit_fail_msg("%s: PTRACE_GETREGSET failed\n", __func__);
-+		} else {
-+			ksft_exit_fail_msg("%s: child didn't stop, failed\n", __func__);
++	dev_disconnect_watches_notify(device);
++
++	if (bdaddr_type == BDADDR_BREDR) {
++		g_slist_free(device->pending);
++		device->pending = NULL;
++
++		if (device->disconn_bredr_timer)
++			return;
++
++		device->disconn_bredr_timer = timeout_add_seconds(
++							DISCONNECT_TIMER,
++							disconnect_bredr,
++							device, NULL);
++	} else {
++		if (device->att_io) {
++			g_io_channel_shutdown(device->att_io, FALSE, NULL);
++			g_io_channel_unref(device->att_io);
++			device->att_io = NULL;
 +		}
 +
-+		switch (ptrace_test_num) {
-+#define CFI_ENABLE_MASK (PTRACE_CFI_LP_EN_STATE |	\
-+			PTRACE_CFI_SS_EN_STATE |	\
-+			PTRACE_CFI_SS_PTR_STATE)
-+		case 0:
-+			if ((cfi_reg.cfi_status.cfi_state & CFI_ENABLE_MASK) != CFI_ENABLE_MASK)
-+				ksft_exit_fail_msg("%s: ptrace_getregset failed, %llu\n", __func__,
-+						   cfi_reg.cfi_status.cfi_state);
-+			if (!cfi_reg.shstk_ptr)
-+				ksft_exit_fail_msg("%s: NULL shadow stack pointer, test failed\n",
-+						   __func__);
-+			break;
-+		case 1:
-+			if (!(cfi_reg.cfi_status.cfi_state & PTRACE_CFI_ELP_STATE))
-+				ksft_exit_fail_msg("%s: elp must have been set\n", __func__);
-+			/* clear elp state. not interested in anything else */
-+			cfi_reg.cfi_status.cfi_state = 0;
++		if (device->disconn_le_timer)
++			return;
 +
-+			ret = ptrace(PTRACE_SETREGSET, pid, (void *)NT_RISCV_USER_CFI, &iov);
-+			if (ret == -1 && errno)
-+				ksft_exit_fail_msg("%s: PTRACE_GETREGSET failed\n", __func__);
-+			break;
-+		default:
-+			ksft_exit_fail_msg("%s: unreachable switch case\n", __func__);
-+			break;
++		device->disconn_le_timer = timeout_add_seconds(
++							DISCONNECT_TIMER,
++							disconnect_le,
++							device, NULL);
++	}
++}
++
++void device_request_connect_bearer(struct btd_device *device,
++				uint8_t bdaddr_type, DBusMessage *msg)
++{
++	int err;
++
++	if (device->bonding) {
++		g_dbus_send_message(dbus_conn, btd_error_in_progress(msg));
++		return;
++	}
++
++	if (bdaddr_type == BDADDR_BREDR)
++		connect_profiles(device, bdaddr_type, msg, NULL);
++	else {
++		if (device->le_state.connected) {
++			dbus_message_new_method_return(msg);
++			return;
 +		}
-+		ptrace(PTRACE_CONT, pid, NULL, NULL);
-+		ptrace_test_num++;
++
++		btd_device_set_temporary(device, false);
++
++		if (device->disable_auto_connect) {
++			device->disable_auto_connect = FALSE;
++			device_set_auto_connect(device, TRUE);
++		}
++
++		err = device_connect_le(device);
++		if (err < 0)
++			g_dbus_send_message(dbus_conn,
++				btd_error_failed(msg, strerror(-err)));
 +	}
-+
-+	waitpid(pid, &status, 0);
-+	if (WEXITSTATUS(status) != 11)
-+		ksft_print_msg("%s, bad return code from child\n", __func__);
-+
-+	ksft_print_msg("%s, ptrace test succeeded\n", __func__);
-+	return true;
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	int ret = 0;
-+	unsigned long lpad_status = 0, ss_status = 0;
-+
-+	ksft_print_header();
-+
-+	ksft_print_msg("Starting risc-v tests\n");
-+
-+	/*
-+	 * Landing pad test. Not a lot of kernel changes to support landing
-+	 * pad for user mode except lighting up a bit in senvcfg via a prctl
-+	 * Enable landing pad through out the execution of test binary
-+	 */
-+	ret = my_syscall5(__NR_prctl, PR_GET_INDIR_BR_LP_STATUS, &lpad_status, 0, 0, 0);
-+	if (ret)
-+		ksft_exit_fail_msg("Get landing pad status failed with %d\n", ret);
-+
-+	if (!(lpad_status & PR_INDIR_BR_LP_ENABLE))
-+		ksft_exit_fail_msg("Landing pad is not enabled, should be enabled via glibc\n");
-+
-+	ret = my_syscall5(__NR_prctl, PR_GET_SHADOW_STACK_STATUS, &ss_status, 0, 0, 0);
-+	if (ret)
-+		ksft_exit_fail_msg("Get shadow stack failed with %d\n", ret);
-+
-+	if (!(ss_status & PR_SHADOW_STACK_ENABLE))
-+		ksft_exit_fail_msg("Shadow stack is not enabled, should be enabled via glibc\n");
-+
-+	if (!register_signal_handler())
-+		ksft_exit_fail_msg("Registering signal handler for SIGSEGV failed\n");
-+
-+	ksft_print_msg("Landing pad and shadow stack are enabled for binary\n");
-+	cfi_ptrace_test();
-+
-+	execute_shadow_stack_tests();
-+
-+	return 0;
-+}
-+
-+#pragma GCC pop_options
-diff --git a/tools/testing/selftests/riscv/cfi/shadowstack.c b/tools/testing/selftests/riscv/cfi/shadowstack.c
-new file mode 100644
-index 000000000000..53387dbd9cf5
---- /dev/null
-+++ b/tools/testing/selftests/riscv/cfi/shadowstack.c
-@@ -0,0 +1,385 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+
-+#include "../../kselftest.h"
-+#include <sys/wait.h>
-+#include <signal.h>
-+#include <fcntl.h>
-+#include <asm-generic/unistd.h>
-+#include <sys/mman.h>
-+#include "shadowstack.h"
-+#include "cfi_rv_test.h"
-+
-+static struct shadow_stack_tests shstk_tests[] = {
-+	{ "shstk fork test\n", shadow_stack_fork_test },
-+	{ "map shadow stack syscall\n", shadow_stack_map_test },
-+	{ "shadow stack gup tests\n", shadow_stack_gup_tests },
-+	{ "shadow stack signal tests\n", shadow_stack_signal_test},
-+	{ "memory protections of shadow stack memory\n", shadow_stack_protection_test }
-+};
-+
-+#define RISCV_SHADOW_STACK_TESTS ARRAY_SIZE(shstk_tests)
-+
-+/* do not optimize shadow stack related test functions */
-+#pragma GCC push_options
-+#pragma GCC optimize("O0")
-+
-+void zar(void)
-+{
-+	unsigned long ssp = 0;
-+
-+	ssp = csr_read(CSR_SSP);
-+	ksft_print_msg("Spewing out shadow stack ptr: %lx\n"
-+			"  This is to ensure shadow stack is indeed enabled and working\n",
-+			ssp);
-+}
-+
-+void bar(void)
-+{
-+	zar();
-+}
-+
-+void foo(void)
-+{
-+	bar();
-+}
-+
-+void zar_child(void)
-+{
-+	unsigned long ssp = 0;
-+
-+	ssp = csr_read(CSR_SSP);
-+	ksft_print_msg("Spewing out shadow stack ptr: %lx\n"
-+			"  This is to ensure shadow stack is indeed enabled and working\n",
-+			ssp);
-+}
-+
-+void bar_child(void)
-+{
-+	zar_child();
-+}
-+
-+void foo_child(void)
-+{
-+	bar_child();
-+}
-+
-+typedef void (call_func_ptr)(void);
-+/*
-+ * call couple of functions to test push pop.
-+ */
-+int shadow_stack_call_tests(call_func_ptr fn_ptr, bool parent)
-+{
-+	ksft_print_msg("dummy calls for sspush and sspopchk in context of %s\n",
-+		       parent ? "parent" : "child");
-+
-+	(fn_ptr)();
-+
-+	return 0;
-+}
-+
-+/* forks a thread, and ensure shadow stacks fork out */
-+bool shadow_stack_fork_test(unsigned long test_num, void *ctx)
-+{
-+	int pid = 0, child_status = 0, parent_pid = 0, ret = 0;
-+	unsigned long ss_status = 0;
-+
-+	ksft_print_msg("Exercising shadow stack fork test\n");
-+
-+	ret = my_syscall5(__NR_prctl, PR_GET_SHADOW_STACK_STATUS, &ss_status, 0, 0, 0);
-+	if (ret) {
-+		ksft_exit_skip("Shadow stack get status prctl failed with errorcode %d\n", ret);
-+		return false;
-+	}
-+
-+	if (!(ss_status & PR_SHADOW_STACK_ENABLE))
-+		ksft_exit_skip("Shadow stack is not enabled, should be enabled via glibc\n");
-+
-+	parent_pid = getpid();
-+	pid = fork();
-+
-+	if (pid) {
-+		ksft_print_msg("Parent pid %d and child pid %d\n", parent_pid, pid);
-+		shadow_stack_call_tests(&foo, true);
+ }
+ 
+ static void add_set(void *data, void *user_data)
+@@ -3880,17 +4037,24 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
+ 	if (!state->connected)
+ 		return;
+ 
++	if (bdaddr_type == BDADDR_BREDR) {
++		if (device->disconn_bredr_timer > 0) {
++			timeout_remove(device->disconn_bredr_timer);
++			device->disconn_bredr_timer = 0;
++		}
 +	} else {
-+		shadow_stack_call_tests(&foo_child, false);
++		if (device->disconn_le_timer > 0) {
++			timeout_remove(device->disconn_le_timer);
++			device->disconn_le_timer = 0;
++		}
 +	}
 +
-+	if (pid) {
-+		ksft_print_msg("Waiting on child to finish\n");
-+		wait(&child_status);
-+	} else {
-+		/* exit child gracefully */
-+		exit(0);
-+	}
-+
-+	if (pid && WIFSIGNALED(child_status)) {
-+		ksft_print_msg("Child faulted, fork test failed\n");
-+		return false;
-+	}
-+
-+	return true;
-+}
-+
-+/* exercise `map_shadow_stack`, pivot to it and call some functions to ensure it works */
-+#define SHADOW_STACK_ALLOC_SIZE 4096
-+bool shadow_stack_map_test(unsigned long test_num, void *ctx)
-+{
-+	unsigned long shdw_addr;
-+	int ret = 0;
-+
-+	ksft_print_msg("Exercising shadow stack map test\n");
-+
-+	shdw_addr = my_syscall3(__NR_map_shadow_stack, NULL, SHADOW_STACK_ALLOC_SIZE, 0);
-+
-+	if (((long)shdw_addr) <= 0) {
-+		ksft_print_msg("map_shadow_stack failed with error code %d\n",
-+			       (int)shdw_addr);
-+		return false;
-+	}
-+
-+	ret = munmap((void *)shdw_addr, SHADOW_STACK_ALLOC_SIZE);
-+
-+	if (ret) {
-+		ksft_print_msg("munmap failed with error code %d\n", ret);
-+		return false;
-+	}
-+
-+	return true;
-+}
-+
-+/*
-+ * shadow stack protection tests. map a shadow stack and
-+ * validate all memory protections work on it
-+ */
-+bool shadow_stack_protection_test(unsigned long test_num, void *ctx)
-+{
-+	unsigned long shdw_addr;
-+	unsigned long *write_addr = NULL;
-+	int ret = 0, pid = 0, child_status = 0;
-+
-+	ksft_print_msg("Exercising shadow stack protection test (WPT)\n");
-+
-+	shdw_addr = my_syscall3(__NR_map_shadow_stack, NULL, SHADOW_STACK_ALLOC_SIZE, 0);
-+
-+	if (((long)shdw_addr) <= 0) {
-+		ksft_print_msg("map_shadow_stack failed with error code %d\n",
-+			       (int)shdw_addr);
-+		return false;
-+	}
-+
-+	write_addr = (unsigned long *)shdw_addr;
-+	pid = fork();
-+
-+	/* no child was created, return false */
-+	if (pid == -1)
-+		return false;
-+
-+	/*
-+	 * try to perform a store from child on shadow stack memory
-+	 * it should result in SIGSEGV
-+	 */
-+	if (!pid) {
-+		/* below write must lead to SIGSEGV */
-+		*write_addr = 0xdeadbeef;
-+	} else {
-+		wait(&child_status);
-+	}
-+
-+	/* test fail, if 0xdeadbeef present on shadow stack address */
-+	if (*write_addr == 0xdeadbeef) {
-+		ksft_print_msg("Shadow stack WPT failed\n");
-+		return false;
-+	}
-+
-+	/* if child reached here, then fail */
-+	if (!pid) {
-+		ksft_print_msg("Shadow stack WPT failed: child reached unreachable state\n");
-+		return false;
-+	}
-+
-+	/* if child exited via signal handler but not for write on ss */
-+	if (WIFEXITED(child_status) &&
-+	    WEXITSTATUS(child_status) != CHILD_EXIT_CODE_SSWRITE) {
-+		ksft_print_msg("Shadow stack WPT failed: child wasn't signaled for write\n");
-+		return false;
-+	}
-+
-+	ret = munmap(write_addr, SHADOW_STACK_ALLOC_SIZE);
-+	if (ret) {
-+		ksft_print_msg("Shadow stack WPT failed: munmap failed, error code %d\n",
-+			       ret);
-+		return false;
-+	}
-+
-+	return true;
-+}
-+
-+#define SS_MAGIC_WRITE_VAL 0xbeefdead
-+
-+int gup_tests(int mem_fd, unsigned long *shdw_addr)
-+{
-+	unsigned long val = 0;
-+
-+	lseek(mem_fd, (unsigned long)shdw_addr, SEEK_SET);
-+	if (read(mem_fd, &val, sizeof(val)) < 0) {
-+		ksft_print_msg("Reading shadow stack mem via gup failed\n");
-+		return 1;
-+	}
-+
-+	val = SS_MAGIC_WRITE_VAL;
-+	lseek(mem_fd, (unsigned long)shdw_addr, SEEK_SET);
-+	if (write(mem_fd, &val, sizeof(val)) < 0) {
-+		ksft_print_msg("Writing shadow stack mem via gup failed\n");
-+		return 1;
-+	}
-+
-+	if (*shdw_addr != SS_MAGIC_WRITE_VAL) {
-+		ksft_print_msg("GUP write to shadow stack memory failed\n");
-+		return 1;
-+	}
-+
-+	return 0;
-+}
-+
-+bool shadow_stack_gup_tests(unsigned long test_num, void *ctx)
-+{
-+	unsigned long shdw_addr = 0;
-+	unsigned long *write_addr = NULL;
-+	int fd = 0;
-+	bool ret = false;
-+
-+	ksft_print_msg("Exercising shadow stack gup tests\n");
-+	shdw_addr = my_syscall3(__NR_map_shadow_stack, NULL, SHADOW_STACK_ALLOC_SIZE, 0);
-+
-+	if (((long)shdw_addr) <= 0) {
-+		ksft_print_msg("map_shadow_stack failed with error code %d\n", (int)shdw_addr);
-+		return false;
-+	}
-+
-+	write_addr = (unsigned long *)shdw_addr;
-+
-+	fd = open("/proc/self/mem", O_RDWR);
-+	if (fd == -1)
-+		return false;
-+
-+	if (gup_tests(fd, write_addr)) {
-+		ksft_print_msg("gup tests failed\n");
-+		goto out;
-+	}
-+
-+	ret = true;
-+out:
-+	if (shdw_addr && munmap(write_addr, SHADOW_STACK_ALLOC_SIZE)) {
-+		ksft_print_msg("munmap failed with error code %d\n", ret);
-+		ret = false;
-+	}
-+
-+	return ret;
-+}
-+
-+volatile bool break_loop;
-+
-+void sigusr1_handler(int signo)
-+{
-+	break_loop = true;
-+}
-+
-+bool sigusr1_signal_test(void)
-+{
-+	struct sigaction sa = {};
-+
-+	sa.sa_handler = sigusr1_handler;
-+	sa.sa_flags = 0;
-+	sigemptyset(&sa.sa_mask);
-+	if (sigaction(SIGUSR1, &sa, NULL)) {
-+		ksft_print_msg("Registering signal handler for SIGUSR1 failed\n");
-+		return false;
-+	}
-+
-+	return true;
-+}
-+
-+/*
-+ * shadow stack signal test. shadow stack must be enabled.
-+ * register a signal, fork another thread which is waiting
-+ * on signal. Send a signal from parent to child, verify
-+ * that signal was received by child. If not test fails
-+ */
-+bool shadow_stack_signal_test(unsigned long test_num, void *ctx)
-+{
-+	int pid = 0, child_status = 0, ret = 0;
-+	unsigned long ss_status = 0;
-+
-+	ksft_print_msg("Exercising shadow stack signal test\n");
-+
-+	ret = my_syscall5(__NR_prctl, PR_GET_SHADOW_STACK_STATUS, &ss_status, 0, 0, 0);
-+	if (ret) {
-+		ksft_print_msg("Shadow stack get status prctl failed with errorcode %d\n", ret);
-+		return false;
-+	}
-+
-+	if (!(ss_status & PR_SHADOW_STACK_ENABLE))
-+		ksft_print_msg("Shadow stack is not enabled, should be enabled via glibc\n");
-+
-+	/* this should be caught by signal handler and do an exit */
-+	if (!sigusr1_signal_test()) {
-+		ksft_print_msg("Registering sigusr1 handler failed\n");
-+		exit(-1);
-+	}
-+
-+	pid = fork();
-+
-+	if (pid == -1) {
-+		ksft_print_msg("Signal test: fork failed\n");
-+		goto out;
-+	}
-+
-+	if (pid == 0) {
-+		while (!break_loop)
-+			sleep(1);
-+
-+		exit(11);
-+		/* child shouldn't go beyond here */
-+	}
-+
-+	/* send SIGUSR1 to child */
-+	kill(pid, SIGUSR1);
-+	wait(&child_status);
-+
-+out:
-+
-+	return (WIFEXITED(child_status) &&
-+		WEXITSTATUS(child_status) == 11);
-+}
-+
-+int execute_shadow_stack_tests(void)
-+{
-+	int ret = 0;
-+	unsigned long test_count = 0;
-+	unsigned long shstk_status = 0;
-+	bool test_pass = false;
-+
-+	ksft_print_msg("Executing RISC-V shadow stack self tests\n");
-+	ksft_set_plan(RISCV_SHADOW_STACK_TESTS);
-+
-+	ret = my_syscall5(__NR_prctl, PR_GET_SHADOW_STACK_STATUS, &shstk_status, 0, 0, 0);
-+
-+	if (ret != 0)
-+		ksft_exit_fail_msg("Get shadow stack status failed with %d\n", ret);
-+
-+	/*
-+	 * If we are here that means get shadow stack status succeeded and
-+	 * thus shadow stack support is baked in the kernel.
-+	 */
-+	while (test_count < RISCV_SHADOW_STACK_TESTS) {
-+		test_pass = (*shstk_tests[test_count].t_func)(test_count, NULL);
-+		ksft_test_result(test_pass, shstk_tests[test_count].name);
-+		test_count++;
-+	}
-+
-+	ksft_finished();
-+
-+	return 0;
-+}
-+
-+#pragma GCC pop_options
-diff --git a/tools/testing/selftests/riscv/cfi/shadowstack.h b/tools/testing/selftests/riscv/cfi/shadowstack.h
-new file mode 100644
-index 000000000000..0be510167de3
---- /dev/null
-+++ b/tools/testing/selftests/riscv/cfi/shadowstack.h
-@@ -0,0 +1,27 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
-+
-+#ifndef SELFTEST_SHADOWSTACK_TEST_H
-+#define SELFTEST_SHADOWSTACK_TEST_H
-+#include <stddef.h>
-+#include <linux/prctl.h>
-+
-+/*
-+ * a cfi test returns true for success or false for fail
-+ * takes a number for test number to index into array and void pointer.
-+ */
-+typedef bool (*shstk_test_func)(unsigned long test_num, void *);
-+
-+struct shadow_stack_tests {
-+	char *name;
-+	shstk_test_func t_func;
-+};
-+
-+bool shadow_stack_fork_test(unsigned long test_num, void *ctx);
-+bool shadow_stack_map_test(unsigned long test_num, void *ctx);
-+bool shadow_stack_protection_test(unsigned long test_num, void *ctx);
-+bool shadow_stack_gup_tests(unsigned long test_num, void *ctx);
-+bool shadow_stack_signal_test(unsigned long test_num, void *ctx);
-+
-+int execute_shadow_stack_tests(void);
-+
-+#endif
+ 	state->connected = false;
+ 	state->initiator = false;
+ 	device->general_connect = FALSE;
+ 
+ 	device_set_svc_refreshed(device, false);
+ 
+-	if (device->disconn_timer > 0) {
+-		timeout_remove(device->disconn_timer);
+-		device->disconn_timer = 0;
+-	}
+-
+ 	/* This could be executed while the client is waiting for Connect() but
+ 	 * att_connect_cb has not been invoked.
+ 	 * In that case reply the client that the connection failed.
+@@ -5359,9 +5523,16 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
+ 	device->pending = NULL;
+ 
+ 	if (btd_device_is_connected(device)) {
+-		if (device->disconn_timer > 0)
+-			timeout_remove(device->disconn_timer);
+-		disconnect_all(device);
++		if (device->disconn_bredr_timer > 0) {
++			timeout_remove(device->disconn_bredr_timer);
++			device->disconn_bredr_timer = 0;
++		}
++		if (device->disconn_le_timer > 0) {
++			timeout_remove(device->disconn_le_timer);
++			device->disconn_le_timer = 0;
++		}
++		disconnect_bredr(device);
++		disconnect_le(device);
+ 	}
+ 
+ 	clear_temporary_timer(device);
+diff --git a/src/device.h b/src/device.h
+index 6ed8affa0d4a9274d30cac9b48e8a6826edefd64..f756fbbd4abfda467a669a38a95ddbcf586d8ff6 100644
+--- a/src/device.h
++++ b/src/device.h
+@@ -141,6 +141,10 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
+ 							uint8_t reason);
+ void device_request_disconnect(struct btd_device *device, DBusMessage *msg);
+ bool device_is_disconnecting(struct btd_device *device);
++void device_request_disconnect_bearer(struct btd_device *device,
++					uint8_t bdaddr_type, DBusMessage *msg);
++void device_request_connect_bearer(struct btd_device *device,
++					uint8_t bdaddr_type, DBusMessage *msg);
+ void device_set_ltk(struct btd_device *device, const uint8_t val[16],
+ 				bool central, uint8_t enc_size);
+ bool btd_device_get_ltk(struct btd_device *device, uint8_t val[16],
 
+---
+base-commit: 5e41d1e1d361e7288964e4c2c5ed90736025662f
+change-id: 20251111-bearer-impl-5f7e396174aa
+
+Best regards,
 -- 
-2.43.0
+Ye He <ye.he@amlogic.com>
 
