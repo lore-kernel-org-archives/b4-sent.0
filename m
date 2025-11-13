@@ -1,10 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Thu, 13 Nov 2025 18:57:45 +0100
-Subject: [PATCH v2 11/12] drm/panel: sofef00: Mark the LPM mode always-on
+Date: Thu, 13 Nov 2025 18:57:46 +0100
+Subject: [PATCH v2 12/12] drm/panel: sofef00: Non-continuous mode and video
+ burst are supported
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251113-sofef00-rebuild-v2-11-e175053061ec@ixit.cz>
+Message-Id: <20251113-sofef00-rebuild-v2-12-e175053061ec@ixit.cz>
 References: <20251113-sofef00-rebuild-v2-0-e175053061ec@ixit.cz>
 In-Reply-To: <20251113-sofef00-rebuild-v2-0-e175053061ec@ixit.cz>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -22,66 +23,43 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1446; i=david@ixit.cz;
- h=from:subject:message-id; bh=dv4mgLKU6V9KA5Q8a78znnVTuWL2bX0IVKAwUPXHk8E=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpFhwVWR0DhH3x/QekF3rJ8kiBp445Bbqdsqmu0
- DdyTzmWe7yJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRYcFQAKCRBgAj/E00kg
- cpEdD/9kDTBHwwsLMzCluvZCQG+MVWx7VHsDr/2TaORCXi68pKGY8svhOAB48NGv5nUCWkQbEHc
- Kep8Qx+rf3Ht1JHdpUoDJ5FwNbeYlPaXJhsQv967lwvTt5sAloZk8j4FYxxCP+HqbZ0oXVDmqNp
- ErPs5Y8tbiFkgUVjFiQ41LrPc8Shl7R9aIw0DKrmTQFSkfpRurb36KC4I8cE3bVD38+k/cEhuy7
- JHq0mH/1PKntoxIm+T7XPQ1tQSwlRCSuXlrnIRcwjvs3/T052qaJXNC1RkM8a51WIGLiHZR7cvK
- de0wjvU35VOGe97oA0JoqYgpQhLRkDjvbO5Wgah2pijoPq1l5pWezoxDTOU91TpC6bdQFRyCLtP
- rLISelPF7lCoUmiJeImxd5y9eEXMDMYLQcJ4Uz1aBuJbha+ki4bW0hR2jwcEdJ8BPTCobiHt24I
- PYR3XAF+4oKRyNz5ciwXz1RVH5drEQpzwOqFuFOENyc9HQ/9GtYriexYuNhrNfnhbxwCyigaIfs
- d+gbrJslaKwhbOEEp6dFOuN1oEkM1FJGBygGVTdI1GBUH+5UFae1d1Tk5R3g2HwWvJ3XIZnQO1P
- /IqDJz9Hq5/fYK5kqOz33UkK9zUidF1ewOpnoJTRfiKcAinFz3bN21ZbcqYmaN72MDgPHZMsJ9M
- /BTsijqnJE+U7QA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=802; i=david@ixit.cz;
+ h=from:subject:message-id; bh=OE1UAGoiypb8yw70x3xMaGL61XZlHwmG/9vzbFRjYK8=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpFhwVlzxcTH43qFIgD1KeqqVc+hIM0YBZcnxct
+ +/4Os9eYZuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRYcFQAKCRBgAj/E00kg
+ cpu6EADNb3oMH/dyM3eFqfmZwlMVEwrACCIRZysVcIzs9Exj+pK1EtPklFvQtPe51Zy8cq6+BoV
+ I/VWjBWU61WgHNTRk3u+pPMnJPM1iEBs6NbhH7XiGNHR5nZqQu7HTmMDDyU7q4PoNeXz74m5MaT
+ j8GF8GhLkQodcCQ3VMKSzbNMQij8xJu8ZmxOMF3J9rbN1qQjlGnioxlKS5Qi7IJnhSJFxkYFdhC
+ hVbnvErRCiap/Lf+r3AQ9JujZiYRhtE78vDaRcGkwVdFMCiQ1UJfApoh9r2pZ3//E4T5H9S0Wbk
+ xIDN17ni2z58jGF00iFOOetDX2BhA0/9agxUUL3Yo6hQiizXX/lujDNf0FLDLEU6FTIiFPp4JZT
+ VaVeWi4nzJkEfRC9awIxeKWdFtbdO7Yl5cIfnEh1TTlZ+yI9tzHEmeDxO/2fh4TZSSkMY8Lg3TV
+ BKXBal4GfW/C/oniamNbZRmLp9P0bzOOjBFGGcqrUtS7uYXNlpsQfmBlmcU/Qq76etBkhkI1kI4
+ aj6SjOCd4ncoaE131T8vGCmgyKGhRbPzTT0Sh7Mj/GjrzmKjZD9ZVsdYktAQpmixQMZKDHPtyLw
+ K28YEkBQaNwODnumgKKmDl9YwYD0rmvJqE/y/Gs0DtdBbLk+ffzMOsH+yhmGZ8pPqWxcTdaHVUe
+ qwQUmeS+ZPhuq6w==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The panel operated in low-power mode, with exception of changing the
-brightness levels.
+The panel supports both modes.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/gpu/drm/panel/panel-samsung-sofef00.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ drivers/gpu/drm/panel/panel-samsung-sofef00.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/gpu/drm/panel/panel-samsung-sofef00.c b/drivers/gpu/drm/panel/panel-samsung-sofef00.c
-index e69a28628b656..8286cad385738 100644
+index 8286cad385738..b330c4a1ad19d 100644
 --- a/drivers/gpu/drm/panel/panel-samsung-sofef00.c
 +++ b/drivers/gpu/drm/panel/panel-samsung-sofef00.c
-@@ -92,8 +92,6 @@ static int sofef00_panel_off(struct sofef00_panel *ctx)
- 	struct mipi_dsi_device *dsi = ctx->dsi;
- 	struct mipi_dsi_multi_context dsi_ctx = { .dsi = dsi };
- 
--	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
--
- 	mipi_dsi_dcs_set_display_off_multi(&dsi_ctx);
- 	mipi_dsi_msleep(&dsi_ctx, 40);
- 
-@@ -180,10 +178,14 @@ static int sofef00_panel_bl_update_status(struct backlight_device *bl)
- 	int err;
- 	u16 brightness = (u16)backlight_get_brightness(bl);
- 
-+	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
-+
- 	err = mipi_dsi_dcs_set_display_brightness_large(dsi, brightness);
- 	if (err < 0)
- 		return err;
- 
-+	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
- 	return 0;
- }
- 
-@@ -234,6 +236,7 @@ static int sofef00_panel_probe(struct mipi_dsi_device *dsi)
+@@ -236,7 +236,8 @@ static int sofef00_panel_probe(struct mipi_dsi_device *dsi)
  
  	dsi->lanes = 4;
  	dsi->format = MIPI_DSI_FMT_RGB888;
-+	dsi->mode_flags = MIPI_DSI_MODE_LPM;
+-	dsi->mode_flags = MIPI_DSI_MODE_LPM;
++	dsi->mode_flags = MIPI_DSI_MODE_VIDEO_BURST |
++			  MIPI_DSI_CLOCK_NON_CONTINUOUS | MIPI_DSI_MODE_LPM;
  
  	ctx->panel.prepare_prev_first = true;
  
