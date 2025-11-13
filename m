@@ -1,10 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Thu, 13 Nov 2025 18:57:40 +0100
-Subject: [PATCH v2 06/12] drm/panel: sofef00: Introduce page macro
+Date: Thu, 13 Nov 2025 18:57:41 +0100
+Subject: [PATCH v2 07/12] drm/panel: sofef00: Add prepare_prev_first flag
+ to drm_panel
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251113-sofef00-rebuild-v2-6-e175053061ec@ixit.cz>
+Message-Id: <20251113-sofef00-rebuild-v2-7-e175053061ec@ixit.cz>
 References: <20251113-sofef00-rebuild-v2-0-e175053061ec@ixit.cz>
 In-Reply-To: <20251113-sofef00-rebuild-v2-0-e175053061ec@ixit.cz>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -22,72 +23,49 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2024; i=david@ixit.cz;
- h=from:subject:message-id; bh=KFWwy/+TPv3o+Pr2om1zoaTzQ1nmZjY1fcOyZY+O5S8=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpFhwUCmAOASb2D9sDkONbkm8n44ZkOV25X9leB
- YYg57le8QGJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRYcFAAKCRBgAj/E00kg
- ciEyEACHuDcOWDQrulCiLG2H//bMfSYhxVLsYaj0YYJ/ameYOo6w/oGJ7ACVG+UK/GAP7KcTjI+
- /UTLfZfsih5a1d773cCB+u0z+s3bVqGdgFAk/Px4lI3dwnsfAzEuFn4z8+ANBdWC83YERoOoQ31
- uTW7JPFmBD3lpDpc2n3oAuC8Yzp0absqpcUTNLqYzJg1jOLaPT40YYHhMaLlZjDfcqICbbAqIFg
- FwHMSvLwv5SpmaEn6CIR58kFi2uyC6nDx6p0dIXPU5CfjhEw8dQaz/B8YQ3jnO3s1JJaWiqnw7u
- aDaKrIVwD//cY4KVlxS0YzcPzPZV84OGtivU2+Upl7Ih1SqGy3AeGceyFj56k7ORTzuMfzP6jW3
- wrcPz7vRe9PIjnALDSwUElwhyBuHNK6fBOPVxibqga3NMCZx8bUDGzCVf3U9VKRIEK/3rfWqzV4
- lXmzpUvn8gtUntCUgZOdr0hFZwwKNuLc9HJToz3wGusDyBKbLaYuYqxzX4Og+Nn2FEQnXbrV7ON
- 5DeJIiNV8YZuuh96/VEBAeurIPAocFSA6pgeBX6FUs3Mnv4HfCWV+l9qsHCLwma1bXnv5isBz+n
- ZnHochmfl5W3i2IpmUIGvq+l1d0wva2LxBD/A23e0NKq2iwxwhc8o/Jc9UthV7CZcWyq1+vOd5o
- SFi0FBbqJjFdq/A==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=918; i=david@ixit.cz;
+ h=from:subject:message-id; bh=4SM9hcft9HxR/OcdKpSF5Ee1W0Jyu8dLyBp//WZCcbk=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpFhwUfInDpnot2Lif7w3ILqlTPGJJ3Br0iShCu
+ 3feEgt+KOeJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRYcFAAKCRBgAj/E00kg
+ cnYBEACQAwA9BeyyljPq7HJOHrhvZh9FYpzIvYsmzMx3dCPmLQ/Uuw3LgrnfNRZkC+Pw3exppn8
+ jzW7JJE8SQTfdIpZ9KegVyMdvSGzayBPe/vya5/rpDatH1qHs2LDN1lWS1V2ZC64dqQjue/33nG
+ Dupj+36uT2MTYklpig2tboB0osJHbvpPNPRLKkE3avGtHppiH7mVkA//heK4AEKvpFmAITJc0Qg
+ D3vFzVAe5efNs2HDairb2vJSrMHPG9oevbvRhREYdQ7Iy1StCr6qaL/6lzkIDr/Boh1JdKb0zEg
+ RDh3RTAHI4x7CrvIPy5MEHVx36S0ZDY90NDxQoOOW4QVNho2HUkrsT8lMImL/yUP7xz6hiCIdiD
+ 9SIgjrNey5IpWRhMOjKArSiwlVxxOB2t4QHqc64/cdNAf+6WYQSwBHnmox2t71YR4Ydhc0Yydy7
+ wbCi6RffWzZOOK8fsLd9Q31rvBKAhzsk2RaSo4cX0EOwlY32dCQXqefs1uMh20IrUJWfHLEoGLh
+ N3HWjT+TwPCtVeO/SBd1DZkef9+Utm+ks75ibtQ99W83nr3yyT3qfnZrILqV6n+tCUJgFEfRzNL
+ QNYr2U7UuKm0a7SWVZaeYmPUEK1nAPoVUzrvOmiW/kn9LUPwUChXDnoccGnvvkCE8E5B98VFI+h
+ CYW5lWzbe6JxS7w==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introducing the macro make the code a bit clearer.
+From: Casey Connolly <casey.connolly@linaro.org>
 
-Looking at other Samsung drivers, I assume it's lvl2, thou due to not
-available documentation it's only educated guess.
+This corrects the host initialisation sequence so that we can send
+DSI/DCS commands in prepare().
 
+Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/gpu/drm/panel/panel-samsung-sofef00.c | 15 ++++++++++-----
- 1 file changed, 10 insertions(+), 5 deletions(-)
+ drivers/gpu/drm/panel/panel-samsung-sofef00.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/drivers/gpu/drm/panel/panel-samsung-sofef00.c b/drivers/gpu/drm/panel/panel-samsung-sofef00.c
-index a3651f0060bde..97122ec8872a1 100644
+index 97122ec8872a1..0d3ae0689a19b 100644
 --- a/drivers/gpu/drm/panel/panel-samsung-sofef00.c
 +++ b/drivers/gpu/drm/panel/panel-samsung-sofef00.c
-@@ -36,6 +36,11 @@ struct sofef00_panel *to_sofef00_panel(struct drm_panel *panel)
- 	return container_of(panel, struct sofef00_panel, panel);
- }
+@@ -242,6 +242,8 @@ static int sofef00_panel_probe(struct mipi_dsi_device *dsi)
+ 	dsi->lanes = 4;
+ 	dsi->format = MIPI_DSI_FMT_RGB888;
  
-+#define sofef00_test_key_on_lvl2(ctx) \
-+	mipi_dsi_dcs_write_seq_multi(ctx, 0xf0, 0x5a, 0x5a)
-+#define sofef00_test_key_off_lvl2(ctx) \
-+	mipi_dsi_dcs_write_seq_multi(ctx, 0xf0, 0xa5, 0xa5)
++	ctx->panel.prepare_prev_first = true;
 +
- static void sofef00_panel_reset(struct sofef00_panel *ctx)
- {
- 	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
-@@ -56,15 +61,15 @@ static int sofef00_panel_on(struct sofef00_panel *ctx)
- 	mipi_dsi_dcs_exit_sleep_mode_multi(&dsi_ctx);
- 	mipi_dsi_usleep_range(&dsi_ctx, 10000, 11000);
- 
--	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xf0, 0x5a, 0x5a);
--
-+	sofef00_test_key_on_lvl2(&dsi_ctx);
- 	mipi_dsi_dcs_set_tear_on_multi(&dsi_ctx, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
-+	sofef00_test_key_off_lvl2(&dsi_ctx);
- 
--	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xf0, 0xa5, 0xa5);
--	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xf0, 0x5a, 0x5a);
-+	sofef00_test_key_on_lvl2(&dsi_ctx);
- 	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xb0, 0x07);
- 	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xb6, 0x12);
--	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xf0, 0xa5, 0xa5);
-+	sofef00_test_key_off_lvl2(&dsi_ctx);
-+
- 	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, MIPI_DCS_WRITE_CONTROL_DISPLAY, 0x20);
- 	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, MIPI_DCS_WRITE_POWER_SAVE, 0x00);
- 
+ 	ctx->panel.backlight = sofef00_create_backlight(dsi);
+ 	if (IS_ERR(ctx->panel.backlight))
+ 		return dev_err_probe(dev, PTR_ERR(ctx->panel.backlight),
 
 -- 
 2.51.0
