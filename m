@@ -1,17 +1,12 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v8 0/2] Add support for sound profile switching and
- leverage for OnePlus slider
-Date: Thu, 13 Nov 2025 17:02:57 +0100
-Message-Id: <20251113-op6-tri-state-v8-0-54073f3874bc@ixit.cz>
+Date: Thu, 13 Nov 2025 17:02:58 +0100
+Subject: [PATCH v8 1/2] Input: add ABS_SND_PROFILE
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIADEBFmkC/3XO3WoCMRAF4FeRXDdLJn+TeOV7FC9iTN2B4kqSB
- n/Yd2/cQkXByzOc7zA3VlKmVNh6dWM5NSo0HXtwHysWx3A8JE77npkU0ggNnk8ny2smXmqoiac
- 9BGECAEjDujnl9EXnZe9z2/NIpU75ssw3fb+yOLWUB7CIQkoNejhQHcp0SXlD+XsYf9gdNvVct
- s4IB/5N2SzlNz82wwXXWoFEgc4AbujcV+L1z9qHRQWv1nZrrI/SxF10UT5b/LcgQL9a7NYrF6y
- yCB53DzvP8y+mjsEDegEAAA==
-X-Change-ID: 20250419-op6-tri-state-ed1a05a11125
+Content-Transfer-Encoding: 8bit
+Message-Id: <20251113-op6-tri-state-v8-1-54073f3874bc@ixit.cz>
+References: <20251113-op6-tri-state-v8-0-54073f3874bc@ixit.cz>
+In-Reply-To: <20251113-op6-tri-state-v8-0-54073f3874bc@ixit.cz>
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
  Jonathan Corbet <corbet@lwn.net>, Jiri Kosina <jikos@kernel.org>, 
  Benjamin Tissoires <bentiss@kernel.org>, 
@@ -24,84 +19,102 @@ To: Dmitry Torokhov <dmitry.torokhov@gmail.com>,
 Cc: linux-input@vger.kernel.org, linux-doc@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
- Gergo Koteles <soyer@irl.hu>, David Heidelberg <david@ixit.cz>, 
- Casey Connolly <casey@connolly.tech>, 
- Konrad Dybcio <konradybcio@kernel.org>
+ Gergo Koteles <soyer@irl.hu>, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2102; i=david@ixit.cz;
- h=from:subject:message-id; bh=rRvKv1BEPoPU3+9Q7iKmxRtmjJdSj7+9UCKsshojBhg=;
- b=kA0DAAgBYAI/xNNJIHIByyZiAGkWATahp+QLvY5EbJpC8VGhVDtZLOC4cLheywBEIOy+YgvZa
- okCMwQAAQgAHRYhBNd6Cc/u3Cu9U6cEdGACP8TTSSByBQJpFgE2AAoJEGACP8TTSSByO5kP+wXy
- EmuWaWzET8c4cNnuAyL6BN2gCaJyUuz1Uox4XB1k7a1pWrElwGw81BpG90wfQEhjFenO2ivub92
- yMwVkGiVqw1PLLJGG1y5leEQAJrG0cDH0V1JTsCS2nyCA4F/v8R7KwRQM/KSHwg2iOOKd0kFb+N
- iQOnW+MxHuf/WAHBjffc7w5Qz9gNUJ0R2M7IdylRGFlU88gZ5560kdds6yjnpHWwPtZpmPy520A
- XQcN/1t3bCudUNClNnRoBwW6DeP346SZ/dxg0KHb4d5Y1TDqRR3JD9cpumzs2qxBiq5t/dHgSnF
- RTItqsNptFi2PmkC6SoNMdJQoWis4fDbpK8zcf6MgMaqDzSbmEMjllm2ZOZ33gwnls3KM7Gp7Fa
- HQQlMP17WK83M0iGQmCvyUCwPXpFgMommp1fLqLQBCWEj8PcXVA86hDYxSfs5JiNwhMptAj7ROg
- BDZW96yc8HXZtzzyq7UXIaL+DuCY1Q3rqbFb8eJ7WFsRN4oG1JYKAjjTusUHSFlehUMu3pNlrzF
- xZkpiT0iEyDgax2b2P8Q6w1gKwlTdus8/2DhG+RCfVDYoZ8wm7DQg4IC3UC5ZWZL97WiopIa3MA
- Q0LpJP48/7mxsdRhMBbD7LoeQBlBj8gHmCT3nc69dJzqqMzAAB5rQyfodjNAIsrysDAw+pVDAW9
- A0Q0u
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2605; i=david@ixit.cz;
+ h=from:subject:message-id; bh=ynFBUiLMOY+lvOYrgSSkX4sfQ4tUkV4SJwWhaS9jV5Q=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpFgE3bK97MXzp5YL7HOjXhvDRHgW7RTRYeuGwG
+ o/3UwuRaDmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRYBNwAKCRBgAj/E00kg
+ cq0qEACegQhFSI9ob0OcxcYpXcowq9RO4oEavqEqwqVKnyXG1Kui8jsQJEkaKOCSHSnbQXMnpmd
+ WZIreor04yTYWFz62HZWLM4lSf951WVz3SLNFCGvVt5rlTpnBn38af6VILT4wPIYW0bXX7SakV7
+ xuBRk41RiKksEWV31b4ViCEfvQhY0P+7WW3iUnQoig9roPWr4iKkyxUD2WwbSzO1iqYtW9XsjuM
+ 2GMoDQEleTil5k596mRYkYjJse1Ka0OmsMMKACKxXsmIADarvPeBCAVAUIgKSQo+KvcSGj9xhOE
+ uQK7L9l6rE6M1nT12NzEmNe43P5RlqKul23TnYYKLdjuy/c9Q/L5GcgzAgyK/6rs804zZ21bWqR
+ S0qH+i7ZBIiJ7uJ8sdvfEpTi0mTprgdBvUlT0ambRX1IunGPm0SuoJFONIYmuqMf6haMi+rCGlg
+ g0Y+BmP5HuVJ5PEmK1ZOHSMmWbDse08OmwdZuwe65S8xLQCkw0W1NCqJZzMPr9T+O1+sXZtue/E
+ hfVH+bzPo5jrUORrSXw71/itRDO7x58cuUChzHULQn0TIN4O/UIa3CmkOro36O8C4uYCsU5390m
+ xHQT7kvqNPVkq1wd6A5AC/o5rSpyHwVdTodsfF2qo7xdqJwulxbnLhadKH/Uw1i4xQn9v6/e/f3
+ 8ioe52z7sgrMANQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series add initial support for OnePlus 6 and 6T, but other OnePlus
-phones contains same mechanism to switch sound profiles.
+From: Gergo Koteles <soyer@irl.hu>
 
-This code was tested for two years within the downstream Snapdragon 845 tree.
-It is now perfectly integrated with feedbackd in the Phosh environment.
+ABS_SND_PROFILE used to describe the state of a multi-value sound profile
+switch. This will be used for the alert-slider on OnePlus phones or other
+phones.
 
-The series is also available (until merged) at
-  https://gitlab.com/sdm845/sdm845-next/-/commits/b4/op6-tri-state
+Profile values added as SND_PROFLE_(SILENT|VIBRATE|RING) identifiers
+to input-event-codes.h so they can be used from DTS.
 
-Changes in v8:
-- Rebased against next-20251113
-- Added R-b, T-b trailers from v7.
-- Link to v7: https://lore.kernel.org/r/20251014-op6-tri-state-v7-0-938a6367197b@ixit.cz
-
-Changes in v7:
-- Separated GPIO number fix from the original commit
-  "arm64: dts: qcom: sdm845-oneplus: Add alert-slider"
-- Rebased again next-20251008
-- Link to v6: https://lore.kernel.org/r/20250731-op6-tri-state-v6-0-569c25cbc8c2@ixit.cz
-
-Changes in v6:
-- Rebased again next-20250731, otherwise just a resent.
-- Link to v5: https://lore.kernel.org/r/20250419-op6-tri-state-v5-0-443127078517@ixit.cz
-
-Changes in v5:
-- Dropped merged
-  "Input: gpio-keys - add support for linux,input-value DTS property"
-- Link to v4: https://lore.kernel.org/all/cover.1677022414.git.soyer@irl.hu/
-
-Changes in v4:
-- DTS: use default debounce-interval, order alphabetically
-- Link to v3: https://lore.kernel.org/lkml/cover.1676850819.git.soyer@irl.hu/
-
-Changes in v3:
-- rename tri-state-key to alert-slider, fix DTS warnings,
-
-Changes in v2:
-- rebase to qcom/for-next
-add SND_PROFILE_* identifiers to input-event-codes.h
-
+Signed-off-by: Gergo Koteles <soyer@irl.hu>
+Reviewed-by: Bjorn Andersson <andersson@kernel.org>
+Tested-by: Guido Günther <agx@sigxcpu.org> # oneplus,fajita & oneplus,enchilada
+Reviewed-by: Guido Günther <agx@sigxcpu.org>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Gergo Koteles (2):
-      Input: add ABS_SND_PROFILE
-      arm64: dts: qcom: sdm845-oneplus: Add alert-slider
+ Documentation/input/event-codes.rst    | 6 ++++++
+ drivers/hid/hid-debug.c                | 1 +
+ include/uapi/linux/input-event-codes.h | 9 +++++++++
+ 3 files changed, 16 insertions(+)
 
- Documentation/input/event-codes.rst                |  6 ++++
- .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 35 ++++++++++++++++++++++
- drivers/hid/hid-debug.c                            |  1 +
- include/uapi/linux/input-event-codes.h             |  9 ++++++
- 4 files changed, 51 insertions(+)
----
-base-commit: 6d7e7251d03f98f26f2ee0dfd21bb0a0480a2178
-change-id: 20250419-op6-tri-state-ed1a05a11125
+diff --git a/Documentation/input/event-codes.rst b/Documentation/input/event-codes.rst
+index 1ead9bb8d9c64..e4f065dd5a1da 100644
+--- a/Documentation/input/event-codes.rst
++++ b/Documentation/input/event-codes.rst
+@@ -241,6 +241,12 @@ A few EV_ABS codes have special meanings:
+     emitted only when the selected profile changes, indicating the newly
+     selected profile value.
+ 
++* ABS_SND_PROFILE:
++
++  - Used to describe the state of a multi-value sound profile switch.
++    An event is emitted only when the selected profile changes,
++    indicating the newly selected profile value.
++
+ * ABS_MT_<name>:
+ 
+   - Used to describe multitouch input events. Please see
+diff --git a/drivers/hid/hid-debug.c b/drivers/hid/hid-debug.c
+index 337d2dc81b4ca..c5865b0d2aaaf 100644
+--- a/drivers/hid/hid-debug.c
++++ b/drivers/hid/hid-debug.c
+@@ -3513,6 +3513,7 @@ static const char *absolutes[ABS_CNT] = {
+ 	[ABS_DISTANCE] = "Distance",	[ABS_TILT_X] = "XTilt",
+ 	[ABS_TILT_Y] = "YTilt",		[ABS_TOOL_WIDTH] = "ToolWidth",
+ 	[ABS_VOLUME] = "Volume",	[ABS_PROFILE] = "Profile",
++	[ABS_SND_PROFILE] = "SoundProfile",
+ 	[ABS_MISC] = "Misc",
+ 	[ABS_MT_SLOT] = "MTSlot",
+ 	[ABS_MT_TOUCH_MAJOR] = "MTMajor",
+diff --git a/include/uapi/linux/input-event-codes.h b/include/uapi/linux/input-event-codes.h
+index 9cd89bcc1d9c0..430552f036616 100644
+--- a/include/uapi/linux/input-event-codes.h
++++ b/include/uapi/linux/input-event-codes.h
+@@ -891,6 +891,7 @@
+ 
+ #define ABS_VOLUME		0x20
+ #define ABS_PROFILE		0x21
++#define ABS_SND_PROFILE		0x22
+ 
+ #define ABS_MISC		0x28
+ 
+@@ -1000,4 +1001,12 @@
+ #define SND_MAX			0x07
+ #define SND_CNT			(SND_MAX+1)
+ 
++/*
++ * ABS_SND_PROFILE values
++ */
++
++#define SND_PROFILE_SILENT	0x00
++#define SND_PROFILE_VIBRATE	0x01
++#define SND_PROFILE_RING	0x02
++
+ #endif
 
-Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+2.51.0
 
