@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Thu, 13 Nov 2025 17:31:01 +0100
-Subject: [PATCH v6 5/7] Input: synaptics-rmi4 - don't do unaligned reads in
- IRQ context
+Date: Thu, 13 Nov 2025 17:31:02 +0100
+Subject: [PATCH v6 6/7] Input: synaptics-rmi4 - read product ID on
+ aftermarket touch ICs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251113-synaptics-rmi4-v6-5-d9836afab801@ixit.cz>
+Message-Id: <20251113-synaptics-rmi4-v6-6-d9836afab801@ixit.cz>
 References: <20251113-synaptics-rmi4-v6-0-d9836afab801@ixit.cz>
 In-Reply-To: <20251113-synaptics-rmi4-v6-0-d9836afab801@ixit.cz>
 To: Kaustabh Chakraborty <kauschluss@disroot.org>, 
@@ -18,20 +18,20 @@ Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, Casey Connolly <casey.connolly@linaro.org>, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2420; i=david@ixit.cz;
- h=from:subject:message-id; bh=2jfYK2Qe0hjHg1A0n2fWZE+x/SealRrGZEErY3nogW8=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpFgfJyed9yL+cvKvJ4fbUVF5fvUPdCG7sJJw9Q
- tRujzGr7WWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRYHyQAKCRBgAj/E00kg
- cnJUEACjvg+R+3IThtsWYfsSlU44fwORQvlngD7TBE+p1lFPZakN2DZTgkPv/2v22gb2BIzTUsd
- kpoPmjnNmqiE/lS+PXpUdNGe3uyMGQseb1KMKxQxrXYKaaQ49Hcl8Ps9SBI+koGDlHPXSM0jIRC
- 0t1Aozmxm28FgCnNXbZymwJhOH5Dny4G5NjBOFx1zmF/tyFeoD3Hm1/xADwRR7KUSYh5PGOx2Lf
- p9Stis5wcPw2HafrfmJioR/X9AFD8OG5Xwc2uOVCr2YWJkK7c0SXdHkCTFackw9NByMtAuYz+Qk
- AO3ygrdPt349yc3gJRRxsXYgA3xoleIurxoIfk/t8BL2XpVbOj8kY5yNG7zbz/n9WhGjP6xnTJB
- w6CZHVv11mvoyvHJU5+W2s85zh/HnsXwLiAQISmRlDwsuuXksmA8IDuoh6fOurUVk9j/1y4GTNI
- Vv9FrnIxm6LEkcG9Xz/D1xJ+3w37D0KJsuzOl6tXBg/UhN6bPo37XE09VZDjTh5ecLrcBO4RRdd
- 7O4dtOvElE55k+lOIH9Uxeio4hIlnTyLQGR+4UOBovVJRv94h60hTpckcoccnWzRClozSP8sWO5
- 1PT5HtQGpb5MXcmcuCmIXgmOVy+EG25RLVqVTvHOZcyJiTJUNqHA75KXl+p5QWVPV+w72gc98eA
- 5a/UUakkugicMgg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1203; i=david@ixit.cz;
+ h=from:subject:message-id; bh=fdg+12tEzxS7iHUQg0vbJynpAJ6kRapCVogkHxp+sbM=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpFgfJJSUY09P6h/jPNxdHSCu3ss2AzYgdLsAQf
+ 40kLo686jaJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRYHyQAKCRBgAj/E00kg
+ cqsOD/9THOF3+00OTbZkhaH5F7LZR7lng7MGQ59Ew3D+EuiaZ7sTjIWBF/om2rwFDqOS7ZsFzf7
+ mKWEI68HbXO5R5M38cOzsyolTb6Q+xdfp7MCUNKHNaCGn7tfrlSWFOYjb66PwZxUD4wTlpDFXL6
+ DAuhi73YTgp+Du2n9QiwRojTH0cZFicStU4l5aFS/efxUkAeKOYZEpa/FZMRUrLWPiUhGnuswee
+ pdVizwYMloQKq+3+ziueGRPNSkySNFm9uuCY++zTIzyLbJWD0/bJzhUBF/ypvCMe3LlnHcGtq3J
+ TU0IBXUi46h8y6GR9ocBlC30p1yreB2yXHTioYQSPOqSSDan6EIo0Gl1HBA5gEvVY0Nbl1y2udR
+ bU0OWwuTdTQACXbL3XUZwmmOTGBXPMimsQkrflx3EtyctOPXdGIleMBr9EnNRW5MNXNIq8nPYIm
+ qKdBqx78dHSqJAjEIxkHEK5jG/0DNsHBQkPWwIH37L5ANGUXA2NWyvEA7hsy8JVwwUjZPjHPiW4
+ dX+vBsXgUEdTFuMih5JJK0nZiYwys7rM9W3sg3/JbtFH93jkM9BkPX2jBN6YnWyGEzO2V3AyY9k
+ 2Onxkmot4F3riXdRmIhIUdyWjTEMwyz4MvsqECpHEp3X2B1vGVMxuLyAck+5Bawiz+EX9mz3GtV
+ nt3lTNcrD3oXYpQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
@@ -39,62 +39,42 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Kaustabh Chakraborty <kauschluss@disroot.org>
 
-Some replacement displays include third-party touch ICs which incur a
-significant penalty (1-2 seconds) when doing certain unaligned reads.
-This is enough to break functionality when it happens in the hot path,
-so adjust the interrupt handler to not read from an unaligned address.
+Some replacement displays include third-party touch ICs which do not
+report the product ID correctly unless we read directly from the
+product ID register. Add a check and a fallback read to handle this.
 
 Signed-off-by: Kaustabh Chakraborty <kauschluss@disroot.org>
 Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/input/rmi4/rmi_driver.c | 20 +++++++++++++-------
- 1 file changed, 13 insertions(+), 7 deletions(-)
+ drivers/input/rmi4/rmi_f01.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
-diff --git a/drivers/input/rmi4/rmi_driver.c b/drivers/input/rmi4/rmi_driver.c
-index c7d2f68e65487..93a190e333c66 100644
---- a/drivers/input/rmi4/rmi_driver.c
-+++ b/drivers/input/rmi4/rmi_driver.c
-@@ -137,9 +137,14 @@ static int rmi_process_interrupt_requests(struct rmi_device *rmi_dev)
- 		return 0;
- 
- 	if (!data->attn_data.data) {
-+		/*
-+		 * Read the device status register as well and ignore it.
-+		 * Some aftermarket ICs have issues with interrupt requests
-+		 * otherwise.
-+		 */
- 		error = rmi_read_block(rmi_dev,
--				data->f01_container->fd.data_base_addr + 1,
--				data->irq_status, data->num_of_irq_regs);
-+				data->f01_container->fd.data_base_addr,
-+				(u8 *)data->irq_status - 1, data->num_of_irq_regs + 1);
- 		if (error < 0) {
- 			dev_err(dev, "Failed to read irqs, code=%d\n", error);
- 			return error;
-@@ -1079,16 +1084,17 @@ int rmi_probe_interrupts(struct rmi_driver_data *data)
- 	data->num_of_irq_regs = (data->irq_count + 7) / 8;
- 
- 	size = BITS_TO_LONGS(data->irq_count) * sizeof(unsigned long);
--	data->irq_memory = devm_kcalloc(dev, size, 4, GFP_KERNEL);
-+	data->irq_memory = devm_kzalloc(dev, size * 4 + 1, GFP_KERNEL);
- 	if (!data->irq_memory) {
- 		dev_err(dev, "Failed to allocate memory for irq masks.\n");
- 		return -ENOMEM;
+diff --git a/drivers/input/rmi4/rmi_f01.c b/drivers/input/rmi4/rmi_f01.c
+index 47be64284b25e..2278e9b6a9207 100644
+--- a/drivers/input/rmi4/rmi_f01.c
++++ b/drivers/input/rmi4/rmi_f01.c
+@@ -250,6 +250,20 @@ static int rmi_f01_read_properties(struct rmi_device *rmi_dev,
+ 		}
  	}
  
--	data->irq_status	= data->irq_memory + size * 0;
--	data->fn_irq_bits	= data->irq_memory + size * 1;
--	data->current_irq_mask	= data->irq_memory + size * 2;
--	data->new_irq_mask	= data->irq_memory + size * 3;
-+	/* The first byte is reserved for the device status register */
-+	data->irq_status	= data->irq_memory + size * 0 + 1;
-+	data->fn_irq_bits	= data->irq_memory + size * 1 + 1;
-+	data->current_irq_mask	= data->irq_memory + size * 2 + 1;
-+	data->new_irq_mask	= data->irq_memory + size * 3 + 1;
- 
- 	return retval;
++	/*
++	 * Some aftermarket ICs put garbage into the product id field unless
++	 * we read directly from the product id register.
++	 */
++	if (props->product_id[0] < 0x20) {
++		ret = rmi_read_block(rmi_dev, query_base_addr + 11,
++				       props->product_id, RMI_PRODUCT_ID_LENGTH);
++		if (ret) {
++			dev_err(&rmi_dev->dev,
++				"Failed to read product id: %d\n", ret);
++			return ret;
++		}
++	}
++
+ 	return 0;
  }
+ 
 
 -- 
 2.51.0
