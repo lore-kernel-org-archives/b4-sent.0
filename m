@@ -1,111 +1,72 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Thu, 13 Nov 2025 17:02:59 +0100
-Subject: [PATCH v8 2/2] arm64: dts: qcom: sdm845-oneplus: Add alert-slider
+From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Date: Thu, 13 Nov 2025 17:10:32 +0100
+Subject: [PATCH v2] riscv: Update MIPS vendor id to 0x127.
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20251113-op6-tri-state-v8-2-54073f3874bc@ixit.cz>
-References: <20251113-op6-tri-state-v8-0-54073f3874bc@ixit.cz>
-In-Reply-To: <20251113-op6-tri-state-v8-0-54073f3874bc@ixit.cz>
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Jonathan Corbet <corbet@lwn.net>, Jiri Kosina <jikos@kernel.org>, 
- Benjamin Tissoires <bentiss@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- =?utf-8?q?Guido_G=C3=BCnther?= <agx@sigxcpu.org>
-Cc: linux-input@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
- Gergo Koteles <soyer@irl.hu>, Casey Connolly <casey@connolly.tech>, 
- David Heidelberg <david@ixit.cz>, Konrad Dybcio <konradybcio@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2077; i=david@ixit.cz;
- h=from:subject:message-id; bh=dqvFSr3SuBIu+543qnkoNfG9uq0Cj2Q9+THYg6kIPK0=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpFgE3UzVo+zDBd/5cErL4bALGyVMggtI90tyiC
- L61dLnRCzWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRYBNwAKCRBgAj/E00kg
- cptuD/4lE1F+wE1YrI3e866r6VZ3BJ1VMxehSO5M5oPDXrvQS+qHmdLrx3q+hAvRBS9JSsSiSi/
- ug7or4TNPrF+DrjgGe3IQRp0LU0ihym5IdlvD0oW5cIy0bYRllgNOa/UChLFvoF6ksGTLoV/3Ir
- phtDYu+BXYXixMNfTZTLj/ke+MC+93Htu2W3Vbho3lzF6nNx0Xnn5RuxIRSlj6Os7/HtIy6YCUg
- X4coQnI15RRjaX4DH0K40kpeIBVo5/yWjyhNH4CxieCCUxHa/1pjAsPEbT16aJAB0RTzzFR/Jmb
- h9lmn7fyVqq0krSmHmElJ0nMU06HlFVMM2IMZEI03iqSJW2HIWyTBofMNbt1JNX633eeJZ0KxBp
- uPJS2+pRSTaJa3l71WRRJR8+aRm6OoqXkE5DH6VHV3NL8qfUqxU4kugignehUOUt1mehbCTofoj
- zSC81jH3Cylj+ghxb0k0h8YOJ1bsGv7boCtJSuqHSa0iJW3cIEm9khd+BQBh9ew9ZnU7AZlQXPp
- oSFHOYM+PRI1kZuja1+t0WdgRTthLBXNXRk5YAlCTgjXHOKlzrTyjoO7tGXKfUHWu37sPSTOsng
- NvlbuYm+coDOtwPESDR7lS7kmEbYBVgrZ3NzAN3X2as/GpGp8MQ7AtVun32yk2H0jl+KiXiAmrq
- y6zlEk0af8zcEZg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251113-mips-vendorid-v2-1-3279489b7f84@htecgroup.com>
+X-B4-Tracking: v=1; b=H4sIAPcCFmkC/12MQQ7CIBBFr9LMWkyhJSauvIfposJQZlEgUImm4
+ e6Odefq5/3kvR0KZsIC126HjJUKxcCgTh0YP4cFBVlmUL3Ssh+kWCkVUTHYmMkK6/ickUdegJ2
+ U0dHr6N0nZk9li/l95Kv8vr8SW3+lKoUUozMP7UarB4c3v6FZcnyms4krTK21D4p8D3euAAAA
+X-Change-ID: 20251031-mips-vendorid-df103aedf117
+To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
+ Albert Ou <aou@eecs.berkeley.edu>, Alexandre Ghiti <alex@ghiti.fr>, 
+ Conor Dooley <conor.dooley@microchip.com>
+Cc: Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
+ linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Chao-ying Fu <cfu@wavecomp.com>, 
+ Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763050233; l=1465;
+ i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
+ bh=htvoMgY/r9ZZuZiS5oLQr0msScykVQRnyI0BkorgU5s=;
+ b=DH0Z+mWY5DvQ1ZxYsIpMOn7gANn02HB+BPNMvkRg7eQ4UStyb1EgAQ25LZVGT9XGYIyk6D91j
+ lGONnSsnfbdAof526t7owx6W4CImuzeLdyRHSBbcDvie3SEj0LzNJCv
+X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
+ pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
+X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Gergo Koteles <soyer@irl.hu>
+From: Chao-ying Fu <cfu@wavecomp.com>
 
-The alert-slider is a tri-state sound profile switch found on the
-OnePlus 6, Android maps the states to "silent", "vibrate" and "ring".
-Expose them as ABS_SND_PROFILE events.
-The previous GPIO numbers were wrong. Update them to the correct ones.
+[1] defines MIPS vendor id as 0x127. All previous MIPS RISC-V patches
+were tested on QEMU, also modified to use 0x722 as MIPS_VENDOR_ID. This
+new value should reflect real hardware.
 
-Co-developed-by: Casey Connolly <casey@connolly.tech>
-Signed-off-by: Casey Connolly <casey@connolly.tech>
-Signed-off-by: Gergo Koteles <soyer@irl.hu>
-Reviewed-by: Konrad Dybcio <konrad.dybcio@linaro.org>
-Tested-by: Guido Günther <agx@sigxcpu.org> # oneplus,fajita & oneplus,enchilada
-Reviewed-by: Guido Günther <agx@sigxcpu.org>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+[1] https://mips.com/wp-content/uploads/2025/06/P8700_Programmers_Reference_Manual_Rev1.84_5-31-2025.pdf
+
+Fixes: a8fed1bc03ac ("riscv: Add xmipsexectl as a vendor extension")
+Signed-off-by: Chao-ying Fu <cfu@wavecomp.com>
+Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 ---
- .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 35 ++++++++++++++++++++++
- 1 file changed, 35 insertions(+)
+Changes in v2:
+- Fix "Fixes" formatting
+- Move "MIPS_VENDOR_ID" to the correct place.
+- Link to v1: https://lore.kernel.org/r/20251103-mips-vendorid-v1-1-4fcb5f4d53fe@htecgroup.com
+---
+ arch/riscv/include/asm/vendorid_list.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-index db6dd04c51bb5..963dc4cc3bbb8 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-@@ -25,6 +25,41 @@ / {
- 	chassis-type = "handset";
- 	qcom,msm-id = <QCOM_ID_SDM845 0x20001>;
+diff --git a/arch/riscv/include/asm/vendorid_list.h b/arch/riscv/include/asm/vendorid_list.h
+index 3b09874d7a6dfb8f8aa45b0be41c20711d539e78..7f5030ee1fcf830b17c6529e9c430fe19ac68b05 100644
+--- a/arch/riscv/include/asm/vendorid_list.h
++++ b/arch/riscv/include/asm/vendorid_list.h
+@@ -7,8 +7,8 @@
  
-+	alert-slider {
-+		compatible = "gpio-keys";
-+		label = "Alert slider";
-+
-+		pinctrl-0 = <&alert_slider_default>;
-+		pinctrl-names = "default";
-+
-+		switch-top {
-+			label = "Silent";
-+			linux,input-type = <EV_ABS>;
-+			linux,code = <ABS_SND_PROFILE>;
-+			linux,input-value = <SND_PROFILE_SILENT>;
-+			gpios = <&tlmm 126 GPIO_ACTIVE_LOW>;
-+			linux,can-disable;
-+		};
-+
-+		switch-middle {
-+			label = "Vibrate";
-+			linux,input-type = <EV_ABS>;
-+			linux,code = <ABS_SND_PROFILE>;
-+			linux,input-value = <SND_PROFILE_VIBRATE>;
-+			gpios = <&tlmm 52 GPIO_ACTIVE_LOW>;
-+			linux,can-disable;
-+		};
-+
-+		switch-bottom {
-+			label = "Ring";
-+			linux,input-type = <EV_ABS>;
-+			linux,code = <ABS_SND_PROFILE>;
-+			linux,input-value = <SND_PROFILE_RING>;
-+			gpios = <&tlmm 24 GPIO_ACTIVE_LOW>;
-+			linux,can-disable;
-+		};
-+	};
-+
- 	aliases {
- 		serial0 = &uart9;
- 		serial1 = &uart6;
+ #define ANDES_VENDOR_ID		0x31e
+ #define MICROCHIP_VENDOR_ID	0x029
++#define MIPS_VENDOR_ID		0x127
+ #define SIFIVE_VENDOR_ID	0x489
+ #define THEAD_VENDOR_ID		0x5b7
+-#define MIPS_VENDOR_ID		0x722
+ 
+ #endif
 
+---
+base-commit: dcb6fa37fd7bc9c3d2b066329b0d27dedf8becaa
+change-id: 20251031-mips-vendorid-df103aedf117
+
+Best regards,
 -- 
-2.51.0
+Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 
