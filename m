@@ -1,99 +1,74 @@
-From: Dumitru Ceclan <dumitru.ceclan@analog.com>
-Date: Fri, 14 Nov 2025 16:52:01 +0200
-Subject: [PATCH v8 21/21] media: i2c: remove MAX96714 driver
+From: Maud Spierings <maudspierings@gocontroll.com>
+Date: Fri, 14 Nov 2025 16:05:17 +0100
+Subject: [PATCH] net: designware-imx: don't set txclk when mode is (r)mii
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251114-gmsl2-3_serdes-v8-21-47499d907990@analog.com>
-References: <20251114-gmsl2-3_serdes-v8-0-47499d907990@analog.com>
-In-Reply-To: <20251114-gmsl2-3_serdes-v8-0-47499d907990@analog.com>
-To: Tomi Valkeinen <tomi.valkeinen+renesas@ideasonboard.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Julien Massot <julien.massot@collabora.com>, Rob Herring <robh@kernel.org>, 
- =?utf-8?q?Niklas_S=C3=B6derlund?= <niklas.soderlund@ragnatech.se>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-gpio@vger.kernel.org, 
- linux-staging@lists.linux.dev, linux-gpio@vger.kernel.org, 
- Cosmin Tanislav <demonsingur@gmail.com>
+Message-Id: <20251114-eqos_rmii-v1-1-4a20cf7cb4c0@gocontroll.com>
+X-B4-Tracking: v=1; b=H4sIACxFF2kC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1NDQ0MT3dTC/OL4otzMTN2U5FRjY2PDxBQzSyMloPqCotS0zAqwWdGxtbU
+ AMT8SMlsAAAA=
+X-Change-ID: 20251114-eqos_rmii-dce3331ad692
+To: Sascha Hauer <s.hauer@pengutronix.de>, 
+ BAREBOX <barebox@lists.infradead.org>
+Cc: Maud Spierings <maudspierings@gocontroll.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763131906; l=2301;
- i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
- bh=vkv6kAMtTD4MZZHDNfXqoAxjfwJqI/ktHZgnc2F++6M=;
- b=PMhd6eoDAQGxvK5DeWiLB+DFnJCLn2SwHKRKCTLYNGlHpYzOfEgx63IdCG0UwUtPjg/uLjc2G
- DLR+r5IW+pQCsoZGHVBdwdvPH/dzbHrWFW+zGQH3oL3QOx+zyAfmrPk
-X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
- pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
-X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763132724; l=1670;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=tOSLmMs/KpGwyt0ek3xHU7qFx3qbudcwf+JlrqEQhdw=;
+ b=Snv/t+eDOO5OiW80jIPvSfeLBD+TDJjgDXKIJf4gxD8hSO9cnoNdybUfLYrBndsoAGZnpDiyO
+ ZVm9ugFZ9G0DtUFvAvki4D9H4mgKEhbiCILEy2EJBc+2z8gXvBoTc1z
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Cosmin Tanislav <demonsingur@gmail.com>
+Add an early exit to eqos_set_txclk() when the mode is (r)mii.
 
-The previous MAX96714 driver has been removed and its functionality has
-been moved to the MAX9296A driver which makes use of the Maxim GMSL2/3
-serializer framework.
+The "tx" clock is actually something called the "slice 81 clock" which
+must always be 50M for the rmii mode. This will later get divided into
+the actual tx clock /2 or /20 which does match those clock rates. Still
+the provided clock != tx clock when the mode is rmii.
 
-Signed-off-by: Cosmin Tanislav <demonsingur@gmail.com>
+Linux also excludes the mii mode from this clock lookup, even though
+the clock rates actually seem to match there. I am not aware why it is
+also excluded, it may be best to wait with merging this until [1] has
+found an answer. But for now I thought it would be best to match Linux
+behaviour.
+
+Link: https://lore.kernel.org/all/aRclKDeHzfJSzpQ3@shell.armlinux.org.uk/ [1]
+
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- MAINTAINERS                |  1 -
- drivers/media/i2c/Kconfig  | 16 ----------------
- drivers/media/i2c/Makefile |  1 -
- 3 files changed, 18 deletions(-)
+ drivers/net/designware_imx.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index ad7e28897062..08ac1170baea 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -15228,7 +15228,6 @@ M:	Julien Massot <julien.massot@collabora.com>
- L:	linux-media@vger.kernel.org
- S:	Maintained
- F:	Documentation/devicetree/bindings/media/i2c/maxim,max96714.yaml
--F:	drivers/media/i2c/max96714.c
+diff --git a/drivers/net/designware_imx.c b/drivers/net/designware_imx.c
+index ec3558fad0..bc3136f8ff 100644
+--- a/drivers/net/designware_imx.c
++++ b/drivers/net/designware_imx.c
+@@ -59,10 +59,15 @@ static unsigned long eqos_get_csr_clk_rate_imx(struct eqos *eqos)
  
- MAX96717 GMSL2 SERIALIZER DRIVER
- M:	Julien Massot <julien.massot@collabora.com>
-diff --git a/drivers/media/i2c/Kconfig b/drivers/media/i2c/Kconfig
-index 4d3a861ee2f0..db827dcd735d 100644
---- a/drivers/media/i2c/Kconfig
-+++ b/drivers/media/i2c/Kconfig
-@@ -1684,22 +1684,6 @@ config VIDEO_DS90UB960
- 	  Device driver for the Texas Instruments DS90UB960
- 	  FPD-Link III Deserializer and DS90UB9702 FPD-Link IV Deserializer.
+ static int eqos_set_txclk(struct eqos *eqos, int speed)
+ {
++	phy_interface_t interface = eqos->interface;
+ 	struct eqos_imx_priv *priv = eqos->priv;
+ 	unsigned long rate;
+ 	int ret;
  
--config VIDEO_MAX96714
--	tristate "Maxim MAX96714 GMSL2 deserializer"
--	depends on OF && I2C && VIDEO_DEV
--	select I2C_MUX
--	select MEDIA_CONTROLLER
--	select GPIOLIB
--	select V4L2_CCI_I2C
--	select V4L2_FWNODE
--	select VIDEO_V4L2_SUBDEV_API
--	help
--	  Device driver for the Maxim MAX96714 GMSL2 Deserializer.
--	  MAX96714 deserializers convert a GMSL2 input to MIPI CSI-2
--	  output.
--
--	  To compile this driver as a module, choose M here: the
--	  module will be called max96714.
- 
- 
- source "drivers/media/i2c/maxim-serdes/Kconfig"
-diff --git a/drivers/media/i2c/Makefile b/drivers/media/i2c/Makefile
-index 96bc49339341..333e4243ea2f 100644
---- a/drivers/media/i2c/Makefile
-+++ b/drivers/media/i2c/Makefile
-@@ -69,7 +69,6 @@ obj-$(CONFIG_VIDEO_LT6911UXE) += lt6911uxe.o
- obj-$(CONFIG_VIDEO_M52790) += m52790.o
- obj-$(CONFIG_VIDEO_MAX9271_LIB) += max9271.o
- obj-$(CONFIG_VIDEO_MAX9286) += max9286.o
--obj-$(CONFIG_VIDEO_MAX96714) += max96714.o
- obj-$(CONFIG_VIDEO_MAXIM_SERDES) += maxim-serdes/
- obj-$(CONFIG_VIDEO_ML86V7667) += ml86v7667.o
- obj-$(CONFIG_VIDEO_MSP3400) += msp3400.o
++	if (interface == PHY_INTERFACE_MODE_RMII ||
++	    interface == PHY_INTERFACE_MODE_MII)
++		return 0;
++
+ 	switch (speed) {
+ 	case SPEED_10:
+ 		rate = 2500000;
 
+---
+base-commit: f485ddfccf960959d25462073528d314b8bf1aea
+change-id: 20251114-eqos_rmii-dce3331ad692
+
+Best regards,
 -- 
-2.43.0
+Maud Spierings <maudspierings@gocontroll.com>
 
