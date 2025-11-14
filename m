@@ -1,82 +1,73 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Fri, 14 Nov 2025 01:14:34 +0100
-Subject: [PATCH v2] ASoC: qcom: sdm845: set quaternary MI2S codec DAI to
- I2S format
+From: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+Date: Fri, 14 Nov 2025 09:11:17 +0800
+Subject: [PATCH] leds: rgb: leds-qcom-lpg: Only enable TRILED when LPG is
+ used by LED
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251114-sdm845-quaternary-v2-1-9d803bf5f7c9@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAGl0FmkC/z3MQQ7CIBBA0as0rJ0GEGxx5T2MCwrTlgRBh2psm
- t5d4sLlW/y/sYIUsLBzszHCdyghpwp5aJibbZoQgq9mkksthFBQ/L1XGp4vuyAlSyug8SfPBy2
- OzrDaPQjH8Pk9r7fqkfIdlpnQ/k9c8k5o2WnVKtObDgQ4G3FoXU4px7heYqjv3Gaa2L5/AdCv5
- G6mAAAA
-X-Change-ID: 20251114-sdm845-quaternary-e9d6d0b513c9
-To: Srinivas Kandagatla <srini@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- "Dr. Git" <drgitx@gmail.com>, Casey Connolly <casey.connolly@linaro.org>, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1341; i=david@ixit.cz;
- h=from:subject:message-id; bh=ARxpTeY9kNYvN6EYXKNHS5nPtDvu8Qayi+gAEHyLru4=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpFnRseuDCJsmzLI7IxIXZzk7++Dy8Mqn2plbaN
- 3Nb4kuFfNWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRZ0bAAKCRBgAj/E00kg
- crilEACvkZu3ZgsuyqRA7SUxj5lMfVN9pu0+B8ucn1W91euBRLxMlqDmLhPILRJAeOZEwwpwaxm
- QLtms3kWoOfpJMBdYLUsvZP43Ke+sVIE7zSPv81i/WRlXSw0TNiHMsFkumBt4whyj011GKkZz18
- wCg8WVbgr1cQBrukb+STxfK83dxBRxsSdHLtYDMtDaNpSYIeVkiqmedSYXGal0BpaQgxLHhZ+cc
- tJqsM+Y1A7J5s3incrmDwXLtIbVH7aA9KteN+ExgZtg5ttBcE/T8O+CFJMMHey7EZgKH3fVNImE
- 4Dz87fOPKWHmCRMw5FMfnUu6dZYa4/EzVh8fi7o6sSTjjSyVEBLSKf4y6CKieDvTpfzD5Fu13f3
- V0j9iu3hSElsc8QmBF5LhpSFdCnA5xc3FBYS/lNLI0SQjNRH9A2tAzP3K+VOpr0l3h0k6cixxIx
- 5YNxv1aP9bWE4f95Qr9CgtdvpJpybuyEBsRSCjtZuQiEQ0O7hZERNazyFo0YUN4AWQRl7+SmhpB
- Z5n1VYX7wjSiMtRYJ0AQG7yetDQsoaDMvPFRwEkdTgdTY69p+p7qkGSWgWw+ezyZD8cBxvEsfrH
- 8sFFsBU37JfeBLtU/xkRkxZffd05B8h/1K/5M3KvbwCYSsMkkd+u6yVGW+1tvSGPZEAENLegYdw
- rFaokJukicQI+Qg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Message-Id: <20251114-lpg_triled_fix-v1-1-9b239832c53c@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIALSBFmkC/x2MQQqAIBAAvxJ7TmhrO9hXIiJzswWx0IhA+nvSc
+ QZmMiSOwgmGKkPkW5IcoQDWFaz7EhwrsYWhbdoeEUn5081XFM923uRRRKTRkDYdNVCiM3LR/3C
+ c3vcDHrP9xWAAAAA=
+X-Change-ID: 20251114-lpg_triled_fix-44491b49b340
+To: kernel@oss.qualcomm.com, Lee Jones <lee@kernel.org>, 
+ Pavel Machek <pavel@kernel.org>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ Bjorn Andersson <andersson@kernel.org>
+Cc: Subbaraman Narayanamurthy <subbaraman.narayanamurthy@oss.qualcomm.com>, 
+ Pavel Machek <pavel@ucw.cz>, linux-leds@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763082680; l=1599;
+ i=fenglin.wu@oss.qualcomm.com; s=20240327; h=from:subject:message-id;
+ bh=ZkSaXsvBfZujLAHvPc5ZBO+V5tX5nGnW9dxKHbr4fm4=;
+ b=gKYlb6Hc81ZK0ommoX8v83TmgQUCzK6Q9d/HyJngwypBSB2SHhoIMm2+iJktSmD+VGHZ9YXBt
+ 7icrT0EtEErB1L1MZL4LFkA3f0FqwN/iXxbEVSLjr9Mf+PyCteFvYYg
+X-Developer-Key: i=fenglin.wu@oss.qualcomm.com; a=ed25519;
+ pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
+X-Endpoint-Received: by B4 Relay for fenglin.wu@oss.qualcomm.com/20240327 with auth_id=406
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: "Dr. Git" <drgitx@gmail.com>
+Enabling the TRILED channel will cause a voltage increase on its power
+supply, which is unnecessary if the LPG channel is not being used to
+control an LED.
 
-We configure the codec DAI format for primary and secondary but not the
-quaternery MI2S path. Add the missing configuration to enable speaker
-codecs on the quaternary MI2S like the MAX9827 found on the OnePlus 6.
-
-Signed-off-by: Dr. Git <drgitx@gmail.com>
-Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Fixes: 24e2d05d1b68 ("leds: Add driver for Qualcomm LPG")
+Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 ---
-Changes in v2:
- - Rebased on top of next-20251113
----
- sound/soc/qcom/sdm845.c | 2 ++
- 1 file changed, 2 insertions(+)
+ drivers/leds/rgb/leds-qcom-lpg.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/sound/soc/qcom/sdm845.c b/sound/soc/qcom/sdm845.c
-index e18a8e44f2db5..0ce9dff4dc525 100644
---- a/sound/soc/qcom/sdm845.c
-+++ b/sound/soc/qcom/sdm845.c
-@@ -365,10 +365,12 @@ static int sdm845_snd_startup(struct snd_pcm_substream *substream)
- 		snd_soc_dai_set_fmt(codec_dai, codec_dai_fmt);
- 		break;
- 	case QUATERNARY_MI2S_RX:
-+		codec_dai_fmt |= SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_I2S;
- 		snd_soc_dai_set_sysclk(cpu_dai,
- 			Q6AFE_LPASS_CLK_ID_QUAD_MI2S_IBIT,
- 			MI2S_BCLK_RATE, SNDRV_PCM_STREAM_PLAYBACK);
- 		snd_soc_dai_set_fmt(cpu_dai, fmt);
-+		snd_soc_dai_set_fmt(codec_dai, codec_dai_fmt);
- 		break;
+diff --git a/drivers/leds/rgb/leds-qcom-lpg.c b/drivers/leds/rgb/leds-qcom-lpg.c
+index 4f2a178e3d265a2cc88e651d3e2ca6ae3dfac2e2..234059b4c0f49d0398030ae5f86967fc1905206d 100644
+--- a/drivers/leds/rgb/leds-qcom-lpg.c
++++ b/drivers/leds/rgb/leds-qcom-lpg.c
+@@ -2,7 +2,7 @@
+ /*
+  * Copyright (c) 2017-2022 Linaro Ltd
+  * Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+- * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
++ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+  */
+ #include <linux/bits.h>
+ #include <linux/bitfield.h>
+@@ -1247,7 +1247,9 @@ static int lpg_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
  
- 	case QUATERNARY_TDM_RX_0:
+ 	lpg_apply(chan);
+ 
+-	triled_set(lpg, chan->triled_mask, chan->enabled ? chan->triled_mask : 0);
++	/* Only control TRILED if the LPG channel is used by TRILED */
++	if (chan->in_use && chan->triled_mask)
++		triled_set(lpg, chan->triled_mask, chan->enabled ? chan->triled_mask : 0);
+ 
+ out_unlock:
+ 	mutex_unlock(&lpg->lock);
 
 ---
-base-commit: 6d7e7251d03f98f26f2ee0dfd21bb0a0480a2178
-change-id: 20251114-sdm845-quaternary-e9d6d0b513c9
+base-commit: ea1c4c7e648d1ca91577071fc42fdc219521098c
+change-id: 20251114-lpg_triled_fix-44491b49b340
 
 Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 
