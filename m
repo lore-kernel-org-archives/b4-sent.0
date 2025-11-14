@@ -1,73 +1,130 @@
-From: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
-Date: Fri, 14 Nov 2025 09:11:17 +0800
-Subject: [PATCH] leds: rgb: leds-qcom-lpg: Only enable TRILED when LPG is
- used by LED
+From: Hrishabh Rajput <hrishabh.rajput@oss.qualcomm.com>
+Subject: [PATCH v7 0/2] Add support for Gunyah Watchdog
+Date: Fri, 14 Nov 2025 07:57:08 +0000
+Message-Id: <20251114-gunyah_watchdog-v7-0-f5c155b941d5@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251114-lpg_triled_fix-v1-1-9b239832c53c@oss.qualcomm.com>
-X-B4-Tracking: v=1; b=H4sIALSBFmkC/x2MQQqAIBAAvxJ7TmhrO9hXIiJzswWx0IhA+nvSc
- QZmMiSOwgmGKkPkW5IcoQDWFaz7EhwrsYWhbdoeEUn5081XFM923uRRRKTRkDYdNVCiM3LR/3C
- c3vcDHrP9xWAAAAA=
-X-Change-ID: 20251114-lpg_triled_fix-44491b49b340
-To: kernel@oss.qualcomm.com, Lee Jones <lee@kernel.org>, 
- Pavel Machek <pavel@kernel.org>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- Bjorn Andersson <andersson@kernel.org>
-Cc: Subbaraman Narayanamurthy <subbaraman.narayanamurthy@oss.qualcomm.com>, 
- Pavel Machek <pavel@ucw.cz>, linux-leds@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Fenglin Wu <fenglin.wu@oss.qualcomm.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763082680; l=1599;
- i=fenglin.wu@oss.qualcomm.com; s=20240327; h=from:subject:message-id;
- bh=ZkSaXsvBfZujLAHvPc5ZBO+V5tX5nGnW9dxKHbr4fm4=;
- b=gKYlb6Hc81ZK0ommoX8v83TmgQUCzK6Q9d/HyJngwypBSB2SHhoIMm2+iJktSmD+VGHZ9YXBt
- 7icrT0EtEErB1L1MZL4LFkA3f0FqwN/iXxbEVSLjr9Mf+PyCteFvYYg
-X-Developer-Key: i=fenglin.wu@oss.qualcomm.com; a=ed25519;
- pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
-X-Endpoint-Received: by B4 Relay for fenglin.wu@oss.qualcomm.com/20240327 with auth_id=406
+X-B4-Tracking: v=1; b=H4sIANTgFmkC/3XQzWrDMAwH8FcpPs9F8lfinvYeYww7VhLDGm9xm
+ 62UvPucHrZAlovgL9BPSHeWaYyU2elwZyNNMcc0lFA9HVjTu6EjHkPJTIDQYEHy7jrcXP/25S5
+ NH1LHRRBGWSVrEpaVqY+R2vj9EF9eS+5jvqTx9lgw4dLdtybkwKUjY0FLIOWfU87Hz6t7b9L5f
+ CyFLeQkfhkEMFtGcOTe2qAwKK007DByxYh6y8jCkAlIrpznMewwasVI3DKqHFU575EIUaLeYfQ
+ fg1BtGV0Y1RiSrTfksdphzIpBsWXM8uLaBcC2Dq757zfzPP8A8OS6pBgCAAA=
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Wim Van Sebroeck <wim@linux-watchdog.org>, 
+ Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-watchdog@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Pavan Kondeti <pavan.kondeti@oss.qualcomm.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Hrishabh Rajput <hrishabh.rajput@oss.qualcomm.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763107035; l=4303;
+ i=hrishabh.rajput@oss.qualcomm.com; s=20250903; h=from:subject:message-id;
+ bh=ou/v6VhoPQAO7pUS4XTVnp0ZdlZ4Z3OMCV2k8W11li0=;
+ b=EOjUc77omRQcAlnkbgUoqq/0z4st7Q2jqXkCUVZ32BIznCgns+VhibZETcLWz9n5dCjU+b7FP
+ fUGgg0HAecABpmuaBXYW9TKIKz7lzTLdNxr3oJAxi5XkVkF5FRU1VrB
+X-Developer-Key: i=hrishabh.rajput@oss.qualcomm.com; a=ed25519;
+ pk=syafMitrjr3b/OYAtA2Im06AUb3fxZY2vJ/t4iCPmgw=
+X-Endpoint-Received: by B4 Relay for hrishabh.rajput@oss.qualcomm.com/20250903 with auth_id=509
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enabling the TRILED channel will cause a voltage increase on its power
-supply, which is unnecessary if the LPG channel is not being used to
-control an LED.
+Gunyah is a Type-I hypervisor which was introduced in the patch series
+[1]. It is an open source hypervisor. The source repo is available at
+[2].
 
-Fixes: 24e2d05d1b68 ("leds: Add driver for Qualcomm LPG")
-Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+The Gunyah Hypervisor doesn't allow its Virtual Machines to directly
+access the MMIO watchdog. It either provides the fully emulated MMIO
+based watchdog interface or the SMC-based watchdog interface depending
+on the hypervisor configuration.
+The SMC-based watchdog follows ARM's SMC Calling Convention (SMCCC)
+version 1.1 and uses Vendor Specific Hypervisor Service Calls space.
+
+This patch series adds support for the SMC-based watchdog interface
+provided by the Gunyah Hypervisor.
+
+This series is tested on SM8750 platform.
+
+[1]
+https://lore.kernel.org/all/20240222-gunyah-v17-0-1e9da6763d38@quicinc.com/
+
+[2]
+https://github.com/quic/gunyah-hypervisor
+
+Signed-off-by: Hrishabh Rajput <hrishabh.rajput@oss.qualcomm.com>
 ---
- drivers/leds/rgb/leds-qcom-lpg.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+Changes in v7:
+- Convert local `const` arrays to `static const` to optimize
+  initialization and stack allocation.
+- Link to v6: https://lore.kernel.org/r/20251112-gunyah_watchdog-v6-0-38ad01f8dac0@oss.qualcomm.com
 
-diff --git a/drivers/leds/rgb/leds-qcom-lpg.c b/drivers/leds/rgb/leds-qcom-lpg.c
-index 4f2a178e3d265a2cc88e651d3e2ca6ae3dfac2e2..234059b4c0f49d0398030ae5f86967fc1905206d 100644
---- a/drivers/leds/rgb/leds-qcom-lpg.c
-+++ b/drivers/leds/rgb/leds-qcom-lpg.c
-@@ -2,7 +2,7 @@
- /*
-  * Copyright (c) 2017-2022 Linaro Ltd
-  * Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
-- * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
-+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-  */
- #include <linux/bits.h>
- #include <linux/bitfield.h>
-@@ -1247,7 +1247,9 @@ static int lpg_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
- 
- 	lpg_apply(chan);
- 
--	triled_set(lpg, chan->triled_mask, chan->enabled ? chan->triled_mask : 0);
-+	/* Only control TRILED if the LPG channel is used by TRILED */
-+	if (chan->in_use && chan->triled_mask)
-+		triled_set(lpg, chan->triled_mask, chan->enabled ? chan->triled_mask : 0);
- 
- out_unlock:
- 	mutex_unlock(&lpg->lock);
+Changes in v6:
+- Fix build issues reported by the kernel test robot on PowerPC and RISC-V
+  architectures by adding IS_ENABLED(CONFIG_HAVE_ARM_SMCCC_DISCOVERY) check
+  before calling arm_smccc_hypervisor_has_uuid().
+- Link to v5: https://lore.kernel.org/r/20251107-gunyah_watchdog-v5-0-4c6e3fb6eb17@oss.qualcomm.com
+
+Changes in v5:
+- Move the gunyah_wdt device registration from the SMEM driver to the
+  SCM driver. Add additional logic to check if we're running under the
+  Gunyah Hypervisor.
+- Implement .remove() for gunyah_wdt driver to make it not persistent.
+- Link to v4: https://lore.kernel.org/r/20251031-gunyah_watchdog-v4-0-7abb1ee11315@oss.qualcomm.com
+
+Changes in v4:
+- Move the contents of gunyah_wdt_init() to qcom_smem_probe() to make
+  sure we're registering the watchdog only on the Qualcomm devices.
+- Link to v3: https://lore.kernel.org/r/20251028-gunyah_watchdog-v3-1-e6d1ea438b1d@oss.qualcomm.com
+
+Changes in v3:
+- Move back to platform driver model. In module init, determine if we're
+  running on a Qualcomm device and there is no supported memory-mapped
+  watchdog present. Then proceed to register platform device and driver
+  for SMC-based Gunyah watchdog.
+- To determine if we're running on a Qualcomm device we're checking the
+  presence of "qcom,smem" compatible devicetree node. As an alternative,
+  we also tried using socinfo for the same purpose. When both
+  gunyah_wdt and socinfo drivers were made built-in, it couldn't be
+  ensured that the socinfo driver probed successfully before gunyah_wdt
+  init was called. Hence, we resorted to the devicetree node approach.
+- Limit the errors listed in gunyah_error to the ones that can be
+  produced by the driver.
+- Link to v2: https://lore.kernel.org/r/20251006-gunyah_watchdog-v2-1-b99d41d45450@oss.qualcomm.com
+
+Changes in v2:
+- Move away from platform driver model since the devicetree overlay does
+  not happen by default.
+  See https://lore.kernel.org/all/91002189-9d9e-48a2-8424-c42705fed3f8@quicinc.com/
+- Only when MMIO-based watchdog device is absent in the devicetree,
+  proceed to detect SMC-based watchdog using GUNYAH_WDT_STATUS SMC and
+  initialize if SMC returns success.
+- Implement pm notifiers as gunyah_wdt is no longer a platform driver so
+  dev_pm_ops cannot be used.
+- Pretimeout IRQ is no longer supported.
+- Remove struct gunyah_wdt since it is not required.
+- Move the contents of gunyah_errno.h to gunyah_wdt.c.
+- Link to v1: https://lore.kernel.org/r/20250903-gunyah_watchdog-v1-0-3ae690530e4b@oss.qualcomm.com
 
 ---
-base-commit: ea1c4c7e648d1ca91577071fc42fdc219521098c
-change-id: 20251114-lpg_triled_fix-44491b49b340
+Hrishabh Rajput (2):
+      firmware: qcom: scm: Register gunyah watchdog device
+      watchdog: Add driver for Gunyah Watchdog
+
+ MAINTAINERS                      |   1 +
+ drivers/firmware/qcom/qcom_scm.c |  53 ++++++++
+ drivers/watchdog/Kconfig         |  13 ++
+ drivers/watchdog/Makefile        |   1 +
+ drivers/watchdog/gunyah_wdt.c    | 260 +++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 328 insertions(+)
+---
+base-commit: e9a6fb0bcdd7609be6969112f3fbfcce3b1d4a7c
+change-id: 20250903-gunyah_watchdog-2d2649438e29
 
 Best regards,
 -- 
-Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+Hrishabh Rajput <hrishabh.rajput@oss.qualcomm.com>
 
