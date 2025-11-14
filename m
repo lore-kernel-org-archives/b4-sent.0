@@ -1,11 +1,10 @@
 From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Fri, 14 Nov 2025 15:11:50 +0100
-Subject: [PATCH 2/3] arm64: dts: freescale: moduline-display: fix
- compatible
+Date: Fri, 14 Nov 2025 15:11:51 +0100
+Subject: [PATCH 3/3] arm64: dts: freescale: tx8p-ml81: fix eqos nvmem-cells
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251114-disp_fix-v1-2-49cbe826afc2@gocontroll.com>
+Message-Id: <20251114-disp_fix-v1-3-49cbe826afc2@gocontroll.com>
 References: <20251114-disp_fix-v1-0-49cbe826afc2@gocontroll.com>
 In-Reply-To: <20251114-disp_fix-v1-0-49cbe826afc2@gocontroll.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,42 +16,60 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  Maud Spierings <maudspierings@gocontroll.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763129510; l=1271;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763129510; l=1812;
  i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=A/MMLDiGbqabv2busN3iJ3qqT/bsCqxgmXodKtDcUZg=;
- b=n6l0t60l1FOiDpkQxRskl1y+G6Fe9wDxFVerCWKAVl1g46IaaWaigUVBuXS4d2BihfojgfmWO
- L1HQN67q9CABf0heICn6pKZWeZHk4xLnmQVASPaqu+1uZfTrmPWYx8d
+ bh=AP85dujUDPLr0xfJMQvOUhdr0wRHQGnqWqUmnerLMaM=;
+ b=uZDz+8SuWZ99IoSCwkdW8s1bBJhE5najT2t/1qht6sMDSBxp4Gfgt+5O5SF6WfAjfcMoCJvBt
+ o/e3r7ghfbxBzZSWzN47ZvA/We6g0DBnp6uuBnGsVWEzXr5XrHZCeip
 X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
  pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
 X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The compatibles should include the SoM compatible, this board is based
-on the Ka-Ro TX8P-ML81 SoM, so add it. Also add the hardware revision to
-the board compatible.
+On this SoM eqos is the primary ethernet interface, Ka-Ro fuses the
+address for it in eth_mac1, eth_mac2 seems to be left unfused. In their
+downstream u-boot they fetch it from eth_mac1 [1][2], by setting alias
+of eqos to ethernet0, the driver then fetches the mac address based on
+the alias number.
 
-This is a breaking change, but it is early enough that it can be
-corrected without causing any issues.
+Set eqos to read from eth_mac1 instead of eth_mac2. Also set fec to
+point at eth_mac2 as it may be fused later even though it is disabled
+by default.
 
-Fixes: 03f07be54cdc ("arm64: dts: freescale: Add the GOcontroll Moduline Display baseboard")
+With this changed barebox is now capable of loading the correct address.
+
+Link: https://github.com/karo-electronics/karo-tx-uboot/blob/380543278410bbf04264d80a3bfbe340b8e62439/drivers/net/dwc_eth_qos.c#L1167 [1]
+Link: https://github.com/karo-electronics/karo-tx-uboot/blob/380543278410bbf04264d80a3bfbe340b8e62439/arch/arm/dts/imx8mp-karo.dtsi#L12 [2]
+
+Fixes: bac63d7c5f46 ("arm64: dts: freescale: add Ka-Ro Electronics tx8p-ml81 COM")
 Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106.dts | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81.dtsi | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106.dts b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106.dts
-index 88ad422c2760..399230144ce3 100644
---- a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106.dts
-+++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106.dts
-@@ -9,7 +9,7 @@
- #include "imx8mp-tx8p-ml81.dtsi"
+diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81.dtsi b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81.dtsi
+index fe8ba16eb40e..761ee046eb72 100644
+--- a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81.dtsi
++++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81.dtsi
+@@ -47,6 +47,7 @@ &eqos {
+ 				 <&clk IMX8MP_SYS_PLL2_100M>,
+ 				 <&clk IMX8MP_SYS_PLL2_50M>;
+ 	assigned-clock-rates = <266000000>, <100000000>, <50000000>;
++	nvmem-cells = <&eth_mac1>;
+ 	phy-handle = <&ethphy0>;
+ 	phy-mode = "rmii";
+ 	pinctrl-0 = <&pinctrl_eqos>;
+@@ -75,6 +76,10 @@ ethphy0: ethernet-phy@0 {
+ 	};
+ };
  
- / {
--	compatible = "gocontroll,moduline-display", "fsl,imx8mp";
-+	compatible = "gocontroll,moduline-display-106", "karo,tx8p-ml81", "fsl,imx8mp";
- 	chassis-type = "embedded";
- 	hardware = "Moduline Display V1.06";
- 	model = "GOcontroll Moduline Display baseboard";
++&fec {
++	nvmem-cells = <&eth_mac2>;
++};
++
+ &gpio1 {
+ 	gpio-line-names = "SODIMM_152",
+ 			  "SODIMM_42",
 
 -- 
 2.51.2
