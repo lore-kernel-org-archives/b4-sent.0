@@ -1,99 +1,87 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Fri, 14 Nov 2025 16:20:25 +0100
-Subject: [PATCH v15 14/14] arm64: dts: rockchip: enable vicap dvp on
- wolfvision pf5 io expander
+From: David Heidelberg <david@ixit.cz>
+Date: Sat, 15 Nov 2025 19:43:58 +0100
+Subject: [PATCH v3] ASoC: qcom: sdm845: set quaternary MI2S codec DAI to
+ I2S format
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20240220-rk3568-vicap-v15-14-8f4915ee365d@collabora.com>
-References: <20240220-rk3568-vicap-v15-0-8f4915ee365d@collabora.com>
-In-Reply-To: <20240220-rk3568-vicap-v15-0-8f4915ee365d@collabora.com>
-To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
- Maxime Chevallier <maxime.chevallier@bootlin.com>, 
- =?utf-8?q?Th=C3=A9o_Lebrun?= <theo.lebrun@bootlin.com>, 
- Thomas Petazzoni <thomas.petazzoni@bootlin.com>, 
- Gerald Loacker <gerald.loacker@wolfvision.net>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Markus Elfring <Markus.Elfring@web.de>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh+dt@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Kever Yang <kever.yang@rock-chips.com>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Collabora Kernel Team <kernel@collabora.com>, 
- Paul Kocialkowski <paulk@sys-base.io>, 
- Alexander Shiyan <eagle.alexander923@gmail.com>, 
- Val Packett <val@packett.cool>, Rob Herring <robh@kernel.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, 
- Michael Riesch <michael.riesch@collabora.com>, 
- Michael Riesch <michael.riesch@collabora.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763133617; l=1721;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=0H9SWagLsWuudSJ0hjW87B9xG48FbT9CuvPeqAKM5fI=;
- b=ON8s1W20TM2jD3yggSPiBMjn3TVdy681hETUmgkXMbCzQ5bIRhnbvJJbaQ2nq4R7R+7KYcocC
- kcQo4gi6jRWDuQiwLMpSjUDm9L/HBnw6KmYYdm+LkgOlG3FcDZKi8dm
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+Message-Id: <20251115-sdm845-quaternary-v3-1-c16bf19128ac@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAO3JGGkC/33OsQ6CMBSF4VcxnS1pCxXq5HsYh9Je5CbY6i0Sk
+ PDuVgdHx384X87KEhBCYsfdyggmTBhDjnK/Y6634QocfW6mhNJSyoonf2sqzR9POwIFSwsH4w9
+ etFqWzrC8uxN0OH/N8yV3R/HGx57A/iShRC21qnVVVKYxNZfc2QHawsUQ4jAspwGzHYtI1w/ZY
+ xojLd+Xk/rA/w5NKnvGN6JsO93VzpxwxrFwL3bZtu0NDFAJtPMAAAA=
+X-Change-ID: 20251114-sdm845-quaternary-e9d6d0b513c9
+To: Srinivas Kandagatla <srini@kernel.org>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ Robert Oscilowski <drgitx@gmail.com>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1499; i=david@ixit.cz;
+ h=from:subject:message-id; bh=PHx2oXpAkKgIFICWfAbsH+E/7ElM+CcL2wslsUfnDDc=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpGMnvkMOhmQGMZfc9yygG3wSWhLGXXFps+EK6U
+ dYBprr6drGJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRjJ7wAKCRBgAj/E00kg
+ cu9lEACxO+7i0H+nj3YGNeIJ7WxlabxhZHlSgl6KOnCkGrifVMOkAxG+wFCjF3xwy8UXZJj+N+f
+ d41fmnrxOKjqO0JfwAM3UYWre9Ig/QR0t9VfB9eYdQBNnuX+kPLU44hDFjKSJFIO+Uro9ylNGKZ
+ vJtbkqTlxzSvI0xxMnfc+Bjf/oEkqHj5v5MMAd6UcEUjlTHfYXqcrwX1cOO5S7mdFPAmfvCeyEZ
+ /FLXLBz0C7ExgfrxrnvynDdCFHnR/nYxl/eS8ncF6gc+i9FIcVBnb17Bg+fAiD9WGwhgiJ+O2D+
+ 5Jw1SgrVDFuWgH4HKdIfA0CxXqBvpS1Y+06gumqoDPhQnBUHdaIEcGCgX4/Wk4q57i4tgEy6TPM
+ V1EVIoDItvpNv/05xqzpnyDm4uzqaQ+lWqu5ousD8akzt8wN6agkPaFTeYUR/K/K7GmWQ7HSegR
+ CIvzfVFIYN+Bbk96g05GPEAxg5HzU4oqLXMv2R0WkVnHoTBOwTSXBEdjeZmJoR7nWoNrggvTXXr
+ D+PGokXhp8+TEpYC9RaPNqCkEvuODCTTUOjeYMqZaY9Pl0P/6H7O5MfMENVUbi36sW7zvhjC99R
+ qfPEv+rxau+Vk/LzMA1Ef+fkQigvXvY2QKwOklgD9Lfp6NxalyJqIXatPZR/D6CA4kl6KZcOMjH
+ Lh/NyPlltdPaw0Q==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Digital Video Port (DVP, the 16-bit variant) of the RK3568 VICAP
-is broken out to the PF5 mainboard expansion header.
-Enable it in the device tree overlay for the WolfVision PF5 IO
-Expander board.
+From: Robert Oscilowski <drgitx@gmail.com>
 
-Signed-off-by: Michael Riesch <michael.riesch@wolfvision.net>
-Reviewed-by: Gerald Loacker <gerald.loacker@wolfvision.net>
-Tested-by: Gerald Loacker <gerald.loacker@wolfvision.net>
-Reviewed-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+We configure the codec DAI format for primary and secondary but not the
+quaternery MI2S path. Add the missing configuration to enable speaker
+codecs on the quaternary MI2S like the MAX9827 found on the OnePlus 6.
+
+Signed-off-by: Robert Oscilowski <drgitx@gmail.com>
+Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../rockchip/rk3568-wolfvision-pf5-io-expander.dtso  | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+Changes in v3:
+- Updated DrGit name to real name.
+- Link to v2: https://lore.kernel.org/r/20251114-sdm845-quaternary-v2-1-9d803bf5f7c9@ixit.cz
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso b/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-index 048933de2943..8cfce71dd318 100644
---- a/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-+++ b/arch/arm64/boot/dts/rockchip/rk3568-wolfvision-pf5-io-expander.dtso
-@@ -11,6 +11,7 @@
- #include <dt-bindings/clock/rk3568-cru.h>
- #include <dt-bindings/gpio/gpio.h>
- #include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/media/video-interfaces.h>
- #include <dt-bindings/pinctrl/rockchip.h>
+Changes in v2:
+ - Rebased on top of next-20251113
+---
+ sound/soc/qcom/sdm845.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/sound/soc/qcom/sdm845.c b/sound/soc/qcom/sdm845.c
+index e18a8e44f2db5..0ce9dff4dc525 100644
+--- a/sound/soc/qcom/sdm845.c
++++ b/sound/soc/qcom/sdm845.c
+@@ -365,10 +365,12 @@ static int sdm845_snd_startup(struct snd_pcm_substream *substream)
+ 		snd_soc_dai_set_fmt(codec_dai, codec_dai_fmt);
+ 		break;
+ 	case QUATERNARY_MI2S_RX:
++		codec_dai_fmt |= SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_I2S;
+ 		snd_soc_dai_set_sysclk(cpu_dai,
+ 			Q6AFE_LPASS_CLK_ID_QUAD_MI2S_IBIT,
+ 			MI2S_BCLK_RATE, SNDRV_PCM_STREAM_PLAYBACK);
+ 		snd_soc_dai_set_fmt(cpu_dai, fmt);
++		snd_soc_dai_set_fmt(codec_dai, codec_dai_fmt);
+ 		break;
  
- &{/} {
-@@ -134,3 +135,22 @@ &usb2phy0_host {
- 	phy-supply = <&usb_host_vbus>;
- 	status = "okay";
- };
-+
-+&vicap {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&cif_clk &cif_dvp_clk &cif_dvp_bus16>;
-+	status = "okay";
-+};
-+
-+&vicap_dvp {
-+	vicap_dvp_input: endpoint {
-+		bus-type = <MEDIA_BUS_TYPE_BT656>;
-+		bus-width = <16>;
-+		pclk-sample = <MEDIA_PCLK_SAMPLE_DUAL_EDGE>;
-+		rockchip,dvp-clk-delay = <10>;
-+	};
-+};
-+
-+&vicap_mmu {
-+	status = "okay";
-+};
+ 	case QUATERNARY_TDM_RX_0:
 
+---
+base-commit: 0f2995693867bfb26197b117cd55624ddc57582f
+change-id: 20251114-sdm845-quaternary-e9d6d0b513c9
+
+Best regards,
 -- 
-2.39.5
+David Heidelberg <david@ixit.cz>
 
