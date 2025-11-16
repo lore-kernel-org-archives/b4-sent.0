@@ -1,117 +1,82 @@
-From: Keguang Zhang <keguang.zhang@gmail.com>
-Date: Sun, 16 Nov 2025 18:08:33 +0800
-Subject: [PATCH] mips: configs: loongson1: Update defconfig
+From: Maud Spierings <maud_spierings@hotmail.com>
+Subject: [PATCH v2 0/6] arm64: dts: qcom: x1e80100-vivobook-s15: add more
+ missing features
+Date: Sun, 16 Nov 2025 11:52:05 +0100
+Message-Id: <20251116-asus_usbc_dp-v2-0-cc8f51136c9f@hotmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251116-loongson1_defconfig-v1-1-e1d546e00bb4@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAKCiGWkC/x3MQQqEMAxA0atI1hYmGSrqVUSkaNoJSCItiCDe3
- TLLt/j/hsJZuMDY3JD5lCKmFdg2sP6CJnayVQN9yCNi53YzTcUUl43jaholuUDB45cIh76HWh6
- Zo1z/6zQ/zwvrkaq6ZQAAAA==
-To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
- Miquel Raynal <miquel.raynal@bootlin.com>, 
- Binbin Zhou <zhoubinbin@loongson.cn>, 
- Vladimir Oltean <vladimir.oltean@nxp.com>, 
- Faizal Rahim <faizal.abdul.rahim@linux.intel.com>, 
- Choong Yong Liang <yong.liang.choong@linux.intel.com>, 
- Tony Nguyen <anthony.l.nguyen@intel.com>
-Cc: linux-mips@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Keguang Zhang <keguang.zhang@gmail.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763287778; l=3001;
- i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
- bh=8uojbtslaA91YSaKby/lQsU31Nd5Xc8jz2Khpi1aP5g=;
- b=VTZ+bmwzeVFKL3xuqgpkkEjvNaI4somzCXdkzidJ4N69wFFP0IDgubCkPac4T4S7bIKDnZtjV
- vSXXY0/sl/FCJWDkSn28/6bNJBwY82KN9yNDEGCvFXbgjAuvNzXT2iF
-X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
- pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
-X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
+X-B4-Tracking: v=1; b=H4sIANWsGWkC/1WP3YqDMBCFX0VyvSn50TSRZel7LKXEzKQGqnETl
+ S7Fd99or/byDMx3vvMiGVPATNrqRRKuIYc4liA+KuJ6O96RBiiZCCYapnhNbV7ybcmdu8FEmWD
+ Silo4ZTQpL1NCH54H7vv6zgl/lkKd30cyYM72oLbV5w7ljEs6xyk4+uSoGWeM9jAEuirKqLTGa
+ X8u1aAujzDaFE8x3b/2ss5mpC4OQ5jbyugOdMeVxeaM2ovGmQZqo7wDlOABtBASak52rT7kOab
+ fY/TKD69Dpbj837fy4mA81NgZIxvUlz7Ogw2PU+kl123b/gBJHp0pQQEAAA==
+X-Change-ID: 20250614-asus_usbc_dp-0203a242c698
+To: Andrzej Hajda <andrzej.hajda@intel.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
+ Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
+ Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ Maud Spierings <maud_spierings@hotmail.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Krzysztof Kozlowski <krzk@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763290343; l=1859;
+ i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
+ bh=OgNY0TEu2bd8MQFRjXHDBVM6Zf/pc0Mf/wDhXncFk3Y=;
+ b=aVNV0zq9yDJOdukxpIrRcYXhBFzEz0xnrtAB5fTCu5jAkv1ohHWcjSBhY4HwMA/Zkw4exH9e3
+ rvF41rFguQnACBrRSLvN6eW5VTgIrknj4VYyUQaKukDrdO2FXtN/YgQ
+X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
+ pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
+X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update loongson1_defconfig to reflect recent Kconfig changes:
-- Replace CONFIG_MTD_NAND_LOONGSON1 with CONFIG_MTD_NAND_LOONGSON,
-  since commit 7a1e3a452a57 ("mtd: rawnand: loongson1: Rename the
-  prefix from ls1x to loongson").
-- Enable CONFIG_ETHTOOL_NETLINK, since commit 9ff2aa4206ef ("net:
-  ethtool: mm: extract stmmac verification logic into common library")
-  makes STMMAC_ETH depend on it.
+There are still many missing features on this machine, add the ps8830
+retimers for display over usb-c, the simple bridge/HDMI port and set up
+to use IRIS.
 
-In addition:
-- Enable CONFIG_JUMP_LABEL to allow optimized static branch handling.
-- Disable unnecessary options.
-- Enable CONFIG_TEST_DHRY as a module.
+Currently IRIS gives a ETIMEDOUT, not sure what that is coming from.
 
-Fixes: 7a1e3a452a57 ("mtd: rawnand: loongson1: Rename the prefix from ls1x to loongson")
-Fixes: 9ff2aa4206ef ("net: ethtool: mm: extract stmmac verification logic into common library")
-Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
+lots of these patches are very strongly based on the work of other
+maintainers of these snapdragon machines, like the HDMI part on that of
+Neil Armstrong, many thanks to those who laid the baseline for me to
+follow.
+
+Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
- arch/mips/configs/loongson1_defconfig | 16 +++++++---------
- 1 file changed, 7 insertions(+), 9 deletions(-)
-
-diff --git a/arch/mips/configs/loongson1_defconfig b/arch/mips/configs/loongson1_defconfig
-index 81acae6f61c8..02d29110f702 100644
---- a/arch/mips/configs/loongson1_defconfig
-+++ b/arch/mips/configs/loongson1_defconfig
-@@ -13,6 +13,7 @@ CONFIG_EXPERT=y
- CONFIG_PERF_EVENTS=y
- CONFIG_MACH_LOONGSON32=y
- # CONFIG_SUSPEND is not set
-+CONFIG_JUMP_LABEL=y
- # CONFIG_SECCOMP is not set
- # CONFIG_GCC_PLUGINS is not set
- CONFIG_MODULES=y
-@@ -30,8 +31,8 @@ CONFIG_IP_PNP_DHCP=y
- CONFIG_SYN_COOKIES=y
- # CONFIG_INET_DIAG is not set
- # CONFIG_IPV6 is not set
-+# CONFIG_BQL is not set
- # CONFIG_WIRELESS is not set
--# CONFIG_ETHTOOL_NETLINK is not set
- CONFIG_DEVTMPFS=y
- CONFIG_DEVTMPFS_MOUNT=y
- # CONFIG_STANDALONE is not set
-@@ -39,7 +40,7 @@ CONFIG_MTD=y
- CONFIG_MTD_CMDLINE_PARTS=y
- CONFIG_MTD_BLOCK=y
- CONFIG_MTD_RAW_NAND=y
--CONFIG_MTD_NAND_LOONGSON1=y
-+CONFIG_MTD_NAND_LOONGSON=y
- CONFIG_MTD_UBI=y
- CONFIG_BLK_DEV_LOOP=y
- CONFIG_SCSI=m
-@@ -72,6 +73,7 @@ CONFIG_NETDEVICES=y
- # CONFIG_NET_VENDOR_MICROCHIP is not set
- # CONFIG_NET_VENDOR_MICROSEMI is not set
- # CONFIG_NET_VENDOR_MICROSOFT is not set
-+# CONFIG_NET_VENDOR_MUCSE is not set
- # CONFIG_NET_VENDOR_NI is not set
- # CONFIG_NET_VENDOR_NATSEMI is not set
- # CONFIG_NET_VENDOR_NETRONOME is not set
-@@ -166,15 +168,11 @@ CONFIG_ROOT_NFS=y
- CONFIG_NLS_CODEPAGE_437=m
- CONFIG_NLS_ISO8859_1=m
- # CONFIG_CRYPTO_HW is not set
--# CONFIG_XZ_DEC_X86 is not set
--# CONFIG_XZ_DEC_POWERPC is not set
--# CONFIG_XZ_DEC_ARM is not set
--# CONFIG_XZ_DEC_ARMTHUMB is not set
--# CONFIG_XZ_DEC_ARM64 is not set
--# CONFIG_XZ_DEC_SPARC is not set
--# CONFIG_XZ_DEC_RISCV is not set
- CONFIG_DYNAMIC_DEBUG=y
- # CONFIG_DEBUG_MISC is not set
- CONFIG_MAGIC_SYSRQ=y
-+# CONFIG_SLUB_DEBUG is not set
-+# CONFIG_RCU_TRACE is not set
- # CONFIG_FTRACE is not set
- # CONFIG_EARLY_PRINTK is not set
-+CONFIG_TEST_DHRY=m
+Changes in v2:
+- Fix the place of the rtmr regs to maintain alphabetical order
+- Link to v1: https://lore.kernel.org/r/20251101-asus_usbc_dp-v1-0-9fd4eb9935e8@hotmail.com
 
 ---
-base-commit: e9a6fb0bcdd7609be6969112f3fbfcce3b1d4a7c
-change-id: 20251116-loongson1_defconfig-a2a513221988
+Maud Spierings (6):
+      dt-bindings: display: bridge: simple: document the Parade PS185HDM DP-to-HDMI bridge
+      drm/bridge: simple: add the Parade PS185HDM DP-to-HDMI bridge
+      arm64: dts: qcom: x1e80100-vivobook-s15: enable ps8830 retimers
+      arm64: dts: qcom: x1e80100-vivobook-s15: add HDMI port
+      arm64: dts: qcom: x1e80100-vivobook-s15: add charge limit nvmem
+      arm64: dts: qcom: x1e80100-vivobook-s15: enable IRIS
+
+ .../bindings/display/bridge/simple-bridge.yaml     |   1 +
+ .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 402 ++++++++++++++++++++-
+ drivers/gpu/drm/bridge/simple-bridge.c             |   5 +
+ 3 files changed, 400 insertions(+), 8 deletions(-)
+---
+base-commit: 98bd8b16ae57e8f25c95d496fcde3dfdd8223d41
+change-id: 20250614-asus_usbc_dp-0203a242c698
+prerequisite-message-id: <20251013-topic-x1e80100-hdmi-v6-0-3a9c8f7506d6@linaro.org>
+prerequisite-patch-id: 5af0a76cad087e18b0a2f771a78d030f9bf3bd68
+prerequisite-patch-id: 5b908c1f0c5a0c52da384a181a75f17c5e2d19b5
+prerequisite-patch-id: ed40af8d7e99a3f1bcb33b4c678b5f21b0618612
 
 Best regards,
 -- 
-Keguang Zhang <keguang.zhang@gmail.com>
+Maud Spierings <maud_spierings@hotmail.com>
 
