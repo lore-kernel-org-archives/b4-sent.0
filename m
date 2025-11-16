@@ -1,11 +1,11 @@
 From: Maud Spierings <maud_spierings@hotmail.com>
-Date: Sun, 16 Nov 2025 11:52:06 +0100
-Subject: [PATCH v2 1/6] dt-bindings: display: bridge: simple: document the
- Parade PS185HDM DP-to-HDMI bridge
+Date: Sun, 16 Nov 2025 11:52:07 +0100
+Subject: [PATCH v2 2/6] drm/bridge: simple: add the Parade PS185HDM
+ DP-to-HDMI bridge
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251116-asus_usbc_dp-v2-1-cc8f51136c9f@hotmail.com>
+Message-Id: <20251116-asus_usbc_dp-v2-2-cc8f51136c9f@hotmail.com>
 References: <20251116-asus_usbc_dp-v2-0-cc8f51136c9f@hotmail.com>
 In-Reply-To: <20251116-asus_usbc_dp-v2-0-cc8f51136c9f@hotmail.com>
 To: Andrzej Hajda <andrzej.hajda@intel.com>, 
@@ -21,13 +21,13 @@ To: Andrzej Hajda <andrzej.hajda@intel.com>,
 Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Maud Spierings <maud_spierings@hotmail.com>, 
- Krzysztof Kozlowski <krzk@kernel.org>
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763290343; l=876;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763290343; l=945;
  i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=0pWqVth8tq9Q9WV6wD5wdXxK/GglHDQWiUHPPE01118=;
- b=uCs7Uzr//Sc6LSh9XEE6yvwKOOc/vLSwvHLq61xg4rTW5BnoOg1NobJSdkfZNBWj7DKnG5NcQ
- Ii0T4jpO91xCHXS/0llKwPEIIsTz5fympxxJy77s0cy0jC8w6zpcU7d
+ bh=lOwUKlnZWvBGuZzv+yAV11vLtSXDOnT6l1naKVDPm98=;
+ b=KeTmdssRRamJCQIgZoutDL6TdRGTm08erGUsWcT8KNW6xLav1onjBFM1b1bIsbAiVHgLhSv1r
+ ZZjHf1fHA2LCclKfBO1GZd17K5lP4kjudM4pKsPe1+cwpjkkGpbUhnD
 X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
  pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
 X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
@@ -35,24 +35,28 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 The Parade PS185HDM is a transparent Displayport to HDMI bridge.
 
-Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
- Documentation/devicetree/bindings/display/bridge/simple-bridge.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/gpu/drm/bridge/simple-bridge.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/display/bridge/simple-bridge.yaml b/Documentation/devicetree/bindings/display/bridge/simple-bridge.yaml
-index 9ef587d46506..950268632370 100644
---- a/Documentation/devicetree/bindings/display/bridge/simple-bridge.yaml
-+++ b/Documentation/devicetree/bindings/display/bridge/simple-bridge.yaml
-@@ -28,6 +28,7 @@ properties:
-       - enum:
-           - adi,adv7123
-           - dumb-vga-dac
-+          - parade,ps185hdm
-           - radxa,ra620
-           - realtek,rtd2171
-           - ti,opa362
+diff --git a/drivers/gpu/drm/bridge/simple-bridge.c b/drivers/gpu/drm/bridge/simple-bridge.c
+index e4d0bc2200f8..90abda199cea 100644
+--- a/drivers/gpu/drm/bridge/simple-bridge.c
++++ b/drivers/gpu/drm/bridge/simple-bridge.c
+@@ -261,6 +261,11 @@ static const struct of_device_id simple_bridge_match[] = {
+ 			.timings = &default_bridge_timings,
+ 			.connector_type = DRM_MODE_CONNECTOR_VGA,
+ 		},
++	}, {
++		.compatible = "parade,ps185hdm",
++		.data = &(const struct simple_bridge_info) {
++			.connector_type = DRM_MODE_CONNECTOR_HDMIA,
++		},
+ 	}, {
+ 		.compatible = "radxa,ra620",
+ 		.data = &(const struct simple_bridge_info) {
 
 -- 
 2.51.2
