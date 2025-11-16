@@ -1,87 +1,117 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sat, 15 Nov 2025 19:43:58 +0100
-Subject: [PATCH v3] ASoC: qcom: sdm845: set quaternary MI2S codec DAI to
- I2S format
+From: Keguang Zhang <keguang.zhang@gmail.com>
+Date: Sun, 16 Nov 2025 18:08:33 +0800
+Subject: [PATCH] mips: configs: loongson1: Update defconfig
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251115-sdm845-quaternary-v3-1-c16bf19128ac@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAO3JGGkC/33OsQ6CMBSF4VcxnS1pCxXq5HsYh9Je5CbY6i0Sk
- PDuVgdHx384X87KEhBCYsfdyggmTBhDjnK/Y6634QocfW6mhNJSyoonf2sqzR9POwIFSwsH4w9
- etFqWzrC8uxN0OH/N8yV3R/HGx57A/iShRC21qnVVVKYxNZfc2QHawsUQ4jAspwGzHYtI1w/ZY
- xojLd+Xk/rA/w5NKnvGN6JsO93VzpxwxrFwL3bZtu0NDFAJtPMAAAA=
-X-Change-ID: 20251114-sdm845-quaternary-e9d6d0b513c9
-To: Srinivas Kandagatla <srini@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- Robert Oscilowski <drgitx@gmail.com>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1499; i=david@ixit.cz;
- h=from:subject:message-id; bh=PHx2oXpAkKgIFICWfAbsH+E/7ElM+CcL2wslsUfnDDc=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpGMnvkMOhmQGMZfc9yygG3wSWhLGXXFps+EK6U
- dYBprr6drGJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRjJ7wAKCRBgAj/E00kg
- cu9lEACxO+7i0H+nj3YGNeIJ7WxlabxhZHlSgl6KOnCkGrifVMOkAxG+wFCjF3xwy8UXZJj+N+f
- d41fmnrxOKjqO0JfwAM3UYWre9Ig/QR0t9VfB9eYdQBNnuX+kPLU44hDFjKSJFIO+Uro9ylNGKZ
- vJtbkqTlxzSvI0xxMnfc+Bjf/oEkqHj5v5MMAd6UcEUjlTHfYXqcrwX1cOO5S7mdFPAmfvCeyEZ
- /FLXLBz0C7ExgfrxrnvynDdCFHnR/nYxl/eS8ncF6gc+i9FIcVBnb17Bg+fAiD9WGwhgiJ+O2D+
- 5Jw1SgrVDFuWgH4HKdIfA0CxXqBvpS1Y+06gumqoDPhQnBUHdaIEcGCgX4/Wk4q57i4tgEy6TPM
- V1EVIoDItvpNv/05xqzpnyDm4uzqaQ+lWqu5ousD8akzt8wN6agkPaFTeYUR/K/K7GmWQ7HSegR
- CIvzfVFIYN+Bbk96g05GPEAxg5HzU4oqLXMv2R0WkVnHoTBOwTSXBEdjeZmJoR7nWoNrggvTXXr
- D+PGokXhp8+TEpYC9RaPNqCkEvuODCTTUOjeYMqZaY9Pl0P/6H7O5MfMENVUbi36sW7zvhjC99R
- qfPEv+rxau+Vk/LzMA1Ef+fkQigvXvY2QKwOklgD9Lfp6NxalyJqIXatPZR/D6CA4kl6KZcOMjH
- Lh/NyPlltdPaw0Q==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Message-Id: <20251116-loongson1_defconfig-v1-1-e1d546e00bb4@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAKCiGWkC/x3MQQqEMAxA0atI1hYmGSrqVUSkaNoJSCItiCDe3
+ TLLt/j/hsJZuMDY3JD5lCKmFdg2sP6CJnayVQN9yCNi53YzTcUUl43jaholuUDB45cIh76HWh6
+ Zo1z/6zQ/zwvrkaq6ZQAAAA==
+To: Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
+ Miquel Raynal <miquel.raynal@bootlin.com>, 
+ Binbin Zhou <zhoubinbin@loongson.cn>, 
+ Vladimir Oltean <vladimir.oltean@nxp.com>, 
+ Faizal Rahim <faizal.abdul.rahim@linux.intel.com>, 
+ Choong Yong Liang <yong.liang.choong@linux.intel.com>, 
+ Tony Nguyen <anthony.l.nguyen@intel.com>
+Cc: linux-mips@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Keguang Zhang <keguang.zhang@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763287778; l=3001;
+ i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
+ bh=8uojbtslaA91YSaKby/lQsU31Nd5Xc8jz2Khpi1aP5g=;
+ b=VTZ+bmwzeVFKL3xuqgpkkEjvNaI4somzCXdkzidJ4N69wFFP0IDgubCkPac4T4S7bIKDnZtjV
+ vSXXY0/sl/FCJWDkSn28/6bNJBwY82KN9yNDEGCvFXbgjAuvNzXT2iF
+X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
+ pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
+X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Robert Oscilowski <drgitx@gmail.com>
+Update loongson1_defconfig to reflect recent Kconfig changes:
+- Replace CONFIG_MTD_NAND_LOONGSON1 with CONFIG_MTD_NAND_LOONGSON,
+  since commit 7a1e3a452a57 ("mtd: rawnand: loongson1: Rename the
+  prefix from ls1x to loongson").
+- Enable CONFIG_ETHTOOL_NETLINK, since commit 9ff2aa4206ef ("net:
+  ethtool: mm: extract stmmac verification logic into common library")
+  makes STMMAC_ETH depend on it.
 
-We configure the codec DAI format for primary and secondary but not the
-quaternery MI2S path. Add the missing configuration to enable speaker
-codecs on the quaternary MI2S like the MAX9827 found on the OnePlus 6.
+In addition:
+- Enable CONFIG_JUMP_LABEL to allow optimized static branch handling.
+- Disable unnecessary options.
+- Enable CONFIG_TEST_DHRY as a module.
 
-Signed-off-by: Robert Oscilowski <drgitx@gmail.com>
-Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Fixes: 7a1e3a452a57 ("mtd: rawnand: loongson1: Rename the prefix from ls1x to loongson")
+Fixes: 9ff2aa4206ef ("net: ethtool: mm: extract stmmac verification logic into common library")
+Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
-Changes in v3:
-- Updated DrGit name to real name.
-- Link to v2: https://lore.kernel.org/r/20251114-sdm845-quaternary-v2-1-9d803bf5f7c9@ixit.cz
+ arch/mips/configs/loongson1_defconfig | 16 +++++++---------
+ 1 file changed, 7 insertions(+), 9 deletions(-)
 
-Changes in v2:
- - Rebased on top of next-20251113
+diff --git a/arch/mips/configs/loongson1_defconfig b/arch/mips/configs/loongson1_defconfig
+index 81acae6f61c8..02d29110f702 100644
+--- a/arch/mips/configs/loongson1_defconfig
++++ b/arch/mips/configs/loongson1_defconfig
+@@ -13,6 +13,7 @@ CONFIG_EXPERT=y
+ CONFIG_PERF_EVENTS=y
+ CONFIG_MACH_LOONGSON32=y
+ # CONFIG_SUSPEND is not set
++CONFIG_JUMP_LABEL=y
+ # CONFIG_SECCOMP is not set
+ # CONFIG_GCC_PLUGINS is not set
+ CONFIG_MODULES=y
+@@ -30,8 +31,8 @@ CONFIG_IP_PNP_DHCP=y
+ CONFIG_SYN_COOKIES=y
+ # CONFIG_INET_DIAG is not set
+ # CONFIG_IPV6 is not set
++# CONFIG_BQL is not set
+ # CONFIG_WIRELESS is not set
+-# CONFIG_ETHTOOL_NETLINK is not set
+ CONFIG_DEVTMPFS=y
+ CONFIG_DEVTMPFS_MOUNT=y
+ # CONFIG_STANDALONE is not set
+@@ -39,7 +40,7 @@ CONFIG_MTD=y
+ CONFIG_MTD_CMDLINE_PARTS=y
+ CONFIG_MTD_BLOCK=y
+ CONFIG_MTD_RAW_NAND=y
+-CONFIG_MTD_NAND_LOONGSON1=y
++CONFIG_MTD_NAND_LOONGSON=y
+ CONFIG_MTD_UBI=y
+ CONFIG_BLK_DEV_LOOP=y
+ CONFIG_SCSI=m
+@@ -72,6 +73,7 @@ CONFIG_NETDEVICES=y
+ # CONFIG_NET_VENDOR_MICROCHIP is not set
+ # CONFIG_NET_VENDOR_MICROSEMI is not set
+ # CONFIG_NET_VENDOR_MICROSOFT is not set
++# CONFIG_NET_VENDOR_MUCSE is not set
+ # CONFIG_NET_VENDOR_NI is not set
+ # CONFIG_NET_VENDOR_NATSEMI is not set
+ # CONFIG_NET_VENDOR_NETRONOME is not set
+@@ -166,15 +168,11 @@ CONFIG_ROOT_NFS=y
+ CONFIG_NLS_CODEPAGE_437=m
+ CONFIG_NLS_ISO8859_1=m
+ # CONFIG_CRYPTO_HW is not set
+-# CONFIG_XZ_DEC_X86 is not set
+-# CONFIG_XZ_DEC_POWERPC is not set
+-# CONFIG_XZ_DEC_ARM is not set
+-# CONFIG_XZ_DEC_ARMTHUMB is not set
+-# CONFIG_XZ_DEC_ARM64 is not set
+-# CONFIG_XZ_DEC_SPARC is not set
+-# CONFIG_XZ_DEC_RISCV is not set
+ CONFIG_DYNAMIC_DEBUG=y
+ # CONFIG_DEBUG_MISC is not set
+ CONFIG_MAGIC_SYSRQ=y
++# CONFIG_SLUB_DEBUG is not set
++# CONFIG_RCU_TRACE is not set
+ # CONFIG_FTRACE is not set
+ # CONFIG_EARLY_PRINTK is not set
++CONFIG_TEST_DHRY=m
+
 ---
- sound/soc/qcom/sdm845.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/sound/soc/qcom/sdm845.c b/sound/soc/qcom/sdm845.c
-index e18a8e44f2db5..0ce9dff4dc525 100644
---- a/sound/soc/qcom/sdm845.c
-+++ b/sound/soc/qcom/sdm845.c
-@@ -365,10 +365,12 @@ static int sdm845_snd_startup(struct snd_pcm_substream *substream)
- 		snd_soc_dai_set_fmt(codec_dai, codec_dai_fmt);
- 		break;
- 	case QUATERNARY_MI2S_RX:
-+		codec_dai_fmt |= SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_I2S;
- 		snd_soc_dai_set_sysclk(cpu_dai,
- 			Q6AFE_LPASS_CLK_ID_QUAD_MI2S_IBIT,
- 			MI2S_BCLK_RATE, SNDRV_PCM_STREAM_PLAYBACK);
- 		snd_soc_dai_set_fmt(cpu_dai, fmt);
-+		snd_soc_dai_set_fmt(codec_dai, codec_dai_fmt);
- 		break;
- 
- 	case QUATERNARY_TDM_RX_0:
-
----
-base-commit: 0f2995693867bfb26197b117cd55624ddc57582f
-change-id: 20251114-sdm845-quaternary-e9d6d0b513c9
+base-commit: e9a6fb0bcdd7609be6969112f3fbfcce3b1d4a7c
+change-id: 20251116-loongson1_defconfig-a2a513221988
 
 Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+Keguang Zhang <keguang.zhang@gmail.com>
 
