@@ -1,11 +1,10 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Mon, 17 Nov 2025 18:17:00 +0800
-Subject: [PATCH 1/5] dt-bindings: arm: amlogic: meson-gx-ao-secure: support
- more SoCs
+Date: Mon, 17 Nov 2025 18:17:01 +0800
+Subject: [PATCH 2/5] soc: amlogic: meson-gx-socinfo: add new SoCs id
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251117-soc-info-s6-s7-s7d-v1-1-6ab8aab03dce@amlogic.com>
+Message-Id: <20251117-soc-info-s6-s7-s7d-v1-2-6ab8aab03dce@amlogic.com>
 References: <20251117-soc-info-s6-s7-s7d-v1-0-6ab8aab03dce@amlogic.com>
 In-Reply-To: <20251117-soc-info-s6-s7-s7d-v1-0-6ab8aab03dce@amlogic.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,37 +16,48 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763374620; l=1021;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763374620; l=1037;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=XEMdKYwBl9u+QWFcS52Jj/So1EuzFbtVf5sqvIVlOFc=;
- b=spJCoSzfIT9m6jM1W2g2a3W28/U3k5lbqXxDLrjHJkLFwDFPWCbxa1KPJ3CWm/zhlJoM+q+Kt
- 1+NRjs+owwTAo4RHmTCuDwgxXyyDUr47rqwzS80havhlRdpMT2N6Zgk
+ bh=lSVasbRmcLc7s9EGABIBCTu4RsvuROyKNeWiDbPy8mo=;
+ b=Mk9+2XSNOsph38a0bZ2mhSrgUnOpoZqHJ5LfqLxqXhDVZOXKC7GX9NmHO16haBkbOcVjZgNxQ
+ 1zj5zV0flCiD6IyyZlSawNEeh0zlIqSh5exaf6tBhEnCjAzFJPIcUog
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add new compatible for ao-secure of Amlogic SoCs(S6,S7,S7D).
+Add new definition for Amlogi SoCs, include S6, S7, S7D.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- .../devicetree/bindings/arm/amlogic/amlogic,meson-gx-ao-secure.yaml    | 3 +++
- 1 file changed, 3 insertions(+)
+ drivers/soc/amlogic/meson-gx-socinfo.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/arm/amlogic/amlogic,meson-gx-ao-secure.yaml b/Documentation/devicetree/bindings/arm/amlogic/amlogic,meson-gx-ao-secure.yaml
-index b4f6695a6015..fa7c403c874a 100644
---- a/Documentation/devicetree/bindings/arm/amlogic/amlogic,meson-gx-ao-secure.yaml
-+++ b/Documentation/devicetree/bindings/arm/amlogic/amlogic,meson-gx-ao-secure.yaml
-@@ -34,6 +34,9 @@ properties:
-               - amlogic,a4-ao-secure
-               - amlogic,c3-ao-secure
-               - amlogic,s4-ao-secure
-+              - amlogic,s6-ao-secure
-+              - amlogic,s7-ao-secure
-+              - amlogic,s7d-ao-secure
-               - amlogic,t7-ao-secure
-           - const: amlogic,meson-gx-ao-secure
-           - const: syscon
+diff --git a/drivers/soc/amlogic/meson-gx-socinfo.c b/drivers/soc/amlogic/meson-gx-socinfo.c
+index 7549f1644e5e..6fbb70c8922d 100644
+--- a/drivers/soc/amlogic/meson-gx-socinfo.c
++++ b/drivers/soc/amlogic/meson-gx-socinfo.c
+@@ -45,7 +45,9 @@ static const struct meson_gx_soc_id {
+ 	{ "S4", 0x37 },
+ 	{ "A5", 0x3c },
+ 	{ "C3", 0x3d },
+-	{ "A4", 0x40 },
++	{ "S7", 0x46 },
++	{ "S7D", 0x47 },
++	{ "S6", 0x48 },
+ };
+ 
+ static const struct meson_gx_package_id {
+@@ -86,6 +88,9 @@ static const struct meson_gx_package_id {
+ 	{ "A311D2", 0x36, 0x1, 0xf },
+ 	{ "A113X2", 0x3c, 0x1, 0xf },
+ 	{ "A113L2", 0x40, 0x1, 0xf },
++	{ "S805X3", 0x46, 0x3, 0xf },
++	{ "S905X5M", 0x47, 0x1, 0xf },
++	{ "S905X5", 0x48, 0x1, 0xf },
+ };
+ 
+ static inline unsigned int socinfo_to_major(u32 socinfo)
 
 -- 
 2.37.1
