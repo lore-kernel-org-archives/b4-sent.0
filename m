@@ -1,61 +1,54 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Mon, 17 Nov 2025 11:01:11 +0100
-Subject: [PATCH 3/3] arm64: defconfig: enable rockchip mipi csi-2 receiver
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH 0/5] soc: amlogic: Add new Amlogic SoCs info defines
+Date: Mon, 17 Nov 2025 18:16:59 +0800
+Message-Id: <20251117-soc-info-s6-s7-s7d-v1-0-6ab8aab03dce@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251114-rockchip-mipi-receiver-v1-3-d13086e810dd@collabora.com>
-References: <20251114-rockchip-mipi-receiver-v1-0-d13086e810dd@collabora.com>
-In-Reply-To: <20251114-rockchip-mipi-receiver-v1-0-d13086e810dd@collabora.com>
-To: Michael Riesch <michael.riesch@collabora.com>, 
- Mehdi Djait <mehdi.djait@linux.intel.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Hans Verkuil <hverkuil@kernel.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Collabora Kernel Team <kernel@collabora.com>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763373685; l=775;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=QnSDQN2WWfjs2EWe+e6kdAB9fFyLYhe37xUo+h6vPgM=;
- b=zt8JNwCZhzaZrzJAnP4ZyYk40HPoatQgt9OBh6t8KP0dO2nRZj4svhR/IY0A+8cfaJFYPlL1O
- 1wVZnObfa4OBcWolGjElKd3Ivs92U1KAxP0nh9ccgok1HReq1sahHnZ
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+X-B4-Tracking: v=1; b=H4sIABv2GmkC/x2MuwqAMAwAf6VkNmCK718RB2lTzdJKAyJI/90i3
+ HLD3QvKWVhhMS9kvkUlxSrUGHDnHg9G8dXBtrYnIouaHEoMCXVAHSseW3LTMBM5281QwytzkOe
+ frlspH9fFvoZkAAAA
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763374620; l=1049;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=aukVyKf6SM/XsCjCWq9eeHkk+NbJxGlbfhudMeFmdm8=;
+ b=C0IuzYTEuNE9tlPGIHItE5TtHdWAF8MvDqs2pleu8u+sCdsjEmlnuf6CzmK2OdZvZVkegdu0X
+ q7Gb0lwbF1LDbwiOzCNvRMtYZqqsLVGNccYgmYZgm65TmBnot+KP+1S
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Rockchip MIPI CSI-2 Receiver is integrated into recent Rockchip
-SoCs, such as the RK3568 and the RK3588.
-Enable the driver for it in the default configuration.
+Add more Amlogic SoCs info defines, include S6, S7, S7D.
 
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- arch/arm64/configs/defconfig | 1 +
- 1 file changed, 1 insertion(+)
+Xianwei Zhao (5):
+      dt-bindings: arm: amlogic: meson-gx-ao-secure: support more SoCs
+      soc: amlogic: meson-gx-socinfo: add new SoCs id
+      arm64: dts: amlogic: s6: add ao secure node
+      arm64: dts: amlogic: s7: add ao secure node
+      arm64: dts: amlogic: s7d: add ao secure node
 
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index e3a2d37bd104..a161666f2894 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -883,6 +883,7 @@ CONFIG_VIDEO_RENESAS_FCP=m
- CONFIG_VIDEO_RENESAS_FDP1=m
- CONFIG_VIDEO_RENESAS_VSP1=m
- CONFIG_VIDEO_RCAR_DRIF=m
-+CONFIG_VIDEO_ROCKCHIP_CSI=m
- CONFIG_VIDEO_ROCKCHIP_RGA=m
- CONFIG_VIDEO_SAMSUNG_EXYNOS_GSC=m
- CONFIG_VIDEO_SAMSUNG_S5P_JPEG=m
+ .../bindings/arm/amlogic/amlogic,meson-gx-ao-secure.yaml          | 3 +++
+ arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi                       | 8 ++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi                       | 8 ++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi                      | 8 ++++++++
+ drivers/soc/amlogic/meson-gx-socinfo.c                            | 7 ++++++-
+ 5 files changed, 33 insertions(+), 1 deletion(-)
+---
+base-commit: cb718411c4c05a4a424c2b73790a1648be97a4af
+change-id: 20251112-soc-info-s6-s7-s7d-01c86911c249
 
+Best regards,
 -- 
-2.39.5
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
