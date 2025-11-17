@@ -1,59 +1,175 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Mon, 17 Nov 2025 18:17:04 +0800
-Subject: [PATCH 5/5] arm64: dts: amlogic: s7d: add ao secure node
+From: David Heidelberg <david@ixit.cz>
+Date: Mon, 17 Nov 2025 13:27:38 +0100
+Subject: [PATCH RFC] arm64: dts: qcom: sdm845: add framebuffer reserved
+ memory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251117-soc-info-s6-s7-s7d-v1-5-6ab8aab03dce@amlogic.com>
-References: <20251117-soc-info-s6-s7-s7d-v1-0-6ab8aab03dce@amlogic.com>
-In-Reply-To: <20251117-soc-info-s6-s7-s7d-v1-0-6ab8aab03dce@amlogic.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763374620; l=862;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=H+K4E15iswq/do49khTt9ccxoAu/8Vn3bdBkB4g+s84=;
- b=TSQr29OzBf7GcKXrMc9GvEDR0PWUwcJlr8rvHIDmIwH9cPtASRkMWcArueUbKoteedsmPpuva
- hMXJx/h5pwLAz08BaoVZ0i0BMcjQ1UC02X6w2j1+AdYIS6Hzq+slVZu
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+Message-Id: <20251117-commonize-framebuffer-v1-1-e4c099b383c9@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIALkUG2kC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1NDQ0Nz3eT83Nz8vMyqVN20osTc1KTStLTUIl0LkzSTtNTERMM080QloN6
+ CotS0zAqwudFKQW7OSrG1tQC7Z+0lbAAAAA==
+X-Change-ID: 20251117-commonize-framebuffer-84f4feaa1f7a
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Casey Connolly <casey.connolly@linaro.org>, 
+ David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4741; i=david@ixit.cz;
+ h=from:subject:message-id; bh=7XaWbvZV9YeWSaUBD4OPJXj85DubDK8OTImKrGrmPag=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpGxTCX3LvhCdmoDKU/4F+lkYNrt1/AEY5VQuJs
+ tRpBfl5+/yJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRsUwgAKCRBgAj/E00kg
+ ctTnEACQq0QyLybhZx2CfAxPHEmjW2FE5U9LcB2+4FE/G2rA51IcpXBJ0r57qFQNINv7qXPHtsS
+ XcppCkkg2y24ArzJNEgx/5SjVjGlZsn0Iqecy5E+CAXvexVArizh6kfBHWLuxkCjBvaXdFox3UC
+ K+AnmHnMYaK4DDXnjiHC5JeNCnjFaE23eF89qcKy/I1E1M8flHvGzOkqj90jXMeABRTVVq2zyWV
+ MDRja5rOXG/uFzGGFYxZ5LaQtr7GAyb/gRlYEXcAlkfJZh36WiHY/Xx12yNPQL9SPyYKtjDRzBu
+ 8tQCFkWJ9p1mEidqCmNHmQdEzkMUMtOZ8iHqxuYZsgqt9ZAWEoFIpSDpc8KQQqQKC/fbJ7Po12l
+ +wvDzABqX4ubrQbiVOn2gnAs+5GU8NY7o+/+hH9MnzIDXAvoiE8rAduu9ge/c18HQx4ZU/8W2qU
+ hj1Dikd7aX4F57zzpY26gAdJNvJ8l2/ybhv2jqw2uQkwCJrujtoBIUbvl2jd7cLqiaYY5JGjEtH
+ H9itqwIfJ3zh1E5Frob8IeWg63DJ48WUpaPnNUsHsbcdltGArJkkZ3yDVt1v8rdm/b/+ymkc7Ci
+ J9a9p2gMrl2UA1sek0lCTysguV1cSYQ5DBIhWw62BbxURZLurKy7fQ1mPMLvzZVs1c/zkRWNgdI
+ 4WQ6SbPhF2CKuRg==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add node for board info registers, which allows getting SoC family and
-board revision.
+From: Casey Connolly <casey.connolly@linaro.org>
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Stick it with the other default reserved regions, all sdm845 devices
+use this address except for cheza.
+
+Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi | 8 ++++++++
- 1 file changed, 8 insertions(+)
+What do you think about this proposed change?
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
-index f1c2e91ec6c5..e60167af0390 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
-@@ -194,6 +194,14 @@ gpiocc: gpio@300 {
- 					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_CC<<8) 2>;
- 				};
- 			};
-+
-+			ao-secure@10220 {
-+				compatible = "amlogic,s7d-ao-secure",
-+					     "amlogic,meson-gx-ao-secure",
-+					     "syscon";
-+				reg = <0x0 0x10220 0x0 0x140>;
-+				amlogic,has-chip-id;
-+			};
- 		};
+I assume QCOM recommends or by default use the default memory region,
+but as can be seen on cheza or sdm850, it seems that vendor can customize
+the region, thus it's not guranteed to have it always on the same address.
+
+There are two approaches I see:
+1. keep as is defined in each device-tree frambuffer node
+2. commonize frambuffer node to sdm845.dtsi and in case of exception
+   remove the node and definite it in device-tree.
+
+I would love to hear your opinions.
+
+Thank you!
+David
+---
+ arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts      | 5 -----
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts            | 5 -----
+ arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi        | 6 ------
+ arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi | 6 ------
+ arch/arm64/boot/dts/qcom/sdm845.dtsi                         | 5 +++++
+ arch/arm64/boot/dts/qcom/sdm850.dtsi                         | 2 ++
+ 6 files changed, 7 insertions(+), 22 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts b/arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts
+index 5d41a92cfebff..26f3081fb92aa 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts
++++ b/arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts
+@@ -109,11 +109,6 @@ vreg_s4a_1p8: pm8998-smps4 {
  	};
- };
+ 
+ 	reserved-memory {
+-		memory@9d400000 {
+-			reg = <0x0 0x9d400000 0x0 0x02400000>;
+-			no-map;
+-		};
+-
+ 		memory@a1300000 {
+ 			compatible = "ramoops";
+ 			reg = <0x0 0xa1300000 0x0 0x100000>;
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
+index ddc2b3ca3bc57..9adf0d76e3ae3 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
++++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
+@@ -62,11 +62,6 @@ key-vol-up {
+ 	};
+ 
+ 	reserved-memory {
+-		framebuffer@9d400000 {
+-			reg = <0x0 0x9d400000 0x0 (1080 * 2160 * 4)>;
+-			no-map;
+-		};
+-
+ 		ramoops: ramoops@b0000000 {
+ 			compatible = "ramoops";
+ 			reg = <0 0xb0000000 0 0x00400000>;
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi b/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi
+index 7dc9349eedfd9..f2d5585122590 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi
+@@ -119,12 +119,6 @@ vreg_s4a_1p8: pm8998-smps4 {
+ 	};
+ 
+ 	reserved-memory {
+-		/* SONY was cool and didn't diverge from MTP this time, yay! */
+-		cont_splash_mem: memory@9d400000 {
+-			reg = <0x0 0x9d400000 0x0 0x2400000>;
+-			no-map;
+-		};
+-
+ 		ramoops@ffc00000 {
+ 			compatible = "ramoops";
+ 			reg = <0x0 0xffc00000 0x0 0x100000>;
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
+index 785006a15e979..7e46e54dcf38c 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
+@@ -100,12 +100,6 @@ spss_mem: memory@97f00000 {
+ 			no-map;
+ 		};
+ 
+-		/* Cont splash region set up by the bootloader */
+-		cont_splash_mem: framebuffer@9d400000 {
+-			reg = <0 0x9d400000 0 0x2400000>;
+-			no-map;
+-		};
+-
+ 		rmtfs_mem: memory@f6301000 {
+ 			compatible = "qcom,rmtfs-mem";
+ 			reg = <0 0xf6301000 0 0x200000>;
+diff --git a/arch/arm64/boot/dts/qcom/sdm845.dtsi b/arch/arm64/boot/dts/qcom/sdm845.dtsi
+index bf2f9c04adba7..7841959a43ca2 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845.dtsi
+@@ -890,6 +890,11 @@ mdata_mem: mpss-metadata {
+ 			no-map;
+ 		};
+ 
++		cont_splash_mem: framebuffer@9d400000 {
++			reg = <0 0x9d400000 0 0x2400000>;
++			no-map;
++		};
++
+ 		fastrpc_mem: fastrpc {
+ 			compatible = "shared-dma-pool";
+ 			alloc-ranges = <0x0 0x00000000 0x0 0xffffffff>;
+diff --git a/arch/arm64/boot/dts/qcom/sdm850.dtsi b/arch/arm64/boot/dts/qcom/sdm850.dtsi
+index da9f6fbe32f6c..b787575c77a5d 100644
+--- a/arch/arm64/boot/dts/qcom/sdm850.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm850.dtsi
+@@ -7,6 +7,8 @@
+ 
+ #include "sdm845.dtsi"
+ 
++/delete-node/ &cont_splash_mem;
++
+ &cpu4_opp_table {
+ 	cpu4_opp33: opp-2841600000 {
+ 		opp-hz = /bits/ 64 <2841600000>;
 
+---
+base-commit: 0c1c7a6a83feaf2cf182c52983ffe330ffb50280
+change-id: 20251117-commonize-framebuffer-84f4feaa1f7a
+
+Best regards,
 -- 
-2.37.1
+David Heidelberg <david@ixit.cz>
 
