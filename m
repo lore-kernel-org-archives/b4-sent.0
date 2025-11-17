@@ -1,175 +1,92 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 17 Nov 2025 13:27:38 +0100
-Subject: [PATCH RFC] arm64: dts: qcom: sdm845: add framebuffer reserved
- memory
+From: Maud Spierings <maudspierings@gocontroll.com>
+Subject: [PATCH v4 0/5] arm64: dts: freescale: add support for the
+ GOcontroll Moduline IV/Mini
+Date: Mon, 17 Nov 2025 16:01:25 +0100
+Message-Id: <20251117-mini_iv-v4-0-5aa63832f51a@gocontroll.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251117-commonize-framebuffer-v1-1-e4c099b383c9@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIALkUG2kC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDQ0Nz3eT83Nz8vMyqVN20osTc1KTStLTUIl0LkzSTtNTERMM080QloN6
- CotS0zAqwudFKQW7OSrG1tQC7Z+0lbAAAAA==
-X-Change-ID: 20251117-commonize-framebuffer-84f4feaa1f7a
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Casey Connolly <casey.connolly@linaro.org>, 
- David Heidelberg <david@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAMU4G2kC/23M0QqDIBTG8VcJr+fQo265q73HGENM60DlsJCN6
+ N1n3RS0y+9wfv+JDC6iG8itmEh0CQcMfR7yVBDbmL52FKu8CTBQnDFNO+zxhYkappyyYDmAIPn
+ 7HZ3Hz1p6PPNucBhD/K7hxJfrsZE4ZdSLstRWapDqeq+DDf0YQ9uebejIEkqwwwAbhoyBGV96b
+ Yzl8i8WOyzYhkXGzquLlZX2wPUBz/P8A3ppLF8dAQAA
+X-Change-ID: 20251009-mini_iv-a05e5c2c1223
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, 
+ Matti Vaittinen <mazziesaccount@gmail.com>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ Maud Spierings <maudspierings@gocontroll.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4741; i=david@ixit.cz;
- h=from:subject:message-id; bh=7XaWbvZV9YeWSaUBD4OPJXj85DubDK8OTImKrGrmPag=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpGxTCX3LvhCdmoDKU/4F+lkYNrt1/AEY5VQuJs
- tRpBfl5+/yJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRsUwgAKCRBgAj/E00kg
- ctTnEACQq0QyLybhZx2CfAxPHEmjW2FE5U9LcB2+4FE/G2rA51IcpXBJ0r57qFQNINv7qXPHtsS
- XcppCkkg2y24ArzJNEgx/5SjVjGlZsn0Iqecy5E+CAXvexVArizh6kfBHWLuxkCjBvaXdFox3UC
- K+AnmHnMYaK4DDXnjiHC5JeNCnjFaE23eF89qcKy/I1E1M8flHvGzOkqj90jXMeABRTVVq2zyWV
- MDRja5rOXG/uFzGGFYxZ5LaQtr7GAyb/gRlYEXcAlkfJZh36WiHY/Xx12yNPQL9SPyYKtjDRzBu
- 8tQCFkWJ9p1mEidqCmNHmQdEzkMUMtOZ8iHqxuYZsgqt9ZAWEoFIpSDpc8KQQqQKC/fbJ7Po12l
- +wvDzABqX4ubrQbiVOn2gnAs+5GU8NY7o+/+hH9MnzIDXAvoiE8rAduu9ge/c18HQx4ZU/8W2qU
- hj1Dikd7aX4F57zzpY26gAdJNvJ8l2/ybhv2jqw2uQkwCJrujtoBIUbvl2jd7cLqiaYY5JGjEtH
- H9itqwIfJ3zh1E5Frob8IeWg63DJ48WUpaPnNUsHsbcdltGArJkkZ3yDVt1v8rdm/b/+ymkc7Ci
- J9a9p2gMrl2UA1sek0lCTysguV1cSYQ5DBIhWw62BbxURZLurKy7fQ1mPMLvzZVs1c/zkRWNgdI
- 4WQ6SbPhF2CKuRg==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763391718; l=2392;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=KOWbH4XWe8kiPnMTy+PCLUNCxjDz4r/cuNdO+SLh1pk=;
+ b=8HxFs7Nh5pNNttOA92Bxz4SU7WWBT7KjRXZkC5kunbSQg8MhIrH/6EIsjGumvGnWPHuZ2onzh
+ vjmBmzhw2T3CO+hge6Q8aRZumFmdMBn2ddYfD3dHzZ1i43cziI+LS00
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Casey Connolly <casey.connolly@linaro.org>
+Add initial support for the Moduline IV and Moduline Mini embedded
+controllers.
 
-Stick it with the other default reserved regions, all sdm845 devices
-use this address except for cheza.
+These systems are powered by the Ka-Ro Electronics tx8m-1610 COM, which
+features an imx8mm SoC.
 
-Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
-What do you think about this proposed change?
+Changes in v4:
+- Fix BUCK6 property order
+- Change the BUCK6 min/max voltage to match the dram specs (Lothar)
+- Make it clear that the two systems are based on a SoM in commit
+  message of the dt-bindings (Conor)
+- Drop merged PMIC fix (Matti, Mark)
+- Link to v3: https://lore.kernel.org/r/20251030-mini_iv-v3-0-ef56c4d9f219@gocontroll.com
 
-I assume QCOM recommends or by default use the default memory region,
-but as can be seen on cheza or sdm850, it seems that vendor can customize
-the region, thus it's not guranteed to have it always on the same address.
+Changes in v3:
+- Add patch fixing the pmic driver
+- Use the proper feedback properties for BUCK6
+- Slightly rework the compatibles, acked by conor dropped
+- Add missing CAN interface supplies, remove the leftover comment
+- Add missing vled-supply
+- Add missing ethernet phy interrupt (doesn't work)
+- Fix the cs-gpios properties in all spi interfaces
+- Fix the order of properties in all spi interfaces
+- Remove unused labels for regulators of the PMIC
+- Link to v2: https://lore.kernel.org/r/20251022-mini_iv-v2-0-20af8f9aac14@gocontroll.com
 
-There are two approaches I see:
-1. keep as is defined in each device-tree frambuffer node
-2. commonize frambuffer node to sdm845.dtsi and in case of exception
-   remove the node and definite it in device-tree.
-
-I would love to hear your opinions.
-
-Thank you!
-David
----
- arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts      | 5 -----
- arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts            | 5 -----
- arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi        | 6 ------
- arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi | 6 ------
- arch/arm64/boot/dts/qcom/sdm845.dtsi                         | 5 +++++
- arch/arm64/boot/dts/qcom/sdm850.dtsi                         | 2 ++
- 6 files changed, 7 insertions(+), 22 deletions(-)
-
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts b/arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts
-index 5d41a92cfebff..26f3081fb92aa 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts
-@@ -109,11 +109,6 @@ vreg_s4a_1p8: pm8998-smps4 {
- 	};
- 
- 	reserved-memory {
--		memory@9d400000 {
--			reg = <0x0 0x9d400000 0x0 0x02400000>;
--			no-map;
--		};
--
- 		memory@a1300000 {
- 			compatible = "ramoops";
- 			reg = <0x0 0xa1300000 0x0 0x100000>;
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-index ddc2b3ca3bc57..9adf0d76e3ae3 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-@@ -62,11 +62,6 @@ key-vol-up {
- 	};
- 
- 	reserved-memory {
--		framebuffer@9d400000 {
--			reg = <0x0 0x9d400000 0x0 (1080 * 2160 * 4)>;
--			no-map;
--		};
--
- 		ramoops: ramoops@b0000000 {
- 			compatible = "ramoops";
- 			reg = <0 0xb0000000 0 0x00400000>;
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi b/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi
-index 7dc9349eedfd9..f2d5585122590 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi
-@@ -119,12 +119,6 @@ vreg_s4a_1p8: pm8998-smps4 {
- 	};
- 
- 	reserved-memory {
--		/* SONY was cool and didn't diverge from MTP this time, yay! */
--		cont_splash_mem: memory@9d400000 {
--			reg = <0x0 0x9d400000 0x0 0x2400000>;
--			no-map;
--		};
--
- 		ramoops@ffc00000 {
- 			compatible = "ramoops";
- 			reg = <0x0 0xffc00000 0x0 0x100000>;
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-index 785006a15e979..7e46e54dcf38c 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-@@ -100,12 +100,6 @@ spss_mem: memory@97f00000 {
- 			no-map;
- 		};
- 
--		/* Cont splash region set up by the bootloader */
--		cont_splash_mem: framebuffer@9d400000 {
--			reg = <0 0x9d400000 0 0x2400000>;
--			no-map;
--		};
--
- 		rmtfs_mem: memory@f6301000 {
- 			compatible = "qcom,rmtfs-mem";
- 			reg = <0 0xf6301000 0 0x200000>;
-diff --git a/arch/arm64/boot/dts/qcom/sdm845.dtsi b/arch/arm64/boot/dts/qcom/sdm845.dtsi
-index bf2f9c04adba7..7841959a43ca2 100644
---- a/arch/arm64/boot/dts/qcom/sdm845.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845.dtsi
-@@ -890,6 +890,11 @@ mdata_mem: mpss-metadata {
- 			no-map;
- 		};
- 
-+		cont_splash_mem: framebuffer@9d400000 {
-+			reg = <0 0x9d400000 0 0x2400000>;
-+			no-map;
-+		};
-+
- 		fastrpc_mem: fastrpc {
- 			compatible = "shared-dma-pool";
- 			alloc-ranges = <0x0 0x00000000 0x0 0xffffffff>;
-diff --git a/arch/arm64/boot/dts/qcom/sdm850.dtsi b/arch/arm64/boot/dts/qcom/sdm850.dtsi
-index da9f6fbe32f6c..b787575c77a5d 100644
---- a/arch/arm64/boot/dts/qcom/sdm850.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm850.dtsi
-@@ -7,6 +7,8 @@
- 
- #include "sdm845.dtsi"
- 
-+/delete-node/ &cont_splash_mem;
-+
- &cpu4_opp_table {
- 	cpu4_opp33: opp-2841600000 {
- 		opp-hz = /bits/ 64 <2841600000>;
+Changes in v2:
+- Fix allignment issue in imx8mm-tx8m-1610.dtsi (fec1)
+- Move phy-reset into fec (works better in barebox)
+- Make the gpio-line-names groups of four on every line
+- Link to v1: https://lore.kernel.org/r/20251009-mini_iv-v1-0-f3889c492457@gocontroll.com
 
 ---
-base-commit: 0c1c7a6a83feaf2cf182c52983ffe330ffb50280
-change-id: 20251117-commonize-framebuffer-84f4feaa1f7a
+Maud Spierings (5):
+      dt-bindings: arm: fsl: Add GOcontroll Moduline IV/Mini
+      arm64: dts: imx8mm: Add pinctrl config definitions
+      arm64: dts: freescale: add Ka-Ro Electronics tx8m-1610 COM
+      arm64: dts: freescale: Add the GOcontroll Moduline IV
+      arm64: dts: freescale: Add the GOcontroll Moduline Mini
+
+ Documentation/devicetree/bindings/arm/fsl.yaml     |   8 +
+ arch/arm64/boot/dts/freescale/Makefile             |   3 +
+ arch/arm64/boot/dts/freescale/imx8mm-pinfunc.h     |  33 +
+ .../imx8mm-tx8m-1610-moduline-iv-306-d.dts         | 800 +++++++++++++++++++++
+ .../imx8mm-tx8m-1610-moduline-mini-111.dts         | 688 ++++++++++++++++++
+ .../arm64/boot/dts/freescale/imx8mm-tx8m-1610.dtsi | 444 ++++++++++++
+ 6 files changed, 1976 insertions(+)
+---
+base-commit: 7c3ba4249a3604477ea9c077e10089ba7ddcaa03
+change-id: 20251009-mini_iv-a05e5c2c1223
 
 Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+Maud Spierings <maudspierings@gocontroll.com>
 
