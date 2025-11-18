@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Tue, 18 Nov 2025 12:30:40 +0100
-Subject: [PATCH v3 5/8] drm/panel: sw43408: Remove manual invocation of
- unprepare at remove
+Date: Tue, 18 Nov 2025 12:30:41 +0100
+Subject: [PATCH v3 6/8] drm/panel: sw43408: Switch to
+ devm_regulator_bulk_get_const
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251118-pixel-3-v3-5-317a2b400d8a@ixit.cz>
+Message-Id: <20251118-pixel-3-v3-6-317a2b400d8a@ixit.cz>
 References: <20251118-pixel-3-v3-0-317a2b400d8a@ixit.cz>
 In-Reply-To: <20251118-pixel-3-v3-0-317a2b400d8a@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -23,48 +23,103 @@ Cc: phodina@protonmail.com, linux-arm-msm@vger.kernel.org,
  phone-devel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=904; i=david@ixit.cz;
- h=from:subject:message-id; bh=InL4IEJK9SCfpvLnrH751SzB3QvgsZ1MDVnoJ5xWIq0=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpHFjgYbn0WPWPCSGgCqAi80SoSxWT3vZwegAVa
- OXROI5fxDiJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRxY4AAKCRBgAj/E00kg
- cs05D/4oJJX22556aW4MvjAKcBubbkD6X06QIGWjSeo5Nr9LdeIfakO56jEXd918axdJD/qg5kx
- cJKmfnmeQdFSSilK51YTcviXAjTmXHmYqn94jU42AuYGfhcPjA0PpND+n8dFa95n/++GUL4ufRD
- 4I/odGbC+cRw1p1YeIf7xCh0rS0O3ma8UdMWhqPX1Hd8BtEyN7ZzA/rE2GSgO+qD/30SNNOI/4p
- 9K9jerDo83mdhc9g+CzXqFgU5pTgY8Fe5afYbTB9pg3nCPwOetcytpHM7hX0bRJXQZctoj9oQ7z
- ZHAhEgrVVfIWn7Lj/Oexdb8sEN2unpSLrItDNFKvZzOd3T08F5AYRbNpfKeOY/k0I6XZz9O3KYh
- t0A1NBGFgn/Lfd1BCPqg908Z65RlqxhMYWV4HNgRRUtVhBtSqlOxu4RY2mVKGmjGA2evxdeEPxn
- fXCmIUxuHbux6TocNwEbJRMfnp64dNNgyyO2dr6ooIgsQRho3VvLS3ijKHeNrZJIv3gZV2KboV+
- T1vj7y6oKDRvob8GqRX2/sOiw+tkR2s0nU4jDx+VICk4Jd5zN4tixNBi7vXj7yu5eXJQ7wmSWx9
- uZBdeq5gNHOdW7bLFLAfyvEnIc2iPQusJ2e0NGfKyXySQ1dxj6oWeBiyWig3G1xwRaBW7LbD+Uc
- Hbj4I8BllB3gA6A==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2649; i=david@ixit.cz;
+ h=from:subject:message-id; bh=RmiIuFd1oStd80sm8454mAMk0dIbubgWeKUm8l8QqhA=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpHFjgrqhBwSznXUBgsLBDos7WSQjI6FB+X4BNp
+ TiiJ21SYSGJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRxY4AAKCRBgAj/E00kg
+ ckPgEAC4QvJiHi82H9WX98rZgG3EZKf3hzr1ZM29Lc46woQVC/9o0HyGndPjx28x1d1EHHmHClG
+ cpYscBUuWrJWWpCfiICfBD1woiKANzcLB9E1MAO5krNqaelISEpoGB0VVBZFRH7cDviZ+eRhNLy
+ AdDl03TtFP69P7/AZpJm0t+fAxbzOrsvTD5BakKp/P76zuAHQHYBIRCu0qceaos81S7yT8a45/L
+ 5UfOaV1egHoGEoE5S89JvgZnYMNXYZdrLdhdRIfANgozBwFubRmXDxo65kUnwqRJ3ULXKExuvld
+ zjCJt+MlozJ3gSz7LfkKQ6tIokQxEEUXRyJ0/ufFq1YWJ6MMmXltLUfhTIThlEHCjB9EcnJUbFi
+ WKg/EtOLq4xDSZCwqiCtb/kQMV0D+uBXQ3aFGUIN0e7m9ym149J9yjiPTk0TdadVgrG8GpbsXKx
+ 2/rcglNeM46QFdPhzbwduH5UYPluwA/HscJ8sHv0uFomaaXVIFS/6GrvFoe01W+Xm6lFu6Tj6Rm
+ b+0ZzqPIkGMxMdoERmxBwL9mwDQGYwdJruNhSx0aCb+sT37ZqvbvqjUgIQJLZUVaxBflatCJCpn
+ ZRTFElrnwgutwc8S90QHD2I+/16kARvOXbDt7bajPbRfV16J2Q8g36JL/hY0D4M7GTzMfGXaIcu
+ DFhwydPNAJ9zXFw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The drm_panel_remove should take care of disable/unprepare. Remove the
-manual call from the sw43408_remove function.
+Switch to devm_regulator_bulk_get_const() to stop setting the supplies
+list in probe(), and move the regulator_bulk_data struct in static const.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/gpu/drm/panel/panel-lg-sw43408.c | 4 ----
- 1 file changed, 4 deletions(-)
+ drivers/gpu/drm/panel/panel-lg-sw43408.c | 26 ++++++++++++++------------
+ 1 file changed, 14 insertions(+), 12 deletions(-)
 
 diff --git a/drivers/gpu/drm/panel/panel-lg-sw43408.c b/drivers/gpu/drm/panel/panel-lg-sw43408.c
-index e5a8a9bb8d15c..d8481bdafd6dd 100644
+index d8481bdafd6dd..0a902470e03fa 100644
 --- a/drivers/gpu/drm/panel/panel-lg-sw43408.c
 +++ b/drivers/gpu/drm/panel/panel-lg-sw43408.c
-@@ -319,10 +319,6 @@ static void sw43408_remove(struct mipi_dsi_device *dsi)
- 	struct sw43408_panel *ctx = mipi_dsi_get_drvdata(dsi);
+@@ -20,13 +20,18 @@
+ #include <drm/display/drm_dsc.h>
+ #include <drm/display/drm_dsc_helper.h>
+ 
+-#define NUM_SUPPLIES 2
++static const struct regulator_bulk_data sw43408_supplies[] = {
++	{ .supply = "vddi", /* 1.88V */
++	  .init_load_uA = 62000 },
++	{ .supply = "vpnl", /* 3.0 V */
++	  .init_load_uA = 857000 },
++};
+ 
+ struct sw43408_panel {
+ 	struct drm_panel base;
+ 	struct mipi_dsi_device *link;
+ 
+-	struct regulator_bulk_data supplies[NUM_SUPPLIES];
++	struct regulator_bulk_data *supplies;
+ 
+ 	struct gpio_desc *reset_gpio;
+ 
+@@ -59,7 +64,7 @@ static int sw43408_unprepare(struct drm_panel *panel)
+ 
+ 	gpiod_set_value(sw43408->reset_gpio, 1);
+ 
+-	ret = regulator_bulk_disable(ARRAY_SIZE(sw43408->supplies), sw43408->supplies);
++	ret = regulator_bulk_disable(ARRAY_SIZE(sw43408_supplies), sw43408->supplies);
+ 
+ 	return ret;
+ }
+@@ -152,7 +157,7 @@ static int sw43408_prepare(struct drm_panel *panel)
+ 	struct sw43408_panel *ctx = to_panel_info(panel);
  	int ret;
  
--	ret = sw43408_unprepare(&ctx->base);
--	if (ret < 0)
--		dev_err(&dsi->dev, "failed to unprepare panel: %d\n", ret);
--
- 	ret = mipi_dsi_detach(dsi);
+-	ret = regulator_bulk_enable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
++	ret = regulator_bulk_enable(ARRAY_SIZE(sw43408_supplies), ctx->supplies);
  	if (ret < 0)
- 		dev_err(&dsi->dev, "failed to detach from DSI host: %d\n", ret);
+ 		return ret;
+ 
+@@ -166,7 +171,7 @@ static int sw43408_prepare(struct drm_panel *panel)
+ 
+ poweroff:
+ 	gpiod_set_value(ctx->reset_gpio, 1);
+-	regulator_bulk_disable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
++	regulator_bulk_disable(ARRAY_SIZE(sw43408_supplies), ctx->supplies);
+ 	return ret;
+ }
+ 
+@@ -249,13 +254,10 @@ static int sw43408_add(struct sw43408_panel *ctx)
+ 	struct device *dev = &ctx->link->dev;
+ 	int ret;
+ 
+-	ctx->supplies[0].supply = "vddi"; /* 1.88 V */
+-	ctx->supplies[0].init_load_uA = 62000;
+-	ctx->supplies[1].supply = "vpnl"; /* 3.0 V */
+-	ctx->supplies[1].init_load_uA = 857000;
+-
+-	ret = devm_regulator_bulk_get(dev, ARRAY_SIZE(ctx->supplies),
+-				      ctx->supplies);
++	ret = devm_regulator_bulk_get_const(dev,
++					    ARRAY_SIZE(sw43408_supplies),
++					    sw43408_supplies,
++					    &ctx->supplies);
+ 	if (ret < 0)
+ 		return ret;
+ 
 
 -- 
 2.51.0
