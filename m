@@ -1,75 +1,83 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Tue, 18 Nov 2025 01:05:57 +0100
-Subject: [PATCH] mm/vmalloc: warn only once when vmalloc detect invalid gfp
- flags
+From: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+Date: Tue, 18 Nov 2025 10:48:03 +0800
+Subject: [PATCH v2] leds: rgb: leds-qcom-lpg: Don't enable TRILED when
+ configuring PWM
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251118-only-one-vmalloc-v1-1-29f8eacb4605@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAGS4G2kC/x2MQQqAIBAAvxJ7TmilKPtKdDDdasE0FKKQ/p50G
- ZjDTIZEkSnBWGWIdHHi4ItgXYHZtd9IsC0OspEdIg4iePcUkLgO7VwwYhmsUn3Tdr1CKNkZaeX
- 7X07z+37nDonqYgAAAA==
-X-Change-ID: 20251118-only-one-vmalloc-b8d997045791
-To: Andrew Morton <akpm@linux-foundation.org>, 
- Uladzislau Rezki <urezki@gmail.com>, 
- "Vishal Moola (Oracle)" <vishal.moola@gmail.com>
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1266; i=david@ixit.cz;
- h=from:subject:message-id; bh=+3LV6m3PqRpzFWM6pdP/J/h+Ov5Mmi3IXlzFVsT12F0=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpG7hnPrb694PSAtJVrUC41ulsIGwk2mg7uisJn
- XnAjQL2gKSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaRu4ZwAKCRBgAj/E00kg
- cqr2D/9RDSNedfot2LwKkIjnQ1JC5RtS0l4ZwgScYSeT8uLysnaMH8XbHHvgZ2HrEvIvSi1DmYN
- +lRq3yAQDBbAZGPheBtnhq0KR4Tq1vUMg+VUiTjjESM3aPuNZDVTzHSmdFrKNBCq21Rmsa1zCWa
- BXBoMKH/u10LIAn5cYYim3gMZYeTPL9lSsAbIkrnIkWFQnsZ8Gg7xm+3j4EldkLpWYwR2m+NL38
- jsUBtlCxTukzD030BYcXChxL5vTSUa5jYxeZm9l4h5RP8/6C159fE9EJjSI3KVjVRHO8/9P5o/P
- /yRU/gvp90rpTY6iRdMaFhsYcOxJXeCMXvyTJ6tGKLH4b0rP+VicjBzf6rzXEFKAelUEX6VxY3K
- 7qQ0a4KdV7Z7SFOsShotfcZpgH8HWKX5dJxe3wK40Fue+1WzmLfo2gXpf73pLk6/xGjDnodbLem
- Hl9s9W3jnlpbKr7fMbcfW2GSDhK+okv4u84GPYIIK5IMPBDxACjYgouhFxS3SFm8yZDTdF2QtBd
- +DsTlLuL7DaVQlhsYr8vuBxKhyTEkll3U4FTSznfMqaHNqnKBHHgJIecFWfPDoCtaLUPTSPkQ75
- bF4b45mzh/e5Xge43nUsHoJ8JQB/r9KIXXnjsKGLZCy1IGgwbmBS7AAa0XIcMGddxIXT++TFqu1
- ToK0FBKpdHKOnfA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Message-Id: <20251118-lpg_triled_fix-v2-1-6d1e5831333f@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAGLeG2kC/3WMwQqDMBAFf0X23IibRGh66n8UERNTXVCjiQ0tk
+ n9v6r2XBzPw5oBgPdkAt+IAbyMFcksGfinAjN0yWEZ9ZuAVrxFRsmkd2t3TZPv2SW8mpVSopdJ
+ CVpBPq7dZn8FHk3mksDv/OfsRf/ZvKiJDpjQX6iq4qYW5uxDK7dVNxs1zmQealNIXrnZ+2LMAA
+ AA=
+X-Change-ID: 20251114-lpg_triled_fix-44491b49b340
+To: kernel@oss.qualcomm.com, Lee Jones <lee@kernel.org>, 
+ Pavel Machek <pavel@kernel.org>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ Bjorn Andersson <andersson@kernel.org>, linux-arm-msm@vger.kernel.org
+Cc: Subbaraman Narayanamurthy <subbaraman.narayanamurthy@oss.qualcomm.com>, 
+ Pavel Machek <pavel@ucw.cz>, linux-leds@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763434085; l=2025;
+ i=fenglin.wu@oss.qualcomm.com; s=20240327; h=from:subject:message-id;
+ bh=cWR4OonENS/A1Z/FgzwkreX5FEzdr4WK9WkPXocNfU0=;
+ b=1BdEDpkIUZ43lhz8o9zOnmCO9uhe6V2GhA+cLZa36KyIzzNvATnKX/Gn5oyRndv6AEVdXYvok
+ OgA+w26WvZnD8sUhOwTjNMnVrtJKcgsNkBkHsMp3HS4u5myrXz1SmnR
+X-Developer-Key: i=fenglin.wu@oss.qualcomm.com; a=ed25519;
+ pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
+X-Endpoint-Received: by B4 Relay for fenglin.wu@oss.qualcomm.com/20240327 with auth_id=406
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Without WARN_ONCE, the logs get spammed immediately after the boot,
-on devices as OnePlus 6T (Snapdragon 845).
+The PWM signal from the LPG channel can be routed to PMIC GPIOs with
+proper GPIO configuration, and it is not necessary to enable the
+TRILED channel in that case. This also applies to the LPG channels
+that mapped to TRILED channels. Additionally, enabling the TRILED
+channel unnecessarily would cause a voltage increase in its power
+supply. Hence remove it.
 
-Fixes: 7179b2256315 ("mm/vmalloc: warn on invalid vmalloc gfp flags")
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Fixes: 24e2d05d1b68 ("leds: Add driver for Qualcomm LPG")
+Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 ---
-I'm not 100% sure this is the right solution, but having WARN_ONCE or
-rate limited warnings here helps a lot on devices as OnePlus 6 (sdm845).
+Changes in v2:
+- Check "chan->in_use" flag in lpg_pwm_apply() is not correct, as it
+  indicates the channel is being used as a LED and this PWM API would
+  never get called. Instead, remove the code line which enables TRILED
+  in lpg_pwm_apply() and update the commit text to explain it clearly.
 
-Please let me know what you think.
+- Link to v1: https://lore.kernel.org/r/20251114-lpg_triled_fix-v1-1-9b239832c53c@oss.qualcomm.com
 ---
- mm/vmalloc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ drivers/leds/rgb/leds-qcom-lpg.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-diff --git a/mm/vmalloc.c b/mm/vmalloc.c
-index 49e0b68768d73..2a3ee17093d6e 100644
---- a/mm/vmalloc.c
-+++ b/mm/vmalloc.c
-@@ -3934,8 +3934,8 @@ static gfp_t vmalloc_fix_flags(gfp_t flags)
- 	gfp_t invalid_mask = flags & ~GFP_VMALLOC_SUPPORTED;
+diff --git a/drivers/leds/rgb/leds-qcom-lpg.c b/drivers/leds/rgb/leds-qcom-lpg.c
+index 4f2a178e3d265a2cc88e651d3e2ca6ae3dfac2e2..e197f548cddb03d079c54c4a0f402402c5d047e2 100644
+--- a/drivers/leds/rgb/leds-qcom-lpg.c
++++ b/drivers/leds/rgb/leds-qcom-lpg.c
+@@ -2,7 +2,7 @@
+ /*
+  * Copyright (c) 2017-2022 Linaro Ltd
+  * Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+- * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
++ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+  */
+ #include <linux/bits.h>
+ #include <linux/bitfield.h>
+@@ -1247,8 +1247,6 @@ static int lpg_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
  
- 	flags &= GFP_VMALLOC_SUPPORTED;
--	WARN(1, "Unexpected gfp: %#x (%pGg). Fixing up to gfp: %#x (%pGg). Fix your code!\n",
--			invalid_mask, &invalid_mask, flags, &flags);
-+	WARN_ONCE(1, "Unexpected gfp: %#x (%pGg). Fixing up to gfp: %#x (%pGg). Fix your code!\n"
-+		  invalid_mask, &invalid_mask, flags, &flags);
- 	return flags;
- }
+ 	lpg_apply(chan);
+ 
+-	triled_set(lpg, chan->triled_mask, chan->enabled ? chan->triled_mask : 0);
+-
+ out_unlock:
+ 	mutex_unlock(&lpg->lock);
  
 
 ---
-base-commit: 0c1c7a6a83feaf2cf182c52983ffe330ffb50280
-change-id: 20251118-only-one-vmalloc-b8d997045791
+base-commit: ea1c4c7e648d1ca91577071fc42fdc219521098c
+change-id: 20251114-lpg_triled_fix-44491b49b340
 
 Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 
