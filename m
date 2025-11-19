@@ -1,14 +1,13 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH v3 0/5] soc: amlogic: Add new Amlogic SoCs info defines
-Date: Wed, 19 Nov 2025 10:52:21 +0800
-Message-Id: <20251119-soc-info-s6-s7-s7d-v3-0-1764c1995c04@amlogic.com>
+Date: Wed, 19 Nov 2025 10:52:22 +0800
+Subject: [PATCH v3 1/5] dt-bindings: arm: amlogic: meson-gx-ao-secure:
+ support more SoCs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOYwHWkC/23NwQqDMAyA4VeRnpfRtJvWnfYeY4faVg1MK+0oG
- +K7rwqDDYRc/kC+zCy6QC6ySzGz4BJF8mMOeSiY6fXYOSCbmwkuzogoIHoDNLYeYgmxymOBo1F
- ljWjEqWb5cAqupdeG3u65e4pPH97bj4Tr9stVe1xC4FDqRmndcGmNu+rh4TsyR+MHtoJJ/CJqF
- xEZkcqJRqJWyuI/sizLB//1zP77AAAA
+Message-Id: <20251119-soc-info-s6-s7-s7d-v3-1-1764c1995c04@amlogic.com>
+References: <20251119-soc-info-s6-s7-s7d-v3-0-1764c1995c04@amlogic.com>
+In-Reply-To: <20251119-soc-info-s6-s7-s7d-v3-0-1764c1995c04@amlogic.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -19,47 +18,39 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  Xianwei Zhao <xianwei.zhao@amlogic.com>, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763520742; l=1361;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763520742; l=1074;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=yGGQ82tynU/Cs1FoQ40nLIWp5JIbe9V7Pi5kfcfRrgs=;
- b=wLxX3Cp5piFHCG506GA5M5KyuVVL2l6yIS3U/E4ZXAwPWoBvmuxVQ8RNUjDCVjiFcpdjbfvXb
- M9qZKNzL1OfCetJ8p4xOwzCW5G/v9trDHPc3j5bZcR6khXkC8NuBAza
+ bh=X2YO1s8uBuGAUV6Y26504dBNen26LRGhmjN4aH4eHgQ=;
+ b=WiKPIWCA4HWTBGjIaDdqHC2n75mnLnvl6lLu/9eXM7AwajIyw2/H6p095qvJqFQgxK3Mp1pPi
+ FpMlSXtqF0uApIbmkdbl6m57ac81Haxinb0wKEyz/AqDdOt051oPZX9
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add more Amlogic SoCs info defines, include S6, S7, S7D.
+Add new compatible for ao-secure of Amlogic SoCs(S6,S7,S7D).
 
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Changes in v3:
-- s/Amlogi/Amlogic/ for patch [2/5].
-- Link to v2: https://lore.kernel.org/r/20251118-soc-info-s6-s7-s7d-v2-0-38e2b31a88d1@amlogic.com
+ .../devicetree/bindings/arm/amlogic/amlogic,meson-gx-ao-secure.yaml    | 3 +++
+ 1 file changed, 3 insertions(+)
 
-Changes in v2:
-- Restore the previous accidental deletion of A4.
-- Link to v1: https://lore.kernel.org/r/20251117-soc-info-s6-s7-s7d-v1-0-6ab8aab03dce@amlogic.com
+diff --git a/Documentation/devicetree/bindings/arm/amlogic/amlogic,meson-gx-ao-secure.yaml b/Documentation/devicetree/bindings/arm/amlogic/amlogic,meson-gx-ao-secure.yaml
+index b4f6695a6015..fa7c403c874a 100644
+--- a/Documentation/devicetree/bindings/arm/amlogic/amlogic,meson-gx-ao-secure.yaml
++++ b/Documentation/devicetree/bindings/arm/amlogic/amlogic,meson-gx-ao-secure.yaml
+@@ -34,6 +34,9 @@ properties:
+               - amlogic,a4-ao-secure
+               - amlogic,c3-ao-secure
+               - amlogic,s4-ao-secure
++              - amlogic,s6-ao-secure
++              - amlogic,s7-ao-secure
++              - amlogic,s7d-ao-secure
+               - amlogic,t7-ao-secure
+           - const: amlogic,meson-gx-ao-secure
+           - const: syscon
 
----
-Xianwei Zhao (5):
-      dt-bindings: arm: amlogic: meson-gx-ao-secure: support more SoCs
-      soc: amlogic: meson-gx-socinfo: add new SoCs id
-      arm64: dts: amlogic: s6: add ao secure node
-      arm64: dts: amlogic: s7: add ao secure node
-      arm64: dts: amlogic: s7d: add ao secure node
-
- .../bindings/arm/amlogic/amlogic,meson-gx-ao-secure.yaml          | 3 +++
- arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi                       | 8 ++++++++
- arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi                       | 8 ++++++++
- arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi                      | 8 ++++++++
- drivers/soc/amlogic/meson-gx-socinfo.c                            | 6 ++++++
- 5 files changed, 33 insertions(+)
----
-base-commit: 8d5b965a53bf6a4e2a2a028b75b2c7067cde5397
-change-id: 20251112-soc-info-s6-s7-s7d-01c86911c249
-
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.37.1
 
