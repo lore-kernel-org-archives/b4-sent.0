@@ -1,74 +1,83 @@
-From: Dave Marquardt <davemarq@linux.ibm.com>
-Date: Tue, 18 Nov 2025 15:34:25 -0600
-Subject: [PATCH RESEND v2] Make edit_in_editor use temporary file in Git
- repository
+From: Per Larsen <perlarsen@google.com>
+Subject: [PATCH v3 0/2] KVM: arm64: Support FF-A direct messaging
+ interfaces
+Date: Wed, 19 Nov 2025 02:07:52 +0000
+Message-Id: <20251119-host-direct-messages-v3-0-c74d04944b26@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251118-edit-with-tmp-file-in-repo-v2-1-0b633b471ddb@linux.ibm.com>
-X-B4-Tracking: v=1; b=H4sIAGDmHGkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
- vPSU3UzU4B8JSMDI1NDQ0ML3dSUzBLd8sySDN2S3ALdtMwcoIo83aLUgnzdpGSDFAMTM1MzM8N
- EJaABBUWpaZkVYMOjlYJcg139XJRia2sBrvDwf3QAAAA=
-X-Change-ID: 20251118-edit-with-tmp-file-in-repo-bc0d0465661a
-To: "Kernel.org Tools" <tools@kernel.org>
-Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>, 
- Dave Marquardt <davemarq@linux.ibm.com>
-X-Mailer: b4 0.15-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763501669; l=1793;
- i=davemarq@linux.ibm.com; s=20250630; h=from:subject:message-id;
- bh=ngJvMGXX1Dy1JqdS+DDokUJ9Gr/lhNU5s71yzHfnFNg=;
- b=IT9xwP2MjpyFEL9n3PUSRlawabt1OX3jrgcCSu0kNIbLSw6Gb2E9B356jHZnkMiQE7moin/9t
- mxkhOQ1wUFFBeSQ7Bz7XkfRKGUsUS627nbd7jVRM04Wu0ahRRBkkzTd
-X-Developer-Key: i=davemarq@linux.ibm.com; a=ed25519;
- pk=eCwwhqOykPrqNNTH1uSGAhXUfNQI0Zlz7hb8uGTjPVU=
-X-Endpoint-Received: by B4 Relay for davemarq@linux.ibm.com/20250630 with auth_id=447
+X-B4-Tracking: v=1; b=H4sIAHgmHWkC/43NTQrCMBCG4auUrI3kxzStK+8hLmoySQO2KZkSl
+ NK7mxY3gguX7wfzzEIQUgAk52ohCXLAEMcS8lAR03ejBxpsaSKYUJyJlvYRZ2pDAjPTARA7D0i
+ VYNxqp1R3t6ScTglceO7s9Va6DzjH9Nq/ZL6tH1Cy32DmlNFTLUHpRnPTuIuP0T/gaOJANjGLf
+ xRRlNYJbcDJWkv2pazr+gb36vfl/wAAAA==
+X-Change-ID: 20251029-host-direct-messages-5201d7f55abd
+To: Marc Zyngier <maz@kernel.org>, Joey Gouly <joey.gouly@arm.com>, 
+ Suzuki K Poulose <suzuki.poulose@arm.com>, 
+ Zenghui Yu <yuzenghui@huawei.com>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
+ Yeoreum Yun <yeoreum.yun@arm.com>, Ben Horgan <ben.horgan@arm.com>, 
+ Oliver Upton <oupton@kernel.org>
+Cc: Armelle Laine <armellel@google.com>, 
+ Sebastien Ene <sebastianene@google.com>, 
+ linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Per Larsen <perlarsen@google.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763518092; l=1768;
+ i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
+ bh=mNMEmJgEYNIBOSgKfDnjr28WG1m9XhnWBodP8OCCvxY=;
+ b=wtFY4QBdUD08j2qc1AJqDZSKK1OvUYEL6zlb1B48v3NdUfiw3eaGLkBm3PmsQLp5ST/sXvDZn
+ qF0op+1cQv5CWqUEDSHGTRU2gk4NuqL84Q5cOcpxdYeJ9UoRGQtVk4A
+X-Developer-Key: i=perlarsen@google.com; a=ed25519;
+ pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
+X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+Support FFA_MSG_SEND_DIRECT_REQ unconditionally.
+Support FFA_MSG_SEND_DIRECT_REQ2 if hypervisor negotiated version 1.2+.
 
+Framework messages (FF-A control plane) are filtered out. For
+FFA_MSG_SEND_DIRECT_REQ, we look at flags in w2. Messages using the REQ2
+interface are always partition messages.
+
+The second patch was part of a previous patch set [0] but was dropped
+since the use case was unclear. A clear use case has now appeared: use
+TPM device with CRB over FF-A when kernel boots with pkvm [1].
+
+Tested by booting Android under QEMU.
+
+Best Regards,
+Per
+
+[0]: https://lore.kernel.org/all/20250730-virtio-msg-ffa-v9-0-7f1b55c8d149@google.com/
+[1]: https://lore.kernel.org/all/20251027191729.1704744-1-yeoreum.yun@arm.com/
+ 
+
+Signed-off-by: Per Larsen <perlarsen@google.com>
+---
+Changes in v3:
+- Filter out framework messages as suggested by Will Deacon. Update cover letter accordingly.
+- Update trailers: Reviewed-by: Yeoreum Yun <yeoreum.yun@arm.com>
+- Link to v2: https://lore.kernel.org/r/20251030-host-direct-messages-v2-0-9f27cef36730@google.com
+
+Changes in v2:
+- 1/2: Drop support for FFA_ID_GET interface in host handler.
+- Link to v1: https://lore.kernel.org/r/20251030-host-direct-messages-v1-0-463e57871c8f@google.com
 
 ---
-This is a resend of a patch I sent in June 2025. I noticed on
-reinstalling b4 that this hadn't been included in recent releases, and
-I couldn't find it in the master branch either.
+Per Larsen (1):
+      KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in host handler
 
-In edit_with_editor, create temporary directory in toplevel/.git/b4 if
-git top level exists. Otherwise let tempfile.TemporaryDirectory use
-its default directory. This avoids issues with Emacs and Magit, which
-insists COMMIT_EDITMSG must be in the repo's directory tree.
+Sebastian Ene (1):
+      KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ in host handler
 
-Signed-off-by: Dave Marquardt <davemarq@linux.ibm.com>
+ arch/arm64/kvm/hyp/nvhe/ffa.c | 33 +++++++++++++++++++++++++++++++++
+ include/linux/arm_ffa.h       |  3 +++
+ 2 files changed, 36 insertions(+)
 ---
- src/b4/__init__.py | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
-
-diff --git a/src/b4/__init__.py b/src/b4/__init__.py
-index 7689550..cc7623a 100644
---- a/src/b4/__init__.py
-+++ b/src/b4/__init__.py
-@@ -4575,8 +4575,16 @@ def edit_in_editor(bdata: bytes, filehint: str = 'COMMIT_EDITMSG') -> bytes:
-     corecfg = get_config_from_git(r'core\..*', {'editor': os.environ.get('EDITOR', 'vi')})
-     editor = corecfg.get('editor')
-     logger.debug('editor=%s', editor)
-+
-+    topdir = git_get_toplevel()
-+    if topdir is not None:
-+        p = Path(topdir)
-+        p = p / '.git' / 'b4'
-+        p.mkdir(parents=True, exist_ok=True)
-+    else:
-+        p = None
-     # Use filehint name in hopes that editors autoload necessary highlight rules
--    with tempfile.TemporaryDirectory(prefix='b4-editor') as temp_dir:
-+    with tempfile.TemporaryDirectory(prefix='b4-editor', dir=p) as temp_dir:
-         temp_fpath = os.path.join(temp_dir, filehint)
-         with open(temp_fpath, 'xb') as edit_file:
-             edit_file.write(bdata)
-
----
-base-commit: a6db3f06ce9836a7fc8921f588452804fc62bed1
-change-id: 20251118-edit-with-tmp-file-in-repo-bc0d0465661a
+base-commit: e7c375b181600caf135cfd03eadbc45eb530f2cb
+change-id: 20251029-host-direct-messages-5201d7f55abd
 
 Best regards,
---  
-Dave Marquardt <davemarq@linux.ibm.com>
+-- 
+Per Larsen <perlarsen@google.com>
 
