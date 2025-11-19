@@ -1,10 +1,10 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 19 Nov 2025 10:52:24 +0800
-Subject: [PATCH v3 3/5] arm64: dts: amlogic: s6: add ao secure node
+Date: Wed, 19 Nov 2025 10:52:25 +0800
+Subject: [PATCH v3 4/5] arm64: dts: amlogic: s7: add ao secure node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251119-soc-info-s6-s7-s7d-v3-3-1764c1995c04@amlogic.com>
+Message-Id: <20251119-soc-info-s6-s7-s7d-v3-4-1764c1995c04@amlogic.com>
 References: <20251119-soc-info-s6-s7-s7d-v3-0-1764c1995c04@amlogic.com>
 In-Reply-To: <20251119-soc-info-s6-s7-s7d-v3-0-1764c1995c04@amlogic.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -18,9 +18,9 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
 X-Mailer: b4 0.12.4
 X-Developer-Signature: v=1; a=ed25519-sha256; t=1763520743; l=913;
  i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=Radwg8hYK+TMvojVUY9r/2XXC2WELdJKWA4Bk2N59s8=;
- b=MGnG/vtgtGjQCDohwEB4pkdfIDdx3n/2tFmD+oKhf8/tNiMYcFZ0HzlC0grUIPf1MMXkTKcwd
- 30KL0EfV1D3Dfq1aB+9lnh1SXQXtKhd/Y80YHX1ZLIqcT+ahZBugiph
+ bh=+3haljXxhzc2NOx8QvAzzjWJEf9qGwOFiodaJKirBq4=;
+ b=Scbx5PsMwbJqHIstRdPKW+JbcJyfiJXaIsDvU9EyJukHChxCoOyAENPjekNGdufEF/XrwpvFy
+ CTf47lJRuyLAV/VMV9XXoDPVwWSrFoiHjU1Pbe1Nz6YqpLEw9nT3kjm
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
@@ -32,20 +32,20 @@ board revision.
 Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi | 8 ++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi | 8 ++++++++
  1 file changed, 8 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi
-index 0dca64a2ef9e..da3e607aea85 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi
-@@ -199,6 +199,14 @@ gpiocc: gpio@300 {
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi
+index d0b63d3fc953..dd7e3de2a53d 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi
+@@ -221,6 +221,14 @@ gpiocc: gpio@300 {
  					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_CC<<8) 2>;
  				};
  			};
 +
 +			ao-secure@10220 {
-+				compatible = "amlogic,s6-ao-secure",
++				compatible = "amlogic,s7-ao-secure",
 +					     "amlogic,meson-gx-ao-secure",
 +					     "syscon";
 +				reg = <0x0 0x10220 0x0 0x140>;
