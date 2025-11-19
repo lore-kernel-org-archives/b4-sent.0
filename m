@@ -1,15 +1,13 @@
 From: Takahiro Kuwano <Takahiro.Kuwano@infineon.com>
-Subject: [PATCH 00/11] mtd: spi-nor: Isolate stacked/parallel support from
- core
-Date: Wed, 19 Nov 2025 14:12:59 +0900
-Message-Id: <20251119-amd-cleanup-v1-0-c555bd85e6e4@infineon.com>
+Date: Wed, 19 Nov 2025 14:13:00 +0900
+Subject: [PATCH 01/11] spi: zynqmp-gqspi: Set priv->is_parallel in
+ child_pre_probe()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANtRHWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDQ0ML3cTcFN3knNTEvNIC3WQLAyNjC3OjVOPkNCWgjoKi1LTMCrBp0bG
- 1tQAn32xhXQAAAA==
-X-Change-ID: 20251118-amd-cleanup-c8023872e3cf
+Message-Id: <20251119-amd-cleanup-v1-1-c555bd85e6e4@infineon.com>
+References: <20251119-amd-cleanup-v1-0-c555bd85e6e4@infineon.com>
+In-Reply-To: <20251119-amd-cleanup-v1-0-c555bd85e6e4@infineon.com>
 To: u-boot@lists.denx.de, Tudor Ambarus <tudor.ambarus@linaro.org>
 Cc: Jagan Teki <jagan@amarulasolutions.com>, 
  Michal Simek <michal.simek@amd.com>, Tom Rini <trini@konsulko.com>, 
@@ -25,55 +23,76 @@ Cc: Jagan Teki <jagan@amarulasolutions.com>,
  Takahiro Kuwano <tkuw584924@gmail.com>, 
  Takahiro Kuwano <Takahiro.Kuwano@infineon.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763529253; l=1974;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763529253; l=1838;
  i=Takahiro.Kuwano@infineon.com; s=20250227; h=from:subject:message-id;
- bh=89mLq7jie3MLaBNSYTnKuDeA/Rgz3c2z5ponCL5nMdw=;
- b=XOysCSdz7SPm34RJzyKvjnjkTbrMnpazB6msxhzgWxhol7ggAXODsHOqdpnB+y1/76y3fI6RC
- Pzy6Kb1le/YDnuhHEIUEa51TcreyC4We1jNnhurxQ9FArsmWkv/hNE4
+ bh=AqEOg4BZ9g/wU8lhyQ1H3eCgVdFedrYMVSatqvFmKYE=;
+ b=3+dOvAz4haA1MrUtN8408QBjL1cQXC6KbuSThy5oWdIgUIcQexZIq95tGrWluM0gKQ192R8yE
+ VF3xfGP83pmAi3MpE0gp4WcwXmhaVMhM8NgCFmkWfs7DJbvfED0Rs4r
 X-Developer-Key: i=Takahiro.Kuwano@infineon.com; a=ed25519;
  pk=aS8V9WLuMUkl0vmgD0xJU19ZajdJmuyFBnBfVj0dfDs=
 X-Endpoint-Received: by B4 Relay for Takahiro.Kuwano@infineon.com/20250227 with auth_id=566
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series suggests to isolate stacked/parallel support from
-spi-nor-core by moving that to SPI controllers and new modules under
-mtd/spi.
+priv->is_parallel should be set at probe instead of at every exec_op().
+It can be set in child_pre_probe() by checking the existence of
+parallel-memories property.
 
-The patchset mainly focuses on removing references to stacked/parallel
-related items from core. The stacked/parallel support logic itself may
-have rooms to improve. Rework or further cleanup in stacked/parallel
-support would be done by other patches after this series is applied.
+Also remove GQSPI_SELECT_LOWER/UPPER_CS flags. They are problematic as
+they overwrite SPI_XFER_BEGIN/END defined in spi.h.
 
 Signed-off-by: Takahiro Kuwano <Takahiro.Kuwano@infineon.com>
 ---
-Takahiro Kuwano (11):
-      spi: zynqmp-gqspi: Set priv->is_parallel in child_pre_probe()
-      spi: zynqmp_gqspi: Remove reference to SPI_XFER_LOWER flag.
-      spi: zynqmp_gqspi: Read two bytes of SR and FSR in parallel mode
-      spi: zynq-qspi: Set priv->is_parallel/stacked in child_pre_probe()
-      spi: zynq_qspi: Remove reference to SPI_XFER_LOWER flag.
-      spi: zynq_qspi: Read two bytes of SR and FSR in parallel mode
-      mtd: spi-nor: Migrate stacked/parallel part to new modules
-      mtd: spi-nor: stacked: Cleanup stacked/parallel flags
-      mtd: spi-nor: parallel: Cleanup stacked/parallel flags
-      mtd: spi-nor: Revert stacked/parallel related commits
-      mtd: spi-nor: Call stacked/parallel post init fixups
+ drivers/spi/zynqmp_gqspi.c | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
 
- drivers/mtd/spi/Makefile       |   4 +
- drivers/mtd/spi/parallel.c     | 412 ++++++++++++++++++++++++++++++++++++++++
- drivers/mtd/spi/sf_internal.h  |  18 ++
- drivers/mtd/spi/spi-nor-core.c | 422 +++++++----------------------------------
- drivers/mtd/spi/stacked.c      | 389 +++++++++++++++++++++++++++++++++++++
- drivers/spi/zynq_qspi.c        |  47 +++--
- drivers/spi/zynqmp_gqspi.c     |  55 ++++--
- include/linux/mtd/spi-nor.h    |  10 -
- include/spi.h                  |   2 -
- 9 files changed, 973 insertions(+), 386 deletions(-)
----
-base-commit: e2d51f8db207f7db70dd8104fa1da2cffda419f2
-change-id: 20251118-amd-cleanup-c8023872e3cf
+diff --git a/drivers/spi/zynqmp_gqspi.c b/drivers/spi/zynqmp_gqspi.c
+index 2a095d0c58e..4a25ee0c459 100644
+--- a/drivers/spi/zynqmp_gqspi.c
++++ b/drivers/spi/zynqmp_gqspi.c
+@@ -89,9 +89,6 @@
+ #define SPI_XFER_ON_LOWER		1
+ #define SPI_XFER_ON_UPPER		2
+ 
+-#define GQSPI_SELECT_LOWER_CS          BIT(0)
+-#define GQSPI_SELECT_UPPER_CS          BIT(1)
+-
+ #define GQSPI_DMA_ALIGN			0x4
+ #define GQSPI_MAX_BAUD_RATE_VAL		7
+ #define GQSPI_DFLT_BAUD_RATE_VAL	2
+@@ -439,6 +436,13 @@ static int zynqmp_qspi_child_pre_probe(struct udevice *bus)
+ 	slave->bytemode = SPI_4BYTE_MODE;
+ 	priv->max_hz = slave->max_hz;
+ 
++	/*
++	 * The property has values that represent flash sizes but we just need
++	 * to know the existence of the property here.
++	 */
++	priv->is_parallel = ofnode_read_bool(dev_ofnode(bus),
++					     "parallel-memories");
++
+ 	return 0;
+ }
+ 
+@@ -862,10 +866,6 @@ static int zynqmp_qspi_exec_op(struct spi_slave *slave,
+ 	else
+ 		priv->u_page = 0;
+ 
+-	if ((slave->flags & GQSPI_SELECT_LOWER_CS) &&
+-	    (slave->flags & GQSPI_SELECT_UPPER_CS))
+-		priv->is_parallel = true;
+-
+ 	priv->stripe = 0;
+ 	priv->bus = 0;
+ 
+@@ -889,7 +889,6 @@ static int zynqmp_qspi_exec_op(struct spi_slave *slave,
+ 
+ 	zynqmp_qspi_chipselect(priv, 0);
+ 
+-	priv->is_parallel = false;
+ 	slave->flags &= ~SPI_XFER_LOWER;
+ 
+ 	return ret;
 
-Best regards,
 -- 
-Takahiro Kuwano <Takahiro.Kuwano@infineon.com>
+2.34.1
 
