@@ -1,99 +1,65 @@
-From: Per Larsen <perlarsen@google.com>
-Date: Wed, 19 Nov 2025 02:07:54 +0000
-Subject: [PATCH v3 2/2] KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in
- host handler
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v3 0/5] soc: amlogic: Add new Amlogic SoCs info defines
+Date: Wed, 19 Nov 2025 10:52:21 +0800
+Message-Id: <20251119-soc-info-s6-s7-s7d-v3-0-1764c1995c04@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251119-host-direct-messages-v3-2-c74d04944b26@google.com>
-References: <20251119-host-direct-messages-v3-0-c74d04944b26@google.com>
-In-Reply-To: <20251119-host-direct-messages-v3-0-c74d04944b26@google.com>
-To: Marc Zyngier <maz@kernel.org>, Joey Gouly <joey.gouly@arm.com>, 
- Suzuki K Poulose <suzuki.poulose@arm.com>, 
- Zenghui Yu <yuzenghui@huawei.com>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Yeoreum Yun <yeoreum.yun@arm.com>, Ben Horgan <ben.horgan@arm.com>, 
- Oliver Upton <oupton@kernel.org>
-Cc: Armelle Laine <armellel@google.com>, 
- Sebastien Ene <sebastianene@google.com>, 
- linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Per Larsen <perlarsen@google.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763518092; l=2628;
- i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
- bh=0P7CauTG9R1nzKRFKD32UxjLLHMH6ZtNvg/BjDofeXQ=;
- b=EZG9yPi4huWCccQXEesR1wCdc/CnJUYSPaK4VunD6mhrLHI12t9bObg45GcwkKX0FO/4oX1Mq
- QlNJtRd1F5PC/yNtMbD3eBg1eF+aMS2tMTrUiEUIgHzI/EqYBGSppqi
-X-Developer-Key: i=perlarsen@google.com; a=ed25519;
- pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
-X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
+X-B4-Tracking: v=1; b=H4sIAOYwHWkC/23NwQqDMAyA4VeRnpfRtJvWnfYeY4faVg1MK+0oG
+ +K7rwqDDYRc/kC+zCy6QC6ySzGz4BJF8mMOeSiY6fXYOSCbmwkuzogoIHoDNLYeYgmxymOBo1F
+ ljWjEqWb5cAqupdeG3u65e4pPH97bj4Tr9stVe1xC4FDqRmndcGmNu+rh4TsyR+MHtoJJ/CJqF
+ xEZkcqJRqJWyuI/sizLB//1zP77AAAA
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.12.4
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763520742; l=1361;
+ i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
+ bh=yGGQ82tynU/Cs1FoQ40nLIWp5JIbe9V7Pi5kfcfRrgs=;
+ b=wLxX3Cp5piFHCG506GA5M5KyuVVL2l6yIS3U/E4ZXAwPWoBvmuxVQ8RNUjDCVjiFcpdjbfvXb
+ M9qZKNzL1OfCetJ8p4xOwzCW5G/v9trDHPc3j5bZcR6khXkC8NuBAza
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-FF-A 1.2 adds the DIRECT_REQ2 messaging interface which is similar to
-the existing FFA_MSG_SEND_DIRECT_{REQ,RESP} functions and can use the
-existing handler function. Add support for FFA_MSG_SEND_DIRECT_REQ2 in
-the host ffa handler.
+Add more Amlogic SoCs info defines, include S6, S7, S7D.
 
-Reviewed-by: Yeoreum Yun <yeoreum.yun@arm.com>
-Signed-off-by: Per Larsen <perlarsen@google.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- arch/arm64/kvm/hyp/nvhe/ffa.c | 15 +++++++++++++--
- 1 file changed, 13 insertions(+), 2 deletions(-)
+Changes in v3:
+- s/Amlogi/Amlogic/ for patch [2/5].
+- Link to v2: https://lore.kernel.org/r/20251118-soc-info-s6-s7-s7d-v2-0-38e2b31a88d1@amlogic.com
 
-diff --git a/arch/arm64/kvm/hyp/nvhe/ffa.c b/arch/arm64/kvm/hyp/nvhe/ffa.c
-index a38a3ab497e5eac11777109684a33f02d88d09a1..c794802bda589b315faf978086ad164a2aee510a 100644
---- a/arch/arm64/kvm/hyp/nvhe/ffa.c
-+++ b/arch/arm64/kvm/hyp/nvhe/ffa.c
-@@ -683,8 +683,10 @@ static bool ffa_call_supported(u64 func_id)
- 	case FFA_NOTIFICATION_SET:
- 	case FFA_NOTIFICATION_GET:
- 	case FFA_NOTIFICATION_INFO_GET:
-+		return false;
- 	/* Optional interfaces added in FF-A 1.2 */
- 	case FFA_MSG_SEND_DIRECT_REQ2:		/* Optional per 7.5.1 */
-+		return hyp_ffa_version >= FFA_VERSION_1_2;
- 	case FFA_MSG_SEND_DIRECT_RESP2:		/* Optional per 7.5.1 */
- 	case FFA_CONSOLE_LOG:			/* Optional per 13.1: not in Table 13.1 */
- 	case FFA_PARTITION_INFO_GET_REGS:	/* Optional for virtual instances per 13.1 */
-@@ -866,12 +868,16 @@ static void do_ffa_direct_msg(struct arm_smccc_1_2_regs *res,
- 			      struct kvm_cpu_context *ctxt,
- 			      u64 vm_handle)
- {
-+	DECLARE_REG(u64, func_id, ctxt, 0);
- 	DECLARE_REG(u32, flags, ctxt, 2);
- 
- 	struct arm_smccc_1_2_regs *args = (void *)&ctxt->regs.regs[0];
- 
--	/* filter out framework messages */
--	if (FIELD_GET(FFA_MSG_FLAGS_MSG_TYPE, flags)) {
-+	/*
-+	 * filter out framework messages.
-+	 * FFA_MSG_SEND_DIRECT_REQ2 is only for partition messages.
-+	 */
-+	if (func_id != FFA_MSG_SEND_DIRECT_REQ2 && FIELD_GET(FFA_MSG_FLAGS_MSG_TYPE, flags)) {
- 		ffa_to_smccc_error(res, FFA_RET_INVALID_PARAMETERS);
- 		return;
- 	}
-@@ -937,6 +943,10 @@ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
- 	case FFA_PARTITION_INFO_GET:
- 		do_ffa_part_get(&res, host_ctxt);
- 		goto out_handled;
-+	case FFA_MSG_SEND_DIRECT_REQ2:
-+		if (!ffa_call_supported(func_id))
-+			goto out_not_supported;
-+		fallthrough;
- 	case FFA_MSG_SEND_DIRECT_REQ:
- 	case FFA_FN64_MSG_SEND_DIRECT_REQ:
- 
-@@ -947,6 +957,7 @@ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
- 	if (ffa_call_supported(func_id))
- 		return false; /* Pass through */
- 
-+out_not_supported:
- 	ffa_to_smccc_error(&res, FFA_RET_NOT_SUPPORTED);
- out_handled:
- 	ffa_set_retval(host_ctxt, &res);
+Changes in v2:
+- Restore the previous accidental deletion of A4.
+- Link to v1: https://lore.kernel.org/r/20251117-soc-info-s6-s7-s7d-v1-0-6ab8aab03dce@amlogic.com
 
+---
+Xianwei Zhao (5):
+      dt-bindings: arm: amlogic: meson-gx-ao-secure: support more SoCs
+      soc: amlogic: meson-gx-socinfo: add new SoCs id
+      arm64: dts: amlogic: s6: add ao secure node
+      arm64: dts: amlogic: s7: add ao secure node
+      arm64: dts: amlogic: s7d: add ao secure node
+
+ .../bindings/arm/amlogic/amlogic,meson-gx-ao-secure.yaml          | 3 +++
+ arch/arm64/boot/dts/amlogic/amlogic-s6.dtsi                       | 8 ++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi                       | 8 ++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi                      | 8 ++++++++
+ drivers/soc/amlogic/meson-gx-socinfo.c                            | 6 ++++++
+ 5 files changed, 33 insertions(+)
+---
+base-commit: 8d5b965a53bf6a4e2a2a028b75b2c7067cde5397
+change-id: 20251112-soc-info-s6-s7-s7d-01c86911c249
+
+Best regards,
 -- 
-2.52.0.rc1.455.g30608eb744-goog
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
