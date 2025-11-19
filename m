@@ -1,11 +1,11 @@
 From: Takahiro Kuwano <Takahiro.Kuwano@infineon.com>
-Date: Wed, 19 Nov 2025 14:13:00 +0900
-Subject: [PATCH 01/11] spi: zynqmp-gqspi: Set priv->is_parallel in
- child_pre_probe()
+Date: Wed, 19 Nov 2025 14:13:01 +0900
+Subject: [PATCH 02/11] spi: zynqmp_gqspi: Remove reference to
+ SPI_XFER_LOWER flag.
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251119-amd-cleanup-v1-1-c555bd85e6e4@infineon.com>
+Message-Id: <20251119-amd-cleanup-v1-2-c555bd85e6e4@infineon.com>
 References: <20251119-amd-cleanup-v1-0-c555bd85e6e4@infineon.com>
 In-Reply-To: <20251119-amd-cleanup-v1-0-c555bd85e6e4@infineon.com>
 To: u-boot@lists.denx.de, Tudor Ambarus <tudor.ambarus@linaro.org>
@@ -23,75 +23,71 @@ Cc: Jagan Teki <jagan@amarulasolutions.com>,
  Takahiro Kuwano <tkuw584924@gmail.com>, 
  Takahiro Kuwano <Takahiro.Kuwano@infineon.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763529253; l=1838;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763529253; l=1582;
  i=Takahiro.Kuwano@infineon.com; s=20250227; h=from:subject:message-id;
- bh=AqEOg4BZ9g/wU8lhyQ1H3eCgVdFedrYMVSatqvFmKYE=;
- b=3+dOvAz4haA1MrUtN8408QBjL1cQXC6KbuSThy5oWdIgUIcQexZIq95tGrWluM0gKQ192R8yE
- VF3xfGP83pmAi3MpE0gp4WcwXmhaVMhM8NgCFmkWfs7DJbvfED0Rs4r
+ bh=VNUuewgVolvHFP3F2HRpZhcnlgOZR8fV/mUTRvu645U=;
+ b=FFfXTMgppHDZdzBcotbasNSqvAK4XA9HP2omVqXVYpnO47BqHiTdHGnXvclMHyxosFOzEKxQY
+ aBJaTFPvHztDHhzPQACP2yGUSBMnfe2iEANhEe21J4PEC1rpYv+F06F
 X-Developer-Key: i=Takahiro.Kuwano@infineon.com; a=ed25519;
  pk=aS8V9WLuMUkl0vmgD0xJU19ZajdJmuyFBnBfVj0dfDs=
 X-Endpoint-Received: by B4 Relay for Takahiro.Kuwano@infineon.com/20250227 with auth_id=566
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-priv->is_parallel should be set at probe instead of at every exec_op().
-It can be set in child_pre_probe() by checking the existence of
-parallel-memories property.
-
-Also remove GQSPI_SELECT_LOWER/UPPER_CS flags. They are problematic as
-they overwrite SPI_XFER_BEGIN/END defined in spi.h.
+SPI_XFER_LOWER is set in spi-nor-core for reading ID, SFDP and BAR.
+The flag is referenced by AMD controllers only. Controller drivers can
+intercept the opcode and change its settings accordingly.
 
 Signed-off-by: Takahiro Kuwano <Takahiro.Kuwano@infineon.com>
 ---
- drivers/spi/zynqmp_gqspi.c | 15 +++++++--------
- 1 file changed, 7 insertions(+), 8 deletions(-)
+ drivers/spi/zynqmp_gqspi.c | 21 ++++++++++++++++++---
+ 1 file changed, 18 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/spi/zynqmp_gqspi.c b/drivers/spi/zynqmp_gqspi.c
-index 2a095d0c58e..4a25ee0c459 100644
+index 4a25ee0c459..143b957516b 100644
 --- a/drivers/spi/zynqmp_gqspi.c
 +++ b/drivers/spi/zynqmp_gqspi.c
-@@ -89,9 +89,6 @@
- #define SPI_XFER_ON_LOWER		1
- #define SPI_XFER_ON_UPPER		2
- 
--#define GQSPI_SELECT_LOWER_CS          BIT(0)
--#define GQSPI_SELECT_UPPER_CS          BIT(1)
--
- #define GQSPI_DMA_ALIGN			0x4
- #define GQSPI_MAX_BAUD_RATE_VAL		7
- #define GQSPI_DFLT_BAUD_RATE_VAL	2
-@@ -439,6 +436,13 @@ static int zynqmp_qspi_child_pre_probe(struct udevice *bus)
- 	slave->bytemode = SPI_4BYTE_MODE;
- 	priv->max_hz = slave->max_hz;
- 
-+	/*
-+	 * The property has values that represent flash sizes but we just need
-+	 * to know the existence of the property here.
-+	 */
-+	priv->is_parallel = ofnode_read_bool(dev_ofnode(bus),
-+					     "parallel-memories");
-+
+@@ -823,6 +823,23 @@ static int zynqmp_qspi_release_bus(struct udevice *dev)
  	return 0;
  }
  
-@@ -862,10 +866,6 @@ static int zynqmp_qspi_exec_op(struct spi_slave *slave,
- 	else
- 		priv->u_page = 0;
- 
--	if ((slave->flags & GQSPI_SELECT_LOWER_CS) &&
--	    (slave->flags & GQSPI_SELECT_UPPER_CS))
--		priv->is_parallel = true;
--
- 	priv->stripe = 0;
++static bool zynqmp_qspi_is_lower_only(const struct spi_mem_op *op)
++{
++	/*
++	 * This is a list of opcodes for which we must read only from lower chip
++	 * in dual parallel mode.
++	 */
++	switch (op->cmd.opcode) {
++	case SPINOR_OP_RDID:
++	case SPINOR_OP_RDSFDP:
++	case SPINOR_OP_BRRD:
++	case SPINOR_OP_RDEAR:
++		return true;
++	}
++
++	return false;
++}
++
+ static bool zynqmp_qspi_update_stripe(const struct spi_mem_op *op)
+ {
+ 	/*
+@@ -870,7 +887,7 @@ static int zynqmp_qspi_exec_op(struct spi_slave *slave,
  	priv->bus = 0;
  
-@@ -889,7 +889,6 @@ static int zynqmp_qspi_exec_op(struct spi_slave *slave,
+ 	if (priv->is_parallel) {
+-		if (slave->flags & SPI_XFER_LOWER)
++		if (zynqmp_qspi_is_lower_only(op))
+ 			priv->bus = 1;
+ 		if (zynqmp_qspi_update_stripe(op))
+ 			priv->stripe = 1;
+@@ -889,8 +906,6 @@ static int zynqmp_qspi_exec_op(struct spi_slave *slave,
  
  	zynqmp_qspi_chipselect(priv, 0);
  
--	priv->is_parallel = false;
- 	slave->flags &= ~SPI_XFER_LOWER;
- 
+-	slave->flags &= ~SPI_XFER_LOWER;
+-
  	return ret;
+ }
+ 
 
 -- 
 2.34.1
