@@ -1,80 +1,70 @@
-From: Takahiro Kuwano <Takahiro.Kuwano@infineon.com>
-Date: Wed, 19 Nov 2025 14:13:10 +0900
-Subject: [PATCH 11/11] mtd: spi-nor: Call stacked/parallel post init fixups
+From: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+Subject: [PATCH v3 0/2] leds: rgb: lpg: Don't enable TRILED when
+ configuring PWM
+Date: Wed, 19 Nov 2025 14:06:41 +0800
+Message-Id: <20251119-lpg_triled_fix-v3-0-84b6dbdc774a@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251119-amd-cleanup-v1-11-c555bd85e6e4@infineon.com>
-References: <20251119-amd-cleanup-v1-0-c555bd85e6e4@infineon.com>
-In-Reply-To: <20251119-amd-cleanup-v1-0-c555bd85e6e4@infineon.com>
-To: u-boot@lists.denx.de, Tudor Ambarus <tudor.ambarus@linaro.org>
-Cc: Jagan Teki <jagan@amarulasolutions.com>, 
- Michal Simek <michal.simek@amd.com>, Tom Rini <trini@konsulko.com>, 
- Ibai Erkiaga <ibai.erkiaga-elorza@amd.com>, Vignesh R <vigneshr@ti.com>, 
- Prasad Kummari <prasad.kummari@amd.com>, 
- Marek Vasut <marek.vasut+renesas@mailbox.org>, 
- Havish Mutya <havish.mutya@amd.com>, 
- Ashok Reddy Soma <ashok.reddy.soma@amd.com>, 
- Venkatesh Yadav Abbarapu <venkatesh.abbarapu@amd.com>, 
- Daassi Bacem <Bacem.Daassi@infineon.com>, 
- Shinsuke Okada <Shinsuke.Okada@infineon.com>, 
- Hiroyuki Saito <Hiroyuki.Saito2@infineon.com>, 
- Takahiro Kuwano <tkuw584924@gmail.com>, 
- Takahiro Kuwano <Takahiro.Kuwano@infineon.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763529253; l=1426;
- i=Takahiro.Kuwano@infineon.com; s=20250227; h=from:subject:message-id;
- bh=Tg+dA3mBGmNn97VIjQKqueub32h6w19dYeeUbobngh0=;
- b=70z6GmNnastkl8xKkcCZFkC8mcNjNOBHrRkbEZMxVPBKiBRZKt6w8/lXdrSBZTnHg0ndlacK1
- EGmyghn/MdFDQowsOeekKqTSOf+A0bhGj+4/NqlvkHKShU3nLXPR7Lx
-X-Developer-Key: i=Takahiro.Kuwano@infineon.com; a=ed25519;
- pk=aS8V9WLuMUkl0vmgD0xJU19ZajdJmuyFBnBfVj0dfDs=
-X-Endpoint-Received: by B4 Relay for Takahiro.Kuwano@infineon.com/20250227 with auth_id=566
+X-B4-Tracking: v=1; b=H4sIAHFeHWkC/3XM0QqCMBTG8VeJXTfx7MxwXfUeEaJz6kCdbTYK8
+ d07ehVUNwf+H5zfwoLx1gR2PizMm2iDdSMFHg9Md+XYGm5raiZSkQGA5P3UFrO3vamLxj65lFJ
+ BJVWFMmX0NHlD8w5eb9SdDbPzr92PsK1/qQgcuKoEqhyFzlBfXAjJ/VH22g1DQodtYhSfSv6lC
+ FJONZgsR0DE5oeyrusbpI8rSfkAAAA=
+X-Change-ID: 20251114-lpg_triled_fix-44491b49b340
+To: kernel@oss.qualcomm.com, Lee Jones <lee@kernel.org>, 
+ Pavel Machek <pavel@kernel.org>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ Bjorn Andersson <andersson@kernel.org>, linux-arm-msm@vger.kernel.org, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Subbaraman Narayanamurthy <subbaraman.narayanamurthy@oss.qualcomm.com>, 
+ Pavel Machek <pavel@ucw.cz>, linux-leds@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Fenglin Wu <fenglin.wu@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763532404; l=1449;
+ i=fenglin.wu@oss.qualcomm.com; s=20240327; h=from:subject:message-id;
+ bh=ZEK+wJs21KjpieXILjX9OQNrW4hvNI90ksPgQCgH+Os=;
+ b=KSR6kKZ3j50ymX3dSQIla49xrLoVfc93fppvTUnwiShO5j/tMcix8DTvKFAIql9ViOFaDoPhs
+ 2mtfgsXh5XbAj/2xFRjrL9eIFfzu/0unuUJ6fLuIqjjZdGWroZeTWzh
+X-Developer-Key: i=fenglin.wu@oss.qualcomm.com; a=ed25519;
+ pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
+X-Endpoint-Received: by B4 Relay for fenglin.wu@oss.qualcomm.com/20240327 with auth_id=406
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for stacked/parallel mode by calling post_init_fixups() from
-core.
+The LPG channel can be used for only outputting PWM signal without the
+need to enable TRILED. Update the DT binding document to explain that
+usage and remove the TRILED enabling register write in the driver for
+that use case.
 
-Signed-off-by: Takahiro Kuwano <Takahiro.Kuwano@infineon.com>
+Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 ---
- drivers/mtd/spi/sf_internal.h  |  3 +++
- drivers/mtd/spi/spi-nor-core.c | 10 ++++++++++
- 2 files changed, 13 insertions(+)
+Changes in v3:
+- Add a DT binding change to clarify the standalone PWM usage according
+  to the suggestion from Bjorn.
+- Link to v2: https://lore.kernel.org/r/20251118-lpg_triled_fix-v2-1-6d1e5831333f@oss.qualcomm.com
 
-diff --git a/drivers/mtd/spi/sf_internal.h b/drivers/mtd/spi/sf_internal.h
-index 8b1a48f045a..a9825a0b317 100644
---- a/drivers/mtd/spi/sf_internal.h
-+++ b/drivers/mtd/spi/sf_internal.h
-@@ -108,4 +108,7 @@ int clean_bar(struct spi_nor *nor);
- int sst_write(struct mtd_info *mtd, loff_t to, size_t len, size_t *retlen,
- 	      const u_char *buf);
- 
-+int spi_nor_stacked_post_init_fixups(struct spi_nor *nor);
-+int spi_nor_parallel_post_init_fixups(struct spi_nor *nor);
-+
- #endif /* _SF_INTERNAL_H_ */
-diff --git a/drivers/mtd/spi/spi-nor-core.c b/drivers/mtd/spi/spi-nor-core.c
-index acfbc0bb702..f9b6971e535 100644
---- a/drivers/mtd/spi/spi-nor-core.c
-+++ b/drivers/mtd/spi/spi-nor-core.c
-@@ -4363,6 +4363,16 @@ int spi_nor_scan(struct spi_nor *nor)
- 	if (ret)
- 		return ret;
- 
-+#if CONFIG_IS_ENABLED(SPI_STACKED_PARALLEL)
-+	ret = spi_nor_stacked_post_init_fixups(nor);
-+	if (ret)
-+		return ret;
-+
-+	ret = spi_nor_parallel_post_init_fixups(nor);
-+	if (ret)
-+		return ret;
-+#endif
-+
- 	nor->rdsr_dummy = params.rdsr_dummy;
- 	nor->rdsr_addr_nbytes = params.rdsr_addr_nbytes;
- 	nor->name = info->name;
+Changes in v2:
+- Check "chan->in_use" flag in lpg_pwm_apply() is not correct, as it
+  indicates the channel is being used as a LED and this PWM API would
+  never get called. Instead, remove the code line which enables TRILED
+  in lpg_pwm_apply() and update the commit text to explain it clearly.
 
+- Link to v1: https://lore.kernel.org/r/20251114-lpg_triled_fix-v1-1-9b239832c53c@oss.qualcomm.com
+
+---
+Fenglin Wu (2):
+      dt-bindings: leds: qcom-lpg: Explain standalone PWM usage
+      leds: rgb: leds-qcom-lpg: Don't enable TRILED when configuring PWM
+
+ Documentation/devicetree/bindings/leds/leds-qcom-lpg.yaml | 5 +++++
+ drivers/leds/rgb/leds-qcom-lpg.c                          | 4 +---
+ 2 files changed, 6 insertions(+), 3 deletions(-)
+---
+base-commit: ea1c4c7e648d1ca91577071fc42fdc219521098c
+change-id: 20251114-lpg_triled_fix-44491b49b340
+
+Best regards,
 -- 
-2.34.1
+Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 
