@@ -1,11 +1,11 @@
 From: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
-Date: Wed, 19 Nov 2025 14:06:42 +0800
-Subject: [PATCH v3 1/2] dt-bindings: leds: qcom-lpg: Explain standalone PWM
- usage
+Date: Wed, 19 Nov 2025 14:06:43 +0800
+Subject: [PATCH v3 2/2] leds: rgb: leds-qcom-lpg: Don't enable TRILED when
+ configuring PWM
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251119-lpg_triled_fix-v3-1-84b6dbdc774a@oss.qualcomm.com>
+Message-Id: <20251119-lpg_triled_fix-v3-2-84b6dbdc774a@oss.qualcomm.com>
 References: <20251119-lpg_triled_fix-v3-0-84b6dbdc774a@oss.qualcomm.com>
 In-Reply-To: <20251119-lpg_triled_fix-v3-0-84b6dbdc774a@oss.qualcomm.com>
 To: kernel@oss.qualcomm.com, Lee Jones <lee@kernel.org>, 
@@ -19,41 +19,51 @@ Cc: Subbaraman Narayanamurthy <subbaraman.narayanamurthy@oss.qualcomm.com>,
  linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763532404; l=1399;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763532404; l=1457;
  i=fenglin.wu@oss.qualcomm.com; s=20240327; h=from:subject:message-id;
- bh=fm6f+mHZk9XQAu2fqBegNtPPu3AH+lJL7icnO/wPnuA=;
- b=7esyEgh0jpdYkUrVM6O/QNlvNQdL8cIhftNM37xGPAgzGa4njb6xJH69lrB4JqnN5TooTy6Ff
- O6/ODUy4YCxD2lqBB3Ae84FxYPF8MSguiw3Ynmumi7q6+TlWcHYK7k6
+ bh=U+wcmaq3xYdZ4UGGBdL6UlkAePK6V2RVv6Nso37Fbso=;
+ b=7NXgXUkI+Lc6RUBYvT8HCUX3BNbVJKBH/xcndfzx5AOUB6kvxNrBRFc/IlIzFADoASq4/3wos
+ XA0PR8iqBqnBPoAEgnXVFJDxMS/OcEvn3/iuVGwMYBlVCqX8MhhWvf1
 X-Developer-Key: i=fenglin.wu@oss.qualcomm.com; a=ed25519;
  pk=BF8SA4IVDk8/EBCwlBehKtn2hp6kipuuAuDAHh9s+K4=
 X-Endpoint-Received: by B4 Relay for fenglin.wu@oss.qualcomm.com/20240327 with auth_id=406
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-LPG channels can be used for only outputting PWM signals by routing to
-PMIC GPIOs without enabling TRILED. Explain this usage in the description
-for better clarity.
+The PWM signal from the LPG channel can be routed to PMIC GPIOs with
+proper GPIO configuration, and it is not necessary to enable the
+TRILED channel in that case. This also applies to the LPG channels
+that mapped to TRILED channels. Additionally, enabling the TRILED
+channel unnecessarily would cause a voltage increase in its power
+supply. Hence remove it.
 
+Fixes: 24e2d05d1b68 ("leds: Add driver for Qualcomm LPG")
 Signed-off-by: Fenglin Wu <fenglin.wu@oss.qualcomm.com>
 ---
- Documentation/devicetree/bindings/leds/leds-qcom-lpg.yaml | 5 +++++
- 1 file changed, 5 insertions(+)
+ drivers/leds/rgb/leds-qcom-lpg.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/leds/leds-qcom-lpg.yaml b/Documentation/devicetree/bindings/leds/leds-qcom-lpg.yaml
-index 841a0229c472a4764426d25d9dbb900adc20fc11..c4b7e57b251845a6970b34bc9ae0c00647b1bf96 100644
---- a/Documentation/devicetree/bindings/leds/leds-qcom-lpg.yaml
-+++ b/Documentation/devicetree/bindings/leds/leds-qcom-lpg.yaml
-@@ -13,6 +13,11 @@ description: >
-   The Qualcomm Light Pulse Generator consists of three different hardware blocks;
-   a ramp generator with lookup table (LUT), the light pulse generator and a three
-   channel current sink. These blocks are found in a wide range of Qualcomm PMICs.
-+  The light pulse generator (LPG) can also be used independently to output PWM
-+  signal for standard PWM applications. In this scenario, the LPG output should
-+  be routed to a specific PMIC GPIO by setting the GPIO pin mux to the special
-+  functions indicated in the datasheet, the TRILED driver for the channel will
-+  not be enabled in this configuration.
+diff --git a/drivers/leds/rgb/leds-qcom-lpg.c b/drivers/leds/rgb/leds-qcom-lpg.c
+index 4f2a178e3d265a2cc88e651d3e2ca6ae3dfac2e2..e197f548cddb03d079c54c4a0f402402c5d047e2 100644
+--- a/drivers/leds/rgb/leds-qcom-lpg.c
++++ b/drivers/leds/rgb/leds-qcom-lpg.c
+@@ -2,7 +2,7 @@
+ /*
+  * Copyright (c) 2017-2022 Linaro Ltd
+  * Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+- * Copyright (c) 2023-2024, Qualcomm Innovation Center, Inc. All rights reserved.
++ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+  */
+ #include <linux/bits.h>
+ #include <linux/bitfield.h>
+@@ -1247,8 +1247,6 @@ static int lpg_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
  
- properties:
-   compatible:
+ 	lpg_apply(chan);
+ 
+-	triled_set(lpg, chan->triled_mask, chan->enabled ? chan->triled_mask : 0);
+-
+ out_unlock:
+ 	mutex_unlock(&lpg->lock);
+ 
 
 -- 
 2.34.1
