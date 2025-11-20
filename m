@@ -1,11 +1,11 @@
 From: Richard Leitner <richard.leitner@linux.dev>
-Date: Thu, 20 Nov 2025 18:04:23 +0100
-Subject: [PATCH v9 3/8] Documentation: uAPI: media: add
- V4L2_CID_FLASH_{DURATION,STROBE_OE}
+Date: Thu, 20 Nov 2025 18:04:24 +0100
+Subject: [PATCH v9 4/8] media: i2c: ov9282: add output enable register
+ definitions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20251120-ov9282-flash-strobe-v9-3-6c9e3a4301d7@linux.dev>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251120-ov9282-flash-strobe-v9-4-6c9e3a4301d7@linux.dev>
 References: <20251120-ov9282-flash-strobe-v9-0-6c9e3a4301d7@linux.dev>
 In-Reply-To: <20251120-ov9282-flash-strobe-v9-0-6c9e3a4301d7@linux.dev>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
@@ -17,96 +17,75 @@ Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-leds@vger.kernel.org, Richard Leitner <richard.leitner@linux.dev>, 
  Hans Verkuil <hverkuil@kernel.org>
 X-Mailer: b4 0.15-dev-a3fc8
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763658268; l=3443;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763658268; l=2135;
  i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
- bh=tBekpthiQ63+sVQeAxYqbIcCsnnV2MHwSMvelKk34hk=;
- b=PrF3n1h9n7HI1En9GXwytLNh/GG8DiYMLV9mlLVe8MGCr3t0l5rPgsFe6WiYT1je1/pATjoQo
- rMADjuvZ4L+AiKM9fcNjuIUr+xssPToHDu7ZY04ydl7RyqDiphXC88J
+ bh=9v4+dv39d0N137tk5o+zSa4BYkpVhhMeNIOdncb3etE=;
+ b=XH2DmoHBE34RUeqgE96SJEBnOASiqIqOxI2l0gGAwf1WzYvTiyDVuXY/lNXYZt1l8WvXddzDn
+ /ubgcgQeHVMDASWTEIi2YpMniNHWC3P5oBnIk+4Hhj+DotJM14FVhnl
 X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
  pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
 X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the new strobe duration and hardware strobe output enable to v4l
-uAPI documentation. Additionally add labels for cross-referencing v4l
-controls.
+Add #define's for the output enable registers (0x3004, 0x3005, 0x3006),
+also known as SC_CTRL_04, SC_CTRL_05, SC_CTRL_04. Use those register
+definitions instead of the raw values in the `common_regs` struct.
 
+All values are based on the OV9281 datasheet v1.53 (january 2019).
+
+Reviewed-by: Dave Stevenson <dave.stevenson@raspberrypi.com>
 Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
- .../userspace-api/media/v4l/ext-ctrls-flash.rst    | 42 ++++++++++++++++++++++
- 1 file changed, 42 insertions(+)
+ drivers/media/i2c/ov9282.c | 29 ++++++++++++++++++++++++++---
+ 1 file changed, 26 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/userspace-api/media/v4l/ext-ctrls-flash.rst b/Documentation/userspace-api/media/v4l/ext-ctrls-flash.rst
-index d22c5efb806a..7cf0d33e79ff 100644
---- a/Documentation/userspace-api/media/v4l/ext-ctrls-flash.rst
-+++ b/Documentation/userspace-api/media/v4l/ext-ctrls-flash.rst
-@@ -57,6 +57,8 @@ Flash Control IDs
- ``V4L2_CID_FLASH_CLASS (class)``
-     The FLASH class descriptor.
+diff --git a/drivers/media/i2c/ov9282.c b/drivers/media/i2c/ov9282.c
+index a9f6176e9729..e67cff6c30ff 100644
+--- a/drivers/media/i2c/ov9282.c
++++ b/drivers/media/i2c/ov9282.c
+@@ -37,6 +37,29 @@
+ #define OV9282_REG_ID		0x300a
+ #define OV9282_ID		0x9281
  
-+.. _v4l2-cid-flash-led-mode:
++/* Output enable registers */
++#define OV9282_REG_OUTPUT_ENABLE4	0x3004
++#define OV9282_OUTPUT_ENABLE4_GPIO2	BIT(1)
++#define OV9282_OUTPUT_ENABLE4_D9	BIT(0)
 +
- ``V4L2_CID_FLASH_LED_MODE (menu)``
-     Defines the mode of the flash LED, the high-power white LED attached
-     to the flash controller. Setting this control may not be possible in
-@@ -80,6 +82,8 @@ Flash Control IDs
- 
- 
- 
-+.. _v4l2-cid-flash-strobe-source:
++#define OV9282_REG_OUTPUT_ENABLE5	0x3005
++#define OV9282_OUTPUT_ENABLE5_D8	BIT(7)
++#define OV9282_OUTPUT_ENABLE5_D7	BIT(6)
++#define OV9282_OUTPUT_ENABLE5_D6	BIT(5)
++#define OV9282_OUTPUT_ENABLE5_D5	BIT(4)
++#define OV9282_OUTPUT_ENABLE5_D4	BIT(3)
++#define OV9282_OUTPUT_ENABLE5_D3	BIT(2)
++#define OV9282_OUTPUT_ENABLE5_D2	BIT(1)
++#define OV9282_OUTPUT_ENABLE5_D1	BIT(0)
 +
- ``V4L2_CID_FLASH_STROBE_SOURCE (menu)``
-     Defines the source of the flash LED strobe.
- 
-@@ -96,6 +100,12 @@ Flash Control IDs
-       - The flash strobe is triggered by an external source. Typically
- 	this is a sensor, which makes it possible to synchronise the
- 	flash strobe start to exposure start.
-+        This method of controlling flash LED strobe has two additional
-+        prerequisites: the strobe source's :ref:`strobe output
-+        <v4l2-cid-flash-strobe-oe>` must be enabled (if available)
-+        and the flash controller's :ref:`flash LED mode
-+        <v4l2-cid-flash-led-mode>` must be set to
-+        ``V4L2_FLASH_LED_MODE_FLASH``.
- 
- 
- 
-@@ -186,3 +196,35 @@ Flash Control IDs
-     charged before strobing. LED flashes often require a cooldown period
-     after strobe during which another strobe will not be possible. This
-     is a read-only control.
++#define OV9282_REG_OUTPUT_ENABLE6	0x3006
++#define OV9282_OUTPUT_ENABLE6_D0	BIT(7)
++#define OV9282_OUTPUT_ENABLE6_PCLK	BIT(6)
++#define OV9282_OUTPUT_ENABLE6_HREF	BIT(5)
++#define OV9282_OUTPUT_ENABLE6_STROBE	BIT(3)
++#define OV9282_OUTPUT_ENABLE6_ILPWM	BIT(2)
++#define OV9282_OUTPUT_ENABLE6_VSYNC	BIT(1)
 +
-+.. _v4l2-cid-flash-duration:
-+
-+``V4L2_CID_FLASH_DURATION (integer)``
-+    Duration of the flash strobe pulse generated by the strobe source, when
-+    using external strobe. This control shall be implemented by the device
-+    generating the hardware flash strobe signal, typically a camera sensor,
-+    connected to a flash controller.
-+
-+    The flash controllers :ref:`strobe source <v4l2-cid-flash-strobe-source>`
-+    must be configured to ``V4L2_FLASH_STROBE_SOURCE_EXTERNAL`` for this
-+    mode of operation. For more details please also take a look at the
-+    documentation there.
-+
-+    The unit should be microseconds (µs) if possible.
-+
-+.. _v4l2-cid-flash-strobe-oe:
-+
-+``V4L2_CID_FLASH_STROBE_OE (boolean)``
-+    Enables the output of a hardware strobe signal from the strobe source,
-+    when using external strobe. This control shall be implemented by the device
-+    generating the hardware flash strobe signal, typically a camera sensor,
-+    connected to a flash controller.
-+
-+    Provided the signal generating device driver supports it, the length of the
-+    strobe signal can be configured by adjusting its
-+    :ref:`flash duration <v4l2-cid-flash-duration>`.
-+
-+    The flash controllers :ref:`strobe source <v4l2-cid-flash-strobe-source>`
-+    must be configured to ``V4L2_FLASH_STROBE_SOURCE_EXTERNAL`` for this
-+    mode of operation. For more details please also take a look at the
-+    documentation there.
+ /* Exposure control */
+ #define OV9282_REG_EXPOSURE	0x3500
+ #define OV9282_EXPOSURE_MIN	1
+@@ -213,9 +236,9 @@ static const struct ov9282_reg common_regs[] = {
+ 	{0x0302, 0x32},
+ 	{0x030e, 0x02},
+ 	{0x3001, 0x00},
+-	{0x3004, 0x00},
+-	{0x3005, 0x00},
+-	{0x3006, 0x04},
++	{OV9282_REG_OUTPUT_ENABLE4, 0x00},
++	{OV9282_REG_OUTPUT_ENABLE5, 0x00},
++	{OV9282_REG_OUTPUT_ENABLE6, OV9282_OUTPUT_ENABLE6_ILPWM},
+ 	{0x3011, 0x0a},
+ 	{0x3013, 0x18},
+ 	{0x301c, 0xf0},
 
 -- 
 2.47.3
