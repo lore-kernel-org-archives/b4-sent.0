@@ -1,16 +1,13 @@
 From: Rudraksha Gupta <guptarud@gmail.com>
-Subject: [PATCH 0/4] ARM: dts: qcom: msm8960: expressatt: Add more
- peripherals
-Date: Wed, 19 Nov 2025 23:14:41 -0800
-Message-Id: <20251119-expressatt_nfc_accel_magn_light-v1-0-636f16f05cf4@gmail.com>
+Date: Wed, 19 Nov 2025 23:14:42 -0800
+Subject: [PATCH 1/4] ARM: dts: qcom: msm8960: expressatt: Add
+ Light/Proximity Sensor
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOG/HmkC/yWN4QqCMBRGX0X2O8W76dyViN4jRMyuNtJZ2wpDf
- PeW/jwfH+cszJHV5FgZLczSRzs9mQBwiFh7b0xPsb4FZjzlOQBgTPPTknON97Xp2rppWxrqsel
- NPej+7uOuUJRyhQUoyYIlvDs9b4VLtbOl1zuE/D6y8a/bQmV0hEJySCUqKTBBUSgQicxErnKeI
- oBSAgExuWax/54fZA0NyWT7E6vW9Qd2dE+szQAAAA==
-X-Change-ID: 20251119-expressatt_nfc_accel_magn_light-f78e02897186
+Message-Id: <20251119-expressatt_nfc_accel_magn_light-v1-1-636f16f05cf4@gmail.com>
+References: <20251119-expressatt_nfc_accel_magn_light-v1-0-636f16f05cf4@gmail.com>
+In-Reply-To: <20251119-expressatt_nfc_accel_magn_light-v1-0-636f16f05cf4@gmail.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -18,122 +15,93 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763622884; l=3261;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763622884; l=2089;
  i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=C/GavcCcbz0+9hmuPu+KaSdExQB2T2ht2vCZ6SSCxQQ=;
- b=LITSp5sAB9U90zf8qhtp9PXgIxwB1D9JvagOJT3NBLVmrogBqz9X79RDa2thZ1sPwKwOrvzmJ
- +tGnTshK751B8AtUdaM0Xsa/Zor+Zq7nCfvZZ+WF0joLHjO/vLIwC89
+ bh=3y/PevugngpXnTyFIerATqp8HygnxRp+u1TfLII58QU=;
+ b=LagrKQ+BSjYyxXq0usvsRwsh+wEO+8m2HP/0WG/GjT0hVI/WolqnLCIkdtwbUcrMQIT3cnjO+
+ IBWkE9OOAA7DRAFNROgjj8gjJUbfv0N7XDg5uWtF7JCgVGmNz7N8EoO
 X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
  pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
 X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Intro:
-=================
-The following is now working on the Samsung Galaxy Express SGH-I437, an
-old 2012 Android phone:
-- Light Sensor
-    - Proximity is currently giving bogus values
-- NFC
-- Magnetometer
-    - Maybe need to update the mount matrix?
-- Accelerometer
-    - Maybe need to update the mount matrix?
-
-Tests:
-=================
-Light Sensor
-=================
-/sys/bus/iio/devices/iio:device2 # cat in_intensity0_raw && cat in_intensity1_raw
-0
-0
-/sys/bus/iio/devices/iio:device2 # cat in_intensity0_raw && cat in_intensity1_raw
-163
-28
-
-=================
-NFC
-=================
-nfc0:
-          Tags: [ ]
-          Devices: [ ]
-          Protocols: [ Felica MIFARE Jewel ISO-DEP NFC-DEP ]
-          Powered: Yes
-          RF Mode: None
-          lto: 150
-          rw: 15
-          miux: 2047
-
-Start polling on nfc0 as initiator
-
-Targets found for nfc0
-  Tags: [ tag4 ]
-  Devices: [ ]
-
-=================
-Magnetometer
-=================
-/sys/bus/iio/devices/iio:device1 # cat in_magn_x_raw && cat in_magn_y_raw && cat in_magn_z_raw
--441672
-1223706
-3275580
-/sys/bus/iio/devices/iio:device1 # cat in_magn_x_raw && cat in_magn_y_raw && cat in_magn_z_raw
--364650
-1206172
-3248674
-/sys/bus/iio/devices/iio:device1 # cat in_magn_x_raw && cat in_magn_y_raw && cat in_magn_z_raw
--439362
-1214092
-3180892
-
-=================
-Accelerometer
-=================
-/sys/bus/iio/devices/iio:device0 # cat in_accel_x_raw && cat in_accel_y_raw && cat in_accel_z_raw
-16
-484
--48
-/sys/bus/iio/devices/iio:device0 # cat in_accel_x_raw && cat in_accel_y_raw && cat in_accel_z_raw
-13
-489
-469
-/sys/bus/iio/devices/iio:device0 # cat in_accel_x_raw && cat in_accel_y_raw && cat in_accel_z_raw
-433
-106
-48
-
-More Information:
-=================
-- Device page:
-https://wiki.postmarketos.org/wiki/Samsung_Galaxy_Express_SGH-I437_(samsung-expressatt)
-- Downstream kernel (uses board files):
-https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/arch/arm/mach-msm/board-express.c
-
-Note: These patches were assisted with AI (specifically Claude) as it
-was easily able to translate the old board file into a DTS format that
-mainline understands.
+Currently the Proximity Sensor doesn't work, but light sensor does.
+Left the proximity sensor as a TODO for later.
 
 Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
-Rudraksha Gupta (4):
-      ARM: dts: qcom: msm8960: expressatt: Add Light/Proximity Sensor
-      ARM: dts: qcom: msm8960: expressatt: Add NFC
-      ARM: dts: qcom: msm8960: expressatt: Add Magnetometer
-      ARM: dts: qcom: msm8960: expressatt: Add Accelerometer
+ .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 36 ++++++++++++++++++++++
+ 1 file changed, 36 insertions(+)
 
- .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 109 +++++++++++++++++++++
- 1 file changed, 109 insertions(+)
----
-base-commit: a771210bab42017434c91411e16694ac4fd7afc2
-change-id: 20251119-expressatt_nfc_accel_magn_light-f78e02897186
-prerequisite-message-id: <176210698639.937813.643585209118839199.b4-ty@kernel.org>
-prerequisite-patch-id: befdfe1948c2fbfb867597a6de917c8067fd57be
-prerequisite-patch-id: 70a2b0837b9846d8a775f464295da73ca8ff26b4
-prerequisite-patch-id: 20e005aa4312c3525e1b90f33a398189b9e2b3b7
-prerequisite-patch-id: 970e0eb8af1736e4565fc37830576a67bf7b3227
-prerequisite-patch-id: babd3b55d9ff28f19dbc3f7978742c58ef436aee
+diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
+index 5ee919dce75b..1e331a046e7b 100644
+--- a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
++++ b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
+@@ -52,6 +52,31 @@ key-volume-down {
+ 			linux,code = <KEY_VOLUMEDOWN>;
+ 		};
+ 	};
++
++	i2c-gpio-sensors {
++		compatible = "i2c-gpio";
++		sda-gpios = <&tlmm 12 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++		scl-gpios = <&tlmm 13 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++		i2c-gpio,delay-us = <5>;
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		light-sensor@39 {
++			compatible = "amstaos,tmd2772";
++			reg = <0x39>;
++			interrupt-parent = <&pm8921_gpio>;
++			interrupts = <6 IRQ_TYPE_EDGE_FALLING>;
++			vdd-supply = <&pm8921_l9>;
++			vddio-supply = <&pm8921_lvs4>;
++
++			// TODO: Proximity doesn't work
++			amstaos,proximity-diodes = <0>;
++			led-max-microamp = <100000>;
++
++			pinctrl-names = "default";
++			pinctrl-0 = <&prox_sensor_int>;
++		};
++	};
+ };
+ 
+ &gsbi5 {
+@@ -163,6 +188,15 @@ &pm8921 {
+ 	interrupts-extended = <&tlmm 104 IRQ_TYPE_LEVEL_LOW>;
+ };
+ 
++&pm8921_gpio {
++	prox_sensor_int: prox-sensor-int-state {
++		pins = "gpio6";
++		function = "normal";
++		input-enable;
++		bias-disable;
++	};
++};
++
+ &rpm {
+ 	regulators {
+ 		compatible = "qcom,rpm-pm8921-regulators";
+@@ -280,6 +314,7 @@ pm8921_l9: l9 {
+ 			regulator-min-microvolt = <2850000>;
+ 			regulator-max-microvolt = <2850000>;
+ 			bias-pull-down;
++			regulator-always-on;
+ 		};
+ 
+ 		pm8921_l10: l10 {
+@@ -377,6 +412,7 @@ pm8921_lvs3: lvs3 {
+ 
+ 		pm8921_lvs4: lvs4 {
+ 			bias-pull-down;
++			regulator-always-on;
+ 		};
+ 
+ 		pm8921_lvs5: lvs5 {
 
-Best regards,
 -- 
-Rudraksha Gupta <guptarud@gmail.com>
+2.51.2
 
