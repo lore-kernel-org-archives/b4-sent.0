@@ -1,11 +1,11 @@
 From: Richard Leitner <richard.leitner@linux.dev>
-Date: Thu, 20 Nov 2025 18:04:22 +0100
-Subject: [PATCH v9 2/8] media: v4l: ctrls: add a control for enabling
- strobe output
+Date: Thu, 20 Nov 2025 18:04:23 +0100
+Subject: [PATCH v9 3/8] Documentation: uAPI: media: add
+ V4L2_CID_FLASH_{DURATION,STROBE_OE}
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251120-ov9282-flash-strobe-v9-2-6c9e3a4301d7@linux.dev>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20251120-ov9282-flash-strobe-v9-3-6c9e3a4301d7@linux.dev>
 References: <20251120-ov9282-flash-strobe-v9-0-6c9e3a4301d7@linux.dev>
 In-Reply-To: <20251120-ov9282-flash-strobe-v9-0-6c9e3a4301d7@linux.dev>
 To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
@@ -17,57 +17,96 @@ Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-leds@vger.kernel.org, Richard Leitner <richard.leitner@linux.dev>, 
  Hans Verkuil <hverkuil@kernel.org>
 X-Mailer: b4 0.15-dev-a3fc8
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763658268; l=1943;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763658268; l=3443;
  i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
- bh=r9LSzB2+m6DYjPhPVqKQHwnITLhhUoOIPWpu3AmSZHE=;
- b=vVduCP2GrEj9Xu48yWI19MF94mSvAD595kXmNQ0A7p62vrS9yWjuJzYiweZ4KX2KV64kcfCZ9
- CCja6JnQIRjABHStF0AwrxOOrKtOs9ADqZew/Wb4imdsRDODtT5qL/E
+ bh=tBekpthiQ63+sVQeAxYqbIcCsnnV2MHwSMvelKk34hk=;
+ b=PrF3n1h9n7HI1En9GXwytLNh/GG8DiYMLV9mlLVe8MGCr3t0l5rPgsFe6WiYT1je1/pATjoQo
+ rMADjuvZ4L+AiKM9fcNjuIUr+xssPToHDu7ZY04ydl7RyqDiphXC88J
 X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
  pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
 X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a control V4L2_CID_FLASH_STROBE_OE to en- or disable the
-strobe output of v4l2 devices (most likely sensors).
+Add the new strobe duration and hardware strobe output enable to v4l
+uAPI documentation. Additionally add labels for cross-referencing v4l
+controls.
 
 Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
- drivers/media/v4l2-core/v4l2-ctrls-defs.c | 2 ++
- include/uapi/linux/v4l2-controls.h        | 1 +
- 2 files changed, 3 insertions(+)
+ .../userspace-api/media/v4l/ext-ctrls-flash.rst    | 42 ++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
 
-diff --git a/drivers/media/v4l2-core/v4l2-ctrls-defs.c b/drivers/media/v4l2-core/v4l2-ctrls-defs.c
-index 4848423205ff..765aeeec84fe 100644
---- a/drivers/media/v4l2-core/v4l2-ctrls-defs.c
-+++ b/drivers/media/v4l2-core/v4l2-ctrls-defs.c
-@@ -1136,6 +1136,7 @@ const char *v4l2_ctrl_get_name(u32 id)
- 	case V4L2_CID_FLASH_CHARGE:		return "Charge";
- 	case V4L2_CID_FLASH_READY:		return "Ready to Strobe";
- 	case V4L2_CID_FLASH_DURATION:		return "Strobe Duration";
-+	case V4L2_CID_FLASH_STROBE_OE:		return "Strobe Output Enable";
+diff --git a/Documentation/userspace-api/media/v4l/ext-ctrls-flash.rst b/Documentation/userspace-api/media/v4l/ext-ctrls-flash.rst
+index d22c5efb806a..7cf0d33e79ff 100644
+--- a/Documentation/userspace-api/media/v4l/ext-ctrls-flash.rst
++++ b/Documentation/userspace-api/media/v4l/ext-ctrls-flash.rst
+@@ -57,6 +57,8 @@ Flash Control IDs
+ ``V4L2_CID_FLASH_CLASS (class)``
+     The FLASH class descriptor.
  
- 	/* JPEG encoder controls */
- 	/* Keep the order of the 'case's the same as in v4l2-controls.h! */
-@@ -1282,6 +1283,7 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
- 	case V4L2_CID_FLASH_STROBE_STATUS:
- 	case V4L2_CID_FLASH_CHARGE:
- 	case V4L2_CID_FLASH_READY:
-+	case V4L2_CID_FLASH_STROBE_OE:
- 	case V4L2_CID_MPEG_VIDEO_DECODER_MPEG4_DEBLOCK_FILTER:
- 	case V4L2_CID_MPEG_VIDEO_DECODER_SLICE_INTERFACE:
- 	case V4L2_CID_MPEG_VIDEO_DEC_DISPLAY_DELAY_ENABLE:
-diff --git a/include/uapi/linux/v4l2-controls.h b/include/uapi/linux/v4l2-controls.h
-index 9830833b48a5..32ba3b5fb1dd 100644
---- a/include/uapi/linux/v4l2-controls.h
-+++ b/include/uapi/linux/v4l2-controls.h
-@@ -1187,6 +1187,7 @@ enum v4l2_flash_strobe_source {
- #define V4L2_CID_FLASH_CHARGE			(V4L2_CID_FLASH_CLASS_BASE + 11)
- #define V4L2_CID_FLASH_READY			(V4L2_CID_FLASH_CLASS_BASE + 12)
- #define V4L2_CID_FLASH_DURATION			(V4L2_CID_FLASH_CLASS_BASE + 13)
-+#define V4L2_CID_FLASH_STROBE_OE		(V4L2_CID_FLASH_CLASS_BASE + 14)
++.. _v4l2-cid-flash-led-mode:
++
+ ``V4L2_CID_FLASH_LED_MODE (menu)``
+     Defines the mode of the flash LED, the high-power white LED attached
+     to the flash controller. Setting this control may not be possible in
+@@ -80,6 +82,8 @@ Flash Control IDs
  
  
- /* JPEG-class control IDs */
+ 
++.. _v4l2-cid-flash-strobe-source:
++
+ ``V4L2_CID_FLASH_STROBE_SOURCE (menu)``
+     Defines the source of the flash LED strobe.
+ 
+@@ -96,6 +100,12 @@ Flash Control IDs
+       - The flash strobe is triggered by an external source. Typically
+ 	this is a sensor, which makes it possible to synchronise the
+ 	flash strobe start to exposure start.
++        This method of controlling flash LED strobe has two additional
++        prerequisites: the strobe source's :ref:`strobe output
++        <v4l2-cid-flash-strobe-oe>` must be enabled (if available)
++        and the flash controller's :ref:`flash LED mode
++        <v4l2-cid-flash-led-mode>` must be set to
++        ``V4L2_FLASH_LED_MODE_FLASH``.
+ 
+ 
+ 
+@@ -186,3 +196,35 @@ Flash Control IDs
+     charged before strobing. LED flashes often require a cooldown period
+     after strobe during which another strobe will not be possible. This
+     is a read-only control.
++
++.. _v4l2-cid-flash-duration:
++
++``V4L2_CID_FLASH_DURATION (integer)``
++    Duration of the flash strobe pulse generated by the strobe source, when
++    using external strobe. This control shall be implemented by the device
++    generating the hardware flash strobe signal, typically a camera sensor,
++    connected to a flash controller.
++
++    The flash controllers :ref:`strobe source <v4l2-cid-flash-strobe-source>`
++    must be configured to ``V4L2_FLASH_STROBE_SOURCE_EXTERNAL`` for this
++    mode of operation. For more details please also take a look at the
++    documentation there.
++
++    The unit should be microseconds (µs) if possible.
++
++.. _v4l2-cid-flash-strobe-oe:
++
++``V4L2_CID_FLASH_STROBE_OE (boolean)``
++    Enables the output of a hardware strobe signal from the strobe source,
++    when using external strobe. This control shall be implemented by the device
++    generating the hardware flash strobe signal, typically a camera sensor,
++    connected to a flash controller.
++
++    Provided the signal generating device driver supports it, the length of the
++    strobe signal can be configured by adjusting its
++    :ref:`flash duration <v4l2-cid-flash-duration>`.
++
++    The flash controllers :ref:`strobe source <v4l2-cid-flash-strobe-source>`
++    must be configured to ``V4L2_FLASH_STROBE_SOURCE_EXTERNAL`` for this
++    mode of operation. For more details please also take a look at the
++    documentation there.
 
 -- 
 2.47.3
