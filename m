@@ -1,11 +1,11 @@
 From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Sun, 23 Nov 2025 08:35:49 +0000
-Subject: [PATCH 2/6] dt-bindings: mfd: maxim,max77759: add charger child
- node
+Date: Sun, 23 Nov 2025 08:35:50 +0000
+Subject: [PATCH 3/6] dt-bindings: usb: maxim,max33359: Add supply property
+ for VBUS in OTG mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251123-max77759-charger-v1-2-6b2e4b8f7f54@google.com>
+Message-Id: <20251123-max77759-charger-v1-3-6b2e4b8f7f54@google.com>
 References: <20251123-max77759-charger-v1-0-6b2e4b8f7f54@google.com>
 In-Reply-To: <20251123-max77759-charger-v1-0-6b2e4b8f7f54@google.com>
 To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -24,53 +24,46 @@ Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org,
  RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
  Amit Sunil Dhamne <amitsd@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763886983; l=1264;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763886983; l=1124;
  i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=qOK5jNVcnx5bjegC1dKWr0w0HMDBjskPRuyCz3Ci8qg=;
- b=qM5W227Kwrbrd0isfNpZBNhXmIQ8NbswaD5IYEMdymoheJrpiELbZYNT2HWxJ2SRpSo+eXcXG
- MwinsnfaCqxCyl++OgYXy2PKQWkgwjfJjmK1q419ZJ3qDZP8wc8PQ0m
+ bh=ak0DhAM6ewGMiDuF0MxJPbPRxRy5VTuNwAK+zQj0j2o=;
+ b=mnGqbVl/z06LDtgfnWHySKhlpzdB1tI4sr08M43fZvaKI1QcLj53kcG8lfxv77MkytMWWtr3k
+ noSNgWtq7qIDsQ+UoA9apDtsiFUsGzHKu5mAgTiqkWWxOP57RsbPlrE
 X-Developer-Key: i=amitsd@google.com; a=ed25519;
  pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
 X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Maxim MAX77759 MFD includes a charger function, hence add its
-binding as a property. Also, update the example to include charger.
+Add a regulator supply property for VBUS when usb is in OTG mode.
 
 Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
+Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
 ---
- Documentation/devicetree/bindings/mfd/maxim,max77759.yaml | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ Documentation/devicetree/bindings/usb/maxim,max33359.yaml | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/mfd/maxim,max77759.yaml b/Documentation/devicetree/bindings/mfd/maxim,max77759.yaml
-index 525de9ab3c2b..29132f73f2c8 100644
---- a/Documentation/devicetree/bindings/mfd/maxim,max77759.yaml
-+++ b/Documentation/devicetree/bindings/mfd/maxim,max77759.yaml
-@@ -37,6 +37,9 @@ properties:
-   nvmem-0:
-     $ref: /schemas/nvmem/maxim,max77759-nvmem.yaml
+diff --git a/Documentation/devicetree/bindings/usb/maxim,max33359.yaml b/Documentation/devicetree/bindings/usb/maxim,max33359.yaml
+index 3de4dc40b791..a529f18c4918 100644
+--- a/Documentation/devicetree/bindings/usb/maxim,max33359.yaml
++++ b/Documentation/devicetree/bindings/usb/maxim,max33359.yaml
+@@ -32,6 +32,9 @@ properties:
+     description:
+       Properties for usb c connector.
  
-+  charger:
-+    $ref: /schemas/power/supply/maxim,max77759-charger.yaml
++  otg-vbus-supply:
++    description: Regulator to control OTG VBUS supply.
 +
  required:
    - compatible
-   - interrupts
-@@ -95,5 +98,14 @@ examples:
-                     };
-                 };
-             };
-+
-+            charger {
-+                compatible = "maxim,max77759-charger";
-+                power-supplies = <&maxtcpc>;
-+
-+                usb-otg-vbus-regulator {
-+                    regulator-name = "usb-otg-vbus";
-+                };
-+            };
-         };
-     };
+   - reg
+@@ -53,6 +56,7 @@ examples:
+             reg = <0x25>;
+             interrupt-parent = <&gpa8>;
+             interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
++            otg-vbus-supply = <&otg_vbus_reg>;
+ 
+             connector {
+                 compatible = "usb-c-connector";
 
 -- 
 2.52.0.rc2.455.g230fcf2819-goog
