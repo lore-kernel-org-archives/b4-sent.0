@@ -1,17 +1,12 @@
 From: Rudraksha Gupta <guptarud@gmail.com>
-Subject: [PATCH v3 0/5] ARM: dts: qcom: msm8960: expressatt: Add more
- peripherals
-Date: Sat, 22 Nov 2025 22:44:41 -0800
-Message-Id: <20251122-expressatt_nfc_accel_magn_light-v3-0-78d198632360@gmail.com>
+Date: Sat, 22 Nov 2025 22:44:42 -0800
+Subject: [PATCH v3 1/5] ARM: dts: qcom: msm8960: Add GSBI2 & GSBI7
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFmtImkC/43PTW7DIBAF4KtYrIvFgMEQVVXuEVWWSwcb1T8NU
- CtR5LuXkE127fKNRt+buZGIwWMkh+pGAm4++nXJQbxUxI79MiD1nzkTzrgEAEPx8h0wxj6lbnG
- 2663FqZv7YekmP4yJulYj49q0oBXJSt52/lIaTu+PHPD8k4vSY0jmO1eKDtUrtIoDU0YrYWojW
- g2iVo2QWnJmALQWBoypPxqarscvDAtO9RqGN3K3Rx/TGq7lmQ0K/u+7N6CMKqEcKMekdc1xmHs
- /1Xadi73xJ4/D3x7PnmwsNkZYq6x79vZ9/wX4EL3LegEAAA==
-X-Change-ID: 20251119-expressatt_nfc_accel_magn_light-f78e02897186
+Message-Id: <20251122-expressatt_nfc_accel_magn_light-v3-1-78d198632360@gmail.com>
+References: <20251122-expressatt_nfc_accel_magn_light-v3-0-78d198632360@gmail.com>
+In-Reply-To: <20251122-expressatt_nfc_accel_magn_light-v3-0-78d198632360@gmail.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -20,163 +15,154 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>, 
  Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763880283; l=5042;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763880283; l=3530;
  i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=8NUXGBoCZMozJu+Ndmf4cKRPIKek+O/M3Gt0Gpz1SDE=;
- b=I8ro388ukVAMsA3At0ZekHrN7DUrhAg8tGGirbzwsTVjWv9RNrNf8WdDaPtWPiT7xPYGovFNc
- V/Kzt40x0wMAPWwTiyk7HQl0DsgOP5w/XRDT0FQyU/OYnPLumm1QGQL
+ bh=2ICK00hH1Y/N2rJ/MOOdERF0k2Q1yj8a78xAIbTZBmM=;
+ b=GIDpc613vT55FqRpJawFEKHmJy86q3X3rXW/pTlAybc57o0nZmiZnPtGDqwsMUd0LJ4zl6ZbN
+ LV6HpxAkHgDCeeigIfppASaKEmBdN5YKoPxU3zgpslrX77577aPZwPC
 X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
  pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
 X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Intro:
-=================
-The following is now working on the Samsung Galaxy Express SGH-I437, an
-old 2012 Android phone:
-- Light Sensor
-    - Proximity is currently floating, even though it matches downstream
-      GPIO pin
-- Magnetometer
-    - Regardless of orientation:
-        - X axis seems to always be negative
-        - Y and Z axis seems to always be positive
-- NFC
-- Accelerometer
+Add the GSBI2 & GSBI7 Node, which is similar to the
+other GSBI nodes in this file.
 
-Tests:
-=================
-Light Sensor
-=================
-// no external light on sensor
-/sys/bus/iio/devices/iio:device2 # cat in_intensity0_raw && cat \
-in_intensity1_raw
-0
-0
-
-// external light shining on sensor
-samsung-expressatt:/sys/bus/iio/devices/iio:device2$ cat \
-in_intensity0_raw in_intensity1_raw
-915
-163
-
-=================
-NFC
-=================
-samsung-expressatt:~$ sudo nfctool -d nfc0 -1 -p
-doas (user@samsung-expressatt) password: 
-nfc0:
-          Tags: [ ]
-          Devices: [ ]
-          Protocols: [ Felica MIFARE Jewel ISO-DEP NFC-DEP ]
-          Powered: Yes
-          RF Mode: None
-          lto: 150
-          rw: 15
-          miux: 2047
-
-Start polling on nfc0 as initiator
-
-Targets found for nfc0
-  Tags: [ tag0 ]
-  Devices: [ ]
-
-=================
-Magnetometer
-=================
-// no matter the orientation x is always negative and y and z are always
-// positive. The values seem to be changing during rotation, but for some
-// reason the magnitude is extremely large
-/sys/bus/iio/devices/iio:device1 # cat in_magn_x_raw && cat \
-in_magn_y_raw && cat in_magn_z_raw
--441672
-1223706
-3275580
-
-=================
-Accelerometer
-=================
-I believe it follows the mount matrix guide located in the kernel:
-https://github.com/torvalds/linux/blob/master/Documentation/devicetree/bindings/iio/mount-matrix.txt
-
-// phone is vertical with charger port closest to the ground and the
-// camera closest to the sky. result: +y
-samsung-expressatt:/sys/bus/iio/devices/iio:device0$ cat in_accel_x_raw \
-in_accel_y_raw in_accel_z_raw
-4
-488
--47
-
-// phone is flat on the ground with the back of the phone closest to the
-// ground and the screen closest to the sky. result: +z
-samsung-expressatt:/sys/bus/iio/devices/iio:device0$ cat in_accel_x_raw \
-in_accel_y_raw in_accel_z_raw
--4
-2
-496
-
-// start with phone flat on the ground and the back of the phone
-// closest to the ground and the screen closest to the sky. then rotate the
-// phone so the charger is closest to you
-// next, tilt the phone onto it's left edge. in this case, it would be
-// the side with the volume buttons. result: +x
-samsung-expressatt:/sys/bus/iio/devices/iio:device0$ cat in_accel_x_raw \
-in_accel_y_raw in_accel_z_raw
-499
--5
-8
-
-More Information:
-=================
-- Device page:
-https://wiki.postmarketos.org/wiki/Samsung_Galaxy_Express_SGH-I437_(samsung-expressatt)
-- Downstream kernel (uses board files):
-https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/arch/arm/mach-msm/board-express.c
-
-Note: These patches were assisted with AI (specifically Claude) as it
-was easily able to translate the old board file into a DTS format that
-mainline understands.
-
+Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
-Changes in v3:
-- More formatting changes
-- Remove output-low on nfc_enable
-- Resolved TODO mount matrix for accelerometer. My tests are above.
-- Will try to eventually solve the following problems:
-    - Couldn't figure out the mount matrix for magnetometer
-    - Proximity is a floating value even though the downstream kernel
-      matches the GPIO pin
-- Link to v2: https://lore.kernel.org/r/20251121-expressatt_nfc_accel_magn_light-v2-0-54ce493cc6cf@gmail.com
+ arch/arm/boot/dts/qcom/qcom-msm8960.dtsi | 96 ++++++++++++++++++++++++++++++++
+ 1 file changed, 96 insertions(+)
 
-Changes in v2:
-- Fixed formatting issues
-- Use GSBI instead of i2c-gpio
-- Remove regulator-always-on
-- Link to v1: https://lore.kernel.org/r/20251119-expressatt_nfc_accel_magn_light-v1-0-636f16f05cf4@gmail.com
+diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
+index 38bd4fd8dda5..fd28401cebb5 100644
+--- a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
++++ b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
+@@ -149,6 +149,24 @@ i2c1-pins {
+ 				};
+ 			};
+ 
++			i2c2_default_state: i2c2-default-state {
++				i2c2-pins {
++					pins = "gpio12", "gpio13";
++					function = "gsbi2";
++					drive-strength = <8>;
++					bias-disable;
++				};
++			};
++
++			i2c2_sleep_state: i2c2-sleep-state {
++				i2c2-pins {
++					pins = "gpio12", "gpio13";
++					function = "gpio";
++					drive-strength = <2>;
++					bias-bus-hold;
++				};
++			};
++
+ 			i2c3_default_state: i2c3-default-state {
+ 				i2c3-pins {
+ 					pins = "gpio16", "gpio17";
+@@ -167,6 +185,24 @@ i2c3-pins {
+ 				};
+ 			};
+ 
++			i2c7_default_state: i2c7-default-state {
++				i2c7-pins {
++					pins = "gpio32", "gpio33";
++					function = "gsbi7";
++					drive-strength = <8>;
++					bias-disable;
++				};
++			};
++
++			i2c7_sleep_state: i2c7-sleep-state {
++				i2c7-pins {
++					pins = "gpio32", "gpio33";
++					function = "gpio";
++					drive-strength = <2>;
++					bias-bus-hold;
++				};
++			};
++
+ 			i2c8_default_state: i2c8-default-state {
+ 				i2c8-pins {
+ 					pins = "gpio36", "gpio37";
+@@ -543,6 +579,36 @@ gsbi1_spi: spi@16080000 {
+ 			};
+ 		};
+ 
++		gsbi2: gsbi@16100000 {
++			compatible = "qcom,gsbi-v1.0.0";
++			reg = <0x16100000 0x100>;
++			ranges;
++			cell-index = <2>;
++			clocks = <&gcc GSBI2_H_CLK>;
++			clock-names = "iface";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			status = "disabled";
++
++			gsbi2_i2c: i2c@16180000 {
++				compatible = "qcom,i2c-qup-v1.1.1";
++				reg = <0x16180000 0x1000>;
++				pinctrl-0 = <&i2c2_default_state>;
++				pinctrl-1 = <&i2c2_sleep_state>;
++				pinctrl-names = "default", "sleep";
++				interrupts = <GIC_SPI 149 IRQ_TYPE_LEVEL_HIGH>;
++				clocks = <&gcc GSBI2_QUP_CLK>,
++					 <&gcc GSBI2_H_CLK>;
++				clock-names = "core",
++					      "iface";
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				status = "disabled";
++			};
++		};
++
+ 		gsbi3: gsbi@16200000 {
+ 			compatible = "qcom,gsbi-v1.0.0";
+ 			reg = <0x16200000 0x100>;
+@@ -600,6 +666,36 @@ gsbi5_serial: serial@16440000 {
+ 			};
+ 		};
+ 
++		gsbi7: gsbi@16600000 {
++			compatible = "qcom,gsbi-v1.0.0";
++			reg = <0x16600000 0x100>;
++			ranges;
++			cell-index = <7>;
++			clocks = <&gcc GSBI7_H_CLK>;
++			clock-names = "iface";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			status = "disabled";
++
++			gsbi7_i2c: i2c@16680000 {
++				compatible = "qcom,i2c-qup-v1.1.1";
++				reg = <0x16680000 0x1000>;
++				pinctrl-0 = <&i2c7_default_state>;
++				pinctrl-1 = <&i2c7_sleep_state>;
++				pinctrl-names = "default", "sleep";
++				interrupts = <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;
++				clocks = <&gcc GSBI7_QUP_CLK>,
++					 <&gcc GSBI7_H_CLK>;
++				clock-names = "core",
++					      "iface";
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				status = "disabled";
++			};
++		};
++
+ 		gsbi8: gsbi@1a000000 {
+ 			compatible = "qcom,gsbi-v1.0.0";
+ 			reg = <0x1a000000 0x100>;
 
----
-Rudraksha Gupta (5):
-      ARM: dts: qcom: msm8960: Add GSBI2 & GSBI7
-      ARM: dts: qcom: msm8960: expressatt: Add Light/Proximity Sensor
-      ARM: dts: qcom: msm8960: expressatt: Add NFC
-      ARM: dts: qcom: msm8960: expressatt: Add Magnetometer
-      ARM: dts: qcom: msm8960: expressatt: Add Accelerometer
-
- .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 105 +++++++++++++++++++++
- arch/arm/boot/dts/qcom/qcom-msm8960.dtsi           |  96 +++++++++++++++++++
- 2 files changed, 201 insertions(+)
----
-base-commit: a771210bab42017434c91411e16694ac4fd7afc2
-change-id: 20251119-expressatt_nfc_accel_magn_light-f78e02897186
-prerequisite-message-id: <176210698639.937813.643585209118839199.b4-ty@kernel.org>
-prerequisite-patch-id: befdfe1948c2fbfb867597a6de917c8067fd57be
-prerequisite-patch-id: 70a2b0837b9846d8a775f464295da73ca8ff26b4
-prerequisite-patch-id: 20e005aa4312c3525e1b90f33a398189b9e2b3b7
-prerequisite-patch-id: 970e0eb8af1736e4565fc37830576a67bf7b3227
-prerequisite-patch-id: babd3b55d9ff28f19dbc3f7978742c58ef436aee
-
-Best regards,
 -- 
-Rudraksha Gupta <guptarud@gmail.com>
+2.52.0
 
