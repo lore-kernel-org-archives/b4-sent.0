@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Mon, 24 Nov 2025 22:53:40 +0100
-Subject: [PATCH RFC 7/8] arm64: dts: qcom: sdm660-xiaomi-lavender: Enable
- support for battery
+Date: Mon, 24 Nov 2025 22:53:41 +0100
+Subject: [PATCH RFC 8/8] arm64: dts: qcom: sdm670-google-sargo: Enable fuel
+ gauge
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251124-pmi8998_fuel_gauge-v1-7-dd3791f61478@ixit.cz>
+Message-Id: <20251124-pmi8998_fuel_gauge-v1-8-dd3791f61478@ixit.cz>
 References: <20251124-pmi8998_fuel_gauge-v1-0-dd3791f61478@ixit.cz>
 In-Reply-To: <20251124-pmi8998_fuel_gauge-v1-0-dd3791f61478@ixit.cz>
 To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -24,64 +24,44 @@ Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1321; i=david@ixit.cz;
- h=from:subject:message-id; bh=//aqcSpHZqCf7Mxnh6vHuPIwTM+lRyzwo555sjaHWYQ=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpJNPgrjHhAZgGkJRJFtjUg8tuRv4ka4Q3yB3je
- dyrZooQwrmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaSTT4AAKCRBgAj/E00kg
- chwTD/4/GOvibHB+A6jj1nlegYxO1fobQm020Fk2yy+lZ+X7zYV3IAd3dAJcIJIMHcPa4/ZAyDl
- nnclreUzuijV8H0Rj8MFp7B25J5XNUPa+ZE9kwrOTNp6uWVrRo25ft1/cS6AnxVWc86DS+3MQ3T
- oEmy56/52kuKyL2kZkVa1gcpZADRqSvi965KuhHYKZlTZenqfWUQBFybCO/yQER7f1LAdwjFbNC
- 67OIvlVKhIoLq2zPLu/7Daxf6KypaLTHMnA5jt1sQRW598WEaEKmXx0GJNR2tZYpu3lmuLaV5eS
- l/rEkvpOkwFioU/R7oWsPy52dkaMW5gHC7MZ6uRHsFOCPLCuqENkKANHJm9rV/R/E1h+jXX4B6p
- HbZ+uDifRd1IPxgIc4+QRhMfYz+czqHv2YzcWkzCX5rIQJwVXx300XkA2y/xpL8TBbANFEqRIUm
- qsTSZTWA4uD+jQC8B9RKiOa2NpDORvD9XPwV3hjdaT0sTYXndKmBOi9RpTQ+v6sMek3cMRI9hK4
- ps3fLHKSx5UOV/Ox2nCftygviLdL9efjTNnIjCpCvhpbsSmCEL1UU3s6vHrTrXecxfqz7hOG73z
- PeOpDuJVSWELW4mcTv3G/cx6/XC1OjdrmUS3IV95D0qUIeRAzWRC/LcVF5Yegpz7nQwyaCqOWgk
- 1AfBNTow9k3tiQQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=813; i=david@ixit.cz;
+ h=from:subject:message-id; bh=SyGBCL9VTEPA+aAWTUKzUH7OLMbCTKZV+KFoRbFN9oM=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpJNPgenmWLfuDKhq15mBg6v1tJzJPi9mONOtDK
+ +nbgiB4RcSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaSTT4AAKCRBgAj/E00kg
+ ct3+D/9FOzgDdTeSSuMnpUerlqxXHRc7EteoshYCabmOBQfZkQfTUgC+p7Nnbujn8EyVH35kHb2
+ 04thXEH3bbZXwDcQ37886myN5Mtm7HRNkGg2/FzE3FYSClXrJoIo+9XdzSWRFTqh7jgLHGYW7bW
+ IKK/9Qq3KPlvhlmiYyhegZSxWdKzhbxFMBprU2gcomvExFvuT9mFU4A8UjddL9SxgXLlmXhn1vC
+ 7Mbvfvd7eBwQ3/n/T4jqKkb7mw5V5ZX3KaSade6jOq3tjcv9pVH/Ui8Ds8BenYgsOYKYPbyIGvT
+ K4W6HBLQfUd3Y2CBEPSGB7wUZW58vhoRNjDUz26iBZ8ofu/gdimjAjo84FQtLpq89gvQpot+2do
+ nJkFJVFN4uDf6Oh4/AaEk3bysrf2gZ0QaeGAMyL0yasVutQO2bELurmwmfVVBGvPVi1Ri0CpYF9
+ dqxm8E8uvzWkxcRFsi9OymhD9I+WIUN5tdCFlvyihsMMlOSGpOyJoEVJ6kgfCmYBNbmPiWfPyHS
+ xDH5NX8mvn0rQcchS2DL04az9PEzKLSgvyHVl/+StqKya6kPzZGnlsJteKA63dlWzhDCgg/hr2f
+ ej8jQ1LL8+E+bTikNcpcJfR1nUt1P8VPgayWzBhDG2UHB7465QB9YCfpV2U8+zTqpCxJer7NCAF
+ BVXLpg4Ve72CGEw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Alexey Minnekhanov <alexeymin@postmarketos.org>
+From: Richard Acayan <mailingradian@gmail.com>
 
-Add support for battery, fuelgauge and charger.
+The PM660 fuel gauge determines the battery charge. Enable it for full
+battery support.
 
-Signed-off-by: Alexey Minnekhanov <alexeymin@postmarketos.org>
+Signed-off-by: Richard Acayan <mailingradian@gmail.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../arm64/boot/dts/qcom/sdm660-xiaomi-lavender.dts | 25 ++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+ arch/arm64/boot/dts/qcom/sdm670-google-sargo.dts | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm660-xiaomi-lavender.dts b/arch/arm64/boot/dts/qcom/sdm660-xiaomi-lavender.dts
-index a9926ad6c6f9f..cb89b88d887d1 100644
---- a/arch/arm64/boot/dts/qcom/sdm660-xiaomi-lavender.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm660-xiaomi-lavender.dts
-@@ -38,6 +38,14 @@ framebuffer0: framebuffer@9d400000 {
- 		};
- 	};
- 
-+	battery: battery {
-+		compatible = "simple-battery";
-+
-+		charge-full-design-microamp-hours = <4000000>;
-+		voltage-min-design-microvolt = <3400000>;
-+		voltage-max-design-microvolt = <4400000>;
-+	};
-+
- 	vph_pwr: vph-pwr-regulator {
- 		compatible = "regulator-fixed";
- 		regulator-name = "vph_pwr";
-@@ -93,6 +101,23 @@ &blsp1_uart2 {
+diff --git a/arch/arm64/boot/dts/qcom/sdm670-google-sargo.dts b/arch/arm64/boot/dts/qcom/sdm670-google-sargo.dts
+index ed55646ca419d..a8e0e85c42cd2 100644
+--- a/arch/arm64/boot/dts/qcom/sdm670-google-sargo.dts
++++ b/arch/arm64/boot/dts/qcom/sdm670-google-sargo.dts
+@@ -490,6 +490,13 @@ &pm660_charger {
  	status = "okay";
  };
  
-+&pm660_charger {
-+	monitored-battery = <&battery>;
-+
-+	status = "okay";
-+};
-+
 +&pm660_fg {
 +	monitored-battery = <&battery>;
 +	power-supplies = <&pm660_charger>;
@@ -89,11 +69,7 @@ index a9926ad6c6f9f..cb89b88d887d1 100644
 +	status = "okay";
 +};
 +
-+&pm660_rradc {
-+	status = "okay";
-+};
-+
- &pon_pwrkey {
+ &pm660_rradc {
  	status = "okay";
  };
 
