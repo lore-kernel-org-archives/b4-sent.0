@@ -1,324 +1,135 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Mon, 24 Nov 2025 21:50:48 +0530
-Subject: [PATCH 5/5] PCI/pwrctrl: Switch to the new pwrctrl APIs
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH RFC 0/8] Qualcomm 3rd gen fuel gauge support
+Date: Mon, 24 Nov 2025 22:53:33 +0100
+Message-Id: <20251124-pmi8998_fuel_gauge-v1-0-dd3791f61478@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251124-pci-pwrctrl-rework-v1-5-78a72627683d@oss.qualcomm.com>
-References: <20251124-pci-pwrctrl-rework-v1-0-78a72627683d@oss.qualcomm.com>
-In-Reply-To: <20251124-pci-pwrctrl-rework-v1-0-78a72627683d@oss.qualcomm.com>
-To: Manivannan Sadhasivam <mani@kernel.org>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
- Bartosz Golaszewski <brgl@bgdev.pl>
-Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Chen-Yu Tsai <wens@kernel.org>, 
- Brian Norris <briannorris@chromium.org>, 
- Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
- Niklas Cassel <cassel@kernel.org>, Alex Elder <elder@riscstar.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAN3TJGkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1NDQyND3YLcTAtLS4v4tNLUnPj0xFKgiuS0xDRzi9QUQwPjFCWgxoKi1LT
+ MCrCh0UpBbs5KsbW1AL1/tXFpAAAA
+X-Change-ID: 20251121-pmi8998_fuel_gauge-cfaf78ed103d
+To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Casey Connolly <casey@connolly.tech>, Joel Selvaraj <foss@joelselvaraj.com>, 
+ Yassine Oudjana <y.oudjana@protonmail.com>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Alexander Martinz <amartinz@shiftphones.com>, 
+ =?utf-8?q?Barnab=C3=A1s_Cz=C3=A9m=C3=A1n?= <barnabas.czeman@mainlining.org>, 
+ Richard Acayan <mailingradian@gmail.com>, 
+ Alexey Minnekhanov <alexeymin@postmarketos.org>
+Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=9435;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=mDB7xVX8LQeuezZL74Dh28IYQlR8cBKIJVcKC/1hNZ4=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpJIXsuhRW0BQsoWAqXI8mAjW/5GwKVcDDKgBng
- rzrf95SHSqJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaSSF7AAKCRBVnxHm/pHO
- 9e30B/99wz7r2n/2zStJ2MN+cr4rCnXIFcs3JJXu2aXW7Pqn4TQWeizI3uJlHOO8JekYzyKf9Fm
- LXkrJcZH5GPw3Rxf0e5RbsaE0fFltZoyHaAPTf/hoiqxIBF20kq5D7oyT1Hvo8B8XPWYnh2fr4g
- 5jKbg61hAGSDkZ54/pYW1Pj8ACCG0yJ9iCiZ+pcJUDFZbgiZ4et1F59+Cp4Xc7ZlIuOMPIDpd+6
- YUrM7NeZ4vVwfgYr+cXDWNJZt4m/3e/Gxxvg/3fAf3OI4U7Mfqqa+jFBERAFYtVgYnrwv4he1fL
- Wx2Z818e6zkq2/IxKRfg2fEeyZxqz4bH3sYKlKnFLzS9iU0J
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3930; i=david@ixit.cz;
+ h=from:subject:message-id; bh=fOs/F2KMPPaBYV2HNCIjkY7xRCV4fqBF2vABwAXElzY=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpJNPfwOh1DLgBnwM5ap8sRP0b+zJPbHFkktSum
+ XctX7K9rImJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaSTT3wAKCRBgAj/E00kg
+ clQaD/wLcC2yy+RovNymSJnl+/PabF4grDFGhltT7eYfv+WQZheqq3A557SPGOTEhAp2FF890Nf
+ 7K0d4Jbr+LM6k0uBGeme6zp0orTCk+eueWcBxLy4lAnBc3IyKts8nVHOZYmW7vkwFUq99SAtf4o
+ 251WGH4eEhBN3FqSi99IGCT9QFL0Zdl6AG8FmhcGmcPQvZr4Hcobq80zDdv04Li1bPoREr3fq75
+ gHE3k6ecA6ql9L43Ph7Hn15TqoIJSnLeIEcMJNEehWOAPBhaoU5etPbHQfeaK5rNEShrtaOC5Td
+ J0dpiHDnKaRog8swYIU+8tGosUeUdizfn75vcEu1XvWNLi1K4h7OTepyuehSFsQNkl+YiuNKkLh
+ wS6cPQYL3XPyyO0C0YjmxhSLSht6Lax4CLF8Ly90OdDNBqTB8A8byK7GyYQFOAQB/hjTUtmPtgm
+ Bcpy4Eo6sWnCJfRqrKPPsYdNeIBY2Ip5elf8OqqabfJD77UR8MBdBUqdRjjvj48BQzS2t8lnYSv
+ JYTPikYAqwgkEdBckUoVassMaB9bcteNJHF4UEsmXa4ZA/By4TP3KYH4IkBj5WbQNkV/YnvHyXh
+ 98l27xBb+3XXCEYpp79+0GbLEySSwOZmrQolhzH2B4NmI99WxDp4VniX64CFbTHh4zVHGv+guXS
+ 8ak3MHdN/AIVYIQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adopt the recently introduced pwrctrl APIs to create, power on, destroy,
-and power off pwrctrl devices. In qcom_pcie_host_init(), call
-pci_pwrctrl_create_devices() to create devices, then
-pci_pwrctrl_power_on_devices() to power them on, both after controller
-resource initialization. Once successful, deassert PERST# for all devices.
+This FG (fuel gauge) can be found on Snapdragon 835, 845, 660, 670..
 
-In qcom_pcie_host_deinit(), call pci_pwrctrl_power_off_devices() after
-asserting PERST#. Note that pci_pwrctrl_destroy_devices() is not called
-here, as deinit is only invoked during system suspend where device
-destruction is unnecessary. If the driver becomes removable in future,
-pci_pwrctrl_destroy_devices() should be called in the remove() handler.
+Series enables the FG, which is used on phones as OnePlus 6, 6T, Pixel 3a..
 
-At last, remove the old pwrctrl framework code from the PCI core, as the
-new APIs are now the sole consumer of pwrctrl functionality. And also do
-not power on the pwrctrl drivers during probe() as this is now handled by
-the APIs.
+Since many downstream trees (sdm845-mainline, sdm660, sdm670) carring
+these patches, after Barnabás dropped older gen support from the driver,
+cleaned up the driver, I picked changes and cleaned up device-tree
+patches and sending the whole bulk for review.
 
-Co-developed-by: Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>
-Signed-off-by: Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Note:
+Usually I picked the oldest commits authors.
+Since there was multiple patches, multiple names and modifications etc.,
+if someone from the authors, co-developers, contributors etc. missing,
+please let me know and I'll fix this up in the next series.
+
+Currently some authors are unreachable or haven't given Signed-off-by
+yet, thus RFC, when this get cleaned up, I'll sent non-RFC or leave it
+to the authors to continue upstreaming process in case they want to.
+
+Until merged (or taken over by the original authors), the series is
+available at:
+  https://gitlab.com/sdm845/sdm845-next/-/commits/b4%2Fpmi8998_fuel_gauge
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/pci/controller/dwc/pcie-qcom.c   | 22 ++++++++++--
- drivers/pci/probe.c                      | 59 --------------------------------
- drivers/pci/pwrctrl/core.c               | 15 --------
- drivers/pci/pwrctrl/pci-pwrctrl-pwrseq.c |  5 ---
- drivers/pci/pwrctrl/slot.c               |  2 --
- drivers/pci/remove.c                     | 20 -----------
- 6 files changed, 20 insertions(+), 103 deletions(-)
+Changes in v1:
+- Clean and read charge full and max voltage from dts. (Joel)
+- Dont put battery info on remove. All the battery info data is devm
+  tracked so it will be freed for us on removal. (Casey)
+- Invert charging current. Battery current should be negative for charging
+  batteries, invert it so it's correct. Fixes upower charging status
+  reporting. (Casey)
+- Expose PROP_STATUS to fix upower not detecting charging status properly.
+- Adopt battery info API changes.
+- Silence -EPROBE_DEFER error. (Richard)
+- Add present sysfs property. Required for battery drivers from
+  UPower>=1.90.0 onwards to work properly. (Alexander)
+- Drop support for older gen from the driver. (Barnabás)
+- Rename the driver to pmi8998_fg. (Barnabás)
+- Remove unnecessary batt_info. (Barnabás)
+- Fix all checkpatch issues in strict mode. (Barnabás)
+- Fixed naming, properties sorting, styling issues, few checkpatch
+  warnings. (David)
+- Updated Joel to "Joel Selvaraj <foss@joelselvaraj.com>" everywhere
+  (patch author, author field inside the driver, dt docs). (David)
+- Link to v0:
+  - https://gitlab.com/msm8998-mainline/linux/ (very old)
+  - https://gitlab.com/sdm845-mainline/linux/ (multiple branches)
+  - https://github.com/sdm660-mainline/linux/
+  - https://gitlab.com/sdm670-mainline/linux-patches/-/tree/main/stable
 
-diff --git a/drivers/pci/controller/dwc/pcie-qcom.c b/drivers/pci/controller/dwc/pcie-qcom.c
-index 7b6f4a391ce4..691ba4243342 100644
---- a/drivers/pci/controller/dwc/pcie-qcom.c
-+++ b/drivers/pci/controller/dwc/pcie-qcom.c
-@@ -24,6 +24,7 @@
- #include <linux/of_pci.h>
- #include <linux/pci.h>
- #include <linux/pci-ecam.h>
-+#include <linux/pci-pwrctrl.h>
- #include <linux/pm_opp.h>
- #include <linux/pm_runtime.h>
- #include <linux/platform_device.h>
-@@ -1352,10 +1353,18 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
- 	if (ret)
- 		goto err_deinit;
- 
-+	ret = pci_pwrctrl_create_devices(pci->dev);
-+	if (ret)
-+		goto err_disable_phy;
-+
-+	ret = pci_pwrctrl_power_on_devices(pci->dev);
-+	if (ret)
-+		goto err_pwrctrl_destroy;
-+
- 	if (pcie->cfg->ops->post_init) {
- 		ret = pcie->cfg->ops->post_init(pcie);
- 		if (ret)
--			goto err_disable_phy;
-+			goto err_pwrctrl_power_off;
- 	}
- 
- 	qcom_ep_reset_deassert(pcie);
-@@ -1370,6 +1379,10 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
- 
- err_assert_reset:
- 	qcom_ep_reset_assert(pcie);
-+err_pwrctrl_power_off:
-+	pci_pwrctrl_power_off_devices(pci->dev);
-+err_pwrctrl_destroy:
-+	pci_pwrctrl_destroy_devices(pci->dev);
- err_disable_phy:
- 	qcom_pcie_phy_power_off(pcie);
- err_deinit:
-@@ -1384,6 +1397,11 @@ static void qcom_pcie_host_deinit(struct dw_pcie_rp *pp)
- 	struct qcom_pcie *pcie = to_qcom_pcie(pci);
- 
- 	qcom_ep_reset_assert(pcie);
-+	/*
-+	 * No need to destroy pwrctrl devices as this function only gets called
-+	 * during system suspend as of now.
-+	 */
-+	pci_pwrctrl_power_off_devices(pci->dev);
- 	qcom_pcie_phy_power_off(pcie);
- 	pcie->cfg->ops->deinit(pcie);
- }
-@@ -2035,7 +2053,7 @@ static int qcom_pcie_probe(struct platform_device *pdev)
- 
- 	ret = dw_pcie_host_init(pp);
- 	if (ret) {
--		dev_err(dev, "cannot initialize host\n");
-+		dev_err_probe(dev, ret, "cannot initialize host\n");
- 		goto err_phy_exit;
- 	}
- 
-diff --git a/drivers/pci/probe.c b/drivers/pci/probe.c
-index c83e75a0ec12..34033605adf3 100644
---- a/drivers/pci/probe.c
-+++ b/drivers/pci/probe.c
-@@ -2533,56 +2533,6 @@ bool pci_bus_read_dev_vendor_id(struct pci_bus *bus, int devfn, u32 *l,
- }
- EXPORT_SYMBOL(pci_bus_read_dev_vendor_id);
- 
--#if IS_ENABLED(CONFIG_PCI_PWRCTRL)
--static struct platform_device *pci_pwrctrl_create_device(struct pci_bus *bus, int devfn)
--{
--	struct pci_host_bridge *host = pci_find_host_bridge(bus);
--	struct platform_device *pdev;
--	struct device_node *np;
--
--	np = of_pci_find_child_device(dev_of_node(&bus->dev), devfn);
--	if (!np)
--		return NULL;
--
--	pdev = of_find_device_by_node(np);
--	if (pdev) {
--		put_device(&pdev->dev);
--		goto err_put_of_node;
--	}
--
--	/*
--	 * First check whether the pwrctrl device really needs to be created or
--	 * not. This is decided based on at least one of the power supplies
--	 * being defined in the devicetree node of the device.
--	 */
--	if (!of_pci_supply_present(np)) {
--		pr_debug("PCI/pwrctrl: Skipping OF node: %s\n", np->name);
--		goto err_put_of_node;
--	}
--
--	/* Now create the pwrctrl device */
--	pdev = of_platform_device_create(np, NULL, &host->dev);
--	if (!pdev) {
--		pr_err("PCI/pwrctrl: Failed to create pwrctrl device for node: %s\n", np->name);
--		goto err_put_of_node;
--	}
--
--	of_node_put(np);
--
--	return pdev;
--
--err_put_of_node:
--	of_node_put(np);
--
--	return NULL;
--}
--#else
--static struct platform_device *pci_pwrctrl_create_device(struct pci_bus *bus, int devfn)
--{
--	return NULL;
--}
--#endif
--
- /*
-  * Read the config data for a PCI device, sanity-check it,
-  * and fill in the dev structure.
-@@ -2592,15 +2542,6 @@ static struct pci_dev *pci_scan_device(struct pci_bus *bus, int devfn)
- 	struct pci_dev *dev;
- 	u32 l;
- 
--	/*
--	 * Create pwrctrl device (if required) for the PCI device to handle the
--	 * power state. If the pwrctrl device is created, then skip scanning
--	 * further as the pwrctrl core will rescan the bus after powering on
--	 * the device.
--	 */
--	if (pci_pwrctrl_create_device(bus, devfn))
--		return NULL;
--
- 	if (!pci_bus_read_dev_vendor_id(bus, devfn, &l, 60*1000))
- 		return NULL;
- 
-diff --git a/drivers/pci/pwrctrl/core.c b/drivers/pci/pwrctrl/core.c
-index e0a0cf015bd0..69bf2514c420 100644
---- a/drivers/pci/pwrctrl/core.c
-+++ b/drivers/pci/pwrctrl/core.c
-@@ -45,16 +45,6 @@ static int pci_pwrctrl_notify(struct notifier_block *nb, unsigned long action,
- 	return NOTIFY_DONE;
- }
- 
--static void rescan_work_func(struct work_struct *work)
--{
--	struct pci_pwrctrl *pwrctrl = container_of(work,
--						   struct pci_pwrctrl, work);
--
--	pci_lock_rescan_remove();
--	pci_rescan_bus(to_pci_host_bridge(pwrctrl->dev->parent)->bus);
--	pci_unlock_rescan_remove();
--}
--
- /**
-  * pci_pwrctrl_init() - Initialize the PCI power control context struct
-  *
-@@ -64,7 +54,6 @@ static void rescan_work_func(struct work_struct *work)
- void pci_pwrctrl_init(struct pci_pwrctrl *pwrctrl, struct device *dev)
- {
- 	pwrctrl->dev = dev;
--	INIT_WORK(&pwrctrl->work, rescan_work_func);
- 	dev_set_drvdata(dev, pwrctrl);
- }
- EXPORT_SYMBOL_GPL(pci_pwrctrl_init);
-@@ -95,8 +84,6 @@ int pci_pwrctrl_device_set_ready(struct pci_pwrctrl *pwrctrl)
- 	if (ret)
- 		return ret;
- 
--	schedule_work(&pwrctrl->work);
--
- 	return 0;
- }
- EXPORT_SYMBOL_GPL(pci_pwrctrl_device_set_ready);
-@@ -109,8 +96,6 @@ EXPORT_SYMBOL_GPL(pci_pwrctrl_device_set_ready);
-  */
- void pci_pwrctrl_device_unset_ready(struct pci_pwrctrl *pwrctrl)
- {
--	cancel_work_sync(&pwrctrl->work);
--
- 	/*
- 	 * We don't have to delete the link here. Typically, this function
- 	 * is only called when the power control device is being detached. If
-diff --git a/drivers/pci/pwrctrl/pci-pwrctrl-pwrseq.c b/drivers/pci/pwrctrl/pci-pwrctrl-pwrseq.c
-index 0fb9038a1d18..7697a8a5cdde 100644
---- a/drivers/pci/pwrctrl/pci-pwrctrl-pwrseq.c
-+++ b/drivers/pci/pwrctrl/pci-pwrctrl-pwrseq.c
-@@ -101,11 +101,6 @@ static int pci_pwrctrl_pwrseq_probe(struct platform_device *pdev)
- 		return dev_err_probe(dev, PTR_ERR(data->pwrseq),
- 				     "Failed to get the power sequencer\n");
- 
--	ret = pci_pwrctrl_pwrseq_power_on(&data->ctx);
--	if (ret)
--		return dev_err_probe(dev, ret,
--				     "Failed to power-on the device\n");
--
- 	ret = devm_add_action_or_reset(dev, devm_pci_pwrctrl_pwrseq_power_off,
- 				       data);
- 	if (ret)
-diff --git a/drivers/pci/pwrctrl/slot.c b/drivers/pci/pwrctrl/slot.c
-index 14701f65f1f2..888300aeefec 100644
---- a/drivers/pci/pwrctrl/slot.c
-+++ b/drivers/pci/pwrctrl/slot.c
-@@ -79,8 +79,6 @@ static int pci_pwrctrl_slot_probe(struct platform_device *pdev)
- 		return dev_err_probe(dev, PTR_ERR(slot->clk),
- 				     "Failed to enable slot clock\n");
- 
--	pci_pwrctrl_slot_power_on(&slot->ctx);
--
- 	slot->ctx.power_on = pci_pwrctrl_slot_power_on;
- 	slot->ctx.power_off = pci_pwrctrl_slot_power_off;
- 
-diff --git a/drivers/pci/remove.c b/drivers/pci/remove.c
-index ce5c25adef55..2a22595f38af 100644
---- a/drivers/pci/remove.c
-+++ b/drivers/pci/remove.c
-@@ -17,25 +17,6 @@ static void pci_free_resources(struct pci_dev *dev)
- 	}
- }
- 
--static void pci_pwrctrl_unregister(struct device *dev)
--{
--	struct device_node *np;
--	struct platform_device *pdev;
--
--	np = dev_of_node(dev);
--	if (!np)
--		return;
--
--	pdev = of_find_device_by_node(np);
--	if (!pdev)
--		return;
--
--	of_device_unregister(pdev);
--	put_device(&pdev->dev);
--
--	of_node_clear_flag(np, OF_POPULATED);
--}
--
- static void pci_stop_dev(struct pci_dev *dev)
- {
- 	pci_pme_active(dev, false);
-@@ -66,7 +47,6 @@ static void pci_destroy_dev(struct pci_dev *dev)
- 	pci_doe_destroy(dev);
- 	pcie_aspm_exit_link_state(dev);
- 	pci_bridge_d3_update(dev);
--	pci_pwrctrl_unregister(&dev->dev);
- 	pci_free_resources(dev);
- 	put_device(&dev->dev);
- }
+---
+Alexey Minnekhanov (1):
+      arm64: dts: qcom: sdm660-xiaomi-lavender: Enable support for battery
 
+Casey Connolly (2):
+      arm64: dts: qcom: pmi8998: Add fuel gauge
+      arm64: dts: qcom: sdm845-shift-axolotl: Enable fuel gauge
+
+Joel Selvaraj (2):
+      power: supply: Add driver for Qualcomm PMI8998 fuel gauge
+      arm64: dts: qcom: sdm845-xiaomi-beryllium: Enable fuel gauge
+
+Richard Acayan (2):
+      arm64: dts: qcom: pm660: Add fuel gauge
+      arm64: dts: qcom: sdm670-google-sargo: Enable fuel gauge
+
+Yassine Oudjana (1):
+      dt-bindings: power: supply: Add schema for Qualcomm pmi8998 fuel gauge
+
+ .../bindings/power/supply/qcom,pmi8998-fg.yaml     |  77 +++
+ arch/arm64/boot/dts/qcom/pm660.dtsi                |  10 +
+ arch/arm64/boot/dts/qcom/pmi8998.dtsi              |  11 +
+ .../arm64/boot/dts/qcom/sdm660-xiaomi-lavender.dts |  25 +
+ arch/arm64/boot/dts/qcom/sdm670-google-sargo.dts   |   7 +
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts  |   7 +
+ .../dts/qcom/sdm845-xiaomi-beryllium-common.dtsi   |   7 +
+ drivers/power/supply/Kconfig                       |   8 +
+ drivers/power/supply/Makefile                      |   1 +
+ drivers/power/supply/pmi8998_fg.c                  | 687 +++++++++++++++++++++
+ 10 files changed, 840 insertions(+)
+---
+base-commit: 422f3140bbcb657e1b86c484296972ab76f6d1ff
+change-id: 20251121-pmi8998_fuel_gauge-cfaf78ed103d
+
+Best regards,
 -- 
-2.48.1
+David Heidelberg <david@ixit.cz>
 
