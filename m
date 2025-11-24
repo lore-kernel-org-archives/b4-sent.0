@@ -1,15 +1,12 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Subject: [PATCH 0/5] PCI/pwrctrl: Major rework to integrate pwrctrl devices
- with controller drivers
-Date: Mon, 24 Nov 2025 21:50:43 +0530
-Message-Id: <20251124-pci-pwrctrl-rework-v1-0-78a72627683d@oss.qualcomm.com>
+Date: Mon, 24 Nov 2025 21:50:44 +0530
+Subject: [PATCH 1/5] PCI: qcom: Parse PERST# from all PCIe bridge nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANuFJGkC/x3MwQpAQBCA4VfRnE2ZjS1eRQ4ag4nYZoWSd7c5f
- of/fyCKqURosgdMTo26bwmUZ8Bzv02COiSDK1xF5EoMrBgu48NWNLl2W5Br6r2QZzd6SGEwGfX
- +p233vh9eGpGQZAAAAA==
-X-Change-ID: 20251124-pci-pwrctrl-rework-c91a6e16c2f6
+Message-Id: <20251124-pci-pwrctrl-rework-v1-1-78a72627683d@oss.qualcomm.com>
+References: <20251124-pci-pwrctrl-rework-v1-0-78a72627683d@oss.qualcomm.com>
+In-Reply-To: <20251124-pci-pwrctrl-rework-v1-0-78a72627683d@oss.qualcomm.com>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
  Lorenzo Pieralisi <lpieralisi@kernel.org>, 
  =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
@@ -22,169 +19,247 @@ Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  Niklas Cassel <cassel@kernel.org>, Alex Elder <elder@riscstar.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5672;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7456;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=G2oM8gOYxWUc+4XHDDX80aRKQxNbGdj0WBo+OD86mLc=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpJIXrdQop8rUtEu6HwvV/4pMyrN00I6cSVXeyT
- XwLhcEPePeJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaSSF6wAKCRBVnxHm/pHO
- 9annB/0bjxxrAq+V6XYRhG3OKrCn4346jT8TUIks6PxHXyecd6UZyQTiGYq9Uc1Ox1ewUHkYxv7
- mb94cV/mETT0S3ruUjNzW1oZICkR07dQNpxq1IPMU5/TQPQ7rCDOFz4/qUmtimemJPJw5LbqD19
- 1HAxkOIVTw/endUK3Fz38e4aQPrR6o/ck2h3dosEcDwQKqrO0aY1ZZVic1c5I1TKBkO568SB9Sv
- lpmMyLvfmzqM/7qJ3xjXy3bFztVhmFcwrkQn9076gaZ20mET9Z2aECIy/+3mpE+XEv+4IXw/ejo
- zplEWhUJ6Boge5Vdlwtbo5v08rZTvk59DrkqQnSDY6dKSxYg
+ bh=MCSBhbbg9vGMpjTEI8+dqcv0csxSz0v3Na25Cc4NhqQ=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpJIXr9wE/ax/MgVsttiO9zRmORDEiQFQ7sdJLR
+ 8msynOU2a6JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaSSF6wAKCRBVnxHm/pHO
+ 9cYYB/99atS90AZH4KZDkPaL0aUWjyDucZSceInRXLoTp4vI7nFPdr9yHTJ+pg25bPACyaS78gY
+ AWu+wM0FAaMZnl2cLToHhM224T3/UnTh9Fy5aRDsYdxagyxo2oJGx7soaqmJHvfnaz0tAVgF+ev
+ dWljCMEoKRkZCmH7RCPBPgSQa3AddMR+Bjjj620kMnrETpEVLEkqDA2vlBGt4Am+93wH1fMaWrb
+ NichJXuGZz5dORUL6QdMMCIPDFFxfOkhwm1F3YRCDSxk7OXlXGMJOcJG1kLT+kM3sEDXN9D2cAb
+ Rg0yZ6t8g2eVROzvjv6wKj9XWjKjFZPMlzE47JoEQOenoKbh
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+Devicetree schema allows the PERST# GPIO to be present in all PCIe bridge
+nodes, not just in Root Port node. But the current logic parses PERST# only
+from the Root Port nodes. Though it is not causing any issue on the current
+platforms, the upcoming platforms will have PERST# in PCIe switch
+downstream ports also. So this requires parsing all the PCIe bridge nodes
+for the PERST# GPIO.
 
-This series provides a major rework for the PCI power control (pwrctrl)
-framework to enable the pwrctrl devices to be controlled by the PCI controller
-drivers.
+Hence, rework the parsing logic to extend to all PCIe bridge nodes starting
+from the Root Port node. If the 'reset-gpios' property is found for a PCI
+bridge node, the GPIO descriptor will be stored in qcom_pcie_perst::desc
+and added to the qcom_pcie_port::perst list.
 
-Problem Statement
-=================
+It should be noted that if more than one bridge node has the same GPIO for
+PERST# (shared PERST#), the driver will error out. This is due to the
+limitation in the GPIOLIB subsystem that allows only exclusive (non-shared)
+access to GPIOs from consumers. But this is soon going to get fixed. Once
+that happens, it will get incorporated in this driver.
 
-Currently, the pwrctrl framework faces two major issues:
-
-1. Missing PERST# integration
-2. Inability to properly handle bus extenders such as PCIe switch devices
-
-First issue arises from the disconnect between the PCI controller drivers and
-pwrctrl framework. At present, the pwrctrl framework just operates on its own
-with the help of the PCI core. The pwrctrl devices are created by the PCI core
-during initial bus scan and the pwrctrl drivers once bind, just power on the
-PCI devices during their probe(). This design conflicts with the PCI Express
-Card Electromechanical Specification requirements for PERST# timing. The reason
-is, PERST# signals are mostly handled by the controller drivers and often
-deasserted even before the pwrctrl drivers probe. According to the spec, PERST#
-should be deasserted only after power and reference clock to the device are
-stable, within predefined timing parameters.
-
-The second issue stems from the PCI bus scan completing before pwrctrl drivers
-probe. This poses a significant problem for PCI bus extenders like switches
-because the PCI core allocates upstream bridge resources during the initial
-scan. If the upstream bridge is not hotplug capable, resources are allocated
-only for the number of downstream buses detected at scan time, which might be
-just one if the switch was not powered and enumerated at that time. Later, when
-the pwrctrl driver powers on and enumerates the switch, enumeration fails due to
-insufficient upstream bridge resources.
-
-Proposal
-========
-
-This series addresses both issues by introducing new individual APIs for pwrctrl
-device creation, destruction, power on, and power off operations. Controller
-drivers are expected to invoke these APIs during their probe(), remove(),
-suspend(), and resume() operations. This integration allows better coordination
-between controller drivers and the pwrctrl framework, enabling enhanced features
-such as D3Cold support.
-
-The original design aimed to avoid modifying controller drivers for pwrctrl
-integration. However, this approach lacked scalability because different
-controllers have varying requirements for when devices should be powered on. For
-example, controller drivers require devices to be powered on early for
-successful PHY initialization.
-
-By using these explicit APIs, controller drivers gain fine grained control over
-their associated pwrctrl devices.
-
-This series modified the pcie-qcom driver (only consumer of pwrctrl framework)
-to adopt to these APIs and also removed the old pwrctrl code from PCI core. This
-could be used as a reference to add pwrctrl support for other controller drivers
-also.
-
-For example, to control the 3.3v supply to the PCI slot where the NVMe device is
-connected, below modifications are required:
-
-Devicetree
-----------
-
-	// In SoC dtsi:
-
-	pci@1bf8000 { // controller node
-		...
-		pcie1_port0: pcie@0 { // PCI Root Port node
-			compatible = "pciclass,0604"; // required for pwrctrl
-							 driver bind
-			...
-		};
-	};
-
-	// In board dts:
-
-	&pcie1_port0 {
-		reset-gpios = <&tlmm 152 GPIO_ACTIVE_LOW>; // optional
-		vpcie3v3-supply = <&vreg_nvme>; // NVMe power supply
-	};
-
-Controller driver
------------------
-
-	// Select PCI_PWRCTRL_SLOT in controller Kconfig
-
-	probe() {
-		...
-		// Initialize controller resources
-		pci_pwrctrl_create_devices(&pdev->dev);
-		pci_pwrctrl_power_on_devices(&pdev->dev);
-		// Deassert PERST# (optional)
-		...
-		pci_host_probe(); // Allocate host bridge and start bus scan
-	}
-
-	suspend {
-		// PME_Turn_Off broadcast
-		// Assert PERST# (optional)
-		pci_pwrctrl_power_off_devices(&pdev->dev);
-		...
-	}
-
-	resume {
-		...
-		pci_pwrctrl_power_on_devices(&pdev->dev);
-		// Deassert PERST# (optional)
-	}
-
-I will add a documentation for the pwrctrl framework in the coming days to make
-it easier to use.
-
-Testing
-=======
-
-This series is tested on the Lenovo Thinkpad T14s laptop based on Qcom X1E
-chipset and RB3Gen2 development board with TC9563 switch based on Qcom QCS6490
-chipset.
-
-**NOTE**: With this series, the controller driver may undergo multiple probe
-deferral if the pwrctrl driver was not available during the controller driver
-probe. This is pretty much required to avoid the resource allocation issue.
+So for now, PERST# sharing is not supported.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
-Krishna Chaitanya Chundru (1):
-      PCI/pwrctrl: Add APIs for explicitly creating and destroying pwrctrl devices
+ drivers/pci/controller/dwc/pcie-qcom.c | 102 +++++++++++++++++++++++++++------
+ 1 file changed, 85 insertions(+), 17 deletions(-)
 
-Manivannan Sadhasivam (4):
-      PCI: qcom: Parse PERST# from all PCIe bridge nodes
-      PCI/pwrctrl: Add 'struct pci_pwrctrl::power_{on/off}' callbacks
-      PCI/pwrctrl: Add APIs to power on/off the pwrctrl devices
-      PCI/pwrctrl: Switch to the new pwrctrl APIs
+diff --git a/drivers/pci/controller/dwc/pcie-qcom.c b/drivers/pci/controller/dwc/pcie-qcom.c
+index 805edbbfe7eb..7b6f4a391ce4 100644
+--- a/drivers/pci/controller/dwc/pcie-qcom.c
++++ b/drivers/pci/controller/dwc/pcie-qcom.c
+@@ -281,10 +281,15 @@ struct qcom_pcie_cfg {
+ 	bool no_l0s;
+ };
+ 
++struct qcom_pcie_perst {
++	struct list_head list;
++	struct gpio_desc *desc;
++};
++
+ struct qcom_pcie_port {
+ 	struct list_head list;
+-	struct gpio_desc *reset;
+ 	struct phy *phy;
++	struct list_head perst;
+ };
+ 
+ struct qcom_pcie {
+@@ -305,11 +310,14 @@ struct qcom_pcie {
+ 
+ static void qcom_perst_assert(struct qcom_pcie *pcie, bool assert)
+ {
++	struct qcom_pcie_perst *perst;
+ 	struct qcom_pcie_port *port;
+ 	int val = assert ? 1 : 0;
+ 
+-	list_for_each_entry(port, &pcie->ports, list)
+-		gpiod_set_value_cansleep(port->reset, val);
++	list_for_each_entry(port, &pcie->ports, list) {
++		list_for_each_entry(perst, &port->perst, list)
++			gpiod_set_value_cansleep(perst->desc, val);
++	}
+ 
+ 	usleep_range(PERST_DELAY_US, PERST_DELAY_US + 500);
+ }
+@@ -1710,18 +1718,58 @@ static const struct pci_ecam_ops pci_qcom_ecam_ops = {
+ 	}
+ };
+ 
+-static int qcom_pcie_parse_port(struct qcom_pcie *pcie, struct device_node *node)
++/* Parse PERST# from all nodes in depth first manner starting from @np */
++static int qcom_pcie_parse_perst(struct qcom_pcie *pcie,
++				 struct qcom_pcie_port *port,
++				 struct device_node *np)
+ {
+ 	struct device *dev = pcie->pci->dev;
+-	struct qcom_pcie_port *port;
++	struct qcom_pcie_perst *perst;
+ 	struct gpio_desc *reset;
+-	struct phy *phy;
+ 	int ret;
+ 
+-	reset = devm_fwnode_gpiod_get(dev, of_fwnode_handle(node),
+-				      "reset", GPIOD_OUT_HIGH, "PERST#");
+-	if (IS_ERR(reset))
++	if (!of_find_property(np, "reset-gpios", NULL))
++		goto parse_child_node;
++
++	reset = devm_fwnode_gpiod_get(dev, of_fwnode_handle(np), "reset",
++				      GPIOD_OUT_HIGH, "PERST#");
++	if (IS_ERR(reset)) {
++		/*
++		 * FIXME: GPIOLIB currently supports exclusive GPIO access only.
++		 * Non exclusive access is broken. But shared PERST# requires
++		 * non-exclusive access. So once GPIOLIB properly supports it,
++		 * implement it here.
++		 */
++		if (PTR_ERR(reset) == -EBUSY)
++			dev_err(dev, "Shared PERST# is not supported\n");
++
+ 		return PTR_ERR(reset);
++	}
++
++	perst = devm_kzalloc(dev, sizeof(*perst), GFP_KERNEL);
++	if (!perst)
++		return -ENOMEM;
++
++	INIT_LIST_HEAD(&perst->list);
++	perst->desc = reset;
++	list_add_tail(&perst->list, &port->perst);
++
++parse_child_node:
++	for_each_available_child_of_node_scoped(np, child) {
++		ret = qcom_pcie_parse_perst(pcie, port, child);
++		if (ret)
++			return ret;
++	}
++
++	return 0;
++}
++
++static int qcom_pcie_parse_port(struct qcom_pcie *pcie, struct device_node *node)
++{
++	struct device *dev = pcie->pci->dev;
++	struct qcom_pcie_port *port;
++	struct phy *phy;
++	int ret;
+ 
+ 	phy = devm_of_phy_get(dev, node, NULL);
+ 	if (IS_ERR(phy))
+@@ -1735,7 +1783,12 @@ static int qcom_pcie_parse_port(struct qcom_pcie *pcie, struct device_node *node
+ 	if (ret)
+ 		return ret;
+ 
+-	port->reset = reset;
++	INIT_LIST_HEAD(&port->perst);
++
++	ret = qcom_pcie_parse_perst(pcie, port, node);
++	if (ret)
++		return ret;
++
+ 	port->phy = phy;
+ 	INIT_LIST_HEAD(&port->list);
+ 	list_add_tail(&port->list, &pcie->ports);
+@@ -1745,9 +1798,10 @@ static int qcom_pcie_parse_port(struct qcom_pcie *pcie, struct device_node *node
+ 
+ static int qcom_pcie_parse_ports(struct qcom_pcie *pcie)
+ {
++	struct qcom_pcie_perst *perst, *tmp_perst;
++	struct qcom_pcie_port *port, *tmp_port;
+ 	struct device *dev = pcie->pci->dev;
+-	struct qcom_pcie_port *port, *tmp;
+-	int ret = -ENOENT;
++	int ret = -ENODEV;
+ 
+ 	for_each_available_child_of_node_scoped(dev->of_node, of_port) {
+ 		if (!of_node_is_type(of_port, "pci"))
+@@ -1760,7 +1814,9 @@ static int qcom_pcie_parse_ports(struct qcom_pcie *pcie)
+ 	return ret;
+ 
+ err_port_del:
+-	list_for_each_entry_safe(port, tmp, &pcie->ports, list) {
++	list_for_each_entry_safe(port, tmp_port, &pcie->ports, list) {
++		list_for_each_entry_safe(perst, tmp_perst, &port->perst, list)
++			list_del(&perst->list);
+ 		phy_exit(port->phy);
+ 		list_del(&port->list);
+ 	}
+@@ -1771,6 +1827,7 @@ static int qcom_pcie_parse_ports(struct qcom_pcie *pcie)
+ static int qcom_pcie_parse_legacy_binding(struct qcom_pcie *pcie)
+ {
+ 	struct device *dev = pcie->pci->dev;
++	struct qcom_pcie_perst *perst;
+ 	struct qcom_pcie_port *port;
+ 	struct gpio_desc *reset;
+ 	struct phy *phy;
+@@ -1792,19 +1849,28 @@ static int qcom_pcie_parse_legacy_binding(struct qcom_pcie *pcie)
+ 	if (!port)
+ 		return -ENOMEM;
+ 
+-	port->reset = reset;
++	perst = devm_kzalloc(dev, sizeof(*perst), GFP_KERNEL);
++	if (!perst)
++		return -ENOMEM;
++
+ 	port->phy = phy;
+ 	INIT_LIST_HEAD(&port->list);
+ 	list_add_tail(&port->list, &pcie->ports);
+ 
++	perst->desc = reset;
++	INIT_LIST_HEAD(&port->perst);
++	INIT_LIST_HEAD(&perst->list);
++	list_add_tail(&perst->list, &port->perst);
++
+ 	return 0;
+ }
+ 
+ static int qcom_pcie_probe(struct platform_device *pdev)
+ {
++	struct qcom_pcie_perst *perst, *tmp_perst;
++	struct qcom_pcie_port *port, *tmp_port;
+ 	const struct qcom_pcie_cfg *pcie_cfg;
+ 	unsigned long max_freq = ULONG_MAX;
+-	struct qcom_pcie_port *port, *tmp;
+ 	struct device *dev = &pdev->dev;
+ 	struct dev_pm_opp *opp;
+ 	struct qcom_pcie *pcie;
+@@ -1945,7 +2011,7 @@ static int qcom_pcie_probe(struct platform_device *pdev)
+ 
+ 	ret = qcom_pcie_parse_ports(pcie);
+ 	if (ret) {
+-		if (ret != -ENOENT) {
++		if (ret != -ENODEV) {
+ 			dev_err_probe(pci->dev, ret,
+ 				      "Failed to parse Root Port: %d\n", ret);
+ 			goto err_pm_runtime_put;
+@@ -2004,7 +2070,9 @@ static int qcom_pcie_probe(struct platform_device *pdev)
+ err_host_deinit:
+ 	dw_pcie_host_deinit(pp);
+ err_phy_exit:
+-	list_for_each_entry_safe(port, tmp, &pcie->ports, list) {
++	list_for_each_entry_safe(port, tmp_port, &pcie->ports, list) {
++		list_for_each_entry_safe(perst, tmp_perst, &port->perst, list)
++			list_del(&perst->list);
+ 		phy_exit(port->phy);
+ 		list_del(&port->list);
+ 	}
 
- drivers/pci/controller/dwc/pcie-qcom.c   | 124 +++++++++++++---
- drivers/pci/probe.c                      |  59 --------
- drivers/pci/pwrctrl/core.c               | 248 +++++++++++++++++++++++++++++--
- drivers/pci/pwrctrl/pci-pwrctrl-pwrseq.c |  30 +++-
- drivers/pci/pwrctrl/slot.c               |  46 ++++--
- drivers/pci/remove.c                     |  20 ---
- include/linux/pci-pwrctrl.h              |  16 +-
- 7 files changed, 407 insertions(+), 136 deletions(-)
----
-base-commit: 3a8660878839faadb4f1a6dd72c3179c1df56787
-change-id: 20251124-pci-pwrctrl-rework-c91a6e16c2f6
-
-Best regards,
 -- 
-Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+2.48.1
 
