@@ -1,11 +1,11 @@
 From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Mon, 24 Nov 2025 15:35:25 -0800
-Subject: [PATCH v4 4/6] ARM: dts: qcom: msm8960: expressatt: Add
- Magnetometer
+Date: Mon, 24 Nov 2025 15:35:26 -0800
+Subject: [PATCH v4 5/6] iio: accel: Prevent NULL pointer dereference in
+ interrupt setup
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251124-expressatt_nfc_accel_magn_light-v4-4-9c5686ad67e2@gmail.com>
+Message-Id: <20251124-expressatt_nfc_accel_magn_light-v4-5-9c5686ad67e2@gmail.com>
 References: <20251124-expressatt_nfc_accel_magn_light-v4-0-9c5686ad67e2@gmail.com>
 In-Reply-To: <20251124-expressatt_nfc_accel_magn_light-v4-0-9c5686ad67e2@gmail.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -17,54 +17,108 @@ To: Bjorn Andersson <andersson@kernel.org>,
  Andy Shevchenko <andy@kernel.org>
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
- Rudraksha Gupta <guptarud@gmail.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+ Rudraksha Gupta <guptarud@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764027322; l=1006;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764027322; l=5921;
  i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=7jrbiFxqBdAClrq/n9H3dJIomUxZ8Xc6QvLk/kgFMvE=;
- b=reakw873qQWdfmQwHHLrt2onXrvLUiqgp/jZu9RU6H70hA4ED0hQhMHEo7nM2IZ2vrRmvys1P
- hUvRikVVUw0D6V1iof74GtNrLmB2IJMlwAxnaaL7ZifQmMIAL79eph0
+ bh=/ZZEHlCaeeU7A42iJsRUFkp4UqWiRDldJmkxQPFbnH0=;
+ b=A+lLK0JUvVziv2HOc9b02v9thpQpJbmn7U5VaoFim+npy26emvE/zZHAiJyCOAMaPXAdyWCYo
+ o1iqNHPR+I/CsjZUNUmhGCRPPWBr9k1SPVhe+CO+BR6c4nsnYS48sFS
 X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
  pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
 X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the Yamaha magnetometer. Mount Matrix is left as a TODO.
+The bmc150_accel_set_interrupt() function assumes that the interrupt
+info is provided. However, when no IRQ is provided, the info pointer
+remains NULL, leading to a kernel oops:
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+	[   95.444148] 8<--- cut here ---
+	[   95.444202] Unable to handle kernel NULL pointer dereference at virtual address 00000001 when read
+	[   95.451504] [00000001] *pgd=00000000
+	[   95.459997] Internal error: Oops: 5 [#1] SMP ARM
+	[   95.460059] Modules linked in: nf_tables atmel_mxt_ts pn544_i2c crc_ccitt pn544 hci nfc rfkill tsl2772 qcom_rng zram zsmalloc fuse loop nfnetlink ext4 jbd2 dm_mod
+	[   95.463738] CPU: 0 UID: 0 PID: 568 Comm: iio-sensor-prox Not tainted 6.18.0-rc6-00107-g56ee44ac80c9 #2 PREEMPT
+	[   95.478046] Hardware name: Generic DT based system
+	[   95.488019] PC is at bmc150_accel_set_interrupt+0x98/0x194
+	[   95.492879] LR is at __pm_runtime_resume+0x5c/0x64
+	[   95.498345] pc : [<c0bbadb4>]    lr : [<c0902474>]    psr: 60000013
+	[   95.503124] sp : f09dddc0  ip : 00240024  fp : c1febb58
+	[   95.509284] r10: c1e0b270  r9 : 00000100  r8 : c104f4f4
+	[   95.514492] r7 : c35b6420  r6 : 00000000  r5 : 00000001  r4 : c1e0b380
+	[   95.519704] r3 : 00250024  r2 : 00000025  r1 : 00000000  r0 : 00000000
+	[   95.526298] Flags: nZCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment none
+	[   95.532812] Control: 10c5787d  Table: 8447006a  DAC: 00000051
+	[   95.540011] Register r0 information: NULL pointer
+	[   95.545743] Register r1 information: NULL pointer
+	[   95.550427] Register r2 information: non-paged memory
+	[   95.555115] Register r3 information: non-paged memory
+	[   95.560152] Register r4 information: slab kmalloc-2k start c1e0b000 pointer offset 896 size 2048
+	[   95.565195] Register r5 information: non-paged memory
+	[   95.574038] Register r6 information: NULL pointer
+	[   95.578989] Register r7 information: slab kmalloc-1k start c35b6400 pointer offset 32 size 1024
+	[   95.583680] Register r8 information: non-slab/vmalloc memory
+	[   95.592183] Register r9 information: non-paged memory
+	[   95.598083] Register r10 information: slab kmalloc-2k start c1e0b000 pointer offset 624 size 2048
+	[   95.603039] Register r11 information: slab kmalloc-192 start c1febb40 pointer offset 24 size 192
+	[   95.611896] Register r12 information: non-paged memory
+	[   95.620743] Process iio-sensor-prox (pid: 568, stack limit = 0x91dd47d2)
+	[   95.625692] Stack: (0xf09dddc0 to 0xf09de000)
+	[   95.632558] ddc0: 60000013 c104f4f4 00000100 c1e0b270 c1e0b3e4 c1e0b380 00000000 00000004
+	[   95.636813] dde0: c1febb58 c0bbb32c c1e0b270 c1e0b000 c1febb40 00000004 c1febb58 c0bb5df0
+	[   95.644978] de00: b6985148 00000001 c1e0b270 00000001 c104f4f4 c06a37a0 c1febba4 00000004
+	[   95.653138] de20: c1e0b000 00000001 c1e0b234 c1febb40 c1e0b008 f09dde90 c2751f00 c4901048
+	[   95.661294] de40: b6985148 c0bb7874 019dde90 99e880ae c48fe300 fffffff2 c48fe310 00000001
+	[   95.669452] de60: b6985148 c04882c8 00000000 00000000 00000000 f09dde90 00004004 00000004
+	[   95.677619] de80: 00000000 f09ddf78 b6985148 c03e1130 c4901000 00000000 00000000 00000000
+	[   95.685773] dea0: 00000000 00000000 00000000 00004004 00000000 00000000 00000000 99e880ae
+	[   95.693931] dec0: c4901000 c2bae880 00000002 00000002 f09ddf78 00000000 b6985148 c03e3208
+	[   95.702093] dee0: 00000000 f09ddef0 000b6985 b6985000 00010001 00000000 f09ddf18 00000000
+	[   95.710253] df00: 00000001 00000000 00000000 00000000 bed7e988 00000001 00000000 00000000
+	[   95.718421] df20: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+	[   95.726576] df40: 00000000 00000000 00000000 00000000 bed7e8d8 99e880ae c4901003 c4901000
+	[   95.734731] df60: f09ddf78 bed7e8d8 00000002 c03e3010 00000000 c2bae880 00000000 00000000
+	[   95.742894] df80: 00000092 99e880ae bed7e8d8 00000001 00000002 00000092 c01002c4 c2bae880
+	[   95.751054] dfa0: 00000092 c01002b4 bed7e8d8 00000001 00000009 bed7e8d8 00000002 00000000
+	[   95.759214] dfc0: bed7e8d8 00000001 00000002 00000092 b69850b0 00000001 00000001 b6985148
+	[   95.767377] dfe0: ffffffff bed7e8d8 b6f5ac69 b6f58ee6 00000030 00000009 00000000 00000000
+	[   95.775524] Call trace:
+	[   95.775546]  bmc150_accel_set_interrupt from bmc150_accel_buffer_postenable+0x40/0x108
+	[   95.786288]  bmc150_accel_buffer_postenable from __iio_update_buffers+0xb78/0xdf4
+	[   95.794018]  __iio_update_buffers from enable_store+0x88/0xc8
+	[   95.801562]  enable_store from kernfs_fop_write_iter+0x154/0x1b4
+	[   95.807295]  kernfs_fop_write_iter from do_iter_readv_writev+0x174/0x1dc
+	[   95.813369]  do_iter_readv_writev from vfs_writev+0x18c/0x428
+	[   95.820051]  vfs_writev from do_writev+0x74/0xe0
+	[   95.825690]  do_writev from __sys_trace_return+0x0/0x10
+	[   95.830376] Exception stack(0xf09ddfa8 to 0xf09ddff0)
+	[   95.835331] dfa0:                   bed7e8d8 00000001 00000009 bed7e8d8 00000002 00000000
+	[   95.840547] dfc0: bed7e8d8 00000001 00000002 00000092 b69850b0 00000001 00000001 b6985148
+	[   95.848702] dfe0: ffffffff bed7e8d8 b6f5ac69 b6f58ee6
+	[   95.856863] Code: e1a01005 ebffffa8 e3500000 4a000020 (e5d62001)
+	[   95.862186] ---[ end trace 0000000000000000 ]---
+
+Add a check to return -ENODEV if no interrupt is provided.
+
 Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
- .../boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
+ drivers/iio/accel/bmc150-accel-core.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-index 4f9b59db7bc3..d32461fc58e9 100644
---- a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-+++ b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-@@ -487,3 +487,22 @@ nfc@2b {
- 		pinctrl-names = "default";
- 	};
- };
+diff --git a/drivers/iio/accel/bmc150-accel-core.c b/drivers/iio/accel/bmc150-accel-core.c
+index 3c5d1560b163..ec87901cf66a 100644
+--- a/drivers/iio/accel/bmc150-accel-core.c
++++ b/drivers/iio/accel/bmc150-accel-core.c
+@@ -523,6 +523,9 @@ static int bmc150_accel_set_interrupt(struct bmc150_accel_data *data, int i,
+ 	const struct bmc150_accel_interrupt_info *info = intr->info;
+ 	int ret;
+ 
++	if (!info)
++		return -ENODEV;
 +
-+&gsbi12 {
-+	qcom,mode = <GSBI_PROT_I2C>;
-+
-+	status = "okay";
-+};
-+
-+&gsbi12_i2c {
-+	status = "okay";
-+
-+	magnetometer@2e {
-+		compatible = "yamaha,yas532";
-+		reg = <0x2e>;
-+		vdd-supply = <&pm8921_l9>;
-+		iovdd-supply = <&pm8921_lvs4>;
-+
-+		/* TODO: Figure out Mount Matrix */
-+	};
-+};
+ 	if (state) {
+ 		if (atomic_inc_return(&intr->users) > 1)
+ 			return 0;
 
 -- 
 2.52.0
