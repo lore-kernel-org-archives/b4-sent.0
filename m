@@ -1,376 +1,289 @@
-From: Ye He <ye.he@amlogic.com>
-Date: Mon, 24 Nov 2025 10:55:18 +0800
-Subject: [PATCH bluez] profiles: Add bearer field to btd_profile
+From: Zhentao Guo <zhentao.guo@amlogic.com>
+Subject: [PATCH RFC v2 0/3] Add Amlogic stateless H.264 video decoder for
+ S4
+Date: Mon, 24 Nov 2025 11:32:16 +0800
+Message-Id: <20251124-b4-s4-vdec-upstream-v2-0-bdbbce3f11a6@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251124-profile-bearer-type-v1-1-50b377b65048@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIABXJI2kC/x3MQQqDMBBG4avIrB0wQbH2KuIiqX/aAdEwUWkV7
- 97g8lu8d1KCChI9i5MUuyRZ5gxTFvT6uPkNljGbbGUbY2zNUZcgE9jDKZTXXwQbhwdC16JDRbm
- MiiDf+9qTnzYcNFzXH/uz9zpsAAAA
-X-Change-ID: 20251124-profile-bearer-type-1ae8ef97e9e0
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Ye He <ye.he@amlogic.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763952918; l=13832;
- i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
- bh=UiNDJDmUHsffzefxnX+hE+voiuhZDJyqyuhJqMWvM18=;
- b=qTwCGY5zAw5YnuVT3LXvO+rwbik4Wx+BJoowbwo6qEoSj/xnzYnVuPmpW2hMplV+OBs1EOiGT
- agV6GkvYTbVC658M33XojR9/2R7+Zh4VAleHcUKVqUCLZeF/rk+RELA
-X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
- pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
-X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
+X-B4-Tracking: v=1; b=H4sIAMDRI2kC/32NQQ6CMBBFr0Jm7Zi2FCSuTEw8gFvDopQRJrGUt
+ NhoCHe34QAu3//5768QKTBFOBcrBEoc2U8Z1KEAO5ppIOQ+MyihKinUCTuNUWPqyeJ7jksg41D
+ UorTSaNtoA3k5B3ryZ7c+4H67QpvDkePiw3d/SnKv/kqTRIG1ElrIRpZd1V+Me/mB7dF6B+22b
+ T8gusGIvQAAAA==
+X-Change-ID: 20251027-b4-s4-vdec-upstream-0603c1a4c84a
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, Zhentao Guo <zhentao.guo@amlogic.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763955152; l=9747;
+ i=zhentao.guo@amlogic.com; s=20251024; h=from:subject:message-id;
+ bh=Rma4wPqX3YrBdvw49dMz8PSp/KasV1B7VvOywDgOwIk=;
+ b=7eiK9AbvnyV9gXLFTpZcAQD4I6wCyibBGhpwhcPp+8k4dMnWbwIHzswp1igFxQQmyeG9NSIv9
+ QfpXMUYCY7nBgLow2EsRMwYYDtrmC+VYlZSEyDAZxVsX9DPvTjREHqI
+X-Developer-Key: i=zhentao.guo@amlogic.com; a=ed25519;
+ pk=5yfDKrjreXwcAoEUsdtWafy6YN500upXp/CgtnXjLVU=
+X-Endpoint-Received: by B4 Relay for zhentao.guo@amlogic.com/20251024 with auth_id=555
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add bearer filed into btd_profile to indicates which bearer
-type this profile belongs to. Thus we can distinct the services
-per bearer.
+Introduce initial driver support for Amlogic's new video acceleration
+hardware architecture, designed for video stream decoding.
 
-Signed-off-by: Ye He <ye.he@amlogic.com>
+Compared to the current Amlogic video decoder hardware architecture,
+this new implementation eliminates the Esparser hardware component,
+enabling direct vb2 buffer input. The driver is designed to support
+the V4L2 M2M stateless decoder API. The initial phase includes support
+for H.264 decoding on Amlogic S805X2 platform.
+
+The driver is capable of:
+- Supporting stateless H.264 decoding up to a resolution 1920x1088(on the S805X2 platform).
+- Supporting I/P/B frame handling.
+- Supporting vb2 mmap and dma-buf modes.
+- Supporting frame-based decode mode. (Note that some H.264 bitstreams require
+  DPB reordering to generate reference lists, the stateless decoder driver
+  cannot access reordered reference lists in this mode, requiring the driver
+  to perform reference list reordering itself)
+- Supporting NV12/NV21 output.
+- Supporting Annex B start codes.
+
+This driver is tested with Gstreamer.
+Example:
+gst-launch-1.0 filesrc location=/tmp/video_640x360_mp4_hevc_450kbps_no_b.mp4 !
+parsebin ! v4l2slh264dec ! filesink location=/tmp/output.yuv
+
+Retry the compliance test based on kernel 6.18-rc6:
+v4l2-compliance 1.30.1, 64 bits, 64-bit time_t
+
+Compliance test for aml-vdec-drv device /dev/video0:
+
+Driver Info:
+        Driver name      : aml-vdec-drv
+        Card type        : platform:aml-vdec-drv
+        Bus info         : platform:fe320000.video-codec
+        Driver version   : 6.18.0
+        Capabilities     : 0x84204000
+                Video Memory-to-Memory Multiplanar
+                Streaming
+                Extended Pix Format
+                Device Capabilities
+        Device Caps      : 0x04204000
+                Video Memory-to-Memory Multiplanar
+                Streaming
+                Extended Pix Format
+        Detected Stateless Decoder
+Media Driver Info:
+        Driver name      : aml-vdec-drv
+        Model            : aml-vdec-drv
+        Serial           :
+        Bus info         : platform:fe320000.video-codec
+        Media version    : 6.18.0
+        Hardware revision: 0x00000000 (0)
+        Driver version   : 6.18.0
+Interface Info:
+        ID               : 0x0300000c
+        Type             : V4L Video
+Entity Info:
+        ID               : 0x00000001 (1)
+        Name             : aml_dev_drv-source
+        Function         : V4L2 I/O
+        Pad 0x01000002   : 0: Source
+          Link 0x02000008: to remote pad 0x1000004 of entity 'aml_dev_drv-proc' (Video Decoder): Data, Enabled, Immutable
+
+Required ioctls:
+        test MC information (see 'Media Driver Info' above): OK
+        test VIDIOC_QUERYCAP: OK
+        test invalid ioctls: OK
+
+Allow for multiple opens:
+        test second /dev/video0 open: OK
+        test VIDIOC_QUERYCAP: OK
+        test VIDIOC_G/S_PRIORITY: OK
+        test for unlimited opens: OK
+
+Debug ioctls:
+        test VIDIOC_DBG_G/S_REGISTER: OK (Not Supported)
+        test VIDIOC_LOG_STATUS: OK (Not Supported)
+
+Input ioctls:
+        test VIDIOC_G/S_TUNER/ENUM_FREQ_BANDS: OK (Not Supported)
+        test VIDIOC_G/S_FREQUENCY: OK (Not Supported)
+        test VIDIOC_S_HW_FREQ_SEEK: OK (Not Supported)
+        test VIDIOC_ENUMAUDIO: OK (Not Supported)
+        test VIDIOC_G/S/ENUMINPUT: OK (Not Supported)
+        test VIDIOC_G/S_AUDIO: OK (Not Supported)
+        Inputs: 0 Audio Inputs: 0 Tuners: 0
+
+Output ioctls:
+        test VIDIOC_G/S_MODULATOR: OK (Not Supported)
+        test VIDIOC_G/S_FREQUENCY: OK (Not Supported)
+        test VIDIOC_ENUMAUDOUT: OK (Not Supported)
+        test VIDIOC_G/S/ENUMOUTPUT: OK (Not Supported)
+        test VIDIOC_G/S_AUDOUT: OK (Not Supported)
+        Outputs: 0 Audio Outputs: 0 Modulators: 0
+
+Input/Output configuration ioctls:
+        test VIDIOC_ENUM/G/S/QUERY_STD: OK (Not Supported)
+        test VIDIOC_ENUM/G/S/QUERY_DV_TIMINGS: OK (Not Supported)
+        test VIDIOC_DV_TIMINGS_CAP: OK (Not Supported)
+        test VIDIOC_G/S_EDID: OK (Not Supported)
+
+Control ioctls:
+        test VIDIOC_QUERY_EXT_CTRL/QUERYMENU: OK
+        test VIDIOC_QUERYCTRL: OK
+        test VIDIOC_G/S_CTRL: OK
+        test VIDIOC_G/S/TRY_EXT_CTRLS: OK
+        test VIDIOC_(UN)SUBSCRIBE_EVENT/DQEVENT: OK
+        test VIDIOC_G/S_JPEGCOMP: OK (Not Supported)
+        Standard Controls: 6 Private Controls: 0
+        Standard Compound Controls: 4 Private Compound Controls: 0
+
+Format ioctls:
+        test VIDIOC_ENUM_FMT/FRAMESIZES/FRAMEINTERVALS: OK
+        test VIDIOC_G/S_PARM: OK (Not Supported)
+        test VIDIOC_G_FBUF: OK (Not Supported)
+        test VIDIOC_G_FMT: OK
+        test VIDIOC_TRY_FMT: OK
+        test VIDIOC_S_FMT: OK
+        test VIDIOC_G_SLICED_VBI_CAP: OK (Not Supported)
+        test Cropping: OK (Not Supported)
+        test Composing: OK (Not Supported)
+        test Scaling: OK (Not Supported)
+
+Codec ioctls:
+        test VIDIOC_(TRY_)ENCODER_CMD: OK (Not Supported)
+        test VIDIOC_G_ENC_INDEX: OK (Not Supported)
+        test VIDIOC_(TRY_)DECODER_CMD: OK
+
+Buffer ioctls:
+        test VIDIOC_REQBUFS/CREATE_BUFS/QUERYBUF: OK
+        test CREATE_BUFS maximum buffers: OK
+        test VIDIOC_REMOVE_BUFS: OK
+        test VIDIOC_EXPBUF: OK
+        test Requests: OK
+        test blocking wait: OK
+
+Fluster test result of JVT-AVC_V1.
+Result:
+Ran 61/135 tests successfully
+
+- 52 test vectors failed due to interlaced or mbaff clips: The Amlogic stateless
+  decoder driver only support bitstreams with frame_mbs_only_flags == 1.
+  Test Vectors:
+        cabac_mot_fld0_full
+        cabac_mot_mbaff0_full
+        cabac_mot_picaff0_full
+        CABREF3_Sand_D
+        CAFI1_SVA_C
+        CAMA1_Sony_C
+        CAMA1_TOSHIBA_B
+        cama1_vtc_c
+        cama2_vtc_b
+        CAMA3_Sand_E
+        cama3_vtc_b
+        CAMACI3_Sony_C
+        CAMANL1_TOSHIBA_B
+        CAMANL2_TOSHIBA_B
+        CAMANL3_Sand_E
+        CAMASL3_Sony_B
+        CAMP_MOT_MBAFF_L30
+        CAMP_MOT_MBAFF_L31
+        CANLMA2_Sony_C
+        CANLMA3_Sony_C
+        CAPA1_TOSHIBA_B
+        CAPAMA3_Sand_F
+        cavlc_mot_fld0_full_B
+        cavlc_mot_mbaff0_full_B
+        cavlc_mot_picaff0_full_B
+        CVCANLMA2_Sony_C
+        CVFI1_Sony_D
+        CVFI1_SVA_C
+        CVFI2_Sony_H
+        CVFI2_SVA_C
+        CVMA1_Sony_D
+        CVMA1_TOSHIBA_B
+        CVMANL1_TOSHIBA_B
+        CVMANL2_TOSHIBA_B
+        CVMAPAQP3_Sony_E
+        CVMAQP2_Sony_G
+        CVMAQP3_Sony_D
+        CVMP_MOT_FLD_L30_B
+        CVNLFI1_Sony_C
+        CVNLFI2_Sony_H
+        CVPA1_TOSHIBA_B
+        FI1_Sony_E
+        MR6_BT_B
+        MR7_BT_B
+        MR8_BT_B
+        MR9_BT_B
+        Sharp_MP_Field_1_B
+        Sharp_MP_Field_2_B
+        Sharp_MP_Field_3_B
+        Sharp_MP_PAFF_1r2
+        Sharp_MP_PAFF_2r
+        CVMP_MOT_FRM_L31_B
+- 3 test vectors failed due to unsupported bitstream.
+  num_slice_group_minus1 greater than zero is not supported by the
+  hardware.
+  Test Vectors:
+        FM1_BT_B
+        FM1_FT_E
+        FM2_SVA_C
+- 2 test vectors failed because SP_SLICE type is not supported by the
+  hardware.
+  Test Vectors:
+        SP1_BT_A
+        sp2_bt_b
+
+We are working with the remain failures, these failures have the same root cause. 
+
+Signed-off-by: Zhentao Guo <zhentao.guo@amlogic.com>
 ---
- profiles/audio/a2dp.c            |  5 +++--
- profiles/audio/asha.c            |  1 +
- profiles/audio/avrcp.c           |  2 ++
- profiles/audio/bap.c             |  2 ++
- profiles/audio/bass.c            |  1 +
- profiles/audio/ccp.c             |  1 +
- profiles/audio/csip.c            |  2 ++
- profiles/audio/mcp.c             |  1 +
- profiles/audio/micp.c            |  1 +
- profiles/audio/vcp.c             |  1 +
- profiles/battery/battery.c       |  1 +
- profiles/deviceinfo/deviceinfo.c |  1 +
- profiles/gap/gas.c               |  1 +
- profiles/health/hdp_manager.c    |  2 ++
- profiles/input/hog.c             |  1 +
- profiles/input/manager.c         |  1 +
- profiles/midi/midi.c             |  1 +
- profiles/network/manager.c       |  3 +++
- profiles/scanparam/scan.c        |  1 +
- src/profile.h                    | 10 ++++++++++
- 20 files changed, 37 insertions(+), 2 deletions(-)
-
-diff --git a/profiles/audio/a2dp.c b/profiles/audio/a2dp.c
-index d8f24eaebc745a6d91a8207f6595f0b90d982c39..7a37003a2b25a9e931b8efdfc974368f5ab2bac8 100644
---- a/profiles/audio/a2dp.c
-+++ b/profiles/audio/a2dp.c
-@@ -3757,8 +3757,9 @@ static void media_server_remove(struct btd_adapter *adapter)
- static struct btd_profile a2dp_source_profile = {
- 	.name		= "a2dp-source",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
--
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.remote_uuid	= A2DP_SOURCE_UUID,
-+
- 	.device_probe	= a2dp_source_probe,
- 	.device_remove	= a2dp_source_remove,
- 
-@@ -3773,7 +3774,7 @@ static struct btd_profile a2dp_source_profile = {
- static struct btd_profile a2dp_sink_profile = {
- 	.name		= "a2dp-sink",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
--
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.remote_uuid	= A2DP_SINK_UUID,
- 	.device_probe	= a2dp_sink_probe,
- 	.device_remove	= a2dp_sink_remove,
-diff --git a/profiles/audio/asha.c b/profiles/audio/asha.c
-index e870ea06f03ac1c20e5b29fb158c815aa2ce756c..8e625fdca32ff0b40efd43e394b34559627bde8c 100644
---- a/profiles/audio/asha.c
-+++ b/profiles/audio/asha.c
-@@ -499,6 +499,7 @@ static int asha_source_disconnect(struct btd_service *service)
- static struct btd_profile asha_source_profile = {
- 	.name		= "asha-source",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= ASHA_PROFILE_UUID,
- 	.experimental	= true,
- 
-diff --git a/profiles/audio/avrcp.c b/profiles/audio/avrcp.c
-index 21bc80bbd095da49788a87357fd67c8e96ab779d..e6f7e1bfde9879ab6bf028e16384d474332fe805 100644
---- a/profiles/audio/avrcp.c
-+++ b/profiles/audio/avrcp.c
-@@ -4868,6 +4868,7 @@ done:
- 
- static struct btd_profile avrcp_target_profile = {
- 	.name		= "audio-avrcp-target",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 
- 	.remote_uuid	= AVRCP_TARGET_UUID,
- 	.device_probe	= avrcp_target_probe,
-@@ -4951,6 +4952,7 @@ done:
- 
- static struct btd_profile avrcp_controller_profile = {
- 	.name		= "avrcp-controller",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 
- 	.remote_uuid	= AVRCP_REMOTE_UUID,
- 	.device_probe	= avrcp_controller_probe,
-diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
-index b07d65e68bab2e60ec675ff9dac781f29194acb2..3f71e3522635d9dee11a32a08d1d18059711f737 100644
---- a/profiles/audio/bap.c
-+++ b/profiles/audio/bap.c
-@@ -3869,6 +3869,7 @@ static void bap_adapter_remove(struct btd_profile *p,
- static struct btd_profile bap_profile = {
- 	.name		= "bap",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= PACS_UUID_STR,
- 	.device_probe	= bap_probe,
- 	.device_remove	= bap_remove,
-@@ -3883,6 +3884,7 @@ static struct btd_profile bap_profile = {
- static struct btd_profile bap_bcast_profile = {
- 	.name		= "bcaa",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= BCAAS_UUID_STR,
- 	.device_probe	= bap_bcast_probe,
- 	.device_remove	= bap_bcast_remove,
-diff --git a/profiles/audio/bass.c b/profiles/audio/bass.c
-index 9ace372376f9452050724360c2c28e7cdcf1391b..8886a27d99b63b37e2937d8d70f71dfeda3d9ef2 100644
---- a/profiles/audio/bass.c
-+++ b/profiles/audio/bass.c
-@@ -2172,6 +2172,7 @@ static void bass_server_remove(struct btd_profile *p,
- static struct btd_profile bass_service = {
- 	.name		= "bass",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= BASS_UUID_STR,
- 	.device_probe	= bass_probe,
- 	.device_remove	= bass_remove,
-diff --git a/profiles/audio/ccp.c b/profiles/audio/ccp.c
-index 8aa537b044e13b6d6a773645b420161bedca13ef..fb85045bb8ba1ec47a33856af1129d0ef78bf500 100644
---- a/profiles/audio/ccp.c
-+++ b/profiles/audio/ccp.c
-@@ -208,6 +208,7 @@ ccp_server_remove(struct btd_profile *p,
- static struct btd_profile ccp_profile = {
- 	.name		= "ccp",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= GTBS_UUID_STR,
- 	.device_probe	= ccp_probe,
- 	.device_remove	= ccp_remove,
-diff --git a/profiles/audio/csip.c b/profiles/audio/csip.c
-index b8f29ddf852231d89760d6fe7ca2cfd684236570..d766c3da951899d990aa59132b820737604b1b7c 100644
---- a/profiles/audio/csip.c
-+++ b/profiles/audio/csip.c
-@@ -303,6 +303,7 @@ static void csip_remove(struct btd_service *service)
- static struct btd_profile csip_profile = {
- 	.name		= "csip",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= CSIS_UUID_STR,
- 
- 	.device_probe	= csip_probe,
-@@ -442,6 +443,7 @@ static void csis_server_remove(struct btd_profile *p,
- static struct btd_profile csis_profile = {
- 	.name		= "csis",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.local_uuid	= CSIS_UUID_STR,
- 
- 	.adapter_probe	= csis_server_probe,
-diff --git a/profiles/audio/mcp.c b/profiles/audio/mcp.c
-index 6651b0897e6f631906b1467f5a479737541da286..8d4eed64399195533ac13fd075d7196a35cf2113 100644
---- a/profiles/audio/mcp.c
-+++ b/profiles/audio/mcp.c
-@@ -383,6 +383,7 @@ static void media_control_server_remove(struct btd_profile *p,
- static struct btd_profile mcp_profile = {
- 	.name			= "mcp",
- 	.priority		= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= GMCS_UUID_STR,
- 	.device_probe	= mcp_probe,
- 	.device_remove	= mcp_remove,
-diff --git a/profiles/audio/micp.c b/profiles/audio/micp.c
-index f1fb133897320677225a1c8bee06b4a1214f14fa..475f32daf75c06dc28ca72420a80e30802e5a3e9 100644
---- a/profiles/audio/micp.c
-+++ b/profiles/audio/micp.c
-@@ -300,6 +300,7 @@ static void micp_server_remove(struct btd_profile *p,
- static struct btd_profile micp_profile = {
- 	.name		= "micp",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= MICS_UUID_STR,
- 
- 	.device_probe	= micp_probe,
-diff --git a/profiles/audio/vcp.c b/profiles/audio/vcp.c
-index 8949c71858e53448ee01c5c4261082f3912a759c..471ad59250386941c377e2f81e911467d7023cce 100644
---- a/profiles/audio/vcp.c
-+++ b/profiles/audio/vcp.c
-@@ -328,6 +328,7 @@ static void vcp_server_remove(struct btd_profile *p,
- static struct btd_profile vcp_profile = {
- 	.name		= "vcp",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= VCS_UUID_STR,
- 
- 	.device_probe	= vcp_probe,
-diff --git a/profiles/battery/battery.c b/profiles/battery/battery.c
-index 050234a0fa03813dc9e1b8302689fc68ec254184..2fe1f4aca2cf7b21e52bec989711741d6d7e25b5 100644
---- a/profiles/battery/battery.c
-+++ b/profiles/battery/battery.c
-@@ -327,6 +327,7 @@ static int batt_disconnect(struct btd_service *service)
- 
- static struct btd_profile batt_profile = {
- 	.name		= "batt-profile",
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= BATTERY_UUID,
- 	.device_probe	= batt_probe,
- 	.device_remove	= batt_remove,
-diff --git a/profiles/deviceinfo/deviceinfo.c b/profiles/deviceinfo/deviceinfo.c
-index f5adb101e312108be8dae20c75cc74e1ff7eaabf..e77bb50b457a28f08f3e9d2ecf8d81d80da86106 100644
---- a/profiles/deviceinfo/deviceinfo.c
-+++ b/profiles/deviceinfo/deviceinfo.c
-@@ -137,6 +137,7 @@ static int deviceinfo_disconnect(struct btd_service *service)
- 
- static struct btd_profile deviceinfo_profile = {
- 	.name		= "deviceinfo",
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= DEVICE_INFORMATION_UUID,
- 	.device_probe	= deviceinfo_probe,
- 	.device_remove	= deviceinfo_remove,
-diff --git a/profiles/gap/gas.c b/profiles/gap/gas.c
-index dd45554d43ebc267d40a8fe4a8fab48f602bf6bc..0f41c9e6c2a5c7d980509ae66d8d7d7c2678fd21 100644
---- a/profiles/gap/gas.c
-+++ b/profiles/gap/gas.c
-@@ -366,6 +366,7 @@ static int gap_disconnect(struct btd_service *service)
- 
- static struct btd_profile gap_profile = {
- 	.name		= "gap-profile",
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= GAP_UUID,
- 	.device_probe	= gap_probe,
- 	.device_remove	= gap_remove,
-diff --git a/profiles/health/hdp_manager.c b/profiles/health/hdp_manager.c
-index d1e627a3382a01bdd5002bcc0da01da35e872da1..72b69428036df77e2cdb224f186fb13191f955ed 100644
---- a/profiles/health/hdp_manager.c
-+++ b/profiles/health/hdp_manager.c
-@@ -57,6 +57,7 @@ static void hdp_driver_remove(struct btd_service *service)
- 
- static struct btd_profile hdp_source_profile = {
- 	.name		= "hdp-source",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.remote_uuid	= HDP_SOURCE_UUID,
- 
- 	.device_probe	= hdp_driver_probe,
-@@ -68,6 +69,7 @@ static struct btd_profile hdp_source_profile = {
- 
- static struct btd_profile hdp_sink_profile = {
- 	.name		= "hdp-sink",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.remote_uuid	= HDP_SINK_UUID,
- 
- 	.device_probe	= hdp_driver_probe,
-diff --git a/profiles/input/hog.c b/profiles/input/hog.c
-index 1f5b82b774353244067e460f49aaccd09e26dcc8..f50a0f217f7f732f82645e289419e51ee6412917 100644
---- a/profiles/input/hog.c
-+++ b/profiles/input/hog.c
-@@ -215,6 +215,7 @@ static int hog_disconnect(struct btd_service *service)
- 
- static struct btd_profile hog_profile = {
- 	.name		= "input-hog",
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= HOG_UUID,
- 	.device_probe	= hog_probe,
- 	.device_remove	= hog_remove,
-diff --git a/profiles/input/manager.c b/profiles/input/manager.c
-index b0e415f6706c54e7c96199d3bb5e483d0927153f..0fcd6728c2fca83f03f7333f50102658553403e7 100644
---- a/profiles/input/manager.c
-+++ b/profiles/input/manager.c
-@@ -45,6 +45,7 @@ static void hid_server_remove(struct btd_profile *p,
- 
- static struct btd_profile input_profile = {
- 	.name		= "input-hid",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.local_uuid	= HID_UUID,
- 	.remote_uuid	= HID_UUID,
- 
-diff --git a/profiles/midi/midi.c b/profiles/midi/midi.c
-index 90e00a5f58361f1da57a71f393e581da5128310c..ea4719b95b23aa97850de362da9012728427f08e 100644
---- a/profiles/midi/midi.c
-+++ b/profiles/midi/midi.c
-@@ -458,6 +458,7 @@ static int midi_disconnect(struct btd_service *service)
- 
- static struct btd_profile midi_profile = {
- 	.name = "MIDI GATT Driver",
-+	.bearer	= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid = MIDI_UUID,
- 	.priority = BTD_PROFILE_PRIORITY_HIGH,
- 	.auto_connect = true,
-diff --git a/profiles/network/manager.c b/profiles/network/manager.c
-index 51f382529df27600d1a4fd806cb656d7f1a682af..693547d45fbc5b2f227fed832b4efb8fb87c2d59 100644
---- a/profiles/network/manager.c
-+++ b/profiles/network/manager.c
-@@ -120,6 +120,7 @@ static void nap_server_remove(struct btd_profile *p,
- 
- static struct btd_profile panu_profile = {
- 	.name		= "network-panu",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.local_uuid	= NAP_UUID,
- 	.remote_uuid	= PANU_UUID,
- 	.device_probe	= connection_register,
-@@ -132,6 +133,7 @@ static struct btd_profile panu_profile = {
- 
- static struct btd_profile gn_profile = {
- 	.name		= "network-gn",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.local_uuid	= PANU_UUID,
- 	.remote_uuid	= GN_UUID,
- 	.device_probe	= connection_register,
-@@ -144,6 +146,7 @@ static struct btd_profile gn_profile = {
- 
- static struct btd_profile nap_profile = {
- 	.name		= "network-nap",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.local_uuid	= PANU_UUID,
- 	.remote_uuid	= NAP_UUID,
- 	.device_probe	= connection_register,
-diff --git a/profiles/scanparam/scan.c b/profiles/scanparam/scan.c
-index 1c531773740c847e970ac45b7fbda2c0c9501ded..a66f80eabf3ef63e35cfd5e8da30e4aa18420b94 100644
---- a/profiles/scanparam/scan.c
-+++ b/profiles/scanparam/scan.c
-@@ -259,6 +259,7 @@ static int scan_param_probe(struct btd_service *service)
- 
- static struct btd_profile scan_profile = {
- 	.name = "Scan Parameters Client Driver",
-+	.bearer	= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid = SCAN_PARAMETERS_UUID,
- 	.device_probe = scan_param_probe,
- 	.device_remove = scan_param_remove,
-diff --git a/src/profile.h b/src/profile.h
-index 424ce55ad65748ead13b1a38d67fbad6beb2b828..1281d8d9a0daa5de6578a5ae6df8fc211269d409 100644
---- a/src/profile.h
-+++ b/src/profile.h
-@@ -12,12 +12,22 @@
- #define BTD_PROFILE_PRIORITY_MEDIUM	1
- #define BTD_PROFILE_PRIORITY_HIGH	2
- 
-+#define BTD_PROFILE_BEARER_ANY		0
-+#define BTD_PROFILE_BEARER_LE		1
-+#define BTD_PROFILE_BEARER_BREDR	2
-+
- struct btd_service;
- 
- struct btd_profile {
- 	const char *name;
- 	int priority;
- 
-+	/* Indicates which bearer type this profile belongs to. Some profiles
-+	 * may exist in both BR/EDR and LE, in which case they should be
-+	 * registered with BTD_PROFILE_BEARER_ANY.
-+	 */
-+	int bearer;
-+
- 	const char *local_uuid;
- 	const char *remote_uuid;
- 
+Changes in v2:
+- Fixed incorrect generation of the reference lists for some B-frames.
+- Rename or get rid of some properties in DTS and dt-binding.
+- Remove some useless code or helper functions, (eg. clk helper functions, reg I/O macros, and some superfluous print messages) replace these functions with existing ones.
+- Replace all the printk messages with dev_err/dev_info/dev_dbg
+- Use the helper functions from the existing meson-canvas driver.
+- Use clk_bulk_data to map clocks from DTS.
+- Retry the V4L2 Compliance test on 6.18-rc6, fix a newly introduced bug.
+- Link to v1: https://lore.kernel.org/r/20251027-b4-s4-vdec-upstream-v1-0-620401813b5d@amlogic.com
 
 ---
-base-commit: f6f6abf8d5ccf3c4bc42cf578c4ef7ab6c2ec9d9
-change-id: 20251124-profile-bearer-type-1ae8ef97e9e0
+Zhentao Guo (3):
+      media: dt-bindings: Add Amlogic V4L2 video decoder
+      decoder: Add V4L2 stateless H.264 decoder driver
+      arm64: dts: amlogic: Add video decoder driver support for S4 SOCs
+
+ .../bindings/media/amlogic,s4-vcodec-dec.yaml      |   87 +
+ MAINTAINERS                                        |    7 +
+ arch/arm64/boot/dts/amlogic/meson-s4.dtsi          |   27 +
+ drivers/media/platform/amlogic/Kconfig             |    1 +
+ drivers/media/platform/amlogic/Makefile            |    1 +
+ drivers/media/platform/amlogic/vdec/Kconfig        |   16 +
+ drivers/media/platform/amlogic/vdec/Makefile       |    4 +
+ drivers/media/platform/amlogic/vdec/TODO           |    7 +
+ drivers/media/platform/amlogic/vdec/aml_vdec.c     |  756 ++++++++
+ drivers/media/platform/amlogic/vdec/aml_vdec.h     |   31 +
+ drivers/media/platform/amlogic/vdec/aml_vdec_drv.c |  239 +++
+ drivers/media/platform/amlogic/vdec/aml_vdec_drv.h |  196 ++
+ drivers/media/platform/amlogic/vdec/aml_vdec_hw.c  |  596 ++++++
+ drivers/media/platform/amlogic/vdec/aml_vdec_hw.h  |  158 ++
+ .../platform/amlogic/vdec/aml_vdec_platform.c      |   37 +
+ .../platform/amlogic/vdec/aml_vdec_platform.h      |   62 +
+ drivers/media/platform/amlogic/vdec/h264.c         | 1933 ++++++++++++++++++++
+ drivers/media/platform/amlogic/vdec/h264.h         |  300 +++
+ drivers/media/platform/amlogic/vdec/reg_defines.h  |  177 ++
+ 19 files changed, 4635 insertions(+)
+---
+base-commit: 0c1c7a6a83feaf2cf182c52983ffe330ffb50280
+change-id: 20251027-b4-s4-vdec-upstream-0603c1a4c84a
 
 Best regards,
 -- 
-Ye He <ye.he@amlogic.com>
+Zhentao Guo <zhentao.guo@amlogic.com>
 
