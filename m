@@ -1,79 +1,138 @@
-From: Zhentao Guo <zhentao.guo@amlogic.com>
-Date: Mon, 24 Nov 2025 11:32:19 +0800
-Subject: [PATCH RFC v2 3/3] arm64: dts: amlogic: Add video decoder driver
- support for S4 SOCs
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Mon, 24 Nov 2025 00:19:53 -0600
+Subject: [PATCH] memory: tegra210: Fix opp table cleanup
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251124-b4-s4-vdec-upstream-v2-3-bdbbce3f11a6@amlogic.com>
-References: <20251124-b4-s4-vdec-upstream-v2-0-bdbbce3f11a6@amlogic.com>
-In-Reply-To: <20251124-b4-s4-vdec-upstream-v2-0-bdbbce3f11a6@amlogic.com>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, Zhentao Guo <zhentao.guo@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1763955152; l=1441;
- i=zhentao.guo@amlogic.com; s=20251024; h=from:subject:message-id;
- bh=ipvSyoCuAjlj5iGd/O8ZvsuGOB2B3dXxp1S6BN3SOc4=;
- b=+1wPmnRCbaMUs0SfXj44FPENcjNu8W4k/F7Tgy5s0bjQiMcfnJkYcBKCv5+xdb+cSPZT7jend
- eHRRpV6VIQSA8ZOxSqEmAJO5YdnW3ZVx3xXwZdX4csth3oNHl+54ezg
-X-Developer-Key: i=zhentao.guo@amlogic.com; a=ed25519;
- pk=5yfDKrjreXwcAoEUsdtWafy6YN500upXp/CgtnXjLVU=
-X-Endpoint-Received: by B4 Relay for zhentao.guo@amlogic.com/20251024 with auth_id=555
+Message-Id: <20251124-tegra210-actmon-fix-v1-1-3c4e2aa98e5f@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAj5I2kC/x2MywqAIBAAfyX23ILaA+tXooPUantIQyMC8d+Tj
+ jMwkyFRZEowNxkiPZw4+AqybWA7jHeEvFcGJdQgperwJheNkgLNdp/Bo+UXJ6vJ9KMWu+ihlle
+ kqv/rspbyAQNSYzZlAAAA
+X-Change-ID: 20251123-tegra210-actmon-fix-9f8ea4680d04
+To: Krzysztof Kozlowski <krzk@kernel.org>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: linux-kernel@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ Dan Carpenter <dan.carpenter@linaro.org>, 
+ Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1763965205; l=3756;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=aVqO6+a1rJ5KerMJYPS3eL1JGgvR/IUQqyrj0a4Y5Oo=;
+ b=xNaJIoIR8XO7UUQnzvAenXAN+WuOtmlEF0szkKf/waMdR00xcssqwghS81Wn0p82osVAqu0as
+ S2UNzDiG/j2B/k31/HNhdzPKpFwU0074HsU0AtPNUHLhDWdySCO7rR7
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add vcodec node to enable Amlogic V4L2 stateless video decoder
-support.
+The original change did not clean up the opp table or hardware table on
+probe error or on remove.
 
-Signed-off-by: Zhentao Guo <zhentao.guo@amlogic.com>
+Fixes: b33c93babead ("memory: tegra210: Support interconnect framework")
+Reported-by: Dan Carpenter <dan.carpenter@linaro.org>
+Closes: https://lore.kernel.org/linux-tegra/aSAxxzcRZduavJQT@stanley.mountain/
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- arch/arm64/boot/dts/amlogic/meson-s4.dtsi | 27 +++++++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+Change-Id: Ie40abdc1f2b1a66ef60cabf00d64cc5ff069ea91
+---
+ drivers/memory/tegra/tegra210-emc-core.c | 23 ++++++++++++++++++-----
+ drivers/memory/tegra/tegra210-emc.h      |  1 +
+ 2 files changed, 19 insertions(+), 5 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-index 9d99ed2994df..80f1b92492a5 100644
---- a/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/meson-s4.dtsi
-@@ -853,5 +853,32 @@ emmc: mmc@fe08c000 {
- 			no-sd;
- 			status = "disabled";
- 		};
+diff --git a/drivers/memory/tegra/tegra210-emc-core.c b/drivers/memory/tegra/tegra210-emc-core.c
+index 397448cb472d5a31565bf201df06e027248f4d5c..7be810eac79faf8ce2d1b90f7931e41e32c4dddd 100644
+--- a/drivers/memory/tegra/tegra210-emc-core.c
++++ b/drivers/memory/tegra/tegra210-emc-core.c
+@@ -1960,13 +1960,13 @@ static int tegra210_emc_opp_table_init(struct tegra210_emc *emc)
+ 	u32 hw_version = BIT(tegra_sku_info.soc_speedo_id);
+ 	struct dev_pm_opp *opp;
+ 	unsigned long rate;
+-	int opp_token, err, max_opps, i;
++	int err, max_opps, i;
+ 
+ 	err = dev_pm_opp_set_supported_hw(emc->dev, &hw_version, 1);
+ 	if (err < 0)
+ 		return dev_err_probe(emc->dev, err, "failed to set OPP supported HW\n");
+ 
+-	opp_token = err;
++	emc->hw_opp_token = err;
+ 
+ 	err = dev_pm_opp_of_add_table(emc->dev);
+ 	if (err) {
+@@ -2009,11 +2009,21 @@ static int tegra210_emc_opp_table_init(struct tegra210_emc *emc)
+ remove_table:
+ 	dev_pm_opp_of_remove_table(emc->dev);
+ put_hw_table:
+-	dev_pm_opp_put_supported_hw(opp_token);
++	dev_pm_opp_put_supported_hw(emc->hw_opp_token);
++	emc->hw_opp_token = 0;
+ 
+ 	return err;
+ }
+ 
++static void tegra210_emc_opp_table_cleanup(struct tegra210_emc *emc)
++{
++	if (emc->hw_opp_token) {
++		dev_pm_opp_of_remove_table(emc->dev);
++		dev_pm_opp_put_supported_hw(emc->hw_opp_token);
++		emc->hw_opp_token = 0;
++	}
++}
 +
-+		canvas: video-lut@fe036048 {
-+			compatible = "amlogic,canvas";
-+			reg = <0x0 0xfe036048 0x0 0x14>;
-+		};
-+
-+		video-codec@fe320000 {
-+			compatible = "amlogic,s4-vcodec-dec";
-+			reg = <0x0 0xfe320000 0x0 0x10000>,
-+			      <0x0 0xfe036000 0x0 0x20>;
-+			amlogic,canvas = <&canvas>;
-+			reg-names = "dos",
-+				    "dmc";
-+			interrupts = <GIC_SPI 91 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 92 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 93 IRQ_TYPE_EDGE_RISING>;
-+			clocks = <&clkc_periphs CLKID_DOS>,
-+				 <&clkc_periphs CLKID_VDEC_SEL>,
-+				 <&clkc_periphs CLKID_HEVCF_SEL>;
-+			clock-names = "vdec",
-+				      "clk_vdec_mux",
-+				      "clk_hevcf_mux";
-+			power-domains = <&pwrc PWRC_S4_DOS_VDEC_ID>,
-+					<&pwrc PWRC_S4_DOS_HEVC_ID>;
-+			power-domain-names = "vdec",
-+					     "hevc";
-+		};
- 	};
- };
+ static void tegra210_emc_detect(struct tegra210_emc *emc)
+ {
+ 	u32 value;
+@@ -2227,7 +2237,7 @@ static int tegra210_emc_probe(struct platform_device *pdev)
+ 		tegra210_emc_rate_requests_init(emc);
+ 		tegra210_emc_interconnect_init(emc);
+ 	} else if (err != -ENODEV) {
+-		return err;
++		goto detach;
+ 	}
+ 
+ 	cd = devm_thermal_of_cooling_device_register(emc->dev, np, "emc", emc,
+@@ -2236,11 +2246,13 @@ static int tegra210_emc_probe(struct platform_device *pdev)
+ 		err = PTR_ERR(cd);
+ 		dev_err(emc->dev, "failed to register cooling device: %d\n",
+ 			err);
+-		goto detach;
++		goto cleanup_table;
+ 	}
+ 
+ 	return 0;
+ 
++cleanup_table:
++	tegra210_emc_opp_table_cleanup(emc);
+ detach:
+ 	debugfs_remove_recursive(emc->debugfs.root);
+ 	tegra210_clk_emc_detach(emc->clk);
+@@ -2254,6 +2266,7 @@ static void tegra210_emc_remove(struct platform_device *pdev)
+ {
+ 	struct tegra210_emc *emc = platform_get_drvdata(pdev);
+ 
++	tegra210_emc_opp_table_cleanup(emc);
+ 	debugfs_remove_recursive(emc->debugfs.root);
+ 	tegra210_clk_emc_detach(emc->clk);
+ 	of_reserved_mem_device_release(emc->dev);
+diff --git a/drivers/memory/tegra/tegra210-emc.h b/drivers/memory/tegra/tegra210-emc.h
+index 3c9142bfd5ae5c57bbc139e69e62c893b50ce40c..e6f267823f9f0ee18cd60778116dc5ca2730a5d4 100644
+--- a/drivers/memory/tegra/tegra210-emc.h
++++ b/drivers/memory/tegra/tegra210-emc.h
+@@ -946,6 +946,7 @@ struct tegra210_emc {
+ 	struct tegra210_clk_emc_provider provider;
+ 
+ 	struct icc_provider icc_provider;
++	int hw_opp_token;
+ 
+ 	/*
+ 	 * There are multiple sources in the EMC driver which could request
 
+---
+base-commit: d724c6f85e80a23ed46b7ebc6e38b527c09d64f5
+change-id: 20251123-tegra210-actmon-fix-9f8ea4680d04
+
+Best regards,
 -- 
-2.42.0
+Aaron Kling <webgeek1234@gmail.com>
 
