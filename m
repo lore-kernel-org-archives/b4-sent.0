@@ -1,10 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Mon, 24 Nov 2025 22:53:37 +0100
-Subject: [PATCH RFC 4/8] arm64: dts: qcom: pm660: Add fuel gauge
+Date: Mon, 24 Nov 2025 22:53:38 +0100
+Subject: [PATCH RFC 5/8] arm64: dts: qcom: sdm845-xiaomi-beryllium: Enable
+ fuel gauge
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251124-pmi8998_fuel_gauge-v1-4-dd3791f61478@ixit.cz>
+Message-Id: <20251124-pmi8998_fuel_gauge-v1-5-dd3791f61478@ixit.cz>
 References: <20251124-pmi8998_fuel_gauge-v1-0-dd3791f61478@ixit.cz>
 In-Reply-To: <20251124-pmi8998_fuel_gauge-v1-0-dd3791f61478@ixit.cz>
 To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
@@ -23,57 +24,53 @@ Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=889; i=david@ixit.cz;
- h=from:subject:message-id; bh=Oehd4AB8jVMo0BM0kTNmlPXaU9PB0xpePJ4WKe1viNY=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpJNPgIuRTPoGf/YpDS0NtfGU0NfB4vzFgHeiCl
- kqK2+FlNR2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaSTT4AAKCRBgAj/E00kg
- cvyeEACBX6kgWzktd3wBY99dGZqC7osuD5Wg2AiGpJRcnNwSaQTQonaHdhzPFzf4TtuABXY+87s
- YrQzr+S2gZioisyz7ppEo9usGCi+zvsZx6hxMHTfst5/jHcX9OhY5KbNnXdlzLRcwmeJcJ1Wb2w
- TZeEk9PAMW/+730BKlpyvN0QnA3nOYqMlQSlS2y6F1vr2k/tV9o+3I25OUV/XPEtw+KC/5H68z1
- y6wtapPz97VeKBbgFgqTrxyjBnyaN82X2CI6yDPJ/p7ny2lNLUJeRtNk2OU/WCwmKHz69JaxbJ0
- YGJc6iiJFzGPBVIiZwAhHXwI1AZ4pyKQ/2erQKcjb5H5RQMaebVYPy4EIkk37uuybRBapAzs0z1
- mIQIT05vG1pgKcrzX5Rv88/dFHl1XUfFRJ+NKWQSuuQSRrcNpX6kn9mMpmZ1T68TO5QUnAikFM0
- p9dU2pPNYhmEEH2Ogg+sCHaVz5feAmylgwolATlXzMDxFBqzaBXVHAv8psAZR2IkkJ6u3I1VUi8
- wkmB6os8ufY9ANh0qgLoLrIMd9cVFWkSiohKjBzXy2xs/rXCiHJ+ynnBBtT0S/yx1Pr635JXgb0
- qTqnrNHGizhfOasey+avZmNQ8YZ1P8j21AUIF+jc/1HyDBT0JtKqmLlZB4D+V3Yl3zNhZ8koUKU
- LBX3bGntOl+3Veg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=864; i=david@ixit.cz;
+ h=from:subject:message-id; bh=Re+K+Vl4ZWKmEaGB1PbuYTeVVGS0LWdIYqQ7l+1dIAI=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpJNPgfC0P7L5HwD7n3cXr0nX8wAQIe/gu8Sdt7
+ OSfwTLO7yaJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaSTT4AAKCRBgAj/E00kg
+ cqOVEACA6gKbkiaPb7CMA/iUgj6STdqPRAi/V9BHUqxSlKcWhjlcnzSqhhNWe0SzqqFeSmi5Zoa
+ yt17IyjfPUm+SLoWvtCklMerADVx7pIrEq8gVf1dWwVKNtAoz3IHr6v0Z2DHMNtYcSmrhWZaaB3
+ DZ9/y3itT1ew+3eICVmS3+CtrELd7MeZ19dwFfmIXbpnpBtpWeeLo+sCREzlbWDNx8Jlq3Nk1qO
+ BylNY1pwf/4v8R5NnMnHsHYMEQyzOwZKUv28e6afb37Bnmptng6+WcTUUSyyIE/08n3g+pkince
+ yNtCJADoNXolSNGXHM6pF64BX9G5iQoC8yQdP9zoqck2PyvLhQnVzoIU+L5tfb4lofile53BpGS
+ oIBj6Qzaz5zMNImMaIr28ykDwQ/0nThRDk0VhZkSY7BIIvFiES/sX3YE5daeCbJ3W/S8TySupKs
+ GQeaKxjy51vSHu6dFauPL1vKMi/JeSacJGzKiPzqTitQK+QDWsJMiIJNUfy1q69TUP9ZdBPe6ea
+ WplkSMec+9a5hb3zIxvFllZ2Ve8qhwDuRX1kaoqnx6PzutPbOctUMs2HUswVOrfVVn/PPH6qCbF
+ hpeMUDWkFaD4c2APyPQ7asaf9T1K6XHbi+uBOfFKsts5kJOfXAie5IueYfI1f/3F23o3Q8VCiCb
+ sPmizpjdlI0Wgcw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Richard Acayan <mailingradian@gmail.com>
+From: Joel Selvaraj <foss@joelselvaraj.com>
 
-The PM660 has the same fuel gauge as PMI8998. Add support for
-PM660 battery monitoring.
+Enable the fuel gauge and configure the associated charger and battery.
 
-Signed-off-by: Richard Acayan <mailingradian@gmail.com>
+Signed-off-by: Joel Selvaraj <foss@joelselvaraj.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/pm660.dtsi | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/pm660.dtsi b/arch/arm64/boot/dts/qcom/pm660.dtsi
-index 156b2ddff0dcb..ce53f5ddc4bdf 100644
---- a/arch/arm64/boot/dts/qcom/pm660.dtsi
-+++ b/arch/arm64/boot/dts/qcom/pm660.dtsi
-@@ -197,6 +197,16 @@ channel@85 {
- 			};
- 		};
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
+index 785006a15e979..bb6448f4e036b 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
+@@ -377,6 +377,13 @@ led-1 {
+ 	};
+ };
  
-+		pm660_fg: fuel-gauge@4000 {
-+			compatible = "qcom,pmi8998-fg";
-+			reg = <0x4000>;
++&pmi8998_fg {
++	power-supplies = <&pmi8998_charger>;
++	monitored-battery = <&battery>;
 +
-+			interrupts = <0x0 0x40 0x3 IRQ_TYPE_EDGE_RISING>;
-+			interrupt-names = "soc-delta";
++	status = "okay";
++};
 +
-+			status = "disabled";
-+		};
-+
- 		pm660_rradc: adc@4500 {
- 			compatible = "qcom,pm660-rradc";
- 			reg = <0x4500>;
+ &pm8998_resin {
+ 	linux,code = <KEY_VOLUMEDOWN>;
+ 	status = "okay";
 
 -- 
 2.51.0
