@@ -1,11 +1,11 @@
 From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Mon, 24 Nov 2025 19:47:01 -0800
-Subject: [PATCH v5 2/4] arm64: dts: rockchip: Add accelerometer sensor to
+Date: Mon, 24 Nov 2025 19:47:02 -0800
+Subject: [PATCH v5 3/4] arm64: dts: rockchip: Add magnetometer sensor to
  Pinephone Pro
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20251124-ppp_light_accel_mag_vol-down-v5-2-f9a10a0a50eb@gmail.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251124-ppp_light_accel_mag_vol-down-v5-3-f9a10a0a50eb@gmail.com>
 References: <20251124-ppp_light_accel_mag_vol-down-v5-0-f9a10a0a50eb@gmail.com>
 In-Reply-To: <20251124-ppp_light_accel_mag_vol-down-v5-0-f9a10a0a50eb@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -13,15 +13,14 @@ To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
 Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
  phone-devel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>, 
- Ondrej Jirman <megi@xff.cz>, Martijn Braam <martijn@brixit.nl>, 
- =?utf-8?q?Kamil_Trzci=C5=84ski?= <ayufan@ayufan.eu>, 
+ Ondrej Jirman <megi@xff.cz>, "Leonardo G. Trombetta" <lgtrombetta@gmx.com>, 
  Pavel Machek <pavel@ucw.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764042420; l=1266;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764042420; l=1356;
  i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=owuI4HZdlvQp/fF0o2W6LK/Li46MndqpBMI0zHW5OxA=;
- b=FsSvN3r0QicnJ/w3S/WAeTY96iFwVszQDSQC0oT7MLn0LeC4PC5RFl3S5/VDEb1Y/4qGuCgQc
- ciIlNIszl9wDaFG9F9VZCx+tlca+23MeQ1xrJPXA0fj6iVKW99UO08h
+ bh=6kNPA+rufMDaioiLjzVrw3yC2YKarI4Xs7vCiBTyO0Y=;
+ b=mjYYXO4VbxbQzJyStmB8AZAeOSbBj75gjJppJVbTQOdHHt/2CWOeQhbgrytShK5eHi5ku4QNZ
+ fuP4qIKj7w2AxQqtJKaj3+ht/F8kA6jIf1mEFpB6PerrijUO2jTOo6z
 X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
  pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
 X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
@@ -29,39 +28,48 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Ondrej Jirman <megi@xff.cz>
 
-Pinephone Pro uses mpu6500 according to the schematic. This was verified
-via `monitor-sensor --accel`. While rotating the device, the output was
-correct (eg. when it was face up, left edge was up, vertical, etc.).
+Pinephone Pro uses AF8133J according to the schematic.
 
-Co-developed-by: Martijn Braam <martijn@brixit.nl>
-Signed-off-by: Martijn Braam <martijn@brixit.nl>
-Co-developed-by: Kamil Trzciński <ayufan@ayufan.eu>
-Signed-off-by: Kamil Trzciński <ayufan@ayufan.eu>
+The mount-matrix was added by Leonardo on top of Ondrej's work of adding
+the magnetometer. It was verified with Leonardo's compass app:
+
+https://gitlab.com/lgtrombetta/compass
+
+Co-developed-by: Leonardo G. Trombetta <lgtrombetta@gmx.com>
+Signed-off-by: Leonardo G. Trombetta <lgtrombetta@gmx.com>
 Signed-off-by: Ondrej Jirman <megi@xff.cz>
 Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 Reviewed-by: Pavel Machek <pavel@ucw.cz>
 ---
- arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts | 6 ++++++
- 1 file changed, 6 insertions(+)
+ arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts b/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
-index 2d2858ee149e..f8c74b43ae9f 100644
+index f8c74b43ae9f..03721d71766c 100644
 --- a/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
 +++ b/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
-@@ -543,7 +543,13 @@ mpu6500@68 {
- 		reg = <0x68>;
- 		interrupt-parent = <&gpio1>;
- 		interrupts = <RK_PC6 IRQ_TYPE_LEVEL_LOW>;
-+		vdd-supply = <&vcc_1v8>;
- 		vddio-supply = <&vcc_1v8>;
-+
-+		mount-matrix =
-+			"1", "0", "0",
-+			"0", "-1", "0",
-+			"0", "0", "-1";
+@@ -553,6 +553,21 @@ mpu6500@68 {
  	};
  };
  
++&i2c4 {
++	af8133j: compass@1c {
++		compatible = "voltafield,af8133j";
++		reg = <0x1c>;
++		reset-gpios = <&gpio1 RK_PA1 GPIO_ACTIVE_LOW>;
++		avdd-supply = <&vcc_3v0>;
++		dvdd-supply = <&vcc_1v8>;
++
++		mount-matrix =
++			"0", "1", "0",
++			"-1", "0", "0",
++			"0", "0", "1";
++	};
++};
++
+ &io_domains {
+ 	bt656-supply = <&vcc1v8_dvp>;
+ 	audio-supply = <&vcca1v8_codec>;
 
 -- 
 2.52.0
