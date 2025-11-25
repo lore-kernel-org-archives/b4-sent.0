@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Tue, 25 Nov 2025 20:15:05 +0530
-Subject: [PATCH v2 01/10] serdev: Convert to_serdev_*() helpers to macros
- and use container_of_const()
+Date: Tue, 25 Nov 2025 20:15:06 +0530
+Subject: [PATCH v2 02/10] serdev: Add serdev device based driver match
+ support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20251125-pci-m2-e-v2-1-32826de07cc5@oss.qualcomm.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251125-pci-m2-e-v2-2-32826de07cc5@oss.qualcomm.com>
 References: <20251125-pci-m2-e-v2-0-32826de07cc5@oss.qualcomm.com>
 In-Reply-To: <20251125-pci-m2-e-v2-0-32826de07cc5@oss.qualcomm.com>
 To: Rob Herring <robh@kernel.org>, 
@@ -28,77 +28,140 @@ Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org,
  Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2123;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3979;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=gp2plOukmLsK8Wz0sYhXr+7v4Z6uCCCmxZxVG517B/M=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpJcDyeFLCzWDU7DbBpggspqjnYeo3HN+5r50pB
- iGA2Xp8WLeJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaSXA8gAKCRBVnxHm/pHO
- 9RlvB/9CbifjQ3jZwZtMwC+hnrlvILHtu+kiJsXQ3WfhvHxz5q0Fcm0nkfdBBgSUwx/bFhMqidX
- /GyfwPv1MHx3GEX3AH41y1whdyQO02CzHOwLE+yu7n7gGnz5009PCzMinAD06jW9aZrHWzlx4Qa
- Voe1JgB5+FRVKs8ppyCu9GEiOdQ2mrnnd2PoWslfpd5KX7DbJvqkAFG2CdPXmWe2f/yJKQZ10S4
- KTR3UoQ1qHi3PQQHP35gajlhY+DXW6Ilc4F3HXG5ohmDGa3i8lJ0qsNb//RwdfdGbkGCgYDJg0Z
- IDLx/gjMjBJuZlTxmgbt6Ot3q3BBG4UnBbmWvKq5nbkoP8/Z
+ bh=l5Ts3o61IXqTXA6cCJVPncMY06Qk0XS4grwShZ7YiiY=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpJcDy5aNQTrm4PBQrFGYoE/mpmzlHS14l3KcAg
+ f67d/Vs8WOJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaSXA8gAKCRBVnxHm/pHO
+ 9WM0B/9vOuD1CGvFWE0LFie5T37/3Dlph915pP3GTxIx3fy/Ux553oVeUV7W9wQX2Mpi83Hb/F+
+ ny6kHH7fV0no6NuuQHmyjyVEGvbG+Qw6zG2FOmkzIBBzVezUph+MvIBNwyrs76QAwW2uAHGQiDY
+ Xdy1FAov0YL439699RHC7LXcD6sg4AvYgXLrIf0yHknev1pnXNtNUHtoMvmHcvFOidBpYuJTF9u
+ LGvizzdk6qCPZj8HpGXD+2UCVGIDRpsK1ei3Qni3oSx4yPHm2zPUFFRwA7SsHjTZEhE9hSI/EEs
+ LXHONCdvpTB80Hzk786sXqWYmP7FXNcojvZDERXUlhPN0hhE
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If these helpers receive the 'const struct device' pointer, then the const
-qualifier will get dropped, leading to below warning:
+Add support to match serdev devices with serdev drivers based on the serdev
+ID table defined in serdev_device_driver::id_table.
 
-warning: passing argument 1 of ‘to_serdev_device_driver’ discards 'const'
-qualifier from pointer target type [-Wdiscarded-qualifiers]
+The matching function, serdev_driver_match_device() uses the serdev device
+name to match against the entries in serdev_device_driver::id_table.
 
-This is not an issue as of now, but with the future commits adding serdev
-device based driver matching, this warning will get triggered. Hence,
-convert these helpers to macros so that the qualifier get preserved and
-also use container_of_const() as container_of() is deprecated.
+If there is no serdev id_table for the driver, then serdev_device_match()
+will fallback to ACPI and DT based matching.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- include/linux/serdev.h | 15 +++------------
- 1 file changed, 3 insertions(+), 12 deletions(-)
+ drivers/tty/serdev/core.c         | 23 ++++++++++++++++++++++-
+ include/linux/mod_devicetable.h   |  7 +++++++
+ include/linux/serdev.h            |  4 ++++
+ scripts/mod/devicetable-offsets.c |  3 +++
+ 4 files changed, 36 insertions(+), 1 deletion(-)
 
+diff --git a/drivers/tty/serdev/core.c b/drivers/tty/serdev/core.c
+index b33e708cb245..2b5582cd5063 100644
+--- a/drivers/tty/serdev/core.c
++++ b/drivers/tty/serdev/core.c
+@@ -85,12 +85,33 @@ static const struct device_type serdev_ctrl_type = {
+ 	.release	= serdev_ctrl_release,
+ };
+ 
++static int serdev_driver_match_device(struct device *dev, const struct device_driver *drv)
++{
++	const struct serdev_device_driver *serdev_drv = to_serdev_device_driver(drv);
++	struct serdev_device *serdev = to_serdev_device(dev);
++	const struct serdev_device_id *id;
++
++	if (!serdev_drv->id_table)
++		return 0;
++
++	for (id = serdev_drv->id_table; id->name[0]; id++) {
++		if (!strcmp(dev_name(dev), id->name)) {
++			serdev->id = id;
++			return 1;
++		}
++	}
++
++	return 0;
++}
++
+ static int serdev_device_match(struct device *dev, const struct device_driver *drv)
+ {
+ 	if (!is_serdev_device(dev))
+ 		return 0;
+ 
+-	/* TODO: platform matching */
++	if (serdev_driver_match_device(dev, drv))
++		return 1;
++
+ 	if (acpi_driver_match_device(dev, drv))
+ 		return 1;
+ 
+diff --git a/include/linux/mod_devicetable.h b/include/linux/mod_devicetable.h
+index 6077972e8b45..70c54c4bedba 100644
+--- a/include/linux/mod_devicetable.h
++++ b/include/linux/mod_devicetable.h
+@@ -976,4 +976,11 @@ struct coreboot_device_id {
+ 	kernel_ulong_t driver_data;
+ };
+ 
++#define SERDEV_NAME_SIZE 32
++
++struct serdev_device_id {
++	const char name[SERDEV_NAME_SIZE];
++	kernel_ulong_t driver_data;
++};
++
+ #endif /* LINUX_MOD_DEVICETABLE_H */
 diff --git a/include/linux/serdev.h b/include/linux/serdev.h
-index 34562eb99931..ecde0ad3e248 100644
+index ecde0ad3e248..aca92e0ee6e7 100644
 --- a/include/linux/serdev.h
 +++ b/include/linux/serdev.h
-@@ -49,10 +49,7 @@ struct serdev_device {
+@@ -39,6 +39,7 @@ struct serdev_device_ops {
+  * @ops:	Device operations.
+  * @write_comp	Completion used by serdev_device_write() internally
+  * @write_lock	Lock to serialize access when writing data
++ * @id:		serdev device ID entry
+  */
+ struct serdev_device {
+ 	struct device dev;
+@@ -47,6 +48,7 @@ struct serdev_device {
+ 	const struct serdev_device_ops *ops;
+ 	struct completion write_comp;
  	struct mutex write_lock;
++	const struct serdev_device_id *id;
  };
  
--static inline struct serdev_device *to_serdev_device(struct device *d)
--{
--	return container_of(d, struct serdev_device, dev);
--}
-+#define to_serdev_device(d) container_of_const(d, struct serdev_device, dev)
- 
- /**
+ #define to_serdev_device(d) container_of_const(d, struct serdev_device, dev)
+@@ -55,11 +57,13 @@ struct serdev_device {
   * struct serdev_device_driver - serdev slave device driver
-@@ -67,10 +64,7 @@ struct serdev_device_driver {
+  * @driver:	serdev device drivers should initialize name field of this
+  *		structure.
++ * @id_table:	serdev device ID table
+  * @probe:	binds this driver to a serdev device.
+  * @remove:	unbinds this driver from the serdev device.
+  */
+ struct serdev_device_driver {
+ 	struct device_driver driver;
++	const struct serdev_device_id *id_table;
+ 	int	(*probe)(struct serdev_device *);
  	void	(*remove)(struct serdev_device *);
  };
+diff --git a/scripts/mod/devicetable-offsets.c b/scripts/mod/devicetable-offsets.c
+index d3d00e85edf7..c1bfa8eddc4d 100644
+--- a/scripts/mod/devicetable-offsets.c
++++ b/scripts/mod/devicetable-offsets.c
+@@ -280,5 +280,8 @@ int main(void)
+ 	DEVID(coreboot_device_id);
+ 	DEVID_FIELD(coreboot_device_id, tag);
  
--static inline struct serdev_device_driver *to_serdev_device_driver(struct device_driver *d)
--{
--	return container_of(d, struct serdev_device_driver, driver);
--}
-+#define to_serdev_device_driver(d) container_of_const(d, struct serdev_device_driver, driver)
- 
- enum serdev_parity {
- 	SERDEV_PARITY_NONE,
-@@ -111,10 +105,7 @@ struct serdev_controller {
- 	const struct serdev_controller_ops *ops;
- };
- 
--static inline struct serdev_controller *to_serdev_controller(struct device *d)
--{
--	return container_of(d, struct serdev_controller, dev);
--}
-+#define to_serdev_controller(d) container_of_const(d, struct serdev_controller, dev)
- 
- static inline void *serdev_device_get_drvdata(const struct serdev_device *serdev)
- {
++	DEVID(serdev_device_id);
++	DEVID_FIELD(serdev_device_id, name);
++
+ 	return 0;
+ }
 
 -- 
 2.48.1
