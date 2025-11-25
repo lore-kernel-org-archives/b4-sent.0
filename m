@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Tue, 25 Nov 2025 16:42:27 +0530
-Subject: [PATCH v3 2/4] PCI/pwrctrl: Add support for handling PCIe M.2
- connectors
+Date: Tue, 25 Nov 2025 16:42:28 +0530
+Subject: [PATCH v3 3/4] PCI/pwrctrl: Create pwrctrl device if the graph
+ port is found
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251125-pci-m2-v3-2-c528042aea47@oss.qualcomm.com>
+Message-Id: <20251125-pci-m2-v3-3-c528042aea47@oss.qualcomm.com>
 References: <20251125-pci-m2-v3-0-c528042aea47@oss.qualcomm.com>
 In-Reply-To: <20251125-pci-m2-v3-0-c528042aea47@oss.qualcomm.com>
 To: Bjorn Helgaas <bhelgaas@google.com>, 
@@ -20,135 +20,55 @@ Cc: linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org,
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
  Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3872;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1400;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=HTvHAc0W+gqT3Gny5NRdE5ZGDr0iND6zrMawYcBU9kc=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpJY8dw2Hnsq2BXwbXXvxR2p7knFdcX9j6VsUKh
- K7Y8RrGG3CJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaSWPHQAKCRBVnxHm/pHO
- 9dcsB/4iw/bZmwyrAulLrLhnkj0HJ3jT02zpCt/xig3ohfMT8P5DAB1EzRr69yjxEvI8cDFR9NN
- GwyE2MMhlJzZCFMKT+GRqniTAoKeMNGUwtiTl2EYJHTPNe4CvxROx2YO2tNlaFivzIU6HjLVJjA
- l34KUHOCOZYj2MpEfPGEEi70gnpDFjsnCZOVY9uXh9hTLfY0DhCBhpZsl75imEugxirj972KGQe
- Ko2gUUekn2eNE9F2ZWOovC3SYqqQh/a8JYBEwrSSnU3BtyktARqhacqr3RhiDdP/KN03Bu/Dm+I
- gi7Jz+HNt3vJ+C4c6Js/BKdboitwqXA2cI8mozzuH0KeXMHF
+ bh=85qx2Om/7njPst0xF59AZpGkw5zpMb/2p4I8tf0rGZI=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpJY8d8dHupd6VCH/oWWZ7QPaB9MbZJaUhUHcND
+ zboN2Jf2ECJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaSWPHQAKCRBVnxHm/pHO
+ 9TkcB/9SuTMoRU5JJS6C646WFkzzsHd2Ulg4rKImNms7pLcqqyrc6/P7U0Bco+g0Cax4FvkIJzy
+ iF/h8h/aXc+tjDqcq//6cF6mYbyfUxH22QfN0ePqMWbFkQ8TbV/mVKwLOqjexHCzX3AtMvuUuhi
+ xKOUsCwhpKncFXKZ4lFt76UehmJiKM8bfEW0G6ILwrcuSmrIFs3osDINLRceMHuN2/54MEb1iYf
+ y07jsNw+NtFtNEBcQ4MaXNK1Dg3p2xrjlG9jT3Dsfw8Fo1hFo5q9pedfto3QmEcuQyFsq8VBkUm
+ AEqmE7RCcFuAw/UEp4ZiWk5C7HcNKIV0lzQdlrQc61jzdTEv
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for handling the PCIe M.2 connectors as Power Sequencing
-devices. These connectors are exposed as the Power Sequencing devices
-as they often support multiple interfaces like PCIe/SATA, USB/UART to the
-host machine and each interfaces could be driven by different client
-drivers at the same time.
+The devicetree node of the PCIe Root Port/Slot could have the graph port
+to link the PCIe M.2 connector node. Since the M.2 connectors are modelled
+as Power Sequencing devices, they need to be controlled by the pwrctrl
+driver as like the Root Port/Slot supplies.
 
-This driver handles the PCIe interface of these connectors. It first checks
-for the presence of the graph port in the Root Port node with the help of
-of_graph_is_present() API, if present, it acquires/poweres ON the
-corresponding pwrseq device.
-
-Once the pwrseq device is powered ON, the driver will skip parsing the Root
-Port/Slot resources and registers with the pwrctrl framework.
+Hence, create the pwrctrl device if the graph port is found in the node.
 
 Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/pci/pwrctrl/Kconfig |  1 +
- drivers/pci/pwrctrl/slot.c  | 35 ++++++++++++++++++++++++++++++-----
- 2 files changed, 31 insertions(+), 5 deletions(-)
+ drivers/pci/probe.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/pci/pwrctrl/Kconfig b/drivers/pci/pwrctrl/Kconfig
-index 6956c1854811..9a195cb7e117 100644
---- a/drivers/pci/pwrctrl/Kconfig
-+++ b/drivers/pci/pwrctrl/Kconfig
-@@ -13,6 +13,7 @@ config PCI_PWRCTRL_PWRSEQ
- 
- config PCI_PWRCTRL_SLOT
- 	tristate "PCI Power Control driver for PCI slots"
-+	select POWER_SEQUENCING
- 	select PCI_PWRCTRL
- 	help
- 	  Say Y here to enable the PCI Power Control driver to control the power
-diff --git a/drivers/pci/pwrctrl/slot.c b/drivers/pci/pwrctrl/slot.c
-index 3320494b62d8..d46c2365208a 100644
---- a/drivers/pci/pwrctrl/slot.c
-+++ b/drivers/pci/pwrctrl/slot.c
-@@ -8,8 +8,10 @@
- #include <linux/device.h>
- #include <linux/mod_devicetable.h>
- #include <linux/module.h>
+diff --git a/drivers/pci/probe.c b/drivers/pci/probe.c
+index c83e75a0ec12..9c8669e2fe72 100644
+--- a/drivers/pci/probe.c
++++ b/drivers/pci/probe.c
+@@ -9,6 +9,7 @@
+ #include <linux/init.h>
+ #include <linux/pci.h>
+ #include <linux/msi.h>
 +#include <linux/of_graph.h>
- #include <linux/pci-pwrctrl.h>
+ #include <linux/of_pci.h>
+ #include <linux/of_platform.h>
  #include <linux/platform_device.h>
-+#include <linux/pwrseq/consumer.h>
- #include <linux/regulator/consumer.h>
- #include <linux/slab.h>
- 
-@@ -17,12 +19,18 @@ struct pci_pwrctrl_slot_data {
- 	struct pci_pwrctrl ctx;
- 	struct regulator_bulk_data *supplies;
- 	int num_supplies;
-+	struct pwrseq_desc *pwrseq;
- };
- 
- static void devm_pci_pwrctrl_slot_power_off(void *data)
- {
- 	struct pci_pwrctrl_slot_data *slot = data;
- 
-+	if (slot->pwrseq) {
-+		pwrseq_power_off(slot->pwrseq);
-+		return;
-+	}
-+
- 	regulator_bulk_disable(slot->num_supplies, slot->supplies);
- 	regulator_bulk_free(slot->num_supplies, slot->supplies);
- }
-@@ -38,6 +46,20 @@ static int pci_pwrctrl_slot_probe(struct platform_device *pdev)
- 	if (!slot)
- 		return -ENOMEM;
- 
-+	if (of_graph_is_present(dev_of_node(dev))) {
-+		slot->pwrseq = devm_pwrseq_get(dev, "pcie");
-+		if (IS_ERR(slot->pwrseq))
-+			return dev_err_probe(dev, PTR_ERR(slot->pwrseq),
-+				     "Failed to get the power sequencer\n");
-+
-+		ret = pwrseq_power_on(slot->pwrseq);
-+		if (ret)
-+			return dev_err_probe(dev, ret,
-+				     "Failed to power-on the device\n");
-+
-+		goto skip_resources;
-+	}
-+
- 	ret = of_regulator_bulk_get_all(dev, dev_of_node(dev),
- 					&slot->supplies);
- 	if (ret < 0) {
-@@ -53,17 +75,20 @@ static int pci_pwrctrl_slot_probe(struct platform_device *pdev)
- 		return ret;
+@@ -2555,7 +2556,7 @@ static struct platform_device *pci_pwrctrl_create_device(struct pci_bus *bus, in
+ 	 * not. This is decided based on at least one of the power supplies
+ 	 * being defined in the devicetree node of the device.
+ 	 */
+-	if (!of_pci_supply_present(np)) {
++	if (!of_pci_supply_present(np) && !of_graph_is_present(np)) {
+ 		pr_debug("PCI/pwrctrl: Skipping OF node: %s\n", np->name);
+ 		goto err_put_of_node;
  	}
- 
--	ret = devm_add_action_or_reset(dev, devm_pci_pwrctrl_slot_power_off,
--				       slot);
--	if (ret)
--		return ret;
--
- 	clk = devm_clk_get_optional_enabled(dev, NULL);
- 	if (IS_ERR(clk)) {
-+		regulator_bulk_disable(slot->num_supplies, slot->supplies);
-+		regulator_bulk_free(slot->num_supplies, slot->supplies);
- 		return dev_err_probe(dev, PTR_ERR(clk),
- 				     "Failed to enable slot clock\n");
- 	}
- 
-+skip_resources:
-+	ret = devm_add_action_or_reset(dev, devm_pci_pwrctrl_slot_power_off,
-+				       slot);
-+	if (ret)
-+		return ret;
-+
- 	pci_pwrctrl_init(&slot->ctx, dev);
- 
- 	ret = devm_pci_pwrctrl_device_set_ready(dev, &slot->ctx);
 
 -- 
 2.48.1
