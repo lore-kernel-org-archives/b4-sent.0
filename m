@@ -1,86 +1,122 @@
-From: Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
-Date: Tue, 25 Nov 2025 16:14:38 +0800
-Subject: [PATCH] ACPICA: Avoid walking the Namespace if StartNode is NULL
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH v3 0/4] PCI: Add initial support for handling PCIe M.2
+ connectors in devicetree
+Date: Tue, 25 Nov 2025 16:42:25 +0530
+Message-Id: <20251125-pci-m2-v3-0-c528042aea47@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251125-acpica-v1-1-99e63b1b25f8@linux.dev>
-X-B4-Tracking: v=1; b=H4sIAG1lJWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDQyNT3cTkgszkRN3UtFTTRNO0ZAPDFEsloOKCotS0zAqwQdGxtbUAeGp
- fDFgAAAA=
-X-Change-ID: 20251125-acpica-efe5a5fc01d9
-To: "Rafael J. Wysocki" <rafael@kernel.org>, 
- Robert Moore <robert.moore@intel.com>, Len Brown <lenb@kernel.org>
-Cc: linux-acpi@vger.kernel.org, acpica-devel@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Mingcong Bai <jeffbai@aosc.io>, 
- Kexy Biscuit <kexybiscuit@aosc.io>, Wentao Guan <guanwentao@uniontech.com>, 
- zhanjun@uniontech.com, niecheng1@uniontech.com, 
- Cryolitia PukNgae <cryolitia@deepin.org>, 
- Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+X-B4-Tracking: v=1; b=H4sIABmPJWkC/22MQQ6CMBBFr0JmbQltKTSuvIdx0ZapNBGKrTYaw
+ t0tJBgXbiZ5k//eDBGDwwjHYoaAyUXnxwz8UIDp1XhF4rrMwComKK04mYwjAyNtw3nDqW6sUpD
+ HU0DrXlvofMncu/jw4b11E12/e0LsiURJRWSthaWWokB58jGW96e6GT8MZT6wlhL7teXXZtlGq
+ U3dtdrWrPtjL8vyAQcd/ifhAAAA
+X-Change-ID: 20251103-pci-m2-7633631b6faa
+To: Bjorn Helgaas <bhelgaas@google.com>, 
+ Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bartosz Golaszewski <brgl@bgdev.pl>
+Cc: linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ Stephan Gerhold <stephan.gerhold@linaro.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ linux-pm@vger.kernel.org, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Frank Li <Frank.Li@nxp.com>, 
+ Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764058497; l=1953;
- i=cryolitia.pukngae@linux.dev; s=20250730; h=from:subject:message-id;
- bh=QnNb3Rg0Cnjh7njPROJmsVbynAuz0L77GmBmAM6S4Ac=;
- b=AGRGG95C86u4Pf5GvMzwCi3bhEDAW7nug8pzVPLRdDT4UBucJbj2650Vod+CnDbW5JUPtZxYM
- HXHJUU9sHujAy0o59jKmCQZiSyaL+lAv5VDnj+wN8ozPEwRr7CMdsJ2
-X-Developer-Key: i=cryolitia.pukngae@linux.dev; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia.pukngae@linux.dev/20250730 with auth_id=540
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3890;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=4W5N3HFT9XqK9ao5zUtwS6grnw6Chec77zAq2yGW/nQ=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpJY8dErVC8h8htWvNiDSqBzHfQ3sLVCilBhBXK
+ hUvQA1ST2uJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaSWPHQAKCRBVnxHm/pHO
+ 9bb6CACMnk1JcvfM0PgRT7maZnabMUcVjF/crON1hr1C+sNZx9zlvXNhu1vTVkN8hY/Sw3ujP2a
+ KmoZaypYTZEAM3+n/w3yO0eZlgCte1/DWtevGEJ0s5pN+t0VfsoWav2GTk084ImlfeYaP4UJSiN
+ Q1fCSa0DFfGl19p1iygp10MDI5zDllfjHIFc+6oi1d+7nN/YP1XgjM7UStTEetfsUDSRGY1aGYC
+ R4LpdZzyTSMNX3yBFBtA63yROanfGNqBlgZFphWjKr4E2B5DpkKLUjjd7Q/yG1RgBD/x8c4cb6V
+ 4IdEA3KXMN41G9jD57PA0aZEmUg8wNx9Mr6YkfcyPu3bqGxo
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ACPICA commit 1c1b57b9eba4554cb132ee658dd942c0210ed20d
+Hi,
 
-Since commit 0c9992315e73 ("ACPICA: Avoid walking the ACPI Namespace
-if it is not there") fixed the situation that both StartNode and
-AcpiGbl_RootNode is NULL. The Linux kernel mainline now still crashed
-on Honor Magicbook 14 Pro[1]. Due to the access to the member of
-ParentNode in AcpiNsGetNextNode, the NULL pointer dereference will
-always happen, no matter whether the StartNode equals to the
-ACPI_ROOT_OBJECT or not. So we move the check of StartNode being NULL
-out of the if block.
+This series is an initial attempt to support the PCIe M.2 connectors in the
+kernel and devicetree binding. The PCIe M.2 connectors as defined in the PCI
+Express M.2 Specification are widely used in Notebooks/Tablet form factors (even
+in PCs). On the ACPI platforms, power to these connectors are mostly handled by
+the firmware/BIOS and the kernel never bothered to directly power manage them as
+like other PCIe connectors. But on the devicetree platforms, the kernel needs to
+power manage these connectors with the help of the devicetree description. But
+so far, there is no proper representation of the M.2 connectors in devicetree
+binding. This forced the developers to fake the M.2 connectors as PMU nodes [1]
+and fixed regulators in devicetree.
 
-Unfortunately, all the attempt to contact with Honor has failed, they
-refused to provide any technical support for Linux. The bad DSDT
-table's dump could be found on GitHub[2].
+So to properly support the M.2 connectors in devicetree platforms, this series
+introduces the devicetree binding for Mechanical Key M connector as an example
+and also the corresponding pwrseq driver and PCI changes in kernel to driver the
+connector.
 
-DMI: HONOR FMB-P/FMB-P-PCB, BIOS 1.13 05/08/2025
+The Mechanical Key M connector is used to connect SSDs to the host machine over
+PCIe/SATA interfaces. Due to the hardware constraints, this series only adds
+support for driving the PCIe interface of the connector in the kernel.
 
-1. https://gist.github.com/Cryolitia/a860ffc97437dcd2cd988371d5b73ed7
-2. https://github.com/denis-bb/honor-fmb-p-dsdt
+Also, the optional interfaces supported by the Key M connectors are not
+supported in the driver and left for the future enhancements.
 
-Signed-off-by: Cryolitia PukNgae <cryolitia@deepin.org>
-Link: https://github.com/acpica/acpica/pull/1061
-Signed-off-by: Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+Future work
+===========
+
+I'm planning to submit the follow-up series to add support for the Mechanical
+Key A connector for connecting the WiFI/BT cards, once some initial review
+happens on this series.
+
+Testing
+=======
+
+This series, together with the devicetree changes [2] [3] were tested on the
+Qualcomm X1e based Lenovo Thinkpad T14s Laptop which has the NVMe SSD connected
+over PCIe.
+
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/arch/arm64/boot/dts/qcom/x1e80100-qcp.dts?h=v6.18-rc4&id=d09ab685a8f51ba412d37305ea62628a01cbea57
+[2] https://github.com/Mani-Sadhasivam/linux/commit/40120d02219f34d2040ffa6328f0d406b1e4c04d
+[3] https://github.com/Mani-Sadhasivam/linux/commit/ff6c3075836cc794a3700b0ec6a4a9eb21d14c6f
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/acpi/acpica/nswalk.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+Changes in v3:
+- Changed the VIO supply name as per dtschema
+- Added explicit endpoint properties to port 0 node for host I/F
+- Used scope based cleanup for OF node in pwrseq driver
+- Collected review tags
+- Link to v2: https://lore.kernel.org/r/20251108-pci-m2-v2-0-e8bc4d7bf42d@oss.qualcomm.com
 
-diff --git a/drivers/acpi/acpica/nswalk.c b/drivers/acpi/acpica/nswalk.c
-index a2ac06a26e92..5670ff5a43cd 100644
---- a/drivers/acpi/acpica/nswalk.c
-+++ b/drivers/acpi/acpica/nswalk.c
-@@ -169,9 +169,12 @@ acpi_ns_walk_namespace(acpi_object_type type,
- 
- 	if (start_node == ACPI_ROOT_OBJECT) {
- 		start_node = acpi_gbl_root_node;
--		if (!start_node) {
--			return_ACPI_STATUS(AE_NO_NAMESPACE);
--		}
-+	}
-+
-+	/* Avoid walking the namespace if the StartNode is NULL */
-+
-+	if (!start_node) {
-+		return_ACPI_STATUS(AE_NO_NAMESPACE);
- 	}
- 
- 	/* Null child means "get first node" */
+Changes in v2:
+- Incorporated comments from Bartosz and Frank for pwrseq and dt-binding
+  patches, especially adding the pwrseq match() code.
+- Link to v1: https://lore.kernel.org/r/20251105-pci-m2-v1-0-84b5f1f1e5e8@oss.qualcomm.com
 
 ---
-base-commit: ac3fd01e4c1efce8f2c054cdeb2ddd2fc0fb150d
-change-id: 20251125-acpica-efe5a5fc01d9
+Manivannan Sadhasivam (4):
+      dt-bindings: connector: Add PCIe M.2 Mechanical Key M connector
+      PCI/pwrctrl: Add support for handling PCIe M.2 connectors
+      PCI/pwrctrl: Create pwrctrl device if the graph port is found
+      power: sequencing: Add the Power Sequencing driver for the PCIe M.2 connectors
+
+ .../bindings/connector/pcie-m2-m-connector.yaml    | 141 ++++++++++++++++++
+ MAINTAINERS                                        |   7 +
+ drivers/pci/probe.c                                |   3 +-
+ drivers/pci/pwrctrl/Kconfig                        |   1 +
+ drivers/pci/pwrctrl/slot.c                         |  35 ++++-
+ drivers/power/sequencing/Kconfig                   |   8 ++
+ drivers/power/sequencing/Makefile                  |   1 +
+ drivers/power/sequencing/pwrseq-pcie-m2.c          | 160 +++++++++++++++++++++
+ 8 files changed, 350 insertions(+), 6 deletions(-)
+---
+base-commit: 3a8660878839faadb4f1a6dd72c3179c1df56787
+change-id: 20251103-pci-m2-7633631b6faa
 
 Best regards,
 -- 
-Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
