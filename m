@@ -1,11 +1,11 @@
 From: Jean-Michel Hautbois <jeanmichel.hautbois@yoseli.org>
-Date: Wed, 26 Nov 2025 09:36:02 +0100
-Subject: [PATCH v2 1/5] dma: fsl-edma: Add FSL_EDMA_DRV_MCF flag for
- ColdFire eDMA
+Date: Wed, 26 Nov 2025 09:36:03 +0100
+Subject: [PATCH v2 2/5] dma: mcf-edma: Add per-channel IRQ naming for
+ debugging
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251126-dma-coldfire-v2-1-5b1e4544d609@yoseli.org>
+Message-Id: <20251126-dma-coldfire-v2-2-5b1e4544d609@yoseli.org>
 References: <20251126-dma-coldfire-v2-0-5b1e4544d609@yoseli.org>
 In-Reply-To: <20251126-dma-coldfire-v2-0-5b1e4544d609@yoseli.org>
 To: Frank Li <Frank.Li@nxp.com>, Vinod Koul <vkoul@kernel.org>, 
@@ -15,76 +15,88 @@ Cc: Greg Ungerer <gerg@linux-m68k.org>, imx@lists.linux.dev,
  linux-kernel@vger.kernel.org, 
  Jean-Michel Hautbois <jeanmichel.hautbois@yoseli.org>
 X-Mailer: b4 0.15-dev-47773
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764146162; l=2499;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764146162; l=2484;
  i=jeanmichel.hautbois@yoseli.org; s=20240925; h=from:subject:message-id;
- bh=9Rl/w8Flv4FYHKNwt2QAAOrN5X7BfFjFIc6s+uDV++s=;
- b=qxtJdH6M5NqML0HZbwh4Es0Y/QUSnr+NBgpH0A7u7ay9142548awxn+ruhMWpHWc4nIiSjk+d
- zdxCMuA6eGvA/cpjqTlKje7dvM+vNG2IsC+9xGT50DAinjJ/8aNrUFL
+ bh=TOkFpkS4T7DbH7y0xlolnOAKUy6LY9n/XPRytl2P/DM=;
+ b=eXEURz7RQO0BH0cJTkHQf62CHI2X69oRsk8d+iX2tOt9SVdilKka5OtxkRGVOhFlVYbteVbXa
+ fHPERnOPFXaDjLqwnSSABn7K2/lG265dpaDWM0d6p5epUVBuRLHSQ4/
 X-Developer-Key: i=jeanmichel.hautbois@yoseli.org; a=ed25519;
  pk=MsMTVmoV69wLIlSkHlFoACIMVNQFyvJzvsJSQsn/kq4=
 X-Endpoint-Received: by B4 Relay for jeanmichel.hautbois@yoseli.org/20240925 with auth_id=570
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add FSL_EDMA_DRV_MCF driver flag to identify MCF ColdFire eDMA
-controllers which have a native M68K register layout.
+Add dynamic per-channel IRQ naming to make DMA interrupt identification
+easier in /proc/interrupts and debugging tools.
 
-The edma_writeb() function applies an XOR ^ 0x3 byte-lane adjustment for
-big-endian eDMA controllers where byte registers within a 32-bit word
-need address correction.
+Instead of all channels showing "eDMA", they now show:
+- "eDMA-0" through "eDMA-15" for channels 0-15
+- "eDMA-16" through "eDMA-55" for channels 16-55
+- "eDMA-tx-56" for the shared channel 56-63 interrupt
+- "eDMA-err" for the error interrupt
 
-However, the MCF54418 eDMA 8-bit registers (SERQ, CERQ, SEEI, CEEI,
-CINT, CERR, SSRT, CDNE) are located at sequential byte addresses
-(0x4018-0x401F) as documented in the MCF54418 Reference Manual Table
-19-2. No byte-lane adjustment is needed, as applying the XOR causes
-writes to target incorrect registers (writing to CERR at 0x401D would
-actually access SSRT at 0x401E).
+This aids debugging DMA issues by making it clear which channel's
+interrupt is being serviced.
 
-Set this flag in the MCF eDMA driver to bypass the XOR adjustment and
-access registers at their documented addresses.
-
-Reviewed-by: Frank Li <Frank.Li@nxp.com>
 Signed-off-by: Jean-Michel Hautbois <jeanmichel.hautbois@yoseli.org>
 ---
- drivers/dma/fsl-edma-common.h | 5 ++++-
- drivers/dma/mcf-edma-main.c   | 2 +-
- 2 files changed, 5 insertions(+), 2 deletions(-)
+ drivers/dma/mcf-edma-main.c | 26 ++++++++++++++++++--------
+ 1 file changed, 18 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/dma/fsl-edma-common.h b/drivers/dma/fsl-edma-common.h
-index 205a96489094..4c86f2f39c1d 100644
---- a/drivers/dma/fsl-edma-common.h
-+++ b/drivers/dma/fsl-edma-common.h
-@@ -225,6 +225,8 @@ struct fsl_edma_desc {
- #define FSL_EDMA_DRV_TCD64		BIT(15)
- /* All channel ERR IRQ share one IRQ line */
- #define FSL_EDMA_DRV_ERRIRQ_SHARE       BIT(16)
-+/* MCF eDMA: Different register layout, no XOR for byte access */
-+#define FSL_EDMA_DRV_MCF                BIT(17)
- 
- 
- #define FSL_EDMA_DRV_EDMA3	(FSL_EDMA_DRV_SPLIT_REG |	\
-@@ -419,7 +421,8 @@ static inline void edma_writeb(struct fsl_edma_engine *edma,
- 			       u8 val, void __iomem *addr)
- {
- 	/* swap the reg offset for these in big-endian mode */
--	if (edma->big_endian)
-+	/* MCF eDMA has different register layout, no XOR needed */
-+	if (edma->big_endian && !(edma->drvdata->flags & FSL_EDMA_DRV_MCF))
- 		iowrite8(val, (void __iomem *)((unsigned long)addr ^ 0x3));
- 	else
- 		iowrite8(val, addr);
 diff --git a/drivers/dma/mcf-edma-main.c b/drivers/dma/mcf-edma-main.c
-index 9e1c6400c77b..f95114829d80 100644
+index f95114829d80..6a7d88895501 100644
 --- a/drivers/dma/mcf-edma-main.c
 +++ b/drivers/dma/mcf-edma-main.c
-@@ -145,7 +145,7 @@ static void mcf_edma_irq_free(struct platform_device *pdev,
- }
+@@ -81,8 +81,14 @@ static int mcf_edma_irq_init(struct platform_device *pdev,
+ 	if (!res)
+ 		return -1;
  
- static struct fsl_edma_drvdata mcf_data = {
--	.flags = FSL_EDMA_DRV_EDMA64,
-+	.flags = FSL_EDMA_DRV_EDMA64 | FSL_EDMA_DRV_MCF,
- 	.setup_irq = mcf_edma_irq_init,
- };
+-	for (ret = 0, i = res->start; i <= res->end; ++i)
+-		ret |= request_irq(i, mcf_edma_tx_handler, 0, "eDMA", mcf_edma);
++	for (ret = 0, i = res->start; i <= res->end; ++i) {
++		char *irq_name = devm_kasprintf(&pdev->dev, GFP_KERNEL,
++						"eDMA-%d", (int)(i - res->start));
++		if (!irq_name)
++			return -ENOMEM;
++
++		ret |= request_irq(i, mcf_edma_tx_handler, 0, irq_name, mcf_edma);
++	}
+ 	if (ret)
+ 		return ret;
  
+@@ -91,23 +97,27 @@ static int mcf_edma_irq_init(struct platform_device *pdev,
+ 	if (!res)
+ 		return -1;
+ 
+-	for (ret = 0, i = res->start; i <= res->end; ++i)
+-		ret |= request_irq(i, mcf_edma_tx_handler, 0, "eDMA", mcf_edma);
++	for (ret = 0, i = res->start; i <= res->end; ++i) {
++		char *irq_name = devm_kasprintf(&pdev->dev, GFP_KERNEL,
++						"eDMA-%d", (int)(16 + i - res->start));
++		if (!irq_name)
++			return -ENOMEM;
++
++		ret |= request_irq(i, mcf_edma_tx_handler, 0, irq_name, mcf_edma);
++	}
+ 	if (ret)
+ 		return ret;
+ 
+ 	ret = platform_get_irq_byname(pdev, "edma-tx-56-63");
+ 	if (ret != -ENXIO) {
+-		ret = request_irq(ret, mcf_edma_tx_handler,
+-				  0, "eDMA", mcf_edma);
++		ret = request_irq(ret, mcf_edma_tx_handler, 0, "eDMA-tx-56", mcf_edma);
+ 		if (ret)
+ 			return ret;
+ 	}
+ 
+ 	ret = platform_get_irq_byname(pdev, "edma-err");
+ 	if (ret != -ENXIO) {
+-		ret = request_irq(ret, mcf_edma_err_handler,
+-				  0, "eDMA", mcf_edma);
++		ret = request_irq(ret, mcf_edma_err_handler, 0, "eDMA-err", mcf_edma);
+ 		if (ret)
+ 			return ret;
+ 	}
 
 -- 
 2.39.5
