@@ -1,208 +1,86 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Thu, 27 Nov 2025 15:30:34 +0800
-Subject: [PATCH 4/4] arm64: dts: amlogic: Add S7D Reset Controller
+From: Alex Wang <alex.ts.wang@fii-foxconn.com>
+Date: Thu, 27 Nov 2025 17:44:51 +0800
+Subject: [PATCH v2] dt: aspeed: clemente: move hdd_led to its own gpio-leds
+ group
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251127-reset-s6-s7-s7d-v1-4-879099ad90d3@amlogic.com>
-References: <20251127-reset-s6-s7-s7d-v1-0-879099ad90d3@amlogic.com>
-In-Reply-To: <20251127-reset-s6-s7-s7d-v1-0-879099ad90d3@amlogic.com>
-To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20251127-leo-dts-add-shunt-resistor-v2-1-c77dfbfb826c@fii-foxconn.com>
+X-B4-Tracking: v=1; b=H4sIAJIdKGkC/42NQQrCMBBFr1Jm7UiSEmldeQ/pIiZTO6CJZGqol
+ N7d2BO4fJ/H+ysIZSaBc7NCpsLCKVYwhwb85OKdkENlMMpYrUyLD0oYZkEXAsr0jjNmEpY5ZTR
+ dNdTJ2eAIauCVaeRlj1+HytOuffavon/rX9miUaMNfd8pd3Ot6i4jM45p8SnGo09PGLZt+wI3H
+ A6KygAAAA==
+X-Change-ID: 20251023-leo-dts-add-shunt-resistor-2810206a5dae
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
+ Andrew Jeffery <andrew@codeconstruct.com.au>
 Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.12.4
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764228641; l=4875;
- i=xianwei.zhao@amlogic.com; s=20231208; h=from:subject:message-id;
- bh=5wwrW6KjOWT339f03AVM4w+kKKlwXFASNHk49oi+itI=;
- b=TcG6ixepJGEJNUVljr+70oZ4T6oh5hBDOVvFVYX7fEpMOOxApf1p3OZNTj+myfpTUPCBjaJW7
- fOGUj3ZVJ/HAHs+nAoGc2IGUsZb954kEjMCHXzk1bC0LAZHArzXYT7d
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=o4fDH8ZXL6xQg5h17eNzRljf6pwZHWWjqcOSsj3dW24=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20231208 with auth_id=107
+ linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ george.kw.lee@fii-foxconn.com, Alex Wang <alex.ts.wang@fii-foxconn.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764236694; l=2118;
+ i=alex.ts.wang@fii-foxconn.com; s=20251023; h=from:subject:message-id;
+ bh=XvfoAuDaFi0LEYIxrGZlYJX6g2aVVWHGpukneXb5b2k=;
+ b=SXG/ZRsEzAm0y+7zt1tH9Ydnb+YuQ8Z7nkeAo5L/ekXuavdkD1Ale8faYlW8bQmxmf8E7FYoW
+ 4p9x7BbeD/6BzqaKejgS49RqwnHxC/r9cz33N53NCEPzRlctPJ3nLVM
+X-Developer-Key: i=alex.ts.wang@fii-foxconn.com; a=ed25519;
+ pk=m/IrKXb14uSdDm4KGXemjNIxgL6TrqXCc9NX09SUJp0=
+X-Endpoint-Received: by B4 Relay for alex.ts.wang@fii-foxconn.com/20251023 with auth_id=551
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the device node and related header file for Amlogic
-S7D reset controller.
+The gpio-leds driver requires all GPIOs in a group to be available;
+if any GPIO in the group is not available the whole group will not be
+created. The hdd_led GPIO is only present after standby power is
+enabled, which can prevent other LEDs in the same group from being
+created and blocks properly setting 'bmc_ready_noled'.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Move the 'hdd_led' node into a separate gpio-leds group so that other
+LEDs are not blocked and the 'bmc_ready_noled' flag can be set
+correctly.
+
+Signed-off-by: Alex Wang <alex.ts.wang@fii-foxconn.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-s7d-reset.h | 134 ++++++++++++++++++++++++
- arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi    |   8 ++
- 2 files changed, 142 insertions(+)
+Changes in v2:
+- I changed “missing” to “not available”. The hdd_led and bmc_ready_noled 
+do not disappear; it's just that hdd_led only becomes available after 
+standby power is enabled, and this process takes some time. The hdd_led 
+becomes available only after bmc_ready_noled is supposed to be set, 
+which causes bmc_ready_noled to fail to be generated and set in time.
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7d-reset.h b/arch/arm64/boot/dts/amlogic/amlogic-s7d-reset.h
-new file mode 100644
-index 000000000000..02deea1c1fe5
---- /dev/null
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-s7d-reset.h
-@@ -0,0 +1,134 @@
-+/* SPDX-License-Identifier: (GPL-2.0+ OR MIT) */
-+/*
-+ * Copyright (c) 2025 Amlogic, Inc. All rights reserved.
-+ */
-+
-+#ifndef _DT_BINDINGS_AMLOGIC_S7D_RESET_H
-+#define _DT_BINDINGS_AMLOGIC_S7D_RESET_H
-+
-+/* RESET0 */
-+#define RESET_USB_DDR0			0
-+#define RESET_USB_DDR1			1
-+#define RESET_USB_DDR2			2
-+#define RESET_USB_DDR3			3
-+#define RESET_USB1			4
-+#define RESET_USB0			5
-+#define RESET_USB1_COMB			6
-+#define RESET_USB0_COMB			7
-+#define RESET_USBPHY20			8
-+#define RESET_USBPHY21			9
-+#define RESET_USBCC			10
-+#define RESET_BC			11
-+#define RESET_AMFC_APB			12
-+/*					13-14	*/
-+#define RESET_HDMI20_AES		15
-+#define RESET_HDMITX_CAPB3		16
-+#define RESET_BRG_VCBUS_DEC		17
-+#define RESET_VCBUS			18
-+#define RESET_VID_PLL_DIV		19
-+#define RESET_VIDEO6			20
-+#define RESET_GE2D			21
-+#define RESET_HDMITXPHY			22
-+#define RESET_VID_LOCK			23
-+#define RESET_VENCL			24
-+#define RESET_VDAC			25
-+#define RESET_VENCP			26
-+#define RESET_VENCI			27
-+#define RESET_RDMA			28
-+#define RESET_HDMI_TX			29
-+#define RESET_VIU			30
-+#define RESET_VENC			31
-+
-+/* RESET1 */
-+#define RESET_AUDIO			32
-+#define RESET_MALI_CAPB3		33
-+#define RESET_MALI			34
-+#define RESET_DDR_APB			35
-+#define RESET_DDR			36
-+#define RESET_DOS_CAPB3			37
-+#define RESET_DOS			38
-+#define RESET_GPU_TS			39
-+#define RESET_PLCK_DBG			40
-+/*					41-47	*/
-+#define RESET_ETH			48
-+/*					49-63	*/
-+
-+/* RESET2 */
-+#define RESET_AM2AXI			64
-+#define RESET_IR_CTRL			65
-+/*					66	*/
-+#define RESET_TEMPSENSOR_PLL		67
-+/*					68-71	*/
-+#define RESET_SMART_CARD		72
-+#define RESET_SPICC0			73
-+/*					74-79	*/
-+#define RESET_MSR_CLK			80
-+/*					81	*/
-+#define RESET_SAR_DIG			82
-+#define RESET_SAR_ANA			83
-+/*					84-85	*/
-+#define RESET_AMFC			86
-+/*					87	*/
-+#define RESET_ACODEC			88
-+#define RESET_CEC			89
-+/*					90	*/
-+#define RESET_WATCHDOG			91
-+/*					92-95	*/
-+
-+/* RESET3 */
-+/* 96 ~ 127 */
-+
-+/* RESET4 */
-+/*					128-131	*/
-+#define RESET_PWM_A			128
-+#define RESET_PWM_B			129
-+#define RESET_PWM_C			130
-+#define RESET_PWM_D			131
-+#define RESET_PWM_E			132
-+#define RESET_PWM_F			133
-+#define RESET_PWM_G			134
-+#define RESET_PWM_H			135
-+#define RESET_PWM_I			136
-+#define RESET_PWM_J			137
-+#define RESET_UART_A			138
-+#define RESET_UART_B			139
-+#define RESET_UART_C			140
-+#define RESET_UART_D			141
-+#define RESET_UART_E			142
-+/*					140-143	*/
-+#define RESET_I2C_S_A			144
-+#define RESET_I2C_M_A			145
-+#define RESET_I2C_M_B			146
-+#define RESET_I2C_M_C			147
-+#define RESET_I2C_M_D			148
-+#define RESET_I2C_M_E			149
-+/*					150-151	*/
-+#define RESET_SD_EMMC_A			152
-+#define RESET_SD_EMMC_B			153
-+#define RESET_SD_EMMC_C			154
-+/*					155-159	*/
-+
-+/* RESET5 */
-+#define RESET_BRG_VDEC_PIPL0		160
-+/*					161-163	*/
-+#define RESET_BRG_GE2D_PIPL0		164
-+#define RESET_BRG_DMC_PIPL0		165
-+#define RESET_BRG_A55_PIPL0		166
-+#define RESET_BRG_MALI_PIPL0		167
-+/*					168	*/
-+#define RESET_BRG_MALI_PIPL1		169
-+/*					170-171	*/
-+#define RESET_BRG_HEVCF_PIPL1		172
-+#define RESET_BRG_HEVCB_PIPL1		173
-+/*					174-182	*/
-+#define RESET_BRG_NIC_EMMC		183
-+/*					164	*/
-+#define RESET_BRG_NIC_SDIOB		185
-+#define RESET_BRG_NIC_SDIOA		186
-+#define RESET_BRG_NIC_VAPB		187
-+#define RESET_BRG_NIC_DSU		188
-+#define RESET_BRG_NIC_CLK81		189
-+#define RESET_BRG_NIC_MAIN		190
-+#define RESET_BRG_NIC_ALL		191
-+
-+#endif
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
-index 0c4417bcd682..bae89ca6c448 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
-@@ -8,6 +8,7 @@
- #include <dt-bindings/gpio/gpio.h>
- #include <dt-bindings/pinctrl/amlogic,pinctrl.h>
- #include <dt-bindings/power/amlogic,s7d-pwrc.h>
-+#include "amlogic-s7d-reset.h"
- 
- / {
- 	cpus {
-@@ -106,6 +107,13 @@ uart_b: serial@7a000 {
- 				status = "disabled";
- 			};
- 
-+			reset: reset-controller@2000 {
-+				compatible = "amlogic,s7d-reset",
-+					     "amlogic,meson-s4-reset";
-+				reg = <0x0 0x2000 0x0 0x98>;
-+				#reset-cells = <1>;
-+			};
-+
- 			periphs_pinctrl: pinctrl@4000 {
- 				compatible = "amlogic,pinctrl-s7d",
- 					     "amlogic,pinctrl-s7";
+- Standby power is enabled during the BMC boot process.
 
+- The hdd_led will only be configured after the BMC boots, when a 
+dedicated service starts and applies the settings.
+
+- Link to v1: https://lore.kernel.org/r/20251023-leo-dts-add-shunt-resistor-v1-1-5d9980aba308@fii-foxconn.com
+---
+ arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-clemente.dts | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-clemente.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-clemente.dts
+index dfe8f6d0eeef..ea1bf6f402bd 100644
+--- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-clemente.dts
++++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-clemente.dts
+@@ -96,7 +96,12 @@ led-3 {
+ 			gpios = <&gpio0 ASPEED_GPIO(P, 5) (GPIO_ACTIVE_HIGH|GPIO_TRANSITORY)>;
+ 		};
+ 
+-		led-hdd {
++	};
++
++	hdd-leds {
++		compatible = "gpio-leds";
++
++		led-0 {
+ 			label = "hdd_led";
+ 			gpios = <&io_expander13 1 GPIO_ACTIVE_LOW>;
+ 		};
+
+---
+base-commit: c6fea62a8379f9e24b243ea4ba1fd482f8cd0d83
+change-id: 20251023-leo-dts-add-shunt-resistor-2810206a5dae
+
+Best regards,
 -- 
-2.37.1
+Alex Wang <alex.ts.wang@fii-foxconn.com>
 
