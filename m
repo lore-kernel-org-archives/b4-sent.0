@@ -1,67 +1,68 @@
-From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Thu, 27 Nov 2025 15:18:52 +0100
-Subject: [PATCH] ARM: i.MX8M: Fix the RAM size calculation for DDR3
+From: Petri Karhula <petri.karhula@novatron.fi>
+Subject: [PATCH v4 0/2] Backlight driver to control backlight behind
+ Congatec Board Controller.
+Date: Thu, 27 Nov 2025 15:21:58 +0000
+Message-Id: <20251127-cgbc-backlight-v4-0-626523b7173d@novatron.fi>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251127-ddr3_size-v1-1-cb26cadcb348@gocontroll.com>
-X-B4-Tracking: v=1; b=H4sIAMtdKGkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDQyNz3ZSUIuP44syqVN3kZANjQwtLA7M0UwMloPqCotS0zAqwWdGxtbU
- AvNR9L1sAAAA=
-X-Change-ID: 20251127-ddr3_size-cc0318906f50
-To: Sascha Hauer <s.hauer@pengutronix.de>, 
- BAREBOX <barebox@lists.infradead.org>
-Cc: Maud Spierings <maudspierings@gocontroll.com>
+X-B4-Tracking: v=1; b=H4sIAJZsKGkC/3XMQQ6CMBCF4auYrq3ptAXBlfcwLsq0wERDTUsaD
+ eHuFlYY4vJ/yfsmFl0gF9nlMLHgEkXyQw59PDDszdA5TjY3k0IWAFBx7BrkjcHHk7p+5KpAAFH
+ bRjQVy6dXcC29V/B2z91THH34rH6CZf1LJeDAEUuDhRIglL4OPpkx+OHUEluwJLdAvQMkF1xb7
+ aw9oylLuQfUBpDFDlAZgMo4Lcuq1gC/wDzPX9QhonEwAQAA
+X-Change-ID: 20251118-cgbc-backlight-35c1109db0b8
+To: Thomas Richard <thomas.richard@bootlin.com>, Lee Jones <lee@kernel.org>, 
+ Daniel Thompson <danielt@kernel.org>, Jingoo Han <jingoohan1@gmail.com>, 
+ Helge Deller <deller@gmx.de>
+Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ linux-fbdev@vger.kernel.org, Petri Karhula <petri.karhula@novatron.fi>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764253135; l=1641;
- i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=S/1+D57OXDOXBoJu1ee59GubYFVu0yhihDlh11/cdtg=;
- b=sjH8KsDCwabGRl0tgeN20OpBWfP+a4TumFB41XRee8MEcYV5UkCNMDUbxzp5yoBIj4FxYgNjm
- yVaC8k1Ej+7BOQum37GuXZ2Juf1e9ZrX8GhYoawpSPiRVzW4IvI1xMJ
-X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
- pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
-X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764256919; l=1467;
+ i=petri.karhula@novatron.fi; s=20251118; h=from:subject:message-id;
+ bh=0DYPf8nCWVRUOaNVG3Sdtd4XAtoEggEvVG8k3t7HN0Y=;
+ b=5BGt3s3TPKHC72VXiw9Ebb2AuFW0gTrHlmAvfcGWm27oYv6CcuWocLtVK0HdOk7BExRn3cZTg
+ 2d2ZeqFlGV7AbpkRpdQ4i5v4b98tUwXDtDOQSLIyxGVlMClbbp/PPbq
+X-Developer-Key: i=petri.karhula@novatron.fi; a=ed25519;
+ pk=LRYJ99jPPsHJwdJEPkqlmzAMqo6oyw7I421aHEfDp7o=
+X-Endpoint-Received: by B4 Relay for petri.karhula@novatron.fi/20251118 with auth_id=567
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The default value in the MSTR register for DDRC_MSTR_DEVICE_CONFIG is
-16bit which causes the calculation to be half of the actual RAM. Add the
-BIT() define for DDR3 and add it to the workaround for calculating the
-correct amount of RAM like LPDDR4.
+This driver provides backlight brightness control through the Linux
+backlight subsystem. It communicates with the board controller to
+adjust LCD backlight using PWM signals. Communication is done
+through Congatec Board Controller core driver.
+    
 
-Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
+Signed-off-by: Petri Karhula <petri.karhula@novatron.fi>
 ---
- arch/arm/mach-imx/esdctl.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Changes in v4:
+- Factor out brightness read into a helper
+- Set backlight_properties.scale to BACKLIGHT_SCALE_LINEAR
+- Link to v3: https://lore.kernel.org/r/20251125-cgbc-backlight-v3-0-18ae42689411@novatron.fi
 
-diff --git a/arch/arm/mach-imx/esdctl.c b/arch/arm/mach-imx/esdctl.c
-index 4c4c3528e1..935c3d3257 100644
---- a/arch/arm/mach-imx/esdctl.c
-+++ b/arch/arm/mach-imx/esdctl.c
-@@ -325,6 +325,7 @@ static int vf610_ddrmc_add_mem(void *mmdcbase, const struct imx_esdctl_data *dat
- #define DDRC_ADDRMAP0_CS_BIT0			GENMASK(4, 0)
- 
- #define DDRC_MSTR				0x0000
-+#define DDRC_MSTR_DDR3				BIT(0)
- #define DDRC_MSTR_DDR4				BIT(4)
- #define DDRC_MSTR_LPDDR4			BIT(5)
- #define DDRC_MSTR_DATA_BUS_WIDTH		GENMASK(13, 12)
-@@ -508,8 +509,8 @@ static resource_size_t imx8m_ddrc_sdram_size(void __iomem *ddrc, unsigned buswid
- 		FIELD_GET(DDRC_ADDRMAP6_LPDDR4_6GB_12GB_24GB, addrmap[6]);
- 	u32 mstr = readl(ddrc + DDRC_MSTR);
- 
--	/* Device config is ignored and taken as 32-bit for LPDDR4 */
--	if (mstr & DDRC_MSTR_LPDDR4)
-+	/* Device config is ignored and taken as 32-bit for LPDDR4 and DDR3 */
-+	if (mstr & DDRC_MSTR_LPDDR4 || mstr & DDRC_MSTR_DDR3)
- 		imx_ddrc_set_mstr_device_config(&mstr, buswidth);
- 
- 	return imx_ddrc_sdram_size(ddrc, addrmap,
+Changes in v3:
+- Fixed review comments and simplified the structure of the driver
+- Link to v2: https://lore.kernel.org/r/20251119-cgbc-backlight-v2-0-4d4edd7ca662@novatron.fi
+
+Changes in v2:
+- Separated Board Controller core driver change into its own patch
+- Link to v1: https://lore.kernel.org/r/20251118-cgbc-backlight-v1-1-cc6ac5301034@novatron.fi
 
 ---
-base-commit: 5d89bec4985d850d59813e34c6b5213d8e8f48f0
-change-id: 20251127-ddr3_size-cc0318906f50
+Petri Karhula (2):
+      backlight: Add Congatec Board Controller (CGBC) backlight support
+      mfd: cgbc: Add support for backlight
+
+ drivers/mfd/cgbc-core.c           |   1 +
+ drivers/video/backlight/Kconfig   |  11 +++
+ drivers/video/backlight/Makefile  |   1 +
+ drivers/video/backlight/cgbc_bl.c | 179 ++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 192 insertions(+)
+---
+base-commit: ac3fd01e4c1efce8f2c054cdeb2ddd2fc0fb150d
+change-id: 20251118-cgbc-backlight-35c1109db0b8
 
 Best regards,
 -- 
-Maud Spierings <maudspierings@gocontroll.com>
+Petri Karhula <petri.karhula@novatron.fi>
 
