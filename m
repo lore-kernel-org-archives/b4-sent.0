@@ -1,117 +1,46 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Fri, 28 Nov 2025 15:03:19 +0400
-Subject: [PATCH] clk: qcom: gcc-ipq5018: flag sleep clock as critical
+From: Maud Spierings <maudspierings@gocontroll.com>
+Subject: [PATCH 0/3] scripts: imx: imx-usb-loader: fix mingw compilation
+Date: Fri, 28 Nov 2025 15:08:51 +0100
+Message-Id: <20251128-imx_usb-v1-0-bb6a5180b38e@gocontroll.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251128-ipq5018-sleep-clk-fix-v1-1-6f4b75ec336c@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAHeBKWkC/x2MQQqAMAzAviI9W7ADx/Qr4kFmq0XRuYEIw787P
- CaQZEgclRP0VYbItyY9jwJUV+DX6VgYdS4MpjEtkXGo4Wobcph25oB+31D0QRKx1FkrXhyUNkQ
- u+v8O4/t+TIoPmWcAAAA=
-X-Change-ID: 20251128-ipq5018-sleep-clk-fix-1ff61966fcf8
-To: Bjorn Andersson <andersson@kernel.org>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, 
- Sricharan Ramabadhran <quic_srichara@quicinc.com>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Varadarajan Narayanan <quic_varada@quicinc.com>, 
- Gokul Sriram Palanisamy <quic_gokulsri@quicinc.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764327803; l=4144;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=rihKcx0crrGSSBw/1HQR+1rGHpJBaHYrt+nnV2LIefY=;
- b=lhJCzqThR0Wpy1Au53cCfOwogN11F5IxWAUIByU9bWOnwhGrOldy02CKE9RRKbyWyjhJ5ZIc3
- VpuAy54F5luDqSG2lYRZ0l36KmYw5pxgArt8SOM+wurLkm+qTmjE6us
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-B4-Tracking: v=1; b=H4sIAPOsKWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1NDQyML3czcivjS4iRdE0ODpKQkU/NUAzMLJaDqgqLUtMwKsEnRsbW1ACn
+ nNCpZAAAA
+X-Change-ID: 20251128-imx_usb-410bbb57e068
+To: Sascha Hauer <s.hauer@pengutronix.de>, 
+ BAREBOX <barebox@lists.infradead.org>
+Cc: Maud Spierings <maudspierings@gocontroll.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764339080; l=643;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=FOkEnvEJmefM83hRliyO6otJ/MBuDcMphB3DLrN2qCY=;
+ b=wZqAQmzlJbsqEIfRfPMPMP/qFLRJPFU8VdB4WgBy+FdDL+u3QXOwoE8townA1qVNs02gDqS/W
+ EGcq/WiInfpBiGGMUHdqrnWu+Li0902aCnj9Cz4P3a5D138PYFtxLxs
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The sleep clock never be disabled. To avoid the kernel trying to disable
-it and keep it always on, flag it as critical.
+Compiling imx-usb-loader for windows targets had become broken, fix it.
 
-Fixes: e3fdbef1bab8 ("clk: qcom: Add Global Clock controller (GCC) driver for IPQ5018")
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
-additional context:
+Maud Spierings (3):
+      scripts: common: fix pread_full() for windows
+      scripts: imx: Makefile.mingw64: add _GNU_SOURCE
+      gitignore: ignore *.exe
 
-This issue occurs on any device referencing the GCC_SLEEP_CLK_SRC clock,
-as required by drivers to bring up the Q6 processor and WCSS, and making
-a call to devm_clk_get_enabled (or similar) implicitly registers a call
-to clk_disable_unprepare which causes below kernel error. This clock
-should never be disabled as also evidenced in the downstream driver:
-https://git.codelinaro.org/clo/qsdk/oss/kernel/linux-ipq-5.4/-/blob/NHSS.QSDK.12.5/drivers/clk/qcom/gcc-ipq5018.c?ref_type=heads#L1424
-
-[    3.012124] ------------[ cut here ]------------
-[    3.012976] gcc_sleep_clk_src status stuck at 'on'
-[    3.013022] WARNING: CPU: 0 PID: 1 at drivers/clk/qcom/clk-branch.c:87 clk_branch_toggle+0x168/0x180
-[    3.022181] Modules linked in:
-[    3.031465] CPU: 0 UID: 0 PID: 1 Comm: swapper/0 Not tainted 6.12.59 #0
-[    3.034328] Hardware name: Linksys MR5500 (DT)
-[    3.040837] pstate: 604000c5 (nZCv daIF +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
-[    3.045354] pc : clk_branch_toggle+0x168/0x180
-[    3.052208] lr : clk_branch_toggle+0x168/0x180
-[    3.056722] sp : ffffffc082393ac0
-[    3.061147] x29: ffffffc082393ac0 x28: 0000000000000000 x27: 0000000000000000
-[    3.064539] x26: 0000000000000000 x25: 0000000000000000 x24: ffffffc080aac890
-[    3.071655] x23: 0000000000000000 x22: 0000000000000000 x21: ffffffc08047c2a8
-[    3.078773] x20: ffffffc0822d62c8 x19: 0000000000000000 x18: ffffffc08224b878
-[    3.085892] x17: ffffffbf9dd04000 x16: ffffffc082378000 x15: 00000000000000b7
-[    3.093010] x14: 00000000000000b7 x13: 00000000ffffffea x12: ffffffc0822a3820
-[    3.100128] x11: ffffffc08224b878 x10: ffffffc0822a3878 x9 : 0000000000000001
-[    3.107247] x8 : 0000000000000001 x7 : 0000000000017fe8 x6 : c0000000ffffefff
-[    3.114364] x5 : 0000000000057fa8 x4 : 0000000000000000 x3 : ffffffc0823938a0
-[    3.121482] x2 : ffffffc08224b7a0 x1 : ffffffc08224b7a0 x0 : 0000000000000026
-[    3.128603] Call trace:
-[    3.135713]  clk_branch_toggle+0x168/0x180
-[    3.137973]  clk_branch2_disable+0x1c/0x30
-[    3.142137]  clk_core_disable+0x60/0xac
-[    3.146218]  clk_disable+0x30/0x4c
-[    3.149950]  clk_disable_unprepare+0x18/0x30
-[    3.153423]  devm_clk_release+0x24/0x40
-[    3.157850]  devres_release_all+0xb0/0x120
-[    3.161409]  device_unbind_cleanup+0x18/0x60
-[    3.165577]  really_probe+0x210/0x2bc
-[    3.170003]  __driver_probe_device+0x78/0x118
-[    3.173562]  driver_probe_device+0x40/0xf0
-[    3.177902]  __driver_attach+0x90/0x160
-[    3.181895]  bus_for_each_dev+0x64/0xb8
-[    3.185627]  driver_attach+0x24/0x3c
-[    3.189447]  bus_add_driver+0xe4/0x208
-[    3.193267]  driver_register+0x68/0x124
-[    3.196825]  __platform_driver_register+0x24/0x30
-[    3.200559]  wcss_sec_driver_init+0x1c/0x28
-[    3.205419]  do_one_initcall+0x50/0x210
-[    3.209413]  kernel_init_freeable+0x23c/0x298
-[    3.213232]  kernel_init+0x20/0x120
-[    3.217746]  ret_from_fork+0x10/0x20
-[    3.221046] ---[ end trace 0000000000000000 ]---
-[    3.225373] remoteproc remoteproc0: releasing q6wcss
+ .gitignore                   | 1 +
+ scripts/common.c             | 6 +++++-
+ scripts/imx/Makefile.mingw64 | 2 +-
+ 3 files changed, 7 insertions(+), 2 deletions(-)
 ---
- drivers/clk/qcom/gcc-ipq5018.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/drivers/clk/qcom/gcc-ipq5018.c b/drivers/clk/qcom/gcc-ipq5018.c
-index dcda2be8c1a51950248050882620d63d75eb1ca5..64792cda06202157441222a0bdbf6dc883343054 100644
---- a/drivers/clk/qcom/gcc-ipq5018.c
-+++ b/drivers/clk/qcom/gcc-ipq5018.c
-@@ -1340,6 +1340,7 @@ static struct clk_branch gcc_sleep_clk_src = {
- 			.name = "gcc_sleep_clk_src",
- 			.parent_data = gcc_sleep_clk_data,
- 			.num_parents = ARRAY_SIZE(gcc_sleep_clk_data),
-+			.flags = CLK_IS_CRITICAL,
- 			.ops = &clk_branch2_ops,
- 		},
- 	},
-
----
-base-commit: 7d31f578f3230f3b7b33b0930b08f9afd8429817
-change-id: 20251128-ipq5018-sleep-clk-fix-1ff61966fcf8
+base-commit: 3e01efb6c6527ca72a1213000006be1902db7be9
+change-id: 20251128-imx_usb-410bbb57e068
 
 Best regards,
 -- 
-George Moussalem <george.moussalem@outlook.com>
+Maud Spierings <maudspierings@gocontroll.com>
 
