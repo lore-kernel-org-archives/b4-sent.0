@@ -1,50 +1,204 @@
-From: Petri Karhula <petri.karhula@novatron.fi>
-Date: Thu, 27 Nov 2025 15:22:00 +0000
-Subject: [PATCH v4 2/2] mfd: cgbc: Add support for backlight
+From: George Moussalem <george.moussalem@outlook.com>
+Subject: [PATCH v19 0/6] Add PWM support for IPQ chipsets
+Date: Fri, 28 Nov 2025 14:29:12 +0400
+Message-Id: <20251128-ipq-pwm-v19-0-13bc704cc6a5@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251127-cgbc-backlight-v4-2-626523b7173d@novatron.fi>
-References: <20251127-cgbc-backlight-v4-0-626523b7173d@novatron.fi>
-In-Reply-To: <20251127-cgbc-backlight-v4-0-626523b7173d@novatron.fi>
-To: Thomas Richard <thomas.richard@bootlin.com>, Lee Jones <lee@kernel.org>, 
- Daniel Thompson <danielt@kernel.org>, Jingoo Han <jingoohan1@gmail.com>, 
- Helge Deller <deller@gmx.de>
-Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- linux-fbdev@vger.kernel.org, Petri Karhula <petri.karhula@novatron.fi>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764256919; l=730;
- i=petri.karhula@novatron.fi; s=20251118; h=from:subject:message-id;
- bh=KPNSZCbWidPbzGQwgMCbuFj/C6Dnnhi7zAXThQ+Pso8=;
- b=e2lTmkqyYL2lvoBpDSI9YvqxziY/8WcYfbee+pofEMx4BfEH0cI64hldpZ5qWBMQaPCGx+dbW
- wN4GsI6gxYtDJAQHmLwZwtRrftEmknjdQxiJrFL4zg8YRHtg+7/tIH4
-X-Developer-Key: i=petri.karhula@novatron.fi; a=ed25519;
- pk=LRYJ99jPPsHJwdJEPkqlmzAMqo6oyw7I421aHEfDp7o=
-X-Endpoint-Received: by B4 Relay for petri.karhula@novatron.fi/20251118 with auth_id=567
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAHh5KWkC/22O0W6DMAxFf6XK81I5CSGhT/2PqppK4gxrg9BAW
+ auKf29A2sSkPV7b5/g+2YCJcGCH3ZMlnGig2OUgqrcdc82l+0BOPg+YBKmhkpJTf+X9d8uddUY
+ 7URivJcvXfcJA91V1OuccUmz52CS8/PBKAGhRgtawl4VUYDQX/Hoj9+7z6z7R47gk6tzexXaRN
+ jSMMT3WepMoF/faJJvEb5O84MAVQJDKIGBpj/E2fsX4uWqWMpMwW9ZuWJPZqvaFQh+cCeYf1m5
+ YWW1Ym1n0NQaLoa4t/mXneX4Bl743AWABAAA=
+X-Change-ID: 20250922-ipq-pwm-c8c75c147d52
+To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Baruch Siach <baruch@tkos.co.il>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-pwm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>, 
+ Devi Priya <quic_devipriy@quicinc.com>, 
+ Baruch Siach <baruch.siach@siklu.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Krzysztof Kozlowski <krzk@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764325760; l=6711;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=UAdMTYVBsBNbXk/Og0eSznO5zDi4I0I2Y1uL6nPcnLo=;
+ b=gWI9mpKgpavSFSWg0DtSwQ8yEo0P2JFddT9ymaCWdcz/rJdWSXg4ItUAQMOrMKPvJF8w7fzGq
+ pw1hy5DLfMUC78Bn9p8HP55a8rGWECgtAiY4hV6U4Rs0wKblLG8RKvk
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Board Controller has control for display backlight.
-Add backlight cell for the cgbc-backlight driver which
-adds support for backlight brightness control.
+Add PWM driver and binding support for IPQ chipsets.
+Also, add nodes to add support for pwm in ipq6018, ipq5018, ipq5332, and
+ipq9574.
 
-Signed-off-by: Petri Karhula <petri.karhula@novatron.fi>
+I've picked up work based on Devi's last submission (v15) which dates
+back to 05 October 2023 as below SoCs are still active.
+
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/mfd/cgbc-core.c | 1 +
- 1 file changed, 1 insertion(+)
+Changes in v19:
+- Changed pwm-cells property in dt bindings from 2 to 3 as per Uwe's
+  recommendation
+- Added hardware notes and limitations based on own findings as
+  requested. NOTE: there's no publically available datasheet though.
+- Expanded comment on REG1_UPDATE to indicate that when this bit is set,
+  values for div and pre-div take effect. The hardware automatically
+  unsets it when the change is completed.
+- Added newline between MACRO definition and next comment
+- In config_div_and_duty, used mul_u64_u64_div_u64 to avoid overflow
+- Removed unncessary restriction of pwm_div to MAX_DIV - 1 after testing
+- Constrain pre_div to MAX_DIV is pre_div calculated is > MAX_DIV
+- Use of mul_u64_u64_div_u64 in .apply
+- Skip calculation of period and duty cycle when PWM_ENABLE REG is unset
+- Set duty cycle to period value when calculated duty cycle > period to
+  return a valid config
+- Removed .npwm as it's taken care of in devm_pwmchip_alloc
+- Added call to devm_clk_rate_exclusive_get to lock the clock rate
+- Start all kernel messages with a capital letter and end with \n.
+- Changed pwm-cells property in all dtsi from 2->3 for in scope IPQ SOCs 
+- Link to v18: https://lore.kernel.org/r/20251029-ipq-pwm-v18-0-edbef8efbb8e@outlook.com
 
-diff --git a/drivers/mfd/cgbc-core.c b/drivers/mfd/cgbc-core.c
-index 4782ff1114a9..10bb4b414c34 100644
---- a/drivers/mfd/cgbc-core.c
-+++ b/drivers/mfd/cgbc-core.c
-@@ -237,6 +237,7 @@ static struct mfd_cell cgbc_devs[] = {
- 	{ .name = "cgbc-i2c", .id = 1 },
- 	{ .name = "cgbc-i2c", .id = 2 },
- 	{ .name = "cgbc-hwmon"	},
-+	{ .name = "cgbc-backlight" },
- };
- 
- static int cgbc_map(struct cgbc_device_data *cgbc)
+Changes in v18:
+- Updated maintainer info in binding
+- Squashed dt bindings patches into the first for adding compatibles for
+  IPQ5018, IPQ5332, and IPQ9574
+- Link to v17: https://lore.kernel.org/r/20251008-ipq-pwm-v17-0-9bd43edfc7f7@outlook.com
 
+Changes in v17:
+- Picked up RB tags from Dmitry and Rob
+- Removed unnecessary code comments
+- Corrected reg property in PWM node in ipq6018 DTS in line with
+  expected nr of bytes for address and size cells
+- Link to v16: https://lore.kernel.org/r/20251001-ipq-pwm-v16-0-300f237e0e68@outlook.com
+
+Changes in v16:
+- Removed reg description in bindings as the offset is not relative to
+  the TCSR region anymore since simple-mfd support was dropped and PWM
+  nodes defined as their own nodes, not child nodes. Updated the example
+  too.
+- Dropped patch to add simple-mfd support to the qcom,tcsr bindings
+- Simplified code to calculate divs and duty cycle as per Uwe's comments
+- Removed unused pwm_chip struct from ipq_pwm_chip struct
+- Removed unnecessary cast as per Uwe's comment
+- Replaced devm_clk_get & clk_prepare_enable by devm_clk_get_enabled
+- Replaced pwmchip_add by devm_pwmchip_add and removed .remove function
+- Removed .owner from driver struct
+- Added compatibles to the bindings and nodes to the device trees to add
+  PWM support in the IPQ5018, IPQ5332, and IPQ9574 SoCs
+- Link to v15: https://lore.kernel.org/r/20231005160550.2423075-1-quic_devipriy@quicinc.com
+
+Changes in v15:
+- No change
+- Link to v14: https://lore.kernel.org/r/20231005033053.2626465-1-quic_devipriy@quicinc.com
+
+Changes in v14:
+- Picked up the R-b tag
+- Link to v13: https://lore.kernel.org/r/20231004090449.256229-1-quic_devipriy@quicinc.com
+
+Changes in v13:
+- Updated the file name to match the compatible
+- Sorted the properties and updated the order in the required field
+- Dropped the syscon node from examples
+- Link to v12: https://lore.kernel.org/r/20230925065915.3467964-1-quic_devipriy@quicinc.com
+
+Changes in v12:
+- Picked up the R-b tag
+
+Changes in v11:
+- No change
+
+Changes in v10:
+- No change
+
+Changes in v9:
+- Add 'ranges' property to example (Rob)
+- Drop label in example (Rob)
+
+Changes in v8:
+- Add size cell to 'reg' (Rob)
+
+Changes in v7:
+- Use 'reg' instead of 'offset' (Rob)
+- Drop 'clock-names' and 'assigned-clock*' (Bjorn)
+- Use single cell address/size in example node (Bjorn)
+- Move '#pwm-cells' lower in example node (Bjorn)
+- List 'reg' as required
+
+Changes in v6:
+- Device node is child of TCSR; remove phandle (Rob Herring)
+- Add assigned-clocks/assigned-clock-rates (Uwe Kleine-König)
+
+Changes in v5:
+- Use qcom,pwm-regs for phandle instead of direct regs (Bjorn
+    Andersson, Kathiravan T)
+
+Changes in v4:
+- Update the binding example node as well (Rob Herring's bot)
+
+Changes in v3:
+- s/qcom,pwm-ipq6018/qcom,ipq6018-pwm/ (Rob Herring)
+
+Changes in v2:
+- Make #pwm-cells const (Rob Herring)
+
+---
+George Moussalem (6):
+      dt-bindings: pwm: qcom,ipq6018-pwm: Add compatible for ipq5018
+      dt-bindings: pwm: qcom,ipq6018-pwm: Add compatible for ipq5332
+      dt-bindings: pwm: qcom,ipq6018-pwm: Add compatible for ipq9574
+      arm64: dts: qcom: ipq5018: add pwm node
+      arm64: dts: qcom: ipq5332: add pwm node
+      arm64: dts: qcom: ipq9574: add pwm node
+
+Devi Priya (3):
+      dt-bindings: pwm: add IPQ6018 binding
+      pwm: driver for qualcomm ipq6018 pwm block
+      arm64: dts: qcom: ipq6018: add pwm node
+
+ .../devicetree/bindings/pwm/qcom,ipq6018-pwm.yaml  |  51 +++++
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi              |  10 +
+ arch/arm64/boot/dts/qcom/ipq5332.dtsi              |  10 +
+ arch/arm64/boot/dts/qcom/ipq6018.dtsi              |  10 +
+ arch/arm64/boot/dts/qcom/ipq9574.dtsi              |  10 +
+ drivers/pwm/Kconfig                                |  12 +
+ drivers/pwm/Makefile                               |   1 +
+ drivers/pwm/pwm-ipq.c                              | 212 +++++++++++++++++++++
+ 8 files changed, 316 insertions(+)
+---
+
+---
+Devi Priya (3):
+      dt-bindings: pwm: add IPQ6018 binding
+      pwm: driver for qualcomm ipq6018 pwm block
+      arm64: dts: qcom: ipq6018: add pwm node
+
+George Moussalem (3):
+      arm64: dts: qcom: ipq5018: add pwm node
+      arm64: dts: qcom: ipq5332: add pwm node
+      arm64: dts: qcom: ipq9574: add pwm node
+
+ .../devicetree/bindings/pwm/qcom,ipq6018-pwm.yaml  |  51 +++++
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi              |  10 +
+ arch/arm64/boot/dts/qcom/ipq5332.dtsi              |  10 +
+ arch/arm64/boot/dts/qcom/ipq6018.dtsi              |  10 +
+ arch/arm64/boot/dts/qcom/ipq9574.dtsi              |  10 +
+ drivers/pwm/Kconfig                                |  12 ++
+ drivers/pwm/Makefile                               |   1 +
+ drivers/pwm/pwm-ipq.c                              | 239 +++++++++++++++++++++
+ 8 files changed, 343 insertions(+)
+---
+base-commit: e15625dc543c0fbb8db84589678613efd6fd4f27
+change-id: 20250922-ipq-pwm-c8c75c147d52
+
+Best regards,
 -- 
-2.34.1
+George Moussalem <george.moussalem@outlook.com>
 
