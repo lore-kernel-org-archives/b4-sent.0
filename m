@@ -1,47 +1,60 @@
-From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Fri, 28 Nov 2025 15:08:54 +0100
-Subject: [PATCH 3/3] gitignore: ignore *.exe
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Date: Fri, 28 Nov 2025 16:36:38 +0000
+Subject: [PATCH RESEND] rtc: max31335: Fix ignored return value in
+ set_alarm
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251128-imx_usb-v1-3-bb6a5180b38e@gocontroll.com>
-References: <20251128-imx_usb-v1-0-bb6a5180b38e@gocontroll.com>
-In-Reply-To: <20251128-imx_usb-v1-0-bb6a5180b38e@gocontroll.com>
-To: Sascha Hauer <s.hauer@pengutronix.de>, 
- BAREBOX <barebox@lists.infradead.org>
-Cc: Maud Spierings <maudspierings@gocontroll.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20251128-max31335-handler-error-v1-1-6b6f7f78dbda@analog.com>
+To: linux-rtc@vger.kernel.org
+Cc: Alexandre Belloni <alexandre.belloni@bootlin.com>, 
+ Guenter Roeck <linux@roeck-us.net>, 
+ Antoniu Miclaus <antoniu.miclaus@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764339080; l=415;
- i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=rBeLpcpDYXlRocbeFNy26wAbndybequTHRKMHaxq3x4=;
- b=PixO3gC8jd2vxpymDlUm9EtSzJ591AW8fubPh7VLtK0Iv7LWz4xCKhoYuxklx9cuaOt8fOuoG
- 8IaFVQcOjJSBzjzlnjeJBAr7pajBou+/7deAZhFepmPfzCWJZyON2Q8
-X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
- pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
-X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764347811; l=1114;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=yZMxjkRilIU/IcTJjTLZ+cXNpd/pN79VeBziWYaCG+k=;
+ b=Ww6kNNxfHs92/DiGWx2t9ft94HuafT9pupVr6oNlNPCHvMtFozJL0WX/yzBeWZCS59lwvt/Gu
+ XvadEoJuSm+DM9ZB64hxFNHANTNHJZd7jEQFHIF5mimVHejmdOl0RIO
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-windows scripts produce .exe files, which should not be added. Add it to
-the gitignore.
+Return the result from regmap_update_bits() instead of ignoring it
+and always returning 0.
 
-Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
+Fixes: dedaf03b99d6 ("rtc: max31335: add driver support")
+Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- .gitignore | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/rtc/rtc-max31335.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/.gitignore b/.gitignore
-index a235f9f7de..74cb7b0928 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -19,6 +19,7 @@
- *.dcd
- *.dcd.S
- *.elf
-+*.exe
- *.i
- *.ko
- *.lex.c
+diff --git a/drivers/rtc/rtc-max31335.c b/drivers/rtc/rtc-max31335.c
+index dfb5bad3a369..23b7bf16b4cd 100644
+--- a/drivers/rtc/rtc-max31335.c
++++ b/drivers/rtc/rtc-max31335.c
+@@ -391,10 +391,8 @@ static int max31335_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = regmap_update_bits(max31335->regmap, max31335->chip->int_status_reg,
+-				 MAX31335_STATUS1_A1F, 0);
+-
+-	return 0;
++	return regmap_update_bits(max31335->regmap, max31335->chip->int_status_reg,
++				  MAX31335_STATUS1_A1F, 0);
+ }
+ 
+ static int max31335_alarm_irq_enable(struct device *dev, unsigned int enabled)
 
+---
+base-commit: 9db26d5855d0374d4652487bfb5aacf40821c469
+change-id: 20251029-max31335-handler-error-65a286c74289
+--
+
+Thanks!
+- Nuno Sá
 -- 
-2.52.0
+Nuno Sá <nuno.sa@analog.com>
 
