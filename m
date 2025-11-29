@@ -1,84 +1,75 @@
-From: Rohan G Thomas <rohan.g.thomas@altera.com>
-Date: Sat, 29 Nov 2025 11:07:05 +0800
-Subject: [PATCH net v2] net: stmmac: Fix E2E delay mechanism
+From: David Heidelberg <david@ixit.cz>
+Date: Sun, 30 Nov 2025 00:22:39 +0100
+Subject: [PATCH] arm64: dts: qcom: oneplus-enchilada: Specify i2c4 clock
+ frequency
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251129-ext-ptp-2v-v2-1-d23aca3e694f@altera.com>
-X-B4-Tracking: v=1; b=H4sIAFhjKmkC/x3MQQqAIBBA0avErBvIiQi7SrRQm2o2JioSSHdPW
- r7F/xUSR+EES1chcpEkt2+gvgN3GX8yyt4MNNCkFGnkJ2PIAamgJedGO1tjJg0tCJEPef7ZCp4
- zbO/7AXYW/YxhAAAA
-X-Change-ID: 20251129-ext-ptp-2v-b2cc3b7baa59
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Richard Cochran <richardcochran@gmail.com>, 
- Jose Abreu <Jose.Abreu@synopsys.com>, Fugang Duan <fugang.duan@nxp.com>, 
- Kurt Kanzenbach <kurt@linutronix.de>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Rohan G Thomas <rohan.g.thomas@altera.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764385627; l=2236;
- i=rohan.g.thomas@altera.com; s=20250815; h=from:subject:message-id;
- bh=Vs44KaAN7n7X6+9HvqUBUtY37vLPXrYhMYfOJlZqUys=;
- b=ypg60oy/Dq2QN4TFD9EqHDMaOwPxa/g2c6RB6k+kdjcWlbpXEr4zWM2FB81DBAhG2qhirq7o5
- UOB5pBk6njBBKZaiVooSWo3wK5OrXnH96mGtc2G/POG28scDk2eNeg4
-X-Developer-Key: i=rohan.g.thomas@altera.com; a=ed25519;
- pk=5yZXkXswhfUILKAQwoIn7m6uSblwgV5oppxqde4g4TY=
-X-Endpoint-Received: by B4 Relay for rohan.g.thomas@altera.com/20250815 with auth_id=494
+Message-Id: <20251130-enchilada-i2c-freq-v1-1-2932480a0261@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAD6AK2kC/x3MQQqAIBBA0avErBtQI4SuEi2GccyBsFKIILp70
+ vIt/n+gSlGpMHUPFLm06p4bbN8BJ8qroIZmcMaN1g4GJXPSjQKhOsZY5ERi8pHEsjcRWngUiXr
+ /03l53w+3sAF1ZAAAAA==
+X-Change-ID: 20251130-enchilada-i2c-freq-aca7fae1c70f
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1148; i=david@ixit.cz;
+ h=from:subject:message-id; bh=ReqOoZR6+itmM36ehLoW61mYST+VhDMpNFMsVslQ+Q8=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpK4BDigd2kU+6OyzeCvnrAaf/24n9+rMDNj4yM
+ EIfKKjAipuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaSuAQwAKCRBgAj/E00kg
+ chrKEACQtzXZBAt0JWqvwythGdzHmGcWesX03W8+6/rbLK0qc9qrDoKF6YKVQDXGC6yCrH6TCzM
+ 9qcxM78oEc0x0uC5ek6JgiPzNy7qJM31jtNXCu5nGuddY4wSRADDYdcTnI29jMAu0Rl2Tn3725b
+ VFoPCq6bp5azKKDkzZxo+/TH6SJNTdUDbAFCjLg3yYlb1G1AMPgbUOevnIXLoCiJkj0SF3g4A9N
+ 1OLnLa1TKzq7Kpt2tA96wsROR2PeRUBHgGP1YmgjC2Jmvu1eO/7Bx0hu9lPT24HAZwZSKjQtcmw
+ G5ps5lIdFBofr90xPTVPCbGB9755Iag/VzPb2ZlPfw1Tcfenbvq8NWrqKKqNO/6xXYB8L/16mR+
+ HDrJksP3AfNPri6Kj6i8JzfvEdquknF9tmNYTTeR5ny85D04iRiYOpHhvym8BLFlZ7OLedPTO6j
+ lb43z/VGmZCsyOlO2bXez0GQ0NhQBeVo2I+8oQ4seQrZu3qU7cZijoEDaYP03p4D3zh9deWyeua
+ /TL7KfpsRnkoTBF+8rCyNi2NXs66CYLrg+HgheYQfXv5qskKa+ZpROjzqqtCtk64qD7UdZSWEAE
+ VvVrZTTWWzC52KLY3Bgfl+lJ3M5X1klODvZEfjCBTOIZYIBSE4L4dDf3NeMxQQkMq8XxazX67Su
+ cQ7P3FrnZmtgZEA==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For E2E delay mechanism, "received DELAY_REQ without timestamp" error
-messages show up for dwmac v3.70+ and dwxgmac IPs.
+Per the binding, omitting the clock frequency from a Geni I2C controller
+node defaults the bus to 100 kHz. But at least in Linux, a friendly info
+print highlights the lack of explicitly defined frequency in the
+DeviceTree.
 
-This issue affects socfpga platforms, Agilex7 (dwmac 3.70) and
-Agilex5 (dwxgmac). According to the databook, to enable timestamping
-for all events, the SNAPTYPSEL bits in the MAC_Timestamp_Control
-register must be set to 2'b01, and the TSEVNTENA bit must be cleared
-to 0'b0.
+Specify the frequency, to give it an explicit value, and to silence the
+log print in Linux.
 
-Commit 3cb958027cb8 ("net: stmmac: Fix E2E delay mechanism") already
-addresses this problem for all dwmacs above version v4.10. However,
-same holds true for v3.70 and above, as well as for dwxgmac. Updates
-the check accordingly.
+Downstream doesn't define any frequency, thus also using 100 kHz.
 
-Fixes: 14f347334bf2 ("net: stmmac: Correctly take timestamp for PTPv2")
-Fixes: f2fb6b6275eb ("net: stmmac: enable timestamp snapshot for required PTP packets in dwmac v5.10a")
-Fixes: 3cb958027cb8 ("net: stmmac: Fix E2E delay mechanism")
-Signed-off-by: Rohan G Thomas <rohan.g.thomas@altera.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-v1 -> v2:
-   - Rebased patch to net tree
-   - Replace core_type with has_xgmac
-   - Nit changes in the commit message
-   - Link: https://lore.kernel.org/all/20251125-ext-ptp-fix-v1-1-83f9f069cb36@altera.com/
----
- drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ arch/arm64/boot/dts/qcom/sdm845-oneplus-enchilada.dts | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-index 7b90ecd3a55e600458b0c87d6125831626f4683d..cfc6e5aaf6f631b9d00dab9f6339778123d4bc75 100644
---- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-@@ -590,7 +590,8 @@ static int stmmac_hwtstamp_set(struct net_device *dev,
- 			config->rx_filter = HWTSTAMP_FILTER_PTP_V2_EVENT;
- 			ptp_v2 = PTP_TCR_TSVER2ENA;
- 			snap_type_sel = PTP_TCR_SNAPTYPSEL_1;
--			if (priv->synopsys_id < DWMAC_CORE_4_10)
-+			if (priv->synopsys_id < DWMAC_CORE_3_70 &&
-+			    !priv->plat->has_xgmac)
- 				ts_event_en = PTP_TCR_TSEVNTENA;
- 			ptp_over_ipv4_udp = PTP_TCR_TSIPV4ENA;
- 			ptp_over_ipv6_udp = PTP_TCR_TSIPV6ENA;
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-enchilada.dts b/arch/arm64/boot/dts/qcom/sdm845-oneplus-enchilada.dts
+index a259eb9d45ae0..881d0f3ebca31 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-enchilada.dts
++++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-enchilada.dts
+@@ -41,6 +41,8 @@ &bq27441_fg {
+ };
+ 
+ &i2c4 {
++	clock-frequency = <100000>;
++
+ 	status = "okay";
+ 
+ 	max98927_codec: max98927@3a {
 
 ---
-base-commit: 527d39cba164fd11e5a46dc38d8f330c72cf992b
-change-id: 20251129-ext-ptp-2v-b2cc3b7baa59
+base-commit: 7d31f578f3230f3b7b33b0930b08f9afd8429817
+change-id: 20251130-enchilada-i2c-freq-aca7fae1c70f
 
 Best regards,
 -- 
-Rohan G Thomas <rohan.g.thomas@altera.com>
+David Heidelberg <david@ixit.cz>
 
