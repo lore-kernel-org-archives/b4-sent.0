@@ -1,60 +1,84 @@
-From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Fri, 28 Nov 2025 16:36:38 +0000
-Subject: [PATCH RESEND] rtc: max31335: Fix ignored return value in
- set_alarm
+From: Rohan G Thomas <rohan.g.thomas@altera.com>
+Date: Sat, 29 Nov 2025 11:07:05 +0800
+Subject: [PATCH net v2] net: stmmac: Fix E2E delay mechanism
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20251128-max31335-handler-error-v1-1-6b6f7f78dbda@analog.com>
-To: linux-rtc@vger.kernel.org
-Cc: Alexandre Belloni <alexandre.belloni@bootlin.com>, 
- Guenter Roeck <linux@roeck-us.net>, 
- Antoniu Miclaus <antoniu.miclaus@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764347811; l=1114;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=yZMxjkRilIU/IcTJjTLZ+cXNpd/pN79VeBziWYaCG+k=;
- b=Ww6kNNxfHs92/DiGWx2t9ft94HuafT9pupVr6oNlNPCHvMtFozJL0WX/yzBeWZCS59lwvt/Gu
- XvadEoJuSm+DM9ZB64hxFNHANTNHJZd7jEQFHIF5mimVHejmdOl0RIO
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251129-ext-ptp-2v-v2-1-d23aca3e694f@altera.com>
+X-B4-Tracking: v=1; b=H4sIAFhjKmkC/x3MQQqAIBBA0avErBvIiQi7SrRQm2o2JioSSHdPW
+ r7F/xUSR+EES1chcpEkt2+gvgN3GX8yyt4MNNCkFGnkJ2PIAamgJedGO1tjJg0tCJEPef7ZCp4
+ zbO/7AXYW/YxhAAAA
+X-Change-ID: 20251129-ext-ptp-2v-b2cc3b7baa59
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>, 
+ Richard Cochran <richardcochran@gmail.com>, 
+ Jose Abreu <Jose.Abreu@synopsys.com>, Fugang Duan <fugang.duan@nxp.com>, 
+ Kurt Kanzenbach <kurt@linutronix.de>
+Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Rohan G Thomas <rohan.g.thomas@altera.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764385627; l=2236;
+ i=rohan.g.thomas@altera.com; s=20250815; h=from:subject:message-id;
+ bh=Vs44KaAN7n7X6+9HvqUBUtY37vLPXrYhMYfOJlZqUys=;
+ b=ypg60oy/Dq2QN4TFD9EqHDMaOwPxa/g2c6RB6k+kdjcWlbpXEr4zWM2FB81DBAhG2qhirq7o5
+ UOB5pBk6njBBKZaiVooSWo3wK5OrXnH96mGtc2G/POG28scDk2eNeg4
+X-Developer-Key: i=rohan.g.thomas@altera.com; a=ed25519;
+ pk=5yZXkXswhfUILKAQwoIn7m6uSblwgV5oppxqde4g4TY=
+X-Endpoint-Received: by B4 Relay for rohan.g.thomas@altera.com/20250815 with auth_id=494
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Return the result from regmap_update_bits() instead of ignoring it
-and always returning 0.
+For E2E delay mechanism, "received DELAY_REQ without timestamp" error
+messages show up for dwmac v3.70+ and dwxgmac IPs.
 
-Fixes: dedaf03b99d6 ("rtc: max31335: add driver support")
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
+This issue affects socfpga platforms, Agilex7 (dwmac 3.70) and
+Agilex5 (dwxgmac). According to the databook, to enable timestamping
+for all events, the SNAPTYPSEL bits in the MAC_Timestamp_Control
+register must be set to 2'b01, and the TSEVNTENA bit must be cleared
+to 0'b0.
+
+Commit 3cb958027cb8 ("net: stmmac: Fix E2E delay mechanism") already
+addresses this problem for all dwmacs above version v4.10. However,
+same holds true for v3.70 and above, as well as for dwxgmac. Updates
+the check accordingly.
+
+Fixes: 14f347334bf2 ("net: stmmac: Correctly take timestamp for PTPv2")
+Fixes: f2fb6b6275eb ("net: stmmac: enable timestamp snapshot for required PTP packets in dwmac v5.10a")
+Fixes: 3cb958027cb8 ("net: stmmac: Fix E2E delay mechanism")
+Signed-off-by: Rohan G Thomas <rohan.g.thomas@altera.com>
 ---
- drivers/rtc/rtc-max31335.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+v1 -> v2:
+   - Rebased patch to net tree
+   - Replace core_type with has_xgmac
+   - Nit changes in the commit message
+   - Link: https://lore.kernel.org/all/20251125-ext-ptp-fix-v1-1-83f9f069cb36@altera.com/
+---
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/rtc/rtc-max31335.c b/drivers/rtc/rtc-max31335.c
-index dfb5bad3a369..23b7bf16b4cd 100644
---- a/drivers/rtc/rtc-max31335.c
-+++ b/drivers/rtc/rtc-max31335.c
-@@ -391,10 +391,8 @@ static int max31335_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
- 	if (ret)
- 		return ret;
- 
--	ret = regmap_update_bits(max31335->regmap, max31335->chip->int_status_reg,
--				 MAX31335_STATUS1_A1F, 0);
--
--	return 0;
-+	return regmap_update_bits(max31335->regmap, max31335->chip->int_status_reg,
-+				  MAX31335_STATUS1_A1F, 0);
- }
- 
- static int max31335_alarm_irq_enable(struct device *dev, unsigned int enabled)
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+index 7b90ecd3a55e600458b0c87d6125831626f4683d..cfc6e5aaf6f631b9d00dab9f6339778123d4bc75 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -590,7 +590,8 @@ static int stmmac_hwtstamp_set(struct net_device *dev,
+ 			config->rx_filter = HWTSTAMP_FILTER_PTP_V2_EVENT;
+ 			ptp_v2 = PTP_TCR_TSVER2ENA;
+ 			snap_type_sel = PTP_TCR_SNAPTYPSEL_1;
+-			if (priv->synopsys_id < DWMAC_CORE_4_10)
++			if (priv->synopsys_id < DWMAC_CORE_3_70 &&
++			    !priv->plat->has_xgmac)
+ 				ts_event_en = PTP_TCR_TSEVNTENA;
+ 			ptp_over_ipv4_udp = PTP_TCR_TSIPV4ENA;
+ 			ptp_over_ipv6_udp = PTP_TCR_TSIPV6ENA;
 
 ---
-base-commit: 9db26d5855d0374d4652487bfb5aacf40821c469
-change-id: 20251029-max31335-handler-error-65a286c74289
---
+base-commit: 527d39cba164fd11e5a46dc38d8f330c72cf992b
+change-id: 20251129-ext-ptp-2v-b2cc3b7baa59
 
-Thanks!
-- Nuno Sá
+Best regards,
 -- 
-Nuno Sá <nuno.sa@analog.com>
+Rohan G Thomas <rohan.g.thomas@altera.com>
 
