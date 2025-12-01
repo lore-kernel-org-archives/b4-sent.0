@@ -1,11 +1,11 @@
 From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Mon, 01 Dec 2025 12:56:50 +0100
-Subject: [PATCH v2 1/3] dt-bindings: arm: fsl: moduline-display: fix
+Date: Mon, 01 Dec 2025 12:56:51 +0100
+Subject: [PATCH v2 2/3] arm64: dts: freescale: moduline-display: fix
  compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251201-disp_fix-v2-1-9b03026311b6@gocontroll.com>
+Message-Id: <20251201-disp_fix-v2-2-9b03026311b6@gocontroll.com>
 References: <20251201-disp_fix-v2-0-9b03026311b6@gocontroll.com>
 In-Reply-To: <20251201-disp_fix-v2-0-9b03026311b6@gocontroll.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,11 +17,11 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  Maud Spierings <maudspierings@gocontroll.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764590218; l=2122;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764590218; l=1431;
  i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=wXt3WiP0vtdg5opoCrY8YMr9jeuCt1sqacON3Gj18VI=;
- b=dGEyya9PxoluEeZNKYrLl9PPX4+vSLb60Xx6eXUGHdjyI2MHA6A21Qi622qMi+FBszZYctbLr
- FrYwekqk62ZAb3l4F26PBa5BgS8yq/OWSLp3MLJsVqCXdnuTfkyWBcB
+ bh=aBjyYr0KgPqqBX1balGgsZXHNYxS/418tzQqfsE7U/M=;
+ b=ENP1Jh0LkCOmw9V6meQOx6iaYrkPrEj23ilMw94d30dw9P9X2sEOUdDY08dVr6PNOuPPLJlUa
+ kcFQPRxMRHsC3P2JmzfG8k6JMGisI01U0xW1T2fJaQo+xUov9VmixIC
 X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
  pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
 X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
@@ -37,39 +37,25 @@ revision specific quirks in the bootloader/userspace.
 This is a breaking change, but it is early enough that it can be
 corrected without causing any issues.
 
-Fixes: 24e67d28ef95 ("dt-bindings: arm: fsl: Add GOcontroll Moduline Display")
+Fixes: 03f07be54cdc ("arm64: dts: freescale: Add the GOcontroll Moduline Display baseboard")
 Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- Documentation/devicetree/bindings/arm/fsl.yaml | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/arm/fsl.yaml b/Documentation/devicetree/bindings/arm/fsl.yaml
-index 21b7168d61f5..0aeac16843b5 100644
---- a/Documentation/devicetree/bindings/arm/fsl.yaml
-+++ b/Documentation/devicetree/bindings/arm/fsl.yaml
-@@ -1105,7 +1105,6 @@ properties:
-               - gateworks,imx8mp-gw74xx   # i.MX8MP Gateworks Board
-               - gateworks,imx8mp-gw75xx-2x # i.MX8MP Gateworks Board
-               - gateworks,imx8mp-gw82xx-2x # i.MX8MP Gateworks Board
--              - gocontroll,moduline-display # GOcontroll Moduline Display controller
-               - prt,prt8ml             # Protonic PRT8ML
-               - skov,imx8mp-skov-basic # SKOV i.MX8MP baseboard without frontplate
-               - skov,imx8mp-skov-revb-hdmi # SKOV i.MX8MP climate control without panel
-@@ -1163,6 +1162,14 @@ properties:
-           - const: engicam,icore-mx8mp             # i.MX8MP Engicam i.Core MX8M Plus SoM
-           - const: fsl,imx8mp
+diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106.dts b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106.dts
+index 88ad422c2760..399230144ce3 100644
+--- a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106.dts
++++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106.dts
+@@ -9,7 +9,7 @@
+ #include "imx8mp-tx8p-ml81.dtsi"
  
-+      - description: Ka-Ro TX8P-ML81 SoM based boards
-+        items:
-+          - enum:
-+              - gocontroll,moduline-display
-+              - gocontroll,moduline-display-106
-+          - const: karo,tx8p-ml81
-+          - const: fsl,imx8mp
-+
-       - description: Kontron i.MX8MP OSM-S SoM based Boards
-         items:
-           - const: kontron,imx8mp-bl-osm-s  # Kontron BL i.MX8MP OSM-S Board
+ / {
+-	compatible = "gocontroll,moduline-display", "fsl,imx8mp";
++	compatible = "gocontroll,moduline-display-106", "karo,tx8p-ml81", "fsl,imx8mp";
+ 	chassis-type = "embedded";
+ 	hardware = "Moduline Display V1.06";
+ 	model = "GOcontroll Moduline Display baseboard";
 
 -- 
 2.52.0
