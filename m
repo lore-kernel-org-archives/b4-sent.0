@@ -1,620 +1,566 @@
 From: Ye He <ye.he@amlogic.com>
-Date: Tue, 02 Dec 2025 16:40:12 +0800
-Subject: [PATCH bluez v9 2/3] bearer: Implement Connect/Disconnect methods
+Date: Tue, 02 Dec 2025 16:40:13 +0800
+Subject: [PATCH bluez v9 3/3] client: Add shell cmd for bearer
+ connect/disconnect
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251202-bearer-impl-v9-2-21602a82ad7c@amlogic.com>
+Message-Id: <20251202-bearer-impl-v9-3-21602a82ad7c@amlogic.com>
 References: <20251202-bearer-impl-v9-0-21602a82ad7c@amlogic.com>
 In-Reply-To: <20251202-bearer-impl-v9-0-21602a82ad7c@amlogic.com>
 To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
 Cc: Ye He <ye.he@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764664813; l=18709;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764664813; l=13978;
  i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
- bh=MI5M/oL9Oj0JnuiN8CXzeu+ZaeniMDDCGuOBZhQTOHI=;
- b=2jzg5SYLob8JB42rhC6aFzvR+obKLp5jeCc0ski+l4ValvbJT++gh/xx8o3tq/fftT2tyk+hc
- GnMeZn4XUgdDYdOzOqpqk5lrm5dxxeRFDkPJ6lrqF0P2yqlpvkK67jo
+ bh=ElnmBmM/d+yq+MpQNoG5UWBo4+Rutw95XfhnO7MS+pQ=;
+ b=ag5G1wfn/Ob0NAbfgBfoZFLbR535IinWOfcL9JJ9mLD/CgrZL3Xl892ENjj0sI+mxIgb5hD0g
+ rg8OIDNXYZNAg7MiyXnMtT2iMXcc05Joi5bIvyIxdwg1LUUe3H8Oyxw
 X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
  pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
 X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch provides implementations for the Connect and Disconnect
-methods of the org.bluez.Bearer.LE1 and org.bluez.Bearer.BREDR1
-interfaces.
+This patch adds shell command for bearer connect/disconnect.
 
 Signed-off-by: Ye He <ye.he@amlogic.com>
 ---
- src/bearer.c | 178 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- src/bearer.h |   2 +-
- src/device.c | 153 ++++++++++++++++++++++++++++++++++++++++++--------
- src/device.h |  17 ++++++
- 4 files changed, 324 insertions(+), 26 deletions(-)
+ client/bluetoothctl-bredr.rst |  70 +++++++++
+ client/bluetoothctl-le.rst    |  71 +++++++++
+ client/bluetoothctl.rst       |  10 ++
+ client/main.c                 | 324 ++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 475 insertions(+)
 
-diff --git a/src/bearer.c b/src/bearer.c
-index 9723b59e2e7b39b2974e258363aa0ace95862651..02267c71143191b813b0dfe5c58fbd6f1af0eca2 100644
---- a/src/bearer.c
-+++ b/src/bearer.c
-@@ -25,23 +25,43 @@
- 
- #include "bluetooth/bluetooth.h"
- #include "bluetooth/mgmt.h"
-+#include "bluetooth/uuid.h"
- 
- #include "gdbus/gdbus.h"
- #include "src/shared/util.h"
-+#include "src/shared/queue.h"
-+#include "src/shared/timeout.h"
- 
- #include "log.h"
- #include "error.h"
- #include "adapter.h"
- #include "device.h"
-+#include "profile.h"
-+#include "service.h"
- #include "dbus-common.h"
- #include "bearer.h"
- 
-+#define DISCONNECT_TIMER	2
+diff --git a/client/bluetoothctl-bredr.rst b/client/bluetoothctl-bredr.rst
+new file mode 100644
+index 0000000000000000000000000000000000000000..3ec702a59ff35261f6eb71cf77b3267229bbad8b
+--- /dev/null
++++ b/client/bluetoothctl-bredr.rst
+@@ -0,0 +1,70 @@
++==================
++bluetoothctl-bredr
++==================
 +
- struct btd_bearer {
- 	struct btd_device *device;
- 	uint8_t type;
- 	const char *path;
-+	unsigned int disconn_timer;
-+	struct queue *disconnects; /* disconnects message */
++-------------
++BREDR Submenu
++-------------
 +
-+	/* Connect() is defined as a single in-flight operation. To preserve
-+	 * the API semantics of org.bluez.Device1.Connect(), we do not queue
-+	 * additional connect messages.
-+	 */
-+	DBusMessage *connect; /* connect message */
++:Version: BlueZ
++:Copyright: Free use of this software is granted under the terms of the GNU
++            Lesser General Public Licenses (LGPL).
++:Date: December 2025
++:Manual section: 1
++:Manual group: Linux System Administration
++
++SYNOPSIS
++========
++
++**bluetoothctl** [--options] [bredr.commands]
++
++BREDR Commands
++==============
++
++list
++----
++
++List available bredr devices.
++
++:Usage: **> list**
++
++show
++----
++
++Show bredr bearer information on a device.
++
++:Usage: **> show [dev]**
++
++connect
++-------
++
++Connect device over bredr.
++
++This command initiates a bredr connection to a remote device.
++
++By default, it establishes the bredr connection and then connects all profiles
++that marked as auto-connectable.
++
++:Usage: > connect <dev>
++:Example: > connect 1C:48:F9:9D:81:5C
++
++disconnect
++----------
++
++Disconnect device over bredr.
++
++By default this command disconnects all profiles associated with the bredr
++connection, and then terminates the bredr link.
++
++:Usage: > disconnect <dev>
++:Example: > disconnect 1C:48:F9:9D:81:5C
++
++RESOURCES
++=========
++
++http://www.bluez.org
++
++REPORTING BUGS
++==============
++
++linux-bluetooth@vger.kernel.org
+diff --git a/client/bluetoothctl-le.rst b/client/bluetoothctl-le.rst
+new file mode 100644
+index 0000000000000000000000000000000000000000..808d5786ee805a61228a5195cc731a5f46de9201
+--- /dev/null
++++ b/client/bluetoothctl-le.rst
+@@ -0,0 +1,71 @@
++===============
++bluetoothctl-le
++===============
++
++----------
++LE Submenu
++----------
++
++:Version: BlueZ
++:Copyright: Free use of this software is granted under the terms of the GNU
++            Lesser General Public Licenses (LGPL).
++:Date: December 2025
++:Manual section: 1
++:Manual group: Linux System Administration
++
++SYNOPSIS
++========
++
++**bluetoothctl** [--options] [le.commands]
++
++LE Commands
++===========
++
++list
++----
++
++List available le devices.
++
++:Usage: **> list**
++
++show
++----
++
++Show le bearer information on a device.
++
++:Usage: **> show [dev]**
++
++connect
++-------
++
++Connect device over le.
++
++This command initiates a le connection to a remote device.
++
++An active scan report is required before the connection can be
++established. If no advertising report is received before the timeout,
++a le-connection-abort-by-local error will be issued.
++
++:Usage: > connect <dev>
++:Example: > connect 1C:48:F9:9D:81:5C
++
++disconnect
++----------
++
++Disconnect device over le.
++
++By default this command disconnects all profiles/services associated with the le
++connection, and then terminates the le link.
++
++:Usage: > disconnect <dev>
++:Example: > disconnect 1C:48:F9:9D:81:5C
++
++RESOURCES
++=========
++
++http://www.bluez.org
++
++REPORTING BUGS
++==============
++
++linux-bluetooth@vger.kernel.org
+diff --git a/client/bluetoothctl.rst b/client/bluetoothctl.rst
+index 0187e877d60b28eb1e735181b3203e60da821e6f..f8d6c345797722aeb1550d903a268c7d756545f9 100644
+--- a/client/bluetoothctl.rst
++++ b/client/bluetoothctl.rst
+@@ -371,6 +371,16 @@ Assistant Submenu
+ 
+ See **bluetoothctl-assistant(1)**
+ 
++LE Submenu
++==================
++
++See **bluetoothctl-le(1)**
++
++BREDR Submenu
++==================
++
++See **bluetoothctl-bredr(1)**
++
+ AUTOMATION
+ ==========
+ Two common ways to automate the tool are to use Here Docs or the program expect.
+diff --git a/client/main.c b/client/main.c
+index 0a928efaa9bb0d2a806895ff8f8c0c7c0d2493bd..464243ea3b7247f4ae2be479643c44380af82917 100644
+--- a/client/main.c
++++ b/client/main.c
+@@ -2789,6 +2789,47 @@ static char *dev_set_generator(const char *text, int state)
+ 	return set_generator(text, state);
+ }
+ 
++static char *bearer_dev_generator(const char *text, int state,
++					const char *iface)
++{
++	char *addr;
++	GDBusProxy *device;
++	GDBusProxy *bearer;
++
++	if (!iface)
++		return NULL;
++
++	addr = dev_generator(text, state);
++	if (!addr)
++		return NULL;
++
++	device = find_proxy_by_address(default_ctrl->devices, addr);
++	if (!device)
++		goto failed;
++
++	bearer = find_proxies_by_iface(default_ctrl->bearers,
++					g_dbus_proxy_get_path(device),
++					iface);
++	if (!bearer)
++		goto failed;
++
++	return addr;
++
++failed:
++	g_free(addr);
++	return NULL;
++}
++
++static char *le_dev_generator(const char *text, int state)
++{
++	return bearer_dev_generator(text, state, "org.bluez.Bearer.LE1");
++}
++
++static char *bredr_dev_generator(const char *text, int state)
++{
++	return bearer_dev_generator(text, state, "org.bluez.Bearer.BREDR1");
++}
++
+ static char *attribute_generator(const char *text, int state)
+ {
+ 	return gatt_attribute_generator(text, state);
+@@ -3296,6 +3337,253 @@ static void cmd_adv_monitor_get_supported_info(int argc, char *argv[])
+ 	adv_monitor_get_supported_info();
+ }
+ 
++static void print_le_properties(GDBusProxy *proxy)
++{
++	GDBusProxy *device;
++
++	device = find_proxies_by_path(default_ctrl->devices,
++					g_dbus_proxy_get_path(proxy));
++
++	if (!device)
++		return;
++
++	bt_shell_printf("Device %s\n", proxy_address(device));
++
++	/* New properties may add to org.bluez.Bearer.LE1. */
++	print_property(proxy, "Paired");
++	print_property(proxy, "Bonded");
++	print_property(proxy, "Connected");
++}
++
++static void print_le_bearers(void *data, void *user_data)
++{
++	GDBusProxy *proxy = data;
++
++	if (!strcmp(g_dbus_proxy_get_interface(proxy),
++				      "org.bluez.Bearer.LE1"))
++		print_le_properties(data);
++}
++
++static void print_bredr_properties(GDBusProxy *proxy)
++{
++	GDBusProxy *device;
++
++	device = find_proxies_by_path(default_ctrl->devices,
++					g_dbus_proxy_get_path(proxy));
++
++	if (!device)
++		return;
++
++	bt_shell_printf("Device %s\n", proxy_address(device));
++
++	/* New properties may add to org.bluez.Bearer.BREDR1. */
++	print_property(proxy, "Paired");
++	print_property(proxy, "Bonded");
++	print_property(proxy, "Connected");
++}
++
++static void print_bredr_bearers(void *data, void *user_data)
++{
++	GDBusProxy *proxy = data;
++
++	if (!strcmp(g_dbus_proxy_get_interface(proxy),
++				      "org.bluez.Bearer.BREDR1"))
++		print_bredr_properties(data);
++}
++
++static void cmd_list_le(int argc, char *argv[])
++{
++	GList *l;
++	GDBusProxy *device;
++
++	for (l = default_ctrl->devices; l; l = g_list_next(l)) {
++		device = l->data;
++		if (find_proxies_by_iface(default_ctrl->bearers,
++				      g_dbus_proxy_get_path(device),
++				      "org.bluez.Bearer.LE1"))
++			print_device(device, NULL);
++	}
++
++	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
++}
++
++static void cmd_list_bredr(int argc, char *argv[])
++{
++	GList *l;
++	GDBusProxy *device;
++
++	for (l = default_ctrl->devices; l; l = g_list_next(l)) {
++		device = l->data;
++		if (find_proxies_by_iface(default_ctrl->bearers,
++				      g_dbus_proxy_get_path(device),
++				      "org.bluez.Bearer.BREDR1"))
++			print_device(device, NULL);
++	}
++
++	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
++}
++
++static void cmd_show_le(int argc, char *argv[])
++{
++	GDBusProxy *device;
++	GDBusProxy *bearer;
++
++	/* Show all le bearers if no argument is given */
++	if (argc != 2) {
++		g_list_foreach(default_ctrl->bearers, print_le_bearers, NULL);
++		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
++	}
++
++	device = find_proxy_by_address(default_ctrl->devices, argv[1]);
++	if (!device) {
++		bt_shell_printf("Device %s not found\n", argv[1]);
++		return bt_shell_noninteractive_quit(EXIT_FAILURE);
++	}
++
++	bearer = find_proxies_by_iface(default_ctrl->bearers,
++				      g_dbus_proxy_get_path(device),
++				      "org.bluez.Bearer.LE1");
++	if (!bearer) {
++		bt_shell_printf("LE bearer not found on %s\n", argv[1]);
++		return bt_shell_noninteractive_quit(EXIT_FAILURE);
++	}
++
++	print_le_properties(bearer);
++
++	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
++}
++
++static void cmd_show_bredr(int argc, char *argv[])
++{
++	GDBusProxy *device;
++	GDBusProxy *bearer;
++
++	/* Show all bredr bearers if no argument is given */
++	if (argc != 2) {
++		g_list_foreach(default_ctrl->bearers, print_bredr_bearers,
++									NULL);
++		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
++	}
++
++	device = find_proxy_by_address(default_ctrl->devices, argv[1]);
++	if (!device) {
++		bt_shell_printf("Device %s not found\n", argv[1]);
++		return bt_shell_noninteractive_quit(EXIT_FAILURE);
++	}
++
++	bearer = find_proxies_by_iface(default_ctrl->bearers,
++				      g_dbus_proxy_get_path(device),
++				      "org.bluez.Bearer.BREDR1");
++	if (!bearer) {
++		bt_shell_printf("BREDR bearer not found on %s\n", argv[1]);
++		return bt_shell_noninteractive_quit(EXIT_FAILURE);
++	}
++
++	print_bredr_properties(bearer);
++
++	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
++}
++
++static void bearer_connect_reply(DBusMessage *message, void *user_data)
++{
++	DBusError error;
++
++	dbus_error_init(&error);
++
++	if (dbus_set_error_from_message(&error, message) == TRUE) {
++		bt_shell_printf("Failed to connect: %s %s\n", error.name,
++				error.message);
++		dbus_error_free(&error);
++		return bt_shell_noninteractive_quit(EXIT_FAILURE);
++	}
++
++	bt_shell_printf("Connection successful\n");
++
++	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
++}
++
++static void bearer_disconn_reply(DBusMessage *message, void *user_data)
++{
++	DBusError error;
++
++	dbus_error_init(&error);
++
++	if (dbus_set_error_from_message(&error, message) == TRUE) {
++		bt_shell_printf("Failed to disconnect: %s %s\n", error.name,
++				error.message);
++		dbus_error_free(&error);
++		return bt_shell_noninteractive_quit(EXIT_FAILURE);
++	}
++
++	bt_shell_printf("Disconnection successful\n");
++
++	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
++}
++
++static void cmd_bearer_method_handler(int argc, char *argv[],
++					const char *iface,
++					const char *method)
++{
++	GDBusProxy *device;
++	GDBusProxy *bearer;
++
++	if (!check_default_ctrl())
++		return bt_shell_noninteractive_quit(EXIT_FAILURE);
++
++	device = find_proxy_by_address(default_ctrl->devices, argv[1]);
++	if (!device) {
++		bt_shell_printf("Device %s not available\n", argv[1]);
++		return bt_shell_noninteractive_quit(EXIT_FAILURE);
++	}
++
++	bearer = find_proxies_by_iface(default_ctrl->bearers,
++					g_dbus_proxy_get_path(device),
++					iface);
++	if (!bearer) {
++		bt_shell_printf("%s is not available on %s\n",
++				iface, argv[1]);
++		return bt_shell_noninteractive_quit(EXIT_FAILURE);
++	}
++
++	if (!g_dbus_proxy_method_call(bearer, method, NULL,
++				      strcmp(method, "Connect") == 0 ?
++					bearer_connect_reply :
++					bearer_disconn_reply,
++				      NULL, NULL)) {
++		bt_shell_printf("Failed to call %s\n", method);
++		return bt_shell_noninteractive_quit(EXIT_FAILURE);
++	}
++
++	bt_shell_printf("Attempting to %s %s with %s\n",
++					method,
++					argv[1],
++					iface);
++}
++
++static void cmd_connect_le(int argc, char *argv[])
++{
++	cmd_bearer_method_handler(argc, argv, "org.bluez.Bearer.LE1",
++								"Connect");
++}
++
++static void cmd_disconnect_le(int argc, char *argv[])
++{
++	cmd_bearer_method_handler(argc, argv, "org.bluez.Bearer.LE1",
++								"Disconnect");
++}
++
++static void cmd_connect_bredr(int argc, char *argv[])
++{
++	cmd_bearer_method_handler(argc, argv, "org.bluez.Bearer.BREDR1",
++								"Connect");
++}
++
++static void cmd_disconnect_bredr(int argc, char *argv[])
++{
++	cmd_bearer_method_handler(argc, argv, "org.bluez.Bearer.BREDR1",
++								"Disconnect");
++}
++
+ static const struct bt_shell_menu advertise_menu = {
+ 	.name = "advertise",
+ 	.desc = "Advertise Options Submenu",
+@@ -3469,6 +3757,40 @@ static const struct bt_shell_menu gatt_menu = {
+ 	{ } },
  };
  
-+static void bearer_free_dbus_message(void *data)
-+{
-+	dbus_message_unref((DBusMessage *)data);
-+}
++static const struct bt_shell_menu le_menu = {
++	.name = "le",
++	.desc = "LE Bearer Submenu",
++	.entries = {
++	{ "list", NULL, cmd_list_le, "List available le devices" },
++	{ "show", "[dev]", cmd_show_le,
++					"LE bearer information",
++					le_dev_generator },
++	{ "connect", "<dev>", cmd_connect_le,
++					"Connect le on a device",
++					le_dev_generator },
++	{ "disconnect", "<dev>", cmd_disconnect_le,
++					"Disconnect le on a device",
++					le_dev_generator },
++	{} },
++};
 +
- static void bearer_free(void *data)
- {
- 	struct btd_bearer *bearer = data;
-@@ -49,17 +69,128 @@ static void bearer_free(void *data)
- 	free(bearer);
- }
- 
-+static void bearer_disconnect_service(struct btd_service *service,
-+						void *user_data)
-+{
-+	uint8_t bdaddr_type = *(uint8_t *)user_data;
-+	struct btd_profile *profile = btd_service_get_profile(service);
-+	struct btd_device *device = btd_service_get_device(service);
++static const struct bt_shell_menu bredr_menu = {
++	.name = "bredr",
++	.desc = "BREDR Bearer Submenu",
++	.entries = {
++	{ "list", NULL, cmd_list_bredr, "List available bredr devices" },
++	{ "show", "[dev]", cmd_show_bredr,
++					"BREDR bearer information",
++					bredr_dev_generator },
++	{ "connect", "<dev>", cmd_connect_bredr,
++					"Connect bredr on a device",
++					bredr_dev_generator },
++	{ "disconnect", "<dev>", cmd_disconnect_bredr,
++					"Disconnect bredr on a device",
++					bredr_dev_generator },
++	{} },
++};
 +
-+	if (!profile || !device)
-+		return;
-+
-+	if (bdaddr_type == BDADDR_BREDR) {
-+		if (profile->bearer == BTD_PROFILE_BEARER_LE)
-+			return;
-+	} else {
-+		if (profile->bearer == BTD_PROFILE_BEARER_BREDR)
-+			return;
-+	}
-+
-+	DBG("Disconnecting profile %s for bearer addr type %u",
-+	profile->name ?: "(unknown)", bdaddr_type);
-+
-+	btd_service_disconnect(service);
-+}
-+
-+
-+static bool bearer_disconnect_link(gpointer user_data)
-+{
-+	struct btd_bearer *bearer = user_data;
-+	struct btd_device *device = bearer->device;
-+
-+	bearer->disconn_timer = 0;
-+
-+	if (btd_device_bdaddr_type_connected(device, bearer->type))
-+		btd_adapter_disconnect_device(device_get_adapter(device),
-+						device_get_address(device),
-+						bearer->type);
-+	return FALSE;
-+}
-+
- static DBusMessage *bearer_connect(DBusConnection *conn, DBusMessage *msg,
- 							void *user_data)
- {
--	/* TODO */
-+	struct btd_bearer *bearer = user_data;
-+	struct btd_device *device = bearer->device;
-+	int err;
-+
-+	if (btd_device_bdaddr_type_connected(device, bearer->type)) {
-+		if (msg)
-+			return btd_error_already_connected(msg);
-+		return NULL;
-+	}
-+
-+	if (device_is_bonding(device, NULL)) {
-+		if (msg)
-+			return btd_error_in_progress(msg);
-+		return NULL;
-+	}
-+
-+	if (device_is_connecting(device) ||
-+		bearer->connect) {
-+		if (msg)
-+			return btd_error_in_progress(msg);
-+		return NULL;
-+	}
-+
-+	if (msg)
-+		bearer->connect = dbus_message_ref(msg);
-+
-+	if (bearer->type == BDADDR_BREDR)
-+		return device_connect_profiles(device, BDADDR_BREDR,
-+								msg, NULL);
-+	else {
-+		btd_device_set_temporary(device, false);
-+		err = device_connect_le(device);
-+		if (err < 0)
-+			return btd_error_failed(msg, strerror(-err));
-+	}
-+
- 	return NULL;
- }
- 
- static DBusMessage *bearer_disconnect(DBusConnection *conn, DBusMessage *msg,
- 							void *user_data)
- {
--	/* TODO */
-+	struct btd_bearer *bearer = user_data;
-+	struct btd_device *device = bearer->device;
-+
-+	if (!btd_device_bdaddr_type_connected(device, bearer->type)) {
-+		if (msg)
-+			return btd_error_not_connected(msg);
-+		return NULL;
-+	}
-+
-+	/* org.bluez.Device1.Disconnect() is in progress. Since it tears down
-+	 * both LE and BR/EDR bearers, it takes precedence over bearer-level
-+	 * disconnects. Ignore any bearer-specific disconnect requests here.
-+	 */
-+	if (device_is_disconnecting(device)) {
-+		if (msg)
-+			return btd_error_in_progress(msg);
-+		return NULL;
-+	}
-+
-+	if (msg)
-+		queue_push_tail(bearer->disconnects, dbus_message_ref(msg));
-+
-+	device_cancel_bonding(device, MGMT_STATUS_DISCONNECTED);
-+
-+	device_cancel_browse(device, bearer->type);
-+
-+	btd_device_foreach_service(device, bearer_disconnect_service,
-+							&bearer->type);
-+
-+	device_remove_pending_services(device, bearer->type);
-+
-+	if (bearer->disconn_timer)
-+		return NULL;
-+
-+	bearer->disconn_timer = timeout_add_seconds(DISCONNECT_TIMER,
-+							bearer_disconnect_link,
-+							bearer, NULL);
-+
- 	return NULL;
- }
- 
-@@ -151,6 +282,7 @@ struct btd_bearer *btd_bearer_new(struct btd_device *device, uint8_t type)
- 	bearer->device = device;
- 	bearer->type = type;
- 	bearer->path = device_get_path(device);
-+	bearer->disconnects = queue_new();
- 
- 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
- 					bearer->path, bearer_interface(type),
-@@ -174,6 +306,16 @@ void btd_bearer_destroy(struct btd_bearer *bearer)
- 		return;
- 	}
- 
-+	if (bearer->disconnects) {
-+		queue_destroy(bearer->disconnects, bearer_free_dbus_message);
-+		bearer->disconnects = NULL;
-+	}
-+
-+	if (bearer->connect) {
-+		dbus_message_unref(bearer->connect);
-+		bearer->connect = NULL;
-+	}
-+
- 	g_dbus_unregister_interface(btd_get_dbus_connection(), bearer->path,
- 					bearer_interface(bearer->type));
- }
-@@ -198,11 +340,27 @@ void btd_bearer_bonded(struct btd_bearer *bearer)
- 					"Bonded");
- }
- 
--void btd_bearer_connected(struct btd_bearer *bearer)
-+void btd_bearer_connected(struct btd_bearer *bearer, int err)
- {
-+	DBusMessage *reply;
-+
- 	if (!bearer || !bearer->path)
- 		return;
- 
-+	if (bearer->connect) {
-+		if (err)
-+			reply = bearer->type == BDADDR_BREDR ?
-+				btd_error_bredr_errno(bearer->connect, err) :
-+				btd_error_le_errno(bearer->connect, err);
-+		else
-+			reply = dbus_message_new_method_return(
-+							bearer->connect);
-+
-+		g_dbus_send_message(btd_get_dbus_connection(), reply);
-+		dbus_message_unref(bearer->connect);
-+		bearer->connect = NULL;
-+	}
-+
- 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
- 					bearer_interface(bearer->type),
- 					"Connected");
-@@ -212,10 +370,24 @@ void btd_bearer_disconnected(struct btd_bearer *bearer, uint8_t reason)
- {
- 	const char *name;
- 	const char *message;
-+	DBusMessage *msg;
-+	const struct queue_entry *entry;
- 
- 	if (!bearer || !bearer->path)
- 		return;
- 
-+	if (!btd_device_is_connected(bearer->device))
-+		device_disconnect_watches_callback(bearer->device);
-+
-+	while (!queue_isempty(bearer->disconnects)) {
-+		entry = queue_get_entries(bearer->disconnects);
-+		msg = entry->data;
-+		g_dbus_send_reply(btd_get_dbus_connection(), msg,
-+						DBUS_TYPE_INVALID);
-+		queue_remove(bearer->disconnects, msg);
-+		dbus_message_unref(msg);
-+	}
-+
- 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
- 					bearer_interface(bearer->type),
- 					"Connected");
-diff --git a/src/bearer.h b/src/bearer.h
-index 4a39dcdd047e8bfe243c6ce0b43713434e0ea587..a201003f47b8a159d5b33bbfe61c783bac06008a 100644
---- a/src/bearer.h
-+++ b/src/bearer.h
-@@ -18,5 +18,5 @@ void btd_bearer_destroy(struct btd_bearer *bearer);
- 
- void btd_bearer_paired(struct btd_bearer *bearer);
- void btd_bearer_bonded(struct btd_bearer *bearer);
--void btd_bearer_connected(struct btd_bearer *bearer);
-+void btd_bearer_connected(struct btd_bearer *bearer, int err);
- void btd_bearer_disconnected(struct btd_bearer *bearer, uint8_t reason);
-diff --git a/src/device.c b/src/device.c
-index 91b6cc0c65eaae8058cd445c0942ffee57289f0d..35b19e5c67d12f983b65f26bdbdf7879f4b92954 100644
---- a/src/device.c
-+++ b/src/device.c
-@@ -2022,6 +2022,28 @@ static void dev_disconn_service(gpointer a, gpointer b)
- 	btd_service_disconnect(a);
- }
- 
-+void device_disconnect_watches_callback(struct btd_device *device)
-+{
-+	if (!device || !device->watches)
-+		return;
-+
-+	while (device->watches) {
-+		struct btd_disconnect_data *data = device->watches->data;
-+
-+		if (data->watch)
-+			/* temporary is set if device is going to be removed */
-+			data->watch(device, device->temporary,
-+							data->user_data);
-+
-+		/* Check if the watch has been removed by callback function */
-+		if (!g_slist_find(device->watches, data))
-+			continue;
-+
-+		device->watches = g_slist_remove(device->watches, data);
-+		g_free(data);
-+	}
-+}
-+
- void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
- {
- 	if (device->bonding)
-@@ -2063,21 +2085,7 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
- 	g_slist_free(device->pending);
- 	device->pending = NULL;
- 
--	while (device->watches) {
--		struct btd_disconnect_data *data = device->watches->data;
--
--		if (data->watch)
--			/* temporary is set if device is going to be removed */
--			data->watch(device, device->temporary,
--							data->user_data);
--
--		/* Check if the watch has been removed by callback function */
--		if (!g_slist_find(device->watches, data))
--			continue;
--
--		device->watches = g_slist_remove(device->watches, data);
--		g_free(data);
--	}
-+	device_disconnect_watches_callback(device);
- 
- 	if (!btd_device_is_connected(device)) {
- 		if (msg)
-@@ -2095,6 +2103,11 @@ bool device_is_disconnecting(struct btd_device *device)
- 	return device->disconn_timer > 0;
- }
- 
-+bool device_is_connecting(struct btd_device *device)
-+{
-+	return device->connect != NULL;
-+}
-+
- static void add_set(void *data, void *user_data)
- {
- 	struct sirk_info *sirk = data;
-@@ -2385,6 +2398,14 @@ done:
- 						BTD_SERVICE_STATE_CONNECTED))
- 			/* Reset error if there are services connected */
- 			err = 0;
-+	} else if (dbus_message_is_method_call(dev->connect,
-+						BTD_BEARER_BREDR_INTERFACE,
-+						"Connect")) {
-+		/* Send D-Bus reply to bredr.connect() */
-+		if (err) {
-+			btd_bearer_connected(dev->bredr, err);
-+			goto unref;
-+		}
- 	}
- 
- 	DBG("returning response to %s", dbus_message_get_sender(dev->connect));
-@@ -2406,6 +2427,7 @@ done:
- 		g_dbus_send_reply(dbus_conn, dev->connect, DBUS_TYPE_INVALID);
- 	}
- 
-+unref:
- 	dbus_message_unref(dev->connect);
- 	dev->connect = NULL;
- }
-@@ -2712,8 +2734,8 @@ int btd_device_connect_services(struct btd_device *dev, GSList *services)
- 	return connect_next(dev);
- }
- 
--static DBusMessage *connect_profiles(struct btd_device *dev, uint8_t bdaddr_type,
--					DBusMessage *msg, const char *uuid)
-+DBusMessage *device_connect_profiles(struct btd_device *dev,
-+		uint8_t bdaddr_type, DBusMessage *msg, const char *uuid)
- {
- 	struct bearer_state *state = get_state(dev, bdaddr_type);
- 	int err;
-@@ -2826,7 +2848,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
- 		return NULL;
- 	}
- 
--	return connect_profiles(dev, bdaddr_type, msg, NULL);
-+	return device_connect_profiles(dev, bdaddr_type, msg, NULL);
- }
- 
- static DBusMessage *connect_profile(DBusConnection *conn, DBusMessage *msg,
-@@ -2848,7 +2870,7 @@ static DBusMessage *connect_profile(DBusConnection *conn, DBusMessage *msg,
- 		return btd_error_invalid_args_str(msg,
- 					ERR_BREDR_CONN_INVALID_ARGUMENTS);
- 
--	reply = connect_profiles(dev, BDADDR_BREDR, msg, uuid);
-+	reply = device_connect_profiles(dev, BDADDR_BREDR, msg, uuid);
- 	free(uuid);
- 
- 	return reply;
-@@ -3052,6 +3074,13 @@ static void browse_request_complete(struct browse_req *req, uint8_t type,
- 		/* Disregard browse errors in case of Pair */
- 		reply = g_dbus_create_reply(req->msg, DBUS_TYPE_INVALID);
- 		goto done;
-+	} else if (dbus_message_is_method_call(req->msg,
-+				BTD_BEARER_BREDR_INTERFACE, "Connect")) {
-+		/* Send D-Bus reply to bredr.connect() */
-+		if (err && dev->bredr) {
-+			btd_bearer_connected(dev->bredr, err);
-+			goto done;
-+		}
- 	}
- 
- 	if (err) {
-@@ -3421,7 +3450,7 @@ static DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
- 	}
- }
- 
--static void device_cancel_bonding(struct btd_device *device, uint8_t status)
-+void device_cancel_bonding(struct btd_device *device, uint8_t status)
- {
- 	struct bonding_req *bonding = device->bonding;
- 	DBusMessage *reply;
-@@ -3768,10 +3797,10 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type,
- 	/* If this is the first connection over this bearer */
- 	if (bdaddr_type == BDADDR_BREDR) {
- 		device_set_bredr_support(dev);
--		btd_bearer_connected(dev->bredr);
-+		btd_bearer_connected(dev->bredr, 0);
- 	} else {
- 		device_set_le_support(dev, bdaddr_type);
--		btd_bearer_connected(dev->le);
-+		btd_bearer_connected(dev->le, 0);
- 	}
- 
- 	state->connected = true;
-@@ -6424,6 +6453,10 @@ done:
- 	if (!err)
- 		device_browse_gatt(device, NULL);
- 
-+	/* Send D-Bus reply to le.connect() */
-+	if (err && device->le)
-+		btd_bearer_connected(device->le, err);
-+
- 	if (device->connect) {
- 		if (err < 0)
- 			reply = btd_error_le_errno(device->connect, err);
-@@ -6629,6 +6662,39 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
- 	return err;
- }
- 
-+static gboolean device_is_browsing(struct btd_device *device,
-+					uint8_t bdaddr_type)
-+{
-+	if (!device->browse)
-+		return FALSE;
-+
-+	if (bdaddr_type == BDADDR_BREDR && device->browse->type == BROWSE_SDP)
-+		return TRUE;
-+
-+	if (bdaddr_type != BDADDR_BREDR && device->browse->type == BROWSE_GATT)
-+		return TRUE;
-+
-+	return FALSE;
-+}
-+
-+void device_cancel_browse(struct btd_device *device, uint8_t bdaddr_type)
-+{
-+	struct btd_adapter *adapter = device->adapter;
-+
-+	DBG("");
-+
-+	if (!device_is_browsing(device, bdaddr_type))
-+		return;
-+
-+	if (bdaddr_type == BDADDR_BREDR)
-+		bt_cancel_discovery(btd_adapter_get_address(adapter),
-+							&device->bdaddr);
-+	else
-+		attio_cleanup(device);
-+
-+	browse_request_free(device->browse);
-+}
-+
- int device_discover_services(struct btd_device *device)
- {
- 	int err;
-@@ -8088,3 +8154,46 @@ void btd_device_foreach_service_data(struct btd_device *dev, bt_ad_func_t func,
- {
- 	bt_ad_foreach_service_data(dev->ad, func, data);
- }
-+
-+
-+void btd_device_foreach_service(struct btd_device *dev,
-+				btd_device_service_func_t func,
-+				void *user_data)
-+{
-+	GSList *l;
-+
-+	for (l = dev->services; l; l = l->next)
-+		func(l->data, user_data);
-+}
-+
-+void device_remove_pending_services(struct btd_device *dev,
-+					uint8_t bdaddr_type)
-+{
-+	GSList *l = dev->pending;
-+	GSList *next;
-+	struct btd_service *service;
-+	struct btd_profile *profile;
-+
-+	while (l) {
-+		next = l->next;
-+		service = l->data;
-+
-+		profile = btd_service_get_profile(service);
-+		if (!profile)
-+			goto next;
-+
-+		if (bdaddr_type == BDADDR_BREDR) {
-+			if (profile->bearer == BTD_PROFILE_BEARER_LE)
-+				goto next;
-+		} else {
-+			if (profile->bearer == BTD_PROFILE_BEARER_BREDR)
-+				goto next;
-+		}
-+
-+		/* Matched: remove from pending list */
-+		dev->pending = g_slist_remove(dev->pending, service);
-+
-+next:
-+		l = next;
-+	}
-+}
-diff --git a/src/device.h b/src/device.h
-index 6ed8affa0d4a9274d30cac9b48e8a6826edefd64..c7b8b2a16eb993758afc85b291cea31ef46f2d8f 100644
---- a/src/device.h
-+++ b/src/device.h
-@@ -120,6 +120,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
- gboolean device_is_bonding(struct btd_device *device, const char *sender);
- void device_bonding_attempt_failed(struct btd_device *device, uint8_t status);
- void device_bonding_failed(struct btd_device *device, uint8_t status);
-+void device_cancel_bonding(struct btd_device *device, uint8_t status);
- struct btd_adapter_pin_cb_iter *device_bonding_iter(struct btd_device *device);
- int device_bonding_attempt_retry(struct btd_device *device);
- long device_bonding_last_duration(struct btd_device *device);
-@@ -134,6 +135,9 @@ int device_notify_pincode(struct btd_device *device, gboolean secure,
- 							const char *pincode);
- void device_cancel_authentication(struct btd_device *device, gboolean aborted);
- gboolean device_is_authenticating(struct btd_device *device);
-+
-+void device_cancel_browse(struct btd_device *device, uint8_t bdaddr_type);
-+
- void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type,
- 							uint32_t flags);
- void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
-@@ -141,6 +145,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
- 							uint8_t reason);
- void device_request_disconnect(struct btd_device *device, DBusMessage *msg);
- bool device_is_disconnecting(struct btd_device *device);
-+bool device_is_connecting(struct btd_device *device);
- void device_set_ltk(struct btd_device *device, const uint8_t val[16],
- 				bool central, uint8_t enc_size);
- bool btd_device_get_ltk(struct btd_device *device, uint8_t val[16],
-@@ -170,6 +175,7 @@ guint device_add_disconnect_watch(struct btd_device *device,
- 				disconnect_watch watch, void *user_data,
- 				GDestroyNotify destroy);
- void device_remove_disconnect_watch(struct btd_device *device, guint id);
-+void device_disconnect_watches_callback(struct btd_device *device);
- int device_get_appearance(struct btd_device *device, uint16_t *value);
- void device_set_appearance(struct btd_device *device, uint16_t value);
- 
-@@ -184,6 +190,9 @@ void btd_device_set_pnpid(struct btd_device *device, uint16_t source,
- 
- int device_connect_le(struct btd_device *dev);
- 
-+DBusMessage *device_connect_profiles(struct btd_device *dev,
-+		uint8_t bdaddr_type, DBusMessage *msg, const char *uuid);
-+
- typedef void (*device_svc_cb_t) (struct btd_device *dev, int err,
- 							void *user_data);
- 
-@@ -225,3 +234,11 @@ void btd_device_set_conn_param(struct btd_device *device, uint16_t min_interval,
- void btd_device_foreach_service_data(struct btd_device *dev,
- 					bt_device_ad_func_t func,
- 					void *data);
-+
-+typedef void (*btd_device_service_func_t)(struct btd_service *service,
-+					void *user_data);
-+void btd_device_foreach_service(struct btd_device *dev,
-+				btd_device_service_func_t func,
-+				void *user_data);
-+void device_remove_pending_services(struct btd_device *dev,
-+					uint8_t bdaddr_type);
+ static const struct bt_shell_menu main_menu = {
+ 	.name = "main",
+ 	.entries = {
+@@ -3593,6 +3915,8 @@ int main(int argc, char *argv[])
+ 	bt_shell_add_submenu(&advertise_monitor_menu);
+ 	bt_shell_add_submenu(&scan_menu);
+ 	bt_shell_add_submenu(&gatt_menu);
++	bt_shell_add_submenu(&le_menu);
++	bt_shell_add_submenu(&bredr_menu);
+ 	admin_add_submenu();
+ 	player_add_submenu();
+ 	mgmt_add_submenu();
 
 -- 
 2.42.0
