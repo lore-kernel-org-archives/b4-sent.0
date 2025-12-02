@@ -1,368 +1,620 @@
 From: Ye He <ye.he@amlogic.com>
-Date: Tue, 02 Dec 2025 16:40:11 +0800
-Subject: [PATCH bluez v9 1/3] profiles: Add bearer field to btd_profile
+Date: Tue, 02 Dec 2025 16:40:12 +0800
+Subject: [PATCH bluez v9 2/3] bearer: Implement Connect/Disconnect methods
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251202-bearer-impl-v9-1-21602a82ad7c@amlogic.com>
+Message-Id: <20251202-bearer-impl-v9-2-21602a82ad7c@amlogic.com>
 References: <20251202-bearer-impl-v9-0-21602a82ad7c@amlogic.com>
 In-Reply-To: <20251202-bearer-impl-v9-0-21602a82ad7c@amlogic.com>
 To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
 Cc: Ye He <ye.he@amlogic.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764664813; l=13682;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764664813; l=18709;
  i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
- bh=iJknXYj5/qJnw3R4q7z1tmxHYi/nmqwl9k1IYJRo4HA=;
- b=3Br98Fx6WmW0NksBvcb7vYgsMbcNPzHOKfXlqBwD02GPnsxdzZs05OLeicTyVTSOsZ6cI7Eoa
- //0xUS5sRTCAAYc7CnRIXQhuXqMqptj81JZxH9IFGf22O4imT0pAmNS
+ bh=MI5M/oL9Oj0JnuiN8CXzeu+ZaeniMDDCGuOBZhQTOHI=;
+ b=2jzg5SYLob8JB42rhC6aFzvR+obKLp5jeCc0ski+l4ValvbJT++gh/xx8o3tq/fftT2tyk+hc
+ GnMeZn4XUgdDYdOzOqpqk5lrm5dxxeRFDkPJ6lrqF0P2yqlpvkK67jo
 X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
  pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
 X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add bearer filed into btd_profile to indicates which bearer
-type this profile belongs to. Thus we can distinct the services
-per bearer.
+This patch provides implementations for the Connect and Disconnect
+methods of the org.bluez.Bearer.LE1 and org.bluez.Bearer.BREDR1
+interfaces.
 
 Signed-off-by: Ye He <ye.he@amlogic.com>
 ---
- profiles/audio/a2dp.c            |  5 +++--
- profiles/audio/asha.c            |  1 +
- profiles/audio/avrcp.c           |  2 ++
- profiles/audio/bap.c             |  2 ++
- profiles/audio/bass.c            |  1 +
- profiles/audio/ccp.c             |  1 +
- profiles/audio/csip.c            |  2 ++
- profiles/audio/mcp.c             |  1 +
- profiles/audio/micp.c            |  1 +
- profiles/audio/vcp.c             |  1 +
- profiles/battery/battery.c       |  1 +
- profiles/deviceinfo/deviceinfo.c |  1 +
- profiles/gap/gas.c               |  1 +
- profiles/health/hdp_manager.c    |  2 ++
- profiles/input/hog.c             |  1 +
- profiles/input/manager.c         |  1 +
- profiles/midi/midi.c             |  1 +
- profiles/network/manager.c       |  3 +++
- profiles/scanparam/scan.c        |  1 +
- src/profile.h                    | 10 ++++++++++
- 20 files changed, 37 insertions(+), 2 deletions(-)
+ src/bearer.c | 178 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ src/bearer.h |   2 +-
+ src/device.c | 153 ++++++++++++++++++++++++++++++++++++++++++--------
+ src/device.h |  17 ++++++
+ 4 files changed, 324 insertions(+), 26 deletions(-)
 
-diff --git a/profiles/audio/a2dp.c b/profiles/audio/a2dp.c
-index d8f24eaebc745a6d91a8207f6595f0b90d982c39..7a37003a2b25a9e931b8efdfc974368f5ab2bac8 100644
---- a/profiles/audio/a2dp.c
-+++ b/profiles/audio/a2dp.c
-@@ -3757,8 +3757,9 @@ static void media_server_remove(struct btd_adapter *adapter)
- static struct btd_profile a2dp_source_profile = {
- 	.name		= "a2dp-source",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
--
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.remote_uuid	= A2DP_SOURCE_UUID,
+diff --git a/src/bearer.c b/src/bearer.c
+index 9723b59e2e7b39b2974e258363aa0ace95862651..02267c71143191b813b0dfe5c58fbd6f1af0eca2 100644
+--- a/src/bearer.c
++++ b/src/bearer.c
+@@ -25,23 +25,43 @@
+ 
+ #include "bluetooth/bluetooth.h"
+ #include "bluetooth/mgmt.h"
++#include "bluetooth/uuid.h"
+ 
+ #include "gdbus/gdbus.h"
+ #include "src/shared/util.h"
++#include "src/shared/queue.h"
++#include "src/shared/timeout.h"
+ 
+ #include "log.h"
+ #include "error.h"
+ #include "adapter.h"
+ #include "device.h"
++#include "profile.h"
++#include "service.h"
+ #include "dbus-common.h"
+ #include "bearer.h"
+ 
++#define DISCONNECT_TIMER	2
 +
- 	.device_probe	= a2dp_source_probe,
- 	.device_remove	= a2dp_source_remove,
- 
-@@ -3773,7 +3774,7 @@ static struct btd_profile a2dp_source_profile = {
- static struct btd_profile a2dp_sink_profile = {
- 	.name		= "a2dp-sink",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
--
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.remote_uuid	= A2DP_SINK_UUID,
- 	.device_probe	= a2dp_sink_probe,
- 	.device_remove	= a2dp_sink_remove,
-diff --git a/profiles/audio/asha.c b/profiles/audio/asha.c
-index e870ea06f03ac1c20e5b29fb158c815aa2ce756c..8e625fdca32ff0b40efd43e394b34559627bde8c 100644
---- a/profiles/audio/asha.c
-+++ b/profiles/audio/asha.c
-@@ -499,6 +499,7 @@ static int asha_source_disconnect(struct btd_service *service)
- static struct btd_profile asha_source_profile = {
- 	.name		= "asha-source",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= ASHA_PROFILE_UUID,
- 	.experimental	= true,
- 
-diff --git a/profiles/audio/avrcp.c b/profiles/audio/avrcp.c
-index 21bc80bbd095da49788a87357fd67c8e96ab779d..e6f7e1bfde9879ab6bf028e16384d474332fe805 100644
---- a/profiles/audio/avrcp.c
-+++ b/profiles/audio/avrcp.c
-@@ -4868,6 +4868,7 @@ done:
- 
- static struct btd_profile avrcp_target_profile = {
- 	.name		= "audio-avrcp-target",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 
- 	.remote_uuid	= AVRCP_TARGET_UUID,
- 	.device_probe	= avrcp_target_probe,
-@@ -4951,6 +4952,7 @@ done:
- 
- static struct btd_profile avrcp_controller_profile = {
- 	.name		= "avrcp-controller",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 
- 	.remote_uuid	= AVRCP_REMOTE_UUID,
- 	.device_probe	= avrcp_controller_probe,
-diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
-index 85bba9543974e5bf2a1ff6380c36e518ebc095ac..a03a120ddaaed7e261d40ac06a8f9502c52772bc 100644
---- a/profiles/audio/bap.c
-+++ b/profiles/audio/bap.c
-@@ -3865,6 +3865,7 @@ static void bap_adapter_remove(struct btd_profile *p,
- static struct btd_profile bap_profile = {
- 	.name		= "bap",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= PACS_UUID_STR,
- 	.device_probe	= bap_probe,
- 	.device_remove	= bap_remove,
-@@ -3879,6 +3880,7 @@ static struct btd_profile bap_profile = {
- static struct btd_profile bap_bcast_profile = {
- 	.name		= "bcaa",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= BCAAS_UUID_STR,
- 	.device_probe	= bap_bcast_probe,
- 	.device_remove	= bap_bcast_remove,
-diff --git a/profiles/audio/bass.c b/profiles/audio/bass.c
-index 9ace372376f9452050724360c2c28e7cdcf1391b..8886a27d99b63b37e2937d8d70f71dfeda3d9ef2 100644
---- a/profiles/audio/bass.c
-+++ b/profiles/audio/bass.c
-@@ -2172,6 +2172,7 @@ static void bass_server_remove(struct btd_profile *p,
- static struct btd_profile bass_service = {
- 	.name		= "bass",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= BASS_UUID_STR,
- 	.device_probe	= bass_probe,
- 	.device_remove	= bass_remove,
-diff --git a/profiles/audio/ccp.c b/profiles/audio/ccp.c
-index 8aa537b044e13b6d6a773645b420161bedca13ef..fb85045bb8ba1ec47a33856af1129d0ef78bf500 100644
---- a/profiles/audio/ccp.c
-+++ b/profiles/audio/ccp.c
-@@ -208,6 +208,7 @@ ccp_server_remove(struct btd_profile *p,
- static struct btd_profile ccp_profile = {
- 	.name		= "ccp",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= GTBS_UUID_STR,
- 	.device_probe	= ccp_probe,
- 	.device_remove	= ccp_remove,
-diff --git a/profiles/audio/csip.c b/profiles/audio/csip.c
-index b8f29ddf852231d89760d6fe7ca2cfd684236570..d766c3da951899d990aa59132b820737604b1b7c 100644
---- a/profiles/audio/csip.c
-+++ b/profiles/audio/csip.c
-@@ -303,6 +303,7 @@ static void csip_remove(struct btd_service *service)
- static struct btd_profile csip_profile = {
- 	.name		= "csip",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= CSIS_UUID_STR,
- 
- 	.device_probe	= csip_probe,
-@@ -442,6 +443,7 @@ static void csis_server_remove(struct btd_profile *p,
- static struct btd_profile csis_profile = {
- 	.name		= "csis",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.local_uuid	= CSIS_UUID_STR,
- 
- 	.adapter_probe	= csis_server_probe,
-diff --git a/profiles/audio/mcp.c b/profiles/audio/mcp.c
-index 6651b0897e6f631906b1467f5a479737541da286..8d4eed64399195533ac13fd075d7196a35cf2113 100644
---- a/profiles/audio/mcp.c
-+++ b/profiles/audio/mcp.c
-@@ -383,6 +383,7 @@ static void media_control_server_remove(struct btd_profile *p,
- static struct btd_profile mcp_profile = {
- 	.name			= "mcp",
- 	.priority		= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= GMCS_UUID_STR,
- 	.device_probe	= mcp_probe,
- 	.device_remove	= mcp_remove,
-diff --git a/profiles/audio/micp.c b/profiles/audio/micp.c
-index f1fb133897320677225a1c8bee06b4a1214f14fa..475f32daf75c06dc28ca72420a80e30802e5a3e9 100644
---- a/profiles/audio/micp.c
-+++ b/profiles/audio/micp.c
-@@ -300,6 +300,7 @@ static void micp_server_remove(struct btd_profile *p,
- static struct btd_profile micp_profile = {
- 	.name		= "micp",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= MICS_UUID_STR,
- 
- 	.device_probe	= micp_probe,
-diff --git a/profiles/audio/vcp.c b/profiles/audio/vcp.c
-index 8949c71858e53448ee01c5c4261082f3912a759c..471ad59250386941c377e2f81e911467d7023cce 100644
---- a/profiles/audio/vcp.c
-+++ b/profiles/audio/vcp.c
-@@ -328,6 +328,7 @@ static void vcp_server_remove(struct btd_profile *p,
- static struct btd_profile vcp_profile = {
- 	.name		= "vcp",
- 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= VCS_UUID_STR,
- 
- 	.device_probe	= vcp_probe,
-diff --git a/profiles/battery/battery.c b/profiles/battery/battery.c
-index 050234a0fa03813dc9e1b8302689fc68ec254184..2fe1f4aca2cf7b21e52bec989711741d6d7e25b5 100644
---- a/profiles/battery/battery.c
-+++ b/profiles/battery/battery.c
-@@ -327,6 +327,7 @@ static int batt_disconnect(struct btd_service *service)
- 
- static struct btd_profile batt_profile = {
- 	.name		= "batt-profile",
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= BATTERY_UUID,
- 	.device_probe	= batt_probe,
- 	.device_remove	= batt_remove,
-diff --git a/profiles/deviceinfo/deviceinfo.c b/profiles/deviceinfo/deviceinfo.c
-index f5adb101e312108be8dae20c75cc74e1ff7eaabf..e77bb50b457a28f08f3e9d2ecf8d81d80da86106 100644
---- a/profiles/deviceinfo/deviceinfo.c
-+++ b/profiles/deviceinfo/deviceinfo.c
-@@ -137,6 +137,7 @@ static int deviceinfo_disconnect(struct btd_service *service)
- 
- static struct btd_profile deviceinfo_profile = {
- 	.name		= "deviceinfo",
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= DEVICE_INFORMATION_UUID,
- 	.device_probe	= deviceinfo_probe,
- 	.device_remove	= deviceinfo_remove,
-diff --git a/profiles/gap/gas.c b/profiles/gap/gas.c
-index dd45554d43ebc267d40a8fe4a8fab48f602bf6bc..0f41c9e6c2a5c7d980509ae66d8d7d7c2678fd21 100644
---- a/profiles/gap/gas.c
-+++ b/profiles/gap/gas.c
-@@ -366,6 +366,7 @@ static int gap_disconnect(struct btd_service *service)
- 
- static struct btd_profile gap_profile = {
- 	.name		= "gap-profile",
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= GAP_UUID,
- 	.device_probe	= gap_probe,
- 	.device_remove	= gap_remove,
-diff --git a/profiles/health/hdp_manager.c b/profiles/health/hdp_manager.c
-index d1e627a3382a01bdd5002bcc0da01da35e872da1..72b69428036df77e2cdb224f186fb13191f955ed 100644
---- a/profiles/health/hdp_manager.c
-+++ b/profiles/health/hdp_manager.c
-@@ -57,6 +57,7 @@ static void hdp_driver_remove(struct btd_service *service)
- 
- static struct btd_profile hdp_source_profile = {
- 	.name		= "hdp-source",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.remote_uuid	= HDP_SOURCE_UUID,
- 
- 	.device_probe	= hdp_driver_probe,
-@@ -68,6 +69,7 @@ static struct btd_profile hdp_source_profile = {
- 
- static struct btd_profile hdp_sink_profile = {
- 	.name		= "hdp-sink",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.remote_uuid	= HDP_SINK_UUID,
- 
- 	.device_probe	= hdp_driver_probe,
-diff --git a/profiles/input/hog.c b/profiles/input/hog.c
-index 1f5b82b774353244067e460f49aaccd09e26dcc8..f50a0f217f7f732f82645e289419e51ee6412917 100644
---- a/profiles/input/hog.c
-+++ b/profiles/input/hog.c
-@@ -215,6 +215,7 @@ static int hog_disconnect(struct btd_service *service)
- 
- static struct btd_profile hog_profile = {
- 	.name		= "input-hog",
-+	.bearer		= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid	= HOG_UUID,
- 	.device_probe	= hog_probe,
- 	.device_remove	= hog_remove,
-diff --git a/profiles/input/manager.c b/profiles/input/manager.c
-index b0e415f6706c54e7c96199d3bb5e483d0927153f..0fcd6728c2fca83f03f7333f50102658553403e7 100644
---- a/profiles/input/manager.c
-+++ b/profiles/input/manager.c
-@@ -45,6 +45,7 @@ static void hid_server_remove(struct btd_profile *p,
- 
- static struct btd_profile input_profile = {
- 	.name		= "input-hid",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.local_uuid	= HID_UUID,
- 	.remote_uuid	= HID_UUID,
- 
-diff --git a/profiles/midi/midi.c b/profiles/midi/midi.c
-index 90e00a5f58361f1da57a71f393e581da5128310c..ea4719b95b23aa97850de362da9012728427f08e 100644
---- a/profiles/midi/midi.c
-+++ b/profiles/midi/midi.c
-@@ -458,6 +458,7 @@ static int midi_disconnect(struct btd_service *service)
- 
- static struct btd_profile midi_profile = {
- 	.name = "MIDI GATT Driver",
-+	.bearer	= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid = MIDI_UUID,
- 	.priority = BTD_PROFILE_PRIORITY_HIGH,
- 	.auto_connect = true,
-diff --git a/profiles/network/manager.c b/profiles/network/manager.c
-index 51f382529df27600d1a4fd806cb656d7f1a682af..693547d45fbc5b2f227fed832b4efb8fb87c2d59 100644
---- a/profiles/network/manager.c
-+++ b/profiles/network/manager.c
-@@ -120,6 +120,7 @@ static void nap_server_remove(struct btd_profile *p,
- 
- static struct btd_profile panu_profile = {
- 	.name		= "network-panu",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.local_uuid	= NAP_UUID,
- 	.remote_uuid	= PANU_UUID,
- 	.device_probe	= connection_register,
-@@ -132,6 +133,7 @@ static struct btd_profile panu_profile = {
- 
- static struct btd_profile gn_profile = {
- 	.name		= "network-gn",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.local_uuid	= PANU_UUID,
- 	.remote_uuid	= GN_UUID,
- 	.device_probe	= connection_register,
-@@ -144,6 +146,7 @@ static struct btd_profile gn_profile = {
- 
- static struct btd_profile nap_profile = {
- 	.name		= "network-nap",
-+	.bearer		= BTD_PROFILE_BEARER_BREDR,
- 	.local_uuid	= PANU_UUID,
- 	.remote_uuid	= NAP_UUID,
- 	.device_probe	= connection_register,
-diff --git a/profiles/scanparam/scan.c b/profiles/scanparam/scan.c
-index 1c531773740c847e970ac45b7fbda2c0c9501ded..a66f80eabf3ef63e35cfd5e8da30e4aa18420b94 100644
---- a/profiles/scanparam/scan.c
-+++ b/profiles/scanparam/scan.c
-@@ -259,6 +259,7 @@ static int scan_param_probe(struct btd_service *service)
- 
- static struct btd_profile scan_profile = {
- 	.name = "Scan Parameters Client Driver",
-+	.bearer	= BTD_PROFILE_BEARER_LE,
- 	.remote_uuid = SCAN_PARAMETERS_UUID,
- 	.device_probe = scan_param_probe,
- 	.device_remove = scan_param_remove,
-diff --git a/src/profile.h b/src/profile.h
-index 424ce55ad65748ead13b1a38d67fbad6beb2b828..1281d8d9a0daa5de6578a5ae6df8fc211269d409 100644
---- a/src/profile.h
-+++ b/src/profile.h
-@@ -12,12 +12,22 @@
- #define BTD_PROFILE_PRIORITY_MEDIUM	1
- #define BTD_PROFILE_PRIORITY_HIGH	2
- 
-+#define BTD_PROFILE_BEARER_ANY		0
-+#define BTD_PROFILE_BEARER_LE		1
-+#define BTD_PROFILE_BEARER_BREDR	2
+ struct btd_bearer {
+ 	struct btd_device *device;
+ 	uint8_t type;
+ 	const char *path;
++	unsigned int disconn_timer;
++	struct queue *disconnects; /* disconnects message */
 +
- struct btd_service;
- 
- struct btd_profile {
- 	const char *name;
- 	int priority;
- 
-+	/* Indicates which bearer type this profile belongs to. Some profiles
-+	 * may exist in both BR/EDR and LE, in which case they should be
-+	 * registered with BTD_PROFILE_BEARER_ANY.
++	/* Connect() is defined as a single in-flight operation. To preserve
++	 * the API semantics of org.bluez.Device1.Connect(), we do not queue
++	 * additional connect messages.
 +	 */
-+	int bearer;
-+
- 	const char *local_uuid;
- 	const char *remote_uuid;
++	DBusMessage *connect; /* connect message */
+ };
  
++static void bearer_free_dbus_message(void *data)
++{
++	dbus_message_unref((DBusMessage *)data);
++}
++
+ static void bearer_free(void *data)
+ {
+ 	struct btd_bearer *bearer = data;
+@@ -49,17 +69,128 @@ static void bearer_free(void *data)
+ 	free(bearer);
+ }
+ 
++static void bearer_disconnect_service(struct btd_service *service,
++						void *user_data)
++{
++	uint8_t bdaddr_type = *(uint8_t *)user_data;
++	struct btd_profile *profile = btd_service_get_profile(service);
++	struct btd_device *device = btd_service_get_device(service);
++
++	if (!profile || !device)
++		return;
++
++	if (bdaddr_type == BDADDR_BREDR) {
++		if (profile->bearer == BTD_PROFILE_BEARER_LE)
++			return;
++	} else {
++		if (profile->bearer == BTD_PROFILE_BEARER_BREDR)
++			return;
++	}
++
++	DBG("Disconnecting profile %s for bearer addr type %u",
++	profile->name ?: "(unknown)", bdaddr_type);
++
++	btd_service_disconnect(service);
++}
++
++
++static bool bearer_disconnect_link(gpointer user_data)
++{
++	struct btd_bearer *bearer = user_data;
++	struct btd_device *device = bearer->device;
++
++	bearer->disconn_timer = 0;
++
++	if (btd_device_bdaddr_type_connected(device, bearer->type))
++		btd_adapter_disconnect_device(device_get_adapter(device),
++						device_get_address(device),
++						bearer->type);
++	return FALSE;
++}
++
+ static DBusMessage *bearer_connect(DBusConnection *conn, DBusMessage *msg,
+ 							void *user_data)
+ {
+-	/* TODO */
++	struct btd_bearer *bearer = user_data;
++	struct btd_device *device = bearer->device;
++	int err;
++
++	if (btd_device_bdaddr_type_connected(device, bearer->type)) {
++		if (msg)
++			return btd_error_already_connected(msg);
++		return NULL;
++	}
++
++	if (device_is_bonding(device, NULL)) {
++		if (msg)
++			return btd_error_in_progress(msg);
++		return NULL;
++	}
++
++	if (device_is_connecting(device) ||
++		bearer->connect) {
++		if (msg)
++			return btd_error_in_progress(msg);
++		return NULL;
++	}
++
++	if (msg)
++		bearer->connect = dbus_message_ref(msg);
++
++	if (bearer->type == BDADDR_BREDR)
++		return device_connect_profiles(device, BDADDR_BREDR,
++								msg, NULL);
++	else {
++		btd_device_set_temporary(device, false);
++		err = device_connect_le(device);
++		if (err < 0)
++			return btd_error_failed(msg, strerror(-err));
++	}
++
+ 	return NULL;
+ }
+ 
+ static DBusMessage *bearer_disconnect(DBusConnection *conn, DBusMessage *msg,
+ 							void *user_data)
+ {
+-	/* TODO */
++	struct btd_bearer *bearer = user_data;
++	struct btd_device *device = bearer->device;
++
++	if (!btd_device_bdaddr_type_connected(device, bearer->type)) {
++		if (msg)
++			return btd_error_not_connected(msg);
++		return NULL;
++	}
++
++	/* org.bluez.Device1.Disconnect() is in progress. Since it tears down
++	 * both LE and BR/EDR bearers, it takes precedence over bearer-level
++	 * disconnects. Ignore any bearer-specific disconnect requests here.
++	 */
++	if (device_is_disconnecting(device)) {
++		if (msg)
++			return btd_error_in_progress(msg);
++		return NULL;
++	}
++
++	if (msg)
++		queue_push_tail(bearer->disconnects, dbus_message_ref(msg));
++
++	device_cancel_bonding(device, MGMT_STATUS_DISCONNECTED);
++
++	device_cancel_browse(device, bearer->type);
++
++	btd_device_foreach_service(device, bearer_disconnect_service,
++							&bearer->type);
++
++	device_remove_pending_services(device, bearer->type);
++
++	if (bearer->disconn_timer)
++		return NULL;
++
++	bearer->disconn_timer = timeout_add_seconds(DISCONNECT_TIMER,
++							bearer_disconnect_link,
++							bearer, NULL);
++
+ 	return NULL;
+ }
+ 
+@@ -151,6 +282,7 @@ struct btd_bearer *btd_bearer_new(struct btd_device *device, uint8_t type)
+ 	bearer->device = device;
+ 	bearer->type = type;
+ 	bearer->path = device_get_path(device);
++	bearer->disconnects = queue_new();
+ 
+ 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+ 					bearer->path, bearer_interface(type),
+@@ -174,6 +306,16 @@ void btd_bearer_destroy(struct btd_bearer *bearer)
+ 		return;
+ 	}
+ 
++	if (bearer->disconnects) {
++		queue_destroy(bearer->disconnects, bearer_free_dbus_message);
++		bearer->disconnects = NULL;
++	}
++
++	if (bearer->connect) {
++		dbus_message_unref(bearer->connect);
++		bearer->connect = NULL;
++	}
++
+ 	g_dbus_unregister_interface(btd_get_dbus_connection(), bearer->path,
+ 					bearer_interface(bearer->type));
+ }
+@@ -198,11 +340,27 @@ void btd_bearer_bonded(struct btd_bearer *bearer)
+ 					"Bonded");
+ }
+ 
+-void btd_bearer_connected(struct btd_bearer *bearer)
++void btd_bearer_connected(struct btd_bearer *bearer, int err)
+ {
++	DBusMessage *reply;
++
+ 	if (!bearer || !bearer->path)
+ 		return;
+ 
++	if (bearer->connect) {
++		if (err)
++			reply = bearer->type == BDADDR_BREDR ?
++				btd_error_bredr_errno(bearer->connect, err) :
++				btd_error_le_errno(bearer->connect, err);
++		else
++			reply = dbus_message_new_method_return(
++							bearer->connect);
++
++		g_dbus_send_message(btd_get_dbus_connection(), reply);
++		dbus_message_unref(bearer->connect);
++		bearer->connect = NULL;
++	}
++
+ 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
+ 					bearer_interface(bearer->type),
+ 					"Connected");
+@@ -212,10 +370,24 @@ void btd_bearer_disconnected(struct btd_bearer *bearer, uint8_t reason)
+ {
+ 	const char *name;
+ 	const char *message;
++	DBusMessage *msg;
++	const struct queue_entry *entry;
+ 
+ 	if (!bearer || !bearer->path)
+ 		return;
+ 
++	if (!btd_device_is_connected(bearer->device))
++		device_disconnect_watches_callback(bearer->device);
++
++	while (!queue_isempty(bearer->disconnects)) {
++		entry = queue_get_entries(bearer->disconnects);
++		msg = entry->data;
++		g_dbus_send_reply(btd_get_dbus_connection(), msg,
++						DBUS_TYPE_INVALID);
++		queue_remove(bearer->disconnects, msg);
++		dbus_message_unref(msg);
++	}
++
+ 	g_dbus_emit_property_changed(btd_get_dbus_connection(), bearer->path,
+ 					bearer_interface(bearer->type),
+ 					"Connected");
+diff --git a/src/bearer.h b/src/bearer.h
+index 4a39dcdd047e8bfe243c6ce0b43713434e0ea587..a201003f47b8a159d5b33bbfe61c783bac06008a 100644
+--- a/src/bearer.h
++++ b/src/bearer.h
+@@ -18,5 +18,5 @@ void btd_bearer_destroy(struct btd_bearer *bearer);
+ 
+ void btd_bearer_paired(struct btd_bearer *bearer);
+ void btd_bearer_bonded(struct btd_bearer *bearer);
+-void btd_bearer_connected(struct btd_bearer *bearer);
++void btd_bearer_connected(struct btd_bearer *bearer, int err);
+ void btd_bearer_disconnected(struct btd_bearer *bearer, uint8_t reason);
+diff --git a/src/device.c b/src/device.c
+index 91b6cc0c65eaae8058cd445c0942ffee57289f0d..35b19e5c67d12f983b65f26bdbdf7879f4b92954 100644
+--- a/src/device.c
++++ b/src/device.c
+@@ -2022,6 +2022,28 @@ static void dev_disconn_service(gpointer a, gpointer b)
+ 	btd_service_disconnect(a);
+ }
+ 
++void device_disconnect_watches_callback(struct btd_device *device)
++{
++	if (!device || !device->watches)
++		return;
++
++	while (device->watches) {
++		struct btd_disconnect_data *data = device->watches->data;
++
++		if (data->watch)
++			/* temporary is set if device is going to be removed */
++			data->watch(device, device->temporary,
++							data->user_data);
++
++		/* Check if the watch has been removed by callback function */
++		if (!g_slist_find(device->watches, data))
++			continue;
++
++		device->watches = g_slist_remove(device->watches, data);
++		g_free(data);
++	}
++}
++
+ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
+ {
+ 	if (device->bonding)
+@@ -2063,21 +2085,7 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
+ 	g_slist_free(device->pending);
+ 	device->pending = NULL;
+ 
+-	while (device->watches) {
+-		struct btd_disconnect_data *data = device->watches->data;
+-
+-		if (data->watch)
+-			/* temporary is set if device is going to be removed */
+-			data->watch(device, device->temporary,
+-							data->user_data);
+-
+-		/* Check if the watch has been removed by callback function */
+-		if (!g_slist_find(device->watches, data))
+-			continue;
+-
+-		device->watches = g_slist_remove(device->watches, data);
+-		g_free(data);
+-	}
++	device_disconnect_watches_callback(device);
+ 
+ 	if (!btd_device_is_connected(device)) {
+ 		if (msg)
+@@ -2095,6 +2103,11 @@ bool device_is_disconnecting(struct btd_device *device)
+ 	return device->disconn_timer > 0;
+ }
+ 
++bool device_is_connecting(struct btd_device *device)
++{
++	return device->connect != NULL;
++}
++
+ static void add_set(void *data, void *user_data)
+ {
+ 	struct sirk_info *sirk = data;
+@@ -2385,6 +2398,14 @@ done:
+ 						BTD_SERVICE_STATE_CONNECTED))
+ 			/* Reset error if there are services connected */
+ 			err = 0;
++	} else if (dbus_message_is_method_call(dev->connect,
++						BTD_BEARER_BREDR_INTERFACE,
++						"Connect")) {
++		/* Send D-Bus reply to bredr.connect() */
++		if (err) {
++			btd_bearer_connected(dev->bredr, err);
++			goto unref;
++		}
+ 	}
+ 
+ 	DBG("returning response to %s", dbus_message_get_sender(dev->connect));
+@@ -2406,6 +2427,7 @@ done:
+ 		g_dbus_send_reply(dbus_conn, dev->connect, DBUS_TYPE_INVALID);
+ 	}
+ 
++unref:
+ 	dbus_message_unref(dev->connect);
+ 	dev->connect = NULL;
+ }
+@@ -2712,8 +2734,8 @@ int btd_device_connect_services(struct btd_device *dev, GSList *services)
+ 	return connect_next(dev);
+ }
+ 
+-static DBusMessage *connect_profiles(struct btd_device *dev, uint8_t bdaddr_type,
+-					DBusMessage *msg, const char *uuid)
++DBusMessage *device_connect_profiles(struct btd_device *dev,
++		uint8_t bdaddr_type, DBusMessage *msg, const char *uuid)
+ {
+ 	struct bearer_state *state = get_state(dev, bdaddr_type);
+ 	int err;
+@@ -2826,7 +2848,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
+ 		return NULL;
+ 	}
+ 
+-	return connect_profiles(dev, bdaddr_type, msg, NULL);
++	return device_connect_profiles(dev, bdaddr_type, msg, NULL);
+ }
+ 
+ static DBusMessage *connect_profile(DBusConnection *conn, DBusMessage *msg,
+@@ -2848,7 +2870,7 @@ static DBusMessage *connect_profile(DBusConnection *conn, DBusMessage *msg,
+ 		return btd_error_invalid_args_str(msg,
+ 					ERR_BREDR_CONN_INVALID_ARGUMENTS);
+ 
+-	reply = connect_profiles(dev, BDADDR_BREDR, msg, uuid);
++	reply = device_connect_profiles(dev, BDADDR_BREDR, msg, uuid);
+ 	free(uuid);
+ 
+ 	return reply;
+@@ -3052,6 +3074,13 @@ static void browse_request_complete(struct browse_req *req, uint8_t type,
+ 		/* Disregard browse errors in case of Pair */
+ 		reply = g_dbus_create_reply(req->msg, DBUS_TYPE_INVALID);
+ 		goto done;
++	} else if (dbus_message_is_method_call(req->msg,
++				BTD_BEARER_BREDR_INTERFACE, "Connect")) {
++		/* Send D-Bus reply to bredr.connect() */
++		if (err && dev->bredr) {
++			btd_bearer_connected(dev->bredr, err);
++			goto done;
++		}
+ 	}
+ 
+ 	if (err) {
+@@ -3421,7 +3450,7 @@ static DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
+ 	}
+ }
+ 
+-static void device_cancel_bonding(struct btd_device *device, uint8_t status)
++void device_cancel_bonding(struct btd_device *device, uint8_t status)
+ {
+ 	struct bonding_req *bonding = device->bonding;
+ 	DBusMessage *reply;
+@@ -3768,10 +3797,10 @@ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type,
+ 	/* If this is the first connection over this bearer */
+ 	if (bdaddr_type == BDADDR_BREDR) {
+ 		device_set_bredr_support(dev);
+-		btd_bearer_connected(dev->bredr);
++		btd_bearer_connected(dev->bredr, 0);
+ 	} else {
+ 		device_set_le_support(dev, bdaddr_type);
+-		btd_bearer_connected(dev->le);
++		btd_bearer_connected(dev->le, 0);
+ 	}
+ 
+ 	state->connected = true;
+@@ -6424,6 +6453,10 @@ done:
+ 	if (!err)
+ 		device_browse_gatt(device, NULL);
+ 
++	/* Send D-Bus reply to le.connect() */
++	if (err && device->le)
++		btd_bearer_connected(device->le, err);
++
+ 	if (device->connect) {
+ 		if (err < 0)
+ 			reply = btd_error_le_errno(device->connect, err);
+@@ -6629,6 +6662,39 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
+ 	return err;
+ }
+ 
++static gboolean device_is_browsing(struct btd_device *device,
++					uint8_t bdaddr_type)
++{
++	if (!device->browse)
++		return FALSE;
++
++	if (bdaddr_type == BDADDR_BREDR && device->browse->type == BROWSE_SDP)
++		return TRUE;
++
++	if (bdaddr_type != BDADDR_BREDR && device->browse->type == BROWSE_GATT)
++		return TRUE;
++
++	return FALSE;
++}
++
++void device_cancel_browse(struct btd_device *device, uint8_t bdaddr_type)
++{
++	struct btd_adapter *adapter = device->adapter;
++
++	DBG("");
++
++	if (!device_is_browsing(device, bdaddr_type))
++		return;
++
++	if (bdaddr_type == BDADDR_BREDR)
++		bt_cancel_discovery(btd_adapter_get_address(adapter),
++							&device->bdaddr);
++	else
++		attio_cleanup(device);
++
++	browse_request_free(device->browse);
++}
++
+ int device_discover_services(struct btd_device *device)
+ {
+ 	int err;
+@@ -8088,3 +8154,46 @@ void btd_device_foreach_service_data(struct btd_device *dev, bt_ad_func_t func,
+ {
+ 	bt_ad_foreach_service_data(dev->ad, func, data);
+ }
++
++
++void btd_device_foreach_service(struct btd_device *dev,
++				btd_device_service_func_t func,
++				void *user_data)
++{
++	GSList *l;
++
++	for (l = dev->services; l; l = l->next)
++		func(l->data, user_data);
++}
++
++void device_remove_pending_services(struct btd_device *dev,
++					uint8_t bdaddr_type)
++{
++	GSList *l = dev->pending;
++	GSList *next;
++	struct btd_service *service;
++	struct btd_profile *profile;
++
++	while (l) {
++		next = l->next;
++		service = l->data;
++
++		profile = btd_service_get_profile(service);
++		if (!profile)
++			goto next;
++
++		if (bdaddr_type == BDADDR_BREDR) {
++			if (profile->bearer == BTD_PROFILE_BEARER_LE)
++				goto next;
++		} else {
++			if (profile->bearer == BTD_PROFILE_BEARER_BREDR)
++				goto next;
++		}
++
++		/* Matched: remove from pending list */
++		dev->pending = g_slist_remove(dev->pending, service);
++
++next:
++		l = next;
++	}
++}
+diff --git a/src/device.h b/src/device.h
+index 6ed8affa0d4a9274d30cac9b48e8a6826edefd64..c7b8b2a16eb993758afc85b291cea31ef46f2d8f 100644
+--- a/src/device.h
++++ b/src/device.h
+@@ -120,6 +120,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t bdaddr_type,
+ gboolean device_is_bonding(struct btd_device *device, const char *sender);
+ void device_bonding_attempt_failed(struct btd_device *device, uint8_t status);
+ void device_bonding_failed(struct btd_device *device, uint8_t status);
++void device_cancel_bonding(struct btd_device *device, uint8_t status);
+ struct btd_adapter_pin_cb_iter *device_bonding_iter(struct btd_device *device);
+ int device_bonding_attempt_retry(struct btd_device *device);
+ long device_bonding_last_duration(struct btd_device *device);
+@@ -134,6 +135,9 @@ int device_notify_pincode(struct btd_device *device, gboolean secure,
+ 							const char *pincode);
+ void device_cancel_authentication(struct btd_device *device, gboolean aborted);
+ gboolean device_is_authenticating(struct btd_device *device);
++
++void device_cancel_browse(struct btd_device *device, uint8_t bdaddr_type);
++
+ void device_add_connection(struct btd_device *dev, uint8_t bdaddr_type,
+ 							uint32_t flags);
+ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
+@@ -141,6 +145,7 @@ void device_remove_connection(struct btd_device *device, uint8_t bdaddr_type,
+ 							uint8_t reason);
+ void device_request_disconnect(struct btd_device *device, DBusMessage *msg);
+ bool device_is_disconnecting(struct btd_device *device);
++bool device_is_connecting(struct btd_device *device);
+ void device_set_ltk(struct btd_device *device, const uint8_t val[16],
+ 				bool central, uint8_t enc_size);
+ bool btd_device_get_ltk(struct btd_device *device, uint8_t val[16],
+@@ -170,6 +175,7 @@ guint device_add_disconnect_watch(struct btd_device *device,
+ 				disconnect_watch watch, void *user_data,
+ 				GDestroyNotify destroy);
+ void device_remove_disconnect_watch(struct btd_device *device, guint id);
++void device_disconnect_watches_callback(struct btd_device *device);
+ int device_get_appearance(struct btd_device *device, uint16_t *value);
+ void device_set_appearance(struct btd_device *device, uint16_t value);
+ 
+@@ -184,6 +190,9 @@ void btd_device_set_pnpid(struct btd_device *device, uint16_t source,
+ 
+ int device_connect_le(struct btd_device *dev);
+ 
++DBusMessage *device_connect_profiles(struct btd_device *dev,
++		uint8_t bdaddr_type, DBusMessage *msg, const char *uuid);
++
+ typedef void (*device_svc_cb_t) (struct btd_device *dev, int err,
+ 							void *user_data);
+ 
+@@ -225,3 +234,11 @@ void btd_device_set_conn_param(struct btd_device *device, uint16_t min_interval,
+ void btd_device_foreach_service_data(struct btd_device *dev,
+ 					bt_device_ad_func_t func,
+ 					void *data);
++
++typedef void (*btd_device_service_func_t)(struct btd_service *service,
++					void *user_data);
++void btd_device_foreach_service(struct btd_device *dev,
++				btd_device_service_func_t func,
++				void *user_data);
++void device_remove_pending_services(struct btd_device *dev,
++					uint8_t bdaddr_type);
 
 -- 
 2.42.0
