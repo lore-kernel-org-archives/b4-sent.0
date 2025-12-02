@@ -1,77 +1,108 @@
-From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Mon, 01 Dec 2025 12:56:52 +0100
-Subject: [PATCH v2 3/3] arm64: dts: freescale: tx8p-ml81: fix eqos
- nvmem-cells
+From: Ye He <ye.he@amlogic.com>
+Subject: [PATCH bluez v9 0/3] Add implementation of bearer
+ connect/disconnect
+Date: Tue, 02 Dec 2025 16:40:10 +0800
+Message-Id: <20251202-bearer-impl-v9-0-21602a82ad7c@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251201-disp_fix-v2-3-9b03026311b6@gocontroll.com>
-References: <20251201-disp_fix-v2-0-9b03026311b6@gocontroll.com>
-In-Reply-To: <20251201-disp_fix-v2-0-9b03026311b6@gocontroll.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- Maud Spierings <maudspierings@gocontroll.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764590218; l=1812;
- i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=UarncIoORvGu/J2XyFu3oe6mX1a3LvZl4JDeYZkFnbQ=;
- b=gYKT+KLzWn3ITTap+LEFHxcxFrpOkXKJ8kY/KJYUf/jCvfQaELRPEDwdtupElv4zeUZvbg20I
- rzAGTOlmmbgBk02fE/9w1MNX79W2vPLkBWEZ7qlLhJTB6WklRhwFQ/J
-X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
- pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
-X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
+X-B4-Tracking: v=1; b=H4sIAOqlLmkC/23PzW6DMAwH8Fepcl4mHOJ89LT3mHbIh9NGglLBh
+ rZVvPsiLgsF32zr93fyYBONmSZ2Pj3YSHOe8nArjX05sXB1twvxHEvPRCMQSnFPbqSR5/7ecUy
+ aWqtAS+dYEfeRUv5e096Z777ol32U8TVPn8P4s96YYV0exs3AgScJaBCkFGDeXN8Nlxxew9CvS
+ bOodbvVoujQkhEYgtJ4oNtam61ui44uhmh8EzTGvZaVFk8vl0V7FCBtTNE6tddYa9xq5A0PBIH
+ QRbDR7rWqtdpqVTTZNkUJCRp/cFvXWm+1Lto69I2Sylgr9tr8a9E8/dsUnayUXiWbynarl2X5A
+ 3/qdJZhAgAA
+X-Change-ID: 20251111-bearer-impl-5f7e396174aa
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Ye He <ye.he@amlogic.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764664813; l=3166;
+ i=ye.he@amlogic.com; s=20250225; h=from:subject:message-id;
+ bh=5DOMLs5m9IU4l0tQJo8D27YDqRllNYTeV81UHwnWLDQ=;
+ b=uT7Zcotg155wcBXPjHhG5Jf6vGNzlM0SQ1haBMdfWS0fuoBD2l1KNsTaQcbnV49JbEeoKc929
+ kflGJrz6vufAc6PGnCRAM3CWK2k0pW8KLjygfE5GSLIdjUJR7aSe6wr
+X-Developer-Key: i=ye.he@amlogic.com; a=ed25519;
+ pk=hiK/p0mkXYSkX8Ooa496DfgjnbtdcyXSPFwK2LN49CE=
+X-Endpoint-Received: by B4 Relay for ye.he@amlogic.com/20250225 with auth_id=348
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On this SoM eqos is the primary ethernet interface, Ka-Ro fuses the
-address for it in eth_mac1, eth_mac2 seems to be left unfused. In their
-downstream u-boot they fetch it from eth_mac1 [1][2], by setting alias
-of eqos to ethernet0, the driver then fetches the mac address based on
-the alias number.
-
-Set eqos to read from eth_mac1 instead of eth_mac2. Also set fec to
-point at eth_mac2 as it may be fused later even though it is disabled
-by default.
-
-With this changed barebox is now capable of loading the correct address.
-
-Link: https://github.com/karo-electronics/karo-tx-uboot/blob/380543278410bbf04264d80a3bfbe340b8e62439/drivers/net/dwc_eth_qos.c#L1167 [1]
-Link: https://github.com/karo-electronics/karo-tx-uboot/blob/380543278410bbf04264d80a3bfbe340b8e62439/arch/arm/dts/imx8mp-karo.dtsi#L12 [2]
-
-Fixes: bac63d7c5f46 ("arm64: dts: freescale: add Ka-Ro Electronics tx8p-ml81 COM")
-Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
+Signed-off-by: Ye He <ye.he@amlogic.com>
 ---
- arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81.dtsi | 5 +++++
- 1 file changed, 5 insertions(+)
+Changes in v9:
+- Send D-Bus reply when bearer.connect() fails. 
+- Link to v8: https://patch.msgid.link/20251201-bearer-impl-v8-0-f944b6f9f201@amlogic.com
 
-diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81.dtsi b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81.dtsi
-index fe8ba16eb40e..761ee046eb72 100644
---- a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81.dtsi
-+++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81.dtsi
-@@ -47,6 +47,7 @@ &eqos {
- 				 <&clk IMX8MP_SYS_PLL2_100M>,
- 				 <&clk IMX8MP_SYS_PLL2_50M>;
- 	assigned-clock-rates = <266000000>, <100000000>, <50000000>;
-+	nvmem-cells = <&eth_mac1>;
- 	phy-handle = <&ethphy0>;
- 	phy-mode = "rmii";
- 	pinctrl-0 = <&pinctrl_eqos>;
-@@ -75,6 +76,10 @@ ethphy0: ethernet-phy@0 {
- 	};
- };
- 
-+&fec {
-+	nvmem-cells = <&eth_mac2>;
-+};
-+
- &gpio1 {
- 	gpio-line-names = "SODIMM_152",
- 			  "SODIMM_42",
+Changes in v8:
+- Add le & bredr as sub-menus.
+- Link to v7: https://patch.msgid.link/20251127-bearer-impl-v7-0-9a5b06468992@amlogic.com
 
+Changes in v7:
+- Specify the bearer type explicitly in the shell command, instead of passing
+- it as a parameter.
+- Link to v6: https://patch.msgid.link/20251126-bearer-impl-v6-0-e93fd41f10b6@amlogic.com
+
+Changes in v6:
+- Fix coding style warnings.
+- Link to v5: https://patch.msgid.link/20251125-bearer-impl-v5-0-ce1ce5ad19d9@amlogic.com
+
+Changes in v5:
+- Split adding bearer field to btd_profile into a standalone patch.
+- Link to v4: https://patch.msgid.link/20251121-bearer-impl-v4-1-b52149dfd9a6@amlogic.com
+
+Changes in v4:
+- Add a bearer field to btd_profile to indicate which bearer type the profile
+- belongs to, thus we can distinct the services per bearer.
+- Link to v3: https://patch.msgid.link/20251118-bearer-impl-v3-1-dadcd8b0c75d@amlogic.com
+
+Changes in v3:
+- Move the modification logic from the device to bearer, and add
+- some helper functions to the device.
+- Link to v2: https://patch.msgid.link/20251113-bearer-impl-v2-1-c3e825cc6758@amlogic.com
+
+Changes in v2:
+- Fix build error & warning.
+- Link to v1: https://patch.msgid.link/20251111-bearer-impl-v1-1-f41585144218@amlogic.com
+
+---
+Ye He (3):
+      profiles: Add bearer field to btd_profile
+      bearer: Implement Connect/Disconnect methods
+      client: Add shell cmd for bearer connect/disconnect
+
+ client/bluetoothctl-bredr.rst    |  70 +++++++++
+ client/bluetoothctl-le.rst       |  71 +++++++++
+ client/bluetoothctl.rst          |  10 ++
+ client/main.c                    | 324 +++++++++++++++++++++++++++++++++++++++
+ profiles/audio/a2dp.c            |   5 +-
+ profiles/audio/asha.c            |   1 +
+ profiles/audio/avrcp.c           |   2 +
+ profiles/audio/bap.c             |   2 +
+ profiles/audio/bass.c            |   1 +
+ profiles/audio/ccp.c             |   1 +
+ profiles/audio/csip.c            |   2 +
+ profiles/audio/mcp.c             |   1 +
+ profiles/audio/micp.c            |   1 +
+ profiles/audio/vcp.c             |   1 +
+ profiles/battery/battery.c       |   1 +
+ profiles/deviceinfo/deviceinfo.c |   1 +
+ profiles/gap/gas.c               |   1 +
+ profiles/health/hdp_manager.c    |   2 +
+ profiles/input/hog.c             |   1 +
+ profiles/input/manager.c         |   1 +
+ profiles/midi/midi.c             |   1 +
+ profiles/network/manager.c       |   3 +
+ profiles/scanparam/scan.c        |   1 +
+ src/bearer.c                     | 178 ++++++++++++++++++++-
+ src/bearer.h                     |   2 +-
+ src/device.c                     | 153 +++++++++++++++---
+ src/device.h                     |  17 ++
+ src/profile.h                    |  10 ++
+ 28 files changed, 836 insertions(+), 28 deletions(-)
+---
+base-commit: 5e41d1e1d361e7288964e4c2c5ed90736025662f
+change-id: 20251111-bearer-impl-5f7e396174aa
+
+Best regards,
 -- 
-2.52.0
+Ye He <ye.he@amlogic.com>
 
