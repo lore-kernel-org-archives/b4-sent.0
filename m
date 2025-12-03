@@ -1,82 +1,43 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Wed, 03 Dec 2025 15:11:41 +0000
-Subject: [PATCH 6/6] iio: buffer-dmaengine: Fix coding style complains
+Subject: [PATCH 0/2] iio: dac: adi-axi-dac: Minor cleanups
+Date: Wed, 03 Dec 2025 15:53:35 +0000
+Message-Id: <20251203-iio-axi-dac-minor-changes-v1-0-b54650cbeb33@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20251203-iio-dmabuf-improvs-v1-6-0e4907ce7322@analog.com>
-References: <20251203-iio-dmabuf-improvs-v1-0-0e4907ce7322@analog.com>
-In-Reply-To: <20251203-iio-dmabuf-improvs-v1-0-0e4907ce7322@analog.com>
+X-B4-Tracking: v=1; b=H4sIAP9cMGkC/yWMQQqAIBQFrxJ/3Ye0XNRVooXVt94iDYUIpLsnt
+ RyYmUxJIiTRUGWKciEh+AKqrmjZrd+EsRYm3WijdNMyENje4NUufMCHyL+XuO+Ms8ZpUTJT6c8
+ oDvf3HqfneQFkKzA9awAAAA==
+X-Change-ID: 20251203-iio-axi-dac-minor-changes-945fa5f2e1eb
 To: linux-iio@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>
+Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764774697; l=2281;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764777217; l=480;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=69+dyLooRn338nP8fU7ume5QNFgzBMAZG9jZvwNJ6yg=;
- b=crtyyF90MwMdaQqi0OClvYRurthYmZQqItNBMwvtn7EuG3wG7qTnrzo+BOFOgz8DtLM6AE1Ap
- 0TPUGDQbZkmBTDs+0tzTZ6gFdNWA3I2dbMAmlLmJNbTJ4sv5A5HIn/k
+ bh=2AHFe2w84lGFKnqTr1gFzttLc8+02i8mtrCuH+ghiPk=;
+ b=SzlRm2vupn+/WEUI+CdieEBLI5MV8CvrUuIZflaGGVBxeZ0RrIGOnuL7UDHNqUHXv3CqxrugA
+ ZHVHaYTM3ZTCGaVnSmmRQ0M9CohrVtP6Tw0lQ+BelzfB+Vx9v1lA7DW
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Just making sure checkpatch is happy. No functional change intended.
+Small series to use dev_err_probe() and turn dev_info() into dev_dbg()
 
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/iio/buffer/industrialio-buffer-dmaengine.c | 11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
+Nuno Sá (2):
+      iio: dac: adi-axi-dac: Make use of dev_err_probe()
+      iio: dac: adi-axi-dac: Turn dev_info() into dev_dbg()
 
-diff --git a/drivers/iio/buffer/industrialio-buffer-dmaengine.c b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-index a8a4adb5ed3a..b906ceaff9e1 100644
---- a/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-+++ b/drivers/iio/buffer/industrialio-buffer-dmaengine.c
-@@ -39,14 +39,13 @@ struct dmaengine_buffer {
- 	size_t max_size;
- };
- 
--static struct dmaengine_buffer *iio_buffer_to_dmaengine_buffer(
--		struct iio_buffer *buffer)
-+static struct dmaengine_buffer *iio_buffer_to_dmaengine_buffer(struct iio_buffer *buffer)
- {
- 	return container_of(buffer, struct dmaengine_buffer, queue.buffer);
- }
- 
- static void iio_dmaengine_buffer_block_done(void *data,
--		const struct dmaengine_result *result)
-+					    const struct dmaengine_result *result)
- {
- 	struct iio_dma_buffer_block *block = data;
- 
-@@ -57,7 +56,7 @@ static void iio_dmaengine_buffer_block_done(void *data,
- }
- 
- static int iio_dmaengine_buffer_submit_block(struct iio_dma_buffer_queue *queue,
--	struct iio_dma_buffer_block *block)
-+					     struct iio_dma_buffer_block *block)
- {
- 	struct dmaengine_buffer *dmaengine_buffer =
- 		iio_buffer_to_dmaengine_buffer(&queue->buffer);
-@@ -184,7 +183,7 @@ static const struct iio_dma_buffer_ops iio_dmaengine_default_ops = {
- };
- 
- static ssize_t iio_dmaengine_buffer_get_length_align(struct device *dev,
--	struct device_attribute *attr, char *buf)
-+						     struct device_attribute *attr, char *buf)
- {
- 	struct iio_buffer *buffer = to_iio_dev_attr(attr)->buffer;
- 	struct dmaengine_buffer *dmaengine_buffer =
-@@ -243,7 +242,7 @@ static struct iio_buffer *iio_dmaengine_buffer_alloc(struct dma_chan *chan)
- 	dmaengine_buffer->max_size = dma_get_max_seg_size(chan->device->dev);
- 
- 	iio_dma_buffer_init(&dmaengine_buffer->queue, chan->device->dev,
--		&iio_dmaengine_default_ops);
-+			    &iio_dmaengine_default_ops);
- 
- 	dmaengine_buffer->queue.buffer.attrs = iio_dmaengine_buffer_attrs;
- 	dmaengine_buffer->queue.buffer.access = &iio_dmaengine_buffer_ops;
+ drivers/iio/dac/adi-axi-dac.c | 28 +++++++++++++---------------
+ 1 file changed, 13 insertions(+), 15 deletions(-)
+---
+base-commit: f9e05791642810a0cf6237d39fafd6fec5e0b4bb
+change-id: 20251203-iio-axi-dac-minor-changes-945fa5f2e1eb
+--
 
--- 
-2.52.0
+Thanks!
+- Nuno Sá
 
