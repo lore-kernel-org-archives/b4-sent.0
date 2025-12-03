@@ -1,82 +1,56 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Tue, 02 Dec 2025 12:31:11 +0100
-Subject: [PATCH] arm64: dts: qcom: sdm845-tama: Keep labibb on, so kernel
- can disable it
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH 0/6] iio: buffer-dma: Minor cleanups and improvements
+Date: Wed, 03 Dec 2025 15:11:35 +0000
+Message-Id: <20251203-iio-dmabuf-improvs-v1-0-0e4907ce7322@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251202-tama-labibb-v1-1-f8f3fda53d1d@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAP7NLmkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDIKFbkpibqJuTmJSZlKRrbGqUYpBqnGRqbJqoBNRRUJSallkBNi06trY
- WAJK5FcNdAAAA
-X-Change-ID: 20251202-tama-labibb-352d0e3b535a
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- David Heidelberg <david@ixit.cz>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIACdTMGkC/x3MQQ5AMBBA0avIrE3SVgmuIhalg1lQmYZIGnfXW
+ L7F/wkiCVOEvkggdHPkcGTosoB5c8dKyD4bjDK11soic0C/u+lakPdTwh1RVb6zxrR2ahvI4Sm
+ 08PNPh/F9PyfoX3hkAAAA
+X-Change-ID: 20251104-iio-dmabuf-improvs-03d942284b86
+To: linux-iio@vger.kernel.org
+Cc: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1307; i=david@ixit.cz;
- h=from:subject:message-id; bh=0UAAE/GYUfDSMLAMoQz/OVDB+waaDiiqt3ufPTsWZ7c=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpLs4Cxo4sEgA4auX8qDQVu1C0Ys5Z92vxDo5nR
- oWfeNHX+06JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaS7OAgAKCRBgAj/E00kg
- ctZ9D/4ph94Vj16a0ibUs8T7RMZ/uzH3ySwLHRXRnxEGxoS/zqT52pPpT8j7w9ArSLdreFh44d5
- 9UyzpaZydzVssH4rV8ylCObkwBNuPdkt4WkCnz17nHMzj3IT9EYJweC8owuA+8LopalvRDJtoWZ
- GKbXICzbLd4QjakbRK3VpVsiMb8kPgd2A03hSECWLSX+NXMnBqA1bBAf3i2khjpkhFgGHifRnm6
- 5lz1SXgurUKEa9grvASL4cHBTg1G+UnyFl+ccttkLVGdipdmaEx2O1gQ5NesyJoLitUEVsgijBm
- 8gIDgSUkl1sO9klZjnjod/IXe5FpOwSabAlT8gtdXAAsv2EwGO9UTfxjr/1wTKGevcqCdS8WWte
- 59r7+ojFjrFUkYxGyDO+BKyEU+9qFufLd7tKsfQ9hvYjCzOy3IVPxcbZjOT++gmrbw0QG+ZqOG8
- 6M798CgG0R7LdVH9SVKOrsi2V5dWkyI1dNPAOU4h0bgTPPYGfohII5MlSvZ4bwExQC6JSXDyP6D
- /6TQ4s5pKZySmG/Arc4aTuqbv5sasQgeoOZuBpTUqxknt43Io2mZeYoASshThDXPWU2Q+WcMlSP
- YwHF90Y31GWyaTkMOPqfdIEuGz5U99LElQyDpbpVGrt/tZ26UhZVaTdg/YgMeKm3NEFyImFaDP5
- s33dy6dL/j/J51Q==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764774697; l=1154;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=YdCCeSF1SQIBqUetVexQTJcy6L84v6sNqM9xPlse8XE=;
+ b=GdFk7UYClyxXmOdoZgiDH12p8FGN4MfMRO680emZKNnDVrgZo32xVT1GxdTIzL8bNTkJWq9Cj
+ yncNf30XJHaDtGjO7y1peCnfz6wnESgnCz3/3XuLzBe5IK/lVFcqlWW
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In case if they were enabled by the bootloader as part of some
-reference/common routine and left hanging. Linux will switch them off if
-they're never used.
+Small series with some minor improvements for IIO DMA buffers:
+ * Use lockdep instead of WARN() + mutex API;
+ * Use cleanup.h;
+ * Turn iio_dma_buffer_init() void;
+ * And I could not resist in cleaning up coding style.
 
-Discussion about it can be found here:
-  https://lore.kernel.org/all/20251130-oneplus-labibb-v1-1-bb3653e43120@ixit.cz/
-
-Fixes: 5dcc6587fde2 ("arm64: dts: qcom: sdm845-tama: Add display nodes")
-Suggested-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: David Heidelberg <david@ixit.cz>
----
- arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama-akatsuki.dts | 8 --------
- 1 file changed, 8 deletions(-)
-
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama-akatsuki.dts b/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama-akatsuki.dts
-index 82e59e4533549..c2b38ecb2e9cf 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama-akatsuki.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama-akatsuki.dts
-@@ -28,14 +28,6 @@ ts_vddio_supply: ts-vddio-regulator {
- 	};
- };
- 
--&ibb {
--	status = "disabled";
--};
--
--&lab {
--	status = "disabled";
--};
--
- &panel {
- 	/* Akatsuki uses an OLED panel. */
- 	/delete-property/ backlight;
+Also note that in some of the coding style cleanups I deliberately went
+above the 80 col limit as I think it otherwise hurts readability. If not
+the case for everyone, I can change it.
 
 ---
-base-commit: 95cb2fd6ce0ad61af54191fe5ef271d7177f9c3a
-change-id: 20251202-tama-labibb-352d0e3b535a
+Nuno Sá (6):
+      iio: buffer-dma: use lockdep instead of WARN()
+      iio: buffer-dma: Use the cleanup.h API
+      iio: buffer-dma: Turn iio_dma_buffer_init() void
+      iio: buffer-dma: Fix coding style complains
+      iio: buffer-dmaengine: Use the cleanup.h API
+      iio: buffer-dmaengine: Fix coding style complains
 
-Best regards,
--- 
-David Heidelberg <david@ixit.cz>
+ drivers/iio/buffer/industrialio-buffer-dma.c       | 186 +++++++++------------
+ drivers/iio/buffer/industrialio-buffer-dmaengine.c |  22 +--
+ include/linux/iio/buffer-dma.h                     |  20 ++-
+ 3 files changed, 96 insertions(+), 132 deletions(-)
+---
+base-commit: c5411c8b9ed1caf53604bb1a5be3f487988efc98
+change-id: 20251104-iio-dmabuf-improvs-03d942284b86
+--
+
+Thanks!
+- Nuno Sá
 
