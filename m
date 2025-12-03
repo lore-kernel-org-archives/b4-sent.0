@@ -1,146 +1,291 @@
-From: Moritz Zielke <moritz.zielke@gmail.com>
-Date: Wed, 03 Dec 2025 18:03:26 +0100
-Subject: [PATCH] rust: io: convert ResourceSize to newtype
+From: David Heidelberg <david@ixit.cz>
+Date: Wed, 03 Dec 2025 23:34:10 +0100
+Subject: [PATCH] ALSA: Do not build obsolete API
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251203-res-size-newtype-v1-1-22ed0b8a7a18@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAF1tMGkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDIwNj3aLUYt3izKpU3bzU8pLKglRds7RUQxODpGQDA2MLJaC2gqLUtMw
- KsJHRsbW1AEJBicRiAAAA
-X-Change-ID: 20251203-res-size-newtype-6fe140bc0038
-To: Danilo Krummrich <dakr@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
- Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Trevor Gross <tmgross@umich.edu>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Moritz Zielke <moritz.zielke@gmail.com>
+Message-Id: <20251203-old-alsa-v1-1-ac80704f52c3@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAOG6MGkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1NDIwNj3fycFN3EnOJE3bREo2Sj5CQDY4tUQyWg8oKi1LTMCrBR0bG1tQA
+ h8dfkWgAAAA==
+X-Change-ID: 20251203-old-alsa-fa2c2cb038e1
+To: Russell King <linux@armlinux.org.uk>, Vladimir Zapolskiy <vz@mleia.com>, 
+ Piotr Wojtaszczyk <piotr.wojtaszczyk@timesys.com>, 
+ Aaro Koskinen <aaro.koskinen@iki.fi>, 
+ Janusz Krzysztofik <jmkrzyszt@gmail.com>, Tony Lindgren <tony@atomide.com>, 
+ Thierry Reding <thierry.reding@gmail.com>, 
+ Jonathan Hunter <jonathanh@nvidia.com>, 
+ Thomas Bogendoerfer <tsbogend@alpha.franken.de>, 
+ Keguang Zhang <keguang.zhang@gmail.com>, 
+ Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
+ Yoshinori Sato <ysato@users.sourceforge.jp>, Rich Felker <dalias@libc.org>, 
+ John Paul Adrian Glaubitz <glaubitz@physik.fu-berlin.de>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ linux-omap@vger.kernel.org, linux-tegra@vger.kernel.org, 
+ linux-mips@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+ linux-sh@vger.kernel.org, linux-sound@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764781437; l=3636;
- i=moritz.zielke@gmail.com; s=20251030; h=from:subject:message-id;
- bh=5TmYhrgh6SV5dKVgNEgNSkZcUX+Zbc71raKvBWcrl+U=;
- b=q54C1dhu/J84OMY9kchh8i60QvcahqNvAWPY54/1lDdLZ/+MIIHD8+9DGbfn8iF6oftY9OhFY
- /ICpuULcbqWDiJS4XI2AaAiU1GjJOhpew4F2+zT1a+eBCZPr0n5KwtL
-X-Developer-Key: i=moritz.zielke@gmail.com; a=ed25519;
- pk=TFwYpZ0YPwD8idGzvlafpvAW4DDA0FrkMEjcfZVXkN0=
-X-Endpoint-Received: by B4 Relay for moritz.zielke@gmail.com/20251030 with auth_id=558
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8871; i=david@ixit.cz;
+ h=from:subject:message-id; bh=iI36/zucaZGMAuHjbpHexqSrh35fgY0PI2Hy+1NmdLI=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpMLr4dZLJefPCvCqy7I+f17rkRcl5hpkhPdmWn
+ TUxQ0hMVpqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaTC6+AAKCRBgAj/E00kg
+ cjJDEACVB5l/R30FCxRxuw1tVSQNh1XBjAM/u0mWR8xtGuOwua2EGN2BnCS2P63uuTvKDaQLHDM
+ nI6uK3wK3LSfSV8llwL09HmaTKe8EHkJhIY4XXnSnt3Xf+YzEwpFtqZdouJRXshNZcOwv9YCaVB
+ BkF3f87Iu6iAbtuEWJhmiD0EZfrMzLbPBxnIiCUOb+xFB3yRoHocuAtB+PqwT5GjEupogYxlWFE
+ vAIlFc4xSMtxdH7wJk6K/D76PwbwXY9dHJHEasuP6KD5sFMjibjf+eP8VAqZMFcFzvsjorfTgtK
+ /tldmJUfctc6nx/IyiGPrx4WT1qMpUjfWymzmtbELTsKwLuH9bnmmmxdZXiW5VUPRVXTmSwWSDf
+ V2OlpxnZL7eJayWWzTyMMt2M6lNWiblwgxYXnFOnxNmr3dunhKVjEX2bpF2fR4LQYjoSdb0VHy2
+ +Sfcs0xEfeGUtbL5tFU6X17UrOoT5VkmPq2R4T1zg7ucI7Om4tnGV5lhj/HUE4PEzODr9mEoDgD
+ oqQKtCrAUTp+XO0o/E4+XjE0NjjNnfhwBhx9WMWAUPOYI52HcPdS+dkXgSRmdphZao3dawJK7wu
+ GeqGmaGEqHl8wJvmrx7wSIu1GGPYHL3yY7CKUq9lRUUcktu0JJ4kGp/Giuj/YqxFNdKhXFerthu
+ bsqXeLACDYQX51g==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Makes ResourceSize a newtype wrapper around the type for which it
-previously was an alias. This should help prevent mistakes by
-restricting what operations are possible with ResourceSize.
+ALSA 0.9.0-rc3 is from 2002, 23 years old.
 
-Suggested-by: Miguel Ojeda <ojeda@kernel.org>
-Link: https://github.com/Rust-for-Linux/linux/issues/1203
-Signed-off-by: Moritz Zielke <moritz.zielke@gmail.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-I think with [1] the prerequisites for making ResourceSize a newtype
-have been applied to the driver-core-testing branch of driver-core.
-So I developed this patch against driver-core-testing. 
+Maybe I could drop also the code and Kconfig option?
 
-[1] https://lore.kernel.org/lkml/DE0C1KA14PDQ.Q2CJDDTQPWOK@kernel.org/
+David
 ---
- rust/kernel/io.rs          | 38 ++++++++++++++++++++++++++++++++++++--
- rust/kernel/io/resource.rs |  6 +++---
- 2 files changed, 39 insertions(+), 5 deletions(-)
+ arch/arm/configs/am200epdkit_defconfig    | 1 -
+ arch/arm/configs/lpc32xx_defconfig        | 1 -
+ arch/arm/configs/omap1_defconfig          | 1 -
+ arch/arm/configs/tegra_defconfig          | 1 -
+ arch/mips/configs/gcw0_defconfig          | 1 -
+ arch/mips/configs/loongson1_defconfig     | 1 -
+ arch/mips/configs/qi_lb60_defconfig       | 1 -
+ arch/mips/configs/rbtx49xx_defconfig      | 1 -
+ arch/mips/configs/rs90_defconfig          | 1 -
+ arch/powerpc/configs/85xx-hw.config       | 1 -
+ arch/powerpc/configs/86xx-hw.config       | 1 -
+ arch/powerpc/configs/mpc5200_defconfig    | 1 -
+ arch/powerpc/configs/ppc6xx_defconfig     | 1 -
+ arch/sh/configs/edosk7760_defconfig       | 1 -
+ arch/sh/configs/se7724_defconfig          | 1 -
+ arch/sh/configs/sh7785lcr_32bit_defconfig | 1 -
+ sound/core/Kconfig                        | 2 +-
+ 17 files changed, 1 insertion(+), 17 deletions(-)
 
-diff --git a/rust/kernel/io.rs b/rust/kernel/io.rs
-index 98e8b84e68d1..490f60680090 100644
---- a/rust/kernel/io.rs
-+++ b/rust/kernel/io.rs
-@@ -4,6 +4,8 @@
- //!
- //! C header: [`include/asm-generic/io.h`](srctree/include/asm-generic/io.h)
+diff --git a/arch/arm/configs/am200epdkit_defconfig b/arch/arm/configs/am200epdkit_defconfig
+index 134a559aba3dd..2367b1685c1cf 100644
+--- a/arch/arm/configs/am200epdkit_defconfig
++++ b/arch/arm/configs/am200epdkit_defconfig
+@@ -68,7 +68,6 @@ CONFIG_SOUND=m
+ CONFIG_SND=m
+ CONFIG_SND_MIXER_OSS=m
+ CONFIG_SND_PCM_OSS=m
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ # CONFIG_SND_VERBOSE_PROCFS is not set
+ CONFIG_SND_PXA2XX_AC97=m
+ CONFIG_USB_GADGET=y
+diff --git a/arch/arm/configs/lpc32xx_defconfig b/arch/arm/configs/lpc32xx_defconfig
+index 2bddb0924a8c0..b9e2e603cd95e 100644
+--- a/arch/arm/configs/lpc32xx_defconfig
++++ b/arch/arm/configs/lpc32xx_defconfig
+@@ -113,7 +113,6 @@ CONFIG_LOGO=y
+ # CONFIG_LOGO_LINUX_VGA16 is not set
+ CONFIG_SOUND=y
+ CONFIG_SND=y
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ # CONFIG_SND_VERBOSE_PROCFS is not set
+ CONFIG_SND_DEBUG=y
+ CONFIG_SND_DEBUG_VERBOSE=y
+diff --git a/arch/arm/configs/omap1_defconfig b/arch/arm/configs/omap1_defconfig
+index dee820474f444..df88763fc7c3d 100644
+--- a/arch/arm/configs/omap1_defconfig
++++ b/arch/arm/configs/omap1_defconfig
+@@ -148,7 +148,6 @@ CONFIG_SOUND=y
+ CONFIG_SND=y
+ CONFIG_SND_MIXER_OSS=y
+ CONFIG_SND_PCM_OSS=y
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ # CONFIG_SND_VERBOSE_PROCFS is not set
+ CONFIG_SND_DUMMY=y
+ CONFIG_SND_USB_AUDIO=y
+diff --git a/arch/arm/configs/tegra_defconfig b/arch/arm/configs/tegra_defconfig
+index ce70ff07c978a..68aedaf92667a 100644
+--- a/arch/arm/configs/tegra_defconfig
++++ b/arch/arm/configs/tegra_defconfig
+@@ -219,7 +219,6 @@ CONFIG_FRAMEBUFFER_CONSOLE_ROTATION=y
+ CONFIG_LOGO=y
+ CONFIG_SOUND=y
+ CONFIG_SND=y
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ # CONFIG_SND_DRIVERS is not set
+ CONFIG_SND_HDA_TEGRA=y
+ CONFIG_SND_HDA_INPUT_BEEP=y
+diff --git a/arch/mips/configs/gcw0_defconfig b/arch/mips/configs/gcw0_defconfig
+index fda9971bdd8d9..adb9fd62ddb0d 100644
+--- a/arch/mips/configs/gcw0_defconfig
++++ b/arch/mips/configs/gcw0_defconfig
+@@ -79,7 +79,6 @@ CONFIG_LOGO=y
+ # CONFIG_LOGO_LINUX_VGA16 is not set
+ CONFIG_SOUND=y
+ CONFIG_SND=y
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ # CONFIG_SND_PROC_FS is not set
+ # CONFIG_SND_DRIVERS is not set
+ # CONFIG_SND_SPI is not set
+diff --git a/arch/mips/configs/loongson1_defconfig b/arch/mips/configs/loongson1_defconfig
+index 02d29110f7024..1d9781ff96986 100644
+--- a/arch/mips/configs/loongson1_defconfig
++++ b/arch/mips/configs/loongson1_defconfig
+@@ -119,7 +119,6 @@ CONFIG_WATCHDOG_SYSFS=y
+ CONFIG_LOONGSON1_WDT=y
+ CONFIG_SOUND=y
+ CONFIG_SND=y
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ # CONFIG_SND_DRIVERS is not set
+ # CONFIG_SND_MIPS is not set
+ # CONFIG_SND_USB is not set
+diff --git a/arch/mips/configs/qi_lb60_defconfig b/arch/mips/configs/qi_lb60_defconfig
+index 5f5b0254d75e7..a1bb0792f6eb1 100644
+--- a/arch/mips/configs/qi_lb60_defconfig
++++ b/arch/mips/configs/qi_lb60_defconfig
+@@ -81,7 +81,6 @@ CONFIG_LOGO=y
+ # CONFIG_LOGO_LINUX_CLUT224 is not set
+ CONFIG_SOUND=y
+ CONFIG_SND=y
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ # CONFIG_SND_VERBOSE_PROCFS is not set
+ # CONFIG_SND_DRIVERS is not set
+ # CONFIG_SND_SPI is not set
+diff --git a/arch/mips/configs/rbtx49xx_defconfig b/arch/mips/configs/rbtx49xx_defconfig
+index 03a7bbe28a532..49c709d663beb 100644
+--- a/arch/mips/configs/rbtx49xx_defconfig
++++ b/arch/mips/configs/rbtx49xx_defconfig
+@@ -53,7 +53,6 @@ CONFIG_TXX9_WDT=m
+ # CONFIG_VGA_ARB is not set
+ CONFIG_SOUND=m
+ CONFIG_SND=m
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ # CONFIG_SND_VERBOSE_PROCFS is not set
+ # CONFIG_SND_DRIVERS is not set
+ # CONFIG_SND_PCI is not set
+diff --git a/arch/mips/configs/rs90_defconfig b/arch/mips/configs/rs90_defconfig
+index a53dd66e9b864..8382d535e6dc1 100644
+--- a/arch/mips/configs/rs90_defconfig
++++ b/arch/mips/configs/rs90_defconfig
+@@ -105,7 +105,6 @@ CONFIG_LOGO=y
+ CONFIG_SOUND=y
+ CONFIG_SND=y
+ # CONFIG_SND_PCM_TIMER is not set
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ # CONFIG_SND_PROC_FS is not set
+ # CONFIG_SND_DRIVERS is not set
+ # CONFIG_SND_MIPS is not set
+diff --git a/arch/powerpc/configs/85xx-hw.config b/arch/powerpc/configs/85xx-hw.config
+index 8aff832173977..2b19c20a9a2c4 100644
+--- a/arch/powerpc/configs/85xx-hw.config
++++ b/arch/powerpc/configs/85xx-hw.config
+@@ -117,7 +117,6 @@ CONFIG_SND_INTEL8X0=y
+ CONFIG_SND_POWERPC_SOC=y
+ # CONFIG_SND_PPC is not set
+ CONFIG_SND_SOC=y
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ # CONFIG_SND_USB is not set
+ CONFIG_SND=y
+ CONFIG_SOUND=y
+diff --git a/arch/powerpc/configs/86xx-hw.config b/arch/powerpc/configs/86xx-hw.config
+index e7bd265fae5a4..07f30ab881e59 100644
+--- a/arch/powerpc/configs/86xx-hw.config
++++ b/arch/powerpc/configs/86xx-hw.config
+@@ -80,7 +80,6 @@ CONFIG_SERIO_LIBPS2=y
+ CONFIG_SND_INTEL8X0=y
+ CONFIG_SND_MIXER_OSS=y
+ CONFIG_SND_PCM_OSS=y
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ CONFIG_SND=y
+ CONFIG_SOUND=y
+ CONFIG_ULI526X=y
+diff --git a/arch/powerpc/configs/mpc5200_defconfig b/arch/powerpc/configs/mpc5200_defconfig
+index c0fe5e76604a0..617650cea56a9 100644
+--- a/arch/powerpc/configs/mpc5200_defconfig
++++ b/arch/powerpc/configs/mpc5200_defconfig
+@@ -75,7 +75,6 @@ CONFIG_FB_SM501=m
+ CONFIG_LOGO=y
+ CONFIG_SOUND=y
+ CONFIG_SND=y
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ # CONFIG_SND_DRIVERS is not set
+ # CONFIG_SND_PCI is not set
+ # CONFIG_SND_PPC is not set
+diff --git a/arch/powerpc/configs/ppc6xx_defconfig b/arch/powerpc/configs/ppc6xx_defconfig
+index b082c1fae13c9..787d707f64a42 100644
+--- a/arch/powerpc/configs/ppc6xx_defconfig
++++ b/arch/powerpc/configs/ppc6xx_defconfig
+@@ -726,7 +726,6 @@ CONFIG_SND_OSSEMUL=y
+ CONFIG_SND_MIXER_OSS=m
+ CONFIG_SND_PCM_OSS=m
+ CONFIG_SND_DYNAMIC_MINORS=y
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ CONFIG_SND_VERBOSE_PRINTK=y
+ CONFIG_SND_DEBUG=y
+ CONFIG_SND_DEBUG_VERBOSE=y
+diff --git a/arch/sh/configs/edosk7760_defconfig b/arch/sh/configs/edosk7760_defconfig
+index abeae220606a3..905fac1072845 100644
+--- a/arch/sh/configs/edosk7760_defconfig
++++ b/arch/sh/configs/edosk7760_defconfig
+@@ -79,7 +79,6 @@ CONFIG_FB_TILEBLITTING=y
+ CONFIG_FB_SH_MOBILE_LCDC=m
+ CONFIG_SOUND=y
+ CONFIG_SND=y
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ # CONFIG_SND_VERBOSE_PROCFS is not set
+ CONFIG_SND_VERBOSE_PRINTK=y
+ CONFIG_SND_SOC=y
+diff --git a/arch/sh/configs/se7724_defconfig b/arch/sh/configs/se7724_defconfig
+index 9e3a54936f76f..8ca46d704c8ba 100644
+--- a/arch/sh/configs/se7724_defconfig
++++ b/arch/sh/configs/se7724_defconfig
+@@ -83,7 +83,6 @@ CONFIG_LOGO=y
+ # CONFIG_LOGO_SUPERH_VGA16 is not set
+ CONFIG_SOUND=y
+ CONFIG_SND=m
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ # CONFIG_SND_DRIVERS is not set
+ # CONFIG_SND_SPI is not set
+ # CONFIG_SND_SUPERH is not set
+diff --git a/arch/sh/configs/sh7785lcr_32bit_defconfig b/arch/sh/configs/sh7785lcr_32bit_defconfig
+index eb63aa61b0465..5468cc53cddb4 100644
+--- a/arch/sh/configs/sh7785lcr_32bit_defconfig
++++ b/arch/sh/configs/sh7785lcr_32bit_defconfig
+@@ -93,7 +93,6 @@ CONFIG_SND_PCM_OSS=y
+ CONFIG_SND_SEQUENCER_OSS=y
+ CONFIG_SND_HRTIMER=y
+ CONFIG_SND_DYNAMIC_MINORS=y
+-# CONFIG_SND_SUPPORT_OLD_API is not set
+ # CONFIG_SND_VERBOSE_PROCFS is not set
+ CONFIG_SND_VERBOSE_PRINTK=y
+ CONFIG_SND_DEBUG=y
+diff --git a/sound/core/Kconfig b/sound/core/Kconfig
+index 48db44fa56feb..4e7bc370ffd7f 100644
+--- a/sound/core/Kconfig
++++ b/sound/core/Kconfig
+@@ -155,7 +155,7 @@ config SND_MAX_CARDS
  
-+use core::num::TryFromIntError;
-+
- use crate::{
-     bindings,
-     prelude::*, //
-@@ -23,9 +25,41 @@
- 
- /// Resource Size type.
- ///
--/// This is a type alias to either `u32` or `u64` depending on the config option
-+/// This is a transparent wrapper around either `u32` or `u64` depending on the config option
- /// `CONFIG_PHYS_ADDR_T_64BIT`, and it can be a u64 even on 32-bit architectures.
--pub type ResourceSize = bindings::resource_size_t;
-+#[repr(transparent)]
-+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
-+pub struct ResourceSize(bindings::phys_addr_t);
-+
-+impl From<ffi::c_uint> for ResourceSize {
-+    #[inline]
-+    fn from(value: ffi::c_uint) -> Self {
-+        Self(value.into())
-+    }
-+}
-+
-+impl From<bindings::resource_size_t> for ResourceSize {
-+    #[inline]
-+    fn from(value: bindings::resource_size_t) -> Self {
-+        Self(value.into())
-+    }
-+}
-+
-+impl TryFrom<ResourceSize> for usize {
-+    type Error = TryFromIntError;
-+
-+    #[inline]
-+    fn try_from(value: ResourceSize) -> Result<Self, Self::Error> {
-+        usize::try_from(value.0)
-+    }
-+}
-+
-+impl From<ResourceSize> for bindings::resource_size_t {
-+    #[inline]
-+    fn from(value: ResourceSize) -> Self {
-+        value.0
-+    }
-+}
- 
- /// Raw representation of an MMIO region.
- ///
-diff --git a/rust/kernel/io/resource.rs b/rust/kernel/io/resource.rs
-index 56cfde97ce87..841bb00b8418 100644
---- a/rust/kernel/io/resource.rs
-+++ b/rust/kernel/io/resource.rs
-@@ -58,7 +58,7 @@ fn drop(&mut self) {
-         };
- 
-         // SAFETY: Safe as per the invariant of `Region`.
--        unsafe { release_fn(start, size) };
-+        unsafe { release_fn(start, size.into()) };
-     }
- }
- 
-@@ -114,7 +114,7 @@ pub fn request_region(
-             bindings::__request_region(
-                 self.0.get(),
-                 start,
--                size,
-+                size.into(),
-                 name.as_char_ptr(),
-                 flags.0 as c_int,
-             )
-@@ -130,7 +130,7 @@ pub fn request_region(
-     pub fn size(&self) -> ResourceSize {
-         let inner = self.0.get();
-         // SAFETY: Safe as per the invariants of `Resource`.
--        unsafe { bindings::resource_size(inner) }
-+        unsafe { bindings::resource_size(inner) }.into()
-     }
- 
-     /// Returns the start address of the resource.
+ config SND_SUPPORT_OLD_API
+ 	bool "Support old ALSA API"
+-	default y
++	default n
+ 	help
+ 	  Say Y here to support the obsolete ALSA PCM API (ver.0.9.0 rc3
+ 	  or older).
 
 ---
-base-commit: 473b9f331718267815649cd93801da832200db71
-change-id: 20251203-res-size-newtype-6fe140bc0038
+base-commit: b2c27842ba853508b0da00187a7508eb3a96c8f7
+change-id: 20251203-old-alsa-fa2c2cb038e1
 
 Best regards,
 -- 
-Moritz Zielke <moritz.zielke@gmail.com>
+David Heidelberg <david@ixit.cz>
 
