@@ -1,50 +1,50 @@
-From: Petri Karhula <petri.karhula@novatron.fi>
-Date: Thu, 04 Dec 2025 14:35:27 +0000
-Subject: [PATCH v5 2/2] mfd: cgbc: Add support for backlight
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH 0/3] iio: adc: adi-axi-adc: Minor cleanups
+Date: Thu, 04 Dec 2025 15:24:16 +0000
+Message-Id: <20251204-iio-axi-adc-minor-change-v1-0-2d441d6c5b65@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251204-cgbc-backlight-v5-2-26f1be6a69c3@novatron.fi>
-References: <20251204-cgbc-backlight-v5-0-26f1be6a69c3@novatron.fi>
-In-Reply-To: <20251204-cgbc-backlight-v5-0-26f1be6a69c3@novatron.fi>
-To: Thomas Richard <thomas.richard@bootlin.com>, Lee Jones <lee@kernel.org>, 
- Daniel Thompson <danielt@kernel.org>, Jingoo Han <jingoohan1@gmail.com>, 
- Helge Deller <deller@gmx.de>
-Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- linux-fbdev@vger.kernel.org, Petri Karhula <petri.karhula@novatron.fi>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAKCnMWkC/y2MQQqEMBAEvyJzdiAZWQx+RTyEONntg4kkIIL4d
+ 4PssaCqLqpaoJWm7qKiBypyamD7jsLPp68y1sYkRj5WzMBAZn+C/Rp4Q8qF/14UZ8NoxDh11PK
+ 9aMT5ruflvh9WSXd9agAAAA==
+X-Change-ID: 20251203-iio-axi-adc-minor-change-f281c70208e8
+To: linux-iio@vger.kernel.org
+Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764858927; l=730;
- i=petri.karhula@novatron.fi; s=20251118; h=from:subject:message-id;
- bh=KPNSZCbWidPbzGQwgMCbuFj/C6Dnnhi7zAXThQ+Pso8=;
- b=qodL7XDtf8qnh34WGfen5MG7V/8ECPtObHwrm0SZEeQ7KZYuXD00kUX91CRBxrVkTBH+KPESd
- tUPwb80sfWgB5lJeyV3gkaXjleoV+IOHUAMvMhAkfirjJ/j5kbwOpzV
-X-Developer-Key: i=petri.karhula@novatron.fi; a=ed25519;
- pk=LRYJ99jPPsHJwdJEPkqlmzAMqo6oyw7I421aHEfDp7o=
-X-Endpoint-Received: by B4 Relay for petri.karhula@novatron.fi/20251118 with auth_id=567
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764861858; l=852;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=F10jaYF8Tg9Y+5FGZpu9v2Se6DGRDlrFpYFnzeV2Vo8=;
+ b=PFNiArMfFnEyixMd+XaWpTpgJpQ37YUj0Do98L0cish9NyiWBgMu/OQywEQagLUeUzcMF3WMy
+ Et+h0DYjxfuDVl+D1J4wwtzIx73Hql1NQks0bzSc/C8nTAbgGS/ROe+
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Board Controller has control for display backlight.
-Add backlight cell for the cgbc-backlight driver which
-adds support for backlight brightness control.
+Small series to use dev_err_probe() and turn dev_info() into dev_dbg().
+It also simplifies axi_adc_create_platform_device() and makes it
+consistent with what we have in the adi-axi-dac driver.
 
-Signed-off-by: Petri Karhula <petri.karhula@novatron.fi>
+(I'm aware that the dev_err_probe() patch is not consistent with the
+series on the axi-dac. I plan to also remove the braces in there as
+David suggested).
+
 ---
- drivers/mfd/cgbc-core.c | 1 +
- 1 file changed, 1 insertion(+)
+Nuno Sá (3):
+      iio: adc: adi-axi-adc: Make use of dev_err_probe()
+      iio: adc: adi-axi-adc: Turn dev_info() into dev_dbg()
+      iio: adc: adi-axi-adc: Slightly simplify axi_adc_create_platform_device()
 
-diff --git a/drivers/mfd/cgbc-core.c b/drivers/mfd/cgbc-core.c
-index 4782ff1114a9..10bb4b414c34 100644
---- a/drivers/mfd/cgbc-core.c
-+++ b/drivers/mfd/cgbc-core.c
-@@ -237,6 +237,7 @@ static struct mfd_cell cgbc_devs[] = {
- 	{ .name = "cgbc-i2c", .id = 1 },
- 	{ .name = "cgbc-i2c", .id = 2 },
- 	{ .name = "cgbc-hwmon"	},
-+	{ .name = "cgbc-backlight" },
- };
- 
- static int cgbc_map(struct cgbc_device_data *cgbc)
+ drivers/iio/adc/adi-axi-adc.c | 36 ++++++++++++++----------------------
+ 1 file changed, 14 insertions(+), 22 deletions(-)
+---
+base-commit: f9e05791642810a0cf6237d39fafd6fec5e0b4bb
+change-id: 20251203-iio-axi-adc-minor-change-f281c70208e8
+--
 
--- 
-2.34.1
+Thanks!
+- Nuno Sá
 
