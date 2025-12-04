@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Thu, 04 Dec 2025 17:32:37 +0100
-Subject: [PATCH WIP v2 3/8] media: qcom: camss: Prepare CSID for C-PHY
- support
+Date: Thu, 04 Dec 2025 17:32:38 +0100
+Subject: [PATCH WIP v2 4/8] media: qcom: camss: Initialize lanes after lane
+ configuration is available
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251204-qcom-cphy-v2-3-6b35ef8b071e@ixit.cz>
+Message-Id: <20251204-qcom-cphy-v2-4-6b35ef8b071e@ixit.cz>
 References: <20251204-qcom-cphy-v2-0-6b35ef8b071e@ixit.cz>
 In-Reply-To: <20251204-qcom-cphy-v2-0-6b35ef8b071e@ixit.cz>
 To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
@@ -20,73 +20,138 @@ Cc: Joel Selvaraj <foss@joelselvaraj.com>,
  linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2138; i=david@ixit.cz;
- h=from:subject:message-id; bh=YHgfSaDVk+a2Lqw1ZwLVeEXKLVx1/k08TjKR7W1kIA8=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpMbesFQujztf3KdNxWDVcx5BHVMJOVNjPLdozA
- 0n6IuihTIiJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaTG3rAAKCRBgAj/E00kg
- chziEACs9Snvcu/70HqB/xfrUyY3IdKXqz3buIP/QGbF+uU4ohHFMCDw04h2OBL8z6SxKjAevPS
- U5qRWOxiH3fX8iDOihzM5QRpfu1ZOYgO0TNWvFiJtWYQH5dFZx93eO2fGVHhZ5cFCI0Gtl7yYCW
- Uli34WXEpuunLt1DfkPZuwuJdogo6/QUI0UpoTfsJsPuIekkRw653h65ZXjeVr5Z9m2KJ6Sb/Ib
- NlIXMlO6jZqP7vUdN6CFV/wOR2ADlccMDZV38Wst8faQmd+sq982fQUQKq7ld95KkW5D7qIGLjd
- uEpEs/MXfAXIuFaRLeJwiy1XVj7HidtmM9bto7tZOpHG8v9Kq8kGWp2N4z3Q4aOPWjXIZCdowRS
- 1bckbeBGFMF9DFlIA+LTRVz09izmyARIJJt1b3JYY4ZHKvd9cpEAXtr7W2Lgtts1+D3I6SaA4nH
- ptmTmtqkt5h+Q4r9Hm3HHT59xqI2BK/cI7QVby86ppwoVnIaA9ZLGShftOG1ZuWN3lTH88iBq5k
- tmLexjGt0JH6h/SW9Ua3nJ6h69SOl63rv3yIKzNOULTFm7E9dJ/wYscFou0RBgf880KjMb8oTw9
- jQdW3XS78QBqCPhNXWAKu2WLb0CWidyq8PFxLY7Wzbdr0+Fn4cb7zhw5IrmS1ygUkijzWweEIJq
- Qjlh/RXP6JyQBOw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3716; i=david@ixit.cz;
+ h=from:subject:message-id; bh=DkOotaipM9pBA7RbX/eKCATzczHp/kS7bChskx461cE=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpMbeseogR/3FRNARfncsun4nAI8wmIE9Ht6XOb
+ P6+uT+L6ieJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaTG3rAAKCRBgAj/E00kg
+ cqqhD/4uurFApFZLgxflxfWkJf6YiX0GwQ1iQjTCQtWf5nENz1XuRbMAmM3uBvnAwR27Wd9dQ2/
+ 0v+tyGF3Nxd7MYL1wmXB9aBuuteU7OaCTGntNNvuYyII2j8EJ4/LC2ArbTzkDEWzlzAYYGT6Dc4
+ sn2EYLSrJI/ln/dt+ANUvOvHHR4HcJv8h40QZ2ky5ZYaTgExSl+LW5+gVS3FgDNm41OjupZ1Qdf
+ Z+L6ILvjXfNE1qiSWSNCPLlzXJ0xkzniUgYVNCeAaDSPsYLJ7w7ilFZQ1BrDoUypCSn3eg+XSjy
+ yGdks8tBS3j8MCAXvgnLWjCJ50XiW20igSjFsxSbV0aCKVrsBASoOW3uTNB2mtjOzkVmC0qudlR
+ l5JIA6E1VmMrzqaPuTtAhl4T3yzsGnm51EP/rDGzgd1UmWo0GXWhGRLi3E0TmyPSnEw5+dPACtS
+ ViXII1OsURuOJ1bqqnWLqPhtMDn4yg4sGXrSVMuptu6vsfsWNoM3c+0TR77c52hd58XTgt1KqCc
+ 0++daRh7YyXxXzJvIY4PmAXtZKUoUdfzwK8yL/zvlvZTYj8zsDqFEh+DoIJJBjPk+8ysvCIoEcP
+ kl0JMdKWJLXwsMeqHlDloQNXFA7QGEISPLJ4GrSr3r40Ov2UNWVVSLVzNQjKsBwjjFhp8ECMjU8
+ fWD+AwdqmAiH8Cw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Inherit C-PHY information from CSIPHY, so we can configure CSID
-properly.
+From: Petr Hodina <phodina@protonmail.com>
 
-CSI2_RX_CFG0_PHY_TYPE_SEL must be set to 1, when C-PHY mode is used.
+The lanes must not be initialized before the driver has access to
+the lane configuration, as it depends on whether D-PHY or C-PHY mode
+is in use. Move the lane initialization to a later stage where the
+configuration structures are available.
 
+Signed-off-by: Petr Hodina <phodina@protonmail.com>
+Reviewed-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/media/platform/qcom/camss/camss-csid-gen2.c | 1 +
- drivers/media/platform/qcom/camss/camss-csid.c      | 1 +
- drivers/media/platform/qcom/camss/camss-csid.h      | 1 +
- 3 files changed, 3 insertions(+)
+ .../platform/qcom/camss/camss-csiphy-3ph-1-0.c     | 73 ++++++++++++----------
+ 1 file changed, 40 insertions(+), 33 deletions(-)
 
-diff --git a/drivers/media/platform/qcom/camss/camss-csid-gen2.c b/drivers/media/platform/qcom/camss/camss-csid-gen2.c
-index 2a1746dcc1c5b..033036ae28a4f 100644
---- a/drivers/media/platform/qcom/camss/camss-csid-gen2.c
-+++ b/drivers/media/platform/qcom/camss/camss-csid-gen2.c
-@@ -183,6 +183,7 @@ static void __csid_configure_rx(struct csid_device *csid,
- 	val = (lane_cnt - 1) << CSI2_RX_CFG0_NUM_ACTIVE_LANES;
- 	val |= phy->lane_assign << CSI2_RX_CFG0_DL0_INPUT_SEL;
- 	val |= phy->csiphy_id << CSI2_RX_CFG0_PHY_NUM_SEL;
-+	val |= csid->phy.cphy << CSI2_RX_CFG0_PHY_TYPE_SEL;
- 	writel_relaxed(val, csid->base + CSID_CSI2_RX_CFG0);
+diff --git a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
+index 9ff79f789fa06..3d30cdce33f96 100644
+--- a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
++++ b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
+@@ -1041,6 +1041,45 @@ static void csiphy_lanes_enable(struct csiphy_device *csiphy,
+ 	u8 val;
+ 	int i;
  
- 	val = 1 << CSI2_RX_CFG1_PACKET_ECC_CORRECTION_EN;
-diff --git a/drivers/media/platform/qcom/camss/camss-csid.c b/drivers/media/platform/qcom/camss/camss-csid.c
-index 5284b5857368c..d9026fd829d61 100644
---- a/drivers/media/platform/qcom/camss/camss-csid.c
-+++ b/drivers/media/platform/qcom/camss/camss-csid.c
-@@ -1287,6 +1287,7 @@ static int csid_link_setup(struct media_entity *entity,
- 		csid->phy.csiphy_id = csiphy->id;
++	switch (csiphy->camss->res->version) {
++	case CAMSS_845:
++		regs->lane_regs = &lane_regs_sdm845[0];
++		regs->lane_array_size = ARRAY_SIZE(lane_regs_sdm845);
++		break;
++	case CAMSS_2290:
++		regs->lane_regs = &lane_regs_qcm2290[0];
++		regs->lane_array_size = ARRAY_SIZE(lane_regs_qcm2290);
++		break;
++	case CAMSS_7280:
++	case CAMSS_8250:
++		regs->lane_regs = &lane_regs_sm8250[0];
++		regs->lane_array_size = ARRAY_SIZE(lane_regs_sm8250);
++		break;
++	case CAMSS_8280XP:
++		regs->lane_regs = &lane_regs_sc8280xp[0];
++		regs->lane_array_size = ARRAY_SIZE(lane_regs_sc8280xp);
++		break;
++	case CAMSS_X1E80100:
++		regs->lane_regs = &lane_regs_x1e80100[0];
++		regs->lane_array_size = ARRAY_SIZE(lane_regs_x1e80100);
++		break;
++	case CAMSS_8550:
++		regs->lane_regs = &lane_regs_sm8550[0];
++		regs->lane_array_size = ARRAY_SIZE(lane_regs_sm8550);
++		break;
++	case CAMSS_8650:
++		regs->lane_regs = &lane_regs_sm8650[0];
++		regs->lane_array_size = ARRAY_SIZE(lane_regs_sm8650);
++		break;
++	case CAMSS_8300:
++	case CAMSS_8775P:
++		regs->lane_regs = &lane_regs_sa8775p[0];
++		regs->lane_array_size = ARRAY_SIZE(lane_regs_sa8775p);
++		break;
++	default:
++		break;
++	}
++
+ 	settle_cnt = csiphy_settle_cnt_calc(link_freq, csiphy->timer_clk_rate);
  
- 		lane_cfg = &csiphy->cfg.csi2->lane_cfg;
-+		csid->phy.cphy = (lane_cfg->phy_cfg == V4L2_MBUS_CSI2_CPHY);
- 		csid->phy.lane_cnt = lane_cfg->num_data;
- 		csid->phy.lane_assign = csid_get_lane_assign(lane_cfg);
+ 	val = 0;
+@@ -1110,47 +1149,15 @@ static int csiphy_init(struct csiphy_device *csiphy)
+ 		return -ENOMEM;
+ 
+ 	csiphy->regs = regs;
+-	regs->offset = 0x800;
+ 
+ 	switch (csiphy->camss->res->version) {
+-	case CAMSS_845:
+-		regs->lane_regs = &lane_regs_sdm845[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_sdm845);
+-		break;
+-	case CAMSS_2290:
+-		regs->lane_regs = &lane_regs_qcm2290[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_qcm2290);
+-		break;
+-	case CAMSS_7280:
+-	case CAMSS_8250:
+-		regs->lane_regs = &lane_regs_sm8250[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_sm8250);
+-		break;
+-	case CAMSS_8280XP:
+-		regs->lane_regs = &lane_regs_sc8280xp[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_sc8280xp);
+-		break;
+ 	case CAMSS_X1E80100:
+-		regs->lane_regs = &lane_regs_x1e80100[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_x1e80100);
+-		regs->offset = 0x1000;
+-		break;
+ 	case CAMSS_8550:
+-		regs->lane_regs = &lane_regs_sm8550[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_sm8550);
+-		regs->offset = 0x1000;
+-		break;
+ 	case CAMSS_8650:
+-		regs->lane_regs = &lane_regs_sm8650[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_sm8650);
+ 		regs->offset = 0x1000;
+ 		break;
+-	case CAMSS_8300:
+-	case CAMSS_8775P:
+-		regs->lane_regs = &lane_regs_sa8775p[0];
+-		regs->lane_array_size = ARRAY_SIZE(lane_regs_sa8775p);
+-		break;
+ 	default:
++		regs->offset = 0x800;
+ 		break;
  	}
-diff --git a/drivers/media/platform/qcom/camss/camss-csid.h b/drivers/media/platform/qcom/camss/camss-csid.h
-index aedc96ed84b2f..a82db31bd2335 100644
---- a/drivers/media/platform/qcom/camss/camss-csid.h
-+++ b/drivers/media/platform/qcom/camss/camss-csid.h
-@@ -70,6 +70,7 @@ struct csid_phy_config {
- 	u32 lane_assign;
- 	u32 en_vc;
- 	u8 need_vc_update;
-+	bool cphy;
- };
  
- struct csid_device;
 
 -- 
 2.51.0
