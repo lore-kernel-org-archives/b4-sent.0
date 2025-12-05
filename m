@@ -1,159 +1,184 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Thu, 04 Dec 2025 17:32:42 +0100
-Subject: [PATCH WIP v2 8/8] media: qcom: camss: Account for C-PHY when
- calculating link frequency
+From: Rudraksha Gupta <guptarud@gmail.com>
+Date: Fri, 05 Dec 2025 02:16:45 -0800
+Subject: [PATCH] ARM: dts: qcom: msm8960: expressatt: Add
+ coreriver,tc360-touchkey
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251204-qcom-cphy-v2-8-6b35ef8b071e@ixit.cz>
-References: <20251204-qcom-cphy-v2-0-6b35ef8b071e@ixit.cz>
-In-Reply-To: <20251204-qcom-cphy-v2-0-6b35ef8b071e@ixit.cz>
-To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Luca Weiss <luca.weiss@fairphone.com>, Petr Hodina <phodina@protonmail.com>, 
- Casey Connolly <casey.connolly@linaro.org>, "Dr. Git" <drgitx@gmail.com>
-Cc: Joel Selvaraj <foss@joelselvaraj.com>, 
- Kieran Bingham <kbingham@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, linux-media@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+Message-Id: <20251205-expressatt-touchkey-v1-1-1444b927c9f3@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAyxMmkC/03MQQ6DIBCF4auYWZcEUIp6lcYQQgcltdgCGhvj3
+ Ut00S7/ybxvg4jBYYS22CDg4qKbfA52KcAM2vdI3D03cMoF41QQXF8BY9QpkTTNZnjghzBZSSN
+ oqbktIS/zh3Xrod66swO+54yn8/iz2+KQGWv+ZOWtUdoYHNVT916Nrh8SsbJGyutGsvraLhV0+
+ /4F2xSEIr8AAAA=
+X-Change-ID: 20251205-expressatt-touchkey-1747c503a2f3
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5230; i=david@ixit.cz;
- h=from:subject:message-id; bh=b1nclvoHacIkz7OV2Q02X6ymuveqnuBFG4Fw6qspG18=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpMbetO8v9IP/fCl+iBxVyeBnOtgKMpCe6yBF3S
- wFhmEpWu5qJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaTG3rQAKCRBgAj/E00kg
- cl+9EACfXP/Tbp6aGoowpOVft73F4HARvALH0Cr4oFK3BECz02pgSBIq1Huv9OWvV9xwd8jDNv7
- 8Ofzv2dqg1MNzlc+B24wGsh9gBCvexmRtC/MARlAcS9gzNd8dDk+S6fOU2gO7IRklOisRIyDGMu
- hkSIZlJnvKlXW/vi25ndaI5VY9hrg18OXGWDtosCn4pNYfIWaax+iUxndE9GNGrm7gIxQiYdC+R
- 4Y/vgVX7VtfrR4PF6ZR25DsE381R0/n5fJt2tXTuoBxaBhKufAbbwn7v2SuVVH3VejZheCr8jOh
- fQbh+YTeDED8Z6jPSNggCmHbYFhWWsDX1n5FgFIhQINEbyJ80k/Ihp5Qg0U5S0efOFxnnsvnsP8
- mSkBCrCgGtpKyJ7Vz0fNsY+rCpyGGq8EW9fkQztzQYy7BDosIvuNzrDG1BNFHDEwC0uN12rl3hg
- Afe9lHXD4qZEPaGBhWrLkHBJx5uIOprgnt75vETEkJGtxGpv+/RPf1RI8Ja/M7w6HfR81MvBW+r
- SJxOKZAxyPx59BUXNVZ2mKGwiE7+OiQbiFcNmlmnlMOEEgbmVOfgiwdq6PtkO3KukqySNsDWdab
- 5iLrT5waOzglhzAajmBQolnj4Amwna9w9Bo3gmCKuvM4vvWEKFGzuAyc1GDV3eLSVGqnBH0Pzlb
- 3s9/bzkunvFTUrw==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764929805; l=5243;
+ i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
+ bh=bVqnx5maQ2+0asrPWYudZakdqnY0csCZUYY5fznTxHc=;
+ b=vV9FXcHwDs8xcyZwCAhkS1lDBXWwNWso6YRMP8HJC1ShPXQo+PQr2Cm/OUqbLQZVwNDiRQKoe
+ /c0OqzGawwqDjPvq3UBmBYchzbEnMfM4tAIJk4jvMAr9Iuey168raXz
+X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
+ pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
+X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Ensure that the link frequency divider correctly accounts for C-PHY
-operation. The divider differs between D-PHY and C-PHY, as described
-in the MIPI CSI-2 specification.
+Add the tc360 touchkey. It's unknown if this is the actual model of the
+touchkey, as downstream doesn't mention a variant, but this works.
 
-For more details, see:
-https://docs.kernel.org/driver-api/media/tx-rx.html#pixel-rate
+Link:
+https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/input/keyboard/cypress_touchkey_236/Makefile#L5
 
-Suggested-by: Sakari Ailus <sakari.ailus@linux.intel.com>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
- drivers/media/platform/qcom/camss/camss-csid.c   |  2 +-
- drivers/media/platform/qcom/camss/camss-csiphy.c |  6 ++++--
- drivers/media/platform/qcom/camss/camss.c        | 16 +++++++++++++---
- drivers/media/platform/qcom/camss/camss.h        |  2 +-
- 4 files changed, 19 insertions(+), 7 deletions(-)
+Add the tc360 touchkey. It's unknown if this is the actual model of the
+touchkey, as downstream doesn't mention a variant, but this works.
 
-diff --git a/drivers/media/platform/qcom/camss/camss-csid.c b/drivers/media/platform/qcom/camss/camss-csid.c
-index d9026fd829d61..437f51dc86f9f 100644
---- a/drivers/media/platform/qcom/camss/camss-csid.c
-+++ b/drivers/media/platform/qcom/camss/camss-csid.c
-@@ -545,7 +545,7 @@ static int csid_set_clock_rates(struct csid_device *csid)
- 	fmt = csid_get_fmt_entry(csid->res->formats->formats, csid->res->formats->nformats,
- 				 csid->fmt[MSM_CSIPHY_PAD_SINK].code);
- 	link_freq = camss_get_link_freq(&csid->subdev.entity, fmt->bpp,
--					csid->phy.lane_cnt);
-+					csid->phy.lane_cnt, csid->phy.cphy);
- 	if (link_freq < 0)
- 		link_freq = 0;
- 
-diff --git a/drivers/media/platform/qcom/camss/camss-csiphy.c b/drivers/media/platform/qcom/camss/camss-csiphy.c
-index a734fb7dde0a4..bac3a9fa3be50 100644
---- a/drivers/media/platform/qcom/camss/camss-csiphy.c
-+++ b/drivers/media/platform/qcom/camss/camss-csiphy.c
-@@ -144,8 +144,9 @@ static int csiphy_set_clock_rates(struct csiphy_device *csiphy)
- 	u8 bpp = csiphy_get_bpp(csiphy->res->formats->formats, csiphy->res->formats->nformats,
- 				csiphy->fmt[MSM_CSIPHY_PAD_SINK].code);
- 	u8 num_lanes = csiphy->cfg.csi2->lane_cfg.num_data;
-+	bool cphy = csiphy->cfg.csi2->lane_cfg.phy_cfg == V4L2_MBUS_CSI2_CPHY;
- 
--	link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, num_lanes);
-+	link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, num_lanes, cphy);
- 	if (link_freq < 0)
- 		link_freq  = 0;
- 
-@@ -270,9 +271,10 @@ static int csiphy_stream_on(struct csiphy_device *csiphy)
- 	u8 bpp = csiphy_get_bpp(csiphy->res->formats->formats, csiphy->res->formats->nformats,
- 				csiphy->fmt[MSM_CSIPHY_PAD_SINK].code);
- 	u8 num_lanes = csiphy->cfg.csi2->lane_cfg.num_data;
-+	bool cphy = csiphy->cfg.csi2->lane_cfg.phy_cfg == V4L2_MBUS_CSI2_CPHY;
- 	u8 val;
- 
--	link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, num_lanes);
-+	link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, num_lanes, cphy);
- 
- 	if (link_freq < 0) {
- 		dev_err(csiphy->camss->dev,
-diff --git a/drivers/media/platform/qcom/camss/camss.c b/drivers/media/platform/qcom/camss/camss.c
-index 414646760ae6b..6333f5dd73b53 100644
---- a/drivers/media/platform/qcom/camss/camss.c
-+++ b/drivers/media/platform/qcom/camss/camss.c
-@@ -32,6 +32,14 @@
- #define CAMSS_CLOCK_MARGIN_NUMERATOR 105
- #define CAMSS_CLOCK_MARGIN_DENOMINATOR 100
- 
-+/*
-+ * C-PHY encodes data by 16/7 ~ 2.28 bits/symbol
-+ * D-PHY doesn't encode data, thus 16/16 = 1 b/s
-+ */
-+#define CAMSS_COMMON_PHY_DIVIDENT 16
-+#define CAMSS_CPHY_DIVISOR 7
-+#define CAMSS_DPHY_DIVISOR 16
+Link:
+https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/input/keyboard/cypress_touchkey_236/Makefile#L5
+
+Test:
+=============
+- LEDs:
+samsung-expressatt:/sys/class/leds/tm2-touchkey$ echo heartbeat > trigger
+// Flashes LEDs :)
+
+- Touching buttons:
+samsung-expressatt:/sys/class/leds/tm2-touchkey$ evtest
+No device specified, trying to scan all of /dev/input/event*
+Not running as root, no devices may be available.
+Available devices:
+/dev/input/event0:      pmic8xxx_pwrkey
+/dev/input/event1:      gpio-keys
+/dev/input/event2:      tm2-touchkey
+/dev/input/event3:      Atmel maXTouch Touchscreen
+Select the device event number [0-3]: 2
+Input driver version is 1.0.1
+Input device ID: bus 0x18 vendor 0x0 product 0x0 version 0x0
+Input device name: "tm2-touchkey"
+Supported events:
+  Event type 0 (EV_SYN)
+  Event type 1 (EV_KEY)
+    Event code 139 (KEY_MENU)
+    Event code 158 (KEY_BACK)
+  Event type 4 (EV_MSC)
+    Event code 4 (MSC_SCAN)
+Properties:
+Testing ... (interrupt to exit)
+Event: time 1761059686.899755, type 4 (EV_MSC), code 4 (MSC_SCAN), value 00
+Event: time 1761059686.899755, type 1 (EV_KEY), code 139 (KEY_MENU), value 1
+Event: time 1761059686.899755, -------------- SYN_REPORT ------------
+Event: time 1761059687.113489, type 4 (EV_MSC), code 4 (MSC_SCAN), value 00
+Event: time 1761059687.113489, type 1 (EV_KEY), code 139 (KEY_MENU), value 0
+Event: time 1761059687.113489, -------------- SYN_REPORT ------------
+Event: time 1761059688.764757, type 4 (EV_MSC), code 4 (MSC_SCAN), value 01
+Event: time 1761059688.764757, type 1 (EV_KEY), code 158 (KEY_BACK), value 1
+Event: time 1761059688.764757, -------------- SYN_REPORT ------------
+Event: time 1761059688.817516, type 4 (EV_MSC), code 4 (MSC_SCAN), value 01
+Event: time 1761059688.817516, type 1 (EV_KEY), code 158 (KEY_BACK), value 0
+Event: time 1761059688.817516, -------------- SYN_REPORT ------------
+---
+ .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 55 ++++++++++++++++++++++
+ 1 file changed, 55 insertions(+)
+
+diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
+index 5a39abd6f3ce..c4b98af6955d 100644
+--- a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
++++ b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
+@@ -52,6 +52,41 @@ key-volume-down {
+ 			linux,code = <KEY_VOLUMEDOWN>;
+ 		};
+ 	};
 +
- static const struct parent_dev_ops vfe_parent_dev_ops;
++	touchkey_enable: touchkey-enable {
++		compatible = "regulator-fixed";
++		regulator-name = "touchkey_enable";
++		gpio = <&tlmm 51 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++		regulator-boot-on;
++	};
++
++	i2c-gpio-touchkey {
++		compatible = "i2c-gpio";
++		#address-cells = <1>;
++		#size-cells = <0>;
++		sda-gpios = <&tlmm 71 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++		scl-gpios = <&tlmm 72 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&touchkey_i2c_pins>;
++		status = "okay";
++		i2c-gpio,delay-us = <2>;
++
++		touchkey@20 {
++			compatible = "coreriver,tc360-touchkey";
++			reg = <0x20>;
++
++			interrupts-extended = <&tlmm 52 IRQ_TYPE_EDGE_FALLING>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&touchkey_irq_pin>;
++
++			vddio-supply = <&touchkey_enable>;
++			vdd-supply = <&pm8921_l29>;
++			vcc-supply = <&pm8921_l29>;
++
++			linux,keycodes = <KEY_MENU KEY_BACK>;
++		};
++	};
+ };
  
- static const struct camss_subdev_resources csiphy_res_8x16[] = {
-@@ -3912,20 +3920,22 @@ struct media_pad *camss_find_sensor_pad(struct media_entity *entity)
-  * camss_get_link_freq - Get link frequency from sensor
-  * @entity: Media entity in the current pipeline
-  * @bpp: Number of bits per pixel for the current format
-- * @lanes: Number of lanes in the link to the sensor
-+ * @nr_of_lanes: Number of lanes in the link to the sensor
-  *
-  * Return link frequency on success or a negative error code otherwise
-  */
- s64 camss_get_link_freq(struct media_entity *entity, unsigned int bpp,
--			unsigned int lanes)
-+			unsigned int nr_of_lanes, bool cphy)
- {
- 	struct media_pad *sensor_pad;
-+	unsigned int div = nr_of_lanes * 2 * (cphy ? CAMSS_CPHY_DIVISOR :
-+						     CAMSS_DPHY_DIVISOR);
+ &gsbi2 {
+@@ -198,6 +233,20 @@ firmware-pins {
+ 			bias-disable;
+ 		};
+ 	};
++
++	touchkey_i2c_pins: touchkey-i2c-state {
++		pins = "gpio71", "gpio72";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	touchkey_irq_pin: touchkey-irq-state {
++		pins = "gpio52";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
+ };
  
- 	sensor_pad = camss_find_sensor_pad(entity);
- 	if (!sensor_pad)
- 		return -ENODEV;
+ &pm8921 {
+@@ -420,6 +469,12 @@ pm8921_l25: l25 {
+ 			bias-pull-down;
+ 		};
  
--	return v4l2_get_link_freq(sensor_pad, bpp, 2 * lanes);
-+	return v4l2_get_link_freq(sensor_pad, CAMSS_COMMON_PHY_DIVIDENT * bpp, div);
- }
- 
- /*
-diff --git a/drivers/media/platform/qcom/camss/camss.h b/drivers/media/platform/qcom/camss/camss.h
-index 9d9a62640e25d..0ab908b0c037f 100644
---- a/drivers/media/platform/qcom/camss/camss.h
-+++ b/drivers/media/platform/qcom/camss/camss.h
-@@ -162,7 +162,7 @@ int camss_enable_clocks(int nclocks, struct camss_clock *clock,
- void camss_disable_clocks(int nclocks, struct camss_clock *clock);
- struct media_pad *camss_find_sensor_pad(struct media_entity *entity);
- s64 camss_get_link_freq(struct media_entity *entity, unsigned int bpp,
--			unsigned int lanes);
-+			unsigned int lanes, bool cphy);
- int camss_get_pixel_clock(struct media_entity *entity, u64 *pixel_clock);
- int camss_pm_domain_on(struct camss *camss, int id);
- void camss_pm_domain_off(struct camss *camss, int id);
++		pm8921_l29: l29 {
++			regulator-min-microvolt = <1800000>;
++			regulator-max-microvolt = <3300000>;
++			bias-pull-down;
++		};
++
+ 		/* Low Voltage Switch */
+ 		pm8921_lvs1: lvs1 {
+ 			bias-pull-down;
 
+---
+base-commit: 0ccd3ddf45c93ab06c9b1a9d266dcab1e52bf3d2
+change-id: 20251205-expressatt-touchkey-1747c503a2f3
+prerequisite-change-id: 20251119-expressatt_nfc_accel_magn_light-f78e02897186:v4
+prerequisite-patch-id: 6fdd0efa5eda512b442b885df80774d1a7037df7
+prerequisite-patch-id: 12d296f83ccb1bdfb8d06a72e476bf51ae5f4e6c
+prerequisite-patch-id: a970acf2080143f41ae0935dd2c57bb71f5bf338
+prerequisite-patch-id: fd25fef58503c5e5cf742e79b124948c7f6b98d9
+prerequisite-patch-id: 966ae746687ebf8eb29c6185a8909b047e70dbb1
+prerequisite-patch-id: 68603a680b24921759425fc289e61fc4435e5ccd
+
+Best regards,
 -- 
-2.51.0
+Rudraksha Gupta <guptarud@gmail.com>
 
