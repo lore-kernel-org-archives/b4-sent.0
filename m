@@ -1,130 +1,61 @@
-From: PrakarshPanwar <prakarshpanwar@gmail.com>
-Date: Fri, 05 Dec 2025 19:27:29 +0530
-Subject: [PATCH] HID: EVision: input mapping fix for K552 keyboard
+From: Robert Eckelmann <longnoserob@gmail.com>
+Subject: [PATCH v3 0/3] arm64: dts: qcom: sdm845-xiaomi-beryllium: Enable
+ SLPI
+Date: Fri, 05 Dec 2025 22:58:58 +0900
+Message-Id: <20251205-slpi-v3-0-a1320a074345@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251205-evision-k552-mapping-fix-v1-1-848d086c43ee@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/y2MUQqAIBAFrxL73YKtGNhVoo+yrZbIRCGC8O5J9
- DmPefNA4iicoKseiHxJktMXaOoK3Db6lVHmwkCKTEPK4O/gbgzhMYYgfsVFbtQ8aedaS9pqKPc
- Qucxfuh9yfgHIKEJBagAAAA==
-X-Change-ID: 20251205-evision-k552-mapping-fix-3eb3cc692393
-To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- PrakarshPanwar <prakarshpanwar@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764943096; l=3517;
- i=prakarshpanwar@gmail.com; s=20251205; h=from:subject:message-id;
- bh=FbNPppy7ffLlAcVnO/gIOJ8EROcXn+EFg4VSSnSlKFM=;
- b=7KadONIPAD8hdhKW3wJRHh93+dJCf9P3K7PLHEYphBx/PPBvL43NM1ejHqWiDoYg7HAQ8JshQ
- y8eQyGtdSW6CDDaVd1Cyhq7+3jegDpruCBJChuCbOOP8wEM9ADgvzK+
-X-Developer-Key: i=prakarshpanwar@gmail.com; a=ed25519;
- pk=ZK93l6VijhK0Hqz7nq+uC+IPDAgNxoOPhtFTMGDVx0c=
-X-Endpoint-Received: by B4 Relay for prakarshpanwar@gmail.com/20251205 with auth_id=571
+X-B4-Tracking: v=1; b=H4sIACLlMmkC/12MywrCMBBFf6XM2shMSoO68j/ERZpO2oG+SCQop
+ f9uWgTF5bnccxaIHIQjXIoFAieJMo0ZykMBrrNjy0qazKBRV0TaqNjPopwhw6Utz+QY8nUO7OW
+ 5Z273zJ3ExxReezXRtv4FEilUjpAaPNVsvb62g5X+6KYBtkDSX0lj9ZF0lhrPWBMa58n+Suu6v
+ gET2ilPzQAAAA==
+X-Change-ID: 20251126-slpi-c616e3a391ce
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ phone-devel@vger.kernel.org, linux-kernel@vger.kernel.org, david@ixit.cz, 
+ Robert Eckelmann <longnoserob@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=963; i=longnoserob@gmail.com;
+ h=from:subject:message-id; bh=SLlMh3YUbCexX05xcDNCw9MPzyvzjL+AToEwatpcYxM=;
+ b=owGbwMvMwCVmcOAq9/vk/SGMp9WSGDKNnuo4nn3v53vl7pozfc/Vc288P362YNvGd38kPs918
+ ksu/OjQ2lHKwiDGxSArpsiyw+2YTqbr0oiNu/eXwcxhZQIZwsDFKQATaSpmZHh4Plggjot17+xW
+ lTvxkVPLA1qXMgSsWHVC+MT6K1xnYpgZ/mnsZXef017C3KmzUa1XMdT5dXDx6oLmrlXbi6fXi5h
+ w8gAA
+X-Developer-Key: i=longnoserob@gmail.com; a=openpgp;
+ fpr=B846C62C6945A558B1BBBF7630C0D50BEF63BF54
+X-Endpoint-Received: by B4 Relay for longnoserob@gmail.com/default with auth_id=569
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Added fix for Media Key in Redragon K552 keyboard
-In Windows, this keyboard F1 Key opens Media Player,
-but in Linux it opens System Settings.
+Enable the SLPI dsp on the Xiaomi Pocophone F1 with Qualcom SDM845 SoC.
 
-This commit is a fix for that bug it remaps K552 F1 key
-which outputs KEY_CONFIG(171) now outputs KEY_MEDIA(226)
-
-It also restructures the input mapping code in hid-evision
-
-Signed-off-by: PrakarshPanwar <prakarshpanwar@gmail.com>
+Signed-off-by: Robert Eckelmann <longnoserob@gmail.com>
 ---
- drivers/hid/hid-evision.c | 39 ++++++++++++++++++++++++++++++++++++---
- drivers/hid/hid-ids.h     |  1 +
- 2 files changed, 37 insertions(+), 3 deletions(-)
+Changes in v3:
+- remove stray newline at end of file
+- Link to v2: https://lore.kernel.org/r/20251205-slpi-v2-0-dfe0b106cf1a@gmail.com
 
-diff --git a/drivers/hid/hid-evision.c b/drivers/hid/hid-evision.c
-index 3e7f43ab80bb63ba073bc71f72acdb5ffaed8202..f78861863d4fc8a1305948385aa561ab374ceb49 100644
---- a/drivers/hid/hid-evision.c
-+++ b/drivers/hid/hid-evision.c
-@@ -14,14 +14,29 @@
- 
- #include "hid-ids.h"
- 
--static int evision_input_mapping(struct hid_device *hdev, struct hid_input *hi,
-+static int evision_k552_input_mapping(struct hid_device *hdev, struct hid_input *hi,
- 		struct hid_field *field, struct hid_usage *usage,
- 		unsigned long **bit, int *max)
- {
--	/* mapping only applies to USB_DEVICE_ID_EVISION_ICL01 */
--	if (hdev->product != USB_DEVICE_ID_EVISION_ICL01)
-+	if ((usage->hid & HID_USAGE_PAGE) != HID_UP_CONSUMER)
-+		return 0;
-+
-+	switch (usage->hid & HID_USAGE) {
-+	/* report 3 */
-+	case 0x183:
-+		hid_map_usage_clear(hi, usage, bit, max, EV_KEY, KEY_MEDIA);
-+		break;
-+	default:
- 		return 0;
-+	}
-+
-+	return 1;
-+}
- 
-+static int evision_icl01_input_mapping(struct hid_device *hdev, struct hid_input *hi,
-+		struct hid_field *field, struct hid_usage *usage,
-+		unsigned long **bit, int *max)
-+{
- 	if ((usage->hid & HID_USAGE_PAGE) != HID_UP_CONSUMER)
- 		return 0;
- 
-@@ -41,6 +56,23 @@ static int evision_input_mapping(struct hid_device *hdev, struct hid_input *hi,
- 	return 0;
- }
- 
-+static int evision_input_mapping(struct hid_device *hdev, struct hid_input *hi,
-+		struct hid_field *field, struct hid_usage *usage,
-+		unsigned long **bit, int *max)
-+{
-+	int ret = 0;
-+
-+	if (hdev->product == USB_DEVICE_ID_EVISION_ICL01) {
-+		ret = evision_icl01_input_mapping(hdev, hi,
-+			field, usage, bit, max);
-+	} else if (hdev->product == USB_DEVICE_ID_EVISION_K552) {
-+		ret = evision_k552_input_mapping(hdev, hi,
-+			field, usage, bit, max);
-+	}
-+
-+	return ret;
-+}
-+
- #define REP_DSC_SIZE 236
- #define USAGE_MAX_INDEX 59
- 
-@@ -59,6 +91,7 @@ static const __u8 *evision_report_fixup(struct hid_device *hdev, __u8 *rdesc,
- static const struct hid_device_id evision_devices[] = {
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_EVISION, USB_DEVICE_ID_EVISION_ICL01) },
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_EVISION, USB_DEVICE_ID_EV_TELINK_RECEIVER) },
-+	{ HID_USB_DEVICE(USB_VENDOR_ID_EVISION, USB_DEVICE_ID_EVISION_K552) },
- 	{ }
- };
- MODULE_DEVICE_TABLE(hid, evision_devices);
-diff --git a/drivers/hid/hid-ids.h b/drivers/hid/hid-ids.h
-index d31711f1aaeccb4ec93c5a9056af605d1775e0c5..f30b383036c74ad48b2d6880a44b2f2ac5dab46e 100644
---- a/drivers/hid/hid-ids.h
-+++ b/drivers/hid/hid-ids.h
-@@ -478,6 +478,7 @@
- 
- #define USB_VENDOR_ID_EVISION           0x320f
- #define USB_DEVICE_ID_EV_TELINK_RECEIVER 0x226f
-+#define USB_DEVICE_ID_EVISION_K552      0X5000
- #define USB_DEVICE_ID_EVISION_ICL01     0x5041
- 
- #define USB_VENDOR_ID_FFBEAST		0x045b
+Changes in v2:
+- adjusted firmware paths
+- enabled i2c busses
+- Link to v1: https://lore.kernel.org/r/20251126-slpi-v1-0-c101d08beaf2@gmail.com
 
 ---
-base-commit: 2061f18ad76ecaddf8ed17df81b8611ea88dbddd
-change-id: 20251205-evision-k552-mapping-fix-3eb3cc692393
+Robert Eckelmann (3):
+      arm64: dts: qcom: sdm845-xiaomi-beryllium: Enable SLPI
+      arm64: dts: qcom: sdm845-xiaomi-beryllium: Adjust firmware paths
+      arm64: dts: qcom: sdm845-xiaomi-beryllium: Add placeholders and sort
+
+ .../dts/qcom/sdm845-xiaomi-beryllium-common.dtsi   | 46 ++++++++++++++++------
+ 1 file changed, 34 insertions(+), 12 deletions(-)
+---
+base-commit: 6987d58a9cbc5bd57c983baa514474a86c945d56
+change-id: 20251126-slpi-c616e3a391ce
 
 Best regards,
 -- 
-PrakarshPanwar <prakarshpanwar@gmail.com>
+Robert Eckelmann <longnoserob@gmail.com>
 
