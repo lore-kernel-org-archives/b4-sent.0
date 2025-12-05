@@ -1,184 +1,77 @@
-From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Fri, 05 Dec 2025 02:16:45 -0800
-Subject: [PATCH] ARM: dts: qcom: msm8960: expressatt: Add
- coreriver,tc360-touchkey
+From: Petri Karhula <petri.karhula@novatron.fi>
+Subject: [PATCH v6 0/2] Backlight driver to control backlight behind
+ Congatec Board Controller.
+Date: Fri, 05 Dec 2025 12:19:46 +0000
+Message-Id: <20251205-cgbc-backlight-v6-0-e4175b0bf406@novatron.fi>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251205-expressatt-touchkey-v1-1-1444b927c9f3@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAyxMmkC/03MQQ6DIBCF4auYWZcEUIp6lcYQQgcltdgCGhvj3
- Ut00S7/ybxvg4jBYYS22CDg4qKbfA52KcAM2vdI3D03cMoF41QQXF8BY9QpkTTNZnjghzBZSSN
- oqbktIS/zh3Xrod66swO+54yn8/iz2+KQGWv+ZOWtUdoYHNVT916Nrh8SsbJGyutGsvraLhV0+
- /4F2xSEIr8AAAA=
-X-Change-ID: 20251205-expressatt-touchkey-1747c503a2f3
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAOLNMmkC/3XMwU7EIBSF4VeZsBbDvcBt68r3MC7gQluiaSe0I
+ ZpJ311mNtYQl/9JzncTW8wpbuLlchM5lrSldalBTxfBs1umKFOoLVChBYBe8uRZescfn2mad6k
+ tA6gheOV7UU/XHMf09QDf3mvPadvX/P3wC9zXf6kCEiQzObZagdLmdVmL2/O6PI9J3LGCZ2BoA
+ JRKmmBiCB07ImwBfQLQNoCuAPQuGqR+MAAtYM5A1wCmAoRkUfsOOh1awP4CqEwD2AogjeAjORp
+ Y/wWO4/gBDZk68bIBAAA=
+X-Change-ID: 20251118-cgbc-backlight-35c1109db0b8
+To: Thomas Richard <thomas.richard@bootlin.com>, Lee Jones <lee@kernel.org>, 
+ Daniel Thompson <danielt@kernel.org>, Jingoo Han <jingoohan1@gmail.com>, 
+ Helge Deller <deller@gmx.de>
+Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ linux-fbdev@vger.kernel.org, Petri Karhula <petri.karhula@novatron.fi>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1764929805; l=5243;
- i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=bVqnx5maQ2+0asrPWYudZakdqnY0csCZUYY5fznTxHc=;
- b=vV9FXcHwDs8xcyZwCAhkS1lDBXWwNWso6YRMP8HJC1ShPXQo+PQr2Cm/OUqbLQZVwNDiRQKoe
- /c0OqzGawwqDjPvq3UBmBYchzbEnMfM4tAIJk4jvMAr9Iuey168raXz
-X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
- pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
-X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1764937189; l=1809;
+ i=petri.karhula@novatron.fi; s=20251118; h=from:subject:message-id;
+ bh=pEX+bLa7nulKt3xh0uUuF7vt+hghow9zmUReq6+oyb8=;
+ b=gLn+8Xttcr+Zg9puF6FZ+9bk8zqLhGLVdWk6ot+Av6CVWYP7On+VC7iXeyOPEwiGoy8fPoRdV
+ bu0pi36oTiJAqezsK7Du3RrumqeZOLePNvHMo5HYPTqRAah4Pg5vwT7
+X-Developer-Key: i=petri.karhula@novatron.fi; a=ed25519;
+ pk=LRYJ99jPPsHJwdJEPkqlmzAMqo6oyw7I421aHEfDp7o=
+X-Endpoint-Received: by B4 Relay for petri.karhula@novatron.fi/20251118 with auth_id=567
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the tc360 touchkey. It's unknown if this is the actual model of the
-touchkey, as downstream doesn't mention a variant, but this works.
+This driver provides backlight brightness control through the Linux
+backlight subsystem. It communicates with the board controller to
+adjust LCD backlight using PWM signals. Communication is done
+through Congatec Board Controller core driver.
+    
 
-Link:
-https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/input/keyboard/cypress_touchkey_236/Makefile#L5
-
-Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
+Signed-off-by: Petri Karhula <petri.karhula@novatron.fi>
 ---
-Add the tc360 touchkey. It's unknown if this is the actual model of the
-touchkey, as downstream doesn't mention a variant, but this works.
+Changes in v6:
+- No code changes, just collected tags.
+- Link to v5: https://lore.kernel.org/r/20251204-cgbc-backlight-v5-0-26f1be6a69c3@novatron.fi
 
-Link:
-https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/input/keyboard/cypress_touchkey_236/Makefile#L5
+Changes in v5:
+- Added current and requested brightnesses to verification error message.
+- Link to v4: https://lore.kernel.org/r/20251127-cgbc-backlight-v4-0-626523b7173d@novatron.fi
 
-Test:
-=============
-- LEDs:
-samsung-expressatt:/sys/class/leds/tm2-touchkey$ echo heartbeat > trigger
-// Flashes LEDs :)
+Changes in v4:
+- Factor out brightness read into a helper
+- Set backlight_properties.scale to BACKLIGHT_SCALE_LINEAR
+- Link to v3: https://lore.kernel.org/r/20251125-cgbc-backlight-v3-0-18ae42689411@novatron.fi
 
-- Touching buttons:
-samsung-expressatt:/sys/class/leds/tm2-touchkey$ evtest
-No device specified, trying to scan all of /dev/input/event*
-Not running as root, no devices may be available.
-Available devices:
-/dev/input/event0:      pmic8xxx_pwrkey
-/dev/input/event1:      gpio-keys
-/dev/input/event2:      tm2-touchkey
-/dev/input/event3:      Atmel maXTouch Touchscreen
-Select the device event number [0-3]: 2
-Input driver version is 1.0.1
-Input device ID: bus 0x18 vendor 0x0 product 0x0 version 0x0
-Input device name: "tm2-touchkey"
-Supported events:
-  Event type 0 (EV_SYN)
-  Event type 1 (EV_KEY)
-    Event code 139 (KEY_MENU)
-    Event code 158 (KEY_BACK)
-  Event type 4 (EV_MSC)
-    Event code 4 (MSC_SCAN)
-Properties:
-Testing ... (interrupt to exit)
-Event: time 1761059686.899755, type 4 (EV_MSC), code 4 (MSC_SCAN), value 00
-Event: time 1761059686.899755, type 1 (EV_KEY), code 139 (KEY_MENU), value 1
-Event: time 1761059686.899755, -------------- SYN_REPORT ------------
-Event: time 1761059687.113489, type 4 (EV_MSC), code 4 (MSC_SCAN), value 00
-Event: time 1761059687.113489, type 1 (EV_KEY), code 139 (KEY_MENU), value 0
-Event: time 1761059687.113489, -------------- SYN_REPORT ------------
-Event: time 1761059688.764757, type 4 (EV_MSC), code 4 (MSC_SCAN), value 01
-Event: time 1761059688.764757, type 1 (EV_KEY), code 158 (KEY_BACK), value 1
-Event: time 1761059688.764757, -------------- SYN_REPORT ------------
-Event: time 1761059688.817516, type 4 (EV_MSC), code 4 (MSC_SCAN), value 01
-Event: time 1761059688.817516, type 1 (EV_KEY), code 158 (KEY_BACK), value 0
-Event: time 1761059688.817516, -------------- SYN_REPORT ------------
----
- .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 55 ++++++++++++++++++++++
- 1 file changed, 55 insertions(+)
+Changes in v3:
+- Fixed review comments and simplified the structure of the driver
+- Link to v2: https://lore.kernel.org/r/20251119-cgbc-backlight-v2-0-4d4edd7ca662@novatron.fi
 
-diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-index 5a39abd6f3ce..c4b98af6955d 100644
---- a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-+++ b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-@@ -52,6 +52,41 @@ key-volume-down {
- 			linux,code = <KEY_VOLUMEDOWN>;
- 		};
- 	};
-+
-+	touchkey_enable: touchkey-enable {
-+		compatible = "regulator-fixed";
-+		regulator-name = "touchkey_enable";
-+		gpio = <&tlmm 51 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+		regulator-boot-on;
-+	};
-+
-+	i2c-gpio-touchkey {
-+		compatible = "i2c-gpio";
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+		sda-gpios = <&tlmm 71 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-+		scl-gpios = <&tlmm 72 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&touchkey_i2c_pins>;
-+		status = "okay";
-+		i2c-gpio,delay-us = <2>;
-+
-+		touchkey@20 {
-+			compatible = "coreriver,tc360-touchkey";
-+			reg = <0x20>;
-+
-+			interrupts-extended = <&tlmm 52 IRQ_TYPE_EDGE_FALLING>;
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&touchkey_irq_pin>;
-+
-+			vddio-supply = <&touchkey_enable>;
-+			vdd-supply = <&pm8921_l29>;
-+			vcc-supply = <&pm8921_l29>;
-+
-+			linux,keycodes = <KEY_MENU KEY_BACK>;
-+		};
-+	};
- };
- 
- &gsbi2 {
-@@ -198,6 +233,20 @@ firmware-pins {
- 			bias-disable;
- 		};
- 	};
-+
-+	touchkey_i2c_pins: touchkey-i2c-state {
-+		pins = "gpio71", "gpio72";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	touchkey_irq_pin: touchkey-irq-state {
-+		pins = "gpio52";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
- };
- 
- &pm8921 {
-@@ -420,6 +469,12 @@ pm8921_l25: l25 {
- 			bias-pull-down;
- 		};
- 
-+		pm8921_l29: l29 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <3300000>;
-+			bias-pull-down;
-+		};
-+
- 		/* Low Voltage Switch */
- 		pm8921_lvs1: lvs1 {
- 			bias-pull-down;
+Changes in v2:
+- Separated Board Controller core driver change into its own patch
+- Link to v1: https://lore.kernel.org/r/20251118-cgbc-backlight-v1-1-cc6ac5301034@novatron.fi
 
 ---
-base-commit: 0ccd3ddf45c93ab06c9b1a9d266dcab1e52bf3d2
-change-id: 20251205-expressatt-touchkey-1747c503a2f3
-prerequisite-change-id: 20251119-expressatt_nfc_accel_magn_light-f78e02897186:v4
-prerequisite-patch-id: 6fdd0efa5eda512b442b885df80774d1a7037df7
-prerequisite-patch-id: 12d296f83ccb1bdfb8d06a72e476bf51ae5f4e6c
-prerequisite-patch-id: a970acf2080143f41ae0935dd2c57bb71f5bf338
-prerequisite-patch-id: fd25fef58503c5e5cf742e79b124948c7f6b98d9
-prerequisite-patch-id: 966ae746687ebf8eb29c6185a8909b047e70dbb1
-prerequisite-patch-id: 68603a680b24921759425fc289e61fc4435e5ccd
+Petri Karhula (2):
+      backlight: Add Congatec Board Controller (CGBC) backlight support
+      mfd: cgbc: Add support for backlight
+
+ drivers/mfd/cgbc-core.c           |   1 +
+ drivers/video/backlight/Kconfig   |  11 +++
+ drivers/video/backlight/Makefile  |   1 +
+ drivers/video/backlight/cgbc_bl.c | 180 ++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 193 insertions(+)
+---
+base-commit: 7d0a66e4bb9081d75c82ec4957c50034cb0ea449
+change-id: 20251118-cgbc-backlight-35c1109db0b8
 
 Best regards,
 -- 
-Rudraksha Gupta <guptarud@gmail.com>
+Petri Karhula <petri.karhula@novatron.fi>
 
