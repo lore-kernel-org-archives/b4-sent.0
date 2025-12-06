@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sat, 06 Dec 2025 14:34:23 +0100
-Subject: [PATCH v5 6/8] drm/panel: sw43408: Switch to
- devm_regulator_bulk_get_const
+Date: Sat, 06 Dec 2025 14:34:24 +0100
+Subject: [PATCH v5 7/8] drm/panel: sw43408: Improve wording when
+ reset-gpios aren't available
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251206-pixel-3-v5-6-dc99732e7d35@ixit.cz>
+Message-Id: <20251206-pixel-3-v5-7-dc99732e7d35@ixit.cz>
 References: <20251206-pixel-3-v5-0-dc99732e7d35@ixit.cz>
 In-Reply-To: <20251206-pixel-3-v5-0-dc99732e7d35@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -26,104 +26,50 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  dri-devel@lists.freedesktop.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2716; i=david@ixit.cz;
- h=from:subject:message-id; bh=uVsb8swJAoi+FQAuLqZnopgHFSzHoIO92dAgRnXWra8=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpNDDxv6t4VuZdCZLrdK1kaZgK7nLWAXjcOcrbQ
- /fkSrvYyhqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaTQw8QAKCRBgAj/E00kg
- cvsFD/4n/SUSuiLIi+NtZpsmV8LAvclnd65vs136thYaW0obqU5Wv0Uqznr01YjMKmo4tAiwd+9
- db681ZBwiHOL2iDnVDm1iEwI3p2USZA0s7XSsImX6Ubj1C2OH41XjBOY7QPO5UN2U8FBeeVxXyu
- pF2MGUuRL0pvEnOrfucSIQRsBCNt+RVZ11igHVdLAz6TlMCnc6epk7j7BAHp6EN1JWhoU+/WaSh
- 3Z6PoXgJVbnS3MnPm3pKi3mJJu27NtfL7yqQYWypz1hd35BMRuI2JvslSdoPhkU9oGq7Z9SUuxd
- AVgcgyBzP/w5ZZ2xewN0TfaLOSVqhCxKgEMimQNpgXp37/iuOVjS9BpqWB/x69cGGzpU/zQerxE
- lm5CQ6m8Yl+aHnHAyDc5vvPMwjWEcbm7Zt+HHWM8vkR9rgprLQPz2oVzuSpGYnFXdW5uEP9XaZi
- uHtt7V+5+Yg7FsdxMdskSODdln4JttQwodZfPOHUVBeS9M6s0LQs0dtW6TvCuny9Y8+5LhaD2BP
- m9NAAdRQyPeExRISAJsvliB0JAtjzW6vMc/Gv4ptcuf/E9y5HZjAFY/nqWsiTlJu1gpbm20s4P3
- ix7BxJN+OBO3uuOBcr3QPxrFMplA17z1K4bmVcLBcMcVnDGerZNihaHi+ufLskOpIXgVFzsS/C7
- eiZeJPKZZaDdXZA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=955; i=david@ixit.cz;
+ h=from:subject:message-id; bh=GyQvEwxDvNQdHbjN2iJyHIARYij0btqlXIWdWGzCINE=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpNDDxtdsdyZTRII7faXPHMLqcHBdNUtm1hB4n9
+ Y/tQ8DwiHmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaTQw8QAKCRBgAj/E00kg
+ cgoGD/sGRfgdLMW9j5UXx+fps1MGyddnL8U5s42c7eYZmeSUQ9DuHGUMoLC1wUoBWDSr+ncCVjk
+ ohFTrMRteBjKioco4gdoCm6CnNaepk59n2qGsQPHZSB99dA73a/XZciVeOfBr+XutqBGfMK1wNR
+ 4x7DzdnJj2lb/7zUufZR3r9GhO7sf0+0z1PaiJ7nATKIgfE70AwqWuOsGKNraw4lica7Y0msov6
+ Di+6PKOmb/5GES9mvJtQ3Z1aUGoGrB4+7ei9T+UtmWZrTazkGeKsijLv0dKQquPoo679HnDtM9w
+ MxkzEZ0WfmgojdxKuYSXNbMAiK4RSkrcfM+a1n6i0k7odi51zE0yWZKycyd9mhJaVZCxCNIS3S+
+ R1YrKNSxDoUYKvDGT2301yXYZHOt+HksLPHQ2KxZZDfLBpDN6ca098WtDdm0cYysPRtGW6A8JcW
+ V1Ljz29QORgmsn5OxWeaCOpAw8LN9tPGbzk1Mh5xHtGaiLJwTglX14q5C+UW86IAKqiJgbt51G5
+ nleLMD84u/Z/Ae/PC+jOFETq+t2zCIl86I/7m8Yqgt6VmSMLB3UrFC2Yi/u/Efrk8RvyBj2EvW8
+ 7q7QBTnN6vFmenePwrRM825mEdzWc4Tu51+1igSRyelu/VRFjQFuKjVi8OLRl4MXf1g8xwieCJ3
+ t/T6mQSiE7g4yRQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Switch to devm_regulator_bulk_get_const() to stop setting the supplies
-list in probe(), and move the regulator_bulk_data struct in static const.
+Choose better wording.
+
+Cosmetic: also inline PTR_ERR.
 
 Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/gpu/drm/panel/panel-lg-sw43408.c | 26 ++++++++++++++------------
- 1 file changed, 14 insertions(+), 12 deletions(-)
+ drivers/gpu/drm/panel/panel-lg-sw43408.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/gpu/drm/panel/panel-lg-sw43408.c b/drivers/gpu/drm/panel/panel-lg-sw43408.c
-index 06b9c5e650edf..65d54c8a9630f 100644
+index 65d54c8a9630f..bef60dfc925d1 100644
 --- a/drivers/gpu/drm/panel/panel-lg-sw43408.c
 +++ b/drivers/gpu/drm/panel/panel-lg-sw43408.c
-@@ -20,13 +20,18 @@
- #include <drm/display/drm_dsc.h>
- #include <drm/display/drm_dsc_helper.h>
+@@ -262,8 +262,8 @@ static int sw43408_add(struct sw43408_panel *ctx)
  
--#define NUM_SUPPLIES 2
-+static const struct regulator_bulk_data sw43408_supplies[] = {
-+	{ .supply = "vddi", /* 1.88V */
-+	  .init_load_uA = 62000 },
-+	{ .supply = "vpnl", /* 3.0 V */
-+	  .init_load_uA = 857000 },
-+};
+ 	ctx->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
+ 	if (IS_ERR(ctx->reset_gpio)) {
+-		ret = PTR_ERR(ctx->reset_gpio);
+-		return dev_err_probe(dev, ret, "cannot get reset gpio\n");
++		return dev_err_probe(dev, PTR_ERR(ctx->reset_gpio),
++				     "Failed to get reset-gpios\n");
+ 	}
  
- struct sw43408_panel {
- 	struct drm_panel base;
- 	struct mipi_dsi_device *link;
- 
--	struct regulator_bulk_data supplies[NUM_SUPPLIES];
-+	struct regulator_bulk_data *supplies;
- 
- 	struct gpio_desc *reset_gpio;
- 
-@@ -59,7 +64,7 @@ static int sw43408_unprepare(struct drm_panel *panel)
- 
- 	gpiod_set_value(sw43408->reset_gpio, 1);
- 
--	ret = regulator_bulk_disable(ARRAY_SIZE(sw43408->supplies), sw43408->supplies);
-+	ret = regulator_bulk_disable(ARRAY_SIZE(sw43408_supplies), sw43408->supplies);
- 
- 	return ret;
- }
-@@ -152,7 +157,7 @@ static int sw43408_prepare(struct drm_panel *panel)
- 	struct sw43408_panel *ctx = to_panel_info(panel);
- 	int ret;
- 
--	ret = regulator_bulk_enable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
-+	ret = regulator_bulk_enable(ARRAY_SIZE(sw43408_supplies), ctx->supplies);
- 	if (ret < 0)
- 		return ret;
- 
-@@ -166,7 +171,7 @@ static int sw43408_prepare(struct drm_panel *panel)
- 
- poweroff:
- 	gpiod_set_value(ctx->reset_gpio, 1);
--	regulator_bulk_disable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
-+	regulator_bulk_disable(ARRAY_SIZE(sw43408_supplies), ctx->supplies);
- 	return ret;
- }
- 
-@@ -248,13 +253,10 @@ static int sw43408_add(struct sw43408_panel *ctx)
- 	struct device *dev = &ctx->link->dev;
- 	int ret;
- 
--	ctx->supplies[0].supply = "vddi"; /* 1.88 V */
--	ctx->supplies[0].init_load_uA = 62000;
--	ctx->supplies[1].supply = "vpnl"; /* 3.0 V */
--	ctx->supplies[1].init_load_uA = 857000;
--
--	ret = devm_regulator_bulk_get(dev, ARRAY_SIZE(ctx->supplies),
--				      ctx->supplies);
-+	ret = devm_regulator_bulk_get_const(dev,
-+					    ARRAY_SIZE(sw43408_supplies),
-+					    sw43408_supplies,
-+					    &ctx->supplies);
- 	if (ret < 0)
- 		return ret;
- 
+ 	ret = sw43408_backlight_init(ctx);
 
 -- 
 2.51.0
