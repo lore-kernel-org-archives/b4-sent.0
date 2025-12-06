@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sat, 06 Dec 2025 14:34:19 +0100
-Subject: [PATCH v5 2/8] dt-bindings: panel: sw43408: adjust to reflect the
- DDIC and panel used
+Date: Sat, 06 Dec 2025 14:34:20 +0100
+Subject: [PATCH v5 3/8] drm/panel: sw43408: Introduce LH546WF1-ED01 panel
+ compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251206-pixel-3-v5-2-dc99732e7d35@ixit.cz>
+Message-Id: <20251206-pixel-3-v5-3-dc99732e7d35@ixit.cz>
 References: <20251206-pixel-3-v5-0-dc99732e7d35@ixit.cz>
 In-Reply-To: <20251206-pixel-3-v5-0-dc99732e7d35@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -24,81 +24,71 @@ To: Bjorn Andersson <andersson@kernel.org>,
  Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- dri-devel@lists.freedesktop.org, David Heidelberg <david@ixit.cz>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+ dri-devel@lists.freedesktop.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1948; i=david@ixit.cz;
- h=from:subject:message-id; bh=YFbMU07Wu5FnvTw9LCEYZ4TnpCBRf84TLv0leteBovM=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpNDDwvDaR+m+QhyrgquOXDdM2avUtPyLdimLfW
- Ah8GO3lqxCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaTQw8AAKCRBgAj/E00kg
- cvbID/0dhkZmu6IKOX/8vMpiK4EW/pxZfDdWH6Xl3GHgtOUlwVA7n7KVp8NCBvrKFzLw5DXb+eQ
- UgtZRmkMFLANxh8lT+JesNImudWnbE2YD+ugaz/qAnwnO1AfYdZNR+PZAzGnJlo+a24aJqj8e+x
- oczJr6qNI/BgtPEGfPXjWBDkyTZ2gMHeA7hdtbcDmBFMPs/krIj2OHesE2kMHsI1SXWinwJQDZx
- 56YciqFiUea7HhcSJebXfpmk895bkbd+H7paXSb4y5J+VW+Z/d1/u4SR//StqHxqmdSJ7aUmApT
- 49tnRHtHVoL1b32uBEDHXrm7MwJqH1pzrbU8TmDR3cFkW8fSyMTasyZ9DCkZModoSljgohFtB1K
- KMiUR+XgDMRPdBUEoZT+XvZXgfp1XuJODqo1Gr0iDoU5pj81iey5zs8k4DCKB/yDHJrfIsiY0y7
- oqNX7E4tiPocA953o6HsZEQ0VgPM4F8Jxg6rLqasniXnAouFHJOVlR6HPn6ItHkJo1wSM/giV96
- O805CINM5pmjJYB7Otrnri6tZ6AOXnt34l3x0t2f/x7CW7LeLnpSNz6zwhVDsi5qR7IA/9LaOhj
- qdNwyeqdg00IYowOEfdnyHBauwNalC49327BTqNLZxzMY0IRIbwMQTV/wo69RPC9pz8/+z48nsz
- nhema7e/ODkJ8eg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1747; i=david@ixit.cz;
+ h=from:subject:message-id; bh=K5KrfoqgLLk98vvZLiz1OAUosAiZymNlygbzh53UxIQ=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpNDDw0iRqtud2wJK5tlpQJSM3IKgtgqcfBohqK
+ sddE6k+kJiJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaTQw8AAKCRBgAj/E00kg
+ crtAD/9Y2PURNGt6jhl8+861Qln6l4gWac48D5IsT5LGy9ZGrbNVcSAgNHHEw1FxJ/gDVT+Fmjx
+ jbNq8ERVvdeegB93LYpcdLt3moc9pRnORIEipdEv0MLzjqN6NwOzgNQ9+/d21FZv4lIpSCdMjNs
+ rUHGQ7jPWsc1rw+n08dbEO5nH1w17s/nY6pIP7QMSiEepSyAZ9Xz+j2qx0WDtqOm+lTPtACdUkM
+ +2SC8jVsWQVzpFNg3j47sdpTmW2aFWWL1PfkTCIHMqyyLsFRQw5Kl+NARX7L8qV+cDNjg8yLw/W
+ IhRfLFVT65+Z2dIgNxVO+OLwm1IZzl1Fg5P3vPtCPUb6PP08YwJxIRklW0o2uwTERYuWdCuqTo2
+ 8o7S+KBqB9QssgxV66Th9z/dKnB2kPyzWaFXmIDnrtDTw2IyJgwQhoAqn/z7s4w8d2TE/p8aOr5
+ PZcL6Yv4fhVx411BYrPjISyMwAbnpHxtJhXrM4z0GEgLC0sTD72cFEmzyYcVLM0cd1uPuDvn436
+ 3he85OmFwSXW8ZMI78M5ie/1yjIlD/ctn+MsDe3UnsZSvsfp3EntZ5XCpnKqze6INoc1KxOrY9m
+ a1iyMqfN8m+SSTLIRK/aakgREU+1xIn6eK4rv0GnVDKS/rUsC8Wwu1vqjLyy7uDs5YuDm5A/sEc
+ sSLk1ddUOQpAC3Q==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add compatible for used LG panel.
-SW43408 is not panel, but DDIC. The panel itself is the
-LG LH546WF1-ED01, so introduce combined compatible for it.
+The supported panel is LH546WF1-ED01, add compatible and adjust the
+struct name to reflect that.
 
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+The standalone compatible lg,sw43408 will continue to work, even thou
+there are no users yet.
+
+Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../devicetree/bindings/display/panel/lg,sw43408.yaml       | 13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+ drivers/gpu/drm/panel/panel-lg-sw43408.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/display/panel/lg,sw43408.yaml b/Documentation/devicetree/bindings/display/panel/lg,sw43408.yaml
-index 2219d3d4ac43b..f641efaeb8b36 100644
---- a/Documentation/devicetree/bindings/display/panel/lg,sw43408.yaml
-+++ b/Documentation/devicetree/bindings/display/panel/lg,sw43408.yaml
-@@ -4,14 +4,16 @@
- $id: http://devicetree.org/schemas/display/panel/lg,sw43408.yaml#
- $schema: http://devicetree.org/meta-schemas/core.yaml#
+diff --git a/drivers/gpu/drm/panel/panel-lg-sw43408.c b/drivers/gpu/drm/panel/panel-lg-sw43408.c
+index 46a56ea92ad9f..dcca7873acf8e 100644
+--- a/drivers/gpu/drm/panel/panel-lg-sw43408.c
++++ b/drivers/gpu/drm/panel/panel-lg-sw43408.c
+@@ -149,7 +149,7 @@ static int sw43408_prepare(struct drm_panel *panel)
+ 	return ret;
+ }
  
--title: LG SW43408 1080x2160 DSI panel
-+title: LG SW43408 AMOLED DDIC
+-static const struct drm_display_mode sw43408_mode = {
++static const struct drm_display_mode lh546wf1_ed01_mode = {
+ 	.clock = (1080 + 20 + 32 + 20) * (2160 + 20 + 4 + 20) * 60 / 1000,
  
- maintainers:
-   - Casey Connolly <casey.connolly@linaro.org>
+ 	.hdisplay = 1080,
+@@ -171,7 +171,7 @@ static const struct drm_display_mode sw43408_mode = {
+ static int sw43408_get_modes(struct drm_panel *panel,
+ 			     struct drm_connector *connector)
+ {
+-	return drm_connector_helper_get_modes_fixed(connector, &sw43408_mode);
++	return drm_connector_helper_get_modes_fixed(connector, &lh546wf1_ed01_mode);
+ }
  
- description:
--  This panel is used on the Pixel 3, it is a 60hz OLED panel which
--  required DSC (Display Stream Compression) and has rounded corners.
-+  The SW43408 is display driver IC with connected panel.
-+
-+  LG LH546WF1-ED01 panel is used on the Pixel 3, it is a 60hz OLED panel
-+  which required DSC (Display Stream Compression) and has rounded corners.
+ static int sw43408_backlight_update_status(struct backlight_device *bl)
+@@ -214,7 +214,8 @@ static const struct drm_panel_funcs sw43408_funcs = {
+ };
  
- allOf:
-   - $ref: panel-common.yaml#
-@@ -19,6 +21,9 @@ allOf:
- properties:
-   compatible:
-     items:
-+      - enum:
-+            # LG 5.46 inch, 1080x2160 pixels, 18:9 ratio
-+          - lg,sw43408-lh546wf1-ed01
-       - const: lg,sw43408
- 
-   reg:
-@@ -46,7 +51,7 @@ examples:
-         #size-cells = <0>;
- 
-         panel@0 {
--            compatible = "lg,sw43408";
-+            compatible = "lg,sw43408-lh546wf1-ed01", "lg,sw43408";
-             reg = <0>;
- 
-             vddi-supply = <&vreg_l14a_1p88>;
+ static const struct of_device_id sw43408_of_match[] = {
+-	{ .compatible = "lg,sw43408", },
++	{ .compatible = "lg,sw43408", }, /* legacy */
++	{ .compatible = "lg,sw43408-lh546wf1-ed01", },
+ 	{ /* sentinel */ }
+ };
+ MODULE_DEVICE_TABLE(of, sw43408_of_match);
 
 -- 
 2.51.0
