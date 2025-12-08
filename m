@@ -1,10 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Mon, 08 Dec 2025 10:41:54 +0100
-Subject: [PATCH v6 1/8] dt-bindings: arm: qcom: Add Pixel 3 and 3 XL
+Date: Mon, 08 Dec 2025 10:41:55 +0100
+Subject: [PATCH v6 2/8] dt-bindings: panel: sw43408: adjust to reflect the
+ DDIC and panel used
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251208-pixel-3-v6-1-e9e559d6f412@ixit.cz>
+Message-Id: <20251208-pixel-3-v6-2-e9e559d6f412@ixit.cz>
 References: <20251208-pixel-3-v6-0-e9e559d6f412@ixit.cz>
 In-Reply-To: <20251208-pixel-3-v6-0-e9e559d6f412@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -24,48 +25,80 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  dri-devel@lists.freedesktop.org, David Heidelberg <david@ixit.cz>, 
- Krzysztof Kozlowski <krzk@kernel.org>
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=765; i=david@ixit.cz;
- h=from:subject:message-id; bh=Vnt/xXHh7c01EXNWnpunAXvFyH2vLjx4UfYXxFc1+5w=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpNp1/qlP6M4fA/UAI9sFslieZ/vPbVdIWRdnrw
- sNMRGePcV+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaTadfwAKCRBgAj/E00kg
- csCCD/9pw77H//blcdVh47TCMq5x3u0geMj+edvvECKlk1jqZQkeDoAACyJKOxWFTIesWIihVG9
- G8iNdshQeUF2v/ODkPkeCrM8iVbYbMzz/V7wBIxwJreiTM/FOQlcDJzfKC/0oscYQ+Rns+Kc2RL
- OjZgwCgBMy0JH3e6OVo9fWxyYJ4CjjLOhBIOxdiDgbq6xXXXuhEhL5QuRADK5bsAnlbmk2ere6o
- Wfpv41N7OPAape7rCm+Klcal8c+tVLH3yHU0sj7wfnssL+GF5vIARAGDN/wmubUf7VOtLpddnAU
- imeOPaDTfB6ewq4t9N00Me4+KXoWGz6MtabP2sWj/qDi9oj3fpdMJq2D20QgY61qfIEcE3mLZc7
- jdaufFk7fz3sVnPBMcioC8umAOmFNvfZJ+VmenataKIMUIxyiICtodu6wIpDUXZ7nHjlYinhhCA
- GLZ0gQvSdSOUcSc7K+yvhFRQpHbQ7zpkNjuIIHTKIMZWM8sQGKH3ThDmJRSLKyf+2V4f/9gR2Ad
- C9Bt3mt5jGaBwH3YgDUzxBMFHu/m+uwrx61IE7HduThDRQOGxcFho0h6I/P4WWHPE/63/R3SOs9
- 5WIh6N3R0XbQQaPZ9AZAKIBRML8H1boVMp7kGShdvXXxAkwMqpSdeatqYVgtavpi4W8S6/Eyr7M
- QjAetK403TJj8dQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1948; i=david@ixit.cz;
+ h=from:subject:message-id; bh=YFbMU07Wu5FnvTw9LCEYZ4TnpCBRf84TLv0leteBovM=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpNp1/2va/mVnfDJFtJnUzeoVBNshAhSm3Ggl2r
+ 5QA/uM5P6qJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaTadfwAKCRBgAj/E00kg
+ chtGD/9BRz2pbgCA5jVXvzIkQFz5VPZK6MADTaowDuIVc05EFfw847eVJ5l7MmBDfALQXt3fY30
+ IAHs8oeh/Q8omQjqwVB80tn631ArucHySGNes6wHnn4aky3/eJi4unvT/Hhzx6xJS4Bfd+dNdaD
+ JvRBf03pfWnqLLsPFtnc7MmR4MKVizOS/+cHvsStCfd2THFCosCOVDryvzUlY4/njLkbtGfDDjT
+ ozsLb5x192nR0ggJyAUaF4/qBnth52cFcCSibYWTyxVGx8iOjSl+UY+hBLlhCIfxUYyolJ4J2+u
+ Vm24ODGYN9gk6blxMnjGkd9D/jTr1rNi3tMCUYInLVUAeKUHTm0K7ga01eHhluxR6T66v/SqIl3
+ NNkDLeMdhkQHCW6l09HohEDXUSoDYjAWBxDkD7HeNrgOl+LxJBZWQ3c649297Gblzlm/C3pP4NS
+ Wo4fwvs7P1l6bQiC1Nv+etV4MfCBOQRFVx6CkOHJrVaBTBbx5WsXKNhns756W+HdXYCqdvDRv1Y
+ YUb/6LcZZjN7JuXdSpkgRoUzxf8oRMxg9xzsZNtO5Crazo4pGjNPzxPMEWNEzmSN6UX9E6iAuzb
+ zj5yMgnssRXlNor1dn/IRZGPaDgrzqDBXm2ZrhSAD5QpOA3GxhHPYMbsyJKjAsie4Mu77DXgJ7p
+ YWgsJB70FH5m5EA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the bindings for the Pixel 3 and 3 XL.
+Add compatible for used LG panel.
+SW43408 is not panel, but DDIC. The panel itself is the
+LG LH546WF1-ED01, so introduce combined compatible for it.
 
-Acked-by: Krzysztof Kozlowski <krzk@kernel.org>
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- Documentation/devicetree/bindings/arm/qcom.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+ .../devicetree/bindings/display/panel/lg,sw43408.yaml       | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
-index d84bd3bca2010..760b6633b7a55 100644
---- a/Documentation/devicetree/bindings/arm/qcom.yaml
-+++ b/Documentation/devicetree/bindings/arm/qcom.yaml
-@@ -900,6 +900,8 @@ properties:
+diff --git a/Documentation/devicetree/bindings/display/panel/lg,sw43408.yaml b/Documentation/devicetree/bindings/display/panel/lg,sw43408.yaml
+index 2219d3d4ac43b..f641efaeb8b36 100644
+--- a/Documentation/devicetree/bindings/display/panel/lg,sw43408.yaml
++++ b/Documentation/devicetree/bindings/display/panel/lg,sw43408.yaml
+@@ -4,14 +4,16 @@
+ $id: http://devicetree.org/schemas/display/panel/lg,sw43408.yaml#
+ $schema: http://devicetree.org/meta-schemas/core.yaml#
  
-       - items:
-           - enum:
-+              - google,blueline
-+              - google,crosshatch
-               - huawei,planck
-               - lenovo,yoga-c630
-               - lg,judyln
+-title: LG SW43408 1080x2160 DSI panel
++title: LG SW43408 AMOLED DDIC
+ 
+ maintainers:
+   - Casey Connolly <casey.connolly@linaro.org>
+ 
+ description:
+-  This panel is used on the Pixel 3, it is a 60hz OLED panel which
+-  required DSC (Display Stream Compression) and has rounded corners.
++  The SW43408 is display driver IC with connected panel.
++
++  LG LH546WF1-ED01 panel is used on the Pixel 3, it is a 60hz OLED panel
++  which required DSC (Display Stream Compression) and has rounded corners.
+ 
+ allOf:
+   - $ref: panel-common.yaml#
+@@ -19,6 +21,9 @@ allOf:
+ properties:
+   compatible:
+     items:
++      - enum:
++            # LG 5.46 inch, 1080x2160 pixels, 18:9 ratio
++          - lg,sw43408-lh546wf1-ed01
+       - const: lg,sw43408
+ 
+   reg:
+@@ -46,7 +51,7 @@ examples:
+         #size-cells = <0>;
+ 
+         panel@0 {
+-            compatible = "lg,sw43408";
++            compatible = "lg,sw43408-lh546wf1-ed01", "lg,sw43408";
+             reg = <0>;
+ 
+             vddi-supply = <&vreg_l14a_1p88>;
 
 -- 
 2.51.0
