@@ -1,187 +1,137 @@
-From: Dominique Martinet <asmadeus@codewreck.org>
-Date: Wed, 10 Dec 2025 06:04:23 +0900
-Subject: [PATCH] 9p/virtio: restrict page pinning to user_backed_iter()
- iovec
+From: Richard Leitner <richard.leitner@linux.dev>
+Subject: [PATCH v10 0/8] Add strobe duration and strobe output enable v4l2
+ ctrl
+Date: Tue, 09 Dec 2025 23:44:35 +0100
+Message-Id: <20251209-ov9282-flash-strobe-v10-0-0117cab82e2d@linux.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251210-virtio_trans_iter-v1-1-92eee6d8b6db@codewreck.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBNyRMquEhFWU81GY5QIorsnL
- d/i/wcSCVOCvnpA6OLEMRTouoLl8GEnxWsxYINWo27UxZI5Tll8SBNnEmVdazqH64xkoHSn0Mb
- 3/xzG9/0AQkmR4mMAAAA=
-X-Change-ID: 20251210-virtio_trans_iter-5973892db2e3
-To: Eric Van Hensbergen <ericvh@kernel.org>, 
- Latchesar Ionkov <lucho@ionkov.net>, 
- Christian Schoenebeck <linux_oss@crudebyte.com>
-Cc: v9fs@lists.linux.dev, linux-kernel@vger.kernel.org, 
- David Howells <dhowells@redhat.com>, Matthew Wilcox <willy@infradead.org>, 
- linux-fsdevel@vger.kernel.org, Chris Arges <carges@cloudflare.com>, 
- Dominique Martinet <asmadeus@codewreck.org>
-X-Mailer: b4 0.15-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8881;
- i=asmadeus@codewreck.org; h=from:subject:message-id;
- bh=xNEQgh7o2uR1z6CBHTRUiHJwBQ8STbwtasQdSBM3wAc=;
- b=owEBbQKS/ZANAwAKAatOm+xqmOZwAcsmYgBpOI7gDbHNYEfwQJ8+jaHr7XmI4uhaDSnG75DTh
- +NSiBBJlXOJAjMEAAEKAB0WIQT8g9txgG5a3TOhiE6rTpvsapjmcAUCaTiO4AAKCRCrTpvsapjm
- cBIzD/9jt0l7eArEe5iQlWAH1x4jiHENmtsp4C9qoKCtch+w0LJFiBtnub+qNg2pmM3dQMsbeBM
- KBVJzunMDL5GobuOpDd3tqLma64MRmdexMj5uJ2mcAJX9WpkLFYd3fflNpnYmlvPLsBkb9lcaFJ
- 4/SvPOAMpiVJBzUSwTDSH+adkORG1dWlbMeknz9Ljq86g5ePMRlxrKL18P6ANjNInhQDLEOD4eI
- OMNelaS2362zInJQnBfnn08QGkj+o1/4jDQntBwIce/Zh3ldmwVJP9eI3ld0t07Rek5OMOtlNhL
- 2vYlMBltroOhS5E0tkjjOCjUw7Sr5lRXwjbVbWjlGDUncV0ZLc0uaU36A/SOzJBoJICZiPb5WsK
- Wf+YyFQDbIECiIewrC+0hNiIu89zF2cEz3VtaC4+DRDvsamj5t9U3/7LyBvj685G7xRFzsuYkxL
- wg2cDbo7emDr5oy9ny4P7xlFfHCgSNVDmgkAgSWSQCmtbb5je55EavgC59dfi6IweFBlOWpOOqu
- cbvN6hNfnowk84kupbmaBQi4KpLrFJyJWnQg64h/2GxNpfNOgvQcFxS+PhLD/3DuIqdCb6jRKHc
- m2043lNqQykrh3qdgxzS/SYUXOa/hIuVvw6zjrsvX7wC4TF26lxhWTpZu9+plwiLzl7qIJ2JBO3
- k775B81/AJYJFjw==
-X-Developer-Key: i=asmadeus@codewreck.org; a=openpgp;
- fpr=B894379F662089525B3FB1B9333F1F391BBBB00A
-X-Endpoint-Received: by B4 Relay for asmadeus@codewreck.org/default with auth_id=435
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAFOmOGkC/33R227CMAwG4FdBuV6Q7ZwarvYe0y7SHEYkoFtbK
+ ibUd18o0oq6skv/sj9b8pV1sc2xY7vNlbVxyF1uTqVAeNkwv3enj8hzKAEjIAUCBG8GSxXxdHD
+ dnnd929SRO6/rAOBtiJqVyc82pnyZ2Lf3e93Gr3PR+3vIatdF7pvjMfe7zaC3WPHWS3Zr3ueub
+ 9rv6aQBp+5/lw/IgUMKyjhUWtbu9ZBP58s2xGHyBnowUK4bVAyUwTiqUEgKS0PMhiS7bohiEIL
+ yEY21ipaGnA0FZt2QxTBUk7Uea+Pt0lCzofGJoYphjabgjAyg1dLQs2FQrxv6ZgiZkFxMSYilY
+ WbDAq4bphhBVUE5baVLfmlUvwYiPPlLVYzaYkgxodfqz2/tg0GwbthiaG+jcFIABvNojOP4A4M
+ A4REEAwAA
+X-Change-ID: 20250303-ov9282-flash-strobe-ac6bd00c9de6
+To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Dave Stevenson <dave.stevenson@raspberrypi.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Lee Jones <lee@kernel.org>, 
+ Pavel Machek <pavel@kernel.org>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-leds@vger.kernel.org, Richard Leitner <richard.leitner@linux.dev>, 
+ Hans Verkuil <hverkuil@kernel.org>
+X-Mailer: b4 0.15-dev-a3fc8
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1765320290; l=5031;
+ i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
+ bh=kqHZHTYcalfqHfsySNEaGq9rBcBlyOIsvDj+Sp/LTc4=;
+ b=ctor+vw6XpqZLU+HkfWDOvmVs3OcWapc6aanSZ5nu376Juz9ysKeq0+k1ifAgHWMChFmNaUsx
+ ai784X27lrIBBDHTsmVsyZ5txHrqKeqeTnhIgXN5y9cGzyovGYQkK/F
+X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
+ pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
+X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When doing a loop mount of a filesystem over 9p, read requests can come
-from unexpected places and blow up as reported by Chris Arges with this
-reproducer:
-```
-dd if=/dev/zero of=./xfs.img bs=1M count=300
-yes | mkfs.xfs -b size=8192 ./xfs.img
-rm -rf ./mount && mkdir -p ./mount
-mount -o loop ./xfs.img ./mount
-```
+This series adds two new v4l2 controls:
+- V4L2_CID_FLASH_DURATION: "Strobe duration": This control enables
+  setting a desired flash/strobe length/duration in µs.
+- V4L2_CID_FLASH_STROBE_OE: "Strobe output enable": This
+  control enables the hardware strobe output signal of a v4l2 device.
 
-The problem is that iov_iter_get_pages_alloc2() apparently cannot be
-called on folios (as illustrated by the backtrace below), so limit what
-iov we can pin from !iov_iter_is_kvec() to user_backed_iter()
+As a first user of these new controls add basic flash/strobe support
+for ov9282 sensors using their "hardware strobe output". The duration
+calculation is only interpolated from various measurements, as no
+documentation was found.
 
-Full backtrace:
-```
-[   31.276957][  T255] loop0: detected capacity change from 0 to 614400
-[   31.286377][  T255] XFS (loop0): EXPERIMENTAL large block size feature enabled.  Use at your own risk!
-[   31.286624][  T255] XFS (loop0): Mounting V5 Filesystem fa3c2d3c-b936-4ee3-a5a8-e80ba36298cc
-[   31.395721][   T62] page: refcount:0 mapcount:0 mapping:0000000000000000 index:0x0 pfn:0x102600
-[   31.395833][   T62] head: order:9 mapcount:0 entire_mapcount:0 nr_pages_mapped:0 pincount:0
-[   31.395915][   T62] flags: 0x2ffff800000040(head|node=0|zone=2|lastcpupid=0x1ffff)
-[   31.395976][   T62] page_type: f8(unknown)
-[   31.396004][   T62] raw: 002ffff800000040 0000000000000000 dead000000000122 0000000000000000
-[   31.396092][   T62] raw: 0000000000000000 0000000000000000 00000000f8000000 0000000000000000
-[   31.396174][   T62] head: 002ffff800000040 0000000000000000 dead000000000122 0000000000000000
-[   31.396251][   T62] head: 0000000000000000 0000000000000000 00000000f8000000 0000000000000000
-[   31.396339][   T62] head: 002ffff800000009 ffffea0004098001 00000000ffffffff 00000000ffffffff
-[   31.396425][   T62] head: ffffffffffffffff 0000000000000000 00000000ffffffff 0000000000000200
-[   31.396523][   T62] page dumped because: VM_BUG_ON_FOLIO(((unsigned int) folio_ref_count(folio) + 127u <= 127u))
-[   31.396641][   T62] ------------[ cut here ]------------
-[   31.396689][   T62] kernel BUG at include/linux/mm.h:1386!
-[   31.396748][   T62] Oops: invalid opcode: 0000 [#1] SMP NOPTI
-[   31.396820][   T62] CPU: 4 UID: 0 PID: 62 Comm: kworker/u32:1 Not tainted 6.18.0-rc7-cloudflare-2025.11.11-21-gab0ed6ff #1 PREEMPT(voluntary)
-[   31.396947][   T62] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 2025.02-8 05/13/2025
-[   31.397031][   T62] Workqueue: loop0 loop_rootcg_workfn
-[   31.397084][   T62] RIP: 0010:__iov_iter_get_pages_alloc+0x7b6/0x920
-[   31.397152][   T62] Code: 08 4c 89 5d 10 44 88 55 20 e9 0d fb ff ff 0f 0b 4d 85 ed 0f 85 fc fb ff ff e9 38 fd ff ff 48 c7 c6 20 88 6d 83 e8 fa 2f b7 ff <0f> 0b 31 f6 b9 c0 0c 00 00 ba 01 00 00 00 4c 89 0c 24 48 8d 3c dd
-[   31.397310][   T62] RSP: 0018:ffffc90000257908 EFLAGS: 00010246
-[   31.397365][   T62] RAX: 000000000000005c RBX: 0000000000000020 RCX: 0000000000000003
-[   31.397424][   T62] RDX: 0000000000000000 RSI: 0000000000000003 RDI: ffffffff83f38508
-[   31.397498][   T62] RBP: ffff888101af90f8 R08: 0000000000000000 R09: ffffc900002577a0
-[   31.397571][   T62] R10: ffffffff83f084c8 R11: 0000000000000003 R12: 0000000000020000
-[   31.397654][   T62] R13: ffffc90000257a70 R14: ffffc90000257a68 R15: ffffea0004098000
-[   31.397727][   T62] FS:  0000000000000000(0000) GS:ffff8882b3266000(0000) knlGS:0000000000000000
-[   31.397819][   T62] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[   31.397890][   T62] CR2: 00007f846eb985a0 CR3: 0000000004620003 CR4: 0000000000772ef0
-[   31.397964][   T62] PKRU: 55555554
-[   31.398005][   T62] Call Trace:
-[   31.398045][   T62]  <TASK>
-[   31.398075][   T62]  ? kvm_sched_clock_read+0x11/0x20
-[   31.398131][   T62]  ? sched_clock+0x10/0x30
-[   31.398179][   T62]  ? sched_clock_cpu+0xf/0x1d0
-[   31.398234][   T62]  iov_iter_get_pages_alloc2+0x20/0x50
-[   31.398277][   T62]  p9_get_mapped_pages.part.0.constprop.0+0x6f/0x280 [9pnet_virtio]
-[   31.398354][   T62]  ? p9pdu_vwritef+0xe0/0x6e0 [9pnet]
-[   31.398413][   T62]  ? pdu_write+0x2d/0x40 [9pnet]
-[   31.398464][   T62]  p9_virtio_zc_request+0x92/0x69a [9pnet_virtio]
-[   31.398530][   T62]  ? p9pdu_vwritef+0xe0/0x6e0 [9pnet]
-[   31.398582][   T62]  ? p9pdu_finalize+0x32/0x90 [9pnet]
-[   31.398620][   T62]  ? p9_client_prepare_req+0xbe/0x150 [9pnet]
-[   31.398693][   T62]  p9_client_zc_rpc.constprop.0+0xf4/0x2f0 [9pnet]
-[   31.398768][   T62]  ? p9_client_xattrwalk+0x148/0x1d0 [9pnet]
-[   31.398840][   T62]  p9_client_write+0x16a/0x240 [9pnet]
-[   31.398887][   T62]  ? __kmalloc_cache_noprof+0x2f3/0x5a0
-[   31.398939][   T62]  v9fs_issue_write+0x3a/0x80 [9p]
-[   31.399002][   T62]  netfs_advance_write+0xd3/0x2b0 [netfs]
-[   31.399069][   T62]  netfs_unbuffered_write+0x66/0xb0 [netfs]
-[   31.399131][   T62]  netfs_unbuffered_write_iter_locked+0x1cd/0x220 [netfs]
-[   31.399202][   T62]  netfs_unbuffered_write_iter+0x100/0x1d0 [netfs]
-[   31.399265][   T62]  lo_rw_aio.isra.0+0x2e7/0x330
-[   31.399321][   T62]  loop_process_work+0x86/0x420
-[   31.399380][   T62]  process_one_work+0x192/0x350
-[   31.399434][   T62]  worker_thread+0x2d3/0x400
-[   31.399493][   T62]  ? __pfx_worker_thread+0x10/0x10
-[   31.399559][   T62]  kthread+0xfc/0x240
-[   31.399605][   T62]  ? __pfx_kthread+0x10/0x10
-[   31.399660][   T62]  ? _raw_spin_unlock+0xe/0x30
-[   31.399711][   T62]  ? finish_task_switch.isra.0+0x8d/0x280
-[   31.399764][   T62]  ? __pfx_kthread+0x10/0x10
-[   31.399820][   T62]  ? __pfx_kthread+0x10/0x10
-[   31.399878][   T62]  ret_from_fork+0x113/0x130
-[   31.399931][   T62]  ? __pfx_kthread+0x10/0x10
-[   31.399992][   T62]  ret_from_fork_asm+0x1a/0x30
-[   31.400050][   T62]  </TASK>
-[   31.400088][   T62] Modules linked in: kvm_intel kvm irqbypass aesni_intel rapl i2c_piix4 i2c_smbus tiny_power_button button configfs virtio_mmio virtio_pci virtio_pci_legacy_dev virtio_pci_modern_dev virtio_console 9pnet_virtio virtiofs virtio virtio_ring fuse 9p 9pnet netfs
-[   31.400365][   T62] ---[ end trace 0000000000000000 ]---
-[   31.405087][   T62] RIP: 0010:__iov_iter_get_pages_alloc+0x7b6/0x920
-[   31.405166][   T62] Code: 08 4c 89 5d 10 44 88 55 20 e9 0d fb ff ff 0f 0b 4d 85 ed 0f 85 fc fb ff ff e9 38 fd ff ff 48 c7 c6 20 88 6d 83 e8 fa 2f b7 ff <0f> 0b 31 f6 b9 c0 0c 00 00 ba 01 00 00 00 4c 89 0c 24 48 8d 3c dd
-[   31.405281][   T62] RSP: 0018:ffffc90000257908 EFLAGS: 00010246
-[   31.405328][   T62] RAX: 000000000000005c RBX: 0000000000000020 RCX: 0000000000000003
-[   31.405383][   T62] RDX: 0000000000000000 RSI: 0000000000000003 RDI: ffffffff83f38508
-[   31.405456][   T62] RBP: ffff888101af90f8 R08: 0000000000000000 R09: ffffc900002577a0
-[   31.405516][   T62] R10: ffffffff83f084c8 R11: 0000000000000003 R12: 0000000000020000
-[   31.405593][   T62] R13: ffffc90000257a70 R14: ffffc90000257a68 R15: ffffea0004098000
-[   31.405665][   T62] FS:  0000000000000000(0000) GS:ffff8882b3266000(0000) knlGS:0000000000000000
-[   31.405730][   T62] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[   31.405774][   T62] CR2: 00007f846eb985a0 CR3: 0000000004620004 CR4: 0000000000772ef0
-[   31.405837][   T62] PKRU: 55555554
-[   31.434509][    C4] ------------[ cut here ]------------
-```
+Further flash/strobe-related controls as well as a migration to v4l2-cci
+helpers for ov9282 will likely be implemented in future series.
 
-Reported-by: Chris Arges <carges@cloudflare.com>
-Closes: https://lkml.kernel.org/r/aSR-C4ahmNRoUV58@861G6M3
-Tested-by: Chris Arges <carges@cloudflare.com>
-Reviewed-by: Christian Schoenebeck <linux_oss@crudebyte.com>
-Suggested-by: Christian Schoenebeck <linux_oss@crudebyte.com>
-Signed-off-by: Dominique Martinet <asmadeus@codewreck.org>
+All register addresses/values are based on the OV9281 datasheet v1.53
+(january 2019). This series was tested using an ov9281 VisionComponents
+camera module.
+
+Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
-This is the patch Chris tested in the linked thread as is
+Changes in v10:
+- Avoid bitwise or on error codes in ov9282_set_ctrl_flash_duration() (Thanks Sakari)
+- Link to v9: https://patch.msgid.link/20251120-ov9282-flash-strobe-v9-0-6c9e3a4301d7@linux.dev
 
-I'll admit I still don't really understand how this even works: the else
-branch of the trans_virtio patch assumes it can use data->kvec->iov_base
-so it shouldn't work with folio-backed iov?!
-(Also: why does iov_iter_get_pages_alloc2() explicitly implement support
-for folio if it's just to blow up later)
-.. but if it worked for Chris I guess that's good enough for now?
+Changes in v9:
+- Avoid needless multiplication/division in ov9282.c (Thanks Sakari)
+- Avoid possible u32 overflow in ov9282.c (Thanks Sakari)
+- Link to v8: https://patch.msgid.link/20251104-ov9282-flash-strobe-v8-0-b91dfef1c65a@linux.dev
 
-I'm still surprised I can't reproduce this, I'll try to play with the
-backing 9p mount options and check these IOs are done properly before
-sending to Linus, but any feedback is welcome until then
----
- net/9p/trans_virtio.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v8:
+- Minor styling changes across the set
+- Add missing error handling for ov9282 strobe_frame_span writing
+- Rename V4L2_CID_FLASH_HW_STROBE_SIGNAL to V4L2_CID_FLASH_STROBE_OE
+- Drop 02/10: FLASH_DURATION handling in v4l2-flash
+- Drop 08/10: strobe_source in ov9282
+- Link to v7: https://lore.kernel.org/r/20250901-ov9282-flash-strobe-v7-0-d58d5a694afc@linux.dev
 
-diff --git a/net/9p/trans_virtio.c b/net/9p/trans_virtio.c
-index 10c2dd48643818907f4370243eb971fceba4d40b..f7ee1f864b03a59568510eb0dd3496bd05b3b8d6 100644
---- a/net/9p/trans_virtio.c
-+++ b/net/9p/trans_virtio.c
-@@ -318,7 +318,7 @@ static int p9_get_mapped_pages(struct virtio_chan *chan,
- 	if (!iov_iter_count(data))
- 		return 0;
- 
--	if (!iov_iter_is_kvec(data)) {
-+	if (user_backed_iter(data)) {
- 		int n;
- 		/*
- 		 * We allow only p9_max_pages pinned. We wait for the
+Changes in v7:
+- Improved v4l2 uAPI documentation (thanks Sakari)
+- Link to v6: https://lore.kernel.org/r/20250716-ov9282-flash-strobe-v6-0-934f12aeff33@linux.dev
+
+Changes in v6:
+- Fix "Alignment should match open parenthesis" by Media-CI bot in v4l2-flash-led-class.c
+- Fix "format string contains non-ascii character (µ)" by Media-CI bot in ov9282.c
+- Introduce new V4L2_CID_FLASH_HW_STROBE_SIGNAL control (as suggested by Sakari)
+- Implement V4L2_CID_FLASH_HW_STROBE_SIGNAL instead of
+  V4L2_CID_FLASH_LED_MODE in ov9282.c (as suggested by Sakari)
+- Drop "media: v4l2-flash: fix flash_timeout comment" as this was
+  applied (thanks Lee)
+- Link to v5: https://lore.kernel.org/r/20250617-ov9282-flash-strobe-v5-0-9762da74d065@linux.dev
+
+Changes in v5:
+- Improve try_ctrl for flash_duration by using DIV_ROUND_UP() and abs() (thanks Sakari)
+- Drop "leds: flash: Add support for flash/strobe duration" as this was applied upstream
+- Add "media: i2c: ov9282: dynamic flash_duration maximum" (thanks Sakari)
+- Link to v4: https://lore.kernel.org/r/20250507-ov9282-flash-strobe-v4-0-72b299c1b7c9@linux.dev
+
+Changes in v4:
+- Fix FLASH_DURATION implementation in v4l2-flash-led-class.c by adding a
+  missing brace and enum entry (thanks Sakari)
+- Fix format of multiline comment in ov9282.c (thanks Sakari)
+- Add missing NULL check in ov9282.c (thanks Sakari)
+- Adapt nr_of_controls_hint for v4l2 handler in ov9282.c (thanks Sakari)
+- Add patch for implementing try_ctrl for strobe_duration (thanks Sakari)
+- Link to v3: https://lore.kernel.org/r/20250429-ov9282-flash-strobe-v3-0-2105ce179952@linux.dev
+
+Changes in v3:
+- create separate patch for leds driver changes (thanks Lee)
+- Link to v2: https://lore.kernel.org/r/20250314-ov9282-flash-strobe-v2-0-14d7a281342d@linux.dev
+
+Changes in v2:
+- remove not needed controls in struct ov9282 (thanks Dave)
+- Fix commit message of 3/3 regarding framerate get/set (thanks Dave)
+- Add V4L2_CID_FLASH_STROBE_SOURCE impementation to ov9282
+- Add new V4L2_CID_FLASH_DURATION control (as suggested by Laurent)
+- Use FLASH_DURATION instead of FLASH_TIMEOUT for ov9282
+- Link to v1: https://lore.kernel.org/r/20250303-ov9282-flash-strobe-v1-0-0fd57a1564ba@linux.dev
 
 ---
-base-commit: 3e281113f871d7f9c69ca55a4d806a72180b7e8a
-change-id: 20251210-virtio_trans_iter-5973892db2e3
+Richard Leitner (8):
+      media: v4l: ctrls: add a control for flash/strobe duration
+      media: v4l: ctrls: add a control for enabling strobe output
+      Documentation: uAPI: media: add V4L2_CID_FLASH_{DURATION,STROBE_OE}
+      media: i2c: ov9282: add output enable register definitions
+      media: i2c: ov9282: add strobe output enable v4l2 control
+      media: i2c: ov9282: add strobe_duration v4l2 control
+      media: i2c: ov9282: implement try_ctrl for strobe_duration
+      media: i2c: ov9282: dynamic flash_duration maximum
+
+ .../userspace-api/media/v4l/ext-ctrls-flash.rst    |  42 +++++
+ drivers/media/i2c/ov9282.c                         | 174 ++++++++++++++++++++-
+ drivers/media/v4l2-core/v4l2-ctrls-defs.c          |   3 +
+ include/uapi/linux/v4l2-controls.h                 |   2 +
+ 4 files changed, 215 insertions(+), 6 deletions(-)
+---
+base-commit: 2f112b1c25da9f5346c2261ed35c5b1e0b906471
+change-id: 20250303-ov9282-flash-strobe-ac6bd00c9de6
 
 Best regards,
--- 
-Dominique Martinet <asmadeus@codewreck.org>
+--  
+Richard Leitner <richard.leitner@linux.dev>
 
