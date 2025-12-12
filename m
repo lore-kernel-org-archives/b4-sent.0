@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sat, 13 Dec 2025 00:08:16 +0100
-Subject: [PATCH 1/2] drm/msm/dpu: Add NULL pointer check in
- dpu_crtc_duplicate_state()
+Date: Sat, 13 Dec 2025 00:08:17 +0100
+Subject: [PATCH 2/2] clk: qcom: rcg2, msm/dsi: Fix hangs caused by register
+ writes while clocks are off
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251213-stability-discussion-v1-1-b25df8453526@ixit.cz>
+Message-Id: <20251213-stability-discussion-v1-2-b25df8453526@ixit.cz>
 References: <20251213-stability-discussion-v1-0-b25df8453526@ixit.cz>
 In-Reply-To: <20251213-stability-discussion-v1-0-b25df8453526@ixit.cz>
 To: Rob Clark <robin.clark@oss.qualcomm.com>, 
@@ -22,20 +22,20 @@ Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org,
  linux-clk@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1152; i=david@ixit.cz;
- h=from:subject:message-id; bh=awDmg5Kg+/H+XtPy9XCo+xTI0vQQ43OvbZYHDH2Enjg=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpPKBkQII8PO5Rx7SPn6kSRID2R3/4fFdTDpgTQ
- 6NT9bZjZRmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaTygZAAKCRBgAj/E00kg
- cre1D/4qT03GfZl67wFuGoKIC52PWR93WXzhpcyxxqXURURCzRjux81RsAZNGYBQ6KcvootGuoZ
- u+XINmGXam4V36KXA4L+eNWKSAgt3bjmOl/bYRUM4fiontyWVNW9iFRFX+jMMoLxoLgKczELK2a
- vwyrj6sox1kACoZTj3uOdioc+CXpB3WkwoaFigEF/DaADT0UGInAtoYN46i6nsKoILmWmFKIJbe
- Zsrfah+aIkb9eWQDv/qQnhFqM4NYEYxeQ1hZgeMe8VbOsWzTxKS7y1lLkWonsOw01b9Eq9KA4UA
- LKPuSyhG9ignyTxyu/Qfxf2le3dYLmPIl3cldheMs6PpUejbzju4FguLVx/k36VdjM1wps6NBnr
- abs8r5Zv45L2/t8kd9kQhUW1qlntqAa3V9vsjTtoRp5ukF/eo6MMMiKBikroszOX2wEWijDPnEk
- tREiIrVdloT37C+fJz2mrIh+rdK8fmQ13oIzgDIOPnhnyssd8fJcv8WufOcMC+Q47vpBz2FNTHQ
- B0HQczn3OJS8GBDYYVG4a+LrQ7esvBawK50zaVNVvCJ7dLKOtX79IJo4WP6MAT4dU+WqFt1zDwR
- rOuuV0KPCKa7dS19Cyz89fYSv0Fo0RQdFe7h6lEMweBcwr6T6XPlODYtuWS0CgBAM+DhnOFvz0U
- w9JMVAO15wIgjtQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2764; i=david@ixit.cz;
+ h=from:subject:message-id; bh=3WwuH3iPdckITDVjZS20u/lAh5Ab6avBlAX4H4KQQAc=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpPKBkj9yTavobap8/tJezp4SUEdEk/oBwh1Cov
+ RLrk4Pd4CeJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaTygZAAKCRBgAj/E00kg
+ cnVqD/4rWYHL9WIoDWye5vQFhBRdRw7fJ7l4Giq25T5Cw+lf79JsiHY3TsLlJDN2jenM3MYKyjV
+ 6mwzr/QnRJEr21FniGTvu1PNK+5Zbu8szUBWbq4IZWJXvhFjLBaScSlnU3H+NusFgNguruc1CVo
+ EB7y3eUU4+JwAkxkDJoOKV/+gHthhorJVlmW2P0JFFanF0KLnic2KgNTbiUrAdroT7hpe7eVWa9
+ uKXV1uci7Lq5zPEw5vYjmMzx+trXm6hYGAMfa3CmIfcjyCOU2Xo4VYVxfStnz9s3nI8R4NrbrsY
+ PYA1gueBL7qfoNqKi2zsCtphlRQnLi4hU1av04XqGHhu3Ftnxwa4bDxIrQ2NeBvhN/MeyrBvur3
+ bt8f4mcxRQLI2ZowkhHTsRTNKzVXI+nXjAdQsWHIMg5BPaep5gWw/GauulMoen40cANCwH/pln/
+ b6NDjv4yzodo5ImSbfjWk9I2+SqgakVeKzaN4TQEJ3NE0S2HwVl09rwBGSoccNiJfYxwOh+cZ9/
+ SXdU+dWNrH+WeM1tAuhbKx2cBQm18RzGZQmYB0HlGz/XoZ8Sekg2v3XbHrSf5qAADpJJbJ63odu
+ JWNVCspHBAA6AbWaJo+AqhmwMVAKt87x+/Rn8We28yCRHEruimKOdepS8KLUt3mFkTfKkPEQ4Bs
+ joLia2cIgFjt10w==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
@@ -43,34 +43,89 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Petr Hodina <petr.hodina@protonmail.com>
 
-dpu_crtc_duplicate_state() assumes that crtc->state is always valid,
-but under certain error or teardown paths it may be NULL, leading to
-a NULL-pointer dereference when calling to_dpu_crtc_state().
+This patch fixes system hangs that occur when RCG2 and DSI code paths
+perform register accesses while the associated clocks or power domains
+are disabled.
+
+For the Qualcomm RCG2 clock driver, updating M/N/D registers while the
+clock is gated can cause the hardware to lock up. Avoid toggling the
+update bit when the clock is disabled and instead write the configuration
+directly.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ drivers/clk/qcom/clk-rcg2.c        | 18 ++++++++++++++++++
+ drivers/gpu/drm/msm/dsi/dsi_host.c | 13 +++++++++++++
+ 2 files changed, 31 insertions(+)
 
-diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c
-index c39f1908ea654..d03666e14d7de 100644
---- a/drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c
-+++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_crtc.c
-@@ -1114,7 +1114,12 @@ static void dpu_crtc_reset(struct drm_crtc *crtc)
-  */
- static struct drm_crtc_state *dpu_crtc_duplicate_state(struct drm_crtc *crtc)
- {
--	struct dpu_crtc_state *cstate, *old_cstate = to_dpu_crtc_state(crtc->state);
-+	struct dpu_crtc_state *cstate, *old_cstate;
-+
-+	if (WARN_ON(!crtc->state))
-+		return NULL;
-+
-+	old_cstate = to_dpu_crtc_state(crtc->state);
+diff --git a/drivers/clk/qcom/clk-rcg2.c b/drivers/clk/qcom/clk-rcg2.c
+index e18cb8807d735..a18d2b9319670 100644
+--- a/drivers/clk/qcom/clk-rcg2.c
++++ b/drivers/clk/qcom/clk-rcg2.c
+@@ -1182,6 +1182,24 @@ static int clk_pixel_set_rate(struct clk_hw *hw, unsigned long rate,
+ 		f.m = frac->num;
+ 		f.n = frac->den;
  
- 	cstate = kmemdup(old_cstate, sizeof(*old_cstate), GFP_KERNEL);
- 	if (!cstate) {
++		/*
++		 * If clock is disabled, update the M, N and D registers and
++		 * don't hit the update bit.
++		 */
++		if (!clk_hw_is_enabled(hw)) {
++			int ret;
++
++			ret = regmap_read(rcg->clkr.regmap, RCG_CFG_OFFSET(rcg), &cfg);
++			if (ret)
++				return ret;
++
++			ret = __clk_rcg2_configure(rcg, &f, &cfg);
++			if (ret)
++				return ret;
++
++			return regmap_write(rcg->clkr.regmap, RCG_CFG_OFFSET(rcg), cfg);
++		}
++
+ 		return clk_rcg2_configure(rcg, &f);
+ 	}
+ 	return -EINVAL;
+diff --git a/drivers/gpu/drm/msm/dsi/dsi_host.c b/drivers/gpu/drm/msm/dsi/dsi_host.c
+index e0de545d40775..374ed966e960b 100644
+--- a/drivers/gpu/drm/msm/dsi/dsi_host.c
++++ b/drivers/gpu/drm/msm/dsi/dsi_host.c
+@@ -762,6 +762,12 @@ dsi_get_cmd_fmt(const enum mipi_dsi_pixel_format mipi_fmt)
+ 
+ static void dsi_ctrl_disable(struct msm_dsi_host *msm_host)
+ {
++	/* Check if we're already powered off before writing registers */
++	if (!msm_host->power_on) {
++		pr_info("DSI CTRL: Skipping register write - host already powered off\n");
++		return;
++	}
++
+ 	dsi_write(msm_host, REG_DSI_CTRL, 0);
+ }
+ 
+@@ -2489,6 +2495,8 @@ int msm_dsi_host_power_off(struct mipi_dsi_host *host)
+ {
+ 	struct msm_dsi_host *msm_host = to_msm_dsi_host(host);
+ 	const struct msm_dsi_cfg_handler *cfg_hnd = msm_host->cfg_hnd;
++	int ret;
++
+ 
+ 	mutex_lock(&msm_host->dev_mutex);
+ 	if (!msm_host->power_on) {
+@@ -2496,6 +2504,11 @@ int msm_dsi_host_power_off(struct mipi_dsi_host *host)
+ 		goto unlock_ret;
+ 	}
+ 
++	/* Ensure clocks are enabled before register access */
++	ret = pm_runtime_get_sync(&msm_host->pdev->dev);
++	if (ret < 0)
++		pm_runtime_put_noidle(&msm_host->pdev->dev);
++
+ 	dsi_ctrl_disable(msm_host);
+ 
+ 	pinctrl_pm_select_sleep_state(&msm_host->pdev->dev);
 
 -- 
 2.51.0
