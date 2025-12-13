@@ -1,81 +1,69 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sat, 13 Dec 2025 13:00:21 +0100
-Subject: [PATCH 2/2] arm64: dts: qcom: sdm845-db845c: Use introduced
- platform wide cam_mclk0_default
+From: Zhaoming Luo <zhml@posteo.com>
+Date: Sat, 13 Dec 2025 23:04:11 +0800
+Subject: [PATCH v2] dt-bindings: ufs: Fix a grammar error
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251213-sdm845-mclk-v1-2-197bc947d4c6@ixit.cz>
-References: <20251213-sdm845-mclk-v1-0-197bc947d4c6@ixit.cz>
-In-Reply-To: <20251213-sdm845-mclk-v1-0-197bc947d4c6@ixit.cz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+Message-Id: <20251213-fix-minor-grammar-err-v2-1-b32be57caa13@posteo.com>
+X-B4-Tracking: v=1; b=H4sIAGqAPWkC/x2MQQqAMAzAviI9W9gqKvoV8TBcpz1sSgciDP/u8
+ BhIUiCzCmeYmwLKt2Q5UwVqG9gOl3ZG8ZWBDPWWbIdBHoySTsVdXYxOkVVxGL01W6DgJw+1vZS
+ r+H+X9X0/tnyRPWcAAAA=
+X-Change-ID: 20251213-fix-minor-grammar-err-67d10cf2fd9d
+To: Alim Akhtar <alim.akhtar@samsung.com>, 
+ Avri Altman <avri.altman@wdc.com>, Bart Van Assche <bvanassche@acm.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
+Cc: linux-scsi@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Zhaoming Luo <zhml@posteo.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1459; i=david@ixit.cz;
- h=from:subject:message-id; bh=R7wOc0/W3li22Q1J4/X9qHO1WroFHpmXK6iETy2cixs=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpPVVV2U1w3Lv52MNqjwbzlO3Q9Z3+2zXGDIi1b
- fZj7gY/pBuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaT1VVQAKCRBgAj/E00kg
- ciqqEACXJbHxjZ3BLIDW/tuHXpqh/j4bDcR89FPsnNqFZ7fXbJZJhZSErUwV+tn0KH88XJinS/k
- 6QTw3qzim1EDuILqD4daWRbkd5kV/Fh5aHSR/EQp4OGycl7wRRmRwrFOqykdjZ1BDj62MjWVj6q
- 4MNLeqa41tQUpb3ElJAm/JKn/3jK+S9PwcF8gtFNwhrKqnFmRoXptHkRmNzkUPrqJuSrXcmL7jk
- 2cXLrQP4Bv5E3gDqhFEEeqsucmfFVRXlJ2DWJQnujXmSiMAhg2T7NAPTWYoaSo8QkDbDju3CQTy
- 7wspl0ibtKHWX+fm0m0u8a6ss6TBqM1Ta9Fiz6EraPj6M4LHwUuAD9KbtpU1miw1hqCK5yWngyo
- rHHXIUtOkDHvxlJO14zP1g2eY8H3X9QjySHDa1RbzLfqpEtFRYc06vmXY/r2XAgD4Rgnv1d2XqV
- W0uwc53Kq9PPELEA4Q00ljmmRPrRNfRRB9rwy6+UWah8+FjOWbja6RKK9vSluj1WMYDcXmezn1M
- 8IclGpllQ9BvZu7Gc7IWc2S75Aua47GyFKpDne3FlZ2rrBDnVb1IxJXRS1X+fMY8XLq+GZE5eu4
- AsXPlHa/OgCfF7ZeD3TUFWLYiQdPW/wGjuPFHk/naQX/jTZQsL9vy369S8dO1yFQwQu0pZoIcYj
- tAMG9k5VmzdvCzQ==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1440; i=zhml@posteo.com;
+ h=from:subject:message-id; bh=fori8aM450W7B3/fTbmPAYSMy/U8i5ZeqbO0a1qO7mc=;
+ b=owGbwMvMwCWW8vrrboHTHcGMp9WSGDJtG1o+qz+J/6IurKsm+/8KI3PRDKb3Ka2T9+Y5iee4R
+ 7hHPzzWMZGFQYyLwVJMkcU57kHABd8el8DWY54wc1iZQIZIizQwAAELA19uYl6pkY6Rnqm2oZ6h
+ oQ6QycDFKQBT/bqJkWHj3Nv8HTM7TP65uV5R3PjMnicx65JYDeeyxaac3WsqNv9n+GcyIz4uR0p
+ 63bmJ/+o3LzqQFPR0CpujSvcOqebQa0E/vrMBAA==
+X-Developer-Key: i=zhml@posteo.com; a=openpgp;
+ fpr=435EE050D04D8C445185C64964EBF5BB10CB8853
+X-Endpoint-Received: by B4 Relay for zhml@posteo.com/default with auth_id=576
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-All Snapdragon 845 platform has same controls GPIOs.
+Fix a minor grammar error.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Zhaoming Luo <zhml@posteo.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-db845c-navigation-mezzanine.dtso | 2 +-
- arch/arm64/boot/dts/qcom/sdm845-db845c.dts                       | 8 --------
- 2 files changed, 1 insertion(+), 9 deletions(-)
+Changes from v1[0]:
+- The subject prefixes match the subsystem as suggested in the
+  documentation[1].
+- The necessary To/Cc entries are included.
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-db845c-navigation-mezzanine.dtso b/arch/arm64/boot/dts/qcom/sdm845-db845c-navigation-mezzanine.dtso
-index dbe1911d8e470..f6c2c98970d76 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-db845c-navigation-mezzanine.dtso
-+++ b/arch/arm64/boot/dts/qcom/sdm845-db845c-navigation-mezzanine.dtso
-@@ -40,7 +40,7 @@ camera@10 {
- 		/* CAM0_RST_N */
- 		reset-gpios = <&tlmm 9 GPIO_ACTIVE_LOW>;
- 		pinctrl-names = "default";
--		pinctrl-0 = <&cam0_default>;
-+		pinctrl-0 = <&cam0_default &cam_mclk0_default>;
- 
- 		clocks = <&clock_camcc CAM_CC_MCLK0_CLK>;
- 		clock-names = "xvclk";
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-db845c.dts b/arch/arm64/boot/dts/qcom/sdm845-db845c.dts
-index ce23f87e0316b..981d19c20fa1f 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-db845c.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-db845c.dts
-@@ -877,14 +877,6 @@ rst-pins {
- 			drive-strength = <16>;
- 			bias-disable;
- 		};
--
--		mclk0-pins {
--			pins = "gpio13";
--			function = "cam_mclk";
--
--			drive-strength = <16>;
--			bias-disable;
--		};
- 	};
- 
- 	cam3_default: cam3-default-state {
+Thanks to Krzysztof Kozlowski for pointing out the errors and providing
+helpful information about how to fix them.
 
+[0]: https://lore.kernel.org/linux-scsi/20251212131112.5516-1-zhml@posteo.com/
+[1]: https://www.kernel.org/doc/html/latest/devicetree/bindings/submitting-patches.html#i-for-patch-submitters
+---
+ Documentation/devicetree/bindings/ufs/ufs-common.yaml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Documentation/devicetree/bindings/ufs/ufs-common.yaml b/Documentation/devicetree/bindings/ufs/ufs-common.yaml
+index 9f04f34d8..efeae8f3d 100644
+--- a/Documentation/devicetree/bindings/ufs/ufs-common.yaml
++++ b/Documentation/devicetree/bindings/ufs/ufs-common.yaml
+@@ -48,7 +48,7 @@ properties:
+     enum: [1, 2]
+     default: 2
+     description:
+-      Number of lanes available per direction.  Note that it is assume same
++      Number of lanes available per direction.  Note that it is assumed same
+       number of lanes is used both directions at once.
+ 
+   vdd-hba-supply:
+
+---
+base-commit: 9d9c1cfec01cdbf24bd9322ed555713a20422115
+change-id: 20251213-fix-minor-grammar-err-67d10cf2fd9d
+
+Best regards,
 -- 
-2.51.0
+Zhaoming Luo <zhml@posteo.com>
 
