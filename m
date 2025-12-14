@@ -1,10 +1,10 @@
 From: Sven Peter <sven@kernel.org>
-Date: Sun, 14 Dec 2025 11:51:34 +0000
-Subject: [PATCH v3 1/3] soc: apple: Add hardware tunable support
+Date: Sun, 14 Dec 2025 11:51:35 +0000
+Subject: [PATCH v3 2/3] dt-bindings: phy: Add Apple Type-C PHY
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251214-b4-atcphy-v3-1-ba82b20e9459@kernel.org>
+Message-Id: <20251214-b4-atcphy-v3-2-ba82b20e9459@kernel.org>
 References: <20251214-b4-atcphy-v3-0-ba82b20e9459@kernel.org>
 In-Reply-To: <20251214-b4-atcphy-v3-0-ba82b20e9459@kernel.org>
 To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
@@ -14,216 +14,274 @@ To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>,
  Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>
 Cc: linux-kernel@vger.kernel.org, asahi@lists.linux.dev, 
  linux-arm-kernel@lists.infradead.org, linux-hardening@vger.kernel.org, 
- linux-phy@lists.infradead.org, devicetree@vger.kernel.org, 
- Alyssa Rosenzweig <alyssa@rosenzweig.io>
+ linux-phy@lists.infradead.org, devicetree@vger.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6699; i=sven@kernel.org;
- h=from:subject:message-id; bh=3/FNvvvthqfqE8Hlk9y9M/lWMbT998+aR2jWJxRXnA4=;
- b=owGbwMvMwCHmIlirolUq95LxtFoSQ6bdkqsHdm3OW9zuFiodtmbTRs25kevmCgms3P5hz1S59
- zalT/TMOkpZGMQ4GGTFFFm277c3ffLwjeDSTZfew8xhZQIZwsDFKQATqYhjZDjlvZ7tVXdN5qM7
- 79YX+n7zO3N3Wvwv86mH/C5ES4bOOurK8FfWSF6vjtn9svakK+xicso8p01ue3z6sXvBccbrCw9
- qT+IEAA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8195; i=sven@kernel.org;
+ h=from:subject:message-id; bh=B8pn83D7Yy67lmNF8MQiKBTy4XDuUoCznztEvqwwgV4=;
+ b=owGbwMvMwCHmIlirolUq95LxtFoSQ6bdkmvvY79c0nGeVs61OP6Vv9pZW73uxi3XLAqz1P60/
+ IrPiP/bUcrCIMbBICumyLJ9v73pk4dvBJduuvQeZg4rE8gQBi5OAZiI6HGG/yX8Lw4ttfwgM/lE
+ ybGibMZTBzwj72w0t3a0tdx9e8Psxb8Z/ntW36lrO83ENCldi98k2jSMo2PZxamW07d/LeU1PGS
+ zhhsA
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Various hardware, like the Type-C PHY or the Thunderbolt/USB4 NHI,
-present on Apple SoCs need machine-specific tunables passed from our
-bootloader m1n1 to the device tree. Add generic helpers so that we
-don't have to duplicate this across multiple drivers.
+Apple's Type-C PHY (ATCPHY) is a PHY for USB 2.0, USB 3.x,
+USB4/Thunderbolt, and DisplayPort connectivity found in Apple Silicon
+SoCs.
 
-Reviewed-by: Alyssa Rosenzweig <alyssa@rosenzweig.io>
+The PHY handles muxing between these different protocols and also provides
+the reset controller for the attached dwc3 USB controller.
+
 Reviewed-by: Neal Gompa <neal@gompa.dev>
-Reviewed-by: Janne Grunau <j@jannau.net>
+Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- drivers/soc/apple/Kconfig         |  4 ++
- drivers/soc/apple/Makefile        |  3 ++
- drivers/soc/apple/tunable.c       | 80 +++++++++++++++++++++++++++++++++++++++
- include/linux/soc/apple/tunable.h | 62 ++++++++++++++++++++++++++++++
- 4 files changed, 149 insertions(+)
+ .../devicetree/bindings/phy/apple,atcphy.yaml      | 222 +++++++++++++++++++++
+ MAINTAINERS                                        |   1 +
+ 2 files changed, 223 insertions(+)
 
-diff --git a/drivers/soc/apple/Kconfig b/drivers/soc/apple/Kconfig
-index ad67368892311bed5a94d358288390a6fb8b3b4a..d0ff32182a2b4a10c98cb96c70a03bea8c650f84 100644
---- a/drivers/soc/apple/Kconfig
-+++ b/drivers/soc/apple/Kconfig
-@@ -38,6 +38,10 @@ config APPLE_SART
- 
- 	  Say 'y' here if you have an Apple SoC.
- 
-+config APPLE_TUNABLE
-+	tristate
-+	depends on ARCH_APPLE || COMPILE_TEST
-+
- endmenu
- 
- endif
-diff --git a/drivers/soc/apple/Makefile b/drivers/soc/apple/Makefile
-index 4d9ab8f3037b7159771d8817fa507ba29f99ae10..0b85ab61aefe131349a67d0aa80204edd8e89925 100644
---- a/drivers/soc/apple/Makefile
-+++ b/drivers/soc/apple/Makefile
-@@ -8,3 +8,6 @@ apple-rtkit-y = rtkit.o rtkit-crashlog.o
- 
- obj-$(CONFIG_APPLE_SART) += apple-sart.o
- apple-sart-y = sart.o
-+
-+obj-$(CONFIG_APPLE_TUNABLE) += apple-tunable.o
-+apple-tunable-y = tunable.o
-diff --git a/drivers/soc/apple/tunable.c b/drivers/soc/apple/tunable.c
+diff --git a/Documentation/devicetree/bindings/phy/apple,atcphy.yaml b/Documentation/devicetree/bindings/phy/apple,atcphy.yaml
 new file mode 100644
-index 0000000000000000000000000000000000000000..6593238391715be07cdfec0c1b116d6946f53fb5
+index 0000000000000000000000000000000000000000..0acac7e3ee67ef2f03ffe1e04b0ac0fb414af362
 --- /dev/null
-+++ b/drivers/soc/apple/tunable.c
-@@ -0,0 +1,80 @@
-+// SPDX-License-Identifier: GPL-2.0-only OR MIT
-+/*
-+ * Apple Silicon hardware tunable support
-+ *
-+ * Each tunable is a list with each entry containing a offset into the MMIO
-+ * region, a mask of bits to be cleared and a set of bits to be set. These
-+ * tunables are passed along by the previous boot stages and vary from device
-+ * to device such that they cannot be hardcoded in the individual drivers.
-+ *
-+ * Copyright (C) The Asahi Linux Contributors
-+ */
++++ b/Documentation/devicetree/bindings/phy/apple,atcphy.yaml
+@@ -0,0 +1,222 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/phy/apple,atcphy.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+#include <linux/io.h>
-+#include <linux/module.h>
-+#include <linux/of.h>
-+#include <linux/overflow.h>
-+#include <linux/soc/apple/tunable.h>
++title: Apple Type-C PHY (ATCPHY)
 +
-+struct apple_tunable *devm_apple_tunable_parse(struct device *dev,
-+					       struct device_node *np,
-+					       const char *name,
-+					       struct resource *res)
-+{
-+	struct apple_tunable *tunable;
-+	struct property *prop;
-+	const __be32 *p;
-+	size_t sz;
-+	int i;
++maintainers:
++  - Sven Peter <sven@kernel.org>
 +
-+	if (resource_size(res) < 4)
-+		return ERR_PTR(-EINVAL);
++description: >
++  The Apple Type-C PHY (ATCPHY) is a combined PHY for USB 2.0, USB 3.x,
++  USB4/Thunderbolt, and DisplayPort connectivity via Type-C ports found in
++  Apple Silicon SoCs.
 +
-+	prop = of_find_property(np, name, NULL);
-+	if (!prop)
-+		return ERR_PTR(-ENOENT);
++  The PHY handles muxing between these different protocols and also provides the
++  reset controller for the attached DWC3 USB controller.
 +
-+	if (prop->length % (3 * sizeof(u32)))
-+		return ERR_PTR(-EINVAL);
-+	sz = prop->length / (3 * sizeof(u32));
++  It is designed for USB4 operation and does not handle individual differential
++  pairs as distinct DisplayPort lanes. Any reference to lane in this binding
++  hence refers to two differential pairs (RX and TX) as used in USB terminology.
 +
-+	tunable = devm_kzalloc(dev, struct_size(tunable, values, sz), GFP_KERNEL);
-+	if (!tunable)
-+		return ERR_PTR(-ENOMEM);
-+	tunable->sz = sz;
++  In order to correctly setup these lanes for the various modes calibration
++  values copied from Apple's firmware and converted to the format described
++  below by our bootloader m1n1 are required. Without these only USB2 operation
++  is possible.
 +
-+	for (i = 0, p = NULL; i < tunable->sz; ++i) {
-+		p = of_prop_next_u32(prop, p, &tunable->values[i].offset);
-+		p = of_prop_next_u32(prop, p, &tunable->values[i].mask);
-+		p = of_prop_next_u32(prop, p, &tunable->values[i].value);
++allOf:
++  - $ref: /schemas/usb/usb-switch.yaml#
 +
-+		/* Sanity checks to catch bugs in our bootloader */
-+		if (tunable->values[i].offset % 4)
-+			return ERR_PTR(-EINVAL);
-+		if (tunable->values[i].offset > (resource_size(res) - 4))
-+			return ERR_PTR(-EINVAL);
-+	}
++$defs:
++  apple,tunable:
++    $ref: /schemas/types.yaml#/definitions/uint32-matrix
++    items:
++      items:
++        - description: Register offset
++        - description: Mask to be applied to the register value
++        - description: Bits to be set after applying the mask
++    description: >
++      List of (register offset, mask, value) tuples copied from Apple's Device
++      Tree by our bootloader m1n1 and used to configure the PHY. These values
++      even vary for a single product/device and likely contain calibration
++      values determined by Apple at manufacturing time.
++      Unless otherwise noted these tunables are always applied to the core
++      register region.
 +
-+	return tunable;
-+}
-+EXPORT_SYMBOL(devm_apple_tunable_parse);
++properties:
++  compatible:
++    oneOf:
++      - items:
++          - enum:
++              - apple,t6000-atcphy
++              - apple,t6020-atcphy
++              - apple,t8112-atcphy
++          - const: apple,t8103-atcphy
++      - const: apple,t8103-atcphy
 +
-+void apple_tunable_apply(void __iomem *regs, struct apple_tunable *tunable)
-+{
-+	size_t i;
++  reg:
++    items:
++      - description: Common controls for all PHYs (USB2/3/4, DisplayPort, TBT)
++      - description: DisplayPort Alternate Mode PHY specific controls
++      - description: Type-C PHY AXI to Apple Fabric interconnect controls
++      - description: USB2 PHY specific controls
++      - description: USB3 PIPE interface controls
 +
-+	for (i = 0; i < tunable->sz; ++i) {
-+		u32 val, old_val;
++  reg-names:
++    items:
++      - const: core
++      - const: lpdptx
++      - const: axi2af
++      - const: usb2phy
++      - const: pipehandler
 +
-+		old_val = readl(regs + tunable->values[i].offset);
-+		val = old_val & ~tunable->values[i].mask;
-+		val |= tunable->values[i].value;
-+		if (val != old_val)
-+			writel(val, regs + tunable->values[i].offset);
-+	}
-+}
-+EXPORT_SYMBOL(apple_tunable_apply);
++  "#phy-cells":
++    const: 1
 +
-+MODULE_LICENSE("Dual MIT/GPL");
-+MODULE_AUTHOR("Sven Peter <sven@kernel.org>");
-+MODULE_DESCRIPTION("Apple Silicon hardware tunable support");
-diff --git a/include/linux/soc/apple/tunable.h b/include/linux/soc/apple/tunable.h
-new file mode 100644
-index 0000000000000000000000000000000000000000..531ca814cd02357a0c5de6f3acde805294c13d4a
---- /dev/null
-+++ b/include/linux/soc/apple/tunable.h
-@@ -0,0 +1,62 @@
-+/* SPDX-License-Identifier: GPL-2.0-only OR MIT */
-+/*
-+ * Apple Silicon hardware tunable support
-+ *
-+ * Each tunable is a list with each entry containing a offset into the MMIO
-+ * region, a mask of bits to be cleared and a set of bits to be set. These
-+ * tunables are passed along by the previous boot stages and vary from device
-+ * to device such that they cannot be hardcoded in the individual drivers.
-+ *
-+ * Copyright (C) The Asahi Linux Contributors
-+ */
++  "#reset-cells":
++    const: 0
 +
-+#ifndef _LINUX_SOC_APPLE_TUNABLE_H_
-+#define _LINUX_SOC_APPLE_TUNABLE_H_
++  mode-switch: true
++  orientation-switch: true
 +
-+#include <linux/device.h>
-+#include <linux/types.h>
++  power-domains:
++    maxItems: 1
 +
-+/**
-+ * Struct to store an Apple Silicon hardware tunable.
-+ *
-+ * Each tunable is a list with each entry containing a offset into the MMIO
-+ * region, a mask of bits to be cleared and a set of bits to be set. These
-+ * tunables are passed along by the previous boot stages and vary from device
-+ * to device such that they cannot be hardcoded in the individual drivers.
-+ *
-+ * @param sz Number of [offset, mask, value] tuples stored in values.
-+ * @param values [offset, mask, value] array.
-+ */
-+struct apple_tunable {
-+	size_t sz;
-+	struct {
-+		u32 offset;
-+		u32 mask;
-+		u32 value;
-+	} values[] __counted_by(sz);
-+};
++  ports:
++    $ref: /schemas/graph.yaml#/properties/ports
++    properties:
++      port@0:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Outgoing connection to the SS port of the Type-C connector.
 +
-+/**
-+ * Parse an array of hardware tunables from the device tree.
-+ *
-+ * @dev: Device node used for devm_kzalloc internally.
-+ * @np: Device node which contains the tunable array.
-+ * @name: Name of the device tree property which contains the tunables.
-+ * @res: Resource to which the tunables will be applied, used for bound checking
-+ *
-+ * @return: devres allocated struct on success or PTR_ERR on failure.
-+ */
-+struct apple_tunable *devm_apple_tunable_parse(struct device *dev,
-+					       struct device_node *np,
-+					       const char *name,
-+					       struct resource *res);
++      port@1:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Incoming endpoint from the USB3 controller.
 +
-+/**
-+ * Apply a previously loaded hardware tunable.
-+ *
-+ * @param regs: MMIO to which the tunable will be applied.
-+ * @param tunable: Pointer to the tunable.
-+ */
-+void apple_tunable_apply(void __iomem *regs, struct apple_tunable *tunable);
++      port@2:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Incoming endpoint from the DisplayPort controller.
 +
-+#endif
++      port@3:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Incoming endpoint from the USB4/Thunderbolt controller.
++
++  apple,tunable-common-a:
++    $ref: "#/$defs/apple,tunable"
++    description: >
++      Common tunables required for all modes, applied before tunable-axi2af.
++
++  apple,tunable-axi2af:
++    $ref: "#/$defs/apple,tunable"
++    description: >
++      AXI to Apple Fabric tunables, required for all modes. Unlike all other
++      tunables these are applied to the axi2af region.
++
++  apple,tunable-common-b:
++    $ref: "#/$defs/apple,tunable"
++    description: >
++      Common tunables required for all modes, applied after tunable-axi2af.
++
++  apple,tunable-lane0-usb:
++    $ref: "#/$defs/apple,tunable"
++    description: USB3 tunables for lane 0.
++
++  apple,tunable-lane1-usb:
++    $ref: "#/$defs/apple,tunable"
++    description: USB3 tunables for lane 1.
++
++  apple,tunable-lane0-cio:
++    $ref: "#/$defs/apple,tunable"
++    description: USB4/Thunderbolt ("Converged IO") tunables for lane 0.
++
++  apple,tunable-lane1-cio:
++    $ref: "#/$defs/apple,tunable"
++    description: USB4/Thunderbolt ("Converged IO") tunables for lane 1.
++
++  apple,tunable-lane0-dp:
++    $ref: "#/$defs/apple,tunable"
++    description: >
++      DisplayPort tunables for lane 0.
++
++      Note that lane here refers to a USB RX and TX pair re-used for DisplayPort
++      and not to an individual DisplayPort differential lane.
++
++  apple,tunable-lane1-dp:
++    $ref: "#/$defs/apple,tunable"
++    description: >
++      DisplayPort tunables for lane 1.
++
++      Note that lane here refers to a USB RX and TX pair re-used for DisplayPort
++      and not to an individual DisplayPort differential lane.
++
++required:
++  - compatible
++  - reg
++  - reg-names
++  - "#phy-cells"
++  - "#reset-cells"
++  - orientation-switch
++  - mode-switch
++  - power-domains
++  - ports
++
++additionalProperties: false
++
++examples:
++  - |
++    phy@83000000 {
++      compatible = "apple,t8103-atcphy";
++      reg = <0x83000000 0x4c000>,
++            <0x83050000 0x8000>,
++            <0x80000000 0x4000>,
++            <0x82a90000 0x4000>,
++            <0x82a84000 0x4000>;
++      reg-names = "core", "lpdptx", "axi2af", "usb2phy",
++                  "pipehandler";
++
++      #phy-cells = <1>;
++      #reset-cells = <0>;
++
++      orientation-switch;
++      mode-switch;
++      power-domains = <&ps_atc0_usb>;
++
++      ports {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        port@0 {
++          reg = <0>;
++
++          endpoint {
++            remote-endpoint = <&typec_connector_ss>;
++          };
++        };
++
++        port@1 {
++          reg = <1>;
++
++          endpoint {
++            remote-endpoint = <&dwc3_ss_out>;
++          };
++        };
++
++        port@2 {
++          reg = <2>;
++
++          endpoint {
++            remote-endpoint = <&dcp_dp_out>;
++          };
++        };
++
++        port@3 {
++          reg = <3>;
++
++          endpoint {
++            remote-endpoint = <&acio_tbt_out>;
++          };
++        };
++      };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 5b11839cba9de1e9e43f63787578edd8c429ca39..5c68ab187d406d5fd6d042672848197c1b6957a1 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -2471,6 +2471,7 @@ F:	Documentation/devicetree/bindings/nvme/apple,nvme-ans.yaml
+ F:	Documentation/devicetree/bindings/nvmem/apple,efuses.yaml
+ F:	Documentation/devicetree/bindings/nvmem/apple,spmi-nvmem.yaml
+ F:	Documentation/devicetree/bindings/pci/apple,pcie.yaml
++F:	Documentation/devicetree/bindings/phy/apple,atcphy.yaml
+ F:	Documentation/devicetree/bindings/pinctrl/apple,pinctrl.yaml
+ F:	Documentation/devicetree/bindings/power/apple*
+ F:	Documentation/devicetree/bindings/power/reset/apple,smc-reboot.yaml
 
 -- 
 2.34.1
