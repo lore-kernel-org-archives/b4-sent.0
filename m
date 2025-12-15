@@ -1,11 +1,11 @@
 From: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
-Date: Mon, 15 Dec 2025 20:41:59 +0800
-Subject: [PATCH v8 03/12] phy: qcom: qmp-usbc: Add DP-related fields for
- USB/DP switchable PHY
+Date: Mon, 15 Dec 2025 20:42:00 +0800
+Subject: [PATCH v8 04/12] phy: qcom: qmp-usbc: Add regulator init_load
+ support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251215-add-displayport-support-for-qcs615-platform-v8-3-cbc72c88a44e@oss.qualcomm.com>
+Message-Id: <20251215-add-displayport-support-for-qcs615-platform-v8-4-cbc72c88a44e@oss.qualcomm.com>
 References: <20251215-add-displayport-support-for-qcs615-platform-v8-0-cbc72c88a44e@oss.qualcomm.com>
 In-Reply-To: <20251215-add-displayport-support-for-qcs615-platform-v8-0-cbc72c88a44e@oss.qualcomm.com>
 To: Vinod Koul <vkoul@kernel.org>, 
@@ -21,140 +21,159 @@ Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org,
  Konrad Dybcio <konradybcio@kernel.org>, 
  Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1765802541; l=3923;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1765802541; l=5388;
  i=xiangxu.yin@oss.qualcomm.com; s=20241125; h=from:subject:message-id;
- bh=sGPDr7m9hknSa/j4j14/VJqeuP9SANRoHGvS8k2xQag=;
- b=z5qZ3g0Uk4wcXTSaij84bfOGTDObRVWbR/ffKggBqc+3C7TRIVDzmYcc7zP5m7/VsMm7G9IFG
- iBsx8RHYdIXDoo4Qwp8v1E0PWcEWqVQx1eW/oa1vRb/Phv7YUtnXYcW
+ bh=383ksxn/Xe0XwLZmvXOJSWJ9xUJUZexxMoJwii57KsE=;
+ b=D+G4I9GJSfE20dGy1Xez9USFiSuZq60YpCDvxuXyjwM99pZv49jum2Zfra7CgsgjT0tyv4if1
+ +uCSg3h3G1iAkUe/o98uHMVdIiWoru6MrU1mSljs2bRAQOdcBUWt7nq
 X-Developer-Key: i=xiangxu.yin@oss.qualcomm.com; a=ed25519;
  pk=F1TwipJzpywfbt3n/RPi4l/A4AVF+QC89XzCHgZYaOc=
 X-Endpoint-Received: by B4 Relay for xiangxu.yin@oss.qualcomm.com/20241125 with auth_id=542
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Extend qmp_usbc_offsets and qmp_phy_cfg with DP-specific fields,
-including register offsets, init tables, and callback hooks. Also
-update qmp_usbc struct to track DP-related resources and state.
-This enables support for USB/DP switchable Type-C PHYs that operate
-in either mode.
+QMP USBC PHY drivers previously did not set init_load_uA for regulators,
+which could result in incorrect vote levels. This patch introduces
+regulator definitions with proper init_load_uA values based on each
+chip's power grid design.
+
+QCS615 USB3 PHY was previously reusing qcm2290_usb3phy_cfg, but its
+regulator requirements differ. A new qcs615_usb3phy_cfg is added to
+reflect the correct settings.
 
 Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Signed-off-by: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
 ---
- drivers/phy/qualcomm/phy-qcom-qmp-usbc.c | 54 +++++++++++++++++++++++++++-----
- 1 file changed, 46 insertions(+), 8 deletions(-)
+ drivers/phy/qualcomm/phy-qcom-qmp-usbc.c | 68 ++++++++++++++++++--------------
+ 1 file changed, 39 insertions(+), 29 deletions(-)
 
 diff --git a/drivers/phy/qualcomm/phy-qcom-qmp-usbc.c b/drivers/phy/qualcomm/phy-qcom-qmp-usbc.c
-index 62920dd2aed3..de28c3464a40 100644
+index de28c3464a40..2c998803fcda 100644
 --- a/drivers/phy/qualcomm/phy-qcom-qmp-usbc.c
 +++ b/drivers/phy/qualcomm/phy-qcom-qmp-usbc.c
-@@ -293,13 +293,18 @@ struct qmp_usbc_offsets {
- 	/* for PHYs with >= 2 lanes */
- 	u16 tx2;
- 	u16 rx2;
-+
-+	u16 dp_serdes;
-+	u16 dp_txa;
-+	u16 dp_txb;
-+	u16 dp_dp_phy;
+@@ -336,7 +336,7 @@ struct qmp_phy_cfg {
+ 	int (*calibrate_dp_phy)(struct qmp_usbc *qmp);
+ 
+ 	/* regulators to be requested */
+-	const char * const *vreg_list;
++	const struct regulator_bulk_data *vreg_list;
+ 	int num_vregs;
+ 
+ 	/* array of registers with different offsets */
+@@ -428,9 +428,19 @@ static const char * const usb3phy_reset_l[] = {
+ 	"phy_phy", "phy",
  };
  
--/* struct qmp_phy_cfg - per-PHY initialization config */
-+struct qmp_usbc;
- struct qmp_phy_cfg {
- 	const struct qmp_usbc_offsets *offsets;
+-/* list of regulators */
+-static const char * const qmp_phy_vreg_l[] = {
+-	"vdda-phy", "vdda-pll",
++static const struct regulator_bulk_data qmp_phy_msm8998_vreg_l[] = {
++	{ .supply = "vdda-phy", .init_load_uA = 68600 },
++	{ .supply = "vdda-pll", .init_load_uA = 14200 },
++};
++
++static const struct regulator_bulk_data qmp_phy_sm2290_vreg_l[] = {
++	{ .supply = "vdda-phy", .init_load_uA = 66100 },
++	{ .supply = "vdda-pll", .init_load_uA = 13300 },
++};
++
++static const struct regulator_bulk_data qmp_phy_qcs615_vreg_l[] = {
++	{ .supply = "vdda-phy", .init_load_uA = 50000 },
++	{ .supply = "vdda-pll", .init_load_uA = 20000 },
+ };
  
--	/* Init sequence for PHY blocks - serdes, tx, rx, pcs */
-+	/* Init sequence for USB PHY blocks - serdes, tx, rx, pcs */
- 	const struct qmp_phy_init_tbl *serdes_tbl;
- 	int serdes_tbl_num;
- 	const struct qmp_phy_init_tbl *tx_tbl;
-@@ -309,6 +314,27 @@ struct qmp_phy_cfg {
- 	const struct qmp_phy_init_tbl *pcs_tbl;
- 	int pcs_tbl_num;
+ static const struct qmp_usbc_offsets qmp_usbc_offsets_v3_qcm2290 = {
+@@ -454,8 +464,8 @@ static const struct qmp_phy_cfg msm8998_usb3phy_cfg = {
+ 	.rx_tbl_num             = ARRAY_SIZE(msm8998_usb3_rx_tbl),
+ 	.pcs_tbl                = msm8998_usb3_pcs_tbl,
+ 	.pcs_tbl_num            = ARRAY_SIZE(msm8998_usb3_pcs_tbl),
+-	.vreg_list              = qmp_phy_vreg_l,
+-	.num_vregs              = ARRAY_SIZE(qmp_phy_vreg_l),
++	.vreg_list              = qmp_phy_msm8998_vreg_l,
++	.num_vregs              = ARRAY_SIZE(qmp_phy_msm8998_vreg_l),
+ 	.regs                   = qmp_v3_usb3phy_regs_layout,
+ };
  
-+	/* Init sequence for DP PHY blocks - serdes, tx, rbr, hbr, hbr2 */
-+	const struct qmp_phy_init_tbl *dp_serdes_tbl;
-+	int dp_serdes_tbl_num;
-+	const struct qmp_phy_init_tbl *dp_tx_tbl;
-+	int dp_tx_tbl_num;
-+	const struct qmp_phy_init_tbl *serdes_tbl_rbr;
-+	int serdes_tbl_rbr_num;
-+	const struct qmp_phy_init_tbl *serdes_tbl_hbr;
-+	int serdes_tbl_hbr_num;
-+	const struct qmp_phy_init_tbl *serdes_tbl_hbr2;
-+	int serdes_tbl_hbr2_num;
+@@ -470,8 +480,8 @@ static const struct qmp_phy_cfg qcm2290_usb3phy_cfg = {
+ 	.rx_tbl_num		= ARRAY_SIZE(qcm2290_usb3_rx_tbl),
+ 	.pcs_tbl		= qcm2290_usb3_pcs_tbl,
+ 	.pcs_tbl_num		= ARRAY_SIZE(qcm2290_usb3_pcs_tbl),
+-	.vreg_list		= qmp_phy_vreg_l,
+-	.num_vregs		= ARRAY_SIZE(qmp_phy_vreg_l),
++	.vreg_list		= qmp_phy_sm2290_vreg_l,
++	.num_vregs		= ARRAY_SIZE(qmp_phy_sm2290_vreg_l),
+ 	.regs			= qmp_v3_usb3phy_regs_layout_qcm2290,
+ };
+ 
+@@ -486,8 +496,24 @@ static const struct qmp_phy_cfg sdm660_usb3phy_cfg = {
+ 	.rx_tbl_num		= ARRAY_SIZE(sdm660_usb3_rx_tbl),
+ 	.pcs_tbl		= qcm2290_usb3_pcs_tbl,
+ 	.pcs_tbl_num		= ARRAY_SIZE(qcm2290_usb3_pcs_tbl),
+-	.vreg_list		= qmp_phy_vreg_l,
+-	.num_vregs		= ARRAY_SIZE(qmp_phy_vreg_l),
++	.vreg_list		= qmp_phy_msm8998_vreg_l,
++	.num_vregs		= ARRAY_SIZE(qmp_phy_msm8998_vreg_l),
++	.regs			= qmp_v3_usb3phy_regs_layout_qcm2290,
++};
 +
-+	const u8 (*swing_tbl)[4][4];
-+	const u8 (*pre_emphasis_tbl)[4][4];
++static const struct qmp_phy_cfg qcs615_usb3phy_cfg = {
++	.offsets		= &qmp_usbc_offsets_v3_qcm2290,
 +
-+	/* DP PHY callbacks */
-+	void (*dp_aux_init)(struct qmp_usbc *qmp);
-+	void (*configure_dp_tx)(struct qmp_usbc *qmp);
-+	int (*configure_dp_phy)(struct qmp_usbc *qmp);
-+	int (*calibrate_dp_phy)(struct qmp_usbc *qmp);
-+
- 	/* regulators to be requested */
- 	const char * const *vreg_list;
- 	int num_vregs;
-@@ -329,24 +355,36 @@ struct qmp_usbc {
- 	void __iomem *rx;
- 	void __iomem *tx2;
- 	void __iomem *rx2;
++	.serdes_tbl		= qcm2290_usb3_serdes_tbl,
++	.serdes_tbl_num		= ARRAY_SIZE(qcm2290_usb3_serdes_tbl),
++	.tx_tbl			= qcm2290_usb3_tx_tbl,
++	.tx_tbl_num		= ARRAY_SIZE(qcm2290_usb3_tx_tbl),
++	.rx_tbl			= qcm2290_usb3_rx_tbl,
++	.rx_tbl_num		= ARRAY_SIZE(qcm2290_usb3_rx_tbl),
++	.pcs_tbl		= qcm2290_usb3_pcs_tbl,
++	.pcs_tbl_num		= ARRAY_SIZE(qcm2290_usb3_pcs_tbl),
++	.vreg_list		= qmp_phy_qcs615_vreg_l,
++	.num_vregs		= ARRAY_SIZE(qmp_phy_qcs615_vreg_l),
+ 	.regs			= qmp_v3_usb3phy_regs_layout_qcm2290,
+ };
+ 
+@@ -773,23 +799,6 @@ static const struct dev_pm_ops qmp_usbc_pm_ops = {
+ 			   qmp_usbc_runtime_resume, NULL)
+ };
+ 
+-static int qmp_usbc_vreg_init(struct qmp_usbc *qmp)
+-{
+-	const struct qmp_phy_cfg *cfg = qmp->cfg;
+-	struct device *dev = qmp->dev;
+-	int num = cfg->num_vregs;
+-	int i;
 -
--	struct regmap *tcsr_map;
--	u32 vls_clamp_reg;
-+	void __iomem *dp_dp_phy;
-+	void __iomem *dp_tx;
-+	void __iomem *dp_tx2;
-+	void __iomem *dp_serdes;
+-	qmp->vregs = devm_kcalloc(dev, num, sizeof(*qmp->vregs), GFP_KERNEL);
+-	if (!qmp->vregs)
+-		return -ENOMEM;
+-
+-	for (i = 0; i < num; i++)
+-		qmp->vregs[i].supply = cfg->vreg_list[i];
+-
+-	return devm_regulator_bulk_get(dev, num, qmp->vregs);
+-}
+-
+ static int qmp_usbc_reset_init(struct qmp_usbc *qmp,
+ 			      const char *const *reset_list,
+ 			      int num_resets)
+@@ -1097,7 +1106,8 @@ static int qmp_usbc_probe(struct platform_device *pdev)
  
- 	struct clk *pipe_clk;
-+	struct clk_fixed_rate pipe_clk_fixed;
-+
-+	struct clk_hw dp_link_hw;
-+	struct clk_hw dp_pixel_hw;
- 	struct clk_bulk_data *clks;
- 	int num_clks;
- 	int num_resets;
- 	struct reset_control_bulk_data *resets;
- 	struct regulator_bulk_data *vregs;
+ 	mutex_init(&qmp->phy_mutex);
  
-+	struct regmap *tcsr_map;
-+	u32 vls_clamp_reg;
-+	u32 dp_phy_mode_reg;
-+
- 	struct mutex phy_mutex;
+-	ret = qmp_usbc_vreg_init(qmp);
++	ret = devm_regulator_bulk_get_const(qmp->dev, qmp->cfg->num_vregs,
++					    qmp->cfg->vreg_list, &qmp->vregs);
+ 	if (ret)
+ 		return ret;
  
- 	struct phy *usb_phy;
- 	enum phy_mode mode;
- 	unsigned int usb_init_count;
- 
--	struct clk_fixed_rate pipe_clk_fixed;
-+	struct phy *dp_phy;
-+	unsigned int dp_aux_cfg;
-+	struct phy_configure_opts_dp dp_opts;
-+	unsigned int dp_init_count;
- 
- 	struct typec_switch_dev *sw;
- 	enum typec_orientation orientation;
-@@ -689,7 +727,7 @@ static int __maybe_unused qmp_usbc_runtime_suspend(struct device *dev)
- 
- 	dev_vdbg(dev, "Suspending QMP phy, mode:%d\n", qmp->mode);
- 
--	if (!qmp->usb_init_count) {
-+	if (!qmp->usb_init_count && !qmp->dp_init_count) {
- 		dev_vdbg(dev, "PHY not initialized, bailing out\n");
- 		return 0;
- 	}
-@@ -709,7 +747,7 @@ static int __maybe_unused qmp_usbc_runtime_resume(struct device *dev)
- 
- 	dev_vdbg(dev, "Resuming QMP phy, mode:%d\n", qmp->mode);
- 
--	if (!qmp->usb_init_count) {
-+	if (!qmp->usb_init_count && !qmp->dp_init_count) {
- 		dev_vdbg(dev, "PHY not initialized, bailing out\n");
- 		return 0;
- 	}
+@@ -1163,7 +1173,7 @@ static const struct of_device_id qmp_usbc_of_match_table[] = {
+ 		.data = &qcm2290_usb3phy_cfg,
+ 	}, {
+ 		.compatible = "qcom,qcs615-qmp-usb3-phy",
+-		.data = &qcm2290_usb3phy_cfg,
++		.data = &qcs615_usb3phy_cfg,
+ 	}, {
+ 		.compatible = "qcom,sdm660-qmp-usb3-phy",
+ 		.data = &sdm660_usb3phy_cfg,
 
 -- 
 2.34.1
