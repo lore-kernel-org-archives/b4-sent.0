@@ -1,10 +1,10 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Mon, 15 Dec 2025 10:35:10 +0400
-Subject: [PATCH v7 5/8] arm64: dts: qcom: ipq5018: add nodes to bring up q6
+Date: Mon, 15 Dec 2025 10:35:11 +0400
+Subject: [PATCH v7 6/8] arm64: dts: qcom: ipq5332: add nodes to bring up q6
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251215-ipq5018-wifi-v7-5-ec4adba941b5@outlook.com>
+Message-Id: <20251215-ipq5018-wifi-v7-6-ec4adba941b5@outlook.com>
 References: <20251215-ipq5018-wifi-v7-0-ec4adba941b5@outlook.com>
 In-Reply-To: <20251215-ipq5018-wifi-v7-0-ec4adba941b5@outlook.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -16,39 +16,51 @@ To: Bjorn Andersson <andersson@kernel.org>,
  Jassi Brar <jassisinghbrar@gmail.com>
 Cc: linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-remoteproc@vger.kernel.org, devicetree@vger.kernel.org, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Gokul Sriram Palanisamy <gokul.sriram.p@oss.qualcomm.com>, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1765780526; l=2536;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1765780526; l=2823;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=U+CxhXV7IiW6598EUIu9tQZCBq0lj8MkLhtP7TD5I8s=;
- b=diC55B13ROdDqKiaREz99TYj8BPbt26jlvPd59SAQ/K2Tl03xaXfV+ZfQitXtNU0Pe00JSdmR
- DwZoF00y1EdCiq9z7gIv4Z1cqscP6ufceM5n+XDyGRXmyYPUdX0GYbg
+ bh=RFwP414pKiR9g6tQiK0sXcMEO0nCLBZxMpD6b2bmUe8=;
+ b=LSg182aeYhdwHLTKx0Q5Os/4O+5kPfvaSUbjnMHVKc5nmEzJ+dFyWc+k071LcbSVu/E764IPc
+ NWFZMLH5P32B3eboalNVK+5yBE667E4+vDi0L2VBR231iwwNxMcKnj8
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+From: Manikanta Mylavarapu <quic_mmanikan@quicinc.com>
+
 Enable nodes required for q6 remoteproc bring up.
 
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+Signed-off-by: Manikanta Mylavarapu <quic_mmanikan@quicinc.com>
+Signed-off-by: Gokul Sriram Palanisamy <gokul.sriram.p@oss.qualcomm.com>
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- arch/arm64/boot/dts/qcom/ipq5018.dtsi | 64 +++++++++++++++++++++++++++++++++++
- 1 file changed, 64 insertions(+)
+ arch/arm64/boot/dts/qcom/ipq5332.dtsi | 64 ++++++++++++++++++++++++++++++++++-
+ 1 file changed, 63 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-index f024b3cba33f6100ac3f4d45598ff2356e026dcf..7bb09621891ea6d287d1c83c77e2feb71b93a0c6 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-@@ -158,6 +158,35 @@ tz_region: tz@4ac00000 {
- 			reg = <0x0 0x4ac00000 0x0 0x200000>;
- 			no-map;
+diff --git a/arch/arm64/boot/dts/qcom/ipq5332.dtsi b/arch/arm64/boot/dts/qcom/ipq5332.dtsi
+index 45fc512a3bab221c0d99f819294abf63369987da..c31b6906355ed7f7e8dd0fd8e1f46654cc5560eb 100644
+--- a/arch/arm64/boot/dts/qcom/ipq5332.dtsi
++++ b/arch/arm64/boot/dts/qcom/ipq5332.dtsi
+@@ -2,7 +2,7 @@
+ /*
+  * IPQ5332 device tree source
+  *
+- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
++ * Copyright (c) 2022-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+  */
+ 
+ #include <dt-bindings/clock/qcom,apss-ipq.h>
+@@ -146,6 +146,35 @@ smem@4a800000 {
+ 
+ 			hwlocks = <&tcsr_mutex 3>;
  		};
 +
-+		q6_region: wcss@4b000000 {
++		q6_region: wcss@4a900000 {
++			reg = <0x0 0x4a900000 0x0 0x2b00000>;
 +			no-map;
-+			reg = <0x0 0x4b000000 0x0 0x1b00000>;
 +		};
 +	};
 +
@@ -57,68 +69,66 @@ index f024b3cba33f6100ac3f4d45598ff2356e026dcf..7bb09621891ea6d287d1c83c77e2feb7
 +		qcom,smem = <435>, <428>;
 +
 +		interrupt-parent = <&intc>;
-+		interrupts = <GIC_SPI 177 IRQ_TYPE_EDGE_RISING>;
++		interrupts = <GIC_SPI 418 IRQ_TYPE_EDGE_RISING>;
 +
 +		mboxes = <&apcs_glb 9>;
 +
 +		qcom,local-pid = <0>;
 +		qcom,remote-pid = <1>;
 +
-+		wcss_smp2p_out: master-kernel {
++		smp2p_wcss_out: master-kernel {
 +			qcom,entry-name = "master-kernel";
 +			#qcom,smem-state-cells = <1>;
 +		};
 +
-+		wcss_smp2p_in: slave-kernel {
++		smp2p_wcss_in: slave-kernel {
 +			qcom,entry-name = "slave-kernel";
 +			interrupt-controller;
 +			#interrupt-cells = <2>;
 +		};
  	};
  
- 	soc: soc@0 {
-@@ -717,6 +746,41 @@ frame@b128000 {
+ 	soc@0 {
+@@ -586,6 +615,39 @@ frame@b128000 {
  			};
  		};
  
-+		q6v5_wcss: remoteproc@cd00000 {
-+			compatible = "qcom,ipq5018-wcss-sec-pil";
-+			reg = <0x0cd00000 0x10000>;
-+			firmware-name = "ath11k/IPQ5018/hw1.0/q6_fw.mbn";
-+			interrupts-extended = <&intc GIC_SPI 291 IRQ_TYPE_EDGE_RISING>,
-+					      <&wcss_smp2p_in 0 IRQ_TYPE_NONE>,
-+					      <&wcss_smp2p_in 1 IRQ_TYPE_NONE>,
-+					      <&wcss_smp2p_in 2 IRQ_TYPE_NONE>,
-+					      <&wcss_smp2p_in 3 IRQ_TYPE_NONE>;
++		q6v5_wcss: remoteproc@d100000 {
++			compatible = "qcom,ipq5332-wcss-sec-pil";
++			reg = <0x0d100000 0x10000>;
++			firmware-name = "ath12k/IPQ5332/hw1.0/q6_fw0.mbn";
++			interrupts-extended = <&intc GIC_SPI 421 IRQ_TYPE_EDGE_RISING>,
++					      <&smp2p_wcss_in 0 IRQ_TYPE_NONE>,
++					      <&smp2p_wcss_in 1 IRQ_TYPE_NONE>,
++					      <&smp2p_wcss_in 2 IRQ_TYPE_NONE>,
++					      <&smp2p_wcss_in 3 IRQ_TYPE_NONE>;
 +			interrupt-names = "wdog",
 +					  "fatal",
 +					  "ready",
 +					  "handover",
 +					  "stop-ack";
 +
-+			clocks = <&gcc GCC_SLEEP_CLK_SRC>,
-+				 <&gcc GCC_SYS_NOC_WCSS_AHB_CLK>;
-+			clock-names = "sleep",
-+				      "interconnect";
++			clocks = <&gcc GCC_IM_SLEEP_CLK>;
++			clock-names = "sleep";
 +
-+			qcom,smem-states = <&wcss_smp2p_out 0>,
-+					   <&wcss_smp2p_out 1>;
-+			qcom,smem-state-names = "shutdown",
-+						"stop";
++			qcom,smem-states = <&smp2p_wcss_out 1>,
++					   <&smp2p_wcss_out 0>;
++			qcom,smem-state-names = "stop",
++						"shutdown";
 +
 +			memory-region = <&q6_region>;
 +
 +			glink-edge {
-+				interrupts = <GIC_SPI 179 IRQ_TYPE_EDGE_RISING>;
++				interrupts = <GIC_SPI 417 IRQ_TYPE_EDGE_RISING>;
 +				label = "rtr";
 +				qcom,remote-pid = <1>;
 +				mboxes = <&apcs_glb 8>;
 +			};
 +		};
 +
- 		pcie1: pcie@80000000 {
- 			compatible = "qcom,pcie-ipq5018";
- 			reg = <0x80000000 0xf1d>,
+ 		pcie1: pcie@18000000 {
+ 			compatible = "qcom,pcie-ipq5332", "qcom,pcie-ipq9574";
+ 			reg = <0x18000000 0xf1c>,
 
 -- 
 2.52.0
