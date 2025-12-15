@@ -1,10 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Mon, 15 Dec 2025 15:30:03 +0100
-Subject: [PATCH 3/4] Input: stmfts - use sysfs_emit() instead of sprintf()
+Date: Mon, 15 Dec 2025 15:30:04 +0100
+Subject: [PATCH 4/4] Input: stmfts - use client to make future code cleaner
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251215-fts-fixes-v1-3-8c1e3a63ebf1@ixit.cz>
+Message-Id: <20251215-fts-fixes-v1-4-8c1e3a63ebf1@ixit.cz>
 References: <20251215-fts-fixes-v1-0-8c1e3a63ebf1@ixit.cz>
 In-Reply-To: <20251215-fts-fixes-v1-0-8c1e3a63ebf1@ixit.cz>
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
@@ -17,20 +17,20 @@ Cc: linux-input@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2787; i=david@ixit.cz;
- h=from:subject:message-id; bh=3xHAswUTtGvoQ6NmHBshFsBrqnYL61pqa0b3OMWeB7I=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpQBtrnuNSlCDEp3U0AMCL9StDPaBZkQm8UpZo5
- tdO7QEjWDuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaUAbawAKCRBgAj/E00kg
- ctYxEACflPTTG5VIeyFgwBgtxU3aAkYDozrwSyYm7rqhN45yyb+3Lj+UkzWI1NLtbuG1vk1o8Ql
- wcRbmjLeFtLKzOWvGprKN57MWOeQRduWiYWua/ZES83aVbK9SekWaxB3r7CAdMrPwjegBrDu7Lc
- cJDIz3yMv1AIEpwlN/eNxj85cpJP7F8+URLSuwE4NEGZcQ+AS/+nOmG0ri9WXvMz1WCs7GwZSL6
- AbOfbbHS0NVVJnSI0BqY1IlSzqBeQl9JSvGVqxgPiWXatmDFaWw+R/MDOiD/Eebfg6/S6onh4+Y
- K7ALIXs8jyrwovmA1FU0vVeHi/hRTvfQONG4G4r1vM4XceEVZyd8u4VHoN7O3M0RGIpxRa+X48/
- JYrrw0Bfe7tNzsl/m6tin9niNbdOQ6IULtAfRbA/E2PVaZDvm5VYRA5bIbb9fmWTnARq0vjshS9
- Cdk5P8sbVjT9Z5AACXDF/0cMszhIU1lnq6NA0rfIO2wfqgPqTPOI8sRdld2lnG0rz7F5NM/Pc6X
- nioeug9YnEXFUKhdPAfEGq/xFPNyE6nukMO9zV10WU/Duc0uE1n5gapGiXvuiwVUlbn+wYGhqpx
- D8vVJvrBlXjrtEtD15BONuFCNhJLSfMOrccvCSbTWRQyChqsrIOVVGkMHzQgZknDgF7OMM5pXMq
- kci2Br62lLhawTw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=999; i=david@ixit.cz;
+ h=from:subject:message-id; bh=roHV704aaY9rcMfaAuaHi+mzFaL37M4mv+RVt1dZ7JA=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpQBtrW0Sc0TA1KAN4LrhLHI2SDk8w1khRX2x3I
+ BJwsriezd6JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaUAbawAKCRBgAj/E00kg
+ choAD/9+4C7jcAftRIQrmL5PLcMe0RuAWm3WOJFJAENwF817DbTZ1B+tnoDmaq4JHk6tiS+koRK
+ 3UflGChw68pIVdGkPMb46OmqKMJDnMynFu0J4I924oEfXtIOBygHbGn9xYuD3QdX0YiaPJFFuw4
+ O/OLlxo5UGd8ADmNvKnJZh+G9yeKrYnRj+hCW/cXex8+mJsPLILQTPWX0ct48oVfO6kAYF36jgZ
+ 6BlxX0mnl+7X36LhV8nbj5mh2/3ucXyJHw90gjQXS/AwbF9Ltgmfxc0G2CHrsu/8MzoeB9ZBlhW
+ PfEctdTDsaDOhZYDRM8D4DE4MrTQPsgDsZTKaDZjoZXawdooPQ33nJCWIyRxBgIaNUcJvNbZ7B1
+ cbsmz+RakyxukqjY6Ori/Jkfq99jL2IAihPjPVy20FWiVAS/NgyeRKMhuSh1Q5hwJPqc8MWAQCq
+ 1a2u7SexBs2sx/BeQ14OuEJOBphYTKjDaymVVPbV2/24pADHQFl73+9XdLiaqogU4Tk45ts9mzx
+ NwAtPN5nIpQLX4g3F7X2diyHKHH5XrspYM30IozfcRsEN+hNH1/y8jLhkZ47f6Rze4WUUcHBo/i
+ j1ajLbNS9B40ZPjanNwzbW4uaNPmTTNBvuqygoURHJV5kZi0a3BSLUWh533P7/3dKWAW1qz5gqt
+ Lx2twOZKVbNUeBA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
@@ -38,83 +38,32 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Petr Hodina <petr.hodina@protonmail.com>
 
-Follow the advice in Documentation/filesystems/sysfs.rst:
-show() should only use sysfs_emit() or sysfs_emit_at() when formatting
-the value to be returned to user space.
+Make code cleaner, compiler will optimize it away anyway.
+
+Preparation for FTM5 support, where more steps are needed.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/input/touchscreen/stmfts.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+ drivers/input/touchscreen/stmfts.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/input/touchscreen/stmfts.c b/drivers/input/touchscreen/stmfts.c
-index ad363b3c344cd..4b166b0a9a5a6 100644
+index 4b166b0a9a5a6..06845a00348cc 100644
 --- a/drivers/input/touchscreen/stmfts.c
 +++ b/drivers/input/touchscreen/stmfts.c
-@@ -410,7 +410,7 @@ static ssize_t stmfts_sysfs_chip_id(struct device *dev,
+@@ -747,9 +747,10 @@ static int stmfts_runtime_suspend(struct device *dev)
+ static int stmfts_runtime_resume(struct device *dev)
  {
  	struct stmfts_data *sdata = dev_get_drvdata(dev);
++	struct i2c_client *client = sdata->client;
+ 	int ret;
  
--	return sprintf(buf, "%#x\n", sdata->chip_id);
-+	return sysfs_emit(buf, "%#x\n", sdata->chip_id);
- }
+-	ret = i2c_smbus_write_byte(sdata->client, STMFTS_SLEEP_OUT);
++	ret = i2c_smbus_write_byte(client, STMFTS_SLEEP_OUT);
+ 	if (ret)
+ 		dev_err(dev, "failed to resume device: %d\n", ret);
  
- static ssize_t stmfts_sysfs_chip_version(struct device *dev,
-@@ -418,7 +418,7 @@ static ssize_t stmfts_sysfs_chip_version(struct device *dev,
- {
- 	struct stmfts_data *sdata = dev_get_drvdata(dev);
- 
--	return sprintf(buf, "%u\n", sdata->chip_ver);
-+	return sysfs_emit(buf, "%u\n", sdata->chip_ver);
- }
- 
- static ssize_t stmfts_sysfs_fw_ver(struct device *dev,
-@@ -426,7 +426,7 @@ static ssize_t stmfts_sysfs_fw_ver(struct device *dev,
- {
- 	struct stmfts_data *sdata = dev_get_drvdata(dev);
- 
--	return sprintf(buf, "%u\n", sdata->fw_ver);
-+	return sysfs_emit(buf, "%u\n", sdata->fw_ver);
- }
- 
- static ssize_t stmfts_sysfs_config_id(struct device *dev,
-@@ -434,7 +434,7 @@ static ssize_t stmfts_sysfs_config_id(struct device *dev,
- {
- 	struct stmfts_data *sdata = dev_get_drvdata(dev);
- 
--	return sprintf(buf, "%#x\n", sdata->config_id);
-+	return sysfs_emit(buf, "%#x\n", sdata->config_id);
- }
- 
- static ssize_t stmfts_sysfs_config_version(struct device *dev,
-@@ -442,7 +442,7 @@ static ssize_t stmfts_sysfs_config_version(struct device *dev,
- {
- 	struct stmfts_data *sdata = dev_get_drvdata(dev);
- 
--	return sprintf(buf, "%u\n", sdata->config_ver);
-+	return sysfs_emit(buf, "%u\n", sdata->config_ver);
- }
- 
- static ssize_t stmfts_sysfs_read_status(struct device *dev,
-@@ -457,7 +457,7 @@ static ssize_t stmfts_sysfs_read_status(struct device *dev,
- 	if (err)
- 		return err;
- 
--	return sprintf(buf, "%#02x\n", status[0]);
-+	return sysfs_emit(buf, "%#02x\n", status[0]);
- }
- 
- static ssize_t stmfts_sysfs_hover_enable_read(struct device *dev,
-@@ -465,7 +465,7 @@ static ssize_t stmfts_sysfs_hover_enable_read(struct device *dev,
- {
- 	struct stmfts_data *sdata = dev_get_drvdata(dev);
- 
--	return sprintf(buf, "%u\n", sdata->hover_enabled);
-+	return sysfs_emit(buf, "%u\n", sdata->hover_enabled);
- }
- 
- static ssize_t stmfts_sysfs_hover_enable_write(struct device *dev,
 
 -- 
 2.51.0
