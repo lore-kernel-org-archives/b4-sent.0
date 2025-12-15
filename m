@@ -1,14 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH 0/4] Input: small nitpick fixes
-Date: Mon, 15 Dec 2025 15:30:00 +0100
-Message-Id: <20251215-fts-fixes-v1-0-8c1e3a63ebf1@ixit.cz>
+Date: Mon, 15 Dec 2025 15:30:01 +0100
+Subject: [PATCH 1/4] Input: stmfts - correct wording for the warning
+ message
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAGgbQGkC/x2KOwqAMAxAr1IyG7ApDvUq4iA21SxVGhGheHeD4
- /s0UK7CCqNrUPkWlaMY+M7Bui9lY5RkDNTT4MkT5ksxy8OKwVTIiSOlCPaflf9g+zS/7wfDWL/
- wWwAAAA==
-X-Change-ID: 20251212-fts-fixes-30253fde92d9
+Message-Id: <20251215-fts-fixes-v1-1-8c1e3a63ebf1@ixit.cz>
+References: <20251215-fts-fixes-v1-0-8c1e3a63ebf1@ixit.cz>
+In-Reply-To: <20251215-fts-fixes-v1-0-8c1e3a63ebf1@ixit.cz>
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
  Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
  Alexandre Torgue <alexandre.torgue@foss.st.com>, 
@@ -19,45 +18,48 @@ Cc: linux-input@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=687; i=david@ixit.cz;
- h=from:subject:message-id; bh=AwEDboNk5GmPqrs+ygIr6oF3UxdqLcCX4eLfPid2KXw=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpQBtraKyNehUYf6Zq6STWquVGzPauk3f3hyPmo
- SDg/syWgFuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaUAbawAKCRBgAj/E00kg
- cnymD/4+NtvqTd1F7d46ZcugHEDVrc8ViX33x3uIbtImJbzqS1A+MAec4i6/CM31tn4plgGWqWy
- 6EypuPlpKe3sXz0yXKC6JeGjQA9mQiuKldrE1AyJSOI2wN+YlY+j1mjfwSETttukIHytCTV0nbf
- irO7tc+AFrOzqBS84eAj9ndDdQp7LCXjSBznGgnCLJKzREM00nrKhlZMxgI7sFbDD3yTjXNPce1
- M+XR7AYGoHD5B6hNRAUDEbXY/7+BFRCkvgEozGB+A4uc7yqaPDU1ILb56vfj1IavErElxFWq4pt
- j73h/x7YHjrM3RsZAjAMaEpAHp162W5xOCfYzVmcW0Ldch+Cd+3pxGYsFayjfqq7V1AukSQy94n
- 1wgsvafywp/tx8HPPNQf/GWLhhOhUFzJR9s3pA0HQrDcZte6mAI+m1mw3GMg4mAyR3Y0rkZHqv0
- prczUCdbQbTjBsGu+bhigFIMlCnwBm96sYKm8Dipxnfro++8FCv/RWfuj2CUOa0kJuwylkmT9RG
- HOlLXX8pcQdXOpZPwa8vGZoZvZcox/6BETTxeCARd9R1txymFGXBY0dPXvcZ8q6KF/0pwKwHKWE
- uy8fNM5yr9XrYOCMLDOznJL8huvL/ZiRudqnhXqaVPIdmDyIf5iCm14FRfejA/MSEwKg7FKEL2h
- sVYg2BC42MPHhNw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=901; i=david@ixit.cz;
+ h=from:subject:message-id; bh=zOdQuMRtwbT9fTBVbDJbgo/FBNojnDOTgGlU+/RFodc=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpQBtrMN45yASJj+00VAkGd5xdIZEokXHQ2coVt
+ zB6A4cgLICJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaUAbawAKCRBgAj/E00kg
+ cmt/D/0WqN7Qnefn04HGZtDjWqh6Xd3bFVndWwMvuHkGWgqXin0Zz/PSV9ITNRECWqPY/ijIjzb
+ QRs1FjZjoX0fwPn1I32WGLypaGIwk64KWTIY1vegL/Ocrl++34Y2YIBphH6P6uw+n5yzGRK0/Xh
+ hAsOWgiN2FwBd1Q3qn98deFk9PJVrPq7YIDeAp7/58aBIUxvdd9kWq/B8bRv2LzufshyTkxNjq0
+ LExaY/z3xkYjEwuI2D9mXagWS3doWS4womk7GYxbfcWhTfW9JuLP5X6YxDhXX0efbf34/xet2Yk
+ x4t9PEtwiYR53Y0LbJS18egxymFMXJlJezYbUTIxN8OoK+Kcaqceg3CioSQwrOyzxaeRQNizSo2
+ hd2sfwAREdCgTfKy9KX7CrGoMvSSxynuHrYP+0785QiwU9+dXb/kV53HQK9hDGqWJ2xTw24zpKF
+ hjeGgxU5qQJsr60EzcT8fFnuh3sn7v5EQP3zO3dyCqG3f7RIX4uT5VQnbEO+IEaTq9g+0EdbfbH
+ xdtPtlgZ7i9KmKXBNZRGHnKn3HJB9qLBa/K1OgKsLkos6GHp5qLew9HGDlUhouQns6M4qxBT/d7
+ cdUy5LSPRkuW+cBEq54O20NMWj/GwWVs7Vfq5x8lGiYfjX3F51KFq90B91xqliZXDkgphc9wqAC
+ GPMM7leEGyjXGuQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Feel free to ignore the last patch, if you want to wait for FTS5
-support.
+We're trying to enable regulator, not disable it.
 
+Fixes: 78bcac7b2ae1 ("Input: add support for the STMicroelectronics FingerTip touchscreen")
+Suggested-by: Petr Hodina <petr.hodina@protonmail.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-David Heidelberg (1):
-      Input: stmfts - correct wording for the warning message
+ drivers/input/touchscreen/stmfts.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Petr Hodina (3):
-      Input: stmfts - Make comments correct
-      Input: stmfts - use sysfs_emit() instead of sprintf()
-      Input: stmfts - use client to make future code cleaner
+diff --git a/drivers/input/touchscreen/stmfts.c b/drivers/input/touchscreen/stmfts.c
+index 119cd26851cf6..9f5609524fef6 100644
+--- a/drivers/input/touchscreen/stmfts.c
++++ b/drivers/input/touchscreen/stmfts.c
+@@ -120,7 +120,7 @@ static int stmfts_brightness_set(struct led_classdev *led_cdev,
+ 			err = regulator_enable(sdata->ledvdd);
+ 			if (err) {
+ 				dev_warn(&sdata->client->dev,
+-					 "failed to disable ledvdd regulator: %d\n",
++					 "failed to enable ledvdd regulator: %d\n",
+ 					 err);
+ 				return err;
+ 			}
 
- drivers/input/touchscreen/stmfts.c | 24 +++++++++++-------------
- 1 file changed, 11 insertions(+), 13 deletions(-)
----
-base-commit: 4a5663c04bb679631985a15efab774da58c37815
-change-id: 20251212-fts-fixes-30253fde92d9
-
-Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+2.51.0
 
