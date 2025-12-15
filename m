@@ -1,11 +1,11 @@
 From: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
-Date: Mon, 15 Dec 2025 20:42:03 +0800
-Subject: [PATCH v8 07/12] phy: qcom: qmp-usbc: Move USB-only init to
- usb_power_on
+Date: Mon, 15 Dec 2025 20:42:04 +0800
+Subject: [PATCH v8 08/12] phy: qcom: qmp-usbc: Add TCSR parsing and PHY
+ mode setting
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251215-add-displayport-support-for-qcs615-platform-v8-7-cbc72c88a44e@oss.qualcomm.com>
+Message-Id: <20251215-add-displayport-support-for-qcs615-platform-v8-8-cbc72c88a44e@oss.qualcomm.com>
 References: <20251215-add-displayport-support-for-qcs615-platform-v8-0-cbc72c88a44e@oss.qualcomm.com>
 In-Reply-To: <20251215-add-displayport-support-for-qcs615-platform-v8-0-cbc72c88a44e@oss.qualcomm.com>
 To: Vinod Koul <vkoul@kernel.org>, 
@@ -21,82 +21,100 @@ Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org,
  Konrad Dybcio <konradybcio@kernel.org>, 
  Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1765802542; l=2368;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1765802542; l=2770;
  i=xiangxu.yin@oss.qualcomm.com; s=20241125; h=from:subject:message-id;
- bh=EXEfXs3Ivmqa5GeuWXsnLZUstEPdHV7WBjmZxvoHteo=;
- b=XELmoCp6GC+Uc9AFX3XoXuwoILTOE/MU7aTZEIMJPPBcJPkTpMiQBj/9RGpZ+2IKGeLJkAzOc
- Js8E2QzBdnhA8OfoKFSEwTtEd0/F4ZDz7SVjAd9qLDhQtLHzmslYy+I
+ bh=TCyU6xV0jZSERKXzLkDpnsdMnjfdzQb/+uM4BPEfHB4=;
+ b=zMlX+0fLr11MpqdlHb3lN6nU/L09NgZNxMYaT2evvudFYzaRy6c2blDAHv5GyJpIDzYYRZZoL
+ gb7+EZQGhlmB7FFAlYt0e4DE3xuBBKFrIqka+SgbKnxeVY7htiK5zzF
 X-Developer-Key: i=xiangxu.yin@oss.qualcomm.com; a=ed25519;
  pk=F1TwipJzpywfbt3n/RPi4l/A4AVF+QC89XzCHgZYaOc=
 X-Endpoint-Received: by B4 Relay for xiangxu.yin@oss.qualcomm.com/20241125 with auth_id=542
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The current implementation programs USB-specific registers in
-qmp_usbc_com_init(), which is shared by both USB and DP modes. This
-causes unnecessary configuration when the PHY is used for DP.
-
-Move USB-only register setup from com_init to qmp_usbc_usb_power_on,
-so it runs only for USB mode.
+Extend TCSR parsing to read optional dp_phy_mode_reg and add
+qmp_usbc_set_phy_mode() to switch between USB and DP modes when
+supported.
 
 Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Signed-off-by: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
 ---
- drivers/phy/qualcomm/phy-qcom-qmp-usbc.c | 22 ++++++++++------------
- 1 file changed, 10 insertions(+), 12 deletions(-)
+ drivers/phy/qualcomm/phy-qcom-qmp-usbc.c | 25 +++++++++++++++++++------
+ 1 file changed, 19 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/phy/qualcomm/phy-qcom-qmp-usbc.c b/drivers/phy/qualcomm/phy-qcom-qmp-usbc.c
-index a6431e6d5586..c8e0f9574ba6 100644
+index c8e0f9574ba6..0a634ec4029a 100644
 --- a/drivers/phy/qualcomm/phy-qcom-qmp-usbc.c
 +++ b/drivers/phy/qualcomm/phy-qcom-qmp-usbc.c
-@@ -30,6 +30,8 @@
- #include "phy-qcom-qmp-pcs-misc-v3.h"
+@@ -529,6 +529,12 @@ static const struct qmp_phy_cfg qcs615_usb3phy_cfg = {
+ 	.regs			= qmp_v3_usb3phy_regs_layout_qcm2290,
+ };
  
- #define PHY_INIT_COMPLETE_TIMEOUT		10000
-+#define SW_PORTSELECT_VAL			BIT(0)
-+#define SW_PORTSELECT_MUX			BIT(1)
- 
- /* set of registers with offsets different per-PHY */
- enum qphy_reg_layout {
-@@ -531,8 +533,6 @@ static int qmp_usbc_com_init(struct phy *phy)
++static void qmp_usbc_set_phy_mode(struct qmp_usbc *qmp, bool is_dp)
++{
++	if (qmp->tcsr_map && qmp->dp_phy_mode_reg)
++		regmap_write(qmp->tcsr_map, qmp->dp_phy_mode_reg, is_dp);
++}
++
+ static int qmp_usbc_com_init(struct phy *phy)
  {
  	struct qmp_usbc *qmp = phy_get_drvdata(phy);
- 	const struct qmp_phy_cfg *cfg = qmp->cfg;
--	void __iomem *pcs = qmp->pcs;
--	u32 val = 0;
- 	int ret;
- 
- 	ret = regulator_bulk_enable(cfg->num_vregs, qmp->vregs);
-@@ -557,16 +557,6 @@ static int qmp_usbc_com_init(struct phy *phy)
+@@ -669,6 +675,8 @@ static int qmp_usbc_usb_enable(struct phy *phy)
  	if (ret)
- 		goto err_assert_reset;
+ 		goto out_unlock;
  
--	qphy_setbits(pcs, cfg->regs[QPHY_PCS_POWER_DOWN_CONTROL], SW_PWRDN);
--
--#define SW_PORTSELECT_VAL			BIT(0)
--#define SW_PORTSELECT_MUX			BIT(1)
--	/* Use software based port select and switch on typec orientation */
--	val = SW_PORTSELECT_MUX;
--	if (qmp->orientation == TYPEC_ORIENTATION_REVERSE)
--		val |= SW_PORTSELECT_VAL;
--	writel(val, qmp->pcs_misc);
--
++	qmp_usbc_set_phy_mode(qmp, false);
++
+ 	ret = qmp_usbc_usb_power_on(phy);
+ 	if (ret) {
+ 		qmp_usbc_com_exit(phy);
+@@ -1112,6 +1120,7 @@ static int qmp_usbc_typec_switch_set(struct typec_switch_dev *sw,
+ 		qmp_usbc_com_exit(qmp->usb_phy);
+ 
+ 		qmp_usbc_com_init(qmp->usb_phy);
++		qmp_usbc_set_phy_mode(qmp, false);
+ 		qmp_usbc_usb_power_on(qmp->usb_phy);
+ 	}
+ 
+@@ -1262,15 +1271,16 @@ static int qmp_usbc_parse_dt(struct qmp_usbc *qmp)
  	return 0;
+ }
  
- err_assert_reset:
-@@ -599,6 +589,14 @@ static int qmp_usbc_usb_power_on(struct phy *phy)
- 	unsigned int val;
- 	int ret;
+-static int qmp_usbc_parse_vls_clamp(struct qmp_usbc *qmp)
++static int qmp_usbc_parse_tcsr(struct qmp_usbc *qmp)
+ {
+ 	struct of_phandle_args tcsr_args;
+ 	struct device *dev = qmp->dev;
+-	int ret;
++	int ret, args_count;
  
-+	qphy_setbits(qmp->pcs, cfg->regs[QPHY_PCS_POWER_DOWN_CONTROL], SW_PWRDN);
+-	/*  for backwards compatibility ignore if there is no property */
+-	ret = of_parse_phandle_with_fixed_args(dev->of_node, "qcom,tcsr-reg", 1, 0,
+-					       &tcsr_args);
++	args_count = of_property_count_u32_elems(dev->of_node, "qcom,tcsr-reg");
++	args_count = args_count - 1;
++	ret = of_parse_phandle_with_fixed_args(dev->of_node, "qcom,tcsr-reg",
++					       args_count, 0, &tcsr_args);
+ 	if (ret == -ENOENT)
+ 		return 0;
+ 	else if (ret < 0)
+@@ -1283,6 +1293,9 @@ static int qmp_usbc_parse_vls_clamp(struct qmp_usbc *qmp)
+ 
+ 	qmp->vls_clamp_reg = tcsr_args.args[0];
+ 
++	if (args_count > 1)
++		qmp->dp_phy_mode_reg = tcsr_args.args[1];
 +
-+	/* Use software based port select and switch on typec orientation */
-+	val = SW_PORTSELECT_MUX;
-+	if (qmp->orientation == TYPEC_ORIENTATION_REVERSE)
-+		val |= SW_PORTSELECT_VAL;
-+	writel(val, qmp->pcs_misc);
-+
- 	qmp_configure(qmp->dev, qmp->serdes, cfg->serdes_tbl,
- 		      cfg->serdes_tbl_num);
+ 	return 0;
+ }
+ 
+@@ -1318,7 +1331,7 @@ static int qmp_usbc_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = qmp_usbc_parse_vls_clamp(qmp);
++	ret = qmp_usbc_parse_tcsr(qmp);
+ 	if (ret)
+ 		return ret;
  
 
 -- 
