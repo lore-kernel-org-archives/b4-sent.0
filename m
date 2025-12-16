@@ -1,72 +1,79 @@
-From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Tue, 16 Dec 2025 11:47:35 +0100
-Subject: [PATCH v2] pmdomain: fix collision in names when registering
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v3 0/2] Improve older camss supply descriptions
+Date: Tue, 16 Dec 2025 13:24:49 +0100
+Message-Id: <20251216-docs-camss-fixes-v3-0-c238b6810771@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251216-genpd_fix-v2-1-1dddd24a61ef@gocontroll.com>
-X-B4-Tracking: v=1; b=H4sIAMY4QWkC/22MQQqDMBAAvyJ7boq7tlZ68h9FiknWGLCJJBJaJ
- H9v6rnHGYbZIXKwHOFe7RA42Wi9K0CnCtQ8OsPC6sJANV2RsBWG3aqfk32LekLWN90pKQlKvwY
- u+ng9hsKzjZsPn2Od8Gf/XRIKFPKiRmo73cgGe+OVd1vwy3JW/gVDzvkLTwW6GqcAAAA=
-X-Change-ID: 20251216-genpd_fix-0f1ed7d8cbb2
-To: Sascha Hauer <s.hauer@pengutronix.de>, 
- BAREBOX <barebox@lists.infradead.org>
-Cc: Maud Spierings <maudspierings@gocontroll.com>
+X-B4-Tracking: v=1; b=H4sIAJFPQWkC/33Nuw7CMAwF0F+pMhMUuzWvif9ADFEe1AMtiquoU
+ PXfSbvAgBjvtc71pCQkDqJO1aRSyCzcdyXUm0q51na3oNmXrNAgAQJq3zvRzt5FdOQxiDbREhL
+ u4UigCnuksB6KulxLblmGPj3XDxmW9s9YBg2anAEgQzHS8cwjD1v3UstUxm9e/+BYuD3Yxjeew
+ O3ch8/z/AbQIwE67QAAAA==
+X-Change-ID: 20251212-docs-camss-fixes-0fa525271951
+To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Vikram Sharma <quic_vikramsa@quicinc.com>, 
+ Kapatrala Syed <akapatra@quicinc.com>, 
+ Hariram Purushothaman <hariramp@quicinc.com>, 
+ Richard Acayan <mailingradian@gmail.com>, Bryan O'Donoghue <bod@kernel.org>, 
+ Hans Verkuil <hverkuil@kernel.org>, Depeng Shao <quic_depengs@quicinc.com>
+Cc: linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1765882075; l=1464;
- i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=uj2xDMAh+W4db9qhkggG33PBx94qxe489pvSR6NF8S4=;
- b=UMOWCJMmRd4UMPDYTdxMIkTcfxw2La02GOaVr9K4dT6IMII7yI1zgCaIC41vVvvQV+tobXJ0x
- aoinzTLYL4hAgg32f93MYw5i5oolkpBZMcN6PRecpxSKU1+SQ4wVBK2
-X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
- pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
-X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1412; i=david@ixit.cz;
+ h=from:subject:message-id; bh=ioJNJf6E3iqakh89UOBaktoghK6qUOL79hbpE/KqCRI=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpQU+TMUrOS2fCW3hRVB4ctdcSTSInlnWDipJxy
+ arm18T5D3+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaUFPkwAKCRBgAj/E00kg
+ cky3D/0fHzJJ6PiAsMbr8iHCykuCUboqMdggD8hCafYdDg3D4dDCYClmeqPNtWlbKDVZwnKGtok
+ 0++tHUtd4Z+RyUrtvbjAhzDEvF7OV0WXMaohedlw7XDUU8LOSrrXLErERNPdpVSoPfVho/LJ0zp
+ c0iDJ/P7PMQ6RyV6ctFeLrBvCZc9USaSqsdcRgrxJJ8hPbSP1B83VTCkFfQ6zBgtXc0c0gqJEFa
+ 8G50D/iAL0Ut5MW8mcrH1MYDscmRblwVNwED/BSV7Pkwx6I9Az30up5geEssGP16pD9DfnUrW9R
+ r9vsxuMbYHJ2QXv0wHEKmvIVmrjjqop2ShRzdo8fOORg+4fL13QvJZgxnh+nDaMfBMonYlJJ0sx
+ 5XMHbox4r3sgddBPb4NNR0X0b/Xrzh7yaYstXa+ap8aHfPHaNkcb+vuz9CLEvpecnwCYYD8kXW6
+ 5vpkQxbaEOIJnv8+LyengGEnnm+WxCr2d6Of55fU5Yfc737k2Fd8bUNyzeCyK7Q8q+0sEvS6T4n
+ YBtXS4zmph7I4iskyLGncjLJ5SOXbGuCQwWyRqMscxCxr6MwzXVc60cN+hekVEOLWhDN6nVqHsa
+ QmPM7yaK4kiigAYdiuWVymAx0pbI+CcC5xRgV3uwPjeX7FVloHkieRk6FNCU1hY41kcfBygUnzM
+ l8GGUskxXUixapQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After adding the imx8m-blk-ctrl driver errors started appearing about
-the genpd device already being registered.
-
-incorperate some extra device details in the device name so this
-possible collision goes away.
-
-Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
+Changes in v3:
+- Add commit improving vdda-phy-supply description to match more recent
+  bindings.
+- Double-checked and specified it's 1.2 V vdda-pll-supply. (Vladimir)
+- Link to v2: https://lore.kernel.org/r/20251213-docs-camss-fixes-v2-1-a8a4d4d51c6c@ixit.cz
+
 Changes in v2:
-- Change virt_dev->id into DEVICE_ID_SINGLE to drop the trailing index
-  number.
-- Link to v1: https://lore.kernel.org/r/20251216-genpd_fix-v1-1-b4ca268d3b31@gocontroll.com
----
-
-It wasn't just errors, it started crashing but that is a seperate issue.
-It at least loads normally with this change
----
- drivers/base/power.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/base/power.c b/drivers/base/power.c
-index c71389422a..cffd043627 100644
---- a/drivers/base/power.c
-+++ b/drivers/base/power.c
-@@ -506,11 +506,11 @@ struct device *genpd_dev_pm_attach_by_id(struct device *dev,
- 	if (!virt_dev)
- 		return ERR_PTR(-ENOMEM);
- 
--	dev_set_name(virt_dev, "genpd");
-+	dev_set_name(virt_dev, "genpd:%u:%s", index, dev_name(dev));
- 	virt_dev->bus = &genpd_bus_type;
- 	virt_dev->parent = dev;
- 	virt_dev->of_node = dev->of_node;
--	virt_dev->id = index;
-+	virt_dev->id = DEVICE_ID_SINGLE;
- 
- 	ret = device_register(virt_dev);
- 	if (ret) {
+- Applied suggestion to clarify the description. (Krzysztof)
+- Link to v1: https://lore.kernel.org/r/20251212-docs-camss-fixes-v1-1-5c011505ff59@ixit.cz
 
 ---
-base-commit: 63898c48611dfe51409ff1f4e1c30de4b2737c48
-change-id: 20251216-genpd_fix-0f1ed7d8cbb2
+David Heidelberg (2):
+      media: dt-bindings: Correct camss VDDA PLL supply description
+      media: dt-bindings: Update camss VDDA PHY supply description
+
+ Documentation/devicetree/bindings/media/qcom,sa8775p-camss.yaml  | 4 ++--
+ Documentation/devicetree/bindings/media/qcom,sc7280-camss.yaml   | 4 ++--
+ Documentation/devicetree/bindings/media/qcom,sc8280xp-camss.yaml | 4 ++--
+ Documentation/devicetree/bindings/media/qcom,sdm670-camss.yaml   | 4 ++--
+ Documentation/devicetree/bindings/media/qcom,sdm845-camss.yaml   | 4 ++--
+ Documentation/devicetree/bindings/media/qcom,sm8250-camss.yaml   | 4 ++--
+ Documentation/devicetree/bindings/media/qcom,sm8550-camss.yaml   | 2 +-
+ 7 files changed, 13 insertions(+), 13 deletions(-)
+---
+base-commit: 563c8dd425b59e44470e28519107b1efc99f4c7b
+change-id: 20251212-docs-camss-fixes-0fa525271951
 
 Best regards,
 -- 
-Maud Spierings <maudspierings@gocontroll.com>
+David Heidelberg <david@ixit.cz>
 
