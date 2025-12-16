@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Tue, 16 Dec 2025 13:24:50 +0100
-Subject: [PATCH v3 1/2] media: dt-bindings: Correct camss VDDA PLL supply
+Date: Tue, 16 Dec 2025 13:24:51 +0100
+Subject: [PATCH v3 2/2] media: dt-bindings: Update camss VDDA PHY supply
  description
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251216-docs-camss-fixes-v3-1-c238b6810771@ixit.cz>
+Message-Id: <20251216-docs-camss-fixes-v3-2-c238b6810771@ixit.cz>
 References: <20251216-docs-camss-fixes-v3-0-c238b6810771@ixit.cz>
 In-Reply-To: <20251216-docs-camss-fixes-v3-0-c238b6810771@ixit.cz>
 To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
@@ -23,29 +23,28 @@ Cc: linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4182; i=david@ixit.cz;
- h=from:subject:message-id; bh=RboAbdtfza+6rpP6+37BoeslOcwbopgvt6vIQ06lVT8=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpQU+TYnM95O1xR3nh3MzuUEdQy0pxVzX4hkbBc
- MXufBHmXbmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaUFPkwAKCRBgAj/E00kg
- cj9/D/9uhriJFw8d8LyuV77Ub4Uc0xwo5OhpsmOuQeeESez20Q1uszOUOtXxomOxze9HV9V+t8g
- 7kRvbatumTPXGY+6HmyVHczsZyp4MidTJ581qFs4Nnc+VPY6mS62ADYUS/O3pKi49RhuypC23xc
- sKq8/rms0J3n/jKArls8t1mK0Lrmwd1IryiThiyyD3qUS7LA+QU6y2WolzmpIy51eQrWY7VDdNs
- pvnfgw0N0JQ/l5tSnWjq18SVTotynUXmz8AB3GE6kWFuGzd1NuCLOoxjimAMqYw+spFTS73+G3d
- WW5A+cmFDYv2bl6pel6TgoM8IRBKRi/QQi2rfGEc+pKvFKJCF7mdr3IHXqcavXBIt9U2/TjSt6f
- JeS2BXtZcP4vp46PO8107BHUI+RE/g0EkzbrL2bEcxPRpC1KAxQFtkUn23S0nb/pI7Pjbsn5liK
- v4mBV75aJiDrLgtG9ElvUVOanRlJICaDBNH8mtjt69pxvYxCxJWEvWWEmpOcSvyOI0QXdHnYFJt
- KVeDjZLnmn9bXNWeXDp9BeCAefhv6ive6y/m1yS9dwGAvCneMJ6q6qNEaBcYfSqcxeuAFRNAc/1
- SCOdC9mLoCVSvL9uIqX+m4j+hRZMX4+XfqQRN9CDet5oleg3BX8/aQzhiNDlLjbbuTXN7GQ0iYB
- kbfMN4iHjl/q27Q==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4654; i=david@ixit.cz;
+ h=from:subject:message-id; bh=o1IfeCH1kmeD2AhyVITFGOuHp+cmCoNcTXwNN5CzHC8=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpQU+TCQCkeAwPZxBE4aO4Kvntr0ZpqW67e00yt
+ 8/hn00TxP2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaUFPkwAKCRBgAj/E00kg
+ cnS0D/9DRSPnbyyoxLGDn1Qbp04226Ye5x4C3MVK1Y0svTT+7G5T+dH4y+jDAgb8YwhznZAZOoY
+ +H3xpRZgLSLikqgHLNFy0QbA6LNMPKzZSMq3fpx0mPL1EBu0ZJ/B9E3FTKEHIyo4/YXhP1iEaWg
+ oOUN9NpTbjWow2kZ2XA+PuFCEeibN2gR2I4pVeK0YEobjyemGfnTawI6NmgZa0JcY+w/lV2I1c9
+ efu8y3ImppLbDKKXiNmPq6u2eql3DaBqwffo6pURqLiRW9BKzRPEcXqNYIgFhnZdVUwrAT3iiId
+ Zq6qFf7D1C34gMLKuMW+DkcY+PXZBDFthP0MRuo8h2cwAqv3z7VlUR6iyiRVxsYo1H3yD9hAa1n
+ ciFCA+xKRIJ/cqq848mOnzJ7h+MT25JV38kDIWMAbXy+Kmo0C1P0nUn/A2V06a+v7TpKrteOcAO
+ N5KyZgX21m4dtUWBPR2e8tqBDzVpBbSr0v0pYJeUDeVPtlqkmah318PJFSAXIAa68svqWSBW5Jo
+ 5yCysxL9VsEe8JfX3cttE51zdPU472W2z2xbc//V06D1JjQFE5omqMAJmaBdWrNKJCKczbOl7dY
+ ZICftkTR/+bJSPl8Utew/Ge24REJ0TeyK9k5qmcEujSMaCb/BrComsfX4VKWRRVht2rU8/fBoNX
+ eFSxtU65zlTvjiA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Usually, the supply is around 1.2 V, not 1.8 V. Rather remove mention of
-voltage from the description.
+Usually, the supply is around 0.875 - 0.88 V. Include the information
+same as is already done for more recent camss dt-bindings.
 
-Fixes: 849139d46d09 ("media: dt-bindings: media: camss: Fixup vdda regulator descriptions sdm845")
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
  Documentation/devicetree/bindings/media/qcom,sa8775p-camss.yaml  | 2 +-
@@ -54,86 +53,100 @@ Signed-off-by: David Heidelberg <david@ixit.cz>
  Documentation/devicetree/bindings/media/qcom,sdm670-camss.yaml   | 2 +-
  Documentation/devicetree/bindings/media/qcom,sdm845-camss.yaml   | 2 +-
  Documentation/devicetree/bindings/media/qcom,sm8250-camss.yaml   | 2 +-
- 6 files changed, 6 insertions(+), 6 deletions(-)
+ Documentation/devicetree/bindings/media/qcom,sm8550-camss.yaml   | 2 +-
+ 7 files changed, 7 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/devicetree/bindings/media/qcom,sa8775p-camss.yaml b/Documentation/devicetree/bindings/media/qcom,sa8775p-camss.yaml
-index 019caa2b09c32..4986d18d1a2da 100644
+index 4986d18d1a2da..5c47a2cf220fb 100644
 --- a/Documentation/devicetree/bindings/media/qcom,sa8775p-camss.yaml
 +++ b/Documentation/devicetree/bindings/media/qcom,sa8775p-camss.yaml
-@@ -130,7 +130,7 @@ properties:
+@@ -126,7 +126,7 @@ properties:
+ 
+   vdda-phy-supply:
+     description:
+-      Phandle to a regulator supply to PHY core block.
++      0.88V regulator supply to CSIPHY IP blocks.
  
    vdda-pll-supply:
      description:
--      Phandle to 1.8V regulator supply to PHY refclk pll block.
-+      1.2V regulator supply to CSIPHY IP blocks.
- 
-   ports:
-     $ref: /schemas/graph.yaml#/properties/ports
 diff --git a/Documentation/devicetree/bindings/media/qcom,sc7280-camss.yaml b/Documentation/devicetree/bindings/media/qcom,sc7280-camss.yaml
-index ee35e3bc97ffd..e4b0b7ffdc336 100644
+index e4b0b7ffdc336..7d180e9cb6fa9 100644
 --- a/Documentation/devicetree/bindings/media/qcom,sc7280-camss.yaml
 +++ b/Documentation/devicetree/bindings/media/qcom,sc7280-camss.yaml
-@@ -129,7 +129,7 @@ properties:
+@@ -125,7 +125,7 @@ properties:
+ 
+   vdda-phy-supply:
+     description:
+-      Phandle to a regulator supply to PHY core block.
++      0.88V regulator supply to CSIPHY IP blocks.
  
    vdda-pll-supply:
      description:
--      Phandle to 1.8V regulator supply to PHY refclk pll block.
-+      1.2V regulator supply to CSIPHY IP blocks.
- 
-   ports:
-     $ref: /schemas/graph.yaml#/properties/ports
 diff --git a/Documentation/devicetree/bindings/media/qcom,sc8280xp-camss.yaml b/Documentation/devicetree/bindings/media/qcom,sc8280xp-camss.yaml
-index c99fe4106eee9..9cba6e0819fb1 100644
+index 9cba6e0819fb1..cd5e4948b97fc 100644
 --- a/Documentation/devicetree/bindings/media/qcom,sc8280xp-camss.yaml
 +++ b/Documentation/devicetree/bindings/media/qcom,sc8280xp-camss.yaml
-@@ -268,7 +268,7 @@ properties:
+@@ -264,7 +264,7 @@ properties:
+ 
+   vdda-phy-supply:
+     description:
+-      Phandle to a regulator supply to PHY core block.
++      0.88V regulator supply to CSIPHY IP blocks.
  
    vdda-pll-supply:
      description:
--      Phandle to 1.8V regulator supply to PHY refclk pll block.
-+      1.2V regulator supply to CSIPHY IP blocks.
- 
- required:
-   - clock-names
 diff --git a/Documentation/devicetree/bindings/media/qcom,sdm670-camss.yaml b/Documentation/devicetree/bindings/media/qcom,sdm670-camss.yaml
-index 35c40fe223767..61222839556bd 100644
+index 61222839556bd..56346b650d21e 100644
 --- a/Documentation/devicetree/bindings/media/qcom,sdm670-camss.yaml
 +++ b/Documentation/devicetree/bindings/media/qcom,sdm670-camss.yaml
-@@ -95,7 +95,7 @@ properties:
+@@ -91,7 +91,7 @@ properties:
+ 
+   vdda-phy-supply:
+     description:
+-      Phandle to a regulator supply to PHY core block.
++      0.88V regulator supply to CSIPHY IP blocks.
  
    vdda-pll-supply:
      description:
--      Phandle to 1.8V regulator supply to PHY refclk pll block.
-+      1.2V regulator supply to CSIPHY IP blocks.
- 
-   ports:
-     $ref: /schemas/graph.yaml#/properties/ports
 diff --git a/Documentation/devicetree/bindings/media/qcom,sdm845-camss.yaml b/Documentation/devicetree/bindings/media/qcom,sdm845-camss.yaml
-index 82bf4689d3300..03b9b34460b0a 100644
+index 03b9b34460b0a..008a739a0018a 100644
 --- a/Documentation/devicetree/bindings/media/qcom,sdm845-camss.yaml
 +++ b/Documentation/devicetree/bindings/media/qcom,sdm845-camss.yaml
-@@ -211,7 +211,7 @@ properties:
+@@ -207,7 +207,7 @@ properties:
+ 
+   vdda-phy-supply:
+     description:
+-      Phandle to a regulator supply to PHY core block.
++      0.88V regulator supply to CSIPHY IP blocks.
  
    vdda-pll-supply:
      description:
--      Phandle to 1.8V regulator supply to PHY refclk pll block.
-+      1.2V regulator supply to CSIPHY IP blocks.
- 
- required:
-   - clock-names
 diff --git a/Documentation/devicetree/bindings/media/qcom,sm8250-camss.yaml b/Documentation/devicetree/bindings/media/qcom,sm8250-camss.yaml
-index ebf68ff4ab961..acf9c54682107 100644
+index acf9c54682107..db5029d521291 100644
 --- a/Documentation/devicetree/bindings/media/qcom,sm8250-camss.yaml
 +++ b/Documentation/devicetree/bindings/media/qcom,sm8250-camss.yaml
-@@ -300,7 +300,7 @@ properties:
+@@ -296,7 +296,7 @@ properties:
+ 
+   vdda-phy-supply:
+     description:
+-      Phandle to a regulator supply to PHY core block.
++      0.88V regulator supply to CSIPHY IP blocks.
  
    vdda-pll-supply:
      description:
--      Phandle to 1.8V regulator supply to PHY refclk pll block.
-+      1.2V regulator supply to CSIPHY IP blocks.
+diff --git a/Documentation/devicetree/bindings/media/qcom,sm8550-camss.yaml b/Documentation/devicetree/bindings/media/qcom,sm8550-camss.yaml
+index cd34f14916b42..ebf82a8c423bc 100644
+--- a/Documentation/devicetree/bindings/media/qcom,sm8550-camss.yaml
++++ b/Documentation/devicetree/bindings/media/qcom,sm8550-camss.yaml
+@@ -134,7 +134,7 @@ properties:
  
- required:
-   - clock-names
+   vdda-phy-supply:
+     description:
+-      Phandle to a regulator supply to PHY core block.
++      0.88V regulator supply to CSIPHY IP blocks.
+ 
+   vdda-pll-supply:
+     description:
 
 -- 
 2.51.0
