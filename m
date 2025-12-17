@@ -1,272 +1,96 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Wed, 17 Dec 2025 22:46:52 +0530
-Subject: [PATCH 2/2] bus: mhi: host: Drop the auto_queue support
+From: =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
+Subject: [PATCH v3 0/6] Microsoft Surface Pro 11 support
+Date: Thu, 18 Dec 2025 00:56:36 +0100
+Message-Id: <20251218-surface-sp11-for-next-v3-0-875afc7bd3b7@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251217-qrtr-fix-v1-2-f6142a3ec9d8@oss.qualcomm.com>
-References: <20251217-qrtr-fix-v1-0-f6142a3ec9d8@oss.qualcomm.com>
-In-Reply-To: <20251217-qrtr-fix-v1-0-f6142a3ec9d8@oss.qualcomm.com>
-To: Jeff Hugo <jeff.hugo@oss.qualcomm.com>, 
- Carl Vanderlip <carl.vanderlip@oss.qualcomm.com>, 
- Oded Gabbay <ogabbay@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>, 
- Jeff Johnson <jjohnson@kernel.org>, "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Maxim Kochetkov <fido_max@inbox.ru>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, mhi@lists.linux.dev, 
- linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
- ath12k@lists.infradead.org, netdev@vger.kernel.org, 
- Bjorn Andersson <andersson@kernel.org>, Johan Hovold <johan@kernel.org>, 
- Chris Lew <quic_clew@quicinc.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7752;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=VV1/Ikl0OH6lDMHohEMkdP14WyebiuRyo/ktlKpfYQ0=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpQuWLymmyGTbV8eF0fjUIB0p3YI1DhyQBE4klb
- 8kCicS1Oa2JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaULliwAKCRBVnxHm/pHO
- 9f8NB/4pb1tI5jOjRcvH7nqMIvhr0IshwN2BGFpgymF6Pqg2ovOgSWiITOPGtpgeDwuTeuMofNq
- VJ+zsH8/hmSDmNuIfbb1uRzu3xNiBI50/5Knqw99RFdVu5wer7HL+F9AsG/4tuh7igH/VofxnoJ
- 7JaDGbVyajrKnkuLP7A0/kKjCFTc+eWFeWWWZnIHgq/2k2tp8G2raOmrquJSqExOMYt9CIhm89p
- m4oHnZgqmlWMm9dg8glTibgBM1xYkOfgk99G5XczRPLbt5q5fPVG+fPGghyJc5IvpMBVGfW2u0l
- O8fcUyy/ZqUf3iCP/Tu5EBZc5GzfGRIpRrq2Gl+h8CCjmaLr
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIADRDQ2kC/x3MOQqAQAxA0atIagNOBhe8ili4ZDTNKImKIN7dw
+ fIV/z9grMIGbfaA8iUmW0zweQbTOsSFUeZkoIJKR65BOzUME6PtzmHYFCPfB1ZUsac61KP3kNp
+ dOcj9f7v+fT8DnBloZwAAAA==
+X-Change-ID: 20251218-surface-sp11-for-next-626e327f7b33
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Johannes Berg <johannes@sipsolutions.net>, 
+ Lorenzo Bianconi <lorenzo@kernel.org>, 
+ Maximilian Luz <luzmaximilian@gmail.com>, Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Jeff Johnson <jjohnson@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-wireless@vger.kernel.org, 
+ platform-driver-x86@vger.kernel.org, ath12k@lists.infradead.org, 
+ Dale Whinham <daleyo@gmail.com>, 
+ =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766015815; l=3060;
+ i=jerome.debretagne@gmail.com; s=20251217; h=from:subject:message-id;
+ bh=HR4qrmI9rceCWt7faPX8zYQtAYw4yuTbacR2hZ8jKj8=;
+ b=t3BXpsJPHxSIlZjyA76+9GhmhP27qDDVarnKi/muuVipdCyPhGDLIzBzk4DJgGDFXkbCTKtLn
+ vi5tRO1d+2BAlPqAqU/Gr8ilzjdiSp01/l7J36E32dkICd8KlD/Ss11
+X-Developer-Key: i=jerome.debretagne@gmail.com; a=ed25519;
+ pk=DcPD9n3oDMsPkt+12tU96swmGb5H86cxt+yiEVcUEGk=
+X-Endpoint-Received: by B4 Relay for jerome.debretagne@gmail.com/20251217 with auth_id=580
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now that the only user of the 'auto_queue' feature, (QRTR) has been
-converted to manage the buffers on its own, drop the code related to it.
+This series brings support for the Qualcomm-based Microsoft Surface
+Pro 11 covering both the OLED and LCD variants.
 
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Signed-off-by: Dale Whinham <daleyo@gmail.com>
+Signed-off-by: Jérôme de Bretagne <jerome.debretagne@gmail.com>
 ---
- drivers/bus/mhi/host/init.c     | 10 -----
- drivers/bus/mhi/host/internal.h |  3 --
- drivers/bus/mhi/host/main.c     | 81 +----------------------------------------
- include/linux/mhi.h             | 14 -------
- 4 files changed, 2 insertions(+), 106 deletions(-)
+Changes in v3:
+- Update the compatible strings to document both the OLED and LCD variants
+- Move the disable-rfkill property into ieee80211.yaml [Rob,Krzysztof]
+- Reference commit c6a7c0b09d5f and detail the disable-rfkill patch description [Rob,Krzysztof]
+- Switch to the renamed hamoa.dtsi and hamoa-pmics.dtsi [Dale]
+- Improve the comments describing the 2 USB Type-C port location
+- Update the speaker definition to describe only 2-speakers [Konrad]
+- Drop output-low from the speaker definition [Konrad]
+- Enable i2c0 to make it accessible through i2c-tools [Konrad]
+- Delete a non-applicable comment about removable WLAN card [Konrad]
+- Re-order a few nodes and fix indentation issues [Konrad]
+- Squash one of the patches as suggested [Krzysztof]
+- Drop the NAKed patch patch about a dpcd link rate quirk [Dmitry]
+- Include the Reviewed-by: tags
+- Link to v2: https://lore.kernel.org/all/20251201011457.17422-1-daleyo@gmail.com/
 
-diff --git a/drivers/bus/mhi/host/init.c b/drivers/bus/mhi/host/init.c
-index 099be8dd1900..b020a6489c07 100644
---- a/drivers/bus/mhi/host/init.c
-+++ b/drivers/bus/mhi/host/init.c
-@@ -841,18 +841,8 @@ static int parse_ch_cfg(struct mhi_controller *mhi_cntrl,
- 		mhi_chan->lpm_notify = ch_cfg->lpm_notify;
- 		mhi_chan->offload_ch = ch_cfg->offload_channel;
- 		mhi_chan->db_cfg.reset_req = ch_cfg->doorbell_mode_switch;
--		mhi_chan->pre_alloc = ch_cfg->auto_queue;
- 		mhi_chan->wake_capable = ch_cfg->wake_capable;
- 
--		/*
--		 * If MHI host allocates buffers, then the channel direction
--		 * should be DMA_FROM_DEVICE
--		 */
--		if (mhi_chan->pre_alloc && mhi_chan->dir != DMA_FROM_DEVICE) {
--			dev_err(dev, "Invalid channel configuration\n");
--			goto error_chan_cfg;
--		}
--
- 		/*
- 		 * Bi-directional and direction less channel must be an
- 		 * offload channel
-diff --git a/drivers/bus/mhi/host/internal.h b/drivers/bus/mhi/host/internal.h
-index 7937bb1f742c..7b0ee5e3a12d 100644
---- a/drivers/bus/mhi/host/internal.h
-+++ b/drivers/bus/mhi/host/internal.h
-@@ -286,7 +286,6 @@ struct mhi_chan {
- 	bool lpm_notify;
- 	bool configured;
- 	bool offload_ch;
--	bool pre_alloc;
- 	bool wake_capable;
- };
- 
-@@ -389,8 +388,6 @@ int mhi_rddm_prepare(struct mhi_controller *mhi_cntrl,
- 		      struct image_info *img_info);
- void mhi_fw_load_handler(struct mhi_controller *mhi_cntrl);
- 
--/* Automatically allocate and queue inbound buffers */
--#define MHI_CH_INBOUND_ALLOC_BUFS BIT(0)
- int mhi_init_chan_ctxt(struct mhi_controller *mhi_cntrl,
- 		       struct mhi_chan *mhi_chan);
- void mhi_deinit_chan_ctxt(struct mhi_controller *mhi_cntrl,
-diff --git a/drivers/bus/mhi/host/main.c b/drivers/bus/mhi/host/main.c
-index 861551274319..53c0ffe30070 100644
---- a/drivers/bus/mhi/host/main.c
-+++ b/drivers/bus/mhi/host/main.c
-@@ -664,23 +664,6 @@ static int parse_xfer_event(struct mhi_controller *mhi_cntrl,
- 				mhi_cntrl->runtime_put(mhi_cntrl);
- 			}
- 
--			/*
--			 * Recycle the buffer if buffer is pre-allocated,
--			 * if there is an error, not much we can do apart
--			 * from dropping the packet
--			 */
--			if (mhi_chan->pre_alloc) {
--				if (mhi_queue_buf(mhi_chan->mhi_dev,
--						  mhi_chan->dir,
--						  buf_info->cb_buf,
--						  buf_info->len, MHI_EOT)) {
--					dev_err(dev,
--						"Error recycling buffer for chan:%d\n",
--						mhi_chan->chan);
--					kfree(buf_info->cb_buf);
--				}
--			}
--
- 			read_lock_bh(&mhi_chan->lock);
- 		}
- 		break;
-@@ -1177,17 +1160,12 @@ static int mhi_queue(struct mhi_device *mhi_dev, struct mhi_buf_info *buf_info,
- int mhi_queue_skb(struct mhi_device *mhi_dev, enum dma_data_direction dir,
- 		  struct sk_buff *skb, size_t len, enum mhi_flags mflags)
- {
--	struct mhi_chan *mhi_chan = (dir == DMA_TO_DEVICE) ? mhi_dev->ul_chan :
--							     mhi_dev->dl_chan;
- 	struct mhi_buf_info buf_info = { };
- 
- 	buf_info.v_addr = skb->data;
- 	buf_info.cb_buf = skb;
- 	buf_info.len = len;
- 
--	if (unlikely(mhi_chan->pre_alloc))
--		return -EINVAL;
--
- 	return mhi_queue(mhi_dev, &buf_info, dir, mflags);
- }
- EXPORT_SYMBOL_GPL(mhi_queue_skb);
-@@ -1472,45 +1450,6 @@ static int mhi_prepare_channel(struct mhi_controller *mhi_cntrl,
- 	if (ret)
- 		goto error_pm_state;
- 
--	if (mhi_chan->dir == DMA_FROM_DEVICE)
--		mhi_chan->pre_alloc = !!(flags & MHI_CH_INBOUND_ALLOC_BUFS);
--
--	/* Pre-allocate buffer for xfer ring */
--	if (mhi_chan->pre_alloc) {
--		int nr_el = get_nr_avail_ring_elements(mhi_cntrl,
--						       &mhi_chan->tre_ring);
--		size_t len = mhi_cntrl->buffer_len;
--
--		while (nr_el--) {
--			void *buf;
--			struct mhi_buf_info info = { };
--
--			buf = kmalloc(len, GFP_KERNEL);
--			if (!buf) {
--				ret = -ENOMEM;
--				goto error_pre_alloc;
--			}
--
--			/* Prepare transfer descriptors */
--			info.v_addr = buf;
--			info.cb_buf = buf;
--			info.len = len;
--			ret = mhi_gen_tre(mhi_cntrl, mhi_chan, &info, MHI_EOT);
--			if (ret) {
--				kfree(buf);
--				goto error_pre_alloc;
--			}
--		}
--
--		read_lock_bh(&mhi_cntrl->pm_lock);
--		if (MHI_DB_ACCESS_VALID(mhi_cntrl)) {
--			read_lock_irq(&mhi_chan->lock);
--			mhi_ring_chan_db(mhi_cntrl, mhi_chan);
--			read_unlock_irq(&mhi_chan->lock);
--		}
--		read_unlock_bh(&mhi_cntrl->pm_lock);
--	}
--
- 	mutex_unlock(&mhi_chan->mutex);
- 
- 	return 0;
-@@ -1522,12 +1461,6 @@ static int mhi_prepare_channel(struct mhi_controller *mhi_cntrl,
- error_init_chan:
- 	mutex_unlock(&mhi_chan->mutex);
- 
--	return ret;
--
--error_pre_alloc:
--	mutex_unlock(&mhi_chan->mutex);
--	mhi_unprepare_channel(mhi_cntrl, mhi_chan);
--
- 	return ret;
- }
- 
-@@ -1600,12 +1533,8 @@ static void mhi_reset_data_chan(struct mhi_controller *mhi_cntrl,
- 		mhi_del_ring_element(mhi_cntrl, buf_ring);
- 		mhi_del_ring_element(mhi_cntrl, tre_ring);
- 
--		if (mhi_chan->pre_alloc) {
--			kfree(buf_info->cb_buf);
--		} else {
--			result.buf_addr = buf_info->cb_buf;
--			mhi_chan->xfer_cb(mhi_chan->mhi_dev, &result);
--		}
-+		result.buf_addr = buf_info->cb_buf;
-+		mhi_chan->xfer_cb(mhi_chan->mhi_dev, &result);
- 	}
- }
- 
-@@ -1666,12 +1595,6 @@ int mhi_prepare_for_transfer(struct mhi_device *mhi_dev)
- }
- EXPORT_SYMBOL_GPL(mhi_prepare_for_transfer);
- 
--int mhi_prepare_for_transfer_autoqueue(struct mhi_device *mhi_dev)
--{
--	return __mhi_prepare_for_transfer(mhi_dev, MHI_CH_INBOUND_ALLOC_BUFS);
--}
--EXPORT_SYMBOL_GPL(mhi_prepare_for_transfer_autoqueue);
--
- void mhi_unprepare_from_transfer(struct mhi_device *mhi_dev)
- {
- 	struct mhi_controller *mhi_cntrl = mhi_dev->mhi_cntrl;
-diff --git a/include/linux/mhi.h b/include/linux/mhi.h
-index dd372b0123a6..88ccb3e14f48 100644
---- a/include/linux/mhi.h
-+++ b/include/linux/mhi.h
-@@ -215,7 +215,6 @@ enum mhi_db_brst_mode {
-  * @lpm_notify: The channel master requires low power mode notifications
-  * @offload_channel: The client manages the channel completely
-  * @doorbell_mode_switch: Channel switches to doorbell mode on M0 transition
-- * @auto_queue: Framework will automatically queue buffers for DL traffic
-  * @wake-capable: Channel capable of waking up the system
-  */
- struct mhi_channel_config {
-@@ -232,7 +231,6 @@ struct mhi_channel_config {
- 	bool lpm_notify;
- 	bool offload_channel;
- 	bool doorbell_mode_switch;
--	bool auto_queue;
- 	bool wake_capable;
- };
- 
-@@ -743,18 +741,6 @@ void mhi_device_put(struct mhi_device *mhi_dev);
-  */
- int mhi_prepare_for_transfer(struct mhi_device *mhi_dev);
- 
--/**
-- * mhi_prepare_for_transfer_autoqueue - Setup UL and DL channels with auto queue
-- *                                      buffers for DL traffic
-- * @mhi_dev: Device associated with the channels
-- *
-- * Allocate and initialize the channel context and also issue the START channel
-- * command to both channels. Channels can be started only if both host and
-- * device execution environments match and channels are in a DISABLED state.
-- * The MHI core will automatically allocate and queue buffers for the DL traffic.
-- */
--int mhi_prepare_for_transfer_autoqueue(struct mhi_device *mhi_dev);
--
- /**
-  * mhi_unprepare_from_transfer - Reset UL and DL channels for data transfer.
-  *                               Issue the RESET channel command and let the
+Changes in v2:
+  - Dropped ATNA30DW01 patch as it was merged.
+  - Split device tree into x1e (OLED)/x1p (LCD) specific *.dts files and move common code into x1-microsoft-denali.dtsi (patch 4).
+  - Device tree now enables higher external monitor refresh rates/resolutions (patch 4).
+  - Device tree now enables partially working audio output; requires alsa-ucm-conf and audioreach-topology definitions in userspace (patch 4).
+  - Replaced 'Work around bogus maximum link rate' with a quirk-based approach (patch 5).
+  - Improve the commit message about the disable-rfkill property in response to feedback (patch 6).
 
+---
+Dale Whinham (4):
+      firmware: qcom: scm: allow QSEECOM on Surface Pro 11
+      platform/surface: aggregator_registry: Add Surface Pro 11
+      arm64: dts: qcom: Add support for Surface Pro 11
+      wifi: ath12k: Add support for disabling rfkill via devicetree
+
+Jérôme de Bretagne (2):
+      dt-bindings: arm: qcom: Document Microsoft Surface Pro 11
+      dt-bindings: wireless: ieee80211: Add disable-rfkill property
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    8 +
+ .../bindings/net/wireless/ieee80211.yaml           |    6 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    4 +
+ arch/arm64/boot/dts/qcom/x1-microsoft-denali.dtsi  | 1326 ++++++++++++++++++++
+ .../dts/qcom/x1e80100-microsoft-denali-oled.dts    |   20 +
+ .../boot/dts/qcom/x1p64100-microsoft-denali.dts    |   16 +
+ drivers/firmware/qcom/qcom_scm.c                   |    1 +
+ drivers/net/wireless/ath/ath12k/core.c             |    3 +
+ .../platform/surface/surface_aggregator_registry.c |   18 +
+ 9 files changed, 1402 insertions(+)
+---
+base-commit: 8f0b4cce4481fb22653697cced8d0d04027cb1e8
+change-id: 20251218-surface-sp11-for-next-626e327f7b33
+
+Best regards,
 -- 
-2.48.1
+Jérôme de Bretagne <jerome.debretagne@gmail.com>
 
