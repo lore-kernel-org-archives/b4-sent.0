@@ -1,111 +1,76 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Tue, 16 Dec 2025 21:34:08 +0100
-Subject: [PATCH] arm64: dts: qcom: sdm845-oneplus: Enable known blocks and
- add placeholders
+From: Joel Granados <joel.granados@kernel.org>
+Subject: [PATCH 0/7] sysctl: Replace the converter macros with functions
+Date: Wed, 17 Dec 2025 09:04:38 +0100
+Message-Id: <20251217-jag-no-macro-conv-v1-0-6e4252687915@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251216-placeholders-v1-1-d7d544200e7c@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAD/CQWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDQyNj3YKcxOTUjPyclNSiYl3zFDPTVCNLMxOLRBMloJaCotS0zAqwcdG
- xtbUAMTGuOl4AAAA=
-X-Change-ID: 20251123-placeholders-7d65e29648a4
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1668; i=david@ixit.cz;
- h=from:subject:message-id; bh=+JZK2ZbxfA/IlfNdhYsiDNwaA0HXucqfuw6KNa0TyXk=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpQcJEA5Crw2AD4nFHdNFPek/RbVbA9LTtw78Hh
- 4W6BMB9wcyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaUHCRAAKCRBgAj/E00kg
- coQ4D/wIOrl3U2EPI6EA35fBqsUoauCdeaHMeDEaVT/zFWMxpY4NvPo7wQPEKxGptTrhvi0DS10
- yCn/4/HjDwEb9vmbsnj6dJ7UDoqbW6+PzRYphlSoND/IoHRT0Bh373xKXOmuWAWJtEhA6Cmb7A0
- 9tpUKrJ1jhmNo1iGhUZkqUnigNWKXjAUioHYtXmqoycC/fkuWdS6spHKlciENo0ehlPp0+0q/72
- m1nfuBi+auZdkt7yqiliJ3efTApM4s0kodS0PQZe1PD/oq4CPn52esVEAJFBjO0GCu1EJN3es/x
- rL575oZ/+LuNzQSb0UJcN+PyZo8AN2CAFynPOs/QWA9ielUgjpgJtBM8+MiozHLzWEDvGwhZiyV
- i/pkCbUOfDZubU1DWGg/swawcp529r5fnZcK0uCgZfa+fPVir40FrPDhp8lRRHiUi0KbeJ+nFki
- KeC3+VXUktrf4BrRsAn2wmGxpjYrMBAZTM9Tc0aiEmOnyMPK+OB6Vvy1zpMp/nU7aN5HaItZPVb
- oN5wBPoKfBwmoors9qnzIKdbKGaoarYUt5nRtdOTy/jY9IU6kPyspRou7uCOd5fycjJTzvFm0Ka
- NuY3uesS0hK5H6cz8O44mN2S3vYGvHHBw6Swaw1DqWjBnvdh/6KvD6qI1CCTt1JNK3Ae5OwuwnU
- UGyUMm1NE8YVc7g==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIABZkQmkC/x3MQQqAIBBA0avErBtIQ6muEi1knGyCNBQiiO6et
+ HyL/x8onIULTM0DmS8pkmKFahugzcXAKL4adKeN0sri7gLGhIejnJBSvLB3xrAdicgPULsz8yr
+ 3/5yX9/0A1qOb+WMAAAA=
+X-Change-ID: 20251216-jag-no-macro-conv-3a55e69cccd8
+To: Kees Cook <kees@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ Joel Granados <joel.granados@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1787;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=grgbd7Roh/N0T9UiQSsIvroaXuc9Ova9XMV/cH1yCQQ=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGlCZDUV3DIaQ0HKM5Fzs252AlZ+Ze2h/ZP9D
+ qZsX8b4ZzxMUokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJpQmQ1AAoJELqXzVK3
+ lkFPkGYL/jyQWWbgPXVTr+kyOhXzgSI6vRsLEMatWZxSHaVps5SqjIE+XgVyQz2GWGV9CfJqtJt
+ QKwBff1YPXc6hZjJR6k0LOsbZl5AeVZwAsnB/ssYZHFJ6DR/isBuZejx5cmYQdpoNmKdRk2ipwr
+ oRxJi/PnbcRPtV9+sutvKXEI3kpRJNwinrMjQvW9SOKwPKzBRVbKO2a4dSQDDcDXjWL0b2iemej
+ XsvhrlIgP/wfDho02lor1xZm0tmr4GbG03oVQyWzBdWL+o/uGED6L3Dv3EG9lF/ZP+ff5NUJMdZ
+ n0balmLvlIxEQkKfRbvxlttR6zTn1oMmtQq0iqVeoszqMqcjoqV7e+FLWPyElhaNUsbtJnspK3i
+ nH9mvGIQImeZl25UxT7GwVOn1/geEVIBzXen76o22O4ZfIrVZIDwUMsP31WYWyRnDvH7wG5lr5P
+ YM8j88wCxyMlUOwv6z3xf+03k7x/+WJ88MP9mKoKWe6jYDrEyDV8Y+scaFFCKAfHl/Ja8+TRXB5
+ KU=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-We know these devices are present; most of them are supported by
-downstream and are close to the mainline kernels.
+Remove all the macros that were created to get jiffies out of sysctl.c.
+In [1] we leaned a bit too hard on macros to generate the converter
+functions needed in jiffies.c, pipe.c and sysctl.c. In this series we
+replace the macros with regular functions to help in debugging and to
+better align with coding-style.rst. This series has been tested with
+sysctl self tests (x86_64) and with 0-day.
 
-This adds placeholders for:
- - front camera (imx371)
- - rear cameras (imx519, imx376k)
- - actuators
- - NFC node on i2c3
+A note about checkpatch: It really dislikes the use of -ENOSYS and
+unused arguments in the no-op versions of the functions. These are all
+false positives IMO as -ENOSYS should be returned to the syscall that is
+reading or writing the proc file.
 
-This is very handy when rebasing the integration tree with
-support for multiple different blocks at the same time.
+Comments are greatly appreciated
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Best
+
+[1] https://lore.kernel.org/all/tqz52ig2b5jas3qqt6jqqek7uwyg64ny5qnwy6gclhgjcy4ltb@s7jiay5vyomg/
+
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 28 ++++++++++++++++++++++
- 1 file changed, 28 insertions(+)
+Joel Granados (7):
+      sysctl: Return -ENOSYS from proc_douintvec_conv when CONFIG_PROC_SYSCTL=n
+      sysctl: clarify proc_douintvec_minmax doc
+      sysctl: Add CONFIG_PROC_SYSCTL guards for converter macros
+      sysctl: Replace UINT converter macros with functions
+      sysctl: Add kernel doc to proc_douintvec_conv
+      sysctl: Replace unidirectional INT converter macros with functions
+      sysctl: replace SYSCTL_INT_CONV_CUSTOM macro with functions
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-index db6dd04c51bb5..3e60565d54c08 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-@@ -352,6 +352,26 @@ vreg_s3c_0p6: smps3 {
- 	};
- };
- 
-+&cci {
-+	status = "okay";
-+};
-+
-+&cci_i2c0 {
-+	/* front sony,imx371 @10 */
-+
-+	/* rear sony,imx519 @1a */
-+
-+	/* rear onnn,lc898217xc @72 */
-+};
-+
-+&cci_i2c1 {
-+	/* sa,sa3103 @0d */
-+
-+	/* rear sony,imx376k @10 */
-+
-+	/* onnn,lc898217xc @74 */
-+};
-+
- &cdsp_pas {
- 	status = "okay";
- 	firmware-name = "qcom/sdm845/oneplus6/cdsp.mbn";
-@@ -373,6 +393,14 @@ &gpu_zap_shader {
- 	firmware-name = "qcom/sdm845/oneplus6/a630_zap.mbn";
- };
- 
-+&i2c3 {
-+	clock-frequency = <400000>;
-+
-+	status = "okay";
-+
-+	/* nxp,nxp-nci-i2c @28 */
-+};
-+
- &i2c10 {
- 	status = "okay";
- 	clock-frequency = <100000>;
-
+ fs/pipe.c              |  22 +++-
+ include/linux/sysctl.h | 120 +++-------------------
+ kernel/sysctl.c        | 274 +++++++++++++++++++++++++++++++++++++++++++++----
+ kernel/time/jiffies.c  | 134 ++++++++++++++++++++----
+ 4 files changed, 403 insertions(+), 147 deletions(-)
 ---
-base-commit: 563c8dd425b59e44470e28519107b1efc99f4c7b
-change-id: 20251123-placeholders-7d65e29648a4
+base-commit: 8f0b4cce4481fb22653697cced8d0d04027cb1e8
+change-id: 20251216-jag-no-macro-conv-3a55e69cccd8
 
 Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+Joel Granados <joel.granados@kernel.org>
 
