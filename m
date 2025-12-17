@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Wed, 17 Dec 2025 12:39:23 +0100
-Subject: [PATCH v2 1/2] arm64: dts: qcom: sdm845: Introduce camera master
- clock pinctrl
+Date: Wed, 17 Dec 2025 12:39:24 +0100
+Subject: [PATCH v2 2/2] arm64: dts: qcom: sdm845-db845c: Use pad fn instead
+ of defining own
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251217-sdm845-mclk-v2-1-7028c2d09145@ixit.cz>
+Message-Id: <20251217-sdm845-mclk-v2-2-7028c2d09145@ixit.cz>
 References: <20251217-sdm845-mclk-v2-0-7028c2d09145@ixit.cz>
 In-Reply-To: <20251217-sdm845-mclk-v2-0-7028c2d09145@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -17,100 +17,82 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2039; i=david@ixit.cz;
- h=from:subject:message-id; bh=cTUXa+N953sv5GxQGdBXyAR0p0U/nn2ORgNoDyha5zM=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpQpZrjyrLIEO33W/yON0eBpo3ZJGTkEg+d6onq
- vjDiyLzhlKJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaUKWawAKCRBgAj/E00kg
- cgzCD/9DaIPYE3l3aFYA49lwXZi905wJ7LMUxGqKLVRoMzQ3/2nWHPdD0bRc7dUgoF0sDLpNsX9
- XqF7/kCC3eILkDb4xeoygrI7dt2uqwGgtyFj5UDxK2y4jE+cmrhusQBbaS3nzXuaBkNAU6Axx8I
- w/5dwe6bWxk46Yfif1+zyDiZmXZFEPFG6d+RjXT2GGI7wlt6HxkEHb0GWu/kpcHN73RjsNFhSKI
- qcRjE2Kr4JWJFYlfjS7K/Imvos9LyPvTzYAkk+HGJjwqWatNp6b/kDVI5qKH4HFOw91Z4cRsyMJ
- p2yq0zcKu07cQWhf/qKNuTpJv7307I/bxNOol3FvNM+zNARIgR/bBTPQhyQtYSCxGAUxIT32hY8
- vFJ/YqePaXUYCS+1L3RjwJE0qT2Zxiql/Iy4uswP/Vh/J2fSyMMq8mT/lTnKdDy0Yb9HfKnGc5d
- 40gogk/T26Sm+x2Wv7fJhqniUTcJqbujICHsVBCQ5bsGRCnCq0BfJUZzKD/9NsRDiM8Cfn4yaXn
- 6HCXAPKY6nKmNFyV648p+xVoXLJjT7eYis/FyX++A2CX1lS7VTc3oy5Dg687XoIaSVPBZshwaZO
- 6YBzP6e5oo10/LGjR+MZcPsX/BVoQowc9EV37sT8yH7SJNXKWEZkCSeb3UrYevXzMK7SEXbHt8f
- jDlw2c248fndF/A==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1827; i=david@ixit.cz;
+ h=from:subject:message-id; bh=G7P7fQVka9nSGdds0k6Y6wrfFIx/ZErtx2+mqLJCAWY=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpQpZr/A2qM22WqPw+Q71qbjioqzrIiiKfFT/lj
+ u8kv9P1j6OJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaUKWawAKCRBgAj/E00kg
+ cn5iEACCAAXd6M7MXTNJiUGEdp68z1bey8nzUcpByTrg5KFvdDibR01TBQCztY1SVbelBwL6WMl
+ 9/Uwwo/j/kK/e9GICVUi+uBlkoVAld5+SFiIUp9LNdHrI+YvXtasQoVwcj76pnJDdF6qehV1hbk
+ y6UfA3Z66EMXYcYHSfFGm3CjtkyNlukefbThlr7Fj73E/VCfD7ZEiy+2rOI9Bdi5LOMq2Dfrmtn
+ +tBQKZV+Y/9PUZsqQNDdaM7+DuMxDnFBbhSxEBQLmf7R2a7UmuNNwFXne0omCAl7TsHfv/1Vrgx
+ QUAGSs64YOMIjY+CVLBRafRFajRYhCN1icVe/BBPUIbCyQNsc5Hs3+WByH18ScWQxWwxvDkxZZv
+ LceQsWHlksC/U5qpuLDMUwoI4cvjjPUeG4qqcTBnLFMnBvl5JYDCmVX5gTpUY7aeFsilu2oGjRA
+ LianfwjvmoWvzYRhtEhG/d5vQ+t+/diF5TUA83p//S/HIiws2Kiop2m39rJ/LnzkokzICVS6yDg
+ 4u8GeaMCagB8SLY6c2yc8AyWEpLywfM8DnRHnO4+0K0Lx50UkSuUiN0ELxoi8lUGd4sgOp5RJVn
+ QuCmpS8AbCNPKgAwkSj4W5BvML/laY9ujaMhHwbqtYBtP40nmt5UBVChIvnP/cwWsWc0xbwNYI6
+ MDQ8nEqyUDlO27A==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Put clock pins configuration for camera master clock into the dtsi.
+Instead of defining own pad function for master clock, pick one offered
+by sdm845 device-tree include.
 
 Reviewed-by: Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845.dtsi | 56 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 56 insertions(+)
+ .../dts/qcom/sdm845-db845c-navigation-mezzanine.dtso     |  2 +-
+ arch/arm64/boot/dts/qcom/sdm845-db845c.dts               | 16 ----------------
+ 2 files changed, 1 insertion(+), 17 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845.dtsi b/arch/arm64/boot/dts/qcom/sdm845.dtsi
-index bf2f9c04adba7..c0f21a745fb0c 100644
---- a/arch/arm64/boot/dts/qcom/sdm845.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845.dtsi
-@@ -2805,6 +2805,62 @@ tlmm: pinctrl@3400000 {
- 			gpio-ranges = <&tlmm 0 0 151>;
- 			wakeup-parent = <&pdc_intc>;
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-db845c-navigation-mezzanine.dtso b/arch/arm64/boot/dts/qcom/sdm845-db845c-navigation-mezzanine.dtso
+index dbe1911d8e470..f6c2c98970d76 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-db845c-navigation-mezzanine.dtso
++++ b/arch/arm64/boot/dts/qcom/sdm845-db845c-navigation-mezzanine.dtso
+@@ -40,7 +40,7 @@ camera@10 {
+ 		/* CAM0_RST_N */
+ 		reset-gpios = <&tlmm 9 GPIO_ACTIVE_LOW>;
+ 		pinctrl-names = "default";
+-		pinctrl-0 = <&cam0_default>;
++		pinctrl-0 = <&cam0_default &cam_mclk0_default>;
  
-+			cam_mclk0_default: cam-mclk0-default-state {
-+				pins = "gpio13";
-+				function = "cam_mclk";
-+				drive-strength = <2>;
-+				bias-disable;
-+			};
-+
-+			cam_mclk0_sleep: cam-mclk0-sleep-state {
-+				pins = "gpio13";
-+				function = "cam_mclk";
-+				drive-strength = <2>;
-+				bias-pull-down;
-+			};
-+
-+			cam_mclk1_default: cam-mclk1-default-state {
-+				pins = "gpio14";
-+				function = "cam_mclk";
-+				drive-strength = <2>;
-+				bias-disable;
-+			};
-+
-+			cam_mclk1_sleep: cam-mclk1-sleep-state {
-+				pins = "gpio14";
-+				function = "cam_mclk";
-+				drive-strength = <2>;
-+				bias-pull-down;
-+			};
-+
-+			cam_mclk2_default: cam-mclk2-default-state {
-+				pins = "gpio15";
-+				function = "cam_mclk";
-+				drive-strength = <2>;
-+				bias-disable;
-+			};
-+
-+			cam_mclk2_sleep: cam-mclk2-sleep-state {
-+				pins = "gpio15";
-+				function = "cam_mclk";
-+				drive-strength = <2>;
-+				bias-pull-down;
-+			};
-+
-+			cam_mclk3_default: cam-mclk3-default-state {
-+				pins = "gpio16";
-+				function = "cam_mclk";
-+				drive-strength = <2>;
-+				bias-disable;
-+			};
-+
-+			cam_mclk3_sleep: cam-mclk3-sleep-state {
-+				pins = "gpio16";
-+				function = "cam_mclk";
-+				drive-strength = <2>;
-+				bias-pull-down;
-+			};
-+
- 			cci0_default: cci0-default-state {
- 				/* SDA, SCL */
- 				pins = "gpio17", "gpio18";
+ 		clocks = <&clock_camcc CAM_CC_MCLK0_CLK>;
+ 		clock-names = "xvclk";
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-db845c.dts b/arch/arm64/boot/dts/qcom/sdm845-db845c.dts
+index ce23f87e0316b..518d2ec657b13 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-db845c.dts
++++ b/arch/arm64/boot/dts/qcom/sdm845-db845c.dts
+@@ -877,14 +877,6 @@ rst-pins {
+ 			drive-strength = <16>;
+ 			bias-disable;
+ 		};
+-
+-		mclk0-pins {
+-			pins = "gpio13";
+-			function = "cam_mclk";
+-
+-			drive-strength = <16>;
+-			bias-disable;
+-		};
+ 	};
+ 
+ 	cam3_default: cam3-default-state {
+@@ -895,14 +887,6 @@ rst-pins {
+ 			drive-strength = <16>;
+ 			bias-disable;
+ 		};
+-
+-		mclk3-pins {
+-			function = "cam_mclk";
+-			pins = "gpio16";
+-
+-			drive-strength = <16>;
+-			bias-disable;
+-		};
+ 	};
+ 
+ 	dsi_sw_sel: dsi-sw-sel-state {
 
 -- 
 2.51.0
