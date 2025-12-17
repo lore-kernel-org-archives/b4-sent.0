@@ -1,72 +1,91 @@
-From: Zhaoming Luo <zhml@posteo.com>
-Date: Wed, 17 Dec 2025 22:03:38 +0800
-Subject: [PATCH v3] dt-bindings: ufs: Fix several grammar errors
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH 0/2] net: qrtr: Drop the MHI 'auto_queue' feature
+Date: Wed, 17 Dec 2025 22:46:50 +0530
+Message-Id: <20251217-qrtr-fix-v1-0-f6142a3ec9d8@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251217-fix-minor-grammar-err-v3-1-9be220cdd56a@posteo.com>
-X-B4-Tracking: v=1; b=H4sIADm4QmkC/4WNQQ6DMAwEv4J8riviiKL21H9UHEJiwIcQ5CDUC
- vH3pnygx1ntzu6QWYUzPKodlDfJkuYC9lKBn9w8MkooDFRTY8hYHOSNUeakOKqL0SmyKt7aYGo
- /0BDuAcp2US7F0/vqCk+S16Sf82ajX/rPuBEa7C313LTeOWOfS8orp6tPEbrjOL7pa1sEuwAAA
- A==
-X-Change-ID: 20251213-fix-minor-grammar-err-67d10cf2fd9d
-To: Alim Akhtar <alim.akhtar@samsung.com>, 
- Avri Altman <avri.altman@wdc.com>, Bart Van Assche <bvanassche@acm.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-scsi@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Zhaoming Luo <zhml@posteo.com>
+X-B4-Tracking: v=1; b=H4sIAILlQmkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1NDI0Nz3cKikiLdtMwK3WQDUwugWIpFimGiElB5QVEqUBhsVHRsbS0AovM
+ Jm1oAAAA=
+X-Change-ID: 20251217-qrtr-fix-c058251d8d1a
+To: Jeff Hugo <jeff.hugo@oss.qualcomm.com>, 
+ Carl Vanderlip <carl.vanderlip@oss.qualcomm.com>, 
+ Oded Gabbay <ogabbay@kernel.org>, Manivannan Sadhasivam <mani@kernel.org>, 
+ Jeff Johnson <jjohnson@kernel.org>, "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Loic Poulain <loic.poulain@oss.qualcomm.com>, 
+ Maxim Kochetkov <fido_max@inbox.ru>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, mhi@lists.linux.dev, 
+ linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
+ ath12k@lists.infradead.org, netdev@vger.kernel.org, 
+ Bjorn Andersson <andersson@kernel.org>, Johan Hovold <johan@kernel.org>, 
+ Chris Lew <quic_clew@quicinc.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1572; i=zhml@posteo.com;
- h=from:subject:message-id; bh=6xDHkeTv5R7oilb7pg+a2ov6MpBdcOcD/xUXTzcBvH8=;
- b=owGbwMvMwCWW8vrrboHTHcGMp9WSGDKddjhtZagOnHrPRvOi+9MGl9vVJvVcSa2fdl1QfnLbV
- GFVkWRcx0QWBjEuBksxRRbnuAcBF3x7XAJbj3nCzGFlAhkiLdLAAAQsDHy5iXmlRjpGeqbahnqG
- hjpAJgMXpwBMtaAPI8OPJzc3dhZs5r6ztUKBs/L/6l6R87vNq76XmcwTl++2f7OJ4Q9P3aIz86K
- WXDjS8nvXOe9DrAob9qcXrdvbqiX3OtfP1Y0BAA==
-X-Developer-Key: i=zhml@posteo.com; a=openpgp;
- fpr=435EE050D04D8C445185C64964EBF5BB10CB8853
-X-Endpoint-Received: by B4 Relay for zhml@posteo.com/default with auth_id=576
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1833;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=nCNmapLXVkzx5G0AMg0w1rDB82qxLQX+MYjj3DhiKp4=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpQuWLGsKVi00BM9j9k2fzmDyfhFZKHkWaVpwxL
+ mEyD11ffiGJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaULliwAKCRBVnxHm/pHO
+ 9dflCACJcSVT7YDyfd1eVp65ty6CysudUmNCdkpwxqBUbCrnGNo3J5HA5Hjn0fxfolTcFBBLQ07
+ NeDnBv7hbBbeyy/YGPc7B2nWrkzT2oE/O6mX1dmUEBSjUBVMBq+M2qerwQHpjy3mT6EmN+lLYuk
+ EoZKz4737MjFD7GJoeu4mMQuQOXQ86hQRcwpELNcqSYNc+8fep+/5IiIPQ2NgkCKu4cKF+CAANE
+ NmFlrFhiohovN3SfcwHdt4M3dZd2Klsd1aCphMoU9i8/gw1xIHR1cGHhWU1Y6+l7SUkLrL6jBh+
+ YTWv2owV7o/wUYhLImCgqMf3xtU5X3/Kt/L/XHl60z1w9ez8
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix several grammar errors.
+Hi,
 
-Signed-off-by: Zhaoming Luo <zhml@posteo.com>
+This series intends to fix the race between the MHI stack and the MHI client
+drivers due to the MHI 'auto_queue' feature. As it turns out often, the best
+way to fix an issue in a feature is to drop the feature itself and this series
+does exactly that.
+
+There is no real benefit in having the 'auto_queue' feature in the MHI stack,
+other than saving a few lines of code in the client drivers. Since the QRTR is
+the only client driver which makes use of this feature, this series reworks the
+QRTR driver to manage the buffer on its own.
+
+Testing
+=======
+
+Tested on Qcom X1E based Lenovo Thinkpad T14s laptop with WLAN device.
+
+Merge Strategy
+==============
+
+Since this series modifies many subsystem drivers, I'd like to get acks from
+relevant subsystem maintainers and take the series through MHI tree.
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
-Changes in v3:
-- Further improvement on the grammar as suggested by Rob Herring.
-  See https://lore.kernel.org/linux-scsi/20251217010112.GA3464453-robh@kernel.org/
-- Link to v2: https://lore.kernel.org/r/20251213-fix-minor-grammar-err-v2-1-b32be57caa13@posteo.com
+Manivannan Sadhasivam (2):
+      net: qrtr: Drop the MHI auto_queue feature for IPCR DL channels
+      bus: mhi: host: Drop the auto_queue support
 
-Changes in v2:
-- The subject prefixes match the subsystem as suggested in the
-  documentation.
-- The necessary To/Cc entries are included.
-- Link to v1: https://lore.kernel.org/linux-scsi/20251212131112.5516-1-zhml@posteo.com/
+ drivers/accel/qaic/mhi_controller.c   | 44 -------------------
+ drivers/bus/mhi/host/init.c           | 10 -----
+ drivers/bus/mhi/host/internal.h       |  3 --
+ drivers/bus/mhi/host/main.c           | 81 +----------------------------------
+ drivers/bus/mhi/host/pci_generic.c    | 20 +--------
+ drivers/net/wireless/ath/ath11k/mhi.c |  4 --
+ drivers/net/wireless/ath/ath12k/mhi.c |  4 --
+ include/linux/mhi.h                   | 14 ------
+ net/qrtr/mhi.c                        | 67 ++++++++++++++++++++++++-----
+ 9 files changed, 60 insertions(+), 187 deletions(-)
 ---
- Documentation/devicetree/bindings/ufs/ufs-common.yaml | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/Documentation/devicetree/bindings/ufs/ufs-common.yaml b/Documentation/devicetree/bindings/ufs/ufs-common.yaml
-index 9f04f34d8..ed97f5682 100644
---- a/Documentation/devicetree/bindings/ufs/ufs-common.yaml
-+++ b/Documentation/devicetree/bindings/ufs/ufs-common.yaml
-@@ -48,8 +48,8 @@ properties:
-     enum: [1, 2]
-     default: 2
-     description:
--      Number of lanes available per direction.  Note that it is assume same
--      number of lanes is used both directions at once.
-+      Number of lanes available per direction.  Note that it is assumed that
-+      the same number of lanes are used in both directions at once.
- 
-   vdd-hba-supply:
-     description:
-
----
-base-commit: 9d9c1cfec01cdbf24bd9322ed555713a20422115
-change-id: 20251213-fix-minor-grammar-err-67d10cf2fd9d
+base-commit: 8f0b4cce4481fb22653697cced8d0d04027cb1e8
+change-id: 20251217-qrtr-fix-c058251d8d1a
 
 Best regards,
 -- 
-Zhaoming Luo <zhml@posteo.com>
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
