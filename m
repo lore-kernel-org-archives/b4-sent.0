@@ -1,99 +1,157 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Wed, 17 Dec 2025 12:39:24 +0100
-Subject: [PATCH v2 2/2] arm64: dts: qcom: sdm845-db845c: Use pad fn instead
- of defining own
+From: Joel Granados <joel.granados@kernel.org>
+Date: Wed, 17 Dec 2025 13:16:42 +0100
+Subject: [PATCH v2] sysctl: Remove unused ctl_table forward declarations
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251217-sdm845-mclk-v2-2-7028c2d09145@ixit.cz>
-References: <20251217-sdm845-mclk-v2-0-7028c2d09145@ixit.cz>
-In-Reply-To: <20251217-sdm845-mclk-v2-0-7028c2d09145@ixit.cz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1827; i=david@ixit.cz;
- h=from:subject:message-id; bh=G7P7fQVka9nSGdds0k6Y6wrfFIx/ZErtx2+mqLJCAWY=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpQpZr/A2qM22WqPw+Q71qbjioqzrIiiKfFT/lj
- u8kv9P1j6OJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaUKWawAKCRBgAj/E00kg
- cn5iEACCAAXd6M7MXTNJiUGEdp68z1bey8nzUcpByTrg5KFvdDibR01TBQCztY1SVbelBwL6WMl
- 9/Uwwo/j/kK/e9GICVUi+uBlkoVAld5+SFiIUp9LNdHrI+YvXtasQoVwcj76pnJDdF6qehV1hbk
- y6UfA3Z66EMXYcYHSfFGm3CjtkyNlukefbThlr7Fj73E/VCfD7ZEiy+2rOI9Bdi5LOMq2Dfrmtn
- +tBQKZV+Y/9PUZsqQNDdaM7+DuMxDnFBbhSxEBQLmf7R2a7UmuNNwFXne0omCAl7TsHfv/1Vrgx
- QUAGSs64YOMIjY+CVLBRafRFajRYhCN1icVe/BBPUIbCyQNsc5Hs3+WByH18ScWQxWwxvDkxZZv
- LceQsWHlksC/U5qpuLDMUwoI4cvjjPUeG4qqcTBnLFMnBvl5JYDCmVX5gTpUY7aeFsilu2oGjRA
- LianfwjvmoWvzYRhtEhG/d5vQ+t+/diF5TUA83p//S/HIiws2Kiop2m39rJ/LnzkokzICVS6yDg
- 4u8GeaMCagB8SLY6c2yc8AyWEpLywfM8DnRHnO4+0K0Lx50UkSuUiN0ELxoi8lUGd4sgOp5RJVn
- QuCmpS8AbCNPKgAwkSj4W5BvML/laY9ujaMhHwbqtYBtP40nmt5UBVChIvnP/cwWsWc0xbwNYI6
- MDQ8nEqyUDlO27A==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Message-Id: <20251217-jag-sysctl_fw_decl-v2-1-d917a73635bc@kernel.org>
+X-B4-Tracking: v=1; b=H4sIACmfQmkC/32NQQrDIBBFrxJmXUtHIrFd9R4lBDGjsRUNGtKG4
+ N1rc4Au34P//g6ZkqMMt2aHRKvLLoYK/NSAnlSwxNxYGfiFC+Qo2FNZlresFz+Y9zCS9kxI3aH
+ sUGipoQ7nRMZ9juijrzy5vMS0HR8r/uzf3IoMGVdXZTrZttLI+4tSIH+OyUJfSvkCUBUTnLUAA
+ AA=
+X-Change-ID: 20251215-jag-sysctl_fw_decl-58c718715c8c
+To: Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
+ Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
+ David Hildenbrand <david@kernel.org>, Petr Mladek <pmladek@suse.com>, 
+ Steven Rostedt <rostedt@goodmis.org>, 
+ John Ogness <john.ogness@linutronix.de>, 
+ Sergey Senozhatsky <senozhatsky@chromium.org>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-mm@kvack.org, linux-hams@vger.kernel.org, netdev@vger.kernel.org, 
+ Joel Granados <joel.granados@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4070;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=+N4sH+sHD/mZO0Dopjn0v7xWI8qX66vpH1TR36avIcM=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGlCnzn3+gSU0+j0UAVfyYseAC+Luiy67oOfV
+ qoKl7xQ38Gdt4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJpQp85AAoJELqXzVK3
+ lkFP6CUL/2DCbeAT7eVMIUFZuqFbctu8L27EdqamYQi/f14ivfW67IvMpQd8Ecs34YCaZK0a57n
+ VIl4Z4L0Ryr0Ft1STkGYh1/pbipbCooRk3yYNucpnyHHJZpNrh89htfwoo43BNMR7dR83TrEQT1
+ NCvvC0oKxZkeHvhidOVij1Z5Sbon0SHgnBuTRa23Nn8EGG+LqerkB/k0iFGtLGp5y7tFOruDgzo
+ M0oGggM5rMfY2qCxSnYjSUAOLtYXznHU+hNAAxVC17o8jf8UZRRLLOkiADhHIqFTbZrTjP/2QAF
+ O/A49Iw58uDNGcNHrvqfIOfHQ/O41LM1wXsCo5+0ijFAr9Ba0GMFlIjz3hCVO327HR792KjIf8H
+ BjvCs2nQs+AX2XhGgZ+G+kS7SCm76yJr3Djq4RVTNN/0t9cFixWp93vjU1N6N20awGC38ev6EwK
+ h0OwtNUDISj1y7LaFQgLFCXs+0yIZjVPe5uzzq5qMhx0RcXJUP/1kVq20J4OxdFpLO3aoZIsKW8
+ zo=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Instead of defining own pad function for master clock, pick one offered
-by sdm845 device-tree include.
+Remove superfluous forward declarations of ctl_table from header files
+where they are no longer needed. These declarations were left behind
+after sysctl code refactoring and cleanup.
 
-Reviewed-by: Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Acked-by: Muchun Song <muchun.song@linux.dev>
+Reviewed-by: Petr Mladek <pmladek@suse.com>
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- .../dts/qcom/sdm845-db845c-navigation-mezzanine.dtso     |  2 +-
- arch/arm64/boot/dts/qcom/sdm845-db845c.dts               | 16 ----------------
- 2 files changed, 1 insertion(+), 17 deletions(-)
+Apologies for such a big To: list. My idea is for this to go into
+mainline through sysctl; get back to me if you prefer otherwise. On the
+off chance that this has a V3, let me know if you want to be removed
+from the To and I'll make that happen
+---
+Changes in v2:
+- Replaced a ctl_table forward declaration in kernel/printk/internal.h
+  with an actual #include <linux/sysctl.h>
+- Link to v1: https://lore.kernel.org/r/20251215-jag-sysctl_fw_decl-v1-1-2a9af78448f8@kernel.org
+---
+ include/linux/fs.h       | 1 -
+ include/linux/hugetlb.h  | 2 --
+ include/linux/printk.h   | 1 -
+ include/net/ax25.h       | 2 --
+ kernel/printk/internal.h | 2 +-
+ kernel/printk/sysctl.c   | 1 -
+ 6 files changed, 1 insertion(+), 8 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-db845c-navigation-mezzanine.dtso b/arch/arm64/boot/dts/qcom/sdm845-db845c-navigation-mezzanine.dtso
-index dbe1911d8e470..f6c2c98970d76 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-db845c-navigation-mezzanine.dtso
-+++ b/arch/arm64/boot/dts/qcom/sdm845-db845c-navigation-mezzanine.dtso
-@@ -40,7 +40,7 @@ camera@10 {
- 		/* CAM0_RST_N */
- 		reset-gpios = <&tlmm 9 GPIO_ACTIVE_LOW>;
- 		pinctrl-names = "default";
--		pinctrl-0 = <&cam0_default>;
-+		pinctrl-0 = <&cam0_default &cam_mclk0_default>;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 04ceeca12a0d5caadb68643bf68b7a78e17c08d4..77f6302fdced1ef7e61ec1b35bed77c77b294124 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -3487,7 +3487,6 @@ ssize_t simple_attr_write(struct file *file, const char __user *buf,
+ ssize_t simple_attr_write_signed(struct file *file, const char __user *buf,
+ 				 size_t len, loff_t *ppos);
  
- 		clocks = <&clock_camcc CAM_CC_MCLK0_CLK>;
- 		clock-names = "xvclk";
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-db845c.dts b/arch/arm64/boot/dts/qcom/sdm845-db845c.dts
-index ce23f87e0316b..518d2ec657b13 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-db845c.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-db845c.dts
-@@ -877,14 +877,6 @@ rst-pins {
- 			drive-strength = <16>;
- 			bias-disable;
- 		};
--
--		mclk0-pins {
--			pins = "gpio13";
--			function = "cam_mclk";
--
--			drive-strength = <16>;
--			bias-disable;
--		};
- 	};
+-struct ctl_table;
+ int __init list_bdev_fs_names(char *buf, size_t size);
  
- 	cam3_default: cam3-default-state {
-@@ -895,14 +887,6 @@ rst-pins {
- 			drive-strength = <16>;
- 			bias-disable;
- 		};
--
--		mclk3-pins {
--			function = "cam_mclk";
--			pins = "gpio16";
--
--			drive-strength = <16>;
--			bias-disable;
--		};
- 	};
+ #define __FMODE_EXEC		((__force int) FMODE_EXEC)
+diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h
+index 019a1c5281e4e6e04a9207dff7f7aa58c9669a80..18d1c4ecc4f948b179679b8fcc7870f3d466a4d9 100644
+--- a/include/linux/hugetlb.h
++++ b/include/linux/hugetlb.h
+@@ -16,8 +16,6 @@
+ #include <linux/userfaultfd_k.h>
+ #include <linux/nodemask.h>
  
- 	dsi_sw_sel: dsi-sw-sel-state {
+-struct ctl_table;
+-struct user_struct;
+ struct mmu_gather;
+ struct node;
+ 
+diff --git a/include/linux/printk.h b/include/linux/printk.h
+index 45c663124c9bd3b294031d839f1253f410313faa..63d516c873b4c412eead6ee4eb9f90a5c28f630c 100644
+--- a/include/linux/printk.h
++++ b/include/linux/printk.h
+@@ -78,7 +78,6 @@ extern void console_verbose(void);
+ /* strlen("ratelimit") + 1 */
+ #define DEVKMSG_STR_MAX_SIZE 10
+ extern char devkmsg_log_str[DEVKMSG_STR_MAX_SIZE];
+-struct ctl_table;
+ 
+ extern int suppress_printk;
+ 
+diff --git a/include/net/ax25.h b/include/net/ax25.h
+index a7bba42dde153a2aeaf010a7ef8b48d39d15a835..beec9712e9c71d4be90acb6fc7113022527bc1ab 100644
+--- a/include/net/ax25.h
++++ b/include/net/ax25.h
+@@ -215,8 +215,6 @@ typedef struct {
+ 	unsigned short		slave_timeout;		/* when? */
+ } ax25_dama_info;
+ 
+-struct ctl_table;
+-
+ typedef struct ax25_dev {
+ 	struct list_head	list;
+ 
+diff --git a/kernel/printk/internal.h b/kernel/printk/internal.h
+index 5f5f626f427942ed8ea310f08c285775d8e095a6..29a3bd1799d426bc7b5ebdc28ff8b75214c57a57 100644
+--- a/kernel/printk/internal.h
++++ b/kernel/printk/internal.h
+@@ -4,9 +4,9 @@
+  */
+ #include <linux/console.h>
+ #include <linux/types.h>
++#include <linux/sysctl.h>
+ 
+ #if defined(CONFIG_PRINTK) && defined(CONFIG_SYSCTL)
+-struct ctl_table;
+ void __init printk_sysctl_init(void);
+ int devkmsg_sysctl_set_loglvl(const struct ctl_table *table, int write,
+ 			      void *buffer, size_t *lenp, loff_t *ppos);
+diff --git a/kernel/printk/sysctl.c b/kernel/printk/sysctl.c
+index da77f3f5c1fe917d9ce2d777355403f123587757..f15732e93c2e9c0865c42e4af9cb6458d4402c0a 100644
+--- a/kernel/printk/sysctl.c
++++ b/kernel/printk/sysctl.c
+@@ -3,7 +3,6 @@
+  * sysctl.c: General linux system control interface
+  */
+ 
+-#include <linux/sysctl.h>
+ #include <linux/printk.h>
+ #include <linux/capability.h>
+ #include <linux/ratelimit.h>
 
+---
+base-commit: 8f0b4cce4481fb22653697cced8d0d04027cb1e8
+change-id: 20251215-jag-sysctl_fw_decl-58c718715c8c
+
+Best regards,
 -- 
-2.51.0
+Joel Granados <joel.granados@kernel.org>
 
