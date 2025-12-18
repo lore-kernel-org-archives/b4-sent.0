@@ -1,110 +1,75 @@
 From: Mateusz Litwin <mateusz.litwin@nokia.com>
-Subject: [PATCH 0/2] spi: cadence-quadspi: Prevent indirect read timeouts
-Date: Thu, 18 Dec 2025 11:44:30 +0100
-Message-Id: <20251218-cqspi_indirect_read_improve-v1-0-0ccb17c62f67@nokia.com>
+Date: Thu, 18 Dec 2025 11:44:31 +0100
+Subject: [PATCH 1/2] spi: cadence-quadspi: Prevent lost complete() call
+ during indirect read
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAA7bQ2kC/x3MTQqDMBAG0KvIrBswI6U/V5ESwmRsv0VjnIgI4
- t0bunybd1BVg1Z6dgeZbqiYc4O/dCSfmN/qkJqJe7569jcnSy0IyAmmsgbTmAK+xeZN3f0Re05
- +GoSF2lBMJ+z/fXyd5w8T8+N1bQAAAA==
-X-Change-ID: 20251217-cqspi_indirect_read_improve-89a02d1f3c2c
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251218-cqspi_indirect_read_improve-v1-1-0ccb17c62f67@nokia.com>
+References: <20251218-cqspi_indirect_read_improve-v1-0-0ccb17c62f67@nokia.com>
+In-Reply-To: <20251218-cqspi_indirect_read_improve-v1-0-0ccb17c62f67@nokia.com>
 To: Mark Brown <broonie@kernel.org>
 Cc: linux-spi@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Mateusz Litwin <mateusz.litwin@nokia.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766054690; l=3752;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766054690; l=2014;
  i=mateusz.litwin@nokia.com; s=20251217; h=from:subject:message-id;
- bh=lpXuaQHHVW5PLk1j9U3yjeo2gCC8MFxHOWMOLB3RRtQ=;
- b=PfYb0I5mcehJmdt4hx0RGEckQL0RhsTf5wXt6QTTtjtBfuFQCn4RpBHV2BZABSKK5Kyk5v9r6
- I3A94MIWMQUCgEVeiHSrw3hzL1ImHDZlfvo7+thlBGakN4GB9v6Odgq
+ bh=idoBq4rF6Q69PiKVn5u/tYsDt9xIXPjO/l/HiqJtOWY=;
+ b=hwIVhv7gbeWGnZepTsMEKWKYDhj8gyawPodd09mtF1cF2UfMXXFHmgemSHuqxBP0tqbnG3mIO
+ CyeL6LH3vLxCun0RwUdnv1gjdk/lESR1ct6/sKfGzWKiDG/py9J5WhS
 X-Developer-Key: i=mateusz.litwin@nokia.com; a=ed25519;
  pk=9NV76cwWrtwYUektOrK/ht9GTzmhtkqSvghr3Td4hM4=
 X-Endpoint-Received: by B4 Relay for mateusz.litwin@nokia.com/20251217 with auth_id=579
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hello,
+A race condition exists between the read loop and IRQ `complete()` call.
+An interrupt could call the complete() between the inner loop and
+reinit_completion(), potentially losing the completion event and causing
+an unnecessary timeout. Moving reinit_completion() before the loop
+prevents this. A premature signal will only result in a spurious wakeup
+and another wait cycle, which is preferable to waiting for a timeout.
 
-On the Stratix10 platform, indirect reads can become very slow due to lost
-interrupts and/or missed `complete()` calls, causing
-`wait_for_completion_timeout()` to expire.
-
-Three issues were identified:
-1) A race condition exists between the read loop and IRQ `complete()`
-   call:
-   An IRQ can call `complete()` after the inner loop ends, but before
-   `reinit_completion()`, losing the completion event and leading to
-   `wait_for_completion_timeout()` expire. This function will not return
-   an error because `bytes_to_read` > 0 (indicating data is already in the
-   FIFO) and the final `ret` value is overwritten by
-   `cqspi_wait_for_bit()` return value (indicating request completion),
-   masking the timeout.
-
-   For test purpose, logging was added to print the count of timeouts and
-   the outer loop count.
-   $ dd if=/dev/mtd0 of=/dev/null bs=64M count=1
-   [ 2232.925219] cadence-qspi ff8d2000.spi: Indirect read error timeout
-    (1) loop (12472)
-   [ 2236.200391] cadence-qspi ff8d2000.spi: Indirect read error timeout
-    (1) loop (12460)
-   [ 2239.482836] cadence-qspi ff8d2000.spi: Indirect read error timeout
-    (5) loop (12450)
-   This indicates that such an event is rare, but possible.
-   Tested on the Stratix10 platform.
-
-2) The quirk assumes the indirect read path never leaves the inner loop on
-   SoCFPGA. This assumption is incorrect when using slow flash. Disabling
-   IRQs in the inner loop can cause lost interrupts.
-
-3) The `CQSPI_SLOW_SRAM` quirk disables `CQSPI_REG_IRQ_IND_COMP` (indirect
-   completion) interrupt, relying solely on the `CQSPI_REG_IRQ_WATERMARK`
-   (FIFO watermark) interrupt. For small transfers sizes, the final data
-   read might not fill the FIFO sufficiently to trigger the watermark,
-   preventing completion and leading to wait_for_completion_timeout()
-   expiration.
-
-Two patches have been prepared to resolve these issues.
--  [1/2] spi: cadence-quadspi: Prevent lost complete() call during
-   indirect read
-   Moving `reinit_completion()` before the inner loop prevents a race
-   condition. This might cause a premature IRQ complete() call to occur;
-   however, in the worst case, this will result in a spurious wakeup and
-   another wait cycle, which is preferable to waiting for a timeout.
-
--  [2/2] spi: cadence-quadspi: Improve CQSPI_SLOW_SRAM quirk if flash is
-   slow
-   Re-enabling `CQSPI_REG_IRQ_IND_COMP` interrupt resolves the problem for
-   small reads and removes the disabling of interrupts, addressing the
-   issue with lost interrupts. This marginally increases the IRQ count.
-
-   Test:
-   $ dd if=/dev/mtd0 of=/dev/null bs=1M count=64
-   Results from the Stratix10 platform with mt25qu02g flash.
-   FIFO size in all tests: 128
-
-   Serviced interrupt call counts:
-   Without `CQSPI_SLOW_SRAM` quirk: 16 668 850
-   With `CQSPI_SLOW_SRAM` quirk: 204 176
-   With `CQSPI_SLOW_SRAM` and this patch: 224 528
-
-Patch 2/2: Delivers a substantial read‑performance improvement for the
-Cadence QSPI controller on the Stratix10 platform. Patch 1/2: Applies to
-all platforms and should yield a modest performance gain, most noticeable
-with large `CQSPI_READ_TIMEOUT_MS` values and workloads dominated by many
-small reads.
-
+Signed-off-by: Mateusz Litwin <mateusz.litwin@nokia.com>
 ---
-Mateusz Litwin (2):
-      spi: cadence-quadspi: Prevent lost complete() call during indirect read
-      spi: cadence-quadspi: Improve CQSPI_SLOW_SRAM quirk if flash is slow
+ drivers/spi/spi-cadence-quadspi.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
 
- drivers/spi/spi-cadence-quadspi.c | 23 +++++++++++------------
- 1 file changed, 11 insertions(+), 12 deletions(-)
----
-base-commit: f4acea9eef704607d1a950909ce3a52a770d6be2
-change-id: 20251217-cqspi_indirect_read_improve-89a02d1f3c2c
+diff --git a/drivers/spi/spi-cadence-quadspi.c b/drivers/spi/spi-cadence-quadspi.c
+index a390b1815fde..02d1ff53e61d 100644
+--- a/drivers/spi/spi-cadence-quadspi.c
++++ b/drivers/spi/spi-cadence-quadspi.c
+@@ -769,6 +769,7 @@ static int cqspi_indirect_read_execute(struct cqspi_flash_pdata *f_pdata,
+ 	readl(reg_base + CQSPI_REG_INDIRECTRD); /* Flush posted write. */
+ 
+ 	while (remaining > 0) {
++		ret = 0;
+ 		if (use_irq &&
+ 		    !wait_for_completion_timeout(&cqspi->transfer_complete,
+ 						 msecs_to_jiffies(CQSPI_READ_TIMEOUT_MS)))
+@@ -781,6 +782,14 @@ static int cqspi_indirect_read_execute(struct cqspi_flash_pdata *f_pdata,
+ 		if (cqspi->slow_sram)
+ 			writel(0x0, reg_base + CQSPI_REG_IRQMASK);
+ 
++		/*
++		 * Prevent lost interrupt and race condition by reinitializing early.
++		 * A spurious wakeup and another wait cycle can occur here,
++		 * which is preferable to waiting until timeout if interrupt is lost.
++		 */
++		if (use_irq)
++			reinit_completion(&cqspi->transfer_complete);
++
+ 		bytes_to_read = cqspi_get_rd_sram_level(cqspi);
+ 
+ 		if (ret && bytes_to_read == 0) {
+@@ -813,7 +822,6 @@ static int cqspi_indirect_read_execute(struct cqspi_flash_pdata *f_pdata,
+ 		}
+ 
+ 		if (use_irq && remaining > 0) {
+-			reinit_completion(&cqspi->transfer_complete);
+ 			if (cqspi->slow_sram)
+ 				writel(CQSPI_REG_IRQ_WATERMARK, reg_base + CQSPI_REG_IRQMASK);
+ 		}
 
-Best regards,
 -- 
-Mateusz Litwin <mateusz.litwin@nokia.com>
+2.43.0
 
