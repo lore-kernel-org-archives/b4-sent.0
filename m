@@ -1,71 +1,96 @@
-From: =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
-Date: Thu, 18 Dec 2025 23:22:12 +0100
-Subject: [PATCH v4 6/6] wifi: ath12k: Add support for disabling rfkill via
- devicetree
+From: Amit Sunil Dhamne <amitsd@google.com>
+Subject: [PATCH v2 0/5] Introduce MAX77759 charger driver
+Date: Thu, 18 Dec 2025 22:49:05 +0000
+Message-Id: <20251218-max77759-charger-v2-0-2b259980a686@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20251218-surface-sp11-for-next-v4-6-7bcf83c1504a@gmail.com>
-References: <20251218-surface-sp11-for-next-v4-0-7bcf83c1504a@gmail.com>
-In-Reply-To: <20251218-surface-sp11-for-next-v4-0-7bcf83c1504a@gmail.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAOGERGkC/2WNQQ6DIBREr2L+ujTyK2C76j0aF6IfJKlioCE2h
+ ruXmu66fDOZNztECo4i3KodAiUXnV8K4KmCYeoXS8yNhQFrFJzXgs39ppQSV1bqYCmwVqCWKEc
+ peQ9ltgYybjuUj67w5OLLh/fxkPg3/cnw8i9LnNVMaqRGt0YZ0dyt9/ZJ58HP0OWcP7Rb5wGxA
+ AAA
+X-Change-ID: 20251105-max77759-charger-852b626d661a
+To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Johannes Berg <johannes@sipsolutions.net>, 
- Lorenzo Bianconi <lorenzo@kernel.org>, 
- Maximilian Luz <luzmaximilian@gmail.com>, Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Jeff Johnson <jjohnson@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-wireless@vger.kernel.org, 
- platform-driver-x86@vger.kernel.org, ath12k@lists.infradead.org, 
- Dale Whinham <daleyo@gmail.com>, 
- =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766096532; l=1265;
- i=jerome.debretagne@gmail.com; s=20251217; h=from:subject:message-id;
- bh=mcMjGRXAT6QkIO3PWrqFYRB9BASEzAi+bYp6SS6IoLc=;
- b=RvVTMjLt69VKME0qck0aSGBZHhTiJB7g5TGhGTiFfRV1Zn3JKB+k59xK71oilLW17JqRP2nS9
- GCFTHv10WNTBsGRyxaoG6hYwUDYgJbLXd3qhZL5/WIDKtTeFprXBY0t
-X-Developer-Key: i=jerome.debretagne@gmail.com; a=ed25519;
- pk=DcPD9n3oDMsPkt+12tU96swmGb5H86cxt+yiEVcUEGk=
-X-Endpoint-Received: by B4 Relay for jerome.debretagne@gmail.com/20251217 with auth_id=580
+ =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
+ Lee Jones <lee@kernel.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Badhri Jagan Sridharan <badhri@google.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Tudor Ambarus <tudor.ambarus@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>
+Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-usb@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
+ RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
+ Amit Sunil Dhamne <amitsd@google.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766098181; l=2751;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=pC82eqfu76ux0epNJS8FANzPY3la5Ggo/hStiOoB+QU=;
+ b=lbIcP1LKHq4okfWrT5bO3wyYxZA3KbK+ci7CLSJci4yPIY5/UBu485YUDYXZH2kYUaC/ilJUh
+ n7d3iDhvCvzB4ythXTWSquSkPeS7zU2RDKTAZblumV4kLTUkXOMmcc+
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Dale Whinham <daleyo@gmail.com>
+MAX77759 PMIC is used in Pixel 6 and 6 Pro (Oriole/Raven) boards.
+One of the functions of the MAX77759 PMIC is a battery charger. This
+patchset introduces a driver for this function. One of the unique
+features of this charger driver is that it works with a USB input where
+the Type-C controller is TCPCI based.
 
-Some devices (e.g. Microsoft Surface Pro 11) indicate that the rfkill
-feature should be disabled by means of an ACPI bitflag.
+Changes to the board files will follow soon once this patchset is reviewed.
 
-If ACPI is not being used (i.e. booting using a devicetree) then this
-property will not be read and therefore rfkill may be enabled and
-the ath12k will be hard-blocked with no way to disable it.
+For reference to the MAX77759 MFD based patchset (present in upstream):
+https://lore.kernel.org/all/20250509-max77759-mfd-v10-0-962ac15ee3ef@linaro.org/
 
-Add a devicetree property that allows us to disable the rfkill feature.
-
-Signed-off-by: Dale Whinham <daleyo@gmail.com>
-Tested-by: Jérôme de Bretagne <jerome.debretagne@gmail.com>
-Signed-off-by: Jérôme de Bretagne <jerome.debretagne@gmail.com>
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
- drivers/net/wireless/ath/ath12k/core.c | 3 +++
- 1 file changed, 3 insertions(+)
+Changes in v2:
+- Fold charger binding in maxim,max77759-charger.yaml to its parent
+  node. (Krzysztof Kozlowski)
+- Renamed regulator supplier & consumer. (Krzysztof Kozlowski & Heikki
+  Krogerus)
+- Removed explicit setting of irq trigger types in max77759 driver.
+  (André Draszik & Krzysztof Kozlowski)
+- Complete bit definitions for IRQ registers. (André Draszik)
+- Consolidate all bit definitions for charger IP in mfd/max77759.h.
+  (André Draszik)
+- Modify the handling of charger IRQs such that regmap IRQ chip handles
+  masking, de-mux and acking of interrupts. (André Draszik)
+- Remove unused macro definitions relating to Charger modes in tcpci
+  maxim driver (André Draszik)
+- Add dependency on Regulator class in Kconfig definition for max77759
+  chg. (Kernel Test Robot)
+- Link to v1: https://lore.kernel.org/r/20251123-max77759-charger-v1-0-6b2e4b8f7f54@google.com
 
-diff --git a/drivers/net/wireless/ath/ath12k/core.c b/drivers/net/wireless/ath/ath12k/core.c
-index cc352eef1939937ce902bee2fbd9737ca3ab5993..e10073bb975cfd2e9ee418edcc49d0d51cf93de1 100644
---- a/drivers/net/wireless/ath/ath12k/core.c
-+++ b/drivers/net/wireless/ath/ath12k/core.c
-@@ -77,6 +77,9 @@ static int ath12k_core_rfkill_config(struct ath12k_base *ab)
- 	if (ath12k_acpi_get_disable_rfkill(ab))
- 		return 0;
- 
-+	if (of_property_read_bool(ab->dev->of_node, "disable-rfkill"))
-+		return 0;
-+
- 	for (i = 0; i < ab->num_radios; i++) {
- 		ar = ab->pdevs[i].ar;
- 
+---
+Amit Sunil Dhamne (5):
+      dt-bindings: mfd: maxim,max77759: add charger child node
+      dt-bindings: usb: maxim,max33359: Add supply property for vbus
+      mfd: max77759: add register bitmasks and modify irq configs for charger
+      power: supply: max77759: add charger driver
+      usb: typec: tcpm/tcpci_maxim: deprecate WAR for setting charger mode
 
+ .../devicetree/bindings/mfd/maxim,max77759.yaml    |  33 +
+ .../devicetree/bindings/usb/maxim,max33359.yaml    |   4 +
+ MAINTAINERS                                        |   7 +
+ drivers/mfd/max77759.c                             |  94 ++-
+ drivers/power/supply/Kconfig                       |  11 +
+ drivers/power/supply/Makefile                      |   1 +
+ drivers/power/supply/max77759_charger.c            | 754 +++++++++++++++++++++
+ drivers/usb/typec/tcpm/tcpci_maxim.h               |   1 +
+ drivers/usb/typec/tcpm/tcpci_maxim_core.c          |  54 +-
+ include/linux/mfd/max77759.h                       | 202 +++++-
+ 10 files changed, 1102 insertions(+), 59 deletions(-)
+---
+base-commit: 39f90c1967215375f7d87b81d14b0f3ed6b40c29
+change-id: 20251105-max77759-charger-852b626d661a
+
+Best regards,
 -- 
-2.47.3
+Amit Sunil Dhamne <amitsd@google.com>
 
