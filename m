@@ -1,110 +1,76 @@
-From: Mateusz Litwin <mateusz.litwin@nokia.com>
-Date: Thu, 18 Dec 2025 11:44:32 +0100
-Subject: [PATCH 2/2] spi: cadence-quadspi: Improve CQSPI_SLOW_SRAM quirk if
- flash is slow
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH v2 0/2] PCI: dwc: Suspend/resume rework
+Date: Thu, 18 Dec 2025 17:34:51 +0530
+Message-Id: <20251218-pci-dwc-suspend-rework-v2-0-5a7778c6094a@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251218-cqspi_indirect_read_improve-v1-2-0ccb17c62f67@nokia.com>
-References: <20251218-cqspi_indirect_read_improve-v1-0-0ccb17c62f67@nokia.com>
-In-Reply-To: <20251218-cqspi_indirect_read_improve-v1-0-0ccb17c62f67@nokia.com>
-To: Mark Brown <broonie@kernel.org>
-Cc: linux-spi@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Mateusz Litwin <mateusz.litwin@nokia.com>
+X-B4-Tracking: v=1; b=H4sIAOPtQ2kC/4WNQQ6CMBBFr0Jm7ZC2Wi2uvIdhUdsqE4ViR0BDu
+ LuVC7j5yfvJf38GDokCw7GYIYWRmGKXQW0KcI3tbgHJZwYllJZSVtg7Qj855IH70HlMYYrpjuY
+ itNR2a/aHCvK4T+FK71V8rjM3xK+YPuvPKH/tX+UoUaC1XoqdUUbv1Skyl8/BPlxs2zIH1Muyf
+ AHvgU/AwwAAAA==
+X-Change-ID: 20251119-pci-dwc-suspend-rework-8b0515a38679
+To: Jingoo Han <jingoohan1@gmail.com>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>
+Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ vincent.guittot@linaro.org, zhangsenchuan@eswincomputing.com, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Frank Li <Frank.Li@nxp.com>, Shawn Lin <shawn.lin@rock-chips.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766054690; l=3194;
- i=mateusz.litwin@nokia.com; s=20251217; h=from:subject:message-id;
- bh=64fsEe9CKhGD7IXFtLt/KPssSVKK7Ivwn7fKzR5jue4=;
- b=oPTenotgmwHCfwVrrTA8q/qneRSqZdXgm6cG/en8p1Mv0AsbxreiFwVhkWWVoK3aq3stLUpXh
- ogKlrPE3GGSAMHqml/ZHrqArMHpFQ0jsWMWCek1A2g3WBhIPpvjzmvv
-X-Developer-Key: i=mateusz.litwin@nokia.com; a=ed25519;
- pk=9NV76cwWrtwYUektOrK/ht9GTzmhtkqSvghr3Td4hM4=
-X-Endpoint-Received: by B4 Relay for mateusz.litwin@nokia.com/20251217 with auth_id=579
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1662;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=Un1QrMZoYgKUn6xmBehYxA0h/rJ2Hz8sTCOdXY7E7RA=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpQ+3kzBf+R5T3XmBxJx1jwtjyxhR0q0MBrgOSq
+ gQ2KZAsHT6JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaUPt5AAKCRBVnxHm/pHO
+ 9XQMB/9lQ8zjM+FyNsCcCwFroBXwObpbD0YykfOi+ewIXOuF5vKk15CUAnC3CVJawYn3d1aNcWL
+ vdFowGdk+V6C8lxDBDg6dFVd6jpe6Hiip6cnh8sdshB3eb6dhpwE7zJ7W4G4yyAd3vhNd8jbKvo
+ OT9TcRxksB24iFMnEeW5yr4em13jmgOJiWV09581OynprqXsOURthWdHWXaoWBbAa/QFf3R1A7I
+ Dwyd1yX79v2K/roo5VZ381s8tfh0pVFUKXeUNQ8DZsZOv/1qvE0o+Yz5ppxBMlyHjLlhDfVq3HB
+ AGq/xkVFuomqDR32qgHYVd9jFSuzWum3YSNrPBzdXh/IRoob
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-CQSPI_SLOW_SRAM quirk on the Stratix10 platform causes fewer interrupts,
-but also causes timeouts if a small block is used or if flash devices are
-slower than or equal in speed to SRAM's read operations. Adding the
-CQSPI_REG_IRQ_IND_COMP interrupt would resolve the problem for small
-reads, and removing the disabling of interrupts would resolve the issue
-with lost interrupts.
-This marginally increases IRQ count. Tests show that this will cause only
-a few percent more interrupts.
+Hi,
 
-Test:
-$ dd if=/dev/mtd0 of=/dev/null bs=1M count=64
-Results from the Stratix10 platform with mt25qu02g flash.
-FIFO size in all tests: 128
+This series is a rework of [1] to allow DWC vendor glue drivers to use the
+dw_pcie_suspend_noirq() and dw_pcie_resume_noirq() APIs without failures as
+reported in [2][3].
 
-Serviced interrupt call counts:
-Without CQSPI_SLOW_SRAM quirk: 16 668 850
-With CQSPI_SLOW_SRAM quirk: 204 176
-With CQSPI_SLOW_SRAM and this commit: 224 528
+Currently, both of these APIs will fail if there is no device connected to the
+bus. This is not fair as suspend/resume should continue even if there is no
+device. Hence, this series tries to address this limitation.
 
-Signed-off-by: Mateusz Litwin <mateusz.litwin@nokia.com>
+- Mani
+
+[1] https://lore.kernel.org/linux-pci/20251107044319.8356-4-manivannan.sadhasivam@oss.qualcomm.com/
+[2] https://lore.kernel.org/linux-pci/CAKfTPtCtHquxtK=Zx2WSNm15MmqeUXO8XXi8FkS4EpuP80PP7g@mail.gmail.com/
+[3] https://lore.kernel.org/linux-pci/27516921.17f2.1997bb2a498.Coremail.zhangsenchuan@eswincomputing.com/
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/spi/spi-cadence-quadspi.c | 19 +++++--------------
- 1 file changed, 5 insertions(+), 14 deletions(-)
+Changes in v2:
+- Changed the logic to check for Detect.Quiet/Active states
+- Collected tags and rebased on top of v6.19-rc1
+- Link to v1: https://lore.kernel.org/r/20251119-pci-dwc-suspend-rework-v1-0-aad104828562@oss.qualcomm.com
 
-diff --git a/drivers/spi/spi-cadence-quadspi.c b/drivers/spi/spi-cadence-quadspi.c
-index 02d1ff53e61d..facd152bc639 100644
---- a/drivers/spi/spi-cadence-quadspi.c
-+++ b/drivers/spi/spi-cadence-quadspi.c
-@@ -300,6 +300,9 @@ struct cqspi_driver_platdata {
- 					 CQSPI_REG_IRQ_IND_SRAM_FULL	| \
- 					 CQSPI_REG_IRQ_IND_COMP)
- 
-+#define CQSPI_IRQ_MASK_RD_SLOW_SRAM	(CQSPI_REG_IRQ_WATERMARK	| \
-+					 CQSPI_REG_IRQ_IND_COMP)
-+
- #define CQSPI_IRQ_MASK_WR		(CQSPI_REG_IRQ_IND_COMP		| \
- 					 CQSPI_REG_IRQ_WATERMARK	| \
- 					 CQSPI_REG_IRQ_UNDERFLOW)
-@@ -381,7 +384,7 @@ static irqreturn_t cqspi_irq_handler(int this_irq, void *dev)
- 	else if (!cqspi->slow_sram)
- 		irq_status &= CQSPI_IRQ_MASK_RD | CQSPI_IRQ_MASK_WR;
- 	else
--		irq_status &= CQSPI_REG_IRQ_WATERMARK | CQSPI_IRQ_MASK_WR;
-+		irq_status &= CQSPI_IRQ_MASK_RD_SLOW_SRAM | CQSPI_IRQ_MASK_WR;
- 
- 	if (irq_status)
- 		complete(&cqspi->transfer_complete);
-@@ -759,7 +762,7 @@ static int cqspi_indirect_read_execute(struct cqspi_flash_pdata *f_pdata,
- 	if (use_irq && cqspi->slow_sram)
- 		writel(CQSPI_REG_IRQ_WATERMARK, reg_base + CQSPI_REG_IRQMASK);
- 	else if (use_irq)
--		writel(CQSPI_IRQ_MASK_RD, reg_base + CQSPI_REG_IRQMASK);
-+		writel(CQSPI_IRQ_MASK_RD_SLOW_SRAM, reg_base + CQSPI_REG_IRQMASK);
- 	else
- 		writel(0, reg_base + CQSPI_REG_IRQMASK);
- 
-@@ -775,13 +778,6 @@ static int cqspi_indirect_read_execute(struct cqspi_flash_pdata *f_pdata,
- 						 msecs_to_jiffies(CQSPI_READ_TIMEOUT_MS)))
- 			ret = -ETIMEDOUT;
- 
--		/*
--		 * Disable all read interrupts until
--		 * we are out of "bytes to read"
--		 */
--		if (cqspi->slow_sram)
--			writel(0x0, reg_base + CQSPI_REG_IRQMASK);
--
- 		/*
- 		 * Prevent lost interrupt and race condition by reinitializing early.
- 		 * A spurious wakeup and another wait cycle can occur here,
-@@ -820,11 +816,6 @@ static int cqspi_indirect_read_execute(struct cqspi_flash_pdata *f_pdata,
- 			remaining -= bytes_to_read;
- 			bytes_to_read = cqspi_get_rd_sram_level(cqspi);
- 		}
--
--		if (use_irq && remaining > 0) {
--			if (cqspi->slow_sram)
--				writel(CQSPI_REG_IRQ_WATERMARK, reg_base + CQSPI_REG_IRQMASK);
--		}
- 	}
- 
- 	/* Check indirect done status */
+---
+Manivannan Sadhasivam (2):
+      PCI: dwc: Skip PME_Turn_Off broadcast and L2/L3 transition during suspend if link is not up
+      PCI: dwc: Do not return failure if link is in Detect.Quiet/Active states
 
+ drivers/pci/controller/dwc/pcie-designware-host.c | 12 +++++++++---
+ drivers/pci/controller/dwc/pcie-designware.c      | 12 +++++++++++-
+ 2 files changed, 20 insertions(+), 4 deletions(-)
+---
+base-commit: 8f0b4cce4481fb22653697cced8d0d04027cb1e8
+change-id: 20251119-pci-dwc-suspend-rework-8b0515a38679
+
+Best regards,
 -- 
-2.43.0
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
