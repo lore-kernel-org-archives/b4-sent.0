@@ -1,15 +1,13 @@
 From: Amit Sunil Dhamne <amitsd@google.com>
-Subject: [PATCH v2 0/5] Introduce MAX77759 charger driver
-Date: Thu, 18 Dec 2025 22:49:05 +0000
-Message-Id: <20251218-max77759-charger-v2-0-2b259980a686@google.com>
+Date: Thu, 18 Dec 2025 22:49:06 +0000
+Subject: [PATCH v2 1/5] dt-bindings: mfd: maxim,max77759: add charger child
+ node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAOGERGkC/2WNQQ6DIBREr2L+ujTyK2C76j0aF6IfJKlioCE2h
- ruXmu66fDOZNztECo4i3KodAiUXnV8K4KmCYeoXS8yNhQFrFJzXgs39ppQSV1bqYCmwVqCWKEc
- peQ9ltgYybjuUj67w5OLLh/fxkPg3/cnw8i9LnNVMaqRGt0YZ0dyt9/ZJ58HP0OWcP7Rb5wGxA
- AAA
-X-Change-ID: 20251105-max77759-charger-852b626d661a
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251218-max77759-charger-v2-1-2b259980a686@google.com>
+References: <20251218-max77759-charger-v2-0-2b259980a686@google.com>
+In-Reply-To: <20251218-max77759-charger-v2-0-2b259980a686@google.com>
 To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -26,71 +24,76 @@ Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org,
  RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
  Amit Sunil Dhamne <amitsd@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766098181; l=2751;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766098181; l=1858;
  i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=pC82eqfu76ux0epNJS8FANzPY3la5Ggo/hStiOoB+QU=;
- b=lbIcP1LKHq4okfWrT5bO3wyYxZA3KbK+ci7CLSJci4yPIY5/UBu485YUDYXZH2kYUaC/ilJUh
- n7d3iDhvCvzB4ythXTWSquSkPeS7zU2RDKTAZblumV4kLTUkXOMmcc+
+ bh=7Z+OfAwjbAkzdqPSTAxyljLhXicf0T4G1279sUdm3LY=;
+ b=NYQG8juDPo2XeqgvzUfn+5NDPn30xfqT6cDA5knYDKoPM7jhRybeGeNk7u4BE08n2rSr/z1BA
+ laoPDdVtOFZDPHqk+OpHYd57jiWUyBcj9PxmtevU7BhZHCTP3QVMoJF
 X-Developer-Key: i=amitsd@google.com; a=ed25519;
  pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
 X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-MAX77759 PMIC is used in Pixel 6 and 6 Pro (Oriole/Raven) boards.
-One of the functions of the MAX77759 PMIC is a battery charger. This
-patchset introduces a driver for this function. One of the unique
-features of this charger driver is that it works with a USB input where
-the Type-C controller is TCPCI based.
-
-Changes to the board files will follow soon once this patchset is reviewed.
-
-For reference to the MAX77759 MFD based patchset (present in upstream):
-https://lore.kernel.org/all/20250509-max77759-mfd-v10-0-962ac15ee3ef@linaro.org/
+The Maxim MAX77759 MFD includes a charger function. Extend the max77759
+binding to include the charger. Also, update the example to include
+charger.
 
 Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
-Changes in v2:
-- Fold charger binding in maxim,max77759-charger.yaml to its parent
-  node. (Krzysztof Kozlowski)
-- Renamed regulator supplier & consumer. (Krzysztof Kozlowski & Heikki
-  Krogerus)
-- Removed explicit setting of irq trigger types in max77759 driver.
-  (André Draszik & Krzysztof Kozlowski)
-- Complete bit definitions for IRQ registers. (André Draszik)
-- Consolidate all bit definitions for charger IP in mfd/max77759.h.
-  (André Draszik)
-- Modify the handling of charger IRQs such that regmap IRQ chip handles
-  masking, de-mux and acking of interrupts. (André Draszik)
-- Remove unused macro definitions relating to Charger modes in tcpci
-  maxim driver (André Draszik)
-- Add dependency on Regulator class in Kconfig definition for max77759
-  chg. (Kernel Test Robot)
-- Link to v1: https://lore.kernel.org/r/20251123-max77759-charger-v1-0-6b2e4b8f7f54@google.com
+ .../devicetree/bindings/mfd/maxim,max77759.yaml    | 33 ++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
 
----
-Amit Sunil Dhamne (5):
-      dt-bindings: mfd: maxim,max77759: add charger child node
-      dt-bindings: usb: maxim,max33359: Add supply property for vbus
-      mfd: max77759: add register bitmasks and modify irq configs for charger
-      power: supply: max77759: add charger driver
-      usb: typec: tcpm/tcpci_maxim: deprecate WAR for setting charger mode
+diff --git a/Documentation/devicetree/bindings/mfd/maxim,max77759.yaml b/Documentation/devicetree/bindings/mfd/maxim,max77759.yaml
+index 525de9ab3c2b..1cffdf2e5776 100644
+--- a/Documentation/devicetree/bindings/mfd/maxim,max77759.yaml
++++ b/Documentation/devicetree/bindings/mfd/maxim,max77759.yaml
+@@ -37,6 +37,30 @@ properties:
+   nvmem-0:
+     $ref: /schemas/nvmem/maxim,max77759-nvmem.yaml
+ 
++  charger:
++    type: object
++    description: This is a dual input switch mode battery charger for portable
++      applications. It supports wired and wireless charging and can operate in
++      buck and boost mode.
++
++    allOf:
++      - $ref: /schemas/power/supply/power-supply.yaml#
++
++    properties:
++      compatible:
++        const: maxim,max77759-charger
++
++      chgin-otg-regulator:
++        type: object
++        description: Provides Boost for sourcing VBUS.
++        $ref: /schemas/regulator/regulator.yaml#
++        unevaluatedProperties: false
++
++    required:
++      - compatible
++
++    unevaluatedProperties: false
++
+ required:
+   - compatible
+   - interrupts
+@@ -95,5 +119,14 @@ examples:
+                     };
+                 };
+             };
++
++            charger {
++                compatible = "maxim,max77759-charger";
++                power-supplies = <&maxtcpci>;
++
++                chgin-otg-regulator {
++                    regulator-name = "chgin-otg";
++                };
++            };
+         };
+     };
 
- .../devicetree/bindings/mfd/maxim,max77759.yaml    |  33 +
- .../devicetree/bindings/usb/maxim,max33359.yaml    |   4 +
- MAINTAINERS                                        |   7 +
- drivers/mfd/max77759.c                             |  94 ++-
- drivers/power/supply/Kconfig                       |  11 +
- drivers/power/supply/Makefile                      |   1 +
- drivers/power/supply/max77759_charger.c            | 754 +++++++++++++++++++++
- drivers/usb/typec/tcpm/tcpci_maxim.h               |   1 +
- drivers/usb/typec/tcpm/tcpci_maxim_core.c          |  54 +-
- include/linux/mfd/max77759.h                       | 202 +++++-
- 10 files changed, 1102 insertions(+), 59 deletions(-)
----
-base-commit: 39f90c1967215375f7d87b81d14b0f3ed6b40c29
-change-id: 20251105-max77759-charger-852b626d661a
-
-Best regards,
 -- 
-Amit Sunil Dhamne <amitsd@google.com>
+2.52.0.322.g1dd061c0dc-goog
 
