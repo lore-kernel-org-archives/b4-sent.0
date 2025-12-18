@@ -1,84 +1,74 @@
-From: Bagas Sanjaya <bagasdotme@gmail.com>
-Date: Thu, 18 Dec 2025 12:05:00 +0700
-Subject: [PATCH] VFS: fix dentry_create() kernel-doc comment
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Date: Thu, 18 Dec 2025 09:11:26 +0100
+Subject: [PATCH] Input: apple_z2: Fix reading incorrect reports after
+ exiting sleep
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251218-dentry-inline-v1-1-0107f4cd8246@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAHuLQ2kC/x3MQQqAIBBG4avErBNUMqqrRAvJvxqIKTSiiO6et
- PwW7z2UEBmJuuKhiJMTb5JhyoLGxcsMxSGbrLbOWNOoADnirVhWFqhKt2YCPOrGUW72iImv/9c
- P7/sByOB+w18AAAA=
-X-Change-ID: 20251218-dentry-inline-4091feeae685
-To: Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
- Benjamin Coddington <bcodding@hammerspace.com>, 
- Jeff Layton <jlayton@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Stephen Rothwell <sfr@canb.auug.org.au>, 
- Bagas Sanjaya <bagasdotme@gmail.com>
+Message-Id: <20251218-z2-init-fix-v1-1-48e3aa239caf@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1NDI0Nz3Soj3cy8zBLdtMwKXeMkQ5PUNJNkMwtLAyWgjoKiVKAw2LTo2Np
+ aAMagJqddAAAA
+X-Change-ID: 20251217-z2-init-fix-3b14ef4c6890
+To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
+ Neal Gompa <neal@gompa.dev>, Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ pitust <piotr@stelmaszek.com>, Sasha Finkelstein <fnkl.kernel@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1989; i=bagasdotme@gmail.com;
- s=Zp7juWIhw0R1; h=from:subject:message-id;
- bh=gykyE4n1Bru42E0/IbBcoXj6P5uhnSGs7sDFNl0/sD8=;
- b=owGbwMvMwCX2bWenZ2ig32LG02pJDJnO3V0TTlS8uK4rEGv08MW3ue6Mz/WDfZZb7ZvJsJ97s
- 3DxkkbLjlIWBjEuBlkxRZZJiXxNp3cZiVxoX+sIM4eVCWQIAxenAExkkTbDP92SKhWfjef6iy8a
- RzxVttaQ3KAzcebhMn73NZL6WrPf1jMy9CXrttxPKT0f/k1hicKsrHXGGsr8nDsyz/9ZsStdzPc
- BKwA=
-X-Developer-Key: i=bagasdotme@gmail.com; a=openpgp;
- fpr=701B806FDCA5D3A58FFB8F7D7C276C64A5E44A1D
-X-Endpoint-Received: by B4 Relay for bagasdotme@gmail.com/Zp7juWIhw0R1 with auth_id=581
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766045498; l=1783;
+ i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
+ bh=OF8WOCZRA9+JnU6tzC4FoVlFYz2Y9tJ9S+rCxmTtWYo=;
+ b=9M/jobQWeFJaXDS54JFsLzWEHIDl+bbiBoVgcNi8y9zH0dzwiavKzcvWquVuCv2w6S35QyEFs
+ /Tty1VBEmetC5P+Ey1YYZq8Io8EkRjNjS2pn7tc70FvVJ/n48GX7n+q
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
+X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Sphinx reports htmldocs warnings:
+Under certain conditions (more prevalent after a suspend/resume cycle),
+the touchscreen controller can send the "boot complete" interrupt before
+it actually finished booting. In those cases, attempting to read touch
+data resuls in a stream of "not ready" messages being read and
+interpreted as a touch report. Check that the response is in fact a
+touch report and discard it otherwise.
 
-Documentation/filesystems/api-summary:56: fs/namei.c:4952: WARNING: Inline emphasis start-string without end-string. [docutils]
-Documentation/filesystems/api-summary:56: fs/namei.c:4942: ERROR: Unknown target name: "o". [docutils]
-
-Fix them by escaping trailing underscore and wildcard.
-
-Fixes: 977de00dfcf87e ("VFS: move dentry_create() from fs/open.c to fs/namei.c")
-Reported-by: Stephen Rothwell <sfr@canb.auug.org.au>
-Closes: https://lore.kernel.org/linux-next/20251216115252.709078e8@canb.auug.org.au/
-Signed-off-by: Bagas Sanjaya <bagasdotme@gmail.com>
+Reported-by: pitust <piotr@stelmaszek.com>
+Closes: https://oftc.catirclogs.org/asahi/2025-12-17#34878715;
+Fixes: 471a92f8a21a ("Input: apple_z2 - add a driver for Apple Z2 touchscreens")
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
-Sphinx reports htmldocs warnings:
+ drivers/input/touchscreen/apple_z2.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-Documentation/filesystems/api-summary:56: fs/namei.c:4952: WARNING: Inline emphasis start-string without end-string. [docutils]
-Documentation/filesystems/api-summary:56: fs/namei.c:4942: ERROR: Unknown target name: "o". [docutils]
-
-Fix them by escaping trailing underscore and wildcard.
----
- fs/namei.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/namei.c b/fs/namei.c
-index aefb21bc0944e3..d575d671b4f960 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -4939,7 +4939,7 @@ EXPORT_SYMBOL(start_creating_user_path);
- /**
-  * dentry_create - Create and open a file
-  * @path: path to create
-- * @flags: O_ flags
-+ * @flags: O\_ flags
-  * @mode: mode bits for new file
-  * @cred: credentials to use
-  *
-@@ -4950,7 +4950,7 @@ EXPORT_SYMBOL(start_creating_user_path);
-  * the new file is to be created. The parent directory and the
-  * negative dentry must reside on the same filesystem instance.
-  *
-- * On success, returns a "struct file *". Otherwise a ERR_PTR
-+ * On success, returns a "struct file \*". Otherwise a ERR_PTR
-  * is returned.
-  */
- struct file *dentry_create(struct path *path, int flags, umode_t mode,
+diff --git a/drivers/input/touchscreen/apple_z2.c b/drivers/input/touchscreen/apple_z2.c
+index 0de161eae59a..271ababf0ad5 100644
+--- a/drivers/input/touchscreen/apple_z2.c
++++ b/drivers/input/touchscreen/apple_z2.c
+@@ -21,6 +21,7 @@
+ #define APPLE_Z2_TOUCH_STARTED           3
+ #define APPLE_Z2_TOUCH_MOVED             4
+ #define APPLE_Z2_CMD_READ_INTERRUPT_DATA 0xEB
++#define APPLE_Z2_REPLY_INTERRUPT_DATA    0xE1
+ #define APPLE_Z2_HBPP_CMD_BLOB           0x3001
+ #define APPLE_Z2_FW_MAGIC                0x5746325A
+ #define LOAD_COMMAND_INIT_PAYLOAD        0
+@@ -142,6 +143,9 @@ static int apple_z2_read_packet(struct apple_z2 *z2)
+ 	if (error)
+ 		return error;
+ 
++	if (z2->rx_buf[0] != APPLE_Z2_REPLY_INTERRUPT_DATA)
++		return 0;
++
+ 	pkt_len = (get_unaligned_le16(z2->rx_buf + 1) + 8) & 0xfffffffc;
+ 
+ 	error = spi_read(z2->spidev, z2->rx_buf, pkt_len);
 
 ---
-base-commit: 981be27a72d163610e8e1c342373930bae80ac99
-change-id: 20251218-dentry-inline-4091feeae685
+base-commit: ea1013c1539270e372fc99854bc6e4d94eaeff66
+change-id: 20251217-z2-init-fix-3b14ef4c6890
 
 Best regards,
 -- 
-Bagas Sanjaya <bagasdotme@gmail.com>
+Sasha Finkelstein <fnkl.kernel@gmail.com>
 
