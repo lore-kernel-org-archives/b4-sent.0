@@ -1,71 +1,84 @@
-From: =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
-Date: Thu, 18 Dec 2025 00:56:42 +0100
-Subject: [PATCH v3 6/6] wifi: ath12k: Add support for disabling rfkill via
- devicetree
+From: Bagas Sanjaya <bagasdotme@gmail.com>
+Date: Thu, 18 Dec 2025 12:05:00 +0700
+Subject: [PATCH] VFS: fix dentry_create() kernel-doc comment
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20251218-surface-sp11-for-next-v3-6-875afc7bd3b7@gmail.com>
-References: <20251218-surface-sp11-for-next-v3-0-875afc7bd3b7@gmail.com>
-In-Reply-To: <20251218-surface-sp11-for-next-v3-0-875afc7bd3b7@gmail.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Johannes Berg <johannes@sipsolutions.net>, 
- Lorenzo Bianconi <lorenzo@kernel.org>, 
- Maximilian Luz <luzmaximilian@gmail.com>, Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Jeff Johnson <jjohnson@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-wireless@vger.kernel.org, 
- platform-driver-x86@vger.kernel.org, ath12k@lists.infradead.org, 
- Dale Whinham <daleyo@gmail.com>, 
- =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766015816; l=1265;
- i=jerome.debretagne@gmail.com; s=20251217; h=from:subject:message-id;
- bh=mcMjGRXAT6QkIO3PWrqFYRB9BASEzAi+bYp6SS6IoLc=;
- b=wXvPF3j03/LWNZD75iE4hFwXKHz7tgopfmBGylHmu1LBrffKpaZf4z3HFwaYucG5rmnNBA0TC
- +3IEZJkayLkDTe1BOcdFdQoiRfnRjfoDmZPUZW4J2nyHcsYVTGtyd+H
-X-Developer-Key: i=jerome.debretagne@gmail.com; a=ed25519;
- pk=DcPD9n3oDMsPkt+12tU96swmGb5H86cxt+yiEVcUEGk=
-X-Endpoint-Received: by B4 Relay for jerome.debretagne@gmail.com/20251217 with auth_id=580
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251218-dentry-inline-v1-1-0107f4cd8246@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAHuLQ2kC/x3MQQqAIBBG4avErBNUMqqrRAvJvxqIKTSiiO6et
+ PwW7z2UEBmJuuKhiJMTb5JhyoLGxcsMxSGbrLbOWNOoADnirVhWFqhKt2YCPOrGUW72iImv/9c
+ P7/sByOB+w18AAAA=
+X-Change-ID: 20251218-dentry-inline-4091feeae685
+To: Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
+ Benjamin Coddington <bcodding@hammerspace.com>, 
+ Jeff Layton <jlayton@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Stephen Rothwell <sfr@canb.auug.org.au>, 
+ Bagas Sanjaya <bagasdotme@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1989; i=bagasdotme@gmail.com;
+ s=Zp7juWIhw0R1; h=from:subject:message-id;
+ bh=gykyE4n1Bru42E0/IbBcoXj6P5uhnSGs7sDFNl0/sD8=;
+ b=owGbwMvMwCX2bWenZ2ig32LG02pJDJnO3V0TTlS8uK4rEGv08MW3ue6Mz/WDfZZb7ZvJsJ97s
+ 3DxkkbLjlIWBjEuBlkxRZZJiXxNp3cZiVxoX+sIM4eVCWQIAxenAExkkTbDP92SKhWfjef6iy8a
+ RzxVttaQ3KAzcebhMn73NZL6WrPf1jMy9CXrttxPKT0f/k1hicKsrHXGGsr8nDsyz/9ZsStdzPc
+ BKwA=
+X-Developer-Key: i=bagasdotme@gmail.com; a=openpgp;
+ fpr=701B806FDCA5D3A58FFB8F7D7C276C64A5E44A1D
+X-Endpoint-Received: by B4 Relay for bagasdotme@gmail.com/Zp7juWIhw0R1 with auth_id=581
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Dale Whinham <daleyo@gmail.com>
+Sphinx reports htmldocs warnings:
 
-Some devices (e.g. Microsoft Surface Pro 11) indicate that the rfkill
-feature should be disabled by means of an ACPI bitflag.
+Documentation/filesystems/api-summary:56: fs/namei.c:4952: WARNING: Inline emphasis start-string without end-string. [docutils]
+Documentation/filesystems/api-summary:56: fs/namei.c:4942: ERROR: Unknown target name: "o". [docutils]
 
-If ACPI is not being used (i.e. booting using a devicetree) then this
-property will not be read and therefore rfkill may be enabled and
-the ath12k will be hard-blocked with no way to disable it.
+Fix them by escaping trailing underscore and wildcard.
 
-Add a devicetree property that allows us to disable the rfkill feature.
-
-Signed-off-by: Dale Whinham <daleyo@gmail.com>
-Tested-by: Jérôme de Bretagne <jerome.debretagne@gmail.com>
-Signed-off-by: Jérôme de Bretagne <jerome.debretagne@gmail.com>
+Fixes: 977de00dfcf87e ("VFS: move dentry_create() from fs/open.c to fs/namei.c")
+Reported-by: Stephen Rothwell <sfr@canb.auug.org.au>
+Closes: https://lore.kernel.org/linux-next/20251216115252.709078e8@canb.auug.org.au/
+Signed-off-by: Bagas Sanjaya <bagasdotme@gmail.com>
 ---
- drivers/net/wireless/ath/ath12k/core.c | 3 +++
- 1 file changed, 3 insertions(+)
+Sphinx reports htmldocs warnings:
 
-diff --git a/drivers/net/wireless/ath/ath12k/core.c b/drivers/net/wireless/ath/ath12k/core.c
-index cc352eef1939937ce902bee2fbd9737ca3ab5993..e10073bb975cfd2e9ee418edcc49d0d51cf93de1 100644
---- a/drivers/net/wireless/ath/ath12k/core.c
-+++ b/drivers/net/wireless/ath/ath12k/core.c
-@@ -77,6 +77,9 @@ static int ath12k_core_rfkill_config(struct ath12k_base *ab)
- 	if (ath12k_acpi_get_disable_rfkill(ab))
- 		return 0;
- 
-+	if (of_property_read_bool(ab->dev->of_node, "disable-rfkill"))
-+		return 0;
-+
- 	for (i = 0; i < ab->num_radios; i++) {
- 		ar = ab->pdevs[i].ar;
- 
+Documentation/filesystems/api-summary:56: fs/namei.c:4952: WARNING: Inline emphasis start-string without end-string. [docutils]
+Documentation/filesystems/api-summary:56: fs/namei.c:4942: ERROR: Unknown target name: "o". [docutils]
 
+Fix them by escaping trailing underscore and wildcard.
+---
+ fs/namei.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index aefb21bc0944e3..d575d671b4f960 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -4939,7 +4939,7 @@ EXPORT_SYMBOL(start_creating_user_path);
+ /**
+  * dentry_create - Create and open a file
+  * @path: path to create
+- * @flags: O_ flags
++ * @flags: O\_ flags
+  * @mode: mode bits for new file
+  * @cred: credentials to use
+  *
+@@ -4950,7 +4950,7 @@ EXPORT_SYMBOL(start_creating_user_path);
+  * the new file is to be created. The parent directory and the
+  * negative dentry must reside on the same filesystem instance.
+  *
+- * On success, returns a "struct file *". Otherwise a ERR_PTR
++ * On success, returns a "struct file \*". Otherwise a ERR_PTR
+  * is returned.
+  */
+ struct file *dentry_create(struct path *path, int flags, umode_t mode,
+
+---
+base-commit: 981be27a72d163610e8e1c342373930bae80ac99
+change-id: 20251218-dentry-inline-4091feeae685
+
+Best regards,
 -- 
-2.47.3
+Bagas Sanjaya <bagasdotme@gmail.com>
 
