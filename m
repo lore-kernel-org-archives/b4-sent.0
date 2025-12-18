@@ -1,74 +1,62 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Thu, 18 Dec 2025 09:11:26 +0100
-Subject: [PATCH] Input: apple_z2: Fix reading incorrect reports after
- exiting sleep
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Date: Thu, 18 Dec 2025 10:21:17 +0100
+Subject: [PATCH] iio: imu: inv_icm42600: enable temp polling when buffer is
+ on
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251218-z2-init-fix-v1-1-48e3aa239caf@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1NDI0Nz3Soj3cy8zBLdtMwKXeMkQ5PUNJNkMwtLAyWgjoKiVKAw2LTo2Np
- aAMagJqddAAAA
-X-Change-ID: 20251217-z2-init-fix-3b14ef4c6890
-To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
- Neal Gompa <neal@gompa.dev>, Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- pitust <piotr@stelmaszek.com>, Sasha Finkelstein <fnkl.kernel@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766045498; l=1783;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=OF8WOCZRA9+JnU6tzC4FoVlFYz2Y9tJ9S+rCxmTtWYo=;
- b=9M/jobQWeFJaXDS54JFsLzWEHIDl+bbiBoVgcNi8y9zH0dzwiavKzcvWquVuCv2w6S35QyEFs
- /Tty1VBEmetC5P+Ey1YYZq8Io8EkRjNjS2pn7tc70FvVJ/n48GX7n+q
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+Message-Id: <20251218-inv-icm42600-do-not-block-temperature-polling-v1-1-909fbd4e240a@tdk.com>
+X-B4-Tracking: v=1; b=H4sIAIzHQ2kC/x3NTQrCMBBA4auUWTuQHxPEq4iLNp3WwXQSkliE0
+ rsbXH6b9w6oVJgq3IcDCu1cOUmHvgwQXqOshDx3g1HGaaNvyLIjh+1qvFI4J5TUcIopvLHRlqm
+ M7VMIc4qRZUXvrFXOh8mqBXozF1r4+/89nuf5A7Em3ER/AAAA
+X-Change-ID: 20251218-inv-icm42600-do-not-block-temperature-polling-6533056cb30f
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766049687; l=1221;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=f8du7ktVd1utCvuUW65hpIirqMUqmiPXKFlXcsmlnPs=;
+ b=ZCNYy2rpUCxw6rObHvdBmygmmhqh6cvA9p/fHoah6C5d4KEC7oI0wBA4vKneYKveRBdIztIz3
+ ARuX7tUQSklA7BLdxaksTEBK8KTcLDGPeXLfI1MTmD17irg00I1I0kG
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Under certain conditions (more prevalent after a suspend/resume cycle),
-the touchscreen controller can send the "boot complete" interrupt before
-it actually finished booting. In those cases, attempting to read touch
-data resuls in a stream of "not ready" messages being read and
-interpreted as a touch report. Check that the response is in fact a
-touch report and discard it otherwise.
+Delete iio_device_claim_direct_mode() when reading temperature.
+It enables polling of temperature data while buffer is on and it
+doesn't have any impact on the other sensors.
 
-Reported-by: pitust <piotr@stelmaszek.com>
-Closes: https://oftc.catirclogs.org/asahi/2025-12-17#34878715;
-Fixes: 471a92f8a21a ("Input: apple_z2 - add a driver for Apple Z2 touchscreens")
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
- drivers/input/touchscreen/apple_z2.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
-diff --git a/drivers/input/touchscreen/apple_z2.c b/drivers/input/touchscreen/apple_z2.c
-index 0de161eae59a..271ababf0ad5 100644
---- a/drivers/input/touchscreen/apple_z2.c
-+++ b/drivers/input/touchscreen/apple_z2.c
-@@ -21,6 +21,7 @@
- #define APPLE_Z2_TOUCH_STARTED           3
- #define APPLE_Z2_TOUCH_MOVED             4
- #define APPLE_Z2_CMD_READ_INTERRUPT_DATA 0xEB
-+#define APPLE_Z2_REPLY_INTERRUPT_DATA    0xE1
- #define APPLE_Z2_HBPP_CMD_BLOB           0x3001
- #define APPLE_Z2_FW_MAGIC                0x5746325A
- #define LOAD_COMMAND_INIT_PAYLOAD        0
-@@ -142,6 +143,9 @@ static int apple_z2_read_packet(struct apple_z2 *z2)
- 	if (error)
- 		return error;
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c
+index 30f6a9595eea2308ef9ab0660210fc14ca758198..727b03d541a58a27cc9d793da78d1f4a1c460297 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c
+@@ -59,10 +59,7 @@ int inv_icm42600_temp_read_raw(struct iio_dev *indio_dev,
  
-+	if (z2->rx_buf[0] != APPLE_Z2_REPLY_INTERRUPT_DATA)
-+		return 0;
-+
- 	pkt_len = (get_unaligned_le16(z2->rx_buf + 1) + 8) & 0xfffffffc;
- 
- 	error = spi_read(z2->spidev, z2->rx_buf, pkt_len);
+ 	switch (mask) {
+ 	case IIO_CHAN_INFO_RAW:
+-		if (!iio_device_claim_direct(indio_dev))
+-			return -EBUSY;
+ 		ret = inv_icm42600_temp_read(st, &temp);
+-		iio_device_release_direct(indio_dev);
+ 		if (ret)
+ 			return ret;
+ 		*val = temp;
 
 ---
-base-commit: ea1013c1539270e372fc99854bc6e4d94eaeff66
-change-id: 20251217-z2-init-fix-3b14ef4c6890
+base-commit: a7b10f0963c651a6406d958a5f64b9c5594f84da
+change-id: 20251218-inv-icm42600-do-not-block-temperature-polling-6533056cb30f
 
 Best regards,
 -- 
-Sasha Finkelstein <fnkl.kernel@gmail.com>
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
