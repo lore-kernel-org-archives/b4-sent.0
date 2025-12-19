@@ -1,14 +1,12 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Subject: [PATCH v2 0/6] ADF41513/ADF41510 PLL frequency synthesizers
-Date: Fri, 19 Dec 2025 12:34:47 +0000
-Message-Id: <20251219-adf41513-iio-driver-v2-0-be29a83d5793@analog.com>
+Date: Fri, 19 Dec 2025 12:34:48 +0000
+Subject: [PATCH v2 1/6] dt-bindings: iio: frequency: add adf41513
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAGdGRWkC/32NQQrCMBBFryKzdiQTrQZX3kO6GJNJO6CNJBKU0
- rsbewCX78F/f4YiWaXAeTNDlqpF09TAbjfgR54GQQ2NwRrbEZFBDvFAHe1RNWHIWiUjs2fHp+i
- ME2jLZ5ao77V67RuPWl4pf9aTSj/7v1cJDdoQ3U1MDP4oF574noadTw/ol2X5AuoIJUW3AAAA
-X-Change-ID: 20251110-adf41513-iio-driver-aaca8a7f808e
+Message-Id: <20251219-adf41513-iio-driver-v2-1-be29a83d5793@analog.com>
+References: <20251219-adf41513-iio-driver-v2-0-be29a83d5793@analog.com>
+In-Reply-To: <20251219-adf41513-iio-driver-v2-0-be29a83d5793@analog.com>
 To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-doc@vger.kernel.org
 Cc: Jonathan Cameron <jic23@kernel.org>, 
@@ -19,69 +17,297 @@ Cc: Jonathan Cameron <jic23@kernel.org>,
  Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766147692; l=2398;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766147692; l=10336;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=sqgwzniAZ/2pfeFn6PJ1VjhBOf9YLXIh2LImEpKrknA=;
- b=IAq3uS794270XTaJ3MbTU1aVJDUYE9VZcZ+kW7zTedhpTfyHkH+tvzEs7TpHjgYowR83CNI2J
- dJZmPd1gDaaDW7Lxj8ixQ1DTEYbppndZyHPNlAZmu4/IUeHov7S0ihJ
+ bh=noPrutzBxzeZyZVEHIJlLxVCsGn5WnOnU02pLpQV+tI=;
+ b=4EzlGvru6OI/u2CNWb42+oaaSfXjdqKvw3dUk1tmTw3agiqlF4Nk1NFz/Vw+s4qX+1i485Oft
+ z88wne8Z9SlAqQ1Vy4zyIQ0sDTFemJAp4uSSkASzZqVIdUJZ/EV/4NU
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch series adds support for the Analog Devices ADF41513 and ADF41510
-ultralow noise PLL frequency synthesizers. These devices are designed for
-implementing local oscillators (LOs) in high-frequency applications.
-The ADF41513 covers frequencies from 1 GHz to 26.5 GHz, while the ADF41510
-operates from 1 GHz to 10 GHz.
-
-Key features supported by this driver:
-- Integer-N and fractional-N operation modes
-- High maximum PFD frequency (250 MHz integer-N, 125 MHz fractional-N)
-- 25-bit fixed modulus or 49-bit variable modulus fractional modes
-- Digital lock detect functionality
-- Phase resync capability for consistent output phase
-- Load Enable vs Reference signal syncronization
-
-The series includes:
-1. PLL driver implementation
-2. Device tree bindings documentation
-3. IIO ABI documentation
+dt-bindings for ADF41513, an ultralow noise PLL frequency synthesizer that
+can be used to implement local oscillators (LOs) as high as 26.5 GHz.
+Most properties refer to existing PLL driver properties (e.g. ADF4350).
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
-Changes in v2:
-- separate driver implementation from extra features and improve commit messages
-- use macros from units.h
-- explanation of custom parse function: adf41513_parse_uhz
-- reorganize driver data structures
-- drop clock framework support for now
-- reorganize documentation
-- Link to v1: https://lore.kernel.org/r/20251110-adf41513-iio-driver-v1-0-2df8be0fdc6e@analog.com
+ .../bindings/iio/frequency/adi,adf41513.yaml       | 246 +++++++++++++++++++++
+ MAINTAINERS                                        |   7 +
+ 2 files changed, 253 insertions(+)
 
----
-Rodrigo Alencar (6):
-      dt-bindings: iio: frequency: add adf41513
-      iio: frequency: adf41513: driver implementation
-      iio: frequency: adf41513: handle LE synchronization feature
-      iio: frequency: adf41513: features on frequency change
-      docs: iio: add documentation for adf41513 driver
-      Documentation: ABI: testing: add support for ADF41513
+diff --git a/Documentation/devicetree/bindings/iio/frequency/adi,adf41513.yaml b/Documentation/devicetree/bindings/iio/frequency/adi,adf41513.yaml
+new file mode 100644
+index 000000000000..01ceb2a7d21b
+--- /dev/null
++++ b/Documentation/devicetree/bindings/iio/frequency/adi,adf41513.yaml
+@@ -0,0 +1,246 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/iio/frequency/adi,adf41513.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Analog Devices ADF41513 PLL Frequency Synthesizer
++
++maintainers:
++  - Rodrigo Alencar <rodrigo.alencar@analog.com>
++
++description:
++  The ADF41513 is an ultralow noise frequency synthesizer that can be used to
++  implement local oscillators (LOs) as high as 26.5 GHz in the upconversion and
++  downconversion sections of wireless receivers and transmitters. The ADF41510
++  supports frequencies up to 10 GHz.
++
++  https://www.analog.com/en/products/adf41513.html
++  https://www.analog.com/en/products/adf41510.html
++
++$ref: /schemas/spi/spi-peripheral-props.yaml#
++
++properties:
++  compatible:
++    enum:
++      - adi,adf41510
++      - adi,adf41513
++
++  reg:
++    maxItems: 1
++
++  spi-max-frequency:
++    maximum: 25000000
++
++  clocks:
++    maxItems: 1
++    description: Clock that provides the reference input frequency.
++
++  avdd1-supply:
++    description: PFD and Up and Down Digital Driver Power Supply (3.3 V)
++
++  avdd2-supply:
++    description: RF Buffer and Prescaler Power Supply (3.3 V)
++
++  avdd3-supply:
++    description: N Divider Power Supply (3.3 V)
++
++  avdd4-supply:
++    description: R Divider and Lock Detector Power Supply (3.3 V)
++
++  avdd5-supply:
++    description: Sigma-Delta Modulator and SPI Power Supply (3.3 V)
++
++  vp-supply:
++    description: Charge Pump Power Supply (3.3 V)
++
++  enable-gpios:
++    description:
++      GPIO that controls the chip enable pin. A logic low on this pin
++      powers down the device and puts the charge pump output into
++      three-state mode.
++    maxItems: 1
++
++  lock-detect-gpios:
++    description:
++      GPIO for lock detect functionality. When configured for digital lock
++      detect, this pin will output a logic high when the PLL is locked.
++    maxItems: 1
++
++  adi,power-up-frequency:
++    $ref: /schemas/types.yaml#/definitions/uint64
++    minimum: 1000000000
++    maximum: 26500000000
++    default: 10000000000
++    description:
++      The PLL tunes to this frequency (in Hz) during the initialization
++      sequence. This property should be set to a frequency supported by the
++      loop filter and VCO used in the design. Range is 1 GHz to 26.5 GHz for
++      ADF41513, and 1 GHz to 10 GHz for ADF41510.
++
++  adi,reference-div-factor:
++    $ref: /schemas/types.yaml#/definitions/uint32
++    minimum: 1
++    maximum: 32
++    default: 1
++    description:
++      Value for the reference division factor (R Counter). The driver will
++      increment R Counter as needed to achieve a PFD frequency within the
++      allowed range. High R counter values will reduce the PFD frequency, which
++      lowers the frequency resolution, and affects phase noise performance.
++
++  adi,reference-doubler-enable:
++    description:
++      Enables the reference doubler. The maximum reference frequency when
++      the doubler is enabled is 225 MHz.
++    type: boolean
++
++  adi,reference-div2-enable:
++    description:
++      Enables the reference divide-by-2 function. This provides a 50%
++      duty cycle signal to the PFD.
++    type: boolean
++
++  adi,charge-pump-resistor-ohms:
++    minimum: 1800
++    maximum: 10000
++    default: 2700
++    description:
++      External charge pump resistor (R_SET) value in ohms. This sets the maximum
++      charge pump current along with the charge pump current setting.
++
++  adi,charge-pump-current-microamp:
++    description:
++      Charge pump current (I_CP) in microamps. The value will be rounded to the
++      nearest supported value. Range of acceptable values depends on the
++      charge pump resistor value, such that 810 mV <= I_CP * R_SET <= 12960 mV.
++      This value depends on the loop filter design.
++
++  adi,muxout-select:
++    description:
++      On chip multiplexer output selection.
++      high_z - MUXOUT Pin set to high-Z. (default)
++      muxout_high - MUXOUT Pin set to high.
++      muxout_low - MUXOUT Pin set to low.
++      f_div_rclk - MUXOUT Pin set to R divider output
++      f_div_nclk - MUXOUT Pin set to N divider output
++      lock_detect - MUXOUT Pin set to Digital lock detect
++      serial_data - MUXOUT Pin set to Serial data output
++      readback - MUXOUT Pin set to Readback mode
++      f_div_clk1 - MUXOUT Pin set to CLK1 divider output
++      f_div_rclk_2 - MUXOUT Pin set to R divider/2 output
++      f_div_nclk_2 - MUXOUT Pin set to N divider/2 output
++    enum: [high_z, muxout_high, muxout_low, f_div_rclk, f_div_nclk, lock_detect,
++           serial_data, readback, f_div_clk1, f_div_rclk_2, f_div_nclk_2]
++
++  adi,muxout-level-1v8-enable:
++    description:
++      Set MUXOUT and DLD logic levels to 1.8V. Default is 3.3V.
++    type: boolean
++
++  adi,phase-detector-polarity-positive-enable:
++    description:
++      Set phase detector polarity to positive. Default is negative.
++      Use positive polarity with non-inverting loop filter and VCO with
++      positive tuning slope, or with inverting loop filter and VCO with
++      negative tuning slope.
++    type: boolean
++
++  adi,lock-detector-count:
++    $ref: /schemas/types.yaml#/definitions/uint32
++    default: 64
++    description:
++      Sets the value for Lock Detector count of the PLL, which determines the
++      number of consecutive phase detector cycles that must be within the lock
++      detector window before lock is declared. Lower values increase the lock
++      detection sensitivity.
++    enum: [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
++
++  adi,phase-resync-period-ns:
++    default: 0
++    description:
++      When this value is non-zero, enable phase resync functionality, which
++      produces a consistent output phase offset with respect to the input
++      reference. The value specifies the resync period in nanoseconds, used
++      to configure clock dividers with respect to the PFD frequency. This value
++      should be set to a value that is at least as long as the worst case lock
++      time, i.e., it depends mostly on the loop filter design.
++
++  adi,le-sync-enable:
++    description:
++      Synchronizes Load Enable (LE) transitions with the reference signal to
++      avoid asynchronous glitches in the output. This is recommended when using
++      the PLL as a frequency synthesizer, where reference signal will always be
++      present while the device is being configured. When using the PLL as a
++      frequency tracker, where the reference signal may be absent for long
++      periods of time, LE sync should be disabled.
++    type: boolean
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - avdd1-supply
++  - avdd2-supply
++  - avdd3-supply
++  - avdd4-supply
++  - avdd5-supply
++  - vp-supply
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    spi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        pll@0 {
++            compatible = "adi,adf41513";
++            reg = <0>;
++            spi-max-frequency = <10000000>;
++            clocks = <&ref_clk>;
++            avdd1-supply = <&vdd_3v3>;
++            avdd2-supply = <&vdd_3v3>;
++            avdd3-supply = <&vdd_3v3>;
++            avdd4-supply = <&vdd_3v3>;
++            avdd5-supply = <&vdd_3v3>;
++            vp-supply = <&vdd_3v3>;
++
++            adi,power-up-frequency = /bits/ 64 <12000000000>;
++            adi,charge-pump-current-microamp = <2400>;
++            adi,phase-detector-polarity-positive-enable;
++        };
++    };
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++    spi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        pll@0 {
++            compatible = "adi,adf41513";
++            reg = <0>;
++            spi-max-frequency = <25000000>;
++            clocks = <&ref_clk>;
++            avdd1-supply = <&avdd1_3v3>;
++            avdd2-supply = <&avdd2_3v3>;
++            avdd3-supply = <&avdd3_3v3>;
++            avdd4-supply = <&avdd4_3v3>;
++            avdd5-supply = <&avdd5_3v3>;
++            vp-supply = <&vp_3v3>;
++            enable-gpios = <&gpio0 10 GPIO_ACTIVE_HIGH>;
++            lock-detect-gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
++
++            adi,power-up-frequency = /bits/ 64 <15500000000>;
++            adi,charge-pump-current-microamp = <3600>;
++            adi,charge-pump-resistor-ohms = <2700>;
++            adi,reference-doubler-enable;
++            adi,muxout-select = "lock_detect";
++            adi,lock-detector-count = <64>;
++            adi,phase-resync-period-ns = <0>;
++            adi,phase-detector-polarity-positive-enable;
++            adi,le-sync-enable;
++        };
++    };
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 29340394ac9d..1c1343f21160 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -1601,6 +1601,13 @@ W:	https://ez.analog.com/linux-software-drivers
+ F:	Documentation/devicetree/bindings/iio/amplifiers/adi,ada4250.yaml
+ F:	drivers/iio/amplifiers/ada4250.c
+ 
++ANALOG DEVICES INC ADF41513 DRIVER
++M:	Rodrigo Alencar <rodrigo.alencar@analog.com>
++L:	linux-iio@vger.kernel.org
++S:	Supported
++W:	https://ez.analog.com/linux-software-drivers
++F:	Documentation/devicetree/bindings/iio/frequency/adi,adf41513.yaml
++
+ ANALOG DEVICES INC ADF4377 DRIVER
+ M:	Antoniu Miclaus <antoniu.miclaus@analog.com>
+ L:	linux-iio@vger.kernel.org
 
- .../ABI/testing/sysfs-bus-iio-frequency-adf41513   |   27 +
- .../bindings/iio/frequency/adi,adf41513.yaml       |  246 ++++
- Documentation/iio/adf41513.rst                     |  255 ++++
- Documentation/iio/index.rst                        |    1 +
- MAINTAINERS                                        |   10 +
- drivers/iio/frequency/Kconfig                      |   10 +
- drivers/iio/frequency/Makefile                     |    1 +
- drivers/iio/frequency/adf41513.c                   | 1378 ++++++++++++++++++++
- 8 files changed, 1928 insertions(+)
----
-base-commit: a7b10f0963c651a6406d958a5f64b9c5594f84da
-change-id: 20251110-adf41513-iio-driver-aaca8a7f808e
-
-Best regards,
 -- 
-Rodrigo Alencar <rodrigo.alencar@analog.com>
+2.43.0
 
