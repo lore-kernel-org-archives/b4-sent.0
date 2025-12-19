@@ -1,173 +1,87 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Fri, 19 Dec 2025 13:16:00 +0100
-Subject: [PATCH 9/9] sysctl: Update API function documentation
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH v2 0/6] ADF41513/ADF41510 PLL frequency synthesizers
+Date: Fri, 19 Dec 2025 12:34:47 +0000
+Message-Id: <20251219-adf41513-iio-driver-v2-0-be29a83d5793@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251219-jag-dovec_consolidate-v1-9-1413b92c6040@kernel.org>
-References: <20251219-jag-dovec_consolidate-v1-0-1413b92c6040@kernel.org>
-In-Reply-To: <20251219-jag-dovec_consolidate-v1-0-1413b92c6040@kernel.org>
-To: Kees Cook <kees@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
- Joel Granados <joel.granados@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5503;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=eyaAlhT7GvJk0qhWteiivwFW9DszaFjDaDK9NOAWZr0=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGlFQgl2j/tke9WV5lXX1Z5qLslstlVwvskoc
- H6HywWfCJe4E4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJpRUIJAAoJELqXzVK3
- lkFPjyYL/0itMb/Er52OShWAef0GqQNRxocv7a4GVmiUHriWBBws1KMmOSYjzVpRaZPquXhK7Zo
- fpEhAEtuWEJiTIRKqibGbFsInUCrl3s8zoK5ZYAZFfQ1cVVHN2pxyQrJnO1M7Ef0RKan0oIOJZj
- 3+aS13Awg0i4ewXAJNcY521XcppJkp5Ej2dSKw+Jj/SSslteBDpMTJLw50HsIb5+mQDY+x3isWo
- 1Bmb/1QTdEBrOs21pmZ3cjIwTv2Ngcyci4MZmwi3nd39K5jRp5NdkcMPYUDnKU1DLWJQTAu35sw
- ZOXS/BNkA15KGxRR+yBeiQzyb+DWJRVttyP4kGYSx5ISN2IhsiG6KFqZ4qYtybJuEL3dPXscVdV
- LukowPs/md5D3knbOGzS7YrvJPzhjzBIhGkvK+EOE9qR71fmRTXuIVzrubj4ECvJXfE58OGTtrd
- O8LMTJhHz7xVDQY+JEZRBi4LejAo6W/q+txenZeSUYjmUaPeejNmX4IpsKs1UbYTxAfy7l/w2l3
- 3w=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+X-B4-Tracking: v=1; b=H4sIAGdGRWkC/32NQQrCMBBFryKzdiQTrQZX3kO6GJNJO6CNJBKU0
+ rsbewCX78F/f4YiWaXAeTNDlqpF09TAbjfgR54GQQ2NwRrbEZFBDvFAHe1RNWHIWiUjs2fHp+i
+ ME2jLZ5ao77V67RuPWl4pf9aTSj/7v1cJDdoQ3U1MDP4oF574noadTw/ol2X5AuoIJUW3AAAA
+X-Change-ID: 20251110-adf41513-iio-driver-aaca8a7f808e
+To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-doc@vger.kernel.org
+Cc: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766147692; l=2398;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=sqgwzniAZ/2pfeFn6PJ1VjhBOf9YLXIh2LImEpKrknA=;
+ b=IAq3uS794270XTaJ3MbTU1aVJDUYE9VZcZ+kW7zTedhpTfyHkH+tvzEs7TpHjgYowR83CNI2J
+ dJZmPd1gDaaDW7Lxj8ixQ1DTEYbppndZyHPNlAZmu4/IUeHov7S0ihJ
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add colon ":" after argument name where it is missing
-Add doc for proc_int_conv and proc_dointvec_conv
+This patch series adds support for the Analog Devices ADF41513 and ADF41510
+ultralow noise PLL frequency synthesizers. These devices are designed for
+implementing local oscillators (LOs) in high-frequency applications.
+The ADF41513 covers frequencies from 1 GHz to 26.5 GHz, while the ADF41510
+operates from 1 GHz to 10 GHz.
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+Key features supported by this driver:
+- Integer-N and fractional-N operation modes
+- High maximum PFD frequency (250 MHz integer-N, 125 MHz fractional-N)
+- 25-bit fixed modulus or 49-bit variable modulus fractional modes
+- Digital lock detect functionality
+- Phase resync capability for consistent output phase
+- Load Enable vs Reference signal syncronization
+
+The series includes:
+1. PLL driver implementation
+2. Device tree bindings documentation
+3. IIO ABI documentation
+
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- kernel/sysctl.c | 60 +++++++++++++++++++++++++++++++++++++++++++--------------
- 1 file changed, 46 insertions(+), 14 deletions(-)
+Changes in v2:
+- separate driver implementation from extra features and improve commit messages
+- use macros from units.h
+- explanation of custom parse function: adf41513_parse_uhz
+- reorganize driver data structures
+- drop clock framework support for now
+- reorganize documentation
+- Link to v1: https://lore.kernel.org/r/20251110-adf41513-iio-driver-v1-0-2df8be0fdc6e@analog.com
 
-diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 3fa59ef77f931c2753584ed03006f3ff9f5a1d0e..0965ea1212b4097fb21158b08007cf550815a19f 100644
---- a/kernel/sysctl.c
-+++ b/kernel/sysctl.c
-@@ -365,7 +365,7 @@ static void proc_put_char(void **buf, size_t *size, char c)
-  * not NULL. Check that the values are less than UINT_MAX to avoid
-  * having to support wrap around from userspace.
-  *
-- * returns 0 on success.
-+ * Returns: 0 on success.
-  */
- int proc_uint_u2k_conv_uop(const ulong *u_ptr, uint *k_ptr,
- 			   ulong (*u_ptr_op)(const ulong))
-@@ -386,7 +386,7 @@ int proc_uint_u2k_conv_uop(const ulong *u_ptr, uint *k_ptr,
-  *
-  * Uses READ_ONCE to assign value to u_ptr.
-  *
-- * returns 0 on success.
-+ * Returns: 0 on success.
-  */
- int proc_uint_k2u_conv(ulong *u_ptr, const uint *k_ptr)
- {
-@@ -460,16 +460,16 @@ static int do_proc_uint_conv_minmax(bool *negp, ulong *u_ptr, uint *k_ptr,
- 
- /**
-  * proc_int_k2u_conv_kop - Assign kernel value to a user space pointer
-- * @u_ptr - pointer to user space variable
-- * @k_ptr - pointer to kernel variable
-- * @negp - assigned %TRUE if the converted kernel value is negative;
-+ * @u_ptr: pointer to user space variable
-+ * @k_ptr: pointer to kernel variable
-+ * @negp: assigned %TRUE if the converted kernel value is negative;
-  *         %FALSE otherweise
-- * @k_ptr_op - execute this function before assigning to u_ptr
-+ * @k_ptr_op: execute this function before assigning to u_ptr
-  *
-  * Uses READ_ONCE to get value from k_ptr. Executes k_ptr_op before assigning
-  * to u_ptr if not NULL. Does **not** check for overflow.
-  *
-- * returns 0 on success.
-+ * Returns: 0 on success.
-  */
- int proc_int_k2u_conv_kop(ulong *u_ptr, const int *k_ptr, bool *negp,
- 			  ulong (*k_ptr_op)(const ulong))
-@@ -488,15 +488,15 @@ int proc_int_k2u_conv_kop(ulong *u_ptr, const int *k_ptr, bool *negp,
- 
- /**
-  * proc_int_u2k_conv_uop - Assign user value to a kernel pointer
-- * @u_ptr - pointer to user space variable
-- * @k_ptr - pointer to kernel variable
-- * @negp - If %TRUE, the converted user value is made negative.
-- * @u_ptr_op - execute this function before assigning to k_ptr
-+ * @u_ptr: pointer to user space variable
-+ * @k_ptr: pointer to kernel variable
-+ * @negp: If %TRUE, the converted user value is made negative.
-+ * @u_ptr_op: execute this function before assigning to k_ptr
-  *
-  * Uses WRITE_ONCE to assign value to k_ptr. Executes u_ptr_op if
-  * not NULL. Check for overflow with UINT_MAX.
-  *
-- * returns 0 on success.
-+ * Returns: 0 on success.
-  */
- int proc_int_u2k_conv_uop(const ulong *u_ptr, int *k_ptr, const bool *negp,
- 			  ulong (*u_ptr_op)(const ulong))
-@@ -515,6 +515,23 @@ int proc_int_u2k_conv_uop(const ulong *u_ptr, int *k_ptr, const bool *negp,
- 	return 0;
- }
- 
-+/**
-+ * proc_int_conv - Change user or kernel pointer based on direction
-+ *
-+ * @negp: will be passed to uni-directional converters
-+ * @u_ptr: pointer to user variable
-+ * @k_ptr: pointer to kernel variable
-+ * @dir: %TRUE if this is a write to the sysctl file
-+ * @tbl: the sysctl table
-+ * @k_ptr_range_check: Check range for k_ptr when %TRUE
-+ * @user_to_kern: Callback used to assign value from user to kernel var
-+ * @kern_to_user: Callback used to assign value from kernel to user var
-+ *
-+ * When direction is kernel to user, then the u_ptr is modified.
-+ * When direction is user to kernel, then the k_ptr is modified.
-+ *
-+ * Returns: 0 on success
-+ */
- int proc_int_conv(bool *negp, ulong *u_ptr, int *k_ptr, int dir,
- 		  const struct ctl_table *tbl, bool k_ptr_range_check,
- 		  int (*user_to_kern)(const bool *negp, const ulong *u_ptr, int *k_ptr),
-@@ -910,7 +927,7 @@ int proc_ulong_conv(ulong *u_ptr, ulong *k_ptr, int dir,
-  * Uses WRITE_ONCE to assign value to k_ptr. Executes u_ptr_op if
-  * not NULL.
-  *
-- * returns: 0 on success.
-+ * Returns: 0 on success.
-  */
- int proc_ulong_u2k_conv_uop(const ulong *u_ptr, ulong *k_ptr,
- 			    ulong (*u_ptr_op)(const ulong))
-@@ -936,7 +953,7 @@ static int proc_ulong_u2k_conv(const ulong *u_ptr, ulong *k_ptr)
-  * Uses READ_ONCE to assign value to u_ptr. Executes k_ptr_op if
-  * not NULL.
-  *
-- * returns: 0 on success.
-+ * Returns: 0 on success.
-  */
- int proc_ulong_k2u_conv_kop(ulong *u_ptr, const ulong *k_ptr,
- 			    ulong (*k_ptr_op)(const ulong))
-@@ -1005,6 +1022,21 @@ int proc_doulongvec_minmax(const struct ctl_table *table, int dir,
- 				do_proc_ulong_conv);
- }
- 
-+/**
-+ * proc_dointvec_conv - read a vector of ints with a custom converter
-+ *
-+ * @table: the sysctl table
-+ * @dir: %TRUE if this is a write to the sysctl file
-+ * @buffer: the user buffer
-+ * @lenp: the size of the user buffer
-+ * @ppos: file position
-+ * @conv: Custom converter call back. Defaults to do_proc_int_conv
-+ *
-+ * Reads/writes up to table->maxlen/sizeof(int) integer values from/to the
-+ * user buffer, treated as an ASCII string.
-+ *
-+ * Returns: 0 on success
-+ */
- int proc_dointvec_conv(const struct ctl_table *table, int dir, void *buffer,
- 		       size_t *lenp, loff_t *ppos,
- 		       int (*conv)(bool *negp, unsigned long *u_ptr, int *k_ptr,
+---
+Rodrigo Alencar (6):
+      dt-bindings: iio: frequency: add adf41513
+      iio: frequency: adf41513: driver implementation
+      iio: frequency: adf41513: handle LE synchronization feature
+      iio: frequency: adf41513: features on frequency change
+      docs: iio: add documentation for adf41513 driver
+      Documentation: ABI: testing: add support for ADF41513
 
+ .../ABI/testing/sysfs-bus-iio-frequency-adf41513   |   27 +
+ .../bindings/iio/frequency/adi,adf41513.yaml       |  246 ++++
+ Documentation/iio/adf41513.rst                     |  255 ++++
+ Documentation/iio/index.rst                        |    1 +
+ MAINTAINERS                                        |   10 +
+ drivers/iio/frequency/Kconfig                      |   10 +
+ drivers/iio/frequency/Makefile                     |    1 +
+ drivers/iio/frequency/adf41513.c                   | 1378 ++++++++++++++++++++
+ 8 files changed, 1928 insertions(+)
+---
+base-commit: a7b10f0963c651a6406d958a5f64b9c5594f84da
+change-id: 20251110-adf41513-iio-driver-aaca8a7f808e
+
+Best regards,
 -- 
-2.50.1
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
