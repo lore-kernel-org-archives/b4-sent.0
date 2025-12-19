@@ -1,159 +1,104 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Fri, 19 Dec 2025 11:54:19 +0100
-Subject: [PATCH v2] loadpin: Implement custom proc_handler for enforce
+Subject: [PATCH 0/9] sysctl: Consolidate do_proc_* functions into one macro
+Date: Fri, 19 Dec 2025 13:15:51 +0100
+Message-Id: <20251219-jag-dovec_consolidate-v1-0-1413b92c6040@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251219-jag-const_loadpin-v2-1-a1490ab35a1d@kernel.org>
-X-B4-Tracking: v=1; b=H4sIANouRWkC/32NQQrDIBBFrxJmXUsUjW1XuUcJRcyYTBs0aJCW4
- N1rc4Au34P//g4JI2GCW7NDxEyJgq8gTg3Y2fgJGY2VQbRCccEVe5qJ2eDT9liCGVfyTHfctUo
- 43VkJdbdGdPQ+mveh8kxpC/FzXGT+s/9qmTPOuosUWisn8dr2L4wel3OIEwyllC+5bmqTswAAA
- A==
-X-Change-ID: 20251215-jag-const_loadpin-761f052f76c4
-To: Kees Cook <kees@kernel.org>, Paul Moore <paul@paul-moore.com>, 
- James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>
-Cc: linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org, 
+X-B4-Tracking: v=1; b=H4sIAPhBRWkC/x3MTQqAIBBA4avErBPSin6uEhGTjjURGhoRRHdPW
+ n6L9x6IFJgi9NkDgS6O7F2CzDPQK7qFBJtkUIWqpZKt2HARxl+kJ+1d9DsbPEnU2BSVVVjabob
+ UHoEs3/93GN/3A8C+JU9nAAAA
+X-Change-ID: 20251218-jag-dovec_consolidate-5a704f2a3f9b
+To: Kees Cook <kees@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
  Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4361;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2984;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=JxnNOF4Pyl6tVn86c+o2jxDPoQsZ+A7P0/0wMdEOmUw=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGlFLvHH6GeSlEgmDQOET2OxfftN0Dsbe3Jp9
- PD+gorNIGAIg4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJpRS7xAAoJELqXzVK3
- lkFPWI8L+wZ2dNsgKxZqTHw8rPSKWr4uDe/i1B2NM7Vtzx0QNXn/1xxyszziWPMnGMXWP6szaDC
- m95Mmfna0YuZGuwpTQkUXfmiJKniLWMuyXrWIhe0lVMREfSi/JO2rTqm0bhZmGHSXCt3EU2gX/i
- 9nJqSS6OCM1J8W9dDRFBR+K1ClmQrMLn1O9nMkJmteNbV3MMs7Eoke803B8phoKlhOq28N1QwGK
- z5huXjouDzwhDnQbaigPDny0V4piRm6tKKNXcm5K4wb0J0UXxeUWWcEu48ro00sRjyOJiTWk9UM
- uy43uorZl4RdpG/yMHf5Sm1TGcN3p1PZSM43U+mkAYs0QseNxylM0DHfctzEJQvNJh4nDC1p42m
- 5ElESl9GMT5eNL+V1Y5+t3xIQacg0f0gpnxJJCzOuG5cpKyW42tU5NWdLg/WLzar4Kqb0we5vLi
- NcDRhSbMmTcqGM3dbO2YoX1lsVtPFJnTyGXVXLBKt8sTDyXmwjrH7Irt9gQdIZfO+DQxQ/BMMh3
- hI=
+ bh=m3fwFPb4CWuGiTg3M7ayJA8LFi+6Cjo0y/adMkfUc6c=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGlFQgRj+CGIHht2T9bLmyPUEqxs2layAJNkP
+ hfKlwSzbzi5EokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJpRUIEAAoJELqXzVK3
+ lkFPnSQL/2fjwpC0rct/GD5o2RDVMK3cyFJEBOK4SA/vhp4zIJqJxhO82Zn8qaIOCIcnMOwdFsl
+ crY+XtkufikPyICrxAIoztCzHv8Oxloy/Gpf1upUneco/KpXFNPgHpHHcg5mIbFIpAUxp1KQO7o
+ wtR4puOQ6w8j1XWFdNR+5kYDoLVqQBX5NARJ5tlly4VI3my9gcWVJHWpZO2GCSKsm5ftsI5+We8
+ 3nMfCDXnI6LaBolXEM1zyM/imUBPC58QKyD1SqYPuY1V2fZjiSlRcZI4lISVJSOHauS5tn+FWuN
+ 22XIhPkrzin8Kptie47MeteD+NrjpNVCH8tseUcYXy90e4hsLHsBcayBdnY2LkYP5STsSA94w8z
+ 6731R2vNafQfnubRKyNTZFKv/pSAP1SUu5iNZnyCDzvZPQ/98yVNwv9ZTMfFgO/2nAe+RIki85/
+ mOrHqv9N3RQJNpdZ4R6nlE5WnOd3puUzgCVaUZRkfcFA4WjH0KO5B7WzkavG6kKClZeaDMK7dO4
+ 4g=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a new static variable (loadpin_root_writable) to keep the
-write-ability state of enforce. Remove set_sysctl and const qualify
-loadpin_sysctl_table (moves into .rodata) as there is no longer need to
-change the value of extra1. The new proc_handler_loadpin returns -EINVAL
-when loadpin_root_writable is false and the kernel var (enforce) is
-being written. The old way of modifying the write-ability of enforce
-stayes in loadpin_check and is still set by calling sb_is_writable.
+What
+====
+Generate do_proc_{int,uint,ulong} with the new do_proc_typevec macro.
+Removed small differences between each implementation and put it all
+under one roof. This macro is meant for internal (to sysctl.c) static
+functions; it should not be used from the outside.
+
+Groups and document the proc handler and converter functions in
+include/linux/sysctl.h. Document how to create custom converters
+with examples for every converter type.
+
+This series sits on top of [1], you can see the working branch here [2].
+
+Why
+===
+Working with one instead of three slightly different implementations of
+the same thing makes more sense to me for three reasons: 1. I don't have
+to think about the different types separately (less context switches) and
+2. One place to begin debugging proc_handler issues and 3. A fix for
+one type, fixes all types.
+
+A word on macros
+================
+I have mixed feelings about the use of macros here, especially because
+it is such a long function. But I see it as the first step. Having this
+in mainline will validate that the three types **indeed** have the same
+logic (I have tested extensively, but linux-next & mainline are the
+ultimate tests). Once this is established in mainline, implementing an
+alternative way of parametrizing becomes easier.
+
+A word on checkpatch
+====================
+* It does not like that ENOSYS is returned for the no-op functions. I'm
+  just following the pattern that was initially there. Does -EINVAL
+  makes more sense?
+* It has a false positive on a spacing around a pointer.
+
+Testing
+=======
+Ran sysctl selftest/kunit on x86_64 and 0-day.
+
+Comments are greatly appreciated
+
+[1] https://lore.kernel.org/20251217-jag-no-macro-conv-v1-0-6e4252687915@kernel.org
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/joel.granados/linux.git/log/?h=jag/dovec_consolidate
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
-Const qualifying ctl tables is part of the hardening effort in the linux
-kernel.
+Joel Granados (9):
+      sysctl: Move default converter assignment out of do_proc_dointvec
+      sysctl: Replace do_proc_dointvec with a type-generic macro
+      sysctl: Generate do_proc_doulongvec_minmax with do_proc_dotypevec macro
+      sysctl: Add negp parameter to douintvec converter functions
+      sysctl: Generate do_proc_douintvec with a type-generic macro
+      sysctl: Rename do_proc_dotypevec macro to do_proc_typevec
+      sysctl: Group proc_handler declarations and document
+      sysctl: Rename proc_doulongvec_minmax_conv to proc_doulongvec_conv
+      sysctl: Update API function documentation
 
-Changes in v2:
-- Removed set_sysctl
-- Added new static loadpin_root_writable var to hold the writable state
-- Renamed the variable holding the writable state to loadpin_root_writable
-- Link to v1: https://lore.kernel.org/r/20251215-jag-const_loadpin-v1-1-6842775f4e90@kernel.org
+ fs/pipe.c              |   2 +-
+ include/linux/sysctl.h | 123 +++++++----
+ kernel/sysctl.c        | 539 +++++++++++++++++++++++--------------------------
+ kernel/time/jiffies.c  |  28 ++-
+ 4 files changed, 371 insertions(+), 321 deletions(-)
 ---
-
----
- security/loadpin/loadpin.c | 43 +++++++++++++++++++------------------------
- 1 file changed, 19 insertions(+), 24 deletions(-)
-
-diff --git a/security/loadpin/loadpin.c b/security/loadpin/loadpin.c
-index 273ffbd6defe1324d6688dec5f9fe6c9401283ed..2ef863af869e45658e9e830af8ac40beaad7d5a9 100644
---- a/security/loadpin/loadpin.c
-+++ b/security/loadpin/loadpin.c
-@@ -53,44 +53,41 @@ static bool deny_reading_verity_digests;
- #endif
- 
- #ifdef CONFIG_SYSCTL
--static struct ctl_table loadpin_sysctl_table[] = {
-+// initialized to false
-+static bool loadpin_root_writable;
-+
-+static int proc_handler_loadpin(const struct ctl_table *table, int dir,
-+				void *buffer, size_t *lenp, loff_t *ppos)
-+{
-+	if (!loadpin_root_writable && SYSCTL_USER_TO_KERN(dir))
-+		return -EINVAL;
-+	return proc_dointvec_minmax(table, dir, buffer, lenp, ppos);
-+}
-+
-+static const struct ctl_table loadpin_sysctl_table[] = {
- 	{
- 		.procname       = "enforce",
- 		.data           = &enforce,
- 		.maxlen         = sizeof(int),
- 		.mode           = 0644,
--		.proc_handler   = proc_dointvec_minmax,
--		.extra1         = SYSCTL_ONE,
-+		.proc_handler   = proc_handler_loadpin,
-+		.extra1         = SYSCTL_ZERO,
- 		.extra2         = SYSCTL_ONE,
- 	},
- };
--
--static void set_sysctl(bool is_writable)
--{
--	/*
--	 * If load pinning is not enforced via a read-only block
--	 * device, allow sysctl to change modes for testing.
--	 */
--	if (is_writable)
--		loadpin_sysctl_table[0].extra1 = SYSCTL_ZERO;
--	else
--		loadpin_sysctl_table[0].extra1 = SYSCTL_ONE;
--}
--#else
--static inline void set_sysctl(bool is_writable) { }
- #endif
- 
--static void report_writable(struct super_block *mnt_sb, bool writable)
-+static void report_writable(struct super_block *mnt_sb)
- {
- 	if (mnt_sb->s_bdev) {
- 		pr_info("%pg (%u:%u): %s\n", mnt_sb->s_bdev,
- 			MAJOR(mnt_sb->s_bdev->bd_dev),
- 			MINOR(mnt_sb->s_bdev->bd_dev),
--			writable ? "writable" : "read-only");
-+			loadpin_root_writable ? "writable" : "read-only");
- 	} else
- 		pr_info("mnt_sb lacks block device, treating as: writable\n");
- 
--	if (!writable)
-+	if (!loadpin_root_writable)
- 		pr_info("load pinning engaged.\n");
- }
- 
-@@ -131,7 +128,6 @@ static int loadpin_check(struct file *file, enum kernel_read_file_id id)
- 	struct super_block *load_root;
- 	const char *origin = kernel_read_file_id_str(id);
- 	bool first_root_pin = false;
--	bool load_root_writable;
- 
- 	/* If the file id is excluded, ignore the pinning. */
- 	if ((unsigned int)id < ARRAY_SIZE(ignore_read_file_id) &&
-@@ -152,7 +148,6 @@ static int loadpin_check(struct file *file, enum kernel_read_file_id id)
- 	}
- 
- 	load_root = file->f_path.mnt->mnt_sb;
--	load_root_writable = sb_is_writable(load_root);
- 
- 	/* First loaded module/firmware defines the root for all others. */
- 	spin_lock(&pinned_root_spinlock);
-@@ -168,8 +163,8 @@ static int loadpin_check(struct file *file, enum kernel_read_file_id id)
- 	spin_unlock(&pinned_root_spinlock);
- 
- 	if (first_root_pin) {
--		report_writable(pinned_root, load_root_writable);
--		set_sysctl(load_root_writable);
-+		report_writable(pinned_root);
-+		loadpin_root_writable = sb_is_writable(pinned_root);
- 		report_load(origin, file, "pinned");
- 	}
- 
-
----
-base-commit: 8f0b4cce4481fb22653697cced8d0d04027cb1e8
-change-id: 20251215-jag-const_loadpin-761f052f76c4
+base-commit: 0616c77e5d877006efe3bea27ca195d396de08dc
+change-id: 20251218-jag-dovec_consolidate-5a704f2a3f9b
 
 Best regards,
 -- 
