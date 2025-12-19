@@ -1,11 +1,11 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Fri, 19 Dec 2025 13:15:56 +0100
-Subject: [PATCH 5/9] sysctl: Generate do_proc_douintvec with a type-generic
- macro
+Date: Fri, 19 Dec 2025 13:15:57 +0100
+Subject: [PATCH 6/9] sysctl: Rename do_proc_dotypevec macro to
+ do_proc_typevec
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251219-jag-dovec_consolidate-v1-5-1413b92c6040@kernel.org>
+Message-Id: <20251219-jag-dovec_consolidate-v1-6-1413b92c6040@kernel.org>
 References: <20251219-jag-dovec_consolidate-v1-0-1413b92c6040@kernel.org>
 In-Reply-To: <20251219-jag-dovec_consolidate-v1-0-1413b92c6040@kernel.org>
 To: Kees Cook <kees@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, 
@@ -13,171 +13,150 @@ To: Kees Cook <kees@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>,
 Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
  Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3960;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4776;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=lGwAIyp+j4sPhraBT9VqqYDul5ESKjWOHxREAsCubL4=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGlFQgeZHbxH9vwL5QklyE8aaBz92idYH9nJS
- MW1Kglb1ccT6IkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJpRUIHAAoJELqXzVK3
- lkFP+0QL/2bugkOsxBAG3heYbcF/ZnWoTX1He24efKOzYDCs0REK5VOvwAIUhiKh0L6GLwCYmkQ
- lDMTaFMG+PEvLgpcTgStsjquhCEPLb7IX29ujagic+j4Wu6fGbkBPSKYpaduYRRtK8ZR3in3fPE
- AB2Odtx5ome0+MI/kzLGj6dzaDPyq1MHUiPK6MgMiP42Nw+OOetzu22ch10VCU1S8jK9iKjPnBs
- y7ZPF1fUACyfKlHDwBniRQakTgMa3St2inKctKaHK6KimxxkBzblcMEQWbldAhZp6D/AxoYddOZ
- nbDUg4VG5UF8VLaoMJx0m4GR7brZ8dgir0usyJVEJbfDQfwukj7+6BRw/62wa/VBucjElJklCBJ
- 59mpaF58e/wfunwRLCgTORhbaoXaNGBv9cetYsJPZ8jWlFNJomUTcH7PEIwXZi/E50kSlDbNfbb
- E7oPnQPF42NxElYqUkdk6bQHKt6YKR5OS4V48Fo4VVEZoDPyLYkZUzriWxDjgHhv9f/rjb1rLf5
- D0=
+ bh=LYKepGhVVod321kzN+GP9Noclko65wxhv2Cran/BQS8=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGlFQgcfKfOWlIi7CTIxyVY3Be7pqiRaPV1kP
+ BTBu0Fdipie3okBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJpRUIHAAoJELqXzVK3
+ lkFPlc4L/iBNaUhX7uiypmBB+40uRz4gu0pYBJAuxOJJo+PEurNQGznaNBuf2zfxg6GYRYUcPfd
+ sbjXOfbOp3S0TpWivzVnwCiv6ZZrmtGASPqMed1yfYXXOeOBaJLhZ7MoM6ABa/u8xAwCTNymORV
+ IUu/SZ/FA06UPc2KLrPWGQOjwN9JAhpR6EbtDpGfmw7zasg3XxXgDKCjX34kEcRa4ywFgMQqFZm
+ 9+8sRhBH2UncZMZOMRMC6ohyJyoZj79MOGDzLO+LHPbRAjELtcRYucu4VAwyi83zyFL8GcU08F0
+ pNZnyxlTZtldzwp6UGSbSE2dbtokK0HwVlachS2zab1suiJmQ9FuquD+41wE/69GbZItQojBOCk
+ KnJQToCyk7xrw5rFYvPpgP07bMdOFQeTjMMJ4zyq4KhISaxfHP1twVJUqdUn9rJrZJekdACytk1
+ F16asKUzQF3fEm9gffB+cDyyBVcQFmH1buMdSWh2Bn0nBqRXaFhLYesmDbnoweyNK5aTC2yyTP4
+ gg=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Generate the behavior in do_proc_douintvec{,_w,_r} functions with
-do_proc_dotypevec(uint). The originals (do_proc_douintvec{,_w,_r})
-where created in the same way as do_proc_dotypevec but for individual
-values (no vectors). In this commit we use the existing macro
-implementation to extend do_proc_douintvec to include vectors of values.
+Remove the do..do from the proc vector functions. The redundant "do"
+only adds confusion to the already large amount of functions in sysctl.c
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- kernel/sysctl.c | 118 ++------------------------------------------------------
- 1 file changed, 3 insertions(+), 115 deletions(-)
+ kernel/sysctl.c | 37 ++++++++++++++++++-------------------
+ 1 file changed, 18 insertions(+), 19 deletions(-)
 
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 8d0796b45b0101096ee395c7ed7c37f7b7199db4..4fa26b913f59c60a5b4fbc2d66d5d99c641eecba 100644
+index 4fa26b913f59c60a5b4fbc2d66d5d99c641eecba..aecb46bdf4cafc134f83f2014e89a209efc8c10d 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
-@@ -451,8 +451,8 @@ static int do_proc_uint_conv(bool *negp, ulong *u_ptr, uint *k_ptr, int dir,
- 			      proc_uint_u2k_conv, proc_uint_k2u_conv);
+@@ -576,8 +576,8 @@ static const char proc_wspace_sep[] = { ' ', '\t', '\n' };
+  * Do not export this macro outside the sysctl subsys.
+  * It is meant to generate static functions only
+  */
+-#define do_proc_dotypevec(T) \
+-static int do_proc_do##T##vec(const struct ctl_table *table, int dir, \
++#define do_proc_typevec(T) \
++static int do_proc_##T##vec(const struct ctl_table *table, int dir, \
+ 		  void *buffer, size_t *lenp, loff_t *ppos, \
+ 		  int (*conv)(bool *negp, ulong *u_ptr, T *k_ptr, \
+ 			      int dir, const struct ctl_table *table)) \
+@@ -647,9 +647,9 @@ out: \
+ 	return err; \
  }
  
--static int do_proc_uint_conv_minmax(ulong *u_ptr, uint *k_ptr, int dir,
--				    const struct ctl_table *tbl)
-+static int do_proc_uint_conv_minmax(bool *negp, ulong *u_ptr, uint *k_ptr,
-+				    int dir, const struct ctl_table *tbl)
- {
- 	return proc_uint_conv(u_ptr, k_ptr, dir, tbl, true,
- 			      proc_uint_u2k_conv, proc_uint_k2u_conv);
-@@ -649,119 +649,7 @@ out: \
- 
- do_proc_dotypevec(int)
- do_proc_dotypevec(ulong)
--
--static int do_proc_douintvec_w(const struct ctl_table *table, void *buffer,
--			       size_t *lenp, loff_t *ppos,
--			       int (*conv)(bool *negp, unsigned long *u_ptr,
--					   unsigned int *k_ptr, int dir,
--					   const struct ctl_table *table))
--{
--	unsigned long lval;
--	int err = 0;
--	size_t left;
--	bool neg;
--	char *p = buffer;
--
--	left = *lenp;
--
--	if (proc_first_pos_non_zero_ignore(ppos, table))
--		goto bail_early;
--
--	if (left > PAGE_SIZE - 1)
--		left = PAGE_SIZE - 1;
--
--	proc_skip_spaces(&p, &left);
--	if (!left) {
--		err = -EINVAL;
--		goto out_free;
--	}
--
--	err = proc_get_long(&p, &left, &lval, &neg,
--			     proc_wspace_sep,
--			     sizeof(proc_wspace_sep), NULL);
--	if (err || neg) {
--		err = -EINVAL;
--		goto out_free;
--	}
--
--	if (conv(&lval, (unsigned int *) table->data, 1, table)) {
--		err = -EINVAL;
--		goto out_free;
--	}
--
--	if (!err && left)
--		proc_skip_spaces(&p, &left);
--
--out_free:
--	if (err)
--		return -EINVAL;
--
--	return 0;
--
--bail_early:
--	*ppos += *lenp;
--	return err;
--}
--
--static int do_proc_douintvec_r(const struct ctl_table *table, void *buffer,
--			       size_t *lenp, loff_t *ppos,
--			       int (*conv)(bool *negp, unsigned long *u_ptr,
--					   unsigned int *k_ptr, int dir,
--					   const struct ctl_table *table))
--{
--	unsigned long lval;
--	int err = 0;
--	size_t left;
--	bool negp;
--
--	left = *lenp;
--
--	if (conv(&negp, &lval, (unsigned int *) table->data, 0, table)) {
--		err = -EINVAL;
--		goto out;
--	}
--
--	proc_put_long(&buffer, &left, lval, false);
--	if (!left)
--		goto out;
--
--	proc_put_char(&buffer, &left, '\n');
--
--out:
--	*lenp -= left;
--	*ppos += *lenp;
--
--	return err;
--}
--
--static int do_proc_douintvec(const struct ctl_table *table, int dir,
--			     void *buffer, size_t *lenp, loff_t *ppos,
--			     int (*conv)(bool *negp, ulong *u_ptr, uint *k_ptr,
--					 int dir, const struct ctl_table *table))
--{
--	unsigned int vleft;
--
--	if (!table->data || !table->maxlen || !*lenp ||
--	    (*ppos && SYSCTL_KERN_TO_USER(dir))) {
--		*lenp = 0;
--		return 0;
--	}
--
--	vleft = table->maxlen / sizeof(unsigned int);
--
--	/*
--	 * Arrays are not supported, keep this simple. *Do not* add
--	 * support for them.
--	 */
--	if (vleft != 1) {
--		*lenp = 0;
--		return -EINVAL;
--	}
--
--	if (SYSCTL_USER_TO_KERN(dir))
--		return do_proc_douintvec_w(table, buffer, lenp, ppos, conv);
--	return do_proc_douintvec_r(table, buffer, lenp, ppos, conv);
--}
-+do_proc_dotypevec(uint)
+-do_proc_dotypevec(int)
+-do_proc_dotypevec(ulong)
+-do_proc_dotypevec(uint)
++do_proc_typevec(int)
++do_proc_typevec(ulong)
++do_proc_typevec(uint)
  
  /**
   * proc_douintvec_conv - read a vector of unsigned ints with a custom converter
+@@ -676,7 +676,7 @@ int proc_douintvec_conv(const struct ctl_table *table, int dir, void *buffer,
+ 	if (!conv)
+ 		conv = do_proc_uint_conv;
+ 
+-	return do_proc_douintvec(table, dir, buffer, lenp, ppos, conv);
++	return do_proc_uintvec(table, dir, buffer, lenp, ppos, conv);
+ }
+ 
+ /**
+@@ -735,7 +735,7 @@ int proc_dobool(const struct ctl_table *table, int dir, void *buffer,
+ int proc_dointvec(const struct ctl_table *table, int dir, void *buffer,
+ 		  size_t *lenp, loff_t *ppos)
+ {
+-	return do_proc_dointvec(table, dir, buffer, lenp, ppos, do_proc_int_conv);
++	return do_proc_intvec(table, dir, buffer, lenp, ppos, do_proc_int_conv);
+ }
+ 
+ /**
+@@ -754,8 +754,7 @@ int proc_dointvec(const struct ctl_table *table, int dir, void *buffer,
+ int proc_douintvec(const struct ctl_table *table, int dir, void *buffer,
+ 		size_t *lenp, loff_t *ppos)
+ {
+-	return do_proc_douintvec(table, dir, buffer, lenp, ppos,
+-				 do_proc_uint_conv);
++	return do_proc_uintvec(table, dir, buffer, lenp, ppos, do_proc_uint_conv);
+ }
+ 
+ /**
+@@ -778,8 +777,8 @@ int proc_douintvec(const struct ctl_table *table, int dir, void *buffer,
+ int proc_dointvec_minmax(const struct ctl_table *table, int dir,
+ 		  void *buffer, size_t *lenp, loff_t *ppos)
+ {
+-	return do_proc_dointvec(table, dir, buffer, lenp, ppos,
+-				do_proc_int_conv_minmax);
++	return do_proc_intvec(table, dir, buffer, lenp, ppos,
++			      do_proc_int_conv_minmax);
+ }
+ 
+ /**
+@@ -805,8 +804,8 @@ int proc_dointvec_minmax(const struct ctl_table *table, int dir,
+ int proc_douintvec_minmax(const struct ctl_table *table, int dir,
+ 			  void *buffer, size_t *lenp, loff_t *ppos)
+ {
+-	return do_proc_douintvec(table, dir, buffer, lenp, ppos,
+-				 do_proc_uint_conv_minmax);
++	return do_proc_uintvec(table, dir, buffer, lenp, ppos,
++			       do_proc_uint_conv_minmax);
+ }
+ 
+ /**
+@@ -849,8 +848,8 @@ int proc_dou8vec_minmax(const struct ctl_table *table, int dir,
+ 		tmp.extra2 = (unsigned int *) &max;
+ 
+ 	val = READ_ONCE(*data);
+-	res = do_proc_douintvec(&tmp, dir, buffer, lenp, ppos,
+-				do_proc_uint_conv_minmax);
++	res = do_proc_uintvec(&tmp, dir, buffer, lenp, ppos,
++			      do_proc_uint_conv_minmax);
+ 	if (res)
+ 		return res;
+ 	if (SYSCTL_USER_TO_KERN(dir))
+@@ -980,7 +979,7 @@ int proc_doulongvec_minmax_conv(const struct ctl_table *table, int dir,
+ 				int (*conv)(bool *negp, ulong *u_ptr, ulong *k_ptr,
+ 					    int dir, const struct ctl_table *table))
+ {
+-	return do_proc_doulongvec(table, dir, buffer, lenp, ppos, conv);
++	return do_proc_ulongvec(table, dir, buffer, lenp, ppos, conv);
+ }
+ 
+ /**
+@@ -1002,8 +1001,8 @@ int proc_doulongvec_minmax_conv(const struct ctl_table *table, int dir,
+ int proc_doulongvec_minmax(const struct ctl_table *table, int dir,
+ 			   void *buffer, size_t *lenp, loff_t *ppos)
+ {
+-	return do_proc_doulongvec(table, dir, buffer, lenp, ppos,
+-				  do_proc_ulong_conv);
++	return do_proc_ulongvec(table, dir, buffer, lenp, ppos,
++				do_proc_ulong_conv);
+ }
+ 
+ int proc_dointvec_conv(const struct ctl_table *table, int dir, void *buffer,
+@@ -1013,7 +1012,7 @@ int proc_dointvec_conv(const struct ctl_table *table, int dir, void *buffer,
+ {
+ 	if (!conv)
+ 		conv = do_proc_int_conv;
+-	return do_proc_dointvec(table, dir, buffer, lenp, ppos, conv);
++	return do_proc_intvec(table, dir, buffer, lenp, ppos, conv);
+ }
+ 
+ /**
 
 -- 
 2.50.1
