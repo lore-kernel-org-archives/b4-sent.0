@@ -1,11 +1,11 @@
 From: =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
-Date: Sat, 20 Dec 2025 01:22:00 +0100
-Subject: [PATCH v5 3/7] dt-bindings: wireless: ath12k: Allow disable-rfkill
- property
+Date: Sat, 20 Dec 2025 01:22:01 +0100
+Subject: [PATCH v5 4/7] firmware: qcom: scm: allow QSEECOM on Surface Pro
+ 11
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20251220-surface-sp11-for-next-v5-3-16065bef8ef3@gmail.com>
+Message-Id: <20251220-surface-sp11-for-next-v5-4-16065bef8ef3@gmail.com>
 References: <20251220-surface-sp11-for-next-v5-0-16065bef8ef3@gmail.com>
 In-Reply-To: <20251220-surface-sp11-for-next-v5-0-16065bef8ef3@gmail.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -22,52 +22,42 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  platform-driver-x86@vger.kernel.org, ath12k@lists.infradead.org, 
  Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
  Dale Whinham <daleyo@gmail.com>, 
- =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
+ =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766190155; l=1122;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766190155; l=997;
  i=jerome.debretagne@gmail.com; s=20251217; h=from:subject:message-id;
- bh=qxUYWgrkevDrzW7E3kqpqIBVkm0S8EYbX/8Sl2i9Gas=;
- b=HDpJFAGzTzB5pyD88o+QOrEljODlF7cCgrR9SyebLystn5VxlZgYVg3uagtZgdENepJt0kLLa
- a+F3uIzqOXxBbr1R0q7/T0VtIvb3vjw3XuxLtdJu4E5cq/heNZe6IhR
+ bh=CNbXWtuQ7AggDKzwaLKJE5TiiiPe100NQahuSnOowsU=;
+ b=ekWgYqaKP7EjU9lwdtb3rgAIV8UQxvoJ2yREJfvy1Co58tmpBXF5fW0VgGbUebmHht3Fe0osN
+ bunbE/BezRVD2bxia+JaDQty15ro+fSWlBPwikL5erL6UusNpJutg1L
 X-Developer-Key: i=jerome.debretagne@gmail.com; a=ed25519;
  pk=DcPD9n3oDMsPkt+12tU96swmGb5H86cxt+yiEVcUEGk=
 X-Endpoint-Received: by B4 Relay for jerome.debretagne@gmail.com/20251217 with auth_id=580
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Reference the ieee80211.yaml schema to allow disable-rfkill to
-be used for models that need to disable the rfkill feature,
-otherwise the Wi-Fi radio is unusable.
+From: Dale Whinham <daleyo@gmail.com>
 
-This is required by the Surface Pro 11 with WCN7850.
+Enables access to EFI variables on this machine.
 
+Signed-off-by: Dale Whinham <daleyo@gmail.com>
 Signed-off-by: Jérôme de Bretagne <jerome.debretagne@gmail.com>
+Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 ---
- Documentation/devicetree/bindings/net/wireless/qcom,ath12k.yaml | 5 +++++
- 1 file changed, 5 insertions(+)
+ drivers/firmware/qcom/qcom_scm.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/net/wireless/qcom,ath12k.yaml b/Documentation/devicetree/bindings/net/wireless/qcom,ath12k.yaml
-index dc68dd59988fc757e8f53e809128cb4e820d66d1..e18c87b21777bc6642e551f23feff69bfb7fb435 100644
---- a/Documentation/devicetree/bindings/net/wireless/qcom,ath12k.yaml
-+++ b/Documentation/devicetree/bindings/net/wireless/qcom,ath12k.yaml
-@@ -21,6 +21,8 @@ properties:
-   reg:
-     maxItems: 1
- 
-+  disable-rfkill: true
-+
-   firmware-name:
-     maxItems: 1
-     description:
-@@ -69,6 +71,9 @@ required:
- 
- additionalProperties: false
- 
-+allOf:
-+  - $ref: ieee80211.yaml#
-+
- examples:
-   - |
-     #include <dt-bindings/clock/qcom,rpmh.h>
+diff --git a/drivers/firmware/qcom/qcom_scm.c b/drivers/firmware/qcom/qcom_scm.c
+index 1a6f85e463e06a12814614cea20719c90a371b69..3dabb04094f91811a430e84998d3c6c759b5c747 100644
+--- a/drivers/firmware/qcom/qcom_scm.c
++++ b/drivers/firmware/qcom/qcom_scm.c
+@@ -2007,6 +2007,7 @@ static const struct of_device_id qcom_scm_qseecom_allowlist[] __maybe_unused = {
+ 	{ .compatible = "lenovo,yoga-slim7x" },
+ 	{ .compatible = "microsoft,arcata", },
+ 	{ .compatible = "microsoft,blackrock" },
++	{ .compatible = "microsoft,denali", },
+ 	{ .compatible = "microsoft,romulus13", },
+ 	{ .compatible = "microsoft,romulus15", },
+ 	{ .compatible = "qcom,hamoa-iot-evk" },
 
 -- 
 2.47.3
