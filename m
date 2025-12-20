@@ -1,72 +1,79 @@
-From: =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
-Date: Sat, 20 Dec 2025 01:22:04 +0100
-Subject: [PATCH v5 7/7] wifi: ath12k: Add support for disabling rfkill via
- devicetree
+From: Maud Spierings <maud_spierings@hotmail.com>
+Subject: [PATCH v3 0/3] arm64: dts: qcom: x1e80100-vivobook-s15: add more
+ missing features
+Date: Sat, 20 Dec 2025 12:38:56 +0100
+Message-Id: <20251220-asus_usbc_dp-v3-0-5e244d420d0f@hotmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20251220-surface-sp11-for-next-v5-7-16065bef8ef3@gmail.com>
-References: <20251220-surface-sp11-for-next-v5-0-16065bef8ef3@gmail.com>
-In-Reply-To: <20251220-surface-sp11-for-next-v5-0-16065bef8ef3@gmail.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Johannes Berg <johannes@sipsolutions.net>, 
- Lorenzo Bianconi <lorenzo@kernel.org>, 
- Maximilian Luz <luzmaximilian@gmail.com>, Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Jeff Johnson <jjohnson@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-wireless@vger.kernel.org, 
- platform-driver-x86@vger.kernel.org, ath12k@lists.infradead.org, 
- Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
- Dale Whinham <daleyo@gmail.com>, 
- =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766190155; l=1262;
- i=jerome.debretagne@gmail.com; s=20251217; h=from:subject:message-id;
- bh=o+2ygO1zvLsftpDj/dtrdmFTDVzHA+1Wm5SG6mbwRZw=;
- b=puDEyDrH298j7z4liMYX0YwZHegBdP1BrcSrveoBtN/lv9OuK3kUHcpM/2uU2GVvU40DhCqw6
- 1GNpYHPLvfhAJCNhfYU+0CILuvsG9oupHPmzIdL8kdaKQqgxheKFzbq
-X-Developer-Key: i=jerome.debretagne@gmail.com; a=ed25519;
- pk=DcPD9n3oDMsPkt+12tU96swmGb5H86cxt+yiEVcUEGk=
-X-Endpoint-Received: by B4 Relay for jerome.debretagne@gmail.com/20251217 with auth_id=580
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIANCKRmkC/12NzQ6CMBAGX4X0bE1/oKGefA9jSClbaSIUW2g0h
+ He34EHxON9mZmcUwFsI6JTNyEO0wbo+AT9kSLeqvwG2TWLECCuIoDlWYQrVFGpdNQMmjHDFcqa
+ FLFFSBg/GPrfc5fphD48pVcfv2NowOv/aXka6rludUkL39UgxwdI0OdRS8gLKc+vGTtn7UbsOr
+ anIfnQq/nSWdK1Lk25caGn2+rIsb9Xtudf+AAAA
+X-Change-ID: 20250614-asus_usbc_dp-0203a242c698
+To: Andrzej Hajda <andrzej.hajda@intel.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
+ Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
+ Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ Maud Spierings <maud_spierings@hotmail.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766230738; l=1498;
+ i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
+ bh=TGiVH1O1BaiBopdUw2gkpw7DmrxZfIrUFSr5F56AaSY=;
+ b=F8/YRwOlXoGGF5HmjbtgIHp/0i7lIYXo5TLYYwg8+F1iZG0IGp2fsyJ4YHYtN0xAKYFWweLEH
+ AviZ9MPR6JEBB8uWD1POJx0tpsfnkSXovMthf/fnVhob/c24RpHDl03
+X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
+ pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
+X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Dale Whinham <daleyo@gmail.com>
+There are still many missing features on this machine, add the ps8830
+retimers for display over usb-c, the simple bridge/HDMI port and set up
+to use IRIS.
 
-Some devices (e.g. Microsoft Surface Pro 11) indicate that the rfkill
-feature should be disabled by means of an ACPI bitflag.
+Currently IRIS gives a ETIMEDOUT, not sure what that is coming from.
 
-If ACPI is not being used (i.e. booting using a devicetree) then this
-property will not be read and therefore rfkill may be enabled and
-the ath12k will be hard-blocked with no way to disable it.
+lots of these patches are very strongly based on the work of other
+maintainers of these snapdragon machines, like the HDMI part on that of
+Neil Armstrong, many thanks to those who laid the baseline for me to
+follow.
 
-Add a devicetree property that allows to disable the rfkill feature.
-
-Signed-off-by: Dale Whinham <daleyo@gmail.com>
-Tested-by: Jérôme de Bretagne <jerome.debretagne@gmail.com>
-Signed-off-by: Jérôme de Bretagne <jerome.debretagne@gmail.com>
+Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
- drivers/net/wireless/ath/ath12k/core.c | 3 +++
- 1 file changed, 3 insertions(+)
+Changes in v3:
+- drop merged patches
+- drop nvmem patch as it wasn't tested properly and didn't seem to work
+- update tags
+- rebase on the latest next as there was a conflict
+- Link to v2: https://lore.kernel.org/r/20251116-asus_usbc_dp-v2-0-cc8f51136c9f@hotmail.com
 
-diff --git a/drivers/net/wireless/ath/ath12k/core.c b/drivers/net/wireless/ath/ath12k/core.c
-index cc352eef1939937ce902bee2fbd9737ca3ab5993..e10073bb975cfd2e9ee418edcc49d0d51cf93de1 100644
---- a/drivers/net/wireless/ath/ath12k/core.c
-+++ b/drivers/net/wireless/ath/ath12k/core.c
-@@ -77,6 +77,9 @@ static int ath12k_core_rfkill_config(struct ath12k_base *ab)
- 	if (ath12k_acpi_get_disable_rfkill(ab))
- 		return 0;
- 
-+	if (of_property_read_bool(ab->dev->of_node, "disable-rfkill"))
-+		return 0;
-+
- 	for (i = 0; i < ab->num_radios; i++) {
- 		ar = ab->pdevs[i].ar;
- 
+Changes in v2:
+- Fix the place of the rtmr regs to maintain alphabetical order
+- Link to v1: https://lore.kernel.org/r/20251101-asus_usbc_dp-v1-0-9fd4eb9935e8@hotmail.com
 
+---
+Maud Spierings (3):
+      arm64: dts: qcom: x1e80100-vivobook-s15: enable ps8830 retimers
+      arm64: dts: qcom: x1e80100-vivobook-s15: add HDMI port
+      arm64: dts: qcom: x1e80100-vivobook-s15: enable IRIS
+
+ .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 396 ++++++++++++++++++++-
+ 1 file changed, 388 insertions(+), 8 deletions(-)
+---
+base-commit: cc3aa43b44bdb43dfbac0fcb51c56594a11338a8
+change-id: 20250614-asus_usbc_dp-0203a242c698
+
+Best regards,
 -- 
-2.47.3
+Maud Spierings <maud_spierings@hotmail.com>
 
