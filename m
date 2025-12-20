@@ -1,11 +1,11 @@
 From: =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
-Date: Sat, 20 Dec 2025 16:26:29 +0100
-Subject: [PATCH v6 1/4] dt-bindings: arm: qcom: Document Microsoft Surface
- Pro 11
+Date: Sat, 20 Dec 2025 16:26:30 +0100
+Subject: [PATCH v6 2/4] firmware: qcom: scm: allow QSEECOM on Surface Pro
+ 11
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20251220-surface-sp11-for-next-v6-1-81f7451edb77@gmail.com>
+Message-Id: <20251220-surface-sp11-for-next-v6-2-81f7451edb77@gmail.com>
 References: <20251220-surface-sp11-for-next-v6-0-81f7451edb77@gmail.com>
 In-Reply-To: <20251220-surface-sp11-for-next-v6-0-81f7451edb77@gmail.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -23,63 +23,41 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
  Dale Whinham <daleyo@gmail.com>, 
  =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766244472; l=1715;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766244472; l=997;
  i=jerome.debretagne@gmail.com; s=20251217; h=from:subject:message-id;
- bh=adcMCekTMwA6DiDUgSju4pCxwPlTO2nkglFu0N6BA/g=;
- b=shgfsOS1fm08+GqW7IKtYrZolTZ4i07CrrUtB2xNo3yWhAFov1Gw3EbrKkEVj3c1RsMfr92tm
- 35ZtsFQ81TzBKtNHqltkZkQRZo3Pjb/AQfPDXU4db4aJ5RIndiWZyh/
+ bh=CNbXWtuQ7AggDKzwaLKJE5TiiiPe100NQahuSnOowsU=;
+ b=AMXf5Qstm/inbiie5fAjms4i/YPZ1dwa62O04DdEOOljs/5PwBg0LnkdF3OKEPitm2j8o+zDv
+ YF3cwb7BMqvAN9c7QQzVqn2CApJWL10BxMVYCRZGcHwBLnQuWfL6y+e
 X-Developer-Key: i=jerome.debretagne@gmail.com; a=ed25519;
  pk=DcPD9n3oDMsPkt+12tU96swmGb5H86cxt+yiEVcUEGk=
 X-Endpoint-Received: by B4 Relay for jerome.debretagne@gmail.com/20251217 with auth_id=580
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the compatibles for the Qualcomm-based Microsoft Surface Pro 11,
-using its Denali codename.
+From: Dale Whinham <daleyo@gmail.com>
 
-The LCD models are using the Qualcomm Snapdragon X1 Plus (X1P64100),
-the OLED ones are using the Qualcomm Snapdragon X1 Elite (X1E80100).
+Enables access to EFI variables on this machine.
 
-Due to the difference in how the built-in panel is being handled
-between the OLED variant and LCD one, it is required to have two
-separate DTBs, so document the compatible string for both variants.
-
+Signed-off-by: Dale Whinham <daleyo@gmail.com>
 Signed-off-by: Jérôme de Bretagne <jerome.debretagne@gmail.com>
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 ---
- Documentation/devicetree/bindings/arm/qcom.yaml | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ drivers/firmware/qcom/qcom_scm.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
-index d84bd3bca2010508a8225b9549d8c634efa06531..4e94776b8c4cd915d7779628c005a021d27aab63 100644
---- a/Documentation/devicetree/bindings/arm/qcom.yaml
-+++ b/Documentation/devicetree/bindings/arm/qcom.yaml
-@@ -1067,6 +1067,12 @@ properties:
-           - const: qcom,x1e78100
-           - const: qcom,x1e80100
- 
-+      - items:
-+          - const: microsoft,denali-lcd
-+          - const: microsoft,denali
-+          - const: qcom,x1p64100
-+          - const: qcom,x1e80100
-+
-       - items:
-           - enum:
-               - asus,vivobook-s15
-@@ -1089,6 +1095,11 @@ properties:
-           - const: qcom,hamoa-iot-som
-           - const: qcom,x1e80100
- 
-+      - items:
-+          - const: microsoft,denali-oled
-+          - const: microsoft,denali
-+          - const: qcom,x1e80100
-+
-       - items:
-           - enum:
-               - asus,zenbook-a14-ux3407qa-lcd
+diff --git a/drivers/firmware/qcom/qcom_scm.c b/drivers/firmware/qcom/qcom_scm.c
+index 1a6f85e463e06a12814614cea20719c90a371b69..3dabb04094f91811a430e84998d3c6c759b5c747 100644
+--- a/drivers/firmware/qcom/qcom_scm.c
++++ b/drivers/firmware/qcom/qcom_scm.c
+@@ -2007,6 +2007,7 @@ static const struct of_device_id qcom_scm_qseecom_allowlist[] __maybe_unused = {
+ 	{ .compatible = "lenovo,yoga-slim7x" },
+ 	{ .compatible = "microsoft,arcata", },
+ 	{ .compatible = "microsoft,blackrock" },
++	{ .compatible = "microsoft,denali", },
+ 	{ .compatible = "microsoft,romulus13", },
+ 	{ .compatible = "microsoft,romulus15", },
+ 	{ .compatible = "qcom,hamoa-iot-evk" },
 
 -- 
 2.47.3
