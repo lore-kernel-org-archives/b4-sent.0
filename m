@@ -1,120 +1,120 @@
-From: Dominique Martinet <asmadeus@codewreck.org>
-Date: Sat, 20 Dec 2025 08:33:21 +0900
-Subject: [PATCH] netfs: fix folio unlock collection end point
+From: =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
+Subject: [PATCH v5 0/7] Microsoft Surface Pro 11 support
+Date: Sat, 20 Dec 2025 01:21:57 +0100
+Message-Id: <20251220-surface-sp11-for-next-v5-0-16065bef8ef3@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251220-netfs_mmap_corruption-v1-1-da4a2ce87e18@codewreck.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBN0oJKuEhFiY80ik7EiiO6et
- PyL9x/IJEwZ+uoBoYsz77GEqSvwq4sLKZ5LA2psDKJWkY6Qp21zafK7yJmOIlSLZGwXgkfrodg
- kFPj+v8P4vh+XyAOgZwAAAA==
-X-Change-ID: 20251220-netfs_mmap_corruption-62e187ffc28c
-To: David Howells <dhowells@redhat.com>, Paulo Alcantara <pc@manguebit.org>, 
- Christian Schoenebeck <linux_oss@crudebyte.com>, 
- Christian Brauner <brauner@kernel.org>
-Cc: netfs@lists.linux.dev, linux-fsdevel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, v9fs@lists.linux.dev, 
- Dominique Martinet <asmadeus@codewreck.org>
-X-Mailer: b4 0.15-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3691;
- i=asmadeus@codewreck.org; h=from:subject:message-id;
- bh=bnehbcpLm5UV7kOLOAuC9015mdwwP/1OVmMXJJYp4+A=;
- b=owEBbQKS/ZANAwAKAatOm+xqmOZwAcsmYgBpReDZTHI58pNcDP7ONjbVTvPcCmbidQsITsxhZ
- tagjjNuBgWJAjMEAAEKAB0WIQT8g9txgG5a3TOhiE6rTpvsapjmcAUCaUXg2QAKCRCrTpvsapjm
- cJKFD/4gdgI+gIbj9zSnPNdgrT/kLxxed+Z3o5ZPyzY1G2mM8Y7QBfPOkC2DmDeNjv5X2+sU0OS
- Xu8Rfl4nFyvsIQ482o8zqxCF7ey03kKpxqru4+tNtp5XLVgRWWLLtS3axq74BN5uhUx2o5ZUdnl
- kcrdmWOYNwHhf9sKxNe+wUphHrPN412lZh9azCMc8rJwkEyD6lvFZkdHKmzTsVDPkNHSipBEVGB
- BlRM1lSkVavC4ZE8tg/W1S2AwhkYfzOTYnNJsV9bCqb+HbNx8jLiKc/4/62ZTA8bd3HOG8KrWE2
- eIMedY4hLUYa511NHTPyDXgg5w/4ZTk3JOU20Eh+y7wYpvXvWzeboMxRx3BWSNd3UNGLTw7cuXs
- xqLdW1EOAjUZKusZgsOrET/PJiB/xBxd8QE1Lo3Sgp8nBDBtZncEGbblebQVf5h1o5eh19HGQbp
- +hKpOQvnljMrWKtQ7d5VlG/nKQ1qT5DLg0eVcrXENVRFVm2jHxKjuDsOmIZnQuZWv7kPhsS79+6
- L+9mqYgadhE34xJ5t001x6Xu0zvp1DeQcTnJEr8x+Q+ZfvbKBO8JQ36Q4fysxLiMVZiI4s/EoNX
- qVtupRpWrv/QbbLK1FpvahYTTN1CTFvdphKnpaq+HU3i8e+UYkBDTtNGJSYRgvEs3bBxb+Eos9V
- Dk0IaxH0TUDXWhA==
-X-Developer-Key: i=asmadeus@codewreck.org; a=openpgp;
- fpr=B894379F662089525B3FB1B9333F1F391BBBB00A
-X-Endpoint-Received: by B4 Relay for asmadeus@codewreck.org/default with auth_id=435
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIACXsRWkC/43NQQ6DIBCF4asY1p1GQMR05T2aLgAHJaliwBIb4
+ 92Lrrprl/9L5puNRAwOI7kVGwmYXHR+yiEuBTGDmnoE1+UmrGSCMtpAfAWrDEKcKQXrA0y4LlC
+ zGjmTVmrOSb6dA1q3nu79kXtwcfHhfb5J/Fh/iYlDCY0UyhqpO65l24/KPa/Gj+QQU/WXUmVFa
+ mMbbqgoK/Wt7Pv+ASKZ4nwAAQAA
+X-Change-ID: 20251218-surface-sp11-for-next-626e327f7b33
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Johannes Berg <johannes@sipsolutions.net>, 
+ Lorenzo Bianconi <lorenzo@kernel.org>, 
+ Maximilian Luz <luzmaximilian@gmail.com>, Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Jeff Johnson <jjohnson@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-wireless@vger.kernel.org, 
+ platform-driver-x86@vger.kernel.org, ath12k@lists.infradead.org, 
+ Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
+ Dale Whinham <daleyo@gmail.com>, 
+ =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766190155; l=4338;
+ i=jerome.debretagne@gmail.com; s=20251217; h=from:subject:message-id;
+ bh=+CciBVMmXK8RVQ3AsM9uUz7HTD5wQc1eKok9OBg5Eag=;
+ b=u52ZKVtftt6PJMa6RlrN2Rjw0LqP83qxxnBf5Xuj14MIz4kx2Z7tM/MqtWKT+v1XrscZFilnq
+ 8O1h0JG1//zAsRXUuKz0MOBqJf8XYL99eblXKqZJmYlRB1DJqsILoKO
+X-Developer-Key: i=jerome.debretagne@gmail.com; a=ed25519;
+ pk=DcPD9n3oDMsPkt+12tU96swmGb5H86cxt+yiEVcUEGk=
+X-Endpoint-Received: by B4 Relay for jerome.debretagne@gmail.com/20251217 with auth_id=580
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-9p suffered from a corruption in mmap-heavy workloads such as compiling
-with clang (e.g. kernel build with `make LLVM=1`, failing with random
-errors on mmaped headers and clang segfaults)
+This series brings support for the Qualcomm-based Microsoft Surface
+Pro 11 covering both the OLED and LCD variants.
 
-David Howells identified a problem in the netfs trace of such a crash,
-below:
-> We unlocked page ix=00005 before doing the ZERO subreq that clears
-> the page tail.  That shouldn't have happened since the collection
-> point hasn't reached the end of the folio yet.
-
-netfs_collect_folio: R=00001b55 ix=00003 r=3000-4000 t=3000/5fb2
-netfs_folio: i=157f3 ix=00003-00003 read-done
-netfs_folio: i=157f3 ix=00003-00003 read-unlock
-netfs_collect_folio: R=00001b55 ix=00004 r=4000-5000 t=4000/5fb2
-netfs_folio: i=157f3 ix=00004-00004 read-done
-netfs_folio: i=157f3 ix=00004-00004 read-unlock
-netfs_collect_folio: R=00001b55 ix=00005 r=5000-5fb2 t=5000/5fb2
-netfs_folio: i=157f3 ix=00005-00005 read-done
-netfs_folio: i=157f3 ix=00005-00005 read-unlock
-...
-netfs_collect_stream: R=00001b55[0:] cto=5fb2 frn=ffffffff
-netfs_collect_state: R=00001b55 col=5fb2 cln=6000 n=c
-netfs_collect_stream: R=00001b55[0:] cto=5fb2 frn=ffffffff
-netfs_collect_state: R=00001b55 col=5fb2 cln=6000 n=8
-...
-netfs_sreq: R=00001b55[2] ZERO SUBMT f=000 s=5fb2 0/4e s=0 e=0
-netfs_sreq: R=00001b55[2] ZERO TERM  f=102 s=5fb2 4e/4e s=5 e=0
-
-This patch changes the end condition for collecting folios that have
-been read, from "is the IO over?" to "have we read up till the end of
-the folio?" (collected_to >= fend), which delays the read-unlock to the
-"ZERO CONSUM" step after the page tail has been zeroed
-
-Reported-by: Christian Schoenebeck <linux_oss@crudebyte.com>
-Link: https://lkml.kernel.org/r/2332946.iZASKD2KPV@weasel
-Fixes: e2d46f2ec332 ("netfs: Change the read result collector to only use one work item")
-Signed-off-by: Dominique Martinet <asmadeus@codewreck.org>
+Signed-off-by: Dale Whinham <daleyo@gmail.com>
+Signed-off-by: Jérôme de Bretagne <jerome.debretagne@gmail.com>
 ---
-A few notes out of order:
-- I don't really understand why this actually matter -- sure,
-  there'll be junk after the mmap region ends, but why does
-  this cause a bug? Since the folio is unlocked the zero fill operation
-  ends up zeroing the end of another page? Well, either way there's no
-  doubt that the early unlock was a problem...
-- I have no idea how to test that this doesn't break something else by
-  not unlocking a page that should be unlocked e.g. something that
-  wouldn't need zero-filling (partial refresh?) -- I don't *think* we
-  have anything like that, but I don't actually know, so pleae don't
-  trust me too much here... Nothing I normally test on 9p broke so it's
-  probably not too far off though.
+Changes in v5:
+- Move the OLED variant description to keep the logical order [Krzysztof]
+- Remove a T-b: tag as not applicable for a binding [Krzysztof]
+- Remove another T-b: tag already covered by authorship [Krzysztof]
+- Reference disable-rfkill in qcom,ath12k.yaml to fix dtbs_check failure [Krzysztof]
+- Remove erroneously copied Copyright lines [Krzysztof]
+- Add the R-b: tag from Dmitry for the aggregator_registry patch
+- Link to v4: https://lore.kernel.org/r/20251218-surface-sp11-for-next-v4-0-7bcf83c1504a@gmail.com
 
-This has been broken for about a year so I guess there's no great hurry
-at this point, but any extra pair of eyes would be appreciated...
+Changes in v4:
+- Re-order the denali entry in the aggregator_registry acpi_match table [Dmitry]
+- Improve the bindings by splitting the LCD and OLED variants into 2 entries [Konrad]
+- Enable i2c4 to make it accessible through i2c-tools [Konrad]
+- Document the addresses for i2c0 and i2c4 like in romulus.dtsi [Konrad]
+- Fix the clock-frequency for i2c0 based on DSDT/SSDT
+- Drop i2c5 which is not found in the DSDT after double-checking
+- Add the R-b: tag from Konrad for the SP11 device trees
+- Link to v3: https://lore.kernel.org/r/20251218-surface-sp11-for-next-v3-0-875afc7bd3b7@gmail.com
 
-(Christian S, I've tested as much as I could think of, but any extra
-validation would be great too if you have time!)
----
- fs/netfs/read_collect.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v3:
+- Update the compatible strings to document both the OLED and LCD variants
+- Move the disable-rfkill property into ieee80211.yaml [Rob,Krzysztof]
+- Reference commit c6a7c0b09d5f and detail the disable-rfkill patch description [Rob,Krzysztof]
+- Switch to the renamed hamoa.dtsi and hamoa-pmics.dtsi [Dale]
+- Improve the comments describing the 2 USB Type-C port location
+- Update the speaker definition to describe only 2-speakers [Konrad]
+- Drop output-low from the speaker definition [Konrad]
+- Enable i2c0 to make it accessible through i2c-tools [Konrad]
+- Delete a non-applicable comment about removable WLAN card [Konrad]
+- Re-order a few nodes and fix indentation issues [Konrad]
+- Squash one of the patches as suggested [Krzysztof]
+- Drop the NAKed patch patch about a dpcd link rate quirk [Dmitry]
+- Include the Reviewed-by: tags
+- Link to v2: https://lore.kernel.org/all/20251201011457.17422-1-daleyo@gmail.com/
 
-diff --git a/fs/netfs/read_collect.c b/fs/netfs/read_collect.c
-index a95e7aadafd072edbb0f1743e0020eaf65b7d1ed..7a0ffa675fb17aa7431c0fd6cc546deb0be0be22 100644
---- a/fs/netfs/read_collect.c
-+++ b/fs/netfs/read_collect.c
-@@ -137,7 +137,7 @@ static void netfs_read_unlock_folios(struct netfs_io_request *rreq,
- 		rreq->front_folio_order = order;
- 		fsize = PAGE_SIZE << order;
- 		fpos = folio_pos(folio);
--		fend = umin(fpos + fsize, rreq->i_size);
-+		fend = fpos + fsize;
- 
- 		trace_netfs_collect_folio(rreq, folio, fend, collected_to);
- 
+Changes in v2:
+  - Dropped ATNA30DW01 patch as it was merged.
+  - Split device tree into x1e (OLED)/x1p (LCD) specific *.dts files and move common code into x1-microsoft-denali.dtsi (patch 4).
+  - Device tree now enables higher external monitor refresh rates/resolutions (patch 4).
+  - Device tree now enables partially working audio output; requires alsa-ucm-conf and audioreach-topology definitions in userspace (patch 4).
+  - Replaced 'Work around bogus maximum link rate' with a quirk-based approach (patch 5).
+  - Improve the commit message about the disable-rfkill property in response to feedback (patch 6).
 
 ---
-base-commit: b10e94717f7e295d7ff6ce08249f7e31b630ef1b
-change-id: 20251220-netfs_mmap_corruption-62e187ffc28c
+Dale Whinham (4):
+      firmware: qcom: scm: allow QSEECOM on Surface Pro 11
+      platform/surface: aggregator_registry: Add Surface Pro 11 (QCOM)
+      arm64: dts: qcom: Add support for Surface Pro 11
+      wifi: ath12k: Add support for disabling rfkill via devicetree
+
+Jérôme de Bretagne (3):
+      dt-bindings: arm: qcom: Document Microsoft Surface Pro 11
+      dt-bindings: wireless: ieee80211: Add disable-rfkill property
+      dt-bindings: wireless: ath12k: Allow disable-rfkill property
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   11 +
+ .../bindings/net/wireless/ieee80211.yaml           |    6 +
+ .../bindings/net/wireless/qcom,ath12k.yaml         |    5 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    4 +
+ arch/arm64/boot/dts/qcom/x1-microsoft-denali.dtsi  | 1324 ++++++++++++++++++++
+ .../dts/qcom/x1e80100-microsoft-denali-oled.dts    |   19 +
+ .../boot/dts/qcom/x1p64100-microsoft-denali.dts    |   15 +
+ drivers/firmware/qcom/qcom_scm.c                   |    1 +
+ drivers/net/wireless/ath/ath12k/core.c             |    3 +
+ .../platform/surface/surface_aggregator_registry.c |   18 +
+ 10 files changed, 1406 insertions(+)
+---
+base-commit: 8f0b4cce4481fb22653697cced8d0d04027cb1e8
+change-id: 20251218-surface-sp11-for-next-626e327f7b33
 
 Best regards,
 -- 
-Dominique Martinet <asmadeus@codewreck.org>
+Jérôme de Bretagne <jerome.debretagne@gmail.com>
 
