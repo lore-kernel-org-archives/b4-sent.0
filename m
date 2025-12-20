@@ -1,16 +1,13 @@
 From: Maud Spierings <maud_spierings@hotmail.com>
-Subject: [PATCH v3 0/3] arm64: dts: qcom: x1e80100-vivobook-s15: add more
- missing features
-Date: Sat, 20 Dec 2025 12:38:56 +0100
-Message-Id: <20251220-asus_usbc_dp-v3-0-5e244d420d0f@hotmail.com>
+Date: Sat, 20 Dec 2025 12:38:57 +0100
+Subject: [PATCH v3 1/3] arm64: dts: qcom: x1e80100-vivobook-s15: enable
+ ps8830 retimers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANCKRmkC/12NzQ6CMBAGX4X0bE1/oKGefA9jSClbaSIUW2g0h
- He34EHxON9mZmcUwFsI6JTNyEO0wbo+AT9kSLeqvwG2TWLECCuIoDlWYQrVFGpdNQMmjHDFcqa
- FLFFSBg/GPrfc5fphD48pVcfv2NowOv/aXka6rludUkL39UgxwdI0OdRS8gLKc+vGTtn7UbsOr
- anIfnQq/nSWdK1Lk25caGn2+rIsb9Xtudf+AAAA
-X-Change-ID: 20250614-asus_usbc_dp-0203a242c698
+Message-Id: <20251220-asus_usbc_dp-v3-1-5e244d420d0f@hotmail.com>
+References: <20251220-asus_usbc_dp-v3-0-5e244d420d0f@hotmail.com>
+In-Reply-To: <20251220-asus_usbc_dp-v3-0-5e244d420d0f@hotmail.com>
 To: Andrzej Hajda <andrzej.hajda@intel.com>, 
  Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
  Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
@@ -24,56 +21,431 @@ To: Andrzej Hajda <andrzej.hajda@intel.com>,
 Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Maud Spierings <maud_spierings@hotmail.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766230738; l=1498;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766230738; l=9057;
  i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
- bh=TGiVH1O1BaiBopdUw2gkpw7DmrxZfIrUFSr5F56AaSY=;
- b=F8/YRwOlXoGGF5HmjbtgIHp/0i7lIYXo5TLYYwg8+F1iZG0IGp2fsyJ4YHYtN0xAKYFWweLEH
- AviZ9MPR6JEBB8uWD1POJx0tpsfnkSXovMthf/fnVhob/c24RpHDl03
+ bh=paRbq4TP07QRE/JaL7Ivl9Q/DcsvlI96XxdrQtVUhB8=;
+ b=iSiVAXhjL5obBTlBuoDi7TzAOJVA9Kn1RbR3cy1On7e8gXHK4GDNpHYLnVdLD49KB2UNGKQSv
+ BlmSvuw6SGsAHXiwLqDpKD1FX0ovI9A1i2dzXp0T4ZjQNP95FHbX4+n
 X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
  pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
 X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There are still many missing features on this machine, add the ps8830
-retimers for display over usb-c, the simple bridge/HDMI port and set up
-to use IRIS.
+The Asus vivobook s15 has two usb type c ports on the left side, these
+use parade ps8830 retimers like the others, enable them to also enable
+dp altmode
 
-Currently IRIS gives a ETIMEDOUT, not sure what that is coming from.
-
-lots of these patches are very strongly based on the work of other
-maintainers of these snapdragon machines, like the HDMI part on that of
-Neil Armstrong, many thanks to those who laid the baseline for me to
-follow.
-
+Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
-Changes in v3:
-- drop merged patches
-- drop nvmem patch as it wasn't tested properly and didn't seem to work
-- update tags
-- rebase on the latest next as there was a conflict
-- Link to v2: https://lore.kernel.org/r/20251116-asus_usbc_dp-v2-0-cc8f51136c9f@hotmail.com
+ .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 310 ++++++++++++++++++++-
+ 1 file changed, 302 insertions(+), 8 deletions(-)
 
-Changes in v2:
-- Fix the place of the rtmr regs to maintain alphabetical order
-- Link to v1: https://lore.kernel.org/r/20251101-asus_usbc_dp-v1-0-9fd4eb9935e8@hotmail.com
+diff --git a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
+index d4df21de0d95..ea8ad67e511f 100644
+--- a/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
++++ b/arch/arm64/boot/dts/qcom/x1e80100-asus-vivobook-s15.dts
+@@ -69,7 +69,15 @@ port@1 {
+ 					reg = <1>;
+ 
+ 					pmic_glink_ss0_ss_in: endpoint {
+-						remote-endpoint = <&usb_1_ss0_qmpphy_out>;
++						remote-endpoint = <&retimer_ss0_ss_out>;
++					};
++				};
++
++				port@2 {
++					reg = <2>;
++
++					pmic_glink_ss0_con_sbu_in: endpoint {
++						remote-endpoint = <&retimer_ss0_con_sbu_out>;
+ 					};
+ 				};
+ 			};
+@@ -98,7 +106,15 @@ port@1 {
+ 					reg = <1>;
+ 
+ 					pmic_glink_ss1_ss_in: endpoint {
+-						remote-endpoint = <&usb_1_ss1_qmpphy_out>;
++						remote-endpoint = <&retimer_ss1_ss_out>;
++					};
++				};
++
++				port@2 {
++					reg = <2>;
++
++					pmic_glink_ss1_con_sbu_in: endpoint {
++						remote-endpoint = <&retimer_ss1_con_sbu_out>;
+ 					};
+ 				};
+ 			};
+@@ -147,6 +163,102 @@ vreg_nvme: regulator-nvme {
+ 		regulator-boot-on;
+ 	};
+ 
++	vreg_rtmr0_1p15: regulator-rtmr0-1p15 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_RTMR0_1P15";
++		regulator-min-microvolt = <1150000>;
++		regulator-max-microvolt = <1150000>;
++
++		gpio = <&pmc8380_5_gpios 8 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&usb0_pwr_1p15_reg_en>;
++		pinctrl-names = "default";
++
++		regulator-boot-on;
++	};
++
++	vreg_rtmr0_1p8: regulator-rtmr0-1p8 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_RTMR0_1P8";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++
++		gpio = <&pm8550ve_9_gpios 8 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&usb0_1p8_reg_en>;
++		pinctrl-names = "default";
++
++		regulator-boot-on;
++	};
++
++	vreg_rtmr0_3p3: regulator-rtmr0-3p3 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_RTMR0_3P3";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++
++		gpio = <&pm8550_gpios 11 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&usb0_3p3_reg_en>;
++		pinctrl-names = "default";
++
++		regulator-boot-on;
++	};
++
++	vreg_rtmr1_1p15: regulator-rtmr1-1p15 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_RTMR1_1P15";
++		regulator-min-microvolt = <1150000>;
++		regulator-max-microvolt = <1150000>;
++
++		gpio = <&tlmm 188 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&usb1_pwr_1p15_reg_en>;
++		pinctrl-names = "default";
++
++		regulator-boot-on;
++	};
++
++	vreg_rtmr1_1p8: regulator-rtmr1-1p8 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_RTMR1_1P8";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++
++		gpio = <&tlmm 175 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&usb1_pwr_1p8_reg_en>;
++		pinctrl-names = "default";
++
++		regulator-boot-on;
++	};
++
++	vreg_rtmr1_3p3: regulator-rtmr1-3p3 {
++		compatible = "regulator-fixed";
++
++		regulator-name = "VREG_RTMR1_3P3";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++
++		gpio = <&tlmm 186 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		pinctrl-0 = <&usb1_pwr_3p3_reg_en>;
++		pinctrl-names = "default";
++
++		regulator-boot-on;
++	};
++
+ 	vph_pwr: regulator-vph-pwr {
+ 		compatible = "regulator-fixed";
+ 
+@@ -506,15 +618,62 @@ touchpad@15 {
+ &i2c1 {
+ 	clock-frequency = <400000>;
+ 	status = "okay";
+-
+-	/* PS8830 USB4 Retimer? @ 0x8 */
+ };
+ 
+ &i2c3 {
+ 	clock-frequency = <400000>;
+ 	status = "okay";
+ 
+-	/* PS8830 USB4 Retimer? @ 0x8 */
++	typec-mux@8 {
++		compatible = "parade,ps8830";
++		reg = <0x08>;
++
++		clocks = <&rpmhcc RPMH_RF_CLK3>;
++
++		vdd-supply = <&vreg_rtmr0_1p15>;
++		vdd33-supply = <&vreg_rtmr0_3p3>;
++		vdd33-cap-supply = <&vreg_rtmr0_3p3>;
++		vddar-supply = <&vreg_rtmr0_1p15>;
++		vddat-supply = <&vreg_rtmr0_1p15>;
++		vddio-supply = <&vreg_rtmr0_1p8>;
++
++		reset-gpios = <&pm8550_gpios 10 GPIO_ACTIVE_LOW>;
++
++		pinctrl-0 = <&rtmr0_default>;
++		pinctrl-names = "default";
++
++		orientation-switch;
++		retimer-switch;
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port@0 {
++				reg = <0>;
++
++				retimer_ss0_ss_out: endpoint {
++					remote-endpoint = <&pmic_glink_ss0_ss_in>;
++				};
++			};
++
++			port@1 {
++				reg = <1>;
++
++				retimer_ss0_ss_in: endpoint {
++					remote-endpoint = <&usb_1_ss0_qmpphy_out>;
++				};
++			};
++
++			port@2 {
++				reg = <2>;
++
++				retimer_ss0_con_sbu_out: endpoint {
++					remote-endpoint = <&pmic_glink_ss0_con_sbu_in>;
++				};
++			};
++		};
++	};
+ };
+ 
+ &i2c5 {
+@@ -583,13 +742,78 @@ &i2c7 {
+ 	clock-frequency = <400000>;
+ 	status = "okay";
+ 
+-	/* PS8830 USB4 Retimer? @ 0x8 */
++	typec-mux@8 {
++		compatible = "parade,ps8830";
++		reg = <0x8>;
++
++		clocks = <&rpmhcc RPMH_RF_CLK4>;
++
++		vdd-supply = <&vreg_rtmr1_1p15>;
++		vdd33-supply = <&vreg_rtmr1_3p3>;
++		vdd33-cap-supply = <&vreg_rtmr1_3p3>;
++		vddar-supply = <&vreg_rtmr1_1p15>;
++		vddat-supply = <&vreg_rtmr1_1p15>;
++		vddio-supply = <&vreg_rtmr1_1p8>;
++
++		reset-gpios = <&tlmm 176 GPIO_ACTIVE_LOW>;
++
++		pinctrl-0 = <&rtmr1_default>;
++		pinctrl-names = "default";
++
++		retimer-switch;
++		orientation-switch;
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			port@0 {
++				reg = <0>;
++
++				retimer_ss1_ss_out: endpoint {
++					remote-endpoint = <&pmic_glink_ss1_ss_in>;
++				};
++			};
++
++			port@1 {
++				reg = <1>;
++
++				retimer_ss1_ss_in: endpoint {
++					remote-endpoint = <&usb_1_ss1_qmpphy_out>;
++				};
++			};
++
++			port@2 {
++				reg = <2>;
++
++				retimer_ss1_con_sbu_out: endpoint {
++					remote-endpoint = <&pmic_glink_ss1_con_sbu_in>;
++				};
++			};
++		};
++	};
+ };
+ 
+ &mdss {
+ 	status = "okay";
+ };
+ 
++&mdss_dp0 {
++	status = "okay";
++};
++
++&mdss_dp0_out {
++	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
++};
++
++&mdss_dp1 {
++	status = "okay";
++};
++
++&mdss_dp1_out {
++	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
++};
++
+ &mdss_dp3 {
+ 	/delete-property/ #sound-dai-cells;
+ 
+@@ -683,6 +907,37 @@ &pcie6a_phy {
+ 	status = "okay";
+ };
+ 
++&pm8550_gpios {
++	rtmr0_default: rtmr0-reset-n-active-state {
++		pins = "gpio10";
++		function = "normal";
++		power-source = <1>; /* 1.8V */
++		bias-disable;
++		input-disable;
++		output-enable;
++	};
++
++	usb0_3p3_reg_en: usb0-3p3-reg-en-state {
++		pins = "gpio11";
++		function = "normal";
++		power-source = <1>; /* 1.8V */
++		bias-disable;
++		input-disable;
++		output-enable;
++	};
++};
++
++&pm8550ve_9_gpios {
++	usb0_1p8_reg_en: usb0-1p8-reg-en-state {
++		pins = "gpio8";
++		function = "normal";
++		power-source = <1>; /* 1.8V */
++		bias-disable;
++		input-disable;
++		output-enable;
++	};
++};
++
+ &pmc8380_3_gpios {
+ 	edp_bl_en: edp-bl-en-state {
+ 		pins = "gpio4";
+@@ -695,6 +950,17 @@ edp_bl_en: edp-bl-en-state {
+ 	};
+ };
+ 
++&pmc8380_5_gpios {
++	usb0_pwr_1p15_reg_en: usb0-pwr-1p15-reg-en-state {
++		pins = "gpio8";
++		function = "normal";
++		power-source = <1>; /* 1.8V */
++		bias-disable;
++		input-disable;
++		output-enable;
++	};
++};
++
+ &qupv3_0 {
+ 	status = "okay";
+ };
+@@ -840,12 +1106,40 @@ wake-n-pins {
+ 		};
+ 	};
+ 
++	rtmr1_default: rtmr1-reset-n-active-state {
++		pins = "gpio176";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-pull-up;
++	};
++
+ 	tpad_default: tpad-default-state {
+ 		pins = "gpio3";
+ 		function = "gpio";
+ 		bias-disable;
+ 	};
+ 
++	usb1_pwr_1p15_reg_en: usb1-pwr-1p15-reg-en-state {
++		pins = "gpio188";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-pull-up;
++	};
++
++	usb1_pwr_1p8_reg_en: usb1-pwr-1p8-reg-en-state {
++		pins = "gpio175";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-pull-up;
++	};
++
++	usb1_pwr_3p3_reg_en: usb1-pwr-3p3-reg-en-state {
++		pins = "gpio186";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-pull-up;
++	};
++
+ 	wcn_bt_en: wcn-bt-en-state {
+ 		pins = "gpio116";
+ 		function = "gpio";
+@@ -914,7 +1208,7 @@ &usb_1_ss0_dwc3_hs {
+ };
+ 
+ &usb_1_ss0_qmpphy_out {
+-	remote-endpoint = <&pmic_glink_ss0_ss_in>;
++	remote-endpoint = <&retimer_ss0_ss_in>;
+ };
+ 
+ &usb_1_ss1_hsphy {
+@@ -946,7 +1240,7 @@ &usb_1_ss1_dwc3_hs {
+ };
+ 
+ &usb_1_ss1_qmpphy_out {
+-	remote-endpoint = <&pmic_glink_ss1_ss_in>;
++	remote-endpoint = <&retimer_ss1_ss_in>;
+ };
+ 
+ &usb_2 {
 
----
-Maud Spierings (3):
-      arm64: dts: qcom: x1e80100-vivobook-s15: enable ps8830 retimers
-      arm64: dts: qcom: x1e80100-vivobook-s15: add HDMI port
-      arm64: dts: qcom: x1e80100-vivobook-s15: enable IRIS
-
- .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 396 ++++++++++++++++++++-
- 1 file changed, 388 insertions(+), 8 deletions(-)
----
-base-commit: cc3aa43b44bdb43dfbac0fcb51c56594a11338a8
-change-id: 20250614-asus_usbc_dp-0203a242c698
-
-Best regards,
 -- 
-Maud Spierings <maud_spierings@hotmail.com>
+2.52.0
 
