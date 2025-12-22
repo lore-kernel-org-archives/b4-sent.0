@@ -1,111 +1,155 @@
-From: Peter Hutterer <peter.hutterer@who-t.net>
-Date: Mon, 22 Dec 2025 09:43:37 +1000
-Subject: [PATCH v2 4/4] selftests/hid: add a test for the Digitizer/Button
- Type pressurepad
+From: Cryolitia PukNgae <cryolitia@uniontech.com>
+Date: Mon, 22 Dec 2025 18:51:39 +0800
+Subject: [PATCH] hwmon: (gpd-fan) add support for Micro PC 2
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251222-wip-hid-pressurepad-v2-4-054ac9689bb7@who-t.net>
-References: <20251222-wip-hid-pressurepad-v2-0-054ac9689bb7@who-t.net>
-In-Reply-To: <20251222-wip-hid-pressurepad-v2-0-054ac9689bb7@who-t.net>
-To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>, 
- Shuah Khan <shuah@kernel.org>
-Cc: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- linux-input@vger.kernel.org, linux-kselftest@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Vadim Klishko <vadim@cirque.com>, 
- Peter Hutterer <peter.hutterer@who-t.net>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766360621; l=5561;
- i=peter.hutterer@who-t.net; s=20251222; h=from:subject:message-id;
- bh=j0qjZKwtNCCu5/YF3Pfm0aG8auUBK2LU4XnpWcX86SM=;
- b=5HPb77NTJCuJUrI8Fn6q1CovxvLMLMCWKWTaQuOhX9nyCuXuNpmTatCt7dBkrl+27MnoWp84z
- izgIrMvovXrADD6mRLuf++19y000n5mtL5vYvVZ6NGNFbintzIjNIol
-X-Developer-Key: i=peter.hutterer@who-t.net; a=ed25519;
- pk=QoL66HDbFudb9Xt36p2XxsSohZSHVHesRR9c0pI28a4=
-X-Endpoint-Received: by B4 Relay for peter.hutterer@who-t.net/20251222 with auth_id=582
+Message-Id: <20251222-mpc2-v1-1-695d8d351cc1@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIALoiSWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1NDIyMj3dyCZCNdo8QkwyTjJANzM0tjJaDSgqLUtMwKsDHRsbW1AFEuo6Z
+ WAAAA
+X-Change-ID: 20251222-mpc2-2ab1b3b07693
+To: Guenter Roeck <linux@roeck-us.net>, Jonathan Corbet <corbet@lwn.net>
+Cc: linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, zhanjun@uniontech.com, 
+ niecheng1@uniontech.com, kylon <3252255+kylon@users.noreply.github.com>, 
+ Cryolitia PukNgae <cryolitia@uniontech.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766400699; l=3503;
+ i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
+ bh=nv5ngPCWNWl1pWZK/Jsrxlg5PBarThSYyvwaOoZoOns=;
+ b=dUI8ap2n210H2jIH6foW8oZ8uJ0m1WIRoV4sc9uvFbUH1MM5LrSnpO+cZQidzg1s43cz3S81w
+ S6PVn0xqJK9ALMUa+O+/ZQtVEPiCjcxyI86VlYb1VYxXvRH57QDbs0E
+X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
+ pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
+X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-We have to resort to a bit of a hack: python-libevdev gets the
-properties from libevdev at module init time. If libevdev hasn't been
-rebuilt with the new property it won't be automatically populated. So we
-hack around this by constructing the property manually.
+GPD Micro PC 2 is a mobile productivity device with 7-inch screen and
+abundant ports.[1]
 
-Signed-off-by: Peter Hutterer <peter.hutterer@who-t.net>
+Link: https://www.gpd.hk/gpdmicropc2345345345 #1
+Co-developed-by: kylon <3252255+kylon@users.noreply.github.com>
+Signed-off-by: kylon <3252255+kylon@users.noreply.github.com>
+Tested-by: kylon <3252255+kylon@users.noreply.github.com>
+Link: https://github.com/Cryolitia/gpd-fan-driver/pull/23
+Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
- .../testing/selftests/hid/tests/test_multitouch.py | 39 +++++++++++++++++++---
- 1 file changed, 35 insertions(+), 4 deletions(-)
+ Documentation/hwmon/gpd-fan.rst |  3 +++
+ drivers/hwmon/gpd-fan.c         | 27 ++++++++++++++++++++++++++-
+ 2 files changed, 29 insertions(+), 1 deletion(-)
 
-diff --git a/tools/testing/selftests/hid/tests/test_multitouch.py b/tools/testing/selftests/hid/tests/test_multitouch.py
-index a06a087f00b6991f7514adf7f8c713bef1a43563..fa4fb2054bd4febb1d2497f2787944f538b27889 100644
---- a/tools/testing/selftests/hid/tests/test_multitouch.py
-+++ b/tools/testing/selftests/hid/tests/test_multitouch.py
-@@ -979,15 +979,36 @@ class BaseTest:
-             assert libevdev.InputEvent(libevdev.EV_ABS.ABS_MT_ORIENTATION, 90) in events
+diff --git a/Documentation/hwmon/gpd-fan.rst b/Documentation/hwmon/gpd-fan.rst
+index 0b56b70e6264..29527a77fe88 100644
+--- a/Documentation/hwmon/gpd-fan.rst
++++ b/Documentation/hwmon/gpd-fan.rst
+@@ -28,6 +28,7 @@ Currently the driver supports the following handhelds:
+  - GPD Win Max 2 2025 (HX370)
+  - GPD Win 4 (6800U)
+  - GPD Win 4 (7840U)
++ - GPD Micro PC 2
  
-     class TestPTP(TestWin8Multitouch):
-+        def test_buttontype(self):
-+            """Check for the right ButtonType."""
-+            uhdev = self.uhdev
-+            assert uhdev is not None
-+            evdev = uhdev.get_evdev()
-+
-+            # If libevdev.so is not yet compiled with INPUT_PROP_PRESSUREPAD
-+            # python-libevdev won't have it either, let's fake it
-+            if not getattr(libevdev, "INPUT_PROP_PRESSUREPAD", None):
-+                prop = libevdev.InputProperty(name="INPUT_PROP_PRESSUREPAD", value=0x7)
-+                libevdev.INPUT_PROP_PRESSUREPAD = prop
-+                libevdev.props.append(prop)
-+
-+            if uhdev.buttontype == HIDButtonType.CLICKPAD:
-+                assert libevdev.INPUT_PROP_BUTTONPAD in evdev.properties
-+            elif uhdev.buttontype == HIDButtonType.PRESSUREPAD:
-+                assert libevdev.INPUT_PROP_PRESSUREPAD in evdev.properties
-+            else:
-+                assert libevdev.INPUT_PROP_PRESSUREPAD not in evdev.properties
-+                assert libevdev.INPUT_PROP_BUTTONPAD not in evdev.properties
-+
-         def test_ptp_buttons(self):
-             """check for button reliability.
--            There are 2 types of touchpads: the click pads and the pressure pads.
--            Each should reliably report the BTN_LEFT events.
-+            There are 3 types of touchpads: click pads + pressure pads and
-+            those with discrete buttons. Each should reliably report the BTN_LEFT events.
-             """
-             uhdev = self.uhdev
-             evdev = uhdev.get_evdev()
+ Module parameters
+ -----------------
+@@ -50,6 +51,8 @@ gpd_fan_board
+        - GPD Win Mini (HX370)
+        - GPD Pocket 4
+        - GPD Duo
++   - mpc2
++       - GPD Micro PC 2
  
--            if uhdev.buttontype == HIDButtonType.CLICKPAD:
-+            if uhdev.buttontype in [HIDButtonType.CLICKPAD, HIDButtonType.PRESSUREPAD]:
-                 r = uhdev.event(click=True)
-                 events = uhdev.next_sync_events()
-                 self.debug_reports(r, uhdev, events)
-@@ -999,7 +1020,7 @@ class BaseTest:
-                 self.debug_reports(r, uhdev, events)
-                 assert libevdev.InputEvent(libevdev.EV_KEY.BTN_LEFT, 0) in events
-                 assert evdev.value[libevdev.EV_KEY.BTN_LEFT] == 0
--            else:
-+            elif uhdev.buttontype == HIDButtonType.DISCRETE_BUTTONS:
-                 r = uhdev.event(left=True)
-                 events = uhdev.next_sync_events()
-                 self.debug_reports(r, uhdev, events)
-@@ -2062,6 +2083,16 @@ class Testite_06cb_2968(BaseTest.TestPTP):
-         )
+ Sysfs entries
+ -------------
+diff --git a/drivers/hwmon/gpd-fan.c b/drivers/hwmon/gpd-fan.c
+index 237f496c4862..1729729b135f 100644
+--- a/drivers/hwmon/gpd-fan.c
++++ b/drivers/hwmon/gpd-fan.c
+@@ -31,6 +31,7 @@ enum gpd_board {
+ 	win4_6800u,
+ 	win_max_2,
+ 	duo,
++	mpc2,
+ };
  
+ enum FAN_PWM_ENABLE {
+@@ -106,6 +107,18 @@ static struct gpd_fan_drvdata gpd_wm2_drvdata = {
+ 	.pwm_max		= 184,
+ };
  
-+class Testven_0488_108c(BaseTest.TestPTP):
-+    def create_device(self):
-+        return PTP(
-+            "uhid test ven_0488_108c",
-+            rdesc="05 01 09 02 a1 01 85 06 09 01 a1 00 05 09 19 01 29 03 15 00 25 01 95 03 75 01 81 02 95 01 75 05 81 03 05 01 09 30 09 31 09 38 15 81 25 7f 75 08 95 03 81 06 c0 c0 05 0d 09 05 a1 01 85 01 05 0d 09 22 a1 02 15 00 25 01 09 47 09 42 95 02 75 01 81 02 95 01 75 03 25 05 09 51 81 02 81 03 05 01 15 00 26 ba 0d 75 10 55 0e 65 11 09 30 35 00 46 d0 05 95 01 81 02 26 d0 06 46 bb 02 09 31 81 02 05 0d 95 01 75 10 26 ff 7f 46 ff 7f 09 30 81 02 c0 05 0d 09 22 a1 02 15 00 25 01 09 47 09 42 95 02 75 01 81 02 95 01 75 03 25 05 09 51 81 02 81 03 05 01 15 00 26 ba 0d 75 10 55 0e 65 11 09 30 35 00 46 d0 05 95 01 81 02 26 d0 06 46 bb 02 09 31 81 02 05 0d 95 01 75 10 26 ff 7f 46 ff 7f 09 30 81 02 c0 05 0d 09 22 a1 02 15 00 25 01 09 47 09 42 95 02 75 01 81 02 95 01 75 03 25 05 09 51 81 02 81 03 05 01 15 00 26 ba 0d 75 10 55 0e 65 11 09 30 35 00 46 d0 05 95 01 81 02 26 d0 06 46 bb 02 09 31 81 02 05 0d 95 01 75 10 26 ff 7f 46 ff 7f 09 30 81 02 c0 55 0c 66 01 10 47 ff ff 00 00 27 ff ff 00 00 75 10 95 01 05 0d 09 56 81 02 09 54 25 05 95 01 75 08 81 02 05 09 09 01 25 01 75 01 95 01 81 02 95 07 81 03 05 0d 85 02 09 55 75 08 95 01 25 05 b1 02 09 59 b1 02 06 00 ff 85 03 09 c5 15 00 26 ff 00 75 08 96 00 01 b1 02 05 0e 09 01 a1 02 85 13 09 23 15 00 25 64 75 08 95 01 b1 02 c0 c0 05 0d 09 0e a1 01 85 04 09 22 a1 02 09 52 15 00 25 0a 75 08 95 01 b1 02 c0 09 22 a1 00 85 05 09 57 09 58 75 01 95 02 25 01 b1 02 95 06 b1 03 c0 c0 06 01 ff 09 02 a1 01 09 00 85 07 15 00 26 ff 00 75 08 96 12 02 b1 02 c0 06 00 ff 09 01 a1 01 85 0d 15 00 26 ff 00 75 08 95 11 09 01 81 02 09 01 91 02 c0 05 0e 09 01 a1 01 85 11 09 35 15 00 26 ff 00 75 08 95 17 b1 02 c0 06 81 ff 09 01 a1 01 09 20 85 17 15 00 26 ff 00 75 08 95 3f 09 01 81 02 09 01 91 02 c0",
-+            input_info=(0x18, 0x0488, 0x108C),
-+            buttontype=HIDButtonType.PRESSUREPAD,
-+        )
++static struct gpd_fan_drvdata gpd_mpc2_drvdata = {
++	.board_name		= "mpc2",
++	.board			= mpc2,
 +
++	.addr_port		= 0x4E,
++	.data_port		= 0x4F,
++	.manual_control_enable	= 0x047A,
++	.rpm_read		= 0x0476,
++	.pwm_write		= 0x047A,
++	.pwm_max		= 244,
++};
 +
- class Testn_trig_1b96_0c01(BaseTest.TestWin8Multitouch):
-     def create_device(self):
-         return Digitizer(
+ static const struct dmi_system_id dmi_table[] = {
+ 	{
+ 		// GPD Win Mini
+@@ -212,11 +225,19 @@ static const struct dmi_system_id dmi_table[] = {
+ 		},
+ 		.driver_data = &gpd_win_mini_drvdata,
+ 	},
++	{
++		// GPD Micro PC 2
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "GPD"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "G1688-08"),
++		},
++		.driver_data = &gpd_mpc2_drvdata,
++	},
+ 	{}
+ };
+ 
+ static const struct gpd_fan_drvdata *gpd_module_drvdata[] = {
+-	&gpd_win_mini_drvdata, &gpd_win4_drvdata, &gpd_wm2_drvdata, NULL
++	&gpd_win_mini_drvdata, &gpd_win4_drvdata, &gpd_wm2_drvdata, &gpd_mpc2_drvdata, NULL
+ };
+ 
+ // Helper functions to handle EC read/write
+@@ -295,6 +316,7 @@ static int gpd_read_rpm(void)
+ 	case win4_6800u:
+ 	case win_mini:
+ 	case duo:
++	case mpc2:
+ 		return gpd_generic_read_rpm();
+ 	case win_max_2:
+ 		return gpd_wm2_read_rpm();
+@@ -321,6 +343,7 @@ static int gpd_read_pwm(void)
+ 	case win_mini:
+ 	case duo:
+ 	case win4_6800u:
++	case mpc2:
+ 		switch (gpd_driver_priv.pwm_enable) {
+ 		case DISABLE:
+ 			return 255;
+@@ -376,6 +399,7 @@ static int gpd_write_pwm(u8 val)
+ 	case win_mini:
+ 	case win4_6800u:
+ 	case win_max_2:
++	case mpc2:
+ 		gpd_generic_write_pwm(val);
+ 		break;
+ 	}
+@@ -443,6 +467,7 @@ static void gpd_set_pwm_enable(enum FAN_PWM_ENABLE enable)
+ 	switch (gpd_driver_priv.drvdata->board) {
+ 	case win_mini:
+ 	case win4_6800u:
++	case mpc2:
+ 		gpd_win_mini_set_pwm_enable(enable);
+ 		break;
+ 	case duo:
 
+---
+base-commit: c6c80820ac5d845c19c4de2e6054e7c246017044
+change-id: 20251222-mpc2-2ab1b3b07693
+
+Best regards,
 -- 
-2.51.1
+Cryolitia PukNgae <cryolitia@uniontech.com>
 
