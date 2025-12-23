@@ -1,10 +1,10 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Tue, 23 Dec 2025 05:37:11 +0000
-Subject: [PATCH v2 3/4] arm64: dts: amlogic: Add S7 Reset Controller
+Date: Tue, 23 Dec 2025 05:37:12 +0000
+Subject: [PATCH v2 4/4] arm64: dts: amlogic: Add S7D Reset Controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251223-reset-s6-s7-s7d-v2-3-958f341449f1@amlogic.com>
+Message-Id: <20251223-reset-s6-s7-s7d-v2-4-958f341449f1@amlogic.com>
 References: <20251223-reset-s6-s7-s7d-v2-0-958f341449f1@amlogic.com>
 In-Reply-To: <20251223-reset-s6-s7-s7d-v2-0-958f341449f1@amlogic.com>
 To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
@@ -17,38 +17,38 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766468230; l=4612;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766468230; l=4875;
  i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=Fr+n33k6HHrDopySr/XnGf+wJrkcpny3tUyJ6cnpMXA=;
- b=jS+mm9Z3V5aX70iBZPI2HiRzkuST9EuPzGBDoFmEhtCZ3dtktFrr8/9pNYxL64B853573PBk2
- znUSLGqsdpgAlFAx3NyJlSCv3UuOYQQSFmFxMXvxiKwyAhCOzUWPI4X
+ bh=SQ/+RhX7ekhuQKEJO7YT/ofDufbjSCzRv3EgEaoCzC4=;
+ b=Ub3MBC5YyaIU+himfpkVOP5Q8bDpKlARcP8tml9B/2y66FDhQ80E6CczaFlAgXLC9+6ak0Ilp
+ +KlBqAvRtcwDlaYT5TcrUe1/uwexbGu9v5qz0gzP7dCCGYd8ZRApO2o
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Add the device node and related header file for Amlogic
-S7 reset controller.
+S7D reset controller.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-s7-reset.h | 124 +++++++++++++++++++++++++
- arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi    |   8 ++
- 2 files changed, 132 insertions(+)
+ arch/arm64/boot/dts/amlogic/amlogic-s7d-reset.h | 134 ++++++++++++++++++++++++
+ arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi    |   8 ++
+ 2 files changed, 142 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7-reset.h b/arch/arm64/boot/dts/amlogic/amlogic-s7-reset.h
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7d-reset.h b/arch/arm64/boot/dts/amlogic/amlogic-s7d-reset.h
 new file mode 100644
-index 000000000000..243136aaf8ec
+index 000000000000..fb15a93d901e
 --- /dev/null
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-s7-reset.h
-@@ -0,0 +1,124 @@
++++ b/arch/arm64/boot/dts/amlogic/amlogic-s7d-reset.h
+@@ -0,0 +1,134 @@
 +/* SPDX-License-Identifier: (GPL-2.0+ OR MIT) */
 +/*
 + * Copyright (c) 2025 Amlogic, Inc. All rights reserved.
 + */
 +
-+#ifndef _DT_BINDINGS_AMLOGIC_S7_RESET_H
-+#define _DT_BINDINGS_AMLOGIC_S7_RESET_H
++#ifndef _DT_BINDINGS_AMLOGIC_S7D_RESET_H
++#define _DT_BINDINGS_AMLOGIC_S7D_RESET_H
 +
 +/* RESET0 */
 +#define RESET_USB_DDR0			0
@@ -61,7 +61,10 @@ index 000000000000..243136aaf8ec
 +#define RESET_USB0_COMB			7
 +#define RESET_USBPHY20			8
 +#define RESET_USBPHY21			9
-+/*					10-14	*/
++#define RESET_USBCC			10
++#define RESET_BC			11
++#define RESET_AMFC_APB			12
++/*					13-14	*/
 +#define RESET_HDMI20_AES		15
 +#define RESET_HDMITX_CAPB3		16
 +#define RESET_BRG_VCBUS_DEC		17
@@ -88,7 +91,9 @@ index 000000000000..243136aaf8ec
 +#define RESET_DDR			36
 +#define RESET_DOS_CAPB3			37
 +#define RESET_DOS			38
-+/*					39-47	*/
++#define RESET_GPU_TS			39
++#define RESET_PLCK_DBG			40
++/*					41-47	*/
 +#define RESET_ETH			48
 +/*					49-63	*/
 +
@@ -103,8 +108,11 @@ index 000000000000..243136aaf8ec
 +/*					74-79	*/
 +#define RESET_MSR_CLK			80
 +/*					81	*/
-+#define RESET_SARADC			82
-+/*					83-87	*/
++#define RESET_SAR_DIG			82
++#define RESET_SAR_ANA			83
++/*					84-85	*/
++#define RESET_AMFC			86
++/*					87	*/
 +#define RESET_ACODEC			88
 +#define RESET_CEC			89
 +/*					90	*/
@@ -128,6 +136,9 @@ index 000000000000..243136aaf8ec
 +#define RESET_PWM_J			137
 +#define RESET_UART_A			138
 +#define RESET_UART_B			139
++#define RESET_UART_C			140
++#define RESET_UART_D			141
++#define RESET_UART_E			142
 +/*					140-143	*/
 +#define RESET_I2C_S_A			144
 +#define RESET_I2C_M_A			145
@@ -143,11 +154,10 @@ index 000000000000..243136aaf8ec
 +
 +/* RESET5 */
 +#define RESET_BRG_VDEC_PIPE0		160
-+#define RESET_BRG_HEVCF_PIPE0		161
-+/*					162-163	*/
++/*					161-163	*/
 +#define RESET_BRG_GE2D_PIPE0		164
 +#define RESET_BRG_DMC_PIPE0		165
-+#define RESET_BRG_A53_PIPE0		166
++#define RESET_BRG_A55_PIPE0		166
 +#define RESET_BRG_MALI_PIPE0		167
 +/*					168	*/
 +#define RESET_BRG_MALI_PIPE1		169
@@ -156,7 +166,7 @@ index 000000000000..243136aaf8ec
 +#define RESET_BRG_HEVCB_PIPE1		173
 +/*					174-182	*/
 +#define RESET_BRG_NIC_EMMC		183
-+#define RESET_BRG_NIC_RAMA		184
++/*					164	*/
 +#define RESET_BRG_NIC_SDIOB		185
 +#define RESET_BRG_NIC_SDIOA		186
 +#define RESET_BRG_NIC_VAPB		187
@@ -166,32 +176,32 @@ index 000000000000..243136aaf8ec
 +#define RESET_BRG_NIC_ALL		191
 +
 +#endif
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi
-index a3faf4d188e1..0b2ac24e8dbc 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-s7.dtsi
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
+index 0c4417bcd682..bae89ca6c448 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
 @@ -8,6 +8,7 @@
  #include <dt-bindings/gpio/gpio.h>
  #include <dt-bindings/pinctrl/amlogic,pinctrl.h>
- #include <dt-bindings/power/amlogic,s7-pwrc.h>
-+#include "amlogic-s7-reset.h"
+ #include <dt-bindings/power/amlogic,s7d-pwrc.h>
++#include "amlogic-s7d-reset.h"
  
  / {
  	cpus {
-@@ -142,6 +143,13 @@ uart_b: serial@7a000 {
+@@ -106,6 +107,13 @@ uart_b: serial@7a000 {
  				status = "disabled";
  			};
  
 +			reset: reset-controller@2000 {
-+				compatible = "amlogic,s7-reset",
++				compatible = "amlogic,s7d-reset",
 +					     "amlogic,meson-s4-reset";
 +				reg = <0x0 0x2000 0x0 0x98>;
 +				#reset-cells = <1>;
 +			};
 +
  			periphs_pinctrl: pinctrl@4000 {
- 				compatible = "amlogic,pinctrl-s7";
- 				#address-cells = <2>;
+ 				compatible = "amlogic,pinctrl-s7d",
+ 					     "amlogic,pinctrl-s7";
 
 -- 
 2.52.0
