@@ -1,208 +1,86 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Tue, 23 Dec 2025 05:37:12 +0000
-Subject: [PATCH v2 4/4] arm64: dts: amlogic: Add S7D Reset Controller
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH v5 0/3] hwmon: Add support for the LTC4283 Hot Swap
+ Controller
+Date: Tue, 23 Dec 2025 12:21:41 +0000
+Message-Id: <20251223-ltc4283-support-v5-0-1152bff59a61@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251223-reset-s6-s7-s7d-v2-4-958f341449f1@amlogic.com>
-References: <20251223-reset-s6-s7-s7d-v2-0-958f341449f1@amlogic.com>
-In-Reply-To: <20251223-reset-s6-s7-s7d-v2-0-958f341449f1@amlogic.com>
-To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAFaJSmkC/23OwY7CIBCA4VcxnMUwAy2wp30Ps4dCByXR0kBtd
+ mP67osmakw9/pPMN3NlhXKkwr42V5ZpjiWmoUaz3TB/7IYD8djXZiiwEQaQnyav0EheLuOY8sR
+ Re+MVtda3jtWtMVOIv3dx/1P7GMuU8t/9wAy36cNSK2sGLrgxDj0FrWXA727oTumw8+nMbtiML
+ 8AKuQawAq3zJCw0IFxYAfIJAIgPH8gKKEedsm3QFvoVoF4AfgJUBXonwOrQa2vUG7Asyz/syFO
+ GcgEAAA==
+X-Change-ID: 20250812-ltc4283-support-27c8c4e69c6b
+To: linux-hwmon@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-doc@vger.kernel.org
+Cc: Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jean Delvare <jdelvare@suse.com>, 
+ Guenter Roeck <linux@roeck-us.net>, Jonathan Corbet <corbet@lwn.net>, 
+ Linus Walleij <linus.walleij@linaro.org>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>, "Rob Herring (Arm)" <robh@kernel.org>, 
+ Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766468230; l=4875;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=SQ/+RhX7ekhuQKEJO7YT/ofDufbjSCzRv3EgEaoCzC4=;
- b=Ub3MBC5YyaIU+himfpkVOP5Q8bDpKlARcP8tml9B/2y66FDhQ80E6CczaFlAgXLC9+6ak0Ilp
- +KlBqAvRtcwDlaYT5TcrUe1/uwexbGu9v5qz0gzP7dCCGYd8ZRApO2o
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766492512; l=2262;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=jhAnj+Jtme12Nuo50V+EmKFGUW7KvEnmq6OcpQAxmfo=;
+ b=zPZqYrKNriSltqV6XCFcc4IVOsfWr3FRco8uAuGRhzOTcsL2dHP7em+w2vcxSObft6G786oVJ
+ 25q+BgYyhV4ADNU5WL+NyG2r3rGS33ctPB5Jjt7zvSgCNrwjh/v9SIa
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the device node and related header file for Amlogic
-S7D reset controller.
+This is v3 for the LTC4283 how swap controller. Main change is that I'm
+now using the auxiliary bus for adding the GPIO device (done depending
+on FW properties).
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Similar to the LTC4282 device, we're clearing some fault logs in the
+reset_history attributes.
+
+Guenter, in [1] you can find some replies for some questions you had in
+v2 that likely you don't remember anymore. Regarding the regmap story I
+ended up adding a secong regmap for the 16 bit wide registers which
+seems like a clean solution (if I'm not missing nothing).
+
+[1]: https://lore.kernel.org/linux-hwmon/0765a0b89779331c62a3f136ef030f7f2f40ea47.camel@gmail.com/
+[2]: https://lore.kernel.org/linux-iio/cover.1761588465.git.geert+renesas@glider.be/
+
 ---
- arch/arm64/boot/dts/amlogic/amlogic-s7d-reset.h | 134 ++++++++++++++++++++++++
- arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi    |   8 ++
- 2 files changed, 142 insertions(+)
+Changes in v5:
+- Patch 2:
+  * Added a secong regmap for the 16bit wide registers;
+  * Add default value for rsense so that we can probe without FW
+    properties;
+  * Make sure to give the right file permissions to the reset_history
+    attrs.
+- Patch 3:
+  * Make sure to get the right regmap (given that the device now has 2);
+  * Add error handling for getting the regmap.
+- Link to v4: https://lore.kernel.org/r/20251204-ltc4283-support-v4-0-db0197fd7984@analog.com
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7d-reset.h b/arch/arm64/boot/dts/amlogic/amlogic-s7d-reset.h
-new file mode 100644
-index 000000000000..fb15a93d901e
---- /dev/null
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-s7d-reset.h
-@@ -0,0 +1,134 @@
-+/* SPDX-License-Identifier: (GPL-2.0+ OR MIT) */
-+/*
-+ * Copyright (c) 2025 Amlogic, Inc. All rights reserved.
-+ */
-+
-+#ifndef _DT_BINDINGS_AMLOGIC_S7D_RESET_H
-+#define _DT_BINDINGS_AMLOGIC_S7D_RESET_H
-+
-+/* RESET0 */
-+#define RESET_USB_DDR0			0
-+#define RESET_USB_DDR1			1
-+#define RESET_USB_DDR2			2
-+#define RESET_USB_DDR3			3
-+#define RESET_USB1			4
-+#define RESET_USB0			5
-+#define RESET_USB1_COMB			6
-+#define RESET_USB0_COMB			7
-+#define RESET_USBPHY20			8
-+#define RESET_USBPHY21			9
-+#define RESET_USBCC			10
-+#define RESET_BC			11
-+#define RESET_AMFC_APB			12
-+/*					13-14	*/
-+#define RESET_HDMI20_AES		15
-+#define RESET_HDMITX_CAPB3		16
-+#define RESET_BRG_VCBUS_DEC		17
-+#define RESET_VCBUS			18
-+#define RESET_VID_PLL_DIV		19
-+#define RESET_VIDEO6			20
-+#define RESET_GE2D			21
-+#define RESET_HDMITXPHY			22
-+#define RESET_VID_LOCK			23
-+#define RESET_VENCL			24
-+#define RESET_VDAC			25
-+#define RESET_VENCP			26
-+#define RESET_VENCI			27
-+#define RESET_RDMA			28
-+#define RESET_HDMI_TX			29
-+#define RESET_VIU			30
-+#define RESET_VENC			31
-+
-+/* RESET1 */
-+#define RESET_AUDIO			32
-+#define RESET_MALI_CAPB3		33
-+#define RESET_MALI			34
-+#define RESET_DDR_APB			35
-+#define RESET_DDR			36
-+#define RESET_DOS_CAPB3			37
-+#define RESET_DOS			38
-+#define RESET_GPU_TS			39
-+#define RESET_PLCK_DBG			40
-+/*					41-47	*/
-+#define RESET_ETH			48
-+/*					49-63	*/
-+
-+/* RESET2 */
-+#define RESET_AM2AXI			64
-+#define RESET_IR_CTRL			65
-+/*					66	*/
-+#define RESET_TEMPSENSOR_PLL		67
-+/*					68-71	*/
-+#define RESET_SMART_CARD		72
-+#define RESET_SPICC0			73
-+/*					74-79	*/
-+#define RESET_MSR_CLK			80
-+/*					81	*/
-+#define RESET_SAR_DIG			82
-+#define RESET_SAR_ANA			83
-+/*					84-85	*/
-+#define RESET_AMFC			86
-+/*					87	*/
-+#define RESET_ACODEC			88
-+#define RESET_CEC			89
-+/*					90	*/
-+#define RESET_WATCHDOG			91
-+/*					92-95	*/
-+
-+/* RESET3 */
-+/* 96 ~ 127 */
-+
-+/* RESET4 */
-+/*					128-131	*/
-+#define RESET_PWM_A			128
-+#define RESET_PWM_B			129
-+#define RESET_PWM_C			130
-+#define RESET_PWM_D			131
-+#define RESET_PWM_E			132
-+#define RESET_PWM_F			133
-+#define RESET_PWM_G			134
-+#define RESET_PWM_H			135
-+#define RESET_PWM_I			136
-+#define RESET_PWM_J			137
-+#define RESET_UART_A			138
-+#define RESET_UART_B			139
-+#define RESET_UART_C			140
-+#define RESET_UART_D			141
-+#define RESET_UART_E			142
-+/*					140-143	*/
-+#define RESET_I2C_S_A			144
-+#define RESET_I2C_M_A			145
-+#define RESET_I2C_M_B			146
-+#define RESET_I2C_M_C			147
-+#define RESET_I2C_M_D			148
-+#define RESET_I2C_M_E			149
-+/*					150-151	*/
-+#define RESET_SD_EMMC_A			152
-+#define RESET_SD_EMMC_B			153
-+#define RESET_SD_EMMC_C			154
-+/*					155-159	*/
-+
-+/* RESET5 */
-+#define RESET_BRG_VDEC_PIPE0		160
-+/*					161-163	*/
-+#define RESET_BRG_GE2D_PIPE0		164
-+#define RESET_BRG_DMC_PIPE0		165
-+#define RESET_BRG_A55_PIPE0		166
-+#define RESET_BRG_MALI_PIPE0		167
-+/*					168	*/
-+#define RESET_BRG_MALI_PIPE1		169
-+/*					170-171	*/
-+#define RESET_BRG_HEVCF_PIPE1		172
-+#define RESET_BRG_HEVCB_PIPE1		173
-+/*					174-182	*/
-+#define RESET_BRG_NIC_EMMC		183
-+/*					164	*/
-+#define RESET_BRG_NIC_SDIOB		185
-+#define RESET_BRG_NIC_SDIOA		186
-+#define RESET_BRG_NIC_VAPB		187
-+#define RESET_BRG_NIC_DSU		188
-+#define RESET_BRG_NIC_CLK81		189
-+#define RESET_BRG_NIC_MAIN		190
-+#define RESET_BRG_NIC_ALL		191
-+
-+#endif
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
-index 0c4417bcd682..bae89ca6c448 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-s7d.dtsi
-@@ -8,6 +8,7 @@
- #include <dt-bindings/gpio/gpio.h>
- #include <dt-bindings/pinctrl/amlogic,pinctrl.h>
- #include <dt-bindings/power/amlogic,s7d-pwrc.h>
-+#include "amlogic-s7d-reset.h"
- 
- / {
- 	cpus {
-@@ -106,6 +107,13 @@ uart_b: serial@7a000 {
- 				status = "disabled";
- 			};
- 
-+			reset: reset-controller@2000 {
-+				compatible = "amlogic,s7d-reset",
-+					     "amlogic,meson-s4-reset";
-+				reg = <0x0 0x2000 0x0 0x98>;
-+				#reset-cells = <1>;
-+			};
-+
- 			periphs_pinctrl: pinctrl@4000 {
- 				compatible = "amlogic,pinctrl-s7d",
- 					     "amlogic,pinctrl-s7";
+---
+Nuno Sá (3):
+      dt-bindings: hwmon: Document the LTC4283 Swap Controller
+      hwmon: ltc4283: Add support for the LTC4283 Swap Controller
+      gpio: gpio-ltc4283: Add support for the LTC4283 Swap Controller
 
--- 
-2.52.0
+ .../devicetree/bindings/hwmon/adi,ltc4283.yaml     |  272 +++
+ Documentation/hwmon/index.rst                      |    1 +
+ Documentation/hwmon/ltc4283.rst                    |  266 +++
+ MAINTAINERS                                        |    9 +
+ drivers/gpio/Kconfig                               |   15 +
+ drivers/gpio/Makefile                              |    1 +
+ drivers/gpio/gpio-ltc4283.c                        |  218 +++
+ drivers/hwmon/Kconfig                              |   12 +
+ drivers/hwmon/Makefile                             |    1 +
+ drivers/hwmon/ltc4283.c                            | 1766 ++++++++++++++++++++
+ 10 files changed, 2561 insertions(+)
+---
+base-commit: bc04acf4aeca588496124a6cf54bfce3db327039
+change-id: 20250812-ltc4283-support-27c8c4e69c6b
+--
+
+Thanks!
+- Nuno Sá
 
