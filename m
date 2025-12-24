@@ -1,327 +1,460 @@
-From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Tue, 23 Dec 2025 12:21:44 +0000
-Subject: [PATCH v5 3/3] gpio: gpio-ltc4283: Add support for the LTC4283
- Swap Controller
+From: Shimin Guo <shimin.guo@skydio.com>
+Date: Tue, 23 Dec 2025 18:19:20 -0800
+Subject: [PATCH] perf unwind-libdw: fix a cross-arch unwinding bug
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20251223-ltc4283-support-v5-3-1152bff59a61@analog.com>
-References: <20251223-ltc4283-support-v5-0-1152bff59a61@analog.com>
-In-Reply-To: <20251223-ltc4283-support-v5-0-1152bff59a61@analog.com>
-To: linux-hwmon@vger.kernel.org, linux-gpio@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-doc@vger.kernel.org
-Cc: Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jean Delvare <jdelvare@suse.com>, 
- Guenter Roeck <linux@roeck-us.net>, Jonathan Corbet <corbet@lwn.net>, 
- Linus Walleij <linus.walleij@linaro.org>, 
- Bartosz Golaszewski <brgl@bgdev.pl>, Linus Walleij <linusw@kernel.org>, 
- Bartosz Golaszewski <brgl@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766492512; l=8636;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=FYkO2RgDoT+AsP2sCyoOSqHa97cEm7cafv5gaSsnvLU=;
- b=hPNlCz2pexoPCmvo3MicK83y06y5OJ6gqOkdpyTEUzH7pQQJWZ6UcXhe+vvuuTMR/jFCUCb8s
- xAaH3FrKaF0BTOZsGzhzo5scidxB2/wK540sVNGwWfbYCWqh2vS/RzQ
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251223-cross-arch-unwind-v1-1-4d71ee7db512@skydio.com>
+X-B4-Tracking: v=1; b=H4sIAKdNS2kC/x3MPQqAMAxA4atIZgO1UlGvIg6lTTVLlQR/QLy7x
+ fEb3ntASZgUxuoBoZOVt1zQ1BWE1eeFkGMxWGNdY22LQTZV9BJWPPLFOWLsBxM771IyHkq3CyW
+ +/+c0v+8H4U6nRmMAAAA=
+X-Change-ID: 20251223-cross-arch-unwind-d890d6a5ff0a
+To: John Garry <john.g.garry@oracle.com>, Will Deacon <will@kernel.org>, 
+ James Clark <james.clark@linaro.org>, Mike Leach <mike.leach@linaro.org>, 
+ Leo Yan <leo.yan@linux.dev>, Peter Zijlstra <peterz@infradead.org>, 
+ Ingo Molnar <mingo@redhat.com>, Arnaldo Carvalho de Melo <acme@kernel.org>, 
+ Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
+ Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
+ Adrian Hunter <adrian.hunter@intel.com>, Guo Ren <guoren@kernel.org>, 
+ Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
+ Albert Ou <aou@eecs.berkeley.edu>, Alexandre Ghiti <alex@ghiti.fr>
+Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-perf-users@vger.kernel.org, linux-csky@vger.kernel.org, 
+ linux-riscv@lists.infradead.org, Shimin Guo <shimin.guo@skydio.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766542788; l=19257;
+ i=shimin.guo@skydio.com; s=20251223; h=from:subject:message-id;
+ bh=40l5ccksJqGw/oklYl5GdK5u9+8khusrwGKRvaYo8Io=;
+ b=H0qgSn3q7iB5y/m+k86ynjJ8+Q2MTyPUnmcUHlF1csDTtiEy2F3JSv4yUl49aAX0mHAw2j7oH
+ DEwdAef3RW2DVfuKbTLk6pgd+HTSwShevokQaTdegQ0Bx29t6Y8WJwB
+X-Developer-Key: i=shimin.guo@skydio.com; a=ed25519;
+ pk=nzTBfI+uHpVtYV5Am25mRvAeY5o5049QH/QxFAGK6VM=
+X-Endpoint-Received: by B4 Relay for shimin.guo@skydio.com/20251223 with auth_id=584
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The LTC4283 device has up to 8 pins that can be configured as GPIOs.
+The set_initial_registers field of Dwfl_Thread_Callbacks needs to be set
+according to the arch of the stack samples being analyzed, not the arch
+that perf itself is built for. Currently perf fails to unwind stack samples
+collected from archs different from that of the host perf is running on.
+This patch moves the arch-specific implementations of set_initial_registers
+from tools/perf/arch to tools/perf/utli/unwind-libdw-arch, similar to the
+way the perf-regs-arch folder contains arch-specific functions related to
+registers, and chooses the implementation based on the arch of the data
+being processed.
 
-Note that PGIO pins are not set as GPIOs by default so if they are
-configured to be used as GPIOs we need to make sure to initialize them
-to a sane default. They are set as inputs by default.
-
-Acked-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
-Reviewed-by: Linus Walleij <linusw@kernel.org>
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
+Signed-off-by: Shimin Guo <shimin.guo@skydio.com>
 ---
- MAINTAINERS                 |   2 +
- drivers/gpio/Kconfig        |  15 +++
- drivers/gpio/Makefile       |   1 +
- drivers/gpio/gpio-ltc4283.c | 218 ++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 236 insertions(+)
+checkpatch flagged three issues:
+> tools/perf/util/unwind-libdw-arch/Build:232: WARNING: added, moved
+or deleted file(s), does MAINTAINERS need updating?
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 9fa27d0b1890..4d544996fde8 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -14957,9 +14957,11 @@ F:	drivers/hwmon/ltc4282.c
+Not sure what to do about that.
+
+> checkpatch.pl: tools/perf/util/unwind-libdw.c:228: WARNING:
+Non-declarative macros with multiple statements should be enclosed in
+a do - while loop
+> checkpatch.pl: tools/perf/util/unwind-libdw.c:228: WARNING: macros
+should not use a trailing semicolon
+
+Are these two false positives? I'm defining static global variables
+with the macro.
+---
+ tools/perf/arch/arm/util/Build                     |  1 -
+ tools/perf/arch/arm64/util/Build                   |  1 -
+ tools/perf/arch/csky/util/Build                    |  2 -
+ tools/perf/arch/powerpc/util/Build                 |  1 -
+ tools/perf/arch/riscv/util/Build                   |  1 -
+ tools/perf/arch/s390/util/Build                    |  2 -
+ tools/perf/arch/x86/util/Build                     |  1 -
+ tools/perf/util/Build                              |  1 +
+ tools/perf/util/unwind-libdw-arch/Build            |  8 ++++
+ .../unwind-libdw-arch/unwind-libdw-arm.c}          |  4 +-
+ .../unwind-libdw-arch/unwind-libdw-arm64.c}        |  4 +-
+ .../unwind-libdw-arch/unwind-libdw-csky.c}         |  6 +--
+ .../unwind-libdw-arch/unwind-libdw-loongarch.c}    |  4 +-
+ .../unwind-libdw-arch/unwind-libdw-powerpc.c}      |  4 +-
+ .../unwind-libdw-arch/unwind-libdw-riscv.c}        |  4 +-
+ .../unwind-libdw-arch/unwind-libdw-s390.c}         |  6 +--
+ .../unwind-libdw-arch/unwind-libdw-x86.c}          |  2 +-
+ tools/perf/util/unwind-libdw.c                     | 49 +++++++++++++++++++---
+ tools/perf/util/unwind-libdw.h                     | 10 ++++-
+ 19 files changed, 79 insertions(+), 32 deletions(-)
+
+diff --git a/tools/perf/arch/arm/util/Build b/tools/perf/arch/arm/util/Build
+index fd695e1fdaee2ccc300a206131b8b38a763b00ce..3291f893b943df0722dff583523fff4ae79919bc 100644
+--- a/tools/perf/arch/arm/util/Build
++++ b/tools/perf/arch/arm/util/Build
+@@ -1,6 +1,5 @@
+ perf-util-y += perf_regs.o
  
- LTC4283 HARDWARE MONITOR AND GPIO DRIVER
- M:	Nuno Sá <nuno.sa@analog.com>
-+L:	linux-gpio@vger.kernel.org
- L:	linux-hwmon@vger.kernel.org
- S:	Supported
- F:	Documentation/devicetree/bindings/hwmon/adi,ltc4283.yaml
-+F:	drivers/gpio/gpio-ltc4283.c
- F:	drivers/hwmon/ltc4283.c
+ perf-util-$(CONFIG_LOCAL_LIBUNWIND)    += unwind-libunwind.o
+-perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw.o
  
- LTC4286 HARDWARE MONITOR DRIVER
-diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
-index c74da29253e8..5dc603268a75 100644
---- a/drivers/gpio/Kconfig
-+++ b/drivers/gpio/Kconfig
-@@ -1749,6 +1749,21 @@ config GPIO_WM8994
+ perf-util-y += pmu.o auxtrace.o cs-etm.o
+diff --git a/tools/perf/arch/arm64/util/Build b/tools/perf/arch/arm64/util/Build
+index d63881081d2eb1e9a83eabf82104d75308f7fc79..0177af19cc00038d6a6005592ddc530bf7eb1557 100644
+--- a/tools/perf/arch/arm64/util/Build
++++ b/tools/perf/arch/arm64/util/Build
+@@ -1,4 +1,3 @@
+-perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw.o
+ perf-util-$(CONFIG_LIBTRACEEVENT) += kvm-stat.o
+ perf-util-$(CONFIG_LOCAL_LIBUNWIND) += unwind-libunwind.o
+ perf-util-y += ../../arm/util/auxtrace.o
+diff --git a/tools/perf/arch/csky/util/Build b/tools/perf/arch/csky/util/Build
+index 5e6ea82c42021d3d5651ca4c4a3a6e5138574e4e..6b2d0e021b11464e46d6b53974260d32ea969732 100644
+--- a/tools/perf/arch/csky/util/Build
++++ b/tools/perf/arch/csky/util/Build
+@@ -1,3 +1 @@
+ perf-util-y += perf_regs.o
+-
+-perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw.o
+diff --git a/tools/perf/arch/powerpc/util/Build b/tools/perf/arch/powerpc/util/Build
+index 3d0d5427aef7f26a8c05c883cc7ad763f08cbb30..5fd28ec713a4db74ecd1d26866a65ddb20e94bd3 100644
+--- a/tools/perf/arch/powerpc/util/Build
++++ b/tools/perf/arch/powerpc/util/Build
+@@ -9,5 +9,4 @@ perf-util-y += evsel.o
+ perf-util-$(CONFIG_LIBDW) += skip-callchain-idx.o
  
- endmenu
+ perf-util-$(CONFIG_LIBUNWIND) += unwind-libunwind.o
+-perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw.o
+ perf-util-y += auxtrace.o
+diff --git a/tools/perf/arch/riscv/util/Build b/tools/perf/arch/riscv/util/Build
+index 58a672246024dd0f72e767d11e9958bd9913ec3c..628b9ebd418bde8cdf1ab1332bf79f7c9d50760e 100644
+--- a/tools/perf/arch/riscv/util/Build
++++ b/tools/perf/arch/riscv/util/Build
+@@ -2,4 +2,3 @@ perf-util-y += perf_regs.o
+ perf-util-y += header.o
  
-+menu "Auxiliary Bus GPIO drivers"
-+	depends on AUXILIARY_BUS
-+
-+config GPIO_LTC4283
-+	tristate "Analog Devices LTC4283 GPIO support"
-+	depends on SENSORS_LTC4283
-+	help
-+	  If you say yes here you want the GPIO function available in Analog
-+	  Devices LTC4283 Negative Voltage Hot Swap Controller.
-+
-+	  This driver can also be built as a module. If so, the module will
-+	  be called gpio-ltc4283.
-+
-+endmenu
-+
- menu "PCI GPIO expanders"
- 	depends on PCI
+ perf-util-$(CONFIG_LIBTRACEEVENT) += kvm-stat.o
+-perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw.o
+diff --git a/tools/perf/arch/s390/util/Build b/tools/perf/arch/s390/util/Build
+index c64eb18dbdae93adafabf8542e4c9a763ecfe057..5391d26fedd46b7d30a1bef0bff2ec2d58ec30ed 100644
+--- a/tools/perf/arch/s390/util/Build
++++ b/tools/perf/arch/s390/util/Build
+@@ -2,8 +2,6 @@ perf-util-y += header.o
+ perf-util-$(CONFIG_LIBTRACEEVENT) += kvm-stat.o
+ perf-util-y += perf_regs.o
  
-diff --git a/drivers/gpio/Makefile b/drivers/gpio/Makefile
-index 2421a8fd3733..f38e529f4618 100644
---- a/drivers/gpio/Makefile
-+++ b/drivers/gpio/Makefile
-@@ -100,6 +100,7 @@ obj-$(CONFIG_GPIO_LP873X)		+= gpio-lp873x.o
- obj-$(CONFIG_GPIO_LP87565)		+= gpio-lp87565.o
- obj-$(CONFIG_GPIO_LPC18XX)		+= gpio-lpc18xx.o
- obj-$(CONFIG_GPIO_LPC32XX)		+= gpio-lpc32xx.o
-+obj-$(CONFIG_GPIO_LTC4283)		+= gpio-ltc4283.o
- obj-$(CONFIG_GPIO_MACSMC)		+= gpio-macsmc.o
- obj-$(CONFIG_GPIO_MADERA)		+= gpio-madera.o
- obj-$(CONFIG_GPIO_MAX3191X)		+= gpio-max3191x.o
-diff --git a/drivers/gpio/gpio-ltc4283.c b/drivers/gpio/gpio-ltc4283.c
+-perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw.o
+-
+ perf-util-y += machine.o
+ perf-util-y += pmu.o
+ 
+diff --git a/tools/perf/arch/x86/util/Build b/tools/perf/arch/x86/util/Build
+index c0dc5965f3624a6f02525a04d287dff755356d20..fad256252bb95a8f8350b6bb1a54e8074eaebbec 100644
+--- a/tools/perf/arch/x86/util/Build
++++ b/tools/perf/arch/x86/util/Build
+@@ -12,7 +12,6 @@ perf-util-y += evsel.o
+ perf-util-y += iostat.o
+ 
+ perf-util-$(CONFIG_LOCAL_LIBUNWIND)    += unwind-libunwind.o
+-perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw.o
+ 
+ perf-util-y += auxtrace.o
+ perf-util-y += archinsn.o
+diff --git a/tools/perf/util/Build b/tools/perf/util/Build
+index 1c2a43e1dc68e7f751ec6082352b10de9ffeea62..15f8a4f4b24a46b6300e824f672dd9c0d5b7865f 100644
+--- a/tools/perf/util/Build
++++ b/tools/perf/util/Build
+@@ -226,6 +226,7 @@ perf-util-$(CONFIG_LIBDW) += debuginfo.o
+ perf-util-$(CONFIG_LIBDW) += annotate-data.o
+ 
+ perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw.o
++perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw-arch/
+ perf-util-$(CONFIG_LOCAL_LIBUNWIND)    += unwind-libunwind-local.o
+ perf-util-$(CONFIG_LIBUNWIND)          += unwind-libunwind.o
+ perf-util-$(CONFIG_LIBUNWIND_X86)      += libunwind/x86_32.o
+diff --git a/tools/perf/util/unwind-libdw-arch/Build b/tools/perf/util/unwind-libdw-arch/Build
 new file mode 100644
-index 000000000000..fa0c106d4fac
+index 0000000000000000000000000000000000000000..e016d54ae2a40ecba47156c8f09cb72156105727
 --- /dev/null
-+++ b/drivers/gpio/gpio-ltc4283.c
-@@ -0,0 +1,218 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Analog Devices LTC4283 GPIO driver
-+ *
-+ * Copyright 2025 Analog Devices Inc.
-+ */
++++ b/tools/perf/util/unwind-libdw-arch/Build
+@@ -0,0 +1,8 @@
++perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw-x86.o
++perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw-arm.o
++perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw-arm64.o
++perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw-csky.o
++perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw-loongarch.o
++perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw-powerpc.o
++perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw-riscv.o
++perf-util-$(CONFIG_LIBDW_DWARF_UNWIND) += unwind-libdw-s390.o
+\ No newline at end of file
+diff --git a/tools/perf/arch/arm/util/unwind-libdw.c b/tools/perf/util/unwind-libdw-arch/unwind-libdw-arm.c
+similarity index 88%
+rename from tools/perf/arch/arm/util/unwind-libdw.c
+rename to tools/perf/util/unwind-libdw-arch/unwind-libdw-arm.c
+index fbb643f224ec4b27ce9d67051fe0bc4ad555b05e..c2718d6b6cff131cd67883e24bb0d3d963c8095a 100644
+--- a/tools/perf/arch/arm/util/unwind-libdw.c
++++ b/tools/perf/util/unwind-libdw-arch/unwind-libdw-arm.c
+@@ -1,11 +1,11 @@
+ // SPDX-License-Identifier: GPL-2.0
+ #include <elfutils/libdwfl.h>
+-#include "perf_regs.h"
++#include "../../../arch/arm/include/uapi/asm/perf_regs.h"
+ #include "../../../util/unwind-libdw.h"
+ #include "../../../util/perf_regs.h"
+ #include "../../../util/sample.h"
+ 
+-bool libdw__arch_set_initial_registers(Dwfl_Thread *thread, void *arg)
++bool libdw_set_initial_registers_arm(Dwfl_Thread *thread, void *arg)
+ {
+ 	struct unwind_info *ui = arg;
+ 	struct regs_dump *user_regs = perf_sample__user_regs(ui->sample);
+diff --git a/tools/perf/arch/arm64/util/unwind-libdw.c b/tools/perf/util/unwind-libdw-arch/unwind-libdw-arm64.c
+similarity index 92%
+rename from tools/perf/arch/arm64/util/unwind-libdw.c
+rename to tools/perf/util/unwind-libdw-arch/unwind-libdw-arm64.c
+index b89b0a7e5ad919fed23643d219fbdc3d84deff1e..87602503e057badc6efd37169cc60c96cf3949ab 100644
+--- a/tools/perf/arch/arm64/util/unwind-libdw.c
++++ b/tools/perf/util/unwind-libdw-arch/unwind-libdw-arm64.c
+@@ -1,11 +1,11 @@
+ // SPDX-License-Identifier: GPL-2.0
+ #include <elfutils/libdwfl.h>
+-#include "perf_regs.h"
++#include "../../../arch/arm64/include/uapi/asm/perf_regs.h"
+ #include "../../../util/unwind-libdw.h"
+ #include "../../../util/perf_regs.h"
+ #include "../../../util/sample.h"
+ 
+-bool libdw__arch_set_initial_registers(Dwfl_Thread *thread, void *arg)
++bool libdw_set_initial_registers_arm64(Dwfl_Thread *thread, void *arg)
+ {
+ 	struct unwind_info *ui = arg;
+ 	struct regs_dump *user_regs = perf_sample__user_regs(ui->sample);
+diff --git a/tools/perf/arch/csky/util/unwind-libdw.c b/tools/perf/util/unwind-libdw-arch/unwind-libdw-csky.c
+similarity index 92%
+rename from tools/perf/arch/csky/util/unwind-libdw.c
+rename to tools/perf/util/unwind-libdw-arch/unwind-libdw-csky.c
+index b20b1569783d7e982e91b1b40120d29ccf2f01d1..889d3b788931f3af55b03ef8b91d5def364972e5 100644
+--- a/tools/perf/arch/csky/util/unwind-libdw.c
++++ b/tools/perf/util/unwind-libdw-arch/unwind-libdw-csky.c
+@@ -2,12 +2,12 @@
+ // Copyright (C) 2019 Hangzhou C-SKY Microsystems co.,ltd.
+ 
+ #include <elfutils/libdwfl.h>
+-#include "perf_regs.h"
++#include "../../../arch/csky/include/uapi/asm/perf_regs.h"
+ #include "../../util/unwind-libdw.h"
+ #include "../../util/perf_regs.h"
+-#include "../../util/event.h"
++#include "../../util/sample.h"
+ 
+-bool libdw__arch_set_initial_registers(Dwfl_Thread *thread, void *arg)
++bool libdw_set_initial_registers_csky(Dwfl_Thread *thread, void *arg)
+ {
+ 	struct unwind_info *ui = arg;
+ 	struct regs_dump *user_regs = perf_sample__user_regs(ui->sample);
+diff --git a/tools/perf/arch/loongarch/util/unwind-libdw.c b/tools/perf/util/unwind-libdw-arch/unwind-libdw-loongarch.c
+similarity index 91%
+rename from tools/perf/arch/loongarch/util/unwind-libdw.c
+rename to tools/perf/util/unwind-libdw-arch/unwind-libdw-loongarch.c
+index 60b1144bedd5f325e1512eeab05c29a1e8de2b03..1c5753ace6f63be771aa92365d3174ad8ed3a6fd 100644
+--- a/tools/perf/arch/loongarch/util/unwind-libdw.c
++++ b/tools/perf/util/unwind-libdw-arch/unwind-libdw-loongarch.c
+@@ -2,12 +2,12 @@
+ /* Copyright (C) 2020-2023 Loongson Technology Corporation Limited */
+ 
+ #include <elfutils/libdwfl.h>
+-#include "perf_regs.h"
++#include "../../../arch/loongarch/include/uapi/asm/perf_regs.h"
+ #include "../../util/unwind-libdw.h"
+ #include "../../util/perf_regs.h"
+ #include "../../util/sample.h"
+ 
+-bool libdw__arch_set_initial_registers(Dwfl_Thread *thread, void *arg)
++bool libdw_set_initial_registers_loongarch(Dwfl_Thread *thread, void *arg)
+ {
+ 	struct unwind_info *ui = arg;
+ 	struct regs_dump *user_regs = perf_sample__user_regs(ui->sample);
+diff --git a/tools/perf/arch/powerpc/util/unwind-libdw.c b/tools/perf/util/unwind-libdw-arch/unwind-libdw-powerpc.c
+similarity index 93%
+rename from tools/perf/arch/powerpc/util/unwind-libdw.c
+rename to tools/perf/util/unwind-libdw-arch/unwind-libdw-powerpc.c
+index 82d0c28ae3459ecdb0039cac1f534420d142739b..28635af3c4aa420faa4de7e53428d82917f78021 100644
+--- a/tools/perf/arch/powerpc/util/unwind-libdw.c
++++ b/tools/perf/util/unwind-libdw-arch/unwind-libdw-powerpc.c
+@@ -1,7 +1,7 @@
+ // SPDX-License-Identifier: GPL-2.0
+ #include <elfutils/libdwfl.h>
+ #include <linux/kernel.h>
+-#include "perf_regs.h"
++#include "../../../arch/powerpc/include/uapi/asm/perf_regs.h"
+ #include "../../../util/unwind-libdw.h"
+ #include "../../../util/perf_regs.h"
+ #include "../../../util/sample.h"
+@@ -13,7 +13,7 @@ static const int special_regs[3][2] = {
+ 	{ 109, PERF_REG_POWERPC_CTR },
+ };
+ 
+-bool libdw__arch_set_initial_registers(Dwfl_Thread *thread, void *arg)
++bool libdw_set_initial_registers_powerpc(Dwfl_Thread *thread, void *arg)
+ {
+ 	struct unwind_info *ui = arg;
+ 	struct regs_dump *user_regs = perf_sample__user_regs(ui->sample);
+diff --git a/tools/perf/arch/riscv/util/unwind-libdw.c b/tools/perf/util/unwind-libdw-arch/unwind-libdw-riscv.c
+similarity index 92%
+rename from tools/perf/arch/riscv/util/unwind-libdw.c
+rename to tools/perf/util/unwind-libdw-arch/unwind-libdw-riscv.c
+index dc1476e16321736de897ad53a00fbc813bd706db..2a5442b3b5bdc27252378de0073deb8a620f8779 100644
+--- a/tools/perf/arch/riscv/util/unwind-libdw.c
++++ b/tools/perf/util/unwind-libdw-arch/unwind-libdw-riscv.c
+@@ -2,12 +2,12 @@
+ /* Copyright (C) 2019 Hangzhou C-SKY Microsystems co.,ltd. */
+ 
+ #include <elfutils/libdwfl.h>
+-#include "perf_regs.h"
++#include "../../../arch/riscv/include/uapi/asm/perf_regs.h"
+ #include "../../util/unwind-libdw.h"
+ #include "../../util/perf_regs.h"
+ #include "../../util/sample.h"
+ 
+-bool libdw__arch_set_initial_registers(Dwfl_Thread *thread, void *arg)
++bool libdw_set_initial_registers_riscv(Dwfl_Thread *thread, void *arg)
+ {
+ 	struct unwind_info *ui = arg;
+ 	struct regs_dump *user_regs = perf_sample__user_regs(ui->sample);
+diff --git a/tools/perf/arch/s390/util/unwind-libdw.c b/tools/perf/util/unwind-libdw-arch/unwind-libdw-s390.c
+similarity index 89%
+rename from tools/perf/arch/s390/util/unwind-libdw.c
+rename to tools/perf/util/unwind-libdw-arch/unwind-libdw-s390.c
+index c27c7a0d1076c890c35ba19543932c4ed5ac9c2a..18d44074a55bc1c7fa2d7150afc1f1a93d4eadf8 100644
+--- a/tools/perf/arch/s390/util/unwind-libdw.c
++++ b/tools/perf/util/unwind-libdw-arch/unwind-libdw-s390.c
+@@ -4,11 +4,11 @@
+ #include "../../util/perf_regs.h"
+ #include "../../util/event.h"
+ #include "../../util/sample.h"
+-#include "dwarf-regs-table.h"
+-#include "perf_regs.h"
++#include "../../arch/s390/include/dwarf-regs-table.h"
++#include "../../../arch/s390/include/uapi/asm/perf_regs.h"
+ 
+ 
+-bool libdw__arch_set_initial_registers(Dwfl_Thread *thread, void *arg)
++bool libdw_set_initial_registers_s390(Dwfl_Thread *thread, void *arg)
+ {
+ 	struct unwind_info *ui = arg;
+ 	struct regs_dump *user_regs = perf_sample__user_regs(ui->sample);
+diff --git a/tools/perf/arch/x86/util/unwind-libdw.c b/tools/perf/util/unwind-libdw-arch/unwind-libdw-x86.c
+similarity index 94%
+rename from tools/perf/arch/x86/util/unwind-libdw.c
+rename to tools/perf/util/unwind-libdw-arch/unwind-libdw-x86.c
+index 798493e887d7308cb293e29e4ba11054d0fda722..822e799fe1543d82dab27a8efeada3f5cde08a44 100644
+--- a/tools/perf/arch/x86/util/unwind-libdw.c
++++ b/tools/perf/util/unwind-libdw-arch/unwind-libdw-x86.c
+@@ -5,7 +5,7 @@
+ #include "../../../util/perf_regs.h"
+ #include "util/sample.h"
+ 
+-bool libdw__arch_set_initial_registers(Dwfl_Thread *thread, void *arg)
++bool libdw_set_initial_registers_x86(Dwfl_Thread *thread, void *arg)
+ {
+ 	struct unwind_info *ui = arg;
+ 	struct regs_dump *user_regs = perf_sample__user_regs(ui->sample);
+diff --git a/tools/perf/util/unwind-libdw.c b/tools/perf/util/unwind-libdw.c
+index ae70fb56a05729b9f06a411d162eabebbf29ac52..4a0f13bc5af99de446d440c551c718ef0187e195 100644
+--- a/tools/perf/util/unwind-libdw.c
++++ b/tools/perf/util/unwind-libdw.c
+@@ -225,12 +225,46 @@ static bool memory_read(Dwfl *dwfl __maybe_unused, Dwarf_Addr addr, Dwarf_Word *
+ 	return true;
+ }
+ 
+-static const Dwfl_Thread_Callbacks callbacks = {
+-	.next_thread		= next_thread,
+-	.memory_read		= memory_read,
+-	.set_initial_registers	= libdw__arch_set_initial_registers,
++#define DEFINE_DWFL_THREAD_CALLBACKS(arch)                           \
++static const Dwfl_Thread_Callbacks callbacks_##arch = {              \
++	.next_thread           = next_thread,                        \
++	.memory_read           = memory_read,                        \
++	.set_initial_registers = libdw_set_initial_registers_##arch, \
+ };
+ 
++DEFINE_DWFL_THREAD_CALLBACKS(x86)
++DEFINE_DWFL_THREAD_CALLBACKS(arm)
++DEFINE_DWFL_THREAD_CALLBACKS(arm64)
++DEFINE_DWFL_THREAD_CALLBACKS(csky)
++DEFINE_DWFL_THREAD_CALLBACKS(loongarch)
++DEFINE_DWFL_THREAD_CALLBACKS(powerpc)
++DEFINE_DWFL_THREAD_CALLBACKS(riscv)
++DEFINE_DWFL_THREAD_CALLBACKS(s390)
 +
-+#include <linux/auxiliary_bus.h>
-+#include <linux/bitfield.h>
-+#include <linux/bitmap.h>
-+#include <linux/bits.h>
-+#include <linux/device.h>
-+#include <linux/gpio/driver.h>
-+#include <linux/mod_devicetable.h>
-+#include <linux/module.h>
-+#include <linux/regmap.h>
-+
-+#define LTC4283_PINS_MAX			8
-+#define LTC4283_PGIOX_START_NR			4
-+#define LTC4283_INPUT_STATUS			0x02
-+#define LTC4283_PGIO_CONFIG			0x10
-+#define   LTC4283_PGIO_CFG_MASK(pin) \
-+	GENMASK(((pin) - LTC4283_PGIOX_START_NR) * 2 + 1, (((pin) - LTC4283_PGIOX_START_NR) * 2))
-+#define LTC4283_PGIO_CONFIG_2			0x11
-+
-+#define LTC42823_ADIO_CONFIG			0x12
-+/* starts at bit 4 */
-+#define   LTC4283_ADIOX_CONFIG_MASK(pin)	BIT((pin) + 4)
-+#define LTC4283_PGIO_DIR_IN			3
-+#define LTC4283_PGIO_DIR_OUT			2
-+
-+struct ltc4283_gpio {
-+	struct gpio_chip gpio_chip;
-+	struct regmap *regmap;
-+};
-+
-+static int ltc4283_pgio_get_direction(const struct ltc4283_gpio *st, unsigned int off)
++static const Dwfl_Thread_Callbacks *get_thread_callbacks(const char *arch)
 +{
-+	unsigned int val;
-+	int ret;
++	if (!strcmp(arch, "arm"))
++		return &callbacks_arm;
++	else if (!strcmp(arch, "arm64"))
++		return &callbacks_arm64;
++	else if (!strcmp(arch, "csky"))
++		return &callbacks_csky;
++	else if (!strcmp(arch, "loongarch"))
++		return &callbacks_loongarch;
++	else if (!strcmp(arch, "powerpc"))
++		return &callbacks_powerpc;
++	else if (!strcmp(arch, "riscv"))
++		return &callbacks_riscv;
++	else if (!strcmp(arch, "s390"))
++		return &callbacks_s390;
++	else if (!strcmp(arch, "x86"))
++		return &callbacks_x86;
 +
-+	ret = regmap_read(st->regmap, LTC4283_PGIO_CONFIG, &val);
-+	if (ret)
-+		return ret;
-+
-+	val = field_get(LTC4283_PGIO_CFG_MASK(off), val);
-+	if (val == LTC4283_PGIO_DIR_IN)
-+		return GPIO_LINE_DIRECTION_IN;
-+
-+	return GPIO_LINE_DIRECTION_OUT;
++	pr_err("Fail to get thread callbacks for arch %s, returns NULL\n",
++	       arch);
++	return NULL;
 +}
 +
-+static int ltc4283_gpio_get_direction(struct gpio_chip *gc, unsigned int off)
-+{
-+	struct ltc4283_gpio *st = gpiochip_get_data(gc);
-+	unsigned int val;
-+	int ret;
+ static int
+ frame_callback(Dwfl_Frame *state, void *arg)
+ {
+@@ -278,6 +312,7 @@ int unwind__get_entries(unwind_entry_cb_t cb, void *arg,
+ 	const char *arch = perf_env__arch(ui_buf.machine->env);
+ 	Dwarf_Word ip;
+ 	int err = -EINVAL, i;
++	const Dwfl_Thread_Callbacks *callbacks;
+ 
+ 	if (!data->user_regs || !data->user_regs->regs)
+ 		return -EINVAL;
+@@ -300,7 +335,11 @@ int unwind__get_entries(unwind_entry_cb_t cb, void *arg,
+ 	if (err)
+ 		goto out;
+ 
+-	err = !dwfl_attach_state(ui->dwfl, EM_NONE, thread__tid(thread), &callbacks, ui);
++	callbacks = get_thread_callbacks(arch);
++	if (!callbacks)
++		goto out;
 +
-+	if (off >= LTC4283_PGIOX_START_NR)
-+		return ltc4283_pgio_get_direction(st, off);
-+
-+	ret = regmap_read(st->regmap, LTC42823_ADIO_CONFIG, &val);
-+	if (ret)
-+		return ret;
-+
-+	if (val & LTC4283_ADIOX_CONFIG_MASK(off))
-+		return GPIO_LINE_DIRECTION_IN;
-+
-+	return GPIO_LINE_DIRECTION_OUT;
-+}
-+
-+static int ltc4283_gpio_direction_set(const struct ltc4283_gpio *st,
-+				      unsigned int off, bool input)
-+{
-+	if (off >= LTC4283_PGIOX_START_NR) {
-+		unsigned int val = LTC4283_PGIO_DIR_OUT;
-+
-+		if (input)
-+			val = LTC4283_PGIO_DIR_IN;
-+
-+		val = field_prep(LTC4283_PGIO_CFG_MASK(off), val);
-+		return regmap_update_bits(st->regmap, LTC4283_PGIO_CONFIG,
-+					  LTC4283_PGIO_CFG_MASK(off), val);
-+	}
-+
-+	return regmap_update_bits(st->regmap, LTC42823_ADIO_CONFIG,
-+				  LTC4283_ADIOX_CONFIG_MASK(off),
-+				  field_prep(LTC4283_ADIOX_CONFIG_MASK(off), input));
-+}
-+
-+static int __ltc4283_gpio_set_value(const struct ltc4283_gpio *st,
-+				    unsigned int off, int val)
-+{
-+	u32 reg = off < LTC4283_PGIOX_START_NR ? LTC42823_ADIO_CONFIG : LTC4283_PGIO_CONFIG_2;
-+
-+	return regmap_update_bits(st->regmap, reg, BIT(off),
-+				  field_prep(BIT(off), !!val));
-+}
-+
-+static int ltc4283_gpio_direction_input(struct gpio_chip *gc, unsigned int off)
-+{
-+	struct ltc4283_gpio *st = gpiochip_get_data(gc);
-+
-+	return ltc4283_gpio_direction_set(st, off, true);
-+}
-+
-+static int ltc4283_gpio_direction_output(struct gpio_chip *gc, unsigned int off, int val)
-+{
-+	struct ltc4283_gpio *st = gpiochip_get_data(gc);
-+	int ret;
-+
-+	ret = ltc4283_gpio_direction_set(st, off, false);
-+	if (ret)
-+		return ret;
-+
-+	return __ltc4283_gpio_set_value(st, off, val);
-+}
-+
-+static int ltc4283_gpio_get_value(struct gpio_chip *gc, unsigned int off)
-+{
-+	struct ltc4283_gpio *st = gpiochip_get_data(gc);
-+	unsigned int val, reg;
-+	int ret, dir;
-+
-+	dir = ltc4283_gpio_get_direction(gc, off);
-+	if (dir < 0)
-+		return dir;
-+
-+	if (dir == GPIO_LINE_DIRECTION_IN) {
-+		ret = regmap_read(st->regmap, LTC4283_INPUT_STATUS, &val);
-+		if (ret)
-+			return ret;
-+
-+		/* ADIO1 is at bit 3. */
-+		if (off < LTC4283_PGIOX_START_NR)
-+			return !!(val & BIT(3 - off));
-+
-+		/* PGIO1 is at bit 7. */
-+		return !!(val & BIT(7 - (off - LTC4283_PGIOX_START_NR)));
-+	}
-+
-+	if (off < LTC4283_PGIOX_START_NR)
-+		reg = LTC42823_ADIO_CONFIG;
-+	else
-+		reg = LTC4283_PGIO_CONFIG_2;
-+
-+	ret = regmap_read(st->regmap, reg, &val);
-+	if (ret)
-+		return ret;
-+
-+	return !!(val & BIT(off));
-+}
-+
-+static int ltc4283_gpio_set_value(struct gpio_chip *gc, unsigned int off, int val)
-+{
-+	struct ltc4283_gpio *st = gpiochip_get_data(gc);
-+
-+	return __ltc4283_gpio_set_value(st, off, val);
-+}
-+
-+static int ltc4283_init_valid_mask(struct gpio_chip *gc, unsigned long *valid_mask,
-+				   unsigned int ngpios)
-+{
-+	unsigned long *mask = dev_get_platdata(gc->parent);
-+
-+	bitmap_copy(valid_mask, mask, ngpios);
-+	return 0;
-+}
-+
-+static int ltc4283_gpio_probe(struct auxiliary_device *adev,
-+			      const struct auxiliary_device_id *id)
-+{
-+	struct device *dev = &adev->dev;
-+	struct ltc4283_gpio *st;
-+	struct gpio_chip *gc;
-+
-+	st = devm_kzalloc(dev, sizeof(*st), GFP_KERNEL);
-+	if (!st)
-+		return -ENOMEM;
-+
-+	st->regmap = dev_get_regmap(dev->parent, "ltc4283-8");
-+	if (!st->regmap)
-+		return dev_err_probe(dev, -ENODEV,
-+				     "Failed to get byte regmap\n");
-+
-+	gc = &st->gpio_chip;
-+	gc->parent = dev;
-+	gc->get_direction = ltc4283_gpio_get_direction;
-+	gc->direction_input = ltc4283_gpio_direction_input;
-+	gc->direction_output = ltc4283_gpio_direction_output;
-+	gc->get = ltc4283_gpio_get_value;
-+	gc->set = ltc4283_gpio_set_value;
-+	gc->init_valid_mask = ltc4283_init_valid_mask;
-+	gc->can_sleep = true;
-+
-+	gc->base = -1;
-+	gc->ngpio = LTC4283_PINS_MAX;
-+	gc->label = adev->name;
-+	gc->owner = THIS_MODULE;
-+
-+	return devm_gpiochip_add_data(dev, &st->gpio_chip, st);
-+}
-+
-+static const struct auxiliary_device_id ltc4283_aux_id_table[] = {
-+	{ "ltc4283.gpio" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(auxiliary, ltc4283_aux_id_table);
-+
-+static struct auxiliary_driver ltc4283_gpio_driver = {
-+	.probe = ltc4283_gpio_probe,
-+	.id_table = ltc4283_aux_id_table,
-+};
-+module_auxiliary_driver(ltc4283_gpio_driver);
-+
-+MODULE_AUTHOR("Nuno Sá <nuno.sa@analog.com>");
-+MODULE_DESCRIPTION("GPIO LTC4283 Driver");
-+MODULE_LICENSE("GPL");
++	err = !dwfl_attach_state(ui->dwfl, EM_NONE, thread__tid(thread), callbacks, ui);
+ 	if (err)
+ 		goto out;
+ 
+diff --git a/tools/perf/util/unwind-libdw.h b/tools/perf/util/unwind-libdw.h
+index 8c88bc4f2304b59561ffd482469ca63ce0f531f0..574b29848cce31e6bfd93021f752b518cebf73b7 100644
+--- a/tools/perf/util/unwind-libdw.h
++++ b/tools/perf/util/unwind-libdw.h
+@@ -9,7 +9,15 @@ struct machine;
+ struct perf_sample;
+ struct thread;
+ 
+-bool libdw__arch_set_initial_registers(Dwfl_Thread *thread, void *arg);
++bool libdw_set_initial_registers_x86(Dwfl_Thread *thread, void *arg);
++bool libdw_set_initial_registers_arm(Dwfl_Thread *thread, void *arg);
++bool libdw_set_initial_registers_arm64(Dwfl_Thread *thread, void *arg);
++bool libdw_set_initial_registers_csky(Dwfl_Thread *thread, void *arg);
++bool libdw_set_initial_registers_loongarch(Dwfl_Thread *thread, void *arg);
++bool libdw_set_initial_registers_mips(Dwfl_Thread *thread, void *arg);
++bool libdw_set_initial_registers_powerpc(Dwfl_Thread *thread, void *arg);
++bool libdw_set_initial_registers_riscv(Dwfl_Thread *thread, void *arg);
++bool libdw_set_initial_registers_s390(Dwfl_Thread *thread, void *arg);
+ 
+ struct unwind_info {
+ 	Dwfl			*dwfl;
 
+---
+base-commit: cbd41c6d4c26c161a2b0e70ad411d3885ff13507
+change-id: 20251223-cross-arch-unwind-d890d6a5ff0a
+
+Best regards,
 -- 
-2.52.0
+Shimin Guo <shimin.guo@skydio.com>
 
