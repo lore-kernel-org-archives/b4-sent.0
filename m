@@ -1,98 +1,64 @@
-From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Thu, 25 Dec 2025 19:43:20 -0800
-Subject: [PATCH v6 2/2] arm64: dts: rockchip: Add light/proximity sensor to
- Pinephone Pro
+From: Ewan Chorynski <ewan.chorynski@ik.me>
+Date: Fri, 26 Dec 2025 18:22:36 +0100
+Subject: [PATCH] rust: drm: Improve safety comment when using
+ `Pin::into_inner_unchecked`
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20251225-ppp_light_accel_mag_vol-down-v6-2-8c79a4e87001@gmail.com>
-References: <20251225-ppp_light_accel_mag_vol-down-v6-0-8c79a4e87001@gmail.com>
-In-Reply-To: <20251225-ppp_light_accel_mag_vol-down-v6-0-8c79a4e87001@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>, 
- Ondrej Jirman <megi@xff.cz>, Martijn Braam <martijn@brixit.nl>, 
- =?utf-8?q?Kamil_Trzci=C5=84ski?= <ayufan@ayufan.eu>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766720655; l=2096;
- i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=73whftO4gyGNvsyeXM75XpLd8dUij1OhzKtrJMPtTnE=;
- b=2wmDdvBnsNlr47Cm6jczlYsiauKFzAVVHejv21YcBlNm2iRXcCA1OC1LsVECmlSPwBoBBgJBz
- ZmNcACNWI1KCMR5Kfs6BgJZ+zyVrwfYb4ahT3RKziGqbXEaVRs6uS/i
-X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
- pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
-X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
+Content-Transfer-Encoding: 7bit
+Message-Id: <20251226-drm-gem-safety-comment-v1-1-5ae56d8194b9@ik.me>
+X-B4-Tracking: v=1; b=H4sIAFvETmkC/x2MMQqAMBAEvyJXe2AOo+BXxEJ0o1ckSiKiiH83y
+ FRTzDyUEBWJuuKhiFOTbiGLKQua1jEsYJ2zk1RijUjDc/S8wHMaHY6bp817hIONsYLathlHOd4
+ jnF7/uB/e9wOI2Z1/aAAAAA==
+To: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Danilo Krummrich <dakr@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
+ Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Trevor Gross <tmgross@umich.edu>
+Cc: dri-devel@lists.freedesktop.org, rust-for-linux@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Ewan Chorynski <ewan.chorynski@ik.me>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766769780; l=1350;
+ i=ewan.chorynski@ik.me; s=20251226; h=from:subject:message-id;
+ bh=cr9xZXsdzg4gFRm4XD7QgBo5pAiTHyiIcr0OoAXNvbY=;
+ b=QHme9hYoeeJ096eavEfMxvGDXboOP72kgL0MmQOVOXx33RBK6szLkQSKUzNcIeKuHaFxRcIZi
+ jsIytm5GTXxDf0S/2mC8WMFLNWBe7z61mZQe6bTkFCq8FR1FjEYKKYt
+X-Developer-Key: i=ewan.chorynski@ik.me; a=ed25519;
+ pk=Qzaw5giL/U3IFVpYyrZjtONgXMAOpXYyUsXRpiS8hUQ=
+X-Endpoint-Received: by B4 Relay for ewan.chorynski@ik.me/20251226 with auth_id=587
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Ondrej Jirman <megi@xff.cz>
+The safety requirements for `Pin::into_inner_unchecked` state that the
+returned pointer must be treated as pinned until it is dropped. Such a
+guarantee is provided by the `ARef` type. This patch improve the safety
+comment to to better reflect this.
 
-Pinephone Pro uses STK3311 according to the schematics.
-
-Tests:
-~ $ monitor-sensor --light
-    // When the sensor is exposed, it get's fluctating values such as
-    Light changed: 1.800000 (lux)
-    Light changed: 1.700000 (lux)
-    Light changed: 1.800000 (lux)
-    Light changed: 1.700000 (lux)
-    Light changed: 1.600000 (lux)
-    Light changed: 1.100000 (lux)
-    // When covering the sensor, it prints a low value and stops printing
-    Light changed: 0.200000 (lux)
-
-~ $ monitor-sensor --proximity
-    // When it goes away from an object
-    Proximity value changed: 0
-    // When it comes near an object
-    Proximity value changed: 1
-
-Co-developed-by: Martijn Braam <martijn@brixit.nl>
-Signed-off-by: Martijn Braam <martijn@brixit.nl>
-Co-developed-by: Kamil Trzciński <ayufan@ayufan.eu>
-Signed-off-by: Kamil Trzciński <ayufan@ayufan.eu>
-Signed-off-by: Ondrej Jirman <megi@xff.cz>
-Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
- arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+Signed-off-by: Ewan Chorynski <ewan.chorynski@ik.me>
+---
+ rust/kernel/drm/gem/mod.rs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts b/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
-index 1d3baa557c70..e89759613b55 100644
---- a/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
-@@ -520,6 +520,16 @@ touchscreen@14 {
- 		touchscreen-size-x = <720>;
- 		touchscreen-size-y = <1440>;
- 	};
-+
-+	light-sensor@48 {
-+		compatible = "sensortek,stk3311";
-+		reg = <0x48>;
-+		interrupt-parent = <&gpio4>;
-+		interrupts = <RK_PD3 IRQ_TYPE_EDGE_FALLING>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&light_int_l>;
-+		proximity-near-level = <300>;
-+	};
- };
+diff --git a/rust/kernel/drm/gem/mod.rs b/rust/kernel/drm/gem/mod.rs
+index a7f682e95c01..ed11d9c0f427 100644
+--- a/rust/kernel/drm/gem/mod.rs
++++ b/rust/kernel/drm/gem/mod.rs
+@@ -210,7 +210,7 @@ pub fn new(dev: &drm::Device<T::Driver>, size: usize) -> Result<ARef<Self>> {
+         // SAFETY: The arguments are all valid per the type invariants.
+         to_result(unsafe { bindings::drm_gem_object_init(dev.as_raw(), obj.obj.get(), size) })?;
  
- &i2c4 {
-@@ -712,6 +722,12 @@ vcc1v8_codec_en: vcc1v8-codec-en {
- 		};
- 	};
+-        // SAFETY: We never move out of `Self`.
++        // SAFETY: We will never move out of `Self` as `ARef<Self>` is always treated as pinned.
+         let ptr = KBox::into_raw(unsafe { Pin::into_inner_unchecked(obj) });
  
-+	stk3311 {
-+		light_int_l: light-int-l {
-+			rockchip,pins = <4 RK_PD3 RK_FUNC_GPIO &pcfg_input_pull_up>;
-+		};
-+	};
-+
- 	wifi {
- 		wifi_host_wake_l: wifi-host-wake-l {
- 			rockchip,pins = <4 RK_PD0 RK_FUNC_GPIO &pcfg_pull_none>;
+         // SAFETY: `ptr` comes from `KBox::into_raw` and hence can't be NULL.
 
+---
+base-commit: 6c8e404891e1059564d1a15a71d3d76070304dde
+change-id: 20251226-drm-gem-safety-comment-1152e457575f
+
+Best regards,
 -- 
-2.52.0
+Ewan Chorynski <ewan.chorynski@ik.me>
 
