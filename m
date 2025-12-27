@@ -1,64 +1,102 @@
-From: Ewan Chorynski <ewan.chorynski@ik.me>
-Date: Fri, 26 Dec 2025 18:22:36 +0100
-Subject: [PATCH] rust: drm: Improve safety comment when using
- `Pin::into_inner_unchecked`
+From: Amit Sunil Dhamne <amitsd@google.com>
+Subject: [PATCH v3 0/5] Introduce MAX77759 charger driver
+Date: Sat, 27 Dec 2025 00:04:20 +0000
+Message-Id: <20251227-max77759-charger-v3-0-54e664f5ca92@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20251226-drm-gem-safety-comment-v1-1-5ae56d8194b9@ik.me>
-X-B4-Tracking: v=1; b=H4sIAFvETmkC/x2MMQqAMBAEvyJXe2AOo+BXxEJ0o1ckSiKiiH83y
- FRTzDyUEBWJuuKhiFOTbiGLKQua1jEsYJ2zk1RijUjDc/S8wHMaHY6bp817hIONsYLathlHOd4
- jnF7/uB/e9wOI2Z1/aAAAAA==
-To: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Danilo Krummrich <dakr@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
- Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Trevor Gross <tmgross@umich.edu>
-Cc: dri-devel@lists.freedesktop.org, rust-for-linux@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ewan Chorynski <ewan.chorynski@ik.me>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1766769780; l=1350;
- i=ewan.chorynski@ik.me; s=20251226; h=from:subject:message-id;
- bh=cr9xZXsdzg4gFRm4XD7QgBo5pAiTHyiIcr0OoAXNvbY=;
- b=QHme9hYoeeJ096eavEfMxvGDXboOP72kgL0MmQOVOXx33RBK6szLkQSKUzNcIeKuHaFxRcIZi
- jsIytm5GTXxDf0S/2mC8WMFLNWBe7z61mZQe6bTkFCq8FR1FjEYKKYt
-X-Developer-Key: i=ewan.chorynski@ik.me; a=ed25519;
- pk=Qzaw5giL/U3IFVpYyrZjtONgXMAOpXYyUsXRpiS8hUQ=
-X-Endpoint-Received: by B4 Relay for ewan.chorynski@ik.me/20251226 with auth_id=587
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAIQiT2kC/23NSw6CMBCA4auQrq1pB/rAlfcwLgoMpYlQ05oGQ
+ 7i7hZgYo8t/JvPNQiIGh5GcioUETC46P+UoDwVpBzNZpK7LTYCB4JwJOppZKSVqmtfBYqBaQCN
+ BdlJyQ/LZPWDv5p28XHMPLj58eO4fEt+mbwzKXyxxyqhsAKtG96oX1dl6b294bP1INi3BRwCu/
+ wiQBWhA1LVmRmr5Jazr+gJoktcj8wAAAA==
+X-Change-ID: 20251105-max77759-charger-852b626d661a
+To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
+ Lee Jones <lee@kernel.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Badhri Jagan Sridharan <badhri@google.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Tudor Ambarus <tudor.ambarus@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>
+Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-usb@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
+ RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
+ Amit Sunil Dhamne <amitsd@google.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1766793897; l=3010;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=l+eK+53HFS6Nf1N+WzqWh69/CWIpr9CIKF2aOQzhUPE=;
+ b=v8dBC0vdvLgYRAJ47ZiiomwUGFw58iVgkYJp8pVD8h8B/j98E/xV5G2OAoJkxhHyABv8ppu86
+ +eTiiO+nyNoBUrO0p1xSNVV8iuFkwjHAduzkWjeHkoNWM4+jH9ereWg
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The safety requirements for `Pin::into_inner_unchecked` state that the
-returned pointer must be treated as pinned until it is dropped. Such a
-guarantee is provided by the `ARef` type. This patch improve the safety
-comment to to better reflect this.
+MAX77759 PMIC is used in Pixel 6 and 6 Pro (Oriole/Raven) boards.
+One of the functions of the MAX77759 PMIC is a battery charger. This
+patchset introduces a driver for this function. One of the unique
+features of this charger driver is that it works with a USB input where
+the Type-C controller is TCPCI based.
+
+Changes to the board files will follow soon once this patchset is reviewed.
+
+For reference to the MAX77759 MFD based patchset (present in upstream):
+https://lore.kernel.org/all/20250509-max77759-mfd-v10-0-962ac15ee3ef@linaro.org/
+
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
+---
+Changes in v3:
+- Had incorrectly folded the charger sub-device with the pmic parent.
+  Corrected it. (Krzysztof Kozlowski)
+- Link to v2: https://lore.kernel.org/r/20251218-max77759-charger-v2-0-2b259980a686@google.com
+
+Changes in v2:
+- Fold charger binding in maxim,max77759-charger.yaml to its parent
+  node. (Krzysztof Kozlowski)
+- Renamed regulator supplier & consumer. (Krzysztof Kozlowski & Heikki
+  Krogerus)
+- Removed explicit setting of irq trigger types in max77759 driver.
+  (André Draszik & Krzysztof Kozlowski)
+- Complete bit definitions for IRQ registers. (André Draszik)
+- Consolidate all bit definitions for charger IP in mfd/max77759.h.
+  (André Draszik)
+- Modify the handling of charger IRQs such that regmap IRQ chip handles
+  masking, de-mux and acking of interrupts. (André Draszik)
+- Remove unused macro definitions relating to Charger modes in tcpci
+  maxim driver (André Draszik)
+- Add dependency on Regulator class in Kconfig definition for max77759
+  chg. (Kernel Test Robot)
+- Link to v1: https://lore.kernel.org/r/20251123-max77759-charger-v1-0-6b2e4b8f7f54@google.com
 
 ---
-Signed-off-by: Ewan Chorynski <ewan.chorynski@ik.me>
----
- rust/kernel/drm/gem/mod.rs | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Amit Sunil Dhamne (5):
+      dt-bindings: mfd: maxim,max77759: reference power-supply schema and add regulator property
+      dt-bindings: usb: maxim,max33359: Add supply property for vbus
+      mfd: max77759: add register bitmasks and modify irq configs for charger
+      power: supply: max77759: add charger driver
+      usb: typec: tcpm/tcpci_maxim: deprecate WAR for setting charger mode
 
-diff --git a/rust/kernel/drm/gem/mod.rs b/rust/kernel/drm/gem/mod.rs
-index a7f682e95c01..ed11d9c0f427 100644
---- a/rust/kernel/drm/gem/mod.rs
-+++ b/rust/kernel/drm/gem/mod.rs
-@@ -210,7 +210,7 @@ pub fn new(dev: &drm::Device<T::Driver>, size: usize) -> Result<ARef<Self>> {
-         // SAFETY: The arguments are all valid per the type invariants.
-         to_result(unsafe { bindings::drm_gem_object_init(dev.as_raw(), obj.obj.get(), size) })?;
- 
--        // SAFETY: We never move out of `Self`.
-+        // SAFETY: We will never move out of `Self` as `ARef<Self>` is always treated as pinned.
-         let ptr = KBox::into_raw(unsafe { Pin::into_inner_unchecked(obj) });
- 
-         // SAFETY: `ptr` comes from `KBox::into_raw` and hence can't be NULL.
-
+ .../devicetree/bindings/mfd/maxim,max77759.yaml    |  16 +-
+ .../devicetree/bindings/usb/maxim,max33359.yaml    |   4 +
+ MAINTAINERS                                        |   6 +
+ drivers/mfd/max77759.c                             |  91 ++-
+ drivers/power/supply/Kconfig                       |  11 +
+ drivers/power/supply/Makefile                      |   1 +
+ drivers/power/supply/max77759_charger.c            | 764 +++++++++++++++++++++
+ drivers/usb/typec/tcpm/tcpci_maxim.h               |   1 +
+ drivers/usb/typec/tcpm/tcpci_maxim_core.c          |  54 +-
+ include/linux/mfd/max77759.h                       | 202 +++++-
+ 10 files changed, 1091 insertions(+), 59 deletions(-)
 ---
-base-commit: 6c8e404891e1059564d1a15a71d3d76070304dde
-change-id: 20251226-drm-gem-safety-comment-1152e457575f
+base-commit: dd9b004b7ff3289fb7bae35130c0a5c0537266af
+change-id: 20251105-max77759-charger-852b626d661a
 
 Best regards,
 -- 
-Ewan Chorynski <ewan.chorynski@ik.me>
+Amit Sunil Dhamne <amitsd@google.com>
 
