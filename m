@@ -1,121 +1,93 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Mon, 29 Dec 2025 22:56:58 +0530
-Subject: [PATCH v3 7/7] PCI: qcom: Rename PERST# assert/deassert helpers
- for uniformity
+Subject: [PATCH v3 0/4] PCI: dwc: Rework the error handling of
+ dw_pcie_wait_for_link() API
+Date: Tue, 30 Dec 2025 20:37:31 +0530
+Message-Id: <20251230-pci-dwc-suspend-rework-v3-0-40cd485714f5@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251229-pci-pwrctrl-rework-v3-7-c7d5918cd0db@oss.qualcomm.com>
-References: <20251229-pci-pwrctrl-rework-v3-0-c7d5918cd0db@oss.qualcomm.com>
-In-Reply-To: <20251229-pci-pwrctrl-rework-v3-0-c7d5918cd0db@oss.qualcomm.com>
-To: Manivannan Sadhasivam <mani@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIALPqU2kC/4XNwQ6CMAyA4VchOzuyDgbDk+9hPMxtyqIyXGVoC
+ O/u4OJF46XJ36RfJ4I2OItkm00k2OjQ+S5FscmIblV3ttSZ1IQzLgCgob121Iya4oC97QwNdvT
+ hQuWRCRCqkFXdkHTcB3tyzxXeH1K3Dh8+vNY/EZbtXzICZVQpA6yUXIqK7zxifh/UVfvbLU+DL
+ HLkH42D/KnxpAlV17XUFWtK9UWb5/kNjcbOkREBAAA=
+X-Change-ID: 20251119-pci-dwc-suspend-rework-8b0515a38679
+To: Jingoo Han <jingoohan1@gmail.com>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
  Lorenzo Pieralisi <lpieralisi@kernel.org>, 
  =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
- Bartosz Golaszewski <brgl@bgdev.pl>
-Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Chen-Yu Tsai <wens@kernel.org>, 
- Brian Norris <briannorris@chromium.org>, 
- Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
- Niklas Cassel <cassel@kernel.org>, Alex Elder <elder@riscstar.com>, 
- Bartosz Golaszewski <bartosz.golaszewski@linaro.org>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>
+Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ vincent.guittot@linaro.org, zhangsenchuan@eswincomputing.com, 
+ Shawn Lin <shawn.lin@rock-chips.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2787;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2251;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=ncgLgkMFVujyqBgktgUh6eUIgflyWGjZ+0g78z7CeOY=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpUrnmxi6KB+fRNxWX9kzeLNU/o+gpdx3ATVtCN
- E8mnmZRMHuJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaVK55gAKCRBVnxHm/pHO
- 9SGVB/9qNDupQXRtd6KkRvL/8ZQmLIK8PPOxYnAv+XWBcVDtUJZsvKBpuAr2T63C2b7nwKt5yYK
- ji7HpnUOUCVvMgp1GbAOQSDltv848Cq+i7DYOuuydEmPGYjdYKPCHQ128NZa1V+yq3bBY1WLQUE
- JnKLLsMXtIsGO5b9mI/Iih5bXpBb9o5LW+RIdvGvHdtOtfRRWvqXqD4e1whoLUkyZNgpTVnrVQU
- zjz7Vu8uDWRmjYpCtHvsgoMBz42lYY3LukkEZXksVDH5h0bs9gc5If1hC6Jl/isCB0Xei31lKYx
- Iz+zt+K3GT7jKPflQyGdOH/3o8yWbsbDnU2BIUeuNq6WBVKd
+ bh=oDy+EPyaJnAnM/riqZPjUlFELI7OMCcdl4Yu+VC1JyY=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpU+q6EaZRACdCf7yoRSVenZw+VK1paZd1LVQKl
+ Pigd+ExmXKJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaVPqugAKCRBVnxHm/pHO
+ 9c3FB/98VgTT2qugab9NRzLkZCj/HRoVqpfmC7svAT31KZl4Ux9razZ+9uI6Ntgi6dM/9tDcUor
+ wAN2CHZjEsOLXRciaRCUNjaC/BNyrecdIYwTasJnWKL/8YVqBysqNMjltIl/vu8mHwPudfSbq+S
+ BSvJSGcIwfhW5RL7FT256w/G9t18rhVaKWtkQXrc3Fr2eorzZ8YLnrLgL7b1+HGS0CZr7LqmdIZ
+ grCVbueLHsXC+zBl1hW1QPtwAfXNNcdzE7AVj1pCa8Q2xrk7ryeHLzsGBKwfEbogSW3hxJpxqBh
+ wkwvLx7cLTO4WtdSIL3rWH1e4XtLBRX7SU5QfxbNcWTTlw+v
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Rename the PERST# assert/deassert helpers from
-qcom_ep_reset_{assert/deassert}() to qcom_pcie_perst_{assert/deassert}() to
-maintain uniformity.
+Hi,
+
+This series reworks the dw_pcie_wait_for_link() API to allow the callers to
+detect the absence of the device on the bus and skip the failure.
+
+Compared to v2, I've reworked the patch 2 to improve the API further and
+dropped the patch 1 that got applied (hence changed the subject). I've also
+modified the error code based on the feedback in v2 to return -ENODEV if device
+is not detected on the bus and -ETIMEDOUT otherwise. This allows the callers to
+skip the failure if device is not detected and handle error for other failure.
+
+Testing
+=======
+
+Tested this series on Rb3Gen2 board without powering on the PCIe switch. Now the
+dw_pcie_wait_for_link() API prints:
+
+	qcom-pcie 1c08000.pcie: Device not found
+
+Instead of the previous log:
+
+	qcom-pcie 1c08000.pcie: Phy link never came up
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/pci/controller/dwc/pcie-qcom.c | 18 +++++++++---------
- 1 file changed, 9 insertions(+), 9 deletions(-)
+Changes in v3:
+- Dropped patch 1 that got appplied
+- Reworked the error handling of dw_pcie_wait_for_link() API further
+- Link to v2: https://lore.kernel.org/r/20251218-pci-dwc-suspend-rework-v2-0-5a7778c6094a@oss.qualcomm.com
 
-diff --git a/drivers/pci/controller/dwc/pcie-qcom.c b/drivers/pci/controller/dwc/pcie-qcom.c
-index 6de3ff555b9d..a9293502e565 100644
---- a/drivers/pci/controller/dwc/pcie-qcom.c
-+++ b/drivers/pci/controller/dwc/pcie-qcom.c
-@@ -295,7 +295,7 @@ struct qcom_pcie {
- 
- #define to_qcom_pcie(x)		dev_get_drvdata((x)->dev)
- 
--static void qcom_perst_assert(struct qcom_pcie *pcie, bool assert)
-+static void __qcom_pcie_perst_assert(struct qcom_pcie *pcie, bool assert)
- {
- 	struct qcom_pcie_perst *perst;
- 	struct qcom_pcie_port *port;
-@@ -309,16 +309,16 @@ static void qcom_perst_assert(struct qcom_pcie *pcie, bool assert)
- 	usleep_range(PERST_DELAY_US, PERST_DELAY_US + 500);
- }
- 
--static void qcom_ep_reset_assert(struct qcom_pcie *pcie)
-+static void qcom_pcie_perst_assert(struct qcom_pcie *pcie)
- {
--	qcom_perst_assert(pcie, true);
-+	__qcom_pcie_perst_assert(pcie, true);
- }
- 
--static void qcom_ep_reset_deassert(struct qcom_pcie *pcie)
-+static void qcom_pcie_perst_deassert(struct qcom_pcie *pcie)
- {
- 	/* Ensure that PERST has been asserted for at least 100 ms */
- 	msleep(PCIE_T_PVPERL_MS);
--	qcom_perst_assert(pcie, false);
-+	__qcom_pcie_perst_assert(pcie, false);
- }
- 
- static int qcom_pcie_start_link(struct dw_pcie *pci)
-@@ -1296,7 +1296,7 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
- 	struct qcom_pcie *pcie = to_qcom_pcie(pci);
- 	int ret;
- 
--	qcom_ep_reset_assert(pcie);
-+	qcom_pcie_perst_assert(pcie);
- 
- 	ret = pcie->cfg->ops->init(pcie);
- 	if (ret)
-@@ -1322,7 +1322,7 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
- 
- 	qcom_pcie_clear_aspm_l0s(pcie->pci);
- 
--	qcom_ep_reset_deassert(pcie);
-+	qcom_pcie_perst_deassert(pcie);
- 
- 	if (pcie->cfg->ops->config_sid) {
- 		ret = pcie->cfg->ops->config_sid(pcie);
-@@ -1333,7 +1333,7 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
- 	return 0;
- 
- err_assert_reset:
--	qcom_ep_reset_assert(pcie);
-+	qcom_pcie_perst_assert(pcie);
- err_pwrctrl_power_off:
- 	pci_pwrctrl_power_off_devices(pci->dev);
- err_pwrctrl_destroy:
-@@ -1352,7 +1352,7 @@ static void qcom_pcie_host_deinit(struct dw_pcie_rp *pp)
- 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
- 	struct qcom_pcie *pcie = to_qcom_pcie(pci);
- 
--	qcom_ep_reset_assert(pcie);
-+	qcom_pcie_perst_assert(pcie);
- 	/*
- 	 * No need to destroy pwrctrl devices as this function only gets called
- 	 * during system suspend as of now.
+Changes in v2:
+- Changed the logic to check for Detect.Quiet/Active states
+- Collected tags and rebased on top of v6.19-rc1
+- Link to v1: https://lore.kernel.org/r/20251119-pci-dwc-suspend-rework-v1-0-aad104828562@oss.qualcomm.com
 
+---
+Manivannan Sadhasivam (4):
+      PCI: dwc: Return -ENODEV from dw_pcie_wait_for_link() if device is not found
+      PCI: dwc: Rename and move ltssm_status_string() to pcie-designware.c
+      PCI: dwc: Rework the error print of dw_pcie_wait_for_link()
+      PCI: dwc: Only skip the dw_pcie_wait_for_link() failure if it returns -ENODEV
+
+ .../pci/controller/dwc/pcie-designware-debugfs.c   | 54 +---------------
+ drivers/pci/controller/dwc/pcie-designware-host.c  |  6 +-
+ drivers/pci/controller/dwc/pcie-designware.c       | 75 +++++++++++++++++++++-
+ drivers/pci/controller/dwc/pcie-designware.h       |  2 +
+ 4 files changed, 80 insertions(+), 57 deletions(-)
+---
+base-commit: 68ac85fb42cfeb081cf029acdd8aace55ed375a2
+change-id: 20251119-pci-dwc-suspend-rework-8b0515a38679
+
+Best regards,
 -- 
-2.48.1
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
