@@ -1,104 +1,141 @@
-From: Ricardo Pardini <ricardo@pardini.net>
-Date: Thu, 01 Jan 2026 07:43:11 +0100
-Subject: [PATCH v2 3/3] arm64: dts: rockchip: Enable the NPU on Turing RK1
+From: Jesung Yang <y.j3ms.n@gmail.com>
+Date: Thu, 01 Jan 2026 08:21:24 +0000
+Subject: [PATCH] scripts: generate_rust_analyzer: reduce the output file
+ size
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260101-arm64-dts-rockchip-rk3588-npu-enablements-v2-3-013cf5d5c39d@pardini.net>
-References: <20260101-arm64-dts-rockchip-rk3588-npu-enablements-v2-0-013cf5d5c39d@pardini.net>
-In-Reply-To: <20260101-arm64-dts-rockchip-rk3588-npu-enablements-v2-0-013cf5d5c39d@pardini.net>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Jimmy Hon <honyuenkwun@gmail.com>, Tomeu Vizoso <tomeu@tomeuvizoso.net>, 
- Ricardo Pardini <ricardo@pardini.net>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1656; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=U3z//lMNVVVOhXu8sqy/9jYcCMBg51abWkRs/utgick=;
- b=owEBbQGS/pANAwAIATteP+Oex+3pAcsmYgBpVheiY0StyS1yWbqibJ/lLj41BFqKPrn8jEIN/
- /nbEkfbD6GJATMEAAEIAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCaVYXogAKCRA7Xj/jnsft
- 6fuvCACpI1CWwJDHaE1NTbe+IO8QAYbUZwnQuwNNo19Dm7GvkaycTb6dxNh5wn76FwoB+JQYgeg
- rqwr+RyXuYCA7RgjEI3rLz8AR+357Y132Nv2CiL6ZwbHZhbu7emxVtgXfnAQQ7m/nBASZAKx/+k
- dkQIhO8epwFyoWdLBM+q1CcoXMjXT1O20AwQlDAo5G/Juz+hu7mkgAMe/j3arbveszy3Uuq4ZJA
- S3pPcZ28jB4LYM/WY/g6iXeDz55I+caW62uanaJroSjMgLiPUAYq/FYa9x3a+qsqPBY4Zjp7gim
- eBACVKgZNHFZP6Veq+d1mQt0VwMQB21Hi9ElXBG9q0oTTJIy
-X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
- fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
-X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
+Message-Id: <20260101-rust-project-reduce-size-v1-1-4cd66e9e02d9@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAIMuVmkC/0WNQQ7CMAwEv1LljKU4LU3oVxAH4zhgJCgkbYVA/
+ J0AB45jeWeepkhWKWZonibLokXHSwVcNYaPdDkIaKxsnHW9RYuQ5zLBNY8n4QmyxJkFij4EYnA
+ b8uRtIDF1fs2S9P5Vb3c/znKba2H6Hf+BofnrCeqqBvSsky4CPuC6SxLQt2lY8GPeUxHg8Vw/h
+ iaFtGFMXbTsqe96a8UxteiicHAd2T27hJHM7vV6A129EETuAAAA
+X-Change-ID: 20260101-rust-project-reduce-size-d829a7a708ae
+To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jesung Yang <y.j3ms.n@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767255742; l=4572;
+ i=y.j3ms.n@gmail.com; s=20251225; h=from:subject:message-id;
+ bh=fEPh+w8Y+NMyisGvsPgXPjuY6/RbC7wcVePF3f0Ffh4=;
+ b=j1VfacoahJifuc3/koMnMMRFojai3MABa61AGcrHSwqIP1QLapT91j9KNXmTo1f3wFpqvrS0C
+ EqF4uBC7IXHC1kgoee1PYJ1/a+fYXkYAgSEMk0DiJvYsebQoQuOwQsp
+X-Developer-Key: i=y.j3ms.n@gmail.com; a=ed25519;
+ pk=2yVgO1I+y7kkFSF2Dc/Dckj4L2FgRnvmERHFt4bspbI=
+X-Endpoint-Received: by B4 Relay for y.j3ms.n@gmail.com/20251225 with auth_id=586
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the NPU on Turing RK1.
-The regulator vdd_npu_s0 was already in place; since
-the NPU power domain supply is now described, remove the
-regulator's always-on.
+Use the `cfg_groups` field to aggregate common configurations into a
+single project-level definition. This avoids repeating identical `cfg`s
+across crates.
 
-Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
+As a result, the size of the generated `rust-project.json` is reduced
+from 11MiB to 406KiB (about 96% reduction).
+
+Signed-off-by: Jesung Yang <y.j3ms.n@gmail.com>
 ---
- .../arm64/boot/dts/rockchip/rk3588-turing-rk1.dtsi | 35 +++++++++++++++++++++-
- 1 file changed, 34 insertions(+), 1 deletion(-)
+This patch depends on [1] to ensure it merges cleanly without conflicts.
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-turing-rk1.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-turing-rk1.dtsi
-index 6daea8961fdd6..b11d24dcc1806 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-turing-rk1.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-turing-rk1.dtsi
-@@ -171,7 +171,6 @@ vdd_npu_s0: regulator@42 {
- 		reg = <0x42>;
- 		fcs,suspend-voltage-selector = <1>;
- 		regulator-name = "vdd_npu_s0";
--		regulator-always-on;
- 		regulator-boot-on;
- 		regulator-min-microvolt = <550000>;
- 		regulator-max-microvolt = <950000>;
-@@ -293,6 +292,10 @@ &pd_gpu {
- 	domain-supply = <&vdd_gpu_s0>;
- };
- 
-+&pd_npu {
-+	domain-supply = <&vdd_npu_s0>;
-+};
-+
- &pinctrl {
- 	fan {
- 		fan_int: fan-int {
-@@ -333,6 +336,36 @@ &pwm0 {
- 	status = "okay";
- };
- 
-+&rknn_core_0 {
-+	npu-supply = <&vdd_npu_s0>;
-+	sram-supply = <&vdd_npu_s0>;
-+	status = "okay";
-+};
-+
-+&rknn_core_1 {
-+	npu-supply = <&vdd_npu_s0>;
-+	sram-supply = <&vdd_npu_s0>;
-+	status = "okay";
-+};
-+
-+&rknn_core_2 {
-+	npu-supply = <&vdd_npu_s0>;
-+	sram-supply = <&vdd_npu_s0>;
-+	status = "okay";
-+};
-+
-+&rknn_mmu_0 {
-+	status = "okay";
-+};
-+
-+&rknn_mmu_1 {
-+	status = "okay";
-+};
-+
-+&rknn_mmu_2 {
-+	status = "okay";
-+};
-+
- &sdhci {
- 	bus-width = <8>;
- 	no-sdio;
+[1] https://lore.kernel.org/rust-for-linux/20260101-ra-fix-primitive-v1-1-def809357b4e@gmail.com/
+---
+ scripts/generate_rust_analyzer.py | 34 ++++++++++++++++++++--------------
+ 1 file changed, 20 insertions(+), 14 deletions(-)
 
+diff --git a/scripts/generate_rust_analyzer.py b/scripts/generate_rust_analyzer.py
+index 6178a53516ec35f308897e65c5001edd81b0d3dd..2a8578fb784d08b2a5e628bfab935080759d2dce 100755
+--- a/scripts/generate_rust_analyzer.py
++++ b/scripts/generate_rust_analyzer.py
+@@ -19,15 +19,7 @@ def args_crates_cfgs(cfgs):
+ 
+     return crates_cfgs
+ 
+-def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
+-    # Generate the configuration list.
+-    cfg = []
+-    with open(objtree / "include" / "generated" / "rustc_cfg") as fd:
+-        for line in fd:
+-            line = line.replace("--cfg=", "")
+-            line = line.replace("\n", "")
+-            cfg.append(line)
+-
++def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs, kernel_cfg_group):
+     # Now fill the crates list -- dependencies need to come first.
+     #
+     # Avoid O(n^2) iterations by keeping a map of indexes.
+@@ -35,7 +27,7 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
+     crates_indexes = {}
+     crates_cfgs = args_crates_cfgs(cfgs)
+ 
+-    def append_crate(display_name, root_module, deps, cfg=[], crate_attrs=[], is_workspace_member=True, is_proc_macro=False, edition="2021"):
++    def append_crate(display_name, root_module, deps, cfg=[], cfg_groups=[], crate_attrs=[], is_workspace_member=True, is_proc_macro=False, edition="2021"):
+         crate = {
+             "display_name": display_name,
+             "root_module": str(root_module),
+@@ -48,6 +40,8 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
+                 "RUST_MODFILE": "This is only for rust-analyzer"
+             }
+         }
++        if len(cfg_groups) > 0:
++            crate["cfg_groups"] = cfg_groups
+         if len(crate_attrs) > 0:
+             crate["crate_attrs"] = crate_attrs
+         if is_proc_macro:
+@@ -134,7 +128,7 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
+             display_name,
+             srctree / "rust"/ display_name / "lib.rs",
+             deps,
+-            cfg=cfg,
++            cfg_groups=[kernel_cfg_group],
+             crate_attrs=crate_attrs,
+         )
+         crates[-1]["env"]["OBJTREE"] = str(objtree.resolve(True))
+@@ -189,7 +183,7 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
+                 name,
+                 path,
+                 ["kernel"],
+-                cfg=cfg,
++                cfg_groups=[kernel_cfg_group],
+                 crate_attrs=["no_std"],
+             )
+ 
+@@ -214,10 +208,22 @@ def main():
+     # Making sure that the `sysroot` and `sysroot_src` belong to the same toolchain.
+     assert args.sysroot in args.sysroot_src.parents
+ 
++    # Generate the configuration list.
++    cfg = []
++    with open(args.objtree / "include" / "generated" / "rustc_cfg") as fd:
++        for line in fd:
++            line = line.replace("--cfg=", "")
++            line = line.replace("\n", "")
++            cfg.append(line)
++    kernel_cfg_group = "kernel"
++
+     rust_project = {
+-        "crates": generate_crates(args.srctree, args.objtree, args.sysroot_src, args.exttree, args.cfgs),
++        "crates": generate_crates(args.srctree, args.objtree, args.sysroot_src, args.exttree, args.cfgs, kernel_cfg_group),
+         "sysroot": str(args.sysroot),
+-        "sysroot_src": str(args.sysroot_src)
++        "sysroot_src": str(args.sysroot_src),
++        "cfg_groups": {
++            kernel_cfg_group: cfg,
++        },
+     }
+ 
+     json.dump(rust_project, sys.stdout, sort_keys=True, indent=4)
+
+---
+base-commit: f8f9c1f4d0c7a64600e2ca312dec824a0bc2f1da
+change-id: 20260101-rust-project-reduce-size-d829a7a708ae
+prerequisite-change-id: 20260101-ra-fix-primitive-78154fe8173f:v1
+prerequisite-patch-id: 0544fdf5522949047a81c3580960183375574fd3
+
+Best regards,
 -- 
-2.52.0
+Jesung Yang <y.j3ms.n@gmail.com>
 
