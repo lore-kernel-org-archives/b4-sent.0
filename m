@@ -1,16 +1,13 @@
 From: Ricardo Pardini <ricardo@pardini.net>
-Subject: [PATCH v2 0/3] arm64: dts: rockchip: Enable the NPU on some rk3588
- boards
-Date: Thu, 01 Jan 2026 07:43:08 +0100
-Message-Id: <20260101-arm64-dts-rockchip-rk3588-npu-enablements-v2-0-013cf5d5c39d@pardini.net>
+Date: Thu, 01 Jan 2026 07:43:09 +0100
+Subject: [PATCH v2 1/3] arm64: dts: rockchip: Enable the NPU on NanoPC
+ T6/T6-LTS
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAHwXVmkC/52NTQ6CMBBGr0K6dkx/RKsr72FYFDrKBGmbKRIN4
- e5WjuDyfV/y3iIyMmEWl2oRjDNliqGA3lWi6114IJAvLLTUtdJGguPxeAA/ZeDYDV1PCXgwtbU
- Q0gswuPaJI4byK9TWSK/x1EpRfInxTu+tdWsK95SnyJ8tPavf+k9lViDBG9sqq119RnNNjj0F2
- gecRLOu6xcK/hwP5AAAAA==
-X-Change-ID: 20251230-arm64-dts-rockchip-rk3588-npu-enablements-1e2830d2e7b0
+Message-Id: <20260101-arm64-dts-rockchip-rk3588-npu-enablements-v2-1-013cf5d5c39d@pardini.net>
+References: <20260101-arm64-dts-rockchip-rk3588-npu-enablements-v2-0-013cf5d5c39d@pardini.net>
+In-Reply-To: <20260101-arm64-dts-rockchip-rk3588-npu-enablements-v2-0-013cf5d5c39d@pardini.net>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
 Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
@@ -18,57 +15,92 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  Jimmy Hon <honyuenkwun@gmail.com>, Tomeu Vizoso <tomeu@tomeuvizoso.net>, 
  Ricardo Pardini <ricardo@pardini.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1792; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=y7Xib1VykIOIuwDYT1LgmZreFH/0h6GvKNisTgW4mqI=;
- b=owEBbQGS/pANAwAIATteP+Oex+3pAcsmYgBpVhehlL5HowYfiZYW+zzvkD9xqKEkcqkG8am37
- CxHDRvpsiWJATMEAAEIAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCaVYXoQAKCRA7Xj/jnsft
- 6e9hB/4l4ovOHeAw15WbmnPtzYpJE+kbvTCuT64We5Nn1iXZyE1UjGdXsKSb+jIlx1Zm2x4HPXE
- WE1ixuJDeShaDWmsAOcokRLsHDmkQUkyoSyodWOBd1+varM7QAxbGztMA+SXI1SA5EQ2x5cp0Or
- ocyRcOyVzLsSyPMyY9LcYwJhQWlbJhULCPn0FC/bZ0BGDawmWLI+KZd8tnr3+TQaIDrKeiwMQMT
- dNFApaPBJNwFxIT4xW5bYBe49qRg64wWtvCwiPaAcdFLRIU44WxK5Z21CDV69zX1dJMs4bxqZKS
- BLl44+U6rmW0wHngUCODQPWR5T15qd7I5nNXBjQ3HQL0IUIh
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1717; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=shFG9R6+v5sNoFpWnfg7ZTJoiZw4vZTXsI7KdVCsRTs=;
+ b=owEBbQGS/pANAwAIATteP+Oex+3pAcsmYgBpVheh7MFP/7SozKGqT+2LoTktB4u2fxOXWTiDT
+ nu3Y1cAdY6JATMEAAEIAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCaVYXoQAKCRA7Xj/jnsft
+ 6RNOB/9efcvKbL7zz3E+rnkdD2iazUZI9FmPbkEcR0H0nBk7FFKDdaHiRhWoIepZ9nFKMk6y7zo
+ Hho6TSDexjkPswr+1LqKX1DlBAAKnn9gHxjAWJqHDSu3rZK7RcgmXoUa3YA+OwpgalGbhH5jnzt
+ keZqSoZiJo2AOp+zyPLmxn4sbT0gqV86turDQk4iwh+CxuxWSO4kZn7BozCUIJxwWBO9dLx4Mk7
+ YhQ4g2KrNSZeuEyX/kulvAI51pG4ASPI2JWXUtGzN76AwQq28h/Zz+HILHfI54I/c1/rTsI+EYb
+ JuNHoUYGO+C4/aaXY6E7Qf+xUlmF1D9RWO5FZDvvjtPh8jBY
 X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
  fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
 X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series enables the NPU on a few Rockchip rk3588 boards.
-In every case here, the required regulator was already in place.
-As suggested by Jimmy Hon [1], since the NPU power domain supply is
-being described, also remove the always-on property from the regulator.
-
-In Jimmy's words: the commit message for the introduction of the 
-pd_npu label mentions how the regulator no longer needs to be always on. 
-[2]
-
-I might send a separate series dropping always-on from the same regulator
-on the boards that have already added the NPU bits with no changes to 
-the regulator. I wonder if I should add Fixes for those.
-
-[1] https://lore.kernel.org/all/CALWfF7KHyKmDcEL9=mYzfCRWc_cymNscoFdeXr8P2frJeww5vA@mail.gmail.com/
-[2] https://lore.kernel.org/linux-rockchip/20250721-6-10-rocket-v9-7-77ebd484941e@tomeuvizoso.net/
+Enable the NPU on FriendlyElec NanoPC T6/T6-LTS boards.
+The regulator vdd_npu_s0 was already in place; since
+the NPU power domain supply is now described, remove the
+regulator's always-on.
 
 Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
 ---
-Changes in v2:
-- Drop the always-on from the vdd_npu_s0 regulator.
-- Link to v1: https://lore.kernel.org/r/20251230-arm64-dts-rockchip-rk3588-npu-enablements-v1-0-d38b182a59e3@pardini.net
-
----
-Ricardo Pardini (3):
-      arm64: dts: rockchip: Enable the NPU on NanoPC T6/T6-LTS
-      arm64: dts: rockchip: Enable the NPU on FriendlyElec CM3588
-      arm64: dts: rockchip: Enable the NPU on Turing RK1
-
- .../dts/rockchip/rk3588-friendlyelec-cm3588.dtsi   | 35 ++++++++++++++++++++-
  arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi | 36 +++++++++++++++++++++-
- .../arm64/boot/dts/rockchip/rk3588-turing-rk1.dtsi | 35 ++++++++++++++++++++-
- 3 files changed, 103 insertions(+), 3 deletions(-)
----
-base-commit: 9448598b22c50c8a5bb77a9103e2d49f134c9578
-change-id: 20251230-arm64-dts-rockchip-rk3588-npu-enablements-1e2830d2e7b0
+ 1 file changed, 35 insertions(+), 1 deletion(-)
 
-Best regards,
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
+index fafeabe9adf9e..90e7fe254491b 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
+@@ -458,7 +458,6 @@ vdd_npu_s0: regulator@42 {
+ 		reg = <0x42>;
+ 		fcs,suspend-voltage-selector = <1>;
+ 		regulator-name = "vdd_npu_s0";
+-		regulator-always-on;
+ 		regulator-boot-on;
+ 		regulator-min-microvolt = <550000>;
+ 		regulator-max-microvolt = <950000>;
+@@ -629,6 +628,10 @@ &pd_gpu {
+ 	domain-supply = <&vdd_gpu_s0>;
+ };
+ 
++&pd_npu {
++	domain-supply = <&vdd_npu_s0>;
++};
++
+ &pinctrl {
+ 	gpio-leds {
+ 		sys_led_pin: sys-led-pin {
+@@ -706,6 +709,37 @@ &pwm1 {
+ 	status = "okay";
+ };
+ 
++&rknn_core_0 {
++	npu-supply = <&vdd_npu_s0>;
++	sram-supply = <&vdd_npu_s0>;
++	status = "okay";
++};
++
++&rknn_core_1 {
++	npu-supply = <&vdd_npu_s0>;
++	sram-supply = <&vdd_npu_s0>;
++	status = "okay";
++};
++
++&rknn_core_2 {
++	npu-supply = <&vdd_npu_s0>;
++	sram-supply = <&vdd_npu_s0>;
++	status = "okay";
++};
++
++&rknn_mmu_0 {
++	status = "okay";
++};
++
++&rknn_mmu_1 {
++	status = "okay";
++};
++
++&rknn_mmu_2 {
++	status = "okay";
++};
++
++
+ &saradc {
+ 	vref-supply = <&avcc_1v8_s0>;
+ 	status = "okay";
+
 -- 
-Ricardo Pardini <ricardo@pardini.net>
+2.52.0
 
