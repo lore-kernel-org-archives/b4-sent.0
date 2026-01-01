@@ -1,287 +1,74 @@
-From: Jesung Yang <y.j3ms.n@gmail.com>
-Date: Thu, 01 Jan 2026 06:25:26 +0000
-Subject: [PATCH] rust: fix IDE support for inherent methods of primitive
- types
+From: Ricardo Pardini <ricardo@pardini.net>
+Subject: [PATCH v2 0/3] arm64: dts: rockchip: Enable the NPU on some rk3588
+ boards
+Date: Thu, 01 Jan 2026 07:43:08 +0100
+Message-Id: <20260101-arm64-dts-rockchip-rk3588-npu-enablements-v2-0-013cf5d5c39d@pardini.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260101-ra-fix-primitive-v1-1-def809357b4e@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAFYTVmkC/x2MSQqAMAwAvyI5G2jcWvyKeBBNNQdrSUUE8e8Wj
- wMz80BiFU7QFw8oX5LkCBmoLGDeprAyypIZKlN1hgyhTujlxqiyyykXo3XUNp4d2dpDzqJyFv7
- lML7vB2ZAB5ViAAAA
-X-Change-ID: 20260101-ra-fix-primitive-78154fe8173f
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jesung Yang <y.j3ms.n@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767248738; l=9946;
- i=y.j3ms.n@gmail.com; s=20251225; h=from:subject:message-id;
- bh=ngAPSt8b3oSBCTDeW0vwzZHGZOR+W6apYA6LrKYv1Mo=;
- b=GlqIccwMqCaABUlbqwmoQco5WbIYGl1uFADWuvG6uHNIjKrshZEPxAdrV1XrFUjDPEayxflr6
- gM9pbtlpzBTAAxUEVX30XGNVliuq9hVErZnPhL4xq7z3qdlrehiEPXL
-X-Developer-Key: i=y.j3ms.n@gmail.com; a=ed25519;
- pk=2yVgO1I+y7kkFSF2Dc/Dckj4L2FgRnvmERHFt4bspbI=
-X-Endpoint-Received: by B4 Relay for y.j3ms.n@gmail.com/20251225 with auth_id=586
+X-B4-Tracking: v=1; b=H4sIAHwXVmkC/52NTQ6CMBBGr0K6dkx/RKsr72FYFDrKBGmbKRIN4
+ e5WjuDyfV/y3iIyMmEWl2oRjDNliqGA3lWi6114IJAvLLTUtdJGguPxeAA/ZeDYDV1PCXgwtbU
+ Q0gswuPaJI4byK9TWSK/x1EpRfInxTu+tdWsK95SnyJ8tPavf+k9lViDBG9sqq119RnNNjj0F2
+ gecRLOu6xcK/hwP5AAAAA==
+X-Change-ID: 20251230-arm64-dts-rockchip-rk3588-npu-enablements-1e2830d2e7b0
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Jimmy Hon <honyuenkwun@gmail.com>, Tomeu Vizoso <tomeu@tomeuvizoso.net>, 
+ Ricardo Pardini <ricardo@pardini.net>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1792; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=y7Xib1VykIOIuwDYT1LgmZreFH/0h6GvKNisTgW4mqI=;
+ b=owEBbQGS/pANAwAIATteP+Oex+3pAcsmYgBpVhehlL5HowYfiZYW+zzvkD9xqKEkcqkG8am37
+ CxHDRvpsiWJATMEAAEIAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCaVYXoQAKCRA7Xj/jnsft
+ 6e9hB/4l4ovOHeAw15WbmnPtzYpJE+kbvTCuT64We5Nn1iXZyE1UjGdXsKSb+jIlx1Zm2x4HPXE
+ WE1ixuJDeShaDWmsAOcokRLsHDmkQUkyoSyodWOBd1+varM7QAxbGztMA+SXI1SA5EQ2x5cp0Or
+ ocyRcOyVzLsSyPMyY9LcYwJhQWlbJhULCPn0FC/bZ0BGDawmWLI+KZd8tnr3+TQaIDrKeiwMQMT
+ dNFApaPBJNwFxIT4xW5bYBe49qRg64wWtvCwiPaAcdFLRIU44WxK5Z21CDV69zX1dJMs4bxqZKS
+ BLl44+U6rmW0wHngUCODQPWR5T15qd7I5nNXBjQ3HQL0IUIh
+X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
+ fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
+X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update `generate_rust_analyzer.py` so that the generated
-`rust-project.json` contains the `sysroot_src` field with
-`"crate_attrs": ["no_std"]` specified for relevant crates. This ensures
-that rust-analyzer provides proper IDE support for inherent methods of
-primitive types.
+This series enables the NPU on a few Rockchip rk3588 boards.
+In every case here, the required regulator was already in place.
+As suggested by Jimmy Hon [1], since the NPU power domain supply is
+being described, also remove the always-on property from the regulator.
 
-Since commit 50384460c68f ("Rewrite method resolution to follow rustc
-more closely") to rust-analyzer, it no longer provides language server
-features like code completion and go-to-definition for inherent methods
-of primitive types when sysroot crates (e.g., `core`, `std`) are inlined
-in `rust-project.json` [1]. As `generate_rust_analyzer.py` currently
-inlines these crates, our setup is affected by this change.
+In Jimmy's words: the commit message for the introduction of the 
+pd_npu label mentions how the regulator no longer needs to be always on. 
+[2]
 
-Specifying the `sysroot_src` field restores this functionality by
-allowing rust-analyzer to locate sysroot crates by itself. However, this
-causes `std` to be treated as a dependency for all local crates by
-default. To align with our compilation settings, provide the `no_std`
-attribute via the `crate_attrs` field, as the `-Zcrate-attr=no_std`
-compiler flag is not visible to rust-analyzer. This combined approach
-removes manual manipulation of sysroot dependencies while preventing
-incorrect symbol resolution against the standard library.
+I might send a separate series dropping always-on from the same regulator
+on the boards that have already added the NPU bits with no changes to 
+the regulator. I wonder if I should add Fixes for those.
 
-Note that this configuration requires rust-analyzer release 2025-12-22
-(v0.3.2727) or later, which introduced support for the `crate_attrs`
-field.
+[1] https://lore.kernel.org/all/CALWfF7KHyKmDcEL9=mYzfCRWc_cymNscoFdeXr8P2frJeww5vA@mail.gmail.com/
+[2] https://lore.kernel.org/linux-rockchip/20250721-6-10-rocket-v9-7-77ebd484941e@tomeuvizoso.net/
 
-Link: https://rust-lang.zulipchat.com/#narrow/channel/x/topic/x/near/561607963 [1]
-Link: https://rust-for-linux.zulipchat.com/#narrow/channel/x/topic/x/near/561607753
-
-Signed-off-by: Jesung Yang <y.j3ms.n@gmail.com>
+Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
 ---
- rust/Makefile                     |  1 -
- scripts/generate_rust_analyzer.py | 75 +++++++++++++++++++--------------------
- 2 files changed, 37 insertions(+), 39 deletions(-)
-
-diff --git a/rust/Makefile b/rust/Makefile
-index 5d357dce1704d15e43effc528be8f5a4d74d3d8d..5110b7fa7b21941894dfeadc1fec5e87af3e7515 100644
---- a/rust/Makefile
-+++ b/rust/Makefile
-@@ -566,7 +566,6 @@ quiet_cmd_rustc_library = $(if $(skip_clippy),RUSTC,$(RUSTC_OR_CLIPPY_QUIET)) L
- 
- rust-analyzer:
- 	$(Q)MAKEFLAGS= $(srctree)/scripts/generate_rust_analyzer.py \
--		--cfgs='core=$(core-cfgs)' $(core-edition) \
- 		--cfgs='proc_macro2=$(proc_macro2-cfgs)' \
- 		--cfgs='quote=$(quote-cfgs)' \
- 		--cfgs='syn=$(syn-cfgs)' \
-diff --git a/scripts/generate_rust_analyzer.py b/scripts/generate_rust_analyzer.py
-index 147d0cc940681426771db865bc2462e7029a6d7d..6178a53516ec35f308897e65c5001edd81b0d3dd 100755
---- a/scripts/generate_rust_analyzer.py
-+++ b/scripts/generate_rust_analyzer.py
-@@ -19,7 +19,7 @@ def args_crates_cfgs(cfgs):
- 
-     return crates_cfgs
- 
--def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs, core_edition):
-+def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
-     # Generate the configuration list.
-     cfg = []
-     with open(objtree / "include" / "generated" / "rustc_cfg") as fd:
-@@ -35,7 +35,7 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs, core_edit
-     crates_indexes = {}
-     crates_cfgs = args_crates_cfgs(cfgs)
- 
--    def append_crate(display_name, root_module, deps, cfg=[], is_workspace_member=True, is_proc_macro=False, edition="2021"):
-+    def append_crate(display_name, root_module, deps, cfg=[], crate_attrs=[], is_workspace_member=True, is_proc_macro=False, edition="2021"):
-         crate = {
-             "display_name": display_name,
-             "root_module": str(root_module),
-@@ -48,6 +48,8 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs, core_edit
-                 "RUST_MODFILE": "This is only for rust-analyzer"
-             }
-         }
-+        if len(crate_attrs) > 0:
-+            crate["crate_attrs"] = crate_attrs
-         if is_proc_macro:
-             proc_macro_dylib_name = subprocess.check_output(
-                 [os.environ["RUSTC"], "--print", "file-names", "--crate-name", display_name, "--crate-type", "proc-macro", "-"],
-@@ -57,67 +59,46 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs, core_edit
-         crates_indexes[display_name] = len(crates)
-         crates.append(crate)
- 
--    def append_sysroot_crate(
--        display_name,
--        deps,
--        cfg=[],
--        edition="2021",
--    ):
--        append_crate(
--            display_name,
--            sysroot_src / display_name / "src" / "lib.rs",
--            deps,
--            cfg,
--            is_workspace_member=False,
--            edition=edition,
--        )
--
--    # NB: sysroot crates reexport items from one another so setting up our transitive dependencies
--    # here is important for ensuring that rust-analyzer can resolve symbols. The sources of truth
--    # for this dependency graph are `(sysroot_src / crate / "Cargo.toml" for crate in crates)`.
--    append_sysroot_crate("core", [], cfg=crates_cfgs.get("core", []), edition=core_edition)
--    append_sysroot_crate("alloc", ["core"])
--    append_sysroot_crate("std", ["alloc", "core"])
--    append_sysroot_crate("proc_macro", ["core", "std"])
--
-     append_crate(
-         "compiler_builtins",
-         srctree / "rust" / "compiler_builtins.rs",
-         [],
-+        crate_attrs=["no_std"],
-     )
- 
-     append_crate(
-         "proc_macro2",
-         srctree / "rust" / "proc-macro2" / "lib.rs",
--        ["core", "alloc", "std", "proc_macro"],
-+        [],
-         cfg=crates_cfgs["proc_macro2"],
-     )
- 
-     append_crate(
-         "quote",
-         srctree / "rust" / "quote" / "lib.rs",
--        ["alloc", "proc_macro", "proc_macro2"],
-+        ["proc_macro2"],
-         cfg=crates_cfgs["quote"],
-     )
- 
-     append_crate(
-         "syn",
-         srctree / "rust" / "syn" / "lib.rs",
--        ["proc_macro", "proc_macro2", "quote"],
-+        ["proc_macro2", "quote"],
-         cfg=crates_cfgs["syn"],
-     )
- 
-     append_crate(
-         "macros",
-         srctree / "rust" / "macros" / "lib.rs",
--        ["std", "proc_macro", "proc_macro2", "quote", "syn"],
-+        ["proc_macro2", "quote", "syn"],
-         is_proc_macro=True,
-     )
- 
-     append_crate(
-         "build_error",
-         srctree / "rust" / "build_error.rs",
--        ["core", "compiler_builtins"],
-+        ["compiler_builtins"],
-+        crate_attrs=["no_std"],
-     )
- 
-     append_crate(
-@@ -125,31 +106,36 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs, core_edit
-         srctree / "rust" / "pin-init" / "internal" / "src" / "lib.rs",
-         [],
-         cfg=["kernel"],
-+        crate_attrs=["no_std"],
-         is_proc_macro=True,
-     )
- 
-     append_crate(
-         "pin_init",
-         srctree / "rust" / "pin-init" / "src" / "lib.rs",
--        ["core", "pin_init_internal", "macros"],
-+        ["pin_init_internal", "macros"],
-         cfg=["kernel"],
-+        crate_attrs=["no_std"],
-     )
- 
-     append_crate(
-         "ffi",
-         srctree / "rust" / "ffi.rs",
--        ["core", "compiler_builtins"],
-+        ["compiler_builtins"],
-+        crate_attrs=["no_std"],
-     )
- 
-     def append_crate_with_generated(
-         display_name,
-         deps,
-+        crate_attrs=[],
-     ):
-         append_crate(
-             display_name,
-             srctree / "rust"/ display_name / "lib.rs",
-             deps,
-             cfg=cfg,
-+            crate_attrs=crate_attrs,
-         )
-         crates[-1]["env"]["OBJTREE"] = str(objtree.resolve(True))
-         crates[-1]["source"] = {
-@@ -160,9 +146,21 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs, core_edit
-             "exclude_dirs": [],
-         }
- 
--    append_crate_with_generated("bindings", ["core", "ffi", "pin_init"])
--    append_crate_with_generated("uapi", ["core", "ffi", "pin_init"])
--    append_crate_with_generated("kernel", ["core", "macros", "build_error", "pin_init", "ffi", "bindings", "uapi"])
-+    append_crate_with_generated(
-+        "bindings",
-+        ["ffi", "pin_init"],
-+        crate_attrs=["no_std"],
-+    )
-+    append_crate_with_generated(
-+        "uapi",
-+        ["ffi", "pin_init"],
-+        crate_attrs=["no_std"],
-+    )
-+    append_crate_with_generated(
-+        "kernel",
-+        ["macros", "build_error", "pin_init", "ffi", "bindings", "uapi"],
-+        crate_attrs=["no_std"],
-+    )
- 
-     def is_root_crate(build_file, target):
-         try:
-@@ -190,8 +188,9 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs, core_edit
-             append_crate(
-                 name,
-                 path,
--                ["core", "kernel"],
-+                ["kernel"],
-                 cfg=cfg,
-+                crate_attrs=["no_std"],
-             )
- 
-     return crates
-@@ -200,7 +199,6 @@ def main():
-     parser = argparse.ArgumentParser()
-     parser.add_argument('--verbose', '-v', action='store_true')
-     parser.add_argument('--cfgs', action='append', default=[])
--    parser.add_argument("core_edition")
-     parser.add_argument("srctree", type=pathlib.Path)
-     parser.add_argument("objtree", type=pathlib.Path)
-     parser.add_argument("sysroot", type=pathlib.Path)
-@@ -217,8 +215,9 @@ def main():
-     assert args.sysroot in args.sysroot_src.parents
- 
-     rust_project = {
--        "crates": generate_crates(args.srctree, args.objtree, args.sysroot_src, args.exttree, args.cfgs, args.core_edition),
-+        "crates": generate_crates(args.srctree, args.objtree, args.sysroot_src, args.exttree, args.cfgs),
-         "sysroot": str(args.sysroot),
-+        "sysroot_src": str(args.sysroot_src)
-     }
- 
-     json.dump(rust_project, sys.stdout, sort_keys=True, indent=4)
+Changes in v2:
+- Drop the always-on from the vdd_npu_s0 regulator.
+- Link to v1: https://lore.kernel.org/r/20251230-arm64-dts-rockchip-rk3588-npu-enablements-v1-0-d38b182a59e3@pardini.net
 
 ---
-base-commit: f8f9c1f4d0c7a64600e2ca312dec824a0bc2f1da
-change-id: 20260101-ra-fix-primitive-78154fe8173f
+Ricardo Pardini (3):
+      arm64: dts: rockchip: Enable the NPU on NanoPC T6/T6-LTS
+      arm64: dts: rockchip: Enable the NPU on FriendlyElec CM3588
+      arm64: dts: rockchip: Enable the NPU on Turing RK1
+
+ .../dts/rockchip/rk3588-friendlyelec-cm3588.dtsi   | 35 ++++++++++++++++++++-
+ arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi | 36 +++++++++++++++++++++-
+ .../arm64/boot/dts/rockchip/rk3588-turing-rk1.dtsi | 35 ++++++++++++++++++++-
+ 3 files changed, 103 insertions(+), 3 deletions(-)
+---
+base-commit: 9448598b22c50c8a5bb77a9103e2d49f134c9578
+change-id: 20251230-arm64-dts-rockchip-rk3588-npu-enablements-1e2830d2e7b0
 
 Best regards,
 -- 
-Jesung Yang <y.j3ms.n@gmail.com>
+Ricardo Pardini <ricardo@pardini.net>
 
