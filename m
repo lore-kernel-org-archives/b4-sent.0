@@ -1,173 +1,122 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Thu, 01 Jan 2026 13:57:13 +0100
-Subject: [PATCH v2 9/9] sysctl: Update API function documentation
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Date: Thu, 01 Jan 2026 15:17:01 +0100
+Subject: [PATCH v2] Update links to doc/develop/falcon.rst
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260101-jag-dovec_consolidate-v2-9-ff918f753ba9@kernel.org>
-References: <20260101-jag-dovec_consolidate-v2-0-ff918f753ba9@kernel.org>
-In-Reply-To: <20260101-jag-dovec_consolidate-v2-0-ff918f753ba9@kernel.org>
-To: Kees Cook <kees@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
- Joel Granados <joel.granados@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5503;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=MLmvW6uK36t+JJxfWBoWzf/bqBLohJaUDaY7ZHy7af8=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGlWby/UXQzkiyGgh9B7trQiFm5F+QkfS5wJM
- M6D6j5PW81ZFYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJpVm8vAAoJELqXzVK3
- lkFPSYYL/jnWyufot+4/mnYJl8EGrk+gJldfGAx28qgTR4Ca+IaFZgjzkm88ShG3yrHr4m5F4cQ
- Emw0s3zI7yhKNih4yyGICMsBWdtSRCIwW7/qCeiCO3ucepX43imHvQO70MHaYGkcP8/zcVbfb8e
- mKAKJFNf17PTMZIKDD4sjhjffCKJcydwnmTzs76FNHntCQW+vSBtsJQHJhSjqu3cP6b2tOKEbfW
- a4cO5kXrztx0GjQnIBVSNPOT6LNOJRRZGENEniv4NhgEOBvfYAjNJnZph8Kfc0UpdjW6TcYArzS
- 3rvGnUDa35pF9OTqH11HrlR9AyJcAZqm3kCCf9BgULdPGXxZty3KowR1gDSH/ZMXI2mmD6/54Q1
- bOp8l6/a4uEKO8X0Xp2iOccHE6V5z7zTpBOZ04yVkdIEY3bUFUuc/YIbpWpNSoG44C/XtnarWCd
- gqdGy+PFGzZJ3WxHIkqA7KK4kR7w09I/o9czgJK9lLYrCRIgRZYCmNwwBeAAiuoXmt1Gb8Ijjz5
- O8=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260101-falcon-v2-1-75896535ad0f@posteo.net>
+X-B4-Tracking: v=1; b=H4sIANyBVmkC/2WMQQrDIBBFrxJmXUvGElO7yj1KFmonzUDRoCItw
+ bvXZlv+6n0eb4dEkSnBrdshUuHEwTeQpw7cavyTBD8ag+zlgPKCYjEvF7wYjR4lIjlrCZq8RVr
+ 4fYTuc+OVUw7xc3QL/t6/REHRpt11sFqpntS0hZQpnD1lmGutX1ReOgKdAAAA
+X-Change-ID: 20251231-falcon-7a97211ecbbe
+To: u-boot@lists.denx.de
+Cc: Tom Rini <trini@konsulko.com>, 
+ Jerome Forissier <jerome.forissier@linaro.org>, 
+ Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
+ Michal Simek <michal.simek@amd.com>, 
+ Heinrich Schuchardt <xypron.glpk@gmx.de>, 
+ Michael Trimarchi <michael@amarulasolutions.com>, 
+ "Kory Maincent (TI.com)" <kory.maincent@bootlin.com>, 
+ Mikhail Kshevetskiy <mikhail.kshevetskiy@iopsys.eu>, 
+ Ibai Erkiaga <ibai.erkiaga-elorza@amd.com>, 
+ Paul Barker <paul.barker.ct@bp.renesas.com>, Anshul Dalal <anshuld@ti.com>, 
+ Peng Fan <peng.fan@nxp.com>, Andre Przywara <andre.przywara@arm.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Mattijs Korpershoek <mkorpershoek@kernel.org>, 
+ Simon Glass <sjg@chromium.org>, Hrushikesh Salunke <h-salunke@ti.com>, 
+ Dario Binacchi <dario.binacchi@amarulasolutions.com>, Ye Li <ye.li@nxp.com>, 
+ Alif Zakuan Yuslaimi <alif.zakuan.yuslaimi@altera.com>, 
+ Sidharth Seela <sidharthseela@gmail.com>, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767277028; l=2880;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=uzyoTCT099z/Hlho/K2kyDiQU5MpWiXI/6PFq2lGyu4=;
+ b=h1splMZr22ZTTifPeBQXfcAoDneceK8Fanc20Gp6OvJgB8PbHkYJPlCPx2syIz3qYXezvKYFJ
+ Xpq5WzB6biFARFZFiTTSJPnO2xnnQGkueJ0L/gXHDEO7T/Ez9rfTKOD
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add colon ":" after argument name where it is missing
-Add doc for proc_int_conv and proc_dointvec_conv
+README.falcon was converted to ReST/HTML in 2023.
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- kernel/sysctl.c | 60 +++++++++++++++++++++++++++++++++++++++++++--------------
- 1 file changed, 46 insertions(+), 14 deletions(-)
+Changes in v2:
+- Use a proper link within ReST (thanks to Heinrich Schuchardt's review)
+- Link to v1: https://lore.kernel.org/r/20251231-falcon-v1-1-19c85b9660e6@posteo.net
+---
+ cmd/Kconfig                 | 4 ++--
+ common/spl/Kconfig          | 2 +-
+ doc/board/ti/am335x_evm.rst | 2 +-
+ doc/develop/falcon.rst      | 1 +
+ 4 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 09a5b2d86684cd09cbd6e9f074ecdb71ea9bf218..5ffa5c1bfdc929f16b59d178d0b253ebcac0f67b 100644
---- a/kernel/sysctl.c
-+++ b/kernel/sysctl.c
-@@ -365,7 +365,7 @@ static void proc_put_char(void **buf, size_t *size, char c)
-  * not NULL. Check that the values are less than UINT_MAX to avoid
-  * having to support wrap around from userspace.
-  *
-- * returns 0 on success.
-+ * Returns: 0 on success.
-  */
- int proc_uint_u2k_conv_uop(const ulong *u_ptr, uint *k_ptr,
- 			   ulong (*u_ptr_op)(const ulong))
-@@ -386,7 +386,7 @@ int proc_uint_u2k_conv_uop(const ulong *u_ptr, uint *k_ptr,
-  *
-  * Uses READ_ONCE to assign value to u_ptr.
-  *
-- * returns 0 on success.
-+ * Returns: 0 on success.
-  */
- int proc_uint_k2u_conv(ulong *u_ptr, const uint *k_ptr)
- {
-@@ -460,16 +460,16 @@ static int do_proc_uint_conv_minmax(bool *negp, ulong *u_ptr, uint *k_ptr,
+diff --git a/cmd/Kconfig b/cmd/Kconfig
+index b71ac554c0b..fca2a0b0e39 100644
+--- a/cmd/Kconfig
++++ b/cmd/Kconfig
+@@ -620,7 +620,7 @@ config CMD_SPL
+ 	help
+ 	  Falcon mode allows booting directly from SPL into an Operating
+ 	  System such as Linux, thus skipping U-Boot proper. See
+-	  doc/README.falcon for full information about how to use this
++	  doc/develop/falcon.rst for full information about how to use this
+ 	  command.
  
- /**
-  * proc_int_k2u_conv_kop - Assign kernel value to a user space pointer
-- * @u_ptr - pointer to user space variable
-- * @k_ptr - pointer to kernel variable
-- * @negp - assigned %TRUE if the converted kernel value is negative;
-+ * @u_ptr: pointer to user space variable
-+ * @k_ptr: pointer to kernel variable
-+ * @negp: assigned %TRUE if the converted kernel value is negative;
-  *         %FALSE otherweise
-- * @k_ptr_op - execute this function before assigning to u_ptr
-+ * @k_ptr_op: execute this function before assigning to u_ptr
-  *
-  * Uses READ_ONCE to get value from k_ptr. Executes k_ptr_op before assigning
-  * to u_ptr if not NULL. Does **not** check for overflow.
-  *
-- * returns 0 on success.
-+ * Returns: 0 on success.
-  */
- int proc_int_k2u_conv_kop(ulong *u_ptr, const int *k_ptr, bool *negp,
- 			  ulong (*k_ptr_op)(const ulong))
-@@ -488,15 +488,15 @@ int proc_int_k2u_conv_kop(ulong *u_ptr, const int *k_ptr, bool *negp,
+ config CMD_SPL_NAND_OFS
+@@ -629,7 +629,7 @@ config CMD_SPL_NAND_OFS
+ 	default 0x0
+ 	help
+ 	  This provides the offset of the command line arguments for Linux
+-	  when booting from NAND in Falcon mode.  See doc/README.falcon
++	  when booting from NAND in Falcon mode.  See doc/develop/falcon.rst
+ 	  for full information about how to use this option (and also see
+ 	  board/gateworks/gw_ventana/README for an example).
  
- /**
-  * proc_int_u2k_conv_uop - Assign user value to a kernel pointer
-- * @u_ptr - pointer to user space variable
-- * @k_ptr - pointer to kernel variable
-- * @negp - If %TRUE, the converted user value is made negative.
-- * @u_ptr_op - execute this function before assigning to k_ptr
-+ * @u_ptr: pointer to user space variable
-+ * @k_ptr: pointer to kernel variable
-+ * @negp: If %TRUE, the converted user value is made negative.
-+ * @u_ptr_op: execute this function before assigning to k_ptr
-  *
-  * Uses WRITE_ONCE to assign value to k_ptr. Executes u_ptr_op if
-  * not NULL. Check for overflow with UINT_MAX.
-  *
-- * returns 0 on success.
-+ * Returns: 0 on success.
-  */
- int proc_int_u2k_conv_uop(const ulong *u_ptr, int *k_ptr, const bool *negp,
- 			  ulong (*u_ptr_op)(const ulong))
-@@ -515,6 +515,23 @@ int proc_int_u2k_conv_uop(const ulong *u_ptr, int *k_ptr, const bool *negp,
- 	return 0;
- }
+diff --git a/common/spl/Kconfig b/common/spl/Kconfig
+index 4b10e9c3880..f0612acf0c2 100644
+--- a/common/spl/Kconfig
++++ b/common/spl/Kconfig
+@@ -1209,7 +1209,7 @@ config SPL_OS_BOOT
+ 	depends on ARM || MICROBLAZE || PPC
+ 	help
+ 	  Enable booting directly to an OS from SPL.
+-	  for more info read doc/README.falcon
++	  for more info read doc/develop/falcon.rst
  
-+/**
-+ * proc_int_conv - Change user or kernel pointer based on direction
-+ *
-+ * @negp: will be passed to uni-directional converters
-+ * @u_ptr: pointer to user variable
-+ * @k_ptr: pointer to kernel variable
-+ * @dir: %TRUE if this is a write to the sysctl file
-+ * @tbl: the sysctl table
-+ * @k_ptr_range_check: Check range for k_ptr when %TRUE
-+ * @user_to_kern: Callback used to assign value from user to kernel var
-+ * @kern_to_user: Callback used to assign value from kernel to user var
-+ *
-+ * When direction is kernel to user, then the u_ptr is modified.
-+ * When direction is user to kernel, then the k_ptr is modified.
-+ *
-+ * Returns: 0 on success
-+ */
- int proc_int_conv(bool *negp, ulong *u_ptr, int *k_ptr, int dir,
- 		  const struct ctl_table *tbl, bool k_ptr_range_check,
- 		  int (*user_to_kern)(const bool *negp, const ulong *u_ptr, int *k_ptr),
-@@ -912,7 +929,7 @@ int proc_ulong_conv(ulong *u_ptr, ulong *k_ptr, int dir,
-  * Uses WRITE_ONCE to assign value to k_ptr. Executes u_ptr_op if
-  * not NULL.
-  *
-- * returns: 0 on success.
-+ * Returns: 0 on success.
-  */
- int proc_ulong_u2k_conv_uop(const ulong *u_ptr, ulong *k_ptr,
- 			    ulong (*u_ptr_op)(const ulong))
-@@ -938,7 +955,7 @@ static int proc_ulong_u2k_conv(const ulong *u_ptr, ulong *k_ptr)
-  * Uses READ_ONCE to assign value to u_ptr. Executes k_ptr_op if
-  * not NULL.
-  *
-- * returns: 0 on success.
-+ * Returns: 0 on success.
-  */
- int proc_ulong_k2u_conv_kop(ulong *u_ptr, const ulong *k_ptr,
- 			    ulong (*k_ptr_op)(const ulong))
-@@ -1007,6 +1024,21 @@ int proc_doulongvec_minmax(const struct ctl_table *table, int dir,
- 				do_proc_ulong_conv);
- }
+ config SPL_OS_BOOT_SECURE
+ 	bool "Allow Falcon Mode on secure devices"
+diff --git a/doc/board/ti/am335x_evm.rst b/doc/board/ti/am335x_evm.rst
+index 40e144948a3..b14ba41917e 100644
+--- a/doc/board/ti/am335x_evm.rst
++++ b/doc/board/ti/am335x_evm.rst
+@@ -274,7 +274,7 @@ into memory, then written to NAND.
+ Falcon Mode
+ -----------
  
-+/**
-+ * proc_dointvec_conv - read a vector of ints with a custom converter
-+ *
-+ * @table: the sysctl table
-+ * @dir: %TRUE if this is a write to the sysctl file
-+ * @buffer: the user buffer
-+ * @lenp: the size of the user buffer
-+ * @ppos: file position
-+ * @conv: Custom converter call back. Defaults to do_proc_int_conv
-+ *
-+ * Reads/writes up to table->maxlen/sizeof(int) integer values from/to the
-+ * user buffer, treated as an ASCII string.
-+ *
-+ * Returns: 0 on success
-+ */
- int proc_dointvec_conv(const struct ctl_table *table, int dir, void *buffer,
- 		       size_t *lenp, loff_t *ppos,
- 		       int (*conv)(bool *negp, unsigned long *u_ptr, int *k_ptr,
+-The default build includes "Falcon Mode" (see doc/README.falcon) via NAND,
++The default build includes :ref:`falcon-mode` via NAND,
+ eMMC (or raw SD cards) and FAT SD cards.  Our default behavior currently is
+ to read a 'c' on the console while in SPL at any point prior to loading the
+ OS payload (so as soon as possible) to opt to booting full U-Boot.  Also
+diff --git a/doc/develop/falcon.rst b/doc/develop/falcon.rst
+index 528a9c389bf..3fc23f65c45 100644
+--- a/doc/develop/falcon.rst
++++ b/doc/develop/falcon.rst
+@@ -1,4 +1,5 @@
+ .. SPDX-License-Identifier: GPL-2.0-or-later
++.. _falcon-mode:
+ 
+ Falcon Mode
+ ===========
 
+---
+base-commit: 4933a0e67578789a57f540a378ce0698435b7b17
+change-id: 20251231-falcon-7a97211ecbbe
+
+Best regards,
 -- 
-2.50.1
+J. Neuschäfer <j.ne@posteo.net>
 
