@@ -1,11 +1,11 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Thu, 01 Jan 2026 13:57:10 +0100
-Subject: [PATCH v2 6/9] sysctl: Rename do_proc_dotypevec macro to
- do_proc_typevec
+Date: Thu, 01 Jan 2026 13:57:11 +0100
+Subject: [PATCH v2 7/9] sysctl: Group proc_handler declarations and
+ document
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260101-jag-dovec_consolidate-v2-6-ff918f753ba9@kernel.org>
+Message-Id: <20260101-jag-dovec_consolidate-v2-7-ff918f753ba9@kernel.org>
 References: <20260101-jag-dovec_consolidate-v2-0-ff918f753ba9@kernel.org>
 In-Reply-To: <20260101-jag-dovec_consolidate-v2-0-ff918f753ba9@kernel.org>
 To: Kees Cook <kees@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, 
@@ -13,149 +13,198 @@ To: Kees Cook <kees@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>,
 Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
  Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4776;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8609;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=EfuZhzyOMaVV5FDyRZb2ekLBnEai3Frd1m0Nc1g3+zI=;
- b=kA0DAAoBupfNUreWQU8ByyZiAGlWby2heWf9jcxP2vhvsBmV3lAISfBPXvVhNCg19pyfxIy/M
- 4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJpVm8tAAoJELqXzVK3lkFP4/0L/A/v
- hGEofZz9w7ZA4yvb3Ml02P3+3enPRIQm0uZVE3j9K0wmjx4Zx8vwwbDU9Gb66iJ5VtDAEnMP6K7
- cmwQ1e1lueC/v/JELJkHBihtSaVw+ou6CUGd7z+S72hjg5LHAdYoLfJHAfj6zOIb/tBjgjXYk4t
- Dc2sg02m/TnuCChNlUUU2cwfu3DeG6tahk5c346iKI3XRWSEoabHP+Xpogn9o0pg3k1RA0EXhAi
- on2KVcbbhNi8pfZrrCevWeXzesx1T6N8uYUSwkepJ0OjZZqfHaHGA271tPKUwjzGJ0t9q/o0moV
- +GlxvgnuXEvTAFapkhfxSBdLUH2Mn8G8smlsTFSdTcU03/IrtMsBYRB3Eb3FahsvpyGh4ymVqqH
- FnPV1l4FBcoPhhRqxgXhyfuoLx3g1ftKIeUY4hckbYGs/iTcC8iN4FR7vrmZdMm26qz836SyOXs
- U0Dai1pPIx3NVgMpmaXiS8URzNdMN7IxrvTxzrlr+SDsB6tUxRjLnnnq1tTA==
+ bh=PIAQtecICUqPpS+GwLLx44WXYsf3diE+/qtx8X2p5C0=;
+ b=owJ4nAHsARP+kA0DAAoBupfNUreWQU8ByyZiAGlWby4Vi5lAIxZP6HujaWUboPTqyKETi6mYN
+ rVvVmiYApOxpIkBsgQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJpVm8uAAoJELqXzVK3
+ lkFPMBoL+ORiK+iFJAXM+evKOGujOUeFh5FzGL07It6KCm5eN2apg8w8EFSkVzn2ipOOSk53HLj
+ ezKCPADMz8FBuGd//+XlXmBtgzfyggqvl10/v/L1dzhqUYw8CfqHppda9vSF3WQn1+3bWnOarF/
+ MsN0GQrtQB4neUSzJYIh3sqQsTRwK8lq4bg5mz9x+QGjJCwilEfRdjIisk8hozkfalgslWdsEuc
+ ojU/uZJ7YdhjBDq7tSuPbT9uhkjAcZoM8Tf8sqR3naHBIUzSFDO4iFCYpJqt3UpjhteC4c5rd02
+ 3Y8mPGIZJf2JeMd300iBwGY3x8f/Fn5mDA5hFQYOovKIIA+X3QSpq7sHB/ox4tBXm1QjykPWW7W
+ ktj3meWyo03L6T1nYWepxLVPq6JBgD1W7/+EFLzmEPGovid8ZOEeHubb9rCygZLDF76vkX9Aem7
+ Cuzh3pcqom5MII3/bOSv61ytynbl8TDRZxpoGDymkfXZKwTyxLDazEACw+EcqaYjiHQ3MhvV7mL
+ Q==
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remove the do..do from the proc vector functions. The redundant "do"
-only adds confusion to the already large amount of functions in sysctl.c
+Make four groups in the sysctl header and document each group with an
+example of how to use them.
+1. proc_handler : All functions that can be passed to the proc_handler
+   pointer in ctl_table
+2. proc handler aggregators: Functions to create proc handlers with
+   custom converters
+3. bi-directional converters: Functions to create read/write custom
+   converters. Can be passed to proc handler aggregators
+4. uni-directional converters: Functions to create read or write custom
+   converters. Can be passed as args to bi-directional converters
+
+Use just one naming convention in the declarations: 'write' becomes
+'dir' and 'buffer' becomes 'buf'.
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- kernel/sysctl.c | 37 ++++++++++++++++++-------------------
- 1 file changed, 18 insertions(+), 19 deletions(-)
+ include/linux/sysctl.h | 128 +++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 87 insertions(+), 41 deletions(-)
 
-diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 5bc1bd3d415be2552f085111852f63ddefb05894..b90924944ad52bcd3347cf5ca7c87ac9455eb70d 100644
---- a/kernel/sysctl.c
-+++ b/kernel/sysctl.c
-@@ -576,8 +576,8 @@ static const char proc_wspace_sep[] = { ' ', '\t', '\n' };
-  * Do not export this macro outside the sysctl subsys.
-  * It is meant to generate static functions only
-  */
--#define do_proc_dotypevec(T) \
--static int do_proc_do##T##vec(const struct ctl_table *table, int dir, \
-+#define do_proc_typevec(T) \
-+static int do_proc_##T##vec(const struct ctl_table *table, int dir, \
- 		  void *buffer, size_t *lenp, loff_t *ppos, \
- 		  int (*conv)(bool *negp, ulong *u_ptr, T *k_ptr, \
- 			      int dir, const struct ctl_table *table)) \
-@@ -649,9 +649,9 @@ out: \
- 	return err; \
- }
+diff --git a/include/linux/sysctl.h b/include/linux/sysctl.h
+index 8f8e357b1f4d377a0891fbc85d34073cd30469b1..ad268dfd9e79f5540a4a85a9a439819fb3172640 100644
+--- a/include/linux/sysctl.h
++++ b/include/linux/sysctl.h
+@@ -74,63 +74,109 @@ extern const int sysctl_vals[];
  
--do_proc_dotypevec(int)
--do_proc_dotypevec(ulong)
--do_proc_dotypevec(uint)
-+do_proc_typevec(int)
-+do_proc_typevec(ulong)
-+do_proc_typevec(uint)
+ extern const unsigned long sysctl_long_vals[];
  
- /**
-  * proc_douintvec_conv - read a vector of unsigned ints with a custom converter
-@@ -678,7 +678,7 @@ int proc_douintvec_conv(const struct ctl_table *table, int dir, void *buffer,
- 	if (!conv)
- 		conv = do_proc_uint_conv;
+-typedef int proc_handler(const struct ctl_table *ctl, int write, void *buffer,
+-		size_t *lenp, loff_t *ppos);
+-
+-int proc_dostring(const struct ctl_table *, int, void *, size_t *, loff_t *);
+-int proc_dobool(const struct ctl_table *table, int write, void *buffer,
+-		size_t *lenp, loff_t *ppos);
++typedef int proc_handler(const struct ctl_table *ctl, int dir, void *buf,
++			 size_t *lenp, loff_t *ppos);
  
--	return do_proc_douintvec(table, dir, buffer, lenp, ppos, conv);
-+	return do_proc_uintvec(table, dir, buffer, lenp, ppos, conv);
- }
- 
- /**
-@@ -737,7 +737,7 @@ int proc_dobool(const struct ctl_table *table, int dir, void *buffer,
- int proc_dointvec(const struct ctl_table *table, int dir, void *buffer,
- 		  size_t *lenp, loff_t *ppos)
- {
--	return do_proc_dointvec(table, dir, buffer, lenp, ppos, do_proc_int_conv);
-+	return do_proc_intvec(table, dir, buffer, lenp, ppos, do_proc_int_conv);
- }
- 
- /**
-@@ -756,8 +756,7 @@ int proc_dointvec(const struct ctl_table *table, int dir, void *buffer,
- int proc_douintvec(const struct ctl_table *table, int dir, void *buffer,
- 		size_t *lenp, loff_t *ppos)
- {
--	return do_proc_douintvec(table, dir, buffer, lenp, ppos,
--				 do_proc_uint_conv);
-+	return do_proc_uintvec(table, dir, buffer, lenp, ppos, do_proc_uint_conv);
- }
- 
- /**
-@@ -780,8 +779,8 @@ int proc_douintvec(const struct ctl_table *table, int dir, void *buffer,
- int proc_dointvec_minmax(const struct ctl_table *table, int dir,
- 		  void *buffer, size_t *lenp, loff_t *ppos)
- {
--	return do_proc_dointvec(table, dir, buffer, lenp, ppos,
--				do_proc_int_conv_minmax);
-+	return do_proc_intvec(table, dir, buffer, lenp, ppos,
-+			      do_proc_int_conv_minmax);
- }
- 
- /**
-@@ -807,8 +806,8 @@ int proc_dointvec_minmax(const struct ctl_table *table, int dir,
- int proc_douintvec_minmax(const struct ctl_table *table, int dir,
- 			  void *buffer, size_t *lenp, loff_t *ppos)
- {
--	return do_proc_douintvec(table, dir, buffer, lenp, ppos,
--				 do_proc_uint_conv_minmax);
-+	return do_proc_uintvec(table, dir, buffer, lenp, ppos,
-+			       do_proc_uint_conv_minmax);
- }
- 
- /**
-@@ -851,8 +850,8 @@ int proc_dou8vec_minmax(const struct ctl_table *table, int dir,
- 		tmp.extra2 = (unsigned int *) &max;
- 
- 	val = READ_ONCE(*data);
--	res = do_proc_douintvec(&tmp, dir, buffer, lenp, ppos,
--				do_proc_uint_conv_minmax);
-+	res = do_proc_uintvec(&tmp, dir, buffer, lenp, ppos,
-+			      do_proc_uint_conv_minmax);
- 	if (res)
- 		return res;
- 	if (SYSCTL_USER_TO_KERN(dir))
-@@ -982,7 +981,7 @@ int proc_doulongvec_minmax_conv(const struct ctl_table *table, int dir,
- 				int (*conv)(bool *negp, ulong *u_ptr, ulong *k_ptr,
- 					    int dir, const struct ctl_table *table))
- {
--	return do_proc_doulongvec(table, dir, buffer, lenp, ppos, conv);
-+	return do_proc_ulongvec(table, dir, buffer, lenp, ppos, conv);
- }
- 
- /**
-@@ -1004,8 +1003,8 @@ int proc_doulongvec_minmax_conv(const struct ctl_table *table, int dir,
- int proc_doulongvec_minmax(const struct ctl_table *table, int dir,
- 			   void *buffer, size_t *lenp, loff_t *ppos)
- {
--	return do_proc_doulongvec(table, dir, buffer, lenp, ppos,
--				  do_proc_ulong_conv);
-+	return do_proc_ulongvec(table, dir, buffer, lenp, ppos,
-+				do_proc_ulong_conv);
- }
- 
- int proc_dointvec_conv(const struct ctl_table *table, int dir, void *buffer,
-@@ -1015,7 +1014,7 @@ int proc_dointvec_conv(const struct ctl_table *table, int dir, void *buffer,
- {
- 	if (!conv)
- 		conv = do_proc_int_conv;
--	return do_proc_dointvec(table, dir, buffer, lenp, ppos, conv);
-+	return do_proc_intvec(table, dir, buffer, lenp, ppos, conv);
- }
- 
- /**
+-int proc_dointvec(const struct ctl_table *, int, void *, size_t *, loff_t *);
+-int proc_dointvec_minmax(const struct ctl_table *table, int dir, void *buffer,
++/* proc_handler functions */
++int proc_dostring(const struct ctl_table *ctl, int dir, void *buf, size_t *lenp,
++		  loff_t *ppos);
++int proc_dobool(const struct ctl_table *ctl, int dir, void *buf, size_t *lenp,
++		loff_t *ppos);
++int proc_dointvec(const struct ctl_table *ctl, int dir, void *buf, size_t *lenp,
++		  loff_t *ppos);
++int proc_dointvec_minmax(const struct ctl_table *ctl, int dir, void *buf,
+ 			 size_t *lenp, loff_t *ppos);
+-int proc_dointvec_conv(const struct ctl_table *table, int dir, void *buffer,
++int proc_douintvec(const struct ctl_table *ctl, int dir, void *buf, size_t *lenp,
++		   loff_t *ppos);
++int proc_douintvec_minmax(const struct ctl_table *ctl, int dir, void *buf,
++			  size_t *lenp, loff_t *ppos);
++int proc_dou8vec_minmax(const struct ctl_table *ctl, int dir, void *buf,
++			size_t *lenp, loff_t *ppos);
++int proc_doulongvec_minmax(const struct ctl_table *ctl, int dir, void *buf,
++			   size_t *lenp, loff_t *ppos);
++int proc_do_large_bitmap(const struct ctl_table *ctl, int dir, void *buf,
++			 size_t *lenp, loff_t *ppos);
++int proc_do_static_key(const struct ctl_table *ctl, int dir, void *buf,
++		       size_t *lenp, loff_t *ppos);
++
++/*
++ * proc_handler aggregators
++ *
++ * Create a proc_handler with a custom converter. Use when the user space
++ * value is a transformation of the kernel value. Cannot be passed as
++ * proc_handlers.
++ *
++ * Example of creating your custom proc handler:
++ * int custom_converter(bool *negp, ulong *u_ptr, uint *k_ptr,
++ *                      int dir, const struct ctl_table *ctl) {...}
++ * int custom_proc_handler(const struct ctl_table *ctl, int dir,
++ *                         void *buf, size_t *lenp, loff_t *ppos
++ * { return proc_dointvec_conv(ctl, dir, buf, lenp, ppos, custom_converter); }
++ */
++int proc_dointvec_conv(const struct ctl_table *ctl, int dir, void *buf,
+ 		       size_t *lenp, loff_t *ppos,
+ 		       int (*conv)(bool *negp, unsigned long *u_ptr, int *k_ptr,
+-				   int dir, const struct ctl_table *table));
+-int proc_int_k2u_conv_kop(ulong *u_ptr, const int *k_ptr, bool *negp,
+-			  ulong (*k_ptr_op)(const ulong));
+-int proc_int_u2k_conv_uop(const ulong *u_ptr, int *k_ptr, const bool *negp,
+-			  ulong (*u_ptr_op)(const ulong));
++				   int dir, const struct ctl_table *ctl));
++int proc_douintvec_conv(const struct ctl_table *ctl, int dir, void *buf,
++			size_t *lenp, loff_t *ppos,
++			int (*conv)(bool *negp, ulong *u_ptr, uint *k_ptr,
++				    int dir, const struct ctl_table *ctl));
++int proc_doulongvec_minmax_conv(const struct ctl_table *ctl, int dir, void *buf,
++				size_t *lenp, loff_t *ppos,
++				int (*conv)(bool *negp, ulong *u_ptr, ulong *k_ptr,
++					    int dir, const struct ctl_table *ctl));
++
++/*
++ * bi-directional converter functions
++ *
++ * Specify the converter function for both directions (user to kernel & kernel
++ * to user). Use when you want to change the value of the variable before
++ * assignment. Used to create custom proc_handler aggregators.
++ *
++ * Example of creating your custom bi-directional converter:
++ * int custom_u2k(ulong *u_ptr, const uint *k_ptr) { ... }
++ * int custom_converter(bool *negp, ulong *u_ptr, uint *k_ptr,
++ *                      int dir, const struct ctl_table *ctl)
++ * { return proc_uint_conv(u_ptr, k_ptr, dir, ctl, true,
++ *                         custom_u2k, proc_uint_k2u_conv}
++ */
+ int proc_int_conv(bool *negp, ulong *u_ptr, int *k_ptr, int dir,
+ 		  const struct ctl_table *tbl, bool k_ptr_range_check,
+ 		  int (*user_to_kern)(const bool *negp, const ulong *u_ptr, int *k_ptr),
+ 		  int (*kern_to_user)(bool *negp, ulong *u_ptr, const int *k_ptr));
+-
+-int proc_douintvec(const struct ctl_table *, int, void *, size_t *, loff_t *);
+-int proc_douintvec_minmax(const struct ctl_table *table, int write, void *buffer,
+-		size_t *lenp, loff_t *ppos);
+-int proc_douintvec_conv(const struct ctl_table *table, int write, void *buffer,
+-			size_t *lenp, loff_t *ppos,
+-			int (*conv)(bool *negp, ulong *lvalp, uint *valp,
+-				    int write, const struct ctl_table *table));
+-int proc_uint_k2u_conv(ulong *u_ptr, const uint *k_ptr);
+-int proc_uint_u2k_conv_uop(const ulong *u_ptr, uint *k_ptr,
+-			   ulong (*u_ptr_op)(const ulong));
+ int proc_uint_conv(ulong *u_ptr, uint *k_ptr, int dir,
+ 		   const struct ctl_table *tbl, bool k_ptr_range_check,
+ 		   int (*user_to_kern)(const ulong *u_ptr, uint *k_ptr),
+ 		   int (*kern_to_user)(ulong *u_ptr, const uint *k_ptr));
+-
+-int proc_dou8vec_minmax(const struct ctl_table *table, int write, void *buffer,
+-			size_t *lenp, loff_t *ppos);
+-int proc_doulongvec_minmax(const struct ctl_table *, int, void *, size_t *, loff_t *);
+-int proc_doulongvec_minmax_conv(const struct ctl_table *table, int dir,
+-				void *buffer, size_t *lenp, loff_t *ppos,
+-				int (*conv)(bool *negp, ulong *u_ptr, ulong *k_ptr,
+-					    int dir, const struct ctl_table *table));
+-int proc_do_large_bitmap(const struct ctl_table *, int, void *, size_t *, loff_t *);
+-int proc_do_static_key(const struct ctl_table *table, int write, void *buffer,
+-		size_t *lenp, loff_t *ppos);
+-
+-int proc_ulong_u2k_conv_uop(const ulong *u_ptr, ulong *k_ptr,
+-			    ulong (*u_ptr_op)(const ulong));
+-int proc_ulong_k2u_conv_kop(ulong *u_ptr, const ulong *k_ptr,
+-			    ulong (*k_ptr_op)(const ulong));
+ int proc_ulong_conv(ulong *u_ptr, ulong *k_ptr, int dir,
+ 		    const struct ctl_table *tbl, bool k_ptr_range_check,
+ 		    int (*user_to_kern)(const ulong *u_ptr, ulong *k_ptr),
+ 		    int (*kern_to_user)(ulong *u_ptr, const ulong *k_ptr));
++
++/*
++ * uni-directional converter functions
++ *
++ * Specify the converter function for one directions (user to kernel or
++ * kernel to user). Use to call the actual value conversion. Used to Create
++ * bi-directional converters.
++ *
++ * Example of creating a uni-directional converter:
++ * ulong op(const ulong val) { ... }
++ * int custom_unidir_conv(ulong *u_ptr, const uint *k_ptr)
++ * { return proc_uint_k2u_conv_kop(u_ptr, k_ptr, op); }
++ */
++int proc_int_k2u_conv_kop(ulong *u_ptr, const int *k_ptr, bool *negp,
++			  ulong (*k_ptr_op)(const ulong));
++int proc_int_u2k_conv_uop(const ulong *u_ptr, int *k_ptr, const bool *negp,
++			  ulong (*u_ptr_op)(const ulong));
++int proc_uint_k2u_conv(ulong *u_ptr, const uint *k_ptr);
++int proc_uint_u2k_conv_uop(const ulong *u_ptr, uint *k_ptr,
++			   ulong (*u_ptr_op)(const ulong));
++int proc_ulong_u2k_conv_uop(const ulong *u_ptr, ulong *k_ptr,
++			    ulong (*u_ptr_op)(const ulong));
++int proc_ulong_k2u_conv_kop(ulong *u_ptr, const ulong *k_ptr,
++			    ulong (*k_ptr_op)(const ulong));
++
+ /*
+  * Register a set of sysctl names by calling register_sysctl
+  * with an initialised array of struct ctl_table's.
 
 -- 
 2.50.1
