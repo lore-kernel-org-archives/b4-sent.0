@@ -1,120 +1,130 @@
 From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Thu, 01 Jan 2026 15:17:01 +0100
-Subject: [PATCH v2] Update links to doc/develop/falcon.rst
+Date: Thu, 01 Jan 2026 15:31:06 +0100
+Subject: [PATCH u-boot] docs: kdoc: handle the obsolescensce of
+ docutils.ErrorString()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260101-falcon-v2-1-75896535ad0f@posteo.net>
-X-B4-Tracking: v=1; b=H4sIANyBVmkC/2WMQQrDIBBFrxJmXUvGElO7yj1KFmonzUDRoCItw
- bvXZlv+6n0eb4dEkSnBrdshUuHEwTeQpw7cavyTBD8ag+zlgPKCYjEvF7wYjR4lIjlrCZq8RVr
- 4fYTuc+OVUw7xc3QL/t6/REHRpt11sFqpntS0hZQpnD1lmGutX1ReOgKdAAAA
-X-Change-ID: 20251231-falcon-7a97211ecbbe
+Message-Id: <20260101-docutils-v1-1-81391910aca3@posteo.net>
+X-B4-Tracking: v=1; b=H4sIACmFVmkC/x3MWwqAIBBA0a3EfCdo9LKtRB9mYw2Eho8IpL0nf
+ R643AwBPWGAqcrg8aZAzhaIugJ9KLsjo60YGt70XHDBNqdTpDOwbpRSGa700K5Q8sujoedfzZD
+ Y6lyE5X0/wNZtTWIAAAA=
+X-Change-ID: 20260101-docutils-5899af0ac74b
 To: u-boot@lists.denx.de
-Cc: Tom Rini <trini@konsulko.com>, 
- Jerome Forissier <jerome.forissier@linaro.org>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- Michal Simek <michal.simek@amd.com>, 
- Heinrich Schuchardt <xypron.glpk@gmx.de>, 
- Michael Trimarchi <michael@amarulasolutions.com>, 
- "Kory Maincent (TI.com)" <kory.maincent@bootlin.com>, 
- Mikhail Kshevetskiy <mikhail.kshevetskiy@iopsys.eu>, 
- Ibai Erkiaga <ibai.erkiaga-elorza@amd.com>, 
- Paul Barker <paul.barker.ct@bp.renesas.com>, Anshul Dalal <anshuld@ti.com>, 
- Peng Fan <peng.fan@nxp.com>, Andre Przywara <andre.przywara@arm.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Mattijs Korpershoek <mkorpershoek@kernel.org>, 
- Simon Glass <sjg@chromium.org>, Hrushikesh Salunke <h-salunke@ti.com>, 
- Dario Binacchi <dario.binacchi@amarulasolutions.com>, Ye Li <ye.li@nxp.com>, 
- Alif Zakuan Yuslaimi <alif.zakuan.yuslaimi@altera.com>, 
- Sidharth Seela <sidharthseela@gmail.com>, 
+Cc: Tom Rini <trini@konsulko.com>, Jonathan Corbet <corbet@lwn.net>, 
+ Zhixu Liu <zhixu.liu@gmail.com>, 
  =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767277028; l=2880;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767277878; l=4083;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=uzyoTCT099z/Hlho/K2kyDiQU5MpWiXI/6PFq2lGyu4=;
- b=h1splMZr22ZTTifPeBQXfcAoDneceK8Fanc20Gp6OvJgB8PbHkYJPlCPx2syIz3qYXezvKYFJ
- Xpq5WzB6biFARFZFiTTSJPnO2xnnQGkueJ0L/gXHDEO7T/Ez9rfTKOD
+ bh=X+ud5m4tMvl7KK+Kta/xOUP34NyNCr/0wkt3Cx3VRSU=;
+ b=ELZSwuto/iuklWehD7d86Xx9KlyxfFxrnB1UWPtZMIEbNv1imllimJGYf+3Bq8TlDVaaecH8c
+ Cm0Cy+k8T6zAtpmJEgL5lZC+3Xm7mcki1uJ7TO3LefKGpgLT62XU/Np
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-README.falcon was converted to ReST/HTML in 2023.
+The ErrorString() and SafeString() docutils functions were helpers meant to
+ease the handling of encodings during the Python 3 transition.  There is no
+real need for them after Python 3.6, and docutils 0.22 removes them,
+breaking the docs build
 
+Handle this by just injecting our own one-liner version of ErrorString(),
+and removing the sole SafeString() call entirely.
+
+Reported-by: Zhixu Liu <zhixu.liu@gmail.com>
+Signed-off-by: Jonathan Corbet <corbet@lwn.net>
+Upstream: https://git.kernel.org/linus/00d95fcc4dee66dfb6980de6f2973b32f973a1eb
+[j.ne: Adapted from Linux to U-Boot]
 Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
-Changes in v2:
-- Use a proper link within ReST (thanks to Heinrich Schuchardt's review)
-- Link to v1: https://lore.kernel.org/r/20251231-falcon-v1-1-19c85b9660e6@posteo.net
----
- cmd/Kconfig                 | 4 ++--
- common/spl/Kconfig          | 2 +-
- doc/board/ti/am335x_evm.rst | 2 +-
- doc/develop/falcon.rst      | 1 +
- 4 files changed, 5 insertions(+), 4 deletions(-)
+ doc/sphinx/kernel_abi.py          | 4 +++-
+ doc/sphinx/kernel_feat.py         | 4 +++-
+ doc/sphinx/kernel_include.py      | 6 ++++--
+ doc/sphinx/maintainers_include.py | 4 +++-
+ 4 files changed, 13 insertions(+), 5 deletions(-)
 
-diff --git a/cmd/Kconfig b/cmd/Kconfig
-index b71ac554c0b..fca2a0b0e39 100644
---- a/cmd/Kconfig
-+++ b/cmd/Kconfig
-@@ -620,7 +620,7 @@ config CMD_SPL
- 	help
- 	  Falcon mode allows booting directly from SPL into an Operating
- 	  System such as Linux, thus skipping U-Boot proper. See
--	  doc/README.falcon for full information about how to use this
-+	  doc/develop/falcon.rst for full information about how to use this
- 	  command.
+diff --git a/doc/sphinx/kernel_abi.py b/doc/sphinx/kernel_abi.py
+index 32c50e496b5..930e9273b16 100644
+--- a/doc/sphinx/kernel_abi.py
++++ b/doc/sphinx/kernel_abi.py
+@@ -44,7 +44,9 @@ from os import path
+ from docutils import nodes, statemachine
+ from docutils.statemachine import ViewList
+ from docutils.parsers.rst import directives, Directive
+-from docutils.utils.error_reporting import ErrorString
++
++def ErrorString(exc):  # Shamelessly stolen from docutils
++    return f'{exc.__class__.__name}: {exc}'
  
- config CMD_SPL_NAND_OFS
-@@ -629,7 +629,7 @@ config CMD_SPL_NAND_OFS
- 	default 0x0
- 	help
- 	  This provides the offset of the command line arguments for Linux
--	  when booting from NAND in Falcon mode.  See doc/README.falcon
-+	  when booting from NAND in Falcon mode.  See doc/develop/falcon.rst
- 	  for full information about how to use this option (and also see
- 	  board/gateworks/gw_ventana/README for an example).
+ #
+ # AutodocReporter is only good up to Sphinx 1.7
+diff --git a/doc/sphinx/kernel_feat.py b/doc/sphinx/kernel_feat.py
+index 2fee04f1ded..cca48f6f1a4 100644
+--- a/doc/sphinx/kernel_feat.py
++++ b/doc/sphinx/kernel_feat.py
+@@ -41,7 +41,9 @@ from os import path
+ from docutils import nodes, statemachine
+ from docutils.statemachine import ViewList
+ from docutils.parsers.rst import directives, Directive
+-from docutils.utils.error_reporting import ErrorString
++
++def ErrorString(exc):  # Shamelessly stolen from docutils
++    return f'{exc.__class__.__name}: {exc}'
  
-diff --git a/common/spl/Kconfig b/common/spl/Kconfig
-index 4b10e9c3880..f0612acf0c2 100644
---- a/common/spl/Kconfig
-+++ b/common/spl/Kconfig
-@@ -1209,7 +1209,7 @@ config SPL_OS_BOOT
- 	depends on ARM || MICROBLAZE || PPC
- 	help
- 	  Enable booting directly to an OS from SPL.
--	  for more info read doc/README.falcon
-+	  for more info read doc/develop/falcon.rst
+ #
+ # AutodocReporter is only good up to Sphinx 1.7
+diff --git a/doc/sphinx/kernel_include.py b/doc/sphinx/kernel_include.py
+index f523aa68a36..6522de9dd69 100755
+--- a/doc/sphinx/kernel_include.py
++++ b/doc/sphinx/kernel_include.py
+@@ -34,11 +34,13 @@ u"""
+ import os.path
  
- config SPL_OS_BOOT_SECURE
- 	bool "Allow Falcon Mode on secure devices"
-diff --git a/doc/board/ti/am335x_evm.rst b/doc/board/ti/am335x_evm.rst
-index 40e144948a3..b14ba41917e 100644
---- a/doc/board/ti/am335x_evm.rst
-+++ b/doc/board/ti/am335x_evm.rst
-@@ -274,7 +274,7 @@ into memory, then written to NAND.
- Falcon Mode
- -----------
+ from docutils import io, nodes, statemachine
+-from docutils.utils.error_reporting import SafeString, ErrorString
+ from docutils.parsers.rst import directives
+ from docutils.parsers.rst.directives.body import CodeBlock, NumberLines
+ from docutils.parsers.rst.directives.misc import Include
  
--The default build includes "Falcon Mode" (see doc/README.falcon) via NAND,
-+The default build includes :ref:`falcon-mode` via NAND,
- eMMC (or raw SD cards) and FAT SD cards.  Our default behavior currently is
- to read a 'c' on the console while in SPL at any point prior to loading the
- OS payload (so as soon as possible) to opt to booting full U-Boot.  Also
-diff --git a/doc/develop/falcon.rst b/doc/develop/falcon.rst
-index 528a9c389bf..3fc23f65c45 100644
---- a/doc/develop/falcon.rst
-+++ b/doc/develop/falcon.rst
-@@ -1,4 +1,5 @@
- .. SPDX-License-Identifier: GPL-2.0-or-later
-+.. _falcon-mode:
++def ErrorString(exc):  # Shamelessly stolen from docutils
++    return f'{exc.__class__.__name}: {exc}'
++
+ __version__  = '1.0'
  
- Falcon Mode
- ===========
+ # ==============================================================================
+@@ -109,7 +111,7 @@ class KernelInclude(Include):
+             raise self.severe('Problems with "%s" directive path:\n'
+                               'Cannot encode input file path "%s" '
+                               '(wrong locale?).' %
+-                              (self.name, SafeString(path)))
++                              (self.name, path))
+         except IOError as error:
+             raise self.severe('Problems with "%s" directive path:\n%s.' %
+                       (self.name, ErrorString(error)))
+diff --git a/doc/sphinx/maintainers_include.py b/doc/sphinx/maintainers_include.py
+index 13557d3d3c2..ab79a74dc0c 100755
+--- a/doc/sphinx/maintainers_include.py
++++ b/doc/sphinx/maintainers_include.py
+@@ -22,10 +22,12 @@ import re
+ import os.path
+ 
+ from docutils import statemachine
+-from docutils.utils.error_reporting import ErrorString
+ from docutils.parsers.rst import Directive
+ from docutils.parsers.rst.directives.misc import Include
+ 
++def ErrorString(exc):  # Shamelessly stolen from docutils
++    return f'{exc.__class__.__name}: {exc}'
++
+ __version__  = '1.0'
+ 
+ def setup(app):
 
 ---
-base-commit: 4933a0e67578789a57f540a378ce0698435b7b17
-change-id: 20251231-falcon-7a97211ecbbe
+base-commit: bb28daf51301546fc2b6882e51f39f5d12952375
+change-id: 20260101-docutils-5899af0ac74b
 
 Best regards,
 -- 
