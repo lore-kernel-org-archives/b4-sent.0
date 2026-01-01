@@ -1,14 +1,13 @@
 From: Shrikant Raskar <raskar.shree97@gmail.com>
-Subject: [PATCH v4 0/4] iio: proximity: Add interrupt support for RFD77402
-Date: Thu, 01 Jan 2026 21:47:37 +0530
-Message-Id: <20260101-b4-rfd77402_irq-v4-0-42cd54359e9f@gmail.com>
+Date: Thu, 01 Jan 2026 21:47:38 +0530
+Subject: [PATCH v4 1/4] dt-bindings: iio: proximity: Add RF Digital
+ RFD77402 ToF sensor
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIACGeVmkC/x3MTQqAIBBA4avErBMmlYSuEhGaY82mnxEiCO+et
- PwW772QSZgyDM0LQjdnPvYK2zawbH5fSXGsBo26xw47FaySFJ2zqGeWS5kYfR980sYh1OoUSvz
- 8x3Eq5QNLQss4YQAAAA==
-X-Change-ID: 20260101-b4-rfd77402_irq-3dda6baf2370
+Message-Id: <20260101-b4-rfd77402_irq-v4-1-42cd54359e9f@gmail.com>
+References: <20260101-b4-rfd77402_irq-v4-0-42cd54359e9f@gmail.com>
+In-Reply-To: <20260101-b4-rfd77402_irq-v4-0-42cd54359e9f@gmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
  David Lechner <dlechner@baylibre.com>, 
  =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
@@ -20,64 +19,101 @@ Cc: raskar.shree97@gmail.com, skhan@linuxfoundation.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767284290; l=2057;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767284290; l=2840;
  i=raskar.shree97@gmail.com; s=20260101; h=from:subject:message-id;
- bh=uKMD+YVerNdxBNPgulQjVdLKZtk3V9JT3BlPXYGr/IM=;
- b=QeBOXo7QsqTkrTgk2V4poG9kBTJvzCdU4jyE/bmrqDdzRTYLWqw/gnH3IbgI2UydC8unw7f3Q
- Dv/AMHop7ULBrKzR938Qp6AvVvcA06b0/BSEMhAHe7IYkeds5umHHst
+ bh=OVYVzLMgPVMO/XnImN7RwZfXGcsHmKgD/1eOSTZgZaQ=;
+ b=kIZPx5FzhAN7jjdlvkZ8JEn43fuXoqi+SyBOinIPl6GRMa65POu3IIEjE5Vf8vc83Lb94d7T2
+ 75OjkeqXlXaCpTBAzOFattW3iO+EcD7CMA03lslwPSituzH5Ch3yJmZ
 X-Developer-Key: i=raskar.shree97@gmail.com; a=ed25519;
  pk=4m2wXDvY0vlXefvRRzawNcNAif88Cy4XvbLkU6iMG/Y=
 X-Endpoint-Received: by B4 Relay for raskar.shree97@gmail.com/20260101 with auth_id=589
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch series adds:
- - Add RF Digital vendor prefix
- - YAML binding for RFD77402
- - Add OF device ID for enumeration via DT
- - Use kernel helper for result polling
- - Interrupt handling support
+The RF Digital RFD77402 is a Time-of-Flight (ToF) proximity and distance
+sensor that provides absolute and highly accurate distance measurements
+from 100 mm up to 2000 mm over an I2C interface. It includes an optional
+interrupt pin that signals when new measurement data is ready.
 
-These changes enable DT-based configuration and event-driven
-operation for the RFD77402 Time-of-Flight sensor.
-
-Changelog:
-- Resend the patch series as v4 since not all patches were delivered
-in v3 due to SMTP daily sending limits.
-- Add 'Reviewed-by' tag to dt-binding patch.
-- Update commit message in OF device ID patch.
-- Update commit message in the third patch.
-- Replace rfd77402_result_polling() with read_poll_timeout().
-- Add 'struct rfd77402_data' details in kernel-doc format.
-- Arrange includes in order.
-- Add comment for completion timeout value.
-- Remove blank lines.
-- Indent the comments to code.
-- Convert mutex_init() to devm_mutex_init().
-- Remove 'IRQF_TRIGGER_FALLING' flag from devm_request_threaded_irq().
-- Drop the duplicate message.
-- Replace 'dev_info' with 'dev_dbg()'.
-- Update 'dev_id' to 'pdata' in rfd77402_interrupt_handler().
-- Drop 'interrupt mode' comment
-- Use 'if(ret)' instead of 'if(ret < 0) for consistency.
-- Use 'return i2c_smbus_write_byte_data()' in 'rfd77402_config_irq'.
-
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Shrikant Raskar <raskar.shree97@gmail.com>
 ---
-Shrikant Raskar (4):
-      dt-bindings: iio: proximity: Add RF Digital RFD77402 ToF sensor
-      iio: proximity: rfd77402: Add OF device ID for enumeration via DT
-      iio: proximity: rfd77402: Use kernel helper for result polling
-      iio: proximity: rfd77402: Add interrupt handling support
+ .../bindings/iio/proximity/rfdigital,rfd77402.yaml | 53 ++++++++++++++++++++++
+ .../devicetree/bindings/vendor-prefixes.yaml       |  2 +
+ 2 files changed, 55 insertions(+)
 
- .../bindings/iio/proximity/rfdigital,rfd77402.yaml |  53 ++++++++
- .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
- drivers/iio/proximity/rfd77402.c                   | 149 ++++++++++++++++++---
- 3 files changed, 183 insertions(+), 21 deletions(-)
----
-base-commit: d8ba32c5a460837a5f0b9619dac99fafb6faef07
-change-id: 20260101-b4-rfd77402_irq-3dda6baf2370
+diff --git a/Documentation/devicetree/bindings/iio/proximity/rfdigital,rfd77402.yaml b/Documentation/devicetree/bindings/iio/proximity/rfdigital,rfd77402.yaml
+new file mode 100644
+index 000000000000..1ef6326b209e
+--- /dev/null
++++ b/Documentation/devicetree/bindings/iio/proximity/rfdigital,rfd77402.yaml
+@@ -0,0 +1,53 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/iio/proximity/rfdigital,rfd77402.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: RF Digital RFD77402 ToF sensor
++
++maintainers:
++  - Shrikant Raskar <raskar.shree97@gmail.com>
++
++description:
++  The RF Digital RFD77402 is a Time-of-Flight (ToF) proximity and distance
++  sensor providing up to 200 mm range measurement over an I2C interface.
++
++properties:
++  compatible:
++    const: rfdigital,rfd77402
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++    description:
++      Interrupt asserted when a new distance measurement is available.
++
++  vdd-supply:
++    description: Regulator that provides power to the sensor.
++
++required:
++  - compatible
++  - reg
++  - vdd-supply
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/irq.h>
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        proximity@4c {
++            compatible = "rfdigital,rfd77402";
++            reg = <0x4c>;
++            vdd-supply = <&vdd_3v3>;
++            interrupt-parent = <&gpio>;
++            interrupts = <4 IRQ_TYPE_EDGE_FALLING>;
++        };
++    };
++...
+diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+index c7591b2aec2a..59ac4f0756d9 100644
+--- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
++++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
+@@ -1361,6 +1361,8 @@ patternProperties:
+     description: Revolution Robotics, Inc. (Revotics)
+   "^rex,.*":
+     description: iMX6 Rex Project
++  "^rfdigital,.*":
++    description: RF Digital Corporation
+   "^richtek,.*":
+     description: Richtek Technology Corporation
+   "^ricoh,.*":
 
-Best regards,
 -- 
-Shrikant Raskar <raskar.shree97@gmail.com>
+2.43.0
 
