@@ -1,141 +1,117 @@
-From: Jesung Yang <y.j3ms.n@gmail.com>
-Date: Thu, 01 Jan 2026 08:21:24 +0000
-Subject: [PATCH] scripts: generate_rust_analyzer: reduce the output file
- size
+From: Joel Granados <joel.granados@kernel.org>
+Subject: [PATCH v2 0/9] SYSCTL: Consolidate do_proc_* functions into one
+ macro
+Date: Thu, 01 Jan 2026 13:57:04 +0100
+Message-Id: <20260101-jag-dovec_consolidate-v2-0-ff918f753ba9@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260101-rust-project-reduce-size-v1-1-4cd66e9e02d9@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAIMuVmkC/0WNQQ7CMAwEv1LljKU4LU3oVxAH4zhgJCgkbYVA/
- J0AB45jeWeepkhWKWZonibLokXHSwVcNYaPdDkIaKxsnHW9RYuQ5zLBNY8n4QmyxJkFij4EYnA
- b8uRtIDF1fs2S9P5Vb3c/znKba2H6Hf+BofnrCeqqBvSsky4CPuC6SxLQt2lY8GPeUxHg8Vw/h
- iaFtGFMXbTsqe96a8UxteiicHAd2T27hJHM7vV6A129EETuAAAA
-X-Change-ID: 20260101-rust-project-reduce-size-d829a7a708ae
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jesung Yang <y.j3ms.n@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACBvVmkC/3WNwQrCMBAFf6Xs2UiSpmo9+R9SJE037WpJJClBK
+ fl3Y8Gjxxl481aIGAgjnKsVAiaK5F0BuavATNqNyGgoDJLLRkhxYnc9ssEnNDfjXfQzDXpB1ug
+ jV1bq2rY9lO0zoKXX1r12hSeKiw/v7SaJr/0V2z/FJBhnQom6b6U5cMUvDwwO570PI3Q55w/yN
+ BBEuwAAAA==
+X-Change-ID: 20251218-jag-dovec_consolidate-5a704f2a3f9b
+To: Kees Cook <kees@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767255742; l=4572;
- i=y.j3ms.n@gmail.com; s=20251225; h=from:subject:message-id;
- bh=fEPh+w8Y+NMyisGvsPgXPjuY6/RbC7wcVePF3f0Ffh4=;
- b=j1VfacoahJifuc3/koMnMMRFojai3MABa61AGcrHSwqIP1QLapT91j9KNXmTo1f3wFpqvrS0C
- EqF4uBC7IXHC1kgoee1PYJ1/a+fYXkYAgSEMk0DiJvYsebQoQuOwQsp
-X-Developer-Key: i=y.j3ms.n@gmail.com; a=ed25519;
- pk=2yVgO1I+y7kkFSF2Dc/Dckj4L2FgRnvmERHFt4bspbI=
-X-Endpoint-Received: by B4 Relay for y.j3ms.n@gmail.com/20251225 with auth_id=586
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3344;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=P8pBvn3ZWdAwB7rC0DXSvNqtAF6IY5L/WLAEk47zMbI=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGlWbym5HxbIW8nxZn775VefAYTMcqjmZinOl
+ wnVI2FFkkifWokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJpVm8pAAoJELqXzVK3
+ lkFPSUoL/3HcnzKn20B/Wg1/1/GsoFz797zPwcTY+WXTsaUt2agMfYVz6VIj5ttLgFla1/wQ0zP
+ +GtTOs723E/p9F571U/2A76zrwqb66vna+jWbDJVwayxUZAZ+oNXUREJF8B5g6/QcPP8Gdi7xK/
+ jYfstubA34Csskr6goT8Aqb3Jl4G+wA2bhLQkBAV8FuASF23nX6M34iKdy1bQ6HCtlnJGuXX1BD
+ O65Q2XWjg4N1tKMBK1nnDbGQgcyJcIja4inErf4VT6X6sinU7lD3vLfQCsLrMh0g3dfoqnUdBDI
+ M/a4MDp7YvPahECG9HmLmaupgkUGBiCI7TgERu4g1SUgR7WZH4A8Ab1TYh7nlsFqRAaBX4Tdw/x
+ 0r3sAQOFhKBCOsBnf32TillvvEoJLHnOblEr10yWD49qd6gN7JH82qVuutZu+uymEj98BXslkBq
+ 3sYD6RRkpFrAuqASyZe2oXuO6X9BD5fPXdfoiG/pMlBGTxPF/r1DBGuCCyIfi9B+xj+4vU54JT8
+ IE=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use the `cfg_groups` field to aggregate common configurations into a
-single project-level definition. This avoids repeating identical `cfg`s
-across crates.
+What
+====
+Generate do_proc_{int,uint,ulong} with the new do_proc_typevec macro.
+Removed small differences between each implementation and put it all
+under one roof. This macro is meant for internal (to sysctl.c) static
+functions; it should not be used from the outside.
 
-As a result, the size of the generated `rust-project.json` is reduced
-from 11MiB to 406KiB (about 96% reduction).
+Groups and document the proc handler and converter functions in
+include/linux/sysctl.h. Document how to create custom converters
+with examples for every converter type.
 
-Signed-off-by: Jesung Yang <y.j3ms.n@gmail.com>
+This series sits on top of [1], you can see the working branch here [2].
+
+Why
+===
+Working with one instead of three slightly different implementations of
+the same thing makes more sense to me for three reasons: 1. I don't have
+to think about the different types separately (less context switches),
+2. One place to begin debugging proc_handler issues and 3. A fix for
+one type, fixes all types.
+
+A word on macros
+================
+I have mixed feelings about the use of macros here, especially because
+it is such a long function. But I see it as the first step. Having this
+in mainline will validate that the three types **indeed** have the same
+logic (I have tested extensively, but linux-next & mainline are the
+ultimate tests). Once in mainline, implementing an alternative way of
+parametrizing becomes easier.
+
+A word on checkpatch
+====================
+* It does not like that ENOSYS is returned for the no-op functions. I'm
+  just following the pattern that was initially there. Does -EINVAL
+  makes more sense?
+* It has a false positive on a spacing around a pointer.
+
+Testing
+=======
+Ran sysctl selftest/kunit on x86_64 and 0-day.
+
+Changes in v2:
+- Handle neg more carefully in the macro:
+  1. Initialize neg to false. So it does not inadvertently return
+     a negative value to user space from an unsigned variable
+  2. Return -EINVAL when the user passes a negative value to an unsigned
+     type.
+- Link to v1: https://lore.kernel.org/r/20251219-jag-dovec_consolidate-v1-0-1413b92c6040@kernel.org
+
+Comments are greatly appreciated
+
+[1] https://lore.kernel.org/20251217-jag-no-macro-conv-v1-0-6e4252687915@kernel.org
+[2] https://git.kernel.org/pub/scm/linux/kernel/git/joel.granados/linux.git/log/?h=jag/dovec_consolidate
+
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
-This patch depends on [1] to ensure it merges cleanly without conflicts.
-
-[1] https://lore.kernel.org/rust-for-linux/20260101-ra-fix-primitive-v1-1-def809357b4e@gmail.com/
 ---
- scripts/generate_rust_analyzer.py | 34 ++++++++++++++++++++--------------
- 1 file changed, 20 insertions(+), 14 deletions(-)
+Joel Granados (9):
+      sysctl: Move default converter assignment out of do_proc_dointvec
+      sysctl: Replace do_proc_dointvec with a type-generic macro
+      sysctl: Generate do_proc_doulongvec_minmax with do_proc_dotypevec macro
+      sysctl: Add negp parameter to douintvec converter functions
+      sysctl: Generate do_proc_douintvec with a type-generic macro
+      sysctl: Rename do_proc_dotypevec macro to do_proc_typevec
+      sysctl: Group proc_handler declarations and document
+      sysctl: Rename proc_doulongvec_minmax_conv to proc_doulongvec_conv
+      sysctl: Update API function documentation
 
-diff --git a/scripts/generate_rust_analyzer.py b/scripts/generate_rust_analyzer.py
-index 6178a53516ec35f308897e65c5001edd81b0d3dd..2a8578fb784d08b2a5e628bfab935080759d2dce 100755
---- a/scripts/generate_rust_analyzer.py
-+++ b/scripts/generate_rust_analyzer.py
-@@ -19,15 +19,7 @@ def args_crates_cfgs(cfgs):
- 
-     return crates_cfgs
- 
--def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
--    # Generate the configuration list.
--    cfg = []
--    with open(objtree / "include" / "generated" / "rustc_cfg") as fd:
--        for line in fd:
--            line = line.replace("--cfg=", "")
--            line = line.replace("\n", "")
--            cfg.append(line)
--
-+def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs, kernel_cfg_group):
-     # Now fill the crates list -- dependencies need to come first.
-     #
-     # Avoid O(n^2) iterations by keeping a map of indexes.
-@@ -35,7 +27,7 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
-     crates_indexes = {}
-     crates_cfgs = args_crates_cfgs(cfgs)
- 
--    def append_crate(display_name, root_module, deps, cfg=[], crate_attrs=[], is_workspace_member=True, is_proc_macro=False, edition="2021"):
-+    def append_crate(display_name, root_module, deps, cfg=[], cfg_groups=[], crate_attrs=[], is_workspace_member=True, is_proc_macro=False, edition="2021"):
-         crate = {
-             "display_name": display_name,
-             "root_module": str(root_module),
-@@ -48,6 +40,8 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
-                 "RUST_MODFILE": "This is only for rust-analyzer"
-             }
-         }
-+        if len(cfg_groups) > 0:
-+            crate["cfg_groups"] = cfg_groups
-         if len(crate_attrs) > 0:
-             crate["crate_attrs"] = crate_attrs
-         if is_proc_macro:
-@@ -134,7 +128,7 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
-             display_name,
-             srctree / "rust"/ display_name / "lib.rs",
-             deps,
--            cfg=cfg,
-+            cfg_groups=[kernel_cfg_group],
-             crate_attrs=crate_attrs,
-         )
-         crates[-1]["env"]["OBJTREE"] = str(objtree.resolve(True))
-@@ -189,7 +183,7 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs):
-                 name,
-                 path,
-                 ["kernel"],
--                cfg=cfg,
-+                cfg_groups=[kernel_cfg_group],
-                 crate_attrs=["no_std"],
-             )
- 
-@@ -214,10 +208,22 @@ def main():
-     # Making sure that the `sysroot` and `sysroot_src` belong to the same toolchain.
-     assert args.sysroot in args.sysroot_src.parents
- 
-+    # Generate the configuration list.
-+    cfg = []
-+    with open(args.objtree / "include" / "generated" / "rustc_cfg") as fd:
-+        for line in fd:
-+            line = line.replace("--cfg=", "")
-+            line = line.replace("\n", "")
-+            cfg.append(line)
-+    kernel_cfg_group = "kernel"
-+
-     rust_project = {
--        "crates": generate_crates(args.srctree, args.objtree, args.sysroot_src, args.exttree, args.cfgs),
-+        "crates": generate_crates(args.srctree, args.objtree, args.sysroot_src, args.exttree, args.cfgs, kernel_cfg_group),
-         "sysroot": str(args.sysroot),
--        "sysroot_src": str(args.sysroot_src)
-+        "sysroot_src": str(args.sysroot_src),
-+        "cfg_groups": {
-+            kernel_cfg_group: cfg,
-+        },
-     }
- 
-     json.dump(rust_project, sys.stdout, sort_keys=True, indent=4)
-
+ fs/pipe.c              |   2 +-
+ include/linux/sysctl.h | 123 +++++++----
+ kernel/sysctl.c        | 541 +++++++++++++++++++++++--------------------------
+ kernel/time/jiffies.c  |  28 ++-
+ 4 files changed, 373 insertions(+), 321 deletions(-)
 ---
-base-commit: f8f9c1f4d0c7a64600e2ca312dec824a0bc2f1da
-change-id: 20260101-rust-project-reduce-size-d829a7a708ae
-prerequisite-change-id: 20260101-ra-fix-primitive-78154fe8173f:v1
-prerequisite-patch-id: 0544fdf5522949047a81c3580960183375574fd3
+base-commit: 0616c77e5d877006efe3bea27ca195d396de08dc
+change-id: 20251218-jag-dovec_consolidate-5a704f2a3f9b
 
 Best regards,
 -- 
-Jesung Yang <y.j3ms.n@gmail.com>
+Joel Granados <joel.granados@kernel.org>
 
