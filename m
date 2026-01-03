@@ -1,93 +1,66 @@
 From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Sat, 03 Jan 2026 19:07:41 +0100
-Subject: [PATCH] powerpc: Move GameCube/Wii options under EMBEDDED6xx
+Subject: [PATCH v2 0/5] PowerPC: A few cleanups in MPC83xx devicetrees
+Date: Sat, 03 Jan 2026 19:54:04 +0100
+Message-Id: <20260103-mpc83xx-cleanup-v2-0-b2a13c0a0d63@posteo.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260103-gcwii-kconfig-v1-1-9c56518190a5@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAOxaWWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDQwNj3fTk8sxM3ezk/Ly0zHRdg6RE0yQTQ9MkS8skJaCegqLUtMwKsHn
- RsbW1AGWNClJfAAAA
-X-Change-ID: 20260103-gcwii-kconfig-0ba5b415b99b
-To: Madhavan Srinivasan <maddy@linux.ibm.com>, 
+X-B4-Tracking: v=1; b=H4sIAMxlWWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
+ vPSU3UzU4B8JSMDIzMDQwND3dyCZAvjigrd5JzUxLzSAl2TlFSLlDQjS4Nkc1MloK6CotS0zAq
+ widGxtbUAsAtLrmEAAAA=
+X-Change-ID: 20260101-mpc83xx-cleanup-4de8df290c75
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Madhavan Srinivasan <maddy@linux.ibm.com>, 
  Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
  "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>
-Cc: linuxppc-dev@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+Cc: devicetree@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+ linux-kernel@vger.kernel.org, 
  =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767463670; l=2106;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767466660; l=1655;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=Xmi3nHsOpx0ZMFbJp+lFFK0uM65XCmoMsN2vzb2RwRI=;
- b=y7w/FrbhG2XQSxdrDNab1OL+gCa5EyXqlWW0/7hcczAE1Dkgw80QeFKV0NE4cHWv8NXZP/Jln
- fVeQRSXewVgDIy+ncRV4XbkrlAAts4Gw7fdaOn8Ba6+wnKMNeRrwCd/
+ bh=79m/nJ/QDMP8KLr5bX+4nacC2eKgzRySRWsaV7zH+GM=;
+ b=4uOPvJj2DCAbQMXQnEmxLy/rrOrQ91EW1qu20Q340P7+2tkitZyITztORk1/v/mZ+jrLVcWvS
+ SOvnF2zbdoCBJr1qVEjChBmg7Hr+jxKp/4KWsbdUA6G6ZbvepQAeBYe
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move CONFIG_GAMECUBE and CONFIG_WII directly below other embedded6xx
-boards, and above options such as TSI108_BRIDGE. This has two
-advantages for the GC/Wii options:
+This series contains a few cleanups for mpc8315erdb.dts and other
+PowerPC devicetrees, which are hopefully uncontroversial.
 
- - They won't be moved around by USBGECKO_UDBG appearing or disappearing
- - They will be intendented in menuconfig/nconfig, to make it clear they
-   are part of the embedded6xx platforms
+Some of the patches were previously part of another, larger series,
+titled "powerpc: MPC83xx cleanup and LANCOM NWAPP2 board", but that
+series became too unwieldy to carry on. For this reason, this series
+starts at version 2.
 
 Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- arch/powerpc/platforms/embedded6xx/Kconfig | 31 +++++++++++++++---------------
- 1 file changed, 16 insertions(+), 15 deletions(-)
+J. Neuschäfer (5):
+      powerpc: dts: mpc8313erdb: Use IRQ_TYPE_* macros
+      powerpc: dts: mpc8315erdb: Use IRQ_TYPE_* macros
+      powerpc: dts: mpc8315erdb: Rename LED nodes to comply with schema
+      powerpc: dts: mpc8315erdb: Add missing #cells properties to SPI bus
+      powerpc: dts: mpc83xx: Add unit addresses to /memory
 
-diff --git a/arch/powerpc/platforms/embedded6xx/Kconfig b/arch/powerpc/platforms/embedded6xx/Kconfig
-index c6adff216fe633..f406b3c7936b23 100644
---- a/arch/powerpc/platforms/embedded6xx/Kconfig
-+++ b/arch/powerpc/platforms/embedded6xx/Kconfig
-@@ -51,6 +51,22 @@ config MVME5100
- 	  This option enables support for the Motorola (now Emerson) MVME5100
- 	  board.
- 
-+config GAMECUBE
-+	bool "Nintendo-GameCube"
-+	depends on EMBEDDED6xx
-+	select GAMECUBE_COMMON
-+	help
-+	  Select GAMECUBE if configuring for the Nintendo GameCube.
-+	  More information at: <http://gc-linux.sourceforge.net/>
-+
-+config WII
-+	bool "Nintendo-Wii"
-+	depends on EMBEDDED6xx
-+	select GAMECUBE_COMMON
-+	help
-+	  Select WII if configuring for the Nintendo Wii.
-+	  More information at: <http://gc-linux.sourceforge.net/>
-+
- config TSI108_BRIDGE
- 	bool
- 	select FORCE_PCI
-@@ -77,18 +93,3 @@ config USBGECKO_UDBG
- 
- 	  If in doubt, say N here.
- 
--config GAMECUBE
--	bool "Nintendo-GameCube"
--	depends on EMBEDDED6xx
--	select GAMECUBE_COMMON
--	help
--	  Select GAMECUBE if configuring for the Nintendo GameCube.
--	  More information at: <http://gc-linux.sourceforge.net/>
--
--config WII
--	bool "Nintendo-Wii"
--	depends on EMBEDDED6xx
--	select GAMECUBE_COMMON
--	help
--	  Select WII if configuring for the Nintendo Wii.
--	  More information at: <http://gc-linux.sourceforge.net/>
-
+ arch/powerpc/boot/dts/asp834x-redboot.dts |   2 +-
+ arch/powerpc/boot/dts/mpc8308_p1m.dts     |   2 +-
+ arch/powerpc/boot/dts/mpc8308rdb.dts      |   2 +-
+ arch/powerpc/boot/dts/mpc8313erdb.dts     |  61 ++++++++-------
+ arch/powerpc/boot/dts/mpc8315erdb.dts     | 119 ++++++++++++++++--------------
+ arch/powerpc/boot/dts/mpc832x_rdb.dts     |   2 +-
+ arch/powerpc/boot/dts/mpc8349emitx.dts    |   2 +-
+ arch/powerpc/boot/dts/mpc8349emitxgp.dts  |   2 +-
+ arch/powerpc/boot/dts/mpc8377_rdb.dts     |   2 +-
+ arch/powerpc/boot/dts/mpc8377_wlan.dts    |   2 +-
+ arch/powerpc/boot/dts/mpc8378_rdb.dts     |   2 +-
+ arch/powerpc/boot/dts/mpc8379_rdb.dts     |   2 +-
+ 12 files changed, 109 insertions(+), 91 deletions(-)
 ---
-base-commit: 9448598b22c50c8a5bb77a9103e2d49f134c9578
-change-id: 20260103-gcwii-kconfig-0ba5b415b99b
+base-commit: d3f2d8e7de622d2a2d4283cb545e51745d87f0c5
+change-id: 20260101-mpc83xx-cleanup-4de8df290c75
 
 Best regards,
 -- 
