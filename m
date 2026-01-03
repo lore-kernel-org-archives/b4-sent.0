@@ -1,140 +1,95 @@
-From: SeungJong Ha <engineer.jjhama@gmail.com>
-Date: Sat, 03 Jan 2026 14:38:50 +0000
-Subject: [PATCH] rust: pci: add HeaderType enum and header_type() helper
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Date: Sat, 03 Jan 2026 19:07:41 +0100
+Subject: [PATCH] powerpc: Move GameCube/Wii options under EMBEDDED6xx
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260103-add-rust-pci-header-type-v1-1-879b4d74b227@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAPkpWWkC/x3MQQrDIBBG4avIrDugRgLJVUoXon+S2SQypqUle
- PdKlt/ivYsqVFBpNhcpPlLl2Dvcw1Da4r6CJXeTt360zg4cc2Z915NLEt4QM5TPXwEPYfRhSg7
- JBep5USzyvdfPV2t/4WGVIGoAAAA=
-To: Danilo Krummrich <dakr@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>
-Cc: linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org, 
- rust-for-linux@vger.kernel.org, SeungJong Ha <engineer.jjhama@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767451130; l=3232;
- i=engineer.jjhama@gmail.com; s=20260103; h=from:subject:message-id;
- bh=e2E4FhBSLeClmn+jWVL0WZmHkENN+PUZbPDhQoNtkk4=;
- b=XWFzV0h3yE2SOPThqJB98GlI0lv2RzQLCSus9cLyUDIbfpwW6sbnzuUnfVt3hJPcFVtwd3Qoi
- ggPUYgYQ0g6B8vzD2SeROuxPwThziziy+4DSpr9CTbgbN4MspyHoxec
-X-Developer-Key: i=engineer.jjhama@gmail.com; a=ed25519;
- pk=G5nmjm+RTiWBpyCvc5xjR1b3li/2zipLSMyz+T4fj5E=
-X-Endpoint-Received: by B4 Relay for engineer.jjhama@gmail.com/20260103 with auth_id=590
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260103-gcwii-kconfig-v1-1-9c56518190a5@posteo.net>
+X-B4-Tracking: v=1; b=H4sIAOxaWWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDQwNj3fTk8sxM3ezk/Ly0zHRdg6RE0yQTQ9MkS8skJaCegqLUtMwKsHn
+ RsbW1AGWNClJfAAAA
+X-Change-ID: 20260103-gcwii-kconfig-0ba5b415b99b
+To: Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>
+Cc: linuxppc-dev@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767463670; l=2106;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=Xmi3nHsOpx0ZMFbJp+lFFK0uM65XCmoMsN2vzb2RwRI=;
+ b=y7w/FrbhG2XQSxdrDNab1OL+gCa5EyXqlWW0/7hcczAE1Dkgw80QeFKV0NE4cHWv8NXZP/Jln
+ fVeQRSXewVgDIy+ncRV4XbkrlAAts4Gw7fdaOn8Ba6+wnKMNeRrwCd/
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the HeaderType enum to represent PCI configuration space header
-types (Normal and Bridge). Also implement the header_type() method in
-the Device struct to allow Rust PCI drivers to identify the device
-type safely.
+Move CONFIG_GAMECUBE and CONFIG_WII directly below other embedded6xx
+boards, and above options such as TSI108_BRIDGE. This has two
+advantages for the GC/Wii options:
 
-This is required for drivers to handle type-specific configuration
-registers correctly.
+ - They won't be moved around by USBGECKO_UDBG appearing or disappearing
+ - They will be intendented in menuconfig/nconfig, to make it clear they
+   are part of the embedded6xx platforms
 
-Signed-off-by: SeungJong Ha <engineer.jjhama@gmail.com>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
-Hello,
+ arch/powerpc/platforms/embedded6xx/Kconfig | 31 +++++++++++++++---------------
+ 1 file changed, 16 insertions(+), 15 deletions(-)
 
-This is my first patch to the Linux kernel, specifically targeting the 
-Rust PCI subsystem. 
-
-This patch introduces the HeaderType enum to represent PCI configuration 
-space header types (Normal and Bridge) and implements the header_type() 
-method in the Device struct.
-
-I have followed the patch submission checklist, but as this is my first 
-contribution, please let me know if I have missed any conventions or 
-if there are areas for improvement.
-
-Thank you for your time and review!
-
-Best regards,
-SeungJong Ha
----
- rust/kernel/pci.rs        | 10 ++++++++++
- rust/kernel/pci/header.rs | 31 +++++++++++++++++++++++++++++++
- 2 files changed, 41 insertions(+)
-
-diff --git a/rust/kernel/pci.rs b/rust/kernel/pci.rs
-index 82e128431..90a0eb54f 100644
---- a/rust/kernel/pci.rs
-+++ b/rust/kernel/pci.rs
-@@ -31,10 +31,12 @@
-     },
- };
+diff --git a/arch/powerpc/platforms/embedded6xx/Kconfig b/arch/powerpc/platforms/embedded6xx/Kconfig
+index c6adff216fe633..f406b3c7936b23 100644
+--- a/arch/powerpc/platforms/embedded6xx/Kconfig
++++ b/arch/powerpc/platforms/embedded6xx/Kconfig
+@@ -51,6 +51,22 @@ config MVME5100
+ 	  This option enables support for the Motorola (now Emerson) MVME5100
+ 	  board.
  
-+mod header;
- mod id;
- mod io;
- mod irq;
++config GAMECUBE
++	bool "Nintendo-GameCube"
++	depends on EMBEDDED6xx
++	select GAMECUBE_COMMON
++	help
++	  Select GAMECUBE if configuring for the Nintendo GameCube.
++	  More information at: <http://gc-linux.sourceforge.net/>
++
++config WII
++	bool "Nintendo-Wii"
++	depends on EMBEDDED6xx
++	select GAMECUBE_COMMON
++	help
++	  Select WII if configuring for the Nintendo Wii.
++	  More information at: <http://gc-linux.sourceforge.net/>
++
+ config TSI108_BRIDGE
+ 	bool
+ 	select FORCE_PCI
+@@ -77,18 +93,3 @@ config USBGECKO_UDBG
  
-+pub use self::header::HeaderType;
- pub use self::id::{
-     Class,
-     ClassMask,
-@@ -373,6 +375,14 @@ pub fn revision_id(&self) -> u8 {
-         unsafe { (*self.as_raw()).revision }
-     }
+ 	  If in doubt, say N here.
  
-+    /// Returns the PCI header type.
-+    #[inline]
-+    pub fn header_type(&self) -> HeaderType {
-+        // SAFETY: By its type invariant `self.as_raw` is always a valid pointer to a
-+        // `struct pci_dev`.
-+        HeaderType::from(unsafe { (*self.as_raw()).hdr_type })
-+    }
-+
-     /// Returns the PCI bus device/function.
-     #[inline]
-     pub fn dev_id(&self) -> u16 {
-diff --git a/rust/kernel/pci/header.rs b/rust/kernel/pci/header.rs
-new file mode 100644
-index 000000000..032efeb16
---- /dev/null
-+++ b/rust/kernel/pci/header.rs
-@@ -0,0 +1,31 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+//! PCI device header type definitions.
-+//!
-+//! This module contains PCI header type definitions
-+
-+use kernel::bindings;
-+
-+/// PCI device header types.
-+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-+pub enum HeaderType {
-+    /// Normal PCI device header (Type 0)
-+    NormalDevice,
-+    /// PCI-to-PCI bridge header (Type 1)
-+    PciToPciBridge,
-+    /// CardBus bridge header (Type 2)
-+    CardBusBridge,
-+    /// Unknown or unsupported header type
-+    Unknown,
-+}
-+
-+impl From<u8> for HeaderType {
-+    fn from(value: u8) -> Self {
-+        match u32::from(value) & bindings::PCI_HEADER_TYPE_MASK {
-+            bindings::PCI_HEADER_TYPE_NORMAL => HeaderType::NormalDevice,
-+            bindings::PCI_HEADER_TYPE_BRIDGE => HeaderType::PciToPciBridge,
-+            bindings::PCI_HEADER_TYPE_CARDBUS => HeaderType::CardBusBridge,
-+            _ => HeaderType::Unknown,
-+        }
-+    }
-+}
+-config GAMECUBE
+-	bool "Nintendo-GameCube"
+-	depends on EMBEDDED6xx
+-	select GAMECUBE_COMMON
+-	help
+-	  Select GAMECUBE if configuring for the Nintendo GameCube.
+-	  More information at: <http://gc-linux.sourceforge.net/>
+-
+-config WII
+-	bool "Nintendo-Wii"
+-	depends on EMBEDDED6xx
+-	select GAMECUBE_COMMON
+-	help
+-	  Select WII if configuring for the Nintendo Wii.
+-	  More information at: <http://gc-linux.sourceforge.net/>
 
 ---
-base-commit: f8f9c1f4d0c7a64600e2ca312dec824a0bc2f1da
-change-id: 20260103-add-rust-pci-header-type-346249c1ec14
+base-commit: 9448598b22c50c8a5bb77a9103e2d49f134c9578
+change-id: 20260103-gcwii-kconfig-0ba5b415b99b
 
 Best regards,
 -- 
-SeungJong Ha <engineer.jjhama@gmail.com>
+J. Neuschäfer <j.ne@posteo.net>
 
