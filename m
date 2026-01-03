@@ -1,163 +1,140 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Sat, 03 Jan 2026 10:00:24 +0100
-Subject: [PATCH v2 2/2] arm64: dts: qcom: x1p42100-lenovo-thinkbook-16: add
- hdmi bridge with enable pin
+From: SeungJong Ha <engineer.jjhama@gmail.com>
+Date: Sat, 03 Jan 2026 14:38:50 +0000
+Subject: [PATCH] rust: pci: add HeaderType enum and header_type() helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260103-tb16-hdmi-v2-2-92b0930fa82e@oldschoolsolutions.biz>
-References: <20260103-tb16-hdmi-v2-0-92b0930fa82e@oldschoolsolutions.biz>
-In-Reply-To: <20260103-tb16-hdmi-v2-0-92b0930fa82e@oldschoolsolutions.biz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Val Packett <val@packett.cool>, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767430836; l=3036;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=Fn6Y6Iaroanl56fohqh2G6S9QZFMHlCGJtymrsxNGH4=;
- b=Lub8dXW86feYnaxRIXMKLvr7iHFiaF2R1C4plOgyYoPaQXst8W5PtUeG8IKujhGSeQClmuadV
- dSoUDHctxiXCjrQUkzv0iSRn09ElKdbWuLnPg3/6Pomw8MB6M0FiNyP
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+Message-Id: <20260103-add-rust-pci-header-type-v1-1-879b4d74b227@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAPkpWWkC/x3MQQrDIBBG4avIrDugRgLJVUoXon+S2SQypqUle
+ PdKlt/ivYsqVFBpNhcpPlLl2Dvcw1Da4r6CJXeTt360zg4cc2Z915NLEt4QM5TPXwEPYfRhSg7
+ JBep5USzyvdfPV2t/4WGVIGoAAAA=
+To: Danilo Krummrich <dakr@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>
+Cc: linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org, 
+ rust-for-linux@vger.kernel.org, SeungJong Ha <engineer.jjhama@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767451130; l=3232;
+ i=engineer.jjhama@gmail.com; s=20260103; h=from:subject:message-id;
+ bh=e2E4FhBSLeClmn+jWVL0WZmHkENN+PUZbPDhQoNtkk4=;
+ b=XWFzV0h3yE2SOPThqJB98GlI0lv2RzQLCSus9cLyUDIbfpwW6sbnzuUnfVt3hJPcFVtwd3Qoi
+ ggPUYgYQ0g6B8vzD2SeROuxPwThziziy+4DSpr9CTbgbN4MspyHoxec
+X-Developer-Key: i=engineer.jjhama@gmail.com; a=ed25519;
+ pk=G5nmjm+RTiWBpyCvc5xjR1b3li/2zipLSMyz+T4fj5E=
+X-Endpoint-Received: by B4 Relay for engineer.jjhama@gmail.com/20260103 with auth_id=590
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add TLMM 120 for hdmi bridge enable.
-In general this is the same setup as on the T14s. Since its using simple-bridge
-and also is Lenovo, we also use the same realtek,rtd2171 compatible.
-The real chip identity is not known yet. The bridge is wired with un-swapped
-lanes, though.
+Add the HeaderType enum to represent PCI configuration space header
+types (Normal and Bridge). Also implement the header_type() method in
+the Device struct to allow Rust PCI drivers to identify the device
+type safely.
 
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+This is required for drivers to handle type-specific configuration
+registers correctly.
+
+Signed-off-by: SeungJong Ha <engineer.jjhama@gmail.com>
 ---
- .../boot/dts/qcom/x1p42100-lenovo-thinkbook-16.dts | 88 ++++++++++++++++++++++
- 1 file changed, 88 insertions(+)
+Hello,
 
-diff --git a/arch/arm64/boot/dts/qcom/x1p42100-lenovo-thinkbook-16.dts b/arch/arm64/boot/dts/qcom/x1p42100-lenovo-thinkbook-16.dts
-index b4a40904f0a01b36ff2fc72e801a5fe7d6971e2a..1e5eb8c5dc988c3c4655f0019e53fc19e0884e4e 100644
---- a/arch/arm64/boot/dts/qcom/x1p42100-lenovo-thinkbook-16.dts
-+++ b/arch/arm64/boot/dts/qcom/x1p42100-lenovo-thinkbook-16.dts
-@@ -78,6 +78,47 @@ camera {
- 		vdd-supply = <&vreg_cam_5p0>;
- 	};
- 
-+	hdmi-bridge {
-+		compatible = "realtek,rtd2171";
-+
-+		enable-gpios = <&tlmm 120 GPIO_ACTIVE_HIGH>;
-+
-+		pinctrl-0 = <&hdmi_hpd_default>;
-+		pinctrl-names = "default";
-+
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			port@0 {
-+				reg = <0>;
-+
-+				hdmi_bridge_dp_in: endpoint {
-+					remote-endpoint = <&usb_1_ss2_qmpphy_out_dp>;
-+				};
-+			};
-+
-+			port@1 {
-+				reg = <1>;
-+
-+				hdmi_bridge_tmds_out: endpoint {
-+					remote-endpoint = <&hdmi_con>;
-+				};
-+			};
-+		};
-+	};
-+
-+	hdmi-connector {
-+		compatible = "hdmi-connector";
-+		type = "a";
-+
-+		port {
-+			hdmi_con: endpoint {
-+				remote-endpoint = <&hdmi_bridge_tmds_out>;
-+			};
-+		};
-+	};
-+
- 	gpio-keys {
- 		compatible = "gpio-keys";
- 
-@@ -1038,6 +1079,14 @@ &mdss_dp1_out {
- 	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
- };
- 
-+&mdss_dp2 {
-+	status = "okay";
-+};
-+
-+&mdss_dp2_out {
-+	link-frequencies = /bits/ 64 <1620000000 2700000000 5400000000 8100000000>;
-+};
-+
- &mdss_dp3 {
- 	/delete-property/ #sound-dai-cells;
- 
-@@ -1327,6 +1376,19 @@ hall_int_n_default: hall-int-n-state {
- 		bias-disable;
- 	};
- 
-+	hdmi_bridge_en: hdmi-bridge-en-state {
-+		pins = "gpio120";
-+		function = "gpio";
-+		drive-strength = <16>;
-+		bias-pull-down;
-+	};
-+
-+	hdmi_hpd_default: hdmi-hpd-default-state {
-+		pins = "gpio126";
-+		function = "usb2_dp";
-+		bias-disable;
-+	};
-+
- 	kybd_default: kybd-default-state {
- 		pins = "gpio67";
- 		function = "gpio";
-@@ -1573,6 +1635,32 @@ &usb_1_ss2_hsphy {
- 	status = "okay";
- };
- 
-+&usb_1_ss2_qmpphy {
-+	vdda-phy-supply = <&vreg_l2j_1p2>;
-+	vdda-pll-supply = <&vreg_l2d_0p9>;
-+
-+	/delete-property/ mode-switch;
-+	/delete-property/ orientation-switch;
-+
-+	status = "okay";
-+
-+	ports {
-+		port@0 {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			/delete-node/ endpoint;
-+
-+			usb_1_ss2_qmpphy_out_dp: endpoint@0 {
-+				reg = <0>;
-+
-+				data-lanes = <0 1 2 3>;
-+				remote-endpoint = <&hdmi_bridge_dp_in>;
-+			};
-+		};
-+	};
-+};
-+
- &usb_2 {
- 	status = "okay";
- };
+This is my first patch to the Linux kernel, specifically targeting the 
+Rust PCI subsystem. 
 
+This patch introduces the HeaderType enum to represent PCI configuration 
+space header types (Normal and Bridge) and implements the header_type() 
+method in the Device struct.
+
+I have followed the patch submission checklist, but as this is my first 
+contribution, please let me know if I have missed any conventions or 
+if there are areas for improvement.
+
+Thank you for your time and review!
+
+Best regards,
+SeungJong Ha
+---
+ rust/kernel/pci.rs        | 10 ++++++++++
+ rust/kernel/pci/header.rs | 31 +++++++++++++++++++++++++++++++
+ 2 files changed, 41 insertions(+)
+
+diff --git a/rust/kernel/pci.rs b/rust/kernel/pci.rs
+index 82e128431..90a0eb54f 100644
+--- a/rust/kernel/pci.rs
++++ b/rust/kernel/pci.rs
+@@ -31,10 +31,12 @@
+     },
+ };
+ 
++mod header;
+ mod id;
+ mod io;
+ mod irq;
+ 
++pub use self::header::HeaderType;
+ pub use self::id::{
+     Class,
+     ClassMask,
+@@ -373,6 +375,14 @@ pub fn revision_id(&self) -> u8 {
+         unsafe { (*self.as_raw()).revision }
+     }
+ 
++    /// Returns the PCI header type.
++    #[inline]
++    pub fn header_type(&self) -> HeaderType {
++        // SAFETY: By its type invariant `self.as_raw` is always a valid pointer to a
++        // `struct pci_dev`.
++        HeaderType::from(unsafe { (*self.as_raw()).hdr_type })
++    }
++
+     /// Returns the PCI bus device/function.
+     #[inline]
+     pub fn dev_id(&self) -> u16 {
+diff --git a/rust/kernel/pci/header.rs b/rust/kernel/pci/header.rs
+new file mode 100644
+index 000000000..032efeb16
+--- /dev/null
++++ b/rust/kernel/pci/header.rs
+@@ -0,0 +1,31 @@
++// SPDX-License-Identifier: GPL-2.0
++
++//! PCI device header type definitions.
++//!
++//! This module contains PCI header type definitions
++
++use kernel::bindings;
++
++/// PCI device header types.
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub enum HeaderType {
++    /// Normal PCI device header (Type 0)
++    NormalDevice,
++    /// PCI-to-PCI bridge header (Type 1)
++    PciToPciBridge,
++    /// CardBus bridge header (Type 2)
++    CardBusBridge,
++    /// Unknown or unsupported header type
++    Unknown,
++}
++
++impl From<u8> for HeaderType {
++    fn from(value: u8) -> Self {
++        match u32::from(value) & bindings::PCI_HEADER_TYPE_MASK {
++            bindings::PCI_HEADER_TYPE_NORMAL => HeaderType::NormalDevice,
++            bindings::PCI_HEADER_TYPE_BRIDGE => HeaderType::PciToPciBridge,
++            bindings::PCI_HEADER_TYPE_CARDBUS => HeaderType::CardBusBridge,
++            _ => HeaderType::Unknown,
++        }
++    }
++}
+
+---
+base-commit: f8f9c1f4d0c7a64600e2ca312dec824a0bc2f1da
+change-id: 20260103-add-rust-pci-header-type-346249c1ec14
+
+Best regards,
 -- 
-2.51.0
+SeungJong Ha <engineer.jjhama@gmail.com>
 
