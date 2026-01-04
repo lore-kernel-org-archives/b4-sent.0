@@ -1,330 +1,98 @@
-From: =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-Date: Sun, 04 Jan 2026 19:31:53 +0100
-Subject: [PATCH v9] arm64: dts: qcom: msm8939: Add camss and cci
+From: Sven Peter <sven@kernel.org>
+Date: Sun, 04 Jan 2026 22:18:31 +0100
+Subject: [PATCH next] phy: apple: atc: Actually check return value of
+ devm_apple_tunable_parse
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260104-camss-8x39-vbif-v9-1-0d47c7afbb2f@apitzsch.eu>
-X-B4-Tracking: v=1; b=H4sIABiyWmkC/23Py2rDMBAF0F8JWldBD4+l6Sr/UbqQ9YgFTRSkV
- KQN/vfKphQXezkDc+6dJyk+R1/I6+FJsq+xxHRtA74ciB3N9expdG0mgglgwBW15lIK1Q+JtA4
- xUFQQAmiOHDVpV7fsQ3ws4tt7m8dY7il/LQGVz9tfS7CNVTll1HBhXc9YbwKeLiZ+pHRM+Tzby
- yEyvX8YWgOLwTHXuZO5xft3sePRf5K5RhXraNgKogm9kw4smNBBv45eALkC5E53OVewyB2HYQC
- 3BdQfwJnY+UE1ALn3evDWGQ3bH/RK2Kugm6Cg07JDqQLY/8I0TT+8ZCHG7wEAAA==
-X-Change-ID: 20250517-camss-8x39-vbif-975ff5819198
-To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Bryan O'Donoghue <bod@kernel.org>
-Cc: ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
- linux-media@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Vincent Knecht <vincent.knecht@mailoo.org>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- =?utf-8?q?Andr=C3=A9_Apitzsch?= <git@apitzsch.eu>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767551530; l=9414;
- i=git@apitzsch.eu; s=20240325; h=from:subject:message-id;
- bh=4vLknzvfLXgTa/DO2IF2xxAc+HnFpKPaiuGsteMNYyc=;
- b=/e3diAOrNlnQ+IY+JqdCnSfWgUwVo6S7Sm7K8vxYhf+IYuJtaKdxnWkhfd1ayQODRKCdCkndC
- xkPqBII/P4pBWzyTvW2dv+fSvigEWUu5ahXNcAbXWDTNevRBqPYUDaw
-X-Developer-Key: i=git@apitzsch.eu; a=ed25519;
- pk=wxovcZRfvNYBMcTw4QFFtNEP4qv39gnBfnfyImXZxiU=
-X-Endpoint-Received: by B4 Relay for git@apitzsch.eu/20240325 with auth_id=142
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260104-atcphy-tunable-fix-v1-1-40bf00feaac0@kernel.org>
+X-B4-Tracking: v=1; b=H4sIACbZWmkC/x2MQQqAIBAAvxJ7bkGlLPpKdLBcayEs1KKI/p50n
+ IGZByIFpghd8UCgkyNvPoMsC5gW42dCtplBCaWFFBWaNO3LjenwZlwJHV9Yy6ZV2mpHzkIO90B
+ Z/9MePF0Jhvf9AOlMAr1qAAAA
+X-Change-ID: 20260104-atcphy-tunable-fix-517826d6fefd
+To: Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
+ Vinod Koul <vkoul@kernel.org>, Neil Armstrong <neil.armstrong@linaro.org>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-phy@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Thomas Glanzmann <thomas@glanzmann.de>, Sven Peter <sven@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3484; i=sven@kernel.org;
+ h=from:subject:message-id; bh=qmsbKPbX1+sTQZ0QzAzI0MrRK6GYbgNVPa9s4pvCfbc=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ2bUTe3pSZWHQk0WVMpvdHxZcLpp0gkxf/0n51f+idksd
+ HDZnYBzHaUsDGJcDLJiiizb99ubPnn4RnDppkvvYeawMoEMYeDiFICJ9Bkw/A9fmLPN/tvt5H9J
+ akkBktq9fi0KHhOUl5vJnPgdUZu3m4Xhr3zIV2XVuNWfHGUnT2Kc/bQkIPyQn+TJaSeeTXkXIel
+ TygUA
+X-Developer-Key: i=sven@kernel.org; a=openpgp;
+ fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
+X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Vincent Knecht <vincent.knecht@mailoo.org>
+Let's actually check the return value of devm_apple_tunable_parse
+instead of trying to check IS_ERR on a pointer to the return value which
+is always going to be valid. This prevent a oops when the tunables are
+invalid or when they don't exist:
 
-Add the camera subsystem and CCI used to interface with cameras on the
-Snapdragon 615.
+[   42.819119] ------------[ cut here ]------------
+[   42.819121] WARNING: CPU: 6 PID: 88 at drivers/phy/apple/atc.c:2145 atcphy_mux_set+0xf60/0x1128 [phy_apple_atc]
+[   42.819302] CPU: 6 UID: 0 PID: 88 Comm: kworker/6:1 Tainted: G S                  6.18+unreleased-asahi #1 PREEMPTLAZY  Debian 6.18.2-0-1~exp1
+[   42.819311] Tainted: [S]=CPU_OUT_OF_SPEC
+[   42.819314] Hardware name: Apple Mac mini (M1, 2020) (DT)
+[   42.819316] Workqueue: events cd321x_update_work [tps6598x]
+[   42.819332] pstate: 81400009 (Nzcv daif +PAN -UAO -TCO +DIT -SSBS BTYPE=--)
+[   42.819338] pc : atcphy_mux_set+0xf60/0x1128 [phy_apple_atc]
+[   42.819344] lr : atcphy_mux_set+0x30/0x1128 [phy_apple_atc]
+[   42.819348] sp : ffffc000813c7c00
+[   42.819350] x29: ffffc000813c7c00 x28: ffff800016babeb8 x27: ffff800016babc80
+[   42.819357] x26: 0000000000000001 x25: 0000000000000001 x24: 0000000000000000
+[   42.819364] x23: ffff800016babec0 x22: 00000000ffffffa1 x21: 0000000000000003
+[   42.819371] x20: ffff80000c1b3680 x19: ffff80000dcdd080 x18: 0000000000000000
+[   42.819376] x17: 0000000000000000 x16: ffffd42e6ede6e08 x15: 0000000000000000
+[   42.819382] x14: ffffd42e707b6980 x13: 0000000000025c68 x12: 726f703d54524f50
+[   42.819388] x11: 0000000000000040 x10: 0000000000000000 x9 : ffffd42e555ed9c0
+[   42.819394] x8 : 0000000000000006 x7 : ffff80000a000dd8 x6 : 0000000000000002
+[   42.819399] x5 : 0000000000000000 x4 : 0000000000000000 x3 : 0000000000000001
+[   42.819404] x2 : 0000000000000005 x1 : 000000000000ff01 x0 : 0000000000000001
+[   42.819410] Call trace:
+[   42.819412]  atcphy_mux_set+0xf60/0x1128 [phy_apple_atc] (P)
+[   42.819419]  typec_mux_set+0x74/0xd8 [typec]
+[   42.819444]  cd321x_update_work+0x440/0x8a8 [tps6598x]
+[   42.819453]  process_one_work+0x170/0x3e0
+[   42.819466]  worker_thread+0x25c/0x390
+[   42.819473]  kthread+0x148/0x240
+[   42.819479]  ret_from_fork+0x10/0x20
+[   42.819488] ---[ end trace 0000000000000000 ]---
 
-Signed-off-by: Vincent Knecht <vincent.knecht@mailoo.org>
-[André: Make order of items the same as in 8916]
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Reviewed-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
-Signed-off-by: André Apitzsch <git@apitzsch.eu>
+Reported-by: Thomas Glanzmann <thomas@glanzmann.de>
+Fixes: 8e98ca1e74db ("phy: apple: Add Apple Type-C PHY")
+Signed-off-by: Sven Peter <sven@kernel.org>
 ---
-This series adds CAMSS support for MSM8939.  It's mostly identical to
-MSM8916, except for some clocks and an additional CSI.
+ drivers/phy/apple/atc.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-To fix black stripes across sensor output, and garbage in CSID TPG
-output, 2 VFE VBIF register settings are needed.  So the 2nd patch adds
-helper functions to do just that.
-
-Patch 1: documents qcom,msm8939-camss DT bindings
-Patch 2: adds helper for VFE VBIF settings
-Patch 3: adds CAMSS_8x39 version in CAMSS driver
-Patch 4: adds camss and cci in msm8939.dtsi
----
-Changes in v9:
-- Drop applied patches 1-3
-- Rebase on latest next/master
-- Link to v8: https://lore.kernel.org/r/20251030-camss-8x39-vbif-v8-0-754834937f5c@apitzsch.eu
-
-Changes in v8:
-- Remove unavailable .link_entities callback [1] to fix build error
-  [1] https://lore.kernel.org/all/20250903002255.346026-2-vladimir.zapolskiy@linaro.org/
-- Link to v7: https://lore.kernel.org/r/20251028-camss-8x39-vbif-v7-0-91ee8becda85@apitzsch.eu
-
-Changes in v7:
-- Fix revision (previous submission was wrongly labelled v1)
-- Pick up tags
-- Rebase on latest next/master
-- Link to v6: https://lore.kernel.org/r/20250908-camss-8x39-vbif-v1-0-f198c9fd0d4d@apitzsch.eu
-
-Changes in v6 (was wrongly labelled v1):
-- Move bindings patch to the beginning
-- Make the order of {reg, clock, interrupt} items the same as in 8916 +
-  append additional items
-- Drop R-b tags from bindings and dts patches as order of items was
-  changed
-- Link to v5: https://lore.kernel.org/r/20250613-camss-8x39-vbif-v5-0-a002301a7730@mailoo.org
-
-Changes in v5:
-- Patch 1: no change
-- Patch 2: no change
-- Patch 3: (bindings)
-  - Fix alphanumerical ordering wrt. underscore (Vladimir)
-  - Add 1.2V mention to vdda-supply description (Vladimir)
-  - Correct vdda-supply regulator name for 1.2V in example
-  - Add empty line between properties and child node (Vladimir)
-  - Remove clock-lanes property in example (Vladimir)
-- Patch 4: (dtsi)
-  - Apply ordering and isp node unit address changes from patch 3.
-- Link to v4: https://lore.kernel.org/r/20250602-camss-8x39-vbif-v4-0-32c277d8f9bf@mailoo.org
-
-Changes in v4:
-- Picked up tags
-- Patch 1:
-  - Fix alignment to match opening parenthesis (Bryan)
-- Patch 2: no change
-- Patch 3:
-  - Wrap line at 80 chars (Krzysztof)
-- Patch 4: no change
-- Link to v3: https://lore.kernel.org/r/20250530-camss-8x39-vbif-v3-0-fc91d15bb5d6@mailoo.org
-
-Changes in v3:
-- Patch 1:
-  - Use braces around multiline (Bryan)
-  - Rename vfe_vbif_reg_write to vfe_vbif_write_reg (Bryan)
-  - Get rid of switch block on CAMSS version (Bryan)
-- Patch 2:
-  - Get rid of switch block on CAMSS version (Bryan)
-- Patch 3: no change
-- Patch 4: no change
-  - Tried to get rid of CCI camss_ahb but this resulted in device
-    freeze+reboot (Konrad)
-- Link to v2: https://lore.kernel.org/r/20250525-camss-8x39-vbif-v2-0-6d3d5c5af456@mailoo.org
-
-Changes in v2:
-- Patch 1:
-  - Fix devm_platform_ioremap_resource_byname line to not end with
-    opening parenthesis (media-ci/1-checkpatch)
-  - Move camss-vfe-4-1.c handling of VBIF previously in patch 2 here
-    (Dmitry)
-- Patch 2:
-  - Declare regulators in PHY entries, not CSID ones (Bryan)
-- Patch 3: (bindings)
-  - Fix bindings checks for new errors (Rob)
-  - Fix properties ordering, code-style and example (Krzysztof)
-  - Sort reg-names, clock-names and interrupt-names alphanumerically (Bryan)
-- Patch 4: (dtsi)
-  - Move #address/#size cells before status (Konrad)
-  - Aligned CCI with msm8916, thus removing ispif_ahb mention (Konrad)
-    If "camss_ahb should be unnecessary", it's still required by qcom,i2c-cci.yaml
-- Link to v1: https://lore.kernel.org/r/20250520-camss-8x39-vbif-v1-0-a12cd6006af9@mailoo.org
----
- arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi |   4 +
- arch/arm64/boot/dts/qcom/msm8939.dtsi        | 146 +++++++++++++++++++++++++++
- 2 files changed, 150 insertions(+)
-
-diff --git a/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi b/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi
-index adb96cd8d643..659d127b1bc3 100644
---- a/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi
-+++ b/arch/arm64/boot/dts/qcom/msm8939-pm8916.dtsi
-@@ -11,6 +11,10 @@
- #include "msm8939.dtsi"
- #include "pm8916.dtsi"
+diff --git a/drivers/phy/apple/atc.c b/drivers/phy/apple/atc.c
+index c8a58ee64b7aad3205df51cf16ae778471ad2c5d..716c1e70de38ca604803739fedaa543d91f7501b 100644
+--- a/drivers/phy/apple/atc.c
++++ b/drivers/phy/apple/atc.c
+@@ -2178,10 +2178,10 @@ static int atcphy_load_tunables(struct apple_atcphy *atcphy)
+ 	for (int i = 0; i < ARRAY_SIZE(tunables); i++) {
+ 		*tunables[i].tunable = devm_apple_tunable_parse(
+ 			atcphy->dev, atcphy->np, tunables[i].dt_name, tunables[i].res);
+-		if (IS_ERR(tunables[i].tunable)) {
++		if (IS_ERR(*tunables[i].tunable)) {
+ 			dev_err(atcphy->dev, "Failed to read tunable %s: %ld\n",
+-				tunables[i].dt_name, PTR_ERR(tunables[i].tunable));
+-			return PTR_ERR(tunables[i].tunable);
++				tunables[i].dt_name, PTR_ERR(*tunables[i].tunable));
++			return PTR_ERR(*tunables[i].tunable);
+ 		}
+ 	}
  
-+&camss {
-+	vdda-supply = <&pm8916_l2>;
-+};
-+
- &mdss_dsi0 {
- 	vdda-supply = <&pm8916_l2>;
- 	vddio-supply = <&pm8916_l6>;
-diff --git a/arch/arm64/boot/dts/qcom/msm8939.dtsi b/arch/arm64/boot/dts/qcom/msm8939.dtsi
-index eb64ec35e7f0..d4d7b0c9206c 100644
---- a/arch/arm64/boot/dts/qcom/msm8939.dtsi
-+++ b/arch/arm64/boot/dts/qcom/msm8939.dtsi
-@@ -1436,6 +1436,145 @@ mdss_dsi1_phy: phy@1aa0300 {
- 			};
- 		};
- 
-+		camss: isp@1b0ac00 {
-+			compatible = "qcom,msm8939-camss";
-+			reg = <0x01b0ac00 0x200>,
-+			      <0x01b00030 0x4>,
-+			      <0x01b0b000 0x200>,
-+			      <0x01b00038 0x4>,
-+			      <0x01b08000 0x100>,
-+			      <0x01b08400 0x100>,
-+			      <0x01b0a000 0x500>,
-+			      <0x01b00020 0x10>,
-+			      <0x01b10000 0x1000>,
-+			      <0x01b08800 0x100>,
-+			      <0x01b40000 0x200>;
-+			reg-names = "csiphy0",
-+				    "csiphy0_clk_mux",
-+				    "csiphy1",
-+				    "csiphy1_clk_mux",
-+				    "csid0",
-+				    "csid1",
-+				    "ispif",
-+				    "csi_clk_mux",
-+				    "vfe0",
-+				    "csid2",
-+				    "vfe0_vbif";
-+
-+			clocks = <&gcc GCC_CAMSS_TOP_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_ISPIF_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0PHYTIMER_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1PHYTIMER_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0PHY_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0PIX_CLK>,
-+				 <&gcc GCC_CAMSS_CSI0RDI_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1PHY_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1PIX_CLK>,
-+				 <&gcc GCC_CAMSS_CSI1RDI_CLK>,
-+				 <&gcc GCC_CAMSS_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_VFE0_CLK>,
-+				 <&gcc GCC_CAMSS_CSI_VFE0_CLK>,
-+				 <&gcc GCC_CAMSS_VFE_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_VFE_AXI_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2PHY_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2PIX_CLK>,
-+				 <&gcc GCC_CAMSS_CSI2RDI_CLK>;
-+			clock-names = "top_ahb",
-+				      "ispif_ahb",
-+				      "csiphy0_timer",
-+				      "csiphy1_timer",
-+				      "csi0_ahb",
-+				      "csi0",
-+				      "csi0_phy",
-+				      "csi0_pix",
-+				      "csi0_rdi",
-+				      "csi1_ahb",
-+				      "csi1",
-+				      "csi1_phy",
-+				      "csi1_pix",
-+				      "csi1_rdi",
-+				      "ahb",
-+				      "vfe0",
-+				      "csi_vfe0",
-+				      "vfe_ahb",
-+				      "vfe_axi",
-+				      "csi2_ahb",
-+				      "csi2",
-+				      "csi2_phy",
-+				      "csi2_pix",
-+				      "csi2_rdi";
-+
-+			interrupts = <GIC_SPI 78 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 79 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 51 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 52 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 55 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 57 IRQ_TYPE_EDGE_RISING>,
-+				     <GIC_SPI 153 IRQ_TYPE_EDGE_RISING>;
-+			interrupt-names = "csiphy0",
-+					  "csiphy1",
-+					  "csid0",
-+					  "csid1",
-+					  "ispif",
-+					  "vfe0",
-+					  "csid2";
-+
-+			iommus = <&apps_iommu 3>;
-+
-+			power-domains = <&gcc VFE_GDSC>;
-+
-+			status = "disabled";
-+
-+			ports {
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+
-+				port@0 {
-+					reg = <0>;
-+				};
-+
-+				port@1 {
-+					reg = <1>;
-+				};
-+			};
-+		};
-+
-+		cci: cci@1b0c000 {
-+			compatible = "qcom,msm8916-cci", "qcom,msm8226-cci";
-+			reg = <0x01b0c000 0x1000>;
-+			interrupts = <GIC_SPI 50 IRQ_TYPE_EDGE_RISING>;
-+			clocks = <&gcc GCC_CAMSS_TOP_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CCI_AHB_CLK>,
-+				 <&gcc GCC_CAMSS_CCI_CLK>,
-+				 <&gcc GCC_CAMSS_AHB_CLK>;
-+			clock-names = "camss_top_ahb",
-+				      "cci_ahb",
-+				      "cci",
-+				      "camss_ahb";
-+			assigned-clocks = <&gcc GCC_CAMSS_CCI_AHB_CLK>,
-+					  <&gcc GCC_CAMSS_CCI_CLK>;
-+			assigned-clock-rates = <80000000>,
-+					       <19200000>;
-+			pinctrl-0 = <&cci0_default>;
-+			pinctrl-names = "default";
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+			status = "disabled";
-+
-+			cci_i2c0: i2c-bus@0 {
-+				reg = <0>;
-+				clock-frequency = <400000>;
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+			};
-+		};
-+
- 		gpu: gpu@1c00000 {
- 			compatible = "qcom,adreno-405.0", "qcom,adreno";
- 			reg = <0x01c00000 0x10000>;
-@@ -1500,6 +1639,13 @@ apps_iommu: iommu@1ef0000 {
- 			#iommu-cells = <1>;
- 			qcom,iommu-secure-id = <17>;
- 
-+			/* vfe */
-+			iommu-ctx@3000 {
-+				compatible = "qcom,msm-iommu-v1-sec";
-+				reg = <0x3000 0x1000>;
-+				interrupts = <GIC_SPI 70 IRQ_TYPE_LEVEL_HIGH>;
-+			};
-+
- 			/* mdp_0: */
- 			iommu-ctx@4000 {
- 				compatible = "qcom,msm-iommu-v1-ns";
 
 ---
-base-commit: cc3aa43b44bdb43dfbac0fcb51c56594a11338a8
-change-id: 20250517-camss-8x39-vbif-975ff5819198
+base-commit: add66a6673bc4aacd0ef0f3c4a51271501770b17
+change-id: 20260104-atcphy-tunable-fix-517826d6fefd
 
 Best regards,
 -- 
-André Apitzsch <git@apitzsch.eu>
+Sven Peter <sven@kernel.org>
 
