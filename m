@@ -1,63 +1,67 @@
 From: Sebastian Krzyszkowiak <sebastian.krzyszkowiak@puri.sm>
-Date: Mon, 05 Jan 2026 21:24:44 +0100
-Subject: [PATCH 5/5] drm/panel: mantix: Don't turn on MIPI peripheral
+Subject: [PATCH 0/6] arm64: dts: imx8mq-librem5: Various improvements for
+ Librem 5
+Date: Mon, 05 Jan 2026 21:39:37 +0100
+Message-Id: <20260105-l5-dtb-fixes-v1-0-f491881a7fe7@puri.sm>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260105-mantix-halo-fixes-v1-5-1ebc9b195a34@puri.sm>
-References: <20260105-mantix-halo-fixes-v1-0-1ebc9b195a34@puri.sm>
-In-Reply-To: <20260105-mantix-halo-fixes-v1-0-1ebc9b195a34@puri.sm>
-To: =?utf-8?q?Guido_G=C3=BCnther?= <agx@sigxcpu.org>, 
- Purism Kernel Team <kernel@puri.sm>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Sebastian Krzyszkowiak <sebastian.krzyszkowiak@puri.sm>
+X-B4-Tracking: v=1; b=H4sIAIkhXGkC/x3MQQrCQAyF4auUrA2mhVbGq4iLzDTaQB0laUUov
+ bvR5cfjfxu4mIrDudnA5K2uzxpoDw2UietdUMcwdNQN1FKPc4/jkvGmH3EsnAbJKRGVE0TyMvk
+ PUVyu4cwumI1rmX4ns9bVjw/2RQz2/Qsz70gwfQAAAA==
+X-Change-ID: 20260105-l5-dtb-fixes-ca96eb9900c7
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: devicetree@vger.kernel.org, imx@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ kernel@puri.sm, Sebastian Krzyszkowiak <sebastian.krzyszkowiak@puri.sm>, 
+ Denis Sergeevich <galilley@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=750;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1047;
  i=sebastian.krzyszkowiak@puri.sm; h=from:subject:message-id;
- bh=wzX3EhJOQLlO3siwfFm5QsCfUWD8LUAgzLS3TEqb+Y0=;
- b=owEBbQKS/ZANAwAKAejyNc8728P/AcsmYgBpXB4fA4zf203rKJwuSpxRbHLhNyBMcGZElCcow
- ikVSWuREM6JAjMEAAEKAB0WIQQi3Z+uAGoRQ1g2YXzo8jXPO9vD/wUCaVweHwAKCRDo8jXPO9vD
- /6XQD/9YRWHVJHTuVsWdmpefFhuqrkdQ4Mal2qi/muZg0wXJqkQakGc7qMqEwWdsiqdgKTVAyaj
- T4gDxtULVY89EYuiHMRYT5Apk9mmPjm+P4114lOTV5Jr8XGXq8Rww4DijAoXDR5esbJbh6A+Cfl
- S9azg+ADcfhtfIzD+GOspjmgpXh0GTP20Ywhzucb6Eao65KbmE39A/Wvqo1QZAeX1BDhH6ErqSH
- dx33Ea7AoZ+es4qfpVmKtBw2aO8buKlzdKmH13UfTyO0kO7Q49WgeAKweuIcwvGZ+w+ga8QLkea
- VvuLLOQW+AJrdunHSAXuqrYjKCvCJa+ikPZpLE/qVJQJvYxSEAti09Gws/GwooftgBOImtAI/gz
- eVvW1AqfAexss1JiBsL60eyepD4u6W4rsegdKq9RZG5ZEJzpNmPKGUx8P+Rwz0xqORbirtk2Ves
- 5uafx7i8Hdfkfr5XdAuRxTMfJcFXHA1FDNVMYE2wkoRmzgElx0U/kuLDZgSOzx5MgymTwGH+88W
- 06lHpDwdKBobcjMcXPdGc9+rFqh9+7jpVKh6PIo0K8ylElkJFjk+4PMOyt6JcLH+IimHgeOh7/D
- yZlzhGY8A9JkQvTf2BVyLsmUTF2sagYt/n73ejLWlvAggj8K5ZqMTIz0V4ocz6/cKZhL9GsHMdg
- 6Kz4zgVb/FdQV1g==
+ bh=h1l9P7NkAKNJ+XD9BctiE5OChOQI9lTMcTs+NJRvzLI=;
+ b=owEBbQKS/ZANAwAKAejyNc8728P/AcsmYgBpXCGgxphxkK6Aiw/QlxhgE83NF6pMFn9DuKqeI
+ qoUnWOJCjCJAjMEAAEKAB0WIQQi3Z+uAGoRQ1g2YXzo8jXPO9vD/wUCaVwhoAAKCRDo8jXPO9vD
+ /+P/D/0Yw7W5ptdqIAPyLsNULtdCV2DUmIpYdm5blfamHr1H20WTIoNAsFalOpCfyXZcpnMUk3q
+ m9YoMsEfQJlxGo3ysQMap3QuO32IhD+StUSkHVyteNbTuT0MKOYWjcH/Sdr5U/7Vq1Dfien7aZv
+ Cl2/zqW2hLswCdS5hIfcJtLTiNJhDkRPtg7O1NV+VgQltp4UogA1/+WCkZ8AzRGRNvQw94UsitQ
+ lWx3ti+NqCH9MfLqHmZIFUCOa+eKIL8PYkd04WRmpL8DRAoCGmMqtDYKz0NoaCiEDmm8bsmM+1Q
+ Ol3XWNdu0tA6ej8b/EOGyaQsI0V4p5B5E+j/LOoc1xlMKpX1JMH6nZWfv0WFsBBtzhwXix1G5Rz
+ y8G3HX619aSedWM8S9sngPJbkJJN2UhNZtYTxW/UHMvEkTqhYvSyGLJ9vYj+Q/uXyG/DD8fzui7
+ fn4tT3fx2bAbYY0zAQtA59vulOJDmvIefkdzTUUWKJ6Vysq/Q/XIy/kshfgoNDrmLtD6GOL21vv
+ BBL9H+jZqa4lNoixAgpERI8Kcb4zaED0aYl34ao0pbWmjw3zuNAIZ5dLGWGWTOt2XutGVhbTLik
+ kPR6IWj7AMmm3q+mkm44hui7jFZBzCW2PAQYnXD6dCWk+oPOCpdjnPnHdt/psxSnWFx8AnKZGne
+ piWwewzgdNue6HA==
 X-Developer-Key: i=sebastian.krzyszkowiak@puri.sm; a=openpgp;
  fpr=22DD9FAE006A11435836617CE8F235CF3BDBC3FF
 X-Endpoint-Received: by B4 Relay for sebastian.krzyszkowiak@puri.sm/default with auth_id=32
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-It's not necessary with these panels.
+These are various DTS patches collected over time in Purism's
+downstream tree - fixing the vibrator's PWM, improving reliability
+of SparkLAN WiFi card and I2C buses, enabling power-on on RTC alarm
+and cleaning up an unneeded property.
 
 Signed-off-by: Sebastian Krzyszkowiak <sebastian.krzyszkowiak@puri.sm>
 ---
- drivers/gpu/drm/panel/panel-mantix-mlaf057we51.c | 2 --
- 1 file changed, 2 deletions(-)
+Sebastian Krzyszkowiak (6):
+      arm64: dts: imx8mq-librem5: Enable I2C recovery
+      arm64: dts: imx8mq-librem5: Set vibrator's PWM frequency to 20kHz
+      arm64: dts: imx8mq-librem5: Enable SNVS RTC
+      arm64: dts: imx8mq-librem5: Limit uSDHC2 frequency to 50MHz
+      arm64: dts: imx8mq-librem5: Set cap-power-off-card for usdhc2
+      arm64: dts: imx8mq-librem5: Don't set mic-cfg for wm8962
 
-diff --git a/drivers/gpu/drm/panel/panel-mantix-mlaf057we51.c b/drivers/gpu/drm/panel/panel-mantix-mlaf057we51.c
-index 30e378faafcd..13352cb4ad77 100644
---- a/drivers/gpu/drm/panel/panel-mantix-mlaf057we51.c
-+++ b/drivers/gpu/drm/panel/panel-mantix-mlaf057we51.c
-@@ -80,8 +80,6 @@ static int mantix_enable(struct drm_panel *panel)
- 	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
- 	mipi_dsi_usleep_range(&dsi_ctx, 10000, 12000);
- 
--	mipi_dsi_turn_on_peripheral_multi(&dsi_ctx);
--
- 	return dsi_ctx.accum_err;
- }
- 
+ arch/arm64/boot/dts/freescale/imx8mq-librem5.dtsi | 67 ++++++++++++++++++-----
+ 1 file changed, 54 insertions(+), 13 deletions(-)
+---
+base-commit: 9ace4753a5202b02191d54e9fdf7f9e3d02b85eb
+change-id: 20260105-l5-dtb-fixes-ca96eb9900c7
 
+Best regards,
 -- 
-2.52.0
+Sebastian Krzyszkowiak <sebastian.krzyszkowiak@puri.sm>
 
