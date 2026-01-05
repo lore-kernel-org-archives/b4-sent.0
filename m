@@ -1,11 +1,10 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Mon, 05 Jan 2026 19:25:44 +0530
-Subject: [PATCH v4 4/8] PCI/pwrctrl: Add APIs to power on/off the pwrctrl
- devices
+Date: Mon, 05 Jan 2026 19:25:45 +0530
+Subject: [PATCH v4 5/8] PCI/pwrctrl: Switch to the new pwrctrl APIs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260105-pci-pwrctrl-rework-v4-4-6d41a7a49789@oss.qualcomm.com>
+Message-Id: <20260105-pci-pwrctrl-rework-v4-5-6d41a7a49789@oss.qualcomm.com>
 References: <20260105-pci-pwrctrl-rework-v4-0-6d41a7a49789@oss.qualcomm.com>
 In-Reply-To: <20260105-pci-pwrctrl-rework-v4-0-6d41a7a49789@oss.qualcomm.com>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
@@ -20,223 +19,405 @@ Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  Niklas Cassel <cassel@kernel.org>, Alex Elder <elder@riscstar.com>, 
  Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- Chen-Yu Tsai <wenst@chromium.org>, 
- Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
+ Chen-Yu Tsai <wenst@chromium.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6585;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=12782;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=Fb+bpv69BElyB5En6ECdvbqRV1R+Pqvx0KEJwNE+5ZE=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpW8LyiLbA0Tx7bj7A+zXnQQ4WfuZsok9yOGXoM
- A7SrVdn2oaJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaVvC8gAKCRBVnxHm/pHO
- 9QNjB/9KKW5YcELIN6C9t2IIazLjPt+jROwu9xM/sYGBZRp0RzITMx/6Y7ab/f5U0S6+4y35fvZ
- 12WIHEz4m5O/DeX0IPmfgP0LN1U2CAfW68aoIrK/jdRNxh26vcmqwPBvY1/MWuLWKCYIgDaV6Xo
- yOWqF95zTI3kuFosEVpVKro4/o0GgaUa6uYeA/OWP1OQ8w/0+E5f+L4rYJSfpTUwy7Frv4mnuiE
- z80ebvHjZvR4EKJ7hZ21SDXr/dn7n2PCbpwEM6l7UJ7M4iOW/bhxCR+46Sjgznj7eAxMQqtq6qF
- gWl6ShrKRFHF7eUDMZ5iP3VUlZ4g3uU0iJG16BQ7aUlQyzzV
+ bh=JSl8b0Y6K6Fa53yBIlFpgxg3UwsEOtJI3rV1U2lzGb8=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpW8LyGZZXythC+MkcQkSIcTHsAo+VGb5yISbqu
+ 2OYeaZUK9aJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaVvC8gAKCRBVnxHm/pHO
+ 9RDtCACrBHLUrbGAykmOKvqaVZcrf+5iX6T+6RQrb0/c940MLuTyP3d1RPZ5LqVoIKvm4NT/zdI
+ QKlgEqHWKVjscIrr0zevNhO4McDytwwE4DL4T463+D2kL2VVhYKlTdLVBbBq9hH5lkNv+7+4w7j
+ Q6lvlkbnY/RD6wQuAemLnhOwfi+w6qUkmjVSUq+CgLHmlCQ1KTNMHuM8DdS/Qb+GQ5S6/PjAE0G
+ 9WW136uWMhnG6fBiOhSD3cQjty862pDZgOAJB/vT11BIl5LVDbiW6+v35NNLs9qK0bd3Y5ri/Xk
+ gpzE+cZL0MDsMKPs9FOoeYxmPUfE232/y/LHkDxcVk8kI2uE
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To fix PCIe bridge resource allocation issues when powering PCIe
-switches with the pwrctrl driver, introduce APIs to explicitly power
-on and off all related devices simultaneously.
+Adopt the recently introduced pwrctrl APIs to create, power on, destroy,
+and power off pwrctrl devices. In qcom_pcie_host_init(), call
+pci_pwrctrl_create_devices() to create devices, then
+pci_pwrctrl_power_on_devices() to power them on, both after controller
+resource initialization. Once successful, deassert PERST# for all devices.
 
-Previously, the individual pwrctrl drivers powered on/off the PCIe devices
-autonomously, without any control from the controller drivers. But to
-enforce ordering w.r.t powering on the devices, these APIs will power
-on/off all the devices at the same time.
+In qcom_pcie_host_deinit(), call pci_pwrctrl_power_off_devices() after
+asserting PERST#. Note that pci_pwrctrl_destroy_devices() is not called
+here, as deinit is only invoked during system suspend where device
+destruction is unnecessary. If the driver becomes removable in future,
+pci_pwrctrl_destroy_devices() should be called in the remove() handler.
 
-The pci_pwrctrl_power_on_devices() API recursively scans the PCI child
-nodes, makes sure that pwrctrl drivers are bind to devices, and calls their
-power_on() callbacks. If any of the pwrctrl driver is not bound, it will
-return -EPROBE_DEFER.
-
-Similarly, pci_pwrctrl_power_off_devices() API powers off devices
-recursively via their power_off() callbacks.
-
-These APIs are expected to be called during the controller probe and
-suspend/resume time to power on/off the devices. But before calling these
-APIs, the pwrctrl devices should've been created beforehand using the
-pci_pwrctrl_{create/destroy}_devices() APIs.
+At last, remove the old pwrctrl framework code from the PCI core (including
+devlinks) as the new APIs are now the sole consumer of pwrctrl
+functionality. And also do not power on the pwrctrl drivers during probe()
+as this is now handled by the APIs.
 
 Co-developed-by: Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>
 Signed-off-by: Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>
 Tested-by: Chen-Yu Tsai <wenst@chromium.org>
-Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
+Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/pci/pwrctrl/core.c  | 132 ++++++++++++++++++++++++++++++++++++++++++++
- include/linux/pci-pwrctrl.h |   4 ++
- 2 files changed, 136 insertions(+)
+ drivers/pci/bus.c                        | 19 ----------
+ drivers/pci/controller/dwc/pcie-qcom.c   | 23 +++++++++++--
+ drivers/pci/probe.c                      | 59 --------------------------------
+ drivers/pci/pwrctrl/core.c               | 15 --------
+ drivers/pci/pwrctrl/pci-pwrctrl-pwrseq.c |  5 ---
+ drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c | 24 ++-----------
+ drivers/pci/pwrctrl/slot.c               |  2 --
+ drivers/pci/remove.c                     | 20 -----------
+ 8 files changed, 24 insertions(+), 143 deletions(-)
 
+diff --git a/drivers/pci/bus.c b/drivers/pci/bus.c
+index 4383a36fd6ca..d60d5f108212 100644
+--- a/drivers/pci/bus.c
++++ b/drivers/pci/bus.c
+@@ -344,7 +344,6 @@ void __weak pcibios_bus_add_device(struct pci_dev *pdev) { }
+ void pci_bus_add_device(struct pci_dev *dev)
+ {
+ 	struct device_node *dn = dev->dev.of_node;
+-	struct platform_device *pdev;
+ 
+ 	/*
+ 	 * Can not put in pci_device_add yet because resources
+@@ -361,24 +360,6 @@ void pci_bus_add_device(struct pci_dev *dev)
+ 	/* Save config space for error recoverability */
+ 	pci_save_state(dev);
+ 
+-	/*
+-	 * If the PCI device is associated with a pwrctrl device with a
+-	 * power supply, create a device link between the PCI device and
+-	 * pwrctrl device.  This ensures that pwrctrl drivers are probed
+-	 * before PCI client drivers.
+-	 */
+-	pdev = of_find_device_by_node(dn);
+-	if (pdev) {
+-		if (of_pci_supply_present(dn)) {
+-			if (!device_link_add(&dev->dev, &pdev->dev,
+-					     DL_FLAG_AUTOREMOVE_CONSUMER)) {
+-				pci_err(dev, "failed to add device link to power control device %s\n",
+-					pdev->name);
+-			}
+-		}
+-		put_device(&pdev->dev);
+-	}
+-
+ 	if (!dn || of_device_is_available(dn))
+ 		pci_dev_allow_binding(dev);
+ 
+diff --git a/drivers/pci/controller/dwc/pcie-qcom.c b/drivers/pci/controller/dwc/pcie-qcom.c
+index 1ca58d0264e3..198befb5be2c 100644
+--- a/drivers/pci/controller/dwc/pcie-qcom.c
++++ b/drivers/pci/controller/dwc/pcie-qcom.c
+@@ -24,6 +24,7 @@
+ #include <linux/of_pci.h>
+ #include <linux/pci.h>
+ #include <linux/pci-ecam.h>
++#include <linux/pci-pwrctrl.h>
+ #include <linux/pm_opp.h>
+ #include <linux/pm_runtime.h>
+ #include <linux/platform_device.h>
+@@ -1317,10 +1318,18 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
+ 	if (ret)
+ 		goto err_deinit;
+ 
++	ret = pci_pwrctrl_create_devices(pci->dev);
++	if (ret)
++		goto err_disable_phy;
++
++	ret = pci_pwrctrl_power_on_devices(pci->dev);
++	if (ret)
++		goto err_pwrctrl_destroy;
++
+ 	if (pcie->cfg->ops->post_init) {
+ 		ret = pcie->cfg->ops->post_init(pcie);
+ 		if (ret)
+-			goto err_disable_phy;
++			goto err_pwrctrl_power_off;
+ 	}
+ 
+ 	qcom_pcie_clear_aspm_l0s(pcie->pci);
+@@ -1337,6 +1346,11 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
+ 
+ err_assert_reset:
+ 	qcom_ep_reset_assert(pcie);
++err_pwrctrl_power_off:
++	pci_pwrctrl_power_off_devices(pci->dev);
++err_pwrctrl_destroy:
++	if (ret != -EPROBE_DEFER)
++		pci_pwrctrl_destroy_devices(pci->dev);
+ err_disable_phy:
+ 	qcom_pcie_phy_power_off(pcie);
+ err_deinit:
+@@ -1351,6 +1365,11 @@ static void qcom_pcie_host_deinit(struct dw_pcie_rp *pp)
+ 	struct qcom_pcie *pcie = to_qcom_pcie(pci);
+ 
+ 	qcom_ep_reset_assert(pcie);
++	/*
++	 * No need to destroy pwrctrl devices as this function only gets called
++	 * during system suspend as of now.
++	 */
++	pci_pwrctrl_power_off_devices(pci->dev);
+ 	qcom_pcie_phy_power_off(pcie);
+ 	pcie->cfg->ops->deinit(pcie);
+ }
+@@ -2029,7 +2048,7 @@ static int qcom_pcie_probe(struct platform_device *pdev)
+ 
+ 	ret = dw_pcie_host_init(pp);
+ 	if (ret) {
+-		dev_err(dev, "cannot initialize host\n");
++		dev_err_probe(dev, ret, "cannot initialize host\n");
+ 		goto err_phy_exit;
+ 	}
+ 
+diff --git a/drivers/pci/probe.c b/drivers/pci/probe.c
+index 41183aed8f5d..6e7252404b58 100644
+--- a/drivers/pci/probe.c
++++ b/drivers/pci/probe.c
+@@ -2563,56 +2563,6 @@ bool pci_bus_read_dev_vendor_id(struct pci_bus *bus, int devfn, u32 *l,
+ }
+ EXPORT_SYMBOL(pci_bus_read_dev_vendor_id);
+ 
+-#if IS_ENABLED(CONFIG_PCI_PWRCTRL)
+-static struct platform_device *pci_pwrctrl_create_device(struct pci_bus *bus, int devfn)
+-{
+-	struct pci_host_bridge *host = pci_find_host_bridge(bus);
+-	struct platform_device *pdev;
+-	struct device_node *np;
+-
+-	np = of_pci_find_child_device(dev_of_node(&bus->dev), devfn);
+-	if (!np)
+-		return NULL;
+-
+-	pdev = of_find_device_by_node(np);
+-	if (pdev) {
+-		put_device(&pdev->dev);
+-		goto err_put_of_node;
+-	}
+-
+-	/*
+-	 * First check whether the pwrctrl device really needs to be created or
+-	 * not. This is decided based on at least one of the power supplies
+-	 * being defined in the devicetree node of the device.
+-	 */
+-	if (!of_pci_supply_present(np)) {
+-		pr_debug("PCI/pwrctrl: Skipping OF node: %s\n", np->name);
+-		goto err_put_of_node;
+-	}
+-
+-	/* Now create the pwrctrl device */
+-	pdev = of_platform_device_create(np, NULL, &host->dev);
+-	if (!pdev) {
+-		pr_err("PCI/pwrctrl: Failed to create pwrctrl device for node: %s\n", np->name);
+-		goto err_put_of_node;
+-	}
+-
+-	of_node_put(np);
+-
+-	return pdev;
+-
+-err_put_of_node:
+-	of_node_put(np);
+-
+-	return NULL;
+-}
+-#else
+-static struct platform_device *pci_pwrctrl_create_device(struct pci_bus *bus, int devfn)
+-{
+-	return NULL;
+-}
+-#endif
+-
+ /*
+  * Read the config data for a PCI device, sanity-check it,
+  * and fill in the dev structure.
+@@ -2622,15 +2572,6 @@ static struct pci_dev *pci_scan_device(struct pci_bus *bus, int devfn)
+ 	struct pci_dev *dev;
+ 	u32 l;
+ 
+-	/*
+-	 * Create pwrctrl device (if required) for the PCI device to handle the
+-	 * power state. If the pwrctrl device is created, then skip scanning
+-	 * further as the pwrctrl core will rescan the bus after powering on
+-	 * the device.
+-	 */
+-	if (pci_pwrctrl_create_device(bus, devfn))
+-		return NULL;
+-
+ 	if (!pci_bus_read_dev_vendor_id(bus, devfn, &l, 60*1000))
+ 		return NULL;
+ 
 diff --git a/drivers/pci/pwrctrl/core.c b/drivers/pci/pwrctrl/core.c
-index 4bd67b688a68..cb7947e347d3 100644
+index cb7947e347d3..5973a83fe0d0 100644
 --- a/drivers/pci/pwrctrl/core.c
 +++ b/drivers/pci/pwrctrl/core.c
-@@ -65,6 +65,7 @@ void pci_pwrctrl_init(struct pci_pwrctrl *pwrctrl, struct device *dev)
+@@ -45,16 +45,6 @@ static int pci_pwrctrl_notify(struct notifier_block *nb, unsigned long action,
+ 	return NOTIFY_DONE;
+ }
+ 
+-static void rescan_work_func(struct work_struct *work)
+-{
+-	struct pci_pwrctrl *pwrctrl = container_of(work,
+-						   struct pci_pwrctrl, work);
+-
+-	pci_lock_rescan_remove();
+-	pci_rescan_bus(to_pci_host_bridge(pwrctrl->dev->parent)->bus);
+-	pci_unlock_rescan_remove();
+-}
+-
+ /**
+  * pci_pwrctrl_init() - Initialize the PCI power control context struct
+  *
+@@ -64,7 +54,6 @@ static void rescan_work_func(struct work_struct *work)
+ void pci_pwrctrl_init(struct pci_pwrctrl *pwrctrl, struct device *dev)
  {
  	pwrctrl->dev = dev;
- 	INIT_WORK(&pwrctrl->work, rescan_work_func);
-+	dev_set_drvdata(dev, pwrctrl);
+-	INIT_WORK(&pwrctrl->work, rescan_work_func);
+ 	dev_set_drvdata(dev, pwrctrl);
  }
  EXPORT_SYMBOL_GPL(pci_pwrctrl_init);
+@@ -95,8 +84,6 @@ int pci_pwrctrl_device_set_ready(struct pci_pwrctrl *pwrctrl)
+ 	if (ret)
+ 		return ret;
  
-@@ -152,6 +153,137 @@ int devm_pci_pwrctrl_device_set_ready(struct device *dev,
+-	schedule_work(&pwrctrl->work);
+-
+ 	return 0;
  }
- EXPORT_SYMBOL_GPL(devm_pci_pwrctrl_device_set_ready);
- 
-+static int __pci_pwrctrl_power_off_device(struct device *dev)
-+{
-+	struct pci_pwrctrl *pwrctrl = dev_get_drvdata(dev);
-+
-+	if (!pwrctrl)
-+		return 0;
-+
-+	return pwrctrl->power_off(pwrctrl);
-+}
-+
-+static void pci_pwrctrl_power_off_device(struct device_node *np)
-+{
-+	struct platform_device *pdev;
-+	int ret;
-+
-+	for_each_available_child_of_node_scoped(np, child)
-+		pci_pwrctrl_power_off_device(child);
-+
-+	pdev = of_find_device_by_node(np);
-+	if (pdev) {
-+		if (device_is_bound(&pdev->dev)) {
-+			ret = __pci_pwrctrl_power_off_device(&pdev->dev);
-+			if (ret)
-+				dev_err(&pdev->dev, "Failed to power off device: %d", ret);
-+		}
-+
-+		platform_device_put(pdev);
-+	}
-+}
-+
-+/**
-+ * pci_pwrctrl_power_off_devices - Power off the pwrctrl devices
-+ *
-+ * @parent: Parent PCI device for which the pwrctrl devices need to be powered
-+ * off.
-+ *
-+ * This function recursively traverses all pwrctrl devices for the child nodes
-+ * of the specified PCI parent device, and powers them off in a depth first
-+ * manner.
-+ */
-+void pci_pwrctrl_power_off_devices(struct device *parent)
-+{
-+	struct device_node *np = parent->of_node;
-+
-+	for_each_available_child_of_node_scoped(np, child)
-+		pci_pwrctrl_power_off_device(child);
-+}
-+EXPORT_SYMBOL_GPL(pci_pwrctrl_power_off_devices);
-+
-+static int __pci_pwrctrl_power_on_device(struct device *dev)
-+{
-+	struct pci_pwrctrl *pwrctrl = dev_get_drvdata(dev);
-+
-+	if (!pwrctrl)
-+		return 0;
-+
-+	return pwrctrl->power_on(pwrctrl);
-+}
-+
-+/*
-+ * Power on the devices in a depth first manner. Before powering on the device,
-+ * make sure its driver is bound.
-+ */
-+static int pci_pwrctrl_power_on_device(struct device_node *np)
-+{
-+	struct platform_device *pdev;
-+	int ret;
-+
-+	for_each_available_child_of_node_scoped(np, child) {
-+		ret = pci_pwrctrl_power_on_device(child);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	pdev = of_find_device_by_node(np);
-+	if (pdev) {
-+		if (!device_is_bound(&pdev->dev)) {
-+			/* FIXME: Use blocking wait instead of probe deferral */
-+			dev_dbg(&pdev->dev, "driver is not bound\n");
-+			ret = -EPROBE_DEFER;
-+		} else {
-+			ret = __pci_pwrctrl_power_on_device(&pdev->dev);
-+		}
-+		platform_device_put(pdev);
-+
-+		if (ret)
-+			return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+/**
-+ * pci_pwrctrl_power_on_devices - Power on the pwrctrl devices
-+ *
-+ * @parent: Parent PCI device for which the pwrctrl devices need to be powered
-+ * on.
-+ *
-+ * This function recursively traverses all pwrctrl devices for the child nodes
-+ * of the specified PCI parent device, and powers them on in a depth first
-+ * manner. On error, all powered on devices will be powered off.
-+ *
-+ * Returns: 0 on success, -EPROBE_DEFER if any pwrctrl driver is not bound, an
-+ * appropriate error code otherwise.
-+ */
-+int pci_pwrctrl_power_on_devices(struct device *parent)
-+{
-+	struct device_node *np = parent->of_node;
-+	struct device_node *child = NULL;
-+	int ret;
-+
-+	for_each_available_child_of_node(np, child) {
-+		ret = pci_pwrctrl_power_on_device(child);
-+		if (ret)
-+			goto err_power_off;
-+	}
-+
-+	return 0;
-+
-+err_power_off:
-+	for_each_available_child_of_node_scoped(np, tmp) {
-+		if (tmp == child)
-+			break;
-+		pci_pwrctrl_power_off_device(tmp);
-+	}
-+	of_node_put(child);
-+
-+	return ret;
-+}
-+EXPORT_SYMBOL_GPL(pci_pwrctrl_power_on_devices);
-+
- static int pci_pwrctrl_create_device(struct device_node *np, struct device *parent)
+ EXPORT_SYMBOL_GPL(pci_pwrctrl_device_set_ready);
+@@ -109,8 +96,6 @@ EXPORT_SYMBOL_GPL(pci_pwrctrl_device_set_ready);
+  */
+ void pci_pwrctrl_device_unset_ready(struct pci_pwrctrl *pwrctrl)
  {
- 	struct platform_device *pdev;
-diff --git a/include/linux/pci-pwrctrl.h b/include/linux/pci-pwrctrl.h
-index 44f66872d090..1192a2527521 100644
---- a/include/linux/pci-pwrctrl.h
-+++ b/include/linux/pci-pwrctrl.h
-@@ -57,8 +57,12 @@ int devm_pci_pwrctrl_device_set_ready(struct device *dev,
- #if IS_ENABLED(CONFIG_PCI_PWRCTRL)
- int pci_pwrctrl_create_devices(struct device *parent);
- void pci_pwrctrl_destroy_devices(struct device *parent);
-+int pci_pwrctrl_power_on_devices(struct device *parent);
-+void pci_pwrctrl_power_off_devices(struct device *parent);
- #else
- static inline int pci_pwrctrl_create_devices(struct device *parent) { return 0; }
- static void pci_pwrctrl_destroy_devices(struct device *parent) { }
-+static inline int pci_pwrctrl_power_on_devices(struct device *parent) { return 0; }
-+static void pci_pwrctrl_power_off_devices(struct device *parent) { }
- #endif
- #endif /* __PCI_PWRCTRL_H__ */
+-	cancel_work_sync(&pwrctrl->work);
+-
+ 	/*
+ 	 * We don't have to delete the link here. Typically, this function
+ 	 * is only called when the power control device is being detached. If
+diff --git a/drivers/pci/pwrctrl/pci-pwrctrl-pwrseq.c b/drivers/pci/pwrctrl/pci-pwrctrl-pwrseq.c
+index 7e7093cbff3c..42b87d480fe8 100644
+--- a/drivers/pci/pwrctrl/pci-pwrctrl-pwrseq.c
++++ b/drivers/pci/pwrctrl/pci-pwrctrl-pwrseq.c
+@@ -101,11 +101,6 @@ static int pci_pwrctrl_pwrseq_probe(struct platform_device *pdev)
+ 		return dev_err_probe(dev, PTR_ERR(data->pwrseq),
+ 				     "Failed to get the power sequencer\n");
+ 
+-	ret = pci_pwrctrl_pwrseq_power_on(&data->ctx);
+-	if (ret)
+-		return dev_err_probe(dev, ret,
+-				     "Failed to power-on the device\n");
+-
+ 	ret = devm_add_action_or_reset(dev, devm_pci_pwrctrl_pwrseq_power_off,
+ 				       data);
+ 	if (ret)
+diff --git a/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c b/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c
+index 616d3caedb34..66132d437ddb 100644
+--- a/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c
++++ b/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c
+@@ -515,8 +515,6 @@ static int tc9563_pwrctrl_power_on(struct pci_pwrctrl *pwrctrl)
+ 
+ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
+ {
+-	struct pci_host_bridge *bridge = to_pci_host_bridge(pdev->dev.parent);
+-	struct pci_bus *bus = bridge->bus;
+ 	struct device *dev = &pdev->dev;
+ 	enum tc9563_pwrctrl_ports port;
+ 	struct tc9563_pwrctrl_ctx *ctx;
+@@ -592,22 +590,6 @@ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
+ 		goto remove_i2c;
+ 	}
+ 
+-	if (bridge->ops->assert_perst) {
+-		ret = bridge->ops->assert_perst(bus, true);
+-		if (ret)
+-			goto remove_i2c;
+-	}
+-
+-	ret = tc9563_pwrctrl_power_on(&ctx->pwrctrl);
+-	if (ret)
+-		goto remove_i2c;
+-
+-	if (bridge->ops->assert_perst) {
+-		ret = bridge->ops->assert_perst(bus, false);
+-		if (ret)
+-			goto power_off;
+-	}
+-
+ 	ctx->pwrctrl.power_on = tc9563_pwrctrl_power_on;
+ 	ctx->pwrctrl.power_off = tc9563_pwrctrl_power_off;
+ 
+@@ -615,8 +597,6 @@ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		goto power_off;
+ 
+-	platform_set_drvdata(pdev, ctx);
+-
+ 	return 0;
+ 
+ power_off:
+@@ -629,7 +609,9 @@ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
+ 
+ static void tc9563_pwrctrl_remove(struct platform_device *pdev)
+ {
+-	struct tc9563_pwrctrl_ctx *ctx = platform_get_drvdata(pdev);
++	struct pci_pwrctrl *pwrctrl = dev_get_drvdata(&pdev->dev);
++	struct tc9563_pwrctrl_ctx *ctx = container_of(pwrctrl,
++					struct tc9563_pwrctrl_ctx, pwrctrl);
+ 
+ 	tc9563_pwrctrl_power_off(&ctx->pwrctrl);
+ 	i2c_unregister_device(ctx->client);
+diff --git a/drivers/pci/pwrctrl/slot.c b/drivers/pci/pwrctrl/slot.c
+index 9f91f04b4ae0..dcd6ab79ca82 100644
+--- a/drivers/pci/pwrctrl/slot.c
++++ b/drivers/pci/pwrctrl/slot.c
+@@ -81,8 +81,6 @@ static int pci_pwrctrl_slot_probe(struct platform_device *pdev)
+ 		return dev_err_probe(dev, PTR_ERR(slot->clk),
+ 				     "Failed to enable slot clock\n");
+ 
+-	pci_pwrctrl_slot_power_on(&slot->ctx);
+-
+ 	slot->ctx.power_on = pci_pwrctrl_slot_power_on;
+ 	slot->ctx.power_off = pci_pwrctrl_slot_power_off;
+ 
+diff --git a/drivers/pci/remove.c b/drivers/pci/remove.c
+index 417a9ea59117..e9d519993853 100644
+--- a/drivers/pci/remove.c
++++ b/drivers/pci/remove.c
+@@ -17,25 +17,6 @@ static void pci_free_resources(struct pci_dev *dev)
+ 	}
+ }
+ 
+-static void pci_pwrctrl_unregister(struct device *dev)
+-{
+-	struct device_node *np;
+-	struct platform_device *pdev;
+-
+-	np = dev_of_node(dev);
+-	if (!np)
+-		return;
+-
+-	pdev = of_find_device_by_node(np);
+-	if (!pdev)
+-		return;
+-
+-	of_device_unregister(pdev);
+-	put_device(&pdev->dev);
+-
+-	of_node_clear_flag(np, OF_POPULATED);
+-}
+-
+ static void pci_stop_dev(struct pci_dev *dev)
+ {
+ 	pci_pme_active(dev, false);
+@@ -73,7 +54,6 @@ static void pci_destroy_dev(struct pci_dev *dev)
+ 	pci_ide_destroy(dev);
+ 	pcie_aspm_exit_link_state(dev);
+ 	pci_bridge_d3_update(dev);
+-	pci_pwrctrl_unregister(&dev->dev);
+ 	pci_free_resources(dev);
+ 	put_device(&dev->dev);
+ }
 
 -- 
 2.48.1
