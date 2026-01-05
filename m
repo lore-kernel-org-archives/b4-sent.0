@@ -1,15 +1,12 @@
 From: Sebastian Krzyszkowiak <sebastian.krzyszkowiak@puri.sm>
-Subject: [PATCH 0/6] arm64: dts: imx8mq-librem5: Various improvements for
- Librem 5
-Date: Mon, 05 Jan 2026 21:39:37 +0100
-Message-Id: <20260105-l5-dtb-fixes-v1-0-f491881a7fe7@puri.sm>
+Date: Mon, 05 Jan 2026 21:39:38 +0100
+Subject: [PATCH 1/6] arm64: dts: imx8mq-librem5: Enable I2C recovery
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIkhXGkC/x3MQQrCQAyF4auUrA2mhVbGq4iLzDTaQB0laUUov
- bvR5cfjfxu4mIrDudnA5K2uzxpoDw2UietdUMcwdNQN1FKPc4/jkvGmH3EsnAbJKRGVE0TyMvk
- PUVyu4cwumI1rmX4ns9bVjw/2RQz2/Qsz70gwfQAAAA==
-X-Change-ID: 20260105-l5-dtb-fixes-ca96eb9900c7
+Message-Id: <20260105-l5-dtb-fixes-v1-1-f491881a7fe7@puri.sm>
+References: <20260105-l5-dtb-fixes-v1-0-f491881a7fe7@puri.sm>
+In-Reply-To: <20260105-l5-dtb-fixes-v1-0-f491881a7fe7@puri.sm>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
  Sascha Hauer <s.hauer@pengutronix.de>, 
@@ -20,48 +17,149 @@ Cc: devicetree@vger.kernel.org, imx@lists.linux.dev,
  kernel@puri.sm, Sebastian Krzyszkowiak <sebastian.krzyszkowiak@puri.sm>, 
  Denis Sergeevich <galilley@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1047;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3624;
  i=sebastian.krzyszkowiak@puri.sm; h=from:subject:message-id;
- bh=h1l9P7NkAKNJ+XD9BctiE5OChOQI9lTMcTs+NJRvzLI=;
- b=owEBbQKS/ZANAwAKAejyNc8728P/AcsmYgBpXCGgxphxkK6Aiw/QlxhgE83NF6pMFn9DuKqeI
- qoUnWOJCjCJAjMEAAEKAB0WIQQi3Z+uAGoRQ1g2YXzo8jXPO9vD/wUCaVwhoAAKCRDo8jXPO9vD
- /+P/D/0Yw7W5ptdqIAPyLsNULtdCV2DUmIpYdm5blfamHr1H20WTIoNAsFalOpCfyXZcpnMUk3q
- m9YoMsEfQJlxGo3ysQMap3QuO32IhD+StUSkHVyteNbTuT0MKOYWjcH/Sdr5U/7Vq1Dfien7aZv
- Cl2/zqW2hLswCdS5hIfcJtLTiNJhDkRPtg7O1NV+VgQltp4UogA1/+WCkZ8AzRGRNvQw94UsitQ
- lWx3ti+NqCH9MfLqHmZIFUCOa+eKIL8PYkd04WRmpL8DRAoCGmMqtDYKz0NoaCiEDmm8bsmM+1Q
- Ol3XWNdu0tA6ej8b/EOGyaQsI0V4p5B5E+j/LOoc1xlMKpX1JMH6nZWfv0WFsBBtzhwXix1G5Rz
- y8G3HX619aSedWM8S9sngPJbkJJN2UhNZtYTxW/UHMvEkTqhYvSyGLJ9vYj+Q/uXyG/DD8fzui7
- fn4tT3fx2bAbYY0zAQtA59vulOJDmvIefkdzTUUWKJ6Vysq/Q/XIy/kshfgoNDrmLtD6GOL21vv
- BBL9H+jZqa4lNoixAgpERI8Kcb4zaED0aYl34ao0pbWmjw3zuNAIZ5dLGWGWTOt2XutGVhbTLik
- kPR6IWj7AMmm3q+mkm44hui7jFZBzCW2PAQYnXD6dCWk+oPOCpdjnPnHdt/psxSnWFx8AnKZGne
- piWwewzgdNue6HA==
+ bh=2CPEfJJK6ZBfWNr7wJ/vjJqV3vNXoiRAgqzj5tKt60c=;
+ b=owEBbQKS/ZANAwAKAejyNc8728P/AcsmYgBpXCGgpw5ShwVRjjkNYF/A3liv5xsJ6t5/Uq4v+
+ pvF0nfbkbCJAjMEAAEKAB0WIQQi3Z+uAGoRQ1g2YXzo8jXPO9vD/wUCaVwhoAAKCRDo8jXPO9vD
+ /7qrD/98HILeJmN1zQegk9fyQSB2sK4lmpDcQ/yvHWNA1OARqgTfhKpZb7MSIx9hR6jM9rqvy7d
+ JxtWRGA2loigoNm2u9o+4bz+AOPR0XEy8R2omH6Yh/Tu6JjDQH/olLEnisojByN5XPAzLVe//kE
+ LCUga/qy8XOnAlKsuY6EJIY+kRmYg+UoTHQyG8Xkz8GAt3qM4C6JBSP4O0Gj7SAZ1gTgUIxUA6J
+ PXIeNghROc3jcayCLhCdX4aQNOqqYa8u9AIqz5wHx/mmdkplfGkAGJMAJIXu8KmFSFvOx1mQlJe
+ 5/Ad0v3lB2WQs4Ri6wPkhHAm4ZtOEDUYrBCHyOxnYSZjdVn0RK0yGVcwCDHAv0effjNeitOSD34
+ 2y8ZPilfsP+BQF9bV9vWRmobmr80imyn/3OvaLQE94QDH0aX3nQDtVrgOKTF0DWPg5m95mKNTRx
+ pVw4RRqr0NmP8c/3Tt/7PAcuwVRi5Fl/8AGOTNWLWg27/tbW/MruLZJcqjPNJtI/n5bcAu7p//K
+ TgI1HHco0d6X27i25+zoGbbLzqgl/EE83LV8WB18rm7WBQN1DECSFQmt72AWn5Pl9zJoHF0ZAo8
+ A5h5SElDAjARwUbgtFvoQ3/fLBMnjCRYkENQgebIxHrHZSQnCcfY5p/aEjN+DPmtu20tjnHvM8i
+ jSAwge6QTFt5vfw==
 X-Developer-Key: i=sebastian.krzyszkowiak@puri.sm; a=openpgp;
  fpr=22DD9FAE006A11435836617CE8F235CF3BDBC3FF
 X-Endpoint-Received: by B4 Relay for sebastian.krzyszkowiak@puri.sm/default with auth_id=32
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-These are various DTS patches collected over time in Purism's
-downstream tree - fixing the vibrator's PWM, improving reliability
-of SparkLAN WiFi card and I2C buses, enabling power-on on RTC alarm
-and cleaning up an unneeded property.
+i2c-imx can perform bus recovery by temporarily switching I2C pins
+into GPIO mode. To do so, it needs GPIO and pinctrl handles to be
+provided in the device tree.
 
+Suggested-by: Denis Sergeevich <galilley@gmail.com>
 Signed-off-by: Sebastian Krzyszkowiak <sebastian.krzyszkowiak@puri.sm>
 ---
-Sebastian Krzyszkowiak (6):
-      arm64: dts: imx8mq-librem5: Enable I2C recovery
-      arm64: dts: imx8mq-librem5: Set vibrator's PWM frequency to 20kHz
-      arm64: dts: imx8mq-librem5: Enable SNVS RTC
-      arm64: dts: imx8mq-librem5: Limit uSDHC2 frequency to 50MHz
-      arm64: dts: imx8mq-librem5: Set cap-power-off-card for usdhc2
-      arm64: dts: imx8mq-librem5: Don't set mic-cfg for wm8962
+ arch/arm64/boot/dts/freescale/imx8mq-librem5.dtsi | 48 +++++++++++++++++++++--
+ 1 file changed, 44 insertions(+), 4 deletions(-)
 
- arch/arm64/boot/dts/freescale/imx8mq-librem5.dtsi | 67 ++++++++++++++++++-----
- 1 file changed, 54 insertions(+), 13 deletions(-)
----
-base-commit: 9ace4753a5202b02191d54e9fdf7f9e3d02b85eb
-change-id: 20260105-l5-dtb-fixes-ca96eb9900c7
+diff --git a/arch/arm64/boot/dts/freescale/imx8mq-librem5.dtsi b/arch/arm64/boot/dts/freescale/imx8mq-librem5.dtsi
+index 9e0e2d7271ef..ce039bd701c2 100644
+--- a/arch/arm64/boot/dts/freescale/imx8mq-librem5.dtsi
++++ b/arch/arm64/boot/dts/freescale/imx8mq-librem5.dtsi
+@@ -512,6 +512,13 @@ MX8MQ_IOMUXC_I2C1_SDA_I2C1_SDA		0x40000026
+ 		>;
+ 	};
+ 
++	pinctrl_i2c1_gpio: i2c1-gpiogrp {
++		fsl,pins = <
++			MX8MQ_IOMUXC_I2C1_SCL_GPIO5_IO14	0x26
++			MX8MQ_IOMUXC_I2C1_SDA_GPIO5_IO15	0x26
++		>;
++	};
++
+ 	pinctrl_i2c2: i2c2grp {
+ 		fsl,pins = <
+ 			MX8MQ_IOMUXC_I2C2_SCL_I2C2_SCL		0x40000026
+@@ -519,6 +526,13 @@ MX8MQ_IOMUXC_I2C2_SDA_I2C2_SDA		0x40000026
+ 		>;
+ 	};
+ 
++	pinctrl_i2c2_gpio: i2c2-gpiogrp {
++		fsl,pins = <
++			MX8MQ_IOMUXC_I2C2_SCL_GPIO5_IO16	0x26
++			MX8MQ_IOMUXC_I2C2_SDA_GPIO5_IO17	0x26
++		>;
++	};
++
+ 	pinctrl_i2c3: i2c3grp {
+ 		fsl,pins = <
+ 			MX8MQ_IOMUXC_I2C3_SCL_I2C3_SCL		0x40000026
+@@ -526,6 +540,13 @@ MX8MQ_IOMUXC_I2C3_SDA_I2C3_SDA		0x40000026
+ 		>;
+ 	};
+ 
++	pinctrl_i2c3_gpio: i2c3-gpiogrp {
++		fsl,pins = <
++			MX8MQ_IOMUXC_I2C3_SCL_GPIO5_IO18	0x26
++			MX8MQ_IOMUXC_I2C3_SDA_GPIO5_IO19	0x26
++		>;
++	};
++
+ 	pinctrl_i2c4: i2c4grp {
+ 		fsl,pins = <
+ 			MX8MQ_IOMUXC_I2C4_SCL_I2C4_SCL		0x40000026
+@@ -533,6 +554,13 @@ MX8MQ_IOMUXC_I2C4_SDA_I2C4_SDA		0x40000026
+ 		>;
+ 	};
+ 
++	pinctrl_i2c4_gpio: i2c4-gpiogrp {
++		fsl,pins = <
++			MX8MQ_IOMUXC_I2C4_SCL_GPIO5_IO20	0x26
++			MX8MQ_IOMUXC_I2C4_SDA_GPIO5_IO21	0x26
++		>;
++	};
++
+ 	pinctrl_keys: keysgrp {
+ 		fsl,pins = <
+ 			/* VOL- */
+@@ -782,8 +810,11 @@ MX8MQ_IOMUXC_GPIO1_IO02_WDOG1_WDOG_B	0x1f
+ 
+ &i2c1 {
+ 	clock-frequency = <384000>;
+-	pinctrl-names = "default";
++	pinctrl-names = "default", "gpio";
+ 	pinctrl-0 = <&pinctrl_i2c1>;
++	pinctrl-1 = <&pinctrl_i2c1_gpio>;
++	scl-gpios = <&gpio5 14 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++	sda-gpios = <&gpio5 15 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+ 	status = "okay";
+ 
+ 	typec_pd: usb-pd@3f {
+@@ -982,8 +1013,11 @@ rtc@68 {
+ 
+ &i2c2 {
+ 	clock-frequency = <384000>;
+-	pinctrl-names = "default";
++	pinctrl-names = "default", "gpio";
+ 	pinctrl-0 = <&pinctrl_i2c2>;
++	pinctrl-1 = <&pinctrl_i2c2_gpio>;
++	scl-gpios = <&gpio5 16 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++	sda-gpios = <&gpio5 17 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+ 	status = "okay";
+ 
+ 	magnetometer: magnetometer@1e	{
+@@ -1031,8 +1065,11 @@ accel_gyro: accel-gyro@6a	{
+ 
+ &i2c3 {
+ 	clock-frequency = <384000>;
+-	pinctrl-names = "default";
++	pinctrl-names = "default", "gpio";
+ 	pinctrl-0 = <&pinctrl_i2c3>;
++	pinctrl-1 = <&pinctrl_i2c3_gpio>;
++	scl-gpios = <&gpio5 18 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++	sda-gpios = <&gpio5 19 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+ 	status = "okay";
+ 
+ 	codec: audio-codec@1a {
+@@ -1121,8 +1158,11 @@ touchscreen@38 {
+ 
+ &i2c4 {
+ 	clock-frequency = <384000>;
+-	pinctrl-names = "default";
++	pinctrl-names = "default", "gpio";
+ 	pinctrl-0 = <&pinctrl_i2c4>;
++	pinctrl-1 = <&pinctrl_i2c4_gpio>;
++	scl-gpios = <&gpio5 20 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++	sda-gpios = <&gpio5 21 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+ 	status = "okay";
+ 
+ 	vcm@c {
 
-Best regards,
 -- 
-Sebastian Krzyszkowiak <sebastian.krzyszkowiak@puri.sm>
+2.52.0
 
