@@ -1,125 +1,65 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Wed, 07 Jan 2026 16:51:37 +0800
-Subject: [PATCH BlueZ bluez 2/2] bap: add timer to wait for SID update
- before PA sync
+From: Louis Rannou <louis.rannou@non.se.com>
+Subject: [PATCH 0/2] wic: extra-partitions: new variable to be combined
+ with sourceparams
+Date: Wed, 07 Jan 2026 11:40:49 +0100
+Message-Id: <20260107-extrafiles-v1-0-a4ddd07df231@non.se.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260107-mgmt_ext_adv_sid-v1-2-6832b40813fd@amlogic.com>
-References: <20260107-mgmt_ext_adv_sid-v1-0-6832b40813fd@amlogic.com>
-In-Reply-To: <20260107-mgmt_ext_adv_sid-v1-0-6832b40813fd@amlogic.com>
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767775901; l=2686;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=YR0LwNu5FiAzaxwLOK2tvD6+VPIsHP6jNefQFy0Z4dM=;
- b=Gwc7w+BPMdlH3cGifxAuvcCn1tAv9D4HChSrXS1yUNB7QH+GHgqPpToiECbXyBNR1PopFItbZ
- HoHsNNA4QSaBMAjPxBwkEHVbR4XzaYuZdUbAeDOeEqs+ZQZXnFJCG86
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+X-B4-Tracking: v=1; b=H4sIADE4XmkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDQwNz3dSKkqLEtMyc1GLdxBTLRCNTUyPLJCMDJaCGgqLUtMwKsGHRsbW
+ 1APiCmy1cAAAA
+To: openembedded-core@lists.openembedded.org
+Cc: Louis Rannou <louis.rannou@non.se.com>, pierre-loup.gosse@smile.fr
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767782471; l=1626;
+ i=louis.rannou@non.se.com; s=20250630; h=from:subject:message-id;
+ bh=b/q85BkYIhY/IQQDm8i7EPkR7Agq6t1mY39ZaaBatj8=;
+ b=MDIhPX3BpPnJCozd7SWQhW+cDnvNwgVULFAjqI5FWBRVASB0hI3zSJRnGSSeNKIe8nSHiLgqs
+ y+BZpUByw4CCjBGYMu2JJzyg8PHhsxhrWvmQi4JCnib8JDxubufAe2m
+X-Developer-Key: i=louis.rannou@non.se.com; a=ed25519;
+ pk=WWYN5/DFKqyCKdv6oTYNuq0gROqwZVfNfw2OMI3tUlc=
+X-Endpoint-Received: by B4 Relay for louis.rannou@non.se.com/20250630 with auth_id=446
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a timer to wait for the SID to become valid before triggering
-PA sync. Once the SID is available, PA sync is initiated accordingly.
+The current extra_partition plugin uses predictable variable names (the
+configuration must predict the image partition label or uuid). This has two
+inconveniences:
 
-Fixes: https://github.com/bluez/bluez/issues/1758
+- an extra partition that has a specific label (or uuid) is doomed with the
+  associated variable. The partition cannot be configured unless the label
+  (or uuid) is changed.
+- two partitions with same label from distincts .wks cannot have different
+  content.
 
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+The first commit increases the tests. It now tests several files can be included
+and that the file system type can be specified. It also simplifies the 'wic ls'
+command by removing unneeded pipes.
+
+The second commit allows the new suffix _sourceparams_foo to be appended
+to IMAGE_EXTRA_PARTITION_FILES. This variable will be preferred whenever
+the .wks specifies a name in the --sourceparams option.
+
+For example:
+  an image may define:
+    IMAGE_EXTRA_PARTITION_FILES_sourceparams_foo = "bar.conf"
+  and the .wks line have line:
+    part --source extra_partition --sourceparams "name=foo"
+
+Signed-off-by: Louis Rannou <louis.rannou@non.se.com>
 ---
- profiles/audio/bap.c | 47 ++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 46 insertions(+), 1 deletion(-)
+Louis Rannou (2):
+      oeqa/selftest: wic: improve extra-partition plugin tests
+      wic: extra-partition: introduce variable matching sourceparams
 
-diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
-index b6eb91ab3..360e0a309 100644
---- a/profiles/audio/bap.c
-+++ b/profiles/audio/bap.c
-@@ -48,6 +48,7 @@
- #include "src/shared/bap.h"
- #include "src/shared/tmap.h"
- #include "src/shared/gmap.h"
-+#include "src/shared/timeout.h"
- 
- #include "btio/btio.h"
- #include "src/plugin.h"
-@@ -140,6 +141,8 @@ struct bap_data {
- 	struct queue *server_streams;
- 	GIOChannel *listen_io;
- 	unsigned int io_id;
-+	unsigned int listen_retry_id;
-+	int listen_retry_tries;
- 	unsigned int cig_update_id;
- 	bool services_ready;
- 	bool bap_ready;
-@@ -176,6 +179,9 @@ static void bap_data_free(struct bap_data *data)
- {
- 	struct queue *bcast_snks = data->bcast_snks;
- 
-+	if (data->listen_retry_id)
-+		timeout_remove(data->listen_retry_id);
-+
- 	if (data->listen_io) {
- 		g_io_channel_shutdown(data->listen_io, TRUE, NULL);
- 		g_io_channel_unref(data->listen_io);
-@@ -3573,16 +3579,55 @@ static void bap_detached(struct bt_bap *bap, void *user_data)
- 	bap_data_remove(data);
- }
- 
-+static bool pa_sync_retry_cb(gpointer user_data)
-+{
-+	struct bap_data *data = user_data;
-+	uint8_t sid = device_get_sid(data->device);
-+
-+	if (!data)
-+		return FALSE;
-+
-+	data->listen_retry_tries++;
-+	if (data->listen_retry_tries >= 2) {
-+		data->listen_retry_id = 0;
-+		data->listen_retry_tries = 0;
-+		btd_adapter_remove_device(data->adapter, data->device);
-+		return FALSE;
-+	}
-+
-+	if (sid != 0xFF) {
-+		data->listen_retry_id = 0;
-+		data->listen_retry_tries = 0;
-+		pa_sync(data);
-+		return FALSE;
-+	}
-+
-+	return TRUE;
-+}
-+
- static int pa_sync(struct bap_data *data)
- {
- 	GError *err = NULL;
--	uint8_t sid = 0xff;
-+	uint8_t sid = device_get_sid(data->device);
- 
- 	if (data->listen_io) {
- 		DBG("Already probed");
- 		return -1;
- 	}
- 
-+	/*
-+	 * If SID is not yet available, wait MGMT_EV_EXT_ADV_SID_CHANGED event
-+	 * to update it and retry PA sync creation.
-+	 */
-+	if (sid == 0xFF) {
-+		DBG("SID not available, scheduling retry for PA sync");
-+		if (data->listen_retry_id == 0)
-+			data->listen_retry_id =
-+						timeout_add(5, pa_sync_retry_cb, data, NULL);
-+
-+		return -1;
-+	}
-+
- 	DBG("Create PA sync with this source");
- 
- 	data->listen_io = bt_io_listen(NULL, iso_pa_sync_confirm_cb, data,
+ meta/lib/oeqa/selftest/cases/wic.py               | 55 ++++++++++++++++-------
+ scripts/lib/wic/plugins/source/extra_partition.py | 24 +++++++---
+ 2 files changed, 57 insertions(+), 22 deletions(-)
+---
+base-commit: 0ed4776533145c901611d7f4f942490e33481335
+change-id: 20260107-extrafiles-ad9a25529b20
 
+Best regards,
 -- 
-2.42.0
+Louis Rannou <louis.rannou@non.se.com>
 
