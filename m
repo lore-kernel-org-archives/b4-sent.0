@@ -1,70 +1,82 @@
-From: Massimiliano Minella <massimiliano.minella@se.com>
-Date: Wed, 07 Jan 2026 17:33:59 +0100
-Subject: [PATCH] libvirt: fix python3 compatibility in hook_support.py
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v3 0/2] Introduce Pixel config fragment for chainloading
+ u-boot
+Date: Wed, 07 Jan 2026 21:28:14 +0100
+Message-Id: <20260107-pixel-config-v3-0-02a25e3fdcfa@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260107-fix_libvirt_hook_script-v1-1-d0016e043ca4@se.com>
-X-B4-Tracking: v=1; b=H4sIAPaKXmkC/x2MWwqAMAzAriL9dtBNfF5FZOisWhQnnYgg3t3hZ
- yDJA4GEKUCTPCB0cWC/R9BpAm7p95kUj5HBoClQY6kmvu3Gw8Vy2sX71QYnfJzKZZrq3GCFVEO
- sD6Go/ue2e98PPExUN2kAAAA=
-To: meta-virtualization@lists.yoctoproject.org
-Cc: Massimiliano Minella <massimiliano.minella@se.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767803643; l=1846;
- i=massimiliano.minella@se.com; s=20250121; h=from:subject:message-id;
- bh=rROvFh/A5TUsfDeJYorMQKChOPNCM3z8U5Y7jgBNGDA=;
- b=MUnCT8xzbPoxIhkE3+A6mgJTDMwkckek6DkIxKUl1B6yZpMkgKafV7/s3WvU9UOp5PuIr73na
- rO1A6PAYhYXDqhCI5pJ6k+xV1LTgsLK9tNlDTc6nW31Ew0umkTc0OFf
-X-Developer-Key: i=massimiliano.minella@se.com; a=ed25519;
- pk=p6Og4stDBPm4cBEySH8oVWARLO52pxVayNFqHslSXU0=
-X-Endpoint-Received: by B4 Relay for massimiliano.minella@se.com/20250121 with auth_id=325
+X-B4-Tracking: v=1; b=H4sIAN7BXmkC/12MQQ6CMBBFr2K6tmRmoAKuvIdxAWWASQyQljQo4
+ e62bkxcvv/z3q48O2GvrqddOQ7iZZ4i5OeTsmMzDayli6wI6AIIpV5k46e289TLoIsWTMXWFoy
+ tisriuI9/yt0fkUfx6+xe33rAtKaQgZJqhLw2kCGaAgrQpLsmSHeTTdbMvlWyA/2MCggAc1Nnh
+ ERR1vhvHMfxARwKWCXPAAAA
+X-Change-ID: 20260107-pixel-config-4b058ecc4e1b
+To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
+ u-boot@lists.denx.de, Petr Vorel <petr.vorel@gmail.com>
+Cc: Casey Connolly <casey.connolly@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Tom Rini <trini@konsulko.com>, 
+ Luca Weiss <luca.weiss@fairphone.com>, Simon Glass <sjg@chromium.org>, 
+ Petr Hodina <petr.hodina@protonmail.com>, 
+ Matthew Croughan <matt@croughan.sh>, phone-devel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1527; i=david@ixit.cz;
+ h=from:subject:message-id; bh=3SzK7zFNN2411j+CdvliX/rSTfJSXnP/60IXCawXpqg=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpXsHgu96s46mCrxnpGsffw4TgllkxFfuWTq5+3
+ iwbEQc5CqCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaV7B4AAKCRBgAj/E00kg
+ cpSqEADSu2qQuMc1MVOasA0CHhgfMV/kLoPVKLLZilp35ax//QRKLWCxPW+IgvXKfaKIsttQcMw
+ o2OV+MFld7FZqyFgH91vpxnCCDqYqyAfGaHTbiSh3OYiczaZgvzaL12ltRYmjoozBiRrqVYbJOV
+ EDE8XzbMWPRGy24rt+dGROHQj1eO3iBkx+ZLmd5fxgvA1pfIhvvZlTcJzxa//mgGyBBIhBLDY8r
+ Anwv8mxcM+3v18lCPrcIUhK7haLVQhrc+LPim9Nqxg6/9rgqCYfeU/pvxoV508v1BnOhlNmnPxb
+ +CQvSq2k28AWQTNGwo6jichmbID8WRQUlPabluUoGW5FRWokx89BdJixzyjjrmFWb2WdDbG6WpC
+ M9qqdpEvqSlO7vjxKDF2bSoVMwlpecdkAzgfWdO/uBOh4b94zPApi5s3QJnw5OjKDxJYosWobHw
+ vukify/BZa/llOL2Ew4mE/xOzqKonWVcxFqORjGOS5iHp7/UhlKCud0uFpVFEskjeWP3u+sq9hI
+ kP3FhqcxkGwz3mFQ18/EutW+8N6URCKbfRcSohj4KX7TlT1cJq9+cIftAKaGUu2uiQ/DsccWPme
+ oTWcqogBMNU6nQFQFGIy18KXaDGv1wmvdfnq9QFtCj7bP54q1dErhcG8M5kxznm61SPiCZ+UDJO
+ /Cp4Hp3s/1f9UpQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-By default Popen expects all the streams to be bytes-like objects but,
-in the Popen.communicate() function call, the "input" argument is a
-string, making the call fail with the error:
+Snapdragon Google Pixel bootloaders require the TEXT_OFFSET to be
+exactly 0x80000. Without this, U-Boot or kernels will fail to load.
 
-qemu hook error: a bytes-like object is required, not 'str'
+This patchset documents Pixel 3 and Pixel 3 XL and adds the necessary
+config fragment along with usage instructions.
 
-Fix the error by setting text mode to True in the subprocess creation.
+It has been tested on Pixel 3, 3 XL (by me), and Pixel 5 (by Petr Vorel).
 
-Also fix the "SyntaxWarning: invalid escape sequence '\w'" in the regex
-used to match script names.
+The corresponding DTS files (sdm845-google-blueline and crosshatch) have
+already been merged into the Linux -next, so mainline U-Boot will receive
+these devices support soon.
 
-Signed-off-by: Massimiliano Minella <massimiliano.minella@se.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- recipes-extended/libvirt/libvirt/hook_support.py | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Changes in v3:
+- Renamed google-pixel3.config to google-pixel.config as it's not
+  limited to Pixel 3 / 3 XL, but also 5 and possibly others.
+- Reworked the documentation. (Casey)
+- Reworded commit message. (Casey)
+- Link to v2: https://lore.kernel.org/u-boot/20250802001359.2122103-1-david@ixit.cz/
 
-diff --git recipes-extended/libvirt/libvirt/hook_support.py recipes-extended/libvirt/libvirt/hook_support.py
-index 7c5e2a94..63e78b79 100755
---- recipes-extended/libvirt/libvirt/hook_support.py
-+++ recipes-extended/libvirt/libvirt/hook_support.py
-@@ -35,7 +35,7 @@ def main():
- 			stdin_save = sys.stdin.readlines()
- 		# Match the name name of the hook + a dash + atleast
- 		# one alpha-numeric character.
--		matcher = re.compile( "%s-\w+" % hook_name )
-+		matcher = re.compile( rf"%s-\w+" % hook_name )
- 		for file_name in sorted( os.listdir( hook_dir ) ):
- 			file_path = os.path.join( hook_dir, file_name )
- 			if matcher.match( file_name ) \
-@@ -43,7 +43,7 @@ def main():
- 			   and os.path.isfile( file_path ) \
- 			   and return_value == 0:
- 				cmd = [ file_path ] + hook_args
--				p = subprocess.Popen( cmd, stdin=subprocess.PIPE )
-+				p = subprocess.Popen( cmd, stdin=subprocess.PIPE, text=True )
- 				p.communicate( input = ''.join( stdin_save ) )[0]
- 				return_value = p.wait()
- 	except Exception as e:
+Changes in v2:
+- Added documentation of Pixel 3 / 3 XL into doc/board/qualcomm. (Casey)
+- Link to v1: https://lore.kernel.org/u-boot/20250729103950.1154040-2-david@ixit.cz/
 
 ---
-base-commit: 28d26fd95397bf575e65fcca0cbb302b1e9bc7ff
-change-id: 20260107-fix_libvirt_hook_script-c31e952080e9
+David Heidelberg (2):
+      doc: board: qualcomm: document Pixel 3 / 3 XL support
+      configs: Add google-pixel fragment config for Pixel 3, 3 XL, 5
+
+ board/qualcomm/google-pixel.config |  5 +++++
+ doc/board/qualcomm/board.rst       | 20 ++++++++++++++++++++
+ 2 files changed, 25 insertions(+)
+---
+base-commit: 53c0d5b387956bb4070a943b61991898373a20e2
+change-id: 20260107-pixel-config-4b058ecc4e1b
 
 Best regards,
 -- 
-Massimiliano Minella <massimiliano.minella@se.com>
+David Heidelberg <david@ixit.cz>
 
