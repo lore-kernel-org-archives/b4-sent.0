@@ -1,108 +1,130 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Wed, 07 Jan 2026 13:41:59 +0530
-Subject: [PATCH v4 6/6] PCI: dwc: Skip failure during
- dw_pcie_resume_noirq() if no device is available
+From: Yang Li <yang.li@amlogic.com>
+Date: Wed, 07 Jan 2026 16:48:08 +0800
+Subject: [PATCH] Bluetooth: mgmt: report extended advertising SID to
+ userspace
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260107-pci-dwc-suspend-rework-v4-6-9b5f3c72df0a@oss.qualcomm.com>
-References: <20260107-pci-dwc-suspend-rework-v4-0-9b5f3c72df0a@oss.qualcomm.com>
-In-Reply-To: <20260107-pci-dwc-suspend-rework-v4-0-9b5f3c72df0a@oss.qualcomm.com>
-To: Jingoo Han <jingoohan1@gmail.com>, 
- Manivannan Sadhasivam <mani@kernel.org>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>
-Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
- vincent.guittot@linaro.org, zhangsenchuan@eswincomputing.com, 
- Shawn Lin <shawn.lin@rock-chips.com>, Richard Zhu <hongxing.zhu@nxp.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2136;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=A+dYXc5n837LUvYZ/2oH3XrvOeQd2MIwA/IwRECz2uo=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpXhVOUjSqOMt6oipJjhHgmBL0+vEUiOzLr77dK
- o/yZ0+6BlCJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaV4VTgAKCRBVnxHm/pHO
- 9SdDB/sGCaPHvWbzjXbEQqHunIZGnTeF+jfGN8X1HvypQRxSWaoCrN9PnHi7fF7M+jLrmu4Vqei
- m0LaOVq3Giiu0o6UW2kqQWcYlNjZRQXvKH9VkTX+fAgE+guRIXtiKQXmfcuyhxggZtgvJSyVP7t
- B3AsEKuKKTzyCCEGQrX/uIEgpVs56RfU5u4tSFJKbdiqchedKmuz7DDghmf7/VIJcBFQLQW1Xwq
- PPPDUx30SHfrnCzcrbGNSS7ECaJxbjE9cGPE9D9eS06eeQznMAhBdi/v1ivyAPWRbx4qQrOQG/1
- 54RUjRClQzvsILf5oV6wviHq4rb2mi7WLJiYEuEKedS4t79I
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+Message-Id: <20260107-mgmt_ext_adv_sid-v1-1-1cb570c7adf7@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAMcdXmkC/x3MTQqAIBBA4avErBO0P6mrRIjkZLPQQiME8e5Jy
+ 2/xXoaIgTDC0mQI+FKky1eItoH91N4iI1MNHe8mLrhkzrpHYXqUNq+KZJhEPfIeh0nOAmp2Bzw
+ o/ct1K+UDF5DVL2IAAAA=
+To: Marcel Holtmann <marcel@holtmann.org>, 
+ Johan Hedberg <johan.hedberg@gmail.com>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: linux-bluetooth@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767775689; l=3615;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=jBmr5FIDDl995BF+9DomJoZAhCWPM4Uef0JY/2Np600=;
+ b=V/ux01+VdAla+V1PNlq5O7Wq86VMgMjszSE8gr9GydbRRVIc6rljMD+tOkvcIXXf/g38GIi5f
+ 9DmB2ewp1MJAewxWuRow2dUwyZr4+D7Zx/RbH+5dw5a6wFydOuxlZrq
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If there is no device attached to any of the Root Ports available under the
-Root bus before suspend and during resume, then there is no point in
-returning failure.
+Add a new mgmt event to report the SID of extended advertising
+to userspace. This allows userspace to obtain the SID before
+initiating PA sync, without waiting for the next extended
+advertising report to update the SID.
 
-So skip returning failure so that the resume succeeds and allow the device
-to get attached later.
+By providing the SID earlier, the PA sync flow can be simplified
+and the overall latency reduced.
 
-If there was a device before suspend and not available during resume, then
-propagate the error to indicate that the device got removed during suspend.
+Link: https://github.com/bluez/bluez/issues/1758
 
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
- drivers/pci/controller/dwc/pcie-designware-host.c | 17 ++++++++++++-----
- 1 file changed, 12 insertions(+), 5 deletions(-)
+ include/net/bluetooth/hci_core.h |  2 ++
+ include/net/bluetooth/mgmt.h     |  7 +++++++
+ net/bluetooth/hci_event.c        |  3 +++
+ net/bluetooth/mgmt.c             | 13 +++++++++++++
+ 4 files changed, 25 insertions(+)
 
-diff --git a/drivers/pci/controller/dwc/pcie-designware-host.c b/drivers/pci/controller/dwc/pcie-designware-host.c
-index ccde12b85463..c30a2ed324cd 100644
---- a/drivers/pci/controller/dwc/pcie-designware-host.c
-+++ b/drivers/pci/controller/dwc/pcie-designware-host.c
-@@ -20,6 +20,7 @@
- #include <linux/platform_device.h>
- 
- #include "../../pci.h"
-+#include "../pci-host-common.h"
- #include "pcie-designware.h"
- 
- static struct pci_ops dw_pcie_ops;
-@@ -1227,6 +1228,7 @@ EXPORT_SYMBOL_GPL(dw_pcie_suspend_noirq);
- 
- int dw_pcie_resume_noirq(struct dw_pcie *pci)
- {
-+	struct dw_pcie_rp *pp = &pci->pp;
- 	int ret;
- 
- 	if (!pci->suspended)
-@@ -1234,23 +1236,28 @@ int dw_pcie_resume_noirq(struct dw_pcie *pci)
- 
- 	pci->suspended = false;
- 
--	if (pci->pp.ops->init) {
--		ret = pci->pp.ops->init(&pci->pp);
-+	if (pp->ops->init) {
-+		ret = pp->ops->init(pp);
- 		if (ret) {
- 			dev_err(pci->dev, "Host init failed: %d\n", ret);
- 			return ret;
+diff --git a/include/net/bluetooth/hci_core.h b/include/net/bluetooth/hci_core.h
+index a7bffb908c1e..81ef3e94e3af 100644
+--- a/include/net/bluetooth/hci_core.h
++++ b/include/net/bluetooth/hci_core.h
+@@ -2469,6 +2469,8 @@ void mgmt_device_found(struct hci_dev *hdev, bdaddr_t *bdaddr, u8 link_type,
+ 		       u8 addr_type, u8 *dev_class, s8 rssi, u32 flags,
+ 		       u8 *eir, u16 eir_len, u8 *scan_rsp, u8 scan_rsp_len,
+ 		       u64 instant);
++void mgmt_ext_adv_sid_changed(struct hci_dev *hdev, bdaddr_t *bdaddr,
++				     u8 addr_type, u8 sid);
+ void mgmt_remote_name(struct hci_dev *hdev, bdaddr_t *bdaddr, u8 link_type,
+ 		      u8 addr_type, s8 rssi, u8 *name, u8 name_len);
+ void mgmt_discovering(struct hci_dev *hdev, u8 discovering);
+diff --git a/include/net/bluetooth/mgmt.h b/include/net/bluetooth/mgmt.h
+index 8234915854b6..7ee38ebaccd8 100644
+--- a/include/net/bluetooth/mgmt.h
++++ b/include/net/bluetooth/mgmt.h
+@@ -1195,3 +1195,10 @@ struct mgmt_ev_mesh_device_found {
+ struct mgmt_ev_mesh_pkt_cmplt {
+ 	__u8	handle;
+ } __packed;
++
++#define MGMT_EV_EXT_ADV_SID_CHANGED		0x0033
++struct mgmt_ev_ext_adv_sid_changed {
++	struct mgmt_addr_info addr;
++	__u8	sid;
++} __packed;
++
+diff --git a/net/bluetooth/hci_event.c b/net/bluetooth/hci_event.c
+index 467710a42d45..f4463e71b424 100644
+--- a/net/bluetooth/hci_event.c
++++ b/net/bluetooth/hci_event.c
+@@ -6519,6 +6519,9 @@ static void hci_le_ext_adv_report_evt(struct hci_dev *hdev, void *data,
+ 					   info->rssi, info->data, info->length,
+ 					   !(evt_type & LE_EXT_ADV_LEGACY_PDU),
+ 					   false, instant);
++			mgmt_ext_adv_sid_changed(hdev, &info->bdaddr,
++						      info->bdaddr_type,
++						      info->sid);
  		}
  	}
  
--	dw_pcie_setup_rc(&pci->pp);
-+	dw_pcie_setup_rc(pp);
+diff --git a/net/bluetooth/mgmt.c b/net/bluetooth/mgmt.c
+index 5be9b8c91949..4e0f8c43e387 100644
+--- a/net/bluetooth/mgmt.c
++++ b/net/bluetooth/mgmt.c
+@@ -208,6 +208,7 @@ static const u16 mgmt_untrusted_events[] = {
+ 	MGMT_EV_EXT_INDEX_REMOVED,
+ 	MGMT_EV_EXT_INFO_CHANGED,
+ 	MGMT_EV_EXP_FEATURE_CHANGED,
++	MGMT_EV_EXT_ADV_SID_CHANGED,
+ };
  
- 	ret = dw_pcie_start_link(pci);
- 	if (ret)
- 		return ret;
- 
- 	ret = dw_pcie_wait_for_link(pci);
--	if (ret)
--		return ret;
-+	/*
-+	 * Skip failure if there is no device attached to the bus now and before
-+	 * suspend. But the error should be returned if a device was attached
-+	 * before suspend and not available now.
-+	 */
-+	if (ret == -ENODEV && !pci_root_ports_have_device(pp->bridge->bus))
-+		return 0;
- 
- 	return ret;
+ #define CACHE_TIMEOUT	secs_to_jiffies(2)
+@@ -10516,6 +10517,18 @@ void mgmt_device_found(struct hci_dev *hdev, bdaddr_t *bdaddr, u8 link_type,
+ 	mgmt_adv_monitor_device_found(hdev, bdaddr, report_device, skb, NULL);
  }
+ 
++void mgmt_ext_adv_sid_changed(struct hci_dev *hdev, bdaddr_t *bdaddr,
++				     u8 addr_type, u8 sid)
++{
++	struct mgmt_ev_ext_adv_sid_changed ev;
++
++	bacpy(&ev.addr.bdaddr, bdaddr);
++	ev.addr.type = link_to_bdaddr(LE_LINK, addr_type);
++	ev.sid = sid;
++
++	mgmt_event(MGMT_EV_EXT_ADV_SID_CHANGED, hdev, &ev, sizeof(ev), NULL);
++}
++
+ void mgmt_remote_name(struct hci_dev *hdev, bdaddr_t *bdaddr, u8 link_type,
+ 		      u8 addr_type, s8 rssi, u8 *name, u8 name_len)
+ {
 
+---
+base-commit: 030d2c0e9c1d68e67f91c08704482ad9881583eb
+change-id: 20260107-mgmt_ext_adv_sid-7ea503e46791
+
+Best regards,
 -- 
-2.48.1
+Yang Li <yang.li@amlogic.com>
 
