@@ -1,65 +1,58 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Wed, 07 Jan 2026 21:28:16 +0100
-Subject: [PATCH v3 2/2] configs: Add google-pixel fragment config for Pixel
- 3, 3 XL, 5
+From: Sam Day <me@samcday.com>
+Subject: [PATCH 0/2] usb: gadget: f_fs: DMA-BUF fixes
+Date: Thu, 08 Jan 2026 08:30:19 +1000
+Message-Id: <20260108-ffs-dmabuf-ioctl-fix-v1-0-e51633891a81@samcday.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260107-pixel-config-v3-2-02a25e3fdcfa@ixit.cz>
-References: <20260107-pixel-config-v3-0-02a25e3fdcfa@ixit.cz>
-In-Reply-To: <20260107-pixel-config-v3-0-02a25e3fdcfa@ixit.cz>
-To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
- u-boot@lists.denx.de, Petr Vorel <petr.vorel@gmail.com>
-Cc: Casey Connolly <casey.connolly@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Tom Rini <trini@konsulko.com>, 
- Luca Weiss <luca.weiss@fairphone.com>, Simon Glass <sjg@chromium.org>, 
- Petr Hodina <petr.hodina@protonmail.com>, 
- Matthew Croughan <matt@croughan.sh>, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=914; i=david@ixit.cz;
- h=from:subject:message-id; bh=h+Nc04IrcZG+c2wA/6MKW+Am3zzHGmDuKQCDq3RHC7o=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpXsHgAKzTizvWemARKtvkORLcddhSm0O/drIFU
- vG+EdEi3OOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaV7B4AAKCRBgAj/E00kg
- coNtD/9FawEBToqkb+y+9El/UCdcE6VxYQM+2Xd9RRC9SnduuhSSlaJbOr7fOuyhcpTpJ9m61ju
- b0GU1siqHDNfZCE7Smcq2Tyr4I0ZTiEb+DM/oniyHjNI/Rg9ZqgCNENuNvgjSz0MKuDnfyRfYdq
- BaPcmp+ZnbXogqaTqBcnhEUkC7DJ4xj/LjPeMoZABMdj/PV9cytgrxsAeD8SBgO8Yszs35DfFSX
- 6iEK5z/3Iw7kp6xxW5pmF9r/UwrLv6DGSiR6TSyI8zVW/ybD4V9ohb54Y8P1e2cbKrLHr5682mE
- Kn7heA4FqtJ1RQdkuAgDe+IJnuRHXA7KTBDi5IR2fOQL+s16ap5HwYNCV8LoaQW21X+ehvj9S6P
- +bWr9qV/absE605KLAX5LLhcT6SIBnc6wsLc5nKP9wp9CrReT7uzZk2CtSgJxxD0vf/rzaoDwWz
- 91gbrezK3W4/IWPsyxkcf+iQwJIFg3Z55sNo6Wrk7AIJV1qh63rRGvQHqwoQdDI/NN2aLtsp0rs
- Z/80ovoxxKUcWP4KU4ZII0zGtHl2DT1m7K5Ln/C55tpYLJ49GAid9loKNcb4mdcnq/3OGWUMw5L
- b/vhzovFLJzcQ/d8d/R8dwVRXfEzA22T4/CMrlqhb8hGa6lKS8U/GhgssJIJnsqCL/MaZ8KgGZr
- CMeGTRhMG7LLBew==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1NDQ0MT3bS0Yt2U3MSk0jTdzPzkkhzdtMwKXSNzIxNLc0MLozQLMyWg1oK
+ iVKAw2Njo2NpaAN0/RwNmAAAA
+X-Change-ID: 20251114-ffs-dmabuf-ioctl-fix-272497182f86
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Sam Day <me@samcday.com>, David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767825022; l=960;
+ i=me@samcday.com; s=20240502; h=from:subject:message-id;
+ bh=NpEMi+FFcLqCy+VebtjlU5KccAtE1btumT4cEIVROu0=;
+ b=225R0QWiOaY4AzMFirxupqQeTXM+RWuCMCHsZJOaHWooi5dyVMGKeFJxvG2f4baryYjxMgELG
+ ZNMYJpt/2AxCNqn8nRsR279l5Uy/gZtpyPpLbr6Ux3wNU97buREp99l
+X-Developer-Key: i=me@samcday.com; a=ed25519;
+ pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
+X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce a fragment config for the Pixel 3, Pixel 3 XL, Pixel 5.
+I recently started kicking the tires on DMA-BUF support in FunctionFS.
+In the process, I found a couple of issues that are fixed in this
+series.
 
-On these devices, U-Boot is chainloaded via fastboot. However, due to
-additional requirements added by google, the image header must have
-a specific value for the text offset.
-This is solved by setting CONFIG_TEXT_OFFSET to 0x80000 in U-Boot.
+One issue is a minor bug in how the ioctl handler treats invalid calls.
+The other is more serious and breaks DMA transfers on systems with a
+tenacious SMMU.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+I created a fairly minimal reproducer of the DMA issue in this gist, to
+assist in testing:
+
+https://gist.github.com/samcday/d23aaf95be678bcdd1dd62b4b79861ea
+
+Tested on:
+ - Pixel 3a
+ - OnePlus 6T
+
+Signed-off-by: Sam Day <me@samcday.com>
 ---
- board/qualcomm/google-pixel.config | 5 +++++
- 1 file changed, 5 insertions(+)
+Sam Day (2):
+      usb: gadget: f_fs: Fix ioctl error handling
+      usb: gadget: f_fs: fix DMA-BUF OUT queues
 
-diff --git a/board/qualcomm/google-pixel.config b/board/qualcomm/google-pixel.config
-new file mode 100644
-index 00000000000..999d4e45268
---- /dev/null
-+++ b/board/qualcomm/google-pixel.config
-@@ -0,0 +1,5 @@
-+# Enables chainloading of U-Boot on Google Pixel phones using
-+# newer bootloaders (Android Q/R)
-+# Use for following devices: Pixel 3 (blueline), Pixel 3 XL (crosshatch),
-+# Pixel 5 (redfin)...
-+CONFIG_TEXT_BASE=0x80080000
+ drivers/usb/gadget/function/f_fs.c | 24 +++++++++---------------
+ 1 file changed, 9 insertions(+), 15 deletions(-)
+---
+base-commit: f0b9d8eb98dfee8d00419aa07543bdc2c1a44fb1
+change-id: 20251114-ffs-dmabuf-ioctl-fix-272497182f86
 
+Best regards,
 -- 
-2.51.0
+Sam Day <me@samcday.com>
 
