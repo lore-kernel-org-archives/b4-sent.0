@@ -1,72 +1,73 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Thu, 08 Jan 2026 12:14:55 +0000
-Subject: [PATCH v3 6/6] Documentation: ABI: testing: add common ABI file
- for iio/frequency
+From: Michael Reeves <michael.reeves077@gmail.com>
+Subject: [PATCH v2 0/2] Add Apple Silicon SMC power driver
+Date: Fri, 09 Jan 2026 00:18:47 +1100
+Message-Id: <20260109-b4-macsmc-power-v2-0-93818f1e7d62@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260108-adf41513-iio-driver-v3-6-23d1371aef48@analog.com>
-References: <20260108-adf41513-iio-driver-v3-0-23d1371aef48@analog.com>
-In-Reply-To: <20260108-adf41513-iio-driver-v3-0-23d1371aef48@analog.com>
-To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-doc@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
+X-B4-Tracking: v=1; b=H4sIALeuX2kC/3WNQQ7CIBBFr9LM2jGA0EZX3sN0gVPaTiKlAYOah
+ ruL3bt8L/nvb5BcZJfg0mwQXebEYamgDg3QbJfJIQ+VQQnVCikM3jV6S8kTruHlIg5CdkTdaE6
+ WoK7W6EZ+78VbX3nm9Azxsx9k+bP/W1miwFadjSatrDHmOnnLjyMFD30p5QtP5UOgrgAAAA==
+X-Change-ID: 20260105-b4-macsmc-power-d017cc7f53ac
+To: Sebastian Reichel <sre@kernel.org>, Sven Peter <sven@kernel.org>, 
+ Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
+ Lee Jones <lee@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
+ asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ Michael Reeves <michael.reeves077@gmail.com>, 
+ Hector Martin <marcan@marcan.st>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767874513; l=1730;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=G8lkskp439tmkyRoT9F24VAmxHi49pi19EkNAx8s4Mc=;
- b=3wJO6+sacBSehsN32V8hDJVbltIkuZW6oQEBtjzTIHPVBMMZAPW88TZVj39pbuwlb1qMTqhDi
- utJND7YHF5HDjNPZAcL55s0Dny6c5+s1CuuuR7mBLK9q8R1XWDa64R+
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767878329; l=1754;
+ i=michael.reeves077@gmail.com; s=20260105; h=from:subject:message-id;
+ bh=ULItbI1yU0oVHXTe0/S32I9HO15qLNcu+lgP97nBouQ=;
+ b=nPEwliGopv3tiHSTW55ltR9k7IAzFxUGeMQtuM3HZAEmI8bCau/pgyINeKM2ZSPnUnxCl0ajA
+ Y5M3G9B279gDQJ1ndb8X8qMopbNEJrDuivf9tPlqQ3VcpAtCYAC0Jvd
+X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
+ pk=QIrgWBGCm3LG0YYc6MLCDkwuVXLTGGooVBdWX/KhSiU=
+X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/20260105 with auth_id=591
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add ABI documentation file for PLL/DDS devices with frequency_resolution
-sysfs entry attribute used by ADF4350 and ADF41513
+This series adds a power supply driver for the Apple SMC found on
+Apple Silicon devices. This allows the kernel to report AC status,
+battery charging status, and power metrics, and modify the charging
+behaviour.
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+The first patch adds the driver itself, and the second patch wires it
+up to the MFD core.
+
+The driver is based on an original out-of-tree implementation by
+Hector Martin. It has been refactored for upstream inclusion, 
+including support for newer SMC firmwares, devices without batteries,
+dynamic property detection and improved state management.
+
+Tested on: Apple M3 (MacBook Air, J613)
+
+Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
 ---
- Documentation/ABI/testing/sysfs-bus-iio-frequency | 11 +++++++++++
- MAINTAINERS                                       |  1 +
- 2 files changed, 12 insertions(+)
+Changes in v2:
+- Added Reviewed-by: Neal Gompa <neal@gompa.dev> to all patches.
+- Fixed Makefile alignment by using tabs for the macsmc-power entry.
+- Upgraded physical battery exhaustion log level to EMERG.
+- Downgraded software-triggered orderly poweroff log level to CRIT.
+- Added check for CHIS key to skip AC registration on desktop models.
+- Link to v1: https://lore.kernel.org/r/20260105-b4-macsmc-power-v1-0-62954c42a555@gmail.com
 
-diff --git a/Documentation/ABI/testing/sysfs-bus-iio-frequency b/Documentation/ABI/testing/sysfs-bus-iio-frequency
-new file mode 100644
-index 000000000000..1ce8ae578fd6
---- /dev/null
-+++ b/Documentation/ABI/testing/sysfs-bus-iio-frequency
-@@ -0,0 +1,11 @@
-+What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_frequency_resolution
-+KernelVersion:	6.20
-+Contact:	linux-iio@vger.kernel.org
-+Description:
-+		Stores channel Y frequency resolution/channel spacing in Hz for PLL
-+		devices. The given value directly influences the operating mode when
-+		fractional-N synthesis is required, as it derives values for
-+		configurable modulus parameters used in the calculation of the output
-+		frequency. It is assumed that the algorithm that is used to compute
-+		the various dividers, is able to generate proper values for multiples
-+		of channel spacing.
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 3bb7d9fe7ed8..f0dc0e7c1bbc 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1615,6 +1615,7 @@ M:	Rodrigo Alencar <rodrigo.alencar@analog.com>
- L:	linux-iio@vger.kernel.org
- S:	Supported
- W:	https://ez.analog.com/linux-software-drivers
-+F:	Documentation/ABI/testing/sysfs-bus-iio-frequency
- F:	Documentation/devicetree/bindings/iio/frequency/adi,adf41513.yaml
- F:	Documentation/iio/adf41513.rst
- F:	drivers/iio/frequency/adf41513.c
+---
+Michael Reeves (2):
+      power: supply: Add macsmc-power driver for Apple Silicon
+      mfd: macsmc: Wire up Apple SMC power driver
 
+ MAINTAINERS                         |   1 +
+ drivers/mfd/macsmc.c                |   1 +
+ drivers/power/supply/Kconfig        |  11 +
+ drivers/power/supply/Makefile       |   1 +
+ drivers/power/supply/macsmc-power.c | 883 ++++++++++++++++++++++++++++++++++++
+ 5 files changed, 897 insertions(+)
+---
+base-commit: cc3aa43b44bdb43dfbac0fcb51c56594a11338a8
+change-id: 20260105-b4-macsmc-power-d017cc7f53ac
+
+Best regards,
 -- 
-2.43.0
+Michael Reeves <michael.reeves077@gmail.com>
 
