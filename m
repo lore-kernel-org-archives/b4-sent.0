@@ -1,16 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v4 0/2] Introduce Pixel config fragment for chainloading
- u-boot
-Date: Thu, 08 Jan 2026 23:13:00 +0100
-Message-Id: <20260108-pixel-config-v4-0-76a2212b69a5@ixit.cz>
+Date: Thu, 08 Jan 2026 23:13:01 +0100
+Subject: [PATCH v4 1/2] doc: board: qualcomm: document Pixel 3 / 3 XL
+ support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOwrYGkC/23OQQ6CQAwF0KuYWVvSdmZUXHkP4wKGgk0MGDATl
- HB3BxPDhuX/zfvpZAbpVQZz3k2ml6iDdm0Kbr8z4V60jYBWKRtGPiDhEZ46ygNC19bagCvRnyQ
- EJ1SaRJ691Om+zF1vKd91eHX9+7ceaWmXIY9Hzglt7jEj8g4dAkNVRK0uOuorCx+z6MirOCEjk
- vV5xsScMNCWsH+x8Wy0gIBcsBdbV6EuVjrP8xcGkIPKCgEAAA==
-X-Change-ID: 20260107-pixel-config-4b058ecc4e1b
+Message-Id: <20260108-pixel-config-v4-1-76a2212b69a5@ixit.cz>
+References: <20260108-pixel-config-v4-0-76a2212b69a5@ixit.cz>
+In-Reply-To: <20260108-pixel-config-v4-0-76a2212b69a5@ixit.cz>
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
  u-boot@lists.denx.de, Petr Vorel <petr.vorel@gmail.com>
 Cc: Casey Connolly <casey.connolly@linaro.org>, 
@@ -20,67 +17,72 @@ Cc: Casey Connolly <casey.connolly@linaro.org>,
  Matthew Croughan <matt@croughan.sh>, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>, Simon Glass <simon.glass@canonical.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1702; i=david@ixit.cz;
- h=from:subject:message-id; bh=Btre+W9rXfTntEbWir+3D2MhegCB4vsVPDfdX2a6Dek=;
- b=kA0DAAgBYAI/xNNJIHIByyZiAGlgK+2gB9sgdp8yXtazzm0fS+wJ9BRrgxi+RjkT3c5e40PuD
- YkCMwQAAQgAHRYhBNd6Cc/u3Cu9U6cEdGACP8TTSSByBQJpYCvtAAoJEGACP8TTSSByqtgQAIJX
- nCzTiuhCC+iDyJ9yeyaIy0fFDC2ZjAtqD4bLK0+WG5N5hAXfSGbyM8vizG8QddZ+3fYsmiMiSqu
- ZklbBRvMG2hyNfLwIaCjVYAZe1Fqkypsdrgm1kq5pMW45c++Tbu5UKAQwbQTqobyAAncQZoOkb0
- cXAJSWeT8wtpN88NgMt6iWdydcNHgLnp9KBMwV0H0sOzic3RuooK4N3OQ3+BLpjgZ5rbKf/MR2K
- b+Ik8rxhmhM+zWIGQR+dnuP3tFkuPEI9NE2HrG5kcw/mMaNgD9KyVvrNYzKndBL58NjTCw/ITDb
- YMU42y1YNnIrYQyrarpa//GR+xCEsA+myAm9UWlMHSjLlAPqMgbAp3AoLNBchc+X4l3pnH7Td93
- miAr1lFY+bhGKlWKI9lCrLr1YKs5aTGvvuAq+zTFkEx2N647Wn8HJVYommIZALE03PwEPVtzIti
- xO6gji+dBn4E0/tz94aCRaUzBju1xdexZdcAB6gzUL4FqKKFBN3ula9Cv1kJ02shQpZ0EE8xzHQ
- 3USFgmvfL6/Paw8+fD6gley1ClJdVlKFPou0Ao6Pr3ybYMF8RJCaAKjUd2I0a2GL1/R46A91tFp
- H1M07uFCOjJV3PdEwoo5oquHCbnCCW2+YOjn6wpMNqes6p7ALHu29nrbbQUR5ncoMysGPbgizYN
- b7+Xt
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1672; i=david@ixit.cz;
+ h=from:subject:message-id; bh=hNetKZ+Gddro+OaLlOoaiaAKLTKqtCw0Cv7t5elrvAA=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpYCvtYbVwQVtX+//qbGMJliHa2ykjFvvx2GxPy
+ N+SZitDgTOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaWAr7QAKCRBgAj/E00kg
+ cuk6D/4wZIi16z6PBPdae34tlgM+74SrAsyIUMD7N+WVNOYVe3DJDXSNCuAa6EbIKEvOlxBJr/d
+ xVLk85zYTcvKrwAOXYS9BMITx4gbhukMJgfNdbDsI2F+a/DXt5V8qfPRCe9+G93fuh7/A51LcvF
+ 7d83wFF/HLcWYEq5FLW/SgCdKK3RrfqoXXlmBb8aTGHGldFocy9wfvJcBDNGXO5VJgHyQQwkleg
+ bWA90TLluAPrIcdamZFRZ/XdZ2HGbkrwfPx3tCXCNuNUYce7GebZ2W8ijJiCjVjec5/gL686T11
+ gbEzETCuIm0nkUAmw2AUc518lJphaisnY8pXyPf5dWE2/4in6pNKmqEAF09S4VYSJDnuZiu3hvI
+ XQjvzgkLTH/DdD9CqoXvsKF8z8j3qlVa/zoqMTsUDOqiVJna3CTzCftHqSGc5UmW0FHhWZqq2GG
+ 2dWmyjJ6kVvhw+547GWyD2DjB4SJaqNJOC6syEGRvQOVyqpYedMhFXAndZOwp/rTA+cSxH3yceL
+ briG5wEYONjnTs3mk0j9Se6kMYS+4lBGCbSaHrNKV818OZUCQfFRnCR7zehgq0eb7NguK9afip6
+ dZdFVgGinZ6oH8vJ5IoZGY0U+dxUONl3DKhTWhe7BMmXfTVjeUA+vGbpDcXu3j3ukeykhn6NhX6
+ +pTX9/cOUleSabw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Snapdragon Google Pixel bootloaders require the TEXT_OFFSET to be
-exactly 0x80000. Without this, U-Boot or kernels will fail to load.
+U-Boot does work on Qualcomm 845-based Pixel 3 and 3 XL.
 
-This patchset documents Pixel 3 and Pixel 3 XL and adds the necessary
-config fragment along with usage instructions.
-
-It has been tested on Pixel 3, 3 XL (by me), and Pixel 5 (by Petr Vorel).
-
-The corresponding DTS files (sdm845-google-blueline and crosshatch) have
-already been merged into the Linux -next, so mainline U-Boot will receive
-these devices support soon.
-
+Reviewed-by: Simon Glass <simon.glass@canonical.com>
+Reviewed-by: Casey Connolly <casey.connolly@linaro.org>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v4:
-- s/CONFIG_TEXT_OFFSET/CONFIG_TEXT_BASE/ in commit message (Casey)
-- Link to v3: https://lore.kernel.org/r/20260107-pixel-config-v3-0-02a25e3fdcfa@ixit.cz
+ doc/board/qualcomm/board.rst | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
-Changes in v3:
-- Renamed google-pixel3.config to google-pixel.config as it's not
-  limited to Pixel 3 / 3 XL, but also 5 and possibly others.
-- Reworked the documentation. (Casey)
-- Reworded commit message. (Casey)
-- Link to v2: https://lore.kernel.org/u-boot/20250802001359.2122103-1-david@ixit.cz/
+diff --git a/doc/board/qualcomm/board.rst b/doc/board/qualcomm/board.rst
+index 642c5095261..e5dbc9816b9 100644
+--- a/doc/board/qualcomm/board.rst
++++ b/doc/board/qualcomm/board.rst
+@@ -38,6 +38,25 @@ with appended dtb, so let's mimic linux to satisfy stock bootloader.
+ Boards
+ ------
+ 
++Pixel 3 (blueline) and Pixel 3 XL (crosshatch)
++^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++blueline refers to the Google Pixel 3, and crosshatch to the Pixel 3 XL, both
++powered by the Qualcomm SDM845 SoC.
++
++These devices use the common qcom_defconfig with the google-pixel.config
++fragment for configuration.
++
++Use the following commands::
++
++	make CROSS_COMPILE=aarch64-linux-gnu- O=.output qcom_defconfig google-pixel.config qcom-phone.config
++
++The DTB is called:
++
++ - "sdm845-google-blueline.dtb" (Pixel 3)
++ - "sdm845-google-crosshatch.dtb" (Pixel 3 XL)
++
++More information can be found on the `Google Pixel 3 page`_.
++
+ starqlte
+ ^^^^^^^^
+ 
+@@ -131,5 +150,6 @@ Other devices with boot image version 2 can be built like this example::
+ 	fastboot flash boot boot.img
+ 	fastboot erase dtbo
+ 
++.. _Google Pixel 3 page: https://en.wikipedia.org/wiki/Pixel_3
+ .. _Samsung S9 page: https://en.wikipedia.org/wiki/Samsung_Galaxy_S9
+ .. _DragonBoard 845c page: https://www.96boards.org/product/rb3-platform/
 
-Changes in v2:
-- Added documentation of Pixel 3 / 3 XL into doc/board/qualcomm. (Casey)
-- Link to v1: https://lore.kernel.org/u-boot/20250729103950.1154040-2-david@ixit.cz/
-
----
-David Heidelberg (2):
-      doc: board: qualcomm: document Pixel 3 / 3 XL support
-      configs: Add google-pixel fragment config for Pixel 3, 3 XL, 5
-
- board/qualcomm/google-pixel.config |  5 +++++
- doc/board/qualcomm/board.rst       | 20 ++++++++++++++++++++
- 2 files changed, 25 insertions(+)
----
-base-commit: 53c0d5b387956bb4070a943b61991898373a20e2
-change-id: 20260107-pixel-config-4b058ecc4e1b
-
-Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+2.51.0
 
