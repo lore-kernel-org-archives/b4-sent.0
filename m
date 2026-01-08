@@ -1,106 +1,102 @@
-From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Thu, 08 Jan 2026 14:08:22 +0800
-Subject: [PATCH v5 8/8] arm64: dts: amlogic: A5: Add peripheral clock
- controller node
+From: Jihan LIN <linjh22s@gmail.com>
+Date: Thu, 08 Jan 2026 08:44:38 +0000
+Subject: [PATCH] Documentation/kbuild: Document gendwarfksyms build
+ dependencies
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260108-a5-clk-v5-8-9a69fc1ef00a@amlogic.com>
-References: <20260108-a5-clk-v5-0-9a69fc1ef00a@amlogic.com>
-In-Reply-To: <20260108-a5-clk-v5-0-9a69fc1ef00a@amlogic.com>
-To: Chuan Liu <chuan.liu@amlogic.com>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jerome Brunet <jbrunet@baylibre.com>, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>, 
- Kevin Hilman <khilman@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-amlogic@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767852503; l=2041;
- i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=YYbjhOqv9sLsKL9/6kFNdkCYIVZ6AE4KPrWobMyqnNo=;
- b=7TAnolGMrfAXAp0ToZlWDjUDG5R4nORRDWK/0uC7v/745DyI9WQoksWsB84+Tn7uRoaU7DSjS
- 3vcnYKtfK5XA6uRTdp4wQdrRr+IHAnQ3EXlKwBw3tQcoezqzf8Nxt3G
-X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
- pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
-X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
+Message-Id: <20260108-documents_gendwarfksyms-v1-1-52b1f9c38c70@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAHVuX2kC/x3MSQqAMAxA0atI1hZqcb6KiBSbahCrNI6Id7e4f
+ Iv/H2D0hAx19IDHg5gWF5DEEfSjdgMKMsGgpMplIjNhln6f0W3cDejMqb2d+J5ZVLYsMdWFNsp
+ CqFePlq7/3LTv+wEPGta9aQAAAA==
+X-Change-ID: 20260105-documents_gendwarfksyms-9f88e4a7ad2f
+To: Nathan Chancellor <nathan@kernel.org>, Nicolas Schier <nsc@kernel.org>, 
+ Jonathan Corbet <corbet@lwn.net>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun.feng@gmail.com>, Sami Tolvanen <samitolvanen@google.com>, 
+ Masahiro Yamada <masahiroy@kernel.org>, Petr Pavlu <petr.pavlu@suse.com>
+Cc: linux-kbuild@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Jihan LIN <linjh22s@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767861915; l=2399;
+ i=linjh22s@gmail.com; s=linjh22s_machine; h=from:subject:message-id;
+ bh=Hr5ycYw2D6CoeYfL5AHxIhIwbrD9nhbsUBykKkGZxFo=;
+ b=Qf7URpG3jkcQR7ZRLUMeJndMh+UWQzdYp1YASq18oNDU3mjDFAp9LQQBmrRBn6B5qKFKolmIL
+ +SEjVVEX68NCLRcco4z613r1iPXqRGYH03iLsILewSqwGXTGncMdoZg
+X-Developer-Key: i=linjh22s@gmail.com; a=ed25519;
+ pk=MnRQAVFy1t4tiGb8ce7ohJwrN2YFXd+dA7XmzR6GmUc=
+X-Endpoint-Received: by B4 Relay for linjh22s@gmail.com/linjh22s_machine with auth_id=592
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add peripheral clock controller node for A5 SoC family.
+Although dependencies for gendwarfksyms were recently added to the
+packaging rules [1-2], the corresponding documentation was missing.
 
-Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
+Document the required build dependencies for gendwarfksyms, and
+include a few examples for installing these dependencies on some
+distributions.
+
+[1] commit 657f96cb7c06 ("kbuild: deb-pkg: Add libdw-dev:native to
+Build-Depends-Arch")
+[2] commit 5bd6bdd0f76e ("kbuild: rpm-pkg: Add (elfutils-devel or
+libdw-devel) to BuildRequires")
+
+Fixes: f28568841ae0 ("tools: Add gendwarfksyms")
+Signed-off-by: Jihan LIN <linjh22s@gmail.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi | 43 +++++++++++++++++++++++++++++
- 1 file changed, 43 insertions(+)
+Hi,
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-index 70deeab220e0..7324e427ed39 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a5.dtsi
-@@ -9,6 +9,7 @@
- #include <dt-bindings/power/amlogic,a5-pwrc.h>
- #include <dt-bindings/clock/amlogic,a5-scmi-clkc.h>
- #include <dt-bindings/clock/amlogic,a5-pll-clkc.h>
-+#include <dt-bindings/clock/amlogic,a5-peripherals-clkc.h>
+I found there is no documentation for build dependencies in gendwarfksyms
+while digging into Rust drivers. Though Yuli added libdw-dev to the build
+dependencies for packaging [1], it seems that there is no documentation
+about it.
+
+This patch documents the build dependencies of gendwarfksyms and adds a few
+examples for installing these dependencies on some distributions.
+
+[1]: https://lore.kernel.org/all/79C925DCE2E963FF+20250422104927.144252-1-wangyuli@uniontech.com/
+---
+ Documentation/kbuild/gendwarfksyms.rst | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+diff --git a/Documentation/kbuild/gendwarfksyms.rst b/Documentation/kbuild/gendwarfksyms.rst
+index ed366250a54eac3a72c2f529da94a9e803704ae4..85fe9086beb760500250e7539058dce515681378 100644
+--- a/Documentation/kbuild/gendwarfksyms.rst
++++ b/Documentation/kbuild/gendwarfksyms.rst
+@@ -14,6 +14,29 @@ selected, **gendwarfksyms** is used instead to calculate symbol versions
+ from the DWARF debugging information, which contains the necessary
+ details about the final module ABI.
  
- / {
- 	cpus {
-@@ -83,6 +84,48 @@ scmi_clk: protocol@14 {
- };
- 
- &apb {
-+	clkc_periphs: clock-controller@0 {
-+		compatible = "amlogic,a5-peripherals-clkc";
-+		reg = <0x0 0x0 0x0 0x224>;
-+		#clock-cells = <1>;
-+		clocks = <&xtal>,
-+			 <&scmi_clk CLKID_OSC>,
-+			 <&scmi_clk CLKID_FIXED_PLL>,
-+			 <&scmi_clk CLKID_FCLK_DIV2>,
-+			 <&scmi_clk CLKID_FCLK_DIV2P5>,
-+			 <&scmi_clk CLKID_FCLK_DIV3>,
-+			 <&scmi_clk CLKID_FCLK_DIV4>,
-+			 <&scmi_clk CLKID_FCLK_DIV5>,
-+			 <&scmi_clk CLKID_FCLK_DIV7>,
-+			 <&clkc_pll CLKID_MPLL2>,
-+			 <&clkc_pll CLKID_MPLL3>,
-+			 <&clkc_pll CLKID_GP0_PLL>,
-+			 <&scmi_clk CLKID_GP1_PLL>,
-+			 <&clkc_pll CLKID_HIFI_PLL>,
-+			 <&scmi_clk CLKID_SYS_CLK>,
-+			 <&scmi_clk CLKID_AXI_CLK>,
-+			 <&scmi_clk CLKID_SYS_PLL_DIV16>,
-+			 <&scmi_clk CLKID_CPU_CLK_DIV16>;
-+		clock-names = "xtal",
-+			      "oscin",
-+			      "fix",
-+			      "fdiv2",
-+			      "fdiv2p5",
-+			      "fdiv3",
-+			      "fdiv4",
-+			      "fdiv5",
-+			      "fdiv7",
-+			      "mpll2",
-+			      "mpll3",
-+			      "gp0",
-+			      "gp1",
-+			      "hifi",
-+			      "sysclk",
-+			      "axiclk",
-+			      "sysplldiv16",
-+			      "cpudiv16";
-+	};
++Dependencies
++-----
 +
- 	reset: reset-controller@2000 {
- 		compatible = "amlogic,a5-reset",
- 			     "amlogic,meson-s4-reset";
++libelf, libdw and zlib are dependencies of gendwarfksyms.
++
++Here are a few examples for installing these dependencies:
++
++* Arch Linux and derivatives::
++
++    sudo pacman --needed -S zlib libelf
++
++* Debian, Ubuntu, and derivatives::
++
++    sudo apt install libelf-dev libdw-dev zlib1g-dev
++
++* Fedora and derivatives::
++
++    sudo dnf install elfutils-libelf-devel elfutils-devel zlib-devel
++
++* openSUSE and derivatives::
++
++    sudo zypper install libelf-devel libdw-devel zlib-devel
++
+ Usage
+ -----
+ 
 
+---
+base-commit: f0b9d8eb98dfee8d00419aa07543bdc2c1a44fb1
+change-id: 20260105-documents_gendwarfksyms-9f88e4a7ad2f
+
+Best regards,
 -- 
-2.42.0
+Jihan LIN <linjh22s@gmail.com>
 
