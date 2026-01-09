@@ -1,66 +1,76 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Thu, 08 Jan 2026 23:13:02 +0100
-Subject: [PATCH v4 2/2] configs: Add google-pixel fragment config for Pixel
- 3, 3 XL, 5
+From: Chuan Liu <chuan.liu@amlogic.com>
+Date: Fri, 09 Jan 2026 11:24:22 +0800
+Subject: [PATCH] clk: Ensure correct consumer's rate boundaries
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260108-pixel-config-v4-2-76a2212b69a5@ixit.cz>
-References: <20260108-pixel-config-v4-0-76a2212b69a5@ixit.cz>
-In-Reply-To: <20260108-pixel-config-v4-0-76a2212b69a5@ixit.cz>
-To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
- u-boot@lists.denx.de, Petr Vorel <petr.vorel@gmail.com>
-Cc: Casey Connolly <casey.connolly@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Tom Rini <trini@konsulko.com>, 
- Luca Weiss <luca.weiss@fairphone.com>, Simon Glass <sjg@chromium.org>, 
- Petr Hodina <petr.hodina@protonmail.com>, 
- Matthew Croughan <matt@croughan.sh>, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>, Simon Glass <simon.glass@canonical.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=969; i=david@ixit.cz;
- h=from:subject:message-id; bh=qCGWssl7AevuFwYko+wSdsMSFJKTaUJcKdPCvF9nMuA=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpYCvtkv22Eohm2V3JBTpdP/7UB3Xxji5Zi0nqz
- iLmElFyZsSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaWAr7QAKCRBgAj/E00kg
- ciOGD/9HqvrEANPQGbo27mqQqdson7R77BTJp2kLN6vO9Bfyu+OgJYgd+UHQ/fJG9XBhnp6/ciE
- KHGW1lUqFeg2OJrlk/lU3yH040t6tHMfWoPX2QBtO7xKq7qOCnYQaJpxiaM5OeYvw32oXTQWM7I
- 9Arc9jmivRCUt+B+IqwdtB7v1009o76voXozElYucjhz+rM0zHQ4EJ4wR+oyZG/BDpVWIIOl881
- ofdnYvEEap9u2u3UJwbWIxNdVYNsN4JB5nINW0vI9QgXBd4dsf2J+X6wAzLGyjJIYd/WKpsoI8z
- K5vp6MnP36nDCe3rF3XgtBvB8mq4KK4PymjdOmuhuJ0JW+S8b21lvQJoN2nJLMHYQIIZF2jdbvP
- N12K42cr+BqoiVkxNc3OmXKzx+kZwd17MnabYSYIzUGYWQ3uYSREgLg3cUA6a/mnwd6l5FznC1q
- AKA0FSdAQCVMcxPHV8E/WvZzFsNjXiyNuF/uoToGq5jScLfWJCZiDrD6smitPybMTkuHSvvpt1l
- gY1/T9MhJAORu0DeDyKF/GW4afL0WiyUKRD7hkKBlwdTCcLub28Ghdb/6dNwOizoxa6xFWxK/QG
- hSCiDfDjEDkZMM5j+XwJ6vVuE/NR+MbovwJejWKF0evty8+jzDea1b2qSSSzkB+nSB3SbsdRj+d
- 66Vowtd1R9g33Mw==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260109-fix_error_setting_clk_rate_range-v1-1-bae0b40e870f@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAOV0YGkC/x2NSwqAMAxEryJZK9Qu/F1FpBSbalCqpEUE6d2Nb
+ gYezJt5ICITRhiKBxgvinQEgbosYF5tWLAiJwxa6UbVqq083QaZDzYRU6KwmHnfDNuEEl/f9bp
+ ztmmt7xXIzMkozn8xTjm/P+F7THIAAAA=
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>
+Cc: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Chuan Liu <chuan.liu@amlogic.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767929092; l=1489;
+ i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
+ bh=iAO6kZohGujkhzhp+PGjVKzMDmm3KwoHd3yOlenUwTg=;
+ b=dklgwC075h3YRM54I0zr7DtZkIYv/Y+AVjOdXmt8hcpOeuKhFpjJQhRjBkBonddOkbY+MvAUQ
+ lPhkBifsCffA4npjw9eyRfrtfzMFRjZzkyO92BFAvLM9bUg37MjVLPD
+X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
+ pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
+X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce a fragment config for the Pixel 3, Pixel 3 XL, Pixel 5.
+If we were to have two users of the same clock, doing something like:
 
-On these devices, U-Boot is chainloaded via fastboot. However, due to
-additional requirements added by Google, the image header must have
-a specific value for the text offset.
-This is solved by setting CONFIG_TEXT_BASE to 0x80080000 in U-Boot.
+clk_set_rate_range(user1, 1000, 2000);
+clk_set_rate_range(user2, 3000, 4000);
 
-Reviewed-by: Simon Glass <simon.glass@canonical.com>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Even when user2's call returns -EINVAL, the min_rate and max_rate of
+user2 are still incorrectly updated. This causes subsequent calls by
+user1 to fail when setting the clock rate, as clk_core_get_boundaries()
+returns corrupted boundaries (min_rate = 3000, max_rate = 2000).
+
+To prevent this, clk_core_check_boundaries() now rollback to the old
+boundaries when the check fails.
+
+Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
- board/qualcomm/google-pixel.config | 5 +++++
- 1 file changed, 5 insertions(+)
+ drivers/clk/clk.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/board/qualcomm/google-pixel.config b/board/qualcomm/google-pixel.config
-new file mode 100644
-index 00000000000..999d4e45268
---- /dev/null
-+++ b/board/qualcomm/google-pixel.config
-@@ -0,0 +1,5 @@
-+# Enables chainloading of U-Boot on Google Pixel phones using
-+# newer bootloaders (Android Q/R)
-+# Use for following devices: Pixel 3 (blueline), Pixel 3 XL (crosshatch),
-+# Pixel 5 (redfin)...
-+CONFIG_TEXT_BASE=0x80080000
+diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
+index 85d2f2481acf..0dfb16bf3f31 100644
+--- a/drivers/clk/clk.c
++++ b/drivers/clk/clk.c
+@@ -2710,13 +2710,17 @@ static int clk_set_rate_range_nolock(struct clk *clk,
+ 	 */
+ 	rate = clamp(rate, min, max);
+ 	ret = clk_core_set_rate_nolock(clk->core, rate);
++
++out:
+ 	if (ret) {
+-		/* rollback the changes */
++		/*
++		 * Rollback the consumer’s old boundaries if check_boundaries or
++		 * set_rate fails.
++		 */
+ 		clk->min_rate = old_min;
+ 		clk->max_rate = old_max;
+ 	}
+ 
+-out:
+ 	if (clk->exclusive_count)
+ 		clk_core_rate_protect(clk->core);
+ 
 
+---
+base-commit: 7f98ab9da046865d57c102fd3ca9669a29845f67
+change-id: 20260107-fix_error_setting_clk_rate_range-d928da67af90
+
+Best regards,
 -- 
-2.51.0
+Chuan Liu <chuan.liu@amlogic.com>
 
