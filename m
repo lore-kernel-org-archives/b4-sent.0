@@ -1,128 +1,89 @@
-From: Jesung Yang <y.j3ms.n@gmail.com>
-Date: Fri, 09 Jan 2026 22:09:01 +0000
-Subject: [PATCH v2 2/2] scripts: generate_rust_analyzer: fix IDE support
- for primitive types
+From: Per Larsen <perlarsen@google.com>
+Subject: [PATCH v4 0/2] KVM: arm64: Support FF-A direct messaging
+ interfaces
+Date: Fri, 09 Jan 2026 22:34:24 +0000
+Message-Id: <20260109-host-direct-messages-v4-0-95da4221d186@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260109-ra-fix-primitive-v2-2-249852a4145a@gmail.com>
-References: <20260109-ra-fix-primitive-v2-0-249852a4145a@gmail.com>
-In-Reply-To: <20260109-ra-fix-primitive-v2-0-249852a4145a@gmail.com>
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, Tamir Duberstein <tamird@gmail.com>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jesung Yang <y.j3ms.n@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAHCCYWkC/43PSwrCMBCA4auUrI3k2bSuvIe4aJNJG7CNJCUop
+ Xc3LYKICi7/gfmGmVGE4CCiQzGjAMlF58ccYlcg3TdjB9iZ3IgRJilhNe59nLBxAfSEB4ix6SB
+ iyQg1ykrZtAbl1WsA624bezrn7l2cfLhvVxJdp0+Qk+9gophgUXKQqlJUV/bYed9dYK/9gFYxs
+ X8UlpXaMqXB8lJx8qHwl0Lpj+cSz4pWwhBRC9Gy8k1ZluUB9++Vt0UBAAA=
+X-Change-ID: 20251029-host-direct-messages-5201d7f55abd
+To: Marc Zyngier <maz@kernel.org>, Joey Gouly <joey.gouly@arm.com>, 
+ Suzuki K Poulose <suzuki.poulose@arm.com>, 
+ Zenghui Yu <yuzenghui@huawei.com>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
+ Yeoreum Yun <yeoreum.yun@arm.com>, Ben Horgan <ben.horgan@arm.com>, 
+ Oliver Upton <oupton@kernel.org>
+Cc: Armelle Laine <armellel@google.com>, 
+ Sebastien Ene <sebastianene@google.com>, 
+ linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Per Larsen <perlarsen@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767996618; l=4187;
- i=y.j3ms.n@gmail.com; s=20251225; h=from:subject:message-id;
- bh=+tPQMcCiMZmTEKJEqCQpRQjsZN53zv5hH8iFQTMRB3M=;
- b=IgKqVR9SLwszTWWbxy+zbxKBzOqNA4a38Jad2lLcsxW08R+o6bcgL8nv9AAVDkYFl2FtyW/hM
- X85fmL2z//ECto6Zm9xu8knpfTRcn1Uij3wjzGYjRvhP9sCJjpN0ebv
-X-Developer-Key: i=y.j3ms.n@gmail.com; a=ed25519;
- pk=2yVgO1I+y7kkFSF2Dc/Dckj4L2FgRnvmERHFt4bspbI=
-X-Endpoint-Received: by B4 Relay for y.j3ms.n@gmail.com/20251225 with auth_id=586
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767998072; l=2128;
+ i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
+ bh=uANFCEmcX63XWgQM35Dj9Sq/pNBgm6UWZiRuDN/bYHk=;
+ b=aF5ssKxPqGYzDwYPs8/gWzPT7cTJyRm20BTQzTtIOoTQd/xoO6zxYErntLB+vTzD6UWo39jzZ
+ dKqyl3XVnZ3BHNqSquFeV8afUAqccCekAcLicvAKDugexTc/BgVe7lg
+X-Developer-Key: i=perlarsen@google.com; a=ed25519;
+ pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
+X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update `generate_rust_analyzer.py` so that the generated
-`rust-project.json` contains the `sysroot_src` field with
-`"crate_attrs": ["no_std"]` specified for relevant crates. This ensures
-that rust-analyzer provides proper IDE support for inherent methods of
-primitive types.
+Support FFA_MSG_SEND_DIRECT_REQ unconditionally.
+Support FFA_MSG_SEND_DIRECT_REQ2 if hypervisor negotiated version 1.2+.
 
-Since commit 50384460c68f ("Rewrite method resolution to follow rustc
-more closely") to rust-analyzer, it no longer provides language server
-features like code completion and go-to-definition for inherent methods
-of primitive types when sysroot crates (e.g., `core`, `std`) are inlined
-in `rust-project.json` [1]. As `generate_rust_analyzer.py` currently
-inlines these crates, our setup is affected by this change.
+Framework messages (FF-A control plane) are filtered out. For
+FFA_MSG_SEND_DIRECT_REQ, we look at flags in w2. Messages using the REQ2
+interface are always partition messages.
 
-Specifying the `sysroot_src` field restores this functionality by
-allowing rust-analyzer to locate sysroot crates by itself. However, this
-causes `std` to be treated as a dependency for all local crates by
-default. To align with our compilation settings, provide the `no_std`
-attribute via the `crate_attrs` field, as the `-Zcrate-attr=no_std`
-compiler flag is not visible to rust-analyzer. This combined approach
-removes manual manipulation of sysroot dependencies while preventing
-incorrect symbol resolution against the standard library.
+The second patch was part of a previous patch set [0] but was dropped
+since the use case was unclear. A clear use case has now appeared: use
+TPM device with CRB over FF-A when kernel boots with pkvm [1].
 
-Note that this configuration requires rust-analyzer release 2025-12-22
-(v0.3.2727) or later, which introduced support for the `crate_attrs`
-field.
+Tested by booting Android under QEMU.
 
-Link: https://rust-lang.zulipchat.com/#narrow/channel/x/topic/x/near/561607963 [1]
-Link: https://rust-for-linux.zulipchat.com/#narrow/channel/x/topic/x/near/561607753
-Signed-off-by: Jesung Yang <y.j3ms.n@gmail.com>
+Best Regards,
+Per
+
+[0]: https://lore.kernel.org/all/20250730-virtio-msg-ffa-v9-0-7f1b55c8d149@google.com/
+[1]: https://lore.kernel.org/all/20251027191729.1704744-1-yeoreum.yun@arm.com/
+ 
+
+Signed-off-by: Per Larsen <perlarsen@google.com>
 ---
- scripts/generate_rust_analyzer.py | 21 ++++++++++++++++++---
- 1 file changed, 18 insertions(+), 3 deletions(-)
+Changes in v4:
+- 1/2: do_ffa_direct_msg: check that flag in w2 is zero; drop unused vm_handle parameter.
+- 2/2: ffa_call_supported: simplify logic by reordering cases.
+-      do_ffa_direct_msg: switch polarity of check and update comment.
+- Link to v3: https://lore.kernel.org/r/20251119-host-direct-messages-v3-0-c74d04944b26@google.com
 
-diff --git a/scripts/generate_rust_analyzer.py b/scripts/generate_rust_analyzer.py
-index 32b0da99f17549ecc83e9a68911373310a2c9617..6c3cb1d65d97e0ec414192f9fb867700a99c3d57 100755
---- a/scripts/generate_rust_analyzer.py
-+++ b/scripts/generate_rust_analyzer.py
-@@ -234,13 +234,16 @@ class RaVersion(enum.Enum):
- 
-     # v0.3.1940, released on 2024-04-29; bundled with the rustup 1.78 toolchain.
-     V20240429 = 0
-+    # v0.3.2727, released on 2025-12-22.
-+    V20251222 = 1
- 
-     @staticmethod
-     def baselines():
--        assert len(RaVersion) == 1, "Exhaustiveness check: update baseline list!"
-+        assert len(RaVersion) == 2, "Exhaustiveness check: update checkpoint list!"
- 
-         return [
-             (datetime.strptime("2024-04-29", "%Y-%m-%d"), (0, 3, 1940), RaVersion.V20240429),
-+            (datetime.strptime("2025-12-22", "%Y-%m-%d"), (0, 3, 2727), RaVersion.V20251222),
-         ]
- 
-     @staticmethod
-@@ -249,10 +252,12 @@ class RaVersion(enum.Enum):
-         return RaVersion.V20240429
- 
-     def __str__(self):
--        assert len(RaVersion) == 1, "Exhaustiveness check: update if branches!"
-+        assert len(RaVersion) == 2, "Exhaustiveness check: update if branches!"
- 
-         if self == RaVersion.V20240429:
-             return "v0.3.1940 (2024-04-29)"
-+        elif self == RaVersion.V20251222:
-+            return "v0.3.2727 (2025-12-22)"
-         else:
-             assert False, "Unreachable"
- 
-@@ -266,7 +271,7 @@ def generate_rust_project(
-     cfgs,
-     core_edition
- ):
--    assert len(RaVersion) == 1, "Exhaustiveness check: update if branches!"
-+    assert len(RaVersion) == 2, "Exhaustiveness check: update if branches!"
- 
-     if ra_version == RaVersion.V20240429:
-         ctx = {
-@@ -277,6 +282,16 @@ def generate_rust_project(
-             "crates": generate_crates(ctx, srctree, objtree, sysroot_src, external_src, cfgs, core_edition),
-             "sysroot": str(sysroot),
-         }
-+    elif ra_version == RaVersion.V20251222:
-+        ctx = {
-+            "use_crate_attrs": True,
-+            "add_sysroot_crates": False,
-+        }
-+        return {
-+            "crates": generate_crates(ctx, srctree, objtree, sysroot_src, external_src, cfgs, core_edition),
-+            "sysroot": str(sysroot),
-+            "sysroot_src": str(sysroot_src),
-+        }
-     else:
-         assert False, "Unreachable"
- 
+Changes in v3:
+- Filter out framework messages as suggested by Will Deacon. Update cover letter accordingly.
+- Update trailers: Reviewed-by: Yeoreum Yun <yeoreum.yun@arm.com>
+- Link to v2: https://lore.kernel.org/r/20251030-host-direct-messages-v2-0-9f27cef36730@google.com
 
+Changes in v2:
+- 1/2: Drop support for FFA_ID_GET interface in host handler.
+- Link to v1: https://lore.kernel.org/r/20251030-host-direct-messages-v1-0-463e57871c8f@google.com
+
+---
+Per Larsen (1):
+      KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in host handler
+
+Sebastian Ene (1):
+      KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ in host handler
+
+ arch/arm64/kvm/hyp/nvhe/ffa.c | 33 ++++++++++++++++++++++++++++++++-
+ include/linux/arm_ffa.h       |  3 +++
+ 2 files changed, 35 insertions(+), 1 deletion(-)
+---
+base-commit: 372800cb95a35a7c40a07e2e0f7de4ce6786d230
+change-id: 20251029-host-direct-messages-5201d7f55abd
+
+Best regards,
 -- 
-2.47.3
+Per Larsen <perlarsen@google.com>
 
