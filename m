@@ -1,140 +1,94 @@
-From: Ziyao Li <liziyao@uniontech.com>
-Date: Fri, 09 Jan 2026 11:36:58 +0800
-Subject: [PATCH v3] PCI: loongson: Override PCIe bridge supported speeds
- for older Loongson 3C6000 series steppings
+From: David Heidelberg <david@ixit.cz>
+Date: Fri, 09 Jan 2026 18:57:07 +0100
+Subject: [PATCH v3] media: ccs: Accommodate C-PHY into the calculation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260109-loongson-pci1-v3-1-5ddc5ae3ba93@uniontech.com>
-X-B4-Tracking: v=1; b=H4sIANl3YGkC/3XOTQrCMBCG4atI1kYy6a+uvIe4aDKTNqBJSWpQS
- u9uWnBTcPl+MA8zs0jBUmSXw8wCJRutdzmK44HpoXM9cYu5mRSyEq2U/OG966N3fNQWeImEApv
- WgFIs34yBjH1v3u2ee7Bx8uGz8QnW9Z+UgAMvzl2nFAIYhdeXy79MpIeT9k+2akn+hFqAKPeCz
- AJCBVQ1qibT7oVlWb5N0d5r8AAAAA==
-X-Change-ID: 20250822-loongson-pci1-4ded0d78f1bb
-To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
- Bjorn Helgaas <bhelgaas@google.com>
-Cc: niecheng1@uniontech.com, zhanjun@uniontech.com, 
- guanwentao@uniontech.com, Kexy Biscuit <kexybiscuit@aosc.io>, 
- linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
- loongarch@lists.linux.dev, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Lain Fearyncess Yang <fsf@live.com>, Ayden Meng <aydenmeng@yeah.net>, 
- Mingcong Bai <jeffbai@aosc.io>, Xi Ruoyao <xry111@xry111.site>, 
- Ziyao Li <liziyao@uniontech.com>
+Message-Id: <20260109-ccs-account-for-cphy-v3-1-e2f1d4fdefc9@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAHJBYWkC/4XNTQ6CMBCG4auQrh3TH9NSV97DuMChldlQ0mIDE
+ u5uYaMb4/L9knlmYclFcomdq4VFlylR6EuoQ8Wwa/qHA2pLM8ml5oJrQEzQIIZnP4IPEXDoZmi
+ 8NXV911xaz8rpEJ2naWevt9IdpTHEef+Sxbb+AbMAAai0sq3mWhpxoYnGI77YxmX5TdQ/CFkIL
+ 83JOvTcKPUh1nV9A/uhukL5AAAA
+X-Change-ID: 20260106-ccs-account-for-cphy-af9788b6029f
+To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, 
+ Mauro Carvalho Chehab <mchehab+huawei@kernel.org>, 
+ Mehdi Djait <mehdi.djait@linux.intel.com>, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767929829; l=4136;
- i=liziyao@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=oMHSSUNney/eskB1K6w/DmvTz2ry8+yQZ5lOuXaB2is=;
- b=bsb8AjnxdcUhPFca5e11Q1ysRRyqUV8kU2lrpnIy2JlQgjXcp20ZD3ireEHdqbYYnf5XxGXXI
- 4Wdlvc/IKYMAi49A2GoFRlrK6aOPYCIFXiB7uNmUSWvecPNcXAwOUBQ
-X-Developer-Key: i=liziyao@uniontech.com; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for liziyao@uniontech.com/20250730 with auth_id=471
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2134; i=david@ixit.cz;
+ h=from:subject:message-id; bh=SSeDb6Dcr02AMjIrsAJrl7pAouBCagBE/oCQYvj01+o=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpYUFyqJvdX4xzJNFisvNwbQpYy92hmqe0z9696
+ F5Ir07ZKymJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaWFBcgAKCRBgAj/E00kg
+ clSiD/9jEsnZ6Nc66RZ8QqrV4C3jccjSlvnfwPgBhrgkhl+AJgK8wkI2opaw5m11D38BulJfyMV
+ cQWXxuy6k5hoBqLrgCt6wmf9wH+qw8Kwmmm4UlJe5GAiDVN4zM7mFcsVt3ZoUWCjPD43m1zDkOb
+ AsMyStCXkutNC3UTsnefzCmLj24Ugwm1olBBARRLddYXRNpRddLoaFp8P0C9AmdyprtwmWU5qh8
+ GETaIOQqQodmOz12IWlHN7vA4cMGdWWMYrYRNDumz+4hs35fBzJ31nKbL0Bzk2IWwBeaCyiwkIK
+ TqJFVY2FO0dYnkuqVG8oM976TClsdF5oN/jFhvqcZMrjvNir+c/NuxJm1XZ3Lh8mS0ipOIC++cA
+ ZNJQnTM2WfU3kIiygGaBi587pafttNVxz4OBwDg1r7LU5TgyW6AgwqeaJU/8kBxm0UW/W6whek/
+ rrZIAbzOjJyCeT5EGAmx1fcVzesCXJjW6Y8LN4+iP2Yke1ZF/hIWUaZDIqllIivclchk8t6yWws
+ a1g1vdszIu/qQOZJK7nhfmPnqIFI4qSPZLU0UxMVhpdpcUENpzC5ntNrkGzkfFFHQXneKjrwDa/
+ fNtB7e2kr9SPWhzOdHmmuFc7q6g/zaRzCmtu1sVmT+25z554wdi/JUcsjCo8PWl+NEDM/Ba+Hhh
+ Niegd126KfPaFJw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Older steppings of the Loongson 3C6000 series incorrectly report the
-supported link speeds on their PCIe bridges (device IDs 3c19, 3c29) as
-only 2.5 GT/s, despite the upstream bus supporting speeds from 2.5 GT/s
-up to 16 GT/s.
+We need to set correct mode for PLL to calculate correct frequency.
+Signalling mode is known at this point, so use it for that.
 
-As a result, since commit 774c71c52aa4 ("PCI/bwctrl: Enable only if more
-than one speed is supported"), bwctrl will be disabled if there's only
-one 2.5 GT/s value in vector `supported_speeds`.
-
-Also, amdgpu reads the value by pcie_get_speed_cap() in amdgpu_device_
-partner_bandwidth(), for its dynamic adjustment of PCIe clocks and
-lanes in power management. We hope this can prevent similar problems
-in future driver changes (similar checks may be implemented in other
-GPU, storage controller, NIC, etc. drivers).
-
-Manually override the `supported_speeds` field for affected PCIe bridges
-with those found on the upstream bus to correctly reflect the supported
-link speeds.
-
-This patch was originally found from AOSC OS[1].
-
-Link: https://github.com/AOSC-Tracking/linux/pull/2 #1
-Tested-by: Lain Fearyncess Yang <fsf@live.com>
-Tested-by: Ayden Meng <aydenmeng@yeah.net>
-Signed-off-by: Ayden Meng <aydenmeng@yeah.net>
-Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
-[Xi Ruoyao: Fix falling through logic and add kernel log output.]
-Signed-off-by: Xi Ruoyao <xry111@xry111.site>
-Link: https://github.com/AOSC-Tracking/linux/commit/4392f441363abdf6fa0a0433d73175a17f493454
-[Ziyao Li: move from drivers/pci/quirks.c to drivers/pci/controller/pci-loongson.c]
-Signed-off-by: Ziyao Li <liziyao@uniontech.com>
-Tested-by: Mingcong Bai <jeffbai@aosc.io>
+Fixes: 47b6eaf36eba ("media: ccs-pll: Differentiate between CSI-2 D-PHY and C-PHY")
+Reviewed-by: Mehdi Djait <mehdi.djait@linux.intel.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
 Changes in v3:
-- Adjust commit message
-- Make the program flow more intuitive
-- Link to v2: https://lore.kernel.org/r/20260104-loongson-pci1-v2-1-d151e57b6ef8@uniontech.com
+- Typo sneaked in (; instead of : in case statement), fix it.
+- Link to v2: https://lore.kernel.org/r/20260108-ccs-account-for-cphy-v2-1-f2749ecf0733@ixit.cz
 
 Changes in v2:
-- Link to v1: https://lore.kernel.org/r/20250822-loongson-pci1-v1-1-39aabbd11fbd@uniontech.com
-- Move from arch/loongarch/pci/pci.c to drivers/pci/controller/pci-loongson.c
-- Fix falling through logic and add kernel log output by Xi Ruoyao
+- Account for CCP2 which PLL calculation handled same way as D-PHY.
+- Add default statement for error handling. (Mehdi)
+- Link to v1: https://lore.kernel.org/r/20260106-ccs-account-for-cphy-v1-1-c3639d606271@ixit.cz
 ---
- drivers/pci/controller/pci-loongson.c | 38 +++++++++++++++++++++++++++++++++++
- 1 file changed, 38 insertions(+)
+ drivers/media/i2c/ccs/ccs-core.c | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/pci/controller/pci-loongson.c b/drivers/pci/controller/pci-loongson.c
-index bc630ab8a283..67a6d99b9e82 100644
---- a/drivers/pci/controller/pci-loongson.c
-+++ b/drivers/pci/controller/pci-loongson.c
-@@ -176,6 +176,44 @@ static void loongson_pci_msi_quirk(struct pci_dev *dev)
- }
- DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_LOONGSON, DEV_LS7A_PCIE_PORT5, loongson_pci_msi_quirk);
+diff --git a/drivers/media/i2c/ccs/ccs-core.c b/drivers/media/i2c/ccs/ccs-core.c
+index 0d7b922fd4c48..ffa2707276284 100644
+--- a/drivers/media/i2c/ccs/ccs-core.c
++++ b/drivers/media/i2c/ccs/ccs-core.c
+@@ -3427,7 +3427,22 @@ static int ccs_probe(struct i2c_client *client)
+ 	sensor->scale_m = CCS_LIM(sensor, SCALER_N_MIN);
  
-+/*
-+ * Older steppings of the Loongson 3C6000 series incorrectly report the
-+ * supported link speeds on their PCIe bridges (device IDs 3c19, 3c29) as
-+ * only 2.5 GT/s, despite the upstream bus supporting speeds from 2.5 GT/s
-+ * up to 16 GT/s.
-+ */
-+static void loongson_pci_bridge_speed_quirk(struct pci_dev *pdev)
-+{
-+	u8 old_supported_speeds = pdev->supported_speeds;
-+
-+	switch (pdev->bus->max_bus_speed) {
-+	case PCIE_SPEED_16_0GT:
-+		pdev->supported_speeds |= PCI_EXP_LNKCAP2_SLS_16_0GB;
-+		fallthrough;
-+	case PCIE_SPEED_8_0GT:
-+		pdev->supported_speeds |= PCI_EXP_LNKCAP2_SLS_8_0GB;
-+		fallthrough;
-+	case PCIE_SPEED_5_0GT:
-+		pdev->supported_speeds |= PCI_EXP_LNKCAP2_SLS_5_0GB;
-+		fallthrough;
-+	case PCIE_SPEED_2_5GT:
-+		pdev->supported_speeds |= PCI_EXP_LNKCAP2_SLS_2_5GB;
+ 	/* prepare PLL configuration input values */
+-	sensor->pll.bus_type = CCS_PLL_BUS_TYPE_CSI2_DPHY;
++	switch (sensor->hwcfg.csi_signalling_mode) {
++	case CCS_CSI_SIGNALING_MODE_CSI_2_CPHY:
++		sensor->pll.bus_type = CCS_PLL_BUS_TYPE_CSI2_CPHY;
++		break;
++	case CCS_CSI_SIGNALING_MODE_CSI_2_DPHY:
++	case SMIAPP_CSI_SIGNALLING_MODE_CCP2_DATA_CLOCK:
++	case SMIAPP_CSI_SIGNALLING_MODE_CCP2_DATA_STROBE:
++		sensor->pll.bus_type = CCS_PLL_BUS_TYPE_CSI2_DPHY;
 +		break;
 +	default:
-+		pci_warn(pdev, "unexpected max bus speed");
++		dev_err(&client->dev, "unsupported signalling mode %u\n",
++			sensor->hwcfg.csi_signalling_mode);
++		rval = -EINVAL;
++		goto out_cleanup;
 +
-+		return;
 +	}
-+
-+	if (pdev->supported_speeds != old_supported_speeds)
-+		pci_info(pdev, "fixing up supported link speeds: 0x%x => 0x%x",
-+			 old_supported_speeds, pdev->supported_speeds);
-+}
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_LOONGSON, 0x3c19,
-+			 loongson_pci_bridge_speed_quirk);
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_LOONGSON, 0x3c29,
-+			 loongson_pci_bridge_speed_quirk);
-+
- static struct loongson_pci *pci_bus_to_loongson_pci(struct pci_bus *bus)
- {
- 	struct pci_config_window *cfg;
+ 	sensor->pll.csi2.lanes = sensor->hwcfg.lanes;
+ 	if (CCS_LIM(sensor, CLOCK_CALCULATION) &
+ 	    CCS_CLOCK_CALCULATION_LANE_SPEED) {
 
 ---
-base-commit: ea1013c1539270e372fc99854bc6e4d94eaeff66
-change-id: 20250822-loongson-pci1-4ded0d78f1bb
+base-commit: f417b7ffcbef7d76b0d8860518f50dae0e7e5eda
+change-id: 20260106-ccs-account-for-cphy-af9788b6029f
 
 Best regards,
 -- 
-Ziyao Li <liziyao@uniontech.com>
+David Heidelberg <david@ixit.cz>
 
