@@ -1,16 +1,13 @@
 From: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
-Subject: [PATCH v2 0/2] power: supply: gpio-charger: add support for
- fast-charge timer
-Date: Fri, 09 Jan 2026 19:41:18 +0100
-Message-Id: <20260109-gpio-charger-timer-v2-0-63fd1ba75830@liebherr.com>
+Date: Fri, 09 Jan 2026 19:41:19 +0100
+Subject: [PATCH v2 1/2] dt-bindings: power: supply: gpio-charger: add
+ support for fast-charge timer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAM5LYWkC/32NQQqDMBREryJ/3ZQkmIpd9R7FhSbf5EM18iOhR
- XL3ph6gm4E3w8wckJAJE9ybAxgzJYprBX1pwIZx9SjIVQYttVFSa+E3iqJG7JHFTktV69yI6qb
- 6TrVQixvjTO9z9DlUDpT2yJ/zI6uf+3cuKyHFZEzXyr6VctaPF+EUkPlq4wJDKeULhwyYYLcAA
- AA=
-X-Change-ID: 20251022-gpio-charger-timer-cddae1619714
+Message-Id: <20260109-gpio-charger-timer-v2-1-63fd1ba75830@liebherr.com>
+References: <20260109-gpio-charger-timer-v2-0-63fd1ba75830@liebherr.com>
+In-Reply-To: <20260109-gpio-charger-timer-v2-0-63fd1ba75830@liebherr.com>
 To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
@@ -20,11 +17,11 @@ Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org,
  Sebastian Reichel <sebastian.reichel@collabora.com>, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1767984085; l=1100;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1767984085; l=1476;
  i=dimitri.fedrau@liebherr.com; s=20241202; h=from:subject:message-id;
- bh=AkWfGMy7CoxX8lwk4ACgbZ8DU1m/o9H1ps5R6pef5iM=;
- b=0WZEp5rREGLi0PqgpPQAQIExjUN2H3LCmNO4sF++IuDli6gLvq2S5z2jpBBOWzPsjiaqJFJkU
- IYpeNHC/qWFAj1OBl8irj0LAwC6aSTmn09YQcHzJf5iy68IoZ7vL8LM
+ bh=iQZT3H4QbthJR7XgNMzV+OsM4tGWzdI0GFJQLgU7bk0=;
+ b=h2gn5xZzegIl21uvYWmVePlzgBTuKD2naV0Sr/uFrdXzN4B+309QaSQ889ueNXPoAGKHAyiBO
+ IfKjd3NpF0iBHEQpmw9dPofr0c/+BYec4aytaD4xHd7SmqmQaXOig4X
 X-Developer-Key: i=dimitri.fedrau@liebherr.com; a=ed25519;
  pk=rT653x09JSQvotxIqQl4/XiI4AOiBZrdOGvxDUbb5m8=
 X-Endpoint-Received: by B4 Relay for dimitri.fedrau@liebherr.com/20241202 with auth_id=290
@@ -32,29 +29,36 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 On some devices like TIs BQ24081 battery charger it is possible to activate
 or deactivate a fast-charge timer that provides a backup safety for charge
-termination. In case of the BQ24081 it is a fixed 7-hour timer. Add support
-for enabling/disabling the fast-charge timer via GPIO.
+termination via GPIO. In case of the BQ24081 it is a fixed 7-hour timer.
 
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Dimitri Fedrau <dimitri.fedrau@liebherr.com>
 ---
-Changes in v2:
-- Added Acked-by tag
-- Link to v1: https://lore.kernel.org/r/20251022-gpio-charger-timer-v1-0-b557409400f2@liebherr.com
+ Documentation/devicetree/bindings/power/supply/gpio-charger.yaml | 5 +++++
+ 1 file changed, 5 insertions(+)
 
----
-Dimitri Fedrau (2):
-      dt-bindings: power: supply: gpio-charger: add support for fast-charge timer
-      power: supply: gpio-charger: add support for fast-charge timer
+diff --git a/Documentation/devicetree/bindings/power/supply/gpio-charger.yaml b/Documentation/devicetree/bindings/power/supply/gpio-charger.yaml
+index 25826bfc289c1c00c338fd0cee2ae6932529cfc3..0edacc104186497118d4ba41f80947009a9aacf6 100644
+--- a/Documentation/devicetree/bindings/power/supply/gpio-charger.yaml
++++ b/Documentation/devicetree/bindings/power/supply/gpio-charger.yaml
+@@ -62,6 +62,10 @@ properties:
+     description: Default charge current limit. Must be listed in
+       charge-current-limit-mapping.
+ 
++  fast-charge-timer-gpios:
++    maxItems: 1
++    description: GPIO used for enabling/disabling the fast-charge timer
++
+ required:
+   - compatible
+ 
+@@ -97,4 +101,5 @@ examples:
+                                      <700000 0x01>, // 700 mA => GPIO A.12 high
+                                      <0 0x02>; // 0 mA => GPIO A.11 high
+       charge-current-limit-default-microamp = <700000>;
++      fast-charge-timer-gpios = <&gpioA 13 GPIO_ACTIVE_LOW>;
+     };
 
- .../ABI/testing/sysfs-class-power-gpio-charger     | 10 ++++++
- .../bindings/power/supply/gpio-charger.yaml        |  5 +++
- drivers/power/supply/gpio-charger.c                | 39 ++++++++++++++++++++++
- 3 files changed, 54 insertions(+)
----
-base-commit: 8f0b4cce4481fb22653697cced8d0d04027cb1e8
-change-id: 20251022-gpio-charger-timer-cddae1619714
-
-Best regards,
 -- 
-Dimitri Fedrau <dimitri.fedrau@liebherr.com>
+2.39.5
 
