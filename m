@@ -1,194 +1,212 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Sat, 10 Jan 2026 00:10:32 +0100
-Subject: [PATCH next v2] board: amediatech: Add X96Q support
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH v3 00/14] Add support for handling PCIe M.2 Key E
+ connectors in devicetree
+Date: Sat, 10 Jan 2026 12:26:18 +0530
+Message-Id: <20260110-pci-m2-e-v3-0-4faee7d0d5ae@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260110-x96q-v2-1-1d6a725eb825@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAOeKYWkC/1XMSw7CIBAG4Ks0sxbDQKTFVe9hXEg7WDZQgRBMw
- 90l3bn8H/kOSBQdJbgPB0QqLrngexCXAZbt5d/E3NozCC5uKCSyqtWHaT0tKEdFxljo1z2SdfV
- kHuCpZnj2dnMph/g97YLn9s8UZMgkqnXk0kyWy3kPKVO4eupCa+0HQq0tv58AAAA=
-X-Change-ID: 20251231-x96q-998c1376ebbf
-To: u-boot@lists.denx.de
-Cc: Tom Rini <trini@konsulko.com>, Svyatoslav Ryhel <clamor95@gmail.com>, 
- Leo Yu-Chi Liang <ycliang@andestech.com>, Peter Geis <pgwipeout@gmail.com>, 
- Lukasz Majewski <lukma@denx.de>, Junhui Liu <junhui.liu@pigmoral.tech>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Andre Przywara <andre.przywara@arm.com>, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIABL4YWkC/22PzY7CMAyEX6XKGVeNm6Q/J94DcQipWSJRCnGJd
+ oV493XLBe1ysTSW5/PMQzGlSKz64qES5chxuoioN4UKJ3/5IoiDaIUVWq01wjVEGBEIOuM660M
+ 3ONsoOb8mOsbvFbXbiz5Fnqf0s5KzXrYfIFlDBV1jdD24w7FFs52Yy9vdn8M0jqUMtbAyvvnRv
+ vlR/DW26AaqmhDsB//zFS7R7S715ldCNRKzX+v1xV9uroUaLLaVQU/eNP+pwjx4JlgWce6L7Er
+ dQgpa/j1/ATUWXx5WAQAA
+X-Change-ID: 20251112-pci-m2-e-94695ac9d657
+To: Rob Herring <robh@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, Nathan Chancellor <nathan@kernel.org>, 
+ Nicolas Schier <nicolas.schier@linux.dev>, Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Mark Pearson <mpearson-lenovo@squebb.ca>, 
+ "Derek J. Clark" <derekjohn.clark@gmail.com>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Marcel Holtmann <marcel@holtmann.org>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ Daniel Scally <djrscally@gmail.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>
+Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-kbuild@vger.kernel.org, platform-driver-x86@vger.kernel.org, 
+ linux-pci@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, linux-bluetooth@vger.kernel.org, 
+ linux-pm@vger.kernel.org, Stephan Gerhold <stephan.gerhold@linaro.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ linux-acpi@vger.kernel.org, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Bartosz Golaszewski <bartosz.golaszewski@linaro.org>, 
+ Sui Jingfeng <sui.jingfeng@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768000246; l=4812;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=lwxA+pVpi1zVG1Z9trQLk9vTs+/3l5841fsJtjOQVsQ=;
- b=qqzQucuPNH5WCSrk01ybLOzckSH/h1/5QVsfPLdyD8JO4A68XSdwpGZ2P+TUEnGV0cNE8Sq7O
- oI5YkEijzo3ARbxvkUUoaJvOp6KJad1FLTuuZZCllxppfRXVUEfe1kV
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=openpgp-sha256; l=7267;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=/lmr5R1V4hK43zv0BnO4dkyfmN+kPBiDyJMM/7lu7/A=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpYfg3x6ypVlkBQJwmswe2FXMz7G7MGJ1fDpFln
+ 1pFCH7X1TiJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWH4NwAKCRBVnxHm/pHO
+ 9VtWB/4naD0ChYSkykbh0J0iwlyz5udE3fk8jhSBChLmrtWJLfi2jntQOHRi08EqMhbLvTqMzpK
+ GZiH2UeTTs3vUPilgQewA7LdK4uJjupNGeGx5LI8gHj63Zxdu46vl/Vi8M+nrTsQQ9gVVzKrsxL
+ NZIVGd1NblOCf7qa0p8xiHJ02fVWISndBgUoEKABCZZ3Ifqw+skTjEvnDNt+d5hM8rQI0ffeaZT
+ xarDVP5JWAd2lcnzo1k5bMZkjIt7ZB2mVVyQbPG8zyIiDbS3vnH/opbGo2m9EOohLQshlR7CiJ5
+ nVT1ILMw5/wPBTf7ocB+WrgoZKbn8PngWEGplUdTj7df/liT
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The X96Q is a set-top box with an H313 SoC, AXP305 PMIC, 1 or 2 GiB RAM,
-8 or 16 GiB eMMC flash, 2x USB A, Micro-SD, HDMI, Ethernet, audio/video
-output, and infrared input.
+Hi,
 
-  https://x96mini.com/products/x96q-tv-box-android-10-set-top-box
+This series is the continuation of the series [1] that added the initial support
+for the PCIe M.2 connectors. This series extends it by adding support for Key E
+connectors. These connectors are used to connect the Wireless Connectivity
+devices such as WiFi, BT, NFC and GNSS devices to the host machine over
+interfaces such as PCIe/SDIO, USB/UART and NFC. This series adds support for
+connectors that expose PCIe interface for WiFi and UART interface for BT. Other
+interfaces are left for future improvements.
 
-This commit adds a defconfig and some documentation. The devicetree is
-already in dts/upstream.
+Serdev device support for BT
+============================
 
-The CONFIG_DRAM_SUNXI_* settings are chosen such that the register
-values in the DRAM PHY's MMIO space are as close as possible to those
-observed when booting with the preinstalled vendor U-Boot. The DRAM
-clock frequency of 600 MHz was reported in the vendor U-Boot's output.
+Adding support for the PCIe interface was mostly straightforward and a lot
+similar to the previous Key M connector. But adding UART interface has proved to
+be tricky. This is mostly because of the fact UART is a non-discoverable bus,
+unlike PCIe which is discoverable. So this series relied on the PCI notifier to
+create the serdev device for UART/BT. This means the PCIe interface will be
+brought up first and after the PCIe device enumeration, the serdev device will
+be created by the pwrseq driver. This logic is necessary since the connector
+driver and DT node don't describe the device, but just the connector. So to make
+the connector interface Plug and Play, the connector driver uses the PCIe device
+ID to identify the card and creates the serdev device. This logic could be
+extended in the future to support more M.2 cards. Even if the M.2 card uses SDIO
+interface for connecting WLAN, a SDIO notifier could be added to create the
+serdev device.
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Open questions
+==============
+
+Though this series adds the relevant functionality for handling the M.2 Key M
+connectors, there are still a few open questions exists on the design. 
+
+1. I've used the DT compatible for the serdev swnode to match the existing OF
+device_id of the bluetooth driver. This avoids implementing custom serdev id
+matching as implemented till v2.
+
+2. PCIe client drivers of some M.2 WLAN cards like the Qcom QCA6390, rely on
+the PCIe device DT node to extract properties such as
+'qcom,calibration-variant', 'firmware-name', etc... For those drivers, should we
+add the PCIe DT node in the Root Port in conjunction with the Port node as
+below?
+
+pcie@0 {
+	wifi@0 {
+		compatible = "pci17cb,1103";
+		...
+		qcom,calibration-variant = "LE_X13S";
+	};
+
+	port {
+		pcie4_port0_ep: endpoint {
+			remote-endpoint = <&m2_e_pcie_ep>;
+		};
+	};
+};
+
+This will also require marking the PMU supplies optional in the relevant ath
+bindings for M.2 cards.
+
+3. Some M.2 cards require specific power up sequence like delays between
+regulator/GPIO and such. For instance, the WCN7850 card supported in this series
+requires 50ms delay between powering up an interface and driving it. I've just
+hardcoded the delay in the driver, but it is a pure hack. Since the pwrseq
+driver doesn't know anything about the device it is dealing with before powering
+it ON, how should it handle the device specific power requirements? Should we
+hardcode the device specific property in the connector node? But then, it will
+no longer become a generic M.2 connector and sort of defeats the purpose of the
+connector binding.
+
+I hope to address these questions with the help of the relevant subsystem
+maintainers and the community. 
+
+Testing
+=======
+
+This series, together with the devicetree changes [2] was tested on the
+Qualcomm X1e based Lenovo Thinkpad T14s Laptop which has the WCN7850 WLAN/BT
+1620 LGA card connected over PCIe and UART.
+
+Dependency
+==========
+
+This series is dependent on the M.2 Key M series [1] on top of v6.19-rc1.
+
+[1] https://lore.kernel.org/linux-pci/20260107-pci-m2-v5-0-8173d8a72641@oss.qualcomm.com
+[2] https://github.com/Mani-Sadhasivam/linux/commit/753033861360171f2af1fdd56e8985ff916e1ac2
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
+Changes in v3:
+- Switched to swnode for the serdev device and dropped the custom
+  serdev_device_id related patches
+- Added new swnode APIs to match the swnode with existing of_device_id
+- Incorporated comments in the bindings patch
+- Dropped the UIM interface from binding since it is not clear how it should get
+  wired
+- Incorporated comments in the pwrseq driver patch
+- Splitted the pwrseq patch into two
+- Added the 1620 LGA compatible with Key E fallback based on Stephan's finding
+- Link to v2: https://lore.kernel.org/r/20251125-pci-m2-e-v2-0-32826de07cc5@oss.qualcomm.com
+
 Changes in v2:
-- Add missing Signed-off-by
-- Re-generate x96q_defconfig with 'make savedefconfig'
-- Move DRAM frequency comment to commit message
-- Use GPL-2.0-or-later instead of deprecated GPL-2.0+
-- Link to v1: https://lore.kernel.org/r/20251231-x96q-v1-1-316d703b8f03@posteo.net
----
- configs/x96q_defconfig         | 31 +++++++++++++++++++++++
- doc/board/amediatech/index.rst |  9 +++++++
- doc/board/amediatech/x96q.rst  | 57 ++++++++++++++++++++++++++++++++++++++++++
- doc/board/index.rst            |  1 +
- 4 files changed, 98 insertions(+)
-
-diff --git a/configs/x96q_defconfig b/configs/x96q_defconfig
-new file mode 100644
-index 00000000000..b74a1b61f3c
---- /dev/null
-+++ b/configs/x96q_defconfig
-@@ -0,0 +1,31 @@
-+CONFIG_ARM=y
-+CONFIG_ARCH_SUNXI=y
-+CONFIG_DEFAULT_DEVICE_TREE="allwinner/sun50i-h313-x96q"
-+CONFIG_DRAM_CLK=600
-+CONFIG_SPL=y
-+CONFIG_DRAM_SUNXI_DX_ODT=0x03030303
-+CONFIG_DRAM_SUNXI_DX_DRI=0x0e0e0e0e
-+CONFIG_DRAM_SUNXI_CA_DRI=0x1f12
-+CONFIG_DRAM_SUNXI_TPR0=0xc0001002
-+CONFIG_DRAM_SUNXI_TPR2=0x00000100
-+CONFIG_DRAM_SUNXI_TPR10=0x002f0107
-+CONFIG_DRAM_SUNXI_TPR11=0xddddcccc
-+CONFIG_DRAM_SUNXI_TPR12=0xeddc7665
-+CONFIG_MACH_SUN50I_H616=y
-+CONFIG_SUNXI_DRAM_H616_DDR3_1333=y
-+CONFIG_R_I2C_ENABLE=y
-+# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
-+CONFIG_FIT_BEST_MATCH=y
-+CONFIG_SPL_I2C=y
-+CONFIG_CMD_UFETCH=y
-+CONFIG_CMD_CAT=y
-+CONFIG_SPL_SYS_I2C_LEGACY=y
-+CONFIG_SYS_I2C_MVTWSI=y
-+CONFIG_SYS_I2C_SLAVE=0x7f
-+CONFIG_SYS_I2C_SPEED=400000
-+CONFIG_SUPPORT_EMMC_BOOT=y
-+CONFIG_SUN8I_EMAC=y
-+CONFIG_AXP305_POWER=y
-+CONFIG_USB_EHCI_HCD=y
-+CONFIG_USB_OHCI_HCD=y
-+CONFIG_SPL_USE_TINY_PRINTF_POINTER_SUPPORT=y
-diff --git a/doc/board/amediatech/index.rst b/doc/board/amediatech/index.rst
-new file mode 100644
-index 00000000000..fd0241e3459
---- /dev/null
-+++ b/doc/board/amediatech/index.rst
-@@ -0,0 +1,9 @@
-+.. SPDX-License-Identifier: GPL-2.0-or-later
-+
-+Amediatech
-+==========
-+
-+.. toctree::
-+   :maxdepth: 2
-+
-+   x96q
-diff --git a/doc/board/amediatech/x96q.rst b/doc/board/amediatech/x96q.rst
-new file mode 100644
-index 00000000000..f220b7005b2
---- /dev/null
-+++ b/doc/board/amediatech/x96q.rst
-@@ -0,0 +1,57 @@
-+.. SPDX-License-Identifier: GPL-2.0-or-later
-+
-+U-Boot for the Amediatech X96Q set-top box
-+==========================================
-+
-+Quick Start
-+-----------
-+
-+- Get and Build the ARM Trusted Firmware (TF-A)
-+- Build U-Boot
-+- Write U-Boot to a microSD card
-+- Boot
-+
-+Get and Build the ARM Trusted Firmware (TF-A)
-+---------------------------------------------
-+
-+.. code-block:: bash
-+
-+    $ echo "Downloading and building TF-A..."
-+    $ git clone https://git.trustedfirmware.org/TF-A/trusted-firmware-a.git
-+    $ cd trusted-firmware-a
-+
-+Then build TF-A:
-+
-+.. code-block:: bash
-+
-+    $ export CROSS_COMPILE=aarch64-linux-gnu-
-+    $ make PLAT=sun50i_h616 bl31
-+    $ cp build/sun50i_h616/release/bl31.bin ../
-+
-+Build U-Boot
-+------------
-+
-+.. code-block:: bash
-+
-+    $ export CROSS_COMPILE=aarch64-none-elf-
-+    $ make x96q_defconfig
-+    $ make
-+
-+After the build succeeds, you will obtain the final ``u-boot-sunxi-with-spl.bin``
-+image, which you can then write to a microSD card.
-+
-+Write U-Boot to a microSD card
-+------------------------------
-+
-+You can then flash U-Boot to the microSD card (replace ``/dev/sdX`` with the
-+card's device file):
-+
-+.. code-block:: bash
-+
-+    $ dd if=u-boot-sunxi-with-spl.bin of=/dev/sdX bs=8k seek=1
-+
-+Boot
-+----
-+
-+When the X96Q is booted with the prepared microSD card inserted, it should boot
-+into the freshly installed U-Boot.
-diff --git a/doc/board/index.rst b/doc/board/index.rst
-index 7870f1bc246..767e1831912 100644
---- a/doc/board/index.rst
-+++ b/doc/board/index.rst
-@@ -9,6 +9,7 @@ Board-specific doc
-    acer/index
-    actions/index
-    advantech/index
-+   amediatech/index
-    andestech/index
-    allwinner/index
-    amlogic/index
+- Used '-' for GPIO names in the binding and removed led*-gpios properties
+- Described the endpoint nodes for port@0 and port@1 nodes
+- Added the OF graph port to the serial binding
+- Fixed the hci_qca driver to return err if devm_pwrseq_get() fails
+- Incorporated various review comments in pwrseq driver
+- Collected Ack
+- Link to v1: https://lore.kernel.org/r/20251112-pci-m2-e-v1-0-97413d6bf824@oss.qualcomm.com
 
 ---
-base-commit: 6cdd7597a2fbfc1572c1b0af23d3daf1cefa2de7
-change-id: 20251231-x96q-998c1376ebbf
+Manivannan Sadhasivam (13):
+      serdev: Convert to_serdev_*() helpers to macros and use container_of_const()
+      serdev: Add an API to find the serdev controller associated with the devicetree node
+      software node: Add software_node_match_device() API
+      software node: Add software_node_device_uevent() API
+      software node: Add software_node_device_modalias() API
+      serdev: Do not return -ENODEV from of_serdev_register_devices() if external connector is used
+      serdev: Add support for swnode based driver matching and uevent/modalias
+      dt-bindings: serial: Document the graph port
+      dt-bindings: connector: Add PCIe M.2 Mechanical Key E connector
+      dt-bindings: connector: m2: Add M.2 1620 LGA soldered down connector
+      Bluetooth: hci_qca: Add M.2 Bluetooth device support using pwrseq
+      power: sequencing: pcie-m2: Add support for PCIe M.2 Key E connectors
+      power: sequencing: pcie-m2: Create serdev device for WCN7850 bluetooth
+
+Sui Jingfeng (1):
+      software node: Implement device_get_match_data fwnode callback
+
+ .../bindings/connector/pcie-m2-e-connector.yaml    | 161 ++++++++++++++
+ .../devicetree/bindings/serial/serial.yaml         |   3 +
+ MAINTAINERS                                        |   1 +
+ drivers/base/swnode.c                              |  71 +++++++
+ drivers/bluetooth/hci_qca.c                        |   9 +
+ drivers/power/sequencing/Kconfig                   |   1 +
+ drivers/power/sequencing/pwrseq-pcie-m2.c          | 234 ++++++++++++++++++++-
+ drivers/tty/serdev/core.c                          |  45 +++-
+ include/linux/property.h                           |   5 +
+ include/linux/serdev.h                             |  24 +--
+ 10 files changed, 528 insertions(+), 26 deletions(-)
+---
+base-commit: cb6649f6217c0331b885cf787f1d175963e2a1d2
+change-id: 20251112-pci-m2-e-94695ac9d657
+prerequisite-message-id: 20251125-pci-m2-v3-0-c528042aea47@oss.qualcomm.com
+prerequisite-patch-id: 58778d8eb97ab86008cd48fb5d28ed6cc0bbbc1b
+prerequisite-patch-id: 2dd7d793a67f59ef6e6b5137e69436896198b965
+prerequisite-patch-id: 8ccaa5fdd95e64e69cd942f93c26e89b827d0453
+prerequisite-patch-id: 3d3e1bb7959ab1e140c5024acdd8655e7a7e99ef
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
