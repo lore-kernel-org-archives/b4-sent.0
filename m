@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Sat, 10 Jan 2026 12:26:23 +0530
-Subject: [PATCH v3 05/14] software node: Add software_node_device_uevent()
- API
+Date: Sat, 10 Jan 2026 12:26:24 +0530
+Subject: [PATCH v3 06/14] software node: Add
+ software_node_device_modalias() API
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260110-pci-m2-e-v3-5-4faee7d0d5ae@oss.qualcomm.com>
+Message-Id: <20260110-pci-m2-e-v3-6-4faee7d0d5ae@oss.qualcomm.com>
 References: <20260110-pci-m2-e-v3-0-4faee7d0d5ae@oss.qualcomm.com>
 In-Reply-To: <20260110-pci-m2-e-v3-0-4faee7d0d5ae@oss.qualcomm.com>
 To: Rob Herring <robh@kernel.org>, 
@@ -35,24 +35,23 @@ Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-acpi@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1813;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1735;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=sTMShVrVQCSRXm+EW6kXtFuYXE2DwqSFk2YRZJf4cuQ=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpYfg9PRR1H3uAQByiIMRu/XB1zyrz9OoHeUCNf
- 4L6FFChmYqJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWH4PQAKCRBVnxHm/pHO
- 9XbCCACQfptQOyQpTiKUhc8vhSqZyCZasHVZYWlCas1Fbl7JQeB7Y9xLVrM9p7ww2gN0f5ke6rU
- HMNHCbyhG8i1RrkaTOXyPIPwEOa+WC7sDA12rKWniG7VO5Rlxd314tcUt8FCuDlYaM6QEwUn10d
- 9isvFw3GqlHEV4Bk9UkZ+YT/ZYhMfKKeteJFF9fk5nMs3qWmjnQA0uUtD4WL6fE99ewKOYda+ll
- 7VbubsEx58qxgQgqv36e9bV1EQ6YqVRPxJdSQQt/V0dWC8VDZdrrCXNRRujzNtbMJqW9Sr9mYke
- xclfAySJhKwjECtCGvkF+aNwM/MXE+C3hzNX7BXrm/xtLTgq
+ bh=hP/S8Z4ct7CcIRG39KVjpY1137sEbkCLhENN+ADZYvc=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpYfg9uwIlLNwsjiWJEiqmMui2S6mjeDAmocoYD
+ B3oBp/UHmOJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWH4PQAKCRBVnxHm/pHO
+ 9ca0B/9SLAMwWT9XvwylsIVN2bRjxI8FjRSwSkLnEt/XBOa61mhgkOFI/IrWMtdGPHN3qdU6Uhm
+ FyudWgJPzcddwKwp3xY5Nf0NTofUzSrcI13Orctcjxc20nKl9mguMlbNmn3Q6kVicCWRFv6ujzY
+ qWvrG1yNtQxEuY4/utH4HWxT2Ex/n1vQ6yYlLmWLPgWTgMoEVju6T4Mckan2+45Wlth/ZbnwMHg
+ DyGfsZhr4dHiuKxmfEqtoy2KGbu+GL396UG2zue95hQuTFv1Mz56313B+GZxCeK5U3LAylTQTkI
+ TqfqNO5gRmqg4kvrK5cEFRJqaM2dQIESVnyvUOaEEvKdqkNz
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add software_node_device_uevent() API to return the uevent variable for
-swnode using the DT compatible property. The uevent will have the DT prefix
-of "of:N*T*C" to match the DT's module device table.
+Add software_node_device_modalias() API to return the MODALIAS string for
+swnode based on the swnode's compatible property.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
@@ -61,14 +60,14 @@ Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
  2 files changed, 14 insertions(+)
 
 diff --git a/drivers/base/swnode.c b/drivers/base/swnode.c
-index 4a3b367dea02..c33e09300e5f 100644
+index c33e09300e5f..a9fa19a27dc6 100644
 --- a/drivers/base/swnode.c
 +++ b/drivers/base/swnode.c
-@@ -388,6 +388,19 @@ bool software_node_match_device(struct device *dev, const struct device_driver *
+@@ -401,6 +401,19 @@ int software_node_device_uevent(const struct device *dev, struct kobj_uevent_env
  }
- EXPORT_SYMBOL_GPL(software_node_match_device);
+ EXPORT_SYMBOL_GPL(software_node_device_uevent);
  
-+int software_node_device_uevent(const struct device *dev, struct kobj_uevent_env *env)
++ssize_t software_node_device_modalias(struct device *dev, char *str, ssize_t len)
 +{
 +	const char *compatible;
 +	int ret;
@@ -77,22 +76,22 @@ index 4a3b367dea02..c33e09300e5f 100644
 +	if (ret)
 +		return ret;
 +
-+	return add_uevent_var(env, "MODALIAS=of:N*T*C%s", compatible);
++	return sysfs_emit(str, "%s\n", compatible);
 +}
-+EXPORT_SYMBOL_GPL(software_node_device_uevent);
++EXPORT_SYMBOL_GPL(software_node_device_modalias);
 +
  /* -------------------------------------------------------------------------- */
  /* fwnode operations */
  
 diff --git a/include/linux/property.h b/include/linux/property.h
-index 7fe75ab732f6..14f85fd66bfc 100644
+index 14f85fd66bfc..94ea02ae1675 100644
 --- a/include/linux/property.h
 +++ b/include/linux/property.h
-@@ -599,6 +599,7 @@ int software_node_register(const struct software_node *node);
- void software_node_unregister(const struct software_node *node);
+@@ -600,6 +600,7 @@ void software_node_unregister(const struct software_node *node);
  
  bool software_node_match_device(struct device *dev, const struct device_driver *drv);
-+int software_node_device_uevent(const struct device *dev, struct kobj_uevent_env *env);
+ int software_node_device_uevent(const struct device *dev, struct kobj_uevent_env *env);
++ssize_t software_node_device_modalias(struct device *dev, char *str, ssize_t len);
  
  struct fwnode_handle *
  fwnode_create_software_node(const struct property_entry *properties,
