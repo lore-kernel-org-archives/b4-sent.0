@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Sat, 10 Jan 2026 12:26:20 +0530
-Subject: [PATCH v3 02/14] serdev: Add an API to find the serdev controller
- associated with the devicetree node
+Date: Sat, 10 Jan 2026 12:26:21 +0530
+Subject: [PATCH v3 03/14] software node: Implement device_get_match_data
+ fwnode callback
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260110-pci-m2-e-v3-2-4faee7d0d5ae@oss.qualcomm.com>
+Message-Id: <20260110-pci-m2-e-v3-3-4faee7d0d5ae@oss.qualcomm.com>
 References: <20260110-pci-m2-e-v3-0-4faee7d0d5ae@oss.qualcomm.com>
 In-Reply-To: <20260110-pci-m2-e-v3-0-4faee7d0d5ae@oss.qualcomm.com>
 To: Rob Herring <robh@kernel.org>, 
@@ -33,77 +33,102 @@ Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-pm@vger.kernel.org, Stephan Gerhold <stephan.gerhold@linaro.org>, 
  Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
  linux-acpi@vger.kernel.org, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Sui Jingfeng <sui.jingfeng@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1955;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2751;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=J1VmrZOJOQw4R6fDrVVe/0GgAe/UzN5xgoimqww9n5Q=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpYfg9QM8A+1VPvL0rKXJiMoRco+nmRGnRevYTT
- du98tgz4V6JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWH4PQAKCRBVnxHm/pHO
- 9U4FCACCxwOFdIfnKu6XwNfbf0DiMLVwnYANlCMmV8YvO8SM6DWM4q+V0auY68FxCxuZBxMAe6A
- y0wdrMcHA4K12q9KSo5OSvK/JVNhSpQ/BtaA2R3cXVMUuTHqkUVQ/EcHThO437kVeHdv60pAr8o
- /Die73XV8o5rvAG2v6Xxa6ivG8hZljucsJXIKaelDwWPM2tiBe3Y10ihUScbh/YLO3TeMCrapfZ
- IARiXJ+jEF4w43ZUFpBhI0aVDvpAlzUEtw58HrUdCasviZYFRcEwEnnHjpr4tERJ2K1clRabAha
- KOv17NjtUG3BGUHV4DPQ63wcEkX8Um5PNMffDNYtNlk7owbS
+ bh=F4x+figNtDXQ6BLWQUSdqEh/6YP1l/9oLa5mqDRbEME=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpYfg92szPUWg0M5Z43p+tA6xqrl3Xl+TIDuuuW
+ XT09vq7oMyJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWH4PQAKCRBVnxHm/pHO
+ 9Ra+B/9a2vNsci/y7Vpukgq08GScntUk3yAHclypYGi2q/5MqocsLJbX2OW+UJ7m09cC9mwWHW9
+ AjiVY6ee45aGahT2qvrBUDo8pfqzMgj+XDXR58kY0HeUsdYN2VxhlgdgSbPt8dwbIJRKt01iSbg
+ 6D8jlu6wA6SRpswVZrY+8QCxMfOiylv388qf0ymdwhNz3UDkdbMDKfrHhHOPwXYyf2CMW/2RTCt
+ eVEDd1fcPULjtiOFhKCS0TH9F2L7Fb+nr+ID2XL+RS5IhX773uIyZ+tcRsibmv/iazQy41ImfM1
+ SUX0ODTN1m2oiueF2rjUeQgUgz8KGWouTV7w9qbBynZj1YKu
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add of_find_serdev_controller_by_node() API to find the serdev controller
-device associated with the devicetree node.
+From: Sui Jingfeng <sui.jingfeng@linux.dev>
 
+Because the software node backend of the fwnode API framework lacks an
+implementation for the .device_get_match_data function callback. This
+makes it difficult to use(and/or test) a few drivers that originates
+from DT world on the non-DT platform.
+
+Implement the .device_get_match_data fwnode callback, which helps to keep
+the three backends of the fwnode API aligned as much as possible. This is
+also a fundamental step to make a few drivers OF-independent truely
+possible.
+
+Device drivers or platform setup codes are expected to provide a software
+node string property, named as "compatible". At this moment, the value of
+this string property is being used to match against the compatible entries
+in the of_device_id table. It can be extended in the future though.
+
+Signed-off-by: Sui Jingfeng <sui.jingfeng@linux.dev>
+[mani: removed fixes tag]
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/tty/serdev/core.c | 16 ++++++++++++++++
- include/linux/serdev.h    |  9 +++++++++
- 2 files changed, 25 insertions(+)
+ drivers/base/swnode.c | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
 
-diff --git a/drivers/tty/serdev/core.c b/drivers/tty/serdev/core.c
-index b33e708cb245..25382c2d63e6 100644
---- a/drivers/tty/serdev/core.c
-+++ b/drivers/tty/serdev/core.c
-@@ -504,6 +504,22 @@ struct serdev_controller *serdev_controller_alloc(struct device *host,
+diff --git a/drivers/base/swnode.c b/drivers/base/swnode.c
+index 16a8301c25d6..cd722712b8e9 100644
+--- a/drivers/base/swnode.c
++++ b/drivers/base/swnode.c
+@@ -15,6 +15,7 @@
+ #include <linux/kobject.h>
+ #include <linux/kstrtox.h>
+ #include <linux/list.h>
++#include <linux/mod_devicetable.h>
+ #include <linux/property.h>
+ #include <linux/slab.h>
+ #include <linux/spinlock.h>
+@@ -390,6 +391,33 @@ static void software_node_put(struct fwnode_handle *fwnode)
+ 	kobject_put(&swnode->kobj);
  }
- EXPORT_SYMBOL_GPL(serdev_controller_alloc);
  
-+/**
-+ * of_find_serdev_controller_by_node() - Find the serdev controller associated
-+ *					 with the devicetree node
-+ * @node:	Devicetree node
-+ *
-+ * Return: Pointer to the serdev controller associated with the node. NULL if
-+ * the controller is not found.
-+ */
-+struct serdev_controller *of_find_serdev_controller_by_node(struct device_node *node)
++static const void *
++software_node_get_match_data(const struct fwnode_handle *fwnode,
++			     const struct device *dev)
 +{
-+	struct device *dev = bus_find_device_by_of_node(&serdev_bus_type, node);
++	struct swnode *swnode = to_swnode(fwnode);
++	const struct of_device_id *matches = dev->driver->of_match_table;
++	const char *val = NULL;
++	int ret;
 +
-+	return (dev && dev->type == &serdev_ctrl_type) ? to_serdev_controller(dev) : NULL;
-+}
-+EXPORT_SYMBOL_GPL(of_find_serdev_controller_by_node);
++	ret = property_entry_read_string_array(swnode->node->properties,
++					       "compatible", &val, 1);
++	if (ret < 0 || !val)
++		return NULL;
 +
- static int of_serdev_register_devices(struct serdev_controller *ctrl)
- {
- 	struct device_node *node;
-diff --git a/include/linux/serdev.h b/include/linux/serdev.h
-index ecde0ad3e248..db9bfaba0662 100644
---- a/include/linux/serdev.h
-+++ b/include/linux/serdev.h
-@@ -333,4 +333,13 @@ static inline bool serdev_acpi_get_uart_resource(struct acpi_resource *ares,
- }
- #endif /* CONFIG_ACPI */
- 
-+#ifdef CONFIG_OF
-+struct serdev_controller *of_find_serdev_controller_by_node(struct device_node *node);
-+#else
-+struct serdev_controller *of_find_serdev_controller_by_node(struct device_node *node)
-+{
++	if (!matches)
++		return NULL;
++
++	while (matches->compatible[0]) {
++		if (!strcmp(matches->compatible, val))
++			return matches->data;
++
++		++matches;
++	}
++
 +	return NULL;
 +}
-+#endif /* CONFIG_OF */
 +
- #endif /*_LINUX_SERDEV_H */
+ static bool software_node_property_present(const struct fwnode_handle *fwnode,
+ 					   const char *propname)
+ {
+@@ -694,6 +722,7 @@ software_node_graph_parse_endpoint(const struct fwnode_handle *fwnode,
+ static const struct fwnode_operations software_node_ops = {
+ 	.get = software_node_get,
+ 	.put = software_node_put,
++	.device_get_match_data = software_node_get_match_data,
+ 	.property_present = software_node_property_present,
+ 	.property_read_bool = software_node_property_present,
+ 	.property_read_int_array = software_node_read_int_array,
 
 -- 
 2.48.1
