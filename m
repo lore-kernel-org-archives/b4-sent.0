@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Sat, 10 Jan 2026 12:26:29 +0530
-Subject: [PATCH v3 11/14] dt-bindings: connector: m2: Add M.2 1620 LGA
- soldered down connector
+Date: Sat, 10 Jan 2026 12:26:30 +0530
+Subject: [PATCH v3 12/14] Bluetooth: hci_qca: Add M.2 Bluetooth device
+ support using pwrseq
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260110-pci-m2-e-v3-11-4faee7d0d5ae@oss.qualcomm.com>
+Message-Id: <20260110-pci-m2-e-v3-12-4faee7d0d5ae@oss.qualcomm.com>
 References: <20260110-pci-m2-e-v3-0-4faee7d0d5ae@oss.qualcomm.com>
 In-Reply-To: <20260110-pci-m2-e-v3-0-4faee7d0d5ae@oss.qualcomm.com>
 To: Rob Herring <robh@kernel.org>, 
@@ -35,52 +35,59 @@ Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-acpi@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1302;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1456;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=RWekJdEKdic9EZu4rQGv0fBKORumjbEDCuN8SBTLMc4=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpYfg+TRCoMWdJ2WYv0cU3v57JOA3eOkhRvc9NM
- QkwIwf2HymJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWH4PgAKCRBVnxHm/pHO
- 9bSxCACn3aeHjikwTH34ED8GMiwZYePyUD6dpLxapg7iDk895cVBZ1IZOGZcvaOvrNc+F1Koz76
- PsxffieAiZaRoIL3PpDMyaQ49vZ+W/mecd7Q9MmnEPWcU7PF45xDGYGwcU9173vd6GbHICVxJ7a
- SHWSjXXiP8m3Jmu53tOznAuVAz2qfsbzn0TS3YlhlGRHhi96AmM2hux0doiV1dd0iF40NAEYwXd
- +n+dmeVZ2v8xXKF0GOHEzBlhU64ECcqKroJegmOdLcwwUdESsfpJS1GPP2IBN8jngvWuLIBasEn
- LSrsJ1XW1MpT922zo4+84wcVpbNDhq+/x0oz6xMM3qWWq2Y/
+ bh=0KqheeXO4Oi8QyG11TDbNEO023eYG3+bTSLkuoPEKb8=;
+ b=kA0DAAoBVZ8R5v6RzvUByyZiAGlh+D6gx1X1RntZ/K3yScUSxWdo5j4RadVoAdU1StMEGJj+n
+ YkBMwQAAQoAHRYhBGelQyqBSMvYpFgnl1WfEeb+kc71BQJpYfg+AAoJEFWfEeb+kc71mzUIAJKD
+ LOTvAaJoMZCbAEBRXhX0J+Cz3taMSKs4B7qN/TsxqpJVRl+LWaQOw+E9j1hqK3hQYAyWZDV48j5
+ NG9BdtI0REUp0PVJgnEZuOc37ZTr97/2ybJGi+qgPbpdMp7v7a+JfY7G3sT1p5CKlD5e0YTZpBo
+ X4QzA0Lry9bTVIZJMkbvxdTiUaUhDJONrzt/xZlidYiZ+6wOzzGAVgWmrbb00cEDP4FcqYexCHb
+ Q79eFCjTiTh+mNfyJTtyVtU8nb3sfkdPRjiU3Uxk9oMDoxVp0MLPqVj4CJlfxaogiGv0uonuVxj
+ EsRsjo86nq1xDPs0QI2omQWzootWm2f9IOEOoh8=
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Lenovo Thinkpad T14s is found to have a soldered down version of M.2 1620
-LGA connector. Though, there is no 1620 LGA form factor defined in the M.2
-spec, it looks very similar to the M.2 Key M connector. So add the
-"pcie-m2-1620-lga-connector" compatible with "pcie-m2-e-connector" fallback
-to reuse the Key M binding.
+Power supply to the M.2 Bluetooth device attached to the host using M.2
+connector is controlled using the 'uart' pwrseq device. So add support for
+getting the pwrseq device if the OF graph link is present. Once obtained,
+the existing pwrseq APIs can be used to control the power supplies of the
+M.2 card.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- .../devicetree/bindings/connector/pcie-m2-e-connector.yaml       | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ drivers/bluetooth/hci_qca.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/connector/pcie-m2-e-connector.yaml b/Documentation/devicetree/bindings/connector/pcie-m2-e-connector.yaml
-index b65b39ddfd19..9757fe92907b 100644
---- a/Documentation/devicetree/bindings/connector/pcie-m2-e-connector.yaml
-+++ b/Documentation/devicetree/bindings/connector/pcie-m2-e-connector.yaml
-@@ -17,7 +17,14 @@ description:
- 
- properties:
-   compatible:
--    const: pcie-m2-e-connector
-+    oneOf:
-+      - items:
-+          - enum:
-+              - pcie-m2-1620-lga-connector
-+          - const: pcie-m2-e-connector
-+      - items:
-+          - enum:
-+              - pcie-m2-e-connector
- 
-   vpcie3v3-supply:
-     description: A phandle to the regulator for 3.3v supply.
+diff --git a/drivers/bluetooth/hci_qca.c b/drivers/bluetooth/hci_qca.c
+index 888176b0faa9..4d562596ebf9 100644
+--- a/drivers/bluetooth/hci_qca.c
++++ b/drivers/bluetooth/hci_qca.c
+@@ -26,6 +26,7 @@
+ #include <linux/mod_devicetable.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
++#include <linux/of_graph.h>
+ #include <linux/acpi.h>
+ #include <linux/platform_device.h>
+ #include <linux/pwrseq/consumer.h>
+@@ -2384,6 +2385,14 @@ static int qca_serdev_probe(struct serdev_device *serdev)
+ 	case QCA_WCN6855:
+ 	case QCA_WCN7850:
+ 	case QCA_WCN6750:
++		if (of_graph_is_present(dev_of_node(&serdev->ctrl->dev))) {
++			qcadev->bt_power->pwrseq = devm_pwrseq_get(&serdev->ctrl->dev,
++								   "uart");
++			if (IS_ERR(qcadev->bt_power->pwrseq))
++				return PTR_ERR(qcadev->bt_power->pwrseq);
++			break;
++		}
++
+ 		if (!device_property_present(&serdev->dev, "enable-gpios")) {
+ 			/*
+ 			 * Backward compatibility with old DT sources. If the
 
 -- 
 2.48.1
