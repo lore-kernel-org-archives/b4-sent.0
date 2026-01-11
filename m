@@ -1,10 +1,11 @@
 From: Bharadwaj Raju <bharadwaj.raju@machinesoul.in>
-Date: Sun, 11 Jan 2026 15:40:30 +0530
-Subject: [PATCH 1/2] ASoC: codecs: aw88261: use dvdd-supply regulator
+Date: Sun, 11 Jan 2026 15:40:31 +0530
+Subject: [PATCH 2/2] ASoC: dt-bindings: document dvdd-supply property for
+ awinic,aw88261
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260111-aw88261-dvdd-v1-1-83fa0850d561@machinesoul.in>
+Message-Id: <20260111-aw88261-dvdd-v1-2-83fa0850d561@machinesoul.in>
 References: <20260111-aw88261-dvdd-v1-0-83fa0850d561@machinesoul.in>
 In-Reply-To: <20260111-aw88261-dvdd-v1-0-83fa0850d561@machinesoul.in>
 To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
@@ -17,46 +18,55 @@ Cc: Bhushan Shah <bhushan.shah@machinesoul.in>,
  linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
  devicetree@vger.kernel.org, Bharadwaj Raju <bharadwaj.raju@machinesoul.in>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768126255; l=992;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768126255; l=1176;
  i=bharadwaj.raju@machinesoul.in; s=20260111; h=from:subject:message-id;
- bh=xIr52IlUNDq+dta2pfCJcyJY6ZnUYlCMSdXp4Olf60M=;
- b=c1yMno2pfazzXCrs++QFgsrEiPgRWjMBn823hwA8g5YITANQ61vSxsKmiEK9oZuFnk+sBgohN
- F79ExVHv0h3DJ88wuzxAfddpBnKtU9x12W9FulbKM25UYH/N3Qm3ZrU
+ bh=RDAmH+QMhrAVsDQ6mEVR7s+ZXNuEnNjhhycIkqn6Zyc=;
+ b=6pKN71ol0pXW85NY7Z+0I7+rJ1buDQnXJXFuJgUKAv2GtFYc8dat5gxFKhN113JH5JQhqeX3W
+ 5m6GrzLOeB5B4Dvd4WYLplAGs2kVyivOjvgRz7q5nv7WzCDeZ+L6Jwo
 X-Developer-Key: i=bharadwaj.raju@machinesoul.in; a=ed25519;
  pk=0M1a+iMXDqasbx7bQL71NdtuutFXu+lVxsiSnEiyAIg=
 X-Endpoint-Received: by B4 Relay for bharadwaj.raju@machinesoul.in/20260111 with auth_id=598
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the dvdd regulator on startup.
+Add (and require) the dvdd-supply property for awinic,aw88261 in
+the awinic,aw88395.yaml binding.
 
 Signed-off-by: Bharadwaj Raju <bharadwaj.raju@machinesoul.in>
 ---
- sound/soc/codecs/aw88261.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ Documentation/devicetree/bindings/sound/awinic,aw88395.yaml | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-diff --git a/sound/soc/codecs/aw88261.c b/sound/soc/codecs/aw88261.c
-index 6bd6e7ffd1aa..9a2d167cf809 100644
---- a/sound/soc/codecs/aw88261.c
-+++ b/sound/soc/codecs/aw88261.c
-@@ -11,6 +11,7 @@
- #include <linux/i2c.h>
- #include <linux/firmware.h>
- #include <linux/regmap.h>
-+#include <linux/regulator/consumer.h>
- #include <sound/soc.h>
- #include "aw88261.h"
- #include "aw88395/aw88395_data_type.h"
-@@ -1295,6 +1296,10 @@ static int aw88261_init(struct aw88261 **aw88261, struct i2c_client *i2c, struct
- 	unsigned int chip_id;
- 	int ret;
+diff --git a/Documentation/devicetree/bindings/sound/awinic,aw88395.yaml b/Documentation/devicetree/bindings/sound/awinic,aw88395.yaml
+index bb92d6ca3144..994d68c074a9 100644
+--- a/Documentation/devicetree/bindings/sound/awinic,aw88395.yaml
++++ b/Documentation/devicetree/bindings/sound/awinic,aw88395.yaml
+@@ -33,6 +33,8 @@ properties:
+   reset-gpios:
+     maxItems: 1
  
-+	ret = devm_regulator_get_enable(&i2c->dev, "dvdd");
-+	if (ret)
-+		return dev_err_probe(&i2c->dev, ret, "Failed to enable dvdd supply\n");
++  dvdd-supply: true
 +
- 	/* read chip id */
- 	ret = regmap_read(regmap, AW88261_ID_REG, &chip_id);
- 	if (ret) {
+   awinic,audio-channel:
+     description:
+       It is used to distinguish multiple PA devices, so that different
+@@ -65,6 +67,17 @@ allOf:
+     then:
+       properties:
+         reset-gpios: false
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: awinic,aw88261
++    then:
++      required:
++        - dvdd-supply
++    else:
++      properties:
++        dvdd-supply: false
+ 
+ unevaluatedProperties: false
+ 
 
 -- 
 2.43.0
