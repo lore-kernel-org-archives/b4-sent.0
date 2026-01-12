@@ -1,54 +1,77 @@
-From: Yang Li <yang.li@amlogic.com>
-Date: Mon, 12 Jan 2026 14:42:11 +0800
-Subject: [PATCH BlueZ bluez] bap: reduce ISO sync timeout to 2s
+From: Hermes Wu <Hermes.wu@ite.com.tw>
+Date: Mon, 12 Jan 2026 14:47:07 +0800
+Subject: [PATCH] drm/bridge: it6505: disable HDCP retry when KSV list
+ timeout
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260112-iso_sync_timeout-v1-1-9a3e99259a3f@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAMKXZGkC/x3MQQqDMBBG4avIrBtIooh4lVJE468dqEnJqKjBu
- zd0+S3eSySIDKG2SBSxs3DwGeZRkHv3fobiMZustrU2xiqW0MnpXbfygrCtqkEJN1Xl2FhQzr4
- REx//5ZOGz4aLXvf9A0jW/fxpAAAA
-To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
-Cc: Yang Li <yang.li@amlogic.com>
-X-Mailer: b4 0.13-dev-f0463
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768200132; l=976;
- i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
- bh=y2BRDsP3/C+MiSJUsfUZeWSpftDfagbVB+7mlzikP/A=;
- b=r8OAJ2HTOV3R/+MHRLvk8Kwys7+swGAzL9Um4Pufeiw0zAd3SYb1bcLw2k97+C3zBWrvYO7oj
- nUCsLPZiZMYAhsBXx69n6bifRwv12NKpW3Ni9t8Sb/gzb0Ip+BPAuQI
-X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
- pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
-X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
+Message-Id: <20260112-disable-hdcp-auto-retry-v1-1-dc9217f08f7c@ite.com.tw>
+X-B4-Tracking: v=1; b=H4sIAOqYZGkC/x3MMQqAMAxA0atIZgNth6JeRRxiGzUgKqmKIt7d4
+ viG/x9IrMIJmuIB5VOSrEuGLQsIEy0jo8RscMZ5Y63DKIn6mXGKYUM69hWVd73RUxWNGXxProZ
+ cb8qDXP+57d73A4D9RE9pAAAA
+X-Change-ID: 20260112-disable-hdcp-auto-retry-6a8d00f6ba29
+To: Andrzej Hajda <andrzej.hajda@intel.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
+ Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
+ Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, treapking@chromium.org, 
+ dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Hermes Wu <Hermes.wu@ite.com.tw>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768200435; l=1553;
+ i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
+ bh=rCW3jddM8TQgyxZZEpHfDk8/Yn8r6UZLGkwB+J85M8A=;
+ b=7A7jap0TA1DohHAgYYmCcYl1NvpnYzSGNv+i1t3xfwhcNzW/K+OvbUDvCRlUdUPNYksWhPW6n
+ ku9ky5ji0efD3VRnbEgNU/W8mhV7rEfdjoyUPEQMYt+3f6A0E2XVlM+
+X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
+ pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
+X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The ISO sync timeout was previously set to 20 seconds,
-which is too long for PA sync. This could leave the userspace
-flow pending for an extended period of time.
+Some DP to HDMI converters fail to report KSV list within the 6-second
+HDCP window, causing the IT6505 to repeatedly restart authentication.
+This results in continuous flickering on the connected HDMI monitor.
 
-Signed-off-by: Yang Li <yang.li@amlogic.com>
+Disable automatic HDCP retry when KSV list timeout. This breaks the
+re-auth loop and significantly improves stability/user experience with
+problematic converters.
+
+Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- lib/bluetooth/bluetooth.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/gpu/drm/bridge/ite-it6505.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/lib/bluetooth/bluetooth.h b/lib/bluetooth/bluetooth.h
-index f9f22c3f7..572009e75 100644
---- a/lib/bluetooth/bluetooth.h
-+++ b/lib/bluetooth/bluetooth.h
-@@ -152,7 +152,7 @@ struct bt_voice {
- #define BT_ISO_QOS_BIG_UNSET	0xff
- #define BT_ISO_QOS_BIS_UNSET	0xff
+diff --git a/drivers/gpu/drm/bridge/ite-it6505.c b/drivers/gpu/drm/bridge/ite-it6505.c
+index a094803ba7aa4e12165fcde432d4e6417fbf3676..1c1e6b78fadbf29da00a68e26671ce5b54ee1557 100644
+--- a/drivers/gpu/drm/bridge/ite-it6505.c
++++ b/drivers/gpu/drm/bridge/ite-it6505.c
+@@ -2238,7 +2238,7 @@ static void it6505_hdcp_wait_ksv_list(struct work_struct *work)
+ 		return;
  
--#define BT_ISO_SYNC_TIMEOUT	0x07d0 /* 20 secs */
-+#define BT_ISO_SYNC_TIMEOUT	0x00c8 /* 2 secs */
+ timeout:
+-	it6505_start_hdcp(it6505);
++	it6505_stop_hdcp(it6505);
+ }
  
- /* For an ISO Broadcaster, this value is used to compute
-  * the desired Periodic Advertising Interval as a function
+ static void it6505_hdcp_work(struct work_struct *work)
+@@ -2596,7 +2596,7 @@ static void it6505_irq_hdcp_fail(struct it6505 *it6505)
+ 	DRM_DEV_DEBUG_DRIVER(dev, "hdcp fail interrupt");
+ 	it6505->hdcp_status = HDCP_AUTH_IDLE;
+ 	it6505_show_hdcp_info(it6505);
+-	it6505_start_hdcp(it6505);
++	it6505_stop_hdcp(it6505);
+ }
+ 
+ static void it6505_irq_aux_cmd_fail(struct it6505 *it6505)
 
 ---
-base-commit: a94f994201a69a36753abda65cc51937de9cd3e3
-change-id: 20260112-iso_sync_timeout-8e3ecf43d82e
+base-commit: 38feb171b3f92d77e8061fafb5ddfffc2c13b672
+change-id: 20260112-disable-hdcp-auto-retry-6a8d00f6ba29
 
 Best regards,
 -- 
-Yang Li <yang.li@amlogic.com>
+Hermes Wu <Hermes.wu@ite.com.tw>
 
