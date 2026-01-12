@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Mon, 12 Jan 2026 21:56:00 +0530
-Subject: [PATCH v4 1/9] serdev: Convert to_serdev_*() helpers to macros and
- use container_of_const()
+Date: Mon, 12 Jan 2026 21:56:01 +0530
+Subject: [PATCH v4 2/9] serdev: Add an API to find the serdev controller
+ associated with the devicetree node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260112-pci-m2-e-v4-1-eff84d2c6d26@oss.qualcomm.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260112-pci-m2-e-v4-2-eff84d2c6d26@oss.qualcomm.com>
 References: <20260112-pci-m2-e-v4-0-eff84d2c6d26@oss.qualcomm.com>
 In-Reply-To: <20260112-pci-m2-e-v4-0-eff84d2c6d26@oss.qualcomm.com>
 To: Rob Herring <robh@kernel.org>, 
@@ -29,81 +29,77 @@ Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-pm@vger.kernel.org, Stephan Gerhold <stephan.gerhold@linaro.org>, 
  Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
  linux-acpi@vger.kernel.org, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2192;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1955;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=07vK9ciXXRPSn3N/nNhnkZAEN4PO5YKuZEczKGyjzQ4=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpZSEtLU1+T/SQ8muTj88PMLYAc1JIDUMVESqYm
- PJvutm3t5WJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWUhLQAKCRBVnxHm/pHO
- 9ZvgCACOa5aYDJDQeVpU6yq+fCGtKV9Xz1BGEatNRuENRILo7sSUAPtGbyGfxzQ/0vcy4Gb+3tW
- jcnVrjZLjEZ+dCXlNXAFyy6VwIckMC8ZO8GOlS67JL5iOmWHfQ/aFzmBY9Uz79eiPwI6BCQTliK
- 1hhKWLBCLzlvHxyooeqQs1gksE36iewETbO1uczvYdH5m2JtG9K6jY89FC7YE756kTcdmskU6B4
- CKcv2Zojofh08iFJ1rz0zid+PoQTNbqCffd6F7xPEkCRAl31mzXhHRzRKNItT5fgOdkhPKgCVC7
- YRafq06sSCerUESzjyX7I3cqm12BXILp3NiBAcA8WQ3w/Pxo
+ bh=J1VmrZOJOQw4R6fDrVVe/0GgAe/UzN5xgoimqww9n5Q=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpZSEtqgiwm1mkQDaD/Wb8/ZXVgx6a+CPfmCw+6
+ HFABhElf66JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWUhLQAKCRBVnxHm/pHO
+ 9eMPCACobFxxteG5pdzS0luxGgzCXNtDCi5oiEXMX32Vb8bWtrZ6t6eXEP/LLe4esV0w1AiTKKk
+ 6s5b9O2HMWDmQgjJOMSQl1ee7bmPg9QkbGIJnbs4Bhz+jCEGUAt4x3aNRE2Oi9CGeN37cG4HsB8
+ UK+Wd4Y2JHpUYg/Pyt85++38RT6kG0/RTLg0apGiKZf0jCGUbAu9+1aw2yReUTLJ5H1HKNYjxHI
+ HPuc55LD9SuUMtuAbvxzkxj9XNeO+KgY5yLfxprgHSmvlGkNxbTWmxOPCZ4hMQ9sipJvTCu5yWd
+ 04yiZzfEKcRICb2XsaVVDdU/yohakOQ8Bjl6pY2KGzqw6lxD
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If these helpers receive the 'const struct device' pointer, then the const
-qualifier will get dropped, leading to below warning:
+Add of_find_serdev_controller_by_node() API to find the serdev controller
+device associated with the devicetree node.
 
- warning: passing argument 1 of ‘to_serdev_device_driver’ discards 'const'
- qualifier from pointer target type [-Wdiscarded-qualifiers]
-
-This is not an issue as of now, but with the future commits adding serdev
-device based driver matching, this warning will get triggered. Hence,
-convert these helpers to macros so that the qualifier get preserved and
-also use container_of_const() as container_of() is deprecated.
-
-Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- include/linux/serdev.h | 15 +++------------
- 1 file changed, 3 insertions(+), 12 deletions(-)
+ drivers/tty/serdev/core.c | 16 ++++++++++++++++
+ include/linux/serdev.h    |  9 +++++++++
+ 2 files changed, 25 insertions(+)
 
+diff --git a/drivers/tty/serdev/core.c b/drivers/tty/serdev/core.c
+index b33e708cb245..25382c2d63e6 100644
+--- a/drivers/tty/serdev/core.c
++++ b/drivers/tty/serdev/core.c
+@@ -504,6 +504,22 @@ struct serdev_controller *serdev_controller_alloc(struct device *host,
+ }
+ EXPORT_SYMBOL_GPL(serdev_controller_alloc);
+ 
++/**
++ * of_find_serdev_controller_by_node() - Find the serdev controller associated
++ *					 with the devicetree node
++ * @node:	Devicetree node
++ *
++ * Return: Pointer to the serdev controller associated with the node. NULL if
++ * the controller is not found.
++ */
++struct serdev_controller *of_find_serdev_controller_by_node(struct device_node *node)
++{
++	struct device *dev = bus_find_device_by_of_node(&serdev_bus_type, node);
++
++	return (dev && dev->type == &serdev_ctrl_type) ? to_serdev_controller(dev) : NULL;
++}
++EXPORT_SYMBOL_GPL(of_find_serdev_controller_by_node);
++
+ static int of_serdev_register_devices(struct serdev_controller *ctrl)
+ {
+ 	struct device_node *node;
 diff --git a/include/linux/serdev.h b/include/linux/serdev.h
-index 34562eb99931..ecde0ad3e248 100644
+index ecde0ad3e248..db9bfaba0662 100644
 --- a/include/linux/serdev.h
 +++ b/include/linux/serdev.h
-@@ -49,10 +49,7 @@ struct serdev_device {
- 	struct mutex write_lock;
- };
+@@ -333,4 +333,13 @@ static inline bool serdev_acpi_get_uart_resource(struct acpi_resource *ares,
+ }
+ #endif /* CONFIG_ACPI */
  
--static inline struct serdev_device *to_serdev_device(struct device *d)
--{
--	return container_of(d, struct serdev_device, dev);
--}
-+#define to_serdev_device(d) container_of_const(d, struct serdev_device, dev)
- 
- /**
-  * struct serdev_device_driver - serdev slave device driver
-@@ -67,10 +64,7 @@ struct serdev_device_driver {
- 	void	(*remove)(struct serdev_device *);
- };
- 
--static inline struct serdev_device_driver *to_serdev_device_driver(struct device_driver *d)
--{
--	return container_of(d, struct serdev_device_driver, driver);
--}
-+#define to_serdev_device_driver(d) container_of_const(d, struct serdev_device_driver, driver)
- 
- enum serdev_parity {
- 	SERDEV_PARITY_NONE,
-@@ -111,10 +105,7 @@ struct serdev_controller {
- 	const struct serdev_controller_ops *ops;
- };
- 
--static inline struct serdev_controller *to_serdev_controller(struct device *d)
--{
--	return container_of(d, struct serdev_controller, dev);
--}
-+#define to_serdev_controller(d) container_of_const(d, struct serdev_controller, dev)
- 
- static inline void *serdev_device_get_drvdata(const struct serdev_device *serdev)
- {
++#ifdef CONFIG_OF
++struct serdev_controller *of_find_serdev_controller_by_node(struct device_node *node);
++#else
++struct serdev_controller *of_find_serdev_controller_by_node(struct device_node *node)
++{
++	return NULL;
++}
++#endif /* CONFIG_OF */
++
+ #endif /*_LINUX_SERDEV_H */
 
 -- 
 2.48.1
