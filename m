@@ -1,77 +1,70 @@
-From: Hermes Wu <Hermes.wu@ite.com.tw>
-Date: Mon, 12 Jan 2026 14:47:07 +0800
-Subject: [PATCH] drm/bridge: it6505: disable HDCP retry when KSV list
- timeout
+From: Louis Rannou <louis.rannou@non.se.com>
+Subject: [PATCH v2 0/2] wic: extra-partitions: new variable to be combined
+ with sourceparams
+Date: Mon, 12 Jan 2026 09:29:54 +0100
+Message-Id: <20260112-extrafiles-v2-0-67f0f6c37c4e@non.se.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260112-disable-hdcp-auto-retry-v1-1-dc9217f08f7c@ite.com.tw>
-X-B4-Tracking: v=1; b=H4sIAOqYZGkC/x3MMQqAMAxA0atIZgNth6JeRRxiGzUgKqmKIt7d4
- viG/x9IrMIJmuIB5VOSrEuGLQsIEy0jo8RscMZ5Y63DKIn6mXGKYUM69hWVd73RUxWNGXxProZ
- cb8qDXP+57d73A4D9RE9pAAAA
-X-Change-ID: 20260112-disable-hdcp-auto-retry-6a8d00f6ba29
-To: Andrzej Hajda <andrzej.hajda@intel.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
- Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
- Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, treapking@chromium.org, 
- dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Hermes Wu <Hermes.wu@ite.com.tw>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768200435; l=1553;
- i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=rCW3jddM8TQgyxZZEpHfDk8/Yn8r6UZLGkwB+J85M8A=;
- b=7A7jap0TA1DohHAgYYmCcYl1NvpnYzSGNv+i1t3xfwhcNzW/K+OvbUDvCRlUdUPNYksWhPW6n
- ku9ky5ji0efD3VRnbEgNU/W8mhV7rEfdjoyUPEQMYt+3f6A0E2XVlM+
-X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
- pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
-X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
+X-B4-Tracking: v=1; b=H4sIAAKxZGkC/23MQQrCMBCF4auUWZuSjNZSV95DuoidiR3QRJISK
+ iV3N3bt8n/wvg0SR+EEl2aDyFmSBF8DDw1Ms/UPVkK1ATWetdG94nWJ1smTk7I0WOw6HO6ooR7
+ ekZ2sO3Yba8+SlhA/u53Nb/3LZKO0sici0j05PJqrD75N3E7hBWMp5QtjVCOVpQAAAA==
+To: openembedded-core@lists.openembedded.org
+Cc: Louis Rannou <louis.rannou@non.se.com>, pierre-loup.gosse@smile.fr
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768206597; l=1768;
+ i=louis.rannou@non.se.com; s=20250630; h=from:subject:message-id;
+ bh=HbnQ1hOFFK/7CF89MCQYjGsU/lvVCpxQ0m+j4WJSFUg=;
+ b=eDcvDUBI3RAGrPdV27/8J5ICgzqRDIvuwUK9PvoodsrMkF5ODl3mcJbBhbXxfsNZA2BftmTkq
+ uNhaieVJJA+D7W39h/hxMmda6+SThHpwbEhCPLd5Xl6M89FvfNgpdIo
+X-Developer-Key: i=louis.rannou@non.se.com; a=ed25519;
+ pk=WWYN5/DFKqyCKdv6oTYNuq0gROqwZVfNfw2OMI3tUlc=
+X-Endpoint-Received: by B4 Relay for louis.rannou@non.se.com/20250630 with auth_id=446
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some DP to HDMI converters fail to report KSV list within the 6-second
-HDCP window, causing the IT6505 to repeatedly restart authentication.
-This results in continuous flickering on the connected HDMI monitor.
+The current extra_partition plugin uses predictable variable names (the
+configuration must predict the image partition label or uuid). This has two
+inconveniences:
 
-Disable automatic HDCP retry when KSV list timeout. This breaks the
-re-auth loop and significantly improves stability/user experience with
-problematic converters.
+- an extra partition that has a specific label (or uuid) is doomed with the
+  associated variable. The partition cannot be configured unless the label
+  (or uuid) is changed.
+- two partitions with same label from distincts .wks cannot have different
+  content.
 
-Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
+The first commit increases the tests. It now tests several files can be included
+and that the file system type can be specified. It also simplifies the 'wic ls'
+command by removing unneeded pipes.
+
+The second commit allows the new suffix _name-%s to be appended to
+IMAGE_EXTRA_PARTITION_FILES. This variable will be preferred whenever the
+.wks specifies a name in the --sourceparams option.
+
+For example:
+  an image may define:
+    IMAGE_EXTRA_PARTITION_FILES_name-foo = "bar.conf"
+  and the .wks line have line:
+    part --source extra_partition --sourceparams "name=foo"
+
+Signed-off-by: Louis Rannou <louis.rannou@non.se.com>
 ---
- drivers/gpu/drm/bridge/ite-it6505.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/gpu/drm/bridge/ite-it6505.c b/drivers/gpu/drm/bridge/ite-it6505.c
-index a094803ba7aa4e12165fcde432d4e6417fbf3676..1c1e6b78fadbf29da00a68e26671ce5b54ee1557 100644
---- a/drivers/gpu/drm/bridge/ite-it6505.c
-+++ b/drivers/gpu/drm/bridge/ite-it6505.c
-@@ -2238,7 +2238,7 @@ static void it6505_hdcp_wait_ksv_list(struct work_struct *work)
- 		return;
- 
- timeout:
--	it6505_start_hdcp(it6505);
-+	it6505_stop_hdcp(it6505);
- }
- 
- static void it6505_hdcp_work(struct work_struct *work)
-@@ -2596,7 +2596,7 @@ static void it6505_irq_hdcp_fail(struct it6505 *it6505)
- 	DRM_DEV_DEBUG_DRIVER(dev, "hdcp fail interrupt");
- 	it6505->hdcp_status = HDCP_AUTH_IDLE;
- 	it6505_show_hdcp_info(it6505);
--	it6505_start_hdcp(it6505);
-+	it6505_stop_hdcp(it6505);
- }
- 
- static void it6505_irq_aux_cmd_fail(struct it6505 *it6505)
+Changes in v2:
+- change suuffix _sourceparam-%s to _name-%s
+- Link to v1: https://lore.kernel.org/r/20260107-extrafiles-v1-0-a4ddd07df231@non.se.com
 
 ---
-base-commit: 38feb171b3f92d77e8061fafb5ddfffc2c13b672
-change-id: 20260112-disable-hdcp-auto-retry-6a8d00f6ba29
+Louis Rannou (2):
+      oeqa/selftest: wic: improve extra-partition plugin tests
+      wic: extra-partition: introduce variable matching sourceparams
+
+ meta/lib/oeqa/selftest/cases/wic.py               | 55 ++++++++++++++++-------
+ scripts/lib/wic/plugins/source/extra_partition.py | 24 +++++++---
+ 2 files changed, 57 insertions(+), 22 deletions(-)
+---
+base-commit: 0ed4776533145c901611d7f4f942490e33481335
+change-id: 20260107-extrafiles-ad9a25529b20
 
 Best regards,
 -- 
-Hermes Wu <Hermes.wu@ite.com.tw>
+Louis Rannou <louis.rannou@non.se.com>
 
