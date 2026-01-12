@@ -1,11 +1,10 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Mon, 12 Jan 2026 21:56:02 +0530
-Subject: [PATCH v4 3/9] serdev: Do not return -ENODEV from
- of_serdev_register_devices() if external connector is used
+Date: Mon, 12 Jan 2026 21:56:03 +0530
+Subject: [PATCH v4 4/9] dt-bindings: serial: Document the graph port
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260112-pci-m2-e-v4-3-eff84d2c6d26@oss.qualcomm.com>
+Message-Id: <20260112-pci-m2-e-v4-4-eff84d2c6d26@oss.qualcomm.com>
 References: <20260112-pci-m2-e-v4-0-eff84d2c6d26@oss.qualcomm.com>
 In-Reply-To: <20260112-pci-m2-e-v4-0-eff84d2c6d26@oss.qualcomm.com>
 To: Rob Herring <robh@kernel.org>, 
@@ -29,62 +28,46 @@ Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-pm@vger.kernel.org, Stephan Gerhold <stephan.gerhold@linaro.org>, 
  Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
  linux-acpi@vger.kernel.org, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1366;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=924;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=70A6WG9+LyiVcQGDZXLPxALHM/UGaFUvvsHfTehdZzg=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpZSEtRw78QNqqJdo870z1l/BYbYj/u0Xo8r9YZ
- n37jmcGrM+JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWUhLQAKCRBVnxHm/pHO
- 9XR+B/0VHC0628+hDHpd19trCYGlXPgy6Z8cGBNjn01kj0yUXk6jb/+LeCFJ2G9lQb/kax+79eM
- AXWKVqINoOT5dQbYrlX+VTPS9X6V6SDDJ8txyXwch2RDN01oFF9zNYRj2XFiweXK4TLvcTeEBoj
- lvvN0KMMMNvn2na1hauUv9k6EJhLjvY0R8OMW5h1fElKq7CbQkWWYppz6RjOV+PCcEI0dk/Bf/q
- JY0Gyn0ro6S7fq+GL39z27cRhl7DlIjVZBLMlj76Fdue8Apoh7ZUpZd0gU6rqRJNDrNcrm1izz6
- MrZl4F4astYmm88mZceGrs9P9ar2MV8krQPH3LbL7pvBZLCp
+ bh=T/idG4KQSOfNt30dCJ08aa+KY4iI2ktYxKaU/4zNwXM=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpZSEtv8Q38gSKx/zNAHHW7JSU4HH2xJDb10pel
+ u2A0qNlaNCJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWUhLQAKCRBVnxHm/pHO
+ 9bT/B/9fDJ+ncITWLZ7gbtwtnZXl1zMoVoh8Hz7vv0ap4NmdB+Y62hMvzahw9/Cp/gArGNqsVUm
+ aB8HbCqZ0SpN5GwHK1wPtrxX0UultBtJVOZ4zn4aumBU/pPw7y23t+hfdeQWXLHCYLF/tA1XvKi
+ ynC2ZQtlQvQO1ke1AhFKx3SLstFbm3Ny881k4UW40h7VOpxWJ9gFL8J9cH/xNHKy30kx4ptj7Yc
+ oBPprPfyQIckHJJumSUYnOWjO3h2iqHA8JRhJQNOgOQ2J5oWZxm2v0NmBNzv9V6GWBVM4i6YEPs
+ FyvdMhstqMEyGkn3jy7QI3tT2Q/ucwPhdvQJ1Dkm/fDhxAiK
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If an external connector like M.2 is connected to the serdev controller
-in DT, then the serdev devices may be created dynamically by the connector
-driver. So do not return -ENODEV from of_serdev_register_devices() if the
-static nodes are not found and the graph node is used.
+A serial controller could be connected to an external connector like PCIe
+M.2 for controlling the serial interface of the card. Hence, document the
+OF graph port.
 
-Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/tty/serdev/core.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ Documentation/devicetree/bindings/serial/serial.yaml | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/drivers/tty/serdev/core.c b/drivers/tty/serdev/core.c
-index 25382c2d63e6..f8093b606dda 100644
---- a/drivers/tty/serdev/core.c
-+++ b/drivers/tty/serdev/core.c
-@@ -12,6 +12,7 @@
- #include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/of.h>
-+#include <linux/of_graph.h>
- #include <linux/of_device.h>
- #include <linux/pm_domain.h>
- #include <linux/pm_runtime.h>
-@@ -548,7 +549,13 @@ static int of_serdev_register_devices(struct serdev_controller *ctrl)
- 		} else
- 			found = true;
- 	}
--	if (!found)
-+
-+	/*
-+	 * When the serdev controller is connected to an external connector like
-+	 * M.2 in DT, then the serdev devices may be created dynamically by the
-+	 * connector driver.
-+	 */
-+	if (!found && !of_graph_is_present(ctrl->dev.of_node))
- 		return -ENODEV;
+diff --git a/Documentation/devicetree/bindings/serial/serial.yaml b/Documentation/devicetree/bindings/serial/serial.yaml
+index 6aa9cfae417b..96eb1de8771e 100644
+--- a/Documentation/devicetree/bindings/serial/serial.yaml
++++ b/Documentation/devicetree/bindings/serial/serial.yaml
+@@ -87,6 +87,9 @@ properties:
+     description:
+       TX FIFO threshold configuration (in bytes).
  
- 	return 0;
++  port:
++    $ref: /schemas/graph.yaml#/properties/port
++
+ patternProperties:
+   "^(bluetooth|bluetooth-gnss|embedded-controller|gnss|gps|mcu|onewire)$":
+     if:
 
 -- 
 2.48.1
