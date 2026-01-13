@@ -1,10 +1,11 @@
 From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Mon, 12 Jan 2026 22:42:25 -0800
-Subject: [PATCH 2/3] mfd: rk8xx-core: Configure `rk808-clkout2` function
+Date: Mon, 12 Jan 2026 22:42:26 -0800
+Subject: [PATCH 3/3] arm64: dts: rockchip: Remove interrupt GPIO for WiFi
+ for the Pinephone Pro
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260112-ppp_connectivity-v1-2-284d6e83b212@gmail.com>
+Message-Id: <20260112-ppp_connectivity-v1-3-284d6e83b212@gmail.com>
 References: <20260112-ppp_connectivity-v1-0-284d6e83b212@gmail.com>
 In-Reply-To: <20260112-ppp_connectivity-v1-0-284d6e83b212@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -12,61 +13,49 @@ To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
  Lee Jones <lee@kernel.org>
 Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Rudraksha Gupta <guptarud@gmail.com>, 
- =?utf-8?q?Kamil_Trzci=C5=84ski?= <ayufan@ayufan.eu>, 
- Martijn Braam <martijn@brixit.nl>, Ondrej Jirman <megi@xff.cz>
+ Rudraksha Gupta <guptarud@gmail.com>, Ondrej Jirman <megi@xff.cz>, 
+ Martijn Braam <martijn@brixit.nl>, 
+ =?utf-8?q?Kamil_Trzci=C5=84ski?= <ayufan@ayufan.eu>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768286545; l=1504;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768286545; l=1127;
  i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=ySfNjI6t8Mnuq2/ifE0ZjoFXQgOPGkiy/R6d0iMEMgg=;
- b=RYIUKOvuwbl5bNrcjJRBKCvN4zR/uEWENYzfyCgtOLKTGNhHcD6wgIPpYaUDMVU+2EzN4GNLR
- mVb3zHI1nmvCzdRUtIDJ4jN4KmqqTvgyiFD50giORdpGvKrZrMSfPzG
+ bh=V2xGi6mOVeWleP+m2F/1DkoT1Cl2cZl0GZeCm6kqSeY=;
+ b=QB+1y+pDSe95xr6xk+qde0I6KgnZrK15MGSnGS0vNzWdXVIPaXxoqEtr5mcbivN2mUb8Nm6L0
+ Um61cMTLCyJDlyJ3mmvuBBGruOkvdrJ7XOzBXjx4r9u3vzsLjn6YkCL
 X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
  pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
 X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Kamil Trzciński <ayufan@ayufan.eu>
+From: Ondrej Jirman <megi@xff.cz>
 
-While the Wifi and Bluetooth chip are defined in the Pinephone Pro's
-DTS, it actually isn't able to be used. Let's define rk808-clkout2 so
-that userspace can actually interact with Wifi and Bluetooth
+Wifi is currently unusable if interrupts are defined. Let's remove them
+so that Wifi networks are actually discoverable.
 
 Co-developed-by: Martijn Braam <martijn@brixit.nl>
 Signed-off-by: Martijn Braam <martijn@brixit.nl>
+Co-developed-by: Kamil Trzciński <ayufan@ayufan.eu>
 Signed-off-by: Kamil Trzciński <ayufan@ayufan.eu>
 Signed-off-by: Ondrej Jirman <megi@xff.cz>
 Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
- drivers/mfd/rk8xx-core.c  | 1 +
- include/linux/mfd/rk808.h | 2 ++
- 2 files changed, 3 insertions(+)
+ arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts | 3 ---
+ 1 file changed, 3 deletions(-)
 
-diff --git a/drivers/mfd/rk8xx-core.c b/drivers/mfd/rk8xx-core.c
-index def4587fdfb8..602218694334 100644
---- a/drivers/mfd/rk8xx-core.c
-+++ b/drivers/mfd/rk8xx-core.c
-@@ -282,6 +282,7 @@ static const struct rk808_reg_data rk818_pre_init_reg[] = {
- 	{ RK818_H5V_EN_REG,	  BIT(0),	    RK818_H5V_EN },
- 	{ RK808_VB_MON_REG,	  MASK_ALL,	    VB_LO_ACT |
- 						    VB_LO_SEL_3500MV },
-+	{ RK808_CLK32OUT_REG, CLK32KOUT2_FUNC_MASK, CLK32KOUT2_FUNC },
- };
- 
- static const struct regmap_irq rk805_irqs[] = {
-diff --git a/include/linux/mfd/rk808.h b/include/linux/mfd/rk808.h
-index 28170ee08898..077fe2e15b78 100644
---- a/include/linux/mfd/rk808.h
-+++ b/include/linux/mfd/rk808.h
-@@ -934,6 +934,8 @@ enum rk806_dvs_mode {
- 
- #define VOUT_LO_INT	BIT(0)
- #define CLK32KOUT2_EN	BIT(0)
-+#define CLK32KOUT2_FUNC		(0 << 1)
-+#define CLK32KOUT2_FUNC_MASK	BIT(1)
- 
- #define TEMP105C			0x08
- #define TEMP115C			0x0c
+diff --git a/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts b/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
+index 97d0bf455258..69bb9de4ce55 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3399-pinephone-pro.dts
+@@ -834,9 +834,6 @@ &sdio0 {
+ 	brcmf: wifi@1 {
+ 		compatible = "brcm,bcm4329-fmac";
+ 		reg = <1>;
+-		interrupt-parent = <&gpio4>;
+-		interrupts = <RK_PD0 IRQ_TYPE_LEVEL_HIGH>;
+-		interrupt-names = "host-wake";
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&wifi_host_wake_l>;
+ 	};
 
 -- 
 2.52.0
