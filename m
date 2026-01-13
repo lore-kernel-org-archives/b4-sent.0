@@ -1,272 +1,145 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Mon, 12 Jan 2026 21:56:08 +0530
-Subject: [PATCH v4 9/9] power: sequencing: pcie-m2: Create serdev device
- for WCN7850 bluetooth
+From: Ziyao Li <liziyao@uniontech.com>
+Date: Tue, 13 Jan 2026 10:38:58 +0800
+Subject: [PATCH v4] PCI: loongson: Override PCIe bridge supported speeds
+ for Loongson-3C6000 series
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260112-pci-m2-e-v4-9-eff84d2c6d26@oss.qualcomm.com>
-References: <20260112-pci-m2-e-v4-0-eff84d2c6d26@oss.qualcomm.com>
-In-Reply-To: <20260112-pci-m2-e-v4-0-eff84d2c6d26@oss.qualcomm.com>
-To: Rob Herring <robh@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>, Nathan Chancellor <nathan@kernel.org>, 
- Nicolas Schier <nicolas.schier@linux.dev>, Hans de Goede <hansg@kernel.org>, 
+Message-Id: <20260113-loongson-pci1-v4-1-1921d6479fe4@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIAEGwZWkC/3XOQQrCMBCF4auUrI1kksa2rryHuEgyUxvQpDS1K
+ KV3NwqCFF3+D+ZjZpZo8JTYvpjZQJNPPoYc5aZgrjPhTNxjbiaF1KKWkl9iDOcUA++dB14iocC
+ qbsFalm/6gVp/f3vHU+7OpzEOjzc/wWv9J03AgavGGGsRoLV4uIX8y0iu27p4ZS9tkh9hJ0CUa
+ 0FmAUED6cruqK1/CepbaNaCyoJGdNqQsqZRa2FZlifoRZhfMgEAAA==
+X-Change-ID: 20250822-loongson-pci1-4ded0d78f1bb
+To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>
+Cc: niecheng1@uniontech.com, zhanjun@uniontech.com, 
+ guanwentao@uniontech.com, Kexy Biscuit <kexybiscuit@aosc.io>, 
+ linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ loongarch@lists.linux.dev, 
  =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Mark Pearson <mpearson-lenovo@squebb.ca>, 
- "Derek J. Clark" <derekjohn.clark@gmail.com>, 
- Manivannan Sadhasivam <mani@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- Bartosz Golaszewski <brgl@bgdev.pl>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Bartosz Golaszewski <brgl@kernel.org>
-Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-kbuild@vger.kernel.org, platform-driver-x86@vger.kernel.org, 
- linux-pci@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-bluetooth@vger.kernel.org, 
- linux-pm@vger.kernel.org, Stephan Gerhold <stephan.gerhold@linaro.org>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
- linux-acpi@vger.kernel.org, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+ Lain Fearyncess Yang <fsf@live.com>, Ayden Meng <aydenmeng@yeah.net>, 
+ Mingcong Bai <jeffbai@aosc.io>, Xi Ruoyao <xry111@xry111.site>, 
+ Ziyao Li <liziyao@uniontech.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7013;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=w70p+2y0uc4RozfccwCnGDOzlXy/s1rG4evBeDzOF7s=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpZSEu/jW+ekB0sG2rj3DHVjC+wWL19GBThP91L
- t+WkapNF7yJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWUhLgAKCRBVnxHm/pHO
- 9TqdB/9UGcoyjANWfKo2B0nSFR7lejpUuKWLr4FwtVwIf2g6ku9SxxLhDfoBUykgwFaGqzIKSKF
- U9Jyv709W8UQLa/9NmHfuMC+5G/bBu48G/StSb17NYJY5YddWWZRlTnUc6Z3cdKQF1M0D+FG+qE
- ehIlX5EjnfGDnq+tHg6YcXI/UsaHzDM+4PIsDNQT1G572LE3TzP5NLrGacGGyr+4FP6DVoe6Rn9
- dRFmrLHCedt+ErlahcQ7YgwTjQfUw4FT0U/AGf5TQ3p8bkKkaoI8Rg05CNAgVuKqx+pV/xsyq8R
- 5Vv79dKRPqFAQeGucS3FoG8XTOpgNunXJJKQHD3Hek+fgoV2
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768271938; l=4318;
+ i=liziyao@uniontech.com; s=20250730; h=from:subject:message-id;
+ bh=7rRFGJVoKl5sZ/Owx3rAS56AhpTg53fD7seUm2ML6+o=;
+ b=k+ClNVeu7ISFrUJFeAR6ztHNTkB8wEYHkrxhXmEMH0UD1lTMTQP0V+P+LDiY6GJ9c1RmVO1r2
+ FWAVbiQzb1wCyAs1y6RO5epfFZpd0Xf+VMx3gZnMZRe9aDrc5Mot04K
+X-Developer-Key: i=liziyao@uniontech.com; a=ed25519;
+ pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
+X-Endpoint-Received: by B4 Relay for liziyao@uniontech.com/20250730 with auth_id=471
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For supporting bluetooth over the non-discoverable UART interface of
-WCN7850, create the serdev device after enumerating the PCIe interface.
-This is mandatory since the device ID is only known after the PCIe
-enumeration and the ID is used for creating the serdev device.
+Older steppings of the Loongson-3C6000 series incorrectly report the
+supported link speeds on their PCIe bridges (device IDs 0x3c19, 0x3c29)
+as only 2.5 GT/s, despite the upstream bus supporting speeds from
+2.5 GT/s up to 16 GT/s.
 
-Since by default there is no OF or ACPI node for the created serdev,
-create a dynamic OF 'bluetooth' node with the 'compatible' property and
-attach it to the serdev device. This will allow the serdev device to bind
-to the existing bluetooth driver.
+As a result, since commit 774c71c52aa4 ("PCI/bwctrl: Enable only if more
+than one speed is supported"), bwctrl will be disabled if there's only
+one 2.5 GT/s value in vector `supported_speeds`.
 
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Also, amdgpu reads the value by pcie_get_speed_cap() in amdgpu_device_
+partner_bandwidth(), for its dynamic adjustment of PCIe clocks and
+lanes in power management. We hope this can prevent similar problems
+in future driver changes (similar checks may be implemented in other
+GPU, storage controller, NIC, etc. drivers).
+
+Manually override the `supported_speeds` field for affected PCIe bridges
+with those found on the upstream bus to correctly reflect the supported
+link speeds.
+
+This patch was originally found from AOSC OS[1].
+
+Link: https://github.com/AOSC-Tracking/linux/pull/2 #1
+Tested-by: Lain Fearyncess Yang <fsf@live.com>
+Tested-by: Ayden Meng <aydenmeng@yeah.net>
+Signed-off-by: Ayden Meng <aydenmeng@yeah.net>
+Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
+[Xi Ruoyao: Fix falling through logic and add kernel log output.]
+Signed-off-by: Xi Ruoyao <xry111@xry111.site>
+Link: https://github.com/AOSC-Tracking/linux/commit/4392f441363abdf6fa0a0433d73175a17f493454
+[Ziyao Li: move from drivers/pci/quirks.c to drivers/pci/controller/pci-loongson.c]
+Signed-off-by: Ziyao Li <liziyao@uniontech.com>
+Tested-by: Mingcong Bai <jeffbai@aosc.io>
 ---
- drivers/power/sequencing/pwrseq-pcie-m2.c | 170 +++++++++++++++++++++++++++++-
- 1 file changed, 169 insertions(+), 1 deletion(-)
+Changes in v4:
+- rename subject
+- use 0x3c19/0x3c29 instead of 3c19/3c29
+- Link to v3: https://lore.kernel.org/r/20260109-loongson-pci1-v3-1-5ddc5ae3ba93@uniontech.com
 
-diff --git a/drivers/power/sequencing/pwrseq-pcie-m2.c b/drivers/power/sequencing/pwrseq-pcie-m2.c
-index 4b85a40d7692..5f9232e6c700 100644
---- a/drivers/power/sequencing/pwrseq-pcie-m2.c
-+++ b/drivers/power/sequencing/pwrseq-pcie-m2.c
-@@ -17,6 +17,7 @@
- #include <linux/platform_device.h>
- #include <linux/pwrseq/provider.h>
- #include <linux/regulator/consumer.h>
-+#include <linux/serdev.h>
- #include <linux/slab.h>
- 
- struct pwrseq_pcie_m2_pdata {
-@@ -32,6 +33,9 @@ struct pwrseq_pcie_m2_ctx {
- 	struct gpio_desc *w_disable1_gpio;
- 	struct gpio_desc *w_disable2_gpio;
- 	struct device *dev;
-+	struct serdev_device *serdev;
-+	struct notifier_block nb;
-+	struct of_changeset *ocs;
- };
- 
- static int pwrseq_pcie_m2_vregs_enable(struct pwrseq_device *pwrseq)
-@@ -178,9 +182,169 @@ static void pwrseq_pcie_free_resources(void *data)
- {
- 	struct pwrseq_pcie_m2_ctx *ctx = data;
- 
-+	serdev_device_remove(ctx->serdev);
-+	of_changeset_revert(ctx->ocs);
-+	of_changeset_destroy(ctx->ocs);
-+	bus_unregister_notifier(&pci_bus_type, &ctx->nb);
- 	regulator_bulk_free(ctx->num_vregs, ctx->regs);
+Changes in v3:
+- Adjust commit message
+- Make the program flow more intuitive
+- Link to v2: https://lore.kernel.org/r/20260104-loongson-pci1-v2-1-d151e57b6ef8@uniontech.com
+
+Changes in v2:
+- Link to v1: https://lore.kernel.org/r/20250822-loongson-pci1-v1-1-39aabbd11fbd@uniontech.com
+- Move from arch/loongarch/pci/pci.c to drivers/pci/controller/pci-loongson.c
+- Fix falling through logic and add kernel log output by Xi Ruoyao
+---
+ drivers/pci/controller/pci-loongson.c | 38 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
+
+diff --git a/drivers/pci/controller/pci-loongson.c b/drivers/pci/controller/pci-loongson.c
+index bc630ab8a283..3d0873b63cd6 100644
+--- a/drivers/pci/controller/pci-loongson.c
++++ b/drivers/pci/controller/pci-loongson.c
+@@ -176,6 +176,44 @@ static void loongson_pci_msi_quirk(struct pci_dev *dev)
  }
+ DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_LOONGSON, DEV_LS7A_PCIE_PORT5, loongson_pci_msi_quirk);
  
-+static int pwrseq_m2_pcie_create_bt_node(struct pwrseq_pcie_m2_ctx *ctx,
-+					struct device_node *parent)
-+{
-+	struct device *dev = ctx->dev;
-+	struct device_node *np;
-+	int ret;
-+
-+	ctx->ocs = devm_kzalloc(dev, sizeof(*ctx->ocs), GFP_KERNEL);
-+	if (!ctx->ocs)
-+		return -ENOMEM;
-+
-+	of_changeset_init(ctx->ocs);
-+
-+	np = of_changeset_create_node(ctx->ocs, parent, "bluetooth");
-+	if (!np) {
-+		dev_err(dev, "Failed to create bluetooth node\n");
-+		ret = -ENODEV;
-+		goto err_destroy_changeset;
-+	}
-+
-+	ret = of_changeset_add_prop_string(ctx->ocs, np, "compatible", "qcom,wcn7850-bt");
-+	if (ret) {
-+		dev_err(dev, "Failed to add bluetooth compatible: %d\n", ret);
-+		goto err_destroy_changeset;
-+	}
-+
-+	ret = of_changeset_apply(ctx->ocs);
-+	if (ret) {
-+		dev_err(dev, "Failed to apply changeset: %d\n", ret);
-+		goto err_destroy_changeset;
-+	}
-+
-+	ret = device_add_of_node(&ctx->serdev->dev, np);
-+	if (ret) {
-+		dev_err(dev, "Failed to add OF node: %d\n", ret);
-+		goto err_revert_changeset;
-+	}
-+
-+	return 0;
-+
-+err_revert_changeset:
-+	of_changeset_revert(ctx->ocs);
-+err_destroy_changeset:
-+	of_changeset_destroy(ctx->ocs);
-+
-+	return ret;
-+}
-+
-+static int pwrseq_m2_pcie_notify(struct notifier_block *nb, unsigned long action,
-+			      void *data)
-+{
-+	struct pwrseq_pcie_m2_ctx *ctx = container_of(nb, struct pwrseq_pcie_m2_ctx, nb);
-+	struct pci_dev *pdev = to_pci_dev(data);
-+	struct serdev_controller *serdev_ctrl;
-+	struct device *dev = ctx->dev;
-+	struct device_node *pci_parent;
-+	int ret;
-+
-+	/*
-+	 * Check whether the PCI device is associated with this M.2 connector or
-+	 * not, by comparing the OF node of the PCI device parent and the Port 0
-+	 * (PCIe) remote node parent OF node.
-+	 */
-+	pci_parent = of_graph_get_remote_node(dev_of_node(ctx->dev), 0, 0);
-+	if (!pci_parent || (pci_parent != pdev->dev.parent->of_node)) {
-+		of_node_put(pci_parent);
-+		return NOTIFY_DONE;
-+	}
-+	of_node_put(pci_parent);
-+
-+	switch (action) {
-+	case BUS_NOTIFY_ADD_DEVICE:
-+		/* Create serdev device for WCN7850 */
-+		if (pdev->vendor == PCI_VENDOR_ID_QCOM && pdev->device == 0x1107) {
-+			struct device_node *serdev_parent __free(device_node) =
-+				of_graph_get_remote_node(dev_of_node(ctx->dev), 1, 1);
-+			if (!serdev_parent)
-+				return NOTIFY_DONE;
-+
-+			serdev_ctrl = of_find_serdev_controller_by_node(serdev_parent);
-+			if (!serdev_ctrl)
-+				return NOTIFY_DONE;
-+
-+			ctx->serdev = serdev_device_alloc(serdev_ctrl);
-+			if (!ctx->serdev)
-+				return NOTIFY_BAD;
-+
-+			ret = pwrseq_m2_pcie_create_bt_node(ctx, serdev_parent);
-+			if (ret) {
-+				serdev_device_put(ctx->serdev);
-+				return notifier_from_errno(ret);
-+			}
-+
-+			ret = serdev_device_add(ctx->serdev);
-+			if (ret) {
-+				dev_err(dev, "Failed to add serdev for WCN7850: %d\n", ret);
-+				of_changeset_revert(ctx->ocs);
-+				of_changeset_destroy(ctx->ocs);
-+				serdev_device_put(ctx->serdev);
-+				return notifier_from_errno(ret);
-+			}
-+		}
-+		break;
-+	case BUS_NOTIFY_REMOVED_DEVICE:
-+		/* Destroy serdev device for WCN7850 */
-+		if (pdev->vendor == PCI_VENDOR_ID_QCOM && pdev->device == 0x1107) {
-+			serdev_device_remove(ctx->serdev);
-+			of_changeset_revert(ctx->ocs);
-+			of_changeset_destroy(ctx->ocs);
-+		}
-+		break;
-+	}
-+
-+	return NOTIFY_OK;
-+}
-+
-+static bool pwrseq_pcie_m2_check_remote_node(struct device *dev, u8 port, u8 endpoint,
-+					     const char *node)
-+{
-+	struct device_node *remote __free(device_node) =
-+			of_graph_get_remote_node(dev_of_node(dev), port, endpoint);
-+
-+	if (remote && of_node_name_eq(remote, node))
-+		return true;
-+
-+	return false;
-+}
-+
 +/*
-+ * If the connector exposes a non-discoverable bus like UART, the respective
-+ * protocol device needs to be created manually with the help of the notifier
-+ * of the discoverable bus like PCIe.
++ * Older steppings of the Loongson-3C6000 series incorrectly report the
++ * supported link speeds on their PCIe bridges (device IDs 0x3c19,
++ * 0x3c29) as only 2.5 GT/s, despite the upstream bus supporting speeds
++ * from 2.5 GT/s up to 16 GT/s.
 + */
-+static int pwrseq_pcie_m2_register_notifier(struct pwrseq_pcie_m2_ctx *ctx, struct device *dev)
++static void loongson_pci_bridge_speed_quirk(struct pci_dev *pdev)
 +{
-+	int ret;
++	u8 old_supported_speeds = pdev->supported_speeds;
 +
-+	/*
-+	 * Register a PCI notifier for Key E connector that has PCIe as Port
-+	 * 0/Endpoint 0 interface and Serial as Port 1/Endpoint 1 interface.
-+	 */
-+	if (pwrseq_pcie_m2_check_remote_node(dev, 1, 1, "serial")) {
-+		if (pwrseq_pcie_m2_check_remote_node(dev, 0, 0, "pcie")) {
-+			ctx->dev = dev;
-+			ctx->nb.notifier_call = pwrseq_m2_pcie_notify;
-+			ret = bus_register_notifier(&pci_bus_type, &ctx->nb);
-+			if (ret) {
-+				dev_err_probe(dev, ret, "Failed to register notifier for serdev\n");
-+				return ret;
-+			}
-+		}
++	switch (pdev->bus->max_bus_speed) {
++	case PCIE_SPEED_16_0GT:
++		pdev->supported_speeds |= PCI_EXP_LNKCAP2_SLS_16_0GB;
++		fallthrough;
++	case PCIE_SPEED_8_0GT:
++		pdev->supported_speeds |= PCI_EXP_LNKCAP2_SLS_8_0GB;
++		fallthrough;
++	case PCIE_SPEED_5_0GT:
++		pdev->supported_speeds |= PCI_EXP_LNKCAP2_SLS_5_0GB;
++		fallthrough;
++	case PCIE_SPEED_2_5GT:
++		pdev->supported_speeds |= PCI_EXP_LNKCAP2_SLS_2_5GB;
++		break;
++	default:
++		pci_warn(pdev, "unexpected max bus speed");
++
++		return;
 +	}
 +
-+	return 0;
++	if (pdev->supported_speeds != old_supported_speeds)
++		pci_info(pdev, "fixing up supported link speeds: 0x%x => 0x%x",
++			 old_supported_speeds, pdev->supported_speeds);
 +}
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_LOONGSON, 0x3c19,
++			 loongson_pci_bridge_speed_quirk);
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_LOONGSON, 0x3c29,
++			 loongson_pci_bridge_speed_quirk);
 +
- static int pwrseq_pcie_m2_probe(struct platform_device *pdev)
+ static struct loongson_pci *pci_bus_to_loongson_pci(struct pci_bus *bus)
  {
- 	struct device *dev = &pdev->dev;
-@@ -235,7 +399,11 @@ static int pwrseq_pcie_m2_probe(struct platform_device *pdev)
- 		return dev_err_probe(dev, PTR_ERR(ctx->pwrseq),
- 				     "Failed to register the power sequencer\n");
- 
--	return 0;
-+	/*
-+	 * Register a notifier for creating protocol devices for
-+	 * non-discoverable busses like UART.
-+	 */
-+	return pwrseq_pcie_m2_register_notifier(ctx, dev);
- }
- 
- static const struct of_device_id pwrseq_pcie_m2_of_match[] = {
+ 	struct pci_config_window *cfg;
 
+---
+base-commit: ea1013c1539270e372fc99854bc6e4d94eaeff66
+change-id: 20250822-loongson-pci1-4ded0d78f1bb
+
+Best regards,
 -- 
-2.48.1
+Ziyao Li <liziyao@uniontech.com>
 
