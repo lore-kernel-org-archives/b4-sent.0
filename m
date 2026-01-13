@@ -1,73 +1,102 @@
-From: Cryolitia PukNgae <cryolitia@uniontech.com>
-Date: Tue, 13 Jan 2026 11:22:52 +0800
-Subject: [PATCH RESEND v2] checkpatch: Suppress warnings when Reported-by:
- is followed by Link:
+From: Rudraksha Gupta <guptarud@gmail.com>
+Subject: [PATCH 0/3] Pinephone Pro Connectivity: Adding Modem, Bluetooth,
+ and Wi-Fi
+Date: Mon, 12 Jan 2026 22:42:23 -0800
+Message-Id: <20260112-ppp_connectivity-v1-0-284d6e83b212@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260113-checkpatch-v2-1-5dfe8b9f4d90@uniontech.com>
-X-B4-Tracking: v=1; b=H4sIAIu6ZWkC/3WOPQ+CMBiE/4rpbE0/sKVODrI66GgYSvvWNkYgg
- ERD+O8WRpHx7vLc3YBaaAK06LAZUAN9aENVRsG2G2S8Lu+Ag40aMcL2RFGFjQfzqHVnPCZMCpl
- KKFwBKAJ1Ay6857IbumTX7HxCefR9aLuq+cwbPZ3Tf3U9xRTbNFVKcsWZ08dXGd90YPzOVM9pY
- cIoIUus0I6AoEmhxCrG+AJzTnKwMZJWrGCUkuVJqUHZRGguf7F8HMcvDt71blUBAAA=
-X-Change-ID: 20250919-checkpatch-0276787ebfbe
-To: Andy Whitcroft <apw@canonical.com>, Joe Perches <joe@perches.com>, 
- Dwaipayan Ray <dwaipayanray1@gmail.com>, 
- Lukas Bulwahn <lukas.bulwahn@gmail.com>
-Cc: workflows@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-mm@kvack.org, linux-doc@vger.kernel.org, ltp@lists.linux.it, 
- niecheng1@uniontech.com, zhanjun@uniontech.com, 
- Cryolitia PukNgae <cryolitia@uniontech.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAFDpZWkC/yXN2wrCMAyA4VcZvTbSlh3cEPE9ZIzaxRlY29nWq
+ ojvbp25+wP58mYBPWFgXfFmHhMFcjaH2BRMX5WdEGjMzSSXNRdCwrIsg3bWoo6UKL6gwjFPcy5
+ bXrJ8tni80HMlT/2/Pd7uWY7/JTMYglrlrthnuBJSVis803SNg9Ia58GoaUhuhtE9LKQaOOx00
+ 6oSdw3n4jgZRfNWO3P4PT2rgJDDUOyKVG9FC15XrP98vtxVLGDiAAAA
+X-Change-ID: 20260112-ppp_connectivity-5edddd7b4904
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Lee Jones <lee@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Rudraksha Gupta <guptarud@gmail.com>, Martijn Braam <martijn@brixit.nl>, 
+ =?utf-8?q?Kamil_Trzci=C5=84ski?= <ayufan@ayufan.eu>, 
+ Ondrej Jirman <megi@xff.cz>, Danct12 <danct12@disroot.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768274577; l=1809;
- i=cryolitia@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=VE6TM5bOD2xrus3PUyCCcDFeowc5jbcfaHJXtjNJP6E=;
- b=H/KmEQriZzSu52B7ZrKMnqG2miNglsyHC9jPS9DFPtDDyHeRknjMSTjUw8oeg5JAuFoPIVG8m
- kMABb8g9rLOCjvhDqFxcPKtvNRnyqmmB3yJsoNFtH9tMhlOJovsCtNo
-X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20250730 with auth_id=474
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768286545; l=3352;
+ i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
+ bh=8tXZjIGktkSj/gIsBOODpm0xDPGQpoD1AscqdH+ddjM=;
+ b=zixIm9Y8C+p6V0XPwI08j+ah9mKT91Eo3L76RzVp8W0TjkE+M7AfqSyS7f5AfgUzSQLMyLDEY
+ Evxb8NGmqQvBlzyD44ElB20KzPu0uvR7fz8zWayHjnDK1RRsv2JfkCE
+X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
+ pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
+X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-> The tag should be followed by a Closes: tag pointing to the report,
-> unless the report is not available on the web. The Link: tag can be
-> used instead of Closes: if the patch fixes a part of the issue(s)
-> being reported.
+Continuing the work on upstreaming Pinephone Pro functionality,
+this patch series gets the connectivity side of the Pinephone Pro
+mainlined. Here are the following patches with sources to the original
+implementation(s):
 
-Accroding to Documentation/process/submitting-patches.rst , Link: is
-also acceptable to followed a Reported-by:
+arm64: dts: rockchip: Remove interrupt GPIO for WiFi for the Pinephone Pro
+- arm64: dts: rockchip: Disable interrupt GPIO for WiFi for the Pinephone Pro
+----- https://codeberg.org/megi/linux/commit/7395662eb6700ba19a92fbfb244d4858f08404f3
 
-Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
+mfd: rk8xx-core: Configure `rk808-clkout2` function
+- power: rk818: Configure rk808-clkout2 function
+----- https://codeberg.org/megi/linux/commit/75be96faf939504d0fd5112846e73e437573f716
+
+arm64: dts: rockchip: Add modem to the Pinephone Pro
+- arm64: dts: rk3399-pinephone-pro: Add 5V power supply
+----- https://codeberg.org/megi/linux/commit/808e7cdaf3ed
+- arm64: dts: rk3399-pinephone-pro: Add modem support 
+----- https://codeberg.org/megi/linux/commit/8f7e3464
+- arm64: dts: rk3399-pinephone-pro: Change modem codec samplerate to 16kHz
+----- https://codeberg.org/megi/linux/commit/3bea535
+- arm64: dts: rk3399-pinephone-pro: Remove modem node
+----- https://gitlab.com/pine64-org/linux/-/commit/f9f847c6fd1
+
+I've also included a short guide on how to test these patches. This
+generally follows this page:
+https://wiki.postmarketos.org/wiki/PINE64_PinePhone_Pro_(pine64-pinephonepro)
+
+To test, please follow the following steps:
+// Follow pmbootstrap installation instructions:
+//   https://docs.postmarketos.org/pmbootstrap/main/installation.html
+// Next, follow the instructions here to put the Pinephone Pro into USB Mass Storage mode:
+//   https://wiki.postmarketos.org/wiki/PINE64_PinePhone_Pro_(pine64-pinephonepro)#Internal_storage_(eMMC)
+cd /to/linux/directory/with/these/patches/on/top
+// I typically choose Phosh. Defaults should work
+pmbootstrap init
+wget https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/master/device/community/linux-pine64-pinephonepro/config-pine64-pinephonepro.aarch64 -O arch/arm64/configs/orangepi_defconfig
+make LLVM=1 CC="ccache clang" O=.output ARCH=arm64 -j $(nproc) W=1 orangepi_defconfig all
+pmbootstrap build --envkernel linux-pine64-pinephonepro
+pmbootstrap build --force device-pine64-pinephonepro
+// Change /dev/sdX appropriately
+pmbootstrap install --sdcard=/dev/sdX
+// Cleanup everything
+pmbootstrap -y zap -a
+
+Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
-Link to previous: https://lore.kernel.org/r/20251023-checkpatch-v1-1-ff73ed1027d6@uniontech.com
----
- scripts/checkpatch.pl | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Kamil Trzciński (1):
+      mfd: rk8xx-core: Configure `rk808-clkout2` function
 
-diff --git a/scripts/checkpatch.pl b/scripts/checkpatch.pl
-index c0250244cf7a..dac9d98133c6 100755
---- a/scripts/checkpatch.pl
-+++ b/scripts/checkpatch.pl
-@@ -3209,10 +3209,10 @@ sub process {
- 			if ($sign_off =~ /^reported(?:|-and-tested)-by:$/i) {
- 				if (!defined $lines[$linenr]) {
- 					WARN("BAD_REPORTED_BY_LINK",
--					     "Reported-by: should be immediately followed by Closes: with a URL to the report\n" . $herecurr . "\n");
--				} elsif ($rawlines[$linenr] !~ /^closes:\s*/i) {
-+					     "Reported-by: should be immediately followed by Closes: or Link: with a URL to the report\n" . $herecurr . "\n");
-+				} elsif ($rawlines[$linenr] !~ /^(closes|link):\s*/i) {
- 					WARN("BAD_REPORTED_BY_LINK",
--					     "Reported-by: should be immediately followed by Closes: with a URL to the report\n" . $herecurr . $rawlines[$linenr] . "\n");
-+					     "Reported-by: should be immediately followed by Closes: or Link: with a URL to the report\n" . $herecurr . $rawlines[$linenr] . "\n");
- 				}
- 			}
- 		}
+Ondrej Jirman (1):
+      arm64: dts: rockchip: Remove interrupt GPIO for WiFi for the Pinephone Pro
 
+Rudraksha Gupta (1):
+      arm64: dts: rockchip: Add modem to the Pinephone Pro
+
+ .../boot/dts/rockchip/rk3399-pinephone-pro.dts     | 86 +++++++++++++++++++++-
+ drivers/mfd/rk8xx-core.c                           |  1 +
+ include/linux/mfd/rk808.h                          |  2 +
+ 3 files changed, 86 insertions(+), 3 deletions(-)
 ---
-base-commit: 9448598b22c50c8a5bb77a9103e2d49f134c9578
-change-id: 20250919-checkpatch-0276787ebfbe
+base-commit: d0e305301e82474223bf26185e86e7dc2eb85350
+change-id: 20260112-ppp_connectivity-5edddd7b4904
+prerequisite-message-id: <20251225-ppp_light_accel_mag_vol-down-v6-0-8c79a4e87001@gmail.com>
+prerequisite-patch-id: 8b32de16edffc9f81d299e40107c95908ead6a81
+prerequisite-patch-id: 7714aa0d065ea9bc58a8fe67f04d738153752221
 
 Best regards,
 -- 
-Cryolitia PukNgae <cryolitia@uniontech.com>
+Rudraksha Gupta <guptarud@gmail.com>
 
