@@ -1,88 +1,50 @@
-From: Jean-Michel Hautbois <jeanmichel.hautbois@yoseli.org>
-Date: Tue, 13 Jan 2026 15:29:48 +0100
-Subject: [PATCH 2/2] dt-bindings: pinctrl: mcp23s08: Add multi-chip example
+From: Yang Xiwen <forbidden405@outlook.com>
+Subject: [PATCH RFC 0/2] net: dwmac_meson8b: Fix incorrect ETH0 register
+ assignment
+Date: Tue, 13 Jan 2026 23:16:14 +0800
+Message-Id: <20260113-aml_eth-v1-0-3dd74db37c4f@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260113-mcp23s17-multiple-addr-names-v1-2-f14b60f92c82@yoseli.org>
-References: <20260113-mcp23s17-multiple-addr-names-v1-0-f14b60f92c82@yoseli.org>
-In-Reply-To: <20260113-mcp23s17-multiple-addr-names-v1-0-f14b60f92c82@yoseli.org>
-To: Linus Walleij <linusw@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Himanshu Bhavani <himanshu.bhavani@siliconsignals.io>
-Cc: linux-gpio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, 
- Jean-Michel Hautbois <jeanmichel.hautbois@yoseli.org>
-X-Mailer: b4 0.15-dev-47773
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768314588; l=2399;
- i=jeanmichel.hautbois@yoseli.org; s=20240925; h=from:subject:message-id;
- bh=vD/F25SfezAejm8BqlJHgIvltMMe6SW7utp1RO4apSA=;
- b=SJyU0kBOEkWdKLZeURIaGnlMhZb8uEgNvqdqqHlrCYmi5t46OXmtGVKaVb9LN9FI+u+JNqk+6
- TZf3miIOMVEA80L/Sz2IqTGhGktBF9I2T/6ocwqY7IVDrSxb/+a5FlT
-X-Developer-Key: i=jeanmichel.hautbois@yoseli.org; a=ed25519;
- pk=MsMTVmoV69wLIlSkHlFoACIMVNQFyvJzvsJSQsn/kq4=
-X-Endpoint-Received: by B4 Relay for jeanmichel.hautbois@yoseli.org/20240925 with auth_id=570
+X-B4-Tracking: v=1; b=H4sIAL5hZmkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDQ0Nj3cTcnPjUkgzdNAPT1DTz5DRzAwMzJaDqgqLUtMwKsEnRSkFuzkq
+ xtbUAeZIjgF4AAAA=
+To: u-boot-amlogic@groups.io, u-boot@lists.denx.de
+Cc: Joe Hershberger <joe.hershberger@ni.com>, 
+ Ramon Fried <rfried.dev@gmail.com>, Jerome Forissier <jerome@forissier.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Tom Rini <trini@konsulko.com>, 
+ Yang Xiwen <forbidden405@outlook.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768317381; l=720;
+ i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
+ bh=rY4/JV3DaI9fBaAujMH30v69WA47tqdcDAHu7tVKel8=;
+ b=ElkdPBF9JYECe41/gCUZ8cqRaN2eiEfTr+wH2wZXkhsZhsmUcaVXh6Lz5PUb1yLAuU9hczS3V
+ gnlw3/81b3VC5ncOJ+MPIOXTRLF5Wo1XGXUfTlgVP0l8almpfh+DAr7
+X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
+ pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
+X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable gpio-line-names property in the schema and add example showing
-how to use it with multiple MCP23S08/17/18 chips sharing the same SPI
-chip select. Names are assigned sequentially in hardware address order.
+The currnet logic for setting ETH0 reg seems broken. It does not conform
+to the datasheet and the Linux driver code.
 
-Signed-off-by: Jean-Michel Hautbois <jeanmichel.hautbois@yoseli.org>
+Fix two bugs here:
+1. replace setbits() with clrsetbits()
+2. set tx radio to 2 rather than 4.
+
+Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- .../bindings/pinctrl/microchip,mcp23s08.yaml       | 33 ++++++++++++++++++++++
- 1 file changed, 33 insertions(+)
+Yang Xiwen (2):
+      net: dwmac_meson8b: replace setbits() with clrsetbits()
+      net: dwmac_meson8b: Fix incorrect clock divider setting
 
-diff --git a/Documentation/devicetree/bindings/pinctrl/microchip,mcp23s08.yaml b/Documentation/devicetree/bindings/pinctrl/microchip,mcp23s08.yaml
-index e07f4723de17..667be31b6da3 100644
---- a/Documentation/devicetree/bindings/pinctrl/microchip,mcp23s08.yaml
-+++ b/Documentation/devicetree/bindings/pinctrl/microchip,mcp23s08.yaml
-@@ -42,6 +42,8 @@ properties:
-   interrupts:
-     maxItems: 1
- 
-+  gpio-line-names: true
-+
-   reset-gpios:
-     description: GPIO specifier for active-low reset pin.
-     maxItems: 1
-@@ -159,3 +161,34 @@ examples:
-             microchip,spi-present-mask = /bits/ 8 <0x01>;
-         };
-     };
-+
-+  - |
-+    /* Multiple chips sharing same SPI CS with gpio-line-names */
-+    spi {
-+        #address-cells = <1>;
-+        #size-cells = <0>;
-+
-+        gpio@0 {
-+            compatible = "microchip,mcp23s17";
-+            reg = <0>;
-+            gpio-controller;
-+            #gpio-cells = <2>;
-+            spi-max-frequency = <10000000>;
-+            /* Two chips at hardware addresses 0 and 1 */
-+            microchip,spi-present-mask = /bits/ 8 <0x03>;
-+            /*
-+             * Names assigned sequentially in address order.
-+             * First 16 names for chip at address 0 (GPA0-7, GPB0-7).
-+             * Next 16 names for chip at address 1 (GPA0-7, GPB0-7).
-+             */
-+            gpio-line-names =
-+                "EXP0_GPA0", "EXP0_GPA1", "EXP0_GPA2", "EXP0_GPA3",
-+                "EXP0_GPA4", "EXP0_GPA5", "EXP0_GPA6", "EXP0_GPA7",
-+                "EXP0_GPB0", "EXP0_GPB1", "EXP0_GPB2", "EXP0_GPB3",
-+                "EXP0_GPB4", "EXP0_GPB5", "EXP0_GPB6", "EXP0_GPB7",
-+                "EXP1_GPA0", "EXP1_GPA1", "EXP1_GPA2", "EXP1_GPA3",
-+                "EXP1_GPA4", "EXP1_GPA5", "EXP1_GPA6", "EXP1_GPA7",
-+                "EXP1_GPB0", "EXP1_GPB1", "EXP1_GPB2", "EXP1_GPB3",
-+                "EXP1_GPB4", "EXP1_GPB5", "EXP1_GPB6", "EXP1_GPB7";
-+        };
-+    };
+ drivers/net/dwmac_meson8b.c | 48 ++++++++++++++++++++++++++++-----------------
+ 1 file changed, 30 insertions(+), 18 deletions(-)
+---
+base-commit: 711150fc6fe7a125cc1133841acc802570478007
+change-id: 20260113-aml_eth-f05ef7cf7006
 
+Best regards,
 -- 
-2.39.5
+Yang Xiwen <forbidden405@outlook.com>
 
