@@ -1,11 +1,11 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Tue, 13 Jan 2026 23:16:15 +0800
-Subject: [PATCH RFC 1/2] net: dwmac_meson8b: replace setbits() with
- clrsetbits()
+Date: Tue, 13 Jan 2026 23:16:16 +0800
+Subject: [PATCH RFC 2/2] net: dwmac_meson8b: Fix incorrect clock divider
+ setting
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260113-aml_eth-v1-1-3dd74db37c4f@outlook.com>
+Message-Id: <20260113-aml_eth-v1-2-3dd74db37c4f@outlook.com>
 References: <20260113-aml_eth-v1-0-3dd74db37c4f@outlook.com>
 In-Reply-To: <20260113-aml_eth-v1-0-3dd74db37c4f@outlook.com>
 To: u-boot-amlogic@groups.io, u-boot@lists.denx.de
@@ -14,119 +14,102 @@ Cc: Joe Hershberger <joe.hershberger@ni.com>,
  Neil Armstrong <neil.armstrong@linaro.org>, Tom Rini <trini@konsulko.com>, 
  Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768317381; l=4115;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768317381; l=4015;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=gHhFLguZETRuvn1ptF4TGpP8+u1e6lfmwRCpP93Z7sU=;
- b=980RnZ7CyrCH2deXDg8iIIzoAuuA/6hPhbZE/nxprH8ZzUpfbMT3gs1Mgh8HGZyaUkDb/OfHo
- T+a+jwISnqcDTONbTjd/FOw49/E9W3c9Cd3fyOMwMLB60HKuSSmwlnn
+ bh=N54o61iT+QMkRPDSfAfYCMn3c7ohOQtF54kAkKdLB7A=;
+ b=533nhsA9QPpoM1+GR3lsAA5fVXmcxKJUrgqQVQKDj8cBEj82qL2QXcyn6jUK7H3Y0lrO6Fov5
+ 0KX9ppxGjw7CmS24E8WBt//kVEycjWlk38Wg8Vmgu3AHpqjthD+VD+Y
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-setbits() only sets the specified bits and leave other bits untouched.
-This is incorrect for ETH_REG_0_TX_PHASE and ETH_REG_0_TX_RATIO fields
-assignment. They contain multiple bits and should be cleared before
-setting new bits. Otherwize the old value is OR'ed with the new value.
-(e.g. 0x2 | 0x4 becomes 0x6)
+The original code sets divisor to 4, which seems incorrect as per the
+datasheet[1] and Linux driver code[2]. See explanation below:
+
+                                                   crystal (24MHz)
+                                                           |
+                                                 Fixed DPLL (2550MHz)
+                                                           |
+                                            -----------------------------
+                                            |                           |
+                                   FCLK_DIV2 (1275MHz)            MPLL2 (500MHz)
+                                            |---------------------------|
+                                                           |
+                                                        M250_MUX (Usually MPLL2)
+                                                           |
+                                                        M250_DIV  (500 / 2 = 250MHz)
+                                                           |
+                                                       FIXED_DIV2 (250 / 2 = 125MHz)
+                                                           |
+                                                       RGMII_TX_EN (Gate)
+                                                           |
+                                                       RGMII_TX_CLK (125MHz)
+
+Note:
+1. It doesn't work to switch M250_MUX to FCLK_DIV2 because it's unable
+   to generate 125MHz rgmii clock (1275/125=10.2);
+2. There is a fixed 2x divider before rgmii tx clock;
+3. MPLL2 is configurable, theoretically. In practice it's always 500MHz.
+
+Because of all these reasons, M250_DIV should be set to 0b010, which
+divides input 500MHz clock to 250MHz output, to generate the 125MHz
+rgmii clock.
+
+In vendor U-Boot, the value read out from 0xc1108140 is 0x7531 (bit7-9
+is 0b010), which also verify this.
+
+This patch is tested on a board with S805.
+
+[1]: https://dn.odroid.com/S905/DataSheet/S905_Public_Datasheet_V1.1.4.pdf P304
+[2]: https://elixir.bootlin.com/linux/v6.18.4/source/drivers/net/ethernet/stmicro/stmmac/dwmac-meson8b.c#L143
 
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
+
+------------
 ---
- drivers/net/dwmac_meson8b.c | 48 ++++++++++++++++++++++++++++-----------------
- 1 file changed, 30 insertions(+), 18 deletions(-)
+ drivers/net/dwmac_meson8b.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/net/dwmac_meson8b.c b/drivers/net/dwmac_meson8b.c
-index fde4aabbacec..b1a3946ce684 100644
+index b1a3946ce684..34f55a4d42ea 100644
 --- a/drivers/net/dwmac_meson8b.c
 +++ b/drivers/net/dwmac_meson8b.c
-@@ -16,7 +16,9 @@
- #define ETH_REG_3		0x1c
- 
- #define GX_ETH_REG_0_PHY_INTF		BIT(0)
-+#define GX_ETH_REG_0_TX_PHASE_MASK	GENMASK(6, 5)
- #define GX_ETH_REG_0_TX_PHASE(x)	(((x) & 3) << 5)
-+#define GX_ETH_REG_0_TX_RATIO_MASK	GENMASK(9, 7)
- #define GX_ETH_REG_0_TX_RATIO(x)	(((x) & 7) << 7)
- #define GX_ETH_REG_0_PHY_CLK_EN	BIT(10)
- #define GX_ETH_REG_0_INVERT_RMII_CLK	BIT(11)
-@@ -24,7 +26,9 @@
- 
- #define AXG_ETH_REG_0_PHY_INTF_RGMII	BIT(0)
- #define AXG_ETH_REG_0_PHY_INTF_RMII	BIT(2)
-+#define AXG_ETH_REG_0_TX_PHASE_MASK	GENMASK(6, 5)
- #define AXG_ETH_REG_0_TX_PHASE(x)	(((x) & 3) << 5)
-+#define AXG_ETH_REG_0_TX_RATIO_MASK	GENMASK(9, 7)
- #define AXG_ETH_REG_0_TX_RATIO(x)	(((x) & 7) << 7)
- #define AXG_ETH_REG_0_PHY_CLK_EN	BIT(10)
- #define AXG_ETH_REG_0_INVERT_RMII_CLK	BIT(11)
-@@ -59,20 +63,24 @@ static int dwmac_setup_axg(struct udevice *dev, struct eth_pdata *edata)
- 	case PHY_INTERFACE_MODE_RGMII:
- 	case PHY_INTERFACE_MODE_RGMII_ID:
- 		/* Set RGMII mode */
--		setbits_le32(plat->regs + ETH_REG_0, AXG_ETH_REG_0_PHY_INTF_RGMII |
--						     AXG_ETH_REG_0_TX_PHASE(1) |
--						     AXG_ETH_REG_0_TX_RATIO(4) |
--						     AXG_ETH_REG_0_PHY_CLK_EN |
--						     AXG_ETH_REG_0_CLK_EN);
-+		clrsetbits_le32(plat->regs + ETH_REG_0,
-+				AXG_ETH_REG_0_TX_PHASE_MASK | AXG_ETH_REG_0_TX_RATIO_MASK,
-+				AXG_ETH_REG_0_PHY_INTF_RGMII |
-+				AXG_ETH_REG_0_TX_PHASE(1) |
-+				AXG_ETH_REG_0_TX_RATIO(4) |
-+				AXG_ETH_REG_0_PHY_CLK_EN |
-+				AXG_ETH_REG_0_CLK_EN);
+@@ -67,7 +67,7 @@ static int dwmac_setup_axg(struct udevice *dev, struct eth_pdata *edata)
+ 				AXG_ETH_REG_0_TX_PHASE_MASK | AXG_ETH_REG_0_TX_RATIO_MASK,
+ 				AXG_ETH_REG_0_PHY_INTF_RGMII |
+ 				AXG_ETH_REG_0_TX_PHASE(1) |
+-				AXG_ETH_REG_0_TX_RATIO(4) |
++				AXG_ETH_REG_0_TX_RATIO(2) |
+ 				AXG_ETH_REG_0_PHY_CLK_EN |
+ 				AXG_ETH_REG_0_CLK_EN);
  		break;
- 
- 	case PHY_INTERFACE_MODE_RGMII_RXID:
- 	case PHY_INTERFACE_MODE_RGMII_TXID:
- 		/* TOFIX: handle amlogic,tx-delay-ns & rx-internal-delay-ps from DT */
--		setbits_le32(plat->regs + ETH_REG_0, AXG_ETH_REG_0_PHY_INTF_RGMII |
--						     AXG_ETH_REG_0_TX_RATIO(4) |
--						     AXG_ETH_REG_0_PHY_CLK_EN |
--						     AXG_ETH_REG_0_CLK_EN);
-+		clrsetbits_le32(plat->regs + ETH_REG_0,
-+				AXG_ETH_REG_0_TX_PHASE_MASK | AXG_ETH_REG_0_TX_RATIO_MASK,
-+				AXG_ETH_REG_0_PHY_INTF_RGMII |
-+				AXG_ETH_REG_0_TX_RATIO(4) |
-+				AXG_ETH_REG_0_PHY_CLK_EN |
-+				AXG_ETH_REG_0_CLK_EN);
+@@ -78,7 +78,7 @@ static int dwmac_setup_axg(struct udevice *dev, struct eth_pdata *edata)
+ 		clrsetbits_le32(plat->regs + ETH_REG_0,
+ 				AXG_ETH_REG_0_TX_PHASE_MASK | AXG_ETH_REG_0_TX_RATIO_MASK,
+ 				AXG_ETH_REG_0_PHY_INTF_RGMII |
+-				AXG_ETH_REG_0_TX_RATIO(4) |
++				AXG_ETH_REG_0_TX_RATIO(2) |
+ 				AXG_ETH_REG_0_PHY_CLK_EN |
+ 				AXG_ETH_REG_0_CLK_EN);
  		break;
+@@ -109,7 +109,7 @@ static int dwmac_setup_gx(struct udevice *dev, struct eth_pdata *edata)
+ 				GX_ETH_REG_0_TX_PHASE_MASK | GX_ETH_REG_0_TX_RATIO_MASK,
+ 				GX_ETH_REG_0_PHY_INTF |
+ 				GX_ETH_REG_0_TX_PHASE(1) |
+-				GX_ETH_REG_0_TX_RATIO(4) |
++				GX_ETH_REG_0_TX_RATIO(2) |
+ 				GX_ETH_REG_0_PHY_CLK_EN |
+ 				GX_ETH_REG_0_CLK_EN);
  
- 	case PHY_INTERFACE_MODE_RMII:
-@@ -97,21 +105,25 @@ static int dwmac_setup_gx(struct udevice *dev, struct eth_pdata *edata)
- 	case PHY_INTERFACE_MODE_RGMII:
- 	case PHY_INTERFACE_MODE_RGMII_ID:
- 		/* Set RGMII mode */
--		setbits_le32(plat->regs + ETH_REG_0, GX_ETH_REG_0_PHY_INTF |
--						     GX_ETH_REG_0_TX_PHASE(1) |
--						     GX_ETH_REG_0_TX_RATIO(4) |
--						     GX_ETH_REG_0_PHY_CLK_EN |
--						     GX_ETH_REG_0_CLK_EN);
-+		clrsetbits_le32(plat->regs + ETH_REG_0,
-+				GX_ETH_REG_0_TX_PHASE_MASK | GX_ETH_REG_0_TX_RATIO_MASK,
-+				GX_ETH_REG_0_PHY_INTF |
-+				GX_ETH_REG_0_TX_PHASE(1) |
-+				GX_ETH_REG_0_TX_RATIO(4) |
-+				GX_ETH_REG_0_PHY_CLK_EN |
-+				GX_ETH_REG_0_CLK_EN);
- 
- 		break;
- 
- 	case PHY_INTERFACE_MODE_RGMII_RXID:
- 	case PHY_INTERFACE_MODE_RGMII_TXID:
- 		/* TOFIX: handle amlogic,tx-delay-ns & rx-internal-delay-ps from DT */
--		setbits_le32(plat->regs + ETH_REG_0, GX_ETH_REG_0_PHY_INTF |
--						     GX_ETH_REG_0_TX_RATIO(4) |
--						     GX_ETH_REG_0_PHY_CLK_EN |
--						     GX_ETH_REG_0_CLK_EN);
-+		clrsetbits_le32(plat->regs + ETH_REG_0,
-+				GX_ETH_REG_0_TX_PHASE_MASK | GX_ETH_REG_0_TX_RATIO_MASK,
-+				GX_ETH_REG_0_PHY_INTF |
-+				GX_ETH_REG_0_TX_RATIO(4) |
-+				GX_ETH_REG_0_PHY_CLK_EN |
-+				GX_ETH_REG_0_CLK_EN);
- 
- 		break;
+@@ -121,7 +121,7 @@ static int dwmac_setup_gx(struct udevice *dev, struct eth_pdata *edata)
+ 		clrsetbits_le32(plat->regs + ETH_REG_0,
+ 				GX_ETH_REG_0_TX_PHASE_MASK | GX_ETH_REG_0_TX_RATIO_MASK,
+ 				GX_ETH_REG_0_PHY_INTF |
+-				GX_ETH_REG_0_TX_RATIO(4) |
++				GX_ETH_REG_0_TX_RATIO(2) |
+ 				GX_ETH_REG_0_PHY_CLK_EN |
+ 				GX_ETH_REG_0_CLK_EN);
  
 
 -- 
