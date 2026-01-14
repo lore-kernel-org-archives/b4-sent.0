@@ -1,15 +1,13 @@
 From: Jihan LIN <linjh22s@gmail.com>
-Subject: [PATCH v2 0/2] gendwarfksyms: Document build dependencies
-Date: Wed, 14 Jan 2026 19:47:43 +0800
-Message-Id: <20260114-documents_gendwarfksyms-v2-0-297c98bd62c6@gmail.com>
+Date: Wed, 14 Jan 2026 19:47:44 +0800
+Subject: [PATCH v2 1/2] Documentation/kbuild: Document gendwarfksyms build
+ dependencies
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAF+CZ2kC/3WNQQ7CIBQFr9L8tRhAa6kr72Eag/BpiQIGarVpu
- LvYxKXLmeTNWyBhtJjgWC0QcbLJBl+AbypQg/Q9EqsLA6f8QBmtiQ7q6dCP6dKj1y8ZzS3NLpH
- WCIF72UjNDZT1I6Kx77V87goPNo0hzuvRxL721xR/mxMjjNT8ykyrdkI19NQ7ae9bFRx0OecPF
- /L5zr4AAAA=
-X-Change-ID: 20260105-documents_gendwarfksyms-9f88e4a7ad2f
+Message-Id: <20260114-documents_gendwarfksyms-v2-1-297c98bd62c6@gmail.com>
+References: <20260114-documents_gendwarfksyms-v2-0-297c98bd62c6@gmail.com>
+In-Reply-To: <20260114-documents_gendwarfksyms-v2-0-297c98bd62c6@gmail.com>
 To: Nathan Chancellor <nathan@kernel.org>, Nicolas Schier <nsc@kernel.org>, 
  Jonathan Corbet <corbet@lwn.net>, Miguel Ojeda <ojeda@kernel.org>, 
  Boqun Feng <boqun.feng@gmail.com>, Sami Tolvanen <samitolvanen@google.com>, 
@@ -18,48 +16,67 @@ Cc: linux-modules@vger.kernel.org, linux-kbuild@vger.kernel.org,
  linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Jihan LIN <linjh22s@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768391298; l=1284;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768391298; l=1690;
  i=linjh22s@gmail.com; s=linjh22s_machine; h=from:subject:message-id;
- bh=42b1jPMRaZQMJsFTcdIPsgOH+T5OPHq2ZKwWlPwIz44=;
- b=OhZJJST3EqaB8evuw8uBs1/Mh0MwTtGN1AdtBslfMv4u2s/DuVo6soixm5q9t7N9lQDdQmtf9
- gnU8lXrczWABzmmL5EWYh3qHGm4lX5ghB3gimUgRYyMRPQM8nDZqA7C
+ bh=zaWdvli633/VK3S2KUL14PgYlfdPOQbClm+Z3p3BhUE=;
+ b=kMzqRJLPJqr33VLRjq0RPNsdmz0bA0nnzM52+b1Yznalz4e6Xi+T+3tx9pdylN9m4W96yQ43T
+ LXR12zdX+BGC5BlQJHChFfDCzW/e24NiHXQ2OmYFX8auZna93/Zztkr
 X-Developer-Key: i=linjh22s@gmail.com; a=ed25519;
  pk=MnRQAVFy1t4tiGb8ce7ohJwrN2YFXd+dA7XmzR6GmUc=
 X-Endpoint-Received: by B4 Relay for linjh22s@gmail.com/linjh22s_machine with auth_id=592
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+Although dependencies for gendwarfksyms were recently added to the
+packaging rules [1-2], the corresponding documentation was missing.
 
-I found there is no documentation for build dependencies in gendwarfksyms
-while digging into Rust drivers. Though Yuli added libdw-dev to the build
-dependencies for packaging [1], it seems that there is no documentation
-about it.
+Document the required build dependencies for gendwarfksyms, and
+include a few examples for installing these dependencies on some
+distributions.
 
-This series documents the build dependencies of gendwarfksyms, adds a few
-examples for installing these dependencies on some distributions and
-introduces indentation style cleanup as suggested.
-
-[1]: https://lore.kernel.org/all/79C925DCE2E963FF+20250422104927.144252-1-wangyuli@uniontech.com/
-
+[1] commit 657f96cb7c06 ("kbuild: deb-pkg: Add libdw-dev:native to
+Build-Depends-Arch")
+[2] commit 5bd6bdd0f76e ("kbuild: rpm-pkg: Add (elfutils-devel or
+libdw-devel) to BuildRequires")
 Signed-off-by: Jihan LIN <linjh22s@gmail.com>
 ---
-Changes in v2:
-- Fix style for section 'Dependencies'.
-- Introduce a new patch to clean up indentation in gendwarfksyms.rst.
-- Link to v1: https://lore.kernel.org/r/20260108-documents_gendwarfksyms-v1-1-52b1f9c38c70@gmail.com
+ Documentation/kbuild/gendwarfksyms.rst | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
 
----
-Jihan LIN (2):
-      Documentation/kbuild: Document gendwarfksyms build dependencies
-      Documentation/kbuild: gendwarfksyms: Style cleanup
+diff --git a/Documentation/kbuild/gendwarfksyms.rst b/Documentation/kbuild/gendwarfksyms.rst
+index ed366250a54eac3a72c2f529da94a9e803704ae4..0e153d13b052da6edcf65950739730c123cd49db 100644
+--- a/Documentation/kbuild/gendwarfksyms.rst
++++ b/Documentation/kbuild/gendwarfksyms.rst
+@@ -14,6 +14,29 @@ selected, **gendwarfksyms** is used instead to calculate symbol versions
+ from the DWARF debugging information, which contains the necessary
+ details about the final module ABI.
+ 
++Dependencies
++------------
++
++libelf, libdw and zlib are dependencies of gendwarfksyms.
++
++Here are a few examples for installing these dependencies:
++
++* Arch Linux and derivatives::
++
++	sudo pacman --needed -S zlib libelf
++
++* Debian, Ubuntu, and derivatives::
++
++	sudo apt install libelf-dev libdw-dev zlib1g-dev
++
++* Fedora and derivatives::
++
++	sudo dnf install elfutils-libelf-devel elfutils-devel zlib-devel
++
++* openSUSE and derivatives::
++
++	sudo zypper install libelf-devel libdw-devel zlib-devel
++
+ Usage
+ -----
+ 
 
- Documentation/kbuild/gendwarfksyms.rst | 123 +++++++++++++++++++--------------
- 1 file changed, 73 insertions(+), 50 deletions(-)
----
-base-commit: b71e635feefc852405b14620a7fc58c4c80c0f73
-change-id: 20260105-documents_gendwarfksyms-9f88e4a7ad2f
-
-Best regards,
 -- 
-Jihan LIN <linjh22s@gmail.com>
+2.51.0
 
