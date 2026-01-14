@@ -1,15 +1,13 @@
 From: Yedaya Katsman <yedaya.ka@gmail.com>
-Subject: [PATCH v2 0/3] Support FT3518 touchscreen in xiaomi-laurel
-Date: Wed, 14 Jan 2026 11:31:05 +0200
-Message-Id: <20260114-touchscreen-patches-v2-0-4215f94c8aba@gmail.com>
+Date: Wed, 14 Jan 2026 11:31:06 +0200
+Subject: [PATCH v2 1/3] dt-bindings: input: touchscreen: edt-ft5x06: Add
+ FocalTech FT3518
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NSw6DIBRFt2LeuDSAwX5G7qNxwOchL6ligJo2x
- r2XuoAOz0nuuRtkTIQZ7s0GCVfKFOcK8tSADXoekZGrDJLLjgvRshJfNmSbEGe26GIDZmbQSCU
- 745Q3UJdLQk/vo/oYKgfKJabPcbKKn/3fWwXjTAt+UxffSueu/Thpep5tnGDY9/0LbwYJOrYAA
- AA=
-X-Change-ID: 20260113-touchscreen-patches-beb2526bd5fb
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260114-touchscreen-patches-v2-1-4215f94c8aba@gmail.com>
+References: <20260114-touchscreen-patches-v2-0-4215f94c8aba@gmail.com>
+In-Reply-To: <20260114-touchscreen-patches-v2-0-4215f94c8aba@gmail.com>
 To: SzczurekYT <szczurek@szczurek.yt>, 
  Dmitry Torokhov <dmitry.torokhov@gmail.com>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -20,43 +18,38 @@ Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org,
  Yedaya Katsman <yedaya.ka@gmail.com>, 
  =?utf-8?q?Kamil_Go=C5=82da?= <kamil.golda@protonmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768383069; l=1085;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768383069; l=984;
  i=yedaya.ka@gmail.com; s=20260113; h=from:subject:message-id;
- bh=TG1VRK73rsFwkrCWwreBjkTZ7tI5mr/BPnHTVBIyQOc=;
- b=F/5PBPJdxPQpBNNxG38MLAbRTBNoWnxPPrSXa4s05zXS0dYj/Rr2EsIW2vsj+0efBdDb9Hlm9
- lkJahEN6cS0DPlYAHRwsyNsJA4BgojCuRCD68MU7bEF/Zee5NBVltJu
+ bh=SqsHa1FpeRSC7pDZsCiIt95zVp6duwvdtWnRvd2BIBs=;
+ b=NXVOGklMCHzyDE9Vx6PjrhFq4h5CvOMmuoyJo+4WmwIuFMWGygUs/OxB/fYUrvzpiUTuw5ox6
+ D7VqO1sVT4FCCXlZ1UrZPc7iBgJrDwhDo0o/be33K4qNSpL4TblsdpQ
 X-Developer-Key: i=yedaya.ka@gmail.com; a=ed25519;
  pk=CgNmxD3tYSws5dZfpmJfc6re/bV/f47veVijddHLytk=
 X-Endpoint-Received: by B4 Relay for yedaya.ka@gmail.com/20260113 with auth_id=601
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds support for the touchscreen in the Xiaomi Mi A3 (xiaomi-laurel)
- smartphone, FocalTech FT3518
+Document FocalTech FT3518 support by adding the compatible.
 
-Original tree was here:
- Link: https://gitlab.postmarketos.org/SzczurekYT/linux/-/commits/laurel
-
+Co-developed-by: Kamil Gołda <kamil.golda@protonmail.com>
+Signed-off-by: Kamil Gołda <kamil.golda@protonmail.com>
 Signed-off-by: Yedaya Katsman <yedaya.ka@gmail.com>
 ---
-Changes in v2:
-- Fixed name and email in signoffs
-- Link to v1: https://lore.kernel.org/r/20260113-touchscreen-patches-v1-0-a10957f32dd8@gmail.com
+ Documentation/devicetree/bindings/input/touchscreen/edt-ft5x06.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
----
-Yedaya Katsman (3):
-      dt-bindings: input: touchscreen: edt-ft5x06: Add FocalTech FT3518
-      drivers: input: touchscreen: edt-ft5x06: Add FocalTech FT3518
-      arm64: dts: qcom: sm6125-xiaomi-laurel-sprout: Add Focaltech FT3518 touchscreen
+diff --git a/Documentation/devicetree/bindings/input/touchscreen/edt-ft5x06.yaml b/Documentation/devicetree/bindings/input/touchscreen/edt-ft5x06.yaml
+index 7d3edb58f72d84ed19fb87fdd136c97f855aba00..6f90522de8c0afbe2d9d1e04578316350f66ec58 100644
+--- a/Documentation/devicetree/bindings/input/touchscreen/edt-ft5x06.yaml
++++ b/Documentation/devicetree/bindings/input/touchscreen/edt-ft5x06.yaml
+@@ -39,6 +39,7 @@ properties:
+       - edt,edt-ft5406
+       - edt,edt-ft5506
+       - evervision,ev-ft5726
++      - focaltech,ft3518
+       - focaltech,ft5426
+       - focaltech,ft5452
+       - focaltech,ft6236
 
- .../bindings/input/touchscreen/edt-ft5x06.yaml     |  1 +
- .../boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts  | 34 ++++++++++++++++++++++
- drivers/input/touchscreen/edt-ft5x06.c             |  6 ++++
- 3 files changed, 41 insertions(+)
----
-base-commit: b71e635feefc852405b14620a7fc58c4c80c0f73
-change-id: 20260113-touchscreen-patches-beb2526bd5fb
-
-Best regards,
 -- 
-Yedaya Katsman <yedaya.ka@gmail.com>
+2.52.0
 
