@@ -1,11 +1,11 @@
 From: Ricardo Pardini <ricardo@pardini.net>
-Date: Wed, 14 Jan 2026 23:48:36 +0100
-Subject: [PATCH 1/2] arm64: dts: amlogic: Enable the npu node on Radxa Zero
- 2
+Date: Wed, 14 Jan 2026 23:48:37 +0100
+Subject: [PATCH 2/2] arm64: dts: amlogic: add the type-c controller on
+ Radxa Zero 2
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260114-arm64-dts-amlogic-radxa-zero2-additions-v1-1-8b5cdf328fde@pardini.net>
+Message-Id: <20260114-arm64-dts-amlogic-radxa-zero2-additions-v1-2-8b5cdf328fde@pardini.net>
 References: <20260114-arm64-dts-amlogic-radxa-zero2-additions-v1-0-8b5cdf328fde@pardini.net>
 In-Reply-To: <20260114-arm64-dts-amlogic-radxa-zero2-additions-v1-0-8b5cdf328fde@pardini.net>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,42 +17,77 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Ricardo Pardini <ricardo@pardini.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=698; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=eqdmMp6peidn3J71/h9AkydpMOUtj1mRqpWe52feB/s=;
- b=owEBbQGS/pANAwAIATteP+Oex+3pAcsmYgBpaB1KmaU5bBjHFVtHlQhR+8JD0BxN6RL1k4sP5
- pT7lMOYuIiJATMEAAEIAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCaWgdSgAKCRA7Xj/jnsft
- 6T9zB/4sWp2MYpPyk50RQWXJ4TUCNsIX3h+AVX/rZKZ3m2cQtlN5RZLgg9WWc8KuRrxv+SwJxkf
- IefNO+MBh3Kg5nwI7Qjd6cPhIPN19r7zMtpyxpnqA17SSsDvkX+Z2LazVfSnMqq44a5VbrBGLPG
- NODCO/yFwkHSBEXLSeCtFl17WGxFJC7zZDQQrP2JkpeepmeayNSfSiYxhpa9LELUCMBYvV8nLyK
- VCo+gr4BEh5DUXAblkt4ySzT6J5utQXzciKNt4oY071YZ+ga09PPZKgxWaisWAKKIOGH/JGII4n
- GjvFSzc3xNPbcEaVMUomsn5wO19pKLCfEpBFL89p64xrwO5C
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1485; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=zb/OKKB6zV/hhBZYiZyJobFT3XGfSbU/eSwN+6koa1Y=;
+ b=owEBbQGS/pANAwAIATteP+Oex+3pAcsmYgBpaB1KlEhHDQdS0hwR9gCrhbZI2IMpaGlg0cHJM
+ GAsqkn+BQuJATMEAAEIAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCaWgdSgAKCRA7Xj/jnsft
+ 6VpIB/48OQIO8h534tAeCE4rHGBpxfc6elGR0Nw/+vh6ua9H1f+NS6RtkgR/249vXrgzaPpq3DN
+ O+POmf+VLSS+slNDVUmwVY1ev/2W4IqGR4jsKV6IzXycKBFm72uE8/93PRbfo/Bxavpl7SZAEQX
+ 2dtba8pz5t7nmyldBFZ5hFXxP39+O9yUnNDGLdbMGfrL3rV7nhZzhlCj4SollYHCFPD9TBCwXwX
+ 1QSTbbZWo7bh9+qLJRy03C9M8V4huPEMoun8KudEzPd3SKsxy3gSGBv2RPlPDcShaBzzGdVYD5a
+ 3+y+BmQkwNnpgJIwCWoPrg1ytk3BRSvc8o2SCBo3KhPZ+5o3
 X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
  fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
 X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Zero2 is also an A311D just like the VIM3, enable its npu.
+The Radxa Zero2 has an FUSB302 controller on i2c3 at address 0x22 and
+INT# wired to GPIOA-13.
 
 Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
 ---
- arch/arm64/boot/dts/amlogic/meson-g12b-radxa-zero2.dts | 4 ++++
- 1 file changed, 4 insertions(+)
+ .../boot/dts/amlogic/meson-g12b-radxa-zero2.dts    | 32 ++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/amlogic/meson-g12b-radxa-zero2.dts b/arch/arm64/boot/dts/amlogic/meson-g12b-radxa-zero2.dts
-index 1e5c6f9849456..a37776d22b09e 100644
+index a37776d22b09e..125b064a15c1e 100644
 --- a/arch/arm64/boot/dts/amlogic/meson-g12b-radxa-zero2.dts
 +++ b/arch/arm64/boot/dts/amlogic/meson-g12b-radxa-zero2.dts
-@@ -394,6 +394,10 @@ &pwm_AO_cd {
- 	status = "okay";
+@@ -364,12 +364,44 @@ hdmi_tx_tmds_out: endpoint {
+ 	};
  };
  
-+&npu {
++/* Also exposed on the 40-pin header: SDA pin 3, SCL pin 5 */
++&i2c3 {
++	pinctrl-0 = <&i2c3_sda_a_pins>, <&i2c3_sck_a_pins>;
++	pinctrl-names = "default";
 +	status = "okay";
++
++	fusb302@22 {
++		compatible = "fcs,fusb302";
++		reg = <0x22>;
++
++		pinctrl-0 = <&fusb302_irq_pins>;
++		pinctrl-names = "default";
++		interrupt-parent = <&gpio_intc>;
++		interrupts = <13 IRQ_TYPE_LEVEL_LOW>;
++
++		vbus-supply = <&ao_5v>;
++
++		status = "okay";
++	};
 +};
 +
- &saradc {
- 	status = "okay";
- 	vref-supply = <&vddao_1v8>;
+ &ir {
+ 	status = "disabled";
+ 	pinctrl-0 = <&remote_input_ao_pins>;
+ 	pinctrl-names = "default";
+ };
+ 
++&periphs_pinctrl {
++	fusb302_irq_pins: fusb302-irq {
++		mux {
++			groups = "GPIOA_13";
++			function = "gpio_periphs";
++			bias-pull-up;
++			output-disable;
++		};
++	};
++};
++
+ &pwm_ab {
+ 	pinctrl-0 = <&pwm_a_e_pins>;
+ 	pinctrl-names = "default";
 
 -- 
 2.52.0
