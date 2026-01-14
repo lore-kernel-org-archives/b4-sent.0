@@ -1,11 +1,11 @@
 From: Yedaya Katsman <yedaya.ka@gmail.com>
-Date: Wed, 14 Jan 2026 11:31:07 +0200
-Subject: [PATCH v2 2/3] drivers: input: touchscreen: edt-ft5x06: Add
- FocalTech FT3518
+Date: Wed, 14 Jan 2026 11:31:08 +0200
+Subject: [PATCH v2 3/3] arm64: dts: qcom: sm6125-xiaomi-laurel-sprout: Add
+ Focaltech FT3518 touchscreen
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260114-touchscreen-patches-v2-2-4215f94c8aba@gmail.com>
+Message-Id: <20260114-touchscreen-patches-v2-3-4215f94c8aba@gmail.com>
 References: <20260114-touchscreen-patches-v2-0-4215f94c8aba@gmail.com>
 In-Reply-To: <20260114-touchscreen-patches-v2-0-4215f94c8aba@gmail.com>
 To: SzczurekYT <szczurek@szczurek.yt>, 
@@ -18,57 +18,77 @@ Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org,
  Yedaya Katsman <yedaya.ka@gmail.com>, 
  =?utf-8?q?Kamil_Go=C5=82da?= <kamil.golda@protonmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768383069; l=2077;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768383069; l=1681;
  i=yedaya.ka@gmail.com; s=20260113; h=from:subject:message-id;
- bh=LlZqPPvB7lsd0lvVniqUg3I3voAg7NGq1S9mELoXUV8=;
- b=LHOLYaqMT87EDJI57rXwCcpvoNlDXsW3Ms8dl8YUs4TpsU+bQoGyPQW5GmMCQGen6rMjwwiyh
- Kzini8Y02C0B14KKQVYpBoBsdaws7RqtIyRS7SZgT6j7KZuGI8U6AJR
+ bh=MQJDxZRgMMx3ymnN/gSLrkJOIC2BOYzM4jCwI34QWOw=;
+ b=nhZraJq9d/+bygyeCl7Xsit4hrgVv8uGiJcOqb/KP82EqguEJo1GsQmj/fuo+ip0ZI+QB+wB+
+ SpQZQOsikcDAcTPidehMgtub4Eq68Ek4EisGQighE+vYhdTe7B+tutN
 X-Developer-Key: i=yedaya.ka@gmail.com; a=ed25519;
  pk=CgNmxD3tYSws5dZfpmJfc6re/bV/f47veVijddHLytk=
 X-Endpoint-Received: by B4 Relay for yedaya.ka@gmail.com/20260113 with auth_id=601
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver also works with FT3518, which supports up to 10 touch points.
- Add compatible data for it.
+Add device tree node for the Focaltech FT3518 touchscreen on
+Xiaomi Mi A3 (laurel-sprout).
+
+Enable qupv3_id_0 and i2c2 bus that the touchscreen is on.
 
 Co-developed-by: Kamil Gołda <kamil.golda@protonmail.com>
 Signed-off-by: Kamil Gołda <kamil.golda@protonmail.com>
 Signed-off-by: Yedaya Katsman <yedaya.ka@gmail.com>
 ---
- drivers/input/touchscreen/edt-ft5x06.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+ .../boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts  | 34 ++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
 
-diff --git a/drivers/input/touchscreen/edt-ft5x06.c b/drivers/input/touchscreen/edt-ft5x06.c
-index bf498bd4dea9651ac939fe137b1c0f05e8557962..d0ab644be0069b5ab29ed037fa090a4279870193 100644
---- a/drivers/input/touchscreen/edt-ft5x06.c
-+++ b/drivers/input/touchscreen/edt-ft5x06.c
-@@ -1475,6 +1475,10 @@ static const struct edt_i2c_chip_data edt_ft5x06_data = {
- 	.max_support_points = 5,
+diff --git a/arch/arm64/boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts b/arch/arm64/boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts
+index 994fb0412fcbdf5466f87a325c48b697a37b514b..97feed708d3b6483eab72cfb0ae39be6f5ae3a11 100644
+--- a/arch/arm64/boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts
++++ b/arch/arm64/boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts
+@@ -119,6 +119,18 @@ active-config0 {
+ 			};
+ 		};
+ 	};
++
++	ts_vdd_supply: ts-vdd-supply {
++		compatible = "regulator-fixed";
++		regulator-name = "ts_vdd_supply";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++
++		gpio = <&tlmm 83 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		startup-delay-us = <70000>;
++	};
  };
  
-+static const struct edt_i2c_chip_data edt_ft3518_data = {
-+	.max_support_points = 10,
+ &hsusb_phy1 {
+@@ -411,3 +423,25 @@ &usb3 {
+ &usb3_dwc3 {
+ 	extcon = <&extcon_usb>;
+ };
++
++&qupv3_id_0 {
++	status = "okay";
 +};
 +
- static const struct edt_i2c_chip_data edt_ft5452_data = {
- 	.max_support_points = 5,
- };
-@@ -1503,6 +1507,7 @@ static const struct i2c_device_id edt_ft5x06_ts_id[] = {
- 	{ .name = "edt-ft5x06", .driver_data = (long)&edt_ft5x06_data },
- 	{ .name = "edt-ft5506", .driver_data = (long)&edt_ft5506_data },
- 	{ .name = "ev-ft5726", .driver_data = (long)&edt_ft5506_data },
-+	{ .name = "ft3518", .driver_data = (long)&edt_ft3518_data },
- 	{ .name = "ft5452", .driver_data = (long)&edt_ft5452_data },
- 	/* Note no edt- prefix for compatibility with the ft6236.c driver */
- 	{ .name = "ft6236", .driver_data = (long)&edt_ft6236_data },
-@@ -1519,6 +1524,7 @@ static const struct of_device_id edt_ft5x06_of_match[] = {
- 	{ .compatible = "edt,edt-ft5406", .data = &edt_ft5x06_data },
- 	{ .compatible = "edt,edt-ft5506", .data = &edt_ft5506_data },
- 	{ .compatible = "evervision,ev-ft5726", .data = &edt_ft5506_data },
-+	{ .compatible = "focaltech,ft3518", .data = &edt_ft3518_data },
- 	{ .compatible = "focaltech,ft5426", .data = &edt_ft5506_data },
- 	{ .compatible = "focaltech,ft5452", .data = &edt_ft5452_data },
- 	/* Note focaltech vendor prefix for compatibility with ft6236.c */
++&i2c2 {
++	status = "okay";
++
++	touchscreen@38 {
++		compatible = "focaltech,ft3518";
++		reg = <0x38>;
++		interrupt-parent = <&tlmm>;
++		interrupts = <88 IRQ_TYPE_EDGE_FALLING>;
++
++		vcc-supply = <&ts_vdd_supply>;
++
++		reset-gpios = <&tlmm 87 GPIO_ACTIVE_LOW>;
++
++		touchscreen-size-x = <720>;
++		touchscreen-size-y = <1560>;
++	};
++};
 
 -- 
 2.52.0
