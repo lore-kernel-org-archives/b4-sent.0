@@ -1,94 +1,84 @@
-From: Ricardo Pardini <ricardo@pardini.net>
-Date: Wed, 14 Jan 2026 23:48:37 +0100
-Subject: [PATCH 2/2] arm64: dts: amlogic: add the type-c controller on
- Radxa Zero 2
+From: Michael Reeves <michael.reeves077@gmail.com>
+Subject: [PATCH v3 0/2] Add Apple Silicon SMC power driver
+Date: Thu, 15 Jan 2026 18:08:14 +1100
+Message-Id: <20260115-b4-macsmc-power-v3-0-c236e09874be@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260114-arm64-dts-amlogic-radxa-zero2-additions-v1-2-8b5cdf328fde@pardini.net>
-References: <20260114-arm64-dts-amlogic-radxa-zero2-additions-v1-0-8b5cdf328fde@pardini.net>
-In-Reply-To: <20260114-arm64-dts-amlogic-radxa-zero2-additions-v1-0-8b5cdf328fde@pardini.net>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Ricardo Pardini <ricardo@pardini.net>
+X-B4-Tracking: v=1; b=H4sIAF+SaGkC/3WNyw6CMBBFf4V0bU07UF4r/8O4qMMATSwlrakaw
+ r9bWJEYl+cm59yFBfKGAmuzhXmKJhg3JchPGcNRTwNx0yVmIKAUUih+L7jVGCzy2b3I807ICrH
+ qVa6RJWv21Jv3XrzeEo8mPJ3/7AdRbuv/VpRc8BIaVWABWil1Gaw2jzM6y7ZWhKPf/PqQ/CavZ
+ d1LqroSjv66rl8n4xcR7gAAAA==
+X-Change-ID: 20260105-b4-macsmc-power-d017cc7f53ac
+To: Sebastian Reichel <sre@kernel.org>, Sven Peter <sven@kernel.org>, 
+ Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
+ Lee Jones <lee@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
+ asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ Michael Reeves <michael.reeves077@gmail.com>, 
+ Hector Martin <marcan@marcan.st>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1485; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=zb/OKKB6zV/hhBZYiZyJobFT3XGfSbU/eSwN+6koa1Y=;
- b=owEBbQGS/pANAwAIATteP+Oex+3pAcsmYgBpaB1KlEhHDQdS0hwR9gCrhbZI2IMpaGlg0cHJM
- GAsqkn+BQuJATMEAAEIAB0WIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCaWgdSgAKCRA7Xj/jnsft
- 6VpIB/48OQIO8h534tAeCE4rHGBpxfc6elGR0Nw/+vh6ua9H1f+NS6RtkgR/249vXrgzaPpq3DN
- O+POmf+VLSS+slNDVUmwVY1ev/2W4IqGR4jsKV6IzXycKBFm72uE8/93PRbfo/Bxavpl7SZAEQX
- 2dtba8pz5t7nmyldBFZ5hFXxP39+O9yUnNDGLdbMGfrL3rV7nhZzhlCj4SollYHCFPD9TBCwXwX
- 1QSTbbZWo7bh9+qLJRy03C9M8V4huPEMoun8KudEzPd3SKsxy3gSGBv2RPlPDcShaBzzGdVYD5a
- 3+y+BmQkwNnpgJIwCWoPrg1ytk3BRSvc8o2SCBo3KhPZ+5o3
-X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
- fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
-X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768460903; l=2212;
+ i=michael.reeves077@gmail.com; s=20260105; h=from:subject:message-id;
+ bh=7ZuDFsWT2gxxq3ujMvtSzPih5aeosnU4qUGhtGU18+o=;
+ b=ZqocKdTEOkpTOndAfW3elALKsRlonSok214dv4pvVbnLBEpl//qZUsBW7DJ3g8mvf1YbcDtEF
+ 6pBqk5v+n0sAmAuvweaEXSglpBwNgYtXbypJpVc8UzHA7hiE0FzDIOr
+X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
+ pk=QIrgWBGCm3LG0YYc6MLCDkwuVXLTGGooVBdWX/KhSiU=
+X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/20260105 with auth_id=591
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Radxa Zero2 has an FUSB302 controller on i2c3 at address 0x22 and
-INT# wired to GPIOA-13.
+This series adds a power supply driver for the Apple SMC found on
+Apple Silicon devices. This allows the kernel to report AC status,
+battery charging status, and power metrics, and modify the charging
+behaviour.
 
-Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
+The first patch adds the driver itself, and the second patch wires it
+up to the MFD core.
+
+The driver is based on an original out-of-tree implementation by
+Hector Martin. It has been refactored for upstream inclusion, 
+including support for newer SMC firmwares, devices without batteries,
+dynamic property detection and improved state management.
+
+Tested on: Apple M3 (MacBook Air, J613)
+
+Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
 ---
- .../boot/dts/amlogic/meson-g12b-radxa-zero2.dts    | 32 ++++++++++++++++++++++
- 1 file changed, 32 insertions(+)
+Changes in v3:
+- Rebase on top of latest linux-next
+- Drop charge control threshold properties.
+- Switch to devm_work_autocancel() for critical work.
+- Add platform ID table and remove MODULE_ALIAS.
+- Simplify property array management in struct macsmc_power.
+- Improve probe error handling and device pointer usage.
+- Minor style and indentation fixes.
+- Link to v2: https://lore.kernel.org/r/20260109-b4-macsmc-power-v2-0-93818f1e7d62@gmail.com
 
-diff --git a/arch/arm64/boot/dts/amlogic/meson-g12b-radxa-zero2.dts b/arch/arm64/boot/dts/amlogic/meson-g12b-radxa-zero2.dts
-index a37776d22b09e..125b064a15c1e 100644
---- a/arch/arm64/boot/dts/amlogic/meson-g12b-radxa-zero2.dts
-+++ b/arch/arm64/boot/dts/amlogic/meson-g12b-radxa-zero2.dts
-@@ -364,12 +364,44 @@ hdmi_tx_tmds_out: endpoint {
- 	};
- };
- 
-+/* Also exposed on the 40-pin header: SDA pin 3, SCL pin 5 */
-+&i2c3 {
-+	pinctrl-0 = <&i2c3_sda_a_pins>, <&i2c3_sck_a_pins>;
-+	pinctrl-names = "default";
-+	status = "okay";
-+
-+	fusb302@22 {
-+		compatible = "fcs,fusb302";
-+		reg = <0x22>;
-+
-+		pinctrl-0 = <&fusb302_irq_pins>;
-+		pinctrl-names = "default";
-+		interrupt-parent = <&gpio_intc>;
-+		interrupts = <13 IRQ_TYPE_LEVEL_LOW>;
-+
-+		vbus-supply = <&ao_5v>;
-+
-+		status = "okay";
-+	};
-+};
-+
- &ir {
- 	status = "disabled";
- 	pinctrl-0 = <&remote_input_ao_pins>;
- 	pinctrl-names = "default";
- };
- 
-+&periphs_pinctrl {
-+	fusb302_irq_pins: fusb302-irq {
-+		mux {
-+			groups = "GPIOA_13";
-+			function = "gpio_periphs";
-+			bias-pull-up;
-+			output-disable;
-+		};
-+	};
-+};
-+
- &pwm_ab {
- 	pinctrl-0 = <&pwm_a_e_pins>;
- 	pinctrl-names = "default";
+Changes in v2:
+- Added Reviewed-by: Neal Gompa <neal@gompa.dev> to all patches.
+- Fixed Makefile alignment by using tabs for the macsmc-power entry.
+- Upgraded physical battery exhaustion log level to EMERG.
+- Downgraded software-triggered orderly poweroff log level to CRIT.
+- Added check for CHIS key to skip AC registration on desktop models.
+- Link to v1: https://lore.kernel.org/r/20260105-b4-macsmc-power-v1-0-62954c42a555@gmail.com
 
+---
+Michael Reeves (2):
+      power: supply: Add macsmc-power driver for Apple Silicon
+      mfd: macsmc: Wire up Apple SMC power driver
+
+ MAINTAINERS                         |   1 +
+ drivers/mfd/macsmc.c                |   1 +
+ drivers/power/supply/Kconfig        |  11 +
+ drivers/power/supply/Makefile       |   1 +
+ drivers/power/supply/macsmc-power.c | 834 ++++++++++++++++++++++++++++++++++++
+ 5 files changed, 848 insertions(+)
+---
+base-commit: b775e489bec70895b7ef6b66927886bbac79598f
+change-id: 20260105-b4-macsmc-power-d017cc7f53ac
+
+Best regards,
 -- 
-2.52.0
+Michael Reeves <michael.reeves077@gmail.com>
 
