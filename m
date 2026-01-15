@@ -1,10 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Thu, 15 Jan 2026 12:58:56 +0530
-Subject: [PATCH v5 04/15] PCI/pwrctrl: tc9563: Clean up whitespace
+Date: Thu, 15 Jan 2026 12:58:57 +0530
+Subject: [PATCH v5 05/15] PCI/pwrctrl: tc9563: Add local variables to
+ reduce repetition
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260115-pci-pwrctrl-rework-v5-4-9d26da3ce903@oss.qualcomm.com>
+Message-Id: <20260115-pci-pwrctrl-rework-v5-5-9d26da3ce903@oss.qualcomm.com>
 References: <20260115-pci-pwrctrl-rework-v5-0-9d26da3ce903@oss.qualcomm.com>
 In-Reply-To: <20260115-pci-pwrctrl-rework-v5-0-9d26da3ce903@oss.qualcomm.com>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
@@ -21,16 +22,16 @@ Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7141;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4095;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=MpBEhzsl31WZThO8tK8CunXFQlrjrY0SrObfkwJWMJ0=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpaJdBJrWfAQB5XD1rr6eeGXI/27AgzGoXlVfDc
- fAAri5Xz/SJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWiXQQAKCRBVnxHm/pHO
- 9UeAB/9oVWRB8kRxN0JLBf9vkp++KwdxOsg7Qd+zhaSPVksTRnIQ0/jzfL0RrwRIvHbydj38lxd
- Nr+WHzh7YtyjRGU/bTdQkKry3KNIwmY7AR6zVZ67rP+YRRoxGXx+m+drIPlE9Lc/exAzecRm9HE
- n6/7s4gf9ykryqkCjG04l0esBqBYcvj9k2ZyUT5wWdRiR2k4XE+ZSIEDDqa91xGBrFiYWJMFrFC
- atZ/SfwoVGQ8VUqrIUN7gnED1Pybzppfrke0FNXqeLjJ5uGLfPWzMPQ1aMb/RhBRzybPxUrscAg
- bwOIhMqWIcJt6RuMIOO7mebfLszuOSFrGUyzo/AXZqNDFFaq
+ bh=eYaEHFlmQ+woaivP3WfGUoZ4cZZwo/rZUMqDu6RaHLk=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpaJdB82yOoj/O6aiEDK4yK0T98sYlbKcj9lMmP
+ sZG4UqZ/lSJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWiXQQAKCRBVnxHm/pHO
+ 9WMZCACrA9g4kMXDkDVfTDfy2iinN4q+exISmFNT898VAOb307ybVwY0EtisyMSQxF6uDKjF/Zb
+ ZVkTNRrmvjMz38PI5UFc9Qac7xYMca3iHjXRYAN4uBqrzcD9msShuzKk3jzFRxsITQ9islorbR7
+ VLhLwn5h6Kk2tKPN8SJjQjGxmzjl+NUI2dX2jkxKaCNMibnquHVEeGlTzHxWrDLj2bqnDGJ/S7h
+ 1kGMeyp8PTra/7p4g/fIo8doGuR94vmsXHy05GyhUOd9enOcPULA+9L5AK8kZ6msU5OoVzsxRw5
+ FWFvybnLWANcyLFfH/Rykodcv1HZg/JX9sqKYWc3EeC41bqK
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
@@ -38,191 +39,113 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Bjorn Helgaas <bhelgaas@google.com>
 
-Most of pci-pwrctrl-tc9563.c fits in 80 columns.  Wrap lines that are
-gratuitously longer.  Whitespace changes only.
+Add local struct device * and struct device_node * variables to reduce
+repetitive pointer chasing.  No functional changes intended.
 
 Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c | 65 +++++++++++++++++++++-----------
- 1 file changed, 42 insertions(+), 23 deletions(-)
+ drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c | 22 ++++++++++++----------
+ 1 file changed, 12 insertions(+), 10 deletions(-)
 
 diff --git a/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c b/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c
-index 0a63add84d09..efc4d2054bfd 100644
+index efc4d2054bfd..90480e35e968 100644
 --- a/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c
 +++ b/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c
-@@ -59,7 +59,7 @@
- #define TC9563_POWER_CONTROL_OVREN	0x82b2c8
+@@ -459,12 +459,13 @@ static void tc9563_pwrctrl_power_off(struct tc9563_pwrctrl_ctx *ctx)
  
- #define TC9563_GPIO_MASK		0xfffffff3
--#define TC9563_GPIO_DEASSERT_BITS	0xc  /* Bits to clear for GPIO deassert */
-+#define TC9563_GPIO_DEASSERT_BITS	0xc  /* Clear to deassert GPIO */
- 
- #define TC9563_TX_MARGIN_MIN_UA		400000
- 
-@@ -69,7 +69,7 @@
-  */
- #define TC9563_OSC_STAB_DELAY_US	(10 * USEC_PER_MSEC)
- 
--#define TC9563_L0S_L1_DELAY_UNIT_NS	256  /* Each unit represents 256 nanoseconds */
-+#define TC9563_L0S_L1_DELAY_UNIT_NS	256  /* Each unit represents 256 ns */
- 
- struct tc9563_pwrctrl_reg_setting {
- 	unsigned int offset;
-@@ -217,7 +217,8 @@ static int tc9563_pwrctrl_i2c_read(struct i2c_client *client,
- }
- 
- static int tc9563_pwrctrl_i2c_bulk_write(struct i2c_client *client,
--					 const struct tc9563_pwrctrl_reg_setting *seq, int len)
-+				const struct tc9563_pwrctrl_reg_setting *seq,
-+				int len)
+ static int tc9563_pwrctrl_bring_up(struct tc9563_pwrctrl_ctx *ctx)
  {
++	struct device *dev = ctx->pwrctrl.dev;
+ 	struct tc9563_pwrctrl_cfg *cfg;
  	int ret, i;
  
-@@ -252,12 +253,13 @@ static int tc9563_pwrctrl_disable_port(struct tc9563_pwrctrl_ctx *ctx,
- 	if (ret)
- 		return ret;
+ 	ret = regulator_bulk_enable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
+ 	if (ret < 0)
+-		return dev_err_probe(ctx->pwrctrl.dev, ret, "cannot enable regulators\n");
++		return dev_err_probe(dev, ret, "cannot enable regulators\n");
  
--	return tc9563_pwrctrl_i2c_bulk_write(ctx->client,
--					    common_pwroff_seq, ARRAY_SIZE(common_pwroff_seq));
-+	return tc9563_pwrctrl_i2c_bulk_write(ctx->client, common_pwroff_seq,
-+					     ARRAY_SIZE(common_pwroff_seq));
- }
+ 	gpiod_set_value(ctx->reset_gpio, 0);
  
- static int tc9563_pwrctrl_set_l0s_l1_entry_delay(struct tc9563_pwrctrl_ctx *ctx,
--						 enum tc9563_pwrctrl_ports port, bool is_l1, u32 ns)
-+						 enum tc9563_pwrctrl_ports port,
-+						 bool is_l1, u32 ns)
- {
- 	u32 rd_val, units;
- 	int ret;
-@@ -269,24 +271,32 @@ static int tc9563_pwrctrl_set_l0s_l1_entry_delay(struct tc9563_pwrctrl_ctx *ctx,
- 	units = ns / TC9563_L0S_L1_DELAY_UNIT_NS;
+@@ -478,37 +479,37 @@ static int tc9563_pwrctrl_bring_up(struct tc9563_pwrctrl_ctx *ctx)
+ 		cfg = &ctx->cfg[i];
+ 		ret = tc9563_pwrctrl_disable_port(ctx, i);
+ 		if (ret) {
+-			dev_err(ctx->pwrctrl.dev, "Disabling port failed\n");
++			dev_err(dev, "Disabling port failed\n");
+ 			goto power_off;
+ 		}
  
- 	if (port == TC9563_ETHERNET) {
--		ret = tc9563_pwrctrl_i2c_read(ctx->client, TC9563_EMBEDDED_ETH_DELAY, &rd_val);
-+		ret = tc9563_pwrctrl_i2c_read(ctx->client,
-+					      TC9563_EMBEDDED_ETH_DELAY,
-+					      &rd_val);
- 		if (ret)
- 			return ret;
+ 		ret = tc9563_pwrctrl_set_l0s_l1_entry_delay(ctx, i, false, cfg->l0s_delay);
+ 		if (ret) {
+-			dev_err(ctx->pwrctrl.dev, "Setting L0s entry delay failed\n");
++			dev_err(dev, "Setting L0s entry delay failed\n");
+ 			goto power_off;
+ 		}
  
- 		if (is_l1)
--			rd_val = u32_replace_bits(rd_val, units, TC9563_ETH_L1_DELAY_MASK);
-+			rd_val = u32_replace_bits(rd_val, units,
-+						  TC9563_ETH_L1_DELAY_MASK);
- 		else
--			rd_val = u32_replace_bits(rd_val, units, TC9563_ETH_L0S_DELAY_MASK);
-+			rd_val = u32_replace_bits(rd_val, units,
-+						  TC9563_ETH_L0S_DELAY_MASK);
+ 		ret = tc9563_pwrctrl_set_l0s_l1_entry_delay(ctx, i, true, cfg->l1_delay);
+ 		if (ret) {
+-			dev_err(ctx->pwrctrl.dev, "Setting L1 entry delay failed\n");
++			dev_err(dev, "Setting L1 entry delay failed\n");
+ 			goto power_off;
+ 		}
  
--		return tc9563_pwrctrl_i2c_write(ctx->client, TC9563_EMBEDDED_ETH_DELAY, rd_val);
-+		return tc9563_pwrctrl_i2c_write(ctx->client,
-+						TC9563_EMBEDDED_ETH_DELAY,
-+						rd_val);
+ 		ret = tc9563_pwrctrl_set_tx_amplitude(ctx, i);
+ 		if (ret) {
+-			dev_err(ctx->pwrctrl.dev, "Setting Tx amplitude failed\n");
++			dev_err(dev, "Setting Tx amplitude failed\n");
+ 			goto power_off;
+ 		}
+ 
+ 		ret = tc9563_pwrctrl_set_nfts(ctx, i);
+ 		if (ret) {
+-			dev_err(ctx->pwrctrl.dev, "Setting N_FTS failed\n");
++			dev_err(dev, "Setting N_FTS failed\n");
+ 			goto power_off;
+ 		}
+ 
+ 		ret = tc9563_pwrctrl_disable_dfe(ctx, i);
+ 		if (ret) {
+-			dev_err(ctx->pwrctrl.dev, "Disabling DFE failed\n");
++			dev_err(dev, "Disabling DFE failed\n");
+ 			goto power_off;
+ 		}
  	}
- 
--	ret = tc9563_pwrctrl_i2c_write(ctx->client, TC9563_PORT_SELECT, BIT(port));
-+	ret = tc9563_pwrctrl_i2c_write(ctx->client, TC9563_PORT_SELECT,
-+				       BIT(port));
- 	if (ret)
- 		return ret;
- 
- 	return tc9563_pwrctrl_i2c_write(ctx->client,
--				       is_l1 ? TC9563_PORT_L1_DELAY : TC9563_PORT_L0S_DELAY, units);
-+			is_l1 ? TC9563_PORT_L1_DELAY : TC9563_PORT_L0S_DELAY,
-+			units);
- }
- 
- static int tc9563_pwrctrl_set_tx_amplitude(struct tc9563_pwrctrl_ctx *ctx,
-@@ -321,7 +331,8 @@ static int tc9563_pwrctrl_set_tx_amplitude(struct tc9563_pwrctrl_ctx *ctx,
- 		{TC9563_TX_MARGIN, amp},
- 	};
- 
--	return tc9563_pwrctrl_i2c_bulk_write(ctx->client, tx_amp_seq, ARRAY_SIZE(tx_amp_seq));
-+	return tc9563_pwrctrl_i2c_bulk_write(ctx->client, tx_amp_seq,
-+					     ARRAY_SIZE(tx_amp_seq));
- }
- 
- static int tc9563_pwrctrl_disable_dfe(struct tc9563_pwrctrl_ctx *ctx,
-@@ -364,8 +375,8 @@ static int tc9563_pwrctrl_disable_dfe(struct tc9563_pwrctrl_ctx *ctx,
- 		{TC9563_PHY_RATE_CHANGE_OVERRIDE, 0x0},
- 	};
- 
--	return tc9563_pwrctrl_i2c_bulk_write(ctx->client,
--					    disable_dfe_seq, ARRAY_SIZE(disable_dfe_seq));
-+	return tc9563_pwrctrl_i2c_bulk_write(ctx->client, disable_dfe_seq,
-+					     ARRAY_SIZE(disable_dfe_seq));
- }
- 
- static int tc9563_pwrctrl_set_nfts(struct tc9563_pwrctrl_ctx *ctx,
-@@ -381,18 +392,22 @@ static int tc9563_pwrctrl_set_nfts(struct tc9563_pwrctrl_ctx *ctx,
- 	if (!nfts[0])
- 		return 0;
- 
--	ret =  tc9563_pwrctrl_i2c_write(ctx->client, TC9563_PORT_SELECT, BIT(port));
-+	ret =  tc9563_pwrctrl_i2c_write(ctx->client, TC9563_PORT_SELECT,
-+					BIT(port));
- 	if (ret)
- 		return ret;
- 
--	return tc9563_pwrctrl_i2c_bulk_write(ctx->client, nfts_seq, ARRAY_SIZE(nfts_seq));
-+	return tc9563_pwrctrl_i2c_bulk_write(ctx->client, nfts_seq,
-+					     ARRAY_SIZE(nfts_seq));
- }
- 
--static int tc9563_pwrctrl_assert_deassert_reset(struct tc9563_pwrctrl_ctx *ctx, bool deassert)
-+static int tc9563_pwrctrl_assert_deassert_reset(struct tc9563_pwrctrl_ctx *ctx,
-+						bool deassert)
+@@ -525,6 +526,7 @@ static int tc9563_pwrctrl_bring_up(struct tc9563_pwrctrl_ctx *ctx)
+ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
  {
- 	int ret, val;
+ 	struct pci_host_bridge *bridge = to_pci_host_bridge(pdev->dev.parent);
++	struct device_node *node = pdev->dev.of_node;
+ 	struct pci_bus *bus = bridge->bus;
+ 	struct device *dev = &pdev->dev;
+ 	enum tc9563_pwrctrl_ports port;
+@@ -536,7 +538,7 @@ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
+ 	if (!ctx)
+ 		return -ENOMEM;
  
--	ret = tc9563_pwrctrl_i2c_write(ctx->client, TC9563_GPIO_CONFIG, TC9563_GPIO_MASK);
-+	ret = tc9563_pwrctrl_i2c_write(ctx->client, TC9563_GPIO_CONFIG,
-+				       TC9563_GPIO_MASK);
+-	ret = of_property_read_u32_index(pdev->dev.of_node, "i2c-parent", 1, &addr);
++	ret = of_property_read_u32_index(node, "i2c-parent", 1, &addr);
  	if (ret)
- 		return ret;
+ 		return dev_err_probe(dev, ret, "Failed to read i2c-parent property\n");
  
-@@ -401,7 +416,8 @@ static int tc9563_pwrctrl_assert_deassert_reset(struct tc9563_pwrctrl_ctx *ctx,
- 	return tc9563_pwrctrl_i2c_write(ctx->client, TC9563_RESET_GPIO, val);
- }
+@@ -572,7 +574,7 @@ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
+ 	pci_pwrctrl_init(&ctx->pwrctrl, dev);
  
--static int tc9563_pwrctrl_parse_device_dt(struct tc9563_pwrctrl_ctx *ctx, struct device_node *node,
-+static int tc9563_pwrctrl_parse_device_dt(struct tc9563_pwrctrl_ctx *ctx,
-+					  struct device_node *node,
- 					  enum tc9563_pwrctrl_ports port)
- {
- 	struct tc9563_pwrctrl_cfg *cfg = &ctx->cfg[port];
-@@ -540,7 +556,8 @@ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
- 	for (int i = 0; i < ARRAY_SIZE(tc9563_supply_names); i++)
- 		ctx->supplies[i].supply = tc9563_supply_names[i];
- 
--	ret = devm_regulator_bulk_get(dev, TC9563_PWRCTL_MAX_SUPPLY, ctx->supplies);
-+	ret = devm_regulator_bulk_get(dev, TC9563_PWRCTL_MAX_SUPPLY,
-+				      ctx->supplies);
+ 	port = TC9563_USP;
+-	ret = tc9563_pwrctrl_parse_device_dt(ctx, pdev->dev.of_node, port);
++	ret = tc9563_pwrctrl_parse_device_dt(ctx, node, port);
  	if (ret) {
- 		dev_err_probe(dev, ret, "failed to get supply regulator\n");
+ 		dev_err(dev, "failed to parse device tree properties: %d\n", ret);
  		goto remove_i2c;
-@@ -563,7 +580,8 @@ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
- 
- 	/*
- 	 * Downstream ports are always children of the upstream port.
--	 * The first node represents DSP1, the second node represents DSP2, and so on.
-+	 * The first node represents DSP1, the second node represents DSP2,
-+	 * and so on.
+@@ -583,7 +585,7 @@ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
+ 	 * The first node represents DSP1, the second node represents DSP2,
+ 	 * and so on.
  	 */
- 	for_each_child_of_node_scoped(pdev->dev.of_node, child) {
+-	for_each_child_of_node_scoped(pdev->dev.of_node, child) {
++	for_each_child_of_node_scoped(node, child) {
  		port++;
-@@ -574,7 +592,8 @@ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
- 		if (port == TC9563_DSP3) {
- 			for_each_child_of_node_scoped(child, child1) {
- 				port++;
--				ret = tc9563_pwrctrl_parse_device_dt(ctx, child1, port);
-+				ret = tc9563_pwrctrl_parse_device_dt(ctx,
-+								child1, port);
- 				if (ret)
- 					break;
- 			}
+ 		ret = tc9563_pwrctrl_parse_device_dt(ctx, child, port);
+ 		if (ret)
 
 -- 
 2.48.1
