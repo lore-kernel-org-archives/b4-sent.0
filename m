@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Thu, 15 Jan 2026 12:58:54 +0530
-Subject: [PATCH v5 02/15] PCI/pwrctrl: slot: Rename private struct and
- pointers for consistency
+Date: Thu, 15 Jan 2026 12:58:55 +0530
+Subject: [PATCH v5 03/15] PCI/pwrctrl: tc9563: Use put_device() instead of
+ i2c_put_adapter()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260115-pci-pwrctrl-rework-v5-2-9d26da3ce903@oss.qualcomm.com>
+Message-Id: <20260115-pci-pwrctrl-rework-v5-3-9d26da3ce903@oss.qualcomm.com>
 References: <20260115-pci-pwrctrl-rework-v5-0-9d26da3ce903@oss.qualcomm.com>
 In-Reply-To: <20260115-pci-pwrctrl-rework-v5-0-9d26da3ce903@oss.qualcomm.com>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
@@ -22,96 +22,64 @@ Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org,
  Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2784;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1750;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=44NVPWUXPuZjfLmJawVYZKHEmFFDsDqRXpz45pIkiiE=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpaJdBuIQNE5ifaCycNCiMPUkxX8+/GtEeFUCk1
- l5byjks6keJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWiXQQAKCRBVnxHm/pHO
- 9ZR/B/46p6o8wAxDjXi2SM97q9/E2HUBtSnn7zcX4kUMv/K8lHL4AcAN9IqScIvsv3FH0coTVpX
- YST09swQHNq9GRC+U48qNKlXB8AWPU4GBNjXMDM9CuqQGnthgu5CLdvq7bjQJYLvH5G+rGbZtyt
- Pyrr6+cYYVlORSUZQrdlTiEat4r5NeyHJXQi7GZ88mrcVQzXKtJGRqYgqX42iUQo5rUptIERpg6
- 1pKuJ62+cx5ylqg+xQaxFf1O+mNFiItwYYw+h7ae/aiNPyj+hffz5qur2mDMBYwl6bvlc3+MH+P
- amHiXxjdYqdMWBC/XwWIqTRnABJpzgc18A58ftXPcHIFzpY/
+ bh=IWMozgMnaMljrI9/K1oAYaHIcX8Y2LJhp+Wln908Neo=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpaJdBUla5R2xNUdzHYiNI94k/Alk5+0fVu8MGa
+ f5sFEDQe1+JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWiXQQAKCRBVnxHm/pHO
+ 9c78B/9XenCvfN2XksYLtpgIozlIyaqCL8y6C52h0KO0i4kzreoDbtR7GzTMcayoDNzPEoiZOGX
+ /x4TaPdM11PRmmbNfS8AJ1/Td62PEPDtIn9MhXpZXhOw9VExbNmsFsyj4y+P3pfh1ufbUYIcjBv
+ z3rQ0bFpBbtzCpVAAfJcyzXJYLvdwfBakIQyiqNc8t3+QuTL7k/oCFyZsIMCvZ+yC2VqEp0au+O
+ PSuiQ7lm22Vm/ecxyoctwmfMWNox6CIwA0Fx0SpiEnCNEo3jhatmcb9kQWrBDnBBRaAGpRNlRRN
+ V9XZ1r5794h0oEJfikO4Iq5XzVRYBIO13llHqMawJooHpYKB
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Bjorn Helgaas <bhelgaas@google.com>
+The API comment for of_find_i2c_adapter_by_node() recommends using
+put_device() to drop the reference count of I2C adapter instead of using
+i2c_put_adapter(). So replace i2c_put_adapter() with put_device().
 
-Previously the pwrseq, tc9563, and slot pwrctrl drivers used different
-naming conventions for their private data structs and pointers to them,
-which makes patches hard to read:
-
-  Previous names                         New names
-  ------------------------------------   ----------------------------------
-  struct pci_pwrctrl_pwrseq_data {       struct pci_pwrctrl_pwrseq {
-    struct pci_pwrctrl ctx;                struct pci_pwrctrl pwrctrl;
-  struct pci_pwrctrl_pwrseq_data *data   struct pci_pwrctrl_pwrseq *pwrseq
-
-  struct tc9563_pwrctrl_ctx {            struct pci_pwrctrl_tc9563 {
-  struct tc9563_pwrctrl_ctx *ctx         struct pci_pwrctrl_tc9563 *tc9563
-
-  struct pci_pwrctrl_slot_data {         struct pci_pwrctrl_slot {
-    struct pci_pwrctrl ctx;                struct pci_pwrctrl pwrctrl;
-  struct pci_pwrctrl_slot_data *slot     struct pci_pwrctrl_slot *slot
-
-Rename "struct pci_pwrctrl_slot_data" to "struct pci_pwrctrl_slot".
-
-Rename the "struct pci_pwrctrl ctx" member to "struct pci_pwrctrl pwrctrl".
-
-No functional change intended.
-
+Fixes: 4c9c7be47310 ("PCI: pwrctrl: Add power control driver for TC9563")
 Signed-off-by: Bjorn Helgaas <bhelgaas@google.com>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
 ---
- drivers/pci/pwrctrl/slot.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/pci/pwrctrl/slot.c b/drivers/pci/pwrctrl/slot.c
-index 3320494b62d8..5ddae4ae3431 100644
---- a/drivers/pci/pwrctrl/slot.c
-+++ b/drivers/pci/pwrctrl/slot.c
-@@ -13,15 +13,15 @@
- #include <linux/regulator/consumer.h>
- #include <linux/slab.h>
- 
--struct pci_pwrctrl_slot_data {
--	struct pci_pwrctrl ctx;
-+struct pci_pwrctrl_slot {
-+	struct pci_pwrctrl pwrctrl;
- 	struct regulator_bulk_data *supplies;
- 	int num_supplies;
- };
- 
- static void devm_pci_pwrctrl_slot_power_off(void *data)
- {
--	struct pci_pwrctrl_slot_data *slot = data;
-+	struct pci_pwrctrl_slot *slot = data;
- 
- 	regulator_bulk_disable(slot->num_supplies, slot->supplies);
- 	regulator_bulk_free(slot->num_supplies, slot->supplies);
-@@ -29,7 +29,7 @@ static void devm_pci_pwrctrl_slot_power_off(void *data)
- 
- static int pci_pwrctrl_slot_probe(struct platform_device *pdev)
- {
--	struct pci_pwrctrl_slot_data *slot;
-+	struct pci_pwrctrl_slot *slot;
- 	struct device *dev = &pdev->dev;
- 	struct clk *clk;
- 	int ret;
-@@ -64,9 +64,9 @@ static int pci_pwrctrl_slot_probe(struct platform_device *pdev)
- 				     "Failed to enable slot clock\n");
+diff --git a/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c b/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c
+index ec423432ac65..0a63add84d09 100644
+--- a/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c
++++ b/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c
+@@ -533,7 +533,7 @@ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
+ 	ctx->client = i2c_new_dummy_device(ctx->adapter, addr);
+ 	if (IS_ERR(ctx->client)) {
+ 		dev_err(dev, "Failed to create I2C client\n");
+-		i2c_put_adapter(ctx->adapter);
++		put_device(&ctx->adapter->dev);
+ 		return PTR_ERR(ctx->client);
  	}
  
--	pci_pwrctrl_init(&slot->ctx, dev);
-+	pci_pwrctrl_init(&slot->pwrctrl, dev);
+@@ -613,7 +613,7 @@ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
+ 	tc9563_pwrctrl_power_off(ctx);
+ remove_i2c:
+ 	i2c_unregister_device(ctx->client);
+-	i2c_put_adapter(ctx->adapter);
++	put_device(&ctx->adapter->dev);
+ 	return ret;
+ }
  
--	ret = devm_pci_pwrctrl_device_set_ready(dev, &slot->ctx);
-+	ret = devm_pci_pwrctrl_device_set_ready(dev, &slot->pwrctrl);
- 	if (ret)
- 		return dev_err_probe(dev, ret, "Failed to register pwrctrl driver\n");
+@@ -623,7 +623,7 @@ static void tc9563_pwrctrl_remove(struct platform_device *pdev)
  
+ 	tc9563_pwrctrl_power_off(ctx);
+ 	i2c_unregister_device(ctx->client);
+-	i2c_put_adapter(ctx->adapter);
++	put_device(&ctx->adapter->dev);
+ }
+ 
+ static const struct of_device_id tc9563_pwrctrl_of_match[] = {
 
 -- 
 2.48.1
