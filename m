@@ -1,123 +1,102 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Thu, 15 Jan 2026 12:59:07 +0530
-Subject: [PATCH v5 15/15] PCI: qcom: Rename PERST# assert/deassert helpers
- for uniformity
+From: Shrikant Raskar <raskar.shree97@gmail.com>
+Subject: [PATCH v5 0/5] iio: proximity: Add interrupt support for RFD77402
+Date: Thu, 15 Jan 2026 13:57:36 +0530
+Message-Id: <20260115-rfd77402_v5-v5-0-594eb57683e4@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260115-pci-pwrctrl-rework-v5-15-9d26da3ce903@oss.qualcomm.com>
-References: <20260115-pci-pwrctrl-rework-v5-0-9d26da3ce903@oss.qualcomm.com>
-In-Reply-To: <20260115-pci-pwrctrl-rework-v5-0-9d26da3ce903@oss.qualcomm.com>
-To: Manivannan Sadhasivam <mani@kernel.org>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>, 
- Bartosz Golaszewski <brgl@bgdev.pl>, Bartosz Golaszewski <brgl@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, Jingoo Han <jingoohan1@gmail.com>
-Cc: linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Chen-Yu Tsai <wens@kernel.org>, 
- Brian Norris <briannorris@chromium.org>, 
- Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
- Niklas Cassel <cassel@kernel.org>, Alex Elder <elder@riscstar.com>, 
- Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAPikaGkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyTHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDQ0NT3aK0FHNzEwOj+DJTXdMUQzPTJKPUxJRECyWgjoKi1LTMCrBp0bG
+ 1tQAGhsn6XQAAAA==
+X-Change-ID: 20260115-rfd77402_v5-5d165b2eada8
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: skhan@linuxfoundation.org, david.hunter.linux@gmail.com, 
+ raskar.shree97@gmail.com, linux-iio@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2814;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=kQooLkyC5qifzywZ79U+6BAgUebWpp8I5aiLs13WZ/k=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpaJdCfKH9LP+YN4xn+brCDqYhun2rxPxNp9ob4
- mhqW6Py/R+JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaWiXQgAKCRBVnxHm/pHO
- 9erVB/4v+/HFL5NEYPWBicvocPxzenVnGa73DJ9j9p14CQ4FY9lL5CII5/EiPConmZJdgUVuDxW
- U3K+LnLr8E4NLpi8g3ihRn9NzvxTS9yAsgSV55EBBpzOptQ0RfUwd3YpBRLJYLoF7f2BeeH3DXr
- AuRvn5WGUeDOVR2XcUYTNP8zJu6zfmyaAbgWeeLe+dhK0E2+V+lFdJZROBS6orau0BVZUGsnIME
- 26tn6PUf5aqop2ly82c8EpkKcLqi9C4ysmSAQTzK68j/EnI9Sz5j6PLjoat5QYtiTl8wcFUW+Zf
- RLMF3z5NT9vCmh0NDxqxaAZvg3dAV10Sn8xzUPZJ16yQc7+e
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768465693; l=2922;
+ i=raskar.shree97@gmail.com; s=20260101; h=from:subject:message-id;
+ bh=TD0CKqKvYK6A8K4BW0oFhjlCzyxkS+4b/3agMVvwxlQ=;
+ b=DDRfls7lm9wPJ9qaKzpoJH66SkdxFA9mAHwXnWF6MXMusz+kzW1AzOnbXLCgKgT5S9qfTny2s
+ M3QkoaaxdqrBSSodzVNxv5FAF5c1uyROux27KBZqRrOipZ0FUH3O7g6
+X-Developer-Key: i=raskar.shree97@gmail.com; a=ed25519;
+ pk=4m2wXDvY0vlXefvRRzawNcNAif88Cy4XvbLkU6iMG/Y=
+X-Endpoint-Received: by B4 Relay for raskar.shree97@gmail.com/20260101 with auth_id=589
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Rename the PERST# assert/deassert helpers from
-qcom_ep_reset_{assert/deassert}() to qcom_pcie_perst_{assert/deassert}() to
-maintain uniformity.
+This series improves the RFD77402 ToF driver by cleaning up include
+ordering, improving resource lifetime handling, switching to kernel
+polling helpers, and adding optional interrupt-driven operation.
 
-Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Changes in v5:
+- Add precursor patch to reorder includes before functional changes.
+- Use devm_mutex_init() for proper lifetime management.
+- Address maintainer feedback on polling helper usage.
+- Remove dead code from interrupt_handler.
+- Add blank line in rfd77402_wait_for_irq.
+- Update measurement timeout comment.
+- Add helper function for result polling.
+- Fix comment format in rfd77402_init.
+- Remove 'data->irq_en = false', as it already initialized by kzalloc.
+- Improve documentation of private driver data.
+
+Signed-off-by: Shrikant Raskar <raskar.shree97@gmail.com>
 ---
- drivers/pci/controller/dwc/pcie-qcom.c | 18 +++++++++---------
- 1 file changed, 9 insertions(+), 9 deletions(-)
+Changelog:
 
-diff --git a/drivers/pci/controller/dwc/pcie-qcom.c b/drivers/pci/controller/dwc/pcie-qcom.c
-index 2a47f71d936a..43fdf1d4a753 100644
---- a/drivers/pci/controller/dwc/pcie-qcom.c
-+++ b/drivers/pci/controller/dwc/pcie-qcom.c
-@@ -290,7 +290,7 @@ struct qcom_pcie {
- 
- #define to_qcom_pcie(x)		dev_get_drvdata((x)->dev)
- 
--static void qcom_perst_assert(struct qcom_pcie *pcie, bool assert)
-+static void __qcom_pcie_perst_assert(struct qcom_pcie *pcie, bool assert)
- {
- 	struct qcom_pcie_port *port;
- 	int val = assert ? 1 : 0;
-@@ -301,16 +301,16 @@ static void qcom_perst_assert(struct qcom_pcie *pcie, bool assert)
- 	usleep_range(PERST_DELAY_US, PERST_DELAY_US + 500);
- }
- 
--static void qcom_ep_reset_assert(struct qcom_pcie *pcie)
-+static void qcom_pcie_perst_assert(struct qcom_pcie *pcie)
- {
--	qcom_perst_assert(pcie, true);
-+	__qcom_pcie_perst_assert(pcie, true);
- }
- 
--static void qcom_ep_reset_deassert(struct qcom_pcie *pcie)
-+static void qcom_pcie_perst_deassert(struct qcom_pcie *pcie)
- {
- 	/* Ensure that PERST has been asserted for at least 100 ms */
- 	msleep(PCIE_T_PVPERL_MS);
--	qcom_perst_assert(pcie, false);
-+	__qcom_pcie_perst_assert(pcie, false);
- }
- 
- static int qcom_pcie_start_link(struct dw_pcie *pci)
-@@ -1289,7 +1289,7 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
- 	struct qcom_pcie *pcie = to_qcom_pcie(pci);
- 	int ret;
- 
--	qcom_ep_reset_assert(pcie);
-+	qcom_pcie_perst_assert(pcie);
- 
- 	ret = pcie->cfg->ops->init(pcie);
- 	if (ret)
-@@ -1313,7 +1313,7 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
- 			goto err_pwrctrl_power_off;
- 	}
- 
--	qcom_ep_reset_deassert(pcie);
-+	qcom_pcie_perst_deassert(pcie);
- 
- 	if (pcie->cfg->ops->config_sid) {
- 		ret = pcie->cfg->ops->config_sid(pcie);
-@@ -1324,7 +1324,7 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
- 	return 0;
- 
- err_assert_reset:
--	qcom_ep_reset_assert(pcie);
-+	qcom_pcie_perst_assert(pcie);
- err_pwrctrl_power_off:
- 	pci_pwrctrl_power_off_devices(pci->dev);
- err_pwrctrl_destroy:
-@@ -1343,7 +1343,7 @@ static void qcom_pcie_host_deinit(struct dw_pcie_rp *pp)
- 	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
- 	struct qcom_pcie *pcie = to_qcom_pcie(pci);
- 
--	qcom_ep_reset_assert(pcie);
-+	qcom_pcie_perst_assert(pcie);
- 
- 	/*
- 	 * No need to destroy pwrctrl devices as this function only gets called
+v3 to v4:
+- No code change.
+Link to v3: https://lore.kernel.org/all/20251221083902.134098-1-raskar.shree97@gmail.com/
 
+v2 to v3:
+- Add 'Reviewed-by' tag to dt-binding patch.
+- Update commit message in OF device ID patch.
+- Update commit message in the third patch.
+- Replace rfd77402_result_polling() with read_poll_timeout().
+- Add 'struct rfd77402_data' details in kernel-doc format.
+- Arrange includes in order.
+- Add comment for completion timeout value.
+- Remove blank lines.
+- Indent the comments to code.
+- Convert mutex_init() to devm_mutex_init().
+- Remove 'IRQF_TRIGGER_FALLING' flag from devm_request_threaded_irq().
+- Drop the duplicate message.
+- Replace 'dev_info' with 'dev_dbg()'.
+- Update 'dev_id' to 'pdata' in rfd77402_interrupt_handler().
+- Drop 'interrupt mode' comment
+- Use 'if(ret)' instead of 'if(ret < 0) for consistency.
+- Use 'return i2c_smbus_write_byte_data()' in 'rfd77402_config_irq'.
+Link to v2: https://lore.kernel.org/all/20251130153712.6792-1-raskar.shree97@gmail.com/
+
+v1 to v2:
+- Fix commit message for dt-binding patch
+- Update interrupt description in dt-binding
+- Add 'vdd-supply' to 'required' property in dt-binding
+- Add patch for moving polling implementation to helper
+- Add helper rfd77402_wait_for_irq()
+- Code refactoring
+- Return failure if request IRQ fail
+Link to v1: https://lore.kernel.org/all/20251126031440.30065-1-raskar.shree97@gmail.com/
+---
+
+---
+Shrikant Raskar (5):
+      iio: proximity: rfd77402: Reorder header includes
+      iio: proximity: rfd77402: Use kernel helper for result polling
+      iio: proximity: rfd77402: Add interrupt handling support
+      iio: proximity: rfd77402: Use devm-managed mutex initialization
+      iio: proximity: rfd77402: Document device private data structure
+
+ drivers/iio/proximity/rfd77402.c | 157 +++++++++++++++++++++++++++++++++------
+ 1 file changed, 133 insertions(+), 24 deletions(-)
+---
+base-commit: 40e81d379e69d6db147865eee0c89e41634e0b60
+change-id: 20260115-rfd77402_v5-5d165b2eada8
+
+Best regards,
 -- 
-2.48.1
+Shrikant Raskar <raskar.shree97@gmail.com>
 
