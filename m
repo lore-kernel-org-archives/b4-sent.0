@@ -1,64 +1,72 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Fri, 16 Jan 2026 14:55:01 +0100
-Subject: [PATCH v6 3/3] arm64: defconfig: enable designware mipi csi-2
- receiver
+From: Fredrik Markstrom <fredrik.markstrom@est.tech>
+Date: Fri, 16 Jan 2026 15:29:42 +0100
+Subject: [PATCH v3] i3c: dw: Initialize spinlock to avoid upsetting lockdep
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251114-rockchip-mipi-receiver-v6-3-b7ce6e68b3fa@collabora.com>
-References: <20251114-rockchip-mipi-receiver-v6-0-b7ce6e68b3fa@collabora.com>
-In-Reply-To: <20251114-rockchip-mipi-receiver-v6-0-b7ce6e68b3fa@collabora.com>
-To: Michael Riesch <michael.riesch@collabora.com>, 
- Chaoyi Chen <chaoyi.chen@rock-chips.com>, 
- Kever Yang <kever.yang@rock-chips.com>, Frank Li <Frank.li@nxp.com>, 
- Mehdi Djait <mehdi.djait@linux.intel.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Hans Verkuil <hverkuil@kernel.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Collabora Kernel Team <kernel@collabora.com>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768571703; l=786;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=4/e4J7LessS5jdywMTVpeb4iDs9BMTFRupZRi4shvqg=;
- b=Bggx/lzI9bhnAatC3/C5uqs1E8vcMopP7FduWddmNcfFfe0+QykSLVvKqk744etEPuuBt1fKZ
- kiAlPRHEq9ND2eFm45VqIxKK9ATogTlk+JZ0AU4/KhDDYJ6Oa09lNik
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+Message-Id: <20260116-i3c_dw_initialize_spinlock-v3-1-cf707b6ed75f@est.tech>
+X-B4-Tracking: v=1; b=H4sIAFVLamkC/43NSw6DIBSF4a0YxqURVKQddR9NYwCv9aYGDRD6M
+ O696MhR0+F/Bt+ZiQeH4Mk5m4mDiB5Hm6I4ZMT0yt6BYpua8JyLnLGKYmGa9tmgxYBqwA80fkI
+ 7jOZBW1lLzriSpdAkAZODDl8bfr2l7tGH0b23r8jW9S82MsqoPplKd0pq4OUFfDgGMD1Z1cj3k
+ vgp8SRBJXRZsE4zWe+kZVm+ZFfuCw0BAAA=
+X-Change-ID: 20260115-i3c_dw_initialize_spinlock-d878212a846b
+To: Alexandre Belloni <alexandre.belloni@bootlin.com>, 
+ Frank Li <Frank.Li@nxp.com>, Joel Stanley <joel@jms.id.au>, 
+ Jeremy Kerr <jk@codeconstruct.com.au>
+Cc: linux-i3c@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Jani Nurminen <jani.nurminen@windriver.com>, 
+ Fredrik Markstrom <fredrik.markstrom@est.tech>, 
+ Ivar Holmqvist <ivar.holmqvist@est.tech>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768573783; l=1556;
+ i=fredrik.markstrom@est.tech; s=20260113; h=from:subject:message-id;
+ bh=/KOdTUSpOybjYrl+4vtlouA6tN65XqPMh7VsKfQMXIM=;
+ b=8Hmq4QhdT8feOv8Uo8CnwWHiMPO2HDk8Yz3pp+jxafGGiodUoLEkQhHqpJJh5qRhiEqDzp7Qf
+ 7g1S3zE+n80CNvqys33fMPbEi7l4re8bL33/UKN6PrgBhn+QTloUQY4
+X-Developer-Key: i=fredrik.markstrom@est.tech; a=ed25519;
+ pk=0a8IXHEgAX55JPS8VZfTf1sDp7q/oAOf459tDQd40Eg=
+X-Endpoint-Received: by B4 Relay for fredrik.markstrom@est.tech/20260113 with auth_id=600
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Synopsys DesignWare MIPI CSI-2 Receiver is integrated into
-recent Rockchip SoCs, such as the RK3568 and the RK3588.
-Enable the driver for it in the default configuration.
+The devs_lock spinlock introduced when adding support for ibi:s was
+never initialized.
 
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+Fixes: e389b1d72a624 ("i3c: dw: Add support for in-band interrupts")
+Suggested-by: Jani Nurminen <jani.nurminen@windriver.com>
+Signed-off-by: Fredrik Markstrom <fredrik.markstrom@est.tech>
+Reviewed-by: Ivar Holmqvist <ivar.holmqvist@est.tech>
 ---
- arch/arm64/configs/defconfig | 1 +
- 1 file changed, 1 insertion(+)
+Changes in v3:
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v2: https://lore.kernel.org/r/20260116-i3c_dw_initialize_spinlock-v2-1-e56b431fb187@est.tech
 
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index 45288ec9eaf7..58bda738819a 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -873,6 +873,7 @@ CONFIG_SDR_PLATFORM_DRIVERS=y
- CONFIG_V4L_MEM2MEM_DRIVERS=y
- CONFIG_VIDEO_AMPHION_VPU=m
- CONFIG_VIDEO_CADENCE_CSI2RX=m
-+CONFIG_VIDEO_DW_MIPI_CSI2RX=m
- CONFIG_VIDEO_MEDIATEK_JPEG=m
- CONFIG_VIDEO_MEDIATEK_VCODEC=m
- CONFIG_VIDEO_WAVE_VPU=m
+Changes in v2:
+- Added context in commit message
+- Link to v1: https://lore.kernel.org/r/20260115-i3c_dw_initialize_spinlock-v1-1-b9c5bfa8be24@est.tech
+---
+ drivers/i3c/master/dw-i3c-master.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
+diff --git a/drivers/i3c/master/dw-i3c-master.c b/drivers/i3c/master/dw-i3c-master.c
+index 889e2ed5bc83..d5b070404056 100644
+--- a/drivers/i3c/master/dw-i3c-master.c
++++ b/drivers/i3c/master/dw-i3c-master.c
+@@ -1570,6 +1570,8 @@ int dw_i3c_common_probe(struct dw_i3c_master *master,
+ 	spin_lock_init(&master->xferqueue.lock);
+ 	INIT_LIST_HEAD(&master->xferqueue.list);
+ 
++	spin_lock_init(&master->devs_lock);
++
+ 	writel(INTR_ALL, master->regs + INTR_STATUS);
+ 	irq = platform_get_irq(pdev, 0);
+ 	ret = devm_request_irq(&pdev->dev, irq,
+
+---
+base-commit: 0f61b1860cc3f52aef9036d7235ed1f017632193
+change-id: 20260115-i3c_dw_initialize_spinlock-d878212a846b
+
+Best regards,
 -- 
-2.39.5
+Fredrik Markstrom <fredrik.markstrom@est.tech>
 
