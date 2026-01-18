@@ -1,11 +1,11 @@
 From: Yedaya Katsman <yedaya.ka@gmail.com>
-Date: Sun, 18 Jan 2026 22:29:41 +0200
-Subject: [PATCH v3 2/3] drivers: input: touchscreen: edt-ft5x06: Add
- FocalTech FT3518
+Date: Sun, 18 Jan 2026 22:29:42 +0200
+Subject: [PATCH v3 3/3] arm64: dts: qcom: sm6125-xiaomi-laurel-sprout: Add
+ Focaltech FT3518 touchscreen
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260118-touchscreen-patches-v3-2-1c6a729c5eb4@gmail.com>
+Message-Id: <20260118-touchscreen-patches-v3-3-1c6a729c5eb4@gmail.com>
 References: <20260118-touchscreen-patches-v3-0-1c6a729c5eb4@gmail.com>
 In-Reply-To: <20260118-touchscreen-patches-v3-0-1c6a729c5eb4@gmail.com>
 To: =?utf-8?q?Kamil_Go=C5=82da?= <kamil.golda@protonmail.com>, 
@@ -15,61 +15,184 @@ To: =?utf-8?q?Kamil_Go=C5=82da?= <kamil.golda@protonmail.com>,
  Konrad Dybcio <konradybcio@kernel.org>
 Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- Yedaya Katsman <yedaya.ka@gmail.com>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+ Yedaya Katsman <yedaya.ka@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768768201; l=2144;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768768201; l=3979;
  i=yedaya.ka@gmail.com; s=20260113; h=from:subject:message-id;
- bh=0VBVyZPt9Idgohqi3iHfe82h1fr4SaGPlZ5cS2FCQFQ=;
- b=9IJc2CyT4JRuq6lwxsNoO9EII8BPqj4B6kreWbyVCRfXc64i7rlOmMMapb9hH7/IMzpnNKI9B
- lLpeiewu+T5DeFSx8SU8Mv2ao6hwKVy1szAdsXCRq48GOZ5Jj9UiMui
+ bh=gc0uiHv+Kr2394WFOHhQSa//UoZdP1/ciZ1jZkUwa0E=;
+ b=cSROccKeZFVWmSgQUYE5KsGt/3EsRqvOweoKWRwOueObEAs7gZRtAmM9lS6Of5R7naU2o8QE3
+ k4JLpMG7w8cCGO3ZC1H3yHkXI+VW4LyfOz6VfJD2zieZB3meiAsHFYs
 X-Developer-Key: i=yedaya.ka@gmail.com; a=ed25519;
  pk=CgNmxD3tYSws5dZfpmJfc6re/bV/f47veVijddHLytk=
 X-Endpoint-Received: by B4 Relay for yedaya.ka@gmail.com/20260113 with auth_id=601
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver also works with FT3518, which supports up to 10 touch points.
- Add compatible data for it.
+Add device tree node for the Focaltech FT3518 touchscreen on
+Xiaomi Mi A3 (laurel-sprout).
+
+Add pmx_ts_* gpio configurations and reference them in the touchscreen
+node.
+Note that gpio pin 83 for the regulator isn't documented downstream
+except in the touchscreen node so it's not defined in the tlmm.
+
+Enable qupv3_id_0 and i2c2 bus that the touchscreen is on.
+
+Downstream references:
+Link: https://github.com/MiCode/Xiaomi_Kernel_OpenSource/blob/laurel-r-oss/arch/arm64/boot/dts/qcom/trinket-pinctrl.dtsi
+Link: https://github.com/MiCode/Xiaomi_Kernel_OpenSource/blob/laurel-r-oss/arch/arm64/boot/dts/qcom/laurel_sprout-qrd.dtsi
 
 Co-developed-by: Kamil Gołda <kamil.golda@protonmail.com>
 Signed-off-by: Kamil Gołda <kamil.golda@protonmail.com>
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Signed-off-by: Yedaya Katsman <yedaya.ka@gmail.com>
 ---
- drivers/input/touchscreen/edt-ft5x06.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+ .../boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts  | 113 +++++++++++++++++++++
+ 1 file changed, 113 insertions(+)
 
-diff --git a/drivers/input/touchscreen/edt-ft5x06.c b/drivers/input/touchscreen/edt-ft5x06.c
-index bf498bd4dea9651ac939fe137b1c0f05e8557962..d0ab644be0069b5ab29ed037fa090a4279870193 100644
---- a/drivers/input/touchscreen/edt-ft5x06.c
-+++ b/drivers/input/touchscreen/edt-ft5x06.c
-@@ -1475,6 +1475,10 @@ static const struct edt_i2c_chip_data edt_ft5x06_data = {
- 	.max_support_points = 5,
+diff --git a/arch/arm64/boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts b/arch/arm64/boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts
+index 994fb0412fcbdf5466f87a325c48b697a37b514b..5e55acacee9585f34eead20661268103f0b7889c 100644
+--- a/arch/arm64/boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts
++++ b/arch/arm64/boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts
+@@ -82,6 +82,18 @@ key-volume-up {
+ 		};
+ 	};
+ 
++	ts_vdd_supply: regulator-ts-vdd {
++		compatible = "regulator-fixed";
++		regulator-name = "ts_vdd_supply";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++
++		gpio = <&tlmm 83 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++
++		startup-delay-us = <70000>;
++	};
++
+ 	thermal-zones {
+ 		rf-pa0-thermal {
+ 			thermal-sensors = <&pm6125_adc_tm 0>;
+@@ -128,6 +140,28 @@ &hsusb_phy1 {
+ 	status = "okay";
  };
  
-+static const struct edt_i2c_chip_data edt_ft3518_data = {
-+	.max_support_points = 10,
++&i2c2 {
++	status = "okay";
++
++	touchscreen@38 {
++		compatible = "focaltech,ft3518";
++		reg = <0x38>;
++		interrupts-extended = <&tlmm 88 IRQ_TYPE_EDGE_FALLING>;
++
++		vcc-supply = <&ts_vdd_supply>;
++
++		pinctrl-names = "pmx_ts_active","pmx_ts_suspend","pmx_ts_release";
++		pinctrl-0 = <&ts_int_active &ts_reset_active>;
++		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
++		pinctrl-2 = <&ts_release>;
++
++		reset-gpios = <&tlmm 87 GPIO_ACTIVE_LOW>;
++
++		touchscreen-size-x = <720>;
++		touchscreen-size-y = <1560>;
++	};
 +};
 +
- static const struct edt_i2c_chip_data edt_ft5452_data = {
- 	.max_support_points = 5,
+ &pm6125_adc {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&camera_flash_therm &emmc_ufs_therm>;
+@@ -220,6 +254,10 @@ &pon_resin {
+ 	status = "okay";
  };
-@@ -1503,6 +1507,7 @@ static const struct i2c_device_id edt_ft5x06_ts_id[] = {
- 	{ .name = "edt-ft5x06", .driver_data = (long)&edt_ft5x06_data },
- 	{ .name = "edt-ft5506", .driver_data = (long)&edt_ft5506_data },
- 	{ .name = "ev-ft5726", .driver_data = (long)&edt_ft5506_data },
-+	{ .name = "ft3518", .driver_data = (long)&edt_ft3518_data },
- 	{ .name = "ft5452", .driver_data = (long)&edt_ft5452_data },
- 	/* Note no edt- prefix for compatibility with the ft6236.c driver */
- 	{ .name = "ft6236", .driver_data = (long)&edt_ft6236_data },
-@@ -1519,6 +1524,7 @@ static const struct of_device_id edt_ft5x06_of_match[] = {
- 	{ .compatible = "edt,edt-ft5406", .data = &edt_ft5x06_data },
- 	{ .compatible = "edt,edt-ft5506", .data = &edt_ft5506_data },
- 	{ .compatible = "evervision,ev-ft5726", .data = &edt_ft5506_data },
-+	{ .compatible = "focaltech,ft3518", .data = &edt_ft3518_data },
- 	{ .compatible = "focaltech,ft5426", .data = &edt_ft5506_data },
- 	{ .compatible = "focaltech,ft5452", .data = &edt_ft5452_data },
- 	/* Note focaltech vendor prefix for compatibility with ft6236.c */
+ 
++&qupv3_id_0 {
++	status = "okay";
++};
++
+ &rpm_requests {
+ 	regulators-0 {
+ 		compatible = "qcom,rpm-pm6125-regulators";
+@@ -387,6 +425,81 @@ &sdhc_2 {
+ 
+ &tlmm {
+ 	gpio-reserved-ranges = <22 2>, <28 6>;
++
++	pmx_ts_reset_active {
++		ts_reset_active: ts_reset_active {
++			mux {
++				pins = "gpio87";
++				function = "gpio";
++			};
++
++			config {
++				pins = "gpio87";
++				drive-strength = <8>;
++				bias-pull-up;
++			};
++		};
++	};
++
++	pmx_ts_reset_suspend {
++		ts_reset_suspend: ts_reset_suspend {
++			mux {
++				pins = "gpio87";
++				function = "gpio";
++			};
++
++			config {
++				pins = "gpio87";
++				drive-strength = <2>;
++				bias-pull-down;
++			};
++		};
++	};
++
++	pmx_ts_int_active {
++		ts_int_active: ts_int_active {
++			mux {
++				pins = "gpio88";
++				function = "gpio";
++			};
++
++			config {
++				pins = "gpio88";
++				drive-strength = <8>;
++				bias-pull-up;
++			};
++		};
++	};
++
++	pmx_ts_int_suspend {
++		ts_int_suspend: ts_int_suspend {
++			mux {
++				pins = "gpio88";
++				function = "gpio";
++			};
++
++			config {
++				pins = "gpio88";
++				drive-strength = <2>;
++				bias-pull-down;
++			};
++		};
++	};
++
++	pmx_ts_release {
++		ts_release: ts_release {
++			mux {
++				pins = "gpio87", "gpio88";
++				function = "gpio";
++			};
++
++			config {
++				pins = "gpio87", "gpio88";
++				drive-strength = <2>;
++				bias-pull-down;
++			};
++		};
++	};
+ };
+ 
+ &ufs_mem_hc {
 
 -- 
 2.52.0
