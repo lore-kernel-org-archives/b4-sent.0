@@ -1,77 +1,256 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sat, 17 Jan 2026 19:18:28 +0100
-Subject: [PATCH] clk: qcom: dispcc-sm7150: Fix dispcc_mdss_pclk1_clk_src
+From: Bharadwaj Raju <bharadwaj.raju@machinesoul.in>
+Date: Mon, 19 Jan 2026 01:00:22 +0530
+Subject: [PATCH RFC] ASoC: codecs: aw88261: Implement renaming of controls
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260117-sm7150-dispcc-fix-v1-1-2f39966bcad2@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAHPSa2kC/x2MSQqAMAwAvyI5G0iDVvAr4kHbVHNwoQERxL9bP
- M7AzAMmWcWgrx7IcqnpsRdwdQVhnfZFUGNhYGJPznVoW+dawqh2hoBJb/ScyPMcmaSB0p1Ziv6
- fw/i+H/Ws2eBjAAAA
-X-Change-ID: 20260117-sm7150-dispcc-fix-62f062bd20e4
-To: Bjorn Andersson <andersson@kernel.org>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Jens Reidel <adrian@mainlining.org>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
+Message-Id: <20260119-aw88261-rename-v1-1-d4236055315f@machinesoul.in>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avIrBOaiaS6SrSwHGsWWShUEN49a
+ fkW/7+QOAonGNQLkS9JcoQCrBQsmw0ra3HFQDWZGtFoe3cdGdSRg91Zo6PWsltm3zdQojOyl+c
+ fjlPOH6L4GVdgAAAA
+X-Change-ID: 20260116-aw88261-rename-1d25aedcbf93
+To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ bhushan.shah@machinesoul.in, luca.weiss@fairphone.com, 
+ Bharadwaj Raju <bharadwaj.raju@machinesoul.in>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1272; i=david@ixit.cz;
- h=from:subject:message-id; bh=DehSC42DoLuOU48sX00s0uMz8/ZmcNB/sAtQOA+m9mE=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpa9KEl7PYVfM8z3T/52r1eu/lL5DJxmGQHNlmL
- aqy1wWgkwKJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaWvShAAKCRBgAj/E00kg
- cjmDD/0QhyDqp28pSI9fXFMiRNW+f587HV1YFHvXnqO1mYu08kw5/7BTvFVW7Lr2ovVM4TQI71/
- Dy/gGMyWVnlNY1CHc4C1xPJQVeRiPfdGh3T/mFx0veBH1hpUZiUvJ4q2vP+Y69NHeeyPqOt4Ekk
- dg2C81t1vC4KzRr45ARtO0AVSDyWVkiPvJhHZQqeIqmgy1a8w5GfRoWXAt5fsU4C8f1FuJead9M
- IoVhAjJlV7uBrDGg0mf7Q1KA3vHWtujuo+YYH2R5C9bOM+i/v3t0EIMU3Rl09edXR5FDJq0Okpf
- aBXl8T3M+gKXev2S/ANr3Y+sGLop3w5OvednjPwXxd7S/cxgt2SYFf5Brw8Bt3lVwoT2FcfIvIk
- ObxW8Itr7IIxgtmjlmnwJcuBBJufgUrz4K5qkwfZKpGT6UrAhT6hjK1T99LQM62em24lSFrz+Xf
- pr87jv1r7/xLjV4uKYfp+/CfWf1w06evYyTv0gtG/IPYO5wQXpWLKLlKQWkHKnBC6h9JG03M2+Y
- +BbKR5KzMo5hiAIR5g20qhiJv1J4r4yBiq/gM6QfcwYpN7qakU0WvFWctmblQVnaa5AiNtFW5hG
- zbgJPwn/7uwocP53xyxR6kb624vZa45fmj8d+GSpQe54PPSy1Q0cqO0POlcK1DcA/9rFbFX8lu6
- Bsy1qNK3BD1Y0Jw==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768764627; l=7728;
+ i=bharadwaj.raju@machinesoul.in; s=20260111; h=from:subject:message-id;
+ bh=iwqJTkyzWCExGcOWGxSpKnKqIADpvM0STYKVbaSzEYg=;
+ b=WnJ04zXcF2EAQkj1cso2NrDqU7bWbBF8Wf1PhPAwcPEM2kWAkxHmFVKzEZatMnmeXFkTb715J
+ N8imOqC7x+/Bbk6WfUIWNpZJ37ujckhyEu15Pw2o4zpZMwyzmgEGj7h
+X-Developer-Key: i=bharadwaj.raju@machinesoul.in; a=ed25519;
+ pk=0M1a+iMXDqasbx7bQL71NdtuutFXu+lVxsiSnEiyAIg=
+X-Endpoint-Received: by B4 Relay for bharadwaj.raju@machinesoul.in/20260111 with auth_id=598
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Set CLK_OPS_PARENT_ENABLE to ensure the parent gets prepared and enabled
-when switching to it.
+When multiple aw88261 amps are present in a system, they cannot be
+enabled together since the names of the DAIs, kcontrols, DAPM widgets,
+and DAPM routes conflict unless they are dynamically renamed to include
+the channel number as a suffix.
 
-Fixes: e3c13e0caa8c ("clk: qcom: dispcc-sm7150: Fix dispcc_mdss_pclk0_clk_src")
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Bharadwaj Raju <bharadwaj.raju@machinesoul.in>
 ---
-I would call it more addition than fix regarding to how the commit is
-named, but generally both pclk0 and pclk1 should receive this flag.
+When multiple aw88261 amps for different channels are present, their 
+controls, widgets, and component names are the same and hence conflict.
 
-Feel free to drop the Fixes tag.
+Rename these to include the channel as a differentiating suffix.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+This patch is an RFC for now because while this is the approach taken 
+in the downstream driver, I'm unsure if this is the best approach.
+Especially because other codec drivers don't seem to do this, generally.
 ---
- drivers/clk/qcom/dispcc-sm7150.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ sound/soc/codecs/aw88261.c | 157 ++++++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 148 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/clk/qcom/dispcc-sm7150.c b/drivers/clk/qcom/dispcc-sm7150.c
-index 811d380a8e9f9..ed8e34ffd69b0 100644
---- a/drivers/clk/qcom/dispcc-sm7150.c
-+++ b/drivers/clk/qcom/dispcc-sm7150.c
-@@ -371,7 +371,7 @@ static struct clk_rcg2 dispcc_mdss_pclk1_clk_src = {
- 		.name = "dispcc_mdss_pclk1_clk_src",
- 		.parent_data = dispcc_parent_data_4,
- 		.num_parents = ARRAY_SIZE(dispcc_parent_data_4),
--		.flags = CLK_SET_RATE_PARENT,
-+		.flags = CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE,
- 		.ops = &clk_pixel_ops,
- 	},
- };
+diff --git a/sound/soc/codecs/aw88261.c b/sound/soc/codecs/aw88261.c
+index 36ee4f7c3d0a..9a2d167cf809 100644
+--- a/sound/soc/codecs/aw88261.c
++++ b/sound/soc/codecs/aw88261.c
+@@ -1130,9 +1130,24 @@ static int aw88261_request_firmware_file(struct aw88261 *aw88261)
+ 	return ret;
+ }
+ 
++static int aw88261_append_channel_suffix(const char *format, const char **name,
++					 struct aw88261 *aw88261)
++{
++	char buf[64];
++
++	snprintf(buf, sizeof(buf), format, *name, aw88261->aw_pa->channel);
++	(*name) = devm_kstrdup(aw88261->aw_pa->dev, buf, GFP_KERNEL);
++	if (!(*name))
++		return -ENOMEM;
++	return 0;
++}
++
+ static int aw88261_codec_probe(struct snd_soc_component *component)
+ {
+ 	struct snd_soc_dapm_context *dapm = snd_soc_component_get_dapm(component);
++	struct snd_soc_dapm_widget *dapm_widgets = NULL;
++	struct snd_soc_dapm_route *audio_map = NULL;
++	struct snd_kcontrol_new *controls = NULL;
+ 	struct aw88261 *aw88261 = snd_soc_component_get_drvdata(component);
+ 	int ret;
+ 
+@@ -1143,20 +1158,110 @@ static int aw88261_codec_probe(struct snd_soc_component *component)
+ 		return dev_err_probe(aw88261->aw_pa->dev, ret,
+ 				"aw88261_request_firmware_file failed\n");
+ 
++	/* rename dapm widgets to avoid clash between left and right amps */
++	dapm_widgets = devm_kzalloc(aw88261->aw_pa->dev,
++				    sizeof(struct snd_soc_dapm_widget) *
++					    ARRAY_SIZE(aw88261_dapm_widgets),
++				    GFP_KERNEL);
++	if (!dapm_widgets)
++		return dev_err_probe(
++			aw88261->aw_pa->dev, -ENOMEM,
++			"could not allocate memory for dapm widgets\n");
++
++	memcpy(dapm_widgets, aw88261_dapm_widgets,
++	       sizeof(struct snd_soc_dapm_widget) *
++		       ARRAY_SIZE(aw88261_dapm_widgets));
++
++	for (int i = 0; i < ARRAY_SIZE(aw88261_dapm_widgets); i++) {
++		if (dapm_widgets[i].name) {
++			ret = aw88261_append_channel_suffix(
++				"%s_%d", &dapm_widgets[i].name, aw88261);
++			if (ret)
++				return dev_err_probe(
++					aw88261->aw_pa->dev, ret,
++					"could not change widget name\n");
++		}
++		if (dapm_widgets[i].sname) {
++			ret = aw88261_append_channel_suffix(
++				"%s_%d", &dapm_widgets[i].sname, aw88261);
++			if (ret)
++				return dev_err_probe(
++					aw88261->aw_pa->dev, ret,
++					"could not change widget sname\n");
++		}
++	}
++
+ 	/* add widgets */
+-	ret = snd_soc_dapm_new_controls(dapm, aw88261_dapm_widgets,
+-							ARRAY_SIZE(aw88261_dapm_widgets));
++	ret = snd_soc_dapm_new_controls(dapm, dapm_widgets,
++					ARRAY_SIZE(aw88261_dapm_widgets));
+ 	if (ret)
+ 		return ret;
+ 
++	/* rename dapm routes to avoid clash between left and right amps */
++	audio_map = devm_kzalloc(aw88261->aw_pa->dev,
++				 sizeof(struct snd_soc_dapm_route) *
++					 ARRAY_SIZE(aw88261_audio_map),
++				 GFP_KERNEL);
++	if (!audio_map)
++		return dev_err_probe(
++			aw88261->aw_pa->dev, -ENOMEM,
++			"could not allocate memory for dapm routes\n");
++
++	memcpy(audio_map, aw88261_audio_map,
++	       sizeof(struct snd_soc_dapm_route) *
++		       ARRAY_SIZE(aw88261_audio_map));
++
++	for (int i = 0; i < ARRAY_SIZE(aw88261_audio_map); i++) {
++		if (audio_map[i].sink) {
++			ret = aw88261_append_channel_suffix(
++				"%s_%d", &audio_map[i].sink, aw88261);
++			if (ret)
++				return dev_err_probe(
++					aw88261->aw_pa->dev, ret,
++					"could not change route sink\n");
++		}
++		if (audio_map[i].source) {
++			ret = aw88261_append_channel_suffix(
++				"%s_%d", &audio_map[i].source, aw88261);
++			if (ret)
++				return dev_err_probe(
++					aw88261->aw_pa->dev, ret,
++					"could not change route source\n");
++		}
++	}
++
+ 	/* add route */
+-	ret = snd_soc_dapm_add_routes(dapm, aw88261_audio_map,
+-							ARRAY_SIZE(aw88261_audio_map));
++	ret = snd_soc_dapm_add_routes(dapm, audio_map,
++				      ARRAY_SIZE(aw88261_audio_map));
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = snd_soc_add_component_controls(component, aw88261_controls,
+-							ARRAY_SIZE(aw88261_controls));
++	/* rename kcontrols to avoid clash between left and right amps */
++	controls = devm_kzalloc(aw88261->aw_pa->dev,
++				sizeof(struct snd_kcontrol_new) *
++					ARRAY_SIZE(aw88261_controls),
++				GFP_KERNEL);
++	if (!controls)
++		return dev_err_probe(
++			aw88261->aw_pa->dev, -ENOMEM,
++			"could not allocate memory for kcontrols\n");
++
++	memcpy(controls, aw88261_controls,
++	       sizeof(struct snd_kcontrol_new) * ARRAY_SIZE(aw88261_controls));
++
++	for (int i = 0; i < ARRAY_SIZE(aw88261_controls); i++) {
++		if (controls[i].name) {
++			ret = aw88261_append_channel_suffix(
++				"%s %d", &controls[i].name, aw88261);
++			if (ret)
++				return dev_err_probe(
++					aw88261->aw_pa->dev, ret,
++					"could not change kcontrol name\n");
++		}
++	}
++
++	ret = snd_soc_add_component_controls(component, controls,
++					     ARRAY_SIZE(aw88261_controls));
+ 
+ 	return ret;
+ }
+@@ -1234,6 +1339,7 @@ static int aw88261_init(struct aw88261 **aw88261, struct i2c_client *i2c, struct
+ static int aw88261_i2c_probe(struct i2c_client *i2c)
+ {
+ 	struct aw88261 *aw88261;
++	struct snd_soc_dai_driver *dai = NULL;
+ 	int ret;
+ 
+ 	ret = i2c_check_functionality(i2c->adapter, I2C_FUNC_I2C);
+@@ -1259,9 +1365,42 @@ static int aw88261_i2c_probe(struct i2c_client *i2c)
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = devm_snd_soc_register_component(&i2c->dev,
+-			&soc_codec_dev_aw88261,
+-			aw88261_dai, ARRAY_SIZE(aw88261_dai));
++	/* rename dai drivers to avoid clashes between left and right amps */
++	dai = devm_kzalloc(aw88261->aw_pa->dev,
++			   sizeof(struct snd_soc_dai_driver) *
++				   ARRAY_SIZE(aw88261_dai),
++			   GFP_KERNEL);
++	if (!dai)
++		return dev_err_probe(&i2c->dev, -ENOMEM,
++				     "could not allocate memory for dai\n");
++
++	memcpy(dai, aw88261_dai,
++	       sizeof(struct snd_soc_dai_driver) * ARRAY_SIZE(aw88261_dai));
++
++	for (int i = 0; i < ARRAY_SIZE(aw88261_dai); i++) {
++		ret = aw88261_append_channel_suffix("%s-%d", &dai[i].name,
++						    aw88261);
++		if (ret)
++			return dev_err_probe(&i2c->dev, ret,
++					     "could not change dai name\n");
++
++		ret = aw88261_append_channel_suffix(
++			"%s_%d", &dai[i].playback.stream_name, aw88261);
++		if (ret)
++			return dev_err_probe(
++				&i2c->dev, ret,
++				"could not change dai playback name\n");
++
++		ret = aw88261_append_channel_suffix(
++			"%s-%d", &dai[i].capture.stream_name, aw88261);
++		if (ret)
++			return dev_err_probe(
++				&i2c->dev, ret,
++				"could not change dai capture name\n");
++	}
++
++	ret = devm_snd_soc_register_component(&i2c->dev, &soc_codec_dev_aw88261,
++					      dai, ARRAY_SIZE(aw88261_dai));
+ 	if (ret)
+ 		dev_err(&i2c->dev, "failed to register aw88261: %d", ret);
+ 
 
 ---
-base-commit: 46fe65a2c28ecf5df1a7475aba1f08ccf4c0ac1b
-change-id: 20260117-sm7150-dispcc-fix-62f062bd20e4
+base-commit: 65af168f341f34ac12f878d7b7f8326df7921190
+change-id: 20260116-aw88261-rename-1d25aedcbf93
 
 Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+Bharadwaj Raju <bharadwaj.raju@machinesoul.in>
 
