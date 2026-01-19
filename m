@@ -1,180 +1,228 @@
 From: Yang Xiwen <forbidden405@outlook.com>
-Date: Tue, 20 Jan 2026 03:07:22 +0800
-Subject: [PATCH v3 5/6] clk: allow assigning parent lazily
+Date: Tue, 20 Jan 2026 03:07:23 +0800
+Subject: [PATCH v3 6/6] test: clk: add test for CLK_LAZY_REPARENT
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260120-clk-reparent-v3-5-0d43d4b362ac@outlook.com>
+Message-Id: <20260120-clk-reparent-v3-6-0d43d4b362ac@outlook.com>
 References: <20260120-clk-reparent-v3-0-0d43d4b362ac@outlook.com>
 In-Reply-To: <20260120-clk-reparent-v3-0-0d43d4b362ac@outlook.com>
 To: Simon Glass <sjg@chromium.org>, Tom Rini <trini@konsulko.com>, 
  Lukasz Majewski <lukma@denx.de>, Sean Anderson <seanga2@gmail.com>
-Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>, 
- Simon Glass <simon.glass@canonical.com>
+Cc: u-boot@lists.denx.de, Yang Xiwen <forbidden405@outlook.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768849639; l=4923;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768849639; l=7495;
  i=forbidden405@outlook.com; s=20230724; h=from:subject:message-id;
- bh=5LNlJejSZamN5MUcEZo/X0XtiDziAhgS2uQ4xElUkDA=;
- b=h/mxQjHVYvNPa52tC3i7BMUkAf+1++db0/ngpfJIcAma7jj38G46+v8hNvhKZvEnYDgKx6OmH
- 0lvDpai+EEHBpvfW05WK0T7n/r1PlT6X4/a1/c4fhB5QFPlnmpqOW2F
+ bh=29coQw/9sTw6zhIgySMsjVjVCKHrMx8v8fa/ab+1boo=;
+ b=m3wBzAVLO3bj9dOgE5VqOVZIsc3H9KNgVMUWsbWNW4vQTsvNNXP8HqU0xOaHlwUuSUVcQzNAc
+ jjzlWsP9W3VAjlgXss+PbuXTk7h44YfrqZbs1DzJ9pY3aEEDaqFcwpC
 X-Developer-Key: i=forbidden405@outlook.com; a=ed25519;
  pk=qOD5jhp891/Xzc+H/PZ8LWVSWE3O/XCQnAg+5vdU2IU=
 X-Endpoint-Received: by B4 Relay for forbidden405@outlook.com/20230724 with auth_id=67
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Don't mandate the parent device exists when registering a clock.
+Add a test for the newly introduced CLK_LAZY_REPARENT feature.
 
-Instead, cache the parent name in the core clk struct and resolve the
-parent in clk_get_parent(), which is called lazily upon real use.
+Modify clk_sandbox_ccf driver to register two clocks(i2s and i2s_root)
+in reversed order.
 
-Disable this feature for xPLs by default to save size.
+The test function then try to acquire the clocks and asserts that their
+internal states are maintained correctly.
 
-Reviewed-by: Simon Glass <simon.glass@canonical.com>
+Ensure clk->parent_name is NULL in all "normal" cases so existing
+drivers are not broken by this feature.
+
 Signed-off-by: Yang Xiwen <forbidden405@outlook.com>
 ---
- drivers/clk/Kconfig      | 12 ++++++++++++
- drivers/clk/clk-uclass.c | 44 ++++++++++++++++++++++++++++++++++++++++++--
- drivers/clk/clk.c        | 14 ++++++++++++--
- include/clk.h            |  2 ++
- 4 files changed, 68 insertions(+), 4 deletions(-)
+ drivers/clk/clk_sandbox_ccf.c | 10 ++++++++++
+ include/sandbox-clk.h         |  2 ++
+ test/dm/clk_ccf.c             | 40 ++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 52 insertions(+)
 
-diff --git a/drivers/clk/Kconfig b/drivers/clk/Kconfig
-index ae783254008c..5a57adef3ccb 100644
---- a/drivers/clk/Kconfig
-+++ b/drivers/clk/Kconfig
-@@ -51,6 +51,18 @@ config VPL_CLK
- 	  setting up clocks within TPL, and allows the same drivers to be
- 	  used as U-Boot proper.
+diff --git a/drivers/clk/clk_sandbox_ccf.c b/drivers/clk/clk_sandbox_ccf.c
+index 9b8036d41aac..86f75132d548 100644
+--- a/drivers/clk/clk_sandbox_ccf.c
++++ b/drivers/clk/clk_sandbox_ccf.c
+@@ -229,6 +229,7 @@ static const struct udevice_id sandbox_clk_ccf_test_ids[] = {
  
-+config CLK_LAZY_REPARENT
-+	bool "Enable clock lazy reparenting feature"
-+	depends on CLK_CCF
-+	default n if SPL_CLK || TPL_CLK || VPL_CLK
-+	default y
-+	help
-+	  This option allows registering clocks in a less strict order that
-+	  Parent clocks can be registered before their children. The clock subsystem
-+	  will cache the parent's name and resolve it to the real parent device "lazily".
-+	  This is the default behavior in Linux clock subsystem. Enabling this feature
-+	  should simplifies the porting of Linux clock drivers to U-Boot.
+ static const char *const usdhc_sels[] = { "pll3_60m", "pll3_80m", };
+ static const char *const i2c_sels[] = { "pll3_60m", "pll3_80m", };
++static const char *const i2s_sels[] = { "pll3_60m", "pll3_80m", };
+ 
+ static int sandbox_clk_ccf_probe(struct udevice *dev)
+ {
+@@ -277,6 +278,15 @@ static int sandbox_clk_ccf_probe(struct udevice *dev)
+ 	dev_clk_dm(dev, SANDBOX_CLK_I2C_ROOT,
+ 		   sandbox_clk_gate2("i2c_root", "i2c", base + 0x7c, 0));
+ 
++	/* Register i2s_root(child) and i2s(parent) in reverse order to test CLK_LAZY_REPARENT */
++	dev_clk_dm(dev, SANDBOX_CLK_I2S_ROOT,
++		   sandbox_clk_gate2("i2s_root", "i2s", base + 0x80, 0));
 +
- config CLK_BCM6345
- 	bool "Clock controller driver for BCM6345"
- 	depends on CLK && ARCH_BMIPS
-diff --git a/drivers/clk/clk-uclass.c b/drivers/clk/clk-uclass.c
-index 297d4d63a579..a7f02d339a55 100644
---- a/drivers/clk/clk-uclass.c
-+++ b/drivers/clk/clk-uclass.c
-@@ -495,6 +495,32 @@ ulong clk_get_rate(struct clk *clk)
- 	return ops->get_rate(clk);
++	reg = BIT(29) | BIT(25) | BIT(17);
++	dev_clk_dm(dev, SANDBOX_CLK_I2S,
++		   sandbox_clk_composite("i2s", i2s_sels, ARRAY_SIZE(i2s_sels),
++					 &reg, CLK_SET_RATE_UNGATE));
++
+ 	return 0;
  }
  
-+static struct udevice *clk_reparent(struct clk *clk, const char *parent_name)
+diff --git a/include/sandbox-clk.h b/include/sandbox-clk.h
+index c2616c27a44a..0cd735e3ad5f 100644
+--- a/include/sandbox-clk.h
++++ b/include/sandbox-clk.h
+@@ -21,6 +21,8 @@ enum {
+ 	SANDBOX_CLK_USDHC2_SEL,
+ 	SANDBOX_CLK_I2C,
+ 	SANDBOX_CLK_I2C_ROOT,
++	SANDBOX_CLK_I2S,
++	SANDBOX_CLK_I2S_ROOT,
+ };
+ 
+ enum sandbox_pllv3_type {
+diff --git a/test/dm/clk_ccf.c b/test/dm/clk_ccf.c
+index 9c06aadb7ed3..8bbb79bec2ac 100644
+--- a/test/dm/clk_ccf.c
++++ b/test/dm/clk_ccf.c
+@@ -35,12 +35,14 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
+ 	ret = clk_get_by_id(CLK_ID(dev, SANDBOX_CLK_ECSPI_ROOT), &clk);
+ 	ut_assertok(ret);
+ 	ut_asserteq_str("ecspi_root", clk->dev->name);
++	ut_assertnull(clk->parent_name);
+ 	ut_asserteq(CLK_SET_RATE_PARENT, clk->flags);
+ 
+ 	/* Test for clk_get_parent_rate() */
+ 	ret = clk_get_by_id(CLK_ID(dev, SANDBOX_CLK_ECSPI1), &clk);
+ 	ut_assertok(ret);
+ 	ut_asserteq_str("ecspi1", clk->dev->name);
++	ut_assertnull(clk->parent_name);
+ 	ut_asserteq(CLK_SET_RATE_PARENT, clk->flags);
+ 
+ 	rate = clk_get_parent_rate(clk);
+@@ -50,6 +52,7 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
+ 	ret = clk_get_by_id(CLK_ID(dev, SANDBOX_CLK_ECSPI0), &clk);
+ 	ut_assertok(ret);
+ 	ut_asserteq_str("ecspi0", clk->dev->name);
++	ut_assertnull(clk->parent_name);
+ 	ut_asserteq(CLK_SET_RATE_PARENT, clk->flags);
+ 
+ 	rate = clk_get_parent_rate(clk);
+@@ -59,6 +62,7 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
+ 	ret = clk_get_by_id(CLK_ID(dev, SANDBOX_CLK_USDHC1_SEL), &clk);
+ 	ut_assertok(ret);
+ 	ut_asserteq_str("usdhc1_sel", clk->dev->name);
++	ut_assertnull(clk->parent_name);
+ 	ut_asserteq(CLK_SET_RATE_NO_REPARENT, clk->flags);
+ 
+ 	rate = clk_get_parent_rate(clk);
+@@ -71,6 +75,7 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
+ 	ut_asserteq_64(60000000, rate);
+ 
+ 	ret = clk_get_by_id(CLK_ID(dev, SANDBOX_CLK_PLL3_80M), &pclk);
++	ut_assertnull(clk->parent_name);
+ 	ut_assertok(ret);
+ 
+ 	ret = clk_set_parent(clk, pclk);
+@@ -82,6 +87,7 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
+ 	ret = clk_get_by_id(CLK_ID(dev, SANDBOX_CLK_USDHC2_SEL), &clk);
+ 	ut_assertok(ret);
+ 	ut_asserteq_str("usdhc2_sel", clk->dev->name);
++	ut_assertnull(clk->parent_name);
+ 	ut_asserteq(CLK_SET_RATE_NO_REPARENT, clk->flags);
+ 
+ 	rate = clk_get_parent_rate(clk);
+@@ -98,6 +104,7 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
+ 	ut_asserteq_64(80000000, rate);
+ 
+ 	ret = clk_get_by_id(CLK_ID(dev, SANDBOX_CLK_PLL3_60M), &pclk);
++	ut_assertnull(clk->parent_name);
+ 	ut_assertok(ret);
+ 
+ 	ret = clk_set_parent(clk, pclk);
+@@ -110,6 +117,7 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
+ 	ret = clk_get_by_id(CLK_ID(dev, SANDBOX_CLK_I2C), &clk);
+ 	ut_assertok(ret);
+ 	ut_asserteq_str("i2c", clk->dev->name);
++	ut_assertnull(clk->parent_name);
+ 	ut_asserteq(CLK_SET_RATE_UNGATE, clk->flags);
+ 
+ 	rate = clk_get_rate(clk);
+@@ -124,11 +132,13 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
+ 	ret = clk_get_by_index(test_dev, SANDBOX_CLK_TEST_ID_I2C_ROOT, &clk_ccf);
+ 	ut_assertok(ret);
+ 	ut_asserteq_str("clk-ccf", clk_ccf.dev->name);
++	ut_assertnull(clk->parent_name);
+ 	ut_asserteq(CLK_ID(clk_ccf.dev, SANDBOX_CLK_I2C_ROOT), clk_ccf.id);
+ 
+ 	ret = clk_get_by_id(CLK_ID(dev, SANDBOX_CLK_I2C_ROOT), &clk);
+ 	ut_assertok(ret);
+ 	ut_asserteq_str("i2c_root", clk->dev->name);
++	ut_assertnull(clk->parent_name);
+ 	ut_asserteq(SANDBOX_CLK_I2C_ROOT, clk_get_id(clk));
+ 
+ 	ret = clk_enable(&clk_ccf);
+@@ -138,6 +148,7 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
+ 	ut_asserteq(1, ret);
+ 
+ 	ret = clk_get_by_id(CLK_ID(dev, SANDBOX_CLK_I2C), &pclk);
++	ut_assertnull(clk->parent_name);
+ 	ut_assertok(ret);
+ 
+ 	ret = sandbox_clk_enable_count(pclk);
+@@ -156,6 +167,7 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
+ 	ret = clk_get_by_id(CLK_ID(dev, SANDBOX_CLK_USDHC1_SEL), &clk);
+ 	ut_assertok(ret);
+ 	ut_asserteq_str("usdhc1_sel", clk->dev->name);
++	ut_assertnull(clk->parent_name);
+ 
+ 	pclk = clk_get_parent(clk);
+ 	ut_assertok_ptr(pclk);
+@@ -169,6 +181,7 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
+ 
+ 	ret = clk_get_by_id(CLK_ID(dev, clkid), &pclk);
+ 	ut_assertok(ret);
++	ut_assertnull(clk->parent_name);
+ 	ret = clk_set_parent(clk, pclk);
+ 	ut_assertok(ret);
+ 	pclk = clk_get_parent(clk);
+@@ -179,6 +192,7 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
+ 	ret = clk_get_by_id(CLK_ID(dev, SANDBOX_CLK_I2C_ROOT), &clk);
+ 	ut_assertok(ret);
+ 	ut_asserteq_str("i2c_root", clk->dev->name);
++	ut_assertnull(clk->parent_name);
+ 
+ 	/* Disable it, if any. */
+ 	ret = sandbox_clk_enable_count(clk);
+@@ -209,3 +223,29 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
+ 	return 1;
+ }
+ DM_TEST(dm_test_clk_ccf, UTF_SCAN_FDT);
++
++#if CONFIG_IS_ENABLED(CLK_LAZY_REPARENT)
++/* Test CLK_LAZY_REPARENT feature */
++static int dm_test_clk_lazy_reparent(struct unit_test_state *uts)
 +{
-+	struct udevice *pdev;
-+	int ret;
++	struct udevice *dev;
++	struct clk *clk_i2s, *clk_i2s_root;
 +
-+	if (!clk_valid(clk))
-+		return NULL;
++	/* Get the device using the clk device */
++	ut_assertok(uclass_get_device_by_name(UCLASS_CLK, "clk-ccf", &dev));
 +
-+	if (!parent_name)
-+		return NULL;
++	ut_assertok(clk_get_by_id(CLK_ID(dev, SANDBOX_CLK_I2S_ROOT), &clk_i2s_root));
++	ut_assertok(clk_get_by_id(CLK_ID(dev, SANDBOX_CLK_I2S), &clk_i2s));
 +
-+	debug("%s(clk=%p) reparenting to %s\n", __func__, clk, parent_name);
++	ut_asserteq_str(clk_i2s_root->parent_name, "i2s");
++	ut_assertnull(clk_i2s_root->dev->parent);
 +
-+	ret = uclass_get_device_by_name(UCLASS_CLK, parent_name, &pdev);
-+	if (ret) {
-+		log_err("%s(clk=%p) failed to find parent \"%s\"\n", __func__, clk, parent_name);
-+		return NULL;
-+	}
++	ut_assertok(clk_enable(clk_i2s_root));
 +
-+	ret = device_reparent(clk->dev, pdev);
-+	if (ret)
-+		return NULL;
++	ut_assertnull(clk_i2s_root->parent_name);
++	ut_asserteq_ptr(clk_i2s_root->dev->parent, clk_i2s->dev);
 +
-+	return pdev;
++	return 0;
 +}
-+
- struct clk *clk_get_parent(struct clk *clk)
- {
- 	struct udevice *pdev;
-@@ -505,8 +531,18 @@ struct clk *clk_get_parent(struct clk *clk)
- 		return NULL;
- 
- 	pdev = dev_get_parent(clk->dev);
--	if (!pdev)
--		return ERR_PTR(-ENODEV);
-+	if (!pdev) {
-+		if (CONFIG_IS_ENABLED(CLK_LAZY_REPARENT)) {
-+			pdev = clk_reparent(clk, clk->parent_name);
-+			free(clk->parent_name);
-+			clk->parent_name = NULL;
-+
-+			if (!pdev)
-+				return ERR_PTR(-ENODEV);
-+		} else {
-+			return ERR_PTR(-ENODEV);
-+		}
-+	}
- 
- 	if (device_get_uclass_id(pdev) != UCLASS_CLK)
- 		return ERR_PTR(-ENODEV);
-@@ -630,6 +666,10 @@ int clk_set_parent(struct clk *clk, struct clk *parent)
- 	debug("%s(clk=%p, parent=%p)\n", __func__, clk, parent);
- 	if (!clk_valid(clk))
- 		return 0;
-+
-+	free(clk->parent_name);
-+	clk->parent_name = NULL;
-+
- 	ops = clk_dev_ops(clk->dev);
- 
- 	if (!ops->set_parent)
-diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
-index b8c2e8d531b9..32b3c03ab09a 100644
---- a/drivers/clk/clk.c
-+++ b/drivers/clk/clk.c
-@@ -24,8 +24,18 @@ int clk_register(struct clk *clk, const char *drv_name,
- 	if (parent_name) {
- 		ret = uclass_get_device_by_name(UCLASS_CLK, parent_name, &parent);
- 		if (ret) {
--			log_err("%s: failed to get %s device (parent of %s)\n",
--				__func__, parent_name, name);
-+			log_debug("%s: failed to get %s device (parent of %s)\n",
-+				  __func__, parent_name, name);
-+
-+			if (CONFIG_IS_ENABLED(CLK_LAZY_REPARENT)) {
-+				/*
-+				 * The parent is not yet registered.
-+				 * Cache the parent name and resolve it later.
-+				 */
-+				clk->parent_name = strdup(parent_name);
-+				if (!clk->parent_name)
-+					return -ENOMEM;
-+			}
- 		} else {
- 			log_debug("%s: name: %s parent: %s [0x%p]\n", __func__, name,
- 				  parent->name, parent);
-diff --git a/include/clk.h b/include/clk.h
-index 90b42a618675..88db75c56d44 100644
---- a/include/clk.h
-+++ b/include/clk.h
-@@ -47,6 +47,7 @@ struct udevice;
- /**
-  * struct clk - A handle to (allowing control of) a single clock.
-  * @dev: The device which implements the clock signal.
-+ * @parent_name: The name of the parent.
-  * @rate: The clock rate (in HZ).
-  * @flags: Flags used across common clock structure (e.g. %CLK_)
-  *         Clock IP blocks specific flags (i.e. mux, div, gate, etc) are defined
-@@ -72,6 +73,7 @@ struct udevice;
-  */
- struct clk {
- 	struct udevice *dev;
-+	char *parent_name;
- 	long long rate;	/* in HZ */
- 	u32 flags;
- 	int enable_count;
++DM_TEST(dm_test_clk_lazy_reparent, UTF_SCAN_FDT);
++#endif
 
 -- 
 2.43.0
