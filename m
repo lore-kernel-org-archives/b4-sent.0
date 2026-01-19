@@ -1,10 +1,11 @@
 From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Mon, 19 Jan 2026 18:19:57 +0100
-Subject: [PATCH 3/4] iio: proximity: vl53l0x-i2c: Fix reset sequence
+Date: Mon, 19 Jan 2026 18:19:58 +0100
+Subject: [PATCH 4/4] iio: proximity: vl53l0x-i2c: Use raw I2C access and
+ read full device ID
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260119-vl53l0x-v1-3-cf71715a1353@protonmail.com>
+Message-Id: <20260119-vl53l0x-v1-4-cf71715a1353@protonmail.com>
 References: <20260119-vl53l0x-v1-0-cf71715a1353@protonmail.com>
 In-Reply-To: <20260119-vl53l0x-v1-0-cf71715a1353@protonmail.com>
 To: Song Qiang <songqiang1304521@gmail.com>, 
@@ -17,54 +18,107 @@ To: Song Qiang <songqiang1304521@gmail.com>,
 Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768843207; l=1425;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768843207; l=2915;
  i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=gSEF9OiTVlziFUY+j6AnvS9EbsjgiEBrPmz9odaovLo=;
- b=tRYucSdFhwTxfqOarD4F45oBWBG3pFwZnKUv7ccyqlEqk3wJpxHk3ou5uHoOzkdxscsLl7C7/
- NH+jR4TUbziBbJLmB2DsOJ4Ca+GSu4/XoKLh4MJ/WlB+xdszuZRB1WT
+ bh=d+hR0F/bDeIjVeoY7OePEyZl2RADxLrlf6OYgdsANok=;
+ b=0kzauao6M0YQ7pPlLk4mUBIlnjb12ECy1EXuGr6fNc/b4+2imVy+PWaKfasHv0iuQbXkvcSZV
+ JJ2fmLulcfoB37cVPj1OtwNKTlsMdbV31tGmdYZECrPZbAn+HluMrJg
 X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
  pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
 X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix the reset GPIO handling and power-up timing to better match the
-VL53L0X reset requirements.
+Replace SMBus byte reads with raw I2C transfers when reading the device
+identification registers.
+
+The VL53L0X exposes its model and revision as 16-bit registers, which are
+more accurately accessed using standard I2C send/receive operations.
+This also avoids depending on SMBus byte data support, which is not
+guaranteed on all I2C adapters.
+
+Read and log both model and revision IDs, and validate the model ID
+during probe to ensure the expected device is present.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- drivers/iio/proximity/vl53l0x-i2c.c | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+ drivers/iio/proximity/vl53l0x-i2c.c | 45 +++++++++++++++++++++++++++++++------
+ 1 file changed, 38 insertions(+), 7 deletions(-)
 
 diff --git a/drivers/iio/proximity/vl53l0x-i2c.c b/drivers/iio/proximity/vl53l0x-i2c.c
-index 7bfab396377a..6901ce7dd835 100644
+index 6901ce7dd835..a2de4cc16a43 100644
 --- a/drivers/iio/proximity/vl53l0x-i2c.c
 +++ b/drivers/iio/proximity/vl53l0x-i2c.c
-@@ -275,9 +275,13 @@ static int vl53l0x_power_on(struct vl53l0x_data *data)
- 			return ret;
- 	}
+@@ -320,11 +320,35 @@ static const struct iio_trigger_ops vl53l0x_trigger_ops = {
+ 	.validate_device = iio_trigger_validate_own_device,
+ };
  
--	gpiod_set_value_cansleep(data->reset_gpio, 0);
++
++static int vl53l0x_read_word(struct i2c_client *client, u8 reg, u16 *val)
++{
++	int ret;
++	u8 buf[2];
++
++	ret = i2c_master_send(client, &reg, 1);
++	if (ret < 0)
++		return ret;
++	if (ret != 1)
++		return -EIO;
++
++	ret = i2c_master_recv(client, buf, 2);
++	if (ret < 0)
++		return ret;
++	if (ret != 2)
++		return -EIO;
++
++	*val = (buf[0] << 8) | buf[1];
++
++	return 0;
++}
++
+ static int vl53l0x_probe(struct i2c_client *client)
+ {
+ 	struct vl53l0x_data *data;
+ 	struct iio_dev *indio_dev;
+ 	int ret;
++	u16 model, rev;
+ 
+ 	indio_dev = devm_iio_device_alloc(&client->dev, sizeof(*data));
+ 	if (!indio_dev)
+@@ -339,13 +363,6 @@ static int vl53l0x_probe(struct i2c_client *client)
+ 				     I2C_FUNC_SMBUS_BYTE_DATA))
+ 		return -EOPNOTSUPP;
+ 
+-	ret = i2c_smbus_read_byte_data(data->client, VL_REG_IDENTIFICATION_MODEL_ID);
+-	if (ret < 0)
+-		return -EINVAL;
 -
--	usleep_range(3200, 5000);
-+	usleep_range(5000, 6000);
-+	if (data->reset_gpio) {
-+		gpiod_set_value_cansleep(data->reset_gpio, 1);
-+		usleep_range(5000, 6000);
-+		gpiod_set_value_cansleep(data->reset_gpio, 0);
-+		usleep_range(5000, 6000);
-+	}
+-	if (ret != VL53L0X_MODEL_ID_VAL)
+-		dev_info(&client->dev, "Unknown model id: 0x%x", ret);
+-
+ 	data->vdd_supply = devm_regulator_get(&client->dev, "vdd");
+ 	if (IS_ERR(data->vdd_supply))
+ 		return dev_err_probe(&client->dev, PTR_ERR(data->vdd_supply),
+@@ -372,6 +389,20 @@ static int vl53l0x_probe(struct i2c_client *client)
+ 	if (ret)
+ 		return ret;
  
- 	return 0;
- }
-@@ -354,7 +358,7 @@ static int vl53l0x_probe(struct i2c_client *client)
- 		return dev_err_probe(&client->dev, PTR_ERR(data->vio_supply),
- 				     "Unable to get VDDIO regulator\n");
- 
--	data->reset_gpio = devm_gpiod_get_optional(&client->dev, "reset", GPIOD_OUT_HIGH);
-+	data->reset_gpio = devm_gpiod_get_optional(&client->dev, "reset", GPIOD_OUT_LOW);
- 	if (IS_ERR(data->reset_gpio))
- 		return dev_err_probe(&client->dev, PTR_ERR(data->reset_gpio),
- 				     "Cannot get reset GPIO\n");
++	ret = vl53l0x_read_word(client, 0xC0, &model);
++	if (ret)
++		return dev_err_probe(&client->dev, ret, "Failed to read model ID\n");
++
++	ret = vl53l0x_read_word(client, 0xC2, &rev);
++	if (ret)
++		return dev_err_probe(&client->dev, ret, "Failed to read revision ID\n");
++
++	dev_info(&client->dev, "VL53L0X model=0x%04x rev=0x%04x\n", model, rev);
++
++	if ((model >> 8) != VL53L0X_MODEL_ID_VAL)
++		return dev_err_probe(&client->dev, -ENODEV,
++			"Unexpected model ID: 0x%04x\n", model);
++
+ 	indio_dev->name = "vl53l0x";
+ 	indio_dev->info = &vl53l0x_info;
+ 	indio_dev->channels = vl53l0x_channels;
 
 -- 
 2.52.0
