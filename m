@@ -1,58 +1,126 @@
-From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
-Date: Mon, 19 Jan 2026 07:06:24 +0000
-Subject: [PATCH v3 3/3] spi: xilinx: use device property accessors.
+From: Michael Riesch <michael.riesch@collabora.com>
+Subject: [PATCH v7 0/3] media: rockchip: add driver for the rockchip mipi
+ csi-2 receiver
+Date: Mon, 19 Jan 2026 11:43:34 +0100
+Message-Id: <20251114-rockchip-mipi-receiver-v7-0-42ff419f9b51@collabora.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260119-spi-xilinx-v3-3-4566c33bac0d@nexthop.ai>
-References: <20260119-spi-xilinx-v3-0-4566c33bac0d@nexthop.ai>
-In-Reply-To: <20260119-spi-xilinx-v3-0-4566c33bac0d@nexthop.ai>
-To: Mark Brown <broonie@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIANYKbmkC/43QTU7EMAwF4KuMsiYo/2lnxT0QC8d1aESnqVKoQ
+ KO5O57ZUokunyV/z/JVrNQKreJ8uopGW1lLnTnEp5PAEeZ3kmXgLIwyXmvtZKv4gWNZ5KUsRTZ
+ CKhs1qRJk4xz22JHg5QQrydRgxpHX569p4uHSKJfvR9vrG+exrJ+1/TzKN32f/tuzaankoK3qA
+ nVaDcML1mmCVBs8Y72IO7uZY5RhilKfnLUxZnR7lD1GWaY0X2QBYra936PcMcoxBfzGkAkH5c0
+ e5Y9RninnAbSOWfcK9qhwjApMpYgUKHTJ5j/U7Xb7BfRwe49MAgAA
+To: Michael Riesch <michael.riesch@collabora.com>, 
+ Chaoyi Chen <chaoyi.chen@rock-chips.com>, 
+ Kever Yang <kever.yang@rock-chips.com>, Frank Li <Frank.li@nxp.com>, 
+ Mehdi Djait <mehdi.djait@linux.intel.com>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Hans Verkuil <hverkuil@kernel.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Michal Simek <michal.simek@amd.com>
-Cc: linux-spi@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Abdurrahman Hussain <abdurrahman@nexthop.ai>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768806393; l=996;
- i=abdurrahman@nexthop.ai; s=20260119; h=from:subject:message-id;
- bh=5Z9Lfw4Ms5TcSIWQwUqr5lvpEWwq7CP+Bn9jodMd2/I=;
- b=b2d156WBDJn95t3Soo/2/DM72vaW8XXHo3TSPZhHT46rJH8In8ygdUXGPL58qNn052PIiR7/E
- eygipSy8BSwAJaNyL3HRid4K04WCK1lspGGY5DooTVfKb1F+Pks67El
-X-Developer-Key: i=abdurrahman@nexthop.ai; a=ed25519;
- pk=S+ysnf+NwMcBdHBlyKIUEAtaFGSIhQwcJcgcXhq0osg=
-X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/20260119 with auth_id=608
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Collabora Kernel Team <kernel@collabora.com>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Michael Riesch <michael.riesch@collabora.com>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768819415; l=3473;
+ i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
+ bh=fzNshCl/IElhoDVxXDq8bpq8eyZl50ZRx9miKtubih4=;
+ b=/h4J5W6AhmYcf3MKRvPQx8UtpfEDalNhD5tZ3xREcJw0YXNXhX6sH9F9TmbDbhgTNZv/ADYk0
+ XRJuG3ZgLxZCyXBIac6H8VeV0YRq8go6pTjEfns2VXEmZfg/yojwsgd
+X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
+ pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
+X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make the driver work on non-OF platforms.
+Habidere,
 
-Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+This series adds support for the Rockchip MIPI CSI-2 Receiver that is
+integrated into recent Rockchip SoCs, such as the RK3568 and the RK3588.
+
+According to Rockchip, this core is NOT the Synopsys MIPI CSI-2 Host, but
+it features a compatible register layout (thanks Chaoyi for the
+clarification).
+
+As pointed out by Frank, we should thus rename the driver and place it
+under drivers/media/platform/synopsys to facilitate re-use of this code
+for similar IP cores.
+
+As has been discussed in [0], it would be beneficial to add support 
+for the split mode (a feature of the Rockchip CSI-2 DPHY) before
+integrating the MIPI CSI-2 Receiver into the respective SoC device tree
+includes. However, we can readily add the DT binding and the driver
+as I am positive they will not need to be changed significantly when this
+feature is introduced.
+
+This constitutes a small step towards mainline video capture and camera
+support on the Rockchip RK3588.
+
+Looking forward to your comments!
+
+Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+
+[0] https://lore.kernel.org/r/20240220-rk3568-vicap-v14-0-b38b6da0fc80@collabora.com
+
 ---
- drivers/spi/spi-xilinx.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+Changes in v7:
+- fixed several cosmetic issues (Frank)
+- Link to v6: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v6-0-b7ce6e68b3fa@collabora.com
 
-diff --git a/drivers/spi/spi-xilinx.c b/drivers/spi/spi-xilinx.c
-index 4aa67fc61cb6..9fb1da2fcce4 100644
---- a/drivers/spi/spi-xilinx.c
-+++ b/drivers/spi/spi-xilinx.c
-@@ -405,11 +405,11 @@ static int xilinx_spi_probe(struct platform_device *pdev)
- 		bits_per_word = pdata->bits_per_word;
- 		force_irq = pdata->force_irq;
- 	} else {
--		of_property_read_u32(pdev->dev.of_node, "xlnx,num-ss-bits",
--					  &num_cs);
--		ret = of_property_read_u32(pdev->dev.of_node,
--					   "xlnx,num-transfer-bits",
--					   &bits_per_word);
-+		device_property_read_u32(&pdev->dev, "xlnx,num-ss-bits",
-+					 &num_cs);
-+		ret = device_property_read_u32(&pdev->dev,
-+					       "xlnx,num-transfer-bits",
-+					       &bits_per_word);
- 		if (ret)
- 			bits_per_word = 8;
- 	}
+Changes in v6:
+- renamed driver to dw-mipi-csi2rx (Sakari)
+- fixed return value of v4l2_get_link_freq (this time, really) (Sakari)
+- Link to v5: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v5-0-45aa117f190a@collabora.com
 
+Changes in v5:
+- fixed indentation in struct platform_driver ... (Sakari)
+- fixed return value in case v4l2_get_link_freq returns 0 (Sakari)
+- switched from pm_runtime_put_sync() to pm_runtime_put() (Sakari)
+- Link to v4: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v4-0-a9c86fecd052@collabora.com
+
+Changes in v4:
+- moved driver to drivers/media/platform/synopsys and renamed it (Frank)
+- addresse review comments by Sakari
+- Link to v3: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v3-0-16e83aa7f395@collabora.com
+
+Changes in v3:
+- rebased onto v6.19/recent media-committers/next
+- Link to v2: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v2-0-eb9b43377fc4@collabora.com
+
+Changes in v2:
+- dropped one R-b by Bryan, as there were two of them on the same patch
+  (Krzysztof)
+- Link to v1: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v1-0-d13086e810dd@collabora.com
+
+---
+Michael Riesch (3):
+      media: dt-bindings: add rockchip mipi csi-2 receiver
+      media: synopsys: add driver for the designware mipi csi-2 receiver
+      arm64: defconfig: enable designware mipi csi-2 receiver
+
+ .../bindings/media/rockchip,rk3568-mipi-csi2.yaml  | 141 ++++
+ MAINTAINERS                                        |   7 +
+ arch/arm64/configs/defconfig                       |   1 +
+ drivers/media/platform/synopsys/Kconfig            |   1 +
+ drivers/media/platform/synopsys/Makefile           |   1 +
+ .../media/platform/synopsys/dw-mipi-csi2/Kconfig   |  17 +
+ .../media/platform/synopsys/dw-mipi-csi2/Makefile  |   2 +
+ .../synopsys/dw-mipi-csi2/dw-mipi-csi2rx.c         | 724 +++++++++++++++++++++
+ 8 files changed, 894 insertions(+)
+---
+base-commit: eb4ee870747c3a77a9c3c84d84efb64bd481013a
+change-id: 20251114-rockchip-mipi-receiver-0baf244c9c8e
+
+Best regards,
 -- 
-2.52.0
+Michael Riesch <michael.riesch@collabora.com>
 
