@@ -1,330 +1,129 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Mon, 19 Jan 2026 22:17:44 +0100
-Subject: [PATCH] powerpc: dts: Build devicetrees of enabled platforms
+From: Michael Riesch <michael.riesch@collabora.com>
+Subject: [PATCH v8 0/3] media: rockchip: add driver for the rockchip mipi
+ csi-2 receiver
+Date: Tue, 20 Jan 2026 13:22:26 +0100
+Message-Id: <20251114-rockchip-mipi-receiver-v8-0-bd1cf5cb9588@collabora.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260119-mpc83xx-dtb-v1-1-522f841290bf@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAHefbmkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDQwND3dyCZAvjigrdlJIkXSPjFEuLRENLg1QjYyWgjoKi1LTMCrBp0bG
- 1tQB0GvtpXQAAAA==
-X-Change-ID: 20260101-mpc83xx-dtb-23d98a190e23
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Madhavan Srinivasan <maddy@linux.ibm.com>, 
- Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
- "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>
-Cc: devicetree@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAIJzb2kC/43QTU7EMAwF4KuMsiYozm87K+6BWCSpQyM6TZVCB
+ Rr17rizRJXI8lny9yzf2Yo148qulzuruOU1l5lC93RhcfTzO/I8UGZSSAMAmtcSP+KYF37LS+Y
+ VI+YNKxfBJ6l17GOHjJaDX5GH6uc40vr8NU00XCqm/P1oe32jPOb1s9SfR/kGx/Tfng244AMo0
+ VnsQAzDSyzT5EOp/jmWGzvYTbZRkigMfdBKOZeiPqNUG6WIArpIee+S6s0ZpdsoTZSnN9qEcRB
+ GnlGmjTJEaeM9gEvQC39G2TbKEhVcRIu2CyqdUq6NcsdVMiUNfeqDgb/Uvu+/e7fAo5cCAAA=
+To: Michael Riesch <michael.riesch@collabora.com>, 
+ Chaoyi Chen <chaoyi.chen@rock-chips.com>, 
+ Kever Yang <kever.yang@rock-chips.com>, Frank Li <Frank.li@nxp.com>, 
+ Mehdi Djait <mehdi.djait@linux.intel.com>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Hans Verkuil <hverkuil@kernel.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Philipp Zabel <p.zabel@pengutronix.de>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Collabora Kernel Team <kernel@collabora.com>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
  linux-kernel@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768857525; l=7146;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=CkVxARSB1O5d1mScjoKsc+hQuvvb6x7rvigR+ALb7dM=;
- b=IQP8gtDvlkHcJUI4814poXnFgkz+sMg1RdgoJPSu8o53EHMF6rH30c76Lrpwmedq+UjTFaEKy
- XdIB+yOrNMgCn+IiCDPTQTS5tqsEZgseMAqCgFEr94H/9UzJBUMyc8S
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Michael Riesch <michael.riesch@collabora.com>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768911749; l=3584;
+ i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
+ bh=xI3XK/W7MN3TODvGHDwVqQLxNB3kgignpElz2ouoedE=;
+ b=c8dBzMuiY14hwKL7xYp8MdP0tAvvQ6oVPsikr49ecWsDas4kEgVMvrYZ3zRVEMs1kEurGoVuh
+ ekEKZgxIFDtAn4YUTiTsuO+UbXwu/Te/YGeh+i39IYb8K0WNsqm2Xv/
+X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
+ pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
+X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Follow the same approach as other architectures such as Arm or RISC-V,
-and build devicetrees based on platforms selected in Kconfig. This makes
-it unnecessary to use CONFIG_OF_ALL_DTBS on PowerPC in order to build
-DTB files.
+Habidere,
 
-This makes it easier to use other build and test infrastructure such as
-`make dtbs_check`, and is a first step towards generating FIT images
-that include all the relevant DTBs with `make image.fit`.
+This series adds support for the Rockchip MIPI CSI-2 Receiver that is
+integrated into recent Rockchip SoCs, such as the RK3568 and the RK3588.
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
----
-A similar patch was previously posted as:
+According to Rockchip, this core is NOT the Synopsys MIPI CSI-2 Host, but
+it features a compatible register layout (thanks Chaoyi for the
+clarification).
 
-  [PATCH 09/19] powerpc: boot: Build devicetrees when CONFIG_MPC831x=y
-  https://lore.kernel.org/lkml/20250102-mpc83xx-v1-9-86f78ba2a7af@posteo.net/
----
- arch/powerpc/boot/dts/Makefile     | 155 +++++++++++++++++++++++++++++++++++++
- arch/powerpc/boot/dts/fsl/Makefile | 100 ++++++++++++++++++++++++
- 2 files changed, 255 insertions(+)
+As pointed out by Frank, we should thus rename the driver and place it
+under drivers/media/platform/synopsys to facilitate re-use of this code
+for similar IP cores.
 
-diff --git a/arch/powerpc/boot/dts/Makefile b/arch/powerpc/boot/dts/Makefile
-index 0cd0d8558b475c..2fd1e24b7aee6c 100644
---- a/arch/powerpc/boot/dts/Makefile
-+++ b/arch/powerpc/boot/dts/Makefile
-@@ -3,3 +3,158 @@
- subdir-y += fsl
- 
- dtb-$(CONFIG_OF_ALL_DTBS) := $(patsubst $(src)/%.dts,%.dtb, $(wildcard $(src)/*.dts))
-+
-+# PPC44x platforms
-+dtb-$(CONFIG_PPC44x_SIMPLE) += \
-+	arches.dtb \
-+	bamboo.dtb \
-+	bluestone.dtb \
-+	glacier.dtb \
-+	eiger.dtb \
-+	katmai.dtb \
-+	rainier.dtb \
-+	redwood.dtb \
-+	sequoia.dtb \
-+	taishan.dtb \
-+	yosemite.dtb \
-+	icon.dtb
-+dtb-$(CONFIG_EBONY) += \
-+	ebony.dtb
-+dtb-$(CONFIG_SAM440EP) += \
-+	sam440ep.dtb
-+dtb-$(CONFIG_WARP) += \
-+	warp.dtb
-+dtb-$(CONFIG_ISS4xx) += \
-+	iss4xx.dtb \
-+	iss4xx-mpic.dtb
-+dtb-$(CONFIG_CANYONLANDS) += \
-+	canyonlands.dtb
-+dtb-$(CONFIG_CURRITUCK) += \
-+	currituck.dtb
-+dtb-$(CONFIG_AKEBONO) += \
-+	akebono.dtb
-+dtb-$(CONFIG_FSP2) += \
-+	fsp2.dtb
-+
-+# Embedded 6xx platforms
-+dtb-$(CONFIG_LINKSTATION) += \
-+	kuroboxHG.dtb \
-+	kuroboxHD.dtb
-+dtb-$(CONFIG_STORCENTER) += \
-+	storcenter.dtb
-+dtb-$(CONFIG_PPC_HOLLY) += \
-+	holly.dtb
-+dtb-$(CONFIG_GAMECUBE) += \
-+	gamecube.dtb
-+dtb-$(CONFIG_WII) += \
-+	wii.dtb
-+dtb-$(CONFIG_MVME5100) += \
-+	mvme5100.dtb
-+
-+# MPC8xx platforms
-+dtb-$(CONFIG_MPC885ADS) += \
-+	mpc885ads.dtb
-+dtb-$(CONFIG_MPC86XADS) += \
-+	mpc866ads.dtb
-+dtb-$(CONFIG_PPC_EP88XC) += \
-+	ep88xc.dtb
-+dtb-$(CONFIG_PPC_ADDER875) += \
-+	adder875-redboot.dtb \
-+	adder875-uboot.dtb
-+dtb-$(CONFIG_TQM8XX) += \
-+	tqm8xx.dtb
-+
-+# MPC512x platforms
-+dtb-$(CONFIG_MPC5121_ADS) += \
-+	mpc5121ads.dtb
-+dtb-$(CONFIG_MPC512x_GENERIC) += \
-+	mpc5125twr.dtb \
-+	ac14xx.dts
-+dtb-$(CONFIG_PDM360NG) += \
-+	pdm360ng.dtb
-+
-+# MPC5200 platforms
-+dtb-$(CONFIG_PPC_MPC5200_SIMPLE) += \
-+	a3m071.dtb \
-+	a4m072.dtb \
-+	charon.dtb \
-+	cm5200.dtb \
-+	digsy_mtc.dtb \
-+	motionpro.dtb \
-+	mucmc52.dtb \
-+	o2d.dtb \
-+	o2d300.dtb \
-+	o2dnt2.dtb \
-+	o2i.dtb \
-+	o2mnt.dtb \
-+	o3dnt.dtb \
-+	pcm030.dtb \
-+	pcm032.dtb \
-+	tqm5200.dtb \
-+	uc101.dtb
-+dtb-$(CONFIG_PPC_LITE5200) += \
-+	lite5200.dtb \
-+	lite5200b.dtb
-+dtb-$(CONFIG_PPC_MEDIA5200) += \
-+	media5200.dtb
-+
-+# MPC82xx platforms
-+dtb-$(CONFIG_EP8248E) += \
-+	ep8248e.dtb
-+dtb-$(CONFIG_MGCOGE) += \
-+	mgcoge.dtb
-+
-+# MPC83xx platforms
-+dtb-$(CONFIG_MPC830x_RDB) += \
-+	mpc8308rdb.dtb \
-+	mpc8308_p1m.dtb
-+dtb-$(CONFIG_MPC831x_RDB) += \
-+	mpc8313erdb.dtb \
-+	mpc8315erdb.dtb
-+dtb-$(CONFIG_MPC832x_RDB) += \
-+	mpc832x_rdb.dtb
-+dtb-$(CONFIG_MPC834x_ITX) += \
-+	mpc8349emitx.dtb \
-+	mpc8349emitxgp.dtb
-+dtb-$(CONFIG_ASP834x) += \
-+	asp834x-redboot.dtb
-+dtb-$(CONFIG_MPC836x_RDK) += \
-+	mpc836x_rdk.dtb
-+dtb-$(CONFIG_KMETER1) += \
-+	kmeter1.dtb
-+dtb-$(CONFIG_MPC837x_RDB) += \
-+	mpc8377_rdb.dtb \
-+	mpc8378_rdb.dtb \
-+	mpc8379_rdb.dtb \
-+	mpc8377_wlan.dtb
-+
-+# MPC85xx platforms
-+dtb-$(CONFIG_STX_GP3) += \
-+	stx_gp3_8560.dtb \
-+	stxssa8555.dtb
-+dtb-$(CONFIG_TQM85xx) += \
-+	tqm8540.dtb \
-+	tqm8541.dtb \
-+	tqm8548.dtb \
-+	tqm8548-bigflash.dtb \
-+	tqm8555.dtb \
-+	tqm8560.dtb
-+dtb-$(CONFIG_SOCRATES) += \
-+	socrates.dtb
-+dtb-$(CONFIG_KSI8560) += \
-+	ksi8560.dtb
-+dtb-$(CONFIG_XES_MPC85xx) += \
-+	xcalibur1501.dtb \
-+	xpedite5200.dtb \
-+	xpedite5200_xmon.dtb \
-+	xpedite5301.dtb \
-+	xpedite5330.dtb \
-+	xpedite5370.dtb
-+
-+# Misc. platforms
-+dtb-$(CONFIG_PPC_MICROWATT) += \
-+	microwatt.dtb
-+dtb-$(CONFIG_AMIGAONE) += \
-+	amigaone.dtb
-+dtb-$(CONFIG_PPC_PS3) += \
-+	ps3.dtb
-diff --git a/arch/powerpc/boot/dts/fsl/Makefile b/arch/powerpc/boot/dts/fsl/Makefile
-index d3ecdf14bc42e7..cc96315d4b7e33 100644
---- a/arch/powerpc/boot/dts/fsl/Makefile
-+++ b/arch/powerpc/boot/dts/fsl/Makefile
-@@ -1,3 +1,103 @@
- # SPDX-License-Identifier: GPL-2.0
- 
- dtb-$(CONFIG_OF_ALL_DTBS) := $(patsubst $(src)/%.dts,%.dtb, $(wildcard $(src)/*.dts))
-+
-+# MPC85xx platforms
-+dtb-$(CONFIG_BSC9131_RDB) += \
-+	bsc9131rdb.dtb
-+dtb-$(CONFIG_BSC9132_QDS) += \
-+	bsc9132qds.dtb
-+dtb-$(CONFIG_C293_PCIE) += \
-+	c293pcie.dtb
-+dtb-$(CONFIG_MPC8536_DS) += \
-+	mpc8536ds.dtb \
-+	mpc8536ds_36b.dtb
-+dtb-$(CONFIG_MPC85xx_DS) += \
-+	mpc8544ds.dtb \
-+	mpc8572ds_camp_core0.dtb \
-+	mpc8572ds_camp_core1.dtb \
-+	mpc8572ds_36b.dtb \
-+	mpc8572ds.dtb
-+dtb-$(CONFIG_MPC85xx_MDS) += \
-+	mpc8568mds.dtb \
-+	mpc8569mds.dtb \
-+	p1021mds.dtb
-+dtb-$(CONFIG_MPC85xx_RDB) += \
-+	p1020mbg-pc_32b.dtb \
-+	p1020mbg-pc_36b.dtb \
-+	p1020rdb_36b.dtb \
-+	p1020rdb.dtb \
-+	p1020rdb-pc_32b.dtb \
-+	p1020rdb-pc_36b.dtb \
-+	p1020rdb-pc_camp_core0.dtb \
-+	p1020rdb-pc_camp_core1.dtb \
-+	p1020rdb-pd.dtb \
-+	p1020utm-pc_32b.dtb \
-+	p1020utm-pc_36b.dtb \
-+	p1021rdb-pc_32b.dtb \
-+	p1021rdb-pc_36b.dtb \
-+	p1024rdb_32b.dtb \
-+	p1024rdb_36b.dtb \
-+	p1025rdb_32b.dtb \
-+	p1025rdb_36b.dtb
-+dtb-$(CONFIG_P1010_RDB) += \
-+	p1010rdb-pa_36b.dtb \
-+	p1010rdb-pa.dtb \
-+	p1010rdb-pb_36b.dtb \
-+	p1010rdb-pb.dtb
-+dtb-$(CONFIG_P1022_DS) += \
-+	p1022ds_32b.dtb \
-+	p1022ds_36b.dtb
-+dtb-$(CONFIG_P1022_RDK) += \
-+	p1022rdk.dtb
-+dtb-$(CONFIG_P1023_RDB) += \
-+	p1023rdb.dtb
-+dtb-$(CONFIG_PPC_P2020) += \
-+	p2020ds.dtb \
-+	turris1x.dtb
-+dtb-$(CONFIG_TWR_P102x) += \
-+	p1025twr.dtb
-+dtb-$(CONFIG_CORENET_GENERIC) += \
-+	b4420qds.dtb \
-+	b4860qds.dtb \
-+	cyrus_p5020.dtb \
-+	kmcent2.dtb \
-+	kmcoge4.dtb \
-+	oca4080.dtb \
-+	p2041rdb.dtb \
-+	p3041ds.dtb \
-+	p4080ds.dtb \
-+	p5020ds.dtb \
-+	p5040ds.dtb \
-+	t1023rdb.dtb \
-+	t1024qds.dtb \
-+	t1024rdb.dtb \
-+	t1040d4rdb.dtb \
-+	t1040qds.dtb \
-+	t1040rdb.dtb \
-+	t1040rdb-rev-a.dtb \
-+	t1042d4rdb.dtb \
-+	t1042qds.dtb \
-+	t1042rdb.dtb \
-+	t1042rdb_pi.dtb \
-+	t2080qds.dtb \
-+	t2080rdb.dtb \
-+	t2081qds.dtb \
-+	t4240qds.dtb \
-+	t4240rdb.dtb
-+dtb-$(CONFIG_PPA8548) += \
-+	ppa8548.dtb
-+dtb-$(CONFIG_GE_IMP3A) += \
-+	ge_imp3a.dtb
-+dtb-$(CONFIG_MVME2500) += \
-+	mvme2500.dtb
-+
-+# MPC86xx platforms
-+dtb-$(CONFIG_GEF_SBC310) += \
-+	gef_sbc310.dtb
-+dtb-$(CONFIG_GEF_SBC610) += \
-+	gef_sbc610.dtb
-+dtb-$(CONFIG_GEF_PPC9A) += \
-+	gef_ppc9a.dtb
-+dtb-$(CONFIG_MVME7100) += \
-+	mvme7100.dtb
+As has been discussed in [0], it would be beneficial to add support 
+for the split mode (a feature of the Rockchip CSI-2 DPHY) before
+integrating the MIPI CSI-2 Receiver into the respective SoC device tree
+includes. However, we can readily add the DT binding and the driver
+as I am positive they will not need to be changed significantly when this
+feature is introduced.
+
+This constitutes a small step towards mainline video capture and camera
+support on the Rockchip RK3588.
+
+Looking forward to your comments!
+
+Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+
+[0] https://lore.kernel.org/r/20240220-rk3568-vicap-v14-0-b38b6da0fc80@collabora.com
 
 ---
-base-commit: 883ca7b2ea487e5547e4728703fd04fad34f2bb9
-change-id: 20260101-mpc83xx-dtb-23d98a190e23
+Changes in v8:
+- moved driver directly to drivers/media/platform/synopsys (Sakari)
+- fixed further cosmetic issues (Frank)
+- Link to v7: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v7-0-42ff419f9b51@collabora.com
+
+Changes in v7:
+- fixed several cosmetic issues (Frank)
+- Link to v6: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v6-0-b7ce6e68b3fa@collabora.com
+
+Changes in v6:
+- renamed driver to dw-mipi-csi2rx (Sakari)
+- fixed return value of v4l2_get_link_freq (this time, really) (Sakari)
+- Link to v5: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v5-0-45aa117f190a@collabora.com
+
+Changes in v5:
+- fixed indentation in struct platform_driver ... (Sakari)
+- fixed return value in case v4l2_get_link_freq returns 0 (Sakari)
+- switched from pm_runtime_put_sync() to pm_runtime_put() (Sakari)
+- Link to v4: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v4-0-a9c86fecd052@collabora.com
+
+Changes in v4:
+- moved driver to drivers/media/platform/synopsys and renamed it (Frank)
+- addresse review comments by Sakari
+- Link to v3: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v3-0-16e83aa7f395@collabora.com
+
+Changes in v3:
+- rebased onto v6.19/recent media-committers/next
+- Link to v2: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v2-0-eb9b43377fc4@collabora.com
+
+Changes in v2:
+- dropped one R-b by Bryan, as there were two of them on the same patch
+  (Krzysztof)
+- Link to v1: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v1-0-d13086e810dd@collabora.com
+
+---
+Michael Riesch (3):
+      media: dt-bindings: add rockchip mipi csi-2 receiver
+      media: synopsys: add driver for the designware mipi csi-2 receiver
+      arm64: defconfig: enable designware mipi csi-2 receiver
+
+ .../bindings/media/rockchip,rk3568-mipi-csi2.yaml  | 141 ++++
+ MAINTAINERS                                        |   7 +
+ arch/arm64/configs/defconfig                       |   1 +
+ drivers/media/platform/synopsys/Kconfig            |  18 +
+ drivers/media/platform/synopsys/Makefile           |   2 +
+ drivers/media/platform/synopsys/dw-mipi-csi2rx.c   | 726 +++++++++++++++++++++
+ 6 files changed, 895 insertions(+)
+---
+base-commit: eb4ee870747c3a77a9c3c84d84efb64bd481013a
+change-id: 20251114-rockchip-mipi-receiver-0baf244c9c8e
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+Michael Riesch <michael.riesch@collabora.com>
 
