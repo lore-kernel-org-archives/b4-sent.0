@@ -1,11 +1,11 @@
 From: Yedaya Katsman <yedaya.ka@gmail.com>
-Date: Tue, 20 Jan 2026 23:40:54 +0200
-Subject: [PATCH v4 1/3] dt-bindings: input: touchscreen: edt-ft5x06: Add
+Date: Tue, 20 Jan 2026 23:40:55 +0200
+Subject: [PATCH v4 2/3] drivers: input: touchscreen: edt-ft5x06: Add
  FocalTech FT3518
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260120-touchscreen-patches-v4-1-30145da9d6d3@gmail.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260120-touchscreen-patches-v4-2-30145da9d6d3@gmail.com>
 References: <20260120-touchscreen-patches-v4-0-30145da9d6d3@gmail.com>
 In-Reply-To: <20260120-touchscreen-patches-v4-0-30145da9d6d3@gmail.com>
 To: =?utf-8?q?Kamil_Go=C5=82da?= <kamil.golda@protonmail.com>, 
@@ -14,39 +14,59 @@ To: =?utf-8?q?Kamil_Go=C5=82da?= <kamil.golda@protonmail.com>,
  Konrad Dybcio <konradybcio@kernel.org>
 Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- Yedaya Katsman <yedaya.ka@gmail.com>
+ Yedaya Katsman <yedaya.ka@gmail.com>, SzczurekYT <szczurek@szczurek.yt>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768945262; l=984;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768945262; l=2061;
  i=yedaya.ka@gmail.com; s=20260113; h=from:subject:message-id;
- bh=SqsHa1FpeRSC7pDZsCiIt95zVp6duwvdtWnRvd2BIBs=;
- b=tRIihQ6uebfKCxvAmZjZiDQq3Dpi5CjZSH4851BdJ0jzG4PUxeTHUDBiQwe1l7g9ZlDRCyucH
- lgbbv/MLQ9qA/T+NAH+jZb/MdYIxQimryLBHdEijwFvp5idogzwYema
+ bh=JnmTIk3Utyw1IEV6j9HoQE20ccGFIPQTbMPlc8S8rg0=;
+ b=sEhf2uiCFUFoXmNev24sziRW7EihOsXcEtvY3LQcZRZRcvnq9nDLqaVcJd7I9aVTBVNq0IcAo
+ INuaI7VgI6RCZXymO/JvtaBNQysLyxBkz2Kz+W2fFjbU02ClByQbIpB
 X-Developer-Key: i=yedaya.ka@gmail.com; a=ed25519;
  pk=CgNmxD3tYSws5dZfpmJfc6re/bV/f47veVijddHLytk=
 X-Endpoint-Received: by B4 Relay for yedaya.ka@gmail.com/20260113 with auth_id=601
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document FocalTech FT3518 support by adding the compatible.
+The driver also works with FT3518, which supports up to 10 touch points.
+ Add compatible data for it.
 
-Co-developed-by: Kamil Gołda <kamil.golda@protonmail.com>
-Signed-off-by: Kamil Gołda <kamil.golda@protonmail.com>
+Co-developed-by: SzczurekYT <szczurek@szczurek.yt>
+Signed-off-by: SzczurekYT <szczurek@szczurek.yt>
 Signed-off-by: Yedaya Katsman <yedaya.ka@gmail.com>
 ---
- Documentation/devicetree/bindings/input/touchscreen/edt-ft5x06.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/input/touchscreen/edt-ft5x06.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/input/touchscreen/edt-ft5x06.yaml b/Documentation/devicetree/bindings/input/touchscreen/edt-ft5x06.yaml
-index 7d3edb58f72d84ed19fb87fdd136c97f855aba00..6f90522de8c0afbe2d9d1e04578316350f66ec58 100644
---- a/Documentation/devicetree/bindings/input/touchscreen/edt-ft5x06.yaml
-+++ b/Documentation/devicetree/bindings/input/touchscreen/edt-ft5x06.yaml
-@@ -39,6 +39,7 @@ properties:
-       - edt,edt-ft5406
-       - edt,edt-ft5506
-       - evervision,ev-ft5726
-+      - focaltech,ft3518
-       - focaltech,ft5426
-       - focaltech,ft5452
-       - focaltech,ft6236
+diff --git a/drivers/input/touchscreen/edt-ft5x06.c b/drivers/input/touchscreen/edt-ft5x06.c
+index bf498bd4dea9651ac939fe137b1c0f05e8557962..d0ab644be0069b5ab29ed037fa090a4279870193 100644
+--- a/drivers/input/touchscreen/edt-ft5x06.c
++++ b/drivers/input/touchscreen/edt-ft5x06.c
+@@ -1475,6 +1475,10 @@ static const struct edt_i2c_chip_data edt_ft5x06_data = {
+ 	.max_support_points = 5,
+ };
+ 
++static const struct edt_i2c_chip_data edt_ft3518_data = {
++	.max_support_points = 10,
++};
++
+ static const struct edt_i2c_chip_data edt_ft5452_data = {
+ 	.max_support_points = 5,
+ };
+@@ -1503,6 +1507,7 @@ static const struct i2c_device_id edt_ft5x06_ts_id[] = {
+ 	{ .name = "edt-ft5x06", .driver_data = (long)&edt_ft5x06_data },
+ 	{ .name = "edt-ft5506", .driver_data = (long)&edt_ft5506_data },
+ 	{ .name = "ev-ft5726", .driver_data = (long)&edt_ft5506_data },
++	{ .name = "ft3518", .driver_data = (long)&edt_ft3518_data },
+ 	{ .name = "ft5452", .driver_data = (long)&edt_ft5452_data },
+ 	/* Note no edt- prefix for compatibility with the ft6236.c driver */
+ 	{ .name = "ft6236", .driver_data = (long)&edt_ft6236_data },
+@@ -1519,6 +1524,7 @@ static const struct of_device_id edt_ft5x06_of_match[] = {
+ 	{ .compatible = "edt,edt-ft5406", .data = &edt_ft5x06_data },
+ 	{ .compatible = "edt,edt-ft5506", .data = &edt_ft5506_data },
+ 	{ .compatible = "evervision,ev-ft5726", .data = &edt_ft5506_data },
++	{ .compatible = "focaltech,ft3518", .data = &edt_ft3518_data },
+ 	{ .compatible = "focaltech,ft5426", .data = &edt_ft5506_data },
+ 	{ .compatible = "focaltech,ft5452", .data = &edt_ft5452_data },
+ 	/* Note focaltech vendor prefix for compatibility with ft6236.c */
 
 -- 
 2.52.0
