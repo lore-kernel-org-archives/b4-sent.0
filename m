@@ -1,64 +1,58 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Tue, 20 Jan 2026 13:22:29 +0100
-Subject: [PATCH v8 3/3] arm64: defconfig: enable designware mipi csi-2
- receiver
+From: Petr Hodina <petr.hodina@protonmail.com>
+Subject: [PATCH v2 0/2] Enable uart and bluetooth for Xperia devices
+Date: Tue, 20 Jan 2026 13:24:23 +0100
+Message-Id: <20260120-akatsuki-uart-v2-0-867ee7f042d0@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20251114-rockchip-mipi-receiver-v8-3-bd1cf5cb9588@collabora.com>
-References: <20251114-rockchip-mipi-receiver-v8-0-bd1cf5cb9588@collabora.com>
-In-Reply-To: <20251114-rockchip-mipi-receiver-v8-0-bd1cf5cb9588@collabora.com>
-To: Michael Riesch <michael.riesch@collabora.com>, 
- Chaoyi Chen <chaoyi.chen@rock-chips.com>, 
- Kever Yang <kever.yang@rock-chips.com>, Frank Li <Frank.li@nxp.com>, 
- Mehdi Djait <mehdi.djait@linux.intel.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Hans Verkuil <hverkuil@kernel.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAPdzb2kC/13MQQ6CMBCF4auQWVvT1kLRlfcwLEYoMkFa0haiI
+ b27haXL/yXv2yAYTybArdjAm5UCOZtDngpoB7Qvw6jLDZLLUkihGY4YwzISW9BHpjrNS11X6ok
+ a8mf2pqfP4T2a3AOF6Pz34Fexr7tUcSGuf9IqGGfyUveqQ9VjWd1n76KzE9L73LoJmpTSD6M9K
+ dyvAAAA
+X-Change-ID: 20251217-akatsuki-uart-4d7057864ba7
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Philipp Zabel <p.zabel@pengutronix.de>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Collabora Kernel Team <kernel@collabora.com>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768911749; l=786;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=4/e4J7LessS5jdywMTVpeb4iDs9BMTFRupZRi4shvqg=;
- b=vM+9GvcUuupfbEtXCVYeCqoIhDdyKGXeBgK5EHF4Y7GG0wfQPK5IhDW3ee+Q8DGNb9+HqRDbd
- cXR5vbU9VxTCsLddpvbjSWg4A95nbSX+dQKQNM2sHkwQtLb5lkuN4Pw
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Petr Hodina <petr.hodina@protonmail.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ David Heidelberg <david@ixit.cz>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768911867; l=887;
+ i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
+ bh=cABijGtH5qtV4tilYuBX2OxEKmyd4+buX5dd0F3c//E=;
+ b=8rewuacEgvIP8DbcRvn9B7+krUMaZJ6zZXJ0TfP2pU3lIGOpq44oRl06poMNxgG2V21gKaBCk
+ r/tJf4Z9vJBCrpt61ZYXuH2JDpmXaE0+L8PHEWEV4o0WG13dLILcH4v
+X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
+ pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
+X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Synopsys DesignWare MIPI CSI-2 Receiver is integrated into
-recent Rockchip SoCs, such as the RK3568 and the RK3588.
-Enable the driver for it in the default configuration.
+This fixes the uart instances defined in the dts so the serial
+console will now work if uart is attached to Rx pin on the uSD pinout.
+Also now enables bluetooth.
 
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- arch/arm64/configs/defconfig | 1 +
- 1 file changed, 1 insertion(+)
+Changes in v2:
+- Added comment about serial0 console
+- Fixed firmware-name to expected path
+- Link to v1: https://lore.kernel.org/r/20260119-akatsuki-uart-v1-0-238f4da4fa56@protonmail.com
 
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index 45288ec9eaf7..58bda738819a 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -873,6 +873,7 @@ CONFIG_SDR_PLATFORM_DRIVERS=y
- CONFIG_V4L_MEM2MEM_DRIVERS=y
- CONFIG_VIDEO_AMPHION_VPU=m
- CONFIG_VIDEO_CADENCE_CSI2RX=m
-+CONFIG_VIDEO_DW_MIPI_CSI2RX=m
- CONFIG_VIDEO_MEDIATEK_JPEG=m
- CONFIG_VIDEO_MEDIATEK_VCODEC=m
- CONFIG_VIDEO_WAVE_VPU=m
+---
+Petr Hodina (2):
+      arm64: dts: qcom: sdm845-sony-xperia-tama: Correct uart instances
+      arm64: dts: qcom: sdm845-sony-xperia-tama: Add bluetooth
 
+ arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
+---
+base-commit: f417b7ffcbef7d76b0d8860518f50dae0e7e5eda
+change-id: 20251217-akatsuki-uart-4d7057864ba7
+
+Best regards,
 -- 
-2.39.5
+Petr Hodina <petr.hodina@protonmail.com>
 
