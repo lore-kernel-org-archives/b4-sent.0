@@ -1,16 +1,13 @@
 From: Michael Riesch <michael.riesch@collabora.com>
-Subject: [PATCH v8 0/3] media: rockchip: add driver for the rockchip mipi
- csi-2 receiver
-Date: Tue, 20 Jan 2026 13:22:26 +0100
-Message-Id: <20251114-rockchip-mipi-receiver-v8-0-bd1cf5cb9588@collabora.com>
+Date: Tue, 20 Jan 2026 13:22:27 +0100
+Subject: [PATCH v8 1/3] media: dt-bindings: add rockchip mipi csi-2
+ receiver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIJzb2kC/43QTU7EMAwF4KuMsiYozm87K+6BWCSpQyM6TZVCB
- Rr17rizRJXI8lny9yzf2Yo148qulzuruOU1l5lC93RhcfTzO/I8UGZSSAMAmtcSP+KYF37LS+Y
- VI+YNKxfBJ6l17GOHjJaDX5GH6uc40vr8NU00XCqm/P1oe32jPOb1s9SfR/kGx/Tfng244AMo0
- VnsQAzDSyzT5EOp/jmWGzvYTbZRkigMfdBKOZeiPqNUG6WIArpIee+S6s0ZpdsoTZSnN9qEcRB
- GnlGmjTJEaeM9gEvQC39G2TbKEhVcRIu2CyqdUq6NcsdVMiUNfeqDgb/Uvu+/e7fAo5cCAAA=
+Message-Id: <20251114-rockchip-mipi-receiver-v8-1-bd1cf5cb9588@collabora.com>
+References: <20251114-rockchip-mipi-receiver-v8-0-bd1cf5cb9588@collabora.com>
+In-Reply-To: <20251114-rockchip-mipi-receiver-v8-0-bd1cf5cb9588@collabora.com>
 To: Michael Riesch <michael.riesch@collabora.com>, 
  Chaoyi Chen <chaoyi.chen@rock-chips.com>, 
  Kever Yang <kever.yang@rock-chips.com>, Frank Li <Frank.li@nxp.com>, 
@@ -32,98 +29,191 @@ Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org,
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
  Michael Riesch <michael.riesch@collabora.com>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768911749; l=3584;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768911749; l=5160;
  i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=xI3XK/W7MN3TODvGHDwVqQLxNB3kgignpElz2ouoedE=;
- b=c8dBzMuiY14hwKL7xYp8MdP0tAvvQ6oVPsikr49ecWsDas4kEgVMvrYZ3zRVEMs1kEurGoVuh
- ekEKZgxIFDtAn4YUTiTsuO+UbXwu/Te/YGeh+i39IYb8K0WNsqm2Xv/
+ bh=OgKl9RHS2qISqL1jKo3kMI1uxI5UDgx/C4nCyULXhQo=;
+ b=HC8IXy/NfVcDmjyGbQyK6E6NH7m9+XrfZjZi8IPQ548SYdQB9wllPuBBkvFYTtYYyxyDfiQCM
+ P42JtzCp86OBP4YXFCoNtp0frc1D/XfZDrv2xIcWqp/KTkNmjrk6cFO
 X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
  pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
 X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Habidere,
+Add documentation for the Rockchip MIPI CSI-2 Receiver.
 
-This series adds support for the Rockchip MIPI CSI-2 Receiver that is
-integrated into recent Rockchip SoCs, such as the RK3568 and the RK3588.
-
-According to Rockchip, this core is NOT the Synopsys MIPI CSI-2 Host, but
-it features a compatible register layout (thanks Chaoyi for the
-clarification).
-
-As pointed out by Frank, we should thus rename the driver and place it
-under drivers/media/platform/synopsys to facilitate re-use of this code
-for similar IP cores.
-
-As has been discussed in [0], it would be beneficial to add support 
-for the split mode (a feature of the Rockchip CSI-2 DPHY) before
-integrating the MIPI CSI-2 Receiver into the respective SoC device tree
-includes. However, we can readily add the DT binding and the driver
-as I am positive they will not need to be changed significantly when this
-feature is introduced.
-
-This constitutes a small step towards mainline video capture and camera
-support on the Rockchip RK3588.
-
-Looking forward to your comments!
-
+Signed-off-by: Michael Riesch <michael.riesch@wolfvision.net>
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
-
-[0] https://lore.kernel.org/r/20240220-rk3568-vicap-v14-0-b38b6da0fc80@collabora.com
-
 ---
-Changes in v8:
-- moved driver directly to drivers/media/platform/synopsys (Sakari)
-- fixed further cosmetic issues (Frank)
-- Link to v7: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v7-0-42ff419f9b51@collabora.com
+ .../bindings/media/rockchip,rk3568-mipi-csi2.yaml  | 141 +++++++++++++++++++++
+ MAINTAINERS                                        |   6 +
+ 2 files changed, 147 insertions(+)
 
-Changes in v7:
-- fixed several cosmetic issues (Frank)
-- Link to v6: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v6-0-b7ce6e68b3fa@collabora.com
+diff --git a/Documentation/devicetree/bindings/media/rockchip,rk3568-mipi-csi2.yaml b/Documentation/devicetree/bindings/media/rockchip,rk3568-mipi-csi2.yaml
+new file mode 100644
+index 000000000000..2c2bd87582eb
+--- /dev/null
++++ b/Documentation/devicetree/bindings/media/rockchip,rk3568-mipi-csi2.yaml
+@@ -0,0 +1,141 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/media/rockchip,rk3568-mipi-csi2.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Rockchip MIPI CSI-2 Receiver
++
++maintainers:
++  - Michael Riesch <michael.riesch@collabora.com>
++
++description:
++  The Rockchip MIPI CSI-2 Receiver is a CSI-2 bridge with one input port and
++  one output port. It receives the data with the help of an external MIPI PHY
++  (C-PHY or D-PHY) and passes it to the Rockchip Video Capture (VICAP) block.
++
++properties:
++  compatible:
++    enum:
++      - rockchip,rk3568-mipi-csi2
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    items:
++      - description: Interrupt that signals changes in CSI2HOST_ERR1.
++      - description: Interrupt that signals changes in CSI2HOST_ERR2.
++
++  interrupt-names:
++    items:
++      - const: err1
++      - const: err2
++
++  clocks:
++    maxItems: 1
++
++  phys:
++    maxItems: 1
++    description: MIPI C-PHY or D-PHY.
++
++  ports:
++    $ref: /schemas/graph.yaml#/properties/ports
++
++    properties:
++      port@0:
++        $ref: /schemas/graph.yaml#/$defs/port-base
++        unevaluatedProperties: false
++        description: Input port node. Connect to e.g., a MIPI CSI-2 image sensor.
++
++        properties:
++          endpoint:
++            $ref: video-interfaces.yaml#
++            unevaluatedProperties: false
++
++            properties:
++              bus-type:
++                enum:
++                  - 1 # MEDIA_BUS_TYPE_CSI2_CPHY
++                  - 4 # MEDIA_BUS_TYPE_CSI2_DPHY
++
++              data-lanes:
++                minItems: 1
++                maxItems: 4
++
++            required:
++              - bus-type
++              - data-lanes
++
++      port@1:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Output port connected to a Rockchip VICAP port.
++
++    required:
++      - port@0
++      - port@1
++
++  power-domains:
++    maxItems: 1
++
++  resets:
++    maxItems: 1
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - phys
++  - ports
++  - power-domains
++  - resets
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/clock/rk3568-cru.h>
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++    #include <dt-bindings/media/video-interfaces.h>
++    #include <dt-bindings/power/rk3568-power.h>
++
++    soc {
++        interrupt-parent = <&gic>;
++        #address-cells = <2>;
++        #size-cells = <2>;
++
++        csi: csi@fdfb0000 {
++            compatible = "rockchip,rk3568-mipi-csi2";
++            reg = <0x0 0xfdfb0000 0x0 0x10000>;
++            interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>,
++                         <GIC_SPI 9 IRQ_TYPE_LEVEL_HIGH>;
++            interrupt-names = "err1", "err2";
++            clocks = <&cru PCLK_CSI2HOST1>;
++            phys = <&csi_dphy>;
++            power-domains = <&power RK3568_PD_VI>;
++            resets = <&cru SRST_P_CSI2HOST1>;
++
++            ports {
++                #address-cells = <1>;
++                #size-cells = <0>;
++
++                csi_in: port@0 {
++                    reg = <0>;
++
++                    csi_input: endpoint {
++                        bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
++                        data-lanes = <1 2 3 4>;
++                        remote-endpoint = <&imx415_output>;
++                    };
++                };
++
++                csi_out: port@1 {
++                    reg = <1>;
++
++                    csi_output: endpoint {
++                        remote-endpoint = <&vicap_mipi_input>;
++                    };
++                };
++            };
++        };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 5560da0deb71..1d1589feaf95 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -25364,6 +25364,12 @@ S:	Maintained
+ F:	drivers/i2c/busses/i2c-designware-amdisp.c
+ F:	include/linux/soc/amd/isp4_misc.h
+ 
++SYNOPSYS DESIGNWARE MIPI CSI-2 RECEIVER DRIVER
++M:	Michael Riesch <michael.riesch@collabora.com>
++L:	linux-media@vger.kernel.org
++S:	Maintained
++F:	Documentation/devicetree/bindings/media/rockchip,rk3568-mipi-csi2.yaml
++
+ SYNOPSYS DESIGNWARE MMC/SD/SDIO DRIVER
+ M:	Jaehoon Chung <jh80.chung@samsung.com>
+ M:	Shawn Lin <shawn.lin@rock-chips.com>
 
-Changes in v6:
-- renamed driver to dw-mipi-csi2rx (Sakari)
-- fixed return value of v4l2_get_link_freq (this time, really) (Sakari)
-- Link to v5: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v5-0-45aa117f190a@collabora.com
-
-Changes in v5:
-- fixed indentation in struct platform_driver ... (Sakari)
-- fixed return value in case v4l2_get_link_freq returns 0 (Sakari)
-- switched from pm_runtime_put_sync() to pm_runtime_put() (Sakari)
-- Link to v4: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v4-0-a9c86fecd052@collabora.com
-
-Changes in v4:
-- moved driver to drivers/media/platform/synopsys and renamed it (Frank)
-- addresse review comments by Sakari
-- Link to v3: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v3-0-16e83aa7f395@collabora.com
-
-Changes in v3:
-- rebased onto v6.19/recent media-committers/next
-- Link to v2: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v2-0-eb9b43377fc4@collabora.com
-
-Changes in v2:
-- dropped one R-b by Bryan, as there were two of them on the same patch
-  (Krzysztof)
-- Link to v1: https://lore.kernel.org/r/20251114-rockchip-mipi-receiver-v1-0-d13086e810dd@collabora.com
-
----
-Michael Riesch (3):
-      media: dt-bindings: add rockchip mipi csi-2 receiver
-      media: synopsys: add driver for the designware mipi csi-2 receiver
-      arm64: defconfig: enable designware mipi csi-2 receiver
-
- .../bindings/media/rockchip,rk3568-mipi-csi2.yaml  | 141 ++++
- MAINTAINERS                                        |   7 +
- arch/arm64/configs/defconfig                       |   1 +
- drivers/media/platform/synopsys/Kconfig            |  18 +
- drivers/media/platform/synopsys/Makefile           |   2 +
- drivers/media/platform/synopsys/dw-mipi-csi2rx.c   | 726 +++++++++++++++++++++
- 6 files changed, 895 insertions(+)
----
-base-commit: eb4ee870747c3a77a9c3c84d84efb64bd481013a
-change-id: 20251114-rockchip-mipi-receiver-0baf244c9c8e
-
-Best regards,
 -- 
-Michael Riesch <michael.riesch@collabora.com>
+2.39.5
 
