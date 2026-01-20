@@ -1,125 +1,100 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Tue, 20 Jan 2026 16:20:38 +0100
-Subject: [PATCH next v3] board: sunxi: Add X96Q support
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH v4 0/5] PCI: dwc: Rework the error handling of
+ dw_pcie_wait_for_link() API
+Date: Tue, 20 Jan 2026 23:17:39 +0530
+Message-Id: <20260120-pci-dwc-suspend-rework-v4-0-2f32d5082549@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260120-x96q-v3-1-1419ee399fa1@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAEWdb2kC/1WMTQ6DIBBGr2JmXRpmiKhdeY+mC9GxsgELhtgY7
- 15i24XL7+e9DSIHyxFuxQaBk43WuxzUpYB+6tyThR1yBpJUIikUa6NfomnqHlWl2ZgR8nUOPNr
- 10NzB8brAI7eTjYsP78Od8NjOmoQChUI9VFKZepSqnX1c2F8dfw2J/pSWiPJHUaZw0F1FJZuay
- hO17/sHEnpwiNUAAAA=
-X-Change-ID: 20251231-x96q-998c1376ebbf
-To: u-boot@lists.denx.de
-Cc: linux-sunxi <linux-sunxi@lists.linux.dev>, 
- Tom Rini <trini@konsulko.com>, Svyatoslav Ryhel <clamor95@gmail.com>, 
- Leo Yu-Chi Liang <ycliang@andestech.com>, Peter Geis <pgwipeout@gmail.com>, 
- Lukasz Majewski <lukma@denx.de>, Junhui Liu <junhui.liu@pigmoral.tech>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Andre Przywara <andre.przywara@arm.com>, 
- Hans de Goede <hdegoede@redhat.com>, 
- Jagan Teki <jagan@amarulasolutions.com>, Chen-Yu Tsai <wens@kernel.org>, 
- Lukas Schmid <lukas.schmid@netcube.li>, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIALu/b2kC/4XNwQ6CMAyA4VchO1uyTQbDk+9hPMxtyqIwXGVoC
+ O/u4OJF46XJ36RfJ4I2OItkl00k2OjQ+S5FscmIblR3seBMasIpF4yxGnrtwIwacMDedgaCHX2
+ 4gjxRwYTayrKqSTrugz275wofjqkbhw8fXuufyJbtXzIyoKCUYbSQXIqS7z1ifh/UTfu2zdMgi
+ xz5R+NM/tR40oSqqkrqktaF+qLN8/wGpZZfZhEBAAA=
+X-Change-ID: 20251119-pci-dwc-suspend-rework-8b0515a38679
+To: Jingoo Han <jingoohan1@gmail.com>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>
+Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ vincent.guittot@linaro.org, zhangsenchuan@eswincomputing.com, 
+ Shawn Lin <shawn.lin@rock-chips.com>, Niklas Cassel <cassel@kernel.org>, 
+ Richard Zhu <hongxing.zhu@nxp.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768922439; l=3015;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=lQ0P3AFYQWqSxsOBdi4MNMycxGc0DyWm9yvx4fujLD0=;
- b=aKdiVIWuFj1j1ap4MA8QBhJ/kLAteO04yG7KEIHlfAKZX0gOxDUL97xy1bgvIKiHwy0ITl9h+
- nCLLE5EtUqHAzkQSUExzyykZsZr00hFJHDcn3Iw/GKXO1qmU8ZOTGzN
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2551;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=LNIqiIz35Ow0dB+iP/L2EzA6wdMLWrPcxHXyLD9uLEk=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpb7+/u8cAJRCYx1de+zE2cF1PsPrS+sMLsbksX
+ hOQ/ODi73iJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaW+/vwAKCRBVnxHm/pHO
+ 9U1wB/0cB6ghiIJDfjb0BWy2iBYwszcPE/QFkdSSrE6n0aCXH7jxx7hx8eH1CIP8+tPdwBTojqx
+ HC06tBxQqZq9b17jfTqGSQwumQ38pMwkq4pHQWBw1ewWeXSiQqv363fmAeNIDQ7HqJGUMXvo0YE
+ UTu7f34O0zN1WvOhWYjOLuictjdbuizs1/26VZCElbn8QY1dal8hoUcOdWbOmkCw9SIZLH9Ie5h
+ pIzuRtiyZWgo862sJOubuUObeyeqlJJQIpyBlM6Zx0HlovVp0Qn9HhVBMdn6D9xSdEaC6tlX8pT
+ g5ciMy2EPgQ6onLDGF5PUSeZY8exGh8IIs92FiZleiRS09Ve
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The X96Q is a set-top box with an H313 SoC, AXP305 PMIC, 1 or 2 GiB RAM,
-8 or 16 GiB eMMC flash, 2x USB A, Micro-SD, HDMI, Ethernet, audio/video
-output, and infrared input.
+Hi,
 
-  https://x96mini.com/products/x96q-tv-box-android-10-set-top-box
+This series reworks the dw_pcie_wait_for_link() API to allow the callers to
+detect the absence of the device on the bus and skip the failure.
 
-This commit adds a defconfig and some documentation. The devicetree is
-already in dts/upstream.
+Compared to v2, I've reworked the patch 2 to improve the API further and
+dropped the patch 1 that got applied (hence changed the subject). I've also
+modified the error code based on the feedback in v2 to return -ENODEV if device
+is not detected on the bus, -EIO if the device is found but not active and
+-ETIMEDOUT otherwise. This allows the callers to skip the failure as needed.
 
-The CONFIG_DRAM_SUNXI_* settings are chosen such that the register
-values in the DRAM PHY's MMIO space are as close as possible to those
-observed when booting with the preinstalled vendor U-Boot. The DRAM
-clock frequency of 600 MHz was reported in the vendor U-Boot's output.
+Testing
+=======
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Tested this series on Rb3Gen2 board without powering on the PCIe switch. Now the
+dw_pcie_wait_for_link() API prints:
+
+	qcom-pcie 1c08000.pcie: Device not found
+
+Instead of the previous log:
+
+	qcom-pcie 1c08000.pcie: Phy link never came up
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
+Changes in v4:
+- Added a check for POLL state and returned -EIO from dw_pcie_wait_for_link()
+- Collected tags
+- Link to v3: https://lore.kernel.org/r/20251230-pci-dwc-suspend-rework-v3-0-40cd485714f5@oss.qualcomm.com
+
 Changes in v3:
-- Remove CONFIG_FIT_BEST_MATCH, CONFIG_CMD_UFETCH/CAT, CONFIG_SYS_I2C_SLAVE
-  and CONFIG_SPL_USE_TINY_PRINTF_POINTER_SUPPORT from defconfig
-- Add board/sunxi/MAINTAINERS entry
-- Remove board-specific documentation
-- Link to v2: https://lore.kernel.org/r/20260110-x96q-v2-1-1d6a725eb825@posteo.net
+- Dropped patch 1 that got appplied
+- Reworked the error handling of dw_pcie_wait_for_link() API further
+- Link to v2: https://lore.kernel.org/r/20251218-pci-dwc-suspend-rework-v2-0-5a7778c6094a@oss.qualcomm.com
 
 Changes in v2:
-- Add missing Signed-off-by
-- Re-generate x96q_defconfig with 'make savedefconfig'
-- Move DRAM frequency comment to commit message
-- Use GPL-2.0-or-later instead of deprecated GPL-2.0+
-- Link to v1: https://lore.kernel.org/r/20251231-x96q-v1-1-316d703b8f03@posteo.net
----
- board/sunxi/MAINTAINERS |  5 +++++
- configs/x96q_defconfig  | 26 ++++++++++++++++++++++++++
- 2 files changed, 31 insertions(+)
-
-diff --git a/board/sunxi/MAINTAINERS b/board/sunxi/MAINTAINERS
-index c52e8a34c85..775d0f7ae83 100644
---- a/board/sunxi/MAINTAINERS
-+++ b/board/sunxi/MAINTAINERS
-@@ -611,6 +611,11 @@ M:	Andre Przywara <andre.przywara@arm.com>
- S:	Maintained
- F:	configs/x96_mate_defconfig
- 
-+X96Q TV BOX
-+M:	J. Neuschäfer <j.ne@posteo.net>
-+S:	Maintained
-+F:	configs/x96q_defconfig
-+
- X96Q PRO+ TV BOX
- M:	Andre Przywara <andre.przywara@arm.com>
- S:	Maintained
-diff --git a/configs/x96q_defconfig b/configs/x96q_defconfig
-new file mode 100644
-index 00000000000..24c214b4c63
---- /dev/null
-+++ b/configs/x96q_defconfig
-@@ -0,0 +1,26 @@
-+CONFIG_ARM=y
-+CONFIG_ARCH_SUNXI=y
-+CONFIG_DEFAULT_DEVICE_TREE="allwinner/sun50i-h313-x96q"
-+CONFIG_DRAM_CLK=600
-+CONFIG_SPL=y
-+CONFIG_DRAM_SUNXI_DX_ODT=0x03030303
-+CONFIG_DRAM_SUNXI_DX_DRI=0x0e0e0e0e
-+CONFIG_DRAM_SUNXI_CA_DRI=0x1f12
-+CONFIG_DRAM_SUNXI_TPR0=0xc0001002
-+CONFIG_DRAM_SUNXI_TPR2=0x00000100
-+CONFIG_DRAM_SUNXI_TPR10=0x002f0107
-+CONFIG_DRAM_SUNXI_TPR11=0xddddcccc
-+CONFIG_DRAM_SUNXI_TPR12=0xeddc7665
-+CONFIG_MACH_SUN50I_H616=y
-+CONFIG_SUNXI_DRAM_H616_DDR3_1333=y
-+CONFIG_R_I2C_ENABLE=y
-+# CONFIG_SYS_MALLOC_CLEAR_ON_INIT is not set
-+CONFIG_SPL_I2C=y
-+CONFIG_SPL_SYS_I2C_LEGACY=y
-+CONFIG_SYS_I2C_MVTWSI=y
-+CONFIG_SYS_I2C_SPEED=400000
-+CONFIG_SUPPORT_EMMC_BOOT=y
-+CONFIG_SUN8I_EMAC=y
-+CONFIG_AXP305_POWER=y
-+CONFIG_USB_EHCI_HCD=y
-+CONFIG_USB_OHCI_HCD=y
+- Changed the logic to check for Detect.Quiet/Active states
+- Collected tags and rebased on top of v6.19-rc1
+- Link to v1: https://lore.kernel.org/r/20251119-pci-dwc-suspend-rework-v1-0-aad104828562@oss.qualcomm.com
 
 ---
-base-commit: 6cdd7597a2fbfc1572c1b0af23d3daf1cefa2de7
-change-id: 20251231-x96q-998c1376ebbf
+Manivannan Sadhasivam (5):
+      PCI: dwc: Return -ENODEV from dw_pcie_wait_for_link() if device is not found
+      PCI: dwc: Return -EIO from dw_pcie_wait_for_link() if device is not active
+      PCI: dwc: Rename and move ltssm_status_string() to pcie-designware.c
+      PCI: dwc: Rework the error print of dw_pcie_wait_for_link()
+      PCI: dwc: Fail dw_pcie_host_init() if dw_pcie_wait_for_link() returns -ETIMEDOUT
+
+ .../pci/controller/dwc/pcie-designware-debugfs.c   | 54 +-------------
+ drivers/pci/controller/dwc/pcie-designware-host.c  |  9 ++-
+ drivers/pci/controller/dwc/pcie-designware.c       | 86 +++++++++++++++++++++-
+ drivers/pci/controller/dwc/pcie-designware.h       |  2 +
+ 4 files changed, 94 insertions(+), 57 deletions(-)
+---
+base-commit: 68ac85fb42cfeb081cf029acdd8aace55ed375a2
+change-id: 20251119-pci-dwc-suspend-rework-8b0515a38679
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
