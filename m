@@ -1,175 +1,93 @@
-From: Ziyao Li <liziyao@uniontech.com>
-Date: Wed, 21 Jan 2026 16:22:40 +0800
-Subject: [PATCH v7] PCI: loongson: Override PCIe bridge supported speeds
- for Loongson-3C6000 series
+From: Per Larsen <perlarsen@google.com>
+Subject: [PATCH v5 0/2] KVM: arm64: Support FF-A direct messaging
+ interfaces
+Date: Wed, 21 Jan 2026 08:27:11 +0000
+Message-Id: <20260121-host-direct-messages-v5-0-2c1614c94e80@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260121-loongson-pci1-v7-1-fc79c85a574d@uniontech.com>
-X-B4-Tracking: v=1; b=H4sIAM+McGkC/33QzWrDMAzA8VcpPs/D8lfinfYeowfbkhvDFpe4C
- x0l7z63MAhZtuNfoB9CN1ZpylTZy+HGJppzzWVs0T0dWBz8eCKesTWTQhrRS8nfSxlPtYz8HDN
- wjYQCuz5BCKztnCdK+frw3o6th1wvZfp68DPcp39JM3DgynkfAgKkgK+fY7vlQnF4juWD3bVZ/
- ghWgNBbQTYBwQCZLlhK/Z6g1oLbCqoJBjEaTyp4p/YEvRJAbQXdBHAS0OrOJdJ7gvlXME2QVkc
- XtHfChz3BroVff7BNIOo99Mmg1HIrLMvyDYKlmYL4AQAA
-X-Change-ID: 20250822-loongson-pci1-4ded0d78f1bb
-To: Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
- Bjorn Helgaas <bhelgaas@google.com>
-Cc: niecheng1@uniontech.com, zhanjun@uniontech.com, 
- guanwentao@uniontech.com, Kexy Biscuit <kexybiscuit@aosc.io>, 
- linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
- loongarch@lists.linux.dev, kernel@uniontech.com, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Lain Fearyncess Yang <fsf@live.com>, Ayden Meng <aydenmeng@yeah.net>, 
- Mingcong Bai <jeffbai@aosc.io>, Xi Ruoyao <xry111@xry111.site>, 
- Ziyao Li <liziyao@uniontech.com>, stable@vger.kernel.org, 
- Huacai Chen <chenhuacai@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768983760; l=5639;
- i=liziyao@uniontech.com; s=20250730; h=from:subject:message-id;
- bh=aekmZZMcdoWR0EYWpMKLj8I7yyrt0QhHP+Dn7NQHYNM=;
- b=JQZuweOAQ3mziPLwrSbTe3gPrlNAUICC9SjBSdZBJqhmnYBnsd9V4xXSQ//DY6Y11ZCUK9tys
- Rv+D2bSfUWLDMz+pN2kl8caFUxIofS1328fr4YFRxdlS9AYzKtJZfFf
-X-Developer-Key: i=liziyao@uniontech.com; a=ed25519;
- pk=tZ+U+kQkT45GRGewbMSB4VPmvpD+KkHC/Wv3rMOn/PU=
-X-Endpoint-Received: by B4 Relay for liziyao@uniontech.com/20250730 with auth_id=471
+X-B4-Tracking: v=1; b=H4sIAOCNcGkC/43PwWrDMAwG4FcpPs9Dku042WnvMXpIbTkxrHWxg
+ 1kpefc5ZWOMrrDjL9D3S1dROEcu4mV3FZlrLDGdWjBPO+Hm8TSxjL5lQUAGgQY5p7JIHzO7RR6
+ 5lHHiIg0BehuMGQ9etNVz5hA/buzbvuU5liXly62l4jb9AhX8DVaUIHWn2NjeouvD65TS9M7PL
+ h3FJlb6j0JNGQJZx0F1VsGdon4UxAfPVdUUZ7UHPWh9oO5O0d9KBwiPFL3dYvyoidBj/1tZ1/U
+ TYrxToYsBAAA=
+X-Change-ID: 20251029-host-direct-messages-5201d7f55abd
+To: Marc Zyngier <maz@kernel.org>, Joey Gouly <joey.gouly@arm.com>, 
+ Suzuki K Poulose <suzuki.poulose@arm.com>, 
+ Zenghui Yu <yuzenghui@huawei.com>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
+ Yeoreum Yun <yeoreum.yun@arm.com>, Ben Horgan <ben.horgan@arm.com>, 
+ Oliver Upton <oupton@kernel.org>
+Cc: Armelle Laine <armellel@google.com>, 
+ Sebastien Ene <sebastianene@google.com>, 
+ linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Per Larsen <perlarsen@google.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768984038; l=2274;
+ i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
+ bh=cQzCdOlysfcwSAXig6FKFPi8qbVKzsFXGYR1TM3D2sM=;
+ b=tbWIPz2+0mSpsec3Xa3QoVglkBclxYCItvNgsUk21mpl9u7YjOgTnHoVxhKwd+Rz1XkEVsTsA
+ 3tEGoyXf7EwCFP5X0SfvcVeTrifAgIygwdr8/RQgY1zrcCx1dWrnp4i
+X-Developer-Key: i=perlarsen@google.com; a=ed25519;
+ pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
+X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Older steppings of the Loongson-3C6000 series incorrectly report the
-supported link speeds on their PCIe bridges (device IDs 0x3c19, 0x3c29)
-as only 2.5 GT/s, despite the upstream bus supporting speeds from
-2.5 GT/s up to 16 GT/s.
+Support FFA_MSG_SEND_DIRECT_REQ unconditionally.
+Support FFA_MSG_SEND_DIRECT_REQ2 if hypervisor negotiated version 1.2+.
 
-As a result, since commit 774c71c52aa4 ("PCI/bwctrl: Enable only if more
-than one speed is supported"), bwctrl will be disabled if there's only
-one 2.5 GT/s value in vector `supported_speeds`.
+Framework messages (FF-A control plane) are filtered out. For
+FFA_MSG_SEND_DIRECT_REQ, we look at flags in w2. Messages using the REQ2
+interface are always partition messages.
 
-Also, the amdgpu driver reads the value by pcie_get_speed_cap() in
-amdgpu_device_partner_bandwidth(), for its dynamic adjustment of PCIe
-clocks and lanes in power management. We hope this patch can prevent
-similar problems in future driver changes (similar checks may be
-implemented in other GPU, storage controller, NIC, etc. drivers).
+The second patch was part of a previous patch set [0] but was dropped
+since the use case was unclear. A clear use case has now appeared: use
+TPM device with CRB over FF-A when kernel boots with pkvm [1].
 
-Manually override the `supported_speeds` field for affected PCIe bridges
-with those found on the upstream bus to correctly reflect the supported
-link speeds.
+Tested by booting Android under QEMU.
 
-This patch was originally found from AOSC OS[1].
+Best Regards,
+Per
 
-Link: https://github.com/AOSC-Tracking/linux/pull/2 #1
-Tested-by: Lain Fearyncess Yang <fsf@live.com>
-Tested-by: Ayden Meng <aydenmeng@yeah.net>
-Signed-off-by: Ayden Meng <aydenmeng@yeah.net>
-Signed-off-by: Mingcong Bai <jeffbai@aosc.io>
-[Xi Ruoyao: Fix falling through logic and add kernel log output.]
-Signed-off-by: Xi Ruoyao <xry111@xry111.site>
-Link: https://github.com/AOSC-Tracking/linux/commit/4392f441363abdf6fa0a0433d73175a17f493454
-[Ziyao Li: move from drivers/pci/quirks.c to drivers/pci/controller/pci-loongson.c]
-Signed-off-by: Ziyao Li <liziyao@uniontech.com>
-Tested-by: Mingcong Bai <jeffbai@aosc.io>
-Cc: stable@vger.kernel.org
-Reviewed-by: Huacai Chen <chenhuacai@loongson.cn>
+[0]: https://lore.kernel.org/all/20250730-virtio-msg-ffa-v9-0-7f1b55c8d149@google.com/
+[1]: https://lore.kernel.org/all/20251027191729.1704744-1-yeoreum.yun@arm.com/
+ 
+
+Signed-off-by: Per Larsen <perlarsen@google.com>
 ---
-The reason of not just copying pdev->bus->self->supported_speeds is
-that we're concerned that this approach assumes the upstream port
-reports the same capabilities as bridge, which may not always be the
-case in future silicon revisions.
-
-Our current conservative approach ensures we only enable speeds that
-are physically supported by checking the actual max_bus_speed. For
-example, if there's a future Loongson-3C9999 where the virtual bridge
-reports Gen4 support but the physical bridge only supports Gen3.
-
-In this scenario, directly copying the upstream port's supported_speeds
-would incorrectly report Gen4 support for the downstream bridge. The
-current patch ensures we only set speed bits up to what the hardware
-actually supports, based on the measured max_bus_speed. This seems
-safer for future silicon.
-
-Changes in v7:
-- adjust commit message
-- Link to v6: https://lore.kernel.org/r/20260114-loongson-pci1-v6-1-ee8a18f5d242@uniontech.com
-
-Changes in v6:
-- adjust commit message
-- Link to v5: https://lore.kernel.org/r/20260113-loongson-pci1-v5-1-264c9b4a90ab@uniontech.com
-
 Changes in v5:
-- style adjust
-- Link to v4: https://lore.kernel.org/r/20260113-loongson-pci1-v4-1-1921d6479fe4@uniontech.com
+- 1/2: do_ffa_direct_msg: validate that sender is HOST_FFA_ID.
+- Link to v4: https://lore.kernel.org/r/20260109-host-direct-messages-v4-0-95da4221d186@google.com
 
 Changes in v4:
-- rename subject
-- use 0x3c19/0x3c29 instead of 3c19/3c29
-- Link to v3: https://lore.kernel.org/r/20260109-loongson-pci1-v3-1-5ddc5ae3ba93@uniontech.com
+- 1/2: do_ffa_direct_msg: check that flag in w2 is zero; drop unused vm_handle parameter.
+- 2/2: ffa_call_supported: simplify logic by reordering cases.
+-      do_ffa_direct_msg: switch polarity of check and update comment.
+- Link to v3: https://lore.kernel.org/r/20251119-host-direct-messages-v3-0-c74d04944b26@google.com
 
 Changes in v3:
-- Adjust commit message
-- Make the program flow more intuitive
-- Link to v2: https://lore.kernel.org/r/20260104-loongson-pci1-v2-1-d151e57b6ef8@uniontech.com
+- Filter out framework messages as suggested by Will Deacon. Update cover letter accordingly.
+- Update trailers: Reviewed-by: Yeoreum Yun <yeoreum.yun@arm.com>
+- Link to v2: https://lore.kernel.org/r/20251030-host-direct-messages-v2-0-9f27cef36730@google.com
 
 Changes in v2:
-- Link to v1: https://lore.kernel.org/r/20250822-loongson-pci1-v1-1-39aabbd11fbd@uniontech.com
-- Move from arch/loongarch/pci/pci.c to drivers/pci/controller/pci-loongson.c
-- Fix falling through logic and add kernel log output by Xi Ruoyao
----
- drivers/pci/controller/pci-loongson.c | 36 +++++++++++++++++++++++++++++++++++
- 1 file changed, 36 insertions(+)
-
-diff --git a/drivers/pci/controller/pci-loongson.c b/drivers/pci/controller/pci-loongson.c
-index bc630ab8a283..a4250d7af1bf 100644
---- a/drivers/pci/controller/pci-loongson.c
-+++ b/drivers/pci/controller/pci-loongson.c
-@@ -176,6 +176,42 @@ static void loongson_pci_msi_quirk(struct pci_dev *dev)
- }
- DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_LOONGSON, DEV_LS7A_PCIE_PORT5, loongson_pci_msi_quirk);
- 
-+/*
-+ * Older steppings of the Loongson-3C6000 series incorrectly report the
-+ * supported link speeds on their PCIe bridges (device IDs 0x3c19,
-+ * 0x3c29) as only 2.5 GT/s, despite the upstream bus supporting speeds
-+ * from 2.5 GT/s up to 16 GT/s.
-+ */
-+static void loongson_pci_bridge_speed_quirk(struct pci_dev *pdev)
-+{
-+	u8 old_supported_speeds = pdev->supported_speeds;
-+
-+	switch (pdev->bus->max_bus_speed) {
-+	case PCIE_SPEED_16_0GT:
-+		pdev->supported_speeds |= PCI_EXP_LNKCAP2_SLS_16_0GB;
-+		fallthrough;
-+	case PCIE_SPEED_8_0GT:
-+		pdev->supported_speeds |= PCI_EXP_LNKCAP2_SLS_8_0GB;
-+		fallthrough;
-+	case PCIE_SPEED_5_0GT:
-+		pdev->supported_speeds |= PCI_EXP_LNKCAP2_SLS_5_0GB;
-+		fallthrough;
-+	case PCIE_SPEED_2_5GT:
-+		pdev->supported_speeds |= PCI_EXP_LNKCAP2_SLS_2_5GB;
-+		break;
-+	default:
-+		pci_warn(pdev, "unexpected max bus speed");
-+
-+		return;
-+	}
-+
-+	if (pdev->supported_speeds != old_supported_speeds)
-+		pci_info(pdev, "fixing up supported link speeds: 0x%x => 0x%x",
-+			 old_supported_speeds, pdev->supported_speeds);
-+}
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_LOONGSON, 0x3c19, loongson_pci_bridge_speed_quirk);
-+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_LOONGSON, 0x3c29, loongson_pci_bridge_speed_quirk);
-+
- static struct loongson_pci *pci_bus_to_loongson_pci(struct pci_bus *bus)
- {
- 	struct pci_config_window *cfg;
+- 1/2: Drop support for FFA_ID_GET interface in host handler.
+- Link to v1: https://lore.kernel.org/r/20251030-host-direct-messages-v1-0-463e57871c8f@google.com
 
 ---
-base-commit: ea1013c1539270e372fc99854bc6e4d94eaeff66
-change-id: 20250822-loongson-pci1-4ded0d78f1bb
+Per Larsen (1):
+      KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in host handler
+
+Sebastian Ene (1):
+      KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ in host handler
+
+ arch/arm64/kvm/hyp/nvhe/ffa.c | 39 ++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 38 insertions(+), 1 deletion(-)
+---
+base-commit: 6c790212c588fddeb0d852f2790840753bb604b1
+change-id: 20251029-host-direct-messages-5201d7f55abd
 
 Best regards,
 -- 
-Ziyao Li <liziyao@uniontech.com>
+Per Larsen <perlarsen@google.com>
 
