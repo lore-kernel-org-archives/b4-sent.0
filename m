@@ -1,158 +1,59 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Wed, 21 Jan 2026 00:59:39 +0000
-Subject: [PATCH v4 5/5] usb: typec: tcpm/tcpci_maxim: deprecate WAR for
- setting charger mode
+From: Yang Li <yang.li@amlogic.com>
+Date: Wed, 21 Jan 2026 10:13:09 +0800
+Subject: [PATCH BlueZ bluez v2] bap: reduce ISO sync timeout to 3.6 secs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260121-max77759-charger-v4-5-694234c8ded1@google.com>
-References: <20260121-max77759-charger-v4-0-694234c8ded1@google.com>
-In-Reply-To: <20260121-max77759-charger-v4-0-694234c8ded1@google.com>
-To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
- Lee Jones <lee@kernel.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Tudor Ambarus <tudor.ambarus@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>
-Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
- RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
- Amit Sunil Dhamne <amitsd@google.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1768957213; l=4043;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=gNnVByQLieKyAsnu80J6+t0cbNJjF7NR+Dggwv66Dvg=;
- b=a2qWTsPaLRBPgYtyC9nrykgm9MHHNBIWDmGasd1ExwNCbAyccZMhE6yNyVEzqdxwL276xA5mi
- 177B1gJG8FpDcyyKsX8HymqgZ4ttdGoNiryQwI+aNtGjKCKqqsTyt3Y
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260121-iso_sync_timeout-v2-1-efa52fdba244@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIADQ2cGkC/3WNQQ6DIBREr2L+ujQCbaNd9R6NMRY/+hORBpDUG
+ u5ewr6ryZvJzBzg0RF6uFcHOIzkya4ZxKkCNQ/rhIzGzCBqcas5F4y87f2+qj6QQbsF1qBEpS9
+ ybARCrr0davqUySe8lg2/0GV7Jh+s28tR5CX8vxk546wdJLatuGbVj8EsdiJ1VtZAl1L6AeQDW
+ 2G5AAAA
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1768961593; l=1152;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=1u27ix1kl7OQvyW8a2HLNDg5ot2OEQvP578EPXDjjL0=;
+ b=ZimwYJ4/Mrcqvzo5MZA/Dr6vwctNQVs+AZ+jYiGlXXcfLvrL+JQ1eis031pvL9i7qrFRgd1bA
+ hM73pFh8z/GAwI+DApubk7WQ0n2mw1j8Fn/WgtYor2Lx6apJJPOwxfF
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-TCPCI maxim driver directly writes to the charger's register space to
-set charger mode depending on the power role. As MAX77759 chg driver
-exists, this WAR is not required.
+The ISO sync timeout was previously set to 20 seconds,
+which is too long for PA sync. This could leave the userspace
+flow pending for an extended period of time.
 
-Instead, use a regulator interface to source vbus when typec is in
-source power mode. In other power modes, this regulator will be turned
-off if active.
-
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
-Reviewed-by: André Draszik <andre.draszik@linaro.org>
+Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
- drivers/usb/typec/tcpm/tcpci_maxim.h      |  1 +
- drivers/usb/typec/tcpm/tcpci_maxim_core.c | 54 +++++++++++++++++++------------
- 2 files changed, 34 insertions(+), 21 deletions(-)
+Changes in v2:
+- Modified the BT_ISO_SYNC_TIMEOUT to 0x0168 (3.6 secs)
+- Link to v1: https://patch.msgid.link/20260112-iso_sync_timeout-v1-1-9a3e99259a3f@amlogic.com
+---
+ lib/bluetooth/bluetooth.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/usb/typec/tcpm/tcpci_maxim.h b/drivers/usb/typec/tcpm/tcpci_maxim.h
-index b33540a42a953dc6d8197790ee4af3b6f52791ce..b314606eb0f67ddbc80d8760244aa6dee61bebc1 100644
---- a/drivers/usb/typec/tcpm/tcpci_maxim.h
-+++ b/drivers/usb/typec/tcpm/tcpci_maxim.h
-@@ -60,6 +60,7 @@ struct max_tcpci_chip {
- 	struct tcpm_port *port;
- 	enum contamiant_state contaminant_state;
- 	bool veto_vconn_swap;
-+	struct regulator *vbus_reg;
- };
+diff --git a/lib/bluetooth/bluetooth.h b/lib/bluetooth/bluetooth.h
+index f9f22c3f7..b9ea34847 100644
+--- a/lib/bluetooth/bluetooth.h
++++ b/lib/bluetooth/bluetooth.h
+@@ -152,7 +152,7 @@ struct bt_voice {
+ #define BT_ISO_QOS_BIG_UNSET	0xff
+ #define BT_ISO_QOS_BIS_UNSET	0xff
  
- static inline int max_tcpci_read16(struct max_tcpci_chip *chip, unsigned int reg, u16 *val)
-diff --git a/drivers/usb/typec/tcpm/tcpci_maxim_core.c b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-index 19f63865079658fb2a446dc390262d141b940e9a..e9e2405c5ca036e28c307088d4b785726834e71f 100644
---- a/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-+++ b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-@@ -10,6 +10,7 @@
- #include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/regmap.h>
-+#include <linux/regulator/consumer.h>
- #include <linux/usb/pd.h>
- #include <linux/usb/tcpci.h>
- #include <linux/usb/tcpm.h>
-@@ -35,12 +36,6 @@
-  */
- #define TCPC_RECEIVE_BUFFER_LEN				32
+-#define BT_ISO_SYNC_TIMEOUT	0x07d0 /* 20 secs */
++#define BT_ISO_SYNC_TIMEOUT	0x0168 /* 3.6 secs */
  
--#define MAX_BUCK_BOOST_SID				0x69
--#define MAX_BUCK_BOOST_OP				0xb9
--#define MAX_BUCK_BOOST_OFF				0
--#define MAX_BUCK_BOOST_SOURCE				0xa
--#define MAX_BUCK_BOOST_SINK				0x5
--
- static const struct regmap_range max_tcpci_tcpci_range[] = {
- 	regmap_reg_range(0x00, 0x95)
- };
-@@ -202,32 +197,49 @@ static void process_rx(struct max_tcpci_chip *chip, u16 status)
- 	tcpm_pd_receive(chip->port, &msg, rx_type);
- }
- 
-+static int get_vbus_regulator_handle(struct max_tcpci_chip *chip)
-+{
-+	if (IS_ERR_OR_NULL(chip->vbus_reg)) {
-+		chip->vbus_reg = devm_regulator_get_exclusive(chip->dev,
-+							      "vbus");
-+		if (IS_ERR_OR_NULL(chip->vbus_reg)) {
-+			dev_err(chip->dev,
-+				"Failed to get vbus regulator handle");
-+			return -ENODEV;
-+		}
-+	}
-+
-+	return 0;
-+}
-+
- static int max_tcpci_set_vbus(struct tcpci *tcpci, struct tcpci_data *tdata, bool source, bool sink)
- {
- 	struct max_tcpci_chip *chip = tdata_to_max_tcpci(tdata);
--	u8 buffer_source[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_SOURCE};
--	u8 buffer_sink[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_SINK};
--	u8 buffer_none[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_OFF};
--	struct i2c_client *i2c = chip->client;
- 	int ret;
- 
--	struct i2c_msg msgs[] = {
--		{
--			.addr = MAX_BUCK_BOOST_SID,
--			.flags = i2c->flags & I2C_M_TEN,
--			.len = 2,
--			.buf = source ? buffer_source : sink ? buffer_sink : buffer_none,
--		},
--	};
--
- 	if (source && sink) {
- 		dev_err(chip->dev, "Both source and sink set\n");
- 		return -EINVAL;
- 	}
- 
--	ret = i2c_transfer(i2c->adapter, msgs, 1);
-+	ret = get_vbus_regulator_handle(chip);
-+	if (ret) {
-+		/*
-+		 * Regulator is not necessary for sink only applications. Return
-+		 * success in cases where sink mode is being modified.
-+		 */
-+		return source ? ret : 1;
-+	}
-+
-+	if (source) {
-+		if (!regulator_is_enabled(chip->vbus_reg))
-+			ret = regulator_enable(chip->vbus_reg);
-+	} else {
-+		if (regulator_is_enabled(chip->vbus_reg))
-+			ret = regulator_disable(chip->vbus_reg);
-+	}
- 
--	return  ret < 0 ? ret : 1;
-+	return ret < 0 ? ret : 1;
- }
- 
- static void process_power_status(struct max_tcpci_chip *chip)
+ /* For an ISO Broadcaster, this value is used to compute
+  * the desired Periodic Advertising Interval as a function
 
+---
+base-commit: c24f0b487ca3d4e0ca315114a889dad4d2c3bb26
+change-id: 20260112-iso_sync_timeout-8e3ecf43d82e
+
+Best regards,
 -- 
-2.52.0.457.g6b5491de43-goog
+Yang Li <yang.li@amlogic.com>
 
