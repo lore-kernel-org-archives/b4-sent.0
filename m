@@ -1,141 +1,55 @@
-From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Wed, 21 Jan 2026 15:23:38 +0100
-Subject: [PATCH RFC v2 4/4] stmmac: s32: enable support for Multi-IRQ mode
+From: Andrea Scian <andrea.scian@dave.eu>
+Subject: [PATCH 0/2] PL353 SW ECC fixes
+Date: Wed, 21 Jan 2026 16:51:02 +0100
+Message-Id: <20260121-pl353-soft-ecc-support-v1-0-00ad8e160d83@dave.eu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260121-dwmac_multi_irq-v2-4-3b829230d071@oss.nxp.com>
-References: <20260121-dwmac_multi_irq-v2-0-3b829230d071@oss.nxp.com>
-In-Reply-To: <20260121-dwmac_multi_irq-v2-0-3b829230d071@oss.nxp.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Chester Lin <chester62515@gmail.com>, Matthias Brugger <mbrugger@suse.com>, 
- Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>, 
- NXP S32 Linux Team <s32@nxp.com>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- imx@lists.linux.dev, devicetree@vger.kernel.org, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769005434; l=3819;
- i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=74RGaLzoIg2YFHeU0p/CYWs0Z4X8UBwxCJa13xx0UtQ=;
- b=4z1wA8YyOVge2MlsBDwF1filHqTcxO5qznswuu0BITrfqUPgdk93OuCEkArMPFXgcvZlVS6AI
- TLRe0UhnAHxAA0luNGhNxlnDvcIPyq4Zn8SWLEgzaFIErg1hMXJJLpB
-X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
- pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
-X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
+X-B4-Tracking: v=1; b=H4sIAOb1cGkC/x3MQQqAIBBA0avErBtIraSuEi3EphqIFKciiO6et
+ HyL/x8QSkwCffFAoouFw56hygL86vaFkKds0JVuK6UVxs00BiXMB5L3KGeMIR1ou5oU2cZY4yD
+ HMdHM9z8exvf9AEreUH9oAAAA
+X-Change-ID: 20260121-pl353-soft-ecc-support-794e1e75373a
+To: Miquel Raynal <miquel.raynal@bootlin.com>, 
+ Michal Simek <michal.simek@amd.com>, Richard Weinberger <richard@nod.at>, 
+ Vignesh Raghavendra <vigneshr@ti.com>
+Cc: linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Andrea Scian <andrea.scian@dave.eu>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769010680; l=972;
+ i=andrea.scian@dave.eu; s=20260121; h=from:subject:message-id;
+ bh=khWQPZnCxP+KVyhqb4DgCCB+QpPliQS5oDegCApIqSw=;
+ b=dFhodP5oDA5NEuu5IVJKHO+GrKJfxfiL0zGvD5Bq9nDEjgJspuZpu/hM1pFM/lVcvXbU7IeMk
+ yCuO/Rl8kMYBKQpLywWArg178bwnqLjvIgffiyJ12VDNlpu+DFOoGTy
+X-Developer-Key: i=andrea.scian@dave.eu; a=ed25519;
+ pk=PMQL72nEsyoiJCobnq0uEXwUFpVmkwoWIx317WvaQOU=
+X-Endpoint-Received: by B4 Relay for andrea.scian@dave.eu/20260121 with auth_id=613
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To get enabled Multi-IRQ mode, the driver checks:
+PL353 has some known errata with its ECC implementation and it may be
+useful to switch to software ECC, to avoid issue with this.
 
-  1) property of 'snps,mtl-xx-config' subnode
-     defines 'snps,xx-queues-to-use' bigger then one, ie:
+On-die ECC is already supported (while I didn't test it) but when
+enabling SW ECC we get operation-not-supported error during page write
+(page read already work correctly)
 
-     ethernet@4033c000 {
-         compatible = "nxp,s32g2-dwmac";
-         ...
-         snps,mtl-rx-config = <&mtl_rx_setup>;
-         ...
+IMHO it's enough to have 1-bit Hamming ECC correction, because this is
+the only one supported on PL353, but this might be a wrong assumption.
 
-         mtl_rx_setup: rx-queues-config {
-             snps,rx-queues-to-use = <2>;
-         };
+This has been tested with nandflipbits and mtd_nandbiterrs
 
-  2) queue based IRQs are set, ie:
-
-     ethernet@4033c000 {
-         compatible = "nxp,s32g2-dwmac";
-         ...
-         interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>,
-                      /* CHN 0: tx, rx */
-                      <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>,
-                      <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
-                      /* CHN 1: tx, rx */
-                      <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
-                      <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
-         interrupt-names = "macirq",
-                           "tx-queue-0", "rx-queue-0",
-                           "tx-queue-1", "rx-queue-1";
-
-If those prerequisites are met, the driver switch to Multi-IRQ mode,
-using per-queue IRQs for rx/tx data pathr:
-
-[    1.387045] s32-dwmac 4033c000.ethernet: Multi-IRQ mode (per queue IRQ) selected
-
-Now the driver owns all queues IRQs:
-
-root@s32g399aevb3:~# grep eth /proc/interrupts
- 29:    0    0    0    0    0    0    0    0    GICv3  89 Level   eth0:mac
- 30:    0    0    0    0    0    0    0    0    GICv3  91 Level   eth0:rx-0
- 31:    0    0    0    0    0    0    0    0    GICv3  93 Level   eth0:rx-1
- 32:    0    0    0    0    0    0    0    0    GICv3  95 Level   eth0:rx-2
- 33:    0    0    0    0    0    0    0    0    GICv3  97 Level   eth0:rx-3
- 34:    0    0    0    0    0    0    0    0    GICv3  99 Level   eth0:rx-4
- 35:    0    0    0    0    0    0    0    0    GICv3  90 Level   eth0:tx-0
- 36:    0    0    0    0    0    0    0    0    GICv3  92 Level   eth0:tx-1
- 37:    0    0    0    0    0    0    0    0    GICv3  94 Level   eth0:tx-2
- 38:    0    0    0    0    0    0    0    0    GICv3  96 Level   eth0:tx-3
- 39:    0    0    0    0    0    0    0    0    GICv3  98 Level   eth0:tx-4
-
-Otherwise, if one of the prerequisite don't met, the driver
-continue with MAC IRQ mode:
-
-[    1.387045] s32-dwmac 4033c000.ethernet: MAC IRQ mode selected
-
-And only MAC IRQ will be attached:
-
-root@s32g399aevb3:~# grep eth /proc/interrupts
- 29:    0    0    0    0    0    0    0    0    GICv3  89 Level   eth0:mac
-
-What represents the original MAC IRQ mode and is fully backward
-compatible.
-
-Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+Signed-off-by: Andrea Scian <andrea.scian@dave.eu>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c | 13 ++++++++++++-
- 1 file changed, 12 insertions(+), 1 deletion(-)
+Andrea Scian (2):
+      mtd: rawnand: pl353: Fix software ECC support
+      mtd: rawnand: pl353: Add message about ECC mode
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-index 5a485ee98fa7..823700219534 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-@@ -2,7 +2,7 @@
- /*
-  * NXP S32G/R GMAC glue layer
-  *
-- * Copyright 2019-2024 NXP
-+ * Copyright 2019-2026 NXP
-  *
-  */
- 
-@@ -149,6 +149,17 @@ static int s32_dwmac_probe(struct platform_device *pdev)
- 	plat->core_type = DWMAC_CORE_GMAC4;
- 	plat->pmt = 1;
- 	plat->flags |= STMMAC_FLAG_SPH_DISABLE;
-+
-+	/* Check for multi-IRQ config. Assumption: symetrical rx/tx queues */
-+	if (plat->rx_queues_to_use > 1 &&
-+	    (res.rx_irq[0] >= 0 || res.tx_irq[0] >= 0)) {
-+		plat->flags |= STMMAC_FLAG_MULTI_MSI_EN;
-+		dev_info(dev, "Multi-IRQ mode (per queue IRQ) selected\n");
-+	} else {
-+		dev_info(dev, "MAC IRQ mode selected\n");
-+	}
-+
-+	plat->flags |= STMMAC_FLAG_MULTI_MSI_EN;
- 	plat->rx_fifo_size = 20480;
- 	plat->tx_fifo_size = 20480;
- 
+ drivers/mtd/nand/raw/pl35x-nand-controller.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+---
+base-commit: 24d479d26b25bce5faea3ddd9fa8f3a6c3129ea7
+change-id: 20260121-pl353-soft-ecc-support-794e1e75373a
 
+Best regards,
 -- 
-2.47.0
+Andrea Scian <andrea.scian@dave.eu>
 
