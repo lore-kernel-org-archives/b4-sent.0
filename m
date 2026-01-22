@@ -1,54 +1,72 @@
 From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
-Date: Thu, 22 Jan 2026 08:32:32 +0000
-Subject: [PATCH v2 2/2] i2c: xiic: make the clock optional
+Date: Thu, 22 Jan 2026 09:00:29 +0000
+Subject: [PATCH v3] spi: xilinx: use device property accessors.
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260122-i2c-xiic-v2-2-134f5d743e8b@nexthop.ai>
-References: <20260122-i2c-xiic-v2-0-134f5d743e8b@nexthop.ai>
-In-Reply-To: <20260122-i2c-xiic-v2-0-134f5d743e8b@nexthop.ai>
-To: Michal Simek <michal.simek@amd.com>, Andi Shyti <andi.shyti@kernel.org>
-Cc: Andy Shevchenko <andriy.shevchenko@intel.com>, 
- linux-arm-kernel@lists.infradead.org, linux-i2c@vger.kernel.org, 
+Message-Id: <20260122-spi-xilinx-v3-1-8cea20e82f0b@nexthop.ai>
+X-B4-Tracking: v=1; b=H4sIACzncWkC/03MQQ6CMBBA0auQWTukU6SiK+9hXBQZ7CRSyBRNE
+ 8LdbVy5fIv/N0iswgku1QbKH0kyx4LmUMEj+PhklKEYrLHOEHWYFsEsL4kZqe+649D2rqUzlGB
+ RHiX/Zrd78ajzhGtQ9v+LkyFLjauta601SOj74a3qw+TjNXJew7zUXmDfv27egTSdAAAA
+X-Change-ID: 20260118-spi-xilinx-1b884d5b6519
+To: Mark Brown <broonie@kernel.org>, Michal Simek <michal.simek@amd.com>
+Cc: linux-spi@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Abdurrahman Hussain <abdurrahman@nexthop.ai>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769070755; l=1147;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769072434; l=1349;
  i=abdurrahman@nexthop.ai; s=20260119; h=from:subject:message-id;
- bh=30Y4elib2oXS0UgCTGXSQddfRG4H8frOGSLNdFvW0G8=;
- b=CuQl/jaFtohkiawpscgRaSfDh2zFoUAaQuD8v9qu3C6qO1n1SZkhluEHqHAaMg63WZ1k0TuCj
- hh0YTdPwwufAH7lEYU6hJCjs0ZmN4/0UP91yD28VLrFcVOAge1JCGsd
+ bh=viHwx+jv2rWkq2BAgRQtX9ZKmm78TjPHuLyAvr0R44g=;
+ b=MHAPlWH5Jbo0z7ZJ5RovdK2iNh+yldLOZ1VZvSlym04m9sAfV19Jv40biP9TcdKUKZEdGGZKW
+ 9ov8hyBh5KXCuoQ2jOiH2lz8DvLRM1hHIi+YBfDnE+J1WnZX8GYDOj9
 X-Developer-Key: i=abdurrahman@nexthop.ai; a=ed25519;
  pk=S+ysnf+NwMcBdHBlyKIUEAtaFGSIhQwcJcgcXhq0osg=
 X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/20260119 with auth_id=608
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The xiic driver is designed to operate without explicit clock configuration
-when clocks are not specified in the firmware. This functionality is
-already implemented in xiic_setclk(), which performs an early return when
-either i2c_clk or input_clk are zero:
-
-This condition is satisfied when clocks are missing, as clk_get_rate(NULL)
-returns zero, allowing the driver to rely on hardware-configured timing.
+Switch to device property accessors.
 
 Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
 ---
- drivers/i2c/busses/i2c-xiic.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Switch to generic device property accessors.
 
-diff --git a/drivers/i2c/busses/i2c-xiic.c b/drivers/i2c/busses/i2c-xiic.c
-index 2ca736cbf688..3d86b2077d6b 100644
---- a/drivers/i2c/busses/i2c-xiic.c
-+++ b/drivers/i2c/busses/i2c-xiic.c
-@@ -1459,7 +1459,7 @@ static int xiic_i2c_probe(struct platform_device *pdev)
- 	mutex_init(&i2c->lock);
- 	spin_lock_init(&i2c->atomic_lock);
- 
--	i2c->clk = devm_clk_get_enabled(dev, NULL);
-+	i2c->clk = devm_clk_get_optional_enabled(dev, NULL);
- 	if (IS_ERR(i2c->clk))
- 		return dev_err_probe(dev, PTR_ERR(i2c->clk),
- 				     "failed to enable input clock.\n");
+Changed from v3:
 
--- 
+Removed the patches to make irq optional from the series
+
 2.52.0
+
+base-commit: 944aacb68baf7624ab8d277d0ebf07f025ca137c
+---
+ drivers/spi/spi-xilinx.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/spi/spi-xilinx.c b/drivers/spi/spi-xilinx.c
+index c86dc56f38b4..c4b70e95b695 100644
+--- a/drivers/spi/spi-xilinx.c
++++ b/drivers/spi/spi-xilinx.c
+@@ -405,11 +405,11 @@ static int xilinx_spi_probe(struct platform_device *pdev)
+ 		bits_per_word = pdata->bits_per_word;
+ 		force_irq = pdata->force_irq;
+ 	} else {
+-		of_property_read_u32(pdev->dev.of_node, "xlnx,num-ss-bits",
+-					  &num_cs);
+-		ret = of_property_read_u32(pdev->dev.of_node,
+-					   "xlnx,num-transfer-bits",
+-					   &bits_per_word);
++		device_property_read_u32(&pdev->dev, "xlnx,num-ss-bits",
++					 &num_cs);
++		ret = device_property_read_u32(&pdev->dev,
++					       "xlnx,num-transfer-bits",
++					       &bits_per_word);
+ 		if (ret)
+ 			bits_per_word = 8;
+ 	}
+
+---
+base-commit: 944aacb68baf7624ab8d277d0ebf07f025ca137c
+change-id: 20260118-spi-xilinx-1b884d5b6519
+
+Best regards,
+-- 
+Abdurrahman Hussain <abdurrahman@nexthop.ai>
 
