@@ -1,60 +1,86 @@
-From: Andrea Scian <andrea.scian@dave.eu>
-Date: Wed, 21 Jan 2026 16:51:04 +0100
-Subject: [PATCH 2/2] mtd: rawnand: pl353: Add message about ECC mode
+From: Ben Zong-You Xie <ben717@andestech.com>
+Subject: [PATCH v2 0/4] i2c: add support for Andes platform
+Date: Thu, 22 Jan 2026 11:53:17 +0800
+Message-Id: <20260122-atciic100-v2-0-7559136d07cf@andestech.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260121-pl353-soft-ecc-support-v1-2-00ad8e160d83@dave.eu>
-References: <20260121-pl353-soft-ecc-support-v1-0-00ad8e160d83@dave.eu>
-In-Reply-To: <20260121-pl353-soft-ecc-support-v1-0-00ad8e160d83@dave.eu>
-To: Miquel Raynal <miquel.raynal@bootlin.com>, 
- Michal Simek <michal.simek@amd.com>, Richard Weinberger <richard@nod.at>, 
- Vignesh Raghavendra <vigneshr@ti.com>
-Cc: linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Andrea Scian <andrea.scian@dave.eu>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769010680; l=1276;
- i=andrea.scian@dave.eu; s=20260121; h=from:subject:message-id;
- bh=z/f8ENeXWTXwmxoaenLS81E+i7n9GAGaHSJK6q7dSKQ=;
- b=cg54ZpaogNFDpXRGOnMDOdNx5iTXN4a1vEajXtKcCRkZVsbPdztye8DOZOhngStVT4r5YBoQp
- fJIlNPeM73EBcbynH723hUzgiF0uWGr/geyi1IXbsBP8gPkQke0C8q2
-X-Developer-Key: i=andrea.scian@dave.eu; a=ed25519;
- pk=PMQL72nEsyoiJCobnq0uEXwUFpVmkwoWIx317WvaQOU=
-X-Endpoint-Received: by B4 Relay for andrea.scian@dave.eu/20260121 with auth_id=613
+X-B4-Tracking: v=1; b=H4sIAC2fcWkC/yWNQQ6CMBAAv0J6tmS7VSqe/Ifh0JZF1sRi2ko0h
+ L9L8TjJZGYRiSJTEpdqEZFmTjyFDfBQCT/acCfJ/cYCARtQCNJmz+wVgOytJt+cB+PcUWz+K9L
+ An7116/6c3u5BPpdAMUZOeYrffTar4pXuCRAMoGpR19gq1EZLJR0Fo8zVhp5SJj/WfnqKbl3XH
+ 5AJcgezAAAA
+X-Change-ID: 20260120-atciic100-da3ec68f7bb4
+To: Andi Shyti <andi.shyti@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Paul Walmsley <pjw@kernel.org>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ Alexandre Ghiti <alex@ghiti.fr>
+Cc: linux-i2c@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-riscv@lists.infradead.org, 
+ Ben Zong-You Xie <ben717@andestech.com>
+X-Mailer: b4 0.15-dev-47773
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769054012; l=2312;
+ i=ben717@andestech.com; s=20260120; h=from:subject:message-id;
+ bh=BsH5qp5mxn9oN1eQAvbNOgB+hDjXd7cRQq++eYiHMgU=;
+ b=MzvB4SwtZthro9prrDLjur33srf2OFFh7FyyKgieW7Q//4XlEJTYGkomf6WXTQ7XV4Aqe+l5H
+ /xnw830+t18AaR7mzJb9MsFvGludOxKRas+WLy5wD7W+nhB+fNx2FOB
+X-Developer-Key: i=ben717@andestech.com; a=ed25519;
+ pk=nb8L7zQKGJpYk0yvrYKjViOZ34A36g1ZIsCmCsP518s=
+X-Endpoint-Received: by B4 Relay for ben717@andestech.com/20260120 with auth_id=610
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This just add some information on kernel log about the selected ECC
+This patch series adds I2C support to Andes platform, such as AE350 and
+QiLai SoC.
 
-Signed-off-by: Andrea Scian <andrea.scian@dave.eu>
+Signed-off-by: Ben Zong-You Xie <ben717@andestech.com>
 ---
- drivers/mtd/nand/raw/pl35x-nand-controller.c | 3 +++
- 1 file changed, 3 insertions(+)
+Changes in v2:
+- ATCIIC100 is the hardware name for the Andes I2C controller and was used
+  throughout v1. However, since Device Tree bindings should reflect the hardware
+  identity and driver/config naming typically follows the i2c-<soc/platform>
+  convention, this version replaces occurrences of "atciic100" with more
+  appropriate names, such as "i2c-andes" or "andes_i2c," to align with upstream
+  standards.
+- Updated cover letter title and the description.
+- Rebased on andi.shyti/i2c/i2c-host-next.
+- (1/4)
+  - Updated the title and the description of the patch.
+  - Specified what the hardware is, and modify the title and compatibles. (Krzysztof)
+  - Corrected device register size.
+- (2/4)
+  - Updated the title and the description of the patch.
+  - Replaced the readl/writel operations with regmap APIs.
+  - Replaced all occurrences of atciic100 with proper names.
+  - Used module_platform_driver() to initialize. (Andi)
+  - Moved CONFIG_I2C_ANDES (CONFIG_I2C_ATCIIC100 in v1) to the
+    "Embedded system I2C/SMBus host controller drivers" section.
+  - Made CONFIG_I2C_ANDES depend on ARCH_ANDES
+- (3/4) (new)
+  - Added an entry to the MAINTAINERS file.
+- (4/4) (new)
+  - Added the I2C node to QiLai DTS.
 
-diff --git a/drivers/mtd/nand/raw/pl35x-nand-controller.c b/drivers/mtd/nand/raw/pl35x-nand-controller.c
-index fcb62b9ec947b..4ce4c6f59b827 100644
---- a/drivers/mtd/nand/raw/pl35x-nand-controller.c
-+++ b/drivers/mtd/nand/raw/pl35x-nand-controller.c
-@@ -970,16 +970,19 @@ static int pl35x_nand_attach_chip(struct nand_chip *chip)
- 
- 	switch (chip->ecc.engine_type) {
- 	case NAND_ECC_ENGINE_TYPE_ON_DIE:
-+		dev_info(nfc->dev, "Using on-die ECC\n");
- 		/* Keep these legacy BBT descriptors for ON_DIE situations */
- 		chip->bbt_td = &bbt_main_descr;
- 		chip->bbt_md = &bbt_mirror_descr;
- 		fallthrough;
- 	case NAND_ECC_ENGINE_TYPE_NONE:
- 	case NAND_ECC_ENGINE_TYPE_SOFT:
-+		dev_info(nfc->dev, "Using software ECC (Hamming 1-bit/512B)\n");
- 		chip->ecc.algo = NAND_ECC_ALGO_HAMMING;
- 		chip->ecc.write_page_raw = nand_monolithic_write_page_raw;
- 		break;
- 	case NAND_ECC_ENGINE_TYPE_ON_HOST:
-+		dev_info(nfc->dev, "Using hardware ECC\n");
- 		ret = pl35x_nand_init_hw_ecc_controller(nfc, chip);
- 		if (ret)
- 			return ret;
+- Link to v1: https://patch.msgid.link/20250207021923.2912373-1-ben717@andestech.com
 
--- 
-2.43.0
+---
+Ben Zong-You Xie (4):
+      dt-bindings: i2c: add support for AE350 I2C controller
+      i2c: add Andes I2C driver support
+      MAINTAINERS: add an entry for Andes I2C driver
+      riscv: dts: andes: qilai: add I2C controller
+
+ .../bindings/i2c/andestech,ae350-i2c.yaml          |  45 +++
+ MAINTAINERS                                        |   6 +
+ arch/riscv/boot/dts/andes/qilai.dtsi               |   7 +
+ drivers/i2c/busses/Kconfig                         |  10 +
+ drivers/i2c/busses/Makefile                        |   1 +
+ drivers/i2c/busses/i2c-andes.c                     | 341 +++++++++++++++++++++
+ 6 files changed, 410 insertions(+)
+---
+base-commit: aa5804b8fb64f446260cee45e7e8a722ac7ca839
+change-id: 20260120-atciic100-da3ec68f7bb4
+
+Best regards,
+--  
+Ben Zong-You Xie <ben717@andestech.com>
 
