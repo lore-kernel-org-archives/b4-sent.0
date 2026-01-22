@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Thu, 22 Jan 2026 22:46:51 +0530
-Subject: [PATCH v6 1/4] dt-bindings: connector: Add PCIe M.2 Mechanical Key
- M connector
+Date: Thu, 22 Jan 2026 22:46:52 +0530
+Subject: [PATCH v6 2/4] PCI/pwrctrl: Add support for handling PCIe M.2
+ connectors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260122-pci-m2-v6-1-575da9f97239@oss.qualcomm.com>
+Message-Id: <20260122-pci-m2-v6-2-575da9f97239@oss.qualcomm.com>
 References: <20260122-pci-m2-v6-0-575da9f97239@oss.qualcomm.com>
 In-Reply-To: <20260122-pci-m2-v6-0-575da9f97239@oss.qualcomm.com>
 To: Bjorn Helgaas <bhelgaas@google.com>, 
@@ -21,193 +21,137 @@ Cc: linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org,
  Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
  linux-pm@vger.kernel.org, linux-ide@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- Frank Li <Frank.Li@nxp.com>
+ Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5981;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3872;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=kpDdQgiW3zswqxs3HBiLd11K+duGGVHLZBnR2sgvg4I=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpcluHFv81maaRQnWKN5jnqTM+aEhIRpasPzYoe
- N/8l6ySdaWJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaXJbhwAKCRBVnxHm/pHO
- 9QBaB/4vyYmLJLbY/toA0NYxwsJM6VJKfTC6Uxoz5gt4KRN2Ggi6jHKV+gPlLpYtfxdJD5z38fN
- e8/oL7ojgq/Wu2G9EBii9wCDAG4lImLajRsCIMzyz0cSfYy5+aLC9+15EB0ypx2l2XU+CanTptN
- iA0eNEfwQFEXQLs8Qfz5OKrWijLLc63mIpWPhMEoPMVF2Kpsjg2oxNJsWMiQDyo3QjVQAoHOPM/
- m7Yldpa7KVRfJgcwfhQPHKJ4MlFypZP/Zq/PX9UlQkLijUmojenOWbBy4WZs08wfUXmSNezHQ5w
- p8mmCdpUazKBAEYo2yvOiG94qu5ALrpacM9sS8cj4slILCws
+ bh=ZDVloXuAnO5BeZ3Skc5JZ2mUrMigYYbAnv9HygHmgvQ=;
+ b=owGbwMvMwMUYOl/w2b+J574ynlZLYsgsim7PCz6YI33g9rXvN9hzzsdcXsjbIKPvGipr/OnRa
+ mGH2QyqnYzGLAyMXAyyYoos6UudtRo9Tt9YEqE+HWYQKxPIFAYuTgGYSEcS+19Zi/uH/zz3WvIv
+ 0uavk1t5WcYmp5P6983ca1RWm+sf/KdYYOmoG+q6+dP2InHVmOup9ha2Pe9nzon26mjZMLfJQOW
+ mK/9+xor3TzaEGFp7b5h38vKJ4MYJzUZZHp6OqZHVSyqkl7hs1LVKu1fEo6nAtPNxd1dc5/GzB2
+ 5+m/Rmes3nfcffPTtcNctIk9Wi6qp/sV3KhAA/K9/wLL8VOyPu82V37jRfbeE/xcEzr+pp+a3Az
+ xKt4nHT5OwtS/z/1alsOnfse/eBD9XLVjnMLGyRnil0/f21qct9NntG6xoYt5a5SNh5vTk4/+7D
+ FVwOG5RKPv/qUjcT/yUg8VYhKnpR4W1fXpHgCzqCUpNUAQ==
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the devicetree binding for PCIe M.2 Mechanical Key M connector defined
-in the PCI Express M.2 Specification, r4.0, sec 5.3. This connector
-provides interfaces like PCIe and SATA to attach the Solid State Drives
-(SSDs) to the host machine along with additional interfaces like USB, and
-SMBus for debugging and supplementary features.
+Add support for handling the PCIe M.2 connectors as Power Sequencing
+devices. These connectors are exposed as the Power Sequencing devices
+as they often support multiple interfaces like PCIe/SATA, USB/UART to the
+host machine and each interfaces could be driven by different client
+drivers at the same time.
 
-The connector provides a primary power supply of 3.3v, along with an
-optional 1.8v VIO supply for the Adapter I/O buffer circuitry operating at
-1.8v sideband signaling.
+This driver handles the PCIe interface of these connectors. It first checks
+for the presence of the graph port in the Root Port node with the help of
+of_graph_is_present() API, if present, it acquires/poweres ON the
+corresponding pwrseq device.
 
-The connector also supplies optional signals in the form of GPIOs for fine
-grained power management.
+Once the pwrseq device is powered ON, the driver will skip parsing the Root
+Port/Slot resources and registers with the pwrctrl framework.
 
-Reviewed-by: Frank Li <Frank.Li@nxp.com>
+Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- .../bindings/connector/pcie-m2-m-connector.yaml    | 145 +++++++++++++++++++++
- 1 file changed, 145 insertions(+)
+ drivers/pci/pwrctrl/Kconfig |  1 +
+ drivers/pci/pwrctrl/slot.c  | 35 ++++++++++++++++++++++++++++++-----
+ 2 files changed, 31 insertions(+), 5 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/connector/pcie-m2-m-connector.yaml b/Documentation/devicetree/bindings/connector/pcie-m2-m-connector.yaml
-new file mode 100644
-index 000000000000..36a99a3b39d7
---- /dev/null
-+++ b/Documentation/devicetree/bindings/connector/pcie-m2-m-connector.yaml
-@@ -0,0 +1,145 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/connector/pcie-m2-m-connector.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
+diff --git a/drivers/pci/pwrctrl/Kconfig b/drivers/pci/pwrctrl/Kconfig
+index e0f999f299bb..cd3aa15bad00 100644
+--- a/drivers/pci/pwrctrl/Kconfig
++++ b/drivers/pci/pwrctrl/Kconfig
+@@ -13,6 +13,7 @@ config PCI_PWRCTRL_PWRSEQ
+ 
+ config PCI_PWRCTRL_SLOT
+ 	tristate "PCI Power Control driver for PCI slots"
++	select POWER_SEQUENCING
+ 	select PCI_PWRCTRL
+ 	help
+ 	  Say Y here to enable the PCI Power Control driver to control the power
+diff --git a/drivers/pci/pwrctrl/slot.c b/drivers/pci/pwrctrl/slot.c
+index 3320494b62d8..d46c2365208a 100644
+--- a/drivers/pci/pwrctrl/slot.c
++++ b/drivers/pci/pwrctrl/slot.c
+@@ -8,8 +8,10 @@
+ #include <linux/device.h>
+ #include <linux/mod_devicetable.h>
+ #include <linux/module.h>
++#include <linux/of_graph.h>
+ #include <linux/pci-pwrctrl.h>
+ #include <linux/platform_device.h>
++#include <linux/pwrseq/consumer.h>
+ #include <linux/regulator/consumer.h>
+ #include <linux/slab.h>
+ 
+@@ -17,12 +19,18 @@ struct pci_pwrctrl_slot_data {
+ 	struct pci_pwrctrl ctx;
+ 	struct regulator_bulk_data *supplies;
+ 	int num_supplies;
++	struct pwrseq_desc *pwrseq;
+ };
+ 
+ static void devm_pci_pwrctrl_slot_power_off(void *data)
+ {
+ 	struct pci_pwrctrl_slot_data *slot = data;
+ 
++	if (slot->pwrseq) {
++		pwrseq_power_off(slot->pwrseq);
++		return;
++	}
 +
-+title: PCIe M.2 Mechanical Key M Connector
+ 	regulator_bulk_disable(slot->num_supplies, slot->supplies);
+ 	regulator_bulk_free(slot->num_supplies, slot->supplies);
+ }
+@@ -38,6 +46,20 @@ static int pci_pwrctrl_slot_probe(struct platform_device *pdev)
+ 	if (!slot)
+ 		return -ENOMEM;
+ 
++	if (of_graph_is_present(dev_of_node(dev))) {
++		slot->pwrseq = devm_pwrseq_get(dev, "pcie");
++		if (IS_ERR(slot->pwrseq))
++			return dev_err_probe(dev, PTR_ERR(slot->pwrseq),
++				     "Failed to get the power sequencer\n");
 +
-+maintainers:
-+  - Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
++		ret = pwrseq_power_on(slot->pwrseq);
++		if (ret)
++			return dev_err_probe(dev, ret,
++				     "Failed to power-on the device\n");
 +
-+description:
-+  A PCIe M.2 M connector node represents a physical PCIe M.2 Mechanical Key M
-+  connector. The Mechanical Key M connectors are used to connect SSDs to the
-+  host system over PCIe/SATA interfaces. These connectors also offer optional
-+  interfaces like USB, SMBus.
++		goto skip_resources;
++	}
 +
-+properties:
-+  compatible:
-+    const: pcie-m2-m-connector
+ 	ret = of_regulator_bulk_get_all(dev, dev_of_node(dev),
+ 					&slot->supplies);
+ 	if (ret < 0) {
+@@ -53,17 +75,20 @@ static int pci_pwrctrl_slot_probe(struct platform_device *pdev)
+ 		return ret;
+ 	}
+ 
+-	ret = devm_add_action_or_reset(dev, devm_pci_pwrctrl_slot_power_off,
+-				       slot);
+-	if (ret)
+-		return ret;
+-
+ 	clk = devm_clk_get_optional_enabled(dev, NULL);
+ 	if (IS_ERR(clk)) {
++		regulator_bulk_disable(slot->num_supplies, slot->supplies);
++		regulator_bulk_free(slot->num_supplies, slot->supplies);
+ 		return dev_err_probe(dev, PTR_ERR(clk),
+ 				     "Failed to enable slot clock\n");
+ 	}
+ 
++skip_resources:
++	ret = devm_add_action_or_reset(dev, devm_pci_pwrctrl_slot_power_off,
++				       slot);
++	if (ret)
++		return ret;
 +
-+  vpcie3v3-supply:
-+    description: A phandle to the regulator for 3.3v supply.
-+
-+  vpcie1v8-supply:
-+    description: A phandle to the regulator for VIO 1.8v supply.
-+
-+  ports:
-+    $ref: /schemas/graph.yaml#/properties/ports
-+    description: OF graph bindings modeling the interfaces exposed on the
-+      connector. Since a single connector can have multiple interfaces, every
-+      interface has an assigned OF graph port number as described below.
-+
-+    properties:
-+      port@0:
-+        $ref: /schemas/graph.yaml#/properties/port
-+        description: PCIe interface
-+
-+      port@1:
-+        $ref: /schemas/graph.yaml#/properties/port
-+        description: SATA interface
-+
-+      port@2:
-+        $ref: /schemas/graph.yaml#/properties/port
-+        description: USB 2.0 interface
-+
-+    anyOf:
-+      - required:
-+          - port@0
-+      - required:
-+          - port@1
-+
-+  i2c-parent:
-+    $ref: /schemas/types.yaml#/definitions/phandle
-+    description: I2C interface
-+
-+  clocks:
-+    description: 32.768 KHz Suspend Clock (SUSCLK) input from the host system to
-+      the M.2 card. Refer, PCI Express M.2 Specification r4.0, sec 3.1.12.1 for
-+      more details.
-+    maxItems: 1
-+
-+  pedet-gpios:
-+    description: GPIO input to PEDET signal. This signal is used by the host
-+      systems to determine the communication protocol that the M.2 card uses;
-+      SATA signaling (low) or PCIe signaling (high). Refer, PCI Express M.2
-+      Specification r4.0, sec 3.3.4.2 for more details.
-+    maxItems: 1
-+
-+  viocfg-gpios:
-+    description: GPIO input to IO voltage configuration (VIO_CFG) signal. This
-+      signal is used by the host systems to determine whether the card supports
-+      an independent IO voltage domain for the sideband signals or not. Refer,
-+      PCI Express M.2 Specification r4.0, sec 3.1.15.1 for more details.
-+    maxItems: 1
-+
-+  pwrdis-gpios:
-+    description: GPIO output to Power Disable (PWRDIS) signal. This signal is
-+      used by the host system to disable power on the M.2 card. Refer, PCI
-+      Express M.2 Specification r4.0, sec 3.3.5.2 for more details.
-+    maxItems: 1
-+
-+  pln-gpios:
-+    description: GPIO output to Power Loss Notification (PLN#) signal. This
-+      signal is used by the host system to notify the M.2 card that the power
-+      loss event is about to occur. Refer, PCI Express M.2 Specification r4.0,
-+      sec 3.2.17.1 for more details.
-+    maxItems: 1
-+
-+  plas3-gpios:
-+    description: GPIO input to Power Loss Acknowledge (PLA_S3#) signal. This
-+      signal is used by the host system to receive the acknowledgment of the M.2
-+      card's preparation for power loss.
-+    maxItems: 1
-+
-+required:
-+  - compatible
-+  - vpcie3v3-supply
-+
-+additionalProperties: false
-+
-+examples:
-+  # PCI M.2 Key M connector for SSDs with PCIe interface
-+  - |
-+    #include <dt-bindings/gpio/gpio.h>
-+
-+    connector {
-+        compatible = "pcie-m2-m-connector";
-+        vpcie3v3-supply = <&vreg_nvme>;
-+        i2c-parent = <&i2c0>;
-+        pedet-gpios = <&tlmm 95 GPIO_ACTIVE_HIGH>;
-+        viocfg-gpios = <&tlmm 96 GPIO_ACTIVE_HIGH>;
-+        pwrdis-gpios = <&tlmm 97 GPIO_ACTIVE_HIGH>;
-+        pln-gpios = <&tlmm 98 GPIO_ACTIVE_LOW>;
-+        plas3-gpios = <&tlmm 99 GPIO_ACTIVE_LOW>;
-+
-+        ports {
-+            #address-cells = <1>;
-+            #size-cells = <0>;
-+
-+            port@0 {
-+                #address-cells = <1>;
-+                #size-cells = <0>;
-+
-+                reg = <0>;
-+
-+                endpoint@0 {
-+                    reg = <0>;
-+                    remote-endpoint = <&pcie6_port0_ep>;
-+                };
-+            };
-+
-+            port@2 {
-+                #address-cells = <1>;
-+                #size-cells = <0>;
-+
-+                reg = <2>;
-+
-+                endpoint@0 {
-+                    reg = <0>;
-+                    remote-endpoint = <&usb_hs_ep>;
-+                };
-+            };
-+        };
-+    };
+ 	pci_pwrctrl_init(&slot->ctx, dev);
+ 
+ 	ret = devm_pci_pwrctrl_device_set_ready(dev, &slot->ctx);
 
 -- 
 2.51.0
