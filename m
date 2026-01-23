@@ -1,95 +1,107 @@
-From: SeungJong Ha <engineer.jjhama@gmail.com>
-Date: Fri, 23 Jan 2026 10:02:45 +0000
-Subject: [PATCH] scripts: generate_rust_analyzer.py: better pin-init macro
- resolvea
+From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
+Subject: [PATCH v3 0/4] Support multi-channel IRQs in stmmac platform
+ drivers
+Date: Fri, 23 Jan 2026 11:09:53 +0100
+Message-Id: <20260123-dwmac_multi_irq-v3-0-cc53f2be8961@oss.nxp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260123-fix-pin-init-crate-dependecies-v1-1-1c6cfe9aa352@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAERHc2kC/x2NwQqDMBAFf0X23AWNobX9leIhJk+7lzUkIgXx3
- 108zmFmDqoogkqf5qCCXaqsatA9Goq/oAtYkjG51j3bzvU8y5+zKIvKxrGEDZyQoQnROjy9fYj
- e+VfwA1kkF5hxD77jeV7cntPXcAAAAA==
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- SeungJong Ha <engineer.jjhama@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769162566; l=2124;
- i=engineer.jjhama@gmail.com; s=20260103; h=from:subject:message-id;
- bh=+X4zr6kdvi4oIiyjF3Tjs9UDmHAGo3XY3Bau+3noR/I=;
- b=GX3iubRy+ziATd5+KV++EBfG7k5Ul6g+5g1l6RGuEC9nGzyl5lnygPdW0xNDubSJ7a6FoFZAp
- aZePNC4VEywAR+xFXl07BPf/t+M1qYQKKTgSkM+jxcBOzUqVKEb7yqt
-X-Developer-Key: i=engineer.jjhama@gmail.com; a=ed25519;
- pk=G5nmjm+RTiWBpyCvc5xjR1b3li/2zipLSMyz+T4fj5E=
-X-Endpoint-Received: by B4 Relay for engineer.jjhama@gmail.com/20260103 with auth_id=590
+X-B4-Tracking: v=1; b=H4sIAPFIc2kC/2XNQQ6CMBCF4auYri1pByjgynsYQ6AtMolQbLFiC
+ He3EF0Ylv9L5puZOG1RO3I6zMRqjw5NHyI+Hohsq/6mKarQBBikHFhB1aurZNk97yOWaB+0UHk
+ jWCJASk7C1WB1g9MmXq6hW3Sjse/tgefr+rV4srM8p4zGIhVQ1UwXTXY2zkX9NETSdGTVPPwEw
+ QKxF2AV6hwKiJliGf8XlmX5ABHPkCHyAAAA
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>, 
+ Chester Lin <chester62515@gmail.com>, Matthias Brugger <mbrugger@suse.com>, 
+ Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>, 
+ NXP S32 Linux Team <s32@nxp.com>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ imx@lists.linux.dev, devicetree@vger.kernel.org, 
+ "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769163006; l=2640;
+ i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
+ bh=4V6Haqfpl1oHjKfTmAHLAt2Iakjd6EWBWDDq/P32s3s=;
+ b=6GtSPTu1ZoE6qF1cAZ/hQcbcMRfciS5B9dcTQYRQTPfgayoFyXPE1LOdUxezBswWMhuo+Q4q9
+ Z3y4v4510vLA9+LLm1llVzGT9381vjVMBUhLcQmEfvFcjnNGEkR6Vjk
+X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
+ pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
+X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Signed-off-by: SeungJong Ha <engineer.jjhama@gmail.com>
+The stmmac core supports two interrupt modes, controlled by the
+flag STMMAC_FLAG_MULTI_MSI_EN:
+
+- When the flag is set, the driver uses multi-channel IRQ mode (Multi-IRQ).
+- Otherwise, a single IRQ line is requested (aka MAC-IRQ):
+
+static int stmmac_request_irq(struct net_device *dev)
+{
+        /* Request the IRQ lines */
+        if (priv->plat->flags & STMMAC_FLAG_MULTI_MSI_EN)
+                ret = stmmac_request_irq_multi_msi(dev);
+        else
+                ret = stmmac_request_irq_single(dev);
+}
+
+At present, only PCI drivers (Intel and Loongson) make use of the Multi-IRQ
+mode. This concept can be extended to DT-based embedded glue drivers
+(dwmac-xxx.c).
+
+This series adds support for reading per-channel IRQs from the DT node and
+reuses the existing STMMAC_FLAG_MULTI_MSI_EN flag to enable multi-IRQ
+operation in platform drivers.
+
+The final decision if Multi-IRQ gets enabled remains on glue driver
+to allow implementing any reguirements/limitions the focused platform
+needs.
+
+NXP S32G2/S32G3/S32R SoCs integrate the DWMAC IP with multi-channel
+interrupt support. The dwmac-s32.c driver change is provided as an example of
+enabling multi-IRQ mode for non-PCI drivers.
+
+Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
-scripts: generate_rust_analyzer.py: Fix pin-init configuration for
-better macro resolve
+Changes in v3:
+- removed RFC prefix
+- rebased on v6.19-rc6
+- fixed forgotten extra line setting to Multi-IRQ unconditionally
+- fixed yaml
+- Link to v2: https://lore.kernel.org/r/20260121-dwmac_multi_irq-v2-0-3b829230d071@oss.nxp.com
 
-Hello,
-
-I encountered an issue where rust-analyzer fails to analyze
-structs decorated with the #[pin_data] attribute while testing
-Rust kernel modules.
-
-It appears that the dependencies for pin-init and drivers were
-missing from the analyzer's configuration. This patch adds
-those missing dependencies.
-
-I have verified that my rust-analyzer correctly processes
-\#[pin_data] structs after applying this fix.
-
-Best regards, SeungJong
----
- scripts/generate_rust_analyzer.py | 12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
-
-diff --git a/scripts/generate_rust_analyzer.py b/scripts/generate_rust_analyzer.py
-index 147d0cc94068..0c6c0444917f 100755
---- a/scripts/generate_rust_analyzer.py
-+++ b/scripts/generate_rust_analyzer.py
-@@ -123,10 +123,18 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs, core_edit
-     append_crate(
-         "pin_init_internal",
-         srctree / "rust" / "pin-init" / "internal" / "src" / "lib.rs",
--        [],
-+        ["std", "proc_macro"],
-         cfg=["kernel"],
-         is_proc_macro=True,
-     )
-+    # pin_init_internal uses #[path = "../../../macros/quote.rs"] to include quote.rs
-+    crates[-1]["source"] = {
-+        "include_dirs": [
-+            str(srctree / "rust" / "pin-init" / "internal" / "src"),
-+            str(srctree / "rust" / "macros"),
-+        ],
-+        "exclude_dirs": [],
-+    }
- 
-     append_crate(
-         "pin_init",
-@@ -190,7 +198,7 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs, core_edit
-             append_crate(
-                 name,
-                 path,
--                ["core", "kernel"],
-+                ["core", "kernel", "pin_init"],
-                 cfg=cfg,
-             )
- 
+Changes in v2:
+- Fixed incorrect buffer len for 'rx-queue-%d' property check
+- Added backward compatibility to not break old settings
+- Fixed DT example in yaml
+- Link to v1: https://lore.kernel.org/r/20251214-dwmac_multi_irq-v1-0-36562ab0e9f7@oss.nxp.com
 
 ---
-base-commit: 2ad6c5cdc89acfefb01b84afa5e55262c40d6fec
-change-id: 20260123-fix-pin-init-crate-dependecies-b94ac4247a48
+Jan Petrous (OSS) (4):
+      net: stmmac: platform: read channels irq
+      dt-bindings: net: nxp,s32-dwmac: Declare per-queue interrupts
+      arm64: dts: s32: set Ethernet channel irqs
+      stmmac: s32: enable support for Multi-IRQ mode
+
+ .../devicetree/bindings/net/nxp,s32-dwmac.yaml     | 42 +++++++++++++++++++---
+ arch/arm64/boot/dts/freescale/s32g2.dtsi           | 26 ++++++++++++--
+ arch/arm64/boot/dts/freescale/s32g3.dtsi           | 26 ++++++++++++--
+ drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c    | 12 ++++++-
+ .../net/ethernet/stmicro/stmmac/stmmac_platform.c  | 38 +++++++++++++++++++-
+ 5 files changed, 131 insertions(+), 13 deletions(-)
+---
+base-commit: 24d479d26b25bce5faea3ddd9fa8f3a6c3129ea7
+change-id: 20251209-dwmac_multi_irq-9d8f60462cc1
 
 Best regards,
 -- 
-SeungJong Ha <engineer.jjhama@gmail.com>
+Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 
