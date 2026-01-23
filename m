@@ -1,85 +1,119 @@
-From: SeungJong Ha <engineer.jjhama@gmail.com>
-Date: Fri, 23 Jan 2026 13:18:44 +0000
-Subject: [PATCH v2] scripts: generate_rust_analyzer: fix resolution of
- #[pin_data] macros
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH v5 0/8] ADF41513/ADF41510 PLL frequency synthesizers
+Date: Fri, 23 Jan 2026 15:53:05 +0000
+Message-Id: <20260123-adf41513-iio-driver-v5-0-2dce812a2dda@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260123-fix-pin-init-crate-dependecies-v2-1-bb1c2500e54c@gmail.com>
-X-B4-Tracking: v=1; b=H4sIADN1c2kC/42NQQ6CQAxFr0K6tgaGEcWV9zAsainQRAYyQ4iGc
- HerJzB/9X7y398gSVRJcM02iLJq0ikYuEMGPFDoBbU1Bpe7Ki9ciZ2+cNaAGnRBjrQItjJLaIX
- Ng4/aE3vnz+QvYJI5ii1+B/fGeNC0TPH9+1uLb/u3ei3QwhV3UhOVJ3frR9LnkacRmn3fP64d9
- FjMAAAA
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jesung Yang <y.j3ms.n@gmail.com>, SeungJong Ha <engineer.jjhama@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769174341; l=1902;
- i=engineer.jjhama@gmail.com; s=20260103; h=from:subject:message-id;
- bh=c7P9j4yaUBkVPSuFKvUbKfXZDCnr6ZWiWGUJURpt+5A=;
- b=iooMwfpk6BvhAz77cbYZxulg/1QPZPrvPxRDPgdolo3ZaYnWEN4irWRH6N1xKv7nanDuDhphy
- tXEShaG5pkKBI5EIeAfT99Gw3MpmP29W8ArojELHDr9ZRgUBjQO6CmD
-X-Developer-Key: i=engineer.jjhama@gmail.com; a=ed25519;
- pk=G5nmjm+RTiWBpyCvc5xjR1b3li/2zipLSMyz+T4fj5E=
-X-Endpoint-Received: by B4 Relay for engineer.jjhama@gmail.com/20260103 with auth_id=590
+X-B4-Tracking: v=1; b=H4sIAGKZc2kC/33OwWrDMAyA4VcpPs/DkpPY2anvUXZQYrkVbPFwi
+ ukoefc5hbGWhh1/gT7pqmbOwrN6211V5iKzpKlG+7JT44mmI2sJtRUabAHAaAqxgRasFkk6ZCm
+ cNdFInlz0xrOqm1+Zo1xu6uG99knmc8rftyMF1un/XgFtNIboBzYxjB3vaaKPdHwd06dawYJ/C
+ EK/jWBFBsaevA2t6+0TYn+RzoDx24hdP7EBrAPi2PgnpLlDoNtGmoqEYXChcx4R3AOyLMsPOh5
+ c0oYBAAA=
+X-Change-ID: 20251110-adf41513-iio-driver-aaca8a7f808e
+To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-doc@vger.kernel.org
+Cc: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769183636; l=3878;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=UHlRZ5DldTHyADoNZZ73Un9907UYWbQli9Ti3A0SiBs=;
+ b=4MBhws7Y5/hMcdecd0oCGQp6xEEQkxeLLV5cYql/wU0Qs2Ojz2GKEEUEr/MFraQuYGjvG3lzb
+ XdzCJlk5qceBY7zEdFtqsxUepC1jUtzUocmfbMXgY+C5nGuipnz3c1V
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently, rust-analyzer fails to properly resolve structs annotated with
-`#[pin_data]`. This prevents IDE features like "Go to Definition" from
-working correctly for those structs.
+This patch series adds support for the Analog Devices ADF41513 and ADF41510
+ultralow noise PLL frequency synthesizers. These devices are designed for
+implementing local oscillators (LOs) in high-frequency applications.
+The ADF41513 covers frequencies from 1 GHz to 26.5 GHz, while the ADF41510
+operates from 1 GHz to 10 GHz.
 
-Add the missing configuration to `generate_rust_analyzer.py` to ensure
-the `pin-init` crate macros are handled correctly.
+Key features supported by this driver:
+- Integer-N and fractional-N operation modes
+- High maximum PFD frequency (250 MHz integer-N, 125 MHz fractional-N)
+- 25-bit fixed modulus or 49-bit variable modulus fractional modes
+- Digital lock detect functionality
+- Phase resync capability for consistent output phase
+- Load Enable vs Reference signal syncronization
 
-Signed-off-by: SeungJong Ha <engineer.jjhama@gmail.com>
+The series includes:
+1. PLL driver implementation
+2. Device tree bindings documentation
+3. IIO ABI documentation
+
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
-I encountered an issue where rust-analyzer fails to analyze
-structs decorated with the #[pin_data] attribute while testing
-Rust kernel modules.
+Changes in v5:
+- Drop local parsing of 64-bit plus fractional parts
+- Add iio_str_to_fixpoint64() to iio core with parsing tests
+- Add DT property dependency for adi,charge-pump-resistor-ohms
+- Add local definition for ADF41513_HZ_PER_GHZ and drop units.h patch
+- Link to v4: https://lore.kernel.org/r/20260116-adf41513-iio-driver-v4-0-dbb7d6782217@analog.com
 
-It appears that the dependencies for pin-init and drivers were
-missing from the analyzer's configuration. This patch adds
-those missing dependencies.
+Changes in v4:
+- Proper usage of units.h macros
+- Simplifications to DT property parsing
+- Adjustments to return value handling
+- Drop of simple DT property node example
+- Link to v3: https://lore.kernel.org/r/20260108-adf41513-iio-driver-v3-0-23d1371aef48@analog.com
 
-I have verified that my rust-analyzer correctly processes
-\#[pin_data] structs after applying this fix.
+Changes in v3:
+- Use FIELD_MODIFY macro in driver implementation
+- Drop refin_frequency iio attribute
+- Drop muxout-select property from dt-bindings (and rename logic-level property)
+- Use -mhz suffix in power-up frequency property
+- Address documentation issues
+- Link to v2: https://lore.kernel.org/r/20251219-adf41513-iio-driver-v2-0-be29a83d5793@analog.com
 
-Best regards, SeungJong
----
 Changes in v2:
-- Fix typos
-- Drop the quote module workaround (will be handled separately)
-- Rebase onto `rust-fixes`
-- Add `pin_init` dependency for Rust drivers
-- Link to v1: https://lore.kernel.org/r/20260123-fix-pin-init-crate-dependecies-v1-1-1c6cfe9aa352@gmail.com
----
- scripts/generate_rust_analyzer.py | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/scripts/generate_rust_analyzer.py b/scripts/generate_rust_analyzer.py
-index 3b645da90092..766c2d91cd81 100755
---- a/scripts/generate_rust_analyzer.py
-+++ b/scripts/generate_rust_analyzer.py
-@@ -214,7 +214,7 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs, core_edit
-             append_crate(
-                 name,
-                 path,
--                ["core", "kernel"],
-+                ["core", "kernel", "pin_init"],
-                 cfg=cfg,
-             )
- 
+- separate driver implementation from extra features and improve commit messages
+- use macros from units.h
+- explanation of custom parse function: adf41513_parse_uhz
+- reorganize driver data structures
+- drop clock framework support for now
+- reorganize documentation
+- Link to v1: https://lore.kernel.org/r/20251110-adf41513-iio-driver-v1-0-2df8be0fdc6e@analog.com
 
 ---
-base-commit: 6d7fef23043553336259211346b6b135d6c1f4c3
-change-id: 20260123-fix-pin-init-crate-dependecies-b94ac4247a48
+Rodrigo Alencar (8):
+      dt-bindings: iio: frequency: add adf41513
+      iio: core: add fixed point parsing with 64-bit parts
+      iio: test: add kunit test for fixed-point parsing
+      iio: frequency: adf41513: driver implementation
+      iio: frequency: adf41513: handle LE synchronization feature
+      iio: frequency: adf41513: features on frequency change
+      docs: iio: add documentation for adf41513 driver
+      Documentation: ABI: testing: add common ABI file for iio/frequency
+
+ Documentation/ABI/testing/sysfs-bus-iio-frequency  |   11 +
+ .../bindings/iio/frequency/adi,adf41513.yaml       |  215 ++++
+ Documentation/iio/adf41513.rst                     |  199 ++++
+ Documentation/iio/index.rst                        |    1 +
+ MAINTAINERS                                        |   11 +
+ drivers/iio/frequency/Kconfig                      |   10 +
+ drivers/iio/frequency/Makefile                     |    1 +
+ drivers/iio/frequency/adf41513.c                   | 1244 ++++++++++++++++++++
+ drivers/iio/industrialio-core.c                    |  151 ++-
+ drivers/iio/test/Kconfig                           |   12 +
+ drivers/iio/test/Makefile                          |    1 +
+ drivers/iio/test/iio-test-fixpoint-parse.c         |  437 +++++++
+ include/linux/iio/iio.h                            |    2 +
+ 13 files changed, 2245 insertions(+), 50 deletions(-)
+---
+base-commit: c30e80d68a7afb334fde7147ee0106f25dd58d3a
+change-id: 20251110-adf41513-iio-driver-aaca8a7f808e
 
 Best regards,
 -- 
-SeungJong Ha <engineer.jjhama@gmail.com>
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
