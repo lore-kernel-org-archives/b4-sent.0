@@ -1,162 +1,120 @@
-From: David Phillips <david@profile.sh>
-Date: Fri, 23 Jan 2026 12:56:09 +0900
-Subject: [PATCH] HID: elecom: Add support for ELECOM HUGE Plus M-HT1MRBK
+From: Chuan Liu <chuan.liu@amlogic.com>
+Subject: [PATCH v6 0/5] clk: amlogic: Add A5 SoC PLLs and Peripheral clock
+Date: Fri, 23 Jan 2026 13:54:54 +0800
+Message-Id: <20260123-a5-clk-v6-0-6d3bbf0ec1ea@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260123-hid-elecom-huge-plus-fix-v1-1-4bed5e52fb3d@profile.sh>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MSwqAMAwFryJZG2jrB/Qq4kLa1AZqlRZFEO9uc
- DlvePNAocxUYKweyHRx4T0J6LoCG5a0ErITBqNMr7RpMLBDimT3DcMp+ohnQc83dm1nvTKDd3o
- BuR+ZZP7T0/y+H604klpqAAAA
-X-Change-ID: 20260123-hid-elecom-huge-plus-fix-545cf029fd1a
-To: Jiri Kosina <jikos@kernel.org>, Benjamin Tissoires <bentiss@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- David Phillips <david@profile.sh>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6118; i=david@profile.sh;
- h=from:subject:message-id; bh=u0LNPm/gfNEblXkqyIokQjDtFoH3XWO7jiKviM9ZIOE=;
- b=owGbwMvMwCV2ny1Y7qdgpz7jabUkhsyij1v0BScuEA39InZk8k6vltkbU1WMXnd2h71N+6FSt
- UTapbipo5SFQYyLQVZMkWWjjufqqwnXdLQrr/2CmcPKBDKEgYtTACay6Qgjw++V5xYEr1ENvDBn
- 4Vpn3z1e7H5zjzLGWBzkXnO+9uO6w80M/8OP9lScPh9xxnrv3On5UkUnstYEuU/vv832ZenK1Jn
- 79DgA
-X-Developer-Key: i=david@profile.sh; a=openpgp;
- fpr=B12C49ABD560D62C2B79D6FADF06531EF911892F
-X-Endpoint-Received: by B4 Relay for david@profile.sh/default with auth_id=614
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAC4Nc2kC/2XM3QrCMAyG4VuRHltJsrasHnkf4kHMsln8mWwyF
+ Nm9W4VNxMMv5HmfptcuaW/Wi6fpdEh9ai95hOXCyIEvjdpU5W0IyEFEtOytnI628OIiy75wiiY
+ /Xzut0/0T2u7yPqT+1naPT3fA93VKuCkxoAXrVUlcjXsoZcPnU9skWUl7Nu/IQDNEJJghZZh3G
+ Qg1Bqz+oZugR6Byhi5DDSQMzEqu+Id+ggEQvtBnGDnEWlBrAP6F4zi+AMeM3k1JAQAA
+To: Chuan Liu <chuan.liu@amlogic.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jerome Brunet <jbrunet@baylibre.com>, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-amlogic@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org
+X-Mailer: b4 0.14.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769147703; l=3892;
+ i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
+ bh=zHQ4wCU8bGYwasn2b503Clo2bqnsQewMVrK57mvYXGM=;
+ b=rLw2OixInyvP6GpRqMjLEO0pWPScYdXXlias5U6jFnZ0M8x6/3iQvZ6SGzvJJKfZeloPaBhtB
+ UYtpJtH9qK7D4DyOypRNPByMZoAmm6ithjyi14DvXVS9RqRLfCY5Zse
+X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
+ pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
+X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-New model in the ELECOM HUGE trackball line that has 8 buttons but the
-report descriptor specifies only 5. The HUGE Plus supports connecting via
-Bluetooth, 2.4GHz wireless USB dongle, and directly via a USB-C cable.
-Each connection type reports a different device id, 01AA for cable,
-01AB for USB dongle, and 01AC for Bluetooth.
+The patchset adds support for the peripheral and PLL clock controller
+on the Amlogic A5 SoC family, such as A113X2.
 
-This patch adds these device IDs and applies the fixups similar to the
-other ELECOM devices to get all 8 buttons working for all 3 connection
-types.
+To make it easier for the maintainer to manage the patches, the
+DTS-related commits have been removed from this version of the
+patchset.
 
-For reference, the usbhid-dump output:
-001:013:001:DESCRIPTOR         1769085639.598405
- 05 01 09 02 A1 01 85 01 09 01 A1 00 05 09 19 01
- 29 05 15 00 25 01 75 01 95 05 81 02 75 03 95 01
- 81 01 05 01 09 30 09 31 16 01 80 26 FF 7F 75 10
- 95 02 81 06 09 38 15 81 25 7F 75 08 95 01 81 06
- 05 0C 0A 38 02 15 81 25 7F 75 08 95 01 81 06 C0
- C0 05 0C 09 01 A1 01 85 02 15 01 26 8C 02 19 01
- 2A 8C 02 75 10 95 01 81 00 C0 05 01 09 80 A1 01
- 85 03 09 82 09 81 09 83 15 00 25 01 19 01 29 03
- 75 01 95 03 81 02 95 05 81 01 C0 06 01 FF 09 00
- A1 01 85 08 09 00 15 00 26 FF 00 75 08 95 07 81
- 02 C0 06 02 FF 09 02 A1 01 85 06 09 02 15 00 26
- FF 00 75 08 95 07 B1 02 C0
+For the convenience of the maintainer and reviewers, the DTS patches
+have been pushed to github separately for reference [1], [2], [3], and
+they will be submitted upstream separately after this patchset is
+merged. I hope this does not cause any additional inconvenience.
 
-Signed-off-by: David Phillips <david@profile.sh>
----
- drivers/hid/Kconfig      |  1 +
- drivers/hid/hid-elecom.c | 16 ++++++++++++++++
- drivers/hid/hid-ids.h    |  3 +++
- drivers/hid/hid-quirks.c |  3 +++
- 4 files changed, 23 insertions(+)
+[1] https://github.com/chuan-aml/linux/commit/edb8fa5e13ca35b37363fe08d8067511613968cd
+[2] https://github.com/chuan-aml/linux/commit/c600dadb45f581e200991dd0beacf3575ff971f1
+[3] https://github.com/chuan-aml/linux/commit/7d373cf78e22ee767a5232010d0a0568e7228086
 
-diff --git a/drivers/hid/Kconfig b/drivers/hid/Kconfig
-index 920a64b66b25..6ff4a3ad34cb 100644
---- a/drivers/hid/Kconfig
-+++ b/drivers/hid/Kconfig
-@@ -369,6 +369,7 @@ config HID_ELECOM
- 	  - EX-G Trackballs (M-XT3DRBK, M-XT3URBK)
- 	  - DEFT Trackballs (M-DT1DRBK, M-DT1URBK, M-DT2DRBK, M-DT2URBK)
- 	  - HUGE Trackballs (M-HT1DRBK, M-HT1URBK)
-+	  - HUGE Plus Trackball (M-HT1MRBK)
- 
- config HID_ELO
- 	tristate "ELO USB 4000/4500 touchscreen"
-diff --git a/drivers/hid/hid-elecom.c b/drivers/hid/hid-elecom.c
-index 2003d2dcda7c..37d88ce57f67 100644
---- a/drivers/hid/hid-elecom.c
-+++ b/drivers/hid/hid-elecom.c
-@@ -5,6 +5,7 @@
-  *  - EX-G Trackballs (M-XT3DRBK, M-XT3URBK, M-XT4DRBK)
-  *  - DEFT Trackballs (M-DT1DRBK, M-DT1URBK, M-DT2DRBK, M-DT2URBK)
-  *  - HUGE Trackballs (M-HT1DRBK, M-HT1URBK)
-+ *  - HUGE Plus Trackball (M-HT1MRBK)
-  *
-  *  Copyright (c) 2010 Richard Nauber <Richard.Nauber@gmail.com>
-  *  Copyright (c) 2016 Yuxuan Shui <yshuiv7@gmail.com>
-@@ -123,12 +124,25 @@ static const __u8 *elecom_report_fixup(struct hid_device *hdev, __u8 *rdesc,
- 		 */
- 		mouse_button_fixup(hdev, rdesc, *rsize, 22, 30, 24, 16, 8);
- 		break;
-+	case USB_DEVICE_ID_ELECOM_M_HT1MRBK:
-+	case USB_DEVICE_ID_ELECOM_M_HT1MRBK_01AB:
-+	case USB_DEVICE_ID_ELECOM_M_HT1MRBK_01AC:
-+		/*
-+		 * Report descriptor format:
-+		 * 24: button bit count
-+		 * 28: padding bit count
-+		 * 22: button report size
-+		 * 16: button usage maximum
-+		 */
-+		mouse_button_fixup(hdev, rdesc, *rsize, 24, 28, 22, 16, 8);
-+		break;
- 	}
- 	return rdesc;
- }
- 
- static const struct hid_device_id elecom_devices[] = {
- 	{ HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_BM084) },
-+	{ HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_HT1MRBK_01AC) },
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_XGL20DLBK) },
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_XT3URBK_00FB) },
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_XT3URBK_018F) },
-@@ -142,6 +156,8 @@ static const struct hid_device_id elecom_devices[] = {
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_HT1URBK_019B) },
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_HT1DRBK_010D) },
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_HT1DRBK_011C) },
-+	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_HT1MRBK) },
-+	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_HT1MRBK_01AB) },
- 	{ }
- };
- MODULE_DEVICE_TABLE(hid, elecom_devices);
-diff --git a/drivers/hid/hid-ids.h b/drivers/hid/hid-ids.h
-index 9c2bf584d9f6..c9b07890a808 100644
---- a/drivers/hid/hid-ids.h
-+++ b/drivers/hid/hid-ids.h
-@@ -465,6 +465,9 @@
- #define USB_DEVICE_ID_ELECOM_M_HT1URBK_019B	0x019b
- #define USB_DEVICE_ID_ELECOM_M_HT1DRBK_010D	0x010d
- #define USB_DEVICE_ID_ELECOM_M_HT1DRBK_011C	0x011c
-+#define USB_DEVICE_ID_ELECOM_M_HT1MRBK	0x01aa
-+#define USB_DEVICE_ID_ELECOM_M_HT1MRBK_01AB	0x01ab
-+#define USB_DEVICE_ID_ELECOM_M_HT1MRBK_01AC	0x01ac
- 
- #define USB_VENDOR_ID_DREAM_CHEEKY	0x1d34
- #define USB_DEVICE_ID_DREAM_CHEEKY_WN	0x0004
-diff --git a/drivers/hid/hid-quirks.c b/drivers/hid/hid-quirks.c
-index 11438039cdb7..3217e436c052 100644
---- a/drivers/hid/hid-quirks.c
-+++ b/drivers/hid/hid-quirks.c
-@@ -420,6 +420,7 @@ static const struct hid_device_id hid_have_special_driver[] = {
- #if IS_ENABLED(CONFIG_HID_ELECOM)
- 	{ HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_BM084) },
- 	{ HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_XGL20DLBK) },
-+	{ HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_HT1MRBK_01AC) },
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_XT3URBK_00FB) },
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_XT3URBK_018F) },
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_XT3DRBK_00FC) },
-@@ -432,6 +433,8 @@ static const struct hid_device_id hid_have_special_driver[] = {
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_HT1URBK_019B) },
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_HT1DRBK_010D) },
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_HT1DRBK_011C) },
-+	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_HT1MRBK) },
-+	{ HID_USB_DEVICE(USB_VENDOR_ID_ELECOM, USB_DEVICE_ID_ELECOM_M_HT1MRBK_01AB) },
- #endif
- #if IS_ENABLED(CONFIG_HID_ELO)
- 	{ HID_USB_DEVICE(USB_VENDOR_ID_ELO, 0x0009) },
+Co-developed-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 
 ---
-base-commit: 79b95d74470dd97d7d0908d5a3c0734a23e51aa4
-change-id: 20260123-hid-elecom-huge-plus-fix-545cf029fd1a
+Changes in v6:
+- Use unified macros for sys_clk/axi_clk.
+- Remove DTS changes to ease maintainer patch management.
+- Link to v5: https://lore.kernel.org/r/20260108-a5-clk-v5-0-9a69fc1ef00a@amlogic.com
+
+Changes in v5:
+- Add “Co-developed-by” tag for Xianwei.
+- Change rtc_clk flags to CLK_SET_RATE_NO_REPARENT.
+- Optimize the macro definitions for clock configuration.
+- Unified naming of clock parent related variables.
+- Link to v4: https://lore.kernel.org/r/20251028-a5-clk-v4-0-e62ca0aae243@amlogic.com
+
+Changes in v4:
+- dt-binding for peripheral clocks (kept Rob’s 'Reviewed-by' here):
+  - Added optional clock source rtc pll.
+  - Renamed rtc_clk’s clkid to better reflect its function.
+- PLL/Clock driver:
+  - Adapted to Jerome’s refactored driver interface, naming
+conventions, and macros.
+  - Updated related CONFIG entries in Kconfig.
+- Added dts patch of PLL/Clock.
+- Link to v3: https://lore.kernel.org/r/20250103-a5-clk-v3-0-a207ce83b9e9@amlogic.com
+
+Changes in v3:
+- Rename xtal_24m to xtal, and modify some description of Kconfig.
+- Drop some comment of PLL source code.
+- Move definition of A5_CLK_GATE_FW frome common code into A5 peripheral source code.
+- Use hw instead of name to describe parent_data.
+- Making SCMI binding the first to submit.
+- Link to v2: https://lore.kernel.org/r/20241120-a5-clk-v2-0-1208621e961d@amlogic.com
+
+Changes in v2:
+- Move some sys clock and axi clock from peripheral to scmi impletement.
+- Remove  ARM_SCMI_PROTOCOL in Kconfig and correct name A5 but not A4.
+- Add two optional clock inputs for the peripheral(ddr pll and clk-measure)
+- Make some changes and adjustments according to suggestions.
+- Link to v1: https://lore.kernel.org/r/20240914-a5-clk-v1-0-5ee2c4f1b08c@amlogic.com
+
+---
+Chuan Liu (5):
+      dt-bindings: clock: Add Amlogic A5 SCMI clock controller support
+      dt-bindings: clock: Add Amlogic A5 PLL clock controller
+      dt-bindings: clock: Add Amlogic A5 peripherals clock controller
+      clk: amlogic: Add A5 PLL clock controller driver
+      clk: amlogic: Add A5 clock peripherals controller driver
+
+ .../clock/amlogic,a5-peripherals-clkc.yaml         | 134 ++++
+ .../bindings/clock/amlogic,a5-pll-clkc.yaml        |  63 ++
+ drivers/clk/meson/Kconfig                          |  27 +
+ drivers/clk/meson/Makefile                         |   2 +
+ drivers/clk/meson/a5-peripherals.c                 | 781 +++++++++++++++++++++
+ drivers/clk/meson/a5-pll.c                         | 478 +++++++++++++
+ .../clock/amlogic,a5-peripherals-clkc.h            | 132 ++++
+ include/dt-bindings/clock/amlogic,a5-pll-clkc.h    |  24 +
+ include/dt-bindings/clock/amlogic,a5-scmi-clkc.h   |  44 ++
+ 9 files changed, 1685 insertions(+)
+---
+base-commit: f0b9d8eb98dfee8d00419aa07543bdc2c1a44fb1
+change-id: 20240911-a5-clk-35c49acb34e1
 
 Best regards,
 -- 
-David Phillips <david@profile.sh>
+Chuan Liu <chuan.liu@amlogic.com>
 
