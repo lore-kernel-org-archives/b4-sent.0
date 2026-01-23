@@ -1,189 +1,96 @@
-From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
-Date: Fri, 23 Jan 2026 08:02:48 +0000
-Subject: [PATCH v3 5/5] i2c: xiic: minor cosmetic cleanup
+From: Maud Spierings <maudspierings@gocontroll.com>
+Subject: [PATCH v5 0/5] arm64: dts: freescale: add support for the
+ GOcontroll Moduline IV/Mini
+Date: Fri, 23 Jan 2026 09:30:27 +0100
+Message-Id: <20260123-mini_iv-v5-0-29bef040f236@gocontroll.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260123-i2c-xiic-v3-5-eb7cd4254dfb@nexthop.ai>
-References: <20260123-i2c-xiic-v3-0-eb7cd4254dfb@nexthop.ai>
-In-Reply-To: <20260123-i2c-xiic-v3-0-eb7cd4254dfb@nexthop.ai>
-To: Michal Simek <michal.simek@amd.com>, Andi Shyti <andi.shyti@kernel.org>
-Cc: Andy Shevchenko <andriy.shevchenko@intel.com>, 
- linux-arm-kernel@lists.infradead.org, linux-i2c@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Abdurrahman Hussain <abdurrahman@nexthop.ai>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23M0QrCIBTG8VcJrzM8R12zq94jIsR0HdhmuCFF7
+ N2zbgzW5Xc4v/+LTT6Rn9hh82LJZ5oojmXo7Ya5mx07z+laNkOBGoQwfKCRLpS5Fdprhw4QJSv
+ f9+QDPb6l07nsG01zTM9vOMPnum5k4IIH2bbGKYNK749ddHGcU+z7nYsD+4Qy/mDEirFgFDa0w
+ VjrQP3F8gdLUbEs2AfdOHU1AcH8xapigH3FqmBtbSNbiUGDXeFlWd4Fe5b1WgEAAA==
+X-Change-ID: 20251009-mini_iv-a05e5c2c1223
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, 
+ Matti Vaittinen <mazziesaccount@gmail.com>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ Maud Spierings <maudspierings@gocontroll.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769155384; l=5149;
- i=abdurrahman@nexthop.ai; s=20260119; h=from:subject:message-id;
- bh=dTX1v7vOgEB5f4WNaQT/jsmJZcS4w/ksW0v2dImQznM=;
- b=YkuZyZUnFWIQcqKGtIzEEqTu0nG2pvhfKHVLBIwNPqZO8JRdoP+A6eOQbjPfDocoF8qn/1Ze8
- 26xjEhNk3jbDoYp/BLH1klsKrt0PBzwDV52/hdf6qW753oo2jvdLHmM
-X-Developer-Key: i=abdurrahman@nexthop.ai; a=ed25519;
- pk=S+ysnf+NwMcBdHBlyKIUEAtaFGSIhQwcJcgcXhq0osg=
-X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/20260119 with auth_id=608
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769157029; l=2544;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=qP1NLLG9rTvhPI7VcZ3e4V6pqIk+aWjOp6382FhfNww=;
+ b=WYzINIuOP4mCBBodYcvLeOdMLJgwXSrgFXWpQiqb3CFwOamicg+qwM8vvYPOCv6G0afTml/NE
+ IGeyucl9D5cCtRjO7o3yj3DyKeRdj3jHV0o1x4eVrdIBTIMAJlM54wx
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a temporary dev variable and reuse it instead of referencing pdev->dev
-everywhere.
+Add initial support for the Moduline IV and Moduline Mini embedded
+controllers.
 
-Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+These systems are powered by the Ka-Ro Electronics tx8m-1610 COM, which
+features an imx8mm SoC.
+
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- drivers/i2c/busses/i2c-xiic.c | 60 +++++++++++++++++++++----------------------
- 1 file changed, 30 insertions(+), 30 deletions(-)
+Changes in v5:
+- Fixup aliases (remove usb ones) (Shawn)
+- Link to v4: https://lore.kernel.org/r/20251117-mini_iv-v4-0-5aa63832f51a@gocontroll.com
 
-diff --git a/drivers/i2c/busses/i2c-xiic.c b/drivers/i2c/busses/i2c-xiic.c
-index 3af2d60d3e32..3c0ec33aefd4 100644
---- a/drivers/i2c/busses/i2c-xiic.c
-+++ b/drivers/i2c/busses/i2c-xiic.c
-@@ -1420,6 +1420,7 @@ MODULE_DEVICE_TABLE(of, xiic_of_match);
- 
- static int xiic_i2c_probe(struct platform_device *pdev)
- {
-+	struct device *dev = &pdev->dev;
- 	struct xiic_i2c *i2c;
- 	struct xiic_i2c_platform_data *pdata;
- 	const struct xiic_version_data *data;
-@@ -1428,11 +1429,11 @@ static int xiic_i2c_probe(struct platform_device *pdev)
- 	u8 i;
- 	u32 sr;
- 
--	i2c = devm_kzalloc(&pdev->dev, sizeof(*i2c), GFP_KERNEL);
-+	i2c = devm_kzalloc(dev, sizeof(*i2c), GFP_KERNEL);
- 	if (!i2c)
- 		return -ENOMEM;
- 
--	data = device_get_match_data(&pdev->dev);
-+	data = device_get_match_data(dev);
- 	if (data)
- 		i2c->quirks = data->quirks;
- 
-@@ -1444,52 +1445,50 @@ static int xiic_i2c_probe(struct platform_device *pdev)
- 	if (irq < 0)
- 		return irq;
- 
--	pdata = dev_get_platdata(&pdev->dev);
-+	pdata = dev_get_platdata(dev);
- 
- 	/* hook up driver to tree */
- 	platform_set_drvdata(pdev, i2c);
- 	i2c->adap = xiic_adapter;
- 	i2c_set_adapdata(&i2c->adap, i2c);
--	i2c->adap.dev.parent = &pdev->dev;
--	device_set_node(&i2c->adap.dev, dev_fwnode(&pdev->dev));
-+	i2c->adap.dev.parent = dev;
-+	device_set_node(&i2c->adap.dev, dev_fwnode(dev));
- 	snprintf(i2c->adap.name, sizeof(i2c->adap.name),
- 		 DRIVER_NAME " %s", pdev->name);
- 
--	ret = devm_mutex_init(&pdev->dev, &i2c->lock);
-+	ret = devm_mutex_init(dev, &i2c->lock);
- 	if (ret < 0)
- 		return ret;
- 
- 	spin_lock_init(&i2c->atomic_lock);
- 
--	i2c->clk = devm_clk_get_optional_enabled(&pdev->dev, NULL);
-+	i2c->clk = devm_clk_get_optional_enabled(dev, NULL);
- 	if (IS_ERR(i2c->clk))
--		return dev_err_probe(&pdev->dev, PTR_ERR(i2c->clk),
-+		return dev_err_probe(dev, PTR_ERR(i2c->clk),
- 				     "failed to enable input clock.\n");
- 
--	i2c->dev = &pdev->dev;
--	pm_runtime_set_autosuspend_delay(i2c->dev, XIIC_PM_TIMEOUT);
--	pm_runtime_use_autosuspend(i2c->dev);
--	pm_runtime_set_active(i2c->dev);
--	pm_runtime_enable(i2c->dev);
-+	i2c->dev = dev;
-+	pm_runtime_set_autosuspend_delay(dev, XIIC_PM_TIMEOUT);
-+	pm_runtime_use_autosuspend(dev);
-+	pm_runtime_set_active(dev);
-+	pm_runtime_enable(dev);
- 
- 	/* SCL frequency configuration */
- 	i2c->input_clk = clk_get_rate(i2c->clk);
--	ret = device_property_read_u32(&pdev->dev, "clock-frequency",
--				       &i2c->i2c_clk);
-+	ret = device_property_read_u32(dev, "clock-frequency", &i2c->i2c_clk);
-+
- 	/* If clock-frequency not specified in DT, do not configure in SW */
- 	if (ret || i2c->i2c_clk > I2C_MAX_FAST_MODE_PLUS_FREQ)
- 		i2c->i2c_clk = 0;
- 
--	ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
--					xiic_process, IRQF_ONESHOT,
--					pdev->name, i2c);
-+	ret = devm_request_threaded_irq(dev, irq, NULL, xiic_process,
-+					IRQF_ONESHOT, pdev->name, i2c);
- 
- 	if (ret < 0) {
- 		goto err_pm_disable;
- 	}
- 
--	i2c->singlemaster =
--		device_property_read_bool(&pdev->dev, "single-master");
-+	i2c->singlemaster = device_property_read_bool(dev, "single-master");
- 
- 	/*
- 	 * Detect endianness
-@@ -1505,7 +1504,7 @@ static int xiic_i2c_probe(struct platform_device *pdev)
- 
- 	ret = xiic_reinit(i2c);
- 	if (ret < 0) {
--		dev_err_probe(&pdev->dev, ret, "Cannot xiic_reinit\n");
-+		dev_err_probe(dev, ret, "Cannot xiic_reinit\n");
- 		goto err_pm_disable;
- 	}
- 
-@@ -1522,38 +1521,39 @@ static int xiic_i2c_probe(struct platform_device *pdev)
- 			i2c_new_client_device(&i2c->adap, pdata->devices + i);
- 	}
- 
--	dev_dbg(&pdev->dev, "mmio %08lx irq %d scl clock frequency %d\n",
-+	dev_dbg(dev, "mmio %08lx irq %d scl clock frequency %d\n",
- 		(unsigned long)res->start, irq, i2c->i2c_clk);
- 
- 	return 0;
- 
- err_pm_disable:
--	pm_runtime_disable(&pdev->dev);
--	pm_runtime_set_suspended(&pdev->dev);
-+	pm_runtime_disable(dev);
-+	pm_runtime_set_suspended(dev);
- 
- 	return ret;
- }
- 
- static void xiic_i2c_remove(struct platform_device *pdev)
- {
-+	struct device *dev = &pdev->dev;
- 	struct xiic_i2c *i2c = platform_get_drvdata(pdev);
- 	int ret;
- 
- 	/* remove adapter & data */
- 	i2c_del_adapter(&i2c->adap);
- 
--	ret = pm_runtime_get_sync(i2c->dev);
-+	ret = pm_runtime_get_sync(dev);
- 
- 	if (ret < 0)
--		dev_warn(&pdev->dev, "Failed to activate device for removal (%pe)\n",
-+		dev_warn(dev, "Failed to activate device for removal (%pe)\n",
- 			 ERR_PTR(ret));
- 	else
- 		xiic_deinit(i2c);
- 
--	pm_runtime_put_sync(i2c->dev);
--	pm_runtime_disable(&pdev->dev);
--	pm_runtime_set_suspended(&pdev->dev);
--	pm_runtime_dont_use_autosuspend(&pdev->dev);
-+	pm_runtime_put_sync(dev);
-+	pm_runtime_disable(dev);
-+	pm_runtime_set_suspended(dev);
-+	pm_runtime_dont_use_autosuspend(dev);
- }
- 
- static const struct dev_pm_ops xiic_dev_pm_ops = {
+Changes in v4:
+- Fix BUCK6 property order
+- Change the BUCK6 min/max voltage to match the dram specs (Lothar)
+- Make it clear that the two systems are based on a SoM in commit
+  message of the dt-bindings (Conor)
+- Drop merged PMIC fix (Matti, Mark)
+- Link to v3: https://lore.kernel.org/r/20251030-mini_iv-v3-0-ef56c4d9f219@gocontroll.com
 
+Changes in v3:
+- Add patch fixing the pmic driver
+- Use the proper feedback properties for BUCK6
+- Slightly rework the compatibles, acked by conor dropped
+- Add missing CAN interface supplies, remove the leftover comment
+- Add missing vled-supply
+- Add missing ethernet phy interrupt (doesn't work)
+- Fix the cs-gpios properties in all spi interfaces
+- Fix the order of properties in all spi interfaces
+- Remove unused labels for regulators of the PMIC
+- Link to v2: https://lore.kernel.org/r/20251022-mini_iv-v2-0-20af8f9aac14@gocontroll.com
+
+Changes in v2:
+- Fix allignment issue in imx8mm-tx8m-1610.dtsi (fec1)
+- Move phy-reset into fec (works better in barebox)
+- Make the gpio-line-names groups of four on every line
+- Link to v1: https://lore.kernel.org/r/20251009-mini_iv-v1-0-f3889c492457@gocontroll.com
+
+---
+Maud Spierings (5):
+      dt-bindings: arm: fsl: Add GOcontroll Moduline IV/Mini
+      arm64: dts: imx8mm: Add pinctrl config definitions
+      arm64: dts: freescale: add Ka-Ro Electronics tx8m-1610 COM
+      arm64: dts: freescale: Add the GOcontroll Moduline IV
+      arm64: dts: freescale: Add the GOcontroll Moduline Mini
+
+ Documentation/devicetree/bindings/arm/fsl.yaml     |   8 +
+ arch/arm64/boot/dts/freescale/Makefile             |   3 +
+ arch/arm64/boot/dts/freescale/imx8mm-pinfunc.h     |  33 +
+ .../imx8mm-tx8m-1610-moduline-iv-306-d.dts         | 798 +++++++++++++++++++++
+ .../imx8mm-tx8m-1610-moduline-mini-111.dts         | 686 ++++++++++++++++++
+ .../arm64/boot/dts/freescale/imx8mm-tx8m-1610.dtsi | 444 ++++++++++++
+ 6 files changed, 1972 insertions(+)
+---
+base-commit: a0c666c25aeefd16f4b088c6549a6fb6b65a8a1d
+change-id: 20251009-mini_iv-a05e5c2c1223
+
+Best regards,
 -- 
-2.52.0
+Maud Spierings <maudspierings@gocontroll.com>
 
