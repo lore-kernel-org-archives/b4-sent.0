@@ -1,87 +1,85 @@
-From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Fri, 23 Jan 2026 12:31:33 +0100
-Subject: [PATCH v7 4/4] arm64: dts: freescale:
- moduline-display-av123z7m-n17: add backlight
+From: SeungJong Ha <engineer.jjhama@gmail.com>
+Date: Fri, 23 Jan 2026 13:18:44 +0000
+Subject: [PATCH v2] scripts: generate_rust_analyzer: fix resolution of
+ #[pin_data] macros
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260123-max25014-v7-4-15e504b9acc7@gocontroll.com>
-References: <20260123-max25014-v7-0-15e504b9acc7@gocontroll.com>
-In-Reply-To: <20260123-max25014-v7-0-15e504b9acc7@gocontroll.com>
-To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
- Jingoo Han <jingoohan1@gmail.com>, Pavel Machek <pavel@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Helge Deller <deller@gmx.de>, 
- Shawn Guo <shawnguo@kernel.org>, Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Liam Girdwood <lgirdwood@gmail.com>, 
- Mark Brown <broonie@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-fbdev@vger.kernel.org, imx@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, 
- Maud Spierings <maudspierings@gocontroll.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769167891; l=1565;
- i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=h3zqJBjPWCRRFOamEmSYnLNeMhZkUwqVa+0eK4+1+KA=;
- b=URPfA67ijU720rzLEbQWlfOakMi8xMeNSO5lod3dESL/XDlERHc1UehgPCXECcGLOAP0DoU/+
- aGAQTPzvL3YAKCu55+Z4zgQXKQhYJLYXTwKd84m2SE/Fvj4M7ngA78r
-X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
- pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
-X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
+Message-Id: <20260123-fix-pin-init-crate-dependecies-v2-1-bb1c2500e54c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIADN1c2kC/42NQQ6CQAxFr0K6tgaGEcWV9zAsainQRAYyQ4iGc
+ HerJzB/9X7y398gSVRJcM02iLJq0ikYuEMGPFDoBbU1Bpe7Ki9ciZ2+cNaAGnRBjrQItjJLaIX
+ Ng4/aE3vnz+QvYJI5ii1+B/fGeNC0TPH9+1uLb/u3ei3QwhV3UhOVJ3frR9LnkacRmn3fP64d9
+ FjMAAAA
+To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jesung Yang <y.j3ms.n@gmail.com>, SeungJong Ha <engineer.jjhama@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769174341; l=1902;
+ i=engineer.jjhama@gmail.com; s=20260103; h=from:subject:message-id;
+ bh=c7P9j4yaUBkVPSuFKvUbKfXZDCnr6ZWiWGUJURpt+5A=;
+ b=iooMwfpk6BvhAz77cbYZxulg/1QPZPrvPxRDPgdolo3ZaYnWEN4irWRH6N1xKv7nanDuDhphy
+ tXEShaG5pkKBI5EIeAfT99Gw3MpmP29W8ArojELHDr9ZRgUBjQO6CmD
+X-Developer-Key: i=engineer.jjhama@gmail.com; a=ed25519;
+ pk=G5nmjm+RTiWBpyCvc5xjR1b3li/2zipLSMyz+T4fj5E=
+X-Endpoint-Received: by B4 Relay for engineer.jjhama@gmail.com/20260103 with auth_id=590
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the missing backlight.
+Currently, rust-analyzer fails to properly resolve structs annotated with
+`#[pin_data]`. This prevents IDE features like "Go to Definition" from
+working correctly for those structs.
 
-Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
+Add the missing configuration to `generate_rust_analyzer.py` to ensure
+the `pin-init` crate macros are handled correctly.
+
+Signed-off-by: SeungJong Ha <engineer.jjhama@gmail.com>
 ---
- ...tx8p-ml81-moduline-display-106-av123z7m-n17.dtso | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+I encountered an issue where rust-analyzer fails to analyze
+structs decorated with the #[pin_data] attribute while testing
+Rust kernel modules.
 
-diff --git a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso
-index 3eb665ce9d5d..66d98a18d898 100644
---- a/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso
-+++ b/arch/arm64/boot/dts/freescale/imx8mp-tx8p-ml81-moduline-display-106-av123z7m-n17.dtso
-@@ -16,6 +16,7 @@
- 
- 	panel {
- 		compatible = "boe,av123z7m-n17";
-+		backlight = <&backlight>;
- 		enable-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;
- 		pinctrl-0 = <&pinctrl_panel>;
- 		pinctrl-names = "default";
-@@ -91,10 +92,28 @@ lvds1_out: endpoint {
- 		};
- 	};
- 
--	/* max25014 @ 0x6f */
-+	backlight: backlight@6f {
-+		compatible = "maxim,max25014";
-+		reg = <0x6f>;
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+		default-brightness = <50>;
-+		enable-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&pinctrl_backlight>;
-+		maxim,iset = <7>;
-+		maxim,strings = <1 1 1 1>;
-+	};
- };
- 
- &iomuxc {
-+	pinctrl_backlight: backlightgrp {
-+		fsl,pins = <
-+			MX8MP_IOMUXC_GPIO1_IO04__GPIO1_IO04
-+				(MX8MP_PULL_UP | MX8MP_PULL_ENABLE)
-+		>;
-+	};
-+
- 	pinctrl_lvds_bridge: lvdsbridgegrp {
- 		fsl,pins = <
- 			MX8MP_IOMUXC_SAI1_TXD2__GPIO4_IO14
+It appears that the dependencies for pin-init and drivers were
+missing from the analyzer's configuration. This patch adds
+those missing dependencies.
 
+I have verified that my rust-analyzer correctly processes
+\#[pin_data] structs after applying this fix.
+
+Best regards, SeungJong
+---
+Changes in v2:
+- Fix typos
+- Drop the quote module workaround (will be handled separately)
+- Rebase onto `rust-fixes`
+- Add `pin_init` dependency for Rust drivers
+- Link to v1: https://lore.kernel.org/r/20260123-fix-pin-init-crate-dependecies-v1-1-1c6cfe9aa352@gmail.com
+---
+ scripts/generate_rust_analyzer.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/scripts/generate_rust_analyzer.py b/scripts/generate_rust_analyzer.py
+index 3b645da90092..766c2d91cd81 100755
+--- a/scripts/generate_rust_analyzer.py
++++ b/scripts/generate_rust_analyzer.py
+@@ -214,7 +214,7 @@ def generate_crates(srctree, objtree, sysroot_src, external_src, cfgs, core_edit
+             append_crate(
+                 name,
+                 path,
+-                ["core", "kernel"],
++                ["core", "kernel", "pin_init"],
+                 cfg=cfg,
+             )
+ 
+
+---
+base-commit: 6d7fef23043553336259211346b6b135d6c1f4c3
+change-id: 20260123-fix-pin-init-crate-dependecies-b94ac4247a48
+
+Best regards,
 -- 
-2.52.0
+SeungJong Ha <engineer.jjhama@gmail.com>
 
