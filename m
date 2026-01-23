@@ -1,141 +1,145 @@
-From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Fri, 23 Jan 2026 11:09:57 +0100
-Subject: [PATCH v3 4/4] stmmac: s32: enable support for Multi-IRQ mode
+From: Maud Spierings <maudspierings@gocontroll.com>
+Subject: [PATCH v7 0/4] backlight: add new max25014 backlight driver
+Date: Fri, 23 Jan 2026 12:31:29 +0100
+Message-Id: <20260123-max25014-v7-0-15e504b9acc7@gocontroll.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260123-dwmac_multi_irq-v3-4-cc53f2be8961@oss.nxp.com>
-References: <20260123-dwmac_multi_irq-v3-0-cc53f2be8961@oss.nxp.com>
-In-Reply-To: <20260123-dwmac_multi_irq-v3-0-cc53f2be8961@oss.nxp.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Chester Lin <chester62515@gmail.com>, Matthias Brugger <mbrugger@suse.com>, 
- Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>, 
- NXP S32 Linux Team <s32@nxp.com>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23OzWrDMAzA8VcpPi9D8nd22nuMHRRHbg1tPJISO
+ krefWoHS2C5Wca/v3xXE4+FJ/V2uKuR5zKVOsgQXg4qnWg4clN6mZUG7cBr31zoJie0jdUQXIu
+ MlJ2S518j53J7pj4+ZT6V6VrH72d5xsftbyRot0ZmbKABjilxK73I78ea6nAd6/n8mupFPUqzX
+ nXEdqO1aJf7QNyhRaZdbVbdIm60Ed2DyZY7MsHt77Z/GgG2u61oT32nCYiMy7varRohbLQT3ZI
+ ncsGA7/a1X7WG7c+96BjZUIqIOv/Xy7L8ALXG0rjbAQAA
+X-Change-ID: 20250626-max25014-4207591e1af5
+To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
+ Jingoo Han <jingoohan1@gmail.com>, Pavel Machek <pavel@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Helge Deller <deller@gmx.de>, 
+ Shawn Guo <shawnguo@kernel.org>, Sascha Hauer <s.hauer@pengutronix.de>, 
  Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- imx@lists.linux.dev, devicetree@vger.kernel.org, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769163006; l=3825;
- i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=N8KG6zSNZaJ0litROq6rIn2vyXQTszprIi2ECHATg2I=;
- b=K0mcEfqhyMu5f3uTCyaUbLXj0uh8y5ZYcUWiyycFQVQZIOShQ6q9eWSQu/+crDBF8QHP+ikdv
- V7cmIGc473sDiWBF7ZrF4GzFsIC3opc2igEXAerVNX0/FFBHco23s1t
-X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
- pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
-X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
+ Fabio Estevam <festevam@gmail.com>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-fbdev@vger.kernel.org, imx@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, 
+ Maud Spierings <maudspierings@gocontroll.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769167891; l=5004;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=vEkFV07PEpR5KX9dNGTST448CA5dKUUwl6Jer72c3uY=;
+ b=s+cmlb1pCiN/IakKQKsOgUXRHfTMAtp7ny2CeiPz3mwdj6Dg/YieSrnYRGPVgMk2wS6zYOTRZ
+ QxSvxYuCQ1HDtSpzxfJ5+37bCHYLcMUhIn+22/PZekKIrv1Xb8bHEEy
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To get enabled Multi-IRQ mode, the driver checks:
+The Maxim MAX25014 is an automotive grade backlight driver IC. Its
+datasheet can be found at [1].
 
-  1) property of 'snps,mtl-xx-config' subnode
-     defines 'snps,xx-queues-to-use' bigger then one, ie:
+With its integrated boost controller, it can power 4 channels (led
+strings) and has a number of different modes using pwm and or i2c.
+Currently implemented is only i2c control.
 
-     ethernet@4033c000 {
-         compatible = "nxp,s32g2-dwmac";
-         ...
-         snps,mtl-rx-config = <&mtl_rx_setup>;
-         ...
+link: https://www.analog.com/media/en/technical-documentation/data-sheets/MAX25014.pdf [1]
 
-         mtl_rx_setup: rx-queues-config {
-             snps,rx-queues-to-use = <2>;
-         };
-
-  2) queue based IRQs are set, ie:
-
-     ethernet@4033c000 {
-         compatible = "nxp,s32g2-dwmac";
-         ...
-         interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>,
-                      /* CHN 0: tx, rx */
-                      <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>,
-                      <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
-                      /* CHN 1: tx, rx */
-                      <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
-                      <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
-         interrupt-names = "macirq",
-                           "tx-queue-0", "rx-queue-0",
-                           "tx-queue-1", "rx-queue-1";
-
-If those prerequisites are met, the driver switch to Multi-IRQ mode,
-using per-queue IRQs for rx/tx data pathr:
-
-[    1.387045] s32-dwmac 4033c000.ethernet: Multi-IRQ mode (per queue IRQ) selected
-
-Now the driver owns all queues IRQs:
-
-root@s32g399aevb3:~# grep eth /proc/interrupts
- 29:    0    0    0    0    0    0    0    0    GICv3  89 Level   eth0:mac
- 30:    0    0    0    0    0    0    0    0    GICv3  91 Level   eth0:rx-0
- 31:    0    0    0    0    0    0    0    0    GICv3  93 Level   eth0:rx-1
- 32:    0    0    0    0    0    0    0    0    GICv3  95 Level   eth0:rx-2
- 33:    0    0    0    0    0    0    0    0    GICv3  97 Level   eth0:rx-3
- 34:    0    0    0    0    0    0    0    0    GICv3  99 Level   eth0:rx-4
- 35:    0    0    0    0    0    0    0    0    GICv3  90 Level   eth0:tx-0
- 36:    0    0    0    0    0    0    0    0    GICv3  92 Level   eth0:tx-1
- 37:    0    0    0    0    0    0    0    0    GICv3  94 Level   eth0:tx-2
- 38:    0    0    0    0    0    0    0    0    GICv3  96 Level   eth0:tx-3
- 39:    0    0    0    0    0    0    0    0    GICv3  98 Level   eth0:tx-4
-
-Otherwise, if one of the prerequisite don't met, the driver
-continue with MAC IRQ mode:
-
-[    1.387045] s32-dwmac 4033c000.ethernet: MAC IRQ mode selected
-
-And only MAC IRQ will be attached:
-
-root@s32g399aevb3:~# grep eth /proc/interrupts
- 29:    0    0    0    0    0    0    0    0    GICv3  89 Level   eth0:mac
-
-What represents the original MAC IRQ mode and is fully backward
-compatible.
-
-Reviewed-by: Matthias Brugger <mbrugger@suse.com>
-Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+Changes in v7:
+- remove the led subnodes
+- always enable the regulator by using devm_regulator_get_enable()
+- remove the no longer required gotos and simplify early returns
+- fix the name of the SHORTED_LED error field
+- fix the name of the SHORTGND error field
+- use the proper backlight helper functions for setting/getting
+  brightness
+- Link to v6: https://lore.kernel.org/r/20251201-max25014-v6-0-88e3ac8112ff@gocontroll.com
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-index 5a485ee98fa7..342091045714 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-@@ -2,7 +2,7 @@
- /*
-  * NXP S32G/R GMAC glue layer
-  *
-- * Copyright 2019-2024 NXP
-+ * Copyright 2019-2026 NXP
-  *
-  */
- 
-@@ -149,6 +149,16 @@ static int s32_dwmac_probe(struct platform_device *pdev)
- 	plat->core_type = DWMAC_CORE_GMAC4;
- 	plat->pmt = 1;
- 	plat->flags |= STMMAC_FLAG_SPH_DISABLE;
-+
-+	/* Check for multi-IRQ config. Assumption: symetrical rx/tx queues */
-+	if (plat->rx_queues_to_use > 1 &&
-+	    (res.rx_irq[0] >= 0 || res.tx_irq[0] >= 0)) {
-+		plat->flags |= STMMAC_FLAG_MULTI_MSI_EN;
-+		dev_info(dev, "Multi-IRQ mode (per queue IRQ) selected\n");
-+	} else {
-+		dev_info(dev, "MAC IRQ mode selected\n");
-+	}
-+
- 	plat->rx_fifo_size = 20480;
- 	plat->tx_fifo_size = 20480;
- 
+Changes in v6:
+- fixup changes in v4 where default brightness handling was changed but
+  not noted
+- remove leftover comment about initializing brightness
+- use BIT definitions for fields in the DIAG register
+- apply reverse christmas tree initialization of local variables
+- remove !=0 from checks, just check if (ret)
+- remove > 0 from checks, just check if (val)
+- use dev_err_probe() more
+- set enable gpio high in the get() instead of seperately calling set()
+- change usleep_range() to fsleep()
+- remove null checks when setting gpio value
+- get regular regulator, not optional to avoid further NULL checks in
+  case none is provided
+- introduce max25014_initial_power_state() to check if the bootloader
+  has already initialized the backlight and to correctly set props.power
+- squash max25014_register_control() into max25014_update_status()
+- in max25014_configure() perform extra checking on the DISABLE register
+  now that the state from the bootloader is taken into account
+- Link to v5: https://lore.kernel.org/r/20251107-max25014-v5-0-9a6aa57306bf@gocontroll.com
 
+Changes in v5:
+- moved comment about current functions of the driver to the actual
+  comment section of the commit
+- fixed the led@0 property, regex patternProperty is not needed as of
+  now
+- added extra clarification about the ISET field/register
+- moved #address-cells and #size-cells to the correct location
+- remove leftover default-brightness in backlight nodes
+- Link to v4: https://lore.kernel.org/r/20251009-max25014-v4-0-6adb2a0aa35f@gocontroll.com
+
+Changes in v4:
+- remove setting default brightness, let backlight core take care of it
+- use a led node to describe the backlight
+- use led-sources to enable specific channels
+- also wait 2ms when there is a supply but no enable
+- change dev_warn() to dev_err() in error path in max25014_check_errors()
+- set backlight_properties.scale to BACKLIGHT_SCALE_LINEAR
+- rebase latest next
+- add address-cells and size-cells to i2c4 in av101hdt-a10.dtso
+- Link to v3: https://lore.kernel.org/r/20250911-max25014-v3-0-d03f4eba375e@gocontroll.com
+
+Changes in v3:
+- fixed commit message type intgrated -> integrated
+- added maximum and description to maxim,iset-property
+- dropped unused labels and pinctrl in bindings example
+- put the compatible first in the bindings example and dts
+- removed brackets around defines
+- removed the leftover pdata struct field
+- removed the initial_brightness struct field
+- Link to v2: https://lore.kernel.org/r/20250819-max25014-v2-0-5fd7aeb141ea@gocontroll.com
+
+Changes in v2:
+- Remove leftover unused property from the bindings example
+- Complete the bindings example with all properties
+- Remove some double info from the maxim,iset property
+- Remove platform_data header, fold its data into the max25014 struct
+- Don't force defines to be unsigned
+- Remove stray struct max25014 declaration
+- Remove chipname and device from the max25014 struct
+- Inline the max25014_backlight_register() and strings_mask() functions
+- Remove CONFIG_OF ifdef
+- Link to v1: https://lore.kernel.org/r/20250725-max25014-v1-0-0e8cce92078e@gocontroll.com
+
+---
+Maud Spierings (4):
+      dt-bindings: backlight: Add max25014 support
+      backlight: add max25014atg backlight
+      arm64: dts: freescale: moduline-display-av101hdt-a10: add backlight
+      arm64: dts: freescale: moduline-display-av123z7m-n17: add backlight
+
+ .../bindings/leds/backlight/maxim,max25014.yaml    |  91 +++++
+ MAINTAINERS                                        |   6 +
+ ...x8p-ml81-moduline-display-106-av101hdt-a10.dtso |  26 ++
+ ...x8p-ml81-moduline-display-106-av123z7m-n17.dtso |  21 +-
+ drivers/video/backlight/Kconfig                    |   7 +
+ drivers/video/backlight/Makefile                   |   1 +
+ drivers/video/backlight/max25014.c                 | 377 +++++++++++++++++++++
+ 7 files changed, 528 insertions(+), 1 deletion(-)
+---
+base-commit: a0c666c25aeefd16f4b088c6549a6fb6b65a8a1d
+change-id: 20250626-max25014-4207591e1af5
+
+Best regards,
 -- 
-2.47.0
+Maud Spierings <maudspierings@gocontroll.com>
 
