@@ -1,116 +1,109 @@
-From: Dmitry Safonov <dima@arista.com>
-Date: Mon, 26 Jan 2026 04:57:35 +0000
-Subject: [PATCH] objtool: Print bfd_vma as unsigned long long on
- ia32-x86_64 cross build
+From: Jiebing Chen <jiebing.chen@amlogic.com>
+Subject: [PATCH v6 0/5] Add support for S4 audio
+Date: Mon, 26 Jan 2026 06:01:41 +0000
+Message-Id: <20260126-audio_drvier-v6-0-99e350855bc2@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260126-objtool-ia32-v1-1-bb6feaf17566@arista.com>
-X-B4-Tracking: v=1; b=H4sIAD70dmkC/x3MQQrCQAxA0auUrA22UUrxKuIi06Y2UjOSGWWg9
- O6OLt/i/w2SuEqCS7OBy0eTRqvoDg2MC9tdUKdqoJb6tqMeY3jkGFdUPhEO55kC0zAJMdTk5TJ
- r+e+ut+rASTA427j8Jqvau6BJyccnpywO+/4FegEfYoIAAAA=
-X-Change-ID: 20260126-objtool-ia32-84f2ba28de2a
-To: Josh Poimboeuf <jpoimboe@kernel.org>, 
- Peter Zijlstra <peterz@infradead.org>, 
- Alexandre Chartre <alexandre.chartre@oracle.com>
-Cc: Dmitry Safonov <0x7f454c46@gmail.com>, linux-kernel@vger.kernel.org, 
- Dmitry Safonov <dima@arista.com>
+X-B4-Tracking: v=1; b=H4sIAEUDd2kC/2XQ32rDIBTH8VcpXs/h0WOO2dXeo5Rh/dMKax1ml
+ Y6Sd58plLQJXv2Ez1fwxoZQUhjYx+bGSqhpSPncRve2Ye5oz4fAk2+bSSG1ABDcXnzKX77UFAo
+ XZLUy4LDHPWvkp4SYrvfcdtf2MQ2/ufzd6xWm20dIvYYqcMGNAyQSURkrPu3pOx+Se3f5xKZUl
+ TOXgAsuG1dkDESryPVhzdUTl2bBVeN+H70SWlBAt+Y4cwX9gmPjnWmHovUE/ZrrmdPyE6ueXkf
+ QOkIg7PCVj+P4D20+qnamAQAA
+X-Change-ID: 20250110-audio_drvier-07a5381c494b
+To: Jerome Brunet <jbrunet@baylibre.com>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jaroslav Kysela <perex@perex.cz>, 
+ Takashi Iwai <tiwai@suse.com>, Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>
+Cc: linux-sound@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
+ jian.xu@amlogic.com, shuai.li@amlogic.com, zhe.wang@amlogic.com, 
+ jiebing chen <jiebing.chen@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769403458; l=3443;
- i=dima@arista.com; s=20250521; h=from:subject:message-id;
- bh=L+OyCJ+E74sD1H+mkrTXuuv+qHPrV/ngZ16iavL1m3s=;
- b=ObqIiox/jffAsupSuqKYIEIID1+AnArUvv3HHvsvuGE6FGaKlKB7YYdwDrOINTV4ErxqY2V+v
- TyO0iM1kzoqBohH89lj53ZfkDqEbNMTyrZRq4wsGqiMTt3uWUZIl85h
-X-Developer-Key: i=dima@arista.com; a=ed25519;
- pk=/z94x2T59rICwjRqYvDsBe0MkpbkkdYrSW2J1G2gIcU=
-X-Endpoint-Received: by B4 Relay for dima@arista.com/20250521 with auth_id=405
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769407326; l=2929;
+ i=jiebing.chen@amlogic.com; s=20250110; h=from:subject:message-id;
+ bh=qEtF9Tw4fx/2Jty79ppvIz7CP62SnXqAy+iNLSUBip4=;
+ b=WCDI9XkY2n9SqNdLfweZHucE91kO1Vkl16ikZivtzdied/xBtb0KevVqUxXxDRvqnnOPud5/b
+ uR1LzpOKTLkDAAGHjO+d81vpRcobgj77DdbglTNv4hSkyDNnVdv4gXF
+X-Developer-Key: i=jiebing.chen@amlogic.com; a=ed25519;
+ pk=6rFvvF45A84pLNRy03hfUHeROxHCnZ+1KAGw/DoqKic=
+X-Endpoint-Received: by B4 Relay for jiebing.chen@amlogic.com/20250110 with auth_id=316
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When objtool is cross-compiled in ia32 container for x86_64 target it
-fails with the following errors:
+This series completes the end-to-end audio support
+for S4 SoC from hardware bindings to driver implementation
+and system integration.
 
-> disas.c: In function 'disas_print_addr_sym':
-> disas.c:173:38: error: format '%lx' expects argument of type 'long unsigned int', but argument 3 has type 'bfd_vma' {aka 'long long unsigned int'} [-Werror=format=]
->   173 |                 DINFO_FPRINTF(dinfo, "0x%lx <%s>", addr, symstr);
->       |                                      ^~~~~~~~~~~~  ~~~~
->       |                                                    |
->       |                                                    bfd_vma {aka long long unsigned int}
+1 Device Tree Bindings Updates 
+Added audio power domain and S4 audio clock support for S4 SoC.
+Added S4 audio tocodec binding support.
 
-Provide a correct printf-fmt depending on sizeof(bfd_vma).
+2 Driver Implementation
+Implemented S4 tocodec driver for G12A architecture.
+Added S4 audio clock support in AXG audio clock 
 
-Cc: Alexandre Chartre <alexandre.chartre@oracle.com>
-Cc: Peter Zijlstra (Intel) <peterz@infradead.org>
-Cc: Josh Poimboeuf <jpoimboe@kernel.org>
-Fixes: 5d859dff266f ("objtool: Print symbol during disassembly")
-Signed-off-by: Dmitry Safonov <dima@arista.com>
+3 Device Tree Integration
+Add Amlogic S4 audio subsystem support in arm64 DTS.
+
+Signed-off-by: jiebing chen <jiebing.chen@amlogic.com>
 ---
- tools/objtool/disas.c | 14 ++++++++------
- 1 file changed, 8 insertions(+), 6 deletions(-)
+Changes in v6:
+- Fix the problem of string for Documentation/devicetree/bindings/clock/amlogic,axg-audio-clkc.yaml
+- Remove clock pad register, and it will be submitted as an independent patch.
+- Redescribe sound/soc/meson/g12a-toacodec.c
+- Link to v5: https://lore.kernel.org/r/20250710-audio_drvier-v5-0-d4155f1e7464@amlogic.com
 
-diff --git a/tools/objtool/disas.c b/tools/objtool/disas.c
-index 2b5059f55e40..26f08d41f2b1 100644
---- a/tools/objtool/disas.c
-+++ b/tools/objtool/disas.c
-@@ -108,6 +108,8 @@ static int sprint_name(char *str, const char *name, unsigned long offset)
- 
- #define DINFO_FPRINTF(dinfo, ...)	\
- 	((*(dinfo)->fprintf_func)((dinfo)->stream, __VA_ARGS__))
-+#define bfd_vma_fmt			\
-+	__builtin_choose_expr(sizeof(bfd_vma) == sizeof(unsigned long), "%#lx <%s>", "%#llx <%s>")
- 
- static int disas_result_fprintf(struct disas_context *dctx,
- 				const char *fmt, va_list ap)
-@@ -170,10 +172,10 @@ static void disas_print_addr_sym(struct section *sec, struct symbol *sym,
- 
- 	if (sym) {
- 		sprint_name(symstr, sym->name, addr - sym->offset);
--		DINFO_FPRINTF(dinfo, "0x%lx <%s>", addr, symstr);
-+		DINFO_FPRINTF(dinfo, bfd_vma_fmt, addr, symstr);
- 	} else {
- 		str = offstr(sec, addr);
--		DINFO_FPRINTF(dinfo, "0x%lx <%s>", addr, str);
-+		DINFO_FPRINTF(dinfo, bfd_vma_fmt, addr, str);
- 		free(str);
- 	}
- }
-@@ -252,7 +254,7 @@ static void disas_print_addr_reloc(bfd_vma addr, struct disassemble_info *dinfo)
- 		 * example: "lea 0x0(%rip),%rdi". The kernel can reference
- 		 * the next IP with _THIS_IP_ macro.
- 		 */
--		DINFO_FPRINTF(dinfo, "0x%lx <_THIS_IP_>", addr);
-+		DINFO_FPRINTF(dinfo, bfd_vma_fmt, addr, "_THIS_IP_");
- 		return;
- 	}
- 
-@@ -264,11 +266,11 @@ static void disas_print_addr_reloc(bfd_vma addr, struct disassemble_info *dinfo)
- 	 */
- 	if (reloc->sym->type == STT_SECTION) {
- 		str = offstr(reloc->sym->sec, reloc->sym->offset + offset);
--		DINFO_FPRINTF(dinfo, "0x%lx <%s>", addr, str);
-+		DINFO_FPRINTF(dinfo, bfd_vma_fmt, addr, str);
- 		free(str);
- 	} else {
- 		sprint_name(symstr, reloc->sym->name, offset);
--		DINFO_FPRINTF(dinfo, "0x%lx <%s>", addr, symstr);
-+		DINFO_FPRINTF(dinfo, bfd_vma_fmt, addr, symstr);
- 	}
- }
- 
-@@ -311,7 +313,7 @@ static void disas_print_address(bfd_vma addr, struct disassemble_info *dinfo)
- 	 */
- 	sym = insn_call_dest(insn);
- 	if (sym && (sym->offset == addr || (sym->offset == 0 && is_reloc))) {
--		DINFO_FPRINTF(dinfo, "0x%lx <%s>", addr, sym->name);
-+		DINFO_FPRINTF(dinfo, bfd_vma_fmt, addr, sym->name);
- 		return;
- 	}
- 
+Changes in v5:
+- Fix warning Documentation/devicetree/bindings/clock/amlogic,axg-audio-clkc.yam when make dt_binding_check
+- The audio reg is mounted below the APB bus in dts file.
+- Deal with pad clock in a distinct controller.
+- Fix warning for sound/soc/meson/g12a-toacodec.c
+- Link to v4: https://lore.kernel.org/r/20250319-audio_drvier-v4-0-686867fad719@amlogic.com
+
+Changes in v4:
+- fix dtb check warning 
+- add maxItems of power domain for dt-bindings
+- fixed audio clock pads regmap base and reg offset 
+- use dapm widget to control tocodec bclk and mclk enable
+- Link to v3: https://lore.kernel.org/r/20250228-audio_drvier-v3-0-dbfd30507e4c@amlogic.com
+
+Changes in v3:
+- remove g12a tocodec switch event
+- Modify the incorrect title for dt-bindings
+- Link to v2: https://lore.kernel.org/r/20250214-audio_drvier-v2-0-37881fa37c9e@amlogic.com
+
+Changes in v2:
+- remove tdm pad control and change tocodec base on g12a
+- change hifipll rate to support 24bit
+- add s4 audio clock
+- Link to v1: https://lore.kernel.org/r/20250113-audio_drvier-v1-0-8c14770f38a0@amlogic.com
 
 ---
-base-commit: ca3a02fda4da8e2c1cb6baee5d72352e9e2cfaea
-change-id: 20260126-objtool-ia32-84f2ba28de2a
+Jiebing Chen (5):
+      dt-bindings: clock: meson: Add audio power domain for S4 soc
+      dt-bindings: Asoc: axg-audio: Add S4 audio tocodec
+      ASoC: meson: g12a-toacodec: Add S4 tocodec driver
+      clk: meson: axg_audio: add S4 support
+      arm64: dts: amlogic: Add Amlogic S4 Audio
+
+ .../bindings/clock/amlogic,axg-audio-clkc.yaml     |  18 +-
+ .../bindings/sound/amlogic,g12a-toacodec.yaml      |   1 +
+ .../boot/dts/amlogic/meson-s4-s805x2-aq222.dts     | 222 +++++++++++++
+ arch/arm64/boot/dts/amlogic/meson-s4.dtsi          | 361 +++++++++++++++++++++
+ drivers/clk/meson/axg-audio.c                      | 165 ++++++++++
+ sound/soc/meson/g12a-toacodec.c                    |  36 ++
+ 6 files changed, 801 insertions(+), 2 deletions(-)
+---
+base-commit: a0c666c25aeefd16f4b088c6549a6fb6b65a8a1d
+change-id: 20250110-audio_drvier-07a5381c494b
 
 Best regards,
 -- 
-Dmitry Safonov <dima@arista.com>
+jiebing chen <jiebing.chen@amlogic.com>
 
