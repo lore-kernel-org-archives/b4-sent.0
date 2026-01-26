@@ -1,14 +1,12 @@
 From: Rouven Czerwinski <rouven.czerwinski@linaro.org>
-Subject: [PATCH 0/3] OP-TEE/OP-TEE drivers: simplify context matches
-Date: Mon, 26 Jan 2026 11:11:23 +0100
-Message-Id: <20260126-optee-simplify-context-match-v1-0-d4104e526cb6@linaro.org>
+Date: Mon, 26 Jan 2026 11:11:24 +0100
+Subject: [PATCH 1/3] optee: simplify OP-TEE context match
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAMs9d2kC/x3MwQqEIBAA0F+JOTdQVgb7K0sHm8YaKBWVpSX69
- 6Tju7wLEkfhBJ/qgsg/SeJdQVtXQJtxK6MsxaAapZtWafQhM2OSI+xi/0jeZT4zHibThsswd70
- eZ2uIoBQhspXz7b/TfT8vP92GbgAAAA==
-X-Change-ID: 20260126-optee-simplify-context-match-d5b3467bfacc
+Message-Id: <20260126-optee-simplify-context-match-v1-1-d4104e526cb6@linaro.org>
+References: <20260126-optee-simplify-context-match-v1-0-d4104e526cb6@linaro.org>
+In-Reply-To: <20260126-optee-simplify-context-match-v1-0-d4104e526cb6@linaro.org>
 To: Jens Wiklander <jens.wiklander@linaro.org>, 
  Sumit Garg <sumit.garg@kernel.org>, Olivia Mackall <olivia@selenic.com>, 
  Herbert Xu <herbert@gondor.apana.org.au>, 
@@ -18,35 +16,41 @@ Cc: op-tee@lists.trustedfirmware.org, linux-kernel@vger.kernel.org,
  linux-crypto@vger.kernel.org, linux-rtc@vger.kernel.org, 
  Rouven Czerwinski <rouven.czerwinski@linaro.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769422286; l=722;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769422286; l=783;
  i=rouven.czerwinski@linaro.org; s=20260126; h=from:subject:message-id;
- bh=tDYIhxiz36gjJoQl3PD4STiraGAmWfjSN46yy4QfZ70=;
- b=6UdZd8aIRGT4L/9vrsiyrk5kkRQCa4+9u0QApVUg2I2zC/EDJOMyYlB50+svgmeaLWEmtkJB8
- cbObPWCi6L2AZqhKJIzHXabmOpA+4OgmlhEeAmksR98tL2uaWZkEYXL
+ bh=Lim3HY4VT+Sv8kk77StbxRDzEmFNkh04aSoGtueluXg=;
+ b=4Kb4IcXJ/tJ1NPTBhb4ailO8WqWg3gIUy0bYahni2O14sARl12J5KJprLVVfhvb0EsXQhEbSV
+ mI7kZiXHlNaCzM9PBik4ckocZG7s57F3uXKm0n7pHLUBJmQXtTloS6G
 X-Developer-Key: i=rouven.czerwinski@linaro.org; a=ed25519;
  pk=/5pmUK/XIAIIo8JA0axgfy1k8NRhRTQkxVwZYa1ga7U=
 X-Endpoint-Received: by B4 Relay for rouven.czerwinski@linaro.org/20260126 with auth_id=616
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Both the OP-TEE core and some OP-TEE drivers use an if/else expression
-to check a boolean which can instead be returned directly. Implement
-this change.
+Simplify the TEE implementor ID match by returning the boolean
+expression directly instead of going through an if/else.
 
+Signed-off-by: Rouven Czerwinski <rouven.czerwinski@linaro.org>
 ---
-Rouven Czerwinski (3):
-      optee: simplify OP-TEE context match
-      hwrng: optee - simplify OP-TEE context match
-      rtc: optee: simplify OP-TEE context match
+ drivers/tee/optee/device.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
 
- drivers/char/hw_random/optee-rng.c | 5 +----
- drivers/rtc/rtc-optee.c            | 5 +----
- drivers/tee/optee/device.c         | 5 +----
- 3 files changed, 3 insertions(+), 12 deletions(-)
----
-base-commit: 63804fed149a6750ffd28610c5c1c98cce6bd377
-change-id: 20260126-optee-simplify-context-match-d5b3467bfacc
+diff --git a/drivers/tee/optee/device.c b/drivers/tee/optee/device.c
+index 950b4661d5df..4c85b04d6004 100644
+--- a/drivers/tee/optee/device.c
++++ b/drivers/tee/optee/device.c
+@@ -13,10 +13,7 @@
+ 
+ static int optee_ctx_match(struct tee_ioctl_version_data *ver, const void *data)
+ {
+-	if (ver->impl_id == TEE_IMPL_ID_OPTEE)
+-		return 1;
+-	else
+-		return 0;
++	return (ver->impl_id == TEE_IMPL_ID_OPTEE);
+ }
+ 
+ static int get_devices(struct tee_context *ctx, u32 session,
 
-Best regards,
 -- 
-Rouven Czerwinski <rouven.czerwinski@linaro.org>
+2.52.0
 
