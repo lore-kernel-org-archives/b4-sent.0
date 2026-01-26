@@ -1,10 +1,10 @@
 From: Jiebing Chen <jiebing.chen@amlogic.com>
-Date: Mon, 26 Jan 2026 06:01:44 +0000
-Subject: [PATCH v6 3/5] ASoC: meson: g12a-toacodec: Add S4 tocodec driver
+Date: Mon, 26 Jan 2026 06:01:45 +0000
+Subject: [PATCH v6 4/5] clk: meson: axg_audio: add S4 support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260126-audio_drvier-v6-3-99e350855bc2@amlogic.com>
+Message-Id: <20260126-audio_drvier-v6-4-99e350855bc2@amlogic.com>
 References: <20260126-audio_drvier-v6-0-99e350855bc2@amlogic.com>
 In-Reply-To: <20260126-audio_drvier-v6-0-99e350855bc2@amlogic.com>
 To: Jerome Brunet <jbrunet@baylibre.com>, 
@@ -22,107 +22,216 @@ Cc: linux-sound@vger.kernel.org, devicetree@vger.kernel.org,
  jian.xu@amlogic.com, shuai.li@amlogic.com, zhe.wang@amlogic.com, 
  jiebing chen <jiebing.chen@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769407326; l=3394;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769407326; l=9384;
  i=jiebing.chen@amlogic.com; s=20250110; h=from:subject:message-id;
- bh=fK4/vGW475a55eAlmHfX9R+Xlh0VKjf26MRZxqH0K8o=;
- b=X2wYzsr0AapLWCUnVhTuFUxlemajlmQX++FzS3QhDO8yQXOK7lzcZUfAwidrQgznXcQCpqNTl
- 5CrCBhtOM6ADv27v1H/hOYOmp6aRQH+Co3tllL0ZbpgsME9PdF0fT9U
+ bh=mSlr+PYl6Kv5xTlb1MKaLQhx8bgwIvHXfLMJnftHOWU=;
+ b=IQRlwbGMXYegPoWxYzkiXv67EwV1WbD7zJf8asDBo2X4ZGAmiWyDjVKSrsP+JN8TCJOxcAJ6h
+ bVZeYe1N9SeAauB+1gaEsNiFSL2oki44eLUgHpomvMFLR5crQia07oj
 X-Developer-Key: i=jiebing.chen@amlogic.com; a=ed25519;
  pk=6rFvvF45A84pLNRy03hfUHeROxHCnZ+1KAGw/DoqKic=
 X-Endpoint-Received: by B4 Relay for jiebing.chen@amlogic.com/20250110 with auth_id=316
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The S4 requires additional clock control bits to be turn on while enabled.
-The S4 has 8 TDM lanes, instead of 4 on previous SoC.
-Update the widget accordingly.
+Add S4 support the axg audio clock controllers, Compared with the
+previous version, the selection of the audio's clock and data pad
+will be designed in the form of pinmux control. The purpose of doing
+this is to distinguish between clock control and pin control selection.
 
 Signed-off-by: Jiebing Chen <jiebing.chen@amlogic.com>
 ---
- sound/soc/meson/g12a-toacodec.c | 36 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 36 insertions(+)
+ drivers/clk/meson/axg-audio.c | 165 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 165 insertions(+)
 
-diff --git a/sound/soc/meson/g12a-toacodec.c b/sound/soc/meson/g12a-toacodec.c
-index a95375b53f0a..a7f9ac2d08f7 100644
---- a/sound/soc/meson/g12a-toacodec.c
-+++ b/sound/soc/meson/g12a-toacodec.c
-@@ -41,6 +41,9 @@
- #define  CTRL0_BCLK_SEL_LSB		4
- #define  CTRL0_MCLK_SEL			GENMASK(2, 0)
- 
-+#define CTRL0_BCLK_ENABLE_SHIFT		30
-+#define CTRL0_MCLK_ENABLE_SHIFT		29
-+
- #define TOACODEC_OUT_CHMAX		2
- 
- struct g12a_toacodec {
-@@ -141,6 +144,13 @@ static const struct snd_soc_dapm_widget sm1_toacodec_widgets[] = {
- 			    &g12a_toacodec_out_enable),
+diff --git a/drivers/clk/meson/axg-audio.c b/drivers/clk/meson/axg-audio.c
+index fd7eca652261..ab8c05b0509e 100644
+--- a/drivers/clk/meson/axg-audio.c
++++ b/drivers/clk/meson/axg-audio.c
+@@ -1150,6 +1150,159 @@ static struct clk_hw *g12a_audio_hw_clks[] = {
+ 	[AUD_CLKID_TOP]			= &axg_aud_top,
  };
  
-+static const struct snd_soc_dapm_widget s4_toacodec_widgets[] = {
-+	SND_SOC_DAPM_MUX("SRC", TOACODEC_CTRL0, CTRL0_BCLK_ENABLE_SHIFT, 0,
-+			 &sm1_toacodec_mux),
-+	SND_SOC_DAPM_SWITCH("OUT EN", TOACODEC_CTRL0, CTRL0_MCLK_ENABLE_SHIFT, 0,
-+			    &g12a_toacodec_out_enable),
++/*
++ * Array of all S4 clocks provided by this provider
++ * The input clocks of the controller will be populated at runtime
++ */
++static struct clk_hw *s4_audio_hw_clks[] = {
++	[AUD_CLKID_DDR_ARB]		= &ddr_arb.hw,
++	[AUD_CLKID_PDM]			= &pdm.hw,
++	[AUD_CLKID_TDMIN_A]		= &tdmin_a.hw,
++	[AUD_CLKID_TDMIN_B]		= &tdmin_b.hw,
++	[AUD_CLKID_TDMIN_C]		= &tdmin_c.hw,
++	[AUD_CLKID_TDMIN_LB]		= &tdmin_lb.hw,
++	[AUD_CLKID_TDMOUT_A]		= &tdmout_a.hw,
++	[AUD_CLKID_TDMOUT_B]		= &tdmout_b.hw,
++	[AUD_CLKID_TDMOUT_C]		= &tdmout_c.hw,
++	[AUD_CLKID_FRDDR_A]		= &frddr_a.hw,
++	[AUD_CLKID_FRDDR_B]		= &frddr_b.hw,
++	[AUD_CLKID_FRDDR_C]		= &frddr_c.hw,
++	[AUD_CLKID_TODDR_A]		= &toddr_a.hw,
++	[AUD_CLKID_TODDR_B]		= &toddr_b.hw,
++	[AUD_CLKID_TODDR_C]		= &toddr_c.hw,
++	[AUD_CLKID_LOOPBACK]		= &loopback.hw,
++	[AUD_CLKID_SPDIFIN]		= &spdifin.hw,
++	[AUD_CLKID_SPDIFOUT]		= &spdifout.hw,
++	[AUD_CLKID_RESAMPLE]		= &resample.hw,
++	[AUD_CLKID_SPDIFOUT_B]		= &spdifout_b.hw,
++	[AUD_CLKID_MST_A_MCLK_SEL]	= &sm1_mst_a_mclk_sel.hw,
++	[AUD_CLKID_MST_B_MCLK_SEL]	= &sm1_mst_b_mclk_sel.hw,
++	[AUD_CLKID_MST_C_MCLK_SEL]	= &sm1_mst_c_mclk_sel.hw,
++	[AUD_CLKID_MST_D_MCLK_SEL]	= &sm1_mst_d_mclk_sel.hw,
++	[AUD_CLKID_MST_E_MCLK_SEL]	= &sm1_mst_e_mclk_sel.hw,
++	[AUD_CLKID_MST_F_MCLK_SEL]	= &sm1_mst_f_mclk_sel.hw,
++	[AUD_CLKID_MST_A_MCLK_DIV]	= &sm1_mst_a_mclk_div.hw,
++	[AUD_CLKID_MST_B_MCLK_DIV]	= &sm1_mst_b_mclk_div.hw,
++	[AUD_CLKID_MST_C_MCLK_DIV]	= &sm1_mst_c_mclk_div.hw,
++	[AUD_CLKID_MST_D_MCLK_DIV]	= &sm1_mst_d_mclk_div.hw,
++	[AUD_CLKID_MST_E_MCLK_DIV]	= &sm1_mst_e_mclk_div.hw,
++	[AUD_CLKID_MST_F_MCLK_DIV]	= &sm1_mst_f_mclk_div.hw,
++	[AUD_CLKID_MST_A_MCLK]		= &sm1_mst_a_mclk.hw,
++	[AUD_CLKID_MST_B_MCLK]		= &sm1_mst_b_mclk.hw,
++	[AUD_CLKID_MST_C_MCLK]		= &sm1_mst_c_mclk.hw,
++	[AUD_CLKID_MST_D_MCLK]		= &sm1_mst_d_mclk.hw,
++	[AUD_CLKID_MST_E_MCLK]		= &sm1_mst_e_mclk.hw,
++	[AUD_CLKID_MST_F_MCLK]		= &sm1_mst_f_mclk.hw,
++	[AUD_CLKID_SPDIFOUT_CLK_SEL]	= &spdifout_clk_sel.hw,
++	[AUD_CLKID_SPDIFOUT_CLK_DIV]	= &spdifout_clk_div.hw,
++	[AUD_CLKID_SPDIFOUT_CLK]	= &spdifout_clk.hw,
++	[AUD_CLKID_SPDIFOUT_B_CLK_SEL]	= &spdifout_b_clk_sel.hw,
++	[AUD_CLKID_SPDIFOUT_B_CLK_DIV]	= &spdifout_b_clk_div.hw,
++	[AUD_CLKID_SPDIFOUT_B_CLK]	= &spdifout_b_clk.hw,
++	[AUD_CLKID_SPDIFIN_CLK_SEL]	= &spdifin_clk_sel.hw,
++	[AUD_CLKID_SPDIFIN_CLK_DIV]	= &spdifin_clk_div.hw,
++	[AUD_CLKID_SPDIFIN_CLK]		= &spdifin_clk.hw,
++	[AUD_CLKID_PDM_DCLK_SEL]	= &pdm_dclk_sel.hw,
++	[AUD_CLKID_PDM_DCLK_DIV]	= &pdm_dclk_div.hw,
++	[AUD_CLKID_PDM_DCLK]		= &pdm_dclk.hw,
++	[AUD_CLKID_PDM_SYSCLK_SEL]	= &pdm_sysclk_sel.hw,
++	[AUD_CLKID_PDM_SYSCLK_DIV]	= &pdm_sysclk_div.hw,
++	[AUD_CLKID_PDM_SYSCLK]		= &pdm_sysclk.hw,
++	[AUD_CLKID_MST_A_SCLK_PRE_EN]	= &mst_a_sclk_pre_en.hw,
++	[AUD_CLKID_MST_B_SCLK_PRE_EN]	= &mst_b_sclk_pre_en.hw,
++	[AUD_CLKID_MST_C_SCLK_PRE_EN]	= &mst_c_sclk_pre_en.hw,
++	[AUD_CLKID_MST_D_SCLK_PRE_EN]	= &mst_d_sclk_pre_en.hw,
++	[AUD_CLKID_MST_E_SCLK_PRE_EN]	= &mst_e_sclk_pre_en.hw,
++	[AUD_CLKID_MST_F_SCLK_PRE_EN]	= &mst_f_sclk_pre_en.hw,
++	[AUD_CLKID_MST_A_SCLK_DIV]	= &mst_a_sclk_div.hw,
++	[AUD_CLKID_MST_B_SCLK_DIV]	= &mst_b_sclk_div.hw,
++	[AUD_CLKID_MST_C_SCLK_DIV]	= &mst_c_sclk_div.hw,
++	[AUD_CLKID_MST_D_SCLK_DIV]	= &mst_d_sclk_div.hw,
++	[AUD_CLKID_MST_E_SCLK_DIV]	= &mst_e_sclk_div.hw,
++	[AUD_CLKID_MST_F_SCLK_DIV]	= &mst_f_sclk_div.hw,
++	[AUD_CLKID_MST_A_SCLK_POST_EN]	= &mst_a_sclk_post_en.hw,
++	[AUD_CLKID_MST_B_SCLK_POST_EN]	= &mst_b_sclk_post_en.hw,
++	[AUD_CLKID_MST_C_SCLK_POST_EN]	= &mst_c_sclk_post_en.hw,
++	[AUD_CLKID_MST_D_SCLK_POST_EN]	= &mst_d_sclk_post_en.hw,
++	[AUD_CLKID_MST_E_SCLK_POST_EN]	= &mst_e_sclk_post_en.hw,
++	[AUD_CLKID_MST_F_SCLK_POST_EN]	= &mst_f_sclk_post_en.hw,
++	[AUD_CLKID_MST_A_SCLK]		= &mst_a_sclk.hw,
++	[AUD_CLKID_MST_B_SCLK]		= &mst_b_sclk.hw,
++	[AUD_CLKID_MST_C_SCLK]		= &mst_c_sclk.hw,
++	[AUD_CLKID_MST_D_SCLK]		= &mst_d_sclk.hw,
++	[AUD_CLKID_MST_E_SCLK]		= &mst_e_sclk.hw,
++	[AUD_CLKID_MST_F_SCLK]		= &mst_f_sclk.hw,
++	[AUD_CLKID_MST_A_LRCLK_DIV]	= &mst_a_lrclk_div.hw,
++	[AUD_CLKID_MST_B_LRCLK_DIV]	= &mst_b_lrclk_div.hw,
++	[AUD_CLKID_MST_C_LRCLK_DIV]	= &mst_c_lrclk_div.hw,
++	[AUD_CLKID_MST_D_LRCLK_DIV]	= &mst_d_lrclk_div.hw,
++	[AUD_CLKID_MST_E_LRCLK_DIV]	= &mst_e_lrclk_div.hw,
++	[AUD_CLKID_MST_F_LRCLK_DIV]	= &mst_f_lrclk_div.hw,
++	[AUD_CLKID_MST_A_LRCLK]		= &mst_a_lrclk.hw,
++	[AUD_CLKID_MST_B_LRCLK]		= &mst_b_lrclk.hw,
++	[AUD_CLKID_MST_C_LRCLK]		= &mst_c_lrclk.hw,
++	[AUD_CLKID_MST_D_LRCLK]		= &mst_d_lrclk.hw,
++	[AUD_CLKID_MST_E_LRCLK]		= &mst_e_lrclk.hw,
++	[AUD_CLKID_MST_F_LRCLK]		= &mst_f_lrclk.hw,
++	[AUD_CLKID_TDMIN_A_SCLK_SEL]	= &tdmin_a_sclk_sel.hw,
++	[AUD_CLKID_TDMIN_B_SCLK_SEL]	= &tdmin_b_sclk_sel.hw,
++	[AUD_CLKID_TDMIN_C_SCLK_SEL]	= &tdmin_c_sclk_sel.hw,
++	[AUD_CLKID_TDMIN_LB_SCLK_SEL]	= &tdmin_lb_sclk_sel.hw,
++	[AUD_CLKID_TDMOUT_A_SCLK_SEL]	= &tdmout_a_sclk_sel.hw,
++	[AUD_CLKID_TDMOUT_B_SCLK_SEL]	= &tdmout_b_sclk_sel.hw,
++	[AUD_CLKID_TDMOUT_C_SCLK_SEL]	= &tdmout_c_sclk_sel.hw,
++	[AUD_CLKID_TDMIN_A_SCLK_PRE_EN]	= &tdmin_a_sclk_pre_en.hw,
++	[AUD_CLKID_TDMIN_B_SCLK_PRE_EN]	= &tdmin_b_sclk_pre_en.hw,
++	[AUD_CLKID_TDMIN_C_SCLK_PRE_EN]	= &tdmin_c_sclk_pre_en.hw,
++	[AUD_CLKID_TDMIN_LB_SCLK_PRE_EN] = &tdmin_lb_sclk_pre_en.hw,
++	[AUD_CLKID_TDMOUT_A_SCLK_PRE_EN] = &tdmout_a_sclk_pre_en.hw,
++	[AUD_CLKID_TDMOUT_B_SCLK_PRE_EN] = &tdmout_b_sclk_pre_en.hw,
++	[AUD_CLKID_TDMOUT_C_SCLK_PRE_EN] = &tdmout_c_sclk_pre_en.hw,
++	[AUD_CLKID_TDMIN_A_SCLK_POST_EN] = &tdmin_a_sclk_post_en.hw,
++	[AUD_CLKID_TDMIN_B_SCLK_POST_EN] = &tdmin_b_sclk_post_en.hw,
++	[AUD_CLKID_TDMIN_C_SCLK_POST_EN] = &tdmin_c_sclk_post_en.hw,
++	[AUD_CLKID_TDMIN_LB_SCLK_POST_EN] = &tdmin_lb_sclk_post_en.hw,
++	[AUD_CLKID_TDMOUT_A_SCLK_POST_EN] = &tdmout_a_sclk_post_en.hw,
++	[AUD_CLKID_TDMOUT_B_SCLK_POST_EN] = &tdmout_b_sclk_post_en.hw,
++	[AUD_CLKID_TDMOUT_C_SCLK_POST_EN] = &tdmout_c_sclk_post_en.hw,
++	[AUD_CLKID_TDMIN_A_SCLK]	= &tdmin_a_sclk.hw,
++	[AUD_CLKID_TDMIN_B_SCLK]	= &tdmin_b_sclk.hw,
++	[AUD_CLKID_TDMIN_C_SCLK]	= &tdmin_c_sclk.hw,
++	[AUD_CLKID_TDMIN_LB_SCLK]	= &tdmin_lb_sclk.hw,
++	[AUD_CLKID_TDMOUT_A_SCLK]	= &g12a_tdmout_a_sclk.hw,
++	[AUD_CLKID_TDMOUT_B_SCLK]	= &g12a_tdmout_b_sclk.hw,
++	[AUD_CLKID_TDMOUT_C_SCLK]	= &g12a_tdmout_c_sclk.hw,
++	[AUD_CLKID_TDMIN_A_LRCLK]	= &tdmin_a_lrclk.hw,
++	[AUD_CLKID_TDMIN_B_LRCLK]	= &tdmin_b_lrclk.hw,
++	[AUD_CLKID_TDMIN_C_LRCLK]	= &tdmin_c_lrclk.hw,
++	[AUD_CLKID_TDMIN_LB_LRCLK]	= &tdmin_lb_lrclk.hw,
++	[AUD_CLKID_TDMOUT_A_LRCLK]	= &tdmout_a_lrclk.hw,
++	[AUD_CLKID_TDMOUT_B_LRCLK]	= &tdmout_b_lrclk.hw,
++	[AUD_CLKID_TDMOUT_C_LRCLK]	= &tdmout_c_lrclk.hw,
++	[AUD_CLKID_TOP]			= &sm1_aud_top.hw,
++	[AUD_CLKID_TORAM]		= &toram.hw,
++	[AUD_CLKID_EQDRC]		= &eqdrc.hw,
++	[AUD_CLKID_RESAMPLE_B]		= &resample_b.hw,
++	[AUD_CLKID_TOVAD]		= &tovad.hw,
++	[AUD_CLKID_LOCKER]		= &locker.hw,
++	[AUD_CLKID_SPDIFIN_LB]		= &spdifin_lb.hw,
++	[AUD_CLKID_FRDDR_D]		= &frddr_d.hw,
++	[AUD_CLKID_TODDR_D]		= &toddr_d.hw,
++	[AUD_CLKID_LOOPBACK_B]		= &loopback_b.hw,
++	[AUD_CLKID_CLK81_EN]		= &sm1_clk81_en.hw,
++	[AUD_CLKID_SYSCLK_A_DIV]	= &sm1_sysclk_a_div.hw,
++	[AUD_CLKID_SYSCLK_A_EN]		= &sm1_sysclk_a_en.hw,
++	[AUD_CLKID_SYSCLK_B_DIV]	= &sm1_sysclk_b_div.hw,
++	[AUD_CLKID_SYSCLK_B_EN]		= &sm1_sysclk_b_en.hw,
++	[AUD_CLKID_EARCRX]		= &earcrx.hw,
++	[AUD_CLKID_EARCRX_CMDC_SEL]	= &sm1_earcrx_cmdc_clk_sel.hw,
++	[AUD_CLKID_EARCRX_CMDC_DIV]	= &sm1_earcrx_cmdc_clk_div.hw,
++	[AUD_CLKID_EARCRX_CMDC]		= &sm1_earcrx_cmdc_clk.hw,
++	[AUD_CLKID_EARCRX_DMAC_SEL]	= &sm1_earcrx_dmac_clk_sel.hw,
++	[AUD_CLKID_EARCRX_DMAC_DIV]	= &sm1_earcrx_dmac_clk_div.hw,
++	[AUD_CLKID_EARCRX_DMAC]		= &sm1_earcrx_dmac_clk.hw,
 +};
 +
- static int g12a_toacodec_input_hw_params(struct snd_pcm_substream *substream,
- 					 struct snd_pcm_hw_params *params,
- 					 struct snd_soc_dai *dai)
-@@ -234,6 +244,10 @@ static const struct snd_kcontrol_new sm1_toacodec_controls[] = {
- 	SOC_SINGLE("Lane Select", TOACODEC_CTRL0, CTRL0_LANE_SEL_SM1, 3, 0),
+ /*
+  * Array of all SM1 clocks provided by this provider
+  * The input clocks of the controller will be populated at runtime
+@@ -1410,6 +1563,15 @@ static const struct audioclk_data g12a_audioclk_data = {
+ 	.max_register = AUDIO_CLK_SPDIFOUT_B_CTRL,
  };
  
-+static const struct snd_kcontrol_new s4_toacodec_controls[] = {
-+	SOC_SINGLE("Lane Select", TOACODEC_CTRL0, CTRL0_LANE_SEL_SM1, 7, 0),
-+};
-+
- static const struct snd_soc_component_driver g12a_toacodec_component_drv = {
- 	.probe			= g12a_toacodec_component_probe,
- 	.controls		= g12a_toacodec_controls,
-@@ -256,6 +270,17 @@ static const struct snd_soc_component_driver sm1_toacodec_component_drv = {
- 	.endianness		= 1,
- };
- 
-+static const struct snd_soc_component_driver s4_toacodec_component_drv = {
-+	.probe			= sm1_toacodec_component_probe,
-+	.controls		= s4_toacodec_controls,
-+	.num_controls		= ARRAY_SIZE(s4_toacodec_controls),
-+	.dapm_widgets		= s4_toacodec_widgets,
-+	.num_dapm_widgets	= ARRAY_SIZE(s4_toacodec_widgets),
-+	.dapm_routes		= g12a_toacodec_routes,
-+	.num_dapm_routes	= ARRAY_SIZE(g12a_toacodec_routes),
-+	.endianness		= 1,
-+};
-+
- static const struct regmap_config g12a_toacodec_regmap_cfg = {
- 	.reg_bits	= 32,
- 	.val_bits	= 32,
-@@ -276,6 +301,13 @@ static const struct g12a_toacodec_match_data sm1_toacodec_match_data = {
- 	.field_bclk_sel	= REG_FIELD(TOACODEC_CTRL0, 4, 6),
- };
- 
-+static const struct g12a_toacodec_match_data s4_toacodec_match_data = {
-+	.component_drv	= &s4_toacodec_component_drv,
-+	.field_dat_sel	= REG_FIELD(TOACODEC_CTRL0, 19, 20),
-+	.field_lrclk_sel = REG_FIELD(TOACODEC_CTRL0, 12, 14),
-+	.field_bclk_sel	= REG_FIELD(TOACODEC_CTRL0, 4, 6),
-+};
-+
- static const struct of_device_id g12a_toacodec_of_match[] = {
- 	{
- 		.compatible = "amlogic,g12a-toacodec",
-@@ -285,6 +317,10 @@ static const struct of_device_id g12a_toacodec_of_match[] = {
- 		.compatible = "amlogic,sm1-toacodec",
- 		.data = &sm1_toacodec_match_data,
- 	},
-+	{
-+		.compatible = "amlogic,s4-toacodec",
-+		.data = &s4_toacodec_match_data,
++static const struct audioclk_data s4_audioclk_data = {
++	.hw_clks = {
++		.hws = s4_audio_hw_clks,
++		.num = ARRAY_SIZE(s4_audio_hw_clks),
 +	},
- 	{}
- };
- MODULE_DEVICE_TABLE(of, g12a_toacodec_of_match);
++	.rst_drvname = "rst-sm1",
++	.max_register = AUDIO_EARCRX_DMAC_CLK_CTRL,
++};
++
+ static const struct audioclk_data sm1_audioclk_data = {
+ 	.hw_clks = {
+ 		.hws = sm1_audio_hw_clks,
+@@ -1426,6 +1588,9 @@ static const struct of_device_id clkc_match_table[] = {
+ 	}, {
+ 		.compatible = "amlogic,g12a-audio-clkc",
+ 		.data = &g12a_audioclk_data
++	}, {
++		.compatible = "amlogic,s4-audio-clkc",
++		.data = &s4_audioclk_data
+ 	}, {
+ 		.compatible = "amlogic,sm1-audio-clkc",
+ 		.data = &sm1_audioclk_data
 
 -- 
 2.52.0
