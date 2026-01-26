@@ -1,10 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Mon, 26 Jan 2026 13:51:03 +0000
-Subject: [PATCH v2 2/6] dt-bindings: iio: amplifiers: Add AD8366 support
+Date: Mon, 26 Jan 2026 13:51:04 +0000
+Subject: [PATCH v2 3/6] iio: amplifiers: ad8366: refactor device resource
+ management
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260126-iio-ad8366-update-v2-2-c9a4d31aeb01@analog.com>
+Message-Id: <20260126-iio-ad8366-update-v2-3-c9a4d31aeb01@analog.com>
 References: <20260126-iio-ad8366-update-v2-0-c9a4d31aeb01@analog.com>
 In-Reply-To: <20260126-iio-ad8366-update-v2-0-c9a4d31aeb01@analog.com>
 To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
@@ -16,112 +17,145 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Conor Dooley <conor+dt@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769436111; l=2610;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769436111; l=3912;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=PH30WSr8qpiolFuH2hsqx+jrXGR0KzrfQM8KgsHyz8Q=;
- b=JcPFr/Gu8SY4SPvzzEjP7VQraWwBjQXjUTHeQehJT5ayaH+75nBdTyKdmUcgcYikDu49lFqK/
- Ha0SwqEVu0UBH4qG56bEQ0jPtL5ob+ECvm9UZcAsg7QsW7BhD90kVFT
+ bh=MSyQPvX4zNZ9Tempwgh6myGBaPDft1zW3aPPK5Ky45k=;
+ b=iRrnsTBOCGHBh+cGIhPDTQxDnpG8Q7e5JRwKzVbTLfKy/FyOA9//ebZnMa/kSc9WypPuMuqm8
+ HLUaGeXuUF1DmpKrnJ1qMgxo6F1Z7PHxsf0zA6puwETxvAtN5LbAhVl
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add device tree binding documentation for amplifiers and digital
-attenuators. This covers different device variants with similar
-SPI control.
+Adhere modern device resource management with the following:
+- Voltage regulator managed and enabled internally;
+- Proper mutex lifecycle with devm_mutex_init(), replacing mutex_init();
+- IIO device registration handled with devm_iio_device_register();
+- removal of goto's from the probe function;
+- ad8366_remove() removed as it is not needed anymore;
+
+Also, dev_err_probe() is used to report probe errors with created local
+device pointer.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- .../bindings/iio/amplifiers/adi,ad8366.yaml        | 68 ++++++++++++++++++++++
- MAINTAINERS                                        |  1 +
- 2 files changed, 69 insertions(+)
+ drivers/iio/amplifiers/ad8366.c | 60 ++++++++++++-----------------------------
+ 1 file changed, 17 insertions(+), 43 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/iio/amplifiers/adi,ad8366.yaml b/Documentation/devicetree/bindings/iio/amplifiers/adi,ad8366.yaml
-new file mode 100644
-index 000000000000..02f790fd73d7
---- /dev/null
-+++ b/Documentation/devicetree/bindings/iio/amplifiers/adi,ad8366.yaml
-@@ -0,0 +1,68 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/iio/amplifiers/adi,ad8366.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: AD8366 and similar Gain Amplifiers and Digital Attenuators
-+
-+maintainers:
-+  - Michael Hennerich <michael.hennerich@analog.com>
-+  - Rodrigo Alencar <rodrigo.alencar@analog.com>
-+
-+description:
-+  Digital Variable Gain Amplifiers (VGAs) and Digital Attenuators with
-+  SPI interface.
-+
-+properties:
-+  compatible:
-+    enum:
-+      - adi,ad8366
-+      - adi,ada4961
-+      - adi,adl5240
-+      - adi,adrf5720
-+      - adi,adrf5730
-+      - adi,adrf5731
-+      - adi,hmc271a
-+      - adi,hmc792a
-+      - adi,hmc1018a
-+      - adi,hmc1019a
-+      - adi,hmc1119
-+
-+  reg:
-+    maxItems: 1
-+
-+  vcc-supply:
-+    description: Regulator that provides power to the device.
-+
-+  reset-gpios:
-+    maxItems: 1
-+
-+  enable-gpios:
-+    maxItems: 1
-+
-+required:
-+  - compatible
-+  - reg
-+  - vcc-supply
-+
-+allOf:
-+  - $ref: /schemas/spi/spi-peripheral-props.yaml#
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/gpio/gpio.h>
-+    spi {
-+      #address-cells = <1>;
-+      #size-cells = <0>;
-+
-+      amplifier@0 {
-+        compatible = "adi,ad8366";
-+        reg = <0>;
-+        spi-max-frequency = <1000000>;
-+        vcc-supply = <&vcc_3v3>;
-+      };
-+    };
-+...
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 8b5bb7030fa6..c3403ae478b7 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1589,6 +1589,7 @@ M:	Rodrigo Alencar <rodrigo.alencar@analog.com>
- L:	linux-iio@vger.kernel.org
- S:	Supported
- W:	https://ez.analog.com/linux-software-drivers
-+F:	Documentation/devicetree/bindings/iio/amplifiers/adi,ad8366.yaml
- F:	drivers/iio/amplifiers/ad8366.c
+diff --git a/drivers/iio/amplifiers/ad8366.c b/drivers/iio/amplifiers/ad8366.c
+index d06ac786501c..0f3fc79ebbf3 100644
+--- a/drivers/iio/amplifiers/ad8366.c
++++ b/drivers/iio/amplifiers/ad8366.c
+@@ -40,7 +40,6 @@ struct ad8366_info {
  
- ANALOG DEVICES INC AD9467 DRIVER
+ struct ad8366_state {
+ 	struct spi_device	*spi;
+-	struct regulator	*reg;
+ 	struct mutex            lock; /* protect sensor state */
+ 	struct gpio_desc	*reset_gpio;
+ 	unsigned char		ch[2];
+@@ -245,25 +244,25 @@ static const struct iio_chan_spec ada4961_channels[] = {
+ 
+ static int ad8366_probe(struct spi_device *spi)
+ {
++	struct device *dev = &spi->dev;
+ 	struct iio_dev *indio_dev;
+ 	struct ad8366_state *st;
+ 	int ret;
+ 
+-	indio_dev = devm_iio_device_alloc(&spi->dev, sizeof(*st));
++	indio_dev = devm_iio_device_alloc(dev, sizeof(*st));
+ 	if (indio_dev == NULL)
+ 		return -ENOMEM;
+ 
+ 	st = iio_priv(indio_dev);
+ 
+-	st->reg = devm_regulator_get(&spi->dev, "vcc");
+-	if (!IS_ERR(st->reg)) {
+-		ret = regulator_enable(st->reg);
+-		if (ret)
+-			return ret;
+-	}
++	ret = devm_regulator_get_enable(dev, "vcc");
++	if (ret)
++		return dev_err_probe(dev, ret, "Failed to get regulator\n");
++
++	ret = devm_mutex_init(dev, &st->lock);
++	if (ret)
++		return ret;
+ 
+-	spi_set_drvdata(spi, indio_dev);
+-	mutex_init(&st->lock);
+ 	st->spi = spi;
+ 	st->type = spi_get_device_id(spi)->driver_data;
+ 
+@@ -276,18 +275,16 @@ static int ad8366_probe(struct spi_device *spi)
+ 	case ID_ADL5240:
+ 	case ID_HMC792:
+ 	case ID_HMC1119:
+-		st->reset_gpio = devm_gpiod_get_optional(&spi->dev, "reset", GPIOD_OUT_HIGH);
+-		if (IS_ERR(st->reset_gpio)) {
+-			ret = PTR_ERR(st->reset_gpio);
+-			goto error_disable_reg;
+-		}
++		st->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_HIGH);
++		if (IS_ERR(st->reset_gpio))
++			return dev_err_probe(dev, PTR_ERR(st->reset_gpio),
++					     "Failed to get reset GPIO\n");
++
+ 		indio_dev->channels = ada4961_channels;
+ 		indio_dev->num_channels = ARRAY_SIZE(ada4961_channels);
+ 		break;
+ 	default:
+-		dev_err(&spi->dev, "Invalid device ID\n");
+-		ret = -EINVAL;
+-		goto error_disable_reg;
++		return dev_err_probe(dev, -EINVAL, "Invalid device ID\n");
+ 	}
+ 
+ 	st->info = &ad8366_infos[st->type];
+@@ -297,31 +294,9 @@ static int ad8366_probe(struct spi_device *spi)
+ 
+ 	ret = ad8366_write(indio_dev, 0, 0);
+ 	if (ret < 0)
+-		goto error_disable_reg;
++		return dev_err_probe(dev, ret, "failed to write initial gain\n");
+ 
+-	ret = iio_device_register(indio_dev);
+-	if (ret)
+-		goto error_disable_reg;
+-
+-	return 0;
+-
+-error_disable_reg:
+-	if (!IS_ERR(st->reg))
+-		regulator_disable(st->reg);
+-
+-	return ret;
+-}
+-
+-static void ad8366_remove(struct spi_device *spi)
+-{
+-	struct iio_dev *indio_dev = spi_get_drvdata(spi);
+-	struct ad8366_state *st = iio_priv(indio_dev);
+-	struct regulator *reg = st->reg;
+-
+-	iio_device_unregister(indio_dev);
+-
+-	if (!IS_ERR(reg))
+-		regulator_disable(reg);
++	return devm_iio_device_register(dev, indio_dev);
+ }
+ 
+ static const struct spi_device_id ad8366_id[] = {
+@@ -339,7 +314,6 @@ static struct spi_driver ad8366_driver = {
+ 		.name	= KBUILD_MODNAME,
+ 	},
+ 	.probe		= ad8366_probe,
+-	.remove		= ad8366_remove,
+ 	.id_table	= ad8366_id,
+ };
+ 
 
 -- 
 2.43.0
