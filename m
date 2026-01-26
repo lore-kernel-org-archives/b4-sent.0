@@ -1,14 +1,12 @@
 From: SeungJong Ha <engineer.jjhama@gmail.com>
-Subject: [PATCH RFC 0/3] rust: tty: introduce TTY subsystem abstractions
- and rttyprintk
-Date: Mon, 26 Jan 2026 12:22:07 +0000
-Message-Id: <20260126-rust-tty-printk-driver-v1-0-28604e7e100e@gmail.com>
+Date: Mon, 26 Jan 2026 12:22:08 +0000
+Subject: [PATCH RFC 1/3] rust: bindings: add TTY subsystem headers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAG9cd2kC/x3MMQqAMAxA0atIZgO2QgdXwQO4ikNpowahSlpFE
- e9ucXzD/w9EEqYITfGA0MmRt5ChygLcYsNMyD4bdKVNpbRBOWLClG7chUNa0QufJOicd7bWpvZ
- GQY53oYmvfzxA37Uwvu8HyXEbOW0AAAA=
+Message-Id: <20260126-rust-tty-printk-driver-v1-1-28604e7e100e@gmail.com>
+References: <20260126-rust-tty-printk-driver-v1-0-28604e7e100e@gmail.com>
+In-Reply-To: <20260126-rust-tty-printk-driver-v1-0-28604e7e100e@gmail.com>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
  Gary Guo <gary@garyguo.net>, 
  =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
@@ -19,55 +17,43 @@ To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>,
 Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
  SeungJong Ha <engineer.jjhama@gmail.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769430128; l=1424;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769430128; l=837;
  i=engineer.jjhama@gmail.com; s=20260103; h=from:subject:message-id;
- bh=2DfOT3UAARODVsJV5czZKsnnyvSjYk3Dn2jTSNBf8po=;
- b=tVTYQ6aHhoTY4AOc9tNlItXqUo1rNgAXfMKxs2A+KpY7m2RRULw/EMmDxnuoXfCv1XIwK/tJW
- pkNj1auCv2PDnbN+k6E18znO+vwB4H8ZuY+CJqmKKyeGEtLA2JNNnxx
+ bh=0vsfQQeWd++TfCsHXwKaK0gI8PJ/Xoa6JfQ9dg4v4UA=;
+ b=Fy5475B4L9nOFeWUdI7UbNWWUKSEoKi0rb8FZIOg8/+VcC6R7PMXlB6lEd0lU4tXJ8tXtXEzr
+ zCGJ67IKU46AR7F9h4/Xo6gH557CrdzWZSCDFwLWadrygVxhTLW6jp9
 X-Developer-Key: i=engineer.jjhama@gmail.com; a=ed25519;
  pk=G5nmjm+RTiWBpyCvc5xjR1b3li/2zipLSMyz+T4fj5E=
 X-Endpoint-Received: by B4 Relay for engineer.jjhama@gmail.com/20260103 with auth_id=590
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hello,
+Add bindings for the TTY subsystem by including the following headers:
+- linux/tty.h
+- linux/tty_driver.h
+- linux/tty_port.h
 
-This RFC patch series introduces Rust abstractions for the
-TTY subsystem and implements a sample driver, rttyprintk.
-
-Currently, TTY abstractions are missing in the
-Rust for Linux implementation. This series aims to fill that gap.
-
-It consists of two main parts:
-- Rust TTY abstractions
-- The rttyprintk driver
-rttyprintk serves as the first example of a Rust TTY driver.
-I chose to port ttyprintk because its simplicity makes it and 
-ideal candidate for validating the new abstractions and demonstrating
-their usage.
-
-Thank you!
+These bindings are needed for the upcoming Rust TTY driver abstractions.
 
 Signed-off-by: SeungJong Ha <engineer.jjhama@gmail.com>
 ---
-SeungJong Ha (3):
-      rust: bindings: add TTY subsystem headers
-      rust: tty: add TTY subsystem abstractions
-      char: rttyprintk: add Rust TTY printk driver
+ rust/bindings/bindings_helper.h | 3 +++
+ 1 file changed, 3 insertions(+)
 
- drivers/char/Kconfig            |  13 ++
- drivers/char/Makefile           |   1 +
- drivers/char/rttyprintk.rs      | 180 +++++++++++++++
- rust/bindings/bindings_helper.h |   3 +
- rust/kernel/lib.rs              |   2 +
- rust/kernel/tty.rs              | 173 +++++++++++++++
- rust/kernel/tty/driver.rs       | 478 ++++++++++++++++++++++++++++++++++++++++
- rust/kernel/tty/port.rs         | 148 +++++++++++++
- 8 files changed, 998 insertions(+)
----
-base-commit: e741e19d7691c5e6f5c2bbff980d835dccb86054
-change-id: 20260126-rust-tty-printk-driver-ccdca3263d61
+diff --git a/rust/bindings/bindings_helper.h b/rust/bindings/bindings_helper.h
+index a067038b4b42..dc326eb84955 100644
+--- a/rust/bindings/bindings_helper.h
++++ b/rust/bindings/bindings_helper.h
+@@ -81,6 +81,9 @@
+ #include <linux/security.h>
+ #include <linux/slab.h>
+ #include <linux/task_work.h>
++#include <linux/tty.h>
++#include <linux/tty_driver.h>
++#include <linux/tty_port.h>
+ #include <linux/tracepoint.h>
+ #include <linux/usb.h>
+ #include <linux/wait.h>
 
-Best regards,
 -- 
-SeungJong Ha <engineer.jjhama@gmail.com>
+2.43.0
 
