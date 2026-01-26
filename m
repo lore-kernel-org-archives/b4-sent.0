@@ -1,61 +1,85 @@
-From: Andrea Scian <andrea.scian@dave.eu>
-Date: Mon, 26 Jan 2026 17:58:56 +0100
-Subject: [PATCH v2 2/2] mtd: rawnand: pl353: Add message about ECC mode
+From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Subject: [PATCH v5 0/6] i2c: xiic: use generic device property accessors
+Date: Mon, 26 Jan 2026 17:08:15 +0000
+Message-Id: <20260126-i2c-xiic-v5-0-88a16a28721c@nexthop.ai>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260126-pl353-soft-ecc-support-v2-2-fcd74b6e955f@dave.eu>
-References: <20260126-pl353-soft-ecc-support-v2-0-fcd74b6e955f@dave.eu>
-In-Reply-To: <20260126-pl353-soft-ecc-support-v2-0-fcd74b6e955f@dave.eu>
-To: Miquel Raynal <miquel.raynal@bootlin.com>, 
- Michal Simek <michal.simek@amd.com>, Richard Weinberger <richard@nod.at>, 
- Vignesh Raghavendra <vigneshr@ti.com>
-Cc: linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Amit Kumar <amit.kumar-mahapatra@amd.com>, 
- Andrea Scian <andrea.scian@dave.eu>
+X-B4-Tracking: v=1; b=H4sIAH+fd2kC/3WOQW7DIBBFrxKxLhGegcTOqveIuhhgKLOIHWHXc
+ hT57sVZuWq7fNJ/T/+pRi7Co7ocnqrwLKMMfQX3dlAhU//JWmJlBQZOpgHQAkEvIkGjp7ZLyTF
+ 1qOr8XjjJ8kpdPyqnMtz0lAvTLtA4Y6C1pyM4bDvdaPLxqxTKN+rfe16mPNyPJFsvyzgN5fF6N
+ sNW/ePEDNroBm1y8WyRW7+PbC9m3Ju4M7Ga7M8hWnA2pt+m/c+01bSE7AldYwL/MNd1/QYbsqa
+ iVQEAAA==
+X-Change-ID: 20260122-i2c-xiic-3ba89ff5ea93
+To: Michal Simek <michal.simek@amd.com>, Andi Shyti <andi.shyti@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, info@mocean-labs.com
+Cc: Andy Shevchenko <andriy.shevchenko@intel.com>, 
+ linux-arm-kernel@lists.infradead.org, linux-i2c@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Abdurrahman Hussain <abdurrahman@nexthop.ai>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769446742; l=1273;
- i=andrea.scian@dave.eu; s=20260121; h=from:subject:message-id;
- bh=W54VDp3ZuMb3O2+EOIc9KMGJG7f9MGc6xwP0ApOENno=;
- b=0PXv3vemO7XV8diJRAX7vegCXBaskah1elabJYQNWe3Q7S3LuwMXE2yPJAjFxFnL/EORJsiRQ
- mVMyImAcEanBHy3xPkySpIIDoajRo7IENyT8qSfWnm+vriOqqLGvOTr
-X-Developer-Key: i=andrea.scian@dave.eu; a=ed25519;
- pk=PMQL72nEsyoiJCobnq0uEXwUFpVmkwoWIx317WvaQOU=
-X-Endpoint-Received: by B4 Relay for andrea.scian@dave.eu/20260121 with auth_id=613
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769447300; l=2044;
+ i=abdurrahman@nexthop.ai; s=20260119; h=from:subject:message-id;
+ bh=VW73wEDlwm86XhzmqjnzsOO/GIvv7ArJjK3GOMgSBcE=;
+ b=8Q/hfEyzU9oetCA/lp4xPmLum414rzPxHu/AuVZD4ceCsOa6W4AvAI49TJN3wt8SDE03wwRB1
+ kMApOawg1wHCAYOgM3PsjhSaASlZkB6a0M54v0qBXMkOFfGLn9wUeqC
+X-Developer-Key: i=abdurrahman@nexthop.ai; a=ed25519;
+ pk=S+ysnf+NwMcBdHBlyKIUEAtaFGSIhQwcJcgcXhq0osg=
+X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/20260119 with auth_id=608
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This just add some information on kernel log about the selected ECC
+Switch to generic device property accessors.
 
-Signed-off-by: Andrea Scian <andrea.scian@dave.eu>
+Switch to managed devm_ functions to simplify error handling.
+
+Make the clock optional since the driver is designed to operate without
+explicit configuration in firmware thus making it useful on platforms
+where clock is not or cannot be provided.
+
+Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
 ---
- drivers/mtd/nand/raw/pl35x-nand-controller.c | 3 +++
- 1 file changed, 3 insertions(+)
+Changes in v5:
+- Reorder the cosmetic patch to be the last in the series.
+- Added a documentation patch to describe the optional clock.
+- Minor commit body rewording.
+- Link to v4: https://lore.kernel.org/r/20260123-i2c-xiic-v4-0-4a3eba3510ce@nexthop.ai
 
-diff --git a/drivers/mtd/nand/raw/pl35x-nand-controller.c b/drivers/mtd/nand/raw/pl35x-nand-controller.c
-index fcb62b9ec947b..cbef4f0084844 100644
---- a/drivers/mtd/nand/raw/pl35x-nand-controller.c
-+++ b/drivers/mtd/nand/raw/pl35x-nand-controller.c
-@@ -970,16 +970,19 @@ static int pl35x_nand_attach_chip(struct nand_chip *chip)
- 
- 	switch (chip->ecc.engine_type) {
- 	case NAND_ECC_ENGINE_TYPE_ON_DIE:
-+		dev_dbg(nfc->dev, "Using on-die ECC\n");
- 		/* Keep these legacy BBT descriptors for ON_DIE situations */
- 		chip->bbt_td = &bbt_main_descr;
- 		chip->bbt_md = &bbt_mirror_descr;
- 		fallthrough;
- 	case NAND_ECC_ENGINE_TYPE_NONE:
- 	case NAND_ECC_ENGINE_TYPE_SOFT:
-+		dev_dbg(nfc->dev, "Using software ECC (Hamming 1-bit/512B)\n");
- 		chip->ecc.algo = NAND_ECC_ALGO_HAMMING;
- 		chip->ecc.write_page_raw = nand_monolithic_write_page_raw;
- 		break;
- 	case NAND_ECC_ENGINE_TYPE_ON_HOST:
-+		dev_dbg(nfc->dev, "Using hardware ECC\n");
- 		ret = pl35x_nand_init_hw_ecc_controller(nfc, chip);
- 		if (ret)
- 			return ret;
+Changes in v4:
+- Reorder the cosmetic patch to be the first in the series.
+- Amend the mutex_init patch to also switch to the managed pm_runtime_
+  variant.
+- Link to v3: https://lore.kernel.org/r/20260123-i2c-xiic-v3-0-eb7cd4254dfb@nexthop.ai
 
+Changes in v3:
+- Reorder the "optional clock" patch to be the first in the series. 
+- Add a patch to switch to devm_mutex_init().
+- Remove dup message in error path.
+- Cosmetic: use temporary dev variable.
+- Link to v2: https://lore.kernel.org/r/20260122-i2c-xiic-v2-0-134f5d743e8b@nexthop.ai
+
+Changes in v2:
+- Split the patch into two independent changes.
+- Added struct device *dev at the top of probe() and remove() to re-use.
+- Switched to device_set_node(...)
+
+---
+Abdurrahman Hussain (6):
+      dt-bindings: i2c: xiic: make clocks optional
+      i2c: xiic: make the clock optional
+      i2c: xiic: switch to devres managed APIs
+      i2c: xiic: remove duplicate error message
+      i2c: xiic: switch to generic device property accessors
+      i2c: xiic: cosmetic cleanup
+
+ .../bindings/i2c/xlnx,xps-iic-2.00.a.yaml          |  1 -
+ drivers/i2c/busses/i2c-xiic.c                      | 81 +++++++++-------------
+ 2 files changed, 34 insertions(+), 48 deletions(-)
+---
+base-commit: 24d479d26b25bce5faea3ddd9fa8f3a6c3129ea7
+change-id: 20260122-i2c-xiic-3ba89ff5ea93
+
+Best regards,
 -- 
-2.43.0
+Abdurrahman Hussain <abdurrahman@nexthop.ai>
 
