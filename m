@@ -1,56 +1,73 @@
-From: Rouven Czerwinski <rouven.czerwinski@linaro.org>
-Date: Mon, 26 Jan 2026 11:11:26 +0100
-Subject: [PATCH 3/3] rtc: optee: simplify OP-TEE context match
+From: SeungJong Ha <engineer.jjhama@gmail.com>
+Subject: [PATCH RFC 0/3] rust: tty: introduce TTY subsystem abstractions
+ and rttyprintk
+Date: Mon, 26 Jan 2026 12:22:07 +0000
+Message-Id: <20260126-rust-tty-printk-driver-v1-0-28604e7e100e@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260126-optee-simplify-context-match-v1-3-d4104e526cb6@linaro.org>
-References: <20260126-optee-simplify-context-match-v1-0-d4104e526cb6@linaro.org>
-In-Reply-To: <20260126-optee-simplify-context-match-v1-0-d4104e526cb6@linaro.org>
-To: Jens Wiklander <jens.wiklander@linaro.org>, 
- Sumit Garg <sumit.garg@kernel.org>, Olivia Mackall <olivia@selenic.com>, 
- Herbert Xu <herbert@gondor.apana.org.au>, 
- =?utf-8?q?Cl=C3=A9ment_L=C3=A9ger?= <clement.leger@bootlin.com>, 
- Alexandre Belloni <alexandre.belloni@bootlin.com>
-Cc: op-tee@lists.trustedfirmware.org, linux-kernel@vger.kernel.org, 
- linux-crypto@vger.kernel.org, linux-rtc@vger.kernel.org, 
- Rouven Czerwinski <rouven.czerwinski@linaro.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769422286; l=831;
- i=rouven.czerwinski@linaro.org; s=20260126; h=from:subject:message-id;
- bh=QLdJDajsDAHZ5Jp/WvnfqKpNSpcj2i8eHxM4elD1BXk=;
- b=hUChSt/PerjC7blQ6RZipCBKxqnlwex+ECe8CfZ0Wb6SYUNshrn+Zn+ndFsgEjw9ve3jh9TQk
- BW08OOTuUhyCZjXixJ0Uk91h8vNM070X6eNfQyVTmMuXGcKhVgSHyg8
-X-Developer-Key: i=rouven.czerwinski@linaro.org; a=ed25519;
- pk=/5pmUK/XIAIIo8JA0axgfy1k8NRhRTQkxVwZYa1ga7U=
-X-Endpoint-Received: by B4 Relay for rouven.czerwinski@linaro.org/20260126 with auth_id=616
+X-B4-Tracking: v=1; b=H4sIAG9cd2kC/x3MMQqAMAxA0atIZgO2QgdXwQO4ikNpowahSlpFE
+ e9ucXzD/w9EEqYITfGA0MmRt5ChygLcYsNMyD4bdKVNpbRBOWLClG7chUNa0QufJOicd7bWpvZ
+ GQY53oYmvfzxA37Uwvu8HyXEbOW0AAAA=
+To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, Arnd Bergmann <arnd@arndb.de>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ SeungJong Ha <engineer.jjhama@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769430128; l=1424;
+ i=engineer.jjhama@gmail.com; s=20260103; h=from:subject:message-id;
+ bh=2DfOT3UAARODVsJV5czZKsnnyvSjYk3Dn2jTSNBf8po=;
+ b=tVTYQ6aHhoTY4AOc9tNlItXqUo1rNgAXfMKxs2A+KpY7m2RRULw/EMmDxnuoXfCv1XIwK/tJW
+ pkNj1auCv2PDnbN+k6E18znO+vwB4H8ZuY+CJqmKKyeGEtLA2JNNnxx
+X-Developer-Key: i=engineer.jjhama@gmail.com; a=ed25519;
+ pk=G5nmjm+RTiWBpyCvc5xjR1b3li/2zipLSMyz+T4fj5E=
+X-Endpoint-Received: by B4 Relay for engineer.jjhama@gmail.com/20260103 with auth_id=590
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Simplify the TEE implementor ID match by returning the boolean
-expression directly instead of going through an if/else.
+Hello,
 
-Signed-off-by: Rouven Czerwinski <rouven.czerwinski@linaro.org>
+This RFC patch series introduces Rust abstractions for the
+TTY subsystem and implements a sample driver, rttyprintk.
+
+Currently, TTY abstractions are missing in the
+Rust for Linux implementation. This series aims to fill that gap.
+
+It consists of two main parts:
+- Rust TTY abstractions
+- The rttyprintk driver
+rttyprintk serves as the first example of a Rust TTY driver.
+I chose to port ttyprintk because its simplicity makes it and 
+ideal candidate for validating the new abstractions and demonstrating
+their usage.
+
+Thank you!
+
+Signed-off-by: SeungJong Ha <engineer.jjhama@gmail.com>
 ---
- drivers/rtc/rtc-optee.c | 5 +----
- 1 file changed, 1 insertion(+), 4 deletions(-)
+SeungJong Ha (3):
+      rust: bindings: add TTY subsystem headers
+      rust: tty: add TTY subsystem abstractions
+      char: rttyprintk: add Rust TTY printk driver
 
-diff --git a/drivers/rtc/rtc-optee.c b/drivers/rtc/rtc-optee.c
-index 184c6d142801..2f18be3de684 100644
---- a/drivers/rtc/rtc-optee.c
-+++ b/drivers/rtc/rtc-optee.c
-@@ -541,10 +541,7 @@ static int optee_rtc_read_info(struct device *dev, struct rtc_device *rtc,
- 
- static int optee_ctx_match(struct tee_ioctl_version_data *ver, const void *data)
- {
--	if (ver->impl_id == TEE_IMPL_ID_OPTEE)
--		return 1;
--	else
--		return 0;
-+	return (ver->impl_id == TEE_IMPL_ID_OPTEE);
- }
- 
- static int optee_rtc_probe(struct device *dev)
+ drivers/char/Kconfig            |  13 ++
+ drivers/char/Makefile           |   1 +
+ drivers/char/rttyprintk.rs      | 180 +++++++++++++++
+ rust/bindings/bindings_helper.h |   3 +
+ rust/kernel/lib.rs              |   2 +
+ rust/kernel/tty.rs              | 173 +++++++++++++++
+ rust/kernel/tty/driver.rs       | 478 ++++++++++++++++++++++++++++++++++++++++
+ rust/kernel/tty/port.rs         | 148 +++++++++++++
+ 8 files changed, 998 insertions(+)
+---
+base-commit: e741e19d7691c5e6f5c2bbff980d835dccb86054
+change-id: 20260126-rust-tty-printk-driver-ccdca3263d61
 
+Best regards,
 -- 
-2.52.0
+SeungJong Ha <engineer.jjhama@gmail.com>
 
