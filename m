@@ -1,15 +1,15 @@
 From: Dmitry Safonov <dima@arista.com>
-Date: Tue, 27 Jan 2026 14:18:28 +0000
-Subject: [PATCH v2] ima_fs: Avoid creating measurement lists for
+Date: Tue, 27 Jan 2026 14:21:13 +0000
+Subject: [PATCH v3] ima_fs: Avoid creating measurement lists for
  unsupported hash algos
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260127-ima-oob-v2-1-f38a18c850cf@arista.com>
-X-B4-Tracking: v=1; b=H4sIADPJeGkC/2WNMQ6DMAxFr4I81xUJFGin3qNicMAUDxDkoKgV4
- u4NrB2f9P77GwRW4QCPbAPlKEH8nMBeMuhGmt+M0icGm9sqN7ZGmQi9d3gfqCmoKsq+dpDsRXm
- Qz1l6tYkdBUanNHfjsZ8orKyHOEpYvX7Px2gO/T8eDRq0fWmHojQN3+onaZrRtfMTtPu+/wDh+
- OWjuAAAAA==
+Message-Id: <20260127-ima-oob-v3-1-1dd09f4c2a6a@arista.com>
+X-B4-Tracking: v=1; b=H4sIANjJeGkC/3WNyw7CIBBFf6VhLaZAH+jK/zAuBjpYFi3N0BBN0
+ 38XujPG5UnuOXdjEcljZNdqY4TJRx/mDOpUMTvC/ETuh8xM1rKrhey5n4CHYPjFgVbQqWboDcv
+ rhdD511G6PzIbiMgNwWzH4k8QV6QyHH1cA72PxyTK/DeeBBdcDo10qhEa2/4GlDU42zCxUk/yj
+ yiz6JQGoa1ua+u+xH3fP3jSKJ/xAAAA
 X-Change-ID: 20260127-ima-oob-9fa83a634d7b
 To: Mimi Zohar <zohar@linux.ibm.com>, 
  Roberto Sassu <roberto.sassu@huawei.com>, 
@@ -22,17 +22,17 @@ Cc: linux-integrity@vger.kernel.org, linux-security-module@vger.kernel.org,
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
  Dmitry Safonov <0x7f454c46@gmail.com>, Dmitry Safonov <dima@arista.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769523522; l=5995;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769523678; l=6162;
  i=dima@arista.com; s=20250521; h=from:subject:message-id;
- bh=ioQ0EdzWsdpfxVjATXSELCB4MMNH/LYwAsBPTDyyGPs=;
- b=dAXkvPTNBGVwDXnCdQxTg8IdAnpL305I+CaRbmgOZvx/DGly4StwaALRji1PqJrNK7dRdxThB
- tFlyQ+vfTWcC7ZtiF4wOlLPwMus+0MZxIVY6WHVKBXcMH5BtshEgKUL
+ bh=0sOqVBGUzXxUF/x1KV8ei9ehoXPsbfmVILKXs/dm3qI=;
+ b=6Oe938tXgYfn5XA2flg3KJkYx5yIM2R+mkTsJ47I2H5OejG+aib56b2bSZNDkV6g+8pE1ijK7
+ 77K8hfut1hcB8eIsnm3BBdO8BN3G10R3WEH38P/nPNu2UC4/bce6lTk
 X-Developer-Key: i=dima@arista.com; a=ed25519;
  pk=/z94x2T59rICwjRqYvDsBe0MkpbkkdYrSW2J1G2gIcU=
 X-Endpoint-Received: by B4 Relay for dima@arista.com/20250521 with auth_id=405
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ima_init_crypto() skips initializing ima_algo_array[i] if the alogorithm
+ima_init_crypto() skips initializing ima_algo_array[i] if the algorithm
 from ima_tpm_chip->allocated_banks[i].crypto_id is not supported.
 It seems avoid adding the unsupported algorithm to ima_algo_array will
 break all the logic that relies on indexing by NR_BANKS(ima_tpm_chip).
@@ -111,6 +111,10 @@ Cc: Silvia Sisinni <silvia.sisinni@polito.it>
 Cc: Roberto Sassu <roberto.sassu@huawei.com>
 Cc: Mimi Zohar <zohar@linux.ibm.com>
 ---
+Changes in v3:
+- Now fix the spelling *for real* (sorry, messed it up in v2)
+- Link to v2: https://lore.kernel.org/r/20260127-ima-oob-v2-1-f38a18c850cf@arista.com
+
 Changes in v2:
 - Instead of skipping unknown algorithms, add files under their TPM_ALG_ID (Roberto Sassu)
 - Fix spelling (Roberto Sassu)
