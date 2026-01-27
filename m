@@ -1,71 +1,188 @@
-From: Jiucheng Xu <jiucheng.xu@amlogic.com>
-Date: Tue, 27 Jan 2026 17:34:10 +0800
-Subject: [PATCH] ext4: EXT4_I(sbi->s_buddy_cache)->i_state_flags is not
- initialized
+From: Dmitry Safonov <dima@arista.com>
+Date: Tue, 27 Jan 2026 14:18:28 +0000
+Subject: [PATCH v2] ima_fs: Avoid creating measurement lists for
+ unsupported hash algos
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260127-origin-dev-v1-1-cafda25e307f@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAJGGeGkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDQyMz3fyizPTMPN2U1DJdyzQLE0Nj0yRLU1NTJaCGgqLUtMwKsGHRsbW
- 1AP5MSmpcAAAA
-X-Change-ID: 20260126-origin-dev-9f84135b9555
-To: Theodore Ts'o <tytso@mit.edu>, 
- Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, jianxin.pan@amlogic.com, tuan.zhang@amlogic.com, 
- Jiucheng Xu <jiucheng.xu@amlogic.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769506451; l=1571;
- i=jiucheng.xu@amlogic.com; s=20250821; h=from:subject:message-id;
- bh=YWP7kPJlOX7OLc+FLI3fR6NkrBzeRbLZcst1TTgNbyA=;
- b=f0Hg3TtsLr4287r90uzc7VGPUI1SUs5bqUrBtUn0WdVP0MYcsg5XZQwNcCvU3XErB11/1f/8P
- cICYbUnQQV3AkdS2lTKlDEsb0lpCMgqXWLVd5Gxs1uM4b8id+zxkTWr
-X-Developer-Key: i=jiucheng.xu@amlogic.com; a=ed25519;
- pk=Q18IjkdWCCuncSplyu+dYqIrm+n42glvoLFJTQqpb2o=
-X-Endpoint-Received: by B4 Relay for jiucheng.xu@amlogic.com/20250821 with auth_id=498
+Message-Id: <20260127-ima-oob-v2-1-f38a18c850cf@arista.com>
+X-B4-Tracking: v=1; b=H4sIADPJeGkC/2WNMQ6DMAxFr4I81xUJFGin3qNicMAUDxDkoKgV4
+ u4NrB2f9P77GwRW4QCPbAPlKEH8nMBeMuhGmt+M0icGm9sqN7ZGmQi9d3gfqCmoKsq+dpDsRXm
+ Qz1l6tYkdBUanNHfjsZ8orKyHOEpYvX7Px2gO/T8eDRq0fWmHojQN3+onaZrRtfMTtPu+/wDh+
+ OWjuAAAAA==
+X-Change-ID: 20260127-ima-oob-9fa83a634d7b
+To: Mimi Zohar <zohar@linux.ibm.com>, 
+ Roberto Sassu <roberto.sassu@huawei.com>, 
+ Dmitry Kasatkin <dmitry.kasatkin@gmail.com>, 
+ Eric Snowberg <eric.snowberg@oracle.com>, Paul Moore <paul@paul-moore.com>, 
+ James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>, 
+ Silvia Sisinni <silvia.sisinni@polito.it>, 
+ Enrico Bravi <enrico.bravi@polito.it>
+Cc: linux-integrity@vger.kernel.org, linux-security-module@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
+ Dmitry Safonov <0x7f454c46@gmail.com>, Dmitry Safonov <dima@arista.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769523522; l=5995;
+ i=dima@arista.com; s=20250521; h=from:subject:message-id;
+ bh=ioQ0EdzWsdpfxVjATXSELCB4MMNH/LYwAsBPTDyyGPs=;
+ b=dAXkvPTNBGVwDXnCdQxTg8IdAnpL305I+CaRbmgOZvx/DGly4StwaALRji1PqJrNK7dRdxThB
+ tFlyQ+vfTWcC7ZtiF4wOlLPwMus+0MZxIVY6WHVKBXcMH5BtshEgKUL
+X-Developer-Key: i=dima@arista.com; a=ed25519;
+ pk=/z94x2T59rICwjRqYvDsBe0MkpbkkdYrSW2J1G2gIcU=
+X-Endpoint-Received: by B4 Relay for dima@arista.com/20250521 with auth_id=405
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The i_state_flags originates from an inode that was previously
-destroyed and then allocated to s_buddy_cache; it requires
-reinitialization.
+ima_init_crypto() skips initializing ima_algo_array[i] if the alogorithm
+from ima_tpm_chip->allocated_banks[i].crypto_id is not supported.
+It seems avoid adding the unsupported algorithm to ima_algo_array will
+break all the logic that relies on indexing by NR_BANKS(ima_tpm_chip).
 
-The relevant log during umount is shown below:
+On 6.12.40 I observe the following read out-of-bounds in hash_algo_name:
 
-EXT4-fs (mmcblk0p28): unmounting filesystem xxx-xxx
-EXT4-fs (mmcblk0p28): Inode 1 (39878178): inode tracked as orphan!
-39878178: 1411f3c7 e0182705 78cc454d ac11f000  .....'..ME.x....
-da10433b: 1a2e0146 792e03d0 9c2a04d1 0c788ad3  F......y..*...x.
-a91573cf: 44270388 4f4202ea 721a12ea 340cbce0  ..'D..BO...r...4
-89cb2f37: 0d13f000 4f270414 1a0b01f0 4f880fe0  ......'O.......O
-810e3bc2: 3f0c02f0 482b0009 02e048d0 83f43f2a  ...?..+H.H..*?..
-3f37c9f7: 02880aaf 00000000 00000000 00000000  ................
+> ==================================================================
+> BUG: KASAN: global-out-of-bounds in create_securityfs_measurement_lists+0x396/0x440
+> Read of size 8 at addr ffffffff83e18138 by task swapper/0/1
+>
+> CPU: 4 UID: 0 PID: 1 Comm: swapper/0 Not tainted 6.12.40 #3
+> Call Trace:
+>  <TASK>
+>  dump_stack_lvl+0x61/0x90
+>  print_report+0xc4/0x580
+>  ? kasan_addr_to_slab+0x26/0x80
+>  ? create_securityfs_measurement_lists+0x396/0x440
+>  kasan_report+0xc2/0x100
+>  ? create_securityfs_measurement_lists+0x396/0x440
+>  create_securityfs_measurement_lists+0x396/0x440
+>  ima_fs_init+0xa3/0x300
+>  ima_init+0x7d/0xd0
+>  init_ima+0x28/0x100
+>  do_one_initcall+0xa6/0x3e0
+>  kernel_init_freeable+0x455/0x740
+>  kernel_init+0x24/0x1d0
+>  ret_from_fork+0x38/0x80
+>  ret_from_fork_asm+0x11/0x20
+>  </TASK>
+>
+> The buggy address belongs to the variable:
+>  hash_algo_name+0xb8/0x420
+>
+> The buggy address belongs to the physical page:
+> page: refcount:1 mapcount:0 mapping:0000000000000000 index:0x0 pfn:0x107ce18
+> flags: 0x8000000000002000(reserved|zone=2)
+> raw: 8000000000002000 ffffea0041f38608 ffffea0041f38608 0000000000000000
+> raw: 0000000000000000 0000000000000000 00000001ffffffff 0000000000000000
+> page dumped because: kasan: bad access detected
+>
+> Memory state around the buggy address:
+>  ffffffff83e18000: 00 01 f9 f9 f9 f9 f9 f9 00 01 f9 f9 f9 f9 f9 f9
+>  ffffffff83e18080: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+> >ffffffff83e18100: 00 00 00 00 00 00 00 f9 f9 f9 f9 f9 00 05 f9 f9
+>                                         ^
+>  ffffffff83e18180: f9 f9 f9 f9 00 00 00 00 00 00 00 04 f9 f9 f9 f9
+>  ffffffff83e18200: 00 00 00 00 00 00 00 00 04 f9 f9 f9 f9 f9 f9 f9
+> ==================================================================
 
-Signed-off-by: Jiucheng Xu <jiucheng.xu@amlogic.com>
+Seems like the TPM chip supports sha3_256, which isn't yet in
+tpm_algorithms:
+> tpm tpm0: TPM with unsupported bank algorithm 0x0027
+
+Grepping HASH_ALGO__LAST in security/integrity/ima/ shows that is
+the check other logic relies on, so add files under TPM_ALG_<ID>
+and print 0 as their hash_digest_size.
+
+This is how it looks on the test machine I have:
+> # ls -1 /sys/kernel/security/ima/
+> ascii_runtime_measurements
+> ascii_runtime_measurements_TPM_ALG_27
+> ascii_runtime_measurements_sha1
+> ascii_runtime_measurements_sha256
+> binary_runtime_measurements
+> binary_runtime_measurements_TPM_ALG_27
+> binary_runtime_measurements_sha1
+> binary_runtime_measurements_sha256
+> policy
+> runtime_measurements_count
+> violations
+
+Fixes: 9fa8e7625008 ("ima: add crypto agility support for template-hash algorithm")
+Signed-off-by: Dmitry Safonov <dima@arista.com>
+Cc: Enrico Bravi <enrico.bravi@polito.it>
+Cc: Silvia Sisinni <silvia.sisinni@polito.it>
+Cc: Roberto Sassu <roberto.sassu@huawei.com>
+Cc: Mimi Zohar <zohar@linux.ibm.com>
 ---
- fs/ext4/mballoc.c | 3 +++
- 1 file changed, 3 insertions(+)
+Changes in v2:
+- Instead of skipping unknown algorithms, add files under their TPM_ALG_ID (Roberto Sassu)
+- Fix spelling (Roberto Sassu)
+- Copy @stable on the fix
+- Link to v1: https://lore.kernel.org/r/20260127-ima-oob-v1-1-2d42f3418e57@arista.com
+---
+ security/integrity/ima/ima_fs.c | 26 ++++++++++++++++++++------
+ 1 file changed, 20 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index dbc82b65f810fed89da7fa7149d3a05de6f107d6..20b07b2bea31ea81ffbd0b4ace3a7b218c8f4dd5 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3521,6 +3521,9 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 	sbi->s_buddy_cache->i_ino = EXT4_BAD_INO;
- 	EXT4_I(sbi->s_buddy_cache)->i_disksize = 0;
- 	ext4_set_inode_mapping_order(sbi->s_buddy_cache);
-+#if (BITS_PER_LONG < 64)
-+	ext4_clear_state_flags(EXT4_I(sbi->s_buddy_cache));
-+#endif
+diff --git a/security/integrity/ima/ima_fs.c b/security/integrity/ima/ima_fs.c
+index 012a58959ff0..3b442e3f84d0 100644
+--- a/security/integrity/ima/ima_fs.c
++++ b/security/integrity/ima/ima_fs.c
+@@ -160,7 +160,10 @@ int ima_measurements_show(struct seq_file *m, void *v)
+ 	ima_putc(m, &pcr, sizeof(e->pcr));
  
- 	for (i = 0; i < ngroups; i++) {
- 		cond_resched();
+ 	/* 2nd: template digest */
+-	ima_putc(m, e->digests[algo_idx].digest, hash_digest_size[algo]);
++	if (algo == HASH_ALGO__LAST)
++		ima_putc(m, "0", 1);
++	else
++		ima_putc(m, e->digests[algo_idx].digest, hash_digest_size[algo]);
+ 
+ 	/* 3rd: template name size */
+ 	namelen = !ima_canonical_fmt ? strlen(template_name) :
+@@ -252,7 +255,10 @@ static int ima_ascii_measurements_show(struct seq_file *m, void *v)
+ 	seq_printf(m, "%2d ", e->pcr);
+ 
+ 	/* 2nd: template hash */
+-	ima_print_digest(m, e->digests[algo_idx].digest, hash_digest_size[algo]);
++	if (algo == HASH_ALGO__LAST)
++		ima_putc(m, "0", 1);
++	else
++		ima_print_digest(m, e->digests[algo_idx].digest, hash_digest_size[algo]);
+ 
+ 	/* 3th:  template name */
+ 	seq_printf(m, " %s", template_name);
+@@ -404,16 +410,24 @@ static int __init create_securityfs_measurement_lists(void)
+ 		char file_name[NAME_MAX + 1];
+ 		struct dentry *dentry;
+ 
+-		sprintf(file_name, "ascii_runtime_measurements_%s",
+-			hash_algo_name[algo]);
++		if (algo == HASH_ALGO__LAST)
++			sprintf(file_name, "ascii_runtime_measurements_TPM_ALG_%x",
++				ima_tpm_chip->allocated_banks[i].alg_id);
++		else
++			sprintf(file_name, "ascii_runtime_measurements_%s",
++				hash_algo_name[algo]);
+ 		dentry = securityfs_create_file(file_name, S_IRUSR | S_IRGRP,
+ 						ima_dir, (void *)(uintptr_t)i,
+ 						&ima_ascii_measurements_ops);
+ 		if (IS_ERR(dentry))
+ 			return PTR_ERR(dentry);
+ 
+-		sprintf(file_name, "binary_runtime_measurements_%s",
+-			hash_algo_name[algo]);
++		if (algo == HASH_ALGO__LAST)
++			sprintf(file_name, "binary_runtime_measurements_TPM_ALG_%x",
++				ima_tpm_chip->allocated_banks[i].alg_id);
++		else
++			sprintf(file_name, "binary_runtime_measurements_%s",
++				hash_algo_name[algo]);
+ 		dentry = securityfs_create_file(file_name, S_IRUSR | S_IRGRP,
+ 						ima_dir, (void *)(uintptr_t)i,
+ 						&ima_measurements_ops);
 
 ---
-base-commit: 4f5e8e6f012349a107531b02eed5b5ace6181449
-change-id: 20260126-origin-dev-9f84135b9555
+base-commit: 63804fed149a6750ffd28610c5c1c98cce6bd377
+change-id: 20260127-ima-oob-9fa83a634d7b
 
 Best regards,
 -- 
-Jiucheng Xu <jiucheng.xu@amlogic.com>
+Dmitry Safonov <dima@arista.com>
 
