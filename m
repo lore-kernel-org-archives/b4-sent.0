@@ -1,54 +1,75 @@
-From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
-Date: Tue, 27 Jan 2026 21:04:01 +0000
-Subject: [PATCH v6 7/7] i2c xiic: cosmetic: use resource format specifier
- in debug log
+From: Charlie Jenkins <thecharlesjenkins@gmail.com>
+Date: Tue, 27 Jan 2026 15:58:15 -0800
+Subject: [PATCH] lib: sbi_pmu: Track SBI_PMU_FW_PLATFORM started counter
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260127-i2c-xiic-v6-7-e82e2f6f657c@nexthop.ai>
-References: <20260127-i2c-xiic-v6-0-e82e2f6f657c@nexthop.ai>
-In-Reply-To: <20260127-i2c-xiic-v6-0-e82e2f6f657c@nexthop.ai>
-To: Michal Simek <michal.simek@amd.com>, Andi Shyti <andi.shyti@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, info@mocean-labs.com
-Cc: Andy Shevchenko <andriy.shevchenko@intel.com>, 
- linux-arm-kernel@lists.infradead.org, linux-i2c@vger.kernel.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Message-Id: <20260127-pmu_platform_stop-v1-1-b07d1abd1ef2@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDQyNz3YLc0viCnMSStPyi3PjikvwC3bTUpNQ0M9PEpDRTEyWgvoKi1LT
+ MCrCZ0bG1tQC1VSDXYwAAAA==
+X-Change-ID: 20260127-pmu_platform_stop-febef65abf54
+To: opensbi@lists.infradead.org
+Cc: Charlie Jenkins <thecharlesjenkins@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769547844; l=796;
- i=abdurrahman@nexthop.ai; s=20260119; h=from:subject:message-id;
- bh=J/OOC66/6Sfkv45zHVfl6G0fbEDSnRoOH90Sob9a/M4=;
- b=z1VOfeSfINJ+Sstk8oOzEEhkqTiF6gN4ilY61XZnUqvtY+JdfITXn0FrwNvt7w5NXQLoEP46x
- gWmqDw/yDK5CjuOytBGF9I+DiHWVDhrQtAD84j7KCtB7BKY/N1qjOQ1
-X-Developer-Key: i=abdurrahman@nexthop.ai; a=ed25519;
- pk=S+ysnf+NwMcBdHBlyKIUEAtaFGSIhQwcJcgcXhq0osg=
-X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/20260119 with auth_id=608
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769558303; l=1617;
+ i=thecharlesjenkins@gmail.com; s=20260127; h=from:subject:message-id;
+ bh=tj6syk7F+QBPYvFgdhMk+dIRCVB7V4CGNm5JdEIntMk=;
+ b=lDq3WIP/TZ8xkAt+Haaz4tTYh4BWQH8wWkjnx3Gk9r1Ldf54ka1XheZfAwi7/3ZrzVwDVjlxV
+ c1JpB9MFtYUDlWhAsyPQDpERYJF0ffaoohLk0PqoCPvdHuWpgi6pdwl
+X-Developer-Key: i=thecharlesjenkins@gmail.com; a=ed25519;
+ pk=4AzEw2rmBYSzmHkYTjITwPc2sWIvqjw/Fu3GnQmSMTI=
+X-Endpoint-Received: by B4 Relay for thecharlesjenkins@gmail.com/20260127 with auth_id=619
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use standard resource format specifier %pR in debug log.
+When a SBI_PMU_FW_PLATFORM starts, add the counter to the counter array
+instead of returning early. This will cause fw_counter_stop() to be
+called when a SBI_PMU_FW_PLATFORM counter should be stopped.
 
-Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Signed-off-by: Charlie Jenkins <thecharlesjenkins@gmail.com>
 ---
- drivers/i2c/busses/i2c-xiic.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ lib/sbi/sbi_pmu.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/i2c/busses/i2c-xiic.c b/drivers/i2c/busses/i2c-xiic.c
-index 9b763d8dbe84..75b43f469861 100644
---- a/drivers/i2c/busses/i2c-xiic.c
-+++ b/drivers/i2c/busses/i2c-xiic.c
-@@ -1518,8 +1518,8 @@ static int xiic_i2c_probe(struct platform_device *pdev)
- 			i2c_new_client_device(&i2c->adap, pdata->devices + i);
- 	}
+diff --git a/lib/sbi/sbi_pmu.c b/lib/sbi/sbi_pmu.c
+index e084005d..3c61079b 100644
+--- a/lib/sbi/sbi_pmu.c
++++ b/lib/sbi/sbi_pmu.c
+@@ -448,6 +448,8 @@ static int pmu_ctr_start_fw(struct sbi_pmu_hart_state *phs,
+ 			    uint64_t event_data, uint64_t ival,
+ 			    bool ival_update)
+ {
++	int rc = 0;
++
+ 	if ((event_code >= SBI_PMU_FW_MAX &&
+ 	    event_code <= SBI_PMU_FW_RESERVED_MAX) ||
+ 	    event_code > SBI_PMU_FW_PLATFORM)
+@@ -468,9 +470,9 @@ static int pmu_ctr_start_fw(struct sbi_pmu_hart_state *phs,
+ 							cidx - num_hw_ctrs,
+ 							ival);
  
--	dev_dbg(dev, "mmio %08lx irq %d scl clock frequency %d\n",
--		(unsigned long)res->start, irq, i2c->i2c_clk);
-+	dev_dbg(dev, "mmio %pR irq %d scl clock frequency %d\n",
-+		res, irq, i2c->i2c_clk);
+-		return pmu_dev->fw_counter_start(phs->hartid,
+-						 cidx - num_hw_ctrs,
+-						 event_data);
++		rc = pmu_dev->fw_counter_start(phs->hartid,
++					       cidx - num_hw_ctrs,
++					       event_data);
+ 	} else {
+ 		if (ival_update)
+ 			phs->fw_counters_data[cidx - num_hw_ctrs] = ival;
+@@ -478,7 +480,7 @@ static int pmu_ctr_start_fw(struct sbi_pmu_hart_state *phs,
  
- 	return ret;
+ 	phs->fw_counters_started |= BIT(cidx - num_hw_ctrs);
+ 
+-	return 0;
++	return rc;
  }
+ 
+ static void pmu_update_inhibit_flags(unsigned long flags, uint64_t *mhpmevent_val)
 
--- 
-2.52.0
+---
+base-commit: 74434f255873d74e56cc50aa762d1caf24c099f8
+change-id: 20260127-pmu_platform_stop-febef65abf54
+
+- Charlie
 
