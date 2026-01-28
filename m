@@ -1,107 +1,98 @@
 From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Wed, 28 Jan 2026 22:10:57 +0100
-Subject: [PATCH net-next V3 7/7] can: gw: use can_gw_hops instead of
- sk_buff::csum_start
+Subject: [PATCH net-next v4 0/6] move CAN skb headroom content to skb
+ extensions
+Date: Wed, 28 Jan 2026 23:43:39 +0100
+Message-Id: <20260128-can_skb_ext-v1-0-330f60fd5d7e@hartkopp.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260128-can_skb_ext-v1-7-71b8bcbfd8cf@hartkopp.net>
-References: <20260128-can_skb_ext-v1-0-71b8bcbfd8cf@hartkopp.net>
-In-Reply-To: <20260128-can_skb_ext-v1-0-71b8bcbfd8cf@hartkopp.net>
+X-B4-Tracking: v=1; b=H4sIABuRemkC/x2MQQqEMBAEvxLmbCAJomYfshcRidrqIMwuiYgg/
+ t3gsaCqLkqIjEQfdVHEwYl/ksEWisY1yALNU2ZyxlXGukaPQfq0DT3OXRvUwXtM1jcl5eIfMfP
+ 53loS7Fqypb4ldff9AMJsovBqAAAA
+X-Change-ID: 20260128-can_skb_ext-0e7a99ed1984
 To: netdev@vger.kernel.org, linux-can@vger.kernel.org
 Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
  Marc Kleine-Budde <mkl@pengutronix.de>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769634697; l=3097;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769640237; l=3309;
  i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=G0PyhBZW9Q7e9z6lpqwdaRFJ89PaevlNpycS/X4tDSQ=;
- b=q6rHO3Uul5CHO5OeJZrz0VkivSn/VVtO0y/TioVJkYJcULo78Zrnm4ZEcNa7XCY4d4d+YmGNa
- QW2ucVfnjX7BUkgA4jvXLoD6Didr/tg55nNvP29SFBEWcjzmla735Mt
+ bh=f0b7C3R7nIS4pAEHba0gtxCqsmxcULxVtR793d7XUko=;
+ b=ygKcs41SccF0rhpQpv0gVvUagf9crxEDNmSOk8rkEC1RG1zjSJU+mkQSosRH+E9NNGBZegnFp
+ qNbMiyrG1u5Aj41T1MaO1RuU+k4Fr7gr5iZBBEYB4jpw7Z9gmfcrThk
 X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
  pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
 X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As CAN skbs don't use IP checksums the skb->csum_start variable was used to
-store the can-gw CAN frame time-to-live counter together with
-skb->ip_summed set to CHECKSUM_UNNECESSARY.
+CAN bus related skbuffs (ETH_P_CAN/ETH_P_CANFD/ETH_P_CANXL) simply contain
+CAN frame structs for CAN CC/FD/XL of skb->len length at skb->data. Those
+CAN skbs do not have network/mac/transport headers nor other such
+references for encapsulated protocols like ethernet/IP protocols.
 
-Remove the 'hack' using the skb->csum_start variable and move the content
-to can_skb_ext::can_gw_hops of the CAN skb extensions.
+To store data for CAN specific use-cases all CAN bus related skbuffs are
+created with a 16 byte private skb headroom (struct can_skb_priv). Using
+the skb headroom and accessing skb->head for this private data led to
+several problems in the past likely due to "The struct can_skb_priv
+business is highly unconventional for the networking stack." [1]
 
-The module parameter 'max_hops' has been reduced to a single byte to fit
-can_skb_ext::can_gw_hops as the maximum value to be stored is 6.
+This patch set aims to remove the unconventional skb headroom usage for CAN
+bus related skbuffs and use the common skb extensions instead.
 
-Signed-off-by: Marc Kleine-Budde <mkl@pengutronix.de>
-Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+[1] https://lore.kernel.org/linux-can/20260104074222.29e660ac@kernel.org/
+
 ---
- net/can/gw.c | 23 ++++++-----------------
- 1 file changed, 6 insertions(+), 17 deletions(-)
+Changes in v2:
+- Patch#1: use u32 instead of __u32 for "struct uniqframe::hash"
+- Patch#3: use u{8,16} instead of __u{8,16} for "struct can_skb_ext"
+- Patch#6: add missing patch
+- Link to v1: https://patch.msgid.link/20260125201601.5018-1-socketcan@hartkopp.net
 
-diff --git a/net/can/gw.c b/net/can/gw.c
-index ad89a1913b3422f77fdf91b5552380282b2db09a..2c134c9e5159d659b83881c51b3814debbc5f9c8 100644
---- a/net/can/gw.c
-+++ b/net/can/gw.c
-@@ -69,12 +69,12 @@ MODULE_ALIAS(CAN_GW_NAME);
- 
- #define CGW_MIN_HOPS 1
- #define CGW_MAX_HOPS 6
- #define CGW_DEFAULT_HOPS 1
- 
--static unsigned int max_hops __read_mostly = CGW_DEFAULT_HOPS;
--module_param(max_hops, uint, 0444);
-+static unsigned char max_hops __read_mostly = CGW_DEFAULT_HOPS;
-+module_param(max_hops, byte, 0444);
- MODULE_PARM_DESC(max_hops,
- 		 "maximum " CAN_GW_NAME " routing hops for CAN frames "
- 		 "(valid values: " __stringify(CGW_MIN_HOPS) "-"
- 		 __stringify(CGW_MAX_HOPS) " hops, "
- 		 "default: " __stringify(CGW_DEFAULT_HOPS) ")");
-@@ -478,23 +478,12 @@ static void can_can_gw_rcv(struct sk_buff *skb, void *data)
- 		return;
- 
- 	/* Do not handle CAN frames routed more than 'max_hops' times.
- 	 * In general we should never catch this delimiter which is intended
- 	 * to cover a misconfiguration protection (e.g. circular CAN routes).
--	 *
--	 * The Controller Area Network controllers only accept CAN frames with
--	 * correct CRCs - which are not visible in the controller registers.
--	 * According to skbuff.h documentation the csum_start element for IP
--	 * checksums is undefined/unused when ip_summed == CHECKSUM_UNNECESSARY.
--	 * Only CAN skbs can be processed here which already have this property.
- 	 */
--
--#define cgw_hops(skb) ((skb)->csum_start)
--
--	BUG_ON(skb->ip_summed != CHECKSUM_UNNECESSARY);
--
--	if (cgw_hops(skb) >= max_hops) {
-+	if (csx->can_gw_hops >= max_hops) {
- 		/* indicate deleted frames due to misconfiguration */
- 		gwj->deleted_frames++;
- 		return;
- 	}
- 
-@@ -530,15 +519,15 @@ static void can_can_gw_rcv(struct sk_buff *skb, void *data)
- 		gwj->dropped_frames++;
- 		return;
- 	}
- 
- 	/* put the incremented hop counter in the cloned skb */
--	cgw_hops(nskb) = cgw_hops(skb) + 1;
-+	ncsx->can_gw_hops = csx->can_gw_hops + 1;
- 
- 	/* first processing of this CAN frame -> adjust to private hop limit */
--	if (gwj->limit_hops && cgw_hops(nskb) == 1)
--		cgw_hops(nskb) = max_hops - gwj->limit_hops + 1;
-+	if (gwj->limit_hops && ncsx->can_gw_hops == 1)
-+		ncsx->can_gw_hops = max_hops - gwj->limit_hops + 1;
- 
- 	nskb->dev = gwj->dst.dev;
- 
- 	/* pointer to modifiable CAN frame */
- 	cf = (struct canfd_frame *)nskb->data;
+Changes in v3:
+- Patch#2: new patch: rename dev_put() in CAN subsystem suggested by Checkpatch
+- Patch#3: use netdev_put() instead of dev_put() suggested by Checkpatch
+- Patch#3: initialize can_gw_hops in can_skb_ext_add() suggested by AI-bot
+- Patch#6: add linebreak in sock_alloc_send_skb() to fit the 80 columns (Checkpatch)
+- Link to v2: https://lore.kernel.org/linux-can/20260128-can-skb-ext-v2-0-fe64aa152c8a@pengutronix.de/
 
+Changes in v4:
+Solve the netdev_put() / dev_put() suggestion from Checkpatch in a separate
+patch set. Therefore these changes are based on V2 again. 
+- Patch#2: initialize can_gw_hops in can_skb_ext_add() suggested by AI-bot
+- Patch#5: add linebreak in sock_alloc_send_skb() to fit the 80 columns
+- Link to v2: https://lore.kernel.org/linux-can/20260128-can-skb-ext-v2-0-fe64aa152c8a@pengutronix.de/
+
+Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+
+---
+Oliver Hartkopp (6):
+      can: use skb hash instead of private variable in headroom
+      can: add CAN skb extension infrastructure
+      can: move ifindex to CAN skb extensions
+      can: move frame_len to CAN skb extensions
+      can: remove private CAN skb headroom infrastructure
+      can: gw: use can_gw_hops instead of sk_buff::csum_start
+
+ MAINTAINERS               |   1 +
+ drivers/net/can/dev/skb.c | 123 +++++++++++++++++++++++++++++-----------------
+ include/linux/can/core.h  |   1 +
+ include/linux/can/skb.h   |  38 +++++---------
+ include/linux/skbuff.h    |   3 ++
+ include/net/can.h         |  28 +++++++++++
+ net/can/Kconfig           |   1 +
+ net/can/af_can.c          |  23 ++++++---
+ net/can/bcm.c             |  26 +++++++---
+ net/can/gw.c              |  38 +++++++-------
+ net/can/isotp.c           |  45 +++++++++++------
+ net/can/j1939/socket.c    |  15 ++++--
+ net/can/j1939/transport.c |  28 +++++++----
+ net/can/raw.c             |  22 ++++++---
+ net/core/skbuff.c         |   4 ++
+ 15 files changed, 255 insertions(+), 141 deletions(-)
+---
+base-commit: 239f09e258b906deced5c2a7c1ac8aed301b558b
+change-id: 20260128-can_skb_ext-0e7a99ed1984
+
+Best regards,
 -- 
-2.47.3
+Oliver Hartkopp <socketcan@hartkopp.net>
 
