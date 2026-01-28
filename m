@@ -1,255 +1,241 @@
-From: Shrikant Raskar <raskar.shree97@gmail.com>
-Date: Wed, 28 Jan 2026 23:21:53 +0530
-Subject: [PATCH v8 6/6] iio: proximity: rfd77402: Add interrupt handling
- support
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Wed, 28 Jan 2026 13:11:28 -0600
+Subject: [PATCH] arm64: dts: qcom: sm8550: Update EAS properties
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260128-b4-rfd77402_v5-v8-6-36388fe7b95e@gmail.com>
-References: <20260128-b4-rfd77402_v5-v8-0-36388fe7b95e@gmail.com>
-In-Reply-To: <20260128-b4-rfd77402_v5-v8-0-36388fe7b95e@gmail.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: skhan@linuxfoundation.org, david.hunter.linux@gmail.com, 
- raskar.shree97@gmail.com, linux-iio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Andy Shevchenko <andriy.shevchenko@intel.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769622737; l=6586;
- i=raskar.shree97@gmail.com; s=20260101; h=from:subject:message-id;
- bh=0mPo2vpMXC9Q/oHUYarDSZZ9QwrfPF9U5iDSrkxtkHU=;
- b=ld4UCe28WeWnd7MCTPvzD+ensV5t/yTsjl31sV4Z0gtcFPgKHe35bATrjUIL8JbsV096znkl9
- Ho3P7IUoeM3AkazO1Ew1Yu5pW/Wb98VF6YxcWdH65GR8Gts6nxRmhd7
-X-Developer-Key: i=raskar.shree97@gmail.com; a=ed25519;
- pk=4m2wXDvY0vlXefvRRzawNcNAif88Cy4XvbLkU6iMG/Y=
-X-Endpoint-Received: by B4 Relay for raskar.shree97@gmail.com/20260101 with auth_id=589
+Message-Id: <20260128-sm8550-eas-v1-1-fb80615bed5c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDQyML3eJcC1NTA93UxGLd5JTEtLSURPM0c3NLJaCGgqLUtMwKsGHRsbW
+ 1AKPAP9lcAAAA
+X-Change-ID: 20260128-sm8550-eas-cdaffda7f779
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Xilin Wu <wuxilin123@gmail.com>, 
+ Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769627501; l=7171;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=dr/gb4h1i+fv/Qf0FGJkkB3yJSjHPlPUZdd42Eh6dqs=;
+ b=uJKU+Oj3cW/4F1uMKZA6IfGz52NMD0C81hG/yhhZpEL+iceCBY3bwka+rwmYKFQHNNZ0zgRtB
+ yYFVHgIaejFAhD45rGc25xFuChj8h6ocrRnFIhza9v6IS3YyVYiWpHo
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add interrupt handling support to enable event-driven data acquisition
-instead of continuous polling. This improves responsiveness, reduces
-CPU overhead, and supports low-power operation by allowing the system
-to remain idle until an interrupt occurs.
+From: Xilin Wu <wuxilin123@gmail.com>
 
-Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
-Signed-off-by: Shrikant Raskar <raskar.shree97@gmail.com>
+The original values provided by Qualcomm appear to be quite
+inaccurate. Specifically, some heavy gaming tasks could be
+improperly assigned to the A510 cores by the scheduler, resulting
+in a CPU bottleneck. This update to the EAS properties aims to
+enhance the user experience across various scenarios.
+
+The power numbers were obtained using a Type-C power meter, which
+was directly connected to the battery connector on the AYN Odin 2
+motherboard, acting as a fake battery.
+
+It should be noted that the A715 cores seem less efficient than the
+A710 cores. Therefore, an average value has been assigned to them,
+considering that the A715 and A710 cores share a single cpufreq
+domain.
+
+Cortex-A510 cores:
+441 kHz, 564 mV, 43 mW, 350 Cx
+556 kHz, 580 mV, 59 mW, 346 Cx
+672 kHz, 592 mV, 71 mW, 312 Cx
+787 kHz, 604 mV, 83 mW, 290 Cx
+902 kHz, 608 mV, 96 mW, 288 Cx
+1017 kHz, 624 mV, 107 mW, 264 Cx
+1113 kHz, 636 mV, 117 mW, 252 Cx
+1228 kHz, 652 mV, 130 mW, 240 Cx
+1344 kHz, 668 mV, 146 mW, 235 Cx
+1459 kHz, 688 mV, 155 mW, 214 Cx
+1555 kHz, 704 mV, 166 mW, 205 Cx
+1670 kHz, 724 mV, 178 mW, 192 Cx
+1785 kHz, 744 mV, 197 mW, 189 Cx
+1900 kHz, 764 mV, 221 mW, 190 Cx
+2016 kHz, 784 mV, 243 mW, 188 Cx
+Your dynamic-power-coefficient for cpu 1: 251
+
+Cortex-A715 cores:
+614 kHz, 572 mV, 97 mW, 470 Cx
+729 kHz, 592 mV, 123 mW, 473 Cx
+844 kHz, 608 mV, 152 mW, 486 Cx
+940 kHz, 624 mV, 178 mW, 485 Cx
+1056 kHz, 644 mV, 207 mW, 465 Cx
+1171 kHz, 656 mV, 243 mW, 480 Cx
+1286 kHz, 672 mV, 271 mW, 459 Cx
+1401 kHz, 692 mV, 310 mW, 454 Cx
+1536 kHz, 716 mV, 368 mW, 462 Cx
+1651 kHz, 740 mV, 416 mW, 454 Cx
+1785 kHz, 760 mV, 492 mW, 475 Cx
+1920 kHz, 784 mV, 544 mW, 457 Cx
+2054 kHz, 804 mV, 613 mW, 458 Cx
+2188 kHz, 828 mV, 702 mW, 465 Cx
+2323 kHz, 852 mV, 782 mW, 461 Cx
+2457 kHz, 876 mV, 895 mW, 473 Cx
+2592 kHz, 896 mV, 1020 mW, 490 Cx
+2707 kHz, 920 mV, 1140 mW, 498 Cx
+2803 kHz, 940 mV, 1215 mW, 490 Cx
+Your dynamic-power-coefficient for cpu 3: 472
+
+Cortex-A710 cores:
+614 kHz, 572 mV, 91 mW, 388 Cx
+729 kHz, 592 mV, 116 mW, 424 Cx
+844 kHz, 608 mV, 143 mW, 443 Cx
+940 kHz, 624 mV, 165 mW, 434 Cx
+1056 kHz, 644 mV, 195 mW, 430 Cx
+1171 kHz, 656 mV, 218 mW, 414 Cx
+1286 kHz, 672 mV, 250 mW, 415 Cx
+1401 kHz, 692 mV, 286 mW, 412 Cx
+1536 kHz, 716 mV, 331 mW, 407 Cx
+1651 kHz, 740 mV, 374 mW, 401 Cx
+1785 kHz, 760 mV, 439 mW, 417 Cx
+1920 kHz, 784 mV, 495 mW, 411 Cx
+2054 kHz, 804 mV, 557 mW, 412 Cx
+2188 kHz, 828 mV, 632 mW, 415 Cx
+2323 kHz, 852 mV, 721 mW, 422 Cx
+2457 kHz, 876 mV, 813 mW, 427 Cx
+2592 kHz, 896 mV, 912 mW, 435 Cx
+2707 kHz, 920 mV, 1019 mW, 442 Cx
+2803 kHz, 940 mV, 1087 mW, 436 Cx
+Your dynamic-power-coefficient for cpu 5: 421
+
+Cortex-X3 core:
+729 kHz, 568 mV, 252 mW, 1110 Cx
+864 kHz, 580 mV, 312 mW, 1097 Cx
+998 kHz, 592 mV, 379 mW, 1109 Cx
+1132 kHz, 608 mV, 453 mW, 1099 Cx
+1248 kHz, 624 mV, 517 mW, 1067 Cx
+1363 kHz, 636 mV, 587 mW, 1067 Cx
+1478 kHz, 648 mV, 657 mW, 1058 Cx
+1593 kHz, 664 mV, 739 mW, 1049 Cx
+1708 kHz, 680 mV, 813 mW, 1020 Cx
+1843 kHz, 704 mV, 940 mW, 1021 Cx
+1977 kHz, 724 mV, 1054 mW, 1007 Cx
+2092 kHz, 740 mV, 1201 mW, 1045 Cx
+2227 kHz, 768 mV, 1358 mW, 1029 Cx
+2342 kHz, 788 mV, 1486 mW, 1016 Cx
+2476 kHz, 812 mV, 1711 mW, 1046 Cx
+2592 kHz, 836 mV, 1846 mW, 1014 Cx
+2726 kHz, 856 mV, 2046 mW, 1020 Cx
+2841 kHz, 880 mV, 2266 mW, 1027 Cx
+2956 kHz, 908 mV, 2616 mW, 1074 Cx
+3187 kHz, 956 mV, 3326 mW, 1147 Cx
+Your dynamic-power-coefficient for cpu 7: 1057
+
+7-zip benchmark single-core MIPS:
+2128   4416   4632   6686
+
+Signed-off-by: Xilin Wu <wuxilin123@gmail.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/iio/proximity/rfd77402.c | 121 ++++++++++++++++++++++++++++++++++++---
- 1 file changed, 113 insertions(+), 8 deletions(-)
+ arch/arm64/boot/dts/qcom/sm8550.dtsi | 32 ++++++++++++++++----------------
+ 1 file changed, 16 insertions(+), 16 deletions(-)
 
-diff --git a/drivers/iio/proximity/rfd77402.c b/drivers/iio/proximity/rfd77402.c
-index c29ae9af4a90..4d6b63f311a7 100644
---- a/drivers/iio/proximity/rfd77402.c
-+++ b/drivers/iio/proximity/rfd77402.c
-@@ -6,20 +6,28 @@
-  *
-  * 7-bit I2C slave address 0x4c
-  *
-- * TODO: interrupt
-  * https://media.digikey.com/pdf/Data%20Sheets/RF%20Digital%20PDFs/RFD77402.pdf
-  */
- 
-+#include <linux/bits.h>
-+#include <linux/completion.h>
- #include <linux/delay.h>
-+#include <linux/dev_printk.h>
-+#include <linux/errno.h>
- #include <linux/i2c.h>
-+#include <linux/interrupt.h>
- #include <linux/iopoll.h>
-+#include <linux/jiffies.h>
- #include <linux/module.h>
-+#include <linux/types.h>
- 
- #include <linux/iio/iio.h>
- 
- #define RFD77402_DRV_NAME "rfd77402"
- 
- #define RFD77402_ICSR		0x00 /* Interrupt Control Status Register */
-+#define RFD77402_ICSR_CLR_CFG	BIT(0)
-+#define RFD77402_ICSR_CLR_TYPE	BIT(1)
- #define RFD77402_ICSR_INT_MODE	BIT(2)
- #define RFD77402_ICSR_INT_POL	BIT(3)
- #define RFD77402_ICSR_RESULT	BIT(4)
-@@ -27,6 +35,12 @@
- #define RFD77402_ICSR_H2M_MSG	BIT(6)
- #define RFD77402_ICSR_RESET	BIT(7)
- 
-+#define RFD77402_IER		0x02
-+#define RFD77402_IER_RESULT	BIT(0)
-+#define RFD77402_IER_M2H_MSG	BIT(1)
-+#define RFD77402_IER_H2M_MSG	BIT(2)
-+#define RFD77402_IER_RESET	BIT(3)
-+
- #define RFD77402_CMD_R		0x04
- #define RFD77402_CMD_SINGLE	0x01
- #define RFD77402_CMD_STANDBY	0x10
-@@ -81,10 +95,14 @@ static const struct {
-  * struct rfd77402_data - device-specific data for the RFD77402 sensor
-  * @client: I2C client handle
-  * @lock: mutex to serialize sensor reads
-+ * @completion: completion used for interrupt-driven measurements
-+ * @irq_en: indicates whether interrupt mode is enabled
-  */
- struct rfd77402_data {
- 	struct i2c_client *client;
- 	struct mutex lock;
-+	struct completion completion;
-+	bool irq_en;
- };
- 
- static const struct iio_chan_spec rfd77402_channels[] = {
-@@ -95,6 +113,41 @@ static const struct iio_chan_spec rfd77402_channels[] = {
- 	},
- };
- 
-+static irqreturn_t rfd77402_interrupt_handler(int irq, void *pdata)
-+{
-+	struct rfd77402_data *data = pdata;
-+	int ret;
-+
-+	ret = i2c_smbus_read_byte_data(data->client, RFD77402_ICSR);
-+	if (ret < 0)
-+		return IRQ_NONE;
-+
-+	/* Check if the interrupt is from our device */
-+	if (!(ret & RFD77402_ICSR_RESULT))
-+		return IRQ_NONE;
-+
-+	/* Signal completion of measurement */
-+	complete(&data->completion);
-+	return IRQ_HANDLED;
-+}
-+
-+static int rfd77402_wait_for_irq(struct rfd77402_data *data)
-+{
-+	int ret;
-+
-+	/*
-+	 * According to RFD77402 Datasheet v1.8,
-+	 * Section 3.1.1 "Single Measure" (Figure: Single Measure Flow Chart),
-+	 * the suggested timeout for single measure is 100 ms.
-+	 */
-+	ret = wait_for_completion_timeout(&data->completion,
-+					  msecs_to_jiffies(100));
-+	if (ret == 0)
-+		return -ETIMEDOUT;
-+
-+	return 0;
-+}
-+
- static int rfd77402_set_state(struct i2c_client *client, u8 state, u16 check)
- {
- 	int ret;
-@@ -120,6 +173,11 @@ static int rfd77402_wait_for_result(struct rfd77402_data *data)
- 	struct i2c_client *client = data->client;
- 	int val, ret;
- 
-+	if (data->irq_en) {
-+		reinit_completion(&data->completion);
-+		return rfd77402_wait_for_irq(data);
-+	}
-+
- 	ret = read_poll_timeout(i2c_smbus_read_byte_data, val,
- 				 (val < 0) || (val & RFD77402_ICSR_RESULT),
- 				 10 * USEC_PER_MSEC,
-@@ -200,8 +258,20 @@ static const struct iio_info rfd77402_info = {
- 	.read_raw = rfd77402_read_raw,
- };
- 
--static int rfd77402_init(struct i2c_client *client)
-+static int rfd77402_config_irq(struct i2c_client *client, u8 csr, u8 ier)
- {
-+	int ret;
-+
-+	ret = i2c_smbus_write_byte_data(client, RFD77402_ICSR, csr);
-+	if (ret)
-+		return ret;
-+
-+	return i2c_smbus_write_byte_data(client, RFD77402_IER, ier);
-+}
-+
-+static int rfd77402_init(struct rfd77402_data *data)
-+{
-+	struct i2c_client *client = data->client;
- 	int ret, i;
- 
- 	ret = rfd77402_set_state(client, RFD77402_CMD_STANDBY,
-@@ -209,10 +279,26 @@ static int rfd77402_init(struct i2c_client *client)
- 	if (ret < 0)
- 		return ret;
- 
--	/* configure INT pad as push-pull, active low */
--	ret = i2c_smbus_write_byte_data(client, RFD77402_ICSR,
--					RFD77402_ICSR_INT_MODE);
--	if (ret < 0)
-+	if (data->irq_en) {
-+		/*
-+		 * Enable interrupt mode:
-+		 * - Configure ICSR for auto-clear on read and
-+		 *   push-pull output
-+		 * - Enable "result ready" interrupt in IER
-+		 */
-+		ret = rfd77402_config_irq(client,
-+					  RFD77402_ICSR_CLR_CFG |
-+					  RFD77402_ICSR_INT_MODE,
-+					  RFD77402_IER_RESULT);
-+	} else {
-+		/*
-+		 * Disable all interrupts:
-+		 * - Clear ICSR configuration
-+		 * - Disable all interrupts in IER
-+		 */
-+		ret = rfd77402_config_irq(client, 0, 0);
-+	}
-+	if (ret)
- 		return ret;
- 
- 	/* I2C configuration */
-@@ -292,13 +378,29 @@ static int rfd77402_probe(struct i2c_client *client)
- 	if (ret)
- 		return ret;
- 
-+	init_completion(&data->completion);
-+
-+	if (client->irq > 0) {
-+		ret = devm_request_threaded_irq(&client->dev, client->irq,
-+						NULL, rfd77402_interrupt_handler,
-+						IRQF_ONESHOT,
-+						"rfd77402", data);
-+		if (ret)
-+			return ret;
-+
-+		data->irq_en = true;
-+		dev_dbg(&client->dev, "Using interrupt mode\n");
-+	} else {
-+		dev_dbg(&client->dev, "Using polling mode\n");
-+	}
-+
- 	indio_dev->info = &rfd77402_info;
- 	indio_dev->channels = rfd77402_channels;
- 	indio_dev->num_channels = ARRAY_SIZE(rfd77402_channels);
- 	indio_dev->name = RFD77402_DRV_NAME;
- 	indio_dev->modes = INDIO_DIRECT_MODE;
- 
--	ret = rfd77402_init(client);
-+	ret = rfd77402_init(data);
- 	if (ret < 0)
- 		return ret;
- 
-@@ -316,7 +418,10 @@ static int rfd77402_suspend(struct device *dev)
- 
- static int rfd77402_resume(struct device *dev)
- {
--	return rfd77402_init(to_i2c_client(dev));
-+	struct iio_dev *indio_dev = dev_get_drvdata(dev);
-+	struct rfd77402_data *data = iio_priv(indio_dev);
-+
-+	return rfd77402_init(data);
- }
- 
- static DEFINE_SIMPLE_DEV_PM_OPS(rfd77402_pm_ops, rfd77402_suspend,
+diff --git a/arch/arm64/boot/dts/qcom/sm8550.dtsi b/arch/arm64/boot/dts/qcom/sm8550.dtsi
+index e3f93f4f412ded9583a6bc9215185a0daf5f1b57..7bbbf3109bc2c6e2e6445207cc86c401be482a73 100644
+--- a/arch/arm64/boot/dts/qcom/sm8550.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8550.dtsi
+@@ -76,8 +76,8 @@ cpu0: cpu@0 {
+ 			power-domains = <&cpu_pd0>;
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 0>;
+-			capacity-dmips-mhz = <1024>;
+-			dynamic-power-coefficient = <100>;
++			capacity-dmips-mhz = <326>;
++			dynamic-power-coefficient = <251>;
+ 			#cooling-cells = <2>;
+ 			l2_0: l2-cache {
+ 				compatible = "cache";
+@@ -102,8 +102,8 @@ cpu1: cpu@100 {
+ 			power-domains = <&cpu_pd1>;
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 0>;
+-			capacity-dmips-mhz = <1024>;
+-			dynamic-power-coefficient = <100>;
++			capacity-dmips-mhz = <326>;
++			dynamic-power-coefficient = <251>;
+ 			#cooling-cells = <2>;
+ 			l2_100: l2-cache {
+ 				compatible = "cache";
+@@ -123,8 +123,8 @@ cpu2: cpu@200 {
+ 			power-domains = <&cpu_pd2>;
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 0>;
+-			capacity-dmips-mhz = <1024>;
+-			dynamic-power-coefficient = <100>;
++			capacity-dmips-mhz = <326>;
++			dynamic-power-coefficient = <251>;
+ 			#cooling-cells = <2>;
+ 			l2_200: l2-cache {
+ 				compatible = "cache";
+@@ -144,8 +144,8 @@ cpu3: cpu@300 {
+ 			power-domains = <&cpu_pd3>;
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 1>;
+-			capacity-dmips-mhz = <1792>;
+-			dynamic-power-coefficient = <270>;
++			capacity-dmips-mhz = <693>;
++			dynamic-power-coefficient = <447>;
+ 			#cooling-cells = <2>;
+ 			l2_300: l2-cache {
+ 				compatible = "cache";
+@@ -165,8 +165,8 @@ cpu4: cpu@400 {
+ 			power-domains = <&cpu_pd4>;
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 1>;
+-			capacity-dmips-mhz = <1792>;
+-			dynamic-power-coefficient = <270>;
++			capacity-dmips-mhz = <693>;
++			dynamic-power-coefficient = <447>;
+ 			#cooling-cells = <2>;
+ 			l2_400: l2-cache {
+ 				compatible = "cache";
+@@ -186,8 +186,8 @@ cpu5: cpu@500 {
+ 			power-domains = <&cpu_pd5>;
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 1>;
+-			capacity-dmips-mhz = <1792>;
+-			dynamic-power-coefficient = <270>;
++			capacity-dmips-mhz = <693>;
++			dynamic-power-coefficient = <447>;
+ 			#cooling-cells = <2>;
+ 			l2_500: l2-cache {
+ 				compatible = "cache";
+@@ -207,8 +207,8 @@ cpu6: cpu@600 {
+ 			power-domains = <&cpu_pd6>;
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 1>;
+-			capacity-dmips-mhz = <1792>;
+-			dynamic-power-coefficient = <270>;
++			capacity-dmips-mhz = <693>;
++			dynamic-power-coefficient = <447>;
+ 			#cooling-cells = <2>;
+ 			l2_600: l2-cache {
+ 				compatible = "cache";
+@@ -228,8 +228,8 @@ cpu7: cpu@700 {
+ 			power-domains = <&cpu_pd7>;
+ 			power-domain-names = "psci";
+ 			qcom,freq-domain = <&cpufreq_hw 2>;
+-			capacity-dmips-mhz = <1894>;
+-			dynamic-power-coefficient = <588>;
++			capacity-dmips-mhz = <1024>;
++			dynamic-power-coefficient = <1057>;
+ 			#cooling-cells = <2>;
+ 			l2_700: l2-cache {
+ 				compatible = "cache";
 
+---
+base-commit: 3f24e4edcd1b8981c6b448ea2680726dedd87279
+change-id: 20260128-sm8550-eas-cdaffda7f779
+
+Best regards,
 -- 
-2.43.0
+Aaron Kling <webgeek1234@gmail.com>
 
