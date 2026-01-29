@@ -1,107 +1,57 @@
-From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Wed, 28 Jan 2026 23:43:45 +0100
-Subject: [PATCH net-next V4 6/6] can: gw: use can_gw_hops instead of
- sk_buff::csum_start
+From: Ben Zong-You Xie <ben717@andestech.com>
+Date: Thu, 29 Jan 2026 14:43:34 +0800
+Subject: [PATCH] drivers: pwm: remove redundant check in pwm_ops_check()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260128-can_skb_ext-v1-6-330f60fd5d7e@hartkopp.net>
-References: <20260128-can_skb_ext-v1-0-330f60fd5d7e@hartkopp.net>
-In-Reply-To: <20260128-can_skb_ext-v1-0-330f60fd5d7e@hartkopp.net>
-To: netdev@vger.kernel.org, linux-can@vger.kernel.org
-Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
- Marc Kleine-Budde <mkl@pengutronix.de>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769640237; l=3097;
- i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=G0PyhBZW9Q7e9z6lpqwdaRFJ89PaevlNpycS/X4tDSQ=;
- b=A2LHfZ/twwOLoG9zvSpDVG4Nf1OOUccXkBBbGeOr0K8+3e2LTmf29u/Wg5JwWGwH8mNBNmtIL
- LUQQxW4kmbQBBwHgwZ82K03Sx5GbFX+zA0ia3vUP8zzEX5DnIcKAJJ7
-X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
- pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
-X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
+Message-Id: <20260129-fix-pwm-ops-check-v1-1-6f0b7952c875@andestech.com>
+X-B4-Tracking: v=1; b=H4sIAJUBe2kC/yXM0QqCQBCF4VeRuW5gXWnFXiW6sPGkU6TLTmUgv
+ rubXX5wzr+QISmMTsVCCR81ncaM8lCQDO3Yg7XLJu98cKVv+KZfjvOTp2gsA+TBAVUQuKarjy3
+ lX0zIo715vvxt7+sd8vqFaF03ID1zUnUAAAA=
+X-Change-ID: 20260129-fix-pwm-ops-check-6e36ce09d75a
+To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>
+Cc: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
+ linux-pwm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Ben Zong-You Xie <ben717@andestech.com>
+X-Mailer: b4 0.15-dev-47773
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769669016; l=921;
+ i=ben717@andestech.com; s=20260120; h=from:subject:message-id;
+ bh=a9RiAo/8R5Tlj69Vgjm25sELpahOvVfSyEKanqMOV6w=;
+ b=Nrmpy0YBi+qTZA1mdEGrL7qlV12ahfdGG6oB2rJsfhbhY+RsXosr35fGWTQ+l0Rvj4JIorvaq
+ 8X+fdBpMZ+uAxJorkkke1Cq+oZDPY755nr65xlhmsLXz9wfMI4X5oxz
+X-Developer-Key: i=ben717@andestech.com; a=ed25519;
+ pk=nb8L7zQKGJpYk0yvrYKjViOZ34A36g1ZIsCmCsP518s=
+X-Endpoint-Received: by B4 Relay for ben717@andestech.com/20260120 with auth_id=610
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As CAN skbs don't use IP checksums the skb->csum_start variable was used to
-store the can-gw CAN frame time-to-live counter together with
-skb->ip_summed set to CHECKSUM_UNNECESSARY.
+Drop the redundant check for the existence of 'ops->write_waveform'.
 
-Remove the 'hack' using the skb->csum_start variable and move the content
-to can_skb_ext::can_gw_hops of the CAN skb extensions.
-
-The module parameter 'max_hops' has been reduced to a single byte to fit
-can_skb_ext::can_gw_hops as the maximum value to be stored is 6.
-
-Signed-off-by: Marc Kleine-Budde <mkl@pengutronix.de>
-Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+Fixes: 17e40c25158f ("pwm: New abstraction for PWM waveforms")
+Signed-off-by: Ben Zong-You Xie <ben717@andestech.com>
 ---
- net/can/gw.c | 23 ++++++-----------------
- 1 file changed, 6 insertions(+), 17 deletions(-)
+ drivers/pwm/core.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/net/can/gw.c b/net/can/gw.c
-index ad89a1913b3422f77fdf91b5552380282b2db09a..2c134c9e5159d659b83881c51b3814debbc5f9c8 100644
---- a/net/can/gw.c
-+++ b/net/can/gw.c
-@@ -69,12 +69,12 @@ MODULE_ALIAS(CAN_GW_NAME);
+diff --git a/drivers/pwm/core.c b/drivers/pwm/core.c
+index ec8731515333..450aedd32c81 100644
+--- a/drivers/pwm/core.c
++++ b/drivers/pwm/core.c
+@@ -1699,8 +1699,7 @@ static bool pwm_ops_check(const struct pwm_chip *chip)
  
- #define CGW_MIN_HOPS 1
- #define CGW_MAX_HOPS 6
- #define CGW_DEFAULT_HOPS 1
+ 	if (ops->write_waveform) {
+ 		if (!ops->round_waveform_tohw ||
+-		    !ops->round_waveform_fromhw ||
+-		    !ops->write_waveform)
++		    !ops->round_waveform_fromhw)
+ 			return false;
  
--static unsigned int max_hops __read_mostly = CGW_DEFAULT_HOPS;
--module_param(max_hops, uint, 0444);
-+static unsigned char max_hops __read_mostly = CGW_DEFAULT_HOPS;
-+module_param(max_hops, byte, 0444);
- MODULE_PARM_DESC(max_hops,
- 		 "maximum " CAN_GW_NAME " routing hops for CAN frames "
- 		 "(valid values: " __stringify(CGW_MIN_HOPS) "-"
- 		 __stringify(CGW_MAX_HOPS) " hops, "
- 		 "default: " __stringify(CGW_DEFAULT_HOPS) ")");
-@@ -478,23 +478,12 @@ static void can_can_gw_rcv(struct sk_buff *skb, void *data)
- 		return;
- 
- 	/* Do not handle CAN frames routed more than 'max_hops' times.
- 	 * In general we should never catch this delimiter which is intended
- 	 * to cover a misconfiguration protection (e.g. circular CAN routes).
--	 *
--	 * The Controller Area Network controllers only accept CAN frames with
--	 * correct CRCs - which are not visible in the controller registers.
--	 * According to skbuff.h documentation the csum_start element for IP
--	 * checksums is undefined/unused when ip_summed == CHECKSUM_UNNECESSARY.
--	 * Only CAN skbs can be processed here which already have this property.
- 	 */
--
--#define cgw_hops(skb) ((skb)->csum_start)
--
--	BUG_ON(skb->ip_summed != CHECKSUM_UNNECESSARY);
--
--	if (cgw_hops(skb) >= max_hops) {
-+	if (csx->can_gw_hops >= max_hops) {
- 		/* indicate deleted frames due to misconfiguration */
- 		gwj->deleted_frames++;
- 		return;
- 	}
- 
-@@ -530,15 +519,15 @@ static void can_can_gw_rcv(struct sk_buff *skb, void *data)
- 		gwj->dropped_frames++;
- 		return;
- 	}
- 
- 	/* put the incremented hop counter in the cloned skb */
--	cgw_hops(nskb) = cgw_hops(skb) + 1;
-+	ncsx->can_gw_hops = csx->can_gw_hops + 1;
- 
- 	/* first processing of this CAN frame -> adjust to private hop limit */
--	if (gwj->limit_hops && cgw_hops(nskb) == 1)
--		cgw_hops(nskb) = max_hops - gwj->limit_hops + 1;
-+	if (gwj->limit_hops && ncsx->can_gw_hops == 1)
-+		ncsx->can_gw_hops = max_hops - gwj->limit_hops + 1;
- 
- 	nskb->dev = gwj->dst.dev;
- 
- 	/* pointer to modifiable CAN frame */
- 	cf = (struct canfd_frame *)nskb->data;
+ 		if (PWM_WFHWSIZE < ops->sizeof_wfhw) {
 
--- 
-2.47.3
+---
+base-commit: 63faf32666e03a78cc985bcbae196418cf7d7938
+change-id: 20260129-fix-pwm-ops-check-6e36ce09d75a
+
+Best regards,
+--  
+Ben Zong-You Xie <ben717@andestech.com>
 
