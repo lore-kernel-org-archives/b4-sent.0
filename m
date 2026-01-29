@@ -1,57 +1,65 @@
-From: Ben Zong-You Xie <ben717@andestech.com>
-Date: Thu, 29 Jan 2026 14:43:34 +0800
-Subject: [PATCH] drivers: pwm: remove redundant check in pwm_ops_check()
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH 0/3] arm64: dts: qcom: sm8550: Fix DTBO boot failure
+Date: Thu, 29 Jan 2026 01:46:29 -0600
+Message-Id: <20260129-sm8550-abl-dtbo-v1-0-abca3be14024@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260129-fix-pwm-ops-check-v1-1-6f0b7952c875@andestech.com>
-X-B4-Tracking: v=1; b=H4sIAJUBe2kC/yXM0QqCQBCF4VeRuW5gXWnFXiW6sPGkU6TLTmUgv
- rubXX5wzr+QISmMTsVCCR81ncaM8lCQDO3Yg7XLJu98cKVv+KZfjvOTp2gsA+TBAVUQuKarjy3
- lX0zIo715vvxt7+sd8vqFaF03ID1zUnUAAAA=
-X-Change-ID: 20260129-fix-pwm-ops-check-6e36ce09d75a
-To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>
-Cc: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>, 
- linux-pwm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Ben Zong-You Xie <ben717@andestech.com>
-X-Mailer: b4 0.15-dev-47773
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769669016; l=921;
- i=ben717@andestech.com; s=20260120; h=from:subject:message-id;
- bh=a9RiAo/8R5Tlj69Vgjm25sELpahOvVfSyEKanqMOV6w=;
- b=Nrmpy0YBi+qTZA1mdEGrL7qlV12ahfdGG6oB2rJsfhbhY+RsXosr35fGWTQ+l0Rvj4JIorvaq
- 8X+fdBpMZ+uAxJorkkke1Cq+oZDPY755nr65xlhmsLXz9wfMI4X5oxz
-X-Developer-Key: i=ben717@andestech.com; a=ed25519;
- pk=nb8L7zQKGJpYk0yvrYKjViOZ34A36g1ZIsCmCsP518s=
-X-Endpoint-Received: by B4 Relay for ben717@andestech.com/20260120 with auth_id=610
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDQyML3eJcC1NTA93EpBzdlJKkfF1LMyMLCzNjkzQDgxQloK6CotS0zAq
+ widGxtbUAhh2jlmEAAAA=
+X-Change-ID: 20260128-sm8550-abl-dtbo-96288634f00d
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Kumar Sharma <quic_vksharma@quicinc.com>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>, 
+ Kuldeep Singh <quic_kuldsing@quicinc.com>, 
+ Lei Chen <quic_chenlei@quicinc.com>, 
+ Pavan Kondeti <pavan.kondeti@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769672821; l=1080;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=QCEkSPxVReljpWVHzeTwyyJ/ekN3C9+uC4x+BSUR/9s=;
+ b=KdzPsRU0OdcLrvu4utlDS5UjyAisqfNnJHbsM10Y7LMe4aaxbh/foFYb3QgMNDQFMEQG5+bLP
+ CftXj5WlQj1Bcors8XCQ7NoLX30wup2gZZ9qCuj/M96sTLUbk3eDVye
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Drop the redundant check for the existence of 'ops->write_waveform'.
+With a current mainline sm8550 base dtb, ABL will fail to apply any dtbo
+and fail back to the bootloader menu. There are three changes needed:
 
-Fixes: 17e40c25158f ("pwm: New abstraction for PWM waveforms")
-Signed-off-by: Ben Zong-You Xie <ben717@andestech.com>
+* Add the tz-log node and a label named qcom_tzlog
+* Rename the scm node to qcom_scm
+* Add a label named arch_timer to the timer node
+
+The tz-log binding doc and node are sourced from CLO commits. The other
+changes are sourced from a lkml message and attributed to the author of
+the message.
+
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/pwm/core.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+Kuldeep Singh (1):
+      dt-bindings: firmware: Add tz-log doc
 
-diff --git a/drivers/pwm/core.c b/drivers/pwm/core.c
-index ec8731515333..450aedd32c81 100644
---- a/drivers/pwm/core.c
-+++ b/drivers/pwm/core.c
-@@ -1699,8 +1699,7 @@ static bool pwm_ops_check(const struct pwm_chip *chip)
- 
- 	if (ops->write_waveform) {
- 		if (!ops->round_waveform_tohw ||
--		    !ops->round_waveform_fromhw ||
--		    !ops->write_waveform)
-+		    !ops->round_waveform_fromhw)
- 			return false;
- 
- 		if (PWM_WFHWSIZE < ops->sizeof_wfhw) {
+Lei Chen (1):
+      arm64: dts: qcom: sm8550: Add tz-log node
 
+Pavan Kondeti (1):
+      arm64: dts: qcom: sm8550: Fix DTBO boot failure
+
+ .../devicetree/bindings/firmware/qcom,tz-log.yaml  | 66 ++++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/sm8550.dtsi               | 12 +++-
+ 2 files changed, 76 insertions(+), 2 deletions(-)
 ---
-base-commit: 63faf32666e03a78cc985bcbae196418cf7d7938
-change-id: 20260129-fix-pwm-ops-check-6e36ce09d75a
+base-commit: 3f24e4edcd1b8981c6b448ea2680726dedd87279
+change-id: 20260128-sm8550-abl-dtbo-96288634f00d
 
 Best regards,
---  
-Ben Zong-You Xie <ben717@andestech.com>
+-- 
+Aaron Kling <webgeek1234@gmail.com>
 
