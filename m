@@ -1,638 +1,112 @@
-From: Jesung Yang <y.j3ms.n@gmail.com>
-Date: Thu, 29 Jan 2026 23:32:48 +0900
-Subject: [PATCH v5 4/4] rust: macros: add private doctests for `TryFrom`
- derive macro
+From: Oliver Hartkopp <socketcan@hartkopp.net>
+Subject: [PATCH net-next v5 0/6] move CAN skb headroom content to skb
+ extensions
+Date: Thu, 29 Jan 2026 17:29:06 +0100
+Message-Id: <20260129-can_skb_ext-v5-0-21252fdc8900@hartkopp.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260129-try-from-into-macro-v5-4-dd011008118c@gmail.com>
-References: <20260129-try-from-into-macro-v5-0-dd011008118c@gmail.com>
-In-Reply-To: <20260129-try-from-into-macro-v5-0-dd011008118c@gmail.com>
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, Alexandre Courbot <acourbot@nvidia.com>
-Cc: linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
- nouveau@lists.freedesktop.org, Jesung Yang <y.j3ms.n@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=19107; i=y.j3ms.n@gmail.com;
- h=from:subject:message-id; bh=l34mus63yQ1c1i6SvdeCR7UhR8dIQzbjvW9rVOFt/Qc=;
- b=owJ4nAFtApL9kA0DAAoBhnBYoOPQ2LoByyZiAGl7b477vpjupbGfMb6dBtpzSyrwTfCz+OyIN
- nLFLHyvPfubQYkCMwQAAQoAHRYhBNJuBqTTLsbEgOaQ0IZwWKDj0Ni6BQJpe2+OAAoJEIZwWKDj
- 0Ni6S7EQAME7j04Zsp3njqnFsdB5ZALVoad+aAD11/OBIGf9+fJyHBYvQMD3e0WZpWDe/VUoDgp
- OfF88eJ+ekngEDnsERzMWoVCGhuus8KKCZEPOu34BurcbvziFslfTAbU3f0qMFsQcnN9ABBO0CX
- x8n6DebbIfG/0TOdG5y+UaDkYvYUU5njVAnPhpdAo25E1f+XfD3e4fnxkTQwvYy0evNhr22+q5t
- G4NNj2wLQMsCbKMpgrTgU3N+LoV1ZbWkULj1Xp/8JF90WMP2Uli47Q1R0APgjrd9mborBOPKyMo
- 7DWW+mebzKISlf8zzDc+sFVObHMHzg7dUymcWNTMHdbogRxulAB/fyx4ZwJcAMrOXL4ndSxxezH
- 6eszoBrqWT9KsdnLlbUaYgMwKjE+HUkz3IRlNphTKzbQgser2eKmkzOidQvYOlNPwPF5O1Lv0Le
- vbkKHpOvD7tZURUr3rJuuOJF+8L0Rb2LOqQ+UmQLUlRQaROrCwWU3ZbzGwawqzhn00IdedzBWVt
- 2vsVXV+0dSBvX7Pu48LqB+ejgA5UUPz4jRKez7s2eF5WBCdah4u5W2herq+IN21+6mQS9ut0W/q
- 7IU6ZffrkrQ7aLjZXmR98uVUadgAHVNeGL+8taoAKyMuvVQqx1aCxYg0Gcd3S+GUN+sK6oK3a0c
- 7hbvJxLLD8G67tJK7UC4zYQ==
-X-Developer-Key: i=y.j3ms.n@gmail.com; a=openpgp;
- fpr=D26E06A4D32EC6C480E690D0867058A0E3D0D8BA
-X-Endpoint-Received: by B4 Relay for y.j3ms.n@gmail.com/default with auth_id=602
+X-B4-Tracking: v=1; b=H4sIANKKe2kC/22NywrDIBREfyXcdS1qmodZ9T9KCDbeNBJQUZGU4
+ L9XXHc5nJkzFwT0GgNMzQUekw7amhK6WwPrLs0HiVYlA6e8p4yPZJVmCcd7wTMSioMUAhUT4wP
+ Kwnnc9FltLzAYiSktmAvZdYjWf+tNYpX/NSZGKGlbuvV0U50a8LlLHw/r3L34YM45/wBBDuics
+ wAAAA==
+X-Change-ID: 20260128-can_skb_ext-0e7a99ed1984
+To: Marc Kleine-Budde <mkl@pengutronix.de>, 
+ Vincent Mailhol <mailhol@kernel.org>, 
+ Oliver Hartkopp <socketcan@hartkopp.net>, 
+ Robin van der Gracht <robin@protonic.nl>, 
+ Oleksij Rempel <o.rempel@pengutronix.de>, kernel@pengutronix.de, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ netdev@vger.kernel.org
+X-Mailer: b4 0.15-dev-47773
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769704191; l=3636;
+ i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
+ bh=zxy8ZTxOQMkZmrBy1Jm4ziPSAhOzUTyddmgqk9oimVc=;
+ b=0FO360njONPSza/y7MeUhhXTSdrc6x+O3jAwaA9ojYiiz0avMmzYbm96Q4qJE8R/+KJIXGtKA
+ XC4v/+PEs05BWlUgaw560r/PGIxAUO3IkY38JapRrQIXXEDA2Hn3f09
+X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
+ pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
+X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add internal doctests to verify the `TryFrom` derive macro's logic. This
-ensures comprehensive testing while keeping the public-facing
-documentation compact and readable.
+CAN bus related skbuffs (ETH_P_CAN/ETH_P_CANFD/ETH_P_CANXL) simply contain
+CAN frame structs for CAN CC/FD/XL of skb->len length at skb->data. Those
+CAN skbs do not have network/mac/transport headers nor other such
+references for encapsulated protocols like ethernet/IP protocols.
 
-Signed-off-by: Jesung Yang <y.j3ms.n@gmail.com>
+To store data for CAN specific use-cases all CAN bus related skbuffs are
+created with a 16 byte private skb headroom (struct can_skb_priv). Using
+the skb headroom and accessing skb->head for this private data led to
+several problems in the past likely due to "The struct can_skb_priv
+business is highly unconventional for the networking stack." [1]
+
+This patch set aims to remove the unconventional skb headroom usage for CAN
+bus related skbuffs and use the common skb extensions instead.
+
+[1] https://lore.kernel.org/linux-can/20260104074222.29e660ac@kernel.org/
+
 ---
- rust/macros/convert.rs | 579 +++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 579 insertions(+)
+Changes in v2:
+- Patch#1: use u32 instead of __u32 for "struct uniqframe::hash"
+- Patch#3: use u{8,16} instead of __u{8,16} for "struct can_skb_ext"
+- Patch#6: add missing patch
+- Link to v1: https://patch.msgid.link/20260125201601.5018-1-socketcan@hartkopp.net
 
-diff --git a/rust/macros/convert.rs b/rust/macros/convert.rs
-index 41ccbd849348..2acaafb58e93 100644
---- a/rust/macros/convert.rs
-+++ b/rust/macros/convert.rs
-@@ -1018,3 +1018,582 @@ mod overflow_assert_works_on_unsigned_int {}
-     /// ```
-     mod any_into_target_overflow_is_rejected {}
- }
-+
-+mod derive_try_from_tests {
-+    /// ```
-+    /// use kernel::{
-+    ///     macros::{
-+    ///         Into,
-+    ///         TryFrom, //
-+    ///     },
-+    ///     num::Bounded,
-+    ///     prelude::*, //
-+    /// };
-+    ///
-+    /// #[derive(Debug, Into, PartialEq, TryFrom)]
-+    /// #[into(bool, Bounded<i8, 7>, Bounded<u8, 7>, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize)]
-+    /// #[try_from(bool, Bounded<i8, 7>, Bounded<u8, 7>, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize)]
-+    /// enum Foo {
-+    ///     A,
-+    ///     B,
-+    /// }
-+    ///
-+    /// assert_eq!(false, Foo::A.into());
-+    /// assert_eq!(true, Foo::B.into());
-+    /// assert_eq!(Ok(Foo::A), Foo::try_from(false));
-+    /// assert_eq!(Ok(Foo::B), Foo::try_from(true));
-+    ///
-+    /// let foo_a: Bounded<i8, 7> = Foo::A.into();
-+    /// let foo_b: Bounded<i8, 7> = Foo::B.into();
-+    /// assert_eq!(Bounded::<i8, 7>::new::<0>(), foo_a);
-+    /// assert_eq!(Bounded::<i8, 7>::new::<1>(), foo_b);
-+    /// assert_eq!(Ok(Foo::A), Foo::try_from(Bounded::<i8, 7>::new::<0>()));
-+    /// assert_eq!(Ok(Foo::B), Foo::try_from(Bounded::<i8, 7>::new::<1>()));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(Bounded::<i8, 7>::new::<-1>()));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(Bounded::<i8, 7>::new::<2>()));
-+    ///
-+    /// let foo_a: Bounded<u8, 7> = Foo::A.into();
-+    /// let foo_b: Bounded<u8, 7> = Foo::B.into();
-+    /// assert_eq!(Bounded::<u8, 7>::new::<0>(), foo_a);
-+    /// assert_eq!(Bounded::<u8, 7>::new::<1>(), foo_b);
-+    /// assert_eq!(Ok(Foo::A), Foo::try_from(Bounded::<u8, 7>::new::<0>()));
-+    /// assert_eq!(Ok(Foo::B), Foo::try_from(Bounded::<u8, 7>::new::<1>()));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(Bounded::<u8, 7>::new::<2>()));
-+    ///
-+    /// macro_rules! gen_signed_tests {
-+    ///     ($($type:ty),*) => {
-+    ///         $(
-+    ///             assert_eq!(0 as $type, Foo::A.into());
-+    ///             assert_eq!(1 as $type, Foo::B.into());
-+    ///             assert_eq!(Ok(Foo::A), Foo::try_from(0 as $type));
-+    ///             assert_eq!(Ok(Foo::B), Foo::try_from(1 as $type));
-+    ///             assert_eq!(Err(EINVAL), Foo::try_from((0 as $type) - 1));
-+    ///             assert_eq!(Err(EINVAL), Foo::try_from((1 as $type) + 1));
-+    ///         )*
-+    ///     };
-+    /// }
-+    /// macro_rules! gen_unsigned_tests {
-+    ///     ($($type:ty),*) => {
-+    ///         $(
-+    ///             assert_eq!(0 as $type, Foo::A.into());
-+    ///             assert_eq!(1 as $type, Foo::B.into());
-+    ///             assert_eq!(Ok(Foo::A), Foo::try_from(0 as $type));
-+    ///             assert_eq!(Ok(Foo::B), Foo::try_from(1 as $type));
-+    ///             assert_eq!(Err(EINVAL), Foo::try_from((1 as $type) + 1));
-+    ///         )*
-+    ///     };
-+    /// }
-+    /// gen_signed_tests!(i8, i16, i32, i64, i128, isize);
-+    /// gen_unsigned_tests!(u8, u16, u32, u64, u128, usize);
-+    /// ```
-+    mod works_with_derive_into {}
-+
-+    /// ```
-+    /// use kernel::{
-+    ///     macros::TryFrom,
-+    ///     prelude::*, //
-+    /// };
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(u8)]
-+    /// enum Foo {
-+    ///     // Works with const expressions.
-+    ///     A = add(0, 0),
-+    ///     B = 2_isize.pow(1) - 1,
-+    /// }
-+    ///
-+    /// const fn add(a: isize, b: isize) -> isize {
-+    ///     a + b
-+    /// }
-+    ///
-+    /// assert_eq!(Ok(Foo::A), Foo::try_from(0_u8));
-+    /// assert_eq!(Ok(Foo::B), Foo::try_from(1_u8));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(2_u8));
-+    /// ```
-+    mod works_with_const_expr {}
-+
-+    /// ```
-+    /// use kernel::{
-+    ///     macros::TryFrom,
-+    ///     prelude::*, //
-+    /// };
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(bool)]
-+    /// enum Foo {
-+    ///     A,
-+    ///     B,
-+    /// }
-+    ///
-+    /// assert_eq!(Ok(Foo::A), Foo::try_from(false));
-+    /// assert_eq!(Ok(Foo::B), Foo::try_from(true));
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(bool)]
-+    /// enum Bar {
-+    ///     A,
-+    /// }
-+    ///
-+    /// assert_eq!(Ok(Bar::A), Bar::try_from(false));
-+    /// assert_eq!(Err(EINVAL), Bar::try_from(true));
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(bool)]
-+    /// enum Baz {
-+    ///     A = 1,
-+    /// }
-+    ///
-+    /// assert_eq!(Err(EINVAL), Baz::try_from(false));
-+    /// assert_eq!(Ok(Baz::A), Baz::try_from(true));
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(bool)]
-+    /// enum Foo {
-+    ///     // `-1` cannot be represented with `bool`.
-+    ///     A = -1,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(bool)]
-+    /// enum Foo {
-+    ///     // `2` cannot be represented with `bool`.
-+    ///     A = 2,
-+    /// }
-+    /// ```
-+    mod overflow_assert_works_on_bool {}
-+
-+    /// ```
-+    /// use kernel::{
-+    ///     macros::TryFrom,
-+    ///     num::Bounded,
-+    ///     prelude::*, //
-+    /// };
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(Bounded<i8, 7>)]
-+    /// enum Foo {
-+    ///     A = -1 << 6,      // The minimum value of `Bounded<i8, 7>`.
-+    ///     B = (1 << 6) - 1, // The maximum value of `Bounded<i8, 7>`.
-+    /// }
-+    ///
-+    /// assert_eq!(Ok(Foo::A), Foo::try_from(Bounded::<i8, 7>::new::<{ -1_i8 << 6 }>()));
-+    /// assert_eq!(Ok(Foo::B), Foo::try_from(Bounded::<i8, 7>::new::<{ (1_i8 << 6) - 1 }>()));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(Bounded::<i8, 7>::new::<{ (-1_i8 << 6) + 1 }>()));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(Bounded::<i8, 7>::new::<{ (1_i8 << 6) - 2 }>()));
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(Bounded<i8, 7>)]
-+    /// enum Foo {
-+    ///     // `1 << 6` cannot be represented with `Bounded<i8, 7>`.
-+    ///     A = 1 << 6,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(Bounded<i8, 7>)]
-+    /// enum Foo {
-+    ///     // `(-1 << 6) - 1` cannot be represented with `Bounded<i8, 7>`.
-+    ///     A = (-1 << 6) - 1,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```
-+    /// use kernel::{
-+    ///     macros::TryFrom,
-+    ///     num::Bounded,
-+    ///     prelude::*, //
-+    /// };
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(Bounded<i8, 1>)]
-+    /// enum Foo {
-+    ///     A = -1, // The minimum value of `Bounded<i8, 1>`.
-+    ///     B,      // The maximum value of `Bounded<i8, 1>`.
-+    /// }
-+    ///
-+    /// assert_eq!(Ok(Foo::A), Foo::try_from(Bounded::<i8, 1>::new::<{ -1_i8 }>()));
-+    /// assert_eq!(Ok(Foo::B), Foo::try_from(Bounded::<i8, 1>::new::<{ 0_i8 } >()));
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(Bounded<i8, 1>)]
-+    /// enum Bar {
-+    ///     A = -1, // The minimum value of `Bounded<i8, 1>`.
-+    /// }
-+    ///
-+    /// assert_eq!(Ok(Bar::A), Bar::try_from(Bounded::<i8, 1>::new::<{ -1_i8 }>()));
-+    /// assert_eq!(Err(EINVAL), Bar::try_from(Bounded::<i8, 1>::new::<{ 0_i8 } >()));
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(Bounded<i8, 1>)]
-+    /// enum Baz {
-+    ///     A, // The maximum value of `Bounded<i8, 1>`.
-+    /// }
-+    ///
-+    /// assert_eq!(Err(EINVAL), Baz::try_from(Bounded::<i8, 1>::new::<{ -1_i8 }>()));
-+    /// assert_eq!(Ok(Baz::A), Baz::try_from(Bounded::<i8, 1>::new::<{ 0_i8 } >()));
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(Bounded<i8, 1>)]
-+    /// enum Foo {
-+    ///     // `1` cannot be represented with `Bounded<i8, 1>`.
-+    ///     A = 1,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(Bounded<i8, 1>)]
-+    /// enum Foo {
-+    ///     // `-2` cannot be represented with `Bounded<i8, 1>`.
-+    ///     A = -2,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```
-+    /// use kernel::{
-+    ///     macros::TryFrom,
-+    ///     num::Bounded,
-+    ///     prelude::*, //
-+    /// };
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(Bounded<i32, 32>)]
-+    /// #[repr(i64)]
-+    /// enum Foo {
-+    ///     A = i32::MIN as i64,
-+    ///     B = i32::MAX as i64,
-+    /// }
-+    ///
-+    /// assert_eq!(Ok(Foo::A), Foo::try_from(Bounded::<i32, 32>::new::<{ i32::MIN }>()));
-+    /// assert_eq!(Ok(Foo::B), Foo::try_from(Bounded::<i32, 32>::new::<{ i32::MAX }>()));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(Bounded::<i32, 32>::new::<{ i32::MIN + 1 }>()));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(Bounded::<i32, 32>::new::<{ i32::MAX - 1 }>()));
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(Bounded<i32, 32>)]
-+    /// #[repr(i64)]
-+    /// enum Foo {
-+    ///     // `1 << 31` cannot be represented with `Bounded<i32, 32>`.
-+    ///     A = 1 << 31,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(Bounded<i32, 32>)]
-+    /// #[repr(i64)]
-+    /// enum Foo {
-+    ///     // `(-1 << 31) - 1` cannot be represented with `Bounded<i32, 32>`.
-+    ///     A = (-1 << 31) - 1,
-+    /// }
-+    /// ```
-+    mod overflow_assert_works_on_signed_bounded {}
-+
-+    /// ```
-+    /// use kernel::{
-+    ///     macros::TryFrom,
-+    ///     num::Bounded,
-+    ///     prelude::*, //
-+    /// };
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(Bounded<u8, 7>)]
-+    /// enum Foo {
-+    ///     A,                // The minimum value of `Bounded<u8, 7>`.
-+    ///     B = (1 << 7) - 1, // The maximum value of `Bounded<u8, 7>`.
-+    /// }
-+    ///
-+    /// assert_eq!(Ok(Foo::A), Foo::try_from(Bounded::<u8, 7>::new::<{ 0 }>()));
-+    /// assert_eq!(Ok(Foo::B), Foo::try_from(Bounded::<u8, 7>::new::<{ (1_u8 << 7) - 1 }>()));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(Bounded::<u8, 7>::new::<{ 1 }>()));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(Bounded::<u8, 7>::new::<{ (1_u8 << 7) - 2 }>()));
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(Bounded<u8, 7>)]
-+    /// enum Foo {
-+    ///     // `1 << 7` cannot be represented with `Bounded<u8, 7>`.
-+    ///     A = 1 << 7,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(Bounded<u8, 7>)]
-+    /// enum Foo {
-+    ///     // `-1` cannot be represented with `Bounded<u8, 7>`.
-+    ///     A = -1,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```
-+    /// use kernel::{
-+    ///     macros::TryFrom,
-+    ///     num::Bounded,
-+    ///     prelude::*, //
-+    /// };
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(Bounded<u8, 1>)]
-+    /// enum Foo {
-+    ///     A, // The minimum value of `Bounded<u8, 1>`.
-+    ///     B, // The maximum value of `Bounded<u8, 1>`.
-+    /// }
-+    ///
-+    /// assert_eq!(Ok(Foo::A), Foo::try_from(Bounded::<u8, 1>::new::<{ 0 }>()));
-+    /// assert_eq!(Ok(Foo::B), Foo::try_from(Bounded::<u8, 1>::new::<{ 1 }>()));
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(Bounded<u8, 1>)]
-+    /// enum Bar {
-+    ///     A, // The minimum value of `Bounded<u8, 1>`.
-+    /// }
-+    ///
-+    /// assert_eq!(Ok(Bar::A), Bar::try_from(Bounded::<u8, 1>::new::<{ 0 }>()));
-+    /// assert_eq!(Err(EINVAL), Bar::try_from(Bounded::<u8, 1>::new::<{ 1 }>()));
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(Bounded<u8, 1>)]
-+    /// enum Baz {
-+    ///     A = 1, // The maximum value of `Bounded<u8, 1>`.
-+    /// }
-+    ///
-+    /// assert_eq!(Err(EINVAL), Baz::try_from(Bounded::<u8, 1>::new::<{ 0 }>()));
-+    /// assert_eq!(Ok(Baz::A), Baz::try_from(Bounded::<u8, 1>::new::<{ 1 }>()));
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(Bounded<u8, 1>)]
-+    /// enum Foo {
-+    ///     // `2` cannot be represented with `Bounded<u8, 1>`.
-+    ///     A = 2,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(Bounded<u8, 1>)]
-+    /// enum Foo {
-+    ///     // `-1` cannot be represented with `Bounded<u8, 1>`.
-+    ///     A = -1,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```
-+    /// use kernel::{
-+    ///     macros::TryFrom,
-+    ///     num::Bounded,
-+    ///     prelude::*, //
-+    /// };
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(Bounded<u32, 32>)]
-+    /// #[repr(u64)]
-+    /// enum Foo {
-+    ///     A = u32::MIN as u64,
-+    ///     B = u32::MAX as u64,
-+    /// }
-+    ///
-+    /// assert_eq!(Ok(Foo::A), Foo::try_from(Bounded::<u32, 32>::new::<{ u32::MIN }>()));
-+    /// assert_eq!(Ok(Foo::B), Foo::try_from(Bounded::<u32, 32>::new::<{ u32::MAX }>()));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(Bounded::<u32, 32>::new::<{ u32::MIN + 1 }>()));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(Bounded::<u32, 32>::new::<{ u32::MAX - 1 }>()));
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(Bounded<u32, 32>)]
-+    /// #[repr(u64)]
-+    /// enum Foo {
-+    ///     // `1 << 32` cannot be represented with `Bounded<u32, 32>`.
-+    ///     A = 1 << 32,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(Bounded<u32, 32>)]
-+    /// #[repr(u64)]
-+    /// enum Foo {
-+    ///     // `-1` cannot be represented with `Bounded<u32, 32>`.
-+    ///     A = -1,
-+    /// }
-+    /// ```
-+    mod overflow_assert_works_on_unsigned_bounded {}
-+
-+    /// ```
-+    /// use kernel::{
-+    ///     macros::TryFrom,
-+    ///     num::Bounded,
-+    ///     prelude::*, //
-+    /// };
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(isize)]
-+    /// #[repr(isize)]
-+    /// enum Foo {
-+    ///     A = isize::MIN,
-+    ///     B = isize::MAX,
-+    /// }
-+    ///
-+    /// assert_eq!(Ok(Foo::A), Foo::try_from(isize::MIN));
-+    /// assert_eq!(Ok(Foo::B), Foo::try_from(isize::MAX));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(isize::MIN + 1));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(isize::MAX - 1));
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(isize)]
-+    /// #[repr(usize)]
-+    /// enum Foo {
-+    ///     A = (isize::MAX as usize) + 1
-+    /// }
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(i32)]
-+    /// #[repr(i64)]
-+    /// enum Foo {
-+    ///     A = (i32::MIN as i64) - 1,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(i32)]
-+    /// #[repr(i64)]
-+    /// enum Foo {
-+    ///     A = (i32::MAX as i64) + 1,
-+    /// }
-+    /// ```
-+    mod overflow_assert_works_on_signed_int {}
-+
-+    /// ```
-+    /// use kernel::{
-+    ///     macros::TryFrom,
-+    ///     num::Bounded,
-+    ///     prelude::*, //
-+    /// };
-+    ///
-+    /// #[derive(Debug, PartialEq, TryFrom)]
-+    /// #[try_from(usize)]
-+    /// #[repr(usize)]
-+    /// enum Foo {
-+    ///     A = usize::MIN,
-+    ///     B = usize::MAX,
-+    /// }
-+    ///
-+    /// assert_eq!(Ok(Foo::A), Foo::try_from(usize::MIN));
-+    /// assert_eq!(Ok(Foo::B), Foo::try_from(usize::MAX));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(usize::MIN + 1));
-+    /// assert_eq!(Err(EINVAL), Foo::try_from(usize::MAX - 1));
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(usize)]
-+    /// #[repr(isize)]
-+    /// enum Foo {
-+    ///     A = -1,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(u32)]
-+    /// #[repr(i64)]
-+    /// enum Foo {
-+    ///     A = (u32::MIN as i64) - 1,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(u32)]
-+    /// #[repr(i64)]
-+    /// enum Foo {
-+    ///     A = (u32::MAX as i64) + 1,
-+    /// }
-+    /// ```
-+    mod overflow_assert_works_on_unsigned_int {}
-+
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(Bounded<i8, 7>, i8, i16, i32, i64)]
-+    /// #[repr(i8)]
-+    /// enum Foo {
-+    ///     // `i8::MAX` cannot be represented with `Bounded<i8, 7>`.
-+    ///     A = i8::MAX,
-+    /// }
-+    /// ```
-+    ///
-+    /// ```compile_fail
-+    /// use kernel::macros::TryFrom;
-+    ///
-+    /// #[derive(TryFrom)]
-+    /// #[try_from(i8, i16, i32, i64, Bounded<i8, 7>)]
-+    /// #[repr(i8)]
-+    /// enum Foo {
-+    ///     // `i8::MAX` cannot be represented with `Bounded<i8, 7>`.
-+    ///     A = i8::MAX,
-+    /// }
-+    /// ```
-+    mod any_try_from_target_overflow_is_rejected {}
-+}
+Changes in v3:
+- Patch#2: new patch: rename dev_put() in CAN subsystem suggested by Checkpatch
+- Patch#3: use netdev_put() instead of dev_put() suggested by Checkpatch
+- Patch#3: initialize can_gw_hops in can_skb_ext_add() suggested by AI-bot
+- Patch#6: add linebreak in sock_alloc_send_skb() to fit the 80 columns (Checkpatch)
+- Link to v2: https://lore.kernel.org/linux-can/20260128-can-skb-ext-v2-0-fe64aa152c8a@pengutronix.de/
 
--- 
-2.52.0
+Changes in v4:
+Solve the netdev_put() / dev_put() suggestion from Checkpatch in a separate
+patch set. Therefore these changes are based on V2 again. 
+- Patch#2: initialize can_gw_hops in can_skb_ext_add() suggested by AI-bot
+- Patch#5: add linebreak in sock_alloc_send_skb() to fit the 80 columns
+- Link to v2: https://lore.kernel.org/linux-can/20260128-can-skb-ext-v2-0-fe64aa152c8a@pengutronix.de/
+
+Changes in v5:
+- Patch#2: use skb_ext_add() for the cloned skb suggested by AI-bot
+- Patch#2: use netdev_put() instead of dev_put() suggested by Checkpatch
+- managed to get the receipient list with b4 prep --auto-to-cc
+- Link to v4: https://lore.kernel.org/netdev/20260128-can_skb_ext-v1-0-330f60fd5d7e@hartkopp.net/
+
+Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+
+---
+Oliver Hartkopp (6):
+      can: use skb hash instead of private variable in headroom
+      can: add CAN skb extension infrastructure
+      can: move ifindex to CAN skb extensions
+      can: move frame_len to CAN skb extensions
+      can: remove private CAN skb headroom infrastructure
+      can: gw: use can_gw_hops instead of sk_buff::csum_start
+
+ MAINTAINERS               |   1 +
+ drivers/net/can/dev/skb.c | 123 +++++++++++++++++++++++++++++-----------------
+ include/linux/can/core.h  |   1 +
+ include/linux/can/skb.h   |  38 +++++---------
+ include/linux/skbuff.h    |   3 ++
+ include/net/can.h         |  28 +++++++++++
+ net/can/Kconfig           |   1 +
+ net/can/af_can.c          |  23 ++++++---
+ net/can/bcm.c             |  26 +++++++---
+ net/can/gw.c              |  42 +++++++++-------
+ net/can/isotp.c           |  45 +++++++++++------
+ net/can/j1939/socket.c    |  15 ++++--
+ net/can/j1939/transport.c |  28 +++++++----
+ net/can/raw.c             |  22 ++++++---
+ net/core/skbuff.c         |   4 ++
+ 15 files changed, 259 insertions(+), 141 deletions(-)
+---
+base-commit: 239f09e258b906deced5c2a7c1ac8aed301b558b
+change-id: 20260128-can_skb_ext-0e7a99ed1984
+
+Best regards,
+--  
+Oliver Hartkopp <socketcan@hartkopp.net>
 
