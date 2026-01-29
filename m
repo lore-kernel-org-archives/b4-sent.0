@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Thu, 29 Jan 2026 01:46:31 -0600
-Subject: [PATCH 2/3] arm64: dts: qcom: sm8550: Add tz-log node
+Date: Thu, 29 Jan 2026 01:46:32 -0600
+Subject: [PATCH 3/3] arm64: dts: qcom: sm8550: Fix DTBO boot failure
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260129-sm8550-abl-dtbo-v1-2-abca3be14024@gmail.com>
+Message-Id: <20260129-sm8550-abl-dtbo-v1-3-abca3be14024@gmail.com>
 References: <20260129-sm8550-abl-dtbo-v1-0-abca3be14024@gmail.com>
 In-Reply-To: <20260129-sm8550-abl-dtbo-v1-0-abca3be14024@gmail.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -14,47 +14,56 @@ To: Bjorn Andersson <andersson@kernel.org>,
  Kumar Sharma <quic_vksharma@quicinc.com>
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>, 
- Lei Chen <quic_chenlei@quicinc.com>
+ Pavan Kondeti <pavan.kondeti@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769672821; l=937;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769672821; l=1325;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=kuDPS1lxGGLEWDgl2NZmSf54NnC2W6l23QlaSfrIpcU=;
- b=FtNF3w+JDBp3IKpM79Nvrxs75KYnRL50BAUcWKnpKdrUJd8AZdy23R4XQMZDNUhuRMz7u8AXR
- b3HT8/hh2x5AFL3w/UItq6BF5EJrkhSwpbjLdBKhh7+16YTguyfCrQe
+ bh=1QhN7qYUAYY4kDlWLSrCOTr9aoermzedi1sIaXcq8p8=;
+ b=s5S4Ku95A0azWVC3DErKg8BiBODrzC+n9GJ2cMLZBE2m2txOGWZVoLMBpRm3txKTwBoahXtU3
+ 3woZ5ZOsH5JDSiEcOu8ukPN0r4omwB/GPWcL7HxkNZ0X/61v76Va44d
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Lei Chen <quic_chenlei@quicinc.com>
+From: Pavan Kondeti <pavan.kondeti@oss.qualcomm.com>
 
-Add DT node to enable tz-log driver.
+ABL requires certain things in the base dtb to apply a dtbo. Namely:
 
-Signed-off-by: Lei Chen <quic_chenlei@quicinc.com>
+* The scm node must be named qcom_scm
+* The timer node must have a label named arch_timer
+
+This aligns the sm8550 soc dtsi with those requirements. Without these
+in the base dtb, when ABL attempts to apply any dtbo, it will fail to
+the bootloader menu.
+
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/sm8550.dtsi | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ arch/arm64/boot/dts/qcom/sm8550.dtsi | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/qcom/sm8550.dtsi b/arch/arm64/boot/dts/qcom/sm8550.dtsi
-index e3f93f4f412ded9583a6bc9215185a0daf5f1b57..740e3c238e8ed0f162dd168291f6e307ace66e80 100644
+index 740e3c238e8ed0f162dd168291f6e307ace66e80..d7cc20e1931904e7c603b800089f00955ecec3b7 100644
 --- a/arch/arm64/boot/dts/qcom/sm8550.dtsi
 +++ b/arch/arm64/boot/dts/qcom/sm8550.dtsi
-@@ -5136,6 +5136,14 @@ data-pins {
- 			};
- 		};
+@@ -329,7 +329,7 @@ cluster_sleep_1: cluster-sleep-1 {
+ 	};
  
-+		qcom_tzlog: tz-log@146aa720 {
-+			compatible = "qcom,tz-log";
-+			reg = <0 0x146aa720 0 0x3000>;
-+			qcom,hyplog-enabled;
-+			hyplog-address-offset = <0x410>;
-+			hyplog-size-offset = <0x414>;
-+		};
-+
- 		apps_smmu: iommu@15000000 {
- 			compatible = "qcom,sm8550-smmu-500", "qcom,smmu-500", "arm,mmu-500";
- 			reg = <0 0x15000000 0 0x100000>;
+ 	firmware {
+-		scm: scm {
++		scm: qcom_scm {
+ 			compatible = "qcom,scm-sm8550", "qcom,scm";
+ 			qcom,dload-mode = <&tcsr 0x19000>;
+ 			interconnects = <&aggre2_noc MASTER_CRYPTO QCOM_ICC_TAG_ALWAYS
+@@ -6764,7 +6764,7 @@ trip-point2 {
+ 		};
+ 	};
+ 
+-	timer {
++	arch_timer: timer {
+ 		compatible = "arm,armv8-timer";
+ 		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW) 0>,
+ 			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW) 0>,
 
 -- 
 2.52.0
