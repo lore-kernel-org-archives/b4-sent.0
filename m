@@ -1,10 +1,10 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Fri, 30 Jan 2026 10:06:44 +0000
-Subject: [PATCH v6 3/8] iio: test: add kunit test for fixed-point parsing
+Date: Fri, 30 Jan 2026 10:06:45 +0000
+Subject: [PATCH v6 4/8] iio: frequency: adf41513: driver implementation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260130-adf41513-iio-driver-v6-3-cf46239026bc@analog.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260130-adf41513-iio-driver-v6-4-cf46239026bc@analog.com>
 References: <20260130-adf41513-iio-driver-v6-0-cf46239026bc@analog.com>
 In-Reply-To: <20260130-adf41513-iio-driver-v6-0-cf46239026bc@analog.com>
 To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
@@ -17,554 +17,1207 @@ Cc: Jonathan Cameron <jic23@kernel.org>,
  Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769767615; l=18522;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769767615; l=39260;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=z3lU/+mZx+x2JrYHd3QV4jsv0e9R3bBynHnvdvHhftg=;
- b=tFsKvHeXxV8u6O9c9GZK1v2UmeZD54PZAxrV/Gys6ENVaHZF5WMyxGjR3HKQ5QYeMJR5PvLbI
- nYoGc0WvN4GBwoGhsV97MQT95nit05uSQr4s+LMVMW9uLg3X1jkIjH2
+ bh=3HCbC/3hjHpDbwAwKBA19ySFxNu+IhZLxApzDOituVY=;
+ b=Wj9HOJJw0cdeezMxJmJ3vo0LawQm9v1OHqpriIMF9ihWJJxvRnEJbDTTS5m0h6oSbd6h4xRk4
+ 3MgiqoCgp1FD6y8Pxw571Y/vA0w+WFYYqZTh5k0G2849Pouh10Ys5Cs
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add kunit test cases that aims to verify expected behavior for
-iio_str_to_fixpoint() and iio_str_to_fixpoint64().
-To run the test, create a .kunitconfig file with:
+The driver is based on existing PLL drivers in the IIO subsystem and
+implements the following key features:
 
-CONFIG_KUNIT=y
-CONFIG_IIO=y
-CONFIG_IIO_FIXPOINT_PARSE_KUNIT_TEST=y
+- Integer-N and fractional-N (fixed/variable modulus) synthesis modes
+- High-resolution frequency calculations using microhertz (µHz) precision
+  to handle sub-Hz resolution across multi-GHz frequency ranges
+- IIO debugfs interface for direct register access
+- FW property parsing from devicetree including charge pump settings,
+  reference path configuration and muxout options
+- Power management support with suspend/resume callbacks
+- Lock detect GPIO monitoring
 
-and run the command:
-./tools/testing/kunit/kunit.py run --kunitconfig=.kunitconfig
+The driver uses 64-bit microhertz values throughout PLL calculations to
+maintain precision when working with frequencies that exceed 32-bit Hz
+representation while requiring fractional Hz resolution.
+
+When merging, ADF41513_HZ_PER_GHZ must be dropped in favor of
+HZ_PER_GHZ defined in linux/units.h.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- MAINTAINERS                                |   1 +
- drivers/iio/test/Kconfig                   |  12 +
- drivers/iio/test/Makefile                  |   1 +
- drivers/iio/test/iio-test-fixpoint-parse.c | 467 +++++++++++++++++++++++++++++
- 4 files changed, 481 insertions(+)
+ MAINTAINERS                      |    1 +
+ drivers/iio/frequency/Kconfig    |   10 +
+ drivers/iio/frequency/Makefile   |    1 +
+ drivers/iio/frequency/adf41513.c | 1114 ++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 1126 insertions(+)
 
 diff --git a/MAINTAINERS b/MAINTAINERS
-index 1bf39f6d964e..a0d845117b52 100644
+index a0d845117b52..5f20ffe036fe 100644
 --- a/MAINTAINERS
 +++ b/MAINTAINERS
 @@ -1640,6 +1640,7 @@ L:	linux-iio@vger.kernel.org
  S:	Supported
  W:	https://ez.analog.com/linux-software-drivers
  F:	Documentation/devicetree/bindings/iio/frequency/adi,adf41513.yaml
-+F:	drivers/iio/test/iio-test-fixpoint-parse.c
++F:	drivers/iio/frequency/adf41513.c
+ F:	drivers/iio/test/iio-test-fixpoint-parse.c
  
  ANALOG DEVICES INC ADF4377 DRIVER
- M:	Antoniu Miclaus <antoniu.miclaus@analog.com>
-diff --git a/drivers/iio/test/Kconfig b/drivers/iio/test/Kconfig
-index 4fc17dd0dcd7..c60dff504bc2 100644
---- a/drivers/iio/test/Kconfig
-+++ b/drivers/iio/test/Kconfig
-@@ -29,6 +29,18 @@ config IIO_RESCALE_KUNIT_TEST
+diff --git a/drivers/iio/frequency/Kconfig b/drivers/iio/frequency/Kconfig
+index 583cbdf4e8cd..90c6304c4bcd 100644
+--- a/drivers/iio/frequency/Kconfig
++++ b/drivers/iio/frequency/Kconfig
+@@ -29,6 +29,16 @@ endmenu
  
- 	  If unsure, say N.
+ menu "Phase-Locked Loop (PLL) frequency synthesizers"
  
-+config IIO_FIXPOINT_PARSE_KUNIT_TEST
-+	tristate "Test IIO fixpoint parsing functions" if !KUNIT_ALL_TESTS
-+	depends on KUNIT
-+	default KUNIT_ALL_TESTS
++config ADF41513
++	tristate "Analog Devices ADF41513 PLL Frequency Synthesizer"
++	depends on SPI
 +	help
-+	  build unit tests for the IIO fixpoint parsing functions.
++	  Say yes here to build support for Analog Devices ADF41513
++	  26.5 GHz Integer-N/Fractional-N PLL Frequency Synthesizer.
 +
-+	  For more information on KUnit and unit tests in general, please refer
-+	  to the KUnit documentation in Documentation/dev-tools/kunit/.
++	  To compile this driver as a module, choose M here: the
++	  module will be called adf41513.
 +
-+	  If unsure, say N.
-+
- config IIO_FORMAT_KUNIT_TEST
- 	tristate "Test IIO formatting functions" if !KUNIT_ALL_TESTS
- 	depends on KUNIT
-diff --git a/drivers/iio/test/Makefile b/drivers/iio/test/Makefile
-index 0c846bc21acd..0c31aaeed755 100644
---- a/drivers/iio/test/Makefile
-+++ b/drivers/iio/test/Makefile
+ config ADF4350
+ 	tristate "Analog Devices ADF4350/ADF4351 Wideband Synthesizers"
+ 	depends on SPI
+diff --git a/drivers/iio/frequency/Makefile b/drivers/iio/frequency/Makefile
+index 70d0e0b70e80..53b4d01414d8 100644
+--- a/drivers/iio/frequency/Makefile
++++ b/drivers/iio/frequency/Makefile
 @@ -5,6 +5,7 @@
  
- # Keep in alphabetical order
- obj-$(CONFIG_IIO_RESCALE_KUNIT_TEST) += iio-test-rescale.o
-+obj-$(CONFIG_IIO_FIXPOINT_PARSE_KUNIT_TEST) += iio-test-fixpoint-parse.o
- obj-$(CONFIG_IIO_FORMAT_KUNIT_TEST) += iio-test-format.o
- obj-$(CONFIG_IIO_GTS_KUNIT_TEST) += iio-test-gts.o
- obj-$(CONFIG_IIO_MULTIPLY_KUNIT_TEST) += iio-test-multiply.o
-diff --git a/drivers/iio/test/iio-test-fixpoint-parse.c b/drivers/iio/test/iio-test-fixpoint-parse.c
+ # When adding new entries keep the list in alphabetical order
+ obj-$(CONFIG_AD9523) += ad9523.o
++obj-$(CONFIG_ADF41513) += adf41513.o
+ obj-$(CONFIG_ADF4350) += adf4350.o
+ obj-$(CONFIG_ADF4371) += adf4371.o
+ obj-$(CONFIG_ADF4377) += adf4377.o
+diff --git a/drivers/iio/frequency/adf41513.c b/drivers/iio/frequency/adf41513.c
 new file mode 100644
-index 000000000000..54ff585fed7d
+index 000000000000..b2efd545c885
 --- /dev/null
-+++ b/drivers/iio/test/iio-test-fixpoint-parse.c
-@@ -0,0 +1,467 @@
++++ b/drivers/iio/frequency/adf41513.c
+@@ -0,0 +1,1114 @@
 +// SPDX-License-Identifier: GPL-2.0-only
-+/* Unit tests for IIO fixpoint parsing functions
++/*
++ * ADF41513 SPI PLL Frequency Synthesizer driver
 + *
 + * Copyright 2026 Analog Devices Inc.
 + */
 +
-+#include <kunit/test.h>
++#include <linux/bitfield.h>
++#include <linux/bits.h>
++#include <linux/clk.h>
++#include <linux/device.h>
++#include <linux/err.h>
++#include <linux/gpio/consumer.h>
 +#include <linux/iio/iio.h>
-+#include <linux/math.h>
++#include <linux/iio/sysfs.h>
++#include <linux/log2.h>
++#include <linux/math64.h>
++#include <linux/mod_devicetable.h>
++#include <linux/module.h>
++#include <linux/property.h>
++#include <linux/regulator/consumer.h>
++#include <linux/spi/spi.h>
++#include <linux/types.h>
++#include <linux/units.h>
 +
-+#define PRECISION(x)	(int_pow(10, (x) - 1))
++/* Registers */
++#define ADF41513_REG0		0
++#define ADF41513_REG1		1
++#define ADF41513_REG2		2
++#define ADF41513_REG3		3
++#define ADF41513_REG4		4
++#define ADF41513_REG5		5
++#define ADF41513_REG6		6
++#define ADF41513_REG7		7
++#define ADF41513_REG8		8
++#define ADF41513_REG9		9
++#define ADF41513_REG10		10
++#define ADF41513_REG11		11
++#define ADF41513_REG12		12
++#define ADF41513_REG13		13
++#define ADF41513_REG_NUM	14
 +
-+/* Test iio_str_to_fixpoint64() with valid positive integers */
-+static void iio_test_str_to_fixpoint64_positive_integers(struct kunit *test)
++#define ADF41513_SYNC_REG0	BIT(ADF41513_REG0)
++#define ADF41513_SYNC_REG1	BIT(ADF41513_REG1)
++#define ADF41513_SYNC_REG2	BIT(ADF41513_REG2)
++#define ADF41513_SYNC_REG3	BIT(ADF41513_REG3)
++#define ADF41513_SYNC_REG4	BIT(ADF41513_REG4)
++#define ADF41513_SYNC_REG5	BIT(ADF41513_REG5)
++#define ADF41513_SYNC_REG6	BIT(ADF41513_REG6)
++#define ADF41513_SYNC_REG7	BIT(ADF41513_REG7)
++#define ADF41513_SYNC_REG9	BIT(ADF41513_REG9)
++#define ADF41513_SYNC_REG11	BIT(ADF41513_REG11)
++#define ADF41513_SYNC_REG12	BIT(ADF41513_REG12)
++#define ADF41513_SYNC_REG13	BIT(ADF41513_REG13)
++#define ADF41513_SYNC_DIFF	0
++#define ADF41513_SYNC_ALL	GENMASK(ADF41513_REG13, ADF41513_REG0)
++
++/* REG0 Bit Definitions */
++#define ADF41513_REG0_CTRL_BITS_MSK		GENMASK(3, 0)
++#define ADF41513_REG0_INT_MSK			GENMASK(19, 4)
++#define ADF41513_REG0_VAR_MOD_MSK		BIT(28)
++
++/* REG1 Bit Definitions */
++#define ADF41513_REG1_FRAC1_MSK			GENMASK(28, 4)
++#define ADF41513_REG1_DITHER2_MSK		BIT(31)
++
++/* REG2 Bit Definitions */
++#define ADF41513_REG2_PHASE_VAL_MSK		GENMASK(15, 4)
++#define ADF41513_REG2_PHASE_ADJ_MSK		BIT(31)
++
++/* REG3 Bit Definitions */
++#define ADF41513_REG3_FRAC2_MSK			GENMASK(27, 4)
++
++/* REG4 Bit Definitions */
++#define ADF41513_REG4_MOD2_MSK			GENMASK(27, 4)
++
++/* REG5 Bit Definitions */
++#define ADF41513_REG5_CLK1_DIV_MSK		GENMASK(15, 4)
++#define ADF41513_REG5_R_CNT_MSK			GENMASK(20, 16)
++#define ADF41513_REG5_REF_DOUBLER_MSK		BIT(21)
++#define ADF41513_REG5_RDIV2_MSK			BIT(22)
++#define ADF41513_REG5_PRESCALER_MSK		BIT(23)
++#define ADF41513_REG5_LSB_P1_MSK		BIT(24)
++#define ADF41513_REG5_CP_CURRENT_MSK		GENMASK(28, 25)
++#define ADF41513_REG5_DLD_MODES_MSK		GENMASK(31, 30)
++
++/* REG6 Bit Definitions */
++#define ADF41513_REG6_COUNTER_RESET_MSK		BIT(4)
++#define ADF41513_REG6_CP_TRISTATE_MSK		BIT(5)
++#define ADF41513_REG6_POWER_DOWN_MSK		BIT(6)
++#define ADF41513_REG6_PD_POLARITY_MSK		BIT(7)
++#define ADF41513_REG6_LDP_MSK			GENMASK(9, 8)
++#define ADF41513_REG6_CP_TRISTATE_PD_ON_MSK	BIT(16)
++#define ADF41513_REG6_SD_RESET_MSK		BIT(17)
++#define ADF41513_REG6_LOL_ENABLE_MSK		BIT(18)
++#define ADF41513_REG6_ABP_MSK			BIT(19)
++#define ADF41513_REG6_INT_MODE_MSK		BIT(20)
++#define ADF41513_REG6_BLEED_ENABLE_MSK		BIT(22)
++#define ADF41513_REG6_BLEED_POLARITY_MSK	BIT(23)
++#define ADF41513_REG6_BLEED_CURRENT_MSK		GENMASK(31, 24)
++
++/* REG7 Bit Definitions */
++#define ADF41513_REG7_CLK2_DIV_MSK		GENMASK(17, 6)
++#define ADF41513_REG7_CLK_DIV_MODE_MSK		GENMASK(19, 18)
++#define ADF41513_REG7_PS_BIAS_MSK		GENMASK(21, 20)
++#define ADF41513_REG7_N_DELAY_MSK		GENMASK(23, 22)
++#define ADF41513_REG7_LD_CLK_SEL_MSK		BIT(26)
++#define ADF41513_REG7_LD_COUNT_MSK		GENMASK(29, 27)
++
++/* REG9 Bit Definitions */
++#define ADF41513_REG9_LD_BIAS_MSK		GENMASK(31, 30)
++
++/* REG11 Bit Definitions */
++#define ADF41513_REG11_POWER_DOWN_SEL_MSK	BIT(31)
++
++/* REG12 Bit Definitions */
++#define ADF41513_REG12_READBACK_SEL_MSK		GENMASK(19, 14)
++#define ADF41513_REG12_LE_SELECT_MSK		BIT(20)
++#define ADF41513_REG12_MASTER_RESET_MSK		BIT(22)
++#define ADF41513_REG12_LOGIC_LEVEL_MSK		BIT(27)
++#define ADF41513_REG12_MUXOUT_MSK		GENMASK(31, 28)
++
++/* MUXOUT Selection */
++#define ADF41513_MUXOUT_TRISTATE		0x0
++#define ADF41513_MUXOUT_DVDD			0x1
++#define ADF41513_MUXOUT_DGND			0x2
++#define ADF41513_MUXOUT_R_DIV			0x3
++#define ADF41513_MUXOUT_N_DIV			0x4
++#define ADF41513_MUXOUT_DIG_LD			0x6
++#define ADF41513_MUXOUT_SDO			0x7
++#define ADF41513_MUXOUT_READBACK		0x8
++#define ADF41513_MUXOUT_CLK1_DIV		0xA
++#define ADF41513_MUXOUT_R_DIV2			0xD
++#define ADF41513_MUXOUT_N_DIV2			0xE
++
++/* DLD Mode Selection */
++#define ADF41513_DLD_TRISTATE			0x0
++#define ADF41513_DLD_DIG_LD			0x1
++#define ADF41513_DLD_LOW			0x2
++#define ADF41513_DLD_HIGH			0x3
++
++/* Prescaler Selection */
++#define ADF41513_PRESCALER_4_5			0
++#define ADF41513_PRESCALER_8_9			1
++#define ADF41513_PRESCALER_AUTO			2
++
++/* Specifications */
++#define ADF41513_HZ_PER_GHZ			1000000000UL
++#define ADF41510_MAX_RF_FREQ_HZ			(10ULL * ADF41513_HZ_PER_GHZ)
++#define ADF41513_MIN_RF_FREQ_HZ			(1ULL * ADF41513_HZ_PER_GHZ)
++#define ADF41513_MAX_RF_FREQ_HZ			(26500ULL * HZ_PER_MHZ)
++
++#define ADF41513_MIN_REF_FREQ_HZ		(10 * HZ_PER_MHZ)
++#define ADF41513_MAX_REF_FREQ_HZ		(800 * HZ_PER_MHZ)
++#define ADF41513_MAX_REF_FREQ_DOUBLER_HZ	(225 * HZ_PER_MHZ)
++
++#define ADF41513_MAX_PFD_FREQ_INT_N_UHZ		(250ULL * MEGA * MICROHZ_PER_HZ)
++#define ADF41513_MAX_PFD_FREQ_FRAC_N_UHZ	(125ULL * MEGA * MICROHZ_PER_HZ)
++#define ADF41513_MAX_FREQ_RESOLUTION_UHZ	(100ULL * KILO * MICROHZ_PER_HZ)
++
++#define ADF41513_MIN_INT_4_5			20
++#define ADF41513_MAX_INT_4_5			511
++#define ADF41513_MIN_INT_8_9			64
++#define ADF41513_MAX_INT_8_9			1023
++
++#define ADF41513_MIN_INT_FRAC_4_5		23
++#define ADF41513_MIN_INT_FRAC_8_9		75
++
++#define ADF41513_MIN_R_CNT			1
++#define ADF41513_MAX_R_CNT			32
++
++#define ADF41513_MIN_R_SET			1800
++#define ADF41513_DEFAULT_R_SET			2700
++#define ADF41513_MAX_R_SET			10000
++
++#define ADF41513_MIN_CP_VOLTAGE_mV		810
++#define ADF41513_DEFAULT_CP_VOLTAGE_mV		6480
++#define ADF41513_MAX_CP_VOLTAGE_mV		12960
++
++#define ADF41513_LD_COUNT_FAST_MIN		2
++#define ADF41513_LD_COUNT_FAST_LIMIT		64
++#define ADF41513_LD_COUNT_MIN			64
++#define ADF41513_LD_COUNT_MAX			8192
++
++#define ADF41513_FIXED_MODULUS			BIT(25)
++#define ADF41513_MAX_MOD2			(BIT(24) - 1)
++#define ADF41513_MAX_PHASE_VAL			(BIT(12) - 1)
++#define ADF41513_MAX_CLK_DIVIDER		(BIT(12) - 1)
++
++#define ADF41513_HZ_DECIMAL_PRECISION		6
++#define ADF41513_PS_BIAS_INIT			0x2
++#define ADF41513_MAX_PHASE_MICRORAD		((2 * 314159265UL) / 100)
++
++enum {
++	ADF41513_FREQ,
++	ADF41513_POWER_DOWN,
++	ADF41513_FREQ_RESOLUTION,
++};
++
++enum adf41513_pll_mode {
++	ADF41513_MODE_INVALID,
++	ADF41513_MODE_INTEGER_N,
++	ADF41513_MODE_FIXED_MODULUS,
++	ADF41513_MODE_VARIABLE_MODULUS,
++};
++
++struct adf41513_chip_info {
++	u64 max_rf_freq_hz;
++	bool has_prescaler_8_9;
++};
++
++struct adf41513_data {
++	u64 power_up_frequency_hz;
++	u64 freq_resolution_uhz;
++	u32 charge_pump_voltage_mv;
++	u32 lock_detect_count;
++
++	u8 ref_div_factor;
++	bool ref_doubler_en;
++	bool ref_div2_en;
++	bool phase_detector_polarity;
++
++	bool logic_lvl_1v8_en;
++};
++
++struct adf41513_pll_settings {
++	enum adf41513_pll_mode mode;
++
++	/* reference path parameters */
++	u8 r_counter;
++	u8 ref_doubler;
++	u8 ref_div2;
++	u8 prescaler;
++
++	/* frequency parameters */
++	u64 target_frequency_uhz;
++	u64 actual_frequency_uhz;
++	u64 pfd_frequency_uhz;
++
++	/* pll parameters */
++	u32 frac1;
++	u32 frac2;
++	u32 mod2;
++	u16 int_value;
++};
++
++struct adf41513_state {
++	const struct adf41513_chip_info *chip_info;
++	struct spi_device *spi;
++	struct gpio_desc *lock_detect;
++	struct gpio_desc *chip_enable;
++	struct clk *ref_clk;
++	u32 ref_freq_hz;
++
++	/*
++	 * Lock for accessing device registers. Some operations require
++	 * multiple consecutive R/W operations, during which the device
++	 * shouldn't be interrupted. The buffers are also shared across
++	 * all operations so need to be protected on stand alone reads and
++	 * writes.
++	 */
++	struct mutex lock;
++
++	/* Cached register values */
++	u32 regs[ADF41513_REG_NUM];
++	u32 regs_hw[ADF41513_REG_NUM];
++
++	struct adf41513_data data;
++	struct adf41513_pll_settings settings;
++
++	/*
++	 * DMA (thus cache coherency maintenance) may require that
++	 * transfer buffers live in their own cache lines.
++	 */
++	__be32 buf __aligned(IIO_DMA_MINALIGN);
++};
++
++static const char * const adf41513_power_supplies[] = {
++	"avdd1", "avdd2", "avdd3", "avdd4", "avdd5", "vp",
++};
++
++static int adf41513_sync_config(struct adf41513_state *st, u16 sync_mask)
 +{
-+	s64 integer, fract;
 +	int ret;
++	int i;
 +
-+	/* Simple positive integer */
-+	ret = iio_str_to_fixpoint64("42", 0, &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 42);
-+	KUNIT_EXPECT_EQ(test, fract, 0);
++	/* write registers in reverse order (R13 to R0)*/
++	for (i = ADF41513_REG13; i >= ADF41513_REG0; i--) {
++		if (st->regs_hw[i] == st->regs[i] && !(sync_mask & BIT(i)))
++			continue;
 +
-+	/* Positive integer with leading + */
-+	ret = iio_str_to_fixpoint64("+10", 0, &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 10);
-+	KUNIT_EXPECT_EQ(test, fract, 0);
++		st->buf = cpu_to_be32(st->regs[i] | i);
++		ret = spi_write(st->spi, &st->buf, sizeof(st->buf));
++		if (ret < 0)
++			return ret;
++		st->regs_hw[i] = st->regs[i];
++		dev_dbg(&st->spi->dev, "REG%d <= 0x%08X\n", i, st->regs[i] | i);
++	}
 +
-+	/* Large positive integer */
-+	ret = iio_str_to_fixpoint64("123456789", 0, &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 123456789);
-+	KUNIT_EXPECT_EQ(test, fract, 0);
++	return 0;
 +}
 +
-+/* Test iio_str_to_fixpoint64() with valid negative integers */
-+static void iio_test_str_to_fixpoint64_negative_integers(struct kunit *test)
++static u64 adf41513_pll_get_rate(struct adf41513_state *st)
 +{
-+	s64 integer, fract;
-+	int ret;
++	struct adf41513_pll_settings *cfg = &st->settings;
 +
-+	/* Simple negative integer */
-+	ret = iio_str_to_fixpoint64("-23", 0, &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, -23);
-+	KUNIT_EXPECT_EQ(test, fract, 0);
++	if (cfg->mode != ADF41513_MODE_INVALID)
++		return cfg->actual_frequency_uhz;
 +
-+	/* Large negative integer */
-+	ret = iio_str_to_fixpoint64("-987654321", 0, &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, -987654321);
-+	KUNIT_EXPECT_EQ(test, fract, 0);
++	/* get pll settings from regs_hw */
++	cfg->int_value = FIELD_GET(ADF41513_REG0_INT_MSK, st->regs_hw[ADF41513_REG0]);
++	cfg->frac1 = FIELD_GET(ADF41513_REG1_FRAC1_MSK, st->regs_hw[ADF41513_REG1]);
++	cfg->frac2 = FIELD_GET(ADF41513_REG3_FRAC2_MSK, st->regs_hw[ADF41513_REG3]);
++	cfg->mod2 = FIELD_GET(ADF41513_REG4_MOD2_MSK, st->regs_hw[ADF41513_REG4]);
++	cfg->r_counter = FIELD_GET(ADF41513_REG5_R_CNT_MSK, st->regs_hw[ADF41513_REG5]);
++	cfg->ref_doubler = FIELD_GET(ADF41513_REG5_REF_DOUBLER_MSK, st->regs_hw[ADF41513_REG5]);
++	cfg->ref_div2 = FIELD_GET(ADF41513_REG5_RDIV2_MSK, st->regs_hw[ADF41513_REG5]);
++	cfg->prescaler = FIELD_GET(ADF41513_REG5_PRESCALER_MSK, st->regs_hw[ADF41513_REG5]);
++
++	/* calculate pfd frequency */
++	cfg->pfd_frequency_uhz = (u64)st->ref_freq_hz * MICRO;
++	if (cfg->ref_doubler)
++		cfg->pfd_frequency_uhz <<= 1;
++	if (cfg->ref_div2)
++		cfg->pfd_frequency_uhz >>= 1;
++	cfg->pfd_frequency_uhz = div_u64(cfg->pfd_frequency_uhz, cfg->r_counter);
++	cfg->actual_frequency_uhz = (u64)cfg->int_value * cfg->pfd_frequency_uhz;
++
++	/* check if int mode is selected */
++	if (FIELD_GET(ADF41513_REG6_INT_MODE_MSK, st->regs_hw[ADF41513_REG6])) {
++		cfg->mode = ADF41513_MODE_INTEGER_N;
++	} else {
++		cfg->actual_frequency_uhz += mul_u64_u32_div(cfg->pfd_frequency_uhz,
++							     cfg->frac1,
++							     ADF41513_FIXED_MODULUS);
++
++		/* check if variable modulus is selected */
++		if (FIELD_GET(ADF41513_REG0_VAR_MOD_MSK, st->regs_hw[ADF41513_REG0])) {
++			cfg->actual_frequency_uhz +=
++				mul_u64_u64_div_u64(cfg->frac2,
++						    cfg->pfd_frequency_uhz,
++						    (u64)cfg->mod2 * ADF41513_FIXED_MODULUS);
++
++			cfg->mode = ADF41513_MODE_VARIABLE_MODULUS;
++		} else {
++			/* LSB_P1 offset */
++			if (!FIELD_GET(ADF41513_REG5_LSB_P1_MSK, st->regs_hw[ADF41513_REG5]))
++				cfg->actual_frequency_uhz +=
++					div_u64(cfg->pfd_frequency_uhz,
++						2 * ADF41513_FIXED_MODULUS);
++			cfg->mode = ADF41513_MODE_FIXED_MODULUS;
++		}
++	}
++
++	cfg->target_frequency_uhz = cfg->actual_frequency_uhz;
++
++	return cfg->actual_frequency_uhz;
 +}
 +
-+/* Test iio_str_to_fixpoint64() with zero */
-+static void iio_test_str_to_fixpoint64_zero(struct kunit *test)
++static int adf41513_calc_pfd_frequency(struct adf41513_state *st,
++				       struct adf41513_pll_settings *result,
++				       u64 fpfd_limit_uhz)
 +{
-+	s64 integer, fract;
-+	int ret;
++	result->ref_div2 = st->data.ref_div2_en;
++	result->ref_doubler = st->data.ref_doubler_en;
 +
-+	/* Zero */
-+	ret = iio_str_to_fixpoint64("0", 0, &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 0);
-+	KUNIT_EXPECT_EQ(test, fract, 0);
++	if (st->data.ref_doubler_en &&
++	    st->ref_freq_hz > ADF41513_MAX_REF_FREQ_DOUBLER_HZ) {
++		result->ref_doubler = 0;
++		dev_warn(&st->spi->dev, "Disabling ref doubler due to high reference frequency\n");
++	}
 +
-+	/* Zero with decimal */
-+	ret = iio_str_to_fixpoint64("0.0", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 0);
-+	KUNIT_EXPECT_EQ(test, fract, 0);
++	result->r_counter = st->data.ref_div_factor - 1;
++	do {
++		result->r_counter++;
++		/* f_PFD = REF_IN × ((1 + D)/(R × (1 + T))) */
++		result->pfd_frequency_uhz = (u64)st->ref_freq_hz * MICRO;
++		if (result->ref_doubler)
++			result->pfd_frequency_uhz <<= 1;
++		if (result->ref_div2)
++			result->pfd_frequency_uhz >>= 1;
++		result->pfd_frequency_uhz = div_u64(result->pfd_frequency_uhz,
++						    result->r_counter);
++	} while (result->pfd_frequency_uhz > fpfd_limit_uhz);
 +
-+	/* leading zeros */
-+	ret = iio_str_to_fixpoint64("00000000000000000000042", 0, &integer,
-+				    &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 42);
-+	KUNIT_EXPECT_EQ(test, fract, 0);
++	if (result->r_counter > ADF41513_MAX_R_CNT) {
++		dev_err(&st->spi->dev, "Cannot optimize PFD frequency\n");
++		return -ERANGE;
++	}
++
++	return 0;
 +}
 +
-+/* Test iio_str_to_fixpoint64() with valid decimal numbers */
-+static void iio_test_str_to_fixpoint64_positive_decimals(struct kunit *test)
++static int adf41513_calc_integer_n(struct adf41513_state *st,
++				   struct adf41513_pll_settings *result)
 +{
-+	s64 integer, fract;
-+	int ret;
++	u16 max_int = st->chip_info->has_prescaler_8_9 ?
++		      ADF41513_MAX_INT_8_9 : ADF41513_MAX_INT_4_5;
++	u64 freq_error_uhz;
++	u16 int_value = div64_u64_rem(result->target_frequency_uhz, result->pfd_frequency_uhz,
++				      &freq_error_uhz);
 +
-+	/* Positive decimal */
-+	ret = iio_str_to_fixpoint64("3.14", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 3);
-+	KUNIT_EXPECT_EQ(test, fract, 140000);
++	/* check if freq error is within a tolerance of 1/2 resolution */
++	if (freq_error_uhz > (result->pfd_frequency_uhz >> 1) && int_value < max_int) {
++		int_value++;
++		freq_error_uhz = result->pfd_frequency_uhz - freq_error_uhz;
++	}
 +
-+	/* Decimal less than 1 */
-+	ret = iio_str_to_fixpoint64("0.5", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 0);
-+	KUNIT_EXPECT_EQ(test, fract, 500000);
++	if (freq_error_uhz > st->data.freq_resolution_uhz)
++		return -ERANGE;
 +
-+	/* Decimal with trailing zeros */
-+	ret = iio_str_to_fixpoint64("+123.000", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 123);
-+	KUNIT_EXPECT_EQ(test, fract, 0);
++	/* set prescaler */
++	if (st->chip_info->has_prescaler_8_9 && int_value >= ADF41513_MIN_INT_8_9 &&
++	    int_value <= ADF41513_MAX_INT_8_9)
++		result->prescaler = 1;
++	else if (int_value >= ADF41513_MIN_INT_4_5 && int_value <= ADF41513_MAX_INT_4_5)
++		result->prescaler = 0;
++	else
++		return -ERANGE;
 +
-+	/* High precision decimal */
-+	ret = iio_str_to_fixpoint64("1.123456789", PRECISION(9), &integer,
-+				    &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 1);
-+	KUNIT_EXPECT_EQ(test, fract, 123456789);
++	result->actual_frequency_uhz = (u64)int_value * result->pfd_frequency_uhz;
++	result->mode = ADF41513_MODE_INTEGER_N;
++	result->int_value = int_value;
++	result->frac1 = 0;
++	result->frac2 = 0;
++	result->mod2 = 0;
 +
-+	/* Small decimal */
-+	ret = iio_str_to_fixpoint64("0.000000001", PRECISION(9), &integer,
-+				    &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 0);
-+	KUNIT_EXPECT_EQ(test, fract, 1);
++	return 0;
 +}
 +
-+/* Test iio_str_to_fixpoint64() with negative decimals */
-+static void iio_test_str_to_fixpoint64_negative_decimals(struct kunit *test)
++static int adf41513_calc_fixed_mod(struct adf41513_state *st,
++				   struct adf41513_pll_settings *result)
 +{
-+	s64 integer, fract;
-+	int ret;
++	u64 freq_error_uhz;
++	u64 resolution_uhz = div_u64(result->pfd_frequency_uhz, ADF41513_FIXED_MODULUS);
++	u64 target_frequency_uhz = result->target_frequency_uhz;
++	u32 frac1;
++	u16 int_value;
++	bool lsb_p1_offset = !FIELD_GET(ADF41513_REG5_LSB_P1_MSK, st->regs_hw[ADF41513_REG5]);
 +
-+	/* Negative decimal */
-+	ret = iio_str_to_fixpoint64("-2.71", PRECISION(5), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, -2);
-+	KUNIT_EXPECT_EQ(test, fract, 71000);
++	/* LSB_P1 adds a frequency offset of f_pfd/2^26 */
++	if (lsb_p1_offset)
++		target_frequency_uhz -= resolution_uhz >> 1;
 +
-+	/* Negative decimal less than -1 */
-+	ret = iio_str_to_fixpoint64("-0.5", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 0);
-+	KUNIT_EXPECT_EQ(test, fract, -500000);
++	int_value = div64_u64_rem(target_frequency_uhz, result->pfd_frequency_uhz,
++				  &freq_error_uhz);
 +
-+	/* Negative with high precision */
-+	ret = iio_str_to_fixpoint64("-0.000000001", PRECISION(9), &integer,
-+				    &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 0);
-+	KUNIT_EXPECT_EQ(test, fract, -1);
++	if (st->chip_info->has_prescaler_8_9 && int_value >= ADF41513_MIN_INT_FRAC_8_9 &&
++	    int_value <= ADF41513_MAX_INT_8_9)
++		result->prescaler = 1;
++	else if (int_value >= ADF41513_MIN_INT_FRAC_4_5 && int_value <= ADF41513_MAX_INT_4_5)
++		result->prescaler = 0;
++	else
++		return -ERANGE;
++
++	/* compute frac1 and fixed modulus error */
++	frac1 = mul_u64_u64_div_u64(freq_error_uhz, ADF41513_FIXED_MODULUS,
++				    result->pfd_frequency_uhz);
++	freq_error_uhz -= mul_u64_u32_div(result->pfd_frequency_uhz, frac1,
++					  ADF41513_FIXED_MODULUS);
++
++	/* check if freq error is within a tolerance of 1/2 resolution */
++	if (freq_error_uhz > (resolution_uhz >> 1) && frac1 < (ADF41513_FIXED_MODULUS - 1)) {
++		frac1++;
++		freq_error_uhz = resolution_uhz - freq_error_uhz;
++	}
++
++	if (freq_error_uhz > st->data.freq_resolution_uhz)
++		return -ERANGE;
++
++	/* integer part */
++	result->actual_frequency_uhz = (u64)int_value * result->pfd_frequency_uhz;
++	/* fractional part */
++	if (lsb_p1_offset)
++		result->actual_frequency_uhz +=	(resolution_uhz >> 1);
++	result->actual_frequency_uhz += mul_u64_u32_div(result->pfd_frequency_uhz, frac1,
++							ADF41513_FIXED_MODULUS);
++	result->mode = ADF41513_MODE_FIXED_MODULUS;
++	result->int_value = int_value;
++	result->frac1 = frac1;
++	result->frac2 = 0;
++	result->mod2 = 0;
++
++	return 0;
 +}
 +
-+/* Test iio_str_to_fixpoint64() with precision edge cases */
-+static void iio_test_str_to_fixpoint64_precision_edge_cases(struct kunit *test)
++static int adf41513_calc_variable_mod(struct adf41513_state *st,
++				      struct adf41513_pll_settings *result)
 +{
-+	s64 integer, fract;
-+	int ret;
++	u64 freq_error_uhz, mod2;
++	u32 frac1, frac2;
++	u16 int_value = div64_u64_rem(result->target_frequency_uhz,
++				      result->pfd_frequency_uhz,
++				      &freq_error_uhz);
 +
-+	/* More digits than precision - should truncate */
-+	ret = iio_str_to_fixpoint64("1.23456", PRECISION(3), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 1);
-+	KUNIT_EXPECT_EQ(test, fract, 234);
++	if (st->chip_info->has_prescaler_8_9 && int_value >= ADF41513_MIN_INT_FRAC_8_9 &&
++	    int_value <= ADF41513_MAX_INT_8_9)
++		result->prescaler = 1;
++	else if (int_value >= ADF41513_MIN_INT_FRAC_4_5 && int_value <= ADF41513_MAX_INT_4_5)
++		result->prescaler = 0;
++	else
++		return -ERANGE;
 +
-+	/* Fewer digits than precision - should pad with zeros */
-+	ret = iio_str_to_fixpoint64("1.23", PRECISION(7), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 1);
-+	KUNIT_EXPECT_EQ(test, fract, 2300000);
++	/* calculate required mod2 based on target resolution / 2 */
++	mod2 = DIV64_U64_ROUND_CLOSEST(result->pfd_frequency_uhz << 1,
++				       st->data.freq_resolution_uhz * ADF41513_FIXED_MODULUS);
++	/* ensure mod2 is at least 2 for meaningful operation */
++	mod2 = clamp(mod2, 2, ADF41513_MAX_MOD2);
 +
-+	/* Single digit fractional with high precision */
-+	ret = iio_str_to_fixpoint64("5.1", PRECISION(9), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 5);
-+	KUNIT_EXPECT_EQ(test, fract, 100000000);
++	/* calculate frac1 and frac2 */
++	frac1 = mul_u64_u64_div_u64(freq_error_uhz, ADF41513_FIXED_MODULUS,
++				    result->pfd_frequency_uhz);
++	freq_error_uhz -= mul_u64_u32_div(result->pfd_frequency_uhz, frac1,
++					  ADF41513_FIXED_MODULUS);
++	frac2 = mul_u64_u64_div_u64(freq_error_uhz, mod2 * ADF41513_FIXED_MODULUS,
++				    result->pfd_frequency_uhz);
++
++	/* integer part */
++	result->actual_frequency_uhz = (u64)int_value * result->pfd_frequency_uhz;
++	/* fractional part */
++	result->actual_frequency_uhz += mul_u64_u64_div_u64(mod2 * frac1 + frac2,
++							    result->pfd_frequency_uhz,
++							    mod2 * ADF41513_FIXED_MODULUS);
++	result->mode = ADF41513_MODE_VARIABLE_MODULUS;
++	result->int_value = int_value;
++	result->frac1 = frac1;
++	result->frac2 = frac2;
++	result->mod2 = mod2;
++
++	return 0;
 +}
 +
-+/* Test iio_str_to_fixpoint64() with newline characters */
-+static void iio_test_str_to_fixpoint64_with_newline(struct kunit *test)
++static int adf41513_calc_pll_settings(struct adf41513_state *st,
++				      struct adf41513_pll_settings *result,
++				      u64 rf_out_uhz)
 +{
-+	s64 integer, fract;
++	u64 max_rf_freq_uhz = st->chip_info->max_rf_freq_hz * MICRO;
++	u64 min_rf_freq_uhz = ADF41513_MIN_RF_FREQ_HZ * MICRO;
++	u64 pfd_freq_limit_uhz;
 +	int ret;
 +
-+	/* Integer with newline */
-+	ret = iio_str_to_fixpoint64("-42\n", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, -42);
-+	KUNIT_EXPECT_EQ(test, fract, 0);
++	if (rf_out_uhz < min_rf_freq_uhz || rf_out_uhz > max_rf_freq_uhz) {
++		dev_err(&st->spi->dev, "RF frequency %llu uHz out of range [%llu, %llu] uHz\n",
++			rf_out_uhz, min_rf_freq_uhz, max_rf_freq_uhz);
++		return -EINVAL;
++	}
 +
-+	/* Decimal with newline */
-+	ret = iio_str_to_fixpoint64("3.141\n", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 3);
-+	KUNIT_EXPECT_EQ(test, fract, 141000);
++	result->target_frequency_uhz = rf_out_uhz;
++
++	/* try integer-N first (best phase noise performance) */
++	pfd_freq_limit_uhz = min(div_u64(rf_out_uhz, ADF41513_MIN_INT_4_5),
++				 ADF41513_MAX_PFD_FREQ_INT_N_UHZ);
++	ret = adf41513_calc_pfd_frequency(st, result, pfd_freq_limit_uhz);
++	if (ret < 0)
++		return ret;
++
++	ret = adf41513_calc_integer_n(st, result);
++	if (ret < 0) {
++		/* try fractional-N: recompute pfd frequency if necessary */
++		pfd_freq_limit_uhz = min(div_u64(rf_out_uhz, ADF41513_MIN_INT_FRAC_4_5),
++					 ADF41513_MAX_PFD_FREQ_FRAC_N_UHZ);
++		if (pfd_freq_limit_uhz < result->pfd_frequency_uhz) {
++			ret = adf41513_calc_pfd_frequency(st, result, pfd_freq_limit_uhz);
++			if (ret < 0)
++				return ret;
++		}
++
++		/* fixed-modulus attempt */
++		ret = adf41513_calc_fixed_mod(st, result);
++		if (ret < 0) {
++			/* variable-modulus attempt */
++			ret = adf41513_calc_variable_mod(st, result);
++			if (ret < 0) {
++				dev_err(&st->spi->dev,
++					"no valid PLL configuration found for %llu uHz\n",
++					rf_out_uhz);
++				return -EINVAL;
++			}
++		}
++	}
++
++	return 0;
 +}
 +
-+/* Test iio_str_to_fixpoint64() with edge cases */
-+static void iio_test_str_to_fixpoint64_edge_cases(struct kunit *test)
++static int adf41513_set_frequency(struct adf41513_state *st, u64 freq_uhz, u16 sync_mask)
 +{
-+	s64 integer, fract;
++	struct adf41513_pll_settings result;
 +	int ret;
 +
-+	/* Leading decimal point */
-+	ret = iio_str_to_fixpoint64(".5", PRECISION(4), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 0);
-+	KUNIT_EXPECT_EQ(test, fract, 5000);
++	ret = adf41513_calc_pll_settings(st, &result, freq_uhz);
++	if (ret < 0)
++		return ret;
 +
-+	/* Leading decimal with sign */
-+	ret = iio_str_to_fixpoint64("-.5", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 0);
-+	KUNIT_EXPECT_EQ(test, fract, -500000);
++	/* apply computed results to pll settings */
++	st->settings = result;
 +
-+	ret = iio_str_to_fixpoint64("+.5", PRECISION(3), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 0);
-+	KUNIT_EXPECT_EQ(test, fract, 500);
++	dev_dbg(&st->spi->dev,
++		"%s mode: int=%u, frac1=%u, frac2=%u, mod2=%u, fpdf=%llu Hz, prescaler=%s\n",
++		(result.mode == ADF41513_MODE_INTEGER_N) ? "integer-n" :
++		(result.mode == ADF41513_MODE_FIXED_MODULUS) ? "fixed-modulus" : "variable-modulus",
++		result.int_value, result.frac1, result.frac2, result.mod2,
++		div64_u64(result.pfd_frequency_uhz, MICRO),
++		result.prescaler ? "8/9" : "4/5");
++
++	st->regs[ADF41513_REG0] = FIELD_PREP(ADF41513_REG0_INT_MSK,
++					     st->settings.int_value);
++	if (st->settings.mode == ADF41513_MODE_VARIABLE_MODULUS)
++		st->regs[ADF41513_REG0] |= ADF41513_REG0_VAR_MOD_MSK;
++
++	st->regs[ADF41513_REG1] = FIELD_PREP(ADF41513_REG1_FRAC1_MSK,
++					     st->settings.frac1);
++	if (st->settings.mode != ADF41513_MODE_INTEGER_N)
++		st->regs[ADF41513_REG1] |= ADF41513_REG1_DITHER2_MSK;
++
++	st->regs[ADF41513_REG3] = FIELD_PREP(ADF41513_REG3_FRAC2_MSK,
++					     st->settings.frac2);
++	FIELD_MODIFY(ADF41513_REG4_MOD2_MSK, &st->regs[ADF41513_REG4],
++		     st->settings.mod2);
++	FIELD_MODIFY(ADF41513_REG5_R_CNT_MSK, &st->regs[ADF41513_REG5],
++		     st->settings.r_counter);
++	FIELD_MODIFY(ADF41513_REG5_REF_DOUBLER_MSK, &st->regs[ADF41513_REG5],
++		     st->settings.ref_doubler);
++	FIELD_MODIFY(ADF41513_REG5_RDIV2_MSK, &st->regs[ADF41513_REG5],
++		     st->settings.ref_div2);
++	FIELD_MODIFY(ADF41513_REG5_PRESCALER_MSK, &st->regs[ADF41513_REG5],
++		     st->settings.prescaler);
++
++	if (st->settings.mode == ADF41513_MODE_INTEGER_N) {
++		st->regs[ADF41513_REG6] |= ADF41513_REG6_INT_MODE_MSK;
++		st->regs[ADF41513_REG6] &= ~ADF41513_REG6_BLEED_ENABLE_MSK;
++	} else {
++		st->regs[ADF41513_REG6] &= ~ADF41513_REG6_INT_MODE_MSK;
++		st->regs[ADF41513_REG6] |= ADF41513_REG6_BLEED_ENABLE_MSK;
++	}
++
++	return adf41513_sync_config(st, sync_mask | ADF41513_SYNC_REG0);
 +}
 +
-+/* Test iio_str_to_fixpoint64() with invalid inputs */
-+static void iio_test_str_to_fixpoint64_invalid(struct kunit *test)
++static int adf41513_suspend(struct adf41513_state *st)
 +{
-+	s64 integer, fract;
++	st->regs[ADF41513_REG6] |= FIELD_PREP(ADF41513_REG6_POWER_DOWN_MSK, 1);
++	return adf41513_sync_config(st, ADF41513_SYNC_DIFF);
++}
++
++static int adf41513_resume(struct adf41513_state *st)
++{
++	st->regs[ADF41513_REG6] &= ~ADF41513_REG6_POWER_DOWN_MSK;
++	return adf41513_sync_config(st, ADF41513_SYNC_DIFF);
++}
++
++static ssize_t adf41513_read_uhz(struct iio_dev *indio_dev,
++				 uintptr_t private,
++				 const struct iio_chan_spec *chan,
++				 char *buf)
++{
++	struct adf41513_state *st = iio_priv(indio_dev);
++	u64 freq_uhz, int_hz;
++	u32 frac_uhz;
++
++	guard(mutex)(&st->lock);
++
++	switch (private) {
++	case ADF41513_FREQ:
++		freq_uhz = adf41513_pll_get_rate(st);
++		if (st->lock_detect &&
++		    !gpiod_get_value_cansleep(st->lock_detect)) {
++			dev_dbg(&st->spi->dev, "PLL un-locked\n");
++			return -EBUSY;
++		}
++		break;
++	case ADF41513_FREQ_RESOLUTION:
++		freq_uhz = st->data.freq_resolution_uhz;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	int_hz = div_u64_rem(freq_uhz, MICRO, &frac_uhz);
++	return sysfs_emit(buf, "%llu.%06u\n", int_hz, frac_uhz);
++}
++
++static ssize_t adf41513_read_powerdown(struct iio_dev *indio_dev,
++				       uintptr_t private,
++				       const struct iio_chan_spec *chan,
++				       char *buf)
++{
++	struct adf41513_state *st = iio_priv(indio_dev);
++	u32 val;
++
++	guard(mutex)(&st->lock);
++
++	switch (private) {
++	case ADF41513_POWER_DOWN:
++		val = FIELD_GET(ADF41513_REG6_POWER_DOWN_MSK,
++				st->regs_hw[ADF41513_REG6]);
++		return sysfs_emit(buf, "%u\n", val);
++	default:
++		return -EINVAL;
++	}
++}
++
++static ssize_t adf41513_write_uhz(struct iio_dev *indio_dev,
++				  uintptr_t private,
++				  const struct iio_chan_spec *chan,
++				  const char *buf, size_t len)
++{
++	struct adf41513_state *st = iio_priv(indio_dev);
++	s64 int_hz, frac_uhz;
++	u64 freq_uhz;
 +	int ret;
 +
-+	/* Empty string */
-+	ret = iio_str_to_fixpoint64("", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++	ret = iio_str_to_fixpoint64(buf, MICRO / 10, &int_hz, &frac_uhz);
++	if (ret)
++		return ret;
 +
-+	/* Just a sign */
-+	ret = iio_str_to_fixpoint64("-", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++	freq_uhz = int_hz * MICRO + frac_uhz;
++	guard(mutex)(&st->lock);
 +
-+	ret = iio_str_to_fixpoint64("+", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++	switch ((u32)private) {
++	case ADF41513_FREQ:
++		ret = adf41513_set_frequency(st, freq_uhz, ADF41513_SYNC_DIFF);
++		break;
++	case ADF41513_FREQ_RESOLUTION:
++		if (freq_uhz == 0 || freq_uhz > ADF41513_MAX_FREQ_RESOLUTION_UHZ)
++			return -EINVAL;
++		st->data.freq_resolution_uhz = freq_uhz;
++		break;
++	default:
++		return -EINVAL;
++	}
 +
-+	/* Just a decimal point */
-+	ret = iio_str_to_fixpoint64(".", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+
-+	/* Non-numeric characters */
-+	ret = iio_str_to_fixpoint64("abc", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+
-+	ret = iio_str_to_fixpoint64("12a", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+
-+	ret = iio_str_to_fixpoint64("3.4x", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+
-+	ret = iio_str_to_fixpoint64("0xff", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+
-+	/* Multiple decimal points */
-+	ret = iio_str_to_fixpoint64("12.34.56", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+
-+	/* Trailing decimal without digits */
-+	ret = iio_str_to_fixpoint64("42.", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+
-+	/* Trailing spaces */
-+	ret = iio_str_to_fixpoint64("42 ", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
-+
-+	/* Too many digits in fractional part */
-+	ret = iio_str_to_fixpoint64("1.123456789012345678901", PRECISION(21),
-+				    &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL); /* fails when checking precision */
++	return ret ?: len;
 +}
 +
-+/* Test iio_str_to_fixpoint() with valid inputs */
-+static void iio_test_str_to_fixpoint_valid(struct kunit *test)
++static ssize_t adf41513_write_powerdown(struct iio_dev *indio_dev,
++					uintptr_t private,
++					const struct iio_chan_spec *chan,
++					const char *buf, size_t len)
 +{
-+	int integer, fract;
++	struct adf41513_state *st = iio_priv(indio_dev);
++	unsigned long readin;
 +	int ret;
 +
-+	/* Test with 6 decimal places */
-+	ret = iio_str_to_fixpoint("10.001234", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 10);
-+	KUNIT_EXPECT_EQ(test, fract, 1234);
++	ret = kstrtoul(buf, 10, &readin);
++	if (ret)
++		return ret;
 +
-+	ret = iio_str_to_fixpoint("-0.5", PRECISION(3), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 0);
-+	KUNIT_EXPECT_EQ(test, fract, -500);
++	guard(mutex)(&st->lock);
 +
-+	/* Test with 9 decimal places */
-+	ret = iio_str_to_fixpoint("5.123456789", PRECISION(9), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 5);
-+	KUNIT_EXPECT_EQ(test, fract, 123456789);
++	switch ((u32)private) {
++	case ADF41513_POWER_DOWN:
++		if (readin)
++			ret = adf41513_suspend(st);
++		else
++			ret = adf41513_resume(st);
++		break;
++	default:
++		return -EINVAL;
++	}
 +
-+	ret = iio_str_to_fixpoint("1.0", PRECISION(9), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 1);
-+	KUNIT_EXPECT_EQ(test, fract, 0);
-+
-+	/* Test with 3 decimal places */
-+	ret = iio_str_to_fixpoint("-7.8", PRECISION(3), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, -7);
-+	KUNIT_EXPECT_EQ(test, fract, 800);
-+
-+	/* Truncation with 2 decimal places */
-+	ret = iio_str_to_fixpoint("3.1415", PRECISION(2), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 3);
-+	KUNIT_EXPECT_EQ(test, fract, 14);
-+
-+	/* Integer with 6 decimal places */
-+	ret = iio_str_to_fixpoint("42", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer, 42);
-+	KUNIT_EXPECT_EQ(test, fract, 0);
++	return ret ?: len;
 +}
 +
-+/* Test both functions with overflow cases */
-+static void iio_test_str_to_fixpoint_overflow(struct kunit *test)
-+{
-+	s64 integer64, fract64;
-+	int integer, fract;
-+	int ret;
-+
-+	/* integer overflow - value exceeds U64_MAX */
-+	ret = iio_str_to_fixpoint64("18446744073709551616", PRECISION(6),
-+				    &integer64, &fract64);
-+	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
-+
-+	/* integer underflow - value less than S64_MIN */
-+	ret = iio_str_to_fixpoint64("-9223372036854775809", PRECISION(6),
-+				    &integer64, &fract64);
-+	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
-+
-+	/* fractional underflow */
-+	ret = iio_str_to_fixpoint64("-0.9223372036854775810", PRECISION(19),
-+				    &integer64, &fract64);
-+	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
-+
-+	/* Integer overflow - value exceeds U32_MAX */
-+	ret = iio_str_to_fixpoint("4294967296", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
-+
-+	/* Integer underflow - value less than INT_MIN */
-+	ret = iio_str_to_fixpoint("-2147483649", PRECISION(6), &integer,
-+				  &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
-+
-+	/* fractional overflow */
-+	ret = iio_str_to_fixpoint("0.4294967296", PRECISION(10), &integer,
-+				  &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
-+
-+	/* fractional underflow */
-+	ret = iio_str_to_fixpoint("-0.2147483649", PRECISION(10), &integer,
-+				  &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
++#define _ADF41513_EXT_PD_INFO(_name, _ident) { \
++	.name = _name, \
++	.read = adf41513_read_powerdown, \
++	.write = adf41513_write_powerdown, \
++	.private = _ident, \
++	.shared = IIO_SEPARATE, \
 +}
 +
-+/* Test iio_str_to_fixpoint() with invalid inputs */
-+static void iio_test_str_to_fixpoint_invalid(struct kunit *test)
-+{
-+	int integer, fract;
-+	int ret;
-+
-+	/* Empty string */
-+	ret = iio_str_to_fixpoint("", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_NE(test, ret, 0);
-+
-+	/* Non-numeric */
-+	ret = iio_str_to_fixpoint("abc", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_NE(test, ret, 0);
-+
-+	/* Invalid characters */
-+	ret = iio_str_to_fixpoint("12.34x", PRECISION(6), &integer, &fract);
-+	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++#define _ADF41513_EXT_UHZ_INFO(_name, _ident) { \
++	.name = _name, \
++	.read = adf41513_read_uhz, \
++	.write = adf41513_write_uhz, \
++	.private = _ident, \
++	.shared = IIO_SEPARATE, \
 +}
 +
-+/* Test both functions with boundary values */
-+static void iio_test_fixpoint_boundary_values(struct kunit *test)
-+{
-+	s64 integer64, fract64;
-+	int integer32, fract32;
-+	int ret;
-+
-+	/* S32_MAX */
-+	ret = iio_str_to_fixpoint("2147483647", PRECISION(6), &integer32,
-+				  &fract32);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer32, S32_MAX);
-+	KUNIT_EXPECT_EQ(test, fract32, 0);
-+
-+	/* U32_MAX */
-+	ret = iio_str_to_fixpoint("4294967295", PRECISION(6), &integer32,
-+				  &fract32);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, (u32)integer32, U32_MAX);
-+	KUNIT_EXPECT_EQ(test, fract32, 0);
-+
-+	/* S32_MIN */
-+	ret = iio_str_to_fixpoint("-2147483648", PRECISION(6), &integer32,
-+				  &fract32);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer32, S32_MIN);
-+	KUNIT_EXPECT_EQ(test, fract32, 0);
-+
-+	/* S32_MIN with fractional part */
-+	ret = iio_str_to_fixpoint("-2147483648.2147483647", PRECISION(10),
-+				  &integer32, &fract32);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer32, S32_MIN);
-+	KUNIT_EXPECT_EQ(test, fract32, S32_MAX);
-+
-+	/* S64_MAX */
-+	ret = iio_str_to_fixpoint64("9223372036854775807", PRECISION(6),
-+				    &integer64, &fract64);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer64, S64_MAX);
-+	KUNIT_EXPECT_EQ(test, fract64, 0);
-+
-+	/* U64_MAX */
-+	ret = iio_str_to_fixpoint64("18446744073709551615", PRECISION(6),
-+				    &integer64, &fract64);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, (u64)integer64, U64_MAX);
-+	KUNIT_EXPECT_EQ(test, fract64, 0);
-+
-+	/* S64_MIN */
-+	ret = iio_str_to_fixpoint64("-9223372036854775808", PRECISION(6),
-+				    &integer64, &fract64);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer64, S64_MIN);
-+	KUNIT_EXPECT_EQ(test, fract64, 0);
-+
-+	/* S64_MIN with fractional part */
-+	ret = iio_str_to_fixpoint64("-9223372036854775808.9223372036854775807",
-+				    PRECISION(19), &integer64, &fract64);
-+	KUNIT_EXPECT_EQ(test, ret, 0);
-+	KUNIT_EXPECT_EQ(test, integer64, S64_MIN);
-+	KUNIT_EXPECT_EQ(test, fract64, S64_MAX);
-+}
-+
-+static struct kunit_case iio_fixpoint_parse_test_cases[] = {
-+	KUNIT_CASE(iio_test_str_to_fixpoint64_positive_integers),
-+	KUNIT_CASE(iio_test_str_to_fixpoint64_negative_integers),
-+	KUNIT_CASE(iio_test_str_to_fixpoint64_zero),
-+	KUNIT_CASE(iio_test_str_to_fixpoint64_positive_decimals),
-+	KUNIT_CASE(iio_test_str_to_fixpoint64_negative_decimals),
-+	KUNIT_CASE(iio_test_str_to_fixpoint64_precision_edge_cases),
-+	KUNIT_CASE(iio_test_str_to_fixpoint64_with_newline),
-+	KUNIT_CASE(iio_test_str_to_fixpoint64_edge_cases),
-+	KUNIT_CASE(iio_test_str_to_fixpoint64_invalid),
-+	KUNIT_CASE(iio_test_str_to_fixpoint_valid),
-+	KUNIT_CASE(iio_test_str_to_fixpoint_overflow),
-+	KUNIT_CASE(iio_test_str_to_fixpoint_invalid),
-+	KUNIT_CASE(iio_test_fixpoint_boundary_values),
++static const struct iio_chan_spec_ext_info adf41513_ext_info[] = {
++	/*
++	 * Ideally we would use IIO_CHAN_INFO_FREQUENCY, but the device supports
++	 * frequency values greater 2^32 with sub-Hz resolution, i.e. 64-bit
++	 * fixed point with 6 decimal places values are used to represent
++	 * frequencies.
++	 */
++	_ADF41513_EXT_UHZ_INFO("frequency", ADF41513_FREQ),
++	_ADF41513_EXT_UHZ_INFO("frequency_resolution", ADF41513_FREQ_RESOLUTION),
++	_ADF41513_EXT_PD_INFO("powerdown", ADF41513_POWER_DOWN),
 +	{ }
 +};
 +
-+static struct kunit_suite iio_fixpoint_parse_test_suite = {
-+	.name = "iio-fixpoint-parse",
-+	.test_cases = iio_fixpoint_parse_test_cases,
++static const struct iio_chan_spec adf41513_chan = {
++	.type = IIO_ALTVOLTAGE,
++	.indexed = 1,
++	.output = 1,
++	.channel = 0,
++	.info_mask_separate = BIT(IIO_CHAN_INFO_PHASE),
++	.ext_info = adf41513_ext_info,
 +};
 +
-+kunit_test_suite(iio_fixpoint_parse_test_suite);
++static int adf41513_read_raw(struct iio_dev *indio_dev,
++			     struct iio_chan_spec const *chan,
++			     int *val, int *val2, long info)
++{
++	struct adf41513_state *st = iio_priv(indio_dev);
++	u64 phase_urad;
++	u16 phase_val;
++
++	guard(mutex)(&st->lock);
++
++	switch (info) {
++	case IIO_CHAN_INFO_PHASE:
++		phase_val = FIELD_GET(ADF41513_REG2_PHASE_VAL_MSK,
++				      st->regs_hw[ADF41513_REG2]);
++		phase_urad = (u64)phase_val * ADF41513_MAX_PHASE_MICRORAD;
++		phase_urad >>= 12;
++		/*
++		 * Before the 12-bit rshift phase_urad can be represented with
++		 * 35 bits at most. After the shift it will fit in 32-bit value.
++		 */
++		*val = (u32)phase_urad / MICRO;
++		*val2 = (u32)phase_urad % MICRO;
++		return IIO_VAL_INT_PLUS_MICRO;
++	default:
++		return -EINVAL;
++	}
++}
++
++static int adf41513_write_raw(struct iio_dev *indio_dev,
++			      struct iio_chan_spec const *chan,
++			      int val, int val2, long info)
++{
++	struct adf41513_state *st = iio_priv(indio_dev);
++	u64 phase_urad;
++	u16 phase_val;
++
++	guard(mutex)(&st->lock);
++
++	switch (info) {
++	case IIO_CHAN_INFO_PHASE:
++		if (val < 0 || val2 < 0)
++			return -EINVAL;
++
++		phase_urad = (u64)val * MICRO + val2;
++		if (phase_urad >= ADF41513_MAX_PHASE_MICRORAD)
++			return -EINVAL;
++
++		phase_val = DIV_U64_ROUND_CLOSEST(phase_urad << 12,
++						  ADF41513_MAX_PHASE_MICRORAD);
++		phase_val = min(phase_val, ADF41513_MAX_PHASE_VAL);
++		st->regs[ADF41513_REG2] |= ADF41513_REG2_PHASE_ADJ_MSK;
++		FIELD_MODIFY(ADF41513_REG2_PHASE_VAL_MSK,
++			     &st->regs[ADF41513_REG2], phase_val);
++		return adf41513_sync_config(st, ADF41513_SYNC_REG0);
++	default:
++		return -EINVAL;
++	}
++}
++
++static int adf41513_reg_access(struct iio_dev *indio_dev, unsigned int reg,
++			       unsigned int writeval, unsigned int *readval)
++{
++	struct adf41513_state *st = iio_priv(indio_dev);
++
++	if (reg > ADF41513_REG13)
++		return -EINVAL;
++
++	guard(mutex)(&st->lock);
++
++	if (!readval) {
++		if (reg <= ADF41513_REG6)
++			st->settings.mode = ADF41513_MODE_INVALID;
++		st->regs[reg] = writeval & ~0xF; /* Clear control bits */
++		return adf41513_sync_config(st, BIT(reg));
++	}
++
++	*readval = st->regs_hw[reg];
++	return 0;
++}
++
++static const struct iio_info adf41513_info = {
++	.read_raw = adf41513_read_raw,
++	.write_raw = adf41513_write_raw,
++	.debugfs_reg_access = &adf41513_reg_access,
++};
++
++static int adf41513_parse_fw(struct adf41513_state *st)
++{
++	struct device *dev = &st->spi->dev;
++	int ret;
++	u32 tmp, cp_resistance, cp_current;
++
++	tmp = ADF41510_MAX_RF_FREQ_HZ / MEGA;
++	device_property_read_u32(dev, "adi,power-up-frequency-mhz", &tmp);
++	st->data.power_up_frequency_hz = (u64)tmp * MEGA;
++	if (st->data.power_up_frequency_hz < ADF41513_MIN_RF_FREQ_HZ ||
++	    st->data.power_up_frequency_hz > ADF41513_MAX_RF_FREQ_HZ)
++		return dev_err_probe(dev, -ERANGE,
++				     "power-up frequency %llu Hz out of range\n",
++				     st->data.power_up_frequency_hz);
++
++	tmp = ADF41513_MIN_R_CNT;
++	device_property_read_u32(dev, "adi,reference-div-factor", &tmp);
++	if (tmp < ADF41513_MIN_R_CNT || tmp > ADF41513_MAX_R_CNT)
++		return dev_err_probe(dev, -ERANGE,
++				     "invalid reference div factor %u\n", tmp);
++	st->data.ref_div_factor = tmp;
++
++	st->data.ref_doubler_en = device_property_read_bool(dev, "adi,reference-doubler-enable");
++	st->data.ref_div2_en = device_property_read_bool(dev, "adi,reference-div2-enable");
++
++	cp_resistance = ADF41513_DEFAULT_R_SET;
++	device_property_read_u32(dev, "adi,charge-pump-resistor-ohms", &cp_resistance);
++	if (cp_resistance < ADF41513_MIN_R_SET || cp_resistance > ADF41513_MAX_R_SET)
++		return dev_err_probe(dev, -ERANGE, "R_SET %u Ohms out of range\n", cp_resistance);
++
++	st->data.charge_pump_voltage_mv = ADF41513_DEFAULT_CP_VOLTAGE_mV;
++	ret = device_property_read_u32(dev, "adi,charge-pump-current-microamp", &cp_current);
++	if (!ret) {
++		tmp = DIV_ROUND_CLOSEST(cp_current * cp_resistance, MILLI); /* convert to mV */
++		if (tmp < ADF41513_MIN_CP_VOLTAGE_mV || tmp > ADF41513_MAX_CP_VOLTAGE_mV)
++			return dev_err_probe(dev, -ERANGE, "I_CP %u uA (%u Ohms) out of range\n",
++					     cp_current, cp_resistance);
++		st->data.charge_pump_voltage_mv = tmp;
++	}
++
++	st->data.phase_detector_polarity =
++		device_property_read_bool(dev, "adi,phase-detector-polarity-positive-enable");
++
++	st->data.logic_lvl_1v8_en = device_property_read_bool(dev, "adi,logic-level-1v8-enable");
++
++	tmp = ADF41513_LD_COUNT_MIN;
++	device_property_read_u32(dev, "adi,lock-detector-count", &tmp);
++	if (tmp < ADF41513_LD_COUNT_FAST_MIN || tmp > ADF41513_LD_COUNT_MAX ||
++	    !is_power_of_2(tmp))
++		return dev_err_probe(dev, -ERANGE,
++				     "invalid lock detect count: %u\n", tmp);
++	st->data.lock_detect_count = tmp;
++
++	st->data.freq_resolution_uhz = MICROHZ_PER_HZ;
++
++	return 0;
++}
++
++static int adf41513_setup(struct adf41513_state *st)
++{
++	u32 tmp;
++
++	memset(st->regs_hw, 0xFF, sizeof(st->regs_hw));
++
++	/* assuming DLD pin is used for lock detection */
++	st->regs[ADF41513_REG5] = FIELD_PREP(ADF41513_REG5_DLD_MODES_MSK,
++					     ADF41513_DLD_DIG_LD);
++
++	tmp = DIV_ROUND_CLOSEST(st->data.charge_pump_voltage_mv, ADF41513_MIN_CP_VOLTAGE_mV);
++	st->regs[ADF41513_REG5] |= FIELD_PREP(ADF41513_REG5_CP_CURRENT_MSK, tmp - 1);
++
++	st->regs[ADF41513_REG6] = ADF41513_REG6_ABP_MSK |
++				  ADF41513_REG6_LOL_ENABLE_MSK |
++				  ADF41513_REG6_SD_RESET_MSK;
++	if (st->data.phase_detector_polarity)
++		st->regs[ADF41513_REG6] |= ADF41513_REG6_PD_POLARITY_MSK;
++
++	st->regs[ADF41513_REG7] = FIELD_PREP(ADF41513_REG7_PS_BIAS_MSK,
++					     ADF41513_PS_BIAS_INIT);
++	tmp = ilog2(st->data.lock_detect_count);
++	if (st->data.lock_detect_count < ADF41513_LD_COUNT_FAST_LIMIT) {
++		tmp -= const_ilog2(ADF41513_LD_COUNT_FAST_MIN);
++		st->regs[ADF41513_REG7] |= ADF41513_REG7_LD_CLK_SEL_MSK;
++	} else {
++		tmp -= const_ilog2(ADF41513_LD_COUNT_MIN);
++	}
++	st->regs[ADF41513_REG7] |= FIELD_PREP(ADF41513_REG7_LD_COUNT_MSK, tmp);
++
++	st->regs[ADF41513_REG11] = ADF41513_REG11_POWER_DOWN_SEL_MSK;
++	st->regs[ADF41513_REG12] = FIELD_PREP(ADF41513_REG12_LOGIC_LEVEL_MSK,
++					      st->data.logic_lvl_1v8_en ? 0 : 1);
++
++	/* perform initialization sequence with power-up frequency */
++	return adf41513_set_frequency(st, st->data.power_up_frequency_hz * MICRO,
++				      ADF41513_SYNC_ALL);
++}
++
++static void adf41513_power_down(void *data)
++{
++	struct adf41513_state *st = data;
++
++	adf41513_suspend(st);
++	gpiod_set_value_cansleep(st->chip_enable, 0);
++}
++
++static int adf41513_pm_suspend(struct device *dev)
++{
++	return adf41513_suspend(dev_get_drvdata(dev));
++}
++
++static int adf41513_pm_resume(struct device *dev)
++{
++	return adf41513_resume(dev_get_drvdata(dev));
++}
++
++static const struct adf41513_chip_info adf41510_chip_info = {
++	.max_rf_freq_hz = ADF41510_MAX_RF_FREQ_HZ,
++	.has_prescaler_8_9 = false,
++};
++
++static const struct adf41513_chip_info adf41513_chip_info = {
++	.max_rf_freq_hz = ADF41513_MAX_RF_FREQ_HZ,
++	.has_prescaler_8_9 = true,
++};
++
++static int adf41513_probe(struct spi_device *spi)
++{
++	struct device *dev = &spi->dev;
++	struct iio_dev *indio_dev;
++	struct adf41513_state *st;
++	int ret;
++
++	indio_dev = devm_iio_device_alloc(dev, sizeof(*st));
++	if (!indio_dev)
++		return -ENOMEM;
++
++	st = iio_priv(indio_dev);
++	st->spi = spi;
++	st->chip_info = spi_get_device_match_data(spi);
++	if (!st->chip_info)
++		return -EINVAL;
++
++	spi_set_drvdata(spi, st);
++
++	st->ref_clk = devm_clk_get_enabled(dev, NULL);
++	if (IS_ERR(st->ref_clk))
++		return PTR_ERR(st->ref_clk);
++
++	st->ref_freq_hz = clk_get_rate(st->ref_clk);
++	if (st->ref_freq_hz < ADF41513_MIN_REF_FREQ_HZ ||
++	    st->ref_freq_hz > ADF41513_MAX_REF_FREQ_HZ)
++		return dev_err_probe(dev, -ERANGE,
++				     "reference frequency %u Hz out of range\n",
++				     st->ref_freq_hz);
++
++	ret = adf41513_parse_fw(st);
++	if (ret)
++		return ret;
++
++	ret = devm_regulator_bulk_get_enable(dev,
++					     ARRAY_SIZE(adf41513_power_supplies),
++					     adf41513_power_supplies);
++	if (ret)
++		return dev_err_probe(dev, ret,
++				     "failed to get and enable regulators\n");
++
++	st->chip_enable = devm_gpiod_get_optional(dev, "enable", GPIOD_OUT_HIGH);
++	if (IS_ERR(st->chip_enable))
++		return dev_err_probe(dev, PTR_ERR(st->chip_enable),
++				     "fail to request chip enable GPIO\n");
++
++	st->lock_detect = devm_gpiod_get_optional(dev, "lock-detect", GPIOD_IN);
++	if (IS_ERR(st->lock_detect))
++		return dev_err_probe(dev, PTR_ERR(st->lock_detect),
++				     "fail to request lock detect GPIO\n");
++
++	ret = devm_mutex_init(dev, &st->lock);
++	if (ret)
++		return ret;
++
++	indio_dev->name = spi_get_device_id(spi)->name;
++	indio_dev->info = &adf41513_info;
++	indio_dev->modes = INDIO_DIRECT_MODE;
++	indio_dev->channels = &adf41513_chan;
++	indio_dev->num_channels = 1;
++
++	ret = adf41513_setup(st);
++	if (ret < 0)
++		return dev_err_probe(dev, ret, "failed to setup device\n");
++
++	ret = devm_add_action_or_reset(dev, adf41513_power_down, st);
++	if (ret)
++		return dev_err_probe(dev, ret, "Failed to add power down action\n");
++
++	return devm_iio_device_register(dev, indio_dev);
++}
++
++static const struct spi_device_id adf41513_id[] = {
++	{"adf41510", (kernel_ulong_t)&adf41510_chip_info},
++	{"adf41513", (kernel_ulong_t)&adf41513_chip_info},
++	{ }
++};
++MODULE_DEVICE_TABLE(spi, adf41513_id);
++
++static const struct of_device_id adf41513_of_match[] = {
++	{ .compatible = "adi,adf41510", .data = &adf41510_chip_info },
++	{ .compatible = "adi,adf41513", .data = &adf41513_chip_info },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, adf41513_of_match);
++
++static DEFINE_SIMPLE_DEV_PM_OPS(adf41513_pm_ops, adf41513_pm_suspend, adf41513_pm_resume);
++
++static struct spi_driver adf41513_driver = {
++	.driver = {
++		.name = "adf41513",
++		.pm = pm_ptr(&adf41513_pm_ops),
++		.of_match_table = adf41513_of_match,
++	},
++	.probe = adf41513_probe,
++	.id_table = adf41513_id,
++};
++module_spi_driver(adf41513_driver);
 +
 +MODULE_AUTHOR("Rodrigo Alencar <rodrigo.alencar@analog.com>");
-+MODULE_AUTHOR("IIO Kunit Test");
-+MODULE_DESCRIPTION("Test IIO fixpoint parsing functions");
++MODULE_DESCRIPTION("Analog Devices ADF41513 PLL Frequency Synthesizer");
 +MODULE_LICENSE("GPL");
 
 -- 
