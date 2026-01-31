@@ -1,10 +1,11 @@
 From: Igor Korotin <igor.korotin.linux@gmail.com>
-Date: Sat, 31 Jan 2026 14:12:46 +0000
-Subject: [PATCH 4/5] rust: i2c: add I2C wrappers
+Date: Sat, 31 Jan 2026 14:12:47 +0000
+Subject: [PATCH 5/5] samples: rust: add Rust I2C adapter registration
+ sample
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260131-i2c-adapter-v1-4-5a436e34cd1a@gmail.com>
+Message-Id: <20260131-i2c-adapter-v1-5-5a436e34cd1a@gmail.com>
 References: <20260131-i2c-adapter-v1-0-5a436e34cd1a@gmail.com>
 In-Reply-To: <20260131-i2c-adapter-v1-0-5a436e34cd1a@gmail.com>
 To: Danilo Krummrich <dakr@kernel.org>, 
@@ -19,169 +20,252 @@ Cc: linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org,
  linux-i2c@vger.kernel.org, markus.probst@posteo.de, 
  Igor Korotin <igor.korotin.linux@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769868772; l=6310;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769868772; l=7280;
  i=igor.korotin.linux@gmail.com; s=20260125; h=from:subject:message-id;
- bh=xiNYPB3pS7P0xBQVQAX6qDtWUnKw7npZg8SdNzhXYa4=;
- b=Ckru9qcxNiYGmCdDkhI5Mp1Q6P6bSRliUUAAG3x2YwBrN/6CsaVzRzwyYvPr8nGcyykkr7P8o
- OVAJmGG4V0cDQMzxLD+rP9JKr9S/AG074vB3APb3xYv9NS8WTiImeKy
+ bh=UoiJITbB7wSdqa0+19oS9e0ghILI5njDjJv+rjpQTNo=;
+ b=OJMA6QqqxEoPFMUi/s6s6vUTrFKJwRrspekSjPnBxBTRXVy2rYv7XsxvuwQ2sLrxN9izdsPPP
+ eVuBxGsChbWCKUGKyTtelRLz2VjTCBrCm7z+Z8P954G66OF/8b0QJBK
 X-Developer-Key: i=igor.korotin.linux@gmail.com; a=ed25519;
  pk=SjZ//wxnynZgJJgTqANyU10A7hdQQdDXLvXIr+zWroE=
 X-Endpoint-Received: by B4 Relay for igor.korotin.linux@gmail.com/20260125 with auth_id=615
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add safe Rust wrappers for common I2C/SMbus operations on I2C clients.
-
-These wrappers provide safe abstractions over low-level C API calls:
-- SMbus byte operations: read/write byte and byte data
-- SMbus word operations: read/write word data
-- SMbus block operations: read/write I2C block data
-- Master I2C operations: master receive and master send
-
-All operations include proper error handling through the Result type.
+Add a new `rust_i2c_adapter` sample, showing how to create a new
+i2c adapter using `i2c::adapter::Registration`
 
 Signed-off-by: Igor Korotin <igor.korotin.linux@gmail.com>
 ---
- rust/helpers/helpers.c    |  1 +
- rust/helpers/i2c.c        | 15 ++++++++
- rust/kernel/i2c/client.rs | 92 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 108 insertions(+)
+ MAINTAINERS                      |   3 +-
+ samples/rust/Kconfig             |  12 +++
+ samples/rust/Makefile            |   1 +
+ samples/rust/rust_i2c_adapter.rs | 170 +++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 184 insertions(+), 2 deletions(-)
 
-diff --git a/rust/helpers/helpers.c b/rust/helpers/helpers.c
-index 79c72762ad9c..6f6b0ff8713a 100644
---- a/rust/helpers/helpers.c
-+++ b/rust/helpers/helpers.c
-@@ -29,6 +29,7 @@
- #include "err.c"
- #include "irq.c"
- #include "fs.c"
-+#include "i2c.c"
- #include "io.c"
- #include "jump_label.c"
- #include "kunit.c"
-diff --git a/rust/helpers/i2c.c b/rust/helpers/i2c.c
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 60662984176d..bae13f1f9a23 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -11888,8 +11888,7 @@ L:	rust-for-linux@vger.kernel.org
+ S:	Maintained
+ F:	rust/i2c/*
+ F:	rust/kernel/i2c.rs
+-F:	samples/rust/rust_driver_i2c.rs
+-F:	samples/rust/rust_i2c_client.rs
++F:	samples/rust/rust_*i2c*.rs
+ 
+ I2C SUBSYSTEM HOST DRIVERS
+ M:	Andi Shyti <andi.shyti@kernel.org>
+diff --git a/samples/rust/Kconfig b/samples/rust/Kconfig
+index 3efa51bfc8ef..a5157b50e27c 100644
+--- a/samples/rust/Kconfig
++++ b/samples/rust/Kconfig
+@@ -107,6 +107,18 @@ config SAMPLE_RUST_I2C_CLIENT
+ 
+ 	  If unsure, say N.
+ 
++config SAMPLE_RUST_I2C_ADAPTER
++	tristate "I2C Adapter Registration"
++	depends on I2C=y
++	help
++	  This option builds the Rust I2C adapter manual creation
++	  sample.
++
++	  To compile this as a module, choose M here:
++	  the module will be called rust_i2c_adapter.
++
++	  If unsure, say N.
++
+ config SAMPLE_RUST_DRIVER_PCI
+ 	tristate "PCI Driver"
+ 	depends on PCI
+diff --git a/samples/rust/Makefile b/samples/rust/Makefile
+index f65885d1d62b..7026eb46ae50 100644
+--- a/samples/rust/Makefile
++++ b/samples/rust/Makefile
+@@ -9,6 +9,7 @@ obj-$(CONFIG_SAMPLE_RUST_DEBUGFS_SCOPED)	+= rust_debugfs_scoped.o
+ obj-$(CONFIG_SAMPLE_RUST_DMA)			+= rust_dma.o
+ obj-$(CONFIG_SAMPLE_RUST_DRIVER_I2C)		+= rust_driver_i2c.o
+ obj-$(CONFIG_SAMPLE_RUST_I2C_CLIENT)		+= rust_i2c_client.o
++obj-$(CONFIG_SAMPLE_RUST_I2C_ADAPTER)		+= rust_i2c_adapter.o
+ obj-$(CONFIG_SAMPLE_RUST_DRIVER_PCI)		+= rust_driver_pci.o
+ obj-$(CONFIG_SAMPLE_RUST_DRIVER_PLATFORM)	+= rust_driver_platform.o
+ obj-$(CONFIG_SAMPLE_RUST_DRIVER_USB)		+= rust_driver_usb.o
+diff --git a/samples/rust/rust_i2c_adapter.rs b/samples/rust/rust_i2c_adapter.rs
 new file mode 100644
-index 000000000000..05bbd26eaaf8
+index 000000000000..542766e27d6f
 --- /dev/null
-+++ b/rust/helpers/i2c.c
-@@ -0,0 +1,15 @@
++++ b/samples/rust/rust_i2c_adapter.rs
+@@ -0,0 +1,170 @@
 +// SPDX-License-Identifier: GPL-2.0
 +
-+#include <linux/i2c.h>
++//! Rust I2C adapter registration sample.
++//!
++//! An I2C adapter in Rust cannot exist on its own. To register a new I2C adapter,
++//! it must be bound to a parent device. In this sample driver, a platform device
++//! is used as the parent.
 +
-+__rust_helper int rust_helper_i2c_master_recv(const struct i2c_client *client,
-+				  char *buf, int count)
-+{
-+	return i2c_master_recv(client, buf, count);
++//! ACPI match table test
++//!
++//! This demonstrates how to test an ACPI-based Rust I2C adapter registration driver
++//! using QEMU with a custom SSDT.
++//!
++//! Steps:
++//!
++//! 1. **Create an SSDT source file** (`ssdt.dsl`) with the following content:
++//!
++//!     ```asl
++//!     DefinitionBlock ("", "SSDT", 2, "TEST", "VIRTACPI", 0x00000001)
++//!     {
++//!         Scope (\_SB)
++//!         {
++//!             Device (T432)
++//!             {
++//!                 Name (_HID, "LNUXBEEF")  // ACPI hardware ID to match
++//!                 Name (_UID, 1)
++//!                 Name (_STA, 0x0F)        // Device present, enabled
++//!                 Name (_CRS, ResourceTemplate ()
++//!                 {
++//!                     Memory32Fixed (ReadWrite, 0xFED00000, 0x1000)
++//!                 })
++//!             }
++//!         }
++//!     }
++//!     ```
++//!
++//! 2. **Compile the table**:
++//!
++//!     ```sh
++//!     iasl -tc ssdt.dsl
++//!     ```
++//!
++//!     This generates `ssdt.aml`
++//!
++//! 3. **Run QEMU** with the compiled AML file:
++//!
++//!     ```sh
++//!     qemu-system-x86_64 -m 512M \
++//!         -enable-kvm \
++//!         -kernel path/to/bzImage \
++//!         -append "root=/dev/sda console=ttyS0" \
++//!         -hda rootfs.img \
++//!         -serial stdio \
++//!         -acpitable file=ssdt.aml
++//!     ```
++//!
++//!     Requirements:
++//!     - The `rust_i2c_adapter` must be present either:
++//!         - built directly into the kernel (`bzImage`), or
++//!         - available as a `.ko` file and loadable from `rootfs.img`
++//!
++//! 4. **Verify it worked** by checking `dmesg`:
++//!
++//!     ```
++//!     rust_i2c_adapter LNUXBEEF:00: Probe Rust I2C Adapter registration sample.
++//!     ```
++//!
++
++use kernel::{
++    acpi,
++    device,
++    devres::Devres,
++    i2c::adapter::{
++        I2cAdapter,
++        I2cAdapterOptions,
++        Registration, //
++    },
++    i2c::algo::{
++        flags, //
++        I2cAlgorithm,
++        I2cFlags,
++        I2cSmbusData,
++    },
++    platform,
++    prelude::*,
++    sync::aref::ARef, //
++};
++
++#[pin_data]
++struct SampleDriver {
++    parent_dev: ARef<platform::Device>,
++    #[pin]
++    i2c_adap: Devres<Registration<SampleDevice>>,
 +}
 +
-+__rust_helper int rust_helper_i2c_master_send(const struct i2c_client *client,
-+				  const char *buf, int count)
-+{
-+	return i2c_master_send(client, buf, count);
++struct SampleDevice {}
++
++#[vtable]
++impl I2cAlgorithm for SampleDevice {
++    fn smbus_xfer(
++        _adap: &I2cAdapter<device::Normal>,
++        _addr: u16,
++        _flags: u16,
++        _read_write: u8,
++        _command: u8,
++        _size: usize,
++        _data: &I2cSmbusData,
++    ) -> Result {
++        dev_info!(_adap.as_ref(), "SMBus xfer: request handler called");
++        Ok(())
++    }
++
++    fn functionality(_adap: &I2cAdapter<device::Normal>) -> I2cFlags {
++        flags::I2C_FUNC_SMBUS_READ_BYTE | flags::I2C_FUNC_SMBUS_WRITE_BYTE
++    }
 +}
-diff --git a/rust/kernel/i2c/client.rs b/rust/kernel/i2c/client.rs
-index a597793ff038..76fa01cb0351 100644
---- a/rust/kernel/i2c/client.rs
-+++ b/rust/kernel/i2c/client.rs
-@@ -140,6 +140,98 @@ unsafe impl Send for I2cClient {}
- // (i.e. `I2cClient<Normal>) are thread safe.
- unsafe impl Sync for I2cClient {}
- 
-+impl I2cClient<device::Normal> {
-+    /// The C `i2c_smbus_read_byte` function wrapper for SMbus "read byte" protocol
-+    pub fn i2c_smbus_read_byte(&self) -> Result<u8> {
-+        // SAFETY: self is a valid reference to a I2cClient<Normal>
-+        let result = unsafe { bindings::i2c_smbus_read_byte(self.as_raw()) };
-+        to_result(result)?;
-+        Ok(result as u8)
-+    }
 +
-+    /// The C `i2c_smbus_write_byte` function wrapper for SMbus "write byte" protocol
-+    pub fn i2c_smbus_write_byte(&self, value: u8) -> Result {
-+        // SAFETY: self is a valid reference to a I2cClient<Normal>
-+        to_result(unsafe { bindings::i2c_smbus_write_byte(self.as_raw(), value) })
-+    }
++kernel::acpi_device_table!(
++    ACPI_TABLE,
++    MODULE_ACPI_TABLE,
++    <SampleDriver as platform::Driver>::IdInfo,
++    [(acpi::DeviceId::new(c"LNUXBEEF"), ())]
++);
 +
-+    /// The C `i2c_smbus_read_byte_data` function wrapper for SMbus "read byte" protocol
-+    pub fn i2c_smbus_read_byte_data(&self, command: u8) -> Result<u8> {
-+        // SAFETY: self is a valid reference to a I2cClient<Normal>
-+        let result = unsafe { bindings::i2c_smbus_read_byte_data(self.as_raw(), command) };
-+        to_result(result)?;
-+        Ok(result as u8)
-+    }
++impl platform::Driver for SampleDriver {
++    type IdInfo = ();
 +
-+    /// The C `i2c_smbus_write_byte_data` function wrapper for SMbus "write byte" protocol
-+    pub fn i2c_smbus_write_byte_data(&self, command: u8, value: u8) -> Result {
-+        // SAFETY: self is a valid reference to a I2cClient<Normal>
-+        to_result(unsafe { bindings::i2c_smbus_write_byte_data(self.as_raw(), command, value) })
-+    }
++    const ACPI_ID_TABLE: Option<acpi::IdTable<Self::IdInfo>> = Some(&ACPI_TABLE);
 +
-+    /// The C `i2c_smbus_read_word_data` function wrapper for SMbus "read word" protocol
-+    pub fn i2c_smbus_read_word_data(&self, command: u8) -> Result<u16> {
-+        // SAFETY: self is a valid reference to a I2cClient<Normal>
-+        let result = unsafe { bindings::i2c_smbus_read_word_data(self.as_raw(), command) };
-+        to_result(result)?;
-+        Ok(result as u16)
-+    }
++    fn probe(
++        pdev: &platform::Device<device::Core>,
++        _id_info: Option<&Self::IdInfo>,
++    ) -> impl PinInit<Self, Error> {
++        pin_init::pin_init_scope(move || {
++            dev_info!(
++                pdev.as_ref(),
++                "Probe Rust I2C Adapter registration sample.\n"
++            );
 +
-+    /// The C `i2c_smbus_write_word_data` function wrapper for SMbus "write word" protocol
-+    pub fn i2c_smbus_write_word_data(&self, command: u8, value: u16) -> Result {
-+        // SAFETY: self is a valid reference to a I2cClient<Normal>
-+        to_result(unsafe { bindings::i2c_smbus_write_word_data(self.as_raw(), command, value) })
-+    }
-+
-+    /// The C `i2c_smbus_read_i2c_block_data` function wrapper for SMbus "block read" protocol
-+    pub fn i2c_smbus_read_i2c_block_data(&self, command: u8, values: &mut [u8]) -> Result<usize> {
-+        // SAFETY: self is a valid reference to a I2cClient<Normal>
-+        let result = unsafe {
-+            bindings::i2c_smbus_read_i2c_block_data(
-+                self.as_raw(),
-+                command,
-+                values.len() as u8,
-+                values.as_mut_ptr(),
-+            )
-+        };
-+        to_result(result)?;
-+        Ok(result as usize)
-+    }
-+
-+    /// The C `i2c_smbus_write_i2c_block_data` function wrapper for SMbus "block write" protocol
-+    pub fn i2c_smbus_write_i2c_block_data(&self, command: u8, values: &[u8]) -> Result {
-+        // SAFETY: self is a valid reference to a I2cClient<Normal>
-+        to_result(unsafe {
-+            bindings::i2c_smbus_write_i2c_block_data(
-+                self.as_raw(),
-+                command,
-+                values.len() as u8,
-+                values.as_ptr(),
-+            )
++            Ok(try_pin_init!(Self {
++                parent_dev: pdev.into(),
++                i2c_adap <- {
++                    let name = I2cAdapterOptions{ name: c"rust_i2c_adapter"};
++                    Registration::register(pdev.as_ref(), name)
++                },
++            }))
 +        })
 +    }
 +
-+    /// The C `i2c_master_recv` function wrapper to issue a single I2C message in master
-+    /// receive mode
-+    pub fn i2c_master_recv(&self, buf: &mut [u8]) -> Result<usize> {
-+        // SAFETY: self is a valid reference to a I2cClient<Normal>
-+        let result =
-+            unsafe { bindings::i2c_master_recv(self.as_raw(), buf.as_mut_ptr(), buf.len() as i32) };
-+        to_result(result)?;
-+        Ok(result as usize)
-+    }
-+
-+    /// The C `i2c_master_send` function wrapper to issue a single I2C message in master
-+    /// transmit mode
-+    pub fn i2c_master_send(&self, buf: &[u8]) -> Result<usize> {
-+        // SAFETY: self is a valid reference to a I2cClient<Normal>
-+        let result =
-+            unsafe { bindings::i2c_master_send(self.as_raw(), buf.as_ptr(), buf.len() as i32) };
-+        to_result(result)?;
-+        Ok(result as usize)
++    fn unbind(pdev: &platform::Device<device::Core>, _this: Pin<&Self>) {
++        dev_info!(
++            pdev.as_ref(),
++            "Unbind start: Rust I2C Adapter registration sample.\n"
++        );
++        // The i2c_adap (Devres<Registration<SampleDevice>>) will be automatically
++        // dropped here, which will call i2c_del_adapter() in its Drop impl
++        dev_info!(
++            pdev.as_ref(),
++            "Unbind complete: Rust I2C Adapter registration sample.\n"
++        );
 +    }
 +}
 +
- /// The registration of an i2c client device.
- ///
- /// This type represents the registration of a [`struct i2c_client`]. When an instance of this
++kernel::module_platform_driver! {
++    type: SampleDriver,
++    name: "rust_i2c_adapter",
++    authors: ["Igor Korotin"],
++    description: "Sample I2C Adapter registration",
++    license: "GPL",
++}
 
 -- 
 2.43.0
