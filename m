@@ -1,132 +1,85 @@
-From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Sat, 31 Jan 2026 14:25:11 +0100
-Subject: [PATCH net-next v7 6/6] can: gw: use can_gw_hops instead of
- sk_buff::csum_start
+From: Igor Korotin <igor.korotin.linux@gmail.com>
+Subject: [PATCH 0/5] rust: extend I2C functionality
+Date: Sat, 31 Jan 2026 14:12:42 +0000
+Message-Id: <20260131-i2c-adapter-v1-0-5a436e34cd1a@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260131-can_skb_ext-v7-6-dd0f8f84a83d@hartkopp.net>
-References: <20260131-can_skb_ext-v7-0-dd0f8f84a83d@hartkopp.net>
-In-Reply-To: <20260131-can_skb_ext-v7-0-dd0f8f84a83d@hartkopp.net>
-To: Marc Kleine-Budde <mkl@pengutronix.de>, 
- Vincent Mailhol <mailhol@kernel.org>, 
- Oliver Hartkopp <socketcan@hartkopp.net>, 
- Robin van der Gracht <robin@protonic.nl>, 
- Oleksij Rempel <o.rempel@pengutronix.de>, kernel@pengutronix.de, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
- netdev@vger.kernel.org
-X-Mailer: b4 0.15-dev-47773
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769865912; l=3632;
- i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=ov/1Nd5fmtdN4DViiwCnK/2y+He9qcgNw2oZkmdY3H8=;
- b=qCf8F5KQ+Ulb1P9YvkvH+SJ+7YVcT+z3gd+i0t9ZNQP2anpAKs7qNUyG1aQPujgkg0+ViP6cd
- NssymmS2ga0Bq43rJeoVo6OtG11jJsf5N23iqvTsD8yZt+lc9LHJCXS
-X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
- pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
-X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
+X-B4-Tracking: v=1; b=H4sIANoNfmkC/yXOywrCMBCF4VcJszYlF2O0iPge0kVMpjXUXpxUE
+ Urf3dgu/wPzMTMkpIgJSjYD4SemOPQ55I6Bf7i+QR5DblBCHYTUkkfluQtunJB40MegtfB7rwz
+ ki5Gwjt9Vu1VbE77eGZ22ETpMya1oyc6bKawU2khZGCuMMlzy4Fq6tkg9PouBmsufvruE3A9dF
+ 6eSOevzL7W1J6OhWpYfLGRRwMYAAAA=
+X-Change-ID: 20260131-i2c-adapter-d38d330c4c25
+To: Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Wolfram Sang <wsa+renesas@sang-engineering.com>
+Cc: linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
+ linux-i2c@vger.kernel.org, markus.probst@posteo.de, 
+ Igor Korotin <igor.korotin.linux@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769868772; l=2298;
+ i=igor.korotin.linux@gmail.com; s=20260125; h=from:subject:message-id;
+ bh=YWgwSGL7NFu8wA5Ois87/WxkNSDJhp8JTOnbIFhNw4M=;
+ b=NYx1gpxD4caOuoDAMtgUPYxZAFyMYfRR1NZcLY5lk90c5c4Dk/xcpMcA0pxsTfdE2c/F9U+Ci
+ 344uPpFIbNPDh2BY+DwOy+smwVsM0zAkFirPRxMMYN66XCfMMf0J/1F
+X-Developer-Key: i=igor.korotin.linux@gmail.com; a=ed25519;
+ pk=SjZ//wxnynZgJJgTqANyU10A7hdQQdDXLvXIr+zWroE=
+X-Endpoint-Received: by B4 Relay for igor.korotin.linux@gmail.com/20260125 with auth_id=615
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As CAN skbs don't use IP checksums the skb->csum_start variable was used to
-store the can-gw CAN frame time-to-live counter together with
-skb->ip_summed set to CHECKSUM_UNNECESSARY.
+This patch series extend the existing I2C functionality with:
+- Abstractions allowing to implement I2C algorithms used by I2C adapters;
+- Abstractions allowing to create and add new I2C adapters;
+- Safe wrappers upon I2C and SMbus transferring C API: read/write
+  bytes/words/byte arrays.
 
-Remove the 'hack' using the skb->csum_start variable and move the content
-to can_skb_ext::can_gw_hops of the CAN skb extensions.
+The patch series contains additional new sample driver `rust_i2c_adapter`
+presenting the new functionality. 
 
-The module parameter 'max_hops' has been reduced to a single byte to fit
-can_skb_ext::can_gw_hops as the maximum value to be stored is 6.
+Patch series depend on 
+message-id: <20260107103511.570525-1-dakr@kernel.org>
 
-Signed-off-by: Marc Kleine-Budde <mkl@pengutronix.de>
-Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+Signed-off-by: Igor Korotin <igor.korotin.linux@gmail.com>
 ---
- drivers/net/can/vxcan.c |  2 +-
- net/can/gw.c            | 23 ++++++-----------------
- 2 files changed, 7 insertions(+), 18 deletions(-)
+Igor Korotin (5):
+      rust: i2c: split client and adapter code into separate files
+      rust: bits: add define_flags macro
+      rust: i2c: Add I2C Adapter registration abstractions
+      rust: i2c: add I2C wrappers
+      samples: rust: add Rust I2C adapter registration sample
 
-diff --git a/drivers/net/can/vxcan.c b/drivers/net/can/vxcan.c
-index 53d7d9046f85..60e5dad0694d 100644
---- a/drivers/net/can/vxcan.c
-+++ b/drivers/net/can/vxcan.c
-@@ -76,11 +76,11 @@ static netdev_tx_t vxcan_xmit(struct sk_buff *oskb, struct net_device *dev)
- 		kfree_skb(oskb);
- 		goto out_unlock;
- 	}
- 
- 	/* reset CAN GW hop counter */
--	skb->csum_start = 0;
-+	csx->can_gw_hops = 0;
- 	skb->pkt_type   = PACKET_BROADCAST;
- 	skb->dev        = peer;
- 	skb->ip_summed  = CHECKSUM_UNNECESSARY;
- 
- 	len = can_skb_get_data_len(skb);
-diff --git a/net/can/gw.c b/net/can/gw.c
-index 816154a978c1..61a1e6b1b83f 100644
---- a/net/can/gw.c
-+++ b/net/can/gw.c
-@@ -69,12 +69,12 @@ MODULE_ALIAS(CAN_GW_NAME);
- 
- #define CGW_MIN_HOPS 1
- #define CGW_MAX_HOPS 6
- #define CGW_DEFAULT_HOPS 1
- 
--static unsigned int max_hops __read_mostly = CGW_DEFAULT_HOPS;
--module_param(max_hops, uint, 0444);
-+static unsigned char max_hops __read_mostly = CGW_DEFAULT_HOPS;
-+module_param(max_hops, byte, 0444);
- MODULE_PARM_DESC(max_hops,
- 		 "maximum " CAN_GW_NAME " routing hops for CAN frames "
- 		 "(valid values: " __stringify(CGW_MIN_HOPS) "-"
- 		 __stringify(CGW_MAX_HOPS) " hops, "
- 		 "default: " __stringify(CGW_DEFAULT_HOPS) ")");
-@@ -478,23 +478,12 @@ static void can_can_gw_rcv(struct sk_buff *skb, void *data)
- 		return;
- 
- 	/* Do not handle CAN frames routed more than 'max_hops' times.
- 	 * In general we should never catch this delimiter which is intended
- 	 * to cover a misconfiguration protection (e.g. circular CAN routes).
--	 *
--	 * The Controller Area Network controllers only accept CAN frames with
--	 * correct CRCs - which are not visible in the controller registers.
--	 * According to skbuff.h documentation the csum_start element for IP
--	 * checksums is undefined/unused when ip_summed == CHECKSUM_UNNECESSARY.
--	 * Only CAN skbs can be processed here which already have this property.
- 	 */
--
--#define cgw_hops(skb) ((skb)->csum_start)
--
--	BUG_ON(skb->ip_summed != CHECKSUM_UNNECESSARY);
--
--	if (cgw_hops(skb) >= max_hops) {
-+	if (csx->can_gw_hops >= max_hops) {
- 		/* indicate deleted frames due to misconfiguration */
- 		gwj->deleted_frames++;
- 		return;
- 	}
- 
-@@ -534,15 +523,15 @@ static void can_can_gw_rcv(struct sk_buff *skb, void *data)
- 		gwj->dropped_frames++;
- 		return;
- 	}
- 
- 	/* put the incremented hop counter in the cloned skb */
--	cgw_hops(nskb) = cgw_hops(skb) + 1;
-+	ncsx->can_gw_hops = csx->can_gw_hops + 1;
- 
- 	/* first processing of this CAN frame -> adjust to private hop limit */
--	if (gwj->limit_hops && cgw_hops(nskb) == 1)
--		cgw_hops(nskb) = max_hops - gwj->limit_hops + 1;
-+	if (gwj->limit_hops && ncsx->can_gw_hops == 1)
-+		ncsx->can_gw_hops = max_hops - gwj->limit_hops + 1;
- 
- 	nskb->dev = gwj->dst.dev;
- 
- 	/* pointer to modifiable CAN frame */
- 	cf = (struct canfd_frame *)nskb->data;
+ MAINTAINERS                      |   4 +-
+ include/linux/i2c.h              |   6 +
+ rust/helpers/helpers.c           |   1 +
+ rust/helpers/i2c.c               |  15 ++
+ rust/kernel/bits.rs              |  57 ++++++++
+ rust/kernel/i2c.rs               | 254 ++-------------------------------
+ rust/kernel/i2c/adapter.rs       | 200 ++++++++++++++++++++++++++
+ rust/kernel/i2c/algo.rs          | 300 +++++++++++++++++++++++++++++++++++++++
+ rust/kernel/i2c/client.rs        | 284 ++++++++++++++++++++++++++++++++++++
+ samples/rust/Kconfig             |  12 ++
+ samples/rust/Makefile            |   1 +
+ samples/rust/rust_driver_i2c.rs  |  10 +-
+ samples/rust/rust_i2c_adapter.rs | 170 ++++++++++++++++++++++
+ samples/rust/rust_i2c_client.rs  |  15 +-
+ 14 files changed, 1069 insertions(+), 260 deletions(-)
+---
+base-commit: a7c013f779530190d0c1e1aa5e7c8a61f0bd479e
+change-id: 20260131-i2c-adapter-d38d330c4c25
+prerequisite-message-id: <20260107103511.570525-1-dakr@kernel.org>
+prerequisite-patch-id: 6e4d28a06d842ddfc7db82f410532a35b8fe317d
+prerequisite-patch-id: 9739295d85b688257fca29be1e1217a05a69c9e7
+prerequisite-patch-id: 78eaed3746a40713f44f13508fcf43653b0a4528
+prerequisite-patch-id: 99f1881bc896896297a903affcfa4f62cab1a307
+prerequisite-patch-id: ea8baa9d648f1178d6f39d140b98bddf3c183f6f
+prerequisite-patch-id: f8a9e049d204bde04e80151a67dfff5ec2633e7a
 
+Best regards,
 -- 
-2.51.0
+Igor Korotin <igor.korotin.linux@gmail.com>
 
