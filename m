@@ -1,56 +1,123 @@
-From: Michael Reeves <michael.reeves077@gmail.com>
-Date: Sat, 31 Jan 2026 14:48:57 +1100
-Subject: [PATCH v7 2/2] mfd: macsmc: Wire up Apple SMC power driver
+From: Oliver Hartkopp <socketcan@hartkopp.net>
+Subject: [PATCH net-next v7 0/6] move CAN skb headroom content to skb
+ extensions
+Date: Sat, 31 Jan 2026 14:25:05 +0100
+Message-Id: <20260131-can_skb_ext-v7-0-dd0f8f84a83d@hartkopp.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260131-b4-macsmc-power-v7-2-0e3a2da69948@gmail.com>
-References: <20260131-b4-macsmc-power-v7-0-0e3a2da69948@gmail.com>
-In-Reply-To: <20260131-b4-macsmc-power-v7-0-0e3a2da69948@gmail.com>
-To: Sebastian Reichel <sre@kernel.org>, Sven Peter <sven@kernel.org>, 
- Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
- Lee Jones <lee@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
- asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- Michael Reeves <michael.reeves077@gmail.com>, 
- Hector Martin <marcan@marcan.st>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769831340; l=861;
- i=michael.reeves077@gmail.com; s=20260105; h=from:subject:message-id;
- bh=l66XKVNJtI8aTWFc0QpUQyQBnqT+6mvF4xxxt3DtiJc=;
- b=VRbZEsFuHG6PoAQ0NYRkJXNz+nGfw6IC9Kb/MSR+DI1O9I0BaJAfS1VJBD0hI4F6PjffTRTEQ
- ZuwAYuvPmoXCYjBOh6SkvKm0w14kjp44wS7bGvue/TLtMU6o5LlgbEb
-X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
- pk=QIrgWBGCm3LG0YYc6MLCDkwuVXLTGGooVBdWX/KhSiU=
-X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/20260105 with auth_id=591
+X-B4-Tracking: v=1; b=H4sIALECfmkC/23N0QqDIBQG4FcJr+c42rLc1d5jjDA9LhlYaEgje
+ vdJVzW6/PnP95+FRAwOI7kXCwmYXHSDz6G+FET3yr+ROpMz4cAFMN5QrXwbP12L80QBayUlGia
+ bG8liDGjdvK09iceJ+nxFXrnpXZyG8N3eJLb1p4uJUaBlCVaANZWp8dGrMH2GcbzmvW0qVXsuj
+ 7zKnDNecWt0IwFOuNjxEo5cZN5YjcqqrrZc/PF1XX+f7YTlMQEAAA==
+X-Change-ID: 20260128-can_skb_ext-0e7a99ed1984
+To: Marc Kleine-Budde <mkl@pengutronix.de>, 
+ Vincent Mailhol <mailhol@kernel.org>, 
+ Oliver Hartkopp <socketcan@hartkopp.net>, 
+ Robin van der Gracht <robin@protonic.nl>, 
+ Oleksij Rempel <o.rempel@pengutronix.de>, kernel@pengutronix.de, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ netdev@vger.kernel.org
+X-Mailer: b4 0.15-dev-47773
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769865912; l=4192;
+ i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
+ bh=c0ib5S8FKJAgbr9rKGdeyQcGZxLarBG9JTmyhwASeyY=;
+ b=V0PjazLzKr90zlvjYmpPtSy152twW9YB9QKJTJt0sZncr2i+fDHIbfdDO5jQV1yZVdGsvqqtJ
+ /gOK6aqkceICoc5G6XU736aVJrjRWW+D2pMji+1jbUFJuZcz80TYACe
+X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
+ pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
+X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Hector Martin <marcan@marcan.st>
+CAN bus related skbuffs (ETH_P_CAN/ETH_P_CANFD/ETH_P_CANXL) simply contain
+CAN frame structs for CAN CC/FD/XL of skb->len length at skb->data. Those
+CAN skbs do not have network/mac/transport headers nor other such
+references for encapsulated protocols like ethernet/IP protocols.
 
-Add the cell for the macsmc-power driver so it is probed by the
-MFD core.
+To store data for CAN specific use-cases all CAN bus related skbuffs are
+created with a 16 byte private skb headroom (struct can_skb_priv). Using
+the skb headroom and accessing skb->head for this private data led to
+several problems in the past likely due to "The struct can_skb_priv
+business is highly unconventional for the networking stack." [1]
 
-Signed-off-by: Hector Martin <marcan@marcan.st>
-Reviewed-by: Neal Gompa <neal@gompa.dev>
-Reviewed-by: Sven Peter <sven@kernel.org>
-Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
+This patch set aims to remove the unconventional skb headroom usage for CAN
+bus related skbuffs and use the common skb extensions instead.
+
+[1] https://lore.kernel.org/linux-can/20260104074222.29e660ac@kernel.org/
+
 ---
- drivers/mfd/macsmc.c | 1 +
- 1 file changed, 1 insertion(+)
+Changes in v2:
+- Patch#1: use u32 instead of __u32 for "struct uniqframe::hash"
+- Patch#3: use u{8,16} instead of __u{8,16} for "struct can_skb_ext"
+- Patch#6: add missing patch
+- Link to v1: https://patch.msgid.link/20260125201601.5018-1-socketcan@hartkopp.net
 
-diff --git a/drivers/mfd/macsmc.c b/drivers/mfd/macsmc.c
-index 1b7e7b3e785f..358feec2d088 100644
---- a/drivers/mfd/macsmc.c
-+++ b/drivers/mfd/macsmc.c
-@@ -46,6 +46,7 @@
- 
- static const struct mfd_cell apple_smc_devs[] = {
- 	MFD_CELL_NAME("macsmc-input"),
-+	MFD_CELL_NAME("macsmc-power"),
- 	MFD_CELL_OF("macsmc-gpio", NULL, NULL, 0, 0, "apple,smc-gpio"),
- 	MFD_CELL_OF("macsmc-hwmon", NULL, NULL, 0, 0, "apple,smc-hwmon"),
- 	MFD_CELL_OF("macsmc-reboot", NULL, NULL, 0, 0, "apple,smc-reboot"),
+Changes in v3:
+- Patch#2: new patch: rename dev_put() in CAN subsystem suggested by Checkpatch
+- Patch#3: use netdev_put() instead of dev_put() suggested by Checkpatch
+- Patch#3: initialize can_gw_hops in can_skb_ext_add() suggested by AI-bot
+- Patch#6: add linebreak in sock_alloc_send_skb() to fit the 80 columns (Checkpatch)
+- Link to v2: https://lore.kernel.org/linux-can/20260128-can-skb-ext-v2-0-fe64aa152c8a@pengutronix.de/
 
--- 
-2.51.2
+Changes in v4:
+Solve the netdev_put() / dev_put() suggestion from Checkpatch in a separate
+patch set. Therefore these changes are based on V2 again. 
+- Patch#2: initialize can_gw_hops in can_skb_ext_add() suggested by AI-bot
+- Patch#5: add linebreak in sock_alloc_send_skb() to fit the 80 columns
+- Link to v2: https://lore.kernel.org/linux-can/20260128-can-skb-ext-v2-0-fe64aa152c8a@pengutronix.de/
+
+Changes in v5:
+- Patch#2: use skb_ext_add() for the cloned skb suggested by AI-bot
+- Patch#2: use netdev_put() instead of dev_put() suggested by Checkpatch
+- managed to get the receipient list with b4 prep --auto-to-cc
+- Link to v4: https://lore.kernel.org/netdev/20260128-can_skb_ext-v1-0-330f60fd5d7e@hartkopp.net/
+
+Changes in v6:
+- Patch#1: drop extern prototype in header file (Checkpatch)
+- Patch#6: vxcan: correctly reset drop counter with skb extensions (AI-bot)
+- Link to v5: https://patch.msgid.link/20260129-can_skb_ext-v5-0-21252fdc8900@hartkopp.net
+
+Changes in v7:
+- Patch#2: common handling for cloned skbs in gw.c j1939/transport.c vxcan.c
+- Patch#6: vxcan: correctly reset drop counter based on updated Patch#2
+- Link to v6: https://patch.msgid.link/20260130-can_skb_ext-v6-0-8fceafab7f26@hartkopp.net
+
+Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+
+---
+Oliver Hartkopp (6):
+      can: use skb hash instead of private variable in headroom
+      can: add CAN skb extension infrastructure
+      can: move ifindex to CAN skb extensions
+      can: move frame_len to CAN skb extensions
+      can: remove private CAN skb headroom infrastructure
+      can: gw: use can_gw_hops instead of sk_buff::csum_start
+
+ MAINTAINERS               |   1 +
+ drivers/net/can/dev/skb.c | 123 +++++++++++++++++++++++++++++-----------------
+ drivers/net/can/vxcan.c   |  16 +++++-
+ include/linux/can/core.h  |   1 +
+ include/linux/can/skb.h   |  38 +++++---------
+ include/linux/skbuff.h    |   3 ++
+ include/net/can.h         |  28 +++++++++++
+ net/can/Kconfig           |   1 +
+ net/can/af_can.c          |  23 ++++++---
+ net/can/bcm.c             |  26 +++++++---
+ net/can/gw.c              |  42 +++++++++-------
+ net/can/isotp.c           |  45 +++++++++++------
+ net/can/j1939/socket.c    |  15 ++++--
+ net/can/j1939/transport.c |  41 ++++++++++++----
+ net/can/raw.c             |  22 ++++++---
+ net/core/skbuff.c         |   4 ++
+ 16 files changed, 286 insertions(+), 143 deletions(-)
+---
+base-commit: 239f09e258b906deced5c2a7c1ac8aed301b558b
+change-id: 20260128-can_skb_ext-0e7a99ed1984
+
+Best regards,
+--  
+Oliver Hartkopp <socketcan@hartkopp.net>
 
