@@ -1,272 +1,101 @@
-From: Igor Korotin <igor.korotin.linux@gmail.com>
-Date: Sat, 31 Jan 2026 14:12:47 +0000
-Subject: [PATCH 5/5] samples: rust: add Rust I2C adapter registration
- sample
+From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Subject: [PATCH v8 0/6] i2c: xiic: use generic device property accessors
+Date: Sun, 01 Feb 2026 02:57:44 +0000
+Message-Id: <20260201-i2c-xiic-v8-0-deb2dd158d1a@nexthop.ai>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260131-i2c-adapter-v1-5-5a436e34cd1a@gmail.com>
-References: <20260131-i2c-adapter-v1-0-5a436e34cd1a@gmail.com>
-In-Reply-To: <20260131-i2c-adapter-v1-0-5a436e34cd1a@gmail.com>
-To: Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Wolfram Sang <wsa+renesas@sang-engineering.com>
-Cc: linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
- linux-i2c@vger.kernel.org, markus.probst@posteo.de, 
- Igor Korotin <igor.korotin.linux@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACjBfmkC/3XOTW6DMBCG4atEXteRPf6lq96j6mJsxsWLQGQoo
+ oq4e01WrmiXI83z6nuwmUqmmb1eHqzQmuc8jfXwLxcWBxw/iee+3gwEWCEBeIbIt5wjVwF9l5I
+ h7BSr7/dCKW/P1PtHvVOZbnwZCmETkEYI8NpewSjfcckx9F+l4HDD8W2kbRmm+xXz0RvyvEzl+
+ 7lshaP6x4gVuOBS6WR6pxX50EaOFatqpWqkqpKCi70Go/t0lvo/qavUqCigMlJEOknTSttIU6X
+ 3KC2CdyDjSdpWukbaY60HgmSTNe4sXSu7RroqHTjSSvvOUfol933/AU4FELsDAgAA
+X-Change-ID: 20260122-i2c-xiic-3ba89ff5ea93
+To: Michal Simek <michal.simek@amd.com>, Andi Shyti <andi.shyti@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Andy Shevchenko <andriy.shevchenko@intel.com>, 
+ linux-arm-kernel@lists.infradead.org, linux-i2c@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Abdurrahman Hussain <abdurrahman@nexthop.ai>, Andrew Lunn <andrew@lunn.ch>, 
+ lkp@intel.com
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1769868772; l=7280;
- i=igor.korotin.linux@gmail.com; s=20260125; h=from:subject:message-id;
- bh=UoiJITbB7wSdqa0+19oS9e0ghILI5njDjJv+rjpQTNo=;
- b=OJMA6QqqxEoPFMUi/s6s6vUTrFKJwRrspekSjPnBxBTRXVy2rYv7XsxvuwQ2sLrxN9izdsPPP
- eVuBxGsChbWCKUGKyTtelRLz2VjTCBrCm7z+Z8P954G66OF/8b0QJBK
-X-Developer-Key: i=igor.korotin.linux@gmail.com; a=ed25519;
- pk=SjZ//wxnynZgJJgTqANyU10A7hdQQdDXLvXIr+zWroE=
-X-Endpoint-Received: by B4 Relay for igor.korotin.linux@gmail.com/20260125 with auth_id=615
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1769914668; l=2657;
+ i=abdurrahman@nexthop.ai; s=20260119; h=from:subject:message-id;
+ bh=R4QN70gtL6kBwxgirmfc+vVqtNxB/tfOuczO6/4Za4Y=;
+ b=YfXXstzqXqVi3zQ+d1PuXev5tPSZc5dWhI07nv2amogmUdyI1ttyJHy/Q1wYH5NcRz61TsIHD
+ aEmsRzWGoU6BBp0Ax5QvbOOvTqEFOyqjiHgvGW56kJWLzlhoaa+URHd
+X-Developer-Key: i=abdurrahman@nexthop.ai; a=ed25519;
+ pk=S+ysnf+NwMcBdHBlyKIUEAtaFGSIhQwcJcgcXhq0osg=
+X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/20260119 with auth_id=608
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a new `rust_i2c_adapter` sample, showing how to create a new
-i2c adapter using `i2c::adapter::Registration`
+- Switch to generic device property accessors.
+- Switch to managed devm_ functions to simplify error handling.
+- General cleanups.
+- Skip clock setup on non-OF systems where clock is not specified via
+firmware.
 
-Signed-off-by: Igor Korotin <igor.korotin.linux@gmail.com>
+Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
 ---
- MAINTAINERS                      |   3 +-
- samples/rust/Kconfig             |  12 +++
- samples/rust/Makefile            |   1 +
- samples/rust/rust_i2c_adapter.rs | 170 +++++++++++++++++++++++++++++++++++++++
- 4 files changed, 184 insertions(+), 2 deletions(-)
+Changes in v8:
+- Made the clock change the last patch in the series.
+- Reworded the clock change description.
+- Changed dev->fwnode to dev_fwnode(dev).
+- Link to v7: https://lore.kernel.org/r/20260129-i2c-xiic-v7-0-727e434897ef@nexthop.ai
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 60662984176d..bae13f1f9a23 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -11888,8 +11888,7 @@ L:	rust-for-linux@vger.kernel.org
- S:	Maintained
- F:	rust/i2c/*
- F:	rust/kernel/i2c.rs
--F:	samples/rust/rust_driver_i2c.rs
--F:	samples/rust/rust_i2c_client.rs
-+F:	samples/rust/rust_*i2c*.rs
- 
- I2C SUBSYSTEM HOST DRIVERS
- M:	Andi Shyti <andi.shyti@kernel.org>
-diff --git a/samples/rust/Kconfig b/samples/rust/Kconfig
-index 3efa51bfc8ef..a5157b50e27c 100644
---- a/samples/rust/Kconfig
-+++ b/samples/rust/Kconfig
-@@ -107,6 +107,18 @@ config SAMPLE_RUST_I2C_CLIENT
- 
- 	  If unsure, say N.
- 
-+config SAMPLE_RUST_I2C_ADAPTER
-+	tristate "I2C Adapter Registration"
-+	depends on I2C=y
-+	help
-+	  This option builds the Rust I2C adapter manual creation
-+	  sample.
-+
-+	  To compile this as a module, choose M here:
-+	  the module will be called rust_i2c_adapter.
-+
-+	  If unsure, say N.
-+
- config SAMPLE_RUST_DRIVER_PCI
- 	tristate "PCI Driver"
- 	depends on PCI
-diff --git a/samples/rust/Makefile b/samples/rust/Makefile
-index f65885d1d62b..7026eb46ae50 100644
---- a/samples/rust/Makefile
-+++ b/samples/rust/Makefile
-@@ -9,6 +9,7 @@ obj-$(CONFIG_SAMPLE_RUST_DEBUGFS_SCOPED)	+= rust_debugfs_scoped.o
- obj-$(CONFIG_SAMPLE_RUST_DMA)			+= rust_dma.o
- obj-$(CONFIG_SAMPLE_RUST_DRIVER_I2C)		+= rust_driver_i2c.o
- obj-$(CONFIG_SAMPLE_RUST_I2C_CLIENT)		+= rust_i2c_client.o
-+obj-$(CONFIG_SAMPLE_RUST_I2C_ADAPTER)		+= rust_i2c_adapter.o
- obj-$(CONFIG_SAMPLE_RUST_DRIVER_PCI)		+= rust_driver_pci.o
- obj-$(CONFIG_SAMPLE_RUST_DRIVER_PLATFORM)	+= rust_driver_platform.o
- obj-$(CONFIG_SAMPLE_RUST_DRIVER_USB)		+= rust_driver_usb.o
-diff --git a/samples/rust/rust_i2c_adapter.rs b/samples/rust/rust_i2c_adapter.rs
-new file mode 100644
-index 000000000000..542766e27d6f
---- /dev/null
-+++ b/samples/rust/rust_i2c_adapter.rs
-@@ -0,0 +1,170 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+//! Rust I2C adapter registration sample.
-+//!
-+//! An I2C adapter in Rust cannot exist on its own. To register a new I2C adapter,
-+//! it must be bound to a parent device. In this sample driver, a platform device
-+//! is used as the parent.
-+
-+//! ACPI match table test
-+//!
-+//! This demonstrates how to test an ACPI-based Rust I2C adapter registration driver
-+//! using QEMU with a custom SSDT.
-+//!
-+//! Steps:
-+//!
-+//! 1. **Create an SSDT source file** (`ssdt.dsl`) with the following content:
-+//!
-+//!     ```asl
-+//!     DefinitionBlock ("", "SSDT", 2, "TEST", "VIRTACPI", 0x00000001)
-+//!     {
-+//!         Scope (\_SB)
-+//!         {
-+//!             Device (T432)
-+//!             {
-+//!                 Name (_HID, "LNUXBEEF")  // ACPI hardware ID to match
-+//!                 Name (_UID, 1)
-+//!                 Name (_STA, 0x0F)        // Device present, enabled
-+//!                 Name (_CRS, ResourceTemplate ()
-+//!                 {
-+//!                     Memory32Fixed (ReadWrite, 0xFED00000, 0x1000)
-+//!                 })
-+//!             }
-+//!         }
-+//!     }
-+//!     ```
-+//!
-+//! 2. **Compile the table**:
-+//!
-+//!     ```sh
-+//!     iasl -tc ssdt.dsl
-+//!     ```
-+//!
-+//!     This generates `ssdt.aml`
-+//!
-+//! 3. **Run QEMU** with the compiled AML file:
-+//!
-+//!     ```sh
-+//!     qemu-system-x86_64 -m 512M \
-+//!         -enable-kvm \
-+//!         -kernel path/to/bzImage \
-+//!         -append "root=/dev/sda console=ttyS0" \
-+//!         -hda rootfs.img \
-+//!         -serial stdio \
-+//!         -acpitable file=ssdt.aml
-+//!     ```
-+//!
-+//!     Requirements:
-+//!     - The `rust_i2c_adapter` must be present either:
-+//!         - built directly into the kernel (`bzImage`), or
-+//!         - available as a `.ko` file and loadable from `rootfs.img`
-+//!
-+//! 4. **Verify it worked** by checking `dmesg`:
-+//!
-+//!     ```
-+//!     rust_i2c_adapter LNUXBEEF:00: Probe Rust I2C Adapter registration sample.
-+//!     ```
-+//!
-+
-+use kernel::{
-+    acpi,
-+    device,
-+    devres::Devres,
-+    i2c::adapter::{
-+        I2cAdapter,
-+        I2cAdapterOptions,
-+        Registration, //
-+    },
-+    i2c::algo::{
-+        flags, //
-+        I2cAlgorithm,
-+        I2cFlags,
-+        I2cSmbusData,
-+    },
-+    platform,
-+    prelude::*,
-+    sync::aref::ARef, //
-+};
-+
-+#[pin_data]
-+struct SampleDriver {
-+    parent_dev: ARef<platform::Device>,
-+    #[pin]
-+    i2c_adap: Devres<Registration<SampleDevice>>,
-+}
-+
-+struct SampleDevice {}
-+
-+#[vtable]
-+impl I2cAlgorithm for SampleDevice {
-+    fn smbus_xfer(
-+        _adap: &I2cAdapter<device::Normal>,
-+        _addr: u16,
-+        _flags: u16,
-+        _read_write: u8,
-+        _command: u8,
-+        _size: usize,
-+        _data: &I2cSmbusData,
-+    ) -> Result {
-+        dev_info!(_adap.as_ref(), "SMBus xfer: request handler called");
-+        Ok(())
-+    }
-+
-+    fn functionality(_adap: &I2cAdapter<device::Normal>) -> I2cFlags {
-+        flags::I2C_FUNC_SMBUS_READ_BYTE | flags::I2C_FUNC_SMBUS_WRITE_BYTE
-+    }
-+}
-+
-+kernel::acpi_device_table!(
-+    ACPI_TABLE,
-+    MODULE_ACPI_TABLE,
-+    <SampleDriver as platform::Driver>::IdInfo,
-+    [(acpi::DeviceId::new(c"LNUXBEEF"), ())]
-+);
-+
-+impl platform::Driver for SampleDriver {
-+    type IdInfo = ();
-+
-+    const ACPI_ID_TABLE: Option<acpi::IdTable<Self::IdInfo>> = Some(&ACPI_TABLE);
-+
-+    fn probe(
-+        pdev: &platform::Device<device::Core>,
-+        _id_info: Option<&Self::IdInfo>,
-+    ) -> impl PinInit<Self, Error> {
-+        pin_init::pin_init_scope(move || {
-+            dev_info!(
-+                pdev.as_ref(),
-+                "Probe Rust I2C Adapter registration sample.\n"
-+            );
-+
-+            Ok(try_pin_init!(Self {
-+                parent_dev: pdev.into(),
-+                i2c_adap <- {
-+                    let name = I2cAdapterOptions{ name: c"rust_i2c_adapter"};
-+                    Registration::register(pdev.as_ref(), name)
-+                },
-+            }))
-+        })
-+    }
-+
-+    fn unbind(pdev: &platform::Device<device::Core>, _this: Pin<&Self>) {
-+        dev_info!(
-+            pdev.as_ref(),
-+            "Unbind start: Rust I2C Adapter registration sample.\n"
-+        );
-+        // The i2c_adap (Devres<Registration<SampleDevice>>) will be automatically
-+        // dropped here, which will call i2c_del_adapter() in its Drop impl
-+        dev_info!(
-+            pdev.as_ref(),
-+            "Unbind complete: Rust I2C Adapter registration sample.\n"
-+        );
-+    }
-+}
-+
-+kernel::module_platform_driver! {
-+    type: SampleDriver,
-+    name: "rust_i2c_adapter",
-+    authors: ["Igor Korotin"],
-+    description: "Sample I2C Adapter registration",
-+    license: "GPL",
-+}
+Changes in v7:
+- Drop the dt-bindings patch.
+- Skip clock setup on non-OF systems.
+- Minor commit body rewording.
+- Applied code-review trailers with `b4 trailers -u`
+- Link to v6: https://lore.kernel.org/r/20260127-i2c-xiic-v6-0-e82e2f6f657c@nexthop.ai
 
+Changes in v6:
+- Cosmetic changes to address the comments.
+- Added a patch to use resource format specifier in debug log.
+- Link to v5: https://lore.kernel.org/r/20260126-i2c-xiic-v5-0-88a16a28721c@nexthop.ai
+
+Changes in v5:
+- Reorder the cosmetic patch to be the last in the series.
+- Added a documentation patch to describe the optional clock.
+- Minor commit body rewording.
+- Link to v4: https://lore.kernel.org/r/20260123-i2c-xiic-v4-0-4a3eba3510ce@nexthop.ai
+
+Changes in v4:
+- Reorder the cosmetic patch to be the first in the series.
+- Amend the mutex_init patch to also switch to the managed pm_runtime_
+  variant.
+- Link to v3: https://lore.kernel.org/r/20260123-i2c-xiic-v3-0-eb7cd4254dfb@nexthop.ai
+
+Changes in v3:
+- Reorder the "optional clock" patch to be the first in the series. 
+- Add a patch to switch to devm_mutex_init().
+- Remove dup message in error path.
+- Cosmetic: use temporary dev variable.
+- Link to v2: https://lore.kernel.org/r/20260122-i2c-xiic-v2-0-134f5d743e8b@nexthop.ai
+
+Changes in v2:
+- Split the patch into two independent changes.
+- Added struct device *dev at the top of probe() and remove() to re-use.
+- Switched to device_set_node(...)
+
+---
+Abdurrahman Hussain (6):
+      i2c: xiic: switch to devres managed APIs
+      i2c: xiic: remove duplicate error message
+      i2c: xiic: switch to generic device property accessors
+      i2c: xiic: cosmetic cleanup
+      i2c xiic: cosmetic: use resource format specifier in debug log
+      i2c: xiic: skip input clock setup on non-OF systems
+
+ drivers/i2c/busses/i2c-xiic.c | 98 +++++++++++++++++++------------------------
+ 1 file changed, 42 insertions(+), 56 deletions(-)
+---
+base-commit: 4d310797262f0ddf129e76c2aad2b950adaf1fda
+change-id: 20260122-i2c-xiic-3ba89ff5ea93
+
+Best regards,
 -- 
-2.43.0
+Abdurrahman Hussain <abdurrahman@nexthop.ai>
 
