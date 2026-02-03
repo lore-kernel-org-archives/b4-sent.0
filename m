@@ -1,191 +1,135 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 03 Feb 2026 11:24:15 +0000
-Subject: [PATCH v3 9/9] iio: amplifiers: ad8366: Update device support
+From: Amit Sunil Dhamne <amitsd@google.com>
+Subject: [PATCH v5 0/5] Introduce MAX77759 charger driver
+Date: Tue, 03 Feb 2026 22:50:26 +0000
+Message-Id: <20260203-max77759-charger-v5-0-b50395376a5f@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260203-iio-ad8366-update-v3-9-5d5636b5181a@analog.com>
-References: <20260203-iio-ad8366-update-v3-0-5d5636b5181a@analog.com>
-In-Reply-To: <20260203-iio-ad8366-update-v3-0-5d5636b5181a@analog.com>
-To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
- devicetree@vger.kernel.org
-Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
- Lars-Peter Clausen <lars@metafoo.de>, Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIALJ7gmkC/23PwW7CMAwG4FdBOS9T4sZOwmnvgTikrVsiDYLSq
+ SpCfXdSBNqm9vjb8mf7LgbOkQex391F5jEOMV1KwI+daE7h0rOMbckCFKDWCuU5TNZa9LK0c89
+ ZOoSagFoiHUQZu2bu4vQkD8eST3H4Sfn23DDqpfrCoFpjo5ZKUg1satfZDs1Xn1L/zZ9NOotFG
+ +FXAO02BCgC1IDeOxXI0Uqo/ghgN4SqCGiYyHTYBA8rwbwFUuWIDcEsX3gDlWlcy63+J8zz/AC
+ pCmSfdwEAAA==
+X-Change-ID: 20251105-max77759-charger-852b626d661a
+To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>, 
- Alexandru Ardelean <alexandru.ardelean@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770117857; l=6250;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=VWX2rYjoJLQFKSpmfPi56ddhqrjyXurza45bIv8KGCc=;
- b=7P6icB4MiuTdlRZsIx83DFXErvmLxITPgRiKTKRf7+JPhC8glSfxh4T9hhXVd0/zwouFmDaPf
- h+TyAPhupfYAi5SsOZPIRRtLgcGoB8ehT36MzW0c699fYqGGRGRGP1+
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+ =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
+ Lee Jones <lee@kernel.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Badhri Jagan Sridharan <badhri@google.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Tudor Ambarus <tudor.ambarus@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>
+Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-usb@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
+ RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
+ Amit Sunil Dhamne <amitsd@google.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770159074; l=4473;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=2Zp4rfp0Kd9kcSVQR1ZIa4DmydM+c0c7shcAIyikU7A=;
+ b=Dtgr9lcr/dlkSXzh1Ur4nnrsfz78a9WBtTSGMMnyXbFZRL7me9qe0JZ76IStrkrSmiCdz4/kg
+ 43jvKAoSL9WDTxuxfZn6BxTZ55ad8Pnh+B9ZA7HEdO9z4Lq67MtB2of
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the following digital step attenuators:
-- HMC271A: 1dB LSB 5-Bit Digital Attenuator SMT, 0.7 - 3.7 GHz
-- ADRF5720: 0.5 dB LSB, 6-Bit, Digital Attenuator, 9 kHz to 40 GHz
-- ADRF5730: 0.5 dB LSB, 6-Bit, Digital Attenuator, 100 MHz to 40 GHz
-- ADRF5731: 2 dB LSB, 4-Bit, Digital Attenuator, 100 MHz to 40 GHz
-- HMC1018A: 1.0 dB LSB GaAs MMIC 5-BIT DIGITAL ATTENUATOR, 0.1 - 30 GHz
-- HMC1019A: 0.5 dB LSB GaAs MMIC 5-BIT DIGITAL ATTENUATOR, 0.1 - 30 GHz
+MAX77759 PMIC is used in Pixel 6 and 6 Pro (Oriole/Raven) boards.
+One of the functions of the MAX77759 PMIC is a battery charger. This
+patchset introduces a driver for this function. One of the unique
+features of this charger driver is that it works with a USB input where
+the Type-C controller is TCPCI based.
 
-Additionally, copyright notice was updated with current year.
+Changes to the board files will follow soon once this patchset is reviewed.
 
-Co-developed-by: Alexandru Ardelean <alexandru.ardelean@analog.com>
-Signed-off-by: Alexandru Ardelean <alexandru.ardelean@analog.com>
-Co-developed-by: Michael Hennerich <michael.hennerich@analog.com>
-Signed-off-by: Michael Hennerich <michael.hennerich@analog.com>
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+For reference to the MAX77759 MFD based patchset (present in upstream):
+https://lore.kernel.org/all/20250509-max77759-mfd-v10-0-962ac15ee3ef@linaro.org/
+
+Dependency list:
+Patch 5 depends on Patch 4 which depends on Patch 3.
+
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
- drivers/iio/amplifiers/Kconfig  |  6 ++++
- drivers/iio/amplifiers/ad8366.c | 69 ++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 74 insertions(+), 1 deletion(-)
+Changes in v5:
+- Use linear_range library instead of reinventing it. (André Draszik)
+  - This requires a selector_max value so modified mfd/max77759.h to
+    include it for CHGCC and CHG_ILIM.
+  - Removed "reviewed-by" for Patch 3 (mfd) due to above
+- Use asnyc probe type. (André Draszik)
+- Retry mechanism for psy_work. (André Draszik)
+- Minor nits (André Draszik):
+  - Use named initializers for instantiating structs.
+  - Use static qualifier for `psy_name` variable.
+  - Refactor if-else ladder to remove else handling if return in prior
+    "if" loop.
+  - Remove redundant `unlikely`.
+- Link to v4: https://lore.kernel.org/r/20260121-max77759-charger-v4-0-694234c8ded1@google.com
 
-diff --git a/drivers/iio/amplifiers/Kconfig b/drivers/iio/amplifiers/Kconfig
-index a8a604863eed..39d280d4d437 100644
---- a/drivers/iio/amplifiers/Kconfig
-+++ b/drivers/iio/amplifiers/Kconfig
-@@ -18,7 +18,13 @@ config AD8366
- 	    AD8366 Dual-Digital Variable Gain Amplifier (VGA)
- 	    ADA4961 BiCMOS RF Digital Gain Amplifier (DGA)
- 	    ADL5240 Digitally controlled variable gain amplifier (VGA)
-+	    ADRF5720: 0.5 dB LSB, 6-Bit, Silicon Digital Attenuator
-+	    ADRF5730: 0.5 dB LSB, 6-Bit, Silicon Digital Attenuator
-+	    ADRF5731: 2 dB LSB, 4-Bit, Silicon Digital Attenuator
-+	    HMC271A: 1dB LSB 5-Bit Digital Attenuator SMT
- 	    HMC792A 0.25 dB LSB GaAs MMIC 6-Bit Digital Attenuator
-+	    HMC1018A: 1.0 dB LSB GaAs MMIC 5-BIT Digital Attenuator
-+	    HMC1019A: 0.5 dB LSB GaAs MMIC 5-BIT Digital Attenuator
- 	    HMC1119 0.25 dB LSB, 7-Bit, Silicon Digital Attenuator
- 
- 	  To compile this driver as a module, choose M here: the
-diff --git a/drivers/iio/amplifiers/ad8366.c b/drivers/iio/amplifiers/ad8366.c
-index 92865ab96ade..42b89fef761a 100644
---- a/drivers/iio/amplifiers/ad8366.c
-+++ b/drivers/iio/amplifiers/ad8366.c
-@@ -5,10 +5,16 @@
-  *   AD8366 Dual-Digital Variable Gain Amplifier (VGA)
-  *   ADA4961 BiCMOS RF Digital Gain Amplifier (DGA)
-  *   ADL5240 Digitally controlled variable gain amplifier (VGA)
-+ *   ADRF5720: 0.5 dB LSB, 6-Bit, Silicon Digital Attenuator, 9 kHz to 40 GHz
-+ *   ADRF5730: 0.5 dB LSB, 6-Bit, Silicon Digital Attenuator, 100 MHz to 40 GHz
-+ *   ADRF5731: 2 dB LSB, 4-Bit, Silicon Digital Attenuator, 100 MHz to 40 GHz
-+ *   HMC271A: 1dB LSB 5-Bit Digital Attenuator SMT, 0.7 - 3.7 GHz
-  *   HMC792A 0.25 dB LSB GaAs MMIC 6-Bit Digital Attenuator
-+ *   HMC1018A: 1.0 dB LSB GaAs MMIC 5-BIT DIGITAL ATTENUATOR, 0.1 - 30 GHz
-+ *   HMC1019A: 0.5 dB LSB GaAs MMIC 5-BIT DIGITAL ATTENUATOR, 0.1 - 30 GHz
-  *   HMC1119 0.25 dB LSB, 7-Bit, Silicon Digital Attenuator
-  *
-- * Copyright 2012-2019 Analog Devices Inc.
-+ * Copyright 2012-2026 Analog Devices Inc.
-  */
- 
- #include <linux/bitrev.h>
-@@ -56,6 +62,18 @@ static size_t ad8366_pack_code(struct ad8366_state *st)
- 	return 2;
- }
- 
-+static size_t adrf5731_pack_code(struct ad8366_state *st)
-+{
-+	st->data[0] = st->ch[0] << 2;
-+	return 1;
-+}
-+
-+static size_t hmc271_pack_code(struct ad8366_state *st)
-+{
-+	st->data[0] = bitrev8(st->ch[0]) >> 3;
-+	return 1;
-+}
-+
- static const struct ad8366_info ad8366_chip_info = {
- 	.gain_min = 4500,
- 	.gain_max = 20500,
-@@ -78,6 +96,29 @@ static const struct ad8366_info adl5240_chip_info = {
- 	.num_channels = 1,
- };
- 
-+static const struct ad8366_info adrf57x0_chip_info = {
-+	.gain_min = -31500,
-+	.gain_max = 0,
-+	.gain_step = -500,
-+	.num_channels = 1,
-+};
-+
-+static const struct ad8366_info adrf5731_chip_info = {
-+	.gain_min = -30000,
-+	.gain_max = 0,
-+	.gain_step = -2000,
-+	.num_channels = 1,
-+	.pack_code = adrf5731_pack_code,
-+};
-+
-+static const struct ad8366_info hmc271_chip_info = {
-+	.gain_min = -31000,
-+	.gain_max = 0,
-+	.gain_step = 1000,
-+	.num_channels = 1,
-+	.pack_code = hmc271_pack_code,
-+};
-+
- static const struct ad8366_info hmc792_chip_info = {
- 	.gain_min = -15750,
- 	.gain_max = 0,
-@@ -85,6 +126,20 @@ static const struct ad8366_info hmc792_chip_info = {
- 	.num_channels = 1,
- };
- 
-+static const struct ad8366_info hmc1018_chip_info = {
-+	.gain_min = -31000,
-+	.gain_max = 0,
-+	.gain_step = 1000,
-+	.num_channels = 1,
-+};
-+
-+static const struct ad8366_info hmc1019_chip_info = {
-+	.gain_min = -15500,
-+	.gain_max = 0,
-+	.gain_step = 500,
-+	.num_channels = 1,
-+};
-+
- static const struct ad8366_info hmc1119_chip_info = {
- 	.gain_min = -31750,
- 	.gain_max = 0,
-@@ -259,7 +314,13 @@ static const struct spi_device_id ad8366_id[] = {
- 	{"ad8366", (kernel_ulong_t)&ad8366_chip_info},
- 	{"ada4961", (kernel_ulong_t)&ada4961_chip_info},
- 	{"adl5240", (kernel_ulong_t)&adl5240_chip_info},
-+	{"adrf5720", (kernel_ulong_t)&adrf57x0_chip_info},
-+	{"adrf5730", (kernel_ulong_t)&adrf57x0_chip_info},
-+	{"adrf5731", (kernel_ulong_t)&adrf5731_chip_info},
-+	{"hmc271a", (kernel_ulong_t)&hmc271_chip_info},
- 	{"hmc792a", (kernel_ulong_t)&hmc792_chip_info},
-+	{"hmc1018a", (kernel_ulong_t)&hmc1018_chip_info},
-+	{"hmc1019a", (kernel_ulong_t)&hmc1019_chip_info},
- 	{"hmc1119", (kernel_ulong_t)&hmc1119_chip_info},
- 	{ }
- };
-@@ -269,7 +330,13 @@ static const struct of_device_id ad8366_of_match[] = {
- 	{ .compatible = "adi,ad8366", .data = &ad8366_chip_info },
- 	{ .compatible = "adi,ada4961", .data = &ada4961_chip_info },
- 	{ .compatible = "adi,adl5240", .data = &adl5240_chip_info },
-+	{ .compatible = "adi,adrf5720", .data = &adrf57x0_chip_info },
-+	{ .compatible = "adi,adrf5730", .data = &adrf57x0_chip_info },
-+	{ .compatible = "adi,adrf5731", .data = &adrf5731_chip_info },
-+	{ .compatible = "adi,hmc271a", .data = &hmc271_chip_info },
- 	{ .compatible = "adi,hmc792a", .data = &hmc792_chip_info },
-+	{ .compatible = "adi,hmc1018a", .data = &hmc1018_chip_info },
-+	{ .compatible = "adi,hmc1019a", .data = &hmc1019_chip_info },
- 	{ .compatible = "adi,hmc1119", .data = &hmc1119_chip_info },
- 	{ }
- };
+Changes in v4:
+- Removed a stray tabspace in mfd/max77759.h. (André Draszik)
+- Fixed the following issues in Patch 4/5 (André Draszik):
+  - Re-order Kconfig entry
+  - Refactored to not use global variable
+  - Use of clamp() to clamp values instead of duplicating logic
+  - Return IRQ_NONE for unhandled irqs or error conditions
+  - Remove debug messages in irq handler
+  - Refactor code to use dev_err_probe in *_init_irqhandler()
+  - Remove unneeded irq_flags
+  - Check return values of regmap ops
+  - Other nits like newlines, not using greedy init, using print stmnts
+- Link to v3: https://lore.kernel.org/r/20251227-max77759-charger-v3-0-54e664f5ca92@google.com
 
+Changes in v3:
+- Had incorrectly folded the charger sub-device with the pmic parent.
+  Corrected it. (Krzysztof Kozlowski)
+- Link to v2: https://lore.kernel.org/r/20251218-max77759-charger-v2-0-2b259980a686@google.com
+
+Changes in v2:
+- Fold charger binding in maxim,max77759-charger.yaml to its parent
+  node. (Krzysztof Kozlowski)
+- Renamed regulator supplier & consumer. (Krzysztof Kozlowski & Heikki
+  Krogerus)
+- Removed explicit setting of irq trigger types in max77759 driver.
+  (André Draszik & Krzysztof Kozlowski)
+- Complete bit definitions for IRQ registers. (André Draszik)
+- Consolidate all bit definitions for charger IP in mfd/max77759.h.
+  (André Draszik)
+- Modify the handling of charger IRQs such that regmap IRQ chip handles
+  masking, de-mux and acking of interrupts. (André Draszik)
+- Remove unused macro definitions relating to Charger modes in tcpci
+  maxim driver (André Draszik)
+- Add dependency on Regulator class in Kconfig definition for max77759
+  chg. (Kernel Test Robot)
+- Link to v1: https://lore.kernel.org/r/20251123-max77759-charger-v1-0-6b2e4b8f7f54@google.com
+
+---
+Amit Sunil Dhamne (5):
+      dt-bindings: mfd: maxim,max77759: reference power-supply schema and add regulator property
+      dt-bindings: usb: maxim,max33359: Add supply property for vbus
+      mfd: max77759: add register bitmasks and modify irq configs for charger
+      power: supply: max77759: add charger driver
+      usb: typec: tcpm/tcpci_maxim: deprecate WAR for setting charger mode
+
+ .../devicetree/bindings/mfd/maxim,max77759.yaml    |  16 +-
+ .../devicetree/bindings/usb/maxim,max33359.yaml    |   4 +
+ MAINTAINERS                                        |   6 +
+ drivers/mfd/max77759.c                             |  91 ++-
+ drivers/power/supply/Kconfig                       |  11 +
+ drivers/power/supply/Makefile                      |   1 +
+ drivers/power/supply/max77759_charger.c            | 777 +++++++++++++++++++++
+ drivers/usb/typec/tcpm/tcpci_maxim.h               |   1 +
+ drivers/usb/typec/tcpm/tcpci_maxim_core.c          |  54 +-
+ include/linux/mfd/max77759.h                       | 204 +++++-
+ 10 files changed, 1106 insertions(+), 59 deletions(-)
+---
+base-commit: 8dfce8991b95d8625d0a1d2896e42f93b9d7f68d
+change-id: 20251105-max77759-charger-852b626d661a
+
+Best regards,
 -- 
-2.43.0
+Amit Sunil Dhamne <amitsd@google.com>
 
