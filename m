@@ -1,65 +1,110 @@
 From: Carl Lee <carl.lee@amd.com>
-Date: Tue, 03 Feb 2026 16:15:18 +0800
-Subject: [PATCH] dt-bindings: hwmon: pmbus: mpq8785: add MPQ8786 support
+Date: Tue, 03 Feb 2026 16:42:58 +0800
+Subject: [PATCH] hwmon: pmbus: mpq8785: add support for MPQ8786
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260203-dt-bindings-hwmon-pmbus-mpq8785-add-mpq8786-support-v1-1-67b041e2f762@amd.com>
-X-B4-Tracking: v=1; b=H4sIAJWugWkC/y2Nyw6CMBAAf4Xs2U3aWrH6K8YD2AX20IddEBLCv
- 9sYbzOXmR2ECpPAvdmh0IeFU6yiTw28pi6OhOyrg1GmVUad0c/Yc/QcR8FpDSliDv0iGPLbXd0
- FO+//3KIsOacy42CdsjdyVmuCWs6FBt5+18fzOL5zrGO9hQAAAA==
-X-Change-ID: 20260203-dt-bindings-hwmon-pmbus-mpq8785-add-mpq8786-support-f48049e8411e
-To: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Charles Hsu <ythsu0511@gmail.com>
-Cc: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, carl.lee@amd.com, peter.shen@amd.com, 
- colin.huang2@amd.com
+Message-Id: <20260203-hwmon-pmbus-mpq8785-add-support-for-mpq8786-v1-1-9ff8c7c50242@amd.com>
+X-B4-Tracking: v=1; b=H4sIABG1gWkC/y2NQQ7CIBAAv9Ls2U0opFD9ivHQlsVyAFbWqknTv
+ 0uMx5nDzA5CNZLApduh0itKLLlBf+pgWad8J4y+MWilrdLK4PpOJSOneRNM/BjdOODkPcrGXOo
+ TQ6l/b3EgZxZ3tnPoDbQiVwrx87tdb8fxBYEl4UV9AAAA
+X-Change-ID: 20260203-hwmon-pmbus-mpq8785-add-support-for-mpq8786-5e73c796bf13
+To: Guenter Roeck <linux@roeck-us.net>
+Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ carl.lee@amd.com, peter.shen@amd.com, colin.huang2@amd.com
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770106533; l=1150;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770108199; l=3052;
  i=carl.lee@amd.com; s=20260203; h=from:subject:message-id;
- bh=m6rFz0ihAnzLuhISl1ijaSTJgrFoG6AoFOau5DfN0xY=;
- b=Q3T/THY9jMnJWZZUerK7LkVKjNZo9m6jjU16kd36W/fczr5Ft9LpqayK80e9Q0SCemSwp+8v7
- Nl/ODBKfYT8C6gYlXr6xmhbXjowUpfgPA+Y3gwI+mP8Ayy00GaidKSz
+ bh=+PacOTgLkW0YQft+ipYSb3SkImmHU2R/2tpMwxSBWcI=;
+ b=Yd7JCbyvZZMcmdLFPfzl/4O8EFB4TwLDrohyaFVZSwFABjGUoyqWynWW9RheKLDA61zIxDfC6
+ 9QbRfn67CNzAP/D9FOWXiTut46X8g4qZloJPjrNhBkgPZDbKrh6o7Km
 X-Developer-Key: i=carl.lee@amd.com; a=ed25519;
  pk=pyq7QaQvoxMg806KVkRwpCbiah+7ncWr4MBpK1AEyjA=
 X-Endpoint-Received: by B4 Relay for carl.lee@amd.com/20260203 with auth_id=623
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add device type support for MPQ8786
+Add support for the Monolithic Power Systems MPQ8786 digital voltage
+regulator.
 
 Signed-off-by: Carl Lee <carl.lee@amd.com>
 ---
- Documentation/devicetree/bindings/hwmon/pmbus/mps,mpq8785.yaml | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ Documentation/hwmon/mpq8785.rst | 7 +++++++
+ drivers/hwmon/pmbus/mpq8785.c   | 6 +++++-
+ 2 files changed, 12 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/hwmon/pmbus/mps,mpq8785.yaml b/Documentation/devicetree/bindings/hwmon/pmbus/mps,mpq8785.yaml
-index 90970a0433e9..aec7397a29f9 100644
---- a/Documentation/devicetree/bindings/hwmon/pmbus/mps,mpq8785.yaml
-+++ b/Documentation/devicetree/bindings/hwmon/pmbus/mps,mpq8785.yaml
-@@ -19,6 +19,7 @@ properties:
-       - mps,mpm3695-25
-       - mps,mpm82504
-       - mps,mpq8785
-+      - mps,mpq8786
+diff --git a/Documentation/hwmon/mpq8785.rst b/Documentation/hwmon/mpq8785.rst
+index 198d5dfd7c30..39306033990f 100644
+--- a/Documentation/hwmon/mpq8785.rst
++++ b/Documentation/hwmon/mpq8785.rst
+@@ -8,6 +8,7 @@ Supported chips:
+   * MPS MPM3695 family
+   * MPS MPM82504
+   * MPS MPQ8785
++  * MPS MPQ8786
  
-   reg:
-     maxItems: 1
-@@ -52,7 +53,9 @@ allOf:
-   - if:
-       properties:
-         compatible:
--          const: mps,mpq8785
-+          enum:
-+            - mps,mpq8785
-+            - mps,mpq8786
-     then:
-       properties:
-         mps,vout-fb-divider-ratio-permille:
+     Prefix: 'mpq8785'
+ 
+@@ -38,6 +39,12 @@ buck converter. The MPQ8785 offers a very compact solution that achieves up to
+ wide input supply range. The MPQ8785 operates at high efficiency over a wide
+ output current load range.
+ 
++The MPQ8786 is a fully integrated, PMBus-compatible, high-frequency, synchronous
++buck converter. The device shares the same PMBus interface and register behavior
++as the MPQ8785, but provides a lower output current capability of up to 25A per
++phase. It offers excellent load and line regulation over a wide input supply
++range and operates at high efficiency over a wide output current load range.
++
+ The PMBus interface provides converter configurations and key parameters
+ monitoring.
+ 
+diff --git a/drivers/hwmon/pmbus/mpq8785.c b/drivers/hwmon/pmbus/mpq8785.c
+index 1f56aaf4dde8..f35534836cb8 100644
+--- a/drivers/hwmon/pmbus/mpq8785.c
++++ b/drivers/hwmon/pmbus/mpq8785.c
+@@ -12,13 +12,14 @@
+ 
+ #define MPM82504_READ_TEMPERATURE_1_SIGN_POS	9
+ 
+-enum chips { mpm3695, mpm3695_25, mpm82504, mpq8785 };
++enum chips { mpm3695, mpm3695_25, mpm82504, mpq8785, mpq8786 };
+ 
+ static u16 voltage_scale_loop_max_val[] = {
+ 	[mpm3695] = GENMASK(9, 0),
+ 	[mpm3695_25] = GENMASK(11, 0),
+ 	[mpm82504] = GENMASK(9, 0),
+ 	[mpq8785] = GENMASK(10, 0),
++	[mpq8786] = GENMASK(10, 0),
+ };
+ 
+ static int mpq8785_identify(struct i2c_client *client,
+@@ -87,6 +88,7 @@ static const struct i2c_device_id mpq8785_id[] = {
+ 	{ "mpm3695-25", mpm3695_25 },
+ 	{ "mpm82504", mpm82504 },
+ 	{ "mpq8785", mpq8785 },
++	{ "mpq8786", mpq8786 },
+ 	{ },
+ };
+ MODULE_DEVICE_TABLE(i2c, mpq8785_id);
+@@ -96,6 +98,7 @@ static const struct of_device_id __maybe_unused mpq8785_of_match[] = {
+ 	{ .compatible = "mps,mpm3695-25", .data = (void *)mpm3695_25 },
+ 	{ .compatible = "mps,mpm82504", .data = (void *)mpm82504 },
+ 	{ .compatible = "mps,mpq8785", .data = (void *)mpq8785 },
++	{ .compatible = "mps,mpq8786", .data = (void *)mpq8786 },
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(of, mpq8785_of_match);
+@@ -128,6 +131,7 @@ static int mpq8785_probe(struct i2c_client *client)
+ 		info->read_word_data = mpm82504_read_word_data;
+ 		break;
+ 	case mpq8785:
++	case mpq8786:
+ 		info->identify = mpq8785_identify;
+ 		break;
+ 	default:
 
 ---
 base-commit: 4c87cdd0328495759f6e9f9f4e1e53ef8032a76f
-change-id: 20260203-dt-bindings-hwmon-pmbus-mpq8785-add-mpq8786-support-f48049e8411e
+change-id: 20260203-hwmon-pmbus-mpq8785-add-support-for-mpq8786-5e73c796bf13
 
 Best regards,
 -- 
