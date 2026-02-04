@@ -1,80 +1,65 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Wed, 04 Feb 2026 18:03:41 +0100
-Subject: [PATCH] testing! arm64: dts: qcom: decrease WiFi antenna regulator
- minimum to 3.0V
+From: Andrea Scian <andrea.scian@dave.eu>
+Subject: [PATCH v3 0/2] PL353 SW ECC fixes
+Date: Wed, 04 Feb 2026 18:41:43 +0100
+Message-Id: <20260204-pl353-soft-ecc-support-v3-0-fd8ee7595cc1@dave.eu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260204-oneplus6-wifi-voltage-v1-1-ee6fd47f9d02@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAOx7g2kC/x2MWwqAIBAAryL7nZBCIl0l+pBtrYVQ0V4Q3j3pc
- 2BmXiiUmQqM4oVMFxeOoYHqBODmwkqSl8agez0orYyMgdJ+FiNv9iyvuB+uSZYQLXpryCO0NmX
- y/Pzfaa71A3I3h2hnAAAA
-X-Change-ID: 20251216-oneplus6-wifi-voltage-8ecc8cf86efc
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIANeEg2kC/4XNTQ7CIBCG4as0rMXwU6B15T2MC4TBkphCoCWap
+ neXdqMb4/L9knlmQRmSh4xOzYISFJ99GGvwQ4PMoMc7YG9rI0aYJJRRHB9ccJyDmzAYg/McY0g
+ TVn0LFJTgimtUj2MC5587fLnWHnyeQnrtfwrd1r9koZhgQrTtgEpiO362usARZrSBhX0j8ifCK
+ uKMVe1NQi+E+yDrur4B0s7gtP8AAAA=
+X-Change-ID: 20260121-pl353-soft-ecc-support-794e1e75373a
+To: Miquel Raynal <miquel.raynal@bootlin.com>, 
+ Michal Simek <michal.simek@amd.com>, Richard Weinberger <richard@nod.at>, 
+ Vignesh Raghavendra <vigneshr@ti.com>
+Cc: linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Andrea Scian <andrea.scian@dave.eu>, stable@kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1386; i=david@ixit.cz;
- h=from:subject:message-id; bh=MU24/0EIkkFW4iVo90u34fUl4tbYSjVYYtHCLcNmzhI=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpg3vttL5pwPV+sq8S27yyE9ZGek38daFoKqtkz
- lcccZPXB4mJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaYN77QAKCRBgAj/E00kg
- chLDEACm+c5AjJwx7etuRiWKrMxuYeqaDczPtr9XUafue2acCLjH4sFSi7MDwui3i6b4vYwg8ah
- zv7H47yGtLtKCeGA3QWhW52UouDimzbEjePwexkfRspE4by+RN4VjCvvEY8f3+2WQwllKv4wpw4
- T6DqU7isqI9u8z5U4Wf3NA/xk1WfFlhT2kAL74OviaxxJ0PN6gij8Ipoubfg042c5bMtiVxUvTY
- edxOycNeMzkXeBejtt6whLYaQwrnaOqL65pizd5YweFFYjRbDu0OF2dVoMpDYARBvnVamV8bdrY
- MkmVwI7aFa6FRtdpHfgROP2fFjhfOxk9cmmoqWQ4dDTGWIbVaFFXGkAzrM6EcsIDiOMsK7+204s
- aOOJSANkOi6FQMZDbdcRrtx53kwSns74qL6HIezwcvmGQo+eY/SBDokMb7Cxc/4Bd1dEONSESDi
- gJ+XAD1Fq/OYjBKcSSDq+MxVZVO6HFWhe6XcVfDmU0+1iQ1n5UOVFPBVRkm6KGn8DKW9v+9OrGm
- DVwCOsEZqv04i7UJ55HEkI4KV+f+pXTwJOmNnZJ11OrZ1lK0w2DmQZIOpjm/LMHhPa9HfblR45R
- 4MnzfqiuQzQkKCd16qOaXxazh7Bt+MkdaQpgjC5ZRsVUw/QNargNUKZAF6ubwQ36HOE9snjVCRV
- vtmO7glK6idZy+g==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770226919; l=1281;
+ i=andrea.scian@dave.eu; s=20260121; h=from:subject:message-id;
+ bh=SN/EnI3gRH5EgPtrtzgUHt1OXyTJ4FMI4Zj0DQ7Bzfg=;
+ b=alB+oSyKR61RnSRxCpvkButoFr42kGODXraEw9NXPMkSn9ky/J95WooC/VZ1ffU+01w3Og2qv
+ caVYdgr2mocCE6UfVoHDud+zpId8MmoiZVqMtglBoEdOg5GzztzauH3
+X-Developer-Key: i=andrea.scian@dave.eu; a=ed25519;
+ pk=PMQL72nEsyoiJCobnq0uEXwUFpVmkwoWIx317WvaQOU=
+X-Endpoint-Received: by B4 Relay for andrea.scian@dave.eu/20260121 with auth_id=613
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Downstream defines minimal voltage as 3.0 V, while when OnePlus 6 was
-introduced to Linux mainline, the value was fixed to maximum 3.3V.
+PL353 has some known errata with its ECC implementation and it may be
+useful to switch to software ECC, to avoid issue with this.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
----
-Tested for ~ 1 month. Seems to work well, no visible issues anywhere.
----
- arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+On-die ECC is already supported (while I didn't test it) but when
+enabling SW ECC we get operation-not-supported error during page write
+(page read already work correctly)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-index 5b121ea5520f5..e950db41ce25a 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-@@ -307,7 +307,7 @@ vreg_l20a_2p95: ldo20 {
- 		};
- 
- 		vreg_l23a_3p3: ldo23 {
--			regulator-min-microvolt = <3300000>;
-+			regulator-min-microvolt = <3000000>;
- 			regulator-max-microvolt = <3312000>;
- 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
- 		};
-@@ -320,7 +320,7 @@ vreg_l24a_3p075: ldo24 {
- 		};
- 
- 		vreg_l25a_3p3: ldo25 {
--			regulator-min-microvolt = <3300000>;
-+			regulator-min-microvolt = <3000000>;
- 			regulator-max-microvolt = <3312000>;
- 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
- 		};
+IMHO it's enough to have 1-bit Hamming ECC correction, because this is
+the only one supported on PL353, but this might be a wrong assumption.
+
+This has been tested with nandflipbits and mtd_nandbiterrs
 
 ---
-base-commit: 5c009020744fe129e4728e71c44a6c7816c9105e
-change-id: 20251216-oneplus6-wifi-voltage-8ecc8cf86efc
+Changes in v3:
+- remove wrong SW ECC algo selection
+- add Fixes and CC to stable
+- Link to v2: https://lore.kernel.org/r/20260126-pl353-soft-ecc-support-v2-0-fcd74b6e955f@dave.eu
+
+Changes in v2:
+- change dev_info() into dev_dbg() to reduce messages
+- Link to v1: https://lore.kernel.org/r/20260121-pl353-soft-ecc-support-v1-0-00ad8e160d83@dave.eu
+
+---
+Andrea Scian (2):
+      mtd: rawnand: pl353: Fix software ECC support
+      mtd: rawnand: pl353: Add message about ECC mode
+
+ drivers/mtd/nand/raw/pl35x-nand-controller.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+---
+base-commit: 24d479d26b25bce5faea3ddd9fa8f3a6c3129ea7
+change-id: 20260121-pl353-soft-ecc-support-794e1e75373a
 
 Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+Andrea Scian <andrea.scian@dave.eu>
 
