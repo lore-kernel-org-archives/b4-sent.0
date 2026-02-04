@@ -1,60 +1,193 @@
-From: Carl Lee <carl.lee@amd.com>
-Date: Wed, 04 Feb 2026 16:33:51 +0800
-Subject: [PATCH] nfc: nxp-nci: remove interrupt trigger type
+From: George Moussalem <george.moussalem@outlook.com>
+Subject: [PATCH v20 0/6] Add PWM support for IPQ chipsets
+Date: Wed, 04 Feb 2026 15:25:06 +0400
+Message-Id: <20260204-ipq-pwm-v20-0-91733011a3d1@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260204-fc-nxp-nci-remove-interrupt-trigger-type-v1-1-3bde91593173@amd.com>
-X-B4-Tracking: v=1; b=H4sIAG4Eg2kC/x2NQQqDMBAAvyJ7diEmpUq/UjxoXOMeXMMmiiL+v
- aHHgWHmhkTKlOBT3aB0cOJNCjR1BX4ZJBDyVBissW9jzQtnj3JGFM+otG5HESST6h4zZuUQSDF
- fkXBq285ZN7qxa6DkotLM53/17Z/nB0Gg9zl6AAAA
-X-Change-ID: 20260204-fc-nxp-nci-remove-interrupt-trigger-type-d778323b3b81
-To: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, carl.lee@amd.com, 
- peter.shen@amd.com, colin.huang2@amd.com
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770194040; l=1133;
- i=carl.lee@amd.com; s=20260203; h=from:subject:message-id;
- bh=S4f9MfSDtarUqVAH0McJX6bzbyZME7KFSQONWKA1FKQ=;
- b=kpvwuOZRaUjemIlIPFCMTW7vpbW0JUD/LrDbcg514SQKKMI40tTfdyIdYQKgh0Z56NMQvofGs
- co6KmX6FiEWBOEfien2vOMEhBLCiZNVJ/A2p6Bo35geoLGMTa/E5Iwn
-X-Developer-Key: i=carl.lee@amd.com; a=ed25519;
- pk=pyq7QaQvoxMg806KVkRwpCbiah+7ncWr4MBpK1AEyjA=
-X-Endpoint-Received: by B4 Relay for carl.lee@amd.com/20260203 with auth_id=623
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAJIsg2kC/23O0W6EIBAF0F/Z8Fw2wyCC+7T/0TSNwlBJq7jo2
+ m42/nvRpK1N9nFgzp17ZyOlQCM7He4s0RzGEPs8IDwdmG3r/o14cPmBIaCCCpGH4cKHz45bY7W
+ yotBOIcvbQyIfvrao55c8+xQ7PrWJ6h8vBYASJSgFRyxQglZc8Ms12FeXTw8p3M7rFHp7tLFbQ
+ 9swTjHdtnqzKNfsrUlOEr9N8gcHLgE8Sk1ApTnH6/QR4/sWs5aZhd5bs7M626pxhSTnrfb6gTU
+ 7i9XOmmzJNeQN+aYx9MBWf1bg/m6VrZCN1VBYW9bqv12W5RuEan9onAEAAA==
+X-Change-ID: 20250922-ipq-pwm-c8c75c147d52
+To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Baruch Siach <baruch@tkos.co.il>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-pwm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>, 
+ Devi Priya <quic_devipriy@quicinc.com>, 
+ Baruch Siach <baruch.siach@siklu.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Krzysztof Kozlowski <krzk@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770204310; l=6197;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=lWoMc7TqQFVxuHYqNXppAV75HA+/N7T/7cdmOpJldZM=;
+ b=dSgDFKkncIy02owZzwas08bBX4PDhp7M9oeHWkU9NMDHUyt/TvT6y3iut9ygxcA2MRnvVPxst
+ EYkcbmN4yjXAtLnLdv2+tnH8IdpWSswVvFj4+TfRNBAlrRrMeSSxh2/
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For NXP NCI devices (e.g. PN7150), the interrupt is level-triggered and
-active high, not edge-triggered.
+Add PWM driver and binding support for IPQ chipsets.
+Also, add nodes to add support for pwm in ipq6018, ipq5018, ipq5332, and
+ipq9574.
 
-Using IRQF_TRIGGER_RISING in the driver can cause interrupts to fail
-to trigger correctly.
+I've picked up work based on Devi's last submission (v15) which dates
+back to 05 October 2023 as below SoCs are still active.
 
-Remove IRQF_TRIGGER_RISING and rely on the IRQ trigger type configured
-via Device Tree.
-
-Signed-off-by: Carl Lee <carl.lee@amd.com>
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/nfc/nxp-nci/i2c.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v20:
+- Updated IPQ_PWM_MAX_DIV macro definition to use FIELD_MAX
+- Removed clk struct from ipq_pwm struct and added clk_rate field
+  instead which is set during probe.
+- Consolidated config_div_and_duty into ipq_pwm_apply
+- Fixed arithmetic overflows in apply and get_state 
+- Fixed off-by-one in divider calculation
+- Enabled 100% relative duty cycle support
+- Aligned continuation on next lines relative to opening parentheses
+- Return 0 instead of ret in probe
+- Link to v19: https://lore.kernel.org/r/20251128-ipq-pwm-v19-0-13bc704cc6a5@outlook.com
 
-diff --git a/drivers/nfc/nxp-nci/i2c.c b/drivers/nfc/nxp-nci/i2c.c
-index 049662ffdf97..6a5ce8ff91f0 100644
---- a/drivers/nfc/nxp-nci/i2c.c
-+++ b/drivers/nfc/nxp-nci/i2c.c
-@@ -305,7 +305,7 @@ static int nxp_nci_i2c_probe(struct i2c_client *client)
- 
- 	r = request_threaded_irq(client->irq, NULL,
- 				 nxp_nci_i2c_irq_thread_fn,
--				 IRQF_TRIGGER_RISING | IRQF_ONESHOT,
-+				 IRQF_ONESHOT,
- 				 NXP_NCI_I2C_DRIVER_NAME, phy);
- 	if (r < 0)
- 		nfc_err(&client->dev, "Unable to register IRQ handler\n");
+Changes in v19:
+- Changed pwm-cells property in dt bindings from 2 to 3 as per Uwe's
+  recommendation
+- Added hardware notes and limitations based on own findings as
+  requested. NOTE: there's no publically available datasheet though.
+- Expanded comment on REG1_UPDATE to indicate that when this bit is set,
+  values for div and pre-div take effect. The hardware automatically
+  unsets it when the change is completed.
+- Added newline between MACRO definition and next comment
+- In config_div_and_duty, used mul_u64_u64_div_u64 to avoid overflow
+- Removed unncessary restriction of pwm_div to MAX_DIV - 1 after testing
+- Constrain pre_div to MAX_DIV is pre_div calculated is > MAX_DIV
+- Use of mul_u64_u64_div_u64 in .apply
+- Skip calculation of period and duty cycle when PWM_ENABLE REG is unset
+- Set duty cycle to period value when calculated duty cycle > period to
+  return a valid config
+- Removed .npwm as it's taken care of in devm_pwmchip_alloc
+- Added call to devm_clk_rate_exclusive_get to lock the clock rate
+- Start all kernel messages with a capital letter and end with \n.
+- Changed pwm-cells property in all dtsi from 2->3 for in scope IPQ SOCs 
+- Link to v18: https://lore.kernel.org/r/20251029-ipq-pwm-v18-0-edbef8efbb8e@outlook.com
+
+Changes in v18:
+- Updated maintainer info in binding
+- Squashed dt bindings patches into the first for adding compatibles for
+  IPQ5018, IPQ5332, and IPQ9574
+- Link to v17: https://lore.kernel.org/r/20251008-ipq-pwm-v17-0-9bd43edfc7f7@outlook.com
+
+Changes in v17:
+- Picked up RB tags from Dmitry and Rob
+- Removed unnecessary code comments
+- Corrected reg property in PWM node in ipq6018 DTS in line with
+  expected nr of bytes for address and size cells
+- Link to v16: https://lore.kernel.org/r/20251001-ipq-pwm-v16-0-300f237e0e68@outlook.com
+
+Changes in v16:
+- Removed reg description in bindings as the offset is not relative to
+  the TCSR region anymore since simple-mfd support was dropped and PWM
+  nodes defined as their own nodes, not child nodes. Updated the example
+  too.
+- Dropped patch to add simple-mfd support to the qcom,tcsr bindings
+- Simplified code to calculate divs and duty cycle as per Uwe's comments
+- Removed unused pwm_chip struct from ipq_pwm_chip struct
+- Removed unnecessary cast as per Uwe's comment
+- Replaced devm_clk_get & clk_prepare_enable by devm_clk_get_enabled
+- Replaced pwmchip_add by devm_pwmchip_add and removed .remove function
+- Removed .owner from driver struct
+- Added compatibles to the bindings and nodes to the device trees to add
+  PWM support in the IPQ5018, IPQ5332, and IPQ9574 SoCs
+- Link to v15: https://lore.kernel.org/r/20231005160550.2423075-1-quic_devipriy@quicinc.com
+
+Changes in v15:
+- No change
+- Link to v14: https://lore.kernel.org/r/20231005033053.2626465-1-quic_devipriy@quicinc.com
+
+Changes in v14:
+- Picked up the R-b tag
+- Link to v13: https://lore.kernel.org/r/20231004090449.256229-1-quic_devipriy@quicinc.com
+
+Changes in v13:
+- Updated the file name to match the compatible
+- Sorted the properties and updated the order in the required field
+- Dropped the syscon node from examples
+- Link to v12: https://lore.kernel.org/r/20230925065915.3467964-1-quic_devipriy@quicinc.com
+
+Changes in v12:
+- Picked up the R-b tag
+
+Changes in v11:
+- No change
+
+Changes in v10:
+- No change
+
+Changes in v9:
+- Add 'ranges' property to example (Rob)
+- Drop label in example (Rob)
+
+Changes in v8:
+- Add size cell to 'reg' (Rob)
+
+Changes in v7:
+- Use 'reg' instead of 'offset' (Rob)
+- Drop 'clock-names' and 'assigned-clock*' (Bjorn)
+- Use single cell address/size in example node (Bjorn)
+- Move '#pwm-cells' lower in example node (Bjorn)
+- List 'reg' as required
+
+Changes in v6:
+- Device node is child of TCSR; remove phandle (Rob Herring)
+- Add assigned-clocks/assigned-clock-rates (Uwe Kleine-König)
+
+Changes in v5:
+- Use qcom,pwm-regs for phandle instead of direct regs (Bjorn
+    Andersson, Kathiravan T)
+
+Changes in v4:
+- Update the binding example node as well (Rob Herring's bot)
+
+Changes in v3:
+- s/qcom,pwm-ipq6018/qcom,ipq6018-pwm/ (Rob Herring)
+
+Changes in v2:
+- Make #pwm-cells const (Rob Herring)
 
 ---
-base-commit: 4c87cdd0328495759f6e9f9f4e1e53ef8032a76f
-change-id: 20260204-fc-nxp-nci-remove-interrupt-trigger-type-d778323b3b81
+
+---
+Devi Priya (3):
+      dt-bindings: pwm: add IPQ6018 binding
+      pwm: driver for qualcomm ipq6018 pwm block
+      arm64: dts: qcom: ipq6018: add pwm node
+
+George Moussalem (3):
+      arm64: dts: qcom: ipq5018: add pwm node
+      arm64: dts: qcom: ipq5332: add pwm node
+      arm64: dts: qcom: ipq9574: add pwm node
+
+ .../devicetree/bindings/pwm/qcom,ipq6018-pwm.yaml  |  51 +++++
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi              |  10 +
+ arch/arm64/boot/dts/qcom/ipq5332.dtsi              |  10 +
+ arch/arm64/boot/dts/qcom/ipq6018.dtsi              |  10 +
+ arch/arm64/boot/dts/qcom/ipq9574.dtsi              |  10 +
+ drivers/pwm/Kconfig                                |  12 ++
+ drivers/pwm/Makefile                               |   1 +
+ drivers/pwm/pwm-ipq.c                              | 239 +++++++++++++++++++++
+ 8 files changed, 343 insertions(+)
+---
+base-commit: 6db894fcdec4d214812f3e6f656639f1b0081127
+change-id: 20250922-ipq-pwm-c8c75c147d52
 
 Best regards,
 -- 
-Carl Lee <carl.lee@amd.com>
+George Moussalem <george.moussalem@outlook.com>
 
