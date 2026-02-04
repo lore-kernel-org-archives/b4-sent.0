@@ -1,103 +1,91 @@
 From: Jihan LIN <linjh22s@gmail.com>
-Subject: [PATCH RFC 0/3] zram: Allow zcomps to manage their own streams
-Date: Wed, 04 Feb 2026 13:48:50 +0000
-Message-Id: <20260204-b4_zcomp_stream-v1-0-35c06ce1d332@gmail.com>
+Date: Wed, 04 Feb 2026 13:48:51 +0000
+Subject: [PATCH RFC 1/3] zram: Rename zcomp_strm_{init, free}()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAEJOg2kC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDIKGbZBJflZyfWxBfXFKUmpira55qmWZuYWGSamhkoQTUVVCUmpZZATY
- xWinIzVkptrYWAHqm2bFmAAAA
-X-Change-ID: 20260202-b4_zcomp_stream-7e9f7884e128
+Message-Id: <20260204-b4_zcomp_stream-v1-1-35c06ce1d332@gmail.com>
+References: <20260204-b4_zcomp_stream-v1-0-35c06ce1d332@gmail.com>
+In-Reply-To: <20260204-b4_zcomp_stream-v1-0-35c06ce1d332@gmail.com>
 To: Minchan Kim <minchan@kernel.org>, 
  Sergey Senozhatsky <senozhatsky@chromium.org>, Jens Axboe <axboe@kernel.dk>
 Cc: linux-kernel@vger.kernel.org, linux-block@vger.kernel.org, 
  Jihan LIN <linjh22s@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770212935; l=3744;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770212935; l=2361;
  i=linjh22s@gmail.com; s=linjh22s_machine; h=from:subject:message-id;
- bh=pc9zD6AGH0779UZk+DuKfn4l01qz37hu1Ou3/rMWP/o=;
- b=4SsG2RqijlRLSQ8Y2rIR4aTpFpmzdHPT9SqREaJPrkg9S+oH8KLUA3tOjM6z7p08YaCO/0haT
- foiz3YYYU4FAWr7+UkX43u+xl3ZpHSv+FRPi3qG6X+mPwyyqRJMA0xI
+ bh=IFvoK5U+khkiAvwSnFIAQSJIRT0dcUrOwkW93SNRf6w=;
+ b=PRv9qw5rfie6P+3wgDGa1Y91Sk+MwawKplgOLzT2zxS5CbI3eCVz/gR2pCSaq3p8C69gRoKHx
+ bPeCX0RrFuJBRrmFtPfiOF+2E2LldwSB5WxN7ZXMx3Eh2i8nLEekB1v
 X-Developer-Key: i=linjh22s@gmail.com; a=ed25519;
  pk=MnRQAVFy1t4tiGb8ce7ohJwrN2YFXd+dA7XmzR6GmUc=
 X-Endpoint-Received: by B4 Relay for linjh22s@gmail.com/linjh22s_machine with auth_id=592
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi all,
+Currently, zcomp uses a preemptive per-CPU stream model where streams
+are allocated for each online CPUs and guarded by mutexes. The existing
+names zcomp_strm_{init, free}() are too generic to explicitly indicate
+they handle per-CPU streams.
 
-This RFC series introduces a new interface to allow zram compression
-backends to manage their own streams, in addition to the existing
-per-CPU stream model.
-
-Current zram manages compression contexts via preemptive per-CPU
-streams, which strictly limits concurrency to the number of online CPUs. 
-In contrast, hardware accelerators specialized for page compression
-generally process PAGE_SIZE payloads (e.g. 4K) using standard
-algorithms. These devices expose the limitations of this model due to
-the following features:
- - These devices utilize a hardware queue to batch requests. A typical
-   queue depth (e.g., 256) far exceeds the number of available CPUs.
- - These devices are asymmetric. Submission is generally fast and
-   asynchronous, but completion implies latency.
- - Some devices only support compression requests, leaving decompression
-   to be handled by software.
-
-This exposes the limitations of the current zcomp architecture, which
-assumes a model where streams are inherently tied to CPU execution
-contexts. This design is not flexible enough to integrate with such
-backends, as it forces a one-size-fits-all model that limits the ability
-to offload compression operations from CPU.
-
-This series proposes a hybrid approach. While maintaining full backward
-compatibility with existing backends, this series introduces a new set
-of operations, op->{get, put}_streams(), for backends that wish to
-manage their own streams. This allows the backend to handle contentions
-internally and dynamically select an execution path for the acquired
-streams. A new flag is also introduced to indicate this capability at
-runtime. zram_write_page() now prefers streams managed by the backend if
- a bio is considered asynchronous.
-
-Some design decisions as follows.
-1. The proposed get_stream() does not take gfp_t flags to keep the
-   interface minimal. By design, backends are fully responsible for
-   allocation safety.
-2. The default per-cpu streams now also imply synchronous path for the
-   backends.
-3. The recompression path currently relies on the default per-cpu
-   streams. This is a trade-off, since recompression is primarily for
-   memory saving, and hardware accelerators typically prioritize
-   throughput over compression ratio.
-4. zstrm->lock is restricted to the default per-cpu streams. Backends
-   must implement internal locking if required. While currently exposed
-   in struct zstrm, this mutex is an implementation detail of the
-   default path. Future work may involve making the default stream
-   locking mechanism opaque to the backends, ensuring they interact only
-   with the necessary stream interfaces.
-
-Although I do not have access to an Intel IAA accelerator and other
-accelerators may not be generally available, this series seems to give
-a good start for supporting batched asynchronous operations in zram.
-The next step would be to introduce an interface that allows
-non-blocking compression submission and validate its real-world
-performance once such hardware accelerators become available.
+Rename them to zcomp_strm_{init, free}_percpu(). This helps distinguish
+them from future streams that may not be per-CPU based. No functional
+changes are intended.
 
 Signed-off-by: Jihan LIN <linjh22s@gmail.com>
 ---
-Jihan LIN (3):
-      zram: Rename zcomp_strm_{init, free}()
-      zram: Introduce zcomp-managed streams
-      zram: Use zcomp-managed streams for async write requests
+ drivers/block/zram/zcomp.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
- drivers/block/zram/zcomp.c    | 37 ++++++++++++++++++++++++++++++-------
- drivers/block/zram/zcomp.h    | 23 +++++++++++++++++++++--
- drivers/block/zram/zram_drv.c | 28 ++++++++++++++++++++++------
- 3 files changed, 73 insertions(+), 15 deletions(-)
----
-base-commit: 24d479d26b25bce5faea3ddd9fa8f3a6c3129ea7
-change-id: 20260202-b4_zcomp_stream-7e9f7884e128
+diff --git a/drivers/block/zram/zcomp.c b/drivers/block/zram/zcomp.c
+index b1bd1daa0060a5b437d947d504d9ee6b4a9ac152..1614340e81dd2bebb29373411c9d180446f78f4c 100644
+--- a/drivers/block/zram/zcomp.c
++++ b/drivers/block/zram/zcomp.c
+@@ -43,7 +43,7 @@ static const struct zcomp_ops *backends[] = {
+ 	NULL
+ };
+ 
+-static void zcomp_strm_free(struct zcomp *comp, struct zcomp_strm *zstrm)
++static void zcomp_strm_free_percpu(struct zcomp *comp, struct zcomp_strm *zstrm)
+ {
+ 	comp->ops->destroy_ctx(&zstrm->ctx);
+ 	vfree(zstrm->local_copy);
+@@ -51,7 +51,7 @@ static void zcomp_strm_free(struct zcomp *comp, struct zcomp_strm *zstrm)
+ 	zstrm->buffer = NULL;
+ }
+ 
+-static int zcomp_strm_init(struct zcomp *comp, struct zcomp_strm *zstrm)
++static int zcomp_strm_init_percpu(struct zcomp *comp, struct zcomp_strm *zstrm)
+ {
+ 	int ret;
+ 
+@@ -66,7 +66,7 @@ static int zcomp_strm_init(struct zcomp *comp, struct zcomp_strm *zstrm)
+ 	 */
+ 	zstrm->buffer = vzalloc(2 * PAGE_SIZE);
+ 	if (!zstrm->buffer || !zstrm->local_copy) {
+-		zcomp_strm_free(comp, zstrm);
++		zcomp_strm_free_percpu(comp, zstrm);
+ 		return -ENOMEM;
+ 	}
+ 	return 0;
+@@ -172,7 +172,7 @@ int zcomp_cpu_up_prepare(unsigned int cpu, struct hlist_node *node)
+ 	struct zcomp_strm *zstrm = per_cpu_ptr(comp->stream, cpu);
+ 	int ret;
+ 
+-	ret = zcomp_strm_init(comp, zstrm);
++	ret = zcomp_strm_init_percpu(comp, zstrm);
+ 	if (ret)
+ 		pr_err("Can't allocate a compression stream\n");
+ 	return ret;
+@@ -184,7 +184,7 @@ int zcomp_cpu_dead(unsigned int cpu, struct hlist_node *node)
+ 	struct zcomp_strm *zstrm = per_cpu_ptr(comp->stream, cpu);
+ 
+ 	mutex_lock(&zstrm->lock);
+-	zcomp_strm_free(comp, zstrm);
++	zcomp_strm_free_percpu(comp, zstrm);
+ 	mutex_unlock(&zstrm->lock);
+ 	return 0;
+ }
 
-Best regards,
 -- 
-Jihan LIN <linjh22s@gmail.com>
+2.51.0
 
