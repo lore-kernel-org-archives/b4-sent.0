@@ -1,64 +1,60 @@
-From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
-Date: Wed, 04 Feb 2026 07:02:04 +0000
-Subject: [PATCH v10 7/7] i2c: xiic: skip input clock setup on non-OF
- systems
+From: Carl Lee <carl.lee@amd.com>
+Date: Wed, 04 Feb 2026 16:33:51 +0800
+Subject: [PATCH] nfc: nxp-nci: remove interrupt trigger type
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260204-i2c-xiic-v10-7-c2b996425235@nexthop.ai>
-References: <20260204-i2c-xiic-v10-0-c2b996425235@nexthop.ai>
-In-Reply-To: <20260204-i2c-xiic-v10-0-c2b996425235@nexthop.ai>
-To: Michal Simek <michal.simek@amd.com>, Andi Shyti <andi.shyti@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Andy Shevchenko <andriy.shevchenko@intel.com>, 
- linux-arm-kernel@lists.infradead.org, linux-i2c@vger.kernel.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Message-Id: <20260204-fc-nxp-nci-remove-interrupt-trigger-type-v1-1-3bde91593173@amd.com>
+X-B4-Tracking: v=1; b=H4sIAG4Eg2kC/x2NQQqDMBAAvyJ7diEmpUq/UjxoXOMeXMMmiiL+v
+ aHHgWHmhkTKlOBT3aB0cOJNCjR1BX4ZJBDyVBissW9jzQtnj3JGFM+otG5HESST6h4zZuUQSDF
+ fkXBq285ZN7qxa6DkotLM53/17Z/nB0Gg9zl6AAAA
+X-Change-ID: 20260204-fc-nxp-nci-remove-interrupt-trigger-type-d778323b3b81
+To: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, carl.lee@amd.com, 
+ peter.shen@amd.com, colin.huang2@amd.com
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770188524; l=1203;
- i=abdurrahman@nexthop.ai; s=20260119; h=from:subject:message-id;
- bh=tYS/VjjyJSR7laAGSOlbLWbUAEEO7GSJdraxofdKYu8=;
- b=reH74jvc9iL/OqdvmPi42fqas2VeKfyY9DxbAVuLmBwi3xnNMpx8UHSJJ9L5TMMcgviHbDYj8
- 0aU2eko7nQnDAICiEOQKoTKw5iHIV/jk8V9JygEwS98ZQ8s3sFNcHeX
-X-Developer-Key: i=abdurrahman@nexthop.ai; a=ed25519;
- pk=S+ysnf+NwMcBdHBlyKIUEAtaFGSIhQwcJcgcXhq0osg=
-X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/20260119 with auth_id=608
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770194040; l=1133;
+ i=carl.lee@amd.com; s=20260203; h=from:subject:message-id;
+ bh=S4f9MfSDtarUqVAH0McJX6bzbyZME7KFSQONWKA1FKQ=;
+ b=kpvwuOZRaUjemIlIPFCMTW7vpbW0JUD/LrDbcg514SQKKMI40tTfdyIdYQKgh0Z56NMQvofGs
+ co6KmX6FiEWBOEfien2vOMEhBLCiZNVJ/A2p6Bo35geoLGMTa/E5Iwn
+X-Developer-Key: i=carl.lee@amd.com; a=ed25519;
+ pk=pyq7QaQvoxMg806KVkRwpCbiah+7ncWr4MBpK1AEyjA=
+X-Endpoint-Received: by B4 Relay for carl.lee@amd.com/20260203 with auth_id=623
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently Linux does not implement ACPI ClockInput() resource to describe
-clocks, unlike DT. However the xiic driver is happy if something
-magically enables the clock before the driver probes, and does not
-turn it off again. The clock should always be considered optional for
-ACPI.
+For NXP NCI devices (e.g. PN7150), the interrupt is level-triggered and
+active high, not edge-triggered.
 
-Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Using IRQF_TRIGGER_RISING in the driver can cause interrupts to fail
+to trigger correctly.
+
+Remove IRQF_TRIGGER_RISING and rely on the IRQ trigger type configured
+via Device Tree.
+
+Signed-off-by: Carl Lee <carl.lee@amd.com>
 ---
- drivers/i2c/busses/i2c-xiic.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ drivers/nfc/nxp-nci/i2c.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/i2c/busses/i2c-xiic.c b/drivers/i2c/busses/i2c-xiic.c
-index 2c0470452221..223074e263ee 100644
---- a/drivers/i2c/busses/i2c-xiic.c
-+++ b/drivers/i2c/busses/i2c-xiic.c
-@@ -1463,10 +1463,12 @@ static int xiic_i2c_probe(struct platform_device *pdev)
+diff --git a/drivers/nfc/nxp-nci/i2c.c b/drivers/nfc/nxp-nci/i2c.c
+index 049662ffdf97..6a5ce8ff91f0 100644
+--- a/drivers/nfc/nxp-nci/i2c.c
++++ b/drivers/nfc/nxp-nci/i2c.c
+@@ -305,7 +305,7 @@ static int nxp_nci_i2c_probe(struct i2c_client *client)
  
- 	spin_lock_init(&i2c->atomic_lock);
- 
--	i2c->clk = devm_clk_get_enabled(&pdev->dev, NULL);
--	if (IS_ERR(i2c->clk))
--		return dev_err_probe(&pdev->dev, PTR_ERR(i2c->clk),
--				     "failed to enable input clock.\n");
-+	if (is_of_node(dev_fwnode(dev))) {
-+		i2c->clk = devm_clk_get_enabled(dev, NULL);
-+		if (IS_ERR(i2c->clk))
-+			return dev_err_probe(dev, PTR_ERR(i2c->clk),
-+					"failed to enable input clock.\n");
-+	}
- 
- 	i2c->dev = dev;
- 
+ 	r = request_threaded_irq(client->irq, NULL,
+ 				 nxp_nci_i2c_irq_thread_fn,
+-				 IRQF_TRIGGER_RISING | IRQF_ONESHOT,
++				 IRQF_ONESHOT,
+ 				 NXP_NCI_I2C_DRIVER_NAME, phy);
+ 	if (r < 0)
+ 		nfc_err(&client->dev, "Unable to register IRQ handler\n");
 
+---
+base-commit: 4c87cdd0328495759f6e9f9f4e1e53ef8032a76f
+change-id: 20260204-fc-nxp-nci-remove-interrupt-trigger-type-d778323b3b81
+
+Best regards,
 -- 
-2.52.0
+Carl Lee <carl.lee@amd.com>
 
