@@ -1,119 +1,80 @@
-From: Jihan LIN <linjh22s@gmail.com>
-Date: Wed, 04 Feb 2026 13:48:53 +0000
-Subject: [PATCH RFC 3/3] zram: Use zcomp-managed streams for async write
- requests
+From: David Heidelberg <david@ixit.cz>
+Date: Wed, 04 Feb 2026 18:03:41 +0100
+Subject: [PATCH] testing! arm64: dts: qcom: decrease WiFi antenna regulator
+ minimum to 3.0V
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260204-b4_zcomp_stream-v1-3-35c06ce1d332@gmail.com>
-References: <20260204-b4_zcomp_stream-v1-0-35c06ce1d332@gmail.com>
-In-Reply-To: <20260204-b4_zcomp_stream-v1-0-35c06ce1d332@gmail.com>
-To: Minchan Kim <minchan@kernel.org>, 
- Sergey Senozhatsky <senozhatsky@chromium.org>, Jens Axboe <axboe@kernel.dk>
-Cc: linux-kernel@vger.kernel.org, linux-block@vger.kernel.org, 
- Jihan LIN <linjh22s@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770212935; l=3979;
- i=linjh22s@gmail.com; s=linjh22s_machine; h=from:subject:message-id;
- bh=n49FebibsqQERts1+tv3yx6Io3Tg7uusMwfFkfvmBE0=;
- b=5iP6q2XsN0scmSU6Ct+S9QgF8jXHJZbhYOQbAjtLTaT/vAif6+MCwR5Xhd6WJvre35Tz3Q7/K
- EdRzKxAK6D8D/uHscoEyVFhM60tKllsrv3+l1/a+wBi1wR4fG/cmVZh
-X-Developer-Key: i=linjh22s@gmail.com; a=ed25519;
- pk=MnRQAVFy1t4tiGb8ce7ohJwrN2YFXd+dA7XmzR6GmUc=
-X-Endpoint-Received: by B4 Relay for linjh22s@gmail.com/linjh22s_machine with auth_id=592
+Message-Id: <20260204-oneplus6-wifi-voltage-v1-1-ee6fd47f9d02@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAOx7g2kC/x2MWwqAIBAAryL7nZBCIl0l+pBtrYVQ0V4Q3j3pc
+ 2BmXiiUmQqM4oVMFxeOoYHqBODmwkqSl8agez0orYyMgdJ+FiNv9iyvuB+uSZYQLXpryCO0NmX
+ y/Pzfaa71A3I3h2hnAAAA
+X-Change-ID: 20251216-oneplus6-wifi-voltage-8ecc8cf86efc
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1386; i=david@ixit.cz;
+ h=from:subject:message-id; bh=MU24/0EIkkFW4iVo90u34fUl4tbYSjVYYtHCLcNmzhI=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpg3vttL5pwPV+sq8S27yyE9ZGek38daFoKqtkz
+ lcccZPXB4mJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaYN77QAKCRBgAj/E00kg
+ chLDEACm+c5AjJwx7etuRiWKrMxuYeqaDczPtr9XUafue2acCLjH4sFSi7MDwui3i6b4vYwg8ah
+ zv7H47yGtLtKCeGA3QWhW52UouDimzbEjePwexkfRspE4by+RN4VjCvvEY8f3+2WQwllKv4wpw4
+ T6DqU7isqI9u8z5U4Wf3NA/xk1WfFlhT2kAL74OviaxxJ0PN6gij8Ipoubfg042c5bMtiVxUvTY
+ edxOycNeMzkXeBejtt6whLYaQwrnaOqL65pizd5YweFFYjRbDu0OF2dVoMpDYARBvnVamV8bdrY
+ MkmVwI7aFa6FRtdpHfgROP2fFjhfOxk9cmmoqWQ4dDTGWIbVaFFXGkAzrM6EcsIDiOMsK7+204s
+ aOOJSANkOi6FQMZDbdcRrtx53kwSns74qL6HIezwcvmGQo+eY/SBDokMb7Cxc/4Bd1dEONSESDi
+ gJ+XAD1Fq/OYjBKcSSDq+MxVZVO6HFWhe6XcVfDmU0+1iQ1n5UOVFPBVRkm6KGn8DKW9v+9OrGm
+ DVwCOsEZqv04i7UJ55HEkI4KV+f+pXTwJOmNnZJ11OrZ1lK0w2DmQZIOpjm/LMHhPa9HfblR45R
+ 4MnzfqiuQzQkKCd16qOaXxazh7Bt+MkdaQpgjC5ZRsVUw/QNargNUKZAF6ubwQ36HOE9snjVCRV
+ vtmO7glK6idZy+g==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Crrent per-CPU streams limit write concurrency to the number of online
-CPUs. For zcomp backends that support zcomp-managed streams, we can
-utilize them for async write requests to get better parallelism.
+Downstream defines minimal voltage as 3.0 V, while when OnePlus 6 was
+introduced to Linux mainline, the value was fixed to maximum 3.3V.
 
-Modify zram_write_page() to accept a flag indicating the request is
-asynchronous. If the bio request is considered as non-synchronous and
-the backend supports zcomp-managed streams, attempt to acquire a
-zcomp-managed stream.
-
-Although zram_write_page() currently waits for compression to complete,
-making the operation appear synchronous, using zcomp-managed streams
-has the potential to improve parallelism for async write requests,
-provided the backend utilizes efficient streams management or
-specialized implementations.
-
-zcomp_stream_get() handles the fallback to per-CPU streams.
-zram_read_page() remains using the generic per-CPU streams, since reads
-are always treated as synchronous in op_is_sync().
-
-Support multiple pages within a single bio request is deferred to keep
-simple and focused.
-
-Signed-off-by: Jihan LIN <linjh22s@gmail.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/block/zram/zram_drv.c | 24 ++++++++++++++++++++----
- 1 file changed, 20 insertions(+), 4 deletions(-)
+Tested for ~ 1 month. Seems to work well, no visible issues anywhere.
+---
+ arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/block/zram/zram_drv.c b/drivers/block/zram/zram_drv.c
-index 2e5a1415e9034674e14e619f486052cd21098f50..655d0e141c621ca38ca1059780c1a8a00258c868 100644
---- a/drivers/block/zram/zram_drv.c
-+++ b/drivers/block/zram/zram_drv.c
-@@ -1966,6 +1966,7 @@ static int read_compressed_page(struct zram *zram, struct page *page, u32 index)
- 	size = zram_get_obj_size(zram, index);
- 	prio = zram_get_priority(zram, index);
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
+index 5b121ea5520f5..e950db41ce25a 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
+@@ -307,7 +307,7 @@ vreg_l20a_2p95: ldo20 {
+ 		};
  
-+	/* Reads are treated as synchronous, see op_is_sync(). */
- 	zstrm = zcomp_stream_get(zram->comps[prio], ZSTRM_DEFAULT);
- 	src = zs_obj_read_begin(zram->mem_pool, handle, zstrm->local_copy);
- 	dst = kmap_local_page(page);
-@@ -2105,7 +2106,8 @@ static int write_incompressible_page(struct zram *zram, struct page *page,
- 	return 0;
- }
+ 		vreg_l23a_3p3: ldo23 {
+-			regulator-min-microvolt = <3300000>;
++			regulator-min-microvolt = <3000000>;
+ 			regulator-max-microvolt = <3312000>;
+ 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+ 		};
+@@ -320,7 +320,7 @@ vreg_l24a_3p075: ldo24 {
+ 		};
  
--static int zram_write_page(struct zram *zram, struct page *page, u32 index)
-+static int zram_write_page(struct zram *zram, struct page *page, u32 index,
-+			   bool is_async)
- {
- 	int ret = 0;
- 	unsigned long handle;
-@@ -2121,7 +2123,19 @@ static int zram_write_page(struct zram *zram, struct page *page, u32 index)
- 	if (same_filled)
- 		return write_same_filled_page(zram, element, index);
- 
--	zstrm = zcomp_stream_get(zram->comps[ZRAM_PRIMARY_COMP], ZSTRM_DEFAULT);
-+	/*
-+	 * Using zcomp-managed stream and waiting for compress done makes
-+	 * this appear synchronous.
-+	 *
-+	 * At this time, zram_bio_write handles pages one by one.
-+	 * However, zcomp-managed streams allow threads to submit jobs
-+	 * to zcomp without the lock contention in per-cpu streams.
-+	 * This might give us better parallelism than the generic per-cpu
-+	 * streams could, assuming zcomp uses efficient streams management
-+	 * or utilizes the specialized implementations.
-+	 */
-+	zstrm = zcomp_stream_get(zram->comps[ZRAM_PRIMARY_COMP],
-+				 is_async ? ZSTRM_PREFER_MGMT : ZSTRM_DEFAULT);
- 	mem = kmap_local_page(page);
- 	ret = zcomp_compress(zram->comps[ZRAM_PRIMARY_COMP], zstrm,
- 			     mem, &comp_len);
-@@ -2183,7 +2197,8 @@ static int zram_bvec_write_partial(struct zram *zram, struct bio_vec *bvec,
- 	ret = zram_read_page(zram, page, index, bio);
- 	if (!ret) {
- 		memcpy_from_bvec(page_address(page) + offset, bvec);
--		ret = zram_write_page(zram, page, index);
-+		ret = zram_write_page(zram, page, index,
-+				      !op_is_sync(bio->bi_opf));
- 	}
- 	__free_page(page);
- 	return ret;
-@@ -2194,7 +2209,8 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec,
- {
- 	if (is_partial_io(bvec))
- 		return zram_bvec_write_partial(zram, bvec, index, offset, bio);
--	return zram_write_page(zram, bvec->bv_page, index);
-+	return zram_write_page(zram, bvec->bv_page, index,
-+			       !op_is_sync(bio->bi_opf));
- }
- 
- #ifdef CONFIG_ZRAM_MULTI_COMP
+ 		vreg_l25a_3p3: ldo25 {
+-			regulator-min-microvolt = <3300000>;
++			regulator-min-microvolt = <3000000>;
+ 			regulator-max-microvolt = <3312000>;
+ 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+ 		};
 
+---
+base-commit: 5c009020744fe129e4728e71c44a6c7816c9105e
+change-id: 20251216-oneplus6-wifi-voltage-8ecc8cf86efc
+
+Best regards,
 -- 
-2.51.0
+David Heidelberg <david@ixit.cz>
 
