@@ -1,78 +1,72 @@
 From: Carl Lee <carl.lee@amd.com>
-Date: Thu, 05 Feb 2026 18:01:39 +0800
-Subject: [PATCH v2 3/3] hwmon: pmbus: mpq8785: force direct mode for VID
- VOUT on MPQ8785/MPQ8786
+Date: Thu, 05 Feb 2026 19:11:39 +0800
+Subject: [PATCH v2] nfc: nxp-nci: remove interrupt trigger type
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260205-dt-bindings-hwmon-pmbus-mpq8785-add-mpq8786-support-v2-3-3744cd9b2850@amd.com>
-References: <20260205-dt-bindings-hwmon-pmbus-mpq8785-add-mpq8786-support-v2-0-3744cd9b2850@amd.com>
-In-Reply-To: <20260205-dt-bindings-hwmon-pmbus-mpq8785-add-mpq8786-support-v2-0-3744cd9b2850@amd.com>
-To: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Charles Hsu <ythsu0511@gmail.com>
-Cc: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, carl.lee@amd.com, peter.shen@amd.com, 
- colin.huang2@amd.com
+Message-Id: <20260205-fc-nxp-nci-remove-interrupt-trigger-type-v2-1-79d2ed4a7e42@amd.com>
+X-B4-Tracking: v=1; b=H4sIAOp6hGkC/52NQQ6CMBBFr0K6dgxtVcCV9zAsoB1gFpRmWhsI4
+ e5WjuDy/fy8t4uATBjEs9gFY6JAi8ugLoUwU+dGBLKZhSrVo1TlDQYDbvXgDAHjvKR8cBGZPz5
+ CZBpHZIibR7BVVWule93XUmSdZxxoPVPvNvNEIS68neUkf+sfkSRBgu4tNvLeaFnpVzfbq1lm0
+ R7H8QVULrAt3gAAAA==
+X-Change-ID: 20260204-fc-nxp-nci-remove-interrupt-trigger-type-d778323b3b81
+To: Krzysztof Kozlowski <krzk@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, carl.lee@amd.com, 
+ peter.shen@amd.com, colin.huang2@amd.com
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770285700; l=1342;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770289904; l=1554;
  i=carl.lee@amd.com; s=20260203; h=from:subject:message-id;
- bh=uUNryTHUDVRGoinkT8aURxtPAS6L7bejWtD4269H63g=;
- b=VMo06GX712048wIeOdsmJHxqW1d72ofM4/Su0TefhhhZh/xVTQ+GAhGcD0mngmW/xyROVEt0v
- aEm3zNh7TOVA700szOjV37xENr3f/GOV7qHJT9GV4Z0mIlSBF2u/XAb
+ bh=6cKyct/VkHp4Ohfqh26SnglO2MibPS/8UbUTT3sCa1U=;
+ b=NnsLioUF8YJNdbbB9wQ/BjoGWcuoLJL4n+sH8aY91LxSbHLePZxwMVHiAmrMnK7jZRf6VFl3w
+ VLb8qS58IQoDxY1HDePigdq/zOcncqba3ybJyyee2NOg+F+kF6n2uW6
 X-Developer-Key: i=carl.lee@amd.com; a=ed25519;
  pk=pyq7QaQvoxMg806KVkRwpCbiah+7ncWr4MBpK1AEyjA=
 X-Endpoint-Received: by B4 Relay for carl.lee@amd.com/20260203 with auth_id=623
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-According to MPQ8785/MPQ8786 datasheet, VID mode configuration is
-the same as direct mode configuration. Therefore, when VOUT is
-reported in VID mode, it must be forced to use direct format.
+For NXP NCI devices (e.g. PN7150), the interrupt is level-triggered and
+active high, not edge-triggered.
+
+Using IRQF_TRIGGER_RISING in the driver can cause interrupts to fail
+to trigger correctly.
+
+Remove IRQF_TRIGGER_RISING and rely on the IRQ trigger type configured
+via Device Tree.
 
 Signed-off-by: Carl Lee <carl.lee@amd.com>
 ---
- drivers/hwmon/pmbus/mpq8785.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+This v2 of the series includes Krzysztof Kozlowski in the review list
+for NXP-NCI NFC.
 
-diff --git a/drivers/hwmon/pmbus/mpq8785.c b/drivers/hwmon/pmbus/mpq8785.c
-index f35534836cb8..d6624af076c3 100644
---- a/drivers/hwmon/pmbus/mpq8785.c
-+++ b/drivers/hwmon/pmbus/mpq8785.c
-@@ -48,6 +48,25 @@ static int mpq8785_identify(struct i2c_client *client,
- 	return 0;
- };
+This series removes IRQF_TRIGGER_RISING in nxp-nci driver,
+relying on the IRQ trigger type specified via Device Tree.
+---
+Changes in v2:
+- Include Krzysztof Kozlowski in the review list for NXP-NCI NFC.
+- Link to v1: https://lore.kernel.org/r/20260204-fc-nxp-nci-remove-interrupt-trigger-type-v1-1-3bde91593173@amd.com
+---
+ drivers/nfc/nxp-nci/i2c.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/nfc/nxp-nci/i2c.c b/drivers/nfc/nxp-nci/i2c.c
+index 049662ffdf97..6a5ce8ff91f0 100644
+--- a/drivers/nfc/nxp-nci/i2c.c
++++ b/drivers/nfc/nxp-nci/i2c.c
+@@ -305,7 +305,7 @@ static int nxp_nci_i2c_probe(struct i2c_client *client)
  
-+static int mpq8785_read_byte_data(struct i2c_client *client, int page, int reg)
-+{
-+	int ret;
-+
-+	switch (reg) {
-+	case PMBUS_VOUT_MODE:
-+		ret = pmbus_read_byte_data(client, page, reg);
-+		if (ret < 0)
-+			return ret;
-+
-+		if ((ret >> 5) == 1)
-+			return PB_VOUT_MODE_DIRECT;
-+	default:
-+		return -ENODATA;
-+	}
-+
-+	return ret;
-+}
-+
- static int mpm82504_read_word_data(struct i2c_client *client, int page,
- 				   int phase, int reg)
- {
-@@ -133,6 +152,7 @@ static int mpq8785_probe(struct i2c_client *client)
- 	case mpq8785:
- 	case mpq8786:
- 		info->identify = mpq8785_identify;
-+		info->read_byte_data = mpq8785_read_byte_data;
- 		break;
- 	default:
- 		return -ENODEV;
+ 	r = request_threaded_irq(client->irq, NULL,
+ 				 nxp_nci_i2c_irq_thread_fn,
+-				 IRQF_TRIGGER_RISING | IRQF_ONESHOT,
++				 IRQF_ONESHOT,
+ 				 NXP_NCI_I2C_DRIVER_NAME, phy);
+ 	if (r < 0)
+ 		nfc_err(&client->dev, "Unable to register IRQ handler\n");
 
+---
+base-commit: 4c87cdd0328495759f6e9f9f4e1e53ef8032a76f
+change-id: 20260204-fc-nxp-nci-remove-interrupt-trigger-type-d778323b3b81
+
+Best regards,
 -- 
-2.34.1
+Carl Lee <carl.lee@amd.com>
 
