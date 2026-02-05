@@ -1,14 +1,12 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH 0/3] baisc devicetree support for Amlogic A9
-Date: Thu, 05 Feb 2026 06:04:01 +0000
-Message-Id: <20260205-a9-baisc-dts-v1-0-1212b46f95a7@amlogic.com>
+Date: Thu, 05 Feb 2026 06:04:02 +0000
+Subject: [PATCH 1/3] dt-bindings: arm: amlogic: add A311Y3 support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANEyhGkC/x3MMQqAMAxA0atIZgNpQVGvIg5tTTVLlUZEKN7d4
- viG/wsoZ2GFqSmQ+RaVI1WYtoGwu7QxyloNlmxPljp0I3onGnC9FIP3ni2TiQNBTc7MUZ5/Ny/
- v+wGIh2F0XgAAAA==
-X-Change-ID: 20260205-a9-baisc-dts-cbbbe2e01f80
+Message-Id: <20260205-a9-baisc-dts-v1-1-1212b46f95a7@amlogic.com>
+References: <20260205-a9-baisc-dts-v1-0-1212b46f95a7@amlogic.com>
+In-Reply-To: <20260205-a9-baisc-dts-v1-0-1212b46f95a7@amlogic.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -20,36 +18,42 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-serial@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-amlogic@lists.infradead.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770271444; l=870;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770271444; l=912;
  i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=ps7j2+Z67QCIPw991CX7xaz/DhDRBR1m3knxUYmHUEk=;
- b=a/G09XieespzzJlySSaPDZ0TgKEJThWA1puCkS6knfHGGWUWbLvYbDZKpVmF0Xd1NCxulbqAx
- R4kjdoSHiYDDIqCUmlxkhluqDOhCAktxMfVEDPOTxXOnDV/GDsFK54a
+ bh=YqKkQKMdwWrvKEAOSja6X/Z+UdrbQ8sFtcO8Ce9oL3I=;
+ b=t44pqp/4M5L4gAGj+JTodZvhV2jIt+7dz9SMNGrtRJc2H2Nh+Yw5T/GhK8Zo7sPh5niDd86Rh
+ 7dmN4TRwzgODz6OfWTPQK9clndrnTuuYvs8ANoGMZbEhul0DmHMAimk
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the new A9 SoC/board device tree and related bindings.
+Add bindings for the Amlogic BY401 board, using A311Y3 Soc from
+Amlogic A9 family chip.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Xianwei Zhao (3):
-      dt-bindings: arm: amlogic: add A311Y3 support
-      dt-bindings: serial: amlogic,meson-uart: Add compatible string for A9
-      arm64: dts: add support for A9 based Amlogic BY401
+ Documentation/devicetree/bindings/arm/amlogic.yaml | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
- Documentation/devicetree/bindings/arm/amlogic.yaml |   6 +
- .../bindings/serial/amlogic,meson-uart.yaml        |   1 +
- arch/arm64/boot/dts/amlogic/Makefile               |   1 +
- .../boot/dts/amlogic/amlogic-a9-a311y3-by401.dts   |  41 +++++++
- arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi        | 127 +++++++++++++++++++++
- 5 files changed, 176 insertions(+)
----
-base-commit: e3194dfb772304a1b7ca3bcfccacefec3468b7bf
-change-id: 20260205-a9-baisc-dts-cbbbe2e01f80
+diff --git a/Documentation/devicetree/bindings/arm/amlogic.yaml b/Documentation/devicetree/bindings/arm/amlogic.yaml
+index a885278bc4e2..9f73a0054fb2 100644
+--- a/Documentation/devicetree/bindings/arm/amlogic.yaml
++++ b/Documentation/devicetree/bindings/arm/amlogic.yaml
+@@ -234,6 +234,12 @@ properties:
+               - amlogic,av400
+           - const: amlogic,a5
+ 
++      - description: Boards with the Amlogic A9 A311Y3 SoC
++        items:
++          - enum:
++              - amlogic,by401
++          - const: amlogic,a9
++
+       - description: Boards with the Amlogic C3 C302X/C308L SoC
+         items:
+           - enum:
 
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.52.0
 
