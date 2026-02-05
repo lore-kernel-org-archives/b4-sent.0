@@ -1,78 +1,60 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Thu, 05 Feb 2026 10:55:38 +0100
-Subject: [PATCH] iio: imu: inv_icm45600: fix INT1 drive bit inverted
+From: Carl Lee <carl.lee@amd.com>
+Subject: [PATCH v2 0/3] hwmon: pmbus: Add support for MPQ8786
+Date: Thu, 05 Feb 2026 18:01:36 +0800
+Message-Id: <20260205-dt-bindings-hwmon-pmbus-mpq8785-add-mpq8786-support-v2-0-3744cd9b2850@amd.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260205-inv-icm45600-fix-int1-drive-bit-v1-1-72a78cd07150@tdk.com>
-X-B4-Tracking: v=1; b=H4sIABlphGkC/x2NQQrDMAwEvxJ0rkBWmhT6ldBDYqvtHuoGO5hAy
- N8repxl2DmoWoFVuncHFWuo+GaHcOkovuf8MkZyJhUdRWVg5MaIn+swivATuw9b4FTQjBdsfEt
- Bbe5NY1Lyl7WYW//C9DjPH2evK0pxAAAA
-X-Change-ID: 20260205-inv-icm45600-fix-int1-drive-bit-7d12ea3e2cd2
-To: Remi Buisson <remi.buisson@tdk.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
- linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>, 
- stable@vger.kernel.org
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770285345; l=2029;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=jonlpc2vCCKoNTffAcqdw9gt54oqvhg5uNYQzxvrOqc=;
- b=5vsMRdNmsBMDk/bEXxMe0CHV8sOVUQ5BP6DYKkfDmmjilUh4irqWX5vYNYJUnCQ06gj6iVmPx
- TmZGs1Xjzz+ADbgOMIgddjMr17moPL0PV9EPmuuF4y4pfMmvp//E53u
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+X-B4-Tracking: v=1; b=H4sIAIBqhGkC/6WOSxKCMBBEr0Jl7VhJjAFdeQ+LBZABZpGPCaAWx
+ d2NlDdw168X/XplCSNhYtdiZREXSuRdBnkoWDc2bkAgk5lJLjWX/ARmgpacITckGJ/WOwi2nRP
+ Y8KjK6gyNMb+sIc0h+DhBryquLlgpIZDl5RCxp9duvdeZR0qTj+/9xCK+7X++RYAAXbZcCZR9q
+ eWtsebYecvqbds+8ZOJU/QAAAA=
+X-Change-ID: 20260203-dt-bindings-hwmon-pmbus-mpq8785-add-mpq8786-support-f48049e8411e
+To: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Charles Hsu <ythsu0511@gmail.com>
+Cc: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, carl.lee@amd.com, peter.shen@amd.com, 
+ colin.huang2@amd.com
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770285700; l=1326;
+ i=carl.lee@amd.com; s=20260203; h=from:subject:message-id;
+ bh=DFrlS59fjMgBzDiAHSMCR4kAn5bfamElxFbhVStZ664=;
+ b=7qGpO4iddJJUHIK/BZ/PIoUzhQpV18z7EKW+T3ZoLBYmGj0Kal+jH61J7ZWmHS8cykG9xgCzw
+ kPnCu9xUc/VBaHD93aMxNi2ZUPpNeEGWJaYEZGD8KyWlE/NySeyyA3M
+X-Developer-Key: i=carl.lee@amd.com; a=ed25519;
+ pk=pyq7QaQvoxMg806KVkRwpCbiah+7ncWr4MBpK1AEyjA=
+X-Endpoint-Received: by B4 Relay for carl.lee@amd.com/20260203 with auth_id=623
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Drive bit must be set for open-drain mode and be cleared for push-pull
-mode.
+This series includes the devicetree binding update followed by the corresponding
+hwmon driver changes. In addition to basic MPQ8786 support, the series
+also fixes VOUT reporting by forcing direct mode for VID VOUT on both
+MPQ8785 and MPQ8786, as VID mode configuration is equivalent to direct
+mode according to the datasheet.
 
-Fixes: 06674a72cf7a ("iio: imu: inv_icm45600: add buffer support in iio devices")
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Cc: stable@vger.kernel.org
+Signed-off-by: Carl Lee <carl.lee@amd.com>
 ---
- drivers/iio/imu/inv_icm45600/inv_icm45600.h      | 2 +-
- drivers/iio/imu/inv_icm45600/inv_icm45600_core.c | 4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600.h b/drivers/iio/imu/inv_icm45600/inv_icm45600.h
-index c5b5446f6c3b43150512bcc4357cee385080b634..1c796d4b2a4038203f734f80d7bf7bad138c3497 100644
---- a/drivers/iio/imu/inv_icm45600/inv_icm45600.h
-+++ b/drivers/iio/imu/inv_icm45600/inv_icm45600.h
-@@ -205,7 +205,7 @@ struct inv_icm45600_sensor_state {
- #define INV_ICM45600_SPI_SLEW_RATE_38NS			0
- 
- #define INV_ICM45600_REG_INT1_CONFIG2			0x0018
--#define INV_ICM45600_INT1_CONFIG2_PUSH_PULL		BIT(2)
-+#define INV_ICM45600_INT1_CONFIG2_OPEN_DRAIN		BIT(2)
- #define INV_ICM45600_INT1_CONFIG2_LATCHED		BIT(1)
- #define INV_ICM45600_INT1_CONFIG2_ACTIVE_HIGH		BIT(0)
- #define INV_ICM45600_INT1_CONFIG2_ACTIVE_LOW		0x00
-diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_core.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_core.c
-index ab1cb7b9dba435a3280e50ab77cd16e903c7816c..b028044d609a41f6d4b747383323130ded0d2e79 100644
---- a/drivers/iio/imu/inv_icm45600/inv_icm45600_core.c
-+++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_core.c
-@@ -637,8 +637,8 @@ static int inv_icm45600_irq_init(struct inv_icm45600_state *st, int irq,
- 		break;
- 	}
- 
--	if (!open_drain)
--		val |= INV_ICM45600_INT1_CONFIG2_PUSH_PULL;
-+	if (open_drain)
-+		val |= INV_ICM45600_INT1_CONFIG2_OPEN_DRAIN;
- 
- 	ret = regmap_write(st->map, INV_ICM45600_REG_INT1_CONFIG2, val);
- 	if (ret)
+Changes in v2:
+- Combine DT binding and driver changes into a single series
+- Fix VOUT reporting by forcing direct mode for VID VOUT
+- Link to v1: https://lore.kernel.org/r/20260203-dt-bindings-hwmon-pmbus-mpq8785-add-mpq8786-support-v1-1-67b041e2f762@amd.com
 
 ---
-base-commit: d820183f371d9aa8517a1cd21fe6edacf0f94b7f
-change-id: 20260205-inv-icm45600-fix-int1-drive-bit-7d12ea3e2cd2
+Carl Lee (3):
+      dt-bindings: hwmon: pmbus: mpq8785: add MPQ8786 support
+      hwmon: pmbus: mpq8785: add support for MPQ8786
+      hwmon: pmbus: mpq8785: force direct mode for VID VOUT on MPQ8785/MPQ8786
+
+ .../bindings/hwmon/pmbus/mps,mpq8785.yaml          |  5 ++++-
+ Documentation/hwmon/mpq8785.rst                    |  7 ++++++
+ drivers/hwmon/pmbus/mpq8785.c                      | 26 +++++++++++++++++++++-
+ 3 files changed, 36 insertions(+), 2 deletions(-)
+---
+base-commit: 4c87cdd0328495759f6e9f9f4e1e53ef8032a76f
+change-id: 20260203-dt-bindings-hwmon-pmbus-mpq8785-add-mpq8786-support-f48049e8411e
 
 Best regards,
 -- 
-Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Carl Lee <carl.lee@amd.com>
 
