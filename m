@@ -1,10 +1,11 @@
 From: Shivam Kalra <shivamklr@cock.li>
-Date: Sat, 07 Feb 2026 17:02:47 +0530
-Subject: [PATCH v3 1/4] rust: alloc: introduce Shrinkable trait
+Date: Sat, 07 Feb 2026 17:02:48 +0530
+Subject: [PATCH v3 2/4] rust: kvec: implement shrink_to and shrink_to_fit
+ for Vec
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260207-binder-shrink-vec-v3-v3-1-8ff388563427@cock.li>
+Message-Id: <20260207-binder-shrink-vec-v3-v3-2-8ff388563427@cock.li>
 References: <20260207-binder-shrink-vec-v3-v3-0-8ff388563427@cock.li>
 In-Reply-To: <20260207-binder-shrink-vec-v3-v3-0-8ff388563427@cock.li>
 To: Danilo Krummrich <dakr@kernel.org>, 
@@ -23,93 +24,175 @@ To: Danilo Krummrich <dakr@kernel.org>,
 Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Shivam Kalra <shivamklr@cock.li>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770464219; l=3225;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770464219; l=6276;
  i=shivamklr@cock.li; s=20260206; h=from:subject:message-id;
- bh=jpKzN865IppJi7C0CyvO1g4N4Vl1EkzCBuFHxaHO0OE=;
- b=zhIqUwyAdly7/oTkm+yQc7lOMHTvmT3Eo+4h5sTrfCeCRighkyX4B4LuahXY3vuFS4AiuoOh5
- KZTu2KbaoCsA/CSSM/LXWseQ3QK9QxZ/Y+AZtY+8JRmdF6nL8f4hLnk
+ bh=VS6hjlCsw50rC5LExWM9OsFec4LNbO7EsbpLvNDwBLA=;
+ b=57DJT0+/d7Rh/Wgps3VfhfwTnf7wGAWgIIJ2fdXHeWcxDZS3o0pdS/jDtsIsxzjonLPAm6nMj
+ VIjwgQY74KgDcejMewKsGWCBABV/FCLmiZ1OCoyqZ+PUgYXl0KG48ps
 X-Developer-Key: i=shivamklr@cock.li; a=ed25519;
  pk=vMC4wm7HuB8IdkiHldCdtuViW0NTnShcRaMF50MWRFQ=
 X-Endpoint-Received: by B4 Relay for shivamklr@cock.li/20260206 with auth_id=628
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce the `Shrinkable` trait to identify allocators that can
-meaningfully reclaim memory when an allocation is shrunk.
+Implement `shrink_to` and `shrink_to_fit` methods for `Vec<T, A>` where
+`A` implements the `Shrinkable` trait.
 
-In the kernel, the slab allocator (`Kmalloc`) uses fixed-size buckets,
-meaning a "shrink" operation often results in the same bucket size being
-used, yielding no actual memory savings. However, page-based allocators
-like `Vmalloc` can reclaim physical pages when the size reduction
-crosses a page boundary.
+`shrink_to` reduces the vector's capacity to a specified minimum, while
+`shrink_to_fit` attempts to shrink capacity to match the current length.
 
-This marker trait allows generic containers (like `KVec` or `KVVec`) to
-determine at compile-time or run-time (via `is_shrinkable`) if a
-shrinking operation is worth performing.
+Both methods only perform shrinking when it would be beneficial:
+- The allocator must support meaningful shrinking (checked via the
+  `Shrinkable` trait bound and `is_shrinkable` runtime check).
+- The operation must free at least one page of memory.
 
+This prevents unnecessary allocations (where shrinking provides no
+benefit) while allowing to reclaim unused memory.
+
+The implementation uses explicit alloc+copy+free because `vrealloc`
+does not yet support in-place shrinking. A TODO note marks this for
+future optimization once the kernel's `vrealloc` gains that capability.
+
+Suggested-by: Alice Ryhl <aliceryhl@google.com>
+Suggested-by: Danilo Krummrich <dakr@kernel.org>
 Signed-off-by: Shivam Kalra <shivamklr@cock.li>
 ---
- rust/kernel/alloc/allocator.rs | 48 ++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 48 insertions(+)
+ rust/kernel/alloc/kvec.rs | 111 +++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 109 insertions(+), 2 deletions(-)
 
-diff --git a/rust/kernel/alloc/allocator.rs b/rust/kernel/alloc/allocator.rs
-index 63bfb91b36712..615799b680b55 100644
---- a/rust/kernel/alloc/allocator.rs
-+++ b/rust/kernel/alloc/allocator.rs
-@@ -251,6 +251,54 @@ unsafe fn realloc(
+diff --git a/rust/kernel/alloc/kvec.rs b/rust/kernel/alloc/kvec.rs
+index ac8d6f763ae81..22a327d69c061 100644
+--- a/rust/kernel/alloc/kvec.rs
++++ b/rust/kernel/alloc/kvec.rs
+@@ -3,13 +3,13 @@
+ //! Implementation of [`Vec`].
+ 
+ use super::{
+-    allocator::{KVmalloc, Kmalloc, Vmalloc, VmallocPageIter},
++    allocator::{KVmalloc, Kmalloc, Shrinkable, Vmalloc, VmallocPageIter},
+     layout::ArrayLayout,
+     AllocError, Allocator, Box, Flags, NumaNode,
+ };
+ use crate::{
+     fmt,
+-    page::AsPageIter, //
++    page::{AsPageIter, PAGE_SIZE},
+ };
+ use core::{
+     borrow::{Borrow, BorrowMut},
+@@ -735,6 +735,113 @@ pub fn retain(&mut self, mut f: impl FnMut(&mut T) -> bool) {
      }
  }
  
-+/// Marker trait for allocators that support meaningful shrinking.
-+///
-+/// Shrinking is only meaningful for allocators that can actually reclaim memory. The slab
-+/// allocator (`Kmalloc`) uses fixed-size buckets and cannot reclaim memory when shrinking,
-+/// so it does not implement this trait.
-+///
-+/// For `Vmalloc`, shrinking always makes sense since it uses page-granularity allocations.
-+/// For `KVmalloc`, shrinking only makes sense if the allocation is backed by vmalloc (checked
-+/// at runtime via `is_vmalloc_addr`).
-+///
-+/// # Note
-+///
-+/// Currently, shrinking vmalloc allocations requires explicit alloc+copy+free because
-+/// `vrealloc` does not support in-place shrinking (see TODO at `mm/vmalloc.c:4316`).
-+/// Once `vrealloc` gains this capability, the shrink implementation can be simplified.
-+///
-+/// # Safety
-+///
-+/// Implementors must ensure that [`Shrinkable::is_shrinkable`] returns `true` only when
-+/// shrinking the allocation would actually reclaim memory.
-+pub unsafe trait Shrinkable: Allocator {
-+    /// Returns whether shrinking an allocation at the given pointer would reclaim memory.
++impl<T, A: Shrinkable> Vec<T, A> {
++    /// Shrinks the capacity of the vector with a lower bound.
 +    ///
-+    /// # Safety
++    /// The capacity will remain at least as large as both the length and the supplied value.
++    /// If the current capacity is less than the lower limit, this is a no-op.
 +    ///
-+    /// `ptr` must be a valid pointer to an allocation made by this allocator.
-+    unsafe fn is_shrinkable(ptr: NonNull<u8>) -> bool;
-+}
++    /// Shrinking only occurs if:
++    /// - The allocator supports shrinking for this allocation (see [`Shrinkable`]).
++    /// - The operation would free at least one page of memory.
++    ///
++    /// If these conditions are not met, the vector is left unchanged.
++    ///
++    /// # Examples
++    ///
++    /// ```
++    /// use kernel::alloc::allocator::Vmalloc;
++    ///
++    /// // Allocate enough capacity to span multiple pages.
++    /// let elements_per_page = kernel::page::PAGE_SIZE / core::mem::size_of::<u32>();
++    /// let mut v: Vec<u32, Vmalloc> = Vec::with_capacity(elements_per_page * 4, GFP_KERNEL)?;
++    /// v.push(1, GFP_KERNEL)?;
++    /// v.push(2, GFP_KERNEL)?;
++    ///
++    /// v.shrink_to(0, GFP_KERNEL)?;
++    /// # Ok::<(), Error>(())
++    /// ```
++    pub fn shrink_to(&mut self, min_capacity: usize, flags: Flags) -> Result<(), AllocError> {
++        let target_cap = core::cmp::max(self.len(), min_capacity);
 +
-+// SAFETY: `Vmalloc` always uses vmalloc, which allocates at page granularity. Shrinking a
-+// vmalloc allocation by at least one page will reclaim that memory.
-+unsafe impl Shrinkable for Vmalloc {
-+    #[inline]
-+    unsafe fn is_shrinkable(_ptr: NonNull<u8>) -> bool {
-+        true
++        if self.capacity() <= target_cap {
++            return Ok(());
++        }
++
++        if Self::is_zst() {
++            return Ok(());
++        }
++
++        // SAFETY: `self.ptr` is valid by the type invariant.
++        if !unsafe { A::is_shrinkable(self.ptr.cast()) } {
++            return Ok(());
++        }
++
++        // Only shrink if we would free at least one page.
++        let current_size = self.capacity() * core::mem::size_of::<T>();
++        let target_size = target_cap * core::mem::size_of::<T>();
++        let current_pages = current_size.div_ceil(PAGE_SIZE);
++        let target_pages = target_size.div_ceil(PAGE_SIZE);
++
++        if current_pages <= target_pages {
++            return Ok(());
++        }
++
++        if target_cap == 0 {
++            if !self.layout.is_empty() {
++                // SAFETY: `self.ptr` was allocated with `A`, layout matches.
++                unsafe { A::free(self.ptr.cast(), self.layout.into()) };
++            }
++            self.ptr = NonNull::dangling();
++            self.layout = ArrayLayout::empty();
++            return Ok(());
++        }
++
++        // SAFETY: `target_cap <= self.capacity()` and original capacity was valid.
++        let new_layout = unsafe { ArrayLayout::<T>::new_unchecked(target_cap) };
++
++        // TODO: Once vrealloc supports in-place shrinking (mm/vmalloc.c:4316), this
++        // explicit alloc+copy+free can potentially be replaced with realloc.
++        let new_ptr = A::alloc(new_layout.into(), flags, NumaNode::NO_NODE)?;
++
++        // SAFETY: Both pointers are valid, non-overlapping, and properly aligned.
++        unsafe {
++            ptr::copy_nonoverlapping(self.as_ptr(), new_ptr.as_ptr().cast::<T>(), self.len);
++        }
++
++        // SAFETY: `self.ptr` was allocated with `A`, layout matches.
++        unsafe { A::free(self.ptr.cast(), self.layout.into()) };
++
++        // SAFETY: `new_ptr` is non-null because `A::alloc` succeeded.
++        self.ptr = unsafe { NonNull::new_unchecked(new_ptr.as_ptr().cast::<T>()) };
++        self.layout = new_layout;
++
++        Ok(())
++    }
++
++    /// Shrinks the capacity of the vector as much as possible.
++    ///
++    /// This is equivalent to calling `shrink_to(0, flags)`. See [`Vec::shrink_to`] for details.
++    ///
++    /// # Examples
++    ///
++    /// ```
++    /// use kernel::alloc::allocator::Vmalloc;
++    ///
++    /// let elements_per_page = kernel::page::PAGE_SIZE / core::mem::size_of::<u32>();
++    /// let mut v: Vec<u32, Vmalloc> = Vec::with_capacity(elements_per_page * 4, GFP_KERNEL)?;
++    /// v.push(1, GFP_KERNEL)?;
++    /// v.push(2, GFP_KERNEL)?;
++    /// v.push(3, GFP_KERNEL)?;
++    ///
++    /// v.shrink_to_fit(GFP_KERNEL)?;
++    /// # Ok::<(), Error>(())
++    /// ```
++    pub fn shrink_to_fit(&mut self, flags: Flags) -> Result<(), AllocError> {
++        self.shrink_to(0, flags)
 +    }
 +}
 +
-+// SAFETY: `KVmalloc` may use either kmalloc or vmalloc. We check at runtime using
-+// `is_vmalloc_addr` to determine if shrinking would be meaningful.
-+unsafe impl Shrinkable for KVmalloc {
-+    #[inline]
-+    unsafe fn is_shrinkable(ptr: NonNull<u8>) -> bool {
-+        // SAFETY: `ptr` is a valid pointer by the safety requirements of this function.
-+        unsafe { bindings::is_vmalloc_addr(ptr.as_ptr().cast()) }
-+    }
-+}
-+
- #[macros::kunit_tests(rust_allocator)]
- mod tests {
-     use super::*;
+ impl<T: Clone, A: Allocator> Vec<T, A> {
+     /// Extend the vector by `n` clones of `value`.
+     pub fn extend_with(&mut self, n: usize, value: T, flags: Flags) -> Result<(), AllocError> {
 
 -- 
 2.43.0
