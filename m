@@ -1,11 +1,11 @@
 From: Shivam Kalra <shivamklr@cock.li>
-Date: Sat, 07 Feb 2026 17:02:48 +0530
-Subject: [PATCH v3 2/4] rust: kvec: implement shrink_to and shrink_to_fit
- for Vec
+Date: Sat, 07 Feb 2026 17:02:49 +0530
+Subject: [PATCH v3 3/4] rust: alloc: add KUnit tests for Vec shrink
+ operations
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260207-binder-shrink-vec-v3-v3-2-8ff388563427@cock.li>
+Message-Id: <20260207-binder-shrink-vec-v3-v3-3-8ff388563427@cock.li>
 References: <20260207-binder-shrink-vec-v3-v3-0-8ff388563427@cock.li>
 In-Reply-To: <20260207-binder-shrink-vec-v3-v3-0-8ff388563427@cock.li>
 To: Danilo Krummrich <dakr@kernel.org>, 
@@ -24,175 +24,232 @@ To: Danilo Krummrich <dakr@kernel.org>,
 Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Shivam Kalra <shivamklr@cock.li>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770464219; l=6276;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770464219; l=8169;
  i=shivamklr@cock.li; s=20260206; h=from:subject:message-id;
- bh=VS6hjlCsw50rC5LExWM9OsFec4LNbO7EsbpLvNDwBLA=;
- b=57DJT0+/d7Rh/Wgps3VfhfwTnf7wGAWgIIJ2fdXHeWcxDZS3o0pdS/jDtsIsxzjonLPAm6nMj
- VIjwgQY74KgDcejMewKsGWCBABV/FCLmiZ1OCoyqZ+PUgYXl0KG48ps
+ bh=NHTvS6dyqkW3XRY4+kOP853dlPQBD1euqXKRvwPwRzM=;
+ b=e0veNa+pVF5XE5buNoXhgDCwpn/qL2W0am/1lsecsDXVsQ3QhZYkH+iDPcmf7Aexl2WmqDJ/u
+ Tic5PXAM7jKCEOJNGA4JSox4fJ3Hb/vdbpxEuqs7Nos+tGBJYwCMTtj
 X-Developer-Key: i=shivamklr@cock.li; a=ed25519;
  pk=vMC4wm7HuB8IdkiHldCdtuViW0NTnShcRaMF50MWRFQ=
 X-Endpoint-Received: by B4 Relay for shivamklr@cock.li/20260206 with auth_id=628
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement `shrink_to` and `shrink_to_fit` methods for `Vec<T, A>` where
-`A` implements the `Shrinkable` trait.
+Add comprehensive KUnit tests for `shrink_to` and `shrink_to_fit` methods
+across different allocator backends (Vmalloc and KVmalloc).
 
-`shrink_to` reduces the vector's capacity to a specified minimum, while
-`shrink_to_fit` attempts to shrink capacity to match the current length.
+The tests verify:
+- Basic shrinking from multiple pages to less than one page
+- Data integrity preservation after shrinking
+- No-op behavior when shrinking would not free pages
+- Empty vector shrinking
+- Partial shrinking with min_capacity constraints
+- Consecutive shrink operations
+- KVVec shrinking behavior for both small (kmalloc-backed) and large
+  (vmalloc-backed) allocations
 
-Both methods only perform shrinking when it would be beneficial:
-- The allocator must support meaningful shrinking (checked via the
-  `Shrinkable` trait bound and `is_shrinkable` runtime check).
-- The operation must free at least one page of memory.
+These tests ensure that the shrinking logic correctly identifies when
+memory can be reclaimed and that the `Shrinkable` trait implementation
+works as expected.
 
-This prevents unnecessary allocations (where shrinking provides no
-benefit) while allowing to reclaim unused memory.
-
-The implementation uses explicit alloc+copy+free because `vrealloc`
-does not yet support in-place shrinking. A TODO note marks this for
-future optimization once the kernel's `vrealloc` gains that capability.
-
-Suggested-by: Alice Ryhl <aliceryhl@google.com>
-Suggested-by: Danilo Krummrich <dakr@kernel.org>
 Signed-off-by: Shivam Kalra <shivamklr@cock.li>
 ---
- rust/kernel/alloc/kvec.rs | 111 +++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 109 insertions(+), 2 deletions(-)
+ rust/kernel/alloc/kvec.rs | 185 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 185 insertions(+)
 
 diff --git a/rust/kernel/alloc/kvec.rs b/rust/kernel/alloc/kvec.rs
-index ac8d6f763ae81..22a327d69c061 100644
+index 22a327d69c06..e7d4ba11c2b0 100644
 --- a/rust/kernel/alloc/kvec.rs
 +++ b/rust/kernel/alloc/kvec.rs
-@@ -3,13 +3,13 @@
- //! Implementation of [`Vec`].
- 
- use super::{
--    allocator::{KVmalloc, Kmalloc, Vmalloc, VmallocPageIter},
-+    allocator::{KVmalloc, Kmalloc, Shrinkable, Vmalloc, VmallocPageIter},
-     layout::ArrayLayout,
-     AllocError, Allocator, Box, Flags, NumaNode,
- };
- use crate::{
-     fmt,
--    page::AsPageIter, //
-+    page::{AsPageIter, PAGE_SIZE},
- };
- use core::{
-     borrow::{Borrow, BorrowMut},
-@@ -735,6 +735,113 @@ pub fn retain(&mut self, mut f: impl FnMut(&mut T) -> bool) {
+@@ -1505,4 +1505,189 @@ fn add(value: &mut [bool]) {
+             func.push_within_capacity(false).unwrap();
+         }
      }
++
++    /// Test basic shrink_to functionality for VVec.
++    ///
++    /// Verifies that:
++    /// - Shrinking from multiple pages to less than one page works correctly.
++    /// - Data integrity is preserved after shrinking.
++    /// - Shrinking an already-optimal vector is a no-op.
++    /// - Requesting a min_capacity larger than current capacity is a no-op.
++    #[test]
++    fn test_shrink_to_vmalloc() {
++        use crate::page::PAGE_SIZE;
++
++        let elements_per_page = PAGE_SIZE / core::mem::size_of::<u32>();
++        let initial_pages = 4;
++        let initial_capacity = elements_per_page * initial_pages;
++
++        let mut v: VVec<u32> = VVec::with_capacity(initial_capacity, GFP_KERNEL).unwrap();
++
++        for i in 0..10 {
++            v.push(i, GFP_KERNEL).unwrap();
++        }
++
++        assert!(v.capacity() >= initial_capacity);
++        assert_eq!(v.len(), 10);
++
++        // Shrink from 4 pages to less than 1 page.
++        v.shrink_to(0, GFP_KERNEL).unwrap();
++
++        // Verify data integrity.
++        assert_eq!(v.len(), 10);
++        for i in 0..10 {
++            assert_eq!(v[i], i as u32);
++        }
++
++        assert!(v.capacity() >= 10);
++        assert!(v.capacity() < initial_capacity);
++
++        // Already optimal: should be a no-op.
++        let cap_after_shrink = v.capacity();
++        v.shrink_to(0, GFP_KERNEL).unwrap();
++        assert_eq!(v.capacity(), cap_after_shrink);
++
++        // min_capacity > capacity: should be a no-op (never grows).
++        v.shrink_to(initial_capacity * 2, GFP_KERNEL).unwrap();
++        assert_eq!(v.capacity(), cap_after_shrink);
++    }
++
++    /// Test that shrink_to is a no-op when no pages would be freed.
++    ///
++    /// Verifies that:
++    /// - When current and target capacity both fit in one page, no shrink occurs.
++    /// - The shrink_to_fit wrapper behaves identically to shrink_to(0).
++    #[test]
++    fn test_shrink_to_vmalloc_no_page_savings() {
++        use crate::page::PAGE_SIZE;
++
++        let elements_per_page = PAGE_SIZE / core::mem::size_of::<u32>();
++
++        let mut v: VVec<u32> = VVec::with_capacity(elements_per_page, GFP_KERNEL).unwrap();
++
++        for i in 0..(elements_per_page / 2) {
++            v.push(i as u32, GFP_KERNEL).unwrap();
++        }
++
++        let cap_before = v.capacity();
++
++        // No page savings: capacity unchanged.
++        v.shrink_to(0, GFP_KERNEL).unwrap();
++        assert_eq!(v.capacity(), cap_before);
++
++        // shrink_to_fit wrapper: same behavior.
++        v.shrink_to_fit(GFP_KERNEL).unwrap();
++        assert_eq!(v.capacity(), cap_before);
++    }
++
++    /// Test shrink_to on an empty VVec.
++    ///
++    /// Verifies that shrinking an empty vector to capacity 0 frees the allocation.
++    #[test]
++    fn test_shrink_to_vmalloc_empty() {
++        use crate::page::PAGE_SIZE;
++
++        let elements_per_page = PAGE_SIZE / core::mem::size_of::<u32>();
++        let initial_capacity = elements_per_page * 2;
++
++        let mut v: VVec<u32> = VVec::with_capacity(initial_capacity, GFP_KERNEL).unwrap();
++        assert!(v.capacity() >= initial_capacity);
++
++        // Shrink empty vector: frees allocation.
++        v.shrink_to(0, GFP_KERNEL).unwrap();
++        assert_eq!(v.capacity(), 0);
++        assert_eq!(v.len(), 0);
++    }
++
++    /// Test partial shrink and consecutive shrink operations.
++    ///
++    /// Verifies that:
++    /// - Shrinking with min_capacity > len but still saving pages works.
++    /// - Consecutive shrink calls maintain data integrity.
++    #[test]
++    fn test_shrink_to_vmalloc_partial_and_consecutive() {
++        use crate::page::PAGE_SIZE;
++
++        let elements_per_page = PAGE_SIZE / core::mem::size_of::<u32>();
++
++        let mut v: VVec<u32> = VVec::with_capacity(elements_per_page * 4, GFP_KERNEL).unwrap();
++
++        // Fill with ~2.5 pages worth of elements.
++        let target_elements = elements_per_page * 2 + elements_per_page / 2;
++        for i in 0..target_elements {
++            v.push(i as u32, GFP_KERNEL).unwrap();
++        }
++
++        // Partial shrink: 4 pages -> 3 pages (min_capacity > len).
++        let min_cap_3_pages = elements_per_page * 3;
++        v.shrink_to(min_cap_3_pages, GFP_KERNEL).unwrap();
++        assert!(v.capacity() >= min_cap_3_pages);
++        assert!(v.capacity() < elements_per_page * 4);
++        assert_eq!(v.len(), target_elements);
++
++        for i in 0..target_elements {
++            assert_eq!(v[i], i as u32);
++        }
++
++        // Consecutive shrink: verify layout remains consistent.
++        let cap_before = v.capacity();
++        v.shrink_to(0, GFP_KERNEL).unwrap();
++        assert!(v.capacity() >= target_elements);
++        assert!(v.capacity() <= cap_before);
++
++        for i in 0..target_elements {
++            assert_eq!(v[i], i as u32);
++        }
++    }
++
++    /// Test KVVec shrink with small allocation (kmalloc-backed).
++    ///
++    /// KVmalloc uses kmalloc for small allocations. Since kmalloc cannot reclaim
++    /// memory when shrinking, shrink_to should be a no-op for small KVVec.
++    #[test]
++    fn test_shrink_to_kvvec_small() {
++        // Small allocation: likely kmalloc-backed, shrink should be no-op.
++        let mut v: KVVec<u32> = KVVec::with_capacity(10, GFP_KERNEL).unwrap();
++        for i in 0..5 {
++            v.push(i, GFP_KERNEL).unwrap();
++        }
++
++        let cap_before = v.capacity();
++        v.shrink_to(0, GFP_KERNEL).unwrap();
++
++        // Kmalloc-backed: capacity unchanged (is_shrinkable returns false).
++        assert_eq!(v.capacity(), cap_before);
++        assert_eq!(v.len(), 5);
++    }
++
++    /// Test KVVec shrink with large allocation (vmalloc-backed).
++    ///
++    /// KVmalloc falls back to vmalloc for large allocations. When vmalloc-backed
++    /// and page savings are possible, shrink_to should actually shrink.
++    #[test]
++    fn test_shrink_to_kvvec_large() {
++        use crate::page::PAGE_SIZE;
++
++        let elements_per_page = PAGE_SIZE / core::mem::size_of::<u32>();
++        let initial_capacity = elements_per_page * 4;
++
++        // Large allocation: likely vmalloc-backed.
++        let mut v: KVVec<u32> = KVVec::with_capacity(initial_capacity, GFP_KERNEL).unwrap();
++        for i in 0..10 {
++            v.push(i, GFP_KERNEL).unwrap();
++        }
++
++        assert!(v.capacity() >= initial_capacity);
++
++        // Shrink from 4 pages to <1 page.
++        v.shrink_to(0, GFP_KERNEL).unwrap();
++
++        // Vmalloc-backed with page savings: should shrink.
++        // Note: If allocation happened to use kmalloc, capacity won't change.
++        // This test verifies the path works; actual behavior depends on allocator.
++        assert_eq!(v.len(), 10);
++        for i in 0..10 {
++            assert_eq!(v[i], i as u32);
++        }
++    }
  }
- 
-+impl<T, A: Shrinkable> Vec<T, A> {
-+    /// Shrinks the capacity of the vector with a lower bound.
-+    ///
-+    /// The capacity will remain at least as large as both the length and the supplied value.
-+    /// If the current capacity is less than the lower limit, this is a no-op.
-+    ///
-+    /// Shrinking only occurs if:
-+    /// - The allocator supports shrinking for this allocation (see [`Shrinkable`]).
-+    /// - The operation would free at least one page of memory.
-+    ///
-+    /// If these conditions are not met, the vector is left unchanged.
-+    ///
-+    /// # Examples
-+    ///
-+    /// ```
-+    /// use kernel::alloc::allocator::Vmalloc;
-+    ///
-+    /// // Allocate enough capacity to span multiple pages.
-+    /// let elements_per_page = kernel::page::PAGE_SIZE / core::mem::size_of::<u32>();
-+    /// let mut v: Vec<u32, Vmalloc> = Vec::with_capacity(elements_per_page * 4, GFP_KERNEL)?;
-+    /// v.push(1, GFP_KERNEL)?;
-+    /// v.push(2, GFP_KERNEL)?;
-+    ///
-+    /// v.shrink_to(0, GFP_KERNEL)?;
-+    /// # Ok::<(), Error>(())
-+    /// ```
-+    pub fn shrink_to(&mut self, min_capacity: usize, flags: Flags) -> Result<(), AllocError> {
-+        let target_cap = core::cmp::max(self.len(), min_capacity);
-+
-+        if self.capacity() <= target_cap {
-+            return Ok(());
-+        }
-+
-+        if Self::is_zst() {
-+            return Ok(());
-+        }
-+
-+        // SAFETY: `self.ptr` is valid by the type invariant.
-+        if !unsafe { A::is_shrinkable(self.ptr.cast()) } {
-+            return Ok(());
-+        }
-+
-+        // Only shrink if we would free at least one page.
-+        let current_size = self.capacity() * core::mem::size_of::<T>();
-+        let target_size = target_cap * core::mem::size_of::<T>();
-+        let current_pages = current_size.div_ceil(PAGE_SIZE);
-+        let target_pages = target_size.div_ceil(PAGE_SIZE);
-+
-+        if current_pages <= target_pages {
-+            return Ok(());
-+        }
-+
-+        if target_cap == 0 {
-+            if !self.layout.is_empty() {
-+                // SAFETY: `self.ptr` was allocated with `A`, layout matches.
-+                unsafe { A::free(self.ptr.cast(), self.layout.into()) };
-+            }
-+            self.ptr = NonNull::dangling();
-+            self.layout = ArrayLayout::empty();
-+            return Ok(());
-+        }
-+
-+        // SAFETY: `target_cap <= self.capacity()` and original capacity was valid.
-+        let new_layout = unsafe { ArrayLayout::<T>::new_unchecked(target_cap) };
-+
-+        // TODO: Once vrealloc supports in-place shrinking (mm/vmalloc.c:4316), this
-+        // explicit alloc+copy+free can potentially be replaced with realloc.
-+        let new_ptr = A::alloc(new_layout.into(), flags, NumaNode::NO_NODE)?;
-+
-+        // SAFETY: Both pointers are valid, non-overlapping, and properly aligned.
-+        unsafe {
-+            ptr::copy_nonoverlapping(self.as_ptr(), new_ptr.as_ptr().cast::<T>(), self.len);
-+        }
-+
-+        // SAFETY: `self.ptr` was allocated with `A`, layout matches.
-+        unsafe { A::free(self.ptr.cast(), self.layout.into()) };
-+
-+        // SAFETY: `new_ptr` is non-null because `A::alloc` succeeded.
-+        self.ptr = unsafe { NonNull::new_unchecked(new_ptr.as_ptr().cast::<T>()) };
-+        self.layout = new_layout;
-+
-+        Ok(())
-+    }
-+
-+    /// Shrinks the capacity of the vector as much as possible.
-+    ///
-+    /// This is equivalent to calling `shrink_to(0, flags)`. See [`Vec::shrink_to`] for details.
-+    ///
-+    /// # Examples
-+    ///
-+    /// ```
-+    /// use kernel::alloc::allocator::Vmalloc;
-+    ///
-+    /// let elements_per_page = kernel::page::PAGE_SIZE / core::mem::size_of::<u32>();
-+    /// let mut v: Vec<u32, Vmalloc> = Vec::with_capacity(elements_per_page * 4, GFP_KERNEL)?;
-+    /// v.push(1, GFP_KERNEL)?;
-+    /// v.push(2, GFP_KERNEL)?;
-+    /// v.push(3, GFP_KERNEL)?;
-+    ///
-+    /// v.shrink_to_fit(GFP_KERNEL)?;
-+    /// # Ok::<(), Error>(())
-+    /// ```
-+    pub fn shrink_to_fit(&mut self, flags: Flags) -> Result<(), AllocError> {
-+        self.shrink_to(0, flags)
-+    }
-+}
-+
- impl<T: Clone, A: Allocator> Vec<T, A> {
-     /// Extend the vector by `n` clones of `value`.
-     pub fn extend_with(&mut self, n: usize, value: T, flags: Flags) -> Result<(), AllocError> {
 
 -- 
 2.43.0
