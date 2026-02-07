@@ -1,14 +1,12 @@
 From: Shivam Kalra <shivamklr@cock.li>
-Subject: [PATCH v3 0/4] rust: alloc: add Vec shrinking methods
-Date: Sat, 07 Feb 2026 17:02:46 +0530
-Message-Id: <20260207-binder-shrink-vec-v3-v3-0-8ff388563427@cock.li>
+Date: Sat, 07 Feb 2026 17:02:47 +0530
+Subject: [PATCH v3 1/4] rust: alloc: introduce Shrinkable trait
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAN8ih2kC/x3MMQqAMAxA0auUzAZCqxa8ijhYGzUIVVIognh3i
- +Mb/n8gswpnGMwDykWynKnCNQaWfU4bo8RqsGR7suQxSIqsmHeVdGDhBYvDrqW2i94HYg81vZR
- Xuf/tOL3vB0wNex9mAAAA
-X-Change-ID: 20260207-binder-shrink-vec-v3-54045d77b0e7
+Message-Id: <20260207-binder-shrink-vec-v3-v3-1-8ff388563427@cock.li>
+References: <20260207-binder-shrink-vec-v3-v3-0-8ff388563427@cock.li>
+In-Reply-To: <20260207-binder-shrink-vec-v3-v3-0-8ff388563427@cock.li>
 To: Danilo Krummrich <dakr@kernel.org>, 
  Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, 
  Vlastimil Babka <vbabka@suse.cz>, 
@@ -25,84 +23,94 @@ To: Danilo Krummrich <dakr@kernel.org>,
 Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Shivam Kalra <shivamklr@cock.li>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770464219; l=3163;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770464219; l=3225;
  i=shivamklr@cock.li; s=20260206; h=from:subject:message-id;
- bh=eH8P3luXJow3f4Sscg7g8kVmMaP2GpouRTc5nqbiE74=;
- b=Pn2AmBL/pIMTm18HamnRx0tEmXtA9rx2/AgFaKiCYzM2GrskmEjFtixxEOLAN2IeIBEcw0MIv
- TvoW9tj0pAhDC8eGX96FRlVu4TgMmnN/5Ea+uf7hjDQYC3uT01rsXbw
+ bh=jpKzN865IppJi7C0CyvO1g4N4Vl1EkzCBuFHxaHO0OE=;
+ b=zhIqUwyAdly7/oTkm+yQc7lOMHTvmT3Eo+4h5sTrfCeCRighkyX4B4LuahXY3vuFS4AiuoOh5
+ KZTu2KbaoCsA/CSSM/LXWseQ3QK9QxZ/Y+AZtY+8JRmdF6nL8f4hLnk
 X-Developer-Key: i=shivamklr@cock.li; a=ed25519;
  pk=vMC4wm7HuB8IdkiHldCdtuViW0NTnShcRaMF50MWRFQ=
 X-Endpoint-Received: by B4 Relay for shivamklr@cock.li/20260206 with auth_id=628
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds shrink_to() and shrink_to_fit() methods to Vec<T, A>
-(and by extension KVVec, KVec, VVec) to allow explicit capacity
-reduction for memory reclamation.
+Introduce the `Shrinkable` trait to identify allocators that can
+meaningfully reclaim memory when an allocation is shrunk.
 
-Problem:
-When elements are removed from a KVVec, the allocated capacity is not
-reduced. The underlying C allocators (krealloc/kvrealloc) don't shrink
-memory in-place. This can cause significant memory waste in scenarios
-with variable workloads.
+In the kernel, the slab allocator (`Kmalloc`) uses fixed-size buckets,
+meaning a "shrink" operation often results in the same bucket size being
+used, yielding no actual memory savings. However, page-based allocators
+like `Vmalloc` can reclaim physical pages when the size reduction
+crosses a page boundary.
 
-Solution:
-- Patch 1: Introduces the `Shrinkable` marker trait to identify allocators
-  that can meaningfully reclaim memory when shrinking (e.g., Vmalloc but
-  not Kmalloc, since Kmalloc uses fixed-size buckets).
-- Patch 2: Implements shrink_to(min_capacity, flags) and
-  shrink_to_fit(flags)  methods. Shrinking only occurs when
-  the allocator is shrinkable AND the operation would free at least
-  one page of memory.
-- Patch 3: Adds KUnit tests for the new methods across different allocator
-  backends (Vmalloc and KVmalloc).
-- Patch 4: Uses shrink_to() in the Rust binder driver to reclaim memory
-  when processes are deregistered. Shrinking is triggered only when the
-  vector capacity exceeds 128 elements and less than half is used.
-
-Testing:
-- KUnit tests pass (rust_kvec test suite).
-- Kernel boots successfully in QEMU with CONFIG_ANDROID_BINDER_IPC_RUST=y.
-
-Changes since v2:
-- Introduced new `Shrinkable` marker trait to distinguish allocators that
-  benefit from shrinking (Vmalloc) from those that don't (Kmalloc).
-- Shrinking now only occurs for vmalloc-backed buffers when at least one
-  page can be freed, avoiding unnecessary work for kmalloc buffers.
-  (Suggested by Danilo Krummrich)
-- Split into 4 patches: Shrinkable trait introduction is now a
-  separate patch to improve reviewability.
-- Uses explicit alloc+copy+free since vrealloc doesn't yet support
-  in-place shrinking; TODO added for future optimization when vrealloc
-  gains that capability. (Discussed with Danilo Krummrich)
-- Fixed minor KVVec/KVec terminology (binder uses KVVec not KVec).
-- Expanded KUnit tests to cover different allocator backends and
-  page-boundary shrinking behavior.
-
-Changes since v1:
-- Resend with correct threading (no code changes).
-- Removed base-commit.
-- Added explicit lore link to dependency in cover letter.
-
-[1] https://lore.kernel.org/lkml/20260130205424.261700-1-shivamklr@cock.li/
-[2] https://lore.kernel.org/lkml/20260131154016.270385-1-shivamklr@cock.li/
+This marker trait allows generic containers (like `KVec` or `KVVec`) to
+determine at compile-time or run-time (via `is_shrinkable`) if a
+shrinking operation is worth performing.
 
 Signed-off-by: Shivam Kalra <shivamklr@cock.li>
 ---
-Shivam Kalra (4):
-      rust: alloc: introduce Shrinkable trait
-      rust: kvec: implement shrink_to and shrink_to_fit for Vec
-      rust: alloc: add KUnit tests for Vec shrink operations
-      rust: binder: shrink all_procs when deregistering processes
+ rust/kernel/alloc/allocator.rs | 48 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 48 insertions(+)
 
- drivers/android/binder/context.rs |  10 ++
- rust/kernel/alloc/allocator.rs    |  48 +++++++
- rust/kernel/alloc/kvec.rs         | 296 +++++++++++++++++++++++++++++++++++++-
- 3 files changed, 352 insertions(+), 2 deletions(-)
----
-base-commit: 3c4ae63073d84abee5d81ce46d86a94e9dae9c89
-change-id: 20260207-binder-shrink-vec-v3-54045d77b0e7
+diff --git a/rust/kernel/alloc/allocator.rs b/rust/kernel/alloc/allocator.rs
+index 63bfb91b36712..615799b680b55 100644
+--- a/rust/kernel/alloc/allocator.rs
++++ b/rust/kernel/alloc/allocator.rs
+@@ -251,6 +251,54 @@ unsafe fn realloc(
+     }
+ }
+ 
++/// Marker trait for allocators that support meaningful shrinking.
++///
++/// Shrinking is only meaningful for allocators that can actually reclaim memory. The slab
++/// allocator (`Kmalloc`) uses fixed-size buckets and cannot reclaim memory when shrinking,
++/// so it does not implement this trait.
++///
++/// For `Vmalloc`, shrinking always makes sense since it uses page-granularity allocations.
++/// For `KVmalloc`, shrinking only makes sense if the allocation is backed by vmalloc (checked
++/// at runtime via `is_vmalloc_addr`).
++///
++/// # Note
++///
++/// Currently, shrinking vmalloc allocations requires explicit alloc+copy+free because
++/// `vrealloc` does not support in-place shrinking (see TODO at `mm/vmalloc.c:4316`).
++/// Once `vrealloc` gains this capability, the shrink implementation can be simplified.
++///
++/// # Safety
++///
++/// Implementors must ensure that [`Shrinkable::is_shrinkable`] returns `true` only when
++/// shrinking the allocation would actually reclaim memory.
++pub unsafe trait Shrinkable: Allocator {
++    /// Returns whether shrinking an allocation at the given pointer would reclaim memory.
++    ///
++    /// # Safety
++    ///
++    /// `ptr` must be a valid pointer to an allocation made by this allocator.
++    unsafe fn is_shrinkable(ptr: NonNull<u8>) -> bool;
++}
++
++// SAFETY: `Vmalloc` always uses vmalloc, which allocates at page granularity. Shrinking a
++// vmalloc allocation by at least one page will reclaim that memory.
++unsafe impl Shrinkable for Vmalloc {
++    #[inline]
++    unsafe fn is_shrinkable(_ptr: NonNull<u8>) -> bool {
++        true
++    }
++}
++
++// SAFETY: `KVmalloc` may use either kmalloc or vmalloc. We check at runtime using
++// `is_vmalloc_addr` to determine if shrinking would be meaningful.
++unsafe impl Shrinkable for KVmalloc {
++    #[inline]
++    unsafe fn is_shrinkable(ptr: NonNull<u8>) -> bool {
++        // SAFETY: `ptr` is a valid pointer by the safety requirements of this function.
++        unsafe { bindings::is_vmalloc_addr(ptr.as_ptr().cast()) }
++    }
++}
++
+ #[macros::kunit_tests(rust_allocator)]
+ mod tests {
+     use super::*;
 
-Best regards,
 -- 
-Shivam Kalra <shivamklr@cock.li>
+2.43.0
 
