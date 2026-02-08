@@ -1,98 +1,116 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sat, 07 Feb 2026 20:18:17 -0600
-Subject: [PATCH] arm64: dts: qcom: sm8550: Add UART15
+From: Baoyuan Geng <geng.baoyuan@gmail.com>
+Date: Mon, 09 Feb 2026 00:16:05 +0800
+Subject: [PATCH] thermal: qcom-spmi-temp-alarm: fix out-of-bounds when
+ copying temp map
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260207-sm8550-uart15-v1-1-d8ccf746d102@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDIwNz3eJcC1NTA93SxKISQ1NdyyTzpBQTi1RzE/MUJaCegqLUtMwKsHn
- RsbW1AIDYp4hfAAAA
-X-Change-ID: 20260207-sm8550-uart15-9b7bd48e747d
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Xilin Wu <wuxilin123@gmail.com>, 
- Molly Sophia <mollysophia379@gmail.com>, 
- Aaron Kling <webgeek1234@gmail.com>, Dmitry Baryshkov <lumag@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770517098; l=2180;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=+xWn2WhENfNTFixOvMZt/E1OqwTYGEWhm9jN/K555L8=;
- b=zsCsd4WBYCQ3ad1VdrolbnoKVsVFbum74EIONdI8W+uuNw2jTQRJAPTixw18xVQ+TKSvD2Lhd
- fEhjj/F48a5CvoECb62xOgC4H9MVzRkaO8R7j3swTzrk+cPP15Fppkl
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+Message-Id: <20260209-fix-qcom-spmi-temp-alarm-oob-v1-1-3f1c67090e77@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqDMBBA0avIrB2YziJWryIu0nRSB4xJE5FC8
+ O6GLh98foUiWaXA1FXIcmrRuDc8+g7cavePoL6bgYkNMT3R6w+/LgYsKSgeEhLazeaAMb7QjDQ
+ Y8o4tG2iLlKX1//28XNcNKYx98W4AAAA=
+X-Change-ID: 20260208-fix-qcom-spmi-temp-alarm-oob-690760fc2a26
+To: Amit Kucheria <amitk@kernel.org>, 
+ Thara Gopinath <thara.gopinath@gmail.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>
+Cc: linux-pm@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Baoyuan Geng <geng.baoyuan@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770567397; l=3171;
+ i=geng.baoyuan@gmail.com; s=20260208; h=from:subject:message-id;
+ bh=IPx2aYZrJ7XVu7bN4arD9CKDHc8AbrpqAhkC0NxaMcs=;
+ b=GL7ylGAiRQkvObp1NvpwrrYJTbgoT0im3QK/Sp1/y4+MwOxQeMz9RRBRxXcRNZZDulWPXdY15
+ Dtk+3rCS2hyCOUAz70sEj9wfWF+B8cj6DA8mjjwyZzNA4MbSTFHPQcz
+X-Developer-Key: i=geng.baoyuan@gmail.com; a=ed25519;
+ pk=K8rZZQg2HZ88njeBrQUyqUdFffk6Lle8CFZzfh55wfU=
+X-Endpoint-Received: by B4 Relay for geng.baoyuan@gmail.com/20260208 with auth_id=630
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Xilin Wu <wuxilin123@gmail.com>
+The way to index the pointer of array missed a dereference, fix it.
 
-Add uart15 node for UART bus present on sm8550 SoC.
+The bug is reported by KASAN[0].
 
-Signed-off-by: Molly Sophia <mollysophia379@gmail.com>
-Signed-off-by: Xilin Wu <wuxilin123@gmail.com>
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+[0]:
+==================================================================
+BUG: KASAN: global-out-of-bounds in qpnp_tm_sync_thresholds+0x11c/0x1a4 [qcom_spmi_temp_alarm]
+Read of size 24 at addr ffffbb86e7685280 by task (udev-worker)/928
+
+CPU: 6 UID: 0 PID: 928 Comm: (udev-worker) \
+    Not tainted 6.19.0-rc8-00185-g2687c848e578 #4 PREEMPT
+Hardware name: Thundercomm RUBIK Pi 3 (DT)
+Call trace:
+ show_stack+0x18/0x30 (C)
+ dump_stack_lvl+0x60/0x80
+ print_report+0x18c/0x4e0
+ kasan_report+0xac/0xf0
+ kasan_check_range+0xfc/0x1ac
+ __asan_memcpy+0x3c/0xa0
+ qpnp_tm_sync_thresholds+0x11c/0x1a4 [qcom_spmi_temp_alarm]
+ qpnp_tm_probe+0x390/0xb60 [qcom_spmi_temp_alarm]
+ platform_probe+0xc0/0x1f0
+ really_probe+0x190/0x604
+ __driver_probe_device+0x160/0x2c0
+ driver_probe_device+0x5c/0x2b8
+ __driver_attach+0x134/0x534
+ bus_for_each_dev+0xf4/0x180
+ driver_attach+0x3c/0x60
+ bus_add_driver+0x1f0/0x510
+ driver_register+0x154/0x39c
+ __platform_driver_register+0x58/0x84
+ qpnp_tm_driver_init+0x2c/0x1000 [qcom_spmi_temp_alarm]
+ do_one_initcall+0xd4/0x354
+ do_init_module+0x30c/0x8bc
+ load_module+0x3de0/0x5764
+ init_module_from_file+0x144/0x254
+ __arm64_sys_finit_module+0x338/0x710
+ invoke_syscall.constprop.0+0x64/0x220
+ do_el0_svc+0x144/0x200
+ el0_svc+0x38/0xb8
+ el0t_64_sync_handler+0xa0/0xe4
+ el0t_64_sync+0x198/0x19c
+
+The buggy address belongs to the variable:
+ temp_map_gen2_v1+0x60/0xffffffffffff9de0 [qcom_spmi_temp_alarm]
+==================================================================
+
+Fixes: 703f13285a6c ("thermal/drivers/qcom-spmi-temp-alarm: Add temp alarm data struct based on HW subtype")
+Fixes: 1f835c6a4c84 ("thermal/drivers/qcom-spmi-temp-alarm: Prepare to support additional Temp Alarm subtypes")
+
+Signed-off-by: Baoyuan Geng <geng.baoyuan@gmail.com>
 ---
-This patch was originally submitted as part of a series to support the
-AYN Odin 2 [0]. That series stalled, so submitting separately.
+ drivers/thermal/qcom/qcom-spmi-temp-alarm.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-[0] https://lore.kernel.org/all/20240424-ayn-odin2-initial-v1-0-e0aa05c991fd@gmail.com/
----
- arch/arm64/boot/dts/qcom/sm8550.dtsi | 24 ++++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
-
-diff --git a/arch/arm64/boot/dts/qcom/sm8550.dtsi b/arch/arm64/boot/dts/qcom/sm8550.dtsi
-index e3f93f4f412ded9583a6bc9215185a0daf5f1b57..ec172c22d928c4d73313c7b4980807760995ecaa 100644
---- a/arch/arm64/boot/dts/qcom/sm8550.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8550.dtsi
-@@ -1251,6 +1251,22 @@ &config_noc SLAVE_QUP_2 QCOM_ICC_TAG_ACTIVE_ONLY>,
- 				#size-cells = <0>;
- 				status = "disabled";
- 			};
-+
-+			uart15: serial@89c000 {
-+				compatible = "qcom,geni-uart";
-+				reg = <0 0x89c000 0 0x4000>;
-+				clock-names = "se";
-+				clocks = <&gcc GCC_QUPV3_WRAP2_S7_CLK>;
-+				pinctrl-names = "default";
-+				pinctrl-0 = <&qup_uart15_default>;
-+				interrupts = <GIC_SPI 462 IRQ_TYPE_LEVEL_HIGH 0>;
-+				interconnects = <&clk_virt MASTER_QUP_CORE_2 0
-+						 &clk_virt SLAVE_QUP_CORE_2 0>,
-+						<&gem_noc MASTER_APPSS_PROC 0
-+						 &config_noc SLAVE_QUP_2 0>;
-+				interconnect-names = "qup-core", "qup-config";
-+				status = "disabled";
-+			};
- 		};
+diff --git a/drivers/thermal/qcom/qcom-spmi-temp-alarm.c b/drivers/thermal/qcom/qcom-spmi-temp-alarm.c
+index f39ca0ddd17b..faaa56b399e8 100644
+--- a/drivers/thermal/qcom/qcom-spmi-temp-alarm.c
++++ b/drivers/thermal/qcom/qcom-spmi-temp-alarm.c
+@@ -345,7 +345,7 @@ static int qpnp_tm_update_critical_trip_temp(struct qpnp_tm_chip *chip,
+ 	}
  
- 		i2c_master_hub_0: geniqup@9c0000 {
-@@ -5095,6 +5111,14 @@ qup_uart14_cts_rts: qup-uart14-cts-rts-state {
- 				bias-pull-down;
- 			};
+ skip:
+-	memcpy(chip->temp_thresh_map, chip->data->temp_map[threshold],
++	memcpy(chip->temp_thresh_map, (*chip->data->temp_map)[threshold],
+ 		sizeof(chip->temp_thresh_map));
+ 	reg |= threshold;
+ 	if (disable_stage2_shutdown && !chip->require_stage2_shutdown)
+@@ -535,7 +535,7 @@ static int qpnp_tm_sync_thresholds(struct qpnp_tm_chip *chip)
+ 		return ret;
  
-+			qup_uart15_default: qup-uart15-default-state {
-+				/* TX, RX */
-+				pins = "gpio74", "gpio75";
-+				function = "qup2_se7";
-+				drive-strength = <2>;
-+				bias-pull-up;
-+			};
-+
- 			sdc2_sleep: sdc2-sleep-state {
- 				clk-pins {
- 					pins = "sdc2_clk";
+ 	threshold = reg & SHUTDOWN_CTRL1_THRESHOLD_MASK;
+-	memcpy(chip->temp_thresh_map, chip->data->temp_map[threshold],
++	memcpy(chip->temp_thresh_map, (*chip->data->temp_map)[threshold],
+ 		sizeof(chip->temp_thresh_map));
+ 
+ 	return ret;
 
 ---
-base-commit: 9845cf73f7db6094c0d8419d6adb848028f4a921
-change-id: 20260207-sm8550-uart15-9b7bd48e747d
+base-commit: 2687c848e57820651b9f69d30c4710f4219f7dbf
+change-id: 20260208-fix-qcom-spmi-temp-alarm-oob-690760fc2a26
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Baoyuan Geng <geng.baoyuan@gmail.com>
 
