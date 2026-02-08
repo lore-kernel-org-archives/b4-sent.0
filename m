@@ -1,190 +1,63 @@
-From: Yedaya Katsman <yedaya.ka@gmail.com>
-Date: Sun, 08 Feb 2026 23:24:23 +0200
-Subject: [PATCH v5] arm64: dts: qcom: sm6125-xiaomi-laurel-sprout: Add
- Focaltech FT3518 touchscreen
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Subject: [PATCH 0/4] arm64: qcom: x1-vivobook-s15: add X1P42100 variant,
+ restructure dts files
+Date: Sun, 08 Feb 2026 22:25:37 +0100
+Message-Id: <20260208-b4-vivobook-v1-0-3a9b5e153909@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260208-touchscreen-patches-v5-1-5821dff9c9a2@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NywqDMBCF4VeRrJuSTBKrXfU9She5jDVQLyRWW
- sR3b3QlIl3+B+abiUQMHiO5ZhMJOProuzaFOmXE1rp9IvUuNQEGOeNc0KF72zragNjSXg+2xkg
- NGlCQG6cqQ9JlH7Dyn1W9P1LXPg5d+K5PRr6s/72RU0Y1Z6W6VAKcK27PRvvX2XYNWbwRtoY8N
- iAZEriqSmkLbfTeEFujODZEMrjN9QVKq9DIvSE3BrBjQyZDMC6V06XLndga8zz/ADzwCLGCAQA
- A
-X-Change-ID: 20260113-touchscreen-patches-beb2526bd5fb
-To: =?utf-8?q?Kamil_Go=C5=82da?= <kamil.golda@protonmail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- Yedaya Katsman <yedaya.ka@gmail.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAFL/iGkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDQ0ML3SQT3bLMsvyk/Pxs3RQDU1MTs9S01GQLIyWgjoKi1LTMCrBp0bG
+ 1tQDABIfIXQAAAA==
+X-Change-ID: 20260118-b4-vivobook-d05546efec82
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Maud Spierings <maud_spierings@hotmail.com>, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770585866; l=4549;
- i=yedaya.ka@gmail.com; s=20260113; h=from:subject:message-id;
- bh=uLRuSW3FC71D/g2v0anek3bfb3SM5Go5/FJtCdtd5IE=;
- b=mQa7ISvungOxBQDzqmmXfERfev6zdun29Y6R+kimhVMkciPeBpHc9CH1u1ruIThgIPQBcaIzN
- nY4HS5FZByIAvMKCNVACNwhVG2xLO/Vh/7pP3JHW6VYZsNdbo2DQjgA
-X-Developer-Key: i=yedaya.ka@gmail.com; a=ed25519;
- pk=CgNmxD3tYSws5dZfpmJfc6re/bV/f47veVijddHLytk=
-X-Endpoint-Received: by B4 Relay for yedaya.ka@gmail.com/20260113 with auth_id=601
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770585945; l=1539;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=AErkvYvhoh0IZtGd3TEa/a8AWqYbTt0GVgZ4S8XP7Og=;
+ b=96tOpgcPUhlalmFO/TElWkBIoRbsxe9cel2IFIgVea7urX8+WuQbC7Q7XLDQ7jHbU9DJWbSbg
+ jg95txZmNJ1BAEQcBRiAZuiqykRuD7AVQfxccc1IwAMV0/oxtNx3Pqz
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add device tree node for the Focaltech FT3518 touchscreen on
-Xiaomi Mi A3 (laurel-sprout).
+This patchset adds the X1P42100 variant of the ASUS Vivobook S15 [1]. To avoid
+redundant code, it pulls the part that is identical to both variants into
+x1-asus-vivobook-s15.dtsi. 
 
-Enable qupv3_id_0 and i2c2 bus that the touchscreen is on.
+I have maintained the X1P42100 variant on my tree for about a year now, it has 
+been tested by quite a few users. Also added sound (not in this patchset) and 
+users operate this successfully.
 
-Downstream references:
-Link: https://github.com/MiCode/Xiaomi_Kernel_OpenSource/blob/laurel-r-oss/arch/arm64/boot/dts/qcom/trinket-pinctrl.dtsi
-Link: https://github.com/MiCode/Xiaomi_Kernel_OpenSource/blob/laurel-r-oss/arch/arm64/boot/dts/qcom/laurel_sprout-qrd.dtsi
+[1]: https://www.asus.chhdakhdkom/de/laptops/for-home/vivobook/asus-vivobook-s-15-s5507/techspec/
 
-Co-developed-by: Kamil Gołda <kamil.golda@protonmail.com>
-Signed-off-by: Kamil Gołda <kamil.golda@protonmail.com>
-Signed-off-by: Yedaya Katsman <yedaya.ka@gmail.com>
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
-Adds support for the touchscreen in the Xiaomi Mi A3 (xiaomi-laurel)
- smartphone, FocalTech FT3518
+Jens Glathe (4):
+      dt-bindings: arm: qcom: Add ASUS Vivobook X1P42100 variant
+      firmware: qcom: scm: allow QSEECOM on ASUS Vivobook X1P42100 variant
+      arm64: dts: qcom: x1-vivobook-s15: create a common dtsi for Hamoa and Purwa variants
+      arm64: dts: qcom: x1-vivobook-s15: add Hamoa- and Purwa-compatible device trees
 
-Original tree was here:
- Link: https://gitlab.postmarketos.org/SzczurekYT/linux/-/commits/laurel
----
-Changes in v5:
-- Add pin config for ts vdd
-- Reorder some properties
-- Drop applied patches
-- Link to v4: https://lore.kernel.org/r/20260120-touchscreen-patches-v4-0-30145da9d6d3@gmail.com
-
-Changes in v4:
-- Follow dts coding style for pinctrl nodes
-- Don't refrence touchscreen "release" gpio config
-- Link to v3: https://lore.kernel.org/r/20260118-touchscreen-patches-v3-0-1c6a729c5eb4@gmail.com
-
-Changes in v3:
-- Rename regulator node and reorder nodes
-- Add gpio pin configuration for pmx_ts_* in sm6125, and reference in the
-  touchscreen configuration as pinctrl-*. Doesn't have configuration for
-  the gpio 83 pin since it isn't documented downstream.
-- Link to v2: https://lore.kernel.org/r/20260114-touchscreen-patches-v2-0-4215f94c8aba@gmail.com
-
-Changes in v2:
-- Fixed name and email in signoffs
-- Link to v1: https://lore.kernel.org/r/20260113-touchscreen-patches-v1-0-a10957f32dd8@gmail.com
----
- .../boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts  | 73 ++++++++++++++++++++++
- 1 file changed, 73 insertions(+)
-
-diff --git a/arch/arm64/boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts b/arch/arm64/boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts
-index 994fb0412fcbdf5466f87a325c48b697a37b514b..97f64cb5d570e018ef666612f3839c4e6759ac7b 100644
---- a/arch/arm64/boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts
-+++ b/arch/arm64/boot/dts/qcom/sm6125-xiaomi-laurel-sprout.dts
-@@ -82,6 +82,19 @@ key-volume-up {
- 		};
- 	};
- 
-+	ts_vdd_supply: regulator-ts-vdd {
-+		compatible = "regulator-fixed";
-+		regulator-name = "ts_vdd_supply";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		startup-delay-us = <70000>;
-+
-+		enable-active-high;
-+		gpio = <&tlmm 83 GPIO_ACTIVE_HIGH>;
-+		pinctrl-0 = <&ts_vdd_en>;
-+		pinctrl-names = "default";
-+	};
-+
- 	thermal-zones {
- 		rf-pa0-thermal {
- 			thermal-sensors = <&pm6125_adc_tm 0>;
-@@ -128,6 +141,27 @@ &hsusb_phy1 {
- 	status = "okay";
- };
- 
-+&i2c2 {
-+	status = "okay";
-+
-+	touchscreen@38 {
-+		compatible = "focaltech,ft3518";
-+		reg = <0x38>;
-+		interrupts-extended = <&tlmm 88 IRQ_TYPE_EDGE_FALLING>;
-+
-+		vcc-supply = <&ts_vdd_supply>;
-+
-+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
-+		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
-+		pinctrl-names = "default","sleep";
-+
-+		reset-gpios = <&tlmm 87 GPIO_ACTIVE_LOW>;
-+
-+		touchscreen-size-x = <720>;
-+		touchscreen-size-y = <1560>;
-+	};
-+};
-+
- &pm6125_adc {
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&camera_flash_therm &emmc_ufs_therm>;
-@@ -220,6 +254,10 @@ &pon_resin {
- 	status = "okay";
- };
- 
-+&qupv3_id_0 {
-+	status = "okay";
-+};
-+
- &rpm_requests {
- 	regulators-0 {
- 		compatible = "qcom,rpm-pm6125-regulators";
-@@ -387,6 +425,41 @@ &sdhc_2 {
- 
- &tlmm {
- 	gpio-reserved-ranges = <22 2>, <28 6>;
-+
-+	ts_vdd_en: ts-vdd-default-state {
-+		pins = "gpio83";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	ts_reset_active: pmx-ts-reset-active-state {
-+		pins = "gpio87";
-+		function = "gpio";
-+		drive-strength = <8>;
-+		bias-pull-up;
-+	};
-+
-+	ts_reset_suspend: pmx-ts-reset-suspend-state {
-+		pins = "gpio87";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-pull-down;
-+	};
-+
-+	ts_int_active: pmx-ts-int-active-state {
-+		pins = "gpio88";
-+		function = "gpio";
-+		drive-strength = <8>;
-+		bias-pull-up;
-+	};
-+
-+	ts_int_suspend: pmx-ts-int-suspend-state {
-+		pins = "gpio88";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-pull-down;
-+	};
- };
- 
- &ufs_mem_hc {
-
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    2 +
+ arch/arm64/boot/dts/qcom/x1-asus-vivobook-s15.dtsi | 1357 ++++++++++++++++++++
+ .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 1347 +------------------
+ .../boot/dts/qcom/x1p42100-asus-vivobook-s15.dts   |   47 +
+ drivers/firmware/qcom/qcom_scm.c                   |    1 +
+ 6 files changed, 1409 insertions(+), 1346 deletions(-)
 ---
 base-commit: 9845cf73f7db6094c0d8419d6adb848028f4a921
-change-id: 20260113-touchscreen-patches-beb2526bd5fb
+change-id: 20260118-b4-vivobook-d05546efec82
 
 Best regards,
 -- 
-Yedaya Katsman <yedaya.ka@gmail.com>
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
