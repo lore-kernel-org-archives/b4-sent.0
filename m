@@ -1,11 +1,11 @@
 From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Sun, 08 Feb 2026 22:25:38 +0100
-Subject: [PATCH 1/4] dt-bindings: arm: qcom: Add ASUS Vivobook X1P42100
- variant
+Date: Sun, 08 Feb 2026 22:25:39 +0100
+Subject: [PATCH 2/4] firmware: qcom: scm: allow QSEECOM on ASUS Vivobook
+ X1P42100 variant
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260208-b4-vivobook-v1-1-3a9b5e153909@oldschoolsolutions.biz>
+Message-Id: <20260208-b4-vivobook-v1-2-3a9b5e153909@oldschoolsolutions.biz>
 References: <20260208-b4-vivobook-v1-0-3a9b5e153909@oldschoolsolutions.biz>
 In-Reply-To: <20260208-b4-vivobook-v1-0-3a9b5e153909@oldschoolsolutions.biz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -16,40 +16,35 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, Maud Spierings <maud_spierings@hotmail.com>, 
  Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770585945; l=1004;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770585945; l=870;
  i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=IBPKARxFia+6xnXTVvSKWy8Y0My2kh4kelOmQulvrgA=;
- b=O4QTAkI8VT1e9qSgk6yo+NuHGUmWb/iVwqJ1RTG1W4V1X3U4mHJJwFT7kvByhkCsTirTvtmeW
- hTlRAcNHkReDKl+Y/bDRSV/OA9nHXDMhbD0QhYNPT+BMnlfX2G0mw0C
+ bh=Z+hY6KG+Sx+z/m5Jxyf1HPdCwq1ydRrs6GXjeMG5dTw=;
+ b=184IJkcbRr7f4UUuL6BFSg4EHnggzXSG1u75RToG7ecuymij5DaDnfYUwTEA5lJ6B0QTBR8vz
+ kRyvd3b8Fp3DSeGlawk7i8EVcOFb1oBvePJDrZCgd+Ynmk8fd+CPIjV
 X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
  pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
 X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The ASUS Vivobook S15 (S5507) [1] is available with Hamoa and Purwa SoC.
-Add the Purwa-based variant:
-
-asus,vivobook-s15-x1p4 compatible to Purwa SoC
-
-[1]: https://www.asus.com/de/laptops/for-home/vivobook/asus-vivobook-s-15-s5507/techspec/
+Enables access to EFI variables on this machine.
 
 Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- Documentation/devicetree/bindings/arm/qcom.yaml | 1 +
+ drivers/firmware/qcom/qcom_scm.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
-index d48c625d3fc42f1a90f76a020753ae4daec8c5ea..5eaeda2c85bdc189d650bba82f173810854f5d1e 100644
---- a/Documentation/devicetree/bindings/arm/qcom.yaml
-+++ b/Documentation/devicetree/bindings/arm/qcom.yaml
-@@ -1124,6 +1124,7 @@ properties:
- 
-       - items:
-           - enum:
-+              - asus,vivobook-s15-x1p4
-               - asus,zenbook-a14-ux3407qa-lcd
-               - asus,zenbook-a14-ux3407qa-oled
-           - const: asus,zenbook-a14-ux3407qa
+diff --git a/drivers/firmware/qcom/qcom_scm.c b/drivers/firmware/qcom/qcom_scm.c
+index 8fbc96693a55f53c508d1ddb2d7a9e62281d1544..2fe1632f06e908683ba2841d68f9d382f407a425 100644
+--- a/drivers/firmware/qcom/qcom_scm.c
++++ b/drivers/firmware/qcom/qcom_scm.c
+@@ -2290,6 +2290,7 @@ EXPORT_SYMBOL_GPL(qcom_scm_qseecom_app_send);
+  */
+ static const struct of_device_id qcom_scm_qseecom_allowlist[] __maybe_unused = {
+ 	{ .compatible = "asus,vivobook-s15" },
++	{ .compatible = "asus,vivobook-s15-x1p4" },
+ 	{ .compatible = "asus,zenbook-a14-ux3407qa" },
+ 	{ .compatible = "asus,zenbook-a14-ux3407ra" },
+ 	{ .compatible = "dell,inspiron-14-plus-7441" },
 
 -- 
 2.51.0
