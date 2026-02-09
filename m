@@ -1,10 +1,11 @@
 From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Mon, 09 Feb 2026 13:48:48 +0800
-Subject: [PATCH 02/13] dt-bindings: clock: Add Amlogic A9 PLL controllers
+Date: Mon, 09 Feb 2026 13:48:49 +0800
+Subject: [PATCH 03/13] dt-bindings: clock: Add Amlogic A9 misc clock
+ control units
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260209-a9_clock_driver-v1-2-a9198dc03d2a@amlogic.com>
+Message-Id: <20260209-a9_clock_driver-v1-3-a9198dc03d2a@amlogic.com>
 References: <20260209-a9_clock_driver-v1-0-a9198dc03d2a@amlogic.com>
 In-Reply-To: <20260209-a9_clock_driver-v1-0-a9198dc03d2a@amlogic.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -16,86 +17,110 @@ Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Chuan Liu <chuan.liu@amlogic.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770616142; l=5717;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770616142; l=20139;
  i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=LyZ6UBT9Q6k7Fn7bjq6bnz37qzqmph54nv7OuWBpCck=;
- b=E1k8Q3OfqeBhGrzZfdznUd4MgKjLxFwgQJabHnnj2VIppvftGQ3dgu/guCoIoj6/G7cr+J5Dh
- 7+ocHR9fbibAqs4W++QyVU3wQHBA/zfIMByCSAL2MooWJS8sllZozlK
+ bh=7QE3RPkma3R9c3HdHltjAQG+gp4wGavYW1MtDbZrjh8=;
+ b=jiL5zhA5poL2RgVqOpHMUn/gllWBLd8I905vvD+b/w0mlefG8/1pxAkWz6QgMtD28xKJgTgHv
+ RlCfGtQ3nSyALhxxjDPWV2ITEHMS7uQNEKgBjBCOXGskv5mOyIGZr7P
 X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
  pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
 X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add dt-binding documentation for PLL controllers used in A9 SoC family.
+Add dt-binding documentation for various miscellaneous peripheral clock
+control units in A9 SoC family.
 
 Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
- .../devicetree/bindings/clock/amlogic,a9-pll.yaml  | 134 +++++++++++++++++++++
- 1 file changed, 134 insertions(+)
+ .../bindings/clock/amlogic,a9-misc-ccu.yaml        | 523 +++++++++++++++++++++
+ include/dt-bindings/clock/amlogic,a9-misc-ccu.h    |  53 +++
+ 2 files changed, 576 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/clock/amlogic,a9-pll.yaml b/Documentation/devicetree/bindings/clock/amlogic,a9-pll.yaml
+diff --git a/Documentation/devicetree/bindings/clock/amlogic,a9-misc-ccu.yaml b/Documentation/devicetree/bindings/clock/amlogic,a9-misc-ccu.yaml
 new file mode 100644
-index 000000000000..26655716f040
+index 000000000000..cce209f75a6e
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/clock/amlogic,a9-pll.yaml
-@@ -0,0 +1,134 @@
++++ b/Documentation/devicetree/bindings/clock/amlogic,a9-misc-ccu.yaml
+@@ -0,0 +1,523 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +# Copyright (C) 2026 Amlogic, Inc. All rights reserved
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/clock/amlogic,a9-pll.yaml#
++$id: http://devicetree.org/schemas/clock/amlogic,a9-misc-ccu.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: Amlogic A9 Family PLL Controllers
++title: Amlogic A9 Family Misc Clock Control Unit
 +
 +maintainers:
 +  - Chuan Liu <chuan.liu@amlogic.com>
 +
 +description: |
-+  PLLs generate high-frequency clocks by frequency multiplication, feeding them
-+  into the clock tree where they can be configured as operational clocks for
-+  various system modules.
++  The misc-ccu contains clock control units which are built from dedicated,
++  non-universal model clock controllers, such as the sc-ccu for smart card and
++  the ts-ccu for temperature sensor.
 +
-+  A diagram of the A9 PLL is as follows:
-+         +------------------------------------------------------+
-+         |      +-------+      +-----+                          |
-+    osc-------->| div N |----->|     |   +-----+                |
-+         |      +-------+      |     |   |     |                |
-+         |                     |     |   | VCO |   +--------+   |
-+         |                     |     |-->|  /  |-->| div OD |------>pll_out
-+         |                     |     |   | DCO |   +--------+   |
-+         |      +----------+   |     |   |     |                |
-+         |  +-->| M & frac |-->|     |   +-----+                |
-+         |  |   +----------+   +-----+      |                   |
-+         |  |                               |                   |
-+         |  +-------------------------------+                   |
-+         +------------------------------------------------------+
++  The clock IDs of the subclocks of these CCUs are defined in
++  "include/dt-bindings/clock/amlogic,a9-misc-ccu.h".
 +
 +properties:
 +  compatible:
 +    oneOf:
 +      - items:
-+          - const: amlogic,a9-int-pll
-+        description: Integer multiplier PLL
++          - const: amlogic,a9-sc-ccu
++        description: Clock control unit of smart card
 +      - items:
-+          - const: amlogic,a9-frac-pll
-+        description: Fractional multiplier PLL
++          - const: amlogic,a9-ts-ccu
++        description: Clock control unit of temperature sensor(s)
 +      - items:
-+          - const: amlogic,a9-frac-step-pll
-+        description: Fractional PLL with integer step granularity
++          - const: amlogic,a9-genout-ccu
++        description: Clock control unit that generates clock output to pin(s)
++      - items:
++          - const: amlogic,a9-clk12_24m-ccu
++        description: Clock control unit that generates clock output 12MHz or
++                     24MHz to pin(s)
++      - items:
++          - const: amlogic,a9-vapb_ge2d-ccu
++        description: Clock control unit for vapb and ge2d
++      - items:
++          - const: amlogic,a9-di-ccu
++        description: Clock control unit of de-interlace
++      - items:
++          - const: amlogic,a9-eth-ccu
++        description: Clock control unit of ethernet
++      - items:
++          - const: amlogic,a9-mclk-ccu
++        description: Clock control unit that provides the clock to the external
++                     camera sensor
++      - items:
++          - const: amlogic,a9-dualdivmux-ccu
++        description: Clock control unit using dual divider channel toggling for
++                     fractional division
 +
 +  reg:
 +    maxItems: 1
 +
 +  clocks:
-+    maxItems: 1
-+    description: input clock of pll
++    minItems: 1
++    maxItems: 32
++
++  clock-names:
++    minItems: 1
++    maxItems: 32
 +
 +  clock-output-names:
-+    maxItems: 1
++    minItems: 1
++    maxItems: 8
 +
 +  '#clock-cells':
-+    const: 0
++    description:
++      The clock controller of a module may contain one or more child clock(s).
++      When a clock controller has multiple child clocks, an index is required
++      to specify a particular clock within the clock controller.
++    oneOf:
++      - const: 0
++        description: Single clock output, no specifier needed
++      - const: 1
++        description: Multiple clocks, index selects specific output
 +
 +  amlogic,clock-max-frequency:
 +    description: |
@@ -122,6 +147,318 @@ index 000000000000..26655716f040
 +        - description: The value to be written to the register
 +        - description: The delay after the register write (unit is us)
 +
++allOf:
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: amlogic,a9-sc-ccu
++    then:
++      properties:
++        clocks:
++          minItems: 1
++          items:
++            - description: input clock source 0
++            - description: input clock source 1 (optional)
++            - description: input clock source 2 (optional)
++            - description: input clock source 3 (optional)
++        clock-names:
++          minItems: 1
++          items:
++            - const: clkin0
++            - const: clkin1
++            - const: clkin2
++            - const: clkin3
++        clock-output-names:
++
++          items:
++            - description: preprocessing clock
++            - description: divider clock
++      required:
++        - clock-names
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: amlogic,a9-ts-ccu
++    then:
++      properties:
++        clocks:
++          description: input clock of ts-ccu
++        clock-output-names:
++          items:
++            - description: divider clock
++            - description: gate clock
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: amlogic,a9-genout-ccu
++    then:
++      properties:
++        clocks:
++          minItems: 1
++          items:
++            - description: input clock source 0
++            - description: input clock source 1 (optional)
++            - description: input clock source 2 (optional)
++            - description: input clock source 3 (optional)
++            - description: input clock source 4 (optional)
++            - description: input clock source 5 (optional)
++            - description: input clock source 6 (optional)
++            - description: input clock source 7 (optional)
++            - description: input clock source 8 (optional)
++            - description: input clock source 9 (optional)
++            - description: input clock source 10 (optional)
++            - description: input clock source 11 (optional)
++            - description: input clock source 12 (optional)
++            - description: input clock source 13 (optional)
++            - description: input clock source 14 (optional)
++            - description: input clock source 15 (optional)
++            - description: input clock source 16 (optional)
++            - description: input clock source 17 (optional)
++            - description: input clock source 18 (optional)
++            - description: input clock source 19 (optional)
++            - description: input clock source 20 (optional)
++            - description: input clock source 21 (optional)
++            - description: input clock source 22 (optional)
++            - description: input clock source 23 (optional)
++            - description: input clock source 24 (optional)
++            - description: input clock source 25 (optional)
++            - description: input clock source 26 (optional)
++            - description: input clock source 27 (optional)
++            - description: input clock source 28 (optional)
++            - description: input clock source 29 (optional)
++            - description: input clock source 30 (optional)
++            - description: input clock source 31 (optional)
++        clock-names:
++          minItems: 1
++          items:
++            - const: clkin0
++            - const: clkin1
++            - const: clkin2
++            - const: clkin3
++            - const: clkin4
++            - const: clkin5
++            - const: clkin6
++            - const: clkin7
++            - const: clkin8
++            - const: clkin9
++            - const: clkin10
++            - const: clkin11
++            - const: clkin12
++            - const: clkin13
++            - const: clkin14
++            - const: clkin15
++            - const: clkin16
++            - const: clkin17
++            - const: clkin18
++            - const: clkin19
++            - const: clkin20
++            - const: clkin21
++            - const: clkin22
++            - const: clkin23
++            - const: clkin24
++            - const: clkin25
++            - const: clkin26
++            - const: clkin27
++            - const: clkin28
++            - const: clkin29
++            - const: clkin30
++            - const: clkin31
++        clock-output-names:
++          items:
++            - description: multiplexer clock
++            - description: divider clock
++            - description: gate clock
++      required:
++        - clock-names
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: amlogic,a9-clk12_24m-ccu
++    then:
++      properties:
++        clocks:
++          maxItems: 1
++          description: 24m-xtal clock
++        clock-output-names:
++          items:
++            - description: input gate clock
++            - description: divider clock
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: amlogic,a9-vapb_ge2d-ccu
++    then:
++      properties:
++        clocks:
++          minItems: 1
++          items:
++            - description: input clock source 0
++            - description: input clock source 1 (optional)
++            - description: input clock source 2 (optional)
++            - description: input clock source 3 (optional)
++            - description: input clock source 4 (optional)
++            - description: input clock source 5 (optional)
++            - description: input clock source 6 (optional)
++            - description: input clock source 7 (optional)
++        clock-names:
++          minItems: 1
++          items:
++            - const: clkin0
++            - const: clkin1
++            - const: clkin2
++            - const: clkin3
++            - const: clkin4
++            - const: clkin5
++            - const: clkin6
++            - const: clkin7
++        clock-output-names:
++          items:
++            - description: vapb clock
++            - description: ge2d clock
++      required:
++        - clock-names
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: amlogic,a9-di-ccu
++    then:
++      properties:
++        clocks:
++          minItems: 1
++          items:
++            - description: input clock source 0
++            - description: input clock source 1 (optional)
++            - description: input clock source 2 (optional)
++            - description: input clock source 3 (optional)
++        clock-names:
++          minItems: 1
++          items:
++            - const: clkin0
++            - const: clkin1
++            - const: clkin2
++            - const: clkin3
++        clock-output-names:
++          items:
++            - description: preprocessing clock
++            - description: divider clock
++            - description: gate clock
++      required:
++        - clock-names
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: amlogic,a9-eth-ccu
++    then:
++      properties:
++        clocks:
++          minItems: 2
++          items:
++            - description: eth_125m input clock
++            - description: rmii input clock source 0
++            - description: rmii input clock source 1 (optional)
++            - description: rmii input clock source 2 (optional)
++            - description: rmii input clock source 3 (optional)
++            - description: rmii input clock source 4 (optional)
++            - description: rmii input clock source 5 (optional)
++            - description: rmii input clock source 6 (optional)
++            - description: rmii input clock source 7 (optional)
++        clock-names:
++          minItems: 2
++          items:
++            - const: clk125m
++            - const: clkin0
++            - const: clkin1
++            - const: clkin2
++            - const: clkin3
++            - const: clkin4
++            - const: clkin5
++            - const: clkin6
++            - const: clkin7
++        clock-output-names:
++          items:
++            - description: eth_125m clock
++            - description: eth_rmii clock
++      required:
++        - clock-names
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: amlogic,a9-mclk-ccu
++    then:
++      properties:
++        clocks:
++          minItems: 1
++          items:
++            - description: mclk0/1 predivider clock source
++            - description: mclk0/1 clock source 1 (optional)
++            - description: mclk0/1 clock source 2 (optional)
++            - description: mclk0/1 clock source 3 (optional)
++        clock-names:
++          minItems: 1
++          items:
++            - const: divin
++            - const: clkin1
++            - const: clkin2
++            - const: clkin3
++        clock-output-names:
++          items:
++            - description: mclk0 pre-divider clock
++            - description: mclk0 multiplexer clock
++            - description: mclk0 divider clock
++            - description: mclk0 gate clock
++            - description: mclk1 pre-divider clock
++            - description: mclk1 multiplexer clock
++            - description: mclk1 divider clock
++            - description: mclk1 gate clock
++      required:
++        - amlogic,clock-init-regs
++        - clock-names
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: amlogic,a9-dualdivmux-ccu
++    then:
++      properties:
++        clocks:
++          minItems: 2
++          items:
++            - description: input clock of dualdiv
++            - description: mux clock source 0
++            - description: mux clock source 1 (optional)
++            - description: mux clock source 2 (optional)
++            - description: mux clock source 3 (optional)
++        clock-names:
++          minItems: 2
++          items:
++            - const: divin
++            - const: mux0
++            - const: mux1
++            - const: mux2
++            - const: mux3
++        clock-output-names:
++          items:
++            - description: dualdiv clock
++            - description: multiplexer clock
++      required:
++        - clock-names
++
 +required:
 +  - compatible
 +  - reg
@@ -136,43 +473,157 @@ index 000000000000..26655716f040
 +    apb {
 +        #address-cells = <2>;
 +        #size-cells = <2>;
-+        clock-mclk_pll@8330 {
-+            compatible = "amlogic,a9-int-pll";
-+            reg = <0x0 0x8330 0x0 0xc>;
-+            #clock-cells = <0>;
-+            amlogic,clock-init-regs = <0x4  0x00402000 0>,
-+                                      <0x8  0x60000100 0>;
-+            amlogic,clock-max-frequency = <2800000000>;
-+            clock-output-names = "mclk_pll";
++        clock-sc@370 {
++            compatible = "amlogic,a9-sc-ccu";
++            reg = <0x0 0x370 0x0 0x4>;
++            #clock-cells = <1>;
++            clock-output-names = "sc_pre",
++                                 "sc";
++            clocks = <&scmi_clk 6>,
++                     <&scmi_clk 9>,
++                     <&scmi_clk 14>,
++                     <&xtal_24m>;
++            clock-names = "clkin0",
++                          "clkin1",
++                          "clkin2",
++                          "clkin3";
++        };
++
++        clock-ts@3a0 {
++            compatible = "amlogic,a9-ts-ccu";
++            reg = <0x0 0x3a0 0x0 0x4>;
++            #clock-cells = <1>;
++            clock-output-names = "ts_div",
++                                 "ts";
 +            clocks = <&xtal_24m>;
 +        };
 +
-+        clock-gp0_pll@8200 {
-+            compatible = "amlogic,a9-frac-pll";
-+            reg = <0x0 0x8200 0x0 0x10>;
-+            #clock-cells = <0>;
-+            amlogic,clock-init-regs = <0x0  0x08010000 0>,
-+                                      <0x4  0x11480000 0>,
-+                                      <0x8  0x1219b010 0>,
-+                                      <0xc  0x00008010 0>;
-+            amlogic,clock-max-frequency = <2800000000>;
-+            clock-output-names = "gp0_pll";
-+            clocks = <&xtal_24m>;
++        clock-eth@3a4 {
++            compatible = "amlogic,a9-eth-ccu";
++            reg = <0x0 0x3a4 0x0 0x4>;
++            #clock-cells = <1>;
++            clock-output-names = "eth_125m",
++                                 "eth_rmii";
++            clocks = <&clk_eth_125m_div>,
++                     <&scmi_clk 6>;
++            clock-names = "clk125m",
++                          "clkin0";
 +        };
 +
-+        clock-hifi_pll@8280 {
-+            compatible = "amlogic,a9-frac-step-pll";
-+            reg = <0x0 0x8280 0x0 0x10>;
-+            #clock-cells = <0>;
-+            amlogic,clock-init-regs = <0x0  0x08010000 0>,
-+                                      <0x4  0x11480000 0>,
-+                                      <0x8  0x1219b010 0>,
-+                                      <0xc  0x00008010 0>;
-+            amlogic,clock-max-frequency = <2800000000>;
-+            clock-output-names = "hifi_pll";
-+            clocks = <&xtal_24m>;
++        clock-mclk@833c {
++            compatible = "amlogic,a9-mclk-ccu";
++            reg = <0x0 0x833c 0x0 0x8>;
++            #clock-cells = <1>;
++            amlogic,clock-init-regs = <0x0  0x04000400 0>,
++                                      <0x4  0x96169616 0>;
++            clock-output-names = "mclk0_pre_div",
++                                 "mclk0_sel",
++                                 "mclk0_div",
++                                 "mclk0",
++                                 "mclk1_pre_div",
++                                 "mclk1_sel",
++                                 "mclk1_div",
++                                 "mclk1";
++            clocks = <&mclk_pll>,
++                     <&xtal_24m>,
++                     <&scmi_clk 4>;
++            clock-names = "divin",
++                          "clkin1",
++                          "clkin2";
 +        };
 +    };
++
++    aobus {
++        #address-cells = <2>;
++        #size-cells = <2>;
++        clkc_ao_cecb: clock-ao_cecb@38 {
++            compatible = "amlogic,a9-dualdivmux-ccu";
++            reg = <0x0 0x38 0x0 0x8>;
++            #clock-cells = <1>;
++
++            clock-output-names = "ao_cecb_dualdiv",
++                                 "ao_cecb";
++            clocks = <&xtal>,
++                     <&clkc_ao_cecb 0>,
++                     <&clkc_rtc 1>;
++            clock-names = "divin",
++                          "mux0",
++                          "mux1";
++        };
++
++        clkc_rtc: clock-rtc@8014c {
++            compatible = "amlogic,a9-dualdivmux-ccu";
++            reg = <0x0 0x8014c 0x0 0x8>;
++            #clock-cells = <1>;
++            clock-output-names = "rtc_dualdiv",
++                                 "rtc";
++            clocks = <&xtal>,
++                     <&xtal>,
++                     <&clkc_rtc 0>;
++            clock-names = "divin",
++                          "mux0",
++                          "mux1";
++        };
++    };
+diff --git a/include/dt-bindings/clock/amlogic,a9-misc-ccu.h b/include/dt-bindings/clock/amlogic,a9-misc-ccu.h
+new file mode 100644
+index 000000000000..102aff8d68e4
+--- /dev/null
++++ b/include/dt-bindings/clock/amlogic,a9-misc-ccu.h
+@@ -0,0 +1,53 @@
++/* SPDX-License-Identifier: (GPL-2.0-only OR MIT) */
++/*
++ * Copyright (C) 2026 Amlogic, Inc. All rights reserved
++ */
++
++#ifndef __AMLOGIC_A9_MISC_CCU_H
++#define __AMLOGIC_A9_MISC_CCU_H
++
++/* &clkc_sc (Smart Card) */
++#define A9_CLK_SC_PRE				0
++#define A9_CLK_SC				1
++
++/* &clkc_ts (Temperature Sensor) */
++#define A9_CLK_TS_DIV				0
++#define A9_CLK_TS				1
++
++/* &clkc_gen_out (Generate Output) */
++#define A9_CLK_GENOUT_SEL			0
++#define A9_CLK_GENOUT_DIV			1
++#define A9_CLK_GENOUT				2
++
++/* &clkc_12_24m (12M & 24M) */
++#define A9_CLK_24M_IN				0
++#define A9_CLK_12_24M				1
++
++/* &clkc_vapb_ge2d (VAPB & GE2D) */
++#define A9_CLK_VAPB				0
++#define A9_CLK_GE2D				1
++
++/* &clkc_di (Deinterlacer) */
++#define A9_CLK_VPU_CLKB_TEMP			0
++#define A9_CLK_VPU_CLKB_DIV			1
++#define A9_CLK_VPU_CLKB				2
++
++/* &clkc_eth (ETH) */
++#define A9_CLK_ETH_125M				0
++#define A9_CLK_ETH_RMII				1
++
++/* &clkc_mclk or &clkc_mclk1 (mclk-ccu) */
++#define A9_CLK_MCLK_0_PRE_DIV			0
++#define A9_CLK_MCLK_0_SEL			1
++#define A9_CLK_MCLK_0_DIV			2
++#define A9_CLK_MCLK_0				3
++#define A9_CLK_MCLK_1_PRE_DIV			4
++#define A9_CLK_MCLK_1_SEL			5
++#define A9_CLK_MCLK_1_DIV			6
++#define A9_CLK_MCLK_1				7
++
++/* &clkc_ao_cecb, &clkc_ao_rtc, &clkc_rtc (dualdivmux-ccu) */
++#define A9_CLK_DUALDIV				0
++#define A9_CLK_DUALDIV_SEL			1
++
++#endif /* __AMLOGIC_A9_MISC_CCU_H */
 
 -- 
 2.42.0
