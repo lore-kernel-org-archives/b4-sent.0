@@ -1,11 +1,10 @@
 From: Chuan Liu <chuan.liu@amlogic.com>
-Date: Mon, 09 Feb 2026 13:48:47 +0800
-Subject: [PATCH 01/13] dt-bindings: clock: Add Amlogic A9 standardized
- model clock control units
+Date: Mon, 09 Feb 2026 13:48:48 +0800
+Subject: [PATCH 02/13] dt-bindings: clock: Add Amlogic A9 PLL controllers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260209-a9_clock_driver-v1-1-a9198dc03d2a@amlogic.com>
+Message-Id: <20260209-a9_clock_driver-v1-2-a9198dc03d2a@amlogic.com>
 References: <20260209-a9_clock_driver-v1-0-a9198dc03d2a@amlogic.com>
 In-Reply-To: <20260209-a9_clock_driver-v1-0-a9198dc03d2a@amlogic.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -17,96 +16,86 @@ Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Chuan Liu <chuan.liu@amlogic.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770616142; l=16188;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770616142; l=5717;
  i=chuan.liu@amlogic.com; s=20240902; h=from:subject:message-id;
- bh=LGR7t5zw1CkYLkatuNOHLf45xN42LhF2iAUlxglSJEw=;
- b=P8RRTNzfxAdNQaYHVPOQYUJftNvVqKauNV9azhek1IyBjv3EqHVBJbZm81g5dx731tDFkmUBZ
- 0D0Bv7aLiQZCfrXokH658fUGnlSAAoysQjIbNmal+G5fyQwM/LVF+GC
+ bh=LyZ6UBT9Q6k7Fn7bjq6bnz37qzqmph54nv7OuWBpCck=;
+ b=E1k8Q3OfqeBhGrzZfdznUd4MgKjLxFwgQJabHnnj2VIppvftGQ3dgu/guCoIoj6/G7cr+J5Dh
+ 7+ocHR9fbibAqs4W++QyVU3wQHBA/zfIMByCSAL2MooWJS8sllZozlK
 X-Developer-Key: i=chuan.liu@amlogic.com; a=ed25519;
  pk=fnKDB+81SoWGKW2GJNFkKy/ULvsDmJZRGBE7pR5Xcpo=
 X-Endpoint-Received: by B4 Relay for chuan.liu@amlogic.com/20240902 with auth_id=203
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add dt-binding documentation for standardized model clock control units
-in A9 SoC family.
+Add dt-binding documentation for PLL controllers used in A9 SoC family.
 
 Signed-off-by: Chuan Liu <chuan.liu@amlogic.com>
 ---
- .../bindings/clock/amlogic,a9-model-ccu.yaml       | 435 +++++++++++++++++++++
- 1 file changed, 435 insertions(+)
+ .../devicetree/bindings/clock/amlogic,a9-pll.yaml  | 134 +++++++++++++++++++++
+ 1 file changed, 134 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/clock/amlogic,a9-model-ccu.yaml b/Documentation/devicetree/bindings/clock/amlogic,a9-model-ccu.yaml
+diff --git a/Documentation/devicetree/bindings/clock/amlogic,a9-pll.yaml b/Documentation/devicetree/bindings/clock/amlogic,a9-pll.yaml
 new file mode 100644
-index 000000000000..56c5cbe1b246
+index 000000000000..26655716f040
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/clock/amlogic,a9-model-ccu.yaml
-@@ -0,0 +1,435 @@
++++ b/Documentation/devicetree/bindings/clock/amlogic,a9-pll.yaml
+@@ -0,0 +1,134 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +# Copyright (C) 2026 Amlogic, Inc. All rights reserved
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/clock/amlogic,a9-model-ccu.yaml#
++$id: http://devicetree.org/schemas/clock/amlogic,a9-pll.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: Amlogic A9 Family Standardized Model Clock Control Unit
++title: Amlogic A9 Family PLL Controllers
 +
 +maintainers:
 +  - Chuan Liu <chuan.liu@amlogic.com>
 +
-+description:
-+  The clock tree within the A9 is composed of numerous instances of these
-+  standardized model CCU (Clock Control Units).
++description: |
++  PLLs generate high-frequency clocks by frequency multiplication, feeding them
++  into the clock tree where they can be configured as operational clocks for
++  various system modules.
++
++  A diagram of the A9 PLL is as follows:
++         +------------------------------------------------------+
++         |      +-------+      +-----+                          |
++    osc-------->| div N |----->|     |   +-----+                |
++         |      +-------+      |     |   |     |                |
++         |                     |     |   | VCO |   +--------+   |
++         |                     |     |-->|  /  |-->| div OD |------>pll_out
++         |                     |     |   | DCO |   +--------+   |
++         |      +----------+   |     |   |     |                |
++         |  +-->| M & frac |-->|     |   +-----+                |
++         |  |   +----------+   +-----+      |                   |
++         |  |                               |                   |
++         |  +-------------------------------+                   |
++         +------------------------------------------------------+
 +
 +properties:
 +  compatible:
 +    oneOf:
 +      - items:
-+          - const: amlogic,a9-composite-ccu
-+        description: Supports clock source selection, frequency division, and
-+                     clock gating.
++          - const: amlogic,a9-int-pll
++        description: Integer multiplier PLL
 +      - items:
-+          - const: amlogic,a9-composite-ccu-mult
-+        description: Some modules have multiple input clocks and contain
-+                     multiple composite-ccus internally.
++          - const: amlogic,a9-frac-pll
++        description: Fractional multiplier PLL
 +      - items:
-+          - const: amlogic,a9-noglitch-ccu
-+        description: Provides the same functionality as composite-ccu but
-+                     includes glitch suppression during frequency transitions.
-+      - items:
-+          - const: amlogic,a9-noglitch-ccu-mult
-+        description: Some modules have multiple input clocks and contain
-+                     multiple noglitch-ccus internally.
-+      - items:
-+          - const: amlogic,a9-sysbus-ccu
-+        description: Consists of multiple gating arrays, commonly used for
-+                     Amlogic's sys_clk and axi_clk.
++          - const: amlogic,a9-frac-step-pll
++        description: Fractional PLL with integer step granularity
 +
 +  reg:
 +    maxItems: 1
 +
 +  clocks:
-+    minItems: 1
-+    maxItems: 16
-+
-+  clock-names:
-+    minItems: 1
-+    maxItems: 16
++    maxItems: 1
++    description: input clock of pll
 +
 +  clock-output-names:
-+    minItems: 1
-+    # The sysbus-ccu of A9 supports up to 128 gates
-+    maxItems: 128
++    maxItems: 1
 +
 +  '#clock-cells':
-+    description:
-+      The clock controller of a module may contain one or more CCU(s). When a
-+      clock controller has multiple CCUs, an index is required to specify a
-+      particular CCU within the clock controller.
-+    oneOf:
-+      - const: 0
-+        description: Single clock output, no specifier needed
-+      - const: 1
-+        description: Multiple clocks, index selects specific output
++    const: 0
 +
 +  amlogic,clock-max-frequency:
 +    description: |
@@ -121,221 +110,17 @@ index 000000000000..56c5cbe1b246
 +      potential issues caused by excessive clock frequency configurations.
 +    $ref: /schemas/types.yaml#/definitions/uint32-array
 +
-+  amlogic,reg-layout:
++  amlogic,clock-init-regs:
 +    description:
-+      These standardized model CCUs require register configuration for their
-+      clock functions. This property node describes the register layout
-+      parameters for each model's CCU.
++      Certain CCUs and PLLs require initialization through dedicated registers
++      before becoming operational. This initialization configures internal clock
++      drive characteristics, divider parameters, and PLL internal circuitry.
 +    $ref: /schemas/types.yaml#/definitions/uint32-matrix
-+
-+allOf:
-+  - if:
-+      properties:
-+        compatible:
-+          anyOf:
-+            - contains:
-+                const: amlogic,a9-composite-ccu
-+            - contains:
-+                const: amlogic,a9-noglitch-ccu
-+    then:
-+      properties:
-+        '#clock-cells':
-+          const: 0
-+        clock-output-names:
-+          minItems: 1
-+          maxItems: 1
-+    else:
-+      properties:
-+        '#clock-cells':
-+          const: 1
-+        clock-output-names:
-+          minItems: 2
-+
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: amlogic,a9-composite-ccu
-+    then:
-+      properties:
-+        clocks:
-+          minItems: 1
-+          items:
-+            - description: input clock source 0
-+            - description: input clock source 1 (optional)
-+            - description: input clock source 2 (optional)
-+            - description: input clock source 3 (optional)
-+            - description: input clock source 4 (optional)
-+            - description: input clock source 5 (optional)
-+            - description: input clock source 6 (optional)
-+            - description: input clock source 7 (optional)
-+        clock-names:
-+          minItems: 1
-+          items:
-+            - const: clkin0
-+            - const: clkin1
-+            - const: clkin2
-+            - const: clkin3
-+            - const: clkin4
-+            - const: clkin5
-+            - const: clkin6
-+            - const: clkin7
-+        amlogic,reg-layout:
-+          description: |
-+            composite-ccu contains three register layout parameters:
-+              * register offset
-+              * bit offset
-+              * divider effective bit width
-+      required:
-+        - amlogic,reg-layout
-+        - clock-names
-+
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: amlogic,a9-composite-ccu-mult
-+    then:
-+      properties:
-+        clocks:
-+          description:
-+            Some clock controllers contain two composite-ccus (labeled
-+            composite_a and composite_b). In certain controllers, composite_a
-+            and composite_b share a common clock source, while in others they
-+            have independent clock sources.
-+          minItems: 1
-+          items:
-+            - description: composite_a/b's input clock source 0
-+            - description: composite_a/b's input clock source 1 (optional)
-+            - description: composite_a/b's input clock source 2 (optional)
-+            - description: composite_a/b's input clock source 3 (optional)
-+            - description: composite_a/b's input clock source 4 (optional)
-+            - description: composite_a/b's input clock source 5 (optional)
-+            - description: composite_a/b's input clock source 6 (optional)
-+            - description: composite_a/b's input clock source 7 (optional)
-+            - description: composite_b's input clock source 0 (optional)
-+            - description: composite_b's input clock source 1 (optional)
-+            - description: composite_b's input clock source 2 (optional)
-+            - description: composite_b's input clock source 3 (optional)
-+            - description: composite_b's input clock source 4 (optional)
-+            - description: composite_b's input clock source 5 (optional)
-+            - description: composite_b's input clock source 6 (optional)
-+            - description: composite_b's input clock source 7 (optional)
-+        clock-names:
-+          minItems: 1
-+          items:
-+            - const: clkin0
-+            - const: clkin1
-+            - const: clkin2
-+            - const: clkin3
-+            - const: clkin4
-+            - const: clkin5
-+            - const: clkin6
-+            - const: clkin7
-+            - const: bclkin0
-+            - const: bclkin1
-+            - const: bclkin2
-+            - const: bclkin3
-+            - const: bclkin4
-+            - const: bclkin5
-+            - const: bclkin6
-+            - const: bclkin7
-+        amlogic,reg-layout:
-+          description: |
-+            composite-ccu contains three register layout parameters:
-+              * register offset
-+              * bit offset
-+              * divider effective bit width
-+      required:
-+        - amlogic,reg-layout
-+        - clock-names
-+
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: amlogic,a9-noglitch-ccu
-+    then:
-+      properties:
-+        clocks:
-+          minItems: 1
-+          items:
-+            - description: input clock source 0
-+            - description: input clock source 1 (optional)
-+            - description: input clock source 2 (optional)
-+            - description: input clock source 3 (optional)
-+            - description: input clock source 4 (optional)
-+            - description: input clock source 5 (optional)
-+            - description: input clock source 6 (optional)
-+            - description: input clock source 7 (optional)
-+        clock-names:
-+          minItems: 1
-+          items:
-+            - const: clkin0
-+            - const: clkin1
-+            - const: clkin2
-+            - const: clkin3
-+            - const: clkin4
-+            - const: clkin5
-+            - const: clkin6
-+            - const: clkin7
-+      required:
-+        - clock-names
-+
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: amlogic,a9-noglitch-ccu-mult
-+    then:
-+      properties:
-+        clocks:
-+          minItems: 1
-+          items:
-+            - description: input clock source 0
-+            - description: input clock source 1 (optional)
-+            - description: input clock source 2 (optional)
-+            - description: input clock source 3 (optional)
-+            - description: input clock source 4 (optional)
-+            - description: input clock source 5 (optional)
-+            - description: input clock source 6 (optional)
-+            - description: input clock source 7 (optional)
-+        clock-names:
-+          minItems: 1
-+          items:
-+            - const: clkin0
-+            - const: clkin1
-+            - const: clkin2
-+            - const: clkin3
-+            - const: clkin4
-+            - const: clkin5
-+            - const: clkin6
-+            - const: clkin7
-+        amlogic,reg-layout:
-+          description: |
-+            composite-ccu contains one register layout parameters:
-+              * register offset
-+      required:
-+        - amlogic,reg-layout
-+        - clock-names
-+
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: amlogic,a9-sysbus-ccu
-+    then:
-+      properties:
-+        clocks:
-+          maxItems: 1
-+          description: input clock of sysbus-ccu
-+        amlogic,reg-layout:
-+          description: |
-+            composite-ccu contains two register layout parameters:
-+              * register offset
-+              * bit offset
-+      required:
-+        - amlogic,reg-layout
++    items:
++      items:
++        - description: The register offset address
++        - description: The value to be written to the register
++        - description: The delay after the register write (unit is us)
 +
 +required:
 +  - compatible
@@ -348,132 +133,44 @@ index 000000000000..56c5cbe1b246
 +
 +examples:
 +  - |
-+    clk_dummy: clock-dummy {
-+        compatible = "fixed-clock";
-+        #clock-cells = <0>;
-+        clock-frequency = <0>;
-+        clock-output-names = "dummy";
-+        status = "disabled";
-+    };
-+
 +    apb {
 +        #address-cells = <2>;
 +        #size-cells = <2>;
-+        clock-controller@350 {
-+            compatible = "amlogic,a9-composite-ccu";
-+            reg = <0x0 0x350 0x0 0x4>;
++        clock-mclk_pll@8330 {
++            compatible = "amlogic,a9-int-pll";
++            reg = <0x0 0x8330 0x0 0xc>;
 +            #clock-cells = <0>;
-+            amlogic,clock-max-frequency = <50000000>;
-+            amlogic,reg-layout = <0x0 0  7>;
-+            clock-output-names = "sar_adc";
-+            clocks = <&xtal_24m>,
-+                     <&scmi_clk 17>;
-+            clock-names = "clkin0", "clkin1";
++            amlogic,clock-init-regs = <0x4  0x00402000 0>,
++                                      <0x8  0x60000100 0>;
++            amlogic,clock-max-frequency = <2800000000>;
++            clock-output-names = "mclk_pll";
++            clocks = <&xtal_24m>;
 +        };
 +
-+        clock-controller@290 {
-+            compatible = "amlogic,a9-composite-ccu-mult";
-+            reg = <0x0 0x290 0x0 0x8>;
-+            #clock-cells = <1>;
-+            amlogic,clock-max-frequency = <250000000>,
-+                                          <250000000>,
-+                                          <1200000000>;
-+            amlogic,reg-layout = <0x0 0  7>,
-+                                 <0x0 16 7>,
-+                                 <0x4 0  7>;
-+            clock-output-names = "sd_emmc_a",
-+                                 "sd_emmc_b",
-+                                 "sd_emmc_c";
-+            clocks = <&xtal_24m>,
-+                     <&scmi_clk 6>,
-+                     <&scmi_clk 10>;
-+            clock-names = "clkin0",
-+                          "clkin1",
-+                          "clkin2";
-+        };
-+
-+        clock-controller@378 {
-+            compatible = "amlogic,a9-composite-ccu-mult";
-+            reg = <0x0 0x378 0x0 0x4>;
-+            #clock-cells = <1>;
-+            amlogic,clock-max-frequency = <500000000>,
-+                                          <667000000>;
-+            amlogic,reg-layout = <0x0 0  7>,
-+                                 <0x0 16 7>;
-+            clock-output-names = "dptx_apb2",
-+                                 "dptx_aud";
-+            clocks = <&xtal_24m>,
-+                     <&scmi_clk 17>,
-+                     <&scmi_clk 12>,
-+                     <&scmi_clk 14>,
-+                     <&clk_dummy>,
-+                     <&clk_dummy>,
-+                     <&clk_dummy>,
-+                     <&clk_dummy>,
-+                     <&xtal_24m>, /* composite-ccu_b's clock source 0 */
-+                     <&scmi_clk 17>, /* composite-ccu_b's clock source 1 */
-+                     <&scmi_clk 10>, /* composite-ccu_b's clock source 2 */
-+                     <&scmi_clk 12>; /* composite-ccu_b's clock source 3 */
-+            clock-names = "clkin0",
-+                          "clkin1",
-+                          "clkin2",
-+                          "clkin3",
-+                          "clkin4",
-+                          "clkin5",
-+                          "clkin6",
-+                          "clkin7",
-+                          "bclkin0",
-+                          "bclkin1",
-+                          "bclkin2",
-+                          "bclkin3";
-+        };
-+
-+        clock-controller@420 {
-+            compatible = "amlogic,a9-noglitch-ccu";
-+            reg = <0x0 0x420 0x0 0x4>;
++        clock-gp0_pll@8200 {
++            compatible = "amlogic,a9-frac-pll";
++            reg = <0x0 0x8200 0x0 0x10>;
 +            #clock-cells = <0>;
-+            amlogic,clock-max-frequency = <800000000>;
-+            clock-output-names = "dspa";
-+            clocks = <&xtal_24m>,
-+                     <&scmi_clk 8>,
-+                     <&scmi_clk 10>;
-+            clock-names = "clkin0",
-+                          "clkin1",
-+                          "clkin2";
++            amlogic,clock-init-regs = <0x0  0x08010000 0>,
++                                      <0x4  0x11480000 0>,
++                                      <0x8  0x1219b010 0>,
++                                      <0xc  0x00008010 0>;
++            amlogic,clock-max-frequency = <2800000000>;
++            clock-output-names = "gp0_pll";
++            clocks = <&xtal_24m>;
 +        };
 +
-+        clock-controller@400 {
-+            compatible = "amlogic,a9-noglitch-ccu-mult";
-+            reg = <0x0 0x400 0x0 0x8>;
-+            #clock-cells = <1>;
-+            /*
-+             * If only one maximum frequency is specified, it is shared by all
-+             * clocks under the current device node.
-+             */
-+            amlogic,clock-max-frequency = <1000000000>;
-+            amlogic,reg-layout = <0x0>,
-+                                 <0x4>;
-+            clock-output-names = "mali",
-+                                 "mali_stack";
-+            clocks = <&xtal_24m>,
-+                     <&scmi_clk 23>,
-+                     <&scmi_clk 6>;
-+            clock-names = "clkin0",
-+                          "clkin1",
-+                          "clkin2";
-+        };
-+
-+        clock-sysbus@230 {
-+            compatible = "amlogic,a9-sysbus-ccu";
-+            reg = <0x0 0x230 0x0 0x10>;
-+            #clock-cells = <1>;
-+            amlogic,reg-layout = <0 0>,
-+                                 <0 1>,
-+                                 <0 3>;
-+            clock-output-names = "sys_am_axi",
-+                                 "sys_dos",
-+                                 "sys_mipi_dsi";
-+            clocks = <&scmi_clk 17>;
++        clock-hifi_pll@8280 {
++            compatible = "amlogic,a9-frac-step-pll";
++            reg = <0x0 0x8280 0x0 0x10>;
++            #clock-cells = <0>;
++            amlogic,clock-init-regs = <0x0  0x08010000 0>,
++                                      <0x4  0x11480000 0>,
++                                      <0x8  0x1219b010 0>,
++                                      <0xc  0x00008010 0>;
++            amlogic,clock-max-frequency = <2800000000>;
++            clock-output-names = "hifi_pll";
++            clocks = <&xtal_24m>;
 +        };
 +    };
 
