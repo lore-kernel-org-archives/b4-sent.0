@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 10 Feb 2026 19:42:03 +0000
-Subject: [PATCH v4 03/11] iio: amplifiers: ad8366: remove unused include
- headers
+Date: Tue, 10 Feb 2026 19:42:04 +0000
+Subject: [PATCH v4 04/11] iio: amplifiers: ad8366: add local dev pointer to
+ the probe function
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260210-iio-ad8366-update-v4-3-15505f7b15b4@analog.com>
+Message-Id: <20260210-iio-ad8366-update-v4-4-15505f7b15b4@analog.com>
 References: <20260210-iio-ad8366-update-v4-0-15505f7b15b4@analog.com>
 In-Reply-To: <20260210-iio-ad8366-update-v4-0-15505f7b15b4@analog.com>
 To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
@@ -17,62 +17,42 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Conor Dooley <conor+dt@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770752535; l=1638;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770752535; l=889;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=CGbPKYHJlOJ9rYJnPGo0vg0Ptr//Gt2yLe6uykPVd2o=;
- b=3mPIYJQagyjOmd+0ojbhmRX/JbMX/TvzF24B3xqT5vy4n4kq+O9L0k/s4WCzVamj7hSc55pdi
- c+h4s2TTZ10BOP99kLBplrLssqY16/wSUdx07v06+ORihfZDGRxuqao
+ bh=JmFUgvP/u+bpyvqN7DVDvcGwocNFLn+PaOaZRRviA1w=;
+ b=584fxEGTc98Iyh2c5wyNxfeEZUj5uTEhH/qfrQIsFQtLMGoZjcN0tkP02tGbZwVVO3GvBo8Jv
+ OUFeYiB13X6BpR4UC7+wcFdiLBKeccHnKv5OY0uWz+vDJeHG8v7+/aH
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Apply IWYU principle, removing the following headers:
-- linux/device.h: no usage of devm_add_action_or_reset, device_attr...
-- linux/kernel.h: no usage of container_of, kasprintf, ...
-- linux/slab.h: memory management handled by iio
-- linux/sysfs.h: sysfs interaction is managed by iio
-- linux/iio/sysfs.h: not using iio device attributes in this driver
-
-Being a small patch, the remaining includes are alphabetically sorted.
-In gcc, compiling with -H allows for dependency visualization,
-which indicates that except for linux/iio/sysfs.h, all removed
-headers are indirectly included by the remaining headers.
+Create local device pointer in the probe function to shorten lines,
+making the code easier to read.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/amplifiers/ad8366.c | 15 +++++----------
- 1 file changed, 5 insertions(+), 10 deletions(-)
+ drivers/iio/amplifiers/ad8366.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/iio/amplifiers/ad8366.c b/drivers/iio/amplifiers/ad8366.c
-index d06ac786501c..6382106ee6c7 100644
+index 6382106ee6c7..3456a31cb1ee 100644
 --- a/drivers/iio/amplifiers/ad8366.c
 +++ b/drivers/iio/amplifiers/ad8366.c
-@@ -11,19 +11,14 @@
-  * Copyright 2012-2019 Analog Devices Inc.
-  */
+@@ -240,11 +240,12 @@ static const struct iio_chan_spec ada4961_channels[] = {
  
--#include <linux/device.h>
--#include <linux/kernel.h>
--#include <linux/slab.h>
--#include <linux/sysfs.h>
--#include <linux/spi/spi.h>
--#include <linux/regulator/consumer.h>
--#include <linux/gpio/consumer.h>
--#include <linux/err.h>
--#include <linux/module.h>
- #include <linux/bitrev.h>
-+#include <linux/err.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/module.h>
-+#include <linux/regulator/consumer.h>
-+#include <linux/spi/spi.h>
+ static int ad8366_probe(struct spi_device *spi)
+ {
++	struct device *dev = &spi->dev;
+ 	struct iio_dev *indio_dev;
+ 	struct ad8366_state *st;
+ 	int ret;
  
- #include <linux/iio/iio.h>
--#include <linux/iio/sysfs.h>
+-	indio_dev = devm_iio_device_alloc(&spi->dev, sizeof(*st));
++	indio_dev = devm_iio_device_alloc(dev, sizeof(*st));
+ 	if (indio_dev == NULL)
+ 		return -ENOMEM;
  
- enum ad8366_type {
- 	ID_AD8366,
 
 -- 
 2.43.0
