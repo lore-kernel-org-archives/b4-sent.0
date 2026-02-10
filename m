@@ -1,11 +1,10 @@
 From: Maud Spierings <maudspierings@gocontroll.com>
-Date: Tue, 10 Feb 2026 09:45:39 +0100
-Subject: [PATCH v7 1/5] dt-bindings: arm: fsl: Add GOcontroll Moduline
- IV/Mini
+Date: Tue, 10 Feb 2026 09:45:40 +0100
+Subject: [PATCH v7 2/5] arm64: dts: imx8mm: Add pinctrl config definitions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260210-mini_iv-v7-1-a3ad8e7ddf0d@gocontroll.com>
+Message-Id: <20260210-mini_iv-v7-2-a3ad8e7ddf0d@gocontroll.com>
 References: <20260210-mini_iv-v7-0-a3ad8e7ddf0d@gocontroll.com>
 In-Reply-To: <20260210-mini_iv-v7-0-a3ad8e7ddf0d@gocontroll.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,48 +16,73 @@ To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>,
  Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>
 Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- Maud Spierings <maudspierings@gocontroll.com>, 
- Conor Dooley <conor.dooley@microchip.com>
+ Maud Spierings <maudspierings@gocontroll.com>, Frank Li <Frank.Li@nxp.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770713143; l=1193;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770713143; l=1797;
  i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
- bh=algPq/arrGx+pf1g3Tkp7Enc4ftUcdmvQiHVariAEtA=;
- b=LOoXIRGdb5Q0XkniyBxhSrhM+HrO3jKKnhitagvu8ObMWQ9cAz7VNgsFZLCj38gtkj4iE2wpy
- F7xvHIk+L2cDGtfT24gG/uh1dZu58PDVwS+XzTrEY3wIo+rWPprR8vG
+ bh=lvUqpRh7n9YkRtJZVSUOA/YxY3527H7NJn4HwdOrJFg=;
+ b=APRpif8J8ASdJITa96V9YCY67fdIDSH/9lqI7hUvoYMWg3s7Olfh0iQKiBvE2Km0iuBL70Rf9
+ qnWB5fX17T9A8i9I2XT7Agj8+C826ZrdT/4hqGk6beiHpjdLedhEgBM
 X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
  pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
 X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the compatible strings for the Moduline IV and Mini.
-Also add a compatible for the Ka-Ro Electronics TX8M-1610 SoM that they
-are based on.
+Currently to configure each IOMUXC_SW_PAD_CTL_PAD the raw value of this
+register is written in the dts, these values are not obvious. Add defines
+which describe the fields of this register which can be or-ed together to
+produce readable settings.
 
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Reviewed-by: Frank Li <Frank.Li@nxp.com>
 Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- Documentation/devicetree/bindings/arm/fsl.yaml | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ arch/arm64/boot/dts/freescale/imx8mm-pinfunc.h | 33 ++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/fsl.yaml b/Documentation/devicetree/bindings/arm/fsl.yaml
-index 5716d701292c..c76c1731b4f7 100644
---- a/Documentation/devicetree/bindings/arm/fsl.yaml
-+++ b/Documentation/devicetree/bindings/arm/fsl.yaml
-@@ -996,6 +996,14 @@ properties:
-           - const: engicam,icore-mx8mm             # i.MX8MM Engicam i.Core MX8M Mini SoM
-           - const: fsl,imx8mm
+diff --git a/arch/arm64/boot/dts/freescale/imx8mm-pinfunc.h b/arch/arm64/boot/dts/freescale/imx8mm-pinfunc.h
+index b1f11098d248..31557b7b9ccc 100644
+--- a/arch/arm64/boot/dts/freescale/imx8mm-pinfunc.h
++++ b/arch/arm64/boot/dts/freescale/imx8mm-pinfunc.h
+@@ -6,6 +6,39 @@
+ #ifndef __DTS_IMX8MM_PINFUNC_H
+ #define __DTS_IMX8MM_PINFUNC_H
  
-+      - description: Ka-Ro Electronics TX8M-1610 based boards
-+        items:
-+          - enum:
-+              - gocontroll,moduline-iv-306-d
-+              - gocontroll,moduline-mini-111
-+          - const: karo,imx8mm-tx8m-1610
-+          - const: fsl,imx8mm
++/* Drive Strength */
++#define MX8MM_DSE_X1		0x0
++#define MX8MM_DSE_X2		0x4
++#define MX8MM_DSE_X4		0x2
++#define MX8MM_DSE_X6		0x6
 +
-       - description: Kontron BL i.MX8MM (N801X S) Board
-         items:
-           - const: kontron,imx8mm-bl
++/* Slew Rate */
++#define MX8MM_FSEL_FAST		0x10
++#define MX8MM_FSEL_SLOW		0x0
++
++/* Open Drain */
++#define MX8MM_ODE_ENABLE	0x20
++#define MX8MM_ODE_DISABLE	0x0
++
++#define MX8MM_PULL_DOWN		0x0
++#define MX8MM_PULL_UP		0x40
++
++/* Hysteresis */
++#define MX8MM_HYS_CMOS		0x0
++#define MX8MM_HYS_SCHMITT	0x80
++
++#define MX8MM_PULL_ENABLE	0x100
++#define MX8MM_PULL_DISABLE	0x0
++
++/* SION force input mode */
++#define MX8MM_SION		0x40000000
++
++/* long defaults */
++#define MX8MM_USDHC_DATA_DEFAULT (MX8MM_FSEL_FAST | MX8MM_PULL_UP | \
++				  MX8MM_HYS_SCHMITT | MX8MM_PULL_ENABLE)
++#define MX8MM_I2C_DEFAULT (MX8MM_DSE_X6 | MX8MM_PULL_UP | MX8MM_HYS_SCHMITT | \
++			   MX8MM_PULL_ENABLE | MX8MM_SION)
++
+ /*
+  * The pin function ID is a tuple of
+  * <mux_reg conf_reg input_reg mux_mode input_val>
 
 -- 
 2.53.0
