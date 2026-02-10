@@ -1,70 +1,99 @@
-From: Soufiane Dani <soufianeda@tutanota.com>
-Date: Tue, 10 Feb 2026 16:45:23 +0100
-Subject: [PATCH v3] staging: atomisp: fix heap buffer overflow in
- framebuffer conversion
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH v4 00/11] iio: amplifiers: ad8366: driver update and dt
+ support
+Date: Tue, 10 Feb 2026 19:42:00 +0000
+Message-Id: <20260210-iio-ad8366-update-v4-0-15505f7b15b4@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260210-atomisp-fix-v3-1-b2efe28a6c53@tutanota.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32MQQ7CIBAAv9JwFsMutEVP/sN4oHWxHFoaQKJp+
- ndpj8Z4nElmFhYpOIrsXC0sUHbR+amAPFSsH8z0IO7uhRkKbASC4Cb50cWZW/fimoSWtq1lozU
- rxRyo6P12vRUeXEw+vPd5hs3+/mTgwAUqhae+s1bCJT2TmXwyx96PbFtl/JNjyZGAoLbQta36y
- td1/QDW9w9z6AAAAA==
-X-Change-ID: 20260210-atomisp-fix-8e083f753688
-To: andy@kernel.org, hansg@kernel.org, mchehab@kernel.org, 
- sakari.ailus@linux.intel.com
-Cc: gregkh@linuxfoundation.org, linux-media@vger.kernel.org, 
- linux-staging@lists.linux.dev, Soufiane Dani <soufianeda@tutanota.com>
+X-B4-Tracking: v=1; b=H4sIAAiKi2kC/23OzQ6CMAzA8VcxOzuz7ivgyfcwHrqtwhJlBJBoC
+ O/u4KJGjv8m/bUT66mL1LPjbmIdjbGPqcmh9zvma2wq4jHkZlJIAyCBx5g4hkJZyx9twIG4sej
+ Qm8I5jyzvtR1d43M1z5fcdeyH1L3WEyMs00WzAqDc0EbgghdCa5KKSqvxhA3eUnXw6c4WbpRfh
+ LRbhMyEL1EHBUhOwB+hPoQUaotQmTDBWGWdgQJ+v5jn+Q3Ke8LaOQEAAA==
+X-Change-ID: 20251121-iio-ad8366-update-56abac58bbca
+To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
+ devicetree@vger.kernel.org
+Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Lars-Peter Clausen <lars@metafoo.de>, Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Alexandru Ardelean <alexandru.ardelean@analog.com>, 
+ Andy Shevchenko <andriy.shevchenko@intel.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770738339; l=1297;
- i=soufianeda@tutanota.com; s=20260210; h=from:subject:message-id;
- bh=i+oYeKTwhxW/Os8v+MNwen7EPT3/rCXrDM2kh4h2xEg=;
- b=0r32OaiNqqSaLESr+pcgBcZfU3auqLuL711WDCgcl/bT9bYDO55FbJW7yw7zWS2XqK5ET9Wdk
- ZdeTwmxVrsJCxaAfLkR/dqhwqLNFRg6Rj4JwJdm37gV8UFMp8SE4DV+
-X-Developer-Key: i=soufianeda@tutanota.com; a=ed25519;
- pk=UzU2pI3/kdLVX1NbSuU4LzRt28OBKkEmk+xBRMw7P+Q=
-X-Endpoint-Received: by B4 Relay for soufianeda@tutanota.com/20260210 with auth_id=631
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770752535; l=2865;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=PHuCXYowjcT9tn+WZauaI9w8j8YdUh8Ki1wtQ+cSTb4=;
+ b=jzJDYXXu0ES79ZoQ01SdoLUCIAyv9OBRqDDb4xjfc+ClvB986g0uPMIz8TlZN8zNEJnThu8Qs
+ 8+NN0luWLPYBXi9Ij8QhsTBUUUH/LFtPn67wUDBnktTnhXH6iwr53CQ
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Validate sizeimage against the allocated frame buffer size before
-hmm_store() to prevent out-of-bounds write.
+This patch series updates the AD8366 amplifier/attenuator driver with
+modern device resource management, including support for additional
+device variants.
 
-Signed-off-by: Soufiane Dani <soufianeda@tutanota.com>
+Adds support for multiple digital step attenuators:
+- ADRF5720: 0.5 dB LSB, 6-Bit, Digital Attenuator, 9 kHz to 40 GHz
+- ADRF5730: 0.5 dB LSB, 6-Bit, Digital Attenuator, 100 MHz to 40 GHz
+- ADRF5731: 2 dB LSB, 4-Bit, Digital Attenuator, 100 MHz to 40 GHz
+- HMC271A: 1 dB LSB, 5-bit, Digital Attenuator, 0.7 - 3.7 GHz
+- HMC1018A: 1.0 dB LSB GaAs MMIC 5-BIT DIGITAL ATTENUATOR, 0.1 - 30 GHz
+- HMC1019A: 0.5 dB LSB GaAs MMIC 5-BIT DIGITAL ATTENUATOR, 0.1 - 30 GHz
+
+Device Tree Support:
+- Adds device tree binding documentation
+- Adds device tree compatible strings for all supported devices
+- Favor chip info tables over device type.
+
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
+Changes in v4:
+- Review of included headers.
+- Split of device-tree support patch.
+- Consume reset controller rather than gpio.
+- Link to v3: https://lore.kernel.org/r/20260203-iio-ad8366-update-v3-0-5d5636b5181a@analog.com
+
 Changes in v3:
--
--
-- Link to v2: https://lore.kernel.org/r/20260210-atomisp-fix-v2-1-2e1e15f1b774@tutanota.com
+- Add compatible checks for dt-binding gpio properties.
+- Remove reset and enable gpio from device state struct.
+- Split refactoring commits.
+- Drop part of the refactoring in favor of a cleaner diff.
+- Get included header files sorted.
+- Link to v2: https://lore.kernel.org/r/20260126-iio-ad8366-update-v2-0-c9a4d31aeb01@analog.com
 
 Changes in v2:
-- Resend with all recipients (v1 only reached sakari and linux-staging)
-- Link to v1: https://lore.kernel.org/r/20260210-atomisp-fix-v1-1-024429cbff31@tutanota.com
----
- drivers/staging/media/atomisp/pci/atomisp_cmd.c | 5 +++++
- 1 file changed, 5 insertions(+)
-
-diff --git a/drivers/staging/media/atomisp/pci/atomisp_cmd.c b/drivers/staging/media/atomisp/pci/atomisp_cmd.c
-index 3a4eb4f6d3be..ca7ffc7855ac 100644
---- a/drivers/staging/media/atomisp/pci/atomisp_cmd.c
-+++ b/drivers/staging/media/atomisp/pci/atomisp_cmd.c
-@@ -3326,6 +3326,11 @@ atomisp_v4l2_framebuffer_to_css_frame(const struct v4l2_framebuffer *arg,
- 		goto err;
- 	}
- 
-+	if (arg->fmt.sizeimage > res->data_bytes) {
-+		ret = -EINVAL;
-+		goto err;
-+	}
-+
- 	tmp_buf = vmalloc(arg->fmt.sizeimage);
- 	if (!tmp_buf) {
- 		ret = -ENOMEM;
+- Reorganize commits with cleanups before features.
+- Link to v1: https://lore.kernel.org/r/20260119-iio-ad8366-update-v1-0-8044e23e964a@analog.com
 
 ---
-base-commit: 72c395024dac5e215136cbff793455f065603b06
-change-id: 20260210-atomisp-fix-8e083f753688
+Rodrigo Alencar (11):
+      MAINTAINERS: Add missing maintainer entry for AD8366 driver
+      dt-bindings: iio: amplifiers: Add AD8366 support
+      iio: amplifiers: ad8366: remove unused include headers
+      iio: amplifiers: ad8366: add local dev pointer to the probe function
+      iio: amplifiers: ad8366: use devm_mutex_init() and drop mutex_init()
+      iio: amplifiers: ad8366: replace reset-gpio with reset controller
+      iio: amplifiers: ad8366: refactor device resource management
+      iio: amplifiers: ad8366: prepare for device-tree support
+      iio: amplifiers: ad8366: add device tree support
+      iio: amplifiers: ad8366: consume enable gpio
+      iio: amplifiers: ad8366: update device support
+
+ .../bindings/iio/amplifiers/adi,ad8366.yaml        |  97 ++++++
+ MAINTAINERS                                        |   9 +
+ drivers/iio/amplifiers/Kconfig                     |   6 +
+ drivers/iio/amplifiers/ad8366.c                    | 355 +++++++++++----------
+ 4 files changed, 291 insertions(+), 176 deletions(-)
+---
+base-commit: 62b44ebc1f2c71db3ca2d4737c52e433f6f03038
+change-id: 20251121-iio-ad8366-update-56abac58bbca
 
 Best regards,
 -- 
-Soufiane Dani <soufianeda@tutanota.com>
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
