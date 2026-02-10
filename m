@@ -1,23 +1,25 @@
 From: Soufiane <soufianeda@tutanota.com>
-Date: Tue, 10 Feb 2026 16:26:31 +0100
-Subject: [PATCH] staging: atomisp: fix heap buffer overflow in framebuffer
- conversion
+Date: Tue, 10 Feb 2026 16:35:27 +0100
+Subject: [PATCH v2] staging: atomisp: fix heap buffer overflow in
+ framebuffer conversion
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260210-atomisp-fix-v1-1-024429cbff31@tutanota.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDI0MD3cSS/NzM4gLdtMwKXYtUAwvjNHNTYzMLCyWgjoKiVKAw2LTo2Np
- aAMjY+oRdAAAA
+Message-Id: <20260210-atomisp-fix-v2-1-2e1e15f1b774@tutanota.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22MQQ7CIBAAv9LsWQwstWJP/sP0gAh2D4UGkGga/
+ i727HEmmdkg2Ug2wdhtEG2hRME3wEMHZtb+aRk9GgNyHDgKznQOC6WVOXozZbmS7nySg1LQijX
+ apvfbbWo8U8ohfvZ5ET/7/1MEE4xj3+PF3J2T4ppfWfuQ9dGEBaZa6xfRn5UsqQAAAA==
 X-Change-ID: 20260210-atomisp-fix-8e083f753688
-To: sakari.ailus@linux.intel.com
-Cc: linux-staging@lists.linux.dev, Soufiane <soufianeda@tutanota.com>
+To: andy@kernel.org, hansg@kernel.org, mchehab@kernel.org, 
+ sakari.ailus@linux.intel.com
+Cc: gregkh@linuxfoundation.org, linux-media@vger.kernel.org, 
+ linux-staging@lists.linux.dev, Soufiane <soufianeda@tutanota.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770737197; l=983;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770737743; l=1170;
  i=soufianeda@tutanota.com; s=20260210; h=from:subject:message-id;
- bh=02IOA1nCQPUgzJT/I1vQUUz6XZjDT1WpNqtxpsjfooI=;
- b=geFPqNN/T0BVfo4OYMZ3MxEJxzvH3LvSlXY88thCyVGuI7tvc2LId+BvyPTkgPJjyQvEs6WAZ
- 9lUhugeSwnkDGY4aDnOrRTV5EnLI7RB8i//RlTqAZTPWVG+PNOuL8xi
+ bh=LIUHpU74WY0uQyqdYbvaZ7O7xKufBT6aHUwY0/k5w9k=;
+ b=rvOtB6aPKYanBXLUZDLJTTwFiLVGt8ns4rKokbVb1Lmbrgf+UW2zv3H2/mRt0aiN2A0mwC7u9
+ HtRzFBEMl6OBe36d9HpHylgcNkZE13kZ8DnBzwKoo+xO/LcjfOHqODQ
 X-Developer-Key: i=soufianeda@tutanota.com; a=ed25519;
  pk=UzU2pI3/kdLVX1NbSuU4LzRt28OBKkEmk+xBRMw7P+Q=
 X-Endpoint-Received: by B4 Relay for soufianeda@tutanota.com/20260210 with auth_id=631
@@ -27,6 +29,10 @@ Validate sizeimage against the allocated frame buffer size before
 hmm_store() to prevent out-of-bounds write.
 
 Signed-off-by: Soufiane <soufianeda@tutanota.com>
+---
+Changes in v2:
+- Resend with all recipients (v1 only reached sakari and linux-staging)
+- Link to v1: https://lore.kernel.org/r/20260210-atomisp-fix-v1-1-024429cbff31@tutanota.com
 ---
  drivers/staging/media/atomisp/pci/atomisp_cmd.c | 5 +++++
  1 file changed, 5 insertions(+)
