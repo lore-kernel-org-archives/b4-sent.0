@@ -1,11 +1,11 @@
 From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Wed, 11 Feb 2026 21:37:50 +0100
-Subject: [PATCH v2 1/4] dt-bindings: arm: qcom: Add ASUS Vivobook X1P42100
- variant
+Date: Wed, 11 Feb 2026 21:37:51 +0100
+Subject: [PATCH v2 2/4] firmware: qcom: scm: allow QSEECOM on ASUS Vivobook
+ X1P42100 variant
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260211-b4-vivobook-v2-1-9f500415d2ed@oldschoolsolutions.biz>
+Message-Id: <20260211-b4-vivobook-v2-2-9f500415d2ed@oldschoolsolutions.biz>
 References: <20260211-b4-vivobook-v2-0-9f500415d2ed@oldschoolsolutions.biz>
 In-Reply-To: <20260211-b4-vivobook-v2-0-9f500415d2ed@oldschoolsolutions.biz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -15,43 +15,40 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Maud Spierings <maud_spierings@hotmail.com>, 
  "Colin K. Williams" <colin@li-nk.org>, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770842282; l=1020;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770842282; l=985;
  i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=PIiPkqq6VcHG3ksDSsOKNpwFjbQlxSUzu0Mnzw3gWck=;
- b=Z8ZyLz2cUOpwlEZo6psPovsQy9dY6p1M1nRjossm85l0V3zL+L7Sd3I2u7Eu5yVip9r+yE8bh
- 8h0UA9n2DFKDsC9JA9RiGsC+gA4VMIpv9LrA+bGvR6Uf3WzOHoL7eBs
+ bh=tF0yL9g/LpNrXUgoxuX8liwiZOuYk95seFYSRj/YEiI=;
+ b=VwwTjjLzM/5MN1rf4SCQXl5HvG2e020MumPyEF4TUkcMUCZAKMxKBt3h5iGlGWOAzVPLLlkkT
+ oWS3vnfbgNYCrOxv8+V0dbZh8cX46/i8K7weXpgFBjieY4m6Zs5zz1L
 X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
  pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
 X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The ASUS Vivobook S15 (S5507) [1] is available with Hamoa and Purwa SoC.
-Add the Purwa-based variant:
+Enables access to EFI variables on this machine.
 
-asus,vivobook-s15-x1p4 compatible to Purwa SoC
-
-[1]: https://www.asus.com/de/laptops/for-home/vivobook/asus-vivobook-s-15-s5507/techspec/
-
+Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Tested-by: Colin K. Williams <colin@li-nk.org>
 Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- Documentation/devicetree/bindings/arm/qcom.yaml | 1 +
+ drivers/firmware/qcom/qcom_scm.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
-index d48c625d3fc42f1a90f76a020753ae4daec8c5ea..8ca0b96c5221dff40be88b0d820671a8614da0b3 100644
---- a/Documentation/devicetree/bindings/arm/qcom.yaml
-+++ b/Documentation/devicetree/bindings/arm/qcom.yaml
-@@ -1131,6 +1131,7 @@ properties:
- 
-       - items:
-           - enum:
-+              - asus,vivobook-s15-x1p4
-               - hp,omnibook-x14-fe1
-               - lenovo,thinkbook-16
-               - qcom,x1p42100-crd
+diff --git a/drivers/firmware/qcom/qcom_scm.c b/drivers/firmware/qcom/qcom_scm.c
+index 8fbc96693a55f53c508d1ddb2d7a9e62281d1544..2fe1632f06e908683ba2841d68f9d382f407a425 100644
+--- a/drivers/firmware/qcom/qcom_scm.c
++++ b/drivers/firmware/qcom/qcom_scm.c
+@@ -2290,6 +2290,7 @@ EXPORT_SYMBOL_GPL(qcom_scm_qseecom_app_send);
+  */
+ static const struct of_device_id qcom_scm_qseecom_allowlist[] __maybe_unused = {
+ 	{ .compatible = "asus,vivobook-s15" },
++	{ .compatible = "asus,vivobook-s15-x1p4" },
+ 	{ .compatible = "asus,zenbook-a14-ux3407qa" },
+ 	{ .compatible = "asus,zenbook-a14-ux3407ra" },
+ 	{ .compatible = "dell,inspiron-14-plus-7441" },
 
 -- 
 2.51.0
