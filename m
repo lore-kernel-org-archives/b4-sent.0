@@ -1,108 +1,102 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Wed, 11 Feb 2026 21:37:53 +0100
-Subject: [PATCH v2 4/4] arm64: dts: qcom: x1-vivobook-s15: add
- Purwa-compatible device tree
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Wed, 11 Feb 2026 16:35:30 -0600
+Subject: [PATCH v2] arm64: dts: qcom: sm8550: Add UART15
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260211-b4-vivobook-v2-4-9f500415d2ed@oldschoolsolutions.biz>
-References: <20260211-b4-vivobook-v2-0-9f500415d2ed@oldschoolsolutions.biz>
-In-Reply-To: <20260211-b4-vivobook-v2-0-9f500415d2ed@oldschoolsolutions.biz>
+Message-Id: <20260211-sm8550-uart15-v2-1-bd23a0de18bc@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XMQQ7CIBRF0a00fywGCBR05D5MBxRo+xMpBirRN
+ Oxd7Nzhfck7O2Sf0Ge4djskXzBjXFvwUwd2MevsCbrWwCnvKaeK5KClpORl0sYkuYxqdEJ7JZS
+ D9nkmP+H78O5D6wXzFtPn4Av7rf+kwggjTls7KdE7RvltDgYfZxsDDLXWL8VlWHKqAAAA
+X-Change-ID: 20260207-sm8550-uart15-9b7bd48e747d
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Maud Spierings <maud_spierings@hotmail.com>, 
- "Colin K. Williams" <colin@li-nk.org>, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+ linux-kernel@vger.kernel.org, Xilin Wu <wuxilin123@gmail.com>, 
+ Molly Sophia <mollysophia379@gmail.com>, 
+ Aaron Kling <webgeek1234@gmail.com>, Dmitry Baryshkov <lumag@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770842282; l=2944;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=ptuXwHkFSH4UzSXx9epEse1Eq5mBz3kvAbkz5o95kh0=;
- b=FS1OfcFva6XjIKmivXvjBM6I5wCVLVP06OWUPzGxnFSaFAh62CfcJDmj+VsnrlKp+nF4/qBm0
- T2b0EGD5jAhDGM4yDRzMLVyUdzPIx/r3eGiF44OYFkLzpLJl+/y4993
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770849331; l=2448;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=1UeX34r1RbR0E20rmrtQKnc42GyRjfpe4HlrJ/o9flA=;
+ b=5X6HlHiTEI4PYvujt7jJ7TJ+8sYjeLR0vqBFWgtbFjmxOuk7vDHkTigGtboTYYYNUzfNxdNM/
+ IazaswrC8YKDQqzE2RIr4W2CgOHncIQmtgJOwSWluK7WvzCPQEFOTAp
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The ASUS Vivobook S15 (S5507) [1] is available with Hamoa and Purwa SoC.
+From: Xilin Wu <wuxilin123@gmail.com>
 
-Add the Purwa-based device tree.
+Add uart15 node for UART bus present on sm8550 SoC.
 
-[1]: https://www.asus.com/de/laptops/for-home/vivobook/asus-vivobook-s-15-s5507/techspec/
-
-Tested-by: Colin K. Williams <colin@li-nk.org>
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Signed-off-by: Molly Sophia <mollysophia379@gmail.com>
+Signed-off-by: Xilin Wu <wuxilin123@gmail.com>
+Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/Makefile                  |  2 +
- .../boot/dts/qcom/x1p42100-asus-vivobook-s15.dts   | 43 ++++++++++++++++++++++
- 2 files changed, 45 insertions(+)
+This patch was originally submitted as part of a series to support the
+AYN Odin 2 [0]. That series stalled, so submitting separately.
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index f80b5d9cf1e80e4efcd70f14cef4e7d4a1ec48eb..baa7ec904b4878a41e6fd9c678025f28cb484cf3 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -380,6 +380,8 @@ x1e80100-microsoft-romulus15-el2-dtbs	:= x1e80100-microsoft-romulus15.dtb x1-el2
- dtb-$(CONFIG_ARCH_QCOM)	+= x1e80100-microsoft-romulus15.dtb x1e80100-microsoft-romulus15-el2.dtb
- x1e80100-qcp-el2-dtbs	:= x1e80100-qcp.dtb x1-el2.dtbo
- dtb-$(CONFIG_ARCH_QCOM)	+= x1e80100-qcp.dtb x1e80100-qcp-el2.dtb
-+x1p42100-asus-vivobook-s15-el2-dtbs	:= x1p42100-asus-vivobook-s15.dtb x1-el2.dtbo
-+dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-asus-vivobook-s15.dtb x1p42100-asus-vivobook-s15-el2.dtb
- x1p42100-asus-zenbook-a14-el2-dtbs	:= x1p42100-asus-zenbook-a14.dtb x1-el2.dtbo
- dtb-$(CONFIG_ARCH_QCOM)	+= x1p42100-asus-zenbook-a14.dtb x1p42100-asus-zenbook-a14-el2.dtb
- x1p42100-asus-zenbook-a14-lcd-el2-dtbs	:= x1p42100-asus-zenbook-a14-lcd.dtb x1-el2.dtbo
-diff --git a/arch/arm64/boot/dts/qcom/x1p42100-asus-vivobook-s15.dts b/arch/arm64/boot/dts/qcom/x1p42100-asus-vivobook-s15.dts
-new file mode 100644
-index 0000000000000000000000000000000000000000..a68c295200d1a2481481f9740c1c2db9e4a7afed
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/x1p42100-asus-vivobook-s15.dts
-@@ -0,0 +1,43 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
-+ * Copyright (c) 2024, Xilin Wu <wuxilin123@gmail.com>
-+ */
-+
-+/dts-v1/;
-+
-+#include "purwa.dtsi"
-+#include "x1-asus-vivobook-s15.dtsi"
-+
-+/delete-node/ &pmc8380_6;
-+/delete-node/ &pmc8380_6_thermal;
-+
-+/ {
-+	model = "ASUS Vivobook S 15 X1P-42-100";
-+	compatible = "asus,vivobook-s15-x1p4", "qcom,x1p42100";
-+	chassis-type = "laptop";
-+};
-+
-+&gpu_zap_shader {
-+	firmware-name = "qcom/x1p42100/ASUSTeK/vivobook-s15/qcdxkmsucpurwa.mbn";
-+};
-+
-+&iris {
-+	firmware-name = "qcom/x1p42100/ASUSTeK/vivobook-s15/qcvss8380.mbn";
-+	status = "okay";
-+};
-+
-+&remoteproc_adsp {
-+	firmware-name = "qcom/x1p42100/ASUSTeK/vivobook-s15/qcadsp8380.mbn",
-+			"qcom/x1p42100/ASUSTeK/vivobook-s15/adsp_dtbs.elf";
-+
-+	status = "okay";
-+};
-+
-+&remoteproc_cdsp {
-+	firmware-name = "qcom/x1p42100/ASUSTeK/vivobook-s15/qccdsp8380.mbn",
-+			"qcom/x1p42100/ASUSTeK/vivobook-s15/cdsp_dtbs.elf";
-+
-+	status = "okay";
-+};
-+
+[0] https://lore.kernel.org/all/20240424-ayn-odin2-initial-v1-0-e0aa05c991fd@gmail.com/
+---
+Changes in v2:
+- Use QCOM_ICC_TAG_ define in interconnect paths phandle third argument
+- Link to v1: https://lore.kernel.org/r/20260207-sm8550-uart15-v1-1-d8ccf746d102@gmail.com
+---
+ arch/arm64/boot/dts/qcom/sm8550.dtsi | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
+diff --git a/arch/arm64/boot/dts/qcom/sm8550.dtsi b/arch/arm64/boot/dts/qcom/sm8550.dtsi
+index e3f93f4f412ded9583a6bc9215185a0daf5f1b57..a54f375f7f041a193a4396e4aa911abb42e3e6dc 100644
+--- a/arch/arm64/boot/dts/qcom/sm8550.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8550.dtsi
+@@ -1251,6 +1251,22 @@ &config_noc SLAVE_QUP_2 QCOM_ICC_TAG_ACTIVE_ONLY>,
+ 				#size-cells = <0>;
+ 				status = "disabled";
+ 			};
++
++			uart15: serial@89c000 {
++				compatible = "qcom,geni-uart";
++				reg = <0 0x89c000 0 0x4000>;
++				clock-names = "se";
++				clocks = <&gcc GCC_QUPV3_WRAP2_S7_CLK>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&qup_uart15_default>;
++				interrupts = <GIC_SPI 462 IRQ_TYPE_LEVEL_HIGH 0>;
++				interconnects = <&clk_virt MASTER_QUP_CORE_2 QCOM_ICC_TAG_ALWAYS
++						 &clk_virt SLAVE_QUP_CORE_2 QCOM_ICC_TAG_ALWAYS>,
++						<&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
++						 &config_noc SLAVE_QUP_2 QCOM_ICC_TAG_ACTIVE_ONLY>;
++				interconnect-names = "qup-core", "qup-config";
++				status = "disabled";
++			};
+ 		};
+ 
+ 		i2c_master_hub_0: geniqup@9c0000 {
+@@ -5095,6 +5111,14 @@ qup_uart14_cts_rts: qup-uart14-cts-rts-state {
+ 				bias-pull-down;
+ 			};
+ 
++			qup_uart15_default: qup-uart15-default-state {
++				/* TX, RX */
++				pins = "gpio74", "gpio75";
++				function = "qup2_se7";
++				drive-strength = <2>;
++				bias-pull-up;
++			};
++
+ 			sdc2_sleep: sdc2-sleep-state {
+ 				clk-pins {
+ 					pins = "sdc2_clk";
+
+---
+base-commit: 9845cf73f7db6094c0d8419d6adb848028f4a921
+change-id: 20260207-sm8550-uart15-9b7bd48e747d
+
+Best regards,
 -- 
-2.51.0
+Aaron Kling <webgeek1234@gmail.com>
 
