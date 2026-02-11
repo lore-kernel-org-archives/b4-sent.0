@@ -1,102 +1,54 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Wed, 11 Feb 2026 16:35:30 -0600
-Subject: [PATCH v2] arm64: dts: qcom: sm8550: Add UART15
+From: Amit Sunil Dhamne <amitsd@google.com>
+Subject: [PATCH 0/2] Introduce Sink Cap Extended AMS
+Date: Wed, 11 Feb 2026 23:25:34 +0000
+Message-Id: <20260211-skedb-v1-0-616340426cdc@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260211-sm8550-uart15-v2-1-bd23a0de18bc@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XMQQ7CIBRF0a00fywGCBR05D5MBxRo+xMpBirRN
- Oxd7Nzhfck7O2Sf0Ge4djskXzBjXFvwUwd2MevsCbrWwCnvKaeK5KClpORl0sYkuYxqdEJ7JZS
- D9nkmP+H78O5D6wXzFtPn4Av7rf+kwggjTls7KdE7RvltDgYfZxsDDLXWL8VlWHKqAAAA
-X-Change-ID: 20260207-sm8550-uart15-9b7bd48e747d
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Xilin Wu <wuxilin123@gmail.com>, 
- Molly Sophia <mollysophia379@gmail.com>, 
- Aaron Kling <webgeek1234@gmail.com>, Dmitry Baryshkov <lumag@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770849331; l=2448;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=1UeX34r1RbR0E20rmrtQKnc42GyRjfpe4HlrJ/o9flA=;
- b=5X6HlHiTEI4PYvujt7jJ7TJ+8sYjeLR0vqBFWgtbFjmxOuk7vDHkTigGtboTYYYNUzfNxdNM/
- IazaswrC8YKDQqzE2RIr4W2CgOHncIQmtgJOwSWluK7WvzCPQEFOTAp
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-B4-Tracking: v=1; b=H4sIAO4PjWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDI0MD3eLs1JQkXdPE1KQkSxOTZGPTNCWg2oKi1LTMCrA50bG1tQCWUjG
+ yVwAAAA==
+X-Change-ID: 20260210-skedb-5aebb944c35f
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Badhri Jagan Sridharan <badhri@google.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-usb@vger.kernel.org, Kyle Tso <kyletso@google.com>, 
+ RD Babiera <rdbabiera@google.com>, Amit Sunil Dhamne <amitsd@google.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770852352; l=974;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=izf2zG/94tc+KXQg6oNDoNUfu9pNiByjq4kRidr7zVM=;
+ b=cRix6fAND3LqFyrOtrWPLIwMSOgmCQFRlycA6KzFaQG/mFd3ZQEaUt4FfZmV/Xzd2vZDbQhdm
+ W3IOZ2Gg/xgCjFP2jU6jH2zXiZELyT2tcPBjDNRsrvh4w8U54UDlgdx
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Xilin Wu <wuxilin123@gmail.com>
+This patchset adds support for Sink Cap Extended AMS. This is a
+"required" AMS for PD 3.1 compliance for Sink or DRP ports and a
+pre-requisite for Battery Caps and Battery Status AMSes.
 
-Add uart15 node for UART bus present on sm8550 SoC.
-
-Signed-off-by: Molly Sophia <mollysophia379@gmail.com>
-Signed-off-by: Xilin Wu <wuxilin123@gmail.com>
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
-This patch was originally submitted as part of a series to support the
-AYN Odin 2 [0]. That series stalled, so submitting separately.
+Amit Sunil Dhamne (2):
+      dt-bindings: connector: Add sink properties to comply with PD 3.1 spec
+      usb: typec: tcpm: add support for Sink Cap Extended msg response
 
-[0] https://lore.kernel.org/all/20240424-ayn-odin2-initial-v1-0-e0aa05c991fd@gmail.com/
+ .../bindings/connector/usb-connector.yaml          |  34 +++
+ .../devicetree/bindings/usb/maxim,max33359.yaml    |   4 +
+ drivers/usb/typec/tcpm/tcpm.c                      | 253 ++++++++++++++++++++-
+ include/dt-bindings/usb/pd.h                       |  18 ++
+ include/linux/usb/pd.h                             |  82 ++++++-
+ 5 files changed, 388 insertions(+), 3 deletions(-)
 ---
-Changes in v2:
-- Use QCOM_ICC_TAG_ define in interconnect paths phandle third argument
-- Link to v1: https://lore.kernel.org/r/20260207-sm8550-uart15-v1-1-d8ccf746d102@gmail.com
----
- arch/arm64/boot/dts/qcom/sm8550.dtsi | 24 ++++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
-
-diff --git a/arch/arm64/boot/dts/qcom/sm8550.dtsi b/arch/arm64/boot/dts/qcom/sm8550.dtsi
-index e3f93f4f412ded9583a6bc9215185a0daf5f1b57..a54f375f7f041a193a4396e4aa911abb42e3e6dc 100644
---- a/arch/arm64/boot/dts/qcom/sm8550.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8550.dtsi
-@@ -1251,6 +1251,22 @@ &config_noc SLAVE_QUP_2 QCOM_ICC_TAG_ACTIVE_ONLY>,
- 				#size-cells = <0>;
- 				status = "disabled";
- 			};
-+
-+			uart15: serial@89c000 {
-+				compatible = "qcom,geni-uart";
-+				reg = <0 0x89c000 0 0x4000>;
-+				clock-names = "se";
-+				clocks = <&gcc GCC_QUPV3_WRAP2_S7_CLK>;
-+				pinctrl-names = "default";
-+				pinctrl-0 = <&qup_uart15_default>;
-+				interrupts = <GIC_SPI 462 IRQ_TYPE_LEVEL_HIGH 0>;
-+				interconnects = <&clk_virt MASTER_QUP_CORE_2 QCOM_ICC_TAG_ALWAYS
-+						 &clk_virt SLAVE_QUP_CORE_2 QCOM_ICC_TAG_ALWAYS>,
-+						<&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
-+						 &config_noc SLAVE_QUP_2 QCOM_ICC_TAG_ACTIVE_ONLY>;
-+				interconnect-names = "qup-core", "qup-config";
-+				status = "disabled";
-+			};
- 		};
- 
- 		i2c_master_hub_0: geniqup@9c0000 {
-@@ -5095,6 +5111,14 @@ qup_uart14_cts_rts: qup-uart14-cts-rts-state {
- 				bias-pull-down;
- 			};
- 
-+			qup_uart15_default: qup-uart15-default-state {
-+				/* TX, RX */
-+				pins = "gpio74", "gpio75";
-+				function = "qup2_se7";
-+				drive-strength = <2>;
-+				bias-pull-up;
-+			};
-+
- 			sdc2_sleep: sdc2-sleep-state {
- 				clk-pins {
- 					pins = "sdc2_clk";
-
----
-base-commit: 9845cf73f7db6094c0d8419d6adb848028f4a921
-change-id: 20260207-sm8550-uart15-9b7bd48e747d
+base-commit: 8dfce8991b95d8625d0a1d2896e42f93b9d7f68d
+change-id: 20260210-skedb-5aebb944c35f
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Amit Sunil Dhamne <amitsd@google.com>
 
