@@ -1,80 +1,107 @@
-From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Thu, 12 Feb 2026 13:47:09 +0530
-Subject: [PATCH v4 3/3] rust_binder: shrink all_procs when deregistering
- processes
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Thu, 12 Feb 2026 10:41:25 -0600
+Subject: [PATCH v3] arm64: dts: qcom: sm8550: Add UART15
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260212-binder-shrink-vec-v3-v4-3-bd02f06bf2cd@zohomail.in>
-References: <20260212-binder-shrink-vec-v3-v4-0-bd02f06bf2cd@zohomail.in>
-In-Reply-To: <20260212-binder-shrink-vec-v3-v4-0-bd02f06bf2cd@zohomail.in>
-To: Danilo Krummrich <dakr@kernel.org>, 
- Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, 
- Vlastimil Babka <vbabka@suse.cz>, 
- "Liam R. Howlett" <Liam.Howlett@oracle.com>, 
- Uladzislau Rezki <urezki@gmail.com>, Miguel Ojeda <ojeda@kernel.org>, 
- Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- =?utf-8?q?Arve_Hj=C3=B8nnev=C3=A5g?= <arve@android.com>, 
- Todd Kjos <tkjos@android.com>, Christian Brauner <brauner@kernel.org>, 
- Carlos Llamas <cmllamas@google.com>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Shivam Kalra <shivamkalra98@zohomail.in>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770884727; l=2022;
- i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
- bh=ofWhi1ML9enjnPcwalc0CgCX2PLEBs7iFFyc8twE/GY=;
- b=T+06K77mrVOTOH6io1OMTpMjZQldVsZxOxg3z5IVqorzVVHDHS8u/IV7Sp18h/0dGAlv8I11k
- /Lu8sZySgDdBpZ4Zb4KLcmLmCwuVb+x3eSIGRfuPCKYwG6n4/x+F3nk
-X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
- pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
-X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
+Message-Id: <20260212-sm8550-uart15-v3-1-b90405f94bec@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XMSwrCMBSF4a2UOzaSmz4SHbkPcZBX2wvWSlKDU
+ rp3046K4PAc+P4Zog/kI5yLGYJPFGl85FEeCrC9fnSekcsbBBcNF1yyOKi65uylw4Q1OxlpXKW
+ 8rKSDbJ7Bt/Teetdb3j3FaQyfLZ9wff+VEjJkTlnbyqpxyMWlGzTdj3YcYC0lsdOIv1pkbZwoN
+ XcelbF7vSzLF6rTw8/oAAAA
+X-Change-ID: 20260207-sm8550-uart15-9b7bd48e747d
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Xilin Wu <wuxilin123@gmail.com>, 
+ Molly Sophia <mollysophia379@gmail.com>, 
+ Aaron Kling <webgeek1234@gmail.com>, Dmitry Baryshkov <lumag@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770914492; l=2588;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=mR3/JRYkuGO8CBqOJAZJw6sx5dxfOUEZ5hawmrAeEFo=;
+ b=aJx/b4n2h90yqY54V5mcmlCBuCfHejlMSqOOiBQPfP7/OiVeqMfSxHKS6XuTbH+o/eXOGYe+e
+ WHBxjMNT5ybAF70oCuuZYYKSFNCnE1UA7pn7RFthPmtrVnoGEkoCysF
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a process is deregistered from the binder context, the all_procs
-vector may have significant unused capacity. Add logic to shrink the
-vector using a conservative strategy that prevents shrink-then-regrow
-oscillation.
-The shrinking strategy triggers when length drops below 1/4 of capacity,
-and shrinks to 1/2 of capacity rather than to the exact length. This
-provides hysteresis to avoid repeated reallocations when the process
-count fluctuates.
-The shrink operation uses GFP_KERNEL and is allowed to fail gracefully
-since it is purely an optimization. The vector remains valid and
-functional even if shrinking fails.
+From: Xilin Wu <wuxilin123@gmail.com>
 
-Suggested-by: Alice Ryhl <aliceryhl@google.com>
-Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
+Add uart15 node for UART bus present on sm8550 SoC.
+
+Signed-off-by: Molly Sophia <mollysophia379@gmail.com>
+Signed-off-by: Xilin Wu <wuxilin123@gmail.com>
+Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/android/binder/context.rs | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+This patch was originally submitted as part of a series to support the
+AYN Odin 2 [0]. That series stalled, so submitting separately.
 
-diff --git a/drivers/android/binder/context.rs b/drivers/android/binder/context.rs
-index 9cf437c025a20..399dab475728b 100644
---- a/drivers/android/binder/context.rs
-+++ b/drivers/android/binder/context.rs
-@@ -94,6 +94,17 @@ pub(crate) fn deregister_process(self: &Arc<Self>, proc: &Arc<Process>) {
-         }
-         let mut manager = self.manager.lock();
-         manager.all_procs.retain(|p| !Arc::ptr_eq(p, proc));
+[0] https://lore.kernel.org/all/20240424-ayn-odin2-initial-v1-0-e0aa05c991fd@gmail.com/
+---
+Changes in v3:
+- Properly pad reg address
+- Link to v2: https://lore.kernel.org/r/20260211-sm8550-uart15-v2-1-bd23a0de18bc@gmail.com
+
+Changes in v2:
+- Use QCOM_ICC_TAG_ define in interconnect paths phandle third argument
+- Link to v1: https://lore.kernel.org/r/20260207-sm8550-uart15-v1-1-d8ccf746d102@gmail.com
+---
+ arch/arm64/boot/dts/qcom/sm8550.dtsi | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/qcom/sm8550.dtsi b/arch/arm64/boot/dts/qcom/sm8550.dtsi
+index e3f93f4f412ded9583a6bc9215185a0daf5f1b57..eebd5f9663edcc91480097aa39e9ca4dc3592dd9 100644
+--- a/arch/arm64/boot/dts/qcom/sm8550.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8550.dtsi
+@@ -1251,6 +1251,22 @@ &config_noc SLAVE_QUP_2 QCOM_ICC_TAG_ACTIVE_ONLY>,
+ 				#size-cells = <0>;
+ 				status = "disabled";
+ 			};
 +
-+        // Shrink the vector if it has significant unused capacity to avoid memory waste,
-+        // but use a conservative strategy to prevent shrink-then-regrow oscillation.
-+        // Only shrink when length drops below 1/4 of capacity, and shrink to 1/2 capacity.
-+        let len = manager.all_procs.len();
-+        let cap = manager.all_procs.capacity();
-+        if len < cap / 4 {
-+            // Shrink to half capacity. Ignore allocation failures since this is just an
-+            // optimization; the vector remains valid even if shrinking fails.
-+            let _ = manager.all_procs.shrink_to(cap / 2, GFP_KERNEL);
-+        }
-     }
++			uart15: serial@89c000 {
++				compatible = "qcom,geni-uart";
++				reg = <0 0x0089c000 0 0x4000>;
++				clock-names = "se";
++				clocks = <&gcc GCC_QUPV3_WRAP2_S7_CLK>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&qup_uart15_default>;
++				interrupts = <GIC_SPI 462 IRQ_TYPE_LEVEL_HIGH 0>;
++				interconnects = <&clk_virt MASTER_QUP_CORE_2 QCOM_ICC_TAG_ALWAYS
++						 &clk_virt SLAVE_QUP_CORE_2 QCOM_ICC_TAG_ALWAYS>,
++						<&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
++						 &config_noc SLAVE_QUP_2 QCOM_ICC_TAG_ACTIVE_ONLY>;
++				interconnect-names = "qup-core", "qup-config";
++				status = "disabled";
++			};
+ 		};
  
-     pub(crate) fn set_manager_node(&self, node_ref: NodeRef) -> Result {
+ 		i2c_master_hub_0: geniqup@9c0000 {
+@@ -5095,6 +5111,14 @@ qup_uart14_cts_rts: qup-uart14-cts-rts-state {
+ 				bias-pull-down;
+ 			};
+ 
++			qup_uart15_default: qup-uart15-default-state {
++				/* TX, RX */
++				pins = "gpio74", "gpio75";
++				function = "qup2_se7";
++				drive-strength = <2>;
++				bias-pull-up;
++			};
++
+ 			sdc2_sleep: sdc2-sleep-state {
+ 				clk-pins {
+ 					pins = "sdc2_clk";
 
+---
+base-commit: 9845cf73f7db6094c0d8419d6adb848028f4a921
+change-id: 20260207-sm8550-uart15-9b7bd48e747d
+
+Best regards,
 -- 
-2.43.0
+Aaron Kling <webgeek1234@gmail.com>
 
