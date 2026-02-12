@@ -1,506 +1,128 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Wed, 11 Feb 2026 23:25:36 +0000
-Subject: [PATCH 2/2] usb: typec: tcpm: add support for Sink Cap Extended
- msg response
+From: Shivam Kalra <shivamkalra98@zohomail.in>
+Subject: [PATCH v4 0/3] rust: alloc: add KVVec shrinking method
+Date: Thu, 12 Feb 2026 13:47:06 +0530
+Message-Id: <20260212-binder-shrink-vec-v3-v4-0-bd02f06bf2cd@zohomail.in>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260211-skedb-v1-2-616340426cdc@google.com>
-References: <20260211-skedb-v1-0-616340426cdc@google.com>
-In-Reply-To: <20260211-skedb-v1-0-616340426cdc@google.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAIKMjWkC/x3MQQqAIBBA0avIrBtIjYquEi1KxxoCixEkCO+et
+ HyL/19IJEwJJvWCUObEV6zoGgXuWONOyL4aTGv61miDG0dPgukQjidmcpgtutFpbTWFLQxQ01s
+ o8PNv56WUD6fXl/FmAAAA
+X-Change-ID: 20260212-binder-shrink-vec-v3-c8c1131efbf7
+To: Danilo Krummrich <dakr@kernel.org>, 
+ Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, 
+ Vlastimil Babka <vbabka@suse.cz>, 
+ "Liam R. Howlett" <Liam.Howlett@oracle.com>, 
+ Uladzislau Rezki <urezki@gmail.com>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-usb@vger.kernel.org, Kyle Tso <kyletso@google.com>, 
- RD Babiera <rdbabiera@google.com>, Amit Sunil Dhamne <amitsd@google.com>
+ =?utf-8?q?Arve_Hj=C3=B8nnev=C3=A5g?= <arve@android.com>, 
+ Todd Kjos <tkjos@android.com>, Christian Brauner <brauner@kernel.org>, 
+ Carlos Llamas <cmllamas@google.com>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Shivam Kalra <shivamkalra98@zohomail.in>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770852352; l=15587;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=BzCSjtIOUUD4Q99p18Q7PqnQpuoLqw6EnXFnmItem+I=;
- b=A6+fIvGraI3758QqJVLEePtwR4SFlrvjG704UCIAa2/Gv7nvit5X/x86U5HbsjInve2M8r89c
- r5aHo4QiKB6BAr0UXNyUU6k2IWWMwq7GhJm39EuwqkDIjPeDL4Q3vn+
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770884727; l=4256;
+ i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
+ bh=bKZOD/0QCyNVBBQrjHN3Q70Hx7RbUjlqHSRCGKdOX4Q=;
+ b=oUzTjmE4lwxmDEfXx9BrqBlGKyqRmES21wey+36aL89hhPYY2AXLmwSrWPIaHfIGLuUkN7KHQ
+ ubSw81jihuwAdiO3t14r9NQWUzn1LoTx/bZuWAQx8hAjyapIIgAz5Nh
+X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
+ pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
+X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for responding to Sink Cap Extended msg request. To achieve
-this, include parsing support for DT properties related to Sink Cap
-Extended. The request for Sink Cap Ext is a control message while the
-response is an extended message (chunked). As the Sink Caps Extended
-Data Block size (24 Byte) is less than MaxExtendedMsgChunkLen (26 Byte),
-a single chunk is sufficient to complete this AMS.
+This series adds a shrink_to() method to KVVec to allow explicit
+capacity reduction for memory reclamation.
 
-Supporting sink cap extended messages while responding to a
-Get_Sink_Caps_Extended request when port is in Sink role is required in
-order to be compliant with at least USB PD Rev3.1 Ver1.8.
+Problem:
+When elements are removed from a KVVec, the allocated capacity is not
+reduced. The underlying C allocators (krealloc/kvrealloc) don't shrink
+memory in-place. This can cause significant memory waste in scenarios
+with variable workloads.
 
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
+Solution:
+- Patch 1: Implements shrink_to(min_capacity, flags) method specifically
+  for KVVec (Vec<T, KVmalloc>). Shrinking only occurs when the operation
+  would free at least one page of memory. The implementation uses
+  explicit alloc+copy+free since vrealloc doesn't yet support in-place
+  shrinking. A TODO comment marks this for future replacement with a
+  generic implementation using A::realloc() once allocators properly
+  support shrinking.
+- Patch 2: Adds KUnit tests for the new shrink_to method, verifying
+  page-based shrinking, empty vector handling, no-op behavior, and
+  min_capacity respect.
+- Patch 3: Uses shrink_to() in the Rust binder driver to reclaim memory
+  when processes are deregistered. Uses a conservative shrinking
+  strategy (trigger at len < cap / 4, shrink to cap / 2) to avoid
+  shrink-then-regrow oscillation.
+
+Testing:
+- KUnit tests pass (rust_kvec test suite).
+- Kernel boots successfully in QEMU with CONFIG_ANDROID_BINDER_IPC_RUST=y.
+
+Changes since v3:
+- Dropped the Shrinkable trait entirely - it was not needed for the
+  KVVec-specific implementation. (Danilo Krummrich)
+- Removed shrink_to_fit() method. Only shrink_to() is implemented.
+  (Danilo Krummrich)
+- Implemented shrink_to() only for KVVec (impl<T> Vec<T, KVmalloc>)
+  instead of as a generic method, since that covers the actual use
+  case in binder. (Danilo Krummrich, Alice Ryhl)
+- Added TODO comment explaining this is a temporary KVVec-specific
+  implementation that should be replaced with a generic
+  Vec<T, A>::shrink_to() calling A::realloc() once the underlying
+  allocators properly support shrinking via realloc. (Danilo Krummrich)
+- Changed binder shrink strategy to be less aggressive to avoid
+  shrink-then-regrow oscillation: now triggers when len < cap / 4 and
+  shrinks to cap / 2. (Alice Ryhl)
+- Removed the cap > 128 threshold check in binder. (Alice Ryhl)
+- Fixed commit prefix from "rust: binder:" to "rust_binder:".
+  (Alice Ryhl)
+- Updated test suite to focus on KVVec-specific behavior.
+
+Changes since v2:
+- Introduced new Shrinkable marker trait to distinguish allocators that
+  benefit from shrinking (Vmalloc) from those that don't (Kmalloc).
+- Shrinking now only occurs for vmalloc-backed buffers when at least one
+  page can be freed, avoiding unnecessary work for kmalloc buffers.
+  (Suggested by Danilo Krummrich)
+- Split into 4 patches: Shrinkable trait introduction is now a
+  separate patch to improve reviewability.
+- Uses explicit alloc+copy+free since vrealloc doesn't yet support
+  in-place shrinking; TODO added for future optimization when vrealloc
+  gains that capability. (Discussed with Danilo Krummrich)
+- Fixed minor KVVec/KVec terminology (binder uses KVVec not KVec).
+- Expanded KUnit tests to cover different allocator backends and
+  page-boundary shrinking behavior.
+
+Changes since v1:
+- Resend with correct threading (no code changes).
+- Removed base-commit.
+- Added explicit lore link to dependency in cover letter.
+
+[1] https://lore.kernel.org/lkml/20260130205424.261700-1-shivamklr@cock.li/
+[2] https://lore.kernel.org/lkml/20260131154016.270385-1-shivamklr@cock.li/
+[3] https://lore.kernel.org/lkml/20260207-binder-shrink-vec-v3-v3-0-8ff388563427@cock.li/
+
+Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
- drivers/usb/typec/tcpm/tcpm.c | 253 +++++++++++++++++++++++++++++++++++++++++-
- include/linux/usb/pd.h        |  82 +++++++++++++-
- 2 files changed, 332 insertions(+), 3 deletions(-)
+Shivam Kalra (3):
+      rust: kvec: implement shrink_to for KVVec
+      rust: alloc: add KUnit tests for KVVec shrink_to
+      rust_binder: shrink all_procs when deregistering processes
 
-diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
-index be49a976428f..72559d0dbf34 100644
---- a/drivers/usb/typec/tcpm/tcpm.c
-+++ b/drivers/usb/typec/tcpm/tcpm.c
-@@ -12,6 +12,7 @@
- #include <linux/jiffies.h>
- #include <linux/kernel.h>
- #include <linux/kthread.h>
-+#include <linux/minmax.h>
- #include <linux/module.h>
- #include <linux/mutex.h>
- #include <linux/power_supply.h>
-@@ -188,7 +189,8 @@
- 	S(STRUCTURED_VDMS),			\
- 	S(COUNTRY_INFO),			\
- 	S(COUNTRY_CODES),			\
--	S(REVISION_INFORMATION)
-+	S(REVISION_INFORMATION),		\
-+	S(GETTING_SINK_EXTENDED_CAPABILITIES)
- 
- #define GENERATE_ENUM(e)	e
- #define GENERATE_STRING(s)	#s
-@@ -229,6 +231,7 @@ enum pd_msg_request {
- 	PD_MSG_DATA_SINK_CAP,
- 	PD_MSG_DATA_SOURCE_CAP,
- 	PD_MSG_DATA_REV,
-+	PD_MSG_EXT_SINK_CAP_EXT
- };
- 
- enum adev_actions {
-@@ -337,6 +340,42 @@ struct pd_timings {
- 	u32 snk_bc12_cmpletion_time;
- };
- 
-+/* Convert microwatt to watt */
-+#define UW_TO_W(pow)					((pow) / 1000000)
-+
-+/**
-+ * pd_identifier - Contains info about PD identifiers
-+ * @vid: Vendor ID (assigned by USB-IF)
-+ * @pid: Product ID (assigned by manufacturer)
-+ * @xid: Value assigned by USB-IF for product
-+ */
-+struct pd_identifier {
-+	u16 vid;
-+	u16 pid;
-+	u32 xid;
-+};
-+
-+/**
-+ * sink_caps_ext_data - Sink extended capability data
-+ * @load_step: Indicates the load step slew rate. Value of 0 indicates 150mA/us
-+ *             & 1 indicates 500 mA/us
-+ * @load_char: Snk overload characteristics
-+ * @compliance: Types of sources the sink has been tested & certified on
-+ * @modes: Charging caps & power sources supported
-+ * @spr_min_pdp: Sink Minimum PDP for SPR mode (in Watts)
-+ * @spr_op_pdp: Sink Operational PDP for SPR mode (in Watts)
-+ * @spr_max_pdp: Sink Maximum PDP for SPR mode (in Watts)
-+ */
-+struct sink_caps_ext_data {
-+	u8 load_step;
-+	u16 load_char;
-+	u8 compliance;
-+	u8 modes;
-+	u8 spr_min_pdp;
-+	u8 spr_op_pdp;
-+	u8 spr_max_pdp;
-+};
-+
- struct tcpm_port {
- 	struct device *dev;
- 
-@@ -585,6 +624,9 @@ struct tcpm_port {
- 
- 	/* Indicates maximum (revision, version) supported */
- 	struct pd_revision_info pd_rev;
-+
-+	struct pd_identifier pd_ident;
-+	struct sink_caps_ext_data sink_caps_ext;
- #ifdef CONFIG_DEBUG_FS
- 	struct dentry *dentry;
- 	struct mutex logbuffer_lock;	/* log buffer access lock */
-@@ -1367,6 +1409,64 @@ static int tcpm_pd_send_sink_caps(struct tcpm_port *port)
- 	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
- }
- 
-+static int tcpm_pd_send_sink_cap_ext(struct tcpm_port *port)
-+{
-+	u16 operating_snk_watt = port->operating_snk_mw / 1000;
-+	struct sink_caps_ext_data *data = &port->sink_caps_ext;
-+	struct pd_identifier *pd_ident = &port->pd_ident;
-+	struct sink_caps_ext_msg skedb = {0};
-+	struct pd_message msg;
-+	u8 data_obj_cnt;
-+
-+	if (!port->self_powered)
-+		data->spr_op_pdp = operating_snk_watt;
-+
-+	/*
-+	 * SPR Sink Minimum PDP indicates the minimum power required to operate
-+	 * a sink device in its lowest level of functionality without requiring
-+	 * power from the battery. We can use the operating_snk_watt value to
-+	 * populate it, as operating_snk_watt indicates device's min operating
-+	 * power.
-+	 */
-+	data->spr_min_pdp = operating_snk_watt;
-+
-+	if (data->spr_op_pdp < data->spr_min_pdp ||
-+	    data->spr_max_pdp < data->spr_op_pdp) {
-+		tcpm_log(port,
-+			 "Invalid PDP values, Min PDP:%u, Op PDP:%u, Max PDP:%u",
-+			 data->spr_min_pdp, data->spr_op_pdp, data->spr_max_pdp);
-+		return -EOPNOTSUPP;
-+	}
-+
-+	memset(&msg, 0, sizeof(msg));
-+	skedb.vid = cpu_to_le16(pd_ident->vid);
-+	skedb.pid = cpu_to_le16(pd_ident->pid);
-+	skedb.xid = cpu_to_le32(pd_ident->xid);
-+	skedb.skedb_ver = SKEDB_VER_1_0;
-+	skedb.load_step = data->load_step;
-+	skedb.load_char = cpu_to_le16(data->load_char);
-+	skedb.compliance = data->compliance;
-+	skedb.modes = data->modes;
-+	skedb.spr_min_pdp = data->spr_min_pdp;
-+	skedb.spr_op_pdp = data->spr_op_pdp;
-+	skedb.spr_max_pdp = data->spr_max_pdp;
-+	memcpy(msg.ext_msg.data, &skedb, sizeof(skedb));
-+	msg.ext_msg.header = PD_EXT_HDR_LE(sizeof(skedb),
-+					   0, /* Denotes if request chunk */
-+					   0, /* Chunk Number */
-+					   1  /* Chunked */);
-+
-+	data_obj_cnt = count_chunked_data_objs(sizeof(skedb));
-+	msg.header = cpu_to_le16(PD_HEADER(PD_EXT_SINK_CAP_EXT,
-+					   port->pwr_role,
-+					   port->data_role,
-+					   port->negotiated_rev,
-+					   port->message_id,
-+					   data_obj_cnt,
-+					   1 /* Denotes if ext header */));
-+	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
-+}
-+
- static void mod_tcpm_delayed_work(struct tcpm_port *port, unsigned int delay_ms)
- {
- 	if (delay_ms) {
-@@ -3655,6 +3755,19 @@ static void tcpm_pd_ctrl_request(struct tcpm_port *port,
- 					   PD_MSG_CTRL_NOT_SUPP,
- 					   NONE_AMS);
- 		break;
-+	case PD_CTRL_GET_SINK_CAP_EXT:
-+		/* This is an unsupported message if port type is SRC */
-+		if (port->negotiated_rev >= PD_REV30 &&
-+		    port->port_type != TYPEC_PORT_SRC)
-+			tcpm_pd_handle_msg(port, PD_MSG_EXT_SINK_CAP_EXT,
-+					   GETTING_SINK_EXTENDED_CAPABILITIES);
-+		else
-+			tcpm_pd_handle_msg(port,
-+					   port->negotiated_rev < PD_REV30 ?
-+					   PD_MSG_CTRL_REJECT :
-+					   PD_MSG_CTRL_NOT_SUPP,
-+					   NONE_AMS);
-+		break;
- 	default:
- 		tcpm_pd_handle_msg(port,
- 				   port->negotiated_rev < PD_REV30 ?
-@@ -3907,6 +4020,16 @@ static bool tcpm_send_queued_message(struct tcpm_port *port)
- 					 ret);
- 			tcpm_ams_finish(port);
- 			break;
-+		case PD_MSG_EXT_SINK_CAP_EXT:
-+			ret = tcpm_pd_send_sink_cap_ext(port);
-+			if (ret == -EOPNOTSUPP)
-+				tcpm_pd_send_control(port, PD_CTRL_NOT_SUPP, TCPC_TX_SOP);
-+			else if (ret < 0)
-+				tcpm_log(port,
-+					 "Unable to transmit sink cap extended, ret=%d",
-+					 ret);
-+			tcpm_ams_finish(port);
-+			break;
- 		default:
- 			break;
- 		}
-@@ -7291,6 +7414,129 @@ static void tcpm_fw_get_timings(struct tcpm_port *port, struct fwnode_handle *fw
- 		port->timings.snk_bc12_cmpletion_time = val;
- }
- 
-+static void tcpm_fw_get_pd_ident(struct tcpm_port *port)
-+{
-+	struct pd_identifier *pd_ident = &port->pd_ident;
-+	u32 *vdo;
-+
-+	/* First 3 vdo values contain info regarding USB PID, VID & XID */
-+	if (port->nr_snk_vdo >= 3)
-+		vdo = port->snk_vdo;
-+	else if (port->nr_snk_vdo_v1 >= 3)
-+		vdo = port->snk_vdo_v1;
-+	else
-+		return;
-+
-+	pd_ident->vid = PD_IDH_VID(vdo[0]);
-+	pd_ident->pid = PD_PRODUCT_PID(vdo[2]);
-+	pd_ident->xid = PD_CSTAT_XID(vdo[1]);
-+	tcpm_log(port, "vid:%#x pid:%#x xid:%#x",
-+		 pd_ident->vid, pd_ident->pid, pd_ident->xid);
-+}
-+
-+static void tcpm_parse_snk_pdos(struct tcpm_port *port)
-+{
-+	struct sink_caps_ext_data *caps = &port->sink_caps_ext;
-+	u32 max_mv, max_ma;
-+	u8 avs_tier1_pdp, avs_tier2_pdp;
-+	int i, pdo_itr;
-+	u32 *snk_pdos;
-+
-+	for (i = 0; i < port->pd_count; ++i) {
-+		snk_pdos = port->pd_list[i]->sink_desc.pdo;
-+		for (pdo_itr = 0; pdo_itr < PDO_MAX_OBJECTS && snk_pdos[pdo_itr];
-+		     ++pdo_itr) {
-+			u32 pdo = snk_pdos[pdo_itr];
-+			u8 curr_snk_pdp = 0;
-+
-+			switch (pdo_type(pdo)) {
-+			case PDO_TYPE_FIXED:
-+				max_mv = pdo_fixed_voltage(pdo);
-+				max_ma = pdo_fixed_current(pdo);
-+				curr_snk_pdp = UW_TO_W(max_mv * max_ma);
-+				break;
-+			case PDO_TYPE_BATT:
-+				curr_snk_pdp = UW_TO_W(pdo_max_power(pdo));
-+				break;
-+			case PDO_TYPE_VAR:
-+				max_mv = pdo_max_voltage(pdo);
-+				max_ma = pdo_max_current(pdo);
-+				curr_snk_pdp = UW_TO_W(max_mv * max_ma);
-+				break;
-+			case PDO_TYPE_APDO:
-+				if (pdo_apdo_type(pdo) == APDO_TYPE_PPS) {
-+					max_mv = pdo_pps_apdo_max_voltage(pdo);
-+					max_ma = pdo_pps_apdo_max_current(pdo);
-+					curr_snk_pdp = UW_TO_W(max_mv * max_ma);
-+					caps->modes |= SINK_MODE_PPS;
-+				} else if (pdo_apdo_type(pdo) ==
-+					   APDO_TYPE_SPR_AVS) {
-+					avs_tier1_pdp = UW_TO_W(SPR_AVS_TIER1_MAX_VOLT_MV
-+						* pdo_spr_avs_apdo_9v_to_15v_max_current_ma(pdo));
-+					avs_tier2_pdp = UW_TO_W(SPR_AVS_TIER2_MAX_VOLT_MV
-+						* pdo_spr_avs_apdo_15v_to_20v_max_current_ma(pdo));
-+					curr_snk_pdp = max(avs_tier1_pdp, avs_tier2_pdp);
-+					caps->modes |= SINK_MODE_AVS;
-+				}
-+				break;
-+			default:
-+				tcpm_log(port, "Invalid source PDO type, ignoring");
-+				continue;
-+			}
-+
-+			caps->spr_max_pdp = max(caps->spr_max_pdp,
-+						curr_snk_pdp);
-+		}
-+	}
-+}
-+
-+static void tcpm_fw_get_sink_caps_ext(struct tcpm_port *port,
-+				      struct fwnode_handle *fwnode)
-+{
-+	struct sink_caps_ext_data *caps = &port->sink_caps_ext;
-+	int ret;
-+	u32 val;
-+
-+	/*
-+	 * Load step represents the change in current per usec that a given
-+	 * source can tolerate while maintaining Vbus within the vSrcValid
-+	 * range. For a sink this represents the "preferred" load-step value. It
-+	 * can only have 2 values (150 mA/usec or 500 mA/usec) with 150 mA/usec
-+	 * being the default.
-+	 */
-+	ret = fwnode_property_read_u32(fwnode, "sink-load-step", &val);
-+	if (!ret)
-+		caps->load_step = val == 500 ? 1 : 0;
-+
-+	fwnode_property_read_u16(fwnode, "sink-load-characteristics",
-+				 &caps->load_char);
-+	fwnode_property_read_u8(fwnode, "sink-compliance", &caps->compliance);
-+	caps->modes = SINK_MODE_VBUS;
-+
-+	/*
-+	 * As per "6.5.13.14" SPR Sink Operational PDP definition, for battery
-+	 * powered devices, this value will correspond to the PDP of the
-+	 * charging adapter either shipped or recommended for use with it. For
-+	 * batteryless sink devices SPR Operational PDP indicates the power
-+	 * required to operate all the device's functional modes. Hence, this
-+	 * value may be considered equal to port's operating_snk_mw. As
-+	 * operating_sink_mw can change as per the pd set used thus, OP PDP
-+	 * is determined when populating Sink Caps Extended Data Block.
-+	 */
-+	if (port->self_powered) {
-+		fwnode_property_read_u32(fwnode, "charging-adapter-pdp-milliwatt",
-+					 &val);
-+		caps->spr_op_pdp = (u8)(val / 1000);
-+		caps->modes |= SINK_MODE_BATT;
-+	}
-+
-+	tcpm_parse_snk_pdos(port);
-+	tcpm_log(port,
-+		 "load-step:%#x load-char:%#x compl:%#x op-pdp:%#x max-pdp:%#x",
-+		 caps->load_step, caps->load_char, caps->compliance,
-+		 caps->spr_op_pdp, caps->spr_max_pdp);
-+}
-+
- static int tcpm_fw_get_caps(struct tcpm_port *port, struct fwnode_handle *fwnode)
- {
- 	struct fwnode_handle *capabilities, *caps = NULL;
-@@ -7464,6 +7710,9 @@ static int tcpm_fw_get_caps(struct tcpm_port *port, struct fwnode_handle *fwnode
- 		}
- 	}
- 
-+	if (port->port_type != TYPEC_PORT_SRC)
-+		tcpm_fw_get_sink_caps_ext(port, fwnode);
-+
- put_caps:
- 	if (caps != fwnode)
- 		fwnode_handle_put(caps);
-@@ -7506,6 +7755,8 @@ static int tcpm_fw_get_snk_vdos(struct tcpm_port *port, struct fwnode_handle *fw
- 			return ret;
- 	}
- 
-+	tcpm_fw_get_pd_ident(port);
-+
- 	return 0;
- }
- 
-diff --git a/include/linux/usb/pd.h b/include/linux/usb/pd.h
-index 6ccd1b2af993..8f7e44c0d321 100644
---- a/include/linux/usb/pd.h
-+++ b/include/linux/usb/pd.h
-@@ -34,7 +34,8 @@ enum pd_ctrl_msg_type {
- 	PD_CTRL_FR_SWAP = 19,
- 	PD_CTRL_GET_PPS_STATUS = 20,
- 	PD_CTRL_GET_COUNTRY_CODES = 21,
--	/* 22-23 Reserved */
-+	PD_CTRL_GET_SINK_CAP_EXT = 22,
-+	/* 23 Reserved */
- 	PD_CTRL_GET_REVISION = 24,
- 	/* 25-31 Reserved */
- };
-@@ -72,7 +73,8 @@ enum pd_ext_msg_type {
- 	PD_EXT_PPS_STATUS = 12,
- 	PD_EXT_COUNTRY_INFO = 13,
- 	PD_EXT_COUNTRY_CODES = 14,
--	/* 15-31 Reserved */
-+	PD_EXT_SINK_CAP_EXT = 15,
-+	/* 16-31 Reserved */
- };
- 
- #define PD_REV10	0x0
-@@ -205,6 +207,72 @@ struct pd_message {
- 	};
- } __packed;
- 
-+/*
-+ * count_chunked_data_objs: Helper to calculate number of Data Objects on a 4
-+ *   byte boundary.
-+ * @size: Size of data block for extended message. Should *not* include extended
-+ *   header size.
-+ */
-+static inline u8 count_chunked_data_objs(u32 size)
-+{
-+	size += offsetof(struct pd_chunked_ext_message_data, data);
-+	return ((size / 4) + (size % 4 ? 1 : 0));
-+}
-+
-+/* Sink Caps Extended Data Block Version */
-+#define SKEDB_VER_1_0				1
-+
-+/* Sink Caps Extended Sink Modes */
-+#define SINK_MODE_PPS		BIT(0)
-+#define SINK_MODE_VBUS		BIT(1)
-+#define SINK_MODE_AC_SUPPLY	BIT(2)
-+#define SINK_MODE_BATT		BIT(3)
-+#define SINK_MODE_BATT_UL	BIT(4) /* Unlimited battery power supply */
-+#define SINK_MODE_AVS		BIT(5)
-+
-+/**
-+ * sink_caps_ext_msg - Sink extended capability PD message
-+ * @vid: Vendor ID
-+ * @pid: Product ID
-+ * @xid: Value assigned by USB-IF for product
-+ * @fw: Firmware version
-+ * @hw: Hardware version
-+ * @skedb_ver: Sink Caps Extended Data Block (SKEDB) Version
-+ * @load_step: Indicates the load step slew rate.
-+ * @load_char: Sink overload characteristics
-+ * @compliance: Types of sources the sink has been tested & certified on
-+ * @touch_temp: Indicates the IEC standard to which the touch temperature
-+ *              conforms to (if applicable).
-+ * @batt_info: Indicates number batteries and hot swappable ports
-+ * @modes: Charging caps & power sources supported
-+ * @spr_min_pdp: Sink Minimum PDP for SPR mode
-+ * @spr_op_pdp: Sink Operational PDP for SPR mode
-+ * @spr_max_pdp: Sink Maximum PDP for SPR mode
-+ * @epr_min_pdp: Sink Minimum PDP for EPR mode
-+ * @epr_op_pdp: Sink Operational PDP for EPR mode
-+ * @epr_max_pdp: Sink Maximum PDP for EPR mode
-+ */
-+struct sink_caps_ext_msg {
-+	__le16 vid;
-+	__le16 pid;
-+	__le32 xid;
-+	u8 fw;
-+	u8 hw;
-+	u8 skedb_ver;
-+	u8 load_step;
-+	__le16 load_char;
-+	u8 compliance;
-+	u8 touch_temp;
-+	u8 batt_info;
-+	u8 modes;
-+	u8 spr_min_pdp;
-+	u8 spr_op_pdp;
-+	u8 spr_max_pdp;
-+	u8 epr_min_pdp;
-+	u8 epr_op_pdp;
-+	u8 epr_max_pdp;
-+} __packed;
-+
- /* PDO: Power Data Object */
- #define PDO_MAX_OBJECTS		7
- 
-@@ -329,6 +397,11 @@ enum pd_apdo_type {
- #define PDO_SPR_AVS_APDO_9V_TO_15V_MAX_CURR	GENMASK(19, 10)	/* 10mA unit */
- #define PDO_SPR_AVS_APDO_15V_TO_20V_MAX_CURR	GENMASK(9, 0)	/* 10mA unit */
- 
-+/* SPR AVS has two different current ranges 9V - 15V, 15V - 20V */
-+#define SPR_AVS_TIER1_MIN_VOLT_MV		9000
-+#define SPR_AVS_TIER1_MAX_VOLT_MV		15000
-+#define SPR_AVS_TIER2_MAX_VOLT_MV		20000
-+
- static inline enum pd_pdo_type pdo_type(u32 pdo)
- {
- 	return (pdo >> PDO_TYPE_SHIFT) & PDO_TYPE_MASK;
-@@ -339,6 +412,11 @@ static inline unsigned int pdo_fixed_voltage(u32 pdo)
- 	return ((pdo >> PDO_FIXED_VOLT_SHIFT) & PDO_VOLT_MASK) * 50;
- }
- 
-+static inline unsigned int pdo_fixed_current(u32 pdo)
-+{
-+	return ((pdo >> PDO_FIXED_CURR_SHIFT) & PDO_CURR_MASK) * 10;
-+}
-+
- static inline unsigned int pdo_min_voltage(u32 pdo)
- {
- 	return ((pdo >> PDO_VAR_MIN_VOLT_SHIFT) & PDO_VOLT_MASK) * 50;
+ drivers/android/binder/context.rs |  11 +++
+ rust/kernel/alloc/kvec.rs         | 190 +++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 200 insertions(+), 1 deletion(-)
+---
+base-commit: 3c4ae63073d84abee5d81ce46d86a94e9dae9c89
+change-id: 20260212-binder-shrink-vec-v3-c8c1131efbf7
 
+Best regards,
 -- 
-2.53.0.239.g8d8fc8a987-goog
+Shivam Kalra <shivamkalra98@zohomail.in>
 
