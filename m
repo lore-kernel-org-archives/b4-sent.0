@@ -1,107 +1,90 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Thu, 12 Feb 2026 10:41:25 -0600
-Subject: [PATCH v3] arm64: dts: qcom: sm8550: Add UART15
+From: Mayank Rungta <mrungta@google.com>
+Subject: [PATCH 0/4] watchdog/hardlockup: Improvements to hardlockup
+ detection and documentation
+Date: Thu, 12 Feb 2026 14:12:09 -0700
+Message-Id: <20260212-hardlockup-watchdog-fixes-v1-0-745f1dce04c3@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260212-sm8550-uart15-v3-1-b90405f94bec@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XMSwrCMBSF4a2UOzaSmz4SHbkPcZBX2wvWSlKDU
- rp3046K4PAc+P4Zog/kI5yLGYJPFGl85FEeCrC9fnSekcsbBBcNF1yyOKi65uylw4Q1OxlpXKW
- 8rKSDbJ7Bt/Teetdb3j3FaQyfLZ9wff+VEjJkTlnbyqpxyMWlGzTdj3YcYC0lsdOIv1pkbZwoN
- XcelbF7vSzLF6rTw8/oAAAA
-X-Change-ID: 20260207-sm8550-uart15-9b7bd48e747d
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Xilin Wu <wuxilin123@gmail.com>, 
- Molly Sophia <mollysophia379@gmail.com>, 
- Aaron Kling <webgeek1234@gmail.com>, Dmitry Baryshkov <lumag@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAClCjmkC/x3LywqAIBBA0V+JWTegRs9fiRaiUw5FhvaC6N+Tl
+ ofLfSBSYIrQZQ8EOjmyXxNknoFxep0I2SaDEqoSSkp0OtjFm/nY8NK7cdZPOPJNEStRyLpsG22
+ UgPRvgf6Q9n543w+BGVJ1awAAAA==
+X-Change-ID: 20260211-hardlockup-watchdog-fixes-60317598ac20
+To: Jonathan Corbet <corbet@lwn.net>, Petr Mladek <pmladek@suse.com>, 
+ Jinchao Wang <wangjinchao600@gmail.com>, 
+ Yunhui Cui <cuiyunhui@bytedance.com>, Stephane Eranian <eranian@google.com>, 
+ Ian Rogers <irogers@google.com>, Li Huafei <lihuafei1@huawei.com>, 
+ Feng Tang <feng.tang@linux.alibaba.com>, 
+ Max Kellermann <max.kellermann@ionos.com>, Jonathan Corbet <corbet@lwn.net>, 
+ Douglas Anderson <dianders@chromium.org>, 
+ Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Mayank Rungta <mrungta@google.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770914492; l=2588;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=mR3/JRYkuGO8CBqOJAZJw6sx5dxfOUEZ5hawmrAeEFo=;
- b=aJx/b4n2h90yqY54V5mcmlCBuCfHejlMSqOOiBQPfP7/OiVeqMfSxHKS6XuTbH+o/eXOGYe+e
- WHBxjMNT5ybAF70oCuuZYYKSFNCnE1UA7pn7RFthPmtrVnoGEkoCysF
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770930732; l=2564;
+ i=mrungta@google.com; s=20260212; h=from:subject:message-id;
+ bh=XizmmF3lxxSnLLMxo8fUj4LGwSFbwQ8dvaEF5IhQtZ8=;
+ b=9cOvWrv+W8cZ9WoLN1hnGKf3VDxgydz3lULolLYHZAMSoALvOyPsWfpwqqUMuZWDybswdJK2u
+ dg23qktnDUnBQ7KS2JPBZeSAU34dqvKH4hKKl7wltlGBaOmWMIYxAzK
+X-Developer-Key: i=mrungta@google.com; a=ed25519;
+ pk=2Bjwbv/ibL10QnyvK9G7DoKpffXy7z6+M4NawEYgYDI=
+X-Endpoint-Received: by B4 Relay for mrungta@google.com/20260212 with auth_id=634
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Xilin Wu <wuxilin123@gmail.com>
+This series addresses limitations in the hardlockup detector implementations
+and updates the documentation to reflect actual behavior and recent changes.
 
-Add uart15 node for UART bus present on sm8550 SoC.
+The changes are structured as follows:
 
-Signed-off-by: Molly Sophia <mollysophia379@gmail.com>
-Signed-off-by: Xilin Wu <wuxilin123@gmail.com>
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@linaro.org>
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Hardlockup Detection Improvements (Patches 1 & 3)
+=================================================
+The hardlockup detector logic relies on updating saved interrupt counts to
+determine if the CPU is making progress.
+
+Patch 1 ensures that the saved interrupt count is updated unconditionally
+before checking the "touched" flag. This prevents stale comparisons which
+can delay detection. This is a logic fix that ensures the detector remains
+accurate even when the watchdog is frequently touched.
+
+Patch 3 improves the Buddy detector's timeliness. The current checking
+interval (every 3rd sample) causes high variability in detection time (up
+to 24s). This patch changes the Buddy detector to check at every hrtimer
+interval (4s) with a missed-interrupt threshold of 3, narrowing the
+detection window to a consistent 8-12 second range.
+
+Documentation Updates (Patches 2 & 4)
+=====================================
+The current documentation does not fully capture the variable nature of
+detection latency or the details of the Buddy system.
+
+Patch 2 removes the strict "10 seconds" definition of a hardlockup, which
+was misleading given the periodic nature of the detector. It adds a
+"Detection Overhead" section to the admin guide, using "Best Case" and
+"Worst Case" scenarios to illustrate that detection time can vary
+significantly (e.g., ~6s to ~20s).
+
+Patch 4 adds a dedicated section for the Buddy detector, which was previously
+undocumented. It details the mechanism, the new timing logic, and known
+limitations.
+
+Signed-off-by: Mayank Rungta <mrungta@google.com>
 ---
-This patch was originally submitted as part of a series to support the
-AYN Odin 2 [0]. That series stalled, so submitting separately.
+Mayank Rungta (4):
+      watchdog/hardlockup: Always update saved interrupts during check
+      doc: watchdog: Clarify hardlockup detection timing
+      watchdog/hardlockup: improve buddy system detection timeliness
+      doc: watchdog: Document buddy detector
 
-[0] https://lore.kernel.org/all/20240424-ayn-odin2-initial-v1-0-e0aa05c991fd@gmail.com/
+ Documentation/admin-guide/lockup-watchdogs.rst | 132 +++++++++++++++++++++----
+ include/linux/nmi.h                            |   1 +
+ kernel/watchdog.c                              |  41 ++++++--
+ kernel/watchdog_buddy.c                        |   9 +-
+ 4 files changed, 146 insertions(+), 37 deletions(-)
 ---
-Changes in v3:
-- Properly pad reg address
-- Link to v2: https://lore.kernel.org/r/20260211-sm8550-uart15-v2-1-bd23a0de18bc@gmail.com
-
-Changes in v2:
-- Use QCOM_ICC_TAG_ define in interconnect paths phandle third argument
-- Link to v1: https://lore.kernel.org/r/20260207-sm8550-uart15-v1-1-d8ccf746d102@gmail.com
----
- arch/arm64/boot/dts/qcom/sm8550.dtsi | 24 ++++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
-
-diff --git a/arch/arm64/boot/dts/qcom/sm8550.dtsi b/arch/arm64/boot/dts/qcom/sm8550.dtsi
-index e3f93f4f412ded9583a6bc9215185a0daf5f1b57..eebd5f9663edcc91480097aa39e9ca4dc3592dd9 100644
---- a/arch/arm64/boot/dts/qcom/sm8550.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8550.dtsi
-@@ -1251,6 +1251,22 @@ &config_noc SLAVE_QUP_2 QCOM_ICC_TAG_ACTIVE_ONLY>,
- 				#size-cells = <0>;
- 				status = "disabled";
- 			};
-+
-+			uart15: serial@89c000 {
-+				compatible = "qcom,geni-uart";
-+				reg = <0 0x0089c000 0 0x4000>;
-+				clock-names = "se";
-+				clocks = <&gcc GCC_QUPV3_WRAP2_S7_CLK>;
-+				pinctrl-names = "default";
-+				pinctrl-0 = <&qup_uart15_default>;
-+				interrupts = <GIC_SPI 462 IRQ_TYPE_LEVEL_HIGH 0>;
-+				interconnects = <&clk_virt MASTER_QUP_CORE_2 QCOM_ICC_TAG_ALWAYS
-+						 &clk_virt SLAVE_QUP_CORE_2 QCOM_ICC_TAG_ALWAYS>,
-+						<&gem_noc MASTER_APPSS_PROC QCOM_ICC_TAG_ACTIVE_ONLY
-+						 &config_noc SLAVE_QUP_2 QCOM_ICC_TAG_ACTIVE_ONLY>;
-+				interconnect-names = "qup-core", "qup-config";
-+				status = "disabled";
-+			};
- 		};
- 
- 		i2c_master_hub_0: geniqup@9c0000 {
-@@ -5095,6 +5111,14 @@ qup_uart14_cts_rts: qup-uart14-cts-rts-state {
- 				bias-pull-down;
- 			};
- 
-+			qup_uart15_default: qup-uart15-default-state {
-+				/* TX, RX */
-+				pins = "gpio74", "gpio75";
-+				function = "qup2_se7";
-+				drive-strength = <2>;
-+				bias-pull-up;
-+			};
-+
- 			sdc2_sleep: sdc2-sleep-state {
- 				clk-pins {
- 					pins = "sdc2_clk";
-
----
-base-commit: 9845cf73f7db6094c0d8419d6adb848028f4a921
-change-id: 20260207-sm8550-uart15-9b7bd48e747d
+base-commit: 0dddf20b4fd4afd59767acc144ad4da60259f21f
+change-id: 20260211-hardlockup-watchdog-fixes-60317598ac20
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Mayank Rungta <mrungta@google.com>
 
