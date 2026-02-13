@@ -1,192 +1,322 @@
-From: Tim Kovalenko <tim.kovalenko@proton.me>
-Date: Thu, 12 Feb 2026 22:49:13 -0500
-Subject: [PATCH] gpu: nova-core: fix stack overflow in GSP memory
- allocation
+From: Zhentao Guo <zhentao.guo@amlogic.com>
+Subject: [PATCH RFC v4 0/4] Add Amlogic stateless H.264 video decoder for
+ S4
+Date: Fri, 13 Feb 2026 13:12:37 +0800
+Message-Id: <20260213-b4-s4-vdec-upstream-v4-0-c7112d00d662@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260212-drm-rust-next-v1-1-409398b12e61@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MwQpAUBBG4VfRrE0xhXgVWeD+mIVLc5GSd3ez/
- BbnPBRgikBN8pDh0qCbj8jThMal9zNYXTRJJmUmubCzle0MB3vcBw8YaumB2lUFxWY3THr/v7Z
- 73w9rhI7IXwAAAA==
-X-Change-ID: 20260212-drm-rust-next-beb92aee9d75
-To: Alexandre Courbot <acourbot@nvidia.com>, 
- Danilo Krummrich <dakr@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun.feng@gmail.com>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Trevor Gross <tmgross@umich.edu>
-Cc: nouveau@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
- Tim Kovalenko <tim.kovalenko@proton.me>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770954563; l=6047;
- i=tim.kovalenko@proton.me; s=20260212; h=from:subject:message-id;
- bh=zAyFM1Gds/9GkecAEWLm2RUuiSkvinRA/rr0HZejhKw=;
- b=W+viKVGiSV2fpc2PJZQBP4AL/bo8ESOw7mFgK3OvX6xoEvuVJ/GSYvGDmMzY2TXs99oKTp0Cj
- NVxFchszV9qATlli8IFa+bPzn6HliAUQwfaFwAvGygjUBGtMNwCVPCP
-X-Developer-Key: i=tim.kovalenko@proton.me; a=ed25519;
- pk=/+OiulEpgeZifgP4mDE4e5YlV6nMeY+frze/lY/xiHI=
-X-Endpoint-Received: by B4 Relay for tim.kovalenko@proton.me/20260212 with auth_id=635
+X-B4-Tracking: v=1; b=H4sIAMWyjmkC/33NSwoCMRAE0KsMWRtJJ21GXQmCB3ArLvJpNeB8S
+ DQoMnc3DIiI4rK66FcPligGSmxZPVikHFLo2hJwUjF3Mu2RePAlMynkDISsuUWekGdPjl/7dIl
+ kGi60UA4MujkaVj77SIdwG9Ud227WbF+Op5AuXbyPSxnG6i+agQuupUABc1B25lemOXfH4Kaua
+ 0Yxy7cCEn8rsijWW+tIHQCM/lbUS9ECJPxWVFEQF9qQU75e0KcyDMMTe0dtnEkBAAA=
+X-Change-ID: 20251027-b4-s4-vdec-upstream-0603c1a4c84a
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, Zhentao Guo <zhentao.guo@amlogic.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770959584; l=12260;
+ i=zhentao.guo@amlogic.com; s=20251024; h=from:subject:message-id;
+ bh=QtyheCxmOuvGDsN1Pbkcqo4Apx5Uh7t3JM+lW/T1IKA=;
+ b=DmDzqn6d/fCbHodpHyDSk7lgqrlZ6n9HfRBXULoacWuMcC2SNaRXzuTomuMwb5wQhGBCmw2ry
+ /EnnrJTmr6DBjqCV8mqcfNF4bptKydt6Y2L1GPHRzDxgvQo2kaYMuT+
+X-Developer-Key: i=zhentao.guo@amlogic.com; a=ed25519;
+ pk=5yfDKrjreXwcAoEUsdtWafy6YN500upXp/CgtnXjLVU=
+X-Endpoint-Received: by B4 Relay for zhentao.guo@amlogic.com/20251024 with auth_id=555
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The `Cmdq::new` function was allocating a `PteArray` struct on the stack
-and was causing a stack overflow with 8216 bytes.
+Introduce initial driver support for Amlogic's new video acceleration
+hardware architecture, designed for video stream decoding.
 
-Remove the `PteArray` and instead calculate and write the Page Table
-Entries directly into the coherent DMA buffer one-by-one. This reduces
-the stack usage quite a lot.
+Compared to the current Amlogic video decoder hardware architecture,
+this new implementation eliminates the Esparser hardware component,
+enabling direct vb2 buffer input. The driver is designed to support
+the V4L2 M2M stateless decoder API. The initial phase includes support
+for H.264 decoding on Amlogic S805X2 platform.
 
-Signed-off-by: Tim Kovalenko <tim.kovalenko@proton.me>
+The driver is capable of:
+- Supporting stateless H.264 decoding up to a resolution 1920x1088(on the S805X2 platform).
+- Supporting I/P/B frame handling.
+- Supporting vb2 mmap and dma-buf modes.
+- Supporting frame-based decode mode. (Note that some H.264 bitstreams require
+  DPB reordering to generate reference lists, the stateless decoder driver
+  cannot access reordered reference lists in this mode, requiring the driver
+  to perform reference list reordering itself)
+- Supporting NV12/NV21 output.
+- Supporting Annex B start codes.
+
+This driver is tested with Gstreamer.
+Example:
+gst-launch-1.0 filesrc location=/tmp/video_640x360_mp4_hevc_450kbps_no_b.mp4 !
+parsebin ! v4l2slh264dec ! filesink location=/tmp/output.yuv
+
+Retry the compliance test based on kernel 6.19:
+v4l2-compliance 1.30.1, 64 bits, 64-bit time_t
+
+Compliance test for aml-vdec-drv device /dev/video0:
+
+Driver Info:
+        Driver name      : aml-vdec-drv
+        Card type        : platform:aml-vdec-drv
+        Bus info         : platform:fe320000.video-codec
+        Driver version   : 6.19.0
+        Capabilities     : 0x84204000
+                Video Memory-to-Memory Multiplanar
+                Streaming
+                Extended Pix Format
+                Device Capabilities
+        Device Caps      : 0x04204000
+                Video Memory-to-Memory Multiplanar
+                Streaming
+                Extended Pix Format
+        Detected Stateless Decoder
+Media Driver Info:
+        Driver name      : aml-vdec-drv
+        Model            : aml-vdec-drv
+        Serial           :
+        Bus info         : platform:fe320000.video-codec
+        Media version    : 6.19.0
+        Hardware revision: 0x00000000 (0)
+        Driver version   : 6.19.0
+Interface Info:
+        ID               : 0x0300000c
+        Type             : V4L Video
+Entity Info:
+        ID               : 0x00000001 (1)
+        Name             : aml_dev_drv-source
+        Function         : V4L2 I/O
+        Pad 0x01000002   : 0: Source
+          Link 0x02000008: to remote pad 0x1000004 of entity 'aml_dev_drv-proc' (Video Decoder): Data, Enabled, Immutable
+
+Required ioctls:
+        test MC information (see 'Media Driver Info' above): OK
+        test VIDIOC_QUERYCAP: OK
+        test invalid ioctls: OK
+
+Allow for multiple opens:
+        test second /dev/video0 open: OK
+        test VIDIOC_QUERYCAP: OK
+        test VIDIOC_G/S_PRIORITY: OK
+        test for unlimited opens: OK
+
+Debug ioctls:
+        test VIDIOC_DBG_G/S_REGISTER: OK (Not Supported)
+        test VIDIOC_LOG_STATUS: OK (Not Supported)
+
+Input ioctls:
+        test VIDIOC_G/S_TUNER/ENUM_FREQ_BANDS: OK (Not Supported)
+        test VIDIOC_G/S_FREQUENCY: OK (Not Supported)
+        test VIDIOC_S_HW_FREQ_SEEK: OK (Not Supported)
+        test VIDIOC_ENUMAUDIO: OK (Not Supported)
+        test VIDIOC_G/S/ENUMINPUT: OK (Not Supported)
+        test VIDIOC_G/S_AUDIO: OK (Not Supported)
+        Inputs: 0 Audio Inputs: 0 Tuners: 0
+
+Output ioctls:
+        test VIDIOC_G/S_MODULATOR: OK (Not Supported)
+        test VIDIOC_G/S_FREQUENCY: OK (Not Supported)
+        test VIDIOC_ENUMAUDOUT: OK (Not Supported)
+        test VIDIOC_G/S/ENUMOUTPUT: OK (Not Supported)
+        test VIDIOC_G/S_AUDOUT: OK (Not Supported)
+        Outputs: 0 Audio Outputs: 0 Modulators: 0
+
+Input/Output configuration ioctls:
+        test VIDIOC_ENUM/G/S/QUERY_STD: OK (Not Supported)
+        test VIDIOC_ENUM/G/S/QUERY_DV_TIMINGS: OK (Not Supported)
+        test VIDIOC_DV_TIMINGS_CAP: OK (Not Supported)
+        test VIDIOC_G/S_EDID: OK (Not Supported)
+
+Control ioctls:
+        test VIDIOC_QUERY_EXT_CTRL/QUERYMENU: OK
+        test VIDIOC_QUERYCTRL: OK
+        test VIDIOC_G/S_CTRL: OK
+        test VIDIOC_G/S/TRY_EXT_CTRLS: OK
+        test VIDIOC_(UN)SUBSCRIBE_EVENT/DQEVENT: OK
+        test VIDIOC_G/S_JPEGCOMP: OK (Not Supported)
+        Standard Controls: 6 Private Controls: 0
+        Standard Compound Controls: 4 Private Compound Controls: 0
+
+Format ioctls:
+        test VIDIOC_ENUM_FMT/FRAMESIZES/FRAMEINTERVALS: OK
+        test VIDIOC_G/S_PARM: OK (Not Supported)
+        test VIDIOC_G_FBUF: OK (Not Supported)
+        test VIDIOC_G_FMT: OK
+        test VIDIOC_TRY_FMT: OK
+        test VIDIOC_S_FMT: OK
+        test VIDIOC_G_SLICED_VBI_CAP: OK (Not Supported)
+        test Cropping: OK (Not Supported)
+        test Composing: OK (Not Supported)
+        test Scaling: OK (Not Supported)
+
+Codec ioctls:
+        test VIDIOC_(TRY_)ENCODER_CMD: OK (Not Supported)
+        test VIDIOC_G_ENC_INDEX: OK (Not Supported)
+        test VIDIOC_(TRY_)DECODER_CMD: OK
+
+Buffer ioctls:
+        test VIDIOC_REQBUFS/CREATE_BUFS/QUERYBUF: OK
+        test CREATE_BUFS maximum buffers: OK
+        test VIDIOC_REMOVE_BUFS: OK
+        test VIDIOC_EXPBUF: OK
+        test Requests: OK
+        test blocking wait: OK
+
+Total for aml-vdec-drv device /dev/video0: 49, Succeeded: 49, Failed: 0, Warnings: 0
+
+Fluster test result of JVT-AVC_V1.
+Result:
+Ran 77/135 tests successfully
+
+- 52 test vectors failed due to interlaced or mbaff clips: The Amlogic stateless
+  decoder driver only support bitstreams with frame_mbs_only_flags == 1.
+  Test Vectors:
+        cabac_mot_fld0_full
+        cabac_mot_mbaff0_full
+        cabac_mot_picaff0_full
+        CABREF3_Sand_D
+        CAFI1_SVA_C
+        CAMA1_Sony_C
+        CAMA1_TOSHIBA_B
+        cama1_vtc_c
+        cama2_vtc_b
+        CAMA3_Sand_E
+        cama3_vtc_b
+        CAMACI3_Sony_C
+        CAMANL1_TOSHIBA_B
+        CAMANL2_TOSHIBA_B
+        CAMANL3_Sand_E
+        CAMASL3_Sony_B
+        CAMP_MOT_MBAFF_L30
+        CAMP_MOT_MBAFF_L31
+        CANLMA2_Sony_C
+        CANLMA3_Sony_C
+        CAPA1_TOSHIBA_B
+        CAPAMA3_Sand_F
+        cavlc_mot_fld0_full_B
+        cavlc_mot_mbaff0_full_B
+        cavlc_mot_picaff0_full_B
+        CVCANLMA2_Sony_C
+        CVFI1_Sony_D
+        CVFI1_SVA_C
+        CVFI2_Sony_H
+        CVFI2_SVA_C
+        CVMA1_Sony_D
+        CVMA1_TOSHIBA_B
+        CVMANL1_TOSHIBA_B
+        CVMANL2_TOSHIBA_B
+        CVMAPAQP3_Sony_E
+        CVMAQP2_Sony_G
+        CVMAQP3_Sony_D
+        CVMP_MOT_FLD_L30_B
+        CVNLFI1_Sony_C
+        CVNLFI2_Sony_H
+        CVPA1_TOSHIBA_B
+        FI1_Sony_E
+        MR6_BT_B
+        MR7_BT_B
+        MR8_BT_B
+        MR9_BT_B
+        Sharp_MP_Field_1_B
+        Sharp_MP_Field_2_B
+        Sharp_MP_Field_3_B
+        Sharp_MP_PAFF_1r2
+        Sharp_MP_PAFF_2r
+        CVMP_MOT_FRM_L31_B
+- 3 test vectors failed due to unsupported bitstream.
+  num_slice_group_minus1 greater than zero is not supported by the
+  hardware.
+  Test Vectors:
+        FM1_BT_B
+        FM1_FT_E
+        FM2_SVA_C
+- 2 test vectors failed because SP_SLICE type is not supported by the
+  hardware.
+  Test Vectors:
+        SP1_BT_A
+        sp2_bt_b
+
+One remain failure is CVFC1_Sony_C, which contains crop information. The md5sum of every decoded YUV indicates that original output from the decoder was correct. The YUV was cropped by gstreamer. The correct cropping method for this bitstream should be to crop 30*2 rows of pixels from both the top and bottom of the image, and 13*2 columns of pixels from both the left and right sides.However, gstreamer cropped 13*4 columns of pixels from the right side and 30*4 rows of pixels from the bottom. We are trying to find out the cause of this. Other failuers mentioned in V1 and V2 were resolved.
+
+Changes in v4:
+- Use %pad to print dma_addr_t type instead of using %llx.
+- Add initial values to some local variables.
+- Link to v3: https://lore.kernel.org/r/20260121-b4-s4-vdec-upstream-v3-0-4496aec3d79e@amlogic.com
+
+Changes in v3:
+- Fixed the DT check error:
+  arch/arm64/boot/dts/amlogic/meson-s4-s805x2-aq222.dtb: video-codec@fe320000 (amlogic,s4-vcodec-dec): 'amlogic,canvas' does not match any of the regexes: '^pinctrl-[0-9]+$' 
+  from schema $id: http://devicetree.org/schemas/media/amlogic,vcodec-dec.yaml
+- Added DOS reset lines to dtsi and dt-binding.
+- Fixed the issue where some B-frames were not decoded correctly(The fluster failures mentioned in patch V1 and V2 were mostly caused by this).
+- Fixed the issue where canvas_index leaks occurred during the decoding of some bitstreams.
+- Rework the src/dst format storage. Use v4l2_pix_format_mplane to store formats that related to bitstreams into the context. Add the reset format function to reset all the formats to default value. 
+- Store decoding parameters related to chip platforms, such as maximum width/height and alignment requirement, organized by chip platform.
+- Link to v2: https://lore.kernel.org/r/20251124-b4-s4-vdec-upstream-v2-0-bdbbce3f11a6@amlogic.com
+
+Changes in v2:
+- Fixed incorrect generation of the reference lists for some B-frames.
+- Rename or get rid of some properties in DTS and dt-binding.
+- Remove some useless code or helper functions, (eg. clk helper functions, reg I/O macros, and some superfluous print messages) replace these functions with existing ones.
+- Replace all the printk messages with dev_err/dev_info/dev_dbg
+- Use the helper functions from the existing meson-canvas driver.
+- Use clk_bulk_data to map clocks from DTS.
+- Retry the V4L2 Compliance test on 6.18-rc6, fix a newly introduced bug.
+- Link to v1: https://lore.kernel.org/r/20251027-b4-s4-vdec-upstream-v1-0-620401813b5d@amlogic.com
+
+To: Mauro Carvalho Chehab <mchehab@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Neil Armstrong <neil.armstrong@linaro.org>
+To: Kevin Hilman <khilman@baylibre.com>
+To: Jerome Brunet <jbrunet@baylibre.com>
+To: Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-media@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-amlogic@lists.infradead.org
+
+Signed-off-by: Zhentao Guo <zhentao.guo@amlogic.com>
 ---
- drivers/gpu/nova-core/gsp.rs      | 50 ++++++++++++++-------------------------
- drivers/gpu/nova-core/gsp/cmdq.rs | 27 ++++++++++++++++++---
- 2 files changed, 42 insertions(+), 35 deletions(-)
+Zhentao Guo (4):
+      media: dt-bindings: Add Amlogic V4L2 video decoder
+      decoder: Add V4L2 stateless H.264 decoder driver
+      arm64: dts: amlogic: Add video decoder driver support for S4 SOCs
+      arm64: defconfig: Enable VDEC driver for Amlogic SoCs
 
-diff --git a/drivers/gpu/nova-core/gsp.rs b/drivers/gpu/nova-core/gsp.rs
-index 174feaca0a6b9269cf35286dec3acc4d60918904..316eeaf87ec5ae67422a34426eefa747c9b6502b 100644
---- a/drivers/gpu/nova-core/gsp.rs
-+++ b/drivers/gpu/nova-core/gsp.rs
-@@ -2,16 +2,14 @@
- 
- mod boot;
- 
-+use core::iter::Iterator;
-+
- use kernel::{
-     device,
--    dma::{
--        CoherentAllocation,
--        DmaAddress, //
--    },
-+    dma::CoherentAllocation,
-     dma_write,
-     pci,
--    prelude::*,
--    transmute::AsBytes, //
-+    prelude::*, //
- };
- 
- pub(crate) mod cmdq;
-@@ -39,27 +37,6 @@
- /// Number of GSP pages to use in a RM log buffer.
- const RM_LOG_BUFFER_NUM_PAGES: usize = 0x10;
- 
--/// Array of page table entries, as understood by the GSP bootloader.
--#[repr(C)]
--struct PteArray<const NUM_ENTRIES: usize>([u64; NUM_ENTRIES]);
--
--/// SAFETY: arrays of `u64` implement `AsBytes` and we are but a wrapper around one.
--unsafe impl<const NUM_ENTRIES: usize> AsBytes for PteArray<NUM_ENTRIES> {}
--
--impl<const NUM_PAGES: usize> PteArray<NUM_PAGES> {
--    /// Creates a new page table array mapping `NUM_PAGES` GSP pages starting at address `start`.
--    fn new(start: DmaAddress) -> Result<Self> {
--        let mut ptes = [0u64; NUM_PAGES];
--        for (i, pte) in ptes.iter_mut().enumerate() {
--            *pte = start
--                .checked_add(num::usize_as_u64(i) << GSP_PAGE_SHIFT)
--                .ok_or(EOVERFLOW)?;
--        }
--
--        Ok(Self(ptes))
--    }
--}
--
- /// The logging buffers are byte queues that contain encoded printf-like
- /// messages from GSP-RM.  They need to be decoded by a special application
- /// that can parse the buffers.
-@@ -86,16 +63,25 @@ fn new(dev: &device::Device<device::Bound>) -> Result<Self> {
-             NUM_PAGES * GSP_PAGE_SIZE,
-             GFP_KERNEL | __GFP_ZERO,
-         )?);
--        let ptes = PteArray::<NUM_PAGES>::new(obj.0.dma_handle())?;
-+
-+        let start_addr = obj.0.dma_handle();
- 
-         // SAFETY: `obj` has just been created and we are its sole user.
--        unsafe {
--            // Copy the self-mapping PTE at the expected location.
-+        let pte_region = unsafe {
-             obj.0
--                .as_slice_mut(size_of::<u64>(), size_of_val(&ptes))?
--                .copy_from_slice(ptes.as_bytes())
-+                .as_slice_mut(size_of::<u64>(), NUM_PAGES * size_of::<u64>())?
-         };
- 
-+        // As in [`DmaGspMem`], this is a  one by one GSP Page write to the memory
-+        // to avoid stack overflow when allocating the whole array at once.
-+        for (i, chunk) in pte_region.chunks_exact_mut(size_of::<u64>()).enumerate() {
-+            let pte_value = start_addr
-+                .checked_add(num::usize_as_u64(i) << GSP_PAGE_SHIFT)
-+                .ok_or(EOVERFLOW)?;
-+
-+            chunk.copy_from_slice(&pte_value.to_ne_bytes());
-+        }
-+
-         Ok(obj)
-     }
- }
-diff --git a/drivers/gpu/nova-core/gsp/cmdq.rs b/drivers/gpu/nova-core/gsp/cmdq.rs
-index 46819a82a51adc58423502d9d45730923b843656..13a82d505c123e733850a00f627ddfe0c218940c 100644
---- a/drivers/gpu/nova-core/gsp/cmdq.rs
-+++ b/drivers/gpu/nova-core/gsp/cmdq.rs
-@@ -35,7 +35,6 @@
-             MsgqRxHeader,
-             MsgqTxHeader, //
-         },
--        PteArray,
-         GSP_PAGE_SHIFT,
-         GSP_PAGE_SIZE, //
-     },
-@@ -159,7 +158,7 @@ struct Msgq {
- #[repr(C)]
- struct GspMem {
-     /// Self-mapping page table entries.
--    ptes: PteArray<{ GSP_PAGE_SIZE / size_of::<u64>() }>,
-+    ptes: [u64; GSP_PAGE_SIZE / size_of::<u64>()],
-     /// CPU queue: the driver writes commands here, and the GSP reads them. It also contains the
-     /// write and read pointers that the CPU updates.
-     ///
-@@ -201,7 +200,29 @@ fn new(dev: &device::Device<device::Bound>) -> Result<Self> {
- 
-         let gsp_mem =
-             CoherentAllocation::<GspMem>::alloc_coherent(dev, 1, GFP_KERNEL | __GFP_ZERO)?;
--        dma_write!(gsp_mem[0].ptes = PteArray::new(gsp_mem.dma_handle())?)?;
-+        const NUM_PAGES: usize = GSP_PAGE_SIZE / size_of::<u64>();
-+
-+        // One by one GSP Page write to the memory to avoid stack overflow when allocating
-+        // the whole array at once.
-+        let item = gsp_mem.item_from_index(0)?;
-+        for i in 0..NUM_PAGES {
-+            let pte_value = gsp_mem
-+                    .dma_handle()
-+                    .checked_add(num::usize_as_u64(i) << GSP_PAGE_SHIFT)
-+                    .ok_or(EOVERFLOW)?;
-+
-+            // SAFETY: `item_from_index` ensures that `item` is always a valid pointer and can be
-+            // dereferenced. The compiler also further validates the expression on whether `field`
-+            // is a member of `item` when expanded by the macro.
-+            //
-+            // Further, this is dma_write! macro expanded and modified to allow for individual
-+            // page write.
-+            unsafe {
-+                let ptr_field = core::ptr::addr_of_mut!((*item).ptes[i]);
-+                gsp_mem.field_write(ptr_field, pte_value);
-+            }
-+        }
-+
-         dma_write!(gsp_mem[0].cpuq.tx = MsgqTxHeader::new(MSGQ_SIZE, RX_HDR_OFF, MSGQ_NUM_PAGES))?;
-         dma_write!(gsp_mem[0].cpuq.rx = MsgqRxHeader::new())?;
- 
-
+ .../bindings/media/amlogic,s4-vcodec-dec.yaml      |   96 +
+ MAINTAINERS                                        |    7 +
+ arch/arm64/boot/dts/amlogic/meson-s4.dtsi          |   28 +
+ arch/arm64/configs/defconfig                       |    1 +
+ drivers/media/platform/amlogic/Kconfig             |    1 +
+ drivers/media/platform/amlogic/Makefile            |    1 +
+ drivers/media/platform/amlogic/vdec/Kconfig        |   16 +
+ drivers/media/platform/amlogic/vdec/Makefile       |    4 +
+ drivers/media/platform/amlogic/vdec/TODO           |    7 +
+ drivers/media/platform/amlogic/vdec/aml_vdec.c     |  734 +++++++
+ drivers/media/platform/amlogic/vdec/aml_vdec.h     |   33 +
+ drivers/media/platform/amlogic/vdec/aml_vdec_drv.c |  239 +++
+ drivers/media/platform/amlogic/vdec/aml_vdec_drv.h |  172 ++
+ drivers/media/platform/amlogic/vdec/aml_vdec_hw.c  |  596 ++++++
+ drivers/media/platform/amlogic/vdec/aml_vdec_hw.h  |  158 ++
+ .../platform/amlogic/vdec/aml_vdec_platform.c      |   85 +
+ .../platform/amlogic/vdec/aml_vdec_platform.h      |   50 +
+ drivers/media/platform/amlogic/vdec/h264.c         | 2129 ++++++++++++++++++++
+ drivers/media/platform/amlogic/vdec/h264.h         |  299 +++
+ drivers/media/platform/amlogic/vdec/reg_defines.h  |  177 ++
+ 20 files changed, 4833 insertions(+)
 ---
-base-commit: cea7b66a80412e2a5b74627b89ae25f1d0110a4b
-change-id: 20260212-drm-rust-next-beb92aee9d75
+base-commit: 9845cf73f7db6094c0d8419d6adb848028f4a921
+change-id: 20251027-b4-s4-vdec-upstream-0603c1a4c84a
 
 Best regards,
 -- 
-Tim Kovalenko <tim.kovalenko@proton.me>
+Zhentao Guo <zhentao.guo@amlogic.com>
 
