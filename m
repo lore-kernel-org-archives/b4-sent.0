@@ -1,233 +1,143 @@
-From: Mayank Rungta <mrungta@google.com>
-Date: Thu, 12 Feb 2026 14:12:13 -0700
-Subject: [PATCH 4/4] doc: watchdog: Document buddy detector
+From: =?utf-8?q?Bence_Cs=C3=B3k=C3=A1s?= <bence98@sch.bme.hu>
+Date: Fri, 13 Feb 2026 01:12:07 +0100
+Subject: [PATCH v2] Documentation: sysfs-pps: Fix `Description:`s
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260212-hardlockup-watchdog-fixes-v1-4-745f1dce04c3@google.com>
-References: <20260212-hardlockup-watchdog-fixes-v1-0-745f1dce04c3@google.com>
-In-Reply-To: <20260212-hardlockup-watchdog-fixes-v1-0-745f1dce04c3@google.com>
-To: Jonathan Corbet <corbet@lwn.net>, Petr Mladek <pmladek@suse.com>, 
- Jinchao Wang <wangjinchao600@gmail.com>, 
- Yunhui Cui <cuiyunhui@bytedance.com>, Stephane Eranian <eranian@google.com>, 
- Ian Rogers <irogers@google.com>, Li Huafei <lihuafei1@huawei.com>, 
- Feng Tang <feng.tang@linux.alibaba.com>, 
- Max Kellermann <max.kellermann@ionos.com>, Jonathan Corbet <corbet@lwn.net>, 
- Douglas Anderson <dianders@chromium.org>, 
- Andrew Morton <akpm@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- Mayank Rungta <mrungta@google.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770930732; l=9260;
- i=mrungta@google.com; s=20260212; h=from:subject:message-id;
- bh=zQJ5AME8IRJnyw3jfYBu6R/B2xO/DNdkDnl61rje4aw=;
- b=toFHZ4xPh9Rwtyl9nRS1I8kdpONsLEyLmZky1cWcVD5z9MmcoaspJHHjJPhCzdCKOs0J88MOO
- pkF7YBQHDqKDBfWl3iNyx8/WKdqAFz4MOpiHXhNbgdzT3dOFpzroXsK
-X-Developer-Key: i=mrungta@google.com; a=ed25519;
- pk=2Bjwbv/ibL10QnyvK9G7DoKpffXy7z6+M4NawEYgYDI=
-X-Endpoint-Received: by B4 Relay for mrungta@google.com/20260212 with auth_id=634
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260213-sysfs-pps-doc-re-v2-1-044cba5715e1@sch.bme.hu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/13MQQ7CIBBA0as0rB1TKDTqynsYF0AHS6JAZmqja
+ Xp3qYkbl3/x3yIYKSKLU7MIwjlyzKmG2jXCjzbdEOJQW6hW9a2SCvjNgaEUhiF7IIS+O6LW0mj
+ ne1G3Qhji60terrUD5QdMI6H9QaY9SANO/1mzBAm9HDpp0Abn7blQvtu0H5+b6ywjOLLJj5vzs
+ DwhiXX9AKz79zrDAAAA
+X-Change-ID: 20260212-sysfs-pps-doc-re-639e44154bc6
+To: Rodolfo Giometti <giometti@enneenne.com>
+Cc: linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Bence_Cs=C3=B3k=C3=A1s?= <bence98@sch.bme.hu>, 
+ Rodolfo Giometti <giometti@linux.it>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770941534; l=4183;
+ i=bence98@sch.bme.hu; s=20260213; h=from:subject:message-id;
+ bh=NDSyGXtsT/QAd57UBSLhgXDguFZiMPZ+GFjvlQWLn4w=;
+ b=YBNDcndyBnstItj3XeujA/660RgesvucRvalhiwOvQV1cPjwwejam2C66ry0XCtYlSIG111Ld
+ mIZi3otCbceD9v+bGmwtSBITGXTYarsM6o4dFryS7SvipUD597E3iB5
+X-Developer-Key: i=bence98@sch.bme.hu; a=ed25519;
+ pk=rtWE8PtqZ5ZMyUVCckDq8i1ASLxgUbV2fwDA8KaOli8=
+X-Endpoint-Received: by B4 Relay for bence98@sch.bme.hu/20260213 with auth_id=636
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The current documentation generalizes the hardlockup detector as primarily
-NMI-perf-based and lacks details on the SMP "Buddy" detector.
+It is unnecessary to duplicate `What:` content in the description. It
+makes it harder to both read and maintain.
 
-Update the documentation to add a detailed description of the Buddy
-detector, and also restructure the "Implementation" section to explicitly
-separate "Softlockup Detector", "Hardlockup Detector (NMI/Perf)", and
-"Hardlockup Detector (Buddy)".
+Also, the uapi header no longer lives at `linux/include/linux/pps.h`.
 
-Clarify that the softlockup hrtimer acts as the heartbeat generator for
-both hardlockup mechanisms and centralize the configuration details in a
-"Frequency and Heartbeats" section.
-
-Signed-off-by: Mayank Rungta <mrungta@google.com>
+Acked-by: Rodolfo Giometti <giometti@enneenne.com>
+Signed-off-by: Bence Csókás <bence98@sch.bme.hu>
 ---
- Documentation/admin-guide/lockup-watchdogs.rst | 149 +++++++++++++++++--------
- 1 file changed, 101 insertions(+), 48 deletions(-)
+Changes in v2:
+* rebased on current master
+* updated email from mailmap
 
-diff --git a/Documentation/admin-guide/lockup-watchdogs.rst b/Documentation/admin-guide/lockup-watchdogs.rst
-index 1b374053771f676d874716b3210cade55ae89b28..7ae7ce3abd2c838ff29c70f7a32ffaf58531e150 100644
---- a/Documentation/admin-guide/lockup-watchdogs.rst
-+++ b/Documentation/admin-guide/lockup-watchdogs.rst
-@@ -30,22 +30,23 @@ timeout is set through the confusingly named "kernel.panic" sysctl),
- to cause the system to reboot automatically after a specified amount
- of time.
- 
-+Configuration
-+=============
-+
-+A kernel knob is provided that allows administrators to configure
-+this period. The "watchdog_thresh" parameter (default 10 seconds)
-+controls the threshold. The right value for a particular environment
-+is a trade-off between fast response to lockups and detection overhead.
-+
- Implementation
- ==============
- 
--The soft and hard lockup detectors are built on top of the hrtimer and
--perf subsystems, respectively. A direct consequence of this is that,
--in principle, they should work in any architecture where these
--subsystems are present.
-+The soft lockup detector is built on top of the hrtimer subsystem.
-+The hard lockup detector is built on top of the perf subsystem
-+(on architectures that support it) or uses an SMP "buddy" system.
- 
--A periodic hrtimer runs to generate interrupts and kick the watchdog
--job. An NMI perf event is generated every "watchdog_thresh"
--(compile-time initialized to 10 and configurable through sysctl of the
--same name) seconds to check for hardlockups. If any CPU in the system
--does not receive any hrtimer interrupt during that time the
--'hardlockup detector' (the handler for the NMI perf event) will
--generate a kernel warning or call panic, depending on the
--configuration.
-+Softlockup Detector
-+-------------------
- 
- The watchdog job runs in a stop scheduling thread that updates a
- timestamp every time it is scheduled. If that timestamp is not updated
-@@ -55,53 +56,105 @@ will dump useful debug information to the system log, after which it
- will call panic if it was instructed to do so or resume execution of
- other kernel code.
- 
--The period of the hrtimer is 2*watchdog_thresh/5, which means it has
--two or three chances to generate an interrupt before the hardlockup
--detector kicks in.
-+Frequency and Heartbeats
-+------------------------
-+
-+The hrtimer used by the softlockup detector serves a dual purpose:
-+it detects softlockups, and it also generates the interrupts
-+(heartbeats) that the hardlockup detectors use to verify CPU liveness.
-+
-+The period of this hrtimer is 2*watchdog_thresh/5. This means the
-+hrtimer has two or three chances to generate an interrupt before the
-+NMI hardlockup detector kicks in.
-+
-+Hardlockup Detector (NMI/Perf)
-+------------------------------
-+
-+On architectures that support NMI (Non-Maskable Interrupt) perf events,
-+a periodic NMI is generated every "watchdog_thresh" seconds.
-+
-+If any CPU in the system does not receive any hrtimer interrupt
-+(heartbeat) during the "watchdog_thresh" window, the 'hardlockup
-+detector' (the handler for the NMI perf event) will generate a kernel
-+warning or call panic.
-+
-+**Detection Overhead (NMI):**
-+
-+The time to detect a lockup can vary depending on when the lockup
-+occurs relative to the NMI check window. Examples below assume a watchdog_thresh of 10.
-+
-+* **Best Case:** The lockup occurs just before the first heartbeat is
-+  due. The detector will notice the missing hrtimer interrupt almost
-+  immediately during the next check.
-+
-+  ::
-+
-+    Time 100.0: cpu 1 heartbeat
-+    Time 100.1: hardlockup_check, cpu1 stores its state
-+    Time 103.9: Hard Lockup on cpu1
-+    Time 104.0: cpu 1 heartbeat never comes
-+    Time 110.1: hardlockup_check, cpu1 checks the state again, should be the same, declares lockup
-+
-+    Time to detection: ~6 seconds
-+
-+* **Worst Case:** The lockup occurs shortly after a valid interrupt
-+  (heartbeat) which itself happened just after the NMI check. The next
-+  NMI check sees that the interrupt count has changed (due to that one
-+  heartbeat), assumes the CPU is healthy, and resets the baseline. The
-+  lockup is only detected at the subsequent check.
-+
-+  ::
-+
-+    Time 100.0: hardlockup_check, cpu1 stores its state
-+    Time 100.1: cpu 1 heartbeat
-+    Time 100.2: Hard Lockup on cpu1
-+    Time 110.0: hardlockup_check, cpu1 stores its state (misses lockup as state changed)
-+    Time 120.0: hardlockup_check, cpu1 checks the state again, should be the same, declares lockup
- 
--As explained above, a kernel knob is provided that allows
--administrators to configure the period of the hrtimer and the perf
--event. The right value for a particular environment is a trade-off
--between fast response to lockups and detection overhead.
-+    Time to detection: ~20 seconds
- 
--Detection Overhead
--------------------
-+Hardlockup Detector (Buddy)
-+---------------------------
- 
--The hardlockup detector checks for lockups using a periodic NMI perf
--event. This means the time to detect a lockup can vary depending on
--when the lockup occurs relative to the NMI check window.
-+On architectures or configurations where NMI perf events are not
-+available (or disabled), the kernel may use the "buddy" hardlockup
-+detector. This mechanism requires SMP (Symmetric Multi-Processing).
- 
--**Best Case:**
--In the best case scenario, the lockup occurs just before the first
--heartbeat is due. The detector will notice the missing hrtimer
--interrupt almost immediately during the next check.
-+In this mode, each CPU is assigned a "buddy" CPU to monitor. The
-+monitoring CPU runs its own hrtimer (the same one used for softlockup
-+detection) and checks if the buddy CPU's hrtimer interrupt count has
-+increased.
- 
--::
-+To ensure timeliness and avoid false positives, the buddy system performs
-+checks at every hrtimer interval (2*watchdog_thresh/5, which is 4 seconds
-+by default). It uses a missed-interrupt threshold of 3. If the buddy's
-+interrupt count has not changed for 3 consecutive checks, it is assumed
-+that the buddy CPU is hardlocked (interrupts disabled). The monitoring
-+CPU will then trigger the hardlockup response (warning or panic).
- 
--  Time 100.0: cpu 1 heartbeat
--  Time 100.1: hardlockup_check, cpu1 stores its state
--  Time 103.9: Hard Lockup on cpu1
--  Time 104.0: cpu 1 heartbeat never comes
--  Time 110.1: hardlockup_check, cpu1 checks the state again, should be the same, declares lockup
-+**Detection Overhead (Buddy):**
- 
--  Time to detection: ~6 seconds
-+With a default check interval of 4 seconds (watchdog_thresh = 10):
- 
--**Worst Case:**
--In the worst case scenario, the lockup occurs shortly after a valid
--interrupt (heartbeat) which itself happened just after the NMI check.
--The next NMI check sees that the interrupt count has changed (due to
--that one heartbeat), assumes the CPU is healthy, and resets the
--baseline. The lockup is only detected at the subsequent check.
-+* **Best case:** Lockup occurs just before a check.
-+    Detected in ~8s (0s till 1st check + 4s till 2nd + 4s till 3rd).
-+* **Worst case:** Lockup occurs just after a check.
-+    Detected in ~12s (4s till 1st check + 4s till 2nd + 4s till 3rd).
- 
--::
-+**Limitations of the Buddy Detector:**
- 
--  Time 100.0: hardlockup_check, cpu1 stores its state
--  Time 100.1: cpu 1 heartbeat
--  Time 100.2: Hard Lockup on cpu1
--  Time 110.0: hardlockup_check, cpu1 stores its state (misses lockup as state changed)
--  Time 120.0: hardlockup_check, cpu1 checks the state again, should be the same, declares lockup
-+1.  **All-CPU Lockup:** If all CPUs lock up simultaneously, the buddy
-+    detector cannot detect the condition because the monitoring CPUs
-+    are also frozen.
-+2.  **Stack Traces:** Unlike the NMI detector, the buddy detector
-+    cannot directly interrupt the locked CPU to grab a stack trace.
-+    It relies on architecture-specific mechanisms (like NMI backtrace
-+    support) to try and retrieve the status of the locked CPU. If
-+    such support is missing, the log may only show that a lockup
-+    occurred without providing the locked CPU's stack.
- 
--  Time to detection: ~20 seconds
-+Watchdog Core Exclusion
-+=======================
- 
- By default, the watchdog runs on all online cores.  However, on a
- kernel configured with NO_HZ_FULL, by default the watchdog runs only
+Link to v1:
+* https://lore.kernel.org/lkml/20250815-b4-sysfs-pps-doc-v1-1-61d315eafbca@prolan.hu
+---
+ Documentation/ABI/testing/sysfs-pps     | 29 ++++++++++++-----------------
+ Documentation/ABI/testing/sysfs-pps-gen |  2 +-
+ 2 files changed, 13 insertions(+), 18 deletions(-)
 
+diff --git a/Documentation/ABI/testing/sysfs-pps b/Documentation/ABI/testing/sysfs-pps
+index 25028c7bc37d..b8034ead5ae5 100644
+--- a/Documentation/ABI/testing/sysfs-pps
++++ b/Documentation/ABI/testing/sysfs-pps
+@@ -10,16 +10,16 @@ What:		/sys/class/pps/ppsX/
+ Date:		February 2008
+ Contact:	Rodolfo Giometti <giometti@linux.it>
+ Description:
+-		The /sys/class/pps/ppsX/ directory is related to X-th
+-		PPS source into the system. Each directory will
+-		contain files to manage and control its PPS source.
++		This directory represents the X-th PPS source in the system.
++		Each directory will contain files to manage and control its
++		PPS source.
+ 
+ What:		/sys/class/pps/ppsX/assert
+ Date:		February 2008
+ Contact:	Rodolfo Giometti <giometti@linux.it>
+ Description:
+-		The /sys/class/pps/ppsX/assert file reports the assert events
+-		and the assert sequence number of the X-th source in the form:
++		This file reports the assert events and the assert sequence
++		number in the form:
+ 
+ 			<secs>.<nsec>#<sequence>
+ 
+@@ -30,8 +30,8 @@ What:		/sys/class/pps/ppsX/clear
+ Date:		February 2008
+ Contact:	Rodolfo Giometti <giometti@linux.it>
+ Description:
+-		The /sys/class/pps/ppsX/clear file reports the clear events
+-		and the clear sequence number of the X-th source in the form:
++		This file reports the clear events and the clear sequence
++		number in the form:
+ 
+ 			<secs>.<nsec>#<sequence>
+ 
+@@ -42,32 +42,27 @@ What:		/sys/class/pps/ppsX/mode
+ Date:		February 2008
+ Contact:	Rodolfo Giometti <giometti@linux.it>
+ Description:
+-		The /sys/class/pps/ppsX/mode file reports the functioning
+-		mode of the X-th source in hexadecimal encoding.
++		This file reports the mode bits in hexadecimal encoding.
+ 
+-		Please, refer to linux/include/linux/pps.h for further
+-		info.
++		Please refer to <linux/pps.h> for further info.
+ 
+ What:		/sys/class/pps/ppsX/echo
+ Date:		February 2008
+ Contact:	Rodolfo Giometti <giometti@linux.it>
+ Description:
+-		The /sys/class/pps/ppsX/echo file reports if the X-th does
+-		or does not support an "echo" function.
++		Whether this source supports an "echo" function.
+ 
+ What:		/sys/class/pps/ppsX/name
+ Date:		February 2008
+ Contact:	Rodolfo Giometti <giometti@linux.it>
+ Description:
+-		The /sys/class/pps/ppsX/name file reports the name of the
+-		X-th source.
++		The name of the PPS source.
+ 
+ What:		/sys/class/pps/ppsX/path
+ Date:		February 2008
+ Contact:	Rodolfo Giometti <giometti@linux.it>
+ Description:
+-		The /sys/class/pps/ppsX/path file reports the path name of
+-		the device connected with the X-th source.
++		The path name of the device connected to this source.
+ 
+ 		If the source is not connected with any device the content
+ 		of this file is empty.
+diff --git a/Documentation/ABI/testing/sysfs-pps-gen b/Documentation/ABI/testing/sysfs-pps-gen
+index 2519207b88fd..c36bac37a883 100644
+--- a/Documentation/ABI/testing/sysfs-pps-gen
++++ b/Documentation/ABI/testing/sysfs-pps-gen
+@@ -12,7 +12,7 @@ Date:		February 2025
+ KernelVersion:  6.13
+ Contact:	Rodolfo Giometti <giometti@enneenne.com>
+ Description:
+-		The /sys/class/pps-gen/pps-genX/ directory is related to X-th
++		This directory represents the X-th
+ 		PPS generator in the system. Each directory contain files to
+ 		manage and control its PPS generator.
+ 
+
+---
+base-commit: 136114e0abf03005e182d75761ab694648e6d388
+change-id: 20260212-sysfs-pps-doc-re-639e44154bc6
+
+Best regards,
 -- 
-2.53.0.273.g2a3d683680-goog
+Bence Csókás <bence98@sch.bme.hu>
 
