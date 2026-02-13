@@ -1,143 +1,120 @@
-From: =?utf-8?q?Bence_Cs=C3=B3k=C3=A1s?= <bence98@sch.bme.hu>
-Date: Fri, 13 Feb 2026 01:12:07 +0100
-Subject: [PATCH v2] Documentation: sysfs-pps: Fix `Description:`s
+From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Subject: [PATCH v11 0/7] i2c: xiic: use generic device property accessors
+Date: Fri, 13 Feb 2026 00:15:15 +0000
+Message-Id: <20260213-i2c-xiic-v11-0-5d18aea11bde@nexthop.ai>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260213-sysfs-pps-doc-re-v2-1-044cba5715e1@sch.bme.hu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/13MQQ7CIBBA0as0rB1TKDTqynsYF0AHS6JAZmqja
- Xp3qYkbl3/x3yIYKSKLU7MIwjlyzKmG2jXCjzbdEOJQW6hW9a2SCvjNgaEUhiF7IIS+O6LW0mj
- ne1G3Qhji60terrUD5QdMI6H9QaY9SANO/1mzBAm9HDpp0Abn7blQvtu0H5+b6ywjOLLJj5vzs
- DwhiXX9AKz79zrDAAAA
-X-Change-ID: 20260212-sysfs-pps-doc-re-639e44154bc6
-To: Rodolfo Giometti <giometti@enneenne.com>
-Cc: linux-kernel@vger.kernel.org, 
- =?utf-8?q?Bence_Cs=C3=B3k=C3=A1s?= <bence98@sch.bme.hu>, 
- Rodolfo Giometti <giometti@linux.it>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIABNtjmkC/3XRPW7DMAwF4KsEnqtAov4z9R5FB8miag2xAzk1U
+ gS5e+UsZaF2JMHv4QG8DyvWgutwOtyHiltZyzK3QYiXwzBOYf5AVlJbDMDBcAHACozsVsrIZAz
+ O56wxeDm080vFXG7PrLf3Nue6nNl1qhhIgNCcg1PmCFo6zwQLMX3WGqZzmF9nvF2n5XIMZc+by
+ npd6tez2gZ76h8lNmCcCamyTlZJdJGG7C02SaUkUjaJ0Y5JgVYp91L9J1WTKkiMQWrBR+ykptI
+ QqZt0LggTwFkQYycNlZZIs7d1gJBNNtr20lLpibRNWrCopHLeYu6k+5HABZGuyYQRUhLaJRE66
+ amkX/FNjqiM11mDsamTglOqCBV8txC9N+0xIPUv+3g8vgEqt8RTtAIAAA==
+X-Change-ID: 20260122-i2c-xiic-3ba89ff5ea93
+To: Michal Simek <michal.simek@amd.com>, Andi Shyti <andi.shyti@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Andy Shevchenko <andriy.shevchenko@intel.com>, 
+ linux-arm-kernel@lists.infradead.org, linux-i2c@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ Abdurrahman Hussain <abdurrahman@nexthop.ai>, Andrew Lunn <andrew@lunn.ch>, 
+ Jonathan Cameron <jonathan.cameron@huawei.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1770941534; l=4183;
- i=bence98@sch.bme.hu; s=20260213; h=from:subject:message-id;
- bh=NDSyGXtsT/QAd57UBSLhgXDguFZiMPZ+GFjvlQWLn4w=;
- b=YBNDcndyBnstItj3XeujA/660RgesvucRvalhiwOvQV1cPjwwejam2C66ry0XCtYlSIG111Ld
- mIZi3otCbceD9v+bGmwtSBITGXTYarsM6o4dFryS7SvipUD597E3iB5
-X-Developer-Key: i=bence98@sch.bme.hu; a=ed25519;
- pk=rtWE8PtqZ5ZMyUVCckDq8i1ASLxgUbV2fwDA8KaOli8=
-X-Endpoint-Received: by B4 Relay for bence98@sch.bme.hu/20260213 with auth_id=636
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1770941721; l=3438;
+ i=abdurrahman@nexthop.ai; s=20260119; h=from:subject:message-id;
+ bh=Sb1Z9ToRtr8u+pAOPxIENcrNfGSnJsAfpeH6JTyv4M4=;
+ b=PZ0XbQV8s2UWSCFbiogIumjF/qg7yBN1gXJJy+KjQPg3jmjsMZcpIscrCEGlRBpjjacXq9IGD
+ o4SKeCIUAiwDq/ZxZmRqIN6lNHpQoyiLAU9itKro+9ayaad7sYYCV0U
+X-Developer-Key: i=abdurrahman@nexthop.ai; a=ed25519;
+ pk=S+ysnf+NwMcBdHBlyKIUEAtaFGSIhQwcJcgcXhq0osg=
+X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/20260119 with auth_id=608
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-It is unnecessary to duplicate `What:` content in the description. It
-makes it harder to both read and maintain.
+- Switch to generic device property accessors.
+- Switch to managed devm_ functions to simplify error handling.
+- General cleanups.
+- Skip clock setup on non-OF systems where clock is not specified via
+firmware.
 
-Also, the uapi header no longer lives at `linux/include/linux/pps.h`.
-
-Acked-by: Rodolfo Giometti <giometti@enneenne.com>
-Signed-off-by: Bence Csókás <bence98@sch.bme.hu>
+Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
 ---
+Changes in v11:
+- Cosmetic change to return 0 in patch 1.
+- Remove pm_runtime_dont_use_autosuspend() in patch 1.
+- Link to v10: https://lore.kernel.org/r/20260204-i2c-xiic-v10-0-c2b996425235@nexthop.ai
+
+Changes in v10:
+- Moved dev_dbg() change from patch 4 to patch 5.
+- Reworded description in patch 6.
+- Addressed Andy's comment in patch 7 (&pdev->dev -> dev).
+- Link to v9: https://lore.kernel.org/r/20260202-i2c-xiic-v9-0-ce4695f5267d@nexthop.ai
+
+Changes in v9:
+- Fix an issue found by the test robot in the cleanup patch.
+- Reworded the clock change description.
+- Add a patch to switch to i2c_add_numbered_adapter().
+- Link to v8: https://lore.kernel.org/r/20260201-i2c-xiic-v8-0-deb2dd158d1a@nexthop.ai
+
+Changes in v8:
+- Made the clock change the last patch in the series.
+- Reworded the clock change description.
+- Changed dev->fwnode to dev_fwnode(dev).
+- Link to v7: https://lore.kernel.org/r/20260129-i2c-xiic-v7-0-727e434897ef@nexthop.ai
+
+Changes in v7:
+- Drop the dt-bindings patch.
+- Skip clock setup on non-OF systems.
+- Minor commit body rewording.
+- Applied code-review trailers with `b4 trailers -u`
+- Link to v6: https://lore.kernel.org/r/20260127-i2c-xiic-v6-0-e82e2f6f657c@nexthop.ai
+
+Changes in v6:
+- Cosmetic changes to address the comments.
+- Added a patch to use resource format specifier in debug log.
+- Link to v5: https://lore.kernel.org/r/20260126-i2c-xiic-v5-0-88a16a28721c@nexthop.ai
+
+Changes in v5:
+- Reorder the cosmetic patch to be the last in the series.
+- Added a documentation patch to describe the optional clock.
+- Minor commit body rewording.
+- Link to v4: https://lore.kernel.org/r/20260123-i2c-xiic-v4-0-4a3eba3510ce@nexthop.ai
+
+Changes in v4:
+- Reorder the cosmetic patch to be the first in the series.
+- Amend the mutex_init patch to also switch to the managed pm_runtime_
+  variant.
+- Link to v3: https://lore.kernel.org/r/20260123-i2c-xiic-v3-0-eb7cd4254dfb@nexthop.ai
+
+Changes in v3:
+- Reorder the "optional clock" patch to be the first in the series. 
+- Add a patch to switch to devm_mutex_init().
+- Remove dup message in error path.
+- Cosmetic: use temporary dev variable.
+- Link to v2: https://lore.kernel.org/r/20260122-i2c-xiic-v2-0-134f5d743e8b@nexthop.ai
+
 Changes in v2:
-* rebased on current master
-* updated email from mailmap
-
-Link to v1:
-* https://lore.kernel.org/lkml/20250815-b4-sysfs-pps-doc-v1-1-61d315eafbca@prolan.hu
----
- Documentation/ABI/testing/sysfs-pps     | 29 ++++++++++++-----------------
- Documentation/ABI/testing/sysfs-pps-gen |  2 +-
- 2 files changed, 13 insertions(+), 18 deletions(-)
-
-diff --git a/Documentation/ABI/testing/sysfs-pps b/Documentation/ABI/testing/sysfs-pps
-index 25028c7bc37d..b8034ead5ae5 100644
---- a/Documentation/ABI/testing/sysfs-pps
-+++ b/Documentation/ABI/testing/sysfs-pps
-@@ -10,16 +10,16 @@ What:		/sys/class/pps/ppsX/
- Date:		February 2008
- Contact:	Rodolfo Giometti <giometti@linux.it>
- Description:
--		The /sys/class/pps/ppsX/ directory is related to X-th
--		PPS source into the system. Each directory will
--		contain files to manage and control its PPS source.
-+		This directory represents the X-th PPS source in the system.
-+		Each directory will contain files to manage and control its
-+		PPS source.
- 
- What:		/sys/class/pps/ppsX/assert
- Date:		February 2008
- Contact:	Rodolfo Giometti <giometti@linux.it>
- Description:
--		The /sys/class/pps/ppsX/assert file reports the assert events
--		and the assert sequence number of the X-th source in the form:
-+		This file reports the assert events and the assert sequence
-+		number in the form:
- 
- 			<secs>.<nsec>#<sequence>
- 
-@@ -30,8 +30,8 @@ What:		/sys/class/pps/ppsX/clear
- Date:		February 2008
- Contact:	Rodolfo Giometti <giometti@linux.it>
- Description:
--		The /sys/class/pps/ppsX/clear file reports the clear events
--		and the clear sequence number of the X-th source in the form:
-+		This file reports the clear events and the clear sequence
-+		number in the form:
- 
- 			<secs>.<nsec>#<sequence>
- 
-@@ -42,32 +42,27 @@ What:		/sys/class/pps/ppsX/mode
- Date:		February 2008
- Contact:	Rodolfo Giometti <giometti@linux.it>
- Description:
--		The /sys/class/pps/ppsX/mode file reports the functioning
--		mode of the X-th source in hexadecimal encoding.
-+		This file reports the mode bits in hexadecimal encoding.
- 
--		Please, refer to linux/include/linux/pps.h for further
--		info.
-+		Please refer to <linux/pps.h> for further info.
- 
- What:		/sys/class/pps/ppsX/echo
- Date:		February 2008
- Contact:	Rodolfo Giometti <giometti@linux.it>
- Description:
--		The /sys/class/pps/ppsX/echo file reports if the X-th does
--		or does not support an "echo" function.
-+		Whether this source supports an "echo" function.
- 
- What:		/sys/class/pps/ppsX/name
- Date:		February 2008
- Contact:	Rodolfo Giometti <giometti@linux.it>
- Description:
--		The /sys/class/pps/ppsX/name file reports the name of the
--		X-th source.
-+		The name of the PPS source.
- 
- What:		/sys/class/pps/ppsX/path
- Date:		February 2008
- Contact:	Rodolfo Giometti <giometti@linux.it>
- Description:
--		The /sys/class/pps/ppsX/path file reports the path name of
--		the device connected with the X-th source.
-+		The path name of the device connected to this source.
- 
- 		If the source is not connected with any device the content
- 		of this file is empty.
-diff --git a/Documentation/ABI/testing/sysfs-pps-gen b/Documentation/ABI/testing/sysfs-pps-gen
-index 2519207b88fd..c36bac37a883 100644
---- a/Documentation/ABI/testing/sysfs-pps-gen
-+++ b/Documentation/ABI/testing/sysfs-pps-gen
-@@ -12,7 +12,7 @@ Date:		February 2025
- KernelVersion:  6.13
- Contact:	Rodolfo Giometti <giometti@enneenne.com>
- Description:
--		The /sys/class/pps-gen/pps-genX/ directory is related to X-th
-+		This directory represents the X-th
- 		PPS generator in the system. Each directory contain files to
- 		manage and control its PPS generator.
- 
+- Split the patch into two independent changes.
+- Added struct device *dev at the top of probe() and remove() to re-use.
+- Switched to device_set_node(...)
 
 ---
-base-commit: 136114e0abf03005e182d75761ab694648e6d388
-change-id: 20260212-sysfs-pps-doc-re-639e44154bc6
+Abdurrahman Hussain (7):
+      i2c: xiic: switch to devres managed APIs
+      i2c: xiic: remove duplicate error message
+      i2c: xiic: switch to generic device property accessors
+      i2c: xiic: cosmetic cleanup
+      i2c: xiic: cosmetic: use resource format specifier in debug log
+      i2c: xiic: use numbered adapter registration
+      i2c: xiic: skip input clock setup on non-OF systems
+
+ drivers/i2c/busses/i2c-xiic.c | 98 +++++++++++++++++++------------------------
+ 1 file changed, 42 insertions(+), 56 deletions(-)
+---
+base-commit: 18f7fcd5e69a04df57b563360b88be72471d6b62
+change-id: 20260122-i2c-xiic-3ba89ff5ea93
 
 Best regards,
 -- 
-Bence Csókás <bence98@sch.bme.hu>
+Abdurrahman Hussain <abdurrahman@nexthop.ai>
 
