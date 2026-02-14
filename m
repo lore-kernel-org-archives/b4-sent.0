@@ -1,160 +1,82 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Sat, 14 Feb 2026 03:12:42 +0000
-Subject: [PATCH v6 6/6] usb: typec: tcpm/tcpci_maxim: deprecate WAR for
- setting charger mode
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Subject: [PATCH v3 0/4] arm64: qcom: x1-vivobook-s15: add X1P42100 variant,
+ restructure dts files
+Date: Sat, 14 Feb 2026 09:32:52 +0100
+Message-Id: <20260214-b4-vivobook-v3-0-3c88065bbf77@oldschoolsolutions.biz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260214-max77759-charger-v6-6-28c09bda74b4@google.com>
-References: <20260214-max77759-charger-v6-0-28c09bda74b4@google.com>
-In-Reply-To: <20260214-max77759-charger-v6-0-28c09bda74b4@google.com>
-To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIADYzkGkC/3XOQQ6CMBCF4auQrq3pFErAlfcwLigdZCJxTIuNS
+ ri7BTeycPm/ZL7MJAJ6wiAO2SQ8RgrEtxT5LhNt39wuKMmlFlrpUgFU0hYyUmTLfJVOGVOU2GF
+ baZEu7h47eq7a6Zy6pzCyf614hGX9OlptnQhSybyprUEwea3qIw8utD3zEHh4jOmnsLf0Fgsa9
+ Q8EsIV0gurOKFWAcRrdX2ie5w8hVlcR/AAAAA==
+X-Change-ID: 20260118-b4-vivobook-d05546efec82
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
- Lee Jones <lee@kernel.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Tudor Ambarus <tudor.ambarus@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>, Mark Brown <broonie@kernel.org>, 
- Matti Vaittinen <mazziesaccount@gmail.com>, 
- Andrew Morton <akpm@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
- RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
- Amit Sunil Dhamne <amitsd@google.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771038829; l=3931;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=SV82ZDWtKqKM+e3skWinWqYZFA5ClNos8oIG2Fwiwec=;
- b=a30VK9AaA+r4F0YLcvsI9TPp5BZthNhQKAN+p0/lbmZTThPFt8DwCap4nnbURWF2U9wLnN0+O
- xkootuhzxRVAUyw0dA555RfwKE9URbBjaE+lEONm+TH3WWugHpfY3ht
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Maud Spierings <maud_spierings@hotmail.com>, 
+ "Colin K. Williams" <colin@li-nk.org>, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771057984; l=2082;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=Ghx+NO5PD21JPthd0b2XCXAdcOQW8V5g2COXkPcaDf8=;
+ b=QEwgM6fwAwd7J50x07qde4b19KBiyOkcEVoA1sCPHgFkCDMC1fmcmoWlZeFrnOF3t07gTVaZz
+ GgJa4haFNDjBjiyMFo4SnutLoA91rPATfDoghZPiFgskWuQVoTipoSR
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-TCPCI maxim driver directly writes to the charger's register space to
-set charger mode depending on the power role. As MAX77759 chg driver
-exists, this WAR is not required.
+This patchset adds the X1P42100 variant of the ASUS Vivobook S15 [1]. To avoid
+redundant code, it pulls the part that is identical to both variants into
+x1-asus-vivobook-s15.dtsi.
 
-Instead, use a regulator interface to source vbus when typec is in
-source power mode. In other power modes, this regulator will be turned
-off if active.
+I have maintained the X1P42100 variant on my tree for about a year now, it has
+been tested by quite a few users. Also added sound (not in this patchset) and
+users operate this successfully.
 
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
-Reviewed-by: André Draszik <andre.draszik@linaro.org>
+[1]: https://www.asus.com/de/laptops/for-home/vivobook/asus-vivobook-s-15-s5507/techspec/
+
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- drivers/usb/typec/tcpm/tcpci_maxim.h      |  1 +
- drivers/usb/typec/tcpm/tcpci_maxim_core.c | 54 +++++++++++++++++++------------
- 2 files changed, 34 insertions(+), 21 deletions(-)
+Changes in v3:
+- Fixed the \nstatus = "okay"; nit
+- Dropped the t-b on the bindings commit
+- Rebased onto next-20260213
+- Link to v2: https://lore.kernel.org/r/20260211-b4-vivobook-v2-0-9f500415d2ed@oldschoolsolutions.biz
 
-diff --git a/drivers/usb/typec/tcpm/tcpci_maxim.h b/drivers/usb/typec/tcpm/tcpci_maxim.h
-index b33540a42a95..b314606eb0f6 100644
---- a/drivers/usb/typec/tcpm/tcpci_maxim.h
-+++ b/drivers/usb/typec/tcpm/tcpci_maxim.h
-@@ -60,6 +60,7 @@ struct max_tcpci_chip {
- 	struct tcpm_port *port;
- 	enum contamiant_state contaminant_state;
- 	bool veto_vconn_swap;
-+	struct regulator *vbus_reg;
- };
- 
- static inline int max_tcpci_read16(struct max_tcpci_chip *chip, unsigned int reg, u16 *val)
-diff --git a/drivers/usb/typec/tcpm/tcpci_maxim_core.c b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-index 19f638650796..e9e2405c5ca0 100644
---- a/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-+++ b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-@@ -10,6 +10,7 @@
- #include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/regmap.h>
-+#include <linux/regulator/consumer.h>
- #include <linux/usb/pd.h>
- #include <linux/usb/tcpci.h>
- #include <linux/usb/tcpm.h>
-@@ -35,12 +36,6 @@
-  */
- #define TCPC_RECEIVE_BUFFER_LEN				32
- 
--#define MAX_BUCK_BOOST_SID				0x69
--#define MAX_BUCK_BOOST_OP				0xb9
--#define MAX_BUCK_BOOST_OFF				0
--#define MAX_BUCK_BOOST_SOURCE				0xa
--#define MAX_BUCK_BOOST_SINK				0x5
--
- static const struct regmap_range max_tcpci_tcpci_range[] = {
- 	regmap_reg_range(0x00, 0x95)
- };
-@@ -202,32 +197,49 @@ static void process_rx(struct max_tcpci_chip *chip, u16 status)
- 	tcpm_pd_receive(chip->port, &msg, rx_type);
- }
- 
-+static int get_vbus_regulator_handle(struct max_tcpci_chip *chip)
-+{
-+	if (IS_ERR_OR_NULL(chip->vbus_reg)) {
-+		chip->vbus_reg = devm_regulator_get_exclusive(chip->dev,
-+							      "vbus");
-+		if (IS_ERR_OR_NULL(chip->vbus_reg)) {
-+			dev_err(chip->dev,
-+				"Failed to get vbus regulator handle");
-+			return -ENODEV;
-+		}
-+	}
-+
-+	return 0;
-+}
-+
- static int max_tcpci_set_vbus(struct tcpci *tcpci, struct tcpci_data *tdata, bool source, bool sink)
- {
- 	struct max_tcpci_chip *chip = tdata_to_max_tcpci(tdata);
--	u8 buffer_source[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_SOURCE};
--	u8 buffer_sink[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_SINK};
--	u8 buffer_none[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_OFF};
--	struct i2c_client *i2c = chip->client;
- 	int ret;
- 
--	struct i2c_msg msgs[] = {
--		{
--			.addr = MAX_BUCK_BOOST_SID,
--			.flags = i2c->flags & I2C_M_TEN,
--			.len = 2,
--			.buf = source ? buffer_source : sink ? buffer_sink : buffer_none,
--		},
--	};
--
- 	if (source && sink) {
- 		dev_err(chip->dev, "Both source and sink set\n");
- 		return -EINVAL;
- 	}
- 
--	ret = i2c_transfer(i2c->adapter, msgs, 1);
-+	ret = get_vbus_regulator_handle(chip);
-+	if (ret) {
-+		/*
-+		 * Regulator is not necessary for sink only applications. Return
-+		 * success in cases where sink mode is being modified.
-+		 */
-+		return source ? ret : 1;
-+	}
-+
-+	if (source) {
-+		if (!regulator_is_enabled(chip->vbus_reg))
-+			ret = regulator_enable(chip->vbus_reg);
-+	} else {
-+		if (regulator_is_enabled(chip->vbus_reg))
-+			ret = regulator_disable(chip->vbus_reg);
-+	}
- 
--	return  ret < 0 ? ret : 1;
-+	return ret < 0 ? ret : 1;
- }
- 
- static void process_power_status(struct max_tcpci_chip *chip)
+Changes in v2:
+- Fixed the bindings mixup and the redundant gpu node in the Purwa dts
+- Re-partitioned the patch set to have no new dangling file
+- Rebased onto next-20260210
+- Thanks to all that commented on the patches.
+- Link to v1: https://lore.kernel.org/r/20260208-b4-vivobook-v1-0-3a9b5e153909@oldschoolsolutions.biz
 
+---
+Jens Glathe (4):
+      dt-bindings: arm: qcom: Add ASUS Vivobook X1P42100 variant
+      firmware: qcom: scm: allow QSEECOM on ASUS Vivobook X1P42100 variant
+      arm64: dts: qcom: x1-vivobook-s15: create a common dtsi for Hamoa and Purwa variants
+      arm64: dts: qcom: x1-vivobook-s15: add Purwa-compatible device tree
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    1 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    2 +
+ arch/arm64/boot/dts/qcom/x1-asus-vivobook-s15.dtsi | 1362 ++++++++++++++++++++
+ .../boot/dts/qcom/x1e80100-asus-vivobook-s15.dts   | 1346 +------------------
+ .../boot/dts/qcom/x1p42100-asus-vivobook-s15.dts   |   44 +
+ drivers/firmware/qcom/qcom_scm.c                   |    1 +
+ 6 files changed, 1411 insertions(+), 1345 deletions(-)
+---
+base-commit: 635c467cc14ebdffab3f77610217c1dacaf88e8c
+change-id: 20260118-b4-vivobook-d05546efec82
+
+Best regards,
 -- 
-2.53.0.273.g2a3d683680-goog
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
