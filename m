@@ -1,107 +1,95 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sun, 15 Feb 2026 19:15:06 +0800
-Subject: [PATCH v2 2/2] mm, swap: merge common convention and simplify
- allocation helper
+Subject: [PATCH v3 0/3] mm/swap: hibernate: improve hibernate performance
+ with new allocator
+Date: Mon, 16 Feb 2026 03:00:24 +0800
+Message-Id: <20260216-hibernate-perf-v3-0-74e025091145@tencent.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260215-hibernate-perf-v2-2-cf28c75b04b7@tencent.com>
-References: <20260215-hibernate-perf-v2-0-cf28c75b04b7@tencent.com>
-In-Reply-To: <20260215-hibernate-perf-v2-0-cf28c75b04b7@tencent.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33MQQ7CIBCF4asY1mLoVEp15T2Miw4d7CykDRCia
+ Xp3aRMXunD5v+R9s4gUmKI472YRKHPk0Zeo9zthh87fSXJfWoCCRkEFcmCk4LtEcqLgpENj2ho
+ BQYMopymQ4+cGXm+lB45pDK/Nz9W6fij9S+VKKum0JjoRNabHSyJvyaeDHR9ixTL8B6AA1kFrj
+ UZ1RPMNLMvyBjRrLPjvAAAA
+X-Change-ID: 20260212-hibernate-perf-fb7783b2b252
 To: linux-mm@kvack.org
 Cc: Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>, 
  Kemeng Shi <shikemeng@huaweicloud.com>, Nhat Pham <nphamcs@gmail.com>, 
  Baoquan He <bhe@redhat.com>, Barry Song <baohua@kernel.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Carsten Grohmann <carstengrohmann@gmx.de>, linux-kernel@vger.kernel.org, 
+ Carsten Grohmann <mail@carstengrohmann.de>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, linux-kernel@vger.kernel.org, 
  "open list:SUSPEND TO RAM" <linux-pm@vger.kernel.org>, 
- Kairui Song <kasong@tencent.com>
+ Carsten Grohmann <carstengrohmann@gmx.de>, Kairui Song <kasong@tencent.com>, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771154107; l=2624;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771182044; l=2672;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=xURGM+JYZwNNO3bCJVyq5yzC/yV0T9iWCnyE/4unSbc=;
- b=v0kDF8xUvccP2/HLrDh7NblfN20PPLULlZ/UaTwGJmcAFIkoTwUkR3GCJ4hwIO83OUbYDANJX
- fyqBaABYJMsCxqAW0utUZT9l2/ES8XKqAAT9u0t+5kR8IaQS9UKM/iN
+ bh=dF6Y79PNFZiEWY4PL7UAYOsByXEL30pvzMVmxPOmG+M=;
+ b=5uoOa6dYgg4V5j9K4LZOCSYQHHvdzzvl/ZfwhWzim0Y8GqweS5RWo5Oj7ZRfTiSEws3cK37UU
+ m12I+YzVF1MCrOSc0F7thaGgrMnaF+aPi3RmD6LyKbPtfzcj9ZdLYcB
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Almost all callers of the cluster scan helper require the: lock -> check
-usefulness/emptiness check -> allocate -> unlock routine. So merge them
-into the same helper to simplify the code.
+The new swap allocator didn't provide a high-performance allocation
+method for hibernate, and just left it using the easy slow path. As a
+result, hibernate performance is quite bad on some devices
+
+Fix it by implementing hibernate support for the fast allocation path.
+
+This regression seems only happen with SSD devices with poor 4k
+performance. I've tested on several different NVME and SSD setups, the
+performance diff is tiny on them, but testing on a Samsung SSD 830
+Series (SATA II, 3.0 Gbps) showed a big difference [1]:
+
+Test result with Samsung SSD 830 Series (SATA II, 3.0 Gbps) thanks
+to Carsten Grohmann [1]:
+6.19:               324 seconds
+After this series:  35 seconds
+
+Test result with SAMSUNG MZ7LH480HAHQ-00005 (SATA 3.2, 6.0 Gb/s):
+Before 0ff67f990bd4: Wrote 2230700 kbytes in 4.47 seconds (499.03 MB/s)
+After 0ff67f990bd4: Wrote 2215472 kbytes in 4.44 seconds (498.98 MB/s)
+After this series: Wrote 2038748 kbytes in 4.04 seconds (504.64 MB/s)
+
+Test result with Memblaze P5910DT0384M00:
+Before 0ff67f990bd4: Wrote 2222772 kbytes in 0.84 seconds (2646.15 MB/s)
+After 0ff67f990bd4: Wrote 2224184 kbytes in 0.90 seconds (2471.31 MB/s)
+After this series: Wrote 1559088 kbytes in 0.55 seconds (2834.70 MB/s)
+
+The performance is almost the same for blazing fast SSDs, but for some
+SSDs, the performance is several times better.
+
+Patch 1 improves the hibernate performance by using the fast path, and
+patch 2 cleans up the code a bit since there are now multiple fast path
+users using similar conventions.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
+Tested-by: Carsten Grohmann <mail@carstengrohmann.de>
+Link: https://lore.kernel.org/linux-mm/8b4bdcfa-ce3f-4e23-839f-31367df7c18f@gmx.de/ [1]
 ---
- mm/swapfile.c | 30 ++++++++----------------------
- 1 file changed, 8 insertions(+), 22 deletions(-)
+Changes in v3:
+- Split the indention change to a standalone patch.
+- Update mail address and add Cc stable.
+- Link to v2: https://lore.kernel.org/r/20260215-hibernate-perf-v2-0-cf28c75b04b7@tencent.com
 
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index bcac10d96fb5..03cc0ff4dc8c 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -923,11 +923,14 @@ static unsigned int alloc_swap_scan_cluster(struct swap_info_struct *si,
- 	bool need_reclaim, ret, usable;
- 
- 	lockdep_assert_held(&ci->lock);
--	VM_WARN_ON(!cluster_is_usable(ci, order));
- 
--	if (end < nr_pages || ci->count + nr_pages > SWAPFILE_CLUSTER)
-+	if (!cluster_is_usable(ci, order) || end < nr_pages ||
-+	    ci->count + nr_pages > SWAPFILE_CLUSTER)
- 		goto out;
- 
-+	if (cluster_is_empty(ci))
-+		offset = cluster_offset(si, ci);
-+
- 	for (end -= nr_pages; offset <= end; offset += nr_pages) {
- 		need_reclaim = false;
- 		if (!cluster_scan_range(si, ci, offset, nr_pages, &need_reclaim))
-@@ -1060,14 +1063,7 @@ static unsigned long cluster_alloc_swap_entry(struct swap_info_struct *si,
- 			goto new_cluster;
- 
- 		ci = swap_cluster_lock(si, offset);
--		/* Cluster could have been used by another order */
--		if (cluster_is_usable(ci, order)) {
--			if (cluster_is_empty(ci))
--				offset = cluster_offset(si, ci);
--			found = alloc_swap_scan_cluster(si, ci, folio, offset);
--		} else {
--			swap_cluster_unlock(ci);
--		}
-+		found = alloc_swap_scan_cluster(si, ci, folio, offset);
- 		if (found)
- 			goto done;
- 	}
-@@ -1332,14 +1328,7 @@ static bool swap_alloc_fast(struct folio *folio)
- 		return false;
- 
- 	ci = swap_cluster_lock(si, offset);
--	if (cluster_is_usable(ci, order)) {
--		if (cluster_is_empty(ci))
--			offset = cluster_offset(si, ci);
--		alloc_swap_scan_cluster(si, ci, folio, offset);
--	} else {
--		swap_cluster_unlock(ci);
--	}
--
-+	alloc_swap_scan_cluster(si, ci, folio, offset);
- 	put_swap_device(si);
- 	return folio_test_swapcache(folio);
- }
-@@ -1945,10 +1934,7 @@ swp_entry_t swap_alloc_hibernation_slot(int type)
- 		pcp_offset = this_cpu_read(percpu_swap_cluster.offset[0]);
- 		if (pcp_si == si && pcp_offset) {
- 			ci = swap_cluster_lock(si, pcp_offset);
--			if (cluster_is_usable(ci, 0))
--				offset = alloc_swap_scan_cluster(si, ci, NULL, pcp_offset);
--			else
--				swap_cluster_unlock(ci);
-+			offset = alloc_swap_scan_cluster(si, ci, NULL, pcp_offset);
- 		}
- 		if (!offset)
- 			offset = cluster_alloc_swap_entry(si, NULL);
+Changes in v2:
+- Based on mm-unstable, resend using b4's relay to fix mismathed patch content.
+- Link to v1: https://lore.kernel.org/r/20260215-hibernate-perf-v1-0-f55ee9ee67db@tencent.com
 
+---
+Kairui Song (3):
+      mm, swap: speed up hibernation allocation and writeout
+      mm, swap: reduce indention for hibernate allocation helper
+      mm, swap: merge common convention and simplify allocation helper
+
+ mm/swapfile.c | 55 +++++++++++++++++++++++++------------------------------
+ 1 file changed, 25 insertions(+), 30 deletions(-)
+---
+base-commit: 53f061047924205138ad9bc315885255f7cc4944
+change-id: 20260212-hibernate-perf-fb7783b2b252
+
+Best regards,
 -- 
-2.52.0
+Kairui Song <kasong@tencent.com>
 
