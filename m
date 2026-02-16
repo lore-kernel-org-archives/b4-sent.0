@@ -1,83 +1,99 @@
-From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Mon, 16 Feb 2026 19:39:57 +0530
-Subject: [PATCH v6 3/3] rust_binder: shrink all_procs when deregistering
- processes
+From: Kairui Song <kasong@tencent.com>
+Subject: [PATCH v4 0/3] mm/swap: hibernate: improve hibernate performance
+ with new allocator
+Date: Mon, 16 Feb 2026 22:58:01 +0800
+Message-Id: <20260216-hibernate-perf-v4-0-1ba9f0bf1ec9@tencent.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260216-binder-shrink-vec-v3-v6-3-ece8e8593e53@zohomail.in>
-References: <20260216-binder-shrink-vec-v3-v6-0-ece8e8593e53@zohomail.in>
-In-Reply-To: <20260216-binder-shrink-vec-v3-v6-0-ece8e8593e53@zohomail.in>
-To: Danilo Krummrich <dakr@kernel.org>, 
- Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, 
- Vlastimil Babka <vbabka@suse.cz>, 
- "Liam R. Howlett" <Liam.Howlett@oracle.com>, 
- Uladzislau Rezki <urezki@gmail.com>, Miguel Ojeda <ojeda@kernel.org>, 
- Boqun Feng <boqun.feng@gmail.com>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- =?utf-8?q?Arve_Hj=C3=B8nnev=C3=A5g?= <arve@android.com>, 
- Todd Kjos <tkjos@android.com>, Christian Brauner <brauner@kernel.org>, 
- Carlos Llamas <cmllamas@google.com>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Shivam Kalra <shivamkalra98@zohomail.in>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33M0QqDIBiG4VsJj+fQv8za0e5j7CDtd3kwCxXZi
+ O59Fgy2BTt8P/iemQT0FgM5FTPxmGywo8tRHQqih87dkNo+NwEGNQMOdLAKvesi0gm9oUZJ2ZQ
+ KFAgg+TR5NPaxgZdr7sGGOPrn5ie+rm9K/FKJU0aNEIgtYi17dY7oNLp41OOdrFiC/wBkQBtot
+ BSKVUrugfITqHdAmQFZIQPBWs4r8Q0sy/ICjdPWYDABAAA=
+X-Change-ID: 20260212-hibernate-perf-fb7783b2b252
+To: linux-mm@kvack.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>, 
+ Kemeng Shi <shikemeng@huaweicloud.com>, Nhat Pham <nphamcs@gmail.com>, 
+ Baoquan He <bhe@redhat.com>, Barry Song <baohua@kernel.org>, 
+ Carsten Grohmann <mail@carstengrohmann.de>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, linux-kernel@vger.kernel.org, 
+ "open list:SUSPEND TO RAM" <linux-pm@vger.kernel.org>, 
+ Carsten Grohmann <carstengrohmann@gmx.de>, Kairui Song <kasong@tencent.com>, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771251023; l=2098;
- i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
- bh=mnNtqRuXw+GbWwUNizt695eJI0LDj0bQ9V6oPxS8Ca8=;
- b=KUC991Pcb5s8ApAhRfN2CtCmZ8JCK0Is6X3B6+q+41igluWkXepMKJ45h5JRYeQzj2X/MfaXg
- W2EfiYUdYp9C2dRyOxEmgaHhOqB/YLKhv4+8ci7NA2x8565gvf00rxD
-X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
- pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
-X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771253885; l=2863;
+ i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
+ bh=sO7TBYofqYSM2bgeL92RYGu50mNH9qEmCpadIybs00Y=;
+ b=CpIU6uKntmcDupIJYIVmNkZrat/SPDOFtjFTIqHnuR4BpQdR82jnesJYYScaxY4crDNFtIKs+
+ pzIT1VZg+Y9CEOaqZvFVJ7o4WqAzx1ovXKLIf+7wkElkcoOdiDUWyUK
+X-Developer-Key: i=kasong@tencent.com; a=ed25519;
+ pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
+X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a process is deregistered from the binder context, the all_procs
-vector may have significant unused capacity. Add logic to shrink the
-vector using a conservative strategy that prevents shrink-then-regrow
-oscillation.
+The new swap allocator didn't provide a high-performance allocation
+method for hibernate, and just left it using the easy slow path. As a
+result, hibernate performance is quite bad on some devices
 
-The shrinking strategy triggers when length drops below 1/4 of capacity,
-and shrinks to twice the current length rather than to the exact length.
-This provides hysteresis to avoid repeated reallocations when the process
-count fluctuates.
+Fix it by implementing hibernate support for the fast allocation path.
 
-The shrink operation uses GFP_KERNEL and is allowed to fail gracefully
-since it is purely an optimization. The vector remains valid and
-functional even if shrinking fails.
+This regression seems only happen with SSD devices with poor 4k
+performance. I've tested on several different NVME and SSD setups, the
+performance diff is tiny on them, but testing on a Samsung SSD 830
+Series (SATA II, 3.0 Gbps) showed a big difference [1]:
 
-Suggested-by: Alice Ryhl <aliceryhl@google.com>
-Reviewed-by: Alice Ryhl <aliceryhl@google.com>
-Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
+Test result with Samsung SSD 830 Series (SATA II, 3.0 Gbps) thanks
+to Carsten Grohmann [1]:
+6.19:               324 seconds
+After this series:  35 seconds
+
+Test result with SAMSUNG MZ7LH480HAHQ-00005 (SATA 3.2, 6.0 Gb/s):
+Before 0ff67f990bd4: Wrote 2230700 kbytes in 4.47 seconds (499.03 MB/s)
+After 0ff67f990bd4: Wrote 2215472 kbytes in 4.44 seconds (498.98 MB/s)
+After this series: Wrote 2038748 kbytes in 4.04 seconds (504.64 MB/s)
+
+Test result with Memblaze P5910DT0384M00:
+Before 0ff67f990bd4: Wrote 2222772 kbytes in 0.84 seconds (2646.15 MB/s)
+After 0ff67f990bd4: Wrote 2224184 kbytes in 0.90 seconds (2471.31 MB/s)
+After this series: Wrote 1559088 kbytes in 0.55 seconds (2834.70 MB/s)
+
+The performance is almost the same for blazing fast SSDs, but for some
+SSDs, the performance is several times better.
+
+Patch 1 improves the hibernate performance by using the fast path, and
+patch 2 cleans up the code a bit since there are now multiple fast path
+users using similar conventions.
+
+Signed-off-by: Kairui Song <kasong@tencent.com>
+Tested-by: Carsten Grohmann <mail@carstengrohmann.de>
+Link: https://lore.kernel.org/linux-mm/8b4bdcfa-ce3f-4e23-839f-31367df7c18f@gmx.de/ [1]
 ---
- drivers/android/binder/context.rs | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+Changes in v4:
+- Reduce indent and improve code comment, as suggested by [ Barry Song ]
+- Link to v3: https://lore.kernel.org/r/20260216-hibernate-perf-v3-0-74e025091145@tencent.com
 
-diff --git a/drivers/android/binder/context.rs b/drivers/android/binder/context.rs
-index 9cf437c025a20..ddddb66b35571 100644
---- a/drivers/android/binder/context.rs
-+++ b/drivers/android/binder/context.rs
-@@ -94,6 +94,17 @@ pub(crate) fn deregister_process(self: &Arc<Self>, proc: &Arc<Process>) {
-         }
-         let mut manager = self.manager.lock();
-         manager.all_procs.retain(|p| !Arc::ptr_eq(p, proc));
-+
-+        // Shrink the vector if it has significant unused capacity to avoid memory waste,
-+        // but use a conservative strategy to prevent shrink-then-regrow oscillation.
-+        // Only shrink when length drops below 1/4 of capacity, and shrink to twice the length.
-+        let len = manager.all_procs.len();
-+        let cap = manager.all_procs.capacity();
-+        if len < cap / 4 {
-+            // Shrink to twice the current length. Ignore allocation failures since this
-+            // is just an optimization; the vector remains valid even if shrinking fails.
-+            let _ = manager.all_procs.shrink_to(len * 2, GFP_KERNEL);
-+        }
-     }
- 
-     pub(crate) fn set_manager_node(&self, node_ref: NodeRef) -> Result {
+Changes in v3:
+- Split the indention change to a standalone patch.
+- Update mail address and add Cc stable.
+- Link to v2: https://lore.kernel.org/r/20260215-hibernate-perf-v2-0-cf28c75b04b7@tencent.com
 
+Changes in v2:
+- Based on mm-unstable, resend using b4's relay to fix mismathed patch content.
+- Link to v1: https://lore.kernel.org/r/20260215-hibernate-perf-v1-0-f55ee9ee67db@tencent.com
+
+---
+Kairui Song (3):
+      mm, swap: speed up hibernation allocation and writeout
+      mm, swap: reduce indention for hibernate allocation helper
+      mm, swap: merge common convention and simplify allocation helper
+
+ mm/swapfile.c | 92 ++++++++++++++++++++++++++++++++++-------------------------
+ 1 file changed, 53 insertions(+), 39 deletions(-)
+---
+base-commit: 53f061047924205138ad9bc315885255f7cc4944
+change-id: 20260212-hibernate-perf-fb7783b2b252
+
+Best regards,
 -- 
-2.43.0
+Kairui Song <kasong@tencent.com>
 
