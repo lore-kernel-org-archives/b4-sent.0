@@ -1,61 +1,66 @@
-From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Mon, 16 Feb 2026 13:24:27 +0000
-Subject: [PATCH] iio: buffer: Fix wait_queue not being removed
+From: Michael Riesch <michael.riesch@collabora.com>
+Subject: [PATCH 0/2] media: rockchip: rkcif: various fixes
+Date: Mon, 16 Feb 2026 14:49:55 +0100
+Message-Id: <20260216-rkcif-fixes-v1-0-b16db20b6d68@collabora.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260216-iio-buffer-write-fix-v1-1-bc08b239f37a@analog.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MywqAIBAAfyX23IJaSPQr0UFzrb1UrL1A+vek4
- wzMZEgkTAn6KoPQxYm3tYCuK5gWt86EHAqDUcYqoy0yb+jPGEnwFj4IIz/Y6BBi541rnYKS7kJ
- F/9thfN8PqEMt72YAAAA=
-X-Change-ID: 20260216-iio-buffer-write-fix-31ddf8b2a4a0
-To: linux-iio@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771248279; l=1108;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=wgGaI/gfKqTtshRUq5bR1f6wLAM/nnkZhqCz5oA7qag=;
- b=bG9bTAk4c9iO1DsO79uD+3MlBL/AGa6EaxSdcj0pNaGl0ji7vPpH33k65sfLmZSsL8LpubgNi
- /FEcDHJ5MVXCW4KluMqO4/0loz/G5FJ1b/p1CsNF+vmuXpcx3MObGxV
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAIMgk2kC/x2LywqDQAwAf0VybmDdikV/RXrYR6xBWSVBEcR/b
+ /A4w8wFSsKk0FcXCB2svBaD+lVBmkL5EXI2Bu9863zdosyJRxz5JMWYc5ff6UNNdGBHDEoYJZQ
+ 02VP2ZTG5CT21meF73388YpNjcgAAAA==
+To: Dan Carpenter <dan.carpenter@linaro.org>, 
+ Paul Elder <paul.elder@ideasonboard.com>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Mehdi Djait <mehdi.djait@linux.intel.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Heiko Stuebner <heiko@sntech.de>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Hans Verkuil <hverkuil+cisco@kernel.org>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>
+Cc: Collabora Kernel Team <kernel@collabora.com>, stable@kernel.org, 
+ linux-media@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Michael Riesch <michael.riesch@collabora.com>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771249800; l=962;
+ i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
+ bh=msfTh03NG07ETuEWGU73Tj/AyEz3fvIWOKO1VC6wmzE=;
+ b=EzemGU4WwwrerpyJyqtpwSkZEMGm+gNFMXztnVatpUldXQTDeZsDGZ8MxfWnBm7/R1bLPh0hI
+ h8+KZIwF77YAolHH+0o2kfeiOq61M+Yi/24IZffM9j2nE7HAw/rB8pd
+X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
+ pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
+X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In the edge case where the IIO device is unregistered while we're
-buffering, we were directly returning an error without removing the wait
-queue. Instead, set 'ret' and break out of the loop.
+Habidere,
 
-Fixes: 9eeee3b0bf19 ("iio: Add output buffer support")
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
+This series contains
+
+ 1) a re-spin of Dan's patch that fixes some more stupid off-by-one issues.
+    This patch has been around on the list for some time, but apparently
+    has not been applied yet.
+ 2) a fix that makes the DMA abstraction respect the minimum number of
+    buffers requirement
+
+Best regards,
+Michael
+
+Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- drivers/iio/industrialio-buffer.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+Dan Carpenter (1):
+      media: rockchip: rkcif: fix off by one bugs
 
-diff --git a/drivers/iio/industrialio-buffer.c b/drivers/iio/industrialio-buffer.c
-index c6259213e150..a09c0d263d7f 100644
---- a/drivers/iio/industrialio-buffer.c
-+++ b/drivers/iio/industrialio-buffer.c
-@@ -228,8 +228,10 @@ static ssize_t iio_buffer_write(struct file *filp, const char __user *buf,
- 	written = 0;
- 	add_wait_queue(&rb->pollq, &wait);
- 	do {
--		if (!indio_dev->info)
--			return -ENODEV;
-+		if (!indio_dev->info) {
-+			ret = -ENODEV;
-+			break;
-+		}
- 
- 		if (!iio_buffer_space_available(rb)) {
- 			if (signal_pending(current)) {
+Michael Riesch (1):
+      media: rockchip: rkcif: comply with minimum number of buffers requirement
 
+ .../platform/rockchip/rkcif/rkcif-capture-mipi.c   | 10 +++---
+ .../media/platform/rockchip/rkcif/rkcif-stream.c   | 41 +++++++++++-----------
+ 2 files changed, 26 insertions(+), 25 deletions(-)
 ---
-base-commit: f52690c50893ef1504990199c8a2dfbb869f38c6
-change-id: 20260216-iio-buffer-write-fix-31ddf8b2a4a0
---
+base-commit: c824345288d11e269ce41b36c105715bc2286050
+change-id: 20260216-rkcif-fixes-bdd9d3c7e4b0
 
-Thanks!
-- Nuno Sá
+Best regards,
+-- 
+Michael Riesch <michael.riesch@collabora.com>
 
