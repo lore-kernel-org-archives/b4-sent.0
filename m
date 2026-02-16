@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Mon, 16 Feb 2026 22:58:03 +0800
-Subject: [PATCH v4 2/3] mm, swap: reduce indention for hibernate allocation
- helper
+Date: Mon, 16 Feb 2026 22:58:04 +0800
+Subject: [PATCH v4 3/3] mm, swap: merge common convention and simplify
+ allocation helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260216-hibernate-perf-v4-2-1ba9f0bf1ec9@tencent.com>
+Message-Id: <20260216-hibernate-perf-v4-3-1ba9f0bf1ec9@tencent.com>
 References: <20260216-hibernate-perf-v4-0-1ba9f0bf1ec9@tencent.com>
 In-Reply-To: <20260216-hibernate-perf-v4-0-1ba9f0bf1ec9@tencent.com>
 To: linux-mm@kvack.org
@@ -17,90 +17,130 @@ Cc: Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>,
  "open list:SUSPEND TO RAM" <linux-pm@vger.kernel.org>, 
  Carsten Grohmann <carstengrohmann@gmx.de>, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771253885; l=2613;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771253885; l=4406;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=NAvqyk1BCM82J8HW6Gnh4CX79o/hdmbrD/B6Y3rHXiw=;
- b=k/nFxKLOf037gv1sMhovQ1z7Lzzq5b7SFtNWk9LCk4plm6mzv2JlgbNEHqsWpL6ecmjVkQy7s
- lmvDhThxszvBx4B7SxU8s36kT/fNDml41igu0SWj6EFXOnsA1XxehU2
+ bh=XE85Cs7eMoW2MzbPsMRN8glTTJ2qQfea8kHvJhs9XRM=;
+ b=XjOjKB6C9RKF289BaDOi2fed12TaT5b+w77m1kwzOZ5PBWUKf9cA9Lwh5/Vmc8idUkOkv49cW
+ CGGS8aMFVcQCG2luwdfgnGmOyIk+xyV50eFl6DypcOEVr3JsMK69xGJ
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-It doesn't have to check the device flag, as the allocator will also
-check the device flag and refuse to allocate if the device is not
-writable. This might cause a trivial waste of CPU cycles of hibernate
-allocation raced with swapoff, but that is very unlikely to happen.
-Removing the check on the common path should be more helpful.
+Almost all callers of the cluster scan helper require the: lock -> check
+usefulness/emptiness check -> allocate -> unlock routine. So merge them
+into the same helper to simplify the code.
+
+While at it, add some kerneldoc too.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/swapfile.c | 51 +++++++++++++++++++++++----------------------------
- 1 file changed, 23 insertions(+), 28 deletions(-)
+ mm/swapfile.c | 54 +++++++++++++++++++++++++++++++-----------------------
+ 1 file changed, 31 insertions(+), 23 deletions(-)
 
 diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 32e0e7545ab8..ea63885f344a 100644
+index ea63885f344a..a6276c5ead8e 100644
 --- a/mm/swapfile.c
 +++ b/mm/swapfile.c
-@@ -1931,35 +1931,30 @@ swp_entry_t swap_alloc_hibernation_slot(int type)
- 	struct swap_cluster_info *ci;
- 	swp_entry_t entry = {0};
- 
--	if (!si)
--		goto fail;
--
--	/* This is called for allocating swap entry, not cache */
--	if (get_swap_device_info(si)) {
--		if (si->flags & SWP_WRITEOK) {
--			/*
--			 * Try the local cluster first if it matches the device. If
--			 * not, try grab a new cluster and override local cluster.
--			 */
--			local_lock(&percpu_swap_cluster.lock);
--			pcp_si = this_cpu_read(percpu_swap_cluster.si[0]);
--			pcp_offset = this_cpu_read(percpu_swap_cluster.offset[0]);
--			if (pcp_si == si && pcp_offset) {
--				ci = swap_cluster_lock(si, pcp_offset);
--				if (cluster_is_usable(ci, 0))
--					offset = alloc_swap_scan_cluster(si, ci, NULL, pcp_offset);
--				else
--					swap_cluster_unlock(ci);
--			}
--			if (!offset)
--				offset = cluster_alloc_swap_entry(si, NULL);
--			local_unlock(&percpu_swap_cluster.lock);
--			if (offset)
--				entry = swp_entry(si->type, offset);
--		}
--		put_swap_device(si);
-+	/* Return empty entry if device is not usable (swapoff or full) */
-+	if (!si || !get_swap_device_info(si))
-+		return entry;
-+	/*
-+	 * Try the local cluster first if it matches the device. If
-+	 * not, try grab a new cluster and override local cluster.
-+	 */
-+	local_lock(&percpu_swap_cluster.lock);
-+	pcp_si = this_cpu_read(percpu_swap_cluster.si[0]);
-+	pcp_offset = this_cpu_read(percpu_swap_cluster.offset[0]);
-+	if (pcp_si == si && pcp_offset) {
-+		ci = swap_cluster_lock(si, pcp_offset);
-+		if (cluster_is_usable(ci, 0))
-+			offset = alloc_swap_scan_cluster(si, ci, NULL, pcp_offset);
-+		else
-+			swap_cluster_unlock(ci);
- 	}
--fail:
-+	if (offset == SWAP_ENTRY_INVALID)
-+		offset = cluster_alloc_swap_entry(si, NULL);
-+	local_unlock(&percpu_swap_cluster.lock);
-+	if (offset)
-+		entry = swp_entry(si->type, offset);
-+	put_swap_device(si);
-+
- 	return entry;
+@@ -910,7 +910,21 @@ static bool cluster_alloc_range(struct swap_info_struct *si,
+ 	return true;
  }
  
+-/* Try use a new cluster for current CPU and allocate from it. */
++/*
++ * alloc_swap_scan_cluster - Scan and allocate swap entries from one cluster.
++ * @si: the swap device of the cluster.
++ * @ci: the cluster, must be locked.
++ * @folio: the folio to allocate for, could be NULL.
++ * @offset: scan start offset, must be a swap device offset pointing inside @ci.
++ *
++ * Scan the swap slots inside @ci, starting from @offset, and allocate
++ * contiguous entries that point to these slots. If @folio is not NULL, folio
++ * size number of entries are allocated, and the starting entry is stored to
++ * folio->swap. If @folio is NULL, one entry will be allocated and passed to
++ * the caller as the return value. In both cases, the offset is returned.
++ *
++ * This helper also updates the percpu cached cluster.
++ */
+ static unsigned int alloc_swap_scan_cluster(struct swap_info_struct *si,
+ 					    struct swap_cluster_info *ci,
+ 					    struct folio *folio, unsigned long offset)
+@@ -923,11 +937,14 @@ static unsigned int alloc_swap_scan_cluster(struct swap_info_struct *si,
+ 	bool need_reclaim, ret, usable;
+ 
+ 	lockdep_assert_held(&ci->lock);
+-	VM_WARN_ON(!cluster_is_usable(ci, order));
+ 
+-	if (end < nr_pages || ci->count + nr_pages > SWAPFILE_CLUSTER)
++	if (!cluster_is_usable(ci, order) || end < nr_pages ||
++	    ci->count + nr_pages > SWAPFILE_CLUSTER)
+ 		goto out;
+ 
++	if (cluster_is_empty(ci))
++		offset = cluster_offset(si, ci);
++
+ 	for (end -= nr_pages; offset <= end; offset += nr_pages) {
+ 		need_reclaim = false;
+ 		if (!cluster_scan_range(si, ci, offset, nr_pages, &need_reclaim))
+@@ -951,6 +968,14 @@ static unsigned int alloc_swap_scan_cluster(struct swap_info_struct *si,
+ 		break;
+ 	}
+ out:
++	/*
++	 * Whether the allocation succeeded or failed, relocate the cluster
++	 * and update percpu offset cache. On success this is necessary to
++	 * mark the cluster as cached fast path. On failure, this invalidates
++	 * the percpu cache to indicate an allocation failure and next scan
++	 * should use a new cluster, and move the failed cluster to where it
++	 * should be.
++	 */
+ 	relocate_cluster(si, ci);
+ 	swap_cluster_unlock(ci);
+ 	if (si->flags & SWP_SOLIDSTATE) {
+@@ -1060,14 +1085,7 @@ static unsigned long cluster_alloc_swap_entry(struct swap_info_struct *si,
+ 			goto new_cluster;
+ 
+ 		ci = swap_cluster_lock(si, offset);
+-		/* Cluster could have been used by another order */
+-		if (cluster_is_usable(ci, order)) {
+-			if (cluster_is_empty(ci))
+-				offset = cluster_offset(si, ci);
+-			found = alloc_swap_scan_cluster(si, ci, folio, offset);
+-		} else {
+-			swap_cluster_unlock(ci);
+-		}
++		found = alloc_swap_scan_cluster(si, ci, folio, offset);
+ 		if (found)
+ 			goto done;
+ 	}
+@@ -1332,14 +1350,7 @@ static bool swap_alloc_fast(struct folio *folio)
+ 		return false;
+ 
+ 	ci = swap_cluster_lock(si, offset);
+-	if (cluster_is_usable(ci, order)) {
+-		if (cluster_is_empty(ci))
+-			offset = cluster_offset(si, ci);
+-		alloc_swap_scan_cluster(si, ci, folio, offset);
+-	} else {
+-		swap_cluster_unlock(ci);
+-	}
+-
++	alloc_swap_scan_cluster(si, ci, folio, offset);
+ 	put_swap_device(si);
+ 	return folio_test_swapcache(folio);
+ }
+@@ -1943,10 +1954,7 @@ swp_entry_t swap_alloc_hibernation_slot(int type)
+ 	pcp_offset = this_cpu_read(percpu_swap_cluster.offset[0]);
+ 	if (pcp_si == si && pcp_offset) {
+ 		ci = swap_cluster_lock(si, pcp_offset);
+-		if (cluster_is_usable(ci, 0))
+-			offset = alloc_swap_scan_cluster(si, ci, NULL, pcp_offset);
+-		else
+-			swap_cluster_unlock(ci);
++		offset = alloc_swap_scan_cluster(si, ci, NULL, pcp_offset);
+ 	}
+ 	if (offset == SWAP_ENTRY_INVALID)
+ 		offset = cluster_alloc_swap_entry(si, NULL);
 
 -- 
 2.52.0
