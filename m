@@ -1,69 +1,68 @@
-From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
-Date: Mon, 16 Feb 2026 18:11:09 +0100
-Subject: [PATCH] net: phy: realtek: Add support for PHY LEDs on RTL8211F-VD
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH 0/2] PCI/pwrctrl: A couple of fixes
+Date: Tue, 17 Feb 2026 15:48:45 +0530
+Message-Id: <20260217-pwrctrl-fixes-7-0-v1-0-b5671e58934f@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260216-rtl8211fvd-add-leds-v1-1-a2b8617bbf80@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAKxPk2kC/x3MzQpAUBBA4VfRrE2ZKePnVWQhM5gSuldS8u5ul
- t/inAeiBbcIbfZAsMuj71sC5RmMy7DNhq7JwAVLwSQYzrVmoulSHFRxNY1YsZUqItYwQSqPYJP
- f/7Xr3/cDklKhhGUAAAA=
-X-Change-ID: 20260216-rtl8211fvd-add-leds-72e5d666e921
-To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: Miroslav Ondra <ondra@faster.cz>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAIVAlGkC/x3L0QpAQBBA0V/RPJsaq2z8ijzYNcuUlmaFkn+3e
+ Tzd7gOJVThBVzygfEqSLWZUZQF+GePMKFM2GDINmcrifqk/dMUgNye0SOhaYleTc4Et5G9X/mP
+ e+uF9P3EfxHtjAAAA
+X-Change-ID: 20260217-pwrctrl-fixes-7-0-b90eb30bbfe7
+To: Bartosz Golaszewski <brgl@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>, 
+ Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>
+Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Raj Kumar Bhagat <raj.bhagat@oss.qualcomm.com>, 
+ Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771261999; l=1456;
- i=cleverline1mc@gmail.com; s=20241112; h=from:subject:message-id;
- bh=UcDBB6aqn6VGJO+wrWmfuuDhMbNI+KYuwnnokfwejMY=;
- b=q1iiWNCuapGkYpnUzMCoonZHxYfGwV7ZC8l5ct9AzwknkjTQeTtkfca2avgxpzrlskW2I1AJX
- nCj+z1JNK7pDiX4V65P3N8Mj6sOv/RxpPodcdDwYM/UoPRdy5n6coGV
-X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
- pk=EJoEbw03UiRORQuCiEyNA8gH1Q6fIpEWnn/MyaWOWX0=
-X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20241112 with auth_id=275
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1121;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=mk61giFA4xV0eLiVM9N9Pk4Frb15EFC/PHziiymACBE=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBplECJmIxMp8QWihoHmtHt2sppe24sig6aGRzb0
+ zqu28jutDOJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaZRAiQAKCRBVnxHm/pHO
+ 9XEAB/4ygWviF5uNJoltOELiKg418BuWOKetvdb2DITohmc74t8Pd0vP8ZePWSbdMDyd+u9+SBA
+ e9vSEaVWKWAxdwwuCykqjealjjb8Xa9k15nmVWYxuuKJ2kX9mWDSxpxRH4xq9AA1NUxDmAf+zgO
+ NV3sXLWSczgSDRJdjbli/8iHAfOWWAfY3ljEBkPPBpA0JZAkGRf2kHUAmkljeTyVJrDsWiC3Cim
+ Bk5rM6CZ3py8oBsYdPxDsoIYZAAkN6KAm2utZWwnEAAnxJIPiD00HV+ZAcF3B/GX5My1ki/p38v
+ TymnfKFFDa3/u7EWh4Tcw7aaFVOVYyiwqz3DMRxnd9ArN+6l
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Realtek RTL8211F-VD has the same LED configuration
-and registers as RTL8211F.
-Use the existing LED related functions for this chip,
-so it is possible to also use the netdev trigger.
+Hi,
 
-Tested on ROCK Pi E.
+This series fixes a couple of issues introduced in the recent pwrctrl rework
+for v7.0. Both issues are due to some incorrect assumptions on deciding when to
+create pwrctrl devices. First issue is due to assuming that all OF graph nodes
+require pwrctrl and another one is due to assuming that all PCI child nodes are
+PCI devices.
 
-Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
+Both issues are fixed by changing the pwrctrl device creation logic in
+pwrctrl/core.
+
+Testing
+=======
+
+This series is tested on Lenovo Thinkpad T14s.
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
-I have been trying to match LED behavior of RTL8211F-VD with RTL8211E
-and found out the RTL8211F is supported already,
-which by the look in datasheet matched the RTL8211F-VD.
-So I have reused the functions and tested on ROCK Pi E.
----
- drivers/net/phy/realtek/realtek_main.c | 3 +++
- 1 file changed, 3 insertions(+)
+Manivannan Sadhasivam (2):
+      PCI/pwrctrl: Ensure that the remote endpoint node parent has the supply requirement
+      PCI/pwrctrl: Only create pwrctrl device if the device node is of type "pci"
 
-diff --git a/drivers/net/phy/realtek/realtek_main.c b/drivers/net/phy/realtek/realtek_main.c
-index 75565fbdbf6d..530b4e26d16e 100644
---- a/drivers/net/phy/realtek/realtek_main.c
-+++ b/drivers/net/phy/realtek/realtek_main.c
-@@ -2243,6 +2243,9 @@ static struct phy_driver realtek_drvs[] = {
- 		.read_page	= rtl821x_read_page,
- 		.write_page	= rtl821x_write_page,
- 		.flags		= PHY_ALWAYS_CALL_SUSPEND,
-+		.led_hw_is_supported = rtl8211x_led_hw_is_supported,
-+		.led_hw_control_get = rtl8211f_led_hw_control_get,
-+		.led_hw_control_set = rtl8211f_led_hw_control_set,
- 	}, {
- 		.name		= "Generic FE-GE Realtek PHY",
- 		.match_phy_device = rtlgen_match_phy_device,
-
+ drivers/pci/pwrctrl/core.c | 51 ++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 38 insertions(+), 13 deletions(-)
 ---
-base-commit: 350adaf7fde9fdbd9aeed6d442a9ae90c6a3ab97
-change-id: 20260216-rtl8211fvd-add-leds-72e5d666e921
+base-commit: 1c2b4a4c2bcb950f182eeeb33d94b565607608cf
+change-id: 20260217-pwrctrl-fixes-7-0-b90eb30bbfe7
 
 Best regards,
 -- 
-Kryštof Černý <cleverline1mc@gmail.com>
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
