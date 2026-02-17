@@ -1,10 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Wed, 18 Feb 2026 04:06:27 +0800
-Subject: [PATCH v3 02/12] mm, swap: clean up swapon process and locking
+Date: Wed, 18 Feb 2026 04:06:28 +0800
+Subject: [PATCH v3 03/12] mm, swap: remove redundant arguments and locking
+ for enabling a device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260218-swap-table-p3-v3-2-f4e34be021a7@tencent.com>
+Message-Id: <20260218-swap-table-p3-v3-3-f4e34be021a7@tencent.com>
 References: <20260218-swap-table-p3-v3-0-f4e34be021a7@tencent.com>
 In-Reply-To: <20260218-swap-table-p3-v3-0-f4e34be021a7@tencent.com>
 To: linux-mm@kvack.org
@@ -16,251 +17,136 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Youngjun Park <youngjun.park@lge.com>, linux-kernel@vger.kernel.org, 
  Chris Li <chrisl@kernel.org>, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771358806; l=8467;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771358806; l=4474;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=cXxlqHGPfGLZ+xxFfflkhqzyXoFTJzecvgOjxPIT7dk=;
- b=debkdUGCJ8SWpduIqzZr3a91hAr96TjXndj2kwo29jnkA/RGFjU1eIWOHZj7hLrcYm7kJhTdx
- lWi1fc2bfSGBvmn3eLdYGOquSqZo+cxXuFQ0AZQI+JY7m2inQxRB/Vh
+ bh=7v/yOoUm+JKrDy/cUABunBQ64SLCuHCZ71QcM/9ivnk=;
+ b=pe7JYHGn/ycRyxgjvXfgwIlVdmMo/7yYX6nZc5R0wASNkiT41lF4CipymFe7E/R78JWzygbk2
+ rfrQGO4XYH1CvtT5mQhICq1K9z8VGrFEWknTZcO7tflKC4tAPK7m94m
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Slightly clean up the swapon process. Add comments about what swap_lock
-protects, introduce and rename helpers that wrap swap_map and
-cluster_info setup, and do it outside of the swap_lock lock.
-
-This lock protection is not needed for swap_map and cluster_info setup
-because all swap users must either hold the percpu ref or hold a stable
-allocated swap entry (e.g., locking a folio in the swap cache) before
-accessing. So before the swap device is exposed by enable_swap_info,
-nothing would use the swap device's map or cluster.
-
-So we are safe to allocate and set up swap data freely first, then
-expose the swap device and set the SWP_WRITEOK flag.
+There is no need to repeatedly pass zero map and priority values.
+zeromap is similar to cluster info and swap_map, which are only used
+once the swap device is exposed. And the prio values are currently
+read only once set, and only used for the list insertion upon expose
+or swap info display.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/swapfile.c | 87 ++++++++++++++++++++++++++++++++---------------------------
- 1 file changed, 48 insertions(+), 39 deletions(-)
+ mm/swapfile.c | 48 ++++++++++++++++++------------------------------
+ 1 file changed, 18 insertions(+), 30 deletions(-)
 
 diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 25dfe992538d..8fc35b316ade 100644
+index 8fc35b316ade..fb0d48681c48 100644
 --- a/mm/swapfile.c
 +++ b/mm/swapfile.c
-@@ -65,6 +65,13 @@ static void move_cluster(struct swap_info_struct *si,
- 			 struct swap_cluster_info *ci, struct list_head *list,
- 			 enum swap_cluster_flags new_flags);
+@@ -2663,19 +2663,6 @@ static int setup_swap_extents(struct swap_info_struct *sis,
+ 	return generic_swapfile_activate(sis, swap_file, span);
+ }
  
+-static void setup_swap_info(struct swap_info_struct *si, int prio,
+-			    unsigned long *zeromap)
+-{
+-	si->prio = prio;
+-	/*
+-	 * the plist prio is negated because plist ordering is
+-	 * low-to-high, while swap ordering is high-to-low
+-	 */
+-	si->list.prio = -si->prio;
+-	si->avail_list.prio = -si->prio;
+-	si->zeromap = zeromap;
+-}
+-
+ static void _enable_swap_info(struct swap_info_struct *si)
+ {
+ 	atomic_long_add(si->pages, &nr_swap_pages);
+@@ -2689,17 +2676,12 @@ static void _enable_swap_info(struct swap_info_struct *si)
+ 	add_to_avail_list(si, true);
+ }
+ 
+-static void enable_swap_info(struct swap_info_struct *si, int prio,
+-			     unsigned long *zeromap)
 +/*
-+ * Protects the swap_info array, and the SWP_USED flag. swap_info contains
-+ * lazily allocated & freed swap device info struts, and SWP_USED indicates
-+ * which device is used, ~SWP_USED devices and can be reused.
-+ *
-+ * Also protects swap_active_head total_swap_pages, and the SWP_WRITEOK flag.
++ * Called after the swap device is ready, resurrect its percpu ref, it's now
++ * safe to reference it. Add it to the list to expose it to the allocator.
 + */
- static DEFINE_SPINLOCK(swap_lock);
- static unsigned int nr_swapfiles;
- atomic_long_t nr_swap_pages;
-@@ -2657,8 +2664,6 @@ static int setup_swap_extents(struct swap_info_struct *sis,
- }
- 
- static void setup_swap_info(struct swap_info_struct *si, int prio,
--			    unsigned char *swap_map,
--			    struct swap_cluster_info *cluster_info,
- 			    unsigned long *zeromap)
++static void enable_swap_info(struct swap_info_struct *si)
  {
- 	si->prio = prio;
-@@ -2668,8 +2673,6 @@ static void setup_swap_info(struct swap_info_struct *si, int prio,
- 	 */
- 	si->list.prio = -si->prio;
- 	si->avail_list.prio = -si->prio;
--	si->swap_map = swap_map;
--	si->cluster_info = cluster_info;
- 	si->zeromap = zeromap;
- }
- 
-@@ -2687,13 +2690,11 @@ static void _enable_swap_info(struct swap_info_struct *si)
- }
- 
- static void enable_swap_info(struct swap_info_struct *si, int prio,
--				unsigned char *swap_map,
--				struct swap_cluster_info *cluster_info,
--				unsigned long *zeromap)
-+			     unsigned long *zeromap)
+-	spin_lock(&swap_lock);
+-	spin_lock(&si->lock);
+-	setup_swap_info(si, prio, zeromap);
+-	spin_unlock(&si->lock);
+-	spin_unlock(&swap_lock);
+-	/*
+-	 * Finished initializing swap device, now it's safe to reference it.
+-	 */
+ 	percpu_ref_resurrect(&si->users);
+ 	spin_lock(&swap_lock);
+ 	spin_lock(&si->lock);
+@@ -2712,7 +2694,6 @@ static void reinsert_swap_info(struct swap_info_struct *si)
  {
  	spin_lock(&swap_lock);
  	spin_lock(&si->lock);
--	setup_swap_info(si, prio, swap_map, cluster_info, zeromap);
-+	setup_swap_info(si, prio, zeromap);
- 	spin_unlock(&si->lock);
- 	spin_unlock(&swap_lock);
- 	/*
-@@ -2711,7 +2712,7 @@ static void reinsert_swap_info(struct swap_info_struct *si)
- {
- 	spin_lock(&swap_lock);
- 	spin_lock(&si->lock);
--	setup_swap_info(si, si->prio, si->swap_map, si->cluster_info, si->zeromap);
-+	setup_swap_info(si, si->prio, si->zeromap);
+-	setup_swap_info(si, si->prio, si->zeromap);
  	_enable_swap_info(si);
  	spin_unlock(&si->lock);
  	spin_unlock(&swap_lock);
-@@ -2735,8 +2736,8 @@ static void wait_for_allocation(struct swap_info_struct *si)
- 	}
- }
- 
--static void free_cluster_info(struct swap_cluster_info *cluster_info,
--			      unsigned long maxpages)
-+static void free_swap_cluster_info(struct swap_cluster_info *cluster_info,
-+				   unsigned long maxpages)
- {
- 	struct swap_cluster_info *ci;
- 	int i, nr_clusters = DIV_ROUND_UP(maxpages, SWAPFILE_CLUSTER);
-@@ -2894,7 +2895,7 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
- 	p->global_cluster = NULL;
- 	vfree(swap_map);
- 	kvfree(zeromap);
--	free_cluster_info(cluster_info, maxpages);
-+	free_swap_cluster_info(cluster_info, maxpages);
- 	/* Destroy swap account information */
- 	swap_cgroup_swapoff(p->type);
- 
-@@ -3243,10 +3244,15 @@ static unsigned long read_swap_header(struct swap_info_struct *si,
- 
- static int setup_swap_map(struct swap_info_struct *si,
- 			  union swap_header *swap_header,
--			  unsigned char *swap_map,
- 			  unsigned long maxpages)
- {
- 	unsigned long i;
-+	unsigned char *swap_map;
-+
-+	swap_map = vzalloc(maxpages);
-+	si->swap_map = swap_map;
-+	if (!swap_map)
-+		return -ENOMEM;
- 
- 	swap_map[0] = SWAP_MAP_BAD; /* omit header page */
- 	for (i = 0; i < swap_header->info.nr_badpages; i++) {
-@@ -3267,9 +3273,9 @@ static int setup_swap_map(struct swap_info_struct *si,
- 	return 0;
- }
- 
--static struct swap_cluster_info *setup_clusters(struct swap_info_struct *si,
--						union swap_header *swap_header,
--						unsigned long maxpages)
-+static int setup_swap_clusters_info(struct swap_info_struct *si,
-+				    union swap_header *swap_header,
-+				    unsigned long maxpages)
- {
- 	unsigned long nr_clusters = DIV_ROUND_UP(maxpages, SWAPFILE_CLUSTER);
- 	struct swap_cluster_info *cluster_info;
-@@ -3339,10 +3345,11 @@ static struct swap_cluster_info *setup_clusters(struct swap_info_struct *si,
- 		}
- 	}
- 
--	return cluster_info;
-+	si->cluster_info = cluster_info;
-+	return 0;
- err:
--	free_cluster_info(cluster_info, maxpages);
--	return ERR_PTR(err);
-+	free_swap_cluster_info(cluster_info, maxpages);
-+	return err;
- }
- 
- SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
-@@ -3358,9 +3365,7 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+@@ -3365,7 +3346,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
  	int nr_extents;
  	sector_t span;
  	unsigned long maxpages;
--	unsigned char *swap_map = NULL;
- 	unsigned long *zeromap = NULL;
--	struct swap_cluster_info *cluster_info = NULL;
+-	unsigned long *zeromap = NULL;
  	struct folio *folio = NULL;
  	struct inode *inode = NULL;
  	bool inced_nr_rotate_swap = false;
-@@ -3371,6 +3376,11 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 	if (!capable(CAP_SYS_ADMIN))
- 		return -EPERM;
- 
-+	/*
-+	 * Allocate or reuse existing !SWP_USED swap_info. The returned
-+	 * si will stay in a dying status, so nothing will access its content
-+	 * until enable_swap_info resurrects its percpu ref and expose it.
-+	 */
- 	si = alloc_swap_info();
- 	if (IS_ERR(si))
- 		return PTR_ERR(si);
-@@ -3453,18 +3463,17 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 
- 	maxpages = si->max;
- 
--	/* OK, set up the swap map and apply the bad block list */
--	swap_map = vzalloc(maxpages);
--	if (!swap_map) {
--		error = -ENOMEM;
-+	/* Setup the swap map and apply bad block */
-+	error = setup_swap_map(si, swap_header, maxpages);
-+	if (error)
+@@ -3481,9 +3461,9 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+ 	 * Use kvmalloc_array instead of bitmap_zalloc as the allocation order might
+ 	 * be above MAX_PAGE_ORDER incase of a large swap file.
+ 	 */
+-	zeromap = kvmalloc_array(BITS_TO_LONGS(maxpages), sizeof(long),
+-				    GFP_KERNEL | __GFP_ZERO);
+-	if (!zeromap) {
++	si->zeromap = kvmalloc_array(BITS_TO_LONGS(maxpages), sizeof(long),
++				     GFP_KERNEL | __GFP_ZERO);
++	if (!si->zeromap) {
+ 		error = -ENOMEM;
  		goto bad_swap_unlock_inode;
--	}
- 
--	error = swap_cgroup_swapon(si->type, maxpages);
-+	/* Set up the swap cluster info */
-+	error = setup_swap_clusters_info(si, swap_header, maxpages);
- 	if (error)
- 		goto bad_swap_unlock_inode;
- 
--	error = setup_swap_map(si, swap_header, swap_map, maxpages);
-+	error = swap_cgroup_swapon(si->type, maxpages);
- 	if (error)
- 		goto bad_swap_unlock_inode;
- 
-@@ -3492,13 +3501,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 		inced_nr_rotate_swap = true;
  	}
- 
--	cluster_info = setup_clusters(si, swap_header, maxpages);
--	if (IS_ERR(cluster_info)) {
--		error = PTR_ERR(cluster_info);
--		cluster_info = NULL;
--		goto bad_swap_unlock_inode;
--	}
--
- 	if ((swap_flags & SWAP_FLAG_DISCARD) &&
- 	    si->bdev && bdev_max_discard_sectors(si->bdev)) {
- 		/*
-@@ -3551,7 +3553,9 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+@@ -3552,10 +3532,17 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+ 	if (swap_flags & SWAP_FLAG_PREFER)
  		prio = swap_flags & SWAP_FLAG_PRIO_MASK;
  
++	/*
++	 * The plist prio is negated because plist ordering is
++	 * low-to-high, while swap ordering is high-to-low
++	 */
++	si->prio = prio;
++	si->list.prio = -si->prio;
++	si->avail_list.prio = -si->prio;
  	si->swap_file = swap_file;
--	enable_swap_info(si, prio, swap_map, cluster_info, zeromap);
-+
-+	/* Sets SWP_WRITEOK, resurrect the percpu ref, expose the swap device */
-+	enable_swap_info(si, prio, zeromap);
+ 
+ 	/* Sets SWP_WRITEOK, resurrect the percpu ref, expose the swap device */
+-	enable_swap_info(si, prio, zeromap);
++	enable_swap_info(si);
  
  	pr_info("Adding %uk swap on %s.  Priority:%d extents:%d across:%lluk %s%s%s%s\n",
  		K(si->pages), name->name, si->prio, nr_extents,
-@@ -3577,13 +3581,18 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 	inode = NULL;
- 	destroy_swap_extents(si, swap_file);
- 	swap_cgroup_swapoff(si->type);
-+	vfree(si->swap_map);
-+	si->swap_map = NULL;
-+	free_swap_cluster_info(si->cluster_info, si->max);
-+	si->cluster_info = NULL;
-+	/*
-+	 * Clear the SWP_USED flag after all resources are freed so
-+	 * alloc_swap_info can reuse this si safely.
-+	 */
+@@ -3585,6 +3572,8 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+ 	si->swap_map = NULL;
+ 	free_swap_cluster_info(si->cluster_info, si->max);
+ 	si->cluster_info = NULL;
++	kvfree(si->zeromap);
++	si->zeromap = NULL;
+ 	/*
+ 	 * Clear the SWP_USED flag after all resources are freed so
+ 	 * alloc_swap_info can reuse this si safely.
+@@ -3592,7 +3581,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
  	spin_lock(&swap_lock);
  	si->flags = 0;
  	spin_unlock(&swap_lock);
--	vfree(swap_map);
- 	kvfree(zeromap);
--	if (cluster_info)
--		free_cluster_info(cluster_info, maxpages);
+-	kvfree(zeromap);
  	if (inced_nr_rotate_swap)
  		atomic_dec(&nr_rotate_swap);
  	if (swap_file)
