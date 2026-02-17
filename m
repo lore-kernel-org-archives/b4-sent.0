@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Wed, 18 Feb 2026 04:06:28 +0800
-Subject: [PATCH v3 03/12] mm, swap: remove redundant arguments and locking
- for enabling a device
+Date: Wed, 18 Feb 2026 04:06:29 +0800
+Subject: [PATCH v3 04/12] mm, swap: consolidate bad slots setup and make it
+ more robust
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260218-swap-table-p3-v3-3-f4e34be021a7@tencent.com>
+Message-Id: <20260218-swap-table-p3-v3-4-f4e34be021a7@tencent.com>
 References: <20260218-swap-table-p3-v3-0-f4e34be021a7@tencent.com>
 In-Reply-To: <20260218-swap-table-p3-v3-0-f4e34be021a7@tencent.com>
 To: linux-mm@kvack.org
@@ -17,139 +17,146 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Youngjun Park <youngjun.park@lge.com>, linux-kernel@vger.kernel.org, 
  Chris Li <chrisl@kernel.org>, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771358806; l=4474;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771358806; l=4411;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=7v/yOoUm+JKrDy/cUABunBQ64SLCuHCZ71QcM/9ivnk=;
- b=pe7JYHGn/ycRyxgjvXfgwIlVdmMo/7yYX6nZc5R0wASNkiT41lF4CipymFe7E/R78JWzygbk2
- rfrQGO4XYH1CvtT5mQhICq1K9z8VGrFEWknTZcO7tflKC4tAPK7m94m
+ bh=dTxwU7HNi4RjZm8BIg4m/tk9gYStmKjj5MiTeMIyv7o=;
+ b=X0FBoaZxzsjFgaOx7GXTnkZmNCoBeOVc8rrBdBmxLga4IAkX6V3jxFmOmyvmmFpMTcvJKdXBw
+ Yoz2wOXCe4kDldrwEgD0/8IdRNTGJgxl5dcBRLKsDyf9zXElv8040Od
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There is no need to repeatedly pass zero map and priority values.
-zeromap is similar to cluster info and swap_map, which are only used
-once the swap device is exposed. And the prio values are currently
-read only once set, and only used for the list insertion upon expose
-or swap info display.
+In preparation for using the swap table to track bad slots directly,
+move the bad slot setup to one place, set up the swap_map mark, and
+cluster counter update together.
+
+While at it, provide more informative logs and a more robust fallback if
+any bad slot info looks incorrect.
+
+Fixes a potential issue that a malformed swap file may cause the cluster
+to be unusable upon swapon, and provides a more verbose warning on a
+malformed swap file
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/swapfile.c | 48 ++++++++++++++++++------------------------------
- 1 file changed, 18 insertions(+), 30 deletions(-)
+ mm/swapfile.c | 68 +++++++++++++++++++++++++++++++++--------------------------
+ 1 file changed, 38 insertions(+), 30 deletions(-)
 
 diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 8fc35b316ade..fb0d48681c48 100644
+index fb0d48681c48..91c1fa804185 100644
 --- a/mm/swapfile.c
 +++ b/mm/swapfile.c
-@@ -2663,19 +2663,6 @@ static int setup_swap_extents(struct swap_info_struct *sis,
- 	return generic_swapfile_activate(sis, swap_file, span);
- }
- 
--static void setup_swap_info(struct swap_info_struct *si, int prio,
--			    unsigned long *zeromap)
--{
--	si->prio = prio;
--	/*
--	 * the plist prio is negated because plist ordering is
--	 * low-to-high, while swap ordering is high-to-low
--	 */
--	si->list.prio = -si->prio;
--	si->avail_list.prio = -si->prio;
--	si->zeromap = zeromap;
--}
--
- static void _enable_swap_info(struct swap_info_struct *si)
+@@ -743,13 +743,37 @@ static void relocate_cluster(struct swap_info_struct *si,
+  * slot. The cluster will not be added to the free cluster list, and its
+  * usage counter will be increased by 1. Only used for initialization.
+  */
+-static int swap_cluster_setup_bad_slot(struct swap_cluster_info *cluster_info,
+-				       unsigned long offset)
++static int swap_cluster_setup_bad_slot(struct swap_info_struct *si,
++				       struct swap_cluster_info *cluster_info,
++				       unsigned int offset, bool mask)
  {
- 	atomic_long_add(si->pages, &nr_swap_pages);
-@@ -2689,17 +2676,12 @@ static void _enable_swap_info(struct swap_info_struct *si)
- 	add_to_avail_list(si, true);
- }
+ 	unsigned long idx = offset / SWAPFILE_CLUSTER;
+ 	struct swap_table *table;
+ 	struct swap_cluster_info *ci;
  
--static void enable_swap_info(struct swap_info_struct *si, int prio,
--			     unsigned long *zeromap)
-+/*
-+ * Called after the swap device is ready, resurrect its percpu ref, it's now
-+ * safe to reference it. Add it to the list to expose it to the allocator.
-+ */
-+static void enable_swap_info(struct swap_info_struct *si)
- {
--	spin_lock(&swap_lock);
--	spin_lock(&si->lock);
--	setup_swap_info(si, prio, zeromap);
--	spin_unlock(&si->lock);
--	spin_unlock(&swap_lock);
--	/*
--	 * Finished initializing swap device, now it's safe to reference it.
--	 */
- 	percpu_ref_resurrect(&si->users);
- 	spin_lock(&swap_lock);
- 	spin_lock(&si->lock);
-@@ -2712,7 +2694,6 @@ static void reinsert_swap_info(struct swap_info_struct *si)
- {
- 	spin_lock(&swap_lock);
- 	spin_lock(&si->lock);
--	setup_swap_info(si, si->prio, si->zeromap);
- 	_enable_swap_info(si);
- 	spin_unlock(&si->lock);
- 	spin_unlock(&swap_lock);
-@@ -3365,7 +3346,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 	int nr_extents;
- 	sector_t span;
- 	unsigned long maxpages;
--	unsigned long *zeromap = NULL;
- 	struct folio *folio = NULL;
- 	struct inode *inode = NULL;
- 	bool inced_nr_rotate_swap = false;
-@@ -3481,9 +3461,9 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 	 * Use kvmalloc_array instead of bitmap_zalloc as the allocation order might
- 	 * be above MAX_PAGE_ORDER incase of a large swap file.
- 	 */
--	zeromap = kvmalloc_array(BITS_TO_LONGS(maxpages), sizeof(long),
--				    GFP_KERNEL | __GFP_ZERO);
--	if (!zeromap) {
-+	si->zeromap = kvmalloc_array(BITS_TO_LONGS(maxpages), sizeof(long),
-+				     GFP_KERNEL | __GFP_ZERO);
-+	if (!si->zeromap) {
- 		error = -ENOMEM;
- 		goto bad_swap_unlock_inode;
- 	}
-@@ -3552,10 +3532,17 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 	if (swap_flags & SWAP_FLAG_PREFER)
- 		prio = swap_flags & SWAP_FLAG_PRIO_MASK;
- 
++	/* si->max may got shrunk by swap swap_activate() */
++	if (offset >= si->max && !mask) {
++		pr_debug("Ignoring bad slot %u (max: %u)\n", offset, si->max);
++		return 0;
++	}
 +	/*
-+	 * The plist prio is negated because plist ordering is
-+	 * low-to-high, while swap ordering is high-to-low
++	 * Account it, skip header slot: si->pages is initiated as
++	 * si->max - 1. Also skip the masking of last cluster,
++	 * si->pages doesn't include that part.
 +	 */
-+	si->prio = prio;
-+	si->list.prio = -si->prio;
-+	si->avail_list.prio = -si->prio;
- 	si->swap_file = swap_file;
++	if (offset && !mask)
++		si->pages -= 1;
++	if (!si->pages) {
++		pr_warn("Empty swap-file\n");
++		return -EINVAL;
++	}
++	/* Check for duplicated bad swap slots. */
++	if (si->swap_map[offset]) {
++		pr_warn("Duplicated bad slot offset %d\n", offset);
++		return -EINVAL;
++	}
++
++	si->swap_map[offset] = SWAP_MAP_BAD;
+ 	ci = cluster_info + idx;
+ 	if (!ci->table) {
+ 		table = swap_table_alloc(GFP_KERNEL);
+@@ -3227,30 +3251,12 @@ static int setup_swap_map(struct swap_info_struct *si,
+ 			  union swap_header *swap_header,
+ 			  unsigned long maxpages)
+ {
+-	unsigned long i;
+ 	unsigned char *swap_map;
  
- 	/* Sets SWP_WRITEOK, resurrect the percpu ref, expose the swap device */
--	enable_swap_info(si, prio, zeromap);
-+	enable_swap_info(si);
+ 	swap_map = vzalloc(maxpages);
+ 	si->swap_map = swap_map;
+ 	if (!swap_map)
+ 		return -ENOMEM;
+-
+-	swap_map[0] = SWAP_MAP_BAD; /* omit header page */
+-	for (i = 0; i < swap_header->info.nr_badpages; i++) {
+-		unsigned int page_nr = swap_header->info.badpages[i];
+-		if (page_nr == 0 || page_nr > swap_header->info.last_page)
+-			return -EINVAL;
+-		if (page_nr < maxpages) {
+-			swap_map[page_nr] = SWAP_MAP_BAD;
+-			si->pages--;
+-		}
+-	}
+-
+-	if (!si->pages) {
+-		pr_warn("Empty swap-file\n");
+-		return -EINVAL;
+-	}
+-
+ 	return 0;
+ }
  
- 	pr_info("Adding %uk swap on %s.  Priority:%d extents:%d across:%lluk %s%s%s%s\n",
- 		K(si->pages), name->name, si->prio, nr_extents,
-@@ -3585,6 +3572,8 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 	si->swap_map = NULL;
- 	free_swap_cluster_info(si->cluster_info, si->max);
- 	si->cluster_info = NULL;
-+	kvfree(si->zeromap);
-+	si->zeromap = NULL;
+@@ -3281,26 +3287,28 @@ static int setup_swap_clusters_info(struct swap_info_struct *si,
+ 	}
+ 
  	/*
- 	 * Clear the SWP_USED flag after all resources are freed so
- 	 * alloc_swap_info can reuse this si safely.
-@@ -3592,7 +3581,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 	spin_lock(&swap_lock);
- 	si->flags = 0;
- 	spin_unlock(&swap_lock);
--	kvfree(zeromap);
- 	if (inced_nr_rotate_swap)
- 		atomic_dec(&nr_rotate_swap);
- 	if (swap_file)
+-	 * Mark unusable pages as unavailable. The clusters aren't
+-	 * marked free yet, so no list operations are involved yet.
+-	 *
+-	 * See setup_swap_map(): header page, bad pages,
+-	 * and the EOF part of the last cluster.
++	 * Mark unusable pages (header page, bad pages, and the EOF part of
++	 * the last cluster) as unavailable. The clusters aren't marked free
++	 * yet, so no list operations are involved yet.
+ 	 */
+-	err = swap_cluster_setup_bad_slot(cluster_info, 0);
++	err = swap_cluster_setup_bad_slot(si, cluster_info, 0, false);
+ 	if (err)
+ 		goto err;
+ 	for (i = 0; i < swap_header->info.nr_badpages; i++) {
+ 		unsigned int page_nr = swap_header->info.badpages[i];
+ 
+-		if (page_nr >= maxpages)
+-			continue;
+-		err = swap_cluster_setup_bad_slot(cluster_info, page_nr);
++		if (!page_nr || page_nr > swap_header->info.last_page) {
++			pr_warn("Bad slot offset is out of border: %d (last_page: %d)\n",
++				page_nr, swap_header->info.last_page);
++			err = -EINVAL;
++			goto err;
++		}
++		err = swap_cluster_setup_bad_slot(si, cluster_info, page_nr, false);
+ 		if (err)
+ 			goto err;
+ 	}
+ 	for (i = maxpages; i < round_up(maxpages, SWAPFILE_CLUSTER); i++) {
+-		err = swap_cluster_setup_bad_slot(cluster_info, i);
++		err = swap_cluster_setup_bad_slot(si, cluster_info, i, true);
+ 		if (err)
+ 			goto err;
+ 	}
 
 -- 
 2.52.0
