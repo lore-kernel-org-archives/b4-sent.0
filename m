@@ -1,160 +1,57 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Wed, 18 Feb 2026 21:59:14 +0000
-Subject: [PATCH v7 6/6] usb: typec: tcpm/tcpci_maxim: deprecate WAR for
- setting charger mode
+From: Oliver Hartkopp <socketcan@hartkopp.net>
+Subject: [PATCH v2 0/2] can: bcm: add/fix locking for config updates at
+ runtime
+Date: Thu, 19 Feb 2026 13:47:30 +0100
+Message-Id: <20260219-bcm_spin_lock_init-v2-0-694352bfca62@hartkopp.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260218-max77759-charger-v7-6-e8d907ce69c5@google.com>
-References: <20260218-max77759-charger-v7-0-e8d907ce69c5@google.com>
-In-Reply-To: <20260218-max77759-charger-v7-0-e8d907ce69c5@google.com>
-To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
- Lee Jones <lee@kernel.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Tudor Ambarus <tudor.ambarus@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>, Mark Brown <broonie@kernel.org>, 
- Matti Vaittinen <mazziesaccount@gmail.com>, 
- Andrew Morton <akpm@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
- RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
- Amit Sunil Dhamne <amitsd@google.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771451962; l=4043;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=uZk9qfSWv4kN+EgweqrzKq0M0KWOUf2Zux+k8glvduw=;
- b=LeyfbPuzzBsNlLUcBhWOWYjV9+YmIEFHOJUKs3FfJS/UY+lAYFSPdVjfZWRgQ+N8tq6KlONMX
- kmdtEnvnyuMAlwAlFnq6YwQCDoGtsaYeBjudIGEQRbV5qgT4pgoQ4MW
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAGMGl2kC/32NwQ6CMBAFf4Xs2RpaKame/A9DGlpWWdG2aSvRE
+ P5dwLvHSebNmyBhJExwKiaIOFIi7xYQuwJs37obMuoWBlGKuhRcMWOfOgVy+uHtoMlRZkJyhUZ
+ 1lSw5LMMQ8UrvLXppfpxe5o42r6XV6CllHz/b68hX7+/ByBln8ijqQ2VVK408923Mgw9h7zBDM
+ 8/zF3H0nk7JAAAA
+X-Change-ID: 20260218-bcm_spin_lock_init-2518eb8d4501
+To: Marc Kleine-Budde <mkl@pengutronix.de>, 
+ "David S. Miller" <davem@davemloft.net>, 
+ Urs Thuermann <urs.thuermann@volkswagen.de>
+Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Oliver Hartkopp <socketcan@hartkopp.net>, 
+ syzbot+5b11eccc403dd1cea9f8@syzkaller.appspotmail.com, 
+ syzbot+75e5e4ae00c3b4bb544e@syzkaller.appspotmail.com
+X-Mailer: b4 0.15-dev-47773
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771505254; l=869;
+ i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
+ bh=cpBnC8pH/PiD3SRicQ3PJ1gVjD/QbqD3gNTHM2XRWnM=;
+ b=UfrzPc03KntdzKKCeEksDrBUy1B0dRbzpJbA9/PqKuCtStIfLZ/rk8mEH4mC4kRBXQ75eQuNp
+ qRMUx/fj9/IDy0cRqXyA4yemjjiVb2ELzZDSs31IvhDLt8PsfYXvq1Q
+X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
+ pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
+X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-TCPCI maxim driver directly writes to the charger's register space to
-set charger mode depending on the power role. As MAX77759 chg driver
-exists, this WAR is not required.
+Address two locking issues detected by KASAN and KCSAN.
 
-Instead, use a regulator interface to source vbus when typec is in
-source power mode. In other power modes, this regulator will be turned
-off if active.
+The first patch fixes an unintialized spin_lock in the KASAN fix.
+The second patch addresses the update of content in bcm_rx_setup().
 
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
-Reviewed-by: André Draszik <andre.draszik@linaro.org>
+Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
 ---
- drivers/usb/typec/tcpm/tcpci_maxim.h      |  1 +
- drivers/usb/typec/tcpm/tcpci_maxim_core.c | 54 +++++++++++++++++++------------
- 2 files changed, 34 insertions(+), 21 deletions(-)
+Changes in v2:
+- Add a second patch addressing the KCSAN report
+- Link to v1: https://patch.msgid.link/20260218-bcm_spin_lock_init-v1-1-592634c8a5b5@hartkopp.net
 
-diff --git a/drivers/usb/typec/tcpm/tcpci_maxim.h b/drivers/usb/typec/tcpm/tcpci_maxim.h
-index b33540a42a953dc6d8197790ee4af3b6f52791ce..b314606eb0f67ddbc80d8760244aa6dee61bebc1 100644
---- a/drivers/usb/typec/tcpm/tcpci_maxim.h
-+++ b/drivers/usb/typec/tcpm/tcpci_maxim.h
-@@ -60,6 +60,7 @@ struct max_tcpci_chip {
- 	struct tcpm_port *port;
- 	enum contamiant_state contaminant_state;
- 	bool veto_vconn_swap;
-+	struct regulator *vbus_reg;
- };
- 
- static inline int max_tcpci_read16(struct max_tcpci_chip *chip, unsigned int reg, u16 *val)
-diff --git a/drivers/usb/typec/tcpm/tcpci_maxim_core.c b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-index 19f63865079658fb2a446dc390262d141b940e9a..e9e2405c5ca036e28c307088d4b785726834e71f 100644
---- a/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-+++ b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-@@ -10,6 +10,7 @@
- #include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/regmap.h>
-+#include <linux/regulator/consumer.h>
- #include <linux/usb/pd.h>
- #include <linux/usb/tcpci.h>
- #include <linux/usb/tcpm.h>
-@@ -35,12 +36,6 @@
-  */
- #define TCPC_RECEIVE_BUFFER_LEN				32
- 
--#define MAX_BUCK_BOOST_SID				0x69
--#define MAX_BUCK_BOOST_OP				0xb9
--#define MAX_BUCK_BOOST_OFF				0
--#define MAX_BUCK_BOOST_SOURCE				0xa
--#define MAX_BUCK_BOOST_SINK				0x5
--
- static const struct regmap_range max_tcpci_tcpci_range[] = {
- 	regmap_reg_range(0x00, 0x95)
- };
-@@ -202,32 +197,49 @@ static void process_rx(struct max_tcpci_chip *chip, u16 status)
- 	tcpm_pd_receive(chip->port, &msg, rx_type);
- }
- 
-+static int get_vbus_regulator_handle(struct max_tcpci_chip *chip)
-+{
-+	if (IS_ERR_OR_NULL(chip->vbus_reg)) {
-+		chip->vbus_reg = devm_regulator_get_exclusive(chip->dev,
-+							      "vbus");
-+		if (IS_ERR_OR_NULL(chip->vbus_reg)) {
-+			dev_err(chip->dev,
-+				"Failed to get vbus regulator handle");
-+			return -ENODEV;
-+		}
-+	}
-+
-+	return 0;
-+}
-+
- static int max_tcpci_set_vbus(struct tcpci *tcpci, struct tcpci_data *tdata, bool source, bool sink)
- {
- 	struct max_tcpci_chip *chip = tdata_to_max_tcpci(tdata);
--	u8 buffer_source[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_SOURCE};
--	u8 buffer_sink[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_SINK};
--	u8 buffer_none[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_OFF};
--	struct i2c_client *i2c = chip->client;
- 	int ret;
- 
--	struct i2c_msg msgs[] = {
--		{
--			.addr = MAX_BUCK_BOOST_SID,
--			.flags = i2c->flags & I2C_M_TEN,
--			.len = 2,
--			.buf = source ? buffer_source : sink ? buffer_sink : buffer_none,
--		},
--	};
--
- 	if (source && sink) {
- 		dev_err(chip->dev, "Both source and sink set\n");
- 		return -EINVAL;
- 	}
- 
--	ret = i2c_transfer(i2c->adapter, msgs, 1);
-+	ret = get_vbus_regulator_handle(chip);
-+	if (ret) {
-+		/*
-+		 * Regulator is not necessary for sink only applications. Return
-+		 * success in cases where sink mode is being modified.
-+		 */
-+		return source ? ret : 1;
-+	}
-+
-+	if (source) {
-+		if (!regulator_is_enabled(chip->vbus_reg))
-+			ret = regulator_enable(chip->vbus_reg);
-+	} else {
-+		if (regulator_is_enabled(chip->vbus_reg))
-+			ret = regulator_disable(chip->vbus_reg);
-+	}
- 
--	return  ret < 0 ? ret : 1;
-+	return ret < 0 ? ret : 1;
- }
- 
- static void process_power_status(struct max_tcpci_chip *chip)
+---
+Oliver Hartkopp (2):
+      can: bcm: fix locking for bcm_op runtime updates
+      can: bcm: add locking when updating filter and timer values
 
--- 
-2.53.0.371.g1d285c8824-goog
+ net/can/bcm.c | 40 +++++++++++++++++++++++++++++++++-------
+ 1 file changed, 33 insertions(+), 7 deletions(-)
+---
+base-commit: 2961f841b025fb234860bac26dfb7fa7cb0fb122
+change-id: 20260218-bcm_spin_lock_init-2518eb8d4501
+
+Best regards,
+--  
+Oliver Hartkopp <socketcan@hartkopp.net>
 
