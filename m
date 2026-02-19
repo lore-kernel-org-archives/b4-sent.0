@@ -1,164 +1,88 @@
-From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Thu, 19 Feb 2026 13:47:32 +0100
-Subject: [PATCH v2 2/2] can: bcm: add locking when updating filter and
- timer values
+From: Dirk Chen <dirkchen@amd.com>
+Date: Thu, 19 Feb 2026 23:44:47 +0800
+Subject: [PATCH v3] ARM: dts: aspeed: anacapa: Add retimer EEPROMs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260219-bcm_spin_lock_init-v2-2-694352bfca62@hartkopp.net>
-References: <20260219-bcm_spin_lock_init-v2-0-694352bfca62@hartkopp.net>
-In-Reply-To: <20260219-bcm_spin_lock_init-v2-0-694352bfca62@hartkopp.net>
-To: Marc Kleine-Budde <mkl@pengutronix.de>, 
- "David S. Miller" <davem@davemloft.net>, 
- Urs Thuermann <urs.thuermann@volkswagen.de>
-Cc: linux-can@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Oliver Hartkopp <socketcan@hartkopp.net>, 
- syzbot+75e5e4ae00c3b4bb544e@syzkaller.appspotmail.com
-X-Mailer: b4 0.15-dev-47773
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771505254; l=4358;
- i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=LZlNTIGHLDqDPxLmvSsyaQormiMZ6P6MsnwA3/m9nxY=;
- b=aYlRDF3AAVYKMqetg4BauKI9oNRyiM7CKQ4FeqEUUVdSELBZI4dLlwRVfDm5dHM9B9TnEIw58
- QOf/3x95UigANm09SDQlqgSaIWkdk2lyMQhJXJk3wWAJekdMS/qOJiR
-X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
- pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
-X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
+Message-Id: <20260219-b4-anacapa-dts-fix-v3-1-4f70fd2d1070@amd.com>
+X-B4-Tracking: v=1; b=H4sIAO4vl2kC/33NOQ7CMBAF0KtEU2NkOyZbxT0QxXgjLrLIjixQl
+ LszSQMFohnpf+m/WSG5GFyCrlghuhxSmEYK5akA0+P4cCxYyiC5rDgdphXDEQ3OyOySmA9PJnn
+ tvWux1NwADefoqD7Q251yH9IyxdfxI4u9/ctlwQSZVmkuhGou6oqDPZtpgB3L8htofwKSAO+Uq
+ rDmZaP9B9i27Q2awI6R8wAAAA==
+X-Change-ID: 20260202-b4-anacapa-dts-fix-207ffe9a3b0c
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
+ Andrew Jeffery <andrew@codeconstruct.com.au>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ Dirk Chen <dirkchen@amd.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771515902; l=1779;
+ i=dirkchen@amd.com; s=20260202; h=from:subject:message-id;
+ bh=e6uon8fDwRBTubN8ywUAkYjtYXx6mIWRj19Qi3Y6T6g=;
+ b=yPhRCyA6wRLeJlcr0K5q0+OqpgObOJe/AzDQSJiYDKvOW5cRhT9MUc8VQfNRlWLPZMUt0q/EO
+ hdK+ttB1juxBEjXrPe59DC/BQLuAYSuWc+elt78/2d3j+BRmO5H9K/+
+X-Developer-Key: i=dirkchen@amd.com; a=ed25519;
+ pk=NBIyLsVg/YYtGLruq9XLdLWx2PP/1MH4jDDQ1V+7wes=
+X-Endpoint-Received: by B4 Relay for dirkchen@amd.com/20260202 with auth_id=622
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-KCSAN detected a simultaneous access to timer values that can be
-overwritten in bcm_rx_setup when updating timer and filter content.
-This caused no functional issues in the past as the new values might
-show up at any time without losing its intended functionality.
+The Anacapa board features Atmel 24C2048 EEPROMs on i2c0 and i2c1, which
+are used to store retimer configurations. Add the corresponding device
+tree nodes to support these components.
 
-Btw. the KCSAN report can be resolved by protecting the 'lockless'
-data updates with a spin_lock_bh().
-
-Fixes: ffd980f976e7 ("[CAN]: Add broadcast manager (bcm) protocol")
-Reported-by: syzbot+75e5e4ae00c3b4bb544e@syzkaller.appspotmail.com
-Closes: https://lore.kernel.org/linux-can/6975d5cf.a00a0220.33ccc7.0022.GAE@google.com/
-Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+Signed-off-by: Dirk Chen <dirkchen@amd.com>
 ---
- net/can/bcm.c | 39 ++++++++++++++++++++++++++++++++-------
- 1 file changed, 32 insertions(+), 7 deletions(-)
+Changes in v3:
+- Reorder I2C device nodes by ascending address (place eeprom@50
+  before i2c-mux@70)
+- Link to v2: https://lore.kernel.org/r/20260209-b4-anacapa-dts-fix-v2-1-fe446a7038bf@amd.com
 
-diff --git a/net/can/bcm.c b/net/can/bcm.c
-index fd9fa072881e..0a3dc5500e14 100644
---- a/net/can/bcm.c
-+++ b/net/can/bcm.c
-@@ -123,10 +123,11 @@ struct bcm_op {
- 	struct canfd_frame sframe;
- 	struct canfd_frame last_sframe;
- 	struct sock *sk;
- 	struct net_device *rx_reg_dev;
- 	spinlock_t bcm_tx_lock; /* protect currframe/count in runtime updates */
-+	spinlock_t bcm_rx_update_lock; /* protect update of filter data */
- };
- 
- struct bcm_sock {
- 	struct sock sk;
- 	int bound;
-@@ -1141,10 +1142,12 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 		return -EINVAL;
- 
- 	/* check the given can_id */
- 	op = bcm_find_op(&bo->rx_ops, msg_head, ifindex);
- 	if (op) {
-+		void *new_frames = NULL;
-+
- 		/* update existing BCM operation */
- 
- 		/*
- 		 * Do we need more space for the CAN frames than currently
- 		 * allocated? -> This is a _really_ unusual use-case and
-@@ -1152,33 +1155,53 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 		 */
- 		if (msg_head->nframes > op->nframes)
- 			return -E2BIG;
- 
- 		if (msg_head->nframes) {
--			/* update CAN frames content */
--			err = memcpy_from_msg(op->frames, msg,
-+			/* get new CAN frames content before locking */
-+			new_frames = kmalloc(msg_head->nframes * op->cfsiz,
-+					     GFP_KERNEL);
-+			if (!new_frames)
-+				return -ENOMEM;
-+
-+			err = memcpy_from_msg(new_frames, msg,
- 					      msg_head->nframes * op->cfsiz);
--			if (err < 0)
-+			if (err < 0) {
-+				kfree(new_frames);
- 				return err;
--
--			/* clear last_frames to indicate 'nothing received' */
--			memset(op->last_frames, 0, msg_head->nframes * op->cfsiz);
-+			}
- 		}
- 
-+		spin_lock_bh(&op->bcm_rx_update_lock);
- 		op->nframes = msg_head->nframes;
- 		op->flags = msg_head->flags;
- 
-+		if (msg_head->nframes) {
-+			/* update CAN frames content */
-+			memcpy(op->frames, new_frames,
-+			       msg_head->nframes * op->cfsiz);
-+
-+			/* clear last_frames to indicate 'nothing received' */
-+			memset(op->last_frames, 0,
-+			       msg_head->nframes * op->cfsiz);
-+		}
-+		spin_unlock_bh(&op->bcm_rx_update_lock);
-+
-+		/* free temporary frames / kfree(NULL) is safe */
-+		kfree(new_frames);
-+
- 		/* Only an update -> do not call can_rx_register() */
- 		do_rx_register = 0;
- 
- 	} else {
- 		/* insert new BCM operation for the given can_id */
- 		op = kzalloc(OPSIZ, GFP_KERNEL);
- 		if (!op)
- 			return -ENOMEM;
- 
- 		spin_lock_init(&op->bcm_tx_lock);
-+		spin_lock_init(&op->bcm_rx_update_lock);
- 		op->can_id = msg_head->can_id;
- 		op->nframes = msg_head->nframes;
- 		op->cfsiz = CFSIZ(msg_head->flags);
- 		op->flags = msg_head->flags;
- 
-@@ -1261,24 +1284,26 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 
- 	} else {
- 		if (op->flags & SETTIMER) {
- 
- 			/* set timer value */
-+			spin_lock_bh(&op->bcm_rx_update_lock);
- 			op->ival1 = msg_head->ival1;
- 			op->ival2 = msg_head->ival2;
- 			op->kt_ival1 = bcm_timeval_to_ktime(msg_head->ival1);
- 			op->kt_ival2 = bcm_timeval_to_ktime(msg_head->ival2);
-+			op->kt_lastmsg = 0;
-+			spin_unlock_bh(&op->bcm_rx_update_lock);
- 
- 			/* disable an active timer due to zero value? */
- 			if (!op->kt_ival1)
- 				hrtimer_cancel(&op->timer);
- 
- 			/*
- 			 * In any case cancel the throttle timer, flush
- 			 * potentially blocked msgs and reset throttle handling
- 			 */
--			op->kt_lastmsg = 0;
- 			hrtimer_cancel(&op->thrtimer);
- 			bcm_rx_thr_flush(op);
- 		}
- 
- 		if ((op->flags & STARTTIMER) && op->kt_ival1)
+Changes in v2:
+- Improved commit description to clarify that the change reflects
+  actual hardware as requested by the reviewer.
+- Removed mentions of other platforms to avoid confusion.
+- Link to v1: https://lore.kernel.org/r/20260202-b4-anacapa-dts-fix-v1-1-20d4b0114854@amd.com
+---
+ arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
+diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
+index 221af858cb6b..1502773d9c30 100644
+--- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
++++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
+@@ -300,6 +300,12 @@ &gpio1 {
+ &i2c0 {
+ 	status = "okay";
+ 
++	eeprom@50 {
++		compatible = "atmel,24c2048";
++		reg = <0x50>;
++		pagesize = <128>;
++	};
++
+ 	i2c-mux@70 {
+ 		compatible = "nxp,pca9546";
+ 		reg = <0x70>;
+@@ -334,6 +340,12 @@ i2c0mux0ch3: i2c@3 {
+ &i2c1 {
+ 	status = "okay";
+ 
++	eeprom@50 {
++		compatible = "atmel,24c2048";
++		reg = <0x50>;
++		pagesize = <128>;
++	};
++
+ 	i2c-mux@70 {
+ 		compatible = "nxp,pca9546";
+ 		reg = <0x70>;
+
+---
+base-commit: 4c87cdd0328495759f6e9f9f4e1e53ef8032a76f
+change-id: 20260202-b4-anacapa-dts-fix-207ffe9a3b0c
+
+Best regards,
 -- 
-2.51.0
+Dirk Chen <dirkchen@amd.com>
 
