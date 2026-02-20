@@ -1,10 +1,11 @@
 From: Michael Riesch <michael.riesch@collabora.com>
-Date: Fri, 20 Feb 2026 09:15:07 +0100
-Subject: [PATCH v2 1/2] media: rockchip: rkcif: fix off by one bugs
+Date: Fri, 20 Feb 2026 09:15:08 +0100
+Subject: [PATCH v2 2/2] media: rockchip: rkcif: comply with minimum number
+ of buffers requirement
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260216-rkcif-fixes-v2-1-ee40931fe0ff@collabora.com>
+Message-Id: <20260216-rkcif-fixes-v2-2-ee40931fe0ff@collabora.com>
 References: <20260216-rkcif-fixes-v2-0-ee40931fe0ff@collabora.com>
 In-Reply-To: <20260216-rkcif-fixes-v2-0-ee40931fe0ff@collabora.com>
 To: Dan Carpenter <dan.carpenter@linaro.org>, 
@@ -22,63 +23,100 @@ Cc: Collabora Kernel Team <kernel@collabora.com>, stable@kernel.org,
  Michael Riesch <michael.riesch@collabora.com>, 
  Chen-Yu Tsai <wens@kernel.org>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771575308; l=2303;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771575308; l=2843;
  i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=+CTMmqq/FBf0OUNoxM2h1AJhLJnTaBpUVbDN8g6FJXc=;
- b=jkqMSDUDANKBRHHyuTdC4NY7nDzfs9Wzk6LdU8E0ORJ+OVHx360FP8JRfy5VTJk4vVrWWJ7MQ
- HVgUvXIym14CwVEQA2gWZ/Cq0XPnkiR8U22M7NCl4m2YbgLdCjOcg6X
+ bh=QlnSURdd8Dclxdp8UA+BrdFUZIn2tw+OGzLWQP2V3Uw=;
+ b=aUmJLnmSesafA20KayfGrJ/nBjA/G1S1v3FbSvXyYUCwd5vve4+NrwlAD+vjZ2DpAv+UGoK7N
+ yAS0hKGcYuJDspP8YEFpbSn/FGQKkYY5q0FtMoVclqlMwAbF0CmqgM/
 X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
  pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
 X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Dan Carpenter <dan.carpenter@linaro.org>
+Each stream requires CIF_REQ_BUFS_MIN=1 buffers to enable streaming.
+However, it failed with only one buffer provided.
 
-Change these comparisons from > vs >= to avoid accessing one element
-beyond the end of the arrays.
-While at it, use ARRAY_SIZE instead of the _MAX enum values.
+Comply with the minimum number of buffers requirement and accept
+exactly one buffer.
 
-Fixes: 1f2353f5a1af ("media: rockchip: rkcif: add support for rk3568 vicap mipi capture")
+Fixes: 501802e2ad51 ("media: rockchip: rkcif: add abstraction for dma blocks")
 Cc: stable@kernel.org
-Signed-off-by: Dan Carpenter <dan.carpenter@linaro.org>
-Reviewed-by: Michael Riesch <michael.riesch@collabora.com>
-Reviewed-by: Paul Elder <paul.elder@ideasonboard.com>
-Reviewed-by: Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+Tested-by: Paul Elder <paul.elder@ideasonboard.com>
 Tested-by: Chen-Yu Tsai <wens@kernel.org>
-[fix cosmetic issues]
 Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- drivers/media/platform/rockchip/rkcif/rkcif-capture-mipi.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ .../media/platform/rockchip/rkcif/rkcif-stream.c   | 44 +++++++++++-----------
+ 1 file changed, 22 insertions(+), 22 deletions(-)
 
-diff --git a/drivers/media/platform/rockchip/rkcif/rkcif-capture-mipi.c b/drivers/media/platform/rockchip/rkcif/rkcif-capture-mipi.c
-index 1b81bcc067ef..9e67160a16e4 100644
---- a/drivers/media/platform/rockchip/rkcif/rkcif-capture-mipi.c
-+++ b/drivers/media/platform/rockchip/rkcif/rkcif-capture-mipi.c
-@@ -489,8 +489,8 @@ static inline unsigned int rkcif_mipi_get_reg(struct rkcif_interface *interface,
+diff --git a/drivers/media/platform/rockchip/rkcif/rkcif-stream.c b/drivers/media/platform/rockchip/rkcif/rkcif-stream.c
+index e00010a91e8b..f15bee4f7cd7 100644
+--- a/drivers/media/platform/rockchip/rkcif/rkcif-stream.c
++++ b/drivers/media/platform/rockchip/rkcif/rkcif-stream.c
+@@ -106,42 +106,42 @@ static int rkcif_stream_init_buffers(struct rkcif_stream *stream)
+ {
+ 	struct v4l2_pix_format_mplane *pix = &stream->pix;
  
- 	block = interface->index - RKCIF_MIPI_BASE;
+-	stream->buffers[0] = rkcif_stream_pop_buffer(stream);
+-	if (!stream->buffers[0])
+-		goto err_buff_0;
+-
+-	stream->buffers[1] = rkcif_stream_pop_buffer(stream);
+-	if (!stream->buffers[1])
+-		goto err_buff_1;
+-
+-	if (stream->queue_buffer) {
+-		stream->queue_buffer(stream, 0);
+-		stream->queue_buffer(stream, 1);
+-	}
+-
+ 	stream->dummy.size = pix->num_planes * pix->plane_fmt[0].sizeimage;
+ 	stream->dummy.vaddr =
+ 		dma_alloc_attrs(stream->rkcif->dev, stream->dummy.size,
+ 				&stream->dummy.buffer.buff_addr[0], GFP_KERNEL,
+ 				DMA_ATTR_NO_KERNEL_MAPPING);
+ 	if (!stream->dummy.vaddr)
+-		goto err_dummy;
++		return -ENOMEM;
  
--	if (WARN_ON_ONCE(block > RKCIF_MIPI_MAX - RKCIF_MIPI_BASE) ||
--	    WARN_ON_ONCE(index > RKCIF_MIPI_REGISTER_MAX))
-+	if (WARN_ON_ONCE(block >= ARRAY_SIZE(rkcif->match_data->mipi->blocks)) ||
-+	    WARN_ON_ONCE(index >= ARRAY_SIZE(rkcif->match_data->mipi->regs)))
- 		return RKCIF_REGISTER_NOTSUPPORTED;
+ 	for (unsigned int i = 1; i < pix->num_planes; i++)
+ 		stream->dummy.buffer.buff_addr[i] =
+ 			stream->dummy.buffer.buff_addr[i - 1] +
+ 			pix->plane_fmt[i - 1].bytesperline * pix->height;
  
- 	offset = rkcif->match_data->mipi->blocks[block].offset;
-@@ -510,9 +510,9 @@ static inline unsigned int rkcif_mipi_id_get_reg(struct rkcif_stream *stream,
- 	block = stream->interface->index - RKCIF_MIPI_BASE;
- 	id = stream->id;
+-	return 0;
++	stream->buffers[0] = rkcif_stream_pop_buffer(stream);
++	if (!stream->buffers[0])
++		goto err_dummy_free;
++
++	stream->buffers[1] = rkcif_stream_pop_buffer(stream);
++	if (!stream->buffers[1]) {
++		stream->buffers[1] = &stream->dummy.buffer;
++		stream->buffers[1]->is_dummy = true;
++	}
  
--	if (WARN_ON_ONCE(block > RKCIF_MIPI_MAX - RKCIF_MIPI_BASE) ||
--	    WARN_ON_ONCE(id > RKCIF_ID_MAX) ||
--	    WARN_ON_ONCE(index > RKCIF_MIPI_ID_REGISTER_MAX))
-+	if (WARN_ON_ONCE(block >= ARRAY_SIZE(rkcif->match_data->mipi->blocks)) ||
-+	    WARN_ON_ONCE(id >= ARRAY_SIZE(rkcif->match_data->mipi->regs_id)) ||
-+	    WARN_ON_ONCE(index >= ARRAY_SIZE(rkcif->match_data->mipi->regs_id[id])))
- 		return RKCIF_REGISTER_NOTSUPPORTED;
+-err_dummy:
+-	rkcif_stream_return_buffer(stream->buffers[1], VB2_BUF_STATE_QUEUED);
+-	stream->buffers[1] = NULL;
++	if (stream->queue_buffer) {
++		stream->queue_buffer(stream, 0);
++		stream->queue_buffer(stream, 1);
++	}
++
++	return 0;
  
- 	offset = rkcif->match_data->mipi->blocks[block].offset;
+-err_buff_1:
+-	rkcif_stream_return_buffer(stream->buffers[0], VB2_BUF_STATE_QUEUED);
+-	stream->buffers[0] = NULL;
+-err_buff_0:
++err_dummy_free:
++	dma_free_attrs(stream->rkcif->dev, stream->dummy.size,
++		       stream->dummy.vaddr,
++		       stream->dummy.buffer.buff_addr[0],
++		       DMA_ATTR_NO_KERNEL_MAPPING);
++	stream->dummy.vaddr = NULL;
+ 	return -EINVAL;
+ }
+ 
 
 -- 
 2.39.5
