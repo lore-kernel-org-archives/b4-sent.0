@@ -1,123 +1,110 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Fri, 20 Feb 2026 09:15:08 +0100
-Subject: [PATCH v2 2/2] media: rockchip: rkcif: comply with minimum number
- of buffers requirement
+From: Radu Sabau <radu.sabau@analog.com>
+Date: Fri, 20 Feb 2026 15:36:17 +0200
+Subject: [PATCH] iio: imu: adis: Fix NULL pointer dereference in adis_init
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260216-rkcif-fixes-v2-2-ee40931fe0ff@collabora.com>
-References: <20260216-rkcif-fixes-v2-0-ee40931fe0ff@collabora.com>
-In-Reply-To: <20260216-rkcif-fixes-v2-0-ee40931fe0ff@collabora.com>
-To: Dan Carpenter <dan.carpenter@linaro.org>, 
- Paul Elder <paul.elder@ideasonboard.com>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Mehdi Djait <mehdi.djait@linux.intel.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Heiko Stuebner <heiko@sntech.de>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Hans Verkuil <hverkuil+cisco@kernel.org>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>
-Cc: Collabora Kernel Team <kernel@collabora.com>, stable@kernel.org, 
- linux-media@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Michael Riesch <michael.riesch@collabora.com>, 
- Chen-Yu Tsai <wens@kernel.org>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771575308; l=2843;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=QlnSURdd8Dclxdp8UA+BrdFUZIn2tw+OGzLWQP2V3Uw=;
- b=aUmJLnmSesafA20KayfGrJ/nBjA/G1S1v3FbSvXyYUCwd5vve4+NrwlAD+vjZ2DpAv+UGoK7N
- yAS0hKGcYuJDspP8YEFpbSn/FGQKkYY5q0FtMoVclqlMwAbF0CmqgM/
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+Message-Id: <20260220-adis-fix-v1-1-9fa10cce812f@analog.com>
+X-B4-Tracking: v=1; b=H4sIAFBjmGkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDIyMD3cSUzGLdtMwKXUNz8+REAxMD0xSLRCWg8oKiVKAw2Kjo2NpaAHI
+ rlHRaAAAA
+X-Change-ID: 20260220-adis-fix-177ca0405d8a
+To: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Nuno Sa <nuno.sa@analog.com>, Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, 
+ Robert Budai <robert.budai@analog.com>, 
+ Antoniu Miclaus <antoniu.miclaus@analog.com>, 
+ Ramona Gradinariu <ramona.gradinariu@analog.com>
+Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
+ linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Radu Sabau <radu.sabau@analog.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771594577; l=3182;
+ i=radu.sabau@analog.com; s=20260220; h=from:subject:message-id;
+ bh=kI9J4huE67pPn8S62AKdcWN4aDigHYDhih5UlDtH0k0=;
+ b=ZXARvjyJBgjz2RcOFZjWD6TZfC3HJXy6WSBHXtA3RpnFyh1ztKAsMTMEF9bVX3Wg8CfrqDTKV
+ tf1LGmXCHgZDfhSj4ntdlyCnoMFS3EjUG29tEMK7TYyM/ivT4ocS8ac
+X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
+ pk=lDPQHgn9jTdt0vo58Na9lLxLaE2mb330if71Cn+EvFU=
+X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20260220 with auth_id=642
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Each stream requires CIF_REQ_BUFS_MIN=1 buffers to enable streaming.
-However, it failed with only one buffer provided.
+The adis_init() function dereferences adis->ops to check if the
+individual function pointers (write, read, reset) are NULL, but does
+not first check if adis->ops itself is NULL.
 
-Comply with the minimum number of buffers requirement and accept
-exactly one buffer.
+Drivers like adis16480, adis16490, adis16545 and others do not set
+custom ops and rely on adis_init() assigning the defaults. Since struct
+adis is zero-initialized by devm_iio_device_alloc(), adis->ops is NULL
+when adis_init() is called, causing a NULL pointer dereference:
 
-Fixes: 501802e2ad51 ("media: rockchip: rkcif: add abstraction for dma blocks")
-Cc: stable@kernel.org
-Tested-by: Paul Elder <paul.elder@ideasonboard.com>
-Tested-by: Chen-Yu Tsai <wens@kernel.org>
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+    Unable to handle kernel NULL pointer dereference at virtual
+    address 0000000000000000
+    pc : adis_init+0xc0/0x118
+    Call trace:
+     adis_init+0xc0/0x118
+     adis16480_probe+0xe0/0x670
+
+Fix this by checking if adis->ops is NULL before dereferencing it,
+falling through to assign the default ops in that case.
+
+Fixes: 7f15d7a7d12d ("iio: imu: adis: Add reset to custom ops")
+Signed-off-by: Radu Sabau <radu.sabau@analog.com>
 ---
- .../media/platform/rockchip/rkcif/rkcif-stream.c   | 44 +++++++++++-----------
- 1 file changed, 22 insertions(+), 22 deletions(-)
+adis_init() dereferences adis->ops to validate its function pointers
+  before checking whether adis->ops itself is NULL. Drivers that rely on
+  the default ops (adis16480, adis16490, adis16545, among others) never
+  set adis->ops prior to calling adis_init(), so the field is NULL due to
+  zero-initialisation by devm_iio_device_alloc(). The result is a kernel
+  crash on probe:
 
-diff --git a/drivers/media/platform/rockchip/rkcif/rkcif-stream.c b/drivers/media/platform/rockchip/rkcif/rkcif-stream.c
-index e00010a91e8b..f15bee4f7cd7 100644
---- a/drivers/media/platform/rockchip/rkcif/rkcif-stream.c
-+++ b/drivers/media/platform/rockchip/rkcif/rkcif-stream.c
-@@ -106,42 +106,42 @@ static int rkcif_stream_init_buffers(struct rkcif_stream *stream)
- {
- 	struct v4l2_pix_format_mplane *pix = &stream->pix;
- 
--	stream->buffers[0] = rkcif_stream_pop_buffer(stream);
--	if (!stream->buffers[0])
--		goto err_buff_0;
--
--	stream->buffers[1] = rkcif_stream_pop_buffer(stream);
--	if (!stream->buffers[1])
--		goto err_buff_1;
--
--	if (stream->queue_buffer) {
--		stream->queue_buffer(stream, 0);
--		stream->queue_buffer(stream, 1);
--	}
--
- 	stream->dummy.size = pix->num_planes * pix->plane_fmt[0].sizeimage;
- 	stream->dummy.vaddr =
- 		dma_alloc_attrs(stream->rkcif->dev, stream->dummy.size,
- 				&stream->dummy.buffer.buff_addr[0], GFP_KERNEL,
- 				DMA_ATTR_NO_KERNEL_MAPPING);
- 	if (!stream->dummy.vaddr)
--		goto err_dummy;
-+		return -ENOMEM;
- 
- 	for (unsigned int i = 1; i < pix->num_planes; i++)
- 		stream->dummy.buffer.buff_addr[i] =
- 			stream->dummy.buffer.buff_addr[i - 1] +
- 			pix->plane_fmt[i - 1].bytesperline * pix->height;
- 
--	return 0;
-+	stream->buffers[0] = rkcif_stream_pop_buffer(stream);
-+	if (!stream->buffers[0])
-+		goto err_dummy_free;
-+
-+	stream->buffers[1] = rkcif_stream_pop_buffer(stream);
-+	if (!stream->buffers[1]) {
-+		stream->buffers[1] = &stream->dummy.buffer;
-+		stream->buffers[1]->is_dummy = true;
-+	}
- 
--err_dummy:
--	rkcif_stream_return_buffer(stream->buffers[1], VB2_BUF_STATE_QUEUED);
--	stream->buffers[1] = NULL;
-+	if (stream->queue_buffer) {
-+		stream->queue_buffer(stream, 0);
-+		stream->queue_buffer(stream, 1);
-+	}
-+
-+	return 0;
- 
--err_buff_1:
--	rkcif_stream_return_buffer(stream->buffers[0], VB2_BUF_STATE_QUEUED);
--	stream->buffers[0] = NULL;
--err_buff_0:
-+err_dummy_free:
-+	dma_free_attrs(stream->rkcif->dev, stream->dummy.size,
-+		       stream->dummy.vaddr,
-+		       stream->dummy.buffer.buff_addr[0],
-+		       DMA_ATTR_NO_KERNEL_MAPPING);
-+	stream->dummy.vaddr = NULL;
- 	return -EINVAL;
- }
- 
+      Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000
+      Hardware name: Raspberry Pi 5 Model B Rev 1.0 (DT)
+      pc : adis_init+0xc0/0x118
+      lr : adis_init+0x50/0x118
+      Call trace:
+       adis_init+0xc0/0x118
+       adis16480_probe+0xe0/0x670
+       spi_probe+0x8c/0xf8
+       really_probe+0xc4/0x2b0
 
+  The bug was introduced in 7f15d7 ("iio: imu: adis: Add reset to custom ops")
+  which added the ops validation logic without a prior NULL check
+  on the pointer itself.
+
+  The fix is a one-line addition of !adis->ops to the condition, so that
+  a NULL ops pointer is treated the same as an ops struct with all-NULL
+  function pointers, both falling through to the default ops assignment.
+  The validation path for partially-populated custom ops structs is
+  unchanged.
+
+  Tested on Raspberry Pi 5 with adis16545-3 connected over SPI. Without
+  the fix the kernel crashes at adis_init+0xc0. With the fix the driver
+  probes successfully and the device is accessible via the IIO subsystem.
+---
+ drivers/iio/imu/adis.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/iio/imu/adis.c b/drivers/iio/imu/adis.c
+index d160147cce0b..e68bc1c36ed1 100644
+--- a/drivers/iio/imu/adis.c
++++ b/drivers/iio/imu/adis.c
+@@ -526,7 +526,7 @@ int adis_init(struct adis *adis, struct iio_dev *indio_dev,
+ 
+ 	adis->spi = spi;
+ 	adis->data = data;
+-	if (!adis->ops->write && !adis->ops->read && !adis->ops->reset)
++	if (!adis->ops || (!adis->ops->write && !adis->ops->read && !adis->ops->reset))
+ 		adis->ops = &adis_default_ops;
+ 	else if (!adis->ops->write || !adis->ops->read || !adis->ops->reset)
+ 		return -EINVAL;
+
+---
+base-commit: 8bf22c33e7a172fbc72464f4cc484d23a6b412ba
+change-id: 20260220-adis-fix-177ca0405d8a
+
+Best regards,
 -- 
-2.39.5
+Radu Sabau <radu.sabau@analog.com>
 
