@@ -1,79 +1,68 @@
-From: Simon Baatz <gmbnomis@gmail.com>
-Date: Fri, 20 Feb 2026 00:55:17 +0100
-Subject: [PATCH RFC net-next 4/4] selftests/net: packetdrill: add
- tcp_rcv_toobig_back_to_back.pkt
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v3 0/2] arm64: qcom: sm8550: add DDR, LLCC & L3 CPU
+ bandwidth scaling
+Date: Thu, 19 Feb 2026 22:07:38 -0600
+Message-Id: <20260219-sm8550-ddr-bw-scaling-v3-0-75c19152e921@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260220-tcp_rfc7323_retract_wnd_rfc-v1-4-904942561479@gmail.com>
-References: <20260220-tcp_rfc7323_retract_wnd_rfc-v1-0-904942561479@gmail.com>
-In-Reply-To: <20260220-tcp_rfc7323_retract_wnd_rfc-v1-0-904942561479@gmail.com>
-To: Eric Dumazet <edumazet@google.com>, 
- Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
- David Ahern <dsahern@kernel.org>, Stefano Brivio <sbrivio@redhat.com>, 
- Jon Maloy <jmaloy@redhat.com>, Jason Xing <kerneljasonxing@gmail.com>, 
- mfreemon@cloudflare.com, Shuah Khan <shuah@kernel.org>
-Cc: Christian Ebner <c.ebner@proxmox.com>, netdev@vger.kernel.org, 
- linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-kselftest@vger.kernel.org, Simon Baatz <gmbnomis@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XNyw6CMBAF0F8hXVvTTgsFV/6HcdEXMAkP05qqI
+ fy7hRUb4/LezD2zkOgD+kguxUKCTxhxnnIQp4LYXk+dp+hyJsCgYsAUjWNdlow6F6h50Wj1gFN
+ HDS9B1qDafELy9hF8i+/dvd1z7jE+5/DZ3yS+tf/ExGnumsqKVjTaSnPtRo3D2c4j2cQEB4XXv
+ xTIihQaTOWk8oodlXVdv8o3uIsAAQAA
+X-Change-ID: 20260207-sm8550-ddr-bw-scaling-b1524827f207
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Georgi Djakov <djakov@kernel.org>, 
+ Sibi Sankar <sibi.sankar@oss.qualcomm.com>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771545363; l=1646;
- i=gmbnomis@gmail.com; s=20260220; h=from:subject:message-id;
- bh=c1eQDsHINo/iLpDzO11WhQUeLWxzIkGGeSmjjLGkjpQ=;
- b=tGiZqmdvVs1iMDN93UHdsZnv90evQhVamdSvCoez+vPECABVnnhvp0nW717BsblYUJtRlcHaH
- oPH4k/Yj/LuCnEItmj3gZHey/IHNif1Hx88V/lBkZm2UFDkSKgvE2qo
-X-Developer-Key: i=gmbnomis@gmail.com; a=ed25519;
- pk=T/JIz/6F5bf1uQJr69lmyi7czVG+F9TVZ/8x5z9Wtqw=
-X-Endpoint-Received: by B4 Relay for gmbnomis@gmail.com/20260220 with auth_id=641
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771560469; l=1208;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=2iCGULRraoRUNzZGJaTBhx5eh+74uNiuFCJjzd4M2Fg=;
+ b=QcmoZJV8o0SGOOXkq3FvvTls/WzFEv1HQs36lHVzHMaeH7cebhGzmLFCQK6IUgqSlGPaNYacG
+ jmWmWnYT0UVCTw5kx07Hl23CIm19IoTRviKnRIuPgAMr/e9KgADvBmb
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This test verifies the sequence number checks using the maximum
-advertised window sequence number when we accept a packet going beyond
-any window that was ever advertised (i.e. rcv_nxt advances beyond
-rcv_mwnd_seq).
+Add the OSM L3 controller node then add the necessary interconnect
+properties with the appropriate OPP table for each CPU cluster to
+allow the DDR, LLCC & L3 CPU bandwidth to scale along the CPU
+cluster operating point.
 
-Signed-off-by: Simon Baatz <gmbnomis@gmail.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- .../packetdrill/tcp_rcv_toobig_back_to_back.pkt    | 27 ++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+Changes in v3:
+- Squash the last two patches
+- Link to v2: https://lore.kernel.org/r/20260218-sm8550-ddr-bw-scaling-v2-0-43a2b6d47e70@gmail.com
 
-diff --git a/tools/testing/selftests/net/packetdrill/tcp_rcv_toobig_back_to_back.pkt b/tools/testing/selftests/net/packetdrill/tcp_rcv_toobig_back_to_back.pkt
-new file mode 100644
-index 0000000000000000000000000000000000000000..4d4c33d248948d3dfaf9b0c5b243ed27321e9b10
---- /dev/null
-+++ b/tools/testing/selftests/net/packetdrill/tcp_rcv_toobig_back_to_back.pkt
-@@ -0,0 +1,27 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+--mss=1000
-+
-+`./defaults.sh`
-+
-+// Establish a connection.
-+   +0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
-+   +0 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
-+   +0 setsockopt(3, SOL_SOCKET, SO_RCVBUF, [20000], 4) = 0
-+   +0 bind(3, ..., ...) = 0
-+   +0 listen(3, 1) = 0
-+
-+   +0 < S 0:0(0) win 32792 <mss 1000,nop,wscale 7>
-+   +0 > S. 0:0(0) ack 1 win 18980 <mss 1460,nop,wscale 0>
-+  +.1 < . 1:1(0) ack 1 win 257
-+
-+   +0 accept(3, ..., ...) = 4
-+
-+// A too big packet is accepted if the receive queue is empty
-+   +0 < P. 1:20001(20000) ack 1 win 257
-+// Send a RST immediately so that there is no rcv_wup/rcv_mwnd_seq update yet
-+   +0 < R. 20001:20001(0) ack 1 win 257
-+//    * > .  1:1(0) ack 20001 win 18000
-+
-+  +.1 %{ assert tcpi_state == TCP_CLOSE, tcpi_state }%
-+
+Changes in v2:
+- Squash first two patches
+- Update opp tables in last patch to match how the downstream driver
+  parses those tables
+- Link to v1: https://lore.kernel.org/r/20260207-sm8550-ddr-bw-scaling-v1-0-d96c3f39ac4b@gmail.com
 
+---
+Aaron Kling (2):
+      dt-bindings: interconnect: OSM L3: Document sm8550 OSM L3 compatible
+      arm64: dts: qcom: sm8550: add cpu OPP table with DDR, LLCC & L3 bandwidths
+
+ .../bindings/interconnect/qcom,osm-l3.yaml         |   1 +
+ arch/arm64/boot/dts/qcom/sm8550.dtsi               | 367 +++++++++++++++++++++
+ 2 files changed, 368 insertions(+)
+---
+base-commit: 9845cf73f7db6094c0d8419d6adb848028f4a921
+change-id: 20260207-sm8550-ddr-bw-scaling-b1524827f207
+
+Best regards,
 -- 
-2.52.0
+Aaron Kling <webgeek1234@gmail.com>
 
