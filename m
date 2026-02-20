@@ -1,13 +1,14 @@
 From: Radu Sabau <radu.sabau@analog.com>
-Date: Fri, 20 Feb 2026 15:36:17 +0200
-Subject: [PATCH] iio: imu: adis: Fix NULL pointer dereference in adis_init
+Date: Fri, 20 Feb 2026 16:16:41 +0200
+Subject: [PATCH v2] iio: imu: adis: Fix NULL pointer dereference in
+ adis_init
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260220-adis-fix-v1-1-9fa10cce812f@analog.com>
-X-B4-Tracking: v=1; b=H4sIAFBjmGkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDIyMD3cSUzGLdtMwKXUNz8+REAxMD0xSLRCWg8oKiVKAw2Kjo2NpaAHI
- rlHRaAAAA
+Message-Id: <20260220-adis-fix-v2-1-4cc24a261306@analog.com>
+X-B4-Tracking: v=1; b=H4sIAMhsmGkC/22MQQrCMBAAv1L27EqyqK2e/If0sKSbdkETSSQoJ
+ X839uxxhmFWyJJUMly6FZIUzRpDA9p14BYOs6BOjYEMnQyRQZ40o9c32r53bA7mOA0MLX8maXp
+ b3cbGi+ZXTJ/tXOzP/pkUixbPnq1xTgZL/sqB73Heu/iAsdb6BXwUTcKhAAAA
 X-Change-ID: 20260220-adis-fix-177ca0405d8a
 To: Lars-Peter Clausen <lars@metafoo.de>, 
  Michael Hennerich <Michael.Hennerich@analog.com>, 
@@ -20,11 +21,11 @@ Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>,
  linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Radu Sabau <radu.sabau@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771594577; l=3182;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771597002; l=3393;
  i=radu.sabau@analog.com; s=20260220; h=from:subject:message-id;
- bh=kI9J4huE67pPn8S62AKdcWN4aDigHYDhih5UlDtH0k0=;
- b=ZXARvjyJBgjz2RcOFZjWD6TZfC3HJXy6WSBHXtA3RpnFyh1ztKAsMTMEF9bVX3Wg8CfrqDTKV
- tf1LGmXCHgZDfhSj4ntdlyCnoMFS3EjUG29tEMK7TYyM/ivT4ocS8ac
+ bh=j7cynfRXNkYO1RlmBQEKsd6iLn8cQ9DPq0pFxeWKoVc=;
+ b=VZwmslO2FNTnjjbSNylbaZMamDujGeJcM7vTTCrv93vtTDh2f2PDkF24gUuH9mf5cp5j8oZug
+ RfnQeyM6zEFDTYHZTs8zb/UwENY9MqkXp4arbRbdNnqzsOU9XGEDLji
 X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
  pk=lDPQHgn9jTdt0vo58Na9lLxLaE2mb330if71Cn+EvFU=
 X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20260220 with auth_id=642
@@ -39,8 +40,7 @@ custom ops and rely on adis_init() assigning the defaults. Since struct
 adis is zero-initialized by devm_iio_device_alloc(), adis->ops is NULL
 when adis_init() is called, causing a NULL pointer dereference:
 
-    Unable to handle kernel NULL pointer dereference at virtual
-    address 0000000000000000
+    Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000
     pc : adis_init+0xc0/0x118
     Call trace:
      adis_init+0xc0/0x118
@@ -49,7 +49,7 @@ when adis_init() is called, causing a NULL pointer dereference:
 Fix this by checking if adis->ops is NULL before dereferencing it,
 falling through to assign the default ops in that case.
 
-Fixes: 7f15d7a7d12d ("iio: imu: adis: Add reset to custom ops")
+Fixes: 3b29bcee8f6f ("iio: imu: adis: Add custom ops struct")
 Signed-off-by: Radu Sabau <radu.sabau@analog.com>
 ---
 adis_init() dereferences adis->ops to validate its function pointers
@@ -69,7 +69,7 @@ adis_init() dereferences adis->ops to validate its function pointers
        spi_probe+0x8c/0xf8
        really_probe+0xc4/0x2b0
 
-  The bug was introduced in 7f15d7 ("iio: imu: adis: Add reset to custom ops")
+  The bug was introduced in 3b29bcee8f6f ("iio: imu: adis: Add custom ops struct")
   which added the ops validation logic without a prior NULL check
   on the pointer itself.
 
@@ -83,11 +83,17 @@ adis_init() dereferences adis->ops to validate its function pointers
   the fix the kernel crashes at adis_init+0xc0. With the fix the driver
   probes successfully and the device is accessible via the IIO subsystem.
 ---
+Changes in v2:
+- put stack trace in a single line in the commit body
+- split long line if in multiple statements and removed the redundant ones
+- use correct git hash for fixes tag
+- Link to v1: https://lore.kernel.org/r/20260220-adis-fix-v1-1-9fa10cce812f@analog.com
+---
  drivers/iio/imu/adis.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/drivers/iio/imu/adis.c b/drivers/iio/imu/adis.c
-index d160147cce0b..e68bc1c36ed1 100644
+index d160147cce0b..a2bc1d14ed91 100644
 --- a/drivers/iio/imu/adis.c
 +++ b/drivers/iio/imu/adis.c
 @@ -526,7 +526,7 @@ int adis_init(struct adis *adis, struct iio_dev *indio_dev,
@@ -95,7 +101,7 @@ index d160147cce0b..e68bc1c36ed1 100644
  	adis->spi = spi;
  	adis->data = data;
 -	if (!adis->ops->write && !adis->ops->read && !adis->ops->reset)
-+	if (!adis->ops || (!adis->ops->write && !adis->ops->read && !adis->ops->reset))
++	if (!adis->ops)
  		adis->ops = &adis_default_ops;
  	else if (!adis->ops->write || !adis->ops->read || !adis->ops->reset)
  		return -EINVAL;
