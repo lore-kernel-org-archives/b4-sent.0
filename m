@@ -1,64 +1,62 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Fri, 20 Feb 2026 16:11:11 -0600
-Subject: [PATCH] dt-bindings: vendor-prefixes: Add AYN Technologies
+From: Maud Spierings <maud_spierings@hotmail.com>
+Date: Sat, 21 Feb 2026 16:04:17 +0100
+Subject: [PATCH] RISC-V: dts: fix generation of dtbs-list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260220-ayn-vendor-v1-1-292cbbb682b3@gmail.com>
+Message-Id: <20260221-riscv_dtbs-v1-1-be58fc118bc2@hotmail.com>
 X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDIyMD3cTKPN2y1LyU/CLdRENTY0Mzi2QjyyQjJaCGgqLUtMwKsGHRsbW
- 1AHYwlvZcAAAA
-X-Change-ID: 20260220-ayn-vendor-a153168c29b2
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xilin Wu <wuxilin123@gmail.com>, Aaron Kling <webgeek1234@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771625471; l=1366;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=geOwC291n5TffmOu0eiv9p98GOQQrv0IWSadxBAMpUw=;
- b=KuKtqAY6dXw2XeJHA0MtPkTKK6Q7BtFdiSxFULlV5lQQbMxqYfsIyboZ1zyigYoEZ68XwAdKr
- ioSULOPFowkCMHOlLNQ/5msP1eGB0Wj77Qkz7x1ZaZgYeyETG2vCYQ5
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+ vPSU3UzU4B8JSMDIzMDIyND3aLM4uSy+JSSpGLd1CSTNKNU4zTDxKQ0JaCGgqLUtMwKsGHRsbW
+ 1AC/b4gpcAAAA
+X-Change-ID: 20260221-riscv_dtbs-eb4f2e3f1abf
+To: Sascha Hauer <s.hauer@pengutronix.de>, 
+ BAREBOX <barebox@lists.infradead.org>
+Cc: Maud Spierings <maud_spierings@hotmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771686269; l=1339;
+ i=maud_spierings@hotmail.com; s=20241110; h=from:subject:message-id;
+ bh=Th7Qwm6hQnrq4gu3K2f3OhDRAPXeHmIvXWOPCaXz16A=;
+ b=T0BIY/L3eAFKEItfifQ7QMsl2CthofU8BEzVlPQcFFkEjt+kIh5p812CeCMgLiChcJGR3o2L7
+ sOvg3DTMAZlAnmOwv6WNQ7FThKwbj09pIhGmhXDcOB72dO+Fk+zEWO/
+X-Developer-Key: i=maud_spierings@hotmail.com; a=ed25519;
+ pk=CeFKVnZvRfX2QjB1DpdiAe2N+MEjwLEB9Yhx/OAcxRc=
+X-Endpoint-Received: by B4 Relay for maud_spierings@hotmail.com/20241110 with auth_id=273
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Xilin Wu <wuxilin123@gmail.com>
+For some reason pbl-$(CONFIG) results in dtbs-list being empty. This breaks
+the generic fit image generation. Switch to lwl-$(CONFIG) like arm.
 
-Add an entry for AYN Technologies (https://www.ayntec.com/)
-
-Signed-off-by: Xilin Wu <wuxilin123@gmail.com>
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Signed-off-by: Maud Spierings <maud_spierings@hotmail.com>
 ---
-This was originally submitted as part of the original Odin 2 submission
-[0], but that series stalled, so submitting this separately. The prefix
-was renamed to ayntec as per the review comment on that patch.
+ arch/riscv/dts/Makefile | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-[0] https://lore.kernel.org/linux-arm-msm/20240424-ayn-odin2-initial-v1-8-e0aa05c991fd@gmail.com/
+diff --git a/arch/riscv/dts/Makefile b/arch/riscv/dts/Makefile
+index 841f86064ae1..92cff9b84fa6 100644
+--- a/arch/riscv/dts/Makefile
++++ b/arch/riscv/dts/Makefile
+@@ -4,11 +4,11 @@
+ # created.
+ obj- += dummy.o
+ 
+-pbl-$(CONFIG_BOARD_ERIZO_GENERIC) += erizo-generic.dtb.o
+-pbl-$(CONFIG_BOARD_HIFIVE) += hifive-unmatched-a00.dtb.o \
++lwl-$(CONFIG_BOARD_ERIZO_GENERIC) += erizo-generic.dtb.o
++lwl-$(CONFIG_BOARD_HIFIVE) += hifive-unmatched-a00.dtb.o \
+                               hifive-unleashed-a00.dtb.o
+-pbl-$(CONFIG_BOARD_BEAGLEV) += jh7100-beaglev-starlight.dtb.o
+-pbl-$(CONFIG_BOARD_LITEX_LINUX) += litex-linux.dtb.o
++lwl-$(CONFIG_BOARD_BEAGLEV) += jh7100-beaglev-starlight.dtb.o
++lwl-$(CONFIG_BOARD_LITEX_LINUX) += litex-linux.dtb.o
+ 
+ clean-files := *.dtb *.dtb.S .*.dtc .*.pre .*.dts *.dtb.z
+ clean-files += *.dtbo *.dtbo.S .*.dtso
+
 ---
- Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index ee7fd3cfe203936d4aa42d4ce6f2efee951b4023..4d08af7b6ceb98ffb330a6e71a8f908d9cb37c4b 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -221,6 +221,8 @@ patternProperties:
-     description: Axiado Corporation
-   "^axis,.*":
-     description: Axis Communications AB
-+  "^ayntec,.*":
-+    description: AYN Technologies Co., Ltd.
-   "^azoteq,.*":
-     description: Azoteq (Pty) Ltd
-   "^azw,.*":
-
----
-base-commit: fe9e3edb6a215515d1148d32a5c445c5bdd7916f
-change-id: 20260220-ayn-vendor-a153168c29b2
+base-commit: 74393178faf08f8102c7c370ac310c29112e1137
+change-id: 20260221-riscv_dtbs-eb4f2e3f1abf
 
 Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+Maud Spierings <maud_spierings@hotmail.com>
 
