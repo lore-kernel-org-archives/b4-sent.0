@@ -1,49 +1,83 @@
 From: Satish Kharat <satishkh@cisco.com>
-Subject: [PATCH v2 0/2] net:ethernet:enic: add VIC ids and link modes
-Date: Mon, 23 Feb 2026 02:27:19 -0800
-Message-Id: <20260223-enic-cscwi36355-v2-0-63488194a974@cisco.com>
+Date: Mon, 23 Feb 2026 02:27:20 -0800
+Subject: [PATCH v2 1/2] net:ethernet:enic: add VIC subsystem ids
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIcrnGkC/2WNQQ7CIBBFr9LMWsxABaMr72G6qMNgZyEYMFXTc
- HexiSuX7yX//QUKZ+ECx26BzLMUSbGB2XRA0xivrMQ3BoPGoTGoOAopKvSU3vXWqn3wiBd7CKw
- R2uqeOchrLZ6HxpOUR8rv9WDWX/tr6b/WrBUqO6IeHe6ct3wiKZS2lG4w1Fo/nOGj164AAAA=
+Message-Id: <20260223-enic-cscwi36355-v2-1-63488194a974@cisco.com>
+References: <20260223-enic-cscwi36355-v2-0-63488194a974@cisco.com>
+In-Reply-To: <20260223-enic-cscwi36355-v2-0-63488194a974@cisco.com>
 To: netdev@vger.kernel.org
 Cc: Satish Kharat <satishkh@cisco.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771842484; l=917;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771842484; l=2264;
  i=satishkh@cisco.com; h=from:subject:message-id;
- bh=N2bM5Up2XL0atqGOG2enGUu9vC/fkdKMG9llDdkFOoo=;
- b=ePtJYNXa95b+fVzS5ILEB9gq+wC/V8iZ3E6DkIITTTW8Y+O5+8iFmUb5ABMrKO4bk6/M/NKvI
- eonYPGwVkUfCQ+giMuvYaKAwxku8hyVWLwabh5BYZcPeRdgjlKuEVaA
+ bh=dmiiJ3fxTUP7u8ZrF0g2EZDSbfEDLnZtm8vLm5JCiQk=;
+ b=pyfckAyhVR58o2HdR9UbUSXu2Poucs1lIYmPJxUdS2/KDEN1mey9nSbTSRF+1uPrALcUolE6/
+ H//Km4jNUqvC+8I6HqBKpXElqmsFXsv+ZrXcg7xpr7sTuPTejWwx6nZ
 X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
  pk=4BxbLoCGvHeIMH/PbpiNVx8/2IcTjFvqcr0AD8K6WLY=
 X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/default with auth_id=639
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add VIC subsystem ids and their supported/advertised media types so ethtool
-reflects the hardware capabilities for the VIC variants.
+Add VIC subsystem id for 12xx, 13xx, 14xx and 15xxx series
 
 Signed-off-by: Satish Kharat <satishkh@cisco.com>
 ---
-Changes in v2:
-Addressed comments from Andrew Lunn
-- Removed the advertising of the link speed as we don't support autoneg.
-- Link to v1: https://lore.kernel.org/r/20260221-enic-cscwi36355-v1-0-5a01a6046d5e@cisco.com
+ drivers/net/ethernet/cisco/enic/enic.h | 39 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 39 insertions(+)
 
----
-Satish Kharat (2):
-      net:ethernet:enic: add VIC subsystem ids
-      net:ethernet:enic: map ethtool link modes by VIC type
+diff --git a/drivers/net/ethernet/cisco/enic/enic.h b/drivers/net/ethernet/cisco/enic/enic.h
+index 301b3f311..6959e85ab 100644
+--- a/drivers/net/ethernet/cisco/enic/enic.h
++++ b/drivers/net/ethernet/cisco/enic/enic.h
+@@ -22,6 +22,45 @@
+ #define DRV_NAME		"enic"
+ #define DRV_DESCRIPTION		"Cisco VIC Ethernet NIC Driver"
+ 
++#define PCI_SUBDEV_ID_CISCO_VIC_1225	0x085
++#define PCI_SUBDEV_ID_CISCO_VIC_1225T	0x0CE
++#define PCI_SUBDEV_ID_CISCO_VIC_1227	0x12E
++#define PCI_SUBDEV_ID_CISCO_VIC_1227T	0x139
++#define PCI_SUBDEV_ID_CISCO_VIC_1240	0x084
++#define PCI_SUBDEV_ID_CISCO_VIC_1280	0x04F
++#define PCI_SUBDEV_ID_CISCO_VIC_1285	0x0CD
++
++#define PCI_SUBDEV_ID_CISCO_VIC_1340	0x12C
++#define PCI_SUBDEV_ID_CISCO_VIC_1380	0x137
++#define PCI_SUBDEV_ID_CISCO_VIC_1385	0x14D
++#define PCI_SUBDEV_ID_CISCO_VIC_1387	0x15D
++
++#define PCI_SUBDEV_ID_CISCO_VIC_1440	0x0215
++#define PCI_SUBDEV_ID_CISCO_VIC_1455	0x0217
++#define PCI_SUBDEV_ID_CISCO_VIC_1457	0x0218
++#define PCI_SUBDEV_ID_CISCO_VIC_1467	0x02AF
++#define PCI_SUBDEV_ID_CISCO_VIC_1477	0x2B0
++#define PCI_SUBDEV_ID_CISCO_VIC_1480	0x0216
++#define PCI_SUBDEV_ID_CISCO_VIC_1485	0x0219
++#define PCI_SUBDEV_ID_CISCO_VIC_1487	0x021A
++#define PCI_SUBDEV_ID_CISCO_VIC_1495	0x024A
++#define PCI_SUBDEV_ID_CISCO_VIC_1497	0x024B
++#define PCI_SUBDEV_ID_CISCO_VIC_14425	0x02CF
++#define PCI_SUBDEV_ID_CISCO_VIC_14825	0x02D0
++
++#define PCI_SUBDEV_ID_CISCO_VIC_15230	0x02DF
++#define PCI_SUBDEV_ID_CISCO_VIC_15231	0x02DB
++#define PCI_SUBDEV_ID_CISCO_VIC_15235	0x02E4
++#define PCI_SUBDEV_ID_CISCO_VIC_15237	0x02F3
++#define PCI_SUBDEV_ID_CISCO_VIC_15238	0x02E8
++#define PCI_SUBDEV_ID_CISCO_VIC_15411	0x02DC
++#define PCI_SUBDEV_ID_CISCO_VIC_15412	0x02E2
++#define PCI_SUBDEV_ID_CISCO_VIC_15420	0x02DE
++#define PCI_SUBDEV_ID_CISCO_VIC_15422	0x02E1
++#define PCI_SUBDEV_ID_CISCO_VIC_15425	0x02F2
++#define PCI_SUBDEV_ID_CISCO_VIC_15427	0x02E0
++#define PCI_SUBDEV_ID_CISCO_VIC_15428	0x02DD
++
+ #define ENIC_BARS_MAX		6
+ 
+ #define ENIC_WQ_MAX		256
 
- drivers/net/ethernet/cisco/enic/enic.h         |  39 +++++++
- drivers/net/ethernet/cisco/enic/enic_ethtool.c | 155 +++++++++++++++++++++++--
- 2 files changed, 187 insertions(+), 7 deletions(-)
----
-base-commit: 8bf22c33e7a172fbc72464f4cc484d23a6b412ba
-change-id: 20260220-enic-cscwi36355-7fd00b59fe10
-
-Best regards,
 -- 
-Satish Kharat <satishkh@cisco.com>
+2.43.0
 
