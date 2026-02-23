@@ -1,64 +1,61 @@
-From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
-Date: Mon, 23 Feb 2026 15:59:22 +0000
-Subject: [PATCH v12 7/7] i2c: xiic: skip input clock setup on non-OF
- systems
+From: Amit Sunil Dhamne <amitsd@google.com>
+Subject: [PATCH v2 0/2] Introduce Sink Cap Extended AMS
+Date: Mon, 23 Feb 2026 20:05:36 +0000
+Message-Id: <20260223-skedb-v2-0-60675765bc7e@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260223-i2c-xiic-v12-7-b6c9ce4e4f3c@nexthop.ai>
-References: <20260223-i2c-xiic-v12-0-b6c9ce4e4f3c@nexthop.ai>
-In-Reply-To: <20260223-i2c-xiic-v12-0-b6c9ce4e4f3c@nexthop.ai>
-To: Michal Simek <michal.simek@amd.com>, Andi Shyti <andi.shyti@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Andy Shevchenko <andriy.shevchenko@intel.com>, 
- linux-arm-kernel@lists.infradead.org, linux-i2c@vger.kernel.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- Abdurrahman Hussain <abdurrahman@nexthop.ai>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771862359; l=1194;
- i=abdurrahman@nexthop.ai; s=20260119; h=from:subject:message-id;
- bh=usc1CKg+f05YBR4E4GFMUb7OKXzoYUSPfhhuE4yE/XA=;
- b=+y1k9kEklzjax8kw0/GxG/XFD+YRKhH4DvYmswPoEay7CKIIqzhSrJB5CtDpA1+ol87X1I/6o
- wBmNI3aTuLmDsP7/x9j7bzPOs5MdZ3A0bhlLvxYUcuC5Ia6PtpP5mJV
-X-Developer-Key: i=abdurrahman@nexthop.ai; a=ed25519;
- pk=S+ysnf+NwMcBdHBlyKIUEAtaFGSIhQwcJcgcXhq0osg=
-X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/20260119 with auth_id=608
+X-B4-Tracking: v=1; b=H4sIABCznGkC/zXMQQrDIBCF4auEWdeixgjtqvcoWUSdmKFtDFqkJ
+ Xj3mNAu/8fjWyFhJExwbVaImClRmGvIUwN2GmaPjFxtkFxqLgVn6YHOsG5AYy5K2bYboX6XiCN
+ 9Dufe154ovUP8HmwW+/oXxE/IgnGmhW4VV1JbZ28+BP/Esw0v6EspG1Nk2v2bAAAA
+X-Change-ID: 20260210-skedb-5aebb944c35f
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Badhri Jagan Sridharan <badhri@google.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-usb@vger.kernel.org, Kyle Tso <kyletso@google.com>, 
+ RD Babiera <rdbabiera@google.com>, Amit Sunil Dhamne <amitsd@google.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771877137; l=1270;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=vGQeQO1YlbRwkKZNHV41+XdKwbW3ff4YznTfIuBhUik=;
+ b=1C1YC5X/kdyac3vFIj+CpmhCvqTVNRN1152BDMfpHEuAlsUgPiGcj0ZN0S01BC4wXS0Zw3QX0
+ jwY9y97k/gNA+TVdIHe+QlT68vRzDpjjBVhevRPfq1FIgRHs8pzhemf
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently Linux does not implement ACPI ClockInput() resource to describe
-clocks, unlike DT. However the xiic driver is happy if something
-magically enables the clock before the driver probes, and does not
-turn it off again. The clock should always be considered optional for
-ACPI.
+This patchset adds support for Sink Cap Extended AMS. This is a
+"required" AMS for PD 3.1 compliance for Sink or DRP ports and a
+pre-requisite for Battery Caps and Battery Status AMSes.
 
-Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
- drivers/i2c/busses/i2c-xiic.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+Changes in v2:
+- Fixed comment for `struct sink_caps_ext_msg`, `struct pd_identifier` and
+  `struct sink_caps_ext_data`. (Linux Test Robot)
+- Added Reviewed-by tag for DT binding patch. (Rob Herring)
+- Link to v1: https://lore.kernel.org/r/20260211-skedb-v1-0-616340426cdc@google.com
 
-diff --git a/drivers/i2c/busses/i2c-xiic.c b/drivers/i2c/busses/i2c-xiic.c
-index 6eb0c6a2618a..3e7735e1dae0 100644
---- a/drivers/i2c/busses/i2c-xiic.c
-+++ b/drivers/i2c/busses/i2c-xiic.c
-@@ -1464,10 +1464,12 @@ static int xiic_i2c_probe(struct platform_device *pdev)
- 
- 	spin_lock_init(&i2c->atomic_lock);
- 
--	i2c->clk = devm_clk_get_enabled(&pdev->dev, NULL);
--	if (IS_ERR(i2c->clk))
--		return dev_err_probe(&pdev->dev, PTR_ERR(i2c->clk),
--				     "failed to enable input clock.\n");
-+	if (is_of_node(fwnode)) {
-+		i2c->clk = devm_clk_get_enabled(dev, NULL);
-+		if (IS_ERR(i2c->clk))
-+			return dev_err_probe(dev, PTR_ERR(i2c->clk),
-+					"failed to enable input clock.\n");
-+	}
- 
- 	i2c->dev = dev;
- 
+---
+Amit Sunil Dhamne (2):
+      dt-bindings: connector: Add sink properties to comply with PD 3.1 spec
+      usb: typec: tcpm: add support for Sink Cap Extended msg response
 
+ .../bindings/connector/usb-connector.yaml          |  34 +++
+ .../devicetree/bindings/usb/maxim,max33359.yaml    |   4 +
+ drivers/usb/typec/tcpm/tcpm.c                      | 253 ++++++++++++++++++++-
+ include/dt-bindings/usb/pd.h                       |  18 ++
+ include/linux/usb/pd.h                             |  82 ++++++-
+ 5 files changed, 388 insertions(+), 3 deletions(-)
+---
+base-commit: 8bf22c33e7a172fbc72464f4cc484d23a6b412ba
+change-id: 20260210-skedb-5aebb944c35f
+
+Best regards,
 -- 
-2.52.0
+Amit Sunil Dhamne <amitsd@google.com>
 
