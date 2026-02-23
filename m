@@ -1,207 +1,54 @@
-From: Satish Kharat <satishkh@cisco.com>
-Date: Mon, 23 Feb 2026 02:27:21 -0800
-Subject: [PATCH v2 2/2] net:ethernet:enic: map ethtool link modes by VIC
- type
+From: Marc Paolo Sosa <marcpaolo.sosa@analog.com>
+Subject: [PATCH 0/2] add driver for max16150
+Date: Mon, 23 Feb 2026 19:03:38 +0800
+Message-Id: <20260223-max16150-v1-0-38e2a4f0d0f1@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260223-enic-cscwi36355-v2-2-63488194a974@cisco.com>
-References: <20260223-enic-cscwi36355-v2-0-63488194a974@cisco.com>
-In-Reply-To: <20260223-enic-cscwi36355-v2-0-63488194a974@cisco.com>
-To: netdev@vger.kernel.org
-Cc: Satish Kharat <satishkh@cisco.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771842484; l=7198;
- i=satishkh@cisco.com; h=from:subject:message-id;
- bh=Un3i7QWSyXNRX99TibvcLoej6yGcTrQNAu7NeoxWq1c=;
- b=WgvezRtPkd7G+IJ8On5FyH8yur2peOb5yfWvrmYlHyPgob/8U4YOFcwfN3ut11pcvhAxpa+29
- 40LnVAFElEJBKw4OXesLSdx4qukkxJjml0siHbtzaZJ+10HgmMqcbs/
-X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
- pk=4BxbLoCGvHeIMH/PbpiNVx8/2IcTjFvqcr0AD8K6WLY=
-X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/default with auth_id=639
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAo0nGkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDIyNj3dzECkMzQ1MDXYvUNEuTVDMT4+QUAyWg8oKi1LTMCrBR0bG1tQD
+ RFD5dWgAAAA==
+X-Change-ID: 20260223-max16150-8ef94e643cd0
+To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Marc Paolo Sosa <marcpaolo.sosa@analog.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771844627; l=1100;
+ i=marcpaolo.sosa@analog.com; s=20260223; h=from:subject:message-id;
+ bh=/Lwi2SQOmjSZoQ2lD1J/F6NVtGfgvtYG1FZkkyq+TAA=;
+ b=o3wekkboUVy8NBZSvp/U6yVbN8moHRJrRb8NnTDV8XQ0Oywr77RoE5H4oqQLufr06GLhqpII+
+ 98yT4xjK/R2DpYIvYGCXGHtLcQRiOzRawl2DaXhmEH7x6l320NiIwzY
+X-Developer-Key: i=marcpaolo.sosa@analog.com; a=ed25519;
+ pk=RR72PZYRimO/84huVqlVyHN3IM3AL984DRKCEXnOJuE=
+X-Endpoint-Received: by B4 Relay for marcpaolo.sosa@analog.com/20260223 with auth_id=646
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Report supported media types based on the VIC subsystem ID so ethtool
-reflects the hardware capabilities.
+Introduce pushbutton control and debouncing support for the
+MAX16150/MAX16169. The component is a low‑power on/off controller
+featuring an integrated switch debouncer and internal latch, designed
+to accept a noisy mechanical pushbutton input while providing a clean,
+stable latched output. It also includes a one‑shot interrupt output for
+event signaling, enabling reliable switch interfacing in low‑power embedded
+systems.
 
-Signed-off-by: Satish Kharat <satishkh@cisco.com>
+Signed-off-by: Marc Paolo Sosa <marcpaolo.sosa@analog.com>
 ---
- drivers/net/ethernet/cisco/enic/enic_ethtool.c | 155 +++++++++++++++++++++++--
- 1 file changed, 148 insertions(+), 7 deletions(-)
+Marc Paolo Sosa (2):
+      dt-bindings: input: add adi,max16150.yaml
+      input: misc: add driver for max16150
 
-diff --git a/drivers/net/ethernet/cisco/enic/enic_ethtool.c b/drivers/net/ethernet/cisco/enic/enic_ethtool.c
-index 471613899..61541fb8d 100644
---- a/drivers/net/ethernet/cisco/enic/enic_ethtool.c
-+++ b/drivers/net/ethernet/cisco/enic/enic_ethtool.c
-@@ -126,19 +126,160 @@ static void enic_intr_coal_set_rx(struct enic *enic, u32 timer)
- 	}
- }
- 
-+static void enic_get_supp_adv_media_type(struct net_device *netdev,
-+					 struct ethtool_link_ksettings *ecmd)
-+{
-+	struct enic *enic = netdev_priv(netdev);
-+	struct ethtool_link_settings *base = &ecmd->base;
-+	u16 sub_dev_id = 0;
-+
-+	base->port = PORT_OTHER;
-+
-+	if (enic->pdev)
-+		sub_dev_id = enic->pdev->subsystem_device;
-+
-+	switch (sub_dev_id) {
-+	case PCI_SUBDEV_ID_CISCO_VIC_1225:
-+	case PCI_SUBDEV_ID_CISCO_VIC_1227:
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     10000baseSR_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported, FIBRE);
-+		base->port = PORT_FIBRE;
-+		break;
-+	case PCI_SUBDEV_ID_CISCO_VIC_1285:
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     40000baseSR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported, FIBRE);
-+		base->port = PORT_FIBRE;
-+		break;
-+	case PCI_SUBDEV_ID_CISCO_VIC_1225T:
-+	case PCI_SUBDEV_ID_CISCO_VIC_1227T:
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     10000baseT_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported, FIBRE);
-+		base->port = PORT_FIBRE;
-+		break;
-+	case PCI_SUBDEV_ID_CISCO_VIC_1385:
-+	case PCI_SUBDEV_ID_CISCO_VIC_1387:
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     10000baseSR_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     10000baseLR_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     40000baseSR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     40000baseLR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported, FIBRE);
-+		base->port = PORT_FIBRE;
-+		break;
-+	case PCI_SUBDEV_ID_CISCO_VIC_1477:
-+	case PCI_SUBDEV_ID_CISCO_VIC_1485:
-+	case PCI_SUBDEV_ID_CISCO_VIC_1487:
-+	case PCI_SUBDEV_ID_CISCO_VIC_1495:
-+	case PCI_SUBDEV_ID_CISCO_VIC_1497:
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     40000baseCR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     40000baseSR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     40000baseLR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     100000baseSR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     100000baseCR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported, FIBRE);
-+		base->port = PORT_FIBRE;
-+		break;
-+	case PCI_SUBDEV_ID_CISCO_VIC_15235:
-+	case PCI_SUBDEV_ID_CISCO_VIC_15237:
-+	case PCI_SUBDEV_ID_CISCO_VIC_15238:
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     40000baseCR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     40000baseSR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     40000baseLR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     100000baseSR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     100000baseCR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     200000baseSR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     200000baseDR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     200000baseLR4_ER4_FR4_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported, FIBRE);
-+		base->port = PORT_FIBRE;
-+		break;
-+	case PCI_SUBDEV_ID_CISCO_VIC_1455:
-+	case PCI_SUBDEV_ID_CISCO_VIC_1457:
-+	case PCI_SUBDEV_ID_CISCO_VIC_1467:
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     10000baseT_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     25000baseSR_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported, FIBRE);
-+		base->port = PORT_FIBRE;
-+		break;
-+	case PCI_SUBDEV_ID_CISCO_VIC_15428:
-+	case PCI_SUBDEV_ID_CISCO_VIC_15427:
-+	case PCI_SUBDEV_ID_CISCO_VIC_15425:
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     10000baseT_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     25000baseSR_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     50000baseSR_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported, FIBRE);
-+		base->port = PORT_FIBRE;
-+		break;
-+	/* Do not mention port type as FIBRE for blade VICs */
-+	case PCI_SUBDEV_ID_CISCO_VIC_1240:
-+	case PCI_SUBDEV_ID_CISCO_VIC_1280:
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     10000baseKR_Full);
-+		break;
-+	case PCI_SUBDEV_ID_CISCO_VIC_1340:
-+	case PCI_SUBDEV_ID_CISCO_VIC_1380:
-+	case PCI_SUBDEV_ID_CISCO_VIC_1440: /* 10G/40G KR */
-+	case PCI_SUBDEV_ID_CISCO_VIC_1480: /* 10G/40G KR */
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     10000baseKR_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     40000baseKR4_Full);
-+		break;
-+	case PCI_SUBDEV_ID_CISCO_VIC_14425: /* 25G KR */
-+	case PCI_SUBDEV_ID_CISCO_VIC_14825: /* 25G KR */
-+	case PCI_SUBDEV_ID_CISCO_VIC_15420: /* 25G KR */
-+	case PCI_SUBDEV_ID_CISCO_VIC_15422: /* 25G KR */
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     25000baseKR_Full);
-+		break;
-+	case PCI_SUBDEV_ID_CISCO_VIC_15411: /* 10G KR */
-+	case PCI_SUBDEV_ID_CISCO_VIC_15412: /* 10G KR */
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     10000baseKR_Full);
-+		break;
-+	case PCI_SUBDEV_ID_CISCO_VIC_15231: /* 25G/100G/200G KR */
-+	case PCI_SUBDEV_ID_CISCO_VIC_15230: /* 25G/100G/200G KR */
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     25000baseKR_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     100000baseKR_Full);
-+		ethtool_link_ksettings_add_link_mode(ecmd, supported,
-+						     200000baseKR4_Full);
-+		break;
-+	}
-+}
-+
- static int enic_get_ksettings(struct net_device *netdev,
- 			      struct ethtool_link_ksettings *ecmd)
- {
- 	struct enic *enic = netdev_priv(netdev);
- 	struct ethtool_link_settings *base = &ecmd->base;
- 
--	ethtool_link_ksettings_add_link_mode(ecmd, supported,
--					     10000baseT_Full);
--	ethtool_link_ksettings_add_link_mode(ecmd, supported, FIBRE);
--	ethtool_link_ksettings_add_link_mode(ecmd, advertising,
--					     10000baseT_Full);
--	ethtool_link_ksettings_add_link_mode(ecmd, advertising, FIBRE);
--	base->port = PORT_FIBRE;
-+	enic_get_supp_adv_media_type(netdev, ecmd);
- 
- 	if (netif_carrier_ok(netdev)) {
- 		base->speed = vnic_dev_port_speed(enic->vdev);
+ .../devicetree/bindings/input/adi,max16150.yaml    |  57 ++++++++
+ drivers/input/misc/Kconfig                         |   9 ++
+ drivers/input/misc/Makefile                        |   1 +
+ drivers/input/misc/max16150.c                      | 161 +++++++++++++++++++++
+ 4 files changed, 228 insertions(+)
+---
+base-commit: e7b53288d9ea899abc6d47a7f20065ab511a810c
+change-id: 20260223-max16150-8ef94e643cd0
 
+Best regards,
 -- 
-2.43.0
+Marc Paolo Sosa <marcpaolo.sosa@analog.com>
 
