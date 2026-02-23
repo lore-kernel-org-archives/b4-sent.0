@@ -1,10 +1,11 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Mon, 23 Feb 2026 14:58:04 +0100
-Subject: [PATCH v5 1/4] net: stmmac: platform: read channels irq
+Date: Mon, 23 Feb 2026 14:58:05 +0100
+Subject: [PATCH v5 2/4] dt-bindings: net: nxp,s32-dwmac: Declare per-queue
+ interrupts
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260223-dwmac_multi_irq-v5-1-8fc699a5fac4@oss.nxp.com>
+Message-Id: <20260223-dwmac_multi_irq-v5-2-8fc699a5fac4@oss.nxp.com>
 References: <20260223-dwmac_multi_irq-v5-0-8fc699a5fac4@oss.nxp.com>
 In-Reply-To: <20260223-dwmac_multi_irq-v5-0-8fc699a5fac4@oss.nxp.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -25,83 +26,101 @@ Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
  imx@lists.linux.dev, devicetree@vger.kernel.org, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771855093; l=2333;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771855093; l=3405;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=P2zfXa4c18tSAED8W/f714pESbYNY0ZOt8TdNWG7VK0=;
- b=hiXarSrsA/JbiyKr+PsMd6bbjrGyHXX8vk7ry0gBoLO10unCvRxYzZb5C9C9xTtP2sfCSNG6y
- lDgDWZJqVCYDGYHr4WLUBkolMSdTx7eXCG92CyX+8rPkB9U869DQROt
+ bh=gQkWPW6Agu54gNIpdO0qRffYb4VG4bnlmEhwhDlFr00=;
+ b=jc9lh1vecb9mybYO4ehOuqpkp71pwzZLjz/g/NY9z1MldT2Bur/6GMyRv7wxMXu4VrGEaeWBb
+ jr8N9BQM0QlBhsyM8e4wQrE2T2MIUo+l1T72x+rqWmOeTGtl+PggQ8a
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Read IRQ resources for all rx/tx channels, to allow Multi-IRQ mode
-for platform glue drivers.
+The DWMAC IP on NXP S32G/R SoCs has connected queue-based IRQ lines,
+set them to allow using Multi-IRQ mode.
 
 Reviewed-by: Matthias Brugger <mbrugger@suse.com>
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- .../net/ethernet/stmicro/stmmac/stmmac_platform.c  | 40 +++++++++++++++++++++-
- 1 file changed, 39 insertions(+), 1 deletion(-)
+ .../devicetree/bindings/net/nxp,s32-dwmac.yaml     | 44 +++++++++++++++++++---
+ 1 file changed, 39 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
-index 5c9fd91a1db9..6166a9b0c0bb 100644
---- a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
-@@ -700,6 +700,9 @@ EXPORT_SYMBOL_GPL(stmmac_pltfr_find_clk);
- int stmmac_get_platform_resources(struct platform_device *pdev,
- 				  struct stmmac_resources *stmmac_res)
- {
-+	char name[16];
-+	int i;
-+
- 	memset(stmmac_res, 0, sizeof(*stmmac_res));
+diff --git a/Documentation/devicetree/bindings/net/nxp,s32-dwmac.yaml b/Documentation/devicetree/bindings/net/nxp,s32-dwmac.yaml
+index 1b2934f3c87c..3a0e41b63c3d 100644
+--- a/Documentation/devicetree/bindings/net/nxp,s32-dwmac.yaml
++++ b/Documentation/devicetree/bindings/net/nxp,s32-dwmac.yaml
+@@ -1,5 +1,5 @@
+ # SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+-# Copyright 2021-2024 NXP
++# Copyright 2021-2026 NXP
+ %YAML 1.2
+ ---
+ $id: http://devicetree.org/schemas/net/nxp,s32-dwmac.yaml#
+@@ -16,6 +16,8 @@ description:
+   the SoC S32R45 has two instances. The devices can use RGMII/RMII/MII
+   interface over Pinctrl device or the output can be routed
+   to the embedded SerDes for SGMII connectivity.
++  The DWMAC instances have connected all RX/TX queues interrupts,
++  enabling load balancing of data traffic across all CPU cores.
  
- 	/* Get IRQ information early to have an ability to ask for deferred
-@@ -735,7 +738,42 @@ int stmmac_get_platform_resources(struct platform_device *pdev,
+ properties:
+   compatible:
+@@ -45,10 +47,22 @@ properties:
+       FlexTimer Modules connect to GMAC_0.
  
- 	stmmac_res->addr = devm_platform_ioremap_resource(pdev, 0);
+   interrupts:
+-    maxItems: 1
++    minItems: 11
++    maxItems: 11
  
--	return PTR_ERR_OR_ZERO(stmmac_res->addr);
-+	if (IS_ERR(stmmac_res->addr))
-+		return PTR_ERR(stmmac_res->addr);
-+
-+	/* RX channels irq */
-+	for (i = 0; i < MTL_MAX_RX_QUEUES; i++) {
-+		scnprintf(name, sizeof(name), "rx-queue-%d", i);
-+		stmmac_res->rx_irq[i] = platform_get_irq_byname_optional(pdev,
-+									 name);
-+		if (stmmac_res->rx_irq[i] <= 0) {
-+			if (stmmac_res->rx_irq[i] == -EPROBE_DEFER)
-+				return -EPROBE_DEFER;
-+			dev_dbg(&pdev->dev, "IRQ rx-queue-%d not found\n", i);
-+
-+			/* Stop on first unset rx-queue-%i property member */
-+			stmmac_res->rx_irq[i] = 0;
-+			break;
-+		}
-+	}
-+
-+	/* TX channels irq */
-+	for (i = 0; i < MTL_MAX_TX_QUEUES; i++) {
-+		scnprintf(name, sizeof(name), "tx-queue-%d", i);
-+		stmmac_res->tx_irq[i] = platform_get_irq_byname_optional(pdev,
-+									 name);
-+		if (stmmac_res->tx_irq[i] <= 0) {
-+			if (stmmac_res->tx_irq[i] == -EPROBE_DEFER)
-+				return -EPROBE_DEFER;
-+			dev_dbg(&pdev->dev, "IRQ tx-queue-%d not found\n", i);
-+
-+			/* Stop on first unset tx-queue-%i property member */
-+			stmmac_res->tx_irq[i] = 0;
-+			break;
-+		}
-+	}
-+
-+	return 0;
- }
- EXPORT_SYMBOL_GPL(stmmac_get_platform_resources);
+   interrupt-names:
+-    const: macirq
++    items:
++      - const: macirq
++      - const: tx-queue-0
++      - const: rx-queue-0
++      - const: tx-queue-1
++      - const: rx-queue-1
++      - const: tx-queue-2
++      - const: rx-queue-2
++      - const: tx-queue-3
++      - const: rx-queue-3
++      - const: tx-queue-4
++      - const: rx-queue-4
  
+   clocks:
+     items:
+@@ -88,8 +102,28 @@ examples:
+               <0x0 0x4007c004 0x0 0x4>;    /* GMAC_0_CTRL_STS */
+         nxp,phy-sel = <&gpr 0x4>;
+         interrupt-parent = <&gic>;
+-        interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
+-        interrupt-names = "macirq";
++        interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>,
++                     /* CHN 0: tx, rx */
++                     <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
++                     /* CHN 1: tx, rx */
++                     <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>,
++                     /* CHN 2: tx, rx */
++                     <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>,
++                     /* CHN 3: tx, rx */
++                     <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>,
++                     /* CHN 4: tx, rx */
++                     <GIC_SPI 66 IRQ_TYPE_LEVEL_HIGH>,
++                     <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;
++        interrupt-names = "macirq",
++                          "tx-queue-0", "rx-queue-0",
++                          "tx-queue-1", "rx-queue-1",
++                          "tx-queue-2", "rx-queue-2",
++                          "tx-queue-3", "rx-queue-3",
++                          "tx-queue-4", "rx-queue-4";
+         snps,mtl-rx-config = <&mtl_rx_setup>;
+         snps,mtl-tx-config = <&mtl_tx_setup>;
+         clocks = <&clks 24>, <&clks 17>, <&clks 16>, <&clks 15>;
 
 -- 
 2.47.0
