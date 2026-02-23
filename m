@@ -1,15 +1,13 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Subject: [PATCH v2 0/2] PCI/pwrctrl: A couple of fixes
-Date: Mon, 23 Feb 2026 20:15:58 +0530
-Message-Id: <20260223-pwrctrl-fixes-7-0-v2-0-97566dfb1809@oss.qualcomm.com>
+Date: Mon, 23 Feb 2026 20:15:59 +0530
+Subject: [PATCH v2 1/2] PCI/pwrctrl: Ensure that the remote endpoint node
+ parent has the supply requirement
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIACZonGkC/32NQQ6CMBREr0L+2pK2CBVW3sOwoPUjTYBiP1YN6
- d0tHMDNJG8mM7MBobdI0GQbeAyWrJsTyFMGZujmBzJ7TwySy4pLodjy9mb1I+vtB4kpxpmuOeq
- Ca92jgtRbPB5hqt3axIOl1fnvcRHE7v5bC2KfLCslsLzUxbm/OqL8+epG46YpTwJtjPEH5dUs/
- 7kAAAA=
-X-Change-ID: 20260217-pwrctrl-fixes-7-0-b90eb30bbfe7
+Message-Id: <20260223-pwrctrl-fixes-7-0-v2-1-97566dfb1809@oss.qualcomm.com>
+References: <20260223-pwrctrl-fixes-7-0-v2-0-97566dfb1809@oss.qualcomm.com>
+In-Reply-To: <20260223-pwrctrl-fixes-7-0-v2-0-97566dfb1809@oss.qualcomm.com>
 To: Bartosz Golaszewski <brgl@kernel.org>, 
  Manivannan Sadhasivam <mani@kernel.org>, 
  Bjorn Helgaas <bhelgaas@google.com>, 
@@ -17,68 +15,114 @@ To: Bartosz Golaszewski <brgl@kernel.org>,
 Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- Raj Kumar Bhagat <raj.bhagat@oss.qualcomm.com>, 
- Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
+ Raj Kumar Bhagat <raj.bhagat@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1760;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3390;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=0oOacB7wekfab+QGwcpYIGrgFEdHi1JQuMOHXuEbmYE=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpnGgpmt4euzNlq9RltGhY8m2X7sgkRa8vB45wV
- NBkzXb+7K2JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaZxoKQAKCRBVnxHm/pHO
- 9Y48B/wJzuwMEfa6vNHi9r0Gd95e9L7tbzABDyDIZDY+B76k4pE95SFkhRhQz8IOwgk0Wp5k6lc
- ++WYLoIiw5YGqnaHbq9+grzTVygO1oQQqiqVQme+EWNBmhfn3kzf71H1qMgBn/N5dEoX7jkCbys
- yf4tdRILk+rR2C7MkvhljuiGYlETnXmRsI0bp2qDyToud2FwpFh9BR0eUlBql7B9NTMnMYTR7KP
- hd4kQUaw2B110rsfLncxb7mbpDfDhwwLYH3VNqIpz5pcfnEZH6W/mMmc0d/dQ8NQ6X243TE3eJn
- n3k+P9DK6wk1tzXr96oeICdXYu7V7Siz2ZZy572hFUsZ9or3
+ bh=zL6q6aa6T9+a57GlUxi/PAtdLbRswIWN6ZLfXidZ7Q8=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpnGgqcQz/SmdNbOAft2OTz/RwIC84RgfBJxwfz
+ G7NxzmzcsKJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaZxoKgAKCRBVnxHm/pHO
+ 9XiAB/4rnXUUEsitsCwNIEuW1CO/iWey8nmy942zlu/cuwLxk6PTedT3+CPg0MDKMiaps7/56++
+ cu5WkHFNsTBH07AF10tlb07+IMQql+pjp5FA8A+iAkKUzpGvFe4B1uXAY/FAE1EDnbgF07d78B/
+ kv6QjAlweLWy7/+5h2M4TI7nmxOcXQUKldz1f+qDlOdo/gJVw6LGRmUTuxvDaNA6IhW/1egVfAN
+ km1pp4sCDLL28fpwQHzn7ULWsw/gxkIMUaYlP1QhnCLIeVzL0GTJo9Rc9CcjU3X+7+U/0wBGl9c
+ yColalMKCbc6K1Qc15b2uZFcmOzCo8UTTIetMHL1NGkHvcFG
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+If OF graph is used in the PCI device node, pwrctrl core currently creates
+the pwrctrl device even if the remote endpoint doesn't have the power
+supply requirements. Since the device doesn't have any power supply
+requirements, there was no pwrctrl driver to probe, leading to PCI
+controller driver probe deferral as it waits for all pwrctrl drivers to
+probe before starting bus scan.
 
-This series fixes a couple of issues introduced in the recent pwrctrl rework
-for v7.0. Both issues are due to some incorrect assumptions on deciding when to
-create pwrctrl devices. First issue is due to assuming that all OF graph nodes
-require pwrctrl and another one is due to assuming that all PCI child nodes are
-PCI devices.
+This issue happens with Qcom ath12k devices with WSI interface attached to
+the Qcom IPQ platforms.
 
-Both issues are fixed by changing the pwrctrl device creation logic in
-pwrctrl/core.
+Fix this issue by checking for the existence of at least one power supply
+property in the remote endpoint parent node. To consolidate all the checks,
+create a new helper pci_pwrctrl_is_required() and move all the checks
+there.
 
-Testing
-=======
-
-This series is tested on Lenovo Thinkpad T14s.
-
-Note for Bjorn H
-================
-
-Even though only patch 1 is fixing a regression on the IPQ board which was not
-part of the testbed of the pwrctrl rework went in for v7.0, patch 2 is also
-fixing an actual issue, but it is not impacting any of the current upstream
-supported platforms. But I'd like to get these two patches merged for v7.0 so
-that both the issues are fixed in the same major release where the issues
-originated.
-
+Fixes: 9db826206f9b ("PCI/pwrctrl: Create pwrctrl device if graph port is found")
+Reported-by: Raj Kumar Bhagat <raj.bhagat@oss.qualcomm.com>
+Tested-by: Raj Kumar Bhagat <raj.bhagat@oss.qualcomm.com>
+Reviewed-by: Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>
+Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
-Changes in v2:
-- Used the compatible match for detecting the PCI devices in DT
-- Link to v1: https://lore.kernel.org/r/20260217-pwrctrl-fixes-7-0-v1-0-b5671e58934f@oss.qualcomm.com
+ drivers/pci/pwrctrl/core.c | 47 +++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 34 insertions(+), 13 deletions(-)
 
----
-Manivannan Sadhasivam (2):
-      PCI/pwrctrl: Ensure that the remote endpoint node parent has the supply requirement
-      PCI/pwrctrl: Only create pwrctrl device if the device node belongs to a PCI device
+diff --git a/drivers/pci/pwrctrl/core.c b/drivers/pci/pwrctrl/core.c
+index 6f7dea6746e0..8325858cc379 100644
+--- a/drivers/pci/pwrctrl/core.c
++++ b/drivers/pci/pwrctrl/core.c
+@@ -268,6 +268,39 @@ int pci_pwrctrl_power_on_devices(struct device *parent)
+ }
+ EXPORT_SYMBOL_GPL(pci_pwrctrl_power_on_devices);
+ 
++/*
++ * Check whether the pwrctrl device really needs to be created or not. The
++ * pwrctrl device will only be created if the node satisfies below requirements:
++ *
++ * 1. Presence of compatible property to match against the pwrctrl driver (AND)
++ * 2. At least one of the power supplies defined in the devicetree node of the
++ *    device (OR) in the remote endpoint parent node to indicate pwrctrl
++ *    requirement.
++ */
++static bool pci_pwrctrl_is_required(struct device_node *np)
++{
++	struct device_node *endpoint;
++
++	if (!of_property_present(np, "compatible"))
++		return false;
++
++	if (of_pci_supply_present(np))
++		return true;
++
++	if (of_graph_is_present(np)) {
++		for_each_endpoint_of_node(np, endpoint) {
++			struct device_node *remote __free(device_node) =
++				of_graph_get_remote_port_parent(endpoint);
++			if (remote) {
++				if (of_pci_supply_present(remote))
++					return true;
++			}
++		}
++	}
++
++	return false;
++}
++
+ static int pci_pwrctrl_create_device(struct device_node *np,
+ 				     struct device *parent)
+ {
+@@ -287,19 +320,7 @@ static int pci_pwrctrl_create_device(struct device_node *np,
+ 		return 0;
+ 	}
+ 
+-	/*
+-	 * Sanity check to make sure that the node has the compatible property
+-	 * to allow driver binding.
+-	 */
+-	if (!of_property_present(np, "compatible"))
+-		return 0;
+-
+-	/*
+-	 * Check whether the pwrctrl device really needs to be created or not.
+-	 * This is decided based on at least one of the power supplies defined
+-	 * in the devicetree node of the device or the graph property.
+-	 */
+-	if (!of_pci_supply_present(np) && !of_graph_is_present(np)) {
++	if (!pci_pwrctrl_is_required(np)) {
+ 		dev_dbg(parent, "Skipping OF node: %s\n", np->name);
+ 		return 0;
+ 	}
 
- drivers/pci/pwrctrl/core.c | 54 +++++++++++++++++++++++++++++++++++-----------
- 1 file changed, 41 insertions(+), 13 deletions(-)
----
-base-commit: 1c2b4a4c2bcb950f182eeeb33d94b565607608cf
-change-id: 20260217-pwrctrl-fixes-7-0-b90eb30bbfe7
-
-Best regards,
 -- 
-Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+2.51.0
 
