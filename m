@@ -1,141 +1,84 @@
-From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Mon, 23 Feb 2026 14:58:07 +0100
-Subject: [PATCH v5 4/4] stmmac: s32: enable support for Multi-IRQ mode
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH v2 0/2] PCI/pwrctrl: A couple of fixes
+Date: Mon, 23 Feb 2026 20:15:58 +0530
+Message-Id: <20260223-pwrctrl-fixes-7-0-v2-0-97566dfb1809@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260223-dwmac_multi_irq-v5-4-8fc699a5fac4@oss.nxp.com>
-References: <20260223-dwmac_multi_irq-v5-0-8fc699a5fac4@oss.nxp.com>
-In-Reply-To: <20260223-dwmac_multi_irq-v5-0-8fc699a5fac4@oss.nxp.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Chester Lin <chester62515@gmail.com>, Matthias Brugger <mbrugger@suse.com>, 
- Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>, 
- NXP S32 Linux Team <s32@nxp.com>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Frank Li <Frank.Li@nxp.com>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- imx@lists.linux.dev, devicetree@vger.kernel.org, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771855093; l=3826;
- i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=jkQq847xhb2eYi7ZpXwtstlwheGp8bBouoJWdRAdL7I=;
- b=uNAw/qBP+ZRZKnsOp91pohZ5uydpZcNiHmWPoOdZckfvptrqJXOwWX9sN/C0qgOPefhVBXYdz
- 7wvVGrk5nHJB3XKllqHIcWW+GvPozLi+hQNy+IybBUzVi+kLDhykdu2
-X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
- pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
-X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
+X-B4-Tracking: v=1; b=H4sIACZonGkC/32NQQ6CMBREr0L+2pK2CBVW3sOwoPUjTYBiP1YN6
+ d0tHMDNJG8mM7MBobdI0GQbeAyWrJsTyFMGZujmBzJ7TwySy4pLodjy9mb1I+vtB4kpxpmuOeq
+ Ca92jgtRbPB5hqt3axIOl1fnvcRHE7v5bC2KfLCslsLzUxbm/OqL8+epG46YpTwJtjPEH5dUs/
+ 7kAAAA=
+X-Change-ID: 20260217-pwrctrl-fixes-7-0-b90eb30bbfe7
+To: Bartosz Golaszewski <brgl@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>, 
+ Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>
+Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Raj Kumar Bhagat <raj.bhagat@oss.qualcomm.com>, 
+ Bjorn Andersson <bjorn.andersson@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1760;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=0oOacB7wekfab+QGwcpYIGrgFEdHi1JQuMOHXuEbmYE=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpnGgpmt4euzNlq9RltGhY8m2X7sgkRa8vB45wV
+ NBkzXb+7K2JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaZxoKQAKCRBVnxHm/pHO
+ 9Y48B/wJzuwMEfa6vNHi9r0Gd95e9L7tbzABDyDIZDY+B76k4pE95SFkhRhQz8IOwgk0Wp5k6lc
+ ++WYLoIiw5YGqnaHbq9+grzTVygO1oQQqiqVQme+EWNBmhfn3kzf71H1qMgBn/N5dEoX7jkCbys
+ yf4tdRILk+rR2C7MkvhljuiGYlETnXmRsI0bp2qDyToud2FwpFh9BR0eUlBql7B9NTMnMYTR7KP
+ hd4kQUaw2B110rsfLncxb7mbpDfDhwwLYH3VNqIpz5pcfnEZH6W/mMmc0d/dQ8NQ6X243TE3eJn
+ n3k+P9DK6wk1tzXr96oeICdXYu7V7Siz2ZZy572hFUsZ9or3
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To get enabled Multi-IRQ mode, the driver checks:
+Hi,
 
-  1) property of 'snps,mtl-xx-config' subnode
-     defines 'snps,xx-queues-to-use' bigger then one, ie:
+This series fixes a couple of issues introduced in the recent pwrctrl rework
+for v7.0. Both issues are due to some incorrect assumptions on deciding when to
+create pwrctrl devices. First issue is due to assuming that all OF graph nodes
+require pwrctrl and another one is due to assuming that all PCI child nodes are
+PCI devices.
 
-     ethernet@4033c000 {
-         compatible = "nxp,s32g2-dwmac";
-         ...
-         snps,mtl-rx-config = <&mtl_rx_setup>;
-         ...
+Both issues are fixed by changing the pwrctrl device creation logic in
+pwrctrl/core.
 
-         mtl_rx_setup: rx-queues-config {
-             snps,rx-queues-to-use = <2>;
-         };
+Testing
+=======
 
-  2) queue based IRQs are set, ie:
+This series is tested on Lenovo Thinkpad T14s.
 
-     ethernet@4033c000 {
-         compatible = "nxp,s32g2-dwmac";
-         ...
-         interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>,
-                      /* CHN 0: tx, rx */
-                      <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>,
-                      <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
-                      /* CHN 1: tx, rx */
-                      <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
-                      <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
-         interrupt-names = "macirq",
-                           "tx-queue-0", "rx-queue-0",
-                           "tx-queue-1", "rx-queue-1";
+Note for Bjorn H
+================
 
-If those prerequisites are met, the driver switch to Multi-IRQ mode,
-using per-queue IRQs for rx/tx data pathr:
+Even though only patch 1 is fixing a regression on the IPQ board which was not
+part of the testbed of the pwrctrl rework went in for v7.0, patch 2 is also
+fixing an actual issue, but it is not impacting any of the current upstream
+supported platforms. But I'd like to get these two patches merged for v7.0 so
+that both the issues are fixed in the same major release where the issues
+originated.
 
-[    1.387045] s32-dwmac 4033c000.ethernet: Multi-IRQ mode (per queue IRQs) selected
-
-Now the driver owns all queues IRQs:
-
-root@s32g399aevb3:~# grep eth /proc/interrupts
- 29:    0    0    0    0    0    0    0    0    GICv3  89 Level   eth0:mac
- 30:    0    0    0    0    0    0    0    0    GICv3  91 Level   eth0:rx-0
- 31:    0    0    0    0    0    0    0    0    GICv3  93 Level   eth0:rx-1
- 32:    0    0    0    0    0    0    0    0    GICv3  95 Level   eth0:rx-2
- 33:    0    0    0    0    0    0    0    0    GICv3  97 Level   eth0:rx-3
- 34:    0    0    0    0    0    0    0    0    GICv3  99 Level   eth0:rx-4
- 35:    0    0    0    0    0    0    0    0    GICv3  90 Level   eth0:tx-0
- 36:    0    0    0    0    0    0    0    0    GICv3  92 Level   eth0:tx-1
- 37:    0    0    0    0    0    0    0    0    GICv3  94 Level   eth0:tx-2
- 38:    0    0    0    0    0    0    0    0    GICv3  96 Level   eth0:tx-3
- 39:    0    0    0    0    0    0    0    0    GICv3  98 Level   eth0:tx-4
-
-Otherwise, if one of the prerequisite don't met, the driver
-continue with MAC IRQ mode:
-
-[    1.387045] s32-dwmac 4033c000.ethernet: MAC IRQ mode selected
-
-And only MAC IRQ will be attached:
-
-root@s32g399aevb3:~# grep eth /proc/interrupts
- 29:    0    0    0    0    0    0    0    0    GICv3  89 Level   eth0:mac
-
-What represents the original MAC IRQ mode and is fully backward
-compatible.
-
-Reviewed-by: Matthias Brugger <mbrugger@suse.com>
-Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+Changes in v2:
+- Used the compatible match for detecting the PCI devices in DT
+- Link to v1: https://lore.kernel.org/r/20260217-pwrctrl-fixes-7-0-v1-0-b5671e58934f@oss.qualcomm.com
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-index af594a096676..4aad7077c9d6 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-@@ -2,7 +2,7 @@
- /*
-  * NXP S32G/R GMAC glue layer
-  *
-- * Copyright 2019-2024 NXP
-+ * Copyright 2019-2026 NXP
-  *
-  */
- 
-@@ -165,6 +165,16 @@ static int s32_dwmac_probe(struct platform_device *pdev)
- 	plat->core_type = DWMAC_CORE_GMAC4;
- 	plat->pmt = 1;
- 	plat->flags |= STMMAC_FLAG_SPH_DISABLE;
-+
-+	/* Check for multi-IRQ config. Assumption: symmetrical rx/tx queues */
-+	if (plat->rx_queues_to_use > 1 &&
-+	    (res.rx_irq[0] > 0 && res.tx_irq[0] > 0)) {
-+		plat->flags |= STMMAC_FLAG_MULTI_MSI_EN;
-+		dev_info(dev, "Multi-IRQ mode (per queue IRQs) selected\n");
-+	} else {
-+		dev_info(dev, "MAC IRQ mode selected\n");
-+	}
-+
- 	plat->rx_fifo_size = 20480;
- 	plat->tx_fifo_size = 20480;
- 
+---
+Manivannan Sadhasivam (2):
+      PCI/pwrctrl: Ensure that the remote endpoint node parent has the supply requirement
+      PCI/pwrctrl: Only create pwrctrl device if the device node belongs to a PCI device
 
+ drivers/pci/pwrctrl/core.c | 54 +++++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 41 insertions(+), 13 deletions(-)
+---
+base-commit: 1c2b4a4c2bcb950f182eeeb33d94b565607608cf
+change-id: 20260217-pwrctrl-fixes-7-0-b90eb30bbfe7
+
+Best regards,
 -- 
-2.47.0
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
