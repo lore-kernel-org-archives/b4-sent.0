@@ -1,506 +1,174 @@
 From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Mon, 23 Feb 2026 20:05:38 +0000
-Subject: [PATCH v2 2/2] usb: typec: tcpm: add support for Sink Cap Extended
- msg response
+Subject: [PATCH v8 0/6] Introduce MAX77759 charger driver
+Date: Tue, 24 Feb 2026 01:45:30 +0000
+Message-Id: <20260224-max77759-charger-v8-0-eb86bd570e9c@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260223-skedb-v2-2-60675765bc7e@google.com>
-References: <20260223-skedb-v2-0-60675765bc7e@google.com>
-In-Reply-To: <20260223-skedb-v2-0-60675765bc7e@google.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIALoCnWkC/23QTW7DIBAF4KtErEsFAzNAV71H1QV/diw1cYUrK
+ 1XkuxdHrZIKlg/EN8y7siWXKS/s5XBlJa/TMs3nGuzTgcWjP4+ZT6lmBgJQSoH85C/GGHS8Xpc
+ xF24RAgElIulZffZZ8jBdbuTbe83Hafmay/dtwir3018MVIutkgtOAbIOdjAD6tdxnseP/BznE
+ 9u1Fe4CSNsRoAoQAJ2zwpOlRlAPApiOoKqAOhPpAaN30Aj6TyBRP9ER9L6F06B0tCkn2Qh4F0D
+ 0esAqBBTKoTLkcWgEehCk7gi092CjcCF5o0PbpHkUek2aKmSbnDAxk4v4T9i27Qe4baNJPQIAA
+ A==
+X-Change-ID: 20251105-max77759-charger-852b626d661a
+To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
+ Lee Jones <lee@kernel.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-usb@vger.kernel.org, Kyle Tso <kyletso@google.com>, 
- RD Babiera <rdbabiera@google.com>, Amit Sunil Dhamne <amitsd@google.com>
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Tudor Ambarus <tudor.ambarus@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>, Mark Brown <broonie@kernel.org>, 
+ Matti Vaittinen <mazziesaccount@gmail.com>, 
+ Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-usb@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
+ RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
+ Amit Sunil Dhamne <amitsd@google.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1771877137; l=15719;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1771897548; l=6235;
  i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=AvH3YX9sA/3OtS0NPLMwAoz6E63rzP2BTy/IgLJCp5Y=;
- b=pZz5h+KaoAdEeodNhDtkPxx1nVqihllA+fv1cHmzhghGqk/kSlIAZ0hg4KNVJ8/+i9Pqvwvro
- 3v+vwM76pNBBWWPEdL5rqF9RwQglsWSdwbYfwZJDuVnF0HrplEKPZBI
+ bh=UvPQEr//jccCvelVCDAFXMcH/Vr87bNsb7Go+1stfTI=;
+ b=UAfLgVGwjj3KWzJTmhzrhKypraWk8suhzXV+fUP/Ygqml1Yire8sg0i1fIcMFZ51hwW2e22sX
+ A7SwqM1svgPAkC1IgxZIyIEB5H0PFY3SD8ca9iiyFSiJcph2QdDcjG9
 X-Developer-Key: i=amitsd@google.com; a=ed25519;
  pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
 X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for responding to Sink Cap Extended msg request. To achieve
-this, include parsing support for DT properties related to Sink Cap
-Extended. The request for Sink Cap Ext is a control message while the
-response is an extended message (chunked). As the Sink Caps Extended
-Data Block size (24 Byte) is less than MaxExtendedMsgChunkLen (26 Byte),
-a single chunk is sufficient to complete this AMS.
+MAX77759 PMIC is used in Pixel 6 and 6 Pro (Oriole/Raven) boards.
+One of the functions of the MAX77759 PMIC is a battery charger. This
+patchset introduces a driver for this function. One of the unique
+features of this charger driver is that it works with a USB input where
+the Type-C controller is TCPCI based.
 
-Supporting sink cap extended messages while responding to a
-Get_Sink_Caps_Extended request when port is in Sink role is required in
-order to be compliant with at least USB PD Rev3.1 Ver1.8.
+Changes to the board files will follow soon once this patchset is reviewed.
+
+For reference to the MAX77759 MFD based patchset (present in upstream):
+https://lore.kernel.org/all/20250509-max77759-mfd-v10-0-962ac15ee3ef@linaro.org/
+
+Dependency list for patches (directionality indicates depends on):
+[6] -> [5] -> [4] & [3]
 
 Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
 ---
- drivers/usb/typec/tcpm/tcpm.c | 253 +++++++++++++++++++++++++++++++++++++++++-
- include/linux/usb/pd.h        |  82 +++++++++++++-
- 2 files changed, 332 insertions(+), 3 deletions(-)
+Changes in v8:
+- Add an newline char at the end of dev_* prints. (André Draszik)
+- Return PTR_ERR() instead of -EPROBE_DEFER when devm_power_supply_register()
+  fails in max77759 charger probe. (André Draszik)
+- Link to v7: https://lore.kernel.org/r/20260218-max77759-charger-v7-0-e8d907ce69c5@google.com
 
-diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
-index b7828160b81d31294a58aa10578e9d8b84f05ac1..bf32d33c606e2e51421034433b251e918f0571bf 100644
---- a/drivers/usb/typec/tcpm/tcpm.c
-+++ b/drivers/usb/typec/tcpm/tcpm.c
-@@ -12,6 +12,7 @@
- #include <linux/jiffies.h>
- #include <linux/kernel.h>
- #include <linux/kthread.h>
-+#include <linux/minmax.h>
- #include <linux/module.h>
- #include <linux/mutex.h>
- #include <linux/power_supply.h>
-@@ -188,7 +189,8 @@
- 	S(STRUCTURED_VDMS),			\
- 	S(COUNTRY_INFO),			\
- 	S(COUNTRY_CODES),			\
--	S(REVISION_INFORMATION)
-+	S(REVISION_INFORMATION),		\
-+	S(GETTING_SINK_EXTENDED_CAPABILITIES)
- 
- #define GENERATE_ENUM(e)	e
- #define GENERATE_STRING(s)	#s
-@@ -229,6 +231,7 @@ enum pd_msg_request {
- 	PD_MSG_DATA_SINK_CAP,
- 	PD_MSG_DATA_SOURCE_CAP,
- 	PD_MSG_DATA_REV,
-+	PD_MSG_EXT_SINK_CAP_EXT
- };
- 
- enum adev_actions {
-@@ -337,6 +340,42 @@ struct pd_timings {
- 	u32 snk_bc12_cmpletion_time;
- };
- 
-+/* Convert microwatt to watt */
-+#define UW_TO_W(pow)					((pow) / 1000000)
-+
-+/*
-+ * struct pd_identifier - Contains info about PD identifiers
-+ * @vid: Vendor ID (assigned by USB-IF)
-+ * @pid: Product ID (assigned by manufacturer)
-+ * @xid: Value assigned by USB-IF for product
-+ */
-+struct pd_identifier {
-+	u16 vid;
-+	u16 pid;
-+	u32 xid;
-+};
-+
-+/*
-+ * struct sink_caps_ext_data - Sink extended capability data
-+ * @load_step: Indicates the load step slew rate. Value of 0 indicates 150mA/us
-+ *             & 1 indicates 500 mA/us
-+ * @load_char: Snk overload characteristics
-+ * @compliance: Types of sources the sink has been tested & certified on
-+ * @modes: Charging caps & power sources supported
-+ * @spr_min_pdp: Sink Minimum PDP for SPR mode (in Watts)
-+ * @spr_op_pdp: Sink Operational PDP for SPR mode (in Watts)
-+ * @spr_max_pdp: Sink Maximum PDP for SPR mode (in Watts)
-+ */
-+struct sink_caps_ext_data {
-+	u8 load_step;
-+	u16 load_char;
-+	u8 compliance;
-+	u8 modes;
-+	u8 spr_min_pdp;
-+	u8 spr_op_pdp;
-+	u8 spr_max_pdp;
-+};
-+
- struct tcpm_port {
- 	struct device *dev;
- 
-@@ -585,6 +624,9 @@ struct tcpm_port {
- 
- 	/* Indicates maximum (revision, version) supported */
- 	struct pd_revision_info pd_rev;
-+
-+	struct pd_identifier pd_ident;
-+	struct sink_caps_ext_data sink_caps_ext;
- #ifdef CONFIG_DEBUG_FS
- 	struct dentry *dentry;
- 	struct mutex logbuffer_lock;	/* log buffer access lock */
-@@ -1367,6 +1409,64 @@ static int tcpm_pd_send_sink_caps(struct tcpm_port *port)
- 	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
- }
- 
-+static int tcpm_pd_send_sink_cap_ext(struct tcpm_port *port)
-+{
-+	u16 operating_snk_watt = port->operating_snk_mw / 1000;
-+	struct sink_caps_ext_data *data = &port->sink_caps_ext;
-+	struct pd_identifier *pd_ident = &port->pd_ident;
-+	struct sink_caps_ext_msg skedb = {0};
-+	struct pd_message msg;
-+	u8 data_obj_cnt;
-+
-+	if (!port->self_powered)
-+		data->spr_op_pdp = operating_snk_watt;
-+
-+	/*
-+	 * SPR Sink Minimum PDP indicates the minimum power required to operate
-+	 * a sink device in its lowest level of functionality without requiring
-+	 * power from the battery. We can use the operating_snk_watt value to
-+	 * populate it, as operating_snk_watt indicates device's min operating
-+	 * power.
-+	 */
-+	data->spr_min_pdp = operating_snk_watt;
-+
-+	if (data->spr_op_pdp < data->spr_min_pdp ||
-+	    data->spr_max_pdp < data->spr_op_pdp) {
-+		tcpm_log(port,
-+			 "Invalid PDP values, Min PDP:%u, Op PDP:%u, Max PDP:%u",
-+			 data->spr_min_pdp, data->spr_op_pdp, data->spr_max_pdp);
-+		return -EOPNOTSUPP;
-+	}
-+
-+	memset(&msg, 0, sizeof(msg));
-+	skedb.vid = cpu_to_le16(pd_ident->vid);
-+	skedb.pid = cpu_to_le16(pd_ident->pid);
-+	skedb.xid = cpu_to_le32(pd_ident->xid);
-+	skedb.skedb_ver = SKEDB_VER_1_0;
-+	skedb.load_step = data->load_step;
-+	skedb.load_char = cpu_to_le16(data->load_char);
-+	skedb.compliance = data->compliance;
-+	skedb.modes = data->modes;
-+	skedb.spr_min_pdp = data->spr_min_pdp;
-+	skedb.spr_op_pdp = data->spr_op_pdp;
-+	skedb.spr_max_pdp = data->spr_max_pdp;
-+	memcpy(msg.ext_msg.data, &skedb, sizeof(skedb));
-+	msg.ext_msg.header = PD_EXT_HDR_LE(sizeof(skedb),
-+					   0, /* Denotes if request chunk */
-+					   0, /* Chunk Number */
-+					   1  /* Chunked */);
-+
-+	data_obj_cnt = count_chunked_data_objs(sizeof(skedb));
-+	msg.header = cpu_to_le16(PD_HEADER(PD_EXT_SINK_CAP_EXT,
-+					   port->pwr_role,
-+					   port->data_role,
-+					   port->negotiated_rev,
-+					   port->message_id,
-+					   data_obj_cnt,
-+					   1 /* Denotes if ext header */));
-+	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
-+}
-+
- static void mod_tcpm_delayed_work(struct tcpm_port *port, unsigned int delay_ms)
- {
- 	if (delay_ms) {
-@@ -3655,6 +3755,19 @@ static void tcpm_pd_ctrl_request(struct tcpm_port *port,
- 					   PD_MSG_CTRL_NOT_SUPP,
- 					   NONE_AMS);
- 		break;
-+	case PD_CTRL_GET_SINK_CAP_EXT:
-+		/* This is an unsupported message if port type is SRC */
-+		if (port->negotiated_rev >= PD_REV30 &&
-+		    port->port_type != TYPEC_PORT_SRC)
-+			tcpm_pd_handle_msg(port, PD_MSG_EXT_SINK_CAP_EXT,
-+					   GETTING_SINK_EXTENDED_CAPABILITIES);
-+		else
-+			tcpm_pd_handle_msg(port,
-+					   port->negotiated_rev < PD_REV30 ?
-+					   PD_MSG_CTRL_REJECT :
-+					   PD_MSG_CTRL_NOT_SUPP,
-+					   NONE_AMS);
-+		break;
- 	default:
- 		tcpm_pd_handle_msg(port,
- 				   port->negotiated_rev < PD_REV30 ?
-@@ -3907,6 +4020,16 @@ static bool tcpm_send_queued_message(struct tcpm_port *port)
- 					 ret);
- 			tcpm_ams_finish(port);
- 			break;
-+		case PD_MSG_EXT_SINK_CAP_EXT:
-+			ret = tcpm_pd_send_sink_cap_ext(port);
-+			if (ret == -EOPNOTSUPP)
-+				tcpm_pd_send_control(port, PD_CTRL_NOT_SUPP, TCPC_TX_SOP);
-+			else if (ret < 0)
-+				tcpm_log(port,
-+					 "Unable to transmit sink cap extended, ret=%d",
-+					 ret);
-+			tcpm_ams_finish(port);
-+			break;
- 		default:
- 			break;
- 		}
-@@ -7291,6 +7414,129 @@ static void tcpm_fw_get_timings(struct tcpm_port *port, struct fwnode_handle *fw
- 		port->timings.snk_bc12_cmpletion_time = val;
- }
- 
-+static void tcpm_fw_get_pd_ident(struct tcpm_port *port)
-+{
-+	struct pd_identifier *pd_ident = &port->pd_ident;
-+	u32 *vdo;
-+
-+	/* First 3 vdo values contain info regarding USB PID, VID & XID */
-+	if (port->nr_snk_vdo >= 3)
-+		vdo = port->snk_vdo;
-+	else if (port->nr_snk_vdo_v1 >= 3)
-+		vdo = port->snk_vdo_v1;
-+	else
-+		return;
-+
-+	pd_ident->vid = PD_IDH_VID(vdo[0]);
-+	pd_ident->pid = PD_PRODUCT_PID(vdo[2]);
-+	pd_ident->xid = PD_CSTAT_XID(vdo[1]);
-+	tcpm_log(port, "vid:%#x pid:%#x xid:%#x",
-+		 pd_ident->vid, pd_ident->pid, pd_ident->xid);
-+}
-+
-+static void tcpm_parse_snk_pdos(struct tcpm_port *port)
-+{
-+	struct sink_caps_ext_data *caps = &port->sink_caps_ext;
-+	u32 max_mv, max_ma;
-+	u8 avs_tier1_pdp, avs_tier2_pdp;
-+	int i, pdo_itr;
-+	u32 *snk_pdos;
-+
-+	for (i = 0; i < port->pd_count; ++i) {
-+		snk_pdos = port->pd_list[i]->sink_desc.pdo;
-+		for (pdo_itr = 0; pdo_itr < PDO_MAX_OBJECTS && snk_pdos[pdo_itr];
-+		     ++pdo_itr) {
-+			u32 pdo = snk_pdos[pdo_itr];
-+			u8 curr_snk_pdp = 0;
-+
-+			switch (pdo_type(pdo)) {
-+			case PDO_TYPE_FIXED:
-+				max_mv = pdo_fixed_voltage(pdo);
-+				max_ma = pdo_fixed_current(pdo);
-+				curr_snk_pdp = UW_TO_W(max_mv * max_ma);
-+				break;
-+			case PDO_TYPE_BATT:
-+				curr_snk_pdp = UW_TO_W(pdo_max_power(pdo));
-+				break;
-+			case PDO_TYPE_VAR:
-+				max_mv = pdo_max_voltage(pdo);
-+				max_ma = pdo_max_current(pdo);
-+				curr_snk_pdp = UW_TO_W(max_mv * max_ma);
-+				break;
-+			case PDO_TYPE_APDO:
-+				if (pdo_apdo_type(pdo) == APDO_TYPE_PPS) {
-+					max_mv = pdo_pps_apdo_max_voltage(pdo);
-+					max_ma = pdo_pps_apdo_max_current(pdo);
-+					curr_snk_pdp = UW_TO_W(max_mv * max_ma);
-+					caps->modes |= SINK_MODE_PPS;
-+				} else if (pdo_apdo_type(pdo) ==
-+					   APDO_TYPE_SPR_AVS) {
-+					avs_tier1_pdp = UW_TO_W(SPR_AVS_TIER1_MAX_VOLT_MV
-+						* pdo_spr_avs_apdo_9v_to_15v_max_current_ma(pdo));
-+					avs_tier2_pdp = UW_TO_W(SPR_AVS_TIER2_MAX_VOLT_MV
-+						* pdo_spr_avs_apdo_15v_to_20v_max_current_ma(pdo));
-+					curr_snk_pdp = max(avs_tier1_pdp, avs_tier2_pdp);
-+					caps->modes |= SINK_MODE_AVS;
-+				}
-+				break;
-+			default:
-+				tcpm_log(port, "Invalid source PDO type, ignoring");
-+				continue;
-+			}
-+
-+			caps->spr_max_pdp = max(caps->spr_max_pdp,
-+						curr_snk_pdp);
-+		}
-+	}
-+}
-+
-+static void tcpm_fw_get_sink_caps_ext(struct tcpm_port *port,
-+				      struct fwnode_handle *fwnode)
-+{
-+	struct sink_caps_ext_data *caps = &port->sink_caps_ext;
-+	int ret;
-+	u32 val;
-+
-+	/*
-+	 * Load step represents the change in current per usec that a given
-+	 * source can tolerate while maintaining Vbus within the vSrcValid
-+	 * range. For a sink this represents the "preferred" load-step value. It
-+	 * can only have 2 values (150 mA/usec or 500 mA/usec) with 150 mA/usec
-+	 * being the default.
-+	 */
-+	ret = fwnode_property_read_u32(fwnode, "sink-load-step", &val);
-+	if (!ret)
-+		caps->load_step = val == 500 ? 1 : 0;
-+
-+	fwnode_property_read_u16(fwnode, "sink-load-characteristics",
-+				 &caps->load_char);
-+	fwnode_property_read_u8(fwnode, "sink-compliance", &caps->compliance);
-+	caps->modes = SINK_MODE_VBUS;
-+
-+	/*
-+	 * As per "6.5.13.14" SPR Sink Operational PDP definition, for battery
-+	 * powered devices, this value will correspond to the PDP of the
-+	 * charging adapter either shipped or recommended for use with it. For
-+	 * batteryless sink devices SPR Operational PDP indicates the power
-+	 * required to operate all the device's functional modes. Hence, this
-+	 * value may be considered equal to port's operating_snk_mw. As
-+	 * operating_sink_mw can change as per the pd set used thus, OP PDP
-+	 * is determined when populating Sink Caps Extended Data Block.
-+	 */
-+	if (port->self_powered) {
-+		fwnode_property_read_u32(fwnode, "charging-adapter-pdp-milliwatt",
-+					 &val);
-+		caps->spr_op_pdp = (u8)(val / 1000);
-+		caps->modes |= SINK_MODE_BATT;
-+	}
-+
-+	tcpm_parse_snk_pdos(port);
-+	tcpm_log(port,
-+		 "load-step:%#x load-char:%#x compl:%#x op-pdp:%#x max-pdp:%#x",
-+		 caps->load_step, caps->load_char, caps->compliance,
-+		 caps->spr_op_pdp, caps->spr_max_pdp);
-+}
-+
- static int tcpm_fw_get_caps(struct tcpm_port *port, struct fwnode_handle *fwnode)
- {
- 	struct fwnode_handle *capabilities, *caps = NULL;
-@@ -7464,6 +7710,9 @@ static int tcpm_fw_get_caps(struct tcpm_port *port, struct fwnode_handle *fwnode
- 		}
- 	}
- 
-+	if (port->port_type != TYPEC_PORT_SRC)
-+		tcpm_fw_get_sink_caps_ext(port, fwnode);
-+
- put_caps:
- 	if (caps != fwnode)
- 		fwnode_handle_put(caps);
-@@ -7506,6 +7755,8 @@ static int tcpm_fw_get_snk_vdos(struct tcpm_port *port, struct fwnode_handle *fw
- 			return ret;
- 	}
- 
-+	tcpm_fw_get_pd_ident(port);
-+
- 	return 0;
- }
- 
-diff --git a/include/linux/usb/pd.h b/include/linux/usb/pd.h
-index 6ccd1b2af993e60d2c68fcd3cef928858d9dd7e3..5a98983195cbb99735d7c5cf10cc43f69fd1b9bd 100644
---- a/include/linux/usb/pd.h
-+++ b/include/linux/usb/pd.h
-@@ -34,7 +34,8 @@ enum pd_ctrl_msg_type {
- 	PD_CTRL_FR_SWAP = 19,
- 	PD_CTRL_GET_PPS_STATUS = 20,
- 	PD_CTRL_GET_COUNTRY_CODES = 21,
--	/* 22-23 Reserved */
-+	PD_CTRL_GET_SINK_CAP_EXT = 22,
-+	/* 23 Reserved */
- 	PD_CTRL_GET_REVISION = 24,
- 	/* 25-31 Reserved */
- };
-@@ -72,7 +73,8 @@ enum pd_ext_msg_type {
- 	PD_EXT_PPS_STATUS = 12,
- 	PD_EXT_COUNTRY_INFO = 13,
- 	PD_EXT_COUNTRY_CODES = 14,
--	/* 15-31 Reserved */
-+	PD_EXT_SINK_CAP_EXT = 15,
-+	/* 16-31 Reserved */
- };
- 
- #define PD_REV10	0x0
-@@ -205,6 +207,72 @@ struct pd_message {
- 	};
- } __packed;
- 
-+/*
-+ * count_chunked_data_objs - Helper to calculate number of Data Objects on a 4
-+ *   byte boundary.
-+ * @size: Size of data block for extended message. Should *not* include extended
-+ *   header size.
-+ */
-+static inline u8 count_chunked_data_objs(u32 size)
-+{
-+	size += offsetof(struct pd_chunked_ext_message_data, data);
-+	return ((size / 4) + (size % 4 ? 1 : 0));
-+}
-+
-+/* Sink Caps Extended Data Block Version */
-+#define SKEDB_VER_1_0				1
-+
-+/* Sink Caps Extended Sink Modes */
-+#define SINK_MODE_PPS		BIT(0)
-+#define SINK_MODE_VBUS		BIT(1)
-+#define SINK_MODE_AC_SUPPLY	BIT(2)
-+#define SINK_MODE_BATT		BIT(3)
-+#define SINK_MODE_BATT_UL	BIT(4) /* Unlimited battery power supply */
-+#define SINK_MODE_AVS		BIT(5)
-+
-+/**
-+ * struct sink_caps_ext_msg - Sink extended capability PD message
-+ * @vid: Vendor ID
-+ * @pid: Product ID
-+ * @xid: Value assigned by USB-IF for product
-+ * @fw: Firmware version
-+ * @hw: Hardware version
-+ * @skedb_ver: Sink Caps Extended Data Block (SKEDB) Version
-+ * @load_step: Indicates the load step slew rate.
-+ * @load_char: Sink overload characteristics
-+ * @compliance: Types of sources the sink has been tested & certified on
-+ * @touch_temp: Indicates the IEC standard to which the touch temperature
-+ *              conforms to (if applicable).
-+ * @batt_info: Indicates number batteries and hot swappable ports
-+ * @modes: Charging caps & power sources supported
-+ * @spr_min_pdp: Sink Minimum PDP for SPR mode
-+ * @spr_op_pdp: Sink Operational PDP for SPR mode
-+ * @spr_max_pdp: Sink Maximum PDP for SPR mode
-+ * @epr_min_pdp: Sink Minimum PDP for EPR mode
-+ * @epr_op_pdp: Sink Operational PDP for EPR mode
-+ * @epr_max_pdp: Sink Maximum PDP for EPR mode
-+ */
-+struct sink_caps_ext_msg {
-+	__le16 vid;
-+	__le16 pid;
-+	__le32 xid;
-+	u8 fw;
-+	u8 hw;
-+	u8 skedb_ver;
-+	u8 load_step;
-+	__le16 load_char;
-+	u8 compliance;
-+	u8 touch_temp;
-+	u8 batt_info;
-+	u8 modes;
-+	u8 spr_min_pdp;
-+	u8 spr_op_pdp;
-+	u8 spr_max_pdp;
-+	u8 epr_min_pdp;
-+	u8 epr_op_pdp;
-+	u8 epr_max_pdp;
-+} __packed;
-+
- /* PDO: Power Data Object */
- #define PDO_MAX_OBJECTS		7
- 
-@@ -329,6 +397,11 @@ enum pd_apdo_type {
- #define PDO_SPR_AVS_APDO_9V_TO_15V_MAX_CURR	GENMASK(19, 10)	/* 10mA unit */
- #define PDO_SPR_AVS_APDO_15V_TO_20V_MAX_CURR	GENMASK(9, 0)	/* 10mA unit */
- 
-+/* SPR AVS has two different current ranges 9V - 15V, 15V - 20V */
-+#define SPR_AVS_TIER1_MIN_VOLT_MV		9000
-+#define SPR_AVS_TIER1_MAX_VOLT_MV		15000
-+#define SPR_AVS_TIER2_MAX_VOLT_MV		20000
-+
- static inline enum pd_pdo_type pdo_type(u32 pdo)
- {
- 	return (pdo >> PDO_TYPE_SHIFT) & PDO_TYPE_MASK;
-@@ -339,6 +412,11 @@ static inline unsigned int pdo_fixed_voltage(u32 pdo)
- 	return ((pdo >> PDO_FIXED_VOLT_SHIFT) & PDO_VOLT_MASK) * 50;
- }
- 
-+static inline unsigned int pdo_fixed_current(u32 pdo)
-+{
-+	return ((pdo >> PDO_FIXED_CURR_SHIFT) & PDO_CURR_MASK) * 10;
-+}
-+
- static inline unsigned int pdo_min_voltage(u32 pdo)
- {
- 	return ((pdo >> PDO_VAR_MIN_VOLT_SHIFT) & PDO_VOLT_MASK) * 50;
+Changes in v7:
+- Add register relock for protected registers in fail path. (André Draszik)
+- Switch to usage of scoped_guard instead of guard. (LKP test bot)
+- Link to v6: https://lore.kernel.org/r/20260214-max77759-charger-v6-0-28c09bda74b4@google.com
 
+Changes in v6:
+-  Linear Range usage (André Draszik):
+  - Dedicate individual arrays for inlim, chgcc & chg_cv_prm to simplify
+    code.
+  - Use numerical values instead of macros for linear_range array init.
+  - Remove macros defining current and voltage limits due to above.
+  - Didn't use Reviewed-by tag for Patch 3 due to the above.
+  - Add new linear_ranges api to leverage it for obtaining selector
+    values.
+  - Improve voltage and current getters and setters functions by leveraging
+    existing and new linear_ranges API.
+- IRQ related changes (André Draszik)
+  - Dedicated names for individual irqs.
+  - Refactor irq handlers.
+  - Ratelimit prints
+- Retry mechanism (André Draszik):
+  - Initialize error retry counter to 0 when psy work is scheduled on a
+    new notifier event.
+  - Protect the counter using a lock.
+  - Add appropriate prints.
+- Link to v5: https://lore.kernel.org/r/20260203-max77759-charger-v5-0-b50395376a5f@google.com
+
+Changes in v5:
+- Use linear_range library instead of reinventing it. (André Draszik)
+  - This requires a selector_max value so modified mfd/max77759.h to
+    include it for CHGCC and CHG_ILIM.
+  - Removed "reviewed-by" for Patch 3 (mfd) due to above
+- Use asnyc probe type. (André Draszik)
+- Retry mechanism for psy_work. (André Draszik)
+- Minor nits (André Draszik):
+  - Use named initializers for instantiating structs.
+  - Use static qualifier for `psy_name` variable.
+  - Refactor if-else ladder to remove else handling if return in prior
+    "if" loop.
+  - Remove redundant `unlikely`.
+- Link to v4: https://lore.kernel.org/r/20260121-max77759-charger-v4-0-694234c8ded1@google.com
+
+Changes in v4:
+- Removed a stray tabspace in mfd/max77759.h. (André Draszik)
+- Fixed the following issues in Patch 4/5 (André Draszik):
+  - Re-order Kconfig entry
+  - Refactored to not use global variable
+  - Use of clamp() to clamp values instead of duplicating logic
+  - Return IRQ_NONE for unhandled irqs or error conditions
+  - Remove debug messages in irq handler
+  - Refactor code to use dev_err_probe in *_init_irqhandler()
+  - Remove unneeded irq_flags
+  - Check return values of regmap ops
+  - Other nits like newlines, not using greedy init, using print stmnts
+- Link to v3: https://lore.kernel.org/r/20251227-max77759-charger-v3-0-54e664f5ca92@google.com
+
+Changes in v3:
+- Had incorrectly folded the charger sub-device with the pmic parent.
+  Corrected it. (Krzysztof Kozlowski)
+- Link to v2: https://lore.kernel.org/r/20251218-max77759-charger-v2-0-2b259980a686@google.com
+
+Changes in v2:
+- Fold charger binding in maxim,max77759-charger.yaml to its parent
+  node. (Krzysztof Kozlowski)
+- Renamed regulator supplier & consumer. (Krzysztof Kozlowski & Heikki
+  Krogerus)
+- Removed explicit setting of irq trigger types in max77759 driver.
+  (André Draszik & Krzysztof Kozlowski)
+- Complete bit definitions for IRQ registers. (André Draszik)
+- Consolidate all bit definitions for charger IP in mfd/max77759.h.
+  (André Draszik)
+- Modify the handling of charger IRQs such that regmap IRQ chip handles
+  masking, de-mux and acking of interrupts. (André Draszik)
+- Remove unused macro definitions relating to Charger modes in tcpci
+  maxim driver (André Draszik)
+- Add dependency on Regulator class in Kconfig definition for max77759
+  chg. (Kernel Test Robot)
+- Link to v1: https://lore.kernel.org/r/20251123-max77759-charger-v1-0-6b2e4b8f7f54@google.com
+
+---
+Amit Sunil Dhamne (6):
+      dt-bindings: mfd: maxim,max77759: reference power-supply schema and add regulator property
+      dt-bindings: usb: maxim,max33359: Add supply property for vbus
+      mfd: max77759: add register bitmasks and modify irq configs for charger
+      lib/linear_ranges: Add linear_range_get_selector_high_array
+      power: supply: max77759: add charger driver
+      usb: typec: tcpm/tcpci_maxim: deprecate WAR for setting charger mode
+
+ .../devicetree/bindings/mfd/maxim,max77759.yaml    |  16 +-
+ .../devicetree/bindings/usb/maxim,max33359.yaml    |   4 +
+ MAINTAINERS                                        |   6 +
+ drivers/mfd/max77759.c                             |  91 ++-
+ drivers/power/supply/Kconfig                       |  11 +
+ drivers/power/supply/Makefile                      |   1 +
+ drivers/power/supply/max77759_charger.c            | 774 +++++++++++++++++++++
+ drivers/usb/typec/tcpm/tcpci_maxim.h               |   1 +
+ drivers/usb/typec/tcpm/tcpci_maxim_core.c          |  54 +-
+ include/linux/linear_range.h                       |   3 +
+ include/linux/mfd/max77759.h                       | 176 ++++-
+ lib/linear_ranges.c                                |  36 +
+ 12 files changed, 1114 insertions(+), 59 deletions(-)
+---
+base-commit: 8bf22c33e7a172fbc72464f4cc484d23a6b412ba
+change-id: 20251105-max77759-charger-852b626d661a
+
+Best regards,
 -- 
-2.53.0.371.g1d285c8824-goog
+Amit Sunil Dhamne <amitsd@google.com>
 
