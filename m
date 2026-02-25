@@ -1,10 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Wed, 25 Feb 2026 10:20:36 +0100
-Subject: [PATCH v6 4/5] arm64: dts: s32: set Ethernet channel irqs
+Date: Wed, 25 Feb 2026 10:20:37 +0100
+Subject: [PATCH v6 5/5] stmmac: s32: enable support for Multi-IRQ mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260225-dwmac_multi_irq-v6-4-245bf1d7110c@oss.nxp.com>
+Message-Id: <20260225-dwmac_multi_irq-v6-5-245bf1d7110c@oss.nxp.com>
 References: <20260225-dwmac_multi_irq-v6-0-245bf1d7110c@oss.nxp.com>
 In-Reply-To: <20260225-dwmac_multi_irq-v6-0-245bf1d7110c@oss.nxp.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -25,122 +25,150 @@ Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
  imx@lists.linux.dev, devicetree@vger.kernel.org, rmk+kernel@armlinux.org.uk, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772011254; l=4163;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772011254; l=4698;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=GJtLVXXJ6B4rcW9eI+Zdnzjbg44iN/frnopr12Ti4EU=;
- b=sAH0X4mViB2MoTIZGnnU0V2U+j/nD8rnu7UyOh3diPo1bPVnCkjXgzNim2p/xSYweUpr3YyTn
- BnBaOeZTFpFAQ2Pl2MVyZziYWiUItZHTW/L9H+qMTHP/MVWMbBY2ToF
+ bh=VhNXhFN3LNj9piUSrvcU0j8rDNgFhxjzRPwBQhKPqME=;
+ b=tG4OPocKqVIacnzg6C8UUg/DR2vaS/X/hta0AyweSYYSjJMzjIGZkxO8P5gK8neG2nzpjZwAT
+ N6pBZ5ltd6hDKEerKCfVeJH9gdRvqiShQiZCBgp+lwc+r83oWkdK9Lj
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The GMAC Ethernet controller found on S32G2/S32G3 and S32R45
-contains up to 5 RX and 5 TX channels.
-It can operate in two interrupt modes:
+Based on previous changes in platform driver, the vendor
+glue driver can enable Multi-IRQ mode, if needed.
 
-  1) Sharing IRQ mode: only MAC IRQ line is used
-     for all channels.
+To get enabled Multi-IRQ mode for dwmac-s32, the driver checks:
 
-  2) Multiple IRQ mode: every channel uses two IRQ lines,
-     one for RX and second for TX.
+  1) property of 'snps,mtl-xx-config' subnode
+     defines 'snps,xx-queues-to-use' bigger then one, ie:
 
-Specify all IRQ twins for all channels.
+     ethernet@4033c000 {
+         compatible = "nxp,s32g2-dwmac";
+         ...
+         snps,mtl-rx-config = <&mtl_rx_setup>;
+         ...
+
+         mtl_rx_setup: rx-queues-config {
+             snps,rx-queues-to-use = <2>;
+         };
+
+  2) queue based IRQs are set, ie:
+
+     ethernet@4033c000 {
+         compatible = "nxp,s32g2-dwmac";
+         ...
+         interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>,
+                      /* CHN 0: tx, rx */
+                      <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>,
+                      <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
+                      /* CHN 1: tx, rx */
+                      <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
+                      <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
+         interrupt-names = "macirq",
+                           "tx-queue-0", "rx-queue-0",
+                           "tx-queue-1", "rx-queue-1";
+
+If those prerequisites are met, the driver switch to Multi-IRQ mode,
+using per-queue IRQs for rx/tx data pathr:
+
+[    1.387045] s32-dwmac 4033c000.ethernet: Multi-IRQ mode (per queue IRQs) selected
+
+Now the driver owns all queues IRQs:
+
+root@s32g399aevb3:~# grep eth /proc/interrupts
+ 29:    0    0    0    0    0    0    0    0    GICv3  89 Level   eth0:mac
+ 30:    0    0    0    0    0    0    0    0    GICv3  91 Level   eth0:rx-0
+ 31:    0    0    0    0    0    0    0    0    GICv3  93 Level   eth0:rx-1
+ 32:    0    0    0    0    0    0    0    0    GICv3  95 Level   eth0:rx-2
+ 33:    0    0    0    0    0    0    0    0    GICv3  97 Level   eth0:rx-3
+ 34:    0    0    0    0    0    0    0    0    GICv3  99 Level   eth0:rx-4
+ 35:    0    0    0    0    0    0    0    0    GICv3  90 Level   eth0:tx-0
+ 36:    0    0    0    0    0    0    0    0    GICv3  92 Level   eth0:tx-1
+ 37:    0    0    0    0    0    0    0    0    GICv3  94 Level   eth0:tx-2
+ 38:    0    0    0    0    0    0    0    0    GICv3  96 Level   eth0:tx-3
+ 39:    0    0    0    0    0    0    0    0    GICv3  98 Level   eth0:tx-4
+
+Otherwise, if one of the prerequisite don't met, the driver
+continue with MAC IRQ mode:
+
+[    1.387045] s32-dwmac 4033c000.ethernet: MAC IRQ mode selected
+
+And only MAC IRQ will be attached:
+
+root@s32g399aevb3:~# grep eth /proc/interrupts
+ 29:    0    0    0    0    0    0    0    0    GICv3  89 Level   eth0:mac
+
+What represents the original MAC IRQ mode and is fully backward
+compatible.
 
 Reviewed-by: Matthias Brugger <mbrugger@suse.com>
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- arch/arm64/boot/dts/freescale/s32g2.dtsi | 26 +++++++++++++++++++++++---
- arch/arm64/boot/dts/freescale/s32g3.dtsi | 26 +++++++++++++++++++++++---
- 2 files changed, 46 insertions(+), 6 deletions(-)
+ drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c | 36 ++++++++++++++++++++++++-
+ 1 file changed, 35 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/freescale/s32g2.dtsi b/arch/arm64/boot/dts/freescale/s32g2.dtsi
-index 51d00dac12de..5a553d503137 100644
---- a/arch/arm64/boot/dts/freescale/s32g2.dtsi
-+++ b/arch/arm64/boot/dts/freescale/s32g2.dtsi
-@@ -3,7 +3,7 @@
-  * NXP S32G2 SoC family
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
+index af594a096676..03e014c10d3f 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
+@@ -2,7 +2,7 @@
+ /*
+  * NXP S32G/R GMAC glue layer
   *
-  * Copyright (c) 2021 SUSE LLC
-- * Copyright 2017-2021, 2024-2025 NXP
-+ * Copyright 2017-2021, 2024-2026 NXP
+- * Copyright 2019-2024 NXP
++ * Copyright 2019-2026 NXP
+  *
   */
  
- #include <dt-bindings/interrupt-controller/arm-gic.h>
-@@ -732,8 +732,28 @@ gmac0: ethernet@4033c000 {
- 			reg = <0x4033c000 0x2000>, /* gmac IP */
- 			      <0x4007c004 0x4>;    /* GMAC_0_CTRL_STS */
- 			interrupt-parent = <&gic>;
--			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
--			interrupt-names = "macirq";
-+			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>,
-+				     /* CHN 0: tx, rx */
-+				     <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
-+				     /* CHN 1: tx, rx */
-+				     <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>,
-+				     /* CHN 2: tx, rx */
-+				     <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>,
-+				     /* CHN 3: tx, rx */
-+				     <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>,
-+				     /* CHN 4: tx, rx */
-+				     <GIC_SPI 66 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;
-+			interrupt-names = "macirq",
-+					  "tx-queue-0", "rx-queue-0",
-+					  "tx-queue-1", "rx-queue-1",
-+					  "tx-queue-2", "rx-queue-2",
-+					  "tx-queue-3", "rx-queue-3",
-+					  "tx-queue-4", "rx-queue-4";
- 			snps,mtl-rx-config = <&mtl_rx_setup>;
- 			snps,mtl-tx-config = <&mtl_tx_setup>;
- 			status = "disabled";
-diff --git a/arch/arm64/boot/dts/freescale/s32g3.dtsi b/arch/arm64/boot/dts/freescale/s32g3.dtsi
-index e314f3c7d61d..b43e6f001f4d 100644
---- a/arch/arm64/boot/dts/freescale/s32g3.dtsi
-+++ b/arch/arm64/boot/dts/freescale/s32g3.dtsi
-@@ -1,6 +1,6 @@
- // SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
- /*
-- * Copyright 2021-2025 NXP
-+ * Copyright 2021-2026 NXP
-  *
-  * Authors: Ghennadi Procopciuc <ghennadi.procopciuc@nxp.com>
-  *          Ciprian Costea <ciprianmarian.costea@nxp.com>
-@@ -809,8 +809,28 @@ gmac0: ethernet@4033c000 {
- 			reg = <0x4033c000 0x2000>, /* gmac IP */
- 			      <0x4007c004 0x4>;    /* GMAC_0_CTRL_STS */
- 			interrupt-parent = <&gic>;
--			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
--			interrupt-names = "macirq";
-+			interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>,
-+				     /* CHN 0: tx, rx */
-+				     <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
-+				     /* CHN 1: tx, rx */
-+				     <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>,
-+				     /* CHN 2: tx, rx */
-+				     <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH>,
-+				     /* CHN 3: tx, rx */
-+				     <GIC_SPI 64 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 65 IRQ_TYPE_LEVEL_HIGH>,
-+				     /* CHN 4: tx, rx */
-+				     <GIC_SPI 66 IRQ_TYPE_LEVEL_HIGH>,
-+				     <GIC_SPI 67 IRQ_TYPE_LEVEL_HIGH>;
-+			interrupt-names = "macirq",
-+					  "tx-queue-0", "rx-queue-0",
-+					  "tx-queue-1", "rx-queue-1",
-+					  "tx-queue-2", "rx-queue-2",
-+					  "tx-queue-3", "rx-queue-3",
-+					  "tx-queue-4", "rx-queue-4";
- 			snps,mtl-rx-config = <&mtl_rx_setup>;
- 			snps,mtl-tx-config = <&mtl_tx_setup>;
- 			status = "disabled";
+@@ -110,6 +110,37 @@ static void s32_gmac_exit(struct device *dev, void *priv)
+ 	clk_disable_unprepare(gmac->rx_clk);
+ }
+ 
++static void s32_gmac_validate_multi_irq(struct device *dev,
++					struct plat_stmmacenet_data *plat,
++					struct stmmac_resources *res)
++{
++	int i;
++
++	/* RX IRQs */
++	STMMAC_FOREACH_MTL_QUEUE(i, plat->rx_queues_to_use) {
++		if (res->rx_irq[i] <= 0) {
++			dev_dbg(dev, "Missing RX queue %d interrupt\n", i);
++			goto no_multi_irq;
++		}
++	}
++
++	/* TX IRQs */
++	STMMAC_FOREACH_MTL_QUEUE(i, plat->tx_queues_to_use) {
++		if (res->tx_irq[i] <= 0) {
++			dev_dbg(dev, "Missing TX queue %d interrupt\n", i);
++			goto no_multi_irq;
++		}
++	}
++
++	plat->flags |= STMMAC_FLAG_MULTI_MSI_EN;
++	dev_info(dev, "Multi-IRQ mode (per queue IRQs) selected\n");
++	return;
++
++no_multi_irq:
++	plat->flags &= ~STMMAC_FLAG_MULTI_MSI_EN;
++	dev_info(dev, "MAC IRQ mode selected\n");
++}
++
+ static int s32_dwmac_probe(struct platform_device *pdev)
+ {
+ 	struct plat_stmmacenet_data *plat;
+@@ -165,6 +196,9 @@ static int s32_dwmac_probe(struct platform_device *pdev)
+ 	plat->core_type = DWMAC_CORE_GMAC4;
+ 	plat->pmt = 1;
+ 	plat->flags |= STMMAC_FLAG_SPH_DISABLE;
++
++	s32_gmac_validate_multi_irq(dev, plat, &res);
++
+ 	plat->rx_fifo_size = 20480;
+ 	plat->tx_fifo_size = 20480;
+ 
 
 -- 
 2.47.0
