@@ -1,11 +1,10 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Wed, 25 Feb 2026 10:20:33 +0100
-Subject: [PATCH v6 1/5] net: stmmac: Use helper macro for loop over
- queue-based arrays
+Date: Wed, 25 Feb 2026 10:20:34 +0100
+Subject: [PATCH v6 2/5] net: stmmac: platform: read channels irq
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260225-dwmac_multi_irq-v6-1-245bf1d7110c@oss.nxp.com>
+Message-Id: <20260225-dwmac_multi_irq-v6-2-245bf1d7110c@oss.nxp.com>
 References: <20260225-dwmac_multi_irq-v6-0-245bf1d7110c@oss.nxp.com>
 In-Reply-To: <20260225-dwmac_multi_irq-v6-0-245bf1d7110c@oss.nxp.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -26,113 +25,83 @@ Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
  imx@lists.linux.dev, devicetree@vger.kernel.org, rmk+kernel@armlinux.org.uk, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772011254; l=4143;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772011254; l=2347;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=AN9BxArjvT+LtwWtaoyDzsO4XeDTxufZg6uDwPtH3+8=;
- b=HrMyIBe6hiEiK+yI++j0zr4SZkcfnBej78BfknH+fkY5XBTCN+M/FNAdcfWgxyRrV7eMXsYyN
- xJKwDPLiatADbjLR6Qfv9C/KgR/geTNb1JSLa1Ljt9HaiAOmkBiinwc
+ bh=hkEc+ztC/1Comap0YKLwRQWHoHmNRZY6meilNIXQiBo=;
+ b=NbMwj1+x1NxPYwBuh1K175Y6YZEBtyVq0UTNDXkp7y7qFtUeC7uzV98+jbnP9iMFe+RWc3OWz
+ IR3tCHAf6g9AeKlrJG4M0dTDBM+hlKfdsF25AFW+bkV4FhvViHdxoEC
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The stmmac driver contains similar pattern for processing queue-based
-arrays, ie. interrupt lines, etc. Factor out the for loop and provide
-a macro STMMAC_FOREACH_MTL_QUEUE(var, limit).
+Read IRQ resources for all rx/tx channels, to allow Multi-IRQ mode
+for platform glue drivers.
 
+Reviewed-by: Matthias Brugger <mbrugger@suse.com>
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c |  2 +-
- drivers/net/ethernet/stmicro/stmmac/stmmac.h        |  3 +++
- drivers/net/ethernet/stmicro/stmmac/stmmac_main.c   | 16 ++++++++--------
- 3 files changed, 12 insertions(+), 9 deletions(-)
+ .../net/ethernet/stmicro/stmmac/stmmac_platform.c  | 40 +++++++++++++++++++++-
+ 1 file changed, 39 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c b/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c
-index 49893b9fb88c..3890e82c69f6 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c
-@@ -233,7 +233,7 @@ static void dwxgmac2_prog_mtl_tx_algorithms(struct mac_device_info *hw,
- 	writel(value, ioaddr + XGMAC_MTL_OPMODE);
- 
- 	/* Set ETS if desired */
--	for (i = 0; i < MTL_MAX_TX_QUEUES; i++) {
-+	STMMAC_FOREACH_MTL_QUEUE(i, MTL_MAX_TX_QUEUES) {
- 		value = readl(ioaddr + XGMAC_MTL_TCx_ETS_CONTROL(i));
- 		value &= ~XGMAC_TSA;
- 		if (ets)
-diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac.h b/drivers/net/ethernet/stmicro/stmmac/stmmac.h
-index 51c96a738151..c972ad8e79f8 100644
---- a/drivers/net/ethernet/stmicro/stmmac/stmmac.h
-+++ b/drivers/net/ethernet/stmicro/stmmac/stmmac.h
-@@ -382,6 +382,9 @@ enum stmmac_state {
- 
- extern const struct dev_pm_ops stmmac_simple_pm_ops;
- 
-+#define STMMAC_FOREACH_MTL_QUEUE(var, limit) \
-+	for (var = 0; var < (limit); var++)
-+
- int stmmac_mdio_unregister(struct net_device *ndev);
- int stmmac_mdio_register(struct net_device *ndev);
- int stmmac_mdio_reset(struct mii_bus *mii);
-diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-index edf0799b7236..b920ca17b2be 100644
---- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
-@@ -3875,7 +3875,7 @@ static int stmmac_request_irq_multi_msi(struct net_device *dev)
- 	}
- 
- 	/* Request Rx MSI irq */
--	for (i = 0; i < priv->plat->rx_queues_to_use; i++) {
-+	STMMAC_FOREACH_MTL_QUEUE(i, priv->plat->rx_queues_to_use) {
- 		if (i >= MTL_MAX_RX_QUEUES)
- 			break;
- 		if (priv->rx_irq[i] == 0)
-@@ -3899,7 +3899,7 @@ static int stmmac_request_irq_multi_msi(struct net_device *dev)
- 	}
- 
- 	/* Request Tx MSI irq */
--	for (i = 0; i < priv->plat->tx_queues_to_use; i++) {
-+	STMMAC_FOREACH_MTL_QUEUE(i, priv->plat->tx_queues_to_use) {
- 		if (i >= MTL_MAX_TX_QUEUES)
- 			break;
- 		if (priv->tx_irq[i] == 0)
-@@ -4084,10 +4084,10 @@ static int __stmmac_open(struct net_device *dev,
- 			 struct stmmac_dma_conf *dma_conf)
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
+index 5c9fd91a1db9..64cb8751b327 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c
+@@ -700,6 +700,9 @@ EXPORT_SYMBOL_GPL(stmmac_pltfr_find_clk);
+ int stmmac_get_platform_resources(struct platform_device *pdev,
+ 				  struct stmmac_resources *stmmac_res)
  {
- 	struct stmmac_priv *priv = netdev_priv(dev);
-+	int ret, i;
- 	u32 chan;
--	int ret;
++	char name[16];
++	int i;
++
+ 	memset(stmmac_res, 0, sizeof(*stmmac_res));
  
--	for (int i = 0; i < MTL_MAX_TX_QUEUES; i++)
-+	STMMAC_FOREACH_MTL_QUEUE(i, MTL_MAX_TX_QUEUES)
- 		if (priv->dma_conf.tx_queue[i].tbs & STMMAC_TBS_EN)
- 			dma_conf->tx_queue[i].tbs = priv->dma_conf.tx_queue[i].tbs;
- 	memcpy(&priv->dma_conf, dma_conf, sizeof(*dma_conf));
-@@ -7734,9 +7734,9 @@ static int __stmmac_dvr_probe(struct device *device,
- 	priv->device = device;
- 	priv->dev = ndev;
+ 	/* Get IRQ information early to have an ability to ask for deferred
+@@ -735,7 +738,42 @@ int stmmac_get_platform_resources(struct platform_device *pdev,
  
--	for (i = 0; i < MTL_MAX_RX_QUEUES; i++)
-+	STMMAC_FOREACH_MTL_QUEUE(i, MTL_MAX_RX_QUEUES)
- 		u64_stats_init(&priv->xstats.rxq_stats[i].napi_syncp);
--	for (i = 0; i < MTL_MAX_TX_QUEUES; i++) {
+ 	stmmac_res->addr = devm_platform_ioremap_resource(pdev, 0);
+ 
+-	return PTR_ERR_OR_ZERO(stmmac_res->addr);
++	if (IS_ERR(stmmac_res->addr))
++		return PTR_ERR(stmmac_res->addr);
++
++	/* RX channels irq */
++	STMMAC_FOREACH_MTL_QUEUE(i, MTL_MAX_RX_QUEUES) {
++		scnprintf(name, sizeof(name), "rx-queue-%d", i);
++		stmmac_res->rx_irq[i] = platform_get_irq_byname_optional(pdev,
++									 name);
++		if (stmmac_res->rx_irq[i] <= 0) {
++			if (stmmac_res->rx_irq[i] == -EPROBE_DEFER)
++				return -EPROBE_DEFER;
++			dev_dbg(&pdev->dev, "IRQ rx-queue-%d not found\n", i);
++
++			/* Stop on first unset rx-queue-%i property member */
++			stmmac_res->rx_irq[i] = 0;
++			break;
++		}
++	}
++
++	/* TX channels irq */
 +	STMMAC_FOREACH_MTL_QUEUE(i, MTL_MAX_TX_QUEUES) {
- 		u64_stats_init(&priv->xstats.txq_stats[i].q_syncp);
- 		u64_stats_init(&priv->xstats.txq_stats[i].napi_syncp);
- 	}
-@@ -7759,9 +7759,9 @@ static int __stmmac_dvr_probe(struct device *device,
- 	priv->sfty_irq = res->sfty_irq;
- 	priv->sfty_ce_irq = res->sfty_ce_irq;
- 	priv->sfty_ue_irq = res->sfty_ue_irq;
--	for (i = 0; i < MTL_MAX_RX_QUEUES; i++)
-+	STMMAC_FOREACH_MTL_QUEUE(i, MTL_MAX_RX_QUEUES)
- 		priv->rx_irq[i] = res->rx_irq[i];
--	for (i = 0; i < MTL_MAX_TX_QUEUES; i++)
-+	STMMAC_FOREACH_MTL_QUEUE(i, MTL_MAX_TX_QUEUES)
- 		priv->tx_irq[i] = res->tx_irq[i];
++		scnprintf(name, sizeof(name), "tx-queue-%d", i);
++		stmmac_res->tx_irq[i] = platform_get_irq_byname_optional(pdev,
++									 name);
++		if (stmmac_res->tx_irq[i] <= 0) {
++			if (stmmac_res->tx_irq[i] == -EPROBE_DEFER)
++				return -EPROBE_DEFER;
++			dev_dbg(&pdev->dev, "IRQ tx-queue-%d not found\n", i);
++
++			/* Stop on first unset tx-queue-%i property member */
++			stmmac_res->tx_irq[i] = 0;
++			break;
++		}
++	}
++
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(stmmac_get_platform_resources);
  
- 	if (!is_zero_ether_addr(res->mac))
 
 -- 
 2.47.0
