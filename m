@@ -1,16 +1,13 @@
 From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Subject: [PATCH v7 0/5] Support multi-channel IRQs in stmmac platform
- drivers
-Date: Thu, 26 Feb 2026 09:54:05 +0100
-Message-Id: <20260226-dwmac_multi_irq-v7-0-f8fe3b945bb4@oss.nxp.com>
+Date: Thu, 26 Feb 2026 09:54:06 +0100
+Subject: [PATCH v7 1/5] net: stmmac: Use helper macro for loop over
+ queue-based arrays
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAC0KoGkC/23O207DMAyA4VeZck2mxDk04Yr3QGhK3ZhFou1oR
- hma+u6kE4ii7PK35M++shynFDN73F3ZFOeU0ziUaB52DI9heI08daUZCDAShOfdZx/w0H+8ndM
- hTe/cd46s0BYQJStbpylSutzE55fSx5TP4/R1OzDLdfpjSV1Zs+SCK2sshFZET83TmPN+uJz2O
- PZs1Wb4FawoRC3AKrQOPCjRiUbWgtoKqhZUERCNImij8/aOoLeCqwVdBAcUlCYkIKgF8yfAvR/
- MKhBa74OhgLoW7FYwtWCLANq0JLtGSoH/hWVZvgEzge5R+gEAAA==
+Message-Id: <20260226-dwmac_multi_irq-v7-1-f8fe3b945bb4@oss.nxp.com>
+References: <20260226-dwmac_multi_irq-v7-0-f8fe3b945bb4@oss.nxp.com>
+In-Reply-To: <20260226-dwmac_multi_irq-v7-0-f8fe3b945bb4@oss.nxp.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
@@ -30,110 +27,114 @@ Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com,
  vladimir.oltean@nxp.com, boon.khai.ng@altera.com, 
  "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
 X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772096053; l=4026;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772096053; l=4143;
  i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=MGkjI1HZcHX6Aqy2EL90L2nZD2qE3PqctGLEz7PLx6k=;
- b=op1+qBlwqIf+sPHSkfy20RksFc+0ZunpL53mVhj/dInyo9aZ9Ijr7cQ7zuzj9ZFg/oShNRwqc
- 2fTdJVb+70uAH4y4NZWy4txMz9KpDTT4dhL1aaw1ikeoyM20FFrcSi9
+ bh=AN9BxArjvT+LtwWtaoyDzsO4XeDTxufZg6uDwPtH3+8=;
+ b=qx4zViXLhquemljUdcK9/hePoUKUSGDPdEFSLQaAUKxdNbrTHqfA5yznxNKgqzJbgLNjeQe5h
+ HwPpAWooWzzCnl0hEP7EkpABcn72M2PYEy57NzXZsGL5wKXTtsMpsUG
 X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
  pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
 X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The stmmac core supports two interrupt modes, controlled by the
-flag STMMAC_FLAG_MULTI_MSI_EN:
-
-- When the flag is set, the driver uses multi-channel IRQ mode (Multi-IRQ).
-- Otherwise, a single IRQ line is requested (aka MAC-IRQ):
-
-static int stmmac_request_irq(struct net_device *dev)
-{
-        /* Request the IRQ lines */
-        if (priv->plat->flags & STMMAC_FLAG_MULTI_MSI_EN)
-                ret = stmmac_request_irq_multi_msi(dev);
-        else
-                ret = stmmac_request_irq_single(dev);
-}
-
-At present, only PCI drivers (Intel and Loongson) make use of the Multi-IRQ
-mode. This concept can be extended to DT-based embedded glue drivers
-(dwmac-xxx.c).
-
-This series adds support for reading per-channel IRQs from the DT node and
-reuses the existing STMMAC_FLAG_MULTI_MSI_EN flag to enable multi-IRQ
-operation in platform drivers.
-
-The final decision if Multi-IRQ gets enabled remains on glue driver
-to allow implementing any reguirements/limitions the focused platform
-needs.
-
-NXP S32G2/S32G3/S32R SoCs integrate the DWMAC IP with multi-channel
-interrupt support. The dwmac-s32.c driver change is provided as an example of
-enabling multi-IRQ mode for non-PCI drivers.
+The stmmac driver contains similar pattern for processing queue-based
+arrays, ie. interrupt lines, etc. Factor out the for loop and provide
+a macro STMMAC_FOREACH_MTL_QUEUE(var, limit).
 
 Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
 ---
-Changes in v7:
-- Optimized 2 similar loops on queue rx/tx irq reading
-- Swap the yaml and dts patches with hope it fix dt_binding_check failing
-- Link to v6: https://lore.kernel.org/r/20260225-dwmac_multi_irq-v6-0-245bf1d7110c@oss.nxp.com
+ drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c |  2 +-
+ drivers/net/ethernet/stmicro/stmmac/stmmac.h        |  3 +++
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c   | 16 ++++++++--------
+ 3 files changed, 12 insertions(+), 9 deletions(-)
 
-Changes in v6:
-- Added 2 mintainers which were not covered by 'b4 prep --auto-to-cc'
-  but complained on patchwork check
-- Added helper macro for loop over queue-based arrays (inspired by AI
-  review)
-- Added full validation on all channel IRQs
-- Link to v5: https://lore.kernel.org/r/20260223-dwmac_multi_irq-v5-0-8fc699a5fac4@oss.nxp.com
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c b/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c
+index 49893b9fb88c..3890e82c69f6 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c
+@@ -233,7 +233,7 @@ static void dwxgmac2_prog_mtl_tx_algorithms(struct mac_device_info *hw,
+ 	writel(value, ioaddr + XGMAC_MTL_OPMODE);
+ 
+ 	/* Set ETS if desired */
+-	for (i = 0; i < MTL_MAX_TX_QUEUES; i++) {
++	STMMAC_FOREACH_MTL_QUEUE(i, MTL_MAX_TX_QUEUES) {
+ 		value = readl(ioaddr + XGMAC_MTL_TCx_ETS_CONTROL(i));
+ 		value &= ~XGMAC_TSA;
+ 		if (ets)
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac.h b/drivers/net/ethernet/stmicro/stmmac/stmmac.h
+index 51c96a738151..c972ad8e79f8 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac.h
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac.h
+@@ -382,6 +382,9 @@ enum stmmac_state {
+ 
+ extern const struct dev_pm_ops stmmac_simple_pm_ops;
+ 
++#define STMMAC_FOREACH_MTL_QUEUE(var, limit) \
++	for (var = 0; var < (limit); var++)
++
+ int stmmac_mdio_unregister(struct net_device *ndev);
+ int stmmac_mdio_register(struct net_device *ndev);
+ int stmmac_mdio_reset(struct mii_bus *mii);
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+index edf0799b7236..b920ca17b2be 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -3875,7 +3875,7 @@ static int stmmac_request_irq_multi_msi(struct net_device *dev)
+ 	}
+ 
+ 	/* Request Rx MSI irq */
+-	for (i = 0; i < priv->plat->rx_queues_to_use; i++) {
++	STMMAC_FOREACH_MTL_QUEUE(i, priv->plat->rx_queues_to_use) {
+ 		if (i >= MTL_MAX_RX_QUEUES)
+ 			break;
+ 		if (priv->rx_irq[i] == 0)
+@@ -3899,7 +3899,7 @@ static int stmmac_request_irq_multi_msi(struct net_device *dev)
+ 	}
+ 
+ 	/* Request Tx MSI irq */
+-	for (i = 0; i < priv->plat->tx_queues_to_use; i++) {
++	STMMAC_FOREACH_MTL_QUEUE(i, priv->plat->tx_queues_to_use) {
+ 		if (i >= MTL_MAX_TX_QUEUES)
+ 			break;
+ 		if (priv->tx_irq[i] == 0)
+@@ -4084,10 +4084,10 @@ static int __stmmac_open(struct net_device *dev,
+ 			 struct stmmac_dma_conf *dma_conf)
+ {
+ 	struct stmmac_priv *priv = netdev_priv(dev);
++	int ret, i;
+ 	u32 chan;
+-	int ret;
+ 
+-	for (int i = 0; i < MTL_MAX_TX_QUEUES; i++)
++	STMMAC_FOREACH_MTL_QUEUE(i, MTL_MAX_TX_QUEUES)
+ 		if (priv->dma_conf.tx_queue[i].tbs & STMMAC_TBS_EN)
+ 			dma_conf->tx_queue[i].tbs = priv->dma_conf.tx_queue[i].tbs;
+ 	memcpy(&priv->dma_conf, dma_conf, sizeof(*dma_conf));
+@@ -7734,9 +7734,9 @@ static int __stmmac_dvr_probe(struct device *device,
+ 	priv->device = device;
+ 	priv->dev = ndev;
+ 
+-	for (i = 0; i < MTL_MAX_RX_QUEUES; i++)
++	STMMAC_FOREACH_MTL_QUEUE(i, MTL_MAX_RX_QUEUES)
+ 		u64_stats_init(&priv->xstats.rxq_stats[i].napi_syncp);
+-	for (i = 0; i < MTL_MAX_TX_QUEUES; i++) {
++	STMMAC_FOREACH_MTL_QUEUE(i, MTL_MAX_TX_QUEUES) {
+ 		u64_stats_init(&priv->xstats.txq_stats[i].q_syncp);
+ 		u64_stats_init(&priv->xstats.txq_stats[i].napi_syncp);
+ 	}
+@@ -7759,9 +7759,9 @@ static int __stmmac_dvr_probe(struct device *device,
+ 	priv->sfty_irq = res->sfty_irq;
+ 	priv->sfty_ce_irq = res->sfty_ce_irq;
+ 	priv->sfty_ue_irq = res->sfty_ue_irq;
+-	for (i = 0; i < MTL_MAX_RX_QUEUES; i++)
++	STMMAC_FOREACH_MTL_QUEUE(i, MTL_MAX_RX_QUEUES)
+ 		priv->rx_irq[i] = res->rx_irq[i];
+-	for (i = 0; i < MTL_MAX_TX_QUEUES; i++)
++	STMMAC_FOREACH_MTL_QUEUE(i, MTL_MAX_TX_QUEUES)
+ 		priv->tx_irq[i] = res->tx_irq[i];
+ 
+ 	if (!is_zero_ether_addr(res->mac))
 
-Changes in v5:
-- fixed typo in "symetrical"
-- cleaned negative return value on platform_get_irq_byname_optional()
-  in stmmac_get_platform_resources()
-- rebased on v7.0-rc1
-- Link to v4: https://lore.kernel.org/r/20260128-dwmac_multi_irq-v4-0-82fa34fcf2f2@oss.nxp.com
-
-Changes in v4:
-- Fixed IRQ reading check
-- Made cleaner the IRQ validity (to get AI reviewer happy)
-- Fixed minItems of interrupts property in yaml
-- Link to v3: https://lore.kernel.org/r/20260123-dwmac_multi_irq-v3-0-cc53f2be8961@oss.nxp.com
-
-Changes in v3:
-- removed RFC prefix
-- rebased on v6.19-rc6
-- fixed forgotten extra line setting to Multi-IRQ unconditionally
-- fixed yaml
-- Link to v2: https://lore.kernel.org/r/20260121-dwmac_multi_irq-v2-0-3b829230d071@oss.nxp.com
-
-Changes in v2:
-- Fixed incorrect buffer len for 'rx-queue-%d' property check
-- Added backward compatibility to not break old settings
-- Fixed DT example in yaml
-- Link to v1: https://lore.kernel.org/r/20251214-dwmac_multi_irq-v1-0-36562ab0e9f7@oss.nxp.com
-
----
-Jan Petrous (OSS) (5):
-      net: stmmac: Use helper macro for loop over queue-based arrays
-      net: stmmac: platform: read channels irq
-      arm64: dts: s32: set Ethernet channel irqs
-      dt-bindings: net: nxp,s32-dwmac: Declare per-queue interrupts
-      stmmac: s32: enable support for Multi-IRQ mode
-
- .../devicetree/bindings/net/nxp,s32-dwmac.yaml     | 44 ++++++++++++++++++---
- arch/arm64/boot/dts/freescale/s32g2.dtsi           | 26 ++++++++++--
- arch/arm64/boot/dts/freescale/s32g3.dtsi           | 26 ++++++++++--
- drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c    | 36 ++++++++++++++++-
- .../net/ethernet/stmicro/stmmac/dwxgmac2_core.c    |  2 +-
- drivers/net/ethernet/stmicro/stmmac/stmmac.h       |  3 ++
- drivers/net/ethernet/stmicro/stmmac/stmmac_main.c  | 16 ++++----
- .../net/ethernet/stmicro/stmmac/stmmac_platform.c  | 46 +++++++++++++++++++++-
- 8 files changed, 177 insertions(+), 22 deletions(-)
----
-base-commit: 6de23f81a5e08be8fbf5e8d7e9febc72a5b5f27f
-change-id: 20251209-dwmac_multi_irq-9d8f60462cc1
-
-Best regards,
 -- 
-Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+2.47.0
 
