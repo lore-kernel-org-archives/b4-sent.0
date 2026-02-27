@@ -1,15 +1,12 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH v4 0/3] Add Amlogic general DMA
-Date: Fri, 27 Feb 2026 07:20:52 +0000
-Message-Id: <20260227-amlogic-dma-v4-0-f25e4614e9b7@amlogic.com>
+Date: Fri, 27 Feb 2026 07:20:53 +0000
+Subject: [PATCH v4 1/3] dt-bindings: dma: Add Amlogic A9 SoC DMA
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANRFoWkC/2XN0Q6CIBTG8VdxXEeTIweiq96jdWFwVLbUBs3Vn
- O8eulyzLr/Dfn9GFil4iuyYjSzQ4KPvuzTkLmO2KbuauHdpM8gBBQjkZXvra2+5a0uujdTaoXW
- gJEviHqjyz6V2vqTd+Pjow2uJD2K+rh216QyC55zgYAg1GVXq0+d1b/uWzaUBVq1yAXqrIWmJg
- K4A7bR0/7r4ash//i6SRlVdTYWGHMBWT9P0BkgoQtgkAQAA
-X-Change-ID: 20251215-amlogic-dma-79477d5cd264
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260227-amlogic-dma-v4-1-f25e4614e9b7@amlogic.com>
+References: <20260227-amlogic-dma-v4-0-f25e4614e9b7@amlogic.com>
+In-Reply-To: <20260227-amlogic-dma-v4-0-f25e4614e9b7@amlogic.com>
 To: Vinod Koul <vkoul@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
@@ -18,58 +15,111 @@ Cc: linux-amlogic@lists.infradead.org, dmaengine@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-hardening@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772176854; l=1831;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772176854; l=2714;
  i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=RFltPrKJIjfvmzT/bfePEMqFZoeR7AwOXUkIc6eFgUs=;
- b=bzjyPILUaw6m5l2hdPlILufPYyMLYzUKnLv4OxWZRw9Q3EZa23UIUr07Fng/0ZVBH7vHbja7D
- BfE0iN5Pk/ADimCHoTtopGiCwwmdzu5FPwSbWXRTer9L2P3+XJ8Siui
+ bh=kAPLFHoe2A7SVw2vXJTjrGauMsdYZiEvifE22xpjjBo=;
+ b=yX2kd6NWfUScjoGpltvYYUcwtCcpiMw2C1VdfpjjA01frK3bCd9gn8zxl94ebazsSzxovYqDI
+ O7D27TXGZDQD/gvIuHYER7G5LbLL77iE/qQ/bWuiZPfh81uQIjPKaa4
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add DMA driver and bindigns for the Amlogic SoCs.
+Add documentation describing the Amlogic A9 SoC DMA. And add
+the properties specific values defines into a new include file.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Changes in v4:
-- Support Split transfer when data len > MAX_LEN.
-- When a module fails or exits, perform de-initialization.
-- Some other minor modifications.
-- Link to v3: https://lore.kernel.org/r/20260206-amlogic-dma-v3-0-56fb9f59ed22@amlogic.com
+ .../devicetree/bindings/dma/amlogic,a9-dma.yaml    | 65 ++++++++++++++++++++++
+ include/dt-bindings/dma/amlogic-dma.h              |  8 +++
+ 2 files changed, 73 insertions(+)
 
-Changes in v3:
-- Adjust the format of binding according to Frank's suggestion.
-- Some code format modified according to Frank's suggestion.
-- Support one prep_sg and one submit, drop multi prep_sg and one submit.
-- Keep pre state when resume from pause status.
-- Link to v2: https://lore.kernel.org/r/20260127-amlogic-dma-v2-0-4525d327d74d@amlogic.com
+diff --git a/Documentation/devicetree/bindings/dma/amlogic,a9-dma.yaml b/Documentation/devicetree/bindings/dma/amlogic,a9-dma.yaml
+new file mode 100644
+index 000000000000..efd7b2602c33
+--- /dev/null
++++ b/Documentation/devicetree/bindings/dma/amlogic,a9-dma.yaml
+@@ -0,0 +1,65 @@
++# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/dma/amlogic,a9-dma.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Amlogic general DMA controller
++
++description:
++  This is a general-purpose peripheral DMA controller. It currently supports
++  major peripherals including I2C, I3C, PIO, and CAN-BUS. Transmit and receive
++  for the same peripheral use two separate channels, controlled by different
++  register sets. I2C and I3C transfer data in 1-byte units, while PIO and
++  CAN-BUS transfer data in 4-byte units. From the controller’s perspective,
++  there is no significant difference.
++
++maintainers:
++  - Xianwei Zhao <xianwei.zhao@amlogic.com>
++
++properties:
++  compatible:
++    const: amlogic,a9-dma
++
++  reg:
++    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++
++  clocks:
++    maxItems: 1
++
++  clock-names:
++    const: sys
++
++  '#dma-cells':
++    const: 2
++
++  dma-channels:
++    maximum: 64
++
++required:
++  - compatible
++  - reg
++  - interrupts
++  - clocks
++  - '#dma-cells'
++  - dma-channels
++
++allOf:
++  - $ref: dma-controller.yaml#
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++    dma-controller@fe400000{
++        compatible = "amlogic,a9-dma";
++        reg = <0xfe400000 0x4000>;
++        interrupts = <GIC_SPI 35 IRQ_TYPE_EDGE_RISING>;
++        clocks = <&clkc 45>;
++        #dma-cells = <2>;
++        dma-channels = <28>;
++    };
+diff --git a/include/dt-bindings/dma/amlogic-dma.h b/include/dt-bindings/dma/amlogic-dma.h
+new file mode 100644
+index 000000000000..025ecc42e395
+--- /dev/null
++++ b/include/dt-bindings/dma/amlogic-dma.h
+@@ -0,0 +1,8 @@
++/* SPDX-License-Identifier: (GPL-2.0 OR MIT) */
++
++#ifndef __DT_BINDINGS_DMA_AMLOGIC_DMA_H__
++#define __DT_BINDINGS_DMA_AMLOGIC_DMA_H__
++
++#define AML_DMA_TYPE_TX		0
++#define AML_DMA_TYPE_RX		1
++#endif /* __DT_BINDINGS_DMA_AMLOGIC_DMA_H__ */
 
-Changes in v2:
-- Introduce what the DMA is used for in the A9 SoC.
-- Some minor modifications were made according to Krzysztof's suggestions.
-- Some modifications were made according to Neil's suggestions.
-- Fix a build error.
-- Link to v1: https://lore.kernel.org/r/20251216-amlogic-dma-v1-0-e289e57e96a7@amlogic.com
-
----
-Xianwei Zhao (3):
-      dt-bindings: dma: Add Amlogic A9 SoC DMA
-      dma: amlogic: Add general DMA driver for A9
-      MAINTAINERS: Add an entry for Amlogic DMA driver
-
- .../devicetree/bindings/dma/amlogic,a9-dma.yaml    |  65 +++
- MAINTAINERS                                        |   7 +
- drivers/dma/Kconfig                                |   9 +
- drivers/dma/Makefile                               |   1 +
- drivers/dma/amlogic-dma.c                          | 585 +++++++++++++++++++++
- include/dt-bindings/dma/amlogic-dma.h              |   8 +
- 6 files changed, 675 insertions(+)
----
-base-commit: 6de23f81a5e08be8fbf5e8d7e9febc72a5b5f27f
-change-id: 20251215-amlogic-dma-79477d5cd264
-
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.52.0
 
