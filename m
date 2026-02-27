@@ -1,57 +1,65 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Fri, 27 Feb 2026 07:20:55 +0000
-Subject: [PATCH v4 3/3] MAINTAINERS: Add an entry for Amlogic DMA driver
+From: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
+Date: Fri, 27 Feb 2026 20:15:01 +0800
+Subject: [PATCH] phy: qcom: qmp-usbc: Fix out-of-bounds array access in dp
+ swing config
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260227-amlogic-dma-v4-3-f25e4614e9b7@amlogic.com>
-References: <20260227-amlogic-dma-v4-0-f25e4614e9b7@amlogic.com>
-In-Reply-To: <20260227-amlogic-dma-v4-0-f25e4614e9b7@amlogic.com>
-To: Vinod Koul <vkoul@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
- "Gustavo A. R. Silva" <gustavoars@kernel.org>
-Cc: linux-amlogic@lists.infradead.org, dmaengine@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-hardening@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
+Message-Id: <20260227-master-v1-1-8d91b9407fdb@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAMWKoWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDIyNz3dzE4pLUIl2LJEsTi2RTM2Pj1EQloOKCotS0zAqwQdGxtbUAVve
+ n8lgAAAA=
+X-Change-ID: 20260227-master-8b948c5633ea
+To: Vinod Koul <vkoul@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, fange.zhang@oss.qualcomm.com, 
+ yongxing.mou@oss.qualcomm.com, li.liu@oss.qualcomm.com, 
+ tingwei.zhang@oss.qualcomm.com, Konrad Dybcio <konradybcio@kernel.org>, 
+ Dan Carpenter <dan.carpenter@linaro.org>, 
+ Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772176854; l=791;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=3ILqFEE9mmDp095lkKeN49I2hs9aNRjaPs7y2SEtITs=;
- b=ZbNvi1H6dX2dRUHx2fdcEhQktkEhlIj//tcfjDKNaTVr5Iuvk7s0K+5auXK4jondqkMXVs5CJ
- vyP1LLQYdI1D6W2XGSkear099oQPRZCFSGq698NjzuWVHFitForzNxb
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772194522; l=1203;
+ i=xiangxu.yin@oss.qualcomm.com; s=20241125; h=from:subject:message-id;
+ bh=pdrpH5cTTs+ijKgI12OITbrW3X2fkvMKZRJEqz9UHyo=;
+ b=MCp8ELqBe4xNj0zEqPVDUDfiJUGcLcxa4ZPNWTAC7dcq0ZgPqU1gJXVl+HmIE/g0m5C0W/gzt
+ r50BRSiilyaCI5SXfWmUohtIIHvcugL/WhmjrgXKfLe54Ft6bn1VKJH
+X-Developer-Key: i=xiangxu.yin@oss.qualcomm.com; a=ed25519;
+ pk=F1TwipJzpywfbt3n/RPi4l/A4AVF+QC89XzCHgZYaOc=
+X-Endpoint-Received: by B4 Relay for xiangxu.yin@oss.qualcomm.com/20241125 with auth_id=542
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Amlogic DMA controller entry to MAINTAINERS to clarify
-the maintainers.
+swing_tbl and pre_emphasis_tbl are 4x4 arrays (valid indices 0-3), but
+the boundary check uses "> 4" instead of ">= 4", allowing index 4 to
+cause an out-of-bounds access.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Reported-by: Dan Carpenter <dan.carpenter@linaro.org>
+Fixes: 81791c45c8e0 ("phy: qcom: qmp-usbc: Add QCS615 USB/DP PHY config and DP mode support")
+Signed-off-by: Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
 ---
- MAINTAINERS | 7 +++++++
- 1 file changed, 7 insertions(+)
+ drivers/phy/qualcomm/phy-qcom-qmp-usbc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 55af015174a5..e9c52dfba2df 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1316,6 +1316,13 @@ F:	Documentation/devicetree/bindings/perf/amlogic,g12-ddr-pmu.yaml
- F:	drivers/perf/amlogic/
- F:	include/soc/amlogic/
+diff --git a/drivers/phy/qualcomm/phy-qcom-qmp-usbc.c b/drivers/phy/qualcomm/phy-qcom-qmp-usbc.c
+index 14feb77789b3..0dd7000614f4 100644
+--- a/drivers/phy/qualcomm/phy-qcom-qmp-usbc.c
++++ b/drivers/phy/qualcomm/phy-qcom-qmp-usbc.c
+@@ -794,7 +794,7 @@ static int qmp_v2_configure_dp_swing(struct qmp_usbc *qmp)
+ 		p_level = max(p_level, dp_opts->pre[i]);
+ 	}
  
-+AMLOGIC DMA DRIVER
-+M:	Xianwei Zhao <xianwei.zhao@amlogic.com>
-+L:	linux-amlogic@lists.infradead.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/dma/amlogic,a9-dma.yaml
-+F:	drivers/dma/amlogic-dma.c
-+
- AMLOGIC ISP DRIVER
- M:	Keke Li <keke.li@amlogic.com>
- L:	linux-media@vger.kernel.org
+-	if (v_level > 4 || p_level > 4) {
++	if (v_level >= 4 || p_level >= 4) {
+ 		dev_err(qmp->dev, "Invalid v(%d) | p(%d) level)\n",
+ 			v_level, p_level);
+ 		return -EINVAL;
 
+---
+base-commit: 7d6661873f6b54c75195780a40d66bad3d482d8f
+change-id: 20260227-master-8b948c5633ea
+
+Best regards,
 -- 
-2.52.0
+Xiangxu Yin <xiangxu.yin@oss.qualcomm.com>
 
