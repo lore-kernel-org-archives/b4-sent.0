@@ -1,186 +1,101 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sun, 01 Mar 2026 01:51:28 +0100
-Subject: [PATCH WIP v4 9/9] media: qcom: camss: Account for C-PHY when
- calculating link frequency
+From: Simon Baatz <gmbnomis@gmail.com>
+Date: Sun, 01 Mar 2026 09:41:33 +0100
+Subject: [PATCH] selftests/net: packetdrill: restore tcp_rcv_big_endseq.pkt
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260301-qcom-cphy-v4-9-e53316d2cc65@ixit.cz>
-References: <20260301-qcom-cphy-v4-0-e53316d2cc65@ixit.cz>
-In-Reply-To: <20260301-qcom-cphy-v4-0-e53316d2cc65@ixit.cz>
-To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Luca Weiss <luca.weiss@fairphone.com>, Petr Hodina <phodina@protonmail.com>, 
- Casey Connolly <casey.connolly@linaro.org>, "Dr. Git" <drgitx@gmail.com>
-Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Joel Selvaraj <foss@joelselvaraj.com>, Kieran Bingham <kbingham@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, linux-media@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6125; i=david@ixit.cz;
- h=from:subject:message-id; bh=Cjh/ZCc+QxiGxE0P3pin9rU82Q1mGW8XbN3n2VAfbWs=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpo42JiWMCDeyS6nMb0DJdISneQyIuieGWA7N6t
- mYYFQY5OOeJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaaONiQAKCRBgAj/E00kg
- cslrD/wPuUhKj65xd6W8NpE9LwqpaN2hXZGJRjBidegodg/nYCj+4Hz/Bw4idpLc/piu2N6Lh3s
- urukhvNP7ick7mXQciySdDUgQf9pEbe4WUX8HYm/+OxRkGTOlpt0rq6onGlLEKeIYXt6iK8CtJX
- zFXsGZuJpGLaGWJeCPO/5tkBXwl5rLeq+ipNKfJbeDWxC3P2r4q4K7R0QJycYqnT1OI2qrgee/3
- FyUIKocC+BgGedGKSK6F4PehKz5pSRXXH/0A0dbrDwutRnAbYDLw6aEnK5OVDvn2EiW2Ufk1AP0
- 1NRWnZFmSo0MvxiDN73n4DuJo41yBmx2vcAYd07S2r4ed2s/IsBz4slXgRo6bE8PReqmrZShPwo
- 5R9eqdqVvVSpT5rodLlxiAOQZBJgsNrYyWd+jzK6VOtvS44A/TYgNv8Kd46+HDsjkcRTF+jXozm
- gwWCmDRMIt7toZHvJrVO8JM0LL+3LPJ13HtIp4mOdWpKnXa6szklZcghCL6i9D0Jq0N1/yxp+px
- S1dFnx4TDDGHrw0+6jQPK/lsKDzAIKwXoGECKNOZ5yuhwFzrMCoPIGda49aj0vAKfyzINqjlRHM
- kLI9TcTynzGM4Ee92zGuYhvmxd5HoGS7MpbA3IeKBiDwngLYpQc/0dQ4QocjYAlIi75rk6Ta/2S
- KAx7UQ0Yx+JRJCw==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Message-Id: <20260301-tcp_rcv_big_endseq-v1-1-86ab7415ab58@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQqAIBBA4avIrBNSor+rRIjpaLMx05AgunvS8
+ lu890DGRJhhZg8kLJTpCBWiYWB2HTxystUgW9m3Uo78MlElU9RGXmGwGU9uRidwmESnBws1jAk
+ d3f90Wd/3AzlIkn9kAAAA
+X-Change-ID: 20260228-tcp_rcv_big_endseq-c8f1e7914a7d
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Shuah Khan <shuah@kernel.org>
+Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, Simon Baatz <gmbnomis@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772354501; l=2571;
+ i=gmbnomis@gmail.com; s=20260220; h=from:subject:message-id;
+ bh=y5Qga6QOLux9usDOxXwZ0c1UWnBSsfdcWFsVJAvrhHI=;
+ b=o5FudX9jHGh+XH4xjuB9TRyfPib3PPUV14pl2IJlNizXNWR68+AE0ZA5cQNh2KDpZiUPNUAj7
+ hISaYNu4DUhDqv4NtAg/77TOI+mb7VHW+0Ra/aVGtPHIWTTmk3GALw2
+X-Developer-Key: i=gmbnomis@gmail.com; a=ed25519;
+ pk=T/JIz/6F5bf1uQJr69lmyi7czVG+F9TVZ/8x5z9Wtqw=
+X-Endpoint-Received: by B4 Relay for gmbnomis@gmail.com/20260220 with auth_id=641
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Ensure that the link frequency divider correctly accounts for C-PHY
-operation. The divider differs between D-PHY and C-PHY, as described
-in the MIPI CSI-2 specification.
+Commit 1cc93c48b5d7 ("selftests/net: packetdrill: remove tests for
+tcp_rcv_*big") removed the test for the reverted commit 1d2fbaad7cd8
+("tcp: stronger sk_rcvbuf checks") but also the one for commit
+9ca48d616ed7 ("tcp: do not accept packets beyond window").
 
-For more details, see:
-https://docs.kernel.org/driver-api/media/tx-rx.html#pixel-rate
+Restore the test with the necessary adaptation: expect a delayed ACK
+instead of an immediate one, since tcp_can_ingest() does not fail
+anymore for the last data packet.
 
-Suggested-by: Sakari Ailus <sakari.ailus@linux.intel.com>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Simon Baatz <gmbnomis@gmail.com>
 ---
- drivers/media/platform/qcom/camss/camss-csid.c   | 11 +++++++----
- drivers/media/platform/qcom/camss/camss-csiphy.c |  6 ++----
- drivers/media/platform/qcom/camss/camss.c        | 18 +++++++++++++++---
- drivers/media/platform/qcom/camss/camss.h        |  2 +-
- 4 files changed, 25 insertions(+), 12 deletions(-)
+ .../net/packetdrill/tcp_rcv_big_endseq.pkt         | 44 ++++++++++++++++++++++
+ 1 file changed, 44 insertions(+)
 
-diff --git a/drivers/media/platform/qcom/camss/camss-csid.c b/drivers/media/platform/qcom/camss/camss-csid.c
-index b50b0cfe280c1..2fc17c6a15e2e 100644
---- a/drivers/media/platform/qcom/camss/camss-csid.c
-+++ b/drivers/media/platform/qcom/camss/camss-csid.c
-@@ -534,18 +534,21 @@ const struct csid_format_info *csid_get_fmt_entry(const struct csid_format_info
-  * csid_set_clock_rates - Calculate and set clock rates on CSID module
-  * @csiphy: CSID device
-  */
--static int csid_set_clock_rates(struct csid_device *csid)
-+static int csid_set_clock_rates(struct v4l2_subdev *sd, struct csid_device *csid)
- {
- 	struct device *dev = csid->camss->dev;
-+	struct csiphy_device *csiphy = v4l2_get_subdevdata(sd);
-+	struct csiphy_lanes_cfg *lane_cfg = &csiphy->cfg.csi2->lane_cfg;
- 	const struct csid_format_info *fmt;
+diff --git a/tools/testing/selftests/net/packetdrill/tcp_rcv_big_endseq.pkt b/tools/testing/selftests/net/packetdrill/tcp_rcv_big_endseq.pkt
+new file mode 100644
+index 0000000000000000000000000000000000000000..6c0f32c40f19be2a750fc9d69bbf64250cd7b525
+--- /dev/null
++++ b/tools/testing/selftests/net/packetdrill/tcp_rcv_big_endseq.pkt
+@@ -0,0 +1,44 @@
++// SPDX-License-Identifier: GPL-2.0
 +
- 	s64 link_freq;
- 	int i, j;
- 	int ret;
- 
- 	fmt = csid_get_fmt_entry(csid->res->formats->formats, csid->res->formats->nformats,
- 				 csid->fmt[MSM_CSIPHY_PAD_SINK].code);
--	link_freq = camss_get_link_freq(&csid->subdev.entity, fmt->bpp,
--					csid->phy.lane_cnt);
++--mss=1000
 +
-+	link_freq = camss_get_link_freq(&csid->subdev.entity, fmt->bpp, lane_cfg);
- 	if (link_freq < 0)
- 		link_freq = 0;
- 
-@@ -703,7 +706,7 @@ static int csid_set_power(struct v4l2_subdev *sd, int on)
- 			return ret;
- 		}
- 
--		ret = csid_set_clock_rates(csid);
-+		ret = csid_set_clock_rates(sd, csid);
- 		if (ret < 0) {
- 			regulator_bulk_disable(csid->num_supplies,
- 					       csid->supplies);
-diff --git a/drivers/media/platform/qcom/camss/camss-csiphy.c b/drivers/media/platform/qcom/camss/camss-csiphy.c
-index 938600f3defe1..ea9dd2cd2e740 100644
---- a/drivers/media/platform/qcom/camss/camss-csiphy.c
-+++ b/drivers/media/platform/qcom/camss/camss-csiphy.c
-@@ -143,9 +143,8 @@ static int csiphy_set_clock_rates(struct csiphy_device *csiphy)
- 
- 	u8 bpp = csiphy_get_bpp(csiphy->res->formats->formats, csiphy->res->formats->nformats,
- 				csiphy->fmt[MSM_CSIPHY_PAD_SINK].code);
--	u8 num_lanes = csiphy->cfg.csi2->lane_cfg.num_data;
- 
--	link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, num_lanes);
-+	link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, &csiphy->cfg.csi2->lane_cfg);
- 	if (link_freq < 0)
- 		link_freq  = 0;
- 
-@@ -270,10 +269,9 @@ static int csiphy_stream_on(struct csiphy_device *csiphy)
- 	u8 lane_mask = csiphy->res->hw_ops->get_lane_mask(&cfg->csi2->lane_cfg);
- 	u8 bpp = csiphy_get_bpp(csiphy->res->formats->formats, csiphy->res->formats->nformats,
- 				csiphy->fmt[MSM_CSIPHY_PAD_SINK].code);
--	u8 num_lanes = csiphy->cfg.csi2->lane_cfg.num_data;
- 	u8 val;
- 
--	link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, num_lanes);
-+	link_freq = camss_get_link_freq(&csiphy->subdev.entity, bpp, &csiphy->cfg.csi2->lane_cfg);
- 
- 	if (link_freq < 0) {
- 		dev_err(csiphy->camss->dev,
-diff --git a/drivers/media/platform/qcom/camss/camss.c b/drivers/media/platform/qcom/camss/camss.c
-index ea0c8cf3cd806..4c13bae17007e 100644
---- a/drivers/media/platform/qcom/camss/camss.c
-+++ b/drivers/media/platform/qcom/camss/camss.c
-@@ -32,6 +32,14 @@
- #define CAMSS_CLOCK_MARGIN_NUMERATOR 105
- #define CAMSS_CLOCK_MARGIN_DENOMINATOR 100
- 
-+/*
-+ * C-PHY encodes data by 16/7 ~ 2.28 bits/symbol
-+ * D-PHY doesn't encode data, thus 16/16 = 1 b/s
-+ */
-+#define CAMSS_COMMON_PHY_DIVIDENT 16
-+#define CAMSS_CPHY_DIVISOR 7
-+#define CAMSS_DPHY_DIVISOR 16
++`./defaults.sh`
 +
- static const struct parent_dev_ops vfe_parent_dev_ops;
- 
- static const struct camss_subdev_resources csiphy_res_8x16[] = {
-@@ -4280,20 +4288,24 @@ struct media_pad *camss_find_sensor_pad(struct media_entity *entity)
-  * camss_get_link_freq - Get link frequency from sensor
-  * @entity: Media entity in the current pipeline
-  * @bpp: Number of bits per pixel for the current format
-- * @lanes: Number of lanes in the link to the sensor
-+ * @lane_cfg: CSI2 lane configuration
-  *
-  * Return link frequency on success or a negative error code otherwise
-  */
- s64 camss_get_link_freq(struct media_entity *entity, unsigned int bpp,
--			unsigned int lanes)
-+			struct csiphy_lanes_cfg *lane_cfg)
- {
- 	struct media_pad *sensor_pad;
-+	u8 num_lanes = lane_cfg->num_data;
-+	bool cphy = lane_cfg->phy_cfg == V4L2_MBUS_CSI2_CPHY;
-+	unsigned int div = num_lanes * 2 * (cphy ? CAMSS_CPHY_DIVISOR :
-+						     CAMSS_DPHY_DIVISOR);
- 
- 	sensor_pad = camss_find_sensor_pad(entity);
- 	if (!sensor_pad)
- 		return -ENODEV;
- 
--	return v4l2_get_link_freq(sensor_pad, bpp, 2 * lanes);
-+	return v4l2_get_link_freq(sensor_pad, CAMSS_COMMON_PHY_DIVIDENT * bpp, div);
- }
- 
- /*
-diff --git a/drivers/media/platform/qcom/camss/camss.h b/drivers/media/platform/qcom/camss/camss.h
-index 6d048414c919e..67be42b4c9174 100644
---- a/drivers/media/platform/qcom/camss/camss.h
-+++ b/drivers/media/platform/qcom/camss/camss.h
-@@ -163,7 +163,7 @@ int camss_enable_clocks(int nclocks, struct camss_clock *clock,
- void camss_disable_clocks(int nclocks, struct camss_clock *clock);
- struct media_pad *camss_find_sensor_pad(struct media_entity *entity);
- s64 camss_get_link_freq(struct media_entity *entity, unsigned int bpp,
--			unsigned int lanes);
-+			struct csiphy_lanes_cfg *lane_cfg);
- int camss_get_pixel_clock(struct media_entity *entity, u64 *pixel_clock);
- int camss_pm_domain_on(struct camss *camss, int id);
- void camss_pm_domain_off(struct camss *camss, int id);
++    0 `nstat -n`
++
++// Establish a connection.
++   +0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
++   +0 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
++   +0 setsockopt(3, SOL_SOCKET, SO_RCVBUF, [10000], 4) = 0
++   +0 bind(3, ..., ...) = 0
++   +0 listen(3, 1) = 0
++
++   +0 < S 0:0(0) win 32792 <mss 1000,nop,wscale 7>
++   +0 > S. 0:0(0) ack 1 <mss 1460,nop,wscale 0>
++  +.1 < . 1:1(0) ack 1 win 257
++
++  +0 accept(3, ..., ...) = 4
++
++  +0 < P. 1:4001(4000) ack 1 win 257
++  +0 > .  1:1(0) ack 4001 win 5000
++
++// packet in sequence : SKB_DROP_REASON_TCP_INVALID_END_SEQUENCE / LINUX_MIB_BEYOND_WINDOW
++  +0 < P. 4001:54001(50000) ack 1 win 257
++  +0 > .  1:1(0) ack 4001 win 5000
++
++// ooo packet. : SKB_DROP_REASON_TCP_INVALID_END_SEQUENCE / LINUX_MIB_BEYOND_WINDOW
++  +1 < P. 5001:55001(50000) ack 1 win 257
++  +0 > .  1:1(0) ack 4001 win 5000
++
++// SKB_DROP_REASON_TCP_INVALID_SEQUENCE / LINUX_MIB_BEYOND_WINDOW
++  +0 < P. 70001:80001(10000) ack 1 win 257
++  +0 > .  1:1(0) ack 4001 win 5000
++
++  +0 read(4, ..., 100000) = 4000
++
++// If queue is empty, accept a packet even if its end_seq is above wup + rcv_wnd
++  +0 < P. 4001:54001(50000) ack 1 win 257
++   * > .  1:1(0) ack 54001 win 0
++
++// Check LINUX_MIB_BEYOND_WINDOW has been incremented 3 times.
+++0 `nstat | grep TcpExtBeyondWindow | grep -q " 3 "`
 
+---
+base-commit: 9439a661c2e80485406ce2c90b107ca17858382d
+change-id: 20260228-tcp_rcv_big_endseq-c8f1e7914a7d
+
+Best regards,
 -- 
-2.51.0
+Simon Baatz <gmbnomis@gmail.com>
 
