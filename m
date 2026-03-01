@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sun, 01 Mar 2026 18:51:16 +0100
-Subject: [PATCH 02/10] Input: stmfts - Switch to
- devm_regulator_bulk_get_const
+Date: Sun, 01 Mar 2026 18:51:17 +0100
+Subject: [PATCH 03/10] Input: stmfts - abstract reading information from
+ the firmware
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260301-stmfts5-v1-2-22c458b9ac68@ixit.cz>
+Message-Id: <20260301-stmfts5-v1-3-22c458b9ac68@ixit.cz>
 References: <20260301-stmfts5-v1-0-22c458b9ac68@ixit.cz>
 In-Reply-To: <20260301-stmfts5-v1-0-22c458b9ac68@ixit.cz>
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
@@ -22,97 +22,89 @@ Cc: Petr Hodina <petr.hodina@protonmail.com>, linux-input@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2336; i=david@ixit.cz;
- h=from:subject:message-id; bh=gp0Adpeb0dgRnIzbTX0yz5VA3gvM4FK6mupYKoiFMj0=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBppHyURAP+6GmRBdj1YMjGOxEXecCpiSaiwdK38
- nv4OmVUw1SJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaaR8lAAKCRBgAj/E00kg
- cuMlD/96F1ggG3DCx9p28DKIQjERz38LjXqEcedMM/S+1ZJUHTM4uyM9XUaHyO6V9e1/UUxuD1A
- YeTodQ7ny4ouLM14vM3Vo24MD6EaOJxpVWPLm4IxLESagvS4gNalrkbrf/Y4v14mXDw1kXWpQmw
- M08g7WifVWBuHyOLnZ5EHQ4ueDqhDnGzoXvR1AxUCxZoUa7dZ8Pr49Uy6M7ZQKPY1SHVspziZ0p
- A01pQkrJoCZbXvvOY6oDBV99mnx94lydjM3NBbyQAi0fzooZEbUtvjYEEgRtdNlqZIMqhO6QnlH
- oEciiUverffQU3Nfx09m4BuyZNjFpkWFunIGuj7C4Q2bJufTQTtYv72FkIIGzvLju8yodpEqpBG
- GRkkLCRg9NQh1uRL3DxNkIrFFfqohEgb+BGzaR6OwXYeRhu8+AN8uiPoVevSlW+rvz6XRUBFlWV
- fGbsCL4Q0YpRe9BcnRw++lj5nB3Y0+Kdp3pNlh0VRYCFWexu9P8CtrQ1u1QHNPdLbULVDqANTaC
- M6yxpV0co47vYcmJroF9Pe5A9H49Ybv5B3Ne1zIGtyNGYc9d8yFX97MlY1y2x7SVaW4y3Ceu/Iz
- YMENmGjWFOVfy6PHDlXcknxLtc3HYQOqt4TiDXL3dSPdqM+faTPtxiJbGye7WEmtgSxz+zEFVi0
- xga+b9htJMYCDaw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1770; i=david@ixit.cz;
+ h=from:subject:message-id; bh=LcR268CsLFX9IfFbR3m8SNFdiJ3g92w+33Vjc2KTWvw=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBppHyUWy/xfoO2DMWkvnS8Fo3kqaxb091fLqkJs
+ yr4BN24YZ+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaaR8lAAKCRBgAj/E00kg
+ cg5jD/0b2uRo3rzxQmo5CcalkkF0xubiFdZrbRZAflq92qK4+zrRzzXq42iZ5nMk/BYbtzm100G
+ WpYXVpvzJXkhvbkF+fm4L+ZhYeAQ7Lp/FSrDrY0kcwlCDSMMsu5ptrIUTIjE1sL/Jp6oV571J6U
+ +Nxio3frQuqOy1QTnq0Cb56/pC8eLFw/kkfxxoCYJ7w5iXU3Azp42xT9FeryOBosVKSUuCzYFZ5
+ Y0r+x5SWY5t5UHPnni8piwCaJUqGZNh2kdOrhzC+7UTVp2yCuRWu1LFpr3y6n1kn/wIbnfn66d6
+ Fglo+sr6ah9ROWcp1taGKX6OJIyQXOfUU5+do75qwLBlVwsaCRuxwX6f3UEjSo0MhqPhL9NbrHr
+ igvOnKr8yBkIbKIXLmJn9nlC/AVE52hWUT3OVEi4tXAOoh08vMgRQWJDTusd/rboo6xv9PmJat5
+ zwhTo5GTVGsANu33wnJKGIrw88FDW+/UMtvCRSA2VTbN8RWVpPECA8WkCdAmIWjGfWaf8lhB3fp
+ rD9nKKpNJCzSbM6knCg69dXSXwVy8Am/+wNeioc3SJ9+0ZZ3I6De4GceMNKCwdqTxlurcd9DH8q
+ enUW0gmPcWmuksR181zBO0HsFFG4vT6l5bE/U9SKeRE7QjEcyNPNRduVz6wk9OO7MIUzQtePR9b
+ oWPsh/uRQCEpo7A==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Switch to devm_regulator_bulk_get_const() to stop setting the supplies
-list in probe(), and move the regulator_bulk_data struct in static const.
-
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Improves readability and makes splitting power on function in following
+commit easier.
 ---
- drivers/input/touchscreen/stmfts.c | 25 ++++++++++++-------------
- 1 file changed, 12 insertions(+), 13 deletions(-)
+ drivers/input/touchscreen/stmfts.c | 36 ++++++++++++++++++++++++------------
+ 1 file changed, 24 insertions(+), 12 deletions(-)
 
 diff --git a/drivers/input/touchscreen/stmfts.c b/drivers/input/touchscreen/stmfts.c
-index 27adb139fa0ce..7c0f94ba49464 100644
+index 7c0f94ba49464..db2dd0bb59fcc 100644
 --- a/drivers/input/touchscreen/stmfts.c
 +++ b/drivers/input/touchscreen/stmfts.c
-@@ -69,9 +69,9 @@
- #define STMFTS_MAX_FINGERS	10
- #define STMFTS_DEV_NAME		"stmfts"
- 
--enum stmfts_regulators {
--	STMFTS_REGULATOR_VDD,
--	STMFTS_REGULATOR_AVDD,
-+static const struct regulator_bulk_data stmfts_supplies[] = {
-+	{ .supply = "vdd" },
-+	{ .supply = "avdd" },
+@@ -519,22 +519,11 @@ static struct attribute *stmfts_sysfs_attrs[] = {
  };
+ ATTRIBUTE_GROUPS(stmfts_sysfs);
  
- struct stmfts_data {
-@@ -82,7 +82,7 @@ struct stmfts_data {
- 
- 	struct touchscreen_properties prop;
- 
--	struct regulator_bulk_data regulators[2];
-+	struct regulator_bulk_data *supplies;
- 
- 	/*
- 	 * Presence of ledvdd will be used also to check
-@@ -524,8 +524,8 @@ static int stmfts_power_on(struct stmfts_data *sdata)
+-static int stmfts_power_on(struct stmfts_data *sdata)
++static int stmfts_read_system_info(struct stmfts_data *sdata)
+ {
  	int err;
  	u8 reg[8];
  
--	err = regulator_bulk_enable(ARRAY_SIZE(sdata->regulators),
--				    sdata->regulators);
+-	err = regulator_bulk_enable(ARRAY_SIZE(stmfts_supplies),
+-				    sdata->supplies);
+-	if (err)
+-		return err;
+-
+-	/*
+-	 * The datasheet does not specify the power on time, but considering
+-	 * that the reset time is < 10ms, I sleep 20ms to be sure
+-	 */
+-	msleep(20);
+-
+ 	err = i2c_smbus_read_i2c_block_data(sdata->client, STMFTS_READ_INFO,
+ 					    sizeof(reg), reg);
+ 	if (err < 0)
+@@ -548,6 +537,29 @@ static int stmfts_power_on(struct stmfts_data *sdata)
+ 	sdata->config_id = reg[4];
+ 	sdata->config_ver = reg[5];
+ 
++	return 0;
++}
++
++static int stmfts_power_on(struct stmfts_data *sdata)
++{
++	int err;
++
 +	err = regulator_bulk_enable(ARRAY_SIZE(stmfts_supplies),
 +				    sdata->supplies);
- 	if (err)
- 		return err;
++	if (err)
++		return err;
++
++	/*
++	 * The datasheet does not specify the power on time, but considering
++	 * that the reset time is < 10ms, I sleep 20ms to be sure
++	 */
++	msleep(20);
++
++
++	err = stmfts_read_system_info(sdata);
++	if (err)
++		return err;
++
+ 	enable_irq(sdata->client->irq);
  
-@@ -590,8 +590,8 @@ static void stmfts_power_off(void *data)
- 	struct stmfts_data *sdata = data;
- 
- 	disable_irq(sdata->client->irq);
--	regulator_bulk_disable(ARRAY_SIZE(sdata->regulators),
--						sdata->regulators);
-+	regulator_bulk_disable(ARRAY_SIZE(stmfts_supplies),
-+			       sdata->supplies);
- }
- 
- static int stmfts_enable_led(struct stmfts_data *sdata)
-@@ -639,11 +639,10 @@ static int stmfts_probe(struct i2c_client *client)
- 	mutex_init(&sdata->mutex);
- 	init_completion(&sdata->cmd_done);
- 
--	sdata->regulators[STMFTS_REGULATOR_VDD].supply = "vdd";
--	sdata->regulators[STMFTS_REGULATOR_AVDD].supply = "avdd";
--	err = devm_regulator_bulk_get(dev,
--				      ARRAY_SIZE(sdata->regulators),
--				      sdata->regulators);
-+	err = devm_regulator_bulk_get_const(dev,
-+					    ARRAY_SIZE(stmfts_supplies),
-+					    stmfts_supplies,
-+					    &sdata->supplies);
- 	if (err)
- 		return err;
- 
+ 	msleep(50);
 
 -- 
 2.51.0
