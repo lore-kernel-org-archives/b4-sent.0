@@ -1,86 +1,93 @@
-From: Jiucheng Xu <jiucheng.xu@amlogic.com>
-Date: Mon, 02 Mar 2026 10:51:03 +0800
-Subject: [PATCH] block: avoild hang when bio_list is non-NULL in
- submit_bio_wait()
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH v4 0/5] soc: qcom: ice: Fix race between qcom_ice_probe()
+ and of_qcom_ice_get()
+Date: Mon, 02 Mar 2026 18:30:17 +0530
+Message-Id: <20260302-qcom-ice-fix-v4-0-0e65740a5dcc@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260302-for-next-v1-1-eb9339e8dc99@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIABb7pGkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDIyMT3bT8It281IoS3ZQ0szQDo2RjM0uTFCWg8oKi1LTMCrBR0bG1tQA
- I0PQ8WgAAAA==
-X-Change-ID: 20260224-for-next-df6f02c3694d
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
- jianxin.pan@amlogic.com, tuan.zhang@amlogic.com, 
- Jiucheng Xu <jiucheng.xu@amlogic.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772419870; l=1659;
- i=jiucheng.xu@amlogic.com; s=20250821; h=from:subject:message-id;
- bh=umq++sfYBrcQgzncaR6KD4RDdLQo6hXzgnvNht92JHc=;
- b=X4RjgRRm6Nf1/IzXU5/a0BXUn8bhim1Iv+n8TXxQpemJztwPBKYqS1YR+PYAsHBQI8wb+Ky9E
- e7RVwpTFwg8CPn//V6Q8dE0FjNN2kt+krfZ6ZZLFPp9hSxEcEzWQ9zw
-X-Developer-Key: i=jiucheng.xu@amlogic.com; a=ed25519;
- pk=Q18IjkdWCCuncSplyu+dYqIrm+n42glvoLFJTQqpb2o=
-X-Endpoint-Received: by B4 Relay for jiucheng.xu@amlogic.com/20250821 with auth_id=498
+X-B4-Tracking: v=1; b=H4sIAOGJpWkC/3XMQQ6CMBAF0KuQrh1SprSKK+9hXJS2ShOh0mqjI
+ dzdgZUxupnk//x5E0suepfYvphYdNknHwYK9aZgptPDxYG3lBlyVBwrDqMJPXjj4OyfYFELzWv
+ ZCrSMXm7RUb1yxxPlzqd7iK9Vz7i0f6CMwKExlW6lVZKjOYSUyvGhr7TqSzps8bL4MFB8GYIMZ
+ bTc1Upgc97+MOZ5fgNkwVjE8wAAAA==
+X-Change-ID: 20260210-qcom-ice-fix-d2a3a045b32d
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Adrian Hunter <adrian.hunter@intel.com>, 
+ Ulf Hansson <ulf.hansson@linaro.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ "Martin K. Petersen" <martin.petersen@oracle.com>, 
+ Abel Vesa <abelvesa@kernel.org>, Abel Vesa <abelvesa@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-mmc@vger.kernel.org, linux-scsi@vger.kernel.org, 
+ Sumit Garg <sumit.garg@oss.qualcomm.com>, mani@kernel.org, 
+ Neeraj Soni <neeraj.soni@oss.qualcomm.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ stable@vger.kernel.org, Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1908;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=toZY+oHCDLL1wXEJv++Eb8dGjU5O3Nr+hFpL9dqNUo0=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBppYnyEWxqDOk0BM6sKUfi4886zLwu99WWtrO2C
+ n4tV2enwR2JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaaWJ8gAKCRBVnxHm/pHO
+ 9U65B/4ouVogJ2VGvK0uAwP5EfJq2GG6FeMRa61ZJo0S+5+Z57OA4Vjl35RaDiCgGHdHRpPnqek
+ Zi7JGgXlv2/4AaXiDcJtEcR4SziGZOCiIMzU+q6TOy5IUxPQA7gTEsL5bjMjceTRWCevd9s44zO
+ VsGqRyz/Y0/B9jQg2rTNIiYpdh4pFR9WBJbL/SxG4kHRnFXOa7RTdr/RMXinT3g6RTYokwcQpLA
+ UI6p0JiD89+oQJSWF5/WBCS5Pc1LgcWZs4ANxFplvp3UarbT8o6J795qCMuW0UDcqVayfUV5NNd
+ iUdzFitWZCUeSX7HdG55V9ViQL6/AYT3707chqN1jblwC3Du
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When current->bio_list is non-NULL in submit_bio_wait(),
-submit_bio_noacct_nocheck appends bio to bio_list but skips IO
-submission, causing submit_bio_wait() to hang indefinitely.
+Hi,
 
-Fix this by temporarily backup bio_list, setting bio_list to
-NULL before calling submit_bio(), then restoring bio_list
-after submit_bio() returns.
+This series fixes the race betwen qcom_ice_probe() and of_qcom_ice_get()
+but synchronizing the two APIs and properly propagating the error codes to
+clients.
 
-I've trimmed down the call stack, as follows:
+Merge Strategy
+==============
 
-f2fs_submit_read_io
-  submit_bio
-    mmc_blk_mq_recovery
-      z_erofs_endio
-        vm_map_ram
-          __pte_alloc_kernel
-            __alloc_pages_direct_reclaim
-              shrink_folio_list
-                __swap_writepage
-                  submit_bio_wait  hang!!!
+Due to dependency, all patches should go through Qcom SoC tree.
 
-Signed-off-by: Jiucheng Xu <jiucheng.xu@amlogic.com>
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- block/bio.c | 13 +++++++++++--
- 1 file changed, 11 insertions(+), 2 deletions(-)
+Changes in v4:
+- For supporting multi-ice instances in a SoC, stored the err ptr in platform
+  drvdata instead of in a global pointer.
+- Link to v3: https://lore.kernel.org/r/20260223-qcom-ice-fix-v3-0-6ca5846329f7@oss.qualcomm.com
 
-diff --git a/block/bio.c b/block/bio.c
-index d80d5d26804e32944bcfe4506ca190033308844f..22c8769722cc89620c239310a0f3d4924de68cf9 100644
---- a/block/bio.c
-+++ b/block/bio.c
-@@ -1505,8 +1505,17 @@ int submit_bio_wait(struct bio *bio)
- 	bio->bi_private = &done;
- 	bio->bi_end_io = submit_bio_wait_endio;
- 	bio->bi_opf |= REQ_SYNC;
--	submit_bio(bio);
--	blk_wait_io(&done);
-+	if (!current->bio_list) {
-+		submit_bio(bio);
-+		blk_wait_io(&done);
-+	} else {
-+		struct bio_list *tmp = current->bio_list;
-+
-+		current->bio_list = NULL;
-+		submit_bio(bio);
-+		blk_wait_io(&done);
-+		current->bio_list = tmp;
-+	}
- 
- 	return blk_status_to_errno(bio->bi_status);
- }
+Changes in v3:
+- Dropped the platform driver removal patch and used the ice_handle to pass
+  error codes. This was done as I learned that we need to have the platform
+  driver design going forward and also removing it introduces other issues.
+- Link to v2: https://lore.kernel.org/r/20260210-qcom-ice-fix-v2-0-9c1ab5d6502c@oss.qualcomm.com
+
+Changes in v2:
+
+- Added MODULE_* macros back
+- Removed spurious platform_device_put()
+- Added patches to remove NULL return
 
 ---
-base-commit: 8c5f40a3ba43ae9a26991f0e4a01a3a06e8958fc
-change-id: 20260224-for-next-df6f02c3694d
+Manivannan Sadhasivam (5):
+      soc: qcom: ice: Fix race between qcom_ice_probe() and of_qcom_ice_get()
+      soc: qcom: ice: Return -ENODEV if the ICE platform device is not found
+      soc: qcom: ice: Return proper error codes from devm_of_qcom_ice_get() instead of NULL
+      mmc: sdhci-msm: Remove NULL check from devm_of_qcom_ice_get()
+      scsi: ufs: ufs-qcom: Remove NULL check from devm_of_qcom_ice_get()
+
+ drivers/mmc/host/sdhci-msm.c | 10 +++++-----
+ drivers/soc/qcom/ice.c       | 33 ++++++++++++++++++++++-----------
+ drivers/ufs/host/ufs-qcom.c  | 10 +++++-----
+ 3 files changed, 32 insertions(+), 21 deletions(-)
+---
+base-commit: 6de23f81a5e08be8fbf5e8d7e9febc72a5b5f27f
+change-id: 20260210-qcom-ice-fix-d2a3a045b32d
 
 Best regards,
 -- 
-Jiucheng Xu <jiucheng.xu@amlogic.com>
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
