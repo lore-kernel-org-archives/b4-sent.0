@@ -1,78 +1,72 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Mon, 02 Mar 2026 18:30:22 +0530
-Subject: [PATCH v4 5/5] scsi: ufs: ufs-qcom: Remove NULL check from
- devm_of_qcom_ice_get()
+From: Shivam Kalra <shivamkalra98@zohomail.in>
+Subject: [PATCH 0/2] mm/vmalloc: free unused pages on vrealloc() shrink
+Date: Mon, 02 Mar 2026 19:27:10 +0530
+Message-Id: <20260302-vmalloc-shrink-v1-0-46deff465b7e@zohomail.in>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260302-qcom-ice-fix-v4-5-0e65740a5dcc@oss.qualcomm.com>
-References: <20260302-qcom-ice-fix-v4-0-0e65740a5dcc@oss.qualcomm.com>
-In-Reply-To: <20260302-qcom-ice-fix-v4-0-0e65740a5dcc@oss.qualcomm.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Adrian Hunter <adrian.hunter@intel.com>, 
- Ulf Hansson <ulf.hansson@linaro.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, 
- "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
- "Martin K. Petersen" <martin.petersen@oracle.com>, 
- Abel Vesa <abelvesa@kernel.org>, Abel Vesa <abelvesa@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-mmc@vger.kernel.org, linux-scsi@vger.kernel.org, 
- Sumit Garg <sumit.garg@oss.qualcomm.com>, mani@kernel.org, 
- Neeraj Soni <neeraj.soni@oss.qualcomm.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIADaXpWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDYwMj3bLcxJyc/GTd4oyizLxsXQOTJKO0RDMLi0RDEyWgpoKi1LTMCrC
+ B0bG1tQAsCUzIYAAAAA==
+X-Change-ID: 20260302-vmalloc-shrink-04b2fa688a14
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ Uladzislau Rezki <urezki@gmail.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Shivam Kalra <shivamkalra98@zohomail.in>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1114;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=TzqKhDLr9WN8kubHG4egYv7EvzBCe1kNbA4zOiRN8WE=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBppYny3mM/pjsxxe74LpHcBCBuM6O78WcNJbaJ0
- muUFmU9g2qJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaaWJ8gAKCRBVnxHm/pHO
- 9aQcB/9b0jJ9AdO0vPQV04cG04qKpN+0ub02IqFskXFTaZbgMqRzF0sPxdZY+vzVFMfSBlXUhmB
- cR/mkQvxxxXmnIIQ4hqQyMuW8N61rWMCm/rllIFs/pQ5E9m7z65k3uy317FHTWO+AmNKe1DKOZJ
- H+h9/hKrM3npOcf/Q8R3wVw/t1Q3LKUJT5KQzz0A+GDGAyH1/bYROuvSAD5Eye1iyilHVeAYodU
- yvbSV5tGXNBzS7ZAwtprvt2rzTLcTMiR2/y089tcM96/el2kF++jEwtdlQ3khvtnmxhFjxofcr4
- 7vVbUMOtwgxRLodw9hHFGa3mPrFE6HauMAhBJvc/yLkGNwFk
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772459853; l=1924;
+ i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
+ bh=5iYnK32dzzvyJuYT0YsGe8MIZxjRwNUxLtlTWSN7ucQ=;
+ b=BKgLUNX7T5+1UaP68S9aSGWliNwqbIqEeeSBcb/pPTyr3ztcYx4XwgHAxmWrHIoo4l7Tb5wrk
+ MDdDsWbd3r+C2DBna4RbPECc2AE/2IPrRi4vnPjbkySXBypYrM7wwdp
+X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
+ pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
+X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now since the devm_of_qcom_ice_get() API never returns NULL, remove the
-NULL check and also simplify the error handling.
+This series implements the TODO in vrealloc() to unmap and free unused
+pages when shrinking across a page boundary.
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Acked-by: Martin K. Petersen <martin.petersen@oracle.com> # UFS
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Problem:
+When vrealloc() shrinks an allocation, it updates bookkeeping
+(requested_size, KASAN shadow) but does not free the underlying physical
+pages. This wastes memory for the lifetime of the allocation.
+
+Solution:
+- Patch 1: Extracts a vmalloc_free_pages(vm, start, end) helper from
+  vfree() that frees a range of pages with memcg and nr_vmalloc_pages
+  accounting. Pure refactor, no functional change.
+- Patch 2: Uses the helper to free tail pages when vrealloc() shrinks
+  across a page boundary. Skips huge page allocations (page_order > 0)
+  since compound pages cannot be partially freed. Also fixes the
+  grow-in-place path to check vm->nr_pages instead of
+  get_vm_area_size(), which reflects the virtual reservation and does
+  not change on shrink.
+The virtual address reservation is kept intact to preserve the range
+for potential future grow-in-place support.
+A concrete user is the Rust binder driver's KVVec::shrink_to [1], which
+performs explicit vrealloc() shrinks for memory reclamation.
+
+Tested:
+- KASAN KUnit (vmalloc_oob passes)
+- lib/test_vmalloc stress tests (3/3, 1M iterations each)
+- checkpatch, sparse, W=1, allmodconfig, coccicheck clean
+
+[1] https://lore.kernel.org/all/20260216-binder-shrink-vec-v3-v6-0-ece8e8593e53@zohomail.in/
+
+Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
- drivers/ufs/host/ufs-qcom.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+Shivam Kalra (2):
+      mm/vmalloc: extract vmalloc_free_pages() helper from vfree()
+      mm/vmalloc: free unused pages on vrealloc() shrink
 
-diff --git a/drivers/ufs/host/ufs-qcom.c b/drivers/ufs/host/ufs-qcom.c
-index 375fd24ba458..72c24ed65fe1 100644
---- a/drivers/ufs/host/ufs-qcom.c
-+++ b/drivers/ufs/host/ufs-qcom.c
-@@ -177,14 +177,14 @@ static int ufs_qcom_ice_init(struct ufs_qcom_host *host)
- 	int i;
- 
- 	ice = devm_of_qcom_ice_get(dev);
--	if (ice == ERR_PTR(-EOPNOTSUPP)) {
-+	if (IS_ERR(ice)) {
-+		if (ice != ERR_PTR(-EOPNOTSUPP))
-+			return PTR_ERR(ice);
-+
- 		dev_warn(dev, "Disabling inline encryption support\n");
--		ice = NULL;
-+		return 0;
- 	}
- 
--	if (IS_ERR_OR_NULL(ice))
--		return PTR_ERR_OR_ZERO(ice);
--
- 	host->ice = ice;
- 
- 	/* Initialize the blk_crypto_profile */
+ mm/vmalloc.c | 73 ++++++++++++++++++++++++++++++++++++++++++------------------
+ 1 file changed, 51 insertions(+), 22 deletions(-)
+---
+base-commit: 3c4ae63073d84abee5d81ce46d86a94e9dae9c89
+change-id: 20260302-vmalloc-shrink-04b2fa688a14
 
+Best regards,
 -- 
-2.51.0
+Shivam Kalra <shivamkalra98@zohomail.in>
 
