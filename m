@@ -1,70 +1,66 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Tue, 03 Mar 2026 10:05:24 +0000
-Subject: [PATCH] dt-bindings: serial: amlogic,meson-uart: Add compatible
- string for A9
+Subject: [PATCH v3 0/2] basic devicetree support for Amlogic A9
+Date: Tue, 03 Mar 2026 10:06:24 +0000
+Message-Id: <20260303-a9-baisc-dts-v3-0-4bf21001f05c@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260303-serial-binding-v1-1-c3df2a8f6fa3@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAGOypmkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDYwNjXZD6xBzdpMy8lMy8dN20FEtDEwsTE3NDczMloKaCotS0zAqwgdG
- xtbUAB4QGzmAAAAA=
-X-Change-ID: 20260303-serial-binding-fd9148447176
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jiri Slaby <jirislaby@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAKCypmkC/3XMSw7CIBSF4a00jMXAtQ/qyH0YB0Bv25vYYqAhm
+ oa9SztSE4fnJN+/soCeMLBzsTKPkQK5OY/ToWB21POAnLq8GQioBYiK65YbTcHybgncGmMQUMh
+ eCZbJw2NPzz13veU9Ulicf+31KLf3TyhKLrgECaas+7bSzUVPdzeQPVo3sS0V4YOD+uGQedmUq
+ u0qa6VW3zyl9AZjGApq6QAAAA==
+X-Change-ID: 20260205-a9-baisc-dts-cbbbe2e01f80
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-kernel@vger.kernel.org, linux-serial@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Jerome Brunet <jbrunet@baylibre.com>, Kevin Hilman <khilman@baylibre.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-serial@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772532325; l=1431;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772532387; l=1285;
  i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=9mURwWMNKHKPj5DQwkxO2/oc3KhRCoTzoGeBobWkQYM=;
- b=JymmJL57wfD3WRuexnCQrwj4gWarkh2+sQtMISQ+nJ1d184MWywv+CAUTFEJ+63gky+C2/16m
- Q8gP9fwsZgFDGeltyP3ZIJJ6/77WPI0Z0i/jNaphv5N1Ab//xjCNCEa
+ bh=xDY2zUL4lo50XwlAxftH7mcEOPS7xG11OXc5XAcUsug=;
+ b=K7ff/AITnNBzEaAERMwOvCVFbtGofqTk6HA3TRi2H7p6R37aiNO599ue4wYKwUWZgmtq0HIwJ
+ wD/cL9vnwNkDHbE8Uf35G+xwW7GDC1fHUUYmnZo29fZQXTMFnirHrNQ
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Amlogic A9 SoCs uses the same UART controller as S4 SoCs.
-There is no need for an extra compatible line in the driver,
-but add A9 compatible line for documentation.
+Add the new A9 SoC/board device tree and related bindings.
 
-Reviewed-by: Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Since the serial submission has removed this patch as a separate patch.
+The dtb check needs to be relied upon for serial submission mereged, or
+check failed, when run "make ARCH=arm64 dtbs_check W=1".
+
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-This patch is from the submission below(patch 2/3).
-https://lore.kernel.org/all/20260205-a9-baisc-dts-v1-0-1212b46f95a7@amlogic.com/
+Changes in v3:
+- Remove serial bindings from this patches and will send it independently.
+- Link to v2: https://lore.kernel.org/r/20260228-a9-baisc-dts-v2-0-47489d5cc1a8@amlogic.com
 
-It is just sent again separately since it goes via the tty tree
----
- Documentation/devicetree/bindings/serial/amlogic,meson-uart.yaml | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/Documentation/devicetree/bindings/serial/amlogic,meson-uart.yaml b/Documentation/devicetree/bindings/serial/amlogic,meson-uart.yaml
-index d8ad1bb6172d..a2702319685d 100644
---- a/Documentation/devicetree/bindings/serial/amlogic,meson-uart.yaml
-+++ b/Documentation/devicetree/bindings/serial/amlogic,meson-uart.yaml
-@@ -56,6 +56,7 @@ properties:
-         items:
-           - enum:
-               - amlogic,a4-uart
-+              - amlogic,a9-uart
-               - amlogic,s6-uart
-               - amlogic,s7-uart
-               - amlogic,s7d-uart
+Changes in v2:
+- Move default interrupt-parent into dtsi.
+- Link to v1: https://lore.kernel.org/r/20260205-a9-baisc-dts-v1-0-1212b46f95a7@amlogic.com
 
 ---
-base-commit: 6de23f81a5e08be8fbf5e8d7e9febc72a5b5f27f
-change-id: 20260303-serial-binding-fd9148447176
+Xianwei Zhao (2):
+      dt-bindings: arm: amlogic: add A311Y3 support
+      arm64: dts: add support for A9 based Amlogic BY401
+
+ Documentation/devicetree/bindings/arm/amlogic.yaml |   6 +
+ arch/arm64/boot/dts/amlogic/Makefile               |   1 +
+ .../boot/dts/amlogic/amlogic-a9-a311y3-by401.dts   |  40 +++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi        | 128 +++++++++++++++++++++
+ 4 files changed, 175 insertions(+)
+---
+base-commit: e3194dfb772304a1b7ca3bcfccacefec3468b7bf
+change-id: 20260205-a9-baisc-dts-cbbbe2e01f80
 
 Best regards,
 -- 
