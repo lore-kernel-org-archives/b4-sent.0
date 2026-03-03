@@ -1,10 +1,10 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 03 Mar 2026 13:27:07 +0000
-Subject: [PATCH v8 02/10] lib: kstrtox: add kstrntoull() helper
+Date: Tue, 03 Mar 2026 13:27:08 +0000
+Subject: [PATCH v8 03/10] lib: test-kstrtox: add tests for kstrntoull()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260303-adf41513-iio-driver-v8-2-8dd2417cc465@analog.com>
+Message-Id: <20260303-adf41513-iio-driver-v8-3-8dd2417cc465@analog.com>
 References: <20260303-adf41513-iio-driver-v8-0-8dd2417cc465@analog.com>
 In-Reply-To: <20260303-adf41513-iio-driver-v8-0-8dd2417cc465@analog.com>
 To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
@@ -18,109 +18,172 @@ Cc: Jonathan Cameron <jic23@kernel.org>,
  Andrew Morton <akpm@linux-foundation.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772544443; l=3621;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772544443; l=4874;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=QOA2ebXlCGOu4rEF7LtCPczO4bNdBpAyoo2OhH/870A=;
- b=wV3bcB78rfX1cS1C53uRVYeEZWLj9IlYYYqbKdCGwFXsZ9gp+BQgGEIz+SeKEFkki+7v3FBtC
- yQX8C5gQY2JD/Sxq364rygWsMEnB7CNS5Gh/P9MyRdSWPl4nE2Gmg3A
+ bh=on3FpvpRalj0PIdH7WCk6vmRu4hDbH1Z0/+fJowkZVQ=;
+ b=IAqWCFIDmLHXOgRb5CvzPQvGqnHhRHpKfOaZW2lL/RGQ/C7gRe4aBF8eQDyfQF0fjl3sJe3+9
+ 0PBIjUMveHnBKypsaz0Ham7YEca4p9sowenwjvj85kd75Vtl1zFOSU8
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add kstrntoull() function, which converts a string to an ULL with a max
-character limit. The function is an alternative integer parsing function
-that does not require a null-terminated string. It becomes a better option
-over simple_strtoull() or kstrtoull() when parsing integers from a buffer
-with custom delimiters without having to create temporary copies.
-The function is consumed inside the implementation _kstrtoull(),
-promoting reuse.
+Add test cases for the new kstrntoull() function which converts a string
+to unsigned long long with a maximum character limit.
+
+The OK tests cover basic decimal conversion, max_chars truncation, octal
+and hex with both autodetection and explicit base, stop-at-non-digit
+behavior, and chained conversions where the return value is used to
+advance through a compound string (e.g. "192.168.1.0", "123::456").
+
+The fail tests cover overflow for decimal, hex, and octal, prefix
+consumed entirely by max_chars, zero max_chars, empty string, and bare
+hex prefix.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- include/linux/kstrtox.h |  3 +++
- lib/kstrtox.c           | 47 +++++++++++++++++++++++++++++++++++++++++++----
- 2 files changed, 46 insertions(+), 4 deletions(-)
+ lib/test-kstrtox.c | 121 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 121 insertions(+)
 
-diff --git a/include/linux/kstrtox.h b/include/linux/kstrtox.h
-index 6ea897222af1..49a6102b8e15 100644
---- a/include/linux/kstrtox.h
-+++ b/include/linux/kstrtox.h
-@@ -9,6 +9,9 @@
- int __must_check _kstrtoul(const char *s, unsigned int base, unsigned long *res);
- int __must_check _kstrtol(const char *s, unsigned int base, long *res);
- 
-+ssize_t __must_check kstrntoull(const char *s, unsigned int base,
-+				unsigned long long *res, size_t max_chars);
-+
- int __must_check kstrtoull(const char *s, unsigned int base, unsigned long long *res);
- int __must_check kstrtoll(const char *s, unsigned int base, long long *res);
- 
-diff --git a/lib/kstrtox.c b/lib/kstrtox.c
-index bdde40cd69d7..202ecc058284 100644
---- a/lib/kstrtox.c
-+++ b/lib/kstrtox.c
-@@ -93,17 +93,56 @@ unsigned int _parse_integer(const char *s, unsigned int base, unsigned long long
- 	return _parse_integer_limit(s, base, p, INT_MAX);
+diff --git a/lib/test-kstrtox.c b/lib/test-kstrtox.c
+index ee87fef66cb5..c3fe2a3bc142 100644
+--- a/lib/test-kstrtox.c
++++ b/lib/test-kstrtox.c
+@@ -703,6 +703,124 @@ static void __init test_kstrtos8_fail(void)
+ 	TEST_FAIL(kstrtos8, s8, "%hhd", test_s8_fail);
  }
  
--static int _kstrtoull(const char *s, unsigned int base, unsigned long long *res)
-+/**
-+ * kstrntoull - convert a string to an unsigned long long with a maximum
-+ * character limit
-+ * @s: The start of the string. The string does not need to be null-terminated.
-+ * The first character cannot be a sign.
-+ * @base: The number base to use. The maximum supported base is 16. If base is
-+ *  given as 0, then the base of the string is automatically detected with the
-+ *  conventional semantics - If it begins with 0x the number will be parsed as a
-+ *  hexadecimal (case insensitive), if it otherwise begins with 0, it will be
-+ *  parsed as an octal number. Otherwise it will be parsed as a decimal.
-+ * @res: Where to write the result of the conversion.
-+ * @max_chars: The maximum number of characters to convert.
-+ *
-+ * Conversion stops when the maximum number of characters is reached or a
-+ * non-digit character is encountered.
-+ *
-+ * Returns the number of characters consumed on success, -ERANGE on overflow and
-+ * -EINVAL on invalid input. Return code must be checked.
-+ */
-+noinline
-+ssize_t kstrntoull(const char *s, unsigned int base, unsigned long long *res,
-+		   size_t max_chars)
- {
--	unsigned long long _res;
-+	const char *cp;
-+	size_t prefix_cnt;
- 	unsigned int rv;
- 
--	s = _parse_integer_fixup_radix(s, &base);
--	rv = _parse_integer(s, base, &_res);
-+	cp = _parse_integer_fixup_radix(s, &base);
-+	prefix_cnt = cp - s;
-+	if (prefix_cnt >= max_chars)
-+		return -EINVAL;
-+
-+	rv = _parse_integer_limit(cp, base, res, max_chars - prefix_cnt);
- 	if (rv & KSTRTOX_OVERFLOW)
- 		return -ERANGE;
- 	if (rv == 0)
- 		return -EINVAL;
-+
-+	return prefix_cnt + rv;
-+}
-+EXPORT_SYMBOL(kstrntoull);
-+
-+static int _kstrtoull(const char *s, unsigned int base, unsigned long long *res)
++static void __init test_kstrntoull_ok(void)
 +{
-+	unsigned long long _res;
-+	ssize_t rv;
++	struct test_ntoull {
++		const char *str;
++		size_t step;
++		unsigned int base;
++		size_t max_chars;
++		ssize_t expected_rv;
++		unsigned long long expected_res;
++	};
++	static const struct test_ntoull test[] __initconst = {
++		/* basic decimal */
++		{"0",		0,	10,	1,	1,	0ULL},
++		{"1",		0,	10,	1,	1,	1ULL},
++		{"123",		0,	10,	3,	3,	123ULL},
++		{"123",		0,	10,	10,	3,	123ULL},
++		/* max_chars truncation */
++		{"1234567",	0,	10,	1,	1,	1ULL},
++		{"1234567",	0,	10,	3,	3,	123ULL},
++		{"1234567",	0,	10,	5,	5,	12345ULL},
++		/* octal with base autodetection */
++		{"0177",	0,	0,	4,	4,	0177ULL},
++		{"0177",	0,	0,	3,	3,	017ULL},
++		{"0177",	0,	0,	2,	2,	01ULL},
++		/* octal with explicit base */
++		{"01777",	0,	8,	4,	4,	0177ULL},
++		{"01777",	0,	8,	3,	3,	017ULL},
++		/* hex with base autodetection */
++		{"0xff",	0,	0,	4,	4,	0xffULL},
++		{"0xffff",	0,	0,	4,	4,	0xffULL},
++		{"0xffff",	0,	0,	6,	6,	0xffffULL},
++		{"0xFF",	0,	0,	4,	4,	0xffULL},
++		/* hex with explicit base */
++		{"0xff",	0,	16,	4,	4,	0xffULL},
++		{"ff",		0,	16,	2,	2,	0xffULL},
++		/* stop at non-digit */
++		{"12abc",	0,	10,	5,	2,	12ULL},
++		/* large values */
++		{"18446744073709551615", 0, 10, 20, 20, 18446744073709551615ULL},
++		{"ffffffffffffffff", 0, 16, 16, 16, 0xffffffffffffffffULL},
++		/* chained tests */
++		{"123::456",	0,	10,	10,	3,	123ULL},
++		{NULL,		2,	10,	10,	3,	456ULL},
++		{"192.168.1.0",	0,	10,	10,	3,	192ULL},
++		{NULL,		1,	10,	10,	3,	168ULL},
++		{NULL,		1,	10,	10,	1,	1ULL},
++		{NULL,		1,	10,	10,	1,	0ULL},
++		{"123-beef",	0,	10,	10,	3,	123ULL},
++		{NULL,		1,	16,	10,	4,	0xBEEFULL},
++		{"12345678",	0,	10,	5,	5,	12345ULL},
++		{NULL,		0,	10,	5,	3,	678ULL},
++	};
++	unsigned int i;
++	const char *s = NULL;
 +
-+	rv = kstrntoull(s, base, &_res, INT_MAX);
-+	if (rv < 0)
-+		return rv;
- 	s += rv;
- 	if (*s == '\n')
- 		s++;
++	for_each_test(i, test) {
++		const struct test_ntoull *t = &test[i];
++		unsigned long long res = ~0ULL;
++		ssize_t rv;
++
++		if (t->str)
++			s = t->str;
++		s += t->step;
++
++		rv = kstrntoull(s, t->base, &res, t->max_chars);
++		if (rv != t->expected_rv) {
++			WARN(1, "str '%s', base %u, max_chars %zu, expected rv %zd, got %zd\n",
++			     s, t->base, t->max_chars, t->expected_rv, rv);
++			continue;
++		}
++		if (rv >= 0 && res != t->expected_res) {
++			WARN(1, "str '%s', base %u, max_chars %zu, expected %llu, got %llu\n",
++			     s, t->base, t->max_chars, t->expected_res, res);
++			continue;
++		}
++		s += rv;
++	}
++}
++
++static void __init test_kstrntoull_fail(void)
++{
++	struct test_ntoull_fail {
++		const char *str;
++		unsigned int base;
++		size_t max_chars;
++		ssize_t expected_rv;
++	};
++	static const struct test_ntoull_fail test[] __initconst = {
++		/* overflow */
++		{"18446744073709551616",	10,	20,	-ERANGE},
++		{"10000000000000000",		16,	17,	-ERANGE},
++		{"2000000000000000000000",	8,	22,	-ERANGE},
++		/* max_chars is too small */
++		{"123",		10,	0,	-EINVAL},
++		{"0xff",	0,	1,	-EINVAL},
++		{"0xff",	0,	2,	-EINVAL},
++		{"0xff",	16,	1,	-EINVAL},
++		{"0xff",	16,	2,	-EINVAL},
++		/* empty string */
++		{"",		10,	10,	-EINVAL},
++		{"0x",		16,	10,	-EINVAL},
++	};
++	unsigned int i;
++
++	for_each_test(i, test) {
++		const struct test_ntoull_fail *t = &test[i];
++		unsigned long long res = 0;
++		ssize_t rv;
++
++		rv = kstrntoull(t->str, t->base, &res, t->max_chars);
++		if (rv != t->expected_rv) {
++			WARN(1, "str '%s', base %u, max_chars %zu, expected %zd, got %zd\n",
++			     t->str, t->base, t->max_chars, t->expected_rv, rv);
++			continue;
++		}
++	}
++}
++
+ static int __init test_kstrtox_init(void)
+ {
+ 	test_kstrtoull_ok();
+@@ -729,6 +847,9 @@ static int __init test_kstrtox_init(void)
+ 	test_kstrtou8_fail();
+ 	test_kstrtos8_ok();
+ 	test_kstrtos8_fail();
++
++	test_kstrntoull_ok();
++	test_kstrntoull_fail();
+ 	return -EINVAL;
+ }
+ module_init(test_kstrtox_init);
 
 -- 
 2.43.0
