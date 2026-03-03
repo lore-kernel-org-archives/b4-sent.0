@@ -1,80 +1,58 @@
 From: Maximilian Pezzullo <maximilianpezzullo@gmail.com>
-Date: Tue, 03 Mar 2026 23:06:17 +0100
-Subject: [PATCH] alpha: objstrip: fix partial write() buffer pointer not
- advancing
+Date: Tue, 03 Mar 2026 23:52:18 +0100
+Subject: [PATCH] ata: libata-core: Disable LPM on ST1000DM010-2EP102
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260303-alpha-fix-v1-1-89abede2a585@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDYwNj3cScgoxE3bTMCt3kVNM0c4PUVAsDwxQloPqColSgMNis6NjaWgA
- gLHmgWwAAAA==
-X-Change-ID: 20260303-alpha-fix-ce5f70ee801d
-To: Richard Henderson <richard.henderson@linaro.org>, 
- Matt Turner <mattst88@gmail.com>, Magnus Lindholm <linmag7@gmail.com>
-Cc: linux-alpha@vger.kernel.org, linux-kernel@vger.kernel.org, 
+Message-Id: <20260303-ata-libata-core-disable-lpm-on-st1000dm010-2ep102-v1-1-40d5db367f67@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2NwQrCMBAFf6Xs2YWXREvxV8RD0qy6kCYlKSKU/
+ rvR0zCXmZ2aVJVG12GnKm9tWnIXcxpofvn8FNbYnSzsCAfHfvOcNPwwlyoctfmQhNO6cMncNgM
+ gLjBgK6uB5YAwXUZMAnem3l2rPPTzf97ux/EFVFUXiYMAAAA=
+X-Change-ID: 20260303-ata-libata-core-disable-lpm-on-st1000dm010-2ep102-b0b85608e034
+To: Damien Le Moal <dlemoal@kernel.org>, Niklas Cassel <cassel@kernel.org>
+Cc: linux-ide@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Filippo Baiamonte <filippo.ba03@bugzilla.kernel.org>, 
+ Copilot <223556219+Copilot@users.noreply.github.com>, 
  Maximilian Pezzullo <maximilianpezzullo@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772575624; l=1584;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772578395; l=1306;
  i=maximilianpezzullo@gmail.com; s=20260303; h=from:subject:message-id;
- bh=z1sLA8h3NypD4m7zDxw+jdCekD1EutaTlomZvuEG0dg=;
- b=TIhTx582nsVwRLtQQmuoneiiCFs/q6M5CdVhFb8BhTlny9UnZ5yZgoIiVVbMF7qEnXPl+7Dc0
- iBqr4hE4EXZBMbUa2eJBhXFPfoNMpfdjCN2u0GIVJWAXPqm8FAK3Z9+
+ bh=neTp5ojoaCXWgRDr8G6XNKyq5Sb8kE/WuOHE9oCy1T8=;
+ b=YYfgDgi2pZ7QrUybv9YQHXOVhAvFLhRa6EXTya1w0RFX3IlSKLpngNlU2GdhbXNm9K5toZS/d
+ tIhxfYTYBRIBba8sJP4Hk5TiV0JcDrfTloCZekqulwguuA38kK6a6HY
 X-Developer-Key: i=maximilianpezzullo@gmail.com; a=ed25519;
  pk=TRTR4c2Vb1IfluQvv5OUDPg7EE+pIzdPBND85UU559w=
 X-Endpoint-Received: by B4 Relay for maximilianpezzullo@gmail.com/20260303 with auth_id=658
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In the main copy loop, on a partial write() the inner do-while
-retried write(ofd, buf, n) always from the start of buf, while
-only n was decremented.  This caused already-written data to be
-re-written, corrupting the output file on systems where write()
-returns less than the requested byte count.
+According to a user report, the ST1000DM010-2EP102 has problems with LPM,
+causing random system freezes since kernel 6.15. The drive belongs to the
+same BarraCuda family as the ST2000DM008-2FR102 which has the same issue.
 
-Fix by introducing a pointer 'p' that tracks the current write
-position within buf and advances it by nwritten on each iteration.
-
-Closes: https://bugzilla.kernel.org/show_bug.cgi?id=221159
+Reported-by: Filippo Baiamonte <filippo.ba03@bugzilla.kernel.org>
+Closes: https://bugzilla.kernel.org/show_bug.cgi?id=221163
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 Signed-off-by: Maximilian Pezzullo <maximilianpezzullo@gmail.com>
 ---
- arch/alpha/boot/tools/objstrip.c | 20 ++++++++++++--------
- 1 file changed, 12 insertions(+), 8 deletions(-)
+ drivers/ata/libata-core.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/arch/alpha/boot/tools/objstrip.c b/arch/alpha/boot/tools/objstrip.c
-index 7cf92d172dc..8da25c2584f 100644
---- a/arch/alpha/boot/tools/objstrip.c
-+++ b/arch/alpha/boot/tools/objstrip.c
-@@ -246,14 +246,18 @@ main (int argc, char *argv[])
- 	    perror("read");
- 	    exit(1);
- 	}
--	do {
--	    nwritten = write(ofd, buf, n);
--	    if ((ssize_t) nwritten == -1) {
--		perror("write");
--		exit(1);
--	    }
--	    n -= nwritten;
--	} while (n > 0);
-+	{
-+	    char *p = buf;
-+	    do {
-+		nwritten = write(ofd, p, n);
-+		if ((ssize_t) nwritten == -1) {
-+		    perror("write");
-+		    exit(1);
-+		}
-+		p += nwritten;
-+		n -= nwritten;
-+	    } while (n > 0);
-+	}
-     }
+diff --git a/drivers/ata/libata-core.c b/drivers/ata/libata-core.c
+index ccbf320524da..76b012f544ea 100644
+--- a/drivers/ata/libata-core.c
++++ b/drivers/ata/libata-core.c
+@@ -4189,6 +4189,7 @@ static const struct ata_dev_quirks_entry __ata_dev_quirks[] = {
+ 						ATA_QUIRK_FIRMWARE_WARN },
  
-     if (pad) {
+ 	/* Seagate disks with LPM issues */
++	{ "ST1000DM010-2EP102",	NULL,		ATA_QUIRK_NOLPM },
+ 	{ "ST2000DM008-2FR102",	NULL,		ATA_QUIRK_NOLPM },
+ 
+ 	/* drives which fail FPDMA_AA activation (some may freeze afterwards)
 
 ---
 base-commit: af4e9ef3d78420feb8fe58cd9a1ab80c501b3c08
-change-id: 20260303-alpha-fix-ce5f70ee801d
+change-id: 20260303-ata-libata-core-disable-lpm-on-st1000dm010-2ep102-b0b85608e034
 
 Best regards,
 -- 
