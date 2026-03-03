@@ -1,250 +1,87 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Tue, 03 Mar 2026 10:25:04 +0000
-Subject: [PATCH v2 5/5] dmaengine: dma-axi-dmac: Gracefully terminate HW
- cyclic transfers
+Date: Tue, 03 Mar 2026 11:50:44 +0000
+Subject: [PATCH] iio: buffer: hw-consumer: remove redundant scan_mask
+ flexible array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260303-axi-dac-cyclic-support-v2-5-0db27b4be95a@analog.com>
-References: <20260303-axi-dac-cyclic-support-v2-0-0db27b4be95a@analog.com>
-In-Reply-To: <20260303-axi-dac-cyclic-support-v2-0-0db27b4be95a@analog.com>
-To: dmaengine@vger.kernel.org
-Cc: Lars-Peter Clausen <lars@metafoo.de>, Vinod Koul <vkoul@kernel.org>
+Message-Id: <20260303-iio-improve-hw-consumer-v1-1-1a19b41977b1@analog.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MSQqAMAxA0atI1gbq0IpeRVw4pDYLW0lxAPHuF
+ pdv8f8DkYQpQpc9IHRy5OATijyD2Y1+JeQlGUpVGlWpCpkD8rZLOAndhXPw8dhIULda28bWZmo
+ LSPUuZPn+z/3wvh8j5hASaQAAAA==
+X-Change-ID: 20260303-iio-improve-hw-consumer-5955f7f46b91
+To: linux-iio@vger.kernel.org
+Cc: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772533501; l=7716;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772538644; l=2083;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=MZvZTb+Rp1mVwxzcFCiCv9YkMsmBeMZLgrW2LPZP0/Y=;
- b=BSvBHwg80gjQC0g2FwALwtSjEcQLkhWzmWYK6cost4Gexl8AV9C3PPpyD0TOtx3qmvJu+ibsN
- c7g2AdU1+vuD88VqJMByiF/BoTzxiQFXlvd+vO5Gu1cJNm2FLL6k98g
+ bh=Vra+JWgYqm9/EZduYD5+E8f+DHld6y8zoalqRBr7c9g=;
+ b=ncbwgfMDfxa9sSOgqaivP4hoCsa4silS+6HmvP7GOtU8KV9ZfD6qzIvPBV6l+UzhVjXaqJjtn
+ 8pncFnsy88mCk5Qrp2NjvluYOzB4SyisQCSqCuUkC8uPUP6li9tfZ9W
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for gracefully terminating hardware cyclic DMA transfers when
-a new transfer is queued and is flagged with DMA_PREP_LOAD_EOT. Without
-this, cyclic transfers would continue indefinitely until we brute force
-it with .device_terminate_all().
-
-When a new descriptor is queued while a cyclic transfer is active, mark
-the cyclic transfer for termination. For hardware with scatter-gather
-support, modify the last segment flags to trigger end-of-transfer. For
-non-SG hardware, clear the CYCLIC flag to allow natural completion.
-
-Older IP core versions (pre-4.6.a) can prefetch data when clearing the
-CYCLIC flag, causing corruption in the next transfer. Work around this
-by disabling and re-enabling the core to flush prefetched data.
-
-The cyclic_eot flag tracks transfers marked for termination, preventing
-new transfers from starting until the cyclic one completes. Non-EOT
-transfers submitted after cyclic transfers are discarded with a warning.
-
-Also note that for hardware cyclic transfers not using SG, we need to
-make sure that chan->next_desc is also set to NULL (so we can look at
-possible EOT transfers) and we also need to move the queue check to
-after axi_dmac_get_next_desc() because with hardware based cyclic
-transfers we might get the queue marked as full and hence we would not
-be able to check for cyclic termination.
+The scan_mask flexible array member in hw_consumer_buffer duplicates
+the scan_mask pointer already present in struct iio_buffer. Remove it
+and allocate the bitmap directly with bitmap_zalloc(), assigning it to
+buf->buffer.scan_mask. This simplifies the code and there's no need for
+the flex array allocation.
 
 Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/dma/dma-axi-dmac.c | 104 +++++++++++++++++++++++++++++++++++++++------
- 1 file changed, 91 insertions(+), 13 deletions(-)
+ drivers/iio/buffer/industrialio-hw-consumer.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/dma/dma-axi-dmac.c b/drivers/dma/dma-axi-dmac.c
-index e9814d725322..45c2c8e4bc45 100644
---- a/drivers/dma/dma-axi-dmac.c
-+++ b/drivers/dma/dma-axi-dmac.c
-@@ -134,6 +134,7 @@ struct axi_dmac_desc {
- 	struct axi_dmac_chan *chan;
- 
- 	bool cyclic;
-+	bool cyclic_eot;
- 	bool have_partial_xfer;
- 
- 	unsigned int num_submitted;
-@@ -162,6 +163,7 @@ struct axi_dmac_chan {
- 	bool hw_cyclic;
- 	bool hw_2d;
- 	bool hw_sg;
-+	bool hw_cyclic_hotfix;
+diff --git a/drivers/iio/buffer/industrialio-hw-consumer.c b/drivers/iio/buffer/industrialio-hw-consumer.c
+index cb771ef8eeb3..24d7df603760 100644
+--- a/drivers/iio/buffer/industrialio-hw-consumer.c
++++ b/drivers/iio/buffer/industrialio-hw-consumer.c
+@@ -28,7 +28,6 @@ struct hw_consumer_buffer {
+ 	struct list_head head;
+ 	struct iio_dev *indio_dev;
+ 	struct iio_buffer buffer;
+-	long scan_mask[];
  };
  
- struct axi_dmac {
-@@ -227,11 +229,26 @@ static bool axi_dmac_check_addr(struct axi_dmac_chan *chan, dma_addr_t addr)
- 	return true;
- }
- 
-+static struct axi_dmac_desc *axi_dmac_active_desc(struct axi_dmac_chan *chan)
-+{
-+	return list_first_entry_or_null(&chan->active_descs,
-+					struct axi_dmac_desc, vdesc.node);
-+}
-+
- static struct axi_dmac_desc *axi_dmac_get_next_desc(struct axi_dmac *dmac,
- 						    struct axi_dmac_chan *chan)
+ static struct hw_consumer_buffer *iio_buffer_to_hw_consumer_buffer(
+@@ -52,7 +51,6 @@ static const struct iio_buffer_access_funcs iio_hw_buf_access = {
+ static struct hw_consumer_buffer *iio_hw_consumer_get_buffer(
+ 	struct iio_hw_consumer *hwc, struct iio_dev *indio_dev)
  {
-+	struct axi_dmac_desc *active = axi_dmac_active_desc(chan);
- 	struct virt_dma_desc *vdesc;
- 	struct axi_dmac_desc *desc;
-+	unsigned int val;
-+
-+	/*
-+	 * Just play safe and ignore any SOF if we have an active cyclic transfer
-+	 * flagged to end. We'll start it as soon as the current cyclic one ends.
-+	 */
-+	if (active && active->cyclic_eot)
-+		return NULL;
+-	unsigned int mask_longs = BITS_TO_LONGS(iio_get_masklength(indio_dev));
+ 	struct hw_consumer_buffer *buf;
  
- 	/*
- 	 * It means a SW cyclic transfer is in place so we should just return
-@@ -245,11 +262,43 @@ static struct axi_dmac_desc *axi_dmac_get_next_desc(struct axi_dmac *dmac,
- 	if (!vdesc)
+ 	list_for_each_entry(buf, &hwc->buffers, head) {
+@@ -60,13 +58,18 @@ static struct hw_consumer_buffer *iio_hw_consumer_get_buffer(
+ 			return buf;
+ 	}
+ 
+-	buf = kzalloc_flex(*buf, scan_mask, mask_longs);
++	buf = kzalloc_obj(*buf);
+ 	if (!buf)
  		return NULL;
  
-+	if (active && active->cyclic && !(vdesc->tx.flags & DMA_PREP_LOAD_EOT)) {
-+		struct device *dev = chan_to_axi_dmac(chan)->dma_dev.dev;
-+
-+		dev_warn(dev, "Discarding non EOT transfer after cyclic\n");
-+		list_del(&vdesc->node);
+ 	buf->buffer.access = &iio_hw_buf_access;
+ 	buf->indio_dev = indio_dev;
+-	buf->buffer.scan_mask = buf->scan_mask;
++	buf->buffer.scan_mask = bitmap_zalloc(iio_get_masklength(indio_dev),
++					      GFP_KERNEL);
++	if (!buf->buffer.scan_mask) {
++		kfree(buf);
 +		return NULL;
 +	}
-+
- 	list_move_tail(&vdesc->node, &chan->active_descs);
- 	desc = to_axi_dmac_desc(vdesc);
- 	chan->next_desc = desc;
  
--	return desc;
-+	if (!active || !active->cyclic)
-+		return desc;
-+
-+	active->cyclic_eot = true;
-+
-+	if (chan->hw_sg) {
-+		unsigned long flags = AXI_DMAC_HW_FLAG_IRQ | AXI_DMAC_HW_FLAG_LAST;
-+		/*
-+		 * Let's then stop the current cyclic transfer by making sure we
-+		 * get an EOT interrupt and to open the cyclic loop by marking
-+		 * the last segment.
-+		 */
-+		active->sg[active->num_sgs - 1].hw->flags = flags;
-+		return NULL;
-+	}
-+
-+	/*
-+	 * Clear the cyclic bit if there's no Scatter-Gather HW so that we get
-+	 * at the end of the transfer.
-+	 */
-+	val = axi_dmac_read(dmac, AXI_DMAC_REG_FLAGS);
-+	val &= ~AXI_DMAC_FLAG_CYCLIC;
-+	axi_dmac_write(dmac, AXI_DMAC_REG_FLAGS, val);
-+
-+	return NULL;
- }
- 
- static void axi_dmac_start_transfer(struct axi_dmac_chan *chan)
-@@ -260,14 +309,14 @@ static void axi_dmac_start_transfer(struct axi_dmac_chan *chan)
- 	unsigned int flags = 0;
- 	unsigned int val;
- 
--	val = axi_dmac_read(dmac, AXI_DMAC_REG_START_TRANSFER);
--	if (val) /* Queue is full, wait for the next SOT IRQ */
--		return;
--
- 	desc = axi_dmac_get_next_desc(dmac, chan);
- 	if (!desc)
- 		return;
- 
-+	val = axi_dmac_read(dmac, AXI_DMAC_REG_START_TRANSFER);
-+	if (val) /* Queue is full, wait for the next SOT IRQ */
-+		return;
-+
- 	sg = &desc->sg[desc->num_submitted];
- 
- 	/* Already queued in cyclic mode. Wait for it to finish */
-@@ -309,10 +358,12 @@ static void axi_dmac_start_transfer(struct axi_dmac_chan *chan)
- 	 * call, enable hw cyclic mode to avoid unnecessary interrupts.
- 	 */
- 	if (chan->hw_cyclic && desc->cyclic && !desc->vdesc.tx.callback) {
--		if (chan->hw_sg)
-+		if (chan->hw_sg) {
- 			desc->sg[desc->num_sgs - 1].hw->flags &= ~AXI_DMAC_HW_FLAG_IRQ;
--		else if (desc->num_sgs == 1)
-+		} else if (desc->num_sgs == 1) {
-+			chan->next_desc = NULL;
- 			flags |= AXI_DMAC_FLAG_CYCLIC;
-+		}
- 	}
- 
- 	if (chan->hw_partial_xfer)
-@@ -330,12 +381,6 @@ static void axi_dmac_start_transfer(struct axi_dmac_chan *chan)
- 	axi_dmac_write(dmac, AXI_DMAC_REG_START_TRANSFER, 1);
- }
- 
--static struct axi_dmac_desc *axi_dmac_active_desc(struct axi_dmac_chan *chan)
--{
--	return list_first_entry_or_null(&chan->active_descs,
--		struct axi_dmac_desc, vdesc.node);
--}
--
- static inline unsigned int axi_dmac_total_sg_bytes(struct axi_dmac_chan *chan,
- 	struct axi_dmac_sg *sg)
- {
-@@ -425,6 +470,35 @@ static bool axi_dmac_handle_cyclic_eot(struct axi_dmac_chan *chan,
- 	/* wrap around */
- 	active->num_completed = 0;
- 
-+	if (active->cyclic_eot) {
-+		/*
-+		 * It means an HW cyclic transfer was marked to stop. And we
-+		 * know we have something to schedule, so start the next
-+		 * transfer now the cyclic one is done.
-+		 */
-+		list_del(&active->vdesc.node);
-+		vchan_cookie_complete(&active->vdesc);
-+
-+		if (chan->hw_cyclic_hotfix) {
-+			struct axi_dmac *dmac = chan_to_axi_dmac(chan);
-+			/*
-+			 * In older IP cores, ending a cyclic transfer by clearing
-+			 * the CYCLIC flag does not guarantee a graceful end.
-+			 * It can happen that some data (of the next frame) is
-+			 * already prefetched and will be wrongly visible in the
-+			 * next transfer. To workaround this, we need to reenable
-+			 * the core so everything is flushed. Newer cores handles
-+			 * this correctly and do not require this "hotfix". The
-+			 * SG IP also does not require this.
-+			 */
-+			dev_dbg(dev, "HW cyclic hotfix\n");
-+			axi_dmac_write(dmac, AXI_DMAC_REG_CTRL, 0);
-+			axi_dmac_write(dmac, AXI_DMAC_REG_CTRL, AXI_DMAC_CTRL_ENABLE);
-+		}
-+
-+		return true;
-+	}
-+
- 	vdesc = vchan_next_desc(&chan->vchan);
- 	if (!vdesc)
- 		return false;
-@@ -460,6 +534,7 @@ static bool axi_dmac_transfer_done(struct axi_dmac_chan *chan,
- 	if (chan->hw_sg) {
- 		if (active->cyclic) {
- 			vchan_cyclic_callback(&active->vdesc);
-+			start_next = axi_dmac_handle_cyclic_eot(chan, active);
- 		} else {
- 			list_del(&active->vdesc.node);
- 			vchan_cookie_complete(&active->vdesc);
-@@ -1103,6 +1178,9 @@ static int axi_dmac_detect_caps(struct axi_dmac *dmac, unsigned int version)
- 		chan->length_align_mask = chan->address_align_mask;
- 	}
- 
-+	if (version < ADI_AXI_PCORE_VER(4, 6, 0) && !chan->hw_sg)
-+		chan->hw_cyclic_hotfix = true;
-+
- 	return 0;
- }
- 
+ 	iio_buffer_init(&buf->buffer);
+ 	list_add_tail(&buf->head, &hwc->buffers);
 
--- 
-2.53.0
+---
+base-commit: cd04646c0f3eefdde87538f6ff932420cedc9ba0
+change-id: 20260303-iio-improve-hw-consumer-5955f7f46b91
+--
+
+Thanks!
+- Nuno Sá
 
