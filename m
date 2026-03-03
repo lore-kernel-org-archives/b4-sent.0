@@ -1,11 +1,10 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 03 Mar 2026 13:27:09 +0000
-Subject: [PATCH v8 04/10] iio: core: add fixed point parsing with 64-bit
- parts
+Date: Tue, 03 Mar 2026 13:27:10 +0000
+Subject: [PATCH v8 05/10] iio: test: add kunit test for fixed-point parsing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260303-adf41513-iio-driver-v8-4-8dd2417cc465@analog.com>
+Message-Id: <20260303-adf41513-iio-driver-v8-5-8dd2417cc465@analog.com>
 References: <20260303-adf41513-iio-driver-v8-0-8dd2417cc465@analog.com>
 In-Reply-To: <20260303-adf41513-iio-driver-v8-0-8dd2417cc465@analog.com>
 To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
@@ -17,235 +16,567 @@ Cc: Jonathan Cameron <jic23@kernel.org>,
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
  Andrew Morton <akpm@linux-foundation.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
+ Rodrigo Alencar <rodrigo.alencar@analog.com>, 
+ Andy Shevchenko <andriy.shevchenko@intel.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772544443; l=5981;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772544443; l=18700;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=VNv64hEq1DZF87gKYc9yb7EPjvgLxM+SfdYJSvzRCYg=;
- b=oobZ+5X4lz+i5hZs1l5gaUZmz+tXISbmFISbn50MOvuot3udJX0rHNV+zlvzErdb/E6zt+KHY
- Xu9iR8GozovD4ceqXkOAX/8Wj//bc8Or4LEHdNqWTWIybtRfNj700hI
+ bh=+yfvv3VeJBnet8WMz5yVGXzQUj8CngD0kPKe93doM7g=;
+ b=H6Vd3795YJPqVHOV/mfr8ohfKdYskf+fnLm8lgPwutTPye0RMThosmqui2fWYSxH15KFfyTap
+ zFGHLrohiwPBuVHHFKUxD5IJtD6bWVLzHoSzD8X+7KpK59lR8NtXCTT
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add iio_str_to_fixpoint64() function that leverages simple_strtoull()
-to parse numbers from a string.
-A helper function __iio_str_to_fixpoint64() replaces
-__iio_str_to_fixpoint() implementation, extending its usage for
-64-bit fixed-point parsing.
+Add kunit test cases that aims to verify expected behavior for
+iio_str_to_fixpoint() and iio_str_to_fixpoint64().
+To run the test, create a .kunitconfig file with:
 
+CONFIG_KUNIT=y
+CONFIG_IIO=y
+CONFIG_IIO_FIXPOINT_PARSE_KUNIT_TEST=y
+
+and run the command:
+./tools/testing/kunit/kunit.py run --kunitconfig=.kunitconfig
+
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/industrialio-core.c | 167 ++++++++++++++++++++++++++++------------
- include/linux/iio/iio.h         |   2 +
- 2 files changed, 119 insertions(+), 50 deletions(-)
+ MAINTAINERS                                |   6 +
+ drivers/iio/test/Kconfig                   |  12 +
+ drivers/iio/test/Makefile                  |   1 +
+ drivers/iio/test/iio-test-fixpoint-parse.c | 470 +++++++++++++++++++++++++++++
+ 4 files changed, 489 insertions(+)
 
-diff --git a/drivers/iio/industrialio-core.c b/drivers/iio/industrialio-core.c
-index 3115d59c1372..3d7f0427c811 100644
---- a/drivers/iio/industrialio-core.c
-+++ b/drivers/iio/industrialio-core.c
-@@ -881,6 +881,93 @@ static ssize_t iio_read_channel_info_avail(struct device *dev,
- 	}
- }
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 1bf39f6d964e..463c888b428f 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -12325,6 +12325,12 @@ F:	include/dt-bindings/iio/
+ F:	include/linux/iio/
+ F:	tools/iio/
  
-+/**
-+ * __iio_str_to_fixpoint64() - Parse a fixed-point number from a string
-+ * @str: The string to parse
-+ * @fract_mult: Multiplier for the first decimal place, should be a power of 10
-+ * @integer: The integer part of the number
-+ * @fract: The fractional part of the number
-+ * @scale_db: True if this should parse as dB
++IIO FIXED POINT PARSE TEST
++M:	Rodrigo Alencar <rodrigo.alencar@analog.com>
++L:	linux-iio@vger.kernel.org
++S:	Maintained
++F:	drivers/iio/test/iio-test-fixpoint-parse.c
++
+ IIO UNIT CONVERTER
+ M:	Peter Rosin <peda@axentia.se>
+ L:	linux-iio@vger.kernel.org
+diff --git a/drivers/iio/test/Kconfig b/drivers/iio/test/Kconfig
+index 4fc17dd0dcd7..c60dff504bc2 100644
+--- a/drivers/iio/test/Kconfig
++++ b/drivers/iio/test/Kconfig
+@@ -29,6 +29,18 @@ config IIO_RESCALE_KUNIT_TEST
+ 
+ 	  If unsure, say N.
+ 
++config IIO_FIXPOINT_PARSE_KUNIT_TEST
++	tristate "Test IIO fixpoint parsing functions" if !KUNIT_ALL_TESTS
++	depends on KUNIT
++	default KUNIT_ALL_TESTS
++	help
++	  build unit tests for the IIO fixpoint parsing functions.
++
++	  For more information on KUnit and unit tests in general, please refer
++	  to the KUnit documentation in Documentation/dev-tools/kunit/.
++
++	  If unsure, say N.
++
+ config IIO_FORMAT_KUNIT_TEST
+ 	tristate "Test IIO formatting functions" if !KUNIT_ALL_TESTS
+ 	depends on KUNIT
+diff --git a/drivers/iio/test/Makefile b/drivers/iio/test/Makefile
+index 0c846bc21acd..0c31aaeed755 100644
+--- a/drivers/iio/test/Makefile
++++ b/drivers/iio/test/Makefile
+@@ -5,6 +5,7 @@
+ 
+ # Keep in alphabetical order
+ obj-$(CONFIG_IIO_RESCALE_KUNIT_TEST) += iio-test-rescale.o
++obj-$(CONFIG_IIO_FIXPOINT_PARSE_KUNIT_TEST) += iio-test-fixpoint-parse.o
+ obj-$(CONFIG_IIO_FORMAT_KUNIT_TEST) += iio-test-format.o
+ obj-$(CONFIG_IIO_GTS_KUNIT_TEST) += iio-test-gts.o
+ obj-$(CONFIG_IIO_MULTIPLY_KUNIT_TEST) += iio-test-multiply.o
+diff --git a/drivers/iio/test/iio-test-fixpoint-parse.c b/drivers/iio/test/iio-test-fixpoint-parse.c
+new file mode 100644
+index 000000000000..69715d22d7ec
+--- /dev/null
++++ b/drivers/iio/test/iio-test-fixpoint-parse.c
+@@ -0,0 +1,470 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/* Unit tests for IIO fixpoint parsing functions
 + *
-+ * This variant uses 64-bit integers for both integer and fractional parts.
-+ * Parsed positive values greater than S64_MAX are returned as-is. Parsed
-+ * negative values less than S64_MIN are treated as range error, so -ERANGE is
-+ * returned.
-+ *
-+ * Returns:
-+ * 0 on success, or a negative error code if the string could not be parsed.
++ * Copyright 2026 Analog Devices Inc.
 + */
-+static int __iio_str_to_fixpoint64(const char *str, u64 fract_mult,
-+				   s64 *integer, s64 *fract, bool scale_db)
++
++#include <kunit/test.h>
++#include <linux/errno.h>
++#include <linux/iio/iio.h>
++#include <linux/limits.h>
++#include <linux/math.h>
++#include <linux/types.h>
++
++#define PRECISION(x)	(int_pow(10, (x) - 1))
++
++/* Test iio_str_to_fixpoint64() with valid positive integers */
++static void iio_test_str_to_fixpoint64_positive_integers(struct kunit *test)
 +{
-+	u64 i = 0, f = 0;
-+	int precision = ffs(fract_mult);
-+	bool negative = false;
-+	ssize_t len;
-+
-+	if (precision > 20) /* ceil(log10(U64_MAX)) = 20 */
-+		return -EINVAL;
-+
-+	if (str[0] == '-') {
-+		negative = true;
-+		str++;
-+	} else if (str[0] == '+') {
-+		str++;
-+	}
-+
-+	if (*str != '.') {
-+		len = kstrntoull(str, 10, &i, SIZE_MAX);
-+		if (len < 0)
-+			return len;
-+		str += len;
-+	}
-+
-+	if (precision && *str == '.') {
-+		str++; /* skip decimal point */
-+		len = kstrntoull(str, 10, &f, precision);
-+		if (len < 0)
-+			return len;
-+		str += len;
-+
-+		if (len < precision) /* scale up */
-+			f *= int_pow(10, precision - len);
-+
-+		while (isdigit(*str)) /* truncate: ignore further digits */
-+			str++;
-+	}
-+
-+	if (scale_db) {
-+		/* Ignore the dB suffix */
-+		if (!strncmp(str, " dB", sizeof(" dB") - 1))
-+			str += sizeof(" dB") - 1;
-+		else if (!strncmp(str, "dB", sizeof("dB") - 1))
-+			str += sizeof("dB") - 1;
-+	}
-+
-+	if (*str == '\n')
-+		str++;
-+
-+	if (*str != '\0')
-+		return -EINVAL;
-+
-+	if (negative) {
-+		if (i) {
-+			if ((s64)-i > 0)
-+				return -ERANGE;
-+			i = -i;
-+		} else {
-+			if ((s64)-f > 0)
-+				return -ERANGE;
-+			f = -f;
-+		}
-+	}
-+
-+	*integer = i;
-+	*fract = f;
-+
-+	return 0;
-+}
-+
- /**
-  * __iio_str_to_fixpoint() - Parse a fixed-point number from a string
-  * @str: The string to parse
-@@ -895,63 +982,43 @@ static ssize_t iio_read_channel_info_avail(struct device *dev,
- static int __iio_str_to_fixpoint(const char *str, int fract_mult,
- 				 int *integer, int *fract, bool scale_db)
- {
--	int i = 0, f = 0;
--	bool integer_part = true, negative = false;
-+	s64 integer64, fract64;
++	s64 integer, fract;
 +	int ret;
- 
--	if (fract_mult == 0) {
--		*fract = 0;
-+	ret = __iio_str_to_fixpoint64(str, fract_mult, &integer64, &fract64,
-+				      scale_db);
-+	if (ret)
-+		return ret;
- 
--		return kstrtoint(str, 0, integer);
--	}
-+	if (integer64 < INT_MIN || integer64 > UINT_MAX ||
-+	    fract64 < INT_MIN || fract64 > UINT_MAX)
-+		return -ERANGE;
- 
--	if (str[0] == '-') {
--		negative = true;
--		str++;
--	} else if (str[0] == '+') {
--		str++;
--	}
--
--	while (*str) {
--		if ('0' <= *str && *str <= '9') {
--			if (integer_part) {
--				i = i * 10 + *str - '0';
--			} else {
--				f += fract_mult * (*str - '0');
--				fract_mult /= 10;
--			}
--		} else if (*str == '\n') {
--			if (*(str + 1) == '\0')
--				break;
--			return -EINVAL;
--		} else if (!strncmp(str, " dB", sizeof(" dB") - 1) && scale_db) {
--			/* Ignore the dB suffix */
--			str += sizeof(" dB") - 1;
--			continue;
--		} else if (!strncmp(str, "dB", sizeof("dB") - 1) && scale_db) {
--			/* Ignore the dB suffix */
--			str += sizeof("dB") - 1;
--			continue;
--		} else if (*str == '.' && integer_part) {
--			integer_part = false;
--		} else {
--			return -EINVAL;
--		}
--		str++;
--	}
--
--	if (negative) {
--		if (i)
--			i = -i;
--		else
--			f = -f;
--	}
--
--	*integer = i;
--	*fract = f;
-+	*integer = integer64;
-+	*fract = fract64;
- 
- 	return 0;
- }
- 
-+/**
-+ * iio_str_to_fixpoint64() - Parse a fixed-point number from a string
-+ * @str: The string to parse
-+ * @fract_mult: Multiplier for the first decimal place, should be a power of 10
-+ * @integer: The integer part of the number
-+ * @fract: The fractional part of the number
-+ *
-+ * This variant uses 64-bit integers for both integer and fractional parts.
-+ *
-+ * Returns:
-+ * 0 on success, or a negative error code if the string could not be parsed.
-+ */
-+int iio_str_to_fixpoint64(const char *str, u64 fract_mult, s64 *integer,
-+			  s64 *fract)
-+{
-+	return __iio_str_to_fixpoint64(str, fract_mult, integer, fract, false);
-+}
-+EXPORT_SYMBOL_GPL(iio_str_to_fixpoint64);
 +
- /**
-  * iio_str_to_fixpoint() - Parse a fixed-point number from a string
-  * @str: The string to parse
-diff --git a/include/linux/iio/iio.h b/include/linux/iio/iio.h
-index a9ecff191bd9..cb30d153465a 100644
---- a/include/linux/iio/iio.h
-+++ b/include/linux/iio/iio.h
-@@ -1055,6 +1055,8 @@ int iio_active_scan_mask_index(struct iio_dev *indio_dev);
- 
- ssize_t iio_format_value(char *buf, unsigned int type, int size, int *vals);
- 
-+int iio_str_to_fixpoint64(const char *str, u64 fract_mult, s64 *integer,
-+			  s64 *fract);
- int iio_str_to_fixpoint(const char *str, int fract_mult, int *integer,
- 	int *fract);
- 
++	/* Simple positive integer */
++	ret = iio_str_to_fixpoint64("42", 0, &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 42);
++	KUNIT_EXPECT_EQ(test, fract, 0);
++
++	/* Positive integer with leading + */
++	ret = iio_str_to_fixpoint64("+10", 0, &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 10);
++	KUNIT_EXPECT_EQ(test, fract, 0);
++
++	/* Large positive integer */
++	ret = iio_str_to_fixpoint64("123456789", 0, &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 123456789);
++	KUNIT_EXPECT_EQ(test, fract, 0);
++}
++
++/* Test iio_str_to_fixpoint64() with valid negative integers */
++static void iio_test_str_to_fixpoint64_negative_integers(struct kunit *test)
++{
++	s64 integer, fract;
++	int ret;
++
++	/* Simple negative integer */
++	ret = iio_str_to_fixpoint64("-23", 0, &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, -23);
++	KUNIT_EXPECT_EQ(test, fract, 0);
++
++	/* Large negative integer */
++	ret = iio_str_to_fixpoint64("-987654321", 0, &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, -987654321);
++	KUNIT_EXPECT_EQ(test, fract, 0);
++}
++
++/* Test iio_str_to_fixpoint64() with zero */
++static void iio_test_str_to_fixpoint64_zero(struct kunit *test)
++{
++	s64 integer, fract;
++	int ret;
++
++	/* Zero */
++	ret = iio_str_to_fixpoint64("0", 0, &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 0);
++	KUNIT_EXPECT_EQ(test, fract, 0);
++
++	/* Zero with decimal */
++	ret = iio_str_to_fixpoint64("0.0", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 0);
++	KUNIT_EXPECT_EQ(test, fract, 0);
++
++	/* leading zeros */
++	ret = iio_str_to_fixpoint64("00000000000000000000042", 0, &integer,
++				    &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 42);
++	KUNIT_EXPECT_EQ(test, fract, 0);
++}
++
++/* Test iio_str_to_fixpoint64() with valid decimal numbers */
++static void iio_test_str_to_fixpoint64_positive_decimals(struct kunit *test)
++{
++	s64 integer, fract;
++	int ret;
++
++	/* Positive decimal */
++	ret = iio_str_to_fixpoint64("3.14", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 3);
++	KUNIT_EXPECT_EQ(test, fract, 140000);
++
++	/* Decimal less than 1 */
++	ret = iio_str_to_fixpoint64("0.5", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 0);
++	KUNIT_EXPECT_EQ(test, fract, 500000);
++
++	/* Decimal with trailing zeros */
++	ret = iio_str_to_fixpoint64("+123.000", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 123);
++	KUNIT_EXPECT_EQ(test, fract, 0);
++
++	/* High precision decimal */
++	ret = iio_str_to_fixpoint64("1.123456789", PRECISION(9), &integer,
++				    &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 1);
++	KUNIT_EXPECT_EQ(test, fract, 123456789);
++
++	/* Small decimal */
++	ret = iio_str_to_fixpoint64("0.000000001", PRECISION(9), &integer,
++				    &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 0);
++	KUNIT_EXPECT_EQ(test, fract, 1);
++}
++
++/* Test iio_str_to_fixpoint64() with negative decimals */
++static void iio_test_str_to_fixpoint64_negative_decimals(struct kunit *test)
++{
++	s64 integer, fract;
++	int ret;
++
++	/* Negative decimal */
++	ret = iio_str_to_fixpoint64("-2.71", PRECISION(5), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, -2);
++	KUNIT_EXPECT_EQ(test, fract, 71000);
++
++	/* Negative decimal less than -1 */
++	ret = iio_str_to_fixpoint64("-0.5", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 0);
++	KUNIT_EXPECT_EQ(test, fract, -500000);
++
++	/* Negative with high precision */
++	ret = iio_str_to_fixpoint64("-0.000000001", PRECISION(9), &integer,
++				    &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 0);
++	KUNIT_EXPECT_EQ(test, fract, -1);
++}
++
++/* Test iio_str_to_fixpoint64() with precision edge cases */
++static void iio_test_str_to_fixpoint64_precision_edge_cases(struct kunit *test)
++{
++	s64 integer, fract;
++	int ret;
++
++	/* More digits than precision - should truncate */
++	ret = iio_str_to_fixpoint64("1.23456", PRECISION(3), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 1);
++	KUNIT_EXPECT_EQ(test, fract, 234);
++
++	/* Fewer digits than precision - should pad with zeros */
++	ret = iio_str_to_fixpoint64("1.23", PRECISION(7), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 1);
++	KUNIT_EXPECT_EQ(test, fract, 2300000);
++
++	/* Single digit fractional with high precision */
++	ret = iio_str_to_fixpoint64("5.1", PRECISION(9), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 5);
++	KUNIT_EXPECT_EQ(test, fract, 100000000);
++}
++
++/* Test iio_str_to_fixpoint64() with newline characters */
++static void iio_test_str_to_fixpoint64_with_newline(struct kunit *test)
++{
++	s64 integer, fract;
++	int ret;
++
++	/* Integer with newline */
++	ret = iio_str_to_fixpoint64("-42\n", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, -42);
++	KUNIT_EXPECT_EQ(test, fract, 0);
++
++	/* Decimal with newline */
++	ret = iio_str_to_fixpoint64("3.141\n", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 3);
++	KUNIT_EXPECT_EQ(test, fract, 141000);
++}
++
++/* Test iio_str_to_fixpoint64() with edge cases */
++static void iio_test_str_to_fixpoint64_edge_cases(struct kunit *test)
++{
++	s64 integer, fract;
++	int ret;
++
++	/* Leading decimal point */
++	ret = iio_str_to_fixpoint64(".5", PRECISION(4), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 0);
++	KUNIT_EXPECT_EQ(test, fract, 5000);
++
++	/* Leading decimal with sign */
++	ret = iio_str_to_fixpoint64("-.5", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 0);
++	KUNIT_EXPECT_EQ(test, fract, -500000);
++
++	ret = iio_str_to_fixpoint64("+.5", PRECISION(3), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 0);
++	KUNIT_EXPECT_EQ(test, fract, 500);
++}
++
++/* Test iio_str_to_fixpoint64() with invalid inputs */
++static void iio_test_str_to_fixpoint64_invalid(struct kunit *test)
++{
++	s64 integer, fract;
++	int ret;
++
++	/* Empty string */
++	ret = iio_str_to_fixpoint64("", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++
++	/* Just a sign */
++	ret = iio_str_to_fixpoint64("-", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++
++	ret = iio_str_to_fixpoint64("+", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++
++	/* Just a decimal point */
++	ret = iio_str_to_fixpoint64(".", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++
++	/* Non-numeric characters */
++	ret = iio_str_to_fixpoint64("abc", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++
++	ret = iio_str_to_fixpoint64("12a", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++
++	ret = iio_str_to_fixpoint64("3.4x", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++
++	ret = iio_str_to_fixpoint64("0xff", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++
++	/* Multiple decimal points */
++	ret = iio_str_to_fixpoint64("12.34.56", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++
++	/* Trailing decimal without digits */
++	ret = iio_str_to_fixpoint64("42.", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++
++	/* Trailing spaces */
++	ret = iio_str_to_fixpoint64("42 ", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++
++	/* Too many digits in fractional part */
++	ret = iio_str_to_fixpoint64("1.123456789012345678901", PRECISION(21),
++				    &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL); /* fails when checking precision */
++}
++
++/* Test iio_str_to_fixpoint() with valid inputs */
++static void iio_test_str_to_fixpoint_valid(struct kunit *test)
++{
++	int integer, fract;
++	int ret;
++
++	/* Test with 6 decimal places */
++	ret = iio_str_to_fixpoint("10.001234", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 10);
++	KUNIT_EXPECT_EQ(test, fract, 1234);
++
++	ret = iio_str_to_fixpoint("-0.5", PRECISION(3), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 0);
++	KUNIT_EXPECT_EQ(test, fract, -500);
++
++	/* Test with 9 decimal places */
++	ret = iio_str_to_fixpoint("5.123456789", PRECISION(9), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 5);
++	KUNIT_EXPECT_EQ(test, fract, 123456789);
++
++	ret = iio_str_to_fixpoint("1.0", PRECISION(9), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 1);
++	KUNIT_EXPECT_EQ(test, fract, 0);
++
++	/* Test with 3 decimal places */
++	ret = iio_str_to_fixpoint("-7.8", PRECISION(3), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, -7);
++	KUNIT_EXPECT_EQ(test, fract, 800);
++
++	/* Truncation with 2 decimal places */
++	ret = iio_str_to_fixpoint("3.1415", PRECISION(2), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 3);
++	KUNIT_EXPECT_EQ(test, fract, 14);
++
++	/* Integer with 6 decimal places */
++	ret = iio_str_to_fixpoint("42", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer, 42);
++	KUNIT_EXPECT_EQ(test, fract, 0);
++}
++
++/* Test both functions with overflow cases */
++static void iio_test_str_to_fixpoint_overflow(struct kunit *test)
++{
++	s64 integer64, fract64;
++	int integer, fract;
++	int ret;
++
++	/* integer overflow - value exceeds U64_MAX */
++	ret = iio_str_to_fixpoint64("18446744073709551616", PRECISION(6),
++				    &integer64, &fract64);
++	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
++
++	/* integer underflow - value less than S64_MIN */
++	ret = iio_str_to_fixpoint64("-9223372036854775809", PRECISION(6),
++				    &integer64, &fract64);
++	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
++
++	/* fractional underflow */
++	ret = iio_str_to_fixpoint64("-0.9223372036854775810", PRECISION(19),
++				    &integer64, &fract64);
++	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
++
++	/* Integer overflow - value exceeds U32_MAX */
++	ret = iio_str_to_fixpoint("4294967296", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
++
++	/* Integer underflow - value less than INT_MIN */
++	ret = iio_str_to_fixpoint("-2147483649", PRECISION(6), &integer,
++				  &fract);
++	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
++
++	/* fractional overflow */
++	ret = iio_str_to_fixpoint("0.4294967296", PRECISION(10), &integer,
++				  &fract);
++	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
++
++	/* fractional underflow */
++	ret = iio_str_to_fixpoint("-0.2147483649", PRECISION(10), &integer,
++				  &fract);
++	KUNIT_EXPECT_EQ(test, ret, -ERANGE);
++}
++
++/* Test iio_str_to_fixpoint() with invalid inputs */
++static void iio_test_str_to_fixpoint_invalid(struct kunit *test)
++{
++	int integer, fract;
++	int ret;
++
++	/* Empty string */
++	ret = iio_str_to_fixpoint("", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_NE(test, ret, 0);
++
++	/* Non-numeric */
++	ret = iio_str_to_fixpoint("abc", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_NE(test, ret, 0);
++
++	/* Invalid characters */
++	ret = iio_str_to_fixpoint("12.34x", PRECISION(6), &integer, &fract);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++}
++
++/* Test both functions with boundary values */
++static void iio_test_fixpoint_boundary_values(struct kunit *test)
++{
++	s64 integer64, fract64;
++	int integer32, fract32;
++	int ret;
++
++	/* S32_MAX */
++	ret = iio_str_to_fixpoint("2147483647", PRECISION(6), &integer32,
++				  &fract32);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer32, S32_MAX);
++	KUNIT_EXPECT_EQ(test, fract32, 0);
++
++	/* U32_MAX */
++	ret = iio_str_to_fixpoint("4294967295", PRECISION(6), &integer32,
++				  &fract32);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, (u32)integer32, U32_MAX);
++	KUNIT_EXPECT_EQ(test, fract32, 0);
++
++	/* S32_MIN */
++	ret = iio_str_to_fixpoint("-2147483648", PRECISION(6), &integer32,
++				  &fract32);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer32, S32_MIN);
++	KUNIT_EXPECT_EQ(test, fract32, 0);
++
++	/* S32_MIN with fractional part */
++	ret = iio_str_to_fixpoint("-2147483648.2147483647", PRECISION(10),
++				  &integer32, &fract32);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer32, S32_MIN);
++	KUNIT_EXPECT_EQ(test, fract32, S32_MAX);
++
++	/* S64_MAX */
++	ret = iio_str_to_fixpoint64("9223372036854775807", PRECISION(6),
++				    &integer64, &fract64);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer64, S64_MAX);
++	KUNIT_EXPECT_EQ(test, fract64, 0);
++
++	/* U64_MAX */
++	ret = iio_str_to_fixpoint64("18446744073709551615", PRECISION(6),
++				    &integer64, &fract64);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, (u64)integer64, U64_MAX);
++	KUNIT_EXPECT_EQ(test, fract64, 0);
++
++	/* S64_MIN */
++	ret = iio_str_to_fixpoint64("-9223372036854775808", PRECISION(6),
++				    &integer64, &fract64);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer64, S64_MIN);
++	KUNIT_EXPECT_EQ(test, fract64, 0);
++
++	/* S64_MIN with fractional part */
++	ret = iio_str_to_fixpoint64("-9223372036854775808.9223372036854775807",
++				    PRECISION(19), &integer64, &fract64);
++	KUNIT_EXPECT_EQ(test, ret, 0);
++	KUNIT_EXPECT_EQ(test, integer64, S64_MIN);
++	KUNIT_EXPECT_EQ(test, fract64, S64_MAX);
++}
++
++static struct kunit_case iio_fixpoint_parse_test_cases[] = {
++	KUNIT_CASE(iio_test_str_to_fixpoint64_positive_integers),
++	KUNIT_CASE(iio_test_str_to_fixpoint64_negative_integers),
++	KUNIT_CASE(iio_test_str_to_fixpoint64_zero),
++	KUNIT_CASE(iio_test_str_to_fixpoint64_positive_decimals),
++	KUNIT_CASE(iio_test_str_to_fixpoint64_negative_decimals),
++	KUNIT_CASE(iio_test_str_to_fixpoint64_precision_edge_cases),
++	KUNIT_CASE(iio_test_str_to_fixpoint64_with_newline),
++	KUNIT_CASE(iio_test_str_to_fixpoint64_edge_cases),
++	KUNIT_CASE(iio_test_str_to_fixpoint64_invalid),
++	KUNIT_CASE(iio_test_str_to_fixpoint_valid),
++	KUNIT_CASE(iio_test_str_to_fixpoint_overflow),
++	KUNIT_CASE(iio_test_str_to_fixpoint_invalid),
++	KUNIT_CASE(iio_test_fixpoint_boundary_values),
++	{ }
++};
++
++static struct kunit_suite iio_fixpoint_parse_test_suite = {
++	.name = "iio-fixpoint-parse",
++	.test_cases = iio_fixpoint_parse_test_cases,
++};
++
++kunit_test_suite(iio_fixpoint_parse_test_suite);
++
++MODULE_AUTHOR("Rodrigo Alencar <rodrigo.alencar@analog.com>");
++MODULE_AUTHOR("IIO Kunit Test");
++MODULE_DESCRIPTION("Test IIO fixpoint parsing functions");
++MODULE_LICENSE("GPL");
 
 -- 
 2.43.0
