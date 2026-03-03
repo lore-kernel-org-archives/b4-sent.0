@@ -1,71 +1,62 @@
 From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Tue, 03 Mar 2026 16:25:18 +0100
-Subject: [PATCH v2] clk: hisilicon: Improve deallocation in error path
+Date: Tue, 03 Mar 2026 16:31:42 +0100
+Subject: [PATCH] powerpc: 83xx: km83xx: Fix keymile vendor prefix
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260303-hisi-error-v2-1-7cd9b43d8fbb@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAF39pmkC/02MQQ7CIBBFr9LMWgwFI8WV9zBdtDBtWQhmaEhNw
- 90d68bl+3n/7ZCRAma4NTsQlpBDigzq1IBbhjijCJ4ZlFQXqZUVCysCiRIJJ+XgzdR5bxTw4UU
- 4he2IPXpmVtdE76Nd2u/6yxjZ/WdKK1phlBmd0daOV32fn9s54gp9rfUDCipp0qIAAAA=
-X-Change-ID: 20240329-hisi-error-c00ad7f8dd72
-To: Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>
-Cc: Tao Lan <taolan@huawei.com>, linux-clk@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
+Message-Id: <20260303-keymile-v1-1-463a11e71702@posteo.net>
+X-B4-Tracking: v=1; b=H4sIAN3+pmkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDQwNj3ezUytzMnFRdM6M0CwsjSyPjpDQzJaDqgqLUtMwKsEnRsbW1APO
+ hQ5NZAAAA
+X-Change-ID: 20260103-keymile-62f882923bf6
+To: "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
+ Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ Holger Brunck <holger.brunck@keymile.com>, Heiko Schocher <hs@denx.de>, 
+ Kumar Gala <galak@kernel.crashing.org>
+Cc: linuxppc-dev@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
  =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772551527; l=1298;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772551910; l=1138;
  i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=W75+ROlkJ4ctU6rXqjndz3tp5n4Jy0ZaYQ7i/ITwlZU=;
- b=ZW94RwJBH7x5SH05HYGS4Nfr3uEkO4103SkA3Ao49766KC6OpDmkSAN/Q34LfIWk9OL56bjvU
- 9GCViRxRSbBCtllj36E+Frki+qDa/vHLcIyUgIYd06TOrNWZ5nI7LbB
+ bh=Rm4lk8+WysP9Sf46IHCnA/JZCuWDkU+j8PEcMpxO19k=;
+ b=lXaauy67JDFSz/HeSMxLJ0Dww8xpDizCxKm4SOSBrzxXfhqGne+M5ux2AVVaHL2gQW8ivULGM
+ yryxC8kKe8IDUDEcGnu3AjZBCTT3w5wB3z1EH7138eI8viayFAs6uRD
 X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
  pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
 X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Unmap 'base' if an error occurs after it has been mapped.
+When kmeter.c was refactored into km83xx.c in 2011, the "keymile" vendor
+prefix was changed to upper-case "Keymile". The devicetree at
+arch/powerpc/boot/dts/kmeter1.dts never underwent the same change,
+suggesting that this was simply a mistake.
 
-Reported-by: Tao Lan <taolan@huawei.com>
-Closes: https://lore.kernel.org/lkml/ZNlSH+eWV8Sk3FYn@probook/
+Fixes: 93e2b95c81042d ("powerpc/83xx: rename and update kmeter1")
 Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
-Changes in v2:
-- Rebase on v7.0-rc2
-- Update my email address
-- Reword the commit message somewhat
-- Link to v1: https://lore.kernel.org/r/20240708-hisi-error-v1-1-727bc7399b63@gmx.net
----
- drivers/clk/hisilicon/clk.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ arch/powerpc/platforms/83xx/km83xx.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/clk/hisilicon/clk.c b/drivers/clk/hisilicon/clk.c
-index fae65127cd4aa8..08050ff1c8cf9a 100644
---- a/drivers/clk/hisilicon/clk.c
-+++ b/drivers/clk/hisilicon/clk.c
-@@ -70,7 +70,7 @@ struct hisi_clock_data *hisi_clk_init(struct device_node *np,
+diff --git a/arch/powerpc/platforms/83xx/km83xx.c b/arch/powerpc/platforms/83xx/km83xx.c
+index 2b5d187d9b62d5..9ef8fb39dd1b18 100644
+--- a/arch/powerpc/platforms/83xx/km83xx.c
++++ b/arch/powerpc/platforms/83xx/km83xx.c
+@@ -155,8 +155,8 @@ machine_device_initcall(mpc83xx_km, mpc83xx_declare_of_platform_devices);
  
- 	clk_data = kzalloc_obj(*clk_data);
- 	if (!clk_data)
--		goto err;
-+		goto err_base;
+ /* list of the supported boards */
+ static char *board[] __initdata = {
+-	"Keymile,KMETER1",
+-	"Keymile,kmpbec8321",
++	"keymile,KMETER1",
++	"keymile,kmpbec8321",
+ 	NULL
+ };
  
- 	clk_data->base = base;
- 	clk_table = kzalloc_objs(*clk_table, nr_clks);
-@@ -83,6 +83,8 @@ struct hisi_clock_data *hisi_clk_init(struct device_node *np,
- 	return clk_data;
- err_data:
- 	kfree(clk_data);
-+err_base:
-+	iounmap(base);
- err:
- 	return NULL;
- }
 
 ---
-base-commit: 11439c4635edd669ae435eec308f4ab8a0804808
-change-id: 20240329-hisi-error-c00ad7f8dd72
+base-commit: 9448598b22c50c8a5bb77a9103e2d49f134c9578
+change-id: 20260103-keymile-62f882923bf6
 
 Best regards,
 -- 
