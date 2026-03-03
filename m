@@ -1,171 +1,81 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Tue, 03 Mar 2026 17:04:08 +0100
-Subject: [PATCH RESEND v5] dt-bindings: powerpc: Add Freescale/NXP MPC83xx
- SoCs
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH v6 0/3] hwmon: Add support for the LTC4283 Hot Swap
+ Controller
+Date: Tue, 03 Mar 2026 17:00:39 +0000
+Message-Id: <20260303-ltc4283-support-v6-0-efe11502fad2@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260303-ppcyaml-soc-v5-1-2982d5a857bc@posteo.net>
-To: Scott Wood <oss@buserror.net>, 
- Madhavan Srinivasan <maddy@linux.ibm.com>, 
- Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
- Naveen N Rao <naveen@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBNEzaSrRAuxqQbCZKwIwrsnL
+ d/i/xcyMmGGoXmB8aZMR6ywbQNh83FFQXM1KKms1FKL/QxGOS3yldLBp5BWL73zIXTeQK0S40L
+ PfxynUj660kVMYQAAAA==
+X-Change-ID: 20260303-ltc4283-support-063f78acc5a4
+To: linux-gpio@vger.kernel.org, linux-hwmon@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-doc@vger.kernel.org
+Cc: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
- Christophe Leroy <chleroy@kernel.org>
-Cc: linuxppc-dev@lists.ozlabs.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+ Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772553855; l=4183;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=536L63cvPpKbvFHHC4dH21r7FgAfuo5+xdMh/4DunPY=;
- b=/GGIoV2BYbJfWNeB7iMXQvs3m30g1HLFdwyLBRvTCjEAxDYYcIhsK/23tNmmoenhXWkfsxuY+
- DcKC/fwlklMDNs93mkWksuznsSlEc3TMoqPZEG/i6/qsiU5/i3vxINv
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772557240; l=1962;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=mgwUhCncYhDl61XAwXlMI23b+H6nVEk5nE7YqMPl7/4=;
+ b=5QEy1itU4Qq/SbblS24Kt7rPX/4f94eo9Z8Iwj5JbfsH6EGvRk7Shvd0OCxCOFe/D3IM3xtXg
+ jyAOnii5XYlD114Ja5BrgGvlFYESNG2je0ZO2v0RyNDX/Qu+WS3rWbG
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a new binding for MPC83xx platforms, describing the board compatible
-strings used in currently existing device trees.
+This is v6 for the LTC4283 how swap controller. Main change is that I'm
+now using the auxiliary bus for adding the GPIO device (done depending
+on FW properties).
 
-Note that the SoC bus is called immr@... in many existing devicetrees,
-but this contradicts the simple-bus binding.
-
-Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
-Reviewed-by: Christophe Leroy <christophe.leroy@csgroup.eu>
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
----
-Changes in v5:
-- Add Christophe Leroy's R-b tag
-- Link to v4: https://lore.kernel.org/r/20250412-ppcyaml-soc-v4-1-bd34f4613d31@posteo.net
-
-Changes in v4:
-- Rebase on v6.15-rc1
-- Try to list all existing compatible strings for MPC83xx boards
-- Link to v3: https://lore.kernel.org/r/20250220-ppcyaml-soc-v3-1-b8c98a61bc1a@posteo.net
-
-V3:
-- split out as a single patch
-- otherwise no changes
-
-V2:
-- part of series [PATCH v2 00/12] YAML conversion of several Freescale/PowerPC DT bindings
-  Link: https://lore.kernel.org/lkml/20250207-ppcyaml-v2-1-8137b0c42526@posteo.net/
-- trim subject line
-- fix property order to comply with dts coding style
-- add Rob Herrings's R-b tag
----
- .../bindings/powerpc/fsl/fsl,mpc83xx.yaml          | 93 ++++++++++++++++++++++
- 1 file changed, 93 insertions(+)
-
-diff --git a/Documentation/devicetree/bindings/powerpc/fsl/fsl,mpc83xx.yaml b/Documentation/devicetree/bindings/powerpc/fsl/fsl,mpc83xx.yaml
-new file mode 100644
-index 00000000000000..9e37d155c5829a
---- /dev/null
-+++ b/Documentation/devicetree/bindings/powerpc/fsl/fsl,mpc83xx.yaml
-@@ -0,0 +1,93 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/powerpc/fsl/fsl,mpc83xx.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Freescale PowerQUICC II Pro (MPC83xx) platforms
-+
-+maintainers:
-+  - J. Neuschäfer <j.ne@posteo.net>
-+
-+properties:
-+  $nodename:
-+    const: '/'
-+  compatible:
-+    oneOf:
-+      - description: MPC83xx Reference Design Boards
-+        items:
-+          - enum:
-+              - fsl,mpc8308rdb
-+              - fsl,mpc8315erdb
-+              - fsl,mpc8360rdk
-+              - fsl,mpc8377rdb
-+              - fsl,mpc8377wlan
-+              - fsl,mpc8378rdb
-+              - fsl,mpc8379rdb
-+
-+      - description: MPC8313E Reference Design Board
-+        items:
-+          - const: MPC8313ERDB
-+          - const: MPC831xRDB
-+          - const: MPC83xxRDB
-+
-+      - description: MPC8323E Reference Design Board
-+        items:
-+          - const: MPC8323ERDB
-+          - const: MPC832xRDB
-+          - const: MPC83xxRDB
-+
-+      - description: MPC8349E-mITX(-GP) Reference Design Platform
-+        items:
-+          - enum:
-+              - MPC8349EMITX
-+              - MPC8349EMITXGP
-+          - const: MPC834xMITX
-+          - const: MPC83xxMITX
-+
-+      - description: Keymile KMETER1 board
-+        const: keymile,KMETER1
-+
-+      - description: MPC8308 P1M board
-+        const: denx,mpc8308_p1m
-+
-+patternProperties:
-+  "^soc@.*$":
-+    type: object
-+    properties:
-+      compatible:
-+        oneOf:
-+          - items:
-+              - enum:
-+                  - fsl,mpc8315-immr
-+                  - fsl,mpc8308-immr
-+              - const: simple-bus
-+          - items:
-+              - const: fsl,mpc8360-immr
-+              - const: fsl,immr
-+              - const: fsl,soc
-+              - const: simple-bus
-+          - const: simple-bus
-+
-+additionalProperties: true
-+
-+examples:
-+  - |
-+    / {
-+        compatible = "fsl,mpc8315erdb";
-+        model = "MPC8315E-RDB";
-+        #address-cells = <1>;
-+        #size-cells = <1>;
-+
-+        soc@e0000000 {
-+            compatible = "fsl,mpc8315-immr", "simple-bus";
-+            reg = <0xe0000000 0x00000200>;
-+            #address-cells = <1>;
-+            #size-cells = <1>;
-+            device_type = "soc";
-+            ranges = <0 0xe0000000 0x00100000>;
-+            bus-frequency = <0>;
-+        };
-+    };
-+
-+...
+Similar to the LTC4282 device, we're clearing some fault logs in the
+reset_history attributes.
 
 ---
-base-commit: 9448598b22c50c8a5bb77a9103e2d49f134c9578
-change-id: 20250220-ppcyaml-soc-cae1f14cf389
+Changes in v6:
+- Patch 2:
+  * Rework regmap to use single regmap with custom regmap_bus
+    (lm75-style);
+  * Add explicit i2c func checks;
+  * Make sure page support is enabled for energy reads;
+  * Fix MODULE_DESCRIPTION: "How Swap" -> "Hot Swap";
+  * Remove #include <linux/hwmon-sysfs.h> (unused);
+  * Fix commit message: "How Swap Controller" -> "Hot Swap Controller";
+  * Fix "Addresses scanned" section in docs (no .detect() supported).
 
-Best regards,
--- 
-J. Neuschäfer <j.ne@posteo.net>
+- Patch 3:
+  * Fix typo: LTC42823_ADIO_CONFIG -> LTC4283_ADIO_CONFIG.
+ 
+- Link to v5: https://lore.kernel.org/linux-hwmon/20251223-ltc4283-support-v5-0-1152bff59a61@analog.com/
+
+---
+
+---
+Nuno Sá (3):
+      dt-bindings: hwmon: Document the LTC4283 Swap Controller
+      hwmon: ltc4283: Add support for the LTC4283 Swap Controller
+      gpio: gpio-ltc4283: Add support for the LTC4283 Swap Controller
+
+ .../devicetree/bindings/hwmon/adi,ltc4283.yaml     |  272 +++
+ Documentation/hwmon/index.rst                      |    1 +
+ Documentation/hwmon/ltc4283.rst                    |  265 +++
+ MAINTAINERS                                        |    9 +
+ drivers/gpio/Kconfig                               |   15 +
+ drivers/gpio/Makefile                              |    1 +
+ drivers/gpio/gpio-ltc4283.c                        |  218 +++
+ drivers/hwmon/Kconfig                              |   12 +
+ drivers/hwmon/Makefile                             |    1 +
+ drivers/hwmon/ltc4283.c                            | 1780 ++++++++++++++++++++
+ 10 files changed, 2574 insertions(+)
+---
+base-commit: 78558965440b27814592ec82d8f3668395953b1b
+change-id: 20260303-ltc4283-support-063f78acc5a4
+--
+
+Thanks!
+- Nuno Sá
 
