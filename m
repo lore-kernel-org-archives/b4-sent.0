@@ -1,76 +1,69 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Tue, 03 Mar 2026 20:05:00 +0100
-Subject: [PATCH RESEND] powerpc: DTS: mpc8313erdb: Add
- timer@*/clock-frequency properties
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v3 0/4] Rework BPI-R2-Pro PCIe clock topology
+Date: Tue, 03 Mar 2026 20:52:26 +0100
+Message-Id: <20260303-rk3568-bri-r2-pro-fix-pcie-v3-0-af5a5207b0a1@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260303-timer-clock-v1-1-68336d3161f3@posteo.net>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAPo7p2kC/33NQQ6CMBCF4auQrh3TTmlBV97DuKC0ysQEyJQQl
+ HB3Cy50xfJ/k3wzixiYQhTnbBYcRorUtSn0IRN1U7WPAORTC5RoJSICP7WxJTgmYISeO7jTBH1
+ NAbQxTqL0XnoUCeg5pNuGX2+pG4pDx6/t16jW9ctqqfbYUYECdwpeq9LlVVFcaKLhWL/Fio74D
+ +ldCEGCzK01wRhvqvIHLcvyAW/XqfMLAQAA
+X-Change-ID: 20260222-rk3568-bri-r2-pro-fix-pcie-355b020dd0d2
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Madhavan Srinivasan <maddy@linux.ibm.com>, 
- Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
- "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>
-Cc: devicetree@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
- linux-kernel@vger.kernel.org, kernel test robot <lkp@intel.com>, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Frank Wunderlich <frank-w@public-files.de>
+Cc: Martin Filla <freebsd@sysctl.cz>, 
+ Charalampos Mitrodimas <charmitro@posteo.net>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772564704; l=1719;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=wToNi3p+7oH/fZkL7rybDw1OVJ8Mht3DHd2zANSoxwc=;
- b=1Y5vaGMTDSwDyTMDt6bOuEi0MTG9ayKBdBMjYkAgwux3aVe+bMocyRNbMftjIT1i5M06PHR/u
- RYochVODplxD1OWG3jKHme3675+QXAlXsjdItXL+fq+xU5SFOARPLdr
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1229; i=david@ixit.cz;
+ h=from:subject:message-id; bh=Tsg7+g5+IzVoAa4NtAmUW9nOtVF1KEhB9DJB2ZeM0Z8=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBppzv7Syif8BQdEO3VtydBbircS9IZVObETCauE
+ 8waThZ7wTmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaac7+wAKCRBgAj/E00kg
+ csqXEADHQTI7xNCuksTS/Xb6kCEdA7QqEbj0hAvV3O224oAAKxq/DBwIK4NCg2fkwjMODv08VgE
+ jRdEam6+jORT/y+kev2u3+1nVC94l/q/jWgFRUehbU42GeGWWlEqexT/tvCQnLLSObOY+r9tydg
+ SZqIR/6r/qE1wF2BucOFbXqKZEC2M6ZAYGjHRhRx+24Wznkl0/Aba6dhN9ffY4HxjDECviRLffw
+ HfTM1fmPNtKN56mCKRvivsGHCmuBVDjwPjKpPyV1Uu7ApuBt2lVDJgynQmDPzDpfzvYDQ7MaI16
+ A6JIkyPhb+TDxUmb60soVH9yFGlsvWtG0HAdho+B88jffsjCDfZXqiPoRrcMdaBYrwh6y706yyH
+ nai572KhAOsU/RRDEuPrHcXo37KoEN3bGnPyUJGRpdvTLhK0zlnDpvPCZkR7BctlkVT+lLsJY5F
+ lFiWdXzXkzdMKnJokbBwH8TfLq9qCiURcc3vYpT8u1VgKYlqIh2j1vSGu3ATEM5UQmtW9p/3LNz
+ /W+BdciJTIQJarJKeo2miRan2Yx/3PNDgDfithQpo+nmNDBkSqtTUmtDHSnHQlwxnRIRrsRZjhG
+ MRXVCic7WW/ATPW1177GmQ9UBX7jutsmI+Q6hOplP7dNuC++coJnH8R/KPv8AOEfMb+rVnyl7gD
+ 1JypALq0pulpaRw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The recent formalization of the fsl,gtm schema has shown that
-mpc8313erdb.dts doesn't provide the clock-frequency property on timer
-nodes. A few different expectations collide here:
-
- - Both the binding and the driver for the Freescale global timer module
-   (GTM) have always required clock-frequency, since their addition in
-   2008 (v2.6.26-rc5-236-g83ff9dcf375c41).
- - mpc8313erdb.dts never had the timer@*/clock-frequency property, since
-   the timer nodes were added in 2008 (v2.6.26-3343-g574366128db29e)
-
-I suspect the way this worked was that the bootloader filled these
-values when booting on an MPC8313 board.
-
-Reported-by: kernel test robot <lkp@intel.com>
-Closes: https://lore.kernel.org/oe-kbuild-all/202505300136.HOpO5P6y-lkp@intel.com/
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/powerpc/boot/dts/mpc8313erdb.dts | 2 ++
- 1 file changed, 2 insertions(+)
+Changes in v3:
+- Added commit extending the clock list with pipe clock for rk3568.
+- Updated the clock list in BPI-R2-Pro dts. (Charalampos)
+- Link to v2: https://lore.kernel.org/r/20260303-rk3568-bri-r2-pro-fix-pcie-v2-0-04665e55d5a8@ixit.cz
 
-diff --git a/arch/powerpc/boot/dts/mpc8313erdb.dts b/arch/powerpc/boot/dts/mpc8313erdb.dts
-index 09508b4c8c7309..0bddc3be9e62f8 100644
---- a/arch/powerpc/boot/dts/mpc8313erdb.dts
-+++ b/arch/powerpc/boot/dts/mpc8313erdb.dts
-@@ -308,6 +308,7 @@ gtm1: timer@500 {
- 			reg = <0x500 0x100>;
- 			interrupts = <90 8 78 8 84 8 72 8>;
- 			interrupt-parent = <&ipic>;
-+			clock-frequency = <0>; /* filled by bootloader */
- 		};
- 
- 		timer@600 {
-@@ -315,6 +316,7 @@ timer@600 {
- 			reg = <0x600 0x100>;
- 			interrupts = <91 8 79 8 85 8 73 8>;
- 			interrupt-parent = <&ipic>;
-+			clock-frequency = <0>; /* filled by bootloader */
- 		};
- 	};
- 
+Changes in v2:
+- Added patches for solving the topology issues and on top of these
+  original patch. (Heiko)
+- Link to v1: https://lore.kernel.org/r/20260301-rk3568-bri-r2-pro-fix-pcie-v1-1-b9ed318b4a77@ixit.cz
 
 ---
-base-commit: 9448598b22c50c8a5bb77a9103e2d49f134c9578
-change-id: 20250625-timer-clock-e03fa9e835c8
+David Heidelberg (4):
+      arm64: dts: rockchip: assign pipe clock to rk3568 PCIe lanes
+      arm64: dts: rockchip: Introduce the reference PCIe clk generator for BPI-R2-Pro
+      arm64: dts: rockchip: Use reference PCIe clock generator for BPI-R2-Pro
+      arm64: dts: rockchip: Define PCIe clock pinctrl for BPI-R2-Pro
+
+ arch/arm64/boot/dts/rockchip/rk3568-bpi-r2-pro.dts | 59 +++++++++++++++++-----
+ arch/arm64/boot/dts/rockchip/rk3568.dtsi           | 12 +++--
+ 2 files changed, 53 insertions(+), 18 deletions(-)
+---
+base-commit: 3fa5e5702a82d259897bd7e209469bc06368bf31
+change-id: 20260222-rk3568-bri-r2-pro-fix-pcie-355b020dd0d2
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+David Heidelberg <david@ixit.cz>
 
