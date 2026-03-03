@@ -1,77 +1,82 @@
 From: Maximilian Pezzullo <maximilianpezzullo@gmail.com>
-Date: Tue, 03 Mar 2026 22:38:21 +0100
-Subject: [PATCH 2/2] igc: fix typos in comments
+Date: Tue, 03 Mar 2026 23:06:17 +0100
+Subject: [PATCH] alpha: objstrip: fix partial write() buffer pointer not
+ advancing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260303-master-v1-2-f180b1ad98b5@gmail.com>
-References: <20260303-master-v1-0-f180b1ad98b5@gmail.com>
-In-Reply-To: <20260303-master-v1-0-f180b1ad98b5@gmail.com>
-To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
- Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: intel-wired-lan@lists.osuosl.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
+Message-Id: <20260303-alpha-fix-v1-1-89abede2a585@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDYwNj3cScgoxE3bTMCt3kVNM0c4PUVAsDwxQloPqColSgMNis6NjaWgA
+ gLHmgWwAAAA==
+X-Change-ID: 20260303-alpha-fix-ce5f70ee801d
+To: Richard Henderson <richard.henderson@linaro.org>, 
+ Matt Turner <mattst88@gmail.com>, Magnus Lindholm <linmag7@gmail.com>
+Cc: linux-alpha@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Maximilian Pezzullo <maximilianpezzullo@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772573919; l=2226;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772575624; l=1584;
  i=maximilianpezzullo@gmail.com; s=20260303; h=from:subject:message-id;
- bh=ezcHABa5+m3YgVJzerPyH32xEuquU6DSu3kByoKy36c=;
- b=F5z5ui9GIfYpWWEgTxwtGVvdmqDUHzQREk6s+IhqrWDwINgqwPtik1msgaOWumPqrdJleLkR7
- GSB0ZC4rXIaA3QAxs8Id7n0SrHri9RzCDySCUQoE2q3aHQsE0pHJx8o
+ bh=z1sLA8h3NypD4m7zDxw+jdCekD1EutaTlomZvuEG0dg=;
+ b=TIhTx582nsVwRLtQQmuoneiiCFs/q6M5CdVhFb8BhTlny9UnZ5yZgoIiVVbMF7qEnXPl+7Dc0
+ iBqr4hE4EXZBMbUa2eJBhXFPfoNMpfdjCN2u0GIVJWAXPqm8FAK3Z9+
 X-Developer-Key: i=maximilianpezzullo@gmail.com; a=ed25519;
  pk=TRTR4c2Vb1IfluQvv5OUDPg7EE+pIzdPBND85UU559w=
 X-Endpoint-Received: by B4 Relay for maximilianpezzullo@gmail.com/20260303 with auth_id=658
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix spelling errors in code comments:
- - igc_diag.c: 'autonegotioation' -> 'autonegotiation'
- - igc_main.c: 'revisons' -> 'revisions' (two occurrences)
+In the main copy loop, on a partial write() the inner do-while
+retried write(ofd, buf, n) always from the start of buf, while
+only n was decremented.  This caused already-written data to be
+re-written, corrupting the output file on systems where write()
+returns less than the requested byte count.
 
+Fix by introducing a pointer 'p' that tracks the current write
+position within buf and advances it by nwritten on each iteration.
+
+Closes: https://bugzilla.kernel.org/show_bug.cgi?id=221159
 Signed-off-by: Maximilian Pezzullo <maximilianpezzullo@gmail.com>
 ---
- drivers/net/ethernet/intel/igc/igc_diag.c | 2 +-
- drivers/net/ethernet/intel/igc/igc_main.c | 4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ arch/alpha/boot/tools/objstrip.c | 20 ++++++++++++--------
+ 1 file changed, 12 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/net/ethernet/intel/igc/igc_diag.c b/drivers/net/ethernet/intel/igc/igc_diag.c
-index a43d7244e..031561fdc 100644
---- a/drivers/net/ethernet/intel/igc/igc_diag.c
-+++ b/drivers/net/ethernet/intel/igc/igc_diag.c
-@@ -172,7 +172,7 @@ bool igc_link_test(struct igc_adapter *adapter, u64 *data)
+diff --git a/arch/alpha/boot/tools/objstrip.c b/arch/alpha/boot/tools/objstrip.c
+index 7cf92d172dc..8da25c2584f 100644
+--- a/arch/alpha/boot/tools/objstrip.c
++++ b/arch/alpha/boot/tools/objstrip.c
+@@ -246,14 +246,18 @@ main (int argc, char *argv[])
+ 	    perror("read");
+ 	    exit(1);
+ 	}
+-	do {
+-	    nwritten = write(ofd, buf, n);
+-	    if ((ssize_t) nwritten == -1) {
+-		perror("write");
+-		exit(1);
+-	    }
+-	    n -= nwritten;
+-	} while (n > 0);
++	{
++	    char *p = buf;
++	    do {
++		nwritten = write(ofd, p, n);
++		if ((ssize_t) nwritten == -1) {
++		    perror("write");
++		    exit(1);
++		}
++		p += nwritten;
++		n -= nwritten;
++	    } while (n > 0);
++	}
+     }
  
- 	*data = 0;
- 
--	/* add delay to give enough time for autonegotioation to finish */
-+	/* add delay to give enough time for autonegotiation to finish */
- 	ssleep(5);
- 
- 	link_up = igc_has_link(adapter);
-diff --git a/drivers/net/ethernet/intel/igc/igc_main.c b/drivers/net/ethernet/intel/igc/igc_main.c
-index 27e5c2109..de3f3d95d 100644
---- a/drivers/net/ethernet/intel/igc/igc_main.c
-+++ b/drivers/net/ethernet/intel/igc/igc_main.c
-@@ -1793,7 +1793,7 @@ static const enum pkt_hash_types igc_rss_type_table[IGC_RSS_TYPE_MAX_TABLE] = {
- 	[IGC_RSS_TYPE_HASH_UDP_IPV6_EX] = PKT_HASH_TYPE_L4,
- 	[10] = PKT_HASH_TYPE_NONE, /* RSS Type above 9 "Reserved" by HW  */
- 	[11] = PKT_HASH_TYPE_NONE, /* keep array sized for SW bit-mask   */
--	[12] = PKT_HASH_TYPE_NONE, /* to handle future HW revisons       */
-+	[12] = PKT_HASH_TYPE_NONE, /* to handle future HW revisions       */
- 	[13] = PKT_HASH_TYPE_NONE,
- 	[14] = PKT_HASH_TYPE_NONE,
- 	[15] = PKT_HASH_TYPE_NONE,
-@@ -7021,7 +7021,7 @@ static enum xdp_rss_hash_type igc_xdp_rss_type[IGC_RSS_TYPE_MAX_TABLE] = {
- 	[IGC_RSS_TYPE_HASH_UDP_IPV6_EX] = XDP_RSS_TYPE_L4_IPV6_UDP_EX,
- 	[10] = XDP_RSS_TYPE_NONE, /* RSS Type above 9 "Reserved" by HW  */
- 	[11] = XDP_RSS_TYPE_NONE, /* keep array sized for SW bit-mask   */
--	[12] = XDP_RSS_TYPE_NONE, /* to handle future HW revisons       */
-+	[12] = XDP_RSS_TYPE_NONE, /* to handle future HW revisions       */
- 	[13] = XDP_RSS_TYPE_NONE,
- 	[14] = XDP_RSS_TYPE_NONE,
- 	[15] = XDP_RSS_TYPE_NONE,
+     if (pad) {
 
+---
+base-commit: af4e9ef3d78420feb8fe58cd9a1ab80c501b3c08
+change-id: 20260303-alpha-fix-ce5f70ee801d
+
+Best regards,
 -- 
-Git-155)
+Maximilian Pezzullo <maximilianpezzullo@gmail.com>
 
