@@ -1,15 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v4 0/4] Rework BPI-R2-Pro PCIe clock topology
-Date: Wed, 04 Mar 2026 12:05:26 +0100
-Message-Id: <20260304-rk3568-bri-r2-pro-fix-pcie-v4-0-37abd7ba29d0@ixit.cz>
+Date: Wed, 04 Mar 2026 12:05:27 +0100
+Subject: [PATCH v4 1/4] arm64: dts: rockchip: assign pipe clock to rk356x
+ PCIe lanes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPcRqGkC/43NwQ6CMAzG8VcxO1vTdRTQk+9hPGxsaGMiZBCCE
- t7dqQf1Qjz+vya/TqoLUUKndqtJxTBIJ801RbZeqepsr6cA4lMrQsqRiCBeDOcluCgQCdrYQC0
- jtJUEMMwOCb1HTyoBbQzp9sIPx9Rn6fom3l6/Bv1c36xBvcQOGjS4bfBGly6zRbGXUfpNdVdPd
- KBvyCxCBAiY5TkHZs+2/IXM/5BJkK3ZMmHh0OoPNM/zA5Rx59tUAQAA
-X-Change-ID: 20260222-rk3568-bri-r2-pro-fix-pcie-355b020dd0d2
+Message-Id: <20260304-rk3568-bri-r2-pro-fix-pcie-v4-1-37abd7ba29d0@ixit.cz>
+References: <20260304-rk3568-bri-r2-pro-fix-pcie-v4-0-37abd7ba29d0@ixit.cz>
+In-Reply-To: <20260304-rk3568-bri-r2-pro-fix-pcie-v4-0-37abd7ba29d0@ixit.cz>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
  Frank Wunderlich <frank-w@public-files.de>
@@ -18,58 +16,86 @@ Cc: Martin Filla <freebsd@sysctl.cz>,
  linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
  linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1501; i=david@ixit.cz;
- h=from:subject:message-id; bh=rappOU6haODzrmo9ldSIUDJg7935zH1v7n2L238WwX8=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpqBH5QVhOP27LnMiKOOFlu0rfrwVolxABEt7dW
- rPVhLK3scuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaagR+QAKCRBgAj/E00kg
- cujPD/0T4cguv77mntr2cU2BgHwJ0LcMPebStYmJTq6Ik7/c5+GAK/s8VhkqnKNzdzbjUpi7hrg
- O7nxijvj6U5NDJS9uiRTi9570RZFDs8pZDenp/IPKi5WR/GuaslR6Xnbqo8tyt2g2S10rXQaWuJ
- jgWWbr5pc3KZ7aXNNNMBQ8C8GpEj+9VplgNe0WhsDVJhhq6wVZrZsu++DNYpVDEvJ64O5L2vcG/
- Yt30ScMWu6s5mLmYs+CYDFAMsTrrf1P+GqJ7Y/boFpckV5Jg4IW8M68uUbZMqYQxyy1MjES8EH7
- BVviXGVMKG2nPJJYERRIXZTIW1fvMkLTEGk934BsHPGxqOBHKf7FkjH/Jo3jHhBWPckEjWdL0MK
- Of+84WHs6SfTh4JqBwBCzL60pYiOahlVjiyoUq8zb3CGLsriWVz/lSY6af+or2aCmLLuF3cYqOn
- m1DWX8cN7aqwDjGQB7JBShBDGm7Tyk4FRr2WqPOWtNt40VXoQlCcBK7e7u3N5Uc5B0IPmR5X7c3
- bvvPPZa6XSq1W+wWlr1qzPx5gMvkypnN27jWc1mMLPTxkk1y5X8tM1Tbly8lUsm/zVrUtQKZrfU
- rn5M99P8fjNOGhI/PyF9H2VNF8VaHswSAXfkoz5vlyLyGWxjxeQKw+O113kDLClPxY510e4gk3l
- GUKSMAtb06LD/RQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2523; i=david@ixit.cz;
+ h=from:subject:message-id; bh=nJWr1cG55C7TfO8lmuP7iO4pkz7D7P5warAqQ5V7GaM=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpqBH5+76cstljDcdJQqO27u9npzazHz0WHktMs
+ RATNgGZiVSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaagR+QAKCRBgAj/E00kg
+ ctxBD/wIdVOClRo0Xr9QvWclph7PqoDR44+VURYr41+YD/4RlyzAe/948Bu4XS2V4Ujyp+TfGH7
+ Jmnd831Htg/1Y/2nOK8Jfd5Dc7QFK+pihhm7IOy3AR9g54sz7ddaAvdRGz/xa6sh2zMO2U4JZQw
+ ud8Z6oJsy3xJTeS11PTH8UUTQkjcnalAqsxQQPgtD+BShRVHQEPMvplR8TDyo8VVherlOjt7jdI
+ bKI09/HIOLQKDh6hG9cCStcfRZpV6CinHfNMTdPHTtDOb6LdUC0a3SIdOxXcG+nxzRoJajGFkbW
+ mBuk1ijJngCropAIITQGS7d1ROhXx4+m6ehxMFrjF2NNyd4tbuSBJ1LlQZdWIrDS5kSPwTfA6Us
+ pX3v3XmIe0RLgcVkxzURUWjNA96va95xQnviXhAJwiBW3S3CVJTcXxW2LCxSFQ92d+X2Zdcn0t/
+ 0liNFDU1E8k2Ght8tBN5DQgB2lQgnRKDBdy7+CgEPwh0SJDtqJgauDNjiH3aQN7Cfg+UAAFl1Tq
+ wEh8uNOoGXiLcrjaVjLD80e8BsCxfuXBeylgIcaW8vykJlb7mPtHenVOMUwAgeegFTND9tktZS1
+ T+4wQAbotfwUYigrPhhUE7rs+0EQ8IsZnaJOTmkBRFnqyqE3HbInprZNMvOmmyu/Ybw4om9BafU
+ fwqmyGml7G0cjtg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+These clocks are used by PCIe lanes, but we're missing from the
+definition.
+
+Suggested-by: Charalampos Mitrodimas <charmitro@posteo.net>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v4:
-- Extend rk3568 pipe clock introduction to whole rk356x. (Shawn)
-- typos (Charalampos)
-- Link to v3: https://lore.kernel.org/r/20260303-rk3568-bri-r2-pro-fix-pcie-v3-0-af5a5207b0a1@ixit.cz
+ arch/arm64/boot/dts/rockchip/rk3568.dtsi      | 12 ++++++++----
+ arch/arm64/boot/dts/rockchip/rk356x-base.dtsi |  6 ++++--
+ 2 files changed, 12 insertions(+), 6 deletions(-)
 
-Changes in v3:
-- Added commit extending the clock list with pipe clock for rk3568.
-- Updated the clock list in BPI-R2-Pro dts. (Charalampos)
-- Link to v2: https://lore.kernel.org/r/20260303-rk3568-bri-r2-pro-fix-pcie-v2-0-04665e55d5a8@ixit.cz
+diff --git a/arch/arm64/boot/dts/rockchip/rk3568.dtsi b/arch/arm64/boot/dts/rockchip/rk3568.dtsi
+index 658097ed69714..3bc653f027f1f 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3568.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3568.dtsi
+@@ -155,9 +155,11 @@ pcie3x1: pcie@fe270000 {
+ 		bus-range = <0x10 0x1f>;
+ 		clocks = <&cru ACLK_PCIE30X1_MST>, <&cru ACLK_PCIE30X1_SLV>,
+ 			 <&cru ACLK_PCIE30X1_DBI>, <&cru PCLK_PCIE30X1>,
+-			 <&cru CLK_PCIE30X1_AUX_NDFT>;
++			 <&cru CLK_PCIE30X1_AUX_NDFT>,
++			 <&cru CLK_PCIE30X1_PIPE_DFT>;
+ 		clock-names = "aclk_mst", "aclk_slv",
+-			      "aclk_dbi", "pclk", "aux";
++			      "aclk_dbi", "pclk", "aux",
++			      "pipe";
+ 		device_type = "pci";
+ 		interrupts = <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,
+ 			     <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>,
+@@ -208,9 +210,11 @@ pcie3x2: pcie@fe280000 {
+ 		bus-range = <0x20 0x2f>;
+ 		clocks = <&cru ACLK_PCIE30X2_MST>, <&cru ACLK_PCIE30X2_SLV>,
+ 			 <&cru ACLK_PCIE30X2_DBI>, <&cru PCLK_PCIE30X2>,
+-			 <&cru CLK_PCIE30X2_AUX_NDFT>;
++			 <&cru CLK_PCIE30X2_AUX_NDFT>,
++			 <&cru CLK_PCIE30X2_PIPE_DFT>;
+ 		clock-names = "aclk_mst", "aclk_slv",
+-			      "aclk_dbi", "pclk", "aux";
++			      "aclk_dbi", "pclk", "aux",
++			      "pipe";
+ 		device_type = "pci";
+ 		interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH>,
+ 			     <GIC_SPI 164 IRQ_TYPE_LEVEL_HIGH>,
+diff --git a/arch/arm64/boot/dts/rockchip/rk356x-base.dtsi b/arch/arm64/boot/dts/rockchip/rk356x-base.dtsi
+index 68b48606f6010..15741acac6274 100644
+--- a/arch/arm64/boot/dts/rockchip/rk356x-base.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk356x-base.dtsi
+@@ -1020,9 +1020,11 @@ pcie2x1: pcie@fe260000 {
+ 		bus-range = <0x0 0xf>;
+ 		clocks = <&cru ACLK_PCIE20_MST>, <&cru ACLK_PCIE20_SLV>,
+ 			 <&cru ACLK_PCIE20_DBI>, <&cru PCLK_PCIE20>,
+-			 <&cru CLK_PCIE20_AUX_NDFT>;
++			 <&cru CLK_PCIE20_AUX_NDFT>,
++			 <&cru CLK_PCIE20_PIPE_DFT>;
+ 		clock-names = "aclk_mst", "aclk_slv",
+-			      "aclk_dbi", "pclk", "aux";
++			      "aclk_dbi", "pclk", "aux",
++			      "pipe";
+ 		device_type = "pci";
+ 		#interrupt-cells = <1>;
+ 		interrupt-map-mask = <0 0 0 7>;
 
-Changes in v2:
-- Added patches for solving the topology issues and on top of these
-  original patch. (Heiko)
-- Link to v1: https://lore.kernel.org/r/20260301-rk3568-bri-r2-pro-fix-pcie-v1-1-b9ed318b4a77@ixit.cz
-
----
-David Heidelberg (4):
-      arm64: dts: rockchip: assign pipe clock to rk356x PCIe lanes
-      arm64: dts: rockchip: Introduce the reference PCIe clk generator for BPI-R2-Pro
-      arm64: dts: rockchip: Use reference PCIe clock generator for BPI-R2-Pro
-      arm64: dts: rockchip: Define PCIe clock pinctrl for BPI-R2-Pro
-
- arch/arm64/boot/dts/rockchip/rk3568-bpi-r2-pro.dts | 59 +++++++++++++++++-----
- arch/arm64/boot/dts/rockchip/rk3568.dtsi           | 12 +++--
- arch/arm64/boot/dts/rockchip/rk356x-base.dtsi      |  6 ++-
- 3 files changed, 57 insertions(+), 20 deletions(-)
----
-base-commit: c025f6cf4209e1542ec2afebe49f42bbaf1a5c7b
-change-id: 20260222-rk3568-bri-r2-pro-fix-pcie-355b020dd0d2
-
-Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+2.53.0
 
