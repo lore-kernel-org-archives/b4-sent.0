@@ -1,55 +1,80 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Wed, 04 Mar 2026 01:42:57 +0100
-Subject: [PATCH] io_uring/mock: Fix typo in help text
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v5 0/3] Add Amlogic general DMA
+Date: Wed, 04 Mar 2026 06:14:11 +0000
+Message-Id: <20260304-amlogic-dma-v5-0-aa453d14fd43@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260304-uring-typo-v1-1-152bd7474dde@posteo.net>
-X-B4-Tracking: v=1; b=H4sIABCAp2kC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDYwMT3dKizLx03ZLKgnxdk2RzYwtzE0NjA1NjJaCGgqLUtMwKsGHRsbW
- 1ANKff55cAAAA
-X-Change-ID: 20260304-uring-typo-4c7387413053
-To: io-uring@vger.kernel.org
-Cc: Jens Axboe <axboe@kernel.dk>, Pavel Begunkov <asml.silence@gmail.com>, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIALPNp2kC/2XOwQ6CMAwG4FchOzvDyro5T76H8QCswBJhBgzRE
+ N7dQSQKHP82398OrKPWUcfO0cBa6l3nfBMCHiKWV2lTEnc2ZAYxoACBPK3vvnQ5t3XKtZFaW8w
+ tKMmCeLRUuNfcdr2FXLnu6dv3XN6Labr0qFVPL3jMCU6GUJNRqb58t8fc12xq6mHRKhag1xqCl
+ ghoE9BWS7vXyU9DvLmdBI2qyEyBhizAXss/vb0tgy4ASSohyWSbz8dx/ACL32ScYgEAAA==
+X-Change-ID: 20251215-amlogic-dma-79477d5cd264
+To: Vinod Koul <vkoul@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
+ "Gustavo A. R. Silva" <gustavoars@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, dmaengine@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-hardening@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772584980; l=792;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=DxSaceN2mJMhpNCtrbbBcSl6awZbjwelglsQqQzCSS0=;
- b=ODptXtfvI+TT/uh0ahgieM6+lXSAuyspU2Opa6r04HnFeeZdDnjaFCotU2HBaLsac8aBwna16
- YwadOTwAa1uCJuw6uFMW+pCq9/oTIx5MiGE4K9Xi2buJJjji54m1axl
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772604853; l=2054;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=ITg/ig7wrS1ZXLm9pbAOjF/U8W9JlHhbHX5MT6WlX0o=;
+ b=fjpfIMWfqpeL8CRxzINA9C5cxUZwVJX06v1o7F7JQow0xOWuh2fpVIvPAHYGlMbwtr3l+1uCn
+ aoKAGr7CJO1BirRlQeYQnLP4NaWu+m1AD99kRobQCjxde8i/uaFBgtH
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix the spelling of "subsystem".
+Add DMA driver and bindigns for the Amlogic SoCs.
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- init/Kconfig | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v5:
+- Rename head file and rename macro definition.
+- Rename the subject in [2/3] from "dma" to "dmaengine".
+- Link to v4: https://lore.kernel.org/r/20260227-amlogic-dma-v4-0-f25e4614e9b7@amlogic.com
 
-diff --git a/init/Kconfig b/init/Kconfig
-index b55deae9256c70..444ce811ea674a 100644
---- a/init/Kconfig
-+++ b/init/Kconfig
-@@ -1902,7 +1902,7 @@ config IO_URING_MOCK_FILE
- 	default n
- 	depends on IO_URING
- 	help
--	  Enable mock files for io_uring subststem testing. The ABI might
-+	  Enable mock files for io_uring subsystem testing. The ABI might
- 	  still change, so it's still experimental and should only be enabled
- 	  for specific test purposes.
- 
+Changes in v4:
+- Support split transfer when data len > MAX_LEN.
+- When a module fails or exits, perform de-initialization.
+- Some other minor modifications.
+- Link to v3: https://lore.kernel.org/r/20260206-amlogic-dma-v3-0-56fb9f59ed22@amlogic.com
+
+Changes in v3:
+- Adjust the format of binding according to Frank's suggestion.
+- Some code format modified according to Frank's suggestion.
+- Support one prep_sg and one submit, drop multi prep_sg and one submit.
+- Keep pre state when resume from pause status.
+- Link to v2: https://lore.kernel.org/r/20260127-amlogic-dma-v2-0-4525d327d74d@amlogic.com
+
+Changes in v2:
+- Introduce what the DMA is used for in the A9 SoC.
+- Some minor modifications were made according to Krzysztof's suggestions.
+- Some modifications were made according to Neil's suggestions.
+- Fix a build error.
+- Link to v1: https://lore.kernel.org/r/20251216-amlogic-dma-v1-0-e289e57e96a7@amlogic.com
 
 ---
-base-commit: 11439c4635edd669ae435eec308f4ab8a0804808
-change-id: 20260304-uring-typo-4c7387413053
+Xianwei Zhao (3):
+      dt-bindings: dma: Add Amlogic A9 SoC DMA
+      dmaengine: amlogic: Add general DMA driver for A9
+      MAINTAINERS: Add an entry for Amlogic DMA driver
+
+ .../devicetree/bindings/dma/amlogic,a9-dma.yaml    |  65 +++
+ MAINTAINERS                                        |   7 +
+ drivers/dma/Kconfig                                |   9 +
+ drivers/dma/Makefile                               |   1 +
+ drivers/dma/amlogic-dma.c                          | 585 +++++++++++++++++++++
+ include/dt-bindings/dma/amlogic,a9-dma.h           |   8 +
+ 6 files changed, 675 insertions(+)
+---
+base-commit: 3d2d1059cae3abab771576a7ee7f59d9627cfb8e
+change-id: 20251215-amlogic-dma-79477d5cd264
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
