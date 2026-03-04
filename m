@@ -1,75 +1,81 @@
-From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
-Date: Wed, 04 Mar 2026 13:03:10 +0100
-Subject: [PATCH net-next v2] net: phy: realtek: Add support for PHY LEDs on
- RTL8211F-VD
+From: Shivam Kalra <shivamkalra98@zohomail.in>
+Subject: [PATCH v2 0/2] mm/vmalloc: free unused pages on vrealloc() shrink
+Date: Wed, 04 Mar 2026 20:23:14 +0530
+Message-Id: <20260304-vmalloc-shrink-v2-0-28c291d60100@zohomail.in>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260304-rtl8211fvd-add-leds-v2-1-d50bd8a50f08@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAH0fqGkC/32NTQqDMBBGryKz7hRnoNF21XuIi2hGHfCnJBJaJ
- Hdv6gG6fA++9x0QxKsEeBQHeIkadFsz8KWAfrLrKKguM3DJpmQy6Pe5ZqIhOrTO4SwuYMVyc8Y
- YuTNBXr68DPo+q02bedKwb/5znkT62f+9SEhouasNVV031OVzXKzO135boE0pfQFJxKzctgAAA
- A==
-X-Change-ID: 20260216-rtl8211fvd-add-leds-72e5d666e921
-To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Daniel Golle <daniel@makrotopia.org>
-Cc: Miroslav Ondra <ondra@faster.cz>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAFpHqGkC/3XMQQ7CIBCF4as0sxYDiNi48h6mC9oOMpGCAUPUh
+ ruL3bv8X/K+FTImwgznboWEhTLF0ELuOpicCTdkNLcGyaXmBy5ZWYz3cWLZJQp3xtUordF9b4S
+ CdnoktPTawOvQ2lF+xvTe/CJ+61+qCMaZ0jNaq/RxPOHlE11cDPk9BRhqrV+Po5ObrgAAAA==
+X-Change-ID: 20260302-vmalloc-shrink-04b2fa688a14
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ Uladzislau Rezki <urezki@gmail.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
+ Shivam Kalra <shivamkalra98@zohomail.in>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772625799; l=1495;
- i=cleverline1mc@gmail.com; s=20241112; h=from:subject:message-id;
- bh=b9WJdwgEAJzujhzgFrIVP9oyEzwN09jGayVy7lFDZmo=;
- b=q+3JhmVA3G6a1NbuIFV7FNiCPImMnZSC0wf7PDxROLyOKJneWg0DNNmWM3B+TGt+/ir1erXiN
- Lysh8oTXscQAXtuf5u8CX8phANPZVy5B++d/fJQOAx/okGIrDy6GU/L
-X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
- pk=EJoEbw03UiRORQuCiEyNA8gH1Q6fIpEWnn/MyaWOWX0=
-X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20241112 with auth_id=275
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772636006; l=2197;
+ i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
+ bh=nhkia8GqDvxaObq8yMuYcab15Z0X2JGKN5fmCCeEHrM=;
+ b=WokF0sCgUwyf1aDiiT0AE891J1ZLYuVqXissd55LWAov7k9BR1j+SMo2VdZ0ze6Hwq0leaQhK
+ ys1hGxddy3SBn5kuFAbwLyxOyRHbo5m+9x1ed7E0F2AHRMsWk8GZhbr
+X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
+ pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
+X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Realtek RTL8211F-VD has the same LED configuration
-and registers as RTL8211F.
-Use the existing LED related functions for this chip,
-so it is possible to also use the netdev trigger.
+This series implements the TODO in vrealloc() to unmap and free unused
+pages when shrinking across a page boundary.
 
-Tested on ROCK Pi E.
+Problem:
+When vrealloc() shrinks an allocation, it updates bookkeeping
+(requested_size, KASAN shadow) but does not free the underlying physical
+pages. This wastes memory for the lifetime of the allocation.
 
-Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
-Reviewed-by: Andrew Lunn <andrew@lunn.ch>
----
-Thanks Andrew Lunn for his feedback.
+Solution:
+- Patch 1: Extracts a vmalloc_free_pages(vm, start, end) helper from
+  vfree() that frees a range of pages with memcg and nr_vmalloc_pages
+  accounting. Pure refactor, no functional change.
+- Patch 2: Uses the helper to free tail pages when vrealloc() shrinks
+  across a page boundary. Skips huge page allocations (page_order > 0)
+  since compound pages cannot be partially freed. Also fixes the
+  grow-in-place path to check vm->nr_pages instead of
+  get_vm_area_size(), which reflects the virtual reservation and does
+  not change on shrink.
+The virtual address reservation is kept intact to preserve the range
+for potential future grow-in-place support.
+A concrete user is the Rust binder driver's KVVec::shrink_to [1], which
+performs explicit vrealloc() shrinks for memory reclamation.
+
+Tested:
+- KASAN KUnit (vmalloc_oob passes)
+- lib/test_vmalloc stress tests (3/3, 1M iterations each)
+- checkpatch, sparse, W=1, allmodconfig, coccicheck clean
+
+[1] https://lore.kernel.org/all/20260216-binder-shrink-vec-v3-v6-0-ece8e8593e53@zohomail.in/
+
+Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
 Changes in v2:
-- Sending in the right time and fixing subject line.
-- No code changes.
-- Link to v1: https://lore.kernel.org/r/20260216-rtl8211fvd-add-leds-v1-1-a2b8617bbf80@gmail.com
----
- drivers/net/phy/realtek/realtek_main.c | 3 +++
- 1 file changed, 3 insertions(+)
-
-diff --git a/drivers/net/phy/realtek/realtek_main.c b/drivers/net/phy/realtek/realtek_main.c
-index 75565fbdbf6d..530b4e26d16e 100644
---- a/drivers/net/phy/realtek/realtek_main.c
-+++ b/drivers/net/phy/realtek/realtek_main.c
-@@ -2243,6 +2243,9 @@ static struct phy_driver realtek_drvs[] = {
- 		.read_page	= rtl821x_read_page,
- 		.write_page	= rtl821x_write_page,
- 		.flags		= PHY_ALWAYS_CALL_SUSPEND,
-+		.led_hw_is_supported = rtl8211x_led_hw_is_supported,
-+		.led_hw_control_get = rtl8211f_led_hw_control_get,
-+		.led_hw_control_set = rtl8211f_led_hw_control_set,
- 	}, {
- 		.name		= "Generic FE-GE Realtek PHY",
- 		.match_phy_device = rtlgen_match_phy_device,
+- Updated the base-commit to mm-new
+- Fix conflicts after rebase
+- Ran `clang-format` on the changes made
+- Use a single `kasan_vrealloc` (Alice Ryhl)
+- Link to v1: https://lore.kernel.org/r/20260302-vmalloc-shrink-v1-0-46deff465b7e@zohomail.in
 
 ---
-base-commit: 350adaf7fde9fdbd9aeed6d442a9ae90c6a3ab97
-change-id: 20260216-rtl8211fvd-add-leds-72e5d666e921
+Shivam Kalra (2):
+      mm/vmalloc: extract vmalloc_free_pages() helper from vfree()
+      mm/vmalloc: free unused pages on vrealloc() shrink
+
+ mm/vmalloc.c | 61 +++++++++++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 42 insertions(+), 19 deletions(-)
+---
+base-commit: 2bff1816949a0849a384ed3cc66c8385d9590861
+change-id: 20260302-vmalloc-shrink-04b2fa688a14
 
 Best regards,
 -- 
-Kryštof Černý <cleverline1mc@gmail.com>
+Shivam Kalra <shivamkalra98@zohomail.in>
 
