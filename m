@@ -1,77 +1,75 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Wed, 04 Mar 2026 12:05:30 +0100
-Subject: [PATCH v4 4/4] arm64: dts: rockchip: Define PCIe clock pinctrl for
- BPI-R2-Pro
+From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
+Date: Wed, 04 Mar 2026 13:03:10 +0100
+Subject: [PATCH net-next v2] net: phy: realtek: Add support for PHY LEDs on
+ RTL8211F-VD
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260304-rk3568-bri-r2-pro-fix-pcie-v4-4-37abd7ba29d0@ixit.cz>
-References: <20260304-rk3568-bri-r2-pro-fix-pcie-v4-0-37abd7ba29d0@ixit.cz>
-In-Reply-To: <20260304-rk3568-bri-r2-pro-fix-pcie-v4-0-37abd7ba29d0@ixit.cz>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Frank Wunderlich <frank-w@public-files.de>
-Cc: Martin Filla <freebsd@sysctl.cz>, 
- Charalampos Mitrodimas <charmitro@posteo.net>, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260304-rtl8211fvd-add-leds-v2-1-d50bd8a50f08@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAH0fqGkC/32NTQqDMBBGryKz7hRnoNF21XuIi2hGHfCnJBJaJ
+ Hdv6gG6fA++9x0QxKsEeBQHeIkadFsz8KWAfrLrKKguM3DJpmQy6Pe5ZqIhOrTO4SwuYMVyc8Y
+ YuTNBXr68DPo+q02bedKwb/5znkT62f+9SEhouasNVV031OVzXKzO135boE0pfQFJxKzctgAAA
+ A==
+X-Change-ID: 20260216-rtl8211fvd-add-leds-72e5d666e921
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Daniel Golle <daniel@makrotopia.org>
+Cc: Miroslav Ondra <ondra@faster.cz>, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1430; i=david@ixit.cz;
- h=from:subject:message-id; bh=phK8+ZRwh/J/YxkbsoLpGT+s0IxKqlf1J/b5vaUdLh0=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpqBH5PO9/6ue5v3vMfwoqhAKzbGkWb5HOukqEv
- PUg0fESJGqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaagR+QAKCRBgAj/E00kg
- crOAD/9ASb2JoxmVej5rj1mI/ep6xH9GgV09wCCinkiCPRPN01eYn5FqLFzwKkg0f26RrlnLZtv
- K7u9wfqXcUimhp36PY+v4WY8QY79h5zCTNT6teP6U1M6QVSnGs+bRjR92WT8nOuSEAY6XGzB8Rm
- 1h4PkXpYjI2YlUJcpHfeQOZrFN5FjkGsPXVJzXjTQ3b3FEJiQCdpYvFzrWIifTFzCfirfOCFWtz
- ajx0i1Ch5CmrpLEqnXPDnH0LgGiMDC7u7So2bn6IZBSeZL1M+u7c+0kSE1WRllq0CivYTXVfqWP
- 0p9CJ+LO3uBdISZtHkIn92QjFgQ7do8NHfrW5xxxVIqIbCioDYMcusDEznazLL5AkfF8OnKyQTD
- ItPvpLGbiOggufGmQ008s5GG6AQN2DhuvPteF5taxQu2bae9JHd4Cyb81fItzMNUujL6eWW6Xrc
- HrktZuGYACmEXX5k1R3aEFjEZHyvzfVlSe2vFQ4sITivvwrMRIltEvpBPDgPKndoL7g5oZyBH0s
- +NGGzDCEK+lZoFJV8HXEhVtfn+RaMi2U1sZncUZ7UFuDuQyZKviBRBLNpiRuMqi5RfXBLREvj+F
- 6c+slrev30iiFaBH0UhZTKCBK/ES44VJ4tH1z5TzZNJtvefqttrOnkxhw3KzZ2j0dV2ww7OWkcp
- xTn5goOXjzRjlOw==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772625799; l=1495;
+ i=cleverline1mc@gmail.com; s=20241112; h=from:subject:message-id;
+ bh=b9WJdwgEAJzujhzgFrIVP9oyEzwN09jGayVy7lFDZmo=;
+ b=q+3JhmVA3G6a1NbuIFV7FNiCPImMnZSC0wf7PDxROLyOKJneWg0DNNmWM3B+TGt+/ir1erXiN
+ Lysh8oTXscQAXtuf5u8CX8phANPZVy5B++d/fJQOAx/okGIrDy6GU/L
+X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
+ pk=EJoEbw03UiRORQuCiEyNA8gH1Q6fIpEWnn/MyaWOWX0=
+X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20241112 with auth_id=275
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Without configuring the PCIe clock enable pin as an output, it
-remains floating in input state. Some operating systems that rely
-on correct pin settings may fail to boot as a result.
+Realtek RTL8211F-VD has the same LED configuration
+and registers as RTL8211F.
+Use the existing LED related functions for this chip,
+so it is possible to also use the netdev trigger.
 
-Fixes: 86973ae0355b ("arm64: dts: rockchip: Add PCIe v3 nodes to BPI-R2-Pro")
-Reported-by: Martin Filla <freebsd@sysctl.cz> # reported by private message
-Tested-by: Martin Filla <freebsd@sysctl.cz>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Tested on ROCK Pi E.
+
+Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
+Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 ---
- arch/arm64/boot/dts/rockchip/rk3568-bpi-r2-pro.dts | 6 ++++++
- 1 file changed, 6 insertions(+)
+Thanks Andrew Lunn for his feedback.
+---
+Changes in v2:
+- Sending in the right time and fixing subject line.
+- No code changes.
+- Link to v1: https://lore.kernel.org/r/20260216-rtl8211fvd-add-leds-v1-1-a2b8617bbf80@gmail.com
+---
+ drivers/net/phy/realtek/realtek_main.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3568-bpi-r2-pro.dts b/arch/arm64/boot/dts/rockchip/rk3568-bpi-r2-pro.dts
-index 3cdea9456a28c..95cf4a6236048 100644
---- a/arch/arm64/boot/dts/rockchip/rk3568-bpi-r2-pro.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3568-bpi-r2-pro.dts
-@@ -125,6 +125,8 @@ pcie_refclk: pcie-refclk-clock {
- 		clocks = <&pcie_refclk_gen>;
- 		#clock-cells = <0>;
- 		enable-gpios = <&gpio0 RK_PD4 GPIO_ACTIVE_HIGH>;
-+		pinctrl-0 = <&pcie_clkreq_h>;
-+		pinctrl-names = "default";
- 	};
- 
- 	vcc3v3_minipcie: regulator-vcc3v3-minipcie {
-@@ -652,6 +654,10 @@ ir_receiver_pin: ir-receiver-pin {
- 	};
- 
- 	pcie {
-+		pcie_clkreq_h: pcie-clkreq-h {
-+			rockchip,pins = <0 RK_PD4 RK_FUNC_GPIO &pcfg_output_high>;
-+		};
-+
- 		minipcie_enable_h: minipcie-enable-h {
- 			rockchip,pins = <0 RK_PC6 RK_FUNC_GPIO &pcfg_pull_none_drv_level_5>;
- 		};
+diff --git a/drivers/net/phy/realtek/realtek_main.c b/drivers/net/phy/realtek/realtek_main.c
+index 75565fbdbf6d..530b4e26d16e 100644
+--- a/drivers/net/phy/realtek/realtek_main.c
++++ b/drivers/net/phy/realtek/realtek_main.c
+@@ -2243,6 +2243,9 @@ static struct phy_driver realtek_drvs[] = {
+ 		.read_page	= rtl821x_read_page,
+ 		.write_page	= rtl821x_write_page,
+ 		.flags		= PHY_ALWAYS_CALL_SUSPEND,
++		.led_hw_is_supported = rtl8211x_led_hw_is_supported,
++		.led_hw_control_get = rtl8211f_led_hw_control_get,
++		.led_hw_control_set = rtl8211f_led_hw_control_set,
+ 	}, {
+ 		.name		= "Generic FE-GE Realtek PHY",
+ 		.match_phy_device = rtlgen_match_phy_device,
 
+---
+base-commit: 350adaf7fde9fdbd9aeed6d442a9ae90c6a3ab97
+change-id: 20260216-rtl8211fvd-add-leds-72e5d666e921
+
+Best regards,
 -- 
-2.53.0
+Kryštof Černý <cleverline1mc@gmail.com>
 
