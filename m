@@ -1,10 +1,10 @@
 From: Charlie Jenkins <thecharlesjenkins@gmail.com>
-Date: Thu, 05 Mar 2026 00:11:31 -0800
-Subject: [PATCH 3/4] riscv: ptrace: Fix BIT() compilation issues
+Date: Thu, 05 Mar 2026 00:11:32 -0800
+Subject: [PATCH 4/4] selftests: riscv: Add license to cfi selftest
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260305-fix_selftests-v1-3-61b62d23500b@gmail.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260305-fix_selftests-v1-4-61b62d23500b@gmail.com>
 References: <20260305-fix_selftests-v1-0-61b62d23500b@gmail.com>
 In-Reply-To: <20260305-fix_selftests-v1-0-61b62d23500b@gmail.com>
 To: Shuah Khan <shuah@kernel.org>, Paul Walmsley <pjw@kernel.org>, 
@@ -14,42 +14,33 @@ To: Shuah Khan <shuah@kernel.org>, Paul Walmsley <pjw@kernel.org>,
 Cc: linux-kselftest@vger.kernel.org, linux-riscv@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Charlie Jenkins <thecharlesjenkins@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772698321; l=1011;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772698321; l=597;
  i=thecharlesjenkins@gmail.com; s=2026030; h=from:subject:message-id;
- bh=t37RqGcAuzbofdWiHpfRgZVkCDu2cWFOE4fQhY8Q/nQ=;
- b=pwecciV9DjRLq/2gHCdYoGcDPn1tWnba1BaX9qs7LAxqs0yHVratA1TL/I9YQ+2ZZd3/7VDVT
- PqwJHDwvVa9D+ZwzrENdIATzGGEn7e65aX7PX5Jot5MLvfHnRTIojpl
+ bh=BASghyhUbPQR3TaCTFC1Bxb1DJuKTtAvjw5yHhn6X94=;
+ b=lJ0mzQxUxYW7xpr4ssXjgSI8+lMx7NSdTsAffUyoUAlkm3NsAqEX0NnmwgQl90DM5nKUkE2Ol
+ iwQ51FDEMj1BmgGXixIaUwyqZuUjPg4nvPFvJoh8E5HgBpvT4rK4KgZ
 X-Developer-Key: i=thecharlesjenkins@gmail.com; a=ed25519;
  pk=vpF2USrG+aB6CTbSt34rzJKsAVe/l+GAXo1IomCMETk=
 X-Endpoint-Received: by B4 Relay for thecharlesjenkins@gmail.com/2026030 with auth_id=663
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-BIT() is being used in ptrace.h without a definition, resulting in
-compilation errors in tools/testing/selftests/riscv/cfi/cfitests.c:
+The cfi selftest was missing a license so add it.
 
-cfitests.c:101:60: error: implicit declaration of function ‘BIT’ [-Wimplicit-function-declaration]
-  101 |                      if ((cfi_reg.cfi_status.cfi_state & CFI_ENABLE_MASK) != CFI_ENABLE_MASK)
-
-Include linux/bits.h to resolve this issue.
-
-Fixes: 2af7c9cf021c ("riscv/ptrace: expose riscv CFI status and state via ptrace and in core files")
 Signed-off-by: Charlie Jenkins <thecharlesjenkins@gmail.com>
 ---
- arch/riscv/include/uapi/asm/ptrace.h | 1 +
- 1 file changed, 1 insertion(+)
+ tools/testing/selftests/riscv/cfi/Makefile | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/arch/riscv/include/uapi/asm/ptrace.h b/arch/riscv/include/uapi/asm/ptrace.h
-index 18988a5f1a63..5b53cea14355 100644
---- a/arch/riscv/include/uapi/asm/ptrace.h
-+++ b/arch/riscv/include/uapi/asm/ptrace.h
-@@ -8,6 +8,7 @@
+diff --git a/tools/testing/selftests/riscv/cfi/Makefile b/tools/testing/selftests/riscv/cfi/Makefile
+index 96a4dc4b69c3..93b4738c0e2e 100644
+--- a/tools/testing/selftests/riscv/cfi/Makefile
++++ b/tools/testing/selftests/riscv/cfi/Makefile
+@@ -1,3 +1,5 @@
++# SPDX-License-Identifier: GPL-2.0
++
+ CFLAGS += $(KHDR_INCLUDES)
+ CFLAGS += -I$(top_srcdir)/tools/include
  
- #ifndef __ASSEMBLER__
- 
-+#include <linux/bits.h>
- #include <linux/types.h>
- 
- #define PTRACE_GETFDPIC		33
 
 -- 
 2.52.0
