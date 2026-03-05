@@ -1,79 +1,67 @@
-From: Cory Keitz <ckeitz@amazon.com>
-Date: Thu, 05 Mar 2026 14:40:13 +0000
-Subject: [PATCH 2/2] i2c: qcom-cci: Add DT property for SCL clock
- stretching
+From: Pascal Eberhard <pascal.eberhard@se.com>
+Subject: [PATCH 0/4] fetch2: add alternative fetch method based on curl
+Date: Thu, 05 Mar 2026 16:32:13 +0100
+Message-Id: <20260305-add_alt_fetch_method_curl-v1-0-0d0220e5fa59@se.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260305-cci-scl-stretch-v1-2-8412abc65745@amazon.com>
-References: <20260305-cci-scl-stretch-v1-0-8412abc65745@amazon.com>
-In-Reply-To: <20260305-cci-scl-stretch-v1-0-8412abc65745@amazon.com>
-To: Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Robert Foss <rfoss@kernel.org>, Andi Shyti <andi.shyti@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-i2c@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Cory Keitz <ckeitz@amazon.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772721622; l=1731;
- i=ckeitz@amazon.com; s=20260304; h=from:subject:message-id;
- bh=OwT3G4Wpy7L8KSSJSz2LODppXx7Vr9o7XgiwykQqPqU=;
- b=Y/sFC7CPtrdfbIbHxNIKks1+lYC88LTW/5BKg8Nn+9ZeRLLWP+0geVubpKbswUAB3aHUnX7iR
- rKHVbnFZCpIDswR5NiCI6o6VOHOHtmBR5msi55ZTF6iU5XHPID42C/Q
-X-Developer-Key: i=ckeitz@amazon.com; a=ed25519;
- pk=IWSPbPI9mzOdPU5zG2ROe/O75E4ckVxuBLNJVYVZCag=
-X-Endpoint-Received: by B4 Relay for ckeitz@amazon.com/20260304 with auth_id=662
+X-B4-Tracking: v=1; b=H4sIAP2hqWkC/x3MQQqDMBBA0avIrBuIEZV6FSlhzEzMgFVJYimId
+ ze4fIv/T0gchRMM1QmRf5JkWwvqVwUu4DqzEioGo02nG90qJLK4ZOs5u2C/nMNG1h1xUT3qyb8
+ 7JGMaKP0e2cv/eY+f67oBNKxzQ2sAAAA=
+To: bitbake-devel@lists.openembedded.org
+Cc: Pascal Eberhard <pascal.eberhard@se.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772724738; l=1861;
+ i=pascal.eberhard@se.com; s=20260304; h=from:subject:message-id;
+ bh=ihFxY3TCVaHzWHIqpRps9YRVw2y0wDa0845NlkZJCeM=;
+ b=jJYogJaaMlHbaYKAXV8MkCR8NogIPOzVt81BzdJWaK1VE4cZHNEhH+NUjMLyoKc9mVeqnybA5
+ Y6sP+/85uJgBt0n/MovXRw9JSUkSNHqY7xOCHHBVmZtgRk2CQblDQX7
+X-Developer-Key: i=pascal.eberhard@se.com; a=ed25519;
+ pk=J7TbFctjt1RVuN5K0juhf/w1E9bAfSeoQ/JG1vV9mWg=
+X-Endpoint-Received: by B4 Relay for pascal.eberhard@se.com/20260304 with auth_id=661
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The CCI hardware supports an SCL clock stretch enable bit in the
-MISC_CTL register, but the driver hardcodes it off for most SoC
-variants. This makes the bus driver unstable for configurations which
-rely on clock stretching. Notably, GMSL uses clock stretching to absorb
-the latency of transaction forwarding across the link.
+wget fetch method is used for web downloads with http, https, ftp, ftps
+protocols. wget cmdline tool is missing some features such as hostname
+resolution by the proxy when using SOCKS5 proxy. SSH tunnel provides
+this feature for example.
 
-Add a per-master "qcom,scl-stretch-enable" boolean DT property that
-ORs with the existing hw_params default, allowing clock stretching to
-be enabled on individual CCI masters without affecting others.
+This curl fetch method is based on curl cmdline tool and provides the
+same protocols as wget and supports SOCKS5 hostname resolution.
+This class inherits wget method in order to avoid code duplication as
+much as possible.
 
-Signed-off-by: Cory Keitz <ckeitz@amazon.com>
+wget remains the default download method. curl fetch method can be
+enabled by setting a new bitbake variable:
+  BB_FETCH_METHOD_HTTP = "curl"
+
+The hostname resolution by SOCKS5 proxy is activated by setting
+environment variable:
+  all_proxy="socks5h://...""
+
+a patch on ce-core will be sent if this proposal is accepted to
+conditionnaly add curl to HOSTTOOLS variable in meta/conf/bitbake.conf:
+HOSTTOOLS += "${@bb.utils.contains('BB_FETCH_METHOD_HTTP', 'curl', 'curl','', d)}"
+
+Signed-off-by: Pascal Eberhard <pascal.eberhard@se.com>
 ---
- drivers/i2c/busses/i2c-qcom-cci.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+Pascal Eberhard (4):
+      fetch2: add curl method to fetch web content
+      fetch2: make curl method activable with BB_FETCH_METHOD_HTTP
+      lib/tests/fetch2: add tests for curl method
+      doc: bitbake-user-manual-ref-variables: describe BB_FETCH_METHOD_HTTP variable
 
-diff --git a/drivers/i2c/busses/i2c-qcom-cci.c b/drivers/i2c/busses/i2c-qcom-cci.c
-index 884055df1560..022c10b310a0 100644
---- a/drivers/i2c/busses/i2c-qcom-cci.c
-+++ b/drivers/i2c/busses/i2c-qcom-cci.c
-@@ -111,6 +111,7 @@ struct cci_master {
- 	struct i2c_adapter adap;
- 	u16 master;
- 	u8 mode;
-+	bool scl_stretch_en;
- 	int status;
- 	struct completion irq_complete;
- 	struct cci *cci;
-@@ -284,7 +285,8 @@ static int cci_init(struct cci *cci)
- 		val = hw->tbuf;
- 		writel(val, cci->base + CCI_I2C_Mm_SDA_CTL_2(i));
- 
--		val = hw->scl_stretch_en << 8 | hw->trdhld << 4 | hw->tsp;
-+		val = (hw->scl_stretch_en | cci->master[i].scl_stretch_en) << 8 |
-+			hw->trdhld << 4 | hw->tsp;
- 		writel(val, cci->base + CCI_I2C_Mm_MISC_CTL(i));
- 	}
- 
-@@ -572,6 +574,9 @@ static int cci_probe(struct platform_device *pdev)
- 				master->mode = I2C_MODE_FAST_PLUS;
- 		}
- 
-+		master->scl_stretch_en =
-+			of_property_read_bool(child, "qcom,scl-stretch-enable");
-+
- 		init_completion(&master->irq_complete);
- 	}
- 
+ .../bitbake-user-manual-ref-variables.rst          |   5 +
+ lib/bb/fetch2/__init__.py                          |   2 +
+ lib/bb/fetch2/curl.py                              | 162 +++++++++++++++++++++
+ lib/bb/fetch2/wget.py                              |  10 ++
+ lib/bb/tests/fetch.py                              |  68 +++++++++
+ 5 files changed, 247 insertions(+)
+---
+base-commit: 48efc36b4e03f736e7521d269ced3417522784e9
+change-id: 20260305-add_alt_fetch_method_curl-7a0bf96ad223
 
+Best regards,
 -- 
-2.47.3
+Pascal Eberhard <pascal.eberhard@se.com>
 
