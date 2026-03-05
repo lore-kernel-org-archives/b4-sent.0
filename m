@@ -1,81 +1,136 @@
 From: Pascal Eberhard <pascal.eberhard@se.com>
-Date: Thu, 05 Mar 2026 16:32:15 +0100
-Subject: [PATCH 2/4] fetch2: make curl method activable with
- BB_FETCH_METHOD_HTTP
+Date: Thu, 05 Mar 2026 16:32:16 +0100
+Subject: [PATCH 3/4] lib/tests/fetch2: add tests for curl method
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260305-add_alt_fetch_method_curl-v1-2-0d0220e5fa59@se.com>
+Message-Id: <20260305-add_alt_fetch_method_curl-v1-3-0d0220e5fa59@se.com>
 References: <20260305-add_alt_fetch_method_curl-v1-0-0d0220e5fa59@se.com>
 In-Reply-To: <20260305-add_alt_fetch_method_curl-v1-0-0d0220e5fa59@se.com>
 To: bitbake-devel@lists.openembedded.org
 Cc: Pascal Eberhard <pascal.eberhard@se.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772724738; l=1806;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772724738; l=5017;
  i=pascal.eberhard@se.com; s=20260304; h=from:subject:message-id;
- bh=64aFNHzuzQvTD39bZT3zcb0N4XDTAFGjqhXZfbW5M2o=;
- b=i7tXCKaj5xjasi+70J1x7rcqy7x8uJ7BbdQXlQ03wode0lgSlsZPvgHjlk9QXdEuFUZINaAf6
- GcwLaov3GHwC9s3WIJhnEuzyo+hx8OsLmMWyHkrjCe/0LGn/TC9q96W
+ bh=UaiA9e2FKgpaMtTOgq8g3apGKeVH2UE6u0BEkf4ti6I=;
+ b=LWVdmEF5vO47Le3Uoh4IzaJLH1WRTHoGSglqElCbF3nJZu5CcOm2dc1HMREguk2M39QMjxYpL
+ zqEBnEWdtMgB/aK+3J2eAmfqdsS7Iqyc8dmBn5vmgWnWJCyGjodxBco
 X-Developer-Key: i=pascal.eberhard@se.com; a=ed25519;
  pk=J7TbFctjt1RVuN5K0juhf/w1E9bAfSeoQ/JG1vV9mWg=
 X-Endpoint-Received: by B4 Relay for pascal.eberhard@se.com/20260304 with auth_id=661
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-wget is the default fetch method. curl fetch method can be activated by
-setting bitbake variable:
-  BB_FETCH_METHOD_HTTP = "curl"
+Duplicate wget fetch method test cases to test curl fetch method.
 
 Signed-off-by: Pascal Eberhard <pascal.eberhard@se.com>
 ---
- lib/bb/fetch2/__init__.py |  2 ++
- lib/bb/fetch2/wget.py     | 10 ++++++++++
- 2 files changed, 12 insertions(+)
+ lib/bb/tests/fetch.py | 68 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 68 insertions(+)
 
-diff --git a/lib/bb/fetch2/__init__.py b/lib/bb/fetch2/__init__.py
-index aaefd8602..dc1158b38 100644
---- a/lib/bb/fetch2/__init__.py
-+++ b/lib/bb/fetch2/__init__.py
-@@ -2107,6 +2107,7 @@ from . import gitannex
- from . import local
- from . import svn
- from . import wget
-+from . import curl
- from . import ssh
- from . import sftp
- from . import s3
-@@ -2123,6 +2124,7 @@ from . import gomod
+diff --git a/lib/bb/tests/fetch.py b/lib/bb/tests/fetch.py
+index 74eb73472..5c587d7b4 100644
+--- a/lib/bb/tests/fetch.py
++++ b/lib/bb/tests/fetch.py
+@@ -1550,6 +1550,7 @@ class FetchLatestVersionTest(FetcherTest):
  
- methods.append(local.Local())
- methods.append(wget.Wget())
-+methods.append(curl.Curl())
- methods.append(svn.Svn())
- methods.append(git.Git())
- methods.append(gitsm.GitSM())
-diff --git a/lib/bb/fetch2/wget.py b/lib/bb/fetch2/wget.py
-index 4e3505599..3b1993f29 100644
---- a/lib/bb/fetch2/wget.py
-+++ b/lib/bb/fetch2/wget.py
-@@ -60,10 +60,20 @@ class Wget(FetchMethod):
-         """
-         return (d.getVar("BB_CHECK_SSL_CERTS") or "1") != "0"
+                     url = "http://127.0.0.1:%s/%s" % (port, data.path)
+                     ud = bb.fetch2.FetchData(url, self.d)
++                    self.assertEqual(ud.method.__class__.__name__, "Wget")
+                     pupver = ud.method.latest_versionstring(ud, self.d)
+                     verstring = pupver[0]
+                     self.assertTrue(verstring, msg="Could not find upstream version for %s" % data.pn)
+@@ -1558,6 +1559,35 @@ class FetchLatestVersionTest(FetcherTest):
+         finally:
+             server.stop()
  
-+    def is_enabled(self, d):
-+        """
-+        wget method is enabled when BB_FETCH_METHOD_HTTP = "wget" or by default
-+        when BB_FETCH_METHOD_HTTP variable is not set.
-+        """
-+        method_http: str = d.getVar("BB_FETCH_METHOD_HTTP") or "wget"
-+        return method_http == "wget"
++    def test_curl_latest_versionstring(self):
++        self.d.setVar("BB_FETCH_METHOD_HTTP", "curl")
++        testdata = os.path.dirname(os.path.abspath(__file__)) + "/fetch-testdata"
++        server = HTTPService(testdata, host="127.0.0.1")
++        server.start()
++        port = server.port
++        try:
++            for data, v in self.test_wget_uris.items():
++                with self.subTest(pn=data.pn):
++                    self.d.setVar("PN", data.pn)
++                    self.d.setVar("PV", data.pv)
++                    if data.check_uri:
++                        checkuri = "http://127.0.0.1:%s/%s" % (port, data.check_uri)
++                        self.d.setVar("UPSTREAM_CHECK_URI", checkuri)
++                    if data.check_regex:
++                        self.d.setVar("UPSTREAM_CHECK_REGEX", data.check_regex)
 +
-     def supports(self, ud, d):
-         """
-         Check to see if a given url can be fetched with wget.
-         """
-+        if not self.is_enabled(d):
-+            return False
-         return ud.type in ['http', 'https', 'ftp', 'ftps']
++                    url = "http://127.0.0.1:%s/%s" % (port, data.path)
++                    ud = bb.fetch2.FetchData(url, self.d)
++                    self.assertEqual(ud.method.__class__.__name__, "Curl")
++                    pupver = ud.method.latest_versionstring(ud, self.d)
++                    verstring = pupver[0]
++                    self.assertTrue(verstring, msg="Could not find upstream version for %s" % data.pn)
++                    r = bb.utils.vercmp_string(v, verstring)
++                    self.assertTrue(r == -1 or r == 0, msg="Package %s, version: %s <= %s" % (data.pn, v, verstring))
++        finally:
++            server.stop()
++        self.d.delVar("BB_FETCH_METHOD_HTTP")
++
+     @skipIfNoNetwork()
+     def test_crate_latest_versionstring(self):
+         for k, v in self.test_crate_uris.items():
+@@ -1590,6 +1620,7 @@ class FetchCheckStatusTest(FetcherTest):
+             with self.subTest(url=u):
+                 ud = fetch.ud[u]
+                 m = ud.method
++                self.assertEqual(ud.method.__class__.__name__, "Wget")
+                 ret = m.checkstatus(fetch, ud, self.d)
+                 self.assertTrue(ret, msg="URI %s, can't check status" % (u))
  
-     def recommends_checksum(self, urldata):
+@@ -1605,10 +1636,47 @@ class FetchCheckStatusTest(FetcherTest):
+             with self.subTest(url=u):
+                 ud = fetch.ud[u]
+                 m = ud.method
++                self.assertEqual(ud.method.__class__.__name__, "Wget")
++                ret = m.checkstatus(fetch, ud, self.d)
++                self.assertTrue(ret, msg="URI %s, can't check status" % (u))
++
++        connection_cache.close_connections()
++
++    @skipIfNoNetwork()
++    def test_curl_checkstatus(self):
++        self.d.setVar("BB_FETCH_METHOD_HTTP", "curl")
++
++        fetch = bb.fetch2.Fetch(self.test_wget_uris, self.d)
++        for u in self.test_wget_uris:
++            with self.subTest(url=u):
++                ud = fetch.ud[u]
++                m = ud.method
++                self.assertEqual(ud.method.__class__.__name__, "Curl")
++                ret = m.checkstatus(fetch, ud, self.d)
++                self.assertTrue(ret, msg="URI %s, can't check status" % (u))
++
++        self.d.delVar("BB_FETCH_METHOD_HTTP")
++
++    @skipIfNoNetwork()
++    def test_curl_checkstatus_connection_cache(self):
++        from bb.fetch2 import FetchConnectionCache
++
++        self.d.setVar("BB_FETCH_METHOD_HTTP", "curl")
++
++        connection_cache = FetchConnectionCache()
++        fetch = bb.fetch2.Fetch(self.test_wget_uris, self.d,
++                    connection_cache = connection_cache)
++
++        for u in self.test_wget_uris:
++            with self.subTest(url=u):
++                ud = fetch.ud[u]
++                m = ud.method
++                self.assertEqual(ud.method.__class__.__name__, "Curl")
+                 ret = m.checkstatus(fetch, ud, self.d)
+                 self.assertTrue(ret, msg="URI %s, can't check status" % (u))
+ 
+         connection_cache.close_connections()
++        self.d.delVar("BB_FETCH_METHOD_HTTP")
+ 
+ 
+ class GitMakeShallowTest(FetcherTest):
 
 -- 
 2.43.0
