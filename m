@@ -1,173 +1,93 @@
-From: Cheng Ding <cding@ddn.com>
-Date: Fri, 06 Mar 2026 18:12:23 +0800
-Subject: [PATCH v2] fuse: invalidate page cache after sync and async direct
- writes
+From: Michael Riesch <michael.riesch@collabora.com>
+Subject: [PATCH 0/4] media: synopsys: csi2rx: add support for rk3588
+ variant
+Date: Fri, 06 Mar 2026 15:09:47 +0100
+Message-Id: <20260305-rk3588-csi2rx-v1-0-0cd8d2bf28c0@collabora.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260306-xfstests-generic-451-v2-1-93b2d540304b@ddn.com>
-X-B4-Tracking: v=1; b=H4sIAIaoqmkC/zWOSwrDMAxErxK8rorjfCBd9R4lC9eSE0PrFMuYh
- JC7Vw10ocUbmHnaFVMKxOpW7SpRCRyWKGAulXKzjRNBQGFltOl1o3tYPWfizDBRlKqDtqvBE2o
- /YGf10CmpfhL5sJ6zj1F4DpyXtJ2WUv/S/2ADlrfoAMMCVs5ZN4szFvsKaLN8A6UGMTyt9qhb0
- 7vmjhivbnmr8TiOL8DtTnLCAAAA
-X-Change-ID: 20260306-xfstests-generic-451-fed0f9d5a095
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: Jingbo Xu <jefflexu@linux.alibaba.com>, 
- Bernd Schubert <bschubert@ddn.com>, linux-fsdevel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Cheng Ding <cding@ddn.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772791965; l=4920;
- i=cding@ddn.com; s=20260306; h=from:subject:message-id;
- bh=EvQek0qcvvJzAP6LXHZM8DbJwI5dqhU9DnJRdAT27o4=;
- b=4aPzLVfAAKvj1XN1cCaABjD8lKc5HSJ5dsoT78kkTGDgcqw43IgQoxNpCVb/hFa9XbgeqMC/3
- TKom6l17sxjBc2c0BV9q1UbI2A2/4BRoW1wtIKmaADZnOY/bfnA00Ua
-X-Developer-Key: i=cding@ddn.com; a=ed25519;
- pk=dzzlP8PhiZl3jtcAzbjIIv0kgtoA95fHdILVyjaeePk=
-X-Endpoint-Received: by B4 Relay for cding@ddn.com/20260306 with auth_id=667
+X-B4-Tracking: v=1; b=H4sIACvgqmkC/x2NQQqDQAwAvyI5N7C7uir9SukhbmMNlW1JaBHEv
+ zd4nIFhdjBWYYNrs4PyT0ze1SFeGigL1SejPJwhhdSHNmTUV5vHEYtJ0g0pxnkoMVMXCLyZyBg
+ npVoWr+p3XV1+lGfZzsntfhx/AsxoBXQAAAA=
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Frank Li <Frank.li@nxp.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Kever Yang <kever.yang@rock-chips.com>, 
+ Collabora Kernel Team <kernel@collabora.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772806189; l=2252;
+ i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
+ bh=QAEkleb6IVGK5L78+HXxLeZCePSBUtX84+LuF5RCLcQ=;
+ b=+z1lAM+K34CYNMrpDG4Vre36ujGjSJtdNTMfHFjGBxHcLTuD65Qq7K+Px6e8p2q3OwnGFIp62
+ NqLrn7qvsTHBOWIwzloMo39o8x8PtoJjfJAz4fBU1hvQX/HBnS8oizi
+X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
+ pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
+X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fixes xfstests generic/451, similar to how commit b359af8275a9 ("fuse:
-Invalidate the page cache after FOPEN_DIRECT_IO write") fixes xfstests
-generic/209.
+Habidere,
 
-Signed-off-by: Cheng Ding <cding@ddn.com>
----
-Changes in v2:
-- Address review comments: move invalidation from fuse_direct_io() to
-  fuse_direct_write_iter()
-- Link to v1: https://lore.kernel.org/r/20260303-async-dio-aio-cache-invalidation-v1-1-fba0fd0426c3@ddn.com
----
- fs/fuse/file.c   | 53 +++++++++++++++++++++++++++++++++++++++++++----------
- fs/fuse/fuse_i.h |  1 +
- 2 files changed, 44 insertions(+), 10 deletions(-)
+The Rockchip RK3588 features six MIPI CSI-2 receiver units:
+ - MIPI0: connected to MIPI DCPHY0
+ - MIPI1: connected to MIPI DCPHY1
+ - MIPI2: connected to MIPI DPHY0
+ - MIPI3: connected to MIPI DPHY0-1 (only with split DPHY0)
+ - MIPI4: connected to MIPI DPHY1
+ - MIPI5: connected to MIPI DPHY1-1 (only with split DPHY1)
 
-diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-index b1bb7153cb78..dc92da9973ae 100644
---- a/fs/fuse/file.c
-+++ b/fs/fuse/file.c
-@@ -23,6 +23,8 @@
- #include <linux/task_io_accounting_ops.h>
- #include <linux/iomap.h>
- 
-+int sb_init_dio_done_wq(struct super_block *sb);
-+
- static int fuse_send_open(struct fuse_mount *fm, u64 nodeid,
- 			  unsigned int open_flags, int opcode,
- 			  struct fuse_open_out *outargp)
-@@ -629,6 +631,19 @@ static ssize_t fuse_get_res_by_io(struct fuse_io_priv *io)
- 	return io->bytes < 0 ? io->size : io->bytes;
- }
- 
-+static void fuse_aio_invalidate_worker(struct work_struct *work)
-+{
-+	struct fuse_io_priv *io = container_of(work, struct fuse_io_priv, work);
-+	struct address_space *mapping = io->iocb->ki_filp->f_mapping;
-+	ssize_t res = fuse_get_res_by_io(io);
-+	pgoff_t start = io->offset >> PAGE_SHIFT;
-+	pgoff_t end = (io->offset + res - 1) >> PAGE_SHIFT;
-+
-+	invalidate_inode_pages2_range(mapping, start, end);
-+	io->iocb->ki_complete(io->iocb, res);
-+	kref_put(&io->refcnt, fuse_io_release);
-+}
-+
- /*
-  * In case of short read, the caller sets 'pos' to the position of
-  * actual end of fuse request in IO request. Otherwise, if bytes_requested
-@@ -661,10 +676,11 @@ static void fuse_aio_complete(struct fuse_io_priv *io, int err, ssize_t pos)
- 	spin_unlock(&io->lock);
- 
- 	if (!left && !io->blocking) {
-+		struct inode *inode = file_inode(io->iocb->ki_filp);
-+		struct address_space *mapping = io->iocb->ki_filp->f_mapping;
- 		ssize_t res = fuse_get_res_by_io(io);
- 
- 		if (res >= 0) {
--			struct inode *inode = file_inode(io->iocb->ki_filp);
- 			struct fuse_conn *fc = get_fuse_conn(inode);
- 			struct fuse_inode *fi = get_fuse_inode(inode);
- 
-@@ -673,6 +689,20 @@ static void fuse_aio_complete(struct fuse_io_priv *io, int err, ssize_t pos)
- 			spin_unlock(&fi->lock);
- 		}
- 
-+		if (io->write && res >= 0 && mapping->nrpages) {
-+			/*
-+			 * As in generic_file_direct_write(), invalidate after the
-+			 * write, to invalidate read-ahead cache that may have competed
-+			 * with the write.
-+			 */
-+			if (!inode->i_sb->s_dio_done_wq)
-+				res = sb_init_dio_done_wq(inode->i_sb);
-+			if (res >= 0) {
-+				INIT_WORK(&io->work, fuse_aio_invalidate_worker);
-+				queue_work(inode->i_sb->s_dio_done_wq, &io->work);
-+				return;
-+			}
-+		}
- 		io->iocb->ki_complete(io->iocb, res);
- 	}
- 
-@@ -1738,15 +1768,6 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,
- 	if (res > 0)
- 		*ppos = pos;
- 
--	if (res > 0 && write && fopen_direct_io) {
--		/*
--		 * As in generic_file_direct_write(), invalidate after the
--		 * write, to invalidate read-ahead cache that may have competed
--		 * with the write.
--		 */
--		invalidate_inode_pages2_range(mapping, idx_from, idx_to);
--	}
--
- 	return res > 0 ? res : err;
- }
- EXPORT_SYMBOL_GPL(fuse_direct_io);
-@@ -1785,6 +1806,8 @@ static ssize_t fuse_direct_read_iter(struct kiocb *iocb, struct iov_iter *to)
- static ssize_t fuse_direct_write_iter(struct kiocb *iocb, struct iov_iter *from)
- {
- 	struct inode *inode = file_inode(iocb->ki_filp);
-+	struct address_space *mapping = inode->i_mapping;
-+	loff_t pos = iocb->ki_pos;
- 	ssize_t res;
- 	bool exclusive;
- 
-@@ -1801,6 +1824,16 @@ static ssize_t fuse_direct_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 					     FUSE_DIO_WRITE);
- 			fuse_write_update_attr(inode, iocb->ki_pos, res);
- 		}
-+		if (res > 0 && mapping->nrpages) {
-+			/*
-+			 * As in generic_file_direct_write(), invalidate after
-+			 * write, to invalidate read-ahead cache that may have
-+			 * with the write.
-+			 */
-+			invalidate_inode_pages2_range(mapping,
-+				pos >> PAGE_SHIFT,
-+				(pos + res - 1) >> PAGE_SHIFT);
-+		}
- 	}
- 	fuse_dio_unlock(iocb, exclusive);
- 
-diff --git a/fs/fuse/fuse_i.h b/fs/fuse/fuse_i.h
-index 7f16049387d1..6e8c8cf6b2c8 100644
---- a/fs/fuse/fuse_i.h
-+++ b/fs/fuse/fuse_i.h
-@@ -377,6 +377,7 @@ union fuse_file_args {
- /** The request IO state (for asynchronous processing) */
- struct fuse_io_priv {
- 	struct kref refcnt;
-+	struct work_struct work;
- 	int async;
- 	spinlock_t lock;
- 	unsigned reqs;
+The MIPI DCPHYs (at least the CSI-2 features of them) as well
+as the split DPHY mode of the DPHYs are not yet supported by
+mainline. However, we can already provide support for the
+MIPI2 and MIPI4 units.
 
+When support for the split DPHY mode is introduced, the DPHY
+nodes should have the property
+    #phy-cells = <1>;
+and the MIPI CSI-2 receiver nodes should have the property
+    phys = <&csi_dphy{0,1} {0,1}>;
+in case the split mode is desired. Since this is a board
+specific hardware design, the properties need to be changed
+in the board device tree (or any overlays).
+
+As reasonable default, however, we can define, e.g., 
+    #phy-cells = <0>;
+and
+    phys = <&csi_dphy{0,1}>;
+in the SoC device tree include.
+This series introduces initial support for this default
+configuration.
+
+In a related note, the split DPHY allows for different
+integrations of the MIPI CSI-2 receiver into the different
+SoCs. Therefore, we introduce a separate compatible (and not
+only a fallback compatible) in the DT bindings.
+
+Looking forward to your comments!
+
+Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
-base-commit: 3c9332f821aa11552f19c331c5aa5299c78c7c94
-change-id: 20260306-xfstests-generic-451-fed0f9d5a095
+Michael Riesch (4):
+      media: dt-bindings: rockchip,rk3568-mipi-csi2: add rk3588 compatible
+      media: synopsys: csi2rx: add support for rk3588 variant
+      arm64: dts: rockchip: add mipi csi-2 receiver nodes to rk3588
+      arm64: defconfig: enable designware mipi csi-2 receiver
+
+ .../bindings/media/rockchip,rk3568-mipi-csi2.yaml  |  1 +
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      | 52 ++++++++++++++++++++++
+ arch/arm64/configs/defconfig                       |  1 +
+ drivers/media/platform/synopsys/dw-mipi-csi2rx.c   |  3 ++
+ 4 files changed, 57 insertions(+)
+---
+base-commit: 11439c4635edd669ae435eec308f4ab8a0804808
+change-id: 20260305-rk3588-csi2rx-a11f7c15a40a
 
 Best regards,
 -- 
-Cheng Ding <cding@ddn.com>
+Michael Riesch <michael.riesch@collabora.com>
 
