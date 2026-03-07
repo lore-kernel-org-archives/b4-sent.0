@@ -1,57 +1,59 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Fri, 06 Mar 2026 15:09:51 +0100
-Subject: [PATCH 4/4] arm64: defconfig: enable designware mipi csi-2
- receiver
+From: Rudraksha Gupta <guptarud@gmail.com>
+Subject: [PATCH 0/3] Samsung Expressatt: Camera Flash
+Date: Fri, 06 Mar 2026 16:58:01 -0800
+Message-Id: <20260306-expressatt_camera_flash-v1-0-b1996f7cdfdd@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260305-rk3588-csi2rx-v1-4-0cd8d2bf28c0@collabora.com>
-References: <20260305-rk3588-csi2rx-v1-0-0cd8d2bf28c0@collabora.com>
-In-Reply-To: <20260305-rk3588-csi2rx-v1-0-0cd8d2bf28c0@collabora.com>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Frank Li <Frank.li@nxp.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Kever Yang <kever.yang@rock-chips.com>, 
- Collabora Kernel Team <kernel@collabora.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772806189; l=786;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=uRAmSPCQ0k5tkcEXE2zVJCarB/CYi0KTB5WBAKhQlug=;
- b=L3K7EAcFM8aMDpYBYUS40ucFmXxoCxR7prpiR7bGI8zrRqCT8z+p4jJHjlA5DdNY8rfl+Q2lD
- IgOJ8rx3BdTCqvgHr9YBtqDWKSBPN5uwTFxPERwVzVxEJInp/IYDiFY
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+X-B4-Tracking: v=1; b=H4sIABl4q2kC/02NQQqDMBAAvyI5N2JiVJRS+o8isqarhhptkygW8
+ e+Neil7mmV3ZiUWjUJLimAlBmdl1Th4YJeAyA6GFql6eiY84mkURynF5W3QWnCukqDRQNX0YDv
+ KYskSyATPAIj/9leNWg7zozzZ4GfyAXcuid41R6AIrt6fMB4lf37qxkl2L/zSmVE/Qog655nMm
+ /jealB9KEd921s1WKQetHJFMKchy0m5bT/s4M1M3AAAAA==
+X-Change-ID: 20260306-expressatt_camera_flash-13c15a7427aa
+To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Linus Walleij <linusw@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: linux-leds@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ Rudraksha Gupta <guptarud@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772845083; l=1311;
+ i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
+ bh=or4XZZ5BaaZ26whdKPwpMfVhYj6Xn2dkuW06vgzjaiw=;
+ b=9vvyscRB7gjVDF3LEsn8bB/LM/q+hZwz/y6Ktb8WeIIWmtzEykVv4R+Jq/IZW5N2qOCVpdYWB
+ dhBNVHv2YcgAF//hhdoSXolgJ1k+FP0CxN+AUOzgZLEo7uVeL+HdGc2
+X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
+ pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
+X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Synopsys DesignWare MIPI CSI-2 Receiver is integrated into
-recent Rockchip SoCs, such as the RK3568 and the RK3588.
-Enable the driver for it in the default configuration.
+This small series adds camera flash to an existing similar mainline
+driver and adds it the the Samsung Expressatt's DTS
 
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+Downstream reference:
+Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/leds/Makefile#L51
+Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/arch/arm/mach-msm/board-apexq-camera.c#L591
+
+Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
- arch/arm64/configs/defconfig | 1 +
- 1 file changed, 1 insertion(+)
+Rudraksha Gupta (3):
+      dt-bindings: leds: rt8515: Support single-GPIO flash ICs with unlock gate
+      leds: flash: rt8515: Support single-GPIO flash ICs with unlock gate
+      ARM: dts: qcom: msm8960: expressatt: Add camera flash
 
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index b67d5b1fc45b..a93ff73ae52c 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -907,6 +907,7 @@ CONFIG_SDR_PLATFORM_DRIVERS=y
- CONFIG_V4L_MEM2MEM_DRIVERS=y
- CONFIG_VIDEO_AMPHION_VPU=m
- CONFIG_VIDEO_CADENCE_CSI2RX=m
-+CONFIG_VIDEO_DW_MIPI_CSI2RX=m
- CONFIG_VIDEO_MEDIATEK_JPEG=m
- CONFIG_VIDEO_MEDIATEK_VCODEC=m
- CONFIG_VIDEO_WAVE_VPU=m
+ .../devicetree/bindings/leds/richtek,rt8515.yaml   | 36 +++++++++++++++++++-
+ .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 31 ++++++++++++++++++
+ drivers/leds/flash/leds-rt8515.c                   | 38 ++++++++++++++++++----
+ 3 files changed, 98 insertions(+), 7 deletions(-)
+---
+base-commit: e9ec05addd1a067fc7cb218f20ecdc1b1b0898c0
+change-id: 20260306-expressatt_camera_flash-13c15a7427aa
+prerequisite-message-id: <20251205-expressatt-touchkey-v1-1-1444b927c9f3@gmail.com>
+prerequisite-patch-id: 8de4de7909722ccaf385c4224f25a623eaa72c28
 
+Best regards,
 -- 
-2.39.5
+Rudraksha Gupta <guptarud@gmail.com>
 
