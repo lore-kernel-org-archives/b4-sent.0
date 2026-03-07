@@ -1,15 +1,13 @@
 From: Rudraksha Gupta <guptarud@gmail.com>
-Subject: [PATCH 0/3] Samsung Expressatt: Camera Flash
-Date: Fri, 06 Mar 2026 16:58:01 -0800
-Message-Id: <20260306-expressatt_camera_flash-v1-0-b1996f7cdfdd@gmail.com>
+Date: Fri, 06 Mar 2026 16:58:02 -0800
+Subject: [PATCH 1/3] dt-bindings: leds: rt8515: Support single-GPIO flash
+ ICs with unlock gate
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIABl4q2kC/02NQQqDMBAAvyI5N2JiVJRS+o8isqarhhptkygW8
- e+Neil7mmV3ZiUWjUJLimAlBmdl1Th4YJeAyA6GFql6eiY84mkURynF5W3QWnCukqDRQNX0YDv
- KYskSyATPAIj/9leNWg7zozzZ4GfyAXcuid41R6AIrt6fMB4lf37qxkl2L/zSmVE/Qog655nMm
- /jealB9KEd921s1WKQetHJFMKchy0m5bT/s4M1M3AAAAA==
-X-Change-ID: 20260306-expressatt_camera_flash-13c15a7427aa
+Message-Id: <20260306-expressatt_camera_flash-v1-1-b1996f7cdfdd@gmail.com>
+References: <20260306-expressatt_camera_flash-v1-0-b1996f7cdfdd@gmail.com>
+In-Reply-To: <20260306-expressatt_camera_flash-v1-0-b1996f7cdfdd@gmail.com>
 To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Linus Walleij <linusw@kernel.org>, 
@@ -19,41 +17,101 @@ Cc: linux-leds@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Rudraksha Gupta <guptarud@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772845083; l=1311;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772845083; l=2686;
  i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=or4XZZ5BaaZ26whdKPwpMfVhYj6Xn2dkuW06vgzjaiw=;
- b=9vvyscRB7gjVDF3LEsn8bB/LM/q+hZwz/y6Ktb8WeIIWmtzEykVv4R+Jq/IZW5N2qOCVpdYWB
- dhBNVHv2YcgAF//hhdoSXolgJ1k+FP0CxN+AUOzgZLEo7uVeL+HdGc2
+ bh=XkKexDy/wzuB27iB2DnLFEzKOovyf++JmlP+fQT4Q6o=;
+ b=he6Q2vN99zHB/nJKmrP5qVDhXsKuAugWXRoYsVze3J2hDLS/1EGDegxeETpbLfSdCc+i4D8XY
+ PVNa65EVPyMCnkBk9e5dqxgRft8bIKI1MvtPOQ5pHGJcJtxpHI7rYic
 X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
  pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
 X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This small series adds camera flash to an existing similar mainline
-driver and adds it the the Samsung Expressatt's DTS
+Some flash ICs use the same one-wire pulse-count protocol as the RT8515
+but have only a single GPIO line for both flash and torch modes, plus an
+optional unlock gate (e.g. a PMIC MPP) that must be driven high before
+the chip responds to the enable GPIO.
 
-Downstream reference:
-Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/leds/Makefile#L51
-Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/arch/arm/mach-msm/board-apexq-camera.c#L591
+Make ent-gpios optional and add an unlock-gpios property to support
+these variants. Add a oneOf constraint requiring exactly one of
+ent-gpios or unlock-gpios. Add a binding example showing the
+single-GPIO configuration.
 
 Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
-Rudraksha Gupta (3):
-      dt-bindings: leds: rt8515: Support single-GPIO flash ICs with unlock gate
-      leds: flash: rt8515: Support single-GPIO flash ICs with unlock gate
-      ARM: dts: qcom: msm8960: expressatt: Add camera flash
+ .../devicetree/bindings/leds/richtek,rt8515.yaml   | 36 +++++++++++++++++++++-
+ 1 file changed, 35 insertions(+), 1 deletion(-)
 
- .../devicetree/bindings/leds/richtek,rt8515.yaml   | 36 +++++++++++++++++++-
- .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 31 ++++++++++++++++++
- drivers/leds/flash/leds-rt8515.c                   | 38 ++++++++++++++++++----
- 3 files changed, 98 insertions(+), 7 deletions(-)
----
-base-commit: e9ec05addd1a067fc7cb218f20ecdc1b1b0898c0
-change-id: 20260306-expressatt_camera_flash-13c15a7427aa
-prerequisite-message-id: <20251205-expressatt-touchkey-v1-1-1444b927c9f3@gmail.com>
-prerequisite-patch-id: 8de4de7909722ccaf385c4224f25a623eaa72c28
+diff --git a/Documentation/devicetree/bindings/leds/richtek,rt8515.yaml b/Documentation/devicetree/bindings/leds/richtek,rt8515.yaml
+index 0356371a6b01..820cf8c55090 100644
+--- a/Documentation/devicetree/bindings/leds/richtek,rt8515.yaml
++++ b/Documentation/devicetree/bindings/leds/richtek,rt8515.yaml
+@@ -15,6 +15,10 @@ description: |
+   current for each mode is defined in hardware using two resistors
+   RFS and RTS.
+ 
++  This driver also supports single-GPIO flash ICs that use the same
++  one-wire pulse-count protocol on one line for both flash and torch.
++  For these, only enf-gpios is required.
++
+ properties:
+   compatible:
+     const: richtek,rt8515
+@@ -26,6 +30,14 @@ properties:
+   ent-gpios:
+     maxItems: 1
+     description: A connection to the 'ENT' (enable torch) pin.
++      Optional for single-GPIO flash ICs where enf-gpios is used for
++      both flash and torch modes.
++
++  unlock-gpios:
++    maxItems: 1
++    description: Optional GPIO to unlock the flash LED circuit. Some
++      boards use a PMIC MPP pin that must be driven high before the
++      flash IC will respond to the enable GPIOs.
+ 
+   richtek,rfs-ohms:
+     minimum: 7680
+@@ -81,10 +93,15 @@ properties:
+ 
+ required:
+   - compatible
+-  - ent-gpios
+   - enf-gpios
+   - led
+ 
++oneOf:
++  - required:
++      - ent-gpios
++  - required:
++      - unlock-gpios
++
+ additionalProperties: false
+ 
+ examples:
+@@ -108,4 +125,21 @@ examples:
+         };
+     };
+ 
++  - |
++    /* Single-GPIO flash IC with unlock gate */
++    #include <dt-bindings/gpio/gpio.h>
++    #include <dt-bindings/leds/common.h>
++
++    led-controller {
++        compatible = "richtek,rt8515";
++        enf-gpios = <&tlmm 3 GPIO_ACTIVE_HIGH>;
++        unlock-gpios = <&pm8921_mpps 4 GPIO_ACTIVE_HIGH>;
++
++        led {
++            function = LED_FUNCTION_FLASH;
++            color = <LED_COLOR_ID_WHITE>;
++            flash-max-timeout-us = <250000>;
++        };
++    };
++
+ ...
 
-Best regards,
 -- 
-Rudraksha Gupta <guptarud@gmail.com>
+2.53.0
 
