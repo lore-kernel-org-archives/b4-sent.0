@@ -1,11 +1,10 @@
 From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Fri, 06 Mar 2026 16:58:03 -0800
-Subject: [PATCH 2/3] leds: flash: rt8515: Support single-GPIO flash ICs
- with unlock gate
+Date: Fri, 06 Mar 2026 16:58:04 -0800
+Subject: [PATCH 3/3] ARM: dts: qcom: msm8960: expressatt: Add camera flash
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260306-expressatt_camera_flash-v1-2-b1996f7cdfdd@gmail.com>
+Message-Id: <20260306-expressatt_camera_flash-v1-3-b1996f7cdfdd@gmail.com>
 References: <20260306-expressatt_camera_flash-v1-0-b1996f7cdfdd@gmail.com>
 In-Reply-To: <20260306-expressatt_camera_flash-v1-0-b1996f7cdfdd@gmail.com>
 To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
@@ -17,108 +16,89 @@ Cc: linux-leds@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  Rudraksha Gupta <guptarud@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772845083; l=3781;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772845083; l=2268;
  i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=eBn8zK2zm3rDt5Cq7ivsaMjK/w9HVVqK9pNgZvC1x40=;
- b=UGnv+rPdrIkDsaPCfH0UYYPewggp5aHqP1G8iGvesY+NLY+lLUq1qPqga3ovVhzNgVzx5sl0w
- SGvmYjjv2mDCarGK2PGGbQNJeXJUO0bubloizi0gW2DiVMpf0Oq6bHu
+ bh=m8KzHTR6SVXyCK/3SUO/rHRnAapxb/9fTcFjEI6HQ28=;
+ b=Bqqb8k0+8JBKt2d4AiB+WtjmC335yhw4VSqawv2OtkoBfOe49d0X3+SbLdDy6RT+WEDI764qj
+ /yXwDX//3jTC4cjAao5RbQcnoR2PNxkYTjkIHJQF/ErNwysEaJgUWxf
 X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
  pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
 X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Extend the RT8515 driver to support flash ICs that use only a single
-GPIO for both flash and torch modes (no separate ENT pin), with an
-optional unlock GPIO that gates the flash circuit.
+Add camera flash support for the Samsung Galaxy Express (expressatt).
+
+The flash IC uses a one-wire pulse-count protocol on GPIO 3, gated by
+PMIC MPP 4 which must be driven high to unlock the flash circuit.
+
+Downstream references:
+Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/leds/Makefile#L51
+Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/arch/arm/mach-msm/board-apexq-camera.c#L591
 
 Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
- drivers/leds/flash/leds-rt8515.c | 38 ++++++++++++++++++++++++++++++++------
- 1 file changed, 32 insertions(+), 6 deletions(-)
+ .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 31 ++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
 
-diff --git a/drivers/leds/flash/leds-rt8515.c b/drivers/leds/flash/leds-rt8515.c
-index f6b439674c03..3164bf91e4c9 100644
---- a/drivers/leds/flash/leds-rt8515.c
-+++ b/drivers/leds/flash/leds-rt8515.c
-@@ -52,6 +52,7 @@ struct rt8515 {
- 	struct regulator *reg;
- 	struct gpio_desc *enable_torch;
- 	struct gpio_desc *enable_flash;
-+	struct gpio_desc *unlock_gpio;
- 	struct timer_list powerdown_timer;
- 	u32 max_timeout; /* Flash max timeout */
- 	int flash_max_intensity;
-@@ -66,7 +67,10 @@ static struct rt8515 *to_rt8515(struct led_classdev_flash *fled)
- static void rt8515_gpio_led_off(struct rt8515 *rt)
- {
- 	gpiod_set_value(rt->enable_flash, 0);
--	gpiod_set_value(rt->enable_torch, 0);
-+	if (rt->enable_torch)
-+		gpiod_set_value(rt->enable_torch, 0);
-+	if (rt->unlock_gpio)
-+		gpiod_set_value_cansleep(rt->unlock_gpio, 0);
- }
+diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
+index c4b98af6955d..96460775a4ec 100644
+--- a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
++++ b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
+@@ -1,5 +1,6 @@
+ // SPDX-License-Identifier: GPL-2.0
+ #include <dt-bindings/input/input.h>
++#include <dt-bindings/leds/common.h>
+ #include <dt-bindings/reset/qcom,gcc-msm8960.h>
  
- static void rt8515_gpio_brightness_commit(struct gpio_desc *gpiod,
-@@ -99,11 +103,19 @@ static int rt8515_led_brightness_set(struct led_classdev *led,
- 		/* Off */
- 		rt8515_gpio_led_off(rt);
- 	} else if (brightness < RT8515_TORCH_MAX) {
--		/* Step it up to movie mode brightness using the flash pin */
--		rt8515_gpio_brightness_commit(rt->enable_torch, brightness);
-+		/* Unlock the flash circuit if needed */
-+		if (rt->unlock_gpio)
-+			gpiod_set_value_cansleep(rt->unlock_gpio, 1);
-+		/* Step it up to movie mode brightness */
-+		rt8515_gpio_brightness_commit(rt->enable_torch ?
-+				rt->enable_torch : rt->enable_flash, brightness);
- 	} else {
-+		/* Unlock the flash circuit if needed */
-+		if (rt->unlock_gpio)
-+			gpiod_set_value_cansleep(rt->unlock_gpio, 1);
- 		/* Max torch brightness requested */
--		gpiod_set_value(rt->enable_torch, 1);
-+		gpiod_set_value(rt->enable_torch ? rt->enable_torch :
-+				rt->enable_flash, 1);
- 	}
+ #include "qcom-msm8960.dtsi"
+@@ -61,6 +62,20 @@ touchkey_enable: touchkey-enable {
+ 		regulator-boot-on;
+ 	};
  
- 	mutex_unlock(&rt->lock);
-@@ -121,6 +133,9 @@ static int rt8515_led_flash_strobe_set(struct led_classdev_flash *fled,
- 	mutex_lock(&rt->lock);
- 
- 	if (state) {
-+		/* Unlock the flash circuit if needed */
-+		if (rt->unlock_gpio)
-+			gpiod_set_value_cansleep(rt->unlock_gpio, 1);
- 		/* Enable LED flash mode and set brightness */
- 		rt8515_gpio_brightness_commit(rt->enable_flash, brightness);
- 		/* Set timeout */
-@@ -298,12 +313,23 @@ static int rt8515_probe(struct platform_device *pdev)
- 		return dev_err_probe(dev, PTR_ERR(rt->enable_flash),
- 				     "cannot get ENF (enable flash) GPIO\n");
- 
--	/* ENT - Enable Torch line */
--	rt->enable_torch = devm_gpiod_get(dev, "ent", GPIOD_OUT_LOW);
-+	/* ENT - Enable Torch line (optional for single-GPIO flash ICs) */
-+	rt->enable_torch = devm_gpiod_get_optional(dev, "ent", GPIOD_OUT_LOW);
- 	if (IS_ERR(rt->enable_torch))
- 		return dev_err_probe(dev, PTR_ERR(rt->enable_torch),
- 				     "cannot get ENT (enable torch) GPIO\n");
- 
-+	/* Optional unlock GPIO (e.g. PMIC MPP to gate flash circuit) */
-+	rt->unlock_gpio = devm_gpiod_get_optional(dev, "unlock", GPIOD_OUT_LOW);
-+	if (IS_ERR(rt->unlock_gpio))
-+		return dev_err_probe(dev, PTR_ERR(rt->unlock_gpio),
-+				     "cannot get unlock GPIO\n");
++	camera_flash: led-controller {
++		compatible = "richtek,rt8515";
++		enf-gpios = <&tlmm 3 GPIO_ACTIVE_HIGH>;
++		unlock-gpios = <&pm8921_mpps 4 GPIO_ACTIVE_HIGH>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&cam_flash_en>;
 +
-+	/* Exactly one of ENT or unlock must be provided */
-+	if (!rt->enable_torch == !rt->unlock_gpio)
-+		return dev_err_probe(dev, -EINVAL,
-+				     "exactly one of ent-gpios or unlock-gpios is required\n");
++		led {
++			function = LED_FUNCTION_FLASH;
++			color = <LED_COLOR_ID_WHITE>;
++			flash-max-timeout-us = <250000>;
++		};
++	};
 +
- 	child = device_get_next_child_node(dev, NULL);
- 	if (!child) {
- 		dev_err(dev,
+ 	i2c-gpio-touchkey {
+ 		compatible = "i2c-gpio";
+ 		#address-cells = <1>;
+@@ -247,6 +262,13 @@ touchkey_irq_pin: touchkey-irq-state {
+ 		drive-strength = <2>;
+ 		bias-disable;
+ 	};
++
++	cam_flash_en: cam-flash-en-state {
++		pins = "gpio3";
++		function = "gpio";
++		drive-strength = <16>;
++		bias-pull-down;
++	};
+ };
+ 
+ &pm8921 {
+@@ -572,3 +594,12 @@ magnetometer@2e {
+ 		/* TODO: Figure out Mount Matrix */
+ 	};
+ };
++
++&pm8921_mpps {
++	flash_led_unlock: flash-led-unlock-state {
++		pins = "mpp4";
++		function = "digital";
++		output-low;
++		power-source = <PM8921_GPIO_S4>;
++	};
++};
 
 -- 
 2.53.0
