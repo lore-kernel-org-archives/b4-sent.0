@@ -1,10 +1,11 @@
 From: Paul Adam <adamp@posteo.de>
-Date: Sat, 07 Mar 2026 18:23:10 +0100
-Subject: [PATCH v4 1/3] dt-bindings: vendor-prefixes: add WIKO SAS
+Date: Sat, 07 Mar 2026 18:23:11 +0100
+Subject: [PATCH v4 2/3] dt-bindings: arm: qcom: add wiko,chuppito
+ compatible string
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260307-wiko-chuppito-v4-1-325ac66ae338@posteo.de>
+Message-Id: <20260307-wiko-chuppito-v4-2-325ac66ae338@posteo.de>
 References: <20260307-wiko-chuppito-v4-0-325ac66ae338@posteo.de>
 In-Reply-To: <20260307-wiko-chuppito-v4-0-325ac66ae338@posteo.de>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -15,37 +16,36 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  phone-devel@vger.kernel.org, Paul Adam <adamp@posteo.de>, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772904201; l=846;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772904201; l=811;
  i=adamp@posteo.de; s=20260215; h=from:subject:message-id;
- bh=p71bdLWPgJx8YbZwRJN3OjH5dKZ2Biw/XlIKc8Hj8V8=;
- b=COGpkrT/qwb78CSninXkVsxU/hwvR7di6vDacrRIu2RXUX1Tr2Ypp5KfHYvSSisShupVwyX7j
- oLbnVjoxZNzDnqM5EHifN7ckR2TKgpnc92nctk1vzmD8LNGHBVQysqT
+ bh=L22ne3Q6rMpTpkTkP/rKSYuGR0NhqH7BLqT9DvYenoM=;
+ b=ndIZKgAzgzs/nKprlv8U5OlJZrvAL5Azob9ZJmJkSAsyjGc8sr7z+2QLNl+Izui0p5LA6nvm6
+ ikamgrb4DJ7BuNXeHYxytDuKtvW8p+0FEdgyy8I4KIbREHOX5pwxInt
 X-Developer-Key: i=adamp@posteo.de; a=ed25519;
  pk=mtrPhSn7htywc4S5zrKNrWM6laAdfnaJzIs0BDiCyAs=
 X-Endpoint-Received: by B4 Relay for adamp@posteo.de/20260215 with auth_id=640
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Wiko is a french smartphone company: https://wiko.com
+Add a compatible for Wiko PULP 4G, a phone from 2015.
 
 Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Paul Adam <adamp@posteo.de>
 ---
- Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+ Documentation/devicetree/bindings/arm/qcom.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index edbce100cae4..187089eef983 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -1819,6 +1819,8 @@ patternProperties:
-     description: Wi2Wi, Inc.
-   "^widora,.*":
-     description: Beijing Widora Technology Co., Ltd.
-+  "^wiko,.*":
-+    description: Wiko SAS
-   "^wiligear,.*":
-     description: Wiligear, Ltd.
-   "^willsemi,.*":
+diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
+index d48c625d3fc4..c9525b61f8ff 100644
+--- a/Documentation/devicetree/bindings/arm/qcom.yaml
++++ b/Documentation/devicetree/bindings/arm/qcom.yaml
+@@ -186,6 +186,7 @@ properties:
+               - samsung,serranove
+               - thwc,uf896
+               - thwc,ufi001c
++              - wiko,chuppito
+               - wingtech,wt86518
+               - wingtech,wt86528
+               - wingtech,wt88047
 
 -- 
 2.53.0
