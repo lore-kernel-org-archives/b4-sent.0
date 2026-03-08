@@ -1,78 +1,89 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Sun, 08 Mar 2026 11:57:31 +0530
-Subject: [PATCH v5 5/5] scsi: ufs: ufs-qcom: Remove NULL check from
- devm_of_qcom_ice_get()
+From: Cristian Cozzolino <cristian_ci@protonmail.com>
+Subject: [PATCH 0/6] Enable new features for flipkart-rimob
+Date: Sun, 08 Mar 2026 16:52:40 +0100
+Message-Id: <20260308-rimob-new-features-v1-0-aa2c330572c0@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260308-qcom-ice-fix-v5-5-e47e8a44b6c4@oss.qualcomm.com>
-References: <20260308-qcom-ice-fix-v5-0-e47e8a44b6c4@oss.qualcomm.com>
-In-Reply-To: <20260308-qcom-ice-fix-v5-0-e47e8a44b6c4@oss.qualcomm.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Adrian Hunter <adrian.hunter@intel.com>, 
- Ulf Hansson <ulf.hansson@linaro.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, 
- "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
- "Martin K. Petersen" <martin.petersen@oracle.com>, 
- Abel Vesa <abelvesa@kernel.org>, Abel Vesa <abelvesa@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-mmc@vger.kernel.org, linux-scsi@vger.kernel.org, 
- Sumit Garg <sumit.garg@oss.qualcomm.com>, mani@kernel.org, 
- Neeraj Soni <neeraj.soni@oss.qualcomm.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQ5AMBBA4avIrE0yWiFcRSyKwSyUTP0l4u4ay
+ 2/x3gOBVThAnTygfEqQ1UdkaQL97PzEKEM0GDIFWbKosqwder5wZLcfygHJllWed9YVhiCGm/I
+ o9z9t2vf9AGG4EOFkAAAA
+X-Change-ID: 20260303-rimob-new-features-037944b3a620
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ Cristian Cozzolino <cristian_ci@protonmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1114;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=TzqKhDLr9WN8kubHG4egYv7EvzBCe1kNbA4zOiRN8WE=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBprRbgLn3T61wt6ZIws4U8+iZm85mLQbn2L0LkB
- jdNzTJQG/eJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaa0W4AAKCRBVnxHm/pHO
- 9Sq9CACAtzJB/b5B7KU1tuGKHbiIGzaq0+XkeDdRyZbJO+T0RjlwkPKJZNd3fDUK4VS98edK5is
- O3MkCT7wwlUQzuveyx7fOf2Wh9FbHMV5ZC296eI/T0rWOmNjkohqQhj2Pwbxy9HQSTl2O8cskqK
- eIEp6ldnBqfI+X0DeDs+u0zUut9t//dQWd9tDiCUfcr1aDLLFTTem77Hg88osY2F+iv8Iz3N5xb
- DI8H7jE6cTJxa9LvLNrmbIB4kQlF+bYEZtHjH4CW0SCH8joAeVOQGyO1aeL9RDwRkygjjRVuxZ0
- Cp9T13UpXDJXDhPyNKLCjXCFyPRcepiDqkqM7J/vpDmKZ82w
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1772985180; l=2259;
+ i=cristian_ci@protonmail.com; s=20250620; h=from:subject:message-id;
+ bh=wQ7u13m0ex1l7LW2+VlBPd+UnM7kt74ULo4GFRhXDqE=;
+ b=DyAla0iz3gxfGuxFSxXh9oTIG5bqNawVTwKQWHjPRBDnN70k+mt1r1WrfmpW56H6yHoRF9Sc/
+ cpB1HrLoTviCcxxzcWC7AdMP0pSqiuXo4WgbtvyRPE5zOpvtB5Rn2kK
+X-Developer-Key: i=cristian_ci@protonmail.com; a=ed25519;
+ pk=xH5IvIPUNHV1Q8R0/pq2CfuVFR/wTiAyuyi6IwedjZY=
+X-Endpoint-Received: by B4 Relay for cristian_ci@protonmail.com/20250620 with auth_id=438
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now since the devm_of_qcom_ice_get() API never returns NULL, remove the
-NULL check and also simplify the error handling.
+This series enables a set of miscellaneous features for Billion Capture+ 
+(a handset using the MSM8953 SoC released in 2017):
+- Panel and GPU
+- Touchscreen
+- WiFi + Bluetooth
+- Hall sensor 
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Acked-by: Martin K. Petersen <martin.petersen@oracle.com> # UFS
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Patches 1 and 2 provide a driver for Novatek NT35532 and its corresponding
+devicetree bindings, required for enabling panel in DTS. The remaining 
+patches are all DTS changes, aimed to enable the features listed above.
+
+To: Neil Armstrong <neil.armstrong@linaro.org>
+To: Jessica Zhang <jesszhan0024@gmail.com>
+To: David Airlie <airlied@gmail.com>
+To: Simona Vetter <simona@ffwll.ch>
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
+To: Maxime Ripard <mripard@kernel.org>
+To: Thomas Zimmermann <tzimmermann@suse.de>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Bjorn Andersson <andersson@kernel.org>
+To: Konrad Dybcio <konradybcio@kernel.org>
+Cc: dri-devel@lists.freedesktop.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-arm-msm@vger.kernel.org
+Cc: ~postmarketos/upstreaming@lists.sr.ht
+Cc: phone-devel@vger.kernel.org 
+
+Signed-off-by: Cristian Cozzolino <cristian_ci@protonmail.com>
 ---
- drivers/ufs/host/ufs-qcom.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+Cristian Cozzolino (6):
+      dt-bindings: display: panel: Add Novatek NT35532 LCD DSI
+      drm/panel: Add driver for Novatek NT35532
+      arm64: dts: qcom: msm8953-flipkart-rimob: Enable display and GPU
+      arm64: dts: qcom: msm8953-flipkart-rimob: Enable WiFi/Bluetooth
+      arm64: dts: qcom: msm8953-flipkart-rimob: Enable touchscreen
+      arm64: dts: qcom: msm8953-flipkart-rimob: Enable Hall sensor
 
-diff --git a/drivers/ufs/host/ufs-qcom.c b/drivers/ufs/host/ufs-qcom.c
-index 375fd24ba458..72c24ed65fe1 100644
---- a/drivers/ufs/host/ufs-qcom.c
-+++ b/drivers/ufs/host/ufs-qcom.c
-@@ -177,14 +177,14 @@ static int ufs_qcom_ice_init(struct ufs_qcom_host *host)
- 	int i;
- 
- 	ice = devm_of_qcom_ice_get(dev);
--	if (ice == ERR_PTR(-EOPNOTSUPP)) {
-+	if (IS_ERR(ice)) {
-+		if (ice != ERR_PTR(-EOPNOTSUPP))
-+			return PTR_ERR(ice);
-+
- 		dev_warn(dev, "Disabling inline encryption support\n");
--		ice = NULL;
-+		return 0;
- 	}
- 
--	if (IS_ERR_OR_NULL(ice))
--		return PTR_ERR_OR_ZERO(ice);
--
- 	host->ice = ice;
- 
- 	/* Initialize the blk_crypto_profile */
+ .../bindings/display/panel/novatek,nt35532.yaml    |  66 ++
+ MAINTAINERS                                        |   6 +
+ .../arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts | 152 ++++
+ drivers/gpu/drm/panel/Kconfig                      |  11 +
+ drivers/gpu/drm/panel/Makefile                     |   1 +
+ drivers/gpu/drm/panel/panel-novatek-nt35532.c      | 767 +++++++++++++++++++++
+ 6 files changed, 1003 insertions(+)
+---
+base-commit: 11439c4635edd669ae435eec308f4ab8a0804808
+change-id: 20260303-rimob-new-features-037944b3a620
 
+Best regards,
 -- 
-2.51.0
+Cristian Cozzolino <cristian_ci@protonmail.com>
 
