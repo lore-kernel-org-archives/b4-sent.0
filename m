@@ -1,14 +1,13 @@
 From: Carl Lee <carl.lee@amd.com>
-Subject: [PATCH 0/2] ARM: dts: aspeed: anacapa: add eeprom devices
-Date: Mon, 09 Mar 2026 11:29:26 +0800
-Message-Id: <20260309-arm-dts-aspeed-anacapa-add-eeprom-device-v1-0-45092310e0e6@amd.com>
+Date: Mon, 09 Mar 2026 11:29:27 +0800
+Subject: [PATCH 1/2] ARM: dts: aspeed: anacapa: Add eeprom device node for
+ PRoT module
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJY+rmkC/x2NwQqDMBAFf0X23IWoKLS/Unp4Js82h8awKUUQ/
- 71Lj8PAzCGNltnk1h1i/OaWt+LQXzqJL5QnNSdnGcIwhzFcFfbW9GmKVsmkKIioUKSkZLXNrWc
- iFT2wMMwYp0U8V41r3v+r++M8f8Xs9lx6AAAA
-X-Change-ID: 20260309-arm-dts-aspeed-anacapa-add-eeprom-device-a1aabe06a35b
+Message-Id: <20260309-arm-dts-aspeed-anacapa-add-eeprom-device-v1-1-45092310e0e6@amd.com>
+References: <20260309-arm-dts-aspeed-anacapa-add-eeprom-device-v1-0-45092310e0e6@amd.com>
+In-Reply-To: <20260309-arm-dts-aspeed-anacapa-add-eeprom-device-v1-0-45092310e0e6@amd.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
  Andrew Jeffery <andrew@codeconstruct.com.au>
@@ -16,32 +15,40 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
  carl.lee@amd.com, peter.shen@amd.com, colin.huang2@amd.com
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773026981; l=628;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773026981; l=712;
  i=carl.lee@amd.com; s=20260203; h=from:subject:message-id;
- bh=GaoP8wcFVTkbA0qAqdRsL25+1PTp6d7J/ewviONVA+o=;
- b=kgrps2Go1O4NvQWUFzsxLNEgYXY5NUMhGVNxD99zrowxmzORxAcbs5rIdv1EZnF/n4UTaLfVN
- vEF+OVFHqZ9AJqv/iM04dPXj3sUtCJWN4uWI6C3XLSaA+E4Ohews4Aa
+ bh=4aUo+I25yKcWkfZ/hlkVpDZQt+CsSEqAbr9PaSDqHsg=;
+ b=3tAsCSbsPpsPhvfGTXlpzgPTJPk7d61OGjUrgblTid5E+Kh1SZMxz/XNk3I6A/r4SM/0xmf6s
+ MgaiyyjUEsBAA5/RaDvyLlXQywZtYW5oU5EX5TosmnWHVXjSE5zf2tq
 X-Developer-Key: i=carl.lee@amd.com; a=ed25519;
  pk=pyq7QaQvoxMg806KVkRwpCbiah+7ncWr4MBpK1AEyjA=
 X-Endpoint-Received: by B4 Relay for carl.lee@amd.com/20260203 with auth_id=623
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add eeprom device nodes used to store FRU data for the PRoT
-module and NFC adapter board on Anacapa platform.
+Add eeprom device node for PRot module FRU.
 
 Signed-off-by: Carl Lee <carl.lee@amd.com>
 ---
-Carl Lee (2):
-      ARM: dts: aspeed: anacapa: Add eeprom device node for PRoT module
-      ARM: dts: aspeed: anacapa: Add eeprom device node for NFC adaptor board
+ arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts | 5 +++++
+ 1 file changed, 5 insertions(+)
 
- arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts | 10 ++++++++++
- 1 file changed, 10 insertions(+)
----
-base-commit: a0ae2a256046c0c5d3778d1a194ff2e171f16e5f
-change-id: 20260309-arm-dts-aspeed-anacapa-add-eeprom-device-a1aabe06a35b
+diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
+index 2cb7bd128d24..680108b00664 100644
+--- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
++++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
+@@ -586,6 +586,11 @@ eeprom@50 {
+ 		reg = <0x50>;
+ 	};
+ 
++	eeprom@51 {
++		compatible = "atmel,24c128";
++		reg = <0x51>;
++	};
++
+ 	// BSM FRU
+ 	eeprom@56 {
+ 		compatible = "atmel,24c64";
 
-Best regards,
 -- 
-Carl Lee <carl.lee@amd.com>
+2.34.1
 
