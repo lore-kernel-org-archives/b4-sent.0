@@ -1,11 +1,10 @@
 From: Jihan LIN <linjh22s@gmail.com>
-Date: Mon, 09 Mar 2026 12:23:07 +0000
-Subject: [PATCH RFC v2 4/5] zram: Use zcomp-managed streams for async write
- requests
+Date: Mon, 09 Mar 2026 12:23:08 +0000
+Subject: [PATCH RFC v2 5/5] zram: Add lz4 PoC for zcomp-managed streams
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260309-b4_zcomp_stream-v2-4-7148622326eb@gmail.com>
+Message-Id: <20260309-b4_zcomp_stream-v2-5-7148622326eb@gmail.com>
 References: <20260309-b4_zcomp_stream-v2-0-7148622326eb@gmail.com>
 In-Reply-To: <20260309-b4_zcomp_stream-v2-0-7148622326eb@gmail.com>
 To: Minchan Kim <minchan@kernel.org>, 
@@ -13,104 +12,577 @@ To: Minchan Kim <minchan@kernel.org>,
 Cc: linux-kernel@vger.kernel.org, linux-block@vger.kernel.org, 
  Jihan LIN <linjh22s@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773058983; l=3798;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773058983; l=14336;
  i=linjh22s@gmail.com; s=linjh22s_machine; h=from:subject:message-id;
- bh=v0DGgSS+E5bgvt8cBKnXuZ6r8eM9BVP7bcdiMehO2N4=;
- b=zwljVfG1zncWfD57mFttrzMqxef6yb2k6deJ19Qm8qYfJy3u8QDJK3byb+yduxIK6Tvk0LF7w
- N5PKY/tv4cBAJG1Rg5GthxCscul2Qk0o6fzkDouOpzjWoEkEIh/GK1/
+ bh=mEMDbmD1qoxl2reBWd5JjsA+BTrp9Jpy4oVUppxc3RM=;
+ b=gH9uVl9GuizfjHXZlitR7fYS65n626SGU0aO3epsRXcwPen+cd/H8uMLnApxo2tr66Av23nvJ
+ mYYWce/CxmeCr9KhGQAjXsdDn+LP+Tz0ZyY6/RzTk4UrFvL258XXt1Z
 X-Developer-Key: i=linjh22s@gmail.com; a=ed25519;
  pk=MnRQAVFy1t4tiGb8ce7ohJwrN2YFXd+dA7XmzR6GmUc=
 X-Endpoint-Received: by B4 Relay for linjh22s@gmail.com/linjh22s_machine with auth_id=592
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Current per-CPU streams limit write concurrency to the number of online
-CPUs. Hardware accelerators with deep submission queues can handle far
-more concurrent requests. Use zcomp-managed streams for async write
-requests to take advantage of this.
+This patch provides a proof-of-concept implementation of zcomp-managed
+streams for the lz4 backend, demonstrating how a hardware-accelerated
+compression backend would integrate with zcomp-managed streams
+introduced earlier in this series.
 
-Modify zram_write_page() to accept a flag indicating the request is
-asynchronous. If the bio request is considered non-synchronous and the
-backend supports zcomp-managed streams, attempt to acquire one.
-zcomp_stream_get() handles the fallback to per-CPU streams.
+The PoC simulates a hardware accelerator with a fixed queue depth of
+128. Global stream buffers are shared across all zram devices, while
+contexts are per-device. Both are pre-allocated. During compression,
+requests are submitted to a double-buffered kfifo queue and processed by
+a dedicated kthread.
 
-Sync writes block waiting for completion (e.g., blk_wait_io() in
-submit_bio_wait() from callers), and remain on per-CPU streams for
-per-request latency. Reads are unchanged since they are treated as
-synchronous operations. Recompression also remains unchanged as it
-prioritizes compression ratio.
-
-Although zram_write_page() currently waits for compression to complete,
-using zcomp-managed streams allows write concurrency to exceed the
-number of CPUs.
-
-Supporting multiple pages within a single bio request is deferred to
-keep it simple and focused.
+Known limitations:
+ - The single kthread serializes all compression work.
+ - Pool sizes are hard-coded.
+ - Uses global mutexes; contention is expected to be high under load.
+ - Assumes !HIGHMEM; kmap_local_page mappings are passed to a kthread.
 
 Signed-off-by: Jihan LIN <linjh22s@gmail.com>
 ---
- drivers/block/zram/zram_drv.c | 21 +++++++++++++++++----
- 1 file changed, 17 insertions(+), 4 deletions(-)
+ drivers/block/zram/backend_lz4.c | 464 +++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 442 insertions(+), 22 deletions(-)
 
-diff --git a/drivers/block/zram/zram_drv.c b/drivers/block/zram/zram_drv.c
-index 7be88cfb56adb12fcc1edc6b4d42271044ef71b5..3db4579776f758c16006fd3108b4f778b84fea30 100644
---- a/drivers/block/zram/zram_drv.c
-+++ b/drivers/block/zram/zram_drv.c
-@@ -2083,6 +2083,7 @@ static int read_compressed_page(struct zram *zram, struct page *page, u32 index)
- 	size = get_slot_size(zram, index);
- 	prio = get_slot_comp_priority(zram, index);
+diff --git a/drivers/block/zram/backend_lz4.c b/drivers/block/zram/backend_lz4.c
+index 04e18661476086502ac41355e9cc38cc2f353d52..adf689003a62770cbbf0901ca07da84108f8d9d7 100644
+--- a/drivers/block/zram/backend_lz4.c
++++ b/drivers/block/zram/backend_lz4.c
+@@ -2,8 +2,12 @@
+ #include <linux/lz4.h>
+ #include <linux/slab.h>
+ #include <linux/vmalloc.h>
++#include <linux/kthread.h>
++#include <linux/kfifo.h>
++#include <linux/completion.h>
  
-+	/* Reads are treated as synchronous, see op_is_sync(). */
- 	zstrm = zcomp_stream_get(zram->comps[prio], ZSTRM_DEFAULT);
- 	src = zs_obj_read_begin(zram->mem_pool, handle, size,
- 				zstrm->local_copy);
-@@ -2249,7 +2250,8 @@ static int write_incompressible_page(struct zram *zram, struct page *page,
+ #include "backend_lz4.h"
++#include "zcomp.h"
+ 
+ struct lz4_ctx {
+ 	void *mem;
+@@ -12,18 +16,326 @@ struct lz4_ctx {
+ 	LZ4_stream_t *cstrm;
+ };
+ 
++struct lz4_stream {
++	struct managed_zstrm zstrm;
++	struct list_head node;
++	struct completion completion;
++	int result;
++};
++
++struct lz4_req {
++	struct lz4_stream *strm;
++	struct lz4_ctx *ctx;
++	struct zcomp_params *params;
++	struct zcomp_req *zreq;
++};
++
++#define BACKEND_LZ4_STREAM_MAX 128
++#define BACKEND_LZ4_QUEUE_NR 2
++
++struct lz4_global {
++	struct list_head stream_head;
++	struct mutex stream_lock;
++	struct task_struct *tsk;
++
++	struct completion new_task_ready;
++
++	struct mutex working_lock;
++	DECLARE_KFIFO(working_queue[BACKEND_LZ4_QUEUE_NR], struct lz4_req,
++		      BACKEND_LZ4_STREAM_MAX);
++	int working_submit_idx;
++
++	struct kref ref;
++};
++
++static DEFINE_MUTEX(lz4_global_lock);
++static struct lz4_global *lz4_global_data;
++
++static void lz4_stream_free(struct lz4_stream *src)
++{
++	if (IS_ERR_OR_NULL(src))
++		return;
++
++	vfree(src->zstrm.strm.buffer);
++	vfree(src->zstrm.strm.local_copy);
++
++	kvfree(src);
++}
++
++DEFINE_FREE(lz4_stream, struct lz4_stream *, lz4_stream_free(_T));
++static struct lz4_stream *lz4_stream_alloc(void)
++{
++	struct lz4_stream *strm __free(lz4_stream) = NULL;
++	void *buffer __free(kvfree) = NULL;
++	void *local_copy __free(kvfree) = NULL;
++
++	strm = kvzalloc_obj(struct lz4_stream, GFP_KERNEL);
++	if (!strm)
++		return ERR_PTR(-ENOMEM);
++
++	buffer = vmalloc(PAGE_SIZE * 2);
++	local_copy = vmalloc(PAGE_SIZE);
++	if (!buffer || !local_copy)
++		return ERR_PTR(-ENOMEM);
++
++	strm->zstrm.strm.buffer = no_free_ptr(buffer);
++	strm->zstrm.strm.local_copy = no_free_ptr(local_copy);
++	strm->zstrm.strm.zcomp_managed = true;
++
++	return_ptr(strm);
++}
++
++static void lz4_streams_destroy(struct lz4_global *inst)
++{
++	struct lz4_stream *pos, *tmp;
++
++	list_for_each_entry_safe(pos, tmp, &inst->stream_head, node) {
++		list_del(&pos->node);
++		lz4_stream_free(pos);
++	}
++}
++
++static int lz4_streams_init(struct zcomp_params *params,
++			    struct lz4_global *inst)
++{
++	int err = 0;
++
++	INIT_LIST_HEAD(&inst->stream_head);
++	for (int i = 0; i < BACKEND_LZ4_STREAM_MAX; i++) {
++		struct lz4_stream *curr_zstrm __free(lz4_stream) = NULL;
++
++		curr_zstrm = lz4_stream_alloc();
++		if (IS_ERR(curr_zstrm)) {
++			err = PTR_ERR(curr_zstrm);
++			break;
++		}
++
++		/* lz4_ctx is linked to stream in get_stream() */
++		list_add(&curr_zstrm->node, &inst->stream_head);
++		init_completion(&curr_zstrm->completion);
++		retain_and_null_ptr(curr_zstrm);
++	}
++
++	if (err) {
++		lz4_streams_destroy(inst);
++		return err;
++	}
++
++	return 0;
++}
++
++static int __lz4_compress(struct zcomp_params *params, struct lz4_ctx *zctx,
++			  struct zcomp_req *req);
++
++static void lz4_do_compression(struct lz4_global *inst)
++{
++	struct lz4_req req;
++	int idx;
++
++	scoped_guard(mutex, &inst->working_lock)
++	{
++		idx = inst->working_submit_idx;
++		inst->working_submit_idx = (idx + 1) % BACKEND_LZ4_QUEUE_NR;
++	}
++
++	while (kfifo_get(&inst->working_queue[idx], &req)) {
++		struct lz4_stream *lz4_strm = req.strm;
++
++		lz4_strm->result =
++			__lz4_compress(req.params, req.ctx, req.zreq);
++		complete(&lz4_strm->completion);
++	}
++}
++
++static int lz4_thread_worker(void *data)
++{
++	struct lz4_global *inst = data;
++
++	while (!kthread_should_stop()) {
++		int err;
++
++		err = wait_for_completion_interruptible(&inst->new_task_ready);
++		if (err)
++			continue;
++		lz4_do_compression(inst);
++	}
++	return 0;
++}
++
++static int lz4_global_init(struct zcomp_params *params)
++{
++	int err = 0;
++	struct lz4_global *newinst = NULL;
++
++	mutex_lock(&lz4_global_lock);
++
++	if (lz4_global_data) {
++		kref_get(&lz4_global_data->ref);
++		err = 0;
++		goto out_unlock;
++	}
++
++	newinst = kvzalloc_obj(*newinst);
++	if (!newinst) {
++		err = -ENOMEM;
++		goto out_unlock;
++	}
++
++	INIT_KFIFO(newinst->working_queue[0]);
++	INIT_KFIFO(newinst->working_queue[1]);
++	newinst->working_submit_idx = 0;
++
++	mutex_init(&newinst->stream_lock);
++	mutex_init(&newinst->working_lock);
++	kref_init(&newinst->ref);
++	err = lz4_streams_init(params, newinst);
++	if (err)
++		goto err_stream_init;
++	init_completion(&newinst->new_task_ready);
++	newinst->tsk = kthread_run(lz4_thread_worker, newinst, "zcomp_lz4");
++	if (IS_ERR(newinst->tsk)) {
++		err = PTR_ERR(newinst->tsk);
++		goto err_kthread_init;
++	}
++
++	lz4_global_data = newinst;
++	mutex_unlock(&lz4_global_lock);
++	return 0;
++
++err_kthread_init:
++	lz4_streams_destroy(newinst);
++err_stream_init:
++	mutex_destroy(&newinst->working_lock);
++	mutex_destroy(&newinst->stream_lock);
++	kvfree(newinst);
++out_unlock:
++	mutex_unlock(&lz4_global_lock);
++	return err;
++}
++
++static void lz4_global_destroy(struct kref *ref)
++{
++	struct lz4_global *inst;
++
++	lockdep_assert_held(&lz4_global_lock);
++
++	if (!lz4_global_data)
++		return;
++	inst = container_of(ref, struct lz4_global, ref);
++	WARN_ON(inst != lz4_global_data);
++
++	lz4_global_data = NULL;
++	kthread_stop(inst->tsk);
++	lz4_streams_destroy(inst);
++	mutex_destroy(&inst->stream_lock);
++	mutex_destroy(&inst->working_lock);
++	kvfree(inst);
++}
++
++struct lz4_drv {
++	struct mutex lock;
++	DECLARE_KFIFO(ctxqueue, struct lz4_ctx *, BACKEND_LZ4_STREAM_MAX);
++	struct lz4_ctx ctxs[BACKEND_LZ4_STREAM_MAX];
++};
++
++static int lz4_ctx_init(struct zcomp_params *params, struct lz4_ctx *zctx);
++static void lz4_ctx_destroy(struct lz4_ctx *zctx);
++
++static void lz4_drv_free(struct lz4_drv *drv_data)
++{
++	int i;
++
++	for (i = 0; i < ARRAY_SIZE(drv_data->ctxs); i++)
++		lz4_ctx_destroy(&drv_data->ctxs[i]);
++
++	mutex_destroy(&drv_data->lock);
++
++	kvfree(drv_data);
++}
++
++static int lz4_drv_alloc(struct zcomp_params *params)
++{
++	struct lz4_drv *drv_data = NULL;
++	int i, len;
++	int err = 0;
++
++	drv_data = kvzalloc_obj(*drv_data);
++	if (!drv_data)
++		return -ENOMEM;
++	mutex_init(&drv_data->lock);
++
++	INIT_KFIFO(drv_data->ctxqueue);
++
++	len = kfifo_size(&drv_data->ctxqueue);
++
++	for (i = 0; i < min(len, ARRAY_SIZE(drv_data->ctxs)); i++) {
++		struct lz4_ctx *ctx = &drv_data->ctxs[i];
++
++		err = lz4_ctx_init(params, ctx);
++		if (err)
++			break;
++
++		kfifo_put(&drv_data->ctxqueue, ctx);
++	}
++
++	if (err) {
++		lz4_drv_free(drv_data);
++		return err;
++	}
++
++	params->drv_data = drv_data;
++
++	return 0;
++}
++
+ static void lz4_release_params(struct zcomp_params *params)
+ {
++	struct lz4_drv *drv_data = params->drv_data;
++
++	if (!params->zstrm_mgmt)
++		return;
++
++	lz4_drv_free(drv_data);
++
++	kref_put_mutex(&lz4_global_data->ref, lz4_global_destroy,
++		       &lz4_global_lock);
+ }
+ 
+ static int lz4_setup_params(struct zcomp_params *params)
+ {
++	int err = 0;
++
+ 	if (params->level == ZCOMP_PARAM_NOT_SET)
+ 		params->level = LZ4_ACCELERATION_DEFAULT;
+ 
++	params->zstrm_mgmt = false;
++	err = lz4_global_init(params);
++	if (err) {
++		pr_err("lz4 global init failed: %d, managed stream disabled",
++		       err);
++		return 0;
++	}
++
++	err = lz4_drv_alloc(params);
++
++	if (err) {
++		pr_err("lz4 drv init failed: %d, managed stream disabled", err);
++		kref_put_mutex(&lz4_global_data->ref, lz4_global_destroy,
++			       &lz4_global_lock);
++		return 0;
++	}
++
++	params->zstrm_mgmt = true;
  	return 0;
  }
  
--static int zram_write_page(struct zram *zram, struct page *page, u32 index)
-+static int zram_write_page(struct zram *zram, struct page *page, u32 index,
-+			   bool is_async)
++static void lz4_ctx_destroy(struct lz4_ctx *zctx)
++{
++	vfree(zctx->mem);
++	kfree(zctx->dstrm);
++	kfree(zctx->cstrm);
++}
++
+ static void lz4_destroy(struct zcomp_ctx *ctx)
  {
- 	int ret = 0;
- 	unsigned long handle;
-@@ -2265,7 +2267,16 @@ static int zram_write_page(struct zram *zram, struct page *page, u32 index)
- 	if (same_filled)
- 		return write_same_filled_page(zram, element, index);
+ 	struct lz4_ctx *zctx = ctx->context;
+@@ -31,12 +343,36 @@ static void lz4_destroy(struct zcomp_ctx *ctx)
+ 	if (!zctx)
+ 		return;
  
--	zstrm = zcomp_stream_get(zram->comps[ZRAM_PRIMARY_COMP], ZSTRM_DEFAULT);
-+	/*
-+	 * Using a zcomp-managed stream and waiting for compression makes this
-+	 * appear synchronous.
-+	 *
-+	 * At this time, zram_bio_write handles pages one by one.
-+	 * However, preferring zcomp-managed streams allows backends to utilize
-+	 * their own resources.
-+	 */
-+	zstrm = zcomp_stream_get(zram->comps[ZRAM_PRIMARY_COMP],
-+				 is_async ? ZSTRM_PREFER_MGMT : ZSTRM_DEFAULT);
- 	mem = kmap_local_page(page);
- 	ret = zcomp_compress(zram->comps[ZRAM_PRIMARY_COMP], zstrm,
- 			     mem, &comp_len);
-@@ -2327,7 +2338,8 @@ static int zram_bvec_write_partial(struct zram *zram, struct bio_vec *bvec,
- 	ret = zram_read_page(zram, page, index, bio);
- 	if (!ret) {
- 		memcpy_from_bvec(page_address(page) + offset, bvec);
--		ret = zram_write_page(zram, page, index);
-+		ret = zram_write_page(zram, page, index,
-+				      !op_is_sync(bio->bi_opf));
- 	}
- 	__free_page(page);
- 	return ret;
-@@ -2338,7 +2350,8 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec,
- {
- 	if (is_partial_io(bvec))
- 		return zram_bvec_write_partial(zram, bvec, index, offset, bio);
--	return zram_write_page(zram, bvec->bv_page, index);
-+	return zram_write_page(zram, bvec->bv_page, index,
-+			       !op_is_sync(bio->bi_opf));
+-	vfree(zctx->mem);
+-	kfree(zctx->dstrm);
+-	kfree(zctx->cstrm);
++	lz4_ctx_destroy(zctx);
+ 	kfree(zctx);
  }
  
- #ifdef CONFIG_ZRAM_MULTI_COMP
++static int lz4_ctx_init(struct zcomp_params *params, struct lz4_ctx *zctx)
++{
++	void *mem __free(kvfree) = NULL;
++	LZ4_streamDecode_t *dstrm __free(kfree) = NULL;
++	LZ4_stream_t *cstrm __free(kfree) = NULL;
++
++	if (params->dict_sz == 0) {
++		mem = vmalloc(LZ4_MEM_COMPRESS);
++		if (!mem)
++			return -ENOMEM;
++	} else {
++		dstrm = kzalloc_obj(*zctx->dstrm);
++		if (!dstrm)
++			return -ENOMEM;
++
++		cstrm = kzalloc_obj(*zctx->cstrm);
++		if (!cstrm)
++			return -ENOMEM;
++	}
++
++	zctx->mem = no_free_ptr(mem);
++	zctx->dstrm = no_free_ptr(dstrm);
++	zctx->cstrm = no_free_ptr(cstrm);
++	return 0;
++}
++
+ static int lz4_create(struct zcomp_params *params, struct zcomp_ctx *ctx)
+ {
+ 	struct lz4_ctx *zctx;
+@@ -46,31 +382,17 @@ static int lz4_create(struct zcomp_params *params, struct zcomp_ctx *ctx)
+ 		return -ENOMEM;
+ 
+ 	ctx->context = zctx;
+-	if (params->dict_sz == 0) {
+-		zctx->mem = vmalloc(LZ4_MEM_COMPRESS);
+-		if (!zctx->mem)
+-			goto error;
+-	} else {
+-		zctx->dstrm = kzalloc_obj(*zctx->dstrm);
+-		if (!zctx->dstrm)
+-			goto error;
+-
+-		zctx->cstrm = kzalloc_obj(*zctx->cstrm);
+-		if (!zctx->cstrm)
+-			goto error;
++	if (lz4_ctx_init(params, zctx)) {
++		lz4_destroy(ctx);
++		return -ENOMEM;
+ 	}
+ 
+ 	return 0;
+-
+-error:
+-	lz4_destroy(ctx);
+-	return -ENOMEM;
+ }
+ 
+-static int lz4_compress(struct zcomp_params *params, struct zcomp_ctx *ctx,
+-			struct zcomp_req *req)
++static int __lz4_compress(struct zcomp_params *params, struct lz4_ctx *zctx,
++			  struct zcomp_req *req)
+ {
+-	struct lz4_ctx *zctx = ctx->context;
+ 	int ret;
+ 
+ 	if (!zctx->cstrm) {
+@@ -92,6 +414,47 @@ static int lz4_compress(struct zcomp_params *params, struct zcomp_ctx *ctx,
+ 	return 0;
+ }
+ 
++static int lz4_compress_managed(struct zcomp_params *params,
++				struct lz4_ctx *zctx, struct zcomp_req *req,
++				struct zcomp_strm *zstrm)
++{
++	struct lz4_stream *mngt_strm =
++		container_of(zstrm_to_managed(zstrm), struct lz4_stream, zstrm);
++
++	scoped_guard(mutex, &lz4_global_data->working_lock)
++	{
++		int cnt;
++		int idx = lz4_global_data->working_submit_idx;
++		struct lz4_req lz4req = {
++			.strm = mngt_strm,
++			.params = params,
++			.ctx = zctx,
++			.zreq = req
++		};
++
++		/* ctx->src is mapped by kmap_local_map() */
++		BUILD_BUG_ON(IS_ENABLED(CONFIG_HIGHMEM));
++		cnt = kfifo_put(&lz4_global_data->working_queue[idx], lz4req);
++		if (cnt == 0)
++			return -EBUSY;
++	}
++	complete(&lz4_global_data->new_task_ready);
++	wait_for_completion(&mngt_strm->completion);
++	return mngt_strm->result;
++}
++
++static int lz4_compress(struct zcomp_params *params, struct zcomp_ctx *ctx,
++			struct zcomp_req *req)
++{
++	struct lz4_ctx *zctx = ctx->context;
++	struct zcomp_strm *zstrm = container_of(ctx, struct zcomp_strm, ctx);
++
++	if (!zstrm->zcomp_managed)
++		return __lz4_compress(params, zctx, req);
++
++	return lz4_compress_managed(params, zctx, req, zstrm);
++}
++
+ static int lz4_decompress(struct zcomp_params *params, struct zcomp_ctx *ctx,
+ 			  struct zcomp_req *req)
+ {
+@@ -116,6 +479,61 @@ static int lz4_decompress(struct zcomp_params *params, struct zcomp_ctx *ctx,
+ 	return 0;
+ }
+ 
++static struct managed_zstrm *lz4_get_stream(struct zcomp_params *params)
++{
++	struct lz4_stream *lz4_strm;
++	struct lz4_drv *drv_data = params->drv_data;
++	struct lz4_ctx *ctx;
++
++	if (!params->zstrm_mgmt)
++		return NULL;
++
++	scoped_guard(mutex, &lz4_global_data->stream_lock)
++	{
++		lz4_strm = list_first_entry_or_null(
++			&lz4_global_data->stream_head, struct lz4_stream, node);
++		if (!lz4_strm)
++			return NULL;
++
++		list_del_init(&lz4_strm->node);
++	}
++
++	scoped_guard(mutex, &drv_data->lock)
++		if (!kfifo_get(&drv_data->ctxqueue, &ctx))
++			ctx = NULL;
++	if (!ctx) {
++		guard(mutex)(&lz4_global_data->stream_lock);
++		list_add(&lz4_strm->node, &lz4_global_data->stream_head);
++		return NULL;
++	}
++	reinit_completion(&lz4_strm->completion);
++	lz4_strm->zstrm.strm.ctx.context = ctx;
++
++	return &lz4_strm->zstrm;
++}
++
++static void lz4_put_stream(struct zcomp_params *params,
++			   struct managed_zstrm *zstrm)
++{
++	struct lz4_stream *lz4_strm;
++	struct lz4_ctx *ctx;
++	struct lz4_drv *drv_data = params->drv_data;
++
++	if (!zstrm)
++		return;
++	if (WARN_ON(!params->zstrm_mgmt))
++		return;
++
++	lz4_strm = container_of(zstrm, struct lz4_stream, zstrm);
++	ctx = zstrm->strm.ctx.context;
++	lz4_strm->zstrm.strm.ctx.context = NULL;
++
++	scoped_guard(mutex, &lz4_global_data->stream_lock)
++		list_add(&lz4_strm->node, &lz4_global_data->stream_head);
++	scoped_guard(mutex, &drv_data->lock)
++		kfifo_put(&drv_data->ctxqueue, ctx);
++}
++
+ const struct zcomp_ops backend_lz4 = {
+ 	.compress	= lz4_compress,
+ 	.decompress	= lz4_decompress,
+@@ -123,5 +541,7 @@ const struct zcomp_ops backend_lz4 = {
+ 	.destroy_ctx	= lz4_destroy,
+ 	.setup_params	= lz4_setup_params,
+ 	.release_params	= lz4_release_params,
++	.get_stream	= lz4_get_stream,
++	.put_stream	= lz4_put_stream,
+ 	.name		= "lz4",
+ };
 
 -- 
 2.51.0
