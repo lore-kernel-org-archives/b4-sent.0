@@ -1,73 +1,87 @@
-From: Hermes Wu <Hermes.wu@ite.com.tw>
-Date: Mon, 09 Mar 2026 17:47:39 +0800
-Subject: [PATCH RESEND] drm/bridge: it6505: disable HDCP retry when KSV
- list timeout
+From: Shivam Kalra <shivamkalra98@zohomail.in>
+Subject: [PATCH v3 0/2] mm/vmalloc: free unused pages on vrealloc() shrink
+Date: Mon, 09 Mar 2026 17:25:44 +0530
+Message-Id: <20260309-vmalloc-shrink-v3-0-5590fd8de2eb@zohomail.in>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260309-disable-hdcp-auto-retry-v1-1-591a1d75a3a6@ite.com.tw>
-To: Andrzej Hajda <andrzej.hajda@intel.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
- Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
- Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, treapking@chromium.org, 
- dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Hermes Wu <Hermes.wu@ite.com.tw>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773049659; l=1553;
- i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
- bh=rCW3jddM8TQgyxZZEpHfDk8/Yn8r6UZLGkwB+J85M8A=;
- b=hTiNcbyw5vGsK42HIOpO38f6dTT8V3VldbcsXm+A0NycewASP4KkonH6md1vRsVg0EaOga/3Q
- pu5bVBYQ1WUCLkpwY1YsonU7Jl3/m8F2iNVAfDpbYP8MX+tIcwZhpE+
-X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
- pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
-X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
+X-B4-Tracking: v=1; b=H4sIAEC1rmkC/3XMQQ7CIBCF4as0rMUMU8TqynsYF7QFmVjBgCFq0
+ 7tLu9IYl/9L3jeyZCKZxPbVyKLJlCj4EvWqYp3T/mw49aUZAiqoAXm+6mEIHU8ukr9wkC1arZp
+ GC8nK6RaNpccCHk+lHaV7iM/Fz2Je/1JZcOBS9cZaqTbt1hxewYWrpmFNns1Yxk9A/gBYAGw63
+ IlegQD4BqZpegNFkO427wAAAA==
+X-Change-ID: 20260302-vmalloc-shrink-04b2fa688a14
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ Uladzislau Rezki <urezki@gmail.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
+ Shivam Kalra <shivamkalra98@zohomail.in>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773057354; l=2366;
+ i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
+ bh=jlu8U+9Fzz1mb0zaTPT4T2YTs5PlfD7vbOcNzJEvn7w=;
+ b=5pgfQzbKvodieJzhPogRQRGbYfEQ4jxUYsqRmvYl16Gp94uAeLz/QVgaiz2d8T1KReTIewEJc
+ x3Oe+2Rl5UwCpZL+iiw47sfuk6P0adKOWiCAqe6v0Y+zRc+tBLgwMy5
+X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
+ pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
+X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some DP to HDMI converters fail to report KSV list within the 6-second
-HDCP window, causing the IT6505 to repeatedly restart authentication.
-This results in continuous flickering on the connected HDMI monitor.
+This series implements the TODO in vrealloc() to unmap and free unused
+pages when shrinking across a page boundary.
 
-Disable automatic HDCP retry when KSV list timeout. This breaks the
-re-auth loop and significantly improves stability/user experience with
-problematic converters.
+Problem:
+When vrealloc() shrinks an allocation, it updates bookkeeping
+(requested_size, KASAN shadow) but does not free the underlying physical
+pages. This wastes memory for the lifetime of the allocation.
 
-Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
+Solution:
+- Patch 1: Extracts a vmalloc_free_pages(vm, start, end) helper from
+  vfree() that frees a range of pages with memcg and nr_vmalloc_pages
+  accounting. Pure refactor, no functional change.
+- Patch 2: Uses the helper to free tail pages when vrealloc() shrinks
+  across a page boundary. Skips huge page allocations (page_order > 0)
+  since compound pages cannot be partially freed. Also fixes the
+  grow-in-place path to check vm->nr_pages instead of
+  get_vm_area_size(), which reflects the virtual reservation and does
+  not change on shrink.
+The virtual address reservation is kept intact to preserve the range
+for potential future grow-in-place support.
+A concrete user is the Rust binder driver's KVVec::shrink_to [1], which
+performs explicit vrealloc() shrinks for memory reclamation.
+
+Tested:
+- KASAN KUnit (vmalloc_oob passes)
+- lib/test_vmalloc stress tests (3/3, 1M iterations each)
+- checkpatch, sparse, W=1, allmodconfig, coccicheck clean
+
+[1] https://lore.kernel.org/all/20260216-binder-shrink-vec-v3-v6-0-ece8e8593e53@zohomail.in/
+
+Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
- drivers/gpu/drm/bridge/ite-it6505.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Changes in v3:
+- Restore the comment.
+- Rebase to the latest mm-new 
+- Link to v2: https://lore.kernel.org/r/20260304-vmalloc-shrink-v2-0-28c291d60100@zohomail.in
 
-diff --git a/drivers/gpu/drm/bridge/ite-it6505.c b/drivers/gpu/drm/bridge/ite-it6505.c
-index a094803ba7aa4e12165fcde432d4e6417fbf3676..1c1e6b78fadbf29da00a68e26671ce5b54ee1557 100644
---- a/drivers/gpu/drm/bridge/ite-it6505.c
-+++ b/drivers/gpu/drm/bridge/ite-it6505.c
-@@ -2238,7 +2238,7 @@ static void it6505_hdcp_wait_ksv_list(struct work_struct *work)
- 		return;
- 
- timeout:
--	it6505_start_hdcp(it6505);
-+	it6505_stop_hdcp(it6505);
- }
- 
- static void it6505_hdcp_work(struct work_struct *work)
-@@ -2596,7 +2596,7 @@ static void it6505_irq_hdcp_fail(struct it6505 *it6505)
- 	DRM_DEV_DEBUG_DRIVER(dev, "hdcp fail interrupt");
- 	it6505->hdcp_status = HDCP_AUTH_IDLE;
- 	it6505_show_hdcp_info(it6505);
--	it6505_start_hdcp(it6505);
-+	it6505_stop_hdcp(it6505);
- }
- 
- static void it6505_irq_aux_cmd_fail(struct it6505 *it6505)
+Changes in v2:
+- Updated the base-commit to mm-new
+- Fix conflicts after rebase
+- Ran `clang-format` on the changes made
+- Use a single `kasan_vrealloc` (Alice Ryhl)
+- Link to v1: https://lore.kernel.org/r/20260302-vmalloc-shrink-v1-0-46deff465b7e@zohomail.in
 
 ---
-base-commit: 38feb171b3f92d77e8061fafb5ddfffc2c13b672
-change-id: 20260112-disable-hdcp-auto-retry-6a8d00f6ba29
+Shivam Kalra (2):
+      mm/vmalloc: extract vmalloc_free_pages() helper from vfree()
+      mm/vmalloc: free unused pages on vrealloc() shrink
+
+ mm/vmalloc.c | 65 ++++++++++++++++++++++++++++++++++++++++++------------------
+ 1 file changed, 46 insertions(+), 19 deletions(-)
+---
+base-commit: f27e4dd73ee9b64177649a1490fa20288e0de94a
+change-id: 20260302-vmalloc-shrink-04b2fa688a14
 
 Best regards,
 -- 
-Hermes Wu <Hermes.wu@ite.com.tw>
+Shivam Kalra <shivamkalra98@zohomail.in>
 
