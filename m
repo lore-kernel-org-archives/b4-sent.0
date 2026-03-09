@@ -1,88 +1,47 @@
-From: Cristian Cozzolino <cristian_ci@protonmail.com>
-Date: Sun, 08 Mar 2026 16:52:46 +0100
-Subject: [PATCH 6/6] arm64: dts: qcom: msm8953-flipkart-rimob: Enable Hall
- sensor
+From: Carl Lee <carl.lee@amd.com>
+Subject: [PATCH 0/2] ARM: dts: aspeed: anacapa: add eeprom devices
+Date: Mon, 09 Mar 2026 11:29:26 +0800
+Message-Id: <20260309-arm-dts-aspeed-anacapa-add-eeprom-device-v1-0-45092310e0e6@amd.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260308-rimob-new-features-v1-6-aa2c330572c0@protonmail.com>
-References: <20260308-rimob-new-features-v1-0-aa2c330572c0@protonmail.com>
-In-Reply-To: <20260308-rimob-new-features-v1-0-aa2c330572c0@protonmail.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
- Cristian Cozzolino <cristian_ci@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAJY+rmkC/x2NwQqDMBAFf0X23IWoKLS/Unp4Js82h8awKUUQ/
+ 71Lj8PAzCGNltnk1h1i/OaWt+LQXzqJL5QnNSdnGcIwhzFcFfbW9GmKVsmkKIioUKSkZLXNrWc
+ iFT2wMMwYp0U8V41r3v+r++M8f8Xs9lx6AAAA
+X-Change-ID: 20260309-arm-dts-aspeed-anacapa-add-eeprom-device-a1aabe06a35b
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
+ Andrew Jeffery <andrew@codeconstruct.com.au>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ carl.lee@amd.com, peter.shen@amd.com, colin.huang2@amd.com
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1772985181; l=1434;
- i=cristian_ci@protonmail.com; s=20250620; h=from:subject:message-id;
- bh=/6j0+t2XKdKx1e1cFAgI0as9W1ExR5I7yqNCXHZ/Uzs=;
- b=NzbU54tsA4XN8Nz2MbLAnZnyrJar55S2NfzMDiqjaBAhTT2PFW84rbNSK+RHqLfbFlgz8pfgW
- brFoFv9OkFFCjXVwpiII9P8yS/qAxX8jxuvtydmjSD5egBN68AjQz/j
-X-Developer-Key: i=cristian_ci@protonmail.com; a=ed25519;
- pk=xH5IvIPUNHV1Q8R0/pq2CfuVFR/wTiAyuyi6IwedjZY=
-X-Endpoint-Received: by B4 Relay for cristian_ci@protonmail.com/20250620 with auth_id=438
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773026981; l=628;
+ i=carl.lee@amd.com; s=20260203; h=from:subject:message-id;
+ bh=GaoP8wcFVTkbA0qAqdRsL25+1PTp6d7J/ewviONVA+o=;
+ b=kgrps2Go1O4NvQWUFzsxLNEgYXY5NUMhGVNxD99zrowxmzORxAcbs5rIdv1EZnF/n4UTaLfVN
+ vEF+OVFHqZ9AJqv/iM04dPXj3sUtCJWN4uWI6C3XLSaA+E4Ohews4Aa
+X-Developer-Key: i=carl.lee@amd.com; a=ed25519;
+ pk=pyq7QaQvoxMg806KVkRwpCbiah+7ncWr4MBpK1AEyjA=
+X-Endpoint-Received: by B4 Relay for carl.lee@amd.com/20260203 with auth_id=623
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the Hall effect sensor (flip cover) for Billion Capture+.
-The GPIO is mapped to SW_LID events as in other qcom devices.
+Add eeprom device nodes used to store FRU data for the PRoT
+module and NFC adapter board on Anacapa platform.
 
-Signed-off-by: Cristian Cozzolino <cristian_ci@protonmail.com>
+Signed-off-by: Carl Lee <carl.lee@amd.com>
 ---
- .../arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts | 25 ++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+Carl Lee (2):
+      ARM: dts: aspeed: anacapa: Add eeprom device node for PRoT module
+      ARM: dts: aspeed: anacapa: Add eeprom device node for NFC adaptor board
 
-diff --git a/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts b/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts
-index 709ea6fc9fbb..83812050a0a3 100644
---- a/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts
-+++ b/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts
-@@ -44,6 +44,24 @@ framebuffer@90001000 {
- 		};
- 	};
- 
-+	gpio-hall-sensor {
-+		compatible = "gpio-keys";
-+
-+		pinctrl-0 = <&hall_sensor_default>;
-+		pinctrl-names = "default";
-+
-+		label = "GPIO Hall Effect Sensor";
-+
-+		event-hall-sensor {
-+			label = "Hall Effect Sensor";
-+			gpios = <&tlmm 46 GPIO_ACTIVE_LOW>;
-+			linux,input-type = <EV_SW>;
-+			linux,code = <SW_LID>;
-+			linux,can-disable;
-+			wakeup-source;
-+		};
-+	};
-+
- 	gpio-keys {
- 		compatible = "gpio-keys";
- 
-@@ -335,6 +353,13 @@ gpio_key_default: gpio-key-default-state {
- 		bias-pull-up;
- 	};
- 
-+	hall_sensor_default: hall-sensor-default-state {
-+		pins = "gpio46";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
- 	mdss_default: mdss-default-state {
- 		pins = "gpio61";
- 		function = "gpio";
+ arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+---
+base-commit: a0ae2a256046c0c5d3778d1a194ff2e171f16e5f
+change-id: 20260309-arm-dts-aspeed-anacapa-add-eeprom-device-a1aabe06a35b
 
+Best regards,
 -- 
-2.52.0
+Carl Lee <carl.lee@amd.com>
 
