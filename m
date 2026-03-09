@@ -1,78 +1,99 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Mon, 09 Mar 2026 12:28:35 +0530
-Subject: [PATCH v6 5/5] scsi: ufs: ufs-qcom: Remove NULL check from
- devm_of_qcom_ice_get()
+From: Simon Baatz <gmbnomis@gmail.com>
+Subject: [PATCH net-next v3 0/6] tcp: RFC 7323-compliant window retraction
+ handling
+Date: Mon, 09 Mar 2026 09:02:25 +0100
+Message-Id: <20260309-tcp_rfc7323_retract_wnd_rfc-v3-0-4c7f96b1ec69@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260309-qcom-ice-fix-v6-5-4dd3347df530@oss.qualcomm.com>
-References: <20260309-qcom-ice-fix-v6-0-4dd3347df530@oss.qualcomm.com>
-In-Reply-To: <20260309-qcom-ice-fix-v6-0-4dd3347df530@oss.qualcomm.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Adrian Hunter <adrian.hunter@intel.com>, 
- Ulf Hansson <ulf.hansson@linaro.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, 
- "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
- "Martin K. Petersen" <martin.petersen@oracle.com>, 
- Abel Vesa <abelvesa@kernel.org>, Abel Vesa <abelvesa@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-mmc@vger.kernel.org, linux-scsi@vger.kernel.org, 
- Sumit Garg <sumit.garg@oss.qualcomm.com>, mani@kernel.org, 
- Neeraj Soni <neeraj.soni@oss.qualcomm.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1114;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=TzqKhDLr9WN8kubHG4egYv7EvzBCe1kNbA4zOiRN8WE=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBprm+cyzgON8I+0A8+YCwC0lnAx+fVb6xBs8GCZ
- /ipeA1Ope2JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaa5vnAAKCRBVnxHm/pHO
- 9cjBB/0VpU+HI2L2yhwqP42hjHlO21QGAw6dvYMNGT+s6tcQHvOGxaChFT7fUZacU3wh3qXMlnL
- Vea57yF7ffCZLtmqvrlYPooGq1QoEGjDDhnogQyTsUPu65QEnvhHnTBzglNRIdTYYYsNcGeajiz
- 7HazNIUcQI7HUDt+jKZ4T6dQuSO0c8AOxzLlHyh/q+PqPK4wihTRdJvE04yK79RBpT3uIYtmqxb
- tvDaeB23VGek+iK37sSqeCBnvQxAO8GDhQxCj/IDhXlqoW1lvH5zAfXZtR9w4K8c5U2Jj62WVez
- uh68KrTn7q5ywmn0lDKq0AFzmZgVcRlf09aPSamG3uWoqpws
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43NQQ6CMBQE0KuQrq0pv1jAlfcwhpTPLzSRQkqDG
+ MLdrax0Y1zOTPJmZRN5SxM7JyvzNNvJDi4GeUgYdtq1xG0TMwMBSgAIHnCsvMFcgqw8Ba8xVA/
+ XvDuOhYYGak11QywKoydjl12/MkeBO1oCu8Wls1MY/HO/ndN9/+thTrngpcjKDE4qzfLy0vba3
+ o849Ls7w6elflsQLa2lKUyJqOSXtW3bC63aRgkcAQAA
+X-Change-ID: 20260220-tcp_rfc7323_retract_wnd_rfc-c8a2d2baebde
+To: Eric Dumazet <edumazet@google.com>, 
+ Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
+ David Ahern <dsahern@kernel.org>, Jon Maloy <jmaloy@redhat.com>, 
+ Jason Xing <kerneljasonxing@gmail.com>, mfreemon@cloudflare.com, 
+ Shuah Khan <shuah@kernel.org>, Stefano Brivio <sbrivio@redhat.com>, 
+ Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>, 
+ Geliang Tang <geliang@kernel.org>
+Cc: netdev@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ mptcp@lists.linux.dev, Simon Baatz <gmbnomis@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773043425; l=2738;
+ i=gmbnomis@gmail.com; s=20260220; h=from:subject:message-id;
+ bh=3vpHAvYSJE1/E/Zw+R+U696ggtTJgVYAry+AHza2BC0=;
+ b=kjc0s3J5JCYmq3GL3c4pN+j3Sh2jXUPcSLsACTyzPCeAcEecc5kYPGGaFYIVKCviKD9I/pjtE
+ SqZlBqN54oHBpEBmApZTEBi2NMxOI3WSLi8DVVvnBfjjWaJhu1fQ5fm
+X-Developer-Key: i=gmbnomis@gmail.com; a=ed25519;
+ pk=T/JIz/6F5bf1uQJr69lmyi7czVG+F9TVZ/8x5z9Wtqw=
+X-Endpoint-Received: by B4 Relay for gmbnomis@gmail.com/20260220 with auth_id=641
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now since the devm_of_qcom_ice_get() API never returns NULL, remove the
-NULL check and also simplify the error handling.
+Hi,
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Acked-by: Martin K. Petersen <martin.petersen@oracle.com> # UFS
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+this series implements the receiver-side requirements for TCP window
+retraction as specified in RFC 7323 and adds packetdrill tests to
+cover the new behavior.
+
+Please see the first patch for background and implementation
+details. Since MPTCP adjusts the TCP receive window on subflows, the
+relevant MPTCP code paths are updated accordingly.
+
+Signed-off-by: Simon Baatz <gmbnomis@gmail.com>
 ---
- drivers/ufs/host/ufs-qcom.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+Changes in v3:
 
-diff --git a/drivers/ufs/host/ufs-qcom.c b/drivers/ufs/host/ufs-qcom.c
-index 375fd24ba458..72c24ed65fe1 100644
---- a/drivers/ufs/host/ufs-qcom.c
-+++ b/drivers/ufs/host/ufs-qcom.c
-@@ -177,14 +177,14 @@ static int ufs_qcom_ice_init(struct ufs_qcom_host *host)
- 	int i;
- 
- 	ice = devm_of_qcom_ice_get(dev);
--	if (ice == ERR_PTR(-EOPNOTSUPP)) {
-+	if (IS_ERR(ice)) {
-+		if (ice != ERR_PTR(-EOPNOTSUPP))
-+			return PTR_ERR(ice);
-+
- 		dev_warn(dev, "Disabling inline encryption support\n");
--		ice = NULL;
-+		return 0;
- 	}
- 
--	if (IS_ERR_OR_NULL(ice))
--		return PTR_ERR_OR_ZERO(ice);
--
- 	host->ice = ice;
- 
- 	/* Initialize the blk_crypto_profile */
+- Address MPTCP subflow-level rcv_wnd adjustments
+- Removed RFC status
+- Adapt tcp_rcv_wnd_shrink_nomem.pkt to reflect 026dfef287c0 ("tcp:
+  give up on stronger sk_rcvbuf checks (for now)")
+- Link to v2: https://lore.kernel.org/r/20260226-tcp_rfc7323_retract_wnd_rfc-v2-0-aa3f8f9cc639@gmail.com
 
+Changes in v2:
+
+- tcp_rcv_wnd_shrink_nomem.pkt tests more RX code paths using various
+  segment types. It also uses a more drastic rcv. buffer reduction (1MB
+  to 16KB).
+- Setting the TCP_REPAIR_WINDOW socket option initializes rcv_mwnd_seq.
+- SKB_DROP_REASON_TCP_OVERWINDOW increases LINUX_MIB_BEYOND_WINDOW now.
+- Moved rcv_mwnd_seq into rcv_wnd's cacheline group.
+- Small editorial changes
+- Link to v1: https://lore.kernel.org/r/20260220-tcp_rfc7323_retract_wnd_rfc-v1-0-904942561479@gmail.com
+
+---
+Simon Baatz (6):
+      tcp: implement RFC 7323 window retraction receiver requirements
+      mptcp: keep rcv_mwnd_seq in sync with subflow rcv_wnd
+      tcp: increase LINUX_MIB_BEYOND_WINDOW for SKB_DROP_REASON_TCP_OVERWINDOW
+      selftests/net: packetdrill: add tcp_rcv_wnd_shrink_nomem.pkt
+      selftests/net: packetdrill: add tcp_rcv_wnd_shrink_allowed.pkt
+      selftests/net: packetdrill: add tcp_rcv_neg_window.pkt
+
+ .../networking/net_cachelines/tcp_sock.rst         |   1 +
+ include/linux/tcp.h                                |   3 +
+ include/net/tcp.h                                  |  22 ++++
+ net/ipv4/tcp.c                                     |   2 +
+ net/ipv4/tcp_fastopen.c                            |   1 +
+ net/ipv4/tcp_input.c                               |  11 +-
+ net/ipv4/tcp_minisocks.c                           |   1 +
+ net/ipv4/tcp_output.c                              |   3 +
+ net/mptcp/options.c                                |   6 +-
+ .../net/packetdrill/tcp_rcv_big_endseq.pkt         |   2 +-
+ .../net/packetdrill/tcp_rcv_neg_window.pkt         |  26 ++++
+ .../net/packetdrill/tcp_rcv_wnd_shrink_allowed.pkt |  40 +++++++
+ .../net/packetdrill/tcp_rcv_wnd_shrink_nomem.pkt   | 132 +++++++++++++++++++++
+ 13 files changed, 242 insertions(+), 8 deletions(-)
+---
+base-commit: 0bcac7b11262557c990da1ac564d45777eb6b005
+change-id: 20260220-tcp_rfc7323_retract_wnd_rfc-c8a2d2baebde
+
+Best regards,
 -- 
-2.51.0
+Simon Baatz <gmbnomis@gmail.com>
 
