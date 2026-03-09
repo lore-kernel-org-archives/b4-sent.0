@@ -1,176 +1,75 @@
-From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Mon, 09 Mar 2026 18:55:24 +0100
-Subject: [PATCH v8 5/5] stmmac: s32: enable support for Multi-IRQ mode
+From: Pascal Eberhard <pascal.eberhard@se.com>
+Subject: [PATCH v2 0/4] fetch2: add alternative fetch method based on curl
+Date: Tue, 10 Mar 2026 00:29:37 +0100
+Message-Id: <20260310-add_alt_fetch_method_curl-v2-0-4789639b28f1@se.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260309-dwmac_multi_irq-v8-5-f0cc5bc811a7@oss.nxp.com>
-References: <20260309-dwmac_multi_irq-v8-0-f0cc5bc811a7@oss.nxp.com>
-In-Reply-To: <20260309-dwmac_multi_irq-v8-0-f0cc5bc811a7@oss.nxp.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Chester Lin <chester62515@gmail.com>, Matthias Brugger <mbrugger@suse.com>, 
- Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>, 
- NXP S32 Linux Team <s32@nxp.com>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Frank Li <Frank.Li@nxp.com>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- imx@lists.linux.dev, devicetree@vger.kernel.org, rmk+kernel@armlinux.org.uk, 
- vladimir.oltean@nxp.com, boon.khai.ng@altera.com, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773078934; l=4702;
- i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=Ccg7iBM1Fl+oVJULpuGtFE+LiMWCMv+ramMC+vtotcs=;
- b=TauJNyXlklHqzzs9EdPPUbvJPNT0FDkCEIZoutsGNVvCyNTQZqCFb336k/psw/nmcceEGsp/G
- lrGYC/1aEkKDPRPiNiM9sxMwykFy79sNUGkRwlJvOyehvA13zBm73FZ
-X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
- pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
-X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
+X-B4-Tracking: v=1; b=H4sIAOFXr2kC/42NQQqDMBBFryKzbso4osWueo8iIU0mTUCNJKm0i
+ Hdv6gm6fA/++xskjp4TXKsNIq8++TAXoFMF2qn5ycKbwkBIHTbYCmWMVGOWlrN2cuLsgpH6FUd
+ xUfiwfacMUQNlv0S2/n2070Nh51MO8XNcrfXP/lNda4ECDRIht1a1/S3xWYcJhn3fv2nrpde/A
+ AAA
+To: bitbake-devel@lists.openembedded.org
+Cc: Pascal Eberhard <pascal.eberhard@se.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773099103; l=2161;
+ i=pascal.eberhard@se.com; s=20260304; h=from:subject:message-id;
+ bh=oTzWgxsxOXvjmbjq8qt/qPI414HTIyiopz/Z9CeCuy8=;
+ b=EY2P0nrM9NvcIAc2jA50bq7MgdjkQhO+UHyT4bfi6KyoXSm+o1s7rMkUwV9O9Sb4RrthqOSp6
+ adYVlm+7V/CC0OL/4Ev7e/8YgHrIDnb+65ByoTqUNiiXjV6XeeD5eft
+X-Developer-Key: i=pascal.eberhard@se.com; a=ed25519;
+ pk=J7TbFctjt1RVuN5K0juhf/w1E9bAfSeoQ/JG1vV9mWg=
+X-Endpoint-Received: by B4 Relay for pascal.eberhard@se.com/20260304 with auth_id=661
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Based on previous changes in platform driver, the vendor
-glue driver can enable Multi-IRQ mode, if needed.
+wget fetch method is used for web downloads with http, https, ftp, ftps
+protocols. wget cmdline tool is missing some features such as hostname
+resolution by the proxy when using SOCKS5 proxy. SSH tunnel provides
+this feature for example.
 
-To get enabled Multi-IRQ mode for dwmac-s32, the driver checks:
+This curl fetch method is based on curl cmdline tool and provides the
+same protocols as wget and supports SOCKS5 hostname resolution.
+This class inherits wget method in order to avoid code duplication as
+much as possible.
 
-  1) property of 'snps,mtl-xx-config' subnode
-     defines 'snps,xx-queues-to-use' bigger then one, ie:
+wget remains the default download method. curl fetch method can be
+enabled by setting a new bitbake variable:
+  BB_FETCH_METHOD_HTTP = "curl"
 
-     ethernet@4033c000 {
-         compatible = "nxp,s32g2-dwmac";
-         ...
-         snps,mtl-rx-config = <&mtl_rx_setup>;
-         ...
+The hostname resolution by SOCKS5 proxy is activated by setting
+environment variable:
+  all_proxy="socks5h://...""
 
-         mtl_rx_setup: rx-queues-config {
-             snps,rx-queues-to-use = <2>;
-         };
+a patch on ce-core will be sent if this proposal is accepted to
+conditionnaly add curl to HOSTTOOLS variable in meta/conf/bitbake.conf:
+HOSTTOOLS += "${@bb.utils.contains('BB_FETCH_METHOD_HTTP', 'curl', 'curl','', d)}"
 
-  2) queue based IRQs are set, ie:
-
-     ethernet@4033c000 {
-         compatible = "nxp,s32g2-dwmac";
-         ...
-         interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>,
-                      /* CHN 0: tx, rx */
-                      <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>,
-                      <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
-                      /* CHN 1: tx, rx */
-                      <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
-                      <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
-         interrupt-names = "macirq",
-                           "tx-queue-0", "rx-queue-0",
-                           "tx-queue-1", "rx-queue-1";
-
-If those prerequisites are met, the driver switches to Multi-IRQ mode,
-using per-queue IRQs for rx/tx data pathr:
-
-[    1.387045] s32-dwmac 4033c000.ethernet: Multi-IRQ mode (per queue IRQs) selected
-
-Now the driver owns all queues IRQs:
-
-root@s32g399aevb3:~# grep eth /proc/interrupts
- 29:    0    0    0    0    0    0    0    0    GICv3  89 Level   eth0:mac
- 30:    0    0    0    0    0    0    0    0    GICv3  91 Level   eth0:rx-0
- 31:    0    0    0    0    0    0    0    0    GICv3  93 Level   eth0:rx-1
- 32:    0    0    0    0    0    0    0    0    GICv3  95 Level   eth0:rx-2
- 33:    0    0    0    0    0    0    0    0    GICv3  97 Level   eth0:rx-3
- 34:    0    0    0    0    0    0    0    0    GICv3  99 Level   eth0:rx-4
- 35:    0    0    0    0    0    0    0    0    GICv3  90 Level   eth0:tx-0
- 36:    0    0    0    0    0    0    0    0    GICv3  92 Level   eth0:tx-1
- 37:    0    0    0    0    0    0    0    0    GICv3  94 Level   eth0:tx-2
- 38:    0    0    0    0    0    0    0    0    GICv3  96 Level   eth0:tx-3
- 39:    0    0    0    0    0    0    0    0    GICv3  98 Level   eth0:tx-4
-
-Otherwise, if one of the prerequisite don't met, the driver
-continue with MAC IRQ mode:
-
-[    1.387045] s32-dwmac 4033c000.ethernet: MAC IRQ mode selected
-
-And only MAC IRQ will be attached:
-
-root@s32g399aevb3:~# grep eth /proc/interrupts
- 29:    0    0    0    0    0    0    0    0    GICv3  89 Level   eth0:mac
-
-What represents the original MAC IRQ mode and is fully backward
-compatible.
-
-Reviewed-by: Matthias Brugger <mbrugger@suse.com>
-Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+Signed-off-by: Pascal Eberhard <pascal.eberhard@se.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c | 36 ++++++++++++++++++++++++-
- 1 file changed, 35 insertions(+), 1 deletion(-)
+Changes in v2:
+- removed type hint unions and tested with Python 3.9, thanks Mathieu
+  Dubois-Briand for reporting this.
+- curl tests are now skipped when curl cmdline tool is not found.
+- Link to v1: https://lore.kernel.org/r/20260305-add_alt_fetch_method_curl-v1-0-0d0220e5fa59@se.com
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-index af594a096676..d4e0c9f44fb3 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-@@ -2,7 +2,7 @@
- /*
-  * NXP S32G/R GMAC glue layer
-  *
-- * Copyright 2019-2024 NXP
-+ * Copyright 2019-2026 NXP
-  *
-  */
- 
-@@ -110,6 +110,37 @@ static void s32_gmac_exit(struct device *dev, void *priv)
- 	clk_disable_unprepare(gmac->rx_clk);
- }
- 
-+static void s32_gmac_setup_multi_irq(struct device *dev,
-+				     struct plat_stmmacenet_data *plat,
-+				     struct stmmac_resources *res)
-+{
-+	int i;
-+
-+	/* RX IRQs */
-+	STMMAC_FOREACH_MTL_QUEUE(i, plat->rx_queues_to_use) {
-+		if (res->rx_irq[i] <= 0) {
-+			dev_dbg(dev, "Missing RX queue %d interrupt\n", i);
-+			goto mac_irq_mode;
-+		}
-+	}
-+
-+	/* TX IRQs */
-+	STMMAC_FOREACH_MTL_QUEUE(i, plat->tx_queues_to_use) {
-+		if (res->tx_irq[i] <= 0) {
-+			dev_dbg(dev, "Missing TX queue %d interrupt\n", i);
-+			goto mac_irq_mode;
-+		}
-+	}
-+
-+	plat->flags |= STMMAC_FLAG_MULTI_MSI_EN;
-+	dev_info(dev, "Multi-IRQ mode (per queue IRQs) selected\n");
-+	return;
-+
-+mac_irq_mode:
-+	plat->flags &= ~STMMAC_FLAG_MULTI_MSI_EN;
-+	dev_info(dev, "MAC IRQ mode selected\n");
-+}
-+
- static int s32_dwmac_probe(struct platform_device *pdev)
- {
- 	struct plat_stmmacenet_data *plat;
-@@ -165,6 +196,9 @@ static int s32_dwmac_probe(struct platform_device *pdev)
- 	plat->core_type = DWMAC_CORE_GMAC4;
- 	plat->pmt = 1;
- 	plat->flags |= STMMAC_FLAG_SPH_DISABLE;
-+
-+	s32_gmac_setup_multi_irq(dev, plat, &res);
-+
- 	plat->rx_fifo_size = 20480;
- 	plat->tx_fifo_size = 20480;
- 
+---
+Pascal Eberhard (4):
+      fetch2: add curl method to fetch web content
+      fetch2: make curl method activable with BB_FETCH_METHOD_HTTP
+      lib/tests/fetch2: add tests for curl method
+      doc: bitbake-user-manual-ref-variables: describe BB_FETCH_METHOD_HTTP variable
 
+ .../bitbake-user-manual-ref-variables.rst          |   5 +
+ lib/bb/fetch2/__init__.py                          |   2 +
+ lib/bb/fetch2/curl.py                              | 162 +++++++++++++++++++++
+ lib/bb/fetch2/wget.py                              |  10 ++
+ lib/bb/tests/fetch.py                              |  75 ++++++++++
+ 5 files changed, 254 insertions(+)
+---
+base-commit: 48efc36b4e03f736e7521d269ced3417522784e9
+change-id: 20260305-add_alt_fetch_method_curl-7a0bf96ad223
+
+Best regards,
 -- 
-2.47.0
+Pascal Eberhard <pascal.eberhard@se.com>
 
