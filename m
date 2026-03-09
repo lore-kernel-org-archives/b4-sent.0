@@ -1,79 +1,101 @@
-From: Simon Baatz <gmbnomis@gmail.com>
-Date: Mon, 09 Mar 2026 09:02:31 +0100
-Subject: [PATCH net-next v3 6/6] selftests/net: packetdrill: add
- tcp_rcv_neg_window.pkt
+From: Zhang Peng <zippermonkey@icloud.com>
+Subject: [PATCH 0/2] mm: batch TLB flushing for dirty folios in vmscan
+Date: Mon, 09 Mar 2026 16:17:40 +0800
+Message-Id: <20260309-batch-tlb-flush-v1-0-eb8fed7d1a9e@icloud.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260309-tcp_rfc7323_retract_wnd_rfc-v3-6-4c7f96b1ec69@gmail.com>
-References: <20260309-tcp_rfc7323_retract_wnd_rfc-v3-0-4c7f96b1ec69@gmail.com>
-In-Reply-To: <20260309-tcp_rfc7323_retract_wnd_rfc-v3-0-4c7f96b1ec69@gmail.com>
-To: Eric Dumazet <edumazet@google.com>, 
- Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
- David Ahern <dsahern@kernel.org>, Jon Maloy <jmaloy@redhat.com>, 
- Jason Xing <kerneljasonxing@gmail.com>, mfreemon@cloudflare.com, 
- Shuah Khan <shuah@kernel.org>, Stefano Brivio <sbrivio@redhat.com>, 
- Matthieu Baerts <matttbe@kernel.org>, Mat Martineau <martineau@kernel.org>, 
- Geliang Tang <geliang@kernel.org>
-Cc: netdev@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
- mptcp@lists.linux.dev, Simon Baatz <gmbnomis@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773043425; l=1560;
- i=gmbnomis@gmail.com; s=20260220; h=from:subject:message-id;
- bh=/JWWw4Fx6ONTjfm9hTqMNguk1B74iLUSkQSY5L1syFw=;
- b=2D7v4mt8UrAsF6NRbarJgDDGMJrIAAIk6UGHgHlbR6lGUYUnBAQbYbj1gZaxxGqnn6xPfh8YQ
- y5j57Qjr1c9BLHK8/b0/n69p50Qeg1agzXfds2tVH6K9S9xPkL77w9u
-X-Developer-Key: i=gmbnomis@gmail.com; a=ed25519;
- pk=T/JIz/6F5bf1uQJr69lmyi7czVG+F9TVZ/8x5z9Wtqw=
-X-Endpoint-Received: by B4 Relay for gmbnomis@gmail.com/20260220 with auth_id=641
+X-B4-Tracking: v=1; b=H4sIACSCrmkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDYwNL3aTEkuQM3ZKcJN20nNLiDF0LS+M0g1RTsyQTSzMloK6CotS0zAq
+ widGxtbUADrHzlGEAAAA=
+X-Change-ID: 20260309-batch-tlb-flush-893f0e56b496
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
+ "Liam R. Howlett" <Liam.Howlett@oracle.com>, 
+ Vlastimil Babka <vbabka@kernel.org>, Mike Rapoport <rppt@kernel.org>, 
+ Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
+ Johannes Weiner <hannes@cmpxchg.org>, Qi Zheng <zhengqi.arch@bytedance.com>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, 
+ Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
+ Wei Xu <weixugc@google.com>, Michal Hocko <mhocko@kernel.org>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Kairui Song <kasong@tencent.com>, Zhang Peng <bruzzhang@tencent.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773044270; l=3059;
+ i=zippermonkey@icloud.com; s=20260309; h=from:subject:message-id;
+ bh=Hxlyr94vhT6tceNWkfUX7FnAnLC5MO+FeAUWHj402F0=;
+ b=sxFReAs8wK3VKflfARWnWgk7f6wn4fNFW99rIJrAv5x9OfnVaMTXYyL4a3bY+wRiQydi+yVgG
+ mEgfk97EZfFAx4YusLrPnkMyYxiSThIU+eO6DqO9mz6vCP33ltXCVv6
+X-Developer-Key: i=zippermonkey@icloud.com; a=ed25519;
+ pk=tPCLpFnBfIyHsp0k7eaUTUREEa36bQNW/69X+NS8wBU=
+X-Endpoint-Received: by B4 Relay for zippermonkey@icloud.com/20260309 with auth_id=671
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The test ensures we correctly apply the maximum advertised window limit
-when rcv_nxt advances past rcv_mwnd_seq, so that the "usable window"
-is properly clamped to zero rather than becoming negative.
+This series introduces batch TLB flushing optimization for dirty folios
+during memory reclaim, aiming to reduce IPI overhead on multi-core systems.
 
-Signed-off-by: Simon Baatz <gmbnomis@gmail.com>
+Background
+----------
+Currently, when performing pageout in memory reclaim, try_to_unmap_flush_dirty()
+is called for each dirty folio individually. On multi-core systems, this causes
+frequent IPIs which can significantly impact performance.
+
+Approach
+--------
+This patch series accumulates dirty folios into batches and performs a single
+TLB flush for the entire batch, rather than flushing for each individual folio.
+
+Changes
+-------
+Patch 1: Refactor shrink_folio_list() to improve code readability and
+         maintainability by extracting common logic into helper functions:
+         - folio_active_bounce(): Handle folio activation logic
+         - folio_free(): Handle folio freeing logic
+         - pageout_one(): Handle single folio pageout logic
+
+Patch 2: Implement batch TLB flushing logic. Dirty folios are accumulated
+         in batches and a single TLB flush is performed for each batch
+         before calling pageout.
+
+Testing
+-------
+The benchmark script uses stress-ng to compare TLB shootdown behavior before and
+after this patch. It constrains a stress-ng workload via memcg to force reclaim
+through shrink_folio_list(), reporting TLB shootdowns and IPIs.
+
+Core benchmark command: stress-ng --vm 16 --vm-bytes 2G --vm-keep --timeout 60
+
+==========================================================================
+                 batch_dirty_tlb_flush Benchmark Results
+==========================================================================
+  Kernel: 7.0.0-rc1+   CPUs: 16
+  MemTotal: 31834M   SwapTotal: 8191M
+  memcg limit: 512M   alloc: 2G   workers: 16   duration: 60s
+--------------------------------------------------------------------------
+Metric                 Before        After             Delta (abs / %)
+--------------------------------------------------------------------------
+bogo ops/s             28238.63      35833.97          +7595.34 (+26.9%)
+TLB shootdowns         55428953      17621697          -37807256 (-68.2%)
+Function call IPIs     34073695      14498768          -19574927 (-57.4%)
+pgscan_anon (pages)    52856224      60252894          7396670 (+14.0%)
+pgsteal_anon (pages)   29004962      34054753          5049791 (+17.4%)
+--------------------------------------------------------------------------
+
+Suggested-by: Kairui Song <kasong@tencent.com>
+Signed-off-by: Zhang Peng <bruzzhang@tencent.com>
 ---
- .../net/packetdrill/tcp_rcv_neg_window.pkt         | 26 ++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
+bruzzhang (2):
+      mm/vmscan: refactor shrink_folio_list for readability and maintainability
+      mm, vmscan: flush TLB for every 31 folios evictions
 
-diff --git a/tools/testing/selftests/net/packetdrill/tcp_rcv_neg_window.pkt b/tools/testing/selftests/net/packetdrill/tcp_rcv_neg_window.pkt
-new file mode 100644
-index 0000000000000000000000000000000000000000..15a9b4938f16d175ac54f3fd192ed2b59b0a4399
---- /dev/null
-+++ b/tools/testing/selftests/net/packetdrill/tcp_rcv_neg_window.pkt
-@@ -0,0 +1,26 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+--mss=1000
-+
-+`./defaults.sh`
-+
-+// Establish a connection.
-+   +0 socket(..., SOCK_STREAM, IPPROTO_TCP) = 3
-+   +0 setsockopt(3, SOL_SOCKET, SO_REUSEADDR, [1], 4) = 0
-+   +0 setsockopt(3, SOL_SOCKET, SO_RCVBUF, [20000], 4) = 0
-+   +0 bind(3, ..., ...) = 0
-+   +0 listen(3, 1) = 0
-+
-+   +0 < S 0:0(0) win 32792 <mss 1000,nop,wscale 7>
-+   +0 > S. 0:0(0) ack 1 win 18980 <mss 1460,nop,wscale 0>
-+  +.1 < . 1:1(0) ack 1 win 257
-+
-+   +0 accept(3, ..., ...) = 4
-+
-+// A too big packet is accepted if the receive queue is empty
-+   +0 < P. 1:20001(20000) ack 1 win 257
-+// Send a RST immediately so that there is no rcv_wup/rcv_mwnd_seq update yet
-+   +0 < R. 20001:20001(0) ack 1 win 257
-+
-+  +.1 %{ assert tcpi_state == TCP_CLOSE, tcpi_state }%
-+
+ include/linux/vmstat.h |   1 +
+ mm/vmscan.c            | 387 +++++++++++++++++++++++++++++++------------------
+ 2 files changed, 245 insertions(+), 143 deletions(-)
+---
+base-commit: 49cb736d092aaa856283e33b78ec3afb3964d82f
+change-id: 20260309-batch-tlb-flush-893f0e56b496
 
+Best regards,
 -- 
-2.53.0
+Zhang Peng <zippermonkey@icloud.com>
 
