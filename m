@@ -1,15 +1,13 @@
 From: Tim Kovalenko <tim.kovalenko@proton.me>
-Subject: [PATCH v4 0/4] Fixes the stack overflow
-Date: Mon, 09 Mar 2026 12:34:17 -0400
-Message-Id: <20260309-drm-rust-next-v4-0-4ef485b19a4c@proton.me>
+Date: Mon, 09 Mar 2026 12:34:18 -0400
+Subject: [PATCH v4 1/4] rust: ptr: add `KnownSize` trait to support DST
+ size info extraction
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XMsQ6DIBSF4VcxzKWBi0rp1PdoOqBcK4NogBIb4
- 7sXnYxJx3OS719IQG8xkHuxEI/JBju6PMpLQdpeuzdSa/ImwKBmwIEaP1D/CZE6nCNtsFGgEZW
- RFclm8tjZee89X3n3NsTRf/d84tv7r5Q45bRkSqhbwwFr/pj8GEd3HZBspQRHLc4astaaqbKTN
- wlcn7U4annWImuFElXVVkqa9qjXdf0BSCj97iYBAAA=
-X-Change-ID: 20260212-drm-rust-next-beb92aee9d75
+Message-Id: <20260309-drm-rust-next-v4-1-4ef485b19a4c@proton.me>
+References: <20260309-drm-rust-next-v4-0-4ef485b19a4c@proton.me>
+In-Reply-To: <20260309-drm-rust-next-v4-0-4ef485b19a4c@proton.me>
 To: Alexandre Courbot <acourbot@nvidia.com>, 
  Danilo Krummrich <dakr@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
  David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
@@ -23,67 +21,88 @@ To: Alexandre Courbot <acourbot@nvidia.com>,
  Robin Murphy <robin.murphy@arm.com>, Boqun Feng <boqun@kernel.org>
 Cc: nouveau@lists.freedesktop.org, dri-devel@lists.freedesktop.org, 
  linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
- linux-kbuild@vger.kernel.org, driver-core@lists.linux.dev, 
- Tim Kovalenko <tim.kovalenko@proton.me>
+ linux-kbuild@vger.kernel.org, driver-core@lists.linux.dev
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773074117; l=1907;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773074117; l=2158;
  i=tim.kovalenko@proton.me; s=20260212; h=from:subject:message-id;
- bh=ur3mma4izM+B5GojZDmfk652EPp1d2EJADISR8mbwE0=;
- b=H3g4pztXItI93AFUT5bJEqqHh4yK27wA5nyBvGNWYTZ5xmzc0yEOXNpfRQ0CgA/5ymjpVGqFG
- fbcO1cz35oUA5sAonNIeYEaK47bnSFhPuWvMK5hzWiftvd8WbwGMrlU
+ bh=FheLpAl87yI4UaHfqa3k20aJCUg9ixwJ8DWS/cDgRg4=;
+ b=45N81LFvbnZxj7EBp15VjpGQhHombjwrqodP4FxEVsCd0JDjLKei5FWNCjy3jFam1BlfUrrI7
+ tx8XLpQNe94AjeTcEcFGAGgbnHF9RBdYUogAKI4RUMXskNkIfccBCVr
 X-Developer-Key: i=tim.kovalenko@proton.me; a=ed25519;
  pk=/+OiulEpgeZifgP4mDE4e5YlV6nMeY+frze/lY/xiHI=
 X-Endpoint-Received: by B4 Relay for tim.kovalenko@proton.me/20260212 with auth_id=635
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+From: Gary Guo <gary@garyguo.net>
 
+Add a `KnownSize` trait which is used obtain a size from a raw pointer's
+metadata. This makes it possible to obtain size information on a raw slice
+pointer. This is similar to Rust `core::mem::size_of_val_raw` which is not
+yet stable.
+
+Signed-off-by: Gary Guo <gary@garyguo.net>
+Reviewed-by: Benno Lossin <lossin@kernel.org>
+Acked-by: Miguel Ojeda <ojeda@kernel.org>
 ---
-Changes in v4:
-- Rebase on top of projection changes
-- Use index projection when writing PTEs
-- Keep PteArray, as discussed in V2, and move entry calculation there
-- Avoid stack allocation by writing PTEs directly to DMA memory
+ rust/kernel/lib.rs |  1 +
+ rust/kernel/ptr.rs | 27 ++++++++++++++++++++++++++-
+ 2 files changed, 27 insertions(+), 1 deletion(-)
 
-- Link to v3: https://lore.kernel.org/r/20260217-drm-rust-next-v3-1-9e7e95c597dc@proton.me
+diff --git a/rust/kernel/lib.rs b/rust/kernel/lib.rs
+index 3da92f18f4eed16335c3c251e6bff68dcf7e781e..510cc7fe496113f85c34f420b1c4be95596297ad 100644
+--- a/rust/kernel/lib.rs
++++ b/rust/kernel/lib.rs
+@@ -20,6 +20,7 @@
+ #![feature(generic_nonzero)]
+ #![feature(inline_const)]
+ #![feature(pointer_is_aligned)]
++#![feature(slice_ptr_len)]
+ //
+ // Stable since Rust 1.80.0.
+ #![feature(slice_flatten)]
+diff --git a/rust/kernel/ptr.rs b/rust/kernel/ptr.rs
+index 5b6a382637fef11e9c0ae9122906422a970d7fcd..cf980a103acf19ee3bd17bb1dfdbcadfe30467ae 100644
+--- a/rust/kernel/ptr.rs
++++ b/rust/kernel/ptr.rs
+@@ -2,7 +2,10 @@
+ 
+ //! Types and functions to work with pointers and addresses.
+ 
+-use core::mem::align_of;
++use core::mem::{
++    align_of,
++    size_of, //
++};
+ use core::num::NonZero;
+ 
+ /// Type representing an alignment, which is always a power of two.
+@@ -225,3 +228,25 @@ fn align_up(self, alignment: Alignment) -> Option<Self> {
+ }
+ 
+ impl_alignable_uint!(u8, u16, u32, u64, usize);
++
++/// Trait to represent compile-time known size information.
++///
++/// This is a generalization of what [`size_of`] which works for dynamically sized types.
++pub trait KnownSize {
++    /// Get the size of an object of this type in bytes, with the metadata of the given pointer.
++    fn size(p: *const Self) -> usize;
++}
++
++impl<T> KnownSize for T {
++    #[inline(always)]
++    fn size(_: *const Self) -> usize {
++        size_of::<T>()
++    }
++}
++
++impl<T> KnownSize for [T] {
++    #[inline(always)]
++    fn size(p: *const Self) -> usize {
++        p.len() * size_of::<T>()
++    }
++}
 
-Changes in v3:
-- Addressed the comments and re-instated the PteArray type.
-- PteArray now uses `init` instead of `new` where it writes to `self`
-  page by page.
-- PteArray just needs a pte pointer obtained from the `gsp_mem.as_slice_mut`.
-
-I hope I understood everything in the V2 email chain and implemented it correctly :)
-
-- Link to v2: https://lore.kernel.org/r/20260213-drm-rust-next-v2-1-aa094f78721a@proton.me
-
-Changes in v2:
-- Missed a code formatting issue.
-- Link to v1: https://lore.kernel.org/r/20260212-drm-rust-next-v1-1-409398b12e61@proton.me
-
----
-Gary Guo (3):
-      rust: ptr: add `KnownSize` trait to support DST size info extraction
-      rust: ptr: add projection infrastructure
-      rust: dma: use pointer projection infra for `dma_{read,write}` macro
-
-Tim Kovalenko (1):
-      gpu: nova-core: fix stack overflow in GSP memory allocation
-
- drivers/gpu/nova-core/gsp.rs      |  48 ++++---
- drivers/gpu/nova-core/gsp/boot.rs |   2 +-
- drivers/gpu/nova-core/gsp/cmdq.rs |  23 ++-
- rust/kernel/dma.rs                | 114 +++++++--------
- rust/kernel/lib.rs                |   4 +
- rust/kernel/ptr.rs                |  30 +++-
- rust/kernel/ptr/projection.rs     | 294 ++++++++++++++++++++++++++++++++++++++
- samples/rust/rust_dma.rs          |  30 ++--
- scripts/Makefile.build            |   4 +-
- 9 files changed, 443 insertions(+), 106 deletions(-)
----
-base-commit: dd8a93dafe6ef50b49d2a7b44862264d74a7aafa
-change-id: 20260212-drm-rust-next-beb92aee9d75
-
-Best regards,
 -- 
-Tim Kovalenko <tim.kovalenko@proton.me>
+2.53.0
 
