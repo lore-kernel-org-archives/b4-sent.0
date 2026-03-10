@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Tue, 10 Mar 2026 19:32:00 +0530
-Subject: [PATCH v7 2/4] PCI: host-common: Add link down handling for Root
- Ports
+Date: Tue, 10 Mar 2026 19:32:01 +0530
+Subject: [PATCH v7 3/4] PCI: qcom: Add support for resetting the Root Port
+ due to link down event
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260310-pci-port-reset-v7-2-9dd00ccc25ab@oss.qualcomm.com>
+Message-Id: <20260310-pci-port-reset-v7-3-9dd00ccc25ab@oss.qualcomm.com>
 References: <20260310-pci-port-reset-v7-0-9dd00ccc25ab@oss.qualcomm.com>
 In-Reply-To: <20260310-pci-port-reset-v7-0-9dd00ccc25ab@oss.qualcomm.com>
 To: Bjorn Helgaas <bhelgaas@google.com>, 
@@ -25,18 +25,18 @@ Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org,
  Richard Zhu <hongxing.zhu@nxp.com>, Brian Norris <briannorris@chromium.org>, 
  Wilson Ding <dingwei@marvell.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- Frank Li <Frank.Li@nxp.com>, Manivannan Sadhasivam <mani@kernel.org>
+ Manivannan Sadhasivam <mani@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5047;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8416;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=aFkx7QcjgWXLjqxldAdhXr9ROuajXIiL4yi0K0WOE5c=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpsCRqrlJW+b7djwMK1Ei7k62UFLEXZ1gYZNshe
- vHMm6FRURuJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCabAkagAKCRBVnxHm/pHO
- 9SvAB/427KkqnhQGX1Vab4Rm6k/g6XchDY2PORDJ+5iwcCnCf9Krh5sdAjTOPlxS/HuGaFWLQX8
- D8CC26e9shL+jLIW9lLal+zwYf88gxcByt2TRMXFpR+HKjMSC0g+9BENXS0h/YjQBdhrUrY3T4Z
- thDUb3YalcqRLDZR0eo6tr/kZiz5WY7jEXdhaACyp0Z9xqzftp03RGn2/M2ouk0FeXke8CaUIvl
- CKfeDrps41NgtH3KQXW0YdUbPiSqdtqFGATgAnpiZI+vWxwnYosZFUO3LU8kqvSMDW+svgOTAbH
- wAc/ZKEfGHGP0gevdD0RvdFzQm34buVpT1/dSdqL3pZIyxFY
+ bh=CwOvSrZ8KQJ6kWNG43kBWKGjoiyD3NMx5WS7RNFKvtQ=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpsCRqm6D1dy8cldnK3AjRKyOQy5OvmSK88PgQI
+ PlOCP7+AUOJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCabAkagAKCRBVnxHm/pHO
+ 9cscCACpTOAAWV9vlYRVzpQvJj37u5thsUwgvk2Uy+aSgVsM881zNKOsYpWUg/C1dy9RWeCBqMr
+ NppjYH5mDwZF6/EtRZcJa80DUFnGrEXVlBqrJfFgmOucDU5vkwn7P/iWTF5VcmFLMmi4OtTAhUF
+ k604fTkx2mfroC8RkIrixzIIRCM2vADyio5uAqeDIAk7zCbAShy7DX0yX7XhZ+iXvTTQTYuIMtX
+ KcRm1gIe7UoITUxDqsDSIGyriXVXJ4cXuAWzIhohFnd/IXnOXYlGvHyuD6Y0PMp5zj6+xpFHKiy
+ hwW4yGz7tYwT9GuRhJnBqWyUMEgWQ63oLJLRTFhw6IuHF/M/
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
@@ -44,130 +44,265 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Manivannan Sadhasivam <mani@kernel.org>
 
-The PCI link, when down, needs to be recovered to bring it back. But on
-some platforms, that cannot be done in a generic way as link recovery
-procedure is platform specific. So add a new API
-pci_host_handle_link_down() that could be called by the host bridge drivers
-for a specific Root Port when the link goes down.
+The PCIe link can go down under circumstances such as the device firmware
+crash, link instability, etc... When that happens, the PCIe Root Port needs
+to be reset to make it operational again. Currently, the driver is not
+handling the link down event, due to which the users have to restart the
+machine to make PCIe link operational again. So fix it by detecting the
+link down event and resetting the Root Port.
 
-The API accepts the 'pci_dev' corresponding to the Root Port which observed
-the link down event. If CONFIG_PCIEAER is enabled, the API calls
-pcie_do_recovery() function with 'pci_channel_io_frozen' as the state. This
-will result in the execution of the AER Fatal error handling code. Since
-the link down recovery is pretty much the same as AER Fatal error handling,
-pcie_do_recovery() helper is reused here. First, the AER error_detected()
-callback will be triggered for the bridge and then for the downstream
-devices. Finally, pci_host_reset_root_port() will be called for the Root
-Port, which will reset the Root Port using 'reset_root_port' callback to
-recover the link. Once that's done, resume message will be broadcasted to
-the bridge and the downstream devices, indicating successful link recovery.
+Since the Qcom PCIe controllers report the link down event through the
+'global' IRQ, enable the link down event by setting PARF_INT_ALL_LINK_DOWN
+bit in PARF_INT_ALL_MASK register.
 
-But if CONFIG_PCIEAER is not enabled in the kernel, only
-pci_host_reset_root_port() API will be called, which will in turn call
-pci_bus_error_reset() to just reset the Root Port as there is no way we
-could inform the drivers about link recovery.
+In the case of the event, iterate through the available Root Ports and call
+pci_host_handle_link_down() API with Root Port 'pci_dev' to let the PCI
+core handle the link down condition. Since Qcom PCIe controllers only
+support one Root Port per controller instance, the API will be called only
+once. But the looping is necessary as there is no PCI API available to
+fetch the Root Port instance without the child 'pci_dev'.
+
+The API will internally call, 'pci_host_bridge::reset_root_port()' callback
+to reset the Root Port in a platform specific way. So implement the
+callback to reset the Root Port by first resetting the PCIe core, followed
+by reinitializing the resources and then finally starting the link again.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@linaro.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Tested-by: Brian Norris <briannorris@chromium.org>
 Tested-by: Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>
-Tested-by: Richard Zhu <hongxing.zhu@nxp.com>
-Reviewed-by: Frank Li <Frank.Li@nxp.com>
 ---
- drivers/pci/controller/pci-host-common.c | 35 ++++++++++++++++++++++++++++++++
- drivers/pci/controller/pci-host-common.h |  1 +
- drivers/pci/pci.c                        |  1 +
- drivers/pci/pcie/err.c                   |  1 +
- 4 files changed, 38 insertions(+)
+ drivers/pci/controller/dwc/pcie-qcom.c | 143 ++++++++++++++++++++++++++++++++-
+ 1 file changed, 142 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/pci/controller/pci-host-common.c b/drivers/pci/controller/pci-host-common.c
-index d6258c1cffe5..15ebff8a542a 100644
---- a/drivers/pci/controller/pci-host-common.c
-+++ b/drivers/pci/controller/pci-host-common.c
-@@ -12,9 +12,11 @@
- #include <linux/of.h>
- #include <linux/of_address.h>
- #include <linux/of_pci.h>
-+#include <linux/pci.h>
- #include <linux/pci-ecam.h>
- #include <linux/platform_device.h>
+diff --git a/drivers/pci/controller/dwc/pcie-qcom.c b/drivers/pci/controller/dwc/pcie-qcom.c
+index 67a16af69ddc..e3f08139d33f 100644
+--- a/drivers/pci/controller/dwc/pcie-qcom.c
++++ b/drivers/pci/controller/dwc/pcie-qcom.c
+@@ -56,6 +56,10 @@
+ #define PARF_AXI_MSTR_WR_ADDR_HALT_V2		0x1a8
+ #define PARF_Q2A_FLUSH				0x1ac
+ #define PARF_LTSSM				0x1b0
++#define PARF_INT_ALL_STATUS			0x224
++#define PARF_INT_ALL_CLEAR			0x228
++#define PARF_INT_ALL_MASK			0x22c
++#define PARF_STATUS				0x230
+ #define PARF_SID_OFFSET				0x234
+ #define PARF_BDF_TRANSLATE_CFG			0x24c
+ #define PARF_DBI_BASE_ADDR_V2			0x350
+@@ -131,6 +135,13 @@
  
-+#include "../pci.h"
- #include "pci-host-common.h"
+ /* PARF_LTSSM register fields */
+ #define LTSSM_EN				BIT(8)
++#define SW_CLEAR_FLUSH_MODE			BIT(10)
++#define FLUSH_MODE				BIT(11)
++
++/* PARF_INT_ALL_{STATUS/CLEAR/MASK} register fields */
++#define INT_ALL_LINK_DOWN			1
++#define PARF_INT_ALL_LINK_DOWN			BIT(INT_ALL_LINK_DOWN)
++#define PARF_INT_MSI_DEV_0_7			GENMASK(30, 23)
  
- static void gen_pci_unmap_cfg(void *ptr)
-@@ -106,5 +108,38 @@ void pci_host_common_remove(struct platform_device *pdev)
+ /* PARF_NO_SNOOP_OVERRIDE register fields */
+ #define WR_NO_SNOOP_OVERRIDE_EN			BIT(1)
+@@ -142,6 +153,9 @@
+ /* PARF_BDF_TO_SID_CFG fields */
+ #define BDF_TO_SID_BYPASS			BIT(0)
+ 
++/* PARF_STATUS fields */
++#define FLUSH_COMPLETED				BIT(8)
++
+ /* ELBI_SYS_CTRL register fields */
+ #define ELBI_SYS_CTRL_LT_ENABLE			BIT(0)
+ 
+@@ -166,6 +180,7 @@
+ 						PCIE_CAP_SLOT_POWER_LIMIT_SCALE)
+ 
+ #define PERST_DELAY_US				1000
++#define FLUSH_TIMEOUT_US			100
+ 
+ #define QCOM_PCIE_CRC8_POLYNOMIAL		(BIT(2) | BIT(1) | BIT(0))
+ 
+@@ -282,11 +297,14 @@ struct qcom_pcie {
+ 	const struct qcom_pcie_cfg *cfg;
+ 	struct dentry *debugfs;
+ 	struct list_head ports;
++	int global_irq;
+ 	bool suspended;
+ 	bool use_pm_opp;
+ };
+ 
+ #define to_qcom_pcie(x)		dev_get_drvdata((x)->dev)
++static int qcom_pcie_reset_root_port(struct pci_host_bridge *bridge,
++				  struct pci_dev *pdev);
+ 
+ static void __qcom_pcie_perst_assert(struct qcom_pcie *pcie, bool assert)
+ {
+@@ -1325,6 +1343,8 @@ static int qcom_pcie_host_init(struct dw_pcie_rp *pp)
+ 			goto err_assert_reset;
+ 	}
+ 
++	pp->bridge->reset_root_port = qcom_pcie_reset_root_port;
++
+ 	return 0;
+ 
+ err_assert_reset:
+@@ -1608,6 +1628,78 @@ static void qcom_pcie_icc_opp_update(struct qcom_pcie *pcie)
+ 	}
  }
- EXPORT_SYMBOL_GPL(pci_host_common_remove);
  
-+static pci_ers_result_t pci_host_reset_root_port(struct pci_dev *dev)
++/*
++ * Qcom PCIe controllers only support one Root Port per controller instance. So
++ * this function ignores the 'pci_dev' associated with the Root Port and just
++ * resets the host bridge, which in turn resets the Root Port also.
++ */
++static int qcom_pcie_reset_root_port(struct pci_host_bridge *bridge,
++				  struct pci_dev *pdev)
 +{
++	struct pci_bus *bus = bridge->bus;
++	struct dw_pcie_rp *pp = bus->sysdata;
++	struct dw_pcie *pci = to_dw_pcie_from_pp(pp);
++	struct qcom_pcie *pcie = to_qcom_pcie(pci);
++	struct device *dev = pcie->pci->dev;
++	u32 val;
 +	int ret;
 +
-+	pci_lock_rescan_remove();
-+	ret = pci_bus_error_reset(dev);
-+	pci_unlock_rescan_remove();
++	/* Wait for the pending transactions to be completed */
++	ret = readl_relaxed_poll_timeout(pcie->parf + PARF_STATUS, val,
++					 val & FLUSH_COMPLETED, 10,
++					 FLUSH_TIMEOUT_US);
 +	if (ret) {
-+		pci_err(dev, "Failed to reset Root Port: %d\n", ret);
-+		return PCI_ERS_RESULT_DISCONNECT;
++		dev_err(dev, "Flush completion failed: %d\n", ret);
++		goto err_host_deinit;
 +	}
 +
-+	pci_info(dev, "Root Port has been reset\n");
++	/* Clear the FLUSH_MODE to allow the core to be reset */
++	val = readl(pcie->parf + PARF_LTSSM);
++	val |= SW_CLEAR_FLUSH_MODE;
++	writel(val, pcie->parf + PARF_LTSSM);
 +
-+	return PCI_ERS_RESULT_RECOVERED;
++	/* Wait for the FLUSH_MODE to clear */
++	ret = readl_relaxed_poll_timeout(pcie->parf + PARF_LTSSM, val,
++					 !(val & FLUSH_MODE), 10,
++					 FLUSH_TIMEOUT_US);
++	if (ret) {
++		dev_err(dev, "Flush mode clear failed: %d\n", ret);
++		goto err_host_deinit;
++	}
++
++	qcom_pcie_host_deinit(pp);
++
++	ret = qcom_pcie_host_init(pp);
++	if (ret) {
++		dev_err(dev, "Host init failed\n");
++		return ret;
++	}
++
++	ret = dw_pcie_setup_rc(pp);
++	if (ret)
++		goto err_host_deinit;
++
++	/*
++	 * Re-enable global IRQ events as the PARF_INT_ALL_MASK register is
++	 * non-sticky.
++	 */
++	if (pcie->global_irq)
++		writel_relaxed(PARF_INT_ALL_LINK_DOWN | PARF_INT_MSI_DEV_0_7,
++				pcie->parf + PARF_INT_ALL_MASK);
++
++	qcom_pcie_start_link(pci);
++	dw_pcie_wait_for_link(pci);
++
++	dev_dbg(dev, "Root Port reset completed\n");
++
++	return 0;
++
++err_host_deinit:
++	qcom_pcie_host_deinit(pp);
++
++	return ret;
 +}
 +
-+static void pci_host_recover_root_port(struct pci_dev *port)
-+{
-+#if IS_ENABLED(CONFIG_PCIEAER)
-+	pcie_do_recovery(port, pci_channel_io_frozen, pci_host_reset_root_port);
-+#else
-+	pci_host_reset_root_port(port);
-+#endif
-+}
-+
-+void pci_host_handle_link_down(struct pci_dev *port)
-+{
-+	pci_info(port, "Recovering Root Port due to Link Down\n");
-+	pci_host_recover_root_port(port);
-+}
-+EXPORT_SYMBOL_GPL(pci_host_handle_link_down);
-+
- MODULE_DESCRIPTION("Common library for PCI host controller drivers");
- MODULE_LICENSE("GPL v2");
-diff --git a/drivers/pci/controller/pci-host-common.h b/drivers/pci/controller/pci-host-common.h
-index b5075d4bd7eb..dd12dd1a1b23 100644
---- a/drivers/pci/controller/pci-host-common.h
-+++ b/drivers/pci/controller/pci-host-common.h
-@@ -17,6 +17,7 @@ int pci_host_common_init(struct platform_device *pdev,
- 			 struct pci_host_bridge *bridge,
- 			 const struct pci_ecam_ops *ops);
- void pci_host_common_remove(struct platform_device *pdev);
-+void pci_host_handle_link_down(struct pci_dev *port);
- 
- struct pci_config_window *pci_host_common_ecam_create(struct device *dev,
- 	struct pci_host_bridge *bridge, const struct pci_ecam_ops *ops);
-diff --git a/drivers/pci/pci.c b/drivers/pci/pci.c
-index 6f09057d83e0..1b37bfe6d079 100644
---- a/drivers/pci/pci.c
-+++ b/drivers/pci/pci.c
-@@ -5650,6 +5650,7 @@ int pci_bus_error_reset(struct pci_dev *bridge)
- 	mutex_unlock(&pci_slot_mutex);
- 	return pci_bus_reset(bridge->subordinate, PCI_RESET_DO_RESET);
+ static int qcom_pcie_link_transition_count(struct seq_file *s, void *data)
+ {
+ 	struct qcom_pcie *pcie = (struct qcom_pcie *)dev_get_drvdata(s->private);
+@@ -1645,6 +1737,27 @@ static void qcom_pcie_init_debugfs(struct qcom_pcie *pcie)
+ 				    qcom_pcie_link_transition_count);
  }
-+EXPORT_SYMBOL_GPL(pci_bus_error_reset);
  
- /**
-  * pci_probe_reset_bus - probe whether a PCI bus can be reset
-diff --git a/drivers/pci/pcie/err.c b/drivers/pci/pcie/err.c
-index 13b9d9eb714f..d77403d8855b 100644
---- a/drivers/pci/pcie/err.c
-+++ b/drivers/pci/pcie/err.c
-@@ -292,3 +292,4 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
++static irqreturn_t qcom_pcie_global_irq_thread(int irq, void *data)
++{
++	struct qcom_pcie *pcie = data;
++	struct dw_pcie_rp *pp = &pcie->pci->pp;
++	struct device *dev = pcie->pci->dev;
++	struct pci_dev *port;
++	unsigned long status = readl_relaxed(pcie->parf + PARF_INT_ALL_STATUS);
++
++	writel_relaxed(status, pcie->parf + PARF_INT_ALL_CLEAR);
++
++	if (test_and_clear_bit(INT_ALL_LINK_DOWN, &status)) {
++		dev_dbg(dev, "Received Link down event\n");
++		for_each_pci_bridge(port, pp->bridge->bus) {
++			if (pci_pcie_type(port) == PCI_EXP_TYPE_ROOT_PORT)
++				pci_host_handle_link_down(port);
++		}
++	}
++
++	return IRQ_HANDLED;
++}
++
+ static void qcom_pci_free_msi(void *ptr)
+ {
+ 	struct dw_pcie_rp *pp = (struct dw_pcie_rp *)ptr;
+@@ -1847,7 +1960,7 @@ static int qcom_pcie_probe(struct platform_device *pdev)
+ 	struct dw_pcie_rp *pp;
+ 	struct resource *res;
+ 	struct dw_pcie *pci;
+-	int ret;
++	int ret, irq;
  
- 	return status;
- }
-+EXPORT_SYMBOL_GPL(pcie_do_recovery);
+ 	pcie_cfg = of_device_get_match_data(dev);
+ 	if (!pcie_cfg) {
+@@ -2004,6 +2117,32 @@ static int qcom_pcie_probe(struct platform_device *pdev)
+ 		goto err_phy_exit;
+ 	}
+ 
++	irq = platform_get_irq_byname_optional(pdev, "global");
++	if (irq > 0) {
++		const char *name;
++
++		name = devm_kasprintf(dev, GFP_KERNEL, "qcom_pcie_global_irq%d",
++				      pci_domain_nr(pp->bridge->bus));
++		if (!name) {
++			ret = -ENOMEM;
++			goto err_host_deinit;
++		}
++
++		ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
++						qcom_pcie_global_irq_thread,
++						IRQF_ONESHOT, name, pcie);
++		if (ret) {
++			dev_err_probe(&pdev->dev, ret,
++				      "Failed to request Global IRQ\n");
++			goto err_host_deinit;
++		}
++
++		writel_relaxed(PARF_INT_ALL_LINK_DOWN | PARF_INT_MSI_DEV_0_7,
++				pcie->parf + PARF_INT_ALL_MASK);
++
++		pcie->global_irq = irq;
++	}
++
+ 	qcom_pcie_icc_opp_update(pcie);
+ 
+ 	if (pcie->mhi)
+@@ -2011,6 +2150,8 @@ static int qcom_pcie_probe(struct platform_device *pdev)
+ 
+ 	return 0;
+ 
++err_host_deinit:
++	dw_pcie_host_deinit(pp);
+ err_phy_exit:
+ 	list_for_each_entry_safe(port, tmp_port, &pcie->ports, list) {
+ 		list_for_each_entry_safe(perst, tmp_perst, &port->perst, list)
 
 -- 
 2.51.0
