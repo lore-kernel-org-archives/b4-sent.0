@@ -1,11 +1,11 @@
 From: Frank Li <Frank.Li@nxp.com>
-Date: Tue, 10 Mar 2026 15:07:38 -0400
-Subject: [PATCH 2/3] mtd: rawnand: mxc: set chip->of_node to nand@0 child
+Date: Tue, 10 Mar 2026 15:07:39 -0400
+Subject: [PATCH 3/3] mtd: rawnand: ifc: set chip->of_node to nand@0 child
  node if present
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260310-gpmi_nand-v1-2-6a665151aa75@nxp.com>
+Message-Id: <20260310-gpmi_nand-v1-3-6a665151aa75@nxp.com>
 References: <20260310-gpmi_nand-v1-0-6a665151aa75@nxp.com>
 In-Reply-To: <20260310-gpmi_nand-v1-0-6a665151aa75@nxp.com>
 To: Han Xu <han.xu@nxp.com>, Miquel Raynal <miquel.raynal@bootlin.com>, 
@@ -19,11 +19,11 @@ Cc: imx@lists.linux.dev, linux-mtd@lists.infradead.org,
  Francesco Dolcini <francesco.dolcini@toradex.com>, 
  Frank Li <Frank.Li@nxp.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773169659; l=1828;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773169659; l=1853;
  i=Frank.Li@nxp.com; s=20240130; h=from:subject:message-id;
- bh=bOj/g+UY+4s889neQOAMnpSX/wgGz20f6Io/aYMX6LU=;
- b=sh93q7HWhsnaCKLZJ2Qq9mCg1igrjdWIT0UcPJC1loYjHO6n/x55Zvvbg0+k8sraeMaRzgx+c
- K502GrP2CkaCs5pORsfOhPhKkCdy+uzAcki6HaIUqBErDcRCWwAzRZ7
+ bh=FIv1RVBcoqzfpJswOf6h6v3Eh4uNH7jSmUjj7+1dAxc=;
+ b=SgBvQQvJLJMzDfPgP5eRXTcA1aGwmtKBs8AGRLQPnTELvBnzgmMNZBvBP0vi5EUThIcaVGZek
+ n1VMQPg0srWBQv/1McFma4ch70Qryj0Ns5QOXu+kXWD3c7ZCtFX7TnT
 X-Developer-Key: i=Frank.Li@nxp.com; a=ed25519;
  pk=I0L1sDUfPxpAkRvPKy7MdauTuSENRq+DnA+G4qcS94Q=
 X-Endpoint-Received: by B4 Relay for Frank.Li@nxp.com/20240130 with auth_id=121
@@ -45,40 +45,40 @@ chips.
 
 Signed-off-by: Frank Li <Frank.Li@nxp.com>
 ---
-Build test only because can't find such old boards, logic is the same as
-gpmi nand flash controller.
+build test only because can't find hardware to test it. but basic logic is
+the same as gpmi.
 ---
- drivers/mtd/nand/raw/mxc_nand.c | 10 +++++++++-
+ drivers/mtd/nand/raw/fsl_ifc_nand.c | 10 +++++++++-
  1 file changed, 9 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/mtd/nand/raw/mxc_nand.c b/drivers/mtd/nand/raw/mxc_nand.c
-index 8c56b685bf91a462a707ff868c601358375aafce..4d8b92e7e67257535142b3a0deb5b179e1a17bad 100644
---- a/drivers/mtd/nand/raw/mxc_nand.c
-+++ b/drivers/mtd/nand/raw/mxc_nand.c
-@@ -4,6 +4,7 @@
-  * Copyright 2008 Sascha Hauer, kernel@pengutronix.de
+diff --git a/drivers/mtd/nand/raw/fsl_ifc_nand.c b/drivers/mtd/nand/raw/fsl_ifc_nand.c
+index dd88b22a91bd13f1619c3061866dec22eceb55f5..fad0334f759dd5f81113e10ec04e8bbaf490bc83 100644
+--- a/drivers/mtd/nand/raw/fsl_ifc_nand.c
++++ b/drivers/mtd/nand/raw/fsl_ifc_nand.c
+@@ -7,6 +7,7 @@
+  * Author: Dipen Dudhat <Dipen.Dudhat@freescale.com>
   */
  
 +#include <linux/cleanup.h>
- #include <linux/delay.h>
- #include <linux/slab.h>
- #include <linux/init.h>
-@@ -1714,7 +1715,14 @@ static int mxcnd_probe(struct platform_device *pdev)
- 	this->legacy.chip_delay = 5;
+ #include <linux/module.h>
+ #include <linux/platform_device.h>
+ #include <linux/types.h>
+@@ -863,7 +864,14 @@ static int fsl_ifc_chip_init(struct fsl_ifc_mtd *priv)
  
- 	nand_set_controller_data(this, host);
--	nand_set_flash_node(this, pdev->dev.of_node);
+ 	/* Fill in fsl_ifc_mtd structure */
+ 	mtd->dev.parent = priv->dev;
+-	nand_set_flash_node(chip, priv->dev->of_node);
 +
 +	struct device_node *np __free(device_node) =
-+		of_get_next_child_with_prefix(pdev->dev.of_node, NULL, "nand");
++		of_get_next_child_with_prefix(priv->dev->of_node, NULL, "nand");
 +
 +	if (np)
-+		nand_set_flash_node(this, np);
++		nand_set_flash_node(chip, np);
 +	else
-+		nand_set_flash_node(this, pdev->dev.of_node);
++		nand_set_flash_node(chip, priv->dev->of_node);
  
- 	host->clk = devm_clk_get(&pdev->dev, NULL);
- 	if (IS_ERR(host->clk))
+ 	/* fill in nand_chip structure */
+ 	/* set up function call table */
 
 -- 
 2.43.0
