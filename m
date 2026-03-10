@@ -1,10 +1,10 @@
 From: Charlie Jenkins <thecharlesjenkins@gmail.com>
-Date: Mon, 09 Mar 2026 18:52:10 -0700
-Subject: [PATCH v2 1/4] selftests: riscv: Add definition of BIT() macro
+Date: Mon, 09 Mar 2026 18:52:11 -0700
+Subject: [PATCH v2 2/4] selftests: riscv: Add braces around EXPECT_EQ()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260309-fix_selftests-v2-1-9d5a553a531e@gmail.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260309-fix_selftests-v2-2-9d5a553a531e@gmail.com>
 References: <20260309-fix_selftests-v2-0-9d5a553a531e@gmail.com>
 In-Reply-To: <20260309-fix_selftests-v2-0-9d5a553a531e@gmail.com>
 To: Shuah Khan <shuah@kernel.org>, Paul Walmsley <pjw@kernel.org>, 
@@ -14,71 +14,78 @@ To: Shuah Khan <shuah@kernel.org>, Paul Walmsley <pjw@kernel.org>,
 Cc: linux-kselftest@vger.kernel.org, linux-riscv@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Charlie Jenkins <thecharlesjenkins@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773107537; l=2501;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773107537; l=2373;
  i=thecharlesjenkins@gmail.com; s=2026030; h=from:subject:message-id;
- bh=fSLPxH6GsBiaH5osUs3h11f7ItiKygcEvbUUMu8KVw8=;
- b=fBBjwRxbvodjq3RWghDxm+Dx/Qr/g8qqQkr3tyPeEL/UlTWkFSdguEjJ2AjRozlUJh2HkvnX7
- a0HUuIEIGH2BBtujgBtaN1UncVFwSqiGg8GtLvfObXDfUeBCaSvFPJL
+ bh=7v3hKOxSt+L+8LtCfZh085q396U9Poj6cOIz6NZfRCU=;
+ b=S2N9TZ8zWVgCVD+QvRzprkQEUmAHkc0wdE0k32fG4zPv1gMn1F6ZCLgFxIaK3ZXubqJTZ9voc
+ cIxu3B7Sm6hBEdbeQLlyIRpfWbeEc6tgeXvqabXhadGrbzqNGjA6diN
 X-Developer-Key: i=thecharlesjenkins@gmail.com; a=ed25519;
  pk=vpF2USrG+aB6CTbSt34rzJKsAVe/l+GAXo1IomCMETk=
 X-Endpoint-Received: by B4 Relay for thecharlesjenkins@gmail.com/2026030 with auth_id=663
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The BIT() macros is used by the validate_v_ptrace() test case, but not
-defined. Include linux/bits.h to pull in this definition. To ensure that
-the header in the kernel source is used, add tools/include to the header
-search path.
+EXPECT_EQ() expands to multiple lines, breaking up one-line if
+statements. This issue was not present in the patch on the mailing list
+but was instead introduced by the maintainer when attempting to fix up
+checkpatch warnings. Add braces around EXPECT_EQ() to avoid the error
+even though checkpatch suggests them to be removed:
 
+validate_v_ptrace.c:626:17: error: ‘else’ without a previous ‘if’
+
+Fixes: 3789d5eecd5a ("selftests: riscv: verify syscalls discard vector context")
 Fixes: 30eb191c895b ("selftests: riscv: verify ptrace rejects invalid vector csr inputs")
+Fixes: 849f05ae1ea6 ("selftests: riscv: verify ptrace accepts valid vector csr values")
 Signed-off-by: Charlie Jenkins <thecharlesjenkins@gmail.com>
 ---
- tools/testing/selftests/riscv/vector/Makefile            | 7 +++++--
- tools/testing/selftests/riscv/vector/validate_v_ptrace.c | 1 +
- 2 files changed, 6 insertions(+), 2 deletions(-)
+ tools/testing/selftests/riscv/vector/validate_v_ptrace.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/tools/testing/selftests/riscv/vector/Makefile b/tools/testing/selftests/riscv/vector/Makefile
-index 326dafd739bf..f74a3aa63c87 100644
---- a/tools/testing/selftests/riscv/vector/Makefile
-+++ b/tools/testing/selftests/riscv/vector/Makefile
-@@ -2,6 +2,9 @@
- # Copyright (C) 2021 ARM Limited
- # Originally tools/testing/arm64/abi/Makefile
- 
-+NO_LIBC_CFLAGS := $(CFLAGS)
-+CFLAGS += -I$(top_srcdir)/tools/include
-+
- TEST_GEN_PROGS := v_initval vstate_prctl vstate_ptrace validate_v_ptrace
- TEST_GEN_PROGS_EXTENDED := vstate_exec_nolibc v_exec_initval_nolibc
- TEST_GEN_LIBS := v_helpers.c sys_hwprobe.c
-@@ -21,14 +24,14 @@ $(OUTPUT)/vstate_prctl: vstate_prctl.c $(OUTPUT)/sys_hwprobe.o $(OUTPUT)/v_helpe
- 
- $(OUTPUT)/vstate_exec_nolibc: vstate_exec_nolibc.c
- 	$(CC) -nostdlib -static -include ../../../../include/nolibc/nolibc.h \
--		-Wall $(CFLAGS) $(LDFLAGS) $^ -o $@ -lgcc
-+		-Wall $(NO_LIBC_CFLAGS) $(LDFLAGS) $^ -o $@ -lgcc
- 
- $(OUTPUT)/v_initval: v_initval.c $(OUTPUT)/sys_hwprobe.o $(OUTPUT)/v_helpers.o
- 	$(CC) -static -o$@ $(CFLAGS) $(LDFLAGS) $^
- 
- $(OUTPUT)/v_exec_initval_nolibc: v_exec_initval_nolibc.c
- 	$(CC) -nostdlib -static -include ../../../../include/nolibc/nolibc.h \
--		-Wall $(CFLAGS) $(LDFLAGS) $^ -o $@ -lgcc
-+		-Wall $(NO_LIBC_CFLAGS) $(LDFLAGS) $^ -o $@ -lgcc
- 
- $(OUTPUT)/vstate_ptrace: vstate_ptrace.c $(OUTPUT)/sys_hwprobe.o $(OUTPUT)/v_helpers.o
- 	$(CC) -static -o$@ $(CFLAGS) $(LDFLAGS) $^
 diff --git a/tools/testing/selftests/riscv/vector/validate_v_ptrace.c b/tools/testing/selftests/riscv/vector/validate_v_ptrace.c
-index 3589549f7228..257de36274e9 100644
+index 257de36274e9..5724e6eb3309 100644
 --- a/tools/testing/selftests/riscv/vector/validate_v_ptrace.c
 +++ b/tools/testing/selftests/riscv/vector/validate_v_ptrace.c
-@@ -6,6 +6,7 @@
- #include <unistd.h>
- #include <errno.h>
+@@ -291,10 +291,11 @@ TEST(ptrace_v_syscall_clobbering)
  
-+#include <linux/bits.h>
- #include <linux/ptrace.h>
- #include <linux/elf.h>
+ 		/* verify initial vsetvli settings */
  
+-		if (is_xtheadvector_supported())
++		if (is_xtheadvector_supported()) {
+ 			EXPECT_EQ(5UL, regset_data->vtype);
+-		else
++		} else {
+ 			EXPECT_EQ(9UL, regset_data->vtype);
++		}
+ 
+ 		EXPECT_EQ(regset_data->vlenb, regset_data->vl);
+ 		EXPECT_EQ(vlenb, regset_data->vlenb);
+@@ -620,10 +621,11 @@ TEST_F(v_csr_invalid, ptrace_v_invalid_values)
+ 
+ 		/* verify initial vsetvli settings */
+ 
+-		if (is_xtheadvector_supported())
++		if (is_xtheadvector_supported()) {
+ 			EXPECT_EQ(5UL, regset_data->vtype);
+-		else
++		} else {
+ 			EXPECT_EQ(9UL, regset_data->vtype);
++		}
+ 
+ 		EXPECT_EQ(regset_data->vlenb, regset_data->vl);
+ 		EXPECT_EQ(vlenb, regset_data->vlenb);
+@@ -828,10 +830,11 @@ TEST_F(v_csr_valid, ptrace_v_valid_values)
+ 
+ 		/* verify initial vsetvli settings */
+ 
+-		if (is_xtheadvector_supported())
++		if (is_xtheadvector_supported()) {
+ 			EXPECT_EQ(5UL, regset_data->vtype);
+-		else
++		} else {
+ 			EXPECT_EQ(9UL, regset_data->vtype);
++		}
+ 
+ 		EXPECT_EQ(regset_data->vlenb, regset_data->vl);
+ 		EXPECT_EQ(vlenb, regset_data->vlenb);
 
 -- 
 2.52.0
