@@ -1,94 +1,79 @@
-From: Jiucheng Xu <jiucheng.xu@amlogic.com>
-Date: Wed, 11 Mar 2026 17:11:31 +0800
-Subject: [PATCH v2] erofs: add GFP_NOIO in the bio completion if needed
+From: Carl Lee <carl.lee@amd.com>
+Date: Wed, 11 Mar 2026 17:26:39 +0800
+Subject: [PATCH] nfc: nxp-nci: i2c: restore IRQ trigger fallback
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260311-origin-dev-v2-1-0657cff690eb@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAMIxsWkC/23MQQ7CIBCF4as0s3YMIKXWlfcwXTR0oJPY0oAhm
- oa7i127/F/yvh0SRaYEt2aHSJkTh7WGOjVg53H1hDzVBiWUERcpMUT2vOJEGaXtjWm7/qqEhnr
- YIjl+H9hjqD1zeoX4Oewsf+tfJkuUqEWrNDnROSfu4/IMnu3ZhgWGUsoXgsB0KaYAAAA=
-X-Change-ID: 20260311-origin-dev-1c9665798204
-To: Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>, 
- Yue Hu <zbestahu@gmail.com>, Jeffle Xu <jefflexu@linux.alibaba.com>, 
- Sandeep Dhavale <dhavale@google.com>, Hongbo Li <lihongbo22@huawei.com>, 
- Chunhai Guo <guochunhai@vivo.com>
-Cc: linux-erofs@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
- jianxin.pan@amlogic.com, tuan.zhang@amlogic.com, 
- Jiucheng Xu <jiucheng.xu@amlogic.com>, Gao Xiang <xiang@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773220291; l=2158;
- i=jiucheng.xu@amlogic.com; s=20250821; h=from:subject:message-id;
- bh=YPPl1F3AUiL8XQFRy+eFl96JoDCQD8dYm64Zhy8f3cs=;
- b=E0Upnfawkos/3AiYtmkE1dhVITJ+d/UynPpDQdaMAbmgFjnARJUiz49lEt2IJfK9wcudy6z32
- CLHKK3xLA6RBs+TwUnC/p76zC/qg7Zq4nsHsjVz3okyIOqW5cUMQBAJ
-X-Developer-Key: i=jiucheng.xu@amlogic.com; a=ed25519;
- pk=Q18IjkdWCCuncSplyu+dYqIrm+n42glvoLFJTQqpb2o=
-X-Endpoint-Received: by B4 Relay for jiucheng.xu@amlogic.com/20250821 with auth_id=498
+Message-Id: <20260311-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-v1-1-9e20714411d7@amd.com>
+X-B4-Tracking: v=1; b=H4sIAE81sWkC/x2N0QqDMAwAf0XyvEBbp7D9iuyhi2kXJlFTGYL47
+ ys+Hhx3BxQ24QLP5gDjnxSZtYK/NUCfqJlRxsoQXOhd6z1qItR9QSVBCYTGZZutarbiZpIzG6Y
+ 4Te9IX6QxPu6hax31DmpyMU6yX7vhdZ5/0iMdoX4AAAA=
+X-Change-ID: 20260311-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-cda942530c60
+To: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, krzk@kernel.org, 
+ carl.lee@amd.com, peter.shen@amd.com, colin.huang2@amd.com
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773221201; l=1872;
+ i=carl.lee@amd.com; s=20260203; h=from:subject:message-id;
+ bh=d9zEHKYZOWYj9HwgrSBRqAmlYHUoxnu970Vb9ocM+pQ=;
+ b=PnTogQDYUwT2GIVK/ooEsD/zYmZXSC3pbnlbEbs1ziFsBf74kT27qLCG4pIgr8wN+zjSny8JF
+ VwK4kMt5viMD7VLb1IGsh0A4SNk2pe7yvn1DGgAV4KToY8R3Xo4lLGs
+X-Developer-Key: i=carl.lee@amd.com; a=ed25519;
+ pk=pyq7QaQvoxMg806KVkRwpCbiah+7ncWr4MBpK1AEyjA=
+X-Endpoint-Received: by B4 Relay for carl.lee@amd.com/20260203 with auth_id=623
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The bio completion path in the process context (e.g. dm-verity)
-will directly call into decompression rather than trigger another
-workqueue context for minimal scheduling latencies, which can
-then call vm_map_ram() with GFP_KERNEL.
+The driver previously relied on IRQF_TRIGGER_RISING when requesting
+the interrupt. This was removed to rely on the trigger type provided
+by firmware.
 
-Due to insufficient memory, vm_map_ram() may generate memory
-swapping I/O, which can cause submit_bio_wait to deadlock
-in some scenarios.
+However, some platforms do not propagate the interrupt trigger type
+to the IRQ descriptor, resulting in interrupts not being triggered.
 
-Trimmed down the call stack, as follows:
+Use the trigger type provided by firmware when available and fall
+back to the historically used rising-edge trigger otherwise.
 
-f2fs_submit_read_io
-  submit_bio                      //bio_list is initialized.
-    mmc_blk_mq_recovery
-      z_erofs_endio
-        vm_map_ram
-          __pte_alloc_kernel
-            __alloc_pages_direct_reclaim
-              shrink_folio_list
-                __swap_writepage
-                  submit_bio_wait  //bio_list is non-NULL, hang!!!
-
-Use memalloc_noio_{save,restore}() to wrap up this path.
-
-Reviewed-by: Gao Xiang <hsiangkao@linux.alibaba.com>
-Signed-off-by: Jiucheng Xu <jiucheng.xu@amlogic.com>
+Signed-off-by: Carl Lee <carl.lee@amd.com>
 ---
-Changes in v2:
-- Reword the commit message.
-- Link to v1: https://lore.kernel.org/r/20260311-origin-dev-v1-1-40524ef07ff0@amlogic.com
----
- fs/erofs/zdata.c | 3 +++
- 1 file changed, 3 insertions(+)
+ drivers/nfc/nxp-nci/i2c.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
 
-diff --git a/fs/erofs/zdata.c b/fs/erofs/zdata.c
-index 3977e42b9516861bf3d59c072b6b8aaa6898dd8a..fe8121df9ef2f2404fc6e3f0fbbd6367f9ec2c67 100644
---- a/fs/erofs/zdata.c
-+++ b/fs/erofs/zdata.c
-@@ -1445,6 +1445,7 @@ static void z_erofs_decompress_kickoff(struct z_erofs_decompressqueue *io,
- 				       int bios)
- {
- 	struct erofs_sb_info *const sbi = EROFS_SB(io->sb);
-+	int gfp_flag;
+diff --git a/drivers/nfc/nxp-nci/i2c.c b/drivers/nfc/nxp-nci/i2c.c
+index 6a5ce8ff91f0..6339586a6a1b 100644
+--- a/drivers/nfc/nxp-nci/i2c.c
++++ b/drivers/nfc/nxp-nci/i2c.c
+@@ -268,6 +268,7 @@ static int nxp_nci_i2c_probe(struct i2c_client *client)
+ 	struct device *dev = &client->dev;
+ 	struct nxp_nci_i2c_phy *phy;
+ 	int r;
++	unsigned long irqflags;
  
- 	/* wake up the caller thread for sync decompression */
- 	if (io->sync) {
-@@ -1477,7 +1478,9 @@ static void z_erofs_decompress_kickoff(struct z_erofs_decompressqueue *io,
- 			sbi->sync_decompress = EROFS_SYNC_DECOMPRESS_FORCE_ON;
- 		return;
- 	}
-+	gfp_flag = memalloc_noio_save();
- 	z_erofs_decompressqueue_work(&io->u.work);
-+	memalloc_noio_restore(gfp_flag);
- }
+ 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
+ 		nfc_err(&client->dev, "Need I2C_FUNC_I2C\n");
+@@ -303,9 +304,17 @@ static int nxp_nci_i2c_probe(struct i2c_client *client)
+ 	if (r < 0)
+ 		return r;
  
- static void z_erofs_fill_bio_vec(struct bio_vec *bvec,
++	/* Prefer the trigger type configured by firmware.
++	 * Some platforms do not provide it, so fall back to the
++	 * historically used rising-edge trigger.
++	 */
++	irqflags = irq_get_trigger_type(client->irq);
++	if (!irqflags)
++		irqflags = IRQF_TRIGGER_RISING;
++
+ 	r = request_threaded_irq(client->irq, NULL,
+ 				 nxp_nci_i2c_irq_thread_fn,
+-				 IRQF_ONESHOT,
++				 irqflags | IRQF_ONESHOT,
+ 				 NXP_NCI_I2C_DRIVER_NAME, phy);
+ 	if (r < 0)
+ 		nfc_err(&client->dev, "Unable to register IRQ handler\n");
 
 ---
-base-commit: 11439c4635edd669ae435eec308f4ab8a0804808
-change-id: 20260311-origin-dev-1c9665798204
+base-commit: 7109a2155340cc7b21f27e832ece6df03592f2e8
+change-id: 20260311-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-cda942530c60
 
 Best regards,
 -- 
-Jiucheng Xu <jiucheng.xu@amlogic.com>
+Carl Lee <carl.lee@amd.com>
 
