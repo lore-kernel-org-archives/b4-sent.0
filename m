@@ -1,85 +1,57 @@
-From: Frank Li <Frank.Li@nxp.com>
-Date: Tue, 10 Mar 2026 15:07:39 -0400
-Subject: [PATCH 3/3] mtd: rawnand: ifc: set chip->of_node to nand@0 child
- node if present
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH 0/2] ASoC: codecs: aw88166: Support device specific
+ firmware
+Date: Tue, 10 Mar 2026 23:43:03 -0500
+Message-Id: <20260310-aw88166-fw-v1-0-2777563bb673@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260310-gpmi_nand-v1-3-6a665151aa75@nxp.com>
-References: <20260310-gpmi_nand-v1-0-6a665151aa75@nxp.com>
-In-Reply-To: <20260310-gpmi_nand-v1-0-6a665151aa75@nxp.com>
-To: Han Xu <han.xu@nxp.com>, Miquel Raynal <miquel.raynal@bootlin.com>, 
- Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>
-Cc: imx@lists.linux.dev, linux-mtd@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- Max Krummenacher <max.oss.09@gmail.com>, 
- Francesco Dolcini <francesco.dolcini@toradex.com>, 
- Frank Li <Frank.Li@nxp.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDY0MD3cRyCwtDMzPdtHJdSwPjpDQz81QDMyNDJaCGgqLUtMwKsGHRsbW
+ 1AO0TzHxcAAAA
+X-Change-ID: 20260310-aw88166-fw-903bf67e0621
+To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Weidong Wang <wangweidong.a@awinic.com>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: linux-sound@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>, 
+ Teguh Sobirin <teguh@sobir.in>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773169659; l=1853;
- i=Frank.Li@nxp.com; s=20240130; h=from:subject:message-id;
- bh=FIv1RVBcoqzfpJswOf6h6v3Eh4uNH7jSmUjj7+1dAxc=;
- b=SgBvQQvJLJMzDfPgP5eRXTcA1aGwmtKBs8AGRLQPnTELvBnzgmMNZBvBP0vi5EUThIcaVGZek
- n1VMQPg0srWBQv/1McFma4ch70Qryj0Ns5QOXu+kXWD3c7ZCtFX7TnT
-X-Developer-Key: i=Frank.Li@nxp.com; a=ed25519;
- pk=I0L1sDUfPxpAkRvPKy7MdauTuSENRq+DnA+G4qcS94Q=
-X-Endpoint-Received: by B4 Relay for Frank.Li@nxp.com/20240130 with auth_id=121
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773204187; l=960;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=66W1pmkks2I4ITe9DRIevRnJ2zaQ2m9va/55lmzkK3A=;
+ b=Q3RAq01dTOkd5P5WbTiga073JhNgG8Jv/3E4ceB/FwiBZKCMwFDA/qdVqU6+plRirM8MzidU7
+ v+p71E+Ajz/AhcJzlHZYMLwyLBRXSayT5JZRhoS8s1ECglFvgIrb2EL
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The nand-controller.yaml binding requires a child node (e.g. nand@0) under
-the NAND controller. However, the driver currently assigns the controller's
-of_node directly to the NAND chip.
+The driver currently loads a hardcoded firmware path. This adds support
+for reading a device specific path from the kernel device tree.
 
-Search for the first child node with the "nand" prefix and assign it to
-chip->of_node. This filters out properties such as "partition" that may be
-placed under the controller node in some older DTS files.
+Patch 2 was originally part of a larger change [0] by Teguh Sobirin and
+was cut down to only the device specific firmware part.
 
-Fall back to using the controller's of_node if no suitable child node is
-found to maintain backward compatibility.
+[0] https://github.com/AYNTechnologies/linux/commit/9dbdd074423d970a9dec9a60f8bb99f8cfafd6a1
 
-This issue went unnoticed because the default behavior works for most NAND
-chips.
-
-Signed-off-by: Frank Li <Frank.Li@nxp.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-build test only because can't find hardware to test it. but basic logic is
-the same as gpmi.
+Aaron Kling (1):
+      ASoC: dt-bindings: Document firmware-name for awinic,aw88166
+
+Teguh Sobirin (1):
+      ASoC: codecs: aw88166: Support device specific firmware
+
+ .../devicetree/bindings/sound/awinic,aw88395.yaml     |  3 +++
+ sound/soc/codecs/aw88166.c                            | 19 +++++++++++++++----
+ 2 files changed, 18 insertions(+), 4 deletions(-)
 ---
- drivers/mtd/nand/raw/fsl_ifc_nand.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+base-commit: fe9e3edb6a215515d1148d32a5c445c5bdd7916f
+change-id: 20260310-aw88166-fw-903bf67e0621
 
-diff --git a/drivers/mtd/nand/raw/fsl_ifc_nand.c b/drivers/mtd/nand/raw/fsl_ifc_nand.c
-index dd88b22a91bd13f1619c3061866dec22eceb55f5..fad0334f759dd5f81113e10ec04e8bbaf490bc83 100644
---- a/drivers/mtd/nand/raw/fsl_ifc_nand.c
-+++ b/drivers/mtd/nand/raw/fsl_ifc_nand.c
-@@ -7,6 +7,7 @@
-  * Author: Dipen Dudhat <Dipen.Dudhat@freescale.com>
-  */
- 
-+#include <linux/cleanup.h>
- #include <linux/module.h>
- #include <linux/platform_device.h>
- #include <linux/types.h>
-@@ -863,7 +864,14 @@ static int fsl_ifc_chip_init(struct fsl_ifc_mtd *priv)
- 
- 	/* Fill in fsl_ifc_mtd structure */
- 	mtd->dev.parent = priv->dev;
--	nand_set_flash_node(chip, priv->dev->of_node);
-+
-+	struct device_node *np __free(device_node) =
-+		of_get_next_child_with_prefix(priv->dev->of_node, NULL, "nand");
-+
-+	if (np)
-+		nand_set_flash_node(chip, np);
-+	else
-+		nand_set_flash_node(chip, priv->dev->of_node);
- 
- 	/* fill in nand_chip structure */
- 	/* set up function call table */
-
+Best regards,
 -- 
-2.43.0
+Aaron Kling <webgeek1234@gmail.com>
 
