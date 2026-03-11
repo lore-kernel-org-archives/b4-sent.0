@@ -1,86 +1,69 @@
-From: =?utf-8?q?Bence_Cs=C3=B3k=C3=A1s?= <bence98@sch.bme.hu>
-Date: Thu, 12 Mar 2026 00:06:35 +0100
-Subject: [PATCH] USB: core: Use `krealloc()` in `usb_cache_string()`
+From: David Heidelberg <david@ixit.cz>
+Date: Thu, 12 Mar 2026 00:49:43 +0100
+Subject: [PATCH] arm64: dts: qcom: Mark l1a regulator as powered during
+ boot
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260312-usb-krealloc-v1-1-f76b92b92402@sch.bme.hu>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MwQqDMAyA4VeRnBewrQzcq8gOaZfOMFclURmI7
- 75ux+/w/wcYq7DBrTlAeReTuVS4SwNppPJklEc1+NZf2+AcbhbxpUzTNCfsuHMh+9BTn6Emi3K
- Wz3833KsjGWNUKmn8Td5kKyuc5xcU/ug4dwAAAA==
-X-Change-ID: 20260311-usb-krealloc-4e413f239a9f
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Bence_Cs=C3=B3k=C3=A1s?= <bence98@sch.bme.hu>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260312-beryllium-booton-v1-1-59c83ab91b78@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAJb/sWkC/x3MQQqAIBBA0avIrBN0goquEi20phowDa0oorsnL
+ d/i/wcSRaYErXgg0smJg8/QhYBhMX4myWM2oMJKlRqlpXg7x8cqbQh78NKMFnVDQ03YQM62SBN
+ f/7Lr3/cD7eMPfGIAAAA=
+X-Change-ID: 20260312-beryllium-booton-adb218ec7e28
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Amit Pundir <amit.pundir@linaro.org>, 
+ Joel Selvaraj <foss@joelselvaraj.com>
+Cc: Konrad Dybcio <konradybcio@gmail.com>, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773270407; l=1845;
- i=bence98@sch.bme.hu; s=20260213; h=from:subject:message-id;
- bh=ryeZKOW7CoNcTvHQhdlplcN1pMIWzqbmCO+DbTrOUHo=;
- b=TQXh95Qshna5DUlvdb+3cekUBsb7EGBbjdiOEEpRVdGjKu6uCnWEJ6F4M+n8xqlupNwBMgqIk
- uDLpQEFx+8DAwBBrbkN3uqDNpMaYsnT+UqcAEygIWIgk9Vtrtj9nuHU
-X-Developer-Key: i=bence98@sch.bme.hu; a=ed25519;
- pk=rtWE8PtqZ5ZMyUVCckDq8i1ASLxgUbV2fwDA8KaOli8=
-X-Endpoint-Received: by B4 Relay for bence98@sch.bme.hu/20260213 with auth_id=636
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1043; i=david@ixit.cz;
+ h=from:subject:message-id; bh=y27EVFmPscBC6k41hKpMUbdL61VHoT6gjj25XcDc/Dk=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpsf+YAnO9xEZ8lMwOKBWhFOPOQMvlih5EuNnnm
+ 53ySIoTkbCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCabH/mAAKCRBgAj/E00kg
+ clj5D/9Lt5xAXXYmqCelEPyDL7bwezi4tQGOJuyKg5zLcPhtJSJ2d2+vG1nYRitj53r3Zsa5krr
+ S+IN4u84oGPHaBL0uEhHoR4oiEoPlMAhYuI8dOKkhaB2FsCI4RPCMRiVRNjA7oKCv7pSfo1VBhG
+ RTa9kYwt1h4qY2hUYjdFLqRp0oju1xEmMz0MpGczhGBwNmZLlhPk9GVzIKtiq6SFNk9yxvQF31i
+ uhXRxQA8OouxWblxoC/Wi2Q22eVbEqmJRs6SzfOU7gk06Dy+lDRAVg1tgO+HPNGxbUkdaHPO8Kb
+ qYFqIaLyXPTu6SCgJ6rn4P7Hr0K2+8ounT1XQbtRt/8HAHhcwSXZu2u2GRWQEPi05Ju8W6Y60wH
+ clIjuBqb+3Z7JUPcn4f1jieDXCNjjGflXNb+7QqrQN9El++aaXWacyTW7cbogBWVx/ZSPKPxUIa
+ Fr8bRusFFamAeKX/5eJqelodo1eppiwc/qMhwVUvcHGvxmmYHUGjR1VVopNm0On+C7B7N9Q5svT
+ YNHnJj3dR0MqFXeZEiTJtDRf2wxJD/d6LWqFfRqGoGyNpQyYYk4DdPDB9Ol/Nl72ClRM9Eho1vy
+ EY4QkN7uY9ERikgzFjy+JHKhdUxiWZ57yCZuHCqPIisKbasenuyYeoAp2l1MXE95Rw6PszkAbeF
+ +e9FfCElhpFR8VA==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Instead of "shrinking" the allocation by `kmalloc()`ing a new, smaller
-buffer, utilize `krealloc()` to shrink the existing allocation. This saves
-a `memcpy()`, as well as guards against `smallbuf` allocation failure.
+This regulator provides for the display subsystem, thus must be on.
 
-Signed-off-by: Bence Csókás <bence98@sch.bme.hu>
+Fixes: 77809cf74a8c ("arm64: dts: qcom: Add support for Xiaomi Poco F1 (Beryllium)")
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Using `krealloc()` makes this code from 2005 more readable as well as
-robust. Nested `if`s were also unrolled.
----
- drivers/usb/core/message.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+ arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/usb/core/message.c b/drivers/usb/core/message.c
-index ea970ddf8879..dfe61d8b913b 100644
---- a/drivers/usb/core/message.c
-+++ b/drivers/usb/core/message.c
-@@ -1005,7 +1005,7 @@ int usb_string(struct usb_device *dev, int index, char *buf, size_t size)
- }
- EXPORT_SYMBOL_GPL(usb_string);
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
+index 01b570d0880d6..1298485c42142 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
+@@ -148,6 +148,7 @@ vreg_l1a_0p875: ldo1 {
+ 			regulator-min-microvolt = <880000>;
+ 			regulator-max-microvolt = <880000>;
+ 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
++			regulator-boot-on;
+ 		};
  
--/* one UTF-8-encoded 16-bit character has at most three bytes */
-+/* one 16-bit character, when UTF-8-encoded, has at most three bytes */
- #define MAX_USB_STRING_SIZE (127 * 3 + 1)
- 
- /**
-@@ -1026,17 +1026,17 @@ char *usb_cache_string(struct usb_device *udev, int index)
- 		return NULL;
- 
- 	buf = kmalloc(MAX_USB_STRING_SIZE, GFP_NOIO);
--	if (buf) {
--		len = usb_string(udev, index, buf, MAX_USB_STRING_SIZE);
--		if (len > 0) {
--			smallbuf = kmalloc(++len, GFP_NOIO);
--			if (!smallbuf)
--				return buf;
--			memcpy(smallbuf, buf, len);
--		}
-+	if (!buf)
-+		return NULL;
-+
-+	len = usb_string(udev, index, buf, MAX_USB_STRING_SIZE);
-+	if (len <= 0) {
- 		kfree(buf);
-+		return NULL;
- 	}
--	return smallbuf;
-+
-+	smallbuf = krealloc(buf, len + 1, GFP_NOIO);
-+	return smallbuf ? : buf;
- }
- EXPORT_SYMBOL_GPL(usb_cache_string);
- 
+ 		vreg_l5a_0p8: ldo5 {
 
 ---
-base-commit: 80234b5ab240f52fa45d201e899e207b9265ef91
-change-id: 20260311-usb-krealloc-4e413f239a9f
+base-commit: f90aadf1c67c8b4969d1e5e6d4fd7227adb6e4d7
+change-id: 20260312-beryllium-booton-adb218ec7e28
 
 Best regards,
 -- 
-Bence Csókás <bence98@sch.bme.hu>
+David Heidelberg <david@ixit.cz>
 
