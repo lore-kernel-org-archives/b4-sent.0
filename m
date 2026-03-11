@@ -1,101 +1,91 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Wed, 11 Mar 2026 12:41:20 -0500
-Subject: [PATCH v2] ASoC: codecs: aw88166: Support device specific firmware
+Subject: [PATCH v2 0/5] arm64: dts: qcom: Support AYN QCS8550 Devices
+Date: Wed, 11 Mar 2026 12:44:36 -0500
+Message-Id: <20260311-ayn-qcs8550-v2-0-e66986e0f0cb@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260311-aw88166-fw-v2-1-8ef30dae3657@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23Myw6CMBCF4Vchs3ZML3GKrnwPw6LFFiYRMK0pG
- tJ3t7J2+Z/kfBskH9knuDQbRJ858TLXUIcG+tHOg0e+1wYlFAktBdq1bSURhhXPQrtAxgtSEur
- hGX3g947dutojp9cSP7ud5W/9y2SJApUx5kTaOTL6OkyWH8d+maArpXwB1Wh++qQAAAA=
-X-Change-ID: 20260310-aw88166-fw-903bf67e0621
-To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Weidong Wang <wangweidong.a@awinic.com>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Teguh Sobirin <teguh@sobir.in>, 
- Aaron Kling <webgeek1234@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1WPzW6DMBCEXwXtua68C9jAqe9R5eCfdWKpQGJT1
+ Cji3es4l/Y4I83MNw/InCJnmJoHJN5jjutSBL014C5mObOIvmggSUoSamHui7i5PPS9FKic1Fa
+ 1nklBSVwTh/hT2z5PL5349l1Kt5cJ1mQWbp3nuE1NGKUxPqBT2g22G9XokXtWvgteE2njreLOa
+ /gLU9gqCsmKsvPi1yQM9i2qwdFoadoRnuuXmLc13eu1Yj3na7RF/PdiRyFF4MFSKDjI5uM8m/j
+ 1XjDhdBzHL56r29gkAQAA
+X-Change-ID: 20260217-ayn-qcs8550-16c07b63de26
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>, 
+ Teguh Sobirin <teguh@sobir.in>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773250889; l=2810;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773251087; l=2199;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=PSKCEBezeNkHEqW++qztKOJQazmNiZFBnmyGWtD8itQ=;
- b=ibbTDxi0MgSmlUbX182R8yJdaTgUWglLz7WRAAGGjITToHASWxtBnJxJDRrJTgFk3WhlO3JWV
- uIkEA2vrTEuAHSLZPcg4SHnTfEa48J/1kj8nrYq2EL6ZHeIaK73Wixn
+ bh=DHrlRUrGIAsGAgBu1A4lPkHX7PV0jeBMaHF4PfPMRP8=;
+ b=cE91nB4s1qND9l9JvQ+bXa4SZqjDNCqWkN7H5CqHMAwaxWYhzWxGrRhx9dI3xba66K/jZcb7X
+ KsFqFfSIj9nC+3gCeMHBHfUmcP6wgIuD8Fd5P4hzL2/8n/2c2mS7TsB
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Teguh Sobirin <teguh@sobir.in>
+This specifically includes:
+* Odin 2 Mini
+* Odin 2 Portal
+* Thor
 
-This driver currently loads firmware from a hardcoded path. Support
-loading device specific firmware when provided by the boot firmware.
+The original Odin 2 dtso is not currently included as it has not yet
+been verified.
 
-Signed-off-by: Teguh Sobirin <teguh@sobir.in>
-Co-developed-by: Aaron Kling <webgeek1234@gmail.com>
+The initial port was done by Teguh Sobirin for ROCKNIX and was made
+available on the AYN github [0].
+
+Support has been removed for things not yet supported by the upstream
+kernel, these will be added later when the related drivers are submitted
+and picked up. Such includes:
+
+* All panels
+* The Odin 2 Mini backlight and touch
+* All rgb leds
+* The built-in uart gamepad
+
+This series depends on one other series as described in b4 deps. Namely,
+the one adding the AYN vendor [1]. This must be merged first for schema
+checks to succeed.
+
+[0] https://github.com/AYNTechnologies/linux/commits/sm8550/v6.17.5/
+[1] https://lore.kernel.org/all/20260220-ayn-vendor-v1-1-292cbbb682b3@gmail.com/
+
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-The driver currently loads a hardcoded firmware path. This adds support
-for reading a device specific path from the kernel device tree.
-
-The patch was originally part of a larger change [0] by Teguh Sobirin
-and was cut down to only the device specific firmware part.
-
-[0] https://github.com/AYNTechnologies/linux/commit/9dbdd074423d970a9dec9a60f8bb99f8cfafd6a1
----
 Changes in v2:
-- Rebase on current linux-next and drop the duplicated bindings patch
-- Change Co-authored-by tag to Co-developed-by
-- Drop unrelated of_match_table addition
-- Link to v1: https://lore.kernel.org/r/20260310-aw88166-fw-v1-0-2777563bb673@gmail.com
+- Drop awinic bindings dep as a duplicated patch already exists
+- Change Co-authored-by tags to Co-developed-by
+- Drop alias to currently unused uart15 in patch 2
+- Link to v1: https://lore.kernel.org/r/20260311-ayn-qcs8550-v1-0-fe8b2faad1ea@gmail.com
+
 ---
- sound/soc/codecs/aw88166.c | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+Aaron Kling (1):
+      dt-bindings: arm: qcom: Add AYN QCS8550 Devices
 
-diff --git a/sound/soc/codecs/aw88166.c b/sound/soc/codecs/aw88166.c
-index daee4de9e3b01fb335975a65456cc79575533d7e..ea277a940c44dfbf033ed4a69051bf506252b1c8 100644
---- a/sound/soc/codecs/aw88166.c
-+++ b/sound/soc/codecs/aw88166.c
-@@ -1574,18 +1574,22 @@ static int aw88166_dev_init(struct aw88166 *aw88166, struct aw_container *aw_cfg
- static int aw88166_request_firmware_file(struct aw88166 *aw88166)
- {
- 	const struct firmware *cont = NULL;
-+	const char *fw_name;
- 	int ret;
- 
- 	aw88166->aw_pa->fw_status = AW88166_DEV_FW_FAILED;
- 
--	ret = request_firmware(&cont, AW88166_ACF_FILE, aw88166->aw_pa->dev);
-+	if (device_property_read_string(aw88166->aw_pa->dev, "firmware-name", &fw_name) < 0)
-+		fw_name = AW88166_ACF_FILE;
-+
-+	ret = request_firmware(&cont, fw_name, aw88166->aw_pa->dev);
- 	if (ret) {
--		dev_err(aw88166->aw_pa->dev, "request [%s] failed!\n", AW88166_ACF_FILE);
-+		dev_err(aw88166->aw_pa->dev, "request [%s] failed!\n", fw_name);
- 		return ret;
- 	}
- 
- 	dev_dbg(aw88166->aw_pa->dev, "loaded %s - size: %zu\n",
--			AW88166_ACF_FILE, cont ? cont->size : 0);
-+			fw_name, cont ? cont->size : 0);
- 
- 	aw88166->aw_cfg = devm_kzalloc(aw88166->aw_pa->dev,
- 			struct_size(aw88166->aw_cfg, data, cont->size), GFP_KERNEL);
-@@ -1599,7 +1603,7 @@ static int aw88166_request_firmware_file(struct aw88166 *aw88166)
- 
- 	ret = aw88395_dev_load_acf_check(aw88166->aw_pa, aw88166->aw_cfg);
- 	if (ret) {
--		dev_err(aw88166->aw_pa->dev, "load [%s] failed!\n", AW88166_ACF_FILE);
-+		dev_err(aw88166->aw_pa->dev, "load [%s] failed!\n", fw_name);
- 		return ret;
- 	}
- 
+Teguh Sobirin (4):
+      arm64: dts: qcom: Add AYN QCS8550 Common
+      arm64: dts: qcom: Add AYN Odin 2 Mini
+      arm64: dts: qcom: Add AYN Odin 2 Portal
+      arm64: dts: qcom: Add AYN Thor
 
+ Documentation/devicetree/bindings/arm/qcom.yaml    |   10 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    7 +
+ arch/arm64/boot/dts/qcom/qcs8550-ayntec-common.dts | 1777 ++++++++++++++++++++
+ .../boot/dts/qcom/qcs8550-ayntec-odin2mini.dtso    |  147 ++
+ .../boot/dts/qcom/qcs8550-ayntec-odin2portal.dtso  |   79 +
+ arch/arm64/boot/dts/qcom/qcs8550-ayntec-thor.dtso  |  223 +++
+ 6 files changed, 2243 insertions(+)
 ---
 base-commit: f90aadf1c67c8b4969d1e5e6d4fd7227adb6e4d7
-change-id: 20260310-aw88166-fw-903bf67e0621
+change-id: 20260217-ayn-qcs8550-16c07b63de26
+prerequisite-change-id: 20260220-ayn-vendor-a153168c29b2:v1
+prerequisite-patch-id: 042cab8f04748207ba5395dd0f23c445955aaa2b
 
 Best regards,
 -- 
