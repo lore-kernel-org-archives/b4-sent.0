@@ -1,176 +1,125 @@
-From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Wed, 11 Mar 2026 11:18:02 +0100
-Subject: [PATCH v10 5/5] stmmac: s32: enable support for Multi-IRQ mode
+From: Cedric Jehasse <cedric.jehasse@luminex.be>
+Subject: [PATCH net-next v8 0/2] net: dsa: mv88e6xxx: Add partial support
+ for TCAM entries
+Date: Wed, 11 Mar 2026 11:46:17 +0100
+Message-Id: <20260311-net-next-mv88e6xxx-tcam-v8-0-32dd5ba30002@luminex.be>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260311-dwmac_multi_irq-v10-5-7ab1669759b5@oss.nxp.com>
-References: <20260311-dwmac_multi_irq-v10-0-7ab1669759b5@oss.nxp.com>
-In-Reply-To: <20260311-dwmac_multi_irq-v10-0-7ab1669759b5@oss.nxp.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+X-B4-Tracking: v=1; b=H4sIAPlHsWkC/4XQzU7DMAwA4FeZciYodvNXTrwH4tAkDotEu6ktV
+ dHUd8dUQhRVHYccLNtfbN/EQH2hQTydbqKnqQzl0nHgH04inpvujWRJHAtUaBVCJTsa+c2jbCf
+ vyc7zLMfYtDJbEwisUj4Hwd3XnnKZV/lF/DSJV86cyzBe+s/1ywnW/L/6BBKkMkDGIGGT4/P7R
+ 1u48jHQik64hdwxhAwlr2PWqFKj7Q6qNhDqY6j6hiJ4711ykHEH6S1kjiHNEIDLfDvSkNwOMr9
+ Qpe7cyEglba4Ba+sduv1qdgvdmcgyVGF0OTSRtbSD3AYCdQw5hlyqU6gVYED/B1qW5QvwT17pf
+ wIAAA==
+X-Change-ID: 20260213-net-next-mv88e6xxx-tcam-f65be16008fb
+To: Andrew Lunn <andrew@lunn.ch>, Vladimir Oltean <olteanv@gmail.com>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Chester Lin <chester62515@gmail.com>, Matthias Brugger <mbrugger@suse.com>, 
- Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>, 
- NXP S32 Linux Team <s32@nxp.com>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Frank Li <Frank.Li@nxp.com>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- imx@lists.linux.dev, devicetree@vger.kernel.org, rmk+kernel@armlinux.org.uk, 
- vladimir.oltean@nxp.com, boon.khai.ng@altera.com, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773224290; l=4702;
- i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=Ccg7iBM1Fl+oVJULpuGtFE+LiMWCMv+ramMC+vtotcs=;
- b=NA4rOoHm0n/DYwZQSeJE866ARF5wXy/f96jN8tDBsziRpwH9UEFiInnaYeHEvf4bL31wwMWsa
- EDiwVlwm+hvA7vAiuGrMP0jzgGSPOaNhz3OmTjd7FnWkJIEWlkyCd7L
-X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
- pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
-X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
+ Russell King <linux@armlinux.org.uk>, Jamal Hadi Salim <jhs@mojatatu.com>, 
+ Jiri Pirko <jiri@resnulli.us>, Simon Horman <horms@kernel.org>
+Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
+ Cedric Jehasse <cedric.jehasse@luminex.be>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773225979; l=3809;
+ i=cedric.jehasse@luminex.be; s=20260213; h=from:subject:message-id;
+ bh=CH6f9TMm0d3EtY6ULRD+dt0KRbIlG4y7+cUqEvseSDY=;
+ b=2SQ3BpVZPy/3YfD2osBUlFa8/M7PAupf/i3aXS/J6mGs+x3t1nBoGiFA1n/IS03hv6SNxPxm2
+ BOzP8aWetNGDR7fhMQ/D+Yzdcz9r9rQKurI/LcET5eOjciuTHjKSWaW
+X-Developer-Key: i=cedric.jehasse@luminex.be; a=ed25519;
+ pk=DL2RaHc2bc7tTDTMJdugm42BtJk4Ip+7V41Gkj+Avjk=
+X-Endpoint-Received: by B4 Relay for cedric.jehasse@luminex.be/20260213 with auth_id=638
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Based on previous changes in platform driver, the vendor
-glue driver can enable Multi-IRQ mode, if needed.
+This series adds partial Ternary Content Addressable Memory (TCAM) for
+the mv88e6390 and mv88e6393 family of switches. TCAM entries allow the
+switch to match the first 48 or 96 bytes of a frame and take actions on
+matched frames.
 
-To get enabled Multi-IRQ mode for dwmac-s32, the driver checks:
+This patch introduces a subset of the available TCAM functionality.
+Matching on ip addresses/protocol and trapping to the cpu.
 
-  1) property of 'snps,mtl-xx-config' subnode
-     defines 'snps,xx-queues-to-use' bigger then one, ie:
+Eg. to trap traffic with destination ip 224.0.1.129 to the cpu:
 
-     ethernet@4033c000 {
-         compatible = "nxp,s32g2-dwmac";
-         ...
-         snps,mtl-rx-config = <&mtl_rx_setup>;
-         ...
+tc qdisc add dev p1 clsact
+tc filter add dev p1 ingress protocol ip flower skip_sw \
+    dst_ip 224.0.1.129 action trap
 
-         mtl_rx_setup: rx-queues-config {
-             snps,rx-queues-to-use = <2>;
-         };
+Review of the mv88e6xxx changes have brought to light something in
+cls_flower:
+When adding a classifier with an ipv4 address both
+FLOW_DISSECTOR_KEY_IPV4_ADDRS and FLOW_DISSECTOR_KEY_IPV6_ADDRS bits are
+set in dissector->used_keys.
+A change was made to address this.
 
-  2) queue based IRQs are set, ie:
-
-     ethernet@4033c000 {
-         compatible = "nxp,s32g2-dwmac";
-         ...
-         interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>,
-                      /* CHN 0: tx, rx */
-                      <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>,
-                      <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
-                      /* CHN 1: tx, rx */
-                      <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
-                      <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
-         interrupt-names = "macirq",
-                           "tx-queue-0", "rx-queue-0",
-                           "tx-queue-1", "rx-queue-1";
-
-If those prerequisites are met, the driver switches to Multi-IRQ mode,
-using per-queue IRQs for rx/tx data pathr:
-
-[    1.387045] s32-dwmac 4033c000.ethernet: Multi-IRQ mode (per queue IRQs) selected
-
-Now the driver owns all queues IRQs:
-
-root@s32g399aevb3:~# grep eth /proc/interrupts
- 29:    0    0    0    0    0    0    0    0    GICv3  89 Level   eth0:mac
- 30:    0    0    0    0    0    0    0    0    GICv3  91 Level   eth0:rx-0
- 31:    0    0    0    0    0    0    0    0    GICv3  93 Level   eth0:rx-1
- 32:    0    0    0    0    0    0    0    0    GICv3  95 Level   eth0:rx-2
- 33:    0    0    0    0    0    0    0    0    GICv3  97 Level   eth0:rx-3
- 34:    0    0    0    0    0    0    0    0    GICv3  99 Level   eth0:rx-4
- 35:    0    0    0    0    0    0    0    0    GICv3  90 Level   eth0:tx-0
- 36:    0    0    0    0    0    0    0    0    GICv3  92 Level   eth0:tx-1
- 37:    0    0    0    0    0    0    0    0    GICv3  94 Level   eth0:tx-2
- 38:    0    0    0    0    0    0    0    0    GICv3  96 Level   eth0:tx-3
- 39:    0    0    0    0    0    0    0    0    GICv3  98 Level   eth0:tx-4
-
-Otherwise, if one of the prerequisite don't met, the driver
-continue with MAC IRQ mode:
-
-[    1.387045] s32-dwmac 4033c000.ethernet: MAC IRQ mode selected
-
-And only MAC IRQ will be attached:
-
-root@s32g399aevb3:~# grep eth /proc/interrupts
- 29:    0    0    0    0    0    0    0    0    GICv3  89 Level   eth0:mac
-
-What represents the original MAC IRQ mode and is fully backward
-compatible.
-
-Reviewed-by: Matthias Brugger <mbrugger@suse.com>
-Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+Signed-off-by: Cedric Jehasse <cedric.jehasse@luminex.be>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c | 36 ++++++++++++++++++++++++-
- 1 file changed, 35 insertions(+), 1 deletion(-)
+Changes in v8:
+- add teardown function for tcflower to free entries in the tcam list
+- Link to v7: https://lore.kernel.org/r/20260310-net-next-mv88e6xxx-tcam-v7-0-7d9db9012b28@luminex.be
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-index af594a096676..d4e0c9f44fb3 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-@@ -2,7 +2,7 @@
- /*
-  * NXP S32G/R GMAC glue layer
-  *
-- * Copyright 2019-2024 NXP
-+ * Copyright 2019-2026 NXP
-  *
-  */
- 
-@@ -110,6 +110,37 @@ static void s32_gmac_exit(struct device *dev, void *priv)
- 	clk_disable_unprepare(gmac->rx_clk);
- }
- 
-+static void s32_gmac_setup_multi_irq(struct device *dev,
-+				     struct plat_stmmacenet_data *plat,
-+				     struct stmmac_resources *res)
-+{
-+	int i;
-+
-+	/* RX IRQs */
-+	STMMAC_FOREACH_MTL_QUEUE(i, plat->rx_queues_to_use) {
-+		if (res->rx_irq[i] <= 0) {
-+			dev_dbg(dev, "Missing RX queue %d interrupt\n", i);
-+			goto mac_irq_mode;
-+		}
-+	}
-+
-+	/* TX IRQs */
-+	STMMAC_FOREACH_MTL_QUEUE(i, plat->tx_queues_to_use) {
-+		if (res->tx_irq[i] <= 0) {
-+			dev_dbg(dev, "Missing TX queue %d interrupt\n", i);
-+			goto mac_irq_mode;
-+		}
-+	}
-+
-+	plat->flags |= STMMAC_FLAG_MULTI_MSI_EN;
-+	dev_info(dev, "Multi-IRQ mode (per queue IRQs) selected\n");
-+	return;
-+
-+mac_irq_mode:
-+	plat->flags &= ~STMMAC_FLAG_MULTI_MSI_EN;
-+	dev_info(dev, "MAC IRQ mode selected\n");
-+}
-+
- static int s32_dwmac_probe(struct platform_device *pdev)
- {
- 	struct plat_stmmacenet_data *plat;
-@@ -165,6 +196,9 @@ static int s32_dwmac_probe(struct platform_device *pdev)
- 	plat->core_type = DWMAC_CORE_GMAC4;
- 	plat->pmt = 1;
- 	plat->flags |= STMMAC_FLAG_SPH_DISABLE;
-+
-+	s32_gmac_setup_multi_irq(dev, plat, &res);
-+
- 	plat->rx_fifo_size = 20480;
- 	plat->tx_fifo_size = 20480;
- 
+Changes in v7:
+- clear register field before setting it
+- fix name inconsistency of mv88e6xx_flower_parse_key
+- use defines for spv and spv_mask register fields
+- Link to v6: https://lore.kernel.org/r/20260305-net-next-mv88e6xxx-tcam-v6-0-32c7fbac129d@luminex.be
 
+Changes in v6:
+- add num_tcam_entries in chip info and check this is not exceeded when
+  adding an entry
+- fix use after free in error path of tcam entry deletion
+- fix copy/paste mistake in comment
+- Link to v5: https://lore.kernel.org/r/20260303-net-next-mv88e6xxx-tcam-v5-0-6f9129687276@luminex.be
+
+Changes in v5:
+- changes to cls_flower to only set the correct
+  FLOW_DISSECTOR_KEY_IPV*_ADDRS bits
+- Link to v4: https://lore.kernel.org/r/20260225-net-next-mv88e6xxx-tcam-v4-1-117f600e41d7@luminex.be
+
+Changes in v4:
+- return -ENOMEM on allocation failure
+- fix double mv88e6xxx_reg_unlock
+- return -EOPNOTSUPP for unsupported addr_type
+- improve error handling in mv88e6xxx_tcam_entry_del
+- Link to v3: https://lore.kernel.org/r/20260224-net-next-mv88e6xxx-tcam-v3-1-dc18887d71f2@luminex.be
+
+Changes in v3:
+- move locking to top level functions
+- use defines for match field offsets
+- use correct comment style
+- remove warning used for debugging
+- rename rc variables to err
+- limit line length to 80 characters
+- Link to v2: https://lore.kernel.org/r/20260217-net-next-mv88e6xxx-tcam-v2-1-d84cf420da46@luminex.be
+
+Changes in RFC-v2:
+- moved tcam_addr to chip info struct and remove tcam_support field
+- added 6393-specific tcam ops that write the TCAM extension register
+- rename the defines for TCAM registers to be consistent
+- reverse christmas tree variable declarations
+- Link to v1: https://lore.kernel.org/r/20260213-net-next-mv88e6xxx-tcam-v1-1-051e552e2afc@luminex.be
+
+---
+Cedric Jehasse (2):
+      net/sched: cls_flower: remove unions from fl_flow_key
+      net: dsa: mv88e6xxx: Add partial support for TCAM entries
+
+ drivers/net/dsa/mv88e6xxx/Makefile   |   2 +
+ drivers/net/dsa/mv88e6xxx/chip.c     |  35 ++++
+ drivers/net/dsa/mv88e6xxx/chip.h     |  52 ++++++
+ drivers/net/dsa/mv88e6xxx/port.c     |  28 ++-
+ drivers/net/dsa/mv88e6xxx/port.h     |   7 +-
+ drivers/net/dsa/mv88e6xxx/tcam.c     | 338 +++++++++++++++++++++++++++++++++++
+ drivers/net/dsa/mv88e6xxx/tcam.h     |  41 +++++
+ drivers/net/dsa/mv88e6xxx/tcflower.c | 167 +++++++++++++++++
+ drivers/net/dsa/mv88e6xxx/tcflower.h |  14 ++
+ net/sched/cls_flower.c               |  12 +-
+ 10 files changed, 686 insertions(+), 10 deletions(-)
+---
+base-commit: cd51b40495c09b92beea6893663b3d0ed7605e81
+change-id: 20260213-net-next-mv88e6xxx-tcam-f65be16008fb
+
+Best regards,
 -- 
-2.47.0
+Cedric Jehasse <cedric.jehasse@luminex.be>
 
