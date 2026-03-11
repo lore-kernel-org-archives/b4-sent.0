@@ -1,18 +1,13 @@
 From: Cedric Jehasse <cedric.jehasse@luminex.be>
-Subject: [PATCH net-next v8 0/2] net: dsa: mv88e6xxx: Add partial support
- for TCAM entries
-Date: Wed, 11 Mar 2026 11:46:17 +0100
-Message-Id: <20260311-net-next-mv88e6xxx-tcam-v8-0-32dd5ba30002@luminex.be>
+Date: Wed, 11 Mar 2026 11:46:18 +0100
+Subject: [PATCH net-next v8 1/2] net/sched: cls_flower: remove unions from
+ fl_flow_key
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPlHsWkC/4XQzU7DMAwA4FeZciYodvNXTrwH4tAkDotEu6ktV
- dHUd8dUQhRVHYccLNtfbN/EQH2hQTydbqKnqQzl0nHgH04inpvujWRJHAtUaBVCJTsa+c2jbCf
- vyc7zLMfYtDJbEwisUj4Hwd3XnnKZV/lF/DSJV86cyzBe+s/1ywnW/L/6BBKkMkDGIGGT4/P7R
- 1u48jHQik64hdwxhAwlr2PWqFKj7Q6qNhDqY6j6hiJ4711ykHEH6S1kjiHNEIDLfDvSkNwOMr9
- Qpe7cyEglba4Ba+sduv1qdgvdmcgyVGF0OTSRtbSD3AYCdQw5hlyqU6gVYED/B1qW5QvwT17pf
- wIAAA==
-X-Change-ID: 20260213-net-next-mv88e6xxx-tcam-f65be16008fb
+Message-Id: <20260311-net-next-mv88e6xxx-tcam-v8-1-32dd5ba30002@luminex.be>
+References: <20260311-net-next-mv88e6xxx-tcam-v8-0-32dd5ba30002@luminex.be>
+In-Reply-To: <20260311-net-next-mv88e6xxx-tcam-v8-0-32dd5ba30002@luminex.be>
 To: Andrew Lunn <andrew@lunn.ch>, Vladimir Oltean <olteanv@gmail.com>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
@@ -21,105 +16,63 @@ To: Andrew Lunn <andrew@lunn.ch>, Vladimir Oltean <olteanv@gmail.com>,
 Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
  Cedric Jehasse <cedric.jehasse@luminex.be>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773225979; l=3809;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773225979; l=1808;
  i=cedric.jehasse@luminex.be; s=20260213; h=from:subject:message-id;
- bh=CH6f9TMm0d3EtY6ULRD+dt0KRbIlG4y7+cUqEvseSDY=;
- b=2SQ3BpVZPy/3YfD2osBUlFa8/M7PAupf/i3aXS/J6mGs+x3t1nBoGiFA1n/IS03hv6SNxPxm2
- BOzP8aWetNGDR7fhMQ/D+Yzdcz9r9rQKurI/LcET5eOjciuTHjKSWaW
+ bh=XHxAavS3OSIr6KhDGV4nKk6jIBOKNR2K6BPZWurwweQ=;
+ b=wH1zISXh7Ry363esXvi+pN2gsBRFcZGZboEw2AXtTTunHLYG2RdVol4+tky8X+kPOPfRVjxRj
+ J76t90gItbYAB9BWhP6ggWYannW3PgclHPAZWqafwxP5EgarJ6GaHuZ
 X-Developer-Key: i=cedric.jehasse@luminex.be; a=ed25519;
  pk=DL2RaHc2bc7tTDTMJdugm42BtJk4Ip+7V41Gkj+Avjk=
 X-Endpoint-Received: by B4 Relay for cedric.jehasse@luminex.be/20260213 with auth_id=638
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds partial Ternary Content Addressable Memory (TCAM) for
-the mv88e6390 and mv88e6393 family of switches. TCAM entries allow the
-switch to match the first 48 or 96 bytes of a frame and take actions on
-matched frames.
+When creating a flower classifier with an ipv4 address the
+flow_dissector has both FLOW_DISSECTOR_KEY_IPV4_ADDRS and
+FLOW_DISSECTOR_KEY_IPV6_ADDRS bits set in used_keys.
+This happens because ipv4/ipv6 fields are a union and
+FL_KEY_SET_IF_MASKED() will interpret either being set as both.
 
-This patch introduces a subset of the available TCAM functionality.
-Matching on ip addresses/protocol and trapping to the cpu.
+Removing the unions fixes this behavior without needing special handling
+for union fields.
 
-Eg. to trap traffic with destination ip 224.0.1.129 to the cpu:
-
-tc qdisc add dev p1 clsact
+Example of a command that caused FLOW_DISSECTOR_KEY_IPV4_ADDRS and
+FLOW_DISSECTOR_KEY_IPV6_ADDRS to be set:
 tc filter add dev p1 ingress protocol ip flower skip_sw \
     dst_ip 224.0.1.129 action trap
 
-Review of the mv88e6xxx changes have brought to light something in
-cls_flower:
-When adding a classifier with an ipv4 address both
-FLOW_DISSECTOR_KEY_IPV4_ADDRS and FLOW_DISSECTOR_KEY_IPV6_ADDRS bits are
-set in dissector->used_keys.
-A change was made to address this.
-
 Signed-off-by: Cedric Jehasse <cedric.jehasse@luminex.be>
 ---
-Changes in v8:
-- add teardown function for tcflower to free entries in the tcam list
-- Link to v7: https://lore.kernel.org/r/20260310-net-next-mv88e6xxx-tcam-v7-0-7d9db9012b28@luminex.be
+ net/sched/cls_flower.c | 12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
 
-Changes in v7:
-- clear register field before setting it
-- fix name inconsistency of mv88e6xx_flower_parse_key
-- use defines for spv and spv_mask register fields
-- Link to v6: https://lore.kernel.org/r/20260305-net-next-mv88e6xxx-tcam-v6-0-32c7fbac129d@luminex.be
+diff --git a/net/sched/cls_flower.c b/net/sched/cls_flower.c
+index 7669371c1354..b95dbe847dde 100644
+--- a/net/sched/cls_flower.c
++++ b/net/sched/cls_flower.c
+@@ -59,18 +59,14 @@ struct fl_flow_key {
+ 	struct flow_dissector_key_eth_addrs eth;
+ 	struct flow_dissector_key_vlan vlan;
+ 	struct flow_dissector_key_vlan cvlan;
+-	union {
+-		struct flow_dissector_key_ipv4_addrs ipv4;
+-		struct flow_dissector_key_ipv6_addrs ipv6;
+-	};
++	struct flow_dissector_key_ipv4_addrs ipv4;
++	struct flow_dissector_key_ipv6_addrs ipv6;
+ 	struct flow_dissector_key_ports tp;
+ 	struct flow_dissector_key_icmp icmp;
+ 	struct flow_dissector_key_arp arp;
+ 	struct flow_dissector_key_keyid enc_key_id;
+-	union {
+-		struct flow_dissector_key_ipv4_addrs enc_ipv4;
+-		struct flow_dissector_key_ipv6_addrs enc_ipv6;
+-	};
++	struct flow_dissector_key_ipv4_addrs enc_ipv4;
++	struct flow_dissector_key_ipv6_addrs enc_ipv6;
+ 	struct flow_dissector_key_ports enc_tp;
+ 	struct flow_dissector_key_mpls mpls;
+ 	struct flow_dissector_key_tcp tcp;
 
-Changes in v6:
-- add num_tcam_entries in chip info and check this is not exceeded when
-  adding an entry
-- fix use after free in error path of tcam entry deletion
-- fix copy/paste mistake in comment
-- Link to v5: https://lore.kernel.org/r/20260303-net-next-mv88e6xxx-tcam-v5-0-6f9129687276@luminex.be
-
-Changes in v5:
-- changes to cls_flower to only set the correct
-  FLOW_DISSECTOR_KEY_IPV*_ADDRS bits
-- Link to v4: https://lore.kernel.org/r/20260225-net-next-mv88e6xxx-tcam-v4-1-117f600e41d7@luminex.be
-
-Changes in v4:
-- return -ENOMEM on allocation failure
-- fix double mv88e6xxx_reg_unlock
-- return -EOPNOTSUPP for unsupported addr_type
-- improve error handling in mv88e6xxx_tcam_entry_del
-- Link to v3: https://lore.kernel.org/r/20260224-net-next-mv88e6xxx-tcam-v3-1-dc18887d71f2@luminex.be
-
-Changes in v3:
-- move locking to top level functions
-- use defines for match field offsets
-- use correct comment style
-- remove warning used for debugging
-- rename rc variables to err
-- limit line length to 80 characters
-- Link to v2: https://lore.kernel.org/r/20260217-net-next-mv88e6xxx-tcam-v2-1-d84cf420da46@luminex.be
-
-Changes in RFC-v2:
-- moved tcam_addr to chip info struct and remove tcam_support field
-- added 6393-specific tcam ops that write the TCAM extension register
-- rename the defines for TCAM registers to be consistent
-- reverse christmas tree variable declarations
-- Link to v1: https://lore.kernel.org/r/20260213-net-next-mv88e6xxx-tcam-v1-1-051e552e2afc@luminex.be
-
----
-Cedric Jehasse (2):
-      net/sched: cls_flower: remove unions from fl_flow_key
-      net: dsa: mv88e6xxx: Add partial support for TCAM entries
-
- drivers/net/dsa/mv88e6xxx/Makefile   |   2 +
- drivers/net/dsa/mv88e6xxx/chip.c     |  35 ++++
- drivers/net/dsa/mv88e6xxx/chip.h     |  52 ++++++
- drivers/net/dsa/mv88e6xxx/port.c     |  28 ++-
- drivers/net/dsa/mv88e6xxx/port.h     |   7 +-
- drivers/net/dsa/mv88e6xxx/tcam.c     | 338 +++++++++++++++++++++++++++++++++++
- drivers/net/dsa/mv88e6xxx/tcam.h     |  41 +++++
- drivers/net/dsa/mv88e6xxx/tcflower.c | 167 +++++++++++++++++
- drivers/net/dsa/mv88e6xxx/tcflower.h |  14 ++
- net/sched/cls_flower.c               |  12 +-
- 10 files changed, 686 insertions(+), 10 deletions(-)
----
-base-commit: cd51b40495c09b92beea6893663b3d0ed7605e81
-change-id: 20260213-net-next-mv88e6xxx-tcam-f65be16008fb
-
-Best regards,
 -- 
-Cedric Jehasse <cedric.jehasse@luminex.be>
+2.43.0
 
