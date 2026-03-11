@@ -1,165 +1,99 @@
-From: Leno Hou <lenohou@gmail.com>
-Date: Wed, 11 Mar 2026 20:09:43 +0800
-Subject: [PATCH v2 2/2] mm/mglru: maintain workingset refault context
- across state transitions
+From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Subject: [PATCH v7 0/3] riscv: Use GCR.U timer device as clocksource
+Date: Wed, 11 Mar 2026 14:26:54 +0100
+Message-Id: <20260311-riscv-time-mmio-v7-0-016845a0f808@htecgroup.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260311-b4-switch-mglru-v2-v2-2-080cb9321463@gmail.com>
-References: <20260311-b4-switch-mglru-v2-v2-0-080cb9321463@gmail.com>
-In-Reply-To: <20260311-b4-switch-mglru-v2-v2-0-080cb9321463@gmail.com>
-To: Andrew Morton <akpm@linux-foundation.org>, 
- Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
- Wei Xu <weixugc@google.com>, Jialing Wang <wjl.linux@gmail.com>, 
- Yafang Shao <laoar.shao@gmail.com>, Yu Zhao <yuzhao@google.com>, 
- Kairui Song <ryncsn@gmail.com>, Bingfang Guo <bfguo@icloud.com>, 
- Barry Song <baohua@kernel.org>
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
- Leno Hou <lenohou@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773230982; l=5011;
- i=lenohou@gmail.com; s=20260311; h=from:subject:message-id;
- bh=mpnWMW6S89qGDIwaKivQjNoGDsv2soTWaW1Gf6K14EE=;
- b=xcndljvTygCcwBzsgj8nOw/iRC7PBqzNOjNrqjCnt1Bogi0UldgGc+rLPInShme/2seEjuxVE
- 5txGqDKNySACcCOr+H31oDye4fgESyq3o03RYnnnbcViC1fsrV+Y3ed
-X-Developer-Key: i=lenohou@gmail.com; a=ed25519;
- pk=8AVHXYurzu1kOGjk9rwvxovwSCynBkv2QAcOvSIe1rw=
-X-Endpoint-Received: by B4 Relay for lenohou@gmail.com/20260311 with auth_id=674
+X-B4-Tracking: v=1; b=H4sIAJ5tsWkC/23NQQ7CIBCF4asY1mJgUhBceQ/josJgZ1ExUImm6
+ d2ldWFiXf4vmW9GljERZnbYjCxhoUzxVmO/3TDXtbcrcvK1GQhQooGGJ8qu8IF65H1PkSsNBkV
+ wrWkDq1f3hIGei3g61+4oDzG9lgelmdePpeTaKg0X3F2EC2ABvNbHbkB3TfFx37nYs9kr6mvsp
+ VwbqhoWvQwGVOsV/jP01zBCrw1dDfBBoAFprTW/xjRNb1bYGfI6AQAA
+X-Change-ID: 20250424-riscv-time-mmio-5628e0fca8af
+To: Daniel Lezcano <daniel.lezcano@linaro.org>, 
+ Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Paul Walmsley <paul.walmsley@sifive.com>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ Alexandre Ghiti <alex@ghiti.fr>, Paul Walmsley <pjw@kernel.org>, 
+ John Stultz <jstultz@google.com>, Stephen Boyd <sboyd@kernel.org>, 
+ Vivian Wang <wangruikang@iscas.ac.cn>
+Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-riscv@lists.infradead.org, 
+ Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
+ Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
+ Chao-ying Fu <cfu@mips.com>, Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773235633; l=2879;
+ i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
+ bh=ePHchjnhwuY+HtMvCqWbW0nK976smbTfakDyyaKGCPs=;
+ b=fkCkl0GxzOWg/0LN7Yq8FbQepOoJ8On8qs/X3czJQ4tyW3a9cG+KEyiZo6KHMeEh5eEM7PwsL
+ 2J/cOJRQcL5CyvNAcMBQMDgs4QuKm3cVf0H3TDMqkAN5/T01YSZrBmK
+X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
+ pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
+X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When MGLRU state is toggled dynamically, existing shadow entries (eviction
-tokens) lose their context. Traditional LRU and MGLRU handle workingset
-refaults using different logic. Without context, shadow entries
-re-activated by the "wrong" reclaim logic trigger excessive page
-activations (pgactivate) and system thrashing, as the kernel cannot
-correctly distinguish if a refaulted page was originally managed by
-MGLRU or the traditional LRU.
+This series adds bindings for the GCR.U timer device and corresponding
+driver support. Accessing the memory mapped shadow of the mtime register
+in the GCR.U region should be faster
+than trapping to M mode each time the timer needs to be read.
+The timer device does not implement any interrupts, therefore the
+timer-riscv clockevent implementation should suffice.
 
-This patch introduces shadow entry context tracking:
+We tested the patchset both on QEMU and the Boston board with the P8700 bitfile:
+- Coremark and timer kselftests on QEMU emulating an 8 core CPU
+- Coremark and timer kselftests on the Boston board with a single core CPU.
 
-- Encode MGLRU origin: Introduce WORKINGSET_MGLRU_SHIFT into the shadow
-  entry (eviction token) encoding. This adds an 'is_mglru' bit to shadow
-  entries, allowing the kernel to correctly identify the originating
-  reclaim logic for a page even after the global MGLRU state has been
-  toggled.
-
-- Refault logic dispatch: Use this 'is_mglru' bit in workingset_refault()
-  and workingset_test_recent() to dispatch refault events to the correct
-  handler (lru_gen_refault vs. traditional workingset refault).
-
-This ensures that refaulted pages are handled by the appropriate reclaim
-logic regardless of the current MGLRU enabled state, preventing
-unnecessary thrashing and state-inconsistent refault activations during
-state transitions.
-
-To: Andrew Morton <akpm@linux-foundation.org>
-To: Axel Rasmussen <axelrasmussen@google.com>
-To: Yuanchu Xie <yuanchu@google.com>
-To: Wei Xu <weixugc@google.com>
-To: Barry Song <21cnbao@gmail.com>
-To: Jialing Wang <wjl.linux@gmail.com>
-To: Yafang Shao <laoar.shao@gmail.com>
-To: Yu Zhao <yuzhao@google.com>
-To: Kairui Song <ryncsn@gmail.com>
-To: Bingfang Guo <bfguo@icloud.com>
-Cc: linux-mm@kvack.org
-Cc: linux-kernel@vger.kernel.org
-Signed-off-by: Leno Hou <lenohou@gmail.com>
+Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Signed-off-by: Djordje Todorovic <djordje.todorovic@htecgroup.com>
+Signed-off-by: Chao-ying Fu <cfu@mips.com>
 ---
- mm/workingset.c | 19 +++++++++++++------
- 1 file changed, 13 insertions(+), 6 deletions(-)
+Changes in v7:
+- Replace the previous implementation with a new timer driver for mips,p8700-gcru
+- Add a patch for 64bit reads for timer mmio
+- Link to v6: https://lore.kernel.org/r/20250806-riscv-time-mmio-v6-0-2df0e8219998@htecgroup.com
 
-diff --git a/mm/workingset.c b/mm/workingset.c
-index 13422d304715..baa766daac24 100644
---- a/mm/workingset.c
-+++ b/mm/workingset.c
-@@ -180,8 +180,10 @@
-  * refault distance will immediately activate the refaulting page.
-  */
- 
-+#define WORKINGSET_MGLRU_SHIFT  1
- #define WORKINGSET_SHIFT 1
- #define EVICTION_SHIFT	((BITS_PER_LONG - BITS_PER_XA_VALUE) +	\
-+			 WORKINGSET_MGLRU_SHIFT + \
- 			 WORKINGSET_SHIFT + NODES_SHIFT + \
- 			 MEM_CGROUP_ID_SHIFT)
- #define EVICTION_MASK	(~0UL >> EVICTION_SHIFT)
-@@ -197,12 +199,13 @@
- static unsigned int bucket_order __read_mostly;
- 
- static void *pack_shadow(int memcgid, pg_data_t *pgdat, unsigned long eviction,
--			 bool workingset)
-+			 bool workingset, bool is_mglru)
- {
- 	eviction &= EVICTION_MASK;
- 	eviction = (eviction << MEM_CGROUP_ID_SHIFT) | memcgid;
- 	eviction = (eviction << NODES_SHIFT) | pgdat->node_id;
- 	eviction = (eviction << WORKINGSET_SHIFT) | workingset;
-+	eviction = (eviction << WORKINGSET_MGLRU_SHIFT) | is_mglru;
- 
- 	return xa_mk_value(eviction);
- }
-@@ -214,6 +217,7 @@ static void unpack_shadow(void *shadow, int *memcgidp, pg_data_t **pgdat,
- 	int memcgid, nid;
- 	bool workingset;
- 
-+	entry >>= WORKINGSET_MGLRU_SHIFT;
- 	workingset = entry & ((1UL << WORKINGSET_SHIFT) - 1);
- 	entry >>= WORKINGSET_SHIFT;
- 	nid = entry & ((1UL << NODES_SHIFT) - 1);
-@@ -254,7 +258,7 @@ static void *lru_gen_eviction(struct folio *folio)
- 	hist = lru_hist_from_seq(min_seq);
- 	atomic_long_add(delta, &lrugen->evicted[hist][type][tier]);
- 
--	return pack_shadow(mem_cgroup_private_id(memcg), pgdat, token, workingset);
-+	return pack_shadow(mem_cgroup_private_id(memcg), pgdat, token, workingset, true);
- }
- 
- /*
-@@ -390,7 +394,7 @@ void *workingset_eviction(struct folio *folio, struct mem_cgroup *target_memcg)
- 	VM_BUG_ON_FOLIO(folio_ref_count(folio), folio);
- 	VM_BUG_ON_FOLIO(!folio_test_locked(folio), folio);
- 
--	if (lru_gen_enabled())
-+	if (folio_lru_gen(folio) != -1)
- 		return lru_gen_eviction(folio);
- 
- 	lruvec = mem_cgroup_lruvec(target_memcg, pgdat);
-@@ -400,7 +404,7 @@ void *workingset_eviction(struct folio *folio, struct mem_cgroup *target_memcg)
- 	eviction >>= bucket_order;
- 	workingset_age_nonresident(lruvec, folio_nr_pages(folio));
- 	return pack_shadow(memcgid, pgdat, eviction,
--				folio_test_workingset(folio));
-+				folio_test_workingset(folio), false);
- }
- 
- /**
-@@ -426,8 +430,10 @@ bool workingset_test_recent(void *shadow, bool file, bool *workingset,
- 	int memcgid;
- 	struct pglist_data *pgdat;
- 	unsigned long eviction;
-+	unsigned long entry = xa_to_value(shadow);
-+	bool is_mglru = !!(entry & WORKINGSET_MGLRU_SHIFT);
- 
--	if (lru_gen_enabled()) {
-+	if (is_mglru) {
- 		bool recent;
- 
- 		rcu_read_lock();
-@@ -539,10 +545,11 @@ void workingset_refault(struct folio *folio, void *shadow)
- 	struct lruvec *lruvec;
- 	bool workingset;
- 	long nr;
-+	unsigned long entry = xa_to_value(shadow);
- 
- 	VM_BUG_ON_FOLIO(!folio_test_locked(folio), folio);
- 
--	if (lru_gen_enabled()) {
-+	if (entry & ((1UL << WORKINGSET_MGLRU_SHIFT) - 1)) {
- 		lru_gen_refault(folio, shadow);
- 		return;
- 	}
+Changes in v6:
+- Rename mti,gcru to mips,p8700-gcru
+- Link to v5: https://lore.kernel.org/r/20250711-riscv-time-mmio-v5-0-9ed1f825ad5e@htecgroup.com
 
+Changes in v5:
+- Fixed build issues on 32-bit RISC-V and sparse warnings
+- Remove clint_time_val and clint.h, replace with riscv_time_val
+- Depend on RISCV_TIMER in Kconfig
+
+Changes in v4:
+- Remove "select" from mti,gcru.yaml.
+- Refactor the driver to use function pointers instead of static keys.
+
+Previous versions:
+v1: https://lore.kernel.org/lkml/20241227150056.191794-1-arikalo@gmail.com/#t
+v2: https://lore.kernel.org/linux-riscv/20250409143816.15802-1-aleksa.paunovic@htecgroup.com/
+v3: https://lore.kernel.org/linux-riscv/DU0PR09MB61968695A2A3146EE83B7708F6BA2@DU0PR09MB6196.eurprd09.prod.outlook.com/
+v4: https://lore.kernel.org/r/20250514-riscv-time-mmio-v4-0-cb0cf2922d66@htecgroup.com
+v5: https://lore.kernel.org/r/20250711-riscv-time-mmio-v5-0-9ed1f825ad5e@htecgroup.com
+v6: https://lore.kernel.org/r/20250806-riscv-time-mmio-v6-0-2df0e8219998@htecgroup.com
+
+---
+Aleksa Paunovic (3):
+      dt-bindings: timer: mips,p8700-gcru
+      riscv: clocksource: Add readq options to clocksource mmio
+      riscv: clocksource: Add p8700-gcru driver
+
+ .../devicetree/bindings/timer/mips,p8700-gcru.yaml | 38 ++++++++++++++++++
+ drivers/clocksource/Kconfig                        |  9 +++++
+ drivers/clocksource/Makefile                       |  1 +
+ drivers/clocksource/mmio.c                         | 14 +++++++
+ drivers/clocksource/timer-p8700.c                  | 45 ++++++++++++++++++++++
+ include/linux/clocksource.h                        |  4 ++
+ 6 files changed, 111 insertions(+)
+---
+base-commit: ac3fd01e4c1efce8f2c054cdeb2ddd2fc0fb150d
+change-id: 20250424-riscv-time-mmio-5628e0fca8af
+
+Best regards,
 -- 
-2.52.0
+Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 
