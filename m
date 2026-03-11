@@ -1,15 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH 0/2] Add framebuffer on Xiaomi Poco F1 and disable the MDSS
- on tianma panel variant
-Date: Wed, 11 Mar 2026 19:44:28 +0100
-Message-Id: <20260311-beryllium-fb-v1-0-408a580d125e@ixit.cz>
+Date: Wed, 11 Mar 2026 19:44:29 +0100
+Subject: [PATCH 1/2] arm64: dts: qcom: sdm845-xiaomi-beryllium: Introduce
+ framebuffer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAy4sWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDQwNz3aTUosqcnMzSXN20JN0U41QL86RkI4OkVAMloJaCotS0zAqwcdG
- xtbUA/dmuaV4AAAA=
-X-Change-ID: 20260107-beryllium-fb-d3e87bc20be0
+Message-Id: <20260311-beryllium-fb-v1-1-408a580d125e@ixit.cz>
+References: <20260311-beryllium-fb-v1-0-408a580d125e@ixit.cz>
+In-Reply-To: <20260311-beryllium-fb-v1-0-408a580d125e@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -18,46 +16,63 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=828; i=david@ixit.cz;
- h=from:subject:message-id; bh=8+88lGJnGD+j6NV1gC42NaIw5lR/TlH0YzC8mNmFOl8=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpsbgOMYYduiFV4B7jZjUm5CNR6u5lX/4g4QjfR
- TMWRIBeuB2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCabG4DgAKCRBgAj/E00kg
- cpAdD/0YQ3QBWu+MFBZKBkilMx/g8Zg9tUGg4rfcYJN62QamaydFWZUXD4apwX6a2DGZ1ror9/N
- l10tC1PjDTt8c6L0MWwrTuc3OMQaUA/EtkFyy7n4ho+ehJ4C4OkRKLxRfu1RSu6hFgXvHirp8B1
- 4a2G6gPwyvGkdytzZBPKzCuOAYJnCCbQUfZK3qBYEwM+X4arhlePM0JUHebFK7DQACqanVA9jdl
- 7ReFnam0bbabxMcThcBXxNS/TWenURnR8xJ8vonUFVBNhhsfr9Ex9LLfwfWafZ0lDYey9dP3uqo
- Lj3zzNeg4HX5Ksc9MfnNMw6vFmQslKKluAUSbaerxUgHvlllF/Pq+7TQQ2BH2hSgKJ0hHToj/wf
- rBne2lB1c8BAxvGr5HPxj0JWgXHuwPhAkKhlvD66SOptJXyDBFVUZMYjgigkwkMN+DSEo1QNcHh
- m05Xuhdt58wpFKJM8NquRtPoYMnsAqZYg4+8pNWUivagsbY16wIOlKn9oVlYT8mKYDO2nvkq6zZ
- DTM1o8TqFOTsMERicW74UkWHdtQZ8bgSPYLQEkK73LC7Uss03B+yzS0PaGgnO0uRVWnNDY9ZVc1
- QUs0r2sM/Fg7ck1q7srj3jOfzebAVkDAAeVGtjQjADHZGVCvuP1AbHYG+4xZQBGJv2kZ3CKNQCA
- cEMr/+QwQ9KDcBQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1053; i=david@ixit.cz;
+ h=from:subject:message-id; bh=i+PpcsXJJ53DrxBp3ADnJsJTSeGIaZ45KNoGbwtVT7c=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpsbgO+vyDUcHpIKz/T39SZ3iI42Y1qchdCybkd
+ Sby9saxZLSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCabG4DgAKCRBgAj/E00kg
+ coi6D/9E4h6y/4CrOKrqkUzpAtAdVD47dHUZ3BnJEqDl2xqoJx0vCQlX97QkiNSKsJ64e/S2lUg
+ naF0xH+f5hxXYfYYp7r6ZTxPNf6mdM8RPHAIlGhK3KFWNJz57joD1cRA7loPBLx4Aj7ZJxcmKG2
+ uWsxos0zIkAE8tLRdLYhimr4QcJ+nLO0KQ0w23KVVWSg97uUdsD29Gp2FolsomQdlOUh9jL5xOZ
+ +Cz4VfZKMQCqo9DELgoj+NRWUlA2VyR+7TYXNXj8Ec4EzBxI058/NMOYTN/W07KduTUcQesNaY+
+ B0vXbR6qXSR0YwACGvTF0ogjwFQMLVA3lo5BXUmkYDgCgq26Krnnnh+5/m14allMiPs8KXqMNp9
+ 0OEFHlizKEe30Wb2EKl0LtgAZnW3H3k1G+6/86UYwhEblpCf1hYWffMSgeXAbEMFGZJcx+Pp5kq
+ kq66KJchdxnoKu7NbefvqHa45UKFLhKnKEmLmWampYTuKefo+BQMOU0yT6meofeI9lHySARUYVt
+ ichOBjeYYqjFbHXO/hFP/SKyGhSb3OhtQJl8m2jFyN9Snz0v/5yivMqFpHgkoApmtq8bl1IVCTe
+ QzxYq4bm0letvP9zvOL3AwrpdQfawZWA/GDGWc5GktYK2INjQ0sUlgzQoFSm1J7ymjU3hYfmsp6
+ z8s3lxaHQIU2YCQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable framebuffer for early console output.
+From: Petr Hodina <petr.hodina@protonmail.com>
 
-Due to broken panel driver on tianma and no visual output it's better
-to disable the MDSS so the framebuffer stays on. 
-
-In case second patch gets rejected, please apply the first one standalone
+Add framebuffer for early console and u-boot support.
 
 Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Petr Hodina (2):
-      arm64: dts: qcom: sdm845-xiaomi-beryllium: Introduce framebuffer
-      arm64: dts: qcom: sdm845-xiaomi-beryllium-tianma: Disable MDSS
-
  .../boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi    | 16 ++++++++++++++++
- .../boot/dts/qcom/sdm845-xiaomi-beryllium-tianma.dts     | 10 ++++++++++
- 2 files changed, 26 insertions(+)
----
-base-commit: f90aadf1c67c8b4969d1e5e6d4fd7227adb6e4d7
-change-id: 20260107-beryllium-fb-d3e87bc20be0
+ 1 file changed, 16 insertions(+)
 
-Best regards,
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
+index 01b570d0880d6..bd6d7a3cfc0ac 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
+@@ -39,6 +39,22 @@ aliases {
+ 		serial1 = &uart6;
+ 	};
+ 
++	chosen {
++		#address-cells = <2>;
++		#size-cells = <2>;
++		ranges;
++
++		framebuffer: framebuffer@9d400000 {
++			compatible = "simple-framebuffer";
++			memory-region = <&cont_splash_mem>;
++
++			format = "a8r8g8b8";
++			stride = <(1080 * 4)>;
++			height = <2246>;
++			width = <1080>;
++		};
++	};
++
+ 	gpio-keys {
+ 		compatible = "gpio-keys";
+ 		autorepeat;
+
 -- 
-David Heidelberg <david@ixit.cz>
+2.53.0
 
