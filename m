@@ -1,10 +1,11 @@
 From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-Date: Wed, 11 Mar 2026 14:26:55 +0100
-Subject: [PATCH v7 1/3] dt-bindings: timer: mips,p8700-gcru
+Date: Wed, 11 Mar 2026 14:26:56 +0100
+Subject: [PATCH v7 2/3] riscv: clocksource: Add readq options to
+ clocksource mmio
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260311-riscv-time-mmio-v7-1-016845a0f808@htecgroup.com>
+Message-Id: <20260311-riscv-time-mmio-v7-2-016845a0f808@htecgroup.com>
 References: <20260311-riscv-time-mmio-v7-0-016845a0f808@htecgroup.com>
 In-Reply-To: <20260311-riscv-time-mmio-v7-0-016845a0f808@htecgroup.com>
 To: Daniel Lezcano <daniel.lezcano@linaro.org>, 
@@ -20,72 +21,67 @@ Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org,
  linux-riscv@lists.infradead.org, 
  Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
  Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
- Chao-ying Fu <cfu@mips.com>, Conor Dooley <conor.dooley@microchip.com>
+ Chao-ying Fu <cfu@mips.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773235633; l=1839;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773235633; l=1888;
  i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
- bh=qlCmLDBO1Y2Dd5pfYZ/Ggi2QMtMAGxo3h0341eF3VPk=;
- b=U4M3KAsGzL2iGmEylw5kFQRQqxOoijFTGZzePXyl2kKy4iv9SCwrk+Gig4NjUET9fNWjVbJo6
- Pf5eiGGyYSyCLHIqHmJoKJOpoog/t+2tBexrtuBhYJp97YMse1WzeKQ
+ bh=Jv3vpBN1+Uh24vJH4CQZDSOQFXoXTNQJWJ4G2f0Tyms=;
+ b=Wm4pnQNuSaGPFUBpuq6TtRUM/iSnjVcf5KngdyLUNX4MMZ1f/TyMH1XPBLeEXuSw7VHoGZkdj
+ 61dIQnhqjloANjTX9T3btPV0/UEGZ1kT1f/te1W2lVdqHqZ3+XBWhnj
 X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
  pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
 X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add dt-bindings for the GCR.U memory mapped timer device for RISC-V
-platforms. The GCR.U memory region contains shadow copies of the RISC-V
-mtime register and the hrtime Global Configuration Register.
+Add read functions for 64-bit register size to the generic
+mmio clocksource, covering both up and down counters.
 
 Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
 ---
- .../devicetree/bindings/timer/mips,p8700-gcru.yaml | 38 ++++++++++++++++++++++
- 1 file changed, 38 insertions(+)
+ drivers/clocksource/mmio.c  | 14 ++++++++++++++
+ include/linux/clocksource.h |  4 ++++
+ 2 files changed, 18 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/timer/mips,p8700-gcru.yaml b/Documentation/devicetree/bindings/timer/mips,p8700-gcru.yaml
-new file mode 100644
-index 0000000000000000000000000000000000000000..3498255762cce6b3f491292d340d9639bb573e6d
---- /dev/null
-+++ b/Documentation/devicetree/bindings/timer/mips,p8700-gcru.yaml
-@@ -0,0 +1,38 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/timer/mips,p8700-gcru.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
+diff --git a/drivers/clocksource/mmio.c b/drivers/clocksource/mmio.c
+index 9de75153183124cc8997c6ab61d0c01d9b2637bc..6329d8ce2c0911b5c6de34346b5ca8de40b93099 100644
+--- a/drivers/clocksource/mmio.c
++++ b/drivers/clocksource/mmio.c
+@@ -17,6 +17,20 @@ static inline struct clocksource_mmio *to_mmio_clksrc(struct clocksource *c)
+ 	return container_of(c, struct clocksource_mmio, clksrc);
+ }
+ 
++#if defined(readq_relaxed)
 +
-+title: GCR.U timer device for the MIPS P8700 platform
++u64 clocksource_mmio_readq_up(struct clocksource *c)
++{
++	return (u64)readq_relaxed(to_mmio_clksrc(c)->reg);
++}
 +
-+maintainers:
-+  - Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
++u64 clocksource_mmio_readq_down(struct clocksource *c)
++{
++	return ~(u64)readq_relaxed(to_mmio_clksrc(c)->reg) & c->mask;
++}
 +
-+description:
-+  The GCR.U memory region contains memory mapped shadow copies of
-+  mtime and hrtime Global Configuration Registers,
-+  which software can choose to make accessible from user mode.
++#endif
 +
-+properties:
-+  compatible:
-+    const: mips,p8700-gcru
-+
-+  reg:
-+    items:
-+      - description: Read-only shadow copy of the RISC-V mtime register.
-+      - description: Read-only shadow copy of the P8700 high resolution timer register.
-+
-+required:
-+  - compatible
-+  - reg
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    timer@1617f000 {
-+        compatible = "mips,p8700-gcru";
-+        reg = <0x1617f050 0x8>,
-+              <0x1617f090 0x8>;
-+    };
+ u64 clocksource_mmio_readl_up(struct clocksource *c)
+ {
+ 	return (u64)readl_relaxed(to_mmio_clksrc(c)->reg);
+diff --git a/include/linux/clocksource.h b/include/linux/clocksource.h
+index 65b7c41471c390463770c2da13694e58e83b84ea..df8ea45ec60a28e0276020cb95ab5328bec89879 100644
+--- a/include/linux/clocksource.h
++++ b/include/linux/clocksource.h
+@@ -276,6 +276,10 @@ static inline void clocksource_arch_init(struct clocksource *cs) { }
+ 
+ extern int timekeeping_notify(struct clocksource *clock);
+ 
++#if defined(readq_relaxed)
++extern u64 clocksource_mmio_readq_up(struct clocksource *c);
++extern u64 clocksource_mmio_readq_down(struct clocksource *c);
++#endif
+ extern u64 clocksource_mmio_readl_up(struct clocksource *);
+ extern u64 clocksource_mmio_readl_down(struct clocksource *);
+ extern u64 clocksource_mmio_readw_up(struct clocksource *);
 
 -- 
 2.43.0
