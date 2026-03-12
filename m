@@ -1,10 +1,10 @@
 From: Mayank Rungta <mrungta@google.com>
-Date: Thu, 12 Mar 2026 16:22:03 -0700
-Subject: [PATCH v2 2/5] watchdog: Update saved interrupts during check
+Date: Thu, 12 Mar 2026 16:22:04 -0700
+Subject: [PATCH v2 3/5] doc: watchdog: Clarify hardlockup detection timing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260312-hardlockup-watchdog-fixes-v2-2-45bd8a0cc7ed@google.com>
+Message-Id: <20260312-hardlockup-watchdog-fixes-v2-3-45bd8a0cc7ed@google.com>
 References: <20260312-hardlockup-watchdog-fixes-v2-0-45bd8a0cc7ed@google.com>
 In-Reply-To: <20260312-hardlockup-watchdog-fixes-v2-0-45bd8a0cc7ed@google.com>
 To: Petr Mladek <pmladek@suse.com>, Jinchao Wang <wangjinchao600@gmail.com>, 
@@ -18,89 +18,97 @@ To: Petr Mladek <pmladek@suse.com>, Jinchao Wang <wangjinchao600@gmail.com>,
 Cc: linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
  Mayank Rungta <mrungta@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773357752; l=2486;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773357752; l=3703;
  i=mrungta@google.com; s=20260212; h=from:subject:message-id;
- bh=M8TFUUsd+x02qNZV27ER4ewjfXgDz4uo0zb2OpCd5AY=;
- b=c1BEltI1CYPBMfFHi5jcw831jLPMgod4QJfhUT9xrFyjz3NldwgfjwNdNDMWxW2HPjQ0sE4J1
- AmprlHBsxMWCOna15znVCFqclrRZKFGioExw5mgmR06dtLbmlgCbqf9
+ bh=i35ZyFlJNjhl6osHQxeTEcPG+44w2tOOkFaSeusqbQ8=;
+ b=4HY4TTU3VfyWx5uaGcGREg3VgDAbDYasdvalGDgnIB9Gmcy5UZOgogoRSUtub5SNrrLoLHXJp
+ ICQg76rZwgyB3mzqZ82s8ycPp/su8VGsl+82bGkh0WB00M61CKEyMJS
 X-Developer-Key: i=mrungta@google.com; a=ed25519;
  pk=2Bjwbv/ibL10QnyvK9G7DoKpffXy7z6+M4NawEYgYDI=
 X-Endpoint-Received: by B4 Relay for mrungta@google.com/20260212 with auth_id=634
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently, arch_touch_nmi_watchdog() causes an early return that
-skips updating hrtimer_interrupts_saved. This leads to stale
-comparisons and delayed lockup detection.
+The current documentation implies that a hardlockup is strictly defined
+as looping for "more than 10 seconds." However, the detection mechanism
+is periodic (based on `watchdog_thresh`), meaning detection time varies
+significantly depending on when the lockup occurs relative to the NMI
+perf event.
 
-I found this issue because in our system the serial console is fairly
-chatty. For example, the 8250 console driver frequently calls
-touch_nmi_watchdog() via console_write(). If a CPU locks up after a
-timer interrupt but before next watchdog check, we see the following
-sequence:
+Update the definition to remove the strict "more than 10 seconds"
+constraint in the introduction and defer details to the Implementation
+section.
 
-  * watchdog_hardlockup_check() saves counter (e.g., 1000)
-  * Timer runs and updates the counter (1001)
-  * touch_nmi_watchdog() is called
-  * CPU locks up
-  * 10s pass: check() notices touch, returns early, skips update
-  * 10s pass: check() saves counter (1001)
-  * 10s pass: check() finally detects lockup
+Additionally, add a "Detection Overhead" section illustrating the
+Best Case (~6s) and Worst Case (~20s) detection scenarios to provide
+administrators with a clearer understanding of the watchdog's
+latency.
 
-This delays detection to 30 seconds. With this fix, we detect the
-lockup in 20 seconds.
-
+Reviewed-by: Petr Mladek <pmladek@suse.com>
 Reviewed-by: Douglas Anderson <dianders@chromium.org>
 Signed-off-by: Mayank Rungta <mrungta@google.com>
 ---
- kernel/watchdog.c | 18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
+ Documentation/admin-guide/lockup-watchdogs.rst | 41 +++++++++++++++++++++++++-
+ 1 file changed, 40 insertions(+), 1 deletion(-)
 
-diff --git a/kernel/watchdog.c b/kernel/watchdog.c
-index 4c5b47495745..431c540bd035 100644
---- a/kernel/watchdog.c
-+++ b/kernel/watchdog.c
-@@ -159,21 +159,28 @@ void watchdog_hardlockup_touch_cpu(unsigned int cpu)
- 	per_cpu(watchdog_hardlockup_touched, cpu) = true;
- }
+diff --git a/Documentation/admin-guide/lockup-watchdogs.rst b/Documentation/admin-guide/lockup-watchdogs.rst
+index 3e09284a8b9b..1b374053771f 100644
+--- a/Documentation/admin-guide/lockup-watchdogs.rst
++++ b/Documentation/admin-guide/lockup-watchdogs.rst
+@@ -16,7 +16,7 @@ details), and a compile option, "BOOTPARAM_SOFTLOCKUP_PANIC", are
+ provided for this.
  
--static bool is_hardlockup(unsigned int cpu)
-+static void watchdog_hardlockup_update(unsigned int cpu)
- {
- 	int hrint = atomic_read(&per_cpu(hrtimer_interrupts, cpu));
+ A 'hardlockup' is defined as a bug that causes the CPU to loop in
+-kernel mode for more than 10 seconds (see "Implementation" below for
++kernel mode for several seconds (see "Implementation" below for
+ details), without letting other interrupts have a chance to run.
+ Similarly to the softlockup case, the current stack trace is displayed
+ upon detection and the system will stay locked up unless the default
+@@ -64,6 +64,45 @@ administrators to configure the period of the hrtimer and the perf
+ event. The right value for a particular environment is a trade-off
+ between fast response to lockups and detection overhead.
  
--	if (per_cpu(hrtimer_interrupts_saved, cpu) == hrint)
--		return true;
--
- 	/*
- 	 * NOTE: we don't need any fancy atomic_t or READ_ONCE/WRITE_ONCE
- 	 * for hrtimer_interrupts_saved. hrtimer_interrupts_saved is
- 	 * written/read by a single CPU.
- 	 */
- 	per_cpu(hrtimer_interrupts_saved, cpu) = hrint;
-+}
++Detection Overhead
++------------------
 +
-+static bool is_hardlockup(unsigned int cpu)
-+{
-+	int hrint = atomic_read(&per_cpu(hrtimer_interrupts, cpu));
++The hardlockup detector checks for lockups using a periodic NMI perf
++event. This means the time to detect a lockup can vary depending on
++when the lockup occurs relative to the NMI check window.
 +
-+	if (per_cpu(hrtimer_interrupts_saved, cpu) != hrint) {
-+		watchdog_hardlockup_update(cpu);
-+		return false;
-+	}
- 
--	return false;
-+	return true;
- }
- 
- static void watchdog_hardlockup_kick(void)
-@@ -191,6 +198,7 @@ void watchdog_hardlockup_check(unsigned int cpu, struct pt_regs *regs)
- 	unsigned long flags;
- 
- 	if (per_cpu(watchdog_hardlockup_touched, cpu)) {
-+		watchdog_hardlockup_update(cpu);
- 		per_cpu(watchdog_hardlockup_touched, cpu) = false;
- 		return;
- 	}
++**Best Case:**
++In the best case scenario, the lockup occurs just before the first
++heartbeat is due. The detector will notice the missing hrtimer
++interrupt almost immediately during the next check.
++
++::
++
++  Time 100.0: cpu 1 heartbeat
++  Time 100.1: hardlockup_check, cpu1 stores its state
++  Time 103.9: Hard Lockup on cpu1
++  Time 104.0: cpu 1 heartbeat never comes
++  Time 110.1: hardlockup_check, cpu1 checks the state again, should be the same, declares lockup
++
++  Time to detection: ~6 seconds
++
++**Worst Case:**
++In the worst case scenario, the lockup occurs shortly after a valid
++interrupt (heartbeat) which itself happened just after the NMI check.
++The next NMI check sees that the interrupt count has changed (due to
++that one heartbeat), assumes the CPU is healthy, and resets the
++baseline. The lockup is only detected at the subsequent check.
++
++::
++
++  Time 100.0: hardlockup_check, cpu1 stores its state
++  Time 100.1: cpu 1 heartbeat
++  Time 100.2: Hard Lockup on cpu1
++  Time 110.0: hardlockup_check, cpu1 stores its state (misses lockup as state changed)
++  Time 120.0: hardlockup_check, cpu1 checks the state again, should be the same, declares lockup
++
++  Time to detection: ~20 seconds
++
+ By default, the watchdog runs on all online cores.  However, on a
+ kernel configured with NO_HZ_FULL, by default the watchdog runs only
+ on the housekeeping cores, not the cores specified in the "nohz_full"
 
 -- 
 2.53.0.851.ga537e3e6e9-goog
