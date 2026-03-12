@@ -1,16 +1,13 @@
 From: Mayank Rungta <mrungta@google.com>
-Subject: [PATCH v2 0/5] watchdog/hardlockup: Improvements to hardlockup
- detection and documentation
-Date: Thu, 12 Mar 2026 16:22:01 -0700
-Message-Id: <20260312-hardlockup-watchdog-fixes-v2-0-45bd8a0cc7ed@google.com>
+Date: Thu, 12 Mar 2026 16:22:02 -0700
+Subject: [PATCH v2 1/5] watchdog: Return early in
+ watchdog_hardlockup_check()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJlKs2kC/32NwQ6CMBBEf4Xs2TVtAVFP/ofh0GyXthEpaRE1h
- H+3knj1+GbyZhZIHD0nOBcLRJ598mHIoHYFkNODZfQmMyihDkJJiU5H0we6PUZ86omcCRY7/+K
- EB1HKpj4dNSkB2R8jb0XWr21m59MU4nu7muU3/a2qP6uzRIFNVXfSEIuKyosNwfa8p3CHdl3XD
- 4zqUOPDAAAA
-X-Change-ID: 20260211-hardlockup-watchdog-fixes-60317598ac20
+Message-Id: <20260312-hardlockup-watchdog-fixes-v2-1-45bd8a0cc7ed@google.com>
+References: <20260312-hardlockup-watchdog-fixes-v2-0-45bd8a0cc7ed@google.com>
+In-Reply-To: <20260312-hardlockup-watchdog-fixes-v2-0-45bd8a0cc7ed@google.com>
 To: Petr Mladek <pmladek@suse.com>, Jinchao Wang <wangjinchao600@gmail.com>, 
  Yunhui Cui <cuiyunhui@bytedance.com>, Stephane Eranian <eranian@google.com>, 
  Ian Rogers <irogers@google.com>, Li Huafei <lihuafei1@huawei.com>, 
@@ -22,87 +19,175 @@ To: Petr Mladek <pmladek@suse.com>, Jinchao Wang <wangjinchao600@gmail.com>,
 Cc: linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
  Mayank Rungta <mrungta@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773357752; l=3297;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773357752; l=5437;
  i=mrungta@google.com; s=20260212; h=from:subject:message-id;
- bh=0C9RlHTOFqbcqCjBROliem/Yw7tye+blJRKLXZ3MYr0=;
- b=mU9EhSv8+WaxR4YXyppJ5Px717BoBUtPBdZrV4UizcqmDTcZKcc7EVPMeIdfs3w7U8t+DV4Ku
- dE9CN1UZKmdCcOoISLGFzs4cDN4EOhn2EKmZJ3Rua6kiTANuiExQpaO
+ bh=/gmGbSYfq0uL3jFNpI3ejNjGlNROGDfe6h8BWDUCdcs=;
+ b=HQzF2MlIsRSuZGZCoBBHHUHE0LnOCFLTKwDzHh7aXPJMLq192jyuitITA7uKVL+uLOB7DMUHR
+ xkMy50bkDXSB0PzgpgywZ8SeScifNZ4R3sKJqyvZctb9P4s0AQEspxX
 X-Developer-Key: i=mrungta@google.com; a=ed25519;
  pk=2Bjwbv/ibL10QnyvK9G7DoKpffXy7z6+M4NawEYgYDI=
 X-Endpoint-Received: by B4 Relay for mrungta@google.com/20260212 with auth_id=634
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series addresses limitations in the hardlockup detector implementations
-and updates the documentation to reflect actual behavior and recent changes.
+Invert the `is_hardlockup(cpu)` check in `watchdog_hardlockup_check()`
+to return early when a hardlockup is not detected. This flattens the
+main logic block, reducing the indentation level and making the code
+easier to read and maintain.
 
-The changes are structured as follows:
-
-Refactoring (Patch 1)
-=====================
-Patch 1 refactors watchdog_hardlockup_check() to return early if no
-lockup is detected. This reduces the indentation level of the main
-logic block, serving as a clean base for the subsequent changes.
-
-Hardlockup Detection Improvements (Patches 2 & 4)
-=================================================
-The hardlockup detector logic relies on updating saved interrupt counts to
-determine if the CPU is making progress.
-
-Patch 1 ensures that the saved interrupt count is updated unconditionally
-before checking the "touched" flag. This prevents stale comparisons which
-can delay detection. This is a logic fix that ensures the detector remains
-accurate even when the watchdog is frequently touched.
-
-Patch 3 improves the Buddy detector's timeliness. The current checking
-interval (every 3rd sample) causes high variability in detection time (up
-to 24s). This patch changes the Buddy detector to check at every hrtimer
-interval (4s) with a missed-interrupt threshold of 3, narrowing the
-detection window to a consistent 8-12 second range.
-
-Documentation Updates (Patches 3 & 5)
-=====================================
-The current documentation does not fully capture the variable nature of
-detection latency or the details of the Buddy system.
-
-Patch 3 removes the strict "10 seconds" definition of a hardlockup, which
-was misleading given the periodic nature of the detector. It adds a
-"Detection Overhead" section to the admin guide, using "Best Case" and
-"Worst Case" scenarios to illustrate that detection time can vary
-significantly (e.g., ~6s to ~20s).
-
-Patch 5 adds a dedicated section for the Buddy detector, which was previously
-undocumented. It details the mechanism, the new timing logic, and known
-limitations.
+This refactoring serves as a preparation patch for future hardlockup
+changes.
 
 Signed-off-by: Mayank Rungta <mrungta@google.com>
 ---
-Changes in v2:
-- Added Patch 1 to refactor watchdog_hardlockup_check() by returning
-  early (Suggested by Douglas Anderson)
-- Introduced the `watchdog_hardlockup_update_reset()` API (Suggested by
-  Petr Mladek)
-- Shifted original v1 patches to Patches 2-5 and rebased them on top of
-  the new refactoring.
-- Link to v1: https://lore.kernel.org/r/20260212-hardlockup-watchdog-fixes-v1-0-745f1dce04c3@google.com
+ kernel/watchdog.c | 117 +++++++++++++++++++++++++++---------------------------
+ 1 file changed, 59 insertions(+), 58 deletions(-)
 
----
-Mayank Rungta (5):
-      watchdog: Return early in watchdog_hardlockup_check()
-      watchdog: Update saved interrupts during check
-      doc: watchdog: Clarify hardlockup detection timing
-      watchdog/hardlockup: improve buddy system detection timeliness
-      doc: watchdog: Document buddy detector
+diff --git a/kernel/watchdog.c b/kernel/watchdog.c
+index 7d675781bc91..4c5b47495745 100644
+--- a/kernel/watchdog.c
++++ b/kernel/watchdog.c
+@@ -187,6 +187,8 @@ static void watchdog_hardlockup_kick(void)
+ void watchdog_hardlockup_check(unsigned int cpu, struct pt_regs *regs)
+ {
+ 	int hardlockup_all_cpu_backtrace;
++	unsigned int this_cpu;
++	unsigned long flags;
+ 
+ 	if (per_cpu(watchdog_hardlockup_touched, cpu)) {
+ 		per_cpu(watchdog_hardlockup_touched, cpu) = false;
+@@ -201,74 +203,73 @@ void watchdog_hardlockup_check(unsigned int cpu, struct pt_regs *regs)
+ 	 * fired multiple times before we overflow'd. If it hasn't
+ 	 * then this is a good indication the cpu is stuck
+ 	 */
+-	if (is_hardlockup(cpu)) {
+-		unsigned int this_cpu = smp_processor_id();
+-		unsigned long flags;
++	if (!is_hardlockup(cpu)) {
++		per_cpu(watchdog_hardlockup_warned, cpu) = false;
++		return;
++	}
+ 
+ #ifdef CONFIG_SYSFS
+-		++hardlockup_count;
++	++hardlockup_count;
+ #endif
+-		/*
+-		 * A poorly behaving BPF scheduler can trigger hard lockup by
+-		 * e.g. putting numerous affinitized tasks in a single queue and
+-		 * directing all CPUs at it. The following call can return true
+-		 * only once when sched_ext is enabled and will immediately
+-		 * abort the BPF scheduler and print out a warning message.
+-		 */
+-		if (scx_hardlockup(cpu))
+-			return;
++	/*
++	 * A poorly behaving BPF scheduler can trigger hard lockup by
++	 * e.g. putting numerous affinitized tasks in a single queue and
++	 * directing all CPUs at it. The following call can return true
++	 * only once when sched_ext is enabled and will immediately
++	 * abort the BPF scheduler and print out a warning message.
++	 */
++	if (scx_hardlockup(cpu))
++		return;
+ 
+-		/* Only print hardlockups once. */
+-		if (per_cpu(watchdog_hardlockup_warned, cpu))
+-			return;
++	/* Only print hardlockups once. */
++	if (per_cpu(watchdog_hardlockup_warned, cpu))
++		return;
+ 
+-		/*
+-		 * Prevent multiple hard-lockup reports if one cpu is already
+-		 * engaged in dumping all cpu back traces.
+-		 */
+-		if (hardlockup_all_cpu_backtrace) {
+-			if (test_and_set_bit_lock(0, &hard_lockup_nmi_warn))
+-				return;
+-		}
++	/*
++	 * Prevent multiple hard-lockup reports if one cpu is already
++	 * engaged in dumping all cpu back traces.
++	 */
++	if (hardlockup_all_cpu_backtrace) {
++		if (test_and_set_bit_lock(0, &hard_lockup_nmi_warn))
++			return;
++	}
+ 
+-		/*
+-		 * NOTE: we call printk_cpu_sync_get_irqsave() after printing
+-		 * the lockup message. While it would be nice to serialize
+-		 * that printout, we really want to make sure that if some
+-		 * other CPU somehow locked up while holding the lock associated
+-		 * with printk_cpu_sync_get_irqsave() that we can still at least
+-		 * get the message about the lockup out.
+-		 */
+-		pr_emerg("CPU%u: Watchdog detected hard LOCKUP on cpu %u\n", this_cpu, cpu);
+-		printk_cpu_sync_get_irqsave(flags);
++	/*
++	 * NOTE: we call printk_cpu_sync_get_irqsave() after printing
++	 * the lockup message. While it would be nice to serialize
++	 * that printout, we really want to make sure that if some
++	 * other CPU somehow locked up while holding the lock associated
++	 * with printk_cpu_sync_get_irqsave() that we can still at least
++	 * get the message about the lockup out.
++	 */
++	this_cpu = smp_processor_id();
++	pr_emerg("CPU%u: Watchdog detected hard LOCKUP on cpu %u\n", this_cpu, cpu);
++	printk_cpu_sync_get_irqsave(flags);
+ 
+-		print_modules();
+-		print_irqtrace_events(current);
+-		if (cpu == this_cpu) {
+-			if (regs)
+-				show_regs(regs);
+-			else
+-				dump_stack();
+-			printk_cpu_sync_put_irqrestore(flags);
+-		} else {
+-			printk_cpu_sync_put_irqrestore(flags);
+-			trigger_single_cpu_backtrace(cpu);
+-		}
++	print_modules();
++	print_irqtrace_events(current);
++	if (cpu == this_cpu) {
++		if (regs)
++			show_regs(regs);
++		else
++			dump_stack();
++		printk_cpu_sync_put_irqrestore(flags);
++	} else {
++		printk_cpu_sync_put_irqrestore(flags);
++		trigger_single_cpu_backtrace(cpu);
++	}
+ 
+-		if (hardlockup_all_cpu_backtrace) {
+-			trigger_allbutcpu_cpu_backtrace(cpu);
+-			if (!hardlockup_panic)
+-				clear_bit_unlock(0, &hard_lockup_nmi_warn);
+-		}
++	if (hardlockup_all_cpu_backtrace) {
++		trigger_allbutcpu_cpu_backtrace(cpu);
++		if (!hardlockup_panic)
++			clear_bit_unlock(0, &hard_lockup_nmi_warn);
++	}
+ 
+-		sys_info(hardlockup_si_mask & ~SYS_INFO_ALL_BT);
+-		if (hardlockup_panic)
+-			nmi_panic(regs, "Hard LOCKUP");
++	sys_info(hardlockup_si_mask & ~SYS_INFO_ALL_BT);
++	if (hardlockup_panic)
++		nmi_panic(regs, "Hard LOCKUP");
+ 
+-		per_cpu(watchdog_hardlockup_warned, cpu) = true;
+-	} else {
+-		per_cpu(watchdog_hardlockup_warned, cpu) = false;
+-	}
++	per_cpu(watchdog_hardlockup_warned, cpu) = true;
+ }
+ 
+ #else /* CONFIG_HARDLOCKUP_DETECTOR_COUNTS_HRTIMER */
 
- Documentation/admin-guide/lockup-watchdogs.rst | 132 ++++++++++++++++++----
- include/linux/nmi.h                            |   1 +
- kernel/watchdog.c                              | 148 ++++++++++++++-----------
- kernel/watchdog_buddy.c                        |   9 +-
- 4 files changed, 199 insertions(+), 91 deletions(-)
----
-base-commit: b4f0dd314b39ea154f62f3bd3115ed0470f9f71e
-change-id: 20260211-hardlockup-watchdog-fixes-60317598ac20
-
-Best regards,
 -- 
-Mayank Rungta <mrungta@google.com>
+2.53.0.851.ga537e3e6e9-goog
 
