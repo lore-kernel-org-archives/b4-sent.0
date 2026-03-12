@@ -1,176 +1,108 @@
-From: "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-Date: Thu, 12 Mar 2026 09:55:30 +0100
-Subject: [PATCH v11 4/4] stmmac: s32: enable support for Multi-IRQ mode
+From: Mayank Rungta <mrungta@google.com>
+Subject: [PATCH v2 0/5] watchdog/hardlockup: Improvements to hardlockup
+ detection and documentation
+Date: Thu, 12 Mar 2026 16:22:01 -0700
+Message-Id: <20260312-hardlockup-watchdog-fixes-v2-0-45bd8a0cc7ed@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260312-dwmac_multi_irq-v11-4-09621ccb040b@oss.nxp.com>
-References: <20260312-dwmac_multi_irq-v11-0-09621ccb040b@oss.nxp.com>
-In-Reply-To: <20260312-dwmac_multi_irq-v11-0-09621ccb040b@oss.nxp.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Chester Lin <chester62515@gmail.com>, Matthias Brugger <mbrugger@suse.com>, 
- Ghennadi Procopciuc <ghennadi.procopciuc@oss.nxp.com>, 
- NXP S32 Linux Team <s32@nxp.com>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Frank Li <Frank.Li@nxp.com>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- imx@lists.linux.dev, devicetree@vger.kernel.org, rmk+kernel@armlinux.org.uk, 
- vladimir.oltean@nxp.com, boon.khai.ng@altera.com, 
- "Jan Petrous (OSS)" <jan.petrous@oss.nxp.com>
-X-Mailer: b4 0.14.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773305743; l=4688;
- i=jan.petrous@oss.nxp.com; s=20240922; h=from:subject:message-id;
- bh=pjUi6bD5N30LSEOzTe4r9Z/0gWQEu05y4HtFcXTJrZw=;
- b=980pVeiCpbeBIoREoL8d93znsgc6CnpvQM4DKGHYTFembrGCrUj8f1UEL7ZdzUueah8ja9VQx
- bRRjWlaxZRCD64r2AcA2kHd9Z6dyF9h+oBmTGKmIynBb6LBWwjcb0OH
-X-Developer-Key: i=jan.petrous@oss.nxp.com; a=ed25519;
- pk=Ke3wwK7rb2Me9UQRf6vR8AsfJZfhTyoDaxkUCqmSWYY=
-X-Endpoint-Received: by B4 Relay for jan.petrous@oss.nxp.com/20240922 with auth_id=217
+X-B4-Tracking: v=1; b=H4sIAJlKs2kC/32NwQ6CMBBEf4Xs2TVtAVFP/ofh0GyXthEpaRE1h
+ H+3knj1+GbyZhZIHD0nOBcLRJ598mHIoHYFkNODZfQmMyihDkJJiU5H0we6PUZ86omcCRY7/+K
+ EB1HKpj4dNSkB2R8jb0XWr21m59MU4nu7muU3/a2qP6uzRIFNVXfSEIuKyosNwfa8p3CHdl3XD
+ 4zqUOPDAAAA
+X-Change-ID: 20260211-hardlockup-watchdog-fixes-60317598ac20
+To: Petr Mladek <pmladek@suse.com>, Jinchao Wang <wangjinchao600@gmail.com>, 
+ Yunhui Cui <cuiyunhui@bytedance.com>, Stephane Eranian <eranian@google.com>, 
+ Ian Rogers <irogers@google.com>, Li Huafei <lihuafei1@huawei.com>, 
+ Feng Tang <feng.tang@linux.alibaba.com>, 
+ Max Kellermann <max.kellermann@ionos.com>, Jonathan Corbet <corbet@lwn.net>, 
+ Douglas Anderson <dianders@chromium.org>, 
+ Andrew Morton <akpm@linux-foundation.org>, 
+ Florian Delizy <fdelizy@google.com>, Shuah Khan <skhan@linuxfoundation.org>
+Cc: linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Mayank Rungta <mrungta@google.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773357752; l=3297;
+ i=mrungta@google.com; s=20260212; h=from:subject:message-id;
+ bh=0C9RlHTOFqbcqCjBROliem/Yw7tye+blJRKLXZ3MYr0=;
+ b=mU9EhSv8+WaxR4YXyppJ5Px717BoBUtPBdZrV4UizcqmDTcZKcc7EVPMeIdfs3w7U8t+DV4Ku
+ dE9CN1UZKmdCcOoISLGFzs4cDN4EOhn2EKmZJ3Rua6kiTANuiExQpaO
+X-Developer-Key: i=mrungta@google.com; a=ed25519;
+ pk=2Bjwbv/ibL10QnyvK9G7DoKpffXy7z6+M4NawEYgYDI=
+X-Endpoint-Received: by B4 Relay for mrungta@google.com/20260212 with auth_id=634
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Based on previous changes in platform driver, the vendor
-glue driver can enable Multi-IRQ mode, if needed.
+This series addresses limitations in the hardlockup detector implementations
+and updates the documentation to reflect actual behavior and recent changes.
 
-To get enabled Multi-IRQ mode for dwmac-s32, the driver checks:
+The changes are structured as follows:
 
-  1) property of 'snps,mtl-xx-config' subnode
-     defines 'snps,xx-queues-to-use' bigger then one, ie:
+Refactoring (Patch 1)
+=====================
+Patch 1 refactors watchdog_hardlockup_check() to return early if no
+lockup is detected. This reduces the indentation level of the main
+logic block, serving as a clean base for the subsequent changes.
 
-     ethernet@4033c000 {
-         compatible = "nxp,s32g2-dwmac";
-         ...
-         snps,mtl-rx-config = <&mtl_rx_setup>;
-         ...
+Hardlockup Detection Improvements (Patches 2 & 4)
+=================================================
+The hardlockup detector logic relies on updating saved interrupt counts to
+determine if the CPU is making progress.
 
-         mtl_rx_setup: rx-queues-config {
-             snps,rx-queues-to-use = <2>;
-         };
+Patch 1 ensures that the saved interrupt count is updated unconditionally
+before checking the "touched" flag. This prevents stale comparisons which
+can delay detection. This is a logic fix that ensures the detector remains
+accurate even when the watchdog is frequently touched.
 
-  2) queue based IRQs are set, ie:
+Patch 3 improves the Buddy detector's timeliness. The current checking
+interval (every 3rd sample) causes high variability in detection time (up
+to 24s). This patch changes the Buddy detector to check at every hrtimer
+interval (4s) with a missed-interrupt threshold of 3, narrowing the
+detection window to a consistent 8-12 second range.
 
-     ethernet@4033c000 {
-         compatible = "nxp,s32g2-dwmac";
-         ...
-         interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>,
-                      /* CHN 0: tx, rx */
-                      <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>,
-                      <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>,
-                      /* CHN 1: tx, rx */
-                      <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
-                      <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
-         interrupt-names = "macirq",
-                           "tx-queue-0", "rx-queue-0",
-                           "tx-queue-1", "rx-queue-1";
+Documentation Updates (Patches 3 & 5)
+=====================================
+The current documentation does not fully capture the variable nature of
+detection latency or the details of the Buddy system.
 
-If those prerequisites are met, the driver switches to Multi-IRQ mode,
-using per-queue IRQs for rx/tx data pathr:
+Patch 3 removes the strict "10 seconds" definition of a hardlockup, which
+was misleading given the periodic nature of the detector. It adds a
+"Detection Overhead" section to the admin guide, using "Best Case" and
+"Worst Case" scenarios to illustrate that detection time can vary
+significantly (e.g., ~6s to ~20s).
 
-[    1.387045] s32-dwmac 4033c000.ethernet: Multi-IRQ mode (per queue IRQs) selected
+Patch 5 adds a dedicated section for the Buddy detector, which was previously
+undocumented. It details the mechanism, the new timing logic, and known
+limitations.
 
-Now the driver owns all queues IRQs:
-
-root@s32g399aevb3:~# grep eth /proc/interrupts
- 29:    0    0    0    0    0    0    0    0    GICv3  89 Level   eth0:mac
- 30:    0    0    0    0    0    0    0    0    GICv3  91 Level   eth0:rx-0
- 31:    0    0    0    0    0    0    0    0    GICv3  93 Level   eth0:rx-1
- 32:    0    0    0    0    0    0    0    0    GICv3  95 Level   eth0:rx-2
- 33:    0    0    0    0    0    0    0    0    GICv3  97 Level   eth0:rx-3
- 34:    0    0    0    0    0    0    0    0    GICv3  99 Level   eth0:rx-4
- 35:    0    0    0    0    0    0    0    0    GICv3  90 Level   eth0:tx-0
- 36:    0    0    0    0    0    0    0    0    GICv3  92 Level   eth0:tx-1
- 37:    0    0    0    0    0    0    0    0    GICv3  94 Level   eth0:tx-2
- 38:    0    0    0    0    0    0    0    0    GICv3  96 Level   eth0:tx-3
- 39:    0    0    0    0    0    0    0    0    GICv3  98 Level   eth0:tx-4
-
-Otherwise, if one of the prerequisite don't met, the driver
-continue with MAC IRQ mode:
-
-[    1.387045] s32-dwmac 4033c000.ethernet: MAC IRQ mode selected
-
-And only MAC IRQ will be attached:
-
-root@s32g399aevb3:~# grep eth /proc/interrupts
- 29:    0    0    0    0    0    0    0    0    GICv3  89 Level   eth0:mac
-
-What represents the original MAC IRQ mode and is fully backward
-compatible.
-
-Reviewed-by: Matthias Brugger <mbrugger@suse.com>
-Signed-off-by: Jan Petrous (OSS) <jan.petrous@oss.nxp.com>
+Signed-off-by: Mayank Rungta <mrungta@google.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c | 36 ++++++++++++++++++++++++-
- 1 file changed, 35 insertions(+), 1 deletion(-)
+Changes in v2:
+- Added Patch 1 to refactor watchdog_hardlockup_check() by returning
+  early (Suggested by Douglas Anderson)
+- Introduced the `watchdog_hardlockup_update_reset()` API (Suggested by
+  Petr Mladek)
+- Shifted original v1 patches to Patches 2-5 and rebased them on top of
+  the new refactoring.
+- Link to v1: https://lore.kernel.org/r/20260212-hardlockup-watchdog-fixes-v1-0-745f1dce04c3@google.com
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-index af594a096676..7d529ac997e6 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-s32.c
-@@ -2,7 +2,7 @@
- /*
-  * NXP S32G/R GMAC glue layer
-  *
-- * Copyright 2019-2024 NXP
-+ * Copyright 2019-2026 NXP
-  *
-  */
- 
-@@ -110,6 +110,37 @@ static void s32_gmac_exit(struct device *dev, void *priv)
- 	clk_disable_unprepare(gmac->rx_clk);
- }
- 
-+static void s32_gmac_setup_multi_irq(struct device *dev,
-+				     struct plat_stmmacenet_data *plat,
-+				     struct stmmac_resources *res)
-+{
-+	int i;
-+
-+	/* RX IRQs */
-+	for (i = 0; i < plat->rx_queues_to_use; i++) {
-+		if (res->rx_irq[i] <= 0) {
-+			dev_dbg(dev, "Missing RX queue %d interrupt\n", i);
-+			goto mac_irq_mode;
-+		}
-+	}
-+
-+	/* TX IRQs */
-+	for (i = 0; i < plat->tx_queues_to_use; i++) {
-+		if (res->tx_irq[i] <= 0) {
-+			dev_dbg(dev, "Missing TX queue %d interrupt\n", i);
-+			goto mac_irq_mode;
-+		}
-+	}
-+
-+	plat->flags |= STMMAC_FLAG_MULTI_MSI_EN;
-+	dev_info(dev, "Multi-IRQ mode (per queue IRQs) selected\n");
-+	return;
-+
-+mac_irq_mode:
-+	plat->flags &= ~STMMAC_FLAG_MULTI_MSI_EN;
-+	dev_info(dev, "MAC IRQ mode selected\n");
-+}
-+
- static int s32_dwmac_probe(struct platform_device *pdev)
- {
- 	struct plat_stmmacenet_data *plat;
-@@ -165,6 +196,9 @@ static int s32_dwmac_probe(struct platform_device *pdev)
- 	plat->core_type = DWMAC_CORE_GMAC4;
- 	plat->pmt = 1;
- 	plat->flags |= STMMAC_FLAG_SPH_DISABLE;
-+
-+	s32_gmac_setup_multi_irq(dev, plat, &res);
-+
- 	plat->rx_fifo_size = 20480;
- 	plat->tx_fifo_size = 20480;
- 
+---
+Mayank Rungta (5):
+      watchdog: Return early in watchdog_hardlockup_check()
+      watchdog: Update saved interrupts during check
+      doc: watchdog: Clarify hardlockup detection timing
+      watchdog/hardlockup: improve buddy system detection timeliness
+      doc: watchdog: Document buddy detector
 
+ Documentation/admin-guide/lockup-watchdogs.rst | 132 ++++++++++++++++++----
+ include/linux/nmi.h                            |   1 +
+ kernel/watchdog.c                              | 148 ++++++++++++++-----------
+ kernel/watchdog_buddy.c                        |   9 +-
+ 4 files changed, 199 insertions(+), 91 deletions(-)
+---
+base-commit: b4f0dd314b39ea154f62f3bd3115ed0470f9f71e
+change-id: 20260211-hardlockup-watchdog-fixes-60317598ac20
+
+Best regards,
 -- 
-2.47.0
+Mayank Rungta <mrungta@google.com>
 
