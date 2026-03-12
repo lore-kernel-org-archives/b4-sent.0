@@ -1,69 +1,92 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Thu, 12 Mar 2026 00:49:43 +0100
-Subject: [PATCH] arm64: dts: qcom: Mark l1a regulator as powered during
- boot
+From: Carl Lee <carl.lee@amd.com>
+Date: Thu, 12 Mar 2026 10:51:35 +0800
+Subject: [PATCH v2] nfc: nxp-nci: i2c: restore IRQ trigger fallback
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260312-beryllium-booton-v1-1-59c83ab91b78@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAJb/sWkC/x3MQQqAIBBA0avIrBN0goquEi20phowDa0oorsnL
- d/i/wcSRaYErXgg0smJg8/QhYBhMX4myWM2oMJKlRqlpXg7x8cqbQh78NKMFnVDQ03YQM62SBN
- f/7Lr3/cD7eMPfGIAAAA=
-X-Change-ID: 20260312-beryllium-booton-adb218ec7e28
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Amit Pundir <amit.pundir@linaro.org>, 
- Joel Selvaraj <foss@joelselvaraj.com>
-Cc: Konrad Dybcio <konradybcio@gmail.com>, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+Message-Id: <20260312-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-v2-1-362348f7fa30@amd.com>
+X-B4-Tracking: v=1; b=H4sIADYqsmkC/52NQQ6CMBBFr0K6dkxbEIIr72FY1GGAiVBwSgiGc
+ HcLR3D5fv7/b1OBhCmoe7IpoYUDjz6CvSQKO+dbAq4jK6ttrlNjwDcIfp3AIwNbBKEwjxJr8oF
+ ZuG1JoHF9/3L4BqxdmdlbqjHXKl5OQg2vp+5ZRe74GH9P+2KO9E/RYsBASVYXJsuMqYuHG+orj
+ oOq9n3/ATh69MPmAAAA
+X-Change-ID: 20260311-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-cda942530c60
+To: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, krzk@kernel.org, 
+ carl.lee@amd.com, peter.shen@amd.com, colin.huang2@amd.com
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1043; i=david@ixit.cz;
- h=from:subject:message-id; bh=y27EVFmPscBC6k41hKpMUbdL61VHoT6gjj25XcDc/Dk=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpsf+YAnO9xEZ8lMwOKBWhFOPOQMvlih5EuNnnm
- 53ySIoTkbCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCabH/mAAKCRBgAj/E00kg
- clj5D/9Lt5xAXXYmqCelEPyDL7bwezi4tQGOJuyKg5zLcPhtJSJ2d2+vG1nYRitj53r3Zsa5krr
- S+IN4u84oGPHaBL0uEhHoR4oiEoPlMAhYuI8dOKkhaB2FsCI4RPCMRiVRNjA7oKCv7pSfo1VBhG
- RTa9kYwt1h4qY2hUYjdFLqRp0oju1xEmMz0MpGczhGBwNmZLlhPk9GVzIKtiq6SFNk9yxvQF31i
- uhXRxQA8OouxWblxoC/Wi2Q22eVbEqmJRs6SzfOU7gk06Dy+lDRAVg1tgO+HPNGxbUkdaHPO8Kb
- qYFqIaLyXPTu6SCgJ6rn4P7Hr0K2+8ounT1XQbtRt/8HAHhcwSXZu2u2GRWQEPi05Ju8W6Y60wH
- clIjuBqb+3Z7JUPcn4f1jieDXCNjjGflXNb+7QqrQN9El++aaXWacyTW7cbogBWVx/ZSPKPxUIa
- Fr8bRusFFamAeKX/5eJqelodo1eppiwc/qMhwVUvcHGvxmmYHUGjR1VVopNm0On+C7B7N9Q5svT
- YNHnJj3dR0MqFXeZEiTJtDRf2wxJD/d6LWqFfRqGoGyNpQyYYk4DdPDB9Ol/Nl72ClRM9Eho1vy
- EY4QkN7uY9ERikgzFjy+JHKhdUxiWZ57yCZuHCqPIisKbasenuyYeoAp2l1MXE95Rw6PszkAbeF
- +e9FfCElhpFR8VA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773283900; l=2295;
+ i=carl.lee@amd.com; s=20260203; h=from:subject:message-id;
+ bh=Vskvtr24ptKC6LYyjgFk7UbMzLWgrMQ1oXC18gOpBqg=;
+ b=fgpkQ7Jh4s1/VnsV0T85utz6z5laWDnSt2PuOdU3vp1k+uGP182z4IZX4PHVblA73ft9IStqP
+ KuuoJGKE75YAz8BeDX9JggIx2HF7/voaXQJujC7O15gzWyhgYroZP8I
+X-Developer-Key: i=carl.lee@amd.com; a=ed25519;
+ pk=pyq7QaQvoxMg806KVkRwpCbiah+7ncWr4MBpK1AEyjA=
+X-Endpoint-Received: by B4 Relay for carl.lee@amd.com/20260203 with auth_id=623
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This regulator provides for the display subsystem, thus must be on.
+The driver previously relied on IRQF_TRIGGER_RISING when requesting
+the interrupt. This was removed to rely on the trigger type provided
+by firmware.
 
-Fixes: 77809cf74a8c ("arm64: dts: qcom: Add support for Xiaomi Poco F1 (Beryllium)")
-Signed-off-by: David Heidelberg <david@ixit.cz>
+However, some platforms do not propagate the interrupt trigger type
+to the IRQ descriptor, resulting in interrupts not being triggered.
+
+Use the trigger type provided by firmware when available and fall
+back to the historically used rising-edge trigger otherwise.
+
+Signed-off-by: Carl Lee <carl.lee@amd.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi | 1 +
- 1 file changed, 1 insertion(+)
+Changes in v2:
+- Add missing <linux/irq.h> include for irq_get_trigger_type().
+- Link to v1: https://lore.kernel.org/r/20260311-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-v1-1-9e20714411d7@amd.com
+---
+ drivers/nfc/nxp-nci/i2c.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-index 01b570d0880d6..1298485c42142 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-@@ -148,6 +148,7 @@ vreg_l1a_0p875: ldo1 {
- 			regulator-min-microvolt = <880000>;
- 			regulator-max-microvolt = <880000>;
- 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-+			regulator-boot-on;
- 		};
+diff --git a/drivers/nfc/nxp-nci/i2c.c b/drivers/nfc/nxp-nci/i2c.c
+index 6a5ce8ff91f0..7aaab92c616c 100644
+--- a/drivers/nfc/nxp-nci/i2c.c
++++ b/drivers/nfc/nxp-nci/i2c.c
+@@ -16,6 +16,7 @@
+ #include <linux/delay.h>
+ #include <linux/i2c.h>
+ #include <linux/interrupt.h>
++#include <linux/irq.h>
+ #include <linux/module.h>
+ #include <linux/nfc.h>
+ #include <linux/gpio/consumer.h>
+@@ -268,6 +269,7 @@ static int nxp_nci_i2c_probe(struct i2c_client *client)
+ 	struct device *dev = &client->dev;
+ 	struct nxp_nci_i2c_phy *phy;
+ 	int r;
++	unsigned long irqflags;
  
- 		vreg_l5a_0p8: ldo5 {
+ 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
+ 		nfc_err(&client->dev, "Need I2C_FUNC_I2C\n");
+@@ -303,9 +305,17 @@ static int nxp_nci_i2c_probe(struct i2c_client *client)
+ 	if (r < 0)
+ 		return r;
+ 
++	/* Prefer the trigger type configured by firmware.
++	 * Some platforms do not provide it, so fall back to the
++	 * historically used rising-edge trigger.
++	 */
++	irqflags = irq_get_trigger_type(client->irq);
++	if (!irqflags)
++		irqflags = IRQF_TRIGGER_RISING;
++
+ 	r = request_threaded_irq(client->irq, NULL,
+ 				 nxp_nci_i2c_irq_thread_fn,
+-				 IRQF_ONESHOT,
++				 irqflags | IRQF_ONESHOT,
+ 				 NXP_NCI_I2C_DRIVER_NAME, phy);
+ 	if (r < 0)
+ 		nfc_err(&client->dev, "Unable to register IRQ handler\n");
 
 ---
-base-commit: f90aadf1c67c8b4969d1e5e6d4fd7227adb6e4d7
-change-id: 20260312-beryllium-booton-adb218ec7e28
+base-commit: 7109a2155340cc7b21f27e832ece6df03592f2e8
+change-id: 20260311-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-cda942530c60
 
 Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+Carl Lee <carl.lee@amd.com>
 
