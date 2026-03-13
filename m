@@ -1,131 +1,91 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Fri, 13 Mar 2026 11:14:24 +0100
-Subject: [PATCH 2/2] powerpc: dts: Add missing model properties
+From: Michael Riesch <michael.riesch@collabora.com>
+Subject: [PATCH v2 0/2] media: synopsys: csi2rx: add support for rk3588
+ variant
+Date: Fri, 13 Mar 2026 12:08:44 +0100
+Message-Id: <20260305-rk3588-csi2rx-v2-0-79d01b615486@collabora.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260313-ppc-model-v1-2-bf19b3d1b65d@posteo.net>
-References: <20260313-ppc-model-v1-0-bf19b3d1b65d@posteo.net>
-In-Reply-To: <20260313-ppc-model-v1-0-bf19b3d1b65d@posteo.net>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Madhavan Srinivasan <maddy@linux.ibm.com>, 
- Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
- "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>
-Cc: devicetree@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773396881; l=3236;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=qyXxRV38xWkpDO+hT68IGUbfYPxG01yo3fihfYhDmgU=;
- b=MGt01luTb+JtIHA5onvF3/Xiuo5FxKvu4GNC6SUJCflpd0lvLCTUuURz46iyDEhNRvlL18oMI
- nebfhkFGMQ1Bud9z7D1Vu2OPt30215o7ucVsq+aqJGjg0V2dtd9wlFW
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIADzws2kC/3WNQQ7CIBBFr9KwdgxQq8SV9zBdDFNqiQhmUFLT9
+ O5i9y7fS/5/i8iOvcvi3CyCXfHZp1hB7xpBE8abAz9UFlrqo2xlB3xvO2OAstc8Ayo1nkh1eJA
+ o6sZidmAZI011Fd8hVPlkN/p5i1z7ypPPr8SfrVnUz/67LwokSBrMoO2oDckLpRDQJsY9pYfo1
+ 3X9ArGcVNXDAAAA
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Frank Li <Frank.li@nxp.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Kever Yang <kever.yang@rock-chips.com>, 
+ Collabora Kernel Team <kernel@collabora.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773400125; l=2036;
+ i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
+ bh=1o+QrPDOJChWf+XukZ3IFOH3/4JgpISUONKoL1ZBE2Q=;
+ b=J+4k2TTV7k5qog3CWEp7rZ7ezRflWtpvTccUCsyTa67YHiKsxVARNg1aLF4W6nuAZ2NzcvT3r
+ U0fniiW+lgrBlFkHKPMU4iy54GTsFTcGkK6M1sDyYHCHRvzdPHvJqzM
+X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
+ pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
+X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-These are the remaining PowerPC devicetrees that do not have a /model
-property, even though it is required by the devicetree specification.
-Fix them by simply copying the compatible string.
+Habidere,
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+The Rockchip RK3588 features six MIPI CSI-2 receiver units:
+ - MIPI0: connected to MIPI DCPHY0
+ - MIPI1: connected to MIPI DCPHY1
+ - MIPI2: connected to MIPI DPHY0
+ - MIPI3: connected to MIPI DPHY0-1 (only with split DPHY0)
+ - MIPI4: connected to MIPI DPHY1
+ - MIPI5: connected to MIPI DPHY1-1 (only with split DPHY1)
+
+The MIPI DCPHYs (at least the CSI-2 features of them) as well
+as the split DPHY mode of the DPHYs are not yet supported by
+mainline. However, we can already provide support for the
+MIPI2 and MIPI4 units.
+
+When support for the split DPHY mode is introduced, the DPHY
+nodes should have the property
+    #phy-cells = <1>;
+and the MIPI CSI-2 receiver nodes should have the property
+    phys = <&csi_dphy{0,1} {0,1}>;
+in case the split mode is desired. Since this is a board
+specific hardware design, the properties need to be changed
+in the board device tree (or any overlays).
+
+As reasonable default, however, we can define, e.g., 
+    #phy-cells = <0>;
+and
+    phys = <&csi_dphy{0,1}>;
+in the SoC device tree include.
+This series introduces initial support for this default
+configuration.
+
+Looking forward to your comments!
+
+Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- arch/powerpc/boot/dts/mpc8308_p1m.dts  | 1 +
- arch/powerpc/boot/dts/mpc8308rdb.dts   | 1 +
- arch/powerpc/boot/dts/mpc836x_rdk.dts  | 1 +
- arch/powerpc/boot/dts/mpc8377_rdb.dts  | 1 +
- arch/powerpc/boot/dts/mpc8377_wlan.dts | 1 +
- arch/powerpc/boot/dts/mpc8378_rdb.dts  | 1 +
- arch/powerpc/boot/dts/mpc8379_rdb.dts  | 1 +
- 7 files changed, 7 insertions(+)
+Changes in v2:
+- use fallback compatible instead of separate compatible (Krzysztof)
+- dropped patch 2 and 4 (as a consequence thereof)
+- Link to v1: https://lore.kernel.org/r/20260305-rk3588-csi2rx-v1-0-0cd8d2bf28c0@collabora.com
 
-diff --git a/arch/powerpc/boot/dts/mpc8308_p1m.dts b/arch/powerpc/boot/dts/mpc8308_p1m.dts
-index 2638555afcc454..2b24efd944113c 100644
---- a/arch/powerpc/boot/dts/mpc8308_p1m.dts
-+++ b/arch/powerpc/boot/dts/mpc8308_p1m.dts
-@@ -9,6 +9,7 @@
- 
- / {
- 	compatible = "denx,mpc8308_p1m";
-+	model = "denx,mpc8308_p1m";
- 	#address-cells = <1>;
- 	#size-cells = <1>;
- 
-diff --git a/arch/powerpc/boot/dts/mpc8308rdb.dts b/arch/powerpc/boot/dts/mpc8308rdb.dts
-index af2ed8380a867c..37b785dc787b7c 100644
---- a/arch/powerpc/boot/dts/mpc8308rdb.dts
-+++ b/arch/powerpc/boot/dts/mpc8308rdb.dts
-@@ -10,6 +10,7 @@
- 
- / {
- 	compatible = "fsl,mpc8308rdb";
-+	model = "fsl,mpc8308rdb";
- 	#address-cells = <1>;
- 	#size-cells = <1>;
- 
-diff --git a/arch/powerpc/boot/dts/mpc836x_rdk.dts b/arch/powerpc/boot/dts/mpc836x_rdk.dts
-index 4ff38e1a2185f8..d3d36fbf4e8695 100644
---- a/arch/powerpc/boot/dts/mpc836x_rdk.dts
-+++ b/arch/powerpc/boot/dts/mpc836x_rdk.dts
-@@ -14,6 +14,7 @@ / {
- 	#address-cells = <1>;
- 	#size-cells = <1>;
- 	compatible = "fsl,mpc8360rdk";
-+	model = "fsl,mpc8360rdk";
- 
- 	aliases {
- 		serial0 = &serial0;
-diff --git a/arch/powerpc/boot/dts/mpc8377_rdb.dts b/arch/powerpc/boot/dts/mpc8377_rdb.dts
-index f137ccb8cfdedf..45f78da31da182 100644
---- a/arch/powerpc/boot/dts/mpc8377_rdb.dts
-+++ b/arch/powerpc/boot/dts/mpc8377_rdb.dts
-@@ -9,6 +9,7 @@
- 
- / {
- 	compatible = "fsl,mpc8377rdb";
-+	model = "fsl,mpc8377rdb";
- 	#address-cells = <1>;
- 	#size-cells = <1>;
- 
-diff --git a/arch/powerpc/boot/dts/mpc8377_wlan.dts b/arch/powerpc/boot/dts/mpc8377_wlan.dts
-index ce254dd74dd06b..318e2e1f4284f2 100644
---- a/arch/powerpc/boot/dts/mpc8377_wlan.dts
-+++ b/arch/powerpc/boot/dts/mpc8377_wlan.dts
-@@ -10,6 +10,7 @@
- 
- / {
- 	compatible = "fsl,mpc8377wlan";
-+	model = "fsl,mpc8377wlan";
- 	#address-cells = <1>;
- 	#size-cells = <1>;
- 
-diff --git a/arch/powerpc/boot/dts/mpc8378_rdb.dts b/arch/powerpc/boot/dts/mpc8378_rdb.dts
-index 19e5473d4161b5..1abec806525844 100644
---- a/arch/powerpc/boot/dts/mpc8378_rdb.dts
-+++ b/arch/powerpc/boot/dts/mpc8378_rdb.dts
-@@ -9,6 +9,7 @@
- 
- / {
- 	compatible = "fsl,mpc8378rdb";
-+	model = "fsl,mpc8378rdb";
- 	#address-cells = <1>;
- 	#size-cells = <1>;
- 
-diff --git a/arch/powerpc/boot/dts/mpc8379_rdb.dts b/arch/powerpc/boot/dts/mpc8379_rdb.dts
-index 61519acca22804..b1e6a85624bef8 100644
---- a/arch/powerpc/boot/dts/mpc8379_rdb.dts
-+++ b/arch/powerpc/boot/dts/mpc8379_rdb.dts
-@@ -9,6 +9,7 @@
- 
- / {
- 	compatible = "fsl,mpc8379rdb";
-+	model = "fsl,mpc8379rdb";
- 	#address-cells = <1>;
- 	#size-cells = <1>;
- 
+---
+Michael Riesch (2):
+      media: dt-bindings: rockchip,rk3568-mipi-csi2: add rk3588 compatible
+      arm64: dts: rockchip: add mipi csi-2 receiver nodes to rk3588
 
+ .../bindings/media/rockchip,rk3568-mipi-csi2.yaml  |  8 +++-
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      | 52 ++++++++++++++++++++++
+ 2 files changed, 58 insertions(+), 2 deletions(-)
+---
+base-commit: 1f318b96cc84d7c2ab792fcc0bfd42a7ca890681
+change-id: 20260305-rk3588-csi2rx-a11f7c15a40a
+
+Best regards,
 -- 
-2.51.0
+Michael Riesch <michael.riesch@collabora.com>
 
