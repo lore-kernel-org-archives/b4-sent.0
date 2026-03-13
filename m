@@ -1,234 +1,137 @@
-From: Mayank Rungta <mrungta@google.com>
-Date: Thu, 12 Mar 2026 16:22:06 -0700
-Subject: [PATCH v2 5/5] doc: watchdog: Document buddy detector
+From: Hermes Wu <Hermes.wu@ite.com.tw>
+Subject: [PATCH v3 0/2] Add ITE IT6162 MIPI DSI to HDMI bridge driver
+Date: Fri, 13 Mar 2026 14:15:59 +0800
+Message-Id: <20260313-upstream-6162-v3-0-8497fb7c4406@ite.com.tw>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260312-hardlockup-watchdog-fixes-v2-5-45bd8a0cc7ed@google.com>
-References: <20260312-hardlockup-watchdog-fixes-v2-0-45bd8a0cc7ed@google.com>
-In-Reply-To: <20260312-hardlockup-watchdog-fixes-v2-0-45bd8a0cc7ed@google.com>
-To: Petr Mladek <pmladek@suse.com>, Jinchao Wang <wangjinchao600@gmail.com>, 
- Yunhui Cui <cuiyunhui@bytedance.com>, Stephane Eranian <eranian@google.com>, 
- Ian Rogers <irogers@google.com>, Li Huafei <lihuafei1@huawei.com>, 
- Feng Tang <feng.tang@linux.alibaba.com>, 
- Max Kellermann <max.kellermann@ionos.com>, Jonathan Corbet <corbet@lwn.net>, 
- Douglas Anderson <dianders@chromium.org>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- Florian Delizy <fdelizy@google.com>, Shuah Khan <skhan@linuxfoundation.org>
-Cc: linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- Mayank Rungta <mrungta@google.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773357752; l=9259;
- i=mrungta@google.com; s=20260212; h=from:subject:message-id;
- bh=bwkL0Xl6QKw4NxlixI2yZ7jUdew4kR4CuvDfQemly9g=;
- b=c/GuPPZRvi3GB9QDz/HD7sY6yOSvVKiuSmTZ28Yk0sqRHK8ArHEaxCrlpGdx2drDzt0lxn1Rz
- hmcdXnQa1IKDsXNVIp2VGQQkqsiUmOGh1sX7fhi1ntCKP3pLxdwfciX
-X-Developer-Key: i=mrungta@google.com; a=ed25519;
- pk=2Bjwbv/ibL10QnyvK9G7DoKpffXy7z6+M4NawEYgYDI=
-X-Endpoint-Received: by B4 Relay for mrungta@google.com/20260212 with auth_id=634
+X-B4-Tracking: v=1; b=H4sIAJ+rs2kC/3WMyw6CMBBFf4XM2pI+YkFX/IdxQaeDdMEjba0aw
+ r9b2BhNXJ6be84CgbyjAOdiAU/JBTeNGdShAOzb8UbM2cwgudRcSsXuc4ie2oFpoSVT1VFQVds
+ OWwvZmT117rn3LtfMvQtx8q89n8S2/islwTgjg6g1ohEdNS5SidNQxgdsqSQ/uuKnX11m3ZKxR
+ mNd58OXvq7rG/ItMMnqAAAA
+X-Change-ID: 20260223-upstream-6162-3751e78dfcad
+To: Andrzej Hajda <andrzej.hajda@intel.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Robert Foss <rfoss@kernel.org>, 
+ Laurent Pinchart <Laurent.pinchart@ideasonboard.com>, 
+ Jonas Karlman <jonas@kwiboo.se>, Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Pet.Weng@ite.com.tw, Kenneth.Hung@ite.com.tw, 
+ Hermes Wu <Hermes.Wu@ite.com.tw>, dri-devel@lists.freedesktop.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Hermes Wu <Hermes.wu@ite.com.tw>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773382593; l=4723;
+ i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
+ bh=XWEtQoEWbgR9DYbHJTmOros7zGhTGpjR1QrZ2m7Srtk=;
+ b=uP8QKB5VDZeROLOXuvqlvgiBqvNrVKhxnQmw14JAT6W4irAv4LgsFfXwkQNa0RP84ng3kyH61
+ 8NVCrkAkPw1Cl0UFjDdYYPuZ5azfpImj8RUmpjs4OrvqSV/USEXuHY3
+X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
+ pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
+X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The current documentation generalizes the hardlockup detector as primarily
-NMI-perf-based and lacks details on the SMP "Buddy" detector.
+This patch series adds support for the ITE IT6162 MIPI DSI to HDMI
+bridge chip. The IT6162 is an I2C-controlled bridge that receives MIPI
+DSI input and outputs HDMI signals.
 
-Update the documentation to add a detailed description of the Buddy
-detector, and also restructure the "Implementation" section to explicitly
-separate "Softlockup Detector", "Hardlockup Detector (NMI/Perf)", and
-"Hardlockup Detector (Buddy)".
+The device supports the following configurations:
+  - Single MIPI DSI input: up to 4K @ 30Hz
+  - Dual MIPI DSI input (combined): up to 4K @ 60Hz
 
-Clarify that the softlockup hrtimer acts as the heartbeat generator for
-both hardlockup mechanisms and centralize the configuration details in a
-"Frequency and Heartbeats" section.
+This series introduces:
+  - dt-bindings: Add YAML binding document for ITE IT6162
+  - drm/bridge: Add ITE IT6162 MIPI DSI to HDMI bridge driver
 
-Reviewed-by: Douglas Anderson <dianders@chromium.org>
-Signed-off-by: Mayank Rungta <mrungta@google.com>
+Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- Documentation/admin-guide/lockup-watchdogs.rst | 149 +++++++++++++++++--------
- 1 file changed, 101 insertions(+), 48 deletions(-)
+Changes in v3:
+- Documentation/devicetree/bindings/display/bridge/ite,it6162.yaml:  
+  * Fix lane-polarities: remove $ref redefinition, allow via video-interfaces.yaml
+  * Improve ite,support-hdcp description to clarify FW-based HDCP behavior
+  * Remove descriptions repeating schema constraints
+  * Remove stray comment in ports required section
+  * Fix data-lanes spacing in example: <1 2 3 4>
+  * Add missing newline at end of file
+  * Add missing change log  that Reviewed-by tag was removed when V1->V2
 
-diff --git a/Documentation/admin-guide/lockup-watchdogs.rst b/Documentation/admin-guide/lockup-watchdogs.rst
-index 1b374053771f..7ae7ce3abd2c 100644
---- a/Documentation/admin-guide/lockup-watchdogs.rst
-+++ b/Documentation/admin-guide/lockup-watchdogs.rst
-@@ -30,22 +30,23 @@ timeout is set through the confusingly named "kernel.panic" sysctl),
- to cause the system to reboot automatically after a specified amount
- of time.
- 
-+Configuration
-+=============
-+
-+A kernel knob is provided that allows administrators to configure
-+this period. The "watchdog_thresh" parameter (default 10 seconds)
-+controls the threshold. The right value for a particular environment
-+is a trade-off between fast response to lockups and detection overhead.
-+
- Implementation
- ==============
- 
--The soft and hard lockup detectors are built on top of the hrtimer and
--perf subsystems, respectively. A direct consequence of this is that,
--in principle, they should work in any architecture where these
--subsystems are present.
-+The soft lockup detector is built on top of the hrtimer subsystem.
-+The hard lockup detector is built on top of the perf subsystem
-+(on architectures that support it) or uses an SMP "buddy" system.
- 
--A periodic hrtimer runs to generate interrupts and kick the watchdog
--job. An NMI perf event is generated every "watchdog_thresh"
--(compile-time initialized to 10 and configurable through sysctl of the
--same name) seconds to check for hardlockups. If any CPU in the system
--does not receive any hrtimer interrupt during that time the
--'hardlockup detector' (the handler for the NMI perf event) will
--generate a kernel warning or call panic, depending on the
--configuration.
-+Softlockup Detector
-+-------------------
- 
- The watchdog job runs in a stop scheduling thread that updates a
- timestamp every time it is scheduled. If that timestamp is not updated
-@@ -55,53 +56,105 @@ will dump useful debug information to the system log, after which it
- will call panic if it was instructed to do so or resume execution of
- other kernel code.
- 
--The period of the hrtimer is 2*watchdog_thresh/5, which means it has
--two or three chances to generate an interrupt before the hardlockup
--detector kicks in.
-+Frequency and Heartbeats
-+------------------------
-+
-+The hrtimer used by the softlockup detector serves a dual purpose:
-+it detects softlockups, and it also generates the interrupts
-+(heartbeats) that the hardlockup detectors use to verify CPU liveness.
-+
-+The period of this hrtimer is 2*watchdog_thresh/5. This means the
-+hrtimer has two or three chances to generate an interrupt before the
-+NMI hardlockup detector kicks in.
-+
-+Hardlockup Detector (NMI/Perf)
-+------------------------------
-+
-+On architectures that support NMI (Non-Maskable Interrupt) perf events,
-+a periodic NMI is generated every "watchdog_thresh" seconds.
-+
-+If any CPU in the system does not receive any hrtimer interrupt
-+(heartbeat) during the "watchdog_thresh" window, the 'hardlockup
-+detector' (the handler for the NMI perf event) will generate a kernel
-+warning or call panic.
-+
-+**Detection Overhead (NMI):**
-+
-+The time to detect a lockup can vary depending on when the lockup
-+occurs relative to the NMI check window. Examples below assume a watchdog_thresh of 10.
-+
-+* **Best Case:** The lockup occurs just before the first heartbeat is
-+  due. The detector will notice the missing hrtimer interrupt almost
-+  immediately during the next check.
-+
-+  ::
-+
-+    Time 100.0: cpu 1 heartbeat
-+    Time 100.1: hardlockup_check, cpu1 stores its state
-+    Time 103.9: Hard Lockup on cpu1
-+    Time 104.0: cpu 1 heartbeat never comes
-+    Time 110.1: hardlockup_check, cpu1 checks the state again, should be the same, declares lockup
-+
-+    Time to detection: ~6 seconds
-+
-+* **Worst Case:** The lockup occurs shortly after a valid interrupt
-+  (heartbeat) which itself happened just after the NMI check. The next
-+  NMI check sees that the interrupt count has changed (due to that one
-+  heartbeat), assumes the CPU is healthy, and resets the baseline. The
-+  lockup is only detected at the subsequent check.
-+
-+  ::
-+
-+    Time 100.0: hardlockup_check, cpu1 stores its state
-+    Time 100.1: cpu 1 heartbeat
-+    Time 100.2: Hard Lockup on cpu1
-+    Time 110.0: hardlockup_check, cpu1 stores its state (misses lockup as state changed)
-+    Time 120.0: hardlockup_check, cpu1 checks the state again, should be the same, declares lockup
- 
--As explained above, a kernel knob is provided that allows
--administrators to configure the period of the hrtimer and the perf
--event. The right value for a particular environment is a trade-off
--between fast response to lockups and detection overhead.
-+    Time to detection: ~20 seconds
- 
--Detection Overhead
--------------------
-+Hardlockup Detector (Buddy)
-+---------------------------
- 
--The hardlockup detector checks for lockups using a periodic NMI perf
--event. This means the time to detect a lockup can vary depending on
--when the lockup occurs relative to the NMI check window.
-+On architectures or configurations where NMI perf events are not
-+available (or disabled), the kernel may use the "buddy" hardlockup
-+detector. This mechanism requires SMP (Symmetric Multi-Processing).
- 
--**Best Case:**
--In the best case scenario, the lockup occurs just before the first
--heartbeat is due. The detector will notice the missing hrtimer
--interrupt almost immediately during the next check.
-+In this mode, each CPU is assigned a "buddy" CPU to monitor. The
-+monitoring CPU runs its own hrtimer (the same one used for softlockup
-+detection) and checks if the buddy CPU's hrtimer interrupt count has
-+increased.
- 
--::
-+To ensure timeliness and avoid false positives, the buddy system performs
-+checks at every hrtimer interval (2*watchdog_thresh/5, which is 4 seconds
-+by default). It uses a missed-interrupt threshold of 3. If the buddy's
-+interrupt count has not changed for 3 consecutive checks, it is assumed
-+that the buddy CPU is hardlocked (interrupts disabled). The monitoring
-+CPU will then trigger the hardlockup response (warning or panic).
- 
--  Time 100.0: cpu 1 heartbeat
--  Time 100.1: hardlockup_check, cpu1 stores its state
--  Time 103.9: Hard Lockup on cpu1
--  Time 104.0: cpu 1 heartbeat never comes
--  Time 110.1: hardlockup_check, cpu1 checks the state again, should be the same, declares lockup
-+**Detection Overhead (Buddy):**
- 
--  Time to detection: ~6 seconds
-+With a default check interval of 4 seconds (watchdog_thresh = 10):
- 
--**Worst Case:**
--In the worst case scenario, the lockup occurs shortly after a valid
--interrupt (heartbeat) which itself happened just after the NMI check.
--The next NMI check sees that the interrupt count has changed (due to
--that one heartbeat), assumes the CPU is healthy, and resets the
--baseline. The lockup is only detected at the subsequent check.
-+* **Best case:** Lockup occurs just before a check.
-+    Detected in ~8s (0s till 1st check + 4s till 2nd + 4s till 3rd).
-+* **Worst case:** Lockup occurs just after a check.
-+    Detected in ~12s (4s till 1st check + 4s till 2nd + 4s till 3rd).
- 
--::
-+**Limitations of the Buddy Detector:**
- 
--  Time 100.0: hardlockup_check, cpu1 stores its state
--  Time 100.1: cpu 1 heartbeat
--  Time 100.2: Hard Lockup on cpu1
--  Time 110.0: hardlockup_check, cpu1 stores its state (misses lockup as state changed)
--  Time 120.0: hardlockup_check, cpu1 checks the state again, should be the same, declares lockup
-+1.  **All-CPU Lockup:** If all CPUs lock up simultaneously, the buddy
-+    detector cannot detect the condition because the monitoring CPUs
-+    are also frozen.
-+2.  **Stack Traces:** Unlike the NMI detector, the buddy detector
-+    cannot directly interrupt the locked CPU to grab a stack trace.
-+    It relies on architecture-specific mechanisms (like NMI backtrace
-+    support) to try and retrieve the status of the locked CPU. If
-+    such support is missing, the log may only show that a lockup
-+    occurred without providing the locked CPU's stack.
- 
--  Time to detection: ~20 seconds
-+Watchdog Core Exclusion
-+=======================
- 
- By default, the watchdog runs on all online cores.  However, on a
- kernel configured with NO_HZ_FULL, by default the watchdog runs only
+- drivers/gpu/drm/bridge/ite-it6162.c:
+  * Fix OFFSET_VERSION_H register offset from 0x03 to 0x05
+  * Add MIPI_PORT_EN_MASK macro combining MIPI_PORT1_EN_MASK and MIPI_PORT0_EN_MASK
+  * Rename HDCP enums: NO_HDCP -> HDCP_DISABLE, NO_HDCP_STATE -> HDCP_STATE_IDLE,
+    AUTH_DONE -> HDCP_STATE_AUTH_DONE, AUTH_FAIL -> HDCP_STATE_AUTH_FAIL
+  * Rename it6162_infoblock_complete() to it6162_wait_command_complete()
+  * Rename it6162_infoblock_host_set() to it6162_infoblock_trigger() 
+  * Remove it6162_infoblock_mipi_config() and it6162_infoblock_write_msg()
+    wrappers, inline into it6162_reset_init() and
+    it6162_mipi_set_video_timing() respectively
+  * Remove it6162_set_default_config() wrapper, inline into
+    it6162_reset_init()  
+  * Fix typo: hdcp_encyption -> hdcp_encryption
+  * Fix typo: it6162_hdcp_read_infomation -> it6162_hdcp_read_information
+  * Remove dev_err_probe() usage outside of probe path
+  * Remove verbose success-path dev_info/dev_dbg logging throughout
+  * Replace __func__ usage in error messages with descriptive strings
+  * Fix double error printing in probe for it6162_init_pdata failure path
+  * Fix uninitialized variable warning: initialize cp_status to
+    DRM_MODE_CONTENT_PROTECTION_DESIRED at declaration; move
+    drm_hdcp_update_content_protection() inside the state-change block
+  * Fix audio sample width mapping: case 20 now maps to WORD_LENGTH_20BIT,
+    case 24 to WORD_LENGTH_24BIT
+  * Remove stray drm_dbg("it6162_bridge_atomic_disable") call
+  * Remove drm_dbg() calls from it6162_display_mode_to_settings()
+  * Drop unused struct it6162 * parameter from it6162_avi_to_video_setting()
+    and it6162_display_mode_to_settings()
+  * Fold it6162_set_default_config() body directly into it6162_reset_init(),
+    removing the wrapper
+  * it6162_infoblock_request_data(): split command complete polling and
+    buffer status check into two steps; use wait_event_timeout() for
+    data_buf_sts since it is updated asynchronously by the interrupt
+    handler; add wait_queue_head_t data_buf_wait to struct it6162 and
+    wake_up() in interrupt handler
 
+- Link to v2: https://lore.kernel.org/r/20260309-upstream-6162-v2-0-debdb6c88030@ite.com.tw
+
+Changes in v2:
+- dt-bindings:
+  * Drop Reviewed-by tag due to below changes
+  * Add property "ite,spport-hdcp" to enable HDCP
+  * Add property "lane-polarities" and "clock-noncontinuous" for DSI
+    setting
+
+- drm/bridge:
+  * Drop unused element in struct it6162
+  * Remove regmap wrappers
+  * Use FIELD_PREP for bitfield operations
+  * Update HDCP status with drm_hdcp_update_content_protection()
+  * Add AVI, AUDIO, and SPD infoframe control
+  * Remove conversion from drm_display_mode to videomode
+  * Fix regulator/gpio error handling in it6162_init_pdata() to return proper error codes
+
+- MAINTAINERS
+  * squash to driver patch
+
+- Link to v1: https://lore.kernel.org/r/20260223-upstream-6162-v1-0-ebcc66ccb1fe@ite.com.tw
+
+---
+Hermes Wu (2):
+      dt-bindings: display: bridge: Add ITE IT6162 MIPI DSI to HDMI bridge
+      drm/bridge: Add ITE IT6162 MIPI DSI to HDMI bridge driver
+
+ .../bindings/display/bridge/ite,it6162.yaml        |  178 +++
+ MAINTAINERS                                        |    7 +
+ drivers/gpu/drm/bridge/Kconfig                     |   17 +
+ drivers/gpu/drm/bridge/Makefile                    |    1 +
+ drivers/gpu/drm/bridge/ite-it6162.c                | 1631 ++++++++++++++++++++
+ 5 files changed, 1834 insertions(+)
+---
+base-commit: 2622649ad6cdbb3e77bfafc8c0fe686090b77f70
+change-id: 20260223-upstream-6162-3751e78dfcad
+
+Best regards,
 -- 
-2.53.0.851.ga537e3e6e9-goog
+Hermes Wu <Hermes.wu@ite.com.tw>
 
