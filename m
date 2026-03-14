@@ -1,173 +1,177 @@
-From: Levi Zim <rsworktech@outlook.com>
-Date: Sun, 15 Mar 2026 00:02:48 +0800
-Subject: [PATCH bpf v3] bpf: do not use kmalloc_nolock when
- !HAVE_CMPXCHG_DOUBLE
+From: Amit Sunil Dhamne <amitsd@google.com>
+Subject: [PATCH RESEND v8 0/6] Introduce MAX77759 charger driver
+Date: Sat, 14 Mar 2026 21:35:35 +0000
+Message-Id: <20260314-max77759-charger-v8-0-226ca5f8c7d2@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260315-bpf-kmalloc-nolock-v3-1-91c72bf91902@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XNyQ6CMBAG4Fchc7amCxT15HsYDwWm0rAMabHRE
- N7dpjcvepnkn+WbDQJ6hwEuxQYeowuO5hTUoYC2N/MDmetSBsml5kqUrFksGyYzjtSymVIdmOa
- dOXHUQnUI6XDxaN0rozdI+3BPzd6Flfw7P4oij36ZUTDBZGkaq2xdmbO90nMdiYZjS1MGo/yPy
- IRUtUalsLRG19/Ivu8fv2qK1AABAAA=
-X-Change-ID: 20260314-bpf-kmalloc-nolock-60da80e613de
-To: Alexei Starovoitov <ast@kernel.org>, 
- Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
- Martin KaFai Lau <martin.lau@linux.dev>, 
- Eduard Zingerman <eddyz87@gmail.com>, Song Liu <song@kernel.org>, 
- Yonghong Song <yonghong.song@linux.dev>, 
- John Fastabend <john.fastabend@gmail.com>, KP Singh <kpsingh@kernel.org>, 
- Stanislav Fomichev <sdf@fomichev.me>, Hao Luo <haoluo@google.com>, 
- Jiri Olsa <jolsa@kernel.org>, 
- Sebastian Andrzej Siewior <bigeasy@linutronix.de>, 
- Clark Williams <clrkwllms@kernel.org>, Steven Rostedt <rostedt@goodmis.org>, 
- Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
- Albert Ou <aou@eecs.berkeley.edu>, Alexandre Ghiti <alex@ghiti.fr>
-Cc: Amery Hung <ameryhung@gmail.com>, linux-riscv@lists.infradead.org, 
- stable@vger.kernel.org, bpf@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-rt-devel@lists.linux.dev, Levi Zim <rsworktech@outlook.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAKfUtWkC/23QTU/DMAwG4L8y5UxR4sZOwokDu3KAI+KQr3aR2
+ IpaVA1N/e9kRWhFydG28th5L2yKY4oTe9hd2BjnNKXhlAt9t2P+YE99bFLINQMOKATH5mjPSik
+ 0TR6PfRwbjeAIKBAJy/KzzzF26bySb+xl/7p/fmLvuX9I09cwfq+bZrFOf1FoS3QWDW/IQZROd
+ 6pD+dgPQ/8R7/1wXLUZbgIIXREgC+AAjdHckqZCaDcCqIrQZgFlJJIdemugEOSfQDwfURHk9Rd
+ GQiu9DjGIQsCbALyWA2bBIW8NtoosdoVAG0HIikDXHLTnxgWrpCuTVFuhlqTKQtTBcOUjGY+Fo
+ DcC1G7QV8FpcgEVj8b/E5Zl+QHMNJU7hwIAAA==
+X-Change-ID: 20251105-max77759-charger-852b626d661a
+To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
+ Lee Jones <lee@kernel.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Badhri Jagan Sridharan <badhri@google.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Tudor Ambarus <tudor.ambarus@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>, Mark Brown <broonie@kernel.org>, 
+ Matti Vaittinen <mazziesaccount@gmail.com>, 
+ Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-usb@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
+ RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
+ Amit Sunil Dhamne <amitsd@google.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5177;
- i=rsworktech@outlook.com; s=ryzen; h=from:subject:message-id;
- bh=F3NzhvAzd0zCVDcRlr7RmrSHpJygKeFMqZIONIS/DVY=;
- b=owEBbQKS/ZANAwAKAW87mNQvxsnYAcsmYgBptYataz9Rjqgmj6vGqmsIM8a6ZekZLkTCdBL8E
- xjDsqOUPQWJAjMEAAEKAB0WIQQolnD5HDY18KF0JEVvO5jUL8bJ2AUCabWGrQAKCRBvO5jUL8bJ
- 2F2AD/9oKgja014FkRBZt0+EeVAdwGQx2xV8nIGzJFegeQEj1nn2IEPSyYITgmeLJ+wp0LhaJ7M
- KZ2ZG7quAiDTUYPLSTk1+qNAR+JaDp15cA1/GHDrdFoLCEO0A4TYRP4eMrqQIOIZra2hF+7EX0C
- v6ndojsunyGRPgeDln9cs6pYfa1XUa8dHgD9bSivT1DluvOajJU1gXjbhTKEOeasYdzMt1IQfNw
- kQX7wq/P3JoUFMTJCL4I66odN1QlGfe2sS7xNg5GOu08NtxDrXY8QkbSLNGAqYA/t5lKwOjdjNg
- MfdFm4zzKcTm4Qe9STv6V9cQjVoG3kRqCbP35meqrOq690na+7HUW4RrAjozujCSLeQ8Zv2s32q
- o9m6p3nzUyP6wB2/sJkwk8eD7S3o4X9ODWpdSAr76mi+9o5AHTvTA2BdaHE4yDhjfSByRrZxjin
- riSi1Foj46ovVjKDCFwdEN0ocJFHCfUW1GjnXA2qjM2Sale7GV7fS/UNNnftktWBTyYA2Jw8hyK
- V30UKE2bZsSHx5wsDVKV/YphBApMDRFi+2OUkKhFIJovNl7pxU2DxjHiKa0T5r1u6xAVlpvEfA7
- 5lHcoM60D8Hn0Xn4JcC9YioctxKS6UI/2FPAVvrham+ytnO0SIbDZbXaiqjWhkr/F7qR0LE3eGI
- k2lMPSDkv1fCCIA==
-X-Developer-Key: i=rsworktech@outlook.com; a=openpgp;
- fpr=17AADD6726DDC58B8EE5881757670CCFA42CCF0A
-X-Endpoint-Received: by B4 Relay for rsworktech@outlook.com/ryzen with auth_id=536
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773524157; l=6377;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=f00uJrynLNBeq1fp8KKlN/A/GMn2B9ae1DulfzNwyPQ=;
+ b=ssMe57JsMYjZhRJG94pjcao4tZCTKY8Mq7ojocIgx7mxddfSwIjQtomYQV/mztDOv1g/OwMue
+ 6QqQQrAEkwvAtSOyVAB4sxh63NX7RVuE5y/UyUQU8D5hTphX6StBE5c
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-kmalloc_nolock always fails for architectures that lack cmpxchg16b.
-For example, this causes bpf_task_storage_get with flag
-BPF_LOCAL_STORAGE_GET_F_CREATE to fails on riscv64 6.19 kernel.
+MAX77759 PMIC is used in Pixel 6 and 6 Pro (Oriole/Raven) boards.
+One of the functions of the MAX77759 PMIC is a battery charger. This
+patchset introduces a driver for this function. One of the unique
+features of this charger driver is that it works with a USB input where
+the Type-C controller is TCPCI based.
 
-Fix it by enabling use_kmalloc_nolock only when HAVE_CMPXCHG_DOUBLE.
-But leave the PREEMPT_RT case as is because it requires kmalloc_nolock
-for correctness. Add a comment about this limitation that architecture's
-lack of CMPXCHG_DOUBLE combined with PREEMPT_RT could make
-bpf_local_storage_alloc always fail.
+Changes to the board files will follow soon once this patchset is reviewed.
 
-Fixes: f484f4a3e058 ("bpf: Replace bpf memory allocator with kmalloc_nolock() in local storage")
-Cc: stable@vger.kernel.org
-Signed-off-by: Levi Zim <rsworktech@outlook.com>
+For reference to the MAX77759 MFD based patchset (present in upstream):
+https://lore.kernel.org/all/20250509-max77759-mfd-v10-0-962ac15ee3ef@linaro.org/
+
+Dependency list for patches (directionality indicates depends on):
+[6] -> [5] -> [4] & [3]
+
+The changes need to be applied in order. In this case this probably
+would be the USB subsystem as that's the leaf in the dependency list.
+
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
-I find that bpf_task_storage_get with flag BPF_LOCAL_STORAGE_GET_F_CREATE
-always fails for me on 6.19 kernel on riscv64 and bisected it.
+Changes in v8:
+- Add an newline char at the end of dev_* prints. (André Draszik)
+- Return PTR_ERR() instead of -EPROBE_DEFER when devm_power_supply_register()
+  fails in max77759 charger probe. (André Draszik)
+- Link to v7: https://lore.kernel.org/r/20260218-max77759-charger-v7-0-e8d907ce69c5@google.com
 
-In f484f4a3e058 ("bpf: Replace bpf memory allocator with kmalloc_nolock()
-in local storage"), bpf memory allocator is replaced with kmalloc_nolock.
-This approach is problematic for architectures that lack CMPXCHG_DOUBLE
-because kmalloc_nolock always fails in this case:
+Changes in v7:
+- Add register relock for protected registers in fail path. (André Draszik)
+- Switch to usage of scoped_guard instead of guard. (LKP test bot)
+- Link to v6: https://lore.kernel.org/r/20260214-max77759-charger-v6-0-28c09bda74b4@google.com
 
-In function kmalloc_nolock (kmalloc_nolock_noprof): 
+Changes in v6:
+-  Linear Range usage (André Draszik):
+  - Dedicate individual arrays for inlim, chgcc & chg_cv_prm to simplify
+    code.
+  - Use numerical values instead of macros for linear_range array init.
+  - Remove macros defining current and voltage limits due to above.
+  - Didn't use Reviewed-by tag for Patch 3 due to the above.
+  - Add new linear_ranges api to leverage it for obtaining selector
+    values.
+  - Improve voltage and current getters and setters functions by leveraging
+    existing and new linear_ranges API.
+- IRQ related changes (André Draszik)
+  - Dedicated names for individual irqs.
+  - Refactor irq handlers.
+  - Ratelimit prints
+- Retry mechanism (André Draszik):
+  - Initialize error retry counter to 0 when psy work is scheduled on a
+    new notifier event.
+  - Protect the counter using a lock.
+  - Add appropriate prints.
+- Link to v5: https://lore.kernel.org/r/20260203-max77759-charger-v5-0-b50395376a5f@google.com
 
-	if (!(s->flags & __CMPXCHG_DOUBLE) && !kmem_cache_debug(s))
-		/*
-		 * kmalloc_nolock() is not supported on architectures that
-		 * don't implement cmpxchg16b, but debug caches don't use
-		 * per-cpu slab and per-cpu partial slabs. They rely on
-		 * kmem_cache_node->list_lock, so kmalloc_nolock() can
-		 * attempt to allocate from debug caches by
-		 * spin_trylock_irqsave(&n->list_lock, ...)
-		 */
-		return NULL;
+Changes in v5:
+- Use linear_range library instead of reinventing it. (André Draszik)
+  - This requires a selector_max value so modified mfd/max77759.h to
+    include it for CHGCC and CHG_ILIM.
+  - Removed "reviewed-by" for Patch 3 (mfd) due to above
+- Use asnyc probe type. (André Draszik)
+- Retry mechanism for psy_work. (André Draszik)
+- Minor nits (André Draszik):
+  - Use named initializers for instantiating structs.
+  - Use static qualifier for `psy_name` variable.
+  - Refactor if-else ladder to remove else handling if return in prior
+    "if" loop.
+  - Remove redundant `unlikely`.
+- Link to v4: https://lore.kernel.org/r/20260121-max77759-charger-v4-0-694234c8ded1@google.com
 
-Fix it by enabling use_kmalloc_nolock only when HAVE_CMPXCHG_DOUBLE.
-(But not for a PREEMPT_RT case as explained in the comment and commitmsg)
+Changes in v4:
+- Removed a stray tabspace in mfd/max77759.h. (André Draszik)
+- Fixed the following issues in Patch 4/5 (André Draszik):
+  - Re-order Kconfig entry
+  - Refactored to not use global variable
+  - Use of clamp() to clamp values instead of duplicating logic
+  - Return IRQ_NONE for unhandled irqs or error conditions
+  - Remove debug messages in irq handler
+  - Refactor code to use dev_err_probe in *_init_irqhandler()
+  - Remove unneeded irq_flags
+  - Check return values of regmap ops
+  - Other nits like newlines, not using greedy init, using print stmnts
+- Link to v3: https://lore.kernel.org/r/20251227-max77759-charger-v3-0-54e664f5ca92@google.com
 
-Note for stable: this only needs to be picked into v6.19 if the patch
-makes it into 7.0.
----
 Changes in v3:
-- Use macro instead of const static variable to avoid triggering
-  warnings.
-- Wrap lines at 80 columns
-- Link to v2: https://lore.kernel.org/r/20260314-bpf-kmalloc-nolock-v2-1-576e33e4fa67@outlook.com
+- Had incorrectly folded the charger sub-device with the pmic parent.
+  Corrected it. (Krzysztof Kozlowski)
+- Link to v2: https://lore.kernel.org/r/20251218-max77759-charger-v2-0-2b259980a686@google.com
 
 Changes in v2:
-- Drop the modification to the PREEMPT_RT case as it requires
-  kmalloc_nolock for correctness.
-- Add a comment to the PREEMPT_RT case about the limitation when
-  not HAVE_CMPXCHG_DOUBLE but enables PREEMPT_RT.
-- Link to v1: https://lore.kernel.org/r/20260314-bpf-kmalloc-nolock-v1-1-24abf3f75a9f@outlook.com
----
- include/linux/bpf_local_storage.h | 1 +
- kernel/bpf/bpf_cgrp_storage.c     | 3 ++-
- kernel/bpf/bpf_local_storage.c    | 4 ++++
- kernel/bpf/bpf_task_storage.c     | 3 ++-
- 4 files changed, 9 insertions(+), 2 deletions(-)
-
-diff --git a/include/linux/bpf_local_storage.h b/include/linux/bpf_local_storage.h
-index 8157e8da61d40..d8f2c5d63a80e 100644
---- a/include/linux/bpf_local_storage.h
-+++ b/include/linux/bpf_local_storage.h
-@@ -18,6 +18,7 @@
- #include <asm/rqspinlock.h>
- 
- #define BPF_LOCAL_STORAGE_CACHE_SIZE	16
-+#define KMALLOC_NOLOCK_SUPPORTED IS_ENABLED(CONFIG_HAVE_CMPXCHG_DOUBLE)
- 
- struct bpf_local_storage_map_bucket {
- 	struct hlist_head list;
-diff --git a/kernel/bpf/bpf_cgrp_storage.c b/kernel/bpf/bpf_cgrp_storage.c
-index c2a2ead1f466d..cd18193c44058 100644
---- a/kernel/bpf/bpf_cgrp_storage.c
-+++ b/kernel/bpf/bpf_cgrp_storage.c
-@@ -114,7 +114,8 @@ static int notsupp_get_next_key(struct bpf_map *map, void *key, void *next_key)
- 
- static struct bpf_map *cgroup_storage_map_alloc(union bpf_attr *attr)
- {
--	return bpf_local_storage_map_alloc(attr, &cgroup_cache, true);
-+	return bpf_local_storage_map_alloc(attr, &cgroup_cache,
-+					   KMALLOC_NOLOCK_SUPPORTED);
- }
- 
- static void cgroup_storage_map_free(struct bpf_map *map)
-diff --git a/kernel/bpf/bpf_local_storage.c b/kernel/bpf/bpf_local_storage.c
-index 9c96a4477f81a..a6c240da87668 100644
---- a/kernel/bpf/bpf_local_storage.c
-+++ b/kernel/bpf/bpf_local_storage.c
-@@ -893,6 +893,10 @@ bpf_local_storage_map_alloc(union bpf_attr *attr,
- 	/* In PREEMPT_RT, kmalloc(GFP_ATOMIC) is still not safe in non
- 	 * preemptible context. Thus, enforce all storages to use
- 	 * kmalloc_nolock() when CONFIG_PREEMPT_RT is enabled.
-+	 *
-+	 * However, kmalloc_nolock would fail on architectures that do not
-+	 * have CMPXCHG_DOUBLE. On such architectures with PREEMPT_RT,
-+	 * bpf_local_storage_alloc would always fail.
- 	 */
- 	smap->use_kmalloc_nolock = IS_ENABLED(CONFIG_PREEMPT_RT) ? true : use_kmalloc_nolock;
- 
-diff --git a/kernel/bpf/bpf_task_storage.c b/kernel/bpf/bpf_task_storage.c
-index 605506792b5b4..6e8597edea314 100644
---- a/kernel/bpf/bpf_task_storage.c
-+++ b/kernel/bpf/bpf_task_storage.c
-@@ -212,7 +212,8 @@ static int notsupp_get_next_key(struct bpf_map *map, void *key, void *next_key)
- 
- static struct bpf_map *task_storage_map_alloc(union bpf_attr *attr)
- {
--	return bpf_local_storage_map_alloc(attr, &task_cache, true);
-+	return bpf_local_storage_map_alloc(attr, &task_cache,
-+					   KMALLOC_NOLOCK_SUPPORTED);
- }
- 
- static void task_storage_map_free(struct bpf_map *map)
+- Fold charger binding in maxim,max77759-charger.yaml to its parent
+  node. (Krzysztof Kozlowski)
+- Renamed regulator supplier & consumer. (Krzysztof Kozlowski & Heikki
+  Krogerus)
+- Removed explicit setting of irq trigger types in max77759 driver.
+  (André Draszik & Krzysztof Kozlowski)
+- Complete bit definitions for IRQ registers. (André Draszik)
+- Consolidate all bit definitions for charger IP in mfd/max77759.h.
+  (André Draszik)
+- Modify the handling of charger IRQs such that regmap IRQ chip handles
+  masking, de-mux and acking of interrupts. (André Draszik)
+- Remove unused macro definitions relating to Charger modes in tcpci
+  maxim driver (André Draszik)
+- Add dependency on Regulator class in Kconfig definition for max77759
+  chg. (Kernel Test Robot)
+- Link to v1: https://lore.kernel.org/r/20251123-max77759-charger-v1-0-6b2e4b8f7f54@google.com
 
 ---
-base-commit: e06e6b8001233241eb5b2e2791162f0585f50f4b
-change-id: 20260314-bpf-kmalloc-nolock-60da80e613de
+Amit Sunil Dhamne (6):
+      dt-bindings: mfd: maxim,max77759: reference power-supply schema and add regulator property
+      dt-bindings: usb: maxim,max33359: Add supply property for vbus
+      mfd: max77759: add register bitmasks and modify irq configs for charger
+      lib/linear_ranges: Add linear_range_get_selector_high_array
+      power: supply: max77759: add charger driver
+      usb: typec: tcpm/tcpci_maxim: deprecate WAR for setting charger mode
+
+ .../devicetree/bindings/mfd/maxim,max77759.yaml    |  16 +-
+ .../devicetree/bindings/usb/maxim,max33359.yaml    |   4 +
+ MAINTAINERS                                        |   6 +
+ drivers/mfd/max77759.c                             |  91 ++-
+ drivers/power/supply/Kconfig                       |  11 +
+ drivers/power/supply/Makefile                      |   1 +
+ drivers/power/supply/max77759_charger.c            | 774 +++++++++++++++++++++
+ drivers/usb/typec/tcpm/tcpci_maxim.h               |   1 +
+ drivers/usb/typec/tcpm/tcpci_maxim_core.c          |  54 +-
+ include/linux/linear_range.h                       |   3 +
+ include/linux/mfd/max77759.h                       | 176 ++++-
+ lib/linear_ranges.c                                |  36 +
+ 12 files changed, 1114 insertions(+), 59 deletions(-)
+---
+base-commit: ecc64d2dc9ff9738d2a896beb68e02c2feaf9a02
+change-id: 20251105-max77759-charger-852b626d661a
 
 Best regards,
 -- 
-Levi Zim <rsworktech@outlook.com>
+Amit Sunil Dhamne <amitsd@google.com>
 
