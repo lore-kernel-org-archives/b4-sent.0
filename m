@@ -1,10 +1,10 @@
 From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Sat, 14 Mar 2026 14:34:14 +0530
-Subject: [PATCH v4 2/3] mm/vmalloc: free unused pages on vrealloc() shrink
+Date: Sat, 14 Mar 2026 14:34:15 +0530
+Subject: [PATCH v4 3/3] lib/test_vmalloc: add vrealloc test case
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260314-vmalloc-shrink-v4-2-c1e2e0bb5455@zohomail.in>
+Message-Id: <20260314-vmalloc-shrink-v4-3-c1e2e0bb5455@zohomail.in>
 References: <20260314-vmalloc-shrink-v4-0-c1e2e0bb5455@zohomail.in>
 In-Reply-To: <20260314-vmalloc-shrink-v4-0-c1e2e0bb5455@zohomail.in>
 To: Andrew Morton <akpm@linux-foundation.org>, 
@@ -13,80 +13,111 @@ Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
  Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
  Shivam Kalra <shivamkalra98@zohomail.in>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773479164; l=2543;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773479164; l=2680;
  i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
- bh=qiLrg/KiMgMQgQ06tgY/qjWWfVqF7Moa3eb5azEQPMU=;
- b=JSgIl8t091y/VKSsQI5DHU6yX/zoZKbxLX6f33+kCAYEstK2d+ExBt3JJ42ubUxhPL/afLIXy
- 9RqAAyIaL4iDI2wyTUIBa/shktn0Zf1G93hgQP/weRS+R2Zs2taVyZQ
+ bh=vGtWOd+QVlnd5fUIfOUP0oSJ0Gu3V+AGGjAsUp+yrM4=;
+ b=ZlC06BPiN19E6EC05bRswEeu5zLVKJ2Ai6lAnm/0OA9b5z49oH4h0mOBUldtoDwZpqrM+2dVD
+ wIb8zLxhCqvALIzYJirqqA4dSyII/Gw2jQfRf+pohOSMKj2/dKPaw0I
 X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
  pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
 X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When vrealloc() shrinks an allocation and the new size crosses a page
-boundary, unmap and free the tail pages that are no longer needed. This
-reclaims physical memory that was previously wasted for the lifetime
-of the allocation.
+Introduce a new test case "vrealloc_test" that exercises the vrealloc()
+shrink and in-place grow paths:
 
-The heuristic is simple: always free when at least one full page becomes
-unused. Huge page allocations (page_order > 0) are skipped, as partial
-freeing would require splitting.
+  - Grow beyond allocated pages (triggers full reallocation).
+  - Shrink crossing a page boundary (frees tail pages).
+  - Shrink within the same page (no page freeing).
+  - Grow within the already allocated page count (in-place).
 
-The virtual address reservation (vm->size / vmap_area) is intentionally
-kept unchanged, preserving the address for potential future grow-in-place
-support.
+Data integrity is validated after each realloc step by checking that
+the first byte of the original allocation is preserved.
 
-Fix the grow-in-place check to compare against vm->nr_pages rather than
-get_vm_area_size(), since the latter reflects the virtual reservation
-which does not shrink. Without this fix, a grow after shrink would
-access freed pages.
+The test is gated behind run_test_mask bit 12 (id 4096).
 
 Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
- mm/vmalloc.c | 19 ++++++++++++++-----
- 1 file changed, 14 insertions(+), 5 deletions(-)
+ lib/test_vmalloc.c | 52 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 52 insertions(+)
 
-diff --git a/mm/vmalloc.c b/mm/vmalloc.c
-index b29bf58c0e3f..2c455f2038f6 100644
---- a/mm/vmalloc.c
-+++ b/mm/vmalloc.c
-@@ -4345,14 +4345,23 @@ void *vrealloc_node_align_noprof(const void *p, size_t size, unsigned long align
- 			goto need_realloc;
- 	}
+diff --git a/lib/test_vmalloc.c b/lib/test_vmalloc.c
+index 876c72c18a0c..ce2b2777a785 100644
+--- a/lib/test_vmalloc.c
++++ b/lib/test_vmalloc.c
+@@ -55,6 +55,7 @@ __param(int, run_test_mask, 7,
+ 		"\t\tid: 512,  name: kvfree_rcu_2_arg_vmalloc_test\n"
+ 		"\t\tid: 1024, name: vm_map_ram_test\n"
+ 		"\t\tid: 2048, name: no_block_alloc_test\n"
++		"\t\tid: 4096, name: vrealloc_test\n"
+ 		/* Add a new test case description here. */
+ );
  
--	/*
--	 * TODO: Shrink the vm_area, i.e. unmap and free unused pages. What
--	 * would be a good heuristic for when to shrink the vm_area?
--	 */
- 	if (size <= old_size) {
-+		unsigned int new_nr_pages = PAGE_ALIGN(size) >> PAGE_SHIFT;
+@@ -421,6 +422,56 @@ vm_map_ram_test(void)
+ 	return nr_allocated != map_nr_pages;
+ }
+ 
++static int vrealloc_test(void)
++{
++	void *ptr;
++	int i;
 +
- 		/* Zero out "freed" memory, potentially for future realloc. */
- 		if (want_init_on_free() || want_init_on_alloc(flags))
- 			memset((void *)p + size, 0, old_size - size);
++	for (i = 0; i < test_loop_count; i++) {
++		ptr = vmalloc(PAGE_SIZE);
++		if (!ptr)
++			return -1;
 +
-+		/* Free tail pages when shrink crosses a page boundary. */
-+		if (new_nr_pages < vm->nr_pages && !vm_area_page_order(vm)) {
-+			unsigned long addr = (unsigned long)p;
++		*((__u8 *)ptr) = 'a';
 +
-+			vunmap_range(addr + (new_nr_pages << PAGE_SHIFT),
-+				     addr + (vm->nr_pages << PAGE_SHIFT));
++		/* Grow: beyond allocated pages, triggers full realloc. */
++		ptr = vrealloc(ptr, 4 * PAGE_SIZE, GFP_KERNEL);
++		if (!ptr)
++			return -1;
 +
-+			vm_area_free_pages(vm, new_nr_pages, vm->nr_pages);
-+			vm->nr_pages = new_nr_pages;
-+		}
- 		vm->requested_size = size;
- 		kasan_vrealloc(p, old_size, size);
- 		return (void *)p;
-@@ -4361,7 +4370,7 @@ void *vrealloc_node_align_noprof(const void *p, size_t size, unsigned long align
- 	/*
- 	 * We already have the bytes available in the allocation; use them.
- 	 */
--	if (size <= alloced_size) {
-+	if (size <= (size_t)vm->nr_pages << PAGE_SHIFT) {
- 		/*
- 		 * No need to zero memory here, as unused memory will have
- 		 * already been zeroed at initial allocation time or during
++		if (*((__u8 *)ptr) != 'a')
++			return -1;
++
++		/* Shrink: crosses page boundary, frees tail pages. */
++		ptr = vrealloc(ptr, PAGE_SIZE, GFP_KERNEL);
++		if (!ptr)
++			return -1;
++
++		if (*((__u8 *)ptr) != 'a')
++			return -1;
++
++		/* Shrink: within same page, no page freeing. */
++		ptr = vrealloc(ptr, PAGE_SIZE / 2, GFP_KERNEL);
++		if (!ptr)
++			return -1;
++
++		if (*((__u8 *)ptr) != 'a')
++			return -1;
++
++		/* Grow: within allocated page, in-place, no realloc. */
++		ptr = vrealloc(ptr, PAGE_SIZE, GFP_KERNEL);
++		if (!ptr)
++			return -1;
++
++		if (*((__u8 *)ptr) != 'a')
++			return -1;
++
++		vfree(ptr);
++	}
++
++	return 0;
++}
++
+ struct test_case_desc {
+ 	const char *test_name;
+ 	int (*test_func)(void);
+@@ -440,6 +491,7 @@ static struct test_case_desc test_case_array[] = {
+ 	{ "kvfree_rcu_2_arg_vmalloc_test", kvfree_rcu_2_arg_vmalloc_test, },
+ 	{ "vm_map_ram_test", vm_map_ram_test, },
+ 	{ "no_block_alloc_test", no_block_alloc_test, true },
++	{ "vrealloc_test", vrealloc_test, },
+ 	/* Add a new test case here. */
+ };
+ 
 
 -- 
 2.43.0
