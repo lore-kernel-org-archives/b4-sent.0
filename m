@@ -1,70 +1,102 @@
-From: Paul Louvel <paul.louvel@bootlin.com>
-Date: Fri, 13 Mar 2026 23:00:58 +0100
-Subject: [PATCH] crypto: replace broken libkcapi link in Crypto API
- documentation
+From: Shivam Kalra <shivamkalra98@zohomail.in>
+Subject: [PATCH v4 0/3] mm/vmalloc: free unused pages on vrealloc() shrink
+Date: Sat, 14 Mar 2026 14:34:12 +0530
+Message-Id: <20260314-vmalloc-shrink-v4-0-c1e2e0bb5455@zohomail.in>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260313-crypto-api-libkcapi-broken-link-v1-1-a218033d7f05@bootlin.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3NQQqEMAyF4atI1hOoypTqVWQWWqOGSltSEUW8u
- 3V279u8/4JEwpSgLS4Q2jlx8BnlpwC79H4m5DEbKlVpVZc1WjnjFrCPjCsPzr5jkODIZ3uH+qt
- 0Q8aSNgbySxSa+PgXut99P3SKL6FxAAAA
-X-Change-ID: 20260313-crypto-api-libkcapi-broken-link-65069e8ce688
-To: Herbert Xu <herbert@gondor.apana.org.au>, 
- "David S. Miller" <davem@davemloft.net>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>
-Cc: linux-crypto@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Paul Louvel <paul.louvel@bootlin.com>
+X-B4-Tracking: v=1; b=H4sIAIwktWkC/3XMza7CIBCG4VsxrMUMU8ppXXkfxgUtw+nEWgwY4
+ k9676IrTePy/ZLveYhEkSmJ7eohImVOHKYSer0S/WCnf5LsSgsENFABynyy4xh6mYbI01GC7tB
+ b0zRWaVFO50ier29wfyg9cLqEeHv7Wb3Wn1RWEqQ2jrzXpu7+aHcPQzhZHjc8iReW8RPQCwALg
+ E2PrXIGFMASqD6BdgFUBajrFrxrHCF138A8z0/7/oNpMAEAAA==
+X-Change-ID: 20260302-vmalloc-shrink-04b2fa688a14
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ Uladzislau Rezki <urezki@gmail.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
+ Shivam Kalra <shivamkalra98@zohomail.in>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773439265; l=1586;
- i=paul.louvel@bootlin.com; s=20260313; h=from:subject:message-id;
- bh=zS0LL2f4m8BpZe7orBEj/v0/x6tFu/8SdGToDAw0bi0=;
- b=NIAz75h6nVAXaHqDss1V8y1Brf27u6DV/G7fj85LfthqkQA8XSJmHWntcSAnqc97VUo0tAVOr
- Fs1/dKE1UTXD/oKNhHfVL2aQ1JYdDSF7+cUQl8PE7ppCNDfM79YIXyp
-X-Developer-Key: i=paul.louvel@bootlin.com; a=ed25519;
- pk=eLW50NT18UAvUT5cAcYf88zNbBCZDLFXuptpyLVhVIU=
-X-Endpoint-Received: by B4 Relay for paul.louvel@bootlin.com/20260313 with auth_id=681
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773479164; l=3149;
+ i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
+ bh=FpWmOp0KrMNBjh4gR56azZfEz9z4IdeZPVymGFzqY4k=;
+ b=e2prkkhIrcliRDFynHQBoXYTe7vpo2xtunw0OR910D+c/ibdQa4FAC33JhJx9Dnw8+zWOfr2I
+ 7gP21Z3WRcJBPU2CGo4ZHCBDBbZ2zMk/fnYzChdxC5pZZZxefIbyydi
+X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
+ pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
+X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The "User Space Interface" section of the Crypto API documentation
-contains a link to the libkcapi project that no longer works.
+This series implements the TODO in vrealloc() to unmap and free unused
+pages when shrinking across a page boundary.
 
-Update the link to point to the correct upstream location so that
-users can access the library documentation.
+Problem:
+When vrealloc() shrinks an allocation, it updates bookkeeping
+(requested_size, KASAN shadow) but does not free the underlying physical
+pages. This wastes memory for the lifetime of the allocation.
 
-Signed-off-by: Paul Louvel <paul.louvel@bootlin.com>
+Solution:
+- Patch 1: Extracts a vm_area_free_pages(vm, start, end) helper from
+  vfree() that frees a range of pages with memcg and nr_vmalloc_pages
+  accounting. Freed page pointers are set to NULL to prevent stale
+  references.
+- Patch 2: Uses the helper to free tail pages when vrealloc() shrinks
+  across a page boundary. Skips huge page allocations (page_order > 0)
+  since compound pages cannot be partially freed. Also fixes the
+  grow-in-place path to check vm->nr_pages instead of
+  get_vm_area_size(), which reflects the virtual reservation and does
+  not change on shrink.
+- Patch 3: Adds a vrealloc test case to lib/test_vmalloc that exercises
+  grow-realloc, shrink-across-boundary, shrink-within-page, and
+  grow-in-place paths with data integrity validation.
+
+The virtual address reservation is kept intact to preserve the range
+for potential future grow-in-place support.
+A concrete user is the Rust binder driver's KVVec::shrink_to [1], which
+performs explicit vrealloc() shrinks for memory reclamation.
+
+Tested:
+- KASAN KUnit (vmalloc_oob passes)
+- lib/test_vmalloc stress tests (3/3, 1M iterations each)
+- checkpatch, sparse, W=1, allmodconfig, coccicheck clean
+
+[1] https://lore.kernel.org/all/20260216-binder-shrink-vec-v3-v6-0-ece8e8593e53@zohomail.in/
+
+Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
-The "User Space Interface" of the Crypto API documentation has a broken
-link to libkcapi. Replacing it with a working one.
----
- Documentation/crypto/userspace-if.rst | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Changes in v4:
+- Rename vmalloc_free_pages() to vm_area_free_pages() to align with
+  vm_area_alloc_pages() (Uladzislau Rezki)
+- NULL out freed vm->pages[] entries to prevent stale pointers (Alice Ryhl)
+- Remove redundant if (vm->nr_pages) guard in vfree() (Uladzislau Rezki)
+- Add vrealloc test case to lib/test_vmalloc (new patch 3/3)
+- Link to v3: https://lore.kernel.org/r/20260309-vmalloc-shrink-v3-0-5590fd8de2eb@zohomail.in
 
-diff --git a/Documentation/crypto/userspace-if.rst b/Documentation/crypto/userspace-if.rst
-index 021759198fe7..79e41845f611 100644
---- a/Documentation/crypto/userspace-if.rst
-+++ b/Documentation/crypto/userspace-if.rst
-@@ -23,7 +23,7 @@ user space, however. This includes the difference between synchronous
- and asynchronous invocations. The user space API call is fully
- synchronous.
- 
--[1] https://www.chronox.de/libkcapi/index.html
-+[1] https://www.chronox.de/libkcapi/
- 
- User Space API General Remarks
- ------------------------------
-@@ -406,4 +406,4 @@ Please see [1] for libkcapi which provides an easy-to-use wrapper around
- the aforementioned Netlink kernel interface. [1] also contains a test
- application that invokes all libkcapi API calls.
- 
--[1] https://www.chronox.de/libkcapi/index.html
-+[1] https://www.chronox.de/libkcapi/
+Changes in v3:
+- Restore the comment.
+- Rebase to the latest mm-new 
+- Link to v2: https://lore.kernel.org/r/20260304-vmalloc-shrink-v2-0-28c291d60100@zohomail.in
+
+Changes in v2:
+- Updated the base-commit to mm-new
+- Fix conflicts after rebase
+- Ran `clang-format` on the changes made
+- Use a single `kasan_vrealloc` (Alice Ryhl)
+- Link to v1: https://lore.kernel.org/r/20260302-vmalloc-shrink-v1-0-46deff465b7e@zohomail.in
 
 ---
-base-commit: b84a0ebe421ca56995ff78b66307667b62b3a900
-change-id: 20260313-crypto-api-libkcapi-broken-link-65069e8ce688
+Shivam Kalra (3):
+      mm/vmalloc: extract vm_area_free_pages() helper from vfree()
+      mm/vmalloc: free unused pages on vrealloc() shrink
+      lib/test_vmalloc: add vrealloc test case
+
+ lib/test_vmalloc.c | 52 ++++++++++++++++++++++++++++++++++++++++++
+ mm/vmalloc.c       | 66 ++++++++++++++++++++++++++++++++++++++----------------
+ 2 files changed, 99 insertions(+), 19 deletions(-)
+---
+base-commit: 593fab843afbd6800243552aebcc61d02d3cdcb2
+change-id: 20260302-vmalloc-shrink-04b2fa688a14
 
 Best regards,
 -- 
-Paul Louvel <paul.louvel@bootlin.com>
+Shivam Kalra <shivamkalra98@zohomail.in>
 
