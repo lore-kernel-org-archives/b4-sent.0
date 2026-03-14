@@ -1,102 +1,115 @@
 From: Shivam Kalra <shivamkalra98@zohomail.in>
-Subject: [PATCH v4 0/3] mm/vmalloc: free unused pages on vrealloc() shrink
-Date: Sat, 14 Mar 2026 14:34:12 +0530
-Message-Id: <20260314-vmalloc-shrink-v4-0-c1e2e0bb5455@zohomail.in>
+Date: Sat, 14 Mar 2026 14:34:13 +0530
+Subject: [PATCH v4 1/3] mm/vmalloc: extract vm_area_free_pages() helper
+ from vfree()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIwktWkC/3XMza7CIBCG4VsxrMUMU8ppXXkfxgUtw+nEWgwY4
- k9676IrTePy/ZLveYhEkSmJ7eohImVOHKYSer0S/WCnf5LsSgsENFABynyy4xh6mYbI01GC7tB
- b0zRWaVFO50ier29wfyg9cLqEeHv7Wb3Wn1RWEqQ2jrzXpu7+aHcPQzhZHjc8iReW8RPQCwALg
- E2PrXIGFMASqD6BdgFUBajrFrxrHCF138A8z0/7/oNpMAEAAA==
-X-Change-ID: 20260302-vmalloc-shrink-04b2fa688a14
+Message-Id: <20260314-vmalloc-shrink-v4-1-c1e2e0bb5455@zohomail.in>
+References: <20260314-vmalloc-shrink-v4-0-c1e2e0bb5455@zohomail.in>
+In-Reply-To: <20260314-vmalloc-shrink-v4-0-c1e2e0bb5455@zohomail.in>
 To: Andrew Morton <akpm@linux-foundation.org>, 
  Uladzislau Rezki <urezki@gmail.com>
 Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
  Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
  Shivam Kalra <shivamkalra98@zohomail.in>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773479164; l=3149;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773479164; l=2682;
  i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
- bh=FpWmOp0KrMNBjh4gR56azZfEz9z4IdeZPVymGFzqY4k=;
- b=e2prkkhIrcliRDFynHQBoXYTe7vpo2xtunw0OR910D+c/ibdQa4FAC33JhJx9Dnw8+zWOfr2I
- 7gP21Z3WRcJBPU2CGo4ZHCBDBbZ2zMk/fnYzChdxC5pZZZxefIbyydi
+ bh=Y7LaORkgehK4lKdbYmYreDeAD1S2R1PpyepoUGhj4EQ=;
+ b=xQ9l8MuWzhTsdTNLyNVGABBwcIWNRVDpsUQH14mvklMOUh9yd46JjQO6KBF9FtlZ6okPsu0kW
+ czUwPJswlxfB04TFAQkB2OrJh05VSSHcWuhq0GVTrJEWsO/lg77OPZ8
 X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
  pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
 X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series implements the TODO in vrealloc() to unmap and free unused
-pages when shrinking across a page boundary.
+Extract the page-freeing loop and NR_VMALLOC stat accounting from
+vfree() into a reusable vm_area_free_pages() helper. The helper operates
+on a range [start, end) of pages from a vm_struct, making it suitable
+for both full free (vfree) and partial free (upcoming vrealloc shrink).
 
-Problem:
-When vrealloc() shrinks an allocation, it updates bookkeeping
-(requested_size, KASAN shadow) but does not free the underlying physical
-pages. This wastes memory for the lifetime of the allocation.
-
-Solution:
-- Patch 1: Extracts a vm_area_free_pages(vm, start, end) helper from
-  vfree() that frees a range of pages with memcg and nr_vmalloc_pages
-  accounting. Freed page pointers are set to NULL to prevent stale
-  references.
-- Patch 2: Uses the helper to free tail pages when vrealloc() shrinks
-  across a page boundary. Skips huge page allocations (page_order > 0)
-  since compound pages cannot be partially freed. Also fixes the
-  grow-in-place path to check vm->nr_pages instead of
-  get_vm_area_size(), which reflects the virtual reservation and does
-  not change on shrink.
-- Patch 3: Adds a vrealloc test case to lib/test_vmalloc that exercises
-  grow-realloc, shrink-across-boundary, shrink-within-page, and
-  grow-in-place paths with data integrity validation.
-
-The virtual address reservation is kept intact to preserve the range
-for potential future grow-in-place support.
-A concrete user is the Rust binder driver's KVVec::shrink_to [1], which
-performs explicit vrealloc() shrinks for memory reclamation.
-
-Tested:
-- KASAN KUnit (vmalloc_oob passes)
-- lib/test_vmalloc stress tests (3/3, 1M iterations each)
-- checkpatch, sparse, W=1, allmodconfig, coccicheck clean
-
-[1] https://lore.kernel.org/all/20260216-binder-shrink-vec-v3-v6-0-ece8e8593e53@zohomail.in/
+Freed page pointers in vm->pages[] are set to NULL to prevent stale
+references when the vm_struct outlives the free (as in vrealloc shrink).
 
 Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
-Changes in v4:
-- Rename vmalloc_free_pages() to vm_area_free_pages() to align with
-  vm_area_alloc_pages() (Uladzislau Rezki)
-- NULL out freed vm->pages[] entries to prevent stale pointers (Alice Ryhl)
-- Remove redundant if (vm->nr_pages) guard in vfree() (Uladzislau Rezki)
-- Add vrealloc test case to lib/test_vmalloc (new patch 3/3)
-- Link to v3: https://lore.kernel.org/r/20260309-vmalloc-shrink-v3-0-5590fd8de2eb@zohomail.in
+ mm/vmalloc.c | 47 +++++++++++++++++++++++++++++++++--------------
+ 1 file changed, 33 insertions(+), 14 deletions(-)
 
-Changes in v3:
-- Restore the comment.
-- Rebase to the latest mm-new 
-- Link to v2: https://lore.kernel.org/r/20260304-vmalloc-shrink-v2-0-28c291d60100@zohomail.in
+diff --git a/mm/vmalloc.c b/mm/vmalloc.c
+index c607307c657a..b29bf58c0e3f 100644
+--- a/mm/vmalloc.c
++++ b/mm/vmalloc.c
+@@ -3416,6 +3416,38 @@ void vfree_atomic(const void *addr)
+ 		schedule_work(&p->wq);
+ }
+ 
++/*
++ * vm_area_free_pages - free a range of pages from a vmalloc allocation
++ * @vm: the vm_struct containing the pages
++ * @start: first page index to free (inclusive)
++ * @end: last page index to free (exclusive)
++ *
++ * Free pages [start, end) updating NR_VMALLOC stat accounting.
++ * Freed vm->pages[] entries are set to NULL.
++ * Caller is responsible for unmapping (vunmap_range) and KASAN
++ * poisoning before calling this.
++ */
++static void vm_area_free_pages(struct vm_struct *vm, unsigned int start,
++			       unsigned int end)
++{
++	unsigned int i;
++
++	for (i = start; i < end; i++) {
++		struct page *page = vm->pages[i];
++
++		BUG_ON(!page);
++		/*
++		 * High-order allocs for huge vmallocs are split, so
++		 * can be freed as an array of order-0 allocations
++		 */
++		if (!(vm->flags & VM_MAP_PUT_PAGES))
++			mod_lruvec_page_state(page, NR_VMALLOC, -1);
++		__free_page(page);
++		vm->pages[i] = NULL;
++		cond_resched();
++	}
++}
++
+ /**
+  * vfree - Release memory allocated by vmalloc()
+  * @addr:  Memory base address
+@@ -3436,7 +3468,6 @@ void vfree_atomic(const void *addr)
+ void vfree(const void *addr)
+ {
+ 	struct vm_struct *vm;
+-	int i;
+ 
+ 	if (unlikely(in_interrupt())) {
+ 		vfree_atomic(addr);
+@@ -3459,19 +3490,7 @@ void vfree(const void *addr)
+ 
+ 	if (unlikely(vm->flags & VM_FLUSH_RESET_PERMS))
+ 		vm_reset_perms(vm);
+-	for (i = 0; i < vm->nr_pages; i++) {
+-		struct page *page = vm->pages[i];
+-
+-		BUG_ON(!page);
+-		/*
+-		 * High-order allocs for huge vmallocs are split, so
+-		 * can be freed as an array of order-0 allocations
+-		 */
+-		if (!(vm->flags & VM_MAP_PUT_PAGES))
+-			mod_lruvec_page_state(page, NR_VMALLOC, -1);
+-		__free_page(page);
+-		cond_resched();
+-	}
++	vm_area_free_pages(vm, 0, vm->nr_pages);
+ 	kvfree(vm->pages);
+ 	kfree(vm);
+ }
 
-Changes in v2:
-- Updated the base-commit to mm-new
-- Fix conflicts after rebase
-- Ran `clang-format` on the changes made
-- Use a single `kasan_vrealloc` (Alice Ryhl)
-- Link to v1: https://lore.kernel.org/r/20260302-vmalloc-shrink-v1-0-46deff465b7e@zohomail.in
-
----
-Shivam Kalra (3):
-      mm/vmalloc: extract vm_area_free_pages() helper from vfree()
-      mm/vmalloc: free unused pages on vrealloc() shrink
-      lib/test_vmalloc: add vrealloc test case
-
- lib/test_vmalloc.c | 52 ++++++++++++++++++++++++++++++++++++++++++
- mm/vmalloc.c       | 66 ++++++++++++++++++++++++++++++++++++++----------------
- 2 files changed, 99 insertions(+), 19 deletions(-)
----
-base-commit: 593fab843afbd6800243552aebcc61d02d3cdcb2
-change-id: 20260302-vmalloc-shrink-04b2fa688a14
-
-Best regards,
 -- 
-Shivam Kalra <shivamkalra98@zohomail.in>
+2.43.0
 
