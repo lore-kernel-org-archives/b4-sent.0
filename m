@@ -1,328 +1,166 @@
-From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Sat, 14 Mar 2026 10:52:21 +0000
-Subject: [PATCH v7 3/3] gpio: gpio-ltc4283: Add support for the LTC4283
- Swap Controller
+From: Levi Zim <rsworktech@outlook.com>
+Date: Sat, 14 Mar 2026 23:31:28 +0800
+Subject: [PATCH bpf v2] bpf: do not use kmalloc_nolock when
+ !HAVE_CMPXCHG_DOUBLE
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260314-ltc4283-support-v7-3-1cda48e93802@analog.com>
-References: <20260314-ltc4283-support-v7-0-1cda48e93802@analog.com>
-In-Reply-To: <20260314-ltc4283-support-v7-0-1cda48e93802@analog.com>
-To: linux-gpio@vger.kernel.org, linux-hwmon@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-doc@vger.kernel.org
-Cc: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, Linus Walleij <linusw@kernel.org>, 
- Bartosz Golaszewski <brgl@kernel.org>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Bartosz Golaszewski <brgl@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773485541; l=8843;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=kcJYe4X0VP+mqWTNnoCX3PvtEdcT2vzAODUO/ykOxEM=;
- b=wLr2AgWl565XDxD8eKXeBA63rVGD+dbOBDHJv2TFF5Zv6HylJEUSodT0Ub1cn/0T1lMMi4AKX
- DLtl+I/7goOBVVUck/5OG9IfuHobjoovjiIra+K166655Cb5DwBDvgW
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260314-bpf-kmalloc-nolock-v2-1-576e33e4fa67@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/31NSw6CMBC9Cpm1Y/pBVFbew7AodCoN0CEtEg3h7
+ jYcwM1L3n+DRNFTgrrYINLqk+eQiToV0PUmvAi9zRyUUJXQssR2djhMZhy5w8AZB6yENTdBldS
+ WIBfnSM5/jtEn5Dw0Wex9Wjh+j6NVHta/zVWiRFWa1ml3vZi7e/B7GZmHc8cTNPu+/wC4ZOdtu
+ wAAAA==
+X-Change-ID: 20260314-bpf-kmalloc-nolock-60da80e613de
+To: Alexei Starovoitov <ast@kernel.org>, 
+ Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
+ Martin KaFai Lau <martin.lau@linux.dev>, 
+ Eduard Zingerman <eddyz87@gmail.com>, Song Liu <song@kernel.org>, 
+ Yonghong Song <yonghong.song@linux.dev>, 
+ John Fastabend <john.fastabend@gmail.com>, KP Singh <kpsingh@kernel.org>, 
+ Stanislav Fomichev <sdf@fomichev.me>, Hao Luo <haoluo@google.com>, 
+ Jiri Olsa <jolsa@kernel.org>, 
+ Sebastian Andrzej Siewior <bigeasy@linutronix.de>, 
+ Clark Williams <clrkwllms@kernel.org>, Steven Rostedt <rostedt@goodmis.org>, 
+ Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
+ Albert Ou <aou@eecs.berkeley.edu>, Alexandre Ghiti <alex@ghiti.fr>
+Cc: Amery Hung <ameryhung@gmail.com>, linux-riscv@lists.infradead.org, 
+ stable@vger.kernel.org, bpf@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-rt-devel@lists.linux.dev, Levi Zim <rsworktech@outlook.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4940;
+ i=rsworktech@outlook.com; s=ryzen; h=from:subject:message-id;
+ bh=OgmsL+IoFTwpgQ53xi0uCbqj+KUlvmYc6EsmLeVQARY=;
+ b=owEBbQKS/ZANAwAKAW87mNQvxsnYAcsmYgBptX9aBEUQoXxUoQbiBYRV3LwvC1cyq5/288bP7
+ 35R5HsR91qJAjMEAAEKAB0WIQQolnD5HDY18KF0JEVvO5jUL8bJ2AUCabV/WgAKCRBvO5jUL8bJ
+ 2BRsD/96Swu0tWcACwdoVeOTVhC7njCgpPYwK7wSVhEobsYCLke6OMJCvhzTH9oy3RdMe9w0TWL
+ TjRmb7Lmy5uMgLM6EFp+buP+147gkZKf8pjUDTjDpqXeHIBwqD5b4c8lXSCwmPXJDT1T8yTkW7k
+ f2Dq3kAz4bD5VPbWOEu2cAYK+VkQVfHUD7qKvhMnkn/lh/2HNNYbcS6HhcWHbWNavYWkYT+4/zK
+ ymDxTC0qpCa8qNCyIgz7rkH2CDddoOXRi5QScgb9BR+EZMy7rQyoeGyQ1xnEsF1qeihAzIwdHGb
+ PnoRdg0iNIK8Zgv0lqflDDOo46IxQRVHv4oB2zeAxGV/XuOIMp9WDBC0kGQv5sydzb/ATIWbNey
+ QE9KicHd8ZgiLOlO7/FMQRrupfMZq4aJzpxx3PS8+MpN8owd+4XYbd5k4p2s+tCfUDB+9QtgmH+
+ KSO+DSXbUeuVSJqx4mGPaBS960sshd0Os1fvag8eqF0z3RnvHxBFVj8rfA58wW7t2C4usIS/6rc
+ 7/txBQVAV8I+ukor2HacVOsvhEfpfxnmJ7KOIIwnnRLdaN/l3sp2sEFmJzqmca5D6i1ye70N3yY
+ UftIwAZFk8nldDqLTu8DkBjR2eLg615FVkL57XrZqrh9M8fFjb/13T37CAU6xV8LIQr9KXcq8OA
+ FC9BoF/h2QyyAOQ==
+X-Developer-Key: i=rsworktech@outlook.com; a=openpgp;
+ fpr=17AADD6726DDC58B8EE5881757670CCFA42CCF0A
+X-Endpoint-Received: by B4 Relay for rsworktech@outlook.com/ryzen with auth_id=536
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The LTC4283 device has up to 8 pins that can be configured as GPIOs.
+kmalloc_nolock always fails for architectures that lack cmpxchg16b.
+For example, this causes bpf_task_storage_get with flag
+BPF_LOCAL_STORAGE_GET_F_CREATE to fails on riscv64 6.19 kernel.
 
-Note that PGIO pins are not set as GPIOs by default so if they are
-configured to be used as GPIOs we need to make sure to initialize them
-to a sane default. They are set as inputs by default.
+Fix it by enabling use_kmalloc_nolock only when HAVE_CMPXCHG_DOUBLE.
+But leave the PREEMPT_RT case as is because it requires kmalloc_nolock
+for correctness. Add a comment about this limitation that architecture's
+lack of CMPXCHG_DOUBLE combined with PREEMPT_RT could make
+bpf_local_storage_alloc always fail.
 
-Acked-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
-Reviewed-by: Linus Walleij <linusw@kernel.org>
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
+Fixes: f484f4a3e058 ("bpf: Replace bpf memory allocator with kmalloc_nolock() in local storage")
+Cc: stable@vger.kernel.org
+Signed-off-by: Levi Zim <rsworktech@outlook.com>
 ---
- MAINTAINERS                 |   2 +
- drivers/gpio/Kconfig        |  15 +++
- drivers/gpio/Makefile       |   1 +
- drivers/gpio/gpio-ltc4283.c | 218 ++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 236 insertions(+)
+I find that bpf_task_storage_get with flag BPF_LOCAL_STORAGE_GET_F_CREATE
+always fails for me on 6.19 kernel on riscv64 and bisected it.
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 38d22cf622b7982e157b19e3ecbf30a80dfbb04d..0f4fc6c189f6ec2d0ccc7943dbf7824b979c89ee 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -15143,9 +15143,11 @@ F:	drivers/hwmon/ltc4282.c
- 
- LTC4283 HARDWARE MONITOR AND GPIO DRIVER
- M:	Nuno Sá <nuno.sa@analog.com>
-+L:	linux-gpio@vger.kernel.org
- L:	linux-hwmon@vger.kernel.org
- S:	Supported
- F:	Documentation/devicetree/bindings/hwmon/adi,ltc4283.yaml
-+F:	drivers/gpio/gpio-ltc4283.c
- F:	drivers/hwmon/ltc4283.c
- 
- LTC4286 HARDWARE MONITOR DRIVER
-diff --git a/drivers/gpio/Kconfig b/drivers/gpio/Kconfig
-index b45fb799e36c19794e56bbac7539250c09beaeb7..ba26210245986c74e8fbe992894a74765d2c6bdb 100644
---- a/drivers/gpio/Kconfig
-+++ b/drivers/gpio/Kconfig
-@@ -1758,6 +1758,21 @@ config GPIO_WM8994
- 
- endmenu
- 
-+menu "Auxiliary Bus GPIO drivers"
-+	depends on AUXILIARY_BUS
-+
-+config GPIO_LTC4283
-+	tristate "Analog Devices LTC4283 GPIO support"
-+	depends on SENSORS_LTC4283
-+	help
-+	  If you say yes here you want the GPIO function available in Analog
-+	  Devices LTC4283 Negative Voltage Hot Swap Controller.
-+
-+	  This driver can also be built as a module. If so, the module will
-+	  be called gpio-ltc4283.
-+
-+endmenu
-+
- menu "PCI GPIO expanders"
- 	depends on PCI
- 
-diff --git a/drivers/gpio/Makefile b/drivers/gpio/Makefile
-index c05f7d795c434cd002b3d6b58a98718429f51cc7..ff37aca5029cd90124906591dd50be0705b1ddff 100644
---- a/drivers/gpio/Makefile
-+++ b/drivers/gpio/Makefile
-@@ -102,6 +102,7 @@ obj-$(CONFIG_GPIO_LP873X)		+= gpio-lp873x.o
- obj-$(CONFIG_GPIO_LP87565)		+= gpio-lp87565.o
- obj-$(CONFIG_GPIO_LPC18XX)		+= gpio-lpc18xx.o
- obj-$(CONFIG_GPIO_LPC32XX)		+= gpio-lpc32xx.o
-+obj-$(CONFIG_GPIO_LTC4283)		+= gpio-ltc4283.o
- obj-$(CONFIG_GPIO_MACSMC)		+= gpio-macsmc.o
- obj-$(CONFIG_GPIO_MADERA)		+= gpio-madera.o
- obj-$(CONFIG_GPIO_MAX3191X)		+= gpio-max3191x.o
-diff --git a/drivers/gpio/gpio-ltc4283.c b/drivers/gpio/gpio-ltc4283.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..6609443c5d62ca0028feffddd4a14eb12942a876
---- /dev/null
-+++ b/drivers/gpio/gpio-ltc4283.c
-@@ -0,0 +1,218 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Analog Devices LTC4283 GPIO driver
-+ *
-+ * Copyright 2025 Analog Devices Inc.
-+ */
-+
-+#include <linux/auxiliary_bus.h>
-+#include <linux/bitfield.h>
-+#include <linux/bitmap.h>
-+#include <linux/bits.h>
-+#include <linux/device.h>
-+#include <linux/gpio/driver.h>
-+#include <linux/mod_devicetable.h>
-+#include <linux/module.h>
-+#include <linux/regmap.h>
-+
-+#define LTC4283_PINS_MAX			8
-+#define LTC4283_PGIOX_START_NR			4
-+#define LTC4283_INPUT_STATUS			0x02
-+#define LTC4283_PGIO_CONFIG			0x10
-+#define   LTC4283_PGIO_CFG_MASK(pin) \
-+	GENMASK(((pin) - LTC4283_PGIOX_START_NR) * 2 + 1, (((pin) - LTC4283_PGIOX_START_NR) * 2))
-+#define LTC4283_PGIO_CONFIG_2			0x11
-+
-+#define LTC4283_ADIO_CONFIG			0x12
-+/* starts at bit 4 */
-+#define   LTC4283_ADIOX_CONFIG_MASK(pin)	BIT((pin) + 4)
-+#define LTC4283_PGIO_DIR_IN			3
-+#define LTC4283_PGIO_DIR_OUT			2
-+
-+struct ltc4283_gpio {
-+	struct gpio_chip gpio_chip;
-+	struct regmap *regmap;
-+};
-+
-+static int ltc4283_pgio_get_direction(const struct ltc4283_gpio *st, unsigned int off)
-+{
-+	unsigned int val;
-+	int ret;
-+
-+	ret = regmap_read(st->regmap, LTC4283_PGIO_CONFIG, &val);
-+	if (ret)
-+		return ret;
-+
-+	val = field_get(LTC4283_PGIO_CFG_MASK(off), val);
-+	if (val == LTC4283_PGIO_DIR_IN)
-+		return GPIO_LINE_DIRECTION_IN;
-+
-+	return GPIO_LINE_DIRECTION_OUT;
-+}
-+
-+static int ltc4283_gpio_get_direction(struct gpio_chip *gc, unsigned int off)
-+{
-+	struct ltc4283_gpio *st = gpiochip_get_data(gc);
-+	unsigned int val;
-+	int ret;
-+
-+	if (off >= LTC4283_PGIOX_START_NR)
-+		return ltc4283_pgio_get_direction(st, off);
-+
-+	ret = regmap_read(st->regmap, LTC4283_ADIO_CONFIG, &val);
-+	if (ret)
-+		return ret;
-+
-+	if (val & LTC4283_ADIOX_CONFIG_MASK(off))
-+		return GPIO_LINE_DIRECTION_IN;
-+
-+	return GPIO_LINE_DIRECTION_OUT;
-+}
-+
-+static int ltc4283_gpio_direction_set(const struct ltc4283_gpio *st,
-+				      unsigned int off, bool input)
-+{
-+	if (off >= LTC4283_PGIOX_START_NR) {
-+		unsigned int val = LTC4283_PGIO_DIR_OUT;
-+
-+		if (input)
-+			val = LTC4283_PGIO_DIR_IN;
-+
-+		val = field_prep(LTC4283_PGIO_CFG_MASK(off), val);
-+		return regmap_update_bits(st->regmap, LTC4283_PGIO_CONFIG,
-+					  LTC4283_PGIO_CFG_MASK(off), val);
-+	}
-+
-+	return regmap_update_bits(st->regmap, LTC4283_ADIO_CONFIG,
-+				  LTC4283_ADIOX_CONFIG_MASK(off),
-+				  field_prep(LTC4283_ADIOX_CONFIG_MASK(off), input));
-+}
-+
-+static int __ltc4283_gpio_set_value(const struct ltc4283_gpio *st,
-+				    unsigned int off, int val)
-+{
-+	u32 reg = off < LTC4283_PGIOX_START_NR ? LTC4283_ADIO_CONFIG : LTC4283_PGIO_CONFIG_2;
-+
-+	return regmap_update_bits(st->regmap, reg, BIT(off),
-+				  field_prep(BIT(off), !!val));
-+}
-+
-+static int ltc4283_gpio_direction_input(struct gpio_chip *gc, unsigned int off)
-+{
-+	struct ltc4283_gpio *st = gpiochip_get_data(gc);
-+
-+	return ltc4283_gpio_direction_set(st, off, true);
-+}
-+
-+static int ltc4283_gpio_direction_output(struct gpio_chip *gc, unsigned int off, int val)
-+{
-+	struct ltc4283_gpio *st = gpiochip_get_data(gc);
-+	int ret;
-+
-+	ret = ltc4283_gpio_direction_set(st, off, false);
-+	if (ret)
-+		return ret;
-+
-+	return __ltc4283_gpio_set_value(st, off, val);
-+}
-+
-+static int ltc4283_gpio_get_value(struct gpio_chip *gc, unsigned int off)
-+{
-+	struct ltc4283_gpio *st = gpiochip_get_data(gc);
-+	unsigned int val, reg;
-+	int ret, dir;
-+
-+	dir = ltc4283_gpio_get_direction(gc, off);
-+	if (dir < 0)
-+		return dir;
-+
-+	if (dir == GPIO_LINE_DIRECTION_IN) {
-+		ret = regmap_read(st->regmap, LTC4283_INPUT_STATUS, &val);
-+		if (ret)
-+			return ret;
-+
-+		/* ADIO1 is at bit 3. */
-+		if (off < LTC4283_PGIOX_START_NR)
-+			return !!(val & BIT(3 - off));
-+
-+		/* PGIO1 is at bit 7. */
-+		return !!(val & BIT(7 - (off - LTC4283_PGIOX_START_NR)));
-+	}
-+
-+	if (off < LTC4283_PGIOX_START_NR)
-+		reg = LTC4283_ADIO_CONFIG;
-+	else
-+		reg = LTC4283_PGIO_CONFIG_2;
-+
-+	ret = regmap_read(st->regmap, reg, &val);
-+	if (ret)
-+		return ret;
-+
-+	return !!(val & BIT(off));
-+}
-+
-+static int ltc4283_gpio_set_value(struct gpio_chip *gc, unsigned int off, int val)
-+{
-+	struct ltc4283_gpio *st = gpiochip_get_data(gc);
-+
-+	return __ltc4283_gpio_set_value(st, off, val);
-+}
-+
-+static int ltc4283_init_valid_mask(struct gpio_chip *gc, unsigned long *valid_mask,
-+				   unsigned int ngpios)
-+{
-+	unsigned long *mask = dev_get_platdata(gc->parent);
-+
-+	bitmap_copy(valid_mask, mask, ngpios);
-+	return 0;
-+}
-+
-+static int ltc4283_gpio_probe(struct auxiliary_device *adev,
-+			      const struct auxiliary_device_id *id)
-+{
-+	struct device *dev = &adev->dev;
-+	struct ltc4283_gpio *st;
-+	struct gpio_chip *gc;
-+
-+	st = devm_kzalloc(dev, sizeof(*st), GFP_KERNEL);
-+	if (!st)
-+		return -ENOMEM;
-+
-+	st->regmap = dev_get_regmap(dev->parent, NULL);
-+	if (!st->regmap)
-+		return dev_err_probe(dev, -ENODEV,
-+				     "Failed to get regmap\n");
-+
-+	gc = &st->gpio_chip;
-+	gc->parent = dev;
-+	gc->get_direction = ltc4283_gpio_get_direction;
-+	gc->direction_input = ltc4283_gpio_direction_input;
-+	gc->direction_output = ltc4283_gpio_direction_output;
-+	gc->get = ltc4283_gpio_get_value;
-+	gc->set = ltc4283_gpio_set_value;
-+	gc->init_valid_mask = ltc4283_init_valid_mask;
-+	gc->can_sleep = true;
-+
-+	gc->base = -1;
-+	gc->ngpio = LTC4283_PINS_MAX;
-+	gc->label = adev->name;
-+	gc->owner = THIS_MODULE;
-+
-+	return devm_gpiochip_add_data(dev, &st->gpio_chip, st);
-+}
-+
-+static const struct auxiliary_device_id ltc4283_aux_id_table[] = {
-+	{ "ltc4283.gpio" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(auxiliary, ltc4283_aux_id_table);
-+
-+static struct auxiliary_driver ltc4283_gpio_driver = {
-+	.probe = ltc4283_gpio_probe,
-+	.id_table = ltc4283_aux_id_table,
-+};
-+module_auxiliary_driver(ltc4283_gpio_driver);
-+
-+MODULE_AUTHOR("Nuno Sá <nuno.sa@analog.com>");
-+MODULE_DESCRIPTION("GPIO LTC4283 Driver");
-+MODULE_LICENSE("GPL");
+In f484f4a3e058 ("bpf: Replace bpf memory allocator with kmalloc_nolock()
+in local storage"), bpf memory allocator is replaced with kmalloc_nolock.
+This approach is problematic for architectures that lack CMPXCHG_DOUBLE
+because kmalloc_nolock always fails in this case:
 
+In function kmalloc_nolock (kmalloc_nolock_noprof): 
+
+	if (!(s->flags & __CMPXCHG_DOUBLE) && !kmem_cache_debug(s))
+		/*
+		 * kmalloc_nolock() is not supported on architectures that
+		 * don't implement cmpxchg16b, but debug caches don't use
+		 * per-cpu slab and per-cpu partial slabs. They rely on
+		 * kmem_cache_node->list_lock, so kmalloc_nolock() can
+		 * attempt to allocate from debug caches by
+		 * spin_trylock_irqsave(&n->list_lock, ...)
+		 */
+		return NULL;
+
+Fix it by enabling use_kmalloc_nolock only when HAVE_CMPXCHG_DOUBLE.
+(But not for a PREEMPT_RT case as explained in the comment and commitmsg)
+
+Note for stable: this only needs to be picked into v6.19 if the patch
+makes it into 7.0.
+---
+Changes in v2:
+- Drop the modification to the PREEMPT_RT case as it requires
+  kmalloc_nolock for correctness.
+- Add a comment to the PREEMPT_RT case about the limitation when
+  not HAVE_CMPXCHG_DOUBLE but enables PREEMPT_RT.
+- Link to v1: https://lore.kernel.org/r/20260314-bpf-kmalloc-nolock-v1-1-24abf3f75a9f@outlook.com
+---
+ include/linux/bpf_local_storage.h | 2 ++
+ kernel/bpf/bpf_cgrp_storage.c     | 2 +-
+ kernel/bpf/bpf_local_storage.c    | 4 ++++
+ kernel/bpf/bpf_task_storage.c     | 2 +-
+ 4 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/include/linux/bpf_local_storage.h b/include/linux/bpf_local_storage.h
+index 8157e8da61d40..a7ae5dde15bcb 100644
+--- a/include/linux/bpf_local_storage.h
++++ b/include/linux/bpf_local_storage.h
+@@ -19,6 +19,8 @@
+ 
+ #define BPF_LOCAL_STORAGE_CACHE_SIZE	16
+ 
++static const bool KMALLOC_NOLOCK_SUPPORTED = IS_ENABLED(CONFIG_HAVE_CMPXCHG_DOUBLE);
++
+ struct bpf_local_storage_map_bucket {
+ 	struct hlist_head list;
+ 	rqspinlock_t lock;
+diff --git a/kernel/bpf/bpf_cgrp_storage.c b/kernel/bpf/bpf_cgrp_storage.c
+index c2a2ead1f466d..09c557e426968 100644
+--- a/kernel/bpf/bpf_cgrp_storage.c
++++ b/kernel/bpf/bpf_cgrp_storage.c
+@@ -114,7 +114,7 @@ static int notsupp_get_next_key(struct bpf_map *map, void *key, void *next_key)
+ 
+ static struct bpf_map *cgroup_storage_map_alloc(union bpf_attr *attr)
+ {
+-	return bpf_local_storage_map_alloc(attr, &cgroup_cache, true);
++	return bpf_local_storage_map_alloc(attr, &cgroup_cache, KMALLOC_NOLOCK_SUPPORTED);
+ }
+ 
+ static void cgroup_storage_map_free(struct bpf_map *map)
+diff --git a/kernel/bpf/bpf_local_storage.c b/kernel/bpf/bpf_local_storage.c
+index 9c96a4477f81a..a6c240da87668 100644
+--- a/kernel/bpf/bpf_local_storage.c
++++ b/kernel/bpf/bpf_local_storage.c
+@@ -893,6 +893,10 @@ bpf_local_storage_map_alloc(union bpf_attr *attr,
+ 	/* In PREEMPT_RT, kmalloc(GFP_ATOMIC) is still not safe in non
+ 	 * preemptible context. Thus, enforce all storages to use
+ 	 * kmalloc_nolock() when CONFIG_PREEMPT_RT is enabled.
++	 *
++	 * However, kmalloc_nolock would fail on architectures that do not
++	 * have CMPXCHG_DOUBLE. On such architectures with PREEMPT_RT,
++	 * bpf_local_storage_alloc would always fail.
+ 	 */
+ 	smap->use_kmalloc_nolock = IS_ENABLED(CONFIG_PREEMPT_RT) ? true : use_kmalloc_nolock;
+ 
+diff --git a/kernel/bpf/bpf_task_storage.c b/kernel/bpf/bpf_task_storage.c
+index 605506792b5b4..9f74fd1ef7f46 100644
+--- a/kernel/bpf/bpf_task_storage.c
++++ b/kernel/bpf/bpf_task_storage.c
+@@ -212,7 +212,7 @@ static int notsupp_get_next_key(struct bpf_map *map, void *key, void *next_key)
+ 
+ static struct bpf_map *task_storage_map_alloc(union bpf_attr *attr)
+ {
+-	return bpf_local_storage_map_alloc(attr, &task_cache, true);
++	return bpf_local_storage_map_alloc(attr, &task_cache, KMALLOC_NOLOCK_SUPPORTED);
+ }
+ 
+ static void task_storage_map_free(struct bpf_map *map)
+
+---
+base-commit: e06e6b8001233241eb5b2e2791162f0585f50f4b
+change-id: 20260314-bpf-kmalloc-nolock-60da80e613de
+
+Best regards,
 -- 
-2.51.0
+Levi Zim <rsworktech@outlook.com>
 
