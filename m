@@ -1,89 +1,96 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sun, 15 Mar 2026 19:52:47 +0100
-Subject: [PATCH WIP v2 11/11] arm64: dts: qcom: sdm845-google: Add STM FTS
- touchscreen support
+Date: Sun, 15 Mar 2026 20:40:16 +0100
+Subject: [PATCH] power: supply: qcom_smbx: allow disabling charging
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260315-stmfts5-v2-11-70bc83ee9591@ixit.cz>
-References: <20260315-stmfts5-v2-0-70bc83ee9591@ixit.cz>
-In-Reply-To: <20260315-stmfts5-v2-0-70bc83ee9591@ixit.cz>
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Henrik Rydberg <rydberg@bitmath.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: Petr Hodina <petr.hodina@protonmail.com>, linux-input@vger.kernel.org, 
- linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Krzysztof Kozlowski <krzk@kernel.org>, devicetree@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
+Message-Id: <20260315-smb2-cherry-pick-v1-1-b2710e470490@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAB8Lt2kC/x3MSQqAMAxA0atI1gZqHBZeRVzYNtogDqQgivTuF
+ pdv8f8LkVU4Ql+8oHxJlGPPqMoCXJj2hVF8NpChztRVi3GzhC6w6oOnuBUb65i8p9lbhpydyrP
+ c/3IYU/oAQZYYgmIAAAA=
+X-Change-ID: 20260315-smb2-cherry-pick-4bce2dd2fdbe
+To: Casey Connolly <casey.connolly@linaro.org>, 
+ Sebastian Reichel <sre@kernel.org>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
  David Heidelberg <david@ixit.cz>
+Cc: linux-arm-msm@vger.kernel.org, linux-pm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1222; i=david@ixit.cz;
- h=from:subject:message-id; bh=GLiD2nULc18ENMziPB9JyYEPA1R8XKpCMXaNSc0DKdU=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBptv/6OhC8SocPmih7wGnZLPlUoktbgC3LKcDkk
- rb7jDcfKtuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCabb/+gAKCRBgAj/E00kg
- cjyAEACecNgd/QeeVImpnVd0/qO9+NmYGuaGVLUdkOlwiR1azyYsPURJ0BoyOPVPUtW2SARrkbp
- /8y+IyIkP6AfVP++jl5EJ6Yb7RANAZofa7WRVNE7EPvM+AinjYj7tk5DCxmS+XbjjG+2fsOZL4n
- Dl0gV1yktFmywT+QT8MjjBZDsgbfZpLBjqJxQmtL4QLcK4bgb78wF0XiWrL4LRdHzKAU6OlpJaI
- LLZhvv4S1aZDfByji/VpDBP7wd78ADZmLqgk1qJrkzJGUpvMdkBWuNNy0ShAPwPQ/6qBCLxBMfi
- KGv68gmommlUQfPd6LWmEX9MRo8aVQloJoeJsr59cRpxKhqYzVENlAF0F2K02rH+CYwz+L1mrER
- z0r96/B3M1MbE3+C2x0pQaXCgiROmD9uWKcQdaURbtuTU7ZPh8a2o/HyfGotrhpkp7dpHd+gaW6
- nWbiiAQACYEfnCaawvKmRL5nX4eUXAN95YFnE9twgQpyQDKJjRMmpAmPpjqF97P3p7LTMpuutth
- cGBOEnjMVoyfpjhAt1qL3bw8zlbnbds2TzfEgRV7jZTAC5o+q6oR4UwDc7HpU3jorAULWVBzD+h
- T88D7ApzdQs8qIaVXoxc9Tf55Dwv6W/74Eed+xnAqYOhVLlW1Knj7K8nSzP+kO6QAFxtb8DY0I4
- yXJg9gbgW+l2ccw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1907; i=david@ixit.cz;
+ h=from:subject:message-id; bh=4AjGJKwbJXe+JB86/acJqUuqP6FV9Wr+oAVrVaq0fiI=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBptwshPIdiXezEZzCVg9hmuCN0irJHRc9S1JKO8
+ J7d6Gt30iWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCabcLIQAKCRBgAj/E00kg
+ cj0OD/wNTfuFuEMJsk5ORkTHCYwFuvW/caJm+clwHiwTJyjDjmOFg31ilRGxWEil0ZymBh9WiC2
+ S1t0ydvEC9JVrHIrXC5CsJCuugFxuRDGmPlWagNhYQgHtkz65H9jFgbtCQLkc7OpN8bBcAzGn1+
+ +tFiNt7MbutiIn1ZZ/WeZCm4U3k+Jbo2tvYHLZqjBsrBRJNh4mbYKK0l99r/29lQOvX7lpoGtTh
+ kgW5KDEWIl0FCqodmmTI6ELsLPekaDZX+mZuFlqYkturHE3C2L6xfktdHRdN+0WbDDr4ylYA49U
+ gCXHEygE6VNwPn2bsZtEJD8+/1+RUDXEjts3HGz+W2Jcr+TKHeOhI935PKZYpV70gCJpw13S7K3
+ NnVlQoqpJR0lTKdNtHwDP0g9YqrOItx6mZTzL95DatWTsj+8IF1Qvc5151XNcjhvImxUjBm/6Kz
+ boxeSXnVIFoT3/RinblE3YgqcYFV7E+9OwKGIdLU4Em8oc6fnEJ0EgcPxgUVizK9pxDBXQHOlRt
+ 7+EKR6Pvq7R0dBIrjP6Mmr2tIsdCydkbU+aAPI/kgZIYouzftHI+s+yykxqRuV2727IcosT7zl8
+ bOk99aY7D8ml21Mxm4q4CbmJOpKBtglkLvCcExsTP78bL41b+mj1J3rWirAKeNxaeJZsexi3nJB
+ 6cKB3OZJohwWO4A==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Petr Hodina <petr.hodina@protonmail.com>
+From: Casey Connolly <casey.connolly@linaro.org>
 
-Basic touchscreen connected to second i2c bus.
+Hook up USBIN_CMD_IL so that writing "0" to the status register will
+disable charging, this is useful to let users limit charging
+automatically.
 
-Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
-Co-developed-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
+Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts | 20 +++++++++++++++++++-
- 1 file changed, 19 insertions(+), 1 deletion(-)
+[David]
+ - adapted from:
+ https://lore.kernel.org/all/20250619-smb2-smb5-support-v1-5-ac5dec51b6e1@linaro.org/
+ - moved USBIN defines into the right place inside this patch
+---
+ drivers/power/supply/qcom_smbx.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts b/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts
-index fa89be500fb85..48d7e7f83c285 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-blueline.dts
-@@ -26,7 +26,25 @@ &i2c2 {
+diff --git a/drivers/power/supply/qcom_smbx.c b/drivers/power/supply/qcom_smbx.c
+index b1cb925581ec6..bf2e2ccc454a6 100644
+--- a/drivers/power/supply/qcom_smbx.c
++++ b/drivers/power/supply/qcom_smbx.c
+@@ -134,6 +134,9 @@
+ #define OCP_CHARGER_BIT					BIT(1)
+ #define SDP_CHARGER_BIT					BIT(0)
  
- 	status = "okay";
++#define USBIN_CMD_IL					0x340
++#define USBIN_SUSPEND_BIT				BIT(0)
++
+ #define TYPE_C_STATUS_1					0x30B
+ #define UFP_TYPEC_MASK					GENMASK(7, 5)
+ #define UFP_TYPEC_RDSTD_BIT				BIT(7)
+@@ -693,6 +696,9 @@ static int smb_set_property(struct power_supply *psy,
+ 	struct smb_chip *chip = power_supply_get_drvdata(psy);
  
--	/* ST,FTS @ 49 */
-+	touchscreen@49 {
-+		compatible = "st,stmfts5";
-+		reg = <0x49>;
-+
-+		pinctrl-0 = <&touchscreen_pins &touchscreen_reset>;
-+		pinctrl-names = "default";
-+
-+		interrupt-parent = <&tlmm>;
-+		interrupts = <125 IRQ_TYPE_LEVEL_LOW>;
-+
-+		switch-gpios = <&tlmm 136 GPIO_ACTIVE_HIGH>;
-+		reset-gpios = <&tlmm 99 GPIO_ACTIVE_LOW>;
-+
-+		avdd-supply = <&vreg_l14a_1p8>;
-+		vdd-supply = <&vreg_l19a_3p3>;
-+
-+		touchscreen-size-x = <1080>;
-+		touchscreen-size-y = <2160>;
-+	};
- };
- 
- &mdss_dsi0 {
+ 	switch (psp) {
++	case POWER_SUPPLY_PROP_STATUS:
++		return regmap_update_bits(chip->regmap, chip->base + USBIN_CMD_IL,
++					  USBIN_SUSPEND_BIT, !val->intval);
+ 	case POWER_SUPPLY_PROP_CURRENT_MAX:
+ 		return smb_set_current_limit(chip, val->intval);
+ 	default:
+@@ -705,6 +711,7 @@ static int smb_property_is_writable(struct power_supply *psy,
+ 				     enum power_supply_property psp)
+ {
+ 	switch (psp) {
++	case POWER_SUPPLY_PROP_STATUS:
+ 	case POWER_SUPPLY_PROP_CURRENT_MAX:
+ 		return 1;
+ 	default:
 
+---
+base-commit: b84a0ebe421ca56995ff78b66307667b62b3a900
+change-id: 20260315-smb2-cherry-pick-4bce2dd2fdbe
+
+Best regards,
 -- 
-2.53.0
+David Heidelberg <david@ixit.cz>
 
