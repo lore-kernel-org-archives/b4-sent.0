@@ -1,11 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sun, 15 Mar 2026 19:52:37 +0100
-Subject: [PATCH WIP v2 01/11] Input: stmfts - Fix the MODULE_LICENSE()
- string
+Date: Sun, 15 Mar 2026 19:52:38 +0100
+Subject: [PATCH WIP v2 02/11] Input: stmfts - Use dev struct directly
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260315-stmfts5-v2-1-70bc83ee9591@ixit.cz>
+Message-Id: <20260315-stmfts5-v2-2-70bc83ee9591@ixit.cz>
 References: <20260315-stmfts5-v2-0-70bc83ee9591@ixit.cz>
 In-Reply-To: <20260315-stmfts5-v2-0-70bc83ee9591@ixit.cz>
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
@@ -22,48 +21,119 @@ Cc: Petr Hodina <petr.hodina@protonmail.com>, linux-input@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1002; i=david@ixit.cz;
- h=from:subject:message-id; bh=GOG7YJ3B7o+VT+w4GnBTqkhN1kux8Pdc+XTRfCEP/IA=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBptv/5xvA2jZDZpaThkHd5fIt1f849y0fCPUsnG
- hXLFU7Ybe+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCabb/+QAKCRBgAj/E00kg
- cj3kEAC8flFyko3KgokdqnmsqY30E4QKqug+jx+R+RaNVCkI8FpRbdis6TXn7uLQqCrJdikYBPf
- KxcunVIjVjt/bDknbO2VRkUEd5Dh01Pvvqb6VBXSOW+jpRZB8OPPWttqhJC62jZaaIk2rGC8/yp
- 8zg2zQslbVuiYN8BwH0EDPDYLGargId3yIAIvv8BZWiMCvox7BSSybfgJGx4iRs8aQndby1tReH
- qv0npS/Fm8lu/kRU9U84JPz2RBE82C4ktfIpDD+cV49ZWEvnLKatY3st5QCNaejIFrDXPJvE2jg
- JgjM6DNev53ejSSjK/ABnf0Z0vQ31+XcpKkgHrbpjuf41mChPzoq6FdgGXkqc3/ymN26Oymjrgi
- a5FzqJ/s3+nZwP+/Yo62Ao8EDUJfSD9vRXYOZKBnOLc+RZSj2x5Kd+2uBdaFYX4te8hpZKcKSkY
- pZtPRjblQ2WHvr2yvGZfn6SKCVQOrkvwgDJGmlyTNlK4Y5W/gf2iIKXHNpkBSkmTjkkTlMIQDS5
- zdeuGtNMKzoXYCANxYXga3Zo9I5uXaOH91S/4zYtpN8v3BzC+GlE2Bo+wJha6EBV6Ox2f3RB1rq
- uJk5xaWLKB2WfZnP6VV0rLXvgwv99SbqUB2WgjIwjKUvkmFHOiTGoejGCGGo4khGH6EnMs5OSEY
- E/x5OZYOTeloq5g==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3250; i=david@ixit.cz;
+ h=from:subject:message-id; bh=qhTFo7x1eamQnc3/H+5w4SpN3nDelhQhEumWc7k2sMo=;
+ b=owEBbAKT/ZANAwAIAWACP8TTSSByAcsmYgBptv/5Yr34vjKy0xgLLgkBC0dOUx3DaiISzKFsn
+ GzkYMtkz2SJAjIEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCabb/+QAKCRBgAj/E00kg
+ cvQjD/dUpVDBUYUofQaoDk47EDAEsI2f+XX1V1uQdnNjhz059wkVp8lYqstPIcTC+b+vQMF/yY4
+ G6VNezIC2/okkeDEyFXpg8WxIJUDftQZ4qqEnDeV50T/j7W/A+9xHnVt2/KLzxxKaGzkCEQUhuR
+ x4XvUaNZj4fL9ThLwAnLxq3naluVRvFv3VwJT5wbJS48l/ZbmceLpBbKnkqoAk85bp7s1NNCcu0
+ rp7XzfesUiOlttRBNAaj3kYY1vZuNBAnbli+xk+SNJZWD5ZuccH7zdBNwQ3HJJrbvaSI7TjP5oI
+ hjnUNq70Mb1pkHJlrudI1bFL+555wTcanGVgQPDywH0ETKIaaMIT1QvYz6j4ZOUTCMZ/bdtA2Bk
+ 6uXhGEo+OF63HOsaNbFeNA7rfNzghE6eUGxWpS+KCDygaoiJfPGHMGSJbW0oVkC2s8BWkFOvZYc
+ Qy5J2FdX0/X1V5nr2dYkATsu1PJbKCdrTr+FtQrniuqPEOhVwLjx5xmapW53SoHrZRFVxKtYelb
+ 2fDPHqq78TynzV53fRN8foRYutV1cQeAkEF0ViKH48spaPbyDaAKiv0h/H21qdq03+ANqskYeT8
+ uFd/CM8cg/paqjKDunUEKnpLMTZW6WvK/0S+ZcBvRVL+ZqySctYZpv9qtWmTXfqpZaZkWlX4sp7
+ +53rUohKjjSTX
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace the bogus "GPL v2" with "GPL" as MODULE_LICNSE() string. The
-value does not declare the module's exact license, but only lets the
-module loader test whether the module is Free Software or not.
-
-See commit bf7fbeeae6db ("module: Cure the MODULE_LICENSE "GPL" vs.
-"GPL v2" bogosity") in the details of the issue. The fix is to use
-"GPL" for all modules under any variant of the GPL.
+Makes the code better readable and noticably shorter.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/input/touchscreen/stmfts.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/input/touchscreen/stmfts.c | 21 +++++++++++----------
+ 1 file changed, 11 insertions(+), 10 deletions(-)
 
 diff --git a/drivers/input/touchscreen/stmfts.c b/drivers/input/touchscreen/stmfts.c
-index 4b166b0a9a5a6..d93ce68feca51 100644
+index d93ce68feca51..1d63f63e43d48 100644
 --- a/drivers/input/touchscreen/stmfts.c
 +++ b/drivers/input/touchscreen/stmfts.c
-@@ -808,4 +808,4 @@ module_i2c_driver(stmfts_driver);
+@@ -620,6 +620,7 @@ static int stmfts_enable_led(struct stmfts_data *sdata)
  
- MODULE_AUTHOR("Andi Shyti <andi.shyti@samsung.com>");
- MODULE_DESCRIPTION("STMicroelectronics FTS Touch Screen");
--MODULE_LICENSE("GPL v2");
-+MODULE_LICENSE("GPL");
+ static int stmfts_probe(struct i2c_client *client)
+ {
++	struct device *dev = &client->dev;
+ 	int err;
+ 	struct stmfts_data *sdata;
+ 
+@@ -628,7 +629,7 @@ static int stmfts_probe(struct i2c_client *client)
+ 						I2C_FUNC_SMBUS_I2C_BLOCK))
+ 		return -ENODEV;
+ 
+-	sdata = devm_kzalloc(&client->dev, sizeof(*sdata), GFP_KERNEL);
++	sdata = devm_kzalloc(dev, sizeof(*sdata), GFP_KERNEL);
+ 	if (!sdata)
+ 		return -ENOMEM;
+ 
+@@ -640,13 +641,13 @@ static int stmfts_probe(struct i2c_client *client)
+ 
+ 	sdata->regulators[STMFTS_REGULATOR_VDD].supply = "vdd";
+ 	sdata->regulators[STMFTS_REGULATOR_AVDD].supply = "avdd";
+-	err = devm_regulator_bulk_get(&client->dev,
++	err = devm_regulator_bulk_get(dev,
+ 				      ARRAY_SIZE(sdata->regulators),
+ 				      sdata->regulators);
+ 	if (err)
+ 		return err;
+ 
+-	sdata->input = devm_input_allocate_device(&client->dev);
++	sdata->input = devm_input_allocate_device(dev);
+ 	if (!sdata->input)
+ 		return -ENOMEM;
+ 
+@@ -665,7 +666,7 @@ static int stmfts_probe(struct i2c_client *client)
+ 	input_set_abs_params(sdata->input, ABS_MT_PRESSURE, 0, 255, 0, 0);
+ 	input_set_abs_params(sdata->input, ABS_DISTANCE, 0, 255, 0, 0);
+ 
+-	sdata->use_key = device_property_read_bool(&client->dev,
++	sdata->use_key = device_property_read_bool(dev,
+ 						   "touch-key-connected");
+ 	if (sdata->use_key) {
+ 		input_set_capability(sdata->input, EV_KEY, KEY_MENU);
+@@ -686,20 +687,20 @@ static int stmfts_probe(struct i2c_client *client)
+ 	 * interrupts. To be on the safe side it's better to not enable
+ 	 * the interrupts during their request.
+ 	 */
+-	err = devm_request_threaded_irq(&client->dev, client->irq,
++	err = devm_request_threaded_irq(dev, client->irq,
+ 					NULL, stmfts_irq_handler,
+ 					IRQF_ONESHOT | IRQF_NO_AUTOEN,
+ 					"stmfts_irq", sdata);
+ 	if (err)
+ 		return err;
+ 
+-	dev_dbg(&client->dev, "initializing ST-Microelectronics FTS...\n");
++	dev_dbg(dev, "initializing ST-Microelectronics FTS...\n");
+ 
+ 	err = stmfts_power_on(sdata);
+ 	if (err)
+ 		return err;
+ 
+-	err = devm_add_action_or_reset(&client->dev, stmfts_power_off, sdata);
++	err = devm_add_action_or_reset(dev, stmfts_power_off, sdata);
+ 	if (err)
+ 		return err;
+ 
+@@ -716,13 +717,13 @@ static int stmfts_probe(struct i2c_client *client)
+ 			 * without LEDs. The ledvdd regulator pointer will be
+ 			 * used as a flag.
+ 			 */
+-			dev_warn(&client->dev, "unable to use touchkey leds\n");
++			dev_warn(dev, "unable to use touchkey leds\n");
+ 			sdata->ledvdd = NULL;
+ 		}
+ 	}
+ 
+-	pm_runtime_enable(&client->dev);
+-	device_enable_async_suspend(&client->dev);
++	pm_runtime_enable(dev);
++	device_enable_async_suspend(dev);
+ 
+ 	return 0;
+ }
 
 -- 
 2.53.0
