@@ -1,15 +1,13 @@
 From: Leno Hou <lenohou@gmail.com>
-Subject: [PATCH v3 0/2] mm/mglru: fix cgroup OOM during MGLRU state
+Date: Mon, 16 Mar 2026 02:18:28 +0800
+Subject: [PATCH v3 1/2] mm/mglru: fix cgroup OOM during MGLRU state
  switching
-Date: Mon, 16 Mar 2026 02:18:27 +0800
-Message-Id: <20260316-b4-switch-mglru-v2-v3-0-c846ce9a2321@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPP3tmkC/0XMTQ6CMBBA4auQWTukPwSqK+9hXJQ60EkoJS2gC
- eHuNm5cfov3DsiUmDLcqgMS7Zw5zgX6UoHzdh4J+VUMSqhWaCmxbzC/eXUewzilDXeFpr+q1gp
- tGj1ACZdEA39+08ezeEgx4OoT2f9KKSNbKYSpO9GhxInm6ON2H4PlqXYxwHl+AWC50MKdAAAA
-X-Change-ID: 20260311-b4-switch-mglru-v2-8b926a03843f
+Message-Id: <20260316-b4-switch-mglru-v2-v3-1-c846ce9a2321@gmail.com>
+References: <20260316-b4-switch-mglru-v2-v3-0-c846ce9a2321@gmail.com>
+In-Reply-To: <20260316-b4-switch-mglru-v2-v3-0-c846ce9a2321@gmail.com>
 To: Andrew Morton <akpm@linux-foundation.org>, 
  Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
  Wei Xu <weixugc@google.com>, Jialing Wang <wjl.linux@gmail.com>, 
@@ -19,11 +17,11 @@ To: Andrew Morton <akpm@linux-foundation.org>,
 Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
  Leno Hou <lenohou@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773598759; l=5184;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773598759; l=11348;
  i=lenohou@gmail.com; s=20260311; h=from:subject:message-id;
- bh=XLc+CXHr5szARKA5uOkl7B+FTZea7sdEx94SmPTWyQE=;
- b=Cvua+Hm4bluAud07M5yJ1O5z7mD/0RYWVModAydGh/0qCqMD0PTAKQKUXoEOA1ZLkM3slOfGi
- i1kFmORzItHCvtOI0VIHkF8UzKws99rkuncJg4vcMlOqO2vvNR/kcOY
+ bh=kyuspqsl57CQHhG9arU0ApaAlBWfHd4kjkO+N+OYlnQ=;
+ b=lJZQoqkROXtQJhx/pEQq7aliD0NS8u0fPJ1wpQyQwBo9/YPQsBfBhdCAFEeVPzqdPIsBP/NDB
+ 5JrJ1B8hIlTAtZBmWasqTgSBzV0uMKjPPFp7/YxZuRrvgduiYgtTHf7
 X-Developer-Key: i=lenohou@gmail.com; a=ed25519;
  pk=8AVHXYurzu1kOGjk9rwvxovwSCynBkv2QAcOvSIe1rw=
 X-Endpoint-Received: by B4 Relay for lenohou@gmail.com/20260311 with auth_id=674
@@ -34,7 +32,7 @@ condition exists between the state switching and the memory reclaim path.
 This can lead to unexpected cgroup OOM kills, even when plenty of
 reclaimable memory is available.
 
-Problem Description 
+Problem Description
 ==================
 
 The issue arises from a "reclaim vacuum" during the transition.
@@ -54,7 +52,7 @@ A similar race can occur during enablement, where the reclaimer sees the
 new state but the MGLRU lists haven't been populated via fill_evictable()
 yet.
 
-Solution 
+Solution
 ========
 
 Introduce a 'draining' state (`lru_drain_core`) to bridge the transition.
@@ -64,32 +62,32 @@ paths sequentially. This ensures that folios remain visible to at least
 one reclaim mechanism until the transition is fully materialized across
 all CPUs.
 
-Changes 
+Changes
 =======
 
 v3:
- - Rebase onto mm-new branch for queue testing 
- - Don't look around while draining 
+ - Rebase onto mm-new branch for queue testing
+ - Don't look around while draining
  - Fix Barry Song's comment
 
-v2: 
+v2:
 - Repalce with a static branch `lru_drain_core` to track the transition
   state.
 - Ensures all LRU helpers correctly identify page state by checking
   folio_lru_gen(folio) != -1 instead of relying solely on global flags.
-- Maintain workingset refault context across MGLRU state transitions 
+- Maintain workingset refault context across MGLRU state transitions
 - Fix build error when CONFIG_LRU_GEN is disabled.
 
-v1: 
+v1:
 - Use smp_store_release() and smp_load_acquire() to ensure the visibility
   of 'enabled' and 'draining' flags across CPUs.
-- Modify shrink_lruvec() to allow a "joint reclaim" period. If an lruvec 
+- Modify shrink_lruvec() to allow a "joint reclaim" period. If an lruvec
   is in the 'draining' state, the reclaimer will attempt to scan MGLRU
   lists first, and then fall through to traditional LRU lists instead
   of returning early. This ensures that folios are visible to at least
   one reclaim path at any given time.
 
-Race & Mitigation 
+Race & Mitigation
 ================
 
 A race window exists between checking the 'draining' state and performing
@@ -107,70 +105,258 @@ does not escalate into a terminal OOM kill.
 This effectively reduce the race window that previously triggered OOMs
 under high memory pressure.
 
-Reproduction 
-===========
-
-The issue was consistently reproduced on v6.1.157 and v6.18.3 using a
-high-pressure memory cgroup (v1) environment.
-
-Reproduction steps: 
-1. Create a 16GB memcg and populate it with 10GB file cache (5GB active)
-   and 8GB active anonymous memory.
-2. Toggle MGLRU state while performing new memory allocations to force
-   direct reclaim.
-
-Reproduction script 
-===================
-
-```bash
-
-MGLRU_FILE="/sys/kernel/mm/lru_gen/enabled"
-CGROUP_PATH="/sys/fs/cgroup/memory/memcg_oom_test"
-
-switch_mglru() {
-    local orig_val=$(cat "$MGLRU_FILE")
-    if [[ "$orig_val" != "0x0000" ]]; then
-        echo n > "$MGLRU_FILE" &
-    else
-        echo y > "$MGLRU_FILE" &
-    fi
-}
-
-mkdir -p "$CGROUP_PATH"
-echo $((16 * 1024 * 1024 * 1024)) > "$CGROUP_PATH/memory.limit_in_bytes"
-echo $$ > "$CGROUP_PATH/cgroup.procs"
-
-dd if=/dev/urandom of=/tmp/test_file bs=1M count=10240
-dd if=/tmp/test_file of=/dev/null bs=1M # Warm up cache
-
-stress-ng --vm 1 --vm-bytes 8G --vm-keep -t 600 &
-sleep 5
-
-switch_mglru
-stress-ng --vm 1 --vm-bytes 2G --vm-populate --timeout 5s || \
-echo "OOM Triggered"
-
-grep oom_kill "$CGROUP_PATH/memory.oom_control"
-```
-
+To: Andrew Morton <akpm@linux-foundation.org>
+To: Axel Rasmussen <axelrasmussen@google.com>
+To: Yuanchu Xie <yuanchu@google.com>
+To: Wei Xu <weixugc@google.com>
+To: Barry Song <21cnbao@gmail.com>
+To: Jialing Wang <wjl.linux@gmail.com>
+To: Yafang Shao <laoar.shao@gmail.com>
+To: Yu Zhao <yuzhao@google.com>
+To: Kairui Song <ryncsn@gmail.com>
+To: Bingfang Guo <bfguo@icloud.com>
+Cc: linux-mm@kvack.org
+Cc: linux-kernel@vger.kernel.org
 Signed-off-by: Leno Hou <lenohou@gmail.com>
 ---
-Leno Hou (2):
-      mm/mglru: fix cgroup OOM during MGLRU state switching
-      mm/mglru: maintain workingset refault context across state transitions
-
- include/linux/mm_inline.h | 16 ++++++++++++++
- include/linux/swap.h      |  2 +-
+ include/linux/mm_inline.h | 16 ++++++++++++++++
  mm/rmap.c                 |  2 +-
- mm/swap.c                 | 15 +++++++------
- mm/vmscan.c               | 55 +++++++++++++++++++++++++++++++++++------------
- mm/workingset.c           | 22 +++++++++++++------
- 6 files changed, 83 insertions(+), 29 deletions(-)
----
-base-commit: c5a81ff6071bcf42531426e6336b5cc424df6e3d
-change-id: 20260311-b4-switch-mglru-v2-8b926a03843f
+ mm/swap.c                 | 15 +++++++++------
+ mm/vmscan.c               | 38 +++++++++++++++++++++++++++++---------
+ 4 files changed, 55 insertions(+), 16 deletions(-)
 
-Best regards,
+diff --git a/include/linux/mm_inline.h b/include/linux/mm_inline.h
+index ad50688d89db..16ac700dac9c 100644
+--- a/include/linux/mm_inline.h
++++ b/include/linux/mm_inline.h
+@@ -102,6 +102,12 @@ static __always_inline enum lru_list folio_lru_list(const struct folio *folio)
+ 
+ #ifdef CONFIG_LRU_GEN
+ 
++static inline bool lru_gen_draining(void)
++{
++	DECLARE_STATIC_KEY_FALSE(lru_drain_core);
++
++	return static_branch_unlikely(&lru_drain_core);
++}
+ #ifdef CONFIG_LRU_GEN_ENABLED
+ static inline bool lru_gen_enabled(void)
+ {
+@@ -316,11 +322,21 @@ static inline bool lru_gen_enabled(void)
+ 	return false;
+ }
+ 
++static inline bool lru_gen_draining(void)
++{
++	return false;
++}
++
+ static inline bool lru_gen_in_fault(void)
+ {
+ 	return false;
+ }
+ 
++static inline int folio_lru_gen(const struct folio *folio)
++{
++	return -1;
++}
++
+ static inline bool lru_gen_add_folio(struct lruvec *lruvec, struct folio *folio, bool reclaiming)
+ {
+ 	return false;
+diff --git a/mm/rmap.c b/mm/rmap.c
+index 6398d7eef393..0b5f663f3062 100644
+--- a/mm/rmap.c
++++ b/mm/rmap.c
+@@ -966,7 +966,7 @@ static bool folio_referenced_one(struct folio *folio,
+ 			nr = folio_pte_batch(folio, pvmw.pte, pteval, max_nr);
+ 		}
+ 
+-		if (lru_gen_enabled() && pvmw.pte) {
++		if (lru_gen_enabled() && !lru_gen_draining() && pvmw.pte) {
+ 			if (lru_gen_look_around(&pvmw, nr))
+ 				referenced++;
+ 		} else if (pvmw.pte) {
+diff --git a/mm/swap.c b/mm/swap.c
+index 5cc44f0de987..ecb192c02d2e 100644
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -462,7 +462,7 @@ void folio_mark_accessed(struct folio *folio)
+ {
+ 	if (folio_test_dropbehind(folio))
+ 		return;
+-	if (lru_gen_enabled()) {
++	if (folio_lru_gen(folio) != -1) {
+ 		lru_gen_inc_refs(folio);
+ 		return;
+ 	}
+@@ -559,7 +559,7 @@ void folio_add_lru_vma(struct folio *folio, struct vm_area_struct *vma)
+  */
+ static void lru_deactivate_file(struct lruvec *lruvec, struct folio *folio)
+ {
+-	bool active = folio_test_active(folio) || lru_gen_enabled();
++	bool active = folio_test_active(folio) || (folio_lru_gen(folio) != -1);
+ 	long nr_pages = folio_nr_pages(folio);
+ 
+ 	if (folio_test_unevictable(folio))
+@@ -602,7 +602,9 @@ static void lru_deactivate(struct lruvec *lruvec, struct folio *folio)
+ {
+ 	long nr_pages = folio_nr_pages(folio);
+ 
+-	if (folio_test_unevictable(folio) || !(folio_test_active(folio) || lru_gen_enabled()))
++	if (folio_test_unevictable(folio) ||
++		!(folio_test_active(folio) ||
++		(folio_lru_gen(folio) != -1)))
+ 		return;
+ 
+ 	lruvec_del_folio(lruvec, folio);
+@@ -617,6 +619,7 @@ static void lru_deactivate(struct lruvec *lruvec, struct folio *folio)
+ static void lru_lazyfree(struct lruvec *lruvec, struct folio *folio)
+ {
+ 	long nr_pages = folio_nr_pages(folio);
++	int gen = folio_lru_gen(folio);
+ 
+ 	if (!folio_test_anon(folio) || !folio_test_swapbacked(folio) ||
+ 	    folio_test_swapcache(folio) || folio_test_unevictable(folio))
+@@ -624,7 +627,7 @@ static void lru_lazyfree(struct lruvec *lruvec, struct folio *folio)
+ 
+ 	lruvec_del_folio(lruvec, folio);
+ 	folio_clear_active(folio);
+-	if (lru_gen_enabled())
++	if (gen != -1)
+ 		lru_gen_clear_refs(folio);
+ 	else
+ 		folio_clear_referenced(folio);
+@@ -695,7 +698,7 @@ void deactivate_file_folio(struct folio *folio)
+ 	if (folio_test_unevictable(folio) || !folio_test_lru(folio))
+ 		return;
+ 
+-	if (lru_gen_enabled() && lru_gen_clear_refs(folio))
++	if ((folio_lru_gen(folio) != -1) && lru_gen_clear_refs(folio))
+ 		return;
+ 
+ 	folio_batch_add_and_move(folio, lru_deactivate_file);
+@@ -714,7 +717,7 @@ void folio_deactivate(struct folio *folio)
+ 	if (folio_test_unevictable(folio) || !folio_test_lru(folio))
+ 		return;
+ 
+-	if (lru_gen_enabled() ? lru_gen_clear_refs(folio) : !folio_test_active(folio))
++	if ((folio_lru_gen(folio) != -1) ? lru_gen_clear_refs(folio) : !folio_test_active(folio))
+ 		return;
+ 
+ 	folio_batch_add_and_move(folio, lru_deactivate);
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 33287ba4a500..bcefd8db9c03 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -886,7 +886,7 @@ static enum folio_references folio_check_references(struct folio *folio,
+ 	if (referenced_ptes == -1)
+ 		return FOLIOREF_KEEP;
+ 
+-	if (lru_gen_enabled()) {
++	if (lru_gen_enabled() && !lru_gen_draining()) {
+ 		if (!referenced_ptes)
+ 			return FOLIOREF_RECLAIM;
+ 
+@@ -2286,7 +2286,7 @@ static void prepare_scan_control(pg_data_t *pgdat, struct scan_control *sc)
+ 	unsigned long file;
+ 	struct lruvec *target_lruvec;
+ 
+-	if (lru_gen_enabled())
++	if (lru_gen_enabled() && !lru_gen_draining())
+ 		return;
+ 
+ 	target_lruvec = mem_cgroup_lruvec(sc->target_mem_cgroup, pgdat);
+@@ -2625,6 +2625,7 @@ static bool can_age_anon_pages(struct lruvec *lruvec,
+ 
+ #ifdef CONFIG_LRU_GEN
+ 
++DEFINE_STATIC_KEY_FALSE(lru_drain_core);
+ #ifdef CONFIG_LRU_GEN_ENABLED
+ DEFINE_STATIC_KEY_ARRAY_TRUE(lru_gen_caps, NR_LRU_GEN_CAPS);
+ #define get_cap(cap)	static_branch_likely(&lru_gen_caps[cap])
+@@ -5318,6 +5319,8 @@ static void lru_gen_change_state(bool enabled)
+ 	if (enabled == lru_gen_enabled())
+ 		goto unlock;
+ 
++	static_branch_enable_cpuslocked(&lru_drain_core);
++
+ 	if (enabled)
+ 		static_branch_enable_cpuslocked(&lru_gen_caps[LRU_GEN_CORE]);
+ 	else
+@@ -5348,6 +5351,9 @@ static void lru_gen_change_state(bool enabled)
+ 
+ 		cond_resched();
+ 	} while ((memcg = mem_cgroup_iter(NULL, memcg, NULL)));
++
++	static_branch_disable_cpuslocked(&lru_drain_core);
++
+ unlock:
+ 	mutex_unlock(&state_mutex);
+ 	put_online_mems();
+@@ -5920,9 +5926,12 @@ static void shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
+ 	bool proportional_reclaim;
+ 	struct blk_plug plug;
+ 
+-	if (lru_gen_enabled() && !root_reclaim(sc)) {
++	if ((lru_gen_enabled() || lru_gen_draining()) && !root_reclaim(sc)) {
+ 		lru_gen_shrink_lruvec(lruvec, sc);
+-		return;
++
++		if (!lru_gen_draining())
++			return;
++
+ 	}
+ 
+ 	get_scan_count(lruvec, sc, nr);
+@@ -6181,11 +6190,17 @@ static void shrink_node(pg_data_t *pgdat, struct scan_control *sc)
+ 	unsigned long nr_reclaimed, nr_scanned, nr_node_reclaimed;
+ 	struct lruvec *target_lruvec;
+ 	bool reclaimable = false;
++	s8 priority = sc->priority;
+ 
+-	if (lru_gen_enabled() && root_reclaim(sc)) {
++	if ((lru_gen_enabled() || lru_gen_draining()) && root_reclaim(sc)) {
+ 		memset(&sc->nr, 0, sizeof(sc->nr));
+ 		lru_gen_shrink_node(pgdat, sc);
+-		return;
++
++		if (!lru_gen_draining())
++			return;
++
++		sc->priority = priority;
++
+ 	}
+ 
+ 	target_lruvec = mem_cgroup_lruvec(sc->target_mem_cgroup, pgdat);
+@@ -6455,7 +6470,7 @@ static void snapshot_refaults(struct mem_cgroup *target_memcg, pg_data_t *pgdat)
+ 	struct lruvec *target_lruvec;
+ 	unsigned long refaults;
+ 
+-	if (lru_gen_enabled())
++	if (lru_gen_enabled() && !lru_gen_draining())
+ 		return;
+ 
+ 	target_lruvec = mem_cgroup_lruvec(target_memcg, pgdat);
+@@ -6844,10 +6859,15 @@ static void kswapd_age_node(struct pglist_data *pgdat, struct scan_control *sc)
+ {
+ 	struct mem_cgroup *memcg;
+ 	struct lruvec *lruvec;
++	s8 priority = sc->priority;
+ 
+-	if (lru_gen_enabled()) {
++	if (lru_gen_enabled() || lru_gen_draining()) {
+ 		lru_gen_age_node(pgdat, sc);
+-		return;
++
++		if (!lru_gen_draining())
++			return;
++
++		sc->priority = priority;
+ 	}
+ 
+ 	lruvec = mem_cgroup_lruvec(NULL, pgdat);
+
 -- 
-Leno Hou <lenohou@gmail.com>
+2.52.0
 
