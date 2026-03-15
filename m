@@ -1,201 +1,176 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Sun, 15 Mar 2026 22:45:13 +0100
-Subject: [PATCH v4] powerpc: dts: Build devicetrees of enabled platforms
+From: Leno Hou <lenohou@gmail.com>
+Subject: [PATCH v3 0/2] mm/mglru: fix cgroup OOM during MGLRU state
+ switching
+Date: Mon, 16 Mar 2026 02:18:27 +0800
+Message-Id: <20260316-b4-switch-mglru-v2-v3-0-c846ce9a2321@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260315-mpc83xx-dtb-v4-1-243849be4280@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAGgot2kC/2XP0QrCIBTG8VcZXmd4jlqzq94jutCpzYu2MYcsx
- t49N4KSLr8Dvz+chUQ3BhfJpVrI6FKIoe/yEIeKNK3uHo4GmzdBhicGDOhzaGo+z9ROhiK3qta
- gmENOshhG58O81273vNsQp3587fEE2/XTAVV0ElCgEtHXAlAx469DHyfXHzs3kS2U8Is5kyXGj
- BtrzhKErIWQf5j/YCg/SDxjobXgxijvNSvwuq5vf0DM1CEBAAA=
-X-Change-ID: 20260101-mpc83xx-dtb-23d98a190e23
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Madhavan Srinivasan <maddy@linux.ibm.com>, 
- Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
- "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>
-Cc: devicetree@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
- linux-kernel@vger.kernel.org, Geert Uytterhoeven <geert@linux-m68k.org>, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAPP3tmkC/0XMTQ6CMBBA4auQWTukPwSqK+9hXJQ60EkoJS2gC
+ eHuNm5cfov3DsiUmDLcqgMS7Zw5zgX6UoHzdh4J+VUMSqhWaCmxbzC/eXUewzilDXeFpr+q1gp
+ tGj1ACZdEA39+08ezeEgx4OoT2f9KKSNbKYSpO9GhxInm6ON2H4PlqXYxwHl+AWC50MKdAAAA
+X-Change-ID: 20260311-b4-switch-mglru-v2-8b926a03843f
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
+ Wei Xu <weixugc@google.com>, Jialing Wang <wjl.linux@gmail.com>, 
+ Yafang Shao <laoar.shao@gmail.com>, Yu Zhao <yuzhao@google.com>, 
+ Kairui Song <ryncsn@gmail.com>, Bingfang Guo <bfguo@icloud.com>, 
+ Barry Song <baohua@kernel.org>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Leno Hou <lenohou@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773611122; l=7655;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=tOg76kwFnfAMdsOrfytYNNBMYvqrE5CInLny6ci6P8A=;
- b=NzezU5KvWQfGRrQUKE2dyqNsHIeSvAcWIJcymF5XosjLKnBuFipX8XPYE505TURVq6XeZfjly
- vIXtgeiIVmSA48hVV0xfWepdBBcRV2OnNU708VeW8A78pzzCT4nmZZW
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773598759; l=5184;
+ i=lenohou@gmail.com; s=20260311; h=from:subject:message-id;
+ bh=XLc+CXHr5szARKA5uOkl7B+FTZea7sdEx94SmPTWyQE=;
+ b=Cvua+Hm4bluAud07M5yJ1O5z7mD/0RYWVModAydGh/0qCqMD0PTAKQKUXoEOA1ZLkM3slOfGi
+ i1kFmORzItHCvtOI0VIHkF8UzKws99rkuncJg4vcMlOqO2vvNR/kcOY
+X-Developer-Key: i=lenohou@gmail.com; a=ed25519;
+ pk=8AVHXYurzu1kOGjk9rwvxovwSCynBkv2QAcOvSIe1rw=
+X-Endpoint-Received: by B4 Relay for lenohou@gmail.com/20260311 with auth_id=674
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Follow the same approach as other architectures such as Arm or RISC-V,
-and build devicetrees based on platforms selected in Kconfig. This makes
-it unnecessary to use CONFIG_OF_ALL_DTBS on PowerPC in order to build
-DTB files.
+When the Multi-Gen LRU (MGLRU) state is toggled dynamically, a race
+condition exists between the state switching and the memory reclaim path.
+This can lead to unexpected cgroup OOM kills, even when plenty of
+reclaimable memory is available.
 
-This makes it easier to use other build and test infrastructure such as
-`make dtbs_check`, and is a first step towards generating FIT images
-that include all the relevant DTBs with `make image.fit`.
+Problem Description 
+==================
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+The issue arises from a "reclaim vacuum" during the transition.
+
+1. When disabling MGLRU, lru_gen_change_state() sets lrugen->enabled to
+   false before the pages are drained from MGLRU lists back to traditional
+   LRU lists.
+2. Concurrent reclaimers in shrink_lruvec() see lrugen->enabled as false
+   and skip the MGLRU path.
+3. However, these pages might not have reached the traditional LRU lists
+   yet, or the changes are not yet visible to all CPUs due to a lack
+   of synchronization.
+4. get_scan_count() subsequently finds traditional LRU lists empty,
+   concludes there is no reclaimable memory, and triggers an OOM kill.
+
+A similar race can occur during enablement, where the reclaimer sees the
+new state but the MGLRU lists haven't been populated via fill_evictable()
+yet.
+
+Solution 
+========
+
+Introduce a 'draining' state (`lru_drain_core`) to bridge the transition.
+When transitioning, the system enters this intermediate state where
+the reclaimer is forced to attempt both MGLRU and traditional reclaim
+paths sequentially. This ensures that folios remain visible to at least
+one reclaim mechanism until the transition is fully materialized across
+all CPUs.
+
+Changes 
+=======
+
+v3:
+ - Rebase onto mm-new branch for queue testing 
+ - Don't look around while draining 
+ - Fix Barry Song's comment
+
+v2: 
+- Repalce with a static branch `lru_drain_core` to track the transition
+  state.
+- Ensures all LRU helpers correctly identify page state by checking
+  folio_lru_gen(folio) != -1 instead of relying solely on global flags.
+- Maintain workingset refault context across MGLRU state transitions 
+- Fix build error when CONFIG_LRU_GEN is disabled.
+
+v1: 
+- Use smp_store_release() and smp_load_acquire() to ensure the visibility
+  of 'enabled' and 'draining' flags across CPUs.
+- Modify shrink_lruvec() to allow a "joint reclaim" period. If an lruvec 
+  is in the 'draining' state, the reclaimer will attempt to scan MGLRU
+  lists first, and then fall through to traditional LRU lists instead
+  of returning early. This ensures that folios are visible to at least
+  one reclaim path at any given time.
+
+Race & Mitigation 
+================
+
+A race window exists between checking the 'draining' state and performing
+the actual list operations. For instance, a reclaimer might observe the
+draining state as false just before it changes, leading to a suboptimal
+reclaim path decision.
+
+However, this impact is effectively mitigated by the kernel's reclaim
+retry mechanism (e.g., in do_try_to_free_pages). If a reclaimer pass fails
+to find eligible folios due to a state transition race, subsequent retries
+in the loop will observe the updated state and correctly direct the scan
+to the appropriate LRU lists. This ensures the transient inconsistency
+does not escalate into a terminal OOM kill.
+
+This effectively reduce the race window that previously triggered OOMs
+under high memory pressure.
+
+Reproduction 
+===========
+
+The issue was consistently reproduced on v6.1.157 and v6.18.3 using a
+high-pressure memory cgroup (v1) environment.
+
+Reproduction steps: 
+1. Create a 16GB memcg and populate it with 10GB file cache (5GB active)
+   and 8GB active anonymous memory.
+2. Toggle MGLRU state while performing new memory allocations to force
+   direct reclaim.
+
+Reproduction script 
+===================
+
+```bash
+
+MGLRU_FILE="/sys/kernel/mm/lru_gen/enabled"
+CGROUP_PATH="/sys/fs/cgroup/memory/memcg_oom_test"
+
+switch_mglru() {
+    local orig_val=$(cat "$MGLRU_FILE")
+    if [[ "$orig_val" != "0x0000" ]]; then
+        echo n > "$MGLRU_FILE" &
+    else
+        echo y > "$MGLRU_FILE" &
+    fi
+}
+
+mkdir -p "$CGROUP_PATH"
+echo $((16 * 1024 * 1024 * 1024)) > "$CGROUP_PATH/memory.limit_in_bytes"
+echo $$ > "$CGROUP_PATH/cgroup.procs"
+
+dd if=/dev/urandom of=/tmp/test_file bs=1M count=10240
+dd if=/tmp/test_file of=/dev/null bs=1M # Warm up cache
+
+stress-ng --vm 1 --vm-bytes 8G --vm-keep -t 600 &
+sleep 5
+
+switch_mglru
+stress-ng --vm 1 --vm-bytes 2G --vm-populate --timeout 5s || \
+echo "OOM Triggered"
+
+grep oom_kill "$CGROUP_PATH/memory.oom_control"
+```
+
+Signed-off-by: Leno Hou <lenohou@gmail.com>
 ---
-Changes in v4:
-- Correctly list turris1x.dtb in boot/dts, not boot/dts/fsl.
-- Link to v3: https://lore.kernel.org/r/20260311-mpc83xx-dtb-v3-1-4aa43bb9ffa0@posteo.net
+Leno Hou (2):
+      mm/mglru: fix cgroup OOM during MGLRU state switching
+      mm/mglru: maintain workingset refault context across state transitions
 
-Changes in v3:
-- Group multiple files per line, while still avoiding backslashes
-  (suggested by Christophe Leroy)
-- Link to v2: https://lore.kernel.org/r/20260305-mpc83xx-dtb-v2-1-cdb751458445@posteo.net
-
-Changes in v2:
-- Use "dtb-$(FOO) += foo.dtb" format on every line, avoid backslashes
-  (suggested by Geert Uytterhoeven)
-- Link to v1: https://lore.kernel.org/r/20260119-mpc83xx-dtb-v1-1-522f841290bf@posteo.net
+ include/linux/mm_inline.h | 16 ++++++++++++++
+ include/linux/swap.h      |  2 +-
+ mm/rmap.c                 |  2 +-
+ mm/swap.c                 | 15 +++++++------
+ mm/vmscan.c               | 55 +++++++++++++++++++++++++++++++++++------------
+ mm/workingset.c           | 22 +++++++++++++------
+ 6 files changed, 83 insertions(+), 29 deletions(-)
 ---
- arch/powerpc/boot/dts/Makefile     | 73 ++++++++++++++++++++++++++++++++++++++
- arch/powerpc/boot/dts/fsl/Makefile | 43 ++++++++++++++++++++++
- 2 files changed, 116 insertions(+)
-
-diff --git a/arch/powerpc/boot/dts/Makefile b/arch/powerpc/boot/dts/Makefile
-index 0cd0d8558b475c..1e61a951cebe84 100644
---- a/arch/powerpc/boot/dts/Makefile
-+++ b/arch/powerpc/boot/dts/Makefile
-@@ -3,3 +3,76 @@
- subdir-y += fsl
- 
- dtb-$(CONFIG_OF_ALL_DTBS) := $(patsubst $(src)/%.dts,%.dtb, $(wildcard $(src)/*.dts))
-+
-+# PPC44x platforms
-+dtb-$(CONFIG_PPC44x_SIMPLE) += arches.dtb bamboo.dtb bluestone.dtb glacier.dtb
-+dtb-$(CONFIG_PPC44x_SIMPLE) += eiger.dtb katmai.dtb rainier.dtb redwood.dtb
-+dtb-$(CONFIG_PPC44x_SIMPLE) += sequoia.dtb taishan.dtb yosemite.dtb icon.dtb
-+dtb-$(CONFIG_EBONY) += ebony.dtb
-+dtb-$(CONFIG_SAM440EP) += sam440ep.dtb
-+dtb-$(CONFIG_WARP) += warp.dtb
-+dtb-$(CONFIG_ISS4xx) += iss4xx.dtb iss4xx-mpic.dtb
-+dtb-$(CONFIG_CANYONLANDS) += canyonlands.dtb
-+dtb-$(CONFIG_CURRITUCK) += currituck.dtb
-+dtb-$(CONFIG_AKEBONO) += akebono.dtb
-+dtb-$(CONFIG_FSP2) += fsp2.dtb
-+
-+# Embedded 6xx platforms
-+dtb-$(CONFIG_LINKSTATION) += kuroboxHG.dtb kuroboxHD.dtb
-+dtb-$(CONFIG_STORCENTER) += storcenter.dtb
-+dtb-$(CONFIG_PPC_HOLLY) += holly.dtb
-+dtb-$(CONFIG_GAMECUBE) += gamecube.dtb
-+dtb-$(CONFIG_WII) += wii.dtb
-+dtb-$(CONFIG_MVME5100) += mvme5100.dtb
-+
-+# MPC8xx platforms
-+dtb-$(CONFIG_MPC885ADS) += mpc885ads.dtb
-+dtb-$(CONFIG_MPC86XADS) += mpc866ads.dtb
-+dtb-$(CONFIG_PPC_EP88XC) += ep88xc.dtb
-+dtb-$(CONFIG_PPC_ADDER875) += adder875-redboot.dtb adder875-uboot.dtb
-+dtb-$(CONFIG_TQM8XX) += tqm8xx.dtb
-+
-+# MPC512x platforms
-+dtb-$(CONFIG_MPC5121_ADS) += mpc5121ads.dtb
-+dtb-$(CONFIG_MPC512x_GENERIC) += mpc5125twr.dtb ac14xx.dts
-+dtb-$(CONFIG_PDM360NG) += pdm360ng.dtb
-+
-+# MPC5200 platforms
-+dtb-$(CONFIG_PPC_MPC5200_SIMPLE) += a3m071.dtb a4m072.dtb charon.dtb cm5200.dtb
-+dtb-$(CONFIG_PPC_MPC5200_SIMPLE) += digsy_mtc.dtb motionpro.dtb mucmc52.dtb
-+dtb-$(CONFIG_PPC_MPC5200_SIMPLE) += o2d.dtb o2d300.dtb o2dnt2.dtb o2i.dtb
-+dtb-$(CONFIG_PPC_MPC5200_SIMPLE) += o2mnt.dtb o3dnt.dtb pcm030.dtb pcm032.dtb
-+dtb-$(CONFIG_PPC_MPC5200_SIMPLE) += tqm5200.dtb uc101.dtb
-+dtb-$(CONFIG_PPC_LITE5200) += lite5200.dtb lite5200b.dtb
-+dtb-$(CONFIG_PPC_MEDIA5200) += media5200.dtb
-+
-+# MPC82xx platforms
-+dtb-$(CONFIG_EP8248E) += ep8248e.dtb
-+dtb-$(CONFIG_MGCOGE) += mgcoge.dtb
-+
-+# MPC83xx platforms
-+dtb-$(CONFIG_MPC830x_RDB) += mpc8308rdb.dtb mpc8308_p1m.dtb
-+dtb-$(CONFIG_MPC831x_RDB) += mpc8313erdb.dtb mpc8315erdb.dtb
-+dtb-$(CONFIG_MPC832x_RDB) += mpc832x_rdb.dtb
-+dtb-$(CONFIG_MPC834x_ITX) += mpc8349emitx.dtb mpc8349emitxgp.dtb
-+dtb-$(CONFIG_ASP834x) += asp834x-redboot.dtb
-+dtb-$(CONFIG_MPC836x_RDK) += mpc836x_rdk.dtb
-+dtb-$(CONFIG_KMETER1) += kmeter1.dtb
-+dtb-$(CONFIG_MPC837x_RDB) += mpc8377_rdb.dtb mpc8378_rdb.dtb mpc8379_rdb.dtb
-+dtb-$(CONFIG_MPC837x_RDB) += mpc8377_wlan.dtb
-+
-+# MPC85xx platforms
-+dtb-$(CONFIG_STX_GP3) += stx_gp3_8560.dtb stxssa8555.dtb
-+dtb-$(CONFIG_TQM85xx) += tqm8540.dtb tqm8541.dtb tqm8548.dtb
-+dtb-$(CONFIG_TQM85xx) += tqm8548-bigflash.dtb tqm8555.dtb tqm8560.dtb
-+dtb-$(CONFIG_SOCRATES) += socrates.dtb
-+dtb-$(CONFIG_KSI8560) += ksi8560.dtb
-+dtb-$(CONFIG_XES_MPC85xx) += xcalibur1501.dtb xpedite5200.dtb
-+dtb-$(CONFIG_XES_MPC85xx) += xpedite5200_xmon.dtb xpedite5301.dtb
-+dtb-$(CONFIG_XES_MPC85xx) += xpedite5330.dtb xpedite5370.dtb
-+dtb-$(CONFIG_PPC_P2020) += turris1x.dtb
-+
-+# Misc. platforms
-+dtb-$(CONFIG_PPC_MICROWATT) += microwatt.dtb
-+dtb-$(CONFIG_AMIGAONE) += amigaone.dtb
-+dtb-$(CONFIG_PPC_PS3) += ps3.dtb
-diff --git a/arch/powerpc/boot/dts/fsl/Makefile b/arch/powerpc/boot/dts/fsl/Makefile
-index d3ecdf14bc42e7..d2cc8e1f007ea5 100644
---- a/arch/powerpc/boot/dts/fsl/Makefile
-+++ b/arch/powerpc/boot/dts/fsl/Makefile
-@@ -1,3 +1,46 @@
- # SPDX-License-Identifier: GPL-2.0
- 
- dtb-$(CONFIG_OF_ALL_DTBS) := $(patsubst $(src)/%.dts,%.dtb, $(wildcard $(src)/*.dts))
-+
-+# MPC85xx platforms
-+dtb-$(CONFIG_BSC9131_RDB) += bsc9131rdb.dtb
-+dtb-$(CONFIG_BSC9132_QDS) += bsc9132qds.dtb
-+dtb-$(CONFIG_C293_PCIE) += c293pcie.dtb
-+dtb-$(CONFIG_MPC8536_DS) += mpc8536ds.dtb mpc8536ds_36b.dtb
-+dtb-$(CONFIG_MPC85xx_DS) += mpc8544ds.dtb mpc8572ds_camp_core0.dtb
-+dtb-$(CONFIG_MPC85xx_DS) += mpc8572ds_camp_core1.dtb mpc8572ds_36b.dtb
-+dtb-$(CONFIG_MPC85xx_DS) += mpc8572ds.dtb
-+dtb-$(CONFIG_MPC85xx_MDS) += mpc8568mds.dtb mpc8569mds.dtb p1021mds.dtb
-+dtb-$(CONFIG_MPC85xx_RDB) += p1020mbg-pc_32b.dtb p1020mbg-pc_36b.dtb
-+dtb-$(CONFIG_MPC85xx_RDB) += p1020rdb_36b.dtb p1020rdb.dtb p1020rdb-pc_32b.dtb
-+dtb-$(CONFIG_MPC85xx_RDB) += p1020rdb-pc_36b.dtb p1020rdb-pc_camp_core0.dtb
-+dtb-$(CONFIG_MPC85xx_RDB) += p1020rdb-pc_camp_core1.dtb p1020rdb-pd.dtb
-+dtb-$(CONFIG_MPC85xx_RDB) += p1020utm-pc_32b.dtb p1020utm-pc_36b.dtb
-+dtb-$(CONFIG_MPC85xx_RDB) += p1021rdb-pc_32b.dtb p1021rdb-pc_36b.dtb
-+dtb-$(CONFIG_MPC85xx_RDB) += p1024rdb_32b.dtb p1024rdb_36b.dtb p1025rdb_32b.dtb
-+dtb-$(CONFIG_MPC85xx_RDB) += p1025rdb_36b.dtb
-+dtb-$(CONFIG_P1010_RDB) += p1010rdb-pa_36b.dtb p1010rdb-pa.dtb
-+dtb-$(CONFIG_P1010_RDB) += p1010rdb-pb_36b.dtb p1010rdb-pb.dtb
-+dtb-$(CONFIG_P1022_DS) += p1022ds_32b.dtb p1022ds_36b.dtb
-+dtb-$(CONFIG_P1022_RDK) += p1022rdk.dtb
-+dtb-$(CONFIG_P1023_RDB) += p1023rdb.dtb
-+dtb-$(CONFIG_PPC_P2020) += p2020ds.dtb
-+dtb-$(CONFIG_TWR_P102x) += p1025twr.dtb
-+dtb-$(CONFIG_CORENET_GENERIC) += b4420qds.dtb b4860qds.dtb cyrus_p5020.dtb
-+dtb-$(CONFIG_CORENET_GENERIC) += kmcent2.dtb kmcoge4.dtb oca4080.dtb
-+dtb-$(CONFIG_CORENET_GENERIC) += p2041rdb.dtb p3041ds.dtb p4080ds.dtb
-+dtb-$(CONFIG_CORENET_GENERIC) += p5020ds.dtb p5040ds.dtb t1023rdb.dtb
-+dtb-$(CONFIG_CORENET_GENERIC) += t1024qds.dtb t1024rdb.dtb t1040d4rdb.dtb
-+dtb-$(CONFIG_CORENET_GENERIC) += t1040qds.dtb t1040rdb.dtb t1040rdb-rev-a.dtb
-+dtb-$(CONFIG_CORENET_GENERIC) += t1042d4rdb.dtb t1042qds.dtb t1042rdb.dtb
-+dtb-$(CONFIG_CORENET_GENERIC) += t1042rdb_pi.dtb t2080qds.dtb t2080rdb.dtb
-+dtb-$(CONFIG_CORENET_GENERIC) += t2081qds.dtb t4240qds.dtb t4240rdb.dtb
-+dtb-$(CONFIG_PPA8548) += ppa8548.dtb
-+dtb-$(CONFIG_GE_IMP3A) += ge_imp3a.dtb
-+dtb-$(CONFIG_MVME2500) += mvme2500.dtb
-+
-+# MPC86xx platforms
-+dtb-$(CONFIG_GEF_SBC310) += gef_sbc310.dtb
-+dtb-$(CONFIG_GEF_SBC610) += gef_sbc610.dtb
-+dtb-$(CONFIG_GEF_PPC9A) += gef_ppc9a.dtb
-+dtb-$(CONFIG_MVME7100) += mvme7100.dtb
-
----
-base-commit: 11439c4635edd669ae435eec308f4ab8a0804808
-change-id: 20260101-mpc83xx-dtb-23d98a190e23
+base-commit: c5a81ff6071bcf42531426e6336b5cc424df6e3d
+change-id: 20260311-b4-switch-mglru-v2-8b926a03843f
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+Leno Hou <lenohou@gmail.com>
 
