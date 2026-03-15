@@ -1,160 +1,129 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Sat, 14 Mar 2026 21:35:41 +0000
-Subject: [PATCH RESEND v8 6/6] usb: typec: tcpm/tcpci_maxim: deprecate WAR
- for setting charger mode
+From: =?utf-8?q?Bence_Cs=C3=B3k=C3=A1s?= <bence98@sch.bme.hu>
+Date: Sun, 15 Mar 2026 12:24:44 +0100
+Subject: [PATCH v2] USB: core: Use krealloc() in usb_cache_string()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260314-max77759-charger-v8-6-226ca5f8c7d2@google.com>
-References: <20260314-max77759-charger-v8-0-226ca5f8c7d2@google.com>
-In-Reply-To: <20260314-max77759-charger-v8-0-226ca5f8c7d2@google.com>
-To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
- Lee Jones <lee@kernel.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Tudor Ambarus <tudor.ambarus@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>, Mark Brown <broonie@kernel.org>, 
- Matti Vaittinen <mazziesaccount@gmail.com>, 
- Andrew Morton <akpm@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
- RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
- Amit Sunil Dhamne <amitsd@google.com>
+Message-Id: <20260315-usb-krealloc-v2-1-32f83e090409@sch.bme.hu>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1WNzQqDMBCEX0Vy7opZxWJPfY/iIUk3Tag/ZVelR
+ Xz3RqGHwlw+mJlvVUIcSdQlWxXTEiWOQwI8ZcoFMzwI4j2xwgLrotQaZrHwZDJdNzqoqNKlx7I
+ xjVdp8mLy8X3c3drE1giBZTO4sJ/0RibivRiiTCN/Du2i9/rPgP+GRYMGf65tgylVgVdxIbc95
+ WFW7bZtX7kHnaHCAAAA
+X-Change-ID: 20260311-usb-krealloc-4e413f239a9f
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Bence_Cs=C3=B3k=C3=A1s?= <bence98@sch.bme.hu>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773524157; l=3933;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=NXEaY7jJE1xTiIeG6fSlLIVVrNuhGg0S0CuNACv6CMc=;
- b=VikvkuCTgBkDHd4mpCk1eNEomZQNlos62+taHl2un6ANvH/7NDqKS9cPL+4j5xS4eIWiVb8h3
- AZYf+PQUO9XDbbsEuu4ESzXRPRLumO21vzjXy/7dh3Pz3s1JUWZnhht
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773573897; l=4191;
+ i=bence98@sch.bme.hu; s=20260213; h=from:subject:message-id;
+ bh=2kZ+PbbmbSbJa9UFioo3zinMoPidNiiYW8i/CUabtoE=;
+ b=U4YeXma1jMRkhsd3BfahbVB9heC7qc9cqfIEry8ybQADDtelwJmnR+tnml/DXzp6zuJcD6oog
+ 205Pr+HIxvVAK5cFPVsE5iPIMXVfD0ERUyLdQ9UGNwJKMGCoHti4pVV
+X-Developer-Key: i=bence98@sch.bme.hu; a=ed25519;
+ pk=rtWE8PtqZ5ZMyUVCckDq8i1ASLxgUbV2fwDA8KaOli8=
+X-Endpoint-Received: by B4 Relay for bence98@sch.bme.hu/20260213 with auth_id=636
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-TCPCI maxim driver directly writes to the charger's register space to
-set charger mode depending on the power role. As MAX77759 chg driver
-exists, this WAR is not required.
+Instead of "shrinking" the allocation by kmalloc()ing a new, smaller
+buffer, utilize krealloc() to shrink the existing allocation. This saves
+a memcpy(), as well as eliminates the temporary `smallbuf` allocation,
+which guards against allocation failure under extreme memory pressure.
 
-Instead, use a regulator interface to source vbus when typec is in
-source power mode. In other power modes, this regulator will be turned
-off if active.
-
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
-Reviewed-by: André Draszik <andre.draszik@linaro.org>
+Signed-off-by: Bence Csókás <bence98@sch.bme.hu>
 ---
- drivers/usb/typec/tcpm/tcpci_maxim.h      |  1 +
- drivers/usb/typec/tcpm/tcpci_maxim_core.c | 54 +++++++++++++++++++------------
- 2 files changed, 34 insertions(+), 21 deletions(-)
+Tested on an AthlonII X2 PC running Arch userland with Plasma.
 
-diff --git a/drivers/usb/typec/tcpm/tcpci_maxim.h b/drivers/usb/typec/tcpm/tcpci_maxim.h
-index b33540a42a95..b314606eb0f6 100644
---- a/drivers/usb/typec/tcpm/tcpci_maxim.h
-+++ b/drivers/usb/typec/tcpm/tcpci_maxim.h
-@@ -60,6 +60,7 @@ struct max_tcpci_chip {
- 	struct tcpm_port *port;
- 	enum contamiant_state contaminant_state;
- 	bool veto_vconn_swap;
-+	struct regulator *vbus_reg;
- };
- 
- static inline int max_tcpci_read16(struct max_tcpci_chip *chip, unsigned int reg, u16 *val)
-diff --git a/drivers/usb/typec/tcpm/tcpci_maxim_core.c b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-index 19f638650796..c0ee7e6959ed 100644
---- a/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-+++ b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-@@ -10,6 +10,7 @@
- #include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/regmap.h>
-+#include <linux/regulator/consumer.h>
- #include <linux/usb/pd.h>
- #include <linux/usb/tcpci.h>
- #include <linux/usb/tcpm.h>
-@@ -35,12 +36,6 @@
-  */
- #define TCPC_RECEIVE_BUFFER_LEN				32
- 
--#define MAX_BUCK_BOOST_SID				0x69
--#define MAX_BUCK_BOOST_OP				0xb9
--#define MAX_BUCK_BOOST_OFF				0
--#define MAX_BUCK_BOOST_SOURCE				0xa
--#define MAX_BUCK_BOOST_SINK				0x5
--
- static const struct regmap_range max_tcpci_tcpci_range[] = {
- 	regmap_reg_range(0x00, 0x95)
- };
-@@ -202,32 +197,49 @@ static void process_rx(struct max_tcpci_chip *chip, u16 status)
- 	tcpm_pd_receive(chip->port, &msg, rx_type);
+  $ sudo lsusb -vvv | grep -P 'i(Product|Manu)'
+  can't get debug descriptor: Resource temporarily unavailable
+    iManufacturer           3 Linux 7.0.0-rc3-00355-g94926a68d237 ohci_hcd
+    iProduct                2 OHCI PCI host controller
+    iManufacturer           1 Hewlett-Packard Company
+    iProduct                2 HP USB Smart Card Keyboard
+  can't get device qualifier: Resource temporarily unavailable
+  can't get debug descriptor: Resource temporarily unavailable
+    iManufacturer           1 PIXART
+    iProduct                2 USB OPTICAL MOUSE
+  can't get debug descriptor: Resource temporarily unavailable
+  can't get device qualifier: Resource temporarily unavailable
+  can't get debug descriptor: Resource temporarily unavailable
+    iManufacturer           3 Linux 7.0.0-rc3-00355-g94926a68d237 ehci_hcd
+    iProduct                2 EHCI Host Controller
+    iManufacturer           3 Linux 7.0.0-rc3-00355-g94926a68d237 ehci_hcd
+  can't get device qualifier: Resource temporarily unavailable
+  can't get debug descriptor: Resource temporarily unavailable
+    iProduct                2 EHCI Host Controller
+  can't get debug descriptor: Resource temporarily unavailable
+    iManufacturer           1 USB
+    iProduct                2 Disk 2.0
+    iManufacturer           3 Linux 7.0.0-rc3-00355-g94926a68d237 ehci_hcd
+    iProduct                2 EHCI Host Controller
+  can't get device qualifier: Resource temporarily unavailable
+  can't get debug descriptor: Resource temporarily unavailable
+  can't get debug descriptor: Resource temporarily unavailable
+    iManufacturer           3 Linux 7.0.0-rc3-00355-g94926a68d237 ohci_hcd
+    iProduct                2 OHCI PCI host controller
+    iManufacturer           3 Linux 7.0.0-rc3-00355-g94926a68d237 ohci_hcd
+    iProduct                2 OHCI PCI host controller
+  can't get debug descriptor: Resource temporarily unavailable
+  can't get debug descriptor: Resource temporarily unavailable
+    iManufacturer           3 Linux 7.0.0-rc3-00355-g94926a68d237 ohci_hcd
+    iProduct                2 OHCI PCI host controller
+---
+Changes in v2:
+- Update msg, remove backticks
+- Add testing results
+- Remove ?:
+- Link to v1: https://lore.kernel.org/r/20260312-usb-krealloc-v1-1-f76b92b92402@sch.bme.hu
+---
+ drivers/usb/core/message.c | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/usb/core/message.c b/drivers/usb/core/message.c
+index ea970ddf8879..a0c77709aa36 100644
+--- a/drivers/usb/core/message.c
++++ b/drivers/usb/core/message.c
+@@ -1005,7 +1005,7 @@ int usb_string(struct usb_device *dev, int index, char *buf, size_t size)
  }
+ EXPORT_SYMBOL_GPL(usb_string);
  
-+static int get_vbus_regulator_handle(struct max_tcpci_chip *chip)
-+{
-+	if (IS_ERR_OR_NULL(chip->vbus_reg)) {
-+		chip->vbus_reg = devm_regulator_get_exclusive(chip->dev,
-+							      "vbus");
-+		if (IS_ERR_OR_NULL(chip->vbus_reg)) {
-+			dev_err(chip->dev,
-+				"Failed to get vbus regulator handle\n");
-+			return -ENODEV;
-+		}
-+	}
-+
-+	return 0;
-+}
-+
- static int max_tcpci_set_vbus(struct tcpci *tcpci, struct tcpci_data *tdata, bool source, bool sink)
- {
- 	struct max_tcpci_chip *chip = tdata_to_max_tcpci(tdata);
--	u8 buffer_source[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_SOURCE};
--	u8 buffer_sink[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_SINK};
--	u8 buffer_none[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_OFF};
--	struct i2c_client *i2c = chip->client;
- 	int ret;
+-/* one UTF-8-encoded 16-bit character has at most three bytes */
++/* one 16-bit character, when UTF-8-encoded, has at most three bytes */
+ #define MAX_USB_STRING_SIZE (127 * 3 + 1)
  
--	struct i2c_msg msgs[] = {
--		{
--			.addr = MAX_BUCK_BOOST_SID,
--			.flags = i2c->flags & I2C_M_TEN,
--			.len = 2,
--			.buf = source ? buffer_source : sink ? buffer_sink : buffer_none,
--		},
--	};
--
- 	if (source && sink) {
- 		dev_err(chip->dev, "Both source and sink set\n");
- 		return -EINVAL;
+ /**
+@@ -1026,16 +1026,18 @@ char *usb_cache_string(struct usb_device *udev, int index)
+ 		return NULL;
+ 
+ 	buf = kmalloc(MAX_USB_STRING_SIZE, GFP_NOIO);
+-	if (buf) {
+-		len = usb_string(udev, index, buf, MAX_USB_STRING_SIZE);
+-		if (len > 0) {
+-			smallbuf = kmalloc(++len, GFP_NOIO);
+-			if (!smallbuf)
+-				return buf;
+-			memcpy(smallbuf, buf, len);
+-		}
++	if (!buf)
++		return NULL;
++
++	len = usb_string(udev, index, buf, MAX_USB_STRING_SIZE);
++	if (len <= 0) {
+ 		kfree(buf);
++		return NULL;
  	}
- 
--	ret = i2c_transfer(i2c->adapter, msgs, 1);
-+	ret = get_vbus_regulator_handle(chip);
-+	if (ret) {
-+		/*
-+		 * Regulator is not necessary for sink only applications. Return
-+		 * success in cases where sink mode is being modified.
-+		 */
-+		return source ? ret : 1;
-+	}
 +
-+	if (source) {
-+		if (!regulator_is_enabled(chip->vbus_reg))
-+			ret = regulator_enable(chip->vbus_reg);
-+	} else {
-+		if (regulator_is_enabled(chip->vbus_reg))
-+			ret = regulator_disable(chip->vbus_reg);
-+	}
- 
--	return  ret < 0 ? ret : 1;
-+	return ret < 0 ? ret : 1;
++	smallbuf = krealloc(buf, len + 1, GFP_NOIO);
++	if (unlikely(!smallbuf))
++		return buf;
+ 	return smallbuf;
  }
- 
- static void process_power_status(struct max_tcpci_chip *chip)
+ EXPORT_SYMBOL_GPL(usb_cache_string);
 
+---
+base-commit: 1c9982b4961334c1edb0745a04cabd34bc2de675
+change-id: 20260311-usb-krealloc-4e413f239a9f
+
+Best regards,
 -- 
-2.53.0.851.ga537e3e6e9-goog
+Bence Csókás <bence98@sch.bme.hu>
 
