@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Sun, 15 Mar 2026 19:52:41 +0100
-Subject: [PATCH WIP v2 05/11] Input: stmfts - disable regulators when power
- on fails
+Date: Sun, 15 Mar 2026 19:52:42 +0100
+Subject: [PATCH WIP v2 06/11] Input: stmfts - use client to make future
+ code cleaner
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260315-stmfts5-v2-5-70bc83ee9591@ixit.cz>
+Message-Id: <20260315-stmfts5-v2-6-70bc83ee9591@ixit.cz>
 References: <20260315-stmfts5-v2-0-70bc83ee9591@ixit.cz>
 In-Reply-To: <20260315-stmfts5-v2-0-70bc83ee9591@ixit.cz>
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
@@ -22,80 +22,53 @@ Cc: Petr Hodina <petr.hodina@protonmail.com>, linux-input@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1598; i=david@ixit.cz;
- h=from:subject:message-id; bh=2qW8ngTjzm302YCB/fjirEd8lBZHppTYTL/irHDu0sU=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBptv/53lQgPZkVE/1ff0MlL4oM6tmmzYpj7LZkM
- I5gtNehdp6JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCabb/+QAKCRBgAj/E00kg
- ckTBD/9d4Fas9MuxGRDBXkRc2fYIYSoRcXx3TcyfKoIpKrnKUiK8rzfIU0SlAg599HVJq/cpPA8
- t507y5DmYEyhyMwSGAFKUnp366aMbjBfX68OV3Zd1ofuv/IpqFwITPliK0N7EuNo/RSQZCBo6m4
- n7TqvPnXGYBJdg51oS9ZYyFhfvmRYm/JMuHTv9EE/hlgOEMS0h40CbticIBAnLqUGaRIxCJNU2L
- Ita88L14n5Qj7eKV9XF08aiVVC9jfT5WPnNmMZFkkYRrQA2ux729GVwUJc7dywNMBl5c8cMjfJR
- hqAOcTfglNYc4X3LYx8p+HrWv9yEsU8X+qyztoXxay7qriMRC7uwBXLjUnpGTg3XE5f3JF0j34u
- /uKRr5zUPrL8805QQF2HKlEXb+Tl2ldFi7ZrsIKivSpuVxSkOOkK4B4g9jlIcRsmT6MwqcWGRMa
- gVS53sC9SIrVRjrAXzw7DSIfjijn4seWDo1QMA5u1zsP8ST2iK2o7MqUphqIgldofokB4bON/v8
- lbgb3wImj5mUgeykHlkU1IkqmlKtBMF4Vl6ATvDNjAw3u3AgXDwAVhtwU3YGZi4fGym3hnG0XNE
- ugj0bO65jbRvjTbAa+LtkKMdq0uOylPQrE0W7tAYp1GJgUfhAtZk52ortLkepchu4YQMZofd4wu
- dPGniMVnb5dUODg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=999; i=david@ixit.cz;
+ h=from:subject:message-id; bh=NjXdWrTyZ4AOoAMN8FANgtl5sLWDEzgbOr47MG8j63A=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBptv/5qkGhTYBwGm6+n5LMbiGmaXgdSYsz1eYSE
+ Ggl5zzA+sqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCabb/+QAKCRBgAj/E00kg
+ ci4wD/9H+6EPZMql8Si2W9hkziJlAifuPuI48m3hQ6EaoLCn1JV/ScaxW4RY95HrYgT28xyfwKl
+ JUqdOBiTgQJQdSV2Dsc0FyMTr06BnXnMYTQaXZ+Q4ZGsfuerdylxbJ19YOLA/3JMjw1CfJdsHy7
+ /mK8gdJDc3oPr+6kyde3hk5afi90oYN8LTNdDcf2ldPgGAKhnOfHOtbXfQzuU+reSNEe0M8qClf
+ dXe4eRsyFdpZeoiZsBSRrYaSR7QkCc+lFWoUJNNjHbJIrxkDH5EU30XWIN8j4PYz576GAbE3aWc
+ wJNq3ZheYbryH7Eq+riMQqPtyefk1ns/ERBv09JZOSYz0crh/9URS4rwy8dVoIQDLn4nHivzWFb
+ +cKwYH3O48NlBfCY9M/KxUmAGMPPN5yAnQr5ze3MdcywvDhkwClk6tmm9NoeihwxlcnxK4MmwdB
+ h61mx+2tFkpQy1rimaDTLFFTCWfiSGxAaxBHUeKAyNRIGaD/B+4Mjw9kDh76eRPcgdOrdpJShUI
+ 9DJPtL5wbAg4Ecux3t1yqYBsAtU0BshwV0lgKNBOCtpZ0OoQYnDATMj5tb3dt3h0+KH30rTChxG
+ YbaAN/GXoD1VtHqI+wpMurzeVO9v2OGEeYVsjjArog1FM7WYvpZISJ44Ok1fng1PV2pT3hJ3aCb
+ duIgAnQjAEzvirA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-We must power off regulators after failing at power on phase.
+From: Petr Hodina <petr.hodina@protonmail.com>
 
+Make code cleaner, compiler will optimize it away anyway.
+
+Preparation for FTM5 support, where more steps are needed.
+
+Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/input/touchscreen/stmfts.c | 13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+ drivers/input/touchscreen/stmfts.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/input/touchscreen/stmfts.c b/drivers/input/touchscreen/stmfts.c
-index c1c9570ddea2d..bf176907177d0 100644
+index bf176907177d0..4dfaf3a6077d9 100644
 --- a/drivers/input/touchscreen/stmfts.c
 +++ b/drivers/input/touchscreen/stmfts.c
-@@ -558,7 +558,7 @@ static int stmfts_power_on(struct stmfts_data *sdata)
+@@ -764,9 +764,10 @@ static int stmfts_runtime_suspend(struct device *dev)
+ static int stmfts_runtime_resume(struct device *dev)
+ {
+ 	struct stmfts_data *sdata = dev_get_drvdata(dev);
++	struct i2c_client *client = sdata->client;
+ 	int ret;
  
- 	err = stmfts_read_system_info(sdata);
- 	if (err)
--		return err;
-+		goto power_off;
+-	ret = i2c_smbus_write_byte(sdata->client, STMFTS_SLEEP_OUT);
++	ret = i2c_smbus_write_byte(client, STMFTS_SLEEP_OUT);
+ 	if (ret)
+ 		dev_err(dev, "failed to resume device: %d\n", ret);
  
- 	enable_irq(sdata->client->irq);
- 
-@@ -566,11 +566,11 @@ static int stmfts_power_on(struct stmfts_data *sdata)
- 
- 	err = stmfts_command(sdata, STMFTS_SYSTEM_RESET);
- 	if (err)
--		return err;
-+		goto power_off;
- 
- 	err = stmfts_command(sdata, STMFTS_SLEEP_OUT);
- 	if (err)
--		return err;
-+		goto power_off;
- 
- 	/* optional tuning */
- 	err = stmfts_command(sdata, STMFTS_MS_CX_TUNING);
-@@ -586,7 +586,7 @@ static int stmfts_power_on(struct stmfts_data *sdata)
- 
- 	err = stmfts_command(sdata, STMFTS_FULL_FORCE_CALIBRATION);
- 	if (err)
--		return err;
-+		goto power_off;
- 
- 	/*
- 	 * At this point no one is using the touchscreen
-@@ -595,6 +595,11 @@ static int stmfts_power_on(struct stmfts_data *sdata)
- 	(void) i2c_smbus_write_byte(sdata->client, STMFTS_SLEEP_IN);
- 
- 	return 0;
-+
-+power_off:
-+	regulator_bulk_disable(ARRAY_SIZE(stmfts_supplies),
-+			       sdata->supplies);
-+	return err;
- }
- 
- static void stmfts_power_off(void *data)
 
 -- 
 2.53.0
