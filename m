@@ -1,10 +1,11 @@
 From: Jia Wang <wangjia@ultrarisc.com>
-Date: Mon, 16 Mar 2026 15:06:57 +0800
-Subject: [PATCH 1/4] riscv: add UltraRISC SoC family Kconfig support
+Date: Mon, 16 Mar 2026 15:06:58 +0800
+Subject: [PATCH 2/4] MAINTAINERS: Add entry for the UltraRISC DP1000 PCIe
+ controller driver and its DT binding
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260316-ultrarisc-pcie-v1-1-ef2946ede698@ultrarisc.com>
+Message-Id: <20260316-ultrarisc-pcie-v1-2-ef2946ede698@ultrarisc.com>
 References: <20260316-ultrarisc-pcie-v1-0-ef2946ede698@ultrarisc.com>
 In-Reply-To: <20260316-ultrarisc-pcie-v1-0-ef2946ede698@ultrarisc.com>
 To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
@@ -20,45 +21,43 @@ Cc: linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org,
  linux-pci@vger.kernel.org, devicetree@vger.kernel.org, 
  Jia Wang <wangjia@ultrarisc.com>
 X-Mailer: b4 0.15-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773644922; l=955;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773644922; l=906;
  i=wangjia@ultrarisc.com; s=20260309; h=from:subject:message-id;
- bh=yTvCixoepaOP7H0g0NOlrwpugZtb4VLtAcECC0j8Mq8=;
- b=1g5NIQahZ7vZ6VjqyuGZB5s/gvegIH0PTVHfuyaBYDlH54vV/CScnL3pV3MVIlvRbTwOEuJA4
- ZPs04vuYuvzDhlUXRSp9XodapVXofPuuHk1D5doYu+D+/fmXQnoX+Nu
+ bh=S1wEZ7Qj4tYv0/nzKH9ecqpxkAyEAumj1u8QGL/LCmU=;
+ b=k/OPXKc2hLilx+CL/XIe0/HcMf/WLkYIYOEZy5X0GAoCsCpp4g45Z9IQUE+FuAcOVj9/a46Nf
+ v3UeZVX3eQtBa2SMl83GV0u3ThurTyk1um3TSrmBIRlCVuVe5p+3ZmN
 X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
  pk=XvYkrelqJIIzobY7j+nIg8rsfv5kzaOzuc1UPhd087U=
 X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260309 with auth_id=682
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The first SoC in the UltraRISC series is UR-DP1000, containing octa
-UltraRISC C100 cores.
+Add a MAINTAINERS entry for the UltraRISC DP1000 PCIe host driver and its
+DT binding.
 
 Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
 ---
- arch/riscv/Kconfig.socs | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ MAINTAINERS | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/arch/riscv/Kconfig.socs b/arch/riscv/Kconfig.socs
-index d621b85dd63b..f49d3ccaacde 100644
---- a/arch/riscv/Kconfig.socs
-+++ b/arch/riscv/Kconfig.socs
-@@ -84,6 +84,16 @@ config ARCH_THEAD
- 	help
- 	  This enables support for the RISC-V based T-HEAD SoCs.
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 96ea84948d76..5caa383fe0ec 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -20571,6 +20571,14 @@ S:	Maintained
+ F:	Documentation/devicetree/bindings/pci/starfive,jh7110-pcie.yaml
+ F:	drivers/pci/controller/plda/pcie-starfive.c
  
-+config ARCH_ULTRARISC
-+	bool "UltraRISC RISC-V SoCs"
-+	depends on MMU && !XIP_KERNEL
-+	help
-+	 This enables support for UltraRISC SoC platform hardware,
-+	 including boards based on the UR-DP1000.
-+	 UR-DP1000 is an 8-core 64-bit RISC-V SoC that supports
-+	 the RV64GCBHX ISA. It supports Hardware Virtualization
-+	 and RISC-V RV64 ISA H(v1.0) Extension.
++PCIE DRIVER FOR ULTRARISC DP1000
++M:	Xincheng Zhang <zhangxincheng@ultrarisc.com>
++M:	Jia Wang <wangjia@ultrarisc.com>
++L:	linux-pci@vger.kernel.org
++S:	Maintained
++F:	Documentation/devicetree/bindings/pci/ultrarisc,dp1000-pcie.yaml
++F:	drivers/pci/controller/dwc/pcie-ultrarisc.c
 +
- config ARCH_VIRT
- 	bool "QEMU Virt Machine"
- 	select POWER_RESET
+ PCIE ENDPOINT DRIVER FOR QUALCOMM
+ M:	Manivannan Sadhasivam <mani@kernel.org>
+ L:	linux-pci@vger.kernel.org
 
 -- 
 2.34.1
