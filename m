@@ -1,333 +1,81 @@
-From: Jia Wang <wangjia@ultrarisc.com>
-Date: Mon, 16 Mar 2026 15:07:00 +0800
-Subject: [PATCH 4/4] PCI: dwc: Add UltraRISC DP1000 PCIe rc driver
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Date: Mon, 16 Mar 2026 15:45:53 +0100
+Subject: [PATCH] HID: wiimote: Fix table layout in comment
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260316-ultrarisc-pcie-v1-4-ef2946ede698@ultrarisc.com>
-References: <20260316-ultrarisc-pcie-v1-0-ef2946ede698@ultrarisc.com>
-In-Reply-To: <20260316-ultrarisc-pcie-v1-0-ef2946ede698@ultrarisc.com>
-To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
- Albert Ou <aou@eecs.berkeley.edu>, Alexandre Ghiti <alex@ghiti.fr>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
- Bjorn Helgaas <bhelgaas@google.com>, Jingoo Han <jingoohan1@gmail.com>, 
- Xincheng Zhang <zhangxincheng@ultrarisc.com>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-pci@vger.kernel.org, devicetree@vger.kernel.org, 
- Jia Wang <wangjia@ultrarisc.com>
-X-Mailer: b4 0.15-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773644922; l=9411;
- i=wangjia@ultrarisc.com; s=20260309; h=from:subject:message-id;
- bh=tSfhKfbr5/q5BnKydlotmuXWfmzyfzz7sJS5AJBU+XI=;
- b=afXZZOlq52qEbho3/d36SucpTBSbGpASGiqFD1YQYpstpuOVXbwJsd8PaN4wZT6/FtpTgil43
- RvSJdOaINjVCJL77kZPyGxcS1vKDQmZXwF2Qe7RQ6kg/JrfifLn+qix
-X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
- pk=XvYkrelqJIIzobY7j+nIg8rsfv5kzaOzuc1UPhd087U=
-X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260309 with auth_id=682
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260316-wiimod-table-v1-1-c1f91be05137@posteo.net>
+X-B4-Tracking: v=1; b=H4sIAKAXuGkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDY0Mz3fLMzNz8FN2SxKScVN3kFMvEpGSDRKNESwsloJaCotS0zAqwcdG
+ xtbUASkamMV4AAAA=
+X-Change-ID: 20260316-wiimod-table-cd9abc0a2a98
+To: David Rheinsberg <david@readahead.eu>, Jiri Kosina <jikos@kernel.org>, 
+ Benjamin Tissoires <bentiss@kernel.org>
+Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773672357; l=2872;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=DEDA+lED2vdDSlKY8TBL6dFV7luPreEtxbUEEFq+ZVg=;
+ b=2WZbUhgFfRufnmPK7P+mhItvlc144t0bDO+De5Cfb0VUzeUqDaL/CDDUcnbXsGJPZWtxaeXPd
+ prgfCVUqQilDii/VLHEPH9C1mADJe/o3xqZRWz2QmWHm3+DWkxcBYAz
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Xincheng Zhang <zhangxincheng@ultrarisc.com>
+Some tab characters snuck into the data layout table for turntable
+extensions, which resulted in the table only looking right at a tabstop
+of 4, which is uncommon in the kernel. Change them to the equivalent
+amount of spaces, which should look correct in any editor.
 
-Add DP1000 soc PCIe rc driver.
-
-Signed-off-by: Xincheng Zhang <zhangxincheng@ultrarisc.com>
-Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- drivers/pci/controller/dwc/Kconfig           |  15 ++
- drivers/pci/controller/dwc/Makefile          |   1 +
- drivers/pci/controller/dwc/pcie-designware.h |  22 +++
- drivers/pci/controller/dwc/pcie-ultrarisc.c  | 202 +++++++++++++++++++++++++++
- 4 files changed, 240 insertions(+)
+ drivers/hid/hid-wiimote-modules.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/pci/controller/dwc/Kconfig b/drivers/pci/controller/dwc/Kconfig
-index d0aa031397fa..0a33891bf7ef 100644
---- a/drivers/pci/controller/dwc/Kconfig
-+++ b/drivers/pci/controller/dwc/Kconfig
-@@ -548,4 +548,19 @@ config PCIE_VISCONTI_HOST
- 	  Say Y here if you want PCIe controller support on Toshiba Visconti SoC.
- 	  This driver supports TMPV7708 SoC.
- 
-+config PCIE_ULTRARISC
-+	bool "UltraRISC PCIe host controller"
-+	depends on ARCH_ULTRARISC || COMPILE_TEST
-+	select PCIE_DW_HOST
-+	select PCI_MSI
-+	default y if ARCH_ULTRARISC
-+	help
-+	  Enables support for the PCIe controller in the UltraRISC SoC.
-+	  This driver supports UR-DP1000 SoC. When selected, it automatically
-+	  enables both `PCIE_DW_HOST` and `PCI_MSI`, ensuring proper support
-+	  for MSI-based interrupt handling in the PCIe controller.
-+	  By default, this symbol is enabled when `ARCH_ULTRARISC` is active,
-+	  requiring no further configuration on that platform.
-+
-+
- endmenu
-diff --git a/drivers/pci/controller/dwc/Makefile b/drivers/pci/controller/dwc/Makefile
-index 67ba59c02038..884c46b78e01 100644
---- a/drivers/pci/controller/dwc/Makefile
-+++ b/drivers/pci/controller/dwc/Makefile
-@@ -38,6 +38,7 @@ obj-$(CONFIG_PCIE_RCAR_GEN4) += pcie-rcar-gen4.o
- obj-$(CONFIG_PCIE_SPACEMIT_K1) += pcie-spacemit-k1.o
- obj-$(CONFIG_PCIE_STM32_HOST) += pcie-stm32.o
- obj-$(CONFIG_PCIE_STM32_EP) += pcie-stm32-ep.o
-+obj-$(CONFIG_PCIE_ULTRARISC) += pcie-ultrarisc.o
- 
- # The following drivers are for devices that use the generic ACPI
- # pci_root.c driver but don't support standard ECAM config access.
-diff --git a/drivers/pci/controller/dwc/pcie-designware.h b/drivers/pci/controller/dwc/pcie-designware.h
-index ae6389dd9caa..8f2ed86cb5c5 100644
---- a/drivers/pci/controller/dwc/pcie-designware.h
-+++ b/drivers/pci/controller/dwc/pcie-designware.h
-@@ -69,6 +69,8 @@
- 
- /* Synopsys-specific PCIe configuration registers */
- #define PCIE_PORT_FORCE			0x708
-+/* Bit[7:0] LINK_NUM: Link Number. Not used for endpoint */
-+#define PORT_LINK_NUM_MASK		GENMASK(7, 0)
- #define PORT_FORCE_DO_DESKEW_FOR_SRIS	BIT(23)
- 
- #define PCIE_PORT_AFR			0x70C
-@@ -96,6 +98,26 @@
- #define PCIE_PORT_LANE_SKEW		0x714
- #define PORT_LANE_SKEW_INSERT_MASK	GENMASK(23, 0)
- 
-+/*
-+ * PCIE_TIMER_CTRL_MAX_FUNC_NUM: Timer Control and Max Function Number Register.
-+ * This register holds the ack frequency, latency, replay, fast link scaling timers,
-+ * and max function number values.
-+ * Bit[30:29] FAST_LINK_SCALING_FACTOR: Fast Link Timer Scaling Factor.
-+ *   0x0 (SF_1024):Scaling Factor is 1024 (1ms is 1us).
-+ *     When the LTSSM is in Config or L12 Entry State, 1ms
-+ *     timer is 2us, 2ms timer is 4us and 3ms timer is 6us.
-+ *   0x1 (SF_256): Scaling Factor is 256 (1ms is 4us)
-+ *   0x2 (SF_64): Scaling Factor is 64 (1ms is 16us)
-+ *   0x3 (SF_16): Scaling Factor is 16 (1ms is 64us)
-+ */
-+#define PCIE_TIMER_CTRL_MAX_FUNC_NUM    0x718
-+#define PORT_FLT_SF_MASK    GENMASK(30, 29)
-+#define PORT_FLT_SF(n)      FIELD_PREP(PORT_FLT_SF_MASK, n)
-+#define PORT_FLT_SF_1024    PORT_FLT_SF(0x0)
-+#define PORT_FLT_SF_256     PORT_FLT_SF(0x1)
-+#define PORT_FLT_SF_64      PORT_FLT_SF(0x2)
-+#define PORT_FLT_SF_16      PORT_FLT_SF(0x3)
-+
- #define PCIE_PORT_DEBUG0		0x728
- #define PORT_LOGIC_LTSSM_STATE_MASK	0x3f
- #define PORT_LOGIC_LTSSM_STATE_L0	0x11
-diff --git a/drivers/pci/controller/dwc/pcie-ultrarisc.c b/drivers/pci/controller/dwc/pcie-ultrarisc.c
-new file mode 100644
-index 000000000000..64cbf16d3ff7
---- /dev/null
-+++ b/drivers/pci/controller/dwc/pcie-ultrarisc.c
-@@ -0,0 +1,202 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * DWC PCIe RC driver for UltraRISC DP1000 SoC
-+ *
-+ * Copyright (C) 2023 UltraRISC
-+ *
-+ */
-+
-+#include <linux/clk.h>
-+#include <linux/delay.h>
-+#include <linux/interrupt.h>
-+#include <linux/kernel.h>
-+#include <linux/init.h>
-+#include <linux/of_device.h>
-+#include <linux/pci.h>
-+#include <linux/platform_device.h>
-+#include <linux/resource.h>
-+#include <linux/types.h>
-+#include <linux/regmap.h>
-+
-+#include "pcie-designware.h"
-+
-+#define PCIE_CUS_CORE          0x400000
-+
-+#define LTSSM_ENABLE           BIT(7)
-+#define FAST_LINK_MODE         BIT(12)
-+#define HOLD_PHY_RST           BIT(14)
-+#define L1SUB_DISABLE          BIT(15)
-+
-+struct ultrarisc_pcie {
-+	struct dw_pcie  *pci;
-+	u32 irq_mask[MAX_MSI_CTRLS];
-+};
-+
-+static const struct of_device_id ultrarisc_pcie_of_match[];
-+
-+static struct pci_ops ultrarisc_pci_ops = {
-+	.map_bus = dw_pcie_own_conf_map_bus,
-+	.read = pci_generic_config_read32,
-+	.write = pci_generic_config_write32,
-+};
-+
-+static int ultrarisc_pcie_host_init(struct dw_pcie_rp *pp)
-+{
-+	struct pci_host_bridge *bridge = pp->bridge;
-+
-+	/* Set the bus ops */
-+	bridge->ops = &ultrarisc_pci_ops;
-+
-+	return 0;
-+}
-+
-+static const struct dw_pcie_host_ops ultrarisc_pcie_host_ops = {
-+	.init = ultrarisc_pcie_host_init,
-+};
-+
-+static int ultrarisc_pcie_establish_link(struct dw_pcie *pci)
-+{
-+	u32 val;
-+	u8 cap_exp;
-+
-+	val = dw_pcie_readl_dbi(pci, PCIE_CUS_CORE);
-+	val &= ~FAST_LINK_MODE;
-+	dw_pcie_writel_dbi(pci, PCIE_CUS_CORE, val);
-+
-+	val = dw_pcie_readl_dbi(pci, PCIE_TIMER_CTRL_MAX_FUNC_NUM);
-+	val &= ~PORT_FLT_SF_MASK;
-+	val |= PORT_FLT_SF_64;
-+	dw_pcie_writel_dbi(pci, PCIE_TIMER_CTRL_MAX_FUNC_NUM, val);
-+
-+	cap_exp = dw_pcie_find_capability(pci, PCI_CAP_ID_EXP);
-+	val = dw_pcie_readl_dbi(pci, cap_exp + PCI_EXP_LNKCTL2);
-+	val &= ~PCI_EXP_LNKCTL2_TLS;
-+	val |= PCI_EXP_LNKCTL2_TLS_16_0GT;
-+	dw_pcie_writel_dbi(pci, cap_exp + PCI_EXP_LNKCTL2, val);
-+
-+	val = dw_pcie_readl_dbi(pci, PCIE_PORT_FORCE);
-+	val &= ~PORT_LINK_NUM_MASK;
-+	dw_pcie_writel_dbi(pci, PCIE_PORT_FORCE, val);
-+
-+	val = dw_pcie_readl_dbi(pci, cap_exp + PCI_EXP_DEVCTL2);
-+	val &= ~PCI_EXP_DEVCTL2_COMP_TIMEOUT;
-+	val |= 0x6;
-+	dw_pcie_writel_dbi(pci, cap_exp + PCI_EXP_DEVCTL2, val);
-+
-+	val = dw_pcie_readl_dbi(pci, PCIE_CUS_CORE);
-+	val &= ~(HOLD_PHY_RST | L1SUB_DISABLE);
-+	val |= LTSSM_ENABLE;
-+	dw_pcie_writel_dbi(pci, PCIE_CUS_CORE, val);
-+
-+	return 0;
-+}
-+
-+static const struct dw_pcie_ops dw_pcie_ops = {
-+	.start_link = ultrarisc_pcie_establish_link,
-+};
-+
-+static int ultrarisc_pcie_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	struct ultrarisc_pcie *ultrarisc_pcie;
-+	struct dw_pcie *pci;
-+	struct dw_pcie_rp *pp;
-+	int ret;
-+
-+	ultrarisc_pcie = devm_kzalloc(dev, sizeof(*ultrarisc_pcie), GFP_KERNEL);
-+	if (!ultrarisc_pcie)
-+		return -ENOMEM;
-+
-+	pci = devm_kzalloc(dev, sizeof(*pci), GFP_KERNEL);
-+	if (!pci)
-+		return -ENOMEM;
-+
-+	pci->dev = dev;
-+	pci->ops = &dw_pcie_ops;
-+
-+	/* Set a default value suitable for at most 16 in and 16 out windows */
-+	pci->atu_size = SZ_8K;
-+
-+	ultrarisc_pcie->pci = pci;
-+
-+	pp = &pci->pp;
-+
-+	platform_set_drvdata(pdev, ultrarisc_pcie);
-+
-+	pp->irq = platform_get_irq(pdev, 1);
-+	if (pp->irq < 0)
-+		return pp->irq;
-+
-+	pp->num_vectors = MAX_MSI_IRQS;
-+	pp->ops = &ultrarisc_pcie_host_ops;
-+
-+	ret = dw_pcie_host_init(pp);
-+	if (ret) {
-+		dev_err(dev, "Failed to initialize host\n");
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static int ultrarisc_pcie_suspend(struct platform_device *pdev, pm_message_t state)
-+{
-+	struct ultrarisc_pcie *ultrarisc_pcie = platform_get_drvdata(pdev);
-+	struct dw_pcie *pci = ultrarisc_pcie->pci;
-+	struct dw_pcie_rp *pp = &pci->pp;
-+	int num_ctrls = pp->num_vectors / MAX_MSI_IRQS_PER_CTRL;
-+	unsigned long flags;
-+	int ctrl;
-+
-+	raw_spin_lock_irqsave(&pp->lock, flags);
-+
-+	for (ctrl = 0; ctrl < num_ctrls; ctrl++)
-+		ultrarisc_pcie->irq_mask[ctrl] = pp->irq_mask[ctrl];
-+
-+	raw_spin_unlock_irqrestore(&pp->lock, flags);
-+
-+	return 0;
-+}
-+
-+static int ultrarisc_pcie_resume(struct platform_device *pdev)
-+{
-+	struct ultrarisc_pcie *ultrarisc_pcie = platform_get_drvdata(pdev);
-+	struct dw_pcie *pci = ultrarisc_pcie->pci;
-+	struct dw_pcie_rp *pp = &pci->pp;
-+	int num_ctrls = pp->num_vectors / MAX_MSI_IRQS_PER_CTRL;
-+	unsigned long flags;
-+	int ctrl;
-+
-+	raw_spin_lock_irqsave(&pp->lock, flags);
-+
-+	for (ctrl = 0; ctrl < num_ctrls; ctrl++) {
-+		pp->irq_mask[ctrl] = ultrarisc_pcie->irq_mask[ctrl];
-+		dw_pcie_writel_dbi(pci,
-+				   PCIE_MSI_INTR0_MASK +
-+				   ctrl * MSI_REG_CTRL_BLOCK_SIZE,
-+				   pp->irq_mask[ctrl]);
-+	}
-+
-+	raw_spin_unlock_irqrestore(&pp->lock, flags);
-+
-+	return 0;
-+}
-+
-+static const struct of_device_id ultrarisc_pcie_of_match[] = {
-+	{
-+		.compatible = "ultrarisc,dp1000-pcie",
-+	},
-+	{},
-+};
-+
-+static struct platform_driver ultrarisc_pcie_driver = {
-+	.driver = {
-+		.name	= "ultrarisc-pcie",
-+		.of_match_table = ultrarisc_pcie_of_match,
-+		.suppress_bind_attrs = true,
-+	},
-+	.probe = ultrarisc_pcie_probe,
-+	.suspend = ultrarisc_pcie_suspend,
-+	.resume = ultrarisc_pcie_resume,
-+};
-+builtin_platform_driver(ultrarisc_pcie_driver);
+diff --git a/drivers/hid/hid-wiimote-modules.c b/drivers/hid/hid-wiimote-modules.c
+index dbccdfa6391672..d9e1b4313d6465 100644
+--- a/drivers/hid/hid-wiimote-modules.c
++++ b/drivers/hid/hid-wiimote-modules.c
+@@ -2442,12 +2442,12 @@ static void wiimod_turntable_in_ext(struct wiimote_data *wdata, const __u8 *ext)
+ 	/* 
+ 	 * Byte |  7   |  6  |  5  |  4  |  3  |  2   |  1   |  0     |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+-	 *   0  | RTT<4:3>   | 		      	  SX <5:0> 			      |
+-	 *   1  | RTT<2:1>   |				  SY <5:0>			      |
++	 *   0  | RTT<4:3>   |                SX <5:0>                |
++	 *   1  | RTT<2:1>   |                SY <5:0>                |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+ 	 *   2  |RTT<0>|  ED<4:3>  |          CS<3:0>        | RTT<5> |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+-	 *   3  |     ED<2:0> 	   | 			 LTT<4:0>			  |
++	 *   3  |     ED<2:0>      |             LTT<4:0>             |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+ 	 *   4  |  0   |  0  | LBR |  B- |  0  |  B+  |  RBR | LTT<5> |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+@@ -2458,12 +2458,12 @@ static void wiimod_turntable_in_ext(struct wiimote_data *wdata, const __u8 *ext)
+ 	 * With Motion+ enabled, it will look like this:
+ 	 * Byte |  8   |  7  |  6  |  5  |  4  |  3   |  2   |  1     |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+-	 *   1  | RTT<4:3>   | 		      	  SX <5:1> 		 |	  0   |
+-	 *   2  | RTT<2:1>   |				  SY <5:1>		 |	  0   |
++	 *   1  | RTT<4:3>   |                SX <5:1>       |    0   |
++	 *   2  | RTT<2:1>   |                SY <5:1>       |    0   |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+ 	 *   3  |RTT<0>|  ED<4:3>  |          CS<3:0>        | RTT<5> |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+-	 *   4  |     ED<2:0> 	   | 			 LTT<4:0>			  |
++	 *   4  |     ED<2:0>      |             LTT<4:0>             |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+ 	 *   5  |  0   |  0  | LBR |  B- |  0  |  B+  | RBR  |  XXXX  |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
 
+---
+base-commit: f338e77383789c0cae23ca3d48adcc5e9e137e3c
+change-id: 20260316-wiimod-table-cd9abc0a2a98
+
+Best regards,
 -- 
-2.34.1
+J. Neuschäfer <j.ne@posteo.net>
 
