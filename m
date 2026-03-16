@@ -1,81 +1,82 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Mon, 16 Mar 2026 15:45:53 +0100
-Subject: [PATCH] HID: wiimote: Fix table layout in comment
+From: Simon Baatz <gmbnomis@gmail.com>
+Date: Mon, 16 Mar 2026 19:51:10 +0100
+Subject: [PATCH net-next] selftests/net: packetdrill: improve
+ tcp_rcv_neg_window.pkt
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260316-wiimod-table-v1-1-c1f91be05137@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAKAXuGkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDY0Mz3fLMzNz8FN2SxKScVN3kFMvEpGSDRKNESwsloJaCotS0zAqwcdG
- xtbUASkamMV4AAAA=
-X-Change-ID: 20260316-wiimod-table-cd9abc0a2a98
-To: David Rheinsberg <david@readahead.eu>, Jiri Kosina <jikos@kernel.org>, 
- Benjamin Tissoires <bentiss@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773672357; l=2872;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=DEDA+lED2vdDSlKY8TBL6dFV7luPreEtxbUEEFq+ZVg=;
- b=2WZbUhgFfRufnmPK7P+mhItvlc144t0bDO+De5Cfb0VUzeUqDaL/CDDUcnbXsGJPZWtxaeXPd
- prgfCVUqQilDii/VLHEPH9C1mADJe/o3xqZRWz2QmWHm3+DWkxcBYAz
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260316-improve_tcp_neg_usable_wnd_test-v1-1-f16d5e365107@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3NQQrCMBBG4auUWRtoUivoVUSGmPzWAZ2GJNZC6
+ d0NLr/NexsVZEGhS7dRxiJFZm2wh47C0+sEI7GZXO9O/WBHI++U5wVcQ2LFxJ/i7y/wVyNXlGq
+ ct4M7x2PwdqRWSRkPWf+HKymqUayVbvv+AxTGEoB7AAAA
+X-Change-ID: 20260315-improve_tcp_neg_usable_wnd_test-2a1329d4ca15
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
+ Shuah Khan <shuah@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Simon Baatz <gmbnomis@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773687085; l=2076;
+ i=gmbnomis@gmail.com; s=20260220; h=from:subject:message-id;
+ bh=ns9OJwOj9IGXzUoNWp91AiRCpz66QceoQnlEDdYlvAg=;
+ b=aGLkhiswPMUPyKJ30KormGEXHe9rlLCtTcgK3UyAcW1S57f5CBIuxVzZENkkCoVI0stE9jFtS
+ 15RLqZ4BcOvBtElun7+2vJzfo+ZGtH9lmc+5i+iqgra7IWtpM6KQ5yN
+X-Developer-Key: i=gmbnomis@gmail.com; a=ed25519;
+ pk=T/JIz/6F5bf1uQJr69lmyi7czVG+F9TVZ/8x5z9Wtqw=
+X-Endpoint-Received: by B4 Relay for gmbnomis@gmail.com/20260220 with auth_id=641
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some tab characters snuck into the data layout table for turntable
-extensions, which resulted in the table only looking right at a tabstop
-of 4, which is uncommon in the kernel. Change them to the equivalent
-amount of spaces, which should look correct in any editor.
+The test depends on accepting a packet that is larger than the
+advertised window and that does not trigger an immediate ACK.
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+Previously, the test might still pass even if kernel behavior changed
+unexpectedly. Add assertions verifying that the large packet was
+accepted and no ACK was sent.
+
+Suggested-by: Eric Dumazet <edumazet@google.com>
+Signed-off-by: Simon Baatz <gmbnomis@gmail.com>
 ---
- drivers/hid/hid-wiimote-modules.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ .../selftests/net/packetdrill/tcp_rcv_neg_window.pkt       | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/hid/hid-wiimote-modules.c b/drivers/hid/hid-wiimote-modules.c
-index dbccdfa6391672..d9e1b4313d6465 100644
---- a/drivers/hid/hid-wiimote-modules.c
-+++ b/drivers/hid/hid-wiimote-modules.c
-@@ -2442,12 +2442,12 @@ static void wiimod_turntable_in_ext(struct wiimote_data *wdata, const __u8 *ext)
- 	/* 
- 	 * Byte |  7   |  6  |  5  |  4  |  3  |  2   |  1   |  0     |
- 	 *------+------+-----+-----+-----+-----+------+------+--------+
--	 *   0  | RTT<4:3>   | 		      	  SX <5:0> 			      |
--	 *   1  | RTT<2:1>   |				  SY <5:0>			      |
-+	 *   0  | RTT<4:3>   |                SX <5:0>                |
-+	 *   1  | RTT<2:1>   |                SY <5:0>                |
- 	 *------+------+-----+-----+-----+-----+------+------+--------+
- 	 *   2  |RTT<0>|  ED<4:3>  |          CS<3:0>        | RTT<5> |
- 	 *------+------+-----+-----+-----+-----+------+------+--------+
--	 *   3  |     ED<2:0> 	   | 			 LTT<4:0>			  |
-+	 *   3  |     ED<2:0>      |             LTT<4:0>             |
- 	 *------+------+-----+-----+-----+-----+------+------+--------+
- 	 *   4  |  0   |  0  | LBR |  B- |  0  |  B+  |  RBR | LTT<5> |
- 	 *------+------+-----+-----+-----+-----+------+------+--------+
-@@ -2458,12 +2458,12 @@ static void wiimod_turntable_in_ext(struct wiimote_data *wdata, const __u8 *ext)
- 	 * With Motion+ enabled, it will look like this:
- 	 * Byte |  8   |  7  |  6  |  5  |  4  |  3   |  2   |  1     |
- 	 *------+------+-----+-----+-----+-----+------+------+--------+
--	 *   1  | RTT<4:3>   | 		      	  SX <5:1> 		 |	  0   |
--	 *   2  | RTT<2:1>   |				  SY <5:1>		 |	  0   |
-+	 *   1  | RTT<4:3>   |                SX <5:1>       |    0   |
-+	 *   2  | RTT<2:1>   |                SY <5:1>       |    0   |
- 	 *------+------+-----+-----+-----+-----+------+------+--------+
- 	 *   3  |RTT<0>|  ED<4:3>  |          CS<3:0>        | RTT<5> |
- 	 *------+------+-----+-----+-----+-----+------+------+--------+
--	 *   4  |     ED<2:0> 	   | 			 LTT<4:0>			  |
-+	 *   4  |     ED<2:0>      |             LTT<4:0>             |
- 	 *------+------+-----+-----+-----+-----+------+------+--------+
- 	 *   5  |  0   |  0  | LBR |  B- |  0  |  B+  | RBR  |  XXXX  |
- 	 *------+------+-----+-----+-----+-----+------+------+--------+
+diff --git a/tools/testing/selftests/net/packetdrill/tcp_rcv_neg_window.pkt b/tools/testing/selftests/net/packetdrill/tcp_rcv_neg_window.pkt
+index 15a9b4938f16d175ac54f3fd192ed2b59b0a4399..b9ab264b2a118f273af269d83a371740ae47359c 100644
+--- a/tools/testing/selftests/net/packetdrill/tcp_rcv_neg_window.pkt
++++ b/tools/testing/selftests/net/packetdrill/tcp_rcv_neg_window.pkt
+@@ -1,4 +1,7 @@
+ // SPDX-License-Identifier: GPL-2.0
++// Test maximum advertised window limit when rcv_nxt advances past
++// rcv_mwnd_seq. The "usable window" must be properly clamped to zero
++// rather than becoming negative.
+ 
+ --mss=1000
+ 
+@@ -17,10 +20,15 @@
+ 
+    +0 accept(3, ..., ...) = 4
+ 
+-// A too big packet is accepted if the receive queue is empty
++// A too big packet is accepted if the receive queue is empty. It
++// does not trigger an immediate ACK.
+    +0 < P. 1:20001(20000) ack 1 win 257
++   +0 %{ assert tcpi_bytes_received == 20000, tcpi_bytes_received; }%
++
+ // Send a RST immediately so that there is no rcv_wup/rcv_mwnd_seq update yet
+    +0 < R. 20001:20001(0) ack 1 win 257
+ 
+-  +.1 %{ assert tcpi_state == TCP_CLOSE, tcpi_state }%
+-
++// Verify that the RST was accepted. Indirectly this also verifies that no
++// immediate ACK was sent for the data packet above.
++   +0 < . 20001:20001(0) ack 1 win 257
++   +0 > R 1:1(0)
 
 ---
-base-commit: f338e77383789c0cae23ca3d48adcc5e9e137e3c
-change-id: 20260316-wiimod-table-cd9abc0a2a98
+base-commit: 5446b8691eb8278f10deca92048fad84ffd1e4d5
+change-id: 20260315-improve_tcp_neg_usable_wnd_test-2a1329d4ca15
 
 Best regards,
 -- 
-J. Neuschäfer <j.ne@posteo.net>
+Simon Baatz <gmbnomis@gmail.com>
 
