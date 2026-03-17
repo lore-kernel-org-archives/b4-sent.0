@@ -1,11 +1,10 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Tue, 17 Mar 2026 09:59:53 +0530
-Subject: [PATCH v6 3/9] serdev: Do not return -ENODEV from
- of_serdev_register_devices() if external connector is used
+Date: Tue, 17 Mar 2026 09:59:54 +0530
+Subject: [PATCH v6 4/9] dt-bindings: serial: Document the graph port
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260317-pci-m2-e-v6-3-9c898f108d3d@oss.qualcomm.com>
+Message-Id: <20260317-pci-m2-e-v6-4-9c898f108d3d@oss.qualcomm.com>
 References: <20260317-pci-m2-e-v6-0-9c898f108d3d@oss.qualcomm.com>
 In-Reply-To: <20260317-pci-m2-e-v6-0-9c898f108d3d@oss.qualcomm.com>
 To: Rob Herring <robh@kernel.org>, 
@@ -30,63 +29,48 @@ Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org,
  Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
  linux-acpi@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- Hans de Goede <johannes.goede@oss.qualcomm.com>, 
- Bartosz Golaszewski <brgl@kernel.org>
+ Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1461;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1047;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=9JYNk+DMPq2LlZQfTiexJ4EeAYXDboalcaCh+TYovs0=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpuNjHCVxcR2eU20/cYNvdftr00vaJ2V7UvPmaH
- ymEVn5El6iJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCabjYxwAKCRBVnxHm/pHO
- 9ciYB/97N4zLhjZr8iceNjwbuRKrCaK0uDrMyc88oKP1joAcuT6eaUaj9C4ac965XDtFjvjgQcd
- HuwZVvPK4edCTJ07RJUPS/RII7SYHgt1Qp8I6dgYWfHD+zpYh1AtJQ8h4rZ1SL6HnMX3FPKAoOc
- +juE9NbztuXO6VsYVDmE3OPHix3rydnJf4nJKmI0Vzfdw2NZJOoUUaheS+m3P21exNVYXN4PyZr
- Fbx8q8CPiqbYDQ8A3ghk65Fy5xPFJfpoLEVq1y9Q0bRNiYFgj5OxjuT7FhchuSArGheEnntt+T4
- oiqiSZt1qADyi4zQnyeOBcuo4wbY2gNTewEHkCOn25cCPAN8
+ bh=qc2byN8fzCzHCp/R/TbHmtEA/yB09rfLEQZF1FIZXLk=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpuNjHzIlkekCrgGWcamJjp5Bq6wTTkw6dTyt+H
+ X3gw2G7SNOJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCabjYxwAKCRBVnxHm/pHO
+ 9XJGB/9ZxYiHOampZxJrCmyhY9H1GJN7K3WEXr1m9d6VtZqZg+8N6b41wlGb4ITXKf4xpe24euM
+ y8z8pHsP6U3xi37uvgcjt+NgxNMXvMS1IOUZk+CYpiFXnAQXJxD1cUYFTa5PttTX1HUBmmNhQvJ
+ uEJ4H/xWRhtAyzSNhs63upcGC/ScQ3FasLHmEJRX62C5O3uxPgm2gIrlkAtOLsn/pB9JsrA+gJJ
+ DCLkdXm5HBTURYxMQBpsl682DemPNhr1h9AHZpND7zvdkL9iMOdW09Wn6hLUW8A5f26/VjObWr4
+ rGTyXjE04zLvxhEWKVgW9f/E7528wwPdoGkTuTo79WzuiZT1
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If an external connector like M.2 is connected to the serdev controller
-in DT, then the serdev devices may be created dynamically by the connector
-driver. So do not return -ENODEV from of_serdev_register_devices() if the
-static nodes are not found and the graph node is used.
+A serial controller could be connected to an external connector like PCIe
+M.2 for controlling the serial interface of the card. Hence, document the
+OF graph port.
 
-Tested-by: Hans de Goede <johannes.goede@oss.qualcomm.com> # ThinkPad T14s gen6 (arm64)
-Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
+Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
+Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/tty/serdev/core.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ Documentation/devicetree/bindings/serial/serial.yaml | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/drivers/tty/serdev/core.c b/drivers/tty/serdev/core.c
-index bf88b95f7458..e9d044a331b0 100644
---- a/drivers/tty/serdev/core.c
-+++ b/drivers/tty/serdev/core.c
-@@ -12,6 +12,7 @@
- #include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/of.h>
-+#include <linux/of_graph.h>
- #include <linux/of_device.h>
- #include <linux/pm_domain.h>
- #include <linux/pm_runtime.h>
-@@ -561,7 +562,13 @@ static int of_serdev_register_devices(struct serdev_controller *ctrl)
- 		} else
- 			found = true;
- 	}
--	if (!found)
-+
-+	/*
-+	 * When the serdev controller is connected to an external connector like
-+	 * M.2 in DT, then the serdev devices may be created dynamically by the
-+	 * connector driver.
-+	 */
-+	if (!found && !of_graph_is_present(dev_of_node(&ctrl->dev)))
- 		return -ENODEV;
+diff --git a/Documentation/devicetree/bindings/serial/serial.yaml b/Documentation/devicetree/bindings/serial/serial.yaml
+index 6aa9cfae417b..96eb1de8771e 100644
+--- a/Documentation/devicetree/bindings/serial/serial.yaml
++++ b/Documentation/devicetree/bindings/serial/serial.yaml
+@@ -87,6 +87,9 @@ properties:
+     description:
+       TX FIFO threshold configuration (in bytes).
  
- 	return 0;
++  port:
++    $ref: /schemas/graph.yaml#/properties/port
++
+ patternProperties:
+   "^(bluetooth|bluetooth-gnss|embedded-controller|gnss|gps|mcu|onewire)$":
+     if:
 
 -- 
 2.51.0
