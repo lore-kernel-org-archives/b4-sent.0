@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Tue, 17 Mar 2026 23:12:33 +0100
-Subject: [PATCH v2 3/5] arm64: dts: qcom: sdm845-shift-axolotl: Convert fb
- to use memory-region
+Date: Tue, 17 Mar 2026 23:12:34 +0100
+Subject: [PATCH v2 4/5] arm64: dts: qcom: sdm845-samsung-starqltechn:
+ Convert fb to use memory-region
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260317-beryllium-fb-v2-3-36b69dfb760c@ixit.cz>
+Message-Id: <20260317-beryllium-fb-v2-4-36b69dfb760c@ixit.cz>
 References: <20260317-beryllium-fb-v2-0-36b69dfb760c@ixit.cz>
 In-Reply-To: <20260317-beryllium-fb-v2-0-36b69dfb760c@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -18,20 +18,20 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1114; i=david@ixit.cz;
- h=from:subject:message-id; bh=+J1GiE3/gu+Ex4529cyTBsEBCOk3gC0OobsfViZGQVA=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpudHR+/5GlKmBFroZ+rrEc7ox3nBpoo4sRrRck
- mtBmnTSuPiJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCabnR0QAKCRBgAj/E00kg
- chhnEACDhIYCHFrtbVidzFiokgVEvko7c1vNLICH17a+Ctjjf1CZsVQilUcOxcUDmABnOyNxm8/
- 01zQthhInphazePhHYzMTiYwy/9iyUwRddnMShd4pf4qsjA59TNOxxnIgPDCe92QPzFnoi0VK8G
- utgm1Oj/uc1biV4JMFP/UEqKjb8NMZkHEtrtNwW3bLHLm2vfGX6zZ0noeKd4Uc4Dhx56I4kTtGJ
- BEQPqLIXyevNkJx/tvaIcovzm6a8ZQCVLPiJOBZymwt+tUM+l0sSeDgHZd9Z3YiDwgQSa/J7ZtC
- CyMmVMSH2USPmAeJxPwOJLF4I6PNMfG15D38wmawpzNss6YXQnIicgxAktkSP+Nuf6H0KHsa/8N
- wGiqrVdj0kfTAqSlEIqNlvCdxcJr6LWgsSY3JMaA1RL7CZjL5rn/Y5XlS3B/rKKGOCogZj7VNs1
- +/S4DyoQR5UrpuXO2NuDK/r/bI8NhtrIrssfcuo6pK3urqblE8hSPXA9CP1SB3r7S414ZTah6zq
- ufxa6Y7AUwuwkEP8R1EcUYt1XKMPwz3L2AK4LCWa4V300m0s/hdF+II+w17VMxMHuial0RF485r
- s0/QF/XwcdAOFL1tmRFlwsoFNesv+sZCFzhUYknemVdQ2RJyzZL7IZbcQ6ZzZzkwZF+9bFgM3Fa
- 0T6j/5SvZHUa4gQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1131; i=david@ixit.cz;
+ h=from:subject:message-id; bh=RXjeRhCssdQxix5qN3wrJwt18xmt4cI0v6Yeeq6xdTU=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpudHRSHDJ02hwchFc5TgZyWfN1S84TyU3efX4l
+ 7j/XQseUhOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCabnR0QAKCRBgAj/E00kg
+ clwrD/9tMxt2PWbYewfbTmjK4AF9Te5tCgkNbjmBsitwGQ+B0Xuv/W6UOOajyrqRzeOC66SUguj
+ kdKvjTLS4XR81REQz4vPRghjy7pEItawX6crNxMfkDtXPjAGhooVsN2nfn5batp7jHQAIRCV7VU
+ 0lPj3G+Fk4f0UhwpTfOV+HpGf2WUKyRXZxcGOTLwBi7Ok6MnIgx+6L+7GtzgRz2kNEr6FV9FgeN
+ 8ARxm9mVlIVxbc1VN3e6CjviuMPSzbznMLh08n0BulC65zOVLWkfVXmIWBX7uFhHlq3ikWUnxzI
+ uTKC2mswabnGXMsqxTXtdnsLnkOJLmdxZq9i1Dmk4W5+2uyzFRyL69Xav97LmmaZWGKMnrX77N8
+ yVg/BI8r+amaC7nw5g95eilG7B+hjzIMZDxwp+mPrTF1FmGEBkJIvZXhBtZ6UGm1nzlujYgi9Ez
+ qq4Q/+9NbyCeas4eh8KzdLXPapX/nuIld3AinwkYXeh38n/DyzdafPNew/ky9c6LkSiMmcV41sh
+ FMQp/RRWOAKHlANQw5DX8IW/lYfl4KdIkRJAata3+ythZHBSvj547FBz7tPdTA2v4hheZhJZ0G9
+ GeJIZJnZKHEUJ3rnhgk0dKteYMbEbz2H4LyxjVxUnwp7PMEz3Z7GnUqhevGRLRh0zjf2j0RMU5X
+ ajVZxGHqscExMBA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
@@ -41,32 +41,33 @@ Instead of manually specifying reg, reuse the memory region.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-index 51b041f91d3e2..27a0facd174c8 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-+++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-@@ -36,9 +36,9 @@ chosen {
- 		stdout-path = "serial0";
- 
- 		/* Use framebuffer setup by the bootloader. */
--		framebuffer0: framebuffer@9d400000 {
-+		framebuffer0: framebuffer-0 {
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts b/arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts
+index 77f5872de6f19..e704497853407 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts
++++ b/arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts
+@@ -43,9 +43,10 @@ chosen {
+ 		#address-cells = <2>;
+ 		#size-cells = <2>;
+ 		ranges;
+-		framebuffer: framebuffer@9d400000 {
++
++		framebuffer: framebuffer-0 {
  			compatible = "simple-framebuffer";
--			reg = <0x0 0x9d400000 0x0 (1080 * 2160 * 4)>;
+-			reg = <0 0x9d400000 0 (2960 * 1440 * 4)>;//2400000
 +			memory-region = <&framebuffer_mem>;
- 			width = <1080>;
- 			height = <2160>;
- 			stride = <(1080 * 4)>;
-@@ -62,7 +62,7 @@ key-vol-up {
+ 			width = <1440>;
+ 			height = <2960>;
+ 			stride = <(1440 * 4)>;
+@@ -109,7 +110,7 @@ vreg_s4a_1p8: pm8998-smps4 {
  	};
  
  	reserved-memory {
--		framebuffer@9d400000 {
-+		framebuffer_mem: framebuffer@9d400000 {
- 			reg = <0x0 0x9d400000 0x0 (1080 * 2160 * 4)>;
+-		memory@9d400000 {
++		framebuffer_mem: memory@9d400000 {
+ 			reg = <0x0 0x9d400000 0x0 0x02400000>;
  			no-map;
  		};
 
