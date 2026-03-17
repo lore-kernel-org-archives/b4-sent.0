@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Tue, 17 Mar 2026 23:12:31 +0100
-Subject: [PATCH v2 1/5] arm64: dts: qcom: sdm845-xiaomi-beryllium:
- Introduce framebuffer
+Date: Tue, 17 Mar 2026 23:12:32 +0100
+Subject: [PATCH v2 2/5] arm64: dts: qcom: sdm845-oneplus: Drop address from
+ framebuffer node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260317-beryllium-fb-v2-1-36b69dfb760c@ixit.cz>
+Message-Id: <20260317-beryllium-fb-v2-2-36b69dfb760c@ixit.cz>
 References: <20260317-beryllium-fb-v2-0-36b69dfb760c@ixit.cz>
 In-Reply-To: <20260317-beryllium-fb-v2-0-36b69dfb760c@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -18,62 +18,47 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1046; i=david@ixit.cz;
- h=from:subject:message-id; bh=aBIkL87wWUcWlDR+ZE8iL72LYcdYRCKY1o3iHR+l8wY=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpudHQlvN1ADBZ3DT2mCEvHMpnoid8nzZid/Q86
- 7f5RN5azeOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCabnR0AAKCRBgAj/E00kg
- coTrEACfP2nwQrJ8aAFTHbRP0sIm0Ptb4P0AoN/M2q1jMe+OO7b9e4+yWmTxikPHzAUzK89tGRf
- 2WLJZgoUYX2RlNf46OA6DVhvsbVF9bYnc/hYcFaTbSwCiuXLeCLlOcqks16tmBr6mzGvwZb/Xt1
- mM67QDFtEjk1Fck74RCquk5/gUju9N50D3YiwfmYRlEKkzPd6yrl61n5H1q/jM/YGEjkV9dP1T3
- efVQnFo7q1B4CS/vbIrba0DsbuytQO1iVlDe1bft1DQtHu2n3S2H85n/DJfdHLxkBEbMSiAALPE
- iCT8XKcr0KFmbGN6sY1Xj7JEMO4u8pMemwBuLH9z0Hj4LcPpJpv5vlPamQ46l77RqO0i06xjIo5
- MpDDISb4pPvewwetOgf9UUFwe7gDXaaNbyTKB7Ozcmhjvcwh2I7msR78Isa460lHUZKbmwLHZaJ
- aLc654E0mj6ITPwOMjOh4PQfyc5EPpjVDARutT0c9lXufSeqncXjzi9gjeRAX+gM0V5KK3a10+J
- WVPxGClgtz3ech3KMYACwba6NUEC3SkgPEnyT5QTM1CCYUh4hOhsCzBzahYXVIHusx2jr802PCS
- joT1UAYN0ItwahCRg0KSn5S690e6avReEJI3aBDmAYmbvYyz5Gn0zASero0Whqaj49bu8/VpEgI
- 17du+yzG6ppBVcQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=857; i=david@ixit.cz;
+ h=from:subject:message-id; bh=KVG+oAo4IX+FcwkDj3OQjurvcb14N3Vls6N/xvndJuU=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpudHQjlabPKJ1x8fxqZ/sZSs8UqV4aoymK2u93
+ U7q6IL5v12JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCabnR0AAKCRBgAj/E00kg
+ cn6fD/9NJ9RJT1D+qtD3fv1V0M5bqR0HnLU5hcs5cyFND1uIk8RGu3Vsj2ujZpcdlgVfdg0+wdx
+ 8NqE2InzM68848IRGbMxd4Z1AhNg7x/1hmOmAKFyW3OnKP67DOs1cbiHatUD3HMx1DrU+Mw7UMi
+ YsVeBzNfrcJp4RUmpotJ6ewe9jk/osyAHPO64tE3sYpB1tarD91TFtsmjdHoKDJENUmc0n8UVBI
+ pG4XJNgrHWg+8es1gfuT30jwhf10z4k5yBerutPIRcaRtIpsfS+Q9hcSv9Oi0xHXTLycO/erpBH
+ adtH/X2EBhzmWw5TYFr1fcogTDoB24auqzLZ08fcNEITdZ4lMaRdxQmSP9i86rAM+feF/snYEna
+ M+Bfm6v+Je/4GSUf1xregFwyon8H3wL647FrjEceWwu04bRIzKanKLLFuEeW95wY9wQrX/nTkh4
+ G46OnCXhYoGfp8r9M9dy8PufldzpuGUM3Kx+Fng0s4l0MA0yaUyXaHI3wUJyw4SD9a8RHo3t9ZZ
+ KvaGiLOCnGwKMnPLsPOhqkwVsWdbPVKDtSOwzVcIL+icYfGe4uoWEM6oGGbhdE3Wd+vAkthb6yg
+ +tErEqC/X0/hLinD0qXsj9naacxz0uZkS1cg0WeL0C1TxHSrS/972o1q6lpBi1fULEcaTwwUaqc
+ AT56VqMMiz8+hvQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Petr Hodina <petr.hodina@protonmail.com>
+This node has no 'reg' property, so it shouldn't have a unit address
+(after '@') either
 
-Add framebuffer for early console and u-boot support.
-
-Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
+Fixes: b0d5c96e860c ("arm64: dts: qcom: sdm845-oneplus: Add framebuffer")
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi    | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-index 01b570d0880d6..b928100f6464b 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-@@ -39,6 +39,22 @@ aliases {
- 		serial1 = &uart6;
- 	};
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
+index 5b121ea5520f5..f5fd213d4a1fd 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
+@@ -37,7 +37,7 @@ chosen {
  
-+	chosen {
-+		#address-cells = <2>;
-+		#size-cells = <2>;
-+		ranges;
-+
+ 		stdout-path = "serial0:115200n8";
+ 
+-		framebuffer: framebuffer@9d400000 {
 +		framebuffer: framebuffer-0 {
-+			compatible = "simple-framebuffer";
-+			memory-region = <&cont_splash_mem>;
-+
-+			format = "a8r8g8b8";
-+			stride = <(1080 * 4)>;
-+			height = <2246>;
-+			width = <1080>;
-+		};
-+	};
-+
- 	gpio-keys {
- 		compatible = "gpio-keys";
- 		autorepeat;
+ 			compatible = "simple-framebuffer";
+ 			memory-region = <&cont_splash_mem>;
+ 
 
 -- 
 2.53.0
