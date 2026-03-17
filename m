@@ -1,11 +1,10 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Wed, 18 Mar 2026 03:08:57 +0800
-Subject: [PATCH 1/8] mm/mglru: consolidate common code for retrieving
- evitable size
+Date: Wed, 18 Mar 2026 03:08:58 +0800
+Subject: [PATCH 2/8] mm/mglru: relocate the LRU scan batch limit to callers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260318-mglru-reclaim-v1-1-2c46f9eb0508@tencent.com>
+Message-Id: <20260318-mglru-reclaim-v1-2-2c46f9eb0508@tencent.com>
 References: <20260318-mglru-reclaim-v1-0-2c46f9eb0508@tencent.com>
 In-Reply-To: <20260318-mglru-reclaim-v1-0-2c46f9eb0508@tencent.com>
 To: linux-mm@kvack.org
@@ -23,127 +22,104 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Vernon Yang <vernon2gm@gmail.com>, linux-kernel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773774704; l=4083;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773774704; l=3426;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=oBDA7DoT+1LgZqzpmvPbT4X1VuiGCgQ8ao2nlrP+Kj0=;
- b=iHaahECT5wFn/8x3pOujy095P54IV+9WnkgMAUT2I1Czxg3d8ClJY6ZPN97ihTWBUn0bJjLoI
- zQT8vb5jG0fDeEZsBGFTXBGIzPWtlMUzmxDquBHFrTjaMGSvEq7rNk7
+ bh=fQOTRb1NWR0zmPJVNyY4mfywYbSd2CGKo+IRJ8AULGE=;
+ b=mIJt8COJcbU+MtTkJSOMrRRP4ieSNiOL7KcyQ5FHr6Xc5vCR517gTft3XyzSKB1K6Nk7QbB+M
+ A06MqUx0WHBBvYe+zdypVrrJKn6f+79LjqJlCgHq0gA0JpAYLbs8QhE
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Merge commonly used code for counting evictable folios in a lruvec.
+Same as active / inactive LRU, MGLRU isolates and scans folios in
+batches.  The batch split is done hidden deep in the helper, which
+makes the code harder to follow.  The helper's arguments are also
+confusing since callers usually request more folios than the batch
+size, so the helper almost never processes the full requested amount.
 
-No behavior change.
+Move the batch splitting into the top loop to make it cleaner, there
+should be no behavior change.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/vmscan.c | 42 +++++++++++++++++-------------------------
- 1 file changed, 17 insertions(+), 25 deletions(-)
+ mm/vmscan.c | 19 +++++++++++--------
+ 1 file changed, 11 insertions(+), 8 deletions(-)
 
 diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 33287ba4a500..d7fc7f1fe06d 100644
+index d7fc7f1fe06d..d48074f9bd87 100644
 --- a/mm/vmscan.c
 +++ b/mm/vmscan.c
-@@ -4078,27 +4078,33 @@ static void set_initial_priority(struct pglist_data *pgdat, struct scan_control
- 	sc->priority = clamp(priority, DEF_PRIORITY / 2, DEF_PRIORITY);
- }
- 
--static bool lruvec_is_sizable(struct lruvec *lruvec, struct scan_control *sc)
-+static long lruvec_evictable_size(struct lruvec *lruvec, int swappiness)
- {
- 	int gen, type, zone;
--	unsigned long total = 0;
--	int swappiness = get_swappiness(lruvec, sc);
-+	unsigned long seq, total = 0;
+@@ -4689,10 +4689,10 @@ static int scan_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
+ 	int scanned = 0;
+ 	int isolated = 0;
+ 	int skipped = 0;
+-	int scan_batch = min(nr_to_scan, MAX_LRU_BATCH);
+-	int remaining = scan_batch;
++	unsigned long remaining = nr_to_scan;
  	struct lru_gen_folio *lrugen = &lruvec->lrugen;
--	struct mem_cgroup *memcg = lruvec_memcg(lruvec);
- 	DEFINE_MAX_SEQ(lruvec);
- 	DEFINE_MIN_SEQ(lruvec);
  
- 	for_each_evictable_type(type, swappiness) {
--		unsigned long seq;
--
- 		for (seq = min_seq[type]; seq <= max_seq; seq++) {
- 			gen = lru_gen_from_seq(seq);
--
- 			for (zone = 0; zone < MAX_NR_ZONES; zone++)
- 				total += max(READ_ONCE(lrugen->nr_pages[gen][type][zone]), 0L);
- 		}
- 	}
++	VM_WARN_ON_ONCE(nr_to_scan > MAX_LRU_BATCH);
+ 	VM_WARN_ON_ONCE(!list_empty(list));
  
-+	return total;
-+}
-+
-+static bool lruvec_is_sizable(struct lruvec *lruvec, struct scan_control *sc)
-+{
-+	unsigned long total;
-+	int swappiness = get_swappiness(lruvec, sc);
-+	struct mem_cgroup *memcg = lruvec_memcg(lruvec);
-+
-+	total = lruvec_evictable_size(lruvec, swappiness);
-+
- 	/* whether the size is big enough to be helpful */
- 	return mem_cgroup_online(memcg) ? (total >> sc->priority) : total;
- }
-@@ -4921,9 +4927,6 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- static bool should_run_aging(struct lruvec *lruvec, unsigned long max_seq,
- 			     int swappiness, unsigned long *nr_to_scan)
+ 	if (get_nr_gens(lruvec, type) == MIN_NR_GENS)
+@@ -4745,7 +4745,7 @@ static int scan_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
+ 	mod_lruvec_state(lruvec, item, isolated);
+ 	mod_lruvec_state(lruvec, PGREFILL, sorted);
+ 	mod_lruvec_state(lruvec, PGSCAN_ANON + type, isolated);
+-	trace_mm_vmscan_lru_isolate(sc->reclaim_idx, sc->order, scan_batch,
++	trace_mm_vmscan_lru_isolate(sc->reclaim_idx, sc->order, nr_to_scan,
+ 				scanned, skipped, isolated,
+ 				type ? LRU_INACTIVE_FILE : LRU_INACTIVE_ANON);
+ 	if (type == LRU_GEN_FILE)
+@@ -4827,7 +4827,8 @@ static int isolate_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
+ 
+ 		*type_scanned = type;
+ 
+-		scanned = scan_folios(nr_to_scan, lruvec, sc, type, tier, list);
++		scanned = scan_folios(nr_to_scan, lruvec, sc,
++				      type, tier, list);
+ 		if (scanned)
+ 			return scanned;
+ 
+@@ -4999,7 +5000,7 @@ static bool should_abort_scan(struct lruvec *lruvec, struct scan_control *sc)
+ 
+ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
  {
--	int gen, type, zone;
--	unsigned long size = 0;
--	struct lru_gen_folio *lrugen = &lruvec->lrugen;
- 	DEFINE_MIN_SEQ(lruvec);
+-	long nr_to_scan;
++	long nr_batch, nr_to_scan;
+ 	unsigned long scanned = 0;
+ 	int swappiness = get_swappiness(lruvec, sc);
  
- 	*nr_to_scan = 0;
-@@ -4931,18 +4934,7 @@ static bool should_run_aging(struct lruvec *lruvec, unsigned long max_seq,
- 	if (evictable_min_seq(min_seq, swappiness) + MIN_NR_GENS > max_seq)
- 		return true;
+@@ -5010,7 +5011,8 @@ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
+ 		if (nr_to_scan <= 0)
+ 			break;
  
--	for_each_evictable_type(type, swappiness) {
--		unsigned long seq;
--
--		for (seq = min_seq[type]; seq <= max_seq; seq++) {
--			gen = lru_gen_from_seq(seq);
--
--			for (zone = 0; zone < MAX_NR_ZONES; zone++)
--				size += max(READ_ONCE(lrugen->nr_pages[gen][type][zone]), 0L);
--		}
--	}
--
--	*nr_to_scan = size;
-+	*nr_to_scan = lruvec_evictable_size(lruvec, swappiness);
- 	/* better to run aging even though eviction is still possible */
- 	return evictable_min_seq(min_seq, swappiness) + MIN_NR_GENS == max_seq;
- }
-@@ -4954,7 +4946,7 @@ static bool should_run_aging(struct lruvec *lruvec, unsigned long max_seq,
-  */
- static long get_nr_to_scan(struct lruvec *lruvec, struct scan_control *sc, int swappiness)
+-		delta = evict_folios(nr_to_scan, lruvec, sc, swappiness);
++		nr_batch = min(nr_to_scan, MAX_LRU_BATCH);
++		delta = evict_folios(nr_batch, lruvec, sc, swappiness);
+ 		if (!delta)
+ 			break;
+ 
+@@ -5615,6 +5617,7 @@ static int run_aging(struct lruvec *lruvec, unsigned long seq,
+ static int run_eviction(struct lruvec *lruvec, unsigned long seq, struct scan_control *sc,
+ 			int swappiness, unsigned long nr_to_reclaim)
  {
--	bool success;
-+	bool need_aging;
- 	unsigned long nr_to_scan;
- 	struct mem_cgroup *memcg = lruvec_memcg(lruvec);
++	int nr_batch;
  	DEFINE_MAX_SEQ(lruvec);
-@@ -4962,7 +4954,7 @@ static long get_nr_to_scan(struct lruvec *lruvec, struct scan_control *sc, int s
- 	if (mem_cgroup_below_min(sc->target_mem_cgroup, memcg))
- 		return -1;
  
--	success = should_run_aging(lruvec, max_seq, swappiness, &nr_to_scan);
-+	need_aging = should_run_aging(lruvec, max_seq, swappiness, &nr_to_scan);
+ 	if (seq + MIN_NR_GENS > max_seq)
+@@ -5631,8 +5634,8 @@ static int run_eviction(struct lruvec *lruvec, unsigned long seq, struct scan_co
+ 		if (sc->nr_reclaimed >= nr_to_reclaim)
+ 			return 0;
  
- 	/* try to scrape all its memory if this memcg was deleted */
- 	if (nr_to_scan && !mem_cgroup_online(memcg))
-@@ -4971,7 +4963,7 @@ static long get_nr_to_scan(struct lruvec *lruvec, struct scan_control *sc, int s
- 	nr_to_scan = apply_proportional_protection(memcg, sc, nr_to_scan);
+-		if (!evict_folios(nr_to_reclaim - sc->nr_reclaimed, lruvec, sc,
+-				  swappiness))
++		nr_batch = min(nr_to_reclaim - sc->nr_reclaimed, MAX_LRU_BATCH);
++		if (!evict_folios(nr_batch, lruvec, sc, swappiness))
+ 			return 0;
  
- 	/* try to get away with not aging at the default priority */
--	if (!success || sc->priority == DEF_PRIORITY)
-+	if (!need_aging || sc->priority == DEF_PRIORITY)
- 		return nr_to_scan >> sc->priority;
- 
- 	/* stop scanning this lruvec as it's low on cold folios */
+ 		cond_resched();
 
 -- 
 2.53.0
