@@ -1,16 +1,13 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Subject: [PATCH 0/2] drm/gpuvm: add debugfs utilities for GPU VA state
- dumping
-Date: Tue, 17 Mar 2026 20:03:39 +0800
-Message-Id: <20260317-gpuvm-helpers-v1-0-00198fc6eeea@linux.dev>
+Date: Tue, 17 Mar 2026 20:03:40 +0800
+Subject: [PATCH 1/2] drm/gpuvm: add name(), RawGpuVa and kernel_alloc_va()
+ for debugfs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIACFDuWkC/02OywrCMBBFf6XM2il5tGktIv6HuEjSsUb6MmmDI
- P67wbpweQbOPfOCQN5RgCZ7gafogpvGBHyXgb3psSN0bWIQTCgmeYXdvMYBb9TP5AOKujUkjGT
- SCEjO7Onqnt+982VjT481zS7bEYwOhHYaBrc0Waxyht4W8J9rshQrORf1L+bXsKCp+N5qKyrdq
- iZ+jYFC0D/lcNg+ZEowqYo651yqsiyQ432iXncj9dfTGF3rdJ7yxyNc3u8P4uenSf8AAAA=
-X-Change-ID: 20260317-gpuvm-helpers-28dbe2b303b2
+Message-Id: <20260317-gpuvm-helpers-v1-1-00198fc6eeea@linux.dev>
+References: <20260317-gpuvm-helpers-v1-0-00198fc6eeea@linux.dev>
+In-Reply-To: <20260317-gpuvm-helpers-v1-0-00198fc6eeea@linux.dev>
 To: Danilo Krummrich <dakr@kernel.org>, 
  Matthew Brost <matthew.brost@intel.com>, 
  =?utf-8?q?Thomas_Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>, 
@@ -23,51 +20,106 @@ To: Danilo Krummrich <dakr@kernel.org>,
 Cc: dri-devel@lists.freedesktop.org, rust-for-linux@vger.kernel.org, 
  Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773749102; l=1764;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773749102; l=3053;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=aS0AQ+DX9KeA6AMbU2CAybn1XXydzrY13XlyF6pIjOw=;
- b=Fqxw7Hamhyb2RexD2o4WMZ4spA4S1bQc2Z7iI/S/FQk9eIyMejQYQT+S4cMB365ongnsABhh+
- Coje7864LlJAxMy7hYBCuACCxxLr0azNcI2odnc+Yow1+AT4oXILCku
+ bh=1cQPW0r6BS+eEjsyt0XQrJVhTMBdg77G847AwAAPoC0=;
+ b=hh3kP7Y+s26EUoQhcpPxRgdgkUcG/PQdcv6jvZUjcOpTa4Z89lKBGQWiaxADRQ+xtqmq3Ho8t
+ Iz8745X0a90DQLQpljwK0yppC3Y2hiOl/ca4gWzihv26LqfunalJSZx
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch series adds helper APIs to enable GPU drivers to implement
-debugfs interfaces [1] [2] that expose GPU VA mapping state for
-inspection and debugging purposes.
+Expose GPU VM name and kernel-reserved VA so drivers can dump GPU VA
+state in debugfs.
 
-Dependencies:
-- [PATCH v12 0/1] rust: interop: Add list module for C linked list interface
-https://lore.kernel.org/rust-for-linux/20260306203648.1136554-1-joelagnelf@nvidia.com/
-- [PATCH v4 0/6] Rust GPUVM immediate mode
-https://lore.kernel.org/rust-for-linux/20260130-gpuvm-rust-v4-0-8364d104ff40@google.com/
-
-Link: https://gitlab.freedesktop.org/panfrost/linux/-/issues/11 [1]
-Link: https://gitlab.freedesktop.org/panfrost/linux/-/merge_requests/59 [2]
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
-Alvin Sun (2):
-      drm/gpuvm: add name(), RawGpuVa and kernel_alloc_va() for debugfs
-      drm/gpuvm: add GpuVaIter and va_mappings() for debugfs
+ rust/kernel/drm/gpuvm/mod.rs | 14 ++++++++++++++
+ rust/kernel/drm/gpuvm/va.rs  | 37 +++++++++++++++++++++++++++++++++++++
+ 2 files changed, 51 insertions(+)
 
- rust/kernel/drm/gpuvm/mod.rs | 20 ++++++++++
- rust/kernel/drm/gpuvm/va.rs  | 90 ++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 110 insertions(+)
----
-base-commit: 34cb4f916af10153c87fabaf6c34e4cafa170427
-change-id: 20260317-gpuvm-helpers-28dbe2b303b2
-prerequisite-change-id: 20251128-gpuvm-rust-b719cac27ad6:v4
-prerequisite-patch-id: 94679c36e594a7d6fc9279dad5419f5558f2302b
-prerequisite-patch-id: 03b672e1e2c07d677326d64de7fccc6092ea6812
-prerequisite-patch-id: 3c1a4c6eec5faaa1a70de53581bd7ae5ab7bc324
-prerequisite-patch-id: 3712380c7bfdf784b6aca146864576cd76bc9a72
-prerequisite-patch-id: 3149e1016beefce815c860d4b64e7c1bb7589f15
-prerequisite-patch-id: 23467ae9a31746a6c44678e0054f1442c6a5ac06
-prerequisite-message-id: <<20260306203648.1136554-1-joelagnelf@nvidia.com>>
-prerequisite-patch-id: 9bc17713af35e5f2744ac55157e2b5078eae77cc
+diff --git a/rust/kernel/drm/gpuvm/mod.rs b/rust/kernel/drm/gpuvm/mod.rs
+index 20e512842dfc6..3186df9f740cf 100644
+--- a/rust/kernel/drm/gpuvm/mod.rs
++++ b/rust/kernel/drm/gpuvm/mod.rs
+@@ -165,6 +165,13 @@ pub fn as_raw(&self) -> *mut bindings::drm_gpuvm {
+         self.vm.get()
+     }
+ 
++    /// Returns the name of this GpuVm.
++    #[inline]
++    pub fn name(&self) -> &CStr {
++        // SAFETY: The `name` field is immutable and points to a NUL-terminated string.
++        unsafe { CStr::from_char_ptr((*self.as_raw()).name) }
++    }
++
+     /// The start of the VA space.
+     #[inline]
+     pub fn va_start(&self) -> u64 {
+@@ -188,6 +195,13 @@ pub fn va_range(&self) -> Range<u64> {
+         Range { start, end }
+     }
+ 
++    /// Returns the kernel-allocated VA for this GpuVm.
++    #[inline]
++    pub fn kernel_alloc_va(&self) -> &RawGpuVa {
++        // SAFETY: The `self.as_raw()` is guaranteed to be a valid pointer to a drm_gpuvm.
++        unsafe { RawGpuVa::from_raw(&raw mut (*self.as_raw()).kernel_alloc_node) }
++    }
++
+     /// Get or create the [`GpuVmBo`] for this gem object.
+     #[inline]
+     pub fn obtain(
+diff --git a/rust/kernel/drm/gpuvm/va.rs b/rust/kernel/drm/gpuvm/va.rs
+index a31122ff22282..8b8fd500b3c5f 100644
+--- a/rust/kernel/drm/gpuvm/va.rs
++++ b/rust/kernel/drm/gpuvm/va.rs
+@@ -81,6 +81,43 @@ pub fn vm_bo(&self) -> &GpuVmBo<T> {
+     }
+ }
+ 
++/// Represents that a range of a GEM object is mapped in the kernel.
++#[repr(transparent)]
++pub struct RawGpuVa(Opaque<bindings::drm_gpuva>);
++
++impl RawGpuVa {
++    /// Access this [`RawGpuVa`] from a raw pointer.
++    ///
++    /// # Safety
++    ///
++    /// For the duration of `'a`, the pointer must reference a valid `drm_gpuva`.
++    #[inline]
++    pub unsafe fn from_raw<'a>(ptr: *mut bindings::drm_gpuva) -> &'a Self {
++        // SAFETY: `drm_gpuva` and `RawGpuVa` have the same layout.
++        unsafe { &*(ptr.cast()) }
++    }
++
++    /// Returns a raw pointer to underlying C value.
++    #[inline]
++    pub fn as_raw(&self) -> *mut bindings::drm_gpuva {
++        self.0.get()
++    }
++
++    /// Returns the address of this mapping in the GPU virtual address space.
++    #[inline]
++    pub fn addr(&self) -> u64 {
++        // SAFETY: `self.as_raw()` is guaranteed to be a valid pointer to a `drm_gpuva`.
++        unsafe { (*self.as_raw()).va.addr }
++    }
++
++    /// Returns the length of this mapping.
++    #[inline]
++    pub fn length(&self) -> u64 {
++        // SAFETY: `self.as_raw()` is guaranteed to be a valid pointer to a `drm_gpuva`.
++        unsafe { (*self.as_raw()).va.range }
++    }
++}
++
+ /// A pre-allocated [`GpuVa`] object.
+ ///
+ /// # Invariants
 
-Best regards,
 -- 
-Alvin Sun <alvin.sun@linux.dev>
+2.43.0
 
