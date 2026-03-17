@@ -1,82 +1,170 @@
-From: Simon Baatz <gmbnomis@gmail.com>
-Date: Mon, 16 Mar 2026 19:51:10 +0100
-Subject: [PATCH net-next] selftests/net: packetdrill: improve
- tcp_rcv_neg_window.pkt
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH v6 0/9] Add support for handling PCIe M.2 Key E connectors
+ in devicetree
+Date: Tue, 17 Mar 2026 09:59:50 +0530
+Message-Id: <20260317-pci-m2-e-v6-0-9c898f108d3d@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260316-improve_tcp_neg_usable_wnd_test-v1-1-f16d5e365107@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3NQQrCMBBG4auUWRtoUivoVUSGmPzWAZ2GJNZC6
- d0NLr/NexsVZEGhS7dRxiJFZm2wh47C0+sEI7GZXO9O/WBHI++U5wVcQ2LFxJ/i7y/wVyNXlGq
- ct4M7x2PwdqRWSRkPWf+HKymqUayVbvv+AxTGEoB7AAAA
-X-Change-ID: 20260315-improve_tcp_neg_usable_wnd_test-2a1329d4ca15
-To: "David S. Miller" <davem@davemloft.net>, 
- Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Shuah Khan <shuah@kernel.org>
-Cc: netdev@vger.kernel.org, linux-kselftest@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Simon Baatz <gmbnomis@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773687085; l=2076;
- i=gmbnomis@gmail.com; s=20260220; h=from:subject:message-id;
- bh=ns9OJwOj9IGXzUoNWp91AiRCpz66QceoQnlEDdYlvAg=;
- b=aGLkhiswPMUPyKJ30KormGEXHe9rlLCtTcgK3UyAcW1S57f5CBIuxVzZENkkCoVI0stE9jFtS
- 15RLqZ4BcOvBtElun7+2vJzfo+ZGtH9lmc+5i+iqgra7IWtpM6KQ5yN
-X-Developer-Key: i=gmbnomis@gmail.com; a=ed25519;
- pk=T/JIz/6F5bf1uQJr69lmyi7czVG+F9TVZ/8x5z9Wtqw=
-X-Endpoint-Received: by B4 Relay for gmbnomis@gmail.com/20260220 with auth_id=641
+X-B4-Tracking: v=1; b=H4sIAL7YuGkC/3XRTW7DIBAF4KtErIsFw49NVrlH1QWGcYNUxwk4V
+ qsod+84UVUW8Qbpofme0HBjBXPCwva7G8u4pJKmEwX7tmPh6E+fyFOkzECAkVICP4fER+DInbb
+ O+OCiNS2j8XPGIX0/qt4/KB9Tmaf882he5Hr7omSRXHDXaqmi7YcO9GEqpblc/VeYxrGhg61dC
+ 1QeTOWBvIIObETRhmA2vPrzVkgpKq/I68EjtlFE43HD69rX79fkcRg6HSHYCHbDm38PoCtvyMf
+ oemeEjEqFF/7+XG7Gy5W+Z35umPW+IF+H0rzfLW0jeA6Shu+/EK+ivNMBAAA=
+X-Change-ID: 20251112-pci-m2-e-94695ac9d657
+To: Rob Herring <robh@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, Nathan Chancellor <nathan@kernel.org>, 
+ Nicolas Schier <nicolas.schier@linux.dev>, Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Mark Pearson <mpearson-lenovo@squebb.ca>, 
+ "Derek J. Clark" <derekjohn.clark@gmail.com>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Marcel Holtmann <marcel@holtmann.org>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ Bartosz Golaszewski <brgl@kernel.org>
+Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-kbuild@vger.kernel.org, platform-driver-x86@vger.kernel.org, 
+ linux-pci@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, linux-bluetooth@vger.kernel.org, 
+ linux-pm@vger.kernel.org, Stephan Gerhold <stephan.gerhold@linaro.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ linux-acpi@vger.kernel.org, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Hans de Goede <johannes.goede@oss.qualcomm.com>, 
+ Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
+ Bartosz Golaszewski <brgl@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5685;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=+nWU70vOvVE7Unqqi6GMuwj93rd1qTWGf37/M1rd6dU=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpuNjDrZP8t3iBpZf3IMrj0qPihBo+aMxTpsaJm
+ 0pPLa5+DS2JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCabjYwwAKCRBVnxHm/pHO
+ 9dF2B/4hd7olKPISxCTRFxQo3nMkhiKvO9H1Gepl7vYYkI4xtavPQmwsoRc3pDwJL1jn0XdTk49
+ UuoxiwlaajrBdQ56bc8a3BQEX07wfofLg1H0frt7afiOAS3jWZp7er0zyBRg5Oom70iRE4CbwEe
+ cibZhm67h28jJXAd8cRnBghFpQ+ij29OGeAp0VaL6wv+EhRQ0Rt+wdiC3Q+Fs0C0XFPHfw1GOrn
+ JgBpM2tQD5OZwpDPsrbP+JNJHw4nv3azpzough2ZsM5zwyjif8Bn7OdXRpul+/ip0Zm6k1tJeUm
+ YvnEJtk1VndptlLQae03uBwUtMSf1x2sH/kJXygk6UJAmPbc
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The test depends on accepting a packet that is larger than the
-advertised window and that does not trigger an immediate ACK.
+Hi,
 
-Previously, the test might still pass even if kernel behavior changed
-unexpectedly. Add assertions verifying that the large packet was
-accepted and no ACK was sent.
+This series is the continuation of the series [1] that added the initial support
+for the PCIe M.2 connectors. This series extends it by adding support for Key E
+connectors. These connectors are used to connect the Wireless Connectivity
+devices such as WiFi, BT, NFC and GNSS devices to the host machine over
+interfaces such as PCIe/SDIO, USB/UART and NFC. This series adds support for
+connectors that expose PCIe interface for WiFi and UART interface for BT. Other
+interfaces are left for future improvements.
 
-Suggested-by: Eric Dumazet <edumazet@google.com>
-Signed-off-by: Simon Baatz <gmbnomis@gmail.com>
+Serdev device support for BT
+============================
+
+Adding support for the PCIe interface was mostly straightforward and a lot
+similar to the previous Key M connector. But adding UART interface has proved to
+be tricky. This is mostly because of the fact UART is a non-discoverable bus,
+unlike PCIe which is discoverable. So this series relied on the PCI notifier to
+create the serdev device for UART/BT. This means the PCIe interface will be
+brought up first and after the PCIe device enumeration, the serdev device will
+be created by the pwrseq driver. This logic is necessary since the connector
+driver and DT node don't describe the device, but just the connector. So to make
+the connector interface Plug and Play, the connector driver uses the PCIe device
+ID to identify the card and creates the serdev device. This logic could be
+extended in the future to support more M.2 cards. Even if the M.2 card uses SDIO
+interface for connecting WLAN, a SDIO notifier could be added to create the
+serdev device.
+
+Testing
+=======
+
+This series, together with the devicetree changes [2] was tested on the
+Qualcomm X1e based Lenovo Thinkpad T14s Laptop which has the WCN7850 WLAN/BT
+1620 LGA card connected over PCIe and UART.
+
+Merge Strategy
+==============
+
+Due to the API dependency, both the serdev and pwrseq patches need to go through
+a single tree, maybe through pwrseq tree. So the serdev patches need Ack from
+Greg. But Bluetooth patch can be merged separately.
+
+[1] https://lore.kernel.org/linux-pci/20260107-pci-m2-v5-0-8173d8a72641@oss.qualcomm.com
+[2] https://github.com/Mani-Sadhasivam/linux/commit/b50f8386900990eed3dce8d91c3b643fb0e8739d
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- .../selftests/net/packetdrill/tcp_rcv_neg_window.pkt       | 14 +++++++++++---
- 1 file changed, 11 insertions(+), 3 deletions(-)
+Changes in v6:
+- Added a check to bail out if the serdev device was already added during notifier.
+- Collected tags
+- Link to v5: https://lore.kernel.org/r/20260224-pci-m2-e-v5-0-dd9b9501d33c@oss.qualcomm.com
 
-diff --git a/tools/testing/selftests/net/packetdrill/tcp_rcv_neg_window.pkt b/tools/testing/selftests/net/packetdrill/tcp_rcv_neg_window.pkt
-index 15a9b4938f16d175ac54f3fd192ed2b59b0a4399..b9ab264b2a118f273af269d83a371740ae47359c 100644
---- a/tools/testing/selftests/net/packetdrill/tcp_rcv_neg_window.pkt
-+++ b/tools/testing/selftests/net/packetdrill/tcp_rcv_neg_window.pkt
-@@ -1,4 +1,7 @@
- // SPDX-License-Identifier: GPL-2.0
-+// Test maximum advertised window limit when rcv_nxt advances past
-+// rcv_mwnd_seq. The "usable window" must be properly clamped to zero
-+// rather than becoming negative.
- 
- --mss=1000
- 
-@@ -17,10 +20,15 @@
- 
-    +0 accept(3, ..., ...) = 4
- 
--// A too big packet is accepted if the receive queue is empty
-+// A too big packet is accepted if the receive queue is empty. It
-+// does not trigger an immediate ACK.
-    +0 < P. 1:20001(20000) ack 1 win 257
-+   +0 %{ assert tcpi_bytes_received == 20000, tcpi_bytes_received; }%
-+
- // Send a RST immediately so that there is no rcv_wup/rcv_mwnd_seq update yet
-    +0 < R. 20001:20001(0) ack 1 win 257
- 
--  +.1 %{ assert tcpi_state == TCP_CLOSE, tcpi_state }%
--
-+// Verify that the RST was accepted. Indirectly this also verifies that no
-+// immediate ACK was sent for the data packet above.
-+   +0 < . 20001:20001(0) ack 1 win 257
-+   +0 > R 1:1(0)
+Changes in v5:
+- Incorporated comments in the binding patch by using single endpoint per port,
+  reordering port nodes, adding missing properties and using a complete example.
+- Incorporated comments in the pwrseq patch (nothing major)
+- Fixed the build issue in patch 2
+- Collected tags
+- Rebased on top of 7.0-rc1
+- Link to v4: https://lore.kernel.org/r/20260112-pci-m2-e-v4-0-eff84d2c6d26@oss.qualcomm.com
+
+Changes in v4:
+- Switched to dynamic OF node for serdev instead of swnode and dropped all
+  swnode related patches
+- Link to v3: https://lore.kernel.org/r/20260110-pci-m2-e-v3-0-4faee7d0d5ae@oss.qualcomm.com
+
+Changes in v3:
+- Switched to swnode for the serdev device and dropped the custom
+  serdev_device_id related patches
+- Added new swnode APIs to match the swnode with existing of_device_id
+- Incorporated comments in the bindings patch
+- Dropped the UIM interface from binding since it is not clear how it should get
+  wired
+- Incorporated comments in the pwrseq driver patch
+- Splitted the pwrseq patch into two
+- Added the 1620 LGA compatible with Key E fallback based on Stephan's finding
+- Link to v2: https://lore.kernel.org/r/20251125-pci-m2-e-v2-0-32826de07cc5@oss.qualcomm.com
+
+Changes in v2:
+- Used '-' for GPIO names in the binding and removed led*-gpios properties
+- Described the endpoint nodes for port@0 and port@1 nodes
+- Added the OF graph port to the serial binding
+- Fixed the hci_qca driver to return err if devm_pwrseq_get() fails
+- Incorporated various review comments in pwrseq driver
+- Collected Ack
+- Link to v1: https://lore.kernel.org/r/20251112-pci-m2-e-v1-0-97413d6bf824@oss.qualcomm.com
 
 ---
-base-commit: 5446b8691eb8278f10deca92048fad84ffd1e4d5
-change-id: 20260315-improve_tcp_neg_usable_wnd_test-2a1329d4ca15
+Manivannan Sadhasivam (9):
+      serdev: Convert to_serdev_*() helpers to macros and use container_of_const()
+      serdev: Add an API to find the serdev controller associated with the devicetree node
+      serdev: Do not return -ENODEV from of_serdev_register_devices() if external connector is used
+      dt-bindings: serial: Document the graph port
+      dt-bindings: connector: Add PCIe M.2 Mechanical Key E connector
+      dt-bindings: connector: m2: Add M.2 1620 LGA soldered down connector
+      Bluetooth: hci_qca: Add M.2 Bluetooth device support using pwrseq
+      power: sequencing: pcie-m2: Add support for PCIe M.2 Key E connectors
+      power: sequencing: pcie-m2: Create serdev device for WCN7850 bluetooth
+
+ .../bindings/connector/pcie-m2-e-connector.yaml    | 191 ++++++++++++++
+ .../devicetree/bindings/serial/serial.yaml         |   3 +
+ MAINTAINERS                                        |   1 +
+ drivers/bluetooth/hci_qca.c                        |   9 +
+ drivers/power/sequencing/Kconfig                   |   3 +-
+ drivers/power/sequencing/pwrseq-pcie-m2.c          | 285 ++++++++++++++++++++-
+ drivers/tty/serdev/core.c                          |  28 +-
+ include/linux/serdev.h                             |  24 +-
+ 8 files changed, 521 insertions(+), 23 deletions(-)
+---
+base-commit: 559f264e403e4d58d56a17595c60a1de011c5e20
+change-id: 20251112-pci-m2-e-94695ac9d657
 
 Best regards,
 -- 
-Simon Baatz <gmbnomis@gmail.com>
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
