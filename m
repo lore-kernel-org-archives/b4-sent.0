@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Tue, 17 Mar 2026 09:59:52 +0530
-Subject: [PATCH v6 2/9] serdev: Add an API to find the serdev controller
- associated with the devicetree node
+Date: Tue, 17 Mar 2026 09:59:53 +0530
+Subject: [PATCH v6 3/9] serdev: Do not return -ENODEV from
+ of_serdev_register_devices() if external connector is used
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260317-pci-m2-e-v6-2-9c898f108d3d@oss.qualcomm.com>
+Message-Id: <20260317-pci-m2-e-v6-3-9c898f108d3d@oss.qualcomm.com>
 References: <20260317-pci-m2-e-v6-0-9c898f108d3d@oss.qualcomm.com>
 In-Reply-To: <20260317-pci-m2-e-v6-0-9c898f108d3d@oss.qualcomm.com>
 To: Rob Herring <robh@kernel.org>, 
@@ -31,82 +31,62 @@ Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-acpi@vger.kernel.org, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
  Hans de Goede <johannes.goede@oss.qualcomm.com>, 
- Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
+ Bartosz Golaszewski <brgl@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2248;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1461;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=rr2lmVP0IC6lUnB67NHw0qDXlaCs5LnvUTeOalg9qug=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpuNjHP7OTLCI2v2JEVO7b4GY8c87LN9vRLUsYb
- MkGvu6rvciJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCabjYxwAKCRBVnxHm/pHO
- 9ZAHB/4rn5Keq3wWhvaowq3W9YqMd9yLEZHQV886wlmogjs0wgzzh5fJUBMd3yGfKKvdjklZ/NF
- W/hl8xIId+94P5p3blvB1vN/jSKEd2eOfPveBS+ThJ3ayG8UN6cS4gen7hHfv6aVfH49jeq8cMv
- WNCnmLGtS46/uxBpjJTI2Px2y3P3N6qxUZGJ3Bz4YBBJ+fTplV0mjkr9or9oveKKSnJox08CkJx
- Xj0FOj0AzGycp8KZUOu470j3cOn60Gj8h9c708Xyd7RolCH1sx82JIYdNgh+fnVRXsyYvWwUd/q
- jk9buKNVQVfoMZwNcZBda0Ge5kv6fSdI78HEiJQWZjrTYopO
+ bh=9JYNk+DMPq2LlZQfTiexJ4EeAYXDboalcaCh+TYovs0=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpuNjHCVxcR2eU20/cYNvdftr00vaJ2V7UvPmaH
+ ymEVn5El6iJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCabjYxwAKCRBVnxHm/pHO
+ 9ciYB/97N4zLhjZr8iceNjwbuRKrCaK0uDrMyc88oKP1joAcuT6eaUaj9C4ac965XDtFjvjgQcd
+ HuwZVvPK4edCTJ07RJUPS/RII7SYHgt1Qp8I6dgYWfHD+zpYh1AtJQ8h4rZ1SL6HnMX3FPKAoOc
+ +juE9NbztuXO6VsYVDmE3OPHix3rydnJf4nJKmI0Vzfdw2NZJOoUUaheS+m3P21exNVYXN4PyZr
+ Fbx8q8CPiqbYDQ8A3ghk65Fy5xPFJfpoLEVq1y9Q0bRNiYFgj5OxjuT7FhchuSArGheEnntt+T4
+ oiqiSZt1qADyi4zQnyeOBcuo4wbY2gNTewEHkCOn25cCPAN8
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add of_find_serdev_controller_by_node() API to find the serdev controller
-device associated with the devicetree node.
+If an external connector like M.2 is connected to the serdev controller
+in DT, then the serdev devices may be created dynamically by the connector
+driver. So do not return -ENODEV from of_serdev_register_devices() if the
+static nodes are not found and the graph node is used.
 
 Tested-by: Hans de Goede <johannes.goede@oss.qualcomm.com> # ThinkPad T14s gen6 (arm64)
-Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
+Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@linaro.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/tty/serdev/core.c | 19 +++++++++++++++++++
- include/linux/serdev.h    |  9 +++++++++
- 2 files changed, 28 insertions(+)
+ drivers/tty/serdev/core.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/tty/serdev/core.c b/drivers/tty/serdev/core.c
-index 8f25510f89b6..bf88b95f7458 100644
+index bf88b95f7458..e9d044a331b0 100644
 --- a/drivers/tty/serdev/core.c
 +++ b/drivers/tty/serdev/core.c
-@@ -514,6 +514,25 @@ struct serdev_controller *serdev_controller_alloc(struct device *host,
- }
- EXPORT_SYMBOL_GPL(serdev_controller_alloc);
+@@ -12,6 +12,7 @@
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
++#include <linux/of_graph.h>
+ #include <linux/of_device.h>
+ #include <linux/pm_domain.h>
+ #include <linux/pm_runtime.h>
+@@ -561,7 +562,13 @@ static int of_serdev_register_devices(struct serdev_controller *ctrl)
+ 		} else
+ 			found = true;
+ 	}
+-	if (!found)
++
++	/*
++	 * When the serdev controller is connected to an external connector like
++	 * M.2 in DT, then the serdev devices may be created dynamically by the
++	 * connector driver.
++	 */
++	if (!found && !of_graph_is_present(dev_of_node(&ctrl->dev)))
+ 		return -ENODEV;
  
-+#ifdef CONFIG_OF
-+/**
-+ * of_find_serdev_controller_by_node() - Find the serdev controller associated
-+ *					 with the devicetree node
-+ * @node:	Devicetree node
-+ *
-+ * Return: Pointer to the serdev controller associated with the node. NULL if
-+ * the controller is not found. Caller is responsible for calling
-+ * serdev_controller_put() to drop the reference.
-+ */
-+struct serdev_controller *of_find_serdev_controller_by_node(struct device_node *node)
-+{
-+	struct device *dev = bus_find_device_by_of_node(&serdev_bus_type, node);
-+
-+	return (dev && dev->type == &serdev_ctrl_type) ? to_serdev_controller(dev) : NULL;
-+}
-+EXPORT_SYMBOL_GPL(of_find_serdev_controller_by_node);
-+#endif
-+
- static int of_serdev_register_devices(struct serdev_controller *ctrl)
- {
- 	struct device_node *node;
-diff --git a/include/linux/serdev.h b/include/linux/serdev.h
-index 0c7d3c27d1f8..188c0ba62d50 100644
---- a/include/linux/serdev.h
-+++ b/include/linux/serdev.h
-@@ -334,4 +334,13 @@ static inline bool serdev_acpi_get_uart_resource(struct acpi_resource *ares,
- }
- #endif /* CONFIG_ACPI */
- 
-+#ifdef CONFIG_OF
-+struct serdev_controller *of_find_serdev_controller_by_node(struct device_node *node);
-+#else
-+static inline struct serdev_controller *of_find_serdev_controller_by_node(struct device_node *node)
-+{
-+	return NULL;
-+}
-+#endif /* CONFIG_OF */
-+
- #endif /*_LINUX_SERDEV_H */
+ 	return 0;
 
 -- 
 2.51.0
