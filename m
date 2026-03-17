@@ -1,64 +1,73 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Tue, 17 Mar 2026 10:32:27 +0100
-Subject: [PATCH v2 9/9] arm64: defconfig: enable designware mipi csi-2
- receiver
+From: Alvin Sun <alvin.sun@linux.dev>
+Subject: [PATCH 0/2] drm/gpuvm: add debugfs utilities for GPU VA state
+ dumping
+Date: Tue, 17 Mar 2026 20:03:39 +0800
+Message-Id: <20260317-gpuvm-helpers-v1-0-00198fc6eeea@linux.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250430-rk3588-vicap-v2-9-77de5ee9048e@collabora.com>
-References: <20250430-rk3588-vicap-v2-0-77de5ee9048e@collabora.com>
-In-Reply-To: <20250430-rk3588-vicap-v2-0-77de5ee9048e@collabora.com>
-To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Kever Yang <kever.yang@rock-chips.com>, 
- Jagan Teki <jagan@amarulasolutions.com>, 
- =?utf-8?q?=D0=9A=D1=83=D0=B7=D0=BD=D0=B5=D1=86=D0=BE=D0=B2_=D0=9C=D0=B8=D1=85=D0=B0=D0=B8=D0=BB?= <mai.kuznetsov.misha@gmail.com>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Collabora Kernel Team <kernel@collabora.com>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773739942; l=937;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=mcrIEvEtgTS/gcjDOYC5aehK60tx7gRZsU5sHfBlIbc=;
- b=A+dG1JrGPklOpVqi49SnGtHySOkEJ6dXRyta+U/NOVzew5dJYC9Ye71CQKLmcW9UbEbrUNtZC
- O/GQT0mD4xxDscHEKg2arA9q0U63v5adbUw2PDPtd/UDe11Ek3S3woD
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+X-B4-Tracking: v=1; b=H4sIACFDuWkC/02OywrCMBBFf6XM2il5tGktIv6HuEjSsUb6MmmDI
+ P67wbpweQbOPfOCQN5RgCZ7gafogpvGBHyXgb3psSN0bWIQTCgmeYXdvMYBb9TP5AOKujUkjGT
+ SCEjO7Onqnt+982VjT481zS7bEYwOhHYaBrc0Waxyht4W8J9rshQrORf1L+bXsKCp+N5qKyrdq
+ iZ+jYFC0D/lcNg+ZEowqYo651yqsiyQ432iXncj9dfTGF3rdJ7yxyNc3u8P4uenSf8AAAA=
+X-Change-ID: 20260317-gpuvm-helpers-28dbe2b303b2
+To: Danilo Krummrich <dakr@kernel.org>, 
+ Matthew Brost <matthew.brost@intel.com>, 
+ =?utf-8?q?Thomas_Hellstr=C3=B6m?= <thomas.hellstrom@linux.intel.com>, 
+ Alice Ryhl <aliceryhl@google.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Trevor Gross <tmgross@umich.edu>
+Cc: dri-devel@lists.freedesktop.org, rust-for-linux@vger.kernel.org, 
+ Alvin Sun <alvin.sun@linux.dev>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773749102; l=1764;
+ i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
+ bh=aS0AQ+DX9KeA6AMbU2CAybn1XXydzrY13XlyF6pIjOw=;
+ b=Fqxw7Hamhyb2RexD2o4WMZ4spA4S1bQc2Z7iI/S/FQk9eIyMejQYQT+S4cMB365ongnsABhh+
+ Coje7864LlJAxMy7hYBCuACCxxLr0azNcI2odnc+Yow1+AT4oXILCku
+X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
+ pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
+X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Synopsys DesignWare MIPI CSI-2 Receiver is integrated into
-recent Rockchip SoCs, such as the RK3568 and the RK3588.
-As a consequence, they are used on a lot of Rockchip-based
-single board computers and/or corresponding camera modules, such
-as the Radxa Camera 4K.
-Enable the driver for it in the default configuration.
+This patch series adds helper APIs to enable GPU drivers to implement
+debugfs interfaces [1] [2] that expose GPU VA mapping state for
+inspection and debugging purposes.
 
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+Dependencies:
+- [PATCH v12 0/1] rust: interop: Add list module for C linked list interface
+https://lore.kernel.org/rust-for-linux/20260306203648.1136554-1-joelagnelf@nvidia.com/
+- [PATCH v4 0/6] Rust GPUVM immediate mode
+https://lore.kernel.org/rust-for-linux/20260130-gpuvm-rust-v4-0-8364d104ff40@google.com/
+
+Link: https://gitlab.freedesktop.org/panfrost/linux/-/issues/11 [1]
+Link: https://gitlab.freedesktop.org/panfrost/linux/-/merge_requests/59 [2]
+Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- arch/arm64/configs/defconfig | 1 +
- 1 file changed, 1 insertion(+)
+Alvin Sun (2):
+      drm/gpuvm: add name(), RawGpuVa and kernel_alloc_va() for debugfs
+      drm/gpuvm: add GpuVaIter and va_mappings() for debugfs
 
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index b67d5b1fc45b..a93ff73ae52c 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -907,6 +907,7 @@ CONFIG_SDR_PLATFORM_DRIVERS=y
- CONFIG_V4L_MEM2MEM_DRIVERS=y
- CONFIG_VIDEO_AMPHION_VPU=m
- CONFIG_VIDEO_CADENCE_CSI2RX=m
-+CONFIG_VIDEO_DW_MIPI_CSI2RX=m
- CONFIG_VIDEO_MEDIATEK_JPEG=m
- CONFIG_VIDEO_MEDIATEK_VCODEC=m
- CONFIG_VIDEO_WAVE_VPU=m
+ rust/kernel/drm/gpuvm/mod.rs | 20 ++++++++++
+ rust/kernel/drm/gpuvm/va.rs  | 90 ++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 110 insertions(+)
+---
+base-commit: 34cb4f916af10153c87fabaf6c34e4cafa170427
+change-id: 20260317-gpuvm-helpers-28dbe2b303b2
+prerequisite-change-id: 20251128-gpuvm-rust-b719cac27ad6:v4
+prerequisite-patch-id: 94679c36e594a7d6fc9279dad5419f5558f2302b
+prerequisite-patch-id: 03b672e1e2c07d677326d64de7fccc6092ea6812
+prerequisite-patch-id: 3c1a4c6eec5faaa1a70de53581bd7ae5ab7bc324
+prerequisite-patch-id: 3712380c7bfdf784b6aca146864576cd76bc9a72
+prerequisite-patch-id: 3149e1016beefce815c860d4b64e7c1bb7589f15
+prerequisite-patch-id: 23467ae9a31746a6c44678e0054f1442c6a5ac06
+prerequisite-message-id: <<20260306203648.1136554-1-joelagnelf@nvidia.com>>
+prerequisite-patch-id: 9bc17713af35e5f2744ac55157e2b5078eae77cc
 
+Best regards,
 -- 
-2.39.5
+Alvin Sun <alvin.sun@linux.dev>
 
