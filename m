@@ -1,16 +1,13 @@
 From: Rudraksha Gupta <guptarud@gmail.com>
-Subject: [PATCH v2 0/3] Samsung Expressatt: Camera Flash
-Date: Wed, 18 Mar 2026 11:34:38 -0700
-Message-Id: <20260318-expressatt_camera_flash-v2-0-5c2b9a623dcb@gmail.com>
+Date: Wed, 18 Mar 2026 11:34:39 -0700
+Subject: [PATCH v2 1/3] dt-bindings: leds: rt8515: Support single-GPIO
+ flash ICs with vin supply
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAD7wumkC/4WP3WrDMAxGXyXoei6284fDGH2PUoriyI1Z3Wy2G
- 1pK3n1KerHdDV0dIX2H7wmJoqcEXfGESLNPfroy6LcC7IjXMwk/MIOWupGlbATdvyKlhDmfLAa
- KeHIXTKNQpVU1tpVuEYG/+cr5+5Z8OL440veNBfm1hLDGbIKueOf8WmlZ/8kXebrZ8ZMeYlaCp
- 6qq3ujWGlfuzwH9ZWen8LG6ekwkGILPXTE3O2VgVY4+5Sk+tm6z2pz/1mCVFL0ypnGtHdww/Kr
- guCzLD5MPNYQxAQAA
-X-Change-ID: 20260306-expressatt_camera_flash-13c15a7427aa
+Message-Id: <20260318-expressatt_camera_flash-v2-1-5c2b9a623dcb@gmail.com>
+References: <20260318-expressatt_camera_flash-v2-0-5c2b9a623dcb@gmail.com>
+In-Reply-To: <20260318-expressatt_camera_flash-v2-0-5c2b9a623dcb@gmail.com>
 To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Linus Walleij <linusw@kernel.org>, 
@@ -19,55 +16,101 @@ To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>,
  Mark Brown <broonie@kernel.org>
 Cc: linux-leds@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- phone-devel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>, 
- David Heidelberg <david@ixit.cz>
+ phone-devel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1773858880; l=1698;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1773858880; l=2584;
  i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=x3uy/XVTTVpT34PL1AIrqtdEtkXWeZVq3ulfI+0NZ8A=;
- b=QvHgY2nmD9UpmbOnF8ObSGoxhgUjgf5v/0kQd55EVTgeJq8lozWe7pBmpUdomdOqb32TAR1HG
- /PzAtPxvM+bCXaGiKdY0cHR7goegmv+dITjwBJ8kTduQVEB+/ppING+
+ bh=yYBJe6glHiFbQLkK5n9J7m92+K8p9p43uhZGLgoNsMM=;
+ b=Gp/YsGw4bT4jw0F3LRRkfz6ZLTUgtXtlwLgkWu5Vzo/7QPJj7on2BoFyAOCBR1Th+QRl0IRAd
+ 5rWUm1ewBakCkrbYSyhoqFx+fSHyE6+ZQoSZKhRhAlrOcVjIJBLmJl1
 X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
  pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
 X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This small series adds camera flash to an existing similar mainline
-driver and adds it the the Samsung Expressatt's DTS
+Some flash ICs use the same one-wire pulse-count protocol as the RT8515
+but have only a single enable line for both flash and torch modes, plus
+an optional input voltage supply (e.g. a GPIO-controlled fixed
+regulator) that gates power to the chip.
 
-Assisted by AI (Claude).
-
-Downstream reference:
-Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/leds/Makefile#L51
-Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/arch/arm/mach-msm/board-apexq-camera.c#L591
+Make ent-gpios optional and add a vin-supply property to support these
+variants. Add a oneOf constraint requiring exactly one of ent-gpios or
+vin-supply. Add a binding example showing the single-GPIO configuration
+with an input supply.
 
 Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
-Changes in v2:
-- dt-bindings: Explain the hardware and not the driver
-- **/*: Use vin-supply instead of unlock-gpio
-- expressatt DTS: Reorder pinctrl-*
-- expressatt DTS: Define rfs-ohms to a default (couldn't find
-                  information about this)
-- Link to v1: https://lore.kernel.org/r/20260306-expressatt_camera_flash-v1-0-b1996f7cdfdd@gmail.com
+ .../devicetree/bindings/leds/richtek,rt8515.yaml   | 34 +++++++++++++++++++++-
+ 1 file changed, 33 insertions(+), 1 deletion(-)
 
----
-Rudraksha Gupta (3):
-      dt-bindings: leds: rt8515: Support single-GPIO flash ICs with vin supply
-      leds: flash: rt8515: Support single-GPIO flash ICs with vin supply
-      ARM: dts: qcom: msm8960: expressatt: Add camera flash
+diff --git a/Documentation/devicetree/bindings/leds/richtek,rt8515.yaml b/Documentation/devicetree/bindings/leds/richtek,rt8515.yaml
+index 0356371a6b01..ab3c5139132c 100644
+--- a/Documentation/devicetree/bindings/leds/richtek,rt8515.yaml
++++ b/Documentation/devicetree/bindings/leds/richtek,rt8515.yaml
+@@ -15,6 +15,10 @@ description: |
+   current for each mode is defined in hardware using two resistors
+   RFS and RTS.
+ 
++  Some flash ICs use the same one-wire pulse-count protocol but have
++  only a single enable line for both flash and torch modes. For these
++  single-channel variants, only enf-gpios is needed.
++
+ properties:
+   compatible:
+     const: richtek,rt8515
+@@ -26,6 +30,11 @@ properties:
+   ent-gpios:
+     maxItems: 1
+     description: A connection to the 'ENT' (enable torch) pin.
++      Not present on single-channel flash ICs that use only one enable
++      line for both flash and torch modes.
++
++  vin-supply:
++    description: Optional input supply for the flash IC.
+ 
+   richtek,rfs-ohms:
+     minimum: 7680
+@@ -81,10 +90,15 @@ properties:
+ 
+ required:
+   - compatible
+-  - ent-gpios
+   - enf-gpios
+   - led
+ 
++oneOf:
++  - required:
++      - ent-gpios
++  - required:
++      - vin-supply
++
+ additionalProperties: false
+ 
+ examples:
+@@ -108,4 +122,22 @@ examples:
+         };
+     };
+ 
++  - |
++    /* Single-channel flash IC with input supply */
++    #include <dt-bindings/gpio/gpio.h>
++    #include <dt-bindings/leds/common.h>
++
++    led-controller {
++        compatible = "richtek,rt8515";
++        enf-gpios = <&tlmm 3 GPIO_ACTIVE_HIGH>;
++        vin-supply = <&flash_reg>;
++        richtek,rfs-ohms = <16000>;
++
++        led {
++            function = LED_FUNCTION_FLASH;
++            color = <LED_COLOR_ID_WHITE>;
++            flash-max-timeout-us = <250000>;
++        };
++    };
++
+ ...
 
- .../devicetree/bindings/leds/richtek,rt8515.yaml   | 34 +++++++++++-
- .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 43 +++++++++++++++
- drivers/leds/flash/leds-rt8515.c                   | 64 +++++++++++++++++++---
- 3 files changed, 132 insertions(+), 9 deletions(-)
----
-base-commit: e9ec05addd1a067fc7cb218f20ecdc1b1b0898c0
-change-id: 20260306-expressatt_camera_flash-13c15a7427aa
-prerequisite-message-id: <20251205-expressatt-touchkey-v1-1-1444b927c9f3@gmail.com>
-prerequisite-patch-id: 8de4de7909722ccaf385c4224f25a623eaa72c28
-
-Best regards,
 -- 
-Rudraksha Gupta <guptarud@gmail.com>
+2.53.0
 
