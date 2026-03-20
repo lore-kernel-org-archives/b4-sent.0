@@ -1,101 +1,123 @@
-From: Dave Marquardt <davemarq@linux.ibm.com>
-Date: Fri, 20 Mar 2026 14:57:24 -0500
-Subject: [PATCH b4] prep: Make `b4 prep --edit-cover` remove already_ran
- file under $GIT_DIR
+From: Markus Probst <markus.probst@posteo.de>
+Subject: [PATCH v4 0/2] Introduce Synology Microp driver
+Date: Fri, 20 Mar 2026 23:09:52 +0100
+Message-Id: <20260320-synology_microp_initial-v4-0-0423ddb83ca4@posteo.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260320-fix-edit-cover-with-workspace-v1-1-6023305b0f93@linux.ibm.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0Q6CMAyF4VchvbbJHAaJr2K8YF2RasJIO8CE8
- O5OufxPcr4NjFXY4FZtoLyISRpLnE8V0NCNT0aJpcE737jaO+zlgxwlI6WFFVfJA65J3zZ1xEj
- BteTrNjbhCsWYlMvh798hXOBxbDaHF1P+wbDvXyti+g6FAAAA
-X-Change-ID: 20260320-fix-edit-cover-with-workspace-cb08c238d6b7
-To: "Kernel.org Tools" <tools@kernel.org>
-Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>, 
- Dave Marquardt <davemarq@linux.ibm.com>
-X-Mailer: b4 0.15-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774036645; l=2942;
- i=davemarq@linux.ibm.com; s=20260216; h=from:subject:message-id;
- bh=wG9tDn/tdqEtNmXCivhG+G9IX8uEt4PbH8HvACzz4Hw=;
- b=yhu4x3KU5C9yEwIKnvDPhkVJPeFspiRBz1Hfv2FLpjkDz9oaN6Ouh8hoXu7jTXAO1A9CnAHT+
- J+z6FtalcOkAewTJTsfOhrgLsh4mX0CDqraptH3NQEfw7JCe79ECpiL
-X-Developer-Key: i=davemarq@linux.ibm.com; a=ed25519;
- pk=vy0/nfobrje6EqZxuyw6a3ZstytG8WK2vf5Y3xtGrEg=
-X-Endpoint-Received: by B4 Relay for davemarq@linux.ibm.com/20260216 with auth_id=689
+X-B4-Tracking: v=1; b=H4sIALHFvWkC/4XP32rDIBgF8FcJXs/iv2jM1d5jjGL1sxXamGoqK
+ yXvPpsMFgZll0c4P8/3QBlSgIz65oESlJBDHGoQbw2yJzMcAQdXM2KEScKJxPk+xHM83veXYFM
+ c92EIUzBnTLxyxqqDElqi2h4T+PC1yB+fa05wvdUPpvXx1++bqreUUYXTLU/7OslBwQCt6Cho0
+ rW2LxxtJ/1UKBVr5QwuY6Nb7ZVlXnndF8qejYPJgG28XMLUN0XtCE5WoOegU8hTTPfl8kKXRf8
+ eWSgm2FvvwYEUorPvY8wTxJ2DxSxs63SvHVYdzTutJfec2vavwzcO5a8dXh3jpLFCcsMI3TrzP
+ H8DhvMD3d8BAAA=
+X-Change-ID: 20260306-synology_microp_initial-0f7dac7b7496
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ rust-for-linux@vger.kernel.org, Markus Probst <markus.probst@posteo.de>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3729;
+ i=markus.probst@posteo.de; h=from:subject:message-id;
+ bh=LC5mjspC1p41SMU+/gd1k5LdVQSaR5oU7FQTL3cog7M=;
+ b=owEBiQJ2/ZANAwAIATR2H/jnrUPSAcsmYgBpvcXcnfQYGMaIEfEGVHsnjJVhAf6oxpw3VdwXO
+ HSS1TWcOX+JAk8EAAEIADkWIQSCdBjE9KxY53IwxHM0dh/4561D0gUCab3F3BsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMSwyLDIACgkQNHYf+OetQ9IfOQ//XhipXoZ9itNPbViGGCLRMr33AbsI+H+
+ vuU+wNsQkUTXhJV9xlsEnvQuZwORw4M5Srz/nKCtrQ+3H56UHB87YrGQQNJYVLArba5c9Tv2GHE
+ da5XZHhMHETcJlKrSzrsZaJksuZMYKkmraqNgHUR+MxVbuJZxzZ1PZhQ+Y5XdA8AUw0x6WMd1bh
+ 0ziCQj0mCYz/GYNwyta+s2ZWFOEQHmLsLDrEh5tu81/JcidlBh7anKjeXcB30XtcCk5CDpJ8F0I
+ NeioWyiW5CaIXN7E/m012kqeSSOn9ux4b99wBCKCDuM0+GZK+kAa4DMHEKs7fNM6NcVebUnPtUv
+ Kb7JZy4yeIFVhc/zwJc6X1Qh3eCLGP96w3ekTMCTWwEF/WiCjgp3G+vFcT21AGemTZZNKmt4zis
+ uPE0t6ziTNORC00O6RT5QDcEHhQiBYrjSEjl4a1WwCrMrsogRwKhwj08uFA7xk8+O59l1clrU+5
+ uqx45h2hmIN/zX23ayksq/789MbXmXSCvWUGW93A44F/oTATeGy3WxjHu1TaJqS8QyOLvWDsld9
+ b5cMQs48j8EFDXV9trgT3RCf4E/8jwa2Ib+bO21sUjHDJODQa5O5F9rMEmqNIi4RTwC+9dZoLQS
+ 6u+R32Ls+C2nS8D80m7nhPKsrY6yj04nrKDEPYLAiYQsOEP2hlis=
+X-Developer-Key: i=markus.probst@posteo.de; a=openpgp;
+ fpr=827418C4F4AC58E77230C47334761FF8E7AD43D2
+X-Endpoint-Received: by B4 Relay for markus.probst@posteo.de/default with auth_id=680
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+Synology uses a microcontroller in their NAS devices connected to a
+serial port to control certain LEDs, fan speeds, a beeper, to handle
+proper shutdown and restart, buttons and fan failures.
 
+This patch series depends on the rust led abstraction [1] and the rust
+serdev abstraction [2].
+
+This is only a initial version of the driver able to control LEDs.
+The following rust abstractions would be required, to implement the
+remaining features:
+- hwmon (include/linux/hwmon.h)
+- input (include/linux/input.h)
+- sysoff handler + hardware protection shutdown (include/linux/reboot.h)
+
+[1] https://lore.kernel.org/rust-for-linux/20260207-rust_leds-v12-0-fdb518417b75@posteo.de/
+[2] https://lore.kernel.org/rust-for-linux/20260313-rust_serdev-v3-0-c9a3af214f7f@posteo.de/
+
+Signed-off-by: Markus Probst <markus.probst@posteo.de>
+---
+Changes in v4:
+- convert to monolithic driver and moved it into drivers/platform
+- removed mfd rust abstraction
+- moved dt-bindings to embedded-controller
+- Link to v3: https://lore.kernel.org/r/20260313-synology_microp_initial-v3-0-ad6ac463a201@posteo.de
+
+Changes in v3:
+- remove `default n` from Kconfig entry, as n is the default already.
+- select RUST_SERIAL_DEV_BUS_ABSTRACTIONS in Kconfig
+- add mfd rust abstraction
+- split core and led parts into their own driver. It should now be considered a
+  MFD device.
+- split led part of dt binding into its own file
+- Link to v2: https://lore.kernel.org/r/20260308-synology_microp_initial-v2-0-9389963f31c5@posteo.de
+
+Changes in v2:
+- fix missing tabs in MAINTAINERS file
+- remove word binding from patch subject
+- add missing signed-off-by
+- add missing help entry in Kconfig
+- add missing spdx license headers
+- remove no-check{,-cpu}-fan properties from the dt-bindings and replace
+  them with the check_fan module parameter
+- use patternProperties for leds in dt-bindings
+- license dt-binding as GPL-2.0-only OR BSD-2-Clause
+- move driver from staging tree into mfd tree and mark it as work in
+  progress inside Kconfig
+- only register alert and usb led if fwnode is present
+- Link to v1: https://lore.kernel.org/r/20260306-synology_microp_initial-v1-0-fcffede6448c@posteo.de
 
 ---
-The `b4 prep --edit-cover` code calls git-filter-repo to update the
-cover letter. When using a Git worktree, the user may get a confusing
-message like
+Markus Probst (2):
+      dt-bindings: embedded-controller: Add synology,microp device
+      platform: Add initial synology microp driver
 
-    Invoking git-filter-repo to update the cover letter.
-    The previous run is older than a day (/home/davemarq/linux/linux/.git/worktrees/ibmvfc-fpin-bis/filter-repo/already_ran already exists).
-    See "Already Ran" section in the manual for more information.
-    Treat this run as a continuation of filtering in the previous run (Y/N)? n
-
-There's code in run_frf() that removes
-<top-level>/.git/filter-repo/already_ran, which may have been left
-behind by git-filter-repo. This doesn't work for Git worktrees, where
-the file is $GIT_DIR/filter-repo/already_ran. GIT_DIR is set to a
-worktree-unique directory under the repository top level directory in
-the worktree case. This update uses $GIT_DIR, which works for both
-repositories and worktrees.
-
-Signed-off-by: Dave Marquardt <davemarq@linux.ibm.com>
+ .../embedded-controller/synology,microp.yaml       |  52 +++++
+ MAINTAINERS                                        |   6 +
+ drivers/platform/Kconfig                           |   2 +
+ drivers/platform/Makefile                          |   1 +
+ drivers/platform/synology_microp/Kconfig           |  13 ++
+ drivers/platform/synology_microp/Makefile          |   3 +
+ drivers/platform/synology_microp/TODO              |   7 +
+ drivers/platform/synology_microp/command.rs        |  50 ++++
+ drivers/platform/synology_microp/led.rs            | 254 +++++++++++++++++++++
+ .../platform/synology_microp/synology_microp.rs    |  58 +++++
+ 10 files changed, 446 insertions(+)
 ---
- src/b4/__init__.py | 10 ++++++++++
- src/b4/ez.py       |  8 ++++----
- 2 files changed, 14 insertions(+), 4 deletions(-)
-
-diff --git a/src/b4/__init__.py b/src/b4/__init__.py
-index 46f3598..5a3c249 100644
---- a/src/b4/__init__.py
-+++ b/src/b4/__init__.py
-@@ -4029,6 +4029,16 @@ def git_get_toplevel(path: Optional[str] = None) -> Optional[str]:
-         topdir = lines[0]
-     return topdir
- 
-+def git_get_gitdir(path: Optional[str] = None) -> Optional[str]:
-+    topdir = None
-+    # Are we in a git tree and if so, what is our git-dir?
-+    gitargs = ['rev-parse', '--git-dir']
-+    lines = git_get_command_lines(path, gitargs)
-+    if len(lines) == 1:
-+        topdir = lines[0]
-+        if not pathlib.PurePath(topdir).is_absolute():
-+            topdir = Path.cwd().joinpath(topdir)
-+    return topdir
- 
- def git_get_common_dir(path: Optional[str] = None) -> Optional[str]:
-     gitargs = ['rev-parse', '--git-common-dir']
-diff --git a/src/b4/ez.py b/src/b4/ez.py
-index 9b0e010..b7afab5 100644
---- a/src/b4/ez.py
-+++ b/src/b4/ez.py
-@@ -156,10 +156,10 @@ def run_frf(frf: fr.RepoFilter) -> None:
-     logger.debug('Running git-filter-repo...')
-     frf.run()
-     logger.debug('git-filter-repo complete')
--    gtl = b4.git_get_toplevel()
--    if isinstance(gtl, str):
--        # Remove .git/filter-repo/already_ran
--        already_ran = os.path.join(gtl, '.git', 'filter-repo', 'already_ran')
-+    gitdir = b4.git_get_gitdir()
-+    if isinstance(gitdir, str):
-+        # Remove $GIT_DIR/filter-repo/already_ran
-+        already_ran = os.path.join(gitdir, 'filter-repo', 'already_ran')
-         if os.path.exists(already_ran):
-             logger.debug('Removing %s', already_ran)
-             os.remove(already_ran)
-
----
-base-commit: bc6c4d853c7eace3b7f325cbd17dfe2d67760fb7
-change-id: 20260320-fix-edit-cover-with-workspace-cb08c238d6b7
-
-Best regards,
---  
-Dave Marquardt <davemarq@linux.ibm.com>
+base-commit: 34cb4f916af10153c87fabaf6c34e4cafa170427
+change-id: 20260306-synology_microp_initial-0f7dac7b7496
+prerequisite-change-id: 20251217-rust_serdev-ee5481e9085c:v3
+prerequisite-patch-id: 52b17274481cc770c257d8f95335293eca32a2c5
+prerequisite-patch-id: eec47e5051640d08bcd34a9670b98804449cad52
+prerequisite-patch-id: f24b68c71c3f69371e8ac0251efca0a023b31cc4
+prerequisite-patch-id: 3dfc1f7e5ecd3e0dd65d676aeb16f55260847b25
+prerequisite-change-id: 20251114-rust_leds-a959f7c2f7f9:v12
+prerequisite-patch-id: 42c445ef6981e3a3740dbaaf307f4b810042e46f
+prerequisite-patch-id: 90c7b200cca722a592353885e21af069101c4e09
+prerequisite-patch-id: c664a52faa3d47000d252eb7603c9c08382e868a
 
