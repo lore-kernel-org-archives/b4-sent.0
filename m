@@ -1,84 +1,64 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Fri, 20 Mar 2026 16:27:34 +0000
-Subject: [PATCH v9 9/9] Documentation: ABI: testing: add common ABI file
- for iio/frequency
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH 0/3] SHIFT 6MQ SD-card support, improved responsivness of
+ touchscreen, and codec
+Date: Fri, 20 Mar 2026 17:29:04 +0100
+Message-Id: <20260320-axolotl-misc-p1-v1-0-89c9b5ecb26e@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260320-adf41513-iio-driver-v9-9-132f0d076374@analog.com>
-References: <20260320-adf41513-iio-driver-v9-0-132f0d076374@analog.com>
-In-Reply-To: <20260320-adf41513-iio-driver-v9-0-132f0d076374@analog.com>
-To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-doc@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Andrew Morton <akpm@linux-foundation.org>, Petr Mladek <pmladek@suse.com>, 
- Steven Rostedt <rostedt@goodmis.org>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Rasmus Villemoes <linux@rasmusvillemoes.dk>, 
- Sergey Senozhatsky <senozhatsky@chromium.org>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
+X-B4-Tracking: v=1; b=H4sIANB1vWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDYyMD3cSK/Jz8khzd3MziZN0CQ10zA8MUEwuDZCPTlDQloK6CotS0zAq
+ widGxtbUA1dZ+emEAAAA=
+X-Change-ID: 20260320-axolotl-misc-p1-601d480c25df
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Dylan Van Assche <me@dylanvanassche.be>
+Cc: linux-arm-msm@vger.kernel.org, Petr Hodina <phodina@protonmail.com>, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Alexander Martinz <amartinz@shiftphones.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774024051; l=2210;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=OhPLAamt4hmbeCatH+/iPHehi/HIntujTnWeOacWI/A=;
- b=gLzhWryg6m+oV9bqr+TQj+jLfDlPUCot3iUaeFycI+CTtIlhW7ks7pcWSG3gL4t6xdeJqnGG4
- msaFVCqE+P4AXpivuIPtTbe/wHf49VyvzsRmkdSEuvU+xqw7+nsUbP5
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+X-Developer-Signature: v=1; a=openpgp-sha256; l=752; i=david@ixit.cz;
+ h=from:subject:message-id; bh=Ug1ZlH1itHQlZdElqdeD1isP56arF+w6CXvCerFsyC8=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpvXXRcxjb8S5LRW8Pns7ES1MQJV59xBIt3G5V3
+ POW24oXwmqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCab110QAKCRBgAj/E00kg
+ cuItEADFkkuZYtDhkdxfwf8AQjLxixHSPDF3FM9seYuJhTVHXMluvFfmDf4X6oWjpYhPv6GYrkq
+ VhltG5hH+UNFpER1sE4gjnsiOJYepgWeh1HgswxMskYdOJQSlgicrnKhUjrCcfqMvuy3tnxWQmt
+ cWcb1vHq5TJLnfNyPkLYjSW9UHt23uC2VpEB+Zw2eMN2zq8/NtJJWjpy2Ehc7XoLTKL+6LU8w/p
+ 69uHcBZPpjn+XmHTfssVC7a27p1UgrwCsB++JBkE2WusuWdIg3BtPPg3uDcOVrbV7iMMoIBuFdh
+ y21wzDVmYCwZsfZ7osQKHGTpLvgXCbFqpffxhBeQqxNHQI5UxkWQu40wUiVVAgFMiuuPLDf1H/K
+ 3lWHVNmc8uTILEXvLkv12GXqUnrQnQYI3YIFcZ7jm3zU2PLoBxr2M8ZGWKkc/DmtG0trKEtqqyj
+ rmqvBCuSkG7ej9C/DCLZ4fiswBO9r/37udralxgat0XSRjso9ugGMD3pgePaTBvVlgnIetH0YEd
+ yRO3KrnAJpcYDgwiTMLL+2N+hNPGBAjY8c0kJ89xXXJ5zrD6w/zBjAdraUxVkWszgo17ylp0OkN
+ GNWOUXmEkNeS4hhnu7lRmtsEDu+19DW3Qt0xlfctSYEARyWeVxtqQU0E5OcZ+0Dbj5vRDYI0I7O
+ WX8dqDAq30gaVVw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add ABI documentation file for PLL/DDS devices with frequency_resolution
-sysfs entry attribute used by both ADF4350 and ADF41513.
+I've tested that SD card and touchscreen works well, the codec does too,
+but for complete enablement needs soundcard support which isn't fully
+finished.
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- Documentation/ABI/testing/sysfs-bus-iio-frequency         | 11 +++++++++++
- Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350 | 10 ----------
- 2 files changed, 11 insertions(+), 10 deletions(-)
+Alexander Martinz (1):
+      arm64: dts: qcom: sdm845-shift-axolotl: Enable TFA9890 codec
 
-diff --git a/Documentation/ABI/testing/sysfs-bus-iio-frequency b/Documentation/ABI/testing/sysfs-bus-iio-frequency
-new file mode 100644
-index 000000000000..1ce8ae578fd6
---- /dev/null
-+++ b/Documentation/ABI/testing/sysfs-bus-iio-frequency
-@@ -0,0 +1,11 @@
-+What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_frequency_resolution
-+KernelVersion:	6.20
-+Contact:	linux-iio@vger.kernel.org
-+Description:
-+		Stores channel Y frequency resolution/channel spacing in Hz for PLL
-+		devices. The given value directly influences the operating mode when
-+		fractional-N synthesis is required, as it derives values for
-+		configurable modulus parameters used in the calculation of the output
-+		frequency. It is assumed that the algorithm that is used to compute
-+		the various dividers, is able to generate proper values for multiples
-+		of channel spacing.
-diff --git a/Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350 b/Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350
-index 1254457a726e..76987a119feb 100644
---- a/Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350
-+++ b/Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350
-@@ -1,13 +1,3 @@
--What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_frequency_resolution
--KernelVersion:	3.4.0
--Contact:	linux-iio@vger.kernel.org
--Description:
--		Stores channel Y frequency resolution/channel spacing in Hz.
--		The value given directly influences the MODULUS used by
--		the fractional-N PLL. It is assumed that the algorithm
--		that is used to compute the various dividers, is able to
--		generate proper values for multiples of channel spacing.
--
- What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_refin_frequency
- KernelVersion:	3.4.0
- Contact:	linux-iio@vger.kernel.org
+Casey Connolly (2):
+      arm64: dts: qcom: sdm845-shift-axolotl: Enable sdcard
+      arm64: dts: qcom: sdm845-shift-axolotl: Set higher touchscreen i2c clock
 
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 58 +++++++++++++++++++++++
+ 1 file changed, 58 insertions(+)
+---
+base-commit: 785f0eb2f85decbe7c1ef9ae922931f0194ffc2e
+change-id: 20260320-axolotl-misc-p1-601d480c25df
+
+Best regards,
 -- 
-2.43.0
+David Heidelberg <david@ixit.cz>
 
