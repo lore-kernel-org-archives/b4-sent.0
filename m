@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Fri, 20 Mar 2026 16:27:27 +0000
-Subject: [PATCH v9 2/9] lib: vsprintf: export simple_strntoull() in a safe
- prototype
+Date: Fri, 20 Mar 2026 16:27:28 +0000
+Subject: [PATCH v9 3/9] iio: core: add fixed point parsing with 64-bit
+ parts
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260320-adf41513-iio-driver-v9-2-132f0d076374@analog.com>
+Message-Id: <20260320-adf41513-iio-driver-v9-3-132f0d076374@analog.com>
 References: <20260320-adf41513-iio-driver-v9-0-132f0d076374@analog.com>
 In-Reply-To: <20260320-adf41513-iio-driver-v9-0-132f0d076374@analog.com>
 To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
@@ -24,154 +24,230 @@ Cc: Jonathan Cameron <jic23@kernel.org>,
  Shuah Khan <skhan@linuxfoundation.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774024051; l=4961;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774024051; l=5973;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=y9XuvOW7WnSOw9U6xKx4a7qJToIhm1Kjwj+aTkUEMP0=;
- b=7BHPg3COnAmow6RIibVkXv2I8hJnFf5WiTTNEZgjF+DwrsPlq0Yx97QGmtJHuZW3yAJqbXwvH
- NGDcvO2lErjAS6pRDT6Xu90PlZhbSDwoHRsCVBbU0PtBOavW72Ya7sL
+ bh=Ksnd2aTUQTR8CkiKxAGTVTTHsBtY2D2AzT0O1EeNwBQ=;
+ b=4UeOZDXkJ+Rd3L+AB4SwQtyOx2Uy6O4a5By+kvjEeFiLlnRhjlnKJw0fUOxVT5Vor9hgPXLIA
+ V5Ap0ncBNEhAuodFOaus37QOATqlKHMgS3V9v7Nbh/GAwuqf6rU/H2o
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Expose simple_strntoull(), by addressing its FIXME, i.e. its prototype is
-slightly changed so that -ERANGE or -EINVAL can be evaluated by the user.
-Flow of the function is not changed and error value is returned in the
-end. Unsafe internal wrapper is created to reduce amount of changes.
+Add iio_str_to_fixpoint64() function that leverages simple_strntoull()
+to parse numbers from a string. A helper function
+__iio_str_to_fixpoint64() replaces __iio_str_to_fixpoint() implementation,
+extending its usage for 64-bit fixed-point parsing.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- include/linux/kstrtox.h |  4 ++++
- lib/vsprintf.c          | 59 +++++++++++++++++++++++++++++++++++++++++--------
- 2 files changed, 54 insertions(+), 9 deletions(-)
+ drivers/iio/industrialio-core.c | 165 ++++++++++++++++++++++++++++------------
+ include/linux/iio/iio.h         |   2 +
+ 2 files changed, 117 insertions(+), 50 deletions(-)
 
-diff --git a/include/linux/kstrtox.h b/include/linux/kstrtox.h
-index 6ea897222af1..5e161073121f 100644
---- a/include/linux/kstrtox.h
-+++ b/include/linux/kstrtox.h
-@@ -148,4 +148,8 @@ extern long simple_strtol(const char *,char **,unsigned int);
- extern unsigned long long simple_strtoull(const char *,char **,unsigned int);
- extern long long simple_strtoll(const char *,char **,unsigned int);
- 
-+extern ssize_t __must_check simple_strntoull(const char *startp, const char **endp,
-+					     unsigned int base, size_t max_chars,
-+					     unsigned long long *res);
-+
- #endif	/* _LINUX_KSTRTOX_H */
-diff --git a/lib/vsprintf.c b/lib/vsprintf.c
-index 800b8ac49f53..6fb880f4013b 100644
---- a/lib/vsprintf.c
-+++ b/lib/vsprintf.c
-@@ -75,25 +75,66 @@ enum hash_pointers_policy {
- };
- static enum hash_pointers_policy hash_pointers_mode __initdata;
+diff --git a/drivers/iio/industrialio-core.c b/drivers/iio/industrialio-core.c
+index 22eefd048ba9..69cb0355526c 100644
+--- a/drivers/iio/industrialio-core.c
++++ b/drivers/iio/industrialio-core.c
+@@ -881,6 +881,91 @@ static ssize_t iio_read_channel_info_avail(struct device *dev,
+ 	}
+ }
  
 +/**
-+ * simple_strntoull - convert a string to an unsigned long long with a character limit
++ * __iio_str_to_fixpoint64() - Parse a fixed-point number from a string
++ * @str: The string to parse
++ * @fract_mult: Multiplier for the first decimal place, should be a power of 10
++ * @integer: The integer part of the number
++ * @fract: The fractional part of the number
++ * @scale_db: True if this should parse as dB
 + *
-+ * @startp: The start of the string
-+ * @endp: A pointer to the end of the parsed string will be placed here
-+ * @base: The number base to use
-+ * @max_chars: The maximum number of characters to parse
-+ * @res: Where to write the result of the conversion on success
++ * This variant uses 64-bit integers for both integer and fractional parts.
++ * Parsed positive values greater than S64_MAX are returned as-is. Parsed
++ * negative values less than S64_MIN are treated as range error, so -ERANGE is
++ * returned.
 + *
-+ * Returns amount of processed characters on success, -ERANGE on overflow and
-+ * -EINVAL on parsing error.
++ * Returns:
++ * 0 on success, or a negative error code if the string could not be parsed.
 + */
- noinline
--static unsigned long long simple_strntoull(const char *startp, char **endp, unsigned int base, size_t max_chars)
-+ssize_t simple_strntoull(const char *startp, const char **endp,
-+			 unsigned int base, size_t max_chars,
-+			 unsigned long long *res)
- {
- 	const char *cp;
--	unsigned long long result = 0ULL;
- 	size_t prefix_chars;
- 	unsigned int rv;
-+	ssize_t ret;
- 
- 	cp = _parse_integer_fixup_radix(startp, &base);
- 	prefix_chars = cp - startp;
- 	if (prefix_chars < max_chars) {
--		rv = _parse_integer_limit(cp, base, &result, max_chars - prefix_chars);
--		/* FIXME */
-+		rv = _parse_integer_limit(cp, base, res, max_chars - prefix_chars);
-+		if (rv & KSTRTOX_OVERFLOW)
-+			ret = -ERANGE;
-+		else if (rv == 0)
-+			ret = -EINVAL;
-+		else
-+			ret = rv + prefix_chars;
- 		cp += (rv & ~KSTRTOX_OVERFLOW);
- 	} else {
- 		/* Field too short for prefix + digit, skip over without converting */
- 		cp = startp + max_chars;
-+		ret = -EINVAL;
-+		*res = 0ULL;
- 	}
- 
-+	if (endp)
-+		*endp = cp;
-+
-+	return ret;
-+}
-+EXPORT_SYMBOL(simple_strntoull);
-+
-+/* unsafe_strntoull ignores simple_strntoull() return value and endp const qualifier */
-+inline
-+static unsigned long long unsafe_strntoull(const char *startp, char **endp,
-+					   unsigned int base, size_t max_chars)
++static int __iio_str_to_fixpoint64(const char *str, u64 fract_mult,
++				   s64 *integer, s64 *fract, bool scale_db)
 +{
-+	unsigned long long result;
-+	const char *cp;
++	u64 i = 0, f = 0;
++	int precision = ffs(fract_mult);
++	bool negative = false;
++	ssize_t len;
 +
-+#pragma GCC diagnostic push
-+#pragma GCC diagnostic ignored "-Wunused-result"
-+	simple_strntoull(startp, &cp, base, max_chars, &result);
-+#pragma GCC diagnostic pop
++	if (precision > 20) /* ceil(log10(U64_MAX)) = 20 */
++		return -EINVAL;
 +
- 	if (endp)
- 		*endp = (char *)cp;
- 
-@@ -111,7 +152,7 @@ static unsigned long long simple_strntoull(const char *startp, char **endp, unsi
- noinline
- unsigned long long simple_strtoull(const char *cp, char **endp, unsigned int base)
- {
--	return simple_strntoull(cp, endp, base, INT_MAX);
-+	return unsafe_strntoull(cp, endp, base, INT_MAX);
- }
- EXPORT_SYMBOL(simple_strtoull);
- 
-@@ -132,7 +173,7 @@ EXPORT_SYMBOL(simple_strtoul);
- unsigned long simple_strntoul(const char *cp, char **endp, unsigned int base,
- 			      size_t max_chars)
- {
--	return simple_strntoull(cp, endp, base, max_chars);
-+	return unsafe_strntoull(cp, endp, base, max_chars);
- }
- EXPORT_SYMBOL(simple_strntoul);
- 
-@@ -163,9 +204,9 @@ static long long simple_strntoll(const char *cp, char **endp, unsigned int base,
- 	 * and the content of *cp is irrelevant.
- 	 */
- 	if (*cp == '-' && max_chars > 0)
--		return -simple_strntoull(cp + 1, endp, base, max_chars - 1);
-+		return -unsafe_strntoull(cp + 1, endp, base, max_chars - 1);
- 
--	return simple_strntoull(cp, endp, base, max_chars);
-+	return unsafe_strntoull(cp, endp, base, max_chars);
- }
- 
++	if (str[0] == '-') {
++		negative = true;
++		str++;
++	} else if (str[0] == '+') {
++		str++;
++	}
++
++	if (*str != '.') {
++		len = simple_strntoull(str, &str, 10, SIZE_MAX, &i);
++		if (len < 0)
++			return len;
++	}
++
++	if (precision && *str == '.') {
++		str++; /* skip decimal point */
++		len = simple_strntoull(str, &str, 10, precision, &f);
++		if (len < 0)
++			return len;
++
++		if (len < precision) /* scale up */
++			f *= int_pow(10, precision - len);
++
++		while (isdigit(*str)) /* truncate: ignore further digits */
++			str++;
++	}
++
++	if (scale_db) {
++		/* Ignore the dB suffix */
++		if (!strncmp(str, " dB", sizeof(" dB") - 1))
++			str += sizeof(" dB") - 1;
++		else if (!strncmp(str, "dB", sizeof("dB") - 1))
++			str += sizeof("dB") - 1;
++	}
++
++	if (*str == '\n')
++		str++;
++
++	if (*str != '\0')
++		return -EINVAL;
++
++	if (negative) {
++		if (i) {
++			if ((s64)-i > 0)
++				return -ERANGE;
++			i = -i;
++		} else {
++			if ((s64)-f > 0)
++				return -ERANGE;
++			f = -f;
++		}
++	}
++
++	*integer = i;
++	*fract = f;
++
++	return 0;
++}
++
  /**
-@@ -3670,7 +3711,7 @@ int vsscanf(const char *buf, const char *fmt, va_list args)
- 			val.s = simple_strntoll(str, &next, base,
- 						field_width >= 0 ? field_width : INT_MAX);
- 		else
--			val.u = simple_strntoull(str, &next, base,
-+			val.u = unsafe_strntoull(str, &next, base,
- 						 field_width >= 0 ? field_width : INT_MAX);
+  * __iio_str_to_fixpoint() - Parse a fixed-point number from a string
+  * @str: The string to parse
+@@ -895,63 +980,43 @@ static ssize_t iio_read_channel_info_avail(struct device *dev,
+ static int __iio_str_to_fixpoint(const char *str, int fract_mult,
+ 				 int *integer, int *fract, bool scale_db)
+ {
+-	int i = 0, f = 0;
+-	bool integer_part = true, negative = false;
++	s64 integer64, fract64;
++	int ret;
  
- 		switch (qualifier) {
+-	if (fract_mult == 0) {
+-		*fract = 0;
++	ret = __iio_str_to_fixpoint64(str, fract_mult, &integer64, &fract64,
++				      scale_db);
++	if (ret)
++		return ret;
+ 
+-		return kstrtoint(str, 0, integer);
+-	}
++	if (integer64 < INT_MIN || integer64 > UINT_MAX ||
++	    fract64 < INT_MIN || fract64 > UINT_MAX)
++		return -ERANGE;
+ 
+-	if (str[0] == '-') {
+-		negative = true;
+-		str++;
+-	} else if (str[0] == '+') {
+-		str++;
+-	}
+-
+-	while (*str) {
+-		if ('0' <= *str && *str <= '9') {
+-			if (integer_part) {
+-				i = i * 10 + *str - '0';
+-			} else {
+-				f += fract_mult * (*str - '0');
+-				fract_mult /= 10;
+-			}
+-		} else if (*str == '\n') {
+-			if (*(str + 1) == '\0')
+-				break;
+-			return -EINVAL;
+-		} else if (!strncmp(str, " dB", sizeof(" dB") - 1) && scale_db) {
+-			/* Ignore the dB suffix */
+-			str += sizeof(" dB") - 1;
+-			continue;
+-		} else if (!strncmp(str, "dB", sizeof("dB") - 1) && scale_db) {
+-			/* Ignore the dB suffix */
+-			str += sizeof("dB") - 1;
+-			continue;
+-		} else if (*str == '.' && integer_part) {
+-			integer_part = false;
+-		} else {
+-			return -EINVAL;
+-		}
+-		str++;
+-	}
+-
+-	if (negative) {
+-		if (i)
+-			i = -i;
+-		else
+-			f = -f;
+-	}
+-
+-	*integer = i;
+-	*fract = f;
++	*integer = integer64;
++	*fract = fract64;
+ 
+ 	return 0;
+ }
+ 
++/**
++ * iio_str_to_fixpoint64() - Parse a fixed-point number from a string
++ * @str: The string to parse
++ * @fract_mult: Multiplier for the first decimal place, should be a power of 10
++ * @integer: The integer part of the number
++ * @fract: The fractional part of the number
++ *
++ * This variant uses 64-bit integers for both integer and fractional parts.
++ *
++ * Returns:
++ * 0 on success, or a negative error code if the string could not be parsed.
++ */
++int iio_str_to_fixpoint64(const char *str, u64 fract_mult, s64 *integer,
++			  s64 *fract)
++{
++	return __iio_str_to_fixpoint64(str, fract_mult, integer, fract, false);
++}
++EXPORT_SYMBOL_GPL(iio_str_to_fixpoint64);
++
+ /**
+  * iio_str_to_fixpoint() - Parse a fixed-point number from a string
+  * @str: The string to parse
+diff --git a/include/linux/iio/iio.h b/include/linux/iio/iio.h
+index a9ecff191bd9..cb30d153465a 100644
+--- a/include/linux/iio/iio.h
++++ b/include/linux/iio/iio.h
+@@ -1055,6 +1055,8 @@ int iio_active_scan_mask_index(struct iio_dev *indio_dev);
+ 
+ ssize_t iio_format_value(char *buf, unsigned int type, int size, int *vals);
+ 
++int iio_str_to_fixpoint64(const char *str, u64 fract_mult, s64 *integer,
++			  s64 *fract);
+ int iio_str_to_fixpoint(const char *str, int fract_mult, int *integer,
+ 	int *fract);
+ 
 
 -- 
 2.43.0
