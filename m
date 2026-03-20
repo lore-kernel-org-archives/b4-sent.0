@@ -1,16 +1,12 @@
 From: Radu Sabau <radu.sabau@analog.com>
-Subject: [PATCH v4 0/4] iio: adc: ad4691: add driver for AD4691
- multichannel SAR ADC family
-Date: Fri, 20 Mar 2026 13:03:54 +0200
-Message-Id: <20260320-ad4692-multichannel-sar-adc-driver-v4-0-052c1050507a@analog.com>
+Date: Fri, 20 Mar 2026 13:03:55 +0200
+Subject: [PATCH v4 1/4] dt-bindings: iio: adc: add AD4691 family
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAJopvWkC/43NQQrCMBQE0KtI1kaSn1hTV95DXCT5Xw3UVpIal
- NK7mxYExU2XMwxvBpYoBkpsvxpYpBxS6NoS9HrF/NW2F+IBS2YgoBJKALeoqxr47dH0YVq01PB
- kY+k9xxgyRb4zpFFrBO2AFege6Rye88nxVPI1pL6Lr/kzy6n98NslfJZccKUqgNoa9H53sK1tu
- svGdzc2+Rm+TCkWmVBMrJ0zltyW5L+pvk21yFTFdBqlRiOtNPLHHMfxDfclFzZ9AQAA
-X-Change-ID: 20260302-ad4692-multichannel-sar-adc-driver-78e4d44d24b2
+Message-Id: <20260320-ad4692-multichannel-sar-adc-driver-v4-1-052c1050507a@analog.com>
+References: <20260320-ad4692-multichannel-sar-adc-driver-v4-0-052c1050507a@analog.com>
+In-Reply-To: <20260320-ad4692-multichannel-sar-adc-driver-v4-0-052c1050507a@analog.com>
 To: Lars-Peter Clausen <lars@metafoo.de>, 
  Michael Hennerich <Michael.Hennerich@analog.com>, 
  Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
@@ -26,162 +22,247 @@ Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-pwm@vger.kernel.org, 
  linux-gpio@vger.kernel.org, Radu Sabau <radu.sabau@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774004636; l=8011;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774004636; l=6905;
  i=radu.sabau@analog.com; s=20260220; h=from:subject:message-id;
- bh=L2DyslcxuuFf7iElJ54ONbiTYAIR9Qi8A8oX8s5e1HI=;
- b=33DNg90fJB06nH6J4RZuCy8EuVUVMfiPeIezUxxesYdRzps9wgXTjW69cpc5gQM+AyJnxPZ5N
- iYTljzlT6TODvsvzxsVljV+UldiRPG9XRw/yrWlk/qjZlvlxMs6zyTI
+ bh=7k2O/4139eTFZPpsKABwqAvS5Z2dOIjHJmh/+f2Utno=;
+ b=lrFcBCjOdXPGR+Bz2gwk2OmdYGjGUHSKVoK9Hq9H5tauzlTVMH6+fioNyQ2kZYRq9d1fAP5cS
+ VDi70vHG+9KBFA7nSrPLYqnRcHY4Ughig9xp27dzIx7hyTHnETubeGV
 X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
  pk=lDPQHgn9jTdt0vo58Na9lLxLaE2mb330if71Cn+EvFU=
 X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20260220 with auth_id=642
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds support for the Analog Devices AD4691 family of
-high-speed, low-power multichannel successive approximation register
-(SAR) ADCs with an SPI-compatible serial interface.
+Add DT bindings for the Analog Devices AD4691 family of multichannel
+SAR ADCs (AD4691, AD4692, AD4693, AD4694).
 
-The family includes:
-  - AD4691: 16-channel, 500 kSPS
-  - AD4692: 16-channel, 1 MSPS
-  - AD4693: 8-channel, 500 kSPS
-  - AD4694: 8-channel, 1 MSPS
+The binding describes the hardware connections:
 
-The devices support two operating modes, auto-detected from the device
-tree:
-  - CNV Burst Mode: external PWM drives CNV independently of SPI;
-                    DATA_READY on a GP pin signals end of conversion
-  - Manual Mode: CNV tied to SPI CS; each SPI transfer reads
-                 the previous conversion result and starts the
-                 next (pipelined N+1 scheme)
+- Power domains: avdd-supply (required), vio-supply, ref-supply or
+  refin-supply (external reference; the REFIN path enables the
+  internal reference buffer), and an optional ldo-in-supply, that if
+  absent, means the on-chip internal LDO will be used.
 
-A new driver is warranted rather than extending ad4695: the AD4691
-data path uses an accumulator-register model — results are read from
-AVG_IN registers, with ACC_MASK, ADC_SETUP, DEVICE_SETUP, and
-GPIO_MODE registers controlling the sequencer — none of which exist
-in AD4695. CNV Burst Mode (PWM drives CNV independently of SPI) and
-Manual Mode (pipelined N+1 transfers) also have no equivalent in
-AD4695's command-embedded single-cycle protocol.
+- Optional PWM on the CNV pin selects CNV Burst Mode; when absent,
+  Manual Mode is assumed with CNV tied to SPI CS.
 
-The series is structured as follows:
-  1/4 - DT bindings (YAML schema) and MAINTAINERS entry
-  2/4 - Initial driver: register map via custom regmap callbacks,
-        IIO read_raw/write_raw, both operating modes, single-channel
-        reads via internal oscillator (Autonomous Mode)
-  3/4 - Triggered buffer support: IRQ-driven (DATA_READY on a GP pin
-        selected via interrupt-names) for CNV Burst Mode; external IIO
-        trigger for Manual Mode to handle the pipelined N+1 SPI protocol
-  4/4 - SPI Engine offload support: DMA-backed high-throughput
-        capture path using the SPI offload subsystem
+- An optional reset GPIO (reset-gpios) for hardware reset.
 
-Datasheets:
-  https://www.analog.com/en/products/ad4691.html
-  https://www.analog.com/en/products/ad4692.html
-  https://www.analog.com/en/products/ad4693.html
-  https://www.analog.com/en/products/ad4694.html
+- Up to four GP pins (gp0..gp3) usable as interrupt sources,
+  identified in firmware via interrupt-names "gp0".."gp3".
+
+- gpio-controller with #gpio-cells = <2> for GP pin GPIO usage.
+
+- #trigger-source-cells = <1>: one cell selecting the GP pin number
+  (0-3) used as the SPI offload trigger source.
+
+Two binding examples are provided: CNV Burst Mode with SPI offload
+(DMA data acquisition driven by DATA_READY on a GP pin), and Manual
+Mode for CPU-driven triggered-buffer or single-shot capture.
 
 Signed-off-by: Radu Sabau <radu.sabau@analog.com>
 ---
-Changes in v4:
-- dt-bindings: add avdd-supply (required) and ldo-in-supply (optional);
-  rename vref-supply → ref-supply, vrefin-supply → refin-supply;
-  corrected reset-gpios polarity (active-high → active-low); remove
-  clocks and pwm-names; extend interrupts to up to 4 GP pins with
-  interrupt-names "gp0".."gp3"; reduce #trigger-source-cells to
-  const: 1 (GP pin number); add gpio-controller / #gpio-cells = <2>;
-  drop adi,ad4691.h header; update binding examples
-- driver: rename CNV Clock Mode → CNV Burst Mode throughout
-- driver: add avdd-supply (required) and ldo-in-supply; track ref vs.
-  refin supply for REFBUF_EN; set LDO_EN in DEVICE_SETUP when ldo-in
-  is present; add software reset fallback via SPI_CONFIG_A register
-- driver: merge ACC_MASK1_REG / ACC_MASK2_REG into ACC_MASK_REG with
-  a single ADDR_DESCENDING 16-bit SPI write
-- driver: remove clocks usage; set PWM rate directly without ref clock
-- driver: rename chip info structs (ad4691_chip_info etc.); rename
-  *chip → *info in state struct; replace adc_mode enum with manual_mode
-  bool; replace ktime sampling_period with u32 cnv_period_ns
-- driver: move IIO_CHAN_INFO_SAMP_FREQ to info_mask_separate with an
-  available list for the internal oscillator frequency
-- driver: use regcache MAPLE instead of RBTREE
-- triggered buffer: derive DATA_READY GP pin from interrupt-names in
-  firmware ("gp0".."gp3") instead of assuming GP0
-- triggered buffer: use regmap_update_bits for DEVICE_SETUP mode toggle
-  to avoid clobbering LDO_EN when toggling MANUAL_MODE bit
-- triggered buffer: split buffer setup ops into separate Manual and
-  CNV Burst variants (mirrors offload path structure)
-- SPI offload: promote channel storagebits from 16 to 32 to match DMA
-  word size; introduce ad4691_manual_channels[] with shift=16 (data in
-  upper 16 bits of the 32-bit word); update triggered-buffer paths to
-  the same layout for consistency
-- SPI offload: derive GP pin from trigger-source args[0] instead of
-  hardcoding GP0; split offload buffer setup ops per mode
-- replace put_unaligned_be32() + FIELD_PREP() with cpu_to_be32() and
-  plain bit-shift ops for SPI offload message construction
-- multiple reviewer-requested code style and correctness fixes
-  (Andy Shevchenko, Nuno Sá, Uwe Kleine-König, David Lechner)
-- Link to v3: https://lore.kernel.org/r/20260313-ad4692-multichannel-sar-adc-driver-v3-0-b4d14d81a181@analog.com
+ .../devicetree/bindings/iio/adc/adi,ad4691.yaml    | 173 +++++++++++++++++++++
+ MAINTAINERS                                        |   7 +
+ 2 files changed, 180 insertions(+)
 
-Changes in v3:
-- Replace GPIO reset handling with reset controller framework
-- Replace two regmap_write() calls for ACC_MASK1/ACC_MASK2 with regmap_bulk_write()
-- Move conv_us declaration closer to its first use
-- Derive spi_device/dev from regmap instead of storing st->spi
-- ad4691_trigger_handler(): use guard(mutex)() and iio_for_each_active_channel()
-- ad4691_setup_triggered_buffer(): return -ENOMEM/-ENOENT directly instead of
-  wrapping in dev_err_probe(); fix fwnode_irq_get() check (irq <= 0 → irq < 0)
-- Add GENMASK defines for SPI offload 32-bit message layout; replace manual
-  bit-shifts with put_unaligned_be32() + FIELD_PREP()
-- Use DIV_ROUND_CLOSEST_ULL() instead of div64_u64()
-- ad4691_set_sampling_freq(): fix indentation; drop unnecessary else after return
-- ad4691_probe(): use PTR_ERR_OR_ZERO() for devm_spi_offload_get()
-- Link to v2: https://lore.kernel.org/r/20260310-ad4692-multichannel-sar-adc-driver-v2-0-d9bb8aeb5e17@analog.com
+diff --git a/Documentation/devicetree/bindings/iio/adc/adi,ad4691.yaml b/Documentation/devicetree/bindings/iio/adc/adi,ad4691.yaml
+new file mode 100644
+index 000000000000..def9f32c78af
+--- /dev/null
++++ b/Documentation/devicetree/bindings/iio/adc/adi,ad4691.yaml
+@@ -0,0 +1,173 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/iio/adc/adi,ad4691.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Analog Devices AD4691 Family Multichannel SAR ADCs
++
++maintainers:
++  - Radu Sabau <radu.sabau@analog.com>
++
++description: |
++  The AD4691 family are high-speed, low-power, multichannel successive
++  approximation register (SAR) analog-to-digital converters (ADCs) with
++  an SPI-compatible serial interface. The ADC supports CNV Burst Mode,
++  where an external PWM drives the CNV pin, and Manual Mode, where CNV
++  is directly tied to the SPI chip-select.
++
++  Datasheets:
++    * https://www.analog.com/en/products/ad4692.html
++    * https://www.analog.com/en/products/ad4691.html
++    * https://www.analog.com/en/products/ad4694.html
++    * https://www.analog.com/en/products/ad4693.html
++
++$ref: /schemas/spi/spi-peripheral-props.yaml#
++
++properties:
++  compatible:
++    enum:
++      - adi,ad4691
++      - adi,ad4692
++      - adi,ad4693
++      - adi,ad4694
++
++  reg:
++    maxItems: 1
++
++  spi-max-frequency:
++    maximum: 40000000
++
++  spi-cpol: true
++  spi-cpha: true
++
++  avdd-supply:
++    description: Analog power supply (4.5V to 5.5V).
++
++  ldo-in-supply:
++    description: LDO input supply. When absent, the internal LDO is used.
++
++  vio-supply:
++    description: I/O voltage supply (1.71V to 1.89V or VDD).
++
++  ref-supply:
++    description: External reference voltage supply (2.4V to 5.25V).
++
++  refin-supply:
++    description: Internal reference buffer input supply.
++
++  reset-gpios:
++    description:
++      GPIO line controlling the hardware reset pin (active-low).
++    maxItems: 1
++
++  pwms:
++    description:
++      PWM connected to the CNV pin. When present, selects CNV Burst Mode where
++      the PWM drives the conversion rate. When absent, Manual Mode is used
++      (CNV tied to SPI CS).
++    maxItems: 1
++
++  interrupts:
++    description:
++      Interrupt lines connected to the ADC GP pins. Each GP pin can be
++      physically wired to an interrupt-capable input on the SoC.
++    maxItems: 4
++
++  interrupt-names:
++    description: Names of the interrupt lines, matching the GP pin names.
++    minItems: 1
++    maxItems: 4
++    items:
++      - const: gp0
++      - const: gp1
++      - const: gp2
++      - const: gp3
++
++  gpio-controller: true
++
++  '#gpio-cells':
++    const: 2
++
++  '#trigger-source-cells':
++    description:
++      This node can act as a trigger source. The single cell in a consumer
++      reference specifies the GP pin number (0-3) used as the trigger output.
++    const: 1
++
++required:
++  - compatible
++  - reg
++  - avdd-supply
++  - vio-supply
++
++allOf:
++  # ref-supply and refin-supply are mutually exclusive, one is required
++  - oneOf:
++      - required:
++          - ref-supply
++      - required:
++          - refin-supply
++
++  # CNV Burst Mode (pwms present) without SPI offload requires a DRDY interrupt.
++  # Offload configurations expose '#trigger-source-cells' instead.
++  - if:
++      required:
++        - pwms
++      not:
++        required:
++          - '#trigger-source-cells'
++    then:
++      required:
++        - interrupts
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++    /* AD4692 in CNV Burst Mode with SPI offload */
++    spi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        adc@0 {
++            compatible = "adi,ad4692";
++            reg = <0>;
++            spi-cpol;
++            spi-cpha;
++            spi-max-frequency = <40000000>;
++
++            avdd-supply = <&avdd_supply>;
++            vio-supply = <&vio_supply>;
++            ref-supply = <&ref_5v>;
++
++            reset-gpios = <&gpio0 15 GPIO_ACTIVE_LOW>;
++
++            pwms = <&pwm_gen 0 0>;
++
++            #trigger-source-cells = <1>;
++        };
++    };
++
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++    /* AD4692 in Manual Mode (CNV tied to SPI CS) */
++    spi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        adc@0 {
++            compatible = "adi,ad4692";
++            reg = <0>;
++            spi-cpol;
++            spi-cpha;
++            spi-max-frequency = <31250000>;
++
++            avdd-supply = <&avdd_supply>;
++            vio-supply = <&vio_supply>;
++            refin-supply = <&refin_supply>;
++
++            reset-gpios = <&gpio0 15 GPIO_ACTIVE_LOW>;
++        };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 61bf550fd37c..438ca850fa1c 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -1484,6 +1484,13 @@ W:	https://ez.analog.com/linux-software-drivers
+ F:	Documentation/devicetree/bindings/iio/adc/adi,ad4170-4.yaml
+ F:	drivers/iio/adc/ad4170-4.c
+ 
++ANALOG DEVICES INC AD4691 DRIVER
++M:	Radu Sabau <radu.sabau@analog.com>
++L:	linux-iio@vger.kernel.org
++S:	Supported
++W:	https://ez.analog.com/linux-software-drivers
++F:	Documentation/devicetree/bindings/iio/adc/adi,ad4691.yaml
++
+ ANALOG DEVICES INC AD4695 DRIVER
+ M:	Michael Hennerich <michael.hennerich@analog.com>
+ M:	Nuno Sá <nuno.sa@analog.com>
 
-Changes in v2:
-- Drop adi,spi-mode DT property; operating mode now auto-detected
-  from pwms presence (CNV Clock Mode if present, Manual Mode if not)
-- Reduce from 5 operating modes to 2 (CNV Clock Mode, Manual Mode);
-  Autonomous, SPI Burst and CNV Burst modes removed as user-selectable
-  modes; Autonomous Mode is now the internal idle/single-shot state
-- Single-shot read_raw always uses internal oscillator (Autonomous
-  Mode), independent of the configured buffer mode
-- Replace bulk regulator API with devm_regulator_get_enable() and
-  devm_regulator_get_enable_read_voltage()
-- Use guard(mutex) and IIO_DEV_ACQUIRE_DIRECT_MODE scoped helpers
-- Replace enum + indexed chip_info array with named chip_info structs
-- Remove product_id field and hardware ID check from probe
-- Factor IIO_CHAN_INFO_RAW body into ad4691_single_shot_read() helper
-- Use fwnode_irq_get(dev_fwnode(dev), 0); drop interrupt-names from
-  DT binding
-- Use devm_clk_get_enabled(dev, NULL); drop clock-names from DT
-  binding
-- Use spi_write_then_read() for DMA-safe register writes
-- Use put_unaligned_be16() for SPI header construction
-- fsleep() instead of usleep_range() in single-shot path
-- storagebits 24->32 for manual-mode channels (uniform DMA layout)
-- Collect full scan into vals[16], single iio_push_to_buffers_with_ts()
-- Use pf->timestamp instead of iio_get_time_ns() in trigger handler
-- Remove IRQF_TRIGGER_FALLING (comes from firmware/DT)
-- Fix offload xfer array size ([17]: N channels + 1 state reset)
-- Drop third DT binding example per reviewer request
-- Link to v1: https://lore.kernel.org/r/20260305-ad4692-multichannel-sar-adc-driver-v1-0-336229a8dcc7@analog.com
-
----
-Radu Sabau (4):
-      dt-bindings: iio: adc: add AD4691 family
-      iio: adc: ad4691: add initial driver for AD4691 family
-      iio: adc: ad4691: add triggered buffer support
-      iio: adc: ad4691: add SPI offload support
-
- .../devicetree/bindings/iio/adc/adi,ad4691.yaml    |  173 +++
- MAINTAINERS                                        |    8 +
- drivers/iio/adc/Kconfig                            |   14 +
- drivers/iio/adc/Makefile                           |    1 +
- drivers/iio/adc/ad4691.c                           | 1638 ++++++++++++++++++++
- 5 files changed, 1834 insertions(+)
----
-base-commit: 11439c4635edd669ae435eec308f4ab8a0804808
-change-id: 20260302-ad4692-multichannel-sar-adc-driver-78e4d44d24b2
-
-Best regards,
 -- 
-Radu Sabau <radu.sabau@analog.com>
+2.43.0
 
