@@ -1,11 +1,11 @@
 From: Cristian Cozzolino <cristian_ci@protonmail.com>
-Date: Sat, 21 Mar 2026 17:23:23 +0100
-Subject: [PATCH v3 4/6] arm64: dts: qcom: msm8953-flipkart-rimob: Enable
- WiFi/Bluetooth
+Date: Sat, 21 Mar 2026 17:23:24 +0100
+Subject: [PATCH v3 5/6] arm64: dts: qcom: msm8953-flipkart-rimob: Enable
+ touchscreen
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260321-rimob-new-features-v3-4-d4b8ee867de7@protonmail.com>
+Message-Id: <20260321-rimob-new-features-v3-5-d4b8ee867de7@protonmail.com>
 References: <20260321-rimob-new-features-v3-0-d4b8ee867de7@protonmail.com>
 In-Reply-To: <20260321-rimob-new-features-v3-0-d4b8ee867de7@protonmail.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -20,52 +20,77 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
  Cristian Cozzolino <cristian_ci@protonmail.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774110230; l=1054;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774110230; l=1582;
  i=cristian_ci@protonmail.com; s=20250620; h=from:subject:message-id;
- bh=m6V8I4T0WqUEJHQUdFENcdM3juf5Ya0wQ/8ytPVjnmI=;
- b=Gs/Bpq7Ng08eKrwYI+h6XMtirKeL0hCvbhxbLree7c6Jg7PK88hRS7r/6ZAf56musOOU7q9xN
- ls/j2vPCN80Cb6MmG8pr6Zy7D/5dRwIV8ScvedtM412YdcDFmXfhQVQ
+ bh=3bKin1PZP9GVSsW6glNJDP7CuB4rn0CKi/qbCyBa+rA=;
+ b=B5If5K0fLvQgoogkrILzqhKx8UKibbWWQJM4uBFDmy5w5f4Dl1frWx50cUatUU/MScjJQZMfh
+ 3tGpS/NLFzVDlUN6jK79oxJ22HAmUQorELLANOUSlWMa+ULjKwyBWX9
 X-Developer-Key: i=cristian_ci@protonmail.com; a=ed25519;
  pk=xH5IvIPUNHV1Q8R0/pq2CfuVFR/wTiAyuyi6IwedjZY=
 X-Endpoint-Received: by B4 Relay for cristian_ci@protonmail.com/20250620 with auth_id=438
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Configure and enable the WCNSS which provides WiFi and Bluetooth on this
-device using the WCN3660B chip.
+This device uses a Goodix GT5688 touch controller, connected to i2c_3.
+Add it to the device tree.
 
 Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Signed-off-by: Cristian Cozzolino <cristian_ci@protonmail.com>
 ---
- arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+ .../arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts | 32 ++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts b/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts
-index d07303a37b2c..eab310ffa07b 100644
+index eab310ffa07b..ddbbbc1eb5b2 100644
 --- a/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts
 +++ b/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts
-@@ -327,3 +327,18 @@ &usb3 {
- &usb3_dwc3 {
- 	dr_mode = "peripheral";
+@@ -94,6 +94,31 @@ &hsusb_phy {
+ 	status = "okay";
  };
-+
-+&wcnss {
-+	vddpx-supply = <&pm8953_l5>;
-+
+ 
++&i2c_3 {
 +	status = "okay";
++
++	touchscreen@5d {
++		compatible = "goodix,gt5688";
++		reg = <0x5d>;
++
++		interrupts-extended = <&tlmm 65 IRQ_TYPE_LEVEL_LOW>;
++
++		pinctrl-0 = <&tsp_int_rst_default>;
++		pinctrl-names = "default";
++
++		irq-gpios = <&tlmm 65 GPIO_ACTIVE_HIGH>;
++		reset-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
++
++		VDDIO-supply = <&pm8953_l6>;
++		AVDD28-supply = <&pm8953_l10>;
++
++		touchscreen-size-x = <1080>;
++		touchscreen-size-y = <1920>;
++		touchscreen-inverted-x;
++		touchscreen-inverted-y;
++	};
 +};
 +
-+&wcnss_iris {
-+	compatible = "qcom,wcn3660b";
+ &ibb {
+ 	qcom,discharge-resistor-kohms = <32>;
+ };
+@@ -318,6 +343,13 @@ panel_default: panel-default-state {
+ 		bias-disable;
+ 		output-high;
+ 	};
 +
-+	vddxo-supply = <&pm8953_l7>;
-+	vddrfa-supply = <&pm8953_l19>;
-+	vddpa-supply = <&pm8953_l9>;
-+	vdddig-supply = <&pm8953_l5>;
-+};
++	tsp_int_rst_default: tsp-int-rst-default-state {
++		pins = "gpio64", "gpio65";
++		function = "gpio";
++		drive-strength = <8>;
++		bias-pull-up;
++	};
+ };
+ 
+ &usb3 {
 
 -- 
 2.53.0
