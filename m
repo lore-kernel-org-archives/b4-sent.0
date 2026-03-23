@@ -1,10 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Tue, 24 Mar 2026 00:20:39 +0100
-Subject: [PATCH v2 1/2] arm64: dts: qcom: sdm845-oneplus: Enable NFC
+Date: Tue, 24 Mar 2026 00:20:40 +0100
+Subject: [PATCH v2 2/2] arm64: dts: qcom: sdm845-shift-axolotl: Enable NFC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260324-oneplus-nfc-v2-1-3eef052c9bc6@ixit.cz>
+Message-Id: <20260324-oneplus-nfc-v2-2-3eef052c9bc6@ixit.cz>
 References: <20260324-oneplus-nfc-v2-0-3eef052c9bc6@ixit.cz>
 In-Reply-To: <20260324-oneplus-nfc-v2-0-3eef052c9bc6@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -17,43 +17,38 @@ Cc: Petr Hodina <petr.hodina@protonmail.com>,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1699; i=david@ixit.cz;
- h=from:subject:message-id; bh=mZudGkYZcNaSxQ/CeRT/N/ZTIKwpfDRvjxNRkrrFQYc=;
- b=kA0DAAgBYAI/xNNJIHIByyZiAGnBysqjzT3RZ4hWQlBtNfrWQuJv4l7WBFalj4taBGlUe1iVb
- YkCMwQAAQgAHRYhBNd6Cc/u3Cu9U6cEdGACP8TTSSByBQJpwcrKAAoJEGACP8TTSSByqFAP/jvb
- Yb8rdRg+E54QdbNUHrZwwcXYfToCR6H0dAblSOa9Fx+wutG+wpP0tSEGNviuh9IbEafhF444Kh+
- Ul7SlfaC3lPkZCeyvyUK/0UxqNZRQtoTWdOlKbKy8U/r6HbhRe1IL4X67n9JcH1he2j1P6z4kda
- RlsVVH4ZD4qKnGf8cuxqxBZ4vDSUgLQ3Wk2f0cx/FeGS4Hs39/7HDToPYd2TTbV98+7LvqwjFlh
- /JTAG+EF+Jmvqd9aP6pvOPb+gnW4DCciFSgmQWdcehqxapuE8NDDUq7VAua4Wu6fyT3IbneImTm
- 6Z7UXjgWfS/GiS+W5fh0e/04jW4v7pdJL7XkVdfZ7gCBixssu6DnvORo+RlCnHyY7EqNxVl9b68
- rIrKJ9W0zFHZi50JcQabD51QB8WMbPzJH0eamdFyDyktUffTDdlgg1zNMwo7ZtTIsonuerJDjHW
- UoXxkRcaYOCQiM9ssziqN7EiGJnm3BBjw8/WUBpgc1oRvkG+95pDwVkduN6SOnfC5VEDvvCubsg
- gjqCikdk595D5aJ6BlIA1+B1brxwNbF151BNWlJDJY5AJsiaC/AA5JfF1ZlIql4ygLz7oYdQBfg
- vYACWWZlBfGP19niXbT1SObsC5j61GB1ZC9xIM8fteqyZqp7wAwh41yYCTTy7QkD0JzwyNUahFB
- YUiN4
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1522; i=david@ixit.cz;
+ h=from:subject:message-id; bh=nWZzFQkA77a3+M7i1r6AFAsRI1+jPOUl0p3IE4kIYfk=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpwcrK6dFijYi4UpbhBhIPecppSkhn2JMpk9UGQ
+ xH38mse6uCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCacHKygAKCRBgAj/E00kg
+ cuLkEADOkzgA6n0vsqx13ZVeQgB6DOUm4GOMyzWTpPa6Sw8aZ7dCfRMTjOsUFjpKDU3goiBy2hq
+ zD0I8cBagm+pIj6wq6iH+gGVK3k7Bm5enzHbRuCk/AB/ioaNCzZ5QmOqkZXHsSak0yCaAPvpRCt
+ dWmGRWixFtXO1afuayonfgpLjs0OipDQKhLJyK6kAICqnlJzmr0wrfaYPb0JwJqQoZOZLX6Prgk
+ D1wjE9chEodPGE7fBm156DLBhuMWANjyKdRYQ7zcfFSjuFqtpo4lg64n4LFQOtL6LeX05m+iOUD
+ 8bBWdgRVVdwaUWE3VAhd3hglghS/Ow/kiwTI2XG7RpayO44nb8o4hDdhmOc3DuOSrgZJkujfc8I
+ jzZSd85OYJwKHNmAKA5Q1WlmAMCVMiSTj+ffbEe0SYOT878ZNAJVWA4dHypR1FSWPdarlv+4ZRF
+ QhLbxLE6UzYYdOyBgQgIRYN88qj8U2dk2dcnN0kS9rCsfrdjq+DxAkTfyVu1WUKXFmclyehuIkO
+ hurPRwdV94FsDJ+Wql/Muqb821HHL0LrF5a9/hOTOcVW/qWAnke3XAgpdTZfDjk1lyLTkd4yr9w
+ OgYxadgfxP60sOkqbsc6PEmbkhti6jhcEn06PyZjzkObpFIXUO2ZiMCL60ZgAbyII5yKyJ/7yJP
+ 1JSNrk68YPRHT3g==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: biemster <l.j.beemster@gmail.com>
+Definition of the NFC.
 
-Enable NFC controller NXP PN553, which is part of the package NXP NQ330
-(NFC + eSE).
-
-Signed-off-by: biemster <l.j.beemster@gmail.com>
-Co-developed-by: David Heidelberg <david@ixit.cz>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 31 ++++++++++++++++++++++
- 1 file changed, 31 insertions(+)
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 33 +++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-index 5b121ea5520f5..4fbce4233a773 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
-@@ -392,6 +392,25 @@ &gpu_zap_shader {
- 	firmware-name = "qcom/sdm845/OnePlus/enchilada/a630_zap.mbn";
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
+index 51b041f91d3e2..eea63aa170b16 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
++++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
+@@ -431,6 +431,25 @@ &gpu_zap_shader {
+ 	firmware-name = "qcom/sdm845/SHIFT/axolotl/a630_zap.mbn";
  };
  
 +&i2c3 {
@@ -70,40 +65,35 @@ index 5b121ea5520f5..4fbce4233a773 100644
 +		enable-gpios = <&tlmm 12 GPIO_ACTIVE_HIGH>;
 +		firmware-gpios = <&tlmm 62 GPIO_ACTIVE_HIGH>;
 +
-+		pinctrl-0 = <&nfc_default>;
++		pinctrl-0 = <&nfc_int_default &nfc_enable_default>;
 +		pinctrl-names = "default";
 +	};
 +};
 +
- &i2c10 {
+ &i2c5 {
  	status = "okay";
- 	clock-frequency = <100000>;
-@@ -594,6 +613,11 @@ &qupv3_id_0 {
- 	status = "okay";
- };
  
-+&qup_i2c3_default {
-+	drive-strength = <2>;
-+	bias-disable;
-+};
-+
- &qup_i2c10_default {
- 	drive-strength = <2>;
- 	bias-disable;
-@@ -926,6 +950,13 @@ speaker_default: speaker-default-state {
- 		bias-pull-up;
- 		output-high;
- 	};
-+
-+	nfc_default: nfc-default-state {
-+		pins = "gpio12", "gpio62", "gpio63";
+@@ -609,6 +628,20 @@ &slpi_pas {
+ &tlmm {
+ 	gpio-reserved-ranges = <0 4>, <81 4>;
+ 
++	nfc_int_default: nfc-int-default-state {
++		pins = "gpio63";
 +		function = "gpio";
-+		drive-strength = <6>;
++		drive-strength = <2>;
 +		bias-pull-up;
 +	};
- };
- 
- &venus {
++
++	nfc_enable_default: nfc-enable-default-state {
++		pins = "gpio12", "gpio62";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-pull-up;
++	};
++
+ 	sde_dsi_active: sde-dsi-active-state {
+ 		pins = "gpio6", "gpio11";
+ 		function = "gpio";
 
 -- 
 2.53.0
