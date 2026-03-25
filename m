@@ -1,115 +1,53 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Wed, 25 Mar 2026 11:25:35 +0100
-Subject: [PATCH v3 2/2] arm64: dts: rockchip: add mipi csi-2 receiver nodes
- to rk3588
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH 0/2] ADRF5702/ADRF5703 Digital Attenuator support
+Date: Wed, 25 Mar 2026 11:12:01 +0000
+Message-Id: <20260325-adrf570x-iio-support-v1-0-9a2685eb2e55@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260305-rk3588-csi2rx-v3-2-754473981f39@collabora.com>
-References: <20260305-rk3588-csi2rx-v3-0-754473981f39@collabora.com>
-In-Reply-To: <20260305-rk3588-csi2rx-v3-0-754473981f39@collabora.com>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Frank Li <Frank.li@nxp.com>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAAHDw2kC/x3MPQqAMAxA4atIZgNt/fcq4lA11Sy2pCqCeHeL4
+ ze890AkYYrQZw8IXRzZ7wk6z2De7L4S8pIMRplaFaZCu4irGnUjs8d4huDlQNJdV+rWTbZUkNI
+ g5Pj+t8P4vh8P9djDZgAAAA==
+X-Change-ID: 20260325-adrf570x-iio-support-e199418fba40
+To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
+Cc: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Kever Yang <kever.yang@rock-chips.com>, 
- Collabora Kernel Team <kernel@collabora.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774434334; l=2503;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=eOx/3+fLG0p1riU9lvyNxwYlp2uG1DyRr96Nkcj8cCQ=;
- b=88X1+5RPNBwR+aEH0UzzpSoiSmSWeI27iJXJWQAFUO8dGOUF6H/Zf+W/3eP25aduk7l+lu5ru
- yZ34GeKdCQaCpycS3z2fj6VaLtjSVGLZQN/xXBLTRgwgT7dSmVbqpio
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+ Conor Dooley <conor+dt@kernel.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774437143; l=808;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=6s60KjYjwOw1gKouJIv1rbJ9T2v6rnXR5nRknIdF0GA=;
+ b=WeuRfH4St3KVL/xuGRUuA2Qs5GkPq1aVPv3shOLplBnzEEx6J6SVYouOOVp1O0u5S6+l6S9NY
+ IqP8VuewfihAvZJQkvjMCLINNZAs8klQg8/T/tohFachBrVXVtifHHt
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Rockchip RK3588 features six MIPI CSI-2 receiver units:
- - MIPI0: connected to MIPI DCPHY0 (not supported)
- - MIPI1: connected to MIPI DCPHY1 (not supported)
- - MIPI2: connected to MIPI DPHY0
- - MIPI3: connected to MIPI DPHY0-1 (not supported)
- - MIPI4: connected to MIPI DPHY1
- - MIPI5: connected to MIPI DPHY1-1 (not supported)
-As the MIPI DCPHYs as well as the split DPHY mode of the DPHYs
-are not yet supported, add only the device tree nodes for the
-MIPI2 and MIPI4 units.
+This is a small patch series that adds support for two extra attenuators.
+Basically, new chip info and device table entries are added into the
+AD8366 IIO driver.
 
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- arch/arm64/boot/dts/rockchip/rk3588-base.dtsi | 52 +++++++++++++++++++++++++++
- 1 file changed, 52 insertions(+)
+Rodrigo Alencar (2):
+      dt-bindings: iio: amplifiers: ad8366: add adrf5702/3 support
+      iio: amplifiers: ad8366: add support for adrf5702/3
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-index 7fe9593d8c19..6c593b0255c3 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-@@ -1430,6 +1430,58 @@ av1d: video-codec@fdc70000 {
- 		resets = <&cru SRST_A_AV1>, <&cru SRST_P_AV1>, <&cru SRST_A_AV1_BIU>, <&cru SRST_P_AV1_BIU>;
- 	};
- 
-+	csi2: csi@fdd30000 {
-+		compatible = "rockchip,rk3588-mipi-csi2", "rockchip,rk3568-mipi-csi2";
-+		reg = <0x0 0xfdd30000 0x0 0x10000>;
-+		interrupts = <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH 0>,
-+			     <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH 0>;
-+		interrupt-names = "err1", "err2";
-+		clocks = <&cru PCLK_CSI_HOST_2>;
-+		phys = <&csi_dphy0>;
-+		power-domains = <&power RK3588_PD_VI>;
-+		resets = <&cru SRST_P_CSI_HOST_2>;
-+		status = "disabled";
-+
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			csi2_in: port@0 {
-+				reg = <0>;
-+			};
-+
-+			csi2_out: port@1 {
-+				reg = <1>;
-+			};
-+		};
-+	};
-+
-+	csi4: csi@fdd50000 {
-+		compatible = "rockchip,rk3588-mipi-csi2", "rockchip,rk3568-mipi-csi2";
-+		reg = <0x0 0xfdd50000 0x0 0x10000>;
-+		interrupts = <GIC_SPI 151 IRQ_TYPE_LEVEL_HIGH 0>,
-+			     <GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH 0>;
-+		interrupt-names = "err1", "err2";
-+		clocks = <&cru PCLK_CSI_HOST_4>;
-+		phys = <&csi_dphy1>;
-+		power-domains = <&power RK3588_PD_VI>;
-+		resets = <&cru SRST_P_CSI_HOST_4>;
-+		status = "disabled";
-+
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			csi4_in: port@0 {
-+				reg = <0>;
-+			};
-+
-+			csi4_out: port@1 {
-+				reg = <1>;
-+			};
-+		};
-+	};
-+
- 	vop: vop@fdd90000 {
- 		compatible = "rockchip,rk3588-vop";
- 		reg = <0x0 0xfdd90000 0x0 0x4200>, <0x0 0xfdd95000 0x0 0x1000>;
+ .../bindings/iio/amplifiers/adi,ad8366.yaml        |  4 ++++
+ drivers/iio/amplifiers/Kconfig                     |  2 ++
+ drivers/iio/amplifiers/ad8366.c                    | 22 ++++++++++++++++++++++
+ 3 files changed, 28 insertions(+)
+---
+base-commit: af980a79bfed43c4a0be12cca786be46f1a0c5e8
+change-id: 20260325-adrf570x-iio-support-e199418fba40
 
+Best regards,
 -- 
-2.39.5
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
