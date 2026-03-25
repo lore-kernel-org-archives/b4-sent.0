@@ -1,11 +1,11 @@
 From: Michael Riesch <michael.riesch@collabora.com>
-Date: Wed, 25 Mar 2026 12:51:12 +0100
-Subject: [PATCH v3 7/9] arm64: dts: rockchip: add radxa camera 4k on rock
- 5b+ cam0
+Date: Wed, 25 Mar 2026 12:51:13 +0100
+Subject: [PATCH v3 8/9] arm64: dts: rockchip: add radxa camera 4k on rock
+ 5b+ cam1
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250430-rk3588-vicap-v3-7-e38e428868cc@collabora.com>
+Message-Id: <20250430-rk3588-vicap-v3-8-e38e428868cc@collabora.com>
 References: <20250430-rk3588-vicap-v3-0-e38e428868cc@collabora.com>
 In-Reply-To: <20250430-rk3588-vicap-v3-0-e38e428868cc@collabora.com>
 To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
@@ -25,11 +25,11 @@ Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774439467; l=4268;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774439467; l=4277;
  i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=0nNnhdbQ217tvNoFygSbOgCx2i2xX88Dl6UgQ4VtEnw=;
- b=5ilQPTQWmZ99ebKVzffeyrebJN7Nw+7AN6tvp9QYvsAJ426ZbQNHokkzk9KmgXcWwxi1Fp7ga
- C8auWvlCIdLAWizQMsKmmeqEHBc3+COC7fZwWSlK9IAwRasW/ePnmdJ
+ bh=nLkcB1Bsd5vddmgjChqUvZyyk/Ls/mtNhdJe225yM4k=;
+ b=Kxg8wo1WFK1LxSUd4lv0+ndVc2Zjoe2GH+w618XmBjGfS4X7zBYHCLm6U/SOc7Jhv9q7NENpT
+ rQ6AAY7LI0mBflAU+m8S5p7ucO7lYdLJNqT8zTwOqcLq3iwuODjZo+D
 X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
  pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
 X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
@@ -37,46 +37,45 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 Add device tree overlay for the Radxa Camera 4K (featuring the
 Sony IMX415 image sensor) to applied on the Radxa ROCK 5B+
-CAM0 port.
+CAM1 port.
 
 Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- arch/arm64/boot/dts/rockchip/Makefile              |  5 ++
- .../rk3588-rock-5b-plus-radxa-cam4k-cam0.dtso      | 99 ++++++++++++++++++++++
- 2 files changed, 104 insertions(+)
+ arch/arm64/boot/dts/rockchip/Makefile              |  4 +-
+ .../rk3588-rock-5b-plus-radxa-cam4k-cam1.dtso      | 99 ++++++++++++++++++++++
+ 2 files changed, 102 insertions(+), 1 deletion(-)
 
 diff --git a/arch/arm64/boot/dts/rockchip/Makefile b/arch/arm64/boot/dts/rockchip/Makefile
-index 4d384f153c13..77c587f43dda 100644
+index 77c587f43dda..191666821a80 100644
 --- a/arch/arm64/boot/dts/rockchip/Makefile
 +++ b/arch/arm64/boot/dts/rockchip/Makefile
-@@ -199,6 +199,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-rock-5b.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-rock-5b-pcie-ep.dtbo
+@@ -200,6 +200,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-rock-5b-pcie-ep.dtbo
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-rock-5b-pcie-srns.dtbo
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-rock-5b-plus.dtb
-+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-rock-5b-plus-radxa-cam4k-cam0.dtbo
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-rock-5b-plus-radxa-cam4k-cam0.dtbo
++dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-rock-5b-plus-radxa-cam4k-cam1.dtbo
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-rock-5t.dtb
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-tiger-haikou.dtb
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-tiger-haikou-video-demo.dtbo
-@@ -298,6 +299,10 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-rock-5b-pcie-srns.dtb
- rk3588-rock-5b-pcie-srns-dtbs := rk3588-rock-5b.dtb \
- 	rk3588-rock-5b-pcie-srns.dtbo
+@@ -301,7 +302,8 @@ rk3588-rock-5b-pcie-srns-dtbs := rk3588-rock-5b.dtb \
  
-+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-rock-5b-plus-radxa-4k-cam.dtb
-+rk3588-rock-5b-plus-radxa-4k-cam-dtbs := rk3588-rock-5b-plus.dtb \
-+	rk3588-rock-5b-plus-radxa-cam4k-cam0.dtbo
-+
+ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-rock-5b-plus-radxa-4k-cam.dtb
+ rk3588-rock-5b-plus-radxa-4k-cam-dtbs := rk3588-rock-5b-plus.dtb \
+-	rk3588-rock-5b-plus-radxa-cam4k-cam0.dtbo
++	rk3588-rock-5b-plus-radxa-cam4k-cam0.dtbo \
++	rk3588-rock-5b-plus-radxa-cam4k-cam1.dtbo
+ 
  dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588-tiger-haikou-haikou-video-demo.dtb
  rk3588-tiger-haikou-haikou-video-demo-dtbs := rk3588-tiger-haikou.dtb \
- 	rk3588-tiger-haikou-video-demo.dtbo
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-rock-5b-plus-radxa-cam4k-cam0.dtso b/arch/arm64/boot/dts/rockchip/rk3588-rock-5b-plus-radxa-cam4k-cam0.dtso
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-rock-5b-plus-radxa-cam4k-cam1.dtso b/arch/arm64/boot/dts/rockchip/rk3588-rock-5b-plus-radxa-cam4k-cam1.dtso
 new file mode 100644
-index 000000000000..ee9ecf68a886
+index 000000000000..96b8df4ed354
 --- /dev/null
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-rock-5b-plus-radxa-cam4k-cam0.dtso
++++ b/arch/arm64/boot/dts/rockchip/rk3588-rock-5b-plus-radxa-cam4k-cam1.dtso
 @@ -0,0 +1,99 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
-+ * Device tree overlay for the Radxa Camera 4K attached to the CAM0 port of
++ * Device tree overlay for the Radxa Camera 4K attached to the CAM1 port of
 + * the Radxa ROCK 5B+.
 + */
 +
@@ -88,81 +87,81 @@ index 000000000000..ee9ecf68a886
 +#include <dt-bindings/pinctrl/rockchip.h>
 +
 +&{/} {
-+	savdd_cam0: regulator-savdd-cam0 {
++	savdd_cam1: regulator-savdd-cam1 {
 +		compatible = "regulator-fixed";
 +		regulator-min-microvolt = <2900000>;
 +		regulator-max-microvolt = <2900000>;
-+		regulator-name = "savdd_cam0";
++		regulator-name = "savdd_cam1";
 +		vin-supply = <&vcc_3v3_s3>;
 +	};
 +
-+	sdvdd_cam0: regulator-sdvdd-cam0 {
++	sdvdd_cam1: regulator-sdvdd-cam1 {
 +		compatible = "regulator-fixed";
 +		regulator-min-microvolt = <1100000>;
 +		regulator-max-microvolt = <1100000>;
-+		regulator-name = "sdvdd_cam0";
++		regulator-name = "sdvdd_cam1";
 +		vin-supply = <&vcc5v0_sys>;
 +	};
 +
-+	siovdd_cam0: regulator-siovdd-cam0 {
++	siovdd_cam1: regulator-siovdd-cam1 {
 +		compatible = "regulator-fixed";
 +		regulator-min-microvolt = <1800000>;
 +		regulator-max-microvolt = <1800000>;
-+		regulator-name = "siovdd_cam0";
++		regulator-name = "siovdd_cam1";
 +		vin-supply = <&vcc_3v3_s3>;
 +	};
 +};
 +
-+&i2c3 {
++&i2c4 {
 +	#address-cells = <1>;
 +	#size-cells = <0>;
 +	status = "okay";
 +
-+	imx415: camera-sensor@1a {
++	cam1_imx415: camera-sensor@1a {
 +		compatible = "sony,imx415";
 +		reg = <0x1a>;
-+		assigned-clocks = <&cru CLK_MIPI_CAMARAOUT_M3>;
++		assigned-clocks = <&cru CLK_MIPI_CAMARAOUT_M4>;
 +		assigned-clock-rates = <37125000>;
-+		avdd-supply = <&savdd_cam0>;
-+		clocks = <&cru CLK_MIPI_CAMARAOUT_M3>;
-+		dvdd-supply = <&sdvdd_cam0>;
++		avdd-supply = <&savdd_cam1>;
++		clocks = <&cru CLK_MIPI_CAMARAOUT_M4>;
++		dvdd-supply = <&sdvdd_cam1>;
 +		orientation = <2>; /* External */
-+		ovdd-supply = <&siovdd_cam0>;
++		ovdd-supply = <&savdd_cam1>;
 +		pinctrl-names = "default";
-+		pinctrl-0 = <&cam0_rstn &mipim0_camera3_clk>;
-+		reset-gpios = <&gpio4 RK_PA0 GPIO_ACTIVE_LOW>;
++		pinctrl-0 = <&cam1_rstn &mipim0_camera4_clk>;
++		reset-gpios = <&gpio2 RK_PB0 GPIO_ACTIVE_LOW>;
 +
 +		port {
-+			imx415_output: endpoint {
++			cam1_imx415_output: endpoint {
 +				data-lanes = <1 2 3 4>;
 +				link-frequencies = /bits/ 64 <445500000>;
-+				remote-endpoint = <&csi2_input>;
++				remote-endpoint = <&csi4_input>;
 +			};
 +		};
 +	};
 +};
 +
 +&pinctrl {
-+	cam0 {
-+		cam0_rstn: cam0-rstn-pinctrl {
-+			rockchip,pins = <4 RK_PA0 RK_FUNC_GPIO &pcfg_pull_none>;
++	cam1 {
++		cam1_rstn: cam1-rstn-pinctrl {
++			rockchip,pins = <2 RK_PB0 RK_FUNC_GPIO &pcfg_pull_none>;
 +		};
 +	};
 +};
 +
-+&csi2 {
++&csi4 {
 +	status = "okay";
 +};
 +
-+&csi2_in {
-+	csi2_input: endpoint {
++&csi4_in {
++	csi4_input: endpoint {
 +		data-lanes = <1 2 3 4>;
 +		link-frequencies = /bits/ 64 <445500000>;
-+		remote-endpoint = <&imx415_output>;
++		remote-endpoint = <&cam1_imx415_output>;
 +	};
 +};
 +
-+&csi_dphy0 {
++&csi_dphy1 {
 +	status = "okay";
 +};
 +
