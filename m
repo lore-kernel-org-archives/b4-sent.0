@@ -1,109 +1,129 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Wed, 25 Mar 2026 11:12:03 +0000
-Subject: [PATCH 2/2] iio: amplifiers: ad8366: add support for adrf5702/3
+From: Michael Riesch <michael.riesch@collabora.com>
+Subject: [PATCH v3 0/9] media: rockchip: rkcif: add support for rk3588
+ vicap
+Date: Wed, 25 Mar 2026 12:51:05 +0100
+Message-Id: <20250430-rk3588-vicap-v3-0-e38e428868cc@collabora.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260325-adrf570x-iio-support-v1-2-9a2685eb2e55@analog.com>
-References: <20260325-adrf570x-iio-support-v1-0-9a2685eb2e55@analog.com>
-In-Reply-To: <20260325-adrf570x-iio-support-v1-0-9a2685eb2e55@analog.com>
-To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org
-Cc: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIACnMw2kC/33Py2rDMBAF0F8xWldBT1vyKv8RutBjVIumkSOlo
+ iH436vYhJRSurwDc+7MDRXIEQoauxvKUGOJ6dQCf+mQm8zpDXD0LSNGmCSCE5zfuVQK1+jMjLW
+ nvXBKMmUG1FbmDCF+rdzhdcsZzp9NvWzDJzp2jRSEsY3sH6TVlgetmQxCjFWhn4esO5L0tH+c4
+ UrEfp6u2GnwzHjhvA5jpejePsVySfm6/tZG9/q/36gUE2y59T4MQmsq9i4dj8ambHYufaxYZf8
+ BrAHD4EECaCIU/AaWZfkGYXCQwWsBAAA=
+To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774437143; l=3508;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=AsNs5tyHtb0PShFN/SAT4QMGDo6HOT+KvogC5g2UCX8=;
- b=2+oY5DPNo4WEC+olLvftCchq99Nj6592+xVQpUbXn3yDSbD5KE4kh7b45GuQaUI6OWfOrcHzl
- yY9QCHxPnZ4BNXXGS9xpE4YBGEynpu22KBe9wVgDCN1gs0cKd3Wohum
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Kever Yang <kever.yang@rock-chips.com>, 
+ Jagan Teki <jagan@amarulasolutions.com>, 
+ =?utf-8?q?=D0=9A=D1=83=D0=B7=D0=BD=D0=B5=D1=86=D0=BE=D0=B2_=D0=9C=D0=B8=D1=85=D0=B0=D0=B8=D0=BB?= <mai.kuznetsov.misha@gmail.com>, 
+ Charalampos Mitrodimas <charmitro@posteo.net>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Collabora Kernel Team <kernel@collabora.com>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774439467; l=4230;
+ i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
+ bh=vbZLOt7EIgfb8wzXcMEkH5OJviNmVkjkd3ow5gAmiUc=;
+ b=J2s0+HJP6GwhPiHb/6T3kiNxUwA7owRv7p6n2lIShYxe0OZPdqFw3RozfsnzKdXDUJO3dri3o
+ B0CPaB36R0AA5amYbV4IbZj/fAVxzt+6utvdrDvgV06SEbg6T+AIH2v
+X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
+ pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
+X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add chip info structs and device table entries for ADRF5702 and ADRF5703
-Digital Step Attenuators.
+Habidere,
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+The RK3588 Video Capture (VICAP) constitutes an essential piece of the
+RK3588 camera interface with one DVP, six MIPI CSI-2 receivers,
+scale/crop units, and a data path multiplexer (to scaler units, to ISP,
+...). This series introduces basic support for the RK3588 VICAP unit
+to the rkcif driver, thus paving the way for video capture in general
+and for camera sensor image processing in particular.
+
+The changes have been tested successfully on a Radxa ROCK 5B+ with two
+Radxa 4K cameras attached to it. The raw images from the sensors can
+be streamed after configuring the hardware pipeline with
+
+media-ctl -d 0 --set-v4l2 '"dw-mipi-csi2rx fdd30000.csi":0 \
+  [fmt:SGBRG10_1X10/3864x2192 field:none colorspace:raw xfer:none]'
+media-ctl -d 0 --set-v4l2 '"rkcif-mipi2":0 \
+  [fmt:SGBRG10_1X10/3864x2192 field:none colorspace:raw xfer:none]'
+media-ctl -d 0 --set-v4l2 '"dw-mipi-csi2rx fdd50000.csi":0 \
+  [fmt:SGBRG10_1X10/3864x2192 field:none colorspace:raw xfer:none]'
+media-ctl -d 0 --set-v4l2 '"rkcif-mipi4":0 \ 
+  [fmt:SGBRG10_1X10/3864x2192 field:none colorspace:raw xfer:none]'
+
+and using e.g., GStreamer
+
+gst-launch-1.0 v4l2src \
+  device=/dev/v4l/by-path/platform-fdce0000.video-capture-video-index0 \
+  ! video/x-bayer,format=gbrg10le,width=3864,height=2192 ! bayer2rgb \
+  ! ...
+(or -index4 for the other camera sensor).
+
+Note that this series requires the RK3588 MIPI CSI-2 receiver patches
+[0]. I included them here to provide the possibility to test the changes
+without any nasty merge conflicts.
+
+Looking forward to your comments!
+
+[0] https://lore.kernel.org/all/20260305-rk3588-csi2rx-v2-0-79d01b615486@collabora.com
+
+Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- drivers/iio/amplifiers/Kconfig  |  2 ++
- drivers/iio/amplifiers/ad8366.c | 22 ++++++++++++++++++++++
- 2 files changed, 24 insertions(+)
+Changes in v3:
+- fixed copy-paste mistake "RK3568" -> "RK3588" in docs (Charalampos)
+- fixed reg properties of ports in dtsi (port@10 <=> <16>, ...)
+- added comment w.r.t. RKCIF_MIPI_CTRL_CAP_EN bit (Mehdi)
+- removed redundant minItems and maxItems from dt-binding (Conor)
+- revised device tree overlays for the Radxa CAMs according to the
+  schematics that I recently received
+- Link to v2: https://lore.kernel.org/r/20250430-rk3588-vicap-v2-0-77de5ee9048e@collabora.com
 
-diff --git a/drivers/iio/amplifiers/Kconfig b/drivers/iio/amplifiers/Kconfig
-index 39d280d4d437..9e24421b5e97 100644
---- a/drivers/iio/amplifiers/Kconfig
-+++ b/drivers/iio/amplifiers/Kconfig
-@@ -18,6 +18,8 @@ config AD8366
- 	    AD8366 Dual-Digital Variable Gain Amplifier (VGA)
- 	    ADA4961 BiCMOS RF Digital Gain Amplifier (DGA)
- 	    ADL5240 Digitally controlled variable gain amplifier (VGA)
-+	    ADRF5702: 0.125 dB LSB, 8-Bit, Silicon Digital Attenuator
-+	    ADRF5703: 0.25 dB LSB, 7-Bit, Silicon Digital Attenuator
- 	    ADRF5720: 0.5 dB LSB, 6-Bit, Silicon Digital Attenuator
- 	    ADRF5730: 0.5 dB LSB, 6-Bit, Silicon Digital Attenuator
- 	    ADRF5731: 2 dB LSB, 4-Bit, Silicon Digital Attenuator
-diff --git a/drivers/iio/amplifiers/ad8366.c b/drivers/iio/amplifiers/ad8366.c
-index 334ca91c0f59..bbf41a1fb3a1 100644
---- a/drivers/iio/amplifiers/ad8366.c
-+++ b/drivers/iio/amplifiers/ad8366.c
-@@ -5,6 +5,8 @@
-  *   AD8366 Dual-Digital Variable Gain Amplifier (VGA)
-  *   ADA4961 BiCMOS RF Digital Gain Amplifier (DGA)
-  *   ADL5240 Digitally controlled variable gain amplifier (VGA)
-+ *   ADRF5702: 0.125 dB LSB, 8-Bit, Silicon Digital Attenuator, 50 MHz to 20 GHz
-+ *   ADRF5703: 0.25 dB LSB, 7-Bit, Silicon Digital Attenuator, 9 kHz to 20 GHz
-  *   ADRF5720: 0.5 dB LSB, 6-Bit, Silicon Digital Attenuator, 9 kHz to 40 GHz
-  *   ADRF5730: 0.5 dB LSB, 6-Bit, Silicon Digital Attenuator, 100 MHz to 40 GHz
-  *   ADRF5731: 2 dB LSB, 4-Bit, Silicon Digital Attenuator, 100 MHz to 40 GHz
-@@ -106,6 +108,22 @@ static const struct ad8366_info adl5240_chip_info = {
- 	.num_channels = 1,
- };
- 
-+static const struct ad8366_info adrf5702_chip_info = {
-+	.name = "adrf5702",
-+	.gain_min = -31875,
-+	.gain_max = 0,
-+	.gain_step = -125,
-+	.num_channels = 1,
-+};
-+
-+static const struct ad8366_info adrf5703_chip_info = {
-+	.name = "adrf5703",
-+	.gain_min = -31750,
-+	.gain_max = 0,
-+	.gain_step = -250,
-+	.num_channels = 1,
-+};
-+
- static const struct ad8366_info adrf5720_chip_info = {
- 	.name = "adrf5720",
- 	.gain_min = -31500,
-@@ -337,6 +355,8 @@ static const struct spi_device_id ad8366_id[] = {
- 	{ "ad8366", (kernel_ulong_t)&ad8366_chip_info },
- 	{ "ada4961", (kernel_ulong_t)&ada4961_chip_info },
- 	{ "adl5240", (kernel_ulong_t)&adl5240_chip_info },
-+	{ "adrf5702", (kernel_ulong_t)&adrf5702_chip_info },
-+	{ "adrf5703", (kernel_ulong_t)&adrf5703_chip_info },
- 	{ "adrf5720", (kernel_ulong_t)&adrf5720_chip_info },
- 	{ "adrf5730", (kernel_ulong_t)&adrf5730_chip_info },
- 	{ "adrf5731", (kernel_ulong_t)&adrf5731_chip_info },
-@@ -353,6 +373,8 @@ static const struct of_device_id ad8366_of_match[] = {
- 	{ .compatible = "adi,ad8366", .data = &ad8366_chip_info },
- 	{ .compatible = "adi,ada4961", .data = &ada4961_chip_info },
- 	{ .compatible = "adi,adl5240", .data = &adl5240_chip_info },
-+	{ .compatible = "adi,adrf5702", .data = &adrf5702_chip_info },
-+	{ .compatible = "adi,adrf5703", .data = &adrf5703_chip_info },
- 	{ .compatible = "adi,adrf5720", .data = &adrf5720_chip_info },
- 	{ .compatible = "adi,adrf5730", .data = &adrf5730_chip_info },
- 	{ .compatible = "adi,adrf5731", .data = &adrf5731_chip_info },
+Changes in v2:
+- modified rockchip,rk3568-vicap binding instead of creating a new one
+  (Conor)
+- aligned clock names and reset names with rockchip,rk3568-vicap
+- Link to v1: https://lore.kernel.org/r/20250430-rk3588-vicap-v1-0-b3bddf749914@collabora.com
 
+---
+Michael Riesch (9):
+      Documentation: admin-guide: media: add rk3588 vicap
+      media: dt-bindings: add rockchip rk3588 vicap
+      media: rockchip: rkcif: add support for rk3588 vicap mipi capture
+      [DONOTMERGE] media: dt-bindings: rockchip,rk3568-mipi-csi2: add rk3588 compatible
+      [DONOTMERGE] arm64: dts: rockchip: add mipi csi-2 receiver nodes to rk3588
+      arm64: dts: rockchip: add vicap node to rk3588
+      arm64: dts: rockchip: add radxa camera 4k on rock 5b+ cam0
+      arm64: dts: rockchip: add radxa camera 4k on rock 5b+ cam1
+      arm64: defconfig: enable designware mipi csi-2 receiver
+
+ .../admin-guide/media/rkcif-rk3588-vicap.dot       |  29 ++++
+ Documentation/admin-guide/media/rkcif.rst          |  32 ++++
+ .../bindings/media/rockchip,rk3568-mipi-csi2.yaml  |   8 +-
+ .../bindings/media/rockchip,rk3568-vicap.yaml      | 187 ++++++++++++++++++---
+ arch/arm64/boot/dts/rockchip/Makefile              |   7 +
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      | 143 ++++++++++++++++
+ .../rk3588-rock-5b-plus-radxa-cam4k-cam0.dtso      |  99 +++++++++++
+ .../rk3588-rock-5b-plus-radxa-cam4k-cam1.dtso      |  99 +++++++++++
+ arch/arm64/configs/defconfig                       |   1 +
+ .../platform/rockchip/rkcif/rkcif-capture-mipi.c   | 141 ++++++++++++++++
+ .../platform/rockchip/rkcif/rkcif-capture-mipi.h   |   1 +
+ .../media/platform/rockchip/rkcif/rkcif-common.h   |   2 +-
+ drivers/media/platform/rockchip/rkcif/rkcif-dev.c  |  18 ++
+ 13 files changed, 740 insertions(+), 27 deletions(-)
+---
+base-commit: 882ac913e67d2462a18bdc2958b496c0f51d1647
+change-id: 20250430-rk3588-vicap-9d164c8528a7
+
+Best regards,
 -- 
-2.43.0
+Michael Riesch <michael.riesch@collabora.com>
 
