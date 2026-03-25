@@ -1,59 +1,82 @@
-From: Vasiliy Doylov <nekocwd@mainlining.org>
-Date: Wed, 25 Mar 2026 01:15:01 +0300
-Subject: [PATCH v4 3/3] MAINTAINERS: Add entry for Onsemi LC898217XC lens
- voice coil driver
+From: Satish Kharat <satishkh@cisco.com>
+Subject: [PATCH net-next 0/6] enic: SR-IOV V2 preparatory infrastructure
+Date: Wed, 25 Mar 2026 00:21:38 -0700
+Message-Id: <20260325-enic-sriov-v2-prep-v1-0-48f04ce110cc@cisco.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260325-media-i2c-lc898217xc-initial-driver-v4-3-6ad6fd74915e@mainlining.org>
-References: <20260325-media-i2c-lc898217xc-initial-driver-v4-0-6ad6fd74915e@mainlining.org>
-In-Reply-To: <20260325-media-i2c-lc898217xc-initial-driver-v4-0-6ad6fd74915e@mainlining.org>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, david@ixit.cz
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- Vitalii Skorkin <nikroks@mainlining.org>, 
- Antonio Rische <nt8r@protonmail.com>, 
- Vasiliy Doylov <nekocwd@mainlining.org>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=790; i=nekocwd@mainlining.org;
- h=from:subject:message-id; bh=Eo9bvXngPWC2RV/8gKjXFNTG4Tj+h2xSlMxai/WWYLE=;
- b=owGbwMvMwCVmXFbadLHr1XTG02pJDJmHeZ4ITU5akp/LM9/n+M0dnHXvi+dMkWzYttPa4dB1H
- t1/Ih9zOkpZGMS4GGTFFFm63x++92AeL2up+idemDmsTCBDGLg4BWAi9U0M/+vSi72OeM2I7HDO
- deEtF/ndW3p/lf290JSmAq3WleKfDjAyHFwh8vJ6/1HpZ01M+5xP/s/9p1JyLdSSw8SsXiJn0XE
- uZgA=
-X-Developer-Key: i=nekocwd@mainlining.org; a=openpgp;
- fpr=8BEFC3DEE09E0D057527F20D33767582D18AEA97
-X-Endpoint-Received: by B4 Relay for nekocwd@mainlining.org/default with auth_id=692
+X-B4-Tracking: v=1; b=H4sIAAKNw2kC/x2MsQqAMAwFf0UyG7BRHPwVcdD61CxRWimC9N8tj
+ ndw91JEUEQaqpcCkkY9rYCrK/LHbDtY18IkjfRNKx3D1HMMeiZOwlfAxbLBYV58u3pHJSxy0+e
+ fjmS42fDcNOX8Ae/5tDtuAAAA
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, Satish Kharat <satishkh@cisco.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774423298; l=2762;
+ i=satishkh@cisco.com; h=from:subject:message-id;
+ bh=qSy9N+gRPs52hh9frh1cA4g+VCjg2QwryN4lX/B1p7w=;
+ b=xI6mgt/ThBwIf5b/RTtJnNp69cE+vRfqz0zwMpLG6jcbQtnA6dl2PPpj8gMamiOLMiYmACtmG
+ 0S+Y2Al5FIgABktOVSOuXZw+NYMfr+mSX2eziO/vyKiK6DvDmHLqawj
+X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
+ pk=4BxbLoCGvHeIMH/PbpiNVx8/2IcTjFvqcr0AD8K6WLY=
+X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/default with auth_id=639
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add entry for Onsemi LC898217XC lens voice coil driver
+This is the first of four series adding SR-IOV V2 support to the enic
+driver for Cisco VIC 14xx/15xx adapters.
 
-Signed-off-by: Vasiliy Doylov <nekocwd@mainlining.org>
+The existing V1 SR-IOV implementation has VFs that interact directly
+with the VIC firmware, leaving the PF driver with no visibility or
+control over VF behavior. V2 introduces a PF-mediated model where VFs
+communicate with the PF through a mailbox over a dedicated admin
+channel. This brings enic in line with the standard Linux SR-IOV
+model, enabling full PF management of VFs via ip link (MAC, VLAN,
+link state, spoofchk, trust, and per-VF statistics).
+
+This preparatory series adds detection and resource helper code with
+no functional change to existing driver behavior:
+
+  - Extend BAR resource discovery for admin channel resources
+  - Register the V2 VF PCI device ID
+  - Detect VF type (V1/V2/usNIC) from SR-IOV PCI capability
+  - Make enic_dev_enable/disable ref-counted for shared use by data
+    path and admin channel
+  - Add type-aware resource allocation for admin WQ/RQ/CQ/INTR
+  - Detect presence of admin channel resources at probe time
+
+Tested on VIC 14xx and 15xx series adapters with V2 VFs under KVM
+(sriov_numvfs, VF passthrough, ip link VF configuration, VF traffic).
+
+Based in part on initial work by Christian Benvenuti.
+
 ---
- MAINTAINERS | 7 +++++++
- 1 file changed, 7 insertions(+)
+Satish Kharat (6):
+      enic: extend resource discovery for SR-IOV admin channel
+      enic: add V2 SR-IOV VF device ID
+      enic: detect SR-IOV VF type from PCI capability
+      enic: make enic_dev_enable/disable ref-counted
+      enic: add type-aware alloc for WQ, RQ, CQ and INTR resources
+      enic: detect admin channel resources for SR-IOV
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index e61b4abb95fc..08ace2642f36 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -19817,6 +19817,13 @@ S:	Supported
- W:	http://www.onsemi.com
- F:	drivers/net/phy/ncn*
- 
-+ONSEMI LC898217XC LENS VOICE COIL DRIVER
-+M:	Vasiliy Doylov <nekocwd@mainlining.org>
-+L:	linux-media@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/media/i2c/onnn,lc898217xc.yaml
-+F:	drivers/media/i2c/lc898217xc.c
-+
- OP-TEE DRIVER
- M:	Jens Wiklander <jens.wiklander@linaro.org>
- L:	op-tee@lists.trustedfirmware.org (moderated for non-subscribers)
+ drivers/net/ethernet/cisco/enic/enic.h          | 18 +++++++++++
+ drivers/net/ethernet/cisco/enic/enic_dev.c      | 17 +++++++---
+ drivers/net/ethernet/cisco/enic/enic_main.c     | 42 ++++++++++++++++++++++++-
+ drivers/net/ethernet/cisco/enic/enic_res.c      | 10 ++++--
+ drivers/net/ethernet/cisco/enic/vnic_cq.c       | 14 +++++++--
+ drivers/net/ethernet/cisco/enic/vnic_cq.h       |  3 ++
+ drivers/net/ethernet/cisco/enic/vnic_dev.c      | 10 ++++++
+ drivers/net/ethernet/cisco/enic/vnic_intr.c     | 12 +++++--
+ drivers/net/ethernet/cisco/enic/vnic_intr.h     |  2 ++
+ drivers/net/ethernet/cisco/enic/vnic_resource.h |  4 +++
+ drivers/net/ethernet/cisco/enic/vnic_rq.c       | 14 +++++++--
+ drivers/net/ethernet/cisco/enic/vnic_rq.h       |  3 ++
+ drivers/net/ethernet/cisco/enic/vnic_wq.c       | 14 +++++++--
+ drivers/net/ethernet/cisco/enic/vnic_wq.h       |  3 ++
+ 14 files changed, 147 insertions(+), 19 deletions(-)
+---
+base-commit: b1c803d5c8167026791abfaed96fd3e6a1fcd750
+change-id: 20260324-enic-sriov-v2-prep-2fe1eabc3dc1
 
+Best regards,
 -- 
-2.50.1
+Satish Kharat <satishkh@cisco.com>
 
