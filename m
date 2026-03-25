@@ -1,67 +1,185 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Wed, 25 Mar 2026 18:57:17 +0100
-Subject: [PATCH v4 3/3] arm64: dts: qcom: sdm845-xiaomi-beryllium: Enable
- ath10k host-cap skip quirk
+From: Amit Sunil Dhamne <amitsd@google.com>
+Subject: [PATCH v9 0/6] Introduce MAX77759 charger driver
+Date: Wed, 25 Mar 2026 22:22:21 +0000
+Message-Id: <20260325-max77759-charger-v9-0-4486dd297adc@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260325-skip-host-cam-qmi-req-v4-3-bc08538487aa@ixit.cz>
-References: <20260325-skip-host-cam-qmi-req-v4-0-bc08538487aa@ixit.cz>
-In-Reply-To: <20260325-skip-host-cam-qmi-req-v4-0-bc08538487aa@ixit.cz>
-To: Johannes Berg <johannes@sipsolutions.net>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jeff Johnson <jjohnson@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Paul Sajna <sajattack@postmarketos.org>
-Cc: Amit Pundir <amit.pundir@linaro.org>, linux-wireless@vger.kernel.org, 
- devicetree@vger.kernel.org, ath10k@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAB5gxGkC/3XRzW7DIAwH8FeJODcTGGxgp73HtANfSSOtTZVMU
+ acq7z7SbWom2NEg/7D/3NicpiHN7Lm5sSktwzyM51zYQ8PC0Z371A4x1ww4oBAc25O7aq3Rtvl
+ 66tPUGgRPQJFIOJbbLlPqhuudfH3L9XGYP8bp8/7CIrbTHwxkiS2i5S15SMqbTneoXvpx7N/TU
+ xhPbNMWeAggTEWALIAHtNZwR4YKQe4E0BVBZgFVIlIdBmehENSvQDwPURHUtoVVIFUwMUVRCPg
+ QgNdywCx45NKi1OSwKwTaCUJVBNpyMIFbH51WvkxS74VakjoLyUTLdUhkAxaC2QlQm8FsgjfkI
+ 2qebNgLh+a7U4r/OgEo5NVN0PHvH6zr+gVLsPIVuQIAAA==
+X-Change-ID: 20251105-max77759-charger-852b626d661a
+To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
+ Lee Jones <lee@kernel.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Badhri Jagan Sridharan <badhri@google.com>, 
+ Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Peter Griffin <peter.griffin@linaro.org>, 
+ Tudor Ambarus <tudor.ambarus@linaro.org>, 
+ Alim Akhtar <alim.akhtar@samsung.com>, Mark Brown <broonie@kernel.org>, 
+ Matti Vaittinen <mazziesaccount@gmail.com>, 
+ Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-usb@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
+ RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
+ Amit Sunil Dhamne <amitsd@google.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=865; i=david@ixit.cz;
- h=from:subject:message-id; bh=7WCT4AIXs3RES5sBwcwPY1VLLZLiJwKsEh3sFLY3XeA=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpxCH731ERAs00JnGTMwhjDc7fvFNGG6zHnruKt
- CzctlaDyk6JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCacQh+wAKCRBgAj/E00kg
- ch0UD/9bRRDJsrM0G4teP9+2n5J/36wjbkVECTL3P9N4I0zEVmBUPaHYndwRhiz2OdWQ850FzrC
- 9l3RUNEjqdi14CbA3wNDnNBlqGdS4m7pnEjPTCgz9rUa4pqqV0blSTnsxMPUkldndytGhBMwCKv
- 0FZ3HnHYNjX/9p/OrHglUWmuuSeWS7pCWZQEuTC+yNesYSgdUoFJpgQKZ/AIephysyQGo06c0Cx
- 3/5FajViggtoX8K9bYrnoRaOiBNoGs2i6iKNn6ybc++JRtcwDkUjKzhE36jVN8YpsvijHreLHyu
- 73SmHDNuQxi7fq7P6paQx6SjMpNMrhSEvQocilCvJmiUYAH1t8Q5OFXGiuDDWcvcsz80tr+o37x
- R9i5YxVJ6xDXBT8XEJWfEIyqsu97obj4TILDO3NDEKOkduvAnVPsirgFlsnxi4DSL/i08yJOf3y
- eQGFnhEqzkok4HpJyylXIqGQ0sAQHXcPijZhs0lpdUz9hnhnzdCLxl8iUBx5Wm2HrKONCex7uSz
- VTG56POA1mOSu48mQV2blAZIyNk8lM52x8t8OAE1j7Ny0ov41eHqmcBT2KYnB6c0ZV4V+8/wraS
- zazwSChKzwhWB4ku7qk80ODz/xgoYzcE/trWbyUqIeyNCwAzGWpXLJeeyZisCa4PEQLcyF8covI
- zF7BssX7Fpp7DYA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774477354; l=6774;
+ i=amitsd@google.com; s=20241031; h=from:subject:message-id;
+ bh=wr80KYo5vG+oY5OuzYhkOh8zc961m+DacPboYs6g2zA=;
+ b=sm8VTAh5gyjneG+gDpJx/HvtUrlSkC+cdEd4VecAQ/o3kae/HjfCYeBoKOAYCb5U/uEoPlIwx
+ fkGEj5iNlTAAwxvWDGVI+a4fTrXYDXYaG48qWRAyOe22CrTw/5jPFF9
+X-Developer-Key: i=amitsd@google.com; a=ed25519;
+ pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
+X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Amit Pundir <amit.pundir@linaro.org>
+MAX77759 PMIC is used in Pixel 6 and 6 Pro (Oriole/Raven) boards.
+One of the functions of the MAX77759 PMIC is a battery charger. This
+patchset introduces a driver for this function. One of the unique
+features of this charger driver is that it works with a USB input where
+the Type-C controller is TCPCI based.
 
-The Wi-Fi firmware used on Xiaomi Poco F1 (beryllium) phone doesn't
-support the host-capability QMI request, so add a quirk to skip it on
-this device.
+Changes to the board files will follow soon once this patchset is reviewed.
 
-Signed-off-by: Amit Pundir <amit.pundir@linaro.org>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+For reference to the MAX77759 MFD based patchset (present in upstream):
+https://lore.kernel.org/all/20250509-max77759-mfd-v10-0-962ac15ee3ef@linaro.org/
+
+Dependency list for patches (directionality indicates depends on):
+[6] -> [5] -> [4] & [3]
+
+The changes need to be applied in order. In this case this probably
+would be the USB subsystem as that's the leaf in the dependency list.
+
+Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi | 1 +
- 1 file changed, 1 insertion(+)
+Changes in v9:
+- Fixed nits in mfd/max77759.* (Lee Jones)
+  - s/max77759_chrg_irq_chip/max77759_chgr_irq_chip
+  - s/bettery/battery
+  - Fix alignment in descriptions in kerneldoc comments
+- Link to v8 resend: https://lore.kernel.org/r/20260314-max77759-charger-v8-0-226ca5f8c7d2@google.com
+- Link to v8: https://lore.kernel.org/all/20260224-max77759-charger-v8-0-eb86bd570e9c@google.com/
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-index 1298485c42142..950bbcc3bf91f 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-@@ -661,5 +661,6 @@ &wifi {
- 	vdd-3.3-ch1-supply = <&vreg_l23a_3p3>;
- 
- 	qcom,calibration-variant = "xiaomi_beryllium";
-+	qcom,snoc-host-cap-skip-quirk;
- };
- 
+Changes in v8:
+- Add an newline char at the end of dev_* prints. (André Draszik)
+- Return PTR_ERR() instead of -EPROBE_DEFER when devm_power_supply_register()
+  fails in max77759 charger probe. (André Draszik)
+- Link to v7: https://lore.kernel.org/r/20260218-max77759-charger-v7-0-e8d907ce69c5@google.com
 
+Changes in v7:
+- Add register relock for protected registers in fail path. (André Draszik)
+- Switch to usage of scoped_guard instead of guard. (LKP test bot)
+- Link to v6: https://lore.kernel.org/r/20260214-max77759-charger-v6-0-28c09bda74b4@google.com
+
+Changes in v6:
+-  Linear Range usage (André Draszik):
+  - Dedicate individual arrays for inlim, chgcc & chg_cv_prm to simplify
+    code.
+  - Use numerical values instead of macros for linear_range array init.
+  - Remove macros defining current and voltage limits due to above.
+  - Didn't use Reviewed-by tag for Patch 3 due to the above.
+  - Add new linear_ranges api to leverage it for obtaining selector
+    values.
+  - Improve voltage and current getters and setters functions by leveraging
+    existing and new linear_ranges API.
+- IRQ related changes (André Draszik)
+  - Dedicated names for individual irqs.
+  - Refactor irq handlers.
+  - Ratelimit prints
+- Retry mechanism (André Draszik):
+  - Initialize error retry counter to 0 when psy work is scheduled on a
+    new notifier event.
+  - Protect the counter using a lock.
+  - Add appropriate prints.
+- Link to v5: https://lore.kernel.org/r/20260203-max77759-charger-v5-0-b50395376a5f@google.com
+
+Changes in v5:
+- Use linear_range library instead of reinventing it. (André Draszik)
+  - This requires a selector_max value so modified mfd/max77759.h to
+    include it for CHGCC and CHG_ILIM.
+  - Removed "reviewed-by" for Patch 3 (mfd) due to above
+- Use asnyc probe type. (André Draszik)
+- Retry mechanism for psy_work. (André Draszik)
+- Minor nits (André Draszik):
+  - Use named initializers for instantiating structs.
+  - Use static qualifier for `psy_name` variable.
+  - Refactor if-else ladder to remove else handling if return in prior
+    "if" loop.
+  - Remove redundant `unlikely`.
+- Link to v4: https://lore.kernel.org/r/20260121-max77759-charger-v4-0-694234c8ded1@google.com
+
+Changes in v4:
+- Removed a stray tabspace in mfd/max77759.h. (André Draszik)
+- Fixed the following issues in Patch 4/5 (André Draszik):
+  - Re-order Kconfig entry
+  - Refactored to not use global variable
+  - Use of clamp() to clamp values instead of duplicating logic
+  - Return IRQ_NONE for unhandled irqs or error conditions
+  - Remove debug messages in irq handler
+  - Refactor code to use dev_err_probe in *_init_irqhandler()
+  - Remove unneeded irq_flags
+  - Check return values of regmap ops
+  - Other nits like newlines, not using greedy init, using print stmnts
+- Link to v3: https://lore.kernel.org/r/20251227-max77759-charger-v3-0-54e664f5ca92@google.com
+
+Changes in v3:
+- Had incorrectly folded the charger sub-device with the pmic parent.
+  Corrected it. (Krzysztof Kozlowski)
+- Link to v2: https://lore.kernel.org/r/20251218-max77759-charger-v2-0-2b259980a686@google.com
+
+Changes in v2:
+- Fold charger binding in maxim,max77759-charger.yaml to its parent
+  node. (Krzysztof Kozlowski)
+- Renamed regulator supplier & consumer. (Krzysztof Kozlowski & Heikki
+  Krogerus)
+- Removed explicit setting of irq trigger types in max77759 driver.
+  (André Draszik & Krzysztof Kozlowski)
+- Complete bit definitions for IRQ registers. (André Draszik)
+- Consolidate all bit definitions for charger IP in mfd/max77759.h.
+  (André Draszik)
+- Modify the handling of charger IRQs such that regmap IRQ chip handles
+  masking, de-mux and acking of interrupts. (André Draszik)
+- Remove unused macro definitions relating to Charger modes in tcpci
+  maxim driver (André Draszik)
+- Add dependency on Regulator class in Kconfig definition for max77759
+  chg. (Kernel Test Robot)
+- Link to v1: https://lore.kernel.org/r/20251123-max77759-charger-v1-0-6b2e4b8f7f54@google.com
+
+---
+Amit Sunil Dhamne (6):
+      dt-bindings: mfd: maxim,max77759: reference power-supply schema and add regulator property
+      dt-bindings: usb: maxim,max33359: Add supply property for vbus
+      mfd: max77759: add register bitmasks and modify irq configs for charger
+      lib/linear_ranges: Add linear_range_get_selector_high_array
+      power: supply: max77759: add charger driver
+      usb: typec: tcpm/tcpci_maxim: deprecate WAR for setting charger mode
+
+ .../devicetree/bindings/mfd/maxim,max77759.yaml    |  16 +-
+ .../devicetree/bindings/usb/maxim,max33359.yaml    |   4 +
+ MAINTAINERS                                        |   6 +
+ drivers/mfd/max77759.c                             |  95 ++-
+ drivers/power/supply/Kconfig                       |  11 +
+ drivers/power/supply/Makefile                      |   1 +
+ drivers/power/supply/max77759_charger.c            | 774 +++++++++++++++++++++
+ drivers/usb/typec/tcpm/tcpci_maxim.h               |   1 +
+ drivers/usb/typec/tcpm/tcpci_maxim_core.c          |  54 +-
+ include/linux/linear_range.h                       |   3 +
+ include/linux/mfd/max77759.h                       | 166 ++++-
+ lib/linear_ranges.c                                |  36 +
+ 12 files changed, 1106 insertions(+), 61 deletions(-)
+---
+base-commit: ecc64d2dc9ff9738d2a896beb68e02c2feaf9a02
+change-id: 20251105-max77759-charger-852b626d661a
+
+Best regards,
 -- 
-2.53.0
+Amit Sunil Dhamne <amitsd@google.com>
 
