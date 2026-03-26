@@ -1,124 +1,185 @@
-From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Thu, 26 Mar 2026 00:57:33 -0700
-Subject: [PATCH v3 3/3] ARM: dts: qcom: msm8960: expressatt: Add camera
- flash
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH v7 0/8] Add support for handling PCIe M.2 Key E connectors
+ in devicetree
+Date: Thu, 26 Mar 2026 13:36:28 +0530
+Message-Id: <20260326-pci-m2-e-v7-0-43324a7866e6@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260326-expressatt_camera_flash-v3-3-e75e5d58990f@gmail.com>
-References: <20260326-expressatt_camera_flash-v3-0-e75e5d58990f@gmail.com>
-In-Reply-To: <20260326-expressatt_camera_flash-v3-0-e75e5d58990f@gmail.com>
-To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Linus Walleij <linusw@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>, 
- Mark Brown <broonie@kernel.org>
-Cc: linux-leds@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- phone-devel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774511852; l=2769;
- i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=E3bvoy4yC0bIqkNCh6mchqNlZsPxKTVNKTYXqgkkJOA=;
- b=hc5OnPVs0kdOQ0weHsoKi54CZFSnCzCNylJgdSXsqUKnLh9pHh7R4LYveHiDkwHv2OjFwB/c+
- I1TZi3ZgSYWC/lV9hm1coRg2PMRtnrt7v8RMFN9ciV5ejzxlD4IgJeO
-X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
- pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
-X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
+X-B4-Tracking: v=1; b=H4sIAATpxGkC/3XRTW7DIBAF4KtErIsFw5/JqveourCZoUGq48Q4V
+ qsody9OVIVFvEF6aL4nxFxZpilRZvvdlU20pJzGYwnubcfCoTt+EU9YMgMBRkoJ/BQSH4AT99p
+ 60wWP1jhWxk8TxfRzr/r4LPmQ8jxOv/fmRa63L0oWyQX3TkuFto8t6Pcx5+Z86b7DOAxNOdjat
+ UDlwVQeilfQgkUSLgSz4dW/t0JKUXlVvI4dkUOBpqMNr2tfv18XTzG2GiFYBLvhzdMD6Mqb4hF
+ 9742QqFTY8PbplXSVt+v/hda3UYoWFb7wt8dyJjpfynrnx4ZY32Xi61Ca97vFNYJPQZbh2x9TJ
+ KpTEwIAAA==
+X-Change-ID: 20251112-pci-m2-e-94695ac9d657
+To: Rob Herring <robh@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, Nathan Chancellor <nathan@kernel.org>, 
+ Nicolas Schier <nicolas.schier@linux.dev>, Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Mark Pearson <mpearson-lenovo@squebb.ca>, 
+ "Derek J. Clark" <derekjohn.clark@gmail.com>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Marcel Holtmann <marcel@holtmann.org>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ Bartosz Golaszewski <brgl@bgdev.pl>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ Bartosz Golaszewski <brgl@kernel.org>
+Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-kbuild@vger.kernel.org, platform-driver-x86@vger.kernel.org, 
+ linux-pci@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, linux-bluetooth@vger.kernel.org, 
+ linux-pm@vger.kernel.org, Stephan Gerhold <stephan.gerhold@linaro.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ linux-acpi@vger.kernel.org, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Hans de Goede <johannes.goede@oss.qualcomm.com>, 
+ Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
+ Bartosz Golaszewski <brgl@kernel.org>
+X-Mailer: b4 0.15.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6213;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=d6b5tGqYUx6+z9gficky9a1VVFlPor5JwCfeMzYcQjg=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpxOkIQ27nIdG+HSpuQkgQ+iXt5cDLBzdoizTmw
+ u4CnZrALziJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCacTpCAAKCRBVnxHm/pHO
+ 9Si6B/4mpsKk3KIGc/++1wcwaummvgRQYCgAucKRk/JpZfipf3gQbNsYncxyyvH62TN7ssPFBmW
+ RPwkHlYLgNjYo0CW0d3oW3zw1yCLiTnSpEIbuOoJTcGkvbbejj93wLXEYwIIYRFa4zIWrk4PHU/
+ YqPMF4B6RRJHufdao7LXw7JQt6cewi/BaEu4Ilm5ceWuvHh8T728Le2EwhyiSOoRbKsxO1P5Zkq
+ 7/FvP6onMFELML95XPnc62fQ2M1GCnx3YFFQkP+hExhqJdeOm4FIy7p0go26raenyfCSqv6cKsU
+ 3HnNdYytwTmGEs1FQw2j3loeFf756dUvJN8EkEnTsf97/Pbo
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add camera flash support for the Samsung Galaxy Express (expressatt).
+Hi,
 
-The flash IC uses a one-wire pulse-count protocol on GPIO 3, powered
-by a GPIO-controlled fixed regulator on PMIC MPP 4. The regulator is
-modeled as a regulator-fixed node and supplied to the flash IC via
-vin-supply.
+This series is the continuation of the series [1] that added the initial support
+for the PCIe M.2 connectors. This series extends it by adding support for Key E
+connectors. These connectors are used to connect the Wireless Connectivity
+devices such as WiFi, BT, NFC and GNSS devices to the host machine over
+interfaces such as PCIe/SDIO, USB/UART and NFC. This series adds support for
+connectors that expose PCIe interface for WiFi and UART interface for BT. Other
+interfaces are left for future improvements.
 
-Downstream references:
-Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/leds/Makefile#L51
-Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/arch/arm/mach-msm/board-apexq-camera.c#L591
+Serdev device support for BT
+============================
 
-Assisted-by: Claude:claude-opus-4.6
-Reviewed-by: David Heidelberg <david@ixit.cz>
-Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
+Adding support for the PCIe interface was mostly straightforward and a lot
+similar to the previous Key M connector. But adding UART interface has proved to
+be tricky. This is mostly because of the fact UART is a non-discoverable bus,
+unlike PCIe which is discoverable. So this series relied on the PCI notifier to
+create the serdev device for UART/BT. This means the PCIe interface will be
+brought up first and after the PCIe device enumeration, the serdev device will
+be created by the pwrseq driver. This logic is necessary since the connector
+driver and DT node don't describe the device, but just the connector. So to make
+the connector interface Plug and Play, the connector driver uses the PCIe device
+ID to identify the card and creates the serdev device. This logic could be
+extended in the future to support more M.2 cards. Even if the M.2 card uses SDIO
+interface for connecting WLAN, a SDIO notifier could be added to create the
+serdev device.
+
+Testing
+=======
+
+This series, together with the devicetree changes [2] was tested on the
+Qualcomm X1e based Lenovo Thinkpad T14s Laptop which has the WCN7850 WLAN/BT
+1620 LGA card connected over PCIe and UART.
+
+Merge Strategy
+==============
+
+Due to the API dependency, both the serdev and pwrseq patches need to go through
+a single tree, maybe through pwrseq tree. So the serdev patches need Ack from
+Greg. But Bluetooth patch can be merged separately.
+
+NOTE
+====
+
+This series is based on bluetooth-next/master to resolve the conflict with the
+Bluetooth patch. Other pathces should apply cleanly on top of v7.0-rc1.
+
+[1] https://lore.kernel.org/linux-pci/20260107-pci-m2-v5-0-8173d8a72641@oss.qualcomm.com
+[2] https://github.com/Mani-Sadhasivam/linux/commit/b50f8386900990eed3dce8d91c3b643fb0e8739d
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 43 ++++++++++++++++++++++
- 1 file changed, 43 insertions(+)
+Changes in v7:
+- Dropped the LGA binding change due to vendor prefix concern. This will be
+  submitted later once I get clarity.
+- Fixed several issues in the cleanup path of the pwrseq-pci-m2 driver which
+  includes adding the .remove() callback.
+- Rebased on top of bluetooth-next/master to resolve conflict with bluetooth
+  patch.
+- Link to v6: https://lore.kernel.org/r/20260317-pci-m2-e-v6-0-9c898f108d3d@oss.qualcomm.com
 
-diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-index c4b98af6955d..35514fd53e3d 100644
---- a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-+++ b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-@@ -1,5 +1,6 @@
- // SPDX-License-Identifier: GPL-2.0
- #include <dt-bindings/input/input.h>
-+#include <dt-bindings/leds/common.h>
- #include <dt-bindings/reset/qcom,gcc-msm8960.h>
- 
- #include "qcom-msm8960.dtsi"
-@@ -61,6 +62,32 @@ touchkey_enable: touchkey-enable {
- 		regulator-boot-on;
- 	};
- 
-+	vreg_flash: regulator-flash {
-+		compatible = "regulator-fixed";
-+		regulator-name = "VREG_FLASH_3P3";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		gpio = <&pm8921_mpps 4 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+		pinctrl-0 = <&flash_led_unlock>;
-+		pinctrl-names = "default";
-+	};
-+
-+	led-controller {
-+		compatible = "richtek,rt8515";
-+		enf-gpios = <&tlmm 3 GPIO_ACTIVE_HIGH>;
-+		vin-supply = <&vreg_flash>;
-+		richtek,rfs-ohms = <16000>;
-+		pinctrl-0 = <&cam_flash_en>;
-+		pinctrl-names = "default";
-+
-+		led {
-+			function = LED_FUNCTION_FLASH;
-+			color = <LED_COLOR_ID_WHITE>;
-+			flash-max-timeout-us = <250000>;
-+		};
-+	};
-+
- 	i2c-gpio-touchkey {
- 		compatible = "i2c-gpio";
- 		#address-cells = <1>;
-@@ -172,6 +199,13 @@ touchscreen@4a {
- };
- 
- &tlmm {
-+	cam_flash_en: cam-flash-en-state {
-+		pins = "gpio3";
-+		function = "gpio";
-+		drive-strength = <16>;
-+		bias-pull-down;
-+	};
-+
- 	spi1_default: spi1-default-state {
- 		mosi-pins {
- 			pins = "gpio6";
-@@ -572,3 +606,12 @@ magnetometer@2e {
- 		/* TODO: Figure out Mount Matrix */
- 	};
- };
-+
-+&pm8921_mpps {
-+	flash_led_unlock: flash-led-unlock-state {
-+		pins = "mpp4";
-+		function = "digital";
-+		output-low;
-+		power-source = <PM8921_GPIO_S4>;
-+	};
-+};
+Changes in v6:
+- Added a check to bail out if the serdev device was already added during notifier.
+- Collected tags
+- Link to v5: https://lore.kernel.org/r/20260224-pci-m2-e-v5-0-dd9b9501d33c@oss.qualcomm.com
 
--- 
-2.53.0
+Changes in v5:
+- Incorporated comments in the binding patch by using single endpoint per port,
+  reordering port nodes, adding missing properties and using a complete example.
+- Incorporated comments in the pwrseq patch (nothing major)
+- Fixed the build issue in patch 2
+- Collected tags
+- Rebased on top of 7.0-rc1
+- Link to v4: https://lore.kernel.org/r/20260112-pci-m2-e-v4-0-eff84d2c6d26@oss.qualcomm.com
+
+Changes in v4:
+- Switched to dynamic OF node for serdev instead of swnode and dropped all
+  swnode related patches
+- Link to v3: https://lore.kernel.org/r/20260110-pci-m2-e-v3-0-4faee7d0d5ae@oss.qualcomm.com
+
+Changes in v3:
+- Switched to swnode for the serdev device and dropped the custom
+  serdev_device_id related patches
+- Added new swnode APIs to match the swnode with existing of_device_id
+- Incorporated comments in the bindings patch
+- Dropped the UIM interface from binding since it is not clear how it should get
+  wired
+- Incorporated comments in the pwrseq driver patch
+- Splitted the pwrseq patch into two
+- Added the 1620 LGA compatible with Key E fallback based on Stephan's finding
+- Link to v2: https://lore.kernel.org/r/20251125-pci-m2-e-v2-0-32826de07cc5@oss.qualcomm.com
+
+Changes in v2:
+- Used '-' for GPIO names in the binding and removed led*-gpios properties
+- Described the endpoint nodes for port@0 and port@1 nodes
+- Added the OF graph port to the serial binding
+- Fixed the hci_qca driver to return err if devm_pwrseq_get() fails
+- Incorporated various review comments in pwrseq driver
+- Collected Ack
+- Link to v1: https://lore.kernel.org/r/20251112-pci-m2-e-v1-0-97413d6bf824@oss.qualcomm.com
+
+---
+Manivannan Sadhasivam (8):
+      serdev: Convert to_serdev_*() helpers to macros and use container_of_const()
+      serdev: Add an API to find the serdev controller associated with the devicetree node
+      serdev: Do not return -ENODEV from of_serdev_register_devices() if external connector is used
+      dt-bindings: serial: Document the graph port
+      dt-bindings: connector: Add PCIe M.2 Mechanical Key E connector
+      Bluetooth: hci_qca: Add M.2 Bluetooth device support using pwrseq
+      power: sequencing: pcie-m2: Add support for PCIe M.2 Key E connectors
+      power: sequencing: pcie-m2: Create serdev device for WCN7850 bluetooth
+
+ .../bindings/connector/pcie-m2-e-connector.yaml    | 184 +++++++++++
+ .../devicetree/bindings/serial/serial.yaml         |   3 +
+ MAINTAINERS                                        |   1 +
+ drivers/bluetooth/hci_qca.c                        |   9 +
+ drivers/power/sequencing/Kconfig                   |   3 +-
+ drivers/power/sequencing/pwrseq-pcie-m2.c          | 346 ++++++++++++++++++++-
+ drivers/tty/serdev/core.c                          |  28 +-
+ include/linux/serdev.h                             |  24 +-
+ 8 files changed, 570 insertions(+), 28 deletions(-)
+---
+base-commit: 559f264e403e4d58d56a17595c60a1de011c5e20
+change-id: 20251112-pci-m2-e-94695ac9d657
+
+Best regards,
+--  
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
