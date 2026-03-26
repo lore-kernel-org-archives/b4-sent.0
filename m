@@ -1,163 +1,187 @@
-From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Thu, 26 Mar 2026 13:37:36 +0000
-Subject: [PATCH 2/2] dmaengine: dma-axi-dmac: fix use-after-free on unbind
+From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Date: Thu, 26 Mar 2026 15:03:48 +0100
+Subject: [PATCH v2] HID: wiimote: Fix table layout and whitespace errors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260326-dma-dmac-handle-vunmap-v1-2-be3e46ffaf69@analog.com>
-References: <20260326-dma-dmac-handle-vunmap-v1-0-be3e46ffaf69@analog.com>
-In-Reply-To: <20260326-dma-dmac-handle-vunmap-v1-0-be3e46ffaf69@analog.com>
-To: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: Lars-Peter Clausen <lars@metafoo.de>, Vinod Koul <vkoul@kernel.org>, 
- Frank Li <Frank.Li@kernel.org>
-X-Mailer: b4 0.15.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774532297; l=4725;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=3oOip9GOTG6Og9wQ6FNEHbQ61iic0c2QfMR92xEdP2o=;
- b=/dP6+C3Zf6eLzl6gGhE28fBFM+vhQkt8yiwTx/pdRhKjPAKIBDlZ7VIyFRbvVpjz1pKBlMqRr
- QMBcTIqs95RDMJXuuvW5INrDOvaTyr8K6AxCH6rt7KpIpptsHBFS+hH
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Message-Id: <20260326-wiimod-table-v2-1-a11703ccdf41@posteo.net>
+X-B4-Tracking: v=1; b=H4sIAMM8xWkC/3XMQQ6CMBCF4auQWTumUyKKK+5hWLRlkEmUkrapG
+ sLdrexd/i953wqRg3CEa7VC4CxR/FxCHypwk5nvjDKUBq10o2pq8CXy9AMmYx+MbmiNdcpo016
+ gXJbAo7x37taXniQmHz67num3/oEyIaGjsSXL6kT1uVt8TOyPMyfot237ArcxjZepAAAA
+X-Change-ID: 20260316-wiimod-table-cd9abc0a2a98
+To: David Rheinsberg <david@readahead.eu>, Jiri Kosina <jikos@kernel.org>, 
+ Benjamin Tissoires <bentiss@kernel.org>, 
+ Bogdan Petru <thonkdifferent@outlook.com>, 
+ Joshua Jun <joshuajun@vivaldi.net>
+Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774533856; l=7027;
+ i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
+ bh=FgYpCYvhtgKlsH8SHBekcIbkuz7x2xhzDunKOXgRYgY=;
+ b=jlQ/SIc+gN4uLo3iBU+tNL2ZJ6ufbZYYpdrx121lMLWovx77IB3Bhvih4SGi05hEJVrkpjGvF
+ QHAlRKyXcMeDfUdVRumQuX2Ggq3I0N1K89kzRGNe1Qn1/jfYHKO65sz
+X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
+ pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
+X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The DMA device lifetime can extend beyond the platform driver unbind if
-DMA channels are still referenced by client drivers. This leads to
-use-after-free when the devm-managed memory is freed on unbind but the
-DMA device callbacks still access it.
+Some tab characters snuck into the data layout table for turntable
+extensions, which resulted in the table only looking right at a tabstop
+of 4, which is uncommon in the kernel. Change them to the equivalent
+amount of spaces, which should look correct in any editor.
 
-Fix this by:
- - Allocating axi_dmac with kzalloc_obj() instead of devm_kzalloc() so
-its lifetime is not tied to the platform device.
- - Implementing the device_release callback that so that we can free
-the object when reference count gets to 0 (no users).
- - Adding an 'unbound' flag protected by the vchan lock that is set
-during driver removal, preventing MMIO accesses after the device has been
-unbound.
+While at it, also fix the other whitespace errors (trailing spaces at
+end of line) introduced in the same commit.
 
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
+Fixes: 05086f3db530b3 ("HID: wiimote: Add support for the DJ Hero turntable")
+Reviewed-by: David Rheinsberg <david@readahead.eu>
+Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
 ---
- drivers/dma/dma-axi-dmac.c | 47 ++++++++++++++++++++++++++++++++++++++++++----
- 1 file changed, 43 insertions(+), 4 deletions(-)
+Changes in v2:
+- also fix the other whitespace errors in the file
+  (suggested by David Rheinsberg <david@readahead.eu>)
+- add Reviewed-by
+- Link to v1: https://lore.kernel.org/r/20260316-wiimod-table-v1-1-c1f91be05137@posteo.net
+---
+ drivers/hid/hid-wiimote-modules.c | 58 +++++++++++++++++++--------------------
+ 1 file changed, 29 insertions(+), 29 deletions(-)
 
-diff --git a/drivers/dma/dma-axi-dmac.c b/drivers/dma/dma-axi-dmac.c
-index df2668064ea2..99454e096588 100644
---- a/drivers/dma/dma-axi-dmac.c
-+++ b/drivers/dma/dma-axi-dmac.c
-@@ -176,6 +176,8 @@ struct axi_dmac {
- 
- 	struct dma_device dma_dev;
- 	struct axi_dmac_chan chan;
-+
-+	bool unbound;
+diff --git a/drivers/hid/hid-wiimote-modules.c b/drivers/hid/hid-wiimote-modules.c
+index dbccdfa6391672..dccb78bb3afd61 100644
+--- a/drivers/hid/hid-wiimote-modules.c
++++ b/drivers/hid/hid-wiimote-modules.c
+@@ -2403,7 +2403,7 @@ static const struct wiimod_ops wiimod_guitar = {
+ 	.in_ext = wiimod_guitar_in_ext,
  };
  
- static struct axi_dmac *chan_to_axi_dmac(struct axi_dmac_chan *chan)
-@@ -184,6 +186,11 @@ static struct axi_dmac *chan_to_axi_dmac(struct axi_dmac_chan *chan)
- 		dma_dev);
- }
- 
-+static struct axi_dmac *dev_to_axi_dmac(struct dma_device *dev)
-+{
-+	return container_of(dev, struct axi_dmac, dma_dev);
-+}
-+
- static struct axi_dmac_chan *to_axi_dmac_chan(struct dma_chan *c)
+-/* 
++/*
+  * Turntable
+  * DJ Hero came with a Turntable Controller that was plugged in
+  * as an extension.
+@@ -2439,15 +2439,15 @@ static const __u16 wiimod_turntable_map[] = {
+ static void wiimod_turntable_in_ext(struct wiimote_data *wdata, const __u8 *ext)
  {
- 	return container_of(c, struct axi_dmac_chan, vchan.chan);
-@@ -616,6 +623,11 @@ static int axi_dmac_terminate_all(struct dma_chan *c)
- 	LIST_HEAD(head);
- 
- 	spin_lock_irqsave(&chan->vchan.lock, flags);
-+	if (dmac->unbound) {
-+		/* We're gone */
-+		spin_unlock_irqrestore(&chan->vchan.lock, flags);
-+		return -ENODEV;
-+	}
- 	axi_dmac_write(dmac, AXI_DMAC_REG_CTRL, 0);
- 	chan->next_desc = NULL;
- 	vchan_get_all_descriptors(&chan->vchan, &head);
-@@ -644,9 +656,12 @@ static void axi_dmac_issue_pending(struct dma_chan *c)
- 	if (chan->hw_sg)
- 		ctrl |= AXI_DMAC_CTRL_ENABLE_SG;
- 
--	axi_dmac_write(dmac, AXI_DMAC_REG_CTRL, ctrl);
--
- 	spin_lock_irqsave(&chan->vchan.lock, flags);
-+	if (dmac->unbound) {
-+		spin_unlock_irqrestore(&chan->vchan.lock, flags);
-+		return;
-+	}
-+	axi_dmac_write(dmac, AXI_DMAC_REG_CTRL, ctrl);
- 	if (vchan_issue_pending(&chan->vchan))
- 		axi_dmac_start_transfer(chan);
- 	spin_unlock_irqrestore(&chan->vchan.lock, flags);
-@@ -1206,6 +1221,14 @@ static int axi_dmac_detect_caps(struct axi_dmac *dmac, unsigned int version)
- 	return 0;
- }
- 
-+static void axi_dmac_release(struct dma_device *dma_dev)
-+{
-+	struct axi_dmac *dmac = dev_to_axi_dmac(dma_dev);
+ 	__u8 be, cs, sx, sy, ed, rtt, rbg, rbr, rbb, ltt, lbg, lbr, lbb, bp, bm;
+-	/* 
++	/*
+ 	 * Byte |  7   |  6  |  5  |  4  |  3  |  2   |  1   |  0     |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+-	 *   0  | RTT<4:3>   | 		      	  SX <5:0> 			      |
+-	 *   1  | RTT<2:1>   |				  SY <5:0>			      |
++	 *   0  | RTT<4:3>   |                SX <5:0>                |
++	 *   1  | RTT<2:1>   |                SY <5:0>                |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+ 	 *   2  |RTT<0>|  ED<4:3>  |          CS<3:0>        | RTT<5> |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+-	 *   3  |     ED<2:0> 	   | 			 LTT<4:0>			  |
++	 *   3  |     ED<2:0>      |             LTT<4:0>             |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+ 	 *   4  |  0   |  0  | LBR |  B- |  0  |  B+  |  RBR | LTT<5> |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+@@ -2458,20 +2458,20 @@ static void wiimod_turntable_in_ext(struct wiimote_data *wdata, const __u8 *ext)
+ 	 * With Motion+ enabled, it will look like this:
+ 	 * Byte |  8   |  7  |  6  |  5  |  4  |  3   |  2   |  1     |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+-	 *   1  | RTT<4:3>   | 		      	  SX <5:1> 		 |	  0   |
+-	 *   2  | RTT<2:1>   |				  SY <5:1>		 |	  0   |
++	 *   1  | RTT<4:3>   |                SX <5:1>       |    0   |
++	 *   2  | RTT<2:1>   |                SY <5:1>       |    0   |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+ 	 *   3  |RTT<0>|  ED<4:3>  |          CS<3:0>        | RTT<5> |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+-	 *   4  |     ED<2:0> 	   | 			 LTT<4:0>			  |
++	 *   4  |     ED<2:0>      |             LTT<4:0>             |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+ 	 *   5  |  0   |  0  | LBR |  B- |  0  |  B+  | RBR  |  XXXX  |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+ 	 *   6  | LBB  |  0  | RBG |  BE | LBG | RBB  | XXXX |  XXXX  |
+ 	 *------+------+-----+-----+-----+-----+------+------+--------+
+ 	 */
+-	
+-	be = !(ext[5] & 0x10); 
 +
-+	put_device(dma_dev->dev);
-+	kfree(dmac);
-+}
-+
- static void axi_dmac_tasklet_kill(void *task)
++	be = !(ext[5] & 0x10);
+ 	cs = ((ext[2] & 0x1e));
+ 	sx = ext[0] & 0x3f;
+ 	sy = ext[1] & 0x3f;
+@@ -2499,32 +2499,32 @@ static void wiimod_turntable_in_ext(struct wiimote_data *wdata, const __u8 *ext)
+ 	input_report_abs(wdata->extension.input, ABS_HAT1X, ltt);
+ 	input_report_abs(wdata->extension.input, ABS_HAT2X, cs);
+ 	input_report_abs(wdata->extension.input, ABS_HAT3X, ed);
+-	input_report_key(wdata->extension.input, 
+-					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_G_RIGHT], 
++	input_report_key(wdata->extension.input,
++					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_G_RIGHT],
+ 					rbg);
+ 	input_report_key(wdata->extension.input,
+ 					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_R_RIGHT],
+ 					rbr);
+-	input_report_key(wdata->extension.input, 
+-					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_B_RIGHT], 
++	input_report_key(wdata->extension.input,
++					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_B_RIGHT],
+ 					rbb);
+-	input_report_key(wdata->extension.input, 
+-					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_G_LEFT], 
++	input_report_key(wdata->extension.input,
++					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_G_LEFT],
+ 					lbg);
+-	input_report_key(wdata->extension.input, 
+-					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_R_LEFT], 
++	input_report_key(wdata->extension.input,
++					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_R_LEFT],
+ 					lbr);
+-	input_report_key(wdata->extension.input, 
+-					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_B_LEFT], 
++	input_report_key(wdata->extension.input,
++					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_B_LEFT],
+ 					lbb);
+-	input_report_key(wdata->extension.input, 
+-					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_EUPHORIA], 
++	input_report_key(wdata->extension.input,
++					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_EUPHORIA],
+ 					be);
+-	input_report_key(wdata->extension.input, 
+-					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_PLUS], 
++	input_report_key(wdata->extension.input,
++					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_PLUS],
+ 					bp);
+-	input_report_key(wdata->extension.input, 
+-					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_MINUS], 
++	input_report_key(wdata->extension.input,
++					wiimod_turntable_map[WIIMOD_TURNTABLE_KEY_MINUS],
+ 					bm);
+ 
+ 	input_sync(wdata->extension.input);
+@@ -2557,7 +2557,7 @@ static void wiimod_turntable_close(struct input_dev *dev)
+ static int wiimod_turntable_probe(const struct wiimod_ops *ops,
+ 			       struct wiimote_data *wdata)
  {
- 	tasklet_kill(task);
-@@ -1216,6 +1239,16 @@ static void axi_dmac_free_dma_controller(void *of_node)
- 	of_dma_controller_free(of_node);
- }
+- 	int ret, i;
++	int ret, i;
  
-+static void axi_dmac_disable(void *__dmac)
-+{
-+	struct axi_dmac *dmac = __dmac;
-+
-+	spin_lock(&dmac->chan.vchan.lock);
-+	dmac->unbound = true;
-+	spin_unlock(&dmac->chan.vchan.lock);
-+	axi_dmac_write(dmac, AXI_DMAC_REG_CTRL, 0);
-+}
-+
- static int axi_dmac_probe(struct platform_device *pdev)
- {
- 	struct dma_device *dma_dev;
-@@ -1225,7 +1258,7 @@ static int axi_dmac_probe(struct platform_device *pdev)
- 	u32 irq_mask = 0;
- 	int ret;
- 
--	dmac = devm_kzalloc(&pdev->dev, sizeof(*dmac), GFP_KERNEL);
-+	dmac = kzalloc_obj(struct axi_dmac);
- 	if (!dmac)
- 		return -ENOMEM;
- 
-@@ -1270,9 +1303,10 @@ static int axi_dmac_probe(struct platform_device *pdev)
- 	dma_dev->device_prep_interleaved_dma = axi_dmac_prep_interleaved;
- 	dma_dev->device_terminate_all = axi_dmac_terminate_all;
- 	dma_dev->device_synchronize = axi_dmac_synchronize;
--	dma_dev->dev = &pdev->dev;
-+	dma_dev->dev = get_device(&pdev->dev);
- 	dma_dev->src_addr_widths = BIT(dmac->chan.src_width);
- 	dma_dev->dst_addr_widths = BIT(dmac->chan.dest_width);
-+	dma_dev->device_release = axi_dmac_release;
- 	dma_dev->directions = BIT(dmac->chan.direction);
- 	dma_dev->residue_granularity = DMA_RESIDUE_GRANULARITY_DESCRIPTOR;
- 	dma_dev->max_sg_burst = 31; /* 31 SGs maximum in one burst */
-@@ -1326,6 +1360,11 @@ static int axi_dmac_probe(struct platform_device *pdev)
+ 	wdata->extension.input = input_allocate_device();
+ 	if (!wdata->extension.input)
+@@ -2594,9 +2594,9 @@ static int wiimod_turntable_probe(const struct wiimod_ops *ops,
+ 	input_set_abs_params(wdata->extension.input,
+ 			     ABS_HAT1X, -8, 8, 0, 0);
+ 	input_set_abs_params(wdata->extension.input,
+-			     ABS_HAT2X, 0, 31, 1, 1);	
++			     ABS_HAT2X, 0, 31, 1, 1);
+ 	input_set_abs_params(wdata->extension.input,
+-			     ABS_HAT3X, 0, 7, 0, 0);	 
++			     ABS_HAT3X, 0, 7, 0, 0);
+ 	ret = input_register_device(wdata->extension.input);
  	if (ret)
- 		return ret;
- 
-+	/* So that we can mark the device as unbound and disable it */
-+	ret = devm_add_action_or_reset(&pdev->dev, axi_dmac_disable, dmac);
-+	if (ret)
-+		return ret;
-+
- 	ret = devm_request_irq(&pdev->dev, dmac->irq, axi_dmac_interrupt_handler,
- 			       IRQF_SHARED, dev_name(&pdev->dev), dmac);
- 	if (ret)
+ 		goto err_free;
 
+---
+base-commit: f338e77383789c0cae23ca3d48adcc5e9e137e3c
+change-id: 20260316-wiimod-table-cd9abc0a2a98
+
+Best regards,
 -- 
-2.53.0
+J. Neuschäfer <j.ne@posteo.net>
 
