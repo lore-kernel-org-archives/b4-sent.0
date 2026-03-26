@@ -1,10 +1,10 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Thu, 26 Mar 2026 14:52:57 +0800
-Subject: [PATCH 04/13] rust: sync: add hazard pointer abstraction
+Date: Thu, 26 Mar 2026 14:52:58 +0800
+Subject: [PATCH 05/13] rust: revocable: add HazPtrRevocable
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260326-b4-tyr-debugfs-v1-4-074badd18716@linux.dev>
+Message-Id: <20260326-b4-tyr-debugfs-v1-5-074badd18716@linux.dev>
 References: <20260326-b4-tyr-debugfs-v1-0-074badd18716@linux.dev>
 In-Reply-To: <20260326-b4-tyr-debugfs-v1-0-074badd18716@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -19,180 +19,173 @@ To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>,
 Cc: rust-for-linux@vger.kernel.org, dri-devel@lists.freedesktop.org, 
  Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774508149; l=4702;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774508149; l=5072;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=8sG5/4DML5NSTRd6XZj5n+aYKAsS4hPMAZ9HC9w0jjQ=;
- b=YR1ZJg1z532+Tja18moGSpkoIqzBWqKo/jm8I9c5IQ8WeGEFJV19rZ/ujdzVlcL89QwvcGk7v
- iA2oaLtRZ66CqEofG7egooB/8hhzclgPbpC4s1jWBgvy626lXhpOXOz
+ bh=NNUdlRHkQrwIntdVy79+2nMOBtE/OfNVECY/qXD3kB8=;
+ b=iz2SPnbLjf4RKaKdCrXMuTOKQNiv60ZRgnJmzYt9rouV7S9kB9AaoMLTZuAKNJsEYt441RFjp
+ HSVbCUqmca2C5fsps7OaM5eH12wN4Evc2YLNfDIRRfCRl+Z9c80rcVD
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add C helpers and Rust wrappers for the kernel hazard pointer API,
-to be used by revocable and other code.
+Add hazard-pointer-based revocable type and related handle/guard.
 
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- rust/bindings/bindings_helper.h |  1 +
- rust/helpers/hazptr.c           | 13 ++++++
- rust/helpers/helpers.c          |  1 +
- rust/kernel/sync.rs             |  1 +
- rust/kernel/sync/hazptr.rs      | 91 +++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 107 insertions(+)
+ rust/kernel/revocable.rs | 127 +++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 124 insertions(+), 3 deletions(-)
 
-diff --git a/rust/bindings/bindings_helper.h b/rust/bindings/bindings_helper.h
-index 9058b09a016ec..8ace50a3dc104 100644
---- a/rust/bindings/bindings_helper.h
-+++ b/rust/bindings/bindings_helper.h
-@@ -60,6 +60,7 @@
- #include <linux/file.h>
- #include <linux/firmware.h>
- #include <linux/fs.h>
-+#include <linux/hazptr.h>
- #include <linux/i2c.h>
- #include <linux/interrupt.h>
- #include <linux/io-pgtable.h>
-diff --git a/rust/helpers/hazptr.c b/rust/helpers/hazptr.c
-new file mode 100644
-index 0000000000000..aa53fbcd0da1d
---- /dev/null
-+++ b/rust/helpers/hazptr.c
-@@ -0,0 +1,13 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+#include <linux/hazptr.h>
-+
-+__rust_helper void *rust_helper_hazptr_acquire(struct hazptr_ctx *ctx, void *const *addr_p)
-+{
-+	return hazptr_acquire(ctx, addr_p);
+diff --git a/rust/kernel/revocable.rs b/rust/kernel/revocable.rs
+index 70733ff5961cd..eabb76ce92c43 100644
+--- a/rust/kernel/revocable.rs
++++ b/rust/kernel/revocable.rs
+@@ -10,14 +10,25 @@
+ use crate::{
+     bindings,
+     prelude::*,
+-    sync::{rcu, SetOnce},
++    sync::{
++        hazptr,
++        hazptr::HazptrCtx,
++        rcu,
++        SetOnce, //
++    },
+     types::Opaque,
+ };
+ use core::{
+     marker::PhantomData,
+     ops::Deref,
+-    ptr::drop_in_place,
+-    sync::atomic::{AtomicBool, Ordering},
++    ptr::{
++        addr_of,
++        drop_in_place, //
++    },
++    sync::atomic::{
++        AtomicBool,
++        Ordering, //
++    },
+ };
+ 
+ /// An object that can become inaccessible at runtime.
+@@ -292,6 +303,116 @@ fn drop(&mut self) {
+     }
+ }
+ 
++/// Revocable protected by hazard pointer instead of RCU.
++#[pin_data(PinnedDrop)]
++pub struct HazPtrRevocable<T> {
++    #[pin]
++    data: Opaque<T>,
++    is_available: AtomicBool,
 +}
 +
-+__rust_helper void rust_helper_hazptr_release(struct hazptr_ctx *ctx, void *addr)
-+{
-+	hazptr_release(ctx, addr);
-+}
-diff --git a/rust/helpers/helpers.c b/rust/helpers/helpers.c
-index f1ac40b0bd1a4..ed8cb74d394a3 100644
---- a/rust/helpers/helpers.c
-+++ b/rust/helpers/helpers.c
-@@ -34,6 +34,7 @@
- #include "err.c"
- #include "irq.c"
- #include "fs.c"
-+#include "hazptr.c"
- #include "io.c"
- #include "jump_label.c"
- #include "kunit.c"
-diff --git a/rust/kernel/sync.rs b/rust/kernel/sync.rs
-index 993dbf2caa0e3..45da761eaee05 100644
---- a/rust/kernel/sync.rs
-+++ b/rust/kernel/sync.rs
-@@ -15,6 +15,7 @@
- pub mod barrier;
- pub mod completion;
- mod condvar;
-+pub mod hazptr;
- pub mod lock;
- mod locked_by;
- pub mod poll;
-diff --git a/rust/kernel/sync/hazptr.rs b/rust/kernel/sync/hazptr.rs
-new file mode 100644
-index 0000000000000..f94ae45dd3d66
---- /dev/null
-+++ b/rust/kernel/sync/hazptr.rs
-@@ -0,0 +1,91 @@
-+// SPDX-License-Identifier: GPL-2.0
++// SAFETY: HazPtrRevocable<T> only moves ownership of T across threads;
++// revocation/drop follow the hazptr protocol, so T: Send suffices.
++unsafe impl<T: Send> Send for HazPtrRevocable<T> {}
 +
-+//! Hazard pointer support.
-+//!
-+//! C header: [`include/linux/hazptr.h`](srctree/include/linux/hazptr.h)
++// SAFETY: &HazPtrRevocable<T> may be shared across threads and yields
++// &T via hazptr guards; with T: Send + Sync such shared access is sound.
++unsafe impl<T: Sync + Send> Sync for HazPtrRevocable<T> {}
 +
-+use crate::{
-+    bindings,
-+    ffi::c_void,
-+    prelude::*,
-+    types::Opaque, //
-+};
-+use core::{
-+    ops::Deref,
-+    ptr::NonNull, //
-+};
-+
-+/// Per-thread context for one hazard-pointer acquire/release pair.
-+#[repr(transparent)]
-+pub struct HazptrCtx(Opaque<bindings::hazptr_ctx>);
-+
-+impl HazptrCtx {
-+    /// Creates a new zero-initialized context for one acquire/release pair.
-+    #[inline]
-+    pub const fn new() -> Self {
-+        Self(Opaque::zeroed())
++impl<T> HazPtrRevocable<T> {
++    /// Creates a new hazard-pointer revocable instance.
++    pub fn new<E>(data_pin_init: impl PinInit<T, E>) -> impl PinInit<Self, E> {
++        try_pin_init!(Self {
++            data <- Opaque::pin_init(data_pin_init),
++            is_available: AtomicBool::new(true),
++        }? E)
 +    }
 +
-+    /// Get the raw pointer.
-+    #[inline]
-+    pub fn as_raw(self: &Pin<&mut Self>) -> *mut bindings::hazptr_ctx {
-+        self.0.get()
++    /// Tries to access the wrapped object. Returns `None` if revoked.
++    ///
++    /// `ctx` is moved into the returned guard and released when the guard is dropped.
++    pub fn try_access<'a>(
++        &self,
++        ctx: Pin<&'a mut HazptrCtx>,
++    ) -> Option<HazPtrRevocableGuard<'a, T>> {
++        let data_ptr = self.data.get();
++        let guard = hazptr::acquire(ctx, addr_of!(data_ptr).cast())?;
++        if !self.is_available.load(Ordering::Relaxed) {
++            return None;
++        }
++        Some(HazPtrRevocableGuard::new(guard))
++    }
++
++    /// Revokes access and drops the wrapped object. Waits for readers via hazptr.
++    pub fn revoke(&self) -> bool {
++        let revoke = self.is_available.swap(false, Ordering::Relaxed);
++        if revoke {
++            hazptr::synchronize(self.data.get() as usize);
++            // SAFETY: `synchronize()` ensures no reader still holds the pointer,
++            // and `self.is_available` is false so no new reader can start, so
++            // `drop_in_place` is safe.
++            unsafe { drop_in_place(self.data.get()) };
++        }
++        revoke
 +    }
 +}
 +
-+impl Default for HazptrCtx {
-+    fn default() -> Self {
-+        Self::new()
++#[pinned_drop]
++impl<T> PinnedDrop for HazPtrRevocable<T> {
++    fn drop(self: Pin<&mut Self>) {
++        // Drop only if the data hasn't been revoked yet (in which case it has already been
++        // dropped).
++        // SAFETY: We are not moving out of `p`, only dropping in place
++        let p = unsafe { self.get_unchecked_mut() };
++        if *p.is_available.get_mut() {
++            // SAFETY: We know `self.data` is valid because no other CPU has changed
++            // `is_available` to `false` yet, and no other CPU can do it anymore because this CPU
++            // holds the only reference (mutable) to `self` now.
++            unsafe { drop_in_place(p.data.get()) };
++        }
 +    }
 +}
 +
-+/// Guard holding a hazard-pointer-protected reference.
-+pub struct Guard<'a, T> {
-+    ctx: Pin<&'a mut HazptrCtx>,
-+    ptr: NonNull<T>,
-+}
++/// A handle to perform revocation on a [`HazPtrRevocable`]. Revokes when dropped.
++pub struct HazPtrRevokeHandle<'a, T>(&'a HazPtrRevocable<T>);
 +
-+impl<'a, T> Guard<'a, T> {
-+    #[inline]
-+    fn new(ctx: Pin<&'a mut HazptrCtx>, ptr: NonNull<T>) -> Self {
-+        Self { ctx, ptr }
++impl<'a, T> HazPtrRevokeHandle<'a, T> {
++    /// Create a revoke-on-drop handle.
++    pub fn new(revocable: &'a HazPtrRevocable<T>) -> Self {
++        Self(revocable)
++    }
++
++    /// Dismiss the handle without revoking.
++    pub fn dismiss(self) {
++        core::mem::forget(self);
 +    }
 +}
 +
-+impl<T> Deref for Guard<'_, T> {
++impl<T> Drop for HazPtrRevokeHandle<'_, T> {
++    fn drop(&mut self) {
++        self.0.revoke();
++    }
++}
++
++/// Guard for a [`HazPtrRevocable`].
++pub struct HazPtrRevocableGuard<'a, T> {
++    guard: hazptr::Guard<'a, T>,
++}
++
++impl<'a, T> HazPtrRevocableGuard<'a, T> {
++    fn new(guard: hazptr::Guard<'a, T>) -> Self {
++        Self { guard }
++    }
++}
++
++impl<T> Deref for HazPtrRevocableGuard<'_, T> {
 +    type Target = T;
 +
-+    #[inline]
-+    fn deref(&self) -> &T {
-+        // SAFETY: hazptr protocol keeps the pointer valid until release.
-+        unsafe { self.ptr.as_ref() }
++    fn deref(&self) -> &Self::Target {
++        &self.guard
 +    }
 +}
 +
-+impl<T> Drop for Guard<'_, T> {
-+    #[inline]
-+    fn drop(&mut self) {
-+        // SAFETY: `self.ctx` and `self.ptr` are the same as the ones used in `acquire`.
-+        unsafe { bindings::hazptr_release(self.ctx.as_raw().cast(), self.ptr.as_ptr().cast()) };
-+    }
-+}
-+
-+/// Acquires a hazard pointer for the pointer at `addr_p` and returns a guard.
-+///
-+/// Returns `None` if the loaded value is null.
-+#[inline]
-+pub fn acquire<'a, T>(
-+    ctx: Pin<&'a mut HazptrCtx>,
-+    addr_p: *const *const T,
-+) -> Option<Guard<'a, T>> {
-+    // SAFETY: ctx is valid and pinned, addr_p is a valid pointer to a pointer.
-+    let ptr = unsafe { bindings::hazptr_acquire(ctx.as_raw().cast(), addr_p.cast()) };
-+    NonNull::new(ptr.cast()).map(|p| Guard::new(ctx, p))
-+}
-+
-+/// Waits until no slot holds `addr`.
-+#[inline]
-+pub fn synchronize(addr: usize) {
-+    // SAFETY: addr is only compared with slot values, not dereferenced.
-+    unsafe { bindings::hazptr_synchronize(addr as *mut c_void) };
-+}
+ /// An object that is initialized and can become inaccessible at runtime.
+ ///
+ /// [`Revocable`] is initialized at the beginning, and can be made inaccessible at runtime.
 
 -- 
 2.43.0
