@@ -1,110 +1,103 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Thu, 26 Mar 2026 18:32:17 +0000
-Subject: [PATCH v2 2/2] iio: amplifiers: ad8366: add support for adrf5702/3
+From: Michael Riesch <michael.riesch@collabora.com>
+Subject: [PATCH v4 0/2] media: synopsys: csi2rx: add support for rk3588
+ variant
+Date: Fri, 27 Mar 2026 00:09:59 +0100
+Message-Id: <20260305-rk3588-csi2rx-v4-0-81c6bcfefa63@collabora.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260326-adrf570x-iio-support-v2-2-b622a17335d0@analog.com>
-References: <20260326-adrf570x-iio-support-v2-0-b622a17335d0@analog.com>
-In-Reply-To: <20260326-adrf570x-iio-support-v2-0-b622a17335d0@analog.com>
-To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org
-Cc: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAMe8xWkC/33NSw7CIAAE0KsY1mL4ttSV9zAu+FpiBQNKapreX
+ dql0S5nknkzgWyTtxkcdxNItvjsY6iB7XdA9zJcLfSmZkAQaRBFHKYb5UJAnT1JI5QYu1ZjLhm
+ SoG6UzBaqJIPu6yq8hqGWj2SdH9eT86Xm3udnTO/1s+Cl/ccXDBFE2ghDlCNCo5OOwyBVTPKg4
+ x0sWiGbAqlC2xmEVYM5E80vgW4KdBE4Yy3tBHa0+xbmef4AvALURkcBAAA=
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Frank Li <Frank.li@nxp.com>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774549942; l=3552;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=C6P6Zr+ZHRuErV9w+QMBv1TsPXudqbrh6GcR2maa73k=;
- b=ixIs+B5ItIa27KzDB0Q8Ui8rF3K+OdrI65dGqEd+ydTV2axa3QYIbvhwJmGgHcsSuwyQ3i4XR
- QVDGvhI7hOXDU2s5wJGBHUn9jdR7JbUyYnKLQvgYJP1vRS1JXbwwPFu
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Kever Yang <kever.yang@rock-chips.com>, 
+ Collabora Kernel Team <kernel@collabora.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774566600; l=2509;
+ i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
+ bh=F+kzzca6Z4BmvXweVJwbOgdkmwl7lP2kz+U6gv7BBLA=;
+ b=Q31Ushq3MPm7/rk/deCaFnjvfmVxk9/KY9/ptu4vESyDcHaREKfCWa+676qoOfzvkuVYr5Aae
+ cbQSVm2trRLBMNUxDD+5gf6NZwQhNeHbeOBdu4LveLZPK3i8dL1Rq8M
+X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
+ pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
+X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add chip info structs and device table entries for ADRF5702 and ADRF5703
-Digital Step Attenuators.
+Habidere,
 
-Reviewed-by: Nuno Sá <nuno.sa@analog.com>
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+The Rockchip RK3588 features six MIPI CSI-2 receiver units:
+ - MIPI0: connected to MIPI DCPHY0
+ - MIPI1: connected to MIPI DCPHY1
+ - MIPI2: connected to MIPI DPHY0
+ - MIPI3: connected to MIPI DPHY0-1 (only with split DPHY0)
+ - MIPI4: connected to MIPI DPHY1
+ - MIPI5: connected to MIPI DPHY1-1 (only with split DPHY1)
+
+The MIPI DCPHYs (at least the CSI-2 features of them) as well
+as the split DPHY mode of the DPHYs are not yet supported by
+mainline. However, we can already provide support for the
+MIPI2 and MIPI4 units.
+
+When support for the split DPHY mode is introduced, the DPHY
+nodes should have the property
+    #phy-cells = <1>;
+and the MIPI CSI-2 receiver nodes should have the property
+    phys = <&csi_dphy{0,1} {0,1}>;
+in case the split mode is desired. Since this is a board
+specific hardware design, the properties need to be changed
+in the board device tree (or any overlays).
+
+As reasonable default, however, we can define, e.g., 
+    #phy-cells = <0>;
+and
+    phys = <&csi_dphy{0,1}>;
+in the SoC device tree include.
+This series introduces initial support for this default
+configuration.
+
+Looking forward to your comments!
+
+Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- drivers/iio/amplifiers/Kconfig  |  2 ++
- drivers/iio/amplifiers/ad8366.c | 22 ++++++++++++++++++++++
- 2 files changed, 24 insertions(+)
+Changes in v4:
+- rebased onto media-commiters/next again (as Frank's patches
+  are now there)
+- changed "oneOf entries to enum in dt binding (Rob)
+- Link to v3: https://lore.kernel.org/r/20260305-rk3588-csi2rx-v3-0-754473981f39@collabora.com
 
-diff --git a/drivers/iio/amplifiers/Kconfig b/drivers/iio/amplifiers/Kconfig
-index 39d280d4d437..9e24421b5e97 100644
---- a/drivers/iio/amplifiers/Kconfig
-+++ b/drivers/iio/amplifiers/Kconfig
-@@ -18,6 +18,8 @@ config AD8366
- 	    AD8366 Dual-Digital Variable Gain Amplifier (VGA)
- 	    ADA4961 BiCMOS RF Digital Gain Amplifier (DGA)
- 	    ADL5240 Digitally controlled variable gain amplifier (VGA)
-+	    ADRF5702: 0.125 dB LSB, 8-Bit, Silicon Digital Attenuator
-+	    ADRF5703: 0.25 dB LSB, 7-Bit, Silicon Digital Attenuator
- 	    ADRF5720: 0.5 dB LSB, 6-Bit, Silicon Digital Attenuator
- 	    ADRF5730: 0.5 dB LSB, 6-Bit, Silicon Digital Attenuator
- 	    ADRF5731: 2 dB LSB, 4-Bit, Silicon Digital Attenuator
-diff --git a/drivers/iio/amplifiers/ad8366.c b/drivers/iio/amplifiers/ad8366.c
-index 334ca91c0f59..bbf41a1fb3a1 100644
---- a/drivers/iio/amplifiers/ad8366.c
-+++ b/drivers/iio/amplifiers/ad8366.c
-@@ -5,6 +5,8 @@
-  *   AD8366 Dual-Digital Variable Gain Amplifier (VGA)
-  *   ADA4961 BiCMOS RF Digital Gain Amplifier (DGA)
-  *   ADL5240 Digitally controlled variable gain amplifier (VGA)
-+ *   ADRF5702: 0.125 dB LSB, 8-Bit, Silicon Digital Attenuator, 50 MHz to 20 GHz
-+ *   ADRF5703: 0.25 dB LSB, 7-Bit, Silicon Digital Attenuator, 9 kHz to 20 GHz
-  *   ADRF5720: 0.5 dB LSB, 6-Bit, Silicon Digital Attenuator, 9 kHz to 40 GHz
-  *   ADRF5730: 0.5 dB LSB, 6-Bit, Silicon Digital Attenuator, 100 MHz to 40 GHz
-  *   ADRF5731: 2 dB LSB, 4-Bit, Silicon Digital Attenuator, 100 MHz to 40 GHz
-@@ -106,6 +108,22 @@ static const struct ad8366_info adl5240_chip_info = {
- 	.num_channels = 1,
- };
- 
-+static const struct ad8366_info adrf5702_chip_info = {
-+	.name = "adrf5702",
-+	.gain_min = -31875,
-+	.gain_max = 0,
-+	.gain_step = -125,
-+	.num_channels = 1,
-+};
-+
-+static const struct ad8366_info adrf5703_chip_info = {
-+	.name = "adrf5703",
-+	.gain_min = -31750,
-+	.gain_max = 0,
-+	.gain_step = -250,
-+	.num_channels = 1,
-+};
-+
- static const struct ad8366_info adrf5720_chip_info = {
- 	.name = "adrf5720",
- 	.gain_min = -31500,
-@@ -337,6 +355,8 @@ static const struct spi_device_id ad8366_id[] = {
- 	{ "ad8366", (kernel_ulong_t)&ad8366_chip_info },
- 	{ "ada4961", (kernel_ulong_t)&ada4961_chip_info },
- 	{ "adl5240", (kernel_ulong_t)&adl5240_chip_info },
-+	{ "adrf5702", (kernel_ulong_t)&adrf5702_chip_info },
-+	{ "adrf5703", (kernel_ulong_t)&adrf5703_chip_info },
- 	{ "adrf5720", (kernel_ulong_t)&adrf5720_chip_info },
- 	{ "adrf5730", (kernel_ulong_t)&adrf5730_chip_info },
- 	{ "adrf5731", (kernel_ulong_t)&adrf5731_chip_info },
-@@ -353,6 +373,8 @@ static const struct of_device_id ad8366_of_match[] = {
- 	{ .compatible = "adi,ad8366", .data = &ad8366_chip_info },
- 	{ .compatible = "adi,ada4961", .data = &ada4961_chip_info },
- 	{ .compatible = "adi,adl5240", .data = &adl5240_chip_info },
-+	{ .compatible = "adi,adrf5702", .data = &adrf5702_chip_info },
-+	{ .compatible = "adi,adrf5703", .data = &adrf5703_chip_info },
- 	{ .compatible = "adi,adrf5720", .data = &adrf5720_chip_info },
- 	{ .compatible = "adi,adrf5730", .data = &adrf5730_chip_info },
- 	{ .compatible = "adi,adrf5731", .data = &adrf5731_chip_info },
+Changes in v3:
+- rebased onto Sakari's cleanup branch (as Frank's patches were
+  merged) (Sakari)
+- added Rob's Acked-by
+- Link to v2: https://lore.kernel.org/r/20260305-rk3588-csi2rx-v2-0-79d01b615486@collabora.com
 
+Changes in v2:
+- use fallback compatible instead of separate compatible (Krzysztof)
+- dropped patch 2 and 4 (as a consequence thereof)
+- Link to v1: https://lore.kernel.org/r/20260305-rk3588-csi2rx-v1-0-0cd8d2bf28c0@collabora.com
+
+---
+Michael Riesch (2):
+      media: dt-bindings: rockchip,rk3568-mipi-csi2: add rk3588 compatible
+      arm64: dts: rockchip: add mipi csi-2 receiver nodes to rk3588
+
+ .../bindings/media/rockchip,rk3568-mipi-csi2.yaml  | 11 +++--
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      | 52 ++++++++++++++++++++++
+ 2 files changed, 60 insertions(+), 3 deletions(-)
+---
+base-commit: 4fbeef21f5387234111b5d52924e77757626faa5
+change-id: 20260305-rk3588-csi2rx-a11f7c15a40a
+
+Best regards,
 -- 
-2.43.0
+Michael Riesch <michael.riesch@collabora.com>
 
