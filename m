@@ -1,10 +1,11 @@
 From: Satish Kharat <satishkh@cisco.com>
-Date: Wed, 25 Mar 2026 22:19:00 -0700
-Subject: [PATCH net-next v2 2/6] enic: add V2 SR-IOV VF device ID
+Date: Wed, 25 Mar 2026 22:19:01 -0700
+Subject: [PATCH net-next v2 3/6] enic: detect SR-IOV VF type from PCI
+ capability
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260325-enic-sriov-v2-prep-v2-2-f72cf716ebfa@cisco.com>
+Message-Id: <20260325-enic-sriov-v2-prep-v2-3-f72cf716ebfa@cisco.com>
 References: <20260325-enic-sriov-v2-prep-v2-0-f72cf716ebfa@cisco.com>
 In-Reply-To: <20260325-enic-sriov-v2-prep-v2-0-f72cf716ebfa@cisco.com>
 To: Satish Kharat <satishkh@cisco.com>, Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -12,54 +13,120 @@ To: Satish Kharat <satishkh@cisco.com>, Andrew Lunn <andrew+netdev@lunn.ch>,
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774502338; l=1690;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774502338; l=3365;
  i=satishkh@cisco.com; h=from:subject:message-id;
- bh=1chUHjnI8ZuULFMfvuOuwWNT2kAEAJEGnPmXwEaCezM=;
- b=LCqCZMsAv5YdqO+10oiZx4mUxfjzGgAdI+3ydSKmeNTVJ1MYaZQqN1qJs1nh94NLXJRG8FbLv
- ytm1oWn9e3CBKsRILsXjjA915aFc8jXbI3uYNGo6zGbQyMrJyIaOWgZ
+ bh=EHjug9jFvuqtjK7rgKqTb+ZxcNgtnQ9ViaQc7HzlDNE=;
+ b=AD0i77XBku6AEiTk8t2xkYir/gIjsd+fXx33Dw+/aSvAoL7RtiUjMV2ymSZWUddEPfCfux/yC
+ q9l8UMp/3BDAoM1M835/mWX+uB0Jd9nf0RmRbbj2QmHcY9qSaA1A3fN
 X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
  pk=4BxbLoCGvHeIMH/PbpiNVx8/2IcTjFvqcr0AD8K6WLY=
 X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/default with auth_id=639
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Register the V2 VF PCI device ID (0x02b7) so the driver binds to V2
-virtual functions created via sriov_configure. Update enic_is_sriov_vf()
-to recognize V2 VFs alongside the existing V1 type.
+Read the VF device ID from the SR-IOV PCI capability at probe time to
+determine whether the PF is configured for V1, USNIC, or V2 virtual
+functions. Store the result in enic->vf_type for use by subsequent
+SR-IOV operations.
+
+The VF type is a firmware-configured property (set via UCSM, CIMC,
+Intersight etc) that is immutable from the driver's perspective. Only
+PFs are probed for this capability; VFs and dynamic vnics skip
+detection.
 
 Signed-off-by: Satish Kharat <satishkh@cisco.com>
 ---
- drivers/net/ethernet/cisco/enic/enic_main.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ drivers/net/ethernet/cisco/enic/enic.h      |  8 +++++++
+ drivers/net/ethernet/cisco/enic/enic_main.c | 37 +++++++++++++++++++++++++++++
+ 2 files changed, 45 insertions(+)
 
+diff --git a/drivers/net/ethernet/cisco/enic/enic.h b/drivers/net/ethernet/cisco/enic/enic.h
+index 366c65d072fc..0fd9cd917132 100644
+--- a/drivers/net/ethernet/cisco/enic/enic.h
++++ b/drivers/net/ethernet/cisco/enic/enic.h
+@@ -225,6 +225,13 @@ struct enic_rq {
+ 	struct page_pool *pool;
+ } ____cacheline_aligned;
+ 
++enum enic_vf_type {
++	ENIC_VF_TYPE_NONE,
++	ENIC_VF_TYPE_V1,
++	ENIC_VF_TYPE_USNIC,
++	ENIC_VF_TYPE_V2,
++};
++
+ /* Per-instance private data structure */
+ struct enic {
+ 	struct net_device *netdev;
+@@ -252,6 +259,7 @@ struct enic {
+ #ifdef CONFIG_PCI_IOV
+ 	u16 num_vfs;
+ #endif
++	enum enic_vf_type vf_type;
+ 	spinlock_t enic_api_lock;
+ 	bool enic_api_busy;
+ 	struct enic_port_profile *pp;
 diff --git a/drivers/net/ethernet/cisco/enic/enic_main.c b/drivers/net/ethernet/cisco/enic/enic_main.c
-index e839081f9ee4..e16dfbcd2c22 100644
+index e16dfbcd2c22..acd05350ec1a 100644
 --- a/drivers/net/ethernet/cisco/enic/enic_main.c
 +++ b/drivers/net/ethernet/cisco/enic/enic_main.c
-@@ -66,12 +66,14 @@
- #define PCI_DEVICE_ID_CISCO_VIC_ENET         0x0043  /* ethernet vnic */
+@@ -67,6 +67,7 @@
  #define PCI_DEVICE_ID_CISCO_VIC_ENET_DYN     0x0044  /* enet dynamic vnic */
  #define PCI_DEVICE_ID_CISCO_VIC_ENET_VF      0x0071  /* enet SRIOV VF */
-+#define PCI_DEVICE_ID_CISCO_VIC_ENET_VF_V2   0x02b7  /* enet SRIOV V2 VF */
+ #define PCI_DEVICE_ID_CISCO_VIC_ENET_VF_V2   0x02b7  /* enet SRIOV V2 VF */
++#define PCI_DEVICE_ID_CISCO_VIC_ENET_VF_USNIC 0x00cf /* enet USNIC VF */
  
  /* Supported devices */
  static const struct pci_device_id enic_id_table[] = {
- 	{ PCI_VDEVICE(CISCO, PCI_DEVICE_ID_CISCO_VIC_ENET) },
- 	{ PCI_VDEVICE(CISCO, PCI_DEVICE_ID_CISCO_VIC_ENET_DYN) },
- 	{ PCI_VDEVICE(CISCO, PCI_DEVICE_ID_CISCO_VIC_ENET_VF) },
-+	{ PCI_VDEVICE(CISCO, PCI_DEVICE_ID_CISCO_VIC_ENET_VF_V2) },
- 	{ 0, }	/* end of table */
- };
- 
-@@ -307,7 +309,8 @@ int enic_sriov_enabled(struct enic *enic)
- 
- static int enic_is_sriov_vf(struct enic *enic)
- {
--	return enic->pdev->device == PCI_DEVICE_ID_CISCO_VIC_ENET_VF;
-+	return enic->pdev->device == PCI_DEVICE_ID_CISCO_VIC_ENET_VF ||
-+	       enic->pdev->device == PCI_DEVICE_ID_CISCO_VIC_ENET_VF_V2;
+@@ -2621,6 +2622,41 @@ static void enic_iounmap(struct enic *enic)
+ 			iounmap(enic->bar[i].vaddr);
  }
  
- int enic_is_valid_vf(struct enic *enic, int vf)
++#ifdef CONFIG_PCI_IOV
++static void enic_sriov_detect_vf_type(struct enic *enic)
++{
++	struct pci_dev *pdev = enic->pdev;
++	int pos;
++	u16 vf_dev_id;
++
++	if (enic_is_sriov_vf(enic) || enic_is_dynamic(enic))
++		return;
++
++	pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_SRIOV);
++	if (!pos) {
++		enic->vf_type = ENIC_VF_TYPE_NONE;
++		return;
++	}
++
++	pci_read_config_word(pdev, pos + PCI_SRIOV_VF_DID, &vf_dev_id);
++
++	switch (vf_dev_id) {
++	case PCI_DEVICE_ID_CISCO_VIC_ENET_VF:
++		enic->vf_type = ENIC_VF_TYPE_V1;
++		break;
++	case PCI_DEVICE_ID_CISCO_VIC_ENET_VF_USNIC:
++		enic->vf_type = ENIC_VF_TYPE_USNIC;
++		break;
++	case PCI_DEVICE_ID_CISCO_VIC_ENET_VF_V2:
++		enic->vf_type = ENIC_VF_TYPE_V2;
++		break;
++	default:
++		enic->vf_type = ENIC_VF_TYPE_NONE;
++		break;
++	}
++}
++#endif
++
+ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+ {
+ 	struct device *dev = &pdev->dev;
+@@ -2734,6 +2770,7 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 			num_pps = enic->num_vfs;
+ 		}
+ 	}
++	enic_sriov_detect_vf_type(enic);
+ #endif
+ 
+ 	/* Allocate structure for port profiles */
 
 -- 
 2.43.0
