@@ -1,10 +1,11 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Thu, 26 Mar 2026 14:52:54 +0800
-Subject: [PATCH 01/13] rust: sync: support [pin_]init for `SetOnce`
+Date: Thu, 26 Mar 2026 14:52:55 +0800
+Subject: [PATCH 02/13] rust: revocable: add lazily instantiated revocable
+ variant
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260326-b4-tyr-debugfs-v1-1-074badd18716@linux.dev>
+Message-Id: <20260326-b4-tyr-debugfs-v1-2-074badd18716@linux.dev>
 References: <20260326-b4-tyr-debugfs-v1-0-074badd18716@linux.dev>
 In-Reply-To: <20260326-b4-tyr-debugfs-v1-0-074badd18716@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -19,11 +20,11 @@ To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>,
 Cc: rust-for-linux@vger.kernel.org, dri-devel@lists.freedesktop.org, 
  Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774508149; l=6987;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774508149; l=3394;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=VFdTtaWWr68iX6gfsDxBRXDRn2N0TRXehh4KrqY/38I=;
- b=/o3V32QCp2CR+Jn1WHwoRnaw9uA8+jsE/N7LshGopcDzQyJ3X678/PGrdMj46O5bSESw36mXh
- Z7aRjKaSUQeDFPm6E0kn4KPejXPYLVCn94+I9zLaJOAP6fOehrzwrKG
+ bh=JCy0YveUUx2PxZVI94KUIjqKl/C8px/HZ+jhmQr0Dks=;
+ b=/3wc7yexWjygUwGQE3Uq9UvBOv7UVYqCidZ6dkDG/T4jCh7C7NSN54PIOyTvEvIBhdHsuoEmV
+ EFCaKay4NliAGoNOCHPfG28dtvIK8pEfICjBJcJdoJp2L9VwdKAzotv
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
@@ -31,187 +32,111 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Gary Guo <gary@garyguo.net>
 
-Make `SetOnce` support initialization via `impl Init` or `impl PinInit`.
-
-This adds a possible failing path if an initializer fails. In such case,
-the state is dropped back to 0 instead of keep increasing; so the monotonicity
-invariant is dropped. The order for initialization is upgraded from Relaxed
-to Acquire so it can observe the effect of a previously failed initialization.
+Add a `LazyRevocable` type, an variant to `Revocable` where
+the data is initialized lazily. This type can be constructed as const and
+put into statics.
 
 Signed-off-by: Gary Guo <gary@garyguo.net>
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- rust/kernel/sync/set_once.rs | 120 +++++++++++++++++++++++++++++++++++--------
- 1 file changed, 99 insertions(+), 21 deletions(-)
+ rust/kernel/revocable.rs | 80 +++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 79 insertions(+), 1 deletion(-)
 
-diff --git a/rust/kernel/sync/set_once.rs b/rust/kernel/sync/set_once.rs
-index 139cef05e935f..db9c5423fade3 100644
---- a/rust/kernel/sync/set_once.rs
-+++ b/rust/kernel/sync/set_once.rs
-@@ -2,11 +2,23 @@
+diff --git a/rust/kernel/revocable.rs b/rust/kernel/revocable.rs
+index 0f4ae673256d5..70733ff5961cd 100644
+--- a/rust/kernel/revocable.rs
++++ b/rust/kernel/revocable.rs
+@@ -7,7 +7,12 @@
  
- //! A container that can be initialized at most once.
+ use pin_init::Wrapper;
  
-+use core::{
-+    cell::UnsafeCell,
-+    mem::MaybeUninit, //
+-use crate::{bindings, prelude::*, sync::rcu, types::Opaque};
++use crate::{
++    bindings,
++    prelude::*,
++    sync::{rcu, SetOnce},
++    types::Opaque,
 +};
-+use pin_init::{
-+    Init,
-+    PinInit, //
-+};
-+
- use super::atomic::{
--    ordering::{Acquire, Relaxed, Release},
--    Atomic,
-+    ordering::{
-+        Acquire,
-+        Release, //
-+    },
-+    Atomic, //
- };
--use core::{cell::UnsafeCell, mem::MaybeUninit};
-+use crate::prelude::*;
- 
- /// A container that can be populated at most once. Thread safe.
- ///
-@@ -15,13 +27,13 @@
- ///
- /// # Invariants
- ///
--/// - `init` may only increase in value.
- /// - `init` may only assume values in the range `0..=2`.
- /// - `init == 0` if and only if `value` is uninitialized.
- /// - `init == 1` if and only if there is exactly one thread with exclusive
- ///   access to `self.value`.
- /// - `init == 2` if and only if `value` is initialized and valid for shared
- ///   access.
-+/// - once `init == 2`, it must remain so.
- ///
- /// # Example
- ///
-@@ -51,6 +63,35 @@ fn default() -> Self {
+ use core::{
+     marker::PhantomData,
+     ops::Deref,
+@@ -261,3 +266,76 @@ fn deref(&self) -> &Self::Target {
+         unsafe { &*self.data_ref }
      }
  }
- 
-+/// Error that can occur during initialization of `SetOnce`.
-+#[derive(Debug)]
-+pub enum InitError<E> {
-+    /// The `Once` has already been initialized.
-+    AlreadyInit,
-+    /// The `Once` is being raced to initialize by another thread.
-+    RacedInit,
-+    /// Error occurs during initialization.
-+    DuringInit(E),
-+}
 +
-+impl<E> From<E> for InitError<E> {
-+    #[inline]
-+    fn from(err: E) -> Self {
-+        InitError::DuringInit(err)
++/// A handle to perform revocation on a [`Revocable`].
++///
++/// The associated `Revocable` is revoked when the handle is dropped.
++pub struct RevokeHandle<'a, T>(&'a Revocable<T>);
++
++impl<'a, T> RevokeHandle<'a, T> {
++    /// Create a revoke-on-drop handle on an existing revocable.
++    pub fn new(revocable: &'a Revocable<T>) -> Self {
++        Self(revocable)
++    }
++
++    /// Dismiss the handle.
++    ///
++    /// This method consumes ownership without revoking the `Revocable`.
++    pub fn dismiss(self) {
++        core::mem::forget(self);
 +    }
 +}
 +
-+impl<E: Into<Error>> From<InitError<E>> for Error {
-+    #[inline]
-+    fn from(this: InitError<E>) -> Self {
-+        match this {
-+            InitError::AlreadyInit => EEXIST,
-+            InitError::RacedInit => EBUSY,
-+            InitError::DuringInit(e) => e.into(),
++impl<'a, T> Drop for RevokeHandle<'a, T> {
++    fn drop(&mut self) {
++        self.0.revoke();
++    }
++}
++
++/// An object that is initialized and can become inaccessible at runtime.
++///
++/// [`Revocable`] is initialized at the beginning, and can be made inaccessible at runtime.
++/// `LazyRevocable` is uninitialized at the beginning, and can be initialized later; it can be
++/// revoked in a similar manner to [`Revocable`]. Once revoked, it cannot be initialized again.
++#[pin_data]
++pub struct LazyRevocable<T> {
++    #[pin]
++    once: SetOnce<Revocable<T>>,
++}
++
++impl<T> LazyRevocable<T> {
++    /// Creates a new lazy revocable instance.
++    ///
++    /// The instance starts uninitialized, where all accesses would fail.
++    pub const fn new() -> Self {
++        LazyRevocable {
++            once: SetOnce::new(),
 +        }
 +    }
++
++    /// Initialize a `LazyRevocable` and obtain a handle to revoke the content if successful.
++    ///
++    /// An error would be returned if the revocable has already been initialized.
++    pub fn init<E: Into<Error>>(
++        self: Pin<&Self>,
++        init: impl PinInit<T, E>,
++    ) -> Result<RevokeHandle<'_, T>> {
++        // SAFETY: `once` is structurally pinned.
++        let once = unsafe { self.map_unchecked(|x| &x.once) };
++        let revocable = once.pin_init(Revocable::new(init))?;
++        Ok(RevokeHandle::new(revocable))
++    }
++
++    /// Tries to access the revocable wrapped object.
++    ///
++    /// Returns `None` if the object has not been initialized, or it has been revoked and is therefore no longer accessible.
++    pub fn try_access(&self) -> Option<RevocableGuard<'_, T>> {
++        self.once.as_ref()?.try_access()
++    }
 +}
 +
- impl<T> SetOnce<T> {
-     /// Create a new [`SetOnce`].
-     ///
-@@ -76,31 +117,68 @@ pub fn as_ref(&self) -> Option<&T> {
-         }
-     }
- 
--    /// Populate the [`SetOnce`].
-+    /// Populate the [`SetOnce`] with an initializer.
-     ///
--    /// Returns `true` if the [`SetOnce`] was successfully populated.
--    pub fn populate(&self, value: T) -> bool {
-+    /// Returns the initialized reference if the [`SetOnce`] was successfully populated.
-+    pub fn init<E>(&self, init: impl Init<T, E>) -> Result<&T, InitError<E>> {
-         // INVARIANT: If the swap succeeds:
--        //  - We increase `init`.
-         //  - We write the valid value `1` to `init`.
-+        //  - The previous value is not `2`, so it is valid to move to `1`.
-         //  - Only one thread can succeed in this write, so we have exclusive access after the
-         //    write.
--        if let Ok(0) = self.init.cmpxchg(0, 1, Relaxed) {
--            // SAFETY: By the type invariants of `Self`, the fact that we succeeded in writing `1`
--            // to `self.init` means we obtained exclusive access to `self.value`.
--            unsafe { core::ptr::write(self.value.get().cast(), value) };
--            // INVARIANT:
--            //  - We increase `init`.
--            //  - We write the valid value `2` to `init`.
--            //  - We release our exclusive access to `self.value` and it is now valid for shared
--            //    access.
--            self.init.store(2, Release);
--            true
--        } else {
--            false
-+        match self.init.cmpxchg(0, 1, Acquire) {
-+            Ok(_) => {
-+                // SAFETY:
-+                // - By the type invariants of `Self`, the fact that we succeeded in writing `1`
-+                //   to `self.init` means we obtained exclusive access to `self.value`.
-+                // - When `Err` is returned, we did not set `self.init` to `2` so the `Drop` is not
-+                //   armed.
-+                match unsafe { init.__init(self.value.get().cast()) } {
-+                    Ok(()) => {
-+                        // INVARIANT:
-+                        //  - The previous value is `1`, so it is valid to move to `2`.
-+                        //  - We write the valid value `2` to `init`.
-+                        //  - We release our exclusive access to `self.value` and it is now valid
-+                        //    for shared access.
-+                        self.init.store(2, Release);
-+                        // SAFETY: we have just initialized the value.
-+                        Ok(unsafe { &*self.value.get().cast() })
-+                    }
-+                    Err(err) => {
-+                        // INVARIANT:
-+                        //  - The previous value is `1`, so it is valid to move to `0`.
-+                        //  - We write the valid value `0` to `init`.
-+                        //  - We release our exclusive access to `self.value` and it is now valid
-+                        //    for shared access.
-+                        self.init.store(0, Release);
-+                        Err(err.into())
-+                    }
-+                }
-+            }
-+            Err(1) => Err(InitError::RacedInit),
-+            Err(_) => Err(InitError::AlreadyInit),
-         }
-     }
- 
-+    /// Populate the [`SetOnce`] with a pinned initializer.
-+    ///
-+    /// Returns the initialized reference if the [`SetOnce`] was successfully populated.
-+    pub fn pin_init<E>(self: Pin<&Self>, init: impl PinInit<T, E>) -> Result<&T, InitError<E>> {
-+        // SAFETY:
-+        // - `__pinned_init` satisfy all requirements of `init_from_closure`
-+        // - calling `__pinned_init` require additional that the slot is pinned, which is satisfied
-+        //   given `self: Pin<&Self>`.
-+        self.get_ref()
-+            .init(unsafe { pin_init::init_from_closure(|slot| init.__pinned_init(slot)) })
++impl<T> Default for LazyRevocable<T> {
++    fn default() -> Self {
++        Self::new()
 +    }
-+
-+    /// Populate the [`SetOnce`].
-+    ///
-+    /// Returns `true` if the [`SetOnce`] was successfully populated.
-+    pub fn populate(&self, value: T) -> bool {
-+        self.init(value).is_ok()
-+    }
-+
-     /// Get a copy of the contained object.
-     ///
-     /// Returns [`None`] if the [`SetOnce`] is empty.
++}
 
 -- 
 2.43.0
