@@ -1,86 +1,59 @@
-From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Thu, 26 Mar 2026 14:20:58 +0000
-Subject: [PATCH] clk: clk-axi-clkgen: Add support versal timings
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH v2 0/2] ADRF5702/ADRF5703 Digital Attenuator support
+Date: Thu, 26 Mar 2026 18:32:15 +0000
+Message-Id: <20260326-adrf570x-iio-support-v2-0-b622a17335d0@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260326-clk-axi-clk-versal-support-v1-1-f21f5d385fcd@analog.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBG4auQWTtJKRGJVzEuSv3RUQLNDBASw
- t2tuHr5Nm8jgwqMrsVGikVMxiGjPBUUX2F4guWRTd752lW+5th/OKxydIFa6NnmlEaduEFAV54
- r11wc5UFSdLIe89v9b5vbN+L0O9K+fwHT1HBJfgAAAA==
-X-Change-ID: 20260326-clk-axi-clk-versal-support-8eaef1530870
-To: linux-clk@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>
-X-Mailer: b4 0.15.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774534858; l=2135;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=H6vZLDBkRf0dpmeOwTvI9djAQiZUxNSKWC9aFQZVfXY=;
- b=qpUbdMOGAu6px7J7fJs8d6gX5Pv21xt8FDdHehGEb0WmNwCbsDDZarbR8zNYFEkbQW5dWx9Xl
- YMuAOr4wspUCsKC9Cmk/+gsoC2jJ8Qkeopk6QF/k5prOC2MzJ8FFoM4
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAK97xWkC/4WNQQ6CMBBFr0Jm7Zi2UgRX3sOwKDCFSZQ2LRIM6
+ d2tXMDle8l/f4dIgSnCrdgh0MqR3ZxBnQroJzOPhDxkBiVUJS5KoxmC1VexIbPD+PbehQVJNk0
+ pa9uZUkCe+kCWtyP7aDNPHBcXPsfLKn/2T3CVKLAxqqo1dYq0vpvZPN147t0L2pTSF8ftO6G5A
+ AAA
+X-Change-ID: 20260325-adrf570x-iio-support-e199418fba40
+To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org
+Cc: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774549942; l=986;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=CzsFZIJiKMsLWlfT0H5N9wCIpe9LumoDaQPCrhbfnfI=;
+ b=TuNHdp+ljawlKp6O97s1DzuisbOEEDdcextDE34p8Mt70LsrYQpTHXumNirEjUzRJvPrvTbP7
+ DERO2VcEXyGD1oxR8My5XngtUgyqr9XJth0tYG8MOZwhwIIsbiNOFdr
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add proper VCO and PFD limits for versal based platforms. For that we
-need to add new Technology and Speed grade defines.
+This is a small patch series that adds support for two extra attenuators.
+Basically, new chip info and device table entries are added into the
+AD8366 IIO driver.
 
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/clk/clk-axi-clkgen.c   | 5 ++++-
- include/linux/adi-axi-common.h | 2 ++
- 2 files changed, 6 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/clk/clk-axi-clkgen.c b/drivers/clk/clk-axi-clkgen.c
-index fa5ccef73e60..26f76a6db820 100644
---- a/drivers/clk/clk-axi-clkgen.c
-+++ b/drivers/clk/clk-axi-clkgen.c
-@@ -521,7 +521,7 @@ static int axi_clkgen_setup_limits(struct axi_clkgen *axi_clkgen,
- 		axi_clkgen->limits.fvco_max = 1200000;
- 		axi_clkgen->limits.fpfd_max = 450000;
- 		break;
--	case ADI_AXI_FPGA_SPEED_2 ... ADI_AXI_FPGA_SPEED_2LV:
-+	case ADI_AXI_FPGA_SPEED_2 ... ADI_AXI_FPGA_SPEED_2MP:
- 		axi_clkgen->limits.fvco_max = 1440000;
- 		axi_clkgen->limits.fpfd_max = 500000;
- 		if (family == ADI_AXI_FPGA_FAMILY_KINTEX || family == ADI_AXI_FPGA_FAMILY_ARTIX) {
-@@ -546,6 +546,9 @@ static int axi_clkgen_setup_limits(struct axi_clkgen *axi_clkgen,
- 	if (tech == ADI_AXI_FPGA_TECH_ULTRASCALE_PLUS) {
- 		axi_clkgen->limits.fvco_max = 1600000;
- 		axi_clkgen->limits.fvco_min = 800000;
-+	} else if (tech == ADI_AXI_FPGA_TECH_VERSAL) {
-+		axi_clkgen->limits.fvco_max = 4320000;
-+		axi_clkgen->limits.fvco_min = 2160000;
- 	}
- 
- 	return 0;
-diff --git a/include/linux/adi-axi-common.h b/include/linux/adi-axi-common.h
-index 37962ba530df..e7ba393061ee 100644
---- a/include/linux/adi-axi-common.h
-+++ b/include/linux/adi-axi-common.h
-@@ -51,6 +51,7 @@ enum adi_axi_fpga_technology {
- 	ADI_AXI_FPGA_TECH_SERIES7,
- 	ADI_AXI_FPGA_TECH_ULTRASCALE,
- 	ADI_AXI_FPGA_TECH_ULTRASCALE_PLUS,
-+	ADI_AXI_FPGA_TECH_VERSAL,
- };
- 
- enum adi_axi_fpga_family {
-@@ -71,6 +72,7 @@ enum adi_axi_fpga_speed_grade {
- 	ADI_AXI_FPGA_SPEED_2    = 20,
- 	ADI_AXI_FPGA_SPEED_2L   = 21,
- 	ADI_AXI_FPGA_SPEED_2LV  = 22,
-+	ADI_AXI_FPGA_SPEED_2MP  = 23,
- 	ADI_AXI_FPGA_SPEED_3    = 30,
- };
- 
+Changes in v2:
+- Add more context to the dt-bindings commit message.
+- Link to v1: https://lore.kernel.org/r/20260325-adrf570x-iio-support-v1-0-9a2685eb2e55@analog.com
 
 ---
-base-commit: 18023cf0dd64f67c403b85dddaada1e9f8c00482
-change-id: 20260326-clk-axi-clk-versal-support-8eaef1530870
---
+Rodrigo Alencar (2):
+      dt-bindings: iio: amplifiers: ad8366: add adrf5702/3 support
+      iio: amplifiers: ad8366: add support for adrf5702/3
 
-Thanks!
-- Nuno Sá
+ .../bindings/iio/amplifiers/adi,ad8366.yaml        |  4 ++++
+ drivers/iio/amplifiers/Kconfig                     |  2 ++
+ drivers/iio/amplifiers/ad8366.c                    | 22 ++++++++++++++++++++++
+ 3 files changed, 28 insertions(+)
+---
+base-commit: af980a79bfed43c4a0be12cca786be46f1a0c5e8
+change-id: 20260325-adrf570x-iio-support-e199418fba40
+
+Best regards,
+-- 
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
