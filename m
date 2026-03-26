@@ -1,160 +1,89 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Wed, 25 Mar 2026 22:22:27 +0000
-Subject: [PATCH v9 6/6] usb: typec: tcpm/tcpci_maxim: deprecate WAR for
- setting charger mode
+From: Roman Vivchar <rva333@protonmail.com>
+Date: Thu, 26 Mar 2026 03:00:47 +0200
+Subject: [PATCH] clocksource/drivers/timer-mediatek: initialize GPT6 as
+ system counter
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260325-max77759-charger-v9-6-4486dd297adc@google.com>
-References: <20260325-max77759-charger-v9-0-4486dd297adc@google.com>
-In-Reply-To: <20260325-max77759-charger-v9-0-4486dd297adc@google.com>
-To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
- Lee Jones <lee@kernel.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Tudor Ambarus <tudor.ambarus@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>, Mark Brown <broonie@kernel.org>, 
- Matti Vaittinen <mazziesaccount@gmail.com>, 
- Andrew Morton <akpm@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
- RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>, 
- Amit Sunil Dhamne <amitsd@google.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260326-archtimer-v1-1-5328574e5935@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDYyNT3cSi5IySzNzUIl1jU/MkA6M0cxMDUwsloPqCotS0zAqwWdGxtbU
+ AfxNdA1sAAAA=
+X-Change-ID: 20260325-archtimer-357b02f74058
+To: Daniel Lezcano <daniel.lezcano@linaro.org>, 
+ Thomas Gleixner <tglx@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, 
+ Akari Tsuyukusa <akkun11.open@gmail.com>, 
+ Roman Vivchar <rva333@protonmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774477354; l=3934;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=bruH2PMOUkO97UYu2THTFVcDzHT49eOgRVKEaZdvmY4=;
- b=UnZJCmEPXSOTZU8eIu3pKBaNNSm5b6cf2wd4OSDRS+1pTSFSHnDBncyhynszpzLtMvhpzQk3x
- J/bDqEhAQE6CQFg6v9Z+rB2tJywptY3TNS6k2xoTCp5XjV5idjdW+Li
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774486847; l=2040;
+ i=rva333@protonmail.com; s=20260325; h=from:subject:message-id;
+ bh=yXLTuLAUXSGAa9XhaQxQZMpIErABYX5VH7iq2PdHl/I=;
+ b=CkjxoHpTP04gLssC28KwNiKO/2GD1L0djaFjsZPxG+Xdk1tr1Ar+H+0rQ8dlleGW5YWaDdQvz
+ KXCJOx3HpXYB5CxlTCwQUDILFRGTPuOmHDxlW4PgJnhBEcsplRiSDro
+X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
+ pk=euuVBZGtA2Cqb8Dju84qpQPhvwxyUirJlXpqEPQWKBM=
+X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260325 with auth_id=695
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-TCPCI maxim driver directly writes to the charger's register space to
-set charger mode depending on the power role. As MAX77759 chg driver
-exists, this WAR is not required.
+On certain MediaTek SoCs like mt6572 (likely before the CPUXGPT was
+introduced), the generic arch timer is fed by the GPT6. Some bootloaders
+don't initialize it properly, leading to dead arch timer.
 
-Instead, use a regulator interface to source vbus when typec is in
-source power mode. In other power modes, this regulator will be turned
-off if active.
+Fix this by configuring GPT6 when the MediaTek timer is probed. This
+makes arch timer work properly and removes IPI overhead from MediaTek
+timer broadcast when arch timer is used.
 
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
-Reviewed-by: André Draszik <andre.draszik@linaro.org>
+If the timer was configured by the bootloader, this change is no-op.
+
+Tested-by: Akari Tsuyukusa <akkun11.open@gmail.com> # MT6589
+Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- drivers/usb/typec/tcpm/tcpci_maxim.h      |  1 +
- drivers/usb/typec/tcpm/tcpci_maxim_core.c | 54 +++++++++++++++++++------------
- 2 files changed, 34 insertions(+), 21 deletions(-)
+On certain MediaTek SoCs like mt6572 (likely before the CPUXGPT was
+introduced), the generic arch timer is fed by the GPT6. Some bootloaders
+don't initialize it properly, leading to dead arch timer.
 
-diff --git a/drivers/usb/typec/tcpm/tcpci_maxim.h b/drivers/usb/typec/tcpm/tcpci_maxim.h
-index b33540a42a95..b314606eb0f6 100644
---- a/drivers/usb/typec/tcpm/tcpci_maxim.h
-+++ b/drivers/usb/typec/tcpm/tcpci_maxim.h
-@@ -60,6 +60,7 @@ struct max_tcpci_chip {
- 	struct tcpm_port *port;
- 	enum contamiant_state contaminant_state;
- 	bool veto_vconn_swap;
-+	struct regulator *vbus_reg;
- };
- 
- static inline int max_tcpci_read16(struct max_tcpci_chip *chip, unsigned int reg, u16 *val)
-diff --git a/drivers/usb/typec/tcpm/tcpci_maxim_core.c b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-index 19f638650796..c0ee7e6959ed 100644
---- a/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-+++ b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-@@ -10,6 +10,7 @@
- #include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/regmap.h>
-+#include <linux/regulator/consumer.h>
- #include <linux/usb/pd.h>
- #include <linux/usb/tcpci.h>
- #include <linux/usb/tcpm.h>
-@@ -35,12 +36,6 @@
-  */
- #define TCPC_RECEIVE_BUFFER_LEN				32
- 
--#define MAX_BUCK_BOOST_SID				0x69
--#define MAX_BUCK_BOOST_OP				0xb9
--#define MAX_BUCK_BOOST_OFF				0
--#define MAX_BUCK_BOOST_SOURCE				0xa
--#define MAX_BUCK_BOOST_SINK				0x5
--
- static const struct regmap_range max_tcpci_tcpci_range[] = {
- 	regmap_reg_range(0x00, 0x95)
- };
-@@ -202,32 +197,49 @@ static void process_rx(struct max_tcpci_chip *chip, u16 status)
- 	tcpm_pd_receive(chip->port, &msg, rx_type);
- }
- 
-+static int get_vbus_regulator_handle(struct max_tcpci_chip *chip)
-+{
-+	if (IS_ERR_OR_NULL(chip->vbus_reg)) {
-+		chip->vbus_reg = devm_regulator_get_exclusive(chip->dev,
-+							      "vbus");
-+		if (IS_ERR_OR_NULL(chip->vbus_reg)) {
-+			dev_err(chip->dev,
-+				"Failed to get vbus regulator handle\n");
-+			return -ENODEV;
-+		}
-+	}
-+
-+	return 0;
-+}
-+
- static int max_tcpci_set_vbus(struct tcpci *tcpci, struct tcpci_data *tdata, bool source, bool sink)
- {
- 	struct max_tcpci_chip *chip = tdata_to_max_tcpci(tdata);
--	u8 buffer_source[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_SOURCE};
--	u8 buffer_sink[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_SINK};
--	u8 buffer_none[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_OFF};
--	struct i2c_client *i2c = chip->client;
- 	int ret;
- 
--	struct i2c_msg msgs[] = {
--		{
--			.addr = MAX_BUCK_BOOST_SID,
--			.flags = i2c->flags & I2C_M_TEN,
--			.len = 2,
--			.buf = source ? buffer_source : sink ? buffer_sink : buffer_none,
--		},
--	};
--
- 	if (source && sink) {
- 		dev_err(chip->dev, "Both source and sink set\n");
- 		return -EINVAL;
- 	}
- 
--	ret = i2c_transfer(i2c->adapter, msgs, 1);
-+	ret = get_vbus_regulator_handle(chip);
-+	if (ret) {
-+		/*
-+		 * Regulator is not necessary for sink only applications. Return
-+		 * success in cases where sink mode is being modified.
-+		 */
-+		return source ? ret : 1;
-+	}
-+
-+	if (source) {
-+		if (!regulator_is_enabled(chip->vbus_reg))
-+			ret = regulator_enable(chip->vbus_reg);
-+	} else {
-+		if (regulator_is_enabled(chip->vbus_reg))
-+			ret = regulator_disable(chip->vbus_reg);
-+	}
- 
--	return  ret < 0 ? ret : 1;
-+	return ret < 0 ? ret : 1;
- }
- 
- static void process_power_status(struct max_tcpci_chip *chip)
+Fix this by configuring GPT6 when the MediaTek timer is probed. This
+makes arch timer work properly and removes IPI overhead from MediaTek
+timer broadcast when arch timer is used.
 
+If the timer was configured by the bootloader, this change is no-op.
+---
+ drivers/clocksource/timer-mediatek.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/drivers/clocksource/timer-mediatek.c b/drivers/clocksource/timer-mediatek.c
+index 7bcb4a3f26fb..7de34cace572 100644
+--- a/drivers/clocksource/timer-mediatek.c
++++ b/drivers/clocksource/timer-mediatek.c
+@@ -22,6 +22,8 @@
+ 
+ #define TIMER_SYNC_TICKS        (3)
+ 
++#define TIMER_SYSCNT            (6)
++
+ /* gpt */
+ #define GPT_IRQ_EN_REG          0x00
+ #define GPT_IRQ_ENABLE(val)     BIT((val) - 1)
+@@ -335,6 +337,9 @@ static int __init mtk_gpt_init(struct device_node *node)
+ 
+ 	mtk_gpt_enable_irq(&to, TIMER_CLK_EVT);
+ 
++	/* Configure GPT6 to feed arch timer */
++	mtk_gpt_setup(&to, TIMER_SYSCNT, GPT_CTRL_OP_FREERUN);
++
+ 	return 0;
+ }
+ TIMER_OF_DECLARE(mtk_mt6577, "mediatek,mt6577-timer", mtk_gpt_init);
+
+---
+base-commit: 05f7e89ab9731565d8a62e3b5d1ec206485eeb0b
+change-id: 20260325-archtimer-357b02f74058
+
+Best regards,
 -- 
-2.53.0.1018.g2bb0e51243-goog
+Roman Vivchar <rva333@protonmail.com>
 
