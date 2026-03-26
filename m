@@ -1,11 +1,11 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Thu, 26 Mar 2026 14:53:02 +0800
-Subject: [PATCH 09/13] rust: drm/gem/shmem: add resident_size() and madv()
- for debugfs
+Date: Thu, 26 Mar 2026 14:53:03 +0800
+Subject: [PATCH 10/13] drm/tyr: expose Vm gpuvm_core, gpuvm and va_range as
+ pub(crate)
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260326-b4-tyr-debugfs-v1-9-074badd18716@linux.dev>
+Message-Id: <20260326-b4-tyr-debugfs-v1-10-074badd18716@linux.dev>
 References: <20260326-b4-tyr-debugfs-v1-0-074badd18716@linux.dev>
 In-Reply-To: <20260326-b4-tyr-debugfs-v1-0-074badd18716@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -20,56 +20,43 @@ To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>,
 Cc: rust-for-linux@vger.kernel.org, dri-devel@lists.freedesktop.org, 
  Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774508149; l=1568;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774508149; l=1015;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=SytIgt6vozG/m7mKrWMtN9I/xCnkOKzotNdgnHBSKms=;
- b=Ea7ydItVYP4cJFCZjIvjMC/oeE5RvEUs+qTXYnefnkzU4Xko+9pE9PboTNYV6i5KsfdrGtuoz
- eaU/ysJ1tHoDCEteIG+NuIrnhVchMD6ObkkGXU6pw/2kL1Gqax8xznX
+ bh=l+K9zW15YdA7Rr803fNe8iacgAff7Ccyrsy1728ZtCA=;
+ b=Z2102NPJrLYhjTFTHtNjxbwByB2im8luathC5tg30XFDs7fqzPxHYQxaYNfs9Gnk4ze5VU0OU
+ m7Np+bRkkAnAIFgr0///hHaP/vbwssLEI4Z2Gx0ewURZ8c5KWShSpXS
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Expose resident size and madvise state of shmem GEM objects so drivers
-can show per-BO memory usage and reclaimable size in debugfs.
+Allow the debugfs module to read VM and GPU VA state for the gpuvas file.
 
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- rust/kernel/drm/gem/shmem.rs | 21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
+ drivers/gpu/drm/tyr/vm.rs | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/rust/kernel/drm/gem/shmem.rs b/rust/kernel/drm/gem/shmem.rs
-index 065bdd78d1ba6..ba25a4a832db6 100644
---- a/rust/kernel/drm/gem/shmem.rs
-+++ b/rust/kernel/drm/gem/shmem.rs
-@@ -196,6 +196,27 @@ extern "C" fn free_callback(obj: *mut bindings::drm_gem_object) {
-         let _ = unsafe { KBox::from_raw(this) };
-     }
+diff --git a/drivers/gpu/drm/tyr/vm.rs b/drivers/gpu/drm/tyr/vm.rs
+index 936c3049812b3..ccf4493065a49 100644
+--- a/drivers/gpu/drm/tyr/vm.rs
++++ b/drivers/gpu/drm/tyr/vm.rs
+@@ -306,12 +306,12 @@ pub(crate) struct Vm {
+     pdev: ARef<platform::Device>,
+     /// DRM GPUVM core for managing virtual address space.
+     #[pin]
+-    gpuvm_core: Mutex<GpuVmCore<GpuVmData>>,
++    pub(crate) gpuvm_core: Mutex<GpuVmCore<GpuVmData>>,
+     /// Non-core part of the GPUVM. Can be used for stuff that doesn't modify the
+     /// internal mapping tree, like GpuVm::obtain()
+-    gpuvm: ARef<GpuVm<GpuVmData>>,
++    pub(crate) gpuvm: ARef<GpuVm<GpuVmData>>,
+     /// VA range for this VM.
+-    va_range: Range<u64>,
++    pub(crate) va_range: Range<u64>,
+ }
  
-+    /// Returns the resident size of this object.
-+    #[inline]
-+    pub fn resident_size(&self) -> usize {
-+        // SAFETY: `self.as_raw_shmem()` is guaranteed to be a valid pointer to a
-+        // drm_gem_shmem_object.
-+        if unsafe { (*self.as_raw_shmem()).pages }.is_null() {
-+            0
-+        } else {
-+            // SAFETY: `self.as_raw()` is guaranteed to be a valid pointer to a drm_gem_object.
-+            unsafe { (*self.as_raw()).size }
-+        }
-+    }
-+
-+    /// Returns the state for madvise of this object.
-+    #[inline]
-+    pub fn madv(&self) -> i32 {
-+        // SAFETY: `self.as_raw_shmem()` is guaranteed to be a valid pointer to a
-+        // drm_gem_shmem_object.
-+        unsafe { (*self.as_raw_shmem()).madv }
-+    }
-+
-     /// Creates (if necessary) and returns an immutable reference to a scatter-gather table of DMA
-     /// pages for this object.
-     ///
+ impl Vm {
 
 -- 
 2.43.0
