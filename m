@@ -1,10 +1,10 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Thu, 26 Mar 2026 14:53:04 +0800
-Subject: [PATCH 11/13] drm/tyr: add debugfs infrastructure
+Date: Thu, 26 Mar 2026 14:53:05 +0800
+Subject: [PATCH 12/13] drm/tyr: add vms and gpuvas debugfs interface
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260326-b4-tyr-debugfs-v1-11-074badd18716@linux.dev>
+Message-Id: <20260326-b4-tyr-debugfs-v1-12-074badd18716@linux.dev>
 References: <20260326-b4-tyr-debugfs-v1-0-074badd18716@linux.dev>
 In-Reply-To: <20260326-b4-tyr-debugfs-v1-0-074badd18716@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -19,181 +19,208 @@ To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>,
 Cc: rust-for-linux@vger.kernel.org, dri-devel@lists.freedesktop.org, 
  Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774508149; l=5182;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774508149; l=6265;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=1btG0Sx25zF2F6OgaSoKvjV0c11Rx1gJQLvaM+XCMnw=;
- b=4BzP84uRMvtQIqd5l1fJvBht5EyLCC3NM+logl6kdz1/5RHPRvas5W18l7V0suTgaTItFl3vL
- ut/W8HeWWYqArHFrV3+rTxb4JteVf0SpQ/puwwai7tneKvmUuyrPM2o
+ bh=PT8BoEdihc7OlVuRK6n+uUkVOlziBrFRPpEjiw9P2kI=;
+ b=CLSwwc7lBTWGbtnfA7WsMpzQ22Qi3qmnhkI6Dl6n48psilB7uc3zezz4XHsLyMyPvZRHiwX9Z
+ uLqKay70PVHBW7qWSLA4EkVDs9vWDXCDDsJgem6h7b30xxYnADHj74y
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add module debugfs root, per-device directory and TyrDebugFSData; wire
-into driver and call debugfs_init.
+Add vms list to Mmu and vms field to TyrDebugFSData; populate vms in
+Firmware::new and register gpuvas read-only file under debugfs
+per-device directory.
 
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- drivers/gpu/drm/tyr/debugfs.rs | 46 ++++++++++++++++++++++++++++++++++++++++++
- drivers/gpu/drm/tyr/driver.rs  | 11 +++++++++-
- drivers/gpu/drm/tyr/tyr.rs     | 39 ++++++++++++++++++++++++++++++++---
- 3 files changed, 92 insertions(+), 4 deletions(-)
+ drivers/gpu/drm/tyr/debugfs.rs | 59 +++++++++++++++++++++++++++++++++++++++---
+ drivers/gpu/drm/tyr/driver.rs  |  5 +++-
+ drivers/gpu/drm/tyr/fw.rs      |  5 +++-
+ drivers/gpu/drm/tyr/mmu.rs     |  6 ++++-
+ 4 files changed, 69 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/gpu/drm/tyr/debugfs.rs b/drivers/gpu/drm/tyr/debugfs.rs
-new file mode 100644
-index 0000000000000..254ecef43ea9a
---- /dev/null
+index 254ecef43ea9a..edbdb83a5b132 100644
+--- a/drivers/gpu/drm/tyr/debugfs.rs
 +++ b/drivers/gpu/drm/tyr/debugfs.rs
-@@ -0,0 +1,46 @@
-+// SPDX-License-Identifier: GPL-2.0 or MIT
-+
-+//! Debugfs support for the Tyr DRM driver.
-+
-+use core::pin;
-+
-+use kernel::{
-+    debugfs,
-+    device::Core,
-+    drm,
-+    platform,
-+    prelude::*,
-+    revocable::LazyRevocable,
-+    str::CString,
-+    sync::{
-+        hazptr::HazptrCtx,
-+        Arc,
-+        ArcBorrow, //
-+    }, //
-+};
-+
-+use crate::driver::TyrDrmDriver;
-+
-+pub(crate) static DEBUGFS_ROOT: LazyRevocable<debugfs::Dir> = LazyRevocable::new();
-+
-+/// Per-device debugfs data.
-+pub(crate) struct TyrDebugFSData {}
-+
-+/// Registers per-device debugfs directory under the module's debugfs root.
-+pub(crate) fn debugfs_init(
-+    ddev: &drm::Device<TyrDrmDriver>,
-+    pdev: &platform::Device<Core>,
-+    debugfs_data: ArcBorrow<'_, TyrDebugFSData>,
-+) -> Result {
-+    let idx = ddev.primary_index();
-+    let dir_name = CString::try_from_fmt(fmt!("{}", idx))?;
-+    let ctx = pin::pin!(HazptrCtx::new());
-+    let root_dir = DEBUGFS_ROOT.try_access(ctx).ok_or_else(|| {
-+        pr_err!("DEBUGFS_ROOT is not set");
-+        ENOENT
-+    })?;
-+    let debugfs_data: Arc<TyrDebugFSData> = debugfs_data.into();
-+    let scope_init = root_dir.scope(debugfs_data, &dir_name, |_data, _dir| {});
-+
-+    kernel::devres::register(pdev.as_ref(), scope_init, GFP_KERNEL)
+@@ -8,6 +8,9 @@
+     debugfs,
+     device::Core,
+     drm,
++    drm::gem::IntoGEMObject,
++    fmt,
++    fmt::Write,
+     platform,
+     prelude::*,
+     revocable::LazyRevocable,
+@@ -15,16 +18,64 @@
+     sync::{
+         hazptr::HazptrCtx,
+         Arc,
+-        ArcBorrow, //
++        ArcBorrow,
++        Mutex, //
+     }, //
+ };
+ 
+ use crate::driver::TyrDrmDriver;
++use crate::vm::Vm;
+ 
+ pub(crate) static DEBUGFS_ROOT: LazyRevocable<debugfs::Dir> = LazyRevocable::new();
+ 
+ /// Per-device debugfs data.
+-pub(crate) struct TyrDebugFSData {}
++#[pin_data]
++pub(crate) struct TyrDebugFSData {
++    #[pin]
++    pub(crate) vms: Mutex<KVec<Arc<Vm>>>,
 +}
++
++/// Writes VM debug information for the "gpuvas" debugfs file.
++fn show_vm(vm: &Vm, f: &mut impl Write) -> core::fmt::Result {
++    writeln!(
++        f,
++        "DRM GPU VA space ({:?}) [0x{:016x};0x{:016x}]",
++        vm.gpuvm.name(),
++        vm.va_range.start,
++        vm.va_range.end,
++    )?;
++
++    let kva = vm.gpuvm.kernel_alloc_va();
++    writeln!(
++        f,
++        "Kernel reserved node [0x{:016x};0x{:016x}]",
++        kva.addr(),
++        kva.addr() + kva.length(),
++    )?;
++
++    writeln!(f, " VAs | start              | range              | end                | object             | object offset")?;
++    writeln!(f, "-------------------------------------------------------------------------------------------------------------")?;
++    for va in vm.gpuvm_core.lock().va_mappings() {
++        f.write_fmt(fmt!(
++            "     | 0x{:016x} | 0x{:016x} | 0x{:016x} | {:18p} | 0x{:016x}\n",
++            va.addr(),
++            va.length(),
++            va.addr() + va.length(),
++            va.obj().as_raw(),
++            va.gem_offset(),
++        ))?;
++    }
++    Ok(())
++}
++
++fn show_gpuvas(data: &Arc<TyrDebugFSData>, f: &mut fmt::Formatter<'_>) -> core::fmt::Result {
++    let vms = data.vms.lock();
++    for vm in vms.iter() {
++        show_vm(vm, f)?;
++        writeln!(f)?;
++    }
++    Ok(())
++}
+ 
+ /// Registers per-device debugfs directory under the module's debugfs root.
+ pub(crate) fn debugfs_init(
+@@ -40,7 +91,9 @@ pub(crate) fn debugfs_init(
+         ENOENT
+     })?;
+     let debugfs_data: Arc<TyrDebugFSData> = debugfs_data.into();
+-    let scope_init = root_dir.scope(debugfs_data, &dir_name, |_data, _dir| {});
++    let scope_init = root_dir.scope(debugfs_data, &dir_name, |data, dir| {
++        dir.read_callback_file(c"gpuvas", data, &show_gpuvas);
++    });
+ 
+     kernel::devres::register(pdev.as_ref(), scope_init, GFP_KERNEL)
+ }
 diff --git a/drivers/gpu/drm/tyr/driver.rs b/drivers/gpu/drm/tyr/driver.rs
-index 593f71c550e08..c8c929fda06ac 100644
+index c8c929fda06ac..e1d5e908de876 100644
 --- a/drivers/gpu/drm/tyr/driver.rs
 +++ b/drivers/gpu/drm/tyr/driver.rs
-@@ -38,6 +38,7 @@
+@@ -154,7 +154,9 @@ fn probe(
+         let platform: ARef<platform::Device> = pdev.into();
+ 
+         let mmu = Mmu::new(pdev, iomem.as_arc_borrow(), &gpu_info)?;
+-        let debugfs_data = Arc::new(TyrDebugFSData {}, GFP_KERNEL)?;
++        let debugfs_data = Arc::pin_init(try_pin_init!(TyrDebugFSData {
++            vms <- new_mutex!(KVec::new()),
++        }), GFP_KERNEL)?;
+         let debugfs_data_clone = debugfs_data.clone();
+ 
+         let firmware = Firmware::new(
+@@ -163,6 +165,7 @@ fn probe(
+             &uninit_ddev,
+             mmu.as_arc_borrow(),
+             &gpu_info,
++            debugfs_data.as_arc_borrow(),
+         )?;
+ 
+         firmware.boot()?;
+diff --git a/drivers/gpu/drm/tyr/fw.rs b/drivers/gpu/drm/tyr/fw.rs
+index b62e5ed69c4d4..c46320bb54516 100644
+--- a/drivers/gpu/drm/tyr/fw.rs
++++ b/drivers/gpu/drm/tyr/fw.rs
+@@ -37,6 +37,7 @@
  };
  
  use crate::{
 +    debugfs::TyrDebugFSData,
-     file::TyrDrmFileData,
-     fw::Firmware,
-     gem::BoData,
-@@ -75,6 +76,9 @@ pub(crate) struct TyrDrmDeviceData {
-     ///
-     /// This is mainly queried by userspace, i.e.: Mesa.
-     pub(crate) gpu_info: GpuInfo,
-+
-+    /// Per-device debugfs data.
-+    pub(crate) debugfs_data: Arc<TyrDebugFSData>,
- }
+     driver::{
+         IoMem,
+         TyrDrmDevice, //
+@@ -200,6 +201,7 @@ pub(crate) fn new(
+         ddev: &TyrDrmDevice<Uninit>,
+         mmu: ArcBorrow<'_, Mmu>,
+         gpu_info: &GpuInfo,
++        debugfs_data: ArcBorrow<'_, TyrDebugFSData>,
+     ) -> Result<Arc<Firmware>> {
+         let vm = Vm::new(pdev, ddev, mmu, gpu_info)?;
  
- // Both `Clk` and `Regulator` do not implement `Send` or `Sync`, but they
-@@ -150,6 +154,8 @@ fn probe(
-         let platform: ARef<platform::Device> = pdev.into();
+@@ -238,11 +240,12 @@ pub(crate) fn new(
+             Firmware {
+                 pdev: pdev.into(),
+                 iomem: iomem.into(),
+-                vm,
++                vm: vm.clone(),
+                 sections,
+             },
+             GFP_KERNEL,
+         )?;
++        debugfs_data.vms.lock().push(vm, GFP_KERNEL)?;
  
-         let mmu = Mmu::new(pdev, iomem.as_arc_borrow(), &gpu_info)?;
-+        let debugfs_data = Arc::new(TyrDebugFSData {}, GFP_KERNEL)?;
-+        let debugfs_data_clone = debugfs_data.clone();
+         Ok(firmware)
+     }
+diff --git a/drivers/gpu/drm/tyr/mmu.rs b/drivers/gpu/drm/tyr/mmu.rs
+index 52a6bbbb179a2..d5e6af4b804e4 100644
+--- a/drivers/gpu/drm/tyr/mmu.rs
++++ b/drivers/gpu/drm/tyr/mmu.rs
+@@ -35,7 +35,8 @@
+         VmAsData, //
+     },
+     regs::MAX_AS_REGISTERS,
+-    slot::SlotManager, //
++    slot::SlotManager,
++    vm, //
+ };
  
-         let firmware = Firmware::new(
-             pdev,
-@@ -174,9 +180,12 @@ fn probe(
-                     _sram: sram_regulator,
-                 }),
-                 gpu_info,
-+                debugfs_data: debugfs_data_clone,
-         });
--
-         let ddev = Registration::new_foreign_owned(uninit_ddev, pdev.as_ref(), data, 0)?;
-+
-+        crate::debugfs::debugfs_init(ddev, pdev, debugfs_data.as_arc_borrow())?;
-+
-         let driver = TyrPlatformDriverData {
-             _device: ddev.into(),
-         };
-diff --git a/drivers/gpu/drm/tyr/tyr.rs b/drivers/gpu/drm/tyr/tyr.rs
-index 18b0668bb2178..cda4955db4dc9 100644
---- a/drivers/gpu/drm/tyr/tyr.rs
-+++ b/drivers/gpu/drm/tyr/tyr.rs
-@@ -5,8 +5,20 @@
- //! The name "Tyr" is inspired by Norse mythology, reflecting Arm's tradition of
- //! naming their GPUs after Nordic mythological figures and places.
- 
--use crate::driver::TyrPlatformDriverData;
-+use crate::{
-+    debugfs::DEBUGFS_ROOT,
-+    driver::TyrPlatformDriverData, //
-+};
-+use kernel::{
-+    driver::Registration,
-+    error,
-+    platform,
-+    prelude::*,
-+    revocable::HazPtrRevokeHandle,
-+    InPlaceModule, //
-+};
- 
-+mod debugfs;
- mod driver;
- mod file;
- mod fw;
-@@ -17,8 +29,29 @@
- mod slot;
- mod vm;
- 
--kernel::module_platform_driver! {
--    type: TyrPlatformDriverData,
-+pub(crate) const MODULE_NAME: &kernel::str::CStr = <LocalModule as kernel::ModuleMetadata>::NAME;
-+
-+#[pin_data]
-+struct TyrModule {
-+    _debugfs_root: HazPtrRevokeHandle<'static, kernel::debugfs::Dir>,
+ pub(crate) mod address_space;
+@@ -51,6 +52,8 @@
+ /// threads. Methods may block if another thread holds the lock.
+ #[pin_data]
+ pub(crate) struct Mmu {
 +    #[pin]
-+    _driver: Registration<platform::Adapter<TyrPlatformDriverData>>,
-+}
-+
-+impl InPlaceModule for TyrModule {
-+    fn init(module: &'static kernel::ThisModule) -> impl PinInit<Self, error::Error> {
-+        let dir = kernel::debugfs::Dir::new(kernel::c_str!("tyr"));
-+        let debugfs_root_handle = Pin::static_ref(&DEBUGFS_ROOT).init(dir);
-+
-+        try_pin_init!(Self {
-+            _driver <- Registration::new(MODULE_NAME, module),
-+            _debugfs_root <- debugfs_root_handle,
-+        })
-+    }
-+}
-+
-+module! {
-+    type: TyrModule,
-     name: "tyr",
-     authors: ["The Tyr driver authors"],
-     description: "Arm Mali Tyr DRM driver",
++    pub(crate) vms: Mutex<KVec<Arc<vm::Vm>>>,
+     /// Manages the allocation of hardware MMU slots to GPU address spaces.
+     ///
+     /// Tracks which address spaces are currently active in hardware slots and
+@@ -75,6 +78,7 @@ pub(crate) fn new(
+         let as_manager = AddressSpaceManager::new(pdev, iomem, gpu_info.as_present)?;
+         let mmu_init = try_pin_init!(Self{
+             as_manager <- new_mutex!(SlotManager::new(as_manager, slot_count)?),
++            vms <- new_mutex!(KVec::new()),
+         });
+         Arc::pin_init(mmu_init, GFP_KERNEL)
+     }
 
 -- 
 2.43.0
