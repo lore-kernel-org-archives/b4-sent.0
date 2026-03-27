@@ -1,76 +1,343 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Subject: [PATCH v8 0/3] hwmon: Add support for the LTC4283 Hot Swap
+Date: Fri, 27 Mar 2026 17:26:14 +0000
+Subject: [PATCH v8 1/3] dt-bindings: hwmon: Document the LTC4283 Swap
  Controller
-Date: Fri, 27 Mar 2026 17:26:13 +0000
-Message-Id: <20260327-ltc4283-support-v8-0-471de255d728@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNQQrDIBQFrxL+uhajiZWuco+ShZhvIqQqaqUle
- Pfa7LucgTfvgITRYoJ7d0DEYpP1roG8dKA35VYkdmkMjDJBOeVkz3pgkpP0CsHHTKjg5iaV1qM
- aoK1CRGPfZ/ExN95syj5+zoMifvZ/qwhCCRrs+5EyoxY2Kad2v161f8Jca/0Cl+nMMK8AAAA=
-X-Change-ID: 20260303-ltc4283-support-063f78acc5a4
+Message-Id: <20260327-ltc4283-support-v8-1-471de255d728@analog.com>
+References: <20260327-ltc4283-support-v8-0-471de255d728@analog.com>
+In-Reply-To: <20260327-ltc4283-support-v8-0-471de255d728@analog.com>
 To: linux-gpio@vger.kernel.org, linux-hwmon@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-doc@vger.kernel.org
 Cc: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>, 
- Bartosz Golaszewski <brgl@kernel.org>
+ Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
 X-Mailer: b4 0.15.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774632374; l=1827;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774632374; l=9689;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=wP07MCoE5Leq1WsPpP2sxNPCLJfyGnjf5lGaQDv3kmA=;
- b=Q1nzDECbjvmzhD8F/jUVZDSHmwCeuMks6JUDapVMLTH1OJdSFYj0xw0RWt7NjcddbfLZLYTLC
- z3ckPOWC3R5Dx2e+2VcYWI5rpJsi1TA5mN2Zxo8QZT6bzRi/ViLZnBL
+ bh=nUG3fQSB6RK0XKrQQTpaOauUpPjj3stWPtiJ5PLIzaM=;
+ b=q5A2JHUIFVyhg5uS0Ct6IAgsPqAIrbtdlAf/LbQxVYFiXIQo4ysqOaQWZtMMUJbu1lYGY8kvO
+ EQlnTjX8b8HCGdwQNgT8SmuAANGEyjuMQqwQbQOi28GIW6asp2vGxGQ
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is v8 for the LTC4283 how swap controller. 
+The LTC4283 is a negative voltage hot swap controller that drives an
+external N-channel MOSFET to allow a board to be safely inserted and
+removed from a live backplane.
 
-Similar to the LTC4282 device, we're clearing some fault logs in the
-reset_history attributes.
+Special note for the "adi,vpower-drns-enable" property. It allows to choose
+between the attenuated MOSFET drain voltage or the attenuated input
+voltage at the RTNS pin (effectively choosing between input or output
+power). This is a system level decision not really intended to change at
+runtime and hence is being added as a Firmware property.
 
+Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
+Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
-Changes in v8:
-- Patch 1:
-   * Improved descriptin in adi,fet-turn-off-disable so it's more clear;
-   * Same for adi,dvdt-inrush-control-disable;
-   * Fixed typo in adi,external-fault-retry-enable description.
-- Patch 2:
-   * Use return value from clamp_val();
-   * Add missing 'ret < 0' for device_property_match_property_string()
-     calls;
-   * Fixed logic in when adi,vpower-drns-enable is enabled;
-   * Check default state of the pgio4 pin. So that we can, accordingly
-     flag st->ext_fault.
-- Link to v7: https://lore.kernel.org/linux-hwmon/20260314-ltc4283-support-v7-0-1cda48e93802@analog.com/ 
----
+ .../devicetree/bindings/hwmon/adi,ltc4283.yaml     | 272 +++++++++++++++++++++
+ MAINTAINERS                                        |   6 +
+ 2 files changed, 278 insertions(+)
 
----
-Nuno Sá (3):
-      dt-bindings: hwmon: Document the LTC4283 Swap Controller
-      hwmon: ltc4283: Add support for the LTC4283 Swap Controller
-      gpio: gpio-ltc4283: Add support for the LTC4283 Swap Controller
+diff --git a/Documentation/devicetree/bindings/hwmon/adi,ltc4283.yaml b/Documentation/devicetree/bindings/hwmon/adi,ltc4283.yaml
+new file mode 100644
+index 000000000000..05e2132ad4d8
+--- /dev/null
++++ b/Documentation/devicetree/bindings/hwmon/adi,ltc4283.yaml
+@@ -0,0 +1,272 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/hwmon/adi,ltc4283.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: LTC4283 Negative Voltage Hot Swap Controller
++
++maintainers:
++  - Nuno Sá <nuno.sa@analog.com>
++
++description: |
++  The LTC4283 negative voltage hot swap controller drives an external N-channel
++  MOSFET to allow a board to be safely inserted and removed from a live
++  backplane.
++
++  https://www.analog.com/media/en/technical-documentation/data-sheets/ltc4283.pdf
++
++properties:
++  compatible:
++    enum:
++      - adi,ltc4283
++
++  reg:
++    maxItems: 1
++
++  adi,rsense-nano-ohms:
++    description: Value of the sense resistor.
++
++  adi,current-limit-sense-microvolt:
++    description:
++      The current limit sense voltage of the chip is adjustable between
++      15mV and 30mV in 1mV steps. This effectively limits the current
++      on the load.
++    minimum: 15000
++    maximum: 30000
++    default: 15000
++
++  adi,current-limit-foldback-factor:
++    description:
++      Specifies the foldback factor for the current limit. The current limit
++      can be reduced (folded back) to one of four preset levels. The value
++      represents the percentage of the current limit sense voltage to use
++      during foldback. A value of 100 means no foldback.
++    $ref: /schemas/types.yaml#/definitions/uint32
++    enum: [10, 20, 50, 100]
++    default: 100
++
++  adi,cooling-delay-ms:
++    description:
++      Cooling time to apply after an overcurrent fault, FET bad or
++      external fault.
++    enum: [512, 1002, 2005, 4100, 8190, 16400, 32800, 65600]
++    default: 512
++
++  adi,fet-bad-timer-delay-ms:
++    description:
++      FET bad timer delay. After a FET bad status condition is detected,
++      this timer is started. If the condition persists for the
++      specified time, the FET is turned off and a fault is logged.
++    enum: [256, 512, 1002, 2005]
++    default: 256
++
++  adi,power-good-reset-on-fet:
++    description:
++      If set, resets the power good status when the MOSFET is turned off.
++      Otherwise, it resets when a low output voltage is detected.
++    type: boolean
++
++  adi,fet-turn-off-disable:
++    description:
++      If set, the MOSFET is not turned off when a FET fault is detected.
++    type: boolean
++
++  adi,tmr-pull-down-disable:
++    description: Disables 2uA pull-down current on the TMR pin.
++    type: boolean
++
++  adi,dvdt-inrush-control-disable:
++    description:
++      Disables dV/dt inrush control during startup. In dV/dt mode, the inrush
++      current is limited by controlling a constant output voltage ramp rate.
++      When disabled, the inrush control mechanism is active current limiting.
++    type: boolean
++
++  adi,fault-log-enable:
++    description:
++      If set, enables logging fault registers and ADC data into EEPROM upon a
++      fault.
++    type: boolean
++
++  adi,vpower-drns-enable:
++    description:
++      If set, enables the attenuated MOSFET drain voltage to be monitored. This
++      effectively means that the MOSFET power is monitored. If not set, the
++      attenuated input voltage (and hence input power) is monitored.
++    type: boolean
++
++  adi,external-fault-fet-off-enable:
++    description: Turns MOSFET off following an external fault.
++    type: boolean
++
++  adi,undervoltage-retry-disable:
++    description: Do not retry to turn on the MOSFET after an undervoltage fault.
++    type: boolean
++
++  adi,overvoltage-retry-disable:
++    description: Do not retry to turn on the MOSFET after an overvoltage fault.
++    type: boolean
++
++  adi,external-fault-retry-enable:
++    description: Retry to turn on the MOSFET after an external fault.
++    type: boolean
++
++  adi,overcurrent-retries:
++    description: Configures auto-retry following an Overcurrent fault.
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [latch-off, "1", "7", unlimited]
++    default: latch-off
++
++  adi,fet-bad-retries:
++    description:
++      Configures auto-retry following a FET bad fault and a consequent MOSFET
++      turn off.
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [latch-off, "1", "7", unlimited]
++    default: latch-off
++
++  adi,pgio1-func:
++    description: Configures the function of the PGIO1 pin.
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [inverted_power_good, power_good, gpio]
++    default: inverted_power_good
++
++  adi,pgio2-func:
++    description: Configures the function of the PGIO2 pin.
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [inverted_power_good, power_good, gpio, active_current_limiting]
++    default: inverted_power_good
++
++  adi,pgio3-func:
++    description: Configures the function of the PGIO3 pin.
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [inverted_power_good_input, power_good_input, gpio]
++    default: inverted_power_good_input
++
++  adi,pgio4-func:
++    description: Configures the function of the PGIO4 pin.
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [inverted_external_fault, external_fault, gpio]
++    default: inverted_external_fault
++
++  adi,gpio-on-adio1:
++    description: If set, the ADIO1 pin is used as a GPIO.
++    type: boolean
++
++  adi,gpio-on-adio2:
++    description: If set, the ADIO2 pin is used as a GPIO.
++    type: boolean
++
++  adi,gpio-on-adio3:
++    description: If set, the ADIO3 pin is used as a GPIO.
++    type: boolean
++
++  adi,gpio-on-adio4:
++    description: If set, the ADIO4 pin is used as a GPIO.
++    type: boolean
++
++  gpio-controller: true
++
++  '#gpio-cells':
++    const: 2
++
++dependencies:
++  adi,gpio-on-adio1:
++    - gpio-controller
++    - '#gpio-cells'
++  adi,gpio-on-adio2:
++    - gpio-controller
++    - '#gpio-cells'
++  adi,gpio-on-adio3:
++    - gpio-controller
++    - '#gpio-cells'
++  adi,gpio-on-adio4:
++    - gpio-controller
++    - '#gpio-cells'
++  adi,external-fault-retry-enable:
++    - adi,pgio4-func
++  adi,external-fault-fet-off-enable:
++    - adi,pgio4-func
++
++required:
++  - compatible
++  - reg
++  - adi,rsense-nano-ohms
++
++allOf:
++  - if:
++      properties:
++        adi,pgio1-func:
++          const: gpio
++      required:
++        - adi,pgio1-func
++    then:
++      required:
++        - gpio-controller
++        - '#gpio-cells'
++
++  - if:
++      properties:
++        adi,pgio2-func:
++          const: gpio
++      required:
++        - adi,pgio2-func
++    then:
++      required:
++        - gpio-controller
++        - '#gpio-cells'
++
++  - if:
++      properties:
++        adi,pgio3-func:
++          const: gpio
++      required:
++        - adi,pgio3-func
++    then:
++      required:
++        - gpio-controller
++        - '#gpio-cells'
++
++  - if:
++      properties:
++        adi,pgio4-func:
++          const: gpio
++      required:
++        - adi,pgio4-func
++    then:
++      properties:
++        adi,external-fault-retry-enable: false
++        adi,external-fault-fet-off-enable: false
++      required:
++        - gpio-controller
++        - '#gpio-cells'
++
++additionalProperties: false
++
++examples:
++  - |
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        swap-controller@15 {
++            compatible = "adi,ltc4283";
++            reg = <0x15>;
++
++            adi,rsense-nano-ohms = <500>;
++            adi,current-limit-sense-microvolt = <25000>;
++            adi,current-limit-foldback-factor = <10>;
++            adi,cooling-delay-ms = <8190>;
++            adi,fet-bad-timer-delay-ms = <512>;
++
++            adi,external-fault-fet-off-enable;
++            adi,pgio4-func = "external_fault";
++
++            adi,gpio-on-adio1;
++            adi,pgio1-func = "gpio";
++            gpio-controller;
++            #gpio-cells = <2>;
++        };
++    };
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 830c6f076b00..13ae2f3db449 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -15141,6 +15141,12 @@ F:	Documentation/devicetree/bindings/hwmon/adi,ltc4282.yaml
+ F:	Documentation/hwmon/ltc4282.rst
+ F:	drivers/hwmon/ltc4282.c
+ 
++LTC4283 HARDWARE MONITOR AND GPIO DRIVER
++M:	Nuno Sá <nuno.sa@analog.com>
++L:	linux-hwmon@vger.kernel.org
++S:	Supported
++F:	Documentation/devicetree/bindings/hwmon/adi,ltc4283.yaml
++
+ LTC4286 HARDWARE MONITOR DRIVER
+ M:	Delphine CC Chiu <Delphine_CC_Chiu@Wiwynn.com>
+ L:	linux-hwmon@vger.kernel.org
 
- .../devicetree/bindings/hwmon/adi,ltc4283.yaml     |  272 +++
- Documentation/hwmon/index.rst                      |    1 +
- Documentation/hwmon/ltc4283.rst                    |  266 +++
- MAINTAINERS                                        |    9 +
- drivers/gpio/Kconfig                               |   15 +
- drivers/gpio/Makefile                              |    1 +
- drivers/gpio/gpio-ltc4283.c                        |  218 +++
- drivers/hwmon/Kconfig                              |   12 +
- drivers/hwmon/Makefile                             |    1 +
- drivers/hwmon/ltc4283.c                            | 1796 ++++++++++++++++++++
- 10 files changed, 2591 insertions(+)
----
-base-commit: cd041796c380961f0e3c04d9627af80131608adc
-change-id: 20260303-ltc4283-support-063f78acc5a4
---
-
-Thanks!
-- Nuno Sá
+-- 
+2.53.0
 
