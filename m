@@ -1,209 +1,149 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Fri, 27 Mar 2026 16:58:40 +0000
-Subject: [PATCH v2 3/4] dmaengine: dma-axi-dmac: fix use-after-free on
- unbind
+Date: Fri, 27 Mar 2026 16:58:41 +0000
+Subject: [PATCH v2 4/4] dmaengine: dma-axi-dmac: Defer freeing DMA
+ descriptors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260327-dma-dmac-handle-vunmap-v2-3-021f95f0e87b@analog.com>
+Message-Id: <20260327-dma-dmac-handle-vunmap-v2-4-021f95f0e87b@analog.com>
 References: <20260327-dma-dmac-handle-vunmap-v2-0-021f95f0e87b@analog.com>
 In-Reply-To: <20260327-dma-dmac-handle-vunmap-v2-0-021f95f0e87b@analog.com>
 To: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org
 Cc: Lars-Peter Clausen <lars@metafoo.de>, Vinod Koul <vkoul@kernel.org>, 
- Frank Li <Frank.Li@kernel.org>
+ Frank Li <Frank.Li@kernel.org>, Eliza Balas <eliza.balas@analog.com>
 X-Mailer: b4 0.15.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774630718; l=6083;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774630718; l=4336;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=wNR0oMrw1rZtsi8jCBNE5cHKX8fscvXjfWhQBVv80wM=;
- b=SKBxoXgda0GYVlhNewidU0+iQyqeuYD43xtQpNKW0k1sukH/ROqnRR76dXCn/DVTduLPpPA4f
- pR1KTZu6VhyCV/5BU7SWgWMUklipVMh4imabMsvPGScJy+mxNaXTQhR
+ bh=iMbPiK/wOeXYmM5fOnDfGQN+n3bpnujjiiAlZriC4to=;
+ b=ta7WMPtxj1EzNdcXn+Q4f3+NDIrTIPaL1n/IM6GuOTrYbw/cY9q/QRd8g71GNM1BDoEnmig7e
+ 2QWONkYu+2hC/3Aj+K0pwzvmqTwy/0+86nR3TGeyVpxNg4YsZC6xM3f
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The DMA device lifetime can extend beyond the platform driver unbind if
-DMA channels are still referenced by client drivers. This leads to
-use-after-free when the devm-managed memory is freed on unbind but the
-DMA device callbacks still access it.
+From: Eliza Balas <eliza.balas@analog.com>
 
-Fix this by:
- - Allocating axi_dmac with kzalloc_obj() instead of devm_kzalloc() so
-its lifetime is not tied to the platform device.
- - Implementing the device_release callback that so that we can free
-the object when reference count gets to 0 (no users).
- - Adding an 'unbound' flag protected by the vchan lock that is set
-during driver removal, preventing MMIO accesses after the device has been
-unbound.
+This IP core can be used in architectures (like Microblaze) where DMA
+descriptors are allocated with vmalloc(). Hence, given that freeing the
+descriptors happen in softirq context, vunmpap() will BUG().
 
-While at it, explicitly include spinlock.h given it was missing.
+To solve the above, we setup a work item during allocation of the
+descriptors and schedule in softirq context. Hence, the actual freeing
+happens in threaded context.
 
+Also note that to account for the possible race where the struct axi_dmac
+object is gone between scheduling the work and actually running it, we
+now save and get a reference of struct device when allocating the
+descriptor (given that's all we need in axi_dmac_free_desc()) and
+release it in axi_dmac_free_desc().
+
+Signed-off-by: Eliza Balas <eliza.balas@analog.com>
+Co-developed-by: Nuno Sá <nuno.sa@analog.com>
 Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/dma/dma-axi-dmac.c | 70 +++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 60 insertions(+), 10 deletions(-)
+ drivers/dma/dma-axi-dmac.c | 50 ++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 37 insertions(+), 13 deletions(-)
 
 diff --git a/drivers/dma/dma-axi-dmac.c b/drivers/dma/dma-axi-dmac.c
-index 127c3cf80a0e..70d3ad7e7d37 100644
+index 70d3ad7e7d37..46f1ead0c7d7 100644
 --- a/drivers/dma/dma-axi-dmac.c
 +++ b/drivers/dma/dma-axi-dmac.c
-@@ -24,6 +24,7 @@
- #include <linux/platform_device.h>
+@@ -25,6 +25,7 @@
  #include <linux/regmap.h>
  #include <linux/slab.h>
-+#include <linux/spinlock.h>
+ #include <linux/spinlock.h>
++#include <linux/workqueue.h>
  
  #include <dt-bindings/dma/axi-dmac.h>
  
-@@ -174,6 +175,8 @@ struct axi_dmac {
- 
- 	struct dma_device dma_dev;
- 	struct axi_dmac_chan chan;
+@@ -133,6 +134,9 @@ struct axi_dmac_sg {
+ struct axi_dmac_desc {
+ 	struct virt_dma_desc vdesc;
+ 	struct axi_dmac_chan *chan;
++	struct device *dev;
 +
-+	bool unbound;
- };
++	struct work_struct sched_work;
  
- static struct axi_dmac *chan_to_axi_dmac(struct axi_dmac_chan *chan)
-@@ -182,6 +185,11 @@ static struct axi_dmac *chan_to_axi_dmac(struct axi_dmac_chan *chan)
- 		dma_dev);
- }
- 
-+static struct axi_dmac *dev_to_axi_dmac(struct dma_device *dev)
-+{
-+	return container_of(dev, struct axi_dmac, dma_dev);
-+}
-+
- static struct axi_dmac_chan *to_axi_dmac_chan(struct dma_chan *c)
- {
- 	return container_of(c, struct axi_dmac_chan, vchan.chan);
-@@ -614,7 +622,12 @@ static int axi_dmac_terminate_all(struct dma_chan *c)
- 	LIST_HEAD(head);
- 
- 	spin_lock_irqsave(&chan->vchan.lock, flags);
--	axi_dmac_write(dmac, AXI_DMAC_REG_CTRL, 0);
-+	/*
-+	 * Only allow the MMIO access if the device is live. Otherwise still
-+	 * go for freeing the descriptors.
-+	 */
-+	if (!dmac->unbound)
-+		axi_dmac_write(dmac, AXI_DMAC_REG_CTRL, 0);
- 	chan->next_desc = NULL;
- 	vchan_get_all_descriptors(&chan->vchan, &head);
- 	list_splice_tail_init(&chan->active_descs, &head);
-@@ -642,9 +655,12 @@ static void axi_dmac_issue_pending(struct dma_chan *c)
- 	if (chan->hw_sg)
- 		ctrl |= AXI_DMAC_CTRL_ENABLE_SG;
- 
--	axi_dmac_write(dmac, AXI_DMAC_REG_CTRL, ctrl);
--
- 	spin_lock_irqsave(&chan->vchan.lock, flags);
-+	if (dmac->unbound) {
-+		spin_unlock_irqrestore(&chan->vchan.lock, flags);
-+		return;
-+	}
-+	axi_dmac_write(dmac, AXI_DMAC_REG_CTRL, ctrl);
- 	if (vchan_issue_pending(&chan->vchan))
- 		axi_dmac_start_transfer(chan);
+ 	bool cyclic;
+ 	bool cyclic_eot;
+@@ -666,6 +670,25 @@ static void axi_dmac_issue_pending(struct dma_chan *c)
  	spin_unlock_irqrestore(&chan->vchan.lock, flags);
-@@ -1184,6 +1200,14 @@ static int axi_dmac_detect_caps(struct axi_dmac *dmac, unsigned int version)
- 	return 0;
  }
  
-+static void axi_dmac_release(struct dma_device *dma_dev)
++static void axi_dmac_free_desc(struct axi_dmac_desc *desc)
 +{
-+	struct axi_dmac *dmac = dev_to_axi_dmac(dma_dev);
++	struct axi_dmac_hw_desc *hw = desc->sg[0].hw;
++	dma_addr_t hw_phys = desc->sg[0].hw_phys;
 +
-+	put_device(dma_dev->dev);
-+	kfree(dmac);
++	dma_free_coherent(desc->dev, PAGE_ALIGN(desc->num_sgs * sizeof(*hw)),
++			  hw, hw_phys);
++	put_device(desc->dev);
++	kfree(desc);
 +}
 +
- static void axi_dmac_tasklet_kill(void *task)
- {
- 	tasklet_kill(task);
-@@ -1194,16 +1218,27 @@ static void axi_dmac_free_dma_controller(void *of_node)
- 	of_dma_controller_free(of_node);
- }
- 
-+static void axi_dmac_disable(void *__dmac)
++static void axi_dmac_free_desc_schedule_work(struct work_struct *work)
 +{
-+	struct axi_dmac *dmac = __dmac;
-+	unsigned long flags;
++	struct axi_dmac_desc *desc = container_of(work, struct axi_dmac_desc,
++						  sched_work);
 +
-+	spin_lock_irqsave(&dmac->chan.vchan.lock, flags);
-+	dmac->unbound = true;
-+	spin_unlock_irqrestore(&dmac->chan.vchan.lock, flags);
-+	axi_dmac_write(dmac, AXI_DMAC_REG_CTRL, 0);
++	axi_dmac_free_desc(desc);
 +}
 +
- static int axi_dmac_probe(struct platform_device *pdev)
+ static struct axi_dmac_desc *
+ axi_dmac_alloc_desc(struct axi_dmac_chan *chan, unsigned int num_sgs)
  {
- 	struct dma_device *dma_dev;
--	struct axi_dmac *dmac;
-+	struct axi_dmac *__dmac;
- 	struct regmap *regmap;
- 	unsigned int version;
- 	u32 irq_mask = 0;
- 	int ret;
+@@ -681,6 +704,7 @@ axi_dmac_alloc_desc(struct axi_dmac_chan *chan, unsigned int num_sgs)
+ 		return NULL;
+ 	desc->num_sgs = num_sgs;
+ 	desc->chan = chan;
++	desc->dev = get_device(dmac->dma_dev.dev);
  
--	dmac = devm_kzalloc(&pdev->dev, sizeof(*dmac), GFP_KERNEL);
-+	struct axi_dmac *dmac __free(kfree) = kzalloc_obj(struct axi_dmac);
- 	if (!dmac)
- 		return -ENOMEM;
- 
-@@ -1251,6 +1286,7 @@ static int axi_dmac_probe(struct platform_device *pdev)
- 	dma_dev->dev = &pdev->dev;
- 	dma_dev->src_addr_widths = BIT(dmac->chan.src_width);
- 	dma_dev->dst_addr_widths = BIT(dmac->chan.dest_width);
-+	dma_dev->device_release = axi_dmac_release;
- 	dma_dev->directions = BIT(dmac->chan.direction);
- 	dma_dev->residue_granularity = DMA_RESIDUE_GRANULARITY_DESCRIPTOR;
- 	dma_dev->max_sg_burst = 31; /* 31 SGs maximum in one burst */
-@@ -1285,12 +1321,21 @@ static int axi_dmac_probe(struct platform_device *pdev)
- 	if (ret)
- 		return ret;
+ 	hws = dma_alloc_coherent(dev, PAGE_ALIGN(num_sgs * sizeof(*hws)),
+ 				&hw_phys, GFP_ATOMIC);
+@@ -703,21 +727,18 @@ axi_dmac_alloc_desc(struct axi_dmac_chan *chan, unsigned int num_sgs)
+ 	/* The last hardware descriptor will trigger an interrupt */
+ 	desc->sg[num_sgs - 1].hw->flags = AXI_DMAC_HW_FLAG_LAST | AXI_DMAC_HW_FLAG_IRQ;
  
 +	/*
-+	 * From this point on, our dmac object has it's lifetime bounded with
-+	 * dma_dev. Will be freed when dma_dev refcount goes to 0. That means,
-+	 * no more automatic kfree(). Also note that dmac is now NULL so we
-+	 * need __dmac.
++	 * We need to setup a work item because this IP can be used on archs
++	 * that rely on vmalloced memory for descriptors. And given that freeing
++	 * the descriptors happens in softirq context, vunmpap() will BUG().
++	 * Hence, setup the worker so that we can queue it and free the
++	 * descriptor in threaded context.
 +	 */
-+	__dmac = no_free_ptr(dmac);
-+	get_device(&pdev->dev);
++	INIT_WORK(&desc->sched_work, axi_dmac_free_desc_schedule_work);
 +
- 	/*
- 	 * Put the action in here so it get's done before unregistering the DMA
- 	 * device.
- 	 */
- 	ret = devm_add_action_or_reset(&pdev->dev, axi_dmac_tasklet_kill,
--				       &dmac->chan.vchan.task);
-+				       &__dmac->chan.vchan.task);
- 	if (ret)
- 		return ret;
- 
-@@ -1304,13 +1349,18 @@ static int axi_dmac_probe(struct platform_device *pdev)
- 	if (ret)
- 		return ret;
- 
--	ret = devm_request_irq(&pdev->dev, dmac->irq, axi_dmac_interrupt_handler,
--			       IRQF_SHARED, dev_name(&pdev->dev), dmac);
-+	/* So that we can mark the device as unbound and disable it */
-+	ret = devm_add_action_or_reset(&pdev->dev, axi_dmac_disable, __dmac);
- 	if (ret)
- 		return ret;
- 
--	regmap = devm_regmap_init_mmio(&pdev->dev, dmac->base,
--		 &axi_dmac_regmap_config);
-+	ret = devm_request_irq(&pdev->dev, __dmac->irq, axi_dmac_interrupt_handler,
-+			       IRQF_SHARED, dev_name(&pdev->dev), __dmac);
-+	if (ret)
-+		return ret;
-+
-+	regmap = devm_regmap_init_mmio(&pdev->dev, __dmac->base,
-+				       &axi_dmac_regmap_config);
- 
- 	return PTR_ERR_OR_ZERO(regmap);
+ 	return desc;
  }
+ 
+-static void axi_dmac_free_desc(struct axi_dmac_desc *desc)
+-{
+-	struct axi_dmac *dmac = chan_to_axi_dmac(desc->chan);
+-	struct device *dev = dmac->dma_dev.dev;
+-	struct axi_dmac_hw_desc *hw = desc->sg[0].hw;
+-	dma_addr_t hw_phys = desc->sg[0].hw_phys;
+-
+-	dma_free_coherent(dev, PAGE_ALIGN(desc->num_sgs * sizeof(*hw)),
+-			  hw, hw_phys);
+-	kfree(desc);
+-}
+-
+ static struct axi_dmac_sg *axi_dmac_fill_linear_sg(struct axi_dmac_chan *chan,
+ 	enum dma_transfer_direction direction, dma_addr_t addr,
+ 	unsigned int num_periods, unsigned int period_len,
+@@ -958,7 +979,10 @@ static void axi_dmac_free_chan_resources(struct dma_chan *c)
+ 
+ static void axi_dmac_desc_free(struct virt_dma_desc *vdesc)
+ {
+-	axi_dmac_free_desc(to_axi_dmac_desc(vdesc));
++	struct axi_dmac_desc *desc = to_axi_dmac_desc(vdesc);
++
++	/* See the comment in axi_dmac_alloc_desc() for the why! */
++	schedule_work(&desc->sched_work);
+ }
+ 
+ static bool axi_dmac_regmap_rdwr(struct device *dev, unsigned int reg)
 
 -- 
 2.53.0
