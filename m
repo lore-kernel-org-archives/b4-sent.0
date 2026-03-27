@@ -1,11 +1,11 @@
 From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Fri, 27 Mar 2026 15:18:39 +0530
-Subject: [PATCH v8 3/6] mm/vmalloc: zero newly exposed memory on vrealloc()
- grow
+Date: Fri, 27 Mar 2026 15:18:40 +0530
+Subject: [PATCH v8 4/6] mm/vmalloc: use READ_ONCE() for vmalloc nr_pages
+ status readers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260327-vmalloc-shrink-v8-3-cc6b57059ed7@zohomail.in>
+Message-Id: <20260327-vmalloc-shrink-v8-4-cc6b57059ed7@zohomail.in>
 References: <20260327-vmalloc-shrink-v8-0-cc6b57059ed7@zohomail.in>
 In-Reply-To: <20260327-vmalloc-shrink-v8-0-cc6b57059ed7@zohomail.in>
 To: Andrew Morton <akpm@linux-foundation.org>, 
@@ -14,61 +14,95 @@ Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
  Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
  Shivam Kalra <shivamkalra98@zohomail.in>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774604917; l=1805;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774604917; l=2959;
  i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
- bh=LSUYWjYOjJYKYliRO3bYLhKxcMuMIBGaVN2tymO6+ew=;
- b=rhThTDLnB57E/DBczd8HBXwMc5oEaaeJggo8YDeT6Y5MrRyp+O/EQh7sxM1hZvm1pvxDVce7R
- Zy3ihFALKZ+BT2UKkAd+06tqJ3RxfEKcdMJTVjTZPZTwIrL3lutscSU
+ bh=q4Ito1vUmJmb3A3de47pGFK3WSX+j54Hs6oFM89TDPE=;
+ b=WAfAOXMaxhCxjvt2ewSFJ24eqk8Y14S2Fzvr0Bi6nQKMPvQrC4YQDdEU9hGatJ8o3viLlAzov
+ V4kYd9euOsHDeADLt//193DDbkOHhKjTrrbTTQyhPFP8B9THCu6sr/a
 X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
  pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
 X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When growing an existing vmalloc allocation in-place, zero the newly
-exposed memory region [old_size, size) if the caller requested it via
-__GFP_ZERO (checked via want_init_on_alloc(flags)).
+The vmalloc status readers (vmalloc_info_show(), show_numa_info(), and
+vmalloc_dump_obj()) currently read v->nr_pages and the v->pages array
+without any concurrent protection.
 
-Previously, the code assumed that the unused capacity in the vm_struct
-was already zeroed either at initial allocation time or during a prior
-shrink. However, if an intermediate shrink operation occurred without
-__GFP_ZERO and without init_on_free enabled, the "freed" portion of the
-allocation would retain its old data.
+In preparation for vrealloc() shrink support, where v->nr_pages can
+be decreased and entries in the v->pages array can be nulled out
+concurrently, these readers must be protected to prevent use-after-free
+or NULL pointer dereferences.
 
-If a subsequent grow-in-place operation then explicitly requests
-__GFP_ZERO, failing to zero the memory here would violate the allocation
-flags and leak the previously discarded, potentially sensitive data.
+Update these functions to use READ_ONCE() when accessing v->nr_pages
+and v->pages[nr]. This ensures the compiler does not re-fetch these
+values and provides a consistent view of the vmap area's state.
+Additionally, in show_numa_info(), explicitly check for a NULL page
+pointer before dereferencing it to avoid potential crashes if a page
+was concurrently removed during a shrink operation.
 
 Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
- mm/vmalloc.c | 13 ++++++++-----
- 1 file changed, 8 insertions(+), 5 deletions(-)
+ mm/vmalloc.c | 19 +++++++++++++------
+ 1 file changed, 13 insertions(+), 6 deletions(-)
 
 diff --git a/mm/vmalloc.c b/mm/vmalloc.c
-index 133c3b0418fe..ddb689bf9ba5 100644
+index ddb689bf9ba5..c6bdddee6266 100644
 --- a/mm/vmalloc.c
 +++ b/mm/vmalloc.c
-@@ -4368,13 +4368,16 @@ void *vrealloc_node_align_noprof(const void *p, size_t size, unsigned long align
- 	 * We already have the bytes available in the allocation; use them.
- 	 */
- 	if (size <= (size_t)vm->nr_pages << PAGE_SHIFT) {
--		/*
--		 * No need to zero memory here, as unused memory will have
--		 * already been zeroed at initial allocation time or during
--		 * realloc shrink time.
--		 */
- 		vm->requested_size = size;
- 		kasan_vrealloc(p, old_size, size);
-+
-+		/*
-+		 * Zero the newly exposed bytes if requested.
-+		 * The region [old_size, size) may contain stale data from
-+		 * a previous shrink that did not use __GFP_ZERO.
-+		 */
-+		if (want_init_on_alloc(flags))
-+			memset((void *)p + old_size, 0, size - old_size);
- 		return (void *)p;
- 	}
+@@ -5189,7 +5189,7 @@ bool vmalloc_dump_obj(void *object)
+ 	vm = va->vm;
+ 	addr = (unsigned long) vm->addr;
+ 	caller = vm->caller;
+-	nr_pages = vm->nr_pages;
++	nr_pages = READ_ONCE(vm->nr_pages);
+ 	spin_unlock(&vn->busy.lock);
  
+ 	pr_cont(" %u-page vmalloc region starting at %#lx allocated at %pS\n",
+@@ -5210,7 +5210,7 @@ bool vmalloc_dump_obj(void *object)
+ static void show_numa_info(struct seq_file *m, struct vm_struct *v,
+ 				 unsigned int *counters)
+ {
+-	unsigned int nr;
++	unsigned int nr, nr_pages;
+ 	unsigned int step = 1U << vm_area_page_order(v);
+ 
+ 	if (!counters)
+@@ -5218,8 +5218,13 @@ static void show_numa_info(struct seq_file *m, struct vm_struct *v,
+ 
+ 	memset(counters, 0, nr_node_ids * sizeof(unsigned int));
+ 
+-	for (nr = 0; nr < v->nr_pages; nr += step)
+-		counters[page_to_nid(v->pages[nr])] += step;
++	nr_pages = READ_ONCE(v->nr_pages);
++	for (nr = 0; nr < nr_pages; nr += step) {
++		struct page *page = READ_ONCE(v->pages[nr]);
++
++		if (page)
++			counters[page_to_nid(page)] += step;
++	}
+ 	for_each_node_state(nr, N_HIGH_MEMORY)
+ 		if (counters[nr])
+ 			seq_printf(m, " N%u=%u", nr, counters[nr]);
+@@ -5247,6 +5252,7 @@ static int vmalloc_info_show(struct seq_file *m, void *p)
+ 	struct vmap_area *va;
+ 	struct vm_struct *v;
+ 	unsigned int *counters;
++	unsigned int nr_pages;
+ 
+ 	if (IS_ENABLED(CONFIG_NUMA))
+ 		counters = kmalloc_array(nr_node_ids, sizeof(unsigned int), GFP_KERNEL);
+@@ -5276,8 +5282,9 @@ static int vmalloc_info_show(struct seq_file *m, void *p)
+ 			if (v->caller)
+ 				seq_printf(m, " %pS", v->caller);
+ 
+-			if (v->nr_pages)
+-				seq_printf(m, " pages=%d", v->nr_pages);
++			nr_pages = READ_ONCE(v->nr_pages);
++			if (nr_pages)
++				seq_printf(m, " pages=%d", nr_pages);
+ 
+ 			if (v->phys_addr)
+ 				seq_printf(m, " phys=%pa", &v->phys_addr);
 
 -- 
 2.43.0
