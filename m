@@ -1,115 +1,197 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Fri, 27 Mar 2026 00:10:01 +0100
-Subject: [PATCH v4 2/2] arm64: dts: rockchip: add mipi csi-2 receiver nodes
- to rk3588
+From: Andy Chung <Andy.Chung@amd.com>
+Date: Fri, 27 Mar 2026 14:59:16 +0800
+Subject: [PATCH] ARM: dts: aspeed: anacapa: Enable MCTP and FRU for NIC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260305-rk3588-csi2rx-v4-2-81c6bcfefa63@collabora.com>
-References: <20260305-rk3588-csi2rx-v4-0-81c6bcfefa63@collabora.com>
-In-Reply-To: <20260305-rk3588-csi2rx-v4-0-81c6bcfefa63@collabora.com>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Frank Li <Frank.li@nxp.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Kever Yang <kever.yang@rock-chips.com>, 
- Collabora Kernel Team <kernel@collabora.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774566600; l=2503;
- i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=eOx/3+fLG0p1riU9lvyNxwYlp2uG1DyRr96Nkcj8cCQ=;
- b=WX8zJtXNZ2DzUtXeA4tPKCgGn9gURRKTTXJy4EnZHg02/gU9BpDfUKzEmvJ4l0W7muZvZiFXu
- nIM6waggZduCn/3ByzcK3qGtRpHGJjluQE3BqKaqqQ7XtxQT4YG1KZK
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
+Message-Id: <20260327-dts_enable_nic_mctp-v1-1-5b5c05f4442c@amd.com>
+X-B4-Tracking: v=1; b=H4sIAMMqxmkC/yXMQQrCMBBG4auUWRtoU5KAVxEJSfqrIxpLJopQe
+ ndTu/wW7y0kKAyhY7dQwYeFX7lhOHSUbiFfoXhqJt1r24/aqamKRw7xAZ85+Weqs8JognHWxMF
+ ZauVccOHv/3o675Z3vCPVbUXr+gP88bJ9dwAAAA==
+X-Change-ID: 20260327-dts_enable_nic_mctp-e35a5765b176
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
+ Andrew Jeffery <andrew@codeconstruct.com.au>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ Andy Chung <andy.chung@amd.com>, Andy Chung <Andy.Chung@amd.com>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774594761; l=3825;
+ i=Andy.Chung@amd.com; s=20260327; h=from:subject:message-id;
+ bh=nPjZUWkxYiROesPBYSRnJtyY+ooYKRCOwqAAXx0E5II=;
+ b=426Yu7gf6eNtDB2/x526jYc4Z1JqYnU4txLYevBKxAhEn8zHWmwRTqtXFJAuEiVW5EmT0Xyud
+ qS5QpdP/rNHDPpoqYK3BCbkLuAfO8zBi5AI7c0GwHoMl+hQ/Ps7C6nE
+X-Developer-Key: i=Andy.Chung@amd.com; a=ed25519;
+ pk=X2gaHRnhU2q5hvMjkC6xmIcC03vKNvHY9CQRdsj9ecM=
+X-Endpoint-Received: by B4 Relay for Andy.Chung@amd.com/20260327 with auth_id=696
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Rockchip RK3588 features six MIPI CSI-2 receiver units:
- - MIPI0: connected to MIPI DCPHY0 (not supported)
- - MIPI1: connected to MIPI DCPHY1 (not supported)
- - MIPI2: connected to MIPI DPHY0
- - MIPI3: connected to MIPI DPHY0-1 (not supported)
- - MIPI4: connected to MIPI DPHY1
- - MIPI5: connected to MIPI DPHY1-1 (not supported)
-As the MIPI DCPHYs as well as the split DPHY mode of the DPHYs
-are not yet supported, add only the device tree nodes for the
-MIPI2 and MIPI4 units.
+Add the mctp-controller property to enable frontend NIC management
+via PLDM over MCTP.
+Also add EEPROM device for NIC FRU.
 
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+Signed-off-by: Andy Chung <Andy.Chung@amd.com>
 ---
- arch/arm64/boot/dts/rockchip/rk3588-base.dtsi | 52 +++++++++++++++++++++++++++
- 1 file changed, 52 insertions(+)
+Add the mctp-controller property to enable frontend NIC management
+via PLDM over MCTP.
+Also add EEPROM device for NIC FRU.
+---
+ .../dts/aspeed/aspeed-bmc-facebook-anacapa.dts     | 67 +++++++++++++++++++++-
+ 1 file changed, 65 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-index 7fe9593d8c19..6c593b0255c3 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
-@@ -1430,6 +1430,58 @@ av1d: video-codec@fdc70000 {
- 		resets = <&cru SRST_A_AV1>, <&cru SRST_P_AV1>, <&cru SRST_A_AV1_BIU>, <&cru SRST_P_AV1_BIU>;
- 	};
+diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
+index 221af858cb6b..138b081be049 100644
+--- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
++++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
+@@ -584,38 +584,67 @@ eeprom@56 {
+ // R Bridge Board
+ &i2c10 {
+ 	status = "okay";
++	multi-master;
++	mctp@10 {
++		compatible = "mctp-i2c-controller";
++		reg = <(0x10 | I2C_OWN_SLAVE_ADDRESS)>;
++	};
  
-+	csi2: csi@fdd30000 {
-+		compatible = "rockchip,rk3588-mipi-csi2", "rockchip,rk3568-mipi-csi2";
-+		reg = <0x0 0xfdd30000 0x0 0x10000>;
-+		interrupts = <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH 0>,
-+			     <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH 0>;
-+		interrupt-names = "err1", "err2";
-+		clocks = <&cru PCLK_CSI_HOST_2>;
-+		phys = <&csi_dphy0>;
-+		power-domains = <&power RK3588_PD_VI>;
-+		resets = <&cru SRST_P_CSI_HOST_2>;
-+		status = "disabled";
-+
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			csi2_in: port@0 {
-+				reg = <0>;
+ 	i2c-mux@71 {
+ 		compatible = "nxp,pca9548";
+ 		reg = <0x71>;
+ 		#address-cells = <1>;
+ 		#size-cells = <0>;
+-		i2c-mux-idle-disconnect;
+ 
+ 		i2c10mux0ch0: i2c@0 {
+ 			reg = <0>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
++			mctp-controller;
+ 		};
+ 		i2c10mux0ch1: i2c@1 {
+ 			reg = <1>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
++			mctp-controller;
++			// BE NIC FRU
++			eeprom@50 {
++				compatible = "atmel,24c32";
++				reg = <0x50>;
 +			};
-+
-+			csi2_out: port@1 {
-+				reg = <1>;
+ 		};
+ 		i2c10mux0ch2: i2c@2 {
+ 			reg = <2>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
++			mctp-controller;
++			// BE NIC FRU
++			eeprom@50 {
++				compatible = "atmel,24c32";
++				reg = <0x50>;
 +			};
-+		};
+ 		};
+ 		i2c10mux0ch3: i2c@3 {
+ 			reg = <3>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
++			mctp-controller;
++			// BE NIC FRU
++			eeprom@50 {
++				compatible = "atmel,24c32";
++				reg = <0x50>;
++			};
+ 		};
+ 		i2c10mux0ch4: i2c@4 {
+ 			reg = <4>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
++			mctp-controller;
++			// BE NIC FRU
++			eeprom@50 {
++				compatible = "atmel,24c32";
++				reg = <0x50>;
++			};
+ 		};
+ 		i2c10mux0ch5: i2c@5 {
+ 			reg = <5>;
+@@ -661,38 +690,72 @@ i2c10mux0ch7: i2c@7 {
+ // L Bridge Board
+ &i2c11 {
+ 	status = "okay";
++	multi-master;
++	mctp@10 {
++		compatible = "mctp-i2c-controller";
++		reg = <(0x10 | I2C_OWN_SLAVE_ADDRESS)>;
 +	};
-+
-+	csi4: csi@fdd50000 {
-+		compatible = "rockchip,rk3588-mipi-csi2", "rockchip,rk3568-mipi-csi2";
-+		reg = <0x0 0xfdd50000 0x0 0x10000>;
-+		interrupts = <GIC_SPI 151 IRQ_TYPE_LEVEL_HIGH 0>,
-+			     <GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH 0>;
-+		interrupt-names = "err1", "err2";
-+		clocks = <&cru PCLK_CSI_HOST_4>;
-+		phys = <&csi_dphy1>;
-+		power-domains = <&power RK3588_PD_VI>;
-+		resets = <&cru SRST_P_CSI_HOST_4>;
-+		status = "disabled";
-+
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			csi4_in: port@0 {
-+				reg = <0>;
+ 
+ 	i2c-mux@71 {
+ 		compatible = "nxp,pca9548";
+ 		reg = <0x71>;
+ 		#address-cells = <1>;
+ 		#size-cells = <0>;
+-		i2c-mux-idle-disconnect;
+ 
+ 		i2c11mux0ch0: i2c@0 {
+ 			reg = <0>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
++			mctp-controller;
++			// FE NIC FRU
++			eeprom@50 {
++				compatible = "atmel,24c32";
++				reg = <0x50>;
 +			};
-+
-+			csi4_out: port@1 {
-+				reg = <1>;
+ 		};
+ 		i2c11mux0ch1: i2c@1 {
+ 			reg = <1>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
++			mctp-controller;
++			// BE NIC FRU
++			eeprom@50 {
++				compatible = "atmel,24c32";
++				reg = <0x50>;
 +			};
-+		};
-+	};
-+
- 	vop: vop@fdd90000 {
- 		compatible = "rockchip,rk3588-vop";
- 		reg = <0x0 0xfdd90000 0x0 0x4200>, <0x0 0xfdd95000 0x0 0x1000>;
+ 		};
+ 		i2c11mux0ch2: i2c@2 {
+ 			reg = <2>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
++			mctp-controller;
++			// BE NIC FRU
++			eeprom@50 {
++				compatible = "atmel,24c32";
++				reg = <0x50>;
++			};
+ 		};
+ 		i2c11mux0ch3: i2c@3 {
+ 			reg = <3>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
++			mctp-controller;
++			// BE NIC FRU
++			eeprom@50 {
++				compatible = "atmel,24c32";
++				reg = <0x50>;
++			};
+ 		};
+ 		i2c11mux0ch4: i2c@4 {
+ 			reg = <4>;
+ 			#address-cells = <1>;
+ 			#size-cells = <0>;
++			mctp-controller;
++			// BE NIC FRU
++			eeprom@50 {
++				compatible = "atmel,24c32";
++				reg = <0x50>;
++			};
+ 		};
+ 		i2c11mux0ch5: i2c@5 {
+ 			reg = <5>;
 
--- 
-2.39.5
+---
+base-commit: 6de23f81a5e08be8fbf5e8d7e9febc72a5b5f27f
+change-id: 20260327-dts_enable_nic_mctp-e35a5765b176
+
+Best regards,
+--  
+Andy Chung <Andy.Chung@amd.com>
 
