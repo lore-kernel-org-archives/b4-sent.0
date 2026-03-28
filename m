@@ -1,11 +1,10 @@
 From: =?utf-8?q?Pablo_Correa_G=C3=B3mez?= <pabloyoyoista@postmarketos.org>
-Date: Sat, 28 Mar 2026 23:58:40 +0100
-Subject: [PATCH v2 1/3] arm64: dts: qcom: sdm670: add default uart pinctrl
- nodes
+Date: Sat, 28 Mar 2026 23:58:41 +0100
+Subject: [PATCH v2 2/3] arm64: dts: qcom: sdm670: add debug uart soc node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v2-1-53abd9db8f0a@postmarketos.org>
+Message-Id: <20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v2-2-53abd9db8f0a@postmarketos.org>
 References: <20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v2-0-53abd9db8f0a@postmarketos.org>
 In-Reply-To: <20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v2-0-53abd9db8f0a@postmarketos.org>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -17,238 +16,59 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  ~postmarketos/upstreaming@lists.sr.ht, 
  =?utf-8?q?Pablo_Correa_G=C3=B3mez?= <pabloyoyoista@postmarketos.org>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4680;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1225;
  i=pabloyoyoista@postmarketos.org; h=from:subject:message-id;
- bh=BuzAL9B0hzH8sHOEbYMQsrlBM+zPhBYp09xz2YwAGlk=;
- b=owEBbQKS/ZANAwAKAXo0JWX/Y195AcsmYgBpyF0i3yr0N6jl6v9p1QPksvTA/RkAzSaABc3un
- ClG0jVJfUiJAjMEAAEKAB0WIQS9CheUSi6o/ykTCaJ6NCVl/2NfeQUCachdIgAKCRB6NCVl/2Nf
- eaNPEACVn4qDfezmZfOt2Qpaa8fgkxBV0/vvAJZVfkt1LQOQQP8fTJqOgwv6Do7LjJl5gV3kJcT
- /8XbUofOrYtlp/YgHwJEv2pSdxokaYK6lDeyuDauXhaqxo+z37d16Pk6trdnzwX8QsQWi/h6pRD
- cxIUTO5zTe1036o736kb8w+7D7bNo2Wp94ZNaUrSRBD61j/38phgDzA38NXhXxfACuE+t6YdD1H
- Ya6hh6As9jv3mELpxBD+LxAi7LaMl6q14aVERbVs3o7NT7fbtkZ4t4+QGFR86btG8QGUl9YwBDL
- dkle8b662I/NUNHNMr1biD8gPWNYu7LsBcZvr1iVfXZQk5HugAGjPYrtSNkWJoyGA/Phx5yZscQ
- EuEPQ2BL1qbID11VnjyXf5Fer4QIsexbSqBz6J8uc/a4hqcr/nPzQnp9GQilA9iTkHEhoAnecmv
- ogeRz3vlorbuT2ahNkhIXqHBfTHI+0BuJAxfESyhJtdEbYYvP6oBmlwuY4L5z5HrtZbz1j6Ke9D
- LzW+rPhBg7XhQN/X7EzbZq0YtFfkYwg0qCGOpmRg7ymkFdvLEaAHwxSbV/JfHKv8hIhytEzDymq
- cvL02qGm8XoBGIe89AveYQD6AvSphRLGeH8LUAocLwY3XpfvzrWN9jJb6R5MYCj/Bgnv3qn99DA
- q6/VVvv+wxw+Z5w==
+ bh=L1100JIpppZkEIE9KsBz4sU5OJaPhYVcFrm/i+/xKLw=;
+ b=owEBbQKS/ZANAwAKAXo0JWX/Y195AcsmYgBpyF0iwB/xXRhz8L+4jRjNqXpXSXx9QDCNjJ8An
+ LuCy+B2y+iJAjMEAAEKAB0WIQS9CheUSi6o/ykTCaJ6NCVl/2NfeQUCachdIgAKCRB6NCVl/2Nf
+ eX9AD/9zmEu8SAarJ0+mCQo4cq3vPVVFuf7ZF8F/1vLWKmFMlfzqP0qpsam4Xr3x99bB2W19DKJ
+ v+R1TX2w4aINZ5RyufvhQRDElwle0+bVXGJxPLZ9fv6cuouXDlO2vclcKoJ8SX1DzXboAMl+Uxs
+ YC2y4KaDOL1H7Oo1JgBqWIWvc7UxGkezVBf2vsr8Ca6uTL6kKYf1Z/Q13y3sFISBv3Wg2OWAyhy
+ 4xYUex7wTIJ12oVJ7RqEQ8oBuw7BA1lLGTmbD6bFaM7d+ynvJu+9LweWeHEINe9AjbWi4iga8BQ
+ 2ho/goNBPrcMJfek33MhbWD01NJRK99+lAH6ysAIyA2Gxm1SfzmXdgURAX+TRGunkn50k9en2ax
+ jnA5wfASR0z1EMx9wOtPgz07gSCBg51oojlvvazLtEV/TR8dLbUYSRGQV+zq+wamNLTAXq6QneB
+ LIP12CZYuUcN+W/RB6Fb6KVWXod+smZ53m9HY73R/5qAFOMXcM8ir6q3TI+4WFhMiKLzOgfYzUz
+ ka6JB6abKAwO6YisMdKu4b8UyBc6tMrS1wtz3fK5dunTn5qk2Lp3yBmGZV+NSTJ5ArPVe52g5eO
+ BOup3l33DZTXLJf3HPuUWY+hzGrd2imEplEg+irbIzsizqjJaqM/vo1MF9hkuG4bo6ukI3aJ7/X
+ tIdkvw6Vo0J2D5Q==
 X-Developer-Key: i=pabloyoyoista@postmarketos.org; a=openpgp;
  fpr=BD0A17944A2EA8FF291309A27A342565FF635F79
 X-Endpoint-Received: by B4 Relay for pabloyoyoista@postmarketos.org/default with auth_id=698
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is a pre-requisite to enable UART in sargo and bonito. Values for
-the pins have been taken from sdm845, and cross-checking dowstream,
-where available.
+Values are taken from the other geni nodes
 
 Signed-off-by: Pablo Correa Gómez <pabloyoyoista@postmarketos.org>
 ---
- arch/arm64/boot/dts/qcom/sdm670.dtsi | 192 +++++++++++++++++++++++++++++++++++
- 1 file changed, 192 insertions(+)
+ arch/arm64/boot/dts/qcom/sdm670.dtsi | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/sdm670.dtsi b/arch/arm64/boot/dts/qcom/sdm670.dtsi
-index 6b296ceaebc2..3e60ab527a42 100644
+index 3e60ab527a42..25cf21c57b7d 100644
 --- a/arch/arm64/boot/dts/qcom/sdm670.dtsi
 +++ b/arch/arm64/boot/dts/qcom/sdm670.dtsi
-@@ -1352,6 +1352,198 @@ qup_i2c15_default: qup-i2c15-default-state {
- 				function = "qup15";
+@@ -1069,6 +1069,21 @@ i2c12: i2c@a90000 {
+ 				status = "disabled";
  			};
  
-+			qup_uart0_default: qup-uart0-default-state {
-+				qup_uart0_tx: tx-pins {
-+					pins = "gpio2";
-+					function = "qup0";
-+				};
-+
-+				qup_uart0_rx: rx-pins {
-+					pins = "gpio3";
-+					function = "qup0";
-+				};
++			uart12: serial@a90000 {
++				compatible = "qcom,geni-debug-uart";
++				reg = <0 0x00a90000 0 0x4000>;
++				clock-names = "se";
++				clocks = <&gcc GCC_QUPV3_WRAP1_S4_CLK>;
++				pinctrl-names = "default";
++				pinctrl-0 = <&qup_uart12_default>;
++				interrupts = <GIC_SPI 357 IRQ_TYPE_LEVEL_HIGH>;
++				power-domains = <&rpmhpd SDM670_CX>;
++				interconnects = <&aggre2_noc MASTER_BLSP_2 0 &config_noc SLAVE_BLSP_2 0>,
++						<&gladiator_noc MASTER_AMPSS_M0 0 &config_noc SLAVE_BLSP_2 0>;
++				interconnect-names = "qup-core", "qup-config";
++				status = "disabled";
 +			};
 +
-+			qup_uart1_default: qup-uart1-default-state {
-+				qup_uart1_tx: tx-pins {
-+					pins = "gpio19";
-+					function = "qup1";
-+				};
-+
-+				qup_uart1_rx: rx-pins {
-+					pins = "gpio20";
-+					function = "qup1";
-+				};
-+			};
-+
-+			qup_uart2_default: qup-uart2-default-state {
-+				qup_uart2_tx: tx-pins {
-+					pins = "gpio29";
-+					function = "qup2";
-+				};
-+
-+				qup_uart2_rx: rx-pins {
-+					pins = "gpio30";
-+					function = "qup2";
-+				};
-+			};
-+
-+			qup_uart3_default: qup-uart3-default-state {
-+				qup_uart3_tx: tx-pins {
-+					pins = "gpio43";
-+					function = "qup3";
-+				};
-+
-+				qup_uart3_rx: rx-pins {
-+					pins = "gpio44";
-+					function = "qup3";
-+				};
-+			};
-+
-+			qup_uart4_default: qup-uart4-default-state {
-+				qup_uart4_tx: tx-pins {
-+					pins = "gpio91";
-+					function = "qup4";
-+				};
-+
-+				qup_uart4_rx: rx-pins {
-+					pins = "gpio92";
-+					function = "qup4";
-+				};
-+			};
-+
-+			qup_uart5_default: qup-uart5-default-state {
-+				qup_uart5_tx: tx-pins {
-+					pins = "gpio87";
-+					function = "qup5";
-+				};
-+
-+				qup_uart5_rx: rx-pins {
-+					pins = "gpio88";
-+					function = "qup5";
-+				};
-+			};
-+
-+			qup_uart6_default: qup-uart6-default-state {
-+				qup_uart6_tx: tx-pins {
-+					pins = "gpio47";
-+					function = "qup6";
-+				};
-+
-+				qup_uart6_rx: rx-pins {
-+					pins = "gpio48";
-+					function = "qup6";
-+				};
-+			};
-+
-+			qup_uart7_default: qup-uart7-default-state {
-+				qup_uart7_tx: tx-pins {
-+					pins = "gpio95";
-+					function = "qup7";
-+				};
-+
-+				qup_uart7_rx: rx-pins {
-+					pins = "gpio96";
-+					function = "qup7";
-+				};
-+			};
-+
-+			qup_uart8_default: qup-uart8-default-state {
-+				qup_uart8_tx: tx-pins {
-+					pins = "gpio67";
-+					function = "qup8";
-+				};
-+
-+				qup_uart8_rx: rx-pins {
-+					pins = "gpio68";
-+					function = "qup8";
-+				};
-+			};
-+
-+			qup_uart9_default: qup-uart9-default-state {
-+				qup_uart9_tx: tx-pins {
-+					pins = "gpio4";
-+					function = "qup9";
-+				};
-+
-+				qup_uart9_rx: rx-pins {
-+					pins = "gpio5";
-+					function = "qup9";
-+				};
-+			};
-+
-+			qup_uart10_default: qup-uart10-default-state {
-+				qup_uart10_tx: tx-pins {
-+					pins = "gpio53";
-+					function = "qup10";
-+				};
-+
-+				qup_uart10_rx: rx-pins {
-+					pins = "gpio54";
-+					function = "qup10";
-+				};
-+			};
-+
-+			qup_uart11_default: qup-uart11-default-state {
-+				qup_uart11_tx: tx-pins {
-+					pins = "gpio33";
-+					function = "qup11";
-+				};
-+
-+				qup_uart11_rx: rx-pins {
-+					pins = "gpio34";
-+					function = "qup11";
-+				};
-+			};
-+
-+			qup_uart12_default: qup-uart12-default-state {
-+				qup_uart12_tx: tx-pins {
-+					pins = "gpio51";
-+					function = "qup12";
-+				};
-+
-+				qup_uart12_rx: rx-pins {
-+					pins = "gpio52";
-+					function = "qup12";
-+				};
-+			};
-+
-+			qup_uart13_default: qup-uart13-default-state {
-+				qup_uart13_tx: tx-pins {
-+					pins = "gpio107";
-+					function = "qup13";
-+				};
-+
-+				qup_uart13_rx: rx-pins {
-+					pins = "gpio108";
-+					function = "qup13";
-+				};
-+			};
-+
-+			qup_uart14_default: qup-uart14-default-state {
-+				qup_uart14_tx: tx-pins {
-+					pins = "gpio31";
-+					function = "qup14";
-+				};
-+
-+				qup_uart14_rx: rx-pins {
-+					pins = "gpio32";
-+					function = "qup14";
-+				};
-+			};
-+
-+			qup_uart15_default: qup-uart15-default-state {
-+				qup_uart15_tx: tx-pins {
-+					pins = "gpio83";
-+					function = "qup15";
-+				};
-+
-+				qup_uart15_rx: rx-pins {
-+					pins = "gpio84";
-+					function = "qup15";
-+				};
-+			};
-+
- 			sdc1_state_on: sdc1-on-state {
- 				clk-pins {
- 					pins = "sdc1_clk";
+ 			i2c13: i2c@a94000 {
+ 				compatible = "qcom,geni-i2c";
+ 				reg = <0 0x00a94000 0 0x4000>;
 
 -- 
 2.53.0
