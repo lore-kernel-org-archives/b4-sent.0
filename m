@@ -1,10 +1,11 @@
 From: =?utf-8?q?Pablo_Correa_G=C3=B3mez?= <pabloyoyoista@postmarketos.org>
-Date: Sat, 28 Mar 2026 23:49:15 +0100
-Subject: [PATCH 2/3] arm64: dts: qcom: sdm670: add debug uart soc node
+Date: Sat, 28 Mar 2026 23:49:16 +0100
+Subject: [PATCH 3/3] arm64: dts: qcom: sdm670-google-common: enabled debug
+ uart
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v1-2-0babf584acdb@postmarketos.org>
+Message-Id: <20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v1-3-0babf584acdb@postmarketos.org>
 References: <20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v1-0-0babf584acdb@postmarketos.org>
 In-Reply-To: <20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v1-0-0babf584acdb@postmarketos.org>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -16,59 +17,79 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  ~postmarketos/upstreaming@lists.sr.ht, 
  =?utf-8?q?Pablo_Correa_G=C3=B3mez?= <pabloyoyoista@postmarketos.org>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1225;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1252;
  i=pabloyoyoista@postmarketos.org; h=from:subject:message-id;
- bh=L1100JIpppZkEIE9KsBz4sU5OJaPhYVcFrm/i+/xKLw=;
- b=owEBbQKS/ZANAwAKAXo0JWX/Y195AcsmYgBpyFrrXUDnvwlheDZ+2hKu3twU3X75u12vBwfwQ
- Ue01ImBC9SJAjMEAAEKAB0WIQS9CheUSi6o/ykTCaJ6NCVl/2NfeQUCacha6wAKCRB6NCVl/2Nf
- edABD/9aqMSORu2P0cDJ2ZuBG55trNlwe2J+pMjrZIgTmr2gWZxj36RvEZ11a4rh+kcXfi1jr9N
- DDxKEC9baYhU1tc9o3DqcMqlV5I1hsZuHfJ5+RHFtbO06VenbcAqH/mciUVe5lQMdKtqqXImJ8m
- uB22mRXGmgBsTmumqYmVqMbM5JGwPfuqgMry6rd/0cGvVC7cA4YbP9LIRdOl1Z0juDrMkDvBmk8
- heVkHAHdoAoMQgAQuBmc9gQjEEBIgxOV9p1iMwcoOaK5pLiGphnVPKJBPJhfAoUg79Y5TI9glwq
- gFTB/9yah9qumsLbr0jiqDyD1Fxp7M1BZpcBCQLY8fauMOzsRFOYMXXkpABsPtmZTY0GYOAXWlM
- dHHQoM5gHSkJNTTMsMfQ6n5i4pmTCaTSutqGVDP3Ibzffj8UQYP3BUVrBfJpbz7ez3g9aL/Vi4N
- zh3LwbJB6nnyUr/4E+jHDffGqOWEhRQbaYbMmCIY7hMEp6cZ5yjIIZJjIjjWFf+4wkoBqj8gyx8
- f84JjIujJejG/cIAPS/GILd1MC56Io2rtPzSHuJbAyxmec+o8HGkPT2wX7cWmZyABOSN6WUnnYd
- VujlKnlU45BBjgOKhzpggl/nda47chqsBD2GOG9VFrLtQ+HgHtqjVGhJN3slyOodbcITevdX+AM
- ZCztYpWiwNMGKcw==
+ bh=VHLwmsN4P772ow9/6v2H4OaVcZPfDAQIcntWKTFdTMc=;
+ b=owEBbQKS/ZANAwAKAXo0JWX/Y195AcsmYgBpyFrr6yxaCAZfF6nwPfGCllYi9Uwpe8Sh+kyUo
+ 03w8ZPL/i6JAjMEAAEKAB0WIQS9CheUSi6o/ykTCaJ6NCVl/2NfeQUCacha6wAKCRB6NCVl/2Nf
+ eYD4D/456HqecDssmjPOnvmNqZg4/wivHZJPn0rYiFSBup5h9cqKUEjaG96XACKW8V4Dx0O+EQ0
+ 77HTYNxLV/FUavEB1a43O5visnvFlCJPyE7QlQXXXx0iVB8VeTxb/DAf5wpqHpYaBch/6wHA8Oe
+ TVuhoMbFTB/BPl2k3d4NFVtvjpOAajIALBDWoKm3BKNb1shE7ycZjGMQC5bGz8nV9tiFkL4OKBD
+ IIJ7CnaSAhtmuhhmx/USxeIO7nl/HJOXjNunEPTU/lLkKWelyqz2vo7wgPSS20GMdwv9ba2FhGt
+ NiUhD6f9W5/Imj8tgOFdpIsn6lsk/9JYyFnBWO67nRUk0a3TQ9bCtR+s7DwDdzzqNmPV7peGpEE
+ tVE8Ag9HySn3gfSEDqDukzYE+Q+Pq0HzCCrirzocRjjsC8w/1h88nlXRngajpSmaBOCFPXhhhJK
+ CYhYTStCtMXS/2v+c2IRVHmmAJkZeKEoO0Pp7Yp0lCHdSmy6nZOE1ng/NgBGUvu9e1ivZTCrwU3
+ z7SIeAfOEx4RSaaEliNRNw+Pq1QgjPJR2zd0rL5LinBQXOMqJ5A9CrcIyqttbQEhBIaYApVEnNk
+ BTsWshEXSM35BI1xBleJuvWU3cXKO8h9GxEsjw0r7gf6SJT9PEt3Pldk82ohP9y5Fa7+ov17hBS
+ LNsKUYn/XKfxXxw==
 X-Developer-Key: i=pabloyoyoista@postmarketos.org; a=openpgp;
  fpr=BD0A17944A2EA8FF291309A27A342565FF635F79
 X-Endpoint-Received: by B4 Relay for pabloyoyoista@postmarketos.org/default with auth_id=698
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Values are taken from the other geni nodes
+This has been tested on the Pixel 3a with USB Cereal board
+
+Depends on
+https://lore.kernel.org/all/20260310002606.16413-5-mailingradian@gmail.com/
 
 Signed-off-by: Pablo Correa Gómez <pabloyoyoista@postmarketos.org>
 ---
- arch/arm64/boot/dts/qcom/sdm670.dtsi | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+ arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm670.dtsi b/arch/arm64/boot/dts/qcom/sdm670.dtsi
-index 3e60ab527a42..25cf21c57b7d 100644
---- a/arch/arm64/boot/dts/qcom/sdm670.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm670.dtsi
-@@ -1069,6 +1069,21 @@ i2c12: i2c@a90000 {
- 				status = "disabled";
- 			};
+diff --git a/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
+index 32dce1cfdf6f..e8bd5f3861e4 100644
+--- a/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi
+@@ -27,7 +27,9 @@
+ /delete-node/ &gpu_mem;
  
-+			uart12: serial@a90000 {
-+				compatible = "qcom,geni-debug-uart";
-+				reg = <0 0x00a90000 0 0x4000>;
-+				clock-names = "se";
-+				clocks = <&gcc GCC_QUPV3_WRAP1_S4_CLK>;
-+				pinctrl-names = "default";
-+				pinctrl-0 = <&qup_uart12_default>;
-+				interrupts = <GIC_SPI 357 IRQ_TYPE_LEVEL_HIGH>;
-+				power-domains = <&rpmhpd SDM670_CX>;
-+				interconnects = <&aggre2_noc MASTER_BLSP_2 0 &config_noc SLAVE_BLSP_2 0>,
-+						<&gladiator_noc MASTER_AMPSS_M0 0 &config_noc SLAVE_BLSP_2 0>;
-+				interconnect-names = "qup-core", "qup-config";
-+				status = "disabled";
-+			};
+ / {
+-	aliases { };
++	aliases {
++		serial0 = &uart12;
++	};
+ 
+ 	battery: battery {
+ 		compatible = "simple-battery";
+@@ -683,6 +685,16 @@ &qupv3_id_1 {
+ 	status = "okay";
+ };
+ 
++&qup_uart12_rx {
++	drive-strength = <2>;
++	bias-pull-up;
++};
 +
- 			i2c13: i2c@a94000 {
- 				compatible = "qcom,geni-i2c";
- 				reg = <0 0x00a94000 0 0x4000>;
++&qup_uart12_tx {
++	drive-strength = <2>;
++	bias-disable;
++};
++
+ &sdhc_1 {
+ 	supports-cqe;
+ 	mmc-hs200-1_8v;
+@@ -749,6 +761,10 @@ ts-switch-pins {
+ 	};
+ };
+ 
++&uart12 {
++	status = "okay";
++};
++
+ &usb_1_hsphy {
+ 	vdd-supply = <&vreg_l1b_0p925>;
+ 	vdda-pll-supply = <&vreg_l10a_1p8>;
 
 -- 
 2.53.0
