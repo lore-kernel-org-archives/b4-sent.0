@@ -1,18 +1,13 @@
 From: =?utf-8?q?Pablo_Correa_G=C3=B3mez?= <pabloyoyoista@postmarketos.org>
-Subject: [PATCH v2 0/3] Add support and enable the debug UART in the Pixel
- 3a and Pixel 3a XL
-Date: Sat, 28 Mar 2026 23:58:39 +0100
-Message-Id: <20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v2-0-53abd9db8f0a@postmarketos.org>
+Date: Sat, 28 Mar 2026 23:58:40 +0100
+Subject: [PATCH v2 1/3] arm64: dts: qcom: sdm670: add default uart pinctrl
+ nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIACBdyGkC/51Qy26DMBD8FeRzF/kBhqCqyn9UOaxhIW6DndomS
- hTl32tIj1UP1R5WI83OzM6dRQqWIuuKOwt0sdF6l4F8KVh/RDcR2CFjJrnUXMkWzmhO/pbHxoQ
- wkFkmWDAk8A7CgD3e0IGjawK9k02l6ransWJZ7xxotNfN6/3wxHExH9Sn1eCHEehrySHSk8YMR
- oLez7NNXVFX407rUSujmpU+U4y4JeyK1y2gFA3nslFtKZSqVQUCZrQn66aAg0W3n1ZYZsG33wW
- U4HzduhS6Euqv+/WFYy7Bh9vW3kVsif9R1EUAB27QjHVbYT+Y/dnHNGP4pORj6cPEDo/H4xuEZ
- HzyrAEAAA==
-X-Change-ID: 20260328-pabloyoyoista-debug-uart-on-rdacayan-next-69274358cef4
+Message-Id: <20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v2-1-53abd9db8f0a@postmarketos.org>
+References: <20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v2-0-53abd9db8f0a@postmarketos.org>
+In-Reply-To: <20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v2-0-53abd9db8f0a@postmarketos.org>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -22,72 +17,239 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  ~postmarketos/upstreaming@lists.sr.ht, 
  =?utf-8?q?Pablo_Correa_G=C3=B3mez?= <pabloyoyoista@postmarketos.org>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2385;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4680;
  i=pabloyoyoista@postmarketos.org; h=from:subject:message-id;
- bh=nHP3Q79k1Omfp3O9NIZj0wGgAydolfzgFfeB6Upr46w=;
- b=owEBbQKS/ZANAwAKAXo0JWX/Y195AcsmYgBpyF0iNfMJR0Hjn40mzpRhY4a+KN6RyU8HE7UTZ
- Xji9/1Z7siJAjMEAAEKAB0WIQS9CheUSi6o/ykTCaJ6NCVl/2NfeQUCachdIgAKCRB6NCVl/2Nf
- eRZ5D/44/oBWn4qtAuhYWUV9scv83370tqe24jS31uyhpYWN4oIlyYDEKJgPuIbsUH3ou9eKUVu
- 9VlMaSTp2dPqbBsUiHoqaBKy8+Yzi0dYa4CC6C26RIboQ/hOAIQLkfFSaWYUhzavLCibKMQQdHg
- jbVtAXMOQrahgUjFMKxHTM4V7bfbFYmnxhb6lezWnnFRJLqsajJc0f3mqMR3U6ESi9kkzKd+PP+
- XNqn32c7Xzd4iSBDvCVnTYpZGN2irVz8wMLigYSqFwnfUVT1IZnhcDICeGr6ENGQudwv1PeQa5f
- YCWwbYIxIZgCRZ3U3noRgCnSihtdWW53dJIttJd2lsTfS305C0W4K+ZWNpN3m+o7eF+u3EFOhru
- 8xRnaCgekO/9EFbgOX/fccXDYD4GZ6CgGLkuUAt0+8WPkxkUEMBBqATpfoBtBAp/2Ru/addYKiS
- Z0qByh4nLGmEh/VBfp7B6hyL3NsaYYdf0DuRS4ptQt45TIcrJhZZ+eKj8oddaFxIvmLfo0bc3EY
- WIizaDAps87cYyibmDhabOlh5Dm2t38HYPfjKw0qOnpD9PhybvCM0tM9x6+mC6jbVEiU+aFXDEn
- p/iBJ6as/BES7NZZok8hNWSGc8u+xU2bmt9MBKkyNAkHb+wuZdoLjLfy5naWxD3Jkvll/JTK4NC
- vKN5keWVOhIHzZw==
+ bh=BuzAL9B0hzH8sHOEbYMQsrlBM+zPhBYp09xz2YwAGlk=;
+ b=owEBbQKS/ZANAwAKAXo0JWX/Y195AcsmYgBpyF0i3yr0N6jl6v9p1QPksvTA/RkAzSaABc3un
+ ClG0jVJfUiJAjMEAAEKAB0WIQS9CheUSi6o/ykTCaJ6NCVl/2NfeQUCachdIgAKCRB6NCVl/2Nf
+ eaNPEACVn4qDfezmZfOt2Qpaa8fgkxBV0/vvAJZVfkt1LQOQQP8fTJqOgwv6Do7LjJl5gV3kJcT
+ /8XbUofOrYtlp/YgHwJEv2pSdxokaYK6lDeyuDauXhaqxo+z37d16Pk6trdnzwX8QsQWi/h6pRD
+ cxIUTO5zTe1036o736kb8w+7D7bNo2Wp94ZNaUrSRBD61j/38phgDzA38NXhXxfACuE+t6YdD1H
+ Ya6hh6As9jv3mELpxBD+LxAi7LaMl6q14aVERbVs3o7NT7fbtkZ4t4+QGFR86btG8QGUl9YwBDL
+ dkle8b662I/NUNHNMr1biD8gPWNYu7LsBcZvr1iVfXZQk5HugAGjPYrtSNkWJoyGA/Phx5yZscQ
+ EuEPQ2BL1qbID11VnjyXf5Fer4QIsexbSqBz6J8uc/a4hqcr/nPzQnp9GQilA9iTkHEhoAnecmv
+ ogeRz3vlorbuT2ahNkhIXqHBfTHI+0BuJAxfESyhJtdEbYYvP6oBmlwuY4L5z5HrtZbz1j6Ke9D
+ LzW+rPhBg7XhQN/X7EzbZq0YtFfkYwg0qCGOpmRg7ymkFdvLEaAHwxSbV/JfHKv8hIhytEzDymq
+ cvL02qGm8XoBGIe89AveYQD6AvSphRLGeH8LUAocLwY3XpfvzrWN9jJb6R5MYCj/Bgnv3qn99DA
+ q6/VVvv+wxw+Z5w==
 X-Developer-Key: i=pabloyoyoista@postmarketos.org; a=openpgp;
  fpr=BD0A17944A2EA8FF291309A27A342565FF635F79
 X-Endpoint-Received: by B4 Relay for pabloyoyoista@postmarketos.org/default with auth_id=698
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In order to get logs through the SBU pins in Google Pixel devices, it is
-necessary to add support to the devicetree, and enable the corresponding
-UART. With this code and an USB-Cereal board, I was able to get full kernel
-logs through serial.
-
-This series depends on the patch adding a sdm670-google-common dtsi for
-dealing with both the Pixel 3a and Pixel 3a XL:
-https://lore.kernel.org/all/20260310002606.16413-5-mailingradian@gmail.com/
-
-This is my first patch sent to the kernel mailing list, so apologies ahead
-if I missed something in the documentation.
+This is a pre-requisite to enable UART in sargo and bonito. Values for
+the pins have been taken from sdm845, and cross-checking dowstream,
+where available.
 
 Signed-off-by: Pablo Correa Gómez <pabloyoyoista@postmarketos.org>
 ---
-Changes in v2:
-- Fix typo in (3/3) commit message
-- Link to v1: https://patch.msgid.link/20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v1-0-0babf584acdb@postmarketos.org
+ arch/arm64/boot/dts/qcom/sdm670.dtsi | 192 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 192 insertions(+)
 
----
-Pablo Correa Gómez (3):
-      arm64: dts: qcom: sdm670: add default uart pinctrl nodes
-      arm64: dts: qcom: sdm670: add debug uart soc node
-      arm64: dts: qcom: sdm670-google-common: enable debug uart
+diff --git a/arch/arm64/boot/dts/qcom/sdm670.dtsi b/arch/arm64/boot/dts/qcom/sdm670.dtsi
+index 6b296ceaebc2..3e60ab527a42 100644
+--- a/arch/arm64/boot/dts/qcom/sdm670.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm670.dtsi
+@@ -1352,6 +1352,198 @@ qup_i2c15_default: qup-i2c15-default-state {
+ 				function = "qup15";
+ 			};
+ 
++			qup_uart0_default: qup-uart0-default-state {
++				qup_uart0_tx: tx-pins {
++					pins = "gpio2";
++					function = "qup0";
++				};
++
++				qup_uart0_rx: rx-pins {
++					pins = "gpio3";
++					function = "qup0";
++				};
++			};
++
++			qup_uart1_default: qup-uart1-default-state {
++				qup_uart1_tx: tx-pins {
++					pins = "gpio19";
++					function = "qup1";
++				};
++
++				qup_uart1_rx: rx-pins {
++					pins = "gpio20";
++					function = "qup1";
++				};
++			};
++
++			qup_uart2_default: qup-uart2-default-state {
++				qup_uart2_tx: tx-pins {
++					pins = "gpio29";
++					function = "qup2";
++				};
++
++				qup_uart2_rx: rx-pins {
++					pins = "gpio30";
++					function = "qup2";
++				};
++			};
++
++			qup_uart3_default: qup-uart3-default-state {
++				qup_uart3_tx: tx-pins {
++					pins = "gpio43";
++					function = "qup3";
++				};
++
++				qup_uart3_rx: rx-pins {
++					pins = "gpio44";
++					function = "qup3";
++				};
++			};
++
++			qup_uart4_default: qup-uart4-default-state {
++				qup_uart4_tx: tx-pins {
++					pins = "gpio91";
++					function = "qup4";
++				};
++
++				qup_uart4_rx: rx-pins {
++					pins = "gpio92";
++					function = "qup4";
++				};
++			};
++
++			qup_uart5_default: qup-uart5-default-state {
++				qup_uart5_tx: tx-pins {
++					pins = "gpio87";
++					function = "qup5";
++				};
++
++				qup_uart5_rx: rx-pins {
++					pins = "gpio88";
++					function = "qup5";
++				};
++			};
++
++			qup_uart6_default: qup-uart6-default-state {
++				qup_uart6_tx: tx-pins {
++					pins = "gpio47";
++					function = "qup6";
++				};
++
++				qup_uart6_rx: rx-pins {
++					pins = "gpio48";
++					function = "qup6";
++				};
++			};
++
++			qup_uart7_default: qup-uart7-default-state {
++				qup_uart7_tx: tx-pins {
++					pins = "gpio95";
++					function = "qup7";
++				};
++
++				qup_uart7_rx: rx-pins {
++					pins = "gpio96";
++					function = "qup7";
++				};
++			};
++
++			qup_uart8_default: qup-uart8-default-state {
++				qup_uart8_tx: tx-pins {
++					pins = "gpio67";
++					function = "qup8";
++				};
++
++				qup_uart8_rx: rx-pins {
++					pins = "gpio68";
++					function = "qup8";
++				};
++			};
++
++			qup_uart9_default: qup-uart9-default-state {
++				qup_uart9_tx: tx-pins {
++					pins = "gpio4";
++					function = "qup9";
++				};
++
++				qup_uart9_rx: rx-pins {
++					pins = "gpio5";
++					function = "qup9";
++				};
++			};
++
++			qup_uart10_default: qup-uart10-default-state {
++				qup_uart10_tx: tx-pins {
++					pins = "gpio53";
++					function = "qup10";
++				};
++
++				qup_uart10_rx: rx-pins {
++					pins = "gpio54";
++					function = "qup10";
++				};
++			};
++
++			qup_uart11_default: qup-uart11-default-state {
++				qup_uart11_tx: tx-pins {
++					pins = "gpio33";
++					function = "qup11";
++				};
++
++				qup_uart11_rx: rx-pins {
++					pins = "gpio34";
++					function = "qup11";
++				};
++			};
++
++			qup_uart12_default: qup-uart12-default-state {
++				qup_uart12_tx: tx-pins {
++					pins = "gpio51";
++					function = "qup12";
++				};
++
++				qup_uart12_rx: rx-pins {
++					pins = "gpio52";
++					function = "qup12";
++				};
++			};
++
++			qup_uart13_default: qup-uart13-default-state {
++				qup_uart13_tx: tx-pins {
++					pins = "gpio107";
++					function = "qup13";
++				};
++
++				qup_uart13_rx: rx-pins {
++					pins = "gpio108";
++					function = "qup13";
++				};
++			};
++
++			qup_uart14_default: qup-uart14-default-state {
++				qup_uart14_tx: tx-pins {
++					pins = "gpio31";
++					function = "qup14";
++				};
++
++				qup_uart14_rx: rx-pins {
++					pins = "gpio32";
++					function = "qup14";
++				};
++			};
++
++			qup_uart15_default: qup-uart15-default-state {
++				qup_uart15_tx: tx-pins {
++					pins = "gpio83";
++					function = "qup15";
++				};
++
++				qup_uart15_rx: rx-pins {
++					pins = "gpio84";
++					function = "qup15";
++				};
++			};
++
+ 			sdc1_state_on: sdc1-on-state {
+ 				clk-pins {
+ 					pins = "sdc1_clk";
 
- arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi |  18 +-
- arch/arm64/boot/dts/qcom/sdm670.dtsi               | 207 +++++++++++++++++++++
- 2 files changed, 224 insertions(+), 1 deletion(-)
----
-base-commit: 54f966f63b379d0c62bb044b7903319776443a4a
-change-id: 20260328-pabloyoyoista-debug-uart-on-rdacayan-next-69274358cef4
-prerequisite-message-id: <20260217002738.133534-1-mailingradian@gmail.com>
-prerequisite-patch-id: aeaea0c438bff770d0c4c33d937db5706d642daf
-prerequisite-patch-id: 11ce654ef61d48fdebf1c4e1d9d184cfb7bcaa59
-prerequisite-patch-id: c6203c8a71fe103b983b6ba5fc99a22948118fb4
-prerequisite-patch-id: f9ff17c7e4b4396850f51e45249d2f6e35df3725
-prerequisite-patch-id: faab09f9fe421a6358e5512c6050dd70d3271273
-prerequisite-patch-id: adb88e3ddcbe33db1e3fc60ea4cb195dac18a8b4
-prerequisite-patch-id: 0c8f7fc0835cdda72529fcfa7b654bb97109fae4
-prerequisite-message-id: <20260310002606.16413-1-mailingradian@gmail.com>
-prerequisite-patch-id: eb2d2be6edae3d09973b49f3ff6c48fa0845e7e0
-prerequisite-patch-id: e6d9e56eaeceddee68d56e2ec8ac20997bff52c9
-prerequisite-patch-id: d5e2975adf904bf656827100df7989218ac9e963
-prerequisite-patch-id: 04478351b1304dfe1357d176c8d0c235346ca40f
-prerequisite-patch-id: a54db56ccdf1491c46158a84ac1cae70f74bb36c
-
-Best regards,
---  
-Pablo Correa Gómez <pabloyoyoista@postmarketos.org>
+-- 
+2.53.0
 
