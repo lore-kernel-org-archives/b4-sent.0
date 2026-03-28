@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sun, 29 Mar 2026 03:52:33 +0800
-Subject: [PATCH v2 07/12] mm/mglru: don't abort scan immediately right
- after aging
+Date: Sun, 29 Mar 2026 03:52:34 +0800
+Subject: [PATCH v2 08/12] mm/mglru: simplify and improve dirty writeback
+ handling
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260329-mglru-reclaim-v2-7-b53a3678513c@tencent.com>
+Message-Id: <20260329-mglru-reclaim-v2-8-b53a3678513c@tencent.com>
 References: <20260329-mglru-reclaim-v2-0-b53a3678513c@tencent.com>
 In-Reply-To: <20260329-mglru-reclaim-v2-0-b53a3678513c@tencent.com>
 To: linux-mm@kvack.org
@@ -24,93 +24,174 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Qi Zheng <qi.zheng@linux.dev>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774727549; l=3429;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774727549; l=5969;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=9oXAEtsd+KkctSkA6zzJc0gY6moW3RMhiz1U6qfN0UQ=;
- b=HN9WBP30sd3hrrKuJwKAHlFAFwvd6vODwGA7Eb826xhii9eEYNqDL5i6qLjQoXwZiXYh4GCih
- gJOM6K37lHQBG45xgdCcGR0ja9EsZn5g1O7FPgsTxAE+5vYFcjRnzgE
+ bh=T/G4ibrY7PQDUQFvtmIQoGY8xdh7KRch5mx7kYmgnHQ=;
+ b=657LO41LLkGKMBTi3D7JTHfNytmDYDYIFylcEUbiGOlDeDMnPmHzWiDcdWfm/O6Hjb1mo/uKU
+ +6EKFyu+SyvC+4eYfDrMoYLJ3KBJFuSN+8217Z64/Znx3R7YWF1gCpP
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Right now, if eviction triggers aging, the reclaimer will abort. This is
-not the optimal strategy for several reasons.
+The current handling of dirty writeback folios is not working well for
+file page heavy workloads: Dirty folios are protected and move to next
+gen upon isolation of getting throttled or reactivation upon pageout
+(shrink_folio_list).
 
-Aborting the reclaim early wastes a reclaim cycle when under pressure,
-and for concurrent reclaim, if the LRU is under aging, all concurrent
-reclaimers might fail. And if the age has just finished, new cold folios
-exposed by the aging are not reclaimed until the next reclaim iteration.
+This might help to reduce the LRU lock contention slightly, but as a
+result, the ping-pong effect of folios between head and tail of last two
+gens is serious as the shrinker will run into protected dirty writeback
+folios more frequently compared to activation. The dirty flush wakeup
+condition is also much more passive compared to active/inactive LRU.
+Active / inactve LRU wakes the flusher if one batch of folios passed to
+shrink_folio_list is unevictable due to under writeback, but MGLRU
+instead has to check this after the whole reclaim loop is done, and then
+count the isolation protection number compared to the total reclaim
+number.
 
-What's more, the current aging trigger is quite lenient, having 3 gens
-with a reclaim priority lower than default will trigger aging, and
-blocks reclaiming from one memcg. This wastes reclaim retry cycles
-easily. And in the worst case, if the reclaim is making slower progress
-and all following attempts fail due to being blocked by aging, it
-triggers unexpected early OOM.
+And we previously saw OOM problems with it, too, which were fixed but
+still not perfect [1].
 
-And if a lruvec requires aging, it doesn't mean it's hot. Instead, the
-lruvec could be idle for quite a while, and hence it might contain lots
-of cold folios to be reclaimed.
+So instead, just drop the special handling for dirty writeback, just
+re-activate it like active / inactive LRU. And also move the dirty flush
+wake up check right after shrink_folio_list. This should improve both
+throttling and performance.
 
-While it's helpful to rotate memcg LRU after aging for global reclaim,
-as global reclaim fairness is coupled with the rotation in shrink_many,
-memcg fairness is instead handled by cgroup iteration in
-shrink_node_memcgs. So, for memcg level pressure, this abort is not the
-key part for keeping the fairness. And in most cases, there is no need
-to age, and fairness must be achieved by upper-level reclaim control.
+Test with YCSB workloadb showed a major performance improvement:
 
-So instead, just keep the scanning going unless one whole batch of
-folios failed to be isolated or enough folios have been scanned, which
-is triggered by evict_folios returning 0. And only abort for global
-reclaim after one batch, so when there are fewer memcgs, progress is
-still made, and the fairness mechanism described above still works fine.
+Before this series:
+Throughput(ops/sec): 61642.78008938203
+AverageLatency(us):  507.11127774145166
+pgpgin 158190589
+pgpgout 5880616
+workingset_refault 7262988
 
-And in most cases, the one more batch attempt for global reclaim might
-just be enough to satisfy what the reclaimer needs, hence improving
-global reclaim performance by reducing reclaim retry cycles.
+After this commit:
+Throughput(ops/sec): 80216.04855744806  (+30.1%, higher is better)
+AverageLatency(us):  388.17633477268913 (-23.5%, lower is better)
+pgpgin 101871227                        (-35.6%, lower is better)
+pgpgout 5770028
+workingset_refault 3418186              (-52.9%, lower is better)
 
-Rotation is still there after the reclaim is done, which still follows
-the comment in mmzone.h. And fairness still looking good.
+The refault rate is ~50% lower, and throughput is ~30% higher, which
+is a huge gain. We also observed significant performance gain for
+other real-world workloads.
 
+We were concerned that the dirty flush could cause more wear for SSD:
+that should not be the problem here, since the wakeup condition is when
+the dirty folios have been pushed to the tail of LRU, which indicates
+that memory pressure is so high that writeback is blocking the workload
+already.
+
+Reviewed-by: Axel Rasmussen <axelrasmussen@google.com>
+Link: https://lore.kernel.org/linux-mm/20241026115714.1437435-1-jingxiangzeng.cas@gmail.com/ [1]
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/vmscan.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+ mm/vmscan.c | 57 ++++++++++++++++-----------------------------------------
+ 1 file changed, 16 insertions(+), 41 deletions(-)
 
 diff --git a/mm/vmscan.c b/mm/vmscan.c
-index e3ca38d0c4cd..8de5c8d5849e 100644
+index 8de5c8d5849e..17b5318fad39 100644
 --- a/mm/vmscan.c
 +++ b/mm/vmscan.c
-@@ -4983,7 +4983,7 @@ static bool should_abort_scan(struct lruvec *lruvec, struct scan_control *sc)
-  */
- static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
+@@ -4583,7 +4583,6 @@ static bool sort_folio(struct lruvec *lruvec, struct folio *folio, struct scan_c
+ 		       int tier_idx)
  {
--	bool need_rotate = false;
-+	bool need_rotate = false, should_age = false;
- 	long nr_batch, nr_to_scan;
- 	int swappiness = get_swappiness(lruvec, sc);
- 	struct mem_cgroup *memcg = lruvec_memcg(lruvec);
-@@ -5001,7 +5001,7 @@ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
- 		if (should_run_aging(lruvec, max_seq, sc, swappiness)) {
- 			if (try_to_inc_max_seq(lruvec, max_seq, swappiness, false))
- 				need_rotate = true;
--			break;
-+			should_age = true;
- 		}
+ 	bool success;
+-	bool dirty, writeback;
+ 	int gen = folio_lru_gen(folio);
+ 	int type = folio_is_file_lru(folio);
+ 	int zone = folio_zonenum(folio);
+@@ -4633,21 +4632,6 @@ static bool sort_folio(struct lruvec *lruvec, struct folio *folio, struct scan_c
+ 		return true;
+ 	}
  
- 		nr_batch = min(nr_to_scan, MIN_LRU_BATCH);
-@@ -5012,6 +5012,10 @@ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
- 		if (should_abort_scan(lruvec, sc))
- 			break;
+-	dirty = folio_test_dirty(folio);
+-	writeback = folio_test_writeback(folio);
+-	if (type == LRU_GEN_FILE && dirty) {
+-		sc->nr.file_taken += delta;
+-		if (!writeback)
+-			sc->nr.unqueued_dirty += delta;
+-	}
+-
+-	/* waiting for writeback */
+-	if (writeback || (type == LRU_GEN_FILE && dirty)) {
+-		gen = folio_inc_gen(lruvec, folio, true);
+-		list_move(&folio->lru, &lrugen->folios[gen][type][zone]);
+-		return true;
+-	}
+-
+ 	return false;
+ }
  
-+		/* Cgroup reclaim fairness not guarded by rotate */
-+		if (root_reclaim(sc) && should_age)
-+			break;
+@@ -4754,8 +4738,6 @@ static int scan_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
+ 	trace_mm_vmscan_lru_isolate(sc->reclaim_idx, sc->order, nr_to_scan,
+ 				scanned, skipped, isolated,
+ 				type ? LRU_INACTIVE_FILE : LRU_INACTIVE_ANON);
+-	if (type == LRU_GEN_FILE)
+-		sc->nr.file_taken += isolated;
+ 
+ 	*isolatedp = isolated;
+ 	return scanned;
+@@ -4858,12 +4840,27 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
+ 		return scanned;
+ retry:
+ 	reclaimed = shrink_folio_list(&list, pgdat, sc, &stat, false, memcg);
+-	sc->nr.unqueued_dirty += stat.nr_unqueued_dirty;
+ 	sc->nr_reclaimed += reclaimed;
+ 	trace_mm_vmscan_lru_shrink_inactive(pgdat->node_id,
+ 			type_scanned, reclaimed, &stat, sc->priority,
+ 			type ? LRU_INACTIVE_FILE : LRU_INACTIVE_ANON);
+ 
++	/*
++	 * If too many file cache in the coldest generation can't be evicted
++	 * due to being dirty, wake up the flusher.
++	 */
++	if (stat.nr_unqueued_dirty == isolated) {
++		wakeup_flusher_threads(WB_REASON_VMSCAN);
 +
- 		nr_to_scan -= delta;
++		/*
++		 * For cgroupv1 dirty throttling is achieved by waking up
++		 * the kernel flusher here and later waiting on folios
++		 * which are in writeback to finish (see shrink_folio_list()).
++		 */
++		if (!writeback_throttling_sane(sc))
++			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
++	}
++
+ 	list_for_each_entry_safe_reverse(folio, next, &list, lru) {
+ 		DEFINE_MIN_SEQ(lruvec);
+ 
+@@ -5020,28 +5017,6 @@ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
  		cond_resched();
  	}
+ 
+-	/*
+-	 * If too many file cache in the coldest generation can't be evicted
+-	 * due to being dirty, wake up the flusher.
+-	 */
+-	if (sc->nr.unqueued_dirty && sc->nr.unqueued_dirty == sc->nr.file_taken) {
+-		struct pglist_data *pgdat = lruvec_pgdat(lruvec);
+-
+-		wakeup_flusher_threads(WB_REASON_VMSCAN);
+-
+-		/*
+-		 * For cgroupv1 dirty throttling is achieved by waking up
+-		 * the kernel flusher here and later waiting on folios
+-		 * which are in writeback to finish (see shrink_folio_list()).
+-		 *
+-		 * Flusher may not be able to issue writeback quickly
+-		 * enough for cgroupv1 writeback throttling to work
+-		 * on a large system.
+-		 */
+-		if (!writeback_throttling_sane(sc))
+-			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
+-	}
+-
+ 	return need_rotate;
+ }
+ 
 
 -- 
 2.53.0
