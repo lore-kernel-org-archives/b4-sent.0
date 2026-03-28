@@ -1,223 +1,87 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Sun, 29 Mar 2026 03:52:38 +0800
-Subject: [PATCH v2 12/12] mm/vmscan: unify writeback reclaim statistic and
- throttling
+From: =?utf-8?q?Pablo_Correa_G=C3=B3mez?= <pabloyoyoista@postmarketos.org>
+Subject: [PATCH 0/3] Add support and enable the debug UART in the Pixel 3a
+ and Pixel 3a XL
+Date: Sat, 28 Mar 2026 23:49:13 +0100
+Message-Id: <20260328-pabloyoyoista-debug-uart-on-rdacayan-next-v1-0-0babf584acdb@postmarketos.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260329-mglru-reclaim-v2-12-b53a3678513c@tencent.com>
-References: <20260329-mglru-reclaim-v2-0-b53a3678513c@tencent.com>
-In-Reply-To: <20260329-mglru-reclaim-v2-0-b53a3678513c@tencent.com>
-To: linux-mm@kvack.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
- Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
- Wei Xu <weixugc@google.com>, Johannes Weiner <hannes@cmpxchg.org>, 
- David Hildenbrand <david@kernel.org>, Michal Hocko <mhocko@kernel.org>, 
- Qi Zheng <zhengqi.arch@bytedance.com>, 
- Shakeel Butt <shakeel.butt@linux.dev>, Lorenzo Stoakes <ljs@kernel.org>, 
- Barry Song <baohua@kernel.org>, David Stevens <stevensd@google.com>, 
- Chen Ridong <chenridong@huaweicloud.com>, Leno Hou <lenohou@gmail.com>, 
- Yafang Shao <laoar.shao@gmail.com>, Yu Zhao <yuzhao@google.com>, 
- Zicheng Wang <wangzicheng@honor.com>, Kalesh Singh <kaleshsingh@google.com>, 
- Suren Baghdasaryan <surenb@google.com>, Chris Li <chrisl@kernel.org>, 
- Vernon Yang <vernon2gm@gmail.com>, linux-kernel@vger.kernel.org, 
- Qi Zheng <qi.zheng@linux.dev>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
- Kairui Song <kasong@tencent.com>
-X-Mailer: b4 0.15.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774727549; l=7093;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=I8jbbfuWeWbYqnTbBqSMSm96wu/ud2/1QtQ5+KraUWM=;
- b=ynKU2SRkk3ghH5g5uJ/eEFepcdH7qkgb2HFXraG5fQVTxkyED2JhzXot1mQKAYfsu8H16ivic
- amsBqsVGdciC3lrkrQ46d9YrqikfmIUkdh62Nphcpn9tUv2l72U/YmJ
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAOlayGkC/32OS2rDMBCGr2K07hi9LDsmlN6jZDGSx65KLKeSX
+ BJC7l7Z6bKUWQwf/K87SxQ9JdZXdxbp2ye/hALipWLuA8NE4IfCTHJpuJIdXNCel1s5nzLCQHa
+ dYMWYYQkQB3R4wwCBrhnMQbZaNZ2jUbOSd4k0+uve9X56clrtJ7m8FfwqIn2tZUR+ypjFROCWe
+ fa5rxo9HowZjbKq3eQzpYT7wr467gOlaDmXrepqoVSjNAiY0Z99mCIOHsPbtGFdAl//DlCC8+2
+ bWhgt1H/+0+PxAyVagEM+AQAA
+X-Change-ID: 20260328-pabloyoyoista-debug-uart-on-rdacayan-next-69274358cef4
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Richard Acayan <mailingradian@gmail.com>, 
+ ~postmarketos/upstreaming@lists.sr.ht, 
+ =?utf-8?q?Pablo_Correa_G=C3=B3mez?= <pabloyoyoista@postmarketos.org>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2201;
+ i=pabloyoyoista@postmarketos.org; h=from:subject:message-id;
+ bh=Bw62XKiLztflw/Q8k1Vk0tX6CpJo4mDwtAvso2G1Je0=;
+ b=kA0DAAoBejQlZf9jX3kByyZiAGnIWuugX1IvvbIoQW1giGjL1ZlcZW6vbSZrGdhg69624MCYJ
+ YkCMwQAAQoAHRYhBL0KF5RKLqj/KRMJono0JWX/Y195BQJpyFrrAAoJEHo0JWX/Y195XqYP/i+q
+ FnzgTPyS9/qV1lBbWeS24iPrmXgNZrdyBq5wHJIOUnChI9piXbg+ouoUIvVeL0hHANaKuvLILQh
+ tRYYdUFpxgkNjMOcISimpoUt7IonZr8HsArGd6TgJohu2FUPkbJXhlIIA3PqfRGl+90MKeoWRTE
+ ReHrejVLA4TYb+rz2f9io53gTfilIodZ8a25EXvLK9y0LK1O4lWrgF5nAz2pg9YhKad1GjngWga
+ 8A3NffOM2Oqv1PIF86kRamo6YznFnljTPtHvduQ7BnDtkjf0nsRp1UbSdK7JNXLA0ymLJ49hcH9
+ cWmqktyk6jZ/qEXHSa0+KQG7zdT6MrCpxBJsklg781MMo9rb8UwEBMNq4XaRwmNpc9sZz0WKYq6
+ fJTGstnH7vFU/cKEuoR6atM9o5uyT3xz7T4Sy++tYBygdKM/cIAOOisbAhQ5/XntEs7yauq36bl
+ zClXwaQ7YyG3pYbBocPw40ucTkletrWA0oLDRdX20coa+0EOtCJklvms/7dEK7HCIrCWkjxQBVK
+ xX1cxBI853zbQ2tsGxG6V4zg3L2eYAisC7VN8n625ejYZJRqliOhtM81agNwx9qKEsE7pQeBdyp
+ fFJVP6nz44mynbOd8dqYn3PRidpvu6lJNDPEhbgFGoFoJNV0e4FYFSjWnlyffswD/E4yarXRKQU
+ 2tJ48
+X-Developer-Key: i=pabloyoyoista@postmarketos.org; a=openpgp;
+ fpr=BD0A17944A2EA8FF291309A27A342565FF635F79
+X-Endpoint-Received: by B4 Relay for pabloyoyoista@postmarketos.org/default with auth_id=698
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently MGLRU and non-MGLRU handle the reclaim statistic and
-writeback handling very differently, especially throttling.
-Basically MGLRU just ignored the throttling part.
+In order to get logs through the SBU pins in Google Pixel devices, it is
+necessary to add support to the devicetree, and enable the corresponding
+UART. With this code and an USB-Cereal board, I was able to get full kernel
+logs through serial.
 
-Let's just unify this part, use a helper to deduplicate the code
-so both setups will share the same behavior. Also remove the
-folio_clear_reclaim in isolate_folio which was actively invalidating
-the congestion control. PG_reclaim is now handled by shrink_folio_list,
-keeping it in isolate_folio is not helpful.
+This series depends on the patch adding a sdm670-google-common dtsi for
+dealing with both the Pixel 3a and Pixel 3a XL:
+https://lore.kernel.org/all/20260310002606.16413-5-mailingradian@gmail.com/
 
-Test using following reproducer using bash:
+This is my first patch sent to the kernel mailing list, so apologies ahead
+if I missed something in the documentation.
 
-  echo "Setup a slow device using dm delay"
-  dd if=/dev/zero of=/var/tmp/backing bs=1M count=2048
-  LOOP=$(losetup --show -f /var/tmp/backing)
-  mkfs.ext4 -q $LOOP
-  echo "0 $(blockdev --getsz $LOOP) delay $LOOP 0 0 $LOOP 0 1000" | \
-      dmsetup create slow_dev
-  mkdir -p /mnt/slow && mount /dev/mapper/slow_dev /mnt/slow
-
-  echo "Start writeback pressure"
-  sync && echo 3 > /proc/sys/vm/drop_caches
-  mkdir /sys/fs/cgroup/test_wb
-  echo 128M > /sys/fs/cgroup/test_wb/memory.max
-  (echo $BASHPID > /sys/fs/cgroup/test_wb/cgroup.procs && \
-      dd if=/dev/zero of=/mnt/slow/testfile bs=1M count=192)
-
-  echo "Clean up"
-  echo "0 $(blockdev --getsz $LOOP) error" | dmsetup load slow_dev
-  dmsetup resume slow_dev
-  umount -l /mnt/slow && sync
-  dmsetup remove slow_dev
-
-Before this commit, `dd` will get OOM killed immediately if
-MGLRU is enabled. Classic LRU is fine.
-
-After this commit, congestion control is now effective and no more
-spin on LRU or premature OOM.
-
-Stress test on other workloads also looking good.
-
-Suggested-by: Chen Ridong <chenridong@huaweicloud.com>
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Signed-off-by: Pablo Correa Gómez <pabloyoyoista@postmarketos.org>
 ---
- mm/vmscan.c | 93 +++++++++++++++++++++++++++----------------------------------
- 1 file changed, 41 insertions(+), 52 deletions(-)
+Pablo Correa Gómez (3):
+      arm64: dts: qcom: sdm670: add default uart pinctrl nodes
+      arm64: dts: qcom: sdm670: add debug uart soc node
+      arm64: dts: qcom: sdm670-google-common: enabled debug uart
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 1783da54ada1..83c8fdf8fdc4 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -1942,6 +1942,44 @@ static int current_may_throttle(void)
- 	return !(current->flags & PF_LOCAL_THROTTLE);
- }
- 
-+static void handle_reclaim_writeback(unsigned long nr_taken,
-+				     struct pglist_data *pgdat,
-+				     struct scan_control *sc,
-+				     struct reclaim_stat *stat)
-+{
-+	/*
-+	 * If dirty folios are scanned that are not queued for IO, it
-+	 * implies that flushers are not doing their job. This can
-+	 * happen when memory pressure pushes dirty folios to the end of
-+	 * the LRU before the dirty limits are breached and the dirty
-+	 * data has expired. It can also happen when the proportion of
-+	 * dirty folios grows not through writes but through memory
-+	 * pressure reclaiming all the clean cache. And in some cases,
-+	 * the flushers simply cannot keep up with the allocation
-+	 * rate. Nudge the flusher threads in case they are asleep.
-+	 */
-+	if (stat->nr_unqueued_dirty == nr_taken && nr_taken) {
-+		wakeup_flusher_threads(WB_REASON_VMSCAN);
-+		/*
-+		 * For cgroupv1 dirty throttling is achieved by waking up
-+		 * the kernel flusher here and later waiting on folios
-+		 * which are in writeback to finish (see shrink_folio_list()).
-+		 *
-+		 * Flusher may not be able to issue writeback quickly
-+		 * enough for cgroupv1 writeback throttling to work
-+		 * on a large system.
-+		 */
-+		if (!writeback_throttling_sane(sc))
-+			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
-+	}
-+
-+	sc->nr.dirty += stat->nr_dirty;
-+	sc->nr.congested += stat->nr_congested;
-+	sc->nr.writeback += stat->nr_writeback;
-+	sc->nr.immediate += stat->nr_immediate;
-+	sc->nr.taken += nr_taken;
-+}
-+
- /*
-  * shrink_inactive_list() is a helper for shrink_node().  It returns the number
-  * of reclaimed pages
-@@ -2005,39 +2043,7 @@ static unsigned long shrink_inactive_list(unsigned long nr_to_scan,
- 	lruvec_lock_irq(lruvec);
- 	lru_note_cost_unlock_irq(lruvec, file, stat.nr_pageout,
- 					nr_scanned - nr_reclaimed);
--
--	/*
--	 * If dirty folios are scanned that are not queued for IO, it
--	 * implies that flushers are not doing their job. This can
--	 * happen when memory pressure pushes dirty folios to the end of
--	 * the LRU before the dirty limits are breached and the dirty
--	 * data has expired. It can also happen when the proportion of
--	 * dirty folios grows not through writes but through memory
--	 * pressure reclaiming all the clean cache. And in some cases,
--	 * the flushers simply cannot keep up with the allocation
--	 * rate. Nudge the flusher threads in case they are asleep.
--	 */
--	if (stat.nr_unqueued_dirty == nr_taken) {
--		wakeup_flusher_threads(WB_REASON_VMSCAN);
--		/*
--		 * For cgroupv1 dirty throttling is achieved by waking up
--		 * the kernel flusher here and later waiting on folios
--		 * which are in writeback to finish (see shrink_folio_list()).
--		 *
--		 * Flusher may not be able to issue writeback quickly
--		 * enough for cgroupv1 writeback throttling to work
--		 * on a large system.
--		 */
--		if (!writeback_throttling_sane(sc))
--			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
--	}
--
--	sc->nr.dirty += stat.nr_dirty;
--	sc->nr.congested += stat.nr_congested;
--	sc->nr.writeback += stat.nr_writeback;
--	sc->nr.immediate += stat.nr_immediate;
--	sc->nr.taken += nr_taken;
--
-+	handle_reclaim_writeback(nr_taken, pgdat, sc, &stat);
- 	trace_mm_vmscan_lru_shrink_inactive(pgdat->node_id,
- 			nr_scanned, nr_reclaimed, &stat, sc->priority, file);
- 	return nr_reclaimed;
-@@ -4651,9 +4657,6 @@ static bool isolate_folio(struct lruvec *lruvec, struct folio *folio, struct sca
- 	if (!folio_test_referenced(folio))
- 		set_mask_bits(&folio->flags.f, LRU_REFS_MASK, 0);
- 
--	/* for shrink_folio_list() */
--	folio_clear_reclaim(folio);
--
- 	success = lru_gen_del_folio(lruvec, folio, true);
- 	VM_WARN_ON_ONCE_FOLIO(!success, folio);
- 
-@@ -4833,26 +4836,11 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- retry:
- 	reclaimed = shrink_folio_list(&list, pgdat, sc, &stat, false, memcg);
- 	sc->nr_reclaimed += reclaimed;
-+	handle_reclaim_writeback(isolated, pgdat, sc, &stat);
- 	trace_mm_vmscan_lru_shrink_inactive(pgdat->node_id,
- 			type_scanned, reclaimed, &stat, sc->priority,
- 			type ? LRU_INACTIVE_FILE : LRU_INACTIVE_ANON);
- 
--	/*
--	 * If too many file cache in the coldest generation can't be evicted
--	 * due to being dirty, wake up the flusher.
--	 */
--	if (stat.nr_unqueued_dirty == isolated) {
--		wakeup_flusher_threads(WB_REASON_VMSCAN);
--
--		/*
--		 * For cgroupv1 dirty throttling is achieved by waking up
--		 * the kernel flusher here and later waiting on folios
--		 * which are in writeback to finish (see shrink_folio_list()).
--		 */
--		if (!writeback_throttling_sane(sc))
--			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
--	}
--
- 	list_for_each_entry_safe_reverse(folio, next, &list, lru) {
- 		DEFINE_MIN_SEQ(lruvec);
- 
-@@ -4895,6 +4883,7 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- 
- 	if (!list_empty(&list)) {
- 		skip_retry = true;
-+		isolated = 0;
- 		goto retry;
- 	}
- 
+ arch/arm64/boot/dts/qcom/sdm670-google-common.dtsi |  18 +-
+ arch/arm64/boot/dts/qcom/sdm670.dtsi               | 207 +++++++++++++++++++++
+ 2 files changed, 224 insertions(+), 1 deletion(-)
+---
+base-commit: 54f966f63b379d0c62bb044b7903319776443a4a
+change-id: 20260328-pabloyoyoista-debug-uart-on-rdacayan-next-69274358cef4
+prerequisite-message-id: <20260217002738.133534-1-mailingradian@gmail.com>
+prerequisite-patch-id: aeaea0c438bff770d0c4c33d937db5706d642daf
+prerequisite-patch-id: 11ce654ef61d48fdebf1c4e1d9d184cfb7bcaa59
+prerequisite-patch-id: c6203c8a71fe103b983b6ba5fc99a22948118fb4
+prerequisite-patch-id: f9ff17c7e4b4396850f51e45249d2f6e35df3725
+prerequisite-patch-id: faab09f9fe421a6358e5512c6050dd70d3271273
+prerequisite-patch-id: adb88e3ddcbe33db1e3fc60ea4cb195dac18a8b4
+prerequisite-patch-id: 0c8f7fc0835cdda72529fcfa7b654bb97109fae4
+prerequisite-message-id: <20260310002606.16413-1-mailingradian@gmail.com>
+prerequisite-patch-id: eb2d2be6edae3d09973b49f3ff6c48fa0845e7e0
+prerequisite-patch-id: e6d9e56eaeceddee68d56e2ec8ac20997bff52c9
+prerequisite-patch-id: d5e2975adf904bf656827100df7989218ac9e963
+prerequisite-patch-id: 04478351b1304dfe1357d176c8d0c235346ca40f
+prerequisite-patch-id: a54db56ccdf1491c46158a84ac1cae70f74bb36c
 
--- 
-2.53.0
+Best regards,
+--  
+Pablo Correa Gómez <pabloyoyoista@postmarketos.org>
 
