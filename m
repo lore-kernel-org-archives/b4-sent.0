@@ -1,11 +1,10 @@
 From: Markus Probst <markus.probst@posteo.de>
-Date: Sun, 29 Mar 2026 20:02:15 +0200
-Subject: [PATCH v5 1/4] dt-bindings: embedded-controller: Add synology
- microp devices
+Date: Sun, 29 Mar 2026 20:02:16 +0200
+Subject: [PATCH v5 2/4] ACPI: of: match PRP0001 in of_match_device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260329-synology_microp_initial-v5-1-27cb80bdf591@posteo.de>
+Message-Id: <20260329-synology_microp_initial-v5-2-27cb80bdf591@posteo.de>
 References: <20260329-synology_microp_initial-v5-0-27cb80bdf591@posteo.de>
 In-Reply-To: <20260329-synology_microp_initial-v5-0-27cb80bdf591@posteo.de>
 To: Hans de Goede <hansg@kernel.org>, 
@@ -27,110 +26,120 @@ Cc: platform-driver-x86@vger.kernel.org, linux-leds@vger.kernel.org,
  rust-for-linux@vger.kernel.org, linux-acpi@vger.kernel.org, 
  Markus Probst <markus.probst@posteo.de>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2847;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3479;
  i=markus.probst@posteo.de; h=from:subject:message-id;
- bh=LjFpIfANTZFo1+4IPCHrW+YIb3KmnE+ivKHsB6gln08=;
- b=owEBiQJ2/ZANAwAIATR2H/jnrUPSAcsmYgBpyWk57cnwGnzCYU7bX9FQiaKM/eXTH6tO9Tsvs
- 8PqY3PJRquJAk8EAAEIADkWIQSCdBjE9KxY53IwxHM0dh/4561D0gUCaclpORsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMSwyLDIACgkQNHYf+OetQ9IgDA/+MkrrYxXzol9wLHQzbRjvpCsg6A/6Hn6
- H0AoQgev00ZuBP8o5HPBJW2wL0BSIZ8hEg/hIxrGg/vxBYMKHz90cfSGPjF3tyqVJw7tf1wlcwP
- bNRykHuuxTXqNeQ+vtEhLD5oa/y4pbwkDoTFmGfRxCmPpj3h/5iEo4k6yOVRA+toNg63jEtMCzJ
- Hm9aq4s6vaWN/X9Hf4+1jdJi4PUZN4gozqI3iqp1zLIuFKx2S/M5wrlTp9whdBqunWSDYYgcyZ5
- RoZ/kNYb+049oFVOHCwX46k1+J7C3s58MemHgWiIO0JL0t2y45exFk4ozUVw94/68rEd2gq4yZ3
- ZAAN4RyhqCBQRgUeQREp3CA1W++fodZZvkfV9H7Wy7d+q82wvmLmM8LA1X2Q+zyOmw3RmuXMYs9
- /APKwzC5fDHFOHpsmIPsEIqVwdPldK1Ks//Pk/hbtNso3D7lsMOr4oZqNzdZX5JragSPj7xQU0d
- ITPdapX3ODn4R/yTCsVvEKra7yBbBPTXOA2NtaDri54URNPhMOWMdQiouADGMCksBjS9sGKM//W
- PtWNKFQh2n+d4kBn3+0rL6epwa7Ut344MIYHN1fxtSfZS2QPtDTw6hS88OcFQU93DvwEo5R28h/
- BAKU8Sbn74AVHk0n0D6UHZuBbWlKJVvWckYrJ7+xj86jWoINbFt0=
+ bh=HMCBaJI1P1YqAkteFmwT2ODjJk1KjOq1Yh0ug86s1zs=;
+ b=owEBiQJ2/ZANAwAIATR2H/jnrUPSAcsmYgBpyWk64tit0EV5IRL2Ka6xmKM30y1j9EVJH02Ji
+ fJerO0lS5+JAk8EAAEIADkWIQSCdBjE9KxY53IwxHM0dh/4561D0gUCaclpOhsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMSwyLDIACgkQNHYf+OetQ9J7HhAAjkadI0ejYpWk+cSPgdRrBvZshABIbgZ
+ GQxgme4t6lF1yir06RFgZ4DX9OiuYb3uNNb9sEML4Rc+pmpQMqj49ucyUWhmJ8Ck8GsFJZy3uz1
+ x52L159LhE7fnrRpft71UTe9QuN7KbK8hVW3l/HYQOpa+bh0K1s/dNcH8G7JMyJk6cLX9Dgu/uJ
+ R1VWPjOcCyM+wQdZ9Nsx27sUInClzLYS3IkFFIF0aCm5K0X4GdsCQOzsNJHVEdNMQwtTfKSBZKo
+ XDR1D46AGw8atrYG/Lz18Q0nKzjTnYrQimTiv2SkzON6c9z1o/OFC7jQNH1ewKTy8+pQ0omYHUN
+ 2QgE0iLkoSVJxW6CLIQd8r1V+wOurWApv0dI01lzIa28uNrn1uxLUCmtC3ugdxoudexVj3XR5xZ
+ F0bbHkrm+1lVIA6cK46JaFCbJ/eFKCOx28q9uzRmHcCGnRuuItmtogtRiVVf5lIy+6uFp491/0l
+ yFsIhX27UgnOEMGPdyEPKi9eskCdpM+F6Uzjhf+MIZxRB1bK5vtJV5mpKgJ5r+/DtKqCx+1+WGb
+ VhtDnr91ra0PsNEKzqJoHjdfFZrZjDeQo5GReIeWr1BVPUVqHU7QfnotHPItj6dhzcSP3LyMIB3
+ Dhd4hoPqw/HnYDOvAxwf5IhSzTTfCw/RQ7GuTNwZTmF5Gs2918pU=
 X-Developer-Key: i=markus.probst@posteo.de; a=openpgp;
  fpr=827418C4F4AC58E77230C47334761FF8E7AD43D2
 X-Endpoint-Received: by B4 Relay for markus.probst@posteo.de/default with auth_id=680
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the Synology Microp devicetree bindings. Those devices are
-microcontrollers found on Synology NAS devices. They are connected to a
-serial port on the host device.
+Export `acpi_of_match_device` function and use it to match for PRP0001
+in `of_match_device`, if the device does not have a device node.
 
-Those devices are used to control certain LEDs, fan speeds, a beeper, to
-handle buttons, fan failures and to properly shutdown and reboot the
-device.
+This fixes the match data being NULL when using ACPI PRP0001, even though
+the device was matched against an of device table.
 
 Signed-off-by: Markus Probst <markus.probst@posteo.de>
 ---
- .../synology,ds923p-microp.yaml                    | 65 ++++++++++++++++++++++
- 1 file changed, 65 insertions(+)
+ drivers/acpi/bus.c   |  7 ++++---
+ drivers/of/device.c  |  9 +++++++--
+ include/linux/acpi.h | 11 +++++++++++
+ 3 files changed, 22 insertions(+), 5 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/embedded-controller/synology,ds923p-microp.yaml b/Documentation/devicetree/bindings/embedded-controller/synology,ds923p-microp.yaml
-new file mode 100644
-index 000000000000..599d32ce2be9
---- /dev/null
-+++ b/Documentation/devicetree/bindings/embedded-controller/synology,ds923p-microp.yaml
-@@ -0,0 +1,65 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/embedded-controller/synology,ds923p-microp.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
+diff --git a/drivers/acpi/bus.c b/drivers/acpi/bus.c
+index 2ec095e2009e..cd02f04cf685 100644
+--- a/drivers/acpi/bus.c
++++ b/drivers/acpi/bus.c
+@@ -831,9 +831,9 @@ const struct acpi_device *acpi_companion_match(const struct device *dev)
+  * identifiers and a _DSD object with the "compatible" property, use that
+  * property to match against the given list of identifiers.
+  */
+-static bool acpi_of_match_device(const struct acpi_device *adev,
+-				 const struct of_device_id *of_match_table,
+-				 const struct of_device_id **of_id)
++bool acpi_of_match_device(const struct acpi_device *adev,
++			  const struct of_device_id *of_match_table,
++			  const struct of_device_id **of_id)
+ {
+ 	const union acpi_object *of_compatible, *obj;
+ 	int i, nval;
+@@ -866,6 +866,7 @@ static bool acpi_of_match_device(const struct acpi_device *adev,
+ 
+ 	return false;
+ }
++EXPORT_SYMBOL_GPL(acpi_of_match_device);
+ 
+ static bool acpi_of_modalias(struct acpi_device *adev,
+ 			     char *modalias, size_t len)
+diff --git a/drivers/of/device.c b/drivers/of/device.c
+index f7e75e527667..128682390058 100644
+--- a/drivers/of/device.c
++++ b/drivers/of/device.c
+@@ -11,6 +11,7 @@
+ #include <linux/mod_devicetable.h>
+ #include <linux/slab.h>
+ #include <linux/platform_device.h>
++#include <linux/acpi.h>
+ 
+ #include <asm/errno.h>
+ #include "of_private.h"
+@@ -26,8 +27,12 @@
+ const struct of_device_id *of_match_device(const struct of_device_id *matches,
+ 					   const struct device *dev)
+ {
+-	if (!matches || !dev->of_node || dev->of_node_reused)
+-		return NULL;
++	if (!matches || !dev->of_node || dev->of_node_reused) {
++		const struct of_device_id *id = NULL;
 +
-+title: Synology NAS on-board Microcontroller
++		acpi_of_match_device(ACPI_COMPANION(dev), matches, &id);
++		return id;
++	}
+ 	return of_match_node(matches, dev->of_node);
+ }
+ EXPORT_SYMBOL(of_match_device);
+diff --git a/include/linux/acpi.h b/include/linux/acpi.h
+index 4d2f0bed7a06..1cf23edcbfbb 100644
+--- a/include/linux/acpi.h
++++ b/include/linux/acpi.h
+@@ -736,6 +736,10 @@ const struct acpi_device_id *acpi_match_acpi_device(const struct acpi_device_id
+ const struct acpi_device_id *acpi_match_device(const struct acpi_device_id *ids,
+ 					       const struct device *dev);
+ 
++bool acpi_of_match_device(const struct acpi_device *adev,
++			  const struct of_device_id *of_match_table,
++			  const struct of_device_id **of_id);
 +
-+maintainers:
-+  - Markus Probst <markus.probst@posteo.de>
+ const void *acpi_device_get_match_data(const struct device *dev);
+ extern bool acpi_driver_match_device(struct device *dev,
+ 				     const struct device_driver *drv);
+@@ -965,6 +969,13 @@ static inline const struct acpi_device_id *acpi_match_device(
+ 	return NULL;
+ }
+ 
++static inline bool acpi_of_match_device(const struct acpi_device *adev,
++					const struct of_device_id *of_match_table,
++					const struct of_device_id **of_id)
++{
++	return false;
++}
 +
-+description: |
-+  Synology Microp is a microcontroller found in Synology NAS devices.
-+  It is connected to a serial port on the host device.
-+
-+  It is necessary to properly shutdown and reboot the NAS device and
-+  provides additional functionality such as led control, fan speed control,
-+  a beeper and buttons on the NAS device.
-+
-+properties:
-+  compatible:
-+    enum:
-+      - synology,ds923p-microp
-+      - synology,ds918p-microp
-+      - synology,ds214play-microp
-+      - synology,ds225p-microp
-+      - synology,ds425p-microp
-+      - synology,ds710p-microp
-+      - synology,ds1010p-microp
-+      - synology,ds723p-microp
-+      - synology,ds1522p-microp
-+      - synology,rs422p-microp
-+      - synology,ds725p-microp
-+      - synology,ds118-microp
-+      - synology,ds124-microp
-+      - synology,ds223-microp
-+      - synology,ds223j-microp
-+      - synology,ds1823xsp-microp
-+      - synology,rs822p-microp
-+      - synology,rs1221p-microp
-+      - synology,rs1221rpp-microp
-+      - synology,ds925p-microp
-+      - synology,ds1525p-microp
-+      - synology,ds1825p-microp
-+
-+  fan-failure-gpios:
-+    description: GPIOs needed to determine which fans stopped working on a fan failure event.
-+    minItems: 2
-+    maxItems: 3
-+
-+required:
-+  - compatible
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/leds/common.h>
-+    #include <dt-bindings/gpio/gpio.h>
-+
-+    embedded-controller {
-+      compatible = "synology,ds923p-microp";
-+
-+      fan-failure-gpios = <&gpio 68 GPIO_ACTIVE_HIGH>, <&gpio 69 GPIO_ACTIVE_HIGH>;
-+    };
+ static inline const void *acpi_device_get_match_data(const struct device *dev)
+ {
+ 	return NULL;
 
 -- 
 2.52.0
