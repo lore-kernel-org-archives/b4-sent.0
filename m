@@ -1,73 +1,145 @@
-From: =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
-Date: Sun, 29 Mar 2026 17:17:33 +0200
-Subject: [PATCH] boot/bootm: Disable interrupts after loading the image
+From: Markus Probst <markus.probst@posteo.de>
+Subject: [PATCH v5 0/4] Introduce Synology Microp driver
+Date: Sun, 29 Mar 2026 20:02:14 +0200
+Message-Id: <20260329-synology_microp_initial-v5-0-27cb80bdf591@posteo.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260329-bootm-wdt-v1-1-f46b3bc6d50e@posteo.net>
-X-B4-Tracking: v=1; b=H4sIAIxCyWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDYyNL3aT8/JJc3fKUEt1kU0NDC3MzQ4tUMyMloPqCotS0zAqwWdGxtbU
- AwHozGFsAAAA=
-X-Change-ID: 20260329-bootm-wdt-c51187618e62
-To: u-boot@lists.denx.de
-Cc: Tom Rini <trini@konsulko.com>, Sughosh Ganu <sughosh.ganu@arm.com>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- Mattijs Korpershoek <mkorpershoek@kernel.org>, 
- =?utf-8?q?=E7=89=9B_=E5=BF=97=E5=AE=8F?= <Zone.Niuzh@hotmail.com>, 
- Benjamin ROBIN <dev@benjarobin.fr>, Aristo Chen <jj251510319013@gmail.com>, 
- =?utf-8?q?J=2E_Neusch=C3=A4fer?= <j.ne@posteo.net>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIACZpyWkC/4XP32rDIBgF8FcJXs/if2Ou9h5jFKufrdDGVFNZK
+ X33uXSwUCi7PML5eb4bKpAjFDR0N5ShxhLT2IJ865A72HEPOPqWESNMEU4ULtcxHdP+uj1Fl9O
+ 0jWOcoz1iErS3Tu+0MAq19pQhxK9F/vh85AznS/tgfjz++UPXdEkZ1ThfyrxtkzxUDCBFT8GQX
+ rqhcrSe9FuhVDwqR/AFWyNN0I4FHcxQ6dLY2QLYpdMpzkNX9Ybg7CT6GXSIZU75ulxe6bLo3yM
+ rxQQHFwJ4UEL07n1KZYa08bCYla2d/rXDmmN4b4zigVMnnx2+cih/7fDmWK+sE4pbRuizI1YOI
+ 68d0RwiGPd+13Nnxdq53+/fqYwUBCcCAAA=
+X-Change-ID: 20260306-synology_microp_initial-0f7dac7b7496
+To: Hans de Goede <hansg@kernel.org>, 
+ =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, Lee Jones <lee@kernel.org>, 
+ Pavel Machek <pavel@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Len Brown <lenb@kernel.org>, 
+ Saravana Kannan <saravanak@kernel.org>
+Cc: platform-driver-x86@vger.kernel.org, linux-leds@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ rust-for-linux@vger.kernel.org, linux-acpi@vger.kernel.org, 
+ Markus Probst <markus.probst@posteo.de>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774797455; l=1473;
- i=j.ne@posteo.net; s=20240329; h=from:subject:message-id;
- bh=zPsGfFMuExAJidkBX5RFyv2C7XhSoz2IUlILWWWBH5I=;
- b=hO2Zorae2qOXNp3SbKtYEfFtCH2IWBWMFI86shCJ6CW/qDgH3lHIJ6ZBH51mMLY5/IvlAfFXL
- BLpKWgwlzkCA5P5K9t6ReTTduMMwvJpkFlDs9zZeLYEcOYzXZ/Z42If
-X-Developer-Key: i=j.ne@posteo.net; a=ed25519;
- pk=NIe0bK42wNaX/C4bi6ezm7NJK0IQE+8MKBm7igFMIS4=
-X-Endpoint-Received: by B4 Relay for j.ne@posteo.net/20240329 with auth_id=156
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4452;
+ i=markus.probst@posteo.de; h=from:subject:message-id;
+ bh=e9f+BMD2N11b9ib6ZSQd0dqaXGkaOaje80ss+t/0DIw=;
+ b=owEBiQJ2/ZANAwAIATR2H/jnrUPSAcsmYgBpyWk2rUhmZ7TPhVuN6wydRwT1dix2jIFFv5vla
+ /grj/FHqNaJAk8EAAEIADkWIQSCdBjE9KxY53IwxHM0dh/4561D0gUCaclpNhsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMSwyLDIACgkQNHYf+OetQ9LiHw//T9vdWAmurrnC0s622dhpTVgbKSQHzQG
+ 5yblR8VQwWCtwnBBEjNhKYBGVX2xzsTH7rgQwHOSvti+wigT56uPtNyboK/6MPIKytjJOI1lSsd
+ Aafbg0El+YVHvgt350Wd4QiUFwwRqvJBY+umM1w85+2EIoNPMLLus9Tfa8szuL5w9vsne8+tfv3
+ lVKoBTELOZDEShIG40lNJ9WtC63jT+j9FJDkzr/YQmXiCBJMMGNZBqNnckQRSvjx5mwO3TXkRq8
+ BMc3wXUvyX3ihe2j7Q08gM9V1wcczqnGpq2DV2cejiqXAooDVicTO8qsmPOqw7vdgRxAqopv6/B
+ pKmn0DGrgSY/4fKf6XAjMOifov9Io0UVZDlNnuZxuznz7nzYGpIjD9ixj7BejrmnuUxTKfPVG4a
+ 3fkk/cuXTVB+NAIaTjTKLSSE+07UZzPn9HZZWL2Gt2trZ6hP3bwG41k6Jsb96woTWJKIUGYB7hZ
+ kiJzosBB6f5MTZH17FnyHMh9zGz9nFI2BALl4TNiG5v0wfqfqqeqExdF9dUs6WR6easfuOD5kgj
+ Lt/5KqF7VuOr4HmU6AWz6jaYsYD+al/akn5Rnz8LfqOzcLRL6jjprgK37irs+npw2ZZsjKW9cK3
+ WR0NfJLntEeHN+wRyhvUprKHWV6Z/QJOJvgccX43WEigzODILB5w=
+X-Developer-Key: i=markus.probst@posteo.de; a=openpgp;
+ fpr=827418C4F4AC58E77230C47334761FF8E7AD43D2
+X-Endpoint-Received: by B4 Relay for markus.probst@posteo.de/default with auth_id=680
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Interrupts need to be disabled before we jump into the OS, but currently
-they're already disabled before we load/uncompress the image. This has
-the inconvenient side effect of taking up a part of the watchdog time
-budget, which can be rather large when the image is big. Ideally, we
-want to leave a full watchdog time slice for the OS, so that it has
-enough time to initialize its own watchdog driver. To ease the pressure,
-disable interrupts (and with it, a timer interrupt that could service
-the watchdog) after loading/uncompressing the OS image.
+Synology uses a microcontroller in their NAS devices connected to a
+serial port to control certain LEDs, fan speeds, a beeper, to handle
+proper shutdown and restart, buttons and fan failures.
 
-Signed-off-by: J. Neuschäfer <j.ne@posteo.net>
+This patch series depends on the rust led abstraction [1] and the rust
+serdev abstraction [2].
+
+This is only a initial version of the driver able to control LEDs.
+The following rust abstractions would be required, to implement the
+remaining features:
+- hwmon (include/linux/hwmon.h)
+- input (include/linux/input.h)
+- sysoff handler + hardware protection shutdown (include/linux/reboot.h)
+
+[1] https://lore.kernel.org/rust-for-linux/20260329-rust_leds-v13-0-21a599c5b2d1@posteo.de/
+[2] https://lore.kernel.org/rust-for-linux/20260313-rust_serdev-v3-0-c9a3af214f7f@posteo.de/
+
+Signed-off-by: Markus Probst <markus.probst@posteo.de>
 ---
- boot/bootm.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Changes in v5:
+- add esata led support
+- use different compatible for each model
+- add visibility modifier to of_device_table macro
+- fix match data missing when using PRP0001
+- Link to v4: https://lore.kernel.org/r/20260320-synology_microp_initial-v4-0-0423ddb83ca4@posteo.de
 
-diff --git a/boot/bootm.c b/boot/bootm.c
-index 4bdca22ea8c..fa4b53050b7 100644
---- a/boot/bootm.c
-+++ b/boot/bootm.c
-@@ -1015,7 +1015,6 @@ int bootm_run_states(struct bootm_info *bmi, int states)
- 
- 	/* Load the OS */
- 	if (!ret && (states & BOOTM_STATE_LOADOS)) {
--		iflag = bootm_disable_interrupts();
- 		ret = bootm_load_os(images, 0);
- 		if (ret && ret != BOOTM_ERR_OVERLAP)
- 			goto err;
-@@ -1044,6 +1043,8 @@ int bootm_run_states(struct bootm_info *bmi, int states)
- 	}
- #endif
- 
-+	iflag = bootm_disable_interrupts();
-+
- 	/* From now on, we need the OS boot function */
- 	if (ret)
- 		return ret;
+Changes in v4:
+- convert to monolithic driver and moved it into drivers/platform
+- removed mfd rust abstraction
+- moved dt-bindings to embedded-controller
+- Link to v3: https://lore.kernel.org/r/20260313-synology_microp_initial-v3-0-ad6ac463a201@posteo.de
+
+Changes in v3:
+- remove `default n` from Kconfig entry, as n is the default already.
+- select RUST_SERIAL_DEV_BUS_ABSTRACTIONS in Kconfig
+- add mfd rust abstraction
+- split core and led parts into their own driver. It should now be considered a
+  MFD device.
+- split led part of dt binding into its own file
+- Link to v2: https://lore.kernel.org/r/20260308-synology_microp_initial-v2-0-9389963f31c5@posteo.de
+
+Changes in v2:
+- fix missing tabs in MAINTAINERS file
+- remove word binding from patch subject
+- add missing signed-off-by
+- add missing help entry in Kconfig
+- add missing spdx license headers
+- remove no-check{,-cpu}-fan properties from the dt-bindings and replace
+  them with the check_fan module parameter
+- use patternProperties for leds in dt-bindings
+- license dt-binding as GPL-2.0-only OR BSD-2-Clause
+- move driver from staging tree into mfd tree and mark it as work in
+  progress inside Kconfig
+- only register alert and usb led if fwnode is present
+- Link to v1: https://lore.kernel.org/r/20260306-synology_microp_initial-v1-0-fcffede6448c@posteo.de
 
 ---
-base-commit: eb95914b9f5886b7ca0eaa2dbcd8a66bb8e5f81a
-change-id: 20260329-bootm-wdt-c51187618e62
+Markus Probst (4):
+      dt-bindings: embedded-controller: Add synology microp devices
+      ACPI: of: match PRP0001 in of_match_device
+      rust: add visibility to of_device_table macro
+      platform: Add initial synology microp driver
 
-Best regards,
--- 
-J. Neuschäfer <j.ne@posteo.net>
+ .../synology,ds923p-microp.yaml                    |  65 +++++
+ MAINTAINERS                                        |   6 +
+ drivers/acpi/bus.c                                 |   7 +-
+ drivers/of/device.c                                |   9 +-
+ drivers/platform/Kconfig                           |   2 +
+ drivers/platform/Makefile                          |   1 +
+ drivers/platform/synology_microp/Kconfig           |  13 +
+ drivers/platform/synology_microp/Makefile          |   3 +
+ drivers/platform/synology_microp/TODO              |   7 +
+ drivers/platform/synology_microp/command.rs        |  55 ++++
+ drivers/platform/synology_microp/led.rs            | 276 +++++++++++++++++++++
+ drivers/platform/synology_microp/model.rs          | 171 +++++++++++++
+ .../platform/synology_microp/synology_microp.rs    |  54 ++++
+ include/linux/acpi.h                               |  11 +
+ rust/kernel/of.rs                                  |   5 +-
+ 15 files changed, 678 insertions(+), 7 deletions(-)
+---
+base-commit: d1d81e9d1a4dd846aee9ae77ff9ecc2800d72148
+change-id: 20260306-synology_microp_initial-0f7dac7b7496
+prerequisite-change-id: 20251217-rust_serdev-ee5481e9085c:v3
+prerequisite-patch-id: 52b17274481cc770c257d8f95335293eca32a2c5
+prerequisite-patch-id: eec47e5051640d08bcd34a9670b98804449cad52
+prerequisite-patch-id: f24b68c71c3f69371e8ac0251efca0a023b31cc4
+prerequisite-patch-id: 3dfc1f7e5ecd3e0dd65d676aeb16f55260847b25
+prerequisite-change-id: 20251114-rust_leds-a959f7c2f7f9:v13
+prerequisite-patch-id: 818700f22dcb9676157c985f82762d7c607b861e
+prerequisite-patch-id: b15ffa7d95d9260151bfb116b259c4473f721c82
+prerequisite-patch-id: 8c47e0d107530f577a1be0b79f8ee791f95d3cbe
 
