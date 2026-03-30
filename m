@@ -1,89 +1,102 @@
-From: Satish Kharat <satishkh@cisco.com>
-Date: Sun, 29 Mar 2026 19:45:22 -0700
-Subject: [PATCH net-next v3 6/6] enic: detect admin channel resources for
- SR-IOV
+From: Ben Zong-You Xie <ben717@andestech.com>
+Subject: [PATCH v4 0/4] i2c: add support for Andes platform
+Date: Mon, 30 Mar 2026 15:30:30 +0800
+Message-Id: <20260330-atciic100-v4-0-d40822f63e4e@andestech.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260329-enic-sriov-v2-prep-v3-6-19a477549ef6@cisco.com>
-References: <20260329-enic-sriov-v2-prep-v3-0-19a477549ef6@cisco.com>
-In-Reply-To: <20260329-enic-sriov-v2-prep-v3-0-19a477549ef6@cisco.com>
-To: Satish Kharat <satishkh@cisco.com>, Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774838716; l=2466;
- i=satishkh@cisco.com; h=from:subject:message-id;
- bh=1nJliUotDMusF5w/UMmuyqwJOqlCYgr21D/fx9rjM1w=;
- b=FP3N6n9JNqA14RAcxqQshUiFQzZBox6Hs9ztDbhE85d+PFcCHb2lUFqDb+YhKX9YHpF/yaE8j
- GOKEOtvVDYaCEZQAGa6PQk5dxH8bmwgEKsBktNdKFJMu0DkDpYCipUg
-X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
- pk=4BxbLoCGvHeIMH/PbpiNVx8/2IcTjFvqcr0AD8K6WLY=
-X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/default with auth_id=639
+X-B4-Tracking: v=1; b=H4sIAJYmymkC/22PQQ6CMBBFr2K6tmQ6BQquvIdxAcMgNRFMi0RDu
+ LstxoQYlz/5782fWXh2lr047GbheLLeDn0I6X4nqKv6C0vbhCwQMAeFIKuRrCUFIJtKM+VFa+o
+ 6FaF/d9za5+o6nT/ZP+or0xgFsdFZPw7utR6bVOxFbwYIBlCVqBMsFWqjpZI190aZY9U37EemL
+ qHhJqJ2wi8YB+Fm0IQSpMmyUum8AUPtP1pv6WJL60AXBIAtEYaffullWd4E3EHwLwEAAA==
+X-Change-ID: 20260120-atciic100-da3ec68f7bb4
+To: Andi Shyti <andi.shyti@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Paul Walmsley <pjw@kernel.org>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ Alexandre Ghiti <alex@ghiti.fr>
+Cc: linux-i2c@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-riscv@lists.infradead.org, 
+ Ben Zong-You Xie <ben717@andestech.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.15-dev-47773
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774855834; l=2820;
+ i=ben717@andestech.com; s=20260120; h=from:subject:message-id;
+ bh=8txCKy0cIY/YJ5xHReKfEq7kDm9ITShL2ROCT8dUI9U=;
+ b=IFTl0zwTqspv0YWzjnUCFXSpskVBqNcKD1vyxDFvZtJeA++FI5JhnxuKqOJgltge55RQVodOa
+ Oknphz5Lj2dC10c9UTfvpN+cDkSEidymTOyj2WQwwsFP4igV6SkFQGK
+X-Developer-Key: i=ben717@andestech.com; a=ed25519;
+ pk=nb8L7zQKGJpYk0yvrYKjViOZ34A36g1ZIsCmCsP518s=
+X-Endpoint-Received: by B4 Relay for ben717@andestech.com/20260120 with auth_id=610
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Check for the presence of admin channel BAR resources
-(RES_TYPE_ADMIN_WQ, ADMIN_RQ, ADMIN_CQ, SRIOV_INTR) during resource
-discovery. Set has_admin_channel when all four are available.
+This patch series adds I2C support to Andes platform, such as AE350 and
+QiLai SoC.
 
-Use ARRAY_SIZE(enic->admin_cq) for the admin CQ count check since the
-driver allocates two admin CQs (one for WQ completions, one for RQ
-completions) and both must be backed by hardware resources.
-
-Add admin WQ, RQ, CQ and INTR fields to struct enic for use by the
-upcoming admin channel open/close paths.
-
-Signed-off-by: Satish Kharat <satishkh@cisco.com>
+Signed-off-by: Ben Zong-You Xie <ben717@andestech.com>
 ---
- drivers/net/ethernet/cisco/enic/enic.h     |  7 +++++++
- drivers/net/ethernet/cisco/enic/enic_res.c | 12 ++++++++++--
- 2 files changed, 17 insertions(+), 2 deletions(-)
+Changes in v4:
+- Rebased on andi.shyti/i2c/i2c-host-next.
+- (1/4)
+  - Added Conor's acked by tag.
 
-diff --git a/drivers/net/ethernet/cisco/enic/enic.h b/drivers/net/ethernet/cisco/enic/enic.h
-index 67fd780b1fa1..08472420f3a1 100644
---- a/drivers/net/ethernet/cisco/enic/enic.h
-+++ b/drivers/net/ethernet/cisco/enic/enic.h
-@@ -289,6 +289,13 @@ struct enic {
- 	u8 rss_key[ENIC_RSS_LEN];
- 	struct vnic_gen_stats gen_stats;
- 	enum ext_cq ext_cq;
-+
-+	/* Admin channel resources for SR-IOV MBOX */
-+	bool has_admin_channel;
-+	struct vnic_wq admin_wq;
-+	struct vnic_rq admin_rq;
-+	struct vnic_cq admin_cq[2];
-+	struct vnic_intr admin_intr;
- };
- 
- static inline struct net_device *vnic_get_netdev(struct vnic_dev *vdev)
-diff --git a/drivers/net/ethernet/cisco/enic/enic_res.c b/drivers/net/ethernet/cisco/enic/enic_res.c
-index bbd3143ed73e..2b7545d6a67f 100644
---- a/drivers/net/ethernet/cisco/enic/enic_res.c
-+++ b/drivers/net/ethernet/cisco/enic/enic_res.c
-@@ -205,10 +205,18 @@ void enic_get_res_counts(struct enic *enic)
- 	enic->cq_count = enic->cq_avail;
- 	enic->intr_count = enic->intr_avail;
- 
-+	enic->has_admin_channel =
-+		vnic_dev_get_res_count(enic->vdev, RES_TYPE_ADMIN_WQ) >= 1 &&
-+		vnic_dev_get_res_count(enic->vdev, RES_TYPE_ADMIN_RQ) >= 1 &&
-+		vnic_dev_get_res_count(enic->vdev, RES_TYPE_ADMIN_CQ) >=
-+			ARRAY_SIZE(enic->admin_cq) &&
-+		vnic_dev_get_res_count(enic->vdev, RES_TYPE_SRIOV_INTR) >= 1;
-+
- 	dev_info(enic_get_dev(enic),
--		"vNIC resources avail: wq %d rq %d cq %d intr %d\n",
-+		"vNIC resources avail: wq %d rq %d cq %d intr %d admin %s\n",
- 		enic->wq_avail, enic->rq_avail,
--		enic->cq_avail, enic->intr_avail);
-+		enic->cq_avail, enic->intr_avail,
-+		enic->has_admin_channel ? "yes" : "no");
- }
- 
- void enic_init_vnic_resources(struct enic *enic)
+- Link to v3: https://patch.msgid.link/20260128-atciic100-v3-0-8c002fcc2bb4@andestech.com
 
--- 
-2.43.0
+Changes in v3:
+- (1/4)
+  - Rewrote the commit message to provide a detailed hardware
+    description and explain the relationship between the ATCIIC100 IP,
+    the AE350 platform, and the QiLai SoC. (Krzysztof)
+
+- Link to v2: https://patch.msgid.link/20260122-atciic100-v2-0-7559136d07cf@andestech.com
+
+Changes in v2:
+- ATCIIC100 is the hardware name for the Andes I2C controller and was used
+  throughout v1. However, since Device Tree bindings should reflect the hardware
+  identity and driver/config naming typically follows the i2c-<soc/platform>
+  convention, this version replaces occurrences of "atciic100" with more
+  appropriate names, such as "i2c-andes" or "andes_i2c," to align with upstream
+  standards.
+- Updated cover letter title and the description.
+- Rebased on andi.shyti/i2c/i2c-host-next.
+- (1/4)
+  - Updated the title and the description of the patch.
+  - Specified what the hardware is, and modify the title and compatibles. (Krzysztof)
+  - Corrected device register size.
+- (2/4)
+  - Updated the title and the description of the patch.
+  - Replaced the readl/writel operations with regmap APIs.
+  - Replaced all occurrences of atciic100 with proper names.
+  - Used module_platform_driver() to initialize. (Andi)
+  - Moved CONFIG_I2C_ANDES (CONFIG_I2C_ATCIIC100 in v1) to the
+    "Embedded system I2C/SMBus host controller drivers" section.
+  - Made CONFIG_I2C_ANDES depend on ARCH_ANDES
+- (3/4) (new)
+  - Added an entry to the MAINTAINERS file.
+- (4/4) (new)
+  - Added the I2C node to QiLai DTS.
+
+- Link to v1: https://patch.msgid.link/20250207021923.2912373-1-ben717@andestech.com
+
+---
+Ben Zong-You Xie (4):
+      dt-bindings: i2c: add support for AE350 I2C controller
+      i2c: add Andes I2C driver support
+      MAINTAINERS: add an entry for Andes I2C driver
+      riscv: dts: andes: qilai: add I2C controller
+
+ .../bindings/i2c/andestech,ae350-i2c.yaml          |  45 +++
+ MAINTAINERS                                        |   6 +
+ arch/riscv/boot/dts/andes/qilai.dtsi               |   7 +
+ drivers/i2c/busses/Kconfig                         |  10 +
+ drivers/i2c/busses/Makefile                        |   1 +
+ drivers/i2c/busses/i2c-andes.c                     | 341 +++++++++++++++++++++
+ 6 files changed, 410 insertions(+)
+---
+base-commit: 46ec065d8610c5e8d11a8b205a6b7bd3c40d46b8
+change-id: 20260120-atciic100-da3ec68f7bb4
+
+Best regards,
+--  
+Ben Zong-You Xie <ben717@andestech.com>
 
