@@ -1,11 +1,11 @@
 From: Satish Kharat <satishkh@cisco.com>
-Date: Sun, 29 Mar 2026 19:45:19 -0700
-Subject: [PATCH net-next v3 3/6] enic: detect SR-IOV VF type from PCI
- capability
+Date: Sun, 29 Mar 2026 19:45:20 -0700
+Subject: [PATCH net-next v3 4/6] enic: make enic_dev_enable/disable
+ ref-counted
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260329-enic-sriov-v2-prep-v3-3-19a477549ef6@cisco.com>
+Message-Id: <20260329-enic-sriov-v2-prep-v3-4-19a477549ef6@cisco.com>
 References: <20260329-enic-sriov-v2-prep-v3-0-19a477549ef6@cisco.com>
 In-Reply-To: <20260329-enic-sriov-v2-prep-v3-0-19a477549ef6@cisco.com>
 To: Satish Kharat <satishkh@cisco.com>, Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -13,120 +13,125 @@ To: Satish Kharat <satishkh@cisco.com>, Andrew Lunn <andrew+netdev@lunn.ch>,
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774838716; l=3365;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774838716; l=4130;
  i=satishkh@cisco.com; h=from:subject:message-id;
- bh=EHjug9jFvuqtjK7rgKqTb+ZxcNgtnQ9ViaQc7HzlDNE=;
- b=D/BEZvPa4Gw73XjlMiux2p+psMbdfXBKO+bFLDb2zgnYNRMiYEzrsidmOV22123Sh+0aQ4/yR
- NbGp9/DcDOHBTIg9r9Vbv9aIPGHqok9tlu60xNPZ83uX7jIbCBKNFA8
+ bh=zvvdRfwq8gsBZZOSKyc4TXaUkVuYP93HpEGc0xRpx0k=;
+ b=KflXMJygQFdksHqK2PJ5a9eLSq02ebxaBkEXTmD1qq2XkgOrJIVA3mLuJkMSdvUwDNOP5gUdy
+ 0etpzaTfZBwATXKb9/agR8LFnU3pVBPiA6l2C/UC4m3gFKzTuZpA2G1
 X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
  pk=4BxbLoCGvHeIMH/PbpiNVx8/2IcTjFvqcr0AD8K6WLY=
 X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/default with auth_id=639
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Read the VF device ID from the SR-IOV PCI capability at probe time to
-determine whether the PF is configured for V1, USNIC, or V2 virtual
-functions. Store the result in enic->vf_type for use by subsequent
-SR-IOV operations.
+Both the data path (ndo_open/ndo_stop) and the upcoming admin channel
+need to enable and disable the vNIC device independently. Without
+reference counting, closing the admin channel while the netdev is up
+would inadvertently disable the entire device.
 
-The VF type is a firmware-configured property (set via UCSM, CIMC,
-Intersight etc) that is immutable from the driver's perspective. Only
-PFs are probed for this capability; VFs and dynamic vnics skip
-detection.
+Add an enable_count to struct enic, protected by the existing
+devcmd_lock. enic_dev_enable() issues CMD_ENABLE_WAIT only on the
+first caller (0 -> 1 transition), and enic_dev_disable() issues
+CMD_DISABLE only when the last caller releases (1 -> 0 transition).
+
+Also check the return value of enic_dev_enable() in enic_open() and
+fail the open if the firmware enable command fails. Without this check,
+a failed enable leaves enable_count at zero while the interface appears
+up, which can cause a later admin channel enable/disable cycle to
+incorrectly disable the hardware under the active data path.
 
 Signed-off-by: Satish Kharat <satishkh@cisco.com>
 ---
- drivers/net/ethernet/cisco/enic/enic.h      |  8 +++++++
- drivers/net/ethernet/cisco/enic/enic_main.c | 37 +++++++++++++++++++++++++++++
- 2 files changed, 45 insertions(+)
+ drivers/net/ethernet/cisco/enic/enic.h      |  1 +
+ drivers/net/ethernet/cisco/enic/enic_dev.c  | 17 +++++++++++++----
+ drivers/net/ethernet/cisco/enic/enic_main.c | 17 ++++++++++++++++-
+ 3 files changed, 30 insertions(+), 5 deletions(-)
 
 diff --git a/drivers/net/ethernet/cisco/enic/enic.h b/drivers/net/ethernet/cisco/enic/enic.h
-index 366c65d072fc..0fd9cd917132 100644
+index 0fd9cd917132..67fd780b1fa1 100644
 --- a/drivers/net/ethernet/cisco/enic/enic.h
 +++ b/drivers/net/ethernet/cisco/enic/enic.h
-@@ -225,6 +225,13 @@ struct enic_rq {
- 	struct page_pool *pool;
- } ____cacheline_aligned;
- 
-+enum enic_vf_type {
-+	ENIC_VF_TYPE_NONE,
-+	ENIC_VF_TYPE_V1,
-+	ENIC_VF_TYPE_USNIC,
-+	ENIC_VF_TYPE_V2,
-+};
-+
- /* Per-instance private data structure */
- struct enic {
- 	struct net_device *netdev;
-@@ -252,6 +259,7 @@ struct enic {
- #ifdef CONFIG_PCI_IOV
+@@ -260,6 +260,7 @@ struct enic {
  	u16 num_vfs;
  #endif
-+	enum enic_vf_type vf_type;
+ 	enum enic_vf_type vf_type;
++	unsigned int enable_count;
  	spinlock_t enic_api_lock;
  	bool enic_api_busy;
  	struct enic_port_profile *pp;
+diff --git a/drivers/net/ethernet/cisco/enic/enic_dev.c b/drivers/net/ethernet/cisco/enic/enic_dev.c
+index 2cbae7c6cc3d..659787f73cf1 100644
+--- a/drivers/net/ethernet/cisco/enic/enic_dev.c
++++ b/drivers/net/ethernet/cisco/enic/enic_dev.c
+@@ -131,10 +131,13 @@ int enic_dev_set_ig_vlan_rewrite_mode(struct enic *enic)
+ 
+ int enic_dev_enable(struct enic *enic)
+ {
+-	int err;
++	int err = 0;
+ 
+ 	spin_lock_bh(&enic->devcmd_lock);
+-	err = vnic_dev_enable_wait(enic->vdev);
++	if (enic->enable_count == 0)
++		err = vnic_dev_enable_wait(enic->vdev);
++	if (!err)
++		enic->enable_count++;
+ 	spin_unlock_bh(&enic->devcmd_lock);
+ 
+ 	return err;
+@@ -142,10 +145,16 @@ int enic_dev_enable(struct enic *enic)
+ 
+ int enic_dev_disable(struct enic *enic)
+ {
+-	int err;
++	int err = 0;
+ 
+ 	spin_lock_bh(&enic->devcmd_lock);
+-	err = vnic_dev_disable(enic->vdev);
++	if (enic->enable_count == 0) {
++		spin_unlock_bh(&enic->devcmd_lock);
++		return 0;
++	}
++	enic->enable_count--;
++	if (enic->enable_count == 0)
++		err = vnic_dev_disable(enic->vdev);
+ 	spin_unlock_bh(&enic->devcmd_lock);
+ 
+ 	return err;
 diff --git a/drivers/net/ethernet/cisco/enic/enic_main.c b/drivers/net/ethernet/cisco/enic/enic_main.c
-index e16dfbcd2c22..acd05350ec1a 100644
+index acd05350ec1a..e7125b818087 100644
 --- a/drivers/net/ethernet/cisco/enic/enic_main.c
 +++ b/drivers/net/ethernet/cisco/enic/enic_main.c
-@@ -67,6 +67,7 @@
- #define PCI_DEVICE_ID_CISCO_VIC_ENET_DYN     0x0044  /* enet dynamic vnic */
- #define PCI_DEVICE_ID_CISCO_VIC_ENET_VF      0x0071  /* enet SRIOV VF */
- #define PCI_DEVICE_ID_CISCO_VIC_ENET_VF_V2   0x02b7  /* enet SRIOV V2 VF */
-+#define PCI_DEVICE_ID_CISCO_VIC_ENET_VF_USNIC 0x00cf /* enet USNIC VF */
- 
- /* Supported devices */
- static const struct pci_device_id enic_id_table[] = {
-@@ -2621,6 +2622,41 @@ static void enic_iounmap(struct enic *enic)
- 			iounmap(enic->bar[i].vaddr);
- }
- 
-+#ifdef CONFIG_PCI_IOV
-+static void enic_sriov_detect_vf_type(struct enic *enic)
-+{
-+	struct pci_dev *pdev = enic->pdev;
-+	int pos;
-+	u16 vf_dev_id;
-+
-+	if (enic_is_sriov_vf(enic) || enic_is_dynamic(enic))
-+		return;
-+
-+	pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_SRIOV);
-+	if (!pos) {
-+		enic->vf_type = ENIC_VF_TYPE_NONE;
-+		return;
+@@ -1750,7 +1750,11 @@ static int enic_open(struct net_device *netdev)
+ 	if (vnic_dev_get_intr_mode(enic->vdev) == VNIC_DEV_INTR_MODE_MSIX)
+ 		for (i = 0; i < enic->wq_count; i++)
+ 			napi_enable(&enic->napi[enic_cq_wq(enic, i)]);
+-	enic_dev_enable(enic);
++	err = enic_dev_enable(enic);
++	if (err) {
++		netdev_err(netdev, "Failed to enable device: %d\n", err);
++		goto err_out_dev_enable;
 +	}
-+
-+	pci_read_config_word(pdev, pos + PCI_SRIOV_VF_DID, &vf_dev_id);
-+
-+	switch (vf_dev_id) {
-+	case PCI_DEVICE_ID_CISCO_VIC_ENET_VF:
-+		enic->vf_type = ENIC_VF_TYPE_V1;
-+		break;
-+	case PCI_DEVICE_ID_CISCO_VIC_ENET_VF_USNIC:
-+		enic->vf_type = ENIC_VF_TYPE_USNIC;
-+		break;
-+	case PCI_DEVICE_ID_CISCO_VIC_ENET_VF_V2:
-+		enic->vf_type = ENIC_VF_TYPE_V2;
-+		break;
-+	default:
-+		enic->vf_type = ENIC_VF_TYPE_NONE;
-+		break;
-+	}
-+}
-+#endif
-+
- static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
- {
- 	struct device *dev = &pdev->dev;
-@@ -2734,6 +2770,7 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
- 			num_pps = enic->num_vfs;
- 		}
- 	}
-+	enic_sriov_detect_vf_type(enic);
- #endif
  
- 	/* Allocate structure for port profiles */
+ 	for (i = 0; i < enic->intr_count; i++)
+ 		vnic_intr_unmask(&enic->intr[i]);
+@@ -1760,6 +1764,17 @@ static int enic_open(struct net_device *netdev)
+ 
+ 	return 0;
+ 
++err_out_dev_enable:
++	for (i = 0; i < enic->rq_count; i++)
++		napi_disable(&enic->napi[i]);
++	if (vnic_dev_get_intr_mode(enic->vdev) == VNIC_DEV_INTR_MODE_MSIX)
++		for (i = 0; i < enic->wq_count; i++)
++			napi_disable(&enic->napi[enic_cq_wq(enic, i)]);
++	netif_tx_disable(netdev);
++	if (!enic_is_dynamic(enic) && !enic_is_sriov_vf(enic))
++		enic_dev_del_station_addr(enic);
++	for (i = 0; i < enic->wq_count; i++)
++		vnic_wq_disable(&enic->wq[i].vwq);
+ err_out_free_rq:
+ 	for (i = 0; i < enic->rq_count; i++) {
+ 		ret = vnic_rq_disable(&enic->rq[i].vrq);
 
 -- 
 2.43.0
