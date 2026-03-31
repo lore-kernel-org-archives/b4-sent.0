@@ -1,11 +1,11 @@
 From: Cristian Cozzolino <cristian_ci@protonmail.com>
-Date: Tue, 31 Mar 2026 11:47:12 +0200
-Subject: [PATCH v5 4/6] arm64: dts: qcom: msm8953-flipkart-rimob: Enable
- WiFi/Bluetooth
+Date: Tue, 31 Mar 2026 11:47:13 +0200
+Subject: [PATCH v5 5/6] arm64: dts: qcom: msm8953-flipkart-rimob: Enable
+ touchscreen
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260331-rimob-new-features-v5-4-5fcf42a29c12@protonmail.com>
+Message-Id: <20260331-rimob-new-features-v5-5-5fcf42a29c12@protonmail.com>
 References: <20260331-rimob-new-features-v5-0-5fcf42a29c12@protonmail.com>
 In-Reply-To: <20260331-rimob-new-features-v5-0-5fcf42a29c12@protonmail.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -20,52 +20,77 @@ Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
  ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
  Cristian Cozzolino <cristian_ci@protonmail.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774950461; l=1054;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774950461; l=1640;
  i=cristian_ci@protonmail.com; s=20250620; h=from:subject:message-id;
- bh=fh/EPBf6DDi6xO2cT/WF/4Df/j3opWByAPpvZnndrW8=;
- b=HMR8LJo0K1WR0rIK+nK/nE52KfPHYkMTNNJjMyXRqiLm5lV0EnbBv4jESDlkcfOEXWJ6qhIRv
- JcKGVY+SCrUBA0AhU+U+MTYHL2FtHtcpYnU+T7FbA6vk7btRnDTj3Bl
+ bh=2lixUsZ8hK7GJbfIpYB3fjZMI34WwYmd7iUiJ+N3tkI=;
+ b=CFERXPieFjSemT4rzWmeU5YO4FOP8r536BLkw1/lGiL/0ltYusAh2o/q31z/7qvhlQgCZ0AOS
+ FJQ+EKIW8HBDvO3s/lMBZxHd2zdecNDZdTLNwyCk2Zjy2VYb68cZPyF
 X-Developer-Key: i=cristian_ci@protonmail.com; a=ed25519;
  pk=xH5IvIPUNHV1Q8R0/pq2CfuVFR/wTiAyuyi6IwedjZY=
 X-Endpoint-Received: by B4 Relay for cristian_ci@protonmail.com/20250620 with auth_id=438
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Configure and enable the WCNSS which provides WiFi and Bluetooth on this
-device using the WCN3660B chip.
+This device uses a Goodix GT5688 touch controller, connected to i2c_3.
+Add it to the device tree.
 
 Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Signed-off-by: Cristian Cozzolino <cristian_ci@protonmail.com>
 ---
- arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+ .../arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts | 32 ++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts b/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts
-index 5a9d71d1e466..db5c9f04bf1a 100644
+index db5c9f04bf1a..060129c72264 100644
 --- a/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts
 +++ b/arch/arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts
-@@ -326,3 +326,18 @@ &usb3 {
- &usb3_dwc3 {
- 	dr_mode = "peripheral";
+@@ -94,6 +94,31 @@ &hsusb_phy {
+ 	status = "okay";
  };
-+
-+&wcnss {
-+	vddpx-supply = <&pm8953_l5>;
-+
+ 
++&i2c_3 {
 +	status = "okay";
++
++	touchscreen@5d {
++		compatible = "goodix,gt5688";
++		reg = <0x5d>;
++
++		interrupts-extended = <&tlmm 65 IRQ_TYPE_LEVEL_LOW>;
++
++		pinctrl-0 = <&tsp_int_rst_default>;
++		pinctrl-names = "default";
++
++		irq-gpios = <&tlmm 65 GPIO_ACTIVE_HIGH>;
++		reset-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
++
++		VDDIO-supply = <&pm8953_l6>;
++		AVDD28-supply = <&pm8953_l10>;
++
++		touchscreen-size-x = <1080>;
++		touchscreen-size-y = <1920>;
++		touchscreen-inverted-x;
++		touchscreen-inverted-y;
++	};
 +};
 +
-+&wcnss_iris {
-+	compatible = "qcom,wcn3660b";
+ &ibb {
+ 	qcom,discharge-resistor-kohms = <32>;
+ };
+@@ -311,6 +336,13 @@ panel_default: panel-default-state {
+ 		bias-disable;
+ 	};
+ 
++	tsp_int_rst_default: tsp-int-rst-default-state {
++		pins = "gpio64", "gpio65";
++		function = "gpio";
++		drive-strength = <8>;
++		bias-pull-up;
++	};
 +
-+	vddxo-supply = <&pm8953_l7>;
-+	vddrfa-supply = <&pm8953_l19>;
-+	vddpa-supply = <&pm8953_l9>;
-+	vdddig-supply = <&pm8953_l5>;
-+};
+ 	gpio_key_default: gpio-key-default-state {
+ 		pins = "gpio85";
+ 		function = "gpio";
 
 -- 
 2.53.0
