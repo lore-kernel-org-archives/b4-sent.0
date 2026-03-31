@@ -1,87 +1,75 @@
-From: Kyle Farnung <kfarnung@gmail.com>
-Date: Mon, 30 Mar 2026 23:32:53 -0700
-Subject: [PATCH v2] wifi: ath11k: apply existing PM quirk to ThinkPad P14s
- Gen 5 AMD
+From: Carl Lee <carl.lee@amd.com>
+Date: Tue, 31 Mar 2026 16:02:28 +0800
+Subject: [PATCH v3] ARM: dts: aspeed: anacapa: Add eeprom device node for
+ NFC adaptor board
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260330-p14s-pm-quirk-v2-1-ef18ce07996b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XMSw7CIBSF4a00d+w1PMSkjtyH6QAptDdKQVCia
- di72LnD/yTnWyHbRDbDqVsh2UKZwtJC7Dows14mizS2BsHEkUnJMPJDxujx8aJ0Q6YVv2reC6k
- ctE9M1tF78y5D65nyM6TPxhf+W/9JhSNH44TTsjdGjOo8eU33vQkehlrrFwFGBJiqAAAA
-X-Change-ID: 20260330-p14s-pm-quirk-0a51ba19235f
-To: Jeff Johnson <jjohnson@kernel.org>, 
- Baochen Qiang <quic_bqiang@quicinc.com>
-Cc: Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
- linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Kyle Farnung <kfarnung@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774938826; l=2024;
- i=kfarnung@gmail.com; s=20260330; h=from:subject:message-id;
- bh=goqTouCdFtdr9SNadM69GmR467yJ8YsnFiPC1yn5iAQ=;
- b=IdTKuCdL9uMN7+89uh+WWQM8YD+zhhN/m4BDbQDv4Ukh/UqXDAxT/kZFxTkgIyohPv/r4xmNp
- h+R43lTYheCDkjHeMkAMiQ3CqrP9or/GUtWD8C5oV/nlkR0bptu41P1
-X-Developer-Key: i=kfarnung@gmail.com; a=ed25519;
- pk=47jis5OdLKFgZynNQVqkx1mTGiEgFTUX+MecmG9rbmE=
-X-Endpoint-Received: by B4 Relay for kfarnung@gmail.com/20260330 with auth_id=706
+Message-Id: <20260331-arm-dts-aspeed-anacapa-add-eeprom-device-v3-1-2bb2226fbb4e@amd.com>
+X-B4-Tracking: v=1; b=H4sIAJN/y2kC/52NOw6DMBAFr4JcZyN/+Mipco8oxeLdBBdgZCMrE
+ eLuMTTpKec9aWYViaPnJG7VKiJnn3yYCphLJdyA05vBU2GhpW6lkRYwjkBLAkwzMwFO6HBGQCJ
+ gnmMob9E4BlSIPcsWTdOLopsjv/znSD2ehQeflhC/RzmrfT0RyQok1I202ijJkts7jnR1YRR7I
+ uuzWg0KrHIdEdd9Z+mv3bbtB6vL7to1AQAA
+X-Change-ID: 20260309-arm-dts-aspeed-anacapa-add-eeprom-device-a1aabe06a35b
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
+ Andrew Jeffery <andrew@codeconstruct.com.au>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ carl.lee@amd.com, peter.shen@amd.com, colin.huang2@amd.com
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1774944151; l=1502;
+ i=carl.lee@amd.com; s=20260203; h=from:subject:message-id;
+ bh=tK4ZlqqLdi/4bQSFXDH6JCKjm/zDadASdjOjaR1GT4A=;
+ b=SaG/KqMDLIxRikW7LI9c8QOG9XIn/wzre1v8BpnxvZL8oSWTfadp8FR8SP4Lf7sUfnMLULhG0
+ NjbP5yWI7GmC0NzJJoaRnpZ72jo1n6xtViWE2VC6hqD6/Q/kYVsRVaK
+X-Developer-Key: i=carl.lee@amd.com; a=ed25519;
+ pk=pyq7QaQvoxMg806KVkRwpCbiah+7ncWr4MBpK1AEyjA=
+X-Endpoint-Received: by B4 Relay for carl.lee@amd.com/20260203 with auth_id=623
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some ThinkPad P14s Gen 5 AMD systems experience suspend/resume
-reliability issues similar to those reported in [1]. These platforms
-were not previously included in the ath11k PM quirk table.
+Add eeprom device node for NFC adaptor board FRU.
 
-Add DMI matches for product IDs 21ME and 21MF to apply the existing
-ATH11K_PM_WOW override, improving suspend/resume behavior on these
-systems.
-
-Tested on a ThinkPad P14s Gen 5 AMD (21ME) running 6.19.9.
-
-[1] https://bugzilla.kernel.org/show_bug.cgi?id=219196
-[2] https://pcsupport.lenovo.com/us/en/products/laptops-and-netbooks/thinkpad-p-series-laptops/thinkpad-p14s-gen-5-type-21me-21mf/
-
-Fixes: ce8669a27016 ("wifi: ath11k: determine PM policy based on machine model")
-Cc: stable@vger.kernel.org
-Signed-off-by: Kyle Farnung <kfarnung@gmail.com>
+Signed-off-by: Carl Lee <carl.lee@amd.com>
 ---
+Add eeprom device node to store FRU data for NFC adapter
+board on Anacapa platform.
+---
+Changes in v3:
+- Fix node ordering to follow ascending unit address
+- Update commit message to match actual changes
+- Link to v2: https://lore.kernel.org/r/20260309-arm-dts-aspeed-anacapa-add-eeprom-device-v2-1-91c7dde4b79d@amd.com
+
 Changes in v2:
-- Fix missing mailing list recipients (linux-wireless, ath11k, linux-kernel)
-- Link to v1: https://lore.kernel.org/r/20260330-p14s-pm-quirk-v1-1-cf2fa39cc2d5@gmail.com
+- Remove PRoT module eeprom commit since it is already included in another series under review.
+- Only include NFC adapter board eeprom node.
+- Link to v1: https://lore.kernel.org/r/20260309-arm-dts-aspeed-anacapa-add-eeprom-device-v1-0-45092310e0e6@amd.com
 ---
- drivers/net/wireless/ath/ath11k/core.c | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/drivers/net/wireless/ath/ath11k/core.c b/drivers/net/wireless/ath/ath11k/core.c
-index 3f6f4db5b7ee1aba79fd7526e5d59d068e0f4a2e..21d366224e75904feeae6cb9c93d9ef692d127fe 100644
---- a/drivers/net/wireless/ath/ath11k/core.c
-+++ b/drivers/net/wireless/ath/ath11k/core.c
-@@ -1041,6 +1041,20 @@ static const struct dmi_system_id ath11k_pm_quirk_table[] = {
- 			DMI_MATCH(DMI_PRODUCT_NAME, "21D5"),
- 		},
- 	},
-+	{
-+		.driver_data = (void *)ATH11K_PM_WOW,
-+		.matches = { /* P14s G5 AMD #1 */
-+			DMI_MATCH(DMI_BOARD_VENDOR, "LENOVO"),
-+			DMI_MATCH(DMI_PRODUCT_NAME, "21ME"),
-+		},
-+	},
-+	{
-+		.driver_data = (void *)ATH11K_PM_WOW,
-+		.matches = { /* P14s G5 AMD #2 */
-+			DMI_MATCH(DMI_BOARD_VENDOR, "LENOVO"),
-+			DMI_MATCH(DMI_PRODUCT_NAME, "21MF"),
-+		},
-+	},
- 	{}
- };
+diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
+index 2cb7bd128d24..57fd81e931d6 100644
+--- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
++++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
+@@ -824,6 +824,11 @@ nfc@28 {
  
+ 				enable-gpios = <&sgpiom0 241 GPIO_ACTIVE_HIGH>;
+ 			};
++
++			eeprom@50 {
++				compatible = "atmel,24c128";
++				reg = <0x50>;
++			};
+ 		};
+ 	};
+ };
 
 ---
-base-commit: dbd94b9831bc52a1efb7ff3de841ffc3457428ce
-change-id: 20260330-p14s-pm-quirk-0a51ba19235f
+base-commit: a0ae2a256046c0c5d3778d1a194ff2e171f16e5f
+change-id: 20260309-arm-dts-aspeed-anacapa-add-eeprom-device-a1aabe06a35b
 
 Best regards,
 -- 
-Kyle Farnung <kfarnung@gmail.com>
+Carl Lee <carl.lee@amd.com>
 
