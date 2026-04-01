@@ -1,114 +1,123 @@
 From: Chen Linxuan <me@black-desk.cn>
-Date: Wed, 01 Apr 2026 15:33:42 +0800
-Subject: [PATCH 2/3] Documentation/config: add includeIf "worktree"
+Date: Wed, 01 Apr 2026 15:33:43 +0800
+Subject: [PATCH 3/3] t1305: add tests for includeIf "worktree"
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260401-includeif-worktree-v1-2-906db69f2c79@black-desk.cn>
+Message-Id: <20260401-includeif-worktree-v1-3-906db69f2c79@black-desk.cn>
 References: <20260401-includeif-worktree-v1-0-906db69f2c79@black-desk.cn>
 In-Reply-To: <20260401-includeif-worktree-v1-0-906db69f2c79@black-desk.cn>
 To: git@vger.kernel.org
 Cc: Chen Linxuan <me@black-desk.cn>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3731; i=me@black-desk.cn;
- h=from:subject:message-id; bh=K3ImsrVJ2Up2HpuPWgWiJNoMH+njSosuW+4tnuNrhzg=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBpzMp38nLlcN/5lZ+kidZrf9fRvmPw1h3d65NF7
- J2HVmthST6JAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaczKdwAKCRB2HuYUOZmu
- i0xpD/0SbQ5hZ1K5gEa7NPRtn9ikFRr8T7U3Z/ewgnpfZHK4anKl3uaz9OqFYLiJ1foTIUU8s7d
- T3YPtgU+Y68pCnhikPVfXWrC0JucBXls8VIJsnnanueDhtqmnOrLp+OdaQpS0mOXO3VKURa0eGw
- LHPvaznCst/anQ9ev+GztmsdX6qfYuceL3MhxwhNbF3mUeNEZFriktniG9i0RPGe5beR2dAg3W/
- hAbzqZxIEN6pqezISwMzgmIFjv5ocNbepOuGNgh26qmFekx2G9GX5JPrHd9t37EjxqJq/3xRjtO
- AcTSKMcY5yjvEMQyVPbJONQUgmyjyiGe++pEnTmqxiYPaXXp/6KFdW8rHaXLXiasdQPIyaXWUd5
- MwsW4a0i98EELsSEtYCdx/0bC+LUbpsp4qi2olIhJLY1nEZGADPNfHah77YwkL1eDuc5LPwhd2p
- GiUuqWZRycwPAo142wJpU+piHiXr7HBYPDWrA7xWWfhd8CBLPqLSP1TAe45Xxcl0RQVjz75NBVB
- tUhmVuFFvLmfE90RnpRA1QV6RSUDWyJZB8PtxrI/EG20T99n3VdcNIcWMAqjFgh+HRTANuWEyIs
- HZ2BQRa/EaG9MhArwniPHaHImVp+cVGRn6QVsCyIu+HYZz/PrPSVebAhTsPsXNoYn7DdkNrHAqc
- 7W6XqcYCL4l6W6Q==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3334; i=me@black-desk.cn;
+ h=from:subject:message-id; bh=vkzlFuHSi6641zT6zd8IknfSDTILs3Ce3ujOUx+yxws=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBpzMp4LF6zNfSELniObOUo61h0uTs6lgwU9WsUA
+ SN9DlT14cCJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaczKeAAKCRB2HuYUOZmu
+ i71rEADo0J4hDiOpqElLkPvo9EN4IQi3vBA9NpGxpKr9EE9YXLFxx4NcOszva1sRBDL/DiajjLm
+ 8SkirT2I9hlJ6phrtP7jGWlZA25zaqGKBEbX+wgY57j0095mVFTiDQqalp4esTPxSi2wGxlQocJ
+ r/iOHsCn+FX5EvBDFn2Z8Ur60XWcuDeOT/MujzBoRhYc6RCa8PAt4N6ZLgOiKtM9ae7Dl0ETH36
+ 3uJ6MmMXf+2CNoxw9q4HRs2g1WI65tYcr4MFpVIu8Sh8nWfF4IZDn8BitI59DHp3Wxap50EhZs4
+ TLvW8GbkD9hLtfL5zROUjBBF6WRW5IdYww/Qv5Sy+fymlZlR5fADu1SvQBhkuf3nQY3MN4A0vZm
+ eGN58Fh6JALTf8Xv8bDR2C8rkAuXDxa6fSprDZtABpu768lY3cGHa1y69GsoWm4ucZabJZe8AQA
+ A1spAIHdX7NnLiwbkAHiXniVLqdOVzP6Y7K9Ew9qquYEAeFbgsuiKxn6TTjer6qjR9y/SkGi9bh
+ DVdcQMLtKW0F4ALfSzI46A6uC7Z0m80/8rZaS5ZQKURhZPYBVJsteXzUHbzkHpd+Ww1MLu9bS53
+ 8JN+0meLGkK5P83R5qjL3RMLLpwDF1M0cYv1C1gIAI96/cjMSbSMxkHdErOFNM8YpjKefqRHP6X
+ 0Au4n5LgfXH7WdA==
 X-Developer-Key: i=me@black-desk.cn; a=openpgp;
  fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
 X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add documentation for the newly introduced `worktree` and `worktree/i`
-conditional include keywords.  Describe how they differ from `gitdir`
-(matching the working tree checkout path instead of the `.git`
-directory path), and list the supported pattern features: glob
-wildcards, `**/` and `/**`, `~` expansion, `./` relative paths, and
-trailing-`/` prefix matching.  Note that the condition never matches
-in a bare repository.  Also add usage examples alongside the existing
-`gitdir` examples.
----
- Documentation/config.adoc | 50 +++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 50 insertions(+)
+Cover the following scenarios unique to the "worktree" condition
+(path matching features such as glob, tilde, icase are already
+exercised by the gitdir tests):
 
-diff --git a/Documentation/config.adoc b/Documentation/config.adoc
-index 62eebe7c5450..a4f3ec905098 100644
---- a/Documentation/config.adoc
-+++ b/Documentation/config.adoc
-@@ -146,6 +146,48 @@ refer to linkgit:gitignore[5] for details. For convenience:
- 	This is the same as `gitdir` except that matching is done
- 	case-insensitively (e.g. on case-insensitive file systems)
+  - bare repository (condition must not match)
+  - multiple worktrees: main and linked worktrees each match their
+    own path-based condition while sharing a single config file;
+    a third linked worktree verifies directory-prefix matching with
+    a trailing slash
+  - symlinked worktree: the path is resolved before matching
+---
+ t/t1305-config-include.sh | 66 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 66 insertions(+)
+
+diff --git a/t/t1305-config-include.sh b/t/t1305-config-include.sh
+index 6e51f892f320..8a5ba4b884d3 100755
+--- a/t/t1305-config-include.sh
++++ b/t/t1305-config-include.sh
+@@ -396,4 +396,70 @@ test_expect_success 'onbranch without repository but explicit nonexistent Git di
+ 	test_must_fail nongit git --git-dir=nonexistent config get foo.bar
+ '
  
-+`worktree`::
-+	The data that follows the keyword `worktree` and a colon is used as a
-+	glob pattern. If the working directory of the current worktree matches
-+	the pattern, the include condition is met.
-++
-+The worktree location is the path where files are checked out (as returned
-+by `git rev-parse --show-toplevel`). This is different from `gitdir`, which
-+matches the `.git` directory path. In a linked worktree, the worktree path
-+is the directory where that worktree's files are located, not the main
-+repository's `.git` directory.
-++
-+The pattern can contain standard globbing wildcards and two additional
-+ones, `**/` and `/**`, that can match multiple path components. Please
-+refer to linkgit:gitignore[5] for details. For convenience:
++# worktree: conditional include tests
 +
-+ * If the pattern starts with `~/`, `~` will be substituted with the
-+   content of the environment variable `HOME`.
++test_expect_success 'conditional include, worktree bare repo' '
++	git init --bare wt-bare &&
++	(
++		cd wt-bare &&
++		echo "[includeIf \"worktree:/\"]path=bar-bare" >>config &&
++		echo "[test]wtbare=1" >bar-bare &&
++		test_must_fail git config test.wtbare
++	)
++'
 +
-+ * If the pattern starts with `./`, it is replaced with the directory
-+   containing the current config file.
++test_expect_success 'conditional include, worktree multiple worktrees' '
++	git init wt-multi &&
++	(
++		cd wt-multi &&
++		test_commit initial &&
++		git worktree add -b linked-branch ../wt-linked HEAD &&
++		git worktree add -b prefix-branch ../wt-prefix/linked HEAD
++	) &&
++	wt_main="$(cd wt-multi && pwd)" &&
++	wt_linked="$(cd wt-linked && pwd)" &&
++	wt_prefix_parent="$(cd wt-prefix && pwd)" &&
++	cat >>wt-multi/.git/config <<-EOF &&
++	[includeIf "worktree:$wt_main"]
++		path = main-config
++	[includeIf "worktree:$wt_linked"]
++		path = linked-config
++	[includeIf "worktree:$wt_prefix_parent/"]
++		path = prefix-config
++	EOF
++	echo "[test]mainvar=main" >wt-multi/.git/main-config &&
++	echo "[test]linkedvar=linked" >wt-multi/.git/linked-config &&
++	echo "[test]prefixvar=prefix" >wt-multi/.git/prefix-config &&
++	echo main >expect &&
++	git -C wt-multi config test.mainvar >actual &&
++	test_cmp expect actual &&
++	test_must_fail git -C wt-multi config test.linkedvar &&
++	test_must_fail git -C wt-multi config test.prefixvar &&
++	echo linked >expect &&
++	git -C wt-linked config test.linkedvar >actual &&
++	test_cmp expect actual &&
++	test_must_fail git -C wt-linked config test.mainvar &&
++	test_must_fail git -C wt-linked config test.prefixvar &&
++	echo prefix >expect &&
++	git -C wt-prefix/linked config test.prefixvar >actual &&
++	test_cmp expect actual &&
++	test_must_fail git -C wt-prefix/linked config test.mainvar &&
++	test_must_fail git -C wt-prefix/linked config test.linkedvar
++'
 +
-+ * If the pattern does not start with either `~/`, `./` or `/`, `**/`
-+   will be automatically prepended. For example, the pattern `foo/bar`
-+   becomes `**/foo/bar` and would match `/any/path/to/foo/bar`.
++test_expect_success SYMLINKS 'conditional include, worktree resolves symlinks' '
++	mkdir real-wt &&
++	ln -s real-wt link-wt &&
++	git init link-wt/repo &&
++	(
++		cd link-wt/repo &&
++		# repo->worktree resolves symlinks, so use real path in pattern
++		echo "[includeIf \"worktree:**/real-wt/repo\"]path=bar-link" >>.git/config &&
++		echo "[test]wtlink=2" >.git/bar-link &&
++		echo 2 >expect &&
++		git config test.wtlink >actual &&
++		test_cmp expect actual
++	)
++'
 +
-+ * If the pattern ends with `/`, `**` will be automatically added. For
-+   example, the pattern `foo/` becomes `foo/**`. In other words, it
-+   matches "foo" and everything inside, recursively.
-++
-+This condition will never match in a bare repository (which has no worktree).
-++
-+This is useful when you need to use different `user.name`, `user.email`, or
-+GPG keys in different worktrees of the same repository. While
-+`extensions.worktreeConfig` also allows per-worktree configuration, it
-+requires changes inside each repository. This condition can be set in the
-+user's global configuration file (e.g. `~/.config/git/config`) and applies
-+to multiple repositories at once.
-+
-+`worktree/i`::
-+	This is the same as `worktree` except that matching is done
-+	case-insensitively (e.g. on case-insensitive file systems)
-+
- `onbranch`::
- 	The data that follows the keyword `onbranch` and a colon is taken to be a
- 	pattern with standard globbing wildcards and two additional
-@@ -244,6 +286,14 @@ Example
- [includeIf "gitdir:~/to/group/"]
- 	path = /path/to/foo.inc
- 
-+; include if the worktree is at /path/to/project-build
-+[includeIf "worktree:/path/to/project-build"]
-+	path = build-config.inc
-+
-+; include for all worktrees inside /path/to/group
-+[includeIf "worktree:/path/to/group/"]
-+	path = group-config.inc
-+
- ; relative paths are always relative to the including
- ; file (if the condition is true); their location is not
- ; affected by the condition
+ test_done
 
 -- 
 2.53.0
