@@ -1,101 +1,87 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Wed, 01 Apr 2026 21:02:08 +0000
-Subject: [PATCH] mfd: max77759: fix comment style for enums
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v4 0/4] Add framebuffer on Xiaomi Poco F1 and disable the
+ MDSS on tianma panel variant
+Date: Thu, 02 Apr 2026 00:39:34 +0200
+Message-Id: <20260402-beryllium-fb-v4-0-46170004da28@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260401-fix-mfd-max77759-usb-next-v1-1-174ec23ad824@google.com>
-X-B4-Tracking: v=1; b=H4sIAM+HzWkC/x2MywqAIBAAfyX23IL2svqV6GC51R6y0ApB+vek4
- 8DMRPDkmDz0WQRHD3s+bAKZZzBv2q6EbBJDIYpGVELiwgH3xeCug1Kq7vD2E1oKF1LTKmNkOYt
- WQ+pPR0n+38P4vh9S0MymawAAAA==
-X-Change-ID: 20260401-fix-mfd-max77759-usb-next-e687dd13c08a
-To: =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
- Lee Jones <lee@kernel.org>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-kernel@vger.kernel.org, linux-usb@vger.kernel.org, 
- Badhri Jagan Sridharan <badhri@google.com>, 
- Amit Sunil Dhamne <amitsd@google.com>
+X-B4-Tracking: v=1; b=H4sIAKaezWkC/13Oyw6CMBCF4VcxXVszvdiiK9/DuKDtIJMgmqKNl
+ /DuFlwgLE+T759+WIeRsGP71YdFTNTRtc1Dr1fM12V7Rk4hbyZBGhBgucP4ahp6XHjleFBYWOc
+ lOASWyS1iRc8xdzzlXVN3v8bXWE9ieP2FlBDzUBIcuIai3BYQhNzigZ503/g3GzJJ/tPFH5LMV
+ BlndqFy1oCfUzVRDcurKlP0NmitNMjSTbTv+y+9ezesHAEAAA==
+X-Change-ID: 20260107-beryllium-fb-d3e87bc20be0
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, David Heidelberg <david@ixit.cz>, 
+ Sam Day <me@samcday.com>, Dzmitry Sankouski <dsankouski@gmail.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ Petr Hodina <petr.hodina@protonmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775077329; l=3284;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=7DZ+8ZRZWuwCTzw0kJR0me2ttfQ1oXwKqAtj79QG1jU=;
- b=VnHr0xONR1kTvZZjHhd/sHmSTg6nOJjtG0cMtUhG3f8l0yxRUnWvR+/kHXJXey0rklvh+ED/e
- EiFG1L9BdqlBSemk4B8NzdgE6dq8NC1CcOFfMePc4eQCnmAsASYPwsL
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1771; i=david@ixit.cz;
+ h=from:subject:message-id; bh=biZ7mTjsG56f0OApK0tI4n92r/opIl7/ocWbNT26owc=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpzZ6pZjk2323McF5sFbwKWL7BkYDzm1It3+tEH
+ u6LNfxzv1mJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac2eqQAKCRBgAj/E00kg
+ cl52D/9t/R1++EPMjpK3Sc8864pED+qlGJUEum1udwAwdDqW4L2R3QYMooKM4oZEpoRuNFcrjMx
+ OfyYDAnBa8Au7OciWoLyHfC3x4GQUFAlrMWxlOjJ7fbHVqPRo2bYs28Kv7uuaTLMHQegqCWtry0
+ 4pD3XAmlHPOjNK9DT6O/y9+nGRTwNtQajsOkFhwBVjT9MwMVpVEOv0D8wCCDIDsUy4/Xkodq4Pn
+ zvcSAM/JNuGEze2yks9dAMi7zyMlDJ1tJLnX9Rhjf3j+K8W+dDfCUsCiOsbzJAnsDbKxOxMCYg0
+ cN/yQnWfc4TMbGgYddq/hSH+fmFgsn9xDP7Pn6hF4eUDLGAu8N7JQfi5EoSO4uer0DFZMYsiu3Y
+ eVea1JGl2rdGGcpJN31R9yqPujDWghwFC+AHEaCnzv/FeTyvNIOoKz/Um+R+2wNz3dwE4rPgmDA
+ TmthgH20MaVkiOOUQFEuWqW+Bv6v6dVX8N+yhB/N4Tni9t0wD8MTD419srJw6nLuQJqsalR8RC8
+ cju0AgyVxjeAjLFwd9Q7K85LB0jyfjMyLK8DWdwrQzrFWeUzjrLPO4kOXVJRFldl4kr5Bp2n712
+ fXyHKWVfTWkG5U/66AJicgNik36wqehpFZCCyOqyjPHj2GCnbM/7R440OC5hwdRQZP4lUUlLj3V
+ /MI2hVlSO0TICUQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix comment style for enums so they're kernel-doc compliant.
+Enable framebuffer for early console output.
 
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
----
-This patch is a follow-up to the series [1]. [1] has been accepted in
-the USB subsystem tree (usb-next). However, since Lee has additional
-feedback [2], I am sending this patch to fix it. Please note that this
-patch is based out of usb-next branch on usb tree. This patch should be
-applied on top of b422f7c072ac ("mfd: max77759: add register bitmasks
-and modify irq configs for charger").
+Due to broken panel driver on tianma and no visual output it's better
+to disable the MDSS so the framebuffer stays on. 
 
-[1] https://lore.kernel.org/all/20260325-max77759-charger-v9-0-4486dd297adc@google.com/
-[2] https://lore.kernel.org/all/20260331123138.GE3795166@google.com/
----
-Output of kernel-doc script (none format)
-$ scripts/kernel-doc -v -none -Wall include/linux/mfd/max77759.h
-Info: include/linux/mfd/max77759.h:134 Scanning doc for enum max77759_chgr_chgin_dtls_status
-Info: include/linux/mfd/max77759.h:152 Scanning doc for enum max77759_chgr_bat_dtls_states
-Info: include/linux/mfd/max77759.h:174 Scanning doc for enum max77759_chgr_chg_dtls_states
-Info: include/linux/mfd/max77759.h:212 Scanning doc for struct max77759
-Info: include/linux/mfd/max77759.h:235 Scanning doc for struct max77759_maxq_command
-Info: include/linux/mfd/max77759.h:247 Scanning doc for struct max77759_maxq_response
-Info: include/linux/mfd/max77759.h:258 Scanning doc for function max77759_maxq_command
----
- include/linux/mfd/max77759.h | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+In case second patch gets rejected, please apply the first one standalone
 
-diff --git a/include/linux/mfd/max77759.h b/include/linux/mfd/max77759.h
-index ad1aa4c2b779..ec19be952877 100644
---- a/include/linux/mfd/max77759.h
-+++ b/include/linux/mfd/max77759.h
-@@ -131,12 +131,12 @@
- #define MAX77759_MAXQ_OPCODE_USER_SPACE_READ     0x81
- #define MAX77759_MAXQ_OPCODE_USER_SPACE_WRITE    0x82
- 
--/*
-+/**
-  * enum max77759_chgr_chgin_dtls_status - Charger Input Status
-  * @MAX77759_CHGR_CHGIN_DTLS_VBUS_UNDERVOLTAGE:
-  *     Charger input voltage (Vchgin) < Under Voltage Threshold (Vuvlo)
-- * @MAX77759_CHGR_CHGIN_DTLS_VBUS_MARGINAL_VOLTAGE: Vchgin > Vuvlo and
-- *     Vchgin < (Battery Voltage (Vbatt) + system voltage (Vsys))
-+ * @MAX77759_CHGR_CHGIN_DTLS_VBUS_MARGINAL_VOLTAGE:
-+ *     Vchgin > Vuvlo and Vchgin < (Battery Voltage (Vbatt) + system voltage (Vsys))
-  * @MAX77759_CHGR_CHGIN_DTLS_VBUS_OVERVOLTAGE:
-  *     Vchgin > Over Voltage threshold (Vovlo)
-  * @MAX77759_CHGR_CHGIN_DTLS_VBUS_VALID:
-@@ -149,7 +149,7 @@ enum max77759_chgr_chgin_dtls_status {
- 	MAX77759_CHGR_CHGIN_DTLS_VBUS_VALID,
- };
- 
--/*
-+/**
-  * enum max77759_chgr_bat_dtls_states - Battery Details
-  * @MAX77759_CHGR_BAT_DTLS_NO_BATT_CHG_SUSP:	No battery and the charger suspended
-  * @MAX77759_CHGR_BAT_DTLS_DEAD_BATTERY:	Vbatt < Vtrickle
-@@ -171,7 +171,7 @@ enum max77759_chgr_bat_dtls_states {
- 	MAX77759_CHGR_BAT_DTLS_BAT_ONLY_MODE,
- };
- 
--/*
-+/**
-  * enum max77759_chgr_chg_dtls_states - Charger Details
-  * @MAX77759_CHGR_CHG_DTLS_PREQUAL:		Charger in prequalification mode
-  * @MAX77759_CHGR_CHG_DTLS_CC:			Charger in fast charge const curr mode
+Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
+---
+Changes in v4:
+- Stripped too many labels, OnePlus 6 does use the label in the OP6/OP6T
+  variants. Re-add.
+- Link to v3: https://lore.kernel.org/r/20260401-beryllium-fb-v3-0-ec7d443402ab@ixit.cz
+
+Changes in v3:
+- Strip label from framebuffer nodes where unused and remove -0 postfix. (Konrad)
+- Link to v2: https://lore.kernel.org/r/20260317-beryllium-fb-v2-0-36b69dfb760c@ixit.cz
+
+Changes in v2:
+- Added few conversion to use memory-region.
+- Corrected framebuffer node name. (Konrad)
+- Link to v1: https://lore.kernel.org/r/20260311-beryllium-fb-v1-0-408a580d125e@ixit.cz
 
 ---
-base-commit: 81ebd43cc0d6d106ce7b6ccbf7b5e40ca7f5503d
-change-id: 20260401-fix-mfd-max77759-usb-next-e687dd13c08a
+David Heidelberg (3):
+      arm64: dts: qcom: sdm845-oneplus: Drop address from framebuffer node
+      arm64: dts: qcom: sdm845-shift-axolotl: Convert fb to use memory-region
+      arm64: dts: qcom: sdm845-samsung-starqltechn: Convert fb to use memory-region
+
+Petr Hodina (1):
+      arm64: dts: qcom: sdm845-xiaomi-beryllium: Introduce framebuffer
+
+ arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi      |  2 +-
+ arch/arm64/boot/dts/qcom/sdm845-samsung-starqltechn.dts  |  7 ++++---
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts        |  8 ++++----
+ .../boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi    | 16 ++++++++++++++++
+ 4 files changed, 25 insertions(+), 8 deletions(-)
+---
+base-commit: bd0f139e5fc11182777b81cefc3893ea508544ec
+change-id: 20260107-beryllium-fb-d3e87bc20be0
 
 Best regards,
 -- 
-Amit Sunil Dhamne <amitsd@google.com>
+David Heidelberg <david@ixit.cz>
 
