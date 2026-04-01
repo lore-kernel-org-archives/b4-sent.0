@@ -1,124 +1,81 @@
-From: Chen Linxuan <me@black-desk.cn>
-Date: Wed, 01 Apr 2026 15:33:43 +0800
-Subject: [PATCH 3/3] t1305: add tests for includeIf "worktree"
+From: Rudraksha Gupta <guptarud@gmail.com>
+Subject: [PATCH v2 0/3] Reorganize DTS and add fuel-gauge to
+ samsung-expressatt
+Date: Wed, 01 Apr 2026 01:28:47 -0700
+Message-Id: <20260401-expressatt_fuel_guage-v2-0-947922834df1@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260401-includeif-worktree-v1-3-906db69f2c79@black-desk.cn>
-References: <20260401-includeif-worktree-v1-0-906db69f2c79@black-desk.cn>
-In-Reply-To: <20260401-includeif-worktree-v1-0-906db69f2c79@black-desk.cn>
-To: git@vger.kernel.org
-Cc: Chen Linxuan <me@black-desk.cn>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WS6WocMRCEX2WY35GRWq1rCcHvkZhFR/fO4B2vP
+ Rc2Zt/d2llM4gOCfpWo+tRU67WdaOxpanfNazvS2k/96aEK+NG0uYsPBxJ9qboFCVZqrQQ9P44
+ 0TXGe97zQcX9YYjWhNYWTZu9iamu2erh/3ri/7656pKel4ufrZfsY59xV+O7PArLCuRRJHA2Va
+ BQkREjeV6iXzmFR0UntCrsN/h5tFBQIlr3OOalUJ/BF2uiA0NnERkUyjGTzx1QMTsbMIL1UqBm
+ rTQZtSoFsXEpOsUmstf+Quo7JBQwTG2+kzoZMZodALiQFGNBnxzYFX8I3UetrgdF6maoVlDMBK
+ yuDD2QVZ0R94eVyiQ6Xhrfud83PWn1tRJp/qhfzacndPb2IVYl6EDEFcDmwvj0MsT/e5NPw6zv
+ SlyXmONAY93yMUydWFFKwohAYHRr1mZbiRKKKoZ93zWpvVGgv2+36aT6NL9snWtW23v/8l21s0
+ EUVb8AmG/4+1N6dz+c3SoA/0ZgCAAA=
+X-Change-ID: 20260331-expressatt_fuel_guage-465dfb3f87ab
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3334; i=me@black-desk.cn;
- h=from:subject:message-id; bh=vkzlFuHSi6641zT6zd8IknfSDTILs3Ce3ujOUx+yxws=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBpzMp4LF6zNfSELniObOUo61h0uTs6lgwU9WsUA
- SN9DlT14cCJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaczKeAAKCRB2HuYUOZmu
- i71rEADo0J4hDiOpqElLkPvo9EN4IQi3vBA9NpGxpKr9EE9YXLFxx4NcOszva1sRBDL/DiajjLm
- 8SkirT2I9hlJ6phrtP7jGWlZA25zaqGKBEbX+wgY57j0095mVFTiDQqalp4esTPxSi2wGxlQocJ
- r/iOHsCn+FX5EvBDFn2Z8Ur60XWcuDeOT/MujzBoRhYc6RCa8PAt4N6ZLgOiKtM9ae7Dl0ETH36
- 3uJ6MmMXf+2CNoxw9q4HRs2g1WI65tYcr4MFpVIu8Sh8nWfF4IZDn8BitI59DHp3Wxap50EhZs4
- TLvW8GbkD9hLtfL5zROUjBBF6WRW5IdYww/Qv5Sy+fymlZlR5fADu1SvQBhkuf3nQY3MN4A0vZm
- eGN58Fh6JALTf8Xv8bDR2C8rkAuXDxa6fSprDZtABpu768lY3cGHa1y69GsoWm4ucZabJZe8AQA
- A1spAIHdX7NnLiwbkAHiXniVLqdOVzP6Y7K9Ew9qquYEAeFbgsuiKxn6TTjer6qjR9y/SkGi9bh
- DVdcQMLtKW0F4ALfSzI46A6uC7Z0m80/8rZaS5ZQKURhZPYBVJsteXzUHbzkHpd+Ww1MLu9bS53
- 8JN+0meLGkK5P83R5qjL3RMLLpwDF1M0cYv1C1gIAI96/cjMSbSMxkHdErOFNM8YpjKefqRHP6X
- 0Au4n5LgfXH7WdA==
-X-Developer-Key: i=me@black-desk.cn; a=openpgp;
- fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
-X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775032128; l=2193;
+ i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
+ bh=ijyWGc7cgC5C8+2EsFh8eAzQCX0rxyLF1iEbqDPqQQo=;
+ b=MmgwvXuLziahm10UT8nqenr/+BUb7r8SSOxtPl16o+nfZOWv8d7ZJ2FHHUV5zKZeAnhDtnlwG
+ UsQEACoEga3C90WXtCwQoAqnRhloxGewGyMajyXy0ijRXz5bBPNFOM4
+X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
+ pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
+X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Cover the following scenarios unique to the "worktree" condition
-(path matching features such as glob, tilde, icase are already
-exercised by the gitdir tests):
+Reorganized the samsung-expressatt DTS to be more in line with mainline
+standards.
 
-  - bare repository (condition must not match)
-  - multiple worktrees: main and linked worktrees each match their
-    own path-based condition while sharing a single config file;
-    a third linked worktree verifies directory-prefix matching with
-    a trailing slash
-  - symlinked worktree: the path is resolved before matching
+Tested battery by doing `cat /sys/class/power_supply/battery/capacity`
+in upstream Linux and comparing the value with downstream Linux. Booted
+on upstream Linux first, as the upstream Linux seems to use a lot
+more battery than downstream, and then put the battery into another
+expressatt running downstream Android to compare values. There are
+some slight differences, but overall seems to line up pretty well with
+downstream.
+
+Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
- t/t1305-config-include.sh | 66 +++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 66 insertions(+)
+Changes in v2:
+- Previous changes were based on some outdated dependencies. Update them
+- Reorganized expressatt DTS
+- Switch to GSBI5
+- Link to v1: https://lore.kernel.org/r/20260331-expressatt_fuel_guage-v1-1-23d1d8526b69@gmail.com
 
-diff --git a/t/t1305-config-include.sh b/t/t1305-config-include.sh
-index 6e51f892f320..8a5ba4b884d3 100755
---- a/t/t1305-config-include.sh
-+++ b/t/t1305-config-include.sh
-@@ -396,4 +396,70 @@ test_expect_success 'onbranch without repository but explicit nonexistent Git di
- 	test_must_fail nongit git --git-dir=nonexistent config get foo.bar
- '
- 
-+# worktree: conditional include tests
-+
-+test_expect_success 'conditional include, worktree bare repo' '
-+	git init --bare wt-bare &&
-+	(
-+		cd wt-bare &&
-+		echo "[includeIf \"worktree:/\"]path=bar-bare" >>config &&
-+		echo "[test]wtbare=1" >bar-bare &&
-+		test_must_fail git config test.wtbare
-+	)
-+'
-+
-+test_expect_success 'conditional include, worktree multiple worktrees' '
-+	git init wt-multi &&
-+	(
-+		cd wt-multi &&
-+		test_commit initial &&
-+		git worktree add -b linked-branch ../wt-linked HEAD &&
-+		git worktree add -b prefix-branch ../wt-prefix/linked HEAD
-+	) &&
-+	wt_main="$(cd wt-multi && pwd)" &&
-+	wt_linked="$(cd wt-linked && pwd)" &&
-+	wt_prefix_parent="$(cd wt-prefix && pwd)" &&
-+	cat >>wt-multi/.git/config <<-EOF &&
-+	[includeIf "worktree:$wt_main"]
-+		path = main-config
-+	[includeIf "worktree:$wt_linked"]
-+		path = linked-config
-+	[includeIf "worktree:$wt_prefix_parent/"]
-+		path = prefix-config
-+	EOF
-+	echo "[test]mainvar=main" >wt-multi/.git/main-config &&
-+	echo "[test]linkedvar=linked" >wt-multi/.git/linked-config &&
-+	echo "[test]prefixvar=prefix" >wt-multi/.git/prefix-config &&
-+	echo main >expect &&
-+	git -C wt-multi config test.mainvar >actual &&
-+	test_cmp expect actual &&
-+	test_must_fail git -C wt-multi config test.linkedvar &&
-+	test_must_fail git -C wt-multi config test.prefixvar &&
-+	echo linked >expect &&
-+	git -C wt-linked config test.linkedvar >actual &&
-+	test_cmp expect actual &&
-+	test_must_fail git -C wt-linked config test.mainvar &&
-+	test_must_fail git -C wt-linked config test.prefixvar &&
-+	echo prefix >expect &&
-+	git -C wt-prefix/linked config test.prefixvar >actual &&
-+	test_cmp expect actual &&
-+	test_must_fail git -C wt-prefix/linked config test.mainvar &&
-+	test_must_fail git -C wt-prefix/linked config test.linkedvar
-+'
-+
-+test_expect_success SYMLINKS 'conditional include, worktree resolves symlinks' '
-+	mkdir real-wt &&
-+	ln -s real-wt link-wt &&
-+	git init link-wt/repo &&
-+	(
-+		cd link-wt/repo &&
-+		# repo->worktree resolves symlinks, so use real path in pattern
-+		echo "[includeIf \"worktree:**/real-wt/repo\"]path=bar-link" >>.git/config &&
-+		echo "[test]wtlink=2" >.git/bar-link &&
-+		echo 2 >expect &&
-+		git config test.wtlink >actual &&
-+		test_cmp expect actual
-+	)
-+'
-+
- test_done
+---
+Rudraksha Gupta (3):
+      ARM: dts: qcom: msm8960: expressatt: Sort node references and includes
+      ARM: dts: qcom: msm8960: Add GSBI5 I2C controller
+      ARM: dts: qcom: msm8960: expressatt: Add MAX17048 fuel gauge
 
+ .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 420 +++++++++++----------
+ arch/arm/boot/dts/qcom/qcom-msm8960.dtsi           |  35 ++
+ 2 files changed, 257 insertions(+), 198 deletions(-)
+---
+base-commit: e9ec05addd1a067fc7cb218f20ecdc1b1b0898c0
+change-id: 20260331-expressatt_fuel_guage-465dfb3f87ab
+prerequisite-patch-id: 6fdd0efa5eda512b442b885df80774d1a7037df7
+prerequisite-patch-id: 12d296f83ccb1bdfb8d06a72e476bf51ae5f4e6c
+prerequisite-patch-id: a970acf2080143f41ae0935dd2c57bb71f5bf338
+prerequisite-patch-id: fd25fef58503c5e5cf742e79b124948c7f6b98d9
+prerequisite-patch-id: 68603a680b24921759425fc289e61fc4435e5ccd
+prerequisite-message-id: <20251205-expressatt-touchkey-v1-1-1444b927c9f3@gmail.com>
+prerequisite-patch-id: 8de4de7909722ccaf385c4224f25a623eaa72c28
+prerequisite-message-id: <20260331-expressatt_camera_flash-v4-0-f1e99f474513@gmail.com>
+prerequisite-patch-id: ab8b8d87fd2d518c4c5b5dace3f22238d1abbe49
+prerequisite-patch-id: 47e32e653e520a27770bb05d99135694b0128ba0
+prerequisite-patch-id: 7ef7df61e7ef6476a35811d765f522f793d9ecc7
+
+Best regards,
 -- 
-2.53.0
+Rudraksha Gupta <guptarud@gmail.com>
 
