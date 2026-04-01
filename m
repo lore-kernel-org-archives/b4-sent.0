@@ -1,126 +1,114 @@
 From: Chen Linxuan <me@black-desk.cn>
-Date: Wed, 01 Apr 2026 15:33:41 +0800
-Subject: [PATCH 1/3] config: add "worktree" and "worktree/i" includeIf
- conditions
+Date: Wed, 01 Apr 2026 15:33:42 +0800
+Subject: [PATCH 2/3] Documentation/config: add includeIf "worktree"
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260401-includeif-worktree-v1-1-906db69f2c79@black-desk.cn>
+Message-Id: <20260401-includeif-worktree-v1-2-906db69f2c79@black-desk.cn>
 References: <20260401-includeif-worktree-v1-0-906db69f2c79@black-desk.cn>
 In-Reply-To: <20260401-includeif-worktree-v1-0-906db69f2c79@black-desk.cn>
 To: git@vger.kernel.org
 Cc: Chen Linxuan <me@black-desk.cn>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3883; i=me@black-desk.cn;
- h=from:subject:message-id; bh=kaFWC9wBISxy3RLvDFRPmLRUew78/tUn1vwIu1C4hEE=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBpzMp2cM8+vn625kfXIE5OFKG5xG4i7TPRZMpb/
- 8gZRajr3cmJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaczKdgAKCRB2HuYUOZmu
- izLGEAC0x0WK+uNP7crQXgXKc2J5U3/xnp63EJ4GG4TWSHuQq393pmxJ02ig6ORksuRXFUuNrG8
- DQsi4Sb00PCMpu/tZp5hpqZQioHg89JvKxPuo9a8CKW5AlT2w/Kw1lfJgFAhIqnsf7L8wsihD7z
- IbdPQqfcgqzQXjEjBn2+E8nnjggD8sAVnQhAwtRM3L0w3WA8HbCuSx0pq+UqPaVCDJLSYtN5G6M
- 7mizHM+ZiFUMjW35WFc5rcJcTKY64e8xSAlHI5q0FSvx3sfDbsrFJfYAtlhAyAXsU6kMamTp2iF
- 4M2v0dz+x+YLUiBtFoeitWb+ZOaaaEKJV9tQ41H7mOT8xWB1mDLSKeQzDpEDTX+OmcseSO9grFH
- ni3gWNwtkygmQQ44KVBW5AaaPSwrNL5R0ceTtBlXGsvcu/mmOstB1/VdIJbRyA9BBJ6wmtfhJOh
- VJIoFgkeBfKbViDMXcQRtQAJcZoXT7h9sGzmY2rub9DxnvUyzRFYI0H7p/VbcVPIxrUA2JcOd4Y
- qM8KupbYQgjTzvHi/jGw5gmMFrXLK6sdQBsOtzsxHHhwW/Hu3VbI4at1uqto6UhYrs9uzNg899J
- V17OEOFNEC8HQC9q4AZGv3mDqGD+s3KJCOv1/gByZz2fh5mbMXxTPsetzwJuCrgdldryJMaKYUd
- BQq1Vqh19qFJetw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3731; i=me@black-desk.cn;
+ h=from:subject:message-id; bh=K3ImsrVJ2Up2HpuPWgWiJNoMH+njSosuW+4tnuNrhzg=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBpzMp38nLlcN/5lZ+kidZrf9fRvmPw1h3d65NF7
+ J2HVmthST6JAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaczKdwAKCRB2HuYUOZmu
+ i0xpD/0SbQ5hZ1K5gEa7NPRtn9ikFRr8T7U3Z/ewgnpfZHK4anKl3uaz9OqFYLiJ1foTIUU8s7d
+ T3YPtgU+Y68pCnhikPVfXWrC0JucBXls8VIJsnnanueDhtqmnOrLp+OdaQpS0mOXO3VKURa0eGw
+ LHPvaznCst/anQ9ev+GztmsdX6qfYuceL3MhxwhNbF3mUeNEZFriktniG9i0RPGe5beR2dAg3W/
+ hAbzqZxIEN6pqezISwMzgmIFjv5ocNbepOuGNgh26qmFekx2G9GX5JPrHd9t37EjxqJq/3xRjtO
+ AcTSKMcY5yjvEMQyVPbJONQUgmyjyiGe++pEnTmqxiYPaXXp/6KFdW8rHaXLXiasdQPIyaXWUd5
+ MwsW4a0i98EELsSEtYCdx/0bC+LUbpsp4qi2olIhJLY1nEZGADPNfHah77YwkL1eDuc5LPwhd2p
+ GiUuqWZRycwPAo142wJpU+piHiXr7HBYPDWrA7xWWfhd8CBLPqLSP1TAe45Xxcl0RQVjz75NBVB
+ tUhmVuFFvLmfE90RnpRA1QV6RSUDWyJZB8PtxrI/EG20T99n3VdcNIcWMAqjFgh+HRTANuWEyIs
+ HZ2BQRa/EaG9MhArwniPHaHImVp+cVGRn6QVsCyIu+HYZz/PrPSVebAhTsPsXNoYn7DdkNrHAqc
+ 7W6XqcYCL4l6W6Q==
 X-Developer-Key: i=me@black-desk.cn; a=openpgp;
  fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
 X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The `includeIf` mechanism already supports matching on the `.git`
-directory path (`gitdir`) and the currently checked out branch
-(`onbranch`).  But in multi-worktree setups the `.git` directory of a
-linked worktree points into the main repository's `.git/worktrees/`
-area, which makes `gitdir` patterns cumbersome when one wants to
-include config based on the working tree's checkout path instead.
-
-Introduce two new condition keywords:
-
-  - `worktree:<pattern>` matches the realpath of the current worktree's
-    working directory (i.e. `repo_get_work_tree()`) against a glob
-    pattern.  This is the path returned by `git rev-parse
-    --show-toplevel`.
-
-  - `worktree/i:<pattern>` is the case-insensitive variant.
-
-The implementation follows the same structure as `include_by_gitdir()`:
-the worktree path is resolved via `strbuf_realpath()`, the condition
-pattern is prepared with `prepare_include_condition_pattern()` (which
-handles `~` expansion, `./` relative paths, `**/` prefix insertion and
-trailing-`/` expansion), and matching is done with `wildmatch()`.  A
-second attempt using `strbuf_add_absolute_path()` is performed to
-handle symlinked paths.
-
-The condition never matches in bare repositories (where there is no
-worktree) or during early config reading (where no repository is
-available).
+Add documentation for the newly introduced `worktree` and `worktree/i`
+conditional include keywords.  Describe how they differ from `gitdir`
+(matching the working tree checkout path instead of the `.git`
+directory path), and list the supported pattern features: glob
+wildcards, `**/` and `/**`, `~` expansion, `./` relative paths, and
+trailing-`/` prefix matching.  Note that the condition never matches
+in a bare repository.  Also add usage examples alongside the existing
+`gitdir` examples.
 ---
- config.c | 25 ++++++++++++++-----------
- 1 file changed, 14 insertions(+), 11 deletions(-)
+ Documentation/config.adoc | 50 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 50 insertions(+)
 
-diff --git a/config.c b/config.c
-index 156f2a24fa00..6d0c2d0725e4 100644
---- a/config.c
-+++ b/config.c
-@@ -235,23 +235,20 @@ static int prepare_include_condition_pattern(const struct key_value_info *kvi,
- 	return 0;
- }
+diff --git a/Documentation/config.adoc b/Documentation/config.adoc
+index 62eebe7c5450..a4f3ec905098 100644
+--- a/Documentation/config.adoc
++++ b/Documentation/config.adoc
+@@ -146,6 +146,48 @@ refer to linkgit:gitignore[5] for details. For convenience:
+ 	This is the same as `gitdir` except that matching is done
+ 	case-insensitively (e.g. on case-insensitive file systems)
  
--static int include_by_gitdir(const struct key_value_info *kvi,
--			     const struct config_options *opts,
--			     const char *cond, size_t cond_len, int icase)
-+static int include_by_path(const struct key_value_info *kvi,
-+			   const char *path,
-+			   const char *cond, size_t cond_len, int icase)
- {
- 	struct strbuf text = STRBUF_INIT;
- 	struct strbuf pattern = STRBUF_INIT;
- 	size_t prefix;
- 	int ret = 0;
--	const char *git_dir;
- 	int already_tried_absolute = 0;
++`worktree`::
++	The data that follows the keyword `worktree` and a colon is used as a
++	glob pattern. If the working directory of the current worktree matches
++	the pattern, the include condition is met.
+++
++The worktree location is the path where files are checked out (as returned
++by `git rev-parse --show-toplevel`). This is different from `gitdir`, which
++matches the `.git` directory path. In a linked worktree, the worktree path
++is the directory where that worktree's files are located, not the main
++repository's `.git` directory.
+++
++The pattern can contain standard globbing wildcards and two additional
++ones, `**/` and `/**`, that can match multiple path components. Please
++refer to linkgit:gitignore[5] for details. For convenience:
++
++ * If the pattern starts with `~/`, `~` will be substituted with the
++   content of the environment variable `HOME`.
++
++ * If the pattern starts with `./`, it is replaced with the directory
++   containing the current config file.
++
++ * If the pattern does not start with either `~/`, `./` or `/`, `**/`
++   will be automatically prepended. For example, the pattern `foo/bar`
++   becomes `**/foo/bar` and would match `/any/path/to/foo/bar`.
++
++ * If the pattern ends with `/`, `**` will be automatically added. For
++   example, the pattern `foo/` becomes `foo/**`. In other words, it
++   matches "foo" and everything inside, recursively.
+++
++This condition will never match in a bare repository (which has no worktree).
+++
++This is useful when you need to use different `user.name`, `user.email`, or
++GPG keys in different worktrees of the same repository. While
++`extensions.worktreeConfig` also allows per-worktree configuration, it
++requires changes inside each repository. This condition can be set in the
++user's global configuration file (e.g. `~/.config/git/config`) and applies
++to multiple repositories at once.
++
++`worktree/i`::
++	This is the same as `worktree` except that matching is done
++	case-insensitively (e.g. on case-insensitive file systems)
++
+ `onbranch`::
+ 	The data that follows the keyword `onbranch` and a colon is taken to be a
+ 	pattern with standard globbing wildcards and two additional
+@@ -244,6 +286,14 @@ Example
+ [includeIf "gitdir:~/to/group/"]
+ 	path = /path/to/foo.inc
  
--	if (opts->git_dir)
--		git_dir = opts->git_dir;
--	else
-+	if (!path)
- 		goto done;
- 
--	strbuf_realpath(&text, git_dir, 1);
-+	strbuf_realpath(&text, path, 1);
- 	strbuf_add(&pattern, cond, cond_len);
- 	ret = prepare_include_condition_pattern(kvi, &pattern, &prefix);
- 	if (ret < 0)
-@@ -284,7 +281,7 @@ static int include_by_gitdir(const struct key_value_info *kvi,
- 		 * which'll do the right thing
- 		 */
- 		strbuf_reset(&text);
--		strbuf_add_absolute_path(&text, git_dir);
-+		strbuf_add_absolute_path(&text, path);
- 		already_tried_absolute = 1;
- 		goto again;
- 	}
-@@ -400,9 +397,15 @@ static int include_condition_is_true(const struct key_value_info *kvi,
- 	const struct config_options *opts = inc->opts;
- 
- 	if (skip_prefix_mem(cond, cond_len, "gitdir:", &cond, &cond_len))
--		return include_by_gitdir(kvi, opts, cond, cond_len, 0);
-+		return include_by_path(kvi, opts->git_dir, cond, cond_len, 0);
- 	else if (skip_prefix_mem(cond, cond_len, "gitdir/i:", &cond, &cond_len))
--		return include_by_gitdir(kvi, opts, cond, cond_len, 1);
-+		return include_by_path(kvi, opts->git_dir, cond, cond_len, 1);
-+	else if (skip_prefix_mem(cond, cond_len, "worktree:", &cond, &cond_len))
-+		return include_by_path(kvi, inc->repo ? repo_get_work_tree(inc->repo) : NULL,
-+				       cond, cond_len, 0);
-+	else if (skip_prefix_mem(cond, cond_len, "worktree/i:", &cond, &cond_len))
-+		return include_by_path(kvi, inc->repo ? repo_get_work_tree(inc->repo) : NULL,
-+				       cond, cond_len, 1);
- 	else if (skip_prefix_mem(cond, cond_len, "onbranch:", &cond, &cond_len))
- 		return include_by_branch(inc, cond, cond_len);
- 	else if (skip_prefix_mem(cond, cond_len, "hasconfig:remote.*.url:", &cond,
++; include if the worktree is at /path/to/project-build
++[includeIf "worktree:/path/to/project-build"]
++	path = build-config.inc
++
++; include for all worktrees inside /path/to/group
++[includeIf "worktree:/path/to/group/"]
++	path = group-config.inc
++
+ ; relative paths are always relative to the including
+ ; file (if the condition is true); their location is not
+ ; affected by the condition
 
 -- 
 2.53.0
