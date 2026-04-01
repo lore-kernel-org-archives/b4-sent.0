@@ -1,128 +1,114 @@
-From: Radu Sabau <radu.sabau@analog.com>
-Date: Wed, 01 Apr 2026 13:56:48 +0300
-Subject: [PATCH v2] iio: adc: ad4695: Fix call ordering in offload buffer
- postenable
+From: Satish Kharat <satishkh@cisco.com>
+Subject: [PATCH net-next v4 0/6] enic: SR-IOV V2 preparatory infrastructure
+Date: Wed, 01 Apr 2026 08:31:10 -0700
+Message-Id: <20260401-enic-sriov-v2-prep-v4-0-d5834b2ef1b9@cisco.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260401-ad4696-fix-v2-1-2480b9a30749@analog.com>
-X-B4-Tracking: v=1; b=H4sIAO/5zGkC/22MQQ7CIBAAv9LsWQxLgYAn/2F6QLq2JAoGDNE0/
- F3s2eNMMrNBoRyowGnYIFMNJaTYQRwG8KuLC7EwdwbBhebjyJmbpbaa3cKbodFWKWe8QoQePDN
- 1vc8uU+c1lFfKn/1d8Wf/bioyZGQkktVS4VWcXXT3tBx9esDUWvsCCtavFqUAAAA=
-X-Change-ID: 20260330-ad4696-fix-186955a8c511
-To: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- David Lechner <dlechner@baylibre.com>, Jonathan Cameron <jic23@kernel.org>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
- Radu Sabau <radu.sabau@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775041007; l=3768;
- i=radu.sabau@analog.com; s=20260220; h=from:subject:message-id;
- bh=pmd7DXpg+W48mt7EX681vGeYH0zmSrEeahfH1uvhrOc=;
- b=AteRS/37NSqfXWYdQ/bHxM0GXDUoX1o68LnrWkoPfyhEW5kiCIZiBEqLzy+SlufivqtxrVX5M
- N0eGcccUp1EABrUGgcT0IoExqjy5Unu+qZ7DRmnYVJjn9EGhGIB0nyR
-X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
- pk=lDPQHgn9jTdt0vo58Na9lLxLaE2mb330if71Cn+EvFU=
-X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20260220 with auth_id=642
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAD46zWkC/4XNMQ7CMAwF0KtUmTFK3NIiJu6BGFrXoR5IqqSKi
+ qrenShiYEBi/P76z5uKHISjulSbCpwkinc5NIdK0dS7B4OMOSvU2OoaG2AnBDGIT5AQ5sAzoGX
+ D/UD1SEblYT5aWQt6U44XcLwu6p6bSeLiw6t8S6b0H/j0C04GNDRnqxtiYzTRlSSSP5J/Fi7hf
+ wIzYTsk25mWB9t/E/u+vwHuO9/dAQEAAA==
+To: Satish Kharat <satishkh@cisco.com>, Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775057474; l=4032;
+ i=satishkh@cisco.com; h=from:subject:message-id;
+ bh=McHxxk4iXE1QL7Kb3bVI5Yay+sCfLULmAtHo/d2Afgw=;
+ b=pdYMjw+uZJFM2vUgWEW2TXQqMLcYceUJVAIOHoqqsBO1Q61V/3+bzI5gaJlKmEq8+FgKxGVyq
+ IfBI0kEID2MCpcyecDymkMIiXh0bWuX7w4Vozdofw6uwweUEj53+3kp
+X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
+ pk=4BxbLoCGvHeIMH/PbpiNVx8/2IcTjFvqcr0AD8K6WLY=
+X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/default with auth_id=639
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ad4695_enter_advanced_sequencer_mode() was called after
-spi_offload_trigger_enable(). That is wrong because
-ad4695_enter_advanced_sequencer_mode() issues regular SPI transfers to
-put the ADC into advanced sequencer mode, and spi_offload_trigger_enable()
-enables the PWM trigger that drives CNV. Once the PWM is running, CNV
-pulses start arriving and the offload engine owns the SPI bus; any
-concurrent regular SPI transfer produces undefined behaviour.
+This is the first of four series adding SR-IOV V2 support to the enic
+driver for Cisco VIC 14xx/15xx adapters.
 
-Fix this by calling ad4695_enter_advanced_sequencer_mode() before
-spi_offload_trigger_enable(), so the ADC is fully configured before the
-first CNV pulse can occur. This is consistent with the same constraint
-that already applies to the BUSY_GP_EN write above it.
+The existing V1 SR-IOV implementation has VFs that interact directly
+with the VIC firmware, leaving the PF driver with no visibility or
+control over VF behavior. V2 introduces a PF-mediated model where VFs
+communicate with the PF through a mailbox over a dedicated admin
+channel. This brings enic in line with the standard Linux SR-IOV
+model, enabling full PF management of VFs via ip link (MAC, VLAN,
+link state, spoofchk, trust, and per-VF statistics).
 
-Update the error unwind labels accordingly: add err_exit_conversion_mode
-so that a failure of spi_offload_trigger_enable() correctly exits
-conversion mode before clearing BUSY_GP_EN.
+This preparatory series adds detection and resource helper code with
+no functional change to existing driver behavior:
 
-Fixes: f09f140e3ea8 ("iio: adc: ad4695: Add support for SPI offload")
-Reviewed-by: Nuno Sá <nuno.sa@analog.com>
-Signed-off-by: Radu Sabau <radu.sabau@analog.com>
----
-ad4695_enter_advanced_sequencer_mode() issues regular SPI transfers to
-configure the ADC. These must complete before spi_offload_trigger_enable()
-enables the PWM/CNV trigger, because once CNV pulses are live the offload
-engine owns the SPI bus.
+  - Extend BAR resource discovery for admin channel resources
+  - Register the V2 VF PCI device ID
+  - Detect VF type (V1/V2/usNIC) from SR-IOV PCI capability
+  - Make enic_dev_enable/disable ref-counted for shared use by data
+    path and admin channel
+  - Add type-aware resource allocation for admin WQ/RQ/CQ/INTR
+  - Detect presence of admin channel resources at probe time
 
-This fixes the call ordering and updates the error unwind path accordingly.
----
+Tested on VIC 14xx and 15xx series adapters with V2 VFs under KVM
+(sriov_numvfs, VF passthrough, ip link VF configuration, VF traffic).
+
+Based in part on initial work by Christian Benvenuti.
+
+To: Satish Kharat <satishkh@cisco.com>
+To: Andrew Lunn <andrew+netdev@lunn.ch>
+To: David S. Miller <davem@davemloft.net>
+To: Eric Dumazet <edumazet@google.com>
+To: Jakub Kicinski <kuba@kernel.org>
+To: Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+Changes in v4:
+- Repost to fix cover letter subject accidentally sent as "Changes in v3:"
+  instead of "enic: SR-IOV V2 preparatory infrastructure". No code changes.
+
+Changes in v3:
+- Thanks to the reviewers for the feedback on v2, all comments have
+  been addressed in this revision.
+- Patch 4/6: check enic_dev_enable() return value in enic_open() and
+  add proper error unwind path so the enable reference count stays
+  consistent if the firmware command fails.
+- Patch 6/6: use ARRAY_SIZE(enic->admin_cq) for the admin CQ resource
+  count check, since the driver allocates two admin CQs and both must
+  be backed by hardware.
+- Link to v2: https://lore.kernel.org/r/20260325-enic-sriov-v2-prep-v2-0-f72cf716ebfa@cisco.com
+
 Changes in v2:
-- Reword commit message to explain the correct bus-ownership
-  invariant directly, without reference to the HDL bug that
-  exposed it.
-- Remove unnecessary comment since the error path changed.
-- Link to v1: https://lore.kernel.org/r/20260330-ad4696-fix-v1-1-e841e96451b2@analog.com
----
- drivers/iio/adc/ad4695.c | 23 ++++++++---------------
- 1 file changed, 8 insertions(+), 15 deletions(-)
-
-diff --git a/drivers/iio/adc/ad4695.c b/drivers/iio/adc/ad4695.c
-index cda419638d9a..4471acd6fd5f 100644
---- a/drivers/iio/adc/ad4695.c
-+++ b/drivers/iio/adc/ad4695.c
-@@ -876,14 +876,14 @@ static int ad4695_offload_buffer_postenable(struct iio_dev *indio_dev)
- 	if (ret)
- 		goto err_unoptimize_message;
- 
--	ret = spi_offload_trigger_enable(st->offload, st->offload_trigger,
--					 &config);
-+	ret = ad4695_enter_advanced_sequencer_mode(st, num_slots);
- 	if (ret)
- 		goto err_disable_busy_output;
- 
--	ret = ad4695_enter_advanced_sequencer_mode(st, num_slots);
-+	ret = spi_offload_trigger_enable(st->offload, st->offload_trigger,
-+					 &config);
- 	if (ret)
--		goto err_offload_trigger_disable;
-+		goto err_exit_conversion_mode;
- 
- 	mutex_lock(&st->cnv_pwm_lock);
- 	pwm_get_state(st->cnv_pwm, &state);
-@@ -895,22 +895,15 @@ static int ad4695_offload_buffer_postenable(struct iio_dev *indio_dev)
- 	ret = pwm_apply_might_sleep(st->cnv_pwm, &state);
- 	mutex_unlock(&st->cnv_pwm_lock);
- 	if (ret)
--		goto err_offload_exit_conversion_mode;
-+		goto err_trigger_disable;
- 
- 	return 0;
- 
--err_offload_exit_conversion_mode:
--	/*
--	 * We have to unwind in a different order to avoid triggering offload.
--	 * ad4695_exit_conversion_mode() triggers a conversion, so it has to be
--	 * done after spi_offload_trigger_disable().
--	 */
-+err_trigger_disable:
- 	spi_offload_trigger_disable(st->offload, st->offload_trigger);
--	ad4695_exit_conversion_mode(st);
--	goto err_disable_busy_output;
- 
--err_offload_trigger_disable:
--	spi_offload_trigger_disable(st->offload, st->offload_trigger);
-+err_exit_conversion_mode:
-+	ad4695_exit_conversion_mode(st);
- 
- err_disable_busy_output:
- 	regmap_clear_bits(st->regmap, AD4695_REG_GP_MODE,
+- Add RES_TYPE_SRIOV_INTR to the has_admin_channel check in patch 6/6
+- CC all netdev maintainers per cc_maintainers CI feedback
+- Link to v1: https://lore.kernel.org/r/20260325-enic-sriov-v2-prep-v1-0-48f04ce110cc@cisco.com
 
 ---
-base-commit: 11439c4635edd669ae435eec308f4ab8a0804808
-change-id: 20260330-ad4696-fix-186955a8c511
+Satish Kharat (6):
+      enic: extend resource discovery for SR-IOV admin channel
+      enic: add V2 SR-IOV VF device ID
+      enic: detect SR-IOV VF type from PCI capability
+      enic: make enic_dev_enable/disable ref-counted
+      enic: add type-aware alloc for WQ, RQ, CQ and INTR resources
+      enic: detect admin channel resources for SR-IOV
+
+ drivers/net/ethernet/cisco/enic/enic.h          | 18 ++++++++
+ drivers/net/ethernet/cisco/enic/enic_dev.c      | 17 +++++--
+ drivers/net/ethernet/cisco/enic/enic_main.c     | 59 ++++++++++++++++++++++++-
+ drivers/net/ethernet/cisco/enic/enic_res.c      | 12 ++++-
+ drivers/net/ethernet/cisco/enic/vnic_cq.c       | 14 ++++--
+ drivers/net/ethernet/cisco/enic/vnic_cq.h       |  3 ++
+ drivers/net/ethernet/cisco/enic/vnic_dev.c      | 10 +++++
+ drivers/net/ethernet/cisco/enic/vnic_intr.c     | 12 +++--
+ drivers/net/ethernet/cisco/enic/vnic_intr.h     |  2 +
+ drivers/net/ethernet/cisco/enic/vnic_resource.h |  4 ++
+ drivers/net/ethernet/cisco/enic/vnic_rq.c       | 14 ++++--
+ drivers/net/ethernet/cisco/enic/vnic_rq.h       |  3 ++
+ drivers/net/ethernet/cisco/enic/vnic_wq.c       | 14 ++++--
+ drivers/net/ethernet/cisco/enic/vnic_wq.h       |  3 ++
+ 14 files changed, 165 insertions(+), 20 deletions(-)
+---
+base-commit: b1c803d5c8167026791abfaed96fd3e6a1fcd750
+change-id: 20260324-enic-sriov-v2-prep-2fe1eabc3dc1
 
 Best regards,
 -- 
-Radu Sabau <radu.sabau@analog.com>
+Satish Kharat <satishkh@cisco.com>
 
