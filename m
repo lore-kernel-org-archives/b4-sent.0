@@ -1,160 +1,70 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Tue, 31 Mar 2026 23:22:21 +0000
-Subject: [PATCH v10 6/6] usb: typec: tcpm/tcpci_maxim: deprecate WAR for
- setting charger mode
+From: Chen Linxuan <me@black-desk.cn>
+Subject: [PATCH 0/3] includeIf: add "worktree" condition for matching
+ working tree path
+Date: Wed, 01 Apr 2026 15:33:40 +0800
+Message-Id: <20260401-includeif-worktree-v1-0-906db69f2c79@black-desk.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260331-max77759-charger-v10-6-76f59233c369@google.com>
-References: <20260331-max77759-charger-v10-0-76f59233c369@google.com>
-In-Reply-To: <20260331-max77759-charger-v10-0-76f59233c369@google.com>
-To: =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
- Lee Jones <lee@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Jagan Sridharan <badhri@google.com>, Mark Brown <broonie@kernel.org>, 
- Matti Vaittinen <mazziesaccount@gmail.com>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- Sebastian Reichel <sre@kernel.org>, Amit Sunil Dhamne <amitsd@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Peter Griffin <peter.griffin@linaro.org>, 
- Tudor Ambarus <tudor.ambarus@linaro.org>, 
- Alim Akhtar <alim.akhtar@samsung.com>
-Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-usb@vger.kernel.org, linux-pm@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-samsung-soc@vger.kernel.org, 
- RD Babiera <rdbabiera@google.com>, Kyle Tso <kyletso@google.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAFXKzGkC/x3MTQqAIBBA4avIrBM0KqirRIvSsYZCY+wPpLsnL
+ b/FewkiMmGETiRgvChS8Bm6EGCW0c8oyWZDqcpGVUpL8mY7LZKTd+D1YETpzNRUba2sm0bI4c7
+ o6Pmn/fC+Hwi2MjlkAAAA
+X-Change-ID: 20260401-includeif-worktree-fcb64950dfba
+To: git@vger.kernel.org
+Cc: Chen Linxuan <me@black-desk.cn>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1774999353; l=3934;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=jqB7nbJYjXzzrVt8ib5lZ+aErFjpCV5gSR4p87DWXuY=;
- b=50/aGmDD8T+AKZHYt95IDC1JJ8uUvuD6lsaj2lxoCtBDrexnAvaJ2xnus30rgZVfqR4t41lCp
- VTyklAgf6e2Dtz3jQ44OtKqemm1jV6Ffhs8KwurZEzuiu+sxmIxbRUW
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1485; i=me@black-desk.cn;
+ h=from:subject:message-id; bh=Ox/TZ26WTiQUgMpzZRDUQr/ZgrIrJkCzCVOAuiq+1Cs=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBpzMpppH9FHw0IVNzRMUISzajiDmC+BmCKrQDpe
+ B8OyhUpEwmJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCaczKaQAKCRB2HuYUOZmu
+ iyEjD/0bb0dum+n2CFyCFMEpbU6dzIkp0uf1Vvbtu9xIi9b61anCeYmHzR4vvVn2fk80YYd5iKf
+ YX+gsV7SEHeGjrwPBWUqOiZZI6j/GauvMAtRO74LTGFk1GtS0u43ZCNhejN2I67xd9kkMM+782J
+ 2YHRzRJ36T7B8QiHj8as0yu1bSQZ9XBniO6cuEw+1yKzi65mMF+391zRTmLWtmuyDMhOActiy5S
+ rLoiSIH9yD/XH+ygd6ulFJLR4vDIQeBFmXLk/sQvSC0Dasp5OvSMHK2Gy9HGq6IB2BtXfmz10bG
+ wK/cyc/JLKf9M9fIMfbRinj7mfmsj0UNaF6B/EiVXyWChKO/rXnlULvUmfarCbzrGEQbLLU32IW
+ phm7LCSgVpU8rI16ry15xwiAybc5wFdWbWe67OmF3bxH5453QFt/8kOgV2+dTdLGZwN35dWuSeS
+ pU2DmiEdOC2p1egWBoGqIuxguqM39mQUD6DwtuU+upXCbcZjMlpYzU5kffaUYxa89FcGho+ztnn
+ +/SJilFi2tmv5wWrLfcmGmrCW2eEiR5OLmuuWBGYgHN0xfa9Fbeuj5WZjJtRHo4c/f9qag4WdLy
+ qDuuZpAGVGcNcy7Zse3FM6DSZHS/aU3F8sg2uMl0/l+3aLpcsAxaIHe5EDGyc2e51HFstR+V/in
+ fCqYwPmWRYEb7zQ==
+X-Developer-Key: i=me@black-desk.cn; a=openpgp;
+ fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
+X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-TCPCI maxim driver directly writes to the charger's register space to
-set charger mode depending on the power role. As MAX77759 chg driver
-exists, this WAR is not required.
+The `includeIf` mechanism already supports matching on the `.git`
+directory path (`gitdir`) and the currently checked out branch
+(`onbranch`).  But in multi-worktree setups the `.git` directory of a
+linked worktree points into the main repository's `.git/worktrees/`
+area, which makes `gitdir` patterns cumbersome when one wants to
+include config based on the working tree's checkout path instead.
 
-Instead, use a regulator interface to source vbus when typec is in
-source power mode. In other power modes, this regulator will be turned
-off if active.
+Introduce two new condition keywords:
 
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Heikki Krogerus <heikki.krogerus@linux.intel.com>
-Reviewed-by: André Draszik <andre.draszik@linaro.org>
+  - `worktree:<pattern>` matches the realpath of the current worktree's
+    working directory against a glob pattern.
+  - `worktree/i:<pattern>` is the case-insensitive variant.
+
+Supported pattern features: glob wildcards, `**/` and `/**`, `~`
+expansion, `./` relative paths, and trailing-`/` prefix matching.
+The condition never matches in a bare repository.
+
+Signed-off-by: Chen Linxuan <me@black-desk.cn>
 ---
- drivers/usb/typec/tcpm/tcpci_maxim.h      |  1 +
- drivers/usb/typec/tcpm/tcpci_maxim_core.c | 54 +++++++++++++++++++------------
- 2 files changed, 34 insertions(+), 21 deletions(-)
+Chen Linxuan (3):
+      config: add "worktree" and "worktree/i" includeIf conditions
+      Documentation/config: add includeIf "worktree"
+      t1305: add tests for includeIf "worktree"
 
-diff --git a/drivers/usb/typec/tcpm/tcpci_maxim.h b/drivers/usb/typec/tcpm/tcpci_maxim.h
-index b33540a42a95..b314606eb0f6 100644
---- a/drivers/usb/typec/tcpm/tcpci_maxim.h
-+++ b/drivers/usb/typec/tcpm/tcpci_maxim.h
-@@ -60,6 +60,7 @@ struct max_tcpci_chip {
- 	struct tcpm_port *port;
- 	enum contamiant_state contaminant_state;
- 	bool veto_vconn_swap;
-+	struct regulator *vbus_reg;
- };
- 
- static inline int max_tcpci_read16(struct max_tcpci_chip *chip, unsigned int reg, u16 *val)
-diff --git a/drivers/usb/typec/tcpm/tcpci_maxim_core.c b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-index 19f638650796..c0ee7e6959ed 100644
---- a/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-+++ b/drivers/usb/typec/tcpm/tcpci_maxim_core.c
-@@ -10,6 +10,7 @@
- #include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/regmap.h>
-+#include <linux/regulator/consumer.h>
- #include <linux/usb/pd.h>
- #include <linux/usb/tcpci.h>
- #include <linux/usb/tcpm.h>
-@@ -35,12 +36,6 @@
-  */
- #define TCPC_RECEIVE_BUFFER_LEN				32
- 
--#define MAX_BUCK_BOOST_SID				0x69
--#define MAX_BUCK_BOOST_OP				0xb9
--#define MAX_BUCK_BOOST_OFF				0
--#define MAX_BUCK_BOOST_SOURCE				0xa
--#define MAX_BUCK_BOOST_SINK				0x5
--
- static const struct regmap_range max_tcpci_tcpci_range[] = {
- 	regmap_reg_range(0x00, 0x95)
- };
-@@ -202,32 +197,49 @@ static void process_rx(struct max_tcpci_chip *chip, u16 status)
- 	tcpm_pd_receive(chip->port, &msg, rx_type);
- }
- 
-+static int get_vbus_regulator_handle(struct max_tcpci_chip *chip)
-+{
-+	if (IS_ERR_OR_NULL(chip->vbus_reg)) {
-+		chip->vbus_reg = devm_regulator_get_exclusive(chip->dev,
-+							      "vbus");
-+		if (IS_ERR_OR_NULL(chip->vbus_reg)) {
-+			dev_err(chip->dev,
-+				"Failed to get vbus regulator handle\n");
-+			return -ENODEV;
-+		}
-+	}
-+
-+	return 0;
-+}
-+
- static int max_tcpci_set_vbus(struct tcpci *tcpci, struct tcpci_data *tdata, bool source, bool sink)
- {
- 	struct max_tcpci_chip *chip = tdata_to_max_tcpci(tdata);
--	u8 buffer_source[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_SOURCE};
--	u8 buffer_sink[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_SINK};
--	u8 buffer_none[2] = {MAX_BUCK_BOOST_OP, MAX_BUCK_BOOST_OFF};
--	struct i2c_client *i2c = chip->client;
- 	int ret;
- 
--	struct i2c_msg msgs[] = {
--		{
--			.addr = MAX_BUCK_BOOST_SID,
--			.flags = i2c->flags & I2C_M_TEN,
--			.len = 2,
--			.buf = source ? buffer_source : sink ? buffer_sink : buffer_none,
--		},
--	};
--
- 	if (source && sink) {
- 		dev_err(chip->dev, "Both source and sink set\n");
- 		return -EINVAL;
- 	}
- 
--	ret = i2c_transfer(i2c->adapter, msgs, 1);
-+	ret = get_vbus_regulator_handle(chip);
-+	if (ret) {
-+		/*
-+		 * Regulator is not necessary for sink only applications. Return
-+		 * success in cases where sink mode is being modified.
-+		 */
-+		return source ? ret : 1;
-+	}
-+
-+	if (source) {
-+		if (!regulator_is_enabled(chip->vbus_reg))
-+			ret = regulator_enable(chip->vbus_reg);
-+	} else {
-+		if (regulator_is_enabled(chip->vbus_reg))
-+			ret = regulator_disable(chip->vbus_reg);
-+	}
- 
--	return  ret < 0 ? ret : 1;
-+	return ret < 0 ? ret : 1;
- }
- 
- static void process_power_status(struct max_tcpci_chip *chip)
+ Documentation/config.adoc | 50 +++++++++++++++++++++++++++++++++++
+ config.c                  | 25 ++++++++++--------
+ t/t1305-config-include.sh | 66 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 130 insertions(+), 11 deletions(-)
+---
+base-commit: 270e10ad6dda3379ea0da7efd11e4fbf2cd7a325
+change-id: 20260401-includeif-worktree-fcb64950dfba
 
+Best regards,
 -- 
-2.53.0.1118.gaef5881109-goog
+Chen Linxuan <me@black-desk.cn>
 
