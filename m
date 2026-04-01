@@ -1,101 +1,72 @@
-From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Wed, 01 Apr 2026 01:28:50 -0700
-Subject: [PATCH v2 3/3] ARM: dts: qcom: msm8960: expressatt: Add MAX17048
- fuel gauge
+From: Cryolitia PukNgae <cryolitia@uniontech.com>
+Date: Wed, 01 Apr 2026 17:47:47 +0800
+Subject: [PATCH RESEND] checkpatch: Suppress warnings when Reported-by: is
+ followed by Link:
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260401-expressatt_fuel_guage-v2-3-947922834df1@gmail.com>
-References: <20260401-expressatt_fuel_guage-v2-0-947922834df1@gmail.com>
-In-Reply-To: <20260401-expressatt_fuel_guage-v2-0-947922834df1@gmail.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775032128; l=2637;
- i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=6C/QG+g2riU+HMSpgvYlES6lzgzGMbIcBfB0DCWzf4c=;
- b=5oyv6cK8ZpEN8a9DCnj85xYw2vgICQuDn6h7zqFSsnjRfnFdvOmz9NeBx32IIIbTTdDhSbWzK
- QFt71it4A3RAEFFHnY5yTafHckkyaTG2hbjafvWV7hEUFpDX787RL4L
-X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
- pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
-X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
+Message-Id: <20260401-checkpatch-v1-1-57da0c7aeb30@uniontech.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDEwND3eSM1OTsgsSS5AzdJEvzFIPkpFTz1FRLJaCGgqLUtMwKsGHRSkG
+ uwa5+LkqxEPHi0qSs1OQSkElKtbUAvrdnm3YAAAA=
+X-Change-ID: 20260401-checkpatch-b97d0cbe7ee9
+To: Andy Whitcroft <apw@canonical.com>, Joe Perches <joe@perches.com>, 
+ Dwaipayan Ray <dwaipayanray1@gmail.com>, 
+ Lukas Bulwahn <lukas.bulwahn@gmail.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>, linux-doc@vger.kernel.org, 
+ linux-mm@kvack.org, linux-kernel@vger.kernel.org, zhanjun@uniontech.com, 
+ niecheng1@uniontech.com, kernel@uniontech.com, Petr Vorel <pvorel@suse.cz>, 
+ Cryolitia PukNgae <cryolitia@uniontech.com>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775036867; l=1810;
+ i=cryolitia@uniontech.com; s=20260401; h=from:subject:message-id;
+ bh=YxanUXAo1zZz/4EvE63HKWNGGvJyrkveItkRihtZCV4=;
+ b=D766Pb878qsWoWtRl0Y0dX3lM14ATdLtp1TaIGcCCH6ilanTBA4wKyOB419peRrrBVysnR6RU
+ kqnOeWaKfSZCzh3anOpxpDemFvfIqvkNOvBuErAtYFvPCTQzK05soEm
+X-Developer-Key: i=cryolitia@uniontech.com; a=ed25519;
+ pk=kF6wBkp7j9167keuk8Q9RvPgMRPuHlJztbLy0vbJ3K0=
+X-Endpoint-Received: by B4 Relay for cryolitia@uniontech.com/20260401 with auth_id=710
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add MAX17048 fuel gauge support.
+> The tag should be followed by a Closes: tag pointing to the report,
+> unless the report is not available on the web. The Link: tag can be
+> used instead of Closes: if the patch fixes a part of the issue(s)
+> being reported.
 
-Tested by comparing battery capacity readings between upstream (mainline
-max17040 driver) and downstream (Samsung max17048_fuelgauge driver)
-across a full discharge cycle. Upstream reads ~3% lower throughout. Both
-track the discharge curve correctly:
+Accroding to Documentation/process/submitting-patches.rst , Link: is
+also acceptable to followed a Reported-by:, if the patch fixes a part
+of the issue(s) being reported.
 
-  Upstream:   95 92 88 87 86 87 83 82 80 68 60 55 50 45 40 35 30 20 16 10 10 5 5 1
-  Downstream: 95 94 92 91 91 89 87 86 84 73 64 59 51 48 43 38 33 23 17 14 12 8 6 3
-
-Each pair of readings was collected by checking the upstream capacity
-first, then moving the battery to a second expressatt running downstream
-Android to check its capacity. The battery was then moved back to the
-upstream device for the next reading. This swap occasionally caused the
-upstream capacity to read slightly higher than the previous value
-(e.g. 86 -> 87). When this happened, the reading was retaken after the
-value settled.
-
-Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-11.0-XNG3C/arch/arm/mach-msm/board-apexq-battery.c
-Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-11.0-XNG3C/drivers/battery/Makefile#L5
-Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-11.0-XNG3C/arch/arm/mach-msm/Makefile#L308
-
-Assisted-by: Claude:claude-opus-4.6
-Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
+Reviewed-by: Petr Vorel <pvorel@suse.cz>
+Signed-off-by: Cryolitia PukNgae <cryolitia@uniontech.com>
 ---
- .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 24 ++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
+ scripts/checkpatch.pl | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-index ed913ca5b825..bc976008ae45 100644
---- a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-+++ b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-@@ -182,6 +182,23 @@ &gsbi5_serial {
- 	status = "okay";
- };
- 
-+&gsbi5_i2c {
-+	status = "okay";
-+
-+	fuel-gauge@36 {
-+		compatible = "maxim,max17048";
-+		reg = <0x36>;
-+		maxim,double-soc;
-+		maxim,rcomp = /bits/ 8 <0x62>;
-+		maxim,alert-low-soc-level = <2>;
-+		interrupt-parent = <&tlmm>;
-+		interrupts = <67 IRQ_TYPE_EDGE_FALLING>;
-+		pinctrl-0 = <&fuelgauge_alert_pin>;
-+		pinctrl-names = "default";
-+		wakeup-source;
-+	};
-+};
-+
- &gsbi7 {
- 	qcom,mode = <GSBI_PROT_I2C>;
- 
-@@ -582,6 +599,13 @@ touchkey_irq_pin: touchkey-irq-state {
- 		bias-disable;
- 	};
- 
-+	fuelgauge_alert_pin: fuelgauge-alert-state {
-+		pins = "gpio67";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
- 	touchkey_i2c_pins: touchkey-i2c-state {
- 		pins = "gpio71", "gpio72";
- 		function = "gpio";
+diff --git a/scripts/checkpatch.pl b/scripts/checkpatch.pl
+index e56374662ff7..b8a098061181 100755
+--- a/scripts/checkpatch.pl
++++ b/scripts/checkpatch.pl
+@@ -3223,10 +3223,10 @@ sub process {
+ 			if ($sign_off =~ /^reported(?:|-and-tested)-by:$/i) {
+ 				if (!defined $lines[$linenr]) {
+ 					WARN("BAD_REPORTED_BY_LINK",
+-					     "Reported-by: should be immediately followed by Closes: with a URL to the report\n" . $herecurr . "\n");
+-				} elsif ($rawlines[$linenr] !~ /^closes:\s*/i) {
++					     "Reported-by: should be immediately followed by Closes: or Link: with a URL to the report\n" . $herecurr . "\n");
++				} elsif ($rawlines[$linenr] !~ /^(closes|link):\s*/i) {
+ 					WARN("BAD_REPORTED_BY_LINK",
+-					     "Reported-by: should be immediately followed by Closes: with a URL to the report\n" . $herecurr . $rawlines[$linenr] . "\n");
++					     "Reported-by: should be immediately followed by Closes: or Link: with a URL to the report\n" . $herecurr . $rawlines[$linenr] . "\n");
+ 				}
+ 			}
+ 		}
 
--- 
-2.53.0
+---
+base-commit: 9147566d801602c9e7fc7f85e989735735bf38ba
+change-id: 20260401-checkpatch-b97d0cbe7ee9
+
+Best regards,
+--  
+Cryolitia PukNgae <cryolitia@uniontech.com>
 
