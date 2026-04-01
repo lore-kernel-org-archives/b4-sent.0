@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Wed, 01 Apr 2026 18:51:43 +0200
-Subject: [PATCH v2 1/3] arm64: dts: qcom: sdm845-shift-axolotl: Enable
- sdcard
+Date: Wed, 01 Apr 2026 18:51:44 +0200
+Subject: [PATCH v2 2/3] arm64: dts: qcom: sdm845-shift-axolotl: Set higher
+ touchscreen i2c clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260401-axolotl-misc-p1-v2-1-f3af384bbb50@ixit.cz>
+Message-Id: <20260401-axolotl-misc-p1-v2-2-f3af384bbb50@ixit.cz>
 References: <20260401-axolotl-misc-p1-v2-0-f3af384bbb50@ixit.cz>
 In-Reply-To: <20260401-axolotl-misc-p1-v2-0-f3af384bbb50@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -20,20 +20,20 @@ Cc: linux-arm-msm@vger.kernel.org, Petr Hodina <phodina@protonmail.com>,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1795; i=david@ixit.cz;
- h=from:subject:message-id; bh=aZdwStcvm+sP0/bffqiFYiM4zgFWPvHavag314QPrS0=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpzU0jT7/hxZAeWt3scy/df6V3dYcWoYPRU+h2T
- 9fov0vKJ9+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac1NIwAKCRBgAj/E00kg
- cglOD/0dGUViocQ/HGt1FG9pRpZRjK6UR7xNAWdv10rQ5ScXXVxYF6bLeIcIeIDCmOPU+zQwR8A
- xfR42u7WkQl3mSAtbRwtQcs1dZ/ys5f/V2nzHOZR3jYeboNB0VHaMun/ViulUzzMku039fgPvKh
- LgXhxNHqgoPJcUinBv1gX+HpCtTY2pic31B4e+41kNVbm+w/8vhBlpTeiiDTS4HieXSeirp81Lx
- KCVE4d7R0LHrshAsXzL/yZNnZRIcC4XGJDnkmAgVb+a4t74SgXErQ3SYQYmH79PzqM6FD9ljkFM
- uZmpquC7WEPtZ9xogfKp7T6Vj2dC6VGT8PyHD6hg75+Kn6rROLWZ2smAykozlrNQdN+3n5iGMz+
- LtAggvVxDmyiuHJKAPd43nHrgzlzWEiMa0cW/6ElVcy7S974fOw33XvERJAuVoMnGdIe92VXGYn
- sqBN+zFPm9RNCdlXiDhzIB3Rn3xM3n7R2X0+4eiWbuNYRY0GrtI94O/cNmkzSX6Uqt5TyD86LNt
- iZI9aWbmTNEjcHc8j5x+cE3hjs1aiJUC3cxTNUwOwiTF7pNbFbEsFK+h0qjlno0aWS2uWgvRciO
- lJL1bhGROezTm1QsYxjWUQ3g7NlNCHxXnnoEP4wCoPAv3j98eRC3DB1ImkQVR/478ujLXsCh8Q3
- owvkhFrh11Oue+Q==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=838; i=david@ixit.cz;
+ h=from:subject:message-id; bh=I0Y7L1PsS3Jhw9nUJ5UreIwD0pMxhXyzUsaI/TIX2V8=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpzU0jNGGXoC33T+AVl2tjBGQZ4i6IupF4X7Y4z
+ 6gEqV2RzVKJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac1NIwAKCRBgAj/E00kg
+ cvCkD/4pAu+7Ud3PoqBKltvqJCumdqwBdGkFnrGryy2unNZmvFgJnkQHHTeafTNLOQtZ2XStLgp
+ Lx9DaCSmRrAk+twJG1LEcaIYISN4pxo+HaFMCHXNecdqei1oXR+uZoTzX9RaJmEFKG/PwR6Or+r
+ mJA201ockb7844c+d66lJXb6zvsPc2UBRv1ZlFGEBMHfkJpKVUBDm6pRSkvaLLZvdXb4U7B6dTA
+ h1xy001b1xFQOXCGlV22sqrQ9uHOvjR8gkPTFwHARE2BHXkdiix13cI1aC0MiQ0Xz1brhueFOoC
+ dyWPJIGZRiMEvM8kDNgJuF4gmblIG2mCcjv9cjw9w2hYfClDCGCbV0BlI4BPelOR9rKZveM5fX3
+ k6u3DXTJcoRc8iW5DuqgIwxcpshzq4lwd1/jVxbyHRCrkSM03oIGy4M2KKb0Kc6i4zWpfw/UIR8
+ skCV5rz2kYDZzr5j6Ga7Flj6A/0UYZ+GuNgKaBoy1skA9ejHYrpouM/T63os/e8r3azknWt+Van
+ cI6d6U1tqSxtaeRUvMKSRAfvptGm+OsrotrlmMTj2irl1pbeGuvFYb6jPpXF3X+hsS2M8kMmkKm
+ Ch6jmAHxV9raXO0lEiDGMGT+AV747nMCPEwIDhp4rL5B9ofD/CGQPTy4Gxl8L8Qm+qnehVPZJI3
+ zO/wwP+MfGHL2UA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
@@ -41,76 +41,30 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Casey Connolly <casey.connolly@linaro.org>
 
-The SHIFT6mq features an sdcard slot, add it.
+Sets a higher rate than the default for good responsiveness of
+touchscreen.
 
 Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
+Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 44 +++++++++++++++++++++++
- 1 file changed, 44 insertions(+)
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-index 740eb22550724..c394350998c26 100644
+index c394350998c26..181c61e8ed748 100644
 --- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
 +++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-@@ -600,6 +600,24 @@ &qupv3_id_1 {
- 	status = "okay";
+@@ -432,6 +432,8 @@ &gpu_zap_shader {
  };
  
-+&sdhc_2 {
-+	status = "okay";
+ &i2c5 {
++	clock-frequency = <400000>;
 +
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&sdc2_default_state &sdc2_card_det_n>;
-+
-+	vmmc-supply = <&vreg_l21a_2p95>;
-+	vqmmc-supply = <&vreg_l13a_2p95>;
-+
-+	bus-width = <4>;
-+	/*
-+	 * Card detection is broken, but because the battery must be removed
-+	 * to insert the card, we use this rather than the broken-cd property
-+	 * which would just waste CPU cycles polling.
-+	 */
-+	non-removable;
-+};
-+
- &slpi_pas {
- 	firmware-name = "qcom/sdm845/SHIFT/axolotl/slpi.mbn";
+ 	status = "okay";
  
-@@ -609,6 +627,32 @@ &slpi_pas {
- &tlmm {
- 	gpio-reserved-ranges = <0 4>, <81 4>;
- 
-+	sdc2_default_state: sdc2-default-state {
-+		clk-pins {
-+			pins = "sdc2_clk";
-+			bias-disable;
-+			drive-strength = <16>;
-+		};
-+
-+		cmd-pins {
-+			pins = "sdc2_cmd";
-+			bias-pull-up;
-+			drive-strength = <10>;
-+		};
-+
-+		data-pins {
-+			pins = "sdc2_data";
-+			bias-pull-up;
-+			drive-strength = <10>;
-+		};
-+	};
-+
-+	sdc2_card_det_n: sd-card-det-n-state {
-+		pins = "gpio126";
-+		function = "gpio";
-+		bias-disable;
-+	};
-+
- 	sde_dsi_active: sde-dsi-active-state {
- 		pins = "gpio6", "gpio11";
- 		function = "gpio";
+ 	touchscreen@38 {
 
 -- 
 2.53.0
