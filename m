@@ -1,135 +1,91 @@
-From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Wed, 01 Apr 2026 22:46:36 +0530
-Subject: [PATCH v9 4/4] lib/test_vmalloc: add vrealloc test case
+From: Rudraksha Gupta <guptarud@gmail.com>
+Subject: [PATCH v3 0/4] Reorganize DTS and add fuel-gauge to
+ samsung-expressatt
+Date: Wed, 01 Apr 2026 13:32:12 -0700
+Message-Id: <20260401-expressatt_fuel_guage-v3-0-9674cfc0b5a2@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260401-vmalloc-shrink-v9-4-bf58dfb997d8@zohomail.in>
-References: <20260401-vmalloc-shrink-v9-0-bf58dfb997d8@zohomail.in>
-In-Reply-To: <20260401-vmalloc-shrink-v9-0-bf58dfb997d8@zohomail.in>
-To: Andrew Morton <akpm@linux-foundation.org>, 
- Uladzislau Rezki <urezki@gmail.com>
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
- Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
- Shivam Kalra <shivamkalra98@zohomail.in>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WS62obMRCFX2XZ390gjUY3U0rfoy1Glxl7iTdO9
+ 0ZC8Lt3vKYkaVOKfh1xzqfhjF7aicaepnbXvLQjrf3Unx9EmE9NW47p4UBdX0W3oMApY3RHT48
+ jTVOa5z0vdNofliQmdLZyNhx8yq1kxcP908b99uOmR/q5CH6+XbaPaS5Hge++L6AEzrUq4mSpJ
+ qshI0IOQaBBeY9VJ6+Mr+w3+O9oo6FCdBxMKVlnmSBU5ZIHQu8yW53IMpIr71MpepUKgwpKo2E
+ Um4rG1grF+py9ZpvZmPAudRuTK1gmtsEqUyzZwh6BfMwaMGIonl2OocYPoi5IgckFlcUK2tuIw
+ ioQIjnNBdFceaVeo8O14a37XfNZqpdGlH1TfTefl3K8p+du1Z0cRMwRfIlsvh6G1J/uynn48hH
+ pryWWNNCY9nxK07FbsVMda4qR0aPVf9JymqgTMfTzrlndnY7tdbvHfprP4/P2iVa9rfc//2UbG
+ 0zVNVhw2cXXhzbiCq8UVP+kgIwb0UeAYLCyfku5XC6/AHX8UXbeAgAA
+X-Change-ID: 20260331-expressatt_fuel_guage-465dfb3f87ab
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775063806; l=2905;
- i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
- bh=yP1QXayDidKnNU2S8I7BqJprRzQI2mQyl0fytHsaqPM=;
- b=K+rvqijkH6LgioddShavqfdDzGqGhFPpOudpCsY2f5P28WR6Xscdt+/cPBZMV4+aWr6Zijp2d
- Y3sYegmUeZYBuDOhdMAZGuZmXpwWjr78v8g053MOKdoIlCWSUOYYW2B
-X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
- pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
-X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775075533; l=2567;
+ i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
+ bh=yd6xIu1ELgN4dc0E5oWBea0q1TRYAi4cof/2S/O3510=;
+ b=h60YI8+uFyz1L63WCxxYV0eYIQd880tYkAT6/Rc9VmB2D7eUtf+6ClHyGfSknxQJBxKEvCDTp
+ qixT5SNt4hUBSpYD50/5d+8/j8jDSpOAXx9tHgT1Ou+W0zgICp4pwkU
+X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
+ pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
+X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce a new test case "vrealloc_test" that exercises the vrealloc()
-shrink and in-place grow paths:
+Reorganized the samsung-expressatt DTS and msm8960 DTSI to be more in
+line with mainline standards. Introduce GSBI5 I2C
 
-  - Grow beyond allocated pages (triggers full reallocation).
-  - Shrink crossing a page boundary (frees tail pages).
-  - Shrink within the same page (no page freeing).
-  - Grow within the already allocated page count (in-place).
+Tested battery by doing `cat /sys/class/power_supply/battery/capacity`
+in upstream Linux and comparing the value with downstream Linux. Booted
+on upstream Linux first, as the upstream Linux seems to use a lot
+more battery than downstream, and then put the battery into another
+expressatt running downstream Android to compare values. There are
+some slight differences, but overall seems to line up pretty well with
+downstream.
 
-Data integrity is validated after each realloc step by checking that
-the first byte of the original allocation is preserved.
-
-The test is gated behind run_test_mask bit 12 (id 4096).
-
-Reviewed-by: Uladzislau Rezki (Sony) <urezki@gmail.com>
-Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
+Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
- lib/test_vmalloc.c | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 62 insertions(+)
+Changes in v3:
+- Flatten i2c pinctrl subnodes in msm8960 dtsi
+- change comment format from // to /* */
+- \n before status
+- use interrupts-extended instead
+- Link to v2: https://lore.kernel.org/r/20260401-expressatt_fuel_guage-v2-0-947922834df1@gmail.com
 
-diff --git a/lib/test_vmalloc.c b/lib/test_vmalloc.c
-index 876c72c18a0c..b23f85e8f8ca 100644
---- a/lib/test_vmalloc.c
-+++ b/lib/test_vmalloc.c
-@@ -55,6 +55,7 @@ __param(int, run_test_mask, 7,
- 		"\t\tid: 512,  name: kvfree_rcu_2_arg_vmalloc_test\n"
- 		"\t\tid: 1024, name: vm_map_ram_test\n"
- 		"\t\tid: 2048, name: no_block_alloc_test\n"
-+		"\t\tid: 4096, name: vrealloc_test\n"
- 		/* Add a new test case description here. */
- );
- 
-@@ -421,6 +422,66 @@ vm_map_ram_test(void)
- 	return nr_allocated != map_nr_pages;
- }
- 
-+static int vrealloc_test(void)
-+{
-+	void *ptr, *tmp;
-+	int i;
-+
-+	for (i = 0; i < test_loop_count; i++) {
-+		int err = -1;
-+
-+		ptr = vrealloc(NULL, PAGE_SIZE, GFP_KERNEL);
-+		if (!ptr)
-+			return -1;
-+
-+		*((__u8 *)ptr) = 'a';
-+
-+		/* Grow: beyond allocated pages, triggers full realloc. */
-+		tmp = vrealloc(ptr, 4 * PAGE_SIZE, GFP_KERNEL);
-+		if (!tmp)
-+			goto error;
-+		ptr = tmp;
-+
-+		if (*((__u8 *)ptr) != 'a')
-+			goto error;
-+
-+		/* Shrink: crosses page boundary, frees tail pages. */
-+		tmp = vrealloc(ptr, PAGE_SIZE, GFP_KERNEL);
-+		if (!tmp)
-+			goto error;
-+		ptr = tmp;
-+
-+		if (*((__u8 *)ptr) != 'a')
-+			goto error;
-+
-+		/* Shrink: within same page, no page freeing. */
-+		tmp = vrealloc(ptr, PAGE_SIZE / 2, GFP_KERNEL);
-+		if (!tmp)
-+			goto error;
-+		ptr = tmp;
-+
-+		if (*((__u8 *)ptr) != 'a')
-+			goto error;
-+
-+		/* Grow: within allocated page, in-place, no realloc. */
-+		tmp = vrealloc(ptr, PAGE_SIZE, GFP_KERNEL);
-+		if (!tmp)
-+			goto error;
-+		ptr = tmp;
-+
-+		if (*((__u8 *)ptr) != 'a')
-+			goto error;
-+
-+		err = 0;
-+error:
-+		vfree(ptr);
-+		if (err)
-+			return err;
-+	}
-+
-+	return 0;
-+}
-+
- struct test_case_desc {
- 	const char *test_name;
- 	int (*test_func)(void);
-@@ -440,6 +501,7 @@ static struct test_case_desc test_case_array[] = {
- 	{ "kvfree_rcu_2_arg_vmalloc_test", kvfree_rcu_2_arg_vmalloc_test, },
- 	{ "vm_map_ram_test", vm_map_ram_test, },
- 	{ "no_block_alloc_test", no_block_alloc_test, true },
-+	{ "vrealloc_test", vrealloc_test, },
- 	/* Add a new test case here. */
- };
- 
+Changes in v2:
+- Previous changes were based on some outdated dependencies. Update them
+- Reorganized expressatt DTS
+- Switch to GSBI5
+- Link to v1: https://lore.kernel.org/r/20260331-expressatt_fuel_guage-v1-1-23d1d8526b69@gmail.com
 
+---
+Rudraksha Gupta (4):
+      ARM: dts: qcom: msm8960: expressatt: Sort node references and includes
+      ARM: dts: qcom: msm8960: Flatten I2C pinctrl state subnodes
+      ARM: dts: qcom: msm8960: Add GSBI5 I2C controller
+      ARM: dts: qcom: msm8960: expressatt: Add MAX17048 fuel gauge
+
+ .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 423 +++++++++++----------
+ arch/arm/boot/dts/qcom/qcom-msm8960.dtsi           | 171 +++++----
+ 2 files changed, 313 insertions(+), 281 deletions(-)
+---
+base-commit: e9ec05addd1a067fc7cb218f20ecdc1b1b0898c0
+change-id: 20260331-expressatt_fuel_guage-465dfb3f87ab
+prerequisite-patch-id: 6fdd0efa5eda512b442b885df80774d1a7037df7
+prerequisite-patch-id: 12d296f83ccb1bdfb8d06a72e476bf51ae5f4e6c
+prerequisite-patch-id: a970acf2080143f41ae0935dd2c57bb71f5bf338
+prerequisite-patch-id: fd25fef58503c5e5cf742e79b124948c7f6b98d9
+prerequisite-patch-id: 68603a680b24921759425fc289e61fc4435e5ccd
+prerequisite-message-id: <20251205-expressatt-touchkey-v1-1-1444b927c9f3@gmail.com>
+prerequisite-patch-id: 8de4de7909722ccaf385c4224f25a623eaa72c28
+prerequisite-message-id: <20260331-expressatt_camera_flash-v4-0-f1e99f474513@gmail.com>
+prerequisite-patch-id: ab8b8d87fd2d518c4c5b5dace3f22238d1abbe49
+prerequisite-patch-id: 47e32e653e520a27770bb05d99135694b0128ba0
+prerequisite-patch-id: 7ef7df61e7ef6476a35811d765f522f793d9ecc7
+
+Best regards,
 -- 
-2.43.0
+Rudraksha Gupta <guptarud@gmail.com>
 
