@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Thu, 02 Apr 2026 11:54:07 +0200
-Subject: [PATCH v3 2/3] arm64: dts: qcom: sdm845-shift-axolotl: Set higher
- touchscreen i2c clock
+Date: Thu, 02 Apr 2026 11:54:08 +0200
+Subject: [PATCH v3 3/3] arm64: dts: qcom: sdm845-shift-axolotl: Enable
+ TFA9890 codec
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260402-axolotl-misc-p1-v3-2-8934e9db6831@ixit.cz>
+Message-Id: <20260402-axolotl-misc-p1-v3-3-8934e9db6831@ixit.cz>
 References: <20260402-axolotl-misc-p1-v3-0-8934e9db6831@ixit.cz>
 In-Reply-To: <20260402-axolotl-misc-p1-v3-0-8934e9db6831@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -20,51 +20,61 @@ Cc: linux-arm-msm@vger.kernel.org, Petr Hodina <phodina@protonmail.com>,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=838; i=david@ixit.cz;
- h=from:subject:message-id; bh=9p+K/F4jbKx5IwsqTA3jbf55J7M/QFSo8brdWdbijrI=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpzjy/9xJHnhjNT6Qk2yPhnOGmFdNSYXM8WMu+4
- AjEBa0p2eqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac48vwAKCRBgAj/E00kg
- csNFD/9YMHUrBa9PsOyayLViCNbx138tHBJuuRTyMd6t/fwcAphniB0+7EWjeqiGNgz35AaLREZ
- VmU1rHJstEP8yz/bb0G0AIC4TlAW1FQH6XhPbn2m0Pj2gafflIsJYKoo4nqjteTgK9IYdQQpLTK
- BA1VJY0ginDt8VcXABSryfjlTYbrzYaTjrwDbxofBriKvGppo4mUk1MFb3YNkLLUmO8mROAC0GH
- ZlPW7wfBY6KhAynqcjkXWP8nWiAHFUC3jbYRK4qT31J8nLdSaeZpgo4Q2hiHCASwn1Cit4X3q6N
- m/xkHbCj5m4tf+a2xnWnF1YPghd26BnHvv7KQjCiumkyVcUemYirRd74To4ocnXTJipRwZ5nO+I
- JkCKkpqy2Q2FzPWTGllyG2elsXPfZMh18BUo+RRxQqO0qXpQe8hvErYaQZpCRhAlPFGxFxqbOai
- l4YMrhs2EYZjzETNW8e711a7j0yi1V4lrUr23fOcnTxpv99DRnUrT04UgS7nV+B3W+24wI2NF9a
- 6uzEOoLLPVc0fzcOBRCij8jWk4Szy2j096Lcyvsu6T1jPhqsbGmtu506YbhzLTUeSJ14XFBHTBL
- 6f5TBkvZGs0Pkcqe0m5VmW8iX1JkWzyqD/6V1SyRHe0Csti5AUatIp7crFUv8ukxp7o0ggsuwmO
- qHcTh23gzCAWGXA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1039; i=david@ixit.cz;
+ h=from:subject:message-id; bh=/tLVCDMeEyd1l4XS4gK2AEpm3lRrSe36wHl8GBumRLY=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpzjy/UCJDjV9x3+R3aAu7WmjW1VThG7KIJDH8A
+ XtyRUdHwPSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac48vwAKCRBgAj/E00kg
+ cjiaD/9CRnzArTwe+BEjDI349N1KrFDtNd67osObrTnPgTU0xnzfkvFd2sZVXPX0LZ3F5X0uReG
+ qBbsOS89FBJgpB8l2o5YVU6adBFufp7TwpMnqqw2IwqH1qWt7p/sZpYq4PtNmxQiVJM5eYaZ8od
+ qudSOGeBycBJH4oDAJvavvaDMaVmQ6+ATP30EIHxRgTLrDU9lTUSgDrYjtjUousK28RfrEhnvDs
+ GmnWrLT0sO5UslWy4cA4CwcO2lizcY0CJ+WlSbLPi1vVXrsAwRfIc7vX+Wfx5bJX4jWjEibxSol
+ LKiLgxxSiDtltYVWJySy++p6IxgL9fUStbd/FaRFG60nToFy7GReYOqmQMuFdfDln7VdlNWgWPF
+ ik17n2heKgE5KAlFmhZ0XNxWTzDH9ppl1bp/PgDC8J1bq158ckMob9H0xRJEskIDHVar0GNGpQ2
+ GknWomPuDxWN2Rr6z2qrWKAOJK5Fvq6eFUyPxK+2b3nI3BEKhtDXAurGewde2Dyq+6HdK/U8nbr
+ I0Ie4GXrL10pbIW4B1GxPw0D2ew4ulHc/DMe00xfgSkgtC6lf0u/iVjbkH0jr3jc+YvlGwsp4oj
+ oXHz3CEx3BrRREzSOJDSBzEfmXzNiuEMvgl0NuFrciBonH2b/eUJ8UoxdcF+KsxI/tcl8G7lh/n
+ nuZvOZHRjxJYjQw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Casey Connolly <casey.connolly@linaro.org>
+From: Alexander Martinz <amartinz@shiftphones.com>
 
-Sets a higher rate than the default for good responsiveness of
-touchscreen.
+Audio amplifier TFA9890 is present on the board.
 
-Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+Signed-off-by: Alexander Martinz <amartinz@shiftphones.com>
 Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 2 ++
- 1 file changed, 2 insertions(+)
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-index b05f04a621e5b..f26079398e07b 100644
+index f26079398e07b..7d81198bc499c 100644
 --- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
 +++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
-@@ -432,6 +432,8 @@ &gpu_zap_shader {
+@@ -459,6 +459,19 @@ &i2c10 {
+ 	/* SMB1355@0x0C */
  };
  
- &i2c5 {
++&i2c11 {
 +	clock-frequency = <400000>;
 +
- 	status = "okay";
- 
- 	touchscreen@38 {
++	status = "okay";
++
++	audio-codec@34 {
++		compatible = "nxp,tfa9890";
++		reg = <0x34>;
++		vddd-supply = <&vreg_s4a_1p8>;
++		#sound-dai-cells = <0>;
++	};
++};
++
+ &ipa {
+ 	qcom,gsi-loader = "self";
+ 	memory-region = <&ipa_fw_mem>;
 
 -- 
 2.53.0
