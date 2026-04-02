@@ -1,121 +1,78 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Thu, 02 Apr 2026 02:40:16 +0000
-Subject: [PATCH v2 2/2] pwm: meson: Add support for Amlogic S7
+From: Chen Linxuan <me@black-desk.cn>
+Subject: [PATCH v2 0/3] includeIf: add "worktree" condition for matching
+ working tree path
+Date: Thu, 02 Apr 2026 10:58:44 +0800
+Message-Id: <20260402-includeif-worktree-v2-0-36e339b898d7@black-desk.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260402-s6-s7-pwm-v2-2-657dce040956@amlogic.com>
-References: <20260402-s6-s7-pwm-v2-0-657dce040956@amlogic.com>
-In-Reply-To: <20260402-s6-s7-pwm-v2-0-657dce040956@amlogic.com>
-To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-pwm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAGTbzWkC/32NTQ6CMBBGr0Jm7ZjSYE1deQ/Doj9TmZQU0yJqC
+ He3cgCX7yXf+1YolJkKXJoVMi1ceEoV5KEBN5h0J2RfGaSQSnSiRU5ufHrigK8pxzkTYXBWdfo
+ kfLAG6vCRKfB7j976ygOXecqf/WNpf/ZvbmlRoBbKW6WDdGd9taNxET2VeHQJ+m3bvmuBZsK4A
+ AAA
+X-Change-ID: 20260401-includeif-worktree-fcb64950dfba
+To: git@vger.kernel.org
+Cc: Kristoffer Haugsbakk <kristofferhaugsbakk@fastmail.com>, 
+ Chen Linxuan <me@black-desk.cn>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775097616; l=2781;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=o49tWz26WxnJOme5RKrdAld7mCVrpPGE+v52KlxAPOc=;
- b=ZCG8B2cWMv72BgpxPUZFlE4mKV/iyUMBSOfTUhkafcR/E4XCYxDHR+ni2AbmTmY920F+TCJi4
- pkcdl4Qr2F1DRXBjIoWyboQEN8XmeDGS2lf5Wly1Kb+9CasM+VeAdlH
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1647; i=me@black-desk.cn;
+ h=from:subject:message-id; bh=Q8VmkXQvpMBDCjFQlGFLOrNMmWMHiShvAqOXZB4T/lI=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBpzdtnewW4nd/lVM3hzyBmw6A9EXI4BwHybc6G4
+ a4caHiK3NSJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCac3bZwAKCRB2HuYUOZmu
+ i8HWD/9FlkQ3qnQDjiH3UyGRtgBCot2vnKUNOgQIzgsGbY/AKfU/9DDNSHPoqY2Q2vNzfwllQkS
+ Ce8pL8WHv7DWdEcF7TBrhcrzNjVGZh7nCqD+oZKAiTprZrg7SZuJt3sNOKYaUxwT92s+DbN/nge
+ inWW0D2TUb7I3RMUL0MIktrIR/NJhjXkx5FU6f0tKS2uUsiuFi2eXS3redxROi4hljVnI3Uy5KY
+ tw6vXYvWclv56bJtnGPFFrKz6hMH80dYkOZuQlCmocZOcxDKEYCS02yIrl39wkYyWHnZFxR8R3n
+ mnc6LiDo2sb0qZRxCZiIiLvh+yH7cJv2dufDtbocBcH+oH/dw0S0q/eF1Wt/9rPXABdmYNHCEun
+ ivw4dkEQlADxfDeyy5No3J7L58+jfDt5il3quemZZd8THjmBIqFHsShi5kq+ANph7yBrdHyFkS9
+ bgbzGHpA6xf7KLiBh4V/0oOWJ/kKhicld6V5s143vDkuM9MpUaAC8qcKPmQxiI+3I73Ev8FmPVh
+ tiv5meg0DdODVlN2UjxfYSbF970Iju9yihzn2a+kjcjWFPIASD6oQX7amYLnJWBM1AzxEyy4n6y
+ MnjSXZAglzfLhlZiaTer4eGm1w0A1UEWRZ/dGKM9QyaN/w68t6QOeu78J7DgGjAQM6V+/eDQXbk
+ Po/CPumiWs/1lDw==
+X-Developer-Key: i=me@black-desk.cn; a=openpgp;
+ fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
+X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for Amlogic S7 PWM. Amlogic S7 different from the
-previous SoCs, a controller includes one pwm, at the same time,
-the controller has only one input clock source.
+The `includeIf` mechanism already supports matching on the `.git`
+directory path (`gitdir`) and the currently checked out branch
+(`onbranch`).  But in multi-worktree setups the `.git` directory of a
+linked worktree points into the main repository's `.git/worktrees/`
+area, which makes `gitdir` patterns cumbersome when one wants to
+include config based on the working tree's checkout path instead.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Introduce two new condition keywords:
+
+  - `worktree:<pattern>` matches the realpath of the current worktree's
+    working directory against a glob pattern.
+  - `worktree/i:<pattern>` is the case-insensitive variant.
+
+Supported pattern features: glob wildcards, `**/` and `/**`, `~`
+expansion, `./` relative paths, and trailing-`/` prefix matching.
+The condition never matches in a bare repository.
+
+Signed-off-by: Chen Linxuan <me@black-desk.cn>
 ---
- drivers/pwm/pwm-meson.c | 32 +++++++++++++++++++++++++++++---
- 1 file changed, 29 insertions(+), 3 deletions(-)
+Changes in v2:
 
-diff --git a/drivers/pwm/pwm-meson.c b/drivers/pwm/pwm-meson.c
-index 8c6bf3d49753..7a43c42ef3d6 100644
---- a/drivers/pwm/pwm-meson.c
-+++ b/drivers/pwm/pwm-meson.c
-@@ -113,6 +113,7 @@ struct meson_pwm_data {
- 	int (*channels_init)(struct pwm_chip *chip);
- 	bool has_constant;
- 	bool has_polarity;
-+	bool single_pwm;
- };
- 
- struct meson_pwm {
-@@ -503,6 +504,18 @@ static void meson_pwm_s4_put_clk(void *data)
- 	clk_put(clk);
- }
- 
-+static int meson_pwm_init_channels_s7(struct pwm_chip *chip)
-+{
-+	struct device *dev = pwmchip_parent(chip);
-+	struct meson_pwm *meson = to_meson_pwm(chip);
-+
-+	meson->channels[0].clk = devm_clk_get(dev, NULL);
-+	if (IS_ERR(meson->channels[0].clk))
-+		return dev_err_probe(dev, PTR_ERR(meson->channels[0].clk),
-+				     "Failed to get clk\n");
-+	return 0;
-+}
-+
- static int meson_pwm_init_channels_s4(struct pwm_chip *chip)
- {
- 	struct device *dev = pwmchip_parent(chip);
-@@ -592,6 +605,13 @@ static const struct meson_pwm_data pwm_s4_data = {
- 	.has_polarity = true,
- };
- 
-+static const struct meson_pwm_data pwm_s7_data = {
-+	.channels_init = meson_pwm_init_channels_s7,
-+	.has_constant = true,
-+	.has_polarity = true,
-+	.single_pwm = true,
-+};
-+
- static const struct of_device_id meson_pwm_matches[] = {
- 	{
- 		.compatible = "amlogic,meson8-pwm-v2",
-@@ -642,6 +662,10 @@ static const struct of_device_id meson_pwm_matches[] = {
- 		.compatible = "amlogic,meson-s4-pwm",
- 		.data = &pwm_s4_data
- 	},
-+	{
-+		.compatible = "amlogic,s7-pwm",
-+		.data = &pwm_s7_data
-+	},
- 	{},
- };
- MODULE_DEVICE_TABLE(of, meson_pwm_matches);
-@@ -650,9 +674,11 @@ static int meson_pwm_probe(struct platform_device *pdev)
- {
- 	struct pwm_chip *chip;
- 	struct meson_pwm *meson;
--	int err;
-+	const struct meson_pwm_data *pdata = of_device_get_match_data(&pdev->dev);
-+	int err, npwm;
- 
--	chip = devm_pwmchip_alloc(&pdev->dev, MESON_NUM_PWMS, sizeof(*meson));
-+	npwm = pdata->single_pwm ? 1 : MESON_NUM_PWMS;
-+	chip = devm_pwmchip_alloc(&pdev->dev, npwm, sizeof(*meson));
- 	if (IS_ERR(chip))
- 		return PTR_ERR(chip);
- 	meson = to_meson_pwm(chip);
-@@ -664,7 +690,7 @@ static int meson_pwm_probe(struct platform_device *pdev)
- 	spin_lock_init(&meson->lock);
- 	chip->ops = &meson_pwm_ops;
- 
--	meson->data = of_device_get_match_data(&pdev->dev);
-+	meson->data = pdata;
- 
- 	err = meson->data->channels_init(chip);
- 	if (err < 0)
+- Add missing signed-off-by lines.
+- Link to v1: https://lore.kernel.org/r/20260401-includeif-worktree-v1-0-906db69f2c79@black-desk.cn
 
+---
+Chen Linxuan (3):
+      config: add "worktree" and "worktree/i" includeIf conditions
+      Documentation/config: add includeIf "worktree"
+      t1305: add tests for includeIf "worktree"
+
+ Documentation/config.adoc | 50 +++++++++++++++++++++++++++++++++++
+ config.c                  | 25 ++++++++++--------
+ t/t1305-config-include.sh | 66 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 130 insertions(+), 11 deletions(-)
+---
+base-commit: 270e10ad6dda3379ea0da7efd11e4fbf2cd7a325
+change-id: 20260401-includeif-worktree-fcb64950dfba
+
+Best regards,
 -- 
-2.52.0
+Chen Linxuan <me@black-desk.cn>
 
