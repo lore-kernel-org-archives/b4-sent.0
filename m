@@ -1,16 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v3 0/3] SHIFT 6MQ SD-card support, improved responsivness
- of touchscreen, and codec
-Date: Thu, 02 Apr 2026 11:54:05 +0200
-Message-Id: <20260402-axolotl-misc-p1-v3-0-8934e9db6831@ixit.cz>
+Date: Thu, 02 Apr 2026 11:54:06 +0200
+Subject: [PATCH v3 1/3] arm64: dts: qcom: sdm845-shift-axolotl: Enable
+ sdcard
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAL08zmkC/3WNwQqDMBAFf0Vybspmo6I9+R+lBxOTumCNJBJsx
- X9v9OKh9DgPZt7KgvFkArtlK/MmUiA3JpCXjOm+HZ+GU5eYIWAJEoG3ixvcPPAXBc0nwUsQXV6
- BxqKzLFmTN5aWo3h/JO4pzM6/j4Mo9vV/KwoOvKp1rQqjFZamoYXmq/6wvRTxtHMQvzYm28rWy
- ipXShVw2tu2fQHemk386gAAAA==
-X-Change-ID: 20260320-axolotl-misc-p1-601d480c25df
+Message-Id: <20260402-axolotl-misc-p1-v3-1-8934e9db6831@ixit.cz>
+References: <20260402-axolotl-misc-p1-v3-0-8934e9db6831@ixit.cz>
+In-Reply-To: <20260402-axolotl-misc-p1-v3-0-8934e9db6831@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -23,55 +20,100 @@ Cc: linux-arm-msm@vger.kernel.org, Petr Hodina <phodina@protonmail.com>,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1146; i=david@ixit.cz;
- h=from:subject:message-id; bh=g8X7jdbCgWRJVgbstnTrfuS11/pgXSaoaMN5ZccW5G8=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpzjy/pvCpctAMVvZY8W5n9dTG/nudXwKmeTXHn
- nL+UMXqjIuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac48vwAKCRBgAj/E00kg
- coJjD/4uCUKkiei3H4sL5HGCOEslH6+dfqYlpBJOdXAX5M125RAh6AjVsldTUClwWP5JsYabSDA
- HlHP2CrERCZ5gE+adrPCvcRB1bcMylD3GgYIu9mIHIqQQ9P1Ep98Yf9jrqneIrximq8YwrEpP5Y
- vr+XXWrNjxVHQZDqodnoL/lebmBwGGVb1w3GqUwMfd8rQYMi7v07hm9X87nVxRNVs8zcOT7JLXd
- zT0AX9fkNe8pZlS+q61n65kU7J02L88Od4s8QloelzLZEHvREPP8gjqFSUJk5WDA3pEy0eox9cd
- ZofYqRSelqvEGHG6o2UpaW6DIH5hBsIbnZJMhxoW/3AnkoXGJ37vNx0wGEWFbmSupPfGISVQ23C
- E9LjQsCSnjkH7fpQfpHW/q0GPHPa462JdXNQg1a/6Mm8X7hIV6eLALL8qCRDts6xregdgkkPlK2
- 91Cq1Ju7vNrD6fUC4EXfjrsn8xuv1FqeaTs3anMZWcTiU+Jmo+nnMJVok3k4AxavqYDbUCgIcjF
- nxHxoH6UMZJY0Qx4b8LRNaDNsW8hq+h8yM7EayjMu1ZjF+rmZ7wuEKCpYNXr1MlVIaasguz7uFo
- eRdSuhHXK3GWoR9hP8ddzelZyQLt8bsAfFxBDNwajNbVaqrpQTUwQuJMzoMK+lsjNqVl8r/k58t
- ylTa7v5dVyitv8A==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1907; i=david@ixit.cz;
+ h=from:subject:message-id; bh=V/gyVRb9byz8QAK00Y2utu0dDrgjEkYddluW8kKLmCI=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpzjy/ODMr9JJWu8/h28lbADOj7k6TlOFsmgBlC
+ UTHKz3K7KiJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac48vwAKCRBgAj/E00kg
+ cg3gD/47qV6iwykb7g2169k9tBKeTaX8ux9jAVV5exnXWBlUlnh1iJ5HoaEHvxATqNENLoMtyQR
+ gAGlApQ7AWZxwmsQK8rojwv1PONIk4c9rI6McTrO77b5shBOvVKx/D45S03FpSUds/EghW+Cbx7
+ Nk+OYYjtwET9G9m4QV+jb7wz/p18KMOQLO9winY1FoKBqT03w16RR3W/7o6IVf2FCmIv0XAGg9r
+ tr8vrm2fgBEw5kUMXVHrCGJAqnB8nSPE5GAGS3nVIrUVMEB2KDXCvnIe5cSil2Qf9BgvYDsRAaZ
+ fHUvNZIhOJPjLdB/Pqb2HyldrMEADF3MpisS2Vog/aW1dw6ueUc67lbJGHTGml2Q6Fwn5YBj7t/
+ OmANWoXdSGJzzhqRoP8mOsHy6xw+9PowYF/PEj8huUfsWZ0zxANeVkkKZ8cMpvXVmcuI7Z4QauQ
+ 0JiS8nsqJMqH26GfnrmviAulBG+i7IjbGsIAee2Qysir05t+F14yga2uUOp2XszfHCzZg03UQJc
+ oyeaFW8HF/KWZc74UiuHMGsaQdDq8J2xLpCmkWhYl0RI9ptXZ2H0wxCCafjnI3YePi7WdTEIcS3
+ /3YFeKSOZc8WPnUxybIbTdzdup67uSMhYo34a/ZZ3+pcL6+EwgIcMk1lrUrhi1di8rpcV5VP7tu
+ vK46/J5IKbiFMJQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-I've tested that SD card and touchscreen works well, the codec does too,
-but for complete enablement needs soundcard support which isn't fully
-finished.
+From: Casey Connolly <casey.connolly@linaro.org>
 
+The SHIFT6mq features an sdcard slot, add it.
+
+Signed-off-by: Casey Connolly <casey.connolly@linaro.org>
+Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+Co-developed-by: David Heidelberg <david@ixit.cz>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v3:
-- sdcard property sorting (Konrad)
-- Link to v2: https://lore.kernel.org/r/20260401-axolotl-misc-p1-v2-0-f3af384bbb50@ixit.cz
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 44 +++++++++++++++++++++++
+ 1 file changed, 44 insertions(+)
 
-Changes in v2:
-- Changed bias-pull-up to bias-disable for SD card detection, since the
-  mechanism doesn't work, we can just save few uA. (Casey)
-- Link to v1: https://lore.kernel.org/r/20260320-axolotl-misc-p1-v1-0-89c9b5ecb26e@ixit.cz
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
+index 740eb22550724..b05f04a621e5b 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
++++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
+@@ -600,6 +600,24 @@ &qupv3_id_1 {
+ 	status = "okay";
+ };
+ 
++&sdhc_2 {
++	pinctrl-0 = <&sdc2_default_state &sdc2_card_det_n>;
++	pinctrl-names = "default";
++
++	vmmc-supply = <&vreg_l21a_2p95>;
++	vqmmc-supply = <&vreg_l13a_2p95>;
++
++	bus-width = <4>;
++	/*
++	 * Card detection is broken, but because the battery must be removed
++	 * to insert the card, we use this rather than the broken-cd property
++	 * which would just waste CPU cycles polling.
++	 */
++	non-removable;
++
++	status = "okay";
++};
++
+ &slpi_pas {
+ 	firmware-name = "qcom/sdm845/SHIFT/axolotl/slpi.mbn";
+ 
+@@ -609,6 +627,32 @@ &slpi_pas {
+ &tlmm {
+ 	gpio-reserved-ranges = <0 4>, <81 4>;
+ 
++	sdc2_default_state: sdc2-default-state {
++		clk-pins {
++			pins = "sdc2_clk";
++			drive-strength = <16>;
++			bias-disable;
++		};
++
++		cmd-pins {
++			pins = "sdc2_cmd";
++			drive-strength = <10>;
++			bias-pull-up;
++		};
++
++		data-pins {
++			pins = "sdc2_data";
++			drive-strength = <10>;
++			bias-pull-up;
++		};
++	};
++
++	sdc2_card_det_n: sd-card-det-n-state {
++		pins = "gpio126";
++		function = "gpio";
++		bias-disable;
++	};
++
+ 	sde_dsi_active: sde-dsi-active-state {
+ 		pins = "gpio6", "gpio11";
+ 		function = "gpio";
 
----
-Alexander Martinz (1):
-      arm64: dts: qcom: sdm845-shift-axolotl: Enable TFA9890 codec
-
-Casey Connolly (2):
-      arm64: dts: qcom: sdm845-shift-axolotl: Enable sdcard
-      arm64: dts: qcom: sdm845-shift-axolotl: Set higher touchscreen i2c clock
-
- arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 59 +++++++++++++++++++++++
- 1 file changed, 59 insertions(+)
----
-base-commit: bd0f139e5fc11182777b81cefc3893ea508544ec
-change-id: 20260320-axolotl-misc-p1-601d480c25df
-
-Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+2.53.0
 
