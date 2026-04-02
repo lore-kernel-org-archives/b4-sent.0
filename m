@@ -1,214 +1,77 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Thu, 02 Apr 2026 07:15:29 +0000
-Subject: [PATCH] power: supply: max77759_charger: fix voltage scale (mV ->
- uV)
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v3 0/3] SHIFT 6MQ SD-card support, improved responsivness
+ of touchscreen, and codec
+Date: Thu, 02 Apr 2026 11:54:05 +0200
+Message-Id: <20260402-axolotl-misc-p1-v3-0-8934e9db6831@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260402-fix-psy-max77759-usb-next-v1-1-427f5af566c3@google.com>
-X-B4-Tracking: v=1; b=H4sIAJAXzmkC/x2MQQ5AMBAAvyJ7tkk1KL4iDsViD0q6SEX8XeM4y
- cw8IOSZBJrkAU8XC28uQpYmMCzWzYQ8RgatdKlypXHigLvcuNpgjClqPKVHR+HArLD5VJVWVQN
- B7HdPUf7fbfe+H7R8EV1rAAAA
-X-Change-ID: 20260402-fix-psy-max77759-usb-next-15a4f86a08ce
-To: Amit Sunil Dhamne <amitsd@google.com>, 
- Sebastian Reichel <sre@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>
-Cc: linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
- linux-usb@vger.kernel.org, Badhri Jagan Sridharan <badhri@google.com>
+X-B4-Tracking: v=1; b=H4sIAL08zmkC/3WNwQqDMBAFf0Vybspmo6I9+R+lBxOTumCNJBJsx
+ X9v9OKh9DgPZt7KgvFkArtlK/MmUiA3JpCXjOm+HZ+GU5eYIWAJEoG3ixvcPPAXBc0nwUsQXV6
+ BxqKzLFmTN5aWo3h/JO4pzM6/j4Mo9vV/KwoOvKp1rQqjFZamoYXmq/6wvRTxtHMQvzYm28rWy
+ ipXShVw2tu2fQHemk386gAAAA==
+X-Change-ID: 20260320-axolotl-misc-p1-601d480c25df
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Dylan Van Assche <me@dylanvanassche.be>
+Cc: linux-arm-msm@vger.kernel.org, Petr Hodina <phodina@protonmail.com>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Alexander Martinz <amartinz@shiftphones.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775114153; l=7748;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=59/AjsdipPHEtmFIyA3h6KhCPPrrp72LTkD5FeZMk/k=;
- b=/cA759Ui37lFsiIJWmlVx2MCaJTghbsbPALCnqg5ZDIL2DNiM8O/pyvhr+gyXCG/Xp4fsMAjZ
- UHXBmKbWx0UDXG4jIzLEBlTLOfiuX4O3QWvUQVTt7ch7Qbe1TZkuYEE
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1146; i=david@ixit.cz;
+ h=from:subject:message-id; bh=g8X7jdbCgWRJVgbstnTrfuS11/pgXSaoaMN5ZccW5G8=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpzjy/pvCpctAMVvZY8W5n9dTG/nudXwKmeTXHn
+ nL+UMXqjIuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac48vwAKCRBgAj/E00kg
+ coJjD/4uCUKkiei3H4sL5HGCOEslH6+dfqYlpBJOdXAX5M125RAh6AjVsldTUClwWP5JsYabSDA
+ HlHP2CrERCZ5gE+adrPCvcRB1bcMylD3GgYIu9mIHIqQQ9P1Ep98Yf9jrqneIrximq8YwrEpP5Y
+ vr+XXWrNjxVHQZDqodnoL/lebmBwGGVb1w3GqUwMfd8rQYMi7v07hm9X87nVxRNVs8zcOT7JLXd
+ zT0AX9fkNe8pZlS+q61n65kU7J02L88Od4s8QloelzLZEHvREPP8gjqFSUJk5WDA3pEy0eox9cd
+ ZofYqRSelqvEGHG6o2UpaW6DIH5hBsIbnZJMhxoW/3AnkoXGJ37vNx0wGEWFbmSupPfGISVQ23C
+ E9LjQsCSnjkH7fpQfpHW/q0GPHPa462JdXNQg1a/6Mm8X7hIV6eLALL8qCRDts6xregdgkkPlK2
+ 91Cq1Ju7vNrD6fUC4EXfjrsn8xuv1FqeaTs3anMZWcTiU+Jmo+nnMJVok3k4AxavqYDbUCgIcjF
+ nxHxoH6UMZJY0Qx4b8LRNaDNsW8hq+h8yM7EayjMu1ZjF+rmZ7wuEKCpYNXr1MlVIaasguz7uFo
+ eRdSuhHXK3GWoR9hP8ddzelZyQLt8bsAfFxBDNwajNbVaqrpQTUwQuJMzoMK+lsjNqVl8r/k58t
+ ylTa7v5dVyitv8A==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-CONSTANT_CHARGE_VOLTAGE_MAX property incorrectly uses mV instead of uV.
-Add fix to use uV as per the power-supply subsystem convention.
+I've tested that SD card and touchscreen works well, the codec does too,
+but for complete enablement needs soundcard support which isn't fully
+finished.
 
-Also, add a note indicating all the properties use non negative values.
-A negative value indicates failure with the appropriate error value. In
-that case, it should not be taken as a measurement value or status.
-
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-This patch is a follow-up to the series [1]. [1] has been accepted in
-the USB subsystem tree (usb-next). However, since Sebastian has additional
-feedback [2], I am sending this patch to address it. Please note that this
-patch is based out of usb-next branch on usb tree. This patch should be
-applied on top of 70d7dd27f6dc ("power: supply: max77759: add charger driver").
+Changes in v3:
+- sdcard property sorting (Konrad)
+- Link to v2: https://lore.kernel.org/r/20260401-axolotl-misc-p1-v2-0-f3af384bbb50@ixit.cz
 
-[1] https://lore.kernel.org/all/20260325-max77759-charger-v9-0-4486dd297adc@google.com/
-[2] https://lore.kernel.org/all/ac2jYUA2F5oQsA2g@venus/#t
----
-Output of power supply selftest:
-root@google-gs:/data/power_supply# ./test_power_supply_properties.sh
-TAP version 13
-1..66
- # Testing device max77759-charger
-ok 1 max77759-charger.exists
-ok 2 max77759-charger.uevent.NAME
-ok 3 max77759-charger.sysfs.type
-ok 4 max77759-charger.uevent.TYPE
-ok 5 max77759-charger.sysfs.usb_type # SKIP
- # Reported: '1' ()
-ok 6 max77759-charger.sysfs.online
- # Reported: '1' ()
-ok 7 max77759-charger.sysfs.present
- # Reported: 'Charging'
-ok 8 max77759-charger.sysfs.status
-ok 9 max77759-charger.sysfs.capacity # SKIP
-ok 10 max77759-charger.sysfs.capacity_level # SKIP
-ok 11 max77759-charger.sysfs.model_name # SKIP
-ok 12 max77759-charger.sysfs.manufacturer # SKIP
-ok 13 max77759-charger.sysfs.serial_number # SKIP
-ok 14 max77759-charger.sysfs.technology # SKIP
-ok 15 max77759-charger.sysfs.cycle_count # SKIP
-ok 16 max77759-charger.sysfs.scope # SKIP
- # Reported: '3000000' uA (3000 mA)
-ok 17 max77759-charger.sysfs.input_current_limit
-ok 18 max77759-charger.sysfs.input_voltage_limit # SKIP
-ok 19 max77759-charger.sysfs.voltage_now # SKIP
-ok 20 max77759-charger.sysfs.voltage_min # SKIP
-ok 21 max77759-charger.sysfs.voltage_max # SKIP
-ok 22 max77759-charger.sysfs.voltage_min_design # SKIP
-ok 23 max77759-charger.sysfs.voltage_max_design # SKIP
-ok 24 max77759-charger.sysfs.current_now # SKIP
-ok 25 max77759-charger.sysfs.current_max # SKIP
-ok 26 max77759-charger.sysfs.charge_now # SKIP
-ok 27 max77759-charger.sysfs.charge_full # SKIP
-ok 28 max77759-charger.sysfs.charge_full_design # SKIP
-ok 29 max77759-charger.sysfs.power_now # SKIP
-ok 30 max77759-charger.sysfs.energy_now # SKIP
-ok 31 max77759-charger.sysfs.energy_full # SKIP
-ok 32 max77759-charger.sysfs.energy_full_design # SKIP
-ok 33 max77759-charger.sysfs.energy_full_design # SKIP
- # Testing device tcpm-source-psy-1-0025
-ok 34 tcpm-source-psy-1-0025.exists
-ok 35 tcpm-source-psy-1-0025.uevent.NAME
-ok 36 tcpm-source-psy-1-0025.sysfs.type
-ok 37 tcpm-source-psy-1-0025.uevent.TYPE
- # Reported: 'C [PD] PD_PPS PD_SPR_AVS PD_PPS_SPR_AVS' ()
-ok 38 tcpm-source-psy-1-0025.sysfs.usb_type
- # Reported: '1' ()
-ok 39 tcpm-source-psy-1-0025.sysfs.online
-ok 40 tcpm-source-psy-1-0025.sysfs.present # SKIP
-ok 41 tcpm-source-psy-1-0025.sysfs.status # SKIP
-ok 42 tcpm-source-psy-1-0025.sysfs.capacity # SKIP
-ok 43 tcpm-source-psy-1-0025.sysfs.capacity_level # SKIP
-ok 44 tcpm-source-psy-1-0025.sysfs.model_name # SKIP
-ok 45 tcpm-source-psy-1-0025.sysfs.manufacturer # SKIP
-ok 46 tcpm-source-psy-1-0025.sysfs.serial_number # SKIP
-ok 47 tcpm-source-psy-1-0025.sysfs.technology # SKIP
-ok 48 tcpm-source-psy-1-0025.sysfs.cycle_count # SKIP
-ok 49 tcpm-source-psy-1-0025.sysfs.scope # SKIP
-ok 50 tcpm-source-psy-1-0025.sysfs.input_current_limit # SKIP
-ok 51 tcpm-source-psy-1-0025.sysfs.input_voltage_limit # SKIP
- # Reported: '5000000' uV (5 V)
-ok 52 tcpm-source-psy-1-0025.sysfs.voltage_now
- # Reported: '5000000' uV (5 V)
-ok 53 tcpm-source-psy-1-0025.sysfs.voltage_min
- # Reported: '5000000' uV (5 V)
-ok 54 tcpm-source-psy-1-0025.sysfs.voltage_max
-ok 55 tcpm-source-psy-1-0025.sysfs.voltage_min_design # SKIP
-ok 56 tcpm-source-psy-1-0025.sysfs.voltage_max_design # SKIP
- # Reported: '3000000' uA (3000 mA)
-ok 57 tcpm-source-psy-1-0025.sysfs.current_now
- # Reported: '3000000' uA (3000 mA)
-ok 58 tcpm-source-psy-1-0025.sysfs.current_max
-ok 59 tcpm-source-psy-1-0025.sysfs.charge_now # SKIP
-ok 60 tcpm-source-psy-1-0025.sysfs.charge_full # SKIP
-ok 61 tcpm-source-psy-1-0025.sysfs.charge_full_design # SKIP
-ok 62 tcpm-source-psy-1-0025.sysfs.power_now # SKIP
-ok 63 tcpm-source-psy-1-0025.sysfs.energy_now # SKIP
-ok 64 tcpm-source-psy-1-0025.sysfs.energy_full # SKIP
-ok 65 tcpm-source-psy-1-0025.sysfs.energy_full_design # SKIP
-ok 66 tcpm-source-psy-1-0025.sysfs.energy_full_design # SKIP
- # 47 skipped test(s) detected.  Consider enabling relevant config options to improve coverage.
- # Totals: pass:19 fail:0 xfail:0 xpass:0 skip:47 error:0
----
- drivers/power/supply/max77759_charger.c | 21 +++++++++++++--------
- 1 file changed, 13 insertions(+), 8 deletions(-)
-
-diff --git a/drivers/power/supply/max77759_charger.c b/drivers/power/supply/max77759_charger.c
-index 9bb414599f16..58594bb78426 100644
---- a/drivers/power/supply/max77759_charger.c
-+++ b/drivers/power/supply/max77759_charger.c
-@@ -26,7 +26,7 @@
- 
- /* Default values for Fast Charge Current & Float Voltage */
- #define CHG_CC_DEFAULT_UA			2266770
--#define CHG_FV_DEFAULT_MV			4300
-+#define CHG_FV_DEFAULT_UV			4300000
- 
- #define MAX_NUM_RETRIES				3
- #define PSY_WORK_RETRY_DELAY_MS			10
-@@ -61,10 +61,10 @@ static const struct linear_range chgcc_limit_ranges[] = {
- 	LINEAR_RANGE(200000, 0x3, 0x3C, 66670),
- };
- 
--/* Charge Termination Voltage Limits (in mV) */
-+/* Charge Termination Voltage Limits (in uV) */
- static const struct linear_range chg_cv_prm_ranges[] = {
--	LINEAR_RANGE(3800, 0x38, 0x39, 100),
--	LINEAR_RANGE(4000, 0x0, 0x32, 10),
-+	LINEAR_RANGE(3800000, 0x38, 0x39, 100000),
-+	LINEAR_RANGE(4000000, 0x0, 0x32, 10000),
- };
- 
- /* USB input current limits (in uA) */
-@@ -310,14 +310,14 @@ static int get_float_voltage(struct max77759_charger *chg)
- 	return ret ? ret : val;
- }
- 
--static int set_float_voltage_limit(struct max77759_charger *chg, u32 fv_mv)
-+static int set_float_voltage_limit(struct max77759_charger *chg, u32 fv_uv)
- {
- 	u32 regval;
- 	bool found;
- 
- 	linear_range_get_selector_high_array(chg_cv_prm_ranges,
- 					     ARRAY_SIZE(chg_cv_prm_ranges),
--					     fv_mv, &regval, &found);
-+					     fv_uv, &regval, &found);
- 	if (!found)
- 		return -EINVAL;
- 
-@@ -370,6 +370,11 @@ static const enum power_supply_property max77759_charger_props[] = {
- 	POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT,
- };
- 
-+/*
-+ * Note: None of the properties in this driver support usage of negative values.
-+ * If you do see one, it's because the function is reporting an error value and
-+ * should not be taken as a measurement value or status.
-+ */
- static int max77759_charger_get_property(struct power_supply *psy,
- 					 enum power_supply_property psp,
- 					 union power_supply_propval *pval)
-@@ -557,10 +562,10 @@ static int max77759_charger_init(struct max77759_charger *chg)
- 		return ret;
- 
- 	if (power_supply_get_battery_info(chg->psy, &info)) {
--		fv = CHG_FV_DEFAULT_MV;
-+		fv = CHG_FV_DEFAULT_UV;
- 		fast_chg_curr = CHG_CC_DEFAULT_UA;
- 	} else {
--		fv = info->constant_charge_voltage_max_uv / 1000;
-+		fv = info->constant_charge_voltage_max_uv;
- 		fast_chg_curr = info->constant_charge_current_max_ua;
- 	}
- 
+Changes in v2:
+- Changed bias-pull-up to bias-disable for SD card detection, since the
+  mechanism doesn't work, we can just save few uA. (Casey)
+- Link to v1: https://lore.kernel.org/r/20260320-axolotl-misc-p1-v1-0-89c9b5ecb26e@ixit.cz
 
 ---
-base-commit: 81ebd43cc0d6d106ce7b6ccbf7b5e40ca7f5503d
-change-id: 20260402-fix-psy-max77759-usb-next-15a4f86a08ce
+Alexander Martinz (1):
+      arm64: dts: qcom: sdm845-shift-axolotl: Enable TFA9890 codec
+
+Casey Connolly (2):
+      arm64: dts: qcom: sdm845-shift-axolotl: Enable sdcard
+      arm64: dts: qcom: sdm845-shift-axolotl: Set higher touchscreen i2c clock
+
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 59 +++++++++++++++++++++++
+ 1 file changed, 59 insertions(+)
+---
+base-commit: bd0f139e5fc11182777b81cefc3893ea508544ec
+change-id: 20260320-axolotl-misc-p1-601d480c25df
 
 Best regards,
 -- 
-Amit Sunil Dhamne <amitsd@google.com>
+David Heidelberg <david@ixit.cz>
 
