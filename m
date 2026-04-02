@@ -1,34 +1,31 @@
 From: Chen Linxuan <me@black-desk.cn>
-Subject: [PATCH v2 0/3] includeIf: add "worktree" condition for matching
- working tree path
-Date: Thu, 02 Apr 2026 10:58:44 +0800
-Message-Id: <20260402-includeif-worktree-v2-0-36e339b898d7@black-desk.cn>
+Date: Thu, 02 Apr 2026 10:58:45 +0800
+Subject: [PATCH v2 1/3] config: add "worktree" and "worktree/i" includeIf
+ conditions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAGTbzWkC/32NTQ6CMBBGr0Jm7ZjSYE1deQ/Doj9TmZQU0yJqC
- He3cgCX7yXf+1YolJkKXJoVMi1ceEoV5KEBN5h0J2RfGaSQSnSiRU5ufHrigK8pxzkTYXBWdfo
- kfLAG6vCRKfB7j976ygOXecqf/WNpf/ZvbmlRoBbKW6WDdGd9taNxET2VeHQJ+m3bvmuBZsK4A
- AAA
-X-Change-ID: 20260401-includeif-worktree-fcb64950dfba
+Message-Id: <20260402-includeif-worktree-v2-1-36e339b898d7@black-desk.cn>
+References: <20260402-includeif-worktree-v2-0-36e339b898d7@black-desk.cn>
+In-Reply-To: <20260402-includeif-worktree-v2-0-36e339b898d7@black-desk.cn>
 To: git@vger.kernel.org
 Cc: Kristoffer Haugsbakk <kristofferhaugsbakk@fastmail.com>, 
  Chen Linxuan <me@black-desk.cn>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1647; i=me@black-desk.cn;
- h=from:subject:message-id; bh=Q8VmkXQvpMBDCjFQlGFLOrNMmWMHiShvAqOXZB4T/lI=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBpzdtnewW4nd/lVM3hzyBmw6A9EXI4BwHybc6G4
- a4caHiK3NSJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCac3bZwAKCRB2HuYUOZmu
- i8HWD/9FlkQ3qnQDjiH3UyGRtgBCot2vnKUNOgQIzgsGbY/AKfU/9DDNSHPoqY2Q2vNzfwllQkS
- Ce8pL8WHv7DWdEcF7TBrhcrzNjVGZh7nCqD+oZKAiTprZrg7SZuJt3sNOKYaUxwT92s+DbN/nge
- inWW0D2TUb7I3RMUL0MIktrIR/NJhjXkx5FU6f0tKS2uUsiuFi2eXS3redxROi4hljVnI3Uy5KY
- tw6vXYvWclv56bJtnGPFFrKz6hMH80dYkOZuQlCmocZOcxDKEYCS02yIrl39wkYyWHnZFxR8R3n
- mnc6LiDo2sb0qZRxCZiIiLvh+yH7cJv2dufDtbocBcH+oH/dw0S0q/eF1Wt/9rPXABdmYNHCEun
- ivw4dkEQlADxfDeyy5No3J7L58+jfDt5il3quemZZd8THjmBIqFHsShi5kq+ANph7yBrdHyFkS9
- bgbzGHpA6xf7KLiBh4V/0oOWJ/kKhicld6V5s143vDkuM9MpUaAC8qcKPmQxiI+3I73Ev8FmPVh
- tiv5meg0DdODVlN2UjxfYSbF970Iju9yihzn2a+kjcjWFPIASD6oQX7amYLnJWBM1AzxEyy4n6y
- MnjSXZAglzfLhlZiaTer4eGm1w0A1UEWRZ/dGKM9QyaN/w68t6QOeu78J7DgGjAQM6V+/eDQXbk
- Po/CPumiWs/1lDw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3933; i=me@black-desk.cn;
+ h=from:subject:message-id; bh=UJNFZfyEBrlzkVUL9x9d6o1OcrWt6gtIxYvdk4Eotmo=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBpzdtoWxJ182FLjLkSpDp6gerPNoMHxymXK7mkN
+ Xd+xZ4S31qJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCac3baAAKCRB2HuYUOZmu
+ i7iqD/4nnl+NaPYEt9q4PsoB2U5yBoWZaXFuaNFE0f4hrzi7AUFclbTZHn6dxS6QlQkxGWXPW15
+ 2zchAHIEn3diQ23yjxdGamWkXNBFbmUZ/0S8feZtn7j3UZwgKvtTaHyMa0Psv/7h24xCJY/Wu7C
+ RJezsNmGvZ+sa0E0wEPzU0uucBdw/jaFkswEmopBWwEGfs423upMyCXAaQjwWioSQWXgUfsg9rc
+ bSAzx7W8orHpwQOYc6M8xeRHGvuJAevkTaDq9ONwLC2UHMUZqRZ0gSDOpwLxd2jVvAYrd4dbAQ5
+ 6i1KBk15K+XVlwyW0AWe4oLOEp3V4uCudy79xb2n/TEQ6wWfDteA7SRfBBbvsXXRj5CiItV8y3T
+ t5KqK42mTzM7BXgbaSRvNdb9Iiy94mZPFb+qb2oklEQSHXoLWUQrFjZKfzJ4GGrW9Y06pycSM68
+ 5QT+xUdr5rP36z9ZXlZuYK+UDC95tDcSZJ1E9BGNhFyVGBMxBl3klo1PuPU8ux2sx+luj+hicu3
+ 9JT81XLyxoEtzaxfm2fsh0dp11e9CR946Lfm5Tdu4VYqCWKEDogeN3nwHnx2E/uIU+caJ33lLgU
+ foRmPpT1f1Nyzv4JFgjXJDTJUyxZo8PgV7d8FqNePfc7gpJRgbhupgJ8Eym64luzrB2Hj9tH8mw
+ rYV36U4mUQe+nJA==
 X-Developer-Key: i=me@black-desk.cn; a=openpgp;
  fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
 X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
@@ -44,35 +41,90 @@ include config based on the working tree's checkout path instead.
 Introduce two new condition keywords:
 
   - `worktree:<pattern>` matches the realpath of the current worktree's
-    working directory against a glob pattern.
+    working directory (i.e. `repo_get_work_tree()`) against a glob
+    pattern.  This is the path returned by `git rev-parse
+    --show-toplevel`.
+
   - `worktree/i:<pattern>` is the case-insensitive variant.
 
-Supported pattern features: glob wildcards, `**/` and `/**`, `~`
-expansion, `./` relative paths, and trailing-`/` prefix matching.
-The condition never matches in a bare repository.
+The implementation follows the same structure as `include_by_gitdir()`:
+the worktree path is resolved via `strbuf_realpath()`, the condition
+pattern is prepared with `prepare_include_condition_pattern()` (which
+handles `~` expansion, `./` relative paths, `**/` prefix insertion and
+trailing-`/` expansion), and matching is done with `wildmatch()`.  A
+second attempt using `strbuf_add_absolute_path()` is performed to
+handle symlinked paths.
+
+The condition never matches in bare repositories (where there is no
+worktree) or during early config reading (where no repository is
+available).
 
 Signed-off-by: Chen Linxuan <me@black-desk.cn>
 ---
-Changes in v2:
+ config.c | 25 ++++++++++++++-----------
+ 1 file changed, 14 insertions(+), 11 deletions(-)
 
-- Add missing signed-off-by lines.
-- Link to v1: https://lore.kernel.org/r/20260401-includeif-worktree-v1-0-906db69f2c79@black-desk.cn
+diff --git a/config.c b/config.c
+index 156f2a24fa00..6d0c2d0725e4 100644
+--- a/config.c
++++ b/config.c
+@@ -235,23 +235,20 @@ static int prepare_include_condition_pattern(const struct key_value_info *kvi,
+ 	return 0;
+ }
+ 
+-static int include_by_gitdir(const struct key_value_info *kvi,
+-			     const struct config_options *opts,
+-			     const char *cond, size_t cond_len, int icase)
++static int include_by_path(const struct key_value_info *kvi,
++			   const char *path,
++			   const char *cond, size_t cond_len, int icase)
+ {
+ 	struct strbuf text = STRBUF_INIT;
+ 	struct strbuf pattern = STRBUF_INIT;
+ 	size_t prefix;
+ 	int ret = 0;
+-	const char *git_dir;
+ 	int already_tried_absolute = 0;
+ 
+-	if (opts->git_dir)
+-		git_dir = opts->git_dir;
+-	else
++	if (!path)
+ 		goto done;
+ 
+-	strbuf_realpath(&text, git_dir, 1);
++	strbuf_realpath(&text, path, 1);
+ 	strbuf_add(&pattern, cond, cond_len);
+ 	ret = prepare_include_condition_pattern(kvi, &pattern, &prefix);
+ 	if (ret < 0)
+@@ -284,7 +281,7 @@ static int include_by_gitdir(const struct key_value_info *kvi,
+ 		 * which'll do the right thing
+ 		 */
+ 		strbuf_reset(&text);
+-		strbuf_add_absolute_path(&text, git_dir);
++		strbuf_add_absolute_path(&text, path);
+ 		already_tried_absolute = 1;
+ 		goto again;
+ 	}
+@@ -400,9 +397,15 @@ static int include_condition_is_true(const struct key_value_info *kvi,
+ 	const struct config_options *opts = inc->opts;
+ 
+ 	if (skip_prefix_mem(cond, cond_len, "gitdir:", &cond, &cond_len))
+-		return include_by_gitdir(kvi, opts, cond, cond_len, 0);
++		return include_by_path(kvi, opts->git_dir, cond, cond_len, 0);
+ 	else if (skip_prefix_mem(cond, cond_len, "gitdir/i:", &cond, &cond_len))
+-		return include_by_gitdir(kvi, opts, cond, cond_len, 1);
++		return include_by_path(kvi, opts->git_dir, cond, cond_len, 1);
++	else if (skip_prefix_mem(cond, cond_len, "worktree:", &cond, &cond_len))
++		return include_by_path(kvi, inc->repo ? repo_get_work_tree(inc->repo) : NULL,
++				       cond, cond_len, 0);
++	else if (skip_prefix_mem(cond, cond_len, "worktree/i:", &cond, &cond_len))
++		return include_by_path(kvi, inc->repo ? repo_get_work_tree(inc->repo) : NULL,
++				       cond, cond_len, 1);
+ 	else if (skip_prefix_mem(cond, cond_len, "onbranch:", &cond, &cond_len))
+ 		return include_by_branch(inc, cond, cond_len);
+ 	else if (skip_prefix_mem(cond, cond_len, "hasconfig:remote.*.url:", &cond,
 
----
-Chen Linxuan (3):
-      config: add "worktree" and "worktree/i" includeIf conditions
-      Documentation/config: add includeIf "worktree"
-      t1305: add tests for includeIf "worktree"
-
- Documentation/config.adoc | 50 +++++++++++++++++++++++++++++++++++
- config.c                  | 25 ++++++++++--------
- t/t1305-config-include.sh | 66 +++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 130 insertions(+), 11 deletions(-)
----
-base-commit: 270e10ad6dda3379ea0da7efd11e4fbf2cd7a325
-change-id: 20260401-includeif-worktree-fcb64950dfba
-
-Best regards,
 -- 
-Chen Linxuan <me@black-desk.cn>
+2.53.0
 
