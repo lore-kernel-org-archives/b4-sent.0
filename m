@@ -1,11 +1,10 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Thu, 02 Apr 2026 02:40:15 +0000
-Subject: [PATCH v2 1/2] dt-bindings: pwm: amlogic: Add new bindings for S6
- S7 S7D
+Date: Thu, 02 Apr 2026 02:40:16 +0000
+Subject: [PATCH v2 2/2] pwm: meson: Add support for Amlogic S7
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260402-s6-s7-pwm-v2-1-657dce040956@amlogic.com>
+Message-Id: <20260402-s6-s7-pwm-v2-2-657dce040956@amlogic.com>
 References: <20260402-s6-s7-pwm-v2-0-657dce040956@amlogic.com>
 In-Reply-To: <20260402-s6-s7-pwm-v2-0-657dce040956@amlogic.com>
 To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
@@ -16,78 +15,106 @@ To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>,
  Martin Blumenstingl <martin.blumenstingl@googlemail.com>
 Cc: linux-pwm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
- Junyi Zhao <junyi.zhao@amlogic.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+ linux-amlogic@lists.infradead.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775097616; l=1811;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775097616; l=2781;
  i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=jS//+H3tRKyNMEGVeMFEtfJwKQUz9wNI3mixje/H5hM=;
- b=tdms4fS6vPfUsXE80dPyDtDcpNiA+GSo14eeE7/bMZQEqHP9vo135gK1STjJTLRYttbPPVLwY
- rusXNJflPoTCbeY6PHczRtZANL0ck36hcRCUHSZlpfIMthZXex+EzFw
+ bh=o49tWz26WxnJOme5RKrdAld7mCVrpPGE+v52KlxAPOc=;
+ b=ZCG8B2cWMv72BgpxPUZFlE4mKV/iyUMBSOfTUhkafcR/E4XCYxDHR+ni2AbmTmY920F+TCJi4
+ pkcdl4Qr2F1DRXBjIoWyboQEN8XmeDGS2lf5Wly1Kb+9CasM+VeAdlH
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Junyi Zhao <junyi.zhao@amlogic.com>
+Add support for Amlogic S7 PWM. Amlogic S7 different from the
+previous SoCs, a controller includes one pwm, at the same time,
+the controller has only one input clock source.
 
-Amlogic S7/S7D/S6 different from the previous SoCs, a controller
-includes one pwm, at the same time, the controller has only one
-input clock source.
-
-Signed-off-by: Junyi Zhao <junyi.zhao@amlogic.com>
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
-Reviewed-by: Martin Blumenstingl <martin.blumenstingl@googlemail.com>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- .../devicetree/bindings/pwm/pwm-amlogic.yaml          | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
+ drivers/pwm/pwm-meson.c | 32 +++++++++++++++++++++++++++++---
+ 1 file changed, 29 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/pwm/pwm-amlogic.yaml b/Documentation/devicetree/bindings/pwm/pwm-amlogic.yaml
-index c337d85da40f..93fa97f4011b 100644
---- a/Documentation/devicetree/bindings/pwm/pwm-amlogic.yaml
-+++ b/Documentation/devicetree/bindings/pwm/pwm-amlogic.yaml
-@@ -37,6 +37,7 @@ properties:
-       - enum:
-           - amlogic,meson8-pwm-v2
-           - amlogic,meson-s4-pwm
-+          - amlogic,s7-pwm
-       - items:
-           - enum:
-               - amlogic,a4-pwm
-@@ -45,6 +46,11 @@ properties:
-               - amlogic,t7-pwm
-               - amlogic,meson-a1-pwm
-           - const: amlogic,meson-s4-pwm
-+      - items:
-+          - enum:
-+              - amlogic,s6-pwm
-+              - amlogic,s7d-pwm
-+          - const: amlogic,s7-pwm
-       - items:
-           - enum:
-               - amlogic,meson8b-pwm-v2
-@@ -146,6 +152,19 @@ allOf:
-         clock-names: false
-       required:
-         - clocks
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            enum:
-+              - amlogic,s7-pwm
-+    then:
-+      properties:
-+        clocks:
-+          maxItems: 1
-+        clock-names: false
-+      required:
-+        - clocks
+diff --git a/drivers/pwm/pwm-meson.c b/drivers/pwm/pwm-meson.c
+index 8c6bf3d49753..7a43c42ef3d6 100644
+--- a/drivers/pwm/pwm-meson.c
++++ b/drivers/pwm/pwm-meson.c
+@@ -113,6 +113,7 @@ struct meson_pwm_data {
+ 	int (*channels_init)(struct pwm_chip *chip);
+ 	bool has_constant;
+ 	bool has_polarity;
++	bool single_pwm;
+ };
  
-   - if:
-       properties:
+ struct meson_pwm {
+@@ -503,6 +504,18 @@ static void meson_pwm_s4_put_clk(void *data)
+ 	clk_put(clk);
+ }
+ 
++static int meson_pwm_init_channels_s7(struct pwm_chip *chip)
++{
++	struct device *dev = pwmchip_parent(chip);
++	struct meson_pwm *meson = to_meson_pwm(chip);
++
++	meson->channels[0].clk = devm_clk_get(dev, NULL);
++	if (IS_ERR(meson->channels[0].clk))
++		return dev_err_probe(dev, PTR_ERR(meson->channels[0].clk),
++				     "Failed to get clk\n");
++	return 0;
++}
++
+ static int meson_pwm_init_channels_s4(struct pwm_chip *chip)
+ {
+ 	struct device *dev = pwmchip_parent(chip);
+@@ -592,6 +605,13 @@ static const struct meson_pwm_data pwm_s4_data = {
+ 	.has_polarity = true,
+ };
+ 
++static const struct meson_pwm_data pwm_s7_data = {
++	.channels_init = meson_pwm_init_channels_s7,
++	.has_constant = true,
++	.has_polarity = true,
++	.single_pwm = true,
++};
++
+ static const struct of_device_id meson_pwm_matches[] = {
+ 	{
+ 		.compatible = "amlogic,meson8-pwm-v2",
+@@ -642,6 +662,10 @@ static const struct of_device_id meson_pwm_matches[] = {
+ 		.compatible = "amlogic,meson-s4-pwm",
+ 		.data = &pwm_s4_data
+ 	},
++	{
++		.compatible = "amlogic,s7-pwm",
++		.data = &pwm_s7_data
++	},
+ 	{},
+ };
+ MODULE_DEVICE_TABLE(of, meson_pwm_matches);
+@@ -650,9 +674,11 @@ static int meson_pwm_probe(struct platform_device *pdev)
+ {
+ 	struct pwm_chip *chip;
+ 	struct meson_pwm *meson;
+-	int err;
++	const struct meson_pwm_data *pdata = of_device_get_match_data(&pdev->dev);
++	int err, npwm;
+ 
+-	chip = devm_pwmchip_alloc(&pdev->dev, MESON_NUM_PWMS, sizeof(*meson));
++	npwm = pdata->single_pwm ? 1 : MESON_NUM_PWMS;
++	chip = devm_pwmchip_alloc(&pdev->dev, npwm, sizeof(*meson));
+ 	if (IS_ERR(chip))
+ 		return PTR_ERR(chip);
+ 	meson = to_meson_pwm(chip);
+@@ -664,7 +690,7 @@ static int meson_pwm_probe(struct platform_device *pdev)
+ 	spin_lock_init(&meson->lock);
+ 	chip->ops = &meson_pwm_ops;
+ 
+-	meson->data = of_device_get_match_data(&pdev->dev);
++	meson->data = pdata;
+ 
+ 	err = meson->data->channels_init(chip);
+ 	if (err < 0)
 
 -- 
 2.52.0
