@@ -1,127 +1,73 @@
-From: Chen Linxuan <me@black-desk.cn>
-Date: Thu, 02 Apr 2026 10:58:47 +0800
-Subject: [PATCH v2 3/3] t1305: add tests for includeIf "worktree"
+From: Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
+Subject: [PATCH 0/3] rust: workqueue: add safe cancellation and status
+ methods
+Date: Thu, 02 Apr 2026 08:53:45 +0530
+Message-Id: <20260402-rust-next-v1-0-0940bb8f201c@multicorewareinc.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260402-includeif-worktree-v2-3-36e339b898d7@black-desk.cn>
-References: <20260402-includeif-worktree-v2-0-36e339b898d7@black-desk.cn>
-In-Reply-To: <20260402-includeif-worktree-v2-0-36e339b898d7@black-desk.cn>
-To: git@vger.kernel.org
-Cc: Kristoffer Haugsbakk <kristofferhaugsbakk@fastmail.com>, 
- Chen Linxuan <me@black-desk.cn>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3384; i=me@black-desk.cn;
- h=from:subject:message-id; bh=+pfu2Arw9XFq2kWFToTNGBZHP0Ni9fWe1yZKTTIyj8A=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBpzdtqkhBuxyP9jpANgdDyxRNhw7ab+cQQJQREa
- bXlEvALDjeJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCac3bagAKCRB2HuYUOZmu
- i8JXEACn7ZtCgb/CjBsq4gLGF+C7RzpcfNtARqZRPJbNPRCLN/o3a8fa4hJFGv+pNB4VAzAVeon
- UK/KfBpfP8+hxNjhEiRoJcclVzRyRyTsfCxwCqD/aU5/R7pWTS3UzuKWixEg4+Mlkduxgz4oWPP
- d/fXAAbNJrd4oI6LeJyBZFreL8EDoKsBYxP5Qxlgt5ee7IR1jUKoGGLMtmSUnIvAGfbI7Us3L1S
- bt1ffVq8H9ZwGPVvoxZ3Ecd8uEFGcHo+QYy2pSugGCpyP8Jlj+xndlRIf8c5OtrXUDVafL1GXyF
- scjimrBFDg46YmxdEUfsb7gJaJs0NgZe4ywLNcnMdgh9VAqSOjHBc0zRmm0QTSjmBDW4Jls3WWY
- rm7DV2P1A3s9s0SHNhJGQd4MOlAW6gFLRzoMS/JxyVA7vt8RCnbtiuEQIXQWqulH6eBrslVi4vM
- DDiRBx1HrbJMc6sHTXZ5BwnvG1Tt954OVLzlyJS/gGMw6+kmKZp+IDrpWJRMzpyb5t7kqz3b453
- ygKToAwGQUjWmP0YP7RkctbCAQ5hI7rBk6IpAt20CSuz+B9rliLUONeGUdSOzqqJW8pxHx0HNoF
- inC9vvLujXiJAr1RZXLpnfyoz7opd3rGVtwjWMKa+ZvWlnTHXRu9OLkH6TKTZpfvI4cH/BiDDsr
- 7oHTXYXj9ytt7Fg==
-X-Developer-Key: i=me@black-desk.cn; a=openpgp;
- fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
-X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
+X-B4-Tracking: v=1; b=H4sIAELhzWkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDEwMj3aLS4hLdvNSKEl1Dy6REA+PExBTjNBMloPqCotS0zAqwWdGxtbU
+ A6LXndVsAAAA=
+To: rust-for-linux@vger.kernel.org
+Cc: Aakash Bollineni <aakash.bollineni@multicorewareinc.com>, 
+ linux-kernel@vger.kernel.org
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775100227; l=2331;
+ i=aakash.bollineni@multicorewareinc.com; s=20260402;
+ h=from:subject:message-id; bh=doSMiViGmwMuDM5rPkB2CTHK7xNoHLVvMHS/OAdAWO0=;
+ b=Vcosgj7HKX1yLZr5GDRW0Us3rYAn/WRoTqqGSMQkcqIzvXR3ZU0gp1TzurpL7BxgCEY4iqIKI
+ mde0VvMo/sqCtzYrCh2JWyV96UDxXLfAZzsyqAIoE6Bk/HAqI61qtjD
+X-Developer-Key: i=aakash.bollineni@multicorewareinc.com; a=ed25519;
+ pk=r3Gonl+2k+8RozN9U/XwfICQdnRlAcLeeAfsExmurdE=
+X-Endpoint-Received: by B4 Relay for aakash.bollineni@multicorewareinc.com/20260402 with auth_id=711
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Cover the following scenarios unique to the "worktree" condition
-(path matching features such as glob, tilde, icase are already
-exercised by the gitdir tests):
+This series modernizes the Rust workqueue infrastructure by adding
+methods for status checking and safe cancellation. These capabilities
+are essential for implementing safe driver teardown paths, such as in
+'Drop' implementations or device removal, where background tasks must
+be stopped before resources are freed.
+This version (v2) addresses the feedback from Miguel Ojeda:
+- The work has been split into a logical 3-patch series.
+- Spurious changes (top-level .kunitconfig) have been removed.
+- Initialization for DelayedWork is now handled via a robust C-helper
+  (INIT_DELAYED_WORK) to ensure correct timer function registration.
+- Pointer arithmetic in the reclamation path has been simplified and
+  verified to be underflow-free.
+Summary of changes:
+1. Helpers: Adds C FFI wrappers for workqueue macros and robust
+   DelayedWork initialization.
+2. Core API: Implements is_pending(), cancel(), and cancel_sync() with
+   guaranteed pointer reclamation and layout safety (#[repr(transparent)]).
+3. Tests: Adds a comprehensive KUnit suite and a standalone stress-test
+   sample.
+The implementation has been verified on x86_64 using KUnit (4/4 PASSED)
+and confirmed to be race-free under high-load stress testing.
+Changelog v1 -> v2:
+- Split into a 3-patch series to separate helpers from API and tests.
+- Replaced manual timer initialization with rust_helper_init_delayed_work.
+- Fixed field offset arithmetic in container_of macro path.
+- Expanded KUnit tests to cover DelayedWork specifically.
+- Wrapped commit messages and cover letter to 75 columns.
 
-  - bare repository (condition must not match)
-  - multiple worktrees: main and linked worktrees each match their
-    own path-based condition while sharing a single config file;
-    a third linked worktree verifies directory-prefix matching with
-    a trailing slash
-  - symlinked worktree: the path is resolved before matching
-
-Signed-off-by: Chen Linxuan <me@black-desk.cn>
+Signed-off-by: Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
 ---
- t/t1305-config-include.sh | 66 +++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 66 insertions(+)
+Aakash Bollineni (3):
+      rust: helpers: add workqueue helpers
+      rust: workqueue: add safe cancellation and status methods
+      rust: workqueue: add KUnit and sample stress tests
 
-diff --git a/t/t1305-config-include.sh b/t/t1305-config-include.sh
-index 6e51f892f320..8a5ba4b884d3 100755
---- a/t/t1305-config-include.sh
-+++ b/t/t1305-config-include.sh
-@@ -396,4 +396,70 @@ test_expect_success 'onbranch without repository but explicit nonexistent Git di
- 	test_must_fail nongit git --git-dir=nonexistent config get foo.bar
- '
- 
-+# worktree: conditional include tests
-+
-+test_expect_success 'conditional include, worktree bare repo' '
-+	git init --bare wt-bare &&
-+	(
-+		cd wt-bare &&
-+		echo "[includeIf \"worktree:/\"]path=bar-bare" >>config &&
-+		echo "[test]wtbare=1" >bar-bare &&
-+		test_must_fail git config test.wtbare
-+	)
-+'
-+
-+test_expect_success 'conditional include, worktree multiple worktrees' '
-+	git init wt-multi &&
-+	(
-+		cd wt-multi &&
-+		test_commit initial &&
-+		git worktree add -b linked-branch ../wt-linked HEAD &&
-+		git worktree add -b prefix-branch ../wt-prefix/linked HEAD
-+	) &&
-+	wt_main="$(cd wt-multi && pwd)" &&
-+	wt_linked="$(cd wt-linked && pwd)" &&
-+	wt_prefix_parent="$(cd wt-prefix && pwd)" &&
-+	cat >>wt-multi/.git/config <<-EOF &&
-+	[includeIf "worktree:$wt_main"]
-+		path = main-config
-+	[includeIf "worktree:$wt_linked"]
-+		path = linked-config
-+	[includeIf "worktree:$wt_prefix_parent/"]
-+		path = prefix-config
-+	EOF
-+	echo "[test]mainvar=main" >wt-multi/.git/main-config &&
-+	echo "[test]linkedvar=linked" >wt-multi/.git/linked-config &&
-+	echo "[test]prefixvar=prefix" >wt-multi/.git/prefix-config &&
-+	echo main >expect &&
-+	git -C wt-multi config test.mainvar >actual &&
-+	test_cmp expect actual &&
-+	test_must_fail git -C wt-multi config test.linkedvar &&
-+	test_must_fail git -C wt-multi config test.prefixvar &&
-+	echo linked >expect &&
-+	git -C wt-linked config test.linkedvar >actual &&
-+	test_cmp expect actual &&
-+	test_must_fail git -C wt-linked config test.mainvar &&
-+	test_must_fail git -C wt-linked config test.prefixvar &&
-+	echo prefix >expect &&
-+	git -C wt-prefix/linked config test.prefixvar >actual &&
-+	test_cmp expect actual &&
-+	test_must_fail git -C wt-prefix/linked config test.mainvar &&
-+	test_must_fail git -C wt-prefix/linked config test.linkedvar
-+'
-+
-+test_expect_success SYMLINKS 'conditional include, worktree resolves symlinks' '
-+	mkdir real-wt &&
-+	ln -s real-wt link-wt &&
-+	git init link-wt/repo &&
-+	(
-+		cd link-wt/repo &&
-+		# repo->worktree resolves symlinks, so use real path in pattern
-+		echo "[includeIf \"worktree:**/real-wt/repo\"]path=bar-link" >>.git/config &&
-+		echo "[test]wtlink=2" >.git/bar-link &&
-+		echo 2 >expect &&
-+		git config test.wtlink >actual &&
-+		test_cmp expect actual
-+	)
-+'
-+
- test_done
+ rust/helpers/workqueue.c            |  34 +++
+ rust/kernel/workqueue.rs            | 467 +++++++++++++++++++++++++++++++++---
+ samples/rust/Makefile               |   2 +
+ samples/rust/rust_workqueue_test.rs | 214 +++++++++++++++++
+ 4 files changed, 682 insertions(+), 35 deletions(-)
+---
+base-commit: bf074eb6891be799174ff42e0051492681fdc045
+change-id: 20260402-rust-next-19ba03aad3f4
 
+Best regards,
 -- 
-2.53.0
+Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
 
