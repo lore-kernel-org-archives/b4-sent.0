@@ -1,11 +1,10 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Fri, 03 Apr 2026 21:36:04 +0530
-Subject: [PATCH v2 1/5] net: qrtr: ns: Limit the maximum server
- registration per node
+Date: Fri, 03 Apr 2026 21:36:05 +0530
+Subject: [PATCH v2 2/5] net: qrtr: ns: Limit the maximum number of lookups
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260403-qrtr-fix-v2-1-f88a14859c63@oss.qualcomm.com>
+Message-Id: <20260403-qrtr-fix-v2-2-f88a14859c63@oss.qualcomm.com>
 References: <20260403-qrtr-fix-v2-0-f88a14859c63@oss.qualcomm.com>
 In-Reply-To: <20260403-qrtr-fix-v2-0-f88a14859c63@oss.qualcomm.com>
 To: Manivannan Sadhasivam <mani@kernel.org>, 
@@ -14,118 +13,104 @@ To: Manivannan Sadhasivam <mani@kernel.org>,
  Simon Horman <horms@kernel.org>
 Cc: linux-arm-msm@vger.kernel.org, netdev@vger.kernel.org, 
  linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Yiming Qian <yimingqian591@gmail.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.15.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3040;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2866;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=d3riliJXlMknVS54Ov71SzRRhSiv88e/lnkbjutnErI=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpz+V5iWagZ44B/XtW7bzTMm3VyehS81n6rAV5x
- HloeQgFVx2JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCac/leQAKCRBVnxHm/pHO
- 9bl6B/9U8q+zrFV+Ph4OxVYjcFNBcyIYhtED6MZXpaAi9D+8JT7Tt0mCjQ0KSvr9q03N6NYRjQD
- 8+ALUxMYQ/5Tofa835NJS0WlNXm9/cQBFVo1kIDld6M17VA1/LiKOElIZQpdMbQ2N4pXKwj0+qi
- +ARQ8JCMj+1zx9LFMYB6a12ILPKlDNTDs0mA2ysGFNdLoc8nGZtfCOoN5kXUS4EBfOCWRhEHz3e
- nP1iHVTvtjUtzwMSMyeHRuaB/sz+8MmV0fUr5tl5q428wW6sAbqFEpUxssM7o4LcU2TQO2L/8Em
- dDyjnfpDUZPEGBunp2MuqT49INb1bJNl0fQk4I/eVm5KiMFd
+ bh=IhZvm8cwMMv2YMLHez1GlQYA3ZymEM0NuV9RTHrTenE=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpz+V5NSoe88Fs+mn/8xIznK2nO1RPvTIemSAHh
+ hlrrMj89m+JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCac/leQAKCRBVnxHm/pHO
+ 9bumB/4qjJ2HMIYIEweuwJYY42DD+Ry/JD69DMQ8cTXFoUTuJK4PACvPqQSeio5PNtKN8y63Fz/
+ n8VE/iC3xcpd+14dc+gdNPPRqPBvSmox46f0FC0TbkwhRzUkKubwR0ZhxcyQARrkigykzPEF8Xp
+ LmIh1h8IDr0nndYq5UwJrVZi416v07OrSJH4innrm7Mw+uVauBill9zLG4vJT3gBvJYM5q2oJ/k
+ jnLLw6suZd+nj1Jlkf2rdsRggSssnT+raxPemEUtjnQgw6MyI9D65zMf+iIqF+JfrLKjK8XVy03
+ Gy8ppHl41AAwJ4UC7gmoVtCC/Bd+fnbqlqbtJ5kYDzvGX+r4
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Current code does no bound checking on the number of servers added per
-node. A malicious client can flood NEW_SERVER messages and exhaust memory.
+Current code does no bound checking on the number of lookups a client can
+perform. Though the code restricts the lookups to local clients, there is
+still a possibility of a malicious local client sending a flood of
+NEW_LOOKUP messages over the same socket.
 
-Fix this issue by limiting the maximum number of server registrations to
-256 per node. If the NEW_SERVER message is received for an old port, then
-don't restrict it as it will get replaced. While at it, also rate limit
-the error messages in the failure path of qrtr_ns_worker().
+Fix this issue by limiting the maximum number of lookups to 64 globally.
+Since the nameserver allows only atmost one local observer, this global
+lookup count will ensure that the lookups stay within the limit.
 
-Note that the limit of 256 is chosen based on the current platform
+Note that, limit of 64 is chosen based on the current platform
 requirements. If requirement changes in the future, this limit can be
 increased.
 
 Cc: stable@vger.kernel.org
 Fixes: 0c2204a4ad71 ("net: qrtr: Migrate nameservice to kernel from userspace")
-Reported-by: Yiming Qian <yimingqian591@gmail.com>
-Reviewed-by: Simon Horman <horms@kernel.org>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- net/qrtr/ns.c | 26 +++++++++++++++++++++-----
- 1 file changed, 21 insertions(+), 5 deletions(-)
+ net/qrtr/ns.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 
 diff --git a/net/qrtr/ns.c b/net/qrtr/ns.c
-index 3203b2220860..63cb5861d87a 100644
+index 63cb5861d87a..5b08d4d4840a 100644
 --- a/net/qrtr/ns.c
 +++ b/net/qrtr/ns.c
-@@ -67,8 +67,14 @@ struct qrtr_server {
- struct qrtr_node {
- 	unsigned int id;
- 	struct xarray servers;
-+	u32 server_count;
+@@ -22,6 +22,7 @@ static struct {
+ 	struct socket *sock;
+ 	struct sockaddr_qrtr bcast_sq;
+ 	struct list_head lookups;
++	u32 lookup_count;
+ 	struct workqueue_struct *workqueue;
+ 	struct work_struct work;
+ 	int local_node;
+@@ -70,10 +71,11 @@ struct qrtr_node {
+ 	u32 server_count;
  };
  
-+/* Max server limit is chosen based on the current platform requirements. If the
-+ * requirement changes in the future, this value can be increased.
-+ */
-+#define QRTR_NS_MAX_SERVERS 256
-+
+-/* Max server limit is chosen based on the current platform requirements. If the
+- * requirement changes in the future, this value can be increased.
++/* Max server, lookup limits are chosen based on the current platform requirements.
++ * If the requirement changes in the future, these values can be increased.
+  */
+ #define QRTR_NS_MAX_SERVERS 256
++#define QRTR_NS_MAX_LOOKUPS 64
+ 
  static struct qrtr_node *node_get(unsigned int node_id)
  {
- 	struct qrtr_node *node;
-@@ -229,6 +235,17 @@ static struct qrtr_server *server_add(unsigned int service,
- 	if (!service || !port)
- 		return NULL;
+@@ -433,6 +435,7 @@ static int ctrl_cmd_del_client(struct sockaddr_qrtr *from,
  
-+	node = node_get(node_id);
-+	if (!node)
-+		return NULL;
-+
-+	/* Make sure the new servers per port are capped at the maximum value */
-+	old = xa_load(&node->servers, port);
-+	if (!old && node->server_count >= QRTR_NS_MAX_SERVERS) {
-+		pr_err_ratelimited("QRTR client node %u exceeds max server limit!\n", node_id);
-+		return NULL;
+ 		list_del(&lookup->li);
+ 		kfree(lookup);
++		qrtr_ns.lookup_count--;
+ 	}
+ 
+ 	/* Remove the server belonging to this port but don't broadcast
+@@ -550,6 +553,11 @@ static int ctrl_cmd_new_lookup(struct sockaddr_qrtr *from,
+ 	if (from->sq_node != qrtr_ns.local_node)
+ 		return -EINVAL;
+ 
++	if (qrtr_ns.lookup_count >= QRTR_NS_MAX_LOOKUPS) {
++		pr_err_ratelimited("QRTR client node exceeds max lookup limit!\n");
++		return -ENOSPC;
 +	}
 +
- 	srv = kzalloc_obj(*srv);
- 	if (!srv)
- 		return NULL;
-@@ -238,10 +255,6 @@ static struct qrtr_server *server_add(unsigned int service,
- 	srv->node = node_id;
- 	srv->port = port;
+ 	lookup = kzalloc_obj(*lookup);
+ 	if (!lookup)
+ 		return -ENOMEM;
+@@ -558,6 +566,7 @@ static int ctrl_cmd_new_lookup(struct sockaddr_qrtr *from,
+ 	lookup->service = service;
+ 	lookup->instance = instance;
+ 	list_add_tail(&lookup->li, &qrtr_ns.lookups);
++	qrtr_ns.lookup_count++;
  
--	node = node_get(node_id);
--	if (!node)
--		goto err;
--
- 	/* Delete the old server on the same port */
- 	old = xa_store(&node->servers, port, srv, GFP_KERNEL);
- 	if (old) {
-@@ -252,6 +265,8 @@ static struct qrtr_server *server_add(unsigned int service,
- 		} else {
- 			kfree(old);
- 		}
-+	} else {
-+		node->server_count++;
+ 	memset(&filter, 0, sizeof(filter));
+ 	filter.service = service;
+@@ -598,6 +607,7 @@ static void ctrl_cmd_del_lookup(struct sockaddr_qrtr *from,
+ 
+ 		list_del(&lookup->li);
+ 		kfree(lookup);
++		qrtr_ns.lookup_count--;
  	}
- 
- 	trace_qrtr_ns_server_add(srv->service, srv->instance,
-@@ -292,6 +307,7 @@ static int server_del(struct qrtr_node *node, unsigned int port, bool bcast)
- 	}
- 
- 	kfree(srv);
-+	node->server_count--;
- 
- 	return 0;
  }
-@@ -670,7 +686,7 @@ static void qrtr_ns_worker(struct work_struct *work)
- 		}
- 
- 		if (ret < 0)
--			pr_err("failed while handling packet from %d:%d",
-+			pr_err_ratelimited("failed while handling packet from %d:%d",
- 			       sq.sq_node, sq.sq_port);
- 	}
  
 
 -- 
