@@ -1,211 +1,81 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Fri, 03 Apr 2026 02:53:40 +0800
-Subject: [PATCH v3 14/14] mm/vmscan: unify writeback reclaim statistic and
- throttling
+From: Chen Linxuan <me@black-desk.cn>
+Subject: [PATCH v3 0/2] includeIf: add "worktree" condition for matching
+ working tree path
+Date: Fri, 03 Apr 2026 15:02:27 +0800
+Message-Id: <20260403-includeif-worktree-v3-0-109ce5782b03@black-desk.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260403-mglru-reclaim-v3-14-a285efd6ff91@tencent.com>
-References: <20260403-mglru-reclaim-v3-0-a285efd6ff91@tencent.com>
-In-Reply-To: <20260403-mglru-reclaim-v3-0-a285efd6ff91@tencent.com>
-To: linux-mm@kvack.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
- Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
- Wei Xu <weixugc@google.com>, Johannes Weiner <hannes@cmpxchg.org>, 
- David Hildenbrand <david@kernel.org>, Michal Hocko <mhocko@kernel.org>, 
- Qi Zheng <zhengqi.arch@bytedance.com>, 
- Shakeel Butt <shakeel.butt@linux.dev>, Lorenzo Stoakes <ljs@kernel.org>, 
- Barry Song <baohua@kernel.org>, David Stevens <stevensd@google.com>, 
- Chen Ridong <chenridong@huaweicloud.com>, Leno Hou <lenohou@gmail.com>, 
- Yafang Shao <laoar.shao@gmail.com>, Yu Zhao <yuzhao@google.com>, 
- Zicheng Wang <wangzicheng@honor.com>, Kalesh Singh <kaleshsingh@google.com>, 
- Suren Baghdasaryan <surenb@google.com>, Chris Li <chrisl@kernel.org>, 
- Vernon Yang <vernon2gm@gmail.com>, linux-kernel@vger.kernel.org, 
- Qi Zheng <qi.zheng@linux.dev>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
- Kairui Song <kasong@tencent.com>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775156018; l=6627;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=HRyVJumaRGlmjmg7giWQoM7fAZ1aA3IIuyfVBBx3wZY=;
- b=xD+AQD0knA28MQKrusASwXm7UtsaKfBTKC9JBS15D+CeEKYFqH1uJ/6ScHUKnKVujGRyMe3N0
- WvZa1Tu3h3iD8Aw8A6T62YMuetjGpPZWi00ERRjqfPGa5cpR9bK+k7t
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+X-B4-Tracking: v=1; b=H4sIAANmz2kC/33NQQ7CIBCF4as0rMVQqLS48h7GRYHBTtpQAxU1T
+ e8u7coY4/J/yXwzkwgBIZJjMZMACSOOPofYFcR0rb8CRZubcMYlq1hJ0ZvhbgEdfYyhnwIAdUb
+ LSh2Ydbol+fAWwOFzQ8+X3B3GaQyv7Ucq1/Uvl0rKqGLSaqkcN7U66aE1PbUQ+73xZCUT/2T4T
+ 4ZnRkgQQulGNbb+ZpZleQMUHPLu/wAAAA==
+X-Change-ID: 20260401-includeif-worktree-fcb64950dfba
+To: git@vger.kernel.org
+Cc: Kristoffer Haugsbakk <kristofferhaugsbakk@fastmail.com>, 
+ Junio C Hamano <gitster@pobox.com>, Chen Linxuan <me@black-desk.cn>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1759; i=me@black-desk.cn;
+ h=from:subject:message-id; bh=DwuWlMFbXxtvcS8zVCluFfVC0Tr1mn0qvPjokUo9tWM=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBpz2YJPPZ4A3xF8wmZB0AhVUv2D2hLbFhIl/u9c
+ zwOJwVKOXeJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCac9mCQAKCRB2HuYUOZmu
+ i/yzEACi1xs2EkXHith7arXWLLea04+1eHyTgUwYJPj1hKcYnhf83QNNPe/uK7Qts1/nsaQSgiI
+ Q61FYxt++T2e4YZrcGCRJvjzWQjSWV1cTL7GbtAnOHeRSc7VfR8NoFcEmsJzv9zAf/0IDhaZZ2M
+ OUC3PoluuaAg17WbDQLv4RN/4kvFKTGSvKv1oLFSfOee+Y8ciIlp746p/Oka1tjv+wEWAK5A2u8
+ DtsjfgK9mNPjselTpdqZ01V5CBkzH9ISAkB5duZhTeRxa0H7cVKl8eIHQM4NjVI0njo22aw1Sq6
+ nD5UKrCMOSq9r3QSCb6NPFi0GFbsbMMcukvvSlrOFJYiy6K11kWkcuFTCGqxIhXLP9scacx5XnL
+ T4180azjwfloPB9JSVogc5BtyexzEwHISNWWVyHuePQMans0jpC6WA6a+Ic7Odpm0eOA4CWNKA9
+ t4V8De8liUGjE0cvAS9h0fy4MsscVhHJoXjb0GeIJLJfz9e6x2w/EBis+lTeFbyVuamev72DM9E
+ Z3gztGCXwC86qIv5iKEqCWo6RS54AHBLj79Zm7L8J395e4uKKnmviPhMREJQxT+WtkLPaqWHySd
+ dZqAoljiPMySg9iebeOBg6H81ucJ/oIuZ1jIytO1szpiMS+ngMEH1AkMOsgPsuURJxkMXSyI9kb
+ aJc/oIZfKAtzw/g==
+X-Developer-Key: i=me@black-desk.cn; a=openpgp;
+ fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
+X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently MGLRU and non-MGLRU handle the reclaim statistic and
-writeback handling very differently, especially throttling.
-Basically MGLRU just ignored the throttling part.
+The `includeIf` mechanism already supports matching on the `.git`
+directory path (`gitdir`) and the currently checked out branch
+(`onbranch`).  But in multi-worktree setups the `.git` directory of a
+linked worktree points into the main repository's `.git/worktrees/`
+area, which makes `gitdir` patterns cumbersome when one wants to
+include config based on the working tree's checkout path instead.
 
-Let's just unify this part, use a helper to deduplicate the code
-so both setups will share the same behavior.
+Introduce two new condition keywords:
 
-Test using following reproducer using bash:
+  - `worktree:<pattern>` matches the realpath of the current worktree's
+    working directory against a glob pattern.
+  - `worktree/i:<pattern>` is the case-insensitive variant.
 
-  echo "Setup a slow device using dm delay"
-  dd if=/dev/zero of=/var/tmp/backing bs=1M count=2048
-  LOOP=$(losetup --show -f /var/tmp/backing)
-  mkfs.ext4 -q $LOOP
-  echo "0 $(blockdev --getsz $LOOP) delay $LOOP 0 0 $LOOP 0 1000" | \
-      dmsetup create slow_dev
-  mkdir -p /mnt/slow && mount /dev/mapper/slow_dev /mnt/slow
+Supported pattern features: glob wildcards, `**/` and `/**`, `~`
+expansion, `./` relative paths, and trailing-`/` prefix matching.
+The condition never matches in a bare repository.
 
-  echo "Start writeback pressure"
-  sync && echo 3 > /proc/sys/vm/drop_caches
-  mkdir /sys/fs/cgroup/test_wb
-  echo 128M > /sys/fs/cgroup/test_wb/memory.max
-  (echo $BASHPID > /sys/fs/cgroup/test_wb/cgroup.procs && \
-      dd if=/dev/zero of=/mnt/slow/testfile bs=1M count=192)
-
-  echo "Clean up"
-  echo "0 $(blockdev --getsz $LOOP) error" | dmsetup load slow_dev
-  dmsetup resume slow_dev
-  umount -l /mnt/slow && sync
-  dmsetup remove slow_dev
-
-Before this commit, `dd` will get OOM killed immediately if
-MGLRU is enabled. Classic LRU is fine.
-
-After this commit, throttling is now effective and no more spin on
-LRU or premature OOM. Stress test on other workloads also looking good.
-
-Global throttling is not here yet, we will fix that separately later.
-
-Suggested-by: Chen Ridong <chenridong@huaweicloud.com>
-Tested-by: Leno Hou <lenohou@gmail.com>
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Signed-off-by: Chen Linxuan <me@black-desk.cn>
 ---
- mm/vmscan.c | 90 ++++++++++++++++++++++++++++---------------------------------
- 1 file changed, 41 insertions(+), 49 deletions(-)
+Changes in v3:
+- Apply Junio's suggestion.
+- Link to v2: https://lore.kernel.org/r/20260402-includeif-worktree-v2-0-36e339b898d7@black-desk.cn
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 9120d914445e..a7b3e5b6676b 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -1942,6 +1942,44 @@ static int current_may_throttle(void)
- 	return !(current->flags & PF_LOCAL_THROTTLE);
- }
- 
-+static void handle_reclaim_writeback(unsigned long nr_taken,
-+				     struct pglist_data *pgdat,
-+				     struct scan_control *sc,
-+				     struct reclaim_stat *stat)
-+{
-+	/*
-+	 * If dirty folios are scanned that are not queued for IO, it
-+	 * implies that flushers are not doing their job. This can
-+	 * happen when memory pressure pushes dirty folios to the end of
-+	 * the LRU before the dirty limits are breached and the dirty
-+	 * data has expired. It can also happen when the proportion of
-+	 * dirty folios grows not through writes but through memory
-+	 * pressure reclaiming all the clean cache. And in some cases,
-+	 * the flushers simply cannot keep up with the allocation
-+	 * rate. Nudge the flusher threads in case they are asleep.
-+	 */
-+	if (stat->nr_unqueued_dirty == nr_taken && nr_taken) {
-+		wakeup_flusher_threads(WB_REASON_VMSCAN);
-+		/*
-+		 * For cgroupv1 dirty throttling is achieved by waking up
-+		 * the kernel flusher here and later waiting on folios
-+		 * which are in writeback to finish (see shrink_folio_list()).
-+		 *
-+		 * Flusher may not be able to issue writeback quickly
-+		 * enough for cgroupv1 writeback throttling to work
-+		 * on a large system.
-+		 */
-+		if (!writeback_throttling_sane(sc))
-+			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
-+	}
-+
-+	sc->nr.dirty += stat->nr_dirty;
-+	sc->nr.congested += stat->nr_congested;
-+	sc->nr.writeback += stat->nr_writeback;
-+	sc->nr.immediate += stat->nr_immediate;
-+	sc->nr.taken += nr_taken;
-+}
-+
- /*
-  * shrink_inactive_list() is a helper for shrink_node().  It returns the number
-  * of reclaimed pages
-@@ -2005,39 +2043,7 @@ static unsigned long shrink_inactive_list(unsigned long nr_to_scan,
- 	lruvec_lock_irq(lruvec);
- 	lru_note_cost_unlock_irq(lruvec, file, stat.nr_pageout,
- 					nr_scanned - nr_reclaimed);
--
--	/*
--	 * If dirty folios are scanned that are not queued for IO, it
--	 * implies that flushers are not doing their job. This can
--	 * happen when memory pressure pushes dirty folios to the end of
--	 * the LRU before the dirty limits are breached and the dirty
--	 * data has expired. It can also happen when the proportion of
--	 * dirty folios grows not through writes but through memory
--	 * pressure reclaiming all the clean cache. And in some cases,
--	 * the flushers simply cannot keep up with the allocation
--	 * rate. Nudge the flusher threads in case they are asleep.
--	 */
--	if (stat.nr_unqueued_dirty == nr_taken) {
--		wakeup_flusher_threads(WB_REASON_VMSCAN);
--		/*
--		 * For cgroupv1 dirty throttling is achieved by waking up
--		 * the kernel flusher here and later waiting on folios
--		 * which are in writeback to finish (see shrink_folio_list()).
--		 *
--		 * Flusher may not be able to issue writeback quickly
--		 * enough for cgroupv1 writeback throttling to work
--		 * on a large system.
--		 */
--		if (!writeback_throttling_sane(sc))
--			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
--	}
--
--	sc->nr.dirty += stat.nr_dirty;
--	sc->nr.congested += stat.nr_congested;
--	sc->nr.writeback += stat.nr_writeback;
--	sc->nr.immediate += stat.nr_immediate;
--	sc->nr.taken += nr_taken;
--
-+	handle_reclaim_writeback(nr_taken, pgdat, sc, &stat);
- 	trace_mm_vmscan_lru_shrink_inactive(pgdat->node_id,
- 			nr_scanned, nr_reclaimed, &stat, sc->priority, file);
- 	return nr_reclaimed;
-@@ -4824,26 +4830,11 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- retry:
- 	reclaimed = shrink_folio_list(&list, pgdat, sc, &stat, false, memcg);
- 	sc->nr_reclaimed += reclaimed;
-+	handle_reclaim_writeback(isolated, pgdat, sc, &stat);
- 	trace_mm_vmscan_lru_shrink_inactive(pgdat->node_id,
- 			type_scanned, reclaimed, &stat, sc->priority,
- 			type ? LRU_INACTIVE_FILE : LRU_INACTIVE_ANON);
- 
--	/*
--	 * If too many file cache in the coldest generation can't be evicted
--	 * due to being dirty, wake up the flusher.
--	 */
--	if (stat.nr_unqueued_dirty == isolated) {
--		wakeup_flusher_threads(WB_REASON_VMSCAN);
--
--		/*
--		 * For cgroupv1 dirty throttling is achieved by waking up
--		 * the kernel flusher here and later waiting on folios
--		 * which are in writeback to finish (see shrink_folio_list()).
--		 */
--		if (!writeback_throttling_sane(sc))
--			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
--	}
--
- 	list_for_each_entry_safe_reverse(folio, next, &list, lru) {
- 		DEFINE_MIN_SEQ(lruvec);
- 
-@@ -4886,6 +4877,7 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- 
- 	if (!list_empty(&list)) {
- 		skip_retry = true;
-+		isolated = 0;
- 		goto retry;
- 	}
- 
+Changes in v2:
 
+- Add missing signed-off-by lines.
+- Link to v1: https://lore.kernel.org/r/20260401-includeif-worktree-v1-0-906db69f2c79@black-desk.cn
+
+---
+Chen Linxuan (2):
+      config: refactor include_by_gitdir() into include_by_path()
+      config: add "worktree" and "worktree/i" includeIf conditions
+
+ Documentation/config.adoc | 50 +++++++++++++++++++++++++++++++++++
+ config.c                  | 25 ++++++++++--------
+ t/t1305-config-include.sh | 66 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 130 insertions(+), 11 deletions(-)
+---
+base-commit: 270e10ad6dda3379ea0da7efd11e4fbf2cd7a325
+change-id: 20260401-includeif-worktree-fcb64950dfba
+
+Best regards,
 -- 
-2.53.0
+Chen Linxuan <me@black-desk.cn>
 
