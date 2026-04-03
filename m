@@ -1,15 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH 0/2] Correct Xiaomi Poco F1 compatible strings and
- evaluation.
-Date: Fri, 03 Apr 2026 18:55:32 +0200
-Message-Id: <20260403-beryllium-compat-string-v1-0-0a6b9cb55a20@ixit.cz>
+Date: Fri, 03 Apr 2026 18:55:33 +0200
+Subject: [PATCH 1/2] dt-bindings: arm: qcom: Add Xiaomi Poco F1 Tianma
+ variant bindings
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAATxz2kC/x3MQQ5AMBBA0avIrE1SJZK6ili0NZiEkilCxN01l
- m/x/wORhClCkz0gdHLkNSQUeQZ+smEk5D4ZtNK1qlSJjuSeZz4W9Ouy2R3jLhxG9L6ojDPKatN
- Dqjehga//3Hbv+wGNbIWgaQAAAA==
-X-Change-ID: 20260403-beryllium-compat-string-cc149b90a29d
+Message-Id: <20260403-beryllium-compat-string-v1-1-0a6b9cb55a20@ixit.cz>
+References: <20260403-beryllium-compat-string-v1-0-0a6b9cb55a20@ixit.cz>
+In-Reply-To: <20260403-beryllium-compat-string-v1-0-0a6b9cb55a20@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -23,42 +21,64 @@ Cc: Petr Hodina <petr.hodina@protonmail.com>,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=690; i=david@ixit.cz;
- h=from:subject:message-id; bh=azPIcXHFapkiczhjKkBzlN9iLe+KM6jGYv3hkG7Ipqo=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpz/EFee5WwJT1VYWmq7xJrHYCNXiTOXM+QC7SN
- XkMMXcqPniJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac/xBQAKCRBgAj/E00kg
- cs3zD/4qFUbU3XPuDX751Hdq2PMwz5080NUcDhWGea/Rll5v2JlJVC8TVQKOQIGkFe/ywILLgA3
- Iwt7QlLUuSYCJfhp3cSs9A9hldfs+HvqLiCJdlpBdonU0tU3EHKrvP8SyZezHg/UGaRQeutstuF
- jjJ3W2FoG79rC561oDf63FiuuHZWhPaW39WMKAoC4dOnAXB47SbvJ8yDIFDSilAmgg+TrPbGA6y
- BDZ92Gj8lGj6V8TdYI0gMobdqiyX0CrCWDCe4frgLe4ooMUA4zx12PZkOmYSlIaKTPKxWN2ROYq
- wvvRYaUiY/I/Zv3fZkmruLvo583Rx27RCswrGQFEudbrFOgRX6EkU8NzrO4obtAvIyJP1CRdZPk
- EqWCMLJNmOv10xgT4FVCrsnIUt402G7nhjef/Aqfs1c+SxnrgOiYTmt1KV6QL0thxFC6UMUkUzU
- iVQGkrXBgqBMgXFUqYd8uDxREk8e4gd4DbQofXDuV3GqIF97hSURSKFz0mBaYTLsAp0ZnET/PrY
- N4W26A4PZW1rHz45qyXb0x8h+qAvbFSPNCb9vOS7MU4BVkQ8mW15vEMLl7Vrq1OBrAE7pUaJf0N
- A8iIg8jz/D4rdZLph2c8u+2fkEEXGJmlKg2YnfScEbEWp8PV3PO7laoVOJe+yClje1k1AYprSvv
- xDZPiHJUohhtbtQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1363; i=david@ixit.cz;
+ h=from:subject:message-id; bh=AtgDPB6o9zOT8gmNuMq9hNsNDcrlPLcnjmej/ulGt/g=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpz/EF/XHbZnknU2q9GYZE1b1+B+HQBIPS+BMAu
+ FLyyc4yKkGJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac/xBQAKCRBgAj/E00kg
+ cpeXD/9qfPaIKGyIFatNhQlvAxgq67x4QBtje0FIAW5zaF01DPyD5SluUuqyWDU5Qspv8UHOo16
+ PmY/sqzltuBcMOQaLjkEKVjk9LfNWX28m2iovXJ9VSI8hL51qd3Ev7560Fu3SsvzTuVvcA2AQoG
+ Cy+CKynm1+DvV83vCH98hz+OdiunZSkWbGpwO4BlHiHcJ6UDrHSX6ta8xRk5gBUNoteEloyIQxY
+ P7A1Q87DrddWwey8vAwhYRV6tsuUEndBP39PPWf8PpdgCeknsnsKgzCeVfDcaLuD329IxdlYH6P
+ WvFZTb7PMYToorhgO3nFLyAMMpGJ8JixLvUjUu6neK1BMQ/aPVm20ilIz0jrLNRsWTY9opqgRGG
+ iXFruwNk1CnPSgP2HVX0ELW4Bd76yPZM6vyavs2RA5H8eVIKZiqcuSR7z730/9onybBcHn4C6qJ
+ U6djopaSjBDLfr4xCRVMWwlIN4JKNigdMRDQRWFSit/wTyShu0hiKxsq+h0y4kyYiNDqILi/SeG
+ kliRhWNYYoKG/anJTTujHZYZqVHjKQ8dnHb4flSUWFnnHI9jTrpDE1LfivszT5URklTJ7RpEHEE
+ cN5F42Pe1H5psJB+IHJeXOx6lvRdTpxIteGxSzGqJWZgJqbQf31+A5fN00W3Lj/rDiW5fglUnbb
+ ymvjge6fXsnNbHw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+Add documentation for Tianma display and touchscreen variant.
+
+While at it, correct binding documentation expectation.
+
+Fixes: 341fdef8ea49 ("dt-bindings: arm: qcom: Add Xiaomi Poco F1 EBBG variant bindings")
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-David Heidelberg (1):
-      dt-bindings: arm: qcom: Add Xiaomi Poco F1 Tianma variant bindings
+ Documentation/devicetree/bindings/arm/qcom.yaml | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-Jens Reidel (1):
-      arm64: dts: qcom: sdm845-xiaomi-beryllium: Fix compatible strings
+diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
+index 8c5fdd320cfcf..b412543f0afb8 100644
+--- a/Documentation/devicetree/bindings/arm/qcom.yaml
++++ b/Documentation/devicetree/bindings/arm/qcom.yaml
+@@ -822,6 +822,14 @@ properties:
+           - const: google,zombie-sku514
+           - const: qcom,sc7280
+ 
++      - description: Xiaomi Poco F1
++        items:
++          - enum:
++              - xiaomi,beryllium-ebbg
++              - xiaomi,beryllium-tianma
++          - const: xiaomi,beryllium
++          - const: qcom,sdm845
++
+       - items:
+           - enum:
+               - lenovo,flex-5g
+@@ -971,8 +979,6 @@ properties:
+               - sony,akatsuki-row
+               - sony,apollo-row
+               - thundercomm,db845c
+-              - xiaomi,beryllium
+-              - xiaomi,beryllium-ebbg
+               - xiaomi,polaris
+           - const: qcom,sdm845
+ 
 
- Documentation/devicetree/bindings/arm/qcom.yaml             | 10 ++++++++--
- arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-ebbg.dts   |  2 +-
- arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-tianma.dts |  2 +-
- 3 files changed, 10 insertions(+), 4 deletions(-)
----
-base-commit: cc13002a9f984d37906e9476f3e532a8cdd126f5
-change-id: 20260403-beryllium-compat-string-cc149b90a29d
-
-Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+2.53.0
 
