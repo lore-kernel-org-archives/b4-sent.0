@@ -1,15 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v3 0/5] NFC support for five Qualcomm SDM845 phones
-Date: Fri, 03 Apr 2026 15:58:45 +0200
-Message-Id: <20260403-oneplus-nfc-v3-0-fbdce57d63c1@ixit.cz>
+Date: Fri, 03 Apr 2026 15:58:46 +0200
+Subject: [PATCH v3 1/5] dt-bindings: nfc: nxp,nci: Document PN557
+ compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJXHz2kC/1XMQQ6CMBCF4auQrq1pB0rEFfcwLqDMyCSmkBYbl
- HB3Cxtl+V7yf4sI6BmDuGaL8Bg58ODSyE+ZsH3jHii5S1uAAqO1vsjB4fh8BenISqsUkrYdNVU
- rUjF6JJ537XZPu+cwDf6941Fv7+aUKgc4OFFLJQ0BkCkKUgg1zzyd7UdsSoT/sjiWkMockZQBW
- 7W2/JXrun4BT7IzEN4AAAA=
-X-Change-ID: 20251118-oneplus-nfc-c00ef1cdfa9b
+Message-Id: <20260403-oneplus-nfc-v3-1-fbdce57d63c1@ixit.cz>
+References: <20260403-oneplus-nfc-v3-0-fbdce57d63c1@ixit.cz>
+In-Reply-To: <20260403-oneplus-nfc-v3-0-fbdce57d63c1@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -26,75 +24,48 @@ Cc: Petr Hodina <petr.hodina@protonmail.com>,
  phone-devel@vger.kernel.org, Krzysztof Kozlowski <krzk@kernel.org>, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1943; i=david@ixit.cz;
- h=from:subject:message-id; bh=dXC2Ls22VsTuntAg533+4rpSlzX0Ms0eP5VcFmrXtfk=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpz8eakJsX6gGd+ScB5FPM+p/JQi2wBwOsMnUt/
- Y+mx1bVEZCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac/HmgAKCRBgAj/E00kg
- cvw2EACQpcKTZBTFP8x4aSpZdX/7zbcUPaMqqAgc1LEA1RcNxdW/5+v8cSHgTE69USU73OadJiR
- YBvX6FjhraJ+XpV0J9QJVAntl4yaUJUX/N7pHYo0DTGsvAa1xkTVNO7XIoDWm8OYBxB1c5cfiDh
- HP1bDeVfCet7LBkAGF41xLFYX478bo3PXUTWgPEp+EUpsHQ/mmpGbt+H3Br8w2M7vqcELo1r3FC
- kpyzezb7jQfsQSRXxbAZEE3JHqSnO/CVxBohOw1q5E1ncaubymGFMHwXOvU3MEa/MY4XUqd+62F
- lrV0Le1/DB+3Xp16aIhu5AC1igPEeLPLKV/2G225RAaJleEwOQOkbDa2pNPoa01hBH3M7L+Z+A1
- VFMi31buq9YJJXqid2bmT+s7uwEq3waDXSpV8qksH0Ysw6G7yIucbg/LaGCCsR0N5cilcKb0Axn
- mniYlTwKKSfmFTmWSkuMc5lvQiRR056g98KOHYxRBDc1BziFmR87P0QW4hg6wWSJaSSx5cCybdJ
- tJfDy+5EbkS1aK3kQZXGVfDFbgbHBpjMB0nbnGT/WExn7/jemnAIjD7TrPDBFPd9wuU3mUx4OeN
- nAzVrPuFC9trE09Ac5jp3St6IqwhhjeXzAUTVNt28/cP170+VPKRo7CD5PPpPHBebxUGR8Gu1Ah
- XgRMuOG02rDEUGA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=801; i=david@ixit.cz;
+ h=from:subject:message-id; bh=XAr0YPSe88hbZiI1E3SbtdYUk0kg/OIc+A90H6b4IMY=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpz8ebxDmaJwjzyRUTYj1d8k6YnudHVAbaS8Z0z
+ WZS8g3mTjuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac/HmwAKCRBgAj/E00kg
+ ctP8D/4tH7JBKTPHlQxYPJDFWKPPaCb8sX95ulLhQltIx4eKz3/rdyOWz0DVGxLHyOCCxXY+yh1
+ vzOjvHlM1+uUlUT9fKALTgVHIdK/ekiYEWh9mvzTGp2+XYyC7nYZgu2872UpcAy+K2+4bErVOx1
+ vnlPUbSMj6EdN2g65b9zQhWzRdqwZ7b3coCjU0mtV2h4ZcFCPSfxIvGnS9B7C0NwG7D6/RW9Ut2
+ AQZoHQL0gu7+MWSV1yKGqtPsH2kqmcLEefupzPJLXArS88YX7uDL4Nev1ce3ypTeOXoEibVSTII
+ QzQo+FMLr++ILDXmsHhdjN+Fr+Zke5f/5S+Y600rSwJRr6AV08BKSYl9KY43HU3/56xBpd8/Mav
+ Z6wkL0vn1o/orT6cZ/Vqzc0Q6TWsbsLjZ/pdG7kMrgqbF2K8VBpc5OTACiWDYCu//khwO7wY1Db
+ o38e2ilcAT8DfwBsuOLPvpfIZ7gxTrYLimWc0kA/ovvliXQ6qr2sEdI9CrPEJeLQh28vcbovgaI
+ 3XtUwbjF2FG9yL304R39Xj7ALJMBvegnY2xHZxOhKgHpA+wLIL0YpnFn/IpLpmIj2jm5Im0D44p
+ BXy6Z2nBYxDge68OwsDc5MHwLJRJID7+wvxCiuPEsWOyb6KiTUVoOKZ10cTXO3aim+fnaANu56i
+ yuA0YIIcTPCechA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-- OnePlus 6 / 6T
- - Pixel 3 / 3 XL
- - SHIFT 6MQ
+The PN557 uses the same hardware as the PN553 but ships with
+firmware compliant with NCI 2.0.
 
-Verified with NFC card using neard:
-
-systemctl enable --now neard
-nfctool --device nfc0 -1
-nfctool -d nfc0 -p
-gdbus introspect --system --dest org.neard --object-path /org/neard/nfc0/tag0/record0
-
-or use gNFC:
-  https://gitlab.gnome.org/dh/gnfc/
-
-successfully detecting and reading a tag.
+Document PN557 as a compatible device.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v3:
-- Added Pixel 3 / 3 XL support.
-- Lower drive-strength from <6>, to <2> which downstream kernel uses.
-- Took full ownership of OnePlus 6 NFC patch as original author prefer to keep annonymous. (Krzysztof)
-- Enable sleep states (pinctrl).
-- Link to v2: https://lore.kernel.org/r/20260324-oneplus-nfc-v2-0-3eef052c9bc6@ixit.cz
+ Documentation/devicetree/bindings/net/nfc/nxp,nci.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-Changes in v2:
-- Use interrupts-extended. (Konrad)
-- Dropped QUESTION prefix, as it's verified this settings work.
-- Added compatible for OnePlus 6 based on schematics.
-- Corrected axolotl NFC compatible based on information from Alexander (SHIFT).
-- Link to v1: https://lore.kernel.org/r/20260322-oneplus-nfc-v1-0-5f22f544f0e2@ixit.cz
+diff --git a/Documentation/devicetree/bindings/net/nfc/nxp,nci.yaml b/Documentation/devicetree/bindings/net/nfc/nxp,nci.yaml
+index 364b361511808..4f3847f64983b 100644
+--- a/Documentation/devicetree/bindings/net/nfc/nxp,nci.yaml
++++ b/Documentation/devicetree/bindings/net/nfc/nxp,nci.yaml
+@@ -18,6 +18,7 @@ properties:
+               - nxp,nq310
+               - nxp,pn547
+               - nxp,pn553
++              - nxp,pn557
+           - const: nxp,nxp-nci-i2c
+ 
+   enable-gpios:
 
----
-David Heidelberg (5):
-      dt-bindings: nfc: nxp,nci: Document PN557 compatible
-      arm64: dts: qcom: sdm845-oneplus: Enable NFC
-      arm64: dts: qcom: sdm845-shift-axolotl: Correct touchscreen sleep state
-      arm64: dts: qcom: sdm845-shift-axolotl: Enable NFC
-      arm64: dts: qcom: sdm845-google-common: Enable NFC
-
- .../devicetree/bindings/net/nfc/nxp,nci.yaml       |  1 +
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 31 ++++++++++++
- .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 57 ++++++++++++++++++++++
- arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts  | 54 +++++++++++++++++++-
- 4 files changed, 142 insertions(+), 1 deletion(-)
----
-base-commit: cc13002a9f984d37906e9476f3e532a8cdd126f5
-change-id: 20251118-oneplus-nfc-c00ef1cdfa9b
-
-Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+2.53.0
 
