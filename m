@@ -1,11 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Fri, 03 Apr 2026 15:58:46 +0200
-Subject: [PATCH v3 1/5] dt-bindings: nfc: nxp,nci: Document PN557
- compatible
+Date: Fri, 03 Apr 2026 15:58:47 +0200
+Subject: [PATCH v3 2/5] arm64: dts: qcom: sdm845-oneplus: Enable NFC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260403-oneplus-nfc-v3-1-fbdce57d63c1@ixit.cz>
+Message-Id: <20260403-oneplus-nfc-v3-2-fbdce57d63c1@ixit.cz>
 References: <20260403-oneplus-nfc-v3-0-fbdce57d63c1@ixit.cz>
 In-Reply-To: <20260403-oneplus-nfc-v3-0-fbdce57d63c1@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -24,47 +23,117 @@ Cc: Petr Hodina <petr.hodina@protonmail.com>,
  phone-devel@vger.kernel.org, Krzysztof Kozlowski <krzk@kernel.org>, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=801; i=david@ixit.cz;
- h=from:subject:message-id; bh=XAr0YPSe88hbZiI1E3SbtdYUk0kg/OIc+A90H6b4IMY=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpz8ebxDmaJwjzyRUTYj1d8k6YnudHVAbaS8Z0z
- WZS8g3mTjuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac/HmwAKCRBgAj/E00kg
- ctP8D/4tH7JBKTPHlQxYPJDFWKPPaCb8sX95ulLhQltIx4eKz3/rdyOWz0DVGxLHyOCCxXY+yh1
- vzOjvHlM1+uUlUT9fKALTgVHIdK/ekiYEWh9mvzTGp2+XYyC7nYZgu2872UpcAy+K2+4bErVOx1
- vnlPUbSMj6EdN2g65b9zQhWzRdqwZ7b3coCjU0mtV2h4ZcFCPSfxIvGnS9B7C0NwG7D6/RW9Ut2
- AQZoHQL0gu7+MWSV1yKGqtPsH2kqmcLEefupzPJLXArS88YX7uDL4Nev1ce3ypTeOXoEibVSTII
- QzQo+FMLr++ILDXmsHhdjN+Fr+Zke5f/5S+Y600rSwJRr6AV08BKSYl9KY43HU3/56xBpd8/Mav
- Z6wkL0vn1o/orT6cZ/Vqzc0Q6TWsbsLjZ/pdG7kMrgqbF2K8VBpc5OTACiWDYCu//khwO7wY1Db
- o38e2ilcAT8DfwBsuOLPvpfIZ7gxTrYLimWc0kA/ovvliXQ6qr2sEdI9CrPEJeLQh28vcbovgaI
- 3XtUwbjF2FG9yL304R39Xj7ALJMBvegnY2xHZxOhKgHpA+wLIL0YpnFn/IpLpmIj2jm5Im0D44p
- BXy6Z2nBYxDge68OwsDc5MHwLJRJID7+wvxCiuPEsWOyb6KiTUVoOKZ10cTXO3aim+fnaANu56i
- yuA0YIIcTPCechA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2115; i=david@ixit.cz;
+ h=from:subject:message-id; bh=XjHS4NuCx7fAMVlZG2ITyhuQL05ri2G40fQqssoq1r0=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpz8ebutw/eNqUEQTHgvd0Dgc/Yo9d5GISqlvQC
+ Loj1cKUs1CJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac/HmwAKCRBgAj/E00kg
+ cpOhEACTMnYjl+0txKZmP0qO2F1r13eawzZ+jEy/BJACx7B28uNuVatro3naOMEtw8vf33HbTf2
+ dCw1QiViihzBelNqdrJQaIYah5dnhWVIETf6eTJFC9geA0HEmUFkcVMwZfl0XF0YYJXTaDBBiv3
+ kjbJSuPcUcbq9d4qJcCmbmkUv9NJinNs612MCwv8uOKHzMVEKTtwFTMmafh7n8Kljj269SBFiXA
+ 3zDxNHUgJ6KHpp4ARCugs64Cp+GJgOCznLmotaiMSJVG38Q/gq3g48URr5JCf8lOHT22Y1zkncT
+ hCDfVhmK6jLkvvmylCuVDaxpo2lgDecfc/1T2vtkRpX0vj2x4E4fc0jtjSdazQGP2Qo2BmtQbH6
+ uq4IVYe+CIt3Jv7WJk7Lx+DMBOUhG0xWpkXOXhkTDTQX7Goccqw+qj5p8GuKamuX2/mk9k4FKFO
+ qutLfDko7CHqrOiciN1qg1qZk5xo3sJxP4JqmllAgbzyqXhUBJjzXUgijSLdTgBS3sbqyGIKbG8
+ Q6i71mqxymUnrCvauu1PQNCVCaEPzU1OGmWcMHlhXRBBDFqlLsh2SsMYykug5rcFfLcol0e3fBv
+ udNROSLEJRjVtNvqjZmjNgwGcI7uEMftRRTQw7hymIXyUDhj8HBMo6ZBh6+Ieu1G2+vGT/EasR7
+ P0ges/E46aez6iA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PN557 uses the same hardware as the PN553 but ships with
-firmware compliant with NCI 2.0.
+Enable NFC controller NXP PN553, which is part of the package NXP NQ330
+(NFC + eSE).
 
-Document PN557 as a compatible device.
+Based on work of biemster <l.j.beemster@gmail.com>.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- Documentation/devicetree/bindings/net/nfc/nxp,nci.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ .../arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi | 57 ++++++++++++++++++++++
+ 1 file changed, 57 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/net/nfc/nxp,nci.yaml b/Documentation/devicetree/bindings/net/nfc/nxp,nci.yaml
-index 364b361511808..4f3847f64983b 100644
---- a/Documentation/devicetree/bindings/net/nfc/nxp,nci.yaml
-+++ b/Documentation/devicetree/bindings/net/nfc/nxp,nci.yaml
-@@ -18,6 +18,7 @@ properties:
-               - nxp,nq310
-               - nxp,pn547
-               - nxp,pn553
-+              - nxp,pn557
-           - const: nxp,nxp-nci-i2c
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
+index 6b7378cf4d493..f5a5f1fbc1fb6 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi
+@@ -464,6 +464,26 @@ &gpu_zap_shader {
+ 	firmware-name = "qcom/sdm845/OnePlus/enchilada/a630_zap.mbn";
+ };
  
-   enable-gpios:
++&i2c3 {
++	clock-frequency = <400000>;
++
++	status = "okay";
++
++	nfc@28 {
++		compatible = "nxp,pn553", "nxp,nxp-nci-i2c";
++		reg = <0x28>;
++
++		interrupts-extended = <&tlmm 63 IRQ_TYPE_EDGE_RISING>;
++
++		enable-gpios = <&tlmm 12 GPIO_ACTIVE_HIGH>;
++		firmware-gpios = <&tlmm 62 GPIO_ACTIVE_HIGH>;
++
++		pinctrl-0 = <&nfc_default>;
++		pinctrl-1 = <&nfc_sleep>;
++		pinctrl-names = "default", "sleep";
++	};
++};
++
+ &i2c10 {
+ 	status = "okay";
+ 	clock-frequency = <100000>;
+@@ -674,6 +694,11 @@ &qupv3_id_0 {
+ 	status = "okay";
+ };
+ 
++&qup_i2c3_default {
++	drive-strength = <2>;
++	bias-disable;
++};
++
+ &qup_i2c10_default {
+ 	drive-strength = <2>;
+ 	bias-disable;
+@@ -1007,6 +1032,38 @@ speaker_default: speaker-default-state {
+ 		bias-pull-up;
+ 		output-high;
+ 	};
++
++	nfc_default: nfc-default-state {
++		enable-pins {
++			pins = "gpio12", "gpio62";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-pull-up;
++		};
++
++		int-pins {
++			pins = "gpio63";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-pull-up;
++		};
++	};
++
++	nfc_sleep: nfc-sleep-state {
++		enable-pins {
++			pins = "gpio12", "gpio62";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-disable;
++		};
++
++		int-pins {
++			pins = "gpio63";
++			function = "gpio";
++			drive-strength = <2>;
++			bias-pull-up;
++		};
++	};
+ };
+ 
+ &venus {
 
 -- 
 2.53.0
