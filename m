@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Fri, 03 Apr 2026 19:08:37 +0200
-Subject: [PATCH WIP v3 08/11] Input: stmfts - add optional reset GPIO
- support
+Date: Fri, 03 Apr 2026 19:08:38 +0200
+Subject: [PATCH WIP v3 09/11] dt-bindings: input: touchscreen: st,stmfts:
+ Introduce STM FTS5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260403-stmfts5-v3-8-5da768cfd201@ixit.cz>
+Message-Id: <20260403-stmfts5-v3-9-5da768cfd201@ixit.cz>
 References: <20260403-stmfts5-v3-0-5da768cfd201@ixit.cz>
 In-Reply-To: <20260403-stmfts5-v3-0-5da768cfd201@ixit.cz>
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
@@ -22,100 +22,68 @@ Cc: Petr Hodina <petr.hodina@protonmail.com>, linux-input@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2354; i=david@ixit.cz;
- h=from:subject:message-id; bh=0H4tPbOaJAGUUm0gV1hJtlkmy5VinkfPf9XKlb62d/Y=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpz/QQW9t8Ua9CuM8zGK6neEShzwuW/HxqOtzx/
- WDfVNUFZyOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac/0EAAKCRBgAj/E00kg
- clqPEACYGaJ7F2ne61ny7ICon2k6Kd28oYfIMioQqvdFM0jeIU8/qc23mpqUK9BteakDL9dz427
- Q2oU/6fVZrkY2eaX2TUpJShYuLpnd0i26mCvAY20J8nzLE9STuESYGkrvT52EMx3vAcK+NUH2Ls
- sjp6mNpXTCyUbAnhz7TEoSnln43BiEQpJ4Ho+lOyXvjGp7XytirLAksWti5kd2mF+MprhQMu027
- PnSNSHd+wjAge12lnYzsK3kkkOIkKUpNEVAeeScuc0ffZSo8DbktluAj491MU0UIBa72SkOa/cp
- DTPCSaQkvj3qR7LFuGO6Gac0kotIbjxGo+pGdCNl2Y5mAJYDw8V7Dgj7RGa/E7Lag28D8V7DlQ7
- oYN9wnAv7SNOw6Lg6wxPYqT3nLYwmt7dXo4N2ggTvmg/934c9D2LwQlERr+kzxMRsPvIHvw/53K
- ix9u6+IFsk/9K8tdz0jcnQRlo1miOPf4xLEGsVaCptad9GFvRYlLmv+YEg+ZUtTES/RB39SG/x8
- RnqW2iiyiltk6e4Jgu9lvYXww+18a2aZ6x+CQ57ZiI3xo6Tjl+r6iilqKG0UlXTI/S5Cj4HJ3Sk
- ru2ihmxrYwZrYAOcSQgqibKo9FayEoOXmTOXz5RZlrUexoMxy2FZhMtGbHekAnmaTxASFnnousA
- I8c0YzBRJ7GJkUw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1224; i=david@ixit.cz;
+ h=from:subject:message-id; bh=ghceD3FEXE+XcrRARnEBBTznzq4UXU11eu6mo0R07f4=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpz/QQhvsLT2ghVPtEcPOErYK1bc52pLTCthXwp
+ ayNpsJ4oM2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac/0EAAKCRBgAj/E00kg
+ cmWjD/41YbgUbGKSLEOxiv4PEGfIIQ4wktekQFoSv6iBkVkiPTHmNUqUjbL3wgSp1QZ7Z4ipdSY
+ mrPrBwC4BKYZVtdpkhHIhYBLxTmTl70bVUKx9WUhKM+Fx9nDbtkRS0JErFzje16MgXsoWS7CYE3
+ twq13rtFuLVjiTnTvq1wXh48nUjMq0ye3TMTGNhdJPXAYT5XlAWq3GaX1GRaEmqB1kgwRiquDhM
+ BentjBlfrkUrLLi3gGy+dz4kZO5YlOQ3rE5kza9WQh8CMdiFv6bfjxvwHN1ox6760pWlY1yOPN7
+ fHUIxflF5Szx6O+Lo2SrZx2oAgvn8CDIZSFNJRJhTTHuAvxpj48Vu7StI9g08XgGbQxRVhogeZK
+ z5DO1v3hKn0EPl+Z0AHM8hTj/oDIvRKbNCFPp2wQvbUhIDmxAAGN48sj2ij6fdv/mPB9G7mWD3M
+ lVODfOzLol/wxgiJ+s4KzHLIAOI4cQErRtA59LYQUBChNKuEIzmFguF0y7WAm/o+PfxWoMvQKVc
+ 416VuonE3Ex/+kqeBRoRW5ryV+5jpa14SwcbQLAsoIAG936TePuvV+A+yUCnZXHwOQP/N98wCtL
+ 9PRFpdi/vhSg2tVMftRkFJ7At5cisCuwspm1zc+XwjpEA3XLjrOOSsKQox9Qk0mhqGgcEdEMpp9
+ vhKhmH8u+AqfWtw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Petr Hodina <petr.hodina@protonmail.com>
+Introduce more recent STM FTS5 touchscreen support.
 
-Add support for an optional "reset-gpios" property. If present, the
-driver drives the reset line high at probe time and releases it during
-power-on, after the regulators have been enabled.
-
-Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
-Co-developed-by: David Heidelberg <david@ixit.cz>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/input/touchscreen/stmfts.c | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+ .../devicetree/bindings/input/touchscreen/st,stmfts.yaml  | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/input/touchscreen/stmfts.c b/drivers/input/touchscreen/stmfts.c
-index 5f7de5e687da2..04110006f54a0 100644
---- a/drivers/input/touchscreen/stmfts.c
-+++ b/drivers/input/touchscreen/stmfts.c
-@@ -77,6 +77,7 @@ static const struct regulator_bulk_data stmfts_supplies[] = {
- struct stmfts_data {
- 	struct i2c_client *client;
- 	struct input_dev *input;
-+	struct gpio_desc *reset_gpio;
- 	struct led_classdev led_cdev;
- 	struct mutex mutex;
+diff --git a/Documentation/devicetree/bindings/input/touchscreen/st,stmfts.yaml b/Documentation/devicetree/bindings/input/touchscreen/st,stmfts.yaml
+index 64c4f24ea3dd0..441fc92b9a4ed 100644
+--- a/Documentation/devicetree/bindings/input/touchscreen/st,stmfts.yaml
++++ b/Documentation/devicetree/bindings/input/touchscreen/st,stmfts.yaml
+@@ -16,10 +16,19 @@ description:
  
-@@ -539,6 +540,15 @@ static int stmfts_read_system_info(struct stmfts_data *sdata)
- 	return 0;
- }
+ allOf:
+   - $ref: touchscreen.yaml#
++  - if:
++      properties:
++        compatible:
++          const: st,stmfts5
++    then:
++      required:
++        - mode-switch-gpios
  
-+static void stmfts_reset(struct stmfts_data *sdata)
-+{
-+	gpiod_set_value_cansleep(sdata->reset_gpio, 1);
-+	msleep(20);
-+
-+	gpiod_set_value_cansleep(sdata->reset_gpio, 0);
-+	msleep(50);
-+}
-+
- static int stmfts_power_on(struct stmfts_data *sdata)
- {
- 	int err;
-@@ -548,6 +558,9 @@ static int stmfts_power_on(struct stmfts_data *sdata)
- 	if (err)
- 		return err;
+ properties:
+   compatible:
+-    const: st,stmfts
++    enum:
++      - st,stmfts
++      - st,stmfts5
  
-+	if (sdata->reset_gpio)
-+		stmfts_reset(sdata);
-+
- 	/*
- 	 * The datasheet does not specify the power on time, but considering
- 	 * that the reset time is < 10ms, I sleep 20ms to be sure
-@@ -606,6 +619,10 @@ static void stmfts_power_off(void *data)
- 	struct stmfts_data *sdata = data;
+   reg:
+     maxItems: 1
+@@ -40,6 +49,10 @@ properties:
+   vdd-supply:
+     description: Power supply
  
- 	disable_irq(sdata->client->irq);
++  mode-switch-gpios:
++    description: Switch between touchscreen SLPI and AP mode.
++    maxItems: 1
 +
-+	if (sdata->reset_gpio)
-+		gpiod_set_value_cansleep(sdata->reset_gpio, 1);
-+
- 	regulator_bulk_disable(ARRAY_SIZE(stmfts_supplies),
- 			       sdata->supplies);
- }
-@@ -662,6 +679,12 @@ static int stmfts_probe(struct i2c_client *client)
- 	if (err)
- 		return err;
- 
-+	sdata->reset_gpio = devm_gpiod_get_optional(dev, "reset",
-+						    GPIOD_OUT_HIGH);
-+	if (IS_ERR(sdata->reset_gpio))
-+		return dev_err_probe(dev, PTR_ERR(sdata->reset_gpio),
-+				     "Failed to get GPIO 'reset'\n");
-+
- 	sdata->input = devm_input_allocate_device(dev);
- 	if (!sdata->input)
- 		return -ENOMEM;
+   reset-gpios:
+     description: Reset GPIO (active-low)
+     maxItems: 1
 
 -- 
 2.53.0
