@@ -1,84 +1,64 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Fri, 03 Apr 2026 21:36:08 +0530
-Subject: [PATCH v2 5/5] net: qrtr: ns: Fix use-after-free in driver
- remove()
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH 0/2] Correct Xiaomi Poco F1 compatible strings and
+ evaluation.
+Date: Fri, 03 Apr 2026 18:55:32 +0200
+Message-Id: <20260403-beryllium-compat-string-v1-0-0a6b9cb55a20@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260403-qrtr-fix-v2-5-f88a14859c63@oss.qualcomm.com>
-References: <20260403-qrtr-fix-v2-0-f88a14859c63@oss.qualcomm.com>
-In-Reply-To: <20260403-qrtr-fix-v2-0-f88a14859c63@oss.qualcomm.com>
-To: Manivannan Sadhasivam <mani@kernel.org>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-X-Mailer: b4 0.15.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1665;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=EKnJBPyE8K/Uxe3dMOqp6oAHc724HrgGM2UtRYAxcbE=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBpz+V58HcsafAzCiDUq93S+ISP2Pv+dqaFAy7vX
- VMZ11JAjSWJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCac/leQAKCRBVnxHm/pHO
- 9fZRB/0WRME4UaAPVOxxBfAFS6wZkqdpCyfphwoctFAR7hmeHtgnPcSfuhFz5NvDeBGfpMX4GwZ
- R2omrFgpOYXH7q+Zzu9nkqY9hFzL1kQSDhqHVVA1mHvvFTaMkH1rxk6F8hDGANaQwsXbpJxm4ks
- BvvFNB+pmoh+dhddW8cCNLB6Q7feta3EKULMgJQoqxlZOjSqwW39sVybhMQvJjxq5QQT6/H1mYQ
- wz2sLHbGI2KJ2y5gxq2P2RnsEFz8NDuWGjFG5xZFwCtB+4DKjvkT0OGTE8a1OUZJ5JNpXSruUyH
- Ui06PAMD8c+pZGhTPQDU1Obul5IXePJYBlp0rahYZYCa1RM9
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+X-B4-Tracking: v=1; b=H4sIAATxz2kC/x3MQQ5AMBBA0avIrE1SJZK6ili0NZiEkilCxN01l
+ m/x/wORhClCkz0gdHLkNSQUeQZ+smEk5D4ZtNK1qlSJjuSeZz4W9Ouy2R3jLhxG9L6ojDPKatN
+ Dqjehga//3Hbv+wGNbIWgaQAAAA==
+X-Change-ID: 20260403-beryllium-compat-string-cc149b90a29d
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Joel Selvaraj <joelselvaraj.oss@gmail.com>, 
+ Jens Reidel <adrian@travitia.xyz>
+Cc: Petr Hodina <petr.hodina@protonmail.com>, 
+ Krzysztof Kozlowski <krzk@kernel.org>, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=690; i=david@ixit.cz;
+ h=from:subject:message-id; bh=azPIcXHFapkiczhjKkBzlN9iLe+KM6jGYv3hkG7Ipqo=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBpz/EFee5WwJT1VYWmq7xJrHYCNXiTOXM+QC7SN
+ XkMMXcqPniJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCac/xBQAKCRBgAj/E00kg
+ cs3zD/4qFUbU3XPuDX751Hdq2PMwz5080NUcDhWGea/Rll5v2JlJVC8TVQKOQIGkFe/ywILLgA3
+ Iwt7QlLUuSYCJfhp3cSs9A9hldfs+HvqLiCJdlpBdonU0tU3EHKrvP8SyZezHg/UGaRQeutstuF
+ jjJ3W2FoG79rC561oDf63FiuuHZWhPaW39WMKAoC4dOnAXB47SbvJ8yDIFDSilAmgg+TrPbGA6y
+ BDZ92Gj8lGj6V8TdYI0gMobdqiyX0CrCWDCe4frgLe4ooMUA4zx12PZkOmYSlIaKTPKxWN2ROYq
+ wvvRYaUiY/I/Zv3fZkmruLvo583Rx27RCswrGQFEudbrFOgRX6EkU8NzrO4obtAvIyJP1CRdZPk
+ EqWCMLJNmOv10xgT4FVCrsnIUt402G7nhjef/Aqfs1c+SxnrgOiYTmt1KV6QL0thxFC6UMUkUzU
+ iVQGkrXBgqBMgXFUqYd8uDxREk8e4gd4DbQofXDuV3GqIF97hSURSKFz0mBaYTLsAp0ZnET/PrY
+ N4W26A4PZW1rHz45qyXb0x8h+qAvbFSPNCb9vOS7MU4BVkQ8mW15vEMLl7Vrq1OBrAE7pUaJf0N
+ A8iIg8jz/D4rdZLph2c8u+2fkEEXGJmlKg2YnfScEbEWp8PV3PO7laoVOJe+yClje1k1AYprSvv
+ xDZPiHJUohhtbtQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In the remove callback, if a packet arrives after destroy_workqueue() is
-called, but before sock_release(), the qrtr_ns_data_ready() callback will
-try to queue the work, causing use-after-free issue.
-
-Fix this issue by saving the default 'sk_data_ready' callback during
-qrtr_ns_init() and use it to replace the qrtr_ns_data_ready() callback at
-the start of remove(). This ensures that even if a packet arrives after
-destroy_workqueue(), the work struct will not be dereferenced.
-
-Cc: stable@vger.kernel.org
-Fixes: 0c2204a4ad71 ("net: qrtr: Migrate nameservice to kernel from userspace")
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- net/qrtr/ns.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+David Heidelberg (1):
+      dt-bindings: arm: qcom: Add Xiaomi Poco F1 Tianma variant bindings
 
-diff --git a/net/qrtr/ns.c b/net/qrtr/ns.c
-index dfb5dad9473c..c62d79e03d64 100644
---- a/net/qrtr/ns.c
-+++ b/net/qrtr/ns.c
-@@ -25,6 +25,7 @@ static struct {
- 	u32 lookup_count;
- 	struct workqueue_struct *workqueue;
- 	struct work_struct work;
-+	void (*saved_data_ready)(struct sock *sk);
- 	int local_node;
- } qrtr_ns;
- 
-@@ -754,6 +755,7 @@ int qrtr_ns_init(void)
- 		goto err_sock;
- 	}
- 
-+	qrtr_ns.saved_data_ready = qrtr_ns.sock->sk->sk_data_ready;
- 	qrtr_ns.sock->sk->sk_data_ready = qrtr_ns_data_ready;
- 
- 	sq.sq_port = QRTR_PORT_CTRL;
-@@ -803,6 +805,10 @@ EXPORT_SYMBOL_GPL(qrtr_ns_init);
- 
- void qrtr_ns_remove(void)
- {
-+	write_lock_bh(&qrtr_ns.sock->sk->sk_callback_lock);
-+	qrtr_ns.sock->sk->sk_data_ready = qrtr_ns.saved_data_ready;
-+	write_unlock_bh(&qrtr_ns.sock->sk->sk_callback_lock);
-+
- 	cancel_work_sync(&qrtr_ns.work);
- 	destroy_workqueue(qrtr_ns.workqueue);
- 
+Jens Reidel (1):
+      arm64: dts: qcom: sdm845-xiaomi-beryllium: Fix compatible strings
 
+ Documentation/devicetree/bindings/arm/qcom.yaml             | 10 ++++++++--
+ arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-ebbg.dts   |  2 +-
+ arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-tianma.dts |  2 +-
+ 3 files changed, 10 insertions(+), 4 deletions(-)
+---
+base-commit: cc13002a9f984d37906e9476f3e532a8cdd126f5
+change-id: 20260403-beryllium-compat-string-cc149b90a29d
+
+Best regards,
 -- 
-2.51.0
+David Heidelberg <david@ixit.cz>
 
