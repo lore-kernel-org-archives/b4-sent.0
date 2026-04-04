@@ -1,11 +1,10 @@
 From: Joe Sandom <jsandom@axon.com>
-Date: Sat, 04 Apr 2026 10:50:56 +0100
-Subject: [PATCH 3/5] arm64: dts: qcom: sm8550-qrd: update PCIe port label
- reference
+Date: Sat, 04 Apr 2026 10:50:57 +0100
+Subject: [PATCH 4/5] dt-bindings: arm: qcom: document QCS8550 RB5Gen2 board
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260404-rb5gen2-dts-v1-3-895f8fc494fc@axon.com>
+Message-Id: <20260404-rb5gen2-dts-v1-4-895f8fc494fc@axon.com>
 References: <20260404-rb5gen2-dts-v1-0-895f8fc494fc@axon.com>
 In-Reply-To: <20260404-rb5gen2-dts-v1-0-895f8fc494fc@axon.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -15,37 +14,43 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Joe Sandom <jsandom@axon.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775296270; l=716;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775296270; l=980;
  i=jsandom@axon.com; s=20260319; h=from:subject:message-id;
- bh=biasXB222hzEaLoXAD4N9CkWdtezEit9QdECECb0yUM=;
- b=NB1JN8WQ/Bx3FQNESndN4DFVm4b95WoTwn8wy/OjSS+N9jn1Vomh5e6wGWscmfQpmk02Xp6qN
- /Hf3CMNDwddAoTns434Ee4AHlyMOTdXJV3pTibRfj55BnMFlJUDU2OE
+ bh=15NO7S2ceOrSNULajYv+uag1jcs9MYHL1sRr8noMBX4=;
+ b=K6NjDmJkvmY+AnawyNi92gkaQT/IaELHxeHmtbHKFODk+XI3XzxGlzo0yqpPp5dt9EWlQuH9Y
+ PQbKVtOji9IBPaNI41GUoDImzepk9t5r+gBeQ5NU8AkuVYafvzYt1X4
 X-Developer-Key: i=jsandom@axon.com; a=ed25519;
  pk=Q/yflwj2WhkgBVTskrS9Vl5oScD0Bp3vTzDi+OxskTo=
 X-Endpoint-Received: by B4 Relay for jsandom@axon.com/20260319 with auth_id=687
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update the pcieport0 reference to pcie0_port0 to match the label
-rename in sm8550.dtsi.
+Document the Qualcomm RB5gen2 from Thundercomm based on the
+QCS8550 chipset from Qualcomm.
+
+[1] https://www.thundercomm.com/product/qualcomm-rb5-gen-2-development-kit/
 
 Signed-off-by: Joe Sandom <jsandom@axon.com>
 ---
- arch/arm64/boot/dts/qcom/sm8550-qrd.dts | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ Documentation/devicetree/bindings/arm/qcom.yaml | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8550-qrd.dts b/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
-index 2fb2e0be5e4c6b597f20f332cdf063daa2664205..cf63109ff7bf7b6fc827f108e22e82b8b04273c1 100644
---- a/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
-@@ -912,7 +912,7 @@ &pcie0 {
- 	status = "okay";
- };
+diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
+index 1335a7bee397c46e8dc62806091531e32b7327d4..f9f8001e3e6b66e3a926255bdb15363f4c7c2b66 100644
+--- a/Documentation/devicetree/bindings/arm/qcom.yaml
++++ b/Documentation/devicetree/bindings/arm/qcom.yaml
+@@ -1093,6 +1093,12 @@ properties:
+           - const: qcom,qcs8550
+           - const: qcom,sm8550
  
--&pcieport0 {
-+&pcie0_port0 {
- 	wifi@0 {
- 		compatible = "pci17cb,1107";
- 		reg = <0x10000 0x0 0x0 0x0 0x0>;
++      - items:
++          - enum:
++              - qcom,qcs8550-rb5gen2
++          - const: qcom,qcs8550
++          - const: qcom,sm8550
++
+       - items:
+           - enum:
+               - ayaneo,pocket-s2
 
 -- 
 2.34.1
