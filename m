@@ -1,135 +1,66 @@
-From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Sat, 04 Apr 2026 14:07:00 +0530
-Subject: [PATCH v10 4/4] lib/test_vmalloc: add vrealloc test case
+From: Joe Sandom <jsandom@axon.com>
+Subject: [PATCH 0/5] arm64: dts: qcom: add QCS8550 RB5Gen2 support
+Date: Sat, 04 Apr 2026 10:50:53 +0100
+Message-Id: <20260404-rb5gen2-dts-v1-0-895f8fc494fc@axon.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260404-vmalloc-shrink-v10-4-335759165dfa@zohomail.in>
-References: <20260404-vmalloc-shrink-v10-0-335759165dfa@zohomail.in>
-In-Reply-To: <20260404-vmalloc-shrink-v10-0-335759165dfa@zohomail.in>
-To: Andrew Morton <akpm@linux-foundation.org>, 
- Uladzislau Rezki <urezki@gmail.com>
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
- Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
- Shivam Kalra <shivamkalra98@zohomail.in>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775291829; l=2905;
- i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
- bh=yP1QXayDidKnNU2S8I7BqJprRzQI2mQyl0fytHsaqPM=;
- b=dHZhZPRkkUDs6TFIAA3rjD7JuxXY1sOelhR86C12exe20D0SPMHRVlTp7p3OVi9D2nlfRjv5u
- +1z1AHGx4dyB6YcKii5U+wJH1nzYNJ7+E0/AP6fUqyPTJD+69ACNh/g
-X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
- pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
-X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
+X-B4-Tracking: v=1; b=H4sIAP3e0GkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDEwMT3aIk0/TUPCPdlJJiXUMLg+SUVIMkc0OzZCWgjoKi1LTMCrBp0bG
+ 1tQBwNxKLXQAAAA==
+X-Change-ID: 20260404-rb5gen2-dts-180cde0b716c
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Joe Sandom <jsandom@axon.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775296270; l=1631;
+ i=jsandom@axon.com; s=20260319; h=from:subject:message-id;
+ bh=pf7w5tEPxeOOou+A5EAQoMnY3SiSO2iuLXfRP9MTBGw=;
+ b=PQNR4qc+QRQmaWCTDKAfsavia3smfw0tdbcQvNnxWMbOcp6cpL75Jrot+IXFhLwx4GSnnE5Ck
+ Ud+/OLc1uv8BwQly/+AOlIvjKgEToO+yCc3VqDqMBiYYqWQM+cNPUF+
+X-Developer-Key: i=jsandom@axon.com; a=ed25519;
+ pk=Q/yflwj2WhkgBVTskrS9Vl5oScD0Bp3vTzDi+OxskTo=
+X-Endpoint-Received: by B4 Relay for jsandom@axon.com/20260319 with auth_id=687
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce a new test case "vrealloc_test" that exercises the vrealloc()
-shrink and in-place grow paths:
+This series adds device tree support for the Thundercomm RB5Gen2
+development kit, based on the Qualcomm QCS8550 chipset.
 
-  - Grow beyond allocated pages (triggers full reallocation).
-  - Shrink crossing a page boundary (frees tail pages).
-  - Shrink within the same page (no page freeing).
-  - Grow within the already allocated page count (in-place).
+Patches 1-3 prepare the SM8550 device tree by adding MHI register regions
+and port labels to the PCIe controller nodes, then update the existing
+HDK and QRD board files to match the renamed labels.
 
-Data integrity is validated after each realloc step by checking that
-the first byte of the original allocation is preserved.
+Patches 4-5 add the dt-bindings documentation and the board device tree
+for the RB5Gen2. This initial submission covers the main board; the vision
+mezzanine will be supported in a follow-up series.
 
-The test is gated behind run_test_mask bit 12 (id 4096).
+Product page:
+https://www.thundercomm.com/product/qualcomm-rb5-gen-2-development-kit
 
-Reviewed-by: Uladzislau Rezki (Sony) <urezki@gmail.com>
-Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
+Signed-off-by: Joe Sandom <jsandom@axon.com>
 ---
- lib/test_vmalloc.c | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 62 insertions(+)
+Joe Sandom (5):
+      arm64: dts: qcom: sm8550: add PCIe MHI register regions and port labels
+      arm64: dts: qcom: sm8550-hdk: update PCIe port label reference
+      arm64: dts: qcom: sm8550-qrd: update PCIe port label reference
+      dt-bindings: arm: qcom: document QCS8550 RB5Gen2 board
+      arm64: dts: qcom: qcs8550: add QCS8550 RB5Gen2 board support
 
-diff --git a/lib/test_vmalloc.c b/lib/test_vmalloc.c
-index 876c72c18a0c..b23f85e8f8ca 100644
---- a/lib/test_vmalloc.c
-+++ b/lib/test_vmalloc.c
-@@ -55,6 +55,7 @@ __param(int, run_test_mask, 7,
- 		"\t\tid: 512,  name: kvfree_rcu_2_arg_vmalloc_test\n"
- 		"\t\tid: 1024, name: vm_map_ram_test\n"
- 		"\t\tid: 2048, name: no_block_alloc_test\n"
-+		"\t\tid: 4096, name: vrealloc_test\n"
- 		/* Add a new test case description here. */
- );
- 
-@@ -421,6 +422,66 @@ vm_map_ram_test(void)
- 	return nr_allocated != map_nr_pages;
- }
- 
-+static int vrealloc_test(void)
-+{
-+	void *ptr, *tmp;
-+	int i;
-+
-+	for (i = 0; i < test_loop_count; i++) {
-+		int err = -1;
-+
-+		ptr = vrealloc(NULL, PAGE_SIZE, GFP_KERNEL);
-+		if (!ptr)
-+			return -1;
-+
-+		*((__u8 *)ptr) = 'a';
-+
-+		/* Grow: beyond allocated pages, triggers full realloc. */
-+		tmp = vrealloc(ptr, 4 * PAGE_SIZE, GFP_KERNEL);
-+		if (!tmp)
-+			goto error;
-+		ptr = tmp;
-+
-+		if (*((__u8 *)ptr) != 'a')
-+			goto error;
-+
-+		/* Shrink: crosses page boundary, frees tail pages. */
-+		tmp = vrealloc(ptr, PAGE_SIZE, GFP_KERNEL);
-+		if (!tmp)
-+			goto error;
-+		ptr = tmp;
-+
-+		if (*((__u8 *)ptr) != 'a')
-+			goto error;
-+
-+		/* Shrink: within same page, no page freeing. */
-+		tmp = vrealloc(ptr, PAGE_SIZE / 2, GFP_KERNEL);
-+		if (!tmp)
-+			goto error;
-+		ptr = tmp;
-+
-+		if (*((__u8 *)ptr) != 'a')
-+			goto error;
-+
-+		/* Grow: within allocated page, in-place, no realloc. */
-+		tmp = vrealloc(ptr, PAGE_SIZE, GFP_KERNEL);
-+		if (!tmp)
-+			goto error;
-+		ptr = tmp;
-+
-+		if (*((__u8 *)ptr) != 'a')
-+			goto error;
-+
-+		err = 0;
-+error:
-+		vfree(ptr);
-+		if (err)
-+			return err;
-+	}
-+
-+	return 0;
-+}
-+
- struct test_case_desc {
- 	const char *test_name;
- 	int (*test_func)(void);
-@@ -440,6 +501,7 @@ static struct test_case_desc test_case_array[] = {
- 	{ "kvfree_rcu_2_arg_vmalloc_test", kvfree_rcu_2_arg_vmalloc_test, },
- 	{ "vm_map_ram_test", vm_map_ram_test, },
- 	{ "no_block_alloc_test", no_block_alloc_test, true },
-+	{ "vrealloc_test", vrealloc_test, },
- 	/* Add a new test case here. */
- };
- 
+ Documentation/devicetree/bindings/arm/qcom.yaml |    6 +
+ arch/arm64/boot/dts/qcom/Makefile               |    1 +
+ arch/arm64/boot/dts/qcom/qcs8550-rb5gen2.dts    | 1610 +++++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/sm8550-hdk.dts         |    2 +-
+ arch/arm64/boot/dts/qcom/sm8550-qrd.dts         |    2 +-
+ arch/arm64/boot/dts/qcom/sm8550.dtsi            |   14 +-
+ 6 files changed, 1627 insertions(+), 8 deletions(-)
+---
+base-commit: af241225893ac4933bb8f0615f2dfda8ea2326ce
+change-id: 20260404-rb5gen2-dts-180cde0b716c
 
+Best regards,
 -- 
-2.43.0
+Joe Sandom <jsandom@axon.com>
 
