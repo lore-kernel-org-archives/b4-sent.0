@@ -1,11 +1,11 @@
 From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Sat, 04 Apr 2026 14:06:57 +0530
-Subject: [PATCH v10 1/4] mm/vmalloc: extract vm_area_free_pages() helper
- from vfree()
+Date: Sat, 04 Apr 2026 14:06:58 +0530
+Subject: [PATCH v10 2/4] mm/vmalloc: use physical page count for vrealloc()
+ grow-in-place check
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260404-vmalloc-shrink-v10-1-335759165dfa@zohomail.in>
+Message-Id: <20260404-vmalloc-shrink-v10-2-335759165dfa@zohomail.in>
 References: <20260404-vmalloc-shrink-v10-0-335759165dfa@zohomail.in>
 In-Reply-To: <20260404-vmalloc-shrink-v10-0-335759165dfa@zohomail.in>
 To: Andrew Morton <akpm@linux-foundation.org>, 
@@ -14,104 +14,58 @@ Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
  Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
  Shivam Kalra <shivamkalra98@zohomail.in>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775291829; l=2828;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775291829; l=1719;
  i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
- bh=pPxio16sTZmRdQnFJiC4z+Co3PLVcVoIySf6x2/MXmo=;
- b=h1QBFXl+j95owXc6zAb1hldqce0tKV3luXhiWMIzcDI39Tj65UEqoVIriqEqgi/XZx8nVxDbW
- qsiV7AnmE+jBQaHWluQjOueqWKM8ZPxO37k9opPAdhZ+l6MXyhGNf19
+ bh=xFhoJw4VuJmdvCHLk875WygxZhGJrQEEk01VRX1BGPc=;
+ b=M/8QbhgSmBFZzu1NbR1WSvEBdyJKUP+HMOfMdENN8sNw+NcvDEXBOA29TwzBIdI/JzBpUJkLP
+ W8ObSAyZTgDCf25iW+/f6ivvhvfSUcsgBLmLF4px+HO7wEBUtYiNQ4l
 X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
  pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
 X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Extract the page-freeing loop and NR_VMALLOC stat accounting from
-vfree() into a reusable vm_area_free_pages() helper. The helper operates
-on a range [start_idx, end_idx) of pages from a vm_struct, making it
-suitable for both full free (vfree) and partial free (upcoming vrealloc
-shrink).
+Update the grow-in-place check in vrealloc() to compare the requested size
+against the actual physical page count (vm->nr_pages) rather than the
+virtual area size (alloced_size, derived from get_vm_area_size()).
 
-Freed page pointers in vm->pages[] are set to NULL to prevent stale
-references when the vm_struct outlives the free (as in vrealloc shrink).
+Currently both values are equivalent, but the upcoming vrealloc() shrink
+functionality will free pages without reducing the virtual reservation
+size. After such a shrink, the old alloced_size-based comparison would
+incorrectly allow a grow-in-place operation to succeed and attempt to
+access freed pages. Switch to vm->nr_pages now so the check remains
+correct once shrink support is added.
 
-Reviewed-by: Alice Ryhl <aliceryhl@google.com>
-Reviewed-by: Uladzislau Rezki (Sony) <urezki@gmail.com>
 Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
- mm/vmalloc.c | 47 +++++++++++++++++++++++++++++++++--------------
- 1 file changed, 33 insertions(+), 14 deletions(-)
+ mm/vmalloc.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
 diff --git a/mm/vmalloc.c b/mm/vmalloc.c
-index b31b208f6ecb..8dd7df79c5c5 100644
+index 8dd7df79c5c5..d0ebe16b584a 100644
 --- a/mm/vmalloc.c
 +++ b/mm/vmalloc.c
-@@ -3416,6 +3416,38 @@ void vfree_atomic(const void *addr)
- 		schedule_work(&p->wq);
- }
- 
-+/*
-+ * vm_area_free_pages - free a range of pages from a vmalloc allocation
-+ * @vm: the vm_struct containing the pages
-+ * @start_idx: first page index to free (inclusive)
-+ * @end_idx: last page index to free (exclusive)
-+ *
-+ * Free pages [start_idx, end_idx) updating NR_VMALLOC stat accounting.
-+ * Freed vm->pages[] entries are set to NULL.
-+ * Caller is responsible for unmapping (vunmap_range) and KASAN
-+ * poisoning before calling this.
-+ */
-+static void vm_area_free_pages(struct vm_struct *vm, unsigned int start_idx,
-+			       unsigned int end_idx)
-+{
-+	unsigned int i;
-+
-+	for (i = start_idx; i < end_idx; i++) {
-+		struct page *page = vm->pages[i];
-+
-+		BUG_ON(!page);
+@@ -4343,6 +4343,12 @@ void *vrealloc_node_align_noprof(const void *p, size_t size, unsigned long align
+ 		if (unlikely(flags & __GFP_THISNODE) && nid != NUMA_NO_NODE &&
+ 			     nid != page_to_nid(vmalloc_to_page(p)))
+ 			goto need_realloc;
++	} else {
 +		/*
-+		 * High-order allocs for huge vmallocs are split, so
-+		 * can be freed as an array of order-0 allocations
++		 * If p is NULL, vrealloc behaves exactly like vmalloc.
++		 * Skip the shrink and in-place grow paths.
 +		 */
-+		if (!(vm->flags & VM_MAP_PUT_PAGES))
-+			mod_lruvec_page_state(page, NR_VMALLOC, -1);
-+		__free_page(page);
-+		vm->pages[i] = NULL;
-+		cond_resched();
-+	}
-+}
-+
- /**
-  * vfree - Release memory allocated by vmalloc()
-  * @addr:  Memory base address
-@@ -3436,7 +3468,6 @@ void vfree_atomic(const void *addr)
- void vfree(const void *addr)
- {
- 	struct vm_struct *vm;
--	int i;
++		goto need_realloc;
+ 	}
  
- 	if (unlikely(in_interrupt())) {
- 		vfree_atomic(addr);
-@@ -3459,19 +3490,7 @@ void vfree(const void *addr)
- 
- 	if (unlikely(vm->flags & VM_FLUSH_RESET_PERMS))
- 		vm_reset_perms(vm);
--	for (i = 0; i < vm->nr_pages; i++) {
--		struct page *page = vm->pages[i];
--
--		BUG_ON(!page);
--		/*
--		 * High-order allocs for huge vmallocs are split, so
--		 * can be freed as an array of order-0 allocations
--		 */
--		if (!(vm->flags & VM_MAP_PUT_PAGES))
--			mod_lruvec_page_state(page, NR_VMALLOC, -1);
--		__free_page(page);
--		cond_resched();
--	}
-+	vm_area_free_pages(vm, 0, vm->nr_pages);
- 	kvfree(vm->pages);
- 	kfree(vm);
- }
+ 	/*
+@@ -4361,7 +4367,7 @@ void *vrealloc_node_align_noprof(const void *p, size_t size, unsigned long align
+ 	/*
+ 	 * We already have the bytes available in the allocation; use them.
+ 	 */
+-	if (size <= alloced_size) {
++	if (size <= (size_t)vm->nr_pages << PAGE_SHIFT) {
+ 		/*
+ 		 * No need to zero memory here, as unused memory will have
+ 		 * already been zeroed at initial allocation time or during
 
 -- 
 2.43.0
