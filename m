@@ -1,14 +1,13 @@
 From: Joe Sandom <jsandom@axon.com>
-Subject: [PATCH 0/5] arm64: dts: qcom: add QCS8550 RB5Gen2 support
-Date: Sat, 04 Apr 2026 10:50:53 +0100
-Message-Id: <20260404-rb5gen2-dts-v1-0-895f8fc494fc@axon.com>
+Date: Sat, 04 Apr 2026 10:50:54 +0100
+Subject: [PATCH 1/5] arm64: dts: qcom: sm8550: add PCIe MHI register
+ regions and port labels
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAP3e0GkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDEwMT3aIk0/TUPCPdlJJiXUMLg+SUVIMkc0OzZCWgjoKi1LTMCrBp0bG
- 1tQBwNxKLXQAAAA==
-X-Change-ID: 20260404-rb5gen2-dts-180cde0b716c
+Message-Id: <20260404-rb5gen2-dts-v1-1-895f8fc494fc@axon.com>
+References: <20260404-rb5gen2-dts-v1-0-895f8fc494fc@axon.com>
+In-Reply-To: <20260404-rb5gen2-dts-v1-0-895f8fc494fc@axon.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -16,51 +15,75 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Joe Sandom <jsandom@axon.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775296270; l=1631;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775296270; l=2186;
  i=jsandom@axon.com; s=20260319; h=from:subject:message-id;
- bh=pf7w5tEPxeOOou+A5EAQoMnY3SiSO2iuLXfRP9MTBGw=;
- b=PQNR4qc+QRQmaWCTDKAfsavia3smfw0tdbcQvNnxWMbOcp6cpL75Jrot+IXFhLwx4GSnnE5Ck
- Ud+/OLc1uv8BwQly/+AOlIvjKgEToO+yCc3VqDqMBiYYqWQM+cNPUF+
+ bh=8wWHbLnW7l5BtOwjusH2UH9x4Bz7+MdlfIopte9jZIc=;
+ b=/HR3+gbkZpZKc2hF6yjfI/Vn8tsYHQumElfWr1CIXbwGseLSsKQNu1500aTd35ZlhuMnb3zzL
+ 6iniPJ0tl19BrvgjnoLC5a10bl9ArqefVJ/j+70NDdPlMM0Tr7wxhmq
 X-Developer-Key: i=jsandom@axon.com; a=ed25519;
  pk=Q/yflwj2WhkgBVTskrS9Vl5oScD0Bp3vTzDi+OxskTo=
 X-Endpoint-Received: by B4 Relay for jsandom@axon.com/20260319 with auth_id=687
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds device tree support for the Thundercomm RB5Gen2
-development kit, based on the Qualcomm QCS8550 chipset.
+Add the MHI register regions to the pcie0 and pcie1 controller nodes
+so that the MHI bus layer can access controller registers directly.
 
-Patches 1-3 prepare the SM8550 device tree by adding MHI register regions
-and port labels to the PCIe controller nodes, then update the existing
-HDK and QRD board files to match the renamed labels.
-
-Patches 4-5 add the dt-bindings documentation and the board device tree
-for the RB5Gen2. This initial submission covers the main board; the vision
-mezzanine will be supported in a follow-up series.
-
-Product page:
-https://www.thundercomm.com/product/qualcomm-rb5-gen-2-development-kit
+Also add labels to the root port nodes (pcie0_port0, pcie1_port0) to
+allow board DTS files to reference them for adding endpoint devices
+to each pcie root port.
 
 Signed-off-by: Joe Sandom <jsandom@axon.com>
 ---
-Joe Sandom (5):
-      arm64: dts: qcom: sm8550: add PCIe MHI register regions and port labels
-      arm64: dts: qcom: sm8550-hdk: update PCIe port label reference
-      arm64: dts: qcom: sm8550-qrd: update PCIe port label reference
-      dt-bindings: arm: qcom: document QCS8550 RB5Gen2 board
-      arm64: dts: qcom: qcs8550: add QCS8550 RB5Gen2 board support
+ arch/arm64/boot/dts/qcom/sm8550.dtsi | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
 
- Documentation/devicetree/bindings/arm/qcom.yaml |    6 +
- arch/arm64/boot/dts/qcom/Makefile               |    1 +
- arch/arm64/boot/dts/qcom/qcs8550-rb5gen2.dts    | 1610 +++++++++++++++++++++++
- arch/arm64/boot/dts/qcom/sm8550-hdk.dts         |    2 +-
- arch/arm64/boot/dts/qcom/sm8550-qrd.dts         |    2 +-
- arch/arm64/boot/dts/qcom/sm8550.dtsi            |   14 +-
- 6 files changed, 1627 insertions(+), 8 deletions(-)
----
-base-commit: af241225893ac4933bb8f0615f2dfda8ea2326ce
-change-id: 20260404-rb5gen2-dts-180cde0b716c
+diff --git a/arch/arm64/boot/dts/qcom/sm8550.dtsi b/arch/arm64/boot/dts/qcom/sm8550.dtsi
+index 912525e9bca6f5e1cbb8887ee0bf9e39650dc4ff..d4caf4d00832d7f1e8f65bf2bc873cddadc42168 100644
+--- a/arch/arm64/boot/dts/qcom/sm8550.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8550.dtsi
+@@ -1964,8 +1964,9 @@ pcie0: pcie@1c00000 {
+ 			      <0 0x60000000 0 0xf1d>,
+ 			      <0 0x60000f20 0 0xa8>,
+ 			      <0 0x60001000 0 0x1000>,
+-			      <0 0x60100000 0 0x100000>;
+-			reg-names = "parf", "dbi", "elbi", "atu", "config";
++			      <0 0x60100000 0 0x100000>,
++				  <0 0x01C03000 0 0x1000>;
++			reg-names = "parf", "dbi", "elbi", "atu", "config", "mhi";
+ 			#address-cells = <3>;
+ 			#size-cells = <2>;
+ 			ranges = <0x01000000 0x0 0x00000000 0x0 0x60200000 0x0 0x100000>,
+@@ -2092,7 +2093,7 @@ opp-16000000-3 {
+ 				};
+ 			};
+ 
+-			pcieport0: pcie@0 {
++			pcie0_port0: pcie@0 {
+ 				device_type = "pci";
+ 				reg = <0x0 0x0 0x0 0x0 0x0>;
+ 				bus-range = <0x01 0xff>;
+@@ -2138,8 +2139,9 @@ pcie1: pcie@1c08000 {
+ 			      <0x0 0x40000000 0x0 0xf1d>,
+ 			      <0x0 0x40000f20 0x0 0xa8>,
+ 			      <0x0 0x40001000 0x0 0x1000>,
+-			      <0x0 0x40100000 0x0 0x100000>;
+-			reg-names = "parf", "dbi", "elbi", "atu", "config";
++			      <0x0 0x40100000 0x0 0x100000>,
++				  <0x0 0x01C0B000 0x0 0x1000>;
++			reg-names = "parf", "dbi", "elbi", "atu", "config", "mhi";
+ 			#address-cells = <3>;
+ 			#size-cells = <2>;
+ 			ranges = <0x01000000 0x0 0x00000000 0x0 0x40200000 0x0 0x100000>,
+@@ -2288,7 +2290,7 @@ opp-32000000-4 {
+ 				};
+ 			};
+ 
+-			pcie@0 {
++			pcie1_port0: pcie@0 {
+ 				device_type = "pci";
+ 				reg = <0x0 0x0 0x0 0x0 0x0>;
+ 				bus-range = <0x01 0xff>;
 
-Best regards,
 -- 
-Joe Sandom <jsandom@axon.com>
+2.34.1
 
