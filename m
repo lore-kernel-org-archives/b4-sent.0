@@ -1,94 +1,94 @@
-From: Igor Korotin <igor.korotin@linux.dev>
-Date: Sat, 04 Apr 2026 18:01:27 +0100
-Subject: [PATCH v2] MAINTAINERS: add Rust I2C tree and update Igor
- Korotin's email
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v2 0/2] arm64: dts: qcom: beryllium compatible ordering and
+ bindings update
+Date: Sun, 05 Apr 2026 12:54:54 +0200
+Message-Id: <20260405-beryllium-compat-string-v2-0-91149be07835@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260404-update-rust-i2c-maintainers-v2-1-42f929828eb1@linux.dev>
-X-B4-Tracking: v=1; b=H4sIAOZD0WkC/33MywrCMBCF4Vcps3YkSUOrrnwPcRGmk3bAXpikR
- Sh9d4MrVy7O4ufAt0NiFU5wq3ZQ3iTJPJVwpwpoCFPPKF1pcMY1pnYNrksXMqOuKaM4wjHIlMt
- YE9rQRns1RGQJirAoR3l/9cezdNR5xDwoh1+z/mtuFi2a1nti7+PFN/e+3K8zzSMcxwefJJiWw
- AAAAA==
-X-Change-ID: 20260326-update-rust-i2c-maintainers-1a7f190ccc1c
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Wolfram Sang <wsa+renesas@sang-engineering.com>
-Cc: linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
- Igor Korotin <igor.korotin@linux.dev>, 
- Igor Korotin <igor.korotin@linux.dev>
+X-B4-Tracking: v=1; b=H4sIAH4/0mkC/4WNTQ6CMBBGr0Jm7ZihAkldeQ/Doi0VJuEvbW1A0
+ rtbuYDL95LvfQd469h6uBcHOBvZ8zJnEJcCzKDm3iJ3mUGQaKiiG2rr9nHk94RmmVYV0AfHc4/
+ GlJXUkpSQHeT16uyLt7P8bDMP7MPi9vMolj/7vxlLJCTVaGl0XStBD944XM0H2pTSFyb4nE28A
+ AAA
+X-Change-ID: 20260403-beryllium-compat-string-cc149b90a29d
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Joel Selvaraj <joelselvaraj.oss@gmail.com>, 
+ Jens Reidel <adrian@travitia.xyz>, Arnaud Ferraris <aferraris@debian.org>, 
+ Marco Mattiolo <marco.mattiolo@hotmail.it>, 
+ Petr Hodina <petr.hodina@protonmail.com>
+Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775322087; l=2018;
- i=igor.korotin@linux.dev; s=20260125; h=from:subject:message-id;
- bh=xCIEH7BDQOWe++khXPx4h519mVjvTQzY/l30EjdlPtM=;
- b=thSs31gc9SQlyHIiiskN6qH7mSIRnHu5esRoQWmylAj3Tr0UkV0mFPCnLayLrKwHq4fCArboF
- QzJws/PqyaiDBYFEBHUI4ToXM4e/yonkb5GRCXq/ZkzHZZXDjMRJzaI
-X-Developer-Key: i=igor.korotin@linux.dev; a=ed25519;
- pk=SjZ//wxnynZgJJgTqANyU10A7hdQQdDXLvXIr+zWroE=
-X-Endpoint-Received: by B4 Relay for igor.korotin@linux.dev/20260125 with auth_id=720
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1958; i=david@ixit.cz;
+ h=from:subject:message-id; bh=U0Y1dfa7x6ljrvRF5AHYokovzfPc9zay7BPLdG5hFFM=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBp0j9/68wXsw1fCSjwwwXOmquRH96atpAGySsNC
+ sck70xjcqCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCadI/fwAKCRBgAj/E00kg
+ ciBjD/99lAVSgOfOneAV7cN506+okqDnFUa2DbWO2Br86UfEgnyz0Q1lZ1Jvve1b8RXCkgIQJPe
+ SqDUwr1FjZn7zXE+deleK8bmva8l3RuEeF8mu4I8XFamtEfNTxJSm0tav2mHyLSLSmw71gLgjiN
+ 9Oln98EplrFqBkPjABsZl7YXNwQ1majNgY6GenWeb8aHj+Ryh914GE2lQ7YsdCwFbypusd1/7gB
+ xPSs/ZCP1ZqN0VowTPNnnVM8z7xoJuRfjKI1UzJlI2jYIzjjkfNDhoVHVzRRy4RuzLozhDAmmhC
+ Pp3c9+P9oyFWoMmXbcFbcm5bBqZdPtM8XFtZnWX/m4ua+A9zf2siFcoFtsbz73HM2M3qQ/Q4gIj
+ tAbeNxPbkVbQvpLeg0bVJ/2uHEwt671FSyNm6y7XTjheK15uU4KUK2XHEGvY7hPDKQQxil2Zl8p
+ Ny/bp2Mo2h1Imq87XBrylBrF3U7p3M5eO5Tvc7Jgl3UsUNEZLyGRcIxQAevkgRkdQ3RhxKB4Kab
+ pCKOc0JdMd7X1VgzuPKAiDNJP3sVMAVXsNnioZuxgRe1MTN+5Arm3v7hrlJYsW/4P6ql43oCiTF
+ SoKWHSYeQkTLP9BjJXR4mT0KhyfLZ+JrD9RX13RmEBswW9ACmkXTRNAfZD3C4xplwuEStKsQA/F
+ 9t5rInMB/nXn6WA==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a git tree entry for Rust I2C development and update the
-e-mail address.
+This series aligns the Xiaomi Poco F1 (beryllium) device tree
+compatible strings with DT matching rules by ensuring proper
+fallback to the generic device compatible.
 
-The tree will be used to collect patches and provide a basis
-for integration and testing, including linux-next.
+Patch 1 updates the dt-bindings documentation to describe
+the Tianma panel variant and clarify the expected compatible
+string ordering and fallback requirements, aligning the
+binding with actual DTS usage.
 
-Signed-off-by: Igor Korotin <igor.korotin.linux@gmail.com>
+Patch 2 updates the DTS files to append the generic
+"xiaomi,beryllium" compatible after the panel-specific ones.
+This enables correct userspace fallback matching (e.g. for
+hexagonrpcd), which currently fails when only the variant-
+specific compatible is present. This constitutes a DT ABI
+change, as additional compatible matches become possible.
+
+Together, these changes fix an incomplete compatible chain
+and ensure consistent behavior across panel variants.
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changelog
----------
-v2:
-- Add an entry in .mailmap linking the e-mail igor.korotin@linux.dev 
-with the igor.korotin.linux@gmail.com
-- Improve commit message to provide more context
-- Update GitHub username from ipv6forever to ikrtn, thus update git
-link. 
----
- .mailmap    | 1 +
- MAINTAINERS | 3 ++-
- 2 files changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/.mailmap b/.mailmap
-index 5ac7074c455f..3a11f89b3d5b 100644
---- a/.mailmap
-+++ b/.mailmap
-@@ -327,6 +327,7 @@ Henrik Rydberg <rydberg@bitmath.org>
- Herbert Xu <herbert@gondor.apana.org.au>
- Huacai Chen <chenhuacai@kernel.org> <chenhc@lemote.com>
- Huacai Chen <chenhuacai@kernel.org> <chenhuacai@loongson.cn>
-+Igor Korotin <igor.korotin@linux.dev> <igor.korotin.linux@gmail.com>
- Ike Panhc <ikepanhc@gmail.com> <ike.pan@canonical.com>
- J. Bruce Fields <bfields@fieldses.org> <bfields@redhat.com>
- J. Bruce Fields <bfields@fieldses.org> <bfields@citi.umich.edu>
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 77fdfcb55f06..f5bf555bd32c 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -12021,11 +12021,12 @@ F:	include/uapi/linux/i2c-*.h
- F:	include/uapi/linux/i2c.h
- 
- I2C SUBSYSTEM [RUST]
--M:	Igor Korotin <igor.korotin.linux@gmail.com>
-+M:	Igor Korotin <igor.korotin@linux.dev>
- R:	Danilo Krummrich <dakr@kernel.org>
- R:	Daniel Almeida <daniel.almeida@collabora.com>
- L:	rust-for-linux@vger.kernel.org
- S:	Maintained
-+T:	git https://github.com/ikrtn/linux.git rust-i2c-next
- F:	rust/kernel/i2c.rs
- F:	samples/rust/rust_driver_i2c.rs
- F:	samples/rust/rust_i2c_client.rs
+Changes in v2:
+- To be extra safe, CCed Arnauld and Marco (Mobian), Jens (for pmOS) is
+  already in the loop, Petr (for NixOS Mobile is already in the loop).
+- Improved description and documented that main distributions
+  already use the patch (thus no API break will not happen to these
+  projects).
+- Link to v1: https://lore.kernel.org/r/20260403-beryllium-compat-string-v1-0-0a6b9cb55a20@ixit.cz
 
 ---
-base-commit: bf074eb6891be799174ff42e0051492681fdc045
-change-id: 20260326-update-rust-i2c-maintainers-1a7f190ccc1c
+David Heidelberg (1):
+      dt-bindings: arm: qcom: Document Xiaomi Poco F1 Tianma variant
+
+Jens Reidel (1):
+      arm64: dts: qcom: sdm845-xiaomi-beryllium: Append compatible strings
+
+ Documentation/devicetree/bindings/arm/qcom.yaml             | 10 ++++++++--
+ arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-ebbg.dts   |  2 +-
+ arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-tianma.dts |  2 +-
+ 3 files changed, 10 insertions(+), 4 deletions(-)
+---
+base-commit: cc13002a9f984d37906e9476f3e532a8cdd126f5
+change-id: 20260403-beryllium-compat-string-cc149b90a29d
 
 Best regards,
 -- 
-Igor Korotin <igor.korotin@linux.dev>
+David Heidelberg <david@ixit.cz>
 
