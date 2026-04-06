@@ -1,218 +1,68 @@
-From: Markus Probst <markus.probst@posteo.de>
-Date: Sun, 05 Apr 2026 19:36:29 +0200
-Subject: [PATCH v6 2/2] dt-bindings: embedded-controller: Add synology
- microp devices
+From: Alexandre Messier <alex@me.ssier.org>
+Subject: [PATCH v2 0/4] Describe more hardware of the HTC One (M8)
+Date: Mon, 06 Apr 2026 01:16:56 -0400
+Message-Id: <20260406-m8-dts-additions-v2-0-c4c4bd50af48@me.ssier.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260405-synology_microp_initial-v6-2-08fde474b6c9@posteo.de>
-References: <20260405-synology_microp_initial-v6-0-08fde474b6c9@posteo.de>
-In-Reply-To: <20260405-synology_microp_initial-v6-0-08fde474b6c9@posteo.de>
-To: Hans de Goede <hansg@kernel.org>, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, Lee Jones <lee@kernel.org>, 
- Pavel Machek <pavel@kernel.org>, Miguel Ojeda <ojeda@kernel.org>, 
- Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAMhB02kC/32NMQ6DMAxFr4I8NygJIEqn3qNiSIkBD0Blo6gVy
+ t3rcoBufv7fzwcIMqHArTiAMZHQtir4SwHDHNYJDUVl8NY3ztrWLFcTdzEhRtq1q9OgWefCGHw
+ NevZiHOl9Kh+98kyyb/w5PyT32/6RJWesaarYhmfVdDW29wVLEUIuN56gzzl/AfqKz4izAAAA
+X-Change-ID: 20251007-m8-dts-additions-ac20291afa24
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: platform-driver-x86@vger.kernel.org, linux-leds@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- rust-for-linux@vger.kernel.org, Markus Probst <markus.probst@posteo.de>
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Luca Weiss <luca@lucaweiss.eu>, linux-arm-kernel@lists.infradead.org, 
+ linux-arm-msm@vger.kernel.org, ~postmarketos/upstreaming@lists.sr.ht, 
+ phone-devel@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Alexandre Messier <alex@me.ssier.org>, 
+ Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
+ linux-leds@vger.kernel.org, Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5337;
- i=markus.probst@posteo.de; h=from:subject:message-id;
- bh=fHl3WzBXTZoWL7NeZc8DC8ZKuATEEU9zJoDi3XrrDYY=;
- b=owEBiQJ2/ZANAwAIATR2H/jnrUPSAcsmYgBp0p2i0v1m+Z5fO9TcT7v5suSdzKGVcrxAnP6Km
- 0uUGYbEEYKJAk8EAAEIADkWIQSCdBjE9KxY53IwxHM0dh/4561D0gUCadKdohsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwyLDIACgkQNHYf+OetQ9IACA//dZsOw8pTiglnPnPxOIG5fYzp5D0O9qM
- APG7JPRR4ylyYCv2N25NEXiC6GFCxD8JviRCjSAj3lpsgMZNjTlo0w59bpKv/K9za8no9g7YN8X
- p646e0Bi+OkaVsuutNt8/jryqAnNemFppLKnpjTbxrMHHZuUn1vP3SFYdfuDzfUXJPtYI4avPZH
- rciF1W0TqO7NiYQzsDsqLu++OsbnBTS10q9eAvg0kQTozJFjVzfqxWg8KXIC9FvwQTIb5WomA/S
- bcvCBjYhXnayr79mkOTAL1y9uOFiPc/K+zXeWSu7TfFVbk6FZGJ/r7SKFDvLFanzh9xFrBvNKy6
- tpaCpVRvcR99lztK8+xVBDUa+wWXD1tIABwZpuBiwI9ZxPpG5WaCHXsNBfNf90eA5V6F13vb+Rl
- yrCz7ivo6NCJp9VYhUTxXfn7ujCTI0JnprUadhyTq4MHPldq3dIKfbTLMmJ8ytKR2Y2oQvkGACx
- PaH36/9BpNHtrMCMXGuhdoYubcy+EnE31Y+EnAlGb3dfY1/R7xY4x1xllrywfUfIDe5T7fmhNwB
- mc1nAnk008akv4nCWVlJoDebso0+fxhKc1bVRbrB30hkoyGuKg9rddhFeTw82sedz9CNh4rT5Jn
- 71QMaWAIZS7cUyWvMpLwGr0bYp46Q2kctvMYRpmPVedSgQz2P9Lc=
-X-Developer-Key: i=markus.probst@posteo.de; a=openpgp;
- fpr=827418C4F4AC58E77230C47334761FF8E7AD43D2
-X-Endpoint-Received: by B4 Relay for markus.probst@posteo.de/default with auth_id=680
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775452618; l=1221;
+ i=alex@me.ssier.org; s=20240603; h=from:subject:message-id;
+ bh=Mgy1duuWt0vR+mviueizCgI5vS8MuDmlLDbmB0xbpMk=;
+ b=3Tt0iAZ6E7HTSlxgNIYL/SaG2UX02aKjPrgvG5Vsw6RtmW2qn6Lj9foVwxIs2s4rY7huMh71e
+ 27OECyK4cxNBxK3B+fvfm1ZVQ0JhBS9e58EuwJbHEOEtT+wOjrGpKJX
+X-Developer-Key: i=alex@me.ssier.org; a=ed25519;
+ pk=JjRqVfLd2XLHX2QTylKoROw346/1LOyZJX0q6cfnrKw=
+X-Endpoint-Received: by B4 Relay for alex@me.ssier.org/20240603 with auth_id=168
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the Synology Microp devicetree bindings. Those devices are
-microcontrollers found on Synology NAS devices. They are connected to a
-serial port on the host device.
+Add hardware description for these parts of the HTC One (M8):
 
-Those devices are used to control certain LEDs, fan speeds, a beeper, to
-handle buttons, fan failures and to properly shutdown and reboot the
-device.
+ - Notification LEDs
+ - Bluetooth
+ - NFC
+ - Touchscreen
 
-This includes the following compatible ids:
- - synology,ds923p-microp
- - synology,ds918p-microp
- - synology,ds214play-microp
- - synology,ds225p-microp
- - synology,ds425p-microp
- - synology,ds710p-microp
- - synology,ds1010p-microp
- - synology,ds723p-microp
- - synology,ds1522p-microp
- - synology,rs422p-microp
- - synology,ds725p-microp
- - synology,ds118-microp
- - synology,ds124-microp
- - synology,ds223-microp
- - synology,ds223j-microp
- - synology,ds1823xsp-microp
- - synology,rs822p-microp
- - synology,rs1221p-microp
- - synology,rs1221rpp-microp
- - synology,ds925p-microp
- - synology,ds1525p-microp
- - synology,ds1825p-microp
-
-Signed-off-by: Markus Probst <markus.probst@posteo.de>
+Signed-off-by: Alexandre Messier <alex@me.ssier.org>
 ---
- .../synology,ds923p-microp.yaml                    | 112 +++++++++++++++++++++
- MAINTAINERS                                        |   1 +
- 2 files changed, 113 insertions(+)
+Changes in v2:
+- Rebased on top of 7.0-rc6
+- In patch 1, change color of one LED from amber to orange.
+- In patch 1, use a multicolor LED to represent the logical grouping
+  of the LEDs.
+- In patches 2 and 4, note in the commit message the usage of same
+  I2C bus frequency as the downstream kernel.
+- In patch 3, gather Reviewed-by tag from Konrad Dybcio.
+- Link to v1: https://lore.kernel.org/r/20251007-m8-dts-additions-v1-0-53d7ab3594e7@me.ssier.org
 
-diff --git a/Documentation/devicetree/bindings/embedded-controller/synology,ds923p-microp.yaml b/Documentation/devicetree/bindings/embedded-controller/synology,ds923p-microp.yaml
-new file mode 100644
-index 000000000000..4518e9b74be1
---- /dev/null
-+++ b/Documentation/devicetree/bindings/embedded-controller/synology,ds923p-microp.yaml
-@@ -0,0 +1,112 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/embedded-controller/synology,ds923p-microp.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Synology NAS on-board Microcontroller
-+
-+maintainers:
-+  - Markus Probst <markus.probst@posteo.de>
-+
-+description: |
-+  Synology Microp is a microcontroller found in Synology NAS devices.
-+  It is connected to a serial port on the host device.
-+
-+  It is necessary to properly shutdown and reboot the NAS device and
-+  provides additional functionality such as led control, fan speed control,
-+  a beeper and buttons on the NAS device.
-+
-+properties:
-+  compatible:
-+    enum:
-+      - synology,ds923p-microp
-+      - synology,ds918p-microp
-+      - synology,ds214play-microp
-+      - synology,ds225p-microp
-+      - synology,ds425p-microp
-+      - synology,ds710p-microp
-+      - synology,ds1010p-microp
-+      - synology,ds723p-microp
-+      - synology,ds1522p-microp
-+      - synology,rs422p-microp
-+      - synology,ds725p-microp
-+      - synology,ds118-microp
-+      - synology,ds124-microp
-+      - synology,ds223-microp
-+      - synology,ds223j-microp
-+      - synology,ds1823xsp-microp
-+      - synology,rs822p-microp
-+      - synology,rs1221p-microp
-+      - synology,rs1221rpp-microp
-+      - synology,ds925p-microp
-+      - synology,ds1525p-microp
-+      - synology,ds1825p-microp
-+
-+  fan-failure-gpios:
-+    description: GPIOs needed to determine which fans stopped working on a fan failure event.
-+    minItems: 2
-+    maxItems: 3
-+
-+required:
-+  - compatible
-+
-+allOf:
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            enum:
-+              - synology,ds214play-microp
-+              - synology,ds225p-microp
-+              - synology,ds710p-microp
-+              - synology,ds723p-microp
-+              - synology,ds725p-microp
-+              - synology,ds118-microp
-+              - synology,ds124-microp
-+              - synology,ds223-microp
-+              - synology,ds223j-microp
-+              - synology,ds1823xsp-microp
-+              - synology,rs822p-microp
-+              - synology,rs1221p-microp
-+              - synology,rs1221rpp-microp
-+              - synology,ds1825p-microp
-+    then:
-+      properties:
-+        fan-failure-gpios: false
-+    else:
-+      required:
-+        - fan-failure-gpios
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/leds/common.h>
-+    #include <dt-bindings/gpio/gpio.h>
-+
-+    embedded-controller {
-+      compatible = "synology,ds923p-microp";
-+
-+      fan-failure-gpios = <&gpio 68 GPIO_ACTIVE_HIGH>, <&gpio 69 GPIO_ACTIVE_HIGH>;
-+    };
-+
-+  - |
-+    #include <dt-bindings/leds/common.h>
-+    #include <dt-bindings/gpio/gpio.h>
-+
-+    embedded-controller {
-+      compatible = "synology,ds723p-microp";
-+    };
-+
-+  - |
-+    #include <dt-bindings/leds/common.h>
-+    #include <dt-bindings/gpio/gpio.h>
-+
-+    embedded-controller {
-+      compatible = "synology,rs422p-microp";
-+
-+      fan-failure-gpios = <&gpio 68 GPIO_ACTIVE_HIGH>,
-+                          <&gpio 69 GPIO_ACTIVE_HIGH>,
-+                          <&gpio 40 GPIO_ACTIVE_HIGH>;
-+    };
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 78c99d831431..72075c9a2016 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -25557,6 +25557,7 @@ F:	include/uapi/linux/sync_file.h
- SYNOLOGY MICROP DRIVER
- M:	Markus Probst <markus.probst@posteo.de>
- S:	Maintained
-+F:	Documentation/devicetree/bindings/embedded-controller/synology,ds923p-microp.yaml
- F:	drivers/platform/synology_microp/
- 
- SYNOPSYS ARC ARCHITECTURE
+---
+Alexandre Messier (4):
+      ARM: dts: qcom: msm8974pro-htc-m8: add status LEDs
+      ARM: dts: qcom: msm8974pro-htc-m8: add NFC support
+      ARM: dts: qcom: msm8974pro-htc-m8: add Bluetooth pins
+      ARM: dts: qcom: msm8974pro-htc-m8: add touchscreen
 
+ arch/arm/boot/dts/qcom/qcom-msm8974pro-htc-m8.dts | 94 ++++++++++++++++++++++-
+ 1 file changed, 90 insertions(+), 4 deletions(-)
+---
+base-commit: 7aaa8047eafd0bd628065b15757d9b48c5f9c07d
+change-id: 20251007-m8-dts-additions-ac20291afa24
+
+Best regards,
 -- 
-2.52.0
+Alexandre Messier <alex@me.ssier.org>
 
