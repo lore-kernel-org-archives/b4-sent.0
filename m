@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 07 Apr 2026 22:55:42 +0800
-Subject: [PATCH RFC 1/2] mm, swap: fix potential race of charging into the
- wrong memcg
+Date: Tue, 07 Apr 2026 22:55:43 +0800
+Subject: [PATCH RFC 2/2] mm, swap: fix race of charging into the wrong
+ memcg for THP
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260407-swap-memcg-fix-v1-1-a473ce2e5bb8@tencent.com>
+Message-Id: <20260407-swap-memcg-fix-v1-2-a473ce2e5bb8@tencent.com>
 References: <20260407-swap-memcg-fix-v1-0-a473ce2e5bb8@tencent.com>
 In-Reply-To: <20260407-swap-memcg-fix-v1-0-a473ce2e5bb8@tencent.com>
 To: linux-mm@kvack.org
@@ -26,185 +26,274 @@ Cc: Michal Hocko <mhocko@kernel.org>,
  Chuanhua Han <hanchuanhua@oppo.com>, linux-kernel@vger.kernel.org, 
  cgroups@vger.kernel.org, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775573744; l=6871;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775573744; l=9867;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=8waYhVG/zmYZKbTD5LXs0veHtD/HsXryyRZUBo5GKyE=;
- b=irCjKZJcfH1APdFUGYgGW2UOdJ94anKzvDXlkVQVoeRoDu0PD7sDKOyFiX0KbC3RdeQzjyai6
- YgLFnp1vTe9BhgDMcWBN37tGPiBPT9o90xyn/zf486gb5TKWojQBGk5
+ bh=X/ek0pSZoNxTKZ9tG09c+ZJJhzY+pVd49UQb7w0YLRg=;
+ b=TEFcKwourn71DBqm8jy/z51c4t+8wplThkHDyKqJx0EX8IOsS+2FUkCNMMf6qaYfwO3XXR8pv
+ JTm46EI/SigDaZbSECo8iymi1myXiHV3UPIKJ8ozTjGjcdqTbh+ysdB
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Swapin folios are allocated and charged without adding to the swap
-cache. So it is possible that the corresponding swap slot will
-be freed, then get allocated again by another memory cgroup. By that
-time, continuing to use the previously charged folio will be risky.
+During THP swapin via the SYNCHRONOUS_IO path, the folio is allocated
+and charged to a memcg before being inserted into the swap cache.
+Between allocation and swap cache insertion, the page table can change
+under us (we don't hold the PTE lock), so the swap entry may be freed
+and reused by a different cgroup. This causes the folio to be charged to
+the wrong memcg. Shmem also has a similar issue.
 
-Usually, this won't cause an issue since the upper-level users of the
-swap entry, the page table, or mapping, will change if the swap entry is
-freed. But, it's possible the page table just happened to be reusing the
-same swap entry too, and if that was used by another cgroup, then that's
-a problem.
+Usually, the double check of the page table will catch this, but the
+same page table entry may reuse the swap entry, but by a different
+cgroup. The chance is extremely low, requiring a set of rare time
+windows to hit in a row, but it is totally possible.
 
-The chance is extremely low, previously this issue is limited to
-SYNCHRONOUS_IO devices. But recent commit 9acbe135588e ("mm/swap:
-fix swap cache memcg accounting") extended the same pattern,
-charging the folio without adding the folio to swap cache first.
-The chance is still extremely low, but in theory, it is more common.
+Fix this by charging the folio after it is inserted and stabilized in
+the swap cache. This would also improve the performance and simplify the
+code.
 
-So to fix that, keep the pattern introduced by commit 2732acda82c9 ("mm,
-swap: use swap cache as the swap in synchronize layer"), always uses
-swap cache as the synchronize layer first, and do the charge afterward.
-And fix the issue that commit 9acbe135588e ("mm/swap: fix swap cache
-memcg accounting") is trying to fix by separating the statistic part
-out.
+Also remove the now-stale comment about memcg charging of swapin
+Now we always charge the folio after adding it to the swap cache.
+Previously it has to do this before adding to swap cache for
+maintaining the per-memcg swapcache stat. We have decoupled the stat
+update from adding the folio during swapin in previous commit so
+this is fine now.
 
-This commit only fixes the issue for non SYNCHRONOUS_IO devices. Another
-separate fix is needed for these devices.
-
-Fixes: 9acbe135588e ("mm/swap: fix swap cache memcg accounting")
-Fixes: 2732acda82c9 ("mm, swap: use swap cache as the swap in synchronize layer")
+Fixes: 242d12c981745 ("mm: support large folios swap-in for sync io devices")
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/swap_state.c | 53 +++++++++++++++++++++++++++++++++++++++++------------
- 1 file changed, 41 insertions(+), 12 deletions(-)
+ mm/memcontrol.c |  3 +--
+ mm/memory.c     | 53 +++++++++++++++++++++++------------------------------
+ mm/shmem.c      | 15 ++++-----------
+ mm/swap.h       |  5 +++--
+ mm/swap_state.c | 17 +++++++++--------
+ 5 files changed, 40 insertions(+), 53 deletions(-)
 
-diff --git a/mm/swap_state.c b/mm/swap_state.c
-index 1415a5c54a43..c53d16b87a98 100644
---- a/mm/swap_state.c
-+++ b/mm/swap_state.c
-@@ -137,8 +137,8 @@ void *swap_cache_get_shadow(swp_entry_t entry)
+diff --git a/mm/memcontrol.c b/mm/memcontrol.c
+index c3d98ab41f1f..21caed15c9f5 100644
+--- a/mm/memcontrol.c
++++ b/mm/memcontrol.c
+@@ -5067,8 +5067,7 @@ int mem_cgroup_charge_hugetlb(struct folio *folio, gfp_t gfp)
+  * @gfp: reclaim mode
+  * @entry: swap entry for which the folio is allocated
+  *
+- * This function charges a folio allocated for swapin. Please call this before
+- * adding the folio to the swapcache.
++ * This function charges a folio allocated for swapin.
+  *
+  * Returns 0 on success. Otherwise, an error code is returned.
+  */
+diff --git a/mm/memory.c b/mm/memory.c
+index ea6568571131..6d5b0c10ac8e 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -4595,22 +4595,8 @@ static vm_fault_t handle_pte_marker(struct vm_fault *vmf)
+ 
+ static struct folio *__alloc_swap_folio(struct vm_fault *vmf)
+ {
+-	struct vm_area_struct *vma = vmf->vma;
+-	struct folio *folio;
+-	softleaf_t entry;
+-
+-	folio = vma_alloc_folio(GFP_HIGHUSER_MOVABLE, 0, vma, vmf->address);
+-	if (!folio)
+-		return NULL;
+-
+-	entry = softleaf_from_pte(vmf->orig_pte);
+-	if (mem_cgroup_swapin_charge_folio(folio, vma->vm_mm,
+-					   GFP_KERNEL, entry)) {
+-		folio_put(folio);
+-		return NULL;
+-	}
+-
+-	return folio;
++	return vma_alloc_folio(GFP_HIGHUSER_MOVABLE, 0,
++			       vmf->vma, vmf->address);
+ }
+ 
+ #ifdef CONFIG_TRANSPARENT_HUGEPAGE
+@@ -4736,13 +4722,8 @@ static struct folio *alloc_swap_folio(struct vm_fault *vmf)
+ 	while (orders) {
+ 		addr = ALIGN_DOWN(vmf->address, PAGE_SIZE << order);
+ 		folio = vma_alloc_folio(gfp, order, vma, addr);
+-		if (folio) {
+-			if (!mem_cgroup_swapin_charge_folio(folio, vma->vm_mm,
+-							    gfp, entry))
+-				return folio;
+-			count_mthp_stat(order, MTHP_STAT_SWPIN_FALLBACK_CHARGE);
+-			folio_put(folio);
+-		}
++		if (folio)
++			return folio;
+ 		count_mthp_stat(order, MTHP_STAT_SWPIN_FALLBACK);
+ 		order = next_order(&orders, order);
+ 	}
+@@ -4858,18 +4839,30 @@ vm_fault_t do_swap_page(struct vm_fault *vmf)
+ 	folio = swap_cache_get_folio(entry);
+ 	if (folio)
+ 		swap_update_readahead(folio, vma, vmf->address);
++
+ 	if (!folio) {
+ 		if (data_race(si->flags & SWP_SYNCHRONOUS_IO)) {
++			gfp_t gfp = GFP_HIGHUSER_MOVABLE;
++
+ 			folio = alloc_swap_folio(vmf);
+ 			if (folio) {
+-				/*
+-				 * folio is charged, so swapin can only fail due
+-				 * to raced swapin and return NULL.
+-				 */
+-				swapcache = swapin_folio(entry, folio);
+-				if (swapcache != folio)
++				if (folio_test_large(folio))
++					gfp = vma_thp_gfp_mask(vma);
++				swapcache = swapin_folio(entry, folio, gfp);
++				if (swapcache) {
++					/* We might hit with another cached swapin */
++					if (swapcache != folio)
++						folio_put(folio);
++					folio = swapcache;
++				} else if (folio_test_large(folio)) {
++					/* THP swapin failed, try order 0 */
++					folio_put(folio);
++					folio = swapin_readahead(entry, GFP_HIGHUSER_MOVABLE, vmf);
++				} else {
++					/* order 0 swapin failure, abort */
+ 					folio_put(folio);
+-				folio = swapcache;
++					folio = NULL;
++				}
+ 			}
+ 		} else {
+ 			folio = swapin_readahead(entry, GFP_HIGHUSER_MOVABLE, vmf);
+diff --git a/mm/shmem.c b/mm/shmem.c
+index 5aa43657886c..bc67b04b9de4 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -2071,22 +2071,15 @@ static struct folio *shmem_swap_alloc_folio(struct inode *inode,
+ 		goto fallback;
+ 	}
+ 
+-	if (mem_cgroup_swapin_charge_folio(new, vma ? vma->vm_mm : NULL,
+-					   alloc_gfp, entry)) {
+-		folio_put(new);
+-		new = ERR_PTR(-ENOMEM);
+-		goto fallback;
+-	}
+-
+-	swapcache = swapin_folio(entry, new);
++	swapcache = swapin_folio(entry, new, alloc_gfp);
+ 	if (swapcache != new) {
+ 		folio_put(new);
+ 		if (!swapcache) {
+ 			/*
+-			 * The new folio is charged already, swapin can
+-			 * only fail due to another raced swapin.
++			 * Fail with -ENOMEM by default, caller will
++			 * correct it to -EEXIST if mapping changed.
+ 			 */
+-			new = ERR_PTR(-EEXIST);
++			new = ERR_PTR(-ENOMEM);
+ 			goto fallback;
+ 		}
+ 	}
+diff --git a/mm/swap.h b/mm/swap.h
+index a77016f2423b..90f1edabb73a 100644
+--- a/mm/swap.h
++++ b/mm/swap.h
+@@ -300,7 +300,7 @@ struct folio *swap_cluster_readahead(swp_entry_t entry, gfp_t flag,
+ 		struct mempolicy *mpol, pgoff_t ilx);
+ struct folio *swapin_readahead(swp_entry_t entry, gfp_t flag,
+ 		struct vm_fault *vmf);
+-struct folio *swapin_folio(swp_entry_t entry, struct folio *folio);
++struct folio *swapin_folio(swp_entry_t entry, struct folio *folio, gfp_t flag);
+ void swap_update_readahead(struct folio *folio, struct vm_area_struct *vma,
+ 			   unsigned long addr);
+ 
+@@ -433,7 +433,8 @@ static inline struct folio *swapin_readahead(swp_entry_t swp, gfp_t gfp_mask,
  	return NULL;
  }
  
--void __swap_cache_add_folio(struct swap_cluster_info *ci,
--			    struct folio *folio, swp_entry_t entry)
-+static void __swap_cache_do_add_folio(struct swap_cluster_info *ci,
-+				      struct folio *folio, swp_entry_t entry)
+-static inline struct folio *swapin_folio(swp_entry_t entry, struct folio *folio)
++static inline struct folio *swapin_folio(swp_entry_t entry,
++		struct folio *folio, gfp_t flag)
  {
- 	unsigned int ci_off = swp_cluster_offset(entry), ci_end;
- 	unsigned long nr_pages = folio_nr_pages(folio);
-@@ -159,7 +159,14 @@ void __swap_cache_add_folio(struct swap_cluster_info *ci,
- 	folio_ref_add(folio, nr_pages);
- 	folio_set_swapcache(folio);
- 	folio->swap = entry;
-+}
-+
-+void __swap_cache_add_folio(struct swap_cluster_info *ci,
-+			    struct folio *folio, swp_entry_t entry)
-+{
-+	unsigned long nr_pages = folio_nr_pages(folio);
- 
-+	__swap_cache_do_add_folio(ci, folio, entry);
- 	node_stat_mod_folio(folio, NR_FILE_PAGES, nr_pages);
- 	lruvec_stat_mod_folio(folio, NR_SWAPCACHE, nr_pages);
+ 	return NULL;
  }
-@@ -207,7 +214,7 @@ static int swap_cache_add_folio(struct folio *folio, swp_entry_t entry,
- 		if (swp_tb_is_shadow(old_tb))
- 			shadow = swp_tb_to_shadow(old_tb);
- 	} while (++ci_off < ci_end);
--	__swap_cache_add_folio(ci, folio, entry);
-+	__swap_cache_do_add_folio(ci, folio, entry);
- 	swap_cluster_unlock(ci);
- 	if (shadowp)
- 		*shadowp = shadow;
-@@ -219,7 +226,7 @@ static int swap_cache_add_folio(struct folio *folio, swp_entry_t entry,
- }
- 
- /**
-- * __swap_cache_del_folio - Removes a folio from the swap cache.
-+ * __swap_cache_do_del_folio - Removes a folio from the swap cache.
-  * @ci: The locked swap cluster.
-  * @folio: The folio.
-  * @entry: The first swap entry that the folio corresponds to.
-@@ -231,8 +238,9 @@ static int swap_cache_add_folio(struct folio *folio, swp_entry_t entry,
-  * Context: Caller must ensure the folio is locked and in the swap cache
-  * using the index of @entry, and lock the cluster that holds the entries.
-  */
--void __swap_cache_del_folio(struct swap_cluster_info *ci, struct folio *folio,
--			    swp_entry_t entry, void *shadow)
-+static void __swap_cache_do_del_folio(struct swap_cluster_info *ci,
-+				      struct folio *folio,
-+				      swp_entry_t entry, void *shadow)
- {
- 	int count;
- 	unsigned long old_tb;
-@@ -265,8 +273,6 @@ void __swap_cache_del_folio(struct swap_cluster_info *ci, struct folio *folio,
- 
- 	folio->swap.val = 0;
- 	folio_clear_swapcache(folio);
--	node_stat_mod_folio(folio, NR_FILE_PAGES, -nr_pages);
--	lruvec_stat_mod_folio(folio, NR_SWAPCACHE, -nr_pages);
- 
- 	if (!folio_swapped) {
- 		__swap_cluster_free_entries(si, ci, ci_start, nr_pages);
-@@ -279,6 +285,16 @@ void __swap_cache_del_folio(struct swap_cluster_info *ci, struct folio *folio,
- 	}
- }
- 
-+void __swap_cache_del_folio(struct swap_cluster_info *ci, struct folio *folio,
-+			    swp_entry_t entry, void *shadow)
-+{
-+	unsigned long nr_pages = folio_nr_pages(folio);
-+
-+	__swap_cache_do_del_folio(ci, folio, entry, shadow);
-+	node_stat_mod_folio(folio, NR_FILE_PAGES, -nr_pages);
-+	lruvec_stat_mod_folio(folio, NR_SWAPCACHE, -nr_pages);
-+}
-+
- /**
-  * swap_cache_del_folio - Removes a folio from the swap cache.
-  * @folio: The folio.
-@@ -452,7 +468,7 @@ void swap_update_readahead(struct folio *folio, struct vm_area_struct *vma,
+diff --git a/mm/swap_state.c b/mm/swap_state.c
+index c53d16b87a98..d24a7a3482ec 100644
+--- a/mm/swap_state.c
++++ b/mm/swap_state.c
+@@ -468,8 +468,7 @@ void swap_update_readahead(struct folio *folio, struct vm_area_struct *vma,
   * __swap_cache_prepare_and_add - Prepare the folio and add it to swap cache.
   * @entry: swap entry to be bound to the folio.
   * @folio: folio to be added.
-- * @gfp: memory allocation flags for charge, can be 0 if @charged if true.
-+ * @gfp: memory allocation flags for charge, can be 0 if @charged is true.
-  * @charged: if the folio is already charged.
+- * @gfp: memory allocation flags for charge, can be 0 if @charged is true.
+- * @charged: if the folio is already charged.
++ * @gfp: memory allocation flags for charge.
   *
   * Update the swap_map and add folio as swap cache, typically before swapin.
-@@ -466,16 +482,15 @@ static struct folio *__swap_cache_prepare_and_add(swp_entry_t entry,
+  * All swap slots covered by the folio must have a non-zero swap count.
+@@ -480,7 +479,7 @@ void swap_update_readahead(struct folio *folio, struct vm_area_struct *vma,
+  */
+ static struct folio *__swap_cache_prepare_and_add(swp_entry_t entry,
  						  struct folio *folio,
- 						  gfp_t gfp, bool charged)
+-						  gfp_t gfp, bool charged)
++						  gfp_t gfp)
  {
-+	unsigned long nr_pages = folio_nr_pages(folio);
+ 	unsigned long nr_pages = folio_nr_pages(folio);
  	struct folio *swapcache = NULL;
-+	struct swap_cluster_info *ci;
- 	void *shadow;
- 	int ret;
- 
- 	__folio_set_locked(folio);
- 	__folio_set_swapbacked(folio);
- 
--	if (!charged && mem_cgroup_swapin_charge_folio(folio, NULL, gfp, entry))
--		goto failed;
--
- 	for (;;) {
- 		ret = swap_cache_add_folio(folio, entry, &shadow);
- 		if (!ret)
-@@ -496,6 +511,20 @@ static struct folio *__swap_cache_prepare_and_add(swp_entry_t entry,
+@@ -511,12 +510,14 @@ static struct folio *__swap_cache_prepare_and_add(swp_entry_t entry,
  			goto failed;
  	}
  
-+	if (!charged && mem_cgroup_swapin_charge_folio(folio, NULL, gfp, entry)) {
-+		/* We might lose the shadow here, but that's fine */
-+		ci = swap_cluster_get_and_lock(folio);
-+		__swap_cache_do_del_folio(ci, folio, entry, NULL);
-+		swap_cluster_unlock(ci);
+-	if (!charged && mem_cgroup_swapin_charge_folio(folio, NULL, gfp, entry)) {
++	if (mem_cgroup_swapin_charge_folio(folio, NULL, gfp, entry)) {
+ 		/* We might lose the shadow here, but that's fine */
+ 		ci = swap_cluster_get_and_lock(folio);
+ 		__swap_cache_do_del_folio(ci, folio, entry, NULL);
+ 		swap_cluster_unlock(ci);
+ 
++		count_mthp_stat(folio_order(folio), MTHP_STAT_SWPIN_FALLBACK_CHARGE);
 +
-+		/* __swap_cache_do_del_folio doesn't put the refs */
-+		folio_ref_sub(folio, nr_pages);
-+		goto failed;
-+	}
-+
-+	node_stat_mod_folio(folio, NR_FILE_PAGES, nr_pages);
-+	lruvec_stat_mod_folio(folio, NR_SWAPCACHE, nr_pages);
-+
- 	memcg1_swapin(entry, folio_nr_pages(folio));
- 	if (shadow)
- 		workingset_refault(folio, shadow);
+ 		/* __swap_cache_do_del_folio doesn't put the refs */
+ 		folio_ref_sub(folio, nr_pages);
+ 		goto failed;
+@@ -578,7 +579,7 @@ struct folio *swap_cache_alloc_folio(swp_entry_t entry, gfp_t gfp_mask,
+ 	if (!folio)
+ 		return NULL;
+ 	/* Try add the new folio, returns existing folio or NULL on failure. */
+-	result = __swap_cache_prepare_and_add(entry, folio, gfp_mask, false);
++	result = __swap_cache_prepare_and_add(entry, folio, gfp_mask);
+ 	if (result == folio)
+ 		*new_page_allocated = true;
+ 	else
+@@ -589,7 +590,7 @@ struct folio *swap_cache_alloc_folio(swp_entry_t entry, gfp_t gfp_mask,
+ /**
+  * swapin_folio - swap-in one or multiple entries skipping readahead.
+  * @entry: starting swap entry to swap in
+- * @folio: a new allocated and charged folio
++ * @folio: a new allocated folio
+  *
+  * Reads @entry into @folio, @folio will be added to the swap cache.
+  * If @folio is a large folio, the @entry will be rounded down to align
+@@ -600,14 +601,14 @@ struct folio *swap_cache_alloc_folio(swp_entry_t entry, gfp_t gfp_mask,
+  * to order 0. Else, if another folio was already added to the swap cache,
+  * return that swap cache folio instead.
+  */
+-struct folio *swapin_folio(swp_entry_t entry, struct folio *folio)
++struct folio *swapin_folio(swp_entry_t entry, struct folio *folio, gfp_t gfp)
+ {
+ 	struct folio *swapcache;
+ 	pgoff_t offset = swp_offset(entry);
+ 	unsigned long nr_pages = folio_nr_pages(folio);
+ 
+ 	entry = swp_entry(swp_type(entry), round_down(offset, nr_pages));
+-	swapcache = __swap_cache_prepare_and_add(entry, folio, 0, true);
++	swapcache = __swap_cache_prepare_and_add(entry, folio, gfp);
+ 	if (swapcache == folio)
+ 		swap_read_folio(folio, NULL);
+ 	return swapcache;
 
 -- 
 2.53.0
