@@ -1,280 +1,51 @@
-From: Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
-Date: Tue, 07 Apr 2026 16:36:16 +0530
-Subject: [PATCH 3/3] rust: workqueue: add KUnit and sample stress tests
+From: rohan1sj <rohan1sj@cadence.com>
+Subject: [PATCH 0/2] CQE support for cadence eMMC host controller
+Date: Tue, 07 Apr 2026 16:48:19 +0530
+Message-Id: <20260407-cdns_sdhci_cqe-support-v1-0-13efc0810631@cadence.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260407-workqueue-v5-sent-v1-3-d0d635289ca0@multicorewareinc.com>
-References: <20260407-workqueue-v5-sent-v1-0-d0d635289ca0@multicorewareinc.com>
-In-Reply-To: <20260407-workqueue-v5-sent-v1-0-d0d635289ca0@multicorewareinc.com>
-To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
- Wedson Almeida Filho <wedsonaf@gmail.com>, Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn.roy.baron@gmail.com>, 
- Alice Ryhl <aliceryhl@google.com>, Tejun Heo <tj@kernel.org>, 
- Lai Jiangshan <jiangshanlai@gmail.com>, Boqun Feng <boqun@kernel.org>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775559977; l=8611;
- i=aakash.bollineni@multicorewareinc.com; s=20260402;
- h=from:subject:message-id; bh=gp4f7kIwzh5ZVlBwO1ov3ack3lBWMbVlWBwMAfPvlJM=;
- b=mKaQBV9yW4UiMs2BoJsYFqk+iWSqCNWeEuUcn+vOxcFShwFzVPGSxrwJWVyQmd3tIJ0pDjsJe
- iFZxrH6wL4UDXnGS+yotllXe1yDIqTyoWzDo1msCWoG0xEzOShxzepB
-X-Developer-Key: i=aakash.bollineni@multicorewareinc.com; a=ed25519;
- pk=r3Gonl+2k+8RozN9U/XwfICQdnRlAcLeeAfsExmurdE=
-X-Endpoint-Received: by B4 Relay for aakash.bollineni@multicorewareinc.com/20260402 with auth_id=711
+X-B4-Tracking: v=1; b=H4sIAPzn1GkC/yXMQQqDMBBA0avIrBtIokTsVUqRdmas00VMM1oE8
+ e6NdvkW/2+gnIUVrtUGmb+iMsUCd6kAx0d8sREqBm99sI0NBilqrzSi9Phho0tKU55N42rfWhe
+ oowFKnDIPsp7j2/1vXZ5vxvm4wb7/AIwmb3J6AAAA
+X-Change-ID: 20260406-cdns_sdhci_cqe-support-41327016d9df
+To: Ulf Hansson <ulf.hansson@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Masahiro Yamada <yamada.masahiro@socionext.com>, 
+ Adrian Hunter <adrian.hunter@intel.com>
+Cc: linux-mmc@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Milind Parab <mparab@cadence.com>, 
+ Swapnil Jakhade <sjakhade@cadence.com>, 
+ Manikandan Pillai <mpillai@cadence.com>, rohan1sj <rohan1sj@cadence.com>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775560710; l=683;
+ i=rohan1sj@cadence.com; s=20260406; h=from:subject:message-id;
+ bh=f9rJgEDeBXdkiLlUJYzj5FIGQ7eAGGBKP3aOjp3S/LU=;
+ b=432Rs2W5eB5m41kztGx+gFDsAfvIwUFnaqjxxkMe+OVIhO8ftsmmauRwYMEFfG82VRMrtc6si
+ QM+qaStNeoMC7fNrm62sMkgDkf6heFcsBpCeE++xwYDY5CtWIEe/IxA
+X-Developer-Key: i=rohan1sj@cadence.com; a=ed25519;
+ pk=YuwylizMVlVj8I4+VPMZ6xrFR2wyqJAWZyj90OVZgD0=
+X-Endpoint-Received: by B4 Relay for rohan1sj@cadence.com/20260406 with auth_id=723
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To ensure the safety and correctness of the improved workqueue API,
-this patch adds comprehensive testing infrastructure:
-1. KUnit Tests: Adds an internal 'rust_kernel_workqueue' test suite
-   to rust/kernel/workqueue.rs. These tests verify basic and
-   synchronous cancellation, refcount stability, and concurrency
-   safety for both standard and delayed work.
-2. Sample Module: Adds samples/rust/rust_workqueue_test.rs as a
-   standalone module that performs a 1000-iteration stress test
-   designed to verify race-free pointer handover during concurrent
-   enqueue/cancel operations.
-The tests use distinct types for standard and delayed work items to
-ensure clear trait dispatch and prevent field offset conflicts.
+Add support for Command Queuing Engine(CQE) feature. Supported in
+cadence controller but driver lacks the support for it
 
-Signed-off-by: Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
+Signed-off-by: rohan1sj <rohan1sj@cadence.com>
 ---
- samples/rust/Kconfig                |  10 ++
- samples/rust/Makefile               |   2 +
- samples/rust/rust_workqueue_test.rs | 191 ++++++++++++++++++++++++++++++++++++
- 3 files changed, 203 insertions(+)
+rohan1sj (2):
+      mmc: cqe: Add CQE DT support for cadence controller
+      mmc: cqe: Add CQE support for cadence mmc driver
 
-diff --git a/samples/rust/Kconfig b/samples/rust/Kconfig
-index c49ab9106345..b3f078f77ca2 100644
---- a/samples/rust/Kconfig
-+++ b/samples/rust/Kconfig
-@@ -172,6 +172,16 @@ config SAMPLE_RUST_SOC
- 
- 	  If unsure, say N.
- 
-+config SAMPLE_RUST_WORKQUEUE
-+	tristate "Workqueue"
-+	help
-+	  This option builds the Rust workqueue robust stress test sample.
-+
-+	  To compile this as a module, choose M here:
-+	  the module will be called rust_workqueue_test.
-+
-+	  If unsure, say N.
-+
- config SAMPLE_RUST_HOSTPROGS
- 	bool "Host programs"
- 	help
-diff --git a/samples/rust/Makefile b/samples/rust/Makefile
-index 6c0aaa58cccc..261aa67b6502 100644
---- a/samples/rust/Makefile
-+++ b/samples/rust/Makefile
-@@ -20,3 +20,5 @@ obj-$(CONFIG_SAMPLE_RUST_SOC)			+= rust_soc.o
- rust_print-y := rust_print_main.o rust_print_events.o
- 
- subdir-$(CONFIG_SAMPLE_RUST_HOSTPROGS)		+= hostprogs
-+
-+obj-$(CONFIG_SAMPLE_RUST_WORKQUEUE)		+= rust_workqueue_test.o
-diff --git a/samples/rust/rust_workqueue_test.rs b/samples/rust/rust_workqueue_test.rs
-new file mode 100644
-index 000000000000..2d081c390bf5
---- /dev/null
-+++ b/samples/rust/rust_workqueue_test.rs
-@@ -0,0 +1,191 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+//! Robust stress test for Rust workqueue API.
-+
-+use kernel::prelude::*;
-+use kernel::sync::Arc;
-+use kernel::time::msecs_to_jiffies;
-+use kernel::workqueue::{self, new_work, Work, WorkItem};
-+
-+#[pin_data]
-+struct TestWorkItem {
-+    #[pin]
-+    work: Work<TestWorkItem>,
-+    value: i32,
-+}
-+
-+kernel::impl_has_work! {
-+    impl HasWork<Self> for TestWorkItem { self.work }
-+}
-+
-+impl WorkItem for TestWorkItem {
-+    type Pointer = Arc<TestWorkItem>;
-+
-+    fn run(this: Arc<TestWorkItem>) {
-+        pr_info!(
-+            "Rust workqueue test: Work item running (value: {})\n",
-+            this.value
-+        );
-+    }
-+}
-+
-+#[pin_data]
-+struct TestDelayedWorkItem {
-+    #[pin]
-+    delayed_work: workqueue::DelayedWork<TestDelayedWorkItem>,
-+    value: i32,
-+}
-+
-+// SAFETY: The `delayed_work` field is at a fixed offset and is valid for the lifetime of
-+// `TestDelayedWorkItem`.
-+unsafe impl workqueue::HasDelayedWork<Self> for TestDelayedWorkItem {}
-+
-+impl WorkItem for TestDelayedWorkItem {
-+    type Pointer = Arc<TestDelayedWorkItem>;
-+
-+    fn run(this: Arc<TestDelayedWorkItem>) {
-+        pr_info!(
-+            "Rust workqueue test: Delayed work item running (value: {})\n",
-+            this.value
-+        );
-+    }
-+}
-+
-+struct RustWorkqueueTest;
-+
-+impl kernel::Module for RustWorkqueueTest {
-+    fn init(_module: &'static ThisModule) -> Result<Self> {
-+        pr_info!("Rust workqueue test: starting robust verification (v3)\n");
-+
-+        // 1. Basic Lifecycle with Refcount Validation (Standard Work)
-+        {
-+            let work_item = Arc::pin_init(
-+                pin_init!(TestWorkItem {
-+                    work <- new_work!("TestWorkItem::work"),
-+                    value: 42,
-+                }),
-+                GFP_KERNEL,
-+            )?;
-+
-+            let initial_count = workqueue::arc_count(&work_item);
-+            pr_info!("Initial Arc strong count: {}\n", initial_count);
-+
-+            // Enqueue
-+            let enqueued_item = work_item.clone();
-+
-+            if let Err(returned_item) = workqueue::system().enqueue(enqueued_item) {
-+                pr_warn!("Work already pending, unexpected!\n");
-+                let _ = returned_item;
-+            } else {
-+                pr_info!(
-+                    "Work enqueued successfully. Strong count: {}\n",
-+                    workqueue::arc_count(&work_item)
-+                );
-+            }
-+
-+            // Cancel immediately
-+            if let Some(reclaimed) = work_item.work.cancel() {
-+                let count_after_cancel = workqueue::arc_count(&work_item);
-+                pr_info!(
-+                    "Success: Work cancelled and Arc reclaimed. Strong count: {}\n",
-+                    count_after_cancel
-+                );
-+
-+                if count_after_cancel != initial_count + 1 {
-+                    pr_err!(
-+                        "ERROR: Refcount mismatch after cancel! Expected {}, got {}\n",
-+                        initial_count + 1,
-+                        count_after_cancel
-+                    );
-+                    return Err(ENXIO);
-+                }
-+                drop(reclaimed);
-+                if workqueue::arc_count(&work_item) != initial_count {
-+                    pr_err!("ERROR: Refcount mismatch after drop!\n");
-+                    return Err(ENXIO);
-+                }
-+            } else {
-+                pr_info!("Work already running or finished.\n");
-+            }
-+        }
-+
-+        // 2. Stress Testing: Enqueue/Cancel Sync Loop
-+        {
-+            pr_info!("Starting stress test (1000 iterations)...\n");
-+            let work_item = Arc::pin_init(
-+                pin_init!(TestWorkItem {
-+                    work <- new_work!("TestWorkItem::work"),
-+                    value: 99,
-+                }),
-+                GFP_KERNEL,
-+            )?;
-+
-+            for i in 0..1000 {
-+                let _ = workqueue::system().enqueue(work_item.clone());
-+                let _ = work_item.work.cancel_sync();
-+                if i % 250 == 0 {
-+                    pr_info!("Stress test progress: {}/1000\n", i);
-+                }
-+            }
-+
-+            if workqueue::arc_count(&work_item) != 1 {
-+                pr_err!("ERROR: Refcount leak detected after stress test!\n");
-+                return Err(ENXIO);
-+            } else {
-+                pr_info!("Stress test completed successfully.\n");
-+            }
-+        }
-+
-+        // 3. Delayed Work Cancellation Test
-+        {
-+            let delayed_item = Arc::pin_init(
-+                pin_init!(TestDelayedWorkItem {
-+                    delayed_work <- workqueue::new_delayed_work!("TestDelayedWorkItem::delayed_work"),
-+                    value: 7,
-+                }),
-+                GFP_KERNEL,
-+            )?;
-+
-+            let initial_count = workqueue::arc_count(&delayed_item);
-+
-+            // Schedule with a long delay (5 seconds)
-+            if let Err(returned) =
-+                workqueue::system().enqueue_delayed(delayed_item.clone(), msecs_to_jiffies(5000))
-+            {
-+                drop(returned);
-+            } else {
-+                pr_info!(
-+                    "Delayed work enqueued. count: {}\n",
-+                    workqueue::arc_count(&delayed_item)
-+                );
-+            }
-+
-+            if let Some(reclaimed) = delayed_item.delayed_work.cancel() {
-+                pr_info!("Success: Delayed work reclaimed. No leak.\n");
-+                drop(reclaimed);
-+            }
-+
-+            if workqueue::arc_count(&delayed_item) != initial_count {
-+                pr_err!("ERROR: Refcount leak after delayed cancel!\n");
-+                return Err(ENXIO);
-+            }
-+        }
-+
-+        pr_info!("Rust workqueue test: all robust checks passed\n");
-+        Ok(RustWorkqueueTest)
-+    }
-+}
-+
-+impl Drop for RustWorkqueueTest {
-+    fn drop(&mut self) {
-+        pr_info!("Rust workqueue test: exit\n");
-+    }
-+}
-+
-+module! {
-+    type: RustWorkqueueTest,
-+    name: "rust_workqueue_test",
-+    authors: ["Aakash Bollineni"],
-+    description: "Robust stress test for Rust workqueue API",
-+    license: "GPL",
-+}
+ .../devicetree/bindings/mmc/cdns,sdhci.yaml        |  32 +++++-
+ drivers/mmc/host/sdhci-cadence.c                   | 118 ++++++++++++++++++++-
+ 2 files changed, 146 insertions(+), 4 deletions(-)
+---
+base-commit: 05f7e89ab9731565d8a62e3b5d1ec206485eeb0b
+change-id: 20260406-cdns_sdhci_cqe-support-41327016d9df
 
--- 
-2.43.0
+Best regards,
+--  
+rohan1sj <rohan1sj@cadence.com>
 
