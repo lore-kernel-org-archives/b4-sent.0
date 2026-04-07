@@ -1,182 +1,103 @@
-From: Satish Kharat <satishkh@cisco.com>
-Date: Mon, 06 Apr 2026 17:37:08 -0700
-Subject: [PATCH 10/10] enic: add V2 VF probe with admin channel and PF
- registration
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v5 0/3] ath10k: Introduce a devicetree quirk to skip host
+ cap QMI requests
+Date: Tue, 07 Apr 2026 08:43:53 +0200
+Message-Id: <20260407-skip-host-cam-qmi-req-v5-0-dfa8a05c6538@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260406-enic-sriov-v2-admin-channel-v2-v1-10-82cc47636a78@cisco.com>
-References: <20260406-enic-sriov-v2-admin-channel-v2-v1-0-82cc47636a78@cisco.com>
-In-Reply-To: <20260406-enic-sriov-v2-admin-channel-v2-v1-0-82cc47636a78@cisco.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- 20260401-enic-sriov-v2-prep-v4-0-d5834b2ef1b9@cisco.com, 
- Satish Kharat <satishkh@cisco.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775522225; l=5643;
- i=satishkh@cisco.com; h=from:subject:message-id;
- bh=dGwC+ltN2vIFndaVGoadwoJkfe40tD8MwvsVFbzhE8w=;
- b=gR56pX3zYq1V0tgUKHaQdrf7ldLB371/wP4Q4gT7qLOUAswfRYwZJEz0o6K4PkWaiteOed/gx
- d8ZN66MrIulAwcsY2N7q2ktJTKVwyczHJuoU/JPeppLkM08FAF+mK1y
-X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
- pk=4BxbLoCGvHeIMH/PbpiNVx8/2IcTjFvqcr0AD8K6WLY=
-X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/default with auth_id=639
+X-B4-Tracking: v=1; b=H4sIAKmn1GkC/43OTU7DMBCG4atUXjOVf2LX6ar3QCwcZ5KMaOLUN
+ lGhyt1xIiHBAsHG0rfwM++DJYyEiZ0PDxZxoURhKkM/HZgf3NQjUFs2k1xqIQSH9EozDCFl8G6
+ E20gQ8QYotDbSYuNVzcrfOWJH9919fim7i2GEPER0uyYMF1xbbQWIujLlhZ4yJJxawNHRFdxI+
+ Ti/TS3Fy5UmF8MxxH6jB0o5xPe9eJHbgb/iFgkceOu6ympX25O70L3o/oNtaYv6MgxXUv9mqGI
+ 0wijfnRrlrfhpVP8yqs3w3Gplq5LxrWNd10+QucI1iwEAAA==
+X-Change-ID: 20251110-skip-host-cam-qmi-req-e155628ebc39
+To: Johannes Berg <johannes@sipsolutions.net>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jeff Johnson <jjohnson@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Paul Sajna <sajattack@postmarketos.org>
+Cc: Baochen Qiang <baochen.qiang@oss.qualcomm.com>, 
+ Vasanthakumar Thiagarajan <vasanthakumar.thiagarajan@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Amit Pundir <amit.pundir@linaro.org>, linux-wireless@vger.kernel.org, 
+ devicetree@vger.kernel.org, ath10k@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2286; i=david@ixit.cz;
+ h=from:subject:message-id; bh=U9QnAdkvD3nYzFEe9H4Oehb+Ag2cpOlB5/v/LOfg9tU=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBp1Keub60q5mQEpUHGJXTQFQ7qWWULRkCPbdMRK
+ eCsbVZvf/mJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCadSnrgAKCRBgAj/E00kg
+ cnFlD/9047bYzGRZ3blI36JI4PtmYhXFdOJ/+ywcceqoWf8WuFYetD3CUaD9Wijcw+G9+UiAqQ+
+ rPMPZEcj0xKWM2zNNK3r3vmW6wghqi48c1jYWzLQKRwAqwoDPTO0xyk2Nvhhjvs7nznGCWur8RE
+ /HiuW5VIK90X59+2kLWhkVWTmttUBA6UiL8PWI+bJchIimJkqj1CFKNgkheUFfnm/M6YSKWrJAM
+ 3iPVgPekQ8m8icmm4kd6cX2Lv8OKQKZjfnyIMcGHRP8ecNnB5Tro8pOLVzs3l8Zt14TKJRw+Q6Y
+ Bj34uhZGPqxHSx/CIChyr2WSM2YA6AsieZh3L7hxGrV3VatrTK2UAb4Yedekw5bGs681z1D4syk
+ RV71v4ar0Ox5vwo9zjRwlmPUF0+O8RshqT87E6noKZmGwDj8uJbCuJuTz4SlV1/IDr8Y9BbSOpu
+ 2hR9r1/6R0x+5WexVbPP/yFWrYlG5oBc19FwH0Y2P8bpDrylHJi32kg/wyxS1WbNFTCkTZfX1Hf
+ 0ckYAx2nkBntecoTL3UfTDB8+emi1q7bo7AYgkEUwD1hsX6lFAzVRW8/LR8C2WSeSKaSjaaBTWN
+ c/gijt6v7F4zAf9YNa4dICd31TKKIa7mKmNTfbAm4iqkBp6HvM6ly4FWwGM8Dbh0V2xPbyQ131A
+ +J+u76xZxycuXgw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a V2 SR-IOV VF probes, open the admin channel, initialize the
-MBOX protocol, perform the capability check with the PF, and register
-with the PF. This establishes the PF-VF communication path that the PF
-uses to send link state notifications.
+This quirk is used so far used on:
+ - LG G7 ThinQ
+ - Xiaomi Poco F1
 
-The admin channel and MBOX registration happen after enic_dev_init()
-(which discovers admin channel resources) and before register_netdev()
-so the VF is fully initialized before the interface is visible to
-userspace.
+I'm resending it after ~ 4 years since initial send due to Snapdragon
+845 being one of best supported platform for mobile phones running
+Linux, so it would be shame to not have shiny support.
 
-On remove, the VF unregisters from the PF and closes its admin channel
-before tearing down data path resources.
+Original thread:
+  https://lore.kernel.org/all/b796bfee-b753-479a-a8d6-ba1fe3ee6222@ixit.cz/
 
-V2 VFs are not provisioned with an RES_TYPE_SRIOV_INTR resource by
-firmware, so bypass that check in the admin channel capability
-detection for V2 VFs. The PF still requires this resource.
+I tried the embedding the information inside the firmware, but the
+information is required *before* loading the firmware itself.
+Firmware quirk thread:
+  https://lore.kernel.org/linux-wireless/20251111-xiaomi-beryllium-firmware-v1-0-836b9c51ad86@ixit.cz/
 
-Signed-off-by: Satish Kharat <satishkh@cisco.com>
+Until merged, available also at:
+  https://codeberg.org/sdm845/linux/commits/branch/b4/skip-host-cam-qmi-req
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/net/ethernet/cisco/enic/enic.h      |  1 +
- drivers/net/ethernet/cisco/enic/enic_main.c | 58 ++++++++++++++++++++++++++++-
- drivers/net/ethernet/cisco/enic/enic_res.c  |  3 +-
- 3 files changed, 59 insertions(+), 3 deletions(-)
+Changes in v5:
+- Implement device-tree mutual-exclusion between
+  snoc-host-cap-8bit-quirk and snoc-host-cap-skip-quirk. (Krzysztof)
+- Link to v4: https://lore.kernel.org/r/20260325-skip-host-cam-qmi-req-v4-0-bc08538487aa@ixit.cz
 
-diff --git a/drivers/net/ethernet/cisco/enic/enic.h b/drivers/net/ethernet/cisco/enic/enic.h
-index 5ef4ed86174f..a8c622057b17 100644
---- a/drivers/net/ethernet/cisco/enic/enic.h
-+++ b/drivers/net/ethernet/cisco/enic/enic.h
-@@ -439,6 +439,7 @@ void enic_reset_addr_lists(struct enic *enic);
- int enic_sriov_enabled(struct enic *enic);
- int enic_is_valid_vf(struct enic *enic, int vf);
- int enic_is_dynamic(struct enic *enic);
-+int enic_is_sriov_vf_v2(struct enic *enic);
- void enic_set_ethtool_ops(struct net_device *netdev);
- int __enic_set_rsskey(struct enic *enic);
- void enic_ext_cq(struct enic *enic);
-diff --git a/drivers/net/ethernet/cisco/enic/enic_main.c b/drivers/net/ethernet/cisco/enic/enic_main.c
-index 4328e2a79619..cdfbac474986 100644
---- a/drivers/net/ethernet/cisco/enic/enic_main.c
-+++ b/drivers/net/ethernet/cisco/enic/enic_main.c
-@@ -316,6 +316,11 @@ static int enic_is_sriov_vf(struct enic *enic)
- 	       enic->pdev->device == PCI_DEVICE_ID_CISCO_VIC_ENET_VF_V2;
- }
- 
-+int enic_is_sriov_vf_v2(struct enic *enic)
-+{
-+	return enic->pdev->device == PCI_DEVICE_ID_CISCO_VIC_ENET_VF_V2;
-+}
-+
- int enic_is_valid_vf(struct enic *enic, int vf)
- {
- #ifdef CONFIG_PCI_IOV
-@@ -2986,6 +2991,32 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
- 		goto err_out_dev_close;
- 	}
- 
-+	/* V2 VF: open admin channel and register with PF.
-+	 * Must happen before register_netdev so the VF is fully
-+	 * initialized before the interface is visible to userspace.
-+	 */
-+	if (enic_is_sriov_vf_v2(enic)) {
-+		err = enic_admin_channel_open(enic);
-+		if (err) {
-+			dev_err(dev,
-+				"Failed to open admin channel: %d\n", err);
-+			goto err_out_dev_deinit;
-+		}
-+		enic_mbox_init(enic);
-+		err = enic_mbox_vf_capability_check(enic);
-+		if (err) {
-+			dev_err(dev,
-+				"MBOX capability check failed: %d\n", err);
-+			goto err_out_admin_close;
-+		}
-+		err = enic_mbox_vf_register(enic);
-+		if (err) {
-+			dev_err(dev,
-+				"MBOX VF registration failed: %d\n", err);
-+			goto err_out_admin_close;
-+		}
-+	}
-+
- 	netif_set_real_num_tx_queues(netdev, enic->wq_count);
- 	netif_set_real_num_rx_queues(netdev, enic->rq_count);
- 
-@@ -3010,7 +3041,7 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
- 	err = enic_set_mac_addr(netdev, enic->mac_addr);
- 	if (err) {
- 		dev_err(dev, "Invalid MAC address, aborting\n");
--		goto err_out_dev_deinit;
-+		goto err_out_admin_close;
- 	}
- 
- 	enic->tx_coalesce_usecs = enic->config.intr_timer_usec;
-@@ -3108,11 +3139,23 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
- 	err = register_netdev(netdev);
- 	if (err) {
- 		dev_err(dev, "Cannot register net device, aborting\n");
--		goto err_out_dev_deinit;
-+		goto err_out_admin_close;
- 	}
- 
- 	return 0;
- 
-+err_out_admin_close:
-+	if (enic_is_sriov_vf_v2(enic)) {
-+		if (enic->vf_registered) {
-+			int unreg_err = enic_mbox_vf_unregister(enic);
-+
-+			if (unreg_err)
-+				netdev_warn(netdev,
-+					    "Failed to unregister from PF: %d\n",
-+					    unreg_err);
-+		}
-+		enic_admin_channel_close(enic);
-+	}
- err_out_dev_deinit:
- 	enic_dev_deinit(enic);
- err_out_dev_close:
-@@ -3150,6 +3193,17 @@ static void enic_remove(struct pci_dev *pdev)
- 		cancel_work_sync(&enic->reset);
- 		cancel_work_sync(&enic->change_mtu_work);
- 		unregister_netdev(netdev);
-+		if (enic_is_sriov_vf_v2(enic)) {
-+			if (enic->vf_registered) {
-+				int unreg_err = enic_mbox_vf_unregister(enic);
-+
-+				if (unreg_err)
-+					netdev_warn(netdev,
-+						    "Failed to unregister from PF: %d\n",
-+						    unreg_err);
-+			}
-+			enic_admin_channel_close(enic);
-+		}
- #ifdef CONFIG_PCI_IOV
- 		if (enic_sriov_enabled(enic)) {
- 			if (enic->vf_type == ENIC_VF_TYPE_V2)
-diff --git a/drivers/net/ethernet/cisco/enic/enic_res.c b/drivers/net/ethernet/cisco/enic/enic_res.c
-index 436326ace049..74cd2ee3af5c 100644
---- a/drivers/net/ethernet/cisco/enic/enic_res.c
-+++ b/drivers/net/ethernet/cisco/enic/enic_res.c
-@@ -211,7 +211,8 @@ void enic_get_res_counts(struct enic *enic)
- 		vnic_dev_get_res_count(enic->vdev, RES_TYPE_ADMIN_RQ) >= 1 &&
- 		vnic_dev_get_res_count(enic->vdev, RES_TYPE_ADMIN_CQ) >=
- 			ARRAY_SIZE(enic->admin_cq) &&
--		vnic_dev_get_res_count(enic->vdev, RES_TYPE_SRIOV_INTR) >= 1;
-+		(enic_is_sriov_vf_v2(enic) ||
-+		 vnic_dev_get_res_count(enic->vdev, RES_TYPE_SRIOV_INTR) >= 1);
- 
- 	dev_info(enic_get_dev(enic),
- 		"vNIC resources avail: wq %d rq %d cq %d intr %d admin %s\n",
+Changes in v4:
+- Added my own missing SoB. (Dmitry)
+- Improve the commit message. (Dmitry)
+- Link to v3: https://lore.kernel.org/r/20260325-skip-host-cam-qmi-req-v3-0-b163cf7b3c81@ixit.cz
 
+Changes in v3:
+- Rebased on recent linux-next (next-20260325).
+- Improved motivation and description. (Dmitry)
+- Link to v2: https://lore.kernel.org/r/20251110-skip-host-cam-qmi-req-v2-0-0daf485a987a@ixit.cz
+
+---
+Amit Pundir (3):
+      dt-bindings: wireless: ath10k: Add quirk to skip host cap QMI requests
+      ath10k: Add device-tree quirk to skip host cap QMI requests
+      arm64: dts: qcom: sdm845-xiaomi-beryllium: Enable ath10k host-cap skip quirk
+
+ .../devicetree/bindings/net/wireless/qcom,ath10k.yaml       | 11 +++++++++++
+ .../arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi |  1 +
+ drivers/net/wireless/ath/ath10k/qmi.c                       | 13 ++++++++++---
+ drivers/net/wireless/ath/ath10k/snoc.c                      |  3 +++
+ drivers/net/wireless/ath/ath10k/snoc.h                      |  1 +
+ 5 files changed, 26 insertions(+), 3 deletions(-)
+---
+base-commit: 816f193dd0d95246f208590924dd962b192def78
+change-id: 20251110-skip-host-cam-qmi-req-e155628ebc39
+
+Best regards,
 -- 
-2.43.0
+David Heidelberg <david@ixit.cz>
 
