@@ -1,213 +1,286 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Tue, 07 Apr 2026 19:57:43 +0800
-Subject: [PATCH v4 14/14] mm/vmscan: unify writeback reclaim statistic and
- throttling
+From: Sasha Finkelstein <fnkl.kernel@gmail.com>
+Date: Tue, 07 Apr 2026 14:09:14 +0200
+Subject: [PATCH] Bluetooth: Add Broadcom channel priority commands
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260407-mglru-reclaim-v4-14-98cf3dc69519@tencent.com>
-References: <20260407-mglru-reclaim-v4-0-98cf3dc69519@tencent.com>
-In-Reply-To: <20260407-mglru-reclaim-v4-0-98cf3dc69519@tencent.com>
-To: linux-mm@kvack.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
- Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
- Wei Xu <weixugc@google.com>, Johannes Weiner <hannes@cmpxchg.org>, 
- David Hildenbrand <david@kernel.org>, Michal Hocko <mhocko@kernel.org>, 
- Qi Zheng <zhengqi.arch@bytedance.com>, 
- Shakeel Butt <shakeel.butt@linux.dev>, Lorenzo Stoakes <ljs@kernel.org>, 
- Barry Song <baohua@kernel.org>, David Stevens <stevensd@google.com>, 
- Chen Ridong <chenridong@huaweicloud.com>, Leno Hou <lenohou@gmail.com>, 
- Yafang Shao <laoar.shao@gmail.com>, Yu Zhao <yuzhao@google.com>, 
- Zicheng Wang <wangzicheng@honor.com>, Kalesh Singh <kaleshsingh@google.com>, 
- Suren Baghdasaryan <surenb@google.com>, Chris Li <chrisl@kernel.org>, 
- Vernon Yang <vernon2gm@gmail.com>, linux-kernel@vger.kernel.org, 
- Qi Zheng <qi.zheng@linux.dev>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
- Kairui Song <kasong@tencent.com>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775563489; l=6741;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=7QHyjr50/quaZhHvOcbUKxflnau3ozYmg6LdN0uZIvA=;
- b=5Z8fDGv9OJlrUKzC10NZUWtSzDzWTPu7NVnBtOD+zo9hXGm0HDSYsBVq4BpUHAVZjMRyRn3u0
- zP+B6GJnYCBCeEevZhnrIEGrodlWr7M6dJawAaylkpM7qj72/PV5f4s
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+Message-Id: <20260407-brcm-prio-v1-1-f38b17376640@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDEwNz3aSi5FzdgqLMfN0kM2ODVLPkZGMLYxMloPqCotS0zAqwWdGxtbU
+ AfbxXPlsAAAA=
+X-Change-ID: 20260407-brcm-prio-b630e6cc3834
+To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
+ Neal Gompa <neal@gompa.dev>, Marcel Holtmann <marcel@holtmann.org>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>
+Cc: linux-kernel@vger.kernel.org, asahi@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, linux-bluetooth@vger.kernel.org, 
+ netdev@vger.kernel.org, Sasha Finkelstein <fnkl.kernel@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775563770; l=7872;
+ i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
+ bh=gg4x5lEmIqKFrASgP0xO22e+G2K7V8H9TMkHZhq7+QY=;
+ b=vbmIOo8yojBRUh3vdplseWSQTA6tBL5Ublusuh3CS9xPiTabxvXlO4ioFtSCo6ffq9mj/H1I+
+ flNVNUJaGSeBgHsyPMZP7NVDSsx61c3wUNqJn5Pu53GVlZW04KseeMm
+X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
+ pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
+X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently MGLRU and non-MGLRU handle the reclaim statistic and
-writeback handling very differently, especially throttling.
-Basically MGLRU just ignored the throttling part.
+Certain Broadcom bluetooth chips (bcm4377/bcm4378/bcm438) need ACL
+streams carrying audio to be set as "high priority" using a vendor
+specific command to prevent 10-ish second-long dropouts whenever
+something does a device scan. This series adds an ioctl to control
+the priorities and hooks it up for the relevant chips.
 
-Let's just unify this part, use a helper to deduplicate the code
-so both setups will share the same behavior.
-
-Test using following reproducer using bash:
-
-  echo "Setup a slow device using dm delay"
-  dd if=/dev/zero of=/var/tmp/backing bs=1M count=2048
-  LOOP=$(losetup --show -f /var/tmp/backing)
-  mkfs.ext4 -q $LOOP
-  echo "0 $(blockdev --getsz $LOOP) delay $LOOP 0 0 $LOOP 0 1000" | \
-      dmsetup create slow_dev
-  mkdir -p /mnt/slow && mount /dev/mapper/slow_dev /mnt/slow
-
-  echo "Start writeback pressure"
-  sync && echo 3 > /proc/sys/vm/drop_caches
-  mkdir /sys/fs/cgroup/test_wb
-  echo 128M > /sys/fs/cgroup/test_wb/memory.max
-  (echo $BASHPID > /sys/fs/cgroup/test_wb/cgroup.procs && \
-      dd if=/dev/zero of=/mnt/slow/testfile bs=1M count=192)
-
-  echo "Clean up"
-  echo "0 $(blockdev --getsz $LOOP) error" | dmsetup load slow_dev
-  dmsetup resume slow_dev
-  umount -l /mnt/slow && sync
-  dmsetup remove slow_dev
-
-Before this commit, `dd` will get OOM killed immediately if
-MGLRU is enabled. Classic LRU is fine.
-
-After this commit, throttling is now effective and no more spin on
-LRU or premature OOM. Stress test on other workloads also looking good.
-
-Global throttling is not here yet, we will fix that separately later.
-
-Suggested-by: Chen Ridong <chenridong@huaweicloud.com>
-Tested-by: Leno Hou <lenohou@gmail.com>
-Reviewed-by: Axel Rasmussen <axelrasmussen@google.com>
-Reviewed-by: Baolin Wang <baolin.wang@linux.alibaba.com>
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
 ---
- mm/vmscan.c | 90 ++++++++++++++++++++++++++++---------------------------------
- 1 file changed, 41 insertions(+), 49 deletions(-)
+ MAINTAINERS                      |  2 ++
+ drivers/bluetooth/hci_bcm4377.c  |  2 ++
+ include/net/bluetooth/hci_core.h | 12 ++++++++++++
+ include/net/bluetooth/hci_sock.h |  7 +++++++
+ net/bluetooth/Kconfig            |  7 +++++++
+ net/bluetooth/Makefile           |  1 +
+ net/bluetooth/brcm.c             | 29 +++++++++++++++++++++++++++++
+ net/bluetooth/brcm.h             | 17 +++++++++++++++++
+ net/bluetooth/hci_conn.c         | 11 +++++++++++
+ net/bluetooth/hci_sock.c         |  4 ++++
+ 10 files changed, 92 insertions(+)
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index cea6df51dcff..609cbaf2cd4e 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -1942,6 +1942,44 @@ static int current_may_throttle(void)
- 	return !(current->flags & PF_LOCAL_THROTTLE);
+diff --git a/MAINTAINERS b/MAINTAINERS
+index c3fe46d7c4bc..81be021367ec 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -2562,6 +2562,8 @@ F:	include/dt-bindings/pinctrl/apple.h
+ F:	include/linux/mfd/macsmc.h
+ F:	include/linux/soc/apple/*
+ F:	include/uapi/drm/asahi_drm.h
++F:	net/bluetooth/brcm.c
++F:	net/bluetooth/brcm.h
+ 
+ ARM/ARTPEC MACHINE SUPPORT
+ M:	Jesper Nilsson <jesper.nilsson@axis.com>
+diff --git a/drivers/bluetooth/hci_bcm4377.c b/drivers/bluetooth/hci_bcm4377.c
+index 925d0a635945..5f79920c0306 100644
+--- a/drivers/bluetooth/hci_bcm4377.c
++++ b/drivers/bluetooth/hci_bcm4377.c
+@@ -2397,6 +2397,8 @@ static int bcm4377_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 	if (bcm4377->hw->broken_le_ext_adv_report_phy)
+ 		hci_set_quirk(hdev, HCI_QUIRK_FIXUP_LE_EXT_ADV_REPORT_PHY);
+ 
++	hci_set_brcm_capable(hdev);
++
+ 	pci_set_drvdata(pdev, bcm4377);
+ 	hci_set_drvdata(hdev, bcm4377);
+ 	SET_HCIDEV_DEV(hdev, &pdev->dev);
+diff --git a/include/net/bluetooth/hci_core.h b/include/net/bluetooth/hci_core.h
+index a7bffb908c1e..ef3b5433203c 100644
+--- a/include/net/bluetooth/hci_core.h
++++ b/include/net/bluetooth/hci_core.h
+@@ -642,6 +642,10 @@ struct hci_dev {
+ 	bool			aosp_quality_report;
+ #endif
+ 
++#if IS_ENABLED(CONFIG_BT_BRCMEXT)
++	bool			brcm_capable;
++#endif
++
+ 	int (*open)(struct hci_dev *hdev);
+ 	int (*close)(struct hci_dev *hdev);
+ 	int (*flush)(struct hci_dev *hdev);
+@@ -1791,6 +1795,13 @@ static inline void hci_set_aosp_capable(struct hci_dev *hdev)
+ #endif
  }
  
-+static void handle_reclaim_writeback(unsigned long nr_taken,
-+				     struct pglist_data *pgdat,
-+				     struct scan_control *sc,
-+				     struct reclaim_stat *stat)
++static inline void hci_set_brcm_capable(struct hci_dev *hdev)
 +{
-+	/*
-+	 * If dirty folios are scanned that are not queued for IO, it
-+	 * implies that flushers are not doing their job. This can
-+	 * happen when memory pressure pushes dirty folios to the end of
-+	 * the LRU before the dirty limits are breached and the dirty
-+	 * data has expired. It can also happen when the proportion of
-+	 * dirty folios grows not through writes but through memory
-+	 * pressure reclaiming all the clean cache. And in some cases,
-+	 * the flushers simply cannot keep up with the allocation
-+	 * rate. Nudge the flusher threads in case they are asleep.
-+	 */
-+	if (stat->nr_unqueued_dirty == nr_taken && nr_taken) {
-+		wakeup_flusher_threads(WB_REASON_VMSCAN);
-+		/*
-+		 * For cgroupv1 dirty throttling is achieved by waking up
-+		 * the kernel flusher here and later waiting on folios
-+		 * which are in writeback to finish (see shrink_folio_list()).
-+		 *
-+		 * Flusher may not be able to issue writeback quickly
-+		 * enough for cgroupv1 writeback throttling to work
-+		 * on a large system.
-+		 */
-+		if (!writeback_throttling_sane(sc))
-+			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
-+	}
-+
-+	sc->nr.dirty += stat->nr_dirty;
-+	sc->nr.congested += stat->nr_congested;
-+	sc->nr.writeback += stat->nr_writeback;
-+	sc->nr.immediate += stat->nr_immediate;
-+	sc->nr.taken += nr_taken;
++#if IS_ENABLED(CONFIG_BT_BRCMEXT)
++	hdev->brcm_capable = true;
++#endif
 +}
 +
- /*
-  * shrink_inactive_list() is a helper for shrink_node().  It returns the number
-  * of reclaimed pages
-@@ -2005,39 +2043,7 @@ static unsigned long shrink_inactive_list(unsigned long nr_to_scan,
- 	lruvec_lock_irq(lruvec);
- 	lru_note_cost_unlock_irq(lruvec, file, stat.nr_pageout,
- 					nr_scanned - nr_reclaimed);
--
--	/*
--	 * If dirty folios are scanned that are not queued for IO, it
--	 * implies that flushers are not doing their job. This can
--	 * happen when memory pressure pushes dirty folios to the end of
--	 * the LRU before the dirty limits are breached and the dirty
--	 * data has expired. It can also happen when the proportion of
--	 * dirty folios grows not through writes but through memory
--	 * pressure reclaiming all the clean cache. And in some cases,
--	 * the flushers simply cannot keep up with the allocation
--	 * rate. Nudge the flusher threads in case they are asleep.
--	 */
--	if (stat.nr_unqueued_dirty == nr_taken) {
--		wakeup_flusher_threads(WB_REASON_VMSCAN);
--		/*
--		 * For cgroupv1 dirty throttling is achieved by waking up
--		 * the kernel flusher here and later waiting on folios
--		 * which are in writeback to finish (see shrink_folio_list()).
--		 *
--		 * Flusher may not be able to issue writeback quickly
--		 * enough for cgroupv1 writeback throttling to work
--		 * on a large system.
--		 */
--		if (!writeback_throttling_sane(sc))
--			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
--	}
--
--	sc->nr.dirty += stat.nr_dirty;
--	sc->nr.congested += stat.nr_congested;
--	sc->nr.writeback += stat.nr_writeback;
--	sc->nr.immediate += stat.nr_immediate;
--	sc->nr.taken += nr_taken;
--
-+	handle_reclaim_writeback(nr_taken, pgdat, sc, &stat);
- 	trace_mm_vmscan_lru_shrink_inactive(pgdat->node_id,
- 			nr_scanned, nr_reclaimed, &stat, sc->priority, file);
- 	return nr_reclaimed;
-@@ -4824,26 +4830,11 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- retry:
- 	reclaimed = shrink_folio_list(&list, pgdat, sc, &stat, false, memcg);
- 	sc->nr_reclaimed += reclaimed;
-+	handle_reclaim_writeback(isolated, pgdat, sc, &stat);
- 	trace_mm_vmscan_lru_shrink_inactive(pgdat->node_id,
- 			type_scanned, reclaimed, &stat, sc->priority,
- 			type ? LRU_INACTIVE_FILE : LRU_INACTIVE_ANON);
+ static inline void hci_devcd_setup(struct hci_dev *hdev)
+ {
+ #ifdef CONFIG_DEV_COREDUMP
+@@ -1812,6 +1823,7 @@ int hci_get_conn_list(void __user *arg);
+ int hci_get_conn_info(struct hci_dev *hdev, void __user *arg);
+ int hci_get_auth_info(struct hci_dev *hdev, void __user *arg);
+ int hci_inquiry(void __user *arg);
++int hci_set_acl_prio(struct hci_dev *hdev, void __user *arg);
  
--	/*
--	 * If too many file cache in the coldest generation can't be evicted
--	 * due to being dirty, wake up the flusher.
--	 */
--	if (stat.nr_unqueued_dirty == isolated) {
--		wakeup_flusher_threads(WB_REASON_VMSCAN);
--
--		/*
--		 * For cgroupv1 dirty throttling is achieved by waking up
--		 * the kernel flusher here and later waiting on folios
--		 * which are in writeback to finish (see shrink_folio_list()).
--		 */
--		if (!writeback_throttling_sane(sc))
--			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
--	}
--
- 	list_for_each_entry_safe_reverse(folio, next, &list, lru) {
- 		DEFINE_MIN_SEQ(lruvec);
+ struct bdaddr_list *hci_bdaddr_list_lookup(struct list_head *list,
+ 					   bdaddr_t *bdaddr, u8 type);
+diff --git a/include/net/bluetooth/hci_sock.h b/include/net/bluetooth/hci_sock.h
+index 13e8cd4414a1..95d156ac4cae 100644
+--- a/include/net/bluetooth/hci_sock.h
++++ b/include/net/bluetooth/hci_sock.h
+@@ -91,6 +91,8 @@ struct hci_ufilter {
  
-@@ -4886,6 +4877,7 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
+ #define HCIINQUIRY	_IOR('H', 240, int)
  
- 	if (!list_empty(&list)) {
- 		skip_retry = true;
-+		isolated = 0;
- 		goto retry;
++#define HCISETACLPRIO	_IOW('H', 250, int)
++
+ /* Ioctl requests structures */
+ struct hci_dev_stats {
+ 	__u32 err_rx;
+@@ -171,6 +173,11 @@ struct hci_inquiry_req {
+ 	__u8  length;
+ 	__u8  num_rsp;
+ };
++
++struct hci_acl_prio_req {
++	__u16 handle;
++	__u8  high_prio;
++};
+ #define IREQ_CACHE_FLUSH 0x0001
+ 
+ #endif /* __HCI_SOCK_H */
+diff --git a/net/bluetooth/Kconfig b/net/bluetooth/Kconfig
+index 6b2b65a66700..0f2a5fbcafc5 100644
+--- a/net/bluetooth/Kconfig
++++ b/net/bluetooth/Kconfig
+@@ -110,6 +110,13 @@ config BT_AOSPEXT
+ 	  This options enables support for the Android Open Source
+ 	  Project defined HCI vendor extensions.
+ 
++config BT_BRCMEXT
++	bool "Enable Broadcom extensions"
++	depends on BT
++	help
++	  This option enables support for the Broadcom defined HCI
++	  vendor extensions.
++
+ config BT_DEBUGFS
+ 	bool "Export Bluetooth internals in debugfs"
+ 	depends on BT && DEBUG_FS
+diff --git a/net/bluetooth/Makefile b/net/bluetooth/Makefile
+index a7eede7616d8..b4c9013a46ce 100644
+--- a/net/bluetooth/Makefile
++++ b/net/bluetooth/Makefile
+@@ -24,5 +24,6 @@ bluetooth-$(CONFIG_BT_LE) += iso.o
+ bluetooth-$(CONFIG_BT_LEDS) += leds.o
+ bluetooth-$(CONFIG_BT_MSFTEXT) += msft.o
+ bluetooth-$(CONFIG_BT_AOSPEXT) += aosp.o
++bluetooth-$(CONFIG_BT_BRCMEXT) += brcm.o
+ bluetooth-$(CONFIG_BT_DEBUGFS) += hci_debugfs.o
+ bluetooth-$(CONFIG_BT_SELFTEST) += selftest.o
+diff --git a/net/bluetooth/brcm.c b/net/bluetooth/brcm.c
+new file mode 100644
+index 000000000000..d03d2af5dc7e
+--- /dev/null
++++ b/net/bluetooth/brcm.c
+@@ -0,0 +1,29 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (C) 2026 The Asahi Linux Contributors
++ */
++
++#include <net/bluetooth/bluetooth.h>
++#include <net/bluetooth/hci_core.h>
++
++#include "brcm.h"
++
++int brcm_set_high_priority(struct hci_dev *hdev, u16 handle, bool enable)
++{
++	struct sk_buff *skb;
++	u8 cmd[3];
++
++	if (!hdev->brcm_capable)
++		return -EOPNOTSUPP;
++
++	cmd[0] = handle;
++	cmd[1] = handle >> 8;
++	cmd[2] = !!enable;
++
++	skb = hci_cmd_sync(hdev, 0xfc57, sizeof(cmd), cmd, HCI_CMD_TIMEOUT);
++	if (IS_ERR(skb))
++		return PTR_ERR(skb);
++
++	kfree_skb(skb);
++	return 0;
++}
+diff --git a/net/bluetooth/brcm.h b/net/bluetooth/brcm.h
+new file mode 100644
+index 000000000000..a501f2988a96
+--- /dev/null
++++ b/net/bluetooth/brcm.h
+@@ -0,0 +1,17 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++/*
++ * Copyright (C) 2026 The Asahi Linux Contributors
++ */
++
++#if IS_ENABLED(CONFIG_BT_BRCMEXT)
++
++int brcm_set_high_priority(struct hci_dev *hdev, u16 handle, bool enable);
++
++#else
++
++static inline int brcm_set_high_priority(struct hci_dev *hdev, u16 handle, bool enable)
++{
++	return -EOPNOTSUPP;
++}
++
++#endif
+diff --git a/net/bluetooth/hci_conn.c b/net/bluetooth/hci_conn.c
+index 11d3ad8d2551..b2c7414a9c5b 100644
+--- a/net/bluetooth/hci_conn.c
++++ b/net/bluetooth/hci_conn.c
+@@ -35,6 +35,7 @@
+ #include <net/bluetooth/iso.h>
+ #include <net/bluetooth/mgmt.h>
+ 
++#include "brcm.h"
+ #include "smp.h"
+ #include "eir.h"
+ 
+@@ -2775,6 +2776,16 @@ int hci_get_auth_info(struct hci_dev *hdev, void __user *arg)
+ 	return copy_to_user(arg, &req, sizeof(req)) ? -EFAULT : 0;
+ }
+ 
++int hci_set_acl_prio(struct hci_dev *hdev, void __user *arg)
++{
++	struct hci_acl_prio_req req;
++
++	if (copy_from_user(&req, arg, sizeof(req)))
++		return -EFAULT;
++
++	return brcm_set_high_priority(hdev, req.handle, req.high_prio);
++}
++
+ struct hci_chan *hci_chan_create(struct hci_conn *conn)
+ {
+ 	struct hci_dev *hdev = conn->hdev;
+diff --git a/net/bluetooth/hci_sock.c b/net/bluetooth/hci_sock.c
+index 0290dea081f6..4be6aeeb6bad 100644
+--- a/net/bluetooth/hci_sock.c
++++ b/net/bluetooth/hci_sock.c
+@@ -1035,6 +1035,9 @@ static int hci_sock_bound_ioctl(struct sock *sk, unsigned int cmd,
+ 		if (!capable(CAP_NET_ADMIN))
+ 			return -EPERM;
+ 		return hci_sock_reject_list_del(hdev, (void __user *)arg);
++
++	case HCISETACLPRIO:
++		return hci_set_acl_prio(hdev, (void __user *)arg);
  	}
  
+ 	return -ENOIOCTLCMD;
+@@ -1072,6 +1075,7 @@ static int hci_sock_ioctl(struct socket *sock, unsigned int cmd,
+ 	case HCIGETAUTHINFO:
+ 	case HCIBLOCKADDR:
+ 	case HCIUNBLOCKADDR:
++	case HCISETACLPRIO:
+ 		break;
+ 	default:
+ 		return -ENOIOCTLCMD;
 
+---
+base-commit: bfe62a454542cfad3379f6ef5680b125f41e20f4
+change-id: 20260407-brcm-prio-b630e6cc3834
+
+Best regards,
 -- 
-2.53.0
+Sasha Finkelstein <fnkl.kernel@gmail.com>
 
