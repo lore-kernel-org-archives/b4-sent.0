@@ -1,300 +1,90 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Tue, 07 Apr 2026 22:55:43 +0800
-Subject: [PATCH RFC 2/2] mm, swap: fix race of charging into the wrong
- memcg for THP
+From: Joe Sandom <jsandom@axon.com>
+Subject: [PATCH v2 0/5] arm64: dts: qcom: add QCS8550 RB5Gen2 support
+Date: Tue, 07 Apr 2026 16:46:43 +0100
+Message-Id: <20260407-rb5gen2-dts-v2-0-d0c7f447ee73@axon.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260407-swap-memcg-fix-v1-2-a473ce2e5bb8@tencent.com>
-References: <20260407-swap-memcg-fix-v1-0-a473ce2e5bb8@tencent.com>
-In-Reply-To: <20260407-swap-memcg-fix-v1-0-a473ce2e5bb8@tencent.com>
-To: linux-mm@kvack.org
-Cc: Michal Hocko <mhocko@kernel.org>, 
- Roman Gushchin <roman.gushchin@linux.dev>, 
- Shakeel Butt <shakeel.butt@linux.dev>, Muchun Song <muchun.song@linux.dev>, 
- Andrew Morton <akpm@linux-foundation.org>, Chris Li <chrisl@kernel.org>, 
- Kemeng Shi <shikemeng@huaweicloud.com>, Nhat Pham <nphamcs@gmail.com>, 
- Baoquan He <bhe@redhat.com>, Barry Song <baohua@kernel.org>, 
- Youngjun Park <youngjun.park@lge.com>, Johannes Weiner <hannes@cmpxchg.org>, 
- Alexandre Ghiti <alex@ghiti.fr>, David Hildenbrand <david@kernel.org>, 
- Lorenzo Stoakes <ljs@kernel.org>, 
- "Liam R. Howlett" <Liam.Howlett@oracle.com>, 
- Vlastimil Babka <vbabka@kernel.org>, Mike Rapoport <rppt@kernel.org>, 
- Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
- Hugh Dickins <hughd@google.com>, 
- Baolin Wang <baolin.wang@linux.alibaba.com>, 
- Chuanhua Han <hanchuanhua@oppo.com>, linux-kernel@vger.kernel.org, 
- cgroups@vger.kernel.org, Kairui Song <kasong@tencent.com>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775573744; l=9867;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=X/ek0pSZoNxTKZ9tG09c+ZJJhzY+pVd49UQb7w0YLRg=;
- b=TEFcKwourn71DBqm8jy/z51c4t+8wplThkHDyKqJx0EX8IOsS+2FUkCNMMf6qaYfwO3XXR8pv
- JTm46EI/SigDaZbSECo8iymi1myXiHV3UPIKJ8ozTjGjcdqTbh+ysdB
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+X-B4-Tracking: v=1; b=H4sIAOMm1WkC/23MQQ6DIBCF4auYWXcaIGi1q96jcaHDoCwKDRhiY
+ 7h7qesu/5e874DE0XGCe3NA5OySC76GujRA6+QXRmdqgxKqE1pojHO7sFdotoSyF2RYzDfZEdT
+ HO7J1+6k9x9qrS1uInxPP8rf+d7JEgf3Q2t6SHrSlx7QHf6XwgrGU8gWEx1PfpQAAAA==
+X-Change-ID: 20260404-rb5gen2-dts-180cde0b716c
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Joe Sandom <jsandom@axon.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775576820; l=2699;
+ i=jsandom@axon.com; s=20260319; h=from:subject:message-id;
+ bh=n5DZ/2/rUyaYQzTqM/i7xw0BlntkOKwWDMmmePbEDNU=;
+ b=sIRtwMpw7um4PASGmn0Z2tIvRkXoeHqaVDUfXiVCGTQTVgYjZkNlqOO4zBxfxgzrkR5nA2mmZ
+ 3I7SXtrOeXbAzcpRzTHEWN22B6nLQqqlS9jS3ITBCE/8w3dkxVPyzCO
+X-Developer-Key: i=jsandom@axon.com; a=ed25519;
+ pk=Q/yflwj2WhkgBVTskrS9Vl5oScD0Bp3vTzDi+OxskTo=
+X-Endpoint-Received: by B4 Relay for jsandom@axon.com/20260319 with auth_id=687
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-During THP swapin via the SYNCHRONOUS_IO path, the folio is allocated
-and charged to a memcg before being inserted into the swap cache.
-Between allocation and swap cache insertion, the page table can change
-under us (we don't hold the PTE lock), so the swap entry may be freed
-and reused by a different cgroup. This causes the folio to be charged to
-the wrong memcg. Shmem also has a similar issue.
+This series adds device tree support for the Thundercomm RB5Gen2
+development kit, based on the Qualcomm QCS8550 chipset.
 
-Usually, the double check of the page table will catch this, but the
-same page table entry may reuse the swap entry, but by a different
-cgroup. The chance is extremely low, requiring a set of rare time
-windows to hit in a row, but it is totally possible.
+Patches 1-3 prepares for the RB5gen2 device tree by adding MHI register
+regions and port labels to the PCIe controller nodes, as well as moving
+common IPA properties into sm8550.dtsi. Then update the existing HDK
+and QRD board files accordingly.
 
-Fix this by charging the folio after it is inserted and stabilized in
-the swap cache. This would also improve the performance and simplify the
-code.
+Patches 4-5 add the dt-bindings documentation and the board device tree
+for the RB5Gen2. This initial submission covers the main board; the vision
+mezzanine will be supported in a follow-up series.
 
-Also remove the now-stale comment about memcg charging of swapin
-Now we always charge the folio after adding it to the swap cache.
-Previously it has to do this before adding to swap cache for
-maintaining the per-memcg swapcache stat. We have decoupled the stat
-update from adding the folio during swapin in previous commit so
-this is fine now.
+Product page:
+https://www.thundercomm.com/product/qualcomm-rb5-gen-2-development-kit
 
-Fixes: 242d12c981745 ("mm: support large folios swap-in for sync io devices")
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Signed-off-by: Joe Sandom <jsandom@axon.com>
 ---
- mm/memcontrol.c |  3 +--
- mm/memory.c     | 53 +++++++++++++++++++++++------------------------------
- mm/shmem.c      | 15 ++++-----------
- mm/swap.h       |  5 +++--
- mm/swap_state.c | 17 +++++++++--------
- 5 files changed, 40 insertions(+), 53 deletions(-)
+Changes in v2:
+- Lowercase hex in MHI region definitions for pcie0 and pcie1 nodes +
+  vertical alignment
+- Change pcie0 and pcie1 reg-names for one entry per line
+- Ensured pcie port labels + changes to sm8550-hdk.dts and sm8550-qrd.dts
+  are done in a single commit
+- Moved IPA gsi-loader and memory-region to sm8550.dtsi since they are common
+  properties. Reflect changes in sm8550-hdk.dts and sm8550-qrd.dts
+- Removed usbhub_reset since this is not required
+- Added swctrl-gpios property to wcn7850-pmu
+- Split sw_ctrl_default gpio from bt_default grouping and referenced the
+  pinctrl separately
+- Replaced upd_reset regulator-fixed with pinctrl and vddpe-3v3-supply
+  on pcie0
+- Aligned firmware-name values vertically on the quote mark
+- Changed cdsp, adsp and modem remoteprocs to .mbn file type instead of
+  .mdt
+- Added remark in rb5gen2 dts commit explaining the rationale for
+  deleting msi-map in pcie0 and pcie1 nodes
+- Link to v1: https://lore.kernel.org/r/20260404-rb5gen2-dts-v1-0-895f8fc494fc@axon.com
 
-diff --git a/mm/memcontrol.c b/mm/memcontrol.c
-index c3d98ab41f1f..21caed15c9f5 100644
---- a/mm/memcontrol.c
-+++ b/mm/memcontrol.c
-@@ -5067,8 +5067,7 @@ int mem_cgroup_charge_hugetlb(struct folio *folio, gfp_t gfp)
-  * @gfp: reclaim mode
-  * @entry: swap entry for which the folio is allocated
-  *
-- * This function charges a folio allocated for swapin. Please call this before
-- * adding the folio to the swapcache.
-+ * This function charges a folio allocated for swapin.
-  *
-  * Returns 0 on success. Otherwise, an error code is returned.
-  */
-diff --git a/mm/memory.c b/mm/memory.c
-index ea6568571131..6d5b0c10ac8e 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -4595,22 +4595,8 @@ static vm_fault_t handle_pte_marker(struct vm_fault *vmf)
- 
- static struct folio *__alloc_swap_folio(struct vm_fault *vmf)
- {
--	struct vm_area_struct *vma = vmf->vma;
--	struct folio *folio;
--	softleaf_t entry;
--
--	folio = vma_alloc_folio(GFP_HIGHUSER_MOVABLE, 0, vma, vmf->address);
--	if (!folio)
--		return NULL;
--
--	entry = softleaf_from_pte(vmf->orig_pte);
--	if (mem_cgroup_swapin_charge_folio(folio, vma->vm_mm,
--					   GFP_KERNEL, entry)) {
--		folio_put(folio);
--		return NULL;
--	}
--
--	return folio;
-+	return vma_alloc_folio(GFP_HIGHUSER_MOVABLE, 0,
-+			       vmf->vma, vmf->address);
- }
- 
- #ifdef CONFIG_TRANSPARENT_HUGEPAGE
-@@ -4736,13 +4722,8 @@ static struct folio *alloc_swap_folio(struct vm_fault *vmf)
- 	while (orders) {
- 		addr = ALIGN_DOWN(vmf->address, PAGE_SIZE << order);
- 		folio = vma_alloc_folio(gfp, order, vma, addr);
--		if (folio) {
--			if (!mem_cgroup_swapin_charge_folio(folio, vma->vm_mm,
--							    gfp, entry))
--				return folio;
--			count_mthp_stat(order, MTHP_STAT_SWPIN_FALLBACK_CHARGE);
--			folio_put(folio);
--		}
-+		if (folio)
-+			return folio;
- 		count_mthp_stat(order, MTHP_STAT_SWPIN_FALLBACK);
- 		order = next_order(&orders, order);
- 	}
-@@ -4858,18 +4839,30 @@ vm_fault_t do_swap_page(struct vm_fault *vmf)
- 	folio = swap_cache_get_folio(entry);
- 	if (folio)
- 		swap_update_readahead(folio, vma, vmf->address);
-+
- 	if (!folio) {
- 		if (data_race(si->flags & SWP_SYNCHRONOUS_IO)) {
-+			gfp_t gfp = GFP_HIGHUSER_MOVABLE;
-+
- 			folio = alloc_swap_folio(vmf);
- 			if (folio) {
--				/*
--				 * folio is charged, so swapin can only fail due
--				 * to raced swapin and return NULL.
--				 */
--				swapcache = swapin_folio(entry, folio);
--				if (swapcache != folio)
-+				if (folio_test_large(folio))
-+					gfp = vma_thp_gfp_mask(vma);
-+				swapcache = swapin_folio(entry, folio, gfp);
-+				if (swapcache) {
-+					/* We might hit with another cached swapin */
-+					if (swapcache != folio)
-+						folio_put(folio);
-+					folio = swapcache;
-+				} else if (folio_test_large(folio)) {
-+					/* THP swapin failed, try order 0 */
-+					folio_put(folio);
-+					folio = swapin_readahead(entry, GFP_HIGHUSER_MOVABLE, vmf);
-+				} else {
-+					/* order 0 swapin failure, abort */
- 					folio_put(folio);
--				folio = swapcache;
-+					folio = NULL;
-+				}
- 			}
- 		} else {
- 			folio = swapin_readahead(entry, GFP_HIGHUSER_MOVABLE, vmf);
-diff --git a/mm/shmem.c b/mm/shmem.c
-index 5aa43657886c..bc67b04b9de4 100644
---- a/mm/shmem.c
-+++ b/mm/shmem.c
-@@ -2071,22 +2071,15 @@ static struct folio *shmem_swap_alloc_folio(struct inode *inode,
- 		goto fallback;
- 	}
- 
--	if (mem_cgroup_swapin_charge_folio(new, vma ? vma->vm_mm : NULL,
--					   alloc_gfp, entry)) {
--		folio_put(new);
--		new = ERR_PTR(-ENOMEM);
--		goto fallback;
--	}
--
--	swapcache = swapin_folio(entry, new);
-+	swapcache = swapin_folio(entry, new, alloc_gfp);
- 	if (swapcache != new) {
- 		folio_put(new);
- 		if (!swapcache) {
- 			/*
--			 * The new folio is charged already, swapin can
--			 * only fail due to another raced swapin.
-+			 * Fail with -ENOMEM by default, caller will
-+			 * correct it to -EEXIST if mapping changed.
- 			 */
--			new = ERR_PTR(-EEXIST);
-+			new = ERR_PTR(-ENOMEM);
- 			goto fallback;
- 		}
- 	}
-diff --git a/mm/swap.h b/mm/swap.h
-index a77016f2423b..90f1edabb73a 100644
---- a/mm/swap.h
-+++ b/mm/swap.h
-@@ -300,7 +300,7 @@ struct folio *swap_cluster_readahead(swp_entry_t entry, gfp_t flag,
- 		struct mempolicy *mpol, pgoff_t ilx);
- struct folio *swapin_readahead(swp_entry_t entry, gfp_t flag,
- 		struct vm_fault *vmf);
--struct folio *swapin_folio(swp_entry_t entry, struct folio *folio);
-+struct folio *swapin_folio(swp_entry_t entry, struct folio *folio, gfp_t flag);
- void swap_update_readahead(struct folio *folio, struct vm_area_struct *vma,
- 			   unsigned long addr);
- 
-@@ -433,7 +433,8 @@ static inline struct folio *swapin_readahead(swp_entry_t swp, gfp_t gfp_mask,
- 	return NULL;
- }
- 
--static inline struct folio *swapin_folio(swp_entry_t entry, struct folio *folio)
-+static inline struct folio *swapin_folio(swp_entry_t entry,
-+		struct folio *folio, gfp_t flag)
- {
- 	return NULL;
- }
-diff --git a/mm/swap_state.c b/mm/swap_state.c
-index c53d16b87a98..d24a7a3482ec 100644
---- a/mm/swap_state.c
-+++ b/mm/swap_state.c
-@@ -468,8 +468,7 @@ void swap_update_readahead(struct folio *folio, struct vm_area_struct *vma,
-  * __swap_cache_prepare_and_add - Prepare the folio and add it to swap cache.
-  * @entry: swap entry to be bound to the folio.
-  * @folio: folio to be added.
-- * @gfp: memory allocation flags for charge, can be 0 if @charged is true.
-- * @charged: if the folio is already charged.
-+ * @gfp: memory allocation flags for charge.
-  *
-  * Update the swap_map and add folio as swap cache, typically before swapin.
-  * All swap slots covered by the folio must have a non-zero swap count.
-@@ -480,7 +479,7 @@ void swap_update_readahead(struct folio *folio, struct vm_area_struct *vma,
-  */
- static struct folio *__swap_cache_prepare_and_add(swp_entry_t entry,
- 						  struct folio *folio,
--						  gfp_t gfp, bool charged)
-+						  gfp_t gfp)
- {
- 	unsigned long nr_pages = folio_nr_pages(folio);
- 	struct folio *swapcache = NULL;
-@@ -511,12 +510,14 @@ static struct folio *__swap_cache_prepare_and_add(swp_entry_t entry,
- 			goto failed;
- 	}
- 
--	if (!charged && mem_cgroup_swapin_charge_folio(folio, NULL, gfp, entry)) {
-+	if (mem_cgroup_swapin_charge_folio(folio, NULL, gfp, entry)) {
- 		/* We might lose the shadow here, but that's fine */
- 		ci = swap_cluster_get_and_lock(folio);
- 		__swap_cache_do_del_folio(ci, folio, entry, NULL);
- 		swap_cluster_unlock(ci);
- 
-+		count_mthp_stat(folio_order(folio), MTHP_STAT_SWPIN_FALLBACK_CHARGE);
-+
- 		/* __swap_cache_do_del_folio doesn't put the refs */
- 		folio_ref_sub(folio, nr_pages);
- 		goto failed;
-@@ -578,7 +579,7 @@ struct folio *swap_cache_alloc_folio(swp_entry_t entry, gfp_t gfp_mask,
- 	if (!folio)
- 		return NULL;
- 	/* Try add the new folio, returns existing folio or NULL on failure. */
--	result = __swap_cache_prepare_and_add(entry, folio, gfp_mask, false);
-+	result = __swap_cache_prepare_and_add(entry, folio, gfp_mask);
- 	if (result == folio)
- 		*new_page_allocated = true;
- 	else
-@@ -589,7 +590,7 @@ struct folio *swap_cache_alloc_folio(swp_entry_t entry, gfp_t gfp_mask,
- /**
-  * swapin_folio - swap-in one or multiple entries skipping readahead.
-  * @entry: starting swap entry to swap in
-- * @folio: a new allocated and charged folio
-+ * @folio: a new allocated folio
-  *
-  * Reads @entry into @folio, @folio will be added to the swap cache.
-  * If @folio is a large folio, the @entry will be rounded down to align
-@@ -600,14 +601,14 @@ struct folio *swap_cache_alloc_folio(swp_entry_t entry, gfp_t gfp_mask,
-  * to order 0. Else, if another folio was already added to the swap cache,
-  * return that swap cache folio instead.
-  */
--struct folio *swapin_folio(swp_entry_t entry, struct folio *folio)
-+struct folio *swapin_folio(swp_entry_t entry, struct folio *folio, gfp_t gfp)
- {
- 	struct folio *swapcache;
- 	pgoff_t offset = swp_offset(entry);
- 	unsigned long nr_pages = folio_nr_pages(folio);
- 
- 	entry = swp_entry(swp_type(entry), round_down(offset, nr_pages));
--	swapcache = __swap_cache_prepare_and_add(entry, folio, 0, true);
-+	swapcache = __swap_cache_prepare_and_add(entry, folio, gfp);
- 	if (swapcache == folio)
- 		swap_read_folio(folio, NULL);
- 	return swapcache;
+---
+Joe Sandom (5):
+      arm64: dts: qcom: sm8550: add PCIe MHI register regions
+      arm64: dts: qcom: sm8550: add PCIe port labels
+      arm64: dts: qcom: sm8550: move IPA properties to SoC device tree
+      dt-bindings: arm: qcom: document QCS8550 RB5Gen2 board
+      arm64: dts: qcom: qcs8550: add QCS8550 RB5Gen2 board support
 
+ Documentation/devicetree/bindings/arm/qcom.yaml |    6 +
+ arch/arm64/boot/dts/qcom/Makefile               |    1 +
+ arch/arm64/boot/dts/qcom/qcs8550-rb5gen2.dts    | 1574 +++++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/sm8550-hdk.dts         |    4 +-
+ arch/arm64/boot/dts/qcom/sm8550-qrd.dts         |    4 +-
+ arch/arm64/boot/dts/qcom/sm8550.dtsi            |   26 +-
+ 6 files changed, 1603 insertions(+), 12 deletions(-)
+---
+base-commit: af241225893ac4933bb8f0615f2dfda8ea2326ce
+change-id: 20260404-rb5gen2-dts-180cde0b716c
+
+Best regards,
 -- 
-2.53.0
+Joe Sandom <jsandom@axon.com>
 
