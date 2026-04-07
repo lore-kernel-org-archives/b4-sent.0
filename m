@@ -1,15 +1,13 @@
 From: Kairui Song <kasong@tencent.com>
-Subject: [PATCH RFC 0/2] mm, swap: fix swapin race that causes inaccurate
- memcg accounting
-Date: Tue, 07 Apr 2026 22:55:41 +0800
-Message-Id: <20260407-swap-memcg-fix-v1-0-a473ce2e5bb8@tencent.com>
+Date: Tue, 07 Apr 2026 22:55:42 +0800
+Subject: [PATCH RFC 1/2] mm, swap: fix potential race of charging into the
+ wrong memcg
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDEwNz3eLyxALd3NTc5HTdtMwKXcuUJIOk5GTjtERzMyWgpoKiVKAw2MB
- opSA3Z6VYiGBxaVJWanIJyCil2loA+uYQK3cAAAA=
-X-Change-ID: 20260407-swap-memcg-fix-9db0bcc3fa76
+Message-Id: <20260407-swap-memcg-fix-v1-1-a473ce2e5bb8@tencent.com>
+References: <20260407-swap-memcg-fix-v1-0-a473ce2e5bb8@tencent.com>
+In-Reply-To: <20260407-swap-memcg-fix-v1-0-a473ce2e5bb8@tencent.com>
 To: linux-mm@kvack.org
 Cc: Michal Hocko <mhocko@kernel.org>, 
  Roman Gushchin <roman.gushchin@linux.dev>, 
@@ -28,123 +26,186 @@ Cc: Michal Hocko <mhocko@kernel.org>,
  Chuanhua Han <hanchuanhua@oppo.com>, linux-kernel@vger.kernel.org, 
  cgroups@vger.kernel.org, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775573744; l=5405;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775573744; l=6871;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=ktiFYUkm17rtWG9ixEvpBIbYQmlh9KYi2e+f5EL5XCo=;
- b=4buYa029bKRDja+FudcwHiadO4RPbc7haNQ9UhhSEB6duzxw3I44ZRV4k0i+0hQXiX0dnEc5j
- Gkfn3V+rOu8CBGklC4jLMUdhig4dBZdcjwMZoWpvGy1ZQEwwSOWBEM3
+ bh=8waYhVG/zmYZKbTD5LXs0veHtD/HsXryyRZUBo5GKyE=;
+ b=irCjKZJcfH1APdFUGYgGW2UOdJ94anKzvDXlkVQVoeRoDu0PD7sDKOyFiX0KbC3RdeQzjyai6
+ YgLFnp1vTe9BhgDMcWBN37tGPiBPT9o90xyn/zf486gb5TKWojQBGk5
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-While doing code inspection, I noticed there is a long-existing issue
-THP swapin may got charged into the wrong memcg since commit
-242d12c981745 ("mm: support large folios swap-in for sync io devices").
-And a recent fix made it a bit worse.
+Swapin folios are allocated and charged without adding to the swap
+cache. So it is possible that the corresponding swap slot will
+be freed, then get allocated again by another memory cgroup. By that
+time, continuing to use the previously charged folio will be risky.
 
-The error seem not serious. The worst that could happen is slightly
-inaccurate memcg accounting as the charge will go to an unexpected but
-somehow still relevant memcg. The chance is seems extremely low.
-This issue will be fixed (and found during the rebase of) swap table P4
-but may worth a separate fix. Sending as RFC first in case I'm missing
-anything, or I'm overlooking the result, or overthinking about it.
+Usually, this won't cause an issue since the upper-level users of the
+swap entry, the page table, or mapping, will change if the swap entry is
+freed. But, it's possible the page table just happened to be reusing the
+same swap entry too, and if that was used by another cgroup, then that's
+a problem.
 
-And recent commit 9acbe135588e ("mm/swap: fix swap cache memcg
-accounting") extended this issue for ordinary swap too (see patch 1 in
-this series). The chance is still extremely low and doesn't seem to have
-a significant negative result.
+The chance is extremely low, previously this issue is limited to
+SYNCHRONOUS_IO devices. But recent commit 9acbe135588e ("mm/swap:
+fix swap cache memcg accounting") extended the same pattern,
+charging the folio without adding the folio to swap cache first.
+The chance is still extremely low, but in theory, it is more common.
 
-The problem occurs when swapin tries to allocate and charge a swapin
-folio without holding any lock or pinning the swap slot first. It's
-possible that the page table or mapping may change. Another thread may
-swap in and free these memory, the swap slots are also freed. Then if
-another mem cgroup faulted these memory again, thing get messy.
+So to fix that, keep the pattern introduced by commit 2732acda82c9 ("mm,
+swap: use swap cache as the swap in synchronize layer"), always uses
+swap cache as the synchronize layer first, and do the charge afterward.
+And fix the issue that commit 9acbe135588e ("mm/swap: fix swap cache
+memcg accounting") is trying to fix by separating the statistic part
+out.
 
-Usually, this is still fine since the user of the charged folio -
-swapin, anon or shmem, will double check if the page table or mapping
-is still the same and abort if not. But the PTE or mapping entry could
-got swapped out again using the same swap entry. Now the page table or
-mapping does look the same. But the swapout is done after the resource
-is owned by another cgroup (e.g. by MADV & realloc), then, back to the
-initial caller the start the swapin and charged the folio, it can keep
-using the old charged folio, which means we chaged into a wrong cgroup.
+This commit only fixes the issue for non SYNCHRONOUS_IO devices. Another
+separate fix is needed for these devices.
 
-The problem is similar to what we fixed with commit 13ddaf26be324
-("mm/swap: fix race when skipping swapcache"). There is no data
-corruption since IO is guarded by swap cache or the old HAS_CACHE
-bit in commit 242d12c981745 ("mm: support large folios swap-in for sync
-io devices").
-
-The chance should be extremely low, it requires multiple cgroups to hit
-a set of rare time windows in a row together, so far I haven't found a
-good way to reproduce it, but in theory it is possible, and at least
-looks risky:
-
-CPU0 (memcg0 runnig)                | CPU1 (also memcg0 running)
-                                    |
-do_swap_page() of entry X           |
-<direct swapin path>                |
-<alloc folio A, charge into memcg0> |
-... interrupted ...                 |
-                                    | do_swap_page() of same entry X
-                                    | <finish swapin>
-                                    | set_pte_at() - a folio installed
-                                    | <frees the folio with MADV_FREE>
-                                    | <migrate to another *memcg1*>
-                                    | <fault and install another folio>
-                                    |   the folio belong to *memcg 1*
-                                    | <swapout the using same entry X>
-... continue ...                    |   now entry X belongs to *memcg 1*
-pte_same() <- Check pass, PTE seems |
-              unchanged, but now    |
-              belong to memcg1.     |
-set_pte_at() <- folio A installed,  |
-                memcg0 is charged.  |
-
-The folio got charged to memcg0, but it really should be charged to
-memcg1 as the PTE / folio is owned by memcg1 before the last swapout.
-Fortunately there is no leak, swap accounting will still be uncharging
-memcg1. memcg0 is not completely irrelevant as it's true that it is now
-memcg1 faulting this folio. Shmem may have similar issue.
-
-Patch 1 fixes this issue for order 0 / non-SYNCHRONOUS_IO swapin, Patch
-2 fixes this issue for SYNCHRONOUS_IO swapin.
-
-If we consider this problem trivial, I suggest we fix it for order 0
-swapin first since that's a more common and recent issue since a recent
-commit.
-
-SYNCHRONOUS_IO fix seems also good, but it changes the current fallback
-logic. Instead of fallback to next order it will fallback to order 0
-directly. That should be fine though. This issue can be fixed / cleaned
-up in a better way with swap table P4 as demostrated previously by
-allocating the folio in swap cache directly with proper fallback and a
-more compat loop for error handling:
-
-https://lore.kernel.org/linux-mm/20260220-swap-table-p4-v1-4-104795d19815@tencent.com/
-
-Having this series merged first should also be fine. In theory, this
-series may also reduce memcg thrashing of large folios since duplicated
-charging is avoided for raced swapin.
-
+Fixes: 9acbe135588e ("mm/swap: fix swap cache memcg accounting")
+Fixes: 2732acda82c9 ("mm, swap: use swap cache as the swap in synchronize layer")
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
-Kairui Song (2):
-      mm, swap: fix potential race of charging into the wrong memcg
-      mm, swap: fix race of charging into the wrong memcg for THP
+ mm/swap_state.c | 53 +++++++++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 41 insertions(+), 12 deletions(-)
 
- mm/memcontrol.c |  3 +--
- mm/memory.c     | 53 ++++++++++++++++++++-------------------------
- mm/shmem.c      | 15 ++++---------
- mm/swap.h       |  5 +++--
- mm/swap_state.c | 66 +++++++++++++++++++++++++++++++++++++++++----------------
- 5 files changed, 79 insertions(+), 63 deletions(-)
----
-base-commit: 96881c429af113d53414341d0609c47f3a0017c6
-change-id: 20260407-swap-memcg-fix-9db0bcc3fa76
+diff --git a/mm/swap_state.c b/mm/swap_state.c
+index 1415a5c54a43..c53d16b87a98 100644
+--- a/mm/swap_state.c
++++ b/mm/swap_state.c
+@@ -137,8 +137,8 @@ void *swap_cache_get_shadow(swp_entry_t entry)
+ 	return NULL;
+ }
+ 
+-void __swap_cache_add_folio(struct swap_cluster_info *ci,
+-			    struct folio *folio, swp_entry_t entry)
++static void __swap_cache_do_add_folio(struct swap_cluster_info *ci,
++				      struct folio *folio, swp_entry_t entry)
+ {
+ 	unsigned int ci_off = swp_cluster_offset(entry), ci_end;
+ 	unsigned long nr_pages = folio_nr_pages(folio);
+@@ -159,7 +159,14 @@ void __swap_cache_add_folio(struct swap_cluster_info *ci,
+ 	folio_ref_add(folio, nr_pages);
+ 	folio_set_swapcache(folio);
+ 	folio->swap = entry;
++}
++
++void __swap_cache_add_folio(struct swap_cluster_info *ci,
++			    struct folio *folio, swp_entry_t entry)
++{
++	unsigned long nr_pages = folio_nr_pages(folio);
+ 
++	__swap_cache_do_add_folio(ci, folio, entry);
+ 	node_stat_mod_folio(folio, NR_FILE_PAGES, nr_pages);
+ 	lruvec_stat_mod_folio(folio, NR_SWAPCACHE, nr_pages);
+ }
+@@ -207,7 +214,7 @@ static int swap_cache_add_folio(struct folio *folio, swp_entry_t entry,
+ 		if (swp_tb_is_shadow(old_tb))
+ 			shadow = swp_tb_to_shadow(old_tb);
+ 	} while (++ci_off < ci_end);
+-	__swap_cache_add_folio(ci, folio, entry);
++	__swap_cache_do_add_folio(ci, folio, entry);
+ 	swap_cluster_unlock(ci);
+ 	if (shadowp)
+ 		*shadowp = shadow;
+@@ -219,7 +226,7 @@ static int swap_cache_add_folio(struct folio *folio, swp_entry_t entry,
+ }
+ 
+ /**
+- * __swap_cache_del_folio - Removes a folio from the swap cache.
++ * __swap_cache_do_del_folio - Removes a folio from the swap cache.
+  * @ci: The locked swap cluster.
+  * @folio: The folio.
+  * @entry: The first swap entry that the folio corresponds to.
+@@ -231,8 +238,9 @@ static int swap_cache_add_folio(struct folio *folio, swp_entry_t entry,
+  * Context: Caller must ensure the folio is locked and in the swap cache
+  * using the index of @entry, and lock the cluster that holds the entries.
+  */
+-void __swap_cache_del_folio(struct swap_cluster_info *ci, struct folio *folio,
+-			    swp_entry_t entry, void *shadow)
++static void __swap_cache_do_del_folio(struct swap_cluster_info *ci,
++				      struct folio *folio,
++				      swp_entry_t entry, void *shadow)
+ {
+ 	int count;
+ 	unsigned long old_tb;
+@@ -265,8 +273,6 @@ void __swap_cache_del_folio(struct swap_cluster_info *ci, struct folio *folio,
+ 
+ 	folio->swap.val = 0;
+ 	folio_clear_swapcache(folio);
+-	node_stat_mod_folio(folio, NR_FILE_PAGES, -nr_pages);
+-	lruvec_stat_mod_folio(folio, NR_SWAPCACHE, -nr_pages);
+ 
+ 	if (!folio_swapped) {
+ 		__swap_cluster_free_entries(si, ci, ci_start, nr_pages);
+@@ -279,6 +285,16 @@ void __swap_cache_del_folio(struct swap_cluster_info *ci, struct folio *folio,
+ 	}
+ }
+ 
++void __swap_cache_del_folio(struct swap_cluster_info *ci, struct folio *folio,
++			    swp_entry_t entry, void *shadow)
++{
++	unsigned long nr_pages = folio_nr_pages(folio);
++
++	__swap_cache_do_del_folio(ci, folio, entry, shadow);
++	node_stat_mod_folio(folio, NR_FILE_PAGES, -nr_pages);
++	lruvec_stat_mod_folio(folio, NR_SWAPCACHE, -nr_pages);
++}
++
+ /**
+  * swap_cache_del_folio - Removes a folio from the swap cache.
+  * @folio: The folio.
+@@ -452,7 +468,7 @@ void swap_update_readahead(struct folio *folio, struct vm_area_struct *vma,
+  * __swap_cache_prepare_and_add - Prepare the folio and add it to swap cache.
+  * @entry: swap entry to be bound to the folio.
+  * @folio: folio to be added.
+- * @gfp: memory allocation flags for charge, can be 0 if @charged if true.
++ * @gfp: memory allocation flags for charge, can be 0 if @charged is true.
+  * @charged: if the folio is already charged.
+  *
+  * Update the swap_map and add folio as swap cache, typically before swapin.
+@@ -466,16 +482,15 @@ static struct folio *__swap_cache_prepare_and_add(swp_entry_t entry,
+ 						  struct folio *folio,
+ 						  gfp_t gfp, bool charged)
+ {
++	unsigned long nr_pages = folio_nr_pages(folio);
+ 	struct folio *swapcache = NULL;
++	struct swap_cluster_info *ci;
+ 	void *shadow;
+ 	int ret;
+ 
+ 	__folio_set_locked(folio);
+ 	__folio_set_swapbacked(folio);
+ 
+-	if (!charged && mem_cgroup_swapin_charge_folio(folio, NULL, gfp, entry))
+-		goto failed;
+-
+ 	for (;;) {
+ 		ret = swap_cache_add_folio(folio, entry, &shadow);
+ 		if (!ret)
+@@ -496,6 +511,20 @@ static struct folio *__swap_cache_prepare_and_add(swp_entry_t entry,
+ 			goto failed;
+ 	}
+ 
++	if (!charged && mem_cgroup_swapin_charge_folio(folio, NULL, gfp, entry)) {
++		/* We might lose the shadow here, but that's fine */
++		ci = swap_cluster_get_and_lock(folio);
++		__swap_cache_do_del_folio(ci, folio, entry, NULL);
++		swap_cluster_unlock(ci);
++
++		/* __swap_cache_do_del_folio doesn't put the refs */
++		folio_ref_sub(folio, nr_pages);
++		goto failed;
++	}
++
++	node_stat_mod_folio(folio, NR_FILE_PAGES, nr_pages);
++	lruvec_stat_mod_folio(folio, NR_SWAPCACHE, nr_pages);
++
+ 	memcg1_swapin(entry, folio_nr_pages(folio));
+ 	if (shadow)
+ 		workingset_refault(folio, shadow);
 
-Best regards,
---  
-Kairui Song <kasong@tencent.com>
+-- 
+2.53.0
 
