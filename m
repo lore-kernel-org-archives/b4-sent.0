@@ -1,286 +1,153 @@
-From: Sasha Finkelstein <fnkl.kernel@gmail.com>
-Date: Tue, 07 Apr 2026 14:09:14 +0200
-Subject: [PATCH] Bluetooth: Add Broadcom channel priority commands
+From: Maud Spierings <maudspierings@gocontroll.com>
+Subject: [PATCH v8 0/4] backlight: add new max25014 backlight driver
+Date: Tue, 07 Apr 2026 16:41:41 +0200
+Message-Id: <20260407-max25014-v8-0-14eac7ed673a@gocontroll.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260407-brcm-prio-v1-1-f38b17376640@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDEwNz3aSi5FzdgqLMfN0kM2ODVLPkZGMLYxMloPqCotS0zAqwWdGxtbU
- AfbxXPlsAAAA=
-X-Change-ID: 20260407-brcm-prio-b630e6cc3834
-To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
- Neal Gompa <neal@gompa.dev>, Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>
-Cc: linux-kernel@vger.kernel.org, asahi@lists.linux.dev, 
- linux-arm-kernel@lists.infradead.org, linux-bluetooth@vger.kernel.org, 
- netdev@vger.kernel.org, Sasha Finkelstein <fnkl.kernel@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775563770; l=7872;
- i=fnkl.kernel@gmail.com; s=20241124; h=from:subject:message-id;
- bh=gg4x5lEmIqKFrASgP0xO22e+G2K7V8H9TMkHZhq7+QY=;
- b=vbmIOo8yojBRUh3vdplseWSQTA6tBL5Ublusuh3CS9xPiTabxvXlO4ioFtSCo6ffq9mj/H1I+
- flNVNUJaGSeBgHsyPMZP7NVDSsx61c3wUNqJn5Pu53GVlZW04KseeMm
-X-Developer-Key: i=fnkl.kernel@gmail.com; a=ed25519;
- pk=aSkp1PdZ+eF4jpMO6oLvz/YfT5XkBUneWwyhQrOgmsU=
-X-Endpoint-Received: by B4 Relay for fnkl.kernel@gmail.com/20241124 with auth_id=283
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23OS2rDMBCA4asEresyo7e66j1KF2N5lAiSKNjBp
+ ATfvUpKa0G90wh9/+guJh4zT+Jtdxcjz3nK5VwH/7IT8UDnPXd5qLOQIA1YabsT3eoJdaclOBO
+ QkZIR9fll5JRvz9THZ50PebqW8etZnvFx+xNx0qyRGTvogH2MHGrP8/u+xHK+juV4fI3lJB6lW
+ a7aY2i0rNqkwRH3qJFpU6tVB8RGq6oHUElzT8qZ7d36TyNAu1tXbWnoJQGRMmlTm1UjuEabqgN
+ ZIuMU2H5b21VLaH9uq/aeFUWPKNO2dr/aAkrVaFc1Gjag+0Axun96WZZvBG2W5xkCAAA=
+X-Change-ID: 20250626-max25014-4207591e1af5
+To: Lee Jones <lee@kernel.org>, Daniel Thompson <danielt@kernel.org>, 
+ Jingoo Han <jingoohan1@gmail.com>, Pavel Machek <pavel@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Helge Deller <deller@gmx.de>, 
+ Shawn Guo <shawnguo@kernel.org>, Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>, Frank Li <Frank.Li@nxp.com>
+Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-fbdev@vger.kernel.org, imx@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, 
+ Maud Spierings <maudspierings@gocontroll.com>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775572904; l=5325;
+ i=maudspierings@gocontroll.com; s=20250214; h=from:subject:message-id;
+ bh=J1I/2EOKwZVbytZkVaMR4iXsx/7J4F1JU+XT5ySnbp0=;
+ b=p2hDxSqIgqxC9d1BFxg57HCSFAyqjj18dU4K/5XRBHtJvUONwpApN2xyYpYFsaKvIKUwT+EXN
+ 8/kLvdncznPCJLpxpgDs7Ydqk82Vjgom6VvmfQ1XsZ01J+ZatazMhpM
+X-Developer-Key: i=maudspierings@gocontroll.com; a=ed25519;
+ pk=7chUb8XpaTQDvWhzTdHC0YPMkTDloELEC7q94tOUyPg=
+X-Endpoint-Received: by B4 Relay for maudspierings@gocontroll.com/20250214 with auth_id=341
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Certain Broadcom bluetooth chips (bcm4377/bcm4378/bcm438) need ACL
-streams carrying audio to be set as "high priority" using a vendor
-specific command to prevent 10-ish second-long dropouts whenever
-something does a device scan. This series adds an ioctl to control
-the priorities and hooks it up for the relevant chips.
+The Maxim MAX25014 is an automotive grade backlight driver IC. Its
+datasheet can be found at [1].
 
-Signed-off-by: Sasha Finkelstein <fnkl.kernel@gmail.com>
+With its integrated boost controller, it can power 4 channels (led
+strings) and has a number of different modes using pwm and or i2c.
+Currently implemented is only i2c control.
+
+link: https://www.analog.com/media/en/technical-documentation/data-sheets/MAX25014.pdf [1]
+
+Signed-off-by: Maud Spierings <maudspierings@gocontroll.com>
 ---
- MAINTAINERS                      |  2 ++
- drivers/bluetooth/hci_bcm4377.c  |  2 ++
- include/net/bluetooth/hci_core.h | 12 ++++++++++++
- include/net/bluetooth/hci_sock.h |  7 +++++++
- net/bluetooth/Kconfig            |  7 +++++++
- net/bluetooth/Makefile           |  1 +
- net/bluetooth/brcm.c             | 29 +++++++++++++++++++++++++++++
- net/bluetooth/brcm.h             | 17 +++++++++++++++++
- net/bluetooth/hci_conn.c         | 11 +++++++++++
- net/bluetooth/hci_sock.c         |  4 ++++
- 10 files changed, 92 insertions(+)
+Changes in v8:
+- Clean up some leftovers from the led subnodes, address/size-cells (Rob)
+- Add Robs rb tag
+- Add Daniels rb tag
+- Bring the Kconfig option in line text wise with other drivers
+- Rebase on the latest next
+- Link to v7: https://lore.kernel.org/r/20260123-max25014-v7-0-15e504b9acc7@gocontroll.com
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index c3fe46d7c4bc..81be021367ec 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -2562,6 +2562,8 @@ F:	include/dt-bindings/pinctrl/apple.h
- F:	include/linux/mfd/macsmc.h
- F:	include/linux/soc/apple/*
- F:	include/uapi/drm/asahi_drm.h
-+F:	net/bluetooth/brcm.c
-+F:	net/bluetooth/brcm.h
- 
- ARM/ARTPEC MACHINE SUPPORT
- M:	Jesper Nilsson <jesper.nilsson@axis.com>
-diff --git a/drivers/bluetooth/hci_bcm4377.c b/drivers/bluetooth/hci_bcm4377.c
-index 925d0a635945..5f79920c0306 100644
---- a/drivers/bluetooth/hci_bcm4377.c
-+++ b/drivers/bluetooth/hci_bcm4377.c
-@@ -2397,6 +2397,8 @@ static int bcm4377_probe(struct pci_dev *pdev, const struct pci_device_id *id)
- 	if (bcm4377->hw->broken_le_ext_adv_report_phy)
- 		hci_set_quirk(hdev, HCI_QUIRK_FIXUP_LE_EXT_ADV_REPORT_PHY);
- 
-+	hci_set_brcm_capable(hdev);
-+
- 	pci_set_drvdata(pdev, bcm4377);
- 	hci_set_drvdata(hdev, bcm4377);
- 	SET_HCIDEV_DEV(hdev, &pdev->dev);
-diff --git a/include/net/bluetooth/hci_core.h b/include/net/bluetooth/hci_core.h
-index a7bffb908c1e..ef3b5433203c 100644
---- a/include/net/bluetooth/hci_core.h
-+++ b/include/net/bluetooth/hci_core.h
-@@ -642,6 +642,10 @@ struct hci_dev {
- 	bool			aosp_quality_report;
- #endif
- 
-+#if IS_ENABLED(CONFIG_BT_BRCMEXT)
-+	bool			brcm_capable;
-+#endif
-+
- 	int (*open)(struct hci_dev *hdev);
- 	int (*close)(struct hci_dev *hdev);
- 	int (*flush)(struct hci_dev *hdev);
-@@ -1791,6 +1795,13 @@ static inline void hci_set_aosp_capable(struct hci_dev *hdev)
- #endif
- }
- 
-+static inline void hci_set_brcm_capable(struct hci_dev *hdev)
-+{
-+#if IS_ENABLED(CONFIG_BT_BRCMEXT)
-+	hdev->brcm_capable = true;
-+#endif
-+}
-+
- static inline void hci_devcd_setup(struct hci_dev *hdev)
- {
- #ifdef CONFIG_DEV_COREDUMP
-@@ -1812,6 +1823,7 @@ int hci_get_conn_list(void __user *arg);
- int hci_get_conn_info(struct hci_dev *hdev, void __user *arg);
- int hci_get_auth_info(struct hci_dev *hdev, void __user *arg);
- int hci_inquiry(void __user *arg);
-+int hci_set_acl_prio(struct hci_dev *hdev, void __user *arg);
- 
- struct bdaddr_list *hci_bdaddr_list_lookup(struct list_head *list,
- 					   bdaddr_t *bdaddr, u8 type);
-diff --git a/include/net/bluetooth/hci_sock.h b/include/net/bluetooth/hci_sock.h
-index 13e8cd4414a1..95d156ac4cae 100644
---- a/include/net/bluetooth/hci_sock.h
-+++ b/include/net/bluetooth/hci_sock.h
-@@ -91,6 +91,8 @@ struct hci_ufilter {
- 
- #define HCIINQUIRY	_IOR('H', 240, int)
- 
-+#define HCISETACLPRIO	_IOW('H', 250, int)
-+
- /* Ioctl requests structures */
- struct hci_dev_stats {
- 	__u32 err_rx;
-@@ -171,6 +173,11 @@ struct hci_inquiry_req {
- 	__u8  length;
- 	__u8  num_rsp;
- };
-+
-+struct hci_acl_prio_req {
-+	__u16 handle;
-+	__u8  high_prio;
-+};
- #define IREQ_CACHE_FLUSH 0x0001
- 
- #endif /* __HCI_SOCK_H */
-diff --git a/net/bluetooth/Kconfig b/net/bluetooth/Kconfig
-index 6b2b65a66700..0f2a5fbcafc5 100644
---- a/net/bluetooth/Kconfig
-+++ b/net/bluetooth/Kconfig
-@@ -110,6 +110,13 @@ config BT_AOSPEXT
- 	  This options enables support for the Android Open Source
- 	  Project defined HCI vendor extensions.
- 
-+config BT_BRCMEXT
-+	bool "Enable Broadcom extensions"
-+	depends on BT
-+	help
-+	  This option enables support for the Broadcom defined HCI
-+	  vendor extensions.
-+
- config BT_DEBUGFS
- 	bool "Export Bluetooth internals in debugfs"
- 	depends on BT && DEBUG_FS
-diff --git a/net/bluetooth/Makefile b/net/bluetooth/Makefile
-index a7eede7616d8..b4c9013a46ce 100644
---- a/net/bluetooth/Makefile
-+++ b/net/bluetooth/Makefile
-@@ -24,5 +24,6 @@ bluetooth-$(CONFIG_BT_LE) += iso.o
- bluetooth-$(CONFIG_BT_LEDS) += leds.o
- bluetooth-$(CONFIG_BT_MSFTEXT) += msft.o
- bluetooth-$(CONFIG_BT_AOSPEXT) += aosp.o
-+bluetooth-$(CONFIG_BT_BRCMEXT) += brcm.o
- bluetooth-$(CONFIG_BT_DEBUGFS) += hci_debugfs.o
- bluetooth-$(CONFIG_BT_SELFTEST) += selftest.o
-diff --git a/net/bluetooth/brcm.c b/net/bluetooth/brcm.c
-new file mode 100644
-index 000000000000..d03d2af5dc7e
---- /dev/null
-+++ b/net/bluetooth/brcm.c
-@@ -0,0 +1,29 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (C) 2026 The Asahi Linux Contributors
-+ */
-+
-+#include <net/bluetooth/bluetooth.h>
-+#include <net/bluetooth/hci_core.h>
-+
-+#include "brcm.h"
-+
-+int brcm_set_high_priority(struct hci_dev *hdev, u16 handle, bool enable)
-+{
-+	struct sk_buff *skb;
-+	u8 cmd[3];
-+
-+	if (!hdev->brcm_capable)
-+		return -EOPNOTSUPP;
-+
-+	cmd[0] = handle;
-+	cmd[1] = handle >> 8;
-+	cmd[2] = !!enable;
-+
-+	skb = hci_cmd_sync(hdev, 0xfc57, sizeof(cmd), cmd, HCI_CMD_TIMEOUT);
-+	if (IS_ERR(skb))
-+		return PTR_ERR(skb);
-+
-+	kfree_skb(skb);
-+	return 0;
-+}
-diff --git a/net/bluetooth/brcm.h b/net/bluetooth/brcm.h
-new file mode 100644
-index 000000000000..a501f2988a96
---- /dev/null
-+++ b/net/bluetooth/brcm.h
-@@ -0,0 +1,17 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
-+/*
-+ * Copyright (C) 2026 The Asahi Linux Contributors
-+ */
-+
-+#if IS_ENABLED(CONFIG_BT_BRCMEXT)
-+
-+int brcm_set_high_priority(struct hci_dev *hdev, u16 handle, bool enable);
-+
-+#else
-+
-+static inline int brcm_set_high_priority(struct hci_dev *hdev, u16 handle, bool enable)
-+{
-+	return -EOPNOTSUPP;
-+}
-+
-+#endif
-diff --git a/net/bluetooth/hci_conn.c b/net/bluetooth/hci_conn.c
-index 11d3ad8d2551..b2c7414a9c5b 100644
---- a/net/bluetooth/hci_conn.c
-+++ b/net/bluetooth/hci_conn.c
-@@ -35,6 +35,7 @@
- #include <net/bluetooth/iso.h>
- #include <net/bluetooth/mgmt.h>
- 
-+#include "brcm.h"
- #include "smp.h"
- #include "eir.h"
- 
-@@ -2775,6 +2776,16 @@ int hci_get_auth_info(struct hci_dev *hdev, void __user *arg)
- 	return copy_to_user(arg, &req, sizeof(req)) ? -EFAULT : 0;
- }
- 
-+int hci_set_acl_prio(struct hci_dev *hdev, void __user *arg)
-+{
-+	struct hci_acl_prio_req req;
-+
-+	if (copy_from_user(&req, arg, sizeof(req)))
-+		return -EFAULT;
-+
-+	return brcm_set_high_priority(hdev, req.handle, req.high_prio);
-+}
-+
- struct hci_chan *hci_chan_create(struct hci_conn *conn)
- {
- 	struct hci_dev *hdev = conn->hdev;
-diff --git a/net/bluetooth/hci_sock.c b/net/bluetooth/hci_sock.c
-index 0290dea081f6..4be6aeeb6bad 100644
---- a/net/bluetooth/hci_sock.c
-+++ b/net/bluetooth/hci_sock.c
-@@ -1035,6 +1035,9 @@ static int hci_sock_bound_ioctl(struct sock *sk, unsigned int cmd,
- 		if (!capable(CAP_NET_ADMIN))
- 			return -EPERM;
- 		return hci_sock_reject_list_del(hdev, (void __user *)arg);
-+
-+	case HCISETACLPRIO:
-+		return hci_set_acl_prio(hdev, (void __user *)arg);
- 	}
- 
- 	return -ENOIOCTLCMD;
-@@ -1072,6 +1075,7 @@ static int hci_sock_ioctl(struct socket *sock, unsigned int cmd,
- 	case HCIGETAUTHINFO:
- 	case HCIBLOCKADDR:
- 	case HCIUNBLOCKADDR:
-+	case HCISETACLPRIO:
- 		break;
- 	default:
- 		return -ENOIOCTLCMD;
+Changes in v7:
+- remove the led subnodes
+- always enable the regulator by using devm_regulator_get_enable()
+- remove the no longer required gotos and simplify early returns
+- fix the name of the SHORTED_LED error field
+- fix the name of the SHORTGND error field
+- use the proper backlight helper functions for setting/getting
+  brightness
+- Link to v6: https://lore.kernel.org/r/20251201-max25014-v6-0-88e3ac8112ff@gocontroll.com
+
+Changes in v6:
+- fixup changes in v4 where default brightness handling was changed but
+  not noted
+- remove leftover comment about initializing brightness
+- use BIT definitions for fields in the DIAG register
+- apply reverse christmas tree initialization of local variables
+- remove !=0 from checks, just check if (ret)
+- remove > 0 from checks, just check if (val)
+- use dev_err_probe() more
+- set enable gpio high in the get() instead of seperately calling set()
+- change usleep_range() to fsleep()
+- remove null checks when setting gpio value
+- get regular regulator, not optional to avoid further NULL checks in
+  case none is provided
+- introduce max25014_initial_power_state() to check if the bootloader
+  has already initialized the backlight and to correctly set props.power
+- squash max25014_register_control() into max25014_update_status()
+- in max25014_configure() perform extra checking on the DISABLE register
+  now that the state from the bootloader is taken into account
+- Link to v5: https://lore.kernel.org/r/20251107-max25014-v5-0-9a6aa57306bf@gocontroll.com
+
+Changes in v5:
+- moved comment about current functions of the driver to the actual
+  comment section of the commit
+- fixed the led@0 property, regex patternProperty is not needed as of
+  now
+- added extra clarification about the ISET field/register
+- moved #address-cells and #size-cells to the correct location
+- remove leftover default-brightness in backlight nodes
+- Link to v4: https://lore.kernel.org/r/20251009-max25014-v4-0-6adb2a0aa35f@gocontroll.com
+
+Changes in v4:
+- remove setting default brightness, let backlight core take care of it
+- use a led node to describe the backlight
+- use led-sources to enable specific channels
+- also wait 2ms when there is a supply but no enable
+- change dev_warn() to dev_err() in error path in max25014_check_errors()
+- set backlight_properties.scale to BACKLIGHT_SCALE_LINEAR
+- rebase latest next
+- add address-cells and size-cells to i2c4 in av101hdt-a10.dtso
+- Link to v3: https://lore.kernel.org/r/20250911-max25014-v3-0-d03f4eba375e@gocontroll.com
+
+Changes in v3:
+- fixed commit message type intgrated -> integrated
+- added maximum and description to maxim,iset-property
+- dropped unused labels and pinctrl in bindings example
+- put the compatible first in the bindings example and dts
+- removed brackets around defines
+- removed the leftover pdata struct field
+- removed the initial_brightness struct field
+- Link to v2: https://lore.kernel.org/r/20250819-max25014-v2-0-5fd7aeb141ea@gocontroll.com
+
+Changes in v2:
+- Remove leftover unused property from the bindings example
+- Complete the bindings example with all properties
+- Remove some double info from the maxim,iset property
+- Remove platform_data header, fold its data into the max25014 struct
+- Don't force defines to be unsigned
+- Remove stray struct max25014 declaration
+- Remove chipname and device from the max25014 struct
+- Inline the max25014_backlight_register() and strings_mask() functions
+- Remove CONFIG_OF ifdef
+- Link to v1: https://lore.kernel.org/r/20250725-max25014-v1-0-0e8cce92078e@gocontroll.com
 
 ---
-base-commit: bfe62a454542cfad3379f6ef5680b125f41e20f4
-change-id: 20260407-brcm-prio-b630e6cc3834
+Maud Spierings (4):
+      dt-bindings: backlight: Add max25014 support
+      backlight: add max25014atg backlight
+      arm64: dts: freescale: moduline-display-av101hdt-a10: add backlight
+      arm64: dts: freescale: moduline-display-av123z7m-n17: add backlight
+
+ .../bindings/leds/backlight/maxim,max25014.yaml    |  83 +++++
+ MAINTAINERS                                        |   6 +
+ ...x8p-ml81-moduline-display-106-av101hdt-a10.dtso |  24 ++
+ ...x8p-ml81-moduline-display-106-av123z7m-n17.dtso |  19 +-
+ drivers/video/backlight/Kconfig                    |   7 +
+ drivers/video/backlight/Makefile                   |   1 +
+ drivers/video/backlight/max25014.c                 | 377 +++++++++++++++++++++
+ 7 files changed, 516 insertions(+), 1 deletion(-)
+---
+base-commit: f3e6330d7fe42b204af05a2dbc68b379e0ad179e
+change-id: 20250626-max25014-4207591e1af5
 
 Best regards,
--- 
-Sasha Finkelstein <fnkl.kernel@gmail.com>
+--  
+Maud Spierings <maudspierings@gocontroll.com>
 
