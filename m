@@ -1,15 +1,13 @@
 From: Satish Kharat <satishkh@cisco.com>
-Subject: [PATCH net-next v3 00/10] enic: SR-IOV V2 admin channel and MBOX
- protocol
-Date: Wed, 08 Apr 2026 09:36:21 -0700
-Message-Id: <20260408-enic-sriov-v2-admin-channel-v2-v3-0-1d4999a03cec@cisco.com>
+Date: Wed, 08 Apr 2026 09:36:22 -0700
+Subject: [PATCH net-next v3 01/10] enic: verify firmware supports V2 SR-IOV
+ at probe time
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAWE1mkC/4WNTQ6DIBBGr2JYdxoEi7Sr3qPpgsBYJ6nQgCE2x
- rsXTRfuXH4/eW9mCSNhYrdqZhEzJQq+BHmqmO2NfyGQK5kJLhRveAPoyUKKFDJkAcYN5GF9eny
- vheXGSLxqraVkBfKJ2NG0CR7M4wgep5E9y9JTGkP8buZcb/tfoo4kuQYOWljbtEoq0+q7pWTD2
- YZhQ2exx+lDnCg4xy/OSSVk5+QetyzLDwamFTolAQAA
+Message-Id: <20260408-enic-sriov-v2-admin-channel-v2-v3-1-1d4999a03cec@cisco.com>
+References: <20260408-enic-sriov-v2-admin-channel-v2-v3-0-1d4999a03cec@cisco.com>
+In-Reply-To: <20260408-enic-sriov-v2-admin-channel-v2-v3-0-1d4999a03cec@cisco.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
@@ -17,81 +15,87 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  20260401-enic-sriov-v2-prep-v4-0-d5834b2ef1b9@cisco.com, 
  Satish Kharat <satishkh@cisco.com>, Breno Leitao <leitao@debian.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775666183; l=3141;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775666183; l=2531;
  i=satishkh@cisco.com; h=from:subject:message-id;
- bh=rqiGFFXpyuhAlYrfaNyFHsiLJQW6CN+GwJa9Jt/vlJE=;
- b=jkEOW6uuWy7Lk9Rl6+4KsNO6alOeY13RwuAnJO3gpMqRvS7LzVny04Zy33ZWNFA/uCJ9rE9Uj
- DY1uHHxElIQDAA5fdI4HKdyewKCCe7WW2dZ1nNJCmUbN7Pa/JS+Lf/h
+ bh=bW4tqPiVbykt8E1AO6HaOo6t5TPoHN2weYduT38tfLQ=;
+ b=BMNnaZ78N7AlI2U108Y696+XyXFqqWeHsVyxu6SqMvOcdqegR3lkpRcrnspKQnjD95N+LfPIg
+ 50OoVSRuI9ACvfyQNNsRPzCqUolFkxVU9ejE/lDFXTsw8a7cnoGpWYk
 X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
  pk=4BxbLoCGvHeIMH/PbpiNVx8/2IcTjFvqcr0AD8K6WLY=
 X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/default with auth_id=639
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds the admin channel infrastructure and mailbox (MBOX)
-protocol needed for V2 SR-IOV support in the enic driver.
+During PF probe, query the firmware get-supported-feature interface
+to verify that the running firmware supports V2 SR-IOV. Firmware
+version 5.3(4.72) and later report VIC_FEATURE_SRIOV via
+CMD_GET_SUPP_FEATURE_VER. If the firmware does not support the
+feature, set vf_type to ENIC_VF_TYPE_NONE and log a warning so the
+admin knows a firmware upgrade is needed.
 
-The V2 SR-IOV design uses a direct PF-VF communication channel built on
-dedicated WQ/RQ/CQ hardware resources and an MSI-X interrupt.
+The VIC_FEATURE_SRIOV enum value (4) matches the firmware ABI. A
+placeholder entry (VIC_FEATURE_PTP at position 3) is added to keep
+the enum in sync with firmware's feature numbering.
 
-Firmware capability and admin channel infrastructure (patches 1-4):
-  - Probe-time firmware feature check for V2 SR-IOV support
-  - Admin channel open/close, RQ buffer management, CQ service
-    with MSI-X interrupt and NAPI polling
-
-MBOX protocol and VF enable (patches 5-10):
-  - MBOX message types, core send/receive, PF and VF handlers
-  - V2 SR-IOV enable wiring with admin channel setup
-  - V2 VF probe with admin channel and PF registration
-
-This series depends on "enic: SR-IOV V2 resource discovery and VF
-type detection" (Series 1), which has been accepted.
-
-Depends-on: 20260401-enic-sriov-v2-prep-v4-0-d5834b2ef1b9@cisco.com
-
+Suggested-by: Breno Leitao <leitao@debian.org>
 Signed-off-by: Satish Kharat <satishkh@cisco.com>
 ---
-Changes in v3:
-- Use early-return pattern in enic_sriov_detect_vf_type to reduce
-  nesting (patch 1) [Breno Leitao]
-- Link to v2: https://lore.kernel.org/r/20260408-enic-sriov-v2-admin-channel-v2-v2-0-d05dd3623fd3@cisco.com
+ drivers/net/ethernet/cisco/enic/enic_main.c   | 19 +++++++++++++++++++
+ drivers/net/ethernet/cisco/enic/vnic_devcmd.h |  2 ++
+ 2 files changed, 21 insertions(+)
 
-Changes in v2:
-- Fix lines exceeding 80 columns (patches 4, 6, 7, 8)
-- Add __maybe_unused to enic_sriov_configure and enic_sriov_v2_enable;
-  .sriov_configure wiring deferred to a later series after devcmd
-  hardening is in place (patch 9)
-- Guard probe-time auto-enable to skip V2 VFs (patch 9)
-- Link to v1: https://lore.kernel.org/r/20260406-enic-sriov-v2-admin-channel-v2-v1-0-82cc47636a78@cisco.com
+diff --git a/drivers/net/ethernet/cisco/enic/enic_main.c b/drivers/net/ethernet/cisco/enic/enic_main.c
+index e7125b818087..73bb59eef7a0 100644
+--- a/drivers/net/ethernet/cisco/enic/enic_main.c
++++ b/drivers/net/ethernet/cisco/enic/enic_main.c
+@@ -2641,8 +2641,10 @@ static void enic_iounmap(struct enic *enic)
+ static void enic_sriov_detect_vf_type(struct enic *enic)
+ {
+ 	struct pci_dev *pdev = enic->pdev;
++	u64 supported_versions, a1 = 0;
+ 	int pos;
+ 	u16 vf_dev_id;
++	int err;
+ 
+ 	if (enic_is_sriov_vf(enic) || enic_is_dynamic(enic))
+ 		return;
+@@ -2669,6 +2671,23 @@ static void enic_sriov_detect_vf_type(struct enic *enic)
+ 		enic->vf_type = ENIC_VF_TYPE_NONE;
+ 		break;
+ 	}
++
++	if (enic->vf_type != ENIC_VF_TYPE_V2)
++		return;
++
++	/* A successful command means firmware recognizes
++	 * VIC_FEATURE_SRIOV; supported_versions is available
++	 * for sub-feature versioning in the future.
++	 */
++	err = vnic_dev_get_supported_feature_ver(enic->vdev,
++						 VIC_FEATURE_SRIOV,
++						 &supported_versions,
++						 &a1);
++	if (err) {
++		dev_warn(&pdev->dev,
++			 "SR-IOV V2 not supported by current firmware. Upgrade to VIC FW 5.3(4.72) or higher.\n");
++		enic->vf_type = ENIC_VF_TYPE_NONE;
++	}
+ }
+ #endif
+ 
+diff --git a/drivers/net/ethernet/cisco/enic/vnic_devcmd.h b/drivers/net/ethernet/cisco/enic/vnic_devcmd.h
+index 605ef17f967e..7a4bce736105 100644
+--- a/drivers/net/ethernet/cisco/enic/vnic_devcmd.h
++++ b/drivers/net/ethernet/cisco/enic/vnic_devcmd.h
+@@ -734,6 +734,8 @@ enum vic_feature_t {
+ 	VIC_FEATURE_VXLAN,
+ 	VIC_FEATURE_RDMA,
+ 	VIC_FEATURE_VXLAN_PATCH,
++	VIC_FEATURE_PTP,
++	VIC_FEATURE_SRIOV,
+ 	VIC_FEATURE_MAX,
+ };
+ 
 
----
-Satish Kharat (10):
-      enic: verify firmware supports V2 SR-IOV at probe time
-      enic: add admin channel open and close for SR-IOV
-      enic: add admin RQ buffer management
-      enic: add admin CQ service with MSI-X interrupt and NAPI polling
-      enic: define MBOX message types and header structures
-      enic: add MBOX core send and receive for admin channel
-      enic: add MBOX PF handlers for VF register and capability
-      enic: add MBOX VF handlers for capability, register and link state
-      enic: wire V2 SR-IOV enable with admin channel and MBOX
-      enic: add V2 VF probe with admin channel and PF registration
-
- drivers/net/ethernet/cisco/enic/Makefile      |   3 +-
- drivers/net/ethernet/cisco/enic/enic.h        |  29 +-
- drivers/net/ethernet/cisco/enic/enic_admin.c  | 511 ++++++++++++++++++++++++
- drivers/net/ethernet/cisco/enic/enic_admin.h  |  27 ++
- drivers/net/ethernet/cisco/enic/enic_main.c   | 214 +++++++++-
- drivers/net/ethernet/cisco/enic/enic_mbox.c   | 546 ++++++++++++++++++++++++++
- drivers/net/ethernet/cisco/enic/enic_mbox.h   |  87 ++++
- drivers/net/ethernet/cisco/enic/enic_res.c    |   4 +-
- drivers/net/ethernet/cisco/enic/vnic_devcmd.h |  11 +
- drivers/net/ethernet/cisco/enic/vnic_enet.h   |   4 +-
- 10 files changed, 1422 insertions(+), 14 deletions(-)
----
-base-commit: 3e6ef4fb822c971b464d44910a1561b4e7f9efa7
-change-id: 20260404-enic-sriov-v2-admin-channel-v2-c0aa3e988833
-
-Best regards,
 -- 
-Satish Kharat <satishkh@cisco.com>
+2.43.0
 
