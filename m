@@ -1,182 +1,69 @@
-From: Satish Kharat <satishkh@cisco.com>
-Date: Wed, 08 Apr 2026 08:08:20 -0700
-Subject: [PATCH net-next v2 10/10] enic: add V2 VF probe with admin channel
- and PF registration
+From: Alberto Ruiz <aruiz@redhat.com>
+Subject: [PATCH 0/2] fuse: fix CUSE device node leak and add regression
+ test
+Date: Wed, 08 Apr 2026 17:23:39 +0200
+Message-Id: <20260408-wip-cuse-leak-fix-v1-0-1c028d575e97@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260408-enic-sriov-v2-admin-channel-v2-v2-10-d05dd3623fd3@cisco.com>
-References: <20260408-enic-sriov-v2-admin-channel-v2-v2-0-d05dd3623fd3@cisco.com>
-In-Reply-To: <20260408-enic-sriov-v2-admin-channel-v2-v2-0-d05dd3623fd3@cisco.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- 20260401-enic-sriov-v2-prep-v4-0-d5834b2ef1b9@cisco.com, 
- Satish Kharat <satishkh@cisco.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775660895; l=5643;
- i=satishkh@cisco.com; h=from:subject:message-id;
- bh=Em8DhCCAW6c85DFkxK9t+0LtoELkjeiLlM4P2QqA/es=;
- b=iDuO7N7G3+jGXzByE0yN/6SE7ecNQsNCpfH6S1u1UXSNtOiQ/H3/bMYEbLA0A8Gg8nEN9CJyJ
- NXdwm0XQvG+CAe0wMOHFlGeTy1gbd/+r+aILU8tNonoX8QTUMJQcgTD
-X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
- pk=4BxbLoCGvHeIMH/PbpiNVx8/2IcTjFvqcr0AD8K6WLY=
-X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/default with auth_id=639
+X-B4-Tracking: v=1; b=H4sIAPty1mkC/x2MSwqAMBDFriKzdqCWotWriAvRpw6KlhY/ULy7x
+ WUCSaQALwjUZJE8Lgly7AmKPKNh6fcZLGNi0kqXyijLtzgezgDe0K88ycOwxtSmUuVoQalzHkn
+ /z7Z73w96cYWgYwAAAA==
+X-Change-ID: 20260408-wip-cuse-leak-fix-e84494706d8e
+To: Miklos Szeredi <miklos@szeredi.hu>, Shuah Khan <shuah@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, Alberto Ruiz <aruiz@redhat.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775661821; l=1981;
+ i=aruiz@redhat.com; s=20260408; h=from:subject:message-id;
+ bh=V4JVgHXrmq3f0UU3dzG1XOpSin/Y60hcI8fTsfyXKhg=;
+ b=OA0l/p3WuhK+V3jOEb/AZMhxCC2gZjORt7zafiyzg0S0boS4nqbL8plKeIXgG4PN7H8rBD4WP
+ e9RLRkfSuiHB7yJg8PVNVPupdrqZIia4U5cvC58VyKDWhWhnPKjd3zx
+X-Developer-Key: i=aruiz@redhat.com; a=ed25519;
+ pk=ZJyUFl31NDNjeRWoQa/6I6bV5lb8axrDvpj9uGd+NvU=
+X-Endpoint-Received: by B4 Relay for aruiz@redhat.com/20260408 with auth_id=727
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a V2 SR-IOV VF probes, open the admin channel, initialize the
-MBOX protocol, perform the capability check with the PF, and register
-with the PF. This establishes the PF-VF communication path that the PF
-uses to send link state notifications.
+In cuse_process_init_reply(), if device_add() succeeds but cdev_alloc()
+or cdev_add() fails, the error path calls put_device() without first
+calling device_del().  This leaves a stale /dev node that permanently
+poisons the device name -- any subsequent attempt to create a CUSE
+device with the same name silently fails with ENODEV.
 
-The admin channel and MBOX registration happen after enic_dev_init()
-(which discovers admin channel resources) and before register_netdev()
-so the VF is fully initialized before the interface is visible to
-userspace.
+The fix is a 3-line change: redirect the cdev_alloc() failure to a new
+err_dev label that calls device_del() before falling through to
+err_unlock.
 
-On remove, the VF unregisters from the PF and closes its admin channel
-before tearing down data path resources.
+Patch 2 adds a kselftest that reproduces the bug by forcing cdev_alloc()
+to fail after device_add() has succeeded, then verifying that no /dev
+node is leaked.  To trigger the failure deterministically, a
+CONFIG_FAULT_INJECTION-guarded module parameter (cuse_inject_cdev_failure)
+is added to cuse.c.  The test falls back to failslab with stack-trace
+filtering when the parameter is unavailable.
 
-V2 VFs are not provisioned with an RES_TYPE_SRIOV_INTR resource by
-firmware, so bypass that check in the admin channel capability
-detection for V2 VFs. The PF still requires this resource.
+I'm on the fence about the fault injection parameter in patch 2 -- it's
+only a few lines and it's guarded behind CONFIG_FAULT_INJECTION, but I
+understand if it feels too intrusive for production code.  Happy to drop
+the kselftest or rework the injection approach if the maintainers prefer.
+The fix in patch 1 stands on its own regardless.
 
-Signed-off-by: Satish Kharat <satishkh@cisco.com>
+Signed-off-by: Alberto Ruiz <aruiz@redhat.com>
 ---
- drivers/net/ethernet/cisco/enic/enic.h      |  1 +
- drivers/net/ethernet/cisco/enic/enic_main.c | 58 ++++++++++++++++++++++++++++-
- drivers/net/ethernet/cisco/enic/enic_res.c  |  3 +-
- 3 files changed, 59 insertions(+), 3 deletions(-)
+Alberto Ruiz (2):
+      fuse: fix device node leak in cuse_process_init_reply()
+      selftests: add CUSE device-node leak regression test
 
-diff --git a/drivers/net/ethernet/cisco/enic/enic.h b/drivers/net/ethernet/cisco/enic/enic.h
-index 29ce26284493..6301930903ee 100644
---- a/drivers/net/ethernet/cisco/enic/enic.h
-+++ b/drivers/net/ethernet/cisco/enic/enic.h
-@@ -441,6 +441,7 @@ void enic_reset_addr_lists(struct enic *enic);
- int enic_sriov_enabled(struct enic *enic);
- int enic_is_valid_vf(struct enic *enic, int vf);
- int enic_is_dynamic(struct enic *enic);
-+int enic_is_sriov_vf_v2(struct enic *enic);
- void enic_set_ethtool_ops(struct net_device *netdev);
- int __enic_set_rsskey(struct enic *enic);
- void enic_ext_cq(struct enic *enic);
-diff --git a/drivers/net/ethernet/cisco/enic/enic_main.c b/drivers/net/ethernet/cisco/enic/enic_main.c
-index 48c38347d6ce..c664ca43ab3a 100644
---- a/drivers/net/ethernet/cisco/enic/enic_main.c
-+++ b/drivers/net/ethernet/cisco/enic/enic_main.c
-@@ -316,6 +316,11 @@ static int enic_is_sriov_vf(struct enic *enic)
- 	       enic->pdev->device == PCI_DEVICE_ID_CISCO_VIC_ENET_VF_V2;
- }
- 
-+int enic_is_sriov_vf_v2(struct enic *enic)
-+{
-+	return enic->pdev->device == PCI_DEVICE_ID_CISCO_VIC_ENET_VF_V2;
-+}
-+
- int enic_is_valid_vf(struct enic *enic, int vf)
- {
- #ifdef CONFIG_PCI_IOV
-@@ -2989,6 +2994,32 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
- 		goto err_out_dev_close;
- 	}
- 
-+	/* V2 VF: open admin channel and register with PF.
-+	 * Must happen before register_netdev so the VF is fully
-+	 * initialized before the interface is visible to userspace.
-+	 */
-+	if (enic_is_sriov_vf_v2(enic)) {
-+		err = enic_admin_channel_open(enic);
-+		if (err) {
-+			dev_err(dev,
-+				"Failed to open admin channel: %d\n", err);
-+			goto err_out_dev_deinit;
-+		}
-+		enic_mbox_init(enic);
-+		err = enic_mbox_vf_capability_check(enic);
-+		if (err) {
-+			dev_err(dev,
-+				"MBOX capability check failed: %d\n", err);
-+			goto err_out_admin_close;
-+		}
-+		err = enic_mbox_vf_register(enic);
-+		if (err) {
-+			dev_err(dev,
-+				"MBOX VF registration failed: %d\n", err);
-+			goto err_out_admin_close;
-+		}
-+	}
-+
- 	netif_set_real_num_tx_queues(netdev, enic->wq_count);
- 	netif_set_real_num_rx_queues(netdev, enic->rq_count);
- 
-@@ -3013,7 +3044,7 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
- 	err = enic_set_mac_addr(netdev, enic->mac_addr);
- 	if (err) {
- 		dev_err(dev, "Invalid MAC address, aborting\n");
--		goto err_out_dev_deinit;
-+		goto err_out_admin_close;
- 	}
- 
- 	enic->tx_coalesce_usecs = enic->config.intr_timer_usec;
-@@ -3111,11 +3142,23 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
- 	err = register_netdev(netdev);
- 	if (err) {
- 		dev_err(dev, "Cannot register net device, aborting\n");
--		goto err_out_dev_deinit;
-+		goto err_out_admin_close;
- 	}
- 
- 	return 0;
- 
-+err_out_admin_close:
-+	if (enic_is_sriov_vf_v2(enic)) {
-+		if (enic->vf_registered) {
-+			int unreg_err = enic_mbox_vf_unregister(enic);
-+
-+			if (unreg_err)
-+				netdev_warn(netdev,
-+					    "Failed to unregister from PF: %d\n",
-+					    unreg_err);
-+		}
-+		enic_admin_channel_close(enic);
-+	}
- err_out_dev_deinit:
- 	enic_dev_deinit(enic);
- err_out_dev_close:
-@@ -3153,6 +3196,17 @@ static void enic_remove(struct pci_dev *pdev)
- 		cancel_work_sync(&enic->reset);
- 		cancel_work_sync(&enic->change_mtu_work);
- 		unregister_netdev(netdev);
-+		if (enic_is_sriov_vf_v2(enic)) {
-+			if (enic->vf_registered) {
-+				int unreg_err = enic_mbox_vf_unregister(enic);
-+
-+				if (unreg_err)
-+					netdev_warn(netdev,
-+						    "Failed to unregister from PF: %d\n",
-+						    unreg_err);
-+			}
-+			enic_admin_channel_close(enic);
-+		}
- #ifdef CONFIG_PCI_IOV
- 		if (enic_sriov_enabled(enic)) {
- 			if (enic->vf_type == ENIC_VF_TYPE_V2)
-diff --git a/drivers/net/ethernet/cisco/enic/enic_res.c b/drivers/net/ethernet/cisco/enic/enic_res.c
-index 436326ace049..74cd2ee3af5c 100644
---- a/drivers/net/ethernet/cisco/enic/enic_res.c
-+++ b/drivers/net/ethernet/cisco/enic/enic_res.c
-@@ -211,7 +211,8 @@ void enic_get_res_counts(struct enic *enic)
- 		vnic_dev_get_res_count(enic->vdev, RES_TYPE_ADMIN_RQ) >= 1 &&
- 		vnic_dev_get_res_count(enic->vdev, RES_TYPE_ADMIN_CQ) >=
- 			ARRAY_SIZE(enic->admin_cq) &&
--		vnic_dev_get_res_count(enic->vdev, RES_TYPE_SRIOV_INTR) >= 1;
-+		(enic_is_sriov_vf_v2(enic) ||
-+		 vnic_dev_get_res_count(enic->vdev, RES_TYPE_SRIOV_INTR) >= 1);
- 
- 	dev_info(enic_get_dev(enic),
- 		"vNIC resources avail: wq %d rq %d cq %d intr %d admin %s\n",
+ fs/fuse/cuse.c                                     |  17 +-
+ tools/testing/selftests/Makefile                   |   1 +
+ tools/testing/selftests/filesystems/cuse/Makefile  |   7 +
+ tools/testing/selftests/filesystems/cuse/config    |   5 +
+ .../selftests/filesystems/cuse/cuse_leak_test.c    | 406 +++++++++++++++++++++
+ 5 files changed, 435 insertions(+), 1 deletion(-)
+---
+base-commit: 631919fb12fe7b1f0453fe1035e62ce704bc3923
+change-id: 20260408-wip-cuse-leak-fix-e84494706d8e
 
+Best regards,
 -- 
-2.43.0
+Alberto Ruiz <aruiz@redhat.com>
 
