@@ -1,59 +1,50 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Wed, 08 Apr 2026 13:42:40 +0100
-Subject: [PATCH v3 1/4] dmaengine: Fix possible use after free
+Date: Wed, 08 Apr 2026 13:42:41 +0100
+Subject: [PATCH v3 2/4] dmaengine: dma-axi-dmac: Properly free struct
+ axi_dmac_desc
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260408-dma-dmac-handle-vunmap-v3-1-2456ad292154@analog.com>
+Message-Id: <20260408-dma-dmac-handle-vunmap-v3-2-2456ad292154@analog.com>
 References: <20260408-dma-dmac-handle-vunmap-v3-0-2456ad292154@analog.com>
 In-Reply-To: <20260408-dma-dmac-handle-vunmap-v3-0-2456ad292154@analog.com>
 To: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org
 Cc: Lars-Peter Clausen <lars@metafoo.de>, Vinod Koul <vkoul@kernel.org>, 
  Frank Li <Frank.Li@kernel.org>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775652161; l=1349;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775652161; l=889;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=6XbKWWnu/XLY2+T0r/woFDDSj9C/H1ATZbhK/NSCskE=;
- b=+BZ++WfuTRR3OxUZPiujlmtxeI7Iicl4JzpuyEQ9qRfF3aMt3YU53A2ibkdNO0+ntfemOTx7o
- FElg/27DZC+Czle7yzEylssm6eTFQsrpr1KiVOUi9GGgVVu9IB81yvv
+ bh=FiW+zvQ0Vg5geNpbllXV8K8Pu2uQGa6K1A0veJRrIZI=;
+ b=pGZW9OUn4eE29hNeUkXDCFnvqVaFshghoo22ssxsncbZV8gPmifgJEWB2pP3dYtmhoTfbvfWh
+ 6jj/ZNNg+fCAuUQq8AGXTtrF7iv2AT8xDl0aCLurO8uy4B2GOnlfv3y
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In dma_release_channel(), we first called dma_chan_put() and then
-checked chan->device->privatecnt for possibly clearing DMA_PRIVATE.
-However, dma_chan_put() will call dma_device_put() which could,
-potentially (if the DMA provider is already gone for example),
-release the last reference of the device and hence freeing
-the it.
+In axi_dmac_prep_peripheral_dma_vec() if we fail after calling
+axi_dmac_alloc_desc(), we need to use axi_dmac_free_desc() to fully free
+the descriptor.
 
-Fix it, by doing the check before calling dma_chan_put().
-
-Fixes: 0f571515c332 ("dmaengine: Add privatecnt to revert DMA_PRIVATE property")
+Fixes: 74609e568670 ("dmaengine: dma-axi-dmac: Implement device_prep_peripheral_dma_vec")
 Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/dma/dmaengine.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ drivers/dma/dma-axi-dmac.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/dma/dmaengine.c b/drivers/dma/dmaengine.c
-index 405bd2fbb4a3..9049171df857 100644
---- a/drivers/dma/dmaengine.c
-+++ b/drivers/dma/dmaengine.c
-@@ -905,11 +905,12 @@ void dma_release_channel(struct dma_chan *chan)
- 	mutex_lock(&dma_list_mutex);
- 	WARN_ONCE(chan->client_count != 1,
- 		  "chan reference count %d != 1\n", chan->client_count);
--	dma_chan_put(chan);
- 	/* drop PRIVATE cap enabled by __dma_request_channel() */
- 	if (--chan->device->privatecnt == 0)
- 		dma_cap_clear(DMA_PRIVATE, chan->device->cap_mask);
+diff --git a/drivers/dma/dma-axi-dmac.c b/drivers/dma/dma-axi-dmac.c
+index 45c2c8e4bc45..127c3cf80a0e 100644
+--- a/drivers/dma/dma-axi-dmac.c
++++ b/drivers/dma/dma-axi-dmac.c
+@@ -769,7 +769,7 @@ axi_dmac_prep_peripheral_dma_vec(struct dma_chan *c, const struct dma_vec *vecs,
+ 	for (i = 0; i < nb; i++) {
+ 		if (!axi_dmac_check_addr(chan, vecs[i].addr) ||
+ 		    !axi_dmac_check_len(chan, vecs[i].len)) {
+-			kfree(desc);
++			axi_dmac_free_desc(desc);
+ 			return NULL;
+ 		}
  
-+	dma_chan_put(chan);
-+
- 	if (chan->slave) {
- 		sysfs_remove_link(&chan->dev->device.kobj, DMA_SLAVE_NAME);
- 		sysfs_remove_link(&chan->slave->kobj, chan->name);
 
 -- 
 2.53.0
