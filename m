@@ -1,15 +1,12 @@
 From: Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
-Subject: [PATCH v6 0/3] rust: workqueue: add safe cancellation and status
- methods
-Date: Wed, 08 Apr 2026 16:06:37 +0530
-Message-Id: <20260408-workqueue-v5-sent-v6-0-0dc184c5343d@multicorewareinc.com>
+Date: Wed, 08 Apr 2026 16:06:38 +0530
+Subject: [PATCH v6 1/3] rust: helpers: add workqueue helpers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIALUv1mkC/32NQQ6CMBBFr0K6dkxBiuDKexgWTTvIRGlxCkVDu
- LuVA7h8L/nvryIgEwZxyVbBGCmQdwmqQyZMr90dgWxiUciikqU8w+L58ZpxRogKAroJdN0oq3J
- jyk6JtBsZO3rvzVubuKcwef7sFzH/2X+1mIMEK211UkXdGC2vw/ycyHjGRTOSM0fjB9Fu2/YFy
- 7iSQb0AAAA=
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260408-workqueue-v5-sent-v6-1-0dc184c5343d@multicorewareinc.com>
+References: <20260408-workqueue-v5-sent-v6-0-0dc184c5343d@multicorewareinc.com>
+In-Reply-To: <20260408-workqueue-v5-sent-v6-0-0dc184c5343d@multicorewareinc.com>
 To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
  Wedson Almeida Filho <wedsonaf@gmail.com>, Gary Guo <gary@garyguo.net>, 
  =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn.roy.baron@gmail.com>, 
@@ -19,76 +16,65 @@ To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>,
 Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775644627; l=2705;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775644627; l=1654;
  i=aakash.bollineni@multicorewareinc.com; s=20260402;
- h=from:subject:message-id; bh=a9FizM6TYahbipOTTxKYodoWPtBuAQAEBGwVzf9mKJA=;
- b=DZIfOHuE5RheOtbfsuBI8e/LrqL4NiMIPHf2wR3m0HWGBeg5vWXZPIvZQFWfjYXNacf6Ks1qY
- zrHR7cpV626Cv9MJ1RdDB1M77GOprChHcsdFOXTO5u9mSZxUpJyAQvr
+ h=from:subject:message-id; bh=N914P+plvR5IEkLzAqjpGBi8jBApqGMRlOfflBmXQOs=;
+ b=QvK2fubgv5E19WQ7IlP/eqlLSvbI0+sJ0P3wV1CuOEbzgzQjahmOjvjRnZbDNK+I2hE6jshgA
+ WRnMve/9kbfCttf7a5GAcg+YcL51sk/KTXKMQF5xo+xak2GoGGPdAw/
 X-Developer-Key: i=aakash.bollineni@multicorewareinc.com; a=ed25519;
  pk=r3Gonl+2k+8RozN9U/XwfICQdnRlAcLeeAfsExmurdE=
 X-Endpoint-Received: by B4 Relay for aakash.bollineni@multicorewareinc.com/20260402 with auth_id=711
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Changes in v6:
-- Refactored rust_helper_init_delayed_work to ensure robust, single-pass initialization 
-  using standard kernel macros, avoiding redundant lockdep and timer setup.
-- Simplified impl_has_delayed_work! macro by using direct pointer casting for 
-  work_container_of.
-- Added missing # Safety documentation blocks to reclaim methods for Arc and KBox.
-- Improved documentation readability by adding vertical whitespace to all examples.
-- Cleaned up link syntax by using direct inline links and removing redundant reference lists.
-- Removed unused rust_helper_get_dwork_timer_fn C helper.
-- Link to v5: https://lore.kernel.org/r/20260407-workqueue-v5-sent-v1-0-d0d635289ca0@multicorewareinc.com
+Add C helpers for work_pending, cancel_work_sync, and
+cancel_delayed_work_sync to bridge the Rust workqueue abstraction
+with the kernel's C workqueue macros.
 
-PLEASE IGNORE v4. This version (v5) corrects a critical KUnit build error 
-and formatting regressions that were present in the previous submission.
-
-Changes in v5:
-- Fixed missing arc_count helper in rust/kernel/workqueue.rs that caused KUnit
-  build failures.
-- Fixed formatting in samples/rust/rust_workqueue_test.rs via rustfmt.
-
-Changes in v4:
-- Fixed Reported-by/Closes tags and metadata for robot tracking.
-- Improved commit structure to separate API changes from tests.
-
-Aakash Bollineni (3):
-  rust: helpers: add workqueue helpers
-  rust: workqueue: add safe cancellation and status methods
-  rust: workqueue: add KUnit and sample stress tests
-
-To: Miguel Ojeda <ojeda@kernel.org>
-To: Alex Gaynor <alex.gaynor@gmail.com>
-To: Wedson Almeida Filho <wedsonaf@gmail.com>
-To: Boqun Feng <boqun.feng@gmail.com>
-To: Gary Guo <gary@garyguo.net>
-To: Björn Roy Baron <bjorn.roy.baron@gmail.com>
-To: Benno Lossin <benno.lossin@proton.me>
-To: Andreas Hindborg <a.hindborg@samsung.com>
-To: Alice Ryhl <aliceryhl@google.com>
-To: Tejun Heo <tj@kernel.org>
-To: Lai Jiangshan <jiangshanlai@gmail.com>
-Cc: rust-for-linux@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
+Additionally, add a robust initialization helper for delayed_work
+that ensures correct timer (delayed_work_timer_fn) and lockdep setup
+in a single pass, avoiding redundant initialization.
 
 Signed-off-by: Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
 ---
-Aakash Bollineni (3):
-      rust: helpers: add workqueue helpers
-      rust: workqueue: add safe cancellation and status methods
-      rust: workqueue: add KUnit and sample stress tests
+ rust/helpers/workqueue.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
 
- rust/helpers/workqueue.c            |  27 ++
- rust/kernel/workqueue.rs            | 500 +++++++++++++++++++++++++++++++++---
- samples/rust/Kconfig                |  10 +
- samples/rust/Makefile               |   2 +
- samples/rust/rust_workqueue_test.rs | 191 ++++++++++++++
- 5 files changed, 695 insertions(+), 35 deletions(-)
----
-base-commit: bf074eb6891be799174ff42e0051492681fdc045
-change-id: 20260407-workqueue-v5-sent-a895d51cc4f5
+diff --git a/rust/helpers/workqueue.c b/rust/helpers/workqueue.c
+index ce1c3a5b2150..ef18d79f95be 100644
+--- a/rust/helpers/workqueue.c
++++ b/rust/helpers/workqueue.c
+@@ -14,3 +14,30 @@ __rust_helper void rust_helper_init_work_with_key(struct work_struct *work,
+ 	INIT_LIST_HEAD(&work->entry);
+ 	work->func = func;
+ }
++
++__rust_helper bool rust_helper_work_pending(struct work_struct *work)
++{
++	return work_pending(work);
++}
++
++__rust_helper bool rust_helper_cancel_work_sync(struct work_struct *work)
++{
++	return cancel_work_sync(work);
++}
++
++__rust_helper bool rust_helper_cancel_delayed_work_sync(struct delayed_work *dwork)
++{
++	return cancel_delayed_work_sync(dwork);
++}
++
++__rust_helper void rust_helper_init_delayed_work(struct delayed_work *dwork,
++						 work_func_t func,
++						 const char *name,
++						 struct lock_class_key *key,
++						 const char *tname,
++						 struct lock_class_key *tkey)
++{
++	rust_helper_init_work_with_key(&dwork->work, func, false, name, key);
++	timer_init_key(&dwork->timer, delayed_work_timer_fn, TIMER_IRQSAFE, tname, tkey);
++}
++
 
-Best regards,
 -- 
-Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
+2.43.0
 
