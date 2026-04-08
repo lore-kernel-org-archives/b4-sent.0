@@ -1,290 +1,105 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Wed, 08 Apr 2026 14:41:29 -0500
-Subject: [PATCH v5 6/6] arm64: dts: qcom: Add AYN Thor
+From: Simon Baatz <gmbnomis@gmail.com>
+Subject: [PATCH net-next 0/7] tcp: restrict rcv_wnd and window_clamp to
+ representable window
+Date: Wed, 08 Apr 2026 23:50:01 +0200
+Message-Id: <20260408-tcp_rcv_exact_clamp_and_wnd-v1-0-76a6f212e153@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260408-ayn-qcs8550-v5-6-c90abeb7a152@gmail.com>
-References: <20260408-ayn-qcs8550-v5-0-c90abeb7a152@gmail.com>
-In-Reply-To: <20260408-ayn-qcs8550-v5-0-c90abeb7a152@gmail.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>, 
- Teguh Sobirin <teguh@sobir.in>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MUQrCMAwA0KuMfFvoanXqVURCSaMGNJa2zMLY3
+ Vf2+X7eAoWzcIHbsEDmWYr8tGM8DEDvoC82ErvBWXe23jpTKWGmGbkFqkif8E0YNOJfo/Fuipf
+ TkSd/HaEPKfNT2r7fQbka5Vbhsa4bOVUUjncAAAA=
+X-Change-ID: 20260402-tcp_rcv_exact_clamp_and_wnd-427d853e7491
+To: Eric Dumazet <edumazet@google.com>, 
+ Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
+ "David S. Miller" <davem@davemloft.net>, David Ahern <dsahern@kernel.org>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, Shuah Khan <shuah@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, Simon Baatz <gmbnomis@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775677286; l=6227;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=Aoe59zShJAm9LqsbtTeOAxSKG37xMv+KPZP6UxGeHpY=;
- b=TnYgTj4ONJW/MeTXekyaFtLywM/uLCwfmFzvYiNestD5W23vlw29ze5VVijdkOJntbgodkJ8p
- 6HV/h6szrT0AqwnR7z+xXTc6+MTn3NMvUqsYudbxR2gV1OrmErMz+Ta
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775685040; l=3225;
+ i=gmbnomis@gmail.com; s=20260220; h=from:subject:message-id;
+ bh=bfuY5pXT/09Tmj0/Sfi1Tla4mOzK5VYAftWHOpXhLbo=;
+ b=X/L7cDWkWfstOARedCaNVrM3czxQSs2EBZ8+lQc5h3mMA/OC1YzQ6XJn5iGm4oU4XHQsWqAKK
+ 8lLUtgCiwCbAAxU3dBg6LND9Ta+95/17SBoIH3Mw6FbOu7aT3g5JGGV
+X-Developer-Key: i=gmbnomis@gmail.com; a=ed25519;
+ pk=T/JIz/6F5bf1uQJr69lmyi7czVG+F9TVZ/8x5z9Wtqw=
+X-Endpoint-Received: by B4 Relay for gmbnomis@gmail.com/20260220 with auth_id=641
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Teguh Sobirin <teguh@sobir.in>
+Hi,
 
-The AYN Thor is a high-performance Android-based handheld gaming console
-powered by the Qualcomm Snapdragon 8 Gen 2 processor featuring dual
-AMOLED touchscreens.
+this series ensures that rcv_wnd and window_clamp do not exceed the
+maximum window size representable for the connection's window scale
+factor.
 
-Signed-off-by: Teguh Sobirin <teguh@sobir.in>
-Co-developed-by: Aaron Kling <webgeek1234@gmail.com>
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+This is most visible when TCP window scaling is not used for a
+connection. In that case, the advertised window is limited to 65535
+bytes, but rcv_wnd or window_clamp can still grow beyond 65535 when
+large receive buffers are used. The resulting mismatch breaks
+calculations that depend on the advertised window, such as the ACK
+decision in __tcp_ack_snd_check(), and can prevent immediate ACKs.
+
+Similar effects may also occur when window scaling is in use, e.g. if
+the application dynamically adjusts SO_RCVBUF in unusual ways or when
+the rmem sysctl parameters change during a connection’s lifetime.
+
+Summary:
+
+- Patch 1 keeps rcv_wnd capped by the (window scale-limited)
+  window_clamp at connection start.
+- Patch 3 and 6 ensure that window_clamp is limited to the
+  representable window when it is updated.
+- The other patches add packetdrill tests to verify the new behavior.
+
+A simple iperf test on a virtme-ng VM (Intel i5-7500, 4 cores,
+loopback) shows a noticeable improvement with window scaling disabled:
+
+Fixed receive buffer:
+
+- sysctl net.ipv4.tcp_window_scaling=0
+- Server: iperf -l 256K -w 256K -s
+- Client: iperf -l 256K -w 256K -c 127.0.0.1 -t 30
+- net-next: ~47 Gbit/sec
+- with this series: ~62 Gbit/sec
+
+Receive buffer autotuning (net.ipv4.tcp_rmem = 4096 131072 7813888):
+
+- sysctl net.ipv4.tcp_window_scaling=0
+- Server: iperf -s
+- Client: iperf -c 127.0.0.1 -t 30
+- net-next: ~48 Gbit/sec
+- with this series: ~60 Gbit/sec
+
+Signed-off-by: Simon Baatz <gmbnomis@gmail.com>
 ---
- arch/arm64/boot/dts/qcom/Makefile                |   1 +
- arch/arm64/boot/dts/qcom/qcs8550-ayntec-thor.dts | 227 +++++++++++++++++++++++
- 2 files changed, 228 insertions(+)
+Simon Baatz (7):
+      tcp: keep rcv_wnd/rcv_ssthresh clamped by window_clamp if no scaling in use
+      selftests/net: packetdrill: verify non-scaled rcv_wnd initialization
+      tcp: Ensure window_clamp is limited to representable window
+      selftests/net: packetdrill: add tcp_rcv_wnd_snd_ack_no_scaling.pkt
+      selftests/net: packetdrill: add TCP_WINDOW_CLAMP test
+      tcp: use tcp_set_window_clamp() for SO_RCVLOWAT
+      selftests/net: packetdrill: add test for SO_RCVLOWAT window clamp
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 6bfc4554580bd5..6feecd62e01546 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -186,6 +186,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= qcs8300-ride-el2.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-aim300-aiot.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-odin2mini.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-odin2portal.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-thor.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs9100-ride.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs9100-ride-r3.dtb
- 
-diff --git a/arch/arm64/boot/dts/qcom/qcs8550-ayntec-thor.dts b/arch/arm64/boot/dts/qcom/qcs8550-ayntec-thor.dts
-new file mode 100644
-index 00000000000000..641146a9a7798e
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/qcs8550-ayntec-thor.dts
-@@ -0,0 +1,227 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2025, Teguh Sobirin.
-+ */
-+
-+/dts-v1/;
-+
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/input.h>
-+#include <dt-bindings/interrupt-controller/irq.h>
-+#include "qcs8550-ayntec-common.dtsi"
-+
-+&{/} {
-+	model = "AYN Thor";
-+	compatible = "ayntec,thor", "qcom,qcs8550", "qcom,sm8550";
-+
-+	vdd_bl_5v0: vdd-bl-5v0-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vdd_bl_5v0";
-+
-+		regulator-min-microvolt = <5000000>;
-+		regulator-max-microvolt = <5000000>;
-+
-+		gpio = <&tlmm 52 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	vdd_disp_1v8: vdd-disp-1v8-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vdd_disp_1v8";
-+
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+
-+		gpio = <&tlmm 70 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	vdd_disp1_2v8: vdd-disp1-2v8-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vdd_disp1_2v8";
-+
-+		regulator-min-microvolt = <2800000>;
-+		regulator-max-microvolt = <2800000>;
-+
-+		gpio = <&tlmm 142 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	vdd_disp2_2v8: vdd-disp2-2v8-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vdd_disp2_2v8";
-+
-+		regulator-min-microvolt = <2800000>;
-+		regulator-max-microvolt = <2800000>;
-+
-+		gpio = <&tlmm 143 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	vdd_ts_3v0: vdd-ts-3v0-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vdd_ts_3v0";
-+
-+		regulator-min-microvolt = <3000000>;
-+		regulator-max-microvolt = <3000000>;
-+
-+		gpio = <&tlmm 144 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	vdd_ts_1v8: vdd-ts-1v8-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vdd_ts_1v8";
-+
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+
-+		gpio = <&tlmm 102 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+};
-+
-+&gpio_keys {
-+	pinctrl-0 = <&volume_up_n &key_ayn_n>;
-+
-+	key-ayn {
-+		label = "AYN Key";
-+		debounce-interval = <15>;
-+		gpios = <&tlmm 41 GPIO_ACTIVE_LOW>;
-+		linux,code = <KEY_F24>;
-+		linux,can-disable;
-+	};
-+
-+	switch-lid {
-+		label = "Hall Lid Sensor";
-+		gpios = <&tlmm 17 GPIO_ACTIVE_LOW>;
-+		linux,input-type = <EV_SW>;
-+		linux,code = <SW_LID>;
-+		linux,can-disable;
-+		wakeup-source;
-+	};
-+};
-+
-+&i2c4 {
-+	clock-frequency = <400000>;
-+
-+	status = "okay";
-+
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	touchscreen@38 {
-+		compatible = "focaltech,ft5426";
-+		reg = <0x38>;
-+
-+		interrupt-parent = <&tlmm>;
-+		interrupts = <25 IRQ_TYPE_EDGE_FALLING>;
-+
-+		reset-gpios = <&tlmm 24 GPIO_ACTIVE_LOW>;
-+
-+		vcc-supply = <&vreg_l14b_3p2>;
-+		iovcc-supply = <&vreg_l12b_1p8>;
-+
-+		pinctrl-0 = <&ts_p_rst_default &ts_p_int_default>;
-+		pinctrl-1 = <&ts_p_rst_sleep &ts_p_int_sleep>;
-+		pinctrl-names = "default", "sleep";
-+
-+		touchscreen-size-x = <1080>;
-+		touchscreen-size-y = <1920>;
-+		touchscreen-swapped-x-y;
-+		touchscreen-inverted-x;
-+	};
-+};
-+
-+&i2c_hub_3 {
-+	clock-frequency = <100000>;
-+
-+	status = "okay";
-+
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	touchscreen@38 {
-+		compatible = "focaltech,ft5452";
-+		reg = <0x38>;
-+
-+		interrupt-parent = <&tlmm>;
-+		interrupts = <15 IRQ_TYPE_EDGE_FALLING>;
-+
-+		reset-gpios = <&tlmm 14 GPIO_ACTIVE_LOW>;
-+
-+		vcc-supply = <&vdd_ts_3v0>;
-+		iovcc-supply = <&vdd_ts_1v8>;
-+
-+		pinctrl-0 = <&ts_s_rst_default &ts_s_int_default>;
-+		pinctrl-1 = <&ts_s_rst_sleep &ts_s_int_sleep>;
-+		pinctrl-names = "default", "sleep";
-+
-+		touchscreen-size-x = <1080>;
-+		touchscreen-size-y = <1240>;
-+		touchscreen-swapped-x-y;
-+		touchscreen-inverted-x;
-+	};
-+};
-+
-+&mdss_dsi0 {
-+	vdda-supply = <&vreg_l3e_1p2>;
-+
-+	status = "okay";
-+
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	panel@0 {
-+		reg = <0>;
-+
-+		port {
-+			panel0_in: endpoint {
-+				remote-endpoint = <&mdss_dsi0_out>;
-+			};
-+		};
-+	};
-+};
-+
-+&mdss_dsi0_out {
-+	remote-endpoint = <&panel0_in>;
-+	data-lanes = <0 1 2 3>;
-+};
-+
-+&mdss_dsi0_phy {
-+	vdds-supply = <&vreg_l1e_0p88>;
-+
-+	status = "okay";
-+};
-+
-+&mdss_dsi1_out {
-+	qcom,te-source = "mdp_vsync_s";
-+};
-+
-+&pm8550_multi_led {
-+	status = "disabled";
-+};
-+
-+&remoteproc_adsp {
-+	firmware-name = "qcom/sm8550/ayntec/thor/adsp.mbn",
-+			"qcom/sm8550/ayntec/thor/adsp_dtb.mbn";
-+
-+	status = "okay";
-+};
-+
-+&spk_amp_l {
-+	firmware-name = "qcom/sm8550/ayntec/thor/aw883xx_acf.bin";
-+};
-+
-+&spk_amp_r {
-+	firmware-name = "qcom/sm8550/ayntec/thor/aw883xx_acf.bin";
-+};
-+
-+&tlmm {
-+	key_ayn_n: key-ayn-n-state {
-+		pins = "gpio41";
-+		function = "gpio";
-+		bias-pull-up;
-+		output-disable;
-+	};
-+};
+ net/ipv4/tcp.c                                     |  6 +++-
+ net/ipv4/tcp_input.c                               | 13 ++++++--
+ net/ipv4/tcp_minisocks.c                           |  8 +++--
+ net/ipv4/tcp_output.c                              |  5 +--
+ .../net/packetdrill/tcp_rcv_sockopt_lowat.pkt      | 24 ++++++++++++++
+ .../net/packetdrill/tcp_rcv_sockopt_wnd_clamp.pkt  | 28 ++++++++++++++++
+ .../packetdrill/tcp_rcv_wnd_active_no_scaling.pkt  | 27 ++++++++++++++++
+ .../tcp_rcv_wnd_active_peer_no_scaling.pkt         | 26 +++++++++++++++
+ .../packetdrill/tcp_rcv_wnd_passive_no_scaling.pkt | 30 ++++++++++++++++++
+ .../tcp_rcv_wnd_passive_peer_no_scaling.pkt        | 29 +++++++++++++++++
+ .../packetdrill/tcp_rcv_wnd_snd_ack_no_scaling.pkt | 37 ++++++++++++++++++++++
+ 11 files changed, 225 insertions(+), 8 deletions(-)
+---
+base-commit: b3e69fc3196fc421e26196e7792f17b0463edc6f
+change-id: 20260402-tcp_rcv_exact_clamp_and_wnd-427d853e7491
 
+Best regards,
 -- 
-2.53.0
+Simon Baatz <gmbnomis@gmail.com>
 
