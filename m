@@ -1,10 +1,10 @@
 From: Dave Marquardt <davemarq@linux.ibm.com>
-Date: Wed, 08 Apr 2026 12:07:43 -0500
-Subject: [PATCH 2/5] ibmvfc: Add NOOP command support
+Date: Wed, 08 Apr 2026 12:07:44 -0500
+Subject: [PATCH 3/5] ibmvfc: make ibmvfc login to fabric
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260408-ibmvfc-fpin-support-v1-2-52b06c464e03@linux.ibm.com>
+Message-Id: <20260408-ibmvfc-fpin-support-v1-3-52b06c464e03@linux.ibm.com>
 References: <20260408-ibmvfc-fpin-support-v1-0-52b06c464e03@linux.ibm.com>
 In-Reply-To: <20260408-ibmvfc-fpin-support-v1-0-52b06c464e03@linux.ibm.com>
 To: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
@@ -18,178 +18,207 @@ Cc: linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
  Greg Joyce <gjoyce@linux.ibm.com>, Kyle Mahlkuch <kmahlkuc@linux.ibm.com>, 
  Dave Marquardt <davemarq@linux.ibm.com>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775668068; l=5787;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775668068; l=6364;
  i=davemarq@linux.ibm.com; s=20260216; h=from:subject:message-id;
- bh=n0x38jb1bZNcxVTLqGeLg3JWwZ917lZAZQZ9f38BwC8=;
- b=YehqTVT50E6sV4zwteh8rEfJStiBCFGPtpJuVhLwWGKrLeEXW1qmoUz/Ko2nviIBgH+RBRc6j
- iUYVrgIs6EJCIJ1KwFUV3kcAGmz9HxumAJ4JQABAQofmjLKFm3uKmme
+ bh=Cbt/rfPik4XB8M92YhjaqQXiYCRxYwBJ6PtbbYpBhuo=;
+ b=PXjs5+PHKlzRHjXbLUSryG+lUh5EBrAAbuiDita0EbTjLRL/t6LJedUzoIHU9xDcXXxT1naLW
+ LWJZM0Iqw8qA+RDwk8neWFD38h7cMPjLzGzXIoNZtyBn8j6A0+EavPp
 X-Developer-Key: i=davemarq@linux.ibm.com; a=ed25519;
  pk=vy0/nfobrje6EqZxuyw6a3ZstytG8WK2vf5Y3xtGrEg=
 X-Endpoint-Received: by B4 Relay for davemarq@linux.ibm.com/20260216 with auth_id=689
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-- Add VFC_NOOP command support
-- Add KUnit tests for VFC_NOOP command
+Make ibmvfc login to fabric when NPIV login returns SUPPORT_SCSI or
+SUPPORT_NVMEOF capabilities.
 ---
- drivers/scsi/ibmvscsi/ibmvfc.c       | 23 +++++++++++++----------
- drivers/scsi/ibmvscsi/ibmvfc.h       | 13 +++++++++++++
- drivers/scsi/ibmvscsi/ibmvfc_kunit.c | 27 +++++++++++++++++++++++++++
- 3 files changed, 53 insertions(+), 10 deletions(-)
+ drivers/scsi/ibmvscsi/ibmvfc.c | 100 ++++++++++++++++++++++++++++++++++++++---
+ drivers/scsi/ibmvscsi/ibmvfc.h |  20 +++++++++
+ 2 files changed, 115 insertions(+), 5 deletions(-)
 
 diff --git a/drivers/scsi/ibmvscsi/ibmvfc.c b/drivers/scsi/ibmvscsi/ibmvfc.c
-index 3ac376ba2c62..808301fa452d 100644
+index 808301fa452d..803fc3caa14d 100644
 --- a/drivers/scsi/ibmvscsi/ibmvfc.c
 +++ b/drivers/scsi/ibmvscsi/ibmvfc.c
-@@ -189,13 +189,6 @@ static long h_reg_sub_crq(unsigned long unit_address, unsigned long ioba,
- 	return rc;
+@@ -5205,6 +5205,89 @@ static void ibmvfc_discover_targets(struct ibmvfc_host *vhost)
+ 		ibmvfc_link_down(vhost, IBMVFC_LINK_DEAD);
  }
  
--static int ibmvfc_check_caps(struct ibmvfc_host *vhost, unsigned long cap_flags)
--{
--	u64 host_caps = be64_to_cpu(vhost->login_buf->resp.capabilities);
--
--	return (host_caps & cap_flags) ? 1 : 0;
--}
--
- static struct ibmvfc_fcp_cmd_iu *ibmvfc_get_fcp_iu(struct ibmvfc_host *vhost,
- 						   struct ibmvfc_cmd *vfc_cmd)
- {
-@@ -1512,7 +1505,9 @@ static void ibmvfc_set_login_info(struct ibmvfc_host *vhost)
- 		login_info->flags |= cpu_to_be16(IBMVFC_CLIENT_MIGRATED);
- 
- 	login_info->max_cmds = cpu_to_be32(max_cmds);
--	login_info->capabilities = cpu_to_be64(IBMVFC_CAN_MIGRATE | IBMVFC_CAN_SEND_VF_WWPN);
-+	login_info->capabilities =
-+		cpu_to_be64(IBMVFC_CAN_MIGRATE | IBMVFC_CAN_SEND_VF_WWPN |
-+			    IBMVFC_CAN_USE_NOOP_CMD);
- 
- 	if (vhost->mq_enabled || vhost->using_channels)
- 		login_info->capabilities |= cpu_to_be64(IBMVFC_CAN_USE_CHANNELS);
-@@ -3461,8 +3456,8 @@ EXPORT_SYMBOL_IF_KUNIT(ibmvfc_handle_async);
-  * @evt_doneq:	Event done queue
-  *
- **/
--static void ibmvfc_handle_crq(struct ibmvfc_crq *crq, struct ibmvfc_host *vhost,
--			      struct list_head *evt_doneq)
-+VISIBLE_IF_KUNIT void ibmvfc_handle_crq(struct ibmvfc_crq *crq, struct ibmvfc_host *vhost,
-+					struct list_head *evt_doneq)
- {
- 	long rc;
- 	struct ibmvfc_event *evt = (struct ibmvfc_event *)be64_to_cpu(crq->ioba);
-@@ -3520,6 +3515,13 @@ static void ibmvfc_handle_crq(struct ibmvfc_crq *crq, struct ibmvfc_host *vhost,
- 	if (crq->format == IBMVFC_ASYNC_EVENT)
- 		return;
- 
-+	if (crq->format == IBMVFC_VFC_NOOP) {
-+		if (!ibmvfc_check_caps(vhost, IBMVFC_SUPPORT_NOOP_CMD))
-+			dev_err(vhost->dev,
-+				"Received unexpected NOOP command from partner\n");
++static void ibmvfc_fabric_login_done(struct ibmvfc_event *evt)
++{
++	struct ibmvfc_fabric_login *rsp = &evt->xfer_iu->fabric_login;
++	u32 mad_status = be16_to_cpu(rsp->common.status);
++	struct ibmvfc_host *vhost = evt->vhost;
++	int level = IBMVFC_DEFAULT_LOG_LEVEL;
++
++	ENTER;
++
++	switch (mad_status) {
++	case IBMVFC_MAD_SUCCESS:
++		vhost->logged_in = 1;
++		vhost->fabric_capabilities = rsp->capabilities;
++		fc_host_port_id(vhost->host) = be64_to_cpu(rsp->nport_id);
++		ibmvfc_free_event(evt);
++		break;
++
++	case IBMVFC_MAD_FAILED:
++		if (ibmvfc_retry_cmd(be16_to_cpu(rsp->status), be16_to_cpu(rsp->error)))
++			level += ibmvfc_retry_host_init(vhost);
++		else
++			ibmvfc_link_down(vhost, IBMVFC_LINK_DEAD);
++		ibmvfc_log(vhost, level, "Fabric Login failed: %s (%x:%x)\n",
++			   ibmvfc_get_cmd_error(be16_to_cpu(rsp->status), be16_to_cpu(rsp->error)),
++						be16_to_cpu(rsp->status), be16_to_cpu(rsp->error));
++		ibmvfc_free_event(evt);
++		LEAVE;
++		return;
++
++	case IBMVFC_MAD_CRQ_ERROR:
++		ibmvfc_retry_host_init(vhost);
++		fallthrough;
++
++	case IBMVFC_MAD_DRIVER_FAILED:
++		ibmvfc_free_event(evt);
++		LEAVE;
++		return;
++
++	default:
++		dev_err(vhost->dev, "Invalid fabric Login response: 0x%x\n", mad_status);
++		ibmvfc_link_down(vhost, IBMVFC_LINK_DEAD);
++		ibmvfc_free_event(evt);
++		LEAVE;
 +		return;
 +	}
 +
- 	/* The only kind of payload CRQs we should get are responses to
- 	 * things we send. Make sure this response is to something we
- 	 * actually sent
-@@ -3540,6 +3542,7 @@ static void ibmvfc_handle_crq(struct ibmvfc_crq *crq, struct ibmvfc_host *vhost,
- 	list_move_tail(&evt->queue_list, evt_doneq);
- 	spin_unlock(&evt->queue->l_lock);
- }
-+EXPORT_SYMBOL_IF_KUNIT(ibmvfc_handle_crq);
++	ibmvfc_set_host_action(vhost, IBMVFC_HOST_ACTION_QUERY);
++	wake_up(&vhost->work_wait_q);
++
++	LEAVE;
++}
++
++static void ibmvfc_fabric_login(struct ibmvfc_host *vhost)
++{
++	struct ibmvfc_fabric_login *mad;
++	struct ibmvfc_event *evt = ibmvfc_get_reserved_event(&vhost->crq);
++	int level = IBMVFC_DEFAULT_LOG_LEVEL;
++
++	if (!evt) {
++		ibmvfc_log(vhost, level, "Fabric Login failed: no available events\n");
++		return;
++	}
++
++	ibmvfc_init_event(evt, ibmvfc_fabric_login_done, IBMVFC_MAD_FORMAT);
++	mad = &evt->iu.fabric_login;
++	memset(mad, 0, sizeof(*mad));
++	if (vhost->scsi_scrqs.protocol == IBMVFC_PROTO_SCSI)
++		mad->common.opcode = cpu_to_be32(IBMVFC_FABRIC_LOGIN);
++	else if (vhost->scsi_scrqs.protocol == IBMVFC_PROTO_NVME)
++		mad->common.opcode = cpu_to_be32(IBMVFC_NVMF_FABRIC_LOGIN);
++	else {
++		ibmvfc_log(vhost, level, "Fabric Login failed: unknown protocol\n");
++		return;
++	}
++	mad->common.version = cpu_to_be32(1);
++	mad->common.length = cpu_to_be16(sizeof(*mad));
++
++	ibmvfc_set_host_action(vhost, IBMVFC_HOST_ACTION_INIT_WAIT);
++
++	if (ibmvfc_send_event(evt, vhost, default_timeout))
++		ibmvfc_link_down(vhost, IBMVFC_LINK_DOWN);
++}
++
+ static void ibmvfc_channel_setup_done(struct ibmvfc_event *evt)
+ {
+ 	struct ibmvfc_host *vhost = evt->vhost;
+@@ -5251,8 +5334,12 @@ static void ibmvfc_channel_setup_done(struct ibmvfc_event *evt)
+ 		return;
+ 	}
  
- /**
-  * ibmvfc_scan_finished - Check if the device scan is done.
+-	ibmvfc_set_host_action(vhost, IBMVFC_HOST_ACTION_QUERY);
+-	wake_up(&vhost->work_wait_q);
++	if (ibmvfc_check_caps(vhost, (IBMVFC_SUPPORT_SCSI | IBMVFC_SUPPORT_NVMEOF))) {
++		ibmvfc_fabric_login(vhost);
++	} else {
++		ibmvfc_set_host_action(vhost, IBMVFC_HOST_ACTION_QUERY);
++		wake_up(&vhost->work_wait_q);
++	}
+ }
+ 
+ static void ibmvfc_channel_setup(struct ibmvfc_host *vhost)
+@@ -5443,9 +5530,12 @@ static void ibmvfc_npiv_login_done(struct ibmvfc_event *evt)
+ 	vhost->host->can_queue = be32_to_cpu(rsp->max_cmds) - IBMVFC_NUM_INTERNAL_REQ;
+ 	vhost->host->max_sectors = npiv_max_sectors;
+ 
+-	if (ibmvfc_check_caps(vhost, IBMVFC_CAN_SUPPORT_CHANNELS) && vhost->do_enquiry) {
+-		ibmvfc_channel_enquiry(vhost);
+-	} else {
++	if (ibmvfc_check_caps(vhost, IBMVFC_CAN_SUPPORT_CHANNELS)) {
++		if (vhost->do_enquiry)
++			ibmvfc_channel_enquiry(vhost);
++	} else if (ibmvfc_check_caps(vhost, (IBMVFC_SUPPORT_SCSI | IBMVFC_SUPPORT_NVMEOF)))
++		ibmvfc_fabric_login(vhost);
++	else {
+ 		vhost->do_enquiry = 0;
+ 		ibmvfc_set_host_action(vhost, IBMVFC_HOST_ACTION_QUERY);
+ 		wake_up(&vhost->work_wait_q);
 diff --git a/drivers/scsi/ibmvscsi/ibmvfc.h b/drivers/scsi/ibmvscsi/ibmvfc.h
-index 29932284a4c9..cd0917f70c6d 100644
+index cd0917f70c6d..4f680c5d9558 100644
 --- a/drivers/scsi/ibmvscsi/ibmvfc.h
 +++ b/drivers/scsi/ibmvscsi/ibmvfc.h
-@@ -180,6 +180,7 @@ struct ibmvfc_npiv_login {
- #define IBMVFC_CAN_HANDLE_FPIN		0x04
- #define IBMVFC_CAN_USE_MAD_VERSION	0x08
- #define IBMVFC_CAN_SEND_VF_WWPN		0x10
-+#define IBMVFC_CAN_USE_NOOP_CMD		0x200
- 	__be64 node_name;
- 	struct srp_direct_buf async;
- 	u8 partition_name[IBMVFC_MAX_NAME];
-@@ -226,6 +227,7 @@ struct ibmvfc_npiv_login_resp {
+@@ -138,6 +138,8 @@ enum ibmvfc_mad_types {
+ 	IBMVFC_CHANNEL_ENQUIRY	= 0x1000,
+ 	IBMVFC_CHANNEL_SETUP	= 0x2000,
+ 	IBMVFC_CONNECTION_INFO	= 0x4000,
++	IBMVFC_FABRIC_LOGIN	= 0x8000,
++	IBMVFC_NVMF_FABRIC_LOGIN	= 0x8001,
+ };
+ 
+ struct ibmvfc_mad_common {
+@@ -227,6 +229,8 @@ struct ibmvfc_npiv_login_resp {
  #define IBMVFC_MAD_VERSION_CAP		0x20
  #define IBMVFC_HANDLE_VF_WWPN		0x40
  #define IBMVFC_CAN_SUPPORT_CHANNELS	0x80
-+#define IBMVFC_SUPPORT_NOOP_CMD		0x1000
++#define IBMVFC_SUPPORT_NVMEOF		0x100
++#define IBMVFC_SUPPORT_SCSI		0x200
+ #define IBMVFC_SUPPORT_NOOP_CMD		0x1000
  	__be32 max_cmds;
  	__be32 scsi_id_sz;
- 	__be64 max_dma_len;
-@@ -621,6 +623,7 @@ struct ibmvfc_trace_entry {
- enum ibmvfc_crq_formats {
- 	IBMVFC_CMD_FORMAT		= 0x01,
- 	IBMVFC_ASYNC_EVENT	= 0x02,
-+	IBMVFC_VFC_NOOP		= 0x03,
- 	IBMVFC_MAD_FORMAT		= 0x04,
+@@ -590,6 +594,19 @@ struct ibmvfc_connection_info {
+ 	__be64 reserved[16];
+ } __packed __aligned(8);
+ 
++struct ibmvfc_fabric_login {
++	struct ibmvfc_mad_common common;
++	__be64 flags;
++#define IBMVFC_STRIP_MERGE	0x1
++#define IBMVFC_LINK_COMMANDS	0x2
++	__be64 capabilities;
++	__be64 nport_id;
++	__be16 status;
++	__be16 error;
++	__be32 pad;
++	__be64 reserved[16];
++} __packed __aligned(8);
++
+ struct ibmvfc_trace_start_entry {
+ 	u32 xfer_len;
+ } __packed;
+@@ -709,6 +726,7 @@ union ibmvfc_iu {
+ 	struct ibmvfc_channel_enquiry channel_enquiry;
+ 	struct ibmvfc_channel_setup_mad channel_setup;
+ 	struct ibmvfc_connection_info connection_info;
++	struct ibmvfc_fabric_login fabric_login;
+ } __packed __aligned(8);
+ 
+ enum ibmvfc_target_action {
+@@ -921,6 +939,8 @@ struct ibmvfc_host {
+ 	struct work_struct rport_add_work_q;
+ 	wait_queue_head_t init_wait_q;
+ 	wait_queue_head_t work_wait_q;
++	__be64 fabric_capabilities;
++	unsigned int login_cap_index;
  };
  
-@@ -946,6 +949,13 @@ struct ibmvfc_host {
- 			dev_err((vhost)->dev, ##__VA_ARGS__); \
- 	} while (0)
- 
-+static inline int ibmvfc_check_caps(struct ibmvfc_host *vhost, unsigned long cap_flags)
-+{
-+	u64 host_caps = be64_to_cpu(vhost->login_buf->resp.capabilities);
-+
-+	return (host_caps & cap_flags) ? 1 : 0;
-+}
-+
- #define ENTER DBG_CMD(printk(KERN_INFO IBMVFC_NAME": Entering %s\n", __func__))
- #define LEAVE DBG_CMD(printk(KERN_INFO IBMVFC_NAME": Leaving %s\n", __func__))
- 
-@@ -960,6 +970,9 @@ struct ibmvfc_host {
- #ifdef VISIBLE_IF_KUNIT
- VISIBLE_IF_KUNIT void ibmvfc_handle_async(struct ibmvfc_async_crq *crq, struct ibmvfc_host *vhost);
- VISIBLE_IF_KUNIT struct list_head *ibmvfc_get_headp(void);
-+VISIBLE_IF_KUNIT void ibmvfc_handle_crq(struct ibmvfc_crq *crq,
-+					struct ibmvfc_host *vhost,
-+					struct list_head *evt_doneq);
- #endif
- 
- #endif
-diff --git a/drivers/scsi/ibmvscsi/ibmvfc_kunit.c b/drivers/scsi/ibmvscsi/ibmvfc_kunit.c
-index 1c238896049f..3359e4ebebe2 100644
---- a/drivers/scsi/ibmvscsi/ibmvfc_kunit.c
-+++ b/drivers/scsi/ibmvscsi/ibmvfc_kunit.c
-@@ -79,8 +79,35 @@ static void ibmvfc_handle_fpin_event_test(struct kunit *test)
- 	}
- }
- 
-+/**
-+ * ibmvfc_noop_test - unit test for VFC_NOOP command
-+ * @test: pointer to kunit structure
-+ *
-+ * Return: void
-+ */
-+static void ibmvfc_noop_test(struct kunit *test)
-+{
-+	struct ibmvfc_host *vhost;
-+	struct list_head *queue;
-+	struct ibmvfc_crq crq;
-+	struct list_head *headp;
-+	LIST_HEAD(evtq);
-+
-+	headp = ibmvfc_get_headp();
-+	queue = headp->next;
-+	vhost = container_of(queue, struct ibmvfc_host, queue);
-+
-+	KUNIT_EXPECT_TRUE(test, ibmvfc_check_caps(vhost, IBMVFC_SUPPORT_NOOP_CMD));
-+
-+	crq.valid = 0x80;
-+	crq.format = IBMVFC_VFC_NOOP;
-+	crq.ioba = cpu_to_be64(NULL);
-+	ibmvfc_handle_crq(&crq, vhost, &evtq);
-+}
-+
- static struct kunit_case ibmvfc_fpin_test_cases[] = {
- 	KUNIT_CASE(ibmvfc_handle_fpin_event_test),
-+	KUNIT_CASE(ibmvfc_noop_test),
- 	{},
- };
- 
+ #define DBG_CMD(CMD) do { if (ibmvfc_debug) CMD; } while (0)
 
 -- 
 2.53.0
