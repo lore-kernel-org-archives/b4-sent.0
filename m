@@ -1,138 +1,94 @@
-From: Radu Sabau <radu.sabau@analog.com>
-Date: Wed, 08 Apr 2026 13:32:13 +0300
-Subject: [PATCH v3] iio: adc: ad4695: Fix call ordering in offload buffer
- postenable
+From: Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
+Subject: [PATCH v6 0/3] rust: workqueue: add safe cancellation and status
+ methods
+Date: Wed, 08 Apr 2026 16:06:37 +0530
+Message-Id: <20260408-workqueue-v5-sent-v6-0-0dc184c5343d@multicorewareinc.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260408-ad4696-fix-v3-1-37fe6e8d1d25@analog.com>
-X-B4-Tracking: v=1; b=H4sIAKwu1mkC/22MSwrCMBQAryJvbSQvPxNX3kNcpO2zDWgjiQSl9
- O6m3UjB5QzMTJApBcpw2k2QqIQc4lhB7nfQDn7siYWuMgguDJeSM98p4wy7hTdDa5zW3rYaEWr
- wTFT1OrtcKw8hv2L6rO+Ci/27KciQkVVIziiNjTj70d9jf2jjA5ZPEb9Wcdy0orZCWd44L/lRu
- U07z/MXOl9JJuEAAAA=
-X-Change-ID: 20260330-ad4696-fix-186955a8c511
-To: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- David Lechner <dlechner@baylibre.com>, Jonathan Cameron <jic23@kernel.org>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jonathan Cameron <Jonathan.Cameron@huawei.com>, 
- Radu Sabau <radu.sabau@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775644333; l=4155;
- i=radu.sabau@analog.com; s=20260220; h=from:subject:message-id;
- bh=meaEx+5eOnCshzOryh8iUzRER3yLb0rU+9apvG7SJTo=;
- b=roQ+/kwyq4jo5nJ/F/IT42iRBsxtEIe7m7HOZFYKRjAjzkqCyVp/crF9AjaeFGn4gZ4Eal49a
- 2x7z7Ic9aINDosW5CHCQSH5qTbw/6vpfEUovRDyWVUItZJVZOPPAfQw
-X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
- pk=lDPQHgn9jTdt0vo58Na9lLxLaE2mb330if71Cn+EvFU=
-X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20260220 with auth_id=642
+X-B4-Tracking: v=1; b=H4sIALUv1mkC/32NQQ6CMBBFr0K6dkxBiuDKexgWTTvIRGlxCkVDu
+ LuVA7h8L/nvryIgEwZxyVbBGCmQdwmqQyZMr90dgWxiUciikqU8w+L58ZpxRogKAroJdN0oq3J
+ jyk6JtBsZO3rvzVubuKcwef7sFzH/2X+1mIMEK211UkXdGC2vw/ycyHjGRTOSM0fjB9Fu2/YFy
+ 7iSQb0AAAA=
+To: Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
+ Wedson Almeida Filho <wedsonaf@gmail.com>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn.roy.baron@gmail.com>, 
+ Alice Ryhl <aliceryhl@google.com>, Tejun Heo <tj@kernel.org>, 
+ Lai Jiangshan <jiangshanlai@gmail.com>, Boqun Feng <boqun@kernel.org>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775644627; l=2705;
+ i=aakash.bollineni@multicorewareinc.com; s=20260402;
+ h=from:subject:message-id; bh=a9FizM6TYahbipOTTxKYodoWPtBuAQAEBGwVzf9mKJA=;
+ b=DZIfOHuE5RheOtbfsuBI8e/LrqL4NiMIPHf2wR3m0HWGBeg5vWXZPIvZQFWfjYXNacf6Ks1qY
+ zrHR7cpV626Cv9MJ1RdDB1M77GOprChHcsdFOXTO5u9mSZxUpJyAQvr
+X-Developer-Key: i=aakash.bollineni@multicorewareinc.com; a=ed25519;
+ pk=r3Gonl+2k+8RozN9U/XwfICQdnRlAcLeeAfsExmurdE=
+X-Endpoint-Received: by B4 Relay for aakash.bollineni@multicorewareinc.com/20260402 with auth_id=711
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ad4695_enter_advanced_sequencer_mode() was called after
-spi_offload_trigger_enable(). That is wrong because
-ad4695_enter_advanced_sequencer_mode() issues regular SPI transfers to
-put the ADC into advanced sequencer mode, and not all SPI offload capable
-controllers support regular SPI transfers while offloading is enabled.
+Changes in v6:
+- Refactored rust_helper_init_delayed_work to ensure robust, single-pass initialization 
+  using standard kernel macros, avoiding redundant lockdep and timer setup.
+- Simplified impl_has_delayed_work! macro by using direct pointer casting for 
+  work_container_of.
+- Added missing # Safety documentation blocks to reclaim methods for Arc and KBox.
+- Improved documentation readability by adding vertical whitespace to all examples.
+- Cleaned up link syntax by using direct inline links and removing redundant reference lists.
+- Removed unused rust_helper_get_dwork_timer_fn C helper.
+- Link to v5: https://lore.kernel.org/r/20260407-workqueue-v5-sent-v1-0-d0d635289ca0@multicorewareinc.com
 
-Fix this by calling ad4695_enter_advanced_sequencer_mode() before
-spi_offload_trigger_enable(), so the ADC is fully configured before the
-first CNV pulse can occur. This is consistent with the same constraint
-that already applies to the BUSY_GP_EN write above it.
+PLEASE IGNORE v4. This version (v5) corrects a critical KUnit build error 
+and formatting regressions that were present in the previous submission.
 
-Update the error unwind labels accordingly: add err_exit_conversion_mode
-so that a failure of spi_offload_trigger_enable() correctly exits
-conversion mode before clearing BUSY_GP_EN.
+Changes in v5:
+- Fixed missing arc_count helper in rust/kernel/workqueue.rs that caused KUnit
+  build failures.
+- Fixed formatting in samples/rust/rust_workqueue_test.rs via rustfmt.
 
-Fixes: f09f140e3ea8 ("iio: adc: ad4695: Add support for SPI offload")
-Reviewed-by: Nuno Sá <nuno.sa@analog.com>
-Reviewed-by: David Lechner <dlechner@baylibre.com>
-Signed-off-by: Radu Sabau <radu.sabau@analog.com>
+Changes in v4:
+- Fixed Reported-by/Closes tags and metadata for robot tracking.
+- Improved commit structure to separate API changes from tests.
+
+Aakash Bollineni (3):
+  rust: helpers: add workqueue helpers
+  rust: workqueue: add safe cancellation and status methods
+  rust: workqueue: add KUnit and sample stress tests
+
+To: Miguel Ojeda <ojeda@kernel.org>
+To: Alex Gaynor <alex.gaynor@gmail.com>
+To: Wedson Almeida Filho <wedsonaf@gmail.com>
+To: Boqun Feng <boqun.feng@gmail.com>
+To: Gary Guo <gary@garyguo.net>
+To: Björn Roy Baron <bjorn.roy.baron@gmail.com>
+To: Benno Lossin <benno.lossin@proton.me>
+To: Andreas Hindborg <a.hindborg@samsung.com>
+To: Alice Ryhl <aliceryhl@google.com>
+To: Tejun Heo <tj@kernel.org>
+To: Lai Jiangshan <jiangshanlai@gmail.com>
+Cc: rust-for-linux@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+Signed-off-by: Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
 ---
-ad4695_enter_advanced_sequencer_mode() issues regular SPI transfers to
-configure the ADC. These must complete before spi_offload_trigger_enable()
-enables the PWM/CNV trigger, because once CNV pulses are live the offload
-engine owns the SPI bus.
+Aakash Bollineni (3):
+      rust: helpers: add workqueue helpers
+      rust: workqueue: add safe cancellation and status methods
+      rust: workqueue: add KUnit and sample stress tests
 
-This fixes the call ordering and updates the error unwind path accordingly.
+ rust/helpers/workqueue.c            |  27 ++
+ rust/kernel/workqueue.rs            | 500 +++++++++++++++++++++++++++++++++---
+ samples/rust/Kconfig                |  10 +
+ samples/rust/Makefile               |   2 +
+ samples/rust/rust_workqueue_test.rs | 191 ++++++++++++++
+ 5 files changed, 695 insertions(+), 35 deletions(-)
 ---
-Changes in v3:
-- Reword commit message: "the offload engine owns the SPI bus; any
-  concurrent regular SPI transfer produces undefined behaviour" →
-  "not all SPI offload capable controllers support regular SPI
-  transfers while offloading is enabled".
-- Rename err_trigger_disable → err_offload_trigger_disable to reduce
-  diff churn.
-- Link to v2: https://lore.kernel.org/r/20260401-ad4696-fix-v2-1-2480b9a30749@analog.com
-
-Changes in v2:
-- Reword commit message to explain the correct bus-ownership
-  invariant directly, without reference to the HDL bug that
-  exposed it.
-- Remove unnecessary comment since the error path changed.
-- Link to v1: https://lore.kernel.org/r/20260330-ad4696-fix-v1-1-e841e96451b2@analog.com
----
- drivers/iio/adc/ad4695.c | 23 ++++++++---------------
- 1 file changed, 8 insertions(+), 15 deletions(-)
-
-diff --git a/drivers/iio/adc/ad4695.c b/drivers/iio/adc/ad4695.c
-index cda419638d9a..53642de7330d 100644
---- a/drivers/iio/adc/ad4695.c
-+++ b/drivers/iio/adc/ad4695.c
-@@ -876,14 +876,14 @@ static int ad4695_offload_buffer_postenable(struct iio_dev *indio_dev)
- 	if (ret)
- 		goto err_unoptimize_message;
- 
--	ret = spi_offload_trigger_enable(st->offload, st->offload_trigger,
--					 &config);
-+	ret = ad4695_enter_advanced_sequencer_mode(st, num_slots);
- 	if (ret)
- 		goto err_disable_busy_output;
- 
--	ret = ad4695_enter_advanced_sequencer_mode(st, num_slots);
-+	ret = spi_offload_trigger_enable(st->offload, st->offload_trigger,
-+					 &config);
- 	if (ret)
--		goto err_offload_trigger_disable;
-+		goto err_exit_conversion_mode;
- 
- 	mutex_lock(&st->cnv_pwm_lock);
- 	pwm_get_state(st->cnv_pwm, &state);
-@@ -895,23 +895,16 @@ static int ad4695_offload_buffer_postenable(struct iio_dev *indio_dev)
- 	ret = pwm_apply_might_sleep(st->cnv_pwm, &state);
- 	mutex_unlock(&st->cnv_pwm_lock);
- 	if (ret)
--		goto err_offload_exit_conversion_mode;
-+		goto err_offload_trigger_disable;
- 
- 	return 0;
- 
--err_offload_exit_conversion_mode:
--	/*
--	 * We have to unwind in a different order to avoid triggering offload.
--	 * ad4695_exit_conversion_mode() triggers a conversion, so it has to be
--	 * done after spi_offload_trigger_disable().
--	 */
--	spi_offload_trigger_disable(st->offload, st->offload_trigger);
--	ad4695_exit_conversion_mode(st);
--	goto err_disable_busy_output;
--
- err_offload_trigger_disable:
- 	spi_offload_trigger_disable(st->offload, st->offload_trigger);
- 
-+err_exit_conversion_mode:
-+	ad4695_exit_conversion_mode(st);
-+
- err_disable_busy_output:
- 	regmap_clear_bits(st->regmap, AD4695_REG_GP_MODE,
- 			  AD4695_REG_GP_MODE_BUSY_GP_EN);
-
----
-base-commit: 11439c4635edd669ae435eec308f4ab8a0804808
-change-id: 20260330-ad4696-fix-186955a8c511
+base-commit: bf074eb6891be799174ff42e0051492681fdc045
+change-id: 20260407-workqueue-v5-sent-a895d51cc4f5
 
 Best regards,
 -- 
-Radu Sabau <radu.sabau@analog.com>
+Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
 
