@@ -1,14 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH 0/2] Introduce OnePlus 6/6T touchscreen compatible
-Date: Wed, 08 Apr 2026 19:34:31 +0200
-Message-Id: <20260408-synaptics-rmi4-dt-v1-0-2d32bacce673@ixit.cz>
+Date: Wed, 08 Apr 2026 19:34:32 +0200
+Subject: [PATCH 1/2] dt-bindings: input: syna,rmi4: Document
+ syna,rmi4-s3706b
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAKeR1mkC/x3MTQ5AMBBA4as0szZJi/i7ilhUO5iFko4IEXfXW
- H6L9x4QikwCnXog0snCW0gwmQK32DATsk+GXOeVLnWDcge7H+wE48ol+gMbS+NUmLrV3kHq9kg
- TX/+zH973A7nUXfhjAAAA
-X-Change-ID: 20260408-synaptics-rmi4-dt-8aebf31790dc
+Message-Id: <20260408-synaptics-rmi4-dt-v1-1-2d32bacce673@ixit.cz>
+References: <20260408-synaptics-rmi4-dt-v1-0-2d32bacce673@ixit.cz>
+In-Reply-To: <20260408-synaptics-rmi4-dt-v1-0-2d32bacce673@ixit.cz>
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, "Jason A. Donenfeld" <Jason@zx2c4.com>, 
@@ -21,44 +20,61 @@ Cc: linux-input@vger.kernel.org, devicetree@vger.kernel.org,
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
  Krzysztof Kozlowski <krzk@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=766; i=david@ixit.cz;
- h=from:subject:message-id; bh=JzKGMSO1Qx98W099lIY3XmzWJxWoll9867PldA76mjU=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBp1pGnAYMMzfmWVcCoSBFRXxcsIHcyzsFYYsnCw
- LV/rmkIDtiJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCadaRpwAKCRBgAj/E00kg
- cmpSEACRduCxZQPGLcSjXukxyg+Is/ZozXUdsnX4cggpr/x5ZQRcu6UBppSw7dD/CtCepy4ieZ5
- 3p33gqJs1q+bed23rLuPGo8aBqBZ1FzYaskzHqU8FSmGIHHDJK4jepK3QFbYG7s0QUK1yxhwNkB
- WydDiRnL/HUhjnVoQjI6NcIHZd0lo+8cy4rTnw3ZE8cRP0qFS6HyGtHjVDiu2bfDeUtifX3o+Dp
- qMMRMXs7rSec7ZwpkdH9ZICDCXql1y70IZ1b2Lm2zgDbKlWxsH1dyWw9CGJOAVoCW76LfJQ4VL3
- X1KR1W/nBNea/Je09+qXRHjEh8rzDVJLwIwU6xzO7HTll62bT1ldHrKOglQjCWHdDr98BXwWGFN
- eYu0/vlBcw2Rm7pEWBH/wTXKkzAiqB67gpDQW8VZ+DYXEOpkCXxQrdijSbBgzMU7ikVMdZXdG/E
- lA8qO5ez1v96CVaz7ysgA74aDcaVk2yXe3EPYUOa1hD4hr48ckFJ2c5cRrKEAT4yZIT+apWIhW3
- zBRylTDonCLUrAuV9b/hsIFA6s4GeQMnBhvXexaYJ0nFHrE0u9BvVl/O6XSGy1b1Llzx2/JIr2e
- rYZDcjJMAS1Cf9ozQ9uLnzV2UuTeIV7CIJscLWSkNceZMxT6QSwC7ujsbCBXm1WZ7VWqLRPLeBe
- 63DkU6NxRswBFrg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1250; i=david@ixit.cz;
+ h=from:subject:message-id; bh=sEfAUOYzG1M4zvx/Xv8wME49V12PqhPhJ6Tk21Hc6yo=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBp1pGnRYv8b9NfVyUWQW1cq7zGcwvT6MzqyLu+D
+ MpQNcOVFzGJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCadaRpwAKCRBgAj/E00kg
+ cugVEADQNlRqMzFq6OW5/JM4N9RqHX0ZZtmZav19w6y15C7iV1B5rzWB0cRDizNam5dbLvEkWQU
+ OYtcZPm6H6wwa/GiyGoywpoc2XmGSNkIbVm0KrrmO4tDhkmNE3eI1HLi/Qxkk6tAcj6YTHhhO+u
+ 22jX0dUTq83XOKUqKTZ0W9dQMBGyQaW86SXRpzWOjKBJ5Z/oFySGanrrjys19Rh4M8b8V+uo0Cy
+ XviUSumFYduu5Pzr9sXR6ol1ocrVbz7pAr8ZXZ1/YmNRJ09pMXh+/SMR6Ir+L8omFmGi8OcoWd1
+ 40MkFEfzdre19/UoLvzOAjF7owWe4xuOEMDCBrQ4tesa4XhrDceMmtF+nmw854tkcgZH08cyGpo
+ HKxt/qO1Emq4D/vPpHs9ciJYKCggOvGZHgN9I90QFxHW5pLa1dWy6on0CvGpiA2pDyX0KH7rnRe
+ k2SNrFxDRCIr/72zBTE5sOiTdtmy5F04IhHBL9kWQorbx0tswQwvTP8gbGZ9sTAQIno83D2+jHI
+ KXYVVbT+3lO1HIpOPwO+sLqBJZrqFKpWx6I4x+QyFuyI830OncC4Rmk2n4CvrxjxqemIztjHUEc
+ z4yVKphaJzavOoNZYOsEGymFsjjwi0Y2A5A+YaANVwH7Ig0iKja+cdxoRQoAL4L3tufdha+Vo4e
+ 5rZ212qBWw27SEA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Mostly related to the
-  https://codeberg.org/sdm845/linux/commits/branch/b4/synaptics-rmi4
-series, but independent on other changes which I trying to upstream for
-more than one year.
+Mostly irrelevant for authentic Synaptics touchscreens, but very important
+for applying workarounds to cheap TS knockoffs.
 
+These knockoffs work well with the downstream driver, and since the user
+has no way to distinguish them, later in this patch set, we introduce
+workarounds to ensure they function as well as possible.
+
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-David Heidelberg (2):
-      dt-bindings: input: syna,rmi4: Document syna,rmi4-s3706b
-      arm64: dts: qcom: sdm845-oneplus: Update compatible to include model
-
  Documentation/devicetree/bindings/input/syna,rmi4.yaml | 11 ++++++++---
- arch/arm64/boot/dts/qcom/sdm845-oneplus-common.dtsi    |  2 +-
- 2 files changed, 9 insertions(+), 4 deletions(-)
----
-base-commit: f3e6330d7fe42b204af05a2dbc68b379e0ad179e
-change-id: 20260408-synaptics-rmi4-dt-8aebf31790dc
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
-Best regards,
+diff --git a/Documentation/devicetree/bindings/input/syna,rmi4.yaml b/Documentation/devicetree/bindings/input/syna,rmi4.yaml
+index 8685ef4481f4a..fb4804ac3544d 100644
+--- a/Documentation/devicetree/bindings/input/syna,rmi4.yaml
++++ b/Documentation/devicetree/bindings/input/syna,rmi4.yaml
+@@ -18,9 +18,14 @@ description: |
+ 
+ properties:
+   compatible:
+-    enum:
+-      - syna,rmi4-i2c
+-      - syna,rmi4-spi
++    oneOf:
++      - enum:
++          - syna,rmi4-i2c
++          - syna,rmi4-spi
++      - items:
++          - enum:
++              - syna,rmi4-s3706b  # OnePlus 6/6T
++          - const: syna,rmi4-i2c
+ 
+   reg:
+     maxItems: 1
+
 -- 
-David Heidelberg <david@ixit.cz>
+2.53.0
 
