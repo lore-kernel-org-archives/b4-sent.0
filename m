@@ -1,15 +1,13 @@
 From: Simon Baatz <gmbnomis@gmail.com>
-Subject: [PATCH net-next 0/7] tcp: restrict rcv_wnd and window_clamp to
- representable window
-Date: Wed, 08 Apr 2026 23:50:01 +0200
-Message-Id: <20260408-tcp_rcv_exact_clamp_and_wnd-v1-0-76a6f212e153@gmail.com>
+Date: Wed, 08 Apr 2026 23:50:02 +0200
+Subject: [PATCH net-next 1/7] tcp: keep rcv_wnd/rcv_ssthresh clamped by
+ window_clamp if no scaling in use
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MUQrCMAwA0KuMfFvoanXqVURCSaMGNJa2zMLY3
- Vf2+X7eAoWzcIHbsEDmWYr8tGM8DEDvoC82ErvBWXe23jpTKWGmGbkFqkif8E0YNOJfo/Fuipf
- TkSd/HaEPKfNT2r7fQbka5Vbhsa4bOVUUjncAAAA=
-X-Change-ID: 20260402-tcp_rcv_exact_clamp_and_wnd-427d853e7491
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260408-tcp_rcv_exact_clamp_and_wnd-v1-1-76a6f212e153@gmail.com>
+References: <20260408-tcp_rcv_exact_clamp_and_wnd-v1-0-76a6f212e153@gmail.com>
+In-Reply-To: <20260408-tcp_rcv_exact_clamp_and_wnd-v1-0-76a6f212e153@gmail.com>
 To: Eric Dumazet <edumazet@google.com>, 
  Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
  "David S. Miller" <davem@davemloft.net>, David Ahern <dsahern@kernel.org>, 
@@ -18,88 +16,105 @@ To: Eric Dumazet <edumazet@google.com>,
 Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-kselftest@vger.kernel.org, Simon Baatz <gmbnomis@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775685040; l=3225;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775685040; l=3731;
  i=gmbnomis@gmail.com; s=20260220; h=from:subject:message-id;
- bh=bfuY5pXT/09Tmj0/Sfi1Tla4mOzK5VYAftWHOpXhLbo=;
- b=X/L7cDWkWfstOARedCaNVrM3czxQSs2EBZ8+lQc5h3mMA/OC1YzQ6XJn5iGm4oU4XHQsWqAKK
- 8lLUtgCiwCbAAxU3dBg6LND9Ta+95/17SBoIH3Mw6FbOu7aT3g5JGGV
+ bh=D5Yj7InMLE8s8H7wijn4PBjZo6pD1UsEIMIUKtUVqsI=;
+ b=T0np/fm0cCfmsmopm+yAL64WwCWbKQ5xalMNOXDtqcWDarCXh4XgNcPAWLwjOAD74EK84mCTt
+ 4BzDrMH7MxVBdK2sxWjq/soVkXrNEeyj2l6EenIRU9XJHC6IzbNNpi5
 X-Developer-Key: i=gmbnomis@gmail.com; a=ed25519;
  pk=T/JIz/6F5bf1uQJr69lmyi7czVG+F9TVZ/8x5z9Wtqw=
 X-Endpoint-Received: by B4 Relay for gmbnomis@gmail.com/20260220 with auth_id=641
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+When window scaling is not used, we already clamp window_clamp to
+65535, but rcv_wnd/rcv_ssthresh can still remain larger than this.
 
-this series ensures that rcv_wnd and window_clamp do not exceed the
-maximum window size representable for the connection's window scale
-factor.
+Fix this by capping rcv_wnd to 65535 in the non-scaling paths of both
+active and passive opens. Since the advertised window in SYN and
+SYN/ACK segments is unscaled, this cannot shrink the window
+advertised to the peer.
 
-This is most visible when TCP window scaling is not used for a
-connection. In that case, the advertised window is limited to 65535
-bytes, but rcv_wnd or window_clamp can still grow beyond 65535 when
-large receive buffers are used. The resulting mismatch breaks
-calculations that depend on the advertised window, such as the ACK
-decision in __tcp_ack_snd_check(), and can prevent immediate ACKs.
-
-Similar effects may also occur when window scaling is in use, e.g. if
-the application dynamically adjusts SO_RCVBUF in unusual ways or when
-the rmem sysctl parameters change during a connection’s lifetime.
-
-Summary:
-
-- Patch 1 keeps rcv_wnd capped by the (window scale-limited)
-  window_clamp at connection start.
-- Patch 3 and 6 ensure that window_clamp is limited to the
-  representable window when it is updated.
-- The other patches add packetdrill tests to verify the new behavior.
-
-A simple iperf test on a virtme-ng VM (Intel i5-7500, 4 cores,
-loopback) shows a noticeable improvement with window scaling disabled:
-
-Fixed receive buffer:
-
-- sysctl net.ipv4.tcp_window_scaling=0
-- Server: iperf -l 256K -w 256K -s
-- Client: iperf -l 256K -w 256K -c 127.0.0.1 -t 30
-- net-next: ~47 Gbit/sec
-- with this series: ~62 Gbit/sec
-
-Receive buffer autotuning (net.ipv4.tcp_rmem = 4096 131072 7813888):
-
-- sysctl net.ipv4.tcp_window_scaling=0
-- Server: iperf -s
-- Client: iperf -c 127.0.0.1 -t 30
-- net-next: ~48 Gbit/sec
-- with this series: ~60 Gbit/sec
+Also ensure that tcp_select_initial_window() always keeps rcv_wnd less
+than or equal to the (scale-limited) window_clamp.
 
 Signed-off-by: Simon Baatz <gmbnomis@gmail.com>
 ---
-Simon Baatz (7):
-      tcp: keep rcv_wnd/rcv_ssthresh clamped by window_clamp if no scaling in use
-      selftests/net: packetdrill: verify non-scaled rcv_wnd initialization
-      tcp: Ensure window_clamp is limited to representable window
-      selftests/net: packetdrill: add tcp_rcv_wnd_snd_ack_no_scaling.pkt
-      selftests/net: packetdrill: add TCP_WINDOW_CLAMP test
-      tcp: use tcp_set_window_clamp() for SO_RCVLOWAT
-      selftests/net: packetdrill: add test for SO_RCVLOWAT window clamp
+ net/ipv4/tcp_input.c     | 7 ++++++-
+ net/ipv4/tcp_minisocks.c | 8 ++++++--
+ net/ipv4/tcp_output.c    | 5 +++--
+ 3 files changed, 15 insertions(+), 5 deletions(-)
 
- net/ipv4/tcp.c                                     |  6 +++-
- net/ipv4/tcp_input.c                               | 13 ++++++--
- net/ipv4/tcp_minisocks.c                           |  8 +++--
- net/ipv4/tcp_output.c                              |  5 +--
- .../net/packetdrill/tcp_rcv_sockopt_lowat.pkt      | 24 ++++++++++++++
- .../net/packetdrill/tcp_rcv_sockopt_wnd_clamp.pkt  | 28 ++++++++++++++++
- .../packetdrill/tcp_rcv_wnd_active_no_scaling.pkt  | 27 ++++++++++++++++
- .../tcp_rcv_wnd_active_peer_no_scaling.pkt         | 26 +++++++++++++++
- .../packetdrill/tcp_rcv_wnd_passive_no_scaling.pkt | 30 ++++++++++++++++++
- .../tcp_rcv_wnd_passive_peer_no_scaling.pkt        | 29 +++++++++++++++++
- .../packetdrill/tcp_rcv_wnd_snd_ack_no_scaling.pkt | 37 ++++++++++++++++++++++
- 11 files changed, 225 insertions(+), 8 deletions(-)
----
-base-commit: b3e69fc3196fc421e26196e7792f17b0463edc6f
-change-id: 20260402-tcp_rcv_exact_clamp_and_wnd-427d853e7491
+diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
+index 7171442c3ed7a..505884dcb7a2b 100644
+--- a/net/ipv4/tcp_input.c
++++ b/net/ipv4/tcp_input.c
+@@ -6898,7 +6898,6 @@ static int tcp_rcv_synsent_state_process(struct sock *sk, struct sk_buff *skb,
+ 		 */
+ 		WRITE_ONCE(tp->rcv_nxt, TCP_SKB_CB(skb)->seq + 1);
+ 		tp->rcv_wup = TCP_SKB_CB(skb)->seq + 1;
+-		tp->rcv_mwnd_seq = tp->rcv_wup + tp->rcv_wnd;
+ 
+ 		/* RFC1323: The window in SYN & SYN/ACK segments is
+ 		 * never scaled.
+@@ -6909,7 +6908,13 @@ static int tcp_rcv_synsent_state_process(struct sock *sk, struct sk_buff *skb,
+ 			tp->rx_opt.snd_wscale = tp->rx_opt.rcv_wscale = 0;
+ 			WRITE_ONCE(tp->window_clamp,
+ 				   min(tp->window_clamp, 65535U));
++			tp->rcv_ssthresh = min(tp->rcv_ssthresh, 65535U);
++			/* As the window in the SYN was not scaled,
++			 * we did not advertise more than 65535.
++			 */
++			tp->rcv_wnd = min(tp->rcv_wnd, 65535U);
+ 		}
++		tp->rcv_mwnd_seq = tp->rcv_wup + tp->rcv_wnd;
+ 
+ 		if (tp->rx_opt.saw_tstamp) {
+ 			tp->rx_opt.tstamp_ok	   = 1;
+diff --git a/net/ipv4/tcp_minisocks.c b/net/ipv4/tcp_minisocks.c
+index 199f0b579e89c..6496fe3b9e139 100644
+--- a/net/ipv4/tcp_minisocks.c
++++ b/net/ipv4/tcp_minisocks.c
+@@ -600,9 +600,7 @@ struct sock *tcp_create_openreq_child(const struct sock *sk,
+ 	newtp->rx_opt.tstamp_ok = ireq->tstamp_ok;
+ 	newtp->rx_opt.sack_ok = ireq->sack_ok;
+ 	newtp->window_clamp = req->rsk_window_clamp;
+-	newtp->rcv_ssthresh = req->rsk_rcv_wnd;
+ 	newtp->rcv_wnd = req->rsk_rcv_wnd;
+-	newtp->rcv_mwnd_seq = newtp->rcv_wup + req->rsk_rcv_wnd;
+ 	newtp->rx_opt.wscale_ok = ireq->wscale_ok;
+ 	if (newtp->rx_opt.wscale_ok) {
+ 		newtp->rx_opt.snd_wscale = ireq->snd_wscale;
+@@ -610,7 +608,13 @@ struct sock *tcp_create_openreq_child(const struct sock *sk,
+ 	} else {
+ 		newtp->rx_opt.snd_wscale = newtp->rx_opt.rcv_wscale = 0;
+ 		newtp->window_clamp = min(newtp->window_clamp, 65535U);
++		/* As the window in the SYN/ACK was not scaled,
++		 * we did not advertise more than 65535.
++		 */
++		newtp->rcv_wnd = min(newtp->rcv_wnd, 65535U);
+ 	}
++	newtp->rcv_ssthresh = newtp->rcv_wnd;
++	newtp->rcv_mwnd_seq = newtp->rcv_wup + newtp->rcv_wnd;
+ 	newtp->snd_wnd = ntohs(tcp_hdr(skb)->window) << newtp->rx_opt.snd_wscale;
+ 	newtp->max_window = newtp->snd_wnd;
+ 
+diff --git a/net/ipv4/tcp_output.c b/net/ipv4/tcp_output.c
+index 8e99687526a64..bf7a12872acb3 100644
+--- a/net/ipv4/tcp_output.c
++++ b/net/ipv4/tcp_output.c
+@@ -269,8 +269,9 @@ void tcp_select_initial_window(const struct sock *sk, int __space, __u32 mss,
+ 				      0, TCP_MAX_WSCALE);
+ 	}
+ 	/* Set the clamp no higher than max representable value */
+-	WRITE_ONCE(*__window_clamp,
+-		   min_t(__u32, U16_MAX << (*rcv_wscale), window_clamp));
++	window_clamp = min_t(u32, U16_MAX << (*rcv_wscale), window_clamp);
++	WRITE_ONCE(*__window_clamp, window_clamp);
++	*rcv_wnd = min(*rcv_wnd, window_clamp);
+ }
+ 
+ /* Chose a new window to advertise, update state in tcp_sock for the
 
-Best regards,
 -- 
-Simon Baatz <gmbnomis@gmail.com>
+2.53.0
 
