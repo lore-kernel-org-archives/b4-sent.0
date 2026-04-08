@@ -1,11 +1,11 @@
 From: Satish Kharat <satishkh@cisco.com>
-Date: Wed, 08 Apr 2026 08:08:16 -0700
-Subject: [PATCH net-next v2 06/10] enic: add MBOX core send and receive for
- admin channel
+Date: Wed, 08 Apr 2026 08:08:17 -0700
+Subject: [PATCH net-next v2 07/10] enic: add MBOX PF handlers for VF
+ register and capability
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260408-enic-sriov-v2-admin-channel-v2-v2-6-d05dd3623fd3@cisco.com>
+Message-Id: <20260408-enic-sriov-v2-admin-channel-v2-v2-7-d05dd3623fd3@cisco.com>
 References: <20260408-enic-sriov-v2-admin-channel-v2-v2-0-d05dd3623fd3@cisco.com>
 In-Reply-To: <20260408-enic-sriov-v2-admin-channel-v2-v2-0-d05dd3623fd3@cisco.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -15,298 +15,279 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  20260401-enic-sriov-v2-prep-v4-0-d5834b2ef1b9@cisco.com, 
  Satish Kharat <satishkh@cisco.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775660895; l=9177;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775660895; l=8596;
  i=satishkh@cisco.com; h=from:subject:message-id;
- bh=aL9JiTFpEYHerEs15NenFciw6c1DyD/mhwDsHcDJOII=;
- b=90FFBo+Oh3asZo8NWdIzNmNc1BqTL2Ed5aT6NOMOKkoduhYg0MaVpC0XDUAXg1OMsfcGyoxb7
- niy06WGGokXCL9BV9qwjG5tGocdersQZr8XSKGi2D5JYbSUmPrEnPPW
+ bh=DXojlTm/F8cmmuhQGydUH0AExl7GLUv/+R2p0bzirWc=;
+ b=wrfbBtpVh5WE4qzMnAw5PG/1T6Imqm5RwPErZ38heugbL5t4cGNSPwE8S9TxMcUz2r8sl/yF/
+ s/WnTIkJIDAApK8RbwOJV1ys4oHWhkIEuJi3ZfVbCrzCqqlQyqaOCtL
 X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
  pk=4BxbLoCGvHeIMH/PbpiNVx8/2IcTjFvqcr0AD8K6WLY=
 X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/default with auth_id=639
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement the mailbox protocol engine used for PF-VF communication
-over the admin channel.
+Implement PF-side mailbox message processing for SR-IOV V2
+admin channel communication.
 
-The send path (enic_mbox_send_msg) builds a message with a common
-header, DMA-maps it, posts a single WQ descriptor with the
-destination vnic ID encoded in the VLAN tag field, and polls
-the WQ CQ for completion.
+When the PF receives messages from VFs, the dispatch routes
+them to type-specific handlers:
+  - VF_CAPABILITY_REQUEST: reply with protocol version 1
+  - VF_REGISTER_REQUEST: mark VF registered, reply, then
+    send PF_LINK_STATE_NOTIF with link enabled
+  - VF_UNREGISTER_REQUEST: mark VF unregistered, send reply
+  - PF_LINK_STATE_ACK: log errors from VF acknowledgment
 
-The receive path (enic_mbox_recv_handler) is installed as the admin
-RQ callback and validates incoming message headers. PF/VF-specific
-dispatch will be added in subsequent commits.
+Per-VF state (struct enic_vf_state) is tracked via enic->vf_state
+which will be allocated when SRIOV V2 is enabled.
+
+Remove the CONFIG_PCI_IOV guard from num_vfs in struct enic. The
+PF handlers reference enic->num_vfs for VF ID bounds checking in
+enic_mbox.c, which is compiled unconditionally. The field must be
+visible regardless of CONFIG_PCI_IOV to avoid build failures.
+
+Add enic_mbox_send_link_state() helper for PF-initiated link
+state notifications, also used later by ndo_set_vf_link_state.
 
 Signed-off-by: Satish Kharat <satishkh@cisco.com>
 ---
- drivers/net/ethernet/cisco/enic/Makefile     |   2 +-
- drivers/net/ethernet/cisco/enic/enic.h       |   6 ++
- drivers/net/ethernet/cisco/enic/enic_admin.c |  23 +++-
- drivers/net/ethernet/cisco/enic/enic_mbox.c  | 156 +++++++++++++++++++++++++++
- drivers/net/ethernet/cisco/enic/enic_mbox.h  |   8 ++
- 5 files changed, 193 insertions(+), 2 deletions(-)
+ drivers/net/ethernet/cisco/enic/enic.h      |   7 +-
+ drivers/net/ethernet/cisco/enic/enic_mbox.c | 174 +++++++++++++++++++++++++++-
+ drivers/net/ethernet/cisco/enic/enic_mbox.h |   1 +
+ 3 files changed, 178 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/net/ethernet/cisco/enic/Makefile b/drivers/net/ethernet/cisco/enic/Makefile
-index 7ae72fefc99a..e38aaf34c148 100644
---- a/drivers/net/ethernet/cisco/enic/Makefile
-+++ b/drivers/net/ethernet/cisco/enic/Makefile
-@@ -4,5 +4,5 @@ obj-$(CONFIG_ENIC) := enic.o
- enic-y := enic_main.o vnic_cq.o vnic_intr.o vnic_wq.o \
- 	enic_res.o enic_dev.o enic_pp.o vnic_dev.o vnic_rq.o vnic_vic.o \
- 	enic_ethtool.o enic_api.o enic_clsf.o enic_rq.o enic_wq.o \
--	enic_admin.o
-+	enic_admin.o enic_mbox.o
- 
 diff --git a/drivers/net/ethernet/cisco/enic/enic.h b/drivers/net/ethernet/cisco/enic/enic.h
-index 1c09da3c0b1a..42f345aceced 100644
+index 42f345aceced..9b1fa3857df5 100644
 --- a/drivers/net/ethernet/cisco/enic/enic.h
 +++ b/drivers/net/ethernet/cisco/enic/enic.h
-@@ -292,6 +292,8 @@ struct enic {
- 
- 	/* Admin channel resources for SR-IOV MBOX */
- 	bool has_admin_channel;
-+	/* set on send timeout; cleared on channel re-open */
-+	bool mbox_send_disabled;
- 	struct vnic_wq admin_wq;
- 	struct vnic_rq admin_rq;
- 	struct vnic_cq admin_cq[2];
-@@ -304,6 +306,10 @@ struct enic {
- 	u64 admin_msg_drop_cnt;
- 	void (*admin_rq_handler)(struct enic *enic, void *buf,
- 				 unsigned int len);
+@@ -256,9 +256,7 @@ struct enic {
+ 	struct enic_rx_coal rx_coalesce_setting;
+ 	u32 rx_coalesce_usecs;
+ 	u32 tx_coalesce_usecs;
+-#ifdef CONFIG_PCI_IOV
+ 	u16 num_vfs;
+-#endif
+ 	enum enic_vf_type vf_type;
+ 	unsigned int enable_count;
+ 	spinlock_t enic_api_lock;
+@@ -310,6 +308,11 @@ struct enic {
+ 	/* MBOX protocol state */
+ 	struct mutex mbox_lock;
+ 	u64 mbox_msg_num;
 +
-+	/* MBOX protocol state */
-+	struct mutex mbox_lock;
-+	u64 mbox_msg_num;
++	/* PF: per-VF MBOX state, allocated when SRIOV V2 is enabled */
++	struct enic_vf_state {
++		bool registered;
++	} *vf_state;
  };
  
  static inline struct net_device *vnic_get_netdev(struct vnic_dev *vdev)
-diff --git a/drivers/net/ethernet/cisco/enic/enic_admin.c b/drivers/net/ethernet/cisco/enic/enic_admin.c
-index 345d194c6eeb..c96268adc173 100644
---- a/drivers/net/ethernet/cisco/enic/enic_admin.c
-+++ b/drivers/net/ethernet/cisco/enic/enic_admin.c
-@@ -19,6 +19,7 @@
- #include "cq_enet_desc.h"
- #include "wq_enet_desc.h"
- #include "rq_enet_desc.h"
-+#include "enic_mbox.h"
- 
- /* No-op: admin WQ buffers are freed inline after completion polling */
- static void enic_admin_wq_buf_clean(struct vnic_wq *wq,
-@@ -156,7 +157,26 @@ unsigned int enic_admin_rq_cq_service(struct enic *enic, unsigned int budget)
- 					buf->dma_addr, buf->len,
- 					DMA_FROM_DEVICE);
- 
--		enic_admin_msg_enqueue(enic, buf->os_buf, buf->len);
-+		if (enic->admin_rq_handler) {
-+			struct cq_enet_rq_desc *rq_desc = desc;
-+			u16 sender_vlan;
-+
-+			/* Firmware sets the CQ VLAN field to identify the
-+			 * sender: 0 = PF, 1-based = VF index.  Overwrite
-+			 * the untrusted src_vnic_id in the MBOX header with
-+			 * the hardware-verified value.
-+			 */
-+			sender_vlan = le16_to_cpu(rq_desc->vlan);
-+			if (buf->len >= sizeof(struct enic_mbox_hdr)) {
-+				struct enic_mbox_hdr *hdr = buf->os_buf;
-+
-+				hdr->src_vnic_id = (sender_vlan == 0) ?
-+					cpu_to_le16(ENIC_MBOX_DST_PF) :
-+					cpu_to_le16(sender_vlan - 1);
-+			}
-+
-+			enic_admin_msg_enqueue(enic, buf->os_buf, buf->len);
-+		}
- 
- 		enic_admin_rq_buf_clean(rq, rq->to_clean);
- 		rq->to_clean = rq->to_clean->next;
-@@ -389,6 +409,7 @@ int enic_admin_channel_open(struct enic *enic)
- 	if (!enic->has_admin_channel)
- 		return -ENODEV;
- 
-+	enic->mbox_send_disabled = false;
- 	err = enic_admin_alloc_resources(enic);
- 	if (err) {
- 		netdev_err(enic->netdev,
 diff --git a/drivers/net/ethernet/cisco/enic/enic_mbox.c b/drivers/net/ethernet/cisco/enic/enic_mbox.c
-new file mode 100644
-index 000000000000..00ab76a47a35
---- /dev/null
+index 00ab76a47a35..eb5049b538b1 100644
+--- a/drivers/net/ethernet/cisco/enic/enic_mbox.c
 +++ b/drivers/net/ethernet/cisco/enic/enic_mbox.c
-@@ -0,0 +1,156 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+// Copyright 2025 Cisco Systems, Inc.  All rights reserved.
-+
-+#include <linux/kernel.h>
-+#include <linux/netdevice.h>
-+#include <linux/dma-mapping.h>
-+#include <linux/delay.h>
-+
-+#include "vnic_dev.h"
-+#include "vnic_wq.h"
-+#include "vnic_cq.h"
-+#include "enic.h"
-+#include "enic_admin.h"
-+#include "enic_mbox.h"
-+#include "wq_enet_desc.h"
-+
-+#define ENIC_MBOX_POLL_TIMEOUT_US	5000000
-+#define ENIC_MBOX_POLL_INTERVAL_US	100
-+
-+static void enic_mbox_fill_hdr(struct enic *enic, struct enic_mbox_hdr *hdr,
-+			       u8 msg_type, u16 dst_vnic_id, u16 msg_len)
+@@ -124,10 +124,168 @@ int enic_mbox_send_msg(struct enic *enic, u8 msg_type, u16 dst_vnic_id,
+ 	return err;
+ }
+ 
++int enic_mbox_send_link_state(struct enic *enic, u16 vf_id, u32 link_state)
 +{
-+	memset(hdr, 0, sizeof(*hdr));
-+	hdr->dst_vnic_id = cpu_to_le16(dst_vnic_id);
-+	hdr->msg_type = msg_type;
-+	hdr->msg_len = cpu_to_le16(msg_len);
-+	hdr->msg_num = cpu_to_le64(++enic->mbox_msg_num);
++	struct enic_mbox_pf_link_state_notif_msg notif = {};
++
++	if (!enic->vf_state || vf_id >= enic->num_vfs ||
++	    !enic->vf_state[vf_id].registered) {
++		netdev_dbg(enic->netdev,
++			   "MBOX: skip link state to unregistered VF %u\n",
++			   vf_id);
++		return 0;
++	}
++
++	notif.link_state = cpu_to_le32(link_state);
++	return enic_mbox_send_msg(enic, ENIC_MBOX_PF_LINK_STATE_NOTIF, vf_id,
++				  &notif, sizeof(notif));
 +}
 +
-+int enic_mbox_send_msg(struct enic *enic, u8 msg_type, u16 dst_vnic_id,
-+		       void *payload, u16 payload_len)
++static int enic_mbox_pf_handle_capability(struct enic *enic, void *msg,
++					  u16 vf_id, u64 msg_num)
 +{
-+	u16 total_len = sizeof(struct enic_mbox_hdr) + payload_len;
-+	struct vnic_wq *wq = &enic->admin_wq;
-+	struct wq_enet_desc *desc;
-+	dma_addr_t dma_addr;
-+	unsigned long timeout;
-+	u16 vlan_tag;
-+	void *buf;
++	struct enic_mbox_vf_capability_reply_msg reply = {};
++
++	reply.reply.ret_major = cpu_to_le16(0);
++	reply.version = cpu_to_le32(ENIC_MBOX_CAP_VERSION_1);
++
++	return enic_mbox_send_msg(enic, ENIC_MBOX_VF_CAPABILITY_REPLY, vf_id,
++				  &reply, sizeof(reply));
++}
++
++static int enic_mbox_pf_handle_register(struct enic *enic, void *msg,
++					u16 vf_id, u64 msg_num)
++{
++	struct enic_mbox_vf_register_reply_msg reply = {};
 +	int err;
 +
-+	/* Serialize MBOX sends. The admin channel is a low-frequency
-+	 * control path; holding the mutex across the poll is acceptable.
-+	 */
-+	mutex_lock(&enic->mbox_lock);
-+
-+	if (!enic->has_admin_channel || enic->mbox_send_disabled) {
-+		err = -ENODEV;
-+		goto unlock;
-+	}
-+
-+	if (vnic_wq_desc_avail(wq) == 0) {
-+		err = -ENOSPC;
-+		goto unlock;
-+	}
-+
-+	buf = kmalloc(total_len, GFP_KERNEL);
-+	if (!buf) {
-+		err = -ENOMEM;
-+		goto unlock;
-+	}
-+
-+	enic_mbox_fill_hdr(enic, buf, msg_type, dst_vnic_id, total_len);
-+	if (payload_len) {
-+		void *dst = buf + sizeof(struct enic_mbox_hdr);
-+
-+		memcpy(dst, payload, payload_len);
-+	}
-+
-+	dma_addr = dma_map_single(&enic->pdev->dev, buf, total_len,
-+				  DMA_TO_DEVICE);
-+	if (dma_mapping_error(&enic->pdev->dev, dma_addr)) {
-+		kfree(buf);
-+		err = -ENOMEM;
-+		goto unlock;
-+	}
-+
-+	/* Firmware uses vlan field for routing: 0 = PF, 1-based = VF index */
-+	if (dst_vnic_id == ENIC_MBOX_DST_PF)
-+		vlan_tag = 0;
-+	else
-+		vlan_tag = dst_vnic_id + 1;
-+
-+	desc = vnic_wq_next_desc(wq);
-+	wq_enet_desc_enc(desc, (u64)dma_addr | VNIC_PADDR_TARGET,
-+			 total_len, 0, 0, 0, 1, 1, 0, 1, vlan_tag, 0);
-+	vnic_wq_post(wq, buf, dma_addr, total_len, 1, 1, 1, 1, 0, 0);
-+	vnic_wq_doorbell(wq);
-+
-+	timeout = jiffies + usecs_to_jiffies(ENIC_MBOX_POLL_TIMEOUT_US);
-+	err = -ETIMEDOUT;
-+	while (time_before(jiffies, timeout)) {
-+		if (enic_admin_wq_cq_service(enic)) {
-+			err = 0;
-+			break;
-+		}
-+		usleep_range(ENIC_MBOX_POLL_INTERVAL_US,
-+			     ENIC_MBOX_POLL_INTERVAL_US + 50);
-+	}
-+
-+	if (!err) {
-+		wq->to_clean = wq->to_clean->next;
-+		wq->ring.desc_avail++;
-+		dma_unmap_single(&enic->pdev->dev, dma_addr, total_len,
-+				 DMA_TO_DEVICE);
-+		kfree(buf);
-+	} else {
-+		netdev_err(enic->netdev,
-+			   "MBOX send timed out (type %u dst %u), disabling channel\n",
-+			   msg_type, dst_vnic_id);
-+		/*
-+		 * The WQ descriptor is still live in hardware. Do not unmap
-+		 * or free the buffer: the device may still DMA from dma_addr.
-+		 * Mark the channel unusable so no further sends are attempted.
-+		 */
-+		enic->mbox_send_disabled = true;
-+	}
-+
-+	netdev_dbg(enic->netdev,
-+		   "MBOX send msg_type %u dst %u vlan %u err %d\n",
-+		   msg_type, dst_vnic_id, vlan_tag, err);
-+unlock:
-+	mutex_unlock(&enic->mbox_lock);
-+	return err;
-+}
-+
-+static void enic_mbox_recv_handler(struct enic *enic, void *buf,
-+				   unsigned int len)
-+{
-+	struct enic_mbox_hdr *hdr = buf;
-+
-+	if (len < sizeof(*hdr)) {
++	if (!enic->vf_state || vf_id >= enic->num_vfs) {
 +		netdev_warn(enic->netdev,
-+			    "MBOX: truncated message (len %u < %zu)\n",
-+			    len, sizeof(*hdr));
-+		return;
++			    "MBOX: register from invalid VF %u\n", vf_id);
++		return -EINVAL;
 +	}
 +
-+	if (hdr->msg_type >= ENIC_MBOX_MAX) {
-+		netdev_warn(enic->netdev, "MBOX: unknown msg type %u\n",
-+			    hdr->msg_type);
-+		return;
++	/* VF re-registering (e.g. guest reboot without clean unregister):
++	 * mark the previous registration inactive before accepting the new one.
++	 */
++	if (enic->vf_state[vf_id].registered) {
++		netdev_dbg(enic->netdev,
++			   "MBOX: VF %u re-register, cleaning previous state\n",
++			   vf_id);
++		enic->vf_state[vf_id].registered = false;
 +	}
 +
-+	netdev_dbg(enic->netdev,
-+		   "MBOX recv: type %u from vnic %u len %u\n",
-+		   hdr->msg_type, le16_to_cpu(hdr->src_vnic_id),
-+		   le16_to_cpu(hdr->msg_len));
++	reply.reply.ret_major = cpu_to_le16(0);
++	err = enic_mbox_send_msg(enic, ENIC_MBOX_VF_REGISTER_REPLY, vf_id,
++				 &reply, sizeof(reply));
++	if (err)
++		return err;
++
++	enic->vf_state[vf_id].registered = true;
++	netdev_info(enic->netdev, "VF %u registered via MBOX\n", vf_id);
++
++	err = enic_mbox_send_link_state(enic, vf_id,
++					ENIC_MBOX_LINK_STATE_ENABLE);
++	if (err)
++		netdev_warn(enic->netdev,
++			    "VF %u: failed to send initial link state: %d\n",
++			    vf_id, err);
++	/* Registration succeeded; link state will be (re-)sent on next
++	 * enic_link_check() event.
++	 */
++	return 0;
 +}
 +
-+void enic_mbox_init(struct enic *enic)
++static int enic_mbox_pf_handle_unregister(struct enic *enic, void *msg,
++					  u16 vf_id, u64 msg_num)
 +{
-+	enic->mbox_msg_num = 0;
-+	mutex_init(&enic->mbox_lock);
-+	enic->admin_rq_handler = enic_mbox_recv_handler;
++	struct enic_mbox_vf_register_reply_msg reply = {};
++	int err;
++
++	if (!enic->vf_state || vf_id >= enic->num_vfs) {
++		netdev_warn(enic->netdev,
++			    "MBOX: unregister from invalid VF %u\n", vf_id);
++		return -EINVAL;
++	}
++
++	reply.reply.ret_major = cpu_to_le16(0);
++	err = enic_mbox_send_msg(enic, ENIC_MBOX_VF_UNREGISTER_REPLY, vf_id,
++				 &reply, sizeof(reply));
++	if (err)
++		return err;
++
++	enic->vf_state[vf_id].registered = false;
++
++	netdev_info(enic->netdev, "VF %u unregistered via MBOX\n", vf_id);
++
++	return 0;
 +}
++
++static void enic_mbox_pf_process_msg(struct enic *enic,
++				     struct enic_mbox_hdr *hdr, void *payload)
++{
++	u16 vf_id = le16_to_cpu(hdr->src_vnic_id);
++	u16 msg_len = le16_to_cpu(hdr->msg_len);
++	int err = 0;
++
++	if (!enic->vf_state) {
++		netdev_dbg(enic->netdev,
++			   "MBOX: PF received msg but SRIOV not active\n");
++		return;
++	}
++
++	if (vf_id >= enic->num_vfs) {
++		netdev_warn(enic->netdev,
++			    "MBOX: PF received msg from invalid VF %u\n",
++			    vf_id);
++		return;
++	}
++
++	switch (hdr->msg_type) {
++	case ENIC_MBOX_VF_CAPABILITY_REQUEST:
++		err = enic_mbox_pf_handle_capability(enic, payload, vf_id,
++						     le64_to_cpu(hdr->msg_num));
++		break;
++	case ENIC_MBOX_VF_REGISTER_REQUEST:
++		err = enic_mbox_pf_handle_register(enic, payload, vf_id,
++						   le64_to_cpu(hdr->msg_num));
++		break;
++	case ENIC_MBOX_VF_UNREGISTER_REQUEST:
++		err = enic_mbox_pf_handle_unregister(enic, payload, vf_id,
++						     le64_to_cpu(hdr->msg_num));
++		break;
++	case ENIC_MBOX_PF_LINK_STATE_ACK: {
++		struct enic_mbox_pf_link_state_ack_msg *ack = payload;
++
++		if (msg_len < sizeof(*hdr) + sizeof(*ack))
++			break;
++		if (le16_to_cpu(ack->ack.ret_major))
++			netdev_warn(enic->netdev,
++				    "MBOX: VF %u link state ACK error %u/%u\n",
++				    vf_id, le16_to_cpu(ack->ack.ret_major),
++				    le16_to_cpu(ack->ack.ret_minor));
++		break;
++	}
++	default:
++		netdev_dbg(enic->netdev,
++			   "MBOX: PF unhandled msg type %u from VF %u\n",
++			   hdr->msg_type, vf_id);
++		err = -EOPNOTSUPP;
++		break;
++	}
++
++	if (err)
++		netdev_warn(enic->netdev,
++			    "MBOX: PF handler for msg type %u from VF %u failed: %d\n",
++			    hdr->msg_type, vf_id, err);
++}
++
+ static void enic_mbox_recv_handler(struct enic *enic, void *buf,
+ 				   unsigned int len)
+ {
+ 	struct enic_mbox_hdr *hdr = buf;
++	void *payload;
++	u16 msg_len;
+ 
+ 	if (len < sizeof(*hdr)) {
+ 		netdev_warn(enic->netdev,
+@@ -142,10 +300,22 @@ static void enic_mbox_recv_handler(struct enic *enic, void *buf,
+ 		return;
+ 	}
+ 
++	msg_len = le16_to_cpu(hdr->msg_len);
++	if (msg_len < sizeof(*hdr) || msg_len > len) {
++		netdev_warn(enic->netdev,
++			    "MBOX: invalid msg_len %u (buf len %u)\n",
++			    msg_len, len);
++		return;
++	}
++
+ 	netdev_dbg(enic->netdev,
+ 		   "MBOX recv: type %u from vnic %u len %u\n",
+-		   hdr->msg_type, le16_to_cpu(hdr->src_vnic_id),
+-		   le16_to_cpu(hdr->msg_len));
++		   hdr->msg_type, le16_to_cpu(hdr->src_vnic_id), msg_len);
++
++	payload = buf + sizeof(*hdr);
++
++	if (enic->vf_state)
++		enic_mbox_pf_process_msg(enic, hdr, payload);
+ }
+ 
+ void enic_mbox_init(struct enic *enic)
 diff --git a/drivers/net/ethernet/cisco/enic/enic_mbox.h b/drivers/net/ethernet/cisco/enic/enic_mbox.h
-index 84cb6bbc1ead..554269b78780 100644
+index 554269b78780..a6f6798d14f4 100644
 --- a/drivers/net/ethernet/cisco/enic/enic_mbox.h
 +++ b/drivers/net/ethernet/cisco/enic/enic_mbox.h
-@@ -72,4 +72,12 @@ struct enic_mbox_pf_link_state_ack_msg {
- 	struct enic_mbox_generic_reply ack;
- };
+@@ -79,5 +79,6 @@ struct enic;
+ void enic_mbox_init(struct enic *enic);
+ int enic_mbox_send_msg(struct enic *enic, u8 msg_type, u16 dst_vnic_id,
+ 		       void *payload, u16 payload_len);
++int enic_mbox_send_link_state(struct enic *enic, u16 vf_id, u32 link_state);
  
-+#define ENIC_MBOX_DST_PF	0xFFFF
-+
-+struct enic;
-+
-+void enic_mbox_init(struct enic *enic);
-+int enic_mbox_send_msg(struct enic *enic, u8 msg_type, u16 dst_vnic_id,
-+		       void *payload, u16 payload_len);
-+
  #endif /* _ENIC_MBOX_H_ */
 
 -- 
