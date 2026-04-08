@@ -1,11 +1,11 @@
 From: Charlie Jenkins <thecharlesjenkins@gmail.com>
-Date: Tue, 07 Apr 2026 21:45:55 -0700
-Subject: [PATCH 07/16] riscv: kvm: Use generated instruction headers for
- csr code
+Date: Tue, 07 Apr 2026 21:45:56 -0700
+Subject: [PATCH 08/16] riscv: kvm: Fix MMIO emulation for sign-extended
+ insns
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260407-riscv_insn_table-v1-7-54b4736a1e77@gmail.com>
+Message-Id: <20260407-riscv_insn_table-v1-8-54b4736a1e77@gmail.com>
 References: <20260407-riscv_insn_table-v1-0-54b4736a1e77@gmail.com>
 In-Reply-To: <20260407-riscv_insn_table-v1-0-54b4736a1e77@gmail.com>
 To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
@@ -18,101 +18,66 @@ Cc: linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, 
  Charlie Jenkins <thecharlesjenkins@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775623594; l=2903;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775623594; l=1861;
  i=thecharlesjenkins@gmail.com; s=2026030; h=from:subject:message-id;
- bh=zjTRDc41ANyFedf3cbSbk5JAhE4813R8ZlVWeNgHH4k=;
- b=cFumLVLBW7/FLTqc8/qslS5/l43/knn4JqcHGnwby/U3awqE5WHPDYMVQa4US319I3Fc8+sSE
- zm0gqE8af27AxhLcN+beDIDk2Pe48rb+bCg8mJDVSRseygG8Qjv0eCI
+ bh=lGPhHeZyq2cBn6D6Rrw+L7g4NlITgLWo0A/2zvmf7AE=;
+ b=db8eDgJl+Lxj01XnGSTnQdW6SSxHQwG8ehZ9ti7lZbKgg//zvLEF/VtHi7aOf3Qg/NPY9t3iw
+ b6GSI/ckqNOCYdESWlISYlmDPk5zSHfsQP5PliI0bV5S5BiyNWqbc/M
 X-Developer-Key: i=thecharlesjenkins@gmail.com; a=ed25519;
  pk=vpF2USrG+aB6CTbSt34rzJKsAVe/l+GAXo1IomCMETk=
 X-Endpoint-Received: by B4 Relay for thecharlesjenkins@gmail.com/2026030 with auth_id=663
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Migrate the csr parsing code to use the generated instruction headers
-instead of the hand-written instruction composition functions.
+KVM MMIO emulation failed to sign extend any signed reads and at the
+same time also unsuccessfully attempted to sign extend reads using lbu.
+Remove the shifting for lbu to avoid sign extension for that
+instruction and cast the data to a signed long instead of an unsigned
+long to allow for sign extension.
 
 Signed-off-by: Charlie Jenkins <thecharlesjenkins@gmail.com>
-
 ---
-
-This is a simple transformation that I have again validated through
-brute force.
----
- arch/riscv/kvm/vcpu_insn.c | 47 +++++++++++++++++++++++-----------------------
- 1 file changed, 24 insertions(+), 23 deletions(-)
+ arch/riscv/kvm/vcpu_insn.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
 
 diff --git a/arch/riscv/kvm/vcpu_insn.c b/arch/riscv/kvm/vcpu_insn.c
-index 4d89b94128ae..62c4510a40af 100644
+index 62c4510a40af..311e2530f888 100644
 --- a/arch/riscv/kvm/vcpu_insn.c
 +++ b/arch/riscv/kvm/vcpu_insn.c
-@@ -146,43 +146,44 @@ int kvm_riscv_vcpu_csr_return(struct kvm_vcpu *vcpu, struct kvm_run *run)
- 
- static int csr_insn(struct kvm_vcpu *vcpu, struct kvm_run *run, ulong insn)
- {
-+	#define GET_REG(_rd) (*((unsigned long *)(&vcpu->arch.guest_context) + _rd))
-+
- 	int i, rc = KVM_INSN_ILLEGAL_TRAP;
--	unsigned int csr_num = insn >> SH_RS2;
--	unsigned int rs1_num = (insn >> SH_RS1) & MASK_RX;
--	ulong rs1_val = GET_RS1(insn, &vcpu->arch.guest_context);
-+	unsigned int csr_num;
- 	const struct csr_func *tcfn, *cfn = NULL;
- 	ulong val = 0, wr_mask = 0, new_val = 0;
- 
- 	/* Decode the CSR instruction */
--	switch (GET_FUNCT3(insn)) {
--	case GET_FUNCT3(INSN_MATCH_CSRRW):
-+	if (riscv_insn_is_csrrw(insn)) {
- 		wr_mask = -1UL;
--		new_val = rs1_val;
--		break;
--	case GET_FUNCT3(INSN_MATCH_CSRRS):
--		wr_mask = rs1_val;
-+		new_val = GET_REG(riscv_insn_csrrw_extract_xs1(insn));
-+		csr_num = riscv_insn_csrrw_extract_csr(insn);
-+	} else if (riscv_insn_is_csrrs(insn)) {
-+		wr_mask = GET_REG(riscv_insn_csrrs_extract_xs1(insn));
- 		new_val = -1UL;
--		break;
--	case GET_FUNCT3(INSN_MATCH_CSRRC):
--		wr_mask = rs1_val;
-+		csr_num = riscv_insn_csrrs_extract_csr(insn);
-+	} else if (riscv_insn_is_csrrc(insn)) {
-+		wr_mask = GET_REG(riscv_insn_csrrs_extract_xs1(insn));
- 		new_val = 0;
--		break;
--	case GET_FUNCT3(INSN_MATCH_CSRRWI):
-+		csr_num = riscv_insn_csrrc_extract_csr(insn);
-+	} else if (riscv_insn_is_csrrwi(insn)) {
- 		wr_mask = -1UL;
--		new_val = rs1_num;
--		break;
--	case GET_FUNCT3(INSN_MATCH_CSRRSI):
--		wr_mask = rs1_num;
-+		new_val = riscv_insn_csrrwi_extract_imm(insn);
-+		csr_num = riscv_insn_csrrwi_extract_csr(insn);
-+	} else if (riscv_insn_is_csrrsi(insn)) {
-+		wr_mask = riscv_insn_csrrwi_extract_imm(insn);
- 		new_val = -1UL;
--		break;
--	case GET_FUNCT3(INSN_MATCH_CSRRCI):
--		wr_mask = rs1_num;
-+		csr_num = riscv_insn_csrrsi_extract_csr(insn);
-+	} else if (riscv_insn_is_csrrci(insn)) {
-+		wr_mask = GET_REG(riscv_insn_csrrwi_extract_imm(insn));
- 		new_val = 0;
--		break;
--	default:
-+		csr_num = riscv_insn_csrrwi_extract_csr(insn);
-+	} else {
- 		return rc;
- 	}
- 
-+	#undef GET_REG
-+
- 	/* Save instruction decode info */
- 	vcpu->arch.csr_decode.insn = insn;
- 	vcpu->arch.csr_decode.return_handled = 0;
+@@ -416,7 +416,6 @@ int kvm_riscv_vcpu_mmio_load(struct kvm_vcpu *vcpu, struct kvm_run *run,
+ 		shift = 8 * (sizeof(ulong) - len);
+ 	} else if ((insn & INSN_MASK_LBU) == INSN_MATCH_LBU) {
+ 		len = 1;
+-		shift = 8 * (sizeof(ulong) - len);
+ #ifdef CONFIG_64BIT
+ 	} else if ((insn & INSN_MASK_LD) == INSN_MATCH_LD) {
+ 		len = 8;
+@@ -650,22 +649,22 @@ int kvm_riscv_vcpu_mmio_return(struct kvm_vcpu *vcpu, struct kvm_run *run)
+ 	case 1:
+ 		data8 = *((u8 *)run->mmio.data);
+ 		SET_RD(insn, &vcpu->arch.guest_context,
+-			(ulong)data8 << shift >> shift);
++			(long)data8 << shift >> shift);
+ 		break;
+ 	case 2:
+ 		data16 = *((u16 *)run->mmio.data);
+ 		SET_RD(insn, &vcpu->arch.guest_context,
+-			(ulong)data16 << shift >> shift);
++			(long)data16 << shift >> shift);
+ 		break;
+ 	case 4:
+ 		data32 = *((u32 *)run->mmio.data);
+ 		SET_RD(insn, &vcpu->arch.guest_context,
+-			(ulong)data32 << shift >> shift);
++			(long)data32 << shift >> shift);
+ 		break;
+ 	case 8:
+ 		data64 = *((u64 *)run->mmio.data);
+ 		SET_RD(insn, &vcpu->arch.guest_context,
+-			(ulong)data64 << shift >> shift);
++			(long)data64 << shift >> shift);
+ 		break;
+ 	default:
+ 		return -EOPNOTSUPP;
 
 -- 
 2.52.0
