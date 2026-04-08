@@ -1,15 +1,12 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v4 00/11] Input: support for STM FTS5
-Date: Thu, 09 Apr 2026 00:15:43 +0200
-Message-Id: <20260409-stmfts5-v4-0-64fe62027db5@ixit.cz>
+Date: Thu, 09 Apr 2026 00:15:44 +0200
+Subject: [PATCH v4 01/11] Input: stmfts - Fix the MODULE_LICENSE() string
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAI/T1mkC/1XMTQ7CIBCG4asY1mJggNK68h7GRfmzLGwNEFJte
- ndpTWxdfpN53glFG7yN6HyYULDZRz/0ZfDjAemu7e8We1M2AgIVAcpxTA+XosCKS0apU0YyQOX
- 7Gazz41q63srufExDeK3hTJfrt8EI/TUyxQQDaC5q1bS6qi9+9Omk32gpZNgpKjYFRUmidM2sb
- URD/xXbFCdsU6woYVpZ1doZIDs1z/MHAYjuawgBAAA=
-X-Change-ID: 20260214-stmfts5-b47311fbd732
+Message-Id: <20260409-stmfts5-v4-1-64fe62027db5@ixit.cz>
+References: <20260409-stmfts5-v4-0-64fe62027db5@ixit.cz>
+In-Reply-To: <20260409-stmfts5-v4-0-64fe62027db5@ixit.cz>
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
  Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
  Alexandre Torgue <alexandre.torgue@foss.st.com>, 
@@ -22,90 +19,51 @@ Cc: Petr Hodina <petr.hodina@protonmail.com>, linux-input@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Krzysztof Kozlowski <krzk@kernel.org>, devicetree@vger.kernel.org, 
  linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2723; i=david@ixit.cz;
- h=from:subject:message-id; bh=KEpr4zJFKU/KOf0lTdcERja2Oc3rB1xw26v3jW80j10=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBp1tORj8Tz8uq8GTC1dEqjNeUZc9jKY8+OcF1HE
- gWaiIeQF1OJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCadbTkQAKCRBgAj/E00kg
- csZwEACUcK4e6blbpGOxU1nC7RkaviK2zL+5IB8QV5bmROBL3UOw8GzYJr9xKE5FDAjx08xsloV
- IeFAmw9cRqlVnSXFIp7wP6FsB/Z4n2mb/5aZxmh4loULzdzneXGEYm5Hu60nyMhpMc66WOZ+UkR
- sGfsfVaoQrJsL4SNeJItTYoayRwhYKcirluxBbsNxZpZ6/JHa61bbY9j3yLkxca+IHS+Vj+q+fi
- weAxo+naTXefK/v8EbRgrQXWv/TIFaZ8Mqi3tBqNEQVOdZ9rP6x/CsV3ySR2DudA7Uj6KaJwtV1
- S2/2pIYv3YpWBcknNuBThDLS8ZgIBpumUY1roXksBlFvAVGVxXiBTQ51M0CqFWpffSQYreeGpAo
- IG4M9uScArO91G6pWqIJRJkCM1MPZ9MpJbiNBBrr1+IH2e8a6B3d/ccJYKwk4D0noOXYqA2Ob2r
- qaqve6GK2KwWTHEWab3PBQg3R52v6o5gaLmX1B3QIS2au02qr9bwSP/KVJjC3CGJlESfsfm4KtL
- KnzMD6AwQK2rTdXiMQp2lL/oIa8HaJOZ59GELbUhgTYHK0zsjSsScjkwFLjAHUjx42QxHRxOJpo
- QCERx6t6yPC6eR1lLR3FewECmpwTWwxTYQBUtLlTrE6m3Q9L5uDJKgsbGEJ1aPgWnD8PNhdYmHB
- AXhpNMpFLZBpAxg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1002; i=david@ixit.cz;
+ h=from:subject:message-id; bh=QDQEyb6yQN5WPWE8pVdtCQECptdn8p6xNSQzeqr7Q2U=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBp1tORTVIWUARSt+X8PEgpRWebBk61lkEJPfSUe
+ Qn5hhASu4WJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCadbTkQAKCRBgAj/E00kg
+ cpLTEACo06/04dYc2te03+Sy7fTTeUeGNPVohJ8IYXHmRlzwNqxLbH3zEffYQo4ogIp4AzNTrdQ
+ PQMBbB9CZKT8OJSWPojgGhodpGdwTQLAxShW6fr0vY14adVsuUUie7qLGvopPQRm1tYaA+uqxe9
+ mr2M+ylz9qrFPPrJaogMehFSipIUAdMFb5MnqDFWA0NjEqZp1uGbHC4T1F65w+49RlzaBu7z1AC
+ zDrENGQ3dmQS8uNxV5xr08qCHSJq9U3PqSR3fc5jsrqTzxoLA48AGBGsbBEsFUrvpI6kCt/XXFO
+ UdGalj2w2HB2KHwaYeneO4KFu/mD3Fe2Ylme65GClsUAjmxyoWfTPgOltIpUXgdBV1il1iS/+22
+ ixalfRz2aHIDZv6t2lGFPM8eNxL/RgaRygUjSu4kvSIXJnodGhIXXs/VsIX0bVPccnbOSL2Afwh
+ pzurDOVnmHN1gJitTqPEbmY17fl4llN1pEpYqDCB09ZjMdg99pYvhQqgxDxq+mc+NuGeGvOMt8n
+ KjRzDRDXQy02HnXXjyKPdVEBnt1oWpHNdvS/dDaZXkoXHbbVLrTLtD7iQnuT2DulPtl/Sxp9+r1
+ RXOiG/xINI+Hwj/2Azta5YpuTyxQOfNwpZyr6Lt5fLSnNJOkVVt5xvrzx/cs1tiCsYIXjRdvM8k
+ wl7YY81E8PSVRWA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Used on various phones. Minimal viable driver.
+Replace the bogus "GPL v2" with "GPL" as MODULE_LICNSE() string. The
+value does not declare the module's exact license, but only lets the
+module loader test whether the module is Free Software or not.
 
-Includes device-tree enabling touchscreen on Pixel 3.
-
-What is missing:
- - switching between AP and SLPI mode (to be able to wake up phone by touch)
- - firmware loading
- - anything above basic touch
+See commit bf7fbeeae6db ("module: Cure the MODULE_LICENSE "GPL" vs.
+"GPL v2" bogosity") in the details of the issue. The fix is to use
+"GPL" for all modules under any variant of the GPL.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v4:
-- Wrap everything below enabling the supplies into stmfts_configure()
-  to avoid bunch of gotos to power off on error (Dmitry T.)
-- Finished chip specific ops and removed is_fts5. (Dmitry T.)
-- Link to v3: https://lore.kernel.org/r/20260403-stmfts5-v3-0-5da768cfd201@ixit.cz
+ drivers/input/touchscreen/stmfts.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Changes in v3:
-- s/touchscreen_pins/touchscreen_irq_n. (Konrad)
-- Use interrupts-extended. (Konrad)
-- Fixed rebase conflict against 8665ceb926ec ("Input: stmfts - use guard notation when acquiring mutex")
-- Rename switch-gpios to mode-switch-gpios.
-- Do not define properties in if:then: branches. (Krzysztof)
-- Link to v2: https://lore.kernel.org/r/20260315-stmfts5-v2-0-70bc83ee9591@ixit.cz
+diff --git a/drivers/input/touchscreen/stmfts.c b/drivers/input/touchscreen/stmfts.c
+index 8af87d0b6eb64..def6bd0c8e059 100644
+--- a/drivers/input/touchscreen/stmfts.c
++++ b/drivers/input/touchscreen/stmfts.c
+@@ -807,4 +807,4 @@ module_i2c_driver(stmfts_driver);
+ 
+ MODULE_AUTHOR("Andi Shyti <andi.shyti@samsung.com>");
+ MODULE_DESCRIPTION("STMicroelectronics FTS Touch Screen");
+-MODULE_LICENSE("GPL v2");
++MODULE_LICENSE("GPL");
 
-Changes in v2:
-- Fix typo in the binding s/switch-gpio/switch-gpios/.
-- Deduplacate allOf. (Rob yamllint)
-- Add missing S-off-by. (Dmitry B.)
-- Dropped irq-gpios as it's not needed. (Konrad)
-- Correct x and y touchscreen area size. (Konrad)
-- Correct reset introduction commit description. (Krzysztof)
-- Partially implemented chip specific ops. (Dmitry T.)
-- Separeted license naming cleanup into separate commit (Dmitry T.)
-- Link to v1: https://lore.kernel.org/r/20260301-stmfts5-v1-0-22c458b9ac68@ixit.cz
-
----
-David Heidelberg (7):
-      Input: stmfts - Fix the MODULE_LICENSE() string
-      Input: stmfts - Use dev struct directly
-      Input: stmfts - Switch to devm_regulator_bulk_get_const
-      Input: stmfts - abstract reading information from the firmware
-      Input: stmfts - disable regulators when power on fails
-      dt-bindings: input: touchscreen: st,stmfts: Introduce reset GPIO
-      dt-bindings: input: touchscreen: st,stmfts: Introduce STM FTS5
-
-Petr Hodina (4):
-      Input: stmfts - use client to make future code cleaner
-      Input: stmfts - add optional reset GPIO support
-      Input: stmfts - support FTS5
-      arm64: dts: qcom: sdm845-google: Add STM FTS touchscreen support
-
- .../bindings/input/touchscreen/st,stmfts.yaml      |  19 +-
- .../arm64/boot/dts/qcom/sdm845-google-blueline.dts |  19 +-
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi |   2 +-
- drivers/input/touchscreen/stmfts.c                 | 601 +++++++++++++++++++--
- 4 files changed, 580 insertions(+), 61 deletions(-)
----
-base-commit: db7efce4ae23ad5e42f5f55428f529ff62b86fab
-change-id: 20260214-stmfts5-b47311fbd732
-
-Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+2.53.0
 
