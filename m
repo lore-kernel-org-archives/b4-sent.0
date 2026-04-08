@@ -1,69 +1,177 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Wed, 08 Apr 2026 13:42:42 +0100
-Subject: [PATCH v3 3/4] dmaengine: dma-axi-dmac: Drop struct clk from main
- struct
+Date: Wed, 08 Apr 2026 13:42:43 +0100
+Subject: [PATCH v3 4/4] dmaengine: dma-axi-dmac: Fig BUG() on vunmap()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260408-dma-dmac-handle-vunmap-v3-3-2456ad292154@analog.com>
+Message-Id: <20260408-dma-dmac-handle-vunmap-v3-4-2456ad292154@analog.com>
 References: <20260408-dma-dmac-handle-vunmap-v3-0-2456ad292154@analog.com>
 In-Reply-To: <20260408-dma-dmac-handle-vunmap-v3-0-2456ad292154@analog.com>
 To: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org
 Cc: Lars-Peter Clausen <lars@metafoo.de>, Vinod Koul <vkoul@kernel.org>, 
  Frank Li <Frank.Li@kernel.org>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775652161; l=1271;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775652161; l=5247;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=QvJ5ia4JnsZhnq/kgtM2oBkAf3EjDDkcD8ZAMJui6c0=;
- b=VDVFL1nBPgidACu/Oxb7bKfwAFlRGTnHyQQTbmPz3w+FqQ3LJqFiZ9vT2jAI9qrJHTy0nsABH
- YIUgLcKB2CMD7LXdskLMQ38jX4EIoAyAfouFDwzge5o3xUbQ0hGKq68
+ bh=KzDfaSnPpvy2D4wxKHW5ARqGw5aBbUaqGy+f36zi13Q=;
+ b=thtB8sL05Q+PPK2j5gKDK5pSKysY9PnifHL08IQNkK48BKw/xnH8YOsi3efQhsWzJOrFEEMqS
+ LauzH44E5UGDBV3H6MVzt8hKwA0+UhFqhzK1RsTfP+BA8RTTCQJW+WL
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There's no reason to keep struct clk in struct axi_dmac. Hence, use a
-local clk variable in .probe() and be done with it.
+For architectures like Microblaze or arm64 (where this IP is used),
+DMA_DIRECT_REMAP is set which means that dma_alloc_coherent() might
+remap (and hence vmalloc()) some memory. This became visible in a design
+where dma_direct_use_pool() is not possible.
+
+With the above, when calling dma_free_coherent(), vunmap() would be
+called from softirq context and thus leading to a BUG().
+
+To fix it, use a dma pool that is allocated in
+.device_alloc_chan_resources() and allocate blocks from it. The key
+point is that now dma_pool_free() is used in axi_dmac_free_desc() to
+free the blocks and that just frees the blocks from the pool in the
+sense they can be used again. In other words, no actual call to
+dma_free_coherent() happens. That only happens when destroying the pool
+in axi_dmac_free_chan_resources() which does not happen in any interrupt
+context.
 
 Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
- drivers/dma/dma-axi-dmac.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ drivers/dma/dma-axi-dmac.c | 66 ++++++++++++++++++++++++++++------------------
+ 1 file changed, 40 insertions(+), 26 deletions(-)
 
 diff --git a/drivers/dma/dma-axi-dmac.c b/drivers/dma/dma-axi-dmac.c
-index 127c3cf80a0e..41898d594be7 100644
+index 41898d594be7..d47ff27e1408 100644
 --- a/drivers/dma/dma-axi-dmac.c
 +++ b/drivers/dma/dma-axi-dmac.c
-@@ -170,8 +170,6 @@ struct axi_dmac {
- 	void __iomem *base;
- 	int irq;
+@@ -13,6 +13,7 @@
+ #include <linux/device.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/dmaengine.h>
++#include <linux/dmapool.h>
+ #include <linux/err.h>
+ #include <linux/interrupt.h>
+ #include <linux/io.h>
+@@ -147,6 +148,7 @@ struct axi_dmac_chan {
+ 	struct virt_dma_chan vchan;
  
--	struct clk *clk;
--
- 	struct dma_device dma_dev;
- 	struct axi_dmac_chan chan;
- };
-@@ -1198,6 +1196,7 @@ static int axi_dmac_probe(struct platform_device *pdev)
+ 	struct axi_dmac_desc *next_desc;
++	void *pool;
+ 	struct list_head active_descs;
+ 	enum dma_transfer_direction direction;
+ 
+@@ -648,11 +650,17 @@ static void axi_dmac_issue_pending(struct dma_chan *c)
+ 	spin_unlock_irqrestore(&chan->vchan.lock, flags);
+ }
+ 
++static void axi_dmac_free_desc(struct axi_dmac_desc *desc)
++{
++	for (unsigned int i = 0; i < desc->num_sgs; i++)
++		dma_pool_free(desc->chan->pool, desc->sg[i].hw, desc->sg[i].hw_phys);
++
++	kfree(desc);
++}
++
+ static struct axi_dmac_desc *
+ axi_dmac_alloc_desc(struct axi_dmac_chan *chan, unsigned int num_sgs)
  {
- 	struct dma_device *dma_dev;
- 	struct axi_dmac *dmac;
-+	struct clk *clk;
- 	struct regmap *regmap;
- 	unsigned int version;
- 	u32 irq_mask = 0;
-@@ -1217,9 +1216,9 @@ static int axi_dmac_probe(struct platform_device *pdev)
- 	if (IS_ERR(dmac->base))
- 		return PTR_ERR(dmac->base);
+-	struct axi_dmac *dmac = chan_to_axi_dmac(chan);
+-	struct device *dev = dmac->dma_dev.dev;
+ 	struct axi_dmac_hw_desc *hws;
+ 	struct axi_dmac_desc *desc;
+ 	dma_addr_t hw_phys;
+@@ -664,22 +672,22 @@ axi_dmac_alloc_desc(struct axi_dmac_chan *chan, unsigned int num_sgs)
+ 	desc->num_sgs = num_sgs;
+ 	desc->chan = chan;
  
--	dmac->clk = devm_clk_get_enabled(&pdev->dev, NULL);
--	if (IS_ERR(dmac->clk))
--		return PTR_ERR(dmac->clk);
-+	clk = devm_clk_get_enabled(&pdev->dev, NULL);
-+	if (IS_ERR(clk))
-+		return PTR_ERR(clk);
+-	hws = dma_alloc_coherent(dev, PAGE_ALIGN(num_sgs * sizeof(*hws)),
+-				&hw_phys, GFP_ATOMIC);
+-	if (!hws) {
+-		kfree(desc);
+-		return NULL;
+-	}
+-
+ 	for (i = 0; i < num_sgs; i++) {
+-		desc->sg[i].hw = &hws[i];
+-		desc->sg[i].hw_phys = hw_phys + i * sizeof(*hws);
++		hws = dma_pool_zalloc(chan->pool, GFP_NOWAIT, &hw_phys);
++		if (!hws) {
++			desc->num_sgs = i;
++			axi_dmac_free_desc(desc);
++			return NULL;
++		}
  
- 	version = axi_dmac_read(dmac, ADI_AXI_REG_VERSION);
+-		hws[i].id = AXI_DMAC_SG_UNUSED;
+-		hws[i].flags = 0;
++		desc->sg[i].hw = hws;
++		desc->sg[i].hw_phys = hw_phys;
++
++		hws->id = AXI_DMAC_SG_UNUSED;
  
+ 		/* Link hardware descriptors */
+-		hws[i].next_sg_addr = hw_phys + (i + 1) * sizeof(*hws);
++		if (i)
++			desc->sg[i - 1].hw->next_sg_addr = hw_phys;
+ 	}
+ 
+ 	/* The last hardware descriptor will trigger an interrupt */
+@@ -688,18 +696,6 @@ axi_dmac_alloc_desc(struct axi_dmac_chan *chan, unsigned int num_sgs)
+ 	return desc;
+ }
+ 
+-static void axi_dmac_free_desc(struct axi_dmac_desc *desc)
+-{
+-	struct axi_dmac *dmac = chan_to_axi_dmac(desc->chan);
+-	struct device *dev = dmac->dma_dev.dev;
+-	struct axi_dmac_hw_desc *hw = desc->sg[0].hw;
+-	dma_addr_t hw_phys = desc->sg[0].hw_phys;
+-
+-	dma_free_coherent(dev, PAGE_ALIGN(desc->num_sgs * sizeof(*hw)),
+-			  hw, hw_phys);
+-	kfree(desc);
+-}
+-
+ static struct axi_dmac_sg *axi_dmac_fill_linear_sg(struct axi_dmac_chan *chan,
+ 	enum dma_transfer_direction direction, dma_addr_t addr,
+ 	unsigned int num_periods, unsigned int period_len,
+@@ -933,9 +929,26 @@ static struct dma_async_tx_descriptor *axi_dmac_prep_interleaved(
+ 	return vchan_tx_prep(&chan->vchan, &desc->vdesc, flags);
+ }
+ 
++static int axi_dmac_alloc_chan_resources(struct dma_chan *c)
++{
++	struct axi_dmac_chan *chan = to_axi_dmac_chan(c);
++	struct device *dev = c->device->dev;
++
++	chan->pool = dma_pool_create(dev_name(dev), dev,
++				     sizeof(struct axi_dmac_hw_desc),
++				     __alignof__(struct axi_dmac_hw_desc), 0);
++	if (!chan->pool)
++		return -ENOMEM;
++
++	return 0;
++}
++
+ static void axi_dmac_free_chan_resources(struct dma_chan *c)
+ {
++	struct axi_dmac_chan *chan = to_axi_dmac_chan(c);
++
+ 	vchan_free_chan_resources(to_virt_chan(c));
++	dma_pool_destroy(chan->pool);
+ }
+ 
+ static void axi_dmac_desc_free(struct virt_dma_desc *vdesc)
+@@ -1238,6 +1251,7 @@ static int axi_dmac_probe(struct platform_device *pdev)
+ 	dma_cap_set(DMA_SLAVE, dma_dev->cap_mask);
+ 	dma_cap_set(DMA_CYCLIC, dma_dev->cap_mask);
+ 	dma_cap_set(DMA_INTERLEAVE, dma_dev->cap_mask);
++	dma_dev->device_alloc_chan_resources = axi_dmac_alloc_chan_resources;
+ 	dma_dev->device_free_chan_resources = axi_dmac_free_chan_resources;
+ 	dma_dev->device_tx_status = dma_cookie_status;
+ 	dma_dev->device_issue_pending = axi_dmac_issue_pending;
 
 -- 
 2.53.0
