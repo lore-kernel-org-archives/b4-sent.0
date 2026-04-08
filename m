@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Thu, 09 Apr 2026 00:15:47 +0200
-Subject: [PATCH v4 04/11] Input: stmfts - abstract reading information from
- the firmware
+Date: Thu, 09 Apr 2026 00:15:48 +0200
+Subject: [PATCH v4 05/11] Input: stmfts - disable regulators when power on
+ fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260409-stmfts5-v4-4-64fe62027db5@ixit.cz>
+Message-Id: <20260409-stmfts5-v4-5-64fe62027db5@ixit.cz>
 References: <20260409-stmfts5-v4-0-64fe62027db5@ixit.cz>
 In-Reply-To: <20260409-stmfts5-v4-0-64fe62027db5@ixit.cz>
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
@@ -22,46 +22,45 @@ Cc: Petr Hodina <petr.hodina@protonmail.com>, linux-input@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1821; i=david@ixit.cz;
- h=from:subject:message-id; bh=MRRMNTeMVS8qh5Y3wcBKjF6ySEKPpTml4To4kFWgqxE=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBp1tOSDBefFkQ6pmg/ESv1rmphll3moGBi4877/
- AdaIOG9cUOJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCadbTkgAKCRBgAj/E00kg
- ci2eEADECFzczHHY3Pw3nIE/rotnNSqUwkRYNMEFGe9E4VNC5iFgbpJXPFfYNTTC4gXdevtmLO1
- 7QJz6f+uU0/a3G2yD3nPkQS83GYu4J7uDTFtkuQsDQ18s53YPBE8qSYkQXoJPPpd2DHPbdq5YKe
- 0jIKBqpffX5dmbgcc2eRxHV5gV97Sw7cgl9VKNxanE9NWpZr3NV5fc7MsrcKWSwaljGS43jDCIY
- KEf9IyFIfwtdSymkLbG3JTHR6JfQYoTpeXAbG6pjARjAclR/w1o8Vz79Ywj757eGg6Eg+MyQjPk
- sg5GdSWX2qjTaxMaiUjXoXjG/ZHqp8Y5RbH+wGxA6wYgq4Y7/4D/QqG2tWSqVzSCrY4feS7/6s0
- JGAdBH5Yz6UslhhAmjf5WM99L7LfvmCzoXdTu3XZupZ2G+VXs8C4NxsYMjEdcDjJaabDo7P0xfd
- Zzl/UgcHiMIgvEiYrYJOX9LdVyplaOE4sHSKD4nfallEMxdDX+XeMIYEAtFMDjCbVk5X+j+Vz41
- X7BSz4YcnVUuenHs66nZRHYyIl3RH8oyAnoIeeHg2jK9gjV3PuxDzCQ5ADe6rgC8KSW/SI340vc
- AWWcgF7gyLrOQVjwJadnY1XIvwgrAkfOZMPD3HQ5mtlmbLawInYnA+Aq1p4tBv3NGyfahtAAu6N
- WampsCjGPsTGc0A==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1834; i=david@ixit.cz;
+ h=from:subject:message-id; bh=otDxlvvUy+vHqWnlpecsigv9uo2JKsE9RKwSL0jKxqM=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBp1tOSqxbb22SJazyTsOITYMHjjDrzpzJN7VpNu
+ 4ltZ1OQGniJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCadbTkgAKCRBgAj/E00kg
+ cmzrD/4tZ0pmiTNrRcm3Y2eAc1o7V/ba3zu0DiVu8JqUrJ1yR3ITurB98GgXril/pT5MbPi9Z/C
+ 29ddmYiNjNewyip5qQD7oGYtlKx9peclhWk37mV1OsbrGScrmFPMbayNpwtXJY827ep2dfVZIlK
+ 8I4GyUUgZyTP8IDJ2g7oeudDLZVXV8vSMX5s4+6qMHecpp3/U3Kj49/LL88Xc9CvNc1aPzY87lZ
+ Xm3hwBHlvRj7sEhxUv4sTgQWT/8YohJkA+srZfOJlAxhK1SBVlKATd1X100W3cNHaoakVtxDivh
+ l/uTAX1FW5BxVxdzXhgWvbrqvwpGeGZUmlti/gbjpmL+ysz3ANWaW8gUNEFVYHbMS6jOzzj3d9S
+ KQQbLDAREvM/D7c6XoA29y7dCjNjoYyyMPubUi9RgBhSX3DRKGtMif5WyUhl2h+3kSC6hSEIkn5
+ Uqgk45GsgTtEdB2syjwbLPkaYGY/LXw9wsc5ONduLLTd2q3m52FThLf0LyxdK+7tNsz9qYKsLEc
+ pZtK9QG+DfIJaFnY2GtewcKK+6TyZ+/ySIVMmxQo3O0vpafq1OYLi75OkEEJQ4lTlqOJ7jUqG2X
+ bleIhh88KpQVs2DBplB5bMLJWyitMYGasnl7c0NY/mvy/mDIdiMQC/En//3ubLhHTxW2ppuEtm0
+ ePllMuTArMZK1xw==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Improves readability and makes splitting power on function in following
-commit easier.
+We must power off regulators after failing at power on phase.
+Create stmfts_configure function, so we don't have to use goto.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/input/touchscreen/stmfts.c | 36 ++++++++++++++++++++++++------------
- 1 file changed, 24 insertions(+), 12 deletions(-)
+ drivers/input/touchscreen/stmfts.c | 37 ++++++++++++++++++++++++-------------
+ 1 file changed, 24 insertions(+), 13 deletions(-)
 
 diff --git a/drivers/input/touchscreen/stmfts.c b/drivers/input/touchscreen/stmfts.c
-index ff884e04ad4c8..71d9b747ccfc5 100644
+index 71d9b747ccfc5..290511dd69437 100644
 --- a/drivers/input/touchscreen/stmfts.c
 +++ b/drivers/input/touchscreen/stmfts.c
-@@ -518,22 +518,11 @@ static struct attribute *stmfts_sysfs_attrs[] = {
- };
- ATTRIBUTE_GROUPS(stmfts_sysfs);
+@@ -539,22 +539,10 @@ static int stmfts_read_system_info(struct stmfts_data *sdata)
+ 	return 0;
+ }
  
 -static int stmfts_power_on(struct stmfts_data *sdata)
-+static int stmfts_read_system_info(struct stmfts_data *sdata)
++static int stmfts_configure(struct stmfts_data *sdata)
  {
  	int err;
- 	u8 reg[8];
  
 -	err = regulator_bulk_enable(ARRAY_SIZE(stmfts_supplies),
 -				    sdata->supplies);
@@ -74,16 +73,14 @@ index ff884e04ad4c8..71d9b747ccfc5 100644
 -	 */
 -	msleep(20);
 -
- 	err = i2c_smbus_read_i2c_block_data(sdata->client, STMFTS_READ_INFO,
- 					    sizeof(reg), reg);
- 	if (err < 0)
-@@ -547,6 +536,29 @@ static int stmfts_power_on(struct stmfts_data *sdata)
- 	sdata->config_id = reg[4];
- 	sdata->config_ver = reg[5];
+-
+ 	err = stmfts_read_system_info(sdata);
+ 	if (err)
+ 		return err;
+@@ -596,6 +584,29 @@ static int stmfts_power_on(struct stmfts_data *sdata)
+ 	return 0;
+ }
  
-+	return 0;
-+}
-+
 +static int stmfts_power_on(struct stmfts_data *sdata)
 +{
 +	int err;
@@ -99,14 +96,17 @@ index ff884e04ad4c8..71d9b747ccfc5 100644
 +	 */
 +	msleep(20);
 +
-+
-+	err = stmfts_read_system_info(sdata);
++	err = stmfts_configure(sdata);
 +	if (err)
-+		return err;
++		regulator_bulk_disable(ARRAY_SIZE(stmfts_supplies),
++				       sdata->supplies);
 +
- 	enable_irq(sdata->client->irq);
- 
- 	msleep(50);
++	return err;
++}
++
+ static void stmfts_power_off(void *data)
+ {
+ 	struct stmfts_data *sdata = data;
 
 -- 
 2.53.0
