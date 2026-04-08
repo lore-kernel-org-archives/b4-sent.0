@@ -1,11 +1,11 @@
 From: Satish Kharat <satishkh@cisco.com>
-Date: Wed, 08 Apr 2026 08:08:19 -0700
-Subject: [PATCH net-next v2 09/10] enic: wire V2 SR-IOV enable with admin
- channel and MBOX
+Date: Wed, 08 Apr 2026 08:08:20 -0700
+Subject: [PATCH net-next v2 10/10] enic: add V2 VF probe with admin channel
+ and PF registration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260408-enic-sriov-v2-admin-channel-v2-v2-9-d05dd3623fd3@cisco.com>
+Message-Id: <20260408-enic-sriov-v2-admin-channel-v2-v2-10-d05dd3623fd3@cisco.com>
 References: <20260408-enic-sriov-v2-admin-channel-v2-v2-0-d05dd3623fd3@cisco.com>
 In-Reply-To: <20260408-enic-sriov-v2-admin-channel-v2-v2-0-d05dd3623fd3@cisco.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -15,247 +15,167 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  20260401-enic-sriov-v2-prep-v4-0-d5834b2ef1b9@cisco.com, 
  Satish Kharat <satishkh@cisco.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775660895; l=6935;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775660895; l=5643;
  i=satishkh@cisco.com; h=from:subject:message-id;
- bh=0Zp148iTdgKUk7HjYvB2gUm0XG1uGsH31sXpO9CD+ik=;
- b=quOaxKFxf+A3HUKuR/jfaHep3haE5vVowegc5xi9ApzAklmC+Q0yq743quNrQDpZ8xlbHjghc
- ILRAzm51K3eAWZzUhu5jdxo0ndhiJ/rfhHzzaR0uskQgmiPHeKUeyWE
+ bh=Em8DhCCAW6c85DFkxK9t+0LtoELkjeiLlM4P2QqA/es=;
+ b=iDuO7N7G3+jGXzByE0yN/6SE7ecNQsNCpfH6S1u1UXSNtOiQ/H3/bMYEbLA0A8Gg8nEN9CJyJ
+ NXdwm0XQvG+CAe0wMOHFlGeTy1gbd/+r+aILU8tNonoX8QTUMJQcgTD
 X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
  pk=4BxbLoCGvHeIMH/PbpiNVx8/2IcTjFvqcr0AD8K6WLY=
 X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/default with auth_id=639
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Extend enic_sriov_configure() to handle V2 SR-IOV VFs. When the PF
-detects V2 VF device IDs, the enable path allocates per-VF MBOX state,
-opens the admin channel, initializes the MBOX protocol, and then calls
-pci_enable_sriov(). The admin channel must be ready before VFs are
-created so that VF drivers can immediately begin the MBOX capability
-and registration handshake during their probe.
+When a V2 SR-IOV VF probes, open the admin channel, initialize the
+MBOX protocol, perform the capability check with the PF, and register
+with the PF. This establishes the PF-VF communication path that the PF
+uses to send link state notifications.
 
-The disable path reverses this order: pci_disable_sriov() first (so VF
-drivers unregister via MBOX), then the admin channel is closed and
-per-VF state is freed.
+The admin channel and MBOX registration happen after enic_dev_init()
+(which discovers admin channel resources) and before register_netdev()
+so the VF is fully initialized before the interface is visible to
+userspace.
 
-The existing V1/USNIC SR-IOV paths are unchanged.
+On remove, the VF unregisters from the PF and closes its admin channel
+before tearing down data path resources.
+
+V2 VFs are not provisioned with an RES_TYPE_SRIOV_INTR resource by
+firmware, so bypass that check in the admin channel capability
+detection for V2 VFs. The PF still requires this resource.
 
 Signed-off-by: Satish Kharat <satishkh@cisco.com>
 ---
- drivers/net/ethernet/cisco/enic/enic_main.c | 137 ++++++++++++++++++++++++++--
- drivers/net/ethernet/cisco/enic/enic_res.c  |   1 +
- drivers/net/ethernet/cisco/enic/vnic_enet.h |   4 +-
- 3 files changed, 134 insertions(+), 8 deletions(-)
+ drivers/net/ethernet/cisco/enic/enic.h      |  1 +
+ drivers/net/ethernet/cisco/enic/enic_main.c | 58 ++++++++++++++++++++++++++++-
+ drivers/net/ethernet/cisco/enic/enic_res.c  |  3 +-
+ 3 files changed, 59 insertions(+), 3 deletions(-)
 
+diff --git a/drivers/net/ethernet/cisco/enic/enic.h b/drivers/net/ethernet/cisco/enic/enic.h
+index 29ce26284493..6301930903ee 100644
+--- a/drivers/net/ethernet/cisco/enic/enic.h
++++ b/drivers/net/ethernet/cisco/enic/enic.h
+@@ -441,6 +441,7 @@ void enic_reset_addr_lists(struct enic *enic);
+ int enic_sriov_enabled(struct enic *enic);
+ int enic_is_valid_vf(struct enic *enic, int vf);
+ int enic_is_dynamic(struct enic *enic);
++int enic_is_sriov_vf_v2(struct enic *enic);
+ void enic_set_ethtool_ops(struct net_device *netdev);
+ int __enic_set_rsskey(struct enic *enic);
+ void enic_ext_cq(struct enic *enic);
 diff --git a/drivers/net/ethernet/cisco/enic/enic_main.c b/drivers/net/ethernet/cisco/enic/enic_main.c
-index 3a4afd6da41f..48c38347d6ce 100644
+index 48c38347d6ce..c664ca43ab3a 100644
 --- a/drivers/net/ethernet/cisco/enic/enic_main.c
 +++ b/drivers/net/ethernet/cisco/enic/enic_main.c
-@@ -60,6 +60,8 @@
- #include "enic_clsf.h"
- #include "enic_rq.h"
- #include "enic_wq.h"
-+#include "enic_admin.h"
-+#include "enic_mbox.h"
- 
- #define ENIC_NOTIFY_TIMER_PERIOD	(2 * HZ)
- 
-@@ -2688,6 +2690,120 @@ static void enic_sriov_detect_vf_type(struct enic *enic)
- 		}
- 	}
+@@ -316,6 +316,11 @@ static int enic_is_sriov_vf(struct enic *enic)
+ 	       enic->pdev->device == PCI_DEVICE_ID_CISCO_VIC_ENET_VF_V2;
  }
-+
-+static int __maybe_unused
-+enic_sriov_v2_enable(struct enic *enic, int num_vfs)
-+{
-+	int err;
-+
-+	if (!enic->has_admin_channel) {
-+		netdev_err(enic->netdev,
-+			   "V2 SR-IOV requires admin channel resources\n");
-+		return -EOPNOTSUPP;
-+	}
-+
-+	enic->vf_state = kcalloc(num_vfs, sizeof(*enic->vf_state), GFP_KERNEL);
-+	if (!enic->vf_state)
-+		return -ENOMEM;
-+
-+	err = enic_admin_channel_open(enic);
-+	if (err) {
-+		netdev_err(enic->netdev,
-+			   "Failed to open admin channel: %d\n", err);
-+		goto free_vf_state;
-+	}
-+
-+	enic_mbox_init(enic);
-+
-+	enic->num_vfs = num_vfs;
-+
-+	err = pci_enable_sriov(enic->pdev, num_vfs);
-+	if (err) {
-+		netdev_err(enic->netdev,
-+			   "pci_enable_sriov failed: %d\n", err);
-+		goto close_admin;
-+	}
-+
-+	enic->priv_flags |= ENIC_SRIOV_ENABLED;
-+	return num_vfs;
-+
-+close_admin:
-+	enic->num_vfs = 0;
-+	enic_admin_channel_close(enic);
-+free_vf_state:
-+	kfree(enic->vf_state);
-+	enic->vf_state = NULL;
-+	return err;
-+}
-+
-+static void enic_sriov_v2_disable(struct enic *enic)
-+{
-+	pci_disable_sriov(enic->pdev);
-+	enic_admin_channel_close(enic);
-+	kfree(enic->vf_state);
-+	enic->vf_state = NULL;
-+	enic->num_vfs = 0;
-+	enic->priv_flags &= ~ENIC_SRIOV_ENABLED;
-+}
-+
-+static int __maybe_unused
-+enic_sriov_configure(struct pci_dev *pdev, int num_vfs)
-+{
-+	struct net_device *netdev = pci_get_drvdata(pdev);
-+	struct enic *enic = netdev_priv(netdev);
-+	struct enic_port_profile *pp;
-+	int err;
-+
-+	if (num_vfs > 0) {
-+		if (enic->config.mq_subvnic_count) {
-+			netdev_err(netdev,
-+				   "SR-IOV not supported with multi-queue sub-vnics\n");
-+			return -EOPNOTSUPP;
-+		}
-+
-+		if (enic->vf_type == ENIC_VF_TYPE_NONE) {
-+			netdev_err(netdev,
-+				   "SR-IOV not supported on this firmware version\n");
-+			return -EOPNOTSUPP;
-+		}
-+
-+		if (enic->vf_type == ENIC_VF_TYPE_V2)
-+			return enic_sriov_v2_enable(enic, num_vfs);
-+
-+		pp = kcalloc(num_vfs, sizeof(*pp), GFP_KERNEL);
-+		if (!pp)
-+			return -ENOMEM;
-+
-+		err = pci_enable_sriov(pdev, num_vfs);
-+		if (err) {
-+			kfree(pp);
-+			return err;
-+		}
-+
-+		kfree(enic->pp);
-+		enic->pp = pp;
-+		enic->num_vfs = num_vfs;
-+		enic->priv_flags |= ENIC_SRIOV_ENABLED;
-+		return num_vfs;
-+	}
-+
-+	if (!enic_sriov_enabled(enic))
-+		return 0;
-+
-+	if (enic->vf_type == ENIC_VF_TYPE_V2) {
-+		enic_sriov_v2_disable(enic);
-+		return 0;
-+	}
-+
-+	pci_disable_sriov(pdev);
-+	enic->num_vfs = 0;
-+	enic->priv_flags &= ~ENIC_SRIOV_ENABLED;
-+
-+	kfree(enic->pp);
-+	enic->pp = kzalloc(sizeof(*enic->pp), GFP_KERNEL);
-+
-+	return 0;
-+}
- #endif
  
- static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
-@@ -2786,12 +2902,18 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
- 		goto err_out_vnic_unregister;
- 
++int enic_is_sriov_vf_v2(struct enic *enic)
++{
++	return enic->pdev->device == PCI_DEVICE_ID_CISCO_VIC_ENET_VF_V2;
++}
++
+ int enic_is_valid_vf(struct enic *enic, int vf)
+ {
  #ifdef CONFIG_PCI_IOV
--	/* Get number of subvnics */
-+	enic_sriov_detect_vf_type(enic);
-+
-+	/* Auto-enable SR-IOV if VFs were pre-configured (e.g. at boot).
-+	 * V2 VFs require the admin channel, which is not yet set up at probe
-+	 * time; use sysfs (enic_sriov_configure) to enable V2 SR-IOV instead.
-+	 */
- 	pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_SRIOV);
- 	if (pos) {
- 		pci_read_config_word(pdev, pos + PCI_SRIOV_TOTAL_VF,
- 			&enic->num_vfs);
--		if (enic->num_vfs) {
-+		if (enic->num_vfs &&
-+		    enic->vf_type != ENIC_VF_TYPE_V2) {
- 			err = pci_enable_sriov(pdev, enic->num_vfs);
- 			if (err) {
- 				dev_err(dev, "SRIOV enable failed, aborting."
-@@ -2803,7 +2925,6 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
- 			num_pps = enic->num_vfs;
- 		}
+@@ -2989,6 +2994,32 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 		goto err_out_dev_close;
  	}
--	enic_sriov_detect_vf_type(enic);
- #endif
  
- 	/* Allocate structure for port profiles */
-@@ -3032,14 +3153,16 @@ static void enic_remove(struct pci_dev *pdev)
++	/* V2 VF: open admin channel and register with PF.
++	 * Must happen before register_netdev so the VF is fully
++	 * initialized before the interface is visible to userspace.
++	 */
++	if (enic_is_sriov_vf_v2(enic)) {
++		err = enic_admin_channel_open(enic);
++		if (err) {
++			dev_err(dev,
++				"Failed to open admin channel: %d\n", err);
++			goto err_out_dev_deinit;
++		}
++		enic_mbox_init(enic);
++		err = enic_mbox_vf_capability_check(enic);
++		if (err) {
++			dev_err(dev,
++				"MBOX capability check failed: %d\n", err);
++			goto err_out_admin_close;
++		}
++		err = enic_mbox_vf_register(enic);
++		if (err) {
++			dev_err(dev,
++				"MBOX VF registration failed: %d\n", err);
++			goto err_out_admin_close;
++		}
++	}
++
+ 	netif_set_real_num_tx_queues(netdev, enic->wq_count);
+ 	netif_set_real_num_rx_queues(netdev, enic->rq_count);
+ 
+@@ -3013,7 +3044,7 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 	err = enic_set_mac_addr(netdev, enic->mac_addr);
+ 	if (err) {
+ 		dev_err(dev, "Invalid MAC address, aborting\n");
+-		goto err_out_dev_deinit;
++		goto err_out_admin_close;
+ 	}
+ 
+ 	enic->tx_coalesce_usecs = enic->config.intr_timer_usec;
+@@ -3111,11 +3142,23 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 	err = register_netdev(netdev);
+ 	if (err) {
+ 		dev_err(dev, "Cannot register net device, aborting\n");
+-		goto err_out_dev_deinit;
++		goto err_out_admin_close;
+ 	}
+ 
+ 	return 0;
+ 
++err_out_admin_close:
++	if (enic_is_sriov_vf_v2(enic)) {
++		if (enic->vf_registered) {
++			int unreg_err = enic_mbox_vf_unregister(enic);
++
++			if (unreg_err)
++				netdev_warn(netdev,
++					    "Failed to unregister from PF: %d\n",
++					    unreg_err);
++		}
++		enic_admin_channel_close(enic);
++	}
+ err_out_dev_deinit:
+ 	enic_dev_deinit(enic);
+ err_out_dev_close:
+@@ -3153,6 +3196,17 @@ static void enic_remove(struct pci_dev *pdev)
  		cancel_work_sync(&enic->reset);
  		cancel_work_sync(&enic->change_mtu_work);
  		unregister_netdev(netdev);
--		enic_dev_deinit(enic);
--		vnic_dev_close(enic->vdev);
++		if (enic_is_sriov_vf_v2(enic)) {
++			if (enic->vf_registered) {
++				int unreg_err = enic_mbox_vf_unregister(enic);
++
++				if (unreg_err)
++					netdev_warn(netdev,
++						    "Failed to unregister from PF: %d\n",
++						    unreg_err);
++			}
++			enic_admin_channel_close(enic);
++		}
  #ifdef CONFIG_PCI_IOV
  		if (enic_sriov_enabled(enic)) {
--			pci_disable_sriov(pdev);
--			enic->priv_flags &= ~ENIC_SRIOV_ENABLED;
-+			if (enic->vf_type == ENIC_VF_TYPE_V2)
-+				enic_sriov_v2_disable(enic);
-+			else
-+				pci_disable_sriov(pdev);
- 		}
- #endif
-+		enic_dev_deinit(enic);
-+		vnic_dev_close(enic->vdev);
- 		kfree(enic->pp);
- 		vnic_dev_unregister(enic->vdev);
- 		enic_iounmap(enic);
+ 			if (enic->vf_type == ENIC_VF_TYPE_V2)
 diff --git a/drivers/net/ethernet/cisco/enic/enic_res.c b/drivers/net/ethernet/cisco/enic/enic_res.c
-index 2b7545d6a67f..436326ace049 100644
+index 436326ace049..74cd2ee3af5c 100644
 --- a/drivers/net/ethernet/cisco/enic/enic_res.c
 +++ b/drivers/net/ethernet/cisco/enic/enic_res.c
-@@ -59,6 +59,7 @@ int enic_get_vnic_config(struct enic *enic)
- 	GET_CONFIG(intr_timer_usec);
- 	GET_CONFIG(loop_tag);
- 	GET_CONFIG(num_arfs);
-+	GET_CONFIG(mq_subvnic_count);
- 	GET_CONFIG(max_rq_ring);
- 	GET_CONFIG(max_wq_ring);
- 	GET_CONFIG(max_cq_ring);
-diff --git a/drivers/net/ethernet/cisco/enic/vnic_enet.h b/drivers/net/ethernet/cisco/enic/vnic_enet.h
-index 9e8e86262a3f..519d2969990b 100644
---- a/drivers/net/ethernet/cisco/enic/vnic_enet.h
-+++ b/drivers/net/ethernet/cisco/enic/vnic_enet.h
-@@ -21,7 +21,9 @@ struct vnic_enet_config {
- 	u16 loop_tag;
- 	u16 vf_rq_count;
- 	u16 num_arfs;
--	u8 reserved[66];
-+	u8 reserved1[32];
-+	u16 mq_subvnic_count;
-+	u8 reserved2[32];
- 	u32 max_rq_ring;	// MAX RQ ring size
- 	u32 max_wq_ring;	// MAX WQ ring size
- 	u32 max_cq_ring;	// MAX CQ ring size
+@@ -211,7 +211,8 @@ void enic_get_res_counts(struct enic *enic)
+ 		vnic_dev_get_res_count(enic->vdev, RES_TYPE_ADMIN_RQ) >= 1 &&
+ 		vnic_dev_get_res_count(enic->vdev, RES_TYPE_ADMIN_CQ) >=
+ 			ARRAY_SIZE(enic->admin_cq) &&
+-		vnic_dev_get_res_count(enic->vdev, RES_TYPE_SRIOV_INTR) >= 1;
++		(enic_is_sriov_vf_v2(enic) ||
++		 vnic_dev_get_res_count(enic->vdev, RES_TYPE_SRIOV_INTR) >= 1);
+ 
+ 	dev_info(enic_get_dev(enic),
+ 		"vNIC resources avail: wq %d rq %d cq %d intr %d admin %s\n",
 
 -- 
 2.43.0
