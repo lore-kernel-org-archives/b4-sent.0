@@ -1,10 +1,10 @@
 From: Nathan Lynch <nathan.lynch@amd.com>
-Date: Fri, 10 Apr 2026 08:07:11 -0500
-Subject: [PATCH 01/23] PCI: Add SNIA SDXI accelerator sub-class
+Date: Fri, 10 Apr 2026 08:07:12 -0500
+Subject: [PATCH 02/23] MAINTAINERS: Add entry for SDXI driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260410-sdxi-base-v1-1-1d184cb5c60a@amd.com>
+Message-Id: <20260410-sdxi-base-v1-2-1d184cb5c60a@amd.com>
 References: <20260410-sdxi-base-v1-0-1d184cb5c60a@amd.com>
 In-Reply-To: <20260410-sdxi-base-v1-0-1d184cb5c60a@amd.com>
 To: Vinod Koul <vkoul@kernel.org>
@@ -17,39 +17,48 @@ Cc: Wei Huang <wei.huang2@amd.com>,
  linux-kernel@vger.kernel.org, dmaengine@vger.kernel.org, 
  Nathan Lynch <nathan.lynch@amd.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775826467; l=777;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775826467; l=957;
  i=nathan.lynch@amd.com; s=20260410; h=from:subject:message-id;
- bh=0hS0icv4e/Aa4EokWK6lx8glYEB0shN8OGORA4fjcu4=;
- b=9aZablbuUb59BddxNdawfY+qt3YEjvA7XynRIR51YF5vdpNUz3+IQl2RoNT9EZ2Qg3NBu2pxm
- XIBv+8TG614AFHQBbZfWn/REVCC3iNfOAiA4DtR1dFrSg/HkSgf8G9F
+ bh=tqnIKUQ/EyLmPhjhcEIOb2dPPBxNHEJNAOATM/Xpro4=;
+ b=CWe5mwrd2PJa7wLdnOmVyBrciLI3IiIUPOqT+6YgXzYTQ16BNNSjKI6Cd5+CS/WT5F3XAtFMG
+ i5fq/eAIO7ADCuz0sq3F5fv+igtAwI9pup/ECs94DNbPDvVVVwOfZVl
 X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
  pk=PK4ozhq+/z9/2Jl5rgDmvHa9raVomv79qM8p1RAFpEw=
 X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20260410 with auth_id=728
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add sub-class code for SNIA Smart Data Accelerator Interface (SDXI).
-See PCI Code and ID Assignment spec r1.14, sec 1.19.
+Add an entry for the SDXI driver to MAINTAINERS. Wei and I will
+maintain the driver.
+
+The SDXI specification and other materials may be found at:
+
+  https://www.snia.org/sdxi
 
 Co-developed-by: Wei Huang <wei.huang2@amd.com>
 Signed-off-by: Wei Huang <wei.huang2@amd.com>
 Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
-Acked-by: Bjorn Helgaas <bhelgaas@google.com>
 ---
- include/linux/pci_ids.h | 1 +
- 1 file changed, 1 insertion(+)
+ MAINTAINERS | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/include/linux/pci_ids.h b/include/linux/pci_ids.h
-index 406abf629be2..e3c68f90f3ad 100644
---- a/include/linux/pci_ids.h
-+++ b/include/linux/pci_ids.h
-@@ -154,6 +154,7 @@
+diff --git a/MAINTAINERS b/MAINTAINERS
+index b38452804a2d..5aa7b6cd93f9 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -23831,6 +23831,13 @@ L:	sdricohcs-devel@lists.sourceforge.net (subscribers-only)
+ S:	Maintained
+ F:	drivers/mmc/host/sdricoh_cs.c
  
- #define PCI_BASE_CLASS_ACCELERATOR	0x12
- #define PCI_CLASS_ACCELERATOR_PROCESSING	0x1200
-+#define PCI_CLASS_ACCELERATOR_SDXI		0x120100
- 
- #define PCI_CLASS_OTHERS		0xff
- 
++SDXI (Smart Data Accelerator Interface) DRIVER
++M:	Nathan Lynch <nathan.lynch@amd.com>
++M:	Wei Huang <wei.huang2@amd.com>
++L:	dmaengine@vger.kernel.org
++S:	Supported
++F:	drivers/dma/sdxi/
++
+ SECO BOARDS CEC DRIVER
+ M:	Ettore Chimenti <ek5.chimenti@gmail.com>
+ S:	Maintained
 
 -- 
 2.53.0
