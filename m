@@ -1,11 +1,11 @@
 From: Nathan Lynch <nathan.lynch@amd.com>
-Date: Fri, 10 Apr 2026 08:07:23 -0500
-Subject: [PATCH 13/23] dmaengine: sdxi: Add unit tests for descriptor ring
- reservations
+Date: Fri, 10 Apr 2026 08:07:24 -0500
+Subject: [PATCH 14/23] dmaengine: sdxi: Attach descriptor ring state to
+ contexts
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260410-sdxi-base-v1-13-1d184cb5c60a@amd.com>
+Message-Id: <20260410-sdxi-base-v1-14-1d184cb5c60a@amd.com>
 References: <20260410-sdxi-base-v1-0-1d184cb5c60a@amd.com>
 In-Reply-To: <20260410-sdxi-base-v1-0-1d184cb5c60a@amd.com>
 To: Vinod Koul <vkoul@kernel.org>
@@ -18,189 +18,97 @@ Cc: Wei Huang <wei.huang2@amd.com>,
  linux-kernel@vger.kernel.org, dmaengine@vger.kernel.org, 
  Nathan Lynch <nathan.lynch@amd.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775826467; l=5269;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775826467; l=2539;
  i=nathan.lynch@amd.com; s=20260410; h=from:subject:message-id;
- bh=96M0WH79Yh/L9470L8b4C78AEBFI/SqNNfiQfEX5P3w=;
- b=0kiv+rFYk3O+HIB4rLGkttlP47zUaUiDRxHnrUNrT9OwF4HW7fidZvrEiVcyM/6SxrW+1zYNZ
- aj87bdlfu4/BeN7GcSxDwCgqj7X2LS6RCfksPVVCya3JtkzOeU5v/VK
+ bh=osQr3BYuGP2fBkWl8ruQ505ci52JISit3XTQLri9FVw=;
+ b=1EooEzzSz67Nn6PR20Q6rrCyRCAf3qi2P0cVNLda1cXwdfMEQU79c4wdjgA7Tz6eVMZAsqlR0
+ 4p8Xayjz17YBZrdP0wIg80eMQbmbgoBm+njik+C99Q3ypwk52Oq350F
 X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
  pk=PK4ozhq+/z9/2Jl5rgDmvHa9raVomv79qM8p1RAFpEw=
 X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20260410 with auth_id=728
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add KUnit tests for the descriptor ring reservation API, covering:
-
-- Valid reservations: full-ring and single-slot after advancing the
-  read pointer.
-
-- Error paths: zero or over-capacity count (-EINVAL), inconsistent
-  index state (-EIO), and insufficient space (-EBUSY).
-
-A .kunitconfig is included ease of use:
-
-  $ tools/testing/kunit/kunit.py run \
-         --kunitconfig=drivers/dma/sdxi/.kunitconfig
-
-No SDXI hardware is required to run these tests.
+Attach an instance of struct sdxi_ring_state to each context upon
+allocation. Each ring state has the same lifetime has its context and
+is freed upon context release.
 
 Co-developed-by: Wei Huang <wei.huang2@amd.com>
 Signed-off-by: Wei Huang <wei.huang2@amd.com>
 Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
 ---
- drivers/dma/sdxi/.kunitconfig |   4 ++
- drivers/dma/sdxi/Kconfig      |   8 ++++
- drivers/dma/sdxi/Makefile     |   3 ++
- drivers/dma/sdxi/ring_kunit.c | 105 ++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 120 insertions(+)
+ drivers/dma/sdxi/context.c | 13 +++++++++++++
+ drivers/dma/sdxi/context.h |  2 ++
+ 2 files changed, 15 insertions(+)
 
-diff --git a/drivers/dma/sdxi/.kunitconfig b/drivers/dma/sdxi/.kunitconfig
-new file mode 100644
-index 000000000000..a98cf19770f0
---- /dev/null
-+++ b/drivers/dma/sdxi/.kunitconfig
-@@ -0,0 +1,4 @@
-+CONFIG_KUNIT=y
-+CONFIG_DMADEVICES=y
-+CONFIG_SDXI=y
-+CONFIG_SDXI_KUNIT_TEST=y
-diff --git a/drivers/dma/sdxi/Kconfig b/drivers/dma/sdxi/Kconfig
-index a568284cd583..e616d3e323bc 100644
---- a/drivers/dma/sdxi/Kconfig
-+++ b/drivers/dma/sdxi/Kconfig
-@@ -6,3 +6,11 @@ config SDXI
- 	  Platform Data Mover devices. SDXI is a vendor-neutral
- 	  standard for a memory-to-memory data mover and acceleration
- 	  interface.
-+
-+config SDXI_KUNIT_TEST
-+	tristate "SDXI unit tests" if !KUNIT_ALL_TESTS
-+	depends on SDXI && KUNIT
-+	default KUNIT_ALL_TESTS
-+	help
-+	  KUnit tests for parts of the SDXI driver. Does not require
-+	  SDXI hardware.
-diff --git a/drivers/dma/sdxi/Makefile b/drivers/dma/sdxi/Makefile
-index 23536a1defc3..372f793c15b1 100644
---- a/drivers/dma/sdxi/Makefile
-+++ b/drivers/dma/sdxi/Makefile
-@@ -7,3 +7,6 @@ sdxi-objs += \
- 	ring.o
+diff --git a/drivers/dma/sdxi/context.c b/drivers/dma/sdxi/context.c
+index 7cae140c0a20..792b5032203b 100644
+--- a/drivers/dma/sdxi/context.c
++++ b/drivers/dma/sdxi/context.c
+@@ -24,6 +24,7 @@
  
- sdxi-$(CONFIG_PCI_MSI) += pci.o
-+
-+obj-$(CONFIG_SDXI_KUNIT_TEST) += \
-+	ring_kunit.o
-diff --git a/drivers/dma/sdxi/ring_kunit.c b/drivers/dma/sdxi/ring_kunit.c
-new file mode 100644
-index 000000000000..3bc7073e0c39
---- /dev/null
-+++ b/drivers/dma/sdxi/ring_kunit.c
-@@ -0,0 +1,105 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * SDXI descriptor ring management tests.
-+ *
-+ * Copyright Advanced Micro Devices, Inc.
-+ */
-+#include <kunit/device.h>
-+#include <kunit/test-bug.h>
-+#include <kunit/test.h>
-+#include <linux/container_of.h>
-+#include <linux/dma-mapping.h>
-+#include <linux/module.h>
-+#include <linux/packing.h>
-+#include <linux/string.h>
-+
+ #include "context.h"
+ #include "hw.h"
 +#include "ring.h"
+ #include "sdxi.h"
+ 
+ #define DEFAULT_DESC_RING_ENTRIES 1024
+@@ -60,6 +61,7 @@ static void sdxi_free_cxt(struct sdxi_cxt *cxt)
+ 		dma_free_coherent(sdxi_to_dev(sdxi), sq->ring_size,
+ 				  sq->desc_ring, sq->ring_dma);
+ 	kfree(cxt->sq);
++	kfree(cxt->ring_state);
+ 	kfree(cxt);
+ }
+ 
+@@ -77,6 +79,10 @@ static struct sdxi_cxt *sdxi_alloc_cxt(struct sdxi_dev *sdxi)
+ 
+ 	cxt->sdxi = sdxi;
+ 
++	cxt->ring_state = kzalloc_obj(*cxt->ring_state, GFP_KERNEL);
++	if (!cxt->ring_state)
++		return NULL;
 +
-+MODULE_IMPORT_NS("EXPORTED_FOR_KUNIT_TESTING");
+ 	cxt->sq = kzalloc_obj(*cxt->sq, GFP_KERNEL);
+ 	if (!cxt->sq)
+ 		return NULL;
+@@ -373,6 +379,8 @@ int sdxi_admin_cxt_init(struct sdxi_dev *sdxi)
+ 	sq->cxt_sts->state = FIELD_PREP(SDXI_CXT_STS_STATE, CXTV_RUN);
+ 	cxt->id = SDXI_ADMIN_CXT_ID;
+ 	cxt->db = sdxi->dbs + cxt->id * sdxi->db_stride;
++	sdxi_ring_state_init(cxt->ring_state, &sq->cxt_sts->read_index,
++			     sq->write_index, sq->ring_entries, sq->desc_ring);
+ 
+ 	err = sdxi_publish_cxt(cxt);
+ 	if (err)
+@@ -389,10 +397,15 @@ int sdxi_admin_cxt_init(struct sdxi_dev *sdxi)
+  */
+ struct sdxi_cxt *sdxi_cxt_new(struct sdxi_dev *sdxi)
+ {
++	struct sdxi_sq *sq;
 +
-+static void valid(struct kunit *t)
-+{
-+	__le64 wi, ri;
-+	struct sdxi_ring_state r;
-+	struct sdxi_ring_resv resv;
-+	struct sdxi_desc *descs, *desc;
+ 	struct sdxi_cxt *cxt __free(sdxi_cxt) = sdxi_alloc_cxt(sdxi);
+ 	if (!cxt)
+ 		return NULL;
+ 
++	sq = cxt->sq;
++	sdxi_ring_state_init(cxt->ring_state, &sq->cxt_sts->read_index,
++			     sq->write_index, sq->ring_entries, sq->desc_ring);
+ 	if (register_cxt(sdxi, cxt))
+ 		return NULL;
+ 
+diff --git a/drivers/dma/sdxi/context.h b/drivers/dma/sdxi/context.h
+index 5cd78e883c8d..9779b9aa4f86 100644
+--- a/drivers/dma/sdxi/context.h
++++ b/drivers/dma/sdxi/context.h
+@@ -54,6 +54,8 @@ struct sdxi_cxt {
+ 	dma_addr_t akey_table_dma;
+ 
+ 	struct sdxi_sq *sq;
 +
-+
-+	descs = kunit_kmalloc_array(t, SZ_1K, sizeof(descs[0]),
-+				    GFP_KERNEL | __GFP_ZERO);
-+	KUNIT_ASSERT_NOT_NULL(t, descs);
-+
-+	ri = wi = 0;
-+	sdxi_ring_state_init(&r, &ri, &wi, SZ_1K, descs);
-+
-+	KUNIT_EXPECT_EQ(t, sdxi_ring_try_reserve(&r, r.entries, &resv), 0);
-+	KUNIT_EXPECT_EQ(t, resv.range.start, 0);
-+	KUNIT_EXPECT_EQ(t, resv.range.end, r.entries - 1);
-+	KUNIT_EXPECT_EQ(t, le64_to_cpu(wi), r.entries);
-+	sdxi_ring_resv_foreach(&resv, desc) {
-+		KUNIT_EXPECT_NOT_NULL_MSG(t, sdxi_ring_resv_next(&resv),
-+			"unexpected null descriptor for index %llu", resv.iter);
-+	}
-+
-+	ri = cpu_to_le64(1);
-+	KUNIT_EXPECT_EQ(t, sdxi_ring_try_reserve(&r, 1, &resv), 0);
-+	KUNIT_EXPECT_EQ(t, le64_to_cpu(wi), r.entries + 1);
-+	KUNIT_EXPECT_NOT_NULL(t, sdxi_ring_resv_next(&resv));
-+}
-+
-+static void invalid(struct kunit *t)
-+{
-+	__le64 wi, ri;
-+	struct sdxi_ring_state rs;
-+	struct sdxi_ring_resv resv;
-+	struct sdxi_desc *descs;
-+
-+	descs = kunit_kmalloc_array(t, SZ_1K, sizeof(descs[0]),
-+				    GFP_KERNEL | __GFP_ZERO);
-+	KUNIT_ASSERT_NOT_NULL(t, descs);
-+
-+	ri = wi = 0;
-+	sdxi_ring_state_init(&rs, &ri, &wi, SZ_1K, descs);
-+
-+	KUNIT_EXPECT_EQ(t, sdxi_ring_try_reserve(&rs, 0, &resv), -EINVAL);
-+	KUNIT_EXPECT_EQ(t, sdxi_ring_try_reserve(&rs, rs.entries + 1, &resv), -EINVAL);
-+
-+	ri = cpu_to_le64(1);
-+	KUNIT_EXPECT_EQ(t, sdxi_ring_try_reserve(&rs, 1, &resv), -EIO);
-+
-+	ri = 0;
-+	wi = cpu_to_le64(rs.entries);
-+	sdxi_ring_state_init(&rs, &ri, &wi, SZ_1K, descs);
-+	KUNIT_EXPECT_EQ(t, sdxi_ring_try_reserve(&rs, 1, &resv), -EBUSY);
-+
-+	ri = cpu_to_le64(rs.entries);
-+	wi = cpu_to_le64(rs.entries + 1);
-+	sdxi_ring_state_init(&rs, &ri, &wi, SZ_1K, descs);
-+	KUNIT_EXPECT_EQ(t, sdxi_ring_try_reserve(&rs, rs.entries, &resv), -EBUSY);
-+}
-+
-+static struct kunit_case testcases[] = {
-+	KUNIT_CASE(valid),
-+	KUNIT_CASE(invalid),
-+	{}
-+};
-+
-+static int setup_device(struct kunit *t)
-+{
-+	struct device *dev = kunit_device_register(t, "sdxi-mock-device");
-+
-+	KUNIT_ASSERT_NOT_ERR_OR_NULL(t, dev);
-+	t->priv = dev;
-+	return 0;
-+}
-+
-+static struct kunit_suite generic_desc_ts = {
-+	.name = "SDXI descriptor ring management",
-+	.test_cases = testcases,
-+	.init = setup_device,
-+};
-+kunit_test_suite(generic_desc_ts);
-+
-+MODULE_DESCRIPTION("SDXI descriptor ring tests");
-+MODULE_AUTHOR("Nathan Lynch");
-+MODULE_LICENSE("GPL");
++	struct sdxi_ring_state *ring_state;
+ };
+ 
+ int sdxi_admin_cxt_init(struct sdxi_dev *sdxi);
 
 -- 
 2.53.0
