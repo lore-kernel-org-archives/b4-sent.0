@@ -1,11 +1,10 @@
 From: Nathan Lynch <nathan.lynch@amd.com>
-Date: Fri, 10 Apr 2026 08:07:14 -0500
-Subject: [PATCH 04/23] dmaengine: sdxi: Feature discovery and initial
- configuration
+Date: Fri, 10 Apr 2026 08:07:15 -0500
+Subject: [PATCH 05/23] dmaengine: sdxi: Configure context tables
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260410-sdxi-base-v1-4-1d184cb5c60a@amd.com>
+Message-Id: <20260410-sdxi-base-v1-5-1d184cb5c60a@amd.com>
 References: <20260410-sdxi-base-v1-0-1d184cb5c60a@amd.com>
 In-Reply-To: <20260410-sdxi-base-v1-0-1d184cb5c60a@amd.com>
 To: Vinod Koul <vkoul@kernel.org>
@@ -18,329 +17,217 @@ Cc: Wei Huang <wei.huang2@amd.com>,
  linux-kernel@vger.kernel.org, dmaengine@vger.kernel.org, 
  Nathan Lynch <nathan.lynch@amd.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775826467; l=9474;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775826467; l=6822;
  i=nathan.lynch@amd.com; s=20260410; h=from:subject:message-id;
- bh=b7xu936IWaAWui2gDis8KlNNC8TGpATPQfcAYDAr6kM=;
- b=y69NHSxZh8DFXKYmeqC9Zq2QsmbA5eS5d6E5M/G8yii7wjB+0qj+1Z4ui552Kxyv9f01qwFqO
- ndycO+cNlbgC8bDMFQzRcOr2GONhO6O2ZxFr5wCAQ0uVJ0jMyUN5cQM
+ bh=Zoq8VnkuwOO4eUQgVv+ADI1U5B7YsdpNi3XIpPjoUyQ=;
+ b=eiX3CHjsjpXNYgDae34bwdmMk/1Im07HeB6UhGhBwp2oVcFBp7Bq1qAfPf8Iw8JSuHsIUWx9U
+ JGP83swnWfODyMBgKKP3OmEDs3dFhka+uRvs6bWCWvrByBbzkxW+kL4
 X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
  pk=PK4ozhq+/z9/2Jl5rgDmvHa9raVomv79qM8p1RAFpEw=
 X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20260410 with auth_id=728
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After bus-specific initialization, force the SDXI function to stopped
-state. This is the expected state from reset, but kexec or driver bugs
-can leave a function in other states from which the initialization
-code must be able to recover.
+SDXI uses a two-level table hierarchy to track contexts. There is a
+single level 2 table per function which enumerates up to 512 level 1
+tables. Each level 1 table enumerates up to 128 contexts.
 
-Discover via the capability registers the doorbell region stride, the
-maximum supported context ID, the operation groups implemented, and
-limits on buffer and control structure sizes. The driver has the
-option of writing more conservative limits to the ctl2 register, but
-it uses those supplied by the implementation for now.
+Allocate and install the L2 table and a single L1 table, enough for
+context IDs 0-127 (i.e. the admin context with reserved id 0, plus 127
+client contexts). For now, to avoid dynamic management of additional
+L1 tables, cap ctl2.max_cxt to 127.
 
-Introduce device register definitions and associated masks via mmio.h.
-
-Add convenience wrappers which are first used here:
-- sdxi_dbg()
-- sdxi_info()
-- sdxi_err()
-- sdxi_read64()
-- sdxi_write64()
-
-Report the version of the standard to which the device conforms, e.g.
-
-  sdxi 0000:00:03.0: SDXI 1.0 device found
+Since the table allocations are devres-managed, there is no
+corresponding cleanup code required.
 
 Co-developed-by: Wei Huang <wei.huang2@amd.com>
 Signed-off-by: Wei Huang <wei.huang2@amd.com>
 Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
 ---
- drivers/dma/sdxi/device.c | 149 +++++++++++++++++++++++++++++++++++++++++++++-
- drivers/dma/sdxi/mmio.h   |  51 ++++++++++++++++
- drivers/dma/sdxi/sdxi.h   |  23 +++++++
- 3 files changed, 222 insertions(+), 1 deletion(-)
+ drivers/dma/sdxi/device.c | 40 +++++++++++++++++++++++++++++--
+ drivers/dma/sdxi/hw.h     | 61 +++++++++++++++++++++++++++++++++++++++++++++++
+ drivers/dma/sdxi/mmio.h   |  6 +++++
+ drivers/dma/sdxi/sdxi.h   |  5 ++++
+ 4 files changed, 110 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/dma/sdxi/device.c b/drivers/dma/sdxi/device.c
-index b718ce04afa0..1083fdddd72f 100644
+index 1083fdddd72f..7e772ce81365 100644
 --- a/drivers/dma/sdxi/device.c
 +++ b/drivers/dma/sdxi/device.c
-@@ -5,14 +5,157 @@
-  * Copyright Advanced Micro Devices, Inc.
-  */
- 
-+#include <linux/bitfield.h>
-+#include <linux/delay.h>
+@@ -8,8 +8,11 @@
+ #include <linux/bitfield.h>
+ #include <linux/delay.h>
  #include <linux/device.h>
++#include <linux/dma-mapping.h>
++#include <linux/log2.h>
  #include <linux/slab.h>
  
-+#include "mmio.h"
++#include "hw.h"
+ #include "mmio.h"
  #include "sdxi.h"
  
-+enum sdxi_fn_gsv {
-+	SDXI_GSV_STOP,
-+	SDXI_GSV_INIT,
-+	SDXI_GSV_ACTIVE,
-+	SDXI_GSV_STOPG_SF,
-+	SDXI_GSV_STOPG_HD,
-+	SDXI_GSV_ERROR,
-+};
-+
-+static const char *const gsv_strings[] = {
-+	[SDXI_GSV_STOP]     = "stopped",
-+	[SDXI_GSV_INIT]     = "initializing",
-+	[SDXI_GSV_ACTIVE]   = "active",
-+	[SDXI_GSV_STOPG_SF] = "soft stopping",
-+	[SDXI_GSV_STOPG_HD] = "hard stopping",
-+	[SDXI_GSV_ERROR]    = "error",
-+};
-+
-+static const char *gsv_str(enum sdxi_fn_gsv gsv)
-+{
-+	if ((size_t)gsv < ARRAY_SIZE(gsv_strings))
-+		return gsv_strings[(size_t)gsv];
-+
-+	WARN_ONCE(1, "unexpected gsv %u\n", gsv);
-+
-+	return "unknown";
-+}
-+
-+enum sdxi_fn_gsr {
-+	SDXI_GSRV_RESET,
-+	SDXI_GSRV_STOP_SF,
-+	SDXI_GSRV_STOP_HD,
-+	SDXI_GSRV_ACTIVE,
-+};
-+
-+static enum sdxi_fn_gsv sdxi_dev_gsv(const struct sdxi_dev *sdxi)
-+{
-+	return (enum sdxi_fn_gsv)FIELD_GET(SDXI_MMIO_STS0_FN_GSV,
-+					   sdxi_read64(sdxi, SDXI_MMIO_STS0));
-+}
-+
-+static void sdxi_write_fn_gsr(struct sdxi_dev *sdxi, enum sdxi_fn_gsr cmd)
-+{
-+	u64 ctl0 = sdxi_read64(sdxi, SDXI_MMIO_CTL0);
-+
-+	FIELD_MODIFY(SDXI_MMIO_CTL0_FN_GSR, &ctl0, cmd);
-+	sdxi_write64(sdxi, SDXI_MMIO_CTL0, ctl0);
-+}
-+
-+/* Get the device to the GSV_STOP state. */
-+static int sdxi_dev_stop(struct sdxi_dev *sdxi)
-+{
-+	unsigned long deadline = jiffies + msecs_to_jiffies(1000);
-+	bool reset_issued = false;
-+
-+	do {
-+		enum sdxi_fn_gsv status = sdxi_dev_gsv(sdxi);
-+
-+		sdxi_dbg(sdxi, "%s: function state: %s\n", __func__, gsv_str(status));
-+
-+		switch (status) {
-+		case SDXI_GSV_ACTIVE:
-+			sdxi_write_fn_gsr(sdxi, SDXI_GSRV_STOP_SF);
-+			break;
-+		case SDXI_GSV_ERROR:
-+			if (!reset_issued) {
-+				sdxi_info(sdxi,
-+					  "function in error state, issuing reset\n");
-+				sdxi_write_fn_gsr(sdxi, SDXI_GSRV_RESET);
-+				reset_issued = true;
-+			} else {
-+				fsleep(1000);
-+			}
-+			break;
-+		case SDXI_GSV_STOP:
-+			return 0;
-+		case SDXI_GSV_INIT:
-+		case SDXI_GSV_STOPG_SF:
-+		case SDXI_GSV_STOPG_HD:
-+			/* transitional states, wait */
-+			sdxi_dbg(sdxi, "waiting for stop (gsv = %u)\n",
-+				 status);
-+			fsleep(1000);
-+			break;
-+		default:
-+			sdxi_err(sdxi, "unknown gsv %u, giving up\n", status);
-+			return -EIO;
-+		}
-+	} while (time_before(jiffies, deadline));
-+
-+	sdxi_err(sdxi, "stop attempt timed out, current status %u\n",
-+		sdxi_dev_gsv(sdxi));
-+	return -ETIMEDOUT;
-+}
-+
-+/*
-+ * See SDXI 1.0 4.1.8 Activation of the SDXI Function by Software.
-+ */
-+static int sdxi_fn_activate(struct sdxi_dev *sdxi)
-+{
-+	u64 version, cap0, cap1, ctl2;
-+	int err;
+@@ -113,7 +116,8 @@ static int sdxi_dev_stop(struct sdxi_dev *sdxi)
+  */
+ static int sdxi_fn_activate(struct sdxi_dev *sdxi)
+ {
+-	u64 version, cap0, cap1, ctl2;
++	u64 version, cap0, cap1, ctl2, cxt_l2, lv01_ptr;
++	struct sdxi_cxt_L2_ent *L2_ent;
+ 	int err;
+ 
+ 	/*
+@@ -137,7 +141,13 @@ static int sdxi_fn_activate(struct sdxi_dev *sdxi)
+ 
+ 	cap1 = sdxi_read64(sdxi, SDXI_MMIO_CAP1);
+ 	sdxi->op_grp_cap = FIELD_GET(SDXI_MMIO_CAP1_OPB_000_CAP, cap1);
+-	sdxi->max_cxtid = FIELD_GET(SDXI_MMIO_CAP1_MAX_CXT, cap1);
 +
 +	/*
-+	 * Clear any existing configuration from MMIO_CTL0 and ensure
-+	 * the function is in GSV_STOP state.
++	 * Constrain the number of client contexts supported by the
++	 * driver to what fits in a single L1 table.
 +	 */
-+	sdxi_write64(sdxi, SDXI_MMIO_CTL0, 0);
-+	err = sdxi_dev_stop(sdxi);
-+	if (err)
-+		return err;
-+
-+	version = sdxi_read64(sdxi, SDXI_MMIO_VERSION);
-+	sdxi_info(sdxi, "SDXI %llu.%llu device found\n",
-+		  FIELD_GET(SDXI_MMIO_VERSION_MAJOR, version),
-+		  FIELD_GET(SDXI_MMIO_VERSION_MINOR, version));
-+
-+	/* Read capabilities and features. */
-+	cap0 = sdxi_read64(sdxi, SDXI_MMIO_CAP0);
-+	sdxi->db_stride = SZ_4K;
-+	sdxi->db_stride *= 1U << FIELD_GET(SDXI_MMIO_CAP0_DB_STRIDE, cap0);
-+
-+	cap1 = sdxi_read64(sdxi, SDXI_MMIO_CAP1);
-+	sdxi->op_grp_cap = FIELD_GET(SDXI_MMIO_CAP1_OPB_000_CAP, cap1);
-+	sdxi->max_cxtid = FIELD_GET(SDXI_MMIO_CAP1_MAX_CXT, cap1);
-+
-+	/* Apply our configuration. */
-+	ctl2 = FIELD_PREP(SDXI_MMIO_CTL2_MAX_CXT, sdxi->max_cxtid);
-+	ctl2 |= FIELD_PREP(SDXI_MMIO_CTL2_MAX_BUFFER,
-+			   FIELD_GET(SDXI_MMIO_CAP1_MAX_BUFFER, cap1));
-+	ctl2 |= FIELD_PREP(SDXI_MMIO_CTL2_MAX_AKEY_SZ,
-+			   FIELD_GET(SDXI_MMIO_CAP1_MAX_AKEY_SZ, cap1));
-+	ctl2 |= FIELD_PREP(SDXI_MMIO_CTL2_OPB_000_AVL,
-+			   FIELD_GET(SDXI_MMIO_CAP1_OPB_000_CAP, cap1));
-+	sdxi_write64(sdxi, SDXI_MMIO_CTL2, ctl2);
-+
-+	return 0;
-+}
-+
- int sdxi_register(struct device *dev, const struct sdxi_bus_ops *ops)
- {
- 	struct sdxi_dev *sdxi;
-+	int err;
++	sdxi->max_cxtid = min(SDXI_L1_TABLE_ENTRIES - 1,
++			      FIELD_GET(SDXI_MMIO_CAP1_MAX_CXT, cap1));
  
- 	sdxi = devm_kzalloc(dev, sizeof(*sdxi), GFP_KERNEL);
- 	if (!sdxi)
-@@ -22,5 +165,9 @@ int sdxi_register(struct device *dev, const struct sdxi_bus_ops *ops)
- 	sdxi->bus_ops = ops;
- 	dev_set_drvdata(dev, sdxi);
+ 	/* Apply our configuration. */
+ 	ctl2 = FIELD_PREP(SDXI_MMIO_CTL2_MAX_CXT, sdxi->max_cxtid);
+@@ -149,6 +159,32 @@ static int sdxi_fn_activate(struct sdxi_dev *sdxi)
+ 			   FIELD_GET(SDXI_MMIO_CAP1_OPB_000_CAP, cap1));
+ 	sdxi_write64(sdxi, SDXI_MMIO_CTL2, ctl2);
  
--	return sdxi->bus_ops->init(sdxi);
-+	err = sdxi->bus_ops->init(sdxi);
-+	if (err)
-+		return err;
++	/* SDXI 1.0 4.1.8.2 Context Level 2 Table Setup */
++	sdxi->L2_table = dmam_alloc_coherent(sdxi_to_dev(sdxi),
++					     sizeof(*sdxi->L2_table),
++					     &sdxi->L2_dma, GFP_KERNEL);
++	if (!sdxi->L2_table)
++		return -ENOMEM;
 +
-+	return sdxi_fn_activate(sdxi);
++	cxt_l2 = FIELD_PREP(SDXI_MMIO_CXT_L2_PTR, sdxi->L2_dma >> ilog2(SZ_4K));
++	sdxi_write64(sdxi, SDXI_MMIO_CXT_L2, cxt_l2);
++
++	/* SDXI 1.0 4.1.8.3 Context Level 1 Table Setup */
++	sdxi->L1_table = dmam_alloc_coherent(sdxi_to_dev(sdxi),
++					     sizeof(*sdxi->L1_table),
++					     &sdxi->L1_dma, GFP_KERNEL);
++	if (!sdxi->L1_table)
++		return -ENOMEM;
++	/*
++	 * SDXI 1.0 4.1.8.3.c: Initialize the Context level 2 table to
++	 * point to the Context Level 1 [table].
++	 */
++	L2_ent = &sdxi->L2_table->entry[0];
++	lv01_ptr = FIELD_PREP(SDXI_CXT_L2_ENT_VL, 1);
++	lv01_ptr |= FIELD_PREP(SDXI_CXT_L2_ENT_LV01_PTR,
++			       sdxi->L1_dma >> ilog2(SZ_4K));
++	L2_ent->lv01_ptr = cpu_to_le64(lv01_ptr);
++
+ 	return 0;
  }
-diff --git a/drivers/dma/sdxi/mmio.h b/drivers/dma/sdxi/mmio.h
+ 
+diff --git a/drivers/dma/sdxi/hw.h b/drivers/dma/sdxi/hw.h
 new file mode 100644
-index 000000000000..c9a11c3f2f76
+index 000000000000..df520ca7792b
 --- /dev/null
-+++ b/drivers/dma/sdxi/mmio.h
-@@ -0,0 +1,51 @@
++++ b/drivers/dma/sdxi/hw.h
+@@ -0,0 +1,61 @@
 +/* SPDX-License-Identifier: GPL-2.0-only */
++/* Copyright Advanced Micro Devices, Inc. */
 +
 +/*
-+ * SDXI MMIO register offsets and layouts.
++ * Control structures and constants defined in the SDXI specification,
++ * with low-level accessors. The ordering of the structures here
++ * follows the order of their definitions in the SDXI spec.
 + *
-+ * Copyright Advanced Micro Devices, Inc.
++ * Names of structures, members, and subfields (bit ranges within
++ * members) are written to match the spec, generally. E.g. struct
++ * sdxi_cxt_L2_ent corresponds to CXT_L2_ENT in the spec.
++ *
++ * Note: a member can have a subfield whose name is identical to the
++ * member's name. E.g. CXT_L2_ENT's lv01_ptr.
++ *
++ * All reserved fields and bits (usually named "rsvd" or some
++ * variation) must be set to zero by the driver unless otherwise
++ * specified.
 + */
 +
-+#ifndef DMA_SDXI_MMIO_H
-+#define DMA_SDXI_MMIO_H
++#ifndef DMA_SDXI_HW_H
++#define DMA_SDXI_HW_H
 +
 +#include <linux/bits.h>
++#include <linux/build_bug.h>
++#include <linux/types.h>
++#include <asm/byteorder.h>
 +
-+enum sdxi_reg {
-+	/* SDXI 1.0 9.1 General Control and Status Registers */
-+	SDXI_MMIO_CTL0       = 0x00000,
-+	SDXI_MMIO_CTL2       = 0x00010,
-+	SDXI_MMIO_STS0       = 0x00100,
-+	SDXI_MMIO_CAP0       = 0x00200,
-+	SDXI_MMIO_CAP1       = 0x00208,
-+	SDXI_MMIO_VERSION    = 0x00210,
++/* SDXI 1.0 Table 3-2: Context Level 2 Table Entry (CXT_L2_ENT) */
++struct sdxi_cxt_L2_ent {
++	__le64 lv01_ptr;
++#define SDXI_CXT_L2_ENT_VL       BIT_ULL(0)
++#define SDXI_CXT_L2_ENT_LV01_PTR GENMASK_ULL(63, 12)
++} __packed;
++static_assert(sizeof(struct sdxi_cxt_L2_ent) == 8);
++
++/* SDXI 1.0 3.2.1 Context Level 2 Table */
++#define SDXI_L2_TABLE_ENTRIES 512
++struct sdxi_cxt_L2_table {
++	struct sdxi_cxt_L2_ent entry[SDXI_L2_TABLE_ENTRIES];
 +};
++static_assert(sizeof(struct sdxi_cxt_L2_table) == 4096);
 +
-+/* SDXI 1.0 Table 9-2: MMIO_CTL0 */
-+#define SDXI_MMIO_CTL0_FN_GSR         GENMASK_ULL(1, 0)
++/* SDXI 1.0 Table 3-3: Context Level 1 Table Entry (CXT_L1_ENT) */
++struct sdxi_cxt_L1_ent {
++	__le64 cxt_ctl_ptr;
++	__le64 akey_ptr;
++	__le32 misc0;
++	__le32 opb_000_enb;
++	__u8 rsvd_0[8];
++} __packed;
++static_assert(sizeof(struct sdxi_cxt_L1_ent) == 32);
 +
-+/* SDXI 1.0 Table 9-4: MMIO_CTL2 */
-+#define SDXI_MMIO_CTL2_MAX_BUFFER  GENMASK_ULL(3, 0)
-+#define SDXI_MMIO_CTL2_MAX_AKEY_SZ GENMASK_ULL(15, 12)
-+#define SDXI_MMIO_CTL2_MAX_CXT     GENMASK_ULL(31, 16)
-+#define SDXI_MMIO_CTL2_OPB_000_AVL GENMASK_ULL(63, 32)
++/* SDXI 1.0 3.2.2 Context Level 1 Table */
++#define SDXI_L1_TABLE_ENTRIES 128
++struct sdxi_cxt_L1_table {
++	struct sdxi_cxt_L1_ent entry[SDXI_L1_TABLE_ENTRIES];
++};
++static_assert(sizeof(struct sdxi_cxt_L1_table) == 4096);
 +
-+/* SDXI 1.0 Table 9-5: MMIO_STS0 */
-+#define SDXI_MMIO_STS0_FN_GSV GENMASK_ULL(2, 0)
++#endif /* DMA_SDXI_HW_H */
+diff --git a/drivers/dma/sdxi/mmio.h b/drivers/dma/sdxi/mmio.h
+index c9a11c3f2f76..d8d631849938 100644
+--- a/drivers/dma/sdxi/mmio.h
++++ b/drivers/dma/sdxi/mmio.h
+@@ -19,6 +19,9 @@ enum sdxi_reg {
+ 	SDXI_MMIO_CAP0       = 0x00200,
+ 	SDXI_MMIO_CAP1       = 0x00208,
+ 	SDXI_MMIO_VERSION    = 0x00210,
 +
-+/* SDXI 1.0 Table 9-6: MMIO_CAP0 */
-+#define SDXI_MMIO_CAP0_SFUNC          GENMASK_ULL(15, 0)
-+#define SDXI_MMIO_CAP0_DB_STRIDE      GENMASK_ULL(22, 20)
-+#define SDXI_MMIO_CAP0_MAX_DS_RING_SZ GENMASK_ULL(28, 24)
++	/* SDXI 1.0 9.2 Context and RKey Table Registers */
++	SDXI_MMIO_CXT_L2     = 0x10000,
+ };
+ 
+ /* SDXI 1.0 Table 9-2: MMIO_CTL0 */
+@@ -48,4 +51,7 @@ enum sdxi_reg {
+ #define SDXI_MMIO_VERSION_MINOR GENMASK_ULL(7, 0)
+ #define SDXI_MMIO_VERSION_MAJOR GENMASK_ULL(23, 16)
+ 
++/* SDXI 1.0 Table 9-9: MMIO_CXT_L2 */
++#define SDXI_MMIO_CXT_L2_PTR GENMASK_ULL(63, 12)
 +
-+/* SDXI 1.0 Table 9-7: MMIO_CAP1 */
-+#define SDXI_MMIO_CAP1_MAX_BUFFER    GENMASK_ULL(3, 0)
-+#define SDXI_MMIO_CAP1_MAX_AKEY_SZ   GENMASK_ULL(15, 12)
-+#define SDXI_MMIO_CAP1_MAX_CXT       GENMASK_ULL(31, 16)
-+#define SDXI_MMIO_CAP1_OPB_000_CAP   GENMASK_ULL(63, 32)
-+
-+/* SDXI 1.0 Table 9-8: MMIO_VERSION */
-+#define SDXI_MMIO_VERSION_MINOR GENMASK_ULL(7, 0)
-+#define SDXI_MMIO_VERSION_MAJOR GENMASK_ULL(23, 16)
-+
-+#endif  /* DMA_SDXI_MMIO_H */
+ #endif  /* DMA_SDXI_MMIO_H */
 diff --git a/drivers/dma/sdxi/sdxi.h b/drivers/dma/sdxi/sdxi.h
-index 9430f3b8d0b3..427118e60aa6 100644
+index 427118e60aa6..185f58b725da 100644
 --- a/drivers/dma/sdxi/sdxi.h
 +++ b/drivers/dma/sdxi/sdxi.h
-@@ -9,8 +9,12 @@
- #define DMA_SDXI_H
+@@ -41,6 +41,11 @@ struct sdxi_dev {
+ 	u16 max_cxtid;			/* Maximum context ID allowed. */
+ 	u32 op_grp_cap;			/* supported operation group cap */
  
- #include <linux/compiler_types.h>
-+#include <linux/dev_printk.h>
-+#include <linux/io-64-nonatomic-lo-hi.h>
- #include <linux/types.h>
- 
-+#include "mmio.h"
-+
- #define SDXI_DRV_DESC		"SDXI driver"
- 
- struct sdxi_dev;
-@@ -32,6 +36,11 @@ struct sdxi_dev {
- 	void __iomem *ctrl_regs;	/* virt addr of ctrl registers */
- 	void __iomem *dbs;		/* virt addr of doorbells */
- 
-+	/* hardware capabilities (from cap0 & cap1) */
-+	u32 db_stride;			/* doorbell stride in bytes */
-+	u16 max_cxtid;			/* Maximum context ID allowed. */
-+	u32 op_grp_cap;			/* supported operation group cap */
++	struct sdxi_cxt_L2_table *L2_table;
++	dma_addr_t L2_dma;
++	struct sdxi_cxt_L1_table *L1_table;
++	dma_addr_t L1_dma;
 +
  	const struct sdxi_bus_ops *bus_ops;
  };
  
-@@ -40,6 +49,20 @@ static inline struct device *sdxi_to_dev(const struct sdxi_dev *sdxi)
- 	return sdxi->dev;
- }
- 
-+#define sdxi_dbg(s, fmt, ...) dev_dbg(sdxi_to_dev(s), fmt, ## __VA_ARGS__)
-+#define sdxi_info(s, fmt, ...) dev_info(sdxi_to_dev(s), fmt, ## __VA_ARGS__)
-+#define sdxi_err(s, fmt, ...) dev_err(sdxi_to_dev(s), fmt, ## __VA_ARGS__)
-+
- int sdxi_register(struct device *dev, const struct sdxi_bus_ops *ops);
- 
-+static inline u64 sdxi_read64(const struct sdxi_dev *sdxi, enum sdxi_reg reg)
-+{
-+	return ioread64(sdxi->ctrl_regs + reg);
-+}
-+
-+static inline void sdxi_write64(struct sdxi_dev *sdxi, enum sdxi_reg reg, u64 val)
-+{
-+	iowrite64(val, sdxi->ctrl_regs + reg);
-+}
-+
- #endif /* DMA_SDXI_H */
 
 -- 
 2.53.0
