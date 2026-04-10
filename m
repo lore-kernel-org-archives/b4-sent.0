@@ -1,15 +1,12 @@
 From: Nathan Lynch <nathan.lynch@amd.com>
-Subject: [PATCH 00/23] dmaengine: Smart Data Accelerator Interface (SDXI)
- basic support
-Date: Fri, 10 Apr 2026 08:07:10 -0500
-Message-Id: <20260410-sdxi-base-v1-0-1d184cb5c60a@amd.com>
+Date: Fri, 10 Apr 2026 08:07:11 -0500
+Subject: [PATCH 01/23] PCI: Add SNIA SDXI accelerator sub-class
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/02MQQrCMBBFr1JmbSSTGGJceQ9xkWZGm0Ub6JSgl
- NzdoBtXnwf/vR2E18wCl2GHlWuWXJYOeBggTXF5ssrUGYw2Tp/RKqFXVmMUVt6ST+FBiZ2H/p+
- ybGV9f1MV+9x+VtDuz6qotCJtTxjRBDPGa5zpmMoM99baBxF+B9CQAAAA
-X-Change-ID: 20250813-sdxi-base-73d7c9fdce57
+Message-Id: <20260410-sdxi-base-v1-1-1d184cb5c60a@amd.com>
+References: <20260410-sdxi-base-v1-0-1d184cb5c60a@amd.com>
+In-Reply-To: <20260410-sdxi-base-v1-0-1d184cb5c60a@amd.com>
 To: Vinod Koul <vkoul@kernel.org>
 Cc: Wei Huang <wei.huang2@amd.com>, 
  Mario Limonciello <mario.limonciello@amd.com>, 
@@ -20,139 +17,40 @@ Cc: Wei Huang <wei.huang2@amd.com>,
  linux-kernel@vger.kernel.org, dmaengine@vger.kernel.org, 
  Nathan Lynch <nathan.lynch@amd.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775826467; l=6024;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775826467; l=777;
  i=nathan.lynch@amd.com; s=20260410; h=from:subject:message-id;
- bh=9rBcO8VxjER3OnuYfoq9G9H5KIuoJGxGfKEMHDiZlyY=;
- b=gAwlqr9NKfu+gJarBGqfqo48zzVDQS3J4QnIesv9toDOQO891IMNga67nVexAyP4Pm4cjv4uW
- oxiFF3l5Vd7DriNYBpEMFpb7EjiywwC8C6tkz/ueyeKCXXbp7BcoEZv
+ bh=0hS0icv4e/Aa4EokWK6lx8glYEB0shN8OGORA4fjcu4=;
+ b=9aZablbuUb59BddxNdawfY+qt3YEjvA7XynRIR51YF5vdpNUz3+IQl2RoNT9EZ2Qg3NBu2pxm
+ XIBv+8TG614AFHQBbZfWn/REVCC3iNfOAiA4DtR1dFrSg/HkSgf8G9F
 X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
  pk=PK4ozhq+/z9/2Jl5rgDmvHa9raVomv79qM8p1RAFpEw=
 X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20260410 with auth_id=728
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Smart Data Accelerator Interface (SDXI) is a vendor-neutral
-architecture for memory-to-memory data movement offload designed for
-kernel bypass and virtualization.
+Add sub-class code for SNIA Smart Data Accelerator Interface (SDXI).
+See PCI Code and ID Assignment spec r1.14, sec 1.19.
 
-General information on SDXI may be found at:
-https://www.snia.org/sdxi
-
-This submission adds a driver with basic support for PCIe-hosted SDXI
-1.0 implementations and includes a DMA engine provider with memcpy
-capability. A more limited RFC version was posted in September 2025;
-the code has seen multiple substantial updates since then, described
-below.
-
-Planned future SDXI work (out of scope for this series):
-
-* Character device for exposing SDXI contexts to user space.
-
-* Support for operation types to be added in future SDXI revisions.
-
-* Greater configurability for control structures, e.g. descriptor ring
-  size.
-
-The latest released version of the SDXI specification is 1.0:
-https://www.snia.org/sites/default/files/technical-work/sdxi/release/SNIA-SDXI-Specification-v1.0a.pdf
-
-Draft versions of future SDXI specifications in development may be found at:
-https://www.snia.org/tech_activities/publicreview#sdxi
-
+Co-developed-by: Wei Huang <wei.huang2@amd.com>
+Signed-off-by: Wei Huang <wei.huang2@amd.com>
+Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
+Acked-by: Bjorn Helgaas <bhelgaas@google.com>
 ---
-Changes in v1:
-- Reorder series and introduce functionality incrementally while
-  remaining buildable and functional at each step. (Jonathan Cameron)
-- Use devres APIs where possible for device resources (JC)
-- Use cleanup APIs to significantly reduce use of goto-oriented error
-  unwinding. (JC)
-- Drop SDXI_DEBUG config option. (JC)
-- Cite SDXI spec version and section number consistently throughout. (JC)
-- Combine local variable declarations of same type. (JC)
-- Mark descriptor structs __packed. (JC)
-- Use designated initializers in descriptor encoding functions. (JC)
-- Prefer dev_err_probe() over sdxi_err() in sdxi_pci_init(). (JC)
-- Prune unnecessary includes throughout source files. (JC)
-- Remove unnecessary/unhelpful comments in several places. (JC)
-- Remove SDXI spec material from "Add SNIA SDXI accelerator sub-class"
-  commit message and reword the remainder. (Bjorn Helgaas)
-- Remove unnecessary local for DMA_BIT_MASK() argument in
-  sdxi_pci_init(). (BH)
-- Use "{ }" for final null entry in id table, not "{ 0, }". (BH)
-- Replace sample descriptor submission code from the SDXI spec with an
-  improved API that has unit tests, eliminates a copy step for
-  callers, and can block until ring space becomes available if
-  desired.
-- Omit the error log facility for now; it can be reintroduced later.
-- Use a per-device xarray to allocate context IDs and map them to
-  context objects.
-- Implement interrupt-based completion signaling for memcpy operations
-  in the DMA engine provider, DMA provider code mostly rewritten.
+ include/linux/pci_ids.h | 1 +
+ 1 file changed, 1 insertion(+)
 
-Non-changes in v1:
-- Mario suggested that pci_clear_master() is needed in
-  sdxi_pci_init()'s error path and in sdxi_pci_exit() (now
-  sdxi_pci_remove()). However, sdxi uses pcim_enable_device(), which
-  appears to ensure that master is cleared for the device. Happy to
-  revisit this if I'm mistaken.
+diff --git a/include/linux/pci_ids.h b/include/linux/pci_ids.h
+index 406abf629be2..e3c68f90f3ad 100644
+--- a/include/linux/pci_ids.h
++++ b/include/linux/pci_ids.h
+@@ -154,6 +154,7 @@
+ 
+ #define PCI_BASE_CLASS_ACCELERATOR	0x12
+ #define PCI_CLASS_ACCELERATOR_PROCESSING	0x1200
++#define PCI_CLASS_ACCELERATOR_SDXI		0x120100
+ 
+ #define PCI_CLASS_OTHERS		0xff
+ 
 
-- Link to RFC: https://lore.kernel.org/r/20250905-sdxi-base-v1-0-d0341a1292ba@amd.com
-
----
-Nathan Lynch (23):
-      PCI: Add SNIA SDXI accelerator sub-class
-      MAINTAINERS: Add entry for SDXI driver
-      dmaengine: sdxi: Add PCI initialization
-      dmaengine: sdxi: Feature discovery and initial configuration
-      dmaengine: sdxi: Configure context tables
-      dmaengine: sdxi: Allocate DMA pools
-      dmaengine: sdxi: Allocate administrative context
-      dmaengine: sdxi: Install administrative context
-      dmaengine: sdxi: Start functions on probe, stop on remove
-      dmaengine: sdxi: Complete administrative context jump start
-      dmaengine: sdxi: Add client context alloc and release APIs
-      dmaengine: sdxi: Add descriptor ring management
-      dmaengine: sdxi: Add unit tests for descriptor ring reservations
-      dmaengine: sdxi: Attach descriptor ring state to contexts
-      dmaengine: sdxi: Per-context access key (AKey) table entry allocator
-      dmaengine: sdxi: Generic descriptor manipulation helpers
-      dmaengine: sdxi: Add completion status block API
-      dmaengine: sdxi: Encode context start, stop, and sync descriptors
-      dmaengine: sdxi: Provide context start and stop APIs
-      dmaengine: sdxi: Encode nop, copy, and interrupt descriptors
-      dmaengine: sdxi: Add unit tests for descriptor encoding
-      dmaengine: sdxi: MSI/MSI-X vector allocation and mapping
-      dmaengine: sdxi: Add DMA engine provider
-
- MAINTAINERS                         |   7 +
- drivers/dma/Kconfig                 |   2 +
- drivers/dma/Makefile                |   1 +
- drivers/dma/sdxi/.kunitconfig       |   4 +
- drivers/dma/sdxi/Kconfig            |  18 ++
- drivers/dma/sdxi/Makefile           |  16 ++
- drivers/dma/sdxi/completion.c       |  79 ++++++
- drivers/dma/sdxi/completion.h       |  24 ++
- drivers/dma/sdxi/context.c          | 504 ++++++++++++++++++++++++++++++++++++
- drivers/dma/sdxi/context.h          | 105 ++++++++
- drivers/dma/sdxi/descriptor.c       | 198 ++++++++++++++
- drivers/dma/sdxi/descriptor.h       | 135 ++++++++++
- drivers/dma/sdxi/descriptor_kunit.c | 484 ++++++++++++++++++++++++++++++++++
- drivers/dma/sdxi/device.c           | 333 ++++++++++++++++++++++++
- drivers/dma/sdxi/dma.c              | 497 +++++++++++++++++++++++++++++++++++
- drivers/dma/sdxi/dma.h              |  12 +
- drivers/dma/sdxi/hw.h               | 254 ++++++++++++++++++
- drivers/dma/sdxi/mmio.h             |  57 ++++
- drivers/dma/sdxi/pci.c              | 120 +++++++++
- drivers/dma/sdxi/ring.c             | 158 +++++++++++
- drivers/dma/sdxi/ring.h             |  84 ++++++
- drivers/dma/sdxi/ring_kunit.c       | 105 ++++++++
- drivers/dma/sdxi/sdxi.h             | 149 +++++++++++
- include/linux/pci_ids.h             |   1 +
- 24 files changed, 3347 insertions(+)
----
-base-commit: c03d8b5462bcb0022f9477d09eb37dae66c3a769
-change-id: 20250813-sdxi-base-73d7c9fdce57
-
-Best regards,
---  
-Nathan Lynch <nathan.lynch@amd.com>
+-- 
+2.53.0
 
