@@ -1,11 +1,11 @@
 From: Satish Kharat <satishkh@cisco.com>
-Date: Sat, 11 Apr 2026 22:06:34 -0700
-Subject: [PATCH net-next v4 08/10] enic: add MBOX VF handlers for
- capability, register and link state
+Date: Sat, 11 Apr 2026 22:06:35 -0700
+Subject: [PATCH net-next v4 09/10] enic: wire V2 SR-IOV enable with admin
+ channel and MBOX
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260411-enic-sriov-v2-admin-channel-v2-v4-8-f052326c2a57@cisco.com>
+Message-Id: <20260411-enic-sriov-v2-admin-channel-v2-v4-9-f052326c2a57@cisco.com>
 References: <20260411-enic-sriov-v2-admin-channel-v2-v4-0-f052326c2a57@cisco.com>
 In-Reply-To: <20260411-enic-sriov-v2-admin-channel-v2-v4-0-f052326c2a57@cisco.com>
 To: Andrew Lunn <andrew+netdev@lunn.ch>, 
@@ -15,346 +15,249 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  20260401-enic-sriov-v2-prep-v4-0-d5834b2ef1b9@cisco.com, 
  Satish Kharat <satishkh@cisco.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1775970405; l=10195;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1775970405; l=7002;
  i=satishkh@cisco.com; h=from:subject:message-id;
- bh=SYGkieDxp+DPjkEhrin05f0PAMQjYWMTm4hWbHxWYts=;
- b=ajz1ZWg7kOdfNGD0a6VmGGZwoWdFiuVLDlfbHGQxvGPe5Kz5AyQaaIxPWRxmF7pjGr5ksgrlD
- jSHcu4Z9y+HCNGly3mJaMyUEeVDA3LTyk7WfjPItDeSzyEGMvdKMWfI
+ bh=RuE1JLfTxnevML+2uxVYjppnrqsce0NwnvNPNOBnys8=;
+ b=N/OZUYc9VOiMUwPU1HegygXlutdy0zEkG/DMHDG1/9pDROayvXJ0gO5gADrjfwLXwegP1Zpn0
+ 7DoEm9fhA5dD+q5xJkz0JbmKFsstJD4Xw54JUTP+FSwbiCmJ+aWAF9p
 X-Developer-Key: i=satishkh@cisco.com; a=ed25519;
  pk=4BxbLoCGvHeIMH/PbpiNVx8/2IcTjFvqcr0AD8K6WLY=
 X-Endpoint-Received: by B4 Relay for satishkh@cisco.com/default with auth_id=639
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement VF-side mailbox message processing for SR-IOV V2
-admin channel communication.
+Extend enic_sriov_configure() to handle V2 SR-IOV VFs. When the PF
+detects V2 VF device IDs, the enable path allocates per-VF MBOX state,
+opens the admin channel, initializes the MBOX protocol, and then calls
+pci_enable_sriov(). The admin channel must be ready before VFs are
+created so that VF drivers can immediately begin the MBOX capability
+and registration handshake during their probe.
 
-VF receive handlers:
-  - VF_CAPABILITY_REPLY: store PF protocol version, signal
-    completion
-  - VF_REGISTER_REPLY: mark VF as registered, signal completion
-  - VF_UNREGISTER_REPLY: mark VF as unregistered, signal
-    completion
-  - PF_LINK_STATE_NOTIF: update carrier state via
-    netif_carrier_on/off, send ACK back to PF
+The disable path reverses this order: pci_disable_sriov() first (so VF
+drivers unregister via MBOX), then the admin channel is closed and
+per-VF state is freed.
 
-VF initiation functions for the probe-time handshake:
-  - enic_mbox_vf_capability_check: send capability request,
-    wait for PF reply via completion
-  - enic_mbox_vf_register: send register request, wait for
-    PF confirmation via completion
-  - enic_mbox_vf_unregister: send unregister request, wait
-    for PF confirmation
-
-The wait helper (enic_mbox_wait_reply) uses
-wait_for_completion_timeout, signaled when the admin ISR/NAPI/
-workqueue pipeline delivers the reply message.
+The existing V1/USNIC SR-IOV paths are unchanged.
 
 Signed-off-by: Satish Kharat <satishkh@cisco.com>
 ---
- drivers/net/ethernet/cisco/enic/enic.h      |   9 +-
- drivers/net/ethernet/cisco/enic/enic_mbox.c | 220 ++++++++++++++++++++++++++++
- drivers/net/ethernet/cisco/enic/enic_mbox.h |   3 +
- 3 files changed, 231 insertions(+), 1 deletion(-)
+ drivers/net/ethernet/cisco/enic/enic_main.c | 139 ++++++++++++++++++++++++++--
+ drivers/net/ethernet/cisco/enic/enic_res.c  |   1 +
+ drivers/net/ethernet/cisco/enic/vnic_enet.h |   4 +-
+ 3 files changed, 136 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/net/ethernet/cisco/enic/enic.h b/drivers/net/ethernet/cisco/enic/enic.h
-index 9b1fa3857df5..29ce26284493 100644
---- a/drivers/net/ethernet/cisco/enic/enic.h
-+++ b/drivers/net/ethernet/cisco/enic/enic.h
-@@ -258,6 +258,8 @@ struct enic {
- 	u32 tx_coalesce_usecs;
- 	u16 num_vfs;
- 	enum enic_vf_type vf_type;
-+	bool vf_registered;
-+	u32 pf_cap_version;
- 	unsigned int enable_count;
- 	spinlock_t enic_api_lock;
- 	bool enic_api_busy;
-@@ -305,9 +307,14 @@ struct enic {
- 	void (*admin_rq_handler)(struct enic *enic, void *buf,
- 				 unsigned int len);
+diff --git a/drivers/net/ethernet/cisco/enic/enic_main.c b/drivers/net/ethernet/cisco/enic/enic_main.c
+index 53d68272d06a..057716ccc283 100644
+--- a/drivers/net/ethernet/cisco/enic/enic_main.c
++++ b/drivers/net/ethernet/cisco/enic/enic_main.c
+@@ -60,6 +60,8 @@
+ #include "enic_clsf.h"
+ #include "enic_rq.h"
+ #include "enic_wq.h"
++#include "enic_admin.h"
++#include "enic_mbox.h"
  
--	/* MBOX protocol state */
-+	/* MBOX protocol state -- single-flight: on the VF, all callers
-+	 * that wait on mbox_comp run under RTNL or during probe/remove,
-+	 * so only one completion is outstanding at a time. mbox_lock
-+	 * protects the shared admin WQ from concurrent senders.
-+	 */
- 	struct mutex mbox_lock;
- 	u64 mbox_msg_num;
-+	struct completion mbox_comp;
+ #define ENIC_NOTIFY_TIMER_PERIOD	(2 * HZ)
  
- 	/* PF: per-VF MBOX state, allocated when SRIOV V2 is enabled */
- 	struct enic_vf_state {
-diff --git a/drivers/net/ethernet/cisco/enic/enic_mbox.c b/drivers/net/ethernet/cisco/enic/enic_mbox.c
-index f5784624ebbd..b5ed31450ee7 100644
---- a/drivers/net/ethernet/cisco/enic/enic_mbox.c
-+++ b/drivers/net/ethernet/cisco/enic/enic_mbox.c
-@@ -5,6 +5,7 @@
- #include <linux/netdevice.h>
- #include <linux/dma-mapping.h>
- #include <linux/delay.h>
-+#include <linux/completion.h>
- 
- #include "vnic_dev.h"
- #include "vnic_wq.h"
-@@ -124,6 +125,16 @@ int enic_mbox_send_msg(struct enic *enic, u8 msg_type, u16 dst_vnic_id,
- 	return err;
+@@ -2689,6 +2691,122 @@ static void enic_sriov_detect_vf_type(struct enic *enic)
+ 		enic->vf_type = ENIC_VF_TYPE_NONE;
+ 	}
  }
- 
-+static int enic_mbox_wait_reply(struct enic *enic, unsigned long timeout_ms)
++
++static int __maybe_unused
++enic_sriov_v2_enable(struct enic *enic, int num_vfs)
 +{
-+	unsigned long left;
-+
-+	left = wait_for_completion_timeout(&enic->mbox_comp,
-+					   msecs_to_jiffies(timeout_ms));
-+
-+	return left ? 0 : -ETIMEDOUT;
-+}
-+
- int enic_mbox_send_link_state(struct enic *enic, u16 vf_id, u32 link_state)
- {
- 	struct enic_mbox_pf_link_state_notif_msg notif = {};
-@@ -280,6 +291,136 @@ static void enic_mbox_pf_process_msg(struct enic *enic,
- 			    hdr->msg_type, vf_id, err);
- }
- 
-+static void enic_mbox_vf_handle_capability_reply(struct enic *enic,
-+						 void *payload)
-+{
-+	struct enic_mbox_vf_capability_reply_msg *reply = payload;
-+
-+	if (le16_to_cpu(reply->reply.ret_major) == 0)
-+		enic->pf_cap_version = le32_to_cpu(reply->version);
-+	complete(&enic->mbox_comp);
-+}
-+
-+static void enic_mbox_vf_handle_register_reply(struct enic *enic,
-+					       void *payload)
-+{
-+	struct enic_mbox_vf_register_reply_msg *reply = payload;
-+
-+	if (le16_to_cpu(reply->reply.ret_major)) {
-+		netdev_warn(enic->netdev,
-+			    "MBOX: VF register rejected by PF: %u/%u\n",
-+			    le16_to_cpu(reply->reply.ret_major),
-+			    le16_to_cpu(reply->reply.ret_minor));
-+	} else {
-+		enic->vf_registered = true;
-+	}
-+	complete(&enic->mbox_comp);
-+}
-+
-+static void enic_mbox_vf_handle_unregister_reply(struct enic *enic,
-+						 void *payload)
-+{
-+	struct enic_mbox_vf_register_reply_msg *reply = payload;
-+
-+	if (le16_to_cpu(reply->reply.ret_major)) {
-+		netdev_warn(enic->netdev,
-+			    "MBOX: VF unregister rejected by PF: %u/%u\n",
-+			    le16_to_cpu(reply->reply.ret_major),
-+			    le16_to_cpu(reply->reply.ret_minor));
-+	} else {
-+		enic->vf_registered = false;
-+	}
-+	complete(&enic->mbox_comp);
-+}
-+
-+static void enic_mbox_vf_handle_link_state(struct enic *enic, void *payload)
-+{
-+	struct enic_mbox_pf_link_state_notif_msg *notif = payload;
-+	struct enic_mbox_pf_link_state_ack_msg ack = {};
-+
-+	switch (le32_to_cpu(notif->link_state)) {
-+	case ENIC_MBOX_LINK_STATE_ENABLE:
-+		if (!netif_carrier_ok(enic->netdev))
-+			netif_carrier_on(enic->netdev);
-+		netdev_dbg(enic->netdev, "MBOX: link state -> UP\n");
-+		break;
-+	case ENIC_MBOX_LINK_STATE_DISABLE:
-+		if (netif_carrier_ok(enic->netdev))
-+			netif_carrier_off(enic->netdev);
-+		netdev_dbg(enic->netdev, "MBOX: link state -> DOWN\n");
-+		break;
-+	default:
-+		netdev_warn(enic->netdev, "MBOX: unknown link state %u\n",
-+			    le32_to_cpu(notif->link_state));
-+		ack.ack.ret_major = cpu_to_le16(ENIC_MBOX_ERR_GENERIC);
-+		break;
-+	}
-+
-+	enic_mbox_send_msg(enic, ENIC_MBOX_PF_LINK_STATE_ACK, ENIC_MBOX_DST_PF,
-+			   &ack, sizeof(ack));
-+}
-+
-+static bool enic_mbox_vf_payload_ok(struct enic *enic, u8 msg_type,
-+				    u16 payload_len, size_t min_len)
-+{
-+	if (payload_len < min_len) {
-+		netdev_warn(enic->netdev,
-+			    "MBOX: short payload for type %u (%u < %zu)\n",
-+			    msg_type, payload_len, min_len);
-+		return false;
-+	}
-+	return true;
-+}
-+
-+static void enic_mbox_vf_process_msg(struct enic *enic,
-+				     struct enic_mbox_hdr *hdr, void *payload,
-+				     u16 payload_len)
-+{
-+	switch (hdr->msg_type) {
-+	case ENIC_MBOX_VF_CAPABILITY_REPLY: {
-+		size_t exp = sizeof(struct enic_mbox_vf_capability_reply_msg);
-+
-+		if (!enic_mbox_vf_payload_ok(enic, hdr->msg_type,
-+					     payload_len, exp))
-+			return;
-+		enic_mbox_vf_handle_capability_reply(enic, payload);
-+		break;
-+	}
-+	case ENIC_MBOX_VF_REGISTER_REPLY: {
-+		size_t exp = sizeof(struct enic_mbox_vf_register_reply_msg);
-+
-+		if (!enic_mbox_vf_payload_ok(enic, hdr->msg_type,
-+					     payload_len, exp))
-+			return;
-+		enic_mbox_vf_handle_register_reply(enic, payload);
-+		break;
-+	}
-+	case ENIC_MBOX_VF_UNREGISTER_REPLY: {
-+		size_t exp = sizeof(struct enic_mbox_vf_register_reply_msg);
-+
-+		if (!enic_mbox_vf_payload_ok(enic, hdr->msg_type,
-+					     payload_len, exp))
-+			return;
-+		enic_mbox_vf_handle_unregister_reply(enic, payload);
-+		break;
-+	}
-+	case ENIC_MBOX_PF_LINK_STATE_NOTIF: {
-+		size_t exp = sizeof(struct enic_mbox_pf_link_state_notif_msg);
-+
-+		if (!enic_mbox_vf_payload_ok(enic, hdr->msg_type,
-+					     payload_len, exp))
-+			return;
-+		enic_mbox_vf_handle_link_state(enic, payload);
-+		break;
-+	}
-+	default:
-+		netdev_dbg(enic->netdev,
-+			   "MBOX: VF unhandled msg type %u\n",
-+			   hdr->msg_type);
-+		break;
-+	}
-+}
-+
- static void enic_mbox_recv_handler(struct enic *enic, void *buf,
- 				   unsigned int len)
- {
-@@ -316,11 +457,90 @@ static void enic_mbox_recv_handler(struct enic *enic, void *buf,
- 
- 	if (enic->vf_state)
- 		enic_mbox_pf_process_msg(enic, hdr, payload);
-+	else
-+		enic_mbox_vf_process_msg(enic, hdr, payload,
-+					 msg_len - (u16)sizeof(*hdr));
-+}
-+
-+int enic_mbox_vf_capability_check(struct enic *enic)
-+{
-+	struct enic_mbox_vf_capability_msg req = {};
 +	int err;
 +
-+	enic->pf_cap_version = 0;
-+	reinit_completion(&enic->mbox_comp);
-+	req.version = cpu_to_le32(ENIC_MBOX_CAP_VERSION_1);
-+
-+	err = enic_mbox_send_msg(enic, ENIC_MBOX_VF_CAPABILITY_REQUEST,
-+				 ENIC_MBOX_DST_PF, &req, sizeof(req));
-+	if (err)
-+		return err;
-+
-+	err = enic_mbox_wait_reply(enic, 3000);
-+	if (err) {
-+		netdev_warn(enic->netdev,
-+			    "MBOX: no capability reply from PF\n");
-+		return err;
-+	}
-+
-+	if (enic->pf_cap_version < ENIC_MBOX_CAP_VERSION_1) {
-+		netdev_warn(enic->netdev,
-+			    "MBOX: PF version %u too old\n",
-+			    enic->pf_cap_version);
++	if (!enic->has_admin_channel) {
++		netdev_err(enic->netdev,
++			   "V2 SR-IOV requires admin channel resources\n");
 +		return -EOPNOTSUPP;
 +	}
 +
-+	return 0;
-+}
++	enic->vf_state = kcalloc(num_vfs, sizeof(*enic->vf_state), GFP_KERNEL);
++	if (!enic->vf_state)
++		return -ENOMEM;
 +
-+int enic_mbox_vf_register(struct enic *enic)
-+{
-+	int err;
-+
-+	enic->vf_registered = false;
-+	reinit_completion(&enic->mbox_comp);
-+
-+	err = enic_mbox_send_msg(enic, ENIC_MBOX_VF_REGISTER_REQUEST,
-+				 ENIC_MBOX_DST_PF, NULL, 0);
-+	if (err)
-+		return err;
-+
-+	err = enic_mbox_wait_reply(enic, 3000);
++	err = enic_admin_channel_open(enic);
 +	if (err) {
-+		netdev_warn(enic->netdev,
-+			    "MBOX: VF registration with PF timed out\n");
-+		return err;
++		netdev_err(enic->netdev,
++			   "Failed to open admin channel: %d\n", err);
++		goto free_vf_state;
 +	}
 +
-+	if (!enic->vf_registered)
-+		return -ENODEV;
++	enic_mbox_init(enic);
++
++	enic->num_vfs = num_vfs;
++
++	err = pci_enable_sriov(enic->pdev, num_vfs);
++	if (err) {
++		netdev_err(enic->netdev,
++			   "pci_enable_sriov failed: %d\n", err);
++		goto close_admin;
++	}
++
++	enic->priv_flags |= ENIC_SRIOV_ENABLED;
++	return num_vfs;
++
++close_admin:
++	enic->num_vfs = 0;
++	enic_admin_channel_close(enic);
++free_vf_state:
++	kfree(enic->vf_state);
++	enic->vf_state = NULL;
++	return err;
++}
++
++static void enic_sriov_v2_disable(struct enic *enic)
++{
++	pci_disable_sriov(enic->pdev);
++	enic_admin_channel_close(enic);
++	kfree(enic->vf_state);
++	enic->vf_state = NULL;
++	enic->num_vfs = 0;
++	enic->priv_flags &= ~ENIC_SRIOV_ENABLED;
++}
++
++static int __maybe_unused
++enic_sriov_configure(struct pci_dev *pdev, int num_vfs)
++{
++	struct net_device *netdev = pci_get_drvdata(pdev);
++	struct enic *enic = netdev_priv(netdev);
++	struct enic_port_profile *pp;
++	int err;
++
++	if (num_vfs > 0) {
++		if (enic->config.mq_subvnic_count) {
++			netdev_err(netdev,
++				   "SR-IOV not supported with multi-queue sub-vnics\n");
++			return -EOPNOTSUPP;
++		}
++
++		if (enic->vf_type == ENIC_VF_TYPE_NONE) {
++			netdev_err(netdev,
++				   "SR-IOV not supported on this firmware version\n");
++			return -EOPNOTSUPP;
++		}
++
++		if (enic->vf_type == ENIC_VF_TYPE_V2)
++			return enic_sriov_v2_enable(enic, num_vfs);
++
++		pp = kcalloc(num_vfs, sizeof(*pp), GFP_KERNEL);
++		if (!pp)
++			return -ENOMEM;
++
++		err = pci_enable_sriov(pdev, num_vfs);
++		if (err) {
++			kfree(pp);
++			return err;
++		}
++
++		kfree(enic->pp);
++		enic->pp = pp;
++		enic->num_vfs = num_vfs;
++		enic->priv_flags |= ENIC_SRIOV_ENABLED;
++		return num_vfs;
++	}
++
++	if (!enic_sriov_enabled(enic))
++		return 0;
++
++	if (enic->vf_type == ENIC_VF_TYPE_V2) {
++		enic_sriov_v2_disable(enic);
++		return 0;
++	}
++
++	pci_disable_sriov(pdev);
++	enic->num_vfs = 0;
++	enic->priv_flags &= ~ENIC_SRIOV_ENABLED;
++
++	kfree(enic->pp);
++	enic->pp = kzalloc_obj(*enic->pp, GFP_KERNEL);
++	if (!enic->pp)
++		return -ENOMEM;
 +
 +	return 0;
 +}
-+
-+int enic_mbox_vf_unregister(struct enic *enic)
-+{
-+	int err;
-+
-+	if (!enic->vf_registered)
-+		return 0;
-+
-+	reinit_completion(&enic->mbox_comp);
-+
-+	err = enic_mbox_send_msg(enic, ENIC_MBOX_VF_UNREGISTER_REQUEST,
-+				 ENIC_MBOX_DST_PF, NULL, 0);
-+	if (err)
-+		return err;
-+
-+	err = enic_mbox_wait_reply(enic, 3000);
-+
-+	return enic->vf_registered ? -ETIMEDOUT : 0;
- }
+ #endif
  
- void enic_mbox_init(struct enic *enic)
- {
- 	enic->mbox_msg_num = 0;
- 	mutex_init(&enic->mbox_lock);
-+	init_completion(&enic->mbox_comp);
- 	enic->admin_rq_handler = enic_mbox_recv_handler;
- }
-diff --git a/drivers/net/ethernet/cisco/enic/enic_mbox.h b/drivers/net/ethernet/cisco/enic/enic_mbox.h
-index a6f6798d14f4..fa2fb08bf7d0 100644
---- a/drivers/net/ethernet/cisco/enic/enic_mbox.h
-+++ b/drivers/net/ethernet/cisco/enic/enic_mbox.h
-@@ -80,5 +80,8 @@ void enic_mbox_init(struct enic *enic);
- int enic_mbox_send_msg(struct enic *enic, u8 msg_type, u16 dst_vnic_id,
- 		       void *payload, u16 payload_len);
- int enic_mbox_send_link_state(struct enic *enic, u16 vf_id, u32 link_state);
-+int enic_mbox_vf_capability_check(struct enic *enic);
-+int enic_mbox_vf_register(struct enic *enic);
-+int enic_mbox_vf_unregister(struct enic *enic);
+ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+@@ -2787,12 +2905,18 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 		goto err_out_vnic_unregister;
  
- #endif /* _ENIC_MBOX_H_ */
+ #ifdef CONFIG_PCI_IOV
+-	/* Get number of subvnics */
++	enic_sriov_detect_vf_type(enic);
++
++	/* Auto-enable SR-IOV if VFs were pre-configured (e.g. at boot).
++	 * V2 VFs require the admin channel, which is not yet set up at probe
++	 * time; use sysfs (enic_sriov_configure) to enable V2 SR-IOV instead.
++	 */
+ 	pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_SRIOV);
+ 	if (pos) {
+ 		pci_read_config_word(pdev, pos + PCI_SRIOV_TOTAL_VF,
+ 			&enic->num_vfs);
+-		if (enic->num_vfs) {
++		if (enic->num_vfs &&
++		    enic->vf_type != ENIC_VF_TYPE_V2) {
+ 			err = pci_enable_sriov(pdev, enic->num_vfs);
+ 			if (err) {
+ 				dev_err(dev, "SRIOV enable failed, aborting."
+@@ -2804,7 +2928,6 @@ static int enic_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 			num_pps = enic->num_vfs;
+ 		}
+ 	}
+-	enic_sriov_detect_vf_type(enic);
+ #endif
+ 
+ 	/* Allocate structure for port profiles */
+@@ -3033,14 +3156,16 @@ static void enic_remove(struct pci_dev *pdev)
+ 		cancel_work_sync(&enic->reset);
+ 		cancel_work_sync(&enic->change_mtu_work);
+ 		unregister_netdev(netdev);
+-		enic_dev_deinit(enic);
+-		vnic_dev_close(enic->vdev);
+ #ifdef CONFIG_PCI_IOV
+ 		if (enic_sriov_enabled(enic)) {
+-			pci_disable_sriov(pdev);
+-			enic->priv_flags &= ~ENIC_SRIOV_ENABLED;
++			if (enic->vf_type == ENIC_VF_TYPE_V2)
++				enic_sriov_v2_disable(enic);
++			else
++				pci_disable_sriov(pdev);
+ 		}
+ #endif
++		enic_dev_deinit(enic);
++		vnic_dev_close(enic->vdev);
+ 		kfree(enic->pp);
+ 		vnic_dev_unregister(enic->vdev);
+ 		enic_iounmap(enic);
+diff --git a/drivers/net/ethernet/cisco/enic/enic_res.c b/drivers/net/ethernet/cisco/enic/enic_res.c
+index 2b7545d6a67f..436326ace049 100644
+--- a/drivers/net/ethernet/cisco/enic/enic_res.c
++++ b/drivers/net/ethernet/cisco/enic/enic_res.c
+@@ -59,6 +59,7 @@ int enic_get_vnic_config(struct enic *enic)
+ 	GET_CONFIG(intr_timer_usec);
+ 	GET_CONFIG(loop_tag);
+ 	GET_CONFIG(num_arfs);
++	GET_CONFIG(mq_subvnic_count);
+ 	GET_CONFIG(max_rq_ring);
+ 	GET_CONFIG(max_wq_ring);
+ 	GET_CONFIG(max_cq_ring);
+diff --git a/drivers/net/ethernet/cisco/enic/vnic_enet.h b/drivers/net/ethernet/cisco/enic/vnic_enet.h
+index 9e8e86262a3f..519d2969990b 100644
+--- a/drivers/net/ethernet/cisco/enic/vnic_enet.h
++++ b/drivers/net/ethernet/cisco/enic/vnic_enet.h
+@@ -21,7 +21,9 @@ struct vnic_enet_config {
+ 	u16 loop_tag;
+ 	u16 vf_rq_count;
+ 	u16 num_arfs;
+-	u8 reserved[66];
++	u8 reserved1[32];
++	u16 mq_subvnic_count;
++	u8 reserved2[32];
+ 	u32 max_rq_ring;	// MAX RQ ring size
+ 	u32 max_wq_ring;	// MAX WQ ring size
+ 	u32 max_cq_ring;	// MAX CQ ring size
 
 -- 
 2.43.0
