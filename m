@@ -1,141 +1,92 @@
-From: Bernd Schubert <bernd@bsbernd.com>
-Date: Mon, 13 Apr 2026 11:41:31 +0200
-Subject: [PATCH v4 8/8] fuse: {io-uring} Prefer the current core over
- mapping
+From: Antony Kurniawan Soemardi <linux@smankusors.com>
+Subject: [PATCH 00/10] ARM: qcom: msm8960: enable WCNSS (Bluetooth & Wi-Fi)
+Date: Tue, 14 Apr 2026 01:55:27 +0700
+Message-Id: <20260414-msm8960-wifi-v1-0-007fda9d6134@smankusors.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260413-reduced-nr-ring-queues_3-v4-8-982b6414b723@bsbernd.com>
-References: <20260413-reduced-nr-ring-queues_3-v4-0-982b6414b723@bsbernd.com>
-In-Reply-To: <20260413-reduced-nr-ring-queues_3-v4-0-982b6414b723@bsbernd.com>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: Joanne Koong <joannelkoong@gmail.com>, linux-fsdevel@vger.kernel.org, 
- Luis Henriques <luis@igalia.com>, Gang He <dchg2000@gmail.com>, 
- Bernd Schubert <bschubert@ddn.com>, Bernd Schubert <bernd@bsbernd.com>
-X-Mailer: b4 0.15-dev-2a633
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776073284; l=3547;
- i=bernd@bsbernd.com; s=20240529; h=from:subject:message-id;
- bh=VTAyHIcmMVaS2enGiELEFeYVNj8yRgmYjZrm6d617lo=;
- b=E9eR8PKfaoL98m8/LZFSwddFHVy5+J4c4fJxh1u9xBQd93xCfiInkTFlgmpcklPTdbTNSY1hi
- AOvxpcz51ktDoMKjVmy2i2igQHl5JBi4iO1+DOt5dQitCzBF32GNhrM
-X-Developer-Key: i=bernd@bsbernd.com; a=ed25519;
- pk=EZVU4bq64+flgoWFCVQoj0URAs3Urjno+1fIq9ZJx8Y=
-X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/20240529 with auth_id=732
+X-B4-Tracking: v=1; b=H4sIAB883WkC/x3MQQ5AQAxA0atI15rQ0OAqYsEouhhkmiCRubuJ5
+ Vv8/4JJUDHosheCXGp67AllnoHbxn0V1DkZqKC6JGL05puWC7x1UZxE3NyyY64YUnIGWfT5d/0
+ Q4wdy1J4oXgAAAA==
+X-Change-ID: 20251226-msm8960-wifi-beecd96c6646
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Lee Jones <lee@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-arm-msm@vger.kernel.org, 
+ linux-clk@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ Rudraksha Gupta <guptarud@gmail.com>, 
+ Antony Kurniawan Soemardi <linux@smankusors.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776106820; l=2611;
+ i=linux@smankusors.com; s=20250609; h=from:subject:message-id;
+ bh=NYwF55QA6txdrIoAGxylJ/Rgbbu7ua+pdJtGzMjggQ4=;
+ b=EEEnBqermgK5yZU8PP0youZRIua/s25daTd5ma8b7a1S2XEenHGNFhQbRsOWo0L3nXNT6qDKv
+ xqpqURXV1/kBVw6c++UcPgP+60pJbZthSABVgD5SmpyT5OG9yyDjrrk
+X-Developer-Key: i=linux@smankusors.com; a=ed25519;
+ pk=65wTy06fJl2/h/EJwjr704YG+yjHFhZObJBWzzK+N00=
+X-Endpoint-Received: by B4 Relay for linux@smankusors.com/20250609 with auth_id=733
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Bernd Schubert <bschubert@ddn.com>
+Enable the WCNSS (Riva) subsystem on MSM8960-based devices to support
+Bluetooth and Wi-Fi.
 
-Mapping might point to a totally different core due to
-random assignment. For performance using the current
-core might be beneficial
+Add the required device tree nodes and resources, including memory
+regions, clocks, interconnects, and communication interfaces used by
+the WCNSS firmware and drivers.
 
-Example (with core binding)
+Changes:
+- Add Riva (WCNSS) nodes: firmware memory, WCN3660 iris radio,
+  Bluetooth and Wi-Fi subdevices, and pinctrl states
+- Add SMSM and SPS nodes for coordination with the WCNSS subsystem
+- Add shared memory and hardware mutex for inter-processor communication
+- Add SCM node for secure channel manager interaction
+- Add RPM clock controller and required QDSS clock resource
+- Add bindings for SPS interrupt controller and RPM clocks
 
-unpatched WRITE: bw=841MiB/s
-patched   WRITE: bw=1363MiB/s
+Known limitations (not addressed in this series):
+The wcn36xx driver appears to misclassify 2.4 GHz networks as 5 GHz
+during hardware scanning, preventing association with 2.4 GHz networks.
+This issue has also been observed on MSM8916 and MSM8953 platforms
+using WCN3620 [1][2].
 
-With
-fio --name=test --ioengine=psync --direct=1 \
-    --rw=write --bs=1M --iodepth=1 --numjobs=1 \
-    --filename_format=/redfs/testfile.\$jobnum --size=100G \
-    --thread --create_on_open=1 --runtime=30s --cpus_allowed=1
+Tested on:
+- Sony Xperia SP
+- Samsung Galaxy Express (SGH-I437) - secure firmware loading not yet
+  functional (separate series pending)
 
-In order to get the good number `--cpus_allowed=1` is needed.
-This could be improved by a future change that avoids
-cpu migration in fuse_request_end() on wake_up() call.
+[1] https://github.com/msm8916-mainline/linux/commit/cc4abc694fcf2c942410136bc58a61e79bf21e83
+[2] https://github.com/msm8953-mainline/linux/commit/779c9627ec0b971bf466588e64fe530cf78a414d
 
-Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
+Signed-off-by: Antony Kurniawan Soemardi <linux@smankusors.com>
 ---
- fs/fuse/dev_uring.c | 41 ++++++++++++++++++++++++++++-------------
- 1 file changed, 28 insertions(+), 13 deletions(-)
+Antony Kurniawan Soemardi (10):
+      dt-bindings: clock: qcom,rpmcc: add msm8960 compatible
+      dt-bindings: mfd: syscon: add qcom,msm8960-sps-sic
+      mfd: qcom_rpm: add msm8960 QDSS clock resource
+      clk: qcom: clk-rpm: add msm8960 compatible
+      ARM: dts: qcom: msm8960: add RPM clock controller and fix USB clocks
+      ARM: dts: qcom: msm8960: add SCM
+      ARM: dts: qcom: msm8960: add SMEM & hwmutex
+      ARM: dts: qcom: msm8960: add SMSM & SPS
+      ARM: dts: qcom: msm8960: add Riva
+      ARM: dts: qcom: msm8960: huashan: enable Wi-Fi and Bluetooth
 
-diff --git a/fs/fuse/dev_uring.c b/fs/fuse/dev_uring.c
-index e06d45b161d5000e24431314b2222b66bdea58aa..5c00fd047c8bd359ec34fb6a41abba44f6794517 100644
---- a/fs/fuse/dev_uring.c
-+++ b/fs/fuse/dev_uring.c
-@@ -19,8 +19,12 @@ MODULE_PARM_DESC(enable_uring,
- 
- #define FUSE_URING_IOV_SEGS 2 /* header and payload */
- 
-+/* Threshold that determines if a better queue should be searched for */
- #define FUSE_URING_Q_THRESHOLD 2
- 
-+/* Number of (re)tries to find a better queue */
-+#define FUSE_URING_Q_TRIES 3
-+
- bool fuse_uring_enabled(void)
- {
- 	return enable_uring;
-@@ -1311,7 +1315,7 @@ static struct fuse_ring_queue *fuse_uring_select_queue(struct fuse_ring *ring,
- 						       bool background)
- {
- 	unsigned int qid;
--	int node, retries = 0;
-+	int node, tries = 0;
- 	unsigned int nr_queues;
- 	unsigned int cpu = task_cpu(current);
- 	struct fuse_ring_queue *queue, *primary_queue = NULL;
-@@ -1336,26 +1340,36 @@ static struct fuse_ring_queue *fuse_uring_select_queue(struct fuse_ring *ring,
- 
- 	nr_queues = READ_ONCE(ring->numa_q_map[node].nr_queues);
- 	if (nr_queues) {
-+		/* prefer the queue that corresponds to the current cpu */
-+		queue = READ_ONCE(ring->queues[cpu]);
-+		if (queue) {
-+			if (queue->nr_reqs <= FUSE_URING_Q_THRESHOLD)
-+				return queue;
-+			primary_queue = queue;
-+		}
-+
- 		qid = ring->numa_q_map[node].cpu_to_qid[cpu];
- 		if (WARN_ON_ONCE(qid >= ring->max_nr_queues))
- 			return NULL;
--		queue = READ_ONCE(ring->queues[qid]);
-+		if (qid != cpu) {
-+			queue = READ_ONCE(ring->queues[qid]);
- 
--		/* Might happen on teardown */
--		if (unlikely(!queue))
--			return NULL;
-+			/* Might happen on teardown */
-+			if (unlikely(!queue))
-+				return NULL;
- 
--		if (queue->nr_reqs < FUSE_URING_Q_THRESHOLD)
--			return queue;
-+			if (queue->nr_reqs <= FUSE_URING_Q_THRESHOLD)
-+				return queue;
-+		}
- 
- 		/* Retries help for load balancing */
--		if (retries < FUSE_URING_Q_THRESHOLD) {
--			if (!retries)
-+		if (tries < FUSE_URING_Q_TRIES && tries + 1 < nr_queues) {
-+			if (!primary_queue)
- 				primary_queue = queue;
- 
--			/* Increase cpu, assuming it will map to a differet qid*/
-+			/* Increase cpu, assuming it will map to a different qid*/
- 			cpu++;
--			retries++;
-+			tries++;
- 			goto retry;
- 		}
- 	}
-@@ -1366,9 +1380,10 @@ static struct fuse_ring_queue *fuse_uring_select_queue(struct fuse_ring *ring,
- 
- 	/* global registered queue bitmap */
- 	qid = ring->q_map.cpu_to_qid[cpu];
--	if (WARN_ON_ONCE(qid >= ring->max_nr_queues))
--	/* Might happen on teardown */
-+	if (WARN_ON_ONCE(qid >= ring->max_nr_queues)) {
-+		/* Might happen on teardown */
- 		return NULL;
-+	}
- 	return READ_ONCE(ring->queues[qid]);
- }
- 
+ .../devicetree/bindings/clock/qcom,rpmcc.yaml      |   5 +-
+ Documentation/devicetree/bindings/mfd/syscon.yaml  |   2 +
+ .../boot/dts/qcom/qcom-msm8960-sony-huashan.dts    |  19 +++
+ arch/arm/boot/dts/qcom/qcom-msm8960.dtsi           | 157 ++++++++++++++++++++-
+ drivers/clk/qcom/clk-rpm.c                         |   1 +
+ drivers/mfd/qcom_rpm.c                             |   1 +
+ 6 files changed, 182 insertions(+), 3 deletions(-)
+---
+base-commit: 978e0d8216cae014f10326c9a257890cf98a6398
+change-id: 20251226-msm8960-wifi-beecd96c6646
 
--- 
-2.43.0
+Best regards,
+--  
+Antony Kurniawan Soemardi <linux@smankusors.com>
 
