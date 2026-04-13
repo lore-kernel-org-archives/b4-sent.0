@@ -1,11 +1,10 @@
 From: Antony Kurniawan Soemardi <linux@smankusors.com>
-Date: Tue, 14 Apr 2026 01:55:28 +0700
-Subject: [PATCH 01/10] dt-bindings: clock: qcom,rpmcc: add msm8960
- compatible
+Date: Tue, 14 Apr 2026 01:55:29 +0700
+Subject: [PATCH 02/10] dt-bindings: mfd: syscon: add qcom,msm8960-sps-sic
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260414-msm8960-wifi-v1-1-007fda9d6134@smankusors.com>
+Message-Id: <20260414-msm8960-wifi-v1-2-007fda9d6134@smankusors.com>
 References: <20260414-msm8960-wifi-v1-0-007fda9d6134@smankusors.com>
 In-Reply-To: <20260414-msm8960-wifi-v1-0-007fda9d6134@smankusors.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -20,50 +19,44 @@ Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-arm-msm@vger.kernel.org,
  Rudraksha Gupta <guptarud@gmail.com>, 
  Antony Kurniawan Soemardi <linux@smankusors.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776106820; l=1260;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776106820; l=1120;
  i=linux@smankusors.com; s=20250609; h=from:subject:message-id;
- bh=1wSMQ0upQbQ8gZkIBGj7bAHKHl2mdsM0ZEnITpOYnso=;
- b=Lttd5AAQmW6e4FfATiHZkrW9wh903AbL1msUWYN3jhbdqqhuztWBQlat9hUVnErBV0vKLlp+z
- mi+xXdoESUZD+kXuOwlwNCpNNqtohCM48zRqnvhDcOn4RWtaFYn4iOS
+ bh=mIW20FISbOXB32b/vpmGZrFFpfMx94QhJtXj8cpMSMk=;
+ b=cho2hesCQxrEf90foy0lm70DCmysnadQ43iMkAv0rZ9uTlR2YnFLPsee81lFbN9svpgq4zi0k
+ EjkMg+VGD4kDQO09PCs9MDLbUSK4M2EqQ9hPkOTKqm6EgiFUSsqcTXS
 X-Developer-Key: i=linux@smankusors.com; a=ed25519;
  pk=65wTy06fJl2/h/EJwjr704YG+yjHFhZObJBWzzK+N00=
 X-Endpoint-Received: by B4 Relay for linux@smankusors.com/20250609 with auth_id=733
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the qcom,rpmcc-msm8960 compatible.
-
-The MSM8960 platform shares the same RPM clock definitions as
-APQ8064, so extend the existing conditional schema to treat
-qcom,rpmcc-msm8960 the same as qcom,rpmcc-apq8064.
+Add compat for Smart Peripheral System (SPS) Interrupt Controller (SIC)
+present on Qualcomm MSM8960 SoC.
 
 Signed-off-by: Antony Kurniawan Soemardi <linux@smankusors.com>
 ---
- Documentation/devicetree/bindings/clock/qcom,rpmcc.yaml | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ Documentation/devicetree/bindings/mfd/syscon.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/clock/qcom,rpmcc.yaml b/Documentation/devicetree/bindings/clock/qcom,rpmcc.yaml
-index ab97d4b7dba8..f84d08199e47 100644
---- a/Documentation/devicetree/bindings/clock/qcom,rpmcc.yaml
-+++ b/Documentation/devicetree/bindings/clock/qcom,rpmcc.yaml
-@@ -36,6 +36,7 @@ properties:
-           - qcom,rpmcc-msm8937
-           - qcom,rpmcc-msm8940
-           - qcom,rpmcc-msm8953
-+          - qcom,rpmcc-msm8960
-           - qcom,rpmcc-msm8974
-           - qcom,rpmcc-msm8976
-           - qcom,rpmcc-msm8992
-@@ -90,7 +91,9 @@ allOf:
-       properties:
-         compatible:
-           contains:
--            const: qcom,rpmcc-apq8064
-+            enum:
-+              - qcom,rpmcc-apq8064
-+              - qcom,rpmcc-msm8960
-     then:
-       properties:
-         clocks:
+diff --git a/Documentation/devicetree/bindings/mfd/syscon.yaml b/Documentation/devicetree/bindings/mfd/syscon.yaml
+index e57add2bacd3..39a24c3ff9cf 100644
+--- a/Documentation/devicetree/bindings/mfd/syscon.yaml
++++ b/Documentation/devicetree/bindings/mfd/syscon.yaml
+@@ -106,6 +106,7 @@ select:
+           - nxp,s32g3-gpr
+           - qcom,apq8064-mmss-sfpb
+           - qcom,apq8064-sps-sic
++          - qcom,msm8960-sps-sic
+           - rockchip,px30-qos
+           - rockchip,rk3036-qos
+           - rockchip,rk3066-qos
+@@ -219,6 +220,7 @@ properties:
+               - nxp,s32g3-gpr
+               - qcom,apq8064-mmss-sfpb
+               - qcom,apq8064-sps-sic
++              - qcom,msm8960-sps-sic
+               - rockchip,px30-qos
+               - rockchip,rk3036-qos
+               - rockchip,rk3066-qos
 
 -- 
 2.34.1
