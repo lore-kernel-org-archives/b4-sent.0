@@ -1,213 +1,85 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Mon, 13 Apr 2026 00:48:28 +0800
-Subject: [PATCH v5 14/14] mm/vmscan: unify writeback reclaim statistic and
- throttling
+From: Bernd Schubert <bernd@bsbernd.com>
+Subject: [PATCH v4 0/8] fuse: {io-uring} Allow to reduce the number of
+ queues and request distribution
+Date: Mon, 13 Apr 2026 11:41:23 +0200
+Message-Id: <20260413-reduced-nr-ring-queues_3-v4-0-982b6414b723@bsbernd.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260413-mglru-reclaim-v5-14-8eaeacbddc44@tencent.com>
-References: <20260413-mglru-reclaim-v5-0-8eaeacbddc44@tencent.com>
-In-Reply-To: <20260413-mglru-reclaim-v5-0-8eaeacbddc44@tencent.com>
-To: linux-mm@kvack.org
-Cc: Andrew Morton <akpm@linux-foundation.org>, 
- Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
- Wei Xu <weixugc@google.com>, Johannes Weiner <hannes@cmpxchg.org>, 
- David Hildenbrand <david@kernel.org>, Michal Hocko <mhocko@kernel.org>, 
- Qi Zheng <zhengqi.arch@bytedance.com>, 
- Shakeel Butt <shakeel.butt@linux.dev>, Lorenzo Stoakes <ljs@kernel.org>, 
- Barry Song <baohua@kernel.org>, David Stevens <stevensd@google.com>, 
- Chen Ridong <chenridong@huaweicloud.com>, Leno Hou <lenohou@gmail.com>, 
- Yafang Shao <laoar.shao@gmail.com>, Yu Zhao <yuzhao@google.com>, 
- Zicheng Wang <wangzicheng@honor.com>, Kalesh Singh <kaleshsingh@google.com>, 
- Suren Baghdasaryan <surenb@google.com>, Chris Li <chrisl@kernel.org>, 
- Vernon Yang <vernon2gm@gmail.com>, linux-kernel@vger.kernel.org, 
- Qi Zheng <qi.zheng@linux.dev>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
- Kairui Song <kasong@tencent.com>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776012497; l=6741;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=onAAOpr3vpU2bMTuSUOIQofpAkgauLbJ3WIXe1tb0hQ=;
- b=FGbRkx/ZwSYXPdD+OeEnzMtVz6XKIkpf+5rfGCSl0b2y9g6+AgDXBdPdqLWrIsmtWIi3rNhwf
- Hq50xl97Ww5BsPWwtOGW6pmOwpX+5hRXjcT/bMktBkPJ45glAXWWUog
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+X-B4-Tracking: v=1; b=H4sIAEO63GkC/43Nyw6CMBCF4VchXVvTC9DiyvcwxoztAF1YtBWiI
+ by7hYWXDXH5n2S+GUnE4DCSXTaSgIOLrvMp8k1GTAu+QepsaiKYKJgSgga0vUFLfaDB+Ybeeuw
+ xniQtwZxVZcFWSpN0fg1Yu8dCH46pWxfvXXgunwY+r3+gA6eMAmiUCrBSWO6t9VvTXchMDuLNc
+ MbkCiMSo3JR1xx0bQr9y8gvhq8xMjGl1cpoAMkBP8w0TS/5S30/TAEAAA==
+X-Change-ID: 20250722-reduced-nr-ring-queues_3-6acb79dad978
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: Joanne Koong <joannelkoong@gmail.com>, linux-fsdevel@vger.kernel.org, 
+ Luis Henriques <luis@igalia.com>, Gang He <dchg2000@gmail.com>, 
+ Bernd Schubert <bschubert@ddn.com>, Bernd Schubert <bernd@bsbernd.com>
+X-Mailer: b4 0.15-dev-2a633
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776073284; l=2588;
+ i=bernd@bsbernd.com; s=20240529; h=from:subject:message-id;
+ bh=AYgMO8orETGEoNQ5KR2Hk5OZqWEsKJP9Um0payT4u9w=;
+ b=+p2yCPDTjU0sgCtn1wVYrq0J3JjtJrpqKVifALPfz0ghb41UD8BR7GzKBTwDTXdjBS/w6KehS
+ pi367cqPDxZDXFpS+Ik+0/y9DBusSLCDeozx4r31vCc0kmDQENTSdZL
+X-Developer-Key: i=bernd@bsbernd.com; a=ed25519;
+ pk=EZVU4bq64+flgoWFCVQoj0URAs3Urjno+1fIq9ZJx8Y=
+X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/20240529 with auth_id=732
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently MGLRU and non-MGLRU handle the reclaim statistic and
-writeback handling very differently, especially throttling.
-Basically MGLRU just ignored the throttling part.
+This adds bitmaps that track which queues are registered and which queues
+do not have queued requests.
+These bitmaps are then used to map from request core to queue
+and also allow load distribution. NUMA affinity is handled and
+fuse client/server protocol does not need changes, all is handled
+in fuse client internally.
 
-Let's just unify this part, use a helper to deduplicate the code
-so both setups will share the same behavior.
-
-Test using following reproducer using bash:
-
-  echo "Setup a slow device using dm delay"
-  dd if=/dev/zero of=/var/tmp/backing bs=1M count=2048
-  LOOP=$(losetup --show -f /var/tmp/backing)
-  mkfs.ext4 -q $LOOP
-  echo "0 $(blockdev --getsz $LOOP) delay $LOOP 0 0 $LOOP 0 1000" | \
-      dmsetup create slow_dev
-  mkdir -p /mnt/slow && mount /dev/mapper/slow_dev /mnt/slow
-
-  echo "Start writeback pressure"
-  sync && echo 3 > /proc/sys/vm/drop_caches
-  mkdir /sys/fs/cgroup/test_wb
-  echo 128M > /sys/fs/cgroup/test_wb/memory.max
-  (echo $BASHPID > /sys/fs/cgroup/test_wb/cgroup.procs && \
-      dd if=/dev/zero of=/mnt/slow/testfile bs=1M count=192)
-
-  echo "Clean up"
-  echo "0 $(blockdev --getsz $LOOP) error" | dmsetup load slow_dev
-  dmsetup resume slow_dev
-  umount -l /mnt/slow && sync
-  dmsetup remove slow_dev
-
-Before this commit, `dd` will get OOM killed immediately if
-MGLRU is enabled. Classic LRU is fine.
-
-After this commit, throttling is now effective and no more spin on
-LRU or premature OOM. Stress test on other workloads also looking good.
-
-Global throttling is not here yet, we will fix that separately later.
-
-Suggested-by: Chen Ridong <chenridong@huaweicloud.com>
-Tested-by: Leno Hou <lenohou@gmail.com>
-Reviewed-by: Axel Rasmussen <axelrasmussen@google.com>
-Reviewed-by: Baolin Wang <baolin.wang@linux.alibaba.com>
-Signed-off-by: Kairui Song <kasong@tencent.com>
+Signed-off-by: Bernd Schubert <bschubert@ddn.com>
 ---
- mm/vmscan.c | 90 ++++++++++++++++++++++++++++---------------------------------
- 1 file changed, 41 insertions(+), 49 deletions(-)
+Changes in v4:
+- Fix leak of ring->numa_q_map
+- Fix q-imbalance due to an issue in static cpu->qid mapping
+- Performance tunings, like preferring the current cpu
+- Removal of distribution among queues, Joanne had concerns about it.
+  As it is an optimization, it can be added later again. At least
+  most of it was removed, some light distribution is still left in.
+- Link to v3: https://lore.kernel.org/r/20251013-reduced-nr-ring-queues_3-v3-0-6d87c8aa31ae@ddn.com
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index a431f94ff3a3..43a3cadbb586 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -1942,6 +1942,44 @@ static int current_may_throttle(void)
- 	return !(current->flags & PF_LOCAL_THROTTLE);
- }
- 
-+static void handle_reclaim_writeback(unsigned long nr_taken,
-+				     struct pglist_data *pgdat,
-+				     struct scan_control *sc,
-+				     struct reclaim_stat *stat)
-+{
-+	/*
-+	 * If dirty folios are scanned that are not queued for IO, it
-+	 * implies that flushers are not doing their job. This can
-+	 * happen when memory pressure pushes dirty folios to the end of
-+	 * the LRU before the dirty limits are breached and the dirty
-+	 * data has expired. It can also happen when the proportion of
-+	 * dirty folios grows not through writes but through memory
-+	 * pressure reclaiming all the clean cache. And in some cases,
-+	 * the flushers simply cannot keep up with the allocation
-+	 * rate. Nudge the flusher threads in case they are asleep.
-+	 */
-+	if (stat->nr_unqueued_dirty == nr_taken && nr_taken) {
-+		wakeup_flusher_threads(WB_REASON_VMSCAN);
-+		/*
-+		 * For cgroupv1 dirty throttling is achieved by waking up
-+		 * the kernel flusher here and later waiting on folios
-+		 * which are in writeback to finish (see shrink_folio_list()).
-+		 *
-+		 * Flusher may not be able to issue writeback quickly
-+		 * enough for cgroupv1 writeback throttling to work
-+		 * on a large system.
-+		 */
-+		if (!writeback_throttling_sane(sc))
-+			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
-+	}
-+
-+	sc->nr.dirty += stat->nr_dirty;
-+	sc->nr.congested += stat->nr_congested;
-+	sc->nr.writeback += stat->nr_writeback;
-+	sc->nr.immediate += stat->nr_immediate;
-+	sc->nr.taken += nr_taken;
-+}
-+
- /*
-  * shrink_inactive_list() is a helper for shrink_node().  It returns the number
-  * of reclaimed pages
-@@ -2005,39 +2043,7 @@ static unsigned long shrink_inactive_list(unsigned long nr_to_scan,
- 	lruvec_lock_irq(lruvec);
- 	lru_note_cost_unlock_irq(lruvec, file, stat.nr_pageout,
- 					nr_scanned - nr_reclaimed);
--
--	/*
--	 * If dirty folios are scanned that are not queued for IO, it
--	 * implies that flushers are not doing their job. This can
--	 * happen when memory pressure pushes dirty folios to the end of
--	 * the LRU before the dirty limits are breached and the dirty
--	 * data has expired. It can also happen when the proportion of
--	 * dirty folios grows not through writes but through memory
--	 * pressure reclaiming all the clean cache. And in some cases,
--	 * the flushers simply cannot keep up with the allocation
--	 * rate. Nudge the flusher threads in case they are asleep.
--	 */
--	if (stat.nr_unqueued_dirty == nr_taken) {
--		wakeup_flusher_threads(WB_REASON_VMSCAN);
--		/*
--		 * For cgroupv1 dirty throttling is achieved by waking up
--		 * the kernel flusher here and later waiting on folios
--		 * which are in writeback to finish (see shrink_folio_list()).
--		 *
--		 * Flusher may not be able to issue writeback quickly
--		 * enough for cgroupv1 writeback throttling to work
--		 * on a large system.
--		 */
--		if (!writeback_throttling_sane(sc))
--			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
--	}
--
--	sc->nr.dirty += stat.nr_dirty;
--	sc->nr.congested += stat.nr_congested;
--	sc->nr.writeback += stat.nr_writeback;
--	sc->nr.immediate += stat.nr_immediate;
--	sc->nr.taken += nr_taken;
--
-+	handle_reclaim_writeback(nr_taken, pgdat, sc, &stat);
- 	trace_mm_vmscan_lru_shrink_inactive(pgdat->node_id,
- 			nr_scanned, nr_reclaimed, &stat, sc->priority, file);
- 	return nr_reclaimed;
-@@ -4824,26 +4830,11 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- retry:
- 	reclaimed = shrink_folio_list(&list, pgdat, sc, &stat, false, memcg);
- 	sc->nr_reclaimed += reclaimed;
-+	handle_reclaim_writeback(isolated, pgdat, sc, &stat);
- 	trace_mm_vmscan_lru_shrink_inactive(pgdat->node_id,
- 			type_scanned, reclaimed, &stat, sc->priority,
- 			type ? LRU_INACTIVE_FILE : LRU_INACTIVE_ANON);
- 
--	/*
--	 * If too many file cache in the coldest generation can't be evicted
--	 * due to being dirty, wake up the flusher.
--	 */
--	if (stat.nr_unqueued_dirty == isolated) {
--		wakeup_flusher_threads(WB_REASON_VMSCAN);
--
--		/*
--		 * For cgroupv1 dirty throttling is achieved by waking up
--		 * the kernel flusher here and later waiting on folios
--		 * which are in writeback to finish (see shrink_folio_list()).
--		 */
--		if (!writeback_throttling_sane(sc))
--			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
--	}
--
- 	list_for_each_entry_safe_reverse(folio, next, &list, lru) {
- 		DEFINE_MIN_SEQ(lruvec);
- 
-@@ -4886,6 +4877,7 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- 
- 	if (!list_empty(&list)) {
- 		skip_retry = true;
-+		isolated = 0;
- 		goto retry;
- 	}
- 
+Changes in v3:
+- removed FUSE_URING_QUEUE_THRESHOLD (Luis)
+- Fixed accidentaly early return of queue1 in fuse_uring_best_queue()
+- Fixed similar early return 'best_global'
+- Added sanity checks for cpu_to_node()
+- Removed retry loops in fuse_uring_best_queue() for code simplicity
+- Reduced local numa retries in fuse_uring_get_queue
+- Added 'FUSE_URING_REDUCED_Q' FUSE_INIT flag to inform userspace
+  about the possibility to reduced queues
+- Link to v2: https://lore.kernel.org/r/20251003-reduced-nr-ring-queues_3-v2-0-742ff1a8fc58@ddn.com
+- Removed wake-on-same cpu patch from this series, 
+  it will be send out independently
+- Used READ_ONCE(queue->nr_reqs) as the value is updated (with a lock being
+  hold) by other threads and possibly cpus.
 
+---
+Bernd Schubert (8):
+      fuse: {io-uring} Add queue length counters
+      fuse: {io-uring} Rename ring->nr_queues to max_nr_queues
+      fuse: {io-uring} Use bitmaps to track registered queues
+      fuse: Fetch a queued fuse request on command registration
+      fuse: {io-uring} Allow reduced number of ring queues
+      fuse: {io-uring} Queue background requests on a different core
+      fuse: Add retry attempts for numa local queues for load distribution
+      fuse: {io-uring} Prefer the current core over mapping
+
+ fs/fuse/dev_uring.c       | 303 ++++++++++++++++++++++++++++++++++------------
+ fs/fuse/dev_uring_i.h     |  25 +++-
+ fs/fuse/inode.c           |   2 +-
+ include/uapi/linux/fuse.h |   3 +
+ 4 files changed, 252 insertions(+), 81 deletions(-)
+---
+base-commit: 028ef9c96e96197026887c0f092424679298aae8
+change-id: 20250722-reduced-nr-ring-queues_3-6acb79dad978
+
+Best regards,
 -- 
-2.53.0
+Bernd Schubert <bernd@bsbernd.com>
 
