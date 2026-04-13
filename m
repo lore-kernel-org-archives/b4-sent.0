@@ -1,10 +1,10 @@
 From: Antony Kurniawan Soemardi <linux@smankusors.com>
-Date: Tue, 14 Apr 2026 01:55:29 +0700
-Subject: [PATCH 02/10] dt-bindings: mfd: syscon: add qcom,msm8960-sps-sic
+Date: Tue, 14 Apr 2026 01:55:30 +0700
+Subject: [PATCH 03/10] mfd: qcom_rpm: add msm8960 QDSS clock resource
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260414-msm8960-wifi-v1-2-007fda9d6134@smankusors.com>
+Message-Id: <20260414-msm8960-wifi-v1-3-007fda9d6134@smankusors.com>
 References: <20260414-msm8960-wifi-v1-0-007fda9d6134@smankusors.com>
 In-Reply-To: <20260414-msm8960-wifi-v1-0-007fda9d6134@smankusors.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -19,44 +19,42 @@ Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-arm-msm@vger.kernel.org,
  Rudraksha Gupta <guptarud@gmail.com>, 
  Antony Kurniawan Soemardi <linux@smankusors.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776106820; l=1120;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776106820; l=1052;
  i=linux@smankusors.com; s=20250609; h=from:subject:message-id;
- bh=mIW20FISbOXB32b/vpmGZrFFpfMx94QhJtXj8cpMSMk=;
- b=cho2hesCQxrEf90foy0lm70DCmysnadQ43iMkAv0rZ9uTlR2YnFLPsee81lFbN9svpgq4zi0k
- EjkMg+VGD4kDQO09PCs9MDLbUSK4M2EqQ9hPkOTKqm6EgiFUSsqcTXS
+ bh=gOwUYArrOBSpo8/sLmrIU44Yc3IP355SUpgihPGh/KM=;
+ b=kP36kl0YA8uqmZfmhFF8HyF+EAX9gBlOqTW2Kkp/0EGzuIx2zyqh2yO5JzvJLie16YLA93krS
+ JI65IXoepbZBM/mxpJT2E5viwd9LpGWMP7I7CF4pvCexlxdgNigegFI
 X-Developer-Key: i=linux@smankusors.com; a=ed25519;
  pk=65wTy06fJl2/h/EJwjr704YG+yjHFhZObJBWzzK+N00=
 X-Endpoint-Received: by B4 Relay for linux@smankusors.com/20250609 with auth_id=733
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add compat for Smart Peripheral System (SPS) Interrupt Controller (SIC)
-present on Qualcomm MSM8960 SoC.
+msm8960 uses the same clock descriptor as apq8064 but lacked the
+corresponding QDSS resource definition in its resource table. Add
+resource ID 209 to msm8960_rpm_resource_table to match apq8064's
+implementation.
 
+Without this entry, RPM clock initialization fails on msm8960,
+preventing Bluetooth/Wi-Fi/USB from being enabled.
+
+Tested-by: Rudraksha Gupta <guptarud@gmail.com>
 Signed-off-by: Antony Kurniawan Soemardi <linux@smankusors.com>
 ---
- Documentation/devicetree/bindings/mfd/syscon.yaml | 2 ++
- 1 file changed, 2 insertions(+)
+ drivers/mfd/qcom_rpm.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/devicetree/bindings/mfd/syscon.yaml b/Documentation/devicetree/bindings/mfd/syscon.yaml
-index e57add2bacd3..39a24c3ff9cf 100644
---- a/Documentation/devicetree/bindings/mfd/syscon.yaml
-+++ b/Documentation/devicetree/bindings/mfd/syscon.yaml
-@@ -106,6 +106,7 @@ select:
-           - nxp,s32g3-gpr
-           - qcom,apq8064-mmss-sfpb
-           - qcom,apq8064-sps-sic
-+          - qcom,msm8960-sps-sic
-           - rockchip,px30-qos
-           - rockchip,rk3036-qos
-           - rockchip,rk3066-qos
-@@ -219,6 +220,7 @@ properties:
-               - nxp,s32g3-gpr
-               - qcom,apq8064-mmss-sfpb
-               - qcom,apq8064-sps-sic
-+              - qcom,msm8960-sps-sic
-               - rockchip,px30-qos
-               - rockchip,rk3036-qos
-               - rockchip,rk3066-qos
+diff --git a/drivers/mfd/qcom_rpm.c b/drivers/mfd/qcom_rpm.c
+index 27446f43e3f3..0defb3279af1 100644
+--- a/drivers/mfd/qcom_rpm.c
++++ b/drivers/mfd/qcom_rpm.c
+@@ -324,6 +324,7 @@ static const struct qcom_rpm_resource msm8960_rpm_resource_table[] = {
+ 	[QCOM_RPM_USB_OTG_SWITCH] =		{ 205, 119, 82, 1 },
+ 	[QCOM_RPM_HDMI_SWITCH] =		{ 206, 120, 83, 1 },
+ 	[QCOM_RPM_DDR_DMM] =			{ 207, 121, 84, 2 },
++	[QCOM_RPM_QDSS_CLK] =			{ 209, ~0, 7, 1 },
+ };
+ 
+ static const struct qcom_rpm_data msm8960_template = {
 
 -- 
 2.34.1
