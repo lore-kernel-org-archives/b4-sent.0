@@ -1,10 +1,10 @@
 From: Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
-Date: Tue, 14 Apr 2026 22:01:15 +0530
-Subject: [PATCH 1/3] drivers: base: Add generic context device bus
+Date: Tue, 14 Apr 2026 22:01:16 +0530
+Subject: [PATCH 2/3] gpu: host1x: Migrate to generic context device bus
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260414-computebus-v1-1-4d904d40926a@oss.qualcomm.com>
+Message-Id: <20260414-computebus-v1-2-4d904d40926a@oss.qualcomm.com>
 References: <20260414-computebus-v1-0-4d904d40926a@oss.qualcomm.com>
 In-Reply-To: <20260414-computebus-v1-0-4d904d40926a@oss.qualcomm.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -22,111 +22,159 @@ Cc: linux-kernel@vger.kernel.org, driver-core@lists.linux.dev,
  iommu@lists.linux.dev, linux-arm-msm@vger.kernel.org, 
  Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776184278; l=3013;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776184278; l=4839;
  i=ekansh.gupta@oss.qualcomm.com; s=20260223; h=from:subject:message-id;
- bh=GiaW9KX6EnyHl15uXUaLI85Eugyx6gIsQQrGnKwyVVk=;
- b=g7ZvTKbHA9UTo3rRc56oQRClDN77YoCoOIyf0Ch0pvK4S/d5lszMPmM5fNmU56g6YpXEOAu9x
- J6BS+tcG340ACkYknZbhTqxrn/ex62ByFElTbD0dzk54v75d4aqeryz
+ bh=DQ1olxxNHseU94rnbtsHQ4+BWgV7NjVl53Fj2nX92ag=;
+ b=LNNS8pXQotH116K8rf8Vjr5wHJV7xKAjMrOpuqvSIYb2fF05W7RU2RHTSCAtKIlqBJ/gG+DKE
+ ePcI9NgORtfD6ngTYZwsvy+E+hgJBXDVF5vXGtcMu8cja0X8Cx7XpLm
 X-Developer-Key: i=ekansh.gupta@oss.qualcomm.com; a=ed25519;
  pk=n0SepARizye+pYjhjg1RA5J+Nq4+IJbyRcBybU+/ERQ=
 X-Endpoint-Received: by B4 Relay for ekansh.gupta@oss.qualcomm.com/20260223 with auth_id=647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce a new generic bus type for synthetic context bank devices
-that require IOMMU context isolation. This bus provides a shared
-infrastructure for accelerator and GPU drivers that create virtual
-devices representing IOMMU context banks.
+Replace the host1x-specific context device bus with the generic
+context_device_bus_type. This eliminates driver-specific bus
+infrastructure in favor of shared code in the driver core.
 
-Currently, drivers like host1x implement their own bus types for
-context devices. This generic implementation allows multiple drivers
-to share the same bus infrastructure, simplifying the IOMMU subsystem
-integration and reducing code duplication.
+The host1x driver creates synthetic context bank devices to represent
+IOMMU contexts for memory isolation. These devices were previously
+registered on a host1x-specific bus ("host1x-context"), but this
+functionality is now provided by the generic "context-device" bus.
+
+The IOMMU subsystem is updated to recognize the generic bus instead
+of the host1x-specific one, allowing proper IOMMU operations on
+context devices.
+
+This change maintains functional equivalence - context devices still
+work the same way, just on a different bus. The device names remain
+"host1x-ctx.N" to preserve any userspace dependencies.
 
 Signed-off-by: Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
 ---
- drivers/base/Kconfig        |  3 +++
- drivers/base/Makefile       |  1 +
- drivers/base/context_bus.c  | 24 ++++++++++++++++++++++++
- include/linux/context_bus.h | 15 +++++++++++++++
- 4 files changed, 43 insertions(+)
+ drivers/gpu/host1x/Kconfig       |  5 +----
+ drivers/gpu/host1x/Makefile      |  1 -
+ drivers/gpu/host1x/context.c     |  2 +-
+ drivers/gpu/host1x/context.h     |  3 +--
+ drivers/gpu/host1x/context_bus.c | 26 --------------------------
+ drivers/iommu/iommu.c            |  6 +++---
+ 6 files changed, 6 insertions(+), 37 deletions(-)
 
-diff --git a/drivers/base/Kconfig b/drivers/base/Kconfig
-index f7d385cbd3ba..479bc4bb442b 100644
---- a/drivers/base/Kconfig
-+++ b/drivers/base/Kconfig
-@@ -4,6 +4,9 @@ menu "Generic Driver Options"
- config AUXILIARY_BUS
- 	bool
+diff --git a/drivers/gpu/host1x/Kconfig b/drivers/gpu/host1x/Kconfig
+index e6c78ae2003a..e3e3896f4d71 100644
+--- a/drivers/gpu/host1x/Kconfig
++++ b/drivers/gpu/host1x/Kconfig
+@@ -1,13 +1,10 @@
+ # SPDX-License-Identifier: GPL-2.0-only
  
-+config CONTEXT_DEVICE_BUS
-+	bool
-+
- config UEVENT_HELPER
- 	bool "Support for uevent helper"
+-config TEGRA_HOST1X_CONTEXT_BUS
+-	bool
+-
+ config TEGRA_HOST1X
+ 	tristate "NVIDIA Tegra host1x driver"
+ 	depends on ARCH_TEGRA || COMPILE_TEST
+ 	select DMA_SHARED_BUFFER
+-	select TEGRA_HOST1X_CONTEXT_BUS
++	select CONTEXT_DEVICE_BUS
+ 	select IOMMU_IOVA
  	help
-diff --git a/drivers/base/Makefile b/drivers/base/Makefile
-index 8074a10183dc..ab9a0b2dc73b 100644
---- a/drivers/base/Makefile
-+++ b/drivers/base/Makefile
-@@ -8,6 +8,7 @@ obj-y			:= component.o core.o bus.o dd.o syscore.o \
- 			   topology.o container.o property.o cacheinfo.o \
- 			   swnode.o faux.o
- obj-$(CONFIG_AUXILIARY_BUS) += auxiliary.o
-+obj-$(CONFIG_CONTEXT_DEVICE_BUS) += context_bus.o
- obj-$(CONFIG_DEVTMPFS)	+= devtmpfs.o
- obj-y			+= power/
- obj-$(CONFIG_ISA_BUS_API)	+= isa.o
-diff --git a/drivers/base/context_bus.c b/drivers/base/context_bus.c
-new file mode 100644
-index 000000000000..6ddb6c27bf69
---- /dev/null
-+++ b/drivers/base/context_bus.c
-@@ -0,0 +1,24 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-+
+ 	  Driver for the NVIDIA Tegra host1x hardware.
+diff --git a/drivers/gpu/host1x/Makefile b/drivers/gpu/host1x/Makefile
+index fead483af0b4..2ccd9a5f1c65 100644
+--- a/drivers/gpu/host1x/Makefile
++++ b/drivers/gpu/host1x/Makefile
+@@ -23,4 +23,3 @@ host1x-$(CONFIG_IOMMU_API) += \
+ 	context.o
+ 
+ obj-$(CONFIG_TEGRA_HOST1X) += host1x.o
+-obj-$(CONFIG_TEGRA_HOST1X_CONTEXT_BUS) += context_bus.o
+diff --git a/drivers/gpu/host1x/context.c b/drivers/gpu/host1x/context.c
+index d50d41c20561..6411c17cc060 100644
+--- a/drivers/gpu/host1x/context.c
++++ b/drivers/gpu/host1x/context.c
+@@ -54,7 +54,7 @@ int host1x_memory_context_list_init(struct host1x *host1x)
+ 		ctx->dev.dma_mask = &ctx->dma_mask;
+ 		ctx->dev.coherent_dma_mask = ctx->dma_mask;
+ 		dev_set_name(&ctx->dev, "host1x-ctx.%d", i);
+-		ctx->dev.bus = &host1x_context_device_bus_type;
++		ctx->dev.bus = &context_device_bus_type;
+ 		ctx->dev.parent = host1x->dev;
+ 		ctx->dev.release = host1x_memory_context_release;
+ 
+diff --git a/drivers/gpu/host1x/context.h b/drivers/gpu/host1x/context.h
+index 3e03bc1d3bac..87ae522fafc7 100644
+--- a/drivers/gpu/host1x/context.h
++++ b/drivers/gpu/host1x/context.h
+@@ -8,13 +8,12 @@
+ #ifndef __HOST1X_CONTEXT_H
+ #define __HOST1X_CONTEXT_H
+ 
 +#include <linux/context_bus.h>
-+#include <linux/init.h>
-+
-+const struct bus_type context_device_bus_type = {
-+	.name = "context-device",
-+};
-+EXPORT_SYMBOL_GPL(context_device_bus_type);
-+
-+static int __init context_device_bus_init(void)
-+{
-+	int err;
-+
-+	err = bus_register(&context_device_bus_type);
-+	if (err < 0) {
-+		pr_err("context-device bus registration failed: %d\n", err);
-+		return err;
-+	}
-+
-+	return 0;
-+}
-+postcore_initcall(context_device_bus_init);
-diff --git a/include/linux/context_bus.h b/include/linux/context_bus.h
-new file mode 100644
-index 000000000000..0cd44cb5b147
---- /dev/null
-+++ b/include/linux/context_bus.h
-@@ -0,0 +1,15 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
-+/*
-+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-+ */
-+
-+#ifndef __LINUX_CONTEXT_BUS_H
-+#define __LINUX_CONTEXT_BUS_H
-+
-+#include <linux/device.h>
-+
+ #include <linux/mutex.h>
+ #include <linux/refcount.h>
+ 
+ struct host1x;
+ 
+-extern struct bus_type host1x_context_device_bus_type;
+-
+ struct host1x_memory_context_list {
+ 	struct mutex lock;
+ 	struct host1x_memory_context *devs;
+diff --git a/drivers/gpu/host1x/context_bus.c b/drivers/gpu/host1x/context_bus.c
+deleted file mode 100644
+index 7cd0e1a5edd1..000000000000
+--- a/drivers/gpu/host1x/context_bus.c
++++ /dev/null
+@@ -1,26 +0,0 @@
+-// SPDX-License-Identifier: GPL-2.0-only
+-/*
+- * Copyright (c) 2021, NVIDIA Corporation.
+- */
+-
+-#include <linux/device.h>
+-#include <linux/of.h>
+-
+-const struct bus_type host1x_context_device_bus_type = {
+-	.name = "host1x-context",
+-};
+-EXPORT_SYMBOL_GPL(host1x_context_device_bus_type);
+-
+-static int __init host1x_context_device_bus_init(void)
+-{
+-	int err;
+-
+-	err = bus_register(&host1x_context_device_bus_type);
+-	if (err < 0) {
+-		pr_err("bus type registration failed: %d\n", err);
+-		return err;
+-	}
+-
+-	return 0;
+-}
+-postcore_initcall(host1x_context_device_bus_init);
+diff --git a/drivers/iommu/iommu.c b/drivers/iommu/iommu.c
+index 61c12ba78206..f01a13e2e634 100644
+--- a/drivers/iommu/iommu.c
++++ b/drivers/iommu/iommu.c
+@@ -16,7 +16,7 @@
+ #include <linux/export.h>
+ #include <linux/slab.h>
+ #include <linux/errno.h>
+-#include <linux/host1x_context_bus.h>
++#include <linux/context_bus.h>
+ #include <linux/iommu.h>
+ #include <linux/iommufd.h>
+ #include <linux/idr.h>
+@@ -173,8 +173,8 @@ static const struct bus_type * const iommu_buses[] = {
+ #ifdef CONFIG_FSL_MC_BUS
+ 	&fsl_mc_bus_type,
+ #endif
+-#ifdef CONFIG_TEGRA_HOST1X_CONTEXT_BUS
+-	&host1x_context_device_bus_type,
 +#ifdef CONFIG_CONTEXT_DEVICE_BUS
-+extern const struct bus_type context_device_bus_type;
-+#endif
-+
-+#endif /* __LINUX_CONTEXT_BUS_H */
++	&context_device_bus_type,
+ #endif
+ #ifdef CONFIG_CDX_BUS
+ 	&cdx_bus_type,
 
 -- 
 2.34.1
