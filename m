@@ -1,15 +1,12 @@
 From: Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
-Subject: [PATCH 0/3] Introduce generic context device bus for IOMMU context
- isolation
-Date: Tue, 14 Apr 2026 22:01:14 +0530
-Message-Id: <20260414-computebus-v1-0-4d904d40926a@oss.qualcomm.com>
+Date: Tue, 14 Apr 2026 22:01:15 +0530
+Subject: [PATCH 1/3] drivers: base: Add generic context device bus
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANJr3mkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDE0MT3eT83ILSktSk0mLdVAtTozRLS5PUVCNTJaCGgqLUtMwKsGHRsbW
- 1AE2VhC1cAAAA
-X-Change-ID: 20260414-computebus-e852f994ee25
+Message-Id: <20260414-computebus-v1-1-4d904d40926a@oss.qualcomm.com>
+References: <20260414-computebus-v1-0-4d904d40926a@oss.qualcomm.com>
+In-Reply-To: <20260414-computebus-v1-0-4d904d40926a@oss.qualcomm.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
  Thierry Reding <thierry.reding@kernel.org>, 
@@ -25,72 +22,112 @@ Cc: linux-kernel@vger.kernel.org, driver-core@lists.linux.dev,
  iommu@lists.linux.dev, linux-arm-msm@vger.kernel.org, 
  Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776184278; l=2594;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776184278; l=3013;
  i=ekansh.gupta@oss.qualcomm.com; s=20260223; h=from:subject:message-id;
- bh=gNqdE9d81DRyUjeuqyd3JZqlKkL8O3oEZBn4pvoKquI=;
- b=baxjKIj5uScDYrCIYv1qYvM3a63CPT0wbgKn65lPfsAUxTA/AlgOpd2u7suXXwN600FcGRQqF
- 3nuqpzm5lmqBrQTEYy04WW8GTzfnkrDDDEQwfOQK54jlvxWaVJzVsAz
+ bh=GiaW9KX6EnyHl15uXUaLI85Eugyx6gIsQQrGnKwyVVk=;
+ b=g7ZvTKbHA9UTo3rRc56oQRClDN77YoCoOIyf0Ch0pvK4S/d5lszMPmM5fNmU56g6YpXEOAu9x
+ J6BS+tcG340ACkYknZbhTqxrn/ex62ByFElTbD0dzk54v75d4aqeryz
 X-Developer-Key: i=ekansh.gupta@oss.qualcomm.com; a=ed25519;
  pk=n0SepARizye+pYjhjg1RA5J+Nq4+IJbyRcBybU+/ERQ=
 X-Endpoint-Received: by B4 Relay for ekansh.gupta@oss.qualcomm.com/20260223 with auth_id=647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series introduces a generic context device bus to replace driver-specific
-implementations and enable proper IOMMU handling of synthetic context bank
-devices used by accelerator and GPU drivers.
+Introduce a new generic bus type for synthetic context bank devices
+that require IOMMU context isolation. This bus provides a shared
+infrastructure for accelerator and GPU drivers that create virtual
+devices representing IOMMU context banks.
 
-Background:
------------
-During review of the fastrpc driver changes [1], it was pointed out that using
-a platform driver for compute bank (CB) devices was incorrect since these are
-synthetic IOMMU context banks, not real platform devices. The platform driver
-approach also had a race condition where device nodes were created before
-channel resources were initialized, and probe was async, allowing applications
-to open devices before sessions were available.
-
-The reviewer suggested following the pattern used in host1x_memory_context_list_init()
-and creating devices manually. During review of the QDA driver [2], it was
-further suggested to create a generic bus type that could be shared across
-multiple drivers rather than having each driver implement its own bus.
-
-This series implements that suggestion by:
-1. Creating a generic context_device_bus_type in drivers/base/
-2. Migrating the existing host1x driver to use it
-3. Converting fastrpc to use it, fixing the race condition in the process
-
-References:
------------
-[1] Fastrpc platform driver review:
-    https://lore.kernel.org/all/golcrcr6voafr3fqsnihyjyut36sii55vzws4josfhkjjg3nie@ur43qq2kvlsv/
-
-[2] QDA driver review requesting generic bus:
-    https://lore.kernel.org/all/en5tdgemre7vq5qihe6wnkbrro24vtzwfxwqrpnrrmugxoszs7@x2ox64zeznvd/
+Currently, drivers like host1x implement their own bus types for
+context devices. This generic implementation allows multiple drivers
+to share the same bus infrastructure, simplifying the IOMMU subsystem
+integration and reducing code duplication.
 
 Signed-off-by: Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
 ---
-Ekansh Gupta (3):
-      drivers: base: Add generic context device bus
-      gpu: host1x: Migrate to generic context device bus
-      misc: fastrpc: Use context device bus for compute banks
+ drivers/base/Kconfig        |  3 +++
+ drivers/base/Makefile       |  1 +
+ drivers/base/context_bus.c  | 24 ++++++++++++++++++++++++
+ include/linux/context_bus.h | 15 +++++++++++++++
+ 4 files changed, 43 insertions(+)
 
- drivers/base/Kconfig             |   3 +
- drivers/base/Makefile            |   1 +
- drivers/base/context_bus.c       |  24 ++++++
- drivers/gpu/host1x/Kconfig       |   5 +-
- drivers/gpu/host1x/Makefile      |   1 -
- drivers/gpu/host1x/context.c     |   2 +-
- drivers/gpu/host1x/context.h     |   3 +-
- drivers/gpu/host1x/context_bus.c |  26 ------
- drivers/iommu/iommu.c            |   6 +-
- drivers/misc/Kconfig             |   1 +
- drivers/misc/fastrpc.c           | 180 +++++++++++++++++++++++++++------------
- include/linux/context_bus.h      |  15 ++++
- 12 files changed, 174 insertions(+), 93 deletions(-)
----
-base-commit: 1c7cc4904160c6fc6377564140062d68a3dc93a0
-change-id: 20260414-computebus-e852f994ee25
+diff --git a/drivers/base/Kconfig b/drivers/base/Kconfig
+index f7d385cbd3ba..479bc4bb442b 100644
+--- a/drivers/base/Kconfig
++++ b/drivers/base/Kconfig
+@@ -4,6 +4,9 @@ menu "Generic Driver Options"
+ config AUXILIARY_BUS
+ 	bool
+ 
++config CONTEXT_DEVICE_BUS
++	bool
++
+ config UEVENT_HELPER
+ 	bool "Support for uevent helper"
+ 	help
+diff --git a/drivers/base/Makefile b/drivers/base/Makefile
+index 8074a10183dc..ab9a0b2dc73b 100644
+--- a/drivers/base/Makefile
++++ b/drivers/base/Makefile
+@@ -8,6 +8,7 @@ obj-y			:= component.o core.o bus.o dd.o syscore.o \
+ 			   topology.o container.o property.o cacheinfo.o \
+ 			   swnode.o faux.o
+ obj-$(CONFIG_AUXILIARY_BUS) += auxiliary.o
++obj-$(CONFIG_CONTEXT_DEVICE_BUS) += context_bus.o
+ obj-$(CONFIG_DEVTMPFS)	+= devtmpfs.o
+ obj-y			+= power/
+ obj-$(CONFIG_ISA_BUS_API)	+= isa.o
+diff --git a/drivers/base/context_bus.c b/drivers/base/context_bus.c
+new file mode 100644
+index 000000000000..6ddb6c27bf69
+--- /dev/null
++++ b/drivers/base/context_bus.c
+@@ -0,0 +1,24 @@
++// SPDX-License-Identifier: GPL-2.0-only
++// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
++
++#include <linux/context_bus.h>
++#include <linux/init.h>
++
++const struct bus_type context_device_bus_type = {
++	.name = "context-device",
++};
++EXPORT_SYMBOL_GPL(context_device_bus_type);
++
++static int __init context_device_bus_init(void)
++{
++	int err;
++
++	err = bus_register(&context_device_bus_type);
++	if (err < 0) {
++		pr_err("context-device bus registration failed: %d\n", err);
++		return err;
++	}
++
++	return 0;
++}
++postcore_initcall(context_device_bus_init);
+diff --git a/include/linux/context_bus.h b/include/linux/context_bus.h
+new file mode 100644
+index 000000000000..0cd44cb5b147
+--- /dev/null
++++ b/include/linux/context_bus.h
+@@ -0,0 +1,15 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++/*
++ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
++ */
++
++#ifndef __LINUX_CONTEXT_BUS_H
++#define __LINUX_CONTEXT_BUS_H
++
++#include <linux/device.h>
++
++#ifdef CONFIG_CONTEXT_DEVICE_BUS
++extern const struct bus_type context_device_bus_type;
++#endif
++
++#endif /* __LINUX_CONTEXT_BUS_H */
 
-Best regards,
 -- 
-Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
+2.34.1
 
