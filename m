@@ -1,114 +1,155 @@
-From: Dipa Mantre <dipa.mantre@oss.qualcomm.com>
-Date: Wed, 15 Apr 2026 16:27:08 +0530
-Subject: [PATCH] arm64: dts: qcom: kaanapali: Enable cpufreq cooling
- devices
+From: David Heidelberg <david@ixit.cz>
+Date: Wed, 15 Apr 2026 13:56:08 +0200
+Subject: [PATCH] arm64: dts: qcom: sdm845-shift-axolotl: describe WiFi/BT
+ properly
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260415-cpufreq_kaanapali-v1-1-1fa94105d5c2@oss.qualcomm.com>
-X-B4-Tracking: v=1; b=H4sIAANv32kC/x3MQQqAIBBA0avErBNSzKKrRMRgYw2FmVIE0d2Tl
- m/x/wOJIlOCrngg0sWJd58hywLsgn4mwVM2qEqZSkstbDhdpGNcET0G3Fg41RqDsq1NYyF3IZL
- j+3/2w/t+TOglfGMAAAA=
-X-Change-ID: 20260414-cpufreq_kaanapali-f2866a18567c
+Message-Id: <20260415-axolotl-wifi-v1-1-07df39cfc0a4@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIANd832kC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDE0NT3cSK/Jz8khzd8sy0TF1LIwuD1DQLCzNDi0QloJaCotS0zAqwcdG
+ xtbUAHx2u0V4AAAA=
+X-Change-ID: 20260415-axolotl-wifi-9280ef88618a
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Dipa Mantre <dipa.mantre@oss.qualcomm.com>
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776250633; l=2252;
- i=dipa.mantre@oss.qualcomm.com; s=20260415; h=from:subject:message-id;
- bh=qRlPI1bp3rfMHl7Ftdun6TIjf61wRmlS2KEJHHF/2v8=;
- b=qNqvbAR4egJ6GWZqWKqT9ABaOPEAGXRaIL9qKVvArzFmcnKe8OoaDzesdTly5yTJiT9UAbOR+
- I8EtSgUX73UDv5rHckmAuAfOog4XJIeo9LARNMb9XzlbnbC24c4TFYz
-X-Developer-Key: i=dipa.mantre@oss.qualcomm.com; a=ed25519;
- pk=IcrgHu2jFHNILPVydQwFqCQq05WcA8wBixw5s+yRMVI=
-X-Endpoint-Received: by B4 Relay for dipa.mantre@oss.qualcomm.com/20260415 with auth_id=736
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2911; i=david@ixit.cz;
+ h=from:subject:message-id; bh=m+1gBdPtLHFUl/FZSDkO1ZCLirKtvrPu1z4kfRZxdtU=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBp33zaBHJJ7tdDyjIkv2tD9QKaMuEipuGeY8xy6
+ /VyaEIVhxSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCad982gAKCRBgAj/E00kg
+ crFEEADExORWdeDstIT/UDZrBsjq/ilsoTTMrKPkU/l2bL7gKl2cTONbMXHyCq6fF60tZiNQWrM
+ /yXAXIx2hQ3PvP1N1++pz7vSH/tgbDRu76BtTIeFf6HVtFw088DJPIO2AwXseCNfz625/RsqaGJ
+ rRZ1K55lg1BJfiqbs7BETgPjUgWkAVPH08Yes8SqpTCIOfFQqmVgZAaEjbBb/XOUbD4kVQIDCbW
+ pxu1F+6aYc5pB2io4Dle868N0mUTyd0GFoLyPhKD2oU9ex/C5mvF2eWh02nOF5ewOjJPb9I+Ii4
+ AL62NOJh9qu+mkqSJdT3Isogz0mwFI1pG02KOt7H4aCgoFAbJWJQl6ir/TnGZV3KObz013Bsmex
+ 88uSDnPzUvdE/Fu2UhFGdXy6FBLvv3gqXnFxY1QQwmnT2i/d4qDfO524PFofUO4OtcG1PYaZ1mp
+ 2N9zFOb+YfUdQ63r8RKbgsQhdTE0m6Gy/i+dt5G+8Myw6BxF2Uxeiy/4D0sAD2gCw+hOk/nvnuk
+ OIUT6MKopQuVku7U75qHQGODACHgxwtnGQEePUWnwpq+BgCrqpaN1XScIdNUr2JN+qrxmIUnsdE
+ Sp+wj/+V05so8nmK+6NkmzZ6GDRv0MHaf8Z6h8CuA/lbBael6ytojl2m3mg+vGW2UXa/peYu/++
+ JpBdg/TMdFzCzMw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add cooling-cells property to the CPU nodes to support cpufreq
-cooling devices.
+The onboard WiFi / BT device, WCN3990, has a simple on-chip PMU, which
+further spreads generated voltage. Describe the PMU in the device tree.
 
-Signed-off-by: Dipa Mantre <dipa.mantre@oss.qualcomm.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm64/boot/dts/qcom/kaanapali.dtsi | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts | 65 +++++++++++++++++++----
+ 1 file changed, 55 insertions(+), 10 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/kaanapali.dtsi b/arch/arm64/boot/dts/qcom/kaanapali.dtsi
-index 7cc326aa1a1a..81c493668b51 100644
---- a/arch/arm64/boot/dts/qcom/kaanapali.dtsi
-+++ b/arch/arm64/boot/dts/qcom/kaanapali.dtsi
-@@ -48,6 +48,7 @@ cpu0: cpu@0 {
- 			power-domains = <&cpu_pd0>;
- 			power-domain-names = "psci";
- 			clocks = <&pdp_scmi_perf 0>;
-+			#cooling-cells = <2>;
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
+index 7d81198bc499c..c14a798035d1b 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
++++ b/arch/arm64/boot/dts/qcom/sdm845-shift-axolotl.dts
+@@ -105,6 +105,43 @@ vreg_s4a_1p8: pm8998-smps4 {
  
- 			l2_0: l2-cache {
- 				compatible = "cache";
-@@ -65,6 +66,7 @@ cpu1: cpu@100 {
- 			power-domains = <&cpu_pd1>;
- 			power-domain-names = "psci";
- 			clocks = <&pdp_scmi_perf 0>;
-+			#cooling-cells = <2>;
- 		};
+ 		vin-supply = <&vph_pwr>;
+ 	};
++
++	wcn3990-pmu {
++		compatible = "qcom,wcn3990-pmu";
++
++		pinctrl-0 = <&sw_ctrl_default>;
++		pinctrl-names = "default";
++
++		vddio-supply = <&vreg_s4a_1p8>;
++		vddxo-supply = <&vreg_l7a_1p8>;
++		vddrf-supply = <&vreg_l17a_1p3>;
++		vddch0-supply = <&vreg_l25a_3p3>;
++		vddch1-supply = <&vreg_l23a_3p3>;
++
++		swctrl-gpios = <&pm8998_gpios 3 GPIO_ACTIVE_HIGH>;
++
++		regulators {
++			vreg_pmu_io: ldo0 {
++				regulator-name = "vreg_pmu_io";
++			};
++
++			vreg_pmu_xo: ldo1 {
++				regulator-name = "vreg_pmu_xo";
++			};
++
++			vreg_pmu_rf: ldo2 {
++				regulator-name = "vreg_pmu_rf";
++			};
++
++			vreg_pmu_ch0: ldo3 {
++				regulator-name = "vreg_pmu_ch0";
++			};
++
++			vreg_pmu_ch1: ldo4 {
++				regulator-name = "vreg_pmu_ch1";
++			};
++		};
++	};
+ };
  
- 		cpu2: cpu@200 {
-@@ -76,6 +78,7 @@ cpu2: cpu@200 {
- 			power-domains = <&cpu_pd2>;
- 			power-domain-names = "psci";
- 			clocks = <&pdp_scmi_perf 0>;
-+			#cooling-cells = <2>;
- 		};
+ &adsp_pas {
+@@ -526,6 +563,13 @@ &mss_pil {
+ };
  
- 		cpu3: cpu@300 {
-@@ -87,6 +90,7 @@ cpu3: cpu@300 {
- 			power-domains = <&cpu_pd3>;
- 			power-domain-names = "psci";
- 			clocks = <&pdp_scmi_perf 0>;
-+			#cooling-cells = <2>;
- 		};
+ &pm8998_gpios {
++	sw_ctrl_default: sw-ctrl-default-state {
++		pins = "gpio3";
++		function = "normal";
++		input-enable;
++		bias-pull-down;
++	};
++
+ 	volume_up_gpio: pm8998-gpio6-state {
+ 		pinconf {
+ 			pins = "gpio6";
+@@ -732,10 +776,11 @@ bluetooth {
+ 		 */
+ 		firmware-name = "SHIFT/axolotl/crnv21.bin";
  
- 		cpu4: cpu@400 {
-@@ -98,6 +102,7 @@ cpu4: cpu@400 {
- 			power-domains = <&cpu_pd4>;
- 			power-domain-names = "psci";
- 			clocks = <&pdp_scmi_perf 0>;
-+			#cooling-cells = <2>;
- 		};
+-		vddio-supply = <&vreg_s4a_1p8>;
+-		vddxo-supply = <&vreg_l7a_1p8>;
+-		vddrf-supply = <&vreg_l17a_1p3>;
+-		vddch0-supply = <&vreg_l25a_3p3>;
++		vddio-supply = <&vreg_pmu_io>;
++		vddxo-supply = <&vreg_pmu_xo>;
++		vddrf-supply = <&vreg_pmu_rf>;
++		vddch0-supply = <&vreg_pmu_ch0>;
++
+ 		max-speed = <3200000>;
+ 	};
+ };
+@@ -790,14 +835,14 @@ &venus {
+ };
  
- 		cpu5: cpu@500 {
-@@ -109,6 +114,7 @@ cpu5: cpu@500 {
- 			power-domains = <&cpu_pd5>;
- 			power-domain-names = "psci";
- 			clocks = <&pdp_scmi_perf 0>;
-+			#cooling-cells = <2>;
- 		};
+ &wifi {
+-	status = "okay";
+-
+ 	vdd-0.8-cx-mx-supply = <&vreg_l5a_0p8>;
+-	vdd-1.3-rfa-supply = <&vreg_l17a_1p3>;
+-	vdd-1.8-xo-supply = <&vreg_l7a_1p8>;
+-	vdd-3.3-ch0-supply = <&vreg_l25a_3p3>;
+-	vdd-3.3-ch1-supply = <&vreg_l23a_3p3>;
++	vdd-1.8-xo-supply = <&vreg_pmu_xo>;
++	vdd-1.3-rfa-supply = <&vreg_pmu_rf>;
++	vdd-3.3-ch0-supply = <&vreg_pmu_ch0>;
++	vdd-3.3-ch1-supply = <&vreg_pmu_ch1>;
  
- 		cpu6: cpu@10000 {
-@@ -120,6 +126,7 @@ cpu6: cpu@10000 {
- 			power-domains = <&cpu_pd6>;
- 			power-domain-names = "psci";
- 			clocks = <&pdp_scmi_perf 1>;
-+			#cooling-cells = <2>;
- 
- 			l2_1: l2-cache {
- 				compatible = "cache";
-@@ -137,6 +144,7 @@ cpu7: cpu@10100 {
- 			power-domains = <&cpu_pd7>;
- 			power-domain-names = "psci";
- 			clocks = <&pdp_scmi_perf 1>;
-+			#cooling-cells = <2>;
- 		};
- 
- 		cpu-map {
+ 	qcom,calibration-variant = "shift_axolotl";
+ 	qcom,snoc-host-cap-8bit-quirk;
++
++	status = "okay";
+ };
 
 ---
 base-commit: e6efabc0afca02efa263aba533f35d90117ab283
-change-id: 20260414-cpufreq_kaanapali-f2866a18567c
+change-id: 20260415-axolotl-wifi-9280ef88618a
 
 Best regards,
 -- 
-Dipa Ramesh Mantre <dipa.mantre@oss.qualcomm.com>
+David Heidelberg <david@ixit.cz>
 
