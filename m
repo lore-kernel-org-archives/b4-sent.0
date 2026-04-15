@@ -1,11 +1,10 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Wed, 15 Apr 2026 10:51:46 +0100
-Subject: [PATCH v10 03/11] lib: test-kstrtox: tests for kstrtodec64() and
- kstrtoudec64()
+Date: Wed, 15 Apr 2026 10:51:47 +0100
+Subject: [PATCH v10 04/11] lib: math: div64: add div64_s64_rem()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260415-adf41513-iio-driver-v10-3-df61046d5457@analog.com>
+Message-Id: <20260415-adf41513-iio-driver-v10-4-df61046d5457@analog.com>
 References: <20260415-adf41513-iio-driver-v10-0-df61046d5457@analog.com>
 In-Reply-To: <20260415-adf41513-iio-driver-v10-0-df61046d5457@analog.com>
 To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
@@ -24,200 +23,88 @@ Cc: Jonathan Cameron <jic23@kernel.org>,
  Shuah Khan <skhan@linuxfoundation.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776246736; l=4968;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776246736; l=2261;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=tp8hvAbYc3biI7q7ogMTaReytHsO+RY7GLMjwvwZ1gQ=;
- b=704ko2KuGMnZE//7PGnbtuXfNh1boSbdctudy9ceg63lFRejeK5xtrYkJPkhlfumppdARxh5c
- GRr+ZI632rsAzIP4zDSnS6eO7tQaJ7gogP/qFQbruoQY9LVD2nxBCcA
+ bh=2v2lygWWRh+YYmi1idrGFbtPNUJ9kh0HFK3mhrgB4es=;
+ b=dWSk7W28BiSoqqG798KAJG0PjF1a0g0ucyax7n98whSjDtc+hwbi/OMSGk5InQY9DqI4nAuED
+ CazcA3ZR+TrCb49CH5CIhAtBPraxW9Kd3TxXP7z+Tvr9l+PEwX7+ugQ
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add tests for decimal parsing helpers kstrtodec64() and kstrtoudec64().
-The test infrastructure is reused from other kstrto*() functions, i.e.,
-the decimal parsers have fixed base of 10, so base field is used as
-scale input for the helpers.
+Add div64_s64_rem() function, with 32-bit implementation that uses
+div64_u64_rem() and a branchless approach to resolve the sign of the
+remainder and quotient (negation in two's complement).
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- lib/test-kstrtox.c | 156 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 156 insertions(+)
+ include/linux/math64.h | 18 ++++++++++++++++++
+ lib/math/div64.c       | 15 +++++++++++++++
+ 2 files changed, 33 insertions(+)
 
-diff --git a/lib/test-kstrtox.c b/lib/test-kstrtox.c
-index ee87fef66cb5..ee9b535bcf1c 100644
---- a/lib/test-kstrtox.c
-+++ b/lib/test-kstrtox.c
-@@ -703,6 +703,156 @@ static void __init test_kstrtos8_fail(void)
- 	TEST_FAIL(kstrtos8, s8, "%hhd", test_s8_fail);
+diff --git a/include/linux/math64.h b/include/linux/math64.h
+index cc305206d89f..99189410d4bb 100644
+--- a/include/linux/math64.h
++++ b/include/linux/math64.h
+@@ -57,6 +57,20 @@ static inline u64 div64_u64_rem(u64 dividend, u64 divisor, u64 *remainder)
+ 	return dividend / divisor;
  }
  
-+static void __init test_kstrtoudec64_ok(void)
++/**
++ * div64_s64_rem - signed 64bit divide with 64bit divisor and remainder
++ * @dividend: signed 64bit dividend
++ * @divisor: signed 64bit divisor
++ * @remainder: pointer to signed 64bit remainder
++ *
++ * Return: sets ``*remainder``, then returns dividend / divisor
++ */
++static inline s64 div64_s64_rem(s64 dividend, s64 divisor, s64 *remainder)
 +{
-+	DECLARE_TEST_OK(u64, struct test_udec64);
-+	static DEFINE_TEST_OK(struct test_udec64, test_udec64_ok) = {
-+		/* basic: integer.fraction, exact digits */
-+		{"0.0",			1,	0},
-+		{"1.5",			1,	15},
-+		{"1.234",		3,	1234},
-+		{"42.0",		1,	420},
-+		/* zero */
-+		{"0.0",			1,	0},
-+		{"0.000",		3,	0},
-+		/* integer only (no decimal point) */
-+		{"0",			1,	0},
-+		{"42",			3,	42000},
-+		{"1",			1,	10},
-+		/* fractional only (leading dot) */
-+		{".5",			1,	5},
-+		{".123",		3,	123},
-+		{".001",		3,	1},
-+		/* zero padding: fewer fractional digits than scale */
-+		{"1.2",			3,	1200},
-+		{"1.2",			6,	1200000},
-+		{"0.01",		3,	10},
-+		{"0.1",			9,	100000000ULL},
-+		{"0.01",		9,	10000000},
-+		/* truncation: more fractional digits than scale */
-+		{"1.23456",		3,	1234},
-+		{"3.1415926535",	6,	3141592},
-+		{"0.999999999",		3,	999},
-+		{"1.99",		1,	19},
-+		/* trailing newline */
-+		{"1.5\n",		1,	15},
-+		{"42\n",		3,	42000},
-+		/* plus sign */
-+		{"+1.5",		1,	15},
-+		{"+.5",			1,	5},
-+		/* scale progression */
-+		{"1.0",			1,	10},
-+		{"1.00",		2,	100},
-+		{"1.000",		3,	1000},
-+		{"1.000000",		6,	1000000},
-+		{"1.000000000",		9,	1000000000ULL},
-+		/* large values spanning u64 range */
-+		{"9223372036.854775807",	9,	9223372036854775807ULL},
-+		{"18446744073709.551615",	6,	18446744073709551615ULL},
-+	};
-+	TEST_OK(kstrtoudec64, u64, "%llu", test_udec64_ok);
++	*remainder = dividend % divisor;
++	return dividend / divisor;
 +}
 +
-+static void __init test_kstrtoudec64_fail(void)
-+{
-+	static DEFINE_TEST_FAIL(test_udec64_fail) = {
-+		/* empty / whitespace */
-+		{"",		3},
-+		{"\n",		3},
-+		/* invalid scale */
-+		{"1.0",		21},
-+		/* minus sign (unsigned) */
-+		{"-1.5",	1},
-+		{"-0.5",	1},
-+		/* no digits after dot */
-+		{"1.",		3},
-+		{".",		3},
-+		/* no digits at all */
-+		{"+",		3},
-+		/* non-digit characters */
-+		{"abc",		3},
-+		{"1.2x",	3},
-+		/* leading/trailing space */
-+		{" 1.5",	1},
-+		{"1.5 ",	1},
-+		/* overflow */
-+		{"18446744073710.551615",	6},
-+		{"99999999999999999999",	1},
-+	};
-+	TEST_FAIL(kstrtoudec64, u64, "%llu", test_udec64_fail);
-+}
+ /**
+  * div64_u64 - unsigned 64bit divide with 64bit divisor
+  * @dividend: unsigned 64bit dividend
+@@ -102,6 +116,10 @@ extern s64 div_s64_rem(s64 dividend, s32 divisor, s32 *remainder);
+ extern u64 div64_u64_rem(u64 dividend, u64 divisor, u64 *remainder);
+ #endif
+ 
++#ifndef div64_s64_rem
++extern s64 div64_s64_rem(s64 dividend, s64 divisor, s64 *remainder);
++#endif
 +
-+static void __init test_kstrtodec64_ok(void)
+ #ifndef div64_u64
+ extern u64 div64_u64(u64 dividend, u64 divisor);
+ #endif
+diff --git a/lib/math/div64.c b/lib/math/div64.c
+index d1e92ea24fce..0b10ded09a9b 100644
+--- a/lib/math/div64.c
++++ b/lib/math/div64.c
+@@ -158,6 +158,21 @@ u64 div64_u64(u64 dividend, u64 divisor)
+ EXPORT_SYMBOL(div64_u64);
+ #endif
+ 
++#ifndef div64_s64_rem
++s64 div64_s64_rem(s64 dividend, s64 divisor, s64 *remainder)
 +{
-+	DECLARE_TEST_OK(s64, struct test_dec64);
-+	static DEFINE_TEST_OK(struct test_dec64, test_dec64_ok) = {
-+		/* basic positive */
-+		{"0.0",			1,	0},
-+		{"1.5",			1,	15},
-+		{"1.234",		3,	1234},
-+		/* basic negative */
-+		{"-1.5",		1,	-15},
-+		{"-1.234",		3,	-1234},
-+		{"-0.5",		1,	-5},
-+		{"-0.001",		3,	-1},
-+		/* zero (signed) */
-+		{"-0",			1,	0},
-+		{"-0.0",		1,	0},
-+		{"0.000",		3,	0},
-+		/* integer only */
-+		{"42",			3,	42000},
-+		{"-42",			3,	-42000},
-+		/* fractional only */
-+		{".5",			1,	5},
-+		{"-.5",			1,	-5},
-+		/* zero padding */
-+		{"1.2",			3,	1200},
-+		{"-1.2",		3,	-1200},
-+		{"0.01",		3,	10},
-+		{"-0.01",		3,	-10},
-+		/* truncation */
-+		{"1.23456",		3,	1234},
-+		{"-1.23456",		3,	-1234},
-+		{"0.999999999",		3,	999},
-+		{"-0.999999999",	3,	-999},
-+		/* trailing newline */
-+		{"1.5\n",		1,	15},
-+		{"-1.5\n",		1,	-15},
-+		/* plus sign */
-+		{"+1.5",		1,	15},
-+		/* limits */
-+		{"9223372036.854775807",	9,	LLONG_MAX},
-+		{"-9223372036.854775808",	9,	LLONG_MIN},
-+	};
-+	TEST_OK(kstrtodec64, s64, "%lld", test_dec64_ok);
-+}
++	s64 quot, t, rem;
 +
-+static void __init test_kstrtodec64_fail(void)
-+{
-+	static DEFINE_TEST_FAIL(test_dec64_fail) = {
-+		/* empty / whitespace */
-+		{"",		3},
-+		{"\n",		3},
-+		/* invalid scale */
-+		{"1.0",		21},
-+		/* no digits after dot */
-+		{"1.",		3},
-+		{".",		3},
-+		{"-.",		3},
-+		/* no digits at all */
-+		{"+",		3},
-+		{"-",		3},
-+		/* non-digit characters */
-+		{"abc",		3},
-+		{"-1.2x",	3},
-+		/* signed overflow */
-+		{"9223372036.854775808",	9},
-+		{"-9223372036.854775809",	9},
-+		{"99999999999999999999",	1},
-+	};
-+	TEST_FAIL(kstrtodec64, s64, "%lld", test_dec64_fail);
-+}
++	quot = div64_u64_rem(abs(dividend), abs(divisor), (u64 *)&rem);
++	t = dividend >> 63;
++	*remainder = (rem ^ t) - t;
++	t = (dividend ^ divisor) >> 63;
 +
- static int __init test_kstrtox_init(void)
++	return (quot ^ t) - t;
++}
++EXPORT_SYMBOL(div64_s64_rem);
++#endif
++
+ #ifndef div64_s64
+ s64 div64_s64(s64 dividend, s64 divisor)
  {
- 	test_kstrtoull_ok();
-@@ -729,6 +879,12 @@ static int __init test_kstrtox_init(void)
- 	test_kstrtou8_fail();
- 	test_kstrtos8_ok();
- 	test_kstrtos8_fail();
-+
-+	test_kstrtoudec64_ok();
-+	test_kstrtoudec64_fail();
-+	test_kstrtodec64_ok();
-+	test_kstrtodec64_fail();
-+
- 	return -EINVAL;
- }
- module_init(test_kstrtox_init);
 
 -- 
 2.43.0
