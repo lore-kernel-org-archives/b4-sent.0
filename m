@@ -1,87 +1,60 @@
-From: Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
-Date: Wed, 15 Apr 2026 12:10:46 +0530
-Subject: [PATCH] arm64: dts: qcom: monaco: add GDSP fastrpc-compute-cb
- nodes
+From: Jian Hu <jian.hu@amlogic.com>
+Subject: [PATCH v2 0/4] soc: amlogic: clk-measure: add A1 and T7 support
+Date: Wed, 15 Apr 2026 16:33:40 +0800
+Message-Id: <20260415-clkmsr_a1_t7-v2-0-02b6314427e6@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260415-monacogdsp-v1-1-077ded36c7fc@oss.qualcomm.com>
-X-B4-Tracking: v=1; b=H4sIAO0y32kC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDE0NT3dz8vMTk/PSU4gLdlCRzC9OUVAMLg1RTJaCGgqLUtMwKsGHRsbW
- 1AFZZrDVcAAAA
-X-Change-ID: 20260415-monacogdsp-db785de080e5
-To: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, quic_bkumar@quicinc.com, 
- quic_chennak@quicinc.com, srinivas.kandagatla@oss.qualcomm.com
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAGRN32kC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
+ vPSU3UzU4B8JSMDIzMDE0NT3eSc7NziovhEw/gSc11LCyMDSwuTFIPENEMloJaCotS0zAqwcdG
+ xtbUAqpd5oF4AAAA=
+X-Change-ID: 20260415-clkmsr_a1_t7-9820984d0af1
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Jian Hu <jian.hu@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776235246; l=1445;
- i=ekansh.gupta@oss.qualcomm.com; s=20260223; h=from:subject:message-id;
- bh=/EG/yomTV06O1VHp8itajNVeYotdDNN6kgP9T9ejF8I=;
- b=AnuUg5syqVnJpw+A6G+a6GG6nuPAgItZu+FyhX/IPzcS5wvq+dDEkVCvjc9+Oqi1t/cc9VFx1
- DB/V0xJlfzOCUXtJcBwccHRtOWufMsq4/0UivfWq4LxYE3xD4zCXNYe
-X-Developer-Key: i=ekansh.gupta@oss.qualcomm.com; a=ed25519;
- pk=n0SepARizye+pYjhjg1RA5J+Nq4+IJbyRcBybU+/ERQ=
-X-Endpoint-Received: by B4 Relay for ekansh.gupta@oss.qualcomm.com/20260223 with auth_id=647
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776242050; l=1104;
+ i=jian.hu@amlogic.com; s=20260415; h=from:subject:message-id;
+ bh=awWIx1f9dR7GIP2hxnIcbP5W1aryibgP9I+hBEGcbjU=;
+ b=lFxpNnrVZaBBtu2+PyhMAD8jPnDZsB51zmR7K2E4pSd6jpoRRgvpHYZt7LRJreDOXR1UEHg33
+ 4Qx8jsvTlacBFUuD4UiAHWO74DXB1vKl6V98L2sGqBeiEEw3Hp59A6w
+X-Developer-Key: i=jian.hu@amlogic.com; a=ed25519;
+ pk=zHUE+rNtH9z+Sb8au1/elWknjFQmy5QDVkBoxleuOIA=
+X-Endpoint-Received: by B4 Relay for jian.hu@amlogic.com/20260415 with auth_id=735
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add GDSP fastrpc compute-cb nodes for monaco SoC.
+This series adds Amlogic clock measurement support for A1 and T7 SoCs,
+including binding updates, driver additions, and device tree enablement.
 
-Signed-off-by: Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
+Signed-off-by: Jian Hu <jian.hu@amlogic.com>
 ---
- arch/arm64/boot/dts/qcom/monaco.dtsi | 29 +++++++++++++++++++++++++++++
- 1 file changed, 29 insertions(+)
-
-diff --git a/arch/arm64/boot/dts/qcom/monaco.dtsi b/arch/arm64/boot/dts/qcom/monaco.dtsi
-index 7b1d57460f1e..ce6ff259cb4a 100644
---- a/arch/arm64/boot/dts/qcom/monaco.dtsi
-+++ b/arch/arm64/boot/dts/qcom/monaco.dtsi
-@@ -7615,6 +7615,35 @@ IPCC_MPROC_SIGNAL_GLINK_QMP
- 
- 				label = "gpdsp";
- 				qcom,remote-pid = <17>;
-+
-+				fastrpc {
-+					compatible = "qcom,fastrpc";
-+					qcom,glink-channels = "fastrpcglink-apps-dsp";
-+					label = "gdsp0";
-+					#address-cells = <1>;
-+					#size-cells = <0>;
-+
-+					compute-cb@1 {
-+						compatible = "qcom,fastrpc-compute-cb";
-+						reg = <1>;
-+						iommus = <&apps_smmu 0x28a1 0x0>;
-+						dma-coherent;
-+					};
-+
-+					compute-cb@2 {
-+						compatible = "qcom,fastrpc-compute-cb";
-+						reg = <2>;
-+						iommus = <&apps_smmu 0x28a2 0x0>;
-+						dma-coherent;
-+					};
-+
-+					compute-cb@3 {
-+						compatible = "qcom,fastrpc-compute-cb";
-+						reg = <3>;
-+						iommus = <&apps_smmu 0x28a3 0x0>;
-+						dma-coherent;
-+					};
-+				};
- 			};
- 		};
- 
+Changes in v2:
+- Add const for a1 and t7 clock measure table.
+- Use b4 to send this series.
+- Link to v1: https://lore.kernel.org/all/20260410100329.3167482-1-jian.hu@amlogic.com
 
 ---
-base-commit: 1c7cc4904160c6fc6377564140062d68a3dc93a0
-change-id: 20260415-monacogdsp-db785de080e5
+Jian Hu (4):
+      dt-bindings: soc: amlogic: clk-measure: Add A1 and T7 compatible
+      soc: amlogic: clk-measure: Add A1 and T7 support
+      arm64: dts: meson: a1: Add clk measure support
+      arm64: dts: amlogic: t7: Add clk measure support
+
+ .../soc/amlogic/amlogic,meson-gx-clk-measure.yaml  |   2 +
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        |   5 +
+ arch/arm64/boot/dts/amlogic/meson-a1.dtsi          |   5 +
+ drivers/soc/amlogic/meson-clk-measure.c            | 272 +++++++++++++++++++++
+ 4 files changed, 284 insertions(+)
+---
+base-commit: 401e5c73eedde8225e87bd11c794b8409248ff41
+change-id: 20260415-clkmsr_a1_t7-9820984d0af1
 
 Best regards,
 -- 
-Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
+Jian Hu <jian.hu@amlogic.com>
 
