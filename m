@@ -1,14 +1,13 @@
 From: Jian Hu <jian.hu@amlogic.com>
-Subject: [PATCH v2 0/4] soc: amlogic: clk-measure: add A1 and T7 support
-Date: Wed, 15 Apr 2026 16:33:40 +0800
-Message-Id: <20260415-clkmsr_a1_t7-v2-0-02b6314427e6@amlogic.com>
+Date: Wed, 15 Apr 2026 16:33:41 +0800
+Subject: [PATCH v2 1/4] dt-bindings: soc: amlogic: clk-measure: Add A1 and
+ T7 compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAGRN32kC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
- vPSU3UzU4B8JSMDIzMDE0NT3eSc7NziovhEw/gSc11LCyMDSwuTFIPENEMloJaCotS0zAqwcdG
- xtbUAqpd5oF4AAAA=
-X-Change-ID: 20260415-clkmsr_a1_t7-9820984d0af1
+Message-Id: <20260415-clkmsr_a1_t7-v2-1-02b6314427e6@amlogic.com>
+References: <20260415-clkmsr_a1_t7-v2-0-02b6314427e6@amlogic.com>
+In-Reply-To: <20260415-clkmsr_a1_t7-v2-0-02b6314427e6@amlogic.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -18,43 +17,37 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Jian Hu <jian.hu@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776242050; l=1104;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776242050; l=872;
  i=jian.hu@amlogic.com; s=20260415; h=from:subject:message-id;
- bh=awWIx1f9dR7GIP2hxnIcbP5W1aryibgP9I+hBEGcbjU=;
- b=lFxpNnrVZaBBtu2+PyhMAD8jPnDZsB51zmR7K2E4pSd6jpoRRgvpHYZt7LRJreDOXR1UEHg33
- 4Qx8jsvTlacBFUuD4UiAHWO74DXB1vKl6V98L2sGqBeiEEw3Hp59A6w
+ bh=IimYeGQJ3sTp582FUYGP7eCFxCNOvcMVP+spCKBvEZI=;
+ b=FTtwbJROifIZYLVA99AKO3wSGTKbZHs98icsYsqYtO8Mg4ZRTH1mFCDUFtUYCdfYrMNBcBx9g
+ rFXH34gR4B7DiKr25FVbcU/cYUJM3rIkkFv+1vTLJf5QJdu6By1eyXO
 X-Developer-Key: i=jian.hu@amlogic.com; a=ed25519;
  pk=zHUE+rNtH9z+Sb8au1/elWknjFQmy5QDVkBoxleuOIA=
 X-Endpoint-Received: by B4 Relay for jian.hu@amlogic.com/20260415 with auth_id=735
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds Amlogic clock measurement support for A1 and T7 SoCs,
-including binding updates, driver additions, and device tree enablement.
+Add the Amlogic A1 and T7 compatible for the clk-measurer IP.
 
 Signed-off-by: Jian Hu <jian.hu@amlogic.com>
 ---
-Changes in v2:
-- Add const for a1 and t7 clock measure table.
-- Use b4 to send this series.
-- Link to v1: https://lore.kernel.org/all/20260410100329.3167482-1-jian.hu@amlogic.com
+ .../devicetree/bindings/soc/amlogic/amlogic,meson-gx-clk-measure.yaml   | 2 ++
+ 1 file changed, 2 insertions(+)
 
----
-Jian Hu (4):
-      dt-bindings: soc: amlogic: clk-measure: Add A1 and T7 compatible
-      soc: amlogic: clk-measure: Add A1 and T7 support
-      arm64: dts: meson: a1: Add clk measure support
-      arm64: dts: amlogic: t7: Add clk measure support
+diff --git a/Documentation/devicetree/bindings/soc/amlogic/amlogic,meson-gx-clk-measure.yaml b/Documentation/devicetree/bindings/soc/amlogic/amlogic,meson-gx-clk-measure.yaml
+index 39d4637c2d08..b1200e6940ac 100644
+--- a/Documentation/devicetree/bindings/soc/amlogic/amlogic,meson-gx-clk-measure.yaml
++++ b/Documentation/devicetree/bindings/soc/amlogic/amlogic,meson-gx-clk-measure.yaml
+@@ -24,6 +24,8 @@ properties:
+       - amlogic,meson-sm1-clk-measure
+       - amlogic,c3-clk-measure
+       - amlogic,s4-clk-measure
++      - amlogic,a1-clk-measure
++      - amlogic,t7-clk-measure
+ 
+   reg:
+     maxItems: 1
 
- .../soc/amlogic/amlogic,meson-gx-clk-measure.yaml  |   2 +
- arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        |   5 +
- arch/arm64/boot/dts/amlogic/meson-a1.dtsi          |   5 +
- drivers/soc/amlogic/meson-clk-measure.c            | 272 +++++++++++++++++++++
- 4 files changed, 284 insertions(+)
----
-base-commit: 401e5c73eedde8225e87bd11c794b8409248ff41
-change-id: 20260415-clkmsr_a1_t7-9820984d0af1
-
-Best regards,
 -- 
-Jian Hu <jian.hu@amlogic.com>
+2.47.1
 
