@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 17 Apr 2026 02:34:36 +0800
-Subject: [PATCH v2 06/11] mm/memcg, swap: tidy up cgroup v1 memsw swap
- helpers
+Date: Fri, 17 Apr 2026 02:34:37 +0800
+Subject: [PATCH v2 07/11] mm, swap: support flexible batch freeing of slots
+ in different memcg
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260417-swap-table-p4-v2-6-17f5d1015428@tencent.com>
+Message-Id: <20260417-swap-table-p4-v2-7-17f5d1015428@tencent.com>
 References: <20260417-swap-table-p4-v2-0-17f5d1015428@tencent.com>
 In-Reply-To: <20260417-swap-table-p4-v2-0-17f5d1015428@tencent.com>
 To: linux-mm@kvack.org
@@ -27,272 +27,79 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Qi Zheng <qi.zheng@linux.dev>, Lorenzo Stoakes <ljs@kernel.org>, 
  Yosry Ahmed <yosry@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776364480; l=9754;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776364480; l=2138;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=xo/FLhG0Zbwo5uMzzJWgjALtV/uD9D6v6Ay7XRQhtEw=;
- b=FQZxi+0cO3HgDmbqTPj3oBgrae4/YkO2A+YKxyl7e1zvTiBVpYQ+U6bSpAn1Lg/XpnWU5a3RP
- ndSSuOOi24UD20L9yzINX3wuV68CsYC4qioqq60LeN8P6i22NCGBRPS
+ bh=YoaWnsRYGA8A2cEs47E+NMl/V2GjNEqDdJTVjYzFty8=;
+ b=wj/6qOyQFBRTit1e7iKg9Wxj6FEpM7E7kz2L87NyATQVErv7WhyPAhQYL/Wj4Pcj+VE2iwp3l
+ 4oSUb0ynR6vCnDfMJOupRgYf8Xkijt82tPcuL3/ANXJ10HlJcuPBDCR
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The cgroup v1 swap helpers always operate on swap cache folios whose
-swap entry is stable: the folio is locked and in the swap cache. There
-is no need to pass the swap entry or page count as separate parameters
-when they can be derived from the folio itself.
-
-Simplify the redundant parameters and add sanity checks to document
-the required preconditions.
-
-Also rename memcg1_swapout to __memcg1_swapout to indicate it requires
-special calling context: the folio must be isolated and dying, and the
-call must be made with interrupts disabled.
-
-No functional change.
+Instead of requiring the caller to ensure all slots are in the same
+memcg, make the function handle different memcgs at once.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/memcontrol.h |  8 ++++----
- include/linux/swap.h       | 10 ++++------
- mm/huge_memory.c           |  2 +-
- mm/memcontrol-v1.c         | 33 ++++++++++++++++++++-------------
- mm/memcontrol.c            |  9 ++++-----
- mm/swap_state.c            |  4 ++--
- mm/swapfile.c              |  2 +-
- mm/vmscan.c                |  2 +-
- 8 files changed, 37 insertions(+), 33 deletions(-)
+ mm/swapfile.c | 33 +++++++++++++++++++++++++++++----
+ 1 file changed, 29 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
-index dc3fa687759b..7d08128de1fd 100644
---- a/include/linux/memcontrol.h
-+++ b/include/linux/memcontrol.h
-@@ -1899,8 +1899,8 @@ static inline void mem_cgroup_exit_user_fault(void)
- 	current->in_user_fault = 0;
- }
- 
--void memcg1_swapout(struct folio *folio, swp_entry_t entry);
--void memcg1_swapin(swp_entry_t entry, unsigned int nr_pages);
-+void __memcg1_swapout(struct folio *folio);
-+void memcg1_swapin(struct folio *folio);
- 
- #else /* CONFIG_MEMCG_V1 */
- static inline
-@@ -1929,11 +1929,11 @@ static inline void mem_cgroup_exit_user_fault(void)
- {
- }
- 
--static inline void memcg1_swapout(struct folio *folio, swp_entry_t entry)
-+static inline void __memcg1_swapout(struct folio *folio)
- {
- }
- 
--static inline void memcg1_swapin(swp_entry_t entry, unsigned int nr_pages)
-+static inline void memcg1_swapin(struct folio *folio)
- {
- }
- 
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index 1930f81e6be4..f2949f5844a6 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -574,13 +574,12 @@ static inline void folio_throttle_swaprate(struct folio *folio, gfp_t gfp)
- #endif
- 
- #if defined(CONFIG_MEMCG) && defined(CONFIG_SWAP)
--int __mem_cgroup_try_charge_swap(struct folio *folio, swp_entry_t entry);
--static inline int mem_cgroup_try_charge_swap(struct folio *folio,
--		swp_entry_t entry)
-+int __mem_cgroup_try_charge_swap(struct folio *folio);
-+static inline int mem_cgroup_try_charge_swap(struct folio *folio)
- {
- 	if (mem_cgroup_disabled())
- 		return 0;
--	return __mem_cgroup_try_charge_swap(folio, entry);
-+	return __mem_cgroup_try_charge_swap(folio);
- }
- 
- extern void __mem_cgroup_uncharge_swap(swp_entry_t entry, unsigned int nr_pages);
-@@ -594,8 +593,7 @@ static inline void mem_cgroup_uncharge_swap(swp_entry_t entry, unsigned int nr_p
- extern long mem_cgroup_get_nr_swap_pages(struct mem_cgroup *memcg);
- extern bool mem_cgroup_swap_full(struct folio *folio);
- #else
--static inline int mem_cgroup_try_charge_swap(struct folio *folio,
--					     swp_entry_t entry)
-+static inline int mem_cgroup_try_charge_swap(struct folio *folio)
- {
- 	return 0;
- }
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 970e077019b7..9630e283cf25 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -4431,7 +4431,7 @@ void deferred_split_folio(struct folio *folio, bool partially_mapped)
- 
- 	/*
- 	 * Exclude swapcache: originally to avoid a corrupt deferred split
--	 * queue. Nowadays that is fully prevented by memcg1_swapout();
-+	 * queue. Nowadays that is fully prevented by __memcg1_swapout();
- 	 * but if page reclaim is already handling the same folio, it is
- 	 * unnecessary to handle it again in the shrinker, so excluding
- 	 * swapcache here may still be a useful optimization.
-diff --git a/mm/memcontrol-v1.c b/mm/memcontrol-v1.c
-index 433bba9dfe71..c8579395ed80 100644
---- a/mm/memcontrol-v1.c
-+++ b/mm/memcontrol-v1.c
-@@ -604,18 +604,23 @@ void memcg1_commit_charge(struct folio *folio, struct mem_cgroup *memcg)
- }
- 
- /**
-- * memcg1_swapout - transfer a memsw charge to swap
-+ * __memcg1_swapout - transfer a memsw charge to swap
-  * @folio: folio whose memsw charge to transfer
-- * @entry: swap entry to move the charge to
-  *
-- * Transfer the memsw charge of @folio to @entry.
-+ * Transfer the memsw charge of @folio to the swap entry stored in
-+ * folio->swap.
-+ *
-+ * Context: folio must be isolated, unmapped, locked and is just about
-+ * to be freed, and caller must disable IRQ.
-  */
--void memcg1_swapout(struct folio *folio, swp_entry_t entry)
-+void __memcg1_swapout(struct folio *folio)
- {
- 	struct mem_cgroup *memcg, *swap_memcg;
- 	struct obj_cgroup *objcg;
- 	unsigned int nr_entries;
- 
-+	VM_WARN_ON_ONCE_FOLIO(!folio_test_swapcache(folio), folio);
-+	VM_WARN_ON_ONCE_FOLIO(!folio_test_locked(folio), folio);
- 	VM_BUG_ON_FOLIO(folio_test_lru(folio), folio);
- 	VM_BUG_ON_FOLIO(folio_ref_count(folio), folio);
- 
-@@ -641,7 +646,7 @@ void memcg1_swapout(struct folio *folio, swp_entry_t entry)
- 	swap_memcg = mem_cgroup_private_id_get_online(memcg, nr_entries);
- 	mod_memcg_state(swap_memcg, MEMCG_SWAP, nr_entries);
- 
--	swap_cgroup_record(folio, mem_cgroup_private_id(swap_memcg), entry);
-+	swap_cgroup_record(folio, mem_cgroup_private_id(swap_memcg), folio->swap);
- 
- 	folio_unqueue_deferred_split(folio);
- 	folio->memcg_data = 0;
-@@ -671,18 +676,20 @@ void memcg1_swapout(struct folio *folio, swp_entry_t entry)
- 	obj_cgroup_put(objcg);
- }
- 
--/*
-+/**
-  * memcg1_swapin - uncharge swap slot
-- * @entry: the first swap entry for which the pages are charged
-- * @nr_pages: number of pages which will be uncharged
-+ * @folio: folio being swapped in
-  *
-- * Call this function after successfully adding the charged page to swapcache.
-+ * Call this function after successfully adding the charged
-+ * folio to swapcache.
-  *
-- * Note: This function assumes the page for which swap slot is being uncharged
-- * is order 0 page.
-+ * Context: The folio has to be in swap cache and locked.
-  */
--void memcg1_swapin(swp_entry_t entry, unsigned int nr_pages)
-+void memcg1_swapin(struct folio *folio)
- {
-+	VM_WARN_ON_ONCE_FOLIO(!folio_test_swapcache(folio), folio);
-+	VM_WARN_ON_ONCE_FOLIO(!folio_test_locked(folio), folio);
-+
- 	/*
- 	 * Cgroup1's unified memory+swap counter has been charged with the
- 	 * new swapcache page, finish the transfer by uncharging the swap
-@@ -701,7 +708,7 @@ void memcg1_swapin(swp_entry_t entry, unsigned int nr_pages)
- 		 * let's not wait for it.  The page already received a
- 		 * memory+swap charge, drop the swap entry duplicate.
- 		 */
--		mem_cgroup_uncharge_swap(entry, nr_pages);
-+		mem_cgroup_uncharge_swap(folio->swap, folio_nr_pages(folio));
- 	}
- }
- 
-diff --git a/mm/memcontrol.c b/mm/memcontrol.c
-index c3d98ab41f1f..c7df30ca5aa7 100644
---- a/mm/memcontrol.c
-+++ b/mm/memcontrol.c
-@@ -5456,13 +5456,12 @@ int __init mem_cgroup_init(void)
- /**
-  * __mem_cgroup_try_charge_swap - try charging swap space for a folio
-  * @folio: folio being added to swap
-- * @entry: swap entry to charge
-  *
-- * Try to charge @folio's memcg for the swap space at @entry.
-+ * Try to charge @folio's memcg for the swap space at folio->swap.
-  *
-  * Returns 0 on success, -ENOMEM on failure.
-  */
--int __mem_cgroup_try_charge_swap(struct folio *folio, swp_entry_t entry)
-+int __mem_cgroup_try_charge_swap(struct folio *folio)
- {
- 	unsigned int nr_pages = folio_nr_pages(folio);
- 	struct page_counter *counter;
-@@ -5479,7 +5478,7 @@ int __mem_cgroup_try_charge_swap(struct folio *folio, swp_entry_t entry)
- 
- 	rcu_read_lock();
- 	memcg = obj_cgroup_memcg(objcg);
--	if (!entry.val) {
-+	if (!folio_test_swapcache(folio)) {
- 		memcg_memory_event(memcg, MEMCG_SWAP_FAIL);
- 		rcu_read_unlock();
- 		return 0;
-@@ -5498,7 +5497,7 @@ int __mem_cgroup_try_charge_swap(struct folio *folio, swp_entry_t entry)
- 	}
- 	mod_memcg_state(memcg, MEMCG_SWAP, nr_pages);
- 
--	swap_cgroup_record(folio, mem_cgroup_private_id(memcg), entry);
-+	swap_cgroup_record(folio, mem_cgroup_private_id(memcg), folio->swap);
- 
- 	return 0;
- }
-diff --git a/mm/swap_state.c b/mm/swap_state.c
-index 21358ed17aeb..af50e6a21850 100644
---- a/mm/swap_state.c
-+++ b/mm/swap_state.c
-@@ -454,8 +454,8 @@ static struct folio *__swap_cache_alloc(struct swap_cluster_info *ci,
- 		return ERR_PTR(-ENOMEM);
- 	}
- 
--	/* For memsw accounting, swap is uncharged when folio is added to swap cache */
--	memcg1_swapin(entry, 1 << order);
-+	/* memsw uncharges swap when folio is added to swap cache */
-+	memcg1_swapin(folio);
- 	if (shadow)
- 		workingset_refault(folio, shadow);
- 
 diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 3aec76d93075..2211d290ae95 100644
+index 2211d290ae95..b0efae57b973 100644
 --- a/mm/swapfile.c
 +++ b/mm/swapfile.c
-@@ -1730,7 +1730,7 @@ int folio_alloc_swap(struct folio *folio)
- 	}
+@@ -1872,21 +1872,46 @@ void __swap_cluster_free_entries(struct swap_info_struct *si,
+ 				 unsigned int ci_start, unsigned int nr_pages)
+ {
+ 	unsigned long old_tb;
++	unsigned int type = si->type;
++	unsigned short id = 0, id_cur;
+ 	unsigned int ci_off = ci_start, ci_end = ci_start + nr_pages;
+-	unsigned long offset = cluster_offset(si, ci) + ci_start;
++	unsigned long offset = cluster_offset(si, ci);
++	unsigned int ci_batch = ci_off;
++	swp_entry_t entry;
  
- 	/* Need to call this even if allocation failed, for MEMCG_SWAP_FAIL. */
--	if (unlikely(mem_cgroup_try_charge_swap(folio, folio->swap)))
-+	if (unlikely(mem_cgroup_try_charge_swap(folio)))
- 		swap_cache_del_folio(folio);
+ 	VM_WARN_ON(ci->count < nr_pages);
  
- 	if (unlikely(!folio_test_swapcache(folio)))
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index bd1b1aa12581..63d06930d8e3 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -739,7 +739,7 @@ static int __remove_mapping(struct address_space *mapping, struct folio *folio,
+ 	ci->count -= nr_pages;
+ 	do {
+ 		old_tb = __swap_table_get(ci, ci_off);
+-		/* Release the last ref, or after swap cache is dropped */
++		/*
++		 * Freeing is done after release of the last swap count
++		 * ref, or after swap cache is dropped
++		 */
+ 		VM_WARN_ON(!swp_tb_is_shadow(old_tb) || __swp_tb_get_count(old_tb) > 1);
+ 		__swap_table_set(ci, ci_off, null_to_swp_tb());
++
++		/*
++		 * Uncharge swap slots by memcg in batches. Consecutive
++		 * slots with the same cgroup id are uncharged together.
++		 */
++		entry = swp_entry(type, offset + ci_off);
++		id_cur = lookup_swap_cgroup_id(entry);
++		if (id != id_cur) {
++			if (id)
++				mem_cgroup_uncharge_swap(swp_entry(type, offset + ci_batch),
++							 ci_off - ci_batch);
++			id = id_cur;
++			ci_batch = ci_off;
++		}
+ 	} while (++ci_off < ci_end);
  
- 		if (reclaimed && !mapping_exiting(mapping))
- 			shadow = workingset_eviction(folio, target_memcg);
--		memcg1_swapout(folio, swap);
-+		__memcg1_swapout(folio);
- 		__swap_cache_del_folio(ci, folio, swap, shadow);
- 		swap_cluster_unlock_irq(ci);
- 	} else {
+-	mem_cgroup_uncharge_swap(swp_entry(si->type, offset), nr_pages);
+-	swap_range_free(si, offset, nr_pages);
++	if (id) {
++		mem_cgroup_uncharge_swap(swp_entry(type, offset + ci_batch),
++					 ci_off - ci_batch);
++	}
++
++	swap_range_free(si, offset + ci_start, nr_pages);
+ 	swap_cluster_assert_empty(ci, ci_start, nr_pages, false);
+ 
+ 	if (!ci->count)
 
 -- 
 2.53.0
