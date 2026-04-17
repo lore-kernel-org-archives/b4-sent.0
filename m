@@ -1,10 +1,10 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Fri, 17 Apr 2026 09:05:53 +0800
-Subject: [PATCH 3/4] rust: xarray: Update StoreError comments for alloc()
+Date: Fri, 17 Apr 2026 09:05:54 +0800
+Subject: [PATCH 4/4] rust: xarray: Add Guard::find() helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260417-tyr-ioctls-deps-v1-3-41c6e9bb061c@linux.dev>
+Message-Id: <20260417-tyr-ioctls-deps-v1-4-41c6e9bb061c@linux.dev>
 References: <20260417-tyr-ioctls-deps-v1-0-41c6e9bb061c@linux.dev>
 In-Reply-To: <20260417-tyr-ioctls-deps-v1-0-41c6e9bb061c@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -19,45 +19,59 @@ Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-mm@kvack.org, =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
  Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776388289; l=1003;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776388289; l=1408;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=F/5SEP+S/zr/1Wvabq3W0ofBAhgKbB5EzANwuYwFetA=;
- b=mHYTu9uPEnfW/Y/sIW8aE4App2+Eq7VQ+cJKYCM8Ln6csO3vDaC4O7okM3v+6xmI1n7e/ytq8
- VUnKr8eWYQoCUmsdOOLPgvyM73PSb2biAEBFhMnuYrl1GylM0RFUgRh
+ bh=HK2c+z8dRuFsYNATe7JRBa5cKQyu3FlazejUuvyOuq8=;
+ b=c/lPoOZ1Arte0C/QoYrkBDlhgjCZ5b99pHUmEM6OFrj/WdCEt52K0YfvGN8Z06RSSMFQgpDdo
+ JBKPQrDSNehAxdqNGVcwXaYyiVDut1xvEu8f1PV1IxWItviywlhjFt6
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update StoreError documentation comments to mention alloc() usage since
-this error type will be used by the upcoming alloc() helper.
+Add a helper to find the first present entry in the XArray.
+
+Returns the index of the first present entry, or None if the array
+is empty.
 
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- rust/kernel/xarray.rs | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ rust/kernel/xarray.rs | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
 
 diff --git a/rust/kernel/xarray.rs b/rust/kernel/xarray.rs
-index 1b882cd2f58bf..235fda0e394ba 100644
+index 235fda0e394ba..e43129d032d9d 100644
 --- a/rust/kernel/xarray.rs
 +++ b/rust/kernel/xarray.rs
-@@ -161,13 +161,13 @@ fn drop(&mut self) {
+@@ -217,6 +217,28 @@ pub fn remove(&mut self, index: usize) -> Option<T> {
+         unsafe { T::try_from_foreign(ptr) }
      }
- }
  
--/// The error returned by [`store`](Guard::store).
-+/// The error returned by [`Guard::store`] and [`Guard::alloc`].
- ///
--/// Contains the underlying error and the value that was not stored.
-+/// Contains the underlying error and the value that was not stored or allocated.
- pub struct StoreError<T> {
-     /// The error that occurred.
-     pub error: Error,
--    /// The value that was not stored.
-+    /// The value that was not stored or allocated.
-     pub value: T,
- }
- 
++    /// Finds the first present entry.
++    ///
++    /// Returns the index of the first present entry, or `None` if the array is empty.
++    pub fn find(&mut self) -> Option<usize> {
++        let mut index = 0usize;
++        // SAFETY: `self.xa.xa` is always valid by the type invariant, and we hold the lock.
++        let ptr = unsafe {
++            bindings::xa_find(
++                self.xa.xa.get(),
++                &mut index,
++                usize::MAX,
++                bindings::XA_PRESENT,
++            )
++        };
++
++        if ptr.is_null() {
++            None
++        } else {
++            Some(index)
++        }
++    }
++
+     /// Stores an element at the given index.
+     ///
+     /// May drop the lock if needed to allocate memory, and then reacquire it afterwards.
 
 -- 
 2.43.0
