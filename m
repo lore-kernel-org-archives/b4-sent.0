@@ -1,325 +1,108 @@
-From: Pawel Laszczak <pawell@cadence.com>
-Date: Fri, 17 Apr 2026 10:37:31 +0200
-Subject: [PATCH] usb: cdnsp: add support for eUSB2v2 port
+From: Vishwas Rajashekar <vishwas.dev@vrajashkr.com>
+Date: Sat, 18 Apr 2026 00:11:09 +0530
+Subject: [PATCH v3] dt-bindings: iio: gyroscope: add mount-matrix for
+ bmg160
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260417-eusb2v2_upstream-v1-1-3340d9d9bf0e@cadence.com>
-X-B4-Tracking: v=1; b=H4sIAErx4WkC/yXMTQqDMBBA4avIrBuIg3/1KqWUTBzbEWolY0QQ7
- 26sy2/x3gbKQVihzTYIvIjKb0zIbxn4jxvfbKRLBrRY2SKvDUclXPAVJ50Du69prC8J764mcpC
- yKXAv63/5eF7WSAP7+fzAvh9soh6UdAAAAA==
-X-Change-ID: 20260417-eusb2v2_upstream-80c5b29a7bba
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- peter.chen@kernel.org, Pawel Laszczak <pawell@cadence.com>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776415060; l=10626;
- i=pawell@cadence.com; h=from:subject:message-id;
- bh=6of1fBEPgMT5L74JUJ70rK/fgrEplBcDd1Odp7kO/AM=;
- b=5Lhb1pypb278XqXBWLw/AqwELnBZbv6L9rq7bYAFjFqQfZq30+5u1nOm3Jj5Xc8MVCOcRWHgx
- oGva0fhgFwbCe0cC4OrR8dt/SCbV3RkmZihYWk+y244uD1C8PDX1tVh
-X-Developer-Key: i=pawell@cadence.com; a=ed25519;
- pk=EUPBvLO9CDg7j6defeDl2iqi+z5Ivqu4Z46aiqe7dYc=
-X-Endpoint-Received: by B4 Relay for pawell@cadence.com/default with auth_id=707
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260418-bmg160-mount-matrix-dt-binding-v3-1-ce8020ecbf9a@vrajashkr.com>
+X-B4-Tracking: v=1; b=H4sIAMR+4mkC/4WOQQ6CMBBFr0K6dgytMIIr72FcQDvAaCimLQ3Gc
+ HdBY2LcuHzJz3v/ITw5Ji8OyUM4iux5sAvsNonQXWVbAjYLC5UqTDOZQd23ElPoh9EG6KvgeAI
+ ToGZr2LZAezTGUJkViGKR3Bw1PL0Cp/Ob/VhfSIfVui469mFw99eDKNfdJ5b/i0UJElJSushLz
+ IjwGF11qXx3dVs99GINRvWtxL9KtSgJUTe5bpqCil/lPM9PO6E29TUBAAA=
+X-Change-ID: 20260414-bmg160-mount-matrix-dt-binding-e76ddde94866
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ "H. Nikolaus Schaller" <hns@goldelico.com>
+Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, luca@lucaweiss.eu, 
+ Vishwas Rajashekar <vishwas.dev@vrajashkr.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776451286; l=2793;
+ i=vishwas.dev@vrajashkr.com; s=20260414; h=from:subject:message-id;
+ bh=0hFO4pVSk29VQGp7JRnLEM4OixgjM26nPl8qocDmLp8=;
+ b=mT7mV223BgKj7ZWEZJn3VqZ2EIir63jVXxPLfx9vXSf2O8OgVVd6O+ftcBRxN7lLdJ6rW/9m6
+ HAHcRbKh0a2DmtX84n4DqNiVFG1X2kkMLKNkkGdrz7hEVDB2w3tf85Q
+X-Developer-Key: i=vishwas.dev@vrajashkr.com; a=ed25519;
+ pk=OvZgoGVJ7ofrIn3w/YijdoJ0IexAy1kREY51mGZPm9M=
+X-Endpoint-Received: by B4 Relay for vishwas.dev@vrajashkr.com/20260414 with auth_id=734
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Cadence CDNSP controller optionally supports eUSB2 (embedded USB2)
-port. While this port type operates logically like high-speed USB 2.0,
-it utilizes a different physical layer signaling.
+The mount-matrix property supplies a 3x3 matrix that is used
+to transform the values from the gyroscope to get vector
+values that are relative to the way the sensor has been mounted
+on the device. When the property is not specified, the identity
+matrix is used.
 
-This patch:
-- Extends the port detection logic to recognize the eUSB2 protocol.
-- Tracks the eUSB2 port offset in the cdnsp_device structure.
-- Ensures that eUSB2 ports are correctly handled during Link State
-  transitions, specifically forcing L0 when LPM is capable, similar
-  to standard USB 2.0 ports.
+This change adds mount-matrix as an optional property to the
+dt-bindings for the bmg160 gyroscope.
 
-Signed-off-by: Pawel Laszczak <pawell@cadence.com>
+Signed-off-by: Vishwas Rajashekar <vishwas.dev@vrajashkr.com>
 ---
- drivers/usb/cdns3/cdnsp-gadget.c | 49 ++++++++++++++++++---------
- drivers/usb/cdns3/cdnsp-gadget.h |  1 +
- drivers/usb/cdns3/cdnsp-mem.c    | 73 +++++++++++++++++++++++++++-------------
- drivers/usb/cdns3/cdnsp-ring.c   |  9 +++--
- 4 files changed, 90 insertions(+), 42 deletions(-)
+The bmg160 driver reads an optional mount-matrix using
+"iio_read_mount_matrix" in "bmg160_core_probe" and stores
+this orientation data in "struct bmg160_data". As the "mount-matrix"
+property is used by the driver, this change proposes to add it to
+the corresponding dt-bindings.
+---
+Changes in v3:
+- Addressed review feedback: updated the commit message to indicate
+  relevance to hardware and remove references to the Linux driver.
+- Link to v2: https://patch.msgid.link/20260416-bmg160-mount-matrix-dt-binding-v2-1-e66cf5cff8e8@vrajashkr.com
 
-diff --git a/drivers/usb/cdns3/cdnsp-gadget.c b/drivers/usb/cdns3/cdnsp-gadget.c
-index 6b3815f8a6e5..2c71c77e6ec3 100644
---- a/drivers/usb/cdns3/cdnsp-gadget.c
-+++ b/drivers/usb/cdns3/cdnsp-gadget.c
-@@ -124,20 +124,28 @@ void cdnsp_set_link_state(struct cdnsp_device *pdev,
- }
+Changes in v2:
+- Addressed review feedback: add mount-matrix example for bmg160
+- Link to v1: https://patch.msgid.link/20260415-bmg160-mount-matrix-dt-binding-v1-1-0e2c85964ee6@vrajashkr.com
+
+To: Jonathan Cameron <jic23@kernel.org>
+To: David Lechner <dlechner@baylibre.com>
+To: Nuno Sá <nuno.sa@analog.com>
+To: Andy Shevchenko <andy@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: "H. Nikolaus Schaller" <hns@goldelico.com>
+Cc: linux-iio@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+---
+ Documentation/devicetree/bindings/iio/gyroscope/bosch,bmg160.yaml | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/Documentation/devicetree/bindings/iio/gyroscope/bosch,bmg160.yaml b/Documentation/devicetree/bindings/iio/gyroscope/bosch,bmg160.yaml
+index 3c6fe74af0b8..ec97778cca78 100644
+--- a/Documentation/devicetree/bindings/iio/gyroscope/bosch,bmg160.yaml
++++ b/Documentation/devicetree/bindings/iio/gyroscope/bosch,bmg160.yaml
+@@ -22,6 +22,9 @@ properties:
+   vdd-supply: true
+   vddio-supply: true
  
- static void cdnsp_disable_port(struct cdnsp_device *pdev,
--			       __le32 __iomem *port_regs)
-+			       struct cdnsp_port *port)
- {
--	u32 temp = cdnsp_port_state_to_neutral(readl(port_regs));
-+	u32 temp;
++  mount-matrix:
++    description: an optional 3x3 mounting rotation matrix.
 +
-+	if (!port->exist)
-+		return;
+   spi-max-frequency:
+     maximum: 10000000
  
--	writel(temp | PORT_PED, port_regs);
-+	temp = cdnsp_port_state_to_neutral(readl(&port->regs->portsc));
-+	writel(temp | PORT_PED, &port->regs->portsc);
- }
- 
- static void cdnsp_clear_port_change_bit(struct cdnsp_device *pdev,
--					__le32 __iomem *port_regs)
-+					struct cdnsp_port *port)
- {
--	u32 portsc = readl(port_regs);
-+	u32 portsc;
-+
-+	if (!port->exist)
-+		return;
- 
-+	portsc = readl(&port->regs->portsc);
- 	writel(cdnsp_port_state_to_neutral(portsc) |
--	       (portsc & PORT_CHANGE_BITS), port_regs);
-+	       (portsc & PORT_CHANGE_BITS), &port->regs->portsc);
- }
- 
- static void cdnsp_set_apb_timeout_value(struct cdnsp_device *pdev)
-@@ -944,7 +952,7 @@ void cdnsp_set_usb2_hardware_lpm(struct cdnsp_device *pdev,
- 				 struct usb_request *req,
- 				 int enable)
- {
--	if (pdev->active_port != &pdev->usb2_port || !pdev->gadget.lpm_capable)
-+	if (pdev->active_port == &pdev->usb3_port || !pdev->gadget.lpm_capable)
- 		return;
- 
- 	trace_cdnsp_lpm(enable);
-@@ -1310,20 +1318,26 @@ static int cdnsp_run(struct cdnsp_device *pdev,
- 		break;
- 	}
- 
--	if (speed >= USB_SPEED_SUPER) {
-+	if (pdev->usb3_port.exist && speed >= USB_SPEED_SUPER) {
- 		writel(temp, &pdev->port3x_regs->mode_addr);
- 		cdnsp_set_link_state(pdev, &pdev->usb3_port.regs->portsc,
- 				     XDEV_RXDETECT);
- 	} else {
--		cdnsp_disable_port(pdev, &pdev->usb3_port.regs->portsc);
-+		cdnsp_disable_port(pdev, &pdev->usb3_port);
- 	}
- 
--	cdnsp_set_link_state(pdev, &pdev->usb2_port.regs->portsc,
--			     XDEV_RXDETECT);
-+	if (pdev->usb2_port.exist) {
-+		cdnsp_set_link_state(pdev, &pdev->usb2_port.regs->portsc,
-+				     XDEV_RXDETECT);
-+		writel(PORT_REG6_L1_L0_HW_EN | fs_speed, &pdev->port20_regs->port_reg6);
-+	}
-+
-+	if (pdev->eusb_port.exist)
-+		cdnsp_set_link_state(pdev, &pdev->eusb_port.regs->portsc,
-+				     XDEV_RXDETECT);
- 
- 	cdnsp_gadget_ep0_desc.wMaxPacketSize = cpu_to_le16(512);
- 
--	writel(PORT_REG6_L1_L0_HW_EN | fs_speed, &pdev->port20_regs->port_reg6);
- 
- 	ret = cdnsp_start(pdev);
- 	if (ret) {
-@@ -1469,8 +1483,10 @@ static void cdnsp_stop(struct cdnsp_device *pdev)
- 			cdnsp_ep_dequeue(&pdev->eps[0], req);
- 	}
- 
--	cdnsp_disable_port(pdev, &pdev->usb2_port.regs->portsc);
--	cdnsp_disable_port(pdev, &pdev->usb3_port.regs->portsc);
-+	cdnsp_disable_port(pdev, &pdev->usb2_port);
-+	cdnsp_disable_port(pdev, &pdev->usb3_port);
-+	cdnsp_disable_port(pdev, &pdev->eusb_port);
-+
- 	cdnsp_disable_slot(pdev);
- 	cdnsp_halt(pdev);
- 
-@@ -1479,8 +1495,9 @@ static void cdnsp_stop(struct cdnsp_device *pdev)
- 	temp = readl(&pdev->ir_set->irq_pending);
- 	writel(IMAN_IE_CLEAR(temp), &pdev->ir_set->irq_pending);
- 
--	cdnsp_clear_port_change_bit(pdev, &pdev->usb2_port.regs->portsc);
--	cdnsp_clear_port_change_bit(pdev, &pdev->usb3_port.regs->portsc);
-+	cdnsp_clear_port_change_bit(pdev, &pdev->usb2_port);
-+	cdnsp_clear_port_change_bit(pdev, &pdev->eusb_port);
-+	cdnsp_clear_port_change_bit(pdev, &pdev->usb3_port);
- 
- 	/* Clear interrupt line */
- 	temp = readl(&pdev->ir_set->irq_pending);
-diff --git a/drivers/usb/cdns3/cdnsp-gadget.h b/drivers/usb/cdns3/cdnsp-gadget.h
-index a91cca509db0..c44bca348a41 100644
---- a/drivers/usb/cdns3/cdnsp-gadget.h
-+++ b/drivers/usb/cdns3/cdnsp-gadget.h
-@@ -1474,6 +1474,7 @@ struct cdnsp_device {
- 	unsigned int link_state;
- 
- 	struct cdnsp_port usb2_port;
-+	struct cdnsp_port eusb_port;
- 	struct cdnsp_port usb3_port;
- 	struct cdnsp_port *active_port;
- 	u16 test_mode;
-diff --git a/drivers/usb/cdns3/cdnsp-mem.c b/drivers/usb/cdns3/cdnsp-mem.c
-index a2a1b21f2ef8..932071818d1e 100644
---- a/drivers/usb/cdns3/cdnsp-mem.c
-+++ b/drivers/usb/cdns3/cdnsp-mem.c
-@@ -1088,11 +1088,9 @@ void cdnsp_mem_cleanup(struct cdnsp_device *pdev)
- 			  pdev->dcbaa, pdev->dcbaa->dma);
- 
- 	pdev->dcbaa = NULL;
--
--	pdev->usb2_port.exist = 0;
--	pdev->usb3_port.exist = 0;
--	pdev->usb2_port.port_num = 0;
--	pdev->usb3_port.port_num = 0;
-+	memset(&pdev->usb2_port, 0, sizeof(struct cdnsp_port));
-+	memset(&pdev->eusb_port, 0, sizeof(struct cdnsp_port));
-+	memset(&pdev->usb3_port, 0, sizeof(struct cdnsp_port));
- 	pdev->active_port = NULL;
- }
- 
-@@ -1133,6 +1131,18 @@ static void cdnsp_add_in_port(struct cdnsp_device *pdev,
- 	port_offset = CDNSP_EXT_PORT_OFF(temp);
- 	port_count = CDNSP_EXT_PORT_COUNT(temp);
- 
-+	if (port == &pdev->eusb_port) {
-+		/*
-+		 * If controller has usb2 + eusb port then eusb is as
-+		 * second port
-+		 */
-+		if (port_count == 2)
-+			port_offset++;
-+
-+		if (port_count == 1 && pdev->usb2_port.exist)
-+			return;
-+	}
-+
- 	trace_cdnsp_port_info(addr, port_offset, port_count, port->maj_rev);
- 
- 	port->port_num = port_offset;
-@@ -1152,13 +1162,10 @@ static int cdnsp_setup_port_arrays(struct cdnsp_device *pdev)
- 	base = &pdev->cap_regs->hc_capbase;
- 	offset = cdnsp_find_next_ext_cap(base, 0,
- 					 EXT_CAP_CFG_DEV_20PORT_CAP_ID);
--	pdev->port20_regs = base + offset;
--
--	offset = cdnsp_find_next_ext_cap(base, 0, D_XEC_CFG_3XPORT_CAP);
--	pdev->port3x_regs =  base + offset;
-+	if (offset)
-+		pdev->port20_regs = base + offset;
- 
- 	offset = 0;
--	base = &pdev->cap_regs->hc_capbase;
- 
- 	/* Driver expects max 2 extended protocol capability. */
- 	for (i = 0; i < 2; i++) {
-@@ -1173,26 +1180,46 @@ static int cdnsp_setup_port_arrays(struct cdnsp_device *pdev)
- 			cdnsp_add_in_port(pdev, &pdev->usb3_port,
- 					  base + offset);
- 
--		if (CDNSP_EXT_PORT_MAJOR(temp) == 0x02 &&
--		    !pdev->usb2_port.port_num)
--			cdnsp_add_in_port(pdev, &pdev->usb2_port,
--					  base + offset);
-+		if (CDNSP_EXT_PORT_MAJOR(temp) == 0x02) {
-+			if (!pdev->usb2_port.port_num && pdev->port20_regs)
-+				cdnsp_add_in_port(pdev, &pdev->usb2_port,
-+						  base + offset);
-+
-+			if (!pdev->eusb_port.port_num)
-+				cdnsp_add_in_port(pdev, &pdev->eusb_port,
-+						  base + offset);
-+		}
- 	}
- 
--	if (!pdev->usb2_port.exist || !pdev->usb3_port.exist) {
--		dev_err(pdev->dev, "Error: Only one port detected\n");
-+	if (!pdev->usb2_port.exist && !pdev->eusb_port.exist &&
-+	    !pdev->usb3_port.exist) {
-+		dev_err(pdev->dev, "Error: No port detected\n");
- 		return -ENODEV;
- 	}
- 
--	trace_cdnsp_init("Found USB 2.0 ports and  USB 3.0 ports.");
-+	if (pdev->usb2_port.exist) {
-+		pdev->usb2_port.regs = (struct cdnsp_port_regs __iomem *)
-+				       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
-+					(pdev->usb2_port.port_num - 1));
-+		trace_cdnsp_init("Found USB 2.0 port.");
-+	}
- 
--	pdev->usb2_port.regs = (struct cdnsp_port_regs __iomem *)
--			       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
--				(pdev->usb2_port.port_num - 1));
-+	if (pdev->eusb_port.exist) {
-+		pdev->eusb_port.regs = (struct cdnsp_port_regs __iomem *)
-+				       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
-+					(pdev->eusb_port.port_num - 1));
-+		trace_cdnsp_init("Found eUSB 2.0 port.");
-+	}
-+
-+	if (pdev->usb3_port.exist) {
-+		offset = cdnsp_find_next_ext_cap(base, 0, D_XEC_CFG_3XPORT_CAP);
-+		pdev->port3x_regs =  base + offset;
- 
--	pdev->usb3_port.regs = (struct cdnsp_port_regs __iomem *)
--			       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
--				(pdev->usb3_port.port_num - 1));
-+		pdev->usb3_port.regs = (struct cdnsp_port_regs __iomem *)
-+				       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
-+					(pdev->usb3_port.port_num - 1));
-+		trace_cdnsp_init("Found  USB 3.x port.");
-+	}
- 
- 	return 0;
- }
-diff --git a/drivers/usb/cdns3/cdnsp-ring.c b/drivers/usb/cdns3/cdnsp-ring.c
-index 0758f171f73e..715658c981ff 100644
---- a/drivers/usb/cdns3/cdnsp-ring.c
-+++ b/drivers/usb/cdns3/cdnsp-ring.c
-@@ -259,7 +259,7 @@ static bool cdnsp_room_on_ring(struct cdnsp_device *pdev,
-  */
- static void cdnsp_force_l0_go(struct cdnsp_device *pdev)
- {
--	if (pdev->active_port == &pdev->usb2_port && pdev->gadget.lpm_capable)
-+	if (pdev->active_port != &pdev->usb3_port && pdev->gadget.lpm_capable)
- 		cdnsp_set_link_state(pdev, &pdev->active_port->regs->portsc, XDEV_U0);
- }
- 
-@@ -763,6 +763,8 @@ static int cdnsp_update_port_id(struct cdnsp_device *pdev, u32 port_id)
- 
- 	if (port_id == pdev->usb2_port.port_num) {
- 		port = &pdev->usb2_port;
-+	} else if (port_id == pdev->eusb_port.port_num) {
-+		port = &pdev->eusb_port;
- 	} else if (port_id == pdev->usb3_port.port_num) {
- 		port  = &pdev->usb3_port;
- 	} else {
-@@ -779,7 +781,8 @@ static int cdnsp_update_port_id(struct cdnsp_device *pdev, u32 port_id)
- 		cdnsp_enable_slot(pdev);
- 	}
- 
--	if (port_id == pdev->usb2_port.port_num)
-+	if ((pdev->usb2_port.exist && port_id == pdev->usb2_port.port_num) ||
-+	    (pdev->eusb_port.exist && port_id == pdev->eusb_port.port_num))
- 		cdnsp_set_usb2_hardware_lpm(pdev, NULL, 1);
- 	else
- 		writel(PORT_U1_TIMEOUT(1) | PORT_U2_TIMEOUT(1),
-@@ -808,7 +811,7 @@ static void cdnsp_handle_port_status(struct cdnsp_device *pdev,
- 
- 	port_regs = pdev->active_port->regs;
- 
--	if (port_id == pdev->usb2_port.port_num)
-+	if (port_id == pdev->usb2_port.port_num || port_id == pdev->eusb_port.port_num)
- 		port2 = true;
- 
- new_event:
+@@ -52,6 +55,9 @@ examples:
+             reg = <0x69>;
+             interrupt-parent = <&gpio6>;
+             interrupts = <18 IRQ_TYPE_EDGE_RISING>;
++            mount-matrix = "0", "1", "0",
++                           "1", "0", "0",
++                           "0", "0", "1";
+         };
+     };
+ ...
 
 ---
-base-commit: 1c7cc4904160c6fc6377564140062d68a3dc93a0
-change-id: 20260417-eusb2v2_upstream-80c5b29a7bba
+base-commit: 591cd656a1bf5ea94a222af5ef2ee76df029c1d2
+change-id: 20260414-bmg160-mount-matrix-dt-binding-e76ddde94866
 
 Best regards,
 --  
-Pawel Laszczak <pawell@cadence.com>
+Vishwas Rajashekar <vishwas.dev@vrajashkr.com>
 
