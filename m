@@ -1,15 +1,12 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Subject: [PATCH RFC v3 0/9] AD9910 Direct Digital Synthesizer
-Date: Fri, 17 Apr 2026 09:17:29 +0100
-Message-Id: <20260417-ad9910-iio-driver-v3-0-29b93712a228@analog.com>
+Date: Fri, 17 Apr 2026 09:17:30 +0100
+Subject: [PATCH RFC v3 1/9] dt-bindings: iio: frequency: add ad9910
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJns4WkC/23OwQrCMAwG4FcZPVtp0jlXT4LgA3gVD13bzYCu0
- kpRxt7dUg8i7Pgn/F8ysegCuch21cSCSxTJjznIVcXMVY+D42RzZiiwEQgt11YpEJzIcxsoucB
- VJy1CbXADPcu9R3A9vYp5ZqfjgV3y8Erx6cO73ElQVl8SxQKZgAsuO2xqretWg9jrUd/8sDb+X
- riEP0IufpUwE26reiU7Z3qAP2Ke5w99Sqal+wAAAA==
-X-Change-ID: 20260218-ad9910-iio-driver-9b3d214c251f
+Message-Id: <20260417-ad9910-iio-driver-v3-1-29b93712a228@analog.com>
+References: <20260417-ad9910-iio-driver-v3-0-29b93712a228@analog.com>
+In-Reply-To: <20260417-ad9910-iio-driver-v3-0-29b93712a228@analog.com>
 To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
  linux-hardening@vger.kernel.org
@@ -23,120 +20,239 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776413867; l=5487;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776413867; l=6418;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=qDl6b8j+50GWnqXWqLLHZmRGl2hcm+uogC6+5zx4iYk=;
- b=Voa/RBJsJokhMpm7/iaji4iGD8KYu19TZHf1Sjq7PqLdGtBRZIcHnP36LHj1mtT03rCvsrYoi
- SsNKPyLl6c7APqMYWGxXgQzUpTyC4EH58PKQhrR/d1Z6jtOfE4Qy4Sr
+ bh=jpnU+PdYYLxqGgaOYBAedYfqrN5HXtXF5AnH1zRbRnQ=;
+ b=l5b6JqTuRYOxKceYQOj29K3elwjyjbCFPx9/OmgZ2cYsqlQTbDuQdXoD/Hbdo/jvJvWogcm7S
+ 6IEdBIGrXVDB0J8w8nq4JdnxVW5XGYue7Ta2rkhGRgXO3SmlUJ7zMWV
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch series adds support for the Analog Devices AD9910 DDS.
-This is a RFC so that we can agree/discuss on the design that follows:
-
-This is a follow-up of the V2 discussion. For V1, we reached into
-this channel composition agreement where physical channels may have
-sub-channels. That adds the flexibility necessary for this design.
-During V2, some feedback indicated that the ABI is too device-specific,
-so DRG/RAM destination and operating modes are configured through
-alternate paths and profile channels are created.
-
-The AD9910 DDS core can be driven through several independent mechanisms:
-single tone profiles, a digital ramp generator, an internal RAM playback
-engine, a parallel data port, and output shift keying. Each of these
-represents a distinct signal path into the DDS accumulator, so the driver
-models them as separate IIO output channels (all IIO_ALTVOLTAGE type).
-This per-channel separation allows userspace to configure each mode
-independently through its own set of sysfs attributes, and to
-enable/disable modes individually via IIO_CHAN_INFO_ENABLE, relying on
-the hardware's own mode selection architecture.
-
-The AD9910 register map is not suited for the regmap framework: register
-widths vary across the map (16, 32, and 64 bits). The driver instead
-implements direct SPI access helpers with a software register cache, using
-type-specific read/write/update functions (ad9910_reg{16,32,64}_{read,
-write,update}) that handle endianness conversion and cache coherency.
-
-Registers are cached for several reasons. The control/function registers
-(CFR1, CFR2) are frequently queried to determine the current operating
-mode (e.g., checking RAM_ENABLE before every profile register access),
-and caching avoids repeated SPI read transactions for what are
-essentially state checks. The cache also enables efficient
-read-modify-write updates on multi-byte registers: the update functions
-merge new field values with the cached register content without issuing
-a SPI read, and skip the write entirely when the value is unchanged.
-Finally, the profile registers serve dual purposes depending on whether
-RAM mode is active -- they hold single tone parameters (FTW, POW, ASF)
-in normal operation but are repurposed for RAM playback configuration
-(start/end address, step rate, operating mode) when RAM is enabled. A
-shadow register array (reg_profile[]) preserves the inactive mode's
-settings across transitions, so no state is lost when switching between
-single tone and RAM operation.
-
-RAM data is loaded through firmware upload infrastructure. Userspace
-writes the waveform data as a raw binary buffer (up to 4096 bytes for
-the full 1024x32-bit RAM), and the driver reverses the byte array and
-transfers it to the device in a single SPI transaction. Per-profile
-start/end addresses and playback parameters (operating mode, step rate,
-no-dwell control) are also configured through firmware update, using
-metadata in the header.
-
-Streaming data to the DDS core through the parallel data port at the
-PD_CLK rate is not covered by this series. That functionality would
-be added in a separate patch series, building on top of the IIO backend
-infrastructure to provide a proper buffered data path.
-
-As I am pushing implementation, as lot has been done already without much
-supervision or agreement, still I would be interested on hearing about
-the design choices discussed above.
-
-Kind regards,
-
-Rodrigo Alencar
+DT-bindings for AD9910, a 1 GSPS DDS with 14-bit DAC. It includes
+configurations for clocks, DAC current, reset and basic GPIO control.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
-Changes in v3:
-- RAM custom configs (address range, destination, modes) loaded during firmware write.
-- DRG destination defined when attrs are written.
-- DRG modes broken down into enable attrs for ramp up/down channels.
-- Add separate profile channels, switching done through enable attr
-- Link to v2: https://lore.kernel.org/r/20260318-ad9910-iio-driver-v2-0-e79f93becf11@analog.com
+ .../bindings/iio/frequency/adi,ad9910.yaml         | 189 +++++++++++++++++++++
+ MAINTAINERS                                        |   7 +
+ 2 files changed, 196 insertions(+)
 
-Changes in v2:
-- Device-tree bindings changes.
-- RAM loading to use firmware update interface.
-- Rearrange of channels into a hierarchy.
-- Link to v1: https://lore.kernel.org/r/20260220-ad9910-iio-driver-v1-0-3b264aa48a10@analog.com
+diff --git a/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml b/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
+new file mode 100644
+index 000000000000..61e879bca5c2
+--- /dev/null
++++ b/Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
+@@ -0,0 +1,189 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/iio/frequency/adi,ad9910.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Analog Devices AD9910 Direct Digital Synthesizer
++
++maintainers:
++  - Rodrigo Alencar <rodrigo.alencar@analog.com>
++
++description:
++  The AD9910 is a 1 GSPS direct digital synthesizer (DDS) with an integrated
++  14-bit DAC. It features single tone mode with 8 configurable profiles,
++  a digital ramp generator, RAM control, OSK, and a parallel data port for
++  high-speed streaming.
++
++  https://www.analog.com/en/products/ad9910.html
++
++properties:
++  compatible:
++    const: adi,ad9910
++
++  reg:
++    maxItems: 1
++
++  spi-max-frequency:
++    maximum: 70000000
++
++  clocks:
++    minItems: 1
++    maxItems: 2
++    description:
++      First clock is always the reference clock (REF_CLK), while the second
++      clock is an optional synchronization clock (SYNC_IN).
++
++  clock-names:
++    oneOf:
++      - items:
++          - const: ref_clk
++      - items:
++          - const: ref_clk
++          - const: sync_in
++
++  '#clock-cells':
++    const: 1
++
++  clock-output-names:
++    minItems: 1
++    maxItems: 3
++    items:
++      enum: [ sync_clk, pdclk, sync_out ]
++
++  interrupts:
++    minItems: 1
++    maxItems: 2
++
++  interrupt-names:
++    minItems: 1
++    maxItems: 2
++    items:
++      enum: [ drover, ram_swp_ovr ]
++
++  dvdd-io33-supply:
++    description: 3.3V Digital I/O supply.
++
++  avdd33-supply:
++    description: 3.3V Analog DAC supply.
++
++  dvdd18-supply:
++    description: 1.8V Digital Core supply.
++
++  avdd18-supply:
++    description: 1.8V Analog Core supply.
++
++  reset-gpios:
++    description:
++      GPIOs controlling the Main Device reset.
++
++  io-reset-gpios:
++    maxItems: 1
++    description:
++      GPIO controlling the I/O_RESET pin.
++
++  powerdown-gpios:
++    maxItems: 1
++    description:
++      GPIO controlling the EXT_PWR_DWN pin.
++
++  update-gpios:
++    maxItems: 1
++    description:
++      GPIO controlling the I/O_UPDATE pin.
++
++  profile-gpios:
++    minItems: 3
++    maxItems: 3
++    description:
++      GPIOs controlling the PROFILE[2:0] pins for profile selection.
++
++  sync-err-gpios:
++    maxItems: 1
++    description:
++      GPIO used to read SYNC_SMP_ERR pin status.
++
++  adi,pll-enable:
++    type: boolean
++    description:
++      Indicates that a loop filter is connected and the internal PLL is enabled.
++      Often used when the reference clock is provided by a crystal or by a
++      single-ended on-board oscillator.
++
++  adi,charge-pump-current-microamp:
++    minimum: 212
++    maximum: 387
++    default: 212
++    description:
++      PLL charge pump current in microamps. Only applicable when the internal
++      PLL is enabled. The value is rounded to the nearest supported step. This
++      value depends mostly on the loop filter design.
++
++  adi,refclk-out-drive-strength:
++    $ref: /schemas/types.yaml#/definitions/string
++    enum: [ disabled, low, medium, high ]
++    default: disabled
++    description:
++      Reference clock output (DRV0) drive strength. Only applicable when
++      the internal PLL is enabled.
++
++  adi,dac-output-current-microamp:
++    minimum: 8640
++    maximum: 31590
++    default: 20070
++    description:
++      DAC full-scale output current in microamps.
++
++dependencies:
++  adi,charge-pump-current-microamp: [ 'adi,pll-enable' ]
++  adi,refclk-out-drive-strength: [ 'adi,pll-enable' ]
++  interrupts: [ interrupt-names ]
++  clocks: [ clock-names ]
++  '#clock-cells': [ clock-output-names ]
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - dvdd-io33-supply
++  - avdd33-supply
++  - dvdd18-supply
++  - avdd18-supply
++
++allOf:
++  - $ref: /schemas/spi/spi-peripheral-props.yaml#
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++    spi {
++        #address-cells = <1>;
++        #size-cells = <0>;
++        dds@0 {
++            compatible = "adi,ad9910";
++            reg = <0>;
++            spi-max-frequency = <1000000>;
++            clocks = <&ad9910_refclk>;
++            clock-names = "ref_clk";
++
++            dvdd-io33-supply = <&vdd_io33>;
++            avdd33-supply = <&vdd_a33>;
++            dvdd18-supply = <&vdd_d18>;
++            avdd18-supply = <&vdd_a18>;
++
++            reset-gpios = <&gpio 0 GPIO_ACTIVE_HIGH>;
++            io-reset-gpios = <&gpio 1 GPIO_ACTIVE_HIGH>;
++            powerdown-gpios = <&gpio 2 GPIO_ACTIVE_HIGH>;
++            update-gpios = <&gpio 3 GPIO_ACTIVE_HIGH>;
++            profile-gpios = <&gpio 4 GPIO_ACTIVE_HIGH>,
++                            <&gpio 5 GPIO_ACTIVE_HIGH>,
++                            <&gpio 6 GPIO_ACTIVE_HIGH>;
++
++            adi,pll-enable;
++            adi,charge-pump-current-microamp = <387>;
++            adi,refclk-out-drive-strength = "disabled";
++        };
++    };
++...
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 08d8ddf4ef68..2ca8b68e5daa 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -1630,6 +1630,13 @@ W:	https://ez.analog.com/linux-software-drivers
+ F:	Documentation/devicetree/bindings/iio/dac/adi,ad9739a.yaml
+ F:	drivers/iio/dac/ad9739a.c
+ 
++ANALOG DEVICES INC AD9910 DRIVER
++M:	Rodrigo Alencar <rodrigo.alencar@analog.com>
++L:	linux-iio@vger.kernel.org
++S:	Supported
++W:	https://ez.analog.com/linux-software-drivers
++F:	Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
++
+ ANALOG DEVICES INC MAX22007 DRIVER
+ M:	Janani Sunil <janani.sunil@analog.com>
+ L:	linux-iio@vger.kernel.org
 
----
-Rodrigo Alencar (9):
-      dt-bindings: iio: frequency: add ad9910
-      iio: frequency: ad9910: initial driver implementation
-      iio: frequency: ad9910: add simple parallel port mode support
-      iio: frequency: ad9910: add digital ramp generator support
-      iio: frequency: ad9910: add RAM mode support
-      iio: frequency: ad9910: add output shift keying support
-      iio: frequency: ad9910: add channel labels
-      Documentation: ABI: testing: add docs for ad9910 sysfs entries
-      docs: iio: add documentation for ad9910 driver
-
- .../ABI/testing/sysfs-bus-iio-frequency-ad9910     |   62 +
- .../bindings/iio/frequency/adi,ad9910.yaml         |  189 ++
- Documentation/iio/ad9910.rst                       |  586 ++++++
- Documentation/iio/index.rst                        |    1 +
- MAINTAINERS                                        |   10 +
- drivers/iio/frequency/Kconfig                      |   20 +
- drivers/iio/frequency/Makefile                     |    1 +
- drivers/iio/frequency/ad9910.c                     | 2118 ++++++++++++++++++++
- 8 files changed, 2987 insertions(+)
----
-base-commit: ff0843ceb1fb11a6b73e0e77b932ef7967aecd4b
-change-id: 20260218-ad9910-iio-driver-9b3d214c251f
-
-Best regards,
 -- 
-Rodrigo Alencar <rodrigo.alencar@analog.com>
+2.43.0
 
