@@ -1,662 +1,325 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Fri, 17 Apr 2026 09:17:38 +0100
-Subject: [PATCH RFC v3 9/9] docs: iio: add documentation for ad9910 driver
+From: Pawel Laszczak <pawell@cadence.com>
+Date: Fri, 17 Apr 2026 10:37:31 +0200
+Subject: [PATCH] usb: cdnsp: add support for eUSB2v2 port
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260417-ad9910-iio-driver-v3-9-29b93712a228@analog.com>
-References: <20260417-ad9910-iio-driver-v3-0-29b93712a228@analog.com>
-In-Reply-To: <20260417-ad9910-iio-driver-v3-0-29b93712a228@analog.com>
-To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-hardening@vger.kernel.org
-Cc: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
- Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776413867; l=19554;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=Y26wAyOqIam/Qw4mkE9gvDQBeSfzE+n262gq7Zqll/I=;
- b=MRyqpS6EGq5flmVCXnToRWN4aGN5dj2qYiYDqQSQHzgr1gf9ZdGO1ESuIzsb2fD3RPIBQ/8nK
- qP4XFEBDhx0ArjNqghKRnxc223Zer9KLixb2+1x+cAjLSakxIGz6uzZ
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+Message-Id: <20260417-eusb2v2_upstream-v1-1-3340d9d9bf0e@cadence.com>
+X-B4-Tracking: v=1; b=H4sIAErx4WkC/yXMTQqDMBBA4avIrBuIg3/1KqWUTBzbEWolY0QQ7
+ 26sy2/x3gbKQVihzTYIvIjKb0zIbxn4jxvfbKRLBrRY2SKvDUclXPAVJ50Du69prC8J764mcpC
+ yKXAv63/5eF7WSAP7+fzAvh9soh6UdAAAAA==
+X-Change-ID: 20260417-eusb2v2_upstream-80c5b29a7bba
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ peter.chen@kernel.org, Pawel Laszczak <pawell@cadence.com>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776415060; l=10626;
+ i=pawell@cadence.com; h=from:subject:message-id;
+ bh=6of1fBEPgMT5L74JUJ70rK/fgrEplBcDd1Odp7kO/AM=;
+ b=5Lhb1pypb278XqXBWLw/AqwELnBZbv6L9rq7bYAFjFqQfZq30+5u1nOm3Jj5Xc8MVCOcRWHgx
+ oGva0fhgFwbCe0cC4OrR8dt/SCbV3RkmZihYWk+y244uD1C8PDX1tVh
+X-Developer-Key: i=pawell@cadence.com; a=ed25519;
+ pk=EUPBvLO9CDg7j6defeDl2iqi+z5Ivqu4Z46aiqe7dYc=
+X-Endpoint-Received: by B4 Relay for pawell@cadence.com/default with auth_id=707
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add documentation for the AD9910 DDS IIO driver, which describes channels,
-DDS modes, attributes and ABI usage examples.
+The Cadence CDNSP controller optionally supports eUSB2 (embedded USB2)
+port. While this port type operates logically like high-speed USB 2.0,
+it utilizes a different physical layer signaling.
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+This patch:
+- Extends the port detection logic to recognize the eUSB2 protocol.
+- Tracks the eUSB2 port offset in the cdnsp_device structure.
+- Ensures that eUSB2 ports are correctly handled during Link State
+  transitions, specifically forcing L0 when LPM is capable, similar
+  to standard USB 2.0 ports.
+
+Signed-off-by: Pawel Laszczak <pawell@cadence.com>
 ---
- Documentation/iio/ad9910.rst | 586 +++++++++++++++++++++++++++++++++++++++++++
- Documentation/iio/index.rst  |   1 +
- MAINTAINERS                  |   1 +
- 3 files changed, 588 insertions(+)
+ drivers/usb/cdns3/cdnsp-gadget.c | 49 ++++++++++++++++++---------
+ drivers/usb/cdns3/cdnsp-gadget.h |  1 +
+ drivers/usb/cdns3/cdnsp-mem.c    | 73 +++++++++++++++++++++++++++-------------
+ drivers/usb/cdns3/cdnsp-ring.c   |  9 +++--
+ 4 files changed, 90 insertions(+), 42 deletions(-)
 
-diff --git a/Documentation/iio/ad9910.rst b/Documentation/iio/ad9910.rst
-new file mode 100644
-index 000000000000..a79819b5afe5
---- /dev/null
-+++ b/Documentation/iio/ad9910.rst
-@@ -0,0 +1,586 @@
-+.. SPDX-License-Identifier: GPL-2.0-only
-+
-+=============
-+AD9910 driver
-+=============
-+
-+DDS (Direct Digital Synthesizer) driver for the Analog Devices Inc. AD9910.
-+The module name is ``ad9910``.
-+
-+* `AD9910 <https://www.analog.com/en/products/ad9910.html>`_
-+
-+The AD9910 is a 1 GSPS DDS with a 14-bit DAC, driven over SPI. The driver
-+exposes the device through the IIO ``altvoltage`` channel type and supports
-+five DDS operating modes: single tone, parallel port modulation, digital ramp
-+generation (DRG), RAM playback and output shift keying (OSK). The device has
-+8 hardware profiles, each capable of storing independent single tone and RAM
-+playback parameters.
-+
-+
-+Channel hierarchy
-+=================
-+
-+The driver exposes the following IIO output channels, each identified by a
-+unique channel number and a human-readable label:
-+
-+* ``out_altvoltage100``: ``phy``: Physical output: system clock and profile control
-+
-+  * ``out_altvoltage101``: ``profile[0]``: Single tone control for profile 0:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage102``: ``profile[1]``: Single tone control for profile 1:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage103``: ``profile[2]``: Single tone control for profile 2:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage104``: ``profile[3]``: Single tone control for profile 3:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage105``: ``profile[4]``: Single tone control for profile 4:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage106``: ``profile[5]``: Single tone control for profile 5:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage107``: ``profile[6]``: Single tone control for profile 6:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage108``: ``profile[7]``: Single tone control for profile 7:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage110``: ``parallel_port``: Parallel port modulation: enable
-+    and offset/scale parameters
-+
-+  * ``out_altvoltage120``: ``digital_ramp_generator``: DRG control: enable
-+
-+    * ``out_altvoltage121``: ``digital_ramp_up``: DRG ramp-up parameters:
-+      no-dwell enable, limits, step sizes, ramp rate
-+    * ``out_altvoltage122``: ``digital_ramp_down``: DRG ramp-down parameters:
-+      no-dwell enable, limits, step sizes, ramp rate
-+
-+  * ``out_altvoltage130``: ``ram_control``: RAM playback: enable, frequency,
-+    phase and sampling frequency for active profile. Other configurations are
-+    provided through a firmware upload interface.
-+
-+  * ``out_altvoltage150``: ``output_shift_keying``: OSK: enable, amplitude
-+    scale, ramp rate, auto/manual control
-+
-+The ``phy`` channel is the root of the hierarchy. Changing its
-+``sampling_frequency`` reconfigures the system clock (SYSCLK) which affects all
-+other channels.
-+
-+All mode-specific channels (single-tone, parallel port, DRG, RAM, OSK) have an
-+``enable`` attribute that turns the mode on/off.
-+
-+DDS modes
-+=========
-+
-+The AD9910 supports multiple modes of operation that can be configured
-+independently or in combination. Such modes and their corresponding IIO channels
-+are described in this section. The following tables are extracted from the
-+AD9910 datasheet and summarizes the control parameters for each mode and their
-+priority when multiple sources are enabled simultaneously:
-+
-+.. flat-table:: DDS Frequency Control
-+   :header-rows: 1
-+
-+   * - Priority
-+     - Data Source
-+     - Conditions
-+
-+   * - Highest Priority
-+     - RAM
-+     - RAM enabled and data destination is frequency
-+
-+   * -
-+     - DRG
-+     - DRG enabled and data destination is frequency
-+
-+   * -
-+     - Parallel data and FTW (frequency_offset)
-+     - Parallel data port enabled and data destination is frequency
-+
-+   * -
-+     - FTW (frequency)
-+     - RAM enabled and data destination is not frequency
-+
-+   * -
-+     - FTW (frequency) in single tone channel for the active profile
-+     - DRG enabled and data destination is not frequency
-+
-+   * -
-+     - FTW (frequency) in single tone channel for the active profile
-+     - Parallel data port enabled and data destination is not frequency
-+
-+   * - Lowest Priority
-+     - FTW (frequency) in single tone channel for the active profile
-+     - None
-+
-+.. flat-table:: DDS Phase Control
-+   :header-rows: 1
-+
-+   * - Priority
-+     - Data Source
-+     - Conditions
-+
-+   * - Highest Priority
-+     - RAM
-+     - RAM enabled and data destination is phase or polar
-+
-+   * -
-+     - DRG
-+     - DRG enabled and data destination is phase
-+
-+   * -
-+     - Parallel data port
-+     - Parallel data port enabled and data destination is phase
-+
-+   * -
-+     - Parallel data port and POW register LSBs (phase_offset)
-+     - Parallel data port enabled and data destination is polar
-+
-+   * -
-+     - POW (phase)
-+     - RAM enabled and destination is not phase nor polar
-+
-+   * -
-+     - POW (phase) in single tone channel for the active profile
-+     - DRG enabled and data destination is not phase
-+
-+   * -
-+     - POW (phase) in single tone channel for the active profile
-+     - Parallel data port enabled and data destination is not phase nor polar
-+
-+   * - Lowest Priority
-+     - POW (phase) in single tone channel for the active profile
-+     - None
-+
-+.. flat-table:: DDS Amplitude Control
-+   :header-rows: 1
-+
-+   * - Priority
-+     - Data Source
-+     - Conditions
-+
-+   * - Highest Priority
-+     - OSK generator
-+     - OSK enabled (auto mode)
-+
-+   * -
-+     - ASF register
-+     - OSK enabled (manual mode)
-+
-+   * -
-+     - RAM
-+     - RAM enabled and data destination is amplitude or polar
-+
-+   * -
-+     - DRG
-+     - DRG enabled and data destination is amplitude
-+
-+   * -
-+     - Parallel data port
-+     - Parallel data port enabled and data destination is amplitude
-+
-+   * -
-+     - Parallel data port and ASF register LSBs (scale_offset)
-+     - Parallel data port enabled and data destination is polar
-+
-+   * - Lowest Priority
-+     - ASF (scale) in single tone channel for the active profile
-+     - (Amplitude scale is already enabled by default)
-+
-+Single tone mode
-+----------------
-+
-+Single tone is the baseline operating mode. The ``profile[Y]`` channels
-+provides enable, frequency, phase and amplitude control:
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``en``
-+     - boolean
-+     - Enable/disable profile Y. Only one profile can be active at a
-+       time. Then enabling a profile disables the current active profile.
-+       Disabling an active profile enables the next profile in ascending order,
-+       wrapping around from 7 to 0.
-+
-+   * - ``frequency``
-+     - Hz
-+     - Output frequency. Range [0, SYSCLK/2). Stored in the profile's frequency
-+       tuning word (FTW).
-+
-+   * - ``phase``
-+     - rad
-+     - Phase offset. Range [0, 2*pi). Stored in the profile's phase offset word
-+       (POW).
-+
-+   * - ``scale``
-+     - fractional
-+     - Amplitude scale factor. Range [0, 1]. Stored in the profile's amplitude
-+       scale factor (ASF).
-+
-+Profile switching is allowed while RAM mode is enabled. In that case single tone
-+parameters are stored in a shadow register and are not written to hardware until
-+RAM mode is disabled.
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Set the active profile to 2 and configure a 100 MHz tone:
-+
-+.. code-block:: bash
-+
-+	echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage103_en
-+	echo 100000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage103_frequency
-+	echo 0.5 > /sys/bus/iio/devices/iio:device0/out_altvoltage103_scale
-+	echo 0 > /sys/bus/iio/devices/iio:device0/out_altvoltage103_phase
-+
-+Read back the current single tone frequency:
-+
-+.. code-block:: bash
-+
-+	cat /sys/bus/iio/devices/iio:device0/out_altvoltage103_frequency
-+
-+Parallel port mode
-+------------------
-+
-+When enabled, the parallel port allows real-time modulation of DDS parameters
-+through a 16-bit external data bus.
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``en``
-+     - boolean
-+     - Enable/disable the parallel data port.
-+
-+   * - ``frequency_scale``
-+     - power-of-2
-+     - FM gain multiplier applied to 16-bit parallel input. Range [1, 32768],
-+       must be a power of 2.
-+
-+   * - ``frequency_offset``
-+     - Hz
-+     - Base FTW to which scaled parallel data is added. Range [0, SYSCLK/2).
-+
-+   * - ``phase_offset``
-+     - rad
-+     - Base phase for polar modulation. Lower 8 bits of POW register.
-+       Range [0, 2*pi/256).
-+
-+   * - ``scale_offset``
-+     - fractional
-+     - Base amplitude for polar modulation. Lower 6 bits of ASF register.
-+       Range [0, 1/256).
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Enable parallel port with a frequency scale of 16 and a 50 MHz offset:
-+
-+.. code-block:: bash
-+
-+	echo 16 > /sys/bus/iio/devices/iio:device0/out_altvoltage110_frequency_scale
-+	echo 50000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage110_frequency_offset
-+  echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage110_en
-+
-+Digital ramp generator (DRG)
-+----------------------------
-+
-+The DRG produces linear frequency, phase or amplitude sweeps using dedicated
-+hardware. It is controlled through three channels: a parent control channel
-+(``digital_ramp_generator``) and two child ramp channels
-+(``digital_ramp_up``, ``digital_ramp_down``). DRG destination is set when
-+ramp attributes are written, i.e. writing to ``frequency`` or ``frequency_step``
-+sets the destination to frequency.
-+
-+Control channel attributes
-+^^^^^^^^^^^^^^^^^^^^^^^^^^
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``en``
-+     - boolean
-+     - Enable/disable the DRG.
-+
-+Ramp channel attributes
-+^^^^^^^^^^^^^^^^^^^^^^^^
-+
-+The ``digital_ramp_up`` and ``digital_ramp_down`` channels share the same
-+attribute set but configure ascending and descending ramp parameters
-+independently:
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``en``
-+     - boolean
-+     - Enable/disable the ramp no-dwell behavior. Enabling both creates a
-+       bidirectional continuous ramp (Triangular pattern). Other configurations
-+       creates a single-shot ramp at the trasition of the DRCTL pin: ramp-up
-+       only, ramp-down only or bidirectional with dwell at the limits.
-+
-+   * - ``frequency``
-+     - Hz
-+     - Frequency ramp limit. Range [0, SYSCLK/2).
-+
-+   * - ``phase``
-+     - rad
-+     - Phase ramp limit. Range [0, 2*pi).
-+
-+   * - ``scale``
-+     - fractional
-+     - Amplitude scale ramp limit. Range [0, 1).
-+
-+   * - ``sampling_frequency``
-+     - Hz
-+     - Ramp clock rate: SYSCLK / (4 * divider).
-+
-+   * - ``frequency_step``
-+     - Hz
-+     - Per-tick frequency increment/decrement. Range [0, SYSCLK/2).
-+
-+   * - ``phase_step``
-+     - rad
-+     - Per-tick phase increment/decrement. Range [0, 2*pi).
-+
-+   * - ``scale_step``
-+     - fractional
-+     - Per-tick amplitude scale increment/decrement. Range [0, 1).
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Configure a frequency sweep from 40 MHz to 60 MHz at a 1 kHz step:
-+
-+.. code-block:: bash
-+
-+	# Enable both no-dwell modes for a bidirectional ramp
-+	echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage121_en
-+  echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage122_en
-+
-+	# Set ramp limits
-+	echo 60000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage121_frequency
-+	echo 40000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage122_frequency
-+
-+	# Set ramp step size to 1 kHz
-+	echo 1000 > /sys/bus/iio/devices/iio:device0/out_altvoltage121_frequency_step
-+	echo 1000 > /sys/bus/iio/devices/iio:device0/out_altvoltage122_frequency_step
-+
-+	# Set ramp rate at 25 MHz
-+	echo 25000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage121_sampling_frequency
-+  echo 25000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage122_sampling_frequency
-+
-+	# Enable the DRG
-+	echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage120_en
-+
-+RAM mode
-+--------
-+
-+The AD9910 contains a 1024 x 32-bit RAM that can be loaded with waveform data
-+and played back to modulate frequency, phase, amplitude, or polar (phase +
-+amplitude) parameters.
-+
-+RAM control channel attributes
-+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``en``
-+     - boolean
-+     - Enable/disable RAM playback. Toggling swaps profile registers between
-+       single tone and RAM configurations across all 8 profiles.
-+
-+   * - ``frequency``
-+     - Hz
-+     - Frequency tuning word used as the single tone frequency when
-+       RAM destination is not ``frequency``. Range [0, SYSCLK/2).
-+
-+   * - ``phase``
-+     - rad
-+     - Phase offset word used as the single tone phase when RAM destination
-+       is not ``phase``. Range [0, 2*pi).
-+
-+   * - ``sampling_frequency``
-+     - Hz
-+     - RAM playback step rate of the active profile, which controls how fast the
-+       address counter advances: SYSCLK / (4 * step_rate).
-+
-+Loading RAM data
-+^^^^^^^^^^^^^^^^
-+
-+RAM data is loaded through the firmware upload framework. The driver registers
-+a firmware upload sysfs entry named ``iio_deviceX:ram``. The FW data follows
-+a simple binary format:
-+
-+- 72-byte header:
-+  - 4-byte big-endian word count: number of 32-bit words to be loaded (0-1024)
-+  - 4-byte big-endian CFR1 value: configuration for the CFR1 register. Only
-+    bits relevant to RAM mode (data destination and internal profile control)
-+    are considered. Other bits are ignored and have no effect.
-+    - Bits [30:29]: RAM data destination:
-+      - 00: frequency
-+      - 01: phase
-+      - 10: amplitude
-+      - 11: polar
-+    - Bits [20:17]: Internal profile control (see Table 14 of the datasheet).
-+  - 8 sets of 8-byte big-endian profile data for profiles 0-7. Each set contains:
-+    - Bits [55:40]: Address step rate value
-+    - Bits [39:30]: End address for the profile
-+    - Bits [23:14]: Start address for the profile
-+    - Bit [5]: no-dwell high for ramp-up mode
-+    - Bit [3]: zero-crossing for direct-switch mode
-+    - Bits [2:0]: operating mode:
-+      - 000: direct switch
-+      - 001: ramp-up
-+      - 010: bidirectional
-+      - 011: bidirectional continuous
-+      - 100: ramp-up continuous
-+- Followed by the specified number of 32-bit big-endian data words.
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Configure RAM mode with frequency destination and load a waveform:
-+
-+.. code-block:: bash
-+
-+	# Load RAM data via firmware upload
-+	echo 1 > /sys/class/firmware/iio\:device0\:ram/loading
-+	cat waveform.bin > /sys/class/firmware/iio\:device0\:ram/data
-+	echo 0 > /sys/class/firmware/iio\:device0\:ram/loading
-+
-+	# Enable RAM mode
-+	echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage130_en
-+
-+Output shift keying (OSK)
-+-------------------------
-+
-+OSK controls the output amplitude envelope, allowing the output to be ramped
-+on/off rather than switched abruptly.
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``en``
-+     - boolean
-+     - Enable/disable OSK.
-+
-+   * - ``scale``
-+     - fractional
-+     - Target amplitude for the OSK ramp. 14-bit ASF field. Range [0, 1).
-+
-+   * - ``sampling_frequency``
-+     - Hz
-+     - OSK ramp rate: SYSCLK / (4 * divider).
-+
-+   * - ``pinctrl_en``
-+     - boolean
-+     - Enable manual external pin control. When enabled, the OSK pin directly
-+       gates the output on/off instead of using the automatic ramp.
-+
-+   * - ``scale_step``
-+     - fractional
-+     - Automatic OSK amplitude step. Writing non-zero enables automatic OSK
-+       and sets the per-tick increment. Writing ``0`` disables it. Rounded to
-+       nearest hardware step: 0.000061, 0.000122, 0.000244 or 0.000488.
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Enable OSK with automatic ramping:
-+
-+.. code-block:: bash
-+
-+	# Set ramp rate
-+	echo 1000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage150_sampling_frequency
-+
-+	# Enable automatic OSK with step size
-+	echo 0.000244 > /sys/bus/iio/devices/iio:device0/out_altvoltage150_scale_step
-+
-+	# Enable OSK
-+	echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage150_en
-+
-+Enable manual pin-controlled OSK:
-+
-+.. code-block:: bash
-+
-+	# Enable manual pin control
-+	echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage150_pinctrl_en
-+	echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage150_en
-+
-+	# Set target amplitude to full scale
-+	echo 1.0 > /sys/bus/iio/devices/iio:device0/out_altvoltage150_scale
-+
-+Physical channel
-+================
-+
-+The ``phy`` channel provides device-level control:
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``sampling_frequency``
-+     - Hz
-+     - System clock (SYSCLK) frequency. With PLL enabled, configures the PLL
-+       multiplier (range 420-1000 MHz). Without PLL, ref clock can only be
-+       divided by 2.
-+
-+   * - ``powerdown``
-+     - boolean
-+     - Software power-down. Writing 1 powers down the digital core, DAC,
-+       reference clock input and auxiliary DAC simultaneously.
-+
-+Usage examples
-+--------------
-+
-+Set the system clock to 1 GHz:
-+
-+.. code-block:: bash
-+
-+	echo 1000000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage100_sampling_frequency
-+
-+Read current system clock frequency:
-+
-+.. code-block:: bash
-+
-+	cat /sys/bus/iio/devices/iio:device0/out_altvoltage100_sampling_frequency
-+
-+Power down the device:
-+
-+.. code-block:: bash
-+
-+	echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage100_powerdown
-diff --git a/Documentation/iio/index.rst b/Documentation/iio/index.rst
-index ba3e609c6a13..55cb1ce84ba8 100644
---- a/Documentation/iio/index.rst
-+++ b/Documentation/iio/index.rst
-@@ -29,6 +29,7 @@ Industrial I/O Kernel Drivers
-    ad7606
-    ad7625
-    ad7944
-+   ad9910
-    ade9000
-    adis16475
-    adis16480
-diff --git a/MAINTAINERS b/MAINTAINERS
-index edd87ee7da5f..14e4272357ce 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1637,6 +1637,7 @@ S:	Supported
- W:	https://ez.analog.com/linux-software-drivers
- F:	Documentation/ABI/testing/sysfs-bus-iio-frequency-ad9910
- F:	Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
-+F:	Documentation/iio/ad9910.rst
- F:	drivers/iio/frequency/ad9910.c
+diff --git a/drivers/usb/cdns3/cdnsp-gadget.c b/drivers/usb/cdns3/cdnsp-gadget.c
+index 6b3815f8a6e5..2c71c77e6ec3 100644
+--- a/drivers/usb/cdns3/cdnsp-gadget.c
++++ b/drivers/usb/cdns3/cdnsp-gadget.c
+@@ -124,20 +124,28 @@ void cdnsp_set_link_state(struct cdnsp_device *pdev,
+ }
  
- ANALOG DEVICES INC MAX22007 DRIVER
+ static void cdnsp_disable_port(struct cdnsp_device *pdev,
+-			       __le32 __iomem *port_regs)
++			       struct cdnsp_port *port)
+ {
+-	u32 temp = cdnsp_port_state_to_neutral(readl(port_regs));
++	u32 temp;
++
++	if (!port->exist)
++		return;
+ 
+-	writel(temp | PORT_PED, port_regs);
++	temp = cdnsp_port_state_to_neutral(readl(&port->regs->portsc));
++	writel(temp | PORT_PED, &port->regs->portsc);
+ }
+ 
+ static void cdnsp_clear_port_change_bit(struct cdnsp_device *pdev,
+-					__le32 __iomem *port_regs)
++					struct cdnsp_port *port)
+ {
+-	u32 portsc = readl(port_regs);
++	u32 portsc;
++
++	if (!port->exist)
++		return;
+ 
++	portsc = readl(&port->regs->portsc);
+ 	writel(cdnsp_port_state_to_neutral(portsc) |
+-	       (portsc & PORT_CHANGE_BITS), port_regs);
++	       (portsc & PORT_CHANGE_BITS), &port->regs->portsc);
+ }
+ 
+ static void cdnsp_set_apb_timeout_value(struct cdnsp_device *pdev)
+@@ -944,7 +952,7 @@ void cdnsp_set_usb2_hardware_lpm(struct cdnsp_device *pdev,
+ 				 struct usb_request *req,
+ 				 int enable)
+ {
+-	if (pdev->active_port != &pdev->usb2_port || !pdev->gadget.lpm_capable)
++	if (pdev->active_port == &pdev->usb3_port || !pdev->gadget.lpm_capable)
+ 		return;
+ 
+ 	trace_cdnsp_lpm(enable);
+@@ -1310,20 +1318,26 @@ static int cdnsp_run(struct cdnsp_device *pdev,
+ 		break;
+ 	}
+ 
+-	if (speed >= USB_SPEED_SUPER) {
++	if (pdev->usb3_port.exist && speed >= USB_SPEED_SUPER) {
+ 		writel(temp, &pdev->port3x_regs->mode_addr);
+ 		cdnsp_set_link_state(pdev, &pdev->usb3_port.regs->portsc,
+ 				     XDEV_RXDETECT);
+ 	} else {
+-		cdnsp_disable_port(pdev, &pdev->usb3_port.regs->portsc);
++		cdnsp_disable_port(pdev, &pdev->usb3_port);
+ 	}
+ 
+-	cdnsp_set_link_state(pdev, &pdev->usb2_port.regs->portsc,
+-			     XDEV_RXDETECT);
++	if (pdev->usb2_port.exist) {
++		cdnsp_set_link_state(pdev, &pdev->usb2_port.regs->portsc,
++				     XDEV_RXDETECT);
++		writel(PORT_REG6_L1_L0_HW_EN | fs_speed, &pdev->port20_regs->port_reg6);
++	}
++
++	if (pdev->eusb_port.exist)
++		cdnsp_set_link_state(pdev, &pdev->eusb_port.regs->portsc,
++				     XDEV_RXDETECT);
+ 
+ 	cdnsp_gadget_ep0_desc.wMaxPacketSize = cpu_to_le16(512);
+ 
+-	writel(PORT_REG6_L1_L0_HW_EN | fs_speed, &pdev->port20_regs->port_reg6);
+ 
+ 	ret = cdnsp_start(pdev);
+ 	if (ret) {
+@@ -1469,8 +1483,10 @@ static void cdnsp_stop(struct cdnsp_device *pdev)
+ 			cdnsp_ep_dequeue(&pdev->eps[0], req);
+ 	}
+ 
+-	cdnsp_disable_port(pdev, &pdev->usb2_port.regs->portsc);
+-	cdnsp_disable_port(pdev, &pdev->usb3_port.regs->portsc);
++	cdnsp_disable_port(pdev, &pdev->usb2_port);
++	cdnsp_disable_port(pdev, &pdev->usb3_port);
++	cdnsp_disable_port(pdev, &pdev->eusb_port);
++
+ 	cdnsp_disable_slot(pdev);
+ 	cdnsp_halt(pdev);
+ 
+@@ -1479,8 +1495,9 @@ static void cdnsp_stop(struct cdnsp_device *pdev)
+ 	temp = readl(&pdev->ir_set->irq_pending);
+ 	writel(IMAN_IE_CLEAR(temp), &pdev->ir_set->irq_pending);
+ 
+-	cdnsp_clear_port_change_bit(pdev, &pdev->usb2_port.regs->portsc);
+-	cdnsp_clear_port_change_bit(pdev, &pdev->usb3_port.regs->portsc);
++	cdnsp_clear_port_change_bit(pdev, &pdev->usb2_port);
++	cdnsp_clear_port_change_bit(pdev, &pdev->eusb_port);
++	cdnsp_clear_port_change_bit(pdev, &pdev->usb3_port);
+ 
+ 	/* Clear interrupt line */
+ 	temp = readl(&pdev->ir_set->irq_pending);
+diff --git a/drivers/usb/cdns3/cdnsp-gadget.h b/drivers/usb/cdns3/cdnsp-gadget.h
+index a91cca509db0..c44bca348a41 100644
+--- a/drivers/usb/cdns3/cdnsp-gadget.h
++++ b/drivers/usb/cdns3/cdnsp-gadget.h
+@@ -1474,6 +1474,7 @@ struct cdnsp_device {
+ 	unsigned int link_state;
+ 
+ 	struct cdnsp_port usb2_port;
++	struct cdnsp_port eusb_port;
+ 	struct cdnsp_port usb3_port;
+ 	struct cdnsp_port *active_port;
+ 	u16 test_mode;
+diff --git a/drivers/usb/cdns3/cdnsp-mem.c b/drivers/usb/cdns3/cdnsp-mem.c
+index a2a1b21f2ef8..932071818d1e 100644
+--- a/drivers/usb/cdns3/cdnsp-mem.c
++++ b/drivers/usb/cdns3/cdnsp-mem.c
+@@ -1088,11 +1088,9 @@ void cdnsp_mem_cleanup(struct cdnsp_device *pdev)
+ 			  pdev->dcbaa, pdev->dcbaa->dma);
+ 
+ 	pdev->dcbaa = NULL;
+-
+-	pdev->usb2_port.exist = 0;
+-	pdev->usb3_port.exist = 0;
+-	pdev->usb2_port.port_num = 0;
+-	pdev->usb3_port.port_num = 0;
++	memset(&pdev->usb2_port, 0, sizeof(struct cdnsp_port));
++	memset(&pdev->eusb_port, 0, sizeof(struct cdnsp_port));
++	memset(&pdev->usb3_port, 0, sizeof(struct cdnsp_port));
+ 	pdev->active_port = NULL;
+ }
+ 
+@@ -1133,6 +1131,18 @@ static void cdnsp_add_in_port(struct cdnsp_device *pdev,
+ 	port_offset = CDNSP_EXT_PORT_OFF(temp);
+ 	port_count = CDNSP_EXT_PORT_COUNT(temp);
+ 
++	if (port == &pdev->eusb_port) {
++		/*
++		 * If controller has usb2 + eusb port then eusb is as
++		 * second port
++		 */
++		if (port_count == 2)
++			port_offset++;
++
++		if (port_count == 1 && pdev->usb2_port.exist)
++			return;
++	}
++
+ 	trace_cdnsp_port_info(addr, port_offset, port_count, port->maj_rev);
+ 
+ 	port->port_num = port_offset;
+@@ -1152,13 +1162,10 @@ static int cdnsp_setup_port_arrays(struct cdnsp_device *pdev)
+ 	base = &pdev->cap_regs->hc_capbase;
+ 	offset = cdnsp_find_next_ext_cap(base, 0,
+ 					 EXT_CAP_CFG_DEV_20PORT_CAP_ID);
+-	pdev->port20_regs = base + offset;
+-
+-	offset = cdnsp_find_next_ext_cap(base, 0, D_XEC_CFG_3XPORT_CAP);
+-	pdev->port3x_regs =  base + offset;
++	if (offset)
++		pdev->port20_regs = base + offset;
+ 
+ 	offset = 0;
+-	base = &pdev->cap_regs->hc_capbase;
+ 
+ 	/* Driver expects max 2 extended protocol capability. */
+ 	for (i = 0; i < 2; i++) {
+@@ -1173,26 +1180,46 @@ static int cdnsp_setup_port_arrays(struct cdnsp_device *pdev)
+ 			cdnsp_add_in_port(pdev, &pdev->usb3_port,
+ 					  base + offset);
+ 
+-		if (CDNSP_EXT_PORT_MAJOR(temp) == 0x02 &&
+-		    !pdev->usb2_port.port_num)
+-			cdnsp_add_in_port(pdev, &pdev->usb2_port,
+-					  base + offset);
++		if (CDNSP_EXT_PORT_MAJOR(temp) == 0x02) {
++			if (!pdev->usb2_port.port_num && pdev->port20_regs)
++				cdnsp_add_in_port(pdev, &pdev->usb2_port,
++						  base + offset);
++
++			if (!pdev->eusb_port.port_num)
++				cdnsp_add_in_port(pdev, &pdev->eusb_port,
++						  base + offset);
++		}
+ 	}
+ 
+-	if (!pdev->usb2_port.exist || !pdev->usb3_port.exist) {
+-		dev_err(pdev->dev, "Error: Only one port detected\n");
++	if (!pdev->usb2_port.exist && !pdev->eusb_port.exist &&
++	    !pdev->usb3_port.exist) {
++		dev_err(pdev->dev, "Error: No port detected\n");
+ 		return -ENODEV;
+ 	}
+ 
+-	trace_cdnsp_init("Found USB 2.0 ports and  USB 3.0 ports.");
++	if (pdev->usb2_port.exist) {
++		pdev->usb2_port.regs = (struct cdnsp_port_regs __iomem *)
++				       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
++					(pdev->usb2_port.port_num - 1));
++		trace_cdnsp_init("Found USB 2.0 port.");
++	}
+ 
+-	pdev->usb2_port.regs = (struct cdnsp_port_regs __iomem *)
+-			       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
+-				(pdev->usb2_port.port_num - 1));
++	if (pdev->eusb_port.exist) {
++		pdev->eusb_port.regs = (struct cdnsp_port_regs __iomem *)
++				       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
++					(pdev->eusb_port.port_num - 1));
++		trace_cdnsp_init("Found eUSB 2.0 port.");
++	}
++
++	if (pdev->usb3_port.exist) {
++		offset = cdnsp_find_next_ext_cap(base, 0, D_XEC_CFG_3XPORT_CAP);
++		pdev->port3x_regs =  base + offset;
+ 
+-	pdev->usb3_port.regs = (struct cdnsp_port_regs __iomem *)
+-			       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
+-				(pdev->usb3_port.port_num - 1));
++		pdev->usb3_port.regs = (struct cdnsp_port_regs __iomem *)
++				       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
++					(pdev->usb3_port.port_num - 1));
++		trace_cdnsp_init("Found  USB 3.x port.");
++	}
+ 
+ 	return 0;
+ }
+diff --git a/drivers/usb/cdns3/cdnsp-ring.c b/drivers/usb/cdns3/cdnsp-ring.c
+index 0758f171f73e..715658c981ff 100644
+--- a/drivers/usb/cdns3/cdnsp-ring.c
++++ b/drivers/usb/cdns3/cdnsp-ring.c
+@@ -259,7 +259,7 @@ static bool cdnsp_room_on_ring(struct cdnsp_device *pdev,
+  */
+ static void cdnsp_force_l0_go(struct cdnsp_device *pdev)
+ {
+-	if (pdev->active_port == &pdev->usb2_port && pdev->gadget.lpm_capable)
++	if (pdev->active_port != &pdev->usb3_port && pdev->gadget.lpm_capable)
+ 		cdnsp_set_link_state(pdev, &pdev->active_port->regs->portsc, XDEV_U0);
+ }
+ 
+@@ -763,6 +763,8 @@ static int cdnsp_update_port_id(struct cdnsp_device *pdev, u32 port_id)
+ 
+ 	if (port_id == pdev->usb2_port.port_num) {
+ 		port = &pdev->usb2_port;
++	} else if (port_id == pdev->eusb_port.port_num) {
++		port = &pdev->eusb_port;
+ 	} else if (port_id == pdev->usb3_port.port_num) {
+ 		port  = &pdev->usb3_port;
+ 	} else {
+@@ -779,7 +781,8 @@ static int cdnsp_update_port_id(struct cdnsp_device *pdev, u32 port_id)
+ 		cdnsp_enable_slot(pdev);
+ 	}
+ 
+-	if (port_id == pdev->usb2_port.port_num)
++	if ((pdev->usb2_port.exist && port_id == pdev->usb2_port.port_num) ||
++	    (pdev->eusb_port.exist && port_id == pdev->eusb_port.port_num))
+ 		cdnsp_set_usb2_hardware_lpm(pdev, NULL, 1);
+ 	else
+ 		writel(PORT_U1_TIMEOUT(1) | PORT_U2_TIMEOUT(1),
+@@ -808,7 +811,7 @@ static void cdnsp_handle_port_status(struct cdnsp_device *pdev,
+ 
+ 	port_regs = pdev->active_port->regs;
+ 
+-	if (port_id == pdev->usb2_port.port_num)
++	if (port_id == pdev->usb2_port.port_num || port_id == pdev->eusb_port.port_num)
+ 		port2 = true;
+ 
+ new_event:
 
--- 
-2.43.0
+---
+base-commit: 1c7cc4904160c6fc6377564140062d68a3dc93a0
+change-id: 20260417-eusb2v2_upstream-80c5b29a7bba
+
+Best regards,
+--  
+Pawel Laszczak <pawell@cadence.com>
 
