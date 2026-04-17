@@ -1,78 +1,92 @@
-From: Alvin Sun <alvin.sun@linux.dev>
-Date: Fri, 17 Apr 2026 09:05:54 +0800
-Subject: [PATCH 4/4] rust: xarray: Add Guard::find() helper
+From: Rex Fu <Rex.Fu@amd.com>
+Date: Fri, 17 Apr 2026 14:41:49 +0800
+Subject: [PATCH] ARM: dts: aspeed: anacapa: add interrupt properties for
+ PDB PCA9555
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260417-tyr-ioctls-deps-v1-4-41c6e9bb061c@linux.dev>
-References: <20260417-tyr-ioctls-deps-v1-0-41c6e9bb061c@linux.dev>
-In-Reply-To: <20260417-tyr-ioctls-deps-v1-0-41c6e9bb061c@linux.dev>
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- "Liam R. Howlett" <Liam.Howlett@oracle.com>, 
- Tamir Duberstein <tamird@kernel.org>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-mm@kvack.org, =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
- Alvin Sun <alvin.sun@linux.dev>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776388289; l=1408;
- i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=HK2c+z8dRuFsYNATe7JRBa5cKQyu3FlazejUuvyOuq8=;
- b=c/lPoOZ1Arte0C/QoYrkBDlhgjCZ5b99pHUmEM6OFrj/WdCEt52K0YfvGN8Z06RSSMFQgpDdo
- JBKPQrDSNehAxdqNGVcwXaYyiVDut1xvEu8f1PV1IxWItviywlhjFt6
-X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
- pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
-X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
+Message-Id: <20260417-anacapa-pca9555-irq-v1-1-9a6d28b1b656@amd.com>
+X-B4-Tracking: v=1; b=H4sIACzW4WkC/yXMQQ6CMBCF4auQWTvJFKhNvYpxMZRRx0WtLRISw
+ t0puvyS9/4VimSVApdmhSyzFn3HCnNqIDw5PgR1rIaW2jP1xiFHDpwYU2BvrUXNH+zI09ibunE
+ E9Zmy3HX5Va+3v8t3eEmYjhRs2w40R47BdwAAAA==
+X-Change-ID: 20260417-anacapa-pca9555-irq-3090d4120270
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
+ Andrew Jeffery <andrew@codeconstruct.com.au>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ Rex Fu <Rex.Fu@amd.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776408109; l=2007;
+ i=Rex.Fu@amd.com; s=20260417; h=from:subject:message-id;
+ bh=o8qWPDdSQIz2wmiJKXl6X/Ju2Iig3de8Ah1xPVk1Lb4=;
+ b=9MQxnVgP2xpf8cl0ReSJT9bCAGSgrGLhuJrX1lJDGwcxn2Z0N5+8gjRkpTj50taQzIWiLxU4L
+ Rb3uKLvuM8zCiSq+XVL/I8mP31UxsiKnatCzhTZShNcZeUVeGzJucDu
+X-Developer-Key: i=Rex.Fu@amd.com; a=ed25519;
+ pk=26ECoh24fxrbXDKgA4hCmgg0xjQ+IxU97kXb46ovwgc=
+X-Endpoint-Received: by B4 Relay for Rex.Fu@amd.com/20260417 with auth_id=738
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a helper to find the first present entry in the XArray.
+Add interrupt-parent and interrupts properties to the PDB PCA9555
+nodes in the anacapa DTS.
 
-Returns the index of the first present entry, or None if the array
-is empty.
-
-Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
+Signed-off-by: Rex Fu <Rex.Fu@amd.com>
 ---
- rust/kernel/xarray.rs | 22 ++++++++++++++++++++++
- 1 file changed, 22 insertions(+)
+Single DTS update for the PDB PCA9555 interrupt wiring on anacapa.
+---
+ arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-diff --git a/rust/kernel/xarray.rs b/rust/kernel/xarray.rs
-index 235fda0e394ba..e43129d032d9d 100644
---- a/rust/kernel/xarray.rs
-+++ b/rust/kernel/xarray.rs
-@@ -217,6 +217,28 @@ pub fn remove(&mut self, index: usize) -> Option<T> {
-         unsafe { T::try_from_foreign(ptr) }
-     }
+diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
+index 2cb7bd128d24..7319f2319bb7 100644
+--- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
++++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
+@@ -481,6 +481,9 @@ gpio@22 {
+ 				gpio-controller;
+ 				#gpio-cells = <2>;
  
-+    /// Finds the first present entry.
-+    ///
-+    /// Returns the index of the first present entry, or `None` if the array is empty.
-+    pub fn find(&mut self) -> Option<usize> {
-+        let mut index = 0usize;
-+        // SAFETY: `self.xa.xa` is always valid by the type invariant, and we hold the lock.
-+        let ptr = unsafe {
-+            bindings::xa_find(
-+                self.xa.xa.get(),
-+                &mut index,
-+                usize::MAX,
-+                bindings::XA_PRESENT,
-+            )
-+        };
++				interrupt-parent = <&sgpiom0>;
++				interrupts = <174 IRQ_TYPE_LEVEL_LOW>;
 +
-+        if ptr.is_null() {
-+            None
-+        } else {
-+            Some(index)
-+        }
-+    }
+ 				gpio-line-names =
+ 					"RPDB_FAN_FULL_SPEED_R_N", "RPDB_I2C_TEMP75_U8_ALERT_R_N",
+ 					"RPDB_I2C_TMP432_U29_ALERT_R_N", "RPDB_GLOBAL_WP",
+@@ -500,6 +503,9 @@ gpio@24 {
+ 				gpio-controller;
+ 				#gpio-cells = <2>;
+ 
++				interrupt-parent = <&sgpiom0>;
++				interrupts = <174 IRQ_TYPE_LEVEL_LOW>;
 +
-     /// Stores an element at the given index.
-     ///
-     /// May drop the lock if needed to allocate memory, and then reacquire it afterwards.
+ 				gpio-line-names =
+ 					"RPDB_EAM2_PRSNT_MOS_N_R", "RPDB_EAM3_PRSNT_MOS_N_R",
+ 					"RPDB_PWRGD_P50V_HSC4_SYS_R",
+@@ -529,6 +535,9 @@ gpio@22 {
+ 				gpio-controller;
+ 				#gpio-cells = <2>;
+ 
++				interrupt-parent = <&sgpiom0>;
++				interrupts = <174 IRQ_TYPE_LEVEL_LOW>;
++
+ 				gpio-line-names =
+ 					"LPDB_FAN_FULL_SPEED_R_N","LPDB_I2C_TEMP75_U8_ALERT_R_N",
+ 					"LPDB_I2C_TMP432_U29_ALERT_R_N","LPDB_GLOBAL_WP",
+@@ -546,6 +555,9 @@ gpio@24 {
+ 				gpio-controller;
+ 				#gpio-cells = <2>;
+ 
++				interrupt-parent = <&sgpiom0>;
++				interrupts = <174 IRQ_TYPE_LEVEL_LOW>;
++
+ 				gpio-line-names =
+ 					"LPDB_P50V_FAN1_R2_PG","LPDB_P50V_FAN2_R2_PG",
+ 					"LPDB_P50V_FAN3_R2_PG","LPDB_P50V_FAN4_R2_PG",
 
--- 
-2.43.0
+---
+base-commit: 76b4ec8efdc3887cdbf730da2e55881fc1a18770
+change-id: 20260417-anacapa-pca9555-irq-3090d4120270
+
+Best regards,
+--  
+Rex Fu <Rex.Fu@amd.com>
 
