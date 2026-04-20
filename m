@@ -1,11 +1,11 @@
 From: Joe Sandom <jsandom@axon.com>
-Date: Mon, 20 Apr 2026 10:13:15 +0100
-Subject: [PATCH v4 3/5] arm64: dts: qcom: sm8550: move IPA properties to
- SoC device tree
+Date: Mon, 20 Apr 2026 10:13:16 +0100
+Subject: [PATCH v4 4/5] dt-bindings: arm: qcom: document QCS8550 RB5Gen2
+ board
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260420-rb5gen2-dts-v4-3-b461909c2de8@axon.com>
+Message-Id: <20260420-rb5gen2-dts-v4-4-b461909c2de8@axon.com>
 References: <20260420-rb5gen2-dts-v4-0-b461909c2de8@axon.com>
 In-Reply-To: <20260420-rb5gen2-dts-v4-0-b461909c2de8@axon.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -14,69 +14,46 @@ To: Bjorn Andersson <andersson@kernel.org>,
  Conor Dooley <conor+dt@kernel.org>
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Joe Sandom <jsandom@axon.com>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776676395; l=2013;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776676395; l=1053;
  i=jsandom@axon.com; s=20260319; h=from:subject:message-id;
- bh=2Hf81fBazRw+MMKDG2/cNY2JsBcSjh+sphR62doLGW8=;
- b=Q1t/lEirurX5HqzIyviieG74aCBbHvQ5KN06iE90BzciCXl9+iYjtywFC/cMWpYUPdm+j6dJU
- iFgIRY8CGL2B+4mR/iz0/AjuPToFTtiNJ1S3Hpq1wmq+bYWvQ3bLLB/
+ bh=X7bqqJqdT0hN1KiBNbd6ABCxR6gi8MIYVUn555bOoDI=;
+ b=CTWmSF03nuwKOY25sJhpdNpwNb/gbrtBSt2VRmPulZCmPOXI4CoSgYF82Ts/kPHohrZSpPBPR
+ sXL5PG70kxRCRTvsjx5IcLGEWP5pGCK7R8yZfeTevulKPaE0N237tnG
 X-Developer-Key: i=jsandom@axon.com; a=ed25519;
  pk=Q/yflwj2WhkgBVTskrS9Vl5oScD0Bp3vTzDi+OxskTo=
 X-Endpoint-Received: by B4 Relay for jsandom@axon.com/20260319 with auth_id=687
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move qcom,gsi-loader and memory-region properties from individual board
-DTS files into the SoC DTSI, since these are common to all SM8550-based
-boards.
+Document the Qualcomm RB5gen2 from Thundercomm based on the
+QCS8550 chipset from Qualcomm.
 
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+[1] https://www.thundercomm.com/product/qualcomm-rb5-gen-2-development-kit/
+
+Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Joe Sandom <jsandom@axon.com>
 ---
- arch/arm64/boot/dts/qcom/sm8550-hdk.dts | 2 --
- arch/arm64/boot/dts/qcom/sm8550-qrd.dts | 2 --
- arch/arm64/boot/dts/qcom/sm8550.dtsi    | 2 ++
- 3 files changed, 2 insertions(+), 4 deletions(-)
+ Documentation/devicetree/bindings/arm/qcom.yaml | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/sm8550-hdk.dts b/arch/arm64/boot/dts/qcom/sm8550-hdk.dts
-index e821b731bdc496c872703723df02ae9b9b0233b5..b795589385520acd74eecc7701cab82f4f7da200 100644
---- a/arch/arm64/boot/dts/qcom/sm8550-hdk.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8550-hdk.dts
-@@ -939,8 +939,6 @@ &i2c_master_hub_0 {
- };
+diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
+index 1335a7bee397c46e8dc62806091531e32b7327d4..f9f8001e3e6b66e3a926255bdb15363f4c7c2b66 100644
+--- a/Documentation/devicetree/bindings/arm/qcom.yaml
++++ b/Documentation/devicetree/bindings/arm/qcom.yaml
+@@ -1093,6 +1093,12 @@ properties:
+           - const: qcom,qcs8550
+           - const: qcom,sm8550
  
- &ipa {
--	qcom,gsi-loader = "self";
--	memory-region = <&ipa_fw_mem>;
- 	firmware-name = "qcom/sm8550/ipa_fws.mbn";
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/sm8550-qrd.dts b/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
-index cf63109ff7bf7b6fc827f108e22e82b8b04273c1..f2effa55d8197819175bfd5a89d2fddb20561548 100644
---- a/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
-+++ b/arch/arm64/boot/dts/qcom/sm8550-qrd.dts
-@@ -818,8 +818,6 @@ fsa4480_sbu_mux: endpoint {
- };
- 
- &ipa {
--	qcom,gsi-loader = "self";
--	memory-region = <&ipa_fw_mem>;
- 	firmware-name = "qcom/sm8550/ipa_fws.mbn";
- 	status = "okay";
- };
-diff --git a/arch/arm64/boot/dts/qcom/sm8550.dtsi b/arch/arm64/boot/dts/qcom/sm8550.dtsi
-index 54308cbde40732da072177eab533582c155df590..d292dfce6b66fff6cff918b8bd6ac0b9cd22c4b3 100644
---- a/arch/arm64/boot/dts/qcom/sm8550.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sm8550.dtsi
-@@ -2730,6 +2730,8 @@ &mc_virt SLAVE_EBI1 QCOM_ICC_TAG_ALWAYS>,
- 			qcom,smem-state-names = "ipa-clock-enabled-valid",
- 						"ipa-clock-enabled";
- 
-+			qcom,gsi-loader = "self";
-+			memory-region = <&ipa_fw_mem>;
- 			sram = <&ipa_modem_tables>;
- 
- 			status = "disabled";
++      - items:
++          - enum:
++              - qcom,qcs8550-rb5gen2
++          - const: qcom,qcs8550
++          - const: qcom,sm8550
++
+       - items:
+           - enum:
+               - ayaneo,pocket-s2
 
 -- 
 2.34.1
