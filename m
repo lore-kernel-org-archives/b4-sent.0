@@ -1,85 +1,234 @@
-From: Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
-Date: Sun, 19 Apr 2026 13:11:04 +0530
-Subject: [PATCH v2] arm64: dts: qcom: talos: Add memory-region for audio PD
+From: Cheng Ding <cding@ddn.com>
+Date: Mon, 20 Apr 2026 16:39:34 +0800
+Subject: [PATCH] fuse: invalidate page cache after DIO and async DIO writes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260419-talosaudio-v2-1-3a3b5dd67dd4@oss.qualcomm.com>
-X-B4-Tracking: v=1; b=H4sIAA+H5GkC/22MQQ6CMBBFr0JmbQmtYKor72FYTEsrkwDFDjQaw
- t2trN385P3kvQ3YRXIMt2KD6BIxhSmDOhVge5yeTlCXGVSlLlUttVhwCIxrR0EY7azX5orSnCE
- Lc3Se3kfs0WbuiZcQP0c7yd/7N5OkkKLRDRqlPKKv74G5fK042DCOZR5o933/AmzAeFSrAAAA
-X-Change-ID: 20260418-talosaudio-b8ecf8b9a1b3
-To: konrad.dybcio@oss.qualcomm.com, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, quic_bkumar@quicinc.com, 
- quic_chennak@quicinc.com, dmitry.baryshkov@oss.qualcomm.com
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
+Message-Id: <20260420-b4-new-451-v1-1-1808fa758695@ddn.com>
+X-B4-Tracking: v=1; b=H4sIAEbm5WkC/x3MQQqAIBBG4avErBtQsYSuEi3Kfms2FgoVhHdPW
+ n6L917KSIJMQ/NSwiVZjlih24b8PscNLGs1GWV6ZY3ixXLEzbbTDA/vfHBWG1ANzoQgzz8bp1I
+ +5L0R7lwAAAA=
+X-Change-ID: 20260420-b4-new-451-ecec7cf7412e
+To: Miklos Szeredi <miklos@szeredi.hu>
+Cc: Jingbo Xu <jefflexu@linux.alibaba.com>, 
+ Bernd Schubert <bschubert@ddn.com>, linux-fsdevel@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Cheng Ding <cding@ddn.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776584465; l=1797;
- i=ekansh.gupta@oss.qualcomm.com; s=20260223; h=from:subject:message-id;
- bh=tC5+DyoQ7lpix63zW4POZfE9Ynqt5jo0xccF4pymBmU=;
- b=Iqu18vQ5NLY3e8LcUmIiQGZF63DRpjQ9Sq1KLhSp1yscIWp7sCt561Eo4Hyl62zSr3vLqursJ
- l53YxyLgsm2D7fM6b9HnNqJWvkBmY7Y04yJeSPNXrqnPozgiKXWuPy9
-X-Developer-Key: i=ekansh.gupta@oss.qualcomm.com; a=ed25519;
- pk=n0SepARizye+pYjhjg1RA5J+Nq4+IJbyRcBybU+/ERQ=
-X-Endpoint-Received: by B4 Relay for ekansh.gupta@oss.qualcomm.com/20260223 with auth_id=647
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776674382; l=7501;
+ i=cding@ddn.com; s=20260306; h=from:subject:message-id;
+ bh=To22O5pFeN05dCS/voHf7CPHVsv+7HOSFw5xW4h5XQE=;
+ b=ccQskVCH6SLYOGnVI7YN/slXlDpn1Bmx0H6KnNYHbrRHpf1jOW9v0IgQEnLfq0BctSTsbY9am
+ dfM0z2VGVlLB9gp+dSCYHhaOHt2RGGOUUBDToRDNsdE3uSzxxnooR92
+X-Developer-Key: i=cding@ddn.com; a=ed25519;
+ pk=dzzlP8PhiZl3jtcAzbjIIv0kgtoA95fHdILVyjaeePk=
+X-Endpoint-Received: by B4 Relay for cding@ddn.com/20260306 with auth_id=667
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Reserve memory region for audio PD dynamic loading and remote heap
-requirements. Add the required VMID list for memory ownership
-transfers.
+This fixe does page cache invalidation after DIO and async DIO writes for
+both O_DIRECT and FOPEN_DIRECT_IO cases.
 
-Signed-off-by: Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
+Commit b359af8275a9 ("fuse: Invalidate the page cache after FOPEN_DIRECT_IO
+write") fixed xfstests generic/209 for DIO writes in the FOPEN_DIRECT_IO
+path. DIO writes without FOPEN_DIRECT_IO are already handled by
+generic_file_direct_write().
+However, async DIO writes (xfstests generic/451) remain unhandled.
+
+After this fix:
+- Async write with FUSE_ASYNC_DIO:
+    invalidate in fuse_aio_invalidate_worker()
+
+- Otherwise (Sync or async write without FUSE_ASYNC_DIO):
+    - With FOPEN_DIRECT_IO:
+        invalidate in fuse_direct_write_iter()
+    - Without FOPEN_DIRECT_IO:
+        invalidate in generic_file_direct_write()
+
+Workqueue is required for async write invalidation to prevent deadlock:
+calling it directly in the I/O end routine (which is in fuse worker thread
+context) can block on a folio lock held by a buffered I/O thread waiting
+for the same fuse worker thread.
+
+Co-developed-by: Jingbo Xu <jefflexu@linux.alibaba.com>
+Signed-off-by: Jingbo Xu <jefflexu@linux.alibaba.com>
+Signed-off-by: Cheng Ding <cding@ddn.com>
 ---
+Changes in v4:
+- Add Jingbo as co-developer (with Jingbo's agreement).
+- Adopt Jingbo's commit message from
+  https://lore.kernel.org/linux-fsdevel/20260111073701.6071-1-jefflexu@linux.alibaba.com/,
+  modified to explain why async DIO invalidation needs a workqueue.
+- Link to v3: https://lore.kernel.org/r/20260309-xfstests-generic-451-v3-1-bb6ad2f59512@ddn.com
+
+Changes in v3:
+- Address review comments: fix typo
+- Address review comments: move sb_init_dio_done_wq() to fuse_direct_IO()
+  Note: We could skip sb_init_dio_done_wq() when io->blocking is true, but
+  I opted to keep the change simpler.
+- Link to v2: https://lore.kernel.org/r/20260306-xfstests-generic-451-v2-1-93b2d540304b@ddn.com
+
 Changes in v2:
-- Fixed VMID list alignment.
-- Link to v1: https://lore.kernel.org/r/20260418-talosaudio-v1-1-585ab22faaf4@oss.qualcomm.com
+- Address review comments: move invalidation from fuse_direct_io() to
+  fuse_direct_write_iter()
+- Link to v1: https://lore.kernel.org/r/20260303-async-dio-aio-cache-invalidation-v1-1-fba0fd0426c3@ddn.com
 ---
- arch/arm64/boot/dts/qcom/talos.dtsi | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ fs/fuse/file.c   | 59 +++++++++++++++++++++++++++++++++++++++++++++-----------
+ fs/fuse/fuse_i.h |  1 +
+ 2 files changed, 49 insertions(+), 11 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/talos.dtsi b/arch/arm64/boot/dts/qcom/talos.dtsi
-index ff5afbfce2a4..f71b327c7ddf 100644
---- a/arch/arm64/boot/dts/qcom/talos.dtsi
-+++ b/arch/arm64/boot/dts/qcom/talos.dtsi
-@@ -11,6 +11,7 @@
- #include <dt-bindings/clock/qcom,qcs615-videocc.h>
- #include <dt-bindings/clock/qcom,rpmh.h>
- #include <dt-bindings/dma/qcom-gpi.h>
-+#include <dt-bindings/firmware/qcom,scm.h>
- #include <dt-bindings/interconnect/qcom,icc.h>
- #include <dt-bindings/interconnect/qcom,osm-l3.h>
- #include <dt-bindings/interconnect/qcom,qcs615-rpmh.h>
-@@ -657,6 +658,11 @@ pil_gpu_mem: pil-gpu@97715000 {
- 			reg = <0x0 0x97715000 0x0 0x2000>;
- 			no-map;
- 		};
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index b1bb7153cb78..c43fe74cdd46 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -23,6 +23,8 @@
+ #include <linux/task_io_accounting_ops.h>
+ #include <linux/iomap.h>
+ 
++int sb_init_dio_done_wq(struct super_block *sb);
 +
-+		adsp_rpc_remote_heap_mem: adsp-rpc-remote-heap@97717000 {
-+			reg = <0x0 0x97717000 0x0 0x800000>;
-+			no-map;
-+		};
- 	};
+ static int fuse_send_open(struct fuse_mount *fm, u64 nodeid,
+ 			  unsigned int open_flags, int opcode,
+ 			  struct fuse_open_out *outargp)
+@@ -629,6 +631,19 @@ static ssize_t fuse_get_res_by_io(struct fuse_io_priv *io)
+ 	return io->bytes < 0 ? io->size : io->bytes;
+ }
  
- 	soc: soc@0 {
-@@ -5100,6 +5106,9 @@ fastrpc {
- 					compatible = "qcom,fastrpc";
- 					qcom,glink-channels = "fastrpcglink-apps-dsp";
- 					label = "adsp";
-+					memory-region = <&adsp_rpc_remote_heap_mem>;
-+					qcom,vmids = <QCOM_SCM_VMID_LPASS
-+						      QCOM_SCM_VMID_ADSP_HEAP>;
- 					#address-cells = <1>;
- 					#size-cells = <0>;
++static void fuse_aio_invalidate_worker(struct work_struct *work)
++{
++	struct fuse_io_priv *io = container_of(work, struct fuse_io_priv, work);
++	struct address_space *mapping = io->iocb->ki_filp->f_mapping;
++	ssize_t res = fuse_get_res_by_io(io);
++	pgoff_t start = io->offset >> PAGE_SHIFT;
++	pgoff_t end = (io->offset + res - 1) >> PAGE_SHIFT;
++
++	invalidate_inode_pages2_range(mapping, start, end);
++	io->iocb->ki_complete(io->iocb, res);
++	kref_put(&io->refcnt, fuse_io_release);
++}
++
+ /*
+  * In case of short read, the caller sets 'pos' to the position of
+  * actual end of fuse request in IO request. Otherwise, if bytes_requested
+@@ -661,10 +676,11 @@ static void fuse_aio_complete(struct fuse_io_priv *io, int err, ssize_t pos)
+ 	spin_unlock(&io->lock);
  
+ 	if (!left && !io->blocking) {
++		struct inode *inode = file_inode(io->iocb->ki_filp);
++		struct address_space *mapping = io->iocb->ki_filp->f_mapping;
+ 		ssize_t res = fuse_get_res_by_io(io);
+ 
+ 		if (res >= 0) {
+-			struct inode *inode = file_inode(io->iocb->ki_filp);
+ 			struct fuse_conn *fc = get_fuse_conn(inode);
+ 			struct fuse_inode *fi = get_fuse_inode(inode);
+ 
+@@ -673,6 +689,17 @@ static void fuse_aio_complete(struct fuse_io_priv *io, int err, ssize_t pos)
+ 			spin_unlock(&fi->lock);
+ 		}
+ 
++		if (io->write && res > 0 && mapping->nrpages) {
++			/*
++			 * As in generic_file_direct_write(), invalidate after the
++			 * write, to invalidate read-ahead cache that may have competed
++			 * with the write.
++			 */
++			INIT_WORK(&io->work, fuse_aio_invalidate_worker);
++			queue_work(inode->i_sb->s_dio_done_wq, &io->work);
++			return;
++		}
++
+ 		io->iocb->ki_complete(io->iocb, res);
+ 	}
+ 
+@@ -1738,15 +1765,6 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,
+ 	if (res > 0)
+ 		*ppos = pos;
+ 
+-	if (res > 0 && write && fopen_direct_io) {
+-		/*
+-		 * As in generic_file_direct_write(), invalidate after the
+-		 * write, to invalidate read-ahead cache that may have competed
+-		 * with the write.
+-		 */
+-		invalidate_inode_pages2_range(mapping, idx_from, idx_to);
+-	}
+-
+ 	return res > 0 ? res : err;
+ }
+ EXPORT_SYMBOL_GPL(fuse_direct_io);
+@@ -1785,6 +1803,8 @@ static ssize_t fuse_direct_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ static ssize_t fuse_direct_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ {
+ 	struct inode *inode = file_inode(iocb->ki_filp);
++	struct address_space *mapping = inode->i_mapping;
++	loff_t pos = iocb->ki_pos;
+ 	ssize_t res;
+ 	bool exclusive;
+ 
+@@ -1801,6 +1821,16 @@ static ssize_t fuse_direct_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 					     FUSE_DIO_WRITE);
+ 			fuse_write_update_attr(inode, iocb->ki_pos, res);
+ 		}
++		if (res > 0 && mapping->nrpages) {
++			/*
++			 * As in generic_file_direct_write(), invalidate after
++			 * write, to invalidate read-ahead cache that may have
++			 * with the write.
++			 */
++			invalidate_inode_pages2_range(mapping,
++				pos >> PAGE_SHIFT,
++				(pos + res - 1) >> PAGE_SHIFT);
++		}
+ 	}
+ 	fuse_dio_unlock(iocb, exclusive);
+ 
+@@ -2826,6 +2856,7 @@ fuse_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
+ 	size_t count = iov_iter_count(iter), shortened = 0;
+ 	loff_t offset = iocb->ki_pos;
+ 	struct fuse_io_priv *io;
++	bool async = ff->fm->fc->async_dio;
+ 
+ 	pos = offset;
+ 	inode = file->f_mapping->host;
+@@ -2834,6 +2865,12 @@ fuse_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
+ 	if ((iov_iter_rw(iter) == READ) && (offset >= i_size))
+ 		return 0;
+ 
++	if ((iov_iter_rw(iter) == WRITE) && async && !inode->i_sb->s_dio_done_wq) {
++		ret = sb_init_dio_done_wq(inode->i_sb);
++		if (ret < 0)
++			return ret;
++	}
++
+ 	io = kmalloc_obj(struct fuse_io_priv);
+ 	if (!io)
+ 		return -ENOMEM;
+@@ -2849,7 +2886,7 @@ fuse_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
+ 	 * By default, we want to optimize all I/Os with async request
+ 	 * submission to the client filesystem if supported.
+ 	 */
+-	io->async = ff->fm->fc->async_dio;
++	io->async = async;
+ 	io->iocb = iocb;
+ 	io->blocking = is_sync_kiocb(iocb);
+ 
+diff --git a/fs/fuse/fuse_i.h b/fs/fuse/fuse_i.h
+index 7f16049387d1..6e8c8cf6b2c8 100644
+--- a/fs/fuse/fuse_i.h
++++ b/fs/fuse/fuse_i.h
+@@ -377,6 +377,7 @@ union fuse_file_args {
+ /** The request IO state (for asynchronous processing) */
+ struct fuse_io_priv {
+ 	struct kref refcnt;
++	struct work_struct work;
+ 	int async;
+ 	spinlock_t lock;
+ 	unsigned reqs;
 
 ---
-base-commit: c7275b05bc428c7373d97aa2da02d3a7fa6b9f66
-change-id: 20260418-talosaudio-b8ecf8b9a1b3
+base-commit: b29fb8829bff243512bb8c8908fd39406f9fd4c3
+change-id: 20260420-b4-new-451-ecec7cf7412e
 
 Best regards,
 -- 
-Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
+Cheng Ding <cding@ddn.com>
 
