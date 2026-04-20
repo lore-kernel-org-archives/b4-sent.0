@@ -1,234 +1,125 @@
-From: Cheng Ding <cding@ddn.com>
-Date: Mon, 20 Apr 2026 16:39:34 +0800
-Subject: [PATCH] fuse: invalidate page cache after DIO and async DIO writes
+From: Joe Sandom <jsandom@axon.com>
+Subject: [PATCH v4 0/5] arm64: dts: qcom: add QCS8550 RB5Gen2 support
+Date: Mon, 20 Apr 2026 10:13:12 +0100
+Message-Id: <20260420-rb5gen2-dts-v4-0-b461909c2de8@axon.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260420-b4-new-451-v1-1-1808fa758695@ddn.com>
-X-B4-Tracking: v=1; b=H4sIAEbm5WkC/x3MQQqAIBBG4avErBtQsYSuEi3Kfms2FgoVhHdPW
- n6L917KSIJMQ/NSwiVZjlih24b8PscNLGs1GWV6ZY3ixXLEzbbTDA/vfHBWG1ANzoQgzz8bp1I
- +5L0R7lwAAAA=
-X-Change-ID: 20260420-b4-new-451-ecec7cf7412e
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: Jingbo Xu <jefflexu@linux.alibaba.com>, 
- Bernd Schubert <bschubert@ddn.com>, linux-fsdevel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Cheng Ding <cding@ddn.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776674382; l=7501;
- i=cding@ddn.com; s=20260306; h=from:subject:message-id;
- bh=To22O5pFeN05dCS/voHf7CPHVsv+7HOSFw5xW4h5XQE=;
- b=ccQskVCH6SLYOGnVI7YN/slXlDpn1Bmx0H6KnNYHbrRHpf1jOW9v0IgQEnLfq0BctSTsbY9am
- dfM0z2VGVlLB9gp+dSCYHhaOHt2RGGOUUBDToRDNsdE3uSzxxnooR92
-X-Developer-Key: i=cding@ddn.com; a=ed25519;
- pk=dzzlP8PhiZl3jtcAzbjIIv0kgtoA95fHdILVyjaeePk=
-X-Endpoint-Received: by B4 Relay for cding@ddn.com/20260306 with auth_id=667
+X-B4-Tracking: v=1; b=H4sIACnu5WkC/23MsQ6DIBSF4VcxzKVBuIh26ns0HQQuylBtwBAb4
+ 7sXnbTpeE7y/QuJGDxGcisWEjD56MchD7gUxPTt0CH1Nm/CGa8YMKBByw4HTu0UaVkzY5FpVVa
+ GZPEO6Py81x7PvHsfpzF89ngqt/d/J5WU0bqRrnYGGnDm3s7jcDXji2yZxI9UnSnP1DKjHIBCV
+ OKHiiNtzlRkqjOphJQWNBzouq5fXjQQ7xsBAAA=
+X-Change-ID: 20260404-rb5gen2-dts-180cde0b716c
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Joe Sandom <jsandom@axon.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776676395; l=4255;
+ i=jsandom@axon.com; s=20260319; h=from:subject:message-id;
+ bh=8SBhTU2OOi12EWCM5Hj3umAGo+5riQev7UW56BMZGNg=;
+ b=bDMGvn5FqPPNXAuR8ddCJxgw39OiLl1cDJUGAF6kBPgBgahhbvSVtx1ChIEESkEEOG1GzgI+g
+ WImeSR97oTUCIxmDzbv2z72udtq5balLem5682xFs3luCWa4Rr+6UmN
+X-Developer-Key: i=jsandom@axon.com; a=ed25519;
+ pk=Q/yflwj2WhkgBVTskrS9Vl5oScD0Bp3vTzDi+OxskTo=
+X-Endpoint-Received: by B4 Relay for jsandom@axon.com/20260319 with auth_id=687
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This fixe does page cache invalidation after DIO and async DIO writes for
-both O_DIRECT and FOPEN_DIRECT_IO cases.
+This series adds device tree support for the Thundercomm RB5Gen2
+development kit, based on the Qualcomm QCS8550 chipset.
 
-Commit b359af8275a9 ("fuse: Invalidate the page cache after FOPEN_DIRECT_IO
-write") fixed xfstests generic/209 for DIO writes in the FOPEN_DIRECT_IO
-path. DIO writes without FOPEN_DIRECT_IO are already handled by
-generic_file_direct_write().
-However, async DIO writes (xfstests generic/451) remain unhandled.
+Patches 1-3 prepares for the RB5gen2 device tree by adding MHI register
+regions and port labels to the PCIe controller nodes, as well as moving
+common IPA properties into sm8550.dtsi. Then update the existing HDK
+and QRD board files accordingly.
 
-After this fix:
-- Async write with FUSE_ASYNC_DIO:
-    invalidate in fuse_aio_invalidate_worker()
+Patches 4-5 add the dt-bindings documentation and the board device tree
+for the RB5Gen2. This initial submission covers the main board; the vision
+mezzanine will be supported in a follow-up series.
 
-- Otherwise (Sync or async write without FUSE_ASYNC_DIO):
-    - With FOPEN_DIRECT_IO:
-        invalidate in fuse_direct_write_iter()
-    - Without FOPEN_DIRECT_IO:
-        invalidate in generic_file_direct_write()
+Product page:
+https://www.thundercomm.com/product/qualcomm-rb5-gen-2-development-kit
 
-Workqueue is required for async write invalidation to prevent deadlock:
-calling it directly in the I/O end routine (which is in fuse worker thread
-context) can block on a folio lock held by a buffered I/O thread waiting
-for the same fuse worker thread.
-
-Co-developed-by: Jingbo Xu <jefflexu@linux.alibaba.com>
-Signed-off-by: Jingbo Xu <jefflexu@linux.alibaba.com>
-Signed-off-by: Cheng Ding <cding@ddn.com>
+Signed-off-by: Joe Sandom <jsandom@axon.com>
 ---
 Changes in v4:
-- Add Jingbo as co-developer (with Jingbo's agreement).
-- Adopt Jingbo's commit message from
-  https://lore.kernel.org/linux-fsdevel/20260111073701.6071-1-jefflexu@linux.alibaba.com/,
-  modified to explain why async DIO invalidation needs a workqueue.
-- Link to v3: https://lore.kernel.org/r/20260309-xfstests-generic-451-v3-1-bb6ad2f59512@ddn.com
+- Renamed LT9611 regulator nodes from lt9611-regulator-* to
+  regulator-lt9611-* to follow standard naming convention
+- Moved pmic-glink node before regulators to match alphabetical
+  ordering used by sm8550-hdk.dts
+- Reordered sound dai-link sub-nodes: codec before cpu
+- Added comma separation between pinctrl-0 phandle references
+  (lt9611 and tc9563 entries)
+- Changed firmware paths from qcom/qcs8550/ to qcom/sm8550/ for
+  adsp, cdsp, modem, IPA and GPU to keep all firmware in the same
+  subdirectory
+- Link to v3: https://lore.kernel.org/r/20260409-rb5gen2-dts-v3-0-be736355d4b4@axon.com
 
 Changes in v3:
-- Address review comments: fix typo
-- Address review comments: move sb_init_dio_done_wq() to fuse_direct_IO()
-  Note: We could skip sb_init_dio_done_wq() when io->blocking is true, but
-  I opted to keep the change simpler.
-- Link to v2: https://lore.kernel.org/r/20260306-xfstests-generic-451-v2-1-93b2d540304b@ddn.com
+- Reworded MHI commit message to describe actual usage (debugfs
+  link_transition_count) per Neil's feedback
+- Reordered pinctrl-0 before pinctrl-names file-wide per Konrad's
+  feedback
+- Removed output-high from lt9611_rst_pin since the driver handles
+  reset sequencing
+- Reordered tlmm pinctrl entries by GPIO number
+- Changed bias-pull-up to bias-disable for regulator enable pins
+  (upd_1p05_en, upd_3p3_en) since these are active-high enables
+- Added comments for gpio-reserved-ranges explaining GPIOs 32-35
+  are for NFC secure element and 36-39 for fingerprint sensor
+- Removed max-sd-hs-hz override since upstream clock driver already
+  provides the correct 37.5MHz frequency
+- Updated msi-map deletion rationale with root cause: Gunyah limits
+  ITS device mappings to two per root complex on SM8550
+- Link to v2: https://lore.kernel.org/r/20260407-rb5gen2-dts-v2-0-d0c7f447ee73@axon.com
 
 Changes in v2:
-- Address review comments: move invalidation from fuse_direct_io() to
-  fuse_direct_write_iter()
-- Link to v1: https://lore.kernel.org/r/20260303-async-dio-aio-cache-invalidation-v1-1-fba0fd0426c3@ddn.com
----
- fs/fuse/file.c   | 59 +++++++++++++++++++++++++++++++++++++++++++++-----------
- fs/fuse/fuse_i.h |  1 +
- 2 files changed, 49 insertions(+), 11 deletions(-)
-
-diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-index b1bb7153cb78..c43fe74cdd46 100644
---- a/fs/fuse/file.c
-+++ b/fs/fuse/file.c
-@@ -23,6 +23,8 @@
- #include <linux/task_io_accounting_ops.h>
- #include <linux/iomap.h>
- 
-+int sb_init_dio_done_wq(struct super_block *sb);
-+
- static int fuse_send_open(struct fuse_mount *fm, u64 nodeid,
- 			  unsigned int open_flags, int opcode,
- 			  struct fuse_open_out *outargp)
-@@ -629,6 +631,19 @@ static ssize_t fuse_get_res_by_io(struct fuse_io_priv *io)
- 	return io->bytes < 0 ? io->size : io->bytes;
- }
- 
-+static void fuse_aio_invalidate_worker(struct work_struct *work)
-+{
-+	struct fuse_io_priv *io = container_of(work, struct fuse_io_priv, work);
-+	struct address_space *mapping = io->iocb->ki_filp->f_mapping;
-+	ssize_t res = fuse_get_res_by_io(io);
-+	pgoff_t start = io->offset >> PAGE_SHIFT;
-+	pgoff_t end = (io->offset + res - 1) >> PAGE_SHIFT;
-+
-+	invalidate_inode_pages2_range(mapping, start, end);
-+	io->iocb->ki_complete(io->iocb, res);
-+	kref_put(&io->refcnt, fuse_io_release);
-+}
-+
- /*
-  * In case of short read, the caller sets 'pos' to the position of
-  * actual end of fuse request in IO request. Otherwise, if bytes_requested
-@@ -661,10 +676,11 @@ static void fuse_aio_complete(struct fuse_io_priv *io, int err, ssize_t pos)
- 	spin_unlock(&io->lock);
- 
- 	if (!left && !io->blocking) {
-+		struct inode *inode = file_inode(io->iocb->ki_filp);
-+		struct address_space *mapping = io->iocb->ki_filp->f_mapping;
- 		ssize_t res = fuse_get_res_by_io(io);
- 
- 		if (res >= 0) {
--			struct inode *inode = file_inode(io->iocb->ki_filp);
- 			struct fuse_conn *fc = get_fuse_conn(inode);
- 			struct fuse_inode *fi = get_fuse_inode(inode);
- 
-@@ -673,6 +689,17 @@ static void fuse_aio_complete(struct fuse_io_priv *io, int err, ssize_t pos)
- 			spin_unlock(&fi->lock);
- 		}
- 
-+		if (io->write && res > 0 && mapping->nrpages) {
-+			/*
-+			 * As in generic_file_direct_write(), invalidate after the
-+			 * write, to invalidate read-ahead cache that may have competed
-+			 * with the write.
-+			 */
-+			INIT_WORK(&io->work, fuse_aio_invalidate_worker);
-+			queue_work(inode->i_sb->s_dio_done_wq, &io->work);
-+			return;
-+		}
-+
- 		io->iocb->ki_complete(io->iocb, res);
- 	}
- 
-@@ -1738,15 +1765,6 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,
- 	if (res > 0)
- 		*ppos = pos;
- 
--	if (res > 0 && write && fopen_direct_io) {
--		/*
--		 * As in generic_file_direct_write(), invalidate after the
--		 * write, to invalidate read-ahead cache that may have competed
--		 * with the write.
--		 */
--		invalidate_inode_pages2_range(mapping, idx_from, idx_to);
--	}
--
- 	return res > 0 ? res : err;
- }
- EXPORT_SYMBOL_GPL(fuse_direct_io);
-@@ -1785,6 +1803,8 @@ static ssize_t fuse_direct_read_iter(struct kiocb *iocb, struct iov_iter *to)
- static ssize_t fuse_direct_write_iter(struct kiocb *iocb, struct iov_iter *from)
- {
- 	struct inode *inode = file_inode(iocb->ki_filp);
-+	struct address_space *mapping = inode->i_mapping;
-+	loff_t pos = iocb->ki_pos;
- 	ssize_t res;
- 	bool exclusive;
- 
-@@ -1801,6 +1821,16 @@ static ssize_t fuse_direct_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 					     FUSE_DIO_WRITE);
- 			fuse_write_update_attr(inode, iocb->ki_pos, res);
- 		}
-+		if (res > 0 && mapping->nrpages) {
-+			/*
-+			 * As in generic_file_direct_write(), invalidate after
-+			 * write, to invalidate read-ahead cache that may have
-+			 * with the write.
-+			 */
-+			invalidate_inode_pages2_range(mapping,
-+				pos >> PAGE_SHIFT,
-+				(pos + res - 1) >> PAGE_SHIFT);
-+		}
- 	}
- 	fuse_dio_unlock(iocb, exclusive);
- 
-@@ -2826,6 +2856,7 @@ fuse_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
- 	size_t count = iov_iter_count(iter), shortened = 0;
- 	loff_t offset = iocb->ki_pos;
- 	struct fuse_io_priv *io;
-+	bool async = ff->fm->fc->async_dio;
- 
- 	pos = offset;
- 	inode = file->f_mapping->host;
-@@ -2834,6 +2865,12 @@ fuse_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
- 	if ((iov_iter_rw(iter) == READ) && (offset >= i_size))
- 		return 0;
- 
-+	if ((iov_iter_rw(iter) == WRITE) && async && !inode->i_sb->s_dio_done_wq) {
-+		ret = sb_init_dio_done_wq(inode->i_sb);
-+		if (ret < 0)
-+			return ret;
-+	}
-+
- 	io = kmalloc_obj(struct fuse_io_priv);
- 	if (!io)
- 		return -ENOMEM;
-@@ -2849,7 +2886,7 @@ fuse_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
- 	 * By default, we want to optimize all I/Os with async request
- 	 * submission to the client filesystem if supported.
- 	 */
--	io->async = ff->fm->fc->async_dio;
-+	io->async = async;
- 	io->iocb = iocb;
- 	io->blocking = is_sync_kiocb(iocb);
- 
-diff --git a/fs/fuse/fuse_i.h b/fs/fuse/fuse_i.h
-index 7f16049387d1..6e8c8cf6b2c8 100644
---- a/fs/fuse/fuse_i.h
-+++ b/fs/fuse/fuse_i.h
-@@ -377,6 +377,7 @@ union fuse_file_args {
- /** The request IO state (for asynchronous processing) */
- struct fuse_io_priv {
- 	struct kref refcnt;
-+	struct work_struct work;
- 	int async;
- 	spinlock_t lock;
- 	unsigned reqs;
+- Lowercase hex in MHI region definitions for pcie0 and pcie1 nodes +
+  vertical alignment
+- Change pcie0 and pcie1 reg-names for one entry per line
+- Ensured pcie port labels + changes to sm8550-hdk.dts and sm8550-qrd.dts
+  are done in a single commit
+- Moved IPA gsi-loader and memory-region to sm8550.dtsi since they are common
+  properties. Reflect changes in sm8550-hdk.dts and sm8550-qrd.dts
+- Removed usbhub_reset since this is not required
+- Added swctrl-gpios property to wcn7850-pmu
+- Split sw_ctrl_default gpio from bt_default grouping and referenced the
+  pinctrl separately
+- Replaced upd_reset regulator-fixed with pinctrl and vddpe-3v3-supply
+  on pcie0
+- Aligned firmware-name values vertically on the quote mark
+- Changed cdsp, adsp and modem remoteprocs to .mbn file type instead of
+  .mdt
+- Added remark in rb5gen2 dts commit explaining the rationale for
+  deleting msi-map in pcie0 and pcie1 nodes
+- Link to v1: https://lore.kernel.org/r/20260404-rb5gen2-dts-v1-0-895f8fc494fc@axon.com
 
 ---
-base-commit: b29fb8829bff243512bb8c8908fd39406f9fd4c3
-change-id: 20260420-b4-new-451-ecec7cf7412e
+Joe Sandom (5):
+      arm64: dts: qcom: sm8550: add PCIe MHI register regions
+      arm64: dts: qcom: sm8550: add PCIe port labels
+      arm64: dts: qcom: sm8550: move IPA properties to SoC device tree
+      dt-bindings: arm: qcom: document QCS8550 RB5Gen2 board
+      arm64: dts: qcom: qcs8550: add QCS8550 RB5Gen2 board support
+
+ Documentation/devicetree/bindings/arm/qcom.yaml |    6 +
+ arch/arm64/boot/dts/qcom/Makefile               |    1 +
+ arch/arm64/boot/dts/qcom/qcs8550-rb5gen2.dts    | 1573 +++++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/sm8550-hdk.dts         |    4 +-
+ arch/arm64/boot/dts/qcom/sm8550-qrd.dts         |    4 +-
+ arch/arm64/boot/dts/qcom/sm8550.dtsi            |   26 +-
+ 6 files changed, 1602 insertions(+), 12 deletions(-)
+---
+base-commit: af241225893ac4933bb8f0615f2dfda8ea2326ce
+change-id: 20260404-rb5gen2-dts-180cde0b716c
 
 Best regards,
 -- 
-Cheng Ding <cding@ddn.com>
+Joe Sandom <jsandom@axon.com>
 
