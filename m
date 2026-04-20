@@ -1,331 +1,158 @@
-From: Pawel Laszczak <pawell@cadence.com>
-Date: Mon, 20 Apr 2026 12:23:57 +0200
-Subject: [PATCH v2] usb: cdnsp: add support for eUSB2v2 port
+From: Shivam Kalra <shivamkalra98@zohomail.in>
+Subject: [PATCH v11 0/5] mm/vmalloc: free unused pages on vrealloc() shrink
+Date: Mon, 20 Apr 2026 22:27:08 +0530
+Message-Id: <20260420-vmalloc-shrink-v11-0-cad80b00853a@zohomail.in>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260420-eusb2v2_upstream-v2-1-9883645e2ede@cadence.com>
-X-B4-Tracking: v=1; b=H4sIALz+5WkC/32Nyw6CMBBFf4XM2pq2oIgr/8MQ08cgNYGSDm00h
- H+34N7lSc49dwHC4JDgWiwQMDlyfswgDwWYXo1PZM5mBsnlmVeiZhhJyyQfcaI5oBrYhZuTlo2
- qtVaQZ1PAzr335L39MUX9QjNvnc3oHc0+fPbPJDbvTz4JJlhZVtw2ttEdx5tRFkeDR+MHaNd1/
- QKQvXkmxAAAAA==
-X-Change-ID: 20260417-eusb2v2_upstream-80c5b29a7bba
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- peter.chen@kernel.org, Pawel Laszczak <pawell@cadence.com>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776680652; l=10753;
- i=pawell@cadence.com; h=from:subject:message-id;
- bh=1S2xw8eKEGUe+bnE03nIXmCBqk4ynYOJ3VbC74u7qJ0=;
- b=EOaOmceN0jXVtNJSPBaLEpPZl8pfC6bnazbbz+5n95jeeo169ydpW4V5uuKYwSNwogwSJDrzR
- CS2cysffA8vCpcIvSD6M1HrIQYaa/e2nuXxMrOyOMP/T1CFIKOdG7Bz
-X-Developer-Key: i=pawell@cadence.com; a=ed25519;
- pk=EUPBvLO9CDg7j6defeDl2iqi+z5Ivqu4Z46aiqe7dYc=
-X-Endpoint-Received: by B4 Relay for pawell@cadence.com/default with auth_id=707
+X-B4-Tracking: v=1; b=H4sIAOVa5mkC/3XQS07EMAwG4KuMsibISeM8WHEPxCJPGjHTohZVw
+ Kh3J50NQYalLfmzf1/ZmpeaV/ZwurIlb3Wt89QKIe5OLI5+esm8ptZgEqSGASTfLv58niNfx6V
+ OrxxUkMVra71QrA29LbnUj5v49Nzqsa7v8/J5W7CJo/svtQkOXOmUS1Eag8mPX/M4X3w939eJH
+ dgme0ARQDZA2iidSBoEAAWGHnAEGBqA6KAkm7LMgQKqAwS9QDUgijYKIaBCpAD2gCEANiCEEgq
+ qiFL/AegOkIIAugGgZfQmmJiDpIDpARrBHBEgaxlsxmQHCtgeoBHsAUQd0AC6nAwF3A+ggEZwx
+ w8K2lSCcyZZCgjoBZpBtB/wYUCDTmhMxf8m9n3/BqEmKLr6AgAA
+X-Change-ID: 20260302-vmalloc-shrink-04b2fa688a14
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ Uladzislau Rezki <urezki@gmail.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
+ Shivam Kalra <shivamkalra98@zohomail.in>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776704237; l=6058;
+ i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
+ bh=a/eGynaEpRz7wkViM8K734IGGUdqnv9E3or0+KxAdiA=;
+ b=dBRX7CqsIutUBDFJ9z5STdxUxUGuixfsRBjF54OKmW/COmrLciHg0ESXUCQX8zv15O5ilSF2r
+ oRxAH0gQUvaCJduA62J9YwVbUbWl9rigbm6TCmJE+ZgRobFqf0x0gi1
+X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
+ pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
+X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Cadence CDNSP controller optionally supports eUSB2 (embedded USB2)
-port. While this port type operates logically like high-speed USB 2.0,
-it utilizes a different physical layer signaling.
+This series implements the TODO in vrealloc() to unmap and free unused
+pages when shrinking across a page boundary.
 
-This patch:
-- Extends the port detection logic to recognize the eUSB2 protocol.
-- Tracks the eUSB2 port offset in the cdnsp_device structure.
-- Ensures that eUSB2 ports are correctly handled during Link State
-  transitions, specifically forcing L0 when LPM is capable, similar
-  to standard USB 2.0 ports.
+Problem:
+When vrealloc() shrinks an allocation, it updates bookkeeping
+(requested_size, KASAN shadow) but does not free the underlying physical
+pages. This wastes memory for the lifetime of the allocation.
 
-Signed-off-by: Pawel Laszczak <pawell@cadence.com>
-Acked-by: Peter Chen <peter.chen@kernel.org>
+Solution:
+- Patch 1: Extracts a vm_area_free_pages(vm, start_idx, end_idx) helper
+  from vfree() that frees a range of pages with memcg and nr_vmalloc_pages
+  accounting. Freed page pointers are set to NULL to prevent stale
+  references.
+- Patch 2: Update the grow-in-place check in vrealloc() to compare the
+  requested size against the actual physical page count (vm->nr_pages) 
+  rather than the virtual area sizes. This is a prerequisite for shrinking.
+- Patch 3: Update vread_iter() to derive the vm area size from
+  vm->nr_pages rather than get_vm_area_size(), which would overestimate
+  the mapped range after a shrink.
+- Patch 4: Uses the helper to free tail pages when vrealloc() shrinks
+  across a page boundary. 
+- Patch 5: Adds a vrealloc test case to lib/test_vmalloc that exercises
+  grow-realloc, shrink-across-boundary, shrink-within-page, and
+  grow-in-place paths.
+
+The virtual address reservation is kept intact to preserve the range
+for potential future grow-in-place support.
+A concrete user is the Rust binder driver's KVVec::shrink_to [1], which
+performs explicit vrealloc() shrinks for memory reclamation.
+
+Tested:
+- KASAN KUnit (vmalloc_oob passes)
+- lib/test_vmalloc stress tests (3/3, 1M iterations each)
+- checkpatch, sparse, W=1, allmodconfig, coccicheck clean
+
+[1] https://lore.kernel.org/all/20260216-binder-shrink-vec-v3-v6-0-ece8e8593e53@zohomail.in/
+
+Suggested-by: Danilo Krummrich <dakr@kernel.org>
+Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
+Changes in v11:
+- Prepare vread_iter() to use vm->nr_pages instead of
+  get_vm_area_size() (Uladzislau Rezki, Sashiko)
+- Drop (size_t) cast from nr_pages << PAGE_SHIFT (Uladzislau Rezki)
+- Link to v10: https://lore.kernel.org/r/20260404-vmalloc-shrink-v10-0-335759165dfa@zohomail.in
+
+Changes in v10:
+- Reorder vm->nr_pages to the beginning (Alice Ryhl)
+- Link to v9: https://lore.kernel.org/r/20260401-vmalloc-shrink-v9-0-bf58dfb997d8@zohomail.in
+
+Changes in v9:
+- Remove READ_ONCE, WRITE_ONCE and drop commit
+  about show_numa_info. (Uladzislau Rezki)
+- Update the commit message in Patch 2. (Alice Ryhl)
+- Remove zero newly exposed memory commit.
+- Link to v8: https://lore.kernel.org/r/20260327-vmalloc-shrink-v8-0-cc6b57059ed7@zohomail.in
+
+Changes in v8:
+- Strip the KASAN tag from the pointer before addr_to_node()
+  to avoid acquiring the wrong node lock (Sashiko).
+- Rebase to latest mm-new.
+- Link to v7: https://lore.kernel.org/r/20260324-vmalloc-shrink-v7-0-c0e62b8e5d83@zohomail.in
+
+Changes in v7:
+- Fix NULL pointer dereference in shrink path (Sashiko)
+- Acquire vn->busy.lock when updating vm->nr_pages to synchronize 
+  with concurrent readers (Uladzislau Rezki)
+- Use READ_ONCE in vmalloc_dump_obj (Sashiko)
+- Skip shrink path on GFP_NIO or GFP_NOFS. (Sashiko)
+- Fix Overflow issue for large allocations. (Sashiko)
+- Use vrealloc instead of vmalloc in vrealloc test.  
+- Link to v6: https://lore.kernel.org/r/20260321-vmalloc-shrink-v6-0-062ca7b7ceb2@zohomail.in
+
+Changes in v6:
+- Fix VM_USERMAP crash by explicitly bypassing early in the shrink path if the flag is set.(Sashiko)
+- Fix Kmemleak scanner panic by calling kmemleak_free_part() to update tracking on shrink.(Sashiko)
+- Fix /proc/vmallocinfo race condition by protecting vm->nr_pages access with 
+  READ_ONCE()/WRITE_ONCE() for concurrent readers.(Sashiko)
+- Fix stale data leak on grow-after-shrink by enforcing mandatory zeroing of the newly exposed memory.(Sashiko)
+- Fix memory leaks in vrealloc_test() by using a temporary pointer to preserve and 
+  free the original allocation upon failure.(Sashiko)
+- Rename vmalloc_free_pages parameters from start/end to start_idx/end_idx for better clarity.(Uladzislau Rezki)
+- Link to v5: https://lore.kernel.org/r/20260317-vmalloc-shrink-v5-0-bbfbf54c5265@zohomail.in
+- Link to Sashiko: https://sashiko.dev/#/patchset/20260317-vmalloc-shrink-v5-0-bbfbf54c5265%40zohomail.in
+
+Changes in v5:
+- Skip vrealloc shrink for VM_FLUSH_RESET_PERMS (Uladzislau Rezki)
+- Link to v4: https://lore.kernel.org/r/20260314-vmalloc-shrink-v4-0-c1e2e0bb5455@zohomail.in
+
+Changes in v4:
+- Rename vmalloc_free_pages() to vm_area_free_pages() to align with
+  vm_area_alloc_pages() (Uladzislau Rezki)
+- NULL out freed vm->pages[] entries to prevent stale pointers (Alice Ryhl)
+- Remove redundant if (vm->nr_pages) guard in vfree() (Uladzislau Rezki)
+- Add vrealloc test case to lib/test_vmalloc (new patch 3/3)
+- Link to v3: https://lore.kernel.org/r/20260309-vmalloc-shrink-v3-0-5590fd8de2eb@zohomail.in
+
+Changes in v3:
+- Restore the comment.
+- Rebase to the latest mm-new 
+- Link to v2: https://lore.kernel.org/r/20260304-vmalloc-shrink-v2-0-28c291d60100@zohomail.in
+
 Changes in v2:
-- Removed unnecessary space.
-- Added Acked-by: Peter Chen.
----
- drivers/usb/cdns3/cdnsp-gadget.c | 49 ++++++++++++++++++---------
- drivers/usb/cdns3/cdnsp-gadget.h |  1 +
- drivers/usb/cdns3/cdnsp-mem.c    | 73 +++++++++++++++++++++++++++-------------
- drivers/usb/cdns3/cdnsp-ring.c   |  9 +++--
- 4 files changed, 90 insertions(+), 42 deletions(-)
-
-diff --git a/drivers/usb/cdns3/cdnsp-gadget.c b/drivers/usb/cdns3/cdnsp-gadget.c
-index 6b3815f8a6e5..2c71c77e6ec3 100644
---- a/drivers/usb/cdns3/cdnsp-gadget.c
-+++ b/drivers/usb/cdns3/cdnsp-gadget.c
-@@ -124,20 +124,28 @@ void cdnsp_set_link_state(struct cdnsp_device *pdev,
- }
- 
- static void cdnsp_disable_port(struct cdnsp_device *pdev,
--			       __le32 __iomem *port_regs)
-+			       struct cdnsp_port *port)
- {
--	u32 temp = cdnsp_port_state_to_neutral(readl(port_regs));
-+	u32 temp;
-+
-+	if (!port->exist)
-+		return;
- 
--	writel(temp | PORT_PED, port_regs);
-+	temp = cdnsp_port_state_to_neutral(readl(&port->regs->portsc));
-+	writel(temp | PORT_PED, &port->regs->portsc);
- }
- 
- static void cdnsp_clear_port_change_bit(struct cdnsp_device *pdev,
--					__le32 __iomem *port_regs)
-+					struct cdnsp_port *port)
- {
--	u32 portsc = readl(port_regs);
-+	u32 portsc;
-+
-+	if (!port->exist)
-+		return;
- 
-+	portsc = readl(&port->regs->portsc);
- 	writel(cdnsp_port_state_to_neutral(portsc) |
--	       (portsc & PORT_CHANGE_BITS), port_regs);
-+	       (portsc & PORT_CHANGE_BITS), &port->regs->portsc);
- }
- 
- static void cdnsp_set_apb_timeout_value(struct cdnsp_device *pdev)
-@@ -944,7 +952,7 @@ void cdnsp_set_usb2_hardware_lpm(struct cdnsp_device *pdev,
- 				 struct usb_request *req,
- 				 int enable)
- {
--	if (pdev->active_port != &pdev->usb2_port || !pdev->gadget.lpm_capable)
-+	if (pdev->active_port == &pdev->usb3_port || !pdev->gadget.lpm_capable)
- 		return;
- 
- 	trace_cdnsp_lpm(enable);
-@@ -1310,20 +1318,26 @@ static int cdnsp_run(struct cdnsp_device *pdev,
- 		break;
- 	}
- 
--	if (speed >= USB_SPEED_SUPER) {
-+	if (pdev->usb3_port.exist && speed >= USB_SPEED_SUPER) {
- 		writel(temp, &pdev->port3x_regs->mode_addr);
- 		cdnsp_set_link_state(pdev, &pdev->usb3_port.regs->portsc,
- 				     XDEV_RXDETECT);
- 	} else {
--		cdnsp_disable_port(pdev, &pdev->usb3_port.regs->portsc);
-+		cdnsp_disable_port(pdev, &pdev->usb3_port);
- 	}
- 
--	cdnsp_set_link_state(pdev, &pdev->usb2_port.regs->portsc,
--			     XDEV_RXDETECT);
-+	if (pdev->usb2_port.exist) {
-+		cdnsp_set_link_state(pdev, &pdev->usb2_port.regs->portsc,
-+				     XDEV_RXDETECT);
-+		writel(PORT_REG6_L1_L0_HW_EN | fs_speed, &pdev->port20_regs->port_reg6);
-+	}
-+
-+	if (pdev->eusb_port.exist)
-+		cdnsp_set_link_state(pdev, &pdev->eusb_port.regs->portsc,
-+				     XDEV_RXDETECT);
- 
- 	cdnsp_gadget_ep0_desc.wMaxPacketSize = cpu_to_le16(512);
- 
--	writel(PORT_REG6_L1_L0_HW_EN | fs_speed, &pdev->port20_regs->port_reg6);
- 
- 	ret = cdnsp_start(pdev);
- 	if (ret) {
-@@ -1469,8 +1483,10 @@ static void cdnsp_stop(struct cdnsp_device *pdev)
- 			cdnsp_ep_dequeue(&pdev->eps[0], req);
- 	}
- 
--	cdnsp_disable_port(pdev, &pdev->usb2_port.regs->portsc);
--	cdnsp_disable_port(pdev, &pdev->usb3_port.regs->portsc);
-+	cdnsp_disable_port(pdev, &pdev->usb2_port);
-+	cdnsp_disable_port(pdev, &pdev->usb3_port);
-+	cdnsp_disable_port(pdev, &pdev->eusb_port);
-+
- 	cdnsp_disable_slot(pdev);
- 	cdnsp_halt(pdev);
- 
-@@ -1479,8 +1495,9 @@ static void cdnsp_stop(struct cdnsp_device *pdev)
- 	temp = readl(&pdev->ir_set->irq_pending);
- 	writel(IMAN_IE_CLEAR(temp), &pdev->ir_set->irq_pending);
- 
--	cdnsp_clear_port_change_bit(pdev, &pdev->usb2_port.regs->portsc);
--	cdnsp_clear_port_change_bit(pdev, &pdev->usb3_port.regs->portsc);
-+	cdnsp_clear_port_change_bit(pdev, &pdev->usb2_port);
-+	cdnsp_clear_port_change_bit(pdev, &pdev->eusb_port);
-+	cdnsp_clear_port_change_bit(pdev, &pdev->usb3_port);
- 
- 	/* Clear interrupt line */
- 	temp = readl(&pdev->ir_set->irq_pending);
-diff --git a/drivers/usb/cdns3/cdnsp-gadget.h b/drivers/usb/cdns3/cdnsp-gadget.h
-index a91cca509db0..c44bca348a41 100644
---- a/drivers/usb/cdns3/cdnsp-gadget.h
-+++ b/drivers/usb/cdns3/cdnsp-gadget.h
-@@ -1474,6 +1474,7 @@ struct cdnsp_device {
- 	unsigned int link_state;
- 
- 	struct cdnsp_port usb2_port;
-+	struct cdnsp_port eusb_port;
- 	struct cdnsp_port usb3_port;
- 	struct cdnsp_port *active_port;
- 	u16 test_mode;
-diff --git a/drivers/usb/cdns3/cdnsp-mem.c b/drivers/usb/cdns3/cdnsp-mem.c
-index a2a1b21f2ef8..5d8cdc91927d 100644
---- a/drivers/usb/cdns3/cdnsp-mem.c
-+++ b/drivers/usb/cdns3/cdnsp-mem.c
-@@ -1088,11 +1088,9 @@ void cdnsp_mem_cleanup(struct cdnsp_device *pdev)
- 			  pdev->dcbaa, pdev->dcbaa->dma);
- 
- 	pdev->dcbaa = NULL;
--
--	pdev->usb2_port.exist = 0;
--	pdev->usb3_port.exist = 0;
--	pdev->usb2_port.port_num = 0;
--	pdev->usb3_port.port_num = 0;
-+	memset(&pdev->usb2_port, 0, sizeof(struct cdnsp_port));
-+	memset(&pdev->eusb_port, 0, sizeof(struct cdnsp_port));
-+	memset(&pdev->usb3_port, 0, sizeof(struct cdnsp_port));
- 	pdev->active_port = NULL;
- }
- 
-@@ -1133,6 +1131,18 @@ static void cdnsp_add_in_port(struct cdnsp_device *pdev,
- 	port_offset = CDNSP_EXT_PORT_OFF(temp);
- 	port_count = CDNSP_EXT_PORT_COUNT(temp);
- 
-+	if (port == &pdev->eusb_port) {
-+		/*
-+		 * If controller has usb2 + eusb port then eusb is as
-+		 * second port
-+		 */
-+		if (port_count == 2)
-+			port_offset++;
-+
-+		if (port_count == 1 && pdev->usb2_port.exist)
-+			return;
-+	}
-+
- 	trace_cdnsp_port_info(addr, port_offset, port_count, port->maj_rev);
- 
- 	port->port_num = port_offset;
-@@ -1152,13 +1162,10 @@ static int cdnsp_setup_port_arrays(struct cdnsp_device *pdev)
- 	base = &pdev->cap_regs->hc_capbase;
- 	offset = cdnsp_find_next_ext_cap(base, 0,
- 					 EXT_CAP_CFG_DEV_20PORT_CAP_ID);
--	pdev->port20_regs = base + offset;
--
--	offset = cdnsp_find_next_ext_cap(base, 0, D_XEC_CFG_3XPORT_CAP);
--	pdev->port3x_regs =  base + offset;
-+	if (offset)
-+		pdev->port20_regs = base + offset;
- 
- 	offset = 0;
--	base = &pdev->cap_regs->hc_capbase;
- 
- 	/* Driver expects max 2 extended protocol capability. */
- 	for (i = 0; i < 2; i++) {
-@@ -1173,26 +1180,46 @@ static int cdnsp_setup_port_arrays(struct cdnsp_device *pdev)
- 			cdnsp_add_in_port(pdev, &pdev->usb3_port,
- 					  base + offset);
- 
--		if (CDNSP_EXT_PORT_MAJOR(temp) == 0x02 &&
--		    !pdev->usb2_port.port_num)
--			cdnsp_add_in_port(pdev, &pdev->usb2_port,
--					  base + offset);
-+		if (CDNSP_EXT_PORT_MAJOR(temp) == 0x02) {
-+			if (!pdev->usb2_port.port_num && pdev->port20_regs)
-+				cdnsp_add_in_port(pdev, &pdev->usb2_port,
-+						  base + offset);
-+
-+			if (!pdev->eusb_port.port_num)
-+				cdnsp_add_in_port(pdev, &pdev->eusb_port,
-+						  base + offset);
-+		}
- 	}
- 
--	if (!pdev->usb2_port.exist || !pdev->usb3_port.exist) {
--		dev_err(pdev->dev, "Error: Only one port detected\n");
-+	if (!pdev->usb2_port.exist && !pdev->eusb_port.exist &&
-+	    !pdev->usb3_port.exist) {
-+		dev_err(pdev->dev, "Error: No port detected\n");
- 		return -ENODEV;
- 	}
- 
--	trace_cdnsp_init("Found USB 2.0 ports and  USB 3.0 ports.");
-+	if (pdev->usb2_port.exist) {
-+		pdev->usb2_port.regs = (struct cdnsp_port_regs __iomem *)
-+				       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
-+					(pdev->usb2_port.port_num - 1));
-+		trace_cdnsp_init("Found USB 2.0 port.");
-+	}
- 
--	pdev->usb2_port.regs = (struct cdnsp_port_regs __iomem *)
--			       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
--				(pdev->usb2_port.port_num - 1));
-+	if (pdev->eusb_port.exist) {
-+		pdev->eusb_port.regs = (struct cdnsp_port_regs __iomem *)
-+				       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
-+					(pdev->eusb_port.port_num - 1));
-+		trace_cdnsp_init("Found eUSB 2.0 port.");
-+	}
-+
-+	if (pdev->usb3_port.exist) {
-+		offset = cdnsp_find_next_ext_cap(base, 0, D_XEC_CFG_3XPORT_CAP);
-+		pdev->port3x_regs =  base + offset;
- 
--	pdev->usb3_port.regs = (struct cdnsp_port_regs __iomem *)
--			       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
--				(pdev->usb3_port.port_num - 1));
-+		pdev->usb3_port.regs = (struct cdnsp_port_regs __iomem *)
-+				       (&pdev->op_regs->port_reg_base + NUM_PORT_REGS *
-+					(pdev->usb3_port.port_num - 1));
-+		trace_cdnsp_init("Found USB 3.x port.");
-+	}
- 
- 	return 0;
- }
-diff --git a/drivers/usb/cdns3/cdnsp-ring.c b/drivers/usb/cdns3/cdnsp-ring.c
-index 0758f171f73e..715658c981ff 100644
---- a/drivers/usb/cdns3/cdnsp-ring.c
-+++ b/drivers/usb/cdns3/cdnsp-ring.c
-@@ -259,7 +259,7 @@ static bool cdnsp_room_on_ring(struct cdnsp_device *pdev,
-  */
- static void cdnsp_force_l0_go(struct cdnsp_device *pdev)
- {
--	if (pdev->active_port == &pdev->usb2_port && pdev->gadget.lpm_capable)
-+	if (pdev->active_port != &pdev->usb3_port && pdev->gadget.lpm_capable)
- 		cdnsp_set_link_state(pdev, &pdev->active_port->regs->portsc, XDEV_U0);
- }
- 
-@@ -763,6 +763,8 @@ static int cdnsp_update_port_id(struct cdnsp_device *pdev, u32 port_id)
- 
- 	if (port_id == pdev->usb2_port.port_num) {
- 		port = &pdev->usb2_port;
-+	} else if (port_id == pdev->eusb_port.port_num) {
-+		port = &pdev->eusb_port;
- 	} else if (port_id == pdev->usb3_port.port_num) {
- 		port  = &pdev->usb3_port;
- 	} else {
-@@ -779,7 +781,8 @@ static int cdnsp_update_port_id(struct cdnsp_device *pdev, u32 port_id)
- 		cdnsp_enable_slot(pdev);
- 	}
- 
--	if (port_id == pdev->usb2_port.port_num)
-+	if ((pdev->usb2_port.exist && port_id == pdev->usb2_port.port_num) ||
-+	    (pdev->eusb_port.exist && port_id == pdev->eusb_port.port_num))
- 		cdnsp_set_usb2_hardware_lpm(pdev, NULL, 1);
- 	else
- 		writel(PORT_U1_TIMEOUT(1) | PORT_U2_TIMEOUT(1),
-@@ -808,7 +811,7 @@ static void cdnsp_handle_port_status(struct cdnsp_device *pdev,
- 
- 	port_regs = pdev->active_port->regs;
- 
--	if (port_id == pdev->usb2_port.port_num)
-+	if (port_id == pdev->usb2_port.port_num || port_id == pdev->eusb_port.port_num)
- 		port2 = true;
- 
- new_event:
+- Updated the base-commit to mm-new
+- Fix conflicts after rebase
+- Ran `clang-format` on the changes made
+- Use a single `kasan_vrealloc` (Alice Ryhl)
+- Link to v1: https://lore.kernel.org/r/20260302-vmalloc-shrink-v1-0-46deff465b7e@zohomail.in
 
 ---
-base-commit: 1c7cc4904160c6fc6377564140062d68a3dc93a0
-change-id: 20260417-eusb2v2_upstream-80c5b29a7bba
+Shivam Kalra (5):
+      mm/vmalloc: extract vm_area_free_pages() helper from vfree()
+      mm/vmalloc: use physical page count for vrealloc() grow-in-place check
+      mm/vmalloc: use physical page count in vread_iter()
+      mm/vmalloc: free unused pages on vrealloc() shrink
+      lib/test_vmalloc: add vrealloc test case
+
+ lib/test_vmalloc.c |  62 +++++++++++++++++++++++++++
+ mm/vmalloc.c       | 120 ++++++++++++++++++++++++++++++++++++++++++++---------
+ 2 files changed, 162 insertions(+), 20 deletions(-)
+---
+base-commit: f4279f87cd6c82ebdaccdc56f38e7b80ca7fcc03
+change-id: 20260302-vmalloc-shrink-04b2fa688a14
 
 Best regards,
---  
-Pawel Laszczak <pawell@cadence.com>
+-- 
+Shivam Kalra <shivamkalra98@zohomail.in>
 
