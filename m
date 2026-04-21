@@ -1,551 +1,132 @@
-From: Alexandre MINETTE <contact@alex-min.fr>
-Date: Tue, 21 Apr 2026 11:45:14 +0200
-Subject: [PATCH 8/8] ARM: dts: qcom: Add Samsung Galaxy S4
+From: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Subject: [PATCH v4 0/8] Add VIM4 MCU/FAN support
+Date: Tue, 21 Apr 2026 13:49:17 +0200
+Message-Id: <20260421-add-mcu-fan-khadas-vim4-v4-0-447114a28f2d@aliel.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260421-mainline-send-v1-sending-v1-8-bcb0857724de@alex-min.fr>
-References: <20260421-mainline-send-v1-sending-v1-0-bcb0857724de@alex-min.fr>
-In-Reply-To: <20260421-mainline-send-v1-sending-v1-0-bcb0857724de@alex-min.fr>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, MyungJoo Ham <myungjoo.ham@samsung.com>, 
- Chanwoo Choi <cw00.choi@samsung.com>, 
- Guru Das Srinagesh <linux@gurudas.dev>, Linus Walleij <linusw@kernel.org>, 
- Rob Clark <robin.clark@oss.qualcomm.com>, Joerg Roedel <joro@8bytes.org>, 
- Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
- Kees Cook <kees@kernel.org>, Tony Luck <tony.luck@intel.com>, 
- "Guilherme G. Piccoli" <gpiccoli@igalia.com>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-gpio@vger.kernel.org, 
- iommu@lists.linux.dev, Alexandre MINETTE <contact@alex-min.fr>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776764711; l=11893;
- i=contact@alex-min.fr; s=20260421; h=from:subject:message-id;
- bh=hR/sJXLJ9ZhjibRuKmzGQr1mcdWLxdHhZJ2Znf5IhWQ=;
- b=Dsz7XGfWa7L4TEbY1/C1/mLUvftNLnSe7H+BIc82yvEz4+1ZYS1jwqb+PSpMcz249qcsFRLus
- CrlidRzdqaFAq0PormOw2uHhqsLOjD7/0D+i1LC5WLz5aTx3Dr1G6/A
-X-Developer-Key: i=contact@alex-min.fr; a=ed25519;
- pk=KOCaxY4v16ptaT0uk1FRkuaDF2n1JhmnYwLiqWD76M4=
-X-Endpoint-Received: by B4 Relay for contact@alex-min.fr/20260421 with auth_id=743
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WS3W7bMAyFXyXw9RToX5YxDH2PYRekSDVabSezH
+ aNFkXef4uYi2VbskhLOd8hDvjczT4Xnptu9NxOvZS7HsRb2y65JBxifWRSqdaOl9tJKLYBIDOk
+ sMozi5QAEs1jLYAUklZCdMyliU9WniXN53cjff3zUE/86V4Pl47FBmFmk4zCUpduN/LqIzcToc
+ NUPPM+w2Xe7r7cPL6P21u2VdLVQQomfBcb94fwEQ398Lmlfcd82d1jSYdN6B46Cz5mwdmYA0Jj
+ WIXqXUOogpU1GcuBHlTZB+9hK1WpPZIBCRuUZLQXyZBnQSatD+6hygSPKFqJvgSk7a8iQJOdTV
+ gksoZaoQfnmPt1qdptuyxbTYE1w+ppMJRfsWXCdGmwOMRjoVv1oisHI7NhqZEVtJBUNewOV6Wx
+ 0iTDrFCjgP02NFHVLoowr9IXEaTqeeFreBNZVWorG5KBujn9r1aat0YsliPHc92Limesa0cuWM
+ UcC262qua7/UOblOL1td1afrvv/70mtSsgKU7rmDimgfKpNcr/P04asbd1hzOcYXTGhnoxHra2
+ J8AfG3GFU+BxjKgY8hOyCRKXwDnO5XH4DJXI1jkoDAAA=
+X-Change-ID: 20260402-add-mcu-fan-khadas-vim4-ac1cbe553c9b
+To: Neil Armstrong <neil.armstrong@linaro.org>, Lee Jones <lee@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Andi Shyti <andi.shyti@kernel.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Beniamino Galvani <b.galvani@gmail.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-i2c@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-pm@vger.kernel.org, 
+ Ronald Claveau <linux-kernel-dev@aliel.fr>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4512;
+ i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
+ bh=VC/Q4a7RdfAXRKe/MhzmudvduSlkOlMS1+Q4VNDHmYA=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ+bzlNgfRZ5HjOZxq/gE8jzX5Exb2xX2N5794vmU3b/33
+ 9sTfWVfRykLgxgXg6yYIkv/XMsT7y4fPfN1j3oKzBxWJpAhDFycAjCR8xkM/4N3TDsQaRV5wyMo
+ /bwNa0kDx+wngY/Ovi3df9nr+779rcKMDLeuZkRxVy74/e7xEbaL0s8CW7TuzPH3mlj0hZsl9s0
+ tVl4A
+X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
+ fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
+X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a device tree for the Samsung Galaxy S4, codenamed jflte.
+The Khadas VIM4 board features a different MCU variant compared to
+previous VIM boards.
+While it shares the same I2C-based communication model,
+it differs in some ways:
 
-This has been tested on a Samsung Galaxy S4 GT-I9505. The initial support
-covers UART, USB peripheral mode with USB networking, the front LED and
-the physical buttons.
+  - A distinct register map with its own volatile/writeable register set
+  - A fan control with 0–100 levels instead of the 0–3 levels previously
+  - A fan power supply gated through a regulator
 
-Signed-off-by: Alexandre MINETTE <contact@alex-min.fr>
+This series adds support for this new variant by:
+
+  1. Refactoring the khadas-mcu MFD driver to use per-variant data
+     structures (regmap config, cells, fan platform data),
+     and adding the khadas,vim4-mcu compatible string.
+
+  2. Extending the fan thermal driver to retrieve the fan register
+     and maximum level from platform_data,
+     and to optionally manage a power regulator for the fan supply.
+
+  3. Adding the corresponding DTS node for the VIM4, wiring the MCU to
+     the I2C AO_A bus and exposing it as a thermal cooling device.
+
+Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- arch/arm/boot/dts/qcom/Makefile                    |   1 +
- .../boot/dts/qcom/qcom-apq8064-samsung-jflte.dts   | 484 +++++++++++++++++++++
- 2 files changed, 485 insertions(+)
+Changes in v4:
+- PATCH 1: limit fan-supply property by compatible according to Conor's feedback.
+- Link to v3: https://lore.kernel.org/r/20260417-add-mcu-fan-khadas-vim4-v3-0-a6a7f570b11b@aliel.fr
 
-diff --git a/arch/arm/boot/dts/qcom/Makefile b/arch/arm/boot/dts/qcom/Makefile
-index 32a44b02d2fa..c23c961f79e3 100644
---- a/arch/arm/boot/dts/qcom/Makefile
-+++ b/arch/arm/boot/dts/qcom/Makefile
-@@ -12,6 +12,7 @@ dtb-$(CONFIG_ARCH_QCOM) += \
- 	qcom-apq8064-ifc6410.dtb \
- 	qcom-apq8064-sony-xperia-lagan-yuga.dtb \
- 	qcom-apq8064-asus-nexus7-flo.dtb \
-+	qcom-apq8064-samsung-jflte.dtb \
- 	qcom-apq8064-lg-nexus4-mako.dtb \
- 	qcom-apq8074-dragonboard.dtb \
- 	qcom-ipq4018-ap120c-ac.dtb \
-diff --git a/arch/arm/boot/dts/qcom/qcom-apq8064-samsung-jflte.dts b/arch/arm/boot/dts/qcom/qcom-apq8064-samsung-jflte.dts
-new file mode 100644
-index 000000000000..9e5faf7c086f
---- /dev/null
-+++ b/arch/arm/boot/dts/qcom/qcom-apq8064-samsung-jflte.dts
-@@ -0,0 +1,484 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/input.h>
-+#include <dt-bindings/mfd/qcom-rpm.h>
-+#include <dt-bindings/leds/common.h>
-+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
-+
-+#include "qcom-apq8064-v2.0.dtsi"
-+#include "pm8821.dtsi"
-+#include "pm8921.dtsi"
-+
-+/ {
-+	model = "Samsung Galaxy S4 (jflte)";
-+	compatible = "samsung,jflte", "qcom,apq8064";
-+	chassis-type = "handset";
-+
-+	aliases {
-+		serial0 = &gsbi7_serial;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+	};
-+
-+	reserved-memory {
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		ranges;
-+
-+		ramoops@88d00000 {
-+			compatible = "ramoops";
-+			reg = <0x88d00000 0x100000>;
-+			record-size = <0x20000>;
-+			console-size = <0x20000>;
-+			ftrace-size = <0x20000>;
-+		};
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&gpio_keys_default>;
-+
-+		key-home {
-+			label = "Home";
-+			gpios = <&pm8921_gpio 30 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <5>;
-+			linux,code = <KEY_HOME>;
-+			wakeup-source;
-+		};
-+
-+		key-volume-up {
-+			label = "Volume Up";
-+			gpios = <&pm8921_gpio 35 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <5>;
-+			linux,code = <KEY_VOLUMEUP>;
-+			wakeup-source;
-+		};
-+
-+		key-volume-down {
-+			label = "Volume Down";
-+			gpios = <&pm8921_gpio 37 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <5>;
-+			linux,code = <KEY_VOLUMEDOWN>;
-+			wakeup-source;
-+		};
-+	};
-+
-+	i2c-muic {
-+		compatible = "i2c-gpio";
-+		sda-gpios = <&tlmm_pinmux 22 GPIO_ACTIVE_HIGH>;
-+		scl-gpios = <&tlmm_pinmux 23 GPIO_ACTIVE_HIGH>;
-+		i2c-gpio,delay-us = <2>;
-+
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		max77693: pmic@66 {
-+			compatible = "maxim,max77693";
-+			reg = <0x66>;
-+			interrupt-parent = <&tlmm_pinmux>;
-+			interrupts = <55 IRQ_TYPE_EDGE_FALLING>;
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&muic_int_default_state>;
-+
-+			muic: muic {
-+				compatible = "maxim,max77693-muic";
-+				safeout1-supply = <&esafeout1_reg>;
-+				safeout2-supply = <&esafeout2_reg>;
-+			};
-+
-+			regulators {
-+				esafeout1_reg: ESAFEOUT1 {
-+					regulator-name = "ESAFEOUT1";
-+				};
-+
-+				esafeout2_reg: ESAFEOUT2 {
-+					regulator-name = "ESAFEOUT2";
-+				};
-+			};
-+		};
-+	};
-+
-+	i2c-led {
-+		compatible = "i2c-gpio";
-+		sda-gpios = <&tlmm_pinmux 6 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-+		scl-gpios = <&tlmm_pinmux 7 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-+		i2c-gpio,delay-us = <2>;
-+
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		led-controller@30 {
-+			compatible = "panasonic,an30259a";
-+			reg = <0x30>;
-+
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			led@1 {
-+				reg = <1>;
-+				function = LED_FUNCTION_STATUS;
-+				color = <LED_COLOR_ID_RED>;
-+			};
-+
-+			led@2 {
-+				reg = <2>;
-+				function = LED_FUNCTION_STATUS;
-+				color = <LED_COLOR_ID_GREEN>;
-+			};
-+
-+			led@3 {
-+				reg = <3>;
-+				function = LED_FUNCTION_STATUS;
-+				color = <LED_COLOR_ID_BLUE>;
-+			};
-+		};
-+	};
-+};
-+
-+&gsbi7 {
-+	qcom,mode = <GSBI_PROT_I2C_UART>;
-+
-+	status = "okay";
-+};
-+
-+&gsbi7_serial {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&gsbi7_uart_pin_a>;
-+
-+	status = "okay";
-+};
-+
-+&pm8821 {
-+	interrupts-extended = <&tlmm_pinmux 76 IRQ_TYPE_LEVEL_LOW>;
-+};
-+
-+&pm8921 {
-+	interrupts-extended = <&tlmm_pinmux 74 IRQ_TYPE_LEVEL_LOW>;
-+};
-+
-+&riva {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&riva_wlan_pin_a>, <&riva_bt_pin_a>, <&riva_fm_pin_a>;
-+
-+	vddcx-supply = <&pm8921_s3>;
-+	vddmx-supply = <&pm8921_l24>;
-+	vddpx-supply = <&pm8921_s4>;
-+
-+	status = "okay";
-+
-+	iris {
-+		vddxo-supply = <&pm8921_l4>;
-+		vddrfa-supply = <&pm8921_s2>;
-+		vddpa-supply = <&pm8921_l10>;
-+		vdddig-supply = <&pm8921_lvs2>;
-+	};
-+};
-+
-+&rpm {
-+	regulators {
-+		compatible = "qcom,rpm-pm8921-regulators";
-+
-+		vdd_l1_l2_l12_l18-supply = <&pm8921_s4>;
-+		vdd_l24-supply = <&pm8921_s1>;
-+		vdd_l25-supply = <&pm8921_s1>;
-+		vdd_l26-supply = <&pm8921_s7>;
-+		vdd_l27-supply = <&pm8921_s7>;
-+		vdd_l28-supply = <&pm8921_s7>;
-+		vin_lvs1_3_6-supply = <&pm8921_s4>;
-+		vin_lvs2-supply = <&pm8921_s1>;
-+		vin_lvs4_5_7-supply = <&pm8921_s4>;
-+
-+		pm8921_l1: l1 {
-+			regulator-min-microvolt = <1100000>;
-+			regulator-max-microvolt = <1100000>;
-+			regulator-always-on;
-+			bias-pull-down;
-+		};
-+
-+		/* mipi_dsi.1-dsi1_pll_vdda */
-+		pm8921_l2: l2 {
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			bias-pull-down;
-+		};
-+
-+		/* msm_otg-HSUSB_3p3 */
-+		pm8921_l3: l3 {
-+			regulator-min-microvolt = <3075000>;
-+			regulator-max-microvolt = <3500000>;
-+			bias-pull-down;
-+		};
-+
-+		/* msm_otg-HSUSB_1p8 */
-+		pm8921_l4: l4 {
-+			regulator-always-on;
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		/* msm_sdcc.1-sdc_vdd */
-+		pm8921_l5: l5 {
-+			regulator-min-microvolt = <2950000>;
-+			regulator-max-microvolt = <2950000>;
-+			bias-pull-down;
-+		};
-+
-+		/* earjack_debug */
-+		pm8921_l6: l6 {
-+			regulator-min-microvolt = <3000000>;
-+			regulator-max-microvolt = <3000000>;
-+			bias-pull-down;
-+		};
-+
-+		/* mipi_dsi.1-dsi_vci */
-+		pm8921_l8: l8 {
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <3000000>;
-+			bias-pull-down;
-+		};
-+
-+		/* wcnss_wlan.0-iris_vddpa */
-+		pm8921_l10: l10 {
-+			regulator-min-microvolt = <2900000>;
-+			regulator-max-microvolt = <2900000>;
-+			bias-pull-down;
-+		};
-+
-+		/* mipi_dsi.1-dsi1_avdd */
-+		pm8921_l11: l11 {
-+			regulator-min-microvolt = <2850000>;
-+			regulator-max-microvolt = <2850000>;
-+			bias-pull-down;
-+		};
-+
-+		/* touch_vdd */
-+		pm8921_l15: l15 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <2950000>;
-+			bias-pull-down;
-+		};
-+
-+		/* slimport_dvdd */
-+		pm8921_l18: l18 {
-+			regulator-min-microvolt = <1100000>;
-+			regulator-max-microvolt = <1100000>;
-+			bias-pull-down;
-+		};
-+
-+		/* touch_io */
-+		pm8921_l22: l22 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			bias-pull-down;
-+		};
-+
-+		/*
-+		 * mipi_dsi.1-dsi_vddio
-+		 * pil_qdsp6v4.1-pll_vdd
-+		 * pil_qdsp6v4.2-pll_vdd
-+		 * msm_ehci_host.0-HSUSB_1p8
-+		 * msm_ehci_host.1-HSUSB_1p8
-+		 */
-+		pm8921_l23: l23 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			bias-pull-down;
-+		};
-+
-+		/*
-+		 * tabla2x-slim-CDC_VDDA_A_1P2V
-+		 * tabla2x-slim-VDDD_CDC_D
-+		 */
-+		pm8921_l24: l24 {
-+			regulator-min-microvolt = <750000>;
-+			regulator-max-microvolt = <1150000>;
-+			bias-pull-down;
-+		};
-+
-+		pm8921_l25: l25 {
-+			regulator-min-microvolt = <1250000>;
-+			regulator-max-microvolt = <1250000>;
-+			regulator-always-on;
-+			bias-pull-down;
-+		};
-+
-+		pm8921_l26: l26 {
-+			regulator-min-microvolt = <375000>;
-+			regulator-max-microvolt = <1050000>;
-+			regulator-always-on;
-+			bias-pull-down;
-+		};
-+
-+		pm8921_l27: l27 {
-+			regulator-min-microvolt = <1100000>;
-+			regulator-max-microvolt = <1100000>;
-+		};
-+
-+		pm8921_l28: l28 {
-+			regulator-min-microvolt = <1050000>;
-+			regulator-max-microvolt = <1050000>;
-+			bias-pull-down;
-+		};
-+
-+		/* wcnss_wlan.0-iris_vddio */
-+		pm8921_lvs1: lvs1 {
-+			bias-pull-down;
-+		};
-+
-+		/* wcnss_wlan.0-iris_vdddig */
-+		pm8921_lvs2: lvs2 {
-+			bias-pull-down;
-+		};
-+
-+		pm8921_lvs3: lvs3 {
-+			bias-pull-down;
-+		};
-+
-+		pm8921_lvs4: lvs4 {
-+			bias-pull-down;
-+		};
-+
-+		pm8921_lvs5: lvs5 {
-+			bias-pull-down;
-+		};
-+
-+		/* mipi_dsi.1-dsi_iovcc */
-+		pm8921_lvs6: lvs6 {
-+			bias-pull-down;
-+		};
-+
-+		/*
-+		 * pil_riva-pll_vdd
-+		 * lvds.0-lvds_vdda
-+		 * mipi_dsi.1-dsi1_vddio
-+		 * hdmi_msm.0-hdmi_vdda
-+		 */
-+		pm8921_lvs7: lvs7 {
-+			bias-pull-down;
-+		};
-+
-+		pm8921_ncp: ncp {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			qcom,switch-mode-frequency = <1600000>;
-+		};
-+
-+		/* Buck SMPS */
-+		pm8921_s1: s1 {
-+			regulator-always-on;
-+			regulator-min-microvolt = <1225000>;
-+			regulator-max-microvolt = <1225000>;
-+			qcom,switch-mode-frequency = <3200000>;
-+			bias-pull-down;
-+		};
-+
-+		pm8921_s2: s2 {
-+			regulator-min-microvolt = <1300000>;
-+			regulator-max-microvolt = <1300000>;
-+			qcom,switch-mode-frequency = <1600000>;
-+			bias-pull-down;
-+		};
-+
-+		/* msm otg HSUSB_VDDCX */
-+		pm8921_s3: s3 {
-+			regulator-min-microvolt = <500000>;
-+			regulator-max-microvolt = <1150000>;
-+			qcom,switch-mode-frequency = <4800000>;
-+			bias-pull-down;
-+		};
-+
-+		/*
-+		 * msm_sdcc.1-sdc-vdd_io
-+		 * tabla2x-slim-CDC_VDDA_RX
-+		 * tabla2x-slim-CDC_VDDA_TX
-+		 * tabla2x-slim-CDC_VDD_CP
-+		 * tabla2x-slim-VDDIO_CDC
-+		 */
-+		pm8921_s4: s4 {
-+			regulator-always-on;
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			qcom,switch-mode-frequency = <1600000>;
-+			bias-pull-down;
-+			qcom,force-mode = <QCOM_RPM_FORCE_MODE_AUTO>;
-+		};
-+
-+		/*
-+		 * supply vdd_l26, vdd_l27, vdd_l28
-+		 */
-+		pm8921_s7: s7 {
-+			regulator-min-microvolt = <1300000>;
-+			regulator-max-microvolt = <1300000>;
-+			qcom,switch-mode-frequency = <3200000>;
-+		};
-+
-+		pm8921_s8: s8 {
-+			regulator-min-microvolt = <2200000>;
-+			regulator-max-microvolt = <2200000>;
-+			qcom,switch-mode-frequency = <1600000>;
-+		};
-+	};
-+};
-+
-+/* eMMC */
-+&sdcc1 {
-+	vmmc-supply = <&pm8921_l5>;
-+	vqmmc-supply = <&pm8921_s4>;
-+
-+	status = "okay";
-+};
-+
-+&pm8921_gpio {
-+	gpio_keys_default: gpio-keys-default-state {
-+		pins = "gpio30", "gpio35", "gpio37";
-+		function = PMIC_GPIO_FUNC_NORMAL;
-+		input-enable;
-+		bias-pull-up;
-+		power-source = <PM8921_GPIO_S4>;
-+	};
-+};
-+
-+&tlmm_pinmux {
-+	gsbi7_uart_pin_a: gsbi7-uart-pin-active-state {
-+		rx-pins {
-+			pins = "gpio83";
-+			function = "gsbi7";
-+			drive-strength = <2>;
-+			bias-pull-up;
-+		};
-+
-+		tx-pins {
-+			pins = "gpio82";
-+			function = "gsbi7";
-+			drive-strength = <4>;
-+			bias-disable;
-+		};
-+	};
-+
-+	muic_int_default_state: muic-int-default-state {
-+		pins = "gpio55";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		input-enable;
-+		bias-disable;
-+	};
-+};
-+
-+&usb_hs1_phy {
-+	v3p3-supply = <&pm8921_l3>;
-+	v1p8-supply = <&pm8921_l4>;
-+	extcon = <&muic>;
-+};
-+
-+&usb_id {
-+	status = "okay";
-+};
-+
-+&usb1 {
-+	dr_mode = "otg";
-+	extcon = <&muic>, <&usb_id>;
-+	status = "okay";
-+};
+Changes in v3:
+- PATCH 1: adding comment on vim4 compatible saying it is not discoverable,
+           thanks to Rob's and Neil's feedback.
+- Link to v2: https://lore.kernel.org/r/20260403-add-mcu-fan-khadas-vim4-v2-0-70536b22439a@aliel.fr
 
+Changes in v2:
+- PATCH 5: Add regulator_disable on suspend thanks to Neil's feedback.
+- Link to v1: https://lore.kernel.org/r/20260402-add-mcu-fan-khadas-vim4-v1-0-2b12eb4ac7b0@aliel.fr
+
+---
+Ronald Claveau (8):
+      dt-bindings: mfd: khadas: Add new compatible for Khadas VIM4 MCU
+      dt-bindings: i2c: amlogic: Add compatible for T7 SOC
+      mfd: khadas-mcu: Add per-variant configuration infrastructure and VIM4 support
+      mfd: khadas-mcu: Add support for VIM4 MCU variant
+      thermal: khadas-mcu-fan: Add fan config from platform data Add regulator support
+      arm64: dts: amlogic: t7: Add i2c pinctrl node
+      arm64: dts: amlogic: t7: Add i2c controller node
+      arm64: dts: amlogic: t7: khadas-vim4: Add i2c MCU fan node
+
+ .../bindings/i2c/amlogic,meson6-i2c.yaml           |  13 ++-
+ .../devicetree/bindings/mfd/khadas,mcu.yaml        |  18 ++++
+ .../dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts  |  13 +++
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        |  20 ++++
+ drivers/mfd/khadas-mcu.c                           | 106 ++++++++++++++++++---
+ drivers/thermal/khadas_mcu_fan.c                   |  49 ++++++++--
+ include/linux/mfd/khadas-mcu.h                     |  39 +++++++-
+ 7 files changed, 235 insertions(+), 23 deletions(-)
+---
+base-commit: f7b64ed948718290209074a50bb0df17e5944873
+change-id: 20260402-add-mcu-fan-khadas-vim4-ac1cbe553c9b
+prerequisite-message-id: <20260326092645.1053261-1-jian.hu@amlogic.com>
+prerequisite-patch-id: f03a086b4137158412b2d47b3de793b858de8dde
+prerequisite-patch-id: 123970c9b29c2090440f2fd71c85d3c6fd8e36de
+prerequisite-patch-id: 3e2e56b0926ba327b520f935df4ced5089bbe503
+prerequisite-patch-id: 65a5d76ffdbc9b3aab3385bb65cb027004c30e7e
+prerequisite-patch-id: 237269801826dd3ad7fb16eb4d7d6d4eab504278
+prerequisite-patch-id: 57e9b08a968aedf543d3d0d56cf1ca4db20b2a16
+prerequisite-change-id: 20260326-add-bcm43752-compatible-e264a4f7973a:v2
+prerequisite-patch-id: cd98b74fa56af72af2553f391c400981d83cd4f4
+prerequisite-patch-id: b730f5e42be1d89d193e63a0265495cdbf2c7d7b
+prerequisite-change-id: 20260330-fix-invalid-property-bbe54d933f71:v2
+prerequisite-patch-id: 8d675e7a239985c762843515b241f0a2f45f9c92
+prerequisite-change-id: 20260331-fix-aml-t7-null-reset-2b608ebf9da4:v1
+prerequisite-patch-id: 5b5de77af11747ce964404fb827d2ee2bff47ea5
+prerequisite-patch-id: 1e37fc75fed1e533adee0f3e7e6ead1f8ff3c55c
+prerequisite-patch-id: 65a5d76ffdbc9b3aab3385bb65cb027004c30e7e
+prerequisite-patch-id: 2daf583fb5e7449a02bd217d8aca330171b598aa
+prerequisite-patch-id: 237269801826dd3ad7fb16eb4d7d6d4eab504278
+prerequisite-patch-id: d1ddf9b7710e91f8062de83bd7ba55afb2c4c112
+prerequisite-patch-id: 57e9b08a968aedf543d3d0d56cf1ca4db20b2a16
+prerequisite-patch-id: cd98b74fa56af72af2553f391c400981d83cd4f4
+prerequisite-patch-id: b730f5e42be1d89d193e63a0265495cdbf2c7d7b
+prerequisite-patch-id: 9debd88fa60febed9cd7208f86603b4c2d270520
+prerequisite-patch-id: 314ef9ff0c4d1d15dab1dea9d92aa065f1eac3e9
+
+Best regards,
 -- 
-2.43.0
+Ronald Claveau <linux-kernel-dev@aliel.fr>
 
