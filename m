@@ -1,11 +1,10 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 21 Apr 2026 14:16:52 +0800
-Subject: [PATCH v3 08/12] mm, swap: delay and unify memcg lookup and
- charging for swapin
+Date: Tue, 21 Apr 2026 14:16:53 +0800
+Subject: [PATCH v3 09/12] mm, swap: consolidate cluster allocation helpers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260421-swap-table-p4-v3-8-2f23759a76bc@tencent.com>
+Message-Id: <20260421-swap-table-p4-v3-9-2f23759a76bc@tencent.com>
 References: <20260421-swap-table-p4-v3-0-2f23759a76bc@tencent.com>
 In-Reply-To: <20260421-swap-table-p4-v3-0-2f23759a76bc@tencent.com>
 To: linux-mm@kvack.org
@@ -28,221 +27,235 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Axel Rasmussen <axelrasmussen@google.com>, Lorenzo Stoakes <ljs@kernel.org>, 
  Yosry Ahmed <yosry@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776752211; l=7735;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776752211; l=7165;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=vQpLlkYrTuiOXS5UJH0oGm4wufG/sCOPvJMEoPHMsVg=;
- b=IS4/2XdO5Va2GVkDuTOph7ESuaHNgUmQPboTHfqkIFc54VkkgyUb6hAEOkm0M01J8vMkLsxGw
- GcOWd6vr4geAlIBYNncl4wGCfx48bIZe8aqAVk0DFH92i54MWve2Qbx
+ bh=B+TeE8JVn80xKMjcMTb6N8fSNYHExA8Vz1o7UX2umm0=;
+ b=gFNJDYUx2Qi1b6tclNArTC3/ZBh+XOnQIKjENIqfaDW3MxZTmBC+CWRd0K0isOUmj/RKSAGRs
+ etswOk+N4jYAJJFmaGGHHDVi6RaLrS5YYbacYwojhQ++Rsr81T/aLOF
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Instead of checking the cgroup private ID during page table walk in
-swap_pte_batch(), move the memcg lookup into __swap_cache_add_check()
-under the cluster lock.
+Swap cluster table management is spread across several narrow
+helpers. As a result, the allocation and fallback sequences are
+open-coded in multiple places.
 
-The first pre-alloc check is speculative and skips the memcg check since
-the post-alloc stable check ensures all slots covered by the folio
-belong to the same memcg. It is very rare for contiguous and aligned
-entries across a contiguous region of a page table of the same process
-or shmem mapping to belong to different memcgs.
+A few more per-cluster tables will be added soon, so avoid
+duplicating these sequences per table type. Fold the existing
+pairs into cluster-oriented helpers, and rename for consistency.
 
-This also prepares for recording the memcg info in the cluster's table.
-Also make the order check and fallback more compact.
-
-There should be no user-observable behavior change.
+No functional change, only a few sanity checks are slightly adjusted.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/memcontrol.h |  6 +++---
- mm/internal.h              | 10 +---------
- mm/memcontrol.c            | 10 ++++------
- mm/swap_state.c            | 28 +++++++++++++++++++---------
- 4 files changed, 27 insertions(+), 27 deletions(-)
+ mm/swapfile.c | 110 ++++++++++++++++++++++++++--------------------------------
+ 1 file changed, 49 insertions(+), 61 deletions(-)
 
-diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
-index 7d08128de1fd..a013f37f24aa 100644
---- a/include/linux/memcontrol.h
-+++ b/include/linux/memcontrol.h
-@@ -646,8 +646,8 @@ static inline int mem_cgroup_charge(struct folio *folio, struct mm_struct *mm,
- 
- int mem_cgroup_charge_hugetlb(struct folio* folio, gfp_t gfp);
- 
--int mem_cgroup_swapin_charge_folio(struct folio *folio, struct mm_struct *mm,
--				  gfp_t gfp, swp_entry_t entry);
-+int mem_cgroup_swapin_charge_folio(struct folio *folio, unsigned short id,
-+				   struct mm_struct *mm, gfp_t gfp);
- 
- void __mem_cgroup_uncharge(struct folio *folio);
- 
-@@ -1137,7 +1137,7 @@ static inline int mem_cgroup_charge_hugetlb(struct folio* folio, gfp_t gfp)
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 8d3d22c463f3..2d16aa89a4fd 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -411,20 +411,7 @@ static inline unsigned int cluster_offset(struct swap_info_struct *si,
+ 	return cluster_index(si, ci) * SWAPFILE_CLUSTER;
  }
  
- static inline int mem_cgroup_swapin_charge_folio(struct folio *folio,
--			struct mm_struct *mm, gfp_t gfp, swp_entry_t entry)
-+		 unsigned short id, struct mm_struct *mm, gfp_t gfp)
- {
- 	return 0;
- }
-diff --git a/mm/internal.h b/mm/internal.h
-index 5a2ddcf68e0b..9d2fec696bd6 100644
---- a/mm/internal.h
-+++ b/mm/internal.h
-@@ -451,24 +451,16 @@ static inline int swap_pte_batch(pte_t *start_ptep, int max_nr, pte_t pte)
- {
- 	pte_t expected_pte = pte_next_swp_offset(pte);
- 	const pte_t *end_ptep = start_ptep + max_nr;
--	const softleaf_t entry = softleaf_from_pte(pte);
- 	pte_t *ptep = start_ptep + 1;
--	unsigned short cgroup_id;
- 
- 	VM_WARN_ON(max_nr < 1);
--	VM_WARN_ON(!softleaf_is_swap(entry));
-+	VM_WARN_ON(!softleaf_is_swap(softleaf_from_pte(pte)));
- 
--	cgroup_id = lookup_swap_cgroup_id(entry);
- 	while (ptep < end_ptep) {
--		softleaf_t entry;
+-static struct swap_table *swap_table_alloc(gfp_t gfp)
+-{
+-	struct folio *folio;
 -
- 		pte = ptep_get(ptep);
- 
- 		if (!pte_same(pte, expected_pte))
- 			break;
--		entry = softleaf_from_pte(pte);
--		if (lookup_swap_cgroup_id(entry) != cgroup_id)
--			break;
- 		expected_pte = pte_next_swp_offset(expected_pte);
- 		ptep++;
- 	}
-diff --git a/mm/memcontrol.c b/mm/memcontrol.c
-index c7df30ca5aa7..641706fa47bf 100644
---- a/mm/memcontrol.c
-+++ b/mm/memcontrol.c
-@@ -5062,27 +5062,25 @@ int mem_cgroup_charge_hugetlb(struct folio *folio, gfp_t gfp)
- 
- /**
-  * mem_cgroup_swapin_charge_folio - Charge a newly allocated folio for swapin.
-- * @folio: folio to charge.
-+ * @folio: the folio to charge
-+ * @id: memory cgroup id
-  * @mm: mm context of the victim
-  * @gfp: reclaim mode
-- * @entry: swap entry for which the folio is allocated
-  *
-  * This function charges a folio allocated for swapin. Please call this before
-  * adding the folio to the swapcache.
-  *
-  * Returns 0 on success. Otherwise, an error code is returned.
-  */
--int mem_cgroup_swapin_charge_folio(struct folio *folio, struct mm_struct *mm,
--				  gfp_t gfp, swp_entry_t entry)
-+int mem_cgroup_swapin_charge_folio(struct folio *folio, unsigned short id,
-+				   struct mm_struct *mm, gfp_t gfp)
+-	if (!SWP_TABLE_USE_PAGE)
+-		return kmem_cache_zalloc(swap_table_cachep, gfp);
+-
+-	folio = folio_alloc(gfp | __GFP_ZERO, 0);
+-	if (folio)
+-		return folio_address(folio);
+-	return NULL;
+-}
+-
+-static void swap_table_free_folio_rcu_cb(struct rcu_head *head)
++static void swap_cluster_free_table_folio_rcu_cb(struct rcu_head *head)
  {
- 	struct mem_cgroup *memcg;
--	unsigned short id;
- 	int ret;
- 
- 	if (mem_cgroup_disabled())
- 		return 0;
- 
--	id = lookup_swap_cgroup_id(entry);
- 	rcu_read_lock();
- 	memcg = mem_cgroup_from_private_id(id);
- 	if (!memcg || !css_tryget_online(&memcg->css))
-diff --git a/mm/swap_state.c b/mm/swap_state.c
-index 12b290d43e45..86d517a33a55 100644
---- a/mm/swap_state.c
-+++ b/mm/swap_state.c
-@@ -142,16 +142,20 @@ void *swap_cache_get_shadow(swp_entry_t entry)
-  * @ci: The locked swap cluster
-  * @targ_entry: The target swap entry to check, will be rounded down by @nr
-  * @nr: Number of slots to check, must be a power of 2
-- * @shadowp: Returns the shadow value if one exists in the range.
-+ * @shadowp: Returns the shadow value if one exists in the range
-+ * @memcg_id: Returns the memory cgroup id, NULL to ignore cgroup check
-  *
-  * Check if all slots covered by given range have a swap count >= 1.
-- * Retrieves the shadow if there is one.
-+ * Retrieves the shadow if there is one. If @memcg_id is not NULL, also
-+ * checks if all slots belong to the same cgroup and return the cgroup
-+ * private id.
-  *
-  * Context: Caller must lock the cluster.
-  */
- static int __swap_cache_add_check(struct swap_cluster_info *ci,
- 				  swp_entry_t targ_entry,
--				  unsigned long nr, void **shadowp)
-+				  unsigned long nr, void **shadowp,
-+				  unsigned short *memcg_id)
- {
- 	unsigned int ci_off, ci_end;
- 	unsigned long old_tb;
-@@ -169,19 +173,24 @@ static int __swap_cache_add_check(struct swap_cluster_info *ci,
- 		return -EEXIST;
- 	if (!__swp_tb_get_count(old_tb))
- 		return -ENOENT;
--	if (swp_tb_is_shadow(old_tb) && shadowp)
-+	if (shadowp && swp_tb_is_shadow(old_tb))
- 		*shadowp = swp_tb_to_shadow(old_tb);
-+	if (memcg_id)
-+		*memcg_id = lookup_swap_cgroup_id(targ_entry);
- 
- 	if (nr == 1)
- 		return 0;
- 
-+	targ_entry.val = round_down(targ_entry.val, nr);
- 	ci_off = round_down(ci_off, nr);
- 	ci_end = ci_off + nr;
- 	do {
- 		old_tb = __swap_table_get(ci, ci_off);
- 		if (unlikely(swp_tb_is_folio(old_tb) ||
--			     !__swp_tb_get_count(old_tb)))
-+			     !__swp_tb_get_count(old_tb) ||
-+			     (memcg_id && *memcg_id != lookup_swap_cgroup_id(targ_entry))))
- 			return -EBUSY;
-+		targ_entry.val++;
- 	} while (++ci_off < ci_end);
- 
- 	return 0;
-@@ -397,6 +406,7 @@ static struct folio *__swap_cache_alloc(struct swap_cluster_info *ci,
- 	swp_entry_t entry;
  	struct folio *folio;
- 	void *shadow = NULL;
-+	unsigned short memcg_id;
- 	unsigned long address, nr_pages = 1 << order;
- 	struct vm_area_struct *vma = vmf ? vmf->vma : NULL;
  
-@@ -404,7 +414,7 @@ static struct folio *__swap_cache_alloc(struct swap_cluster_info *ci,
+@@ -432,15 +419,46 @@ static void swap_table_free_folio_rcu_cb(struct rcu_head *head)
+ 	folio_put(folio);
+ }
  
- 	/* Check if the slot and range are available, skip allocation if not */
+-static void swap_table_free(struct swap_table *table)
++static void swap_cluster_free_table(struct swap_cluster_info *ci)
+ {
++	struct swap_table *table;
++
++	table = (struct swap_table *)rcu_dereference_protected(ci->table, true);
++	if (!table)
++		return;
++
++	rcu_assign_pointer(ci->table, NULL);
+ 	if (!SWP_TABLE_USE_PAGE) {
+ 		kmem_cache_free(swap_table_cachep, table);
+ 		return;
+ 	}
+ 
+ 	call_rcu(&(folio_page(virt_to_folio(table), 0)->rcu_head),
+-		 swap_table_free_folio_rcu_cb);
++		 swap_cluster_free_table_folio_rcu_cb);
++}
++
++static int swap_cluster_alloc_table(struct swap_cluster_info *ci, gfp_t gfp)
++{
++	struct swap_table *table = NULL;
++	struct folio *folio;
++
++	/* The cluster must be empty and not on any list during allocation. */
++	VM_WARN_ON_ONCE(ci->flags || !cluster_is_empty(ci));
++	if (rcu_access_pointer(ci->table))
++		return 0;
++
++	if (SWP_TABLE_USE_PAGE) {
++		folio = folio_alloc(gfp | __GFP_ZERO, 0);
++		if (folio)
++			table = folio_address(folio);
++	} else {
++		table = kmem_cache_zalloc(swap_table_cachep, gfp);
++	}
++	if (!table)
++		return -ENOMEM;
++
++	rcu_assign_pointer(ci->table, table);
++	return 0;
+ }
+ 
+ /*
+@@ -471,27 +489,15 @@ static void swap_cluster_assert_empty(struct swap_cluster_info *ci,
+ 	WARN_ON_ONCE(nr == SWAPFILE_CLUSTER && ci->extend_table);
+ }
+ 
+-static void swap_cluster_free_table(struct swap_cluster_info *ci)
+-{
+-	struct swap_table *table;
+-
+-	/* Only empty cluster's table is allow to be freed  */
+-	lockdep_assert_held(&ci->lock);
+-	table = (void *)rcu_dereference_protected(ci->table, true);
+-	rcu_assign_pointer(ci->table, NULL);
+-
+-	swap_table_free(table);
+-}
+-
+ /*
+  * Allocate swap table for one cluster. Attempt an atomic allocation first,
+  * then fallback to sleeping allocation.
+  */
+ static struct swap_cluster_info *
+-swap_cluster_alloc_table(struct swap_info_struct *si,
++swap_cluster_populate(struct swap_info_struct *si,
+ 			 struct swap_cluster_info *ci)
+ {
+-	struct swap_table *table;
++	int ret;
+ 
+ 	/*
+ 	 * Only cluster isolation from the allocator does table allocation.
+@@ -502,14 +508,9 @@ swap_cluster_alloc_table(struct swap_info_struct *si,
+ 		lockdep_assert_held(&si->global_cluster_lock);
+ 	lockdep_assert_held(&ci->lock);
+ 
+-	/* The cluster must be free and was just isolated from the free list. */
+-	VM_WARN_ON_ONCE(ci->flags || !cluster_is_empty(ci));
+-
+-	table = swap_table_alloc(__GFP_HIGH | __GFP_NOMEMALLOC | __GFP_NOWARN);
+-	if (table) {
+-		rcu_assign_pointer(ci->table, table);
++	if (!swap_cluster_alloc_table(ci, __GFP_HIGH | __GFP_NOMEMALLOC |
++					  __GFP_NOWARN))
+ 		return ci;
+-	}
+ 
+ 	/*
+ 	 * Try a sleep allocation. Each isolated free cluster may cause
+@@ -521,7 +522,8 @@ swap_cluster_alloc_table(struct swap_info_struct *si,
+ 		spin_unlock(&si->global_cluster_lock);
+ 	local_unlock(&percpu_swap_cluster.lock);
+ 
+-	table = swap_table_alloc(__GFP_HIGH | __GFP_NOMEMALLOC | GFP_KERNEL);
++	ret = swap_cluster_alloc_table(ci, __GFP_HIGH | __GFP_NOMEMALLOC |
++					   GFP_KERNEL);
+ 
+ 	/*
+ 	 * Back to atomic context. We might have migrated to a new CPU with a
+@@ -536,20 +538,11 @@ swap_cluster_alloc_table(struct swap_info_struct *si,
+ 		spin_lock(&si->global_cluster_lock);
  	spin_lock(&ci->lock);
--	err = __swap_cache_add_check(ci, targ_entry, nr_pages, NULL);
-+	err = __swap_cache_add_check(ci, targ_entry, nr_pages, NULL, NULL);
- 	spin_unlock(&ci->lock);
- 	if (unlikely(err))
- 		return ERR_PTR(err);
-@@ -427,7 +437,7 @@ static struct folio *__swap_cache_alloc(struct swap_cluster_info *ci,
  
- 	/* Double check the range is still not in conflict */
- 	spin_lock(&ci->lock);
--	err = __swap_cache_add_check(ci, targ_entry, nr_pages, &shadow);
-+	err = __swap_cache_add_check(ci, targ_entry, nr_pages, &shadow, &memcg_id);
- 	if (unlikely(err)) {
+-	/* Nothing except this helper should touch a dangling empty cluster. */
+-	if (WARN_ON_ONCE(cluster_table_is_alloced(ci))) {
+-		if (table)
+-			swap_table_free(table);
+-		return ci;
+-	}
+-
+-	if (!table) {
++	if (ret) {
+ 		move_cluster(si, ci, &si->free_clusters, CLUSTER_FLAG_FREE);
  		spin_unlock(&ci->lock);
- 		folio_put(folio);
-@@ -439,8 +449,8 @@ static struct folio *__swap_cache_alloc(struct swap_cluster_info *ci,
- 	__swap_cache_do_add_folio(ci, folio, entry);
- 	spin_unlock(&ci->lock);
+ 		return NULL;
+ 	}
+-
+-	rcu_assign_pointer(ci->table, table);
+ 	return ci;
+ }
  
--	if (mem_cgroup_swapin_charge_folio(folio, vmf ? vmf->vma->vm_mm : NULL,
--					   gfp, entry)) {
-+	if (mem_cgroup_swapin_charge_folio(folio, memcg_id,
-+					   vmf ? vmf->vma->vm_mm : NULL, gfp)) {
+@@ -621,12 +614,11 @@ static struct swap_cluster_info *isolate_lock_cluster(
+ 	}
+ 	spin_unlock(&si->lock);
+ 
+-	if (found && !cluster_table_is_alloced(found)) {
+-		/* Only an empty free cluster's swap table can be freed. */
+-		VM_WARN_ON_ONCE(flags != CLUSTER_FLAG_FREE);
++	/* Cluster's table is freed when and only when it's on the free list. */
++	if (found && flags == CLUSTER_FLAG_FREE) {
+ 		VM_WARN_ON_ONCE(list != &si->free_clusters);
+-		VM_WARN_ON_ONCE(!cluster_is_empty(found));
+-		return swap_cluster_alloc_table(si, found);
++		VM_WARN_ON_ONCE(cluster_table_is_alloced(found));
++		return swap_cluster_populate(si, found);
+ 	}
+ 
+ 	return found;
+@@ -769,7 +761,6 @@ static int swap_cluster_setup_bad_slot(struct swap_info_struct *si,
+ 	unsigned int ci_off = offset % SWAPFILE_CLUSTER;
+ 	unsigned long idx = offset / SWAPFILE_CLUSTER;
+ 	struct swap_cluster_info *ci;
+-	struct swap_table *table;
+ 	int ret = 0;
+ 
+ 	/* si->max may got shrunk by swap swap_activate() */
+@@ -790,12 +781,9 @@ static int swap_cluster_setup_bad_slot(struct swap_info_struct *si,
+ 	}
+ 
+ 	ci = cluster_info + idx;
+-	if (!ci->table) {
+-		table = swap_table_alloc(GFP_KERNEL);
+-		if (!table)
+-			return -ENOMEM;
+-		rcu_assign_pointer(ci->table, table);
+-	}
++	/* Need to allocate swap table first for initial bad slot marking. */
++	if (!ci->count && swap_cluster_alloc_table(ci, GFP_KERNEL))
++		return -ENOMEM;
+ 	spin_lock(&ci->lock);
+ 	/* Check for duplicated bad swap slots. */
+ 	if (__swap_table_xchg(ci, ci_off, SWP_TB_BAD) != SWP_TB_NULL) {
+@@ -2992,7 +2980,7 @@ static void free_swap_cluster_info(struct swap_cluster_info *cluster_info,
+ 		ci = cluster_info + i;
+ 		/* Cluster with bad marks count will have a remaining table */
  		spin_lock(&ci->lock);
- 		__swap_cache_do_del_folio(ci, folio, entry, shadow);
- 		spin_unlock(&ci->lock);
+-		if (rcu_dereference_protected(ci->table, true)) {
++		if (cluster_table_is_alloced(ci)) {
+ 			swap_cluster_assert_empty(ci, 0, SWAPFILE_CLUSTER, true);
+ 			swap_cluster_free_table(ci);
+ 		}
 
 -- 
 2.53.0
