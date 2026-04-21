@@ -1,10 +1,11 @@
 From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Tue, 21 Apr 2026 13:49:24 +0200
-Subject: [PATCH v4 7/8] arm64: dts: amlogic: t7: Add i2c controller node
+Date: Tue, 21 Apr 2026 13:49:25 +0200
+Subject: [PATCH v4 8/8] arm64: dts: amlogic: t7: khadas-vim4: Add i2c MCU
+ fan node
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260421-add-mcu-fan-khadas-vim4-v4-7-447114a28f2d@aliel.fr>
+Message-Id: <20260421-add-mcu-fan-khadas-vim4-v4-8-447114a28f2d@aliel.fr>
 References: <20260421-add-mcu-fan-khadas-vim4-v4-0-447114a28f2d@aliel.fr>
 In-Reply-To: <20260421-add-mcu-fan-khadas-vim4-v4-0-447114a28f2d@aliel.fr>
 To: Neil Armstrong <neil.armstrong@linaro.org>, Lee Jones <lee@kernel.org>, 
@@ -22,49 +23,49 @@ Cc: linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-pm@vger.kernel.org, 
  Ronald Claveau <linux-kernel-dev@aliel.fr>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1096;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=969;
  i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=seZTIBpCrIa88Q5I5ls9lWfgh7ETpuTsfLV3IO6SlWs=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ+bzlCqnF41f5ZzTdcoWHisQmKfda7g7YfbxfX5Ljq/fu
- 0qq7eq1jlIWBjEuBlkxRZb+uZYn3l0+eubrHvUUmDmsTCBDGLg4BWAiMzoY/vv9LxE5wcvHxjkz
- 9c/diBAJxvi82F+b82cJTK++sbgnPYrhv8+lJivXOiYFnhi7/ltmn6JUkhwnRfbbsCec4NTYXrS
- UCQA=
+ bh=tWFcpje6b/UPuUaynpp5o+HzSsytJcZL6uVNyAgG8qQ=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ+bzlGrOqQsFRScd93G08Hmn2V+TM9X8gF2q1/WNHh/U/
+ zhYWO/sKGVhEONikBVTZOmfa3ni3eWjZ77uUU+BmcPKBDKEgYtTACbiO43hr0jjMc8dC2ud/ldu
+ OMr4Oa160uf0hDs74paIntq3WMKq6yEjwyQNsfC1PP23Fr0RNhNfqLwz57blNbsfzfl9MY/Xycq
+ tZgcA
 X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
  fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
 X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the T7 i2c controller node used by the Khadas VIM4
-for MCU communication.
-
-Use amlogic,meson-axg-i2c as fallback compatible.
+Enable and configure i2c MCU node to get fan working on Khadas VIM4.
 
 Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ .../boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts      | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
-index e96fe10b251a0..560c9dce35266 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi
-@@ -711,6 +711,16 @@ pwm_ao_cd: pwm@60000 {
- 				status = "disabled";
- 			};
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
+index 69d6118ba57e7..5d7f5390f3a66 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
++++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
+@@ -157,6 +157,19 @@ wifi32k: wifi32k {
+ 	};
+ };
  
-+			i2c_m_ao_a: i2c@76000 {
-+				compatible = "amlogic,t7-i2c", "amlogic,meson-axg-i2c";
-+				reg = <0x0 0x76000 0x0 0x48>;
-+				#address-cells = <1>;
-+				#size-cells = <0>;
-+				interrupts = <GIC_SPI 330 IRQ_TYPE_EDGE_RISING>;
-+				clocks = <&clkc_periphs CLKID_SYS_I2C_AO_A>;
-+				status = "disabled";
-+			};
++&i2c_m_ao_a {
++	status = "okay";
++	pinctrl-0 = <&i2c0_ao_d_pins>;
++	pinctrl-names = "default";
 +
- 			sd_emmc_a: mmc@88000 {
- 				compatible = "amlogic,t7-mmc", "amlogic,meson-axg-mmc";
- 				reg = <0x0 0x88000 0x0 0x800>;
++	khadas_mcu: system-controller@18 {
++		compatible = "khadas,vim4-mcu";
++		reg = <0x18>;
++		fan-supply = <&vcc5v>;
++		#cooling-cells = <2>;
++	};
++};
++
+ &pwm_ab {
+ 	status = "okay";
+ 	pinctrl-0 = <&pwm_a_pins>;
 
 -- 
 2.49.0
