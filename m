@@ -1,144 +1,93 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Wed, 22 Apr 2026 11:48:38 +0200
-Subject: [PATCH RESEND 4/4] drm/panel: Enable GPIOLIB for panels which uses
- functions from it
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH 00/12] Fixes/improvements for the PCI M.2 power sequencing
+ driver
+Date: Wed, 22 Apr 2026 16:54:41 +0530
+Message-Id: <20260422-pwrseq-m2-bt-v1-0-720d02545a64@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260422-panel-clean-up-kconfig-dep-v1-4-d825e9ffe911@ixit.cz>
-References: <20260422-panel-clean-up-kconfig-dep-v1-0-d825e9ffe911@ixit.cz>
-In-Reply-To: <20260422-panel-clean-up-kconfig-dep-v1-0-d825e9ffe911@ixit.cz>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
- Dzmitry Sankouski <dsankouski@gmail.com>, Sam Ravnborg <sam@ravnborg.org>
-Cc: Casey Connolly <casey.connolly@linaro.org>, 
- marijn.suijten@somainline.org, dri-devel@lists.freedesktop.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3466; i=david@ixit.cz;
- h=from:subject:message-id; bh=ZBiRe+gQ0qF5gTizCozkxDh2BdDwt4NwCy4NcwkIA/Y=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBp6Jl4kCY/HgJI146RXhILETPAjE/tuZPSMXgms
- ECWjlvmXBCJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaeiZeAAKCRBgAj/E00kg
- cpZwD/9vZ9FucYKgFYXr3tHHRj8yMP/0ETa0QOo7hASX8YXgej+JZ3N4UId5QbXPCN5OLceCYcr
- VqgKEtobr+IxcM6ylugM2DGgmODrx/rIBgBiSGWr5SO7UsSeZuBFUvQorv7bHPVqN5Umtp6kTEH
- CChaxNd2J5E/H+tntOwhx6/ujnUPPoI1GUgOZyWXuPr2VS5+/xInliCQMmW71e0e72tJphclkQc
- QrOsdes9sVs9N0/pGp5VF/0Fexe3dpMX4PUim18treuc+NXPy4FzsEfNRdr8LJJl84XpT6xJ3Ea
- by+iuMu2tq4MzSHfSfnNtZ37akBouhC6IXqbqiEYC/JnSKbX71ZLfsWe3dGIN4X7Hgt297D90t9
- 9Mh6l7l4EWsEcgK9oy5CXxQZ71ElO5sPiwD2VdL1nX06t9DB489HowVWW9BKQ9J0pKDaLvE5Nzw
- pYJNC1KtB1wo0YwHEAmYfbNLP/1sId6MksL/Ewbrf9YHyAtK2p0nGguP4JXXZs+qH6wuk6cva1P
- pi72s4ciJyc2ZZQibC4jP6H9cwlZ+dhK7vwEw21uJYnf5SdRivXrYt/PAr2Tn/EGAm89srG+RIY
- 1HnazOJvAIkL+NY2D85TKLC0mWSTIioa5KRXKGcj09gycqeMrkPTfRcbOTgCMWg04kt+DRivUZW
- aSDByIPcFYz/hIA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIAPqv6GkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDEyMj3YLyouLUQt1cI92kEt3EpJTERHNDA0uT1CQloJaCotS0zAqwcdG
+ xEH5xaVJWanIJyAyl2loAycvp3XAAAAA=
+X-Change-ID: 20260422-pwrseq-m2-bt-abdaa71094eb
+To: Bartosz Golaszewski <brgl@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ Marcel Holtmann <marcel@holtmann.org>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ Shuai Zhang <quic_shuaz@quicinc.com>
+Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-pci@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-bluetooth@vger.kernel.org, Wei Deng <wei.deng@oss.qualcomm.com>, 
+ Luiz Augusto von Dentz <luiz.von.dentz@intel.com>, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
+ stable+noautosel@kernel.org
+X-Mailer: b4 0.15.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2584;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=lqk3QdLBMm60ixEGqFx4KyHoJO7Nz6868LggAMS8LtY=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBp6K/+74ctGya8p8gkXaPiUCDCvw26R/1sf31k+
+ 3IL7DZbwWyJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCaeiv/gAKCRBVnxHm/pHO
+ 9SONB/97M+ux5IjYybMtelgpS4I3KTrOMDXpTMpWH1ziA49OGXH8mUfyDlcDGatxmuRfF6dhz9m
+ tr0qaHJZLNOJsSgjWrh4E5qFDkKvO0Ss0DDwQpQJ8LA883KMrjYaL3g1jU1Ifq5fbqp7CeC7wIG
+ /cjfeBjOumzw/0bQ9QVRm3h/qBH6SVaymWRMuTCaSjROVI76j1e7hfuiqK1agIIe94TbEndP/6b
+ cYtLXHRTkUcC6rNuR8Q8MvlosdrmXeEI+PH/Pc8/IWfMlIyFjWCTrb5PLnSXeqRIPRoIet2KwzR
+ 0dzB41l4ZPR2ByB8P4xYX01vga7PK58akyC/9i3rgBraM+hT
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-These panels used on sdm845 devices are using GPIOLIB functions,
-ensure it's enabled.
+Hi,
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+This series has several key improvements and fixes to the M.2 power sequencing
+driver and also the BT HCI_QCA driver. Notably, this series allows the M.2 power
+sequencing driver to work with more M.2 cards, not just WCN7850. It also allows
+the BT HCI_QCA driver to detect whether it can control BT_EN (or W_DISABLE2#)
+signal on the connector and set the HCI_QUIRK_NON_PERSISTENT_SETUP quirk.
+
+Testing
+=======
+
+This series was tested on Lenovo Thinkpad T14s together with the below DTS
+patches:
+https://github.com/Mani-Sadhasivam/linux/commit/29534d15307551b2355eb254601dec511169f0aa
+https://github.com/Mani-Sadhasivam/linux/commit/f4eaacfe647674be200847092b43cdef2194fc55
+
+Merge Strategy
+==============
+
+Since the BT HCI_QCA changes depend on the pwrseq changes, it would be good to
+merge the whole series through pwrseq tree or through an immutable branch.
+
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/gpu/drm/panel/Kconfig | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+Manivannan Sadhasivam (12):
+      power: sequencing: Introduce an API to check whether the pwrseq is fixed or controllable
+      power: sequencing: pcie-m2: Add support for 'is_fixed()' callback to 'uart' target
+      power: sequencing: qcom-wcn: Add support for 'is_fixed()' callback to 'bluetooth' target
+      power: sequencing: pcie-m2: Fix inconsistent function prefixes
+      power: sequencing: pcie-m2: Allow creating serdev for multiple PCI devices
+      power: sequencing: pcie-m2: Improve PCI device ID check
+      power: sequencing: pcie-m2: Create serdev for PCI devices present before probe
+      power: sequencing: pcie-m2: Create BT node based on the pci_device_id[] table
+      Bluetooth: hci_qca: Add M.2 Bluetooth device support using pwrseq
+      Bluetooth: hci_qca: Rename 'power_ctrl_enabled' to 'bt_en_available'
+      Bluetooth: hci_qca: Check whether the M.2 UART interface is fixed or not
+      Bluetooth: hci_qca: Fix the broken BT_EN GPIO detection for Qcom WCN devices
 
-diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
-index 4e7b4808f6e7c..3e819b4b23962 100644
---- a/drivers/gpu/drm/panel/Kconfig
-+++ b/drivers/gpu/drm/panel/Kconfig
-@@ -102,17 +102,17 @@ config DRM_PANEL_BOE_TV101WUM_LL2
- 	depends on DRM_MIPI_DSI
- 	depends on BACKLIGHT_CLASS_DEVICE
- 	help
- 	  Say Y here if you want to support for BOE TV101WUM-LL2
- 	  WUXGA PANEL DSI Video Mode panel
- 
- config DRM_PANEL_EBBG_FT8719
- 	tristate "EBBG FT8719 panel driver"
--	depends on OF
-+	depends on OF && GPIOLIB
- 	depends on DRM_MIPI_DSI
- 	depends on BACKLIGHT_CLASS_DEVICE
- 	help
- 	  Say Y here if you want to enable support for the EBBG FT8719
- 	  video mode panel. Mainly found on Xiaomi Poco F1 mobile phone.
- 	  The panel has a resolution of 1080x2246. It provides a MIPI DSI
- 	  interface to the host.
- 
-@@ -427,17 +427,17 @@ config DRM_PANEL_LG_LG4573
- 	depends on OF && SPI
- 	select VIDEOMODE_HELPERS
- 	help
- 	  Say Y here if you want to enable support for LG4573 RGB panel.
- 	  To compile this driver as a module, choose M here.
- 
- config DRM_PANEL_LG_SW43408
- 	tristate "LG SW43408 panel"
--	depends on OF
-+	depends on OF && GPIOLIB
- 	depends on DRM_MIPI_DSI
- 	depends on BACKLIGHT_CLASS_DEVICE
- 	select DRM_DISPLAY_DSC_HELPER
- 	select DRM_DISPLAY_HELPER
- 	help
- 	  Say Y here if you want to enable support for LG sw43408 panel.
- 	  The panel has a 1080x2160@60Hz resolution and uses 24 bit RGB per
- 	  pixel. It provides a MIPI DSI interface to the host and has a
-@@ -531,27 +531,27 @@ config DRM_PANEL_NOVATEK_NT36523
- 	depends on BACKLIGHT_CLASS_DEVICE
- 	help
- 	  Say Y here if you want to enable support for the panels built
- 	  around the Novatek NT36523 display controller, such as some
- 	  Boe panels used in Xiaomi Mi Pad 5 and 5 Pro tablets.
- 
- config DRM_PANEL_NOVATEK_NT36672A
- 	tristate "Novatek NT36672A DSI panel"
--	depends on OF
-+	depends on OF && GPIOLIB
- 	depends on DRM_MIPI_DSI
- 	depends on BACKLIGHT_CLASS_DEVICE
- 	help
- 	  Say Y here if you want to enable support for the panels built
- 	  around the Novatek NT36672A display controller, such as some
- 	  Tianma panels used in a few Xiaomi Poco F1 mobile phones.
- 
- config DRM_PANEL_NOVATEK_NT36672E
- 	tristate "Novatek NT36672E DSI panel"
--	depends on OF
-+	depends on OF && GPIOLIB
- 	depends on DRM_MIPI_DSI
- 	depends on BACKLIGHT_CLASS_DEVICE
- 	help
- 	  Say Y here if you want to enable support for Novatek NT36672E DSI Video Mode
- 	  LCD panel module. The panel has a resolution of 1080x2408 and uses 24 bit
- 	  RGB per pixel.
- 
- config DRM_PANEL_NOVATEK_NT37801
-@@ -1177,17 +1177,17 @@ config DRM_PANEL_VISIONOX_R66451
- 	select DRM_DISPLAY_DSC_HELPER
- 	select DRM_DISPLAY_HELPER
- 	help
- 	  Say Y here if you want to enable support for Visionox
- 	  R66451 1080x2340 AMOLED DSI panel.
- 
- config DRM_PANEL_VISIONOX_RM69299
- 	tristate "Visionox RM69299"
--	depends on OF
-+	depends on OF && GPIOLIB
- 	depends on DRM_MIPI_DSI
- 	depends on BACKLIGHT_CLASS_DEVICE
- 	help
- 	  Say Y here if you want to enable support for Visionox
- 	  RM69299  DSI Video Mode panel.
- 
- config DRM_PANEL_VISIONOX_RM692E5
- 	tristate "Visionox RM692E5"
+ drivers/bluetooth/hci_qca.c                |  40 +++--
+ drivers/power/sequencing/core.c            |  33 ++++
+ drivers/power/sequencing/pwrseq-pcie-m2.c  | 242 ++++++++++++++++++++++-------
+ drivers/power/sequencing/pwrseq-qcom-wcn.c |   9 ++
+ include/linux/pwrseq/consumer.h            |   6 +
+ include/linux/pwrseq/provider.h            |   2 +
+ 6 files changed, 262 insertions(+), 70 deletions(-)
+---
+base-commit: 6596a02b207886e9e00bb0161c7fd59fea53c081
+change-id: 20260422-pwrseq-m2-bt-abdaa71094eb
 
--- 
-2.53.0
+Best regards,
+--  
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
