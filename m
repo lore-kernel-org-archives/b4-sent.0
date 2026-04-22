@@ -1,85 +1,59 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 22 Apr 2026 11:44:13 +0000
-Subject: [PATCH] pinctrl: meson: amlogic-a4: fix deadlock issue
+From: Haritha S K <haritha.k@oss.qualcomm.com>
+Date: Wed, 22 Apr 2026 19:15:55 +0530
+Subject: [PATCH] arm64: dts: qcom: talos: Add passive polling-delay to
+ gpu-thermal zone
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260422-fix-pinconf-v1-1-abb4d2e0da55@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAIy06GkC/x3NQQqDQAyF4atI1gY02C68inQxkyY1m4xkigji3
- Tt2+fP4eCdUCZMKc3dCyG7VircY+w54Tf4RtHdroIGew0SEagdu5lxccaIsIzPpIyk0kVMVzJG
- c19toCXQ5vve0hTT5P1pe1/UD9QwM4XgAAAA=
-X-Change-ID: 20260422-fix-pinconf-42be1cc2f5af
-To: Linus Walleij <linusw@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-amlogic@lists.infradead.org, linux-gpio@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776858256; l=2200;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=Ss1NSqKaiC5N5QiCWkTV2uRyv5Uo42HRnPH2RlMwg5E=;
- b=fr7u9d+eLFEa7sccl3XsNIMQoaiZ7WblPDxAAp4bIzh/HrYB6ydQXMiU1Ec+47fQmUWfWWegx
- Yj1u23N8KyqBcB7KMBYSwEMnn8XKl/x0IRNVvlYw3sfzP8B5LsRUsqG
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+Message-Id: <20260422-qcs615_gpu_cooling-v1-1-d5a984ac29e3@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIABLR6GkC/yXMQQqDMBBA0avIrBtIUk3RqxSRGifpiCSa0VIQ7
+ 95Ul2/x/w6MiZChKXZI+CGmGDLUrQD7fgWPgoZs0FIbWWotFstGVZ2ft87GOFHw4l6bSvYP50o
+ 1QA7nhI6+5/TZXuatH9Gu/xMcxw8CLHVjdgAAAA==
+X-Change-ID: 20260422-qcs615_gpu_cooling-39650b7ff41d
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, manaf.pallikunhi@oss.qualcomm.com, 
+ gaurav.kohli@oss.qualcomm.com, Haritha S K <haritha.k@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776865565; l=853;
+ i=haritha.k@oss.qualcomm.com; s=20260422; h=from:subject:message-id;
+ bh=bEeXthao5AxPlUbPaBK/C+/v/mQ8p69utkWRhhz7Ow8=;
+ b=oT2QuqyLDyfY+zGIZ7EJKJa21B2m+lISVcXqxQkjhwPo0EMKWjPwHZ8QUL2EKVqvCCS6kt3b5
+ yT5jT3ePYvtArhgxaD5bqyc07ke9NAv4PERBA+UeHYUJ9zuDYeFWnIc
+X-Developer-Key: i=haritha.k@oss.qualcomm.com; a=ed25519;
+ pk=ivp2P9RgsC6IkOe8JaqweeahT9pd0BVtL2d1YD8ICSg=
+X-Endpoint-Received: by B4 Relay for haritha.k@oss.qualcomm.com/20260422 with auth_id=745
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Accessing the pinconf-pins sysfs node may deadlock.
+Add a passive polling-delay to the gpu-thermal thermal zone on Talos
+to ensure periodic temperature monitoring while in passive mode.
 
-pinconf_pins_show() holds pctldev->mutex, and the platform driver
-calls pinctrl_find_gpio_range_from_pin(), which tries to acquire
-the same mutex again, leading to a deadlock.
-
-Use pinctrl_find_gpio_range_from_pin_nolock() to fix this issue.
-
-Fixes: 6e9be3abb78c ("pinctrl: Add driver support for Amlogic SoCs")
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Signed-off-by: Haritha S K <haritha.k@oss.qualcomm.com>
 ---
-Fix deadlock issue.
----
- drivers/pinctrl/meson/pinctrl-amlogic-a4.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ arch/arm64/boot/dts/qcom/talos.dtsi | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/pinctrl/meson/pinctrl-amlogic-a4.c b/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
-index e2293a872dcb..35d27626a336 100644
---- a/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
-+++ b/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
-@@ -292,7 +292,7 @@ static int aml_calc_reg_and_bit(struct pinctrl_gpio_range *range,
- static int aml_pinconf_get_pull(struct aml_pinctrl *info, unsigned int pin)
- {
- 	struct pinctrl_gpio_range *range =
--			 pinctrl_find_gpio_range_from_pin(info->pctl, pin);
-+			 pinctrl_find_gpio_range_from_pin_nolock(info->pctl, pin);
- 	struct aml_gpio_bank *bank = gpio_chip_to_bank(range->gc);
- 	unsigned int reg, bit, val;
- 	int ret, conf;
-@@ -326,7 +326,7 @@ static int aml_pinconf_get_drive_strength(struct aml_pinctrl *info,
- 					  u16 *drive_strength_ua)
- {
- 	struct pinctrl_gpio_range *range =
--			 pinctrl_find_gpio_range_from_pin(info->pctl, pin);
-+			 pinctrl_find_gpio_range_from_pin_nolock(info->pctl, pin);
- 	struct aml_gpio_bank *bank = gpio_chip_to_bank(range->gc);
- 	unsigned int reg, bit;
- 	unsigned int val;
-@@ -365,7 +365,7 @@ static int aml_pinconf_get_gpio_bit(struct aml_pinctrl *info,
- 				    unsigned int reg_type)
- {
- 	struct pinctrl_gpio_range *range =
--			 pinctrl_find_gpio_range_from_pin(info->pctl, pin);
-+			 pinctrl_find_gpio_range_from_pin_nolock(info->pctl, pin);
- 	struct aml_gpio_bank *bank = gpio_chip_to_bank(range->gc);
- 	unsigned int reg, bit, val;
- 	int ret;
+diff --git a/arch/arm64/boot/dts/qcom/talos.dtsi b/arch/arm64/boot/dts/qcom/talos.dtsi
+index ff5afbfce2a4..8a3669b2d062 100644
+--- a/arch/arm64/boot/dts/qcom/talos.dtsi
++++ b/arch/arm64/boot/dts/qcom/talos.dtsi
+@@ -5267,6 +5267,7 @@ cpu-critical {
+ 
+ 		gpu-thermal {
+ 			thermal-sensors = <&tsens0 9>;
++			polling-delay-passive = <200>;
+ 
+ 			trips {
+ 				gpu_alert0: trip-point0 {
 
 ---
-base-commit: bd7fd288490c64835a74c05e631c102ce056d5e1
-change-id: 20260422-fix-pinconf-42be1cc2f5af
+base-commit: bee6ea30c48788e18348309f891ed8afbf7702ac
+change-id: 20260422-qcs615_gpu_cooling-39650b7ff41d
 
 Best regards,
--- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+--  
+Haritha S K <haritha.k@oss.qualcomm.com>
 
