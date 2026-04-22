@@ -1,421 +1,61 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Wed, 22 Apr 2026 02:43:25 -0500
-Subject: [PATCH v6 2/2] drm/panel: Add panel driver for ChipWealth CH13726A
- based panels
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH RESEND 0/4] drm/panel: Small Kconfig cleanup
+Date: Wed, 22 Apr 2026 11:48:34 +0200
+Message-Id: <20260422-panel-clean-up-kconfig-dep-v1-0-d825e9ffe911@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260422-ch13726a-v6-2-03680d6673ff@gmail.com>
-References: <20260422-ch13726a-v6-0-03680d6673ff@gmail.com>
-In-Reply-To: <20260422-ch13726a-v6-0-03680d6673ff@gmail.com>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
  Jessica Zhang <jesszhan0024@gmail.com>, 
  Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
  Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
  David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Teguh Sobirin <teguh@sobir.in>, 
- Aaron Kling <webgeek1234@gmail.com>
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Dzmitry Sankouski <dsankouski@gmail.com>, Sam Ravnborg <sam@ravnborg.org>
+Cc: Casey Connolly <casey.connolly@linaro.org>, 
+ marijn.suijten@somainline.org, dri-devel@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776843820; l=11291;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=6zJEeAQrGi45qzGSgqVejzQKCslg4CHUh2iZVXemX90=;
- b=eHyYS02UynJpM8aSk5F1foHzYFvvKnvQuFd7sK7QPtUgyR1i9tfk6JpqyoSrihKM82x0U8UgF
- M/7DIJwGdimDvSnLXNaCBYbqfMSrgpJdxtpoYHtltkdn25tEnAaE4ai
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=openpgp-sha256; l=763; i=david@ixit.cz;
+ h=from:subject:message-id; bh=ylQzySUo9bDhSqmkcXiDS7XuuRz2rDXvl6KfxBGmTsY=;
+ b=kA0DAAgBYAI/xNNJIHIByyZiAGnomXih2X9v8Bfun+gaoBwp9eFzTbvsiKUw650qXY3DOpNqc
+ IkCMwQAAQgAHRYhBNd6Cc/u3Cu9U6cEdGACP8TTSSByBQJp6Jl4AAoJEGACP8TTSSByfj8QALSE
+ kxyBpbLRU7LCBQKbXXvtnVh0TMNEWO7u209TXCRBeMXcx53ZcI3PIwj5FDsXC1qtabCsQnyKyc6
+ t5TLPgcsxDtpgpGRPGrsV5mlPCT/mPvME9iZ7d/XYqwpfuvOumYAc9ac2h78Ml32sxlF612dO+b
+ 7wLgFuYKP3m0Ap8WetqodFqqHeKJP2ZNAYFY2ARcHs87Dx3bFYAWYs0+ndTYKvtUwMNT013ZtSX
+ i/35mLVSSfiJWqJy2oyQIgfunTm94zdAxgWulIv5rqamGSD+L7M/SjbLmfPOlS/Z6zOu1ga+eHE
+ vWkrZiIoGDdSUq2oIqKjrmWTA//9N3o4WHrsjzrBccNBNko9xfw7F5K+DwQ/0z5PnCb25Nlsilw
+ eqxLVAuQzK07mbxZncDUC9PD8CW58rdjQJw9JA1MLN0fluolVDE8toOVHgQdOKHQE6FMf5j8q6i
+ wbMtbL4zc325UM63dDdSdrFT9eOqSxGgd7og+WNenJZrA36kUEOmb2NE6zrhxIGWr5Mn/A3XweX
+ CtJNcdT9BPGQ0TZvmGfdF8zXs3ZzU5y7aTfjYaHThVZJarwWD7qrSApCiAkGQ1OiAuZq3qRrAPa
+ 8OGUHk2Hav1zkBTpLHL7AMMzAcxvzIJD8R1JAcxSwGewW1nNglyeiRmrwcjue8AvhpykRm+FwE3
+ DJn4x
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Teguh Sobirin <teguh@sobir.in>
+Inspired by looking at Marijn patch. Since Marijn patch is not merged yet,
+appending patch to my series.
 
-This is used by the AYN Thor for the bottom panel.
-
-Signed-off-by: Teguh Sobirin <teguh@sobir.in>
-Co-developed-by: Aaron Kling <webgeek1234@gmail.com>
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/gpu/drm/panel/Kconfig                     |  11 +
- drivers/gpu/drm/panel/Makefile                    |   1 +
- drivers/gpu/drm/panel/panel-chipwealth-ch13726a.c | 333 ++++++++++++++++++++++
- 3 files changed, 345 insertions(+)
+David Heidelberg (3):
+      drm/panel: Clean up S6E3FC2X01 config dependencies
+      drm/panel: Clean up S6E3HA2 config dependencies and fill help text
+      drm/panel: Enable GPIOLIB for panels which uses functions from it
 
-diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
-index d6863b28ddc559..e2c00f08f4507d 100644
---- a/drivers/gpu/drm/panel/Kconfig
-+++ b/drivers/gpu/drm/panel/Kconfig
-@@ -105,6 +105,17 @@ config DRM_PANEL_BOE_TV101WUM_LL2
- 	  Say Y here if you want to support for BOE TV101WUM-LL2
- 	  WUXGA PANEL DSI Video Mode panel
- 
-+config DRM_PANEL_CHIPWEALTH_CH13726A
-+	tristate "CHIPWEALTH CH13726A-based DSI panel"
-+	depends on OF
-+	depends on DRM_MIPI_DSI
-+	depends on BACKLIGHT_CLASS_DEVICE
-+	select DRM_DISPLAY_DP_HELPER
-+	select DRM_DISPLAY_HELPER
-+	help
-+	  Say Y here if you want to enable support for ChipWealth
-+	  CH13726A-based display panels.
-+
- config DRM_PANEL_EBBG_FT8719
- 	tristate "EBBG FT8719 panel driver"
- 	depends on OF
-diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
-index a4291dc3905bed..343d283d1620fb 100644
---- a/drivers/gpu/drm/panel/Makefile
-+++ b/drivers/gpu/drm/panel/Makefile
-@@ -9,6 +9,7 @@ obj-$(CONFIG_DRM_PANEL_BOE_TD4320) += panel-boe-td4320.o
- obj-$(CONFIG_DRM_PANEL_BOE_TH101MB31UIG002_28A) += panel-boe-th101mb31ig002-28a.o
- obj-$(CONFIG_DRM_PANEL_BOE_TV101WUM_LL2) += panel-boe-tv101wum-ll2.o
- obj-$(CONFIG_DRM_PANEL_BOE_TV101WUM_NL6) += panel-boe-tv101wum-nl6.o
-+obj-$(CONFIG_DRM_PANEL_CHIPWEALTH_CH13726A) += panel-chipwealth-ch13726a.o
- obj-$(CONFIG_DRM_PANEL_DSI_CM) += panel-dsi-cm.o
- obj-$(CONFIG_DRM_PANEL_LVDS) += panel-lvds.o
- obj-$(CONFIG_DRM_PANEL_SIMPLE) += panel-simple.o
-diff --git a/drivers/gpu/drm/panel/panel-chipwealth-ch13726a.c b/drivers/gpu/drm/panel/panel-chipwealth-ch13726a.c
-new file mode 100644
-index 00000000000000..175f40e752126f
---- /dev/null
-+++ b/drivers/gpu/drm/panel/panel-chipwealth-ch13726a.c
-@@ -0,0 +1,333 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * ChipWealth CH13726A MIPI-DSI panel driver
-+ * Copyright (c) 2024, Teguh Sobirin <teguh@sobir.in>.
-+ */
-+
-+#include <linux/backlight.h>
-+#include <linux/delay.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/module.h>
-+#include <linux/of.h>
-+#include <linux/regulator/consumer.h>
-+
-+#include <drm/drm_mipi_dsi.h>
-+#include <drm/drm_modes.h>
-+#include <drm/drm_panel.h>
-+
-+#include <video/mipi_display.h>
-+
-+static const struct regulator_bulk_data ch13726a_supplies[] = {
-+	{ .supply = "vdd1v2", },
-+	{ .supply = "vddio", },
-+	{ .supply = "vdd", },
-+	{ .supply = "avdd", },
-+};
-+
-+struct ch13726a_panel {
-+	struct drm_panel panel;
-+	struct mipi_dsi_device *dsi;
-+	struct regulator_bulk_data *supplies;
-+	struct gpio_desc *reset_gpio;
-+	struct ch13726a_desc *desc;
-+	enum drm_panel_orientation orientation;
-+};
-+
-+struct ch13726a_desc {
-+	unsigned int width_mm;
-+	unsigned int height_mm;
-+	unsigned int bpc;
-+
-+	const struct drm_display_mode *modes;
-+	unsigned int num_modes;
-+};
-+
-+static inline struct ch13726a_panel *to_ch13726a_panel(struct drm_panel *panel)
-+{
-+	return container_of(panel, struct ch13726a_panel, panel);
-+}
-+
-+static void ch13726a_reset(struct ch13726a_panel *ctx)
-+{
-+	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
-+	usleep_range(10000, 11000);
-+	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
-+	usleep_range(10000, 11000);
-+	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
-+	usleep_range(10000, 11000);
-+}
-+
-+static int ch13726a_on(struct ch13726a_panel *ctx)
-+{
-+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = ctx->dsi };
-+
-+	ctx->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xf0, 0x50);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xb9, 0x00);
-+
-+	mipi_dsi_dcs_exit_sleep_mode_multi(&dsi_ctx);
-+
-+	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
-+
-+	return dsi_ctx.accum_err;
-+}
-+
-+static int ch13726a_disable(struct drm_panel *panel)
-+{
-+	struct ch13726a_panel *ctx = to_ch13726a_panel(panel);
-+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = ctx->dsi };
-+
-+	ctx->dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
-+
-+	mipi_dsi_dcs_set_display_off_multi(&dsi_ctx);
-+	mipi_dsi_msleep(&dsi_ctx, 50);
-+	mipi_dsi_dcs_enter_sleep_mode_multi(&dsi_ctx);
-+
-+	return dsi_ctx.accum_err;
-+}
-+
-+static int ch13726a_prepare(struct drm_panel *panel)
-+{
-+	struct ch13726a_panel *ctx = to_ch13726a_panel(panel);
-+	struct device *dev = &ctx->dsi->dev;
-+	int ret;
-+
-+	ret = regulator_bulk_enable(ARRAY_SIZE(ch13726a_supplies), ctx->supplies);
-+	if (ret < 0) {
-+		dev_err(dev, "Failed to enable regulators: %d\n", ret);
-+		return ret;
-+	}
-+
-+	ch13726a_reset(ctx);
-+
-+	ret = ch13726a_on(ctx);
-+	if (ret < 0) {
-+		dev_err(dev, "Failed to initialize panel: %d\n", ret);
-+		gpiod_set_value_cansleep(ctx->reset_gpio, 0);
-+		regulator_bulk_disable(ARRAY_SIZE(ch13726a_supplies), ctx->supplies);
-+		return ret;
-+	}
-+
-+	msleep(28);
-+
-+	return 0;
-+}
-+
-+static int ch13726a_unprepare(struct drm_panel *panel)
-+{
-+	struct ch13726a_panel *ctx = to_ch13726a_panel(panel);
-+
-+	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
-+	regulator_bulk_disable(ARRAY_SIZE(ch13726a_supplies), ctx->supplies);
-+
-+	return 0;
-+}
-+
-+static const struct drm_display_mode thor_bottom_modes[] = {
-+	{
-+		/* 120Hz */
-+		.clock = (1080 + 28 + 4 + 36) * (1240 + 16 + 4 + 8) * 120 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 28,
-+		.hsync_end = 1080 + 28 + 4,
-+		.htotal = 1080 + 28 + 4 + 36,
-+		.vdisplay = 1240,
-+		.vsync_start = 1240 + 16,
-+		.vsync_end = 1240 + 16 + 4,
-+		.vtotal = 1240 + 16 + 4 + 8,
-+	},
-+	{
-+		/* 60Hz */
-+		.clock = (1080 + 28 + 4 + 36) * (1240 + 16 + 4 + 8) * 60 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 28,
-+		.hsync_end = 1080 + 28 + 4,
-+		.htotal = 1080 + 28 + 4 + 36,
-+		.vdisplay = 1240,
-+		.vsync_start = 1240 + 16,
-+		.vsync_end = 1240 + 16 + 4,
-+		.vtotal = 1240 + 16 + 4 + 8,
-+	}
-+};
-+
-+static struct ch13726a_desc thor_bottom_desc = {
-+	.modes = thor_bottom_modes,
-+	.num_modes = ARRAY_SIZE(thor_bottom_modes),
-+	.width_mm = 65,
-+	.height_mm = 75,
-+	.bpc = 8,
-+};
-+
-+static int ch13726a_get_modes(struct drm_panel *panel,
-+					struct drm_connector *connector)
-+{
-+	struct ch13726a_panel *ctx = to_ch13726a_panel(panel);
-+
-+	for (uint8_t i = 0; i < ctx->desc->num_modes; i++) {
-+		const struct drm_display_mode *m = &ctx->desc->modes[i];
-+		struct drm_display_mode *mode;
-+
-+		mode = drm_mode_duplicate(connector->dev, m);
-+		if (!mode) {
-+			dev_err(&ctx->dsi->dev, "failed to add mode %ux%u@%u\n",
-+				m->hdisplay, m->vdisplay, drm_mode_vrefresh(m));
-+			return -ENOMEM;
-+		}
-+
-+		mode->type = DRM_MODE_TYPE_DRIVER;
-+		if (i == 0)
-+			mode->type |= DRM_MODE_TYPE_PREFERRED;
-+
-+		drm_mode_set_name(mode);
-+		drm_mode_probed_add(connector, mode);
-+	}
-+
-+	connector->display_info.width_mm = ctx->desc->width_mm;
-+	connector->display_info.height_mm = ctx->desc->height_mm;
-+	connector->display_info.bpc = ctx->desc->bpc;
-+
-+	return ctx->desc->num_modes;
-+}
-+
-+static enum drm_panel_orientation ch13726a_get_orientation(struct drm_panel *panel)
-+{
-+	struct ch13726a_panel *ctx = to_ch13726a_panel(panel);
-+
-+	return ctx->orientation;
-+}
-+
-+static const struct drm_panel_funcs ch13726a_panel_funcs = {
-+	.prepare = ch13726a_prepare,
-+	.unprepare = ch13726a_unprepare,
-+	.disable = ch13726a_disable,
-+	.get_modes = ch13726a_get_modes,
-+	.get_orientation = ch13726a_get_orientation,
-+};
-+
-+static int ch13726a_bl_update_status(struct backlight_device *bl)
-+{
-+	struct mipi_dsi_device *dsi = bl_get_data(bl);
-+	u16 brightness = backlight_get_brightness(bl);
-+	int ret;
-+
-+	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
-+
-+	ret = mipi_dsi_dcs_set_display_brightness(dsi, brightness);
-+	if (ret < 0)
-+		return ret;
-+
-+	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
-+	return 0;
-+}
-+
-+static const struct backlight_ops ch13726a_bl_ops = {
-+	.update_status = ch13726a_bl_update_status,
-+};
-+
-+static struct backlight_device *
-+ch13726a_create_backlight(struct mipi_dsi_device *dsi)
-+{
-+	struct device *dev = &dsi->dev;
-+	const struct backlight_properties props = {
-+		.type = BACKLIGHT_RAW,
-+		.brightness = 255,
-+		.max_brightness = 255,
-+	};
-+
-+	return devm_backlight_device_register(dev, dev_name(dev), dev, dsi,
-+					      &ch13726a_bl_ops, &props);
-+}
-+
-+static int ch13726a_probe(struct mipi_dsi_device *dsi)
-+{
-+	struct device *dev = &dsi->dev;
-+	struct ch13726a_panel *ctx;
-+	int ret;
-+
-+	ctx = devm_drm_panel_alloc(dev, __typeof(*ctx), panel,
-+				   &ch13726a_panel_funcs,
-+				   DRM_MODE_CONNECTOR_DSI);
-+	if (IS_ERR(ctx))
-+		return PTR_ERR(ctx);
-+
-+	ctx->desc = (struct ch13726a_desc *)of_device_get_match_data(dev);
-+	if (!ctx->desc)
-+		return -ENODEV;
-+
-+	ret = devm_regulator_bulk_get_const(dev,
-+					    ARRAY_SIZE(ch13726a_supplies),
-+					    ch13726a_supplies,
-+					    &ctx->supplies);
-+	if (ret < 0)
-+		return dev_err_probe(dev, ret, "Failed to get regulators\n");
-+
-+	ctx->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
-+	if (IS_ERR(ctx->reset_gpio))
-+		return dev_err_probe(dev, PTR_ERR(ctx->reset_gpio),
-+				     "Failed to get reset-gpios\n");
-+
-+	ret = of_drm_get_panel_orientation(dev->of_node, &ctx->orientation);
-+	if (ret < 0) {
-+		dev_err(dev, "%pOF: failed to get orientation %d\n", dev->of_node, ret);
-+		return ret;
-+	}
-+
-+	ctx->dsi = dsi;
-+	mipi_dsi_set_drvdata(dsi, ctx);
-+
-+	dsi->lanes = 4;
-+	dsi->format = MIPI_DSI_FMT_RGB888;
-+	dsi->mode_flags = MIPI_DSI_MODE_VIDEO |
-+			  MIPI_DSI_CLOCK_NON_CONTINUOUS;
-+
-+	ctx->panel.prepare_prev_first = true;
-+
-+	ctx->panel.backlight = ch13726a_create_backlight(dsi);
-+	if (IS_ERR(ctx->panel.backlight))
-+		return dev_err_probe(dev, PTR_ERR(ctx->panel.backlight),
-+				     "Failed to create backlight\n");
-+
-+	drm_panel_add(&ctx->panel);
-+
-+	ret = mipi_dsi_attach(dsi);
-+	if (ret < 0) {
-+		dev_err(dev, "Failed to attach to DSI host: %d\n", ret);
-+		drm_panel_remove(&ctx->panel);
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static void ch13726a_remove(struct mipi_dsi_device *dsi)
-+{
-+	struct ch13726a_panel *ctx = mipi_dsi_get_drvdata(dsi);
-+	int ret;
-+
-+	ret = mipi_dsi_detach(dsi);
-+	if (ret < 0)
-+		dev_err(&dsi->dev, "Failed to detach from DSI host: %d\n", ret);
-+
-+	drm_panel_remove(&ctx->panel);
-+}
-+
-+static const struct of_device_id ch13726a_of_match[] = {
-+	{ .compatible = "ayntec,thor-panel-bottom", .data = &thor_bottom_desc },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, ch13726a_of_match);
-+
-+static struct mipi_dsi_driver ch13726a_driver = {
-+	.probe = ch13726a_probe,
-+	.remove = ch13726a_remove,
-+	.driver = {
-+		.name = "panel-ch13726a-amoled",
-+		.of_match_table = ch13726a_of_match,
-+	},
-+};
-+module_mipi_dsi_driver(ch13726a_driver);
-+
-+MODULE_DESCRIPTION("DRM driver for CH13726A DSI panels");
-+MODULE_LICENSE("GPL");
+Marijn Suijten (1):
+      drm/panel: Clean up SOFEF00 config dependencies
 
+ drivers/gpu/drm/panel/Kconfig | 25 +++++++++++++++----------
+ 1 file changed, 15 insertions(+), 10 deletions(-)
+---
+base-commit: 877552aa875839314afad7154b5a561889e87ea9
+change-id: 20260224-panel-clean-up-kconfig-dep-7dc39c351ef8
+
+Best regards,
 -- 
-2.53.0
+David Heidelberg <david@ixit.cz>
 
