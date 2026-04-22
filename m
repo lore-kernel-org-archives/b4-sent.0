@@ -1,10 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Wed, 22 Apr 2026 15:45:49 +0100
-Subject: [PATCH 15/22] iio: dac: ad5686: create bus ops struct
+Date: Wed, 22 Apr 2026 15:45:50 +0100
+Subject: [PATCH 16/22] iio: dac: ad5686: extend device support with new
+ parts
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260422-ad5313r-iio-support-v1-15-ed7dca001d1b@analog.com>
+Message-Id: <20260422-ad5313r-iio-support-v1-16-ed7dca001d1b@analog.com>
 References: <20260422-ad5313r-iio-support-v1-0-ed7dca001d1b@analog.com>
 In-Reply-To: <20260422-ad5313r-iio-support-v1-0-ed7dca001d1b@analog.com>
 To: Jonathan Cameron <jic23@kernel.org>, linux-iio@vger.kernel.org, 
@@ -19,245 +20,246 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Philipp Zabel <p.zabel@pengutronix.de>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776869181; l=7997;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776869181; l=10073;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=uPClgrlUPxOW/10rckm79pZao0inPAAnozDn4pnLyIU=;
- b=wZDih8DVfYFcM/5Tu4xEMM01KygTMLWVe4b+INQfC1gIa4k9Y1xC9UjpG3DexSddC1IFJycdr
- lnakbLON2f3DpUuCjrKW/SvDFXXG2EiF6b1jMI9it90DJJCYE8k+TtV
+ bh=ZOoAgr93kAfD2sJxGQv6hN2qubBX9RO2hW6A/Wbys+I=;
+ b=mm8eqFL3aj9kOMry+45BTtlgSfv3slwm9xkvid8FQAuu6+EzNTPoRyuwT5Eysh18Ni/jPYpvk
+ 7geHzON7rIqCOHNCE+buuZUvbGQsg5iJ9V/ycxiuhEnMMrvQZx9L1So
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Create struct with bus operations, including a sync() operation that will
-be used to flush multiple channel writes at once. Auxiliary functions
-ad5686_write() and ad5686_read() are created and ad5686_probe() now
-receives an ops struct pointer rather than individual read and write
-functions. Documentation header of ad5686_state struct is updated
-accordingly (adjusting renamed fields and formatting).
+Add support for AD5313R, AD5317R, AD5674, AD5679, AD5687, AD5687R, AD5689,
+AD5689R to the AD5686 SPI driver. Also adding support for AD5316R, AD5675,
+AD5697R to the AD5696 I2C driver. This includes the creation of seven chip
+info struct instances and reuse of existing ones.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/dac/ad5686-spi.c |  7 ++++++-
- drivers/iio/dac/ad5686.c     | 32 ++++++++++++++------------------
- drivers/iio/dac/ad5686.h     | 44 ++++++++++++++++++++++++++++++++------------
- drivers/iio/dac/ad5696-i2c.c |  7 ++++++-
- 4 files changed, 58 insertions(+), 32 deletions(-)
+ drivers/iio/dac/ad5686-spi.c | 16 +++++++++++++
+ drivers/iio/dac/ad5686.c     | 55 ++++++++++++++++++++++++++++++++++++++++++++
+ drivers/iio/dac/ad5686.h     |  7 ++++++
+ drivers/iio/dac/ad5696-i2c.c |  6 +++++
+ 4 files changed, 84 insertions(+)
 
 diff --git a/drivers/iio/dac/ad5686-spi.c b/drivers/iio/dac/ad5686-spi.c
-index 6c9b70880da9..9c00e016e67c 100644
+index 9c00e016e67c..b57dc88eb953 100644
 --- a/drivers/iio/dac/ad5686-spi.c
 +++ b/drivers/iio/dac/ad5686-spi.c
-@@ -91,10 +91,15 @@ static int ad5686_spi_read(struct ad5686_state *st, u8 addr)
- 	return be32_to_cpu(st->data[2].d32);
- }
- 
-+static const struct ad5686_bus_ops ad5686_spi_ops = {
-+	.write = ad5686_spi_write,
-+	.read = ad5686_spi_read,
-+};
-+
- static int ad5686_spi_probe(struct spi_device *spi)
- {
- 	return ad5686_probe(&spi->dev, spi_get_device_match_data(spi),
--			    spi->modalias, ad5686_spi_write, ad5686_spi_read);
-+			    spi->modalias, &ad5686_spi_ops);
- }
+@@ -104,10 +104,14 @@ static int ad5686_spi_probe(struct spi_device *spi)
  
  static const struct spi_device_id ad5686_spi_id[] = {
+ 	{ "ad5310r",  (kernel_ulong_t)&ad5310r_chip_info },
++	{ "ad5313r",  (kernel_ulong_t)&ad5338r_chip_info },
++	{ "ad5317r",  (kernel_ulong_t)&ad5317r_chip_info },
+ 	{ "ad5672r",  (kernel_ulong_t)&ad5672r_chip_info },
++	{ "ad5674",   (kernel_ulong_t)&ad5674_chip_info },
+ 	{ "ad5674r",  (kernel_ulong_t)&ad5674r_chip_info },
+ 	{ "ad5676",   (kernel_ulong_t)&ad5676_chip_info },
+ 	{ "ad5676r",  (kernel_ulong_t)&ad5676r_chip_info },
++	{ "ad5679",   (kernel_ulong_t)&ad5679_chip_info },
+ 	{ "ad5679r",  (kernel_ulong_t)&ad5679r_chip_info },
+ 	{ "ad5681r",  (kernel_ulong_t)&ad5681r_chip_info },
+ 	{ "ad5682r",  (kernel_ulong_t)&ad5682r_chip_info },
+@@ -119,16 +123,24 @@ static const struct spi_device_id ad5686_spi_id[] = {
+ 	{ "ad5685r",  (kernel_ulong_t)&ad5685r_chip_info },
+ 	{ "ad5686",   (kernel_ulong_t)&ad5686_chip_info },
+ 	{ "ad5686r",  (kernel_ulong_t)&ad5686r_chip_info },
++	{ "ad5687",   (kernel_ulong_t)&ad5687_chip_info },
++	{ "ad5687r",  (kernel_ulong_t)&ad5687r_chip_info },
++	{ "ad5689",   (kernel_ulong_t)&ad5689_chip_info },
++	{ "ad5689r",  (kernel_ulong_t)&ad5689r_chip_info },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(spi, ad5686_spi_id);
+ 
+ static const struct of_device_id ad5686_of_match[] = {
+ 	{ .compatible = "adi,ad5310r", .data = &ad5310r_chip_info },
++	{ .compatible = "adi,ad5313r", .data = &ad5338r_chip_info },
++	{ .compatible = "adi,ad5317r", .data = &ad5317r_chip_info },
+ 	{ .compatible = "adi,ad5672r", .data = &ad5672r_chip_info },
++	{ .compatible = "adi,ad5674",  .data = &ad5674_chip_info },
+ 	{ .compatible = "adi,ad5674r", .data = &ad5674r_chip_info },
+ 	{ .compatible = "adi,ad5676",  .data = &ad5676_chip_info },
+ 	{ .compatible = "adi,ad5676r", .data = &ad5676r_chip_info },
++	{ .compatible = "adi,ad5679",  .data = &ad5679_chip_info },
+ 	{ .compatible = "adi,ad5679r", .data = &ad5679r_chip_info },
+ 	{ .compatible = "adi,ad5681r", .data = &ad5681r_chip_info },
+ 	{ .compatible = "adi,ad5682r", .data = &ad5682r_chip_info },
+@@ -139,6 +151,10 @@ static const struct of_device_id ad5686_of_match[] = {
+ 	{ .compatible = "adi,ad5685r", .data = &ad5685r_chip_info },
+ 	{ .compatible = "adi,ad5686",  .data = &ad5686_chip_info },
+ 	{ .compatible = "adi,ad5686r", .data = &ad5686r_chip_info },
++	{ .compatible = "adi,ad5687",  .data = &ad5687_chip_info },
++	{ .compatible = "adi,ad5687r", .data = &ad5687r_chip_info },
++	{ .compatible = "adi,ad5689",  .data = &ad5689_chip_info },
++	{ .compatible = "adi,ad5689r", .data = &ad5689r_chip_info },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(of, ad5686_of_match);
 diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
-index 4989404a7b6e..fddcc77ab794 100644
+index fddcc77ab794..bb661d985626 100644
 --- a/drivers/iio/dac/ad5686.c
 +++ b/drivers/iio/dac/ad5686.c
-@@ -27,18 +27,18 @@ static int ad5310_control_sync(struct ad5686_state *st)
- {
- 	unsigned int pd_val = st->pwr_down_mask & st->pwr_down_mode;
+@@ -296,8 +296,11 @@ DECLARE_AD5683_CHANNELS(ad5683r_channels, 16, 0);
+ /* dual-channel */
+ DECLARE_AD5338_CHANNELS(ad5337r_channels, 8, 8);
+ DECLARE_AD5338_CHANNELS(ad5338r_channels, 10, 6);
++DECLARE_AD5338_CHANNELS(ad5687r_channels, 12, 4);
++DECLARE_AD5338_CHANNELS(ad5689r_channels, 16, 0);
  
--	return st->write(st, AD5686_CMD_CONTROL_REG, 0,
--			 FIELD_PREP(AD5310_PD_MSK, pd_val) |
--			 FIELD_PREP(AD5310_REF_BIT_MSK, !st->use_internal_vref));
-+	return ad5686_write(st, AD5686_CMD_CONTROL_REG, 0,
-+			    FIELD_PREP(AD5310_PD_MSK, pd_val) |
-+			    FIELD_PREP(AD5310_REF_BIT_MSK, !st->use_internal_vref));
- }
+ /* quad-channel */
++DECLARE_AD5686_CHANNELS(ad5317r_channels, 10, 6);
+ DECLARE_AD5686_CHANNELS(ad5684r_channels, 12, 4);
+ DECLARE_AD5686_CHANNELS(ad5685r_channels, 14, 2);
+ DECLARE_AD5686_CHANNELS(ad5686r_channels, 16, 0);
+@@ -373,6 +376,44 @@ const struct ad5686_chip_info ad5338r_chip_info = {
+ };
+ EXPORT_SYMBOL_NS_GPL(ad5338r_chip_info, "IIO_AD5686");
  
- static int ad5683_control_sync(struct ad5686_state *st)
- {
- 	unsigned int pd_val = st->pwr_down_mask & st->pwr_down_mode;
++const struct ad5686_chip_info ad5687_chip_info = {
++	.channels = ad5687r_channels,
++	.num_channels = 2,
++	.regmap_type = AD5686_REGMAP,
++};
++EXPORT_SYMBOL_NS_GPL(ad5687_chip_info, "IIO_AD5686");
++
++const struct ad5686_chip_info ad5687r_chip_info = {
++	.channels = ad5687r_channels,
++	.int_vref_mv = 2500,
++	.num_channels = 2,
++	.regmap_type = AD5686_REGMAP,
++};
++EXPORT_SYMBOL_NS_GPL(ad5687r_chip_info, "IIO_AD5686");
++
++const struct ad5686_chip_info ad5689_chip_info = {
++	.channels = ad5689r_channels,
++	.num_channels = 2,
++	.regmap_type = AD5686_REGMAP,
++};
++EXPORT_SYMBOL_NS_GPL(ad5689_chip_info, "IIO_AD5686");
++
++const struct ad5686_chip_info ad5689r_chip_info = {
++	.channels = ad5689r_channels,
++	.int_vref_mv = 2500,
++	.num_channels = 2,
++	.regmap_type = AD5686_REGMAP,
++};
++EXPORT_SYMBOL_NS_GPL(ad5689r_chip_info, "IIO_AD5686");
++
++const struct ad5686_chip_info ad5317r_chip_info = {
++	.channels = ad5317r_channels,
++	.int_vref_mv = 2500,
++	.num_channels = 4,
++	.regmap_type = AD5686_REGMAP,
++};
++EXPORT_SYMBOL_NS_GPL(ad5317r_chip_info, "IIO_AD5686");
++
+ const struct ad5686_chip_info ad5684_chip_info = {
+ 	.channels = ad5684r_channels,
+ 	.num_channels = 4,
+@@ -434,6 +475,13 @@ const struct ad5686_chip_info ad5676r_chip_info = {
+ };
+ EXPORT_SYMBOL_NS_GPL(ad5676r_chip_info, "IIO_AD5686");
  
--	return st->write(st, AD5686_CMD_CONTROL_REG, 0,
--			 FIELD_PREP(AD5683_PD_MSK, pd_val) |
--			 FIELD_PREP(AD5683_REF_BIT_MSK, !st->use_internal_vref));
-+	return ad5686_write(st, AD5686_CMD_CONTROL_REG, 0,
-+			    FIELD_PREP(AD5683_PD_MSK, pd_val) |
-+			    FIELD_PREP(AD5683_REF_BIT_MSK, !st->use_internal_vref));
- }
++const struct ad5686_chip_info ad5674_chip_info = {
++	.channels = ad5674r_channels,
++	.num_channels = 16,
++	.regmap_type = AD5686_REGMAP,
++};
++EXPORT_SYMBOL_NS_GPL(ad5674_chip_info, "IIO_AD5686");
++
+ const struct ad5686_chip_info ad5674r_chip_info = {
+ 	.channels = ad5674r_channels,
+ 	.int_vref_mv = 2500,
+@@ -442,6 +490,13 @@ const struct ad5686_chip_info ad5674r_chip_info = {
+ };
+ EXPORT_SYMBOL_NS_GPL(ad5674r_chip_info, "IIO_AD5686");
  
- static inline int ad5686_pd_mask_shift(const struct iio_chan_spec *chan)
-@@ -137,7 +137,7 @@ static ssize_t ad5686_write_dac_powerdown(struct iio_dev *indio_dev,
- 		} else {
- 			val = lower_16_bits(val);
- 		}
--		ret = st->write(st, AD5686_CMD_POWERDOWN_DAC, address, val);
-+		ret = ad5686_write(st, AD5686_CMD_POWERDOWN_DAC, address, val);
- 		break;
- 	default:
- 		ret = -EINVAL;
-@@ -160,7 +160,7 @@ static int ad5686_read_raw(struct iio_dev *indio_dev,
- 	switch (m) {
- 	case IIO_CHAN_INFO_RAW:
- 		mutex_lock(&st->lock);
--		ret = st->read(st, chan->address);
-+		ret = ad5686_read(st, chan->address);
- 		mutex_unlock(&st->lock);
- 		if (ret < 0)
- 			return ret;
-@@ -190,10 +190,8 @@ static int ad5686_write_raw(struct iio_dev *indio_dev,
- 			return -EINVAL;
- 
- 		mutex_lock(&st->lock);
--		ret = st->write(st,
--				AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
--				chan->address,
--				val << chan->scan_type.shift);
-+		ret = ad5686_write(st, AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
-+				   chan->address, val << chan->scan_type.shift);
- 		mutex_unlock(&st->lock);
- 		break;
- 	default:
-@@ -454,8 +452,7 @@ EXPORT_SYMBOL_NS_GPL(ad5679r_chip_info, "IIO_AD5686");
- 
- int ad5686_probe(struct device *dev,
- 		 const struct ad5686_chip_info *chip_info,
--		 const char *name, ad5686_write_func write,
--		 ad5686_read_func read)
-+		 const char *name, const struct ad5686_bus_ops *ops)
- {
- 	struct iio_dev *indio_dev;
- 	struct ad5686_state *st;
-@@ -468,8 +465,7 @@ int ad5686_probe(struct device *dev,
- 	st = iio_priv(indio_dev);
- 
- 	st->dev = dev;
--	st->write = write;
--	st->read = read;
-+	st->ops = ops;
- 	st->chip_info = chip_info;
- 
- 	ret = devm_regulator_get_enable_optional(dev, "vdd");
-@@ -525,8 +521,8 @@ int ad5686_probe(struct device *dev,
- 			return ret;
- 		break;
- 	case AD5686_REGMAP:
--		ret = st->write(st, AD5686_CMD_INTERNAL_REFER_SETUP, 0,
--				!st->use_internal_vref);
-+		ret = ad5686_write(st, AD5686_CMD_INTERNAL_REFER_SETUP, 0,
-+				   !st->use_internal_vref);
- 		if (ret)
- 			return ret;
- 		break;
++const struct ad5686_chip_info ad5679_chip_info = {
++	.channels = ad5679r_channels,
++	.num_channels = 16,
++	.regmap_type = AD5686_REGMAP,
++};
++EXPORT_SYMBOL_NS_GPL(ad5679_chip_info, "IIO_AD5686");
++
+ const struct ad5686_chip_info ad5679r_chip_info = {
+ 	.channels = ad5679r_channels,
+ 	.int_vref_mv = 2500,
 diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
-index 7004d0d1d97a..55f49dbbbd39 100644
+index 55f49dbbbd39..e2ed0a2a8ac9 100644
 --- a/drivers/iio/dac/ad5686.h
 +++ b/drivers/iio/dac/ad5686.h
-@@ -56,10 +56,17 @@ enum ad5686_regmap_type {
+@@ -94,8 +94,13 @@ extern const struct ad5686_chip_info ad5683r_chip_info;
+ /* dual-channel instances */
+ extern const struct ad5686_chip_info ad5337r_chip_info;
+ extern const struct ad5686_chip_info ad5338r_chip_info;
++extern const struct ad5686_chip_info ad5687_chip_info;
++extern const struct ad5686_chip_info ad5687r_chip_info;
++extern const struct ad5686_chip_info ad5689_chip_info;
++extern const struct ad5686_chip_info ad5689r_chip_info;
  
- struct ad5686_state;
+ /* quad-channel instances */
++extern const struct ad5686_chip_info ad5317r_chip_info;
+ extern const struct ad5686_chip_info ad5684_chip_info;
+ extern const struct ad5686_chip_info ad5684r_chip_info;
+ extern const struct ad5686_chip_info ad5685r_chip_info;
+@@ -108,7 +113,9 @@ extern const struct ad5686_chip_info ad5676_chip_info;
+ extern const struct ad5686_chip_info ad5676r_chip_info;
  
--typedef int (*ad5686_write_func)(struct ad5686_state *st,
--				 u8 cmd, u8 addr, u16 val);
--
--typedef int (*ad5686_read_func)(struct ad5686_state *st, u8 addr);
-+/**
-+ * ad5686_bus_ops - bus specific read/write operations
-+ * @read: read a register value at the given address
-+ * @write: write a command, address and value to the device
-+ * @sync: ensure the completion of the write operation (optional)
-+ */
-+struct ad5686_bus_ops {
-+	int (*read)(struct ad5686_state *st, u8 addr);
-+	int (*write)(struct ad5686_state *st, u8 cmd, u8 addr, u16 val);
-+	int (*sync)(struct ad5686_state *st);
-+};
+ /* 16-channel instances */
++extern const struct ad5686_chip_info ad5674_chip_info;
+ extern const struct ad5686_chip_info ad5674r_chip_info;
++extern const struct ad5686_chip_info ad5679_chip_info;
+ extern const struct ad5686_chip_info ad5679r_chip_info;
  
  /**
-  * struct ad5686_chip_info - chip specific information
-@@ -106,24 +113,23 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
- 
- /**
-  * struct ad5686_state - driver instance specific data
-- * @spi:		spi_device
-+ * @dev:		device instance
-  * @chip_info:		chip model specific constants, available modes etc
-+ * @ops:		bus specific operations
-  * @vref_mv:		actual reference voltage used
-  * @pwr_down_mask:	power down mask
-  * @pwr_down_mode:	current power down mode
-  * @use_internal_vref:	set to true if the internal reference voltage is used
-- * @lock		lock to protect the data buffer during regmap ops
-- * @data:		spi transfer buffers
-+ * @lock:		lock to protect the data buffer during regmap ops
-+ * @data:		transfer buffers
-  */
--
- struct ad5686_state {
- 	struct device			*dev;
- 	const struct ad5686_chip_info	*chip_info;
-+	const struct ad5686_bus_ops	*ops;
- 	unsigned short			vref_mv;
- 	unsigned int			pwr_down_mask;
- 	unsigned int			pwr_down_mode;
--	ad5686_write_func		write;
--	ad5686_read_func		read;
- 	bool				use_internal_vref;
- 	struct mutex			lock;
- 
-@@ -142,8 +148,22 @@ struct ad5686_state {
- 
- int ad5686_probe(struct device *dev,
- 		 const struct ad5686_chip_info *chip_info,
--		 const char *name, ad5686_write_func write,
--		 ad5686_read_func read);
-+		 const char *name, const struct ad5686_bus_ops *ops);
- 
-+static inline int ad5686_write(struct ad5686_state *st, u8 cmd, u8 addr, u16 val)
-+{
-+	int ret;
-+
-+	ret = st->ops->write(st, cmd, addr, val);
-+	if (ret)
-+		return ret;
-+
-+	return st->ops->sync ? st->ops->sync(st) : 0;
-+}
-+
-+static inline int ad5686_read(struct ad5686_state *st, u8 addr)
-+{
-+	return st->ops->read(st, addr);
-+}
- 
- #endif /* __DRIVERS_IIO_DAC_AD5686_H__ */
 diff --git a/drivers/iio/dac/ad5696-i2c.c b/drivers/iio/dac/ad5696-i2c.c
-index 237f4b5df021..51cd765d80f3 100644
+index 51cd765d80f3..8fb9da7fde1f 100644
 --- a/drivers/iio/dac/ad5696-i2c.c
 +++ b/drivers/iio/dac/ad5696-i2c.c
-@@ -61,10 +61,15 @@ static int ad5686_i2c_write(struct ad5686_state *st,
- 	return (ret != 3) ? -EIO : 0;
- }
- 
-+static const struct ad5686_bus_ops ad5686_i2c_ops = {
-+	.write = ad5686_i2c_write,
-+	.read = ad5686_i2c_read,
-+};
-+
- static int ad5686_i2c_probe(struct i2c_client *i2c)
- {
- 	return ad5686_probe(&i2c->dev, i2c_get_match_data(i2c),
--			    i2c->name, ad5686_i2c_write, ad5686_i2c_read);
-+			    i2c->name, &ad5686_i2c_ops);
- }
+@@ -74,10 +74,12 @@ static int ad5686_i2c_probe(struct i2c_client *i2c)
  
  static const struct i2c_device_id ad5686_i2c_id[] = {
+ 	{ "ad5311r",  (kernel_ulong_t)&ad5311r_chip_info },
++	{ "ad5316r",  (kernel_ulong_t)&ad5317r_chip_info },
+ 	{ "ad5337r",  (kernel_ulong_t)&ad5337r_chip_info },
+ 	{ "ad5338r",  (kernel_ulong_t)&ad5338r_chip_info },
+ 	{ "ad5671r",  (kernel_ulong_t)&ad5672r_chip_info },
+ 	{ "ad5673r",  (kernel_ulong_t)&ad5674r_chip_info },
++	{ "ad5675",   (kernel_ulong_t)&ad5676_chip_info },
+ 	{ "ad5675r",  (kernel_ulong_t)&ad5676r_chip_info },
+ 	{ "ad5677r",  (kernel_ulong_t)&ad5679r_chip_info },
+ 	{ "ad5691r",  (kernel_ulong_t)&ad5681r_chip_info },
+@@ -89,16 +91,19 @@ static const struct i2c_device_id ad5686_i2c_id[] = {
+ 	{ "ad5695r",  (kernel_ulong_t)&ad5685r_chip_info },
+ 	{ "ad5696",   (kernel_ulong_t)&ad5686_chip_info },
+ 	{ "ad5696r",  (kernel_ulong_t)&ad5686r_chip_info },
++	{ "ad5697r",  (kernel_ulong_t)&ad5687r_chip_info },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(i2c, ad5686_i2c_id);
+ 
+ static const struct of_device_id ad5686_of_match[] = {
+ 	{ .compatible = "adi,ad5311r", .data = &ad5311r_chip_info },
++	{ .compatible = "adi,ad5316r", .data = &ad5317r_chip_info },
+ 	{ .compatible = "adi,ad5337r", .data = &ad5337r_chip_info },
+ 	{ .compatible = "adi,ad5338r", .data = &ad5338r_chip_info },
+ 	{ .compatible = "adi,ad5671r", .data = &ad5672r_chip_info },
+ 	{ .compatible = "adi,ad5673r", .data = &ad5674r_chip_info },
++	{ .compatible = "adi,ad5675",  .data = &ad5676_chip_info },
+ 	{ .compatible = "adi,ad5675r", .data = &ad5676r_chip_info },
+ 	{ .compatible = "adi,ad5677r", .data = &ad5679r_chip_info },
+ 	{ .compatible = "adi,ad5691r", .data = &ad5681r_chip_info },
+@@ -110,6 +115,7 @@ static const struct of_device_id ad5686_of_match[] = {
+ 	{ .compatible = "adi,ad5695r", .data = &ad5685r_chip_info },
+ 	{ .compatible = "adi,ad5696",  .data = &ad5686_chip_info },
+ 	{ .compatible = "adi,ad5696r", .data = &ad5686r_chip_info },
++	{ .compatible = "adi,ad5697r", .data = &ad5687r_chip_info },
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(of, ad5686_of_match);
 
 -- 
 2.43.0
