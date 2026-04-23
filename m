@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 24 Apr 2026 01:43:20 +0800
-Subject: [PATCH v6 09/14] mm/mglru: use the common routine for
- dirty/writeback reactivation
+Date: Fri, 24 Apr 2026 01:43:21 +0800
+Subject: [PATCH v6 10/14] mm/mglru: simplify and improve dirty writeback
+ handling
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260424-mglru-reclaim-v6-9-a57622d770c3@tencent.com>
+Message-Id: <20260424-mglru-reclaim-v6-10-a57622d770c3@tencent.com>
 References: <20260424-mglru-reclaim-v6-0-a57622d770c3@tencent.com>
 In-Reply-To: <20260424-mglru-reclaim-v6-0-a57622d770c3@tencent.com>
 To: linux-mm@kvack.org
@@ -24,99 +24,131 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Qi Zheng <qi.zheng@linux.dev>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776966208; l=3248;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776966208; l=4411;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=7k2CuT+9M2FqGXa3ZySKsRX9m55VQUz1CgD9CNT+STo=;
- b=e/0nGIlQGEkN6o/HRZO9n+5h03rf9bHKDu79HVK6nCYp4pGnYmPaCq6k/aQjhVK8Aw5NPQkMJ
- zSzZha2E9UhDciN1F3iY4n+z7KodZliU0miGrxSPt64XWXCf/TcS1U8
+ bh=XPufkC5dGXzX8uV7Cj2QhJr/PISwcv22HaMg1KGzKUs=;
+ b=83TwcM7l6VCtXPRMNnDwwLNV5hfrHNISGsC8sWWxi+9iy1qcXg9Q9qRnWrBQNQa7TKdb26nlN
+ fKGr8fkJKhcBakUzQrLDsQHdXCIqeYk2EY2lRLhlLvYdoskYdlVmxAH
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently MGLRU will move the dirty writeback folios to the second
-oldest gen instead of reactivate them like the classical LRU. This
-might help to reduce the LRU contention as it skipped the isolation.
-But as a result we will see these folios at the LRU tail more frequently
-leading to inefficient reclaim.
+Right now the flusher wakeup mechanism for MGLRU is less responsive
+and unlikely to trigger compared to classical LRU. The classical
+LRU wakes the flusher if one batch of folios passed to shrink_folio_list
+is unevictable due to under writeback. MGLRU instead check and handle
+this after the whole reclaim loop is done.
 
-Besides, the dirty / writeback check after isolation in
-shrink_folio_list is more accurate and covers more cases. So instead,
-just drop the special handling for dirty writeback, use the common
-routine and re-activate it like the classical LRU.
+We previously even saw OOM problems due to passive flusher, which were
+fixed but still not perfect [1].
 
-This should in theory improve the scan efficiency. These folios will be
-rotated back to LRU tail once writeback is done so there is no risk of
-hotness inversion. And now each reclaim loop will have a higher
-success rate. This also prepares for unifying the writeback and
-throttling mechanism with classical LRU, we keep these folios far from
-tail so detecting the tail batch will have a similar pattern with
-classical LRU.
+We have just unified the dirty folio counting and activation routine,
+now just move the dirty flush into the loop right after shrink_folio_list.
+This improves the performance a lot for workloads involving heavy
+writeback and prepares for throttling too.
 
-The micro optimization that avoids LRU contention by skipping the
-isolation is gone, which should be fine. Compared to IO and writeback
-cost, the isolation overhead is trivial.
+Test with YCSB workloadb showed a major performance improvement:
 
-And using the common routine also keeps the folio's referenced bits
-(tier bits), which could improve metrics in the long term. Also no
-more need to clean reclaim bit as the common routine will make use
-of it.
+Before this series:
+Throughput(ops/sec): 62485.02962831822
+AverageLatency(us): 500.9746963330107
+pgpgin 159347462
+workingset_refault_file 34522071
 
-Note the common routine updates a few throttling and writeback counters,
-which are not used, and never have been for the MGLRU case. We will
-start making use of these in later commits.
+After this commit:
+Throughput(ops/sec): 80857.08510208207
+AverageLatency(us): 386.653262968934
+pgpgin 112233121
+workingset_refault_file 19516246
+
+The performance is a lot better with significantly lower refault. We also
+observed similar or higher performance gain for other real-world workloads.
+
+We were concerned that the dirty flush could cause more wear for SSD:
+that should not be the problem here, since the wakeup condition is when
+the dirty folios have been pushed to the tail of LRU, which indicates
+that memory pressure is so high that writeback is blocking the workload
+already.
 
 Reviewed-by: Axel Rasmussen <axelrasmussen@google.com>
-Reviewed-by: Barry Song <baohua@kernel.org>
+Link: https://lore.kernel.org/linux-mm/20241026115714.1437435-1-jingxiangzeng.cas@gmail.com/ [1]
 Reviewed-by: Baolin Wang <baolin.wang@linux.alibaba.com>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/vmscan.c | 19 -------------------
- 1 file changed, 19 deletions(-)
+ mm/vmscan.c | 41 ++++++++++++++++-------------------------
+ 1 file changed, 16 insertions(+), 25 deletions(-)
 
 diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 35e3352a53e3..74255efc4ad9 100644
+index 74255efc4ad9..d7a72a60c894 100644
 --- a/mm/vmscan.c
 +++ b/mm/vmscan.c
-@@ -4578,7 +4578,6 @@ static bool sort_folio(struct lruvec *lruvec, struct folio *folio, struct scan_c
- 		       int tier_idx)
- {
- 	bool success;
--	bool dirty, writeback;
- 	int gen = folio_lru_gen(folio);
- 	int type = folio_is_file_lru(folio);
- 	int zone = folio_zonenum(folio);
-@@ -4628,21 +4627,6 @@ static bool sort_folio(struct lruvec *lruvec, struct folio *folio, struct scan_c
- 		return true;
+@@ -4724,8 +4724,6 @@ static int scan_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
+ 	trace_mm_vmscan_lru_isolate(sc->reclaim_idx, sc->order, nr_to_scan,
+ 				scanned, skipped, isolated,
+ 				type ? LRU_INACTIVE_FILE : LRU_INACTIVE_ANON);
+-	if (type == LRU_GEN_FILE)
+-		sc->nr.file_taken += isolated;
+ 
+ 	*isolatedp = isolated;
+ 	return scanned;
+@@ -4833,12 +4831,27 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
+ 		return scanned;
+ retry:
+ 	reclaimed = shrink_folio_list(&list, pgdat, sc, &stat, false, memcg);
+-	sc->nr.unqueued_dirty += stat.nr_unqueued_dirty;
+ 	sc->nr_reclaimed += reclaimed;
+ 	trace_mm_vmscan_lru_shrink_inactive(pgdat->node_id,
+ 			type_scanned, reclaimed, &stat, sc->priority,
+ 			type ? LRU_INACTIVE_FILE : LRU_INACTIVE_ANON);
+ 
++	/*
++	 * If too many file cache in the coldest generation can't be evicted
++	 * due to being dirty, wake up the flusher.
++	 */
++	if (stat.nr_unqueued_dirty == isolated) {
++		wakeup_flusher_threads(WB_REASON_VMSCAN);
++
++		/*
++		 * For cgroupv1 dirty throttling is achieved by waking up
++		 * the kernel flusher here and later waiting on folios
++		 * which are in writeback to finish (see shrink_folio_list()).
++		 */
++		if (!writeback_throttling_sane(sc))
++			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
++	}
++
+ 	list_for_each_entry_safe_reverse(folio, next, &list, lru) {
+ 		DEFINE_MIN_SEQ(lruvec);
+ 
+@@ -4999,28 +5012,6 @@ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
+ 		cond_resched();
  	}
  
--	dirty = folio_test_dirty(folio);
--	writeback = folio_test_writeback(folio);
--	if (type == LRU_GEN_FILE && dirty) {
--		sc->nr.file_taken += delta;
--		if (!writeback)
--			sc->nr.unqueued_dirty += delta;
+-	/*
+-	 * If too many file cache in the coldest generation can't be evicted
+-	 * due to being dirty, wake up the flusher.
+-	 */
+-	if (sc->nr.unqueued_dirty && sc->nr.unqueued_dirty == sc->nr.file_taken) {
+-		struct pglist_data *pgdat = lruvec_pgdat(lruvec);
+-
+-		wakeup_flusher_threads(WB_REASON_VMSCAN);
+-
+-		/*
+-		 * For cgroupv1 dirty throttling is achieved by waking up
+-		 * the kernel flusher here and later waiting on folios
+-		 * which are in writeback to finish (see shrink_folio_list()).
+-		 *
+-		 * Flusher may not be able to issue writeback quickly
+-		 * enough for cgroupv1 writeback throttling to work
+-		 * on a large system.
+-		 */
+-		if (!writeback_throttling_sane(sc))
+-			reclaim_throttle(pgdat, VMSCAN_THROTTLE_WRITEBACK);
 -	}
 -
--	/* waiting for writeback */
--	if (writeback || (type == LRU_GEN_FILE && dirty)) {
--		gen = folio_inc_gen(lruvec, folio, true);
--		list_move(&folio->lru, &lrugen->folios[gen][type][zone]);
--		return true;
--	}
--
- 	return false;
+ 	return need_rotate;
  }
- 
-@@ -4664,9 +4648,6 @@ static bool isolate_folio(struct lruvec *lruvec, struct folio *folio, struct sca
- 	if (!folio_test_referenced(folio))
- 		set_mask_bits(&folio->flags.f, LRU_REFS_MASK, 0);
- 
--	/* for shrink_folio_list() */
--	folio_clear_reclaim(folio);
--
- 	success = lru_gen_del_folio(lruvec, folio, true);
- 	VM_WARN_ON_ONCE_FOLIO(!success, folio);
  
 
 -- 
