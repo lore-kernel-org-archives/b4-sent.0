@@ -1,49 +1,60 @@
 From: Patrick Vogelaar <patrick.vogelaar@belden.com>
-Date: Thu, 23 Apr 2026 23:02:04 +0200
-Subject: [PATCH meta-virtualization][PATCH 1/2] podman: fix PV to right
- version
+Date: Thu, 23 Apr 2026 23:02:05 +0200
+Subject: [PATCH meta-virtualization][PATCH 2/2] podman: update SRC_URI
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260423-podman-fixes-v1-1-3ffa0badf612@belden.com>
+Message-Id: <20260423-podman-fixes-v1-2-3ffa0badf612@belden.com>
 References: <20260423-podman-fixes-v1-0-3ffa0badf612@belden.com>
 In-Reply-To: <20260423-podman-fixes-v1-0-3ffa0badf612@belden.com>
 To: meta-virtualization@lists.yoctoproject.org
 Cc: Patrick Vogelaar <patrick.vogelaar@belden.com>, 
  patrick.vogelaar.dev@mailbox.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776978137; l=895;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776978137; l=1439;
  i=patrick.vogelaar@belden.com; s=20240201; h=from:subject:message-id;
- bh=3dEjye6kkclmDTUzTAvsaM4X6/mfANGzqzb9BtRfOWw=;
- b=tHT3fAz/NiMZJm5Ii7Z0khjWwFYDOB9zLoYd24AKwxrrH/1zmQG12bvIJhQSW+83kI2uRZZPU
- x8WHHV8DO4PB0A7KvXBXl90WQNJmywtU2DVRLyEg9PBcCUeRBviMYYs
+ bh=yO29jiJJsf/MoZvBQEld2qyQLCDdtYNhT/accy+vUbQ=;
+ b=Iobn5nn+f1sz774eOJPLwCKEmil0s6eXOfddUllf7/A95R95HQWEP2F3ukzMIvFS7GIREMHVW
+ 5ROXjaegxfQAO7FXzpfpfuE0oUQqeVSzPfIrkjG1mqfadyRZgahFpmS
 X-Developer-Key: i=patrick.vogelaar@belden.com; a=ed25519;
  pk=w0QU8RmOR3hQv1DxMcz6KmySeE8yqbvO0xC1ZSSUNqY=
 X-Endpoint-Received: by B4 Relay for patrick.vogelaar@belden.com/20240201 with auth_id=125
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 3b9ff919799daa5eccd56b481cefd61db652ab99 updated the SRCREV as well as
-the branch in the SRC_URI but left PV untouched. This now sets PV to v5.8.1
-which corresponds with the SRCREV.
+Podman is hosted under github as podman and not libpod. Accessing
+github.com/containers/libpod automatically forwards to
+github.com/containers/podman.
+
+This commit does not really fix a problem but reflects more the current
+repository name.
 
 Signed-off-by: Patrick Vogelaar <patrick.vogelaar@belden.com>
 ---
- recipes-containers/podman/podman_git.bb | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ recipes-containers/podman/podman_git.bb | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/recipes-containers/podman/podman_git.bb b/recipes-containers/podman/podman_git.bb
-index df333dfc..fd0cd908 100644
+index fd0cd908..8e108c4e 100644
 --- a/recipes-containers/podman/podman_git.bb
 +++ b/recipes-containers/podman/podman_git.bb
-@@ -27,7 +27,7 @@ LIC_FILES_CHKSUM = "file://src/import/LICENSE;md5=3d9b931fa23ab1cacd0087f9e2ee12
+@@ -18,7 +18,7 @@ DEPENDS = " \
  
- GO_IMPORT = "import"
+ SRCREV = "9d66b48e1c9bc1f4e757384f44c4ecb2838138d7"
+ SRC_URI = " \
+-    git://github.com/containers/libpod.git;branch=v5.8;protocol=https;destsuffix=${GO_SRCURI_DESTSUFFIX} \
++    git://github.com/containers/podman.git;branch=v5.8;protocol=https;destsuffix=${GO_SRCURI_DESTSUFFIX} \
+     ${@bb.utils.contains('PACKAGECONFIG', 'rootless', 'file://50-podman-rootless.conf', '', d)} \
+ "
  
--PV = "v5.7.1"
-+PV = "v5.8.1"
+@@ -34,7 +34,7 @@ CVE_STATUS[CVE-2023-0778] = "fixed-version: fixed since v4.5.0"
  
- CVE_STATUS[CVE-2022-2989] = "fixed-version: fixed since v4.3.0"
- CVE_STATUS[CVE-2023-0778] = "fixed-version: fixed since v4.5.0"
+ PACKAGES =+ "${PN}-contrib"
+ 
+-PODMAN_PKG = "github.com/containers/libpod"
++PODMAN_PKG = "github.com/containers/podman"
+ 
+ BUILDTAGS_EXTRA ?= "${@bb.utils.contains('VIRTUAL-RUNTIME_container_networking','cni','cni','',d)}"
+ BUILDTAGS ?= "seccomp varlink \
 
 -- 
 2.43.0
