@@ -1,11 +1,10 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 24 Apr 2026 01:43:16 +0800
-Subject: [PATCH v6 05/14] mm/mglru: scan and count the exact number of
- folios
+Date: Fri, 24 Apr 2026 01:43:17 +0800
+Subject: [PATCH v6 06/14] mm/mglru: use a smaller batch for reclaim
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260424-mglru-reclaim-v6-5-a57622d770c3@tencent.com>
+Message-Id: <20260424-mglru-reclaim-v6-6-a57622d770c3@tencent.com>
 References: <20260424-mglru-reclaim-v6-0-a57622d770c3@tencent.com>
 In-Reply-To: <20260424-mglru-reclaim-v6-0-a57622d770c3@tencent.com>
 To: linux-mm@kvack.org
@@ -24,209 +23,43 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Qi Zheng <qi.zheng@linux.dev>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776966208; l=7208;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776966208; l=1039;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=ODZqtE2pvK8J9b/Qn9DADqSwqh8BtYgqOn3xmvuv5Ug=;
- b=/aNBx65vJgi4oAH2q8DW6+fyqSR0cgDQBJkhovj+OfQOqHjzrcyH2vK14I3MkjtML4NYv0uEB
- wemkWElke0TBxt1LAOtgwQkHLal1jWOzOM8sVTlEuYI2KQgJfbAChNR
+ bh=prfg9m1Tu1GJeQ+RnyeWNB/GqbsjUBEqoBx+SgrJxbQ=;
+ b=B0GUvgdLw6/QZUwnQrWQy2s99KbNhkSnfjCf1YfCPiMj/KomlU67xWV6/QY/zn21EX/wIU9Ri
+ VkWjytzHo3yAfpYlKd2Rl6bn07KLo3k1PfW76Vw88jHwqKrwlJuD/6I
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make the scan helpers return the exact number of folios being scanned
-or isolated. Since the reclaim loop now has a natural scan budget that
-controls the scan progress, returning the scan number and consuming
-the budget makes the scan more accurate and easier to follow.
-
-The number of scanned folios for each iteration is always larger than
-0, unless the reclaim must stop for a forced aging, so there is no
-more need for any special handling when there is no progress made:
-
-- `return isolated || !remaining ? scanned : 0` in scan_folios: both
-  the function and the call now just return the exact scan count,
-  combined with the scan budget introduced in the previous commit to
-  avoid livelock or under scan.
-
-- `scanned += try_to_inc_min_seq` in evict_folios: adding a bool as a
-  scan count was kind of confusing and no longer needed to, as scan
-  number should never be zero as long as there are still evictable
-  gens. We may encounter a empty old gen that return 0 scan count,
-  to avoid that, do a try_to_inc_min_seq before isolation which
-  have slight to none overhead in most cases.
-
-- `evictable_min_seq + MIN_NR_GENS > max_seq` guard in evict_folios:
-  the per-type get_nr_gens == MIN_NR_GENS check in scan_folios
-  naturally returns 0 when only two gens remain and breaks the loop.
-
-Also change try_to_inc_min_seq to return void, as its return value is
-no longer used by any caller. Call it before isolate_folios to flush
-any empty gens left by external folio freeing, and again after
-isolate_folios when scanning moved or protected folios may have
-emptied the oldest gen.
-
-The scan still stops if only two gens are left, as the scan number
-will be zero. This matches the previous behavior. This forced gen
-protection may be removed or softened later to improve reclaim
-further.
+With a fixed number to reclaim calculated at the beginning, making each
+following step smaller should reduce the lock contention and avoid
+over-aggressive reclaim of folios, as it will abort earlier when the
+number of folios to be reclaimed is reached.
 
 Reviewed-by: Axel Rasmussen <axelrasmussen@google.com>
 Reviewed-by: Chen Ridong <chenridong@huaweicloud.com>
 Reviewed-by: Baolin Wang <baolin.wang@linux.alibaba.com>
+Reviewed-by: Barry Song <baohua@kernel.org>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/vmscan.c | 58 +++++++++++++++++++++++++++++-----------------------------
- 1 file changed, 29 insertions(+), 29 deletions(-)
+ mm/vmscan.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 757beb605980..f021dd1b84f8 100644
+index f021dd1b84f8..f6ee7ccf4e81 100644
 --- a/mm/vmscan.c
 +++ b/mm/vmscan.c
-@@ -3878,10 +3878,9 @@ static bool inc_min_seq(struct lruvec *lruvec, int type, int swappiness)
- 	return true;
- }
+@@ -5006,7 +5006,7 @@ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
+ 			break;
+ 		}
  
--static bool try_to_inc_min_seq(struct lruvec *lruvec, int swappiness)
-+static void try_to_inc_min_seq(struct lruvec *lruvec, int swappiness)
- {
- 	int gen, type, zone;
--	bool success = false;
- 	bool seq_inc_flag = false;
- 	struct lru_gen_folio *lrugen = &lruvec->lrugen;
- 	DEFINE_MIN_SEQ(lruvec);
-@@ -3907,11 +3906,10 @@ static bool try_to_inc_min_seq(struct lruvec *lruvec, int swappiness)
- 
- 	/*
- 	 * If min_seq[type] of both anonymous and file is not increased,
--	 * we can directly return false to avoid unnecessary checking
--	 * overhead later.
-+	 * return here to avoid unnecessary checking overhead later.
- 	 */
- 	if (!seq_inc_flag)
--		return success;
-+		return;
- 
- 	/* see the comment on lru_gen_folio */
- 	if (swappiness && swappiness <= MAX_SWAPPINESS) {
-@@ -3929,10 +3927,7 @@ static bool try_to_inc_min_seq(struct lruvec *lruvec, int swappiness)
- 
- 		reset_ctrl_pos(lruvec, type, true);
- 		WRITE_ONCE(lrugen->min_seq[type], min_seq[type]);
--		success = true;
- 	}
--
--	return success;
- }
- 
- static bool inc_max_seq(struct lruvec *lruvec, unsigned long seq, int swappiness)
-@@ -4686,7 +4681,7 @@ static bool isolate_folio(struct lruvec *lruvec, struct folio *folio, struct sca
- 
- static int scan_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- 		       struct scan_control *sc, int type, int tier,
--		       struct list_head *list)
-+		       struct list_head *list, int *isolatedp)
- {
- 	int i;
- 	int gen;
-@@ -4756,11 +4751,9 @@ static int scan_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- 				type ? LRU_INACTIVE_FILE : LRU_INACTIVE_ANON);
- 	if (type == LRU_GEN_FILE)
- 		sc->nr.file_taken += isolated;
--	/*
--	 * There might not be eligible folios due to reclaim_idx. Check the
--	 * remaining to prevent livelock if it's not making progress.
--	 */
--	return isolated || !remaining ? scanned : 0;
-+
-+	*isolatedp = isolated;
-+	return scanned;
- }
- 
- static int get_tier_idx(struct lruvec *lruvec, int type)
-@@ -4804,33 +4797,36 @@ static int get_type_to_scan(struct lruvec *lruvec, int swappiness)
- 
- static int isolate_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- 			  struct scan_control *sc, int swappiness,
--			  int *type_scanned, struct list_head *list)
-+			  struct list_head *list, int *isolated,
-+			  int *isolate_type, int *isolate_scanned)
- {
- 	int i;
-+	int total_scanned = 0;
- 	int type = get_type_to_scan(lruvec, swappiness);
- 
- 	for_each_evictable_type(i, swappiness) {
- 		int scanned;
- 		int tier = get_tier_idx(lruvec, type);
- 
--		*type_scanned = type;
-+		scanned = scan_folios(nr_to_scan, lruvec, sc,
-+				      type, tier, list, isolated);
- 
--		scanned = scan_folios(nr_to_scan, lruvec, sc, type, tier, list);
--		if (scanned)
--			return scanned;
-+		total_scanned += scanned;
-+		if (*isolated) {
-+			*isolate_type = type;
-+			*isolate_scanned = scanned;
-+			break;
-+		}
- 
- 		type = !type;
- 	}
- 
--	return 0;
-+	return total_scanned;
- }
- 
- static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- 			struct scan_control *sc, int swappiness)
- {
--	int type;
--	int scanned;
--	int reclaimed;
- 	LIST_HEAD(list);
- 	LIST_HEAD(clean);
- 	struct folio *folio;
-@@ -4838,19 +4834,23 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- 	enum node_stat_item item;
- 	struct reclaim_stat stat;
- 	struct lru_gen_mm_walk *walk;
-+	int scanned, reclaimed;
-+	int isolated = 0, type, type_scanned;
- 	bool skip_retry = false;
--	struct lru_gen_folio *lrugen = &lruvec->lrugen;
- 	struct mem_cgroup *memcg = lruvec_memcg(lruvec);
- 	struct pglist_data *pgdat = lruvec_pgdat(lruvec);
- 
- 	lruvec_lock_irq(lruvec);
- 
--	scanned = isolate_folios(nr_to_scan, lruvec, sc, swappiness, &type, &list);
-+	/* In case folio deletion left empty old gens, flush them */
-+	try_to_inc_min_seq(lruvec, swappiness);
- 
--	scanned += try_to_inc_min_seq(lruvec, swappiness);
-+	scanned = isolate_folios(nr_to_scan, lruvec, sc, swappiness,
-+				 &list, &isolated, &type, &type_scanned);
- 
--	if (evictable_min_seq(lrugen->min_seq, swappiness) + MIN_NR_GENS > lrugen->max_seq)
--		scanned = 0;
-+	/* Scanning may have emptied the oldest gen, flush it */
-+	if (scanned)
-+		try_to_inc_min_seq(lruvec, swappiness);
- 
- 	lruvec_unlock_irq(lruvec);
- 
-@@ -4861,7 +4861,7 @@ static int evict_folios(unsigned long nr_to_scan, struct lruvec *lruvec,
- 	sc->nr.unqueued_dirty += stat.nr_unqueued_dirty;
- 	sc->nr_reclaimed += reclaimed;
- 	trace_mm_vmscan_lru_shrink_inactive(pgdat->node_id,
--			scanned, reclaimed, &stat, sc->priority,
-+			type_scanned, reclaimed, &stat, sc->priority,
- 			type ? LRU_INACTIVE_FILE : LRU_INACTIVE_ANON);
- 
- 	list_for_each_entry_safe_reverse(folio, next, &list, lru) {
+-		nr_batch = min(nr_to_scan, MAX_LRU_BATCH);
++		nr_batch = min(nr_to_scan, MIN_LRU_BATCH);
+ 		delta = evict_folios(nr_batch, lruvec, sc, swappiness);
+ 		if (!delta)
+ 			break;
 
 -- 
 2.54.0
