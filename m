@@ -1,10 +1,10 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 24 Apr 2026 01:43:23 +0800
-Subject: [PATCH v6 12/14] mm/vmscan: remove sc->file_taken
+Date: Fri, 24 Apr 2026 01:43:24 +0800
+Subject: [PATCH v6 13/14] mm/vmscan: remove sc->unqueued_dirty
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260424-mglru-reclaim-v6-12-a57622d770c3@tencent.com>
+Message-Id: <20260424-mglru-reclaim-v6-13-a57622d770c3@tencent.com>
 References: <20260424-mglru-reclaim-v6-0-a57622d770c3@tencent.com>
 In-Reply-To: <20260424-mglru-reclaim-v6-0-a57622d770c3@tencent.com>
 To: linux-mm@kvack.org
@@ -23,11 +23,11 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Qi Zheng <qi.zheng@linux.dev>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776966208; l=1018;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776966208; l=1092;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=hbjcSghvUpKJ+Cq31Huf7ozCEGn1Zf5iRINfj/MTnU4=;
- b=9Hs8tFOS36fafoVOzNH2AmgLcP26/rJlYpL3c+JrWMbVYfCT9/cI2Qno4ktn6aBAU5LO1x+jb
- UGIl2T7iv9UD0BDWwjOYZfuWOcY58EynFCKnUzbsEL02TQ99LaK7DZE
+ bh=BcORidMLEmQouegYnHcnzJgwCLFGF5hvusRRBleG7A4=;
+ b=jK5uHZZUVzeN0NAKTODLaABCBqMJKZvZMubU/ltTUylOFyl+ZQ+lSpeo1aKQ9OOUQcBVjTDM8
+ sqJIiKuJZBgCgIMWLK/Ppy6q83QKXlxGiq9gk73Lt0d8XKZ0W8Q61tk
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
@@ -35,35 +35,36 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 No one is using it now, just remove it.
 
-Reviewed-by: Axel Rasmussen <axelrasmussen@google.com>
+Suggested-by: Axel Rasmussen <axelrasmussen@google.com>
 Reviewed-by: Baolin Wang <baolin.wang@linux.alibaba.com>
+Reviewed-by: Axel Rasmussen <axelrasmussen@google.com>
+Reviewed-by: Barry Song <baohua@kernel.org>
 Reviewed-by: Chen Ridong <chenridong@huaweicloud.com>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/vmscan.c | 3 ---
- 1 file changed, 3 deletions(-)
+ mm/vmscan.c | 2 --
+ 1 file changed, 2 deletions(-)
 
 diff --git a/mm/vmscan.c b/mm/vmscan.c
-index f6cb1a4b6a31..7bec0ae51465 100644
+index 7bec0ae51465..6df5ab625e6a 100644
 --- a/mm/vmscan.c
 +++ b/mm/vmscan.c
-@@ -173,7 +173,6 @@ struct scan_control {
+@@ -169,7 +169,6 @@ struct scan_control {
+ 
+ 	struct {
+ 		unsigned int dirty;
+-		unsigned int unqueued_dirty;
  		unsigned int congested;
  		unsigned int writeback;
  		unsigned int immediate;
--		unsigned int file_taken;
- 		unsigned int taken;
- 	} nr;
+@@ -2035,7 +2034,6 @@ static unsigned long shrink_inactive_list(unsigned long nr_to_scan,
  
-@@ -2040,8 +2039,6 @@ static unsigned long shrink_inactive_list(unsigned long nr_to_scan,
+ 	sc->nr.dirty += stat.nr_dirty;
+ 	sc->nr.congested += stat.nr_congested;
+-	sc->nr.unqueued_dirty += stat.nr_unqueued_dirty;
  	sc->nr.writeback += stat.nr_writeback;
  	sc->nr.immediate += stat.nr_immediate;
  	sc->nr.taken += nr_taken;
--	if (file)
--		sc->nr.file_taken += nr_taken;
- 
- 	trace_mm_vmscan_lru_shrink_inactive(pgdat->node_id,
- 			nr_scanned, nr_reclaimed, &stat, sc->priority, file);
 
 -- 
 2.54.0
