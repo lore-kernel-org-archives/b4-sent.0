@@ -1,10 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Fri, 24 Apr 2026 01:43:17 +0800
-Subject: [PATCH v6 06/14] mm/mglru: use a smaller batch for reclaim
+Date: Fri, 24 Apr 2026 01:43:18 +0800
+Subject: [PATCH v6 07/14] mm/mglru: don't abort scan immediately right
+ after aging
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260424-mglru-reclaim-v6-6-a57622d770c3@tencent.com>
+Message-Id: <20260424-mglru-reclaim-v6-7-a57622d770c3@tencent.com>
 References: <20260424-mglru-reclaim-v6-0-a57622d770c3@tencent.com>
 In-Reply-To: <20260424-mglru-reclaim-v6-0-a57622d770c3@tencent.com>
 To: linux-mm@kvack.org
@@ -23,43 +24,100 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Qi Zheng <qi.zheng@linux.dev>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776966208; l=1039;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1776966208; l=3735;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=prfg9m1Tu1GJeQ+RnyeWNB/GqbsjUBEqoBx+SgrJxbQ=;
- b=B0GUvgdLw6/QZUwnQrWQy2s99KbNhkSnfjCf1YfCPiMj/KomlU67xWV6/QY/zn21EX/wIU9Ri
- VkWjytzHo3yAfpYlKd2Rl6bn07KLo3k1PfW76Vw88jHwqKrwlJuD/6I
+ bh=cyzkCao3l6tObidLw0rB9YIwMV9MllEksfGhK4Us/14=;
+ b=0MXMmuZsZb1934LVkoZkqTiJqAyaKJhn4iq3J+AU0zWoPtHsgd+IWLlubb/4xiaYV+97NvQP0
+ 1e5BCs8PQcfDY8nxg9cC3PBEtPpWyMDipNHror9tUNf2Qd82b52WQ5A
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With a fixed number to reclaim calculated at the beginning, making each
-following step smaller should reduce the lock contention and avoid
-over-aggressive reclaim of folios, as it will abort earlier when the
-number of folios to be reclaimed is reached.
+Right now, if eviction triggers aging, the reclaimer will abort. This is
+not the optimal strategy for several reasons.
+
+Aborting the reclaim early wastes a reclaim cycle when under pressure,
+and for concurrent reclaim, if the LRU is under aging, all concurrent
+reclaimers might fail. And if the age has just finished, new cold folios
+exposed by the aging are not reclaimed until the next reclaim iteration.
+
+What's more, the current aging trigger is quite lenient, having 3 gens
+with a reclaim priority lower than default will trigger aging, and
+blocks reclaiming from one memcg. This wastes reclaim retry cycles
+easily. And in the worst case, if the reclaim is making slower progress
+and all following attempts fail due to being blocked by aging, it
+triggers unexpected early OOM.
+
+And if a lruvec requires aging, it doesn't mean it's hot. Instead, the
+lruvec could be idle for quite a while, and hence it might contain lots
+of cold folios to be reclaimed.
+
+While it's helpful to rotate memcg LRU after aging for global reclaim,
+as global reclaim fairness is coupled with the rotation in shrink_many,
+memcg fairness is instead handled by cgroup iteration in
+shrink_node_memcgs. So, for memcg level pressure, this abort is not the
+key part for keeping the fairness. And in most cases, there is no need
+to age, and fairness must be achieved by upper-level reclaim control.
+
+So instead, just keep the scanning going unless one whole batch of
+folios failed to be isolated or enough folios have been scanned, which
+is triggered by evict_folios returning 0. And only abort for global
+reclaim after one batch, so when there are fewer memcgs, progress is
+still made, and the fairness mechanism described above still works fine.
+
+And in most cases, the one more batch attempt for global reclaim might
+just be enough to satisfy what the reclaimer needs, hence improving
+global reclaim performance by reducing reclaim retry cycles.
+
+Rotation is still there after the reclaim is done, which still follows
+the comment in mmzone.h. And fairness still looking good.
 
 Reviewed-by: Axel Rasmussen <axelrasmussen@google.com>
 Reviewed-by: Chen Ridong <chenridong@huaweicloud.com>
-Reviewed-by: Baolin Wang <baolin.wang@linux.alibaba.com>
 Reviewed-by: Barry Song <baohua@kernel.org>
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/vmscan.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ mm/vmscan.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
 diff --git a/mm/vmscan.c b/mm/vmscan.c
-index f021dd1b84f8..f6ee7ccf4e81 100644
+index f6ee7ccf4e81..084c6ea8910c 100644
 --- a/mm/vmscan.c
 +++ b/mm/vmscan.c
-@@ -5006,7 +5006,7 @@ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
- 			break;
+@@ -4984,7 +4984,7 @@ static bool should_abort_scan(struct lruvec *lruvec, struct scan_control *sc)
+  */
+ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
+ {
+-	bool need_rotate = false;
++	bool need_rotate = false, should_age = false;
+ 	long nr_batch, nr_to_scan;
+ 	int swappiness = get_swappiness(lruvec, sc);
+ 	struct mem_cgroup *memcg = lruvec_memcg(lruvec);
+@@ -5002,8 +5002,7 @@ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
+ 		if (should_run_aging(lruvec, max_seq, sc, swappiness)) {
+ 			if (try_to_inc_max_seq(lruvec, max_seq, swappiness, false))
+ 				need_rotate = true;
+-			/* stop scanning as it's low on cold folios */
+-			break;
++			should_age = true;
  		}
  
--		nr_batch = min(nr_to_scan, MAX_LRU_BATCH);
-+		nr_batch = min(nr_to_scan, MIN_LRU_BATCH);
- 		delta = evict_folios(nr_batch, lruvec, sc, swappiness);
- 		if (!delta)
+ 		nr_batch = min(nr_to_scan, MIN_LRU_BATCH);
+@@ -5014,6 +5013,13 @@ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
+ 		if (should_abort_scan(lruvec, sc))
  			break;
+ 
++		/*
++		 * Root reclaim needs rotation when low on cold folio for better
++		 * fairness. Cgroup reclaim gets fairness from the iterator.
++		 */
++		if (root_reclaim(sc) && should_age)
++			break;
++
+ 		nr_to_scan -= delta;
+ 		cond_resched();
+ 	}
 
 -- 
 2.54.0
