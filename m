@@ -1,61 +1,93 @@
-From: Patrick Vogelaar <patrick.vogelaar@belden.com>
-Date: Thu, 23 Apr 2026 23:02:05 +0200
-Subject: [PATCH meta-virtualization][PATCH 2/2] podman: update SRC_URI
+From: Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
+Date: Fri, 24 Apr 2026 15:40:22 +0530
+Subject: [PATCH v3] arm64: dts: qcom: talos: Add memory-region for audio PD
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260423-podman-fixes-v1-2-3ffa0badf612@belden.com>
-References: <20260423-podman-fixes-v1-0-3ffa0badf612@belden.com>
-In-Reply-To: <20260423-podman-fixes-v1-0-3ffa0badf612@belden.com>
-To: meta-virtualization@lists.yoctoproject.org
-Cc: Patrick Vogelaar <patrick.vogelaar@belden.com>, 
- patrick.vogelaar.dev@mailbox.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1776978137; l=1439;
- i=patrick.vogelaar@belden.com; s=20240201; h=from:subject:message-id;
- bh=yO29jiJJsf/MoZvBQEld2qyQLCDdtYNhT/accy+vUbQ=;
- b=Iobn5nn+f1sz774eOJPLwCKEmil0s6eXOfddUllf7/A95R95HQWEP2F3ukzMIvFS7GIREMHVW
- 5ROXjaegxfQAO7FXzpfpfuE0oUQqeVSzPfIrkjG1mqfadyRZgahFpmS
-X-Developer-Key: i=patrick.vogelaar@belden.com; a=ed25519;
- pk=w0QU8RmOR3hQv1DxMcz6KmySeE8yqbvO0xC1ZSSUNqY=
-X-Endpoint-Received: by B4 Relay for patrick.vogelaar@belden.com/20240201 with auth_id=125
+Message-Id: <20260424-talosaudio-v3-1-9e2ad5d78a2e@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAI5B62kC/23MQQ6DIBCF4auYWRcjoBa76j2aLgaBSqLSgpI2x
+ rsXXbWJm0n+Sd63QNDe6gCXbAGvow3WjSn4KYO2w/GhiVWpgRWsLkoqyIS9Czgr64gUujVCNkg
+ lhzR4em3se8du99SdDZPzn92OdPseMpESSipRoWTMIJry6kLIXzP2rRuGPB3YtMh+heZPYEngy
+ GWlVH1W6khY1/ULhq2KtO0AAAA=
+X-Change-ID: 20260418-talosaudio-b8ecf8b9a1b3
+To: konrad.dybcio@oss.qualcomm.com, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, quic_bkumar@quicinc.com, 
+ quic_chennak@quicinc.com, dmitry.baryshkov@oss.qualcomm.com
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777025424; l=2086;
+ i=ekansh.gupta@oss.qualcomm.com; s=20260223; h=from:subject:message-id;
+ bh=BMQhN87MOW3Bin4ZVjUzWQxUOWRhdvvp1i+NLcdrruM=;
+ b=AZSk/nnoNK1O+zaH16pGtagQAZwKk0vhXw+p0ekjNHu6e5j9UK9UM1bQTzBZEP1WF31mtDx2f
+ z754EqRI2xlBOMYhrWaV+hAfPDlB+kOOPR+Gg2S+qurnJEdSh7cuAbD
+X-Developer-Key: i=ekansh.gupta@oss.qualcomm.com; a=ed25519;
+ pk=n0SepARizye+pYjhjg1RA5J+Nq4+IJbyRcBybU+/ERQ=
+X-Endpoint-Received: by B4 Relay for ekansh.gupta@oss.qualcomm.com/20260223 with auth_id=647
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Podman is hosted under github as podman and not libpod. Accessing
-github.com/containers/libpod automatically forwards to
-github.com/containers/podman.
+Reserve memory region for audio PD dynamic loading and remote heap
+requirements. Add the required VMID list for memory ownership
+transfers.
 
-This commit does not really fix a problem but reflects more the current
-repository name.
-
-Signed-off-by: Patrick Vogelaar <patrick.vogelaar@belden.com>
+Signed-off-by: Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
 ---
- recipes-containers/podman/podman_git.bb | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Changes in v3:
+- Use shared-dma-pool representation for adsp_rpc_remote_heap_mem.
+- Link to v2: https://lore.kernel.org/r/20260419-talosaudio-v2-1-3a3b5dd67dd4@oss.qualcomm.com
 
-diff --git a/recipes-containers/podman/podman_git.bb b/recipes-containers/podman/podman_git.bb
-index fd0cd908..8e108c4e 100644
---- a/recipes-containers/podman/podman_git.bb
-+++ b/recipes-containers/podman/podman_git.bb
-@@ -18,7 +18,7 @@ DEPENDS = " \
- 
- SRCREV = "9d66b48e1c9bc1f4e757384f44c4ecb2838138d7"
- SRC_URI = " \
--    git://github.com/containers/libpod.git;branch=v5.8;protocol=https;destsuffix=${GO_SRCURI_DESTSUFFIX} \
-+    git://github.com/containers/podman.git;branch=v5.8;protocol=https;destsuffix=${GO_SRCURI_DESTSUFFIX} \
-     ${@bb.utils.contains('PACKAGECONFIG', 'rootless', 'file://50-podman-rootless.conf', '', d)} \
- "
- 
-@@ -34,7 +34,7 @@ CVE_STATUS[CVE-2023-0778] = "fixed-version: fixed since v4.5.0"
- 
- PACKAGES =+ "${PN}-contrib"
- 
--PODMAN_PKG = "github.com/containers/libpod"
-+PODMAN_PKG = "github.com/containers/podman"
- 
- BUILDTAGS_EXTRA ?= "${@bb.utils.contains('VIRTUAL-RUNTIME_container_networking','cni','cni','',d)}"
- BUILDTAGS ?= "seccomp varlink \
+Changes in v2:
+- Fixed VMID list alignment.
+- Link to v1: https://lore.kernel.org/r/20260418-talosaudio-v1-1-585ab22faaf4@oss.qualcomm.com
+---
+ arch/arm64/boot/dts/qcom/talos.dtsi | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
+diff --git a/arch/arm64/boot/dts/qcom/talos.dtsi b/arch/arm64/boot/dts/qcom/talos.dtsi
+index ff5afbfce2a4..c230d46616ea 100644
+--- a/arch/arm64/boot/dts/qcom/talos.dtsi
++++ b/arch/arm64/boot/dts/qcom/talos.dtsi
+@@ -11,6 +11,7 @@
+ #include <dt-bindings/clock/qcom,qcs615-videocc.h>
+ #include <dt-bindings/clock/qcom,rpmh.h>
+ #include <dt-bindings/dma/qcom-gpi.h>
++#include <dt-bindings/firmware/qcom,scm.h>
+ #include <dt-bindings/interconnect/qcom,icc.h>
+ #include <dt-bindings/interconnect/qcom,osm-l3.h>
+ #include <dt-bindings/interconnect/qcom,qcs615-rpmh.h>
+@@ -657,6 +658,14 @@ pil_gpu_mem: pil-gpu@97715000 {
+ 			reg = <0x0 0x97715000 0x0 0x2000>;
+ 			no-map;
+ 		};
++
++		adsp_rpc_remote_heap_mem: adsp-rpc-remote-heap {
++			compatible = "shared-dma-pool";
++			alloc-ranges = <0x0 0x80000000 0x0 0x80000000>;
++			reusable;
++			alignment = <0x0 0x400000>;
++			size = <0x0 0x800000>;
++		};
+ 	};
+ 
+ 	soc: soc@0 {
+@@ -5100,6 +5109,9 @@ fastrpc {
+ 					compatible = "qcom,fastrpc";
+ 					qcom,glink-channels = "fastrpcglink-apps-dsp";
+ 					label = "adsp";
++					memory-region = <&adsp_rpc_remote_heap_mem>;
++					qcom,vmids = <QCOM_SCM_VMID_LPASS
++						      QCOM_SCM_VMID_ADSP_HEAP>;
+ 					#address-cells = <1>;
+ 					#size-cells = <0>;
+ 
+
+---
+base-commit: c7275b05bc428c7373d97aa2da02d3a7fa6b9f66
+change-id: 20260418-talosaudio-b8ecf8b9a1b3
+
+Best regards,
 -- 
-2.43.0
+Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
 
