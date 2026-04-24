@@ -1,10 +1,10 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Fri, 24 Apr 2026 13:37:54 +0200
-Subject: [PATCH RFC 4/5] nvme: Implement CDQ core functionality
+Date: Fri, 24 Apr 2026 13:37:55 +0200
+Subject: [PATCH RFC 5/5] nvme: Add CDQ ioctl interface
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260424-jag-cdq-lkml-v1-4-d773343a717c@kernel.org>
+Message-Id: <20260424-jag-cdq-lkml-v1-5-d773343a717c@kernel.org>
 References: <20260424-jag-cdq-lkml-v1-0-d773343a717c@kernel.org>
 In-Reply-To: <20260424-jag-cdq-lkml-v1-0-d773343a717c@kernel.org>
 To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
@@ -13,423 +13,178 @@ To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>,
 Cc: linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=11713;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4647;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=03dIhM6pDJ5/ddT82ZomuEoboyghm3luwc7xkzLLs88=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGnrVivxNLZQykSGg3CE/47xTNKxYrOEd9nZf
- vOda17oyKYwHIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJp61YrAAoJELqXzVK3
- lkFP2rgMAJbWG0HCVpWSQ6yt2fAL2UfZYcpGbZAEeROPC/XSdN4bs9E3Ex6WXAsb94amuofT2hs
- EPJuiG1pRPneAJoiIe6Qo6/Qss/rOhyZNtzaZEh3ljWWEuFxnB0an6KlloMlCPRwZxhPl5XtLL8
- E7Cr3gQnoQmmoxc+jNrYwBQCD6/8fUuTe+vweaO4Fteys4meuuxVc3RiQqS0YlXkQNXXcRP45fd
- 4vhA6A1ldF1XJBO7f/DlX9gF2UJdxl8ruE1awQXrvQWt8wohZa+CsuGSmuH1XBmS+gT9fyAD/nk
- nb78UEpqT+Cbv5O7YoOysw1X74mOMhVEg9AXni0pWdDS8HBEJzZLMWumFNXFDI4Tt4RmQAEL/0R
- fMMukadKvTNK8U5XJ0SzNuxD8Uu4JrQhA5DyptiCMqUzrvEwTadNb9NNfWuY6U0vw6rVNRXdOr/
- 7FEVQAasLkGgfnEL/tDGHIkuVAjAzw8CmBd9gJKUkGb6owM5xMsFUEoUc9pGk0xlUF4JFt/86g5
- bg=
+ bh=4sHaCCccq5eLSKvrkGZ7ST8L13vQIeDmpX57uViLJyE=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGnrVis0PgumY0ewTsOM/34h4kUkJuD+/2+4f
+ PTJZqQVf1j6dYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJp61YrAAoJELqXzVK3
+ lkFPn3wL/jKdR3jvoJ0nVQYDcX4EEO2SLnTzID0qaLwYRqAPiJmn/jBYhrYUsNL4fXi6a+E2tJ1
+ IEETlT35XxhtJdlxAfL0aWZ/6GcemL5+6hFMT60dajXJvGyaCYXW2Ew5lgzYlEZ9uFOgkMKyEYK
+ IItpm8sLMG8XnAlI8re4VwZBU0xXSmfUG+A6ePP0S/y1kKqS8RbBBv5JeNqOGUfkFKJ5MiqO2D2
+ LW67cNFUGY8fUI2/UmatG8XQITi1qUlTISBcNs/ET/B/S5efz4ulMpgIi/MwiHmO6U05stXYty5
+ tVdmNtWcBqe8E81ADtOHdBCPSh2ljFQORv1Dne9Nhgk6Py/wSMw88jQ+in3hqgCoGv2ygpHjWR7
+ /b7HW8k0h4tq1QjObs9Xa3VGV89vIxyLYulDE6QyRjsdiDDrpubK1LX3MgeMailp96i6ZiK3+7v
+ SLHJQlEf/NJoniwSD6kiJ8PSWLB9XV/wiuk1s0+KZIlEf7Ou/MpWNIsk1NugFnxoA8aVrg8+m26
+ Gk=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Controller Data Queue (CDQ) support to the NVMe driver. CDQs enable
-efficient device-to-host data transfer through dedicated queues with
-DMA-mapped user memory.
+Add userspace ioctl interface for CDQ (Controller Data Queue)
+management. This allows userspace applications to create, configure,
+and delete CDQs.
 
-This patch implements:
-- DMA mapping with user page pinning (nvme_cdq_map_dma_usr)
-- PRP list allocation for discontiguous memory (nvme_cdq_alloc_prp_list)
-- CDQ create/delete commands (nvme_cdq_create, nvme_cdq_delete)
-- Tail pointer event notification via eventfd (nvme_cdq_set_tpt)
-- Async event notification handling for CDQ events
-- xarray-based CDQ instance management
-- Integration into controller init/free paths
-- Add function declarations for CDQ lifecycle management:
-  nvme_cdq_create(), nvme_cdq_delete(), nvme_cdq_set_tpt()
+The interface includes:
+- struct nvme_cdq_cmd for passing CDQ parameters
+- NVME_IOCTL_CDQ ioctl command (0x50)
+- Support for both controller and device ioctls
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- drivers/nvme/host/core.c | 306 +++++++++++++++++++++++++++++++++++++++++++++--
- drivers/nvme/host/nvme.h |   5 +
- 2 files changed, 304 insertions(+), 7 deletions(-)
+ drivers/nvme/host/ioctl.c       | 53 ++++++++++++++++++++++++++++++++++++++++-
+ include/uapi/linux/nvme_ioctl.h | 29 ++++++++++++++++++++++
+ 2 files changed, 81 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
-index be4807591d2d80d228c10e3c78b6b7dc371b3865..1bcdf328b0edf0ede7a799a965fd0b539404e3c6 100644
---- a/drivers/nvme/host/core.c
-+++ b/drivers/nvme/host/core.c
-@@ -23,6 +23,7 @@
- #include <linux/pm_qos.h>
- #include <linux/ratelimit.h>
- #include <linux/unaligned.h>
-+#include <linux/eventfd.h>
- 
+diff --git a/drivers/nvme/host/ioctl.c b/drivers/nvme/host/ioctl.c
+index 8844bbd395159e544218db413e066cae6c24b2f1..98441439bd6be67e20717fed4ffc4d32c9b37725 100644
+--- a/drivers/nvme/host/ioctl.c
++++ b/drivers/nvme/host/ioctl.c
+@@ -8,6 +8,7 @@
+ #include <linux/nvme_ioctl.h>
+ #include <linux/io_uring/cmd.h>
  #include "nvme.h"
- #include "fabrics.h"
-@@ -1252,6 +1253,298 @@ u32 nvme_passthru_start(struct nvme_ctrl *ctrl, struct nvme_ns *ns, u8 opcode)
- }
- EXPORT_SYMBOL_NS_GPL(nvme_passthru_start, "NVME_TARGET_PASSTHRU");
++#include "trace.h"
  
-+static void nvme_cdq_unmap_dma_usr(struct nvme_ctrl *ctrl, struct cdq_nvme_queue *cdq)
+ enum {
+ 	NVME_IOCTL_VEC		= (1 << 0),
+@@ -373,6 +374,51 @@ static int nvme_user_cmd64(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
+ 	return status;
+ }
+ 
++static int nvme_user_cdq(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
++		struct nvme_cdq_cmd __user *ucmd, unsigned int flags,
++		bool open_for_write)
 +{
-+	dma_unmap_sgtable(ctrl->dev, &cdq->sgt, DMA_BIDIRECTIONAL, 0);
-+	sg_free_table(&cdq->sgt);
-+	unpin_user_pages(cdq->pages, cdq->nr_pages);
-+	kfree(cdq->pages);
-+}
++	int status;
++	u16 cdq_id = 0;
++	struct nvme_cdq_cmd cmd = {};
 +
-+/* nvme_cdq_alloc_from_usr - Make user virtual memory DMAable */
-+static int nvme_cdq_map_dma_usr(struct nvme_ctrl *ctrl, struct cdq_nvme_queue *cdq,
-+				const u32 size_nbytes, unsigned long uaddr)
-+{
-+	int ret = -ENOMEM;
-+	struct page **pages;
++	if (copy_from_user(&cmd, ucmd, sizeof(cmd)))
++		return -EFAULT;
 +
-+	if (!PAGE_ALIGN(uaddr))
++	/* 21 = 12 (PAGE_SHIFT) + 9 (PAGE_SHIFT / sizeof(u64)) */
++	if (cmd.size_nbyte > MAX_NR_CDQ_PRPS << 21)
 +		return -EINVAL;
 +
-+	cdq->nr_pages = (size_nbytes + PAGE_SIZE - 1) >> PAGE_SHIFT;
-+	pages = kvmalloc_array(cdq->nr_pages, sizeof(struct page *), GFP_KERNEL);
-+	if (!pages)
-+		return -ENOMEM;
-+
-+	mmap_read_lock(current->mm);
-+	ret = pin_user_pages(uaddr, cdq->nr_pages, FOLL_WRITE | FOLL_LONGTERM, pages);
-+	if (ret != cdq->nr_pages) {
-+		if (ret > 0)
-+			unpin_user_pages(pages, ret);
-+		ret = -EFAULT;
-+		mmap_read_unlock(current->mm);
-+		goto free_pages;
-+	}
-+	mmap_read_unlock(current->mm);
-+
-+	ret = sg_alloc_table_from_pages_segment(&cdq->sgt, pages, cdq->nr_pages,
-+						0, size_nbytes, PAGE_SIZE, GFP_KERNEL);
-+	if (ret)
-+		goto unpin_pages;
-+
-+	ret = dma_map_sgtable(ctrl->dev, &cdq->sgt, DMA_BIDIRECTIONAL, 0);
-+	if (ret)
-+		goto free_sgt;
-+
-+	cdq->pages = pages;
-+
-+	return 0;
-+
-+free_sgt:
-+	sg_free_table(&cdq->sgt);
-+
-+unpin_pages:
-+	unpin_user_pages(pages, cdq->nr_pages);
-+
-+free_pages:
-+	kvfree(pages);
-+
-+	return ret;
-+}
-+
-+static void nvme_cdq_free_prp_lists(struct nvme_ctrl *ctrl,
-+				    struct cdq_nvme_queue *cdq)
-+{
-+	for (int i = 0; i < cdq->nr_prp_lists; ++i) {
-+		if (cdq->prp_lists[i])
-+			dma_free_coherent(ctrl->dev, PAGE_SIZE,
-+					  cdq->prp_lists[i],
-+					  cdq->prp_lists_dma[i]);
-+	}
-+}
-+static int nvme_cdq_alloc_prp_single(struct nvme_ctrl *ctrl, struct cdq_nvme_queue *cdq)
-+{
-+	cdq->nr_prp_lists = 0;
-+	memset(cdq->prp_lists, 0, sizeof(cdq->prp_lists));
-+	cdq->prp_lists_dma[0] = sg_dma_address(cdq->sgt.sgl);
-+	cdq->prp_lists_dma[1] = 0;
-+	return 0;
-+}
-+
-+static int nvme_cdq_alloc_prp_list(struct nvme_ctrl *ctrl, struct cdq_nvme_queue *cdq)
-+{
-+	unsigned int i, prp_list_idx = 0;
-+	struct scatterlist *sg;
-+	u64 *prp_list, *prp_list_tmp;
-+	dma_addr_t prp_list_tmp_dma;
-+
-+	prp_list = dma_alloc_coherent(ctrl->dev, PAGE_SIZE, &prp_list_tmp_dma, GFP_KERNEL);
-+	if (!prp_list)
-+		return -ENOMEM;
-+
-+	cdq->prp_lists[0] = prp_list;
-+	cdq->prp_lists_dma[0] = prp_list_tmp_dma;
-+	cdq->nr_prp_lists = 1;
-+
-+	for_each_sgtable_dma_sg(&cdq->sgt, sg, i) {
-+		if (prp_list_idx == PAGE_SIZE >> 3) {
-+			if (cdq->nr_prp_lists == MAX_NR_CDQ_PRPS)
-+				goto prps_err;
-+
-+			prp_list_tmp = dma_alloc_coherent(ctrl->dev,
-+					PAGE_SIZE, &prp_list_tmp_dma, GFP_KERNEL);
-+			if (!prp_list_tmp)
-+				goto prps_err;
-+
-+			cdq->prp_lists_dma[cdq->nr_prp_lists] = prp_list_tmp_dma;
-+			cdq->prp_lists[cdq->nr_prp_lists++] = prp_list_tmp;
-+
-+			prp_list = prp_list_tmp;
-+			prp_list_idx = 0;
-+		}
-+		prp_list[prp_list_idx++] = sg_dma_address(sg);
-+	}
-+
-+	return 0;
-+
-+prps_err:
-+	nvme_cdq_free_prp_lists(ctrl, cdq);
-+
-+	return -EFAULT;
-+}
-+
-+static int nvme_cdq_cmd_delete(struct nvme_ctrl *ctrl, const u16 cdq_id)
-+{
-+	struct nvme_command c = {
-+		.cdq.opcode = nvme_admin_cdq,
-+		.cdq.sel = NVME_CDQ_SEL_DELETE_CDQ,
-+		.cdq.dw11.cdqid = cdq_id
-+	};
-+
-+	return __nvme_submit_sync_cmd(ctrl->admin_q, &c, NULL, NULL, 0, NVME_QID_ANY, 0);
-+}
-+
-+static int nvme_cdq_cmd_create(struct cdq_nvme_queue *cdq, const u16 mos, const u16 cqs,
-+			       const u16 dw11_flags)
-+{
-+	int ret;
-+	union nvme_result result = { };
-+	struct nvme_command c = {
-+		.cdq.opcode = nvme_admin_cdq,
-+		.cdq.sel = NVME_CDQ_SEL_CREATE_CDQ,
-+		.cdq.mos = cpu_to_le16(mos),
-+		.cdq.dw11.cqs = cpu_to_le16(cqs),
-+		.cdq.cdqsize = cdq->size_nbyte >> 2, // >>2: size is in dwords
-+		.cdq.dw11.flags = cpu_to_le16(dw11_flags),
-+		.cdq.prp1 = cdq->prp_lists_dma[0]
-+	};
-+
-+	ret = __nvme_submit_sync_cmd(cdq->ctrl->admin_q, &c, &result, NULL, 0, NVME_QID_ANY, 0);
-+	if (ret)
-+		return ret;
-+
-+	cdq->cdq_id = le16_to_cpu(result.u16);
-+
-+	return ret;
-+}
-+
-+int nvme_cdq_set_tpt(struct nvme_ctrl *ctrl, u16 cdq_id, const int tpt_fd)
-+{
-+
-+	struct cdq_nvme_queue *cdq;
-+
-+	if (tpt_fd < 0)
-+		return -EINVAL;
-+
-+	cdq = xa_load(&ctrl->cdqs, cdq_id);
-+	if (xa_is_err(cdq))
-+		return -EINVAL;
-+
-+	if (cdq->tpt_efd_ctx)
-+		eventfd_ctx_put(cdq->tpt_efd_ctx);
-+
-+	cdq->tpt_efd_ctx = eventfd_ctx_fdget(tpt_fd);
-+	if (IS_ERR(cdq->tpt_efd_ctx))
-+		return -EINVAL;
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(nvme_cdq_set_tpt);
-+
-+int nvme_cdq_create(struct nvme_ctrl *ctrl, const u16 mos, const u16 cqs,
-+		    unsigned long uaddr, const u32 size_nbyte, u16 *cdq_id)
-+{
-+	int ret;
-+	u16 d11_flags;
-+	struct cdq_nvme_queue *cdq, *xa_ret;
-+
-+	cdq = kzalloc(sizeof(*cdq), GFP_KERNEL);
-+	if (!cdq)
-+		return -ENOMEM;
-+
-+	cdq->ctrl = ctrl;
-+	cdq->size_nbyte = size_nbyte;
-+
-+	ret = nvme_cdq_map_dma_usr(ctrl, cdq, size_nbyte, uaddr);
-+	if (ret)
-+		goto err_cdq_free;
-+
-+	if (cdq->sgt.nents > 1) {
-+		d11_flags = NVME_CDQ_CFG_PC_DISCONT;
-+		ret = nvme_cdq_alloc_prp_list(ctrl, cdq);
++	if (cmd.size_nbyte == 0) {
++		status = nvme_cdq_delete(ctrl, cmd.id);
 +	} else {
-+		d11_flags = NVME_CDQ_CFG_PC_CONT;
-+		ret = nvme_cdq_alloc_prp_single(ctrl, cdq);
++		status = nvme_cdq_create(ctrl, cmd.mos, cmd.cqs, cmd.entries,
++					 cmd.size_nbyte, &cdq_id);
++		if (status)
++			return status;
++
++		if (cmd.tpt_fd > 0) {
++			status = nvme_cdq_set_tpt(ctrl, cdq_id, cmd.tpt_fd);
++			if (status)
++				goto del_cdq;
++		}
++
++		cmd.id = cdq_id;
++
++		if (copy_to_user(ucmd, &cmd, sizeof(cmd))) {
++			status = -EINVAL;
++			goto del_cdq;
++		}
 +	}
 +
-+	if (ret)
-+		goto err_cdq_unmap_dma;
++	return status;
 +
-+	ret = nvme_cdq_cmd_create(cdq, mos, cqs, d11_flags);
-+	if (ret)
-+		goto err_cdq_free_prp;
-+
-+	xa_ret = xa_store(&ctrl->cdqs, cdq->cdq_id, cdq, GFP_KERNEL);
-+	if (xa_is_err(xa_ret)) {
-+		ret = xa_err(xa_ret);
-+		goto err_cmd_del;
-+	}
-+
-+	*cdq_id = cdq->cdq_id;
-+
-+	return 0;
-+
-+err_cmd_del:
-+	nvme_cdq_cmd_delete(ctrl, cdq->cdq_id);
-+
-+err_cdq_free_prp:
-+	nvme_cdq_free_prp_lists(ctrl, cdq);
-+
-+err_cdq_unmap_dma:
-+	cdq_id = NULL;
-+	nvme_cdq_unmap_dma_usr(ctrl, cdq);
-+
-+err_cdq_free:
-+	kfree(cdq);
-+
-+	return ret;
-+}
-+EXPORT_SYMBOL_GPL(nvme_cdq_create);
-+
-+int nvme_cdq_delete(struct nvme_ctrl *ctrl, const u16 cdq_id)
-+{
-+	int ret;
-+	struct cdq_nvme_queue *cdq;
-+
-+	cdq = xa_load(&ctrl->cdqs, cdq_id);
-+	if (xa_is_err(cdq))
-+		return -EINVAL;
-+
-+	if (cdq->tpt_efd_ctx)
-+		eventfd_ctx_put(cdq->tpt_efd_ctx);
-+
-+	ret = nvme_cdq_cmd_delete(ctrl, cdq_id);
-+	if (ret)
-+		return ret;
-+
-+	cdq = xa_erase(&ctrl->cdqs, cdq_id);
-+	if (!cdq)
-+		return -EINVAL;
-+
-+	nvme_cdq_free_prp_lists(ctrl, cdq);
-+	nvme_cdq_unmap_dma_usr(ctrl, cdq);
-+
-+	kfree(cdq);
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(nvme_cdq_delete);
-+
-+static int nvme_cdq_handle_aen_tpevent(struct nvme_ctrl *ctrl, u32 event_param)
-+{
-+	u16 cdq_id = event_param & NVME_FEAT_CDQ_ID_MASK;
-+	struct cdq_nvme_queue *cdq;
-+
-+	cdq = xa_load(&ctrl->cdqs, cdq_id);
-+	if (!cdq || xa_is_err(cdq) || !cdq->tpt_efd_ctx)
-+		return false;
-+
-+	eventfd_signal(cdq->tpt_efd_ctx);
-+
-+	return true;
++del_cdq:
++	// Ignore return; already in error
++	nvme_cdq_delete(ctrl, cdq_id);
++	return status;
 +}
 +
-+static void nvme_free_cdqs(struct nvme_ctrl *ctrl)
-+{
-+	struct cdq_nvme_queue *cdq;
-+	unsigned long i;
-+
-+	xa_for_each(&ctrl->cdqs, i, cdq)
-+		nvme_cdq_delete(ctrl, i);
-+
-+	xa_destroy(&ctrl->cdqs);
-+}
-+
- void nvme_passthru_end(struct nvme_ctrl *ctrl, struct nvme_ns *ns, u32 effects,
- 		       struct nvme_command *cmd, int status)
+ struct nvme_uring_data {
+ 	__u64	metadata;
+ 	__u64	addr;
+@@ -540,7 +586,8 @@ static int nvme_uring_cmd_io(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
+ 
+ static bool is_ctrl_ioctl(unsigned int cmd)
  {
-@@ -4751,9 +5044,9 @@ static bool nvme_handle_aen_oneshot(struct nvme_ctrl *ctrl, u32 result, u32 even
- {
- 	u32 aer_subtype = nvme_aer_subtype(result);
+-	if (cmd == NVME_IOCTL_ADMIN_CMD || cmd == NVME_IOCTL_ADMIN64_CMD)
++	if (cmd == NVME_IOCTL_ADMIN_CMD || cmd == NVME_IOCTL_ADMIN64_CMD ||
++	    cmd == NVME_IOCTL_CDQ)
+ 		return true;
+ 	if (is_sed_ioctl(cmd))
+ 		return true;
+@@ -555,6 +602,8 @@ static int nvme_ctrl_ioctl(struct nvme_ctrl *ctrl, unsigned int cmd,
+ 		return nvme_user_cmd(ctrl, NULL, argp, 0, open_for_write);
+ 	case NVME_IOCTL_ADMIN64_CMD:
+ 		return nvme_user_cmd64(ctrl, NULL, argp, 0, open_for_write);
++	case NVME_IOCTL_CDQ:
++		return nvme_user_cdq(ctrl, NULL, argp, 0, open_for_write);
+ 	default:
+ 		return sed_ioctl(ctrl->opal_dev, cmd, argp);
+ 	}
+@@ -873,6 +922,8 @@ long nvme_dev_ioctl(struct file *file, unsigned int cmd,
+ 			return -EACCES;
+ 		nvme_queue_scan(ctrl);
+ 		return 0;
++	case NVME_IOCTL_CDQ:
++		return nvme_user_cdq(ctrl, NULL, argp, 0, open_for_write);
+ 	default:
+ 		return -ENOTTY;
+ 	}
+diff --git a/include/uapi/linux/nvme_ioctl.h b/include/uapi/linux/nvme_ioctl.h
+index 2f76cba6716637baff53e167a6141b68420d75c3..8d220c276d959dbd45f224d8ed300fe02dea2f20 100644
+--- a/include/uapi/linux/nvme_ioctl.h
++++ b/include/uapi/linux/nvme_ioctl.h
+@@ -92,6 +92,34 @@ struct nvme_uring_cmd {
+ 	__u32   rsvd2;
+ };
  
--	/* Will be extended to handle specific one-shot event types */
- 	if (aer_subtype == NVME_AER_ONE_SHOT_CDQ_TAIL_PTR)
--		return -ENOSYS;
-+		return nvme_cdq_handle_aen_tpevent(ctrl, event_param);
++struct nvme_cdq_cmd {
++	/*
++	 * CDQ size in bytes:
++	 * (Number of entries) * (entry size in bytes)
++	 */
++	__u32	size_nbyte;
 +
- 	return false;
- }
++	/*
++	 * Virtual mem (returned by mmap). Start of the entries buf in virtual mem.
++	 */
++	__u64	entries;
++
++	/*
++	 * Tail Pointer Trigger eventfd File Descriptor
++	 * Passed when creating the cdq.
++	 * -1 means that there is no FD and AER should not be forwarded.
++	 */
++	int	tpt_fd;
++
++	/*
++	 * Returned by controller; CDQ ID
++	 */
++	__u16	id;
++
++	__u16	cqs;
++	__u16	mos;
++};
++
+ #define nvme_admin_cmd nvme_passthru_cmd
  
-@@ -4819,13 +5112,9 @@ void nvme_complete_async_event(struct nvme_ctrl *ctrl, __le16 status,
- 		requeue = nvme_handle_aen_notice(ctrl, result);
- 		break;
- 	case NVME_AER_ONE_SHOT:
--		/*
--		 * One-shot events like CDQ tail pointer events.
--		 * Extract event parameter from upper 32 bits.
--		 */
-+		/* One-shot events like CDQ tail pointer events. */
- 		event_param = le64_to_cpu(res->u64) >> 32;
- 		requeue = nvme_handle_aen_oneshot(ctrl, result, event_param);
--		trace_nvme_async_event(ctrl, result);
- 		break;
- 	case NVME_AER_ERROR:
- 		/*
-@@ -5064,6 +5353,7 @@ static void nvme_free_ctrl(struct device *dev)
- 	if (!subsys || ctrl->instance != subsys->instance)
- 		ida_free(&nvme_instance_ida, ctrl->instance);
- 	nvme_free_cels(ctrl);
-+	nvme_free_cdqs(ctrl);
- 	nvme_mpath_uninit(ctrl);
- 	cleanup_srcu_struct(&ctrl->srcu);
- 	nvme_auth_stop(ctrl);
-@@ -5110,6 +5400,7 @@ int nvme_init_ctrl(struct nvme_ctrl *ctrl, struct device *dev,
- 	mutex_init(&ctrl->scan_lock);
- 	INIT_LIST_HEAD(&ctrl->namespaces);
- 	xa_init(&ctrl->cels);
-+	xa_init(&ctrl->cdqs);
- 	ctrl->dev = dev;
- 	ctrl->ops = ops;
- 	ctrl->quirks = quirks;
-@@ -5375,6 +5666,7 @@ static inline void _nvme_check_size(void)
- 	BUILD_BUG_ON(sizeof(struct nvme_rotational_media_log) != 512);
- 	BUILD_BUG_ON(sizeof(struct nvme_dbbuf) != 64);
- 	BUILD_BUG_ON(sizeof(struct nvme_directive_cmd) != 64);
-+	BUILD_BUG_ON(sizeof(struct nvme_cdq) != 64);
- 	BUILD_BUG_ON(sizeof(struct nvme_feat_host_behavior) != 512);
- }
+ #define NVME_IOCTL_ID		_IO('N', 0x40)
+@@ -104,6 +132,7 @@ struct nvme_uring_cmd {
+ #define NVME_IOCTL_ADMIN64_CMD	_IOWR('N', 0x47, struct nvme_passthru_cmd64)
+ #define NVME_IOCTL_IO64_CMD	_IOWR('N', 0x48, struct nvme_passthru_cmd64)
+ #define NVME_IOCTL_IO64_CMD_VEC	_IOWR('N', 0x49, struct nvme_passthru_cmd64)
++#define NVME_IOCTL_CDQ		_IOR('N', 0x50, struct nvme_cdq_cmd)
  
-diff --git a/drivers/nvme/host/nvme.h b/drivers/nvme/host/nvme.h
-index 30d5052c7728c0d5c5e8772ff531bc672e96940f..2e8bbd3a7394303f6c803b0d5a457abb6d1b485d 100644
---- a/drivers/nvme/host/nvme.h
-+++ b/drivers/nvme/host/nvme.h
-@@ -1285,6 +1285,11 @@ u32 nvme_passthru_start(struct nvme_ctrl *ctrl, struct nvme_ns *ns, u8 opcode);
- int nvme_execute_rq(struct request *rq, bool at_head);
- void nvme_passthru_end(struct nvme_ctrl *ctrl, struct nvme_ns *ns, u32 effects,
- 		       struct nvme_command *cmd, int status);
-+int nvme_cdq_create(struct nvme_ctrl *ctrl, const u16 mos, const u16 cqs,
-+		    unsigned long uaddr, const u32 size_nbyte,
-+		    u16 *cdq_id);
-+int nvme_cdq_delete(struct nvme_ctrl *ctrl, const u16 cdq_id);
-+int nvme_cdq_set_tpt(struct nvme_ctrl *ctrl, u16 cdq_id, const int tpt_fd);
- struct nvme_ctrl *nvme_ctrl_from_file(struct file *file);
- struct nvme_ns *nvme_find_get_ns(struct nvme_ctrl *ctrl, unsigned nsid);
- bool nvme_get_ns(struct nvme_ns *ns);
+ /* io_uring async commands: */
+ #define NVME_URING_CMD_IO	_IOWR('N', 0x80, struct nvme_uring_cmd)
 
 -- 
 2.50.1
