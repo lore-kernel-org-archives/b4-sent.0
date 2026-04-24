@@ -1,191 +1,139 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Fri, 24 Apr 2026 13:37:55 +0200
-Subject: [PATCH RFC 5/5] nvme: Add CDQ ioctl interface
+From: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Subject: [PATCH v5 0/8] Add VIM4 MCU/FAN support
+Date: Fri, 24 Apr 2026 16:17:31 +0200
+Message-Id: <20260424-add-mcu-fan-khadas-vim4-v5-0-afcfa7157b23@aliel.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260424-jag-cdq-lkml-v1-5-d773343a717c@kernel.org>
-References: <20260424-jag-cdq-lkml-v1-0-d773343a717c@kernel.org>
-In-Reply-To: <20260424-jag-cdq-lkml-v1-0-d773343a717c@kernel.org>
-To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
- Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
- Chaitanya Kulkarni <chaitanyak@nvidia.com>, Jason Gunthorpe <jgg@ziepe.ca>
-Cc: linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Joel Granados <joel.granados@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4647;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=4sHaCCccq5eLSKvrkGZ7ST8L13vQIeDmpX57uViLJyE=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGnrVis0PgumY0ewTsOM/34h4kUkJuD+/2+4f
- PTJZqQVf1j6dYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJp61YrAAoJELqXzVK3
- lkFPn3wL/jKdR3jvoJ0nVQYDcX4EEO2SLnTzID0qaLwYRqAPiJmn/jBYhrYUsNL4fXi6a+E2tJ1
- IEETlT35XxhtJdlxAfL0aWZ/6GcemL5+6hFMT60dajXJvGyaCYXW2Ew5lgzYlEZ9uFOgkMKyEYK
- IItpm8sLMG8XnAlI8re4VwZBU0xXSmfUG+A6ePP0S/y1kKqS8RbBBv5JeNqOGUfkFKJ5MiqO2D2
- LW67cNFUGY8fUI2/UmatG8XQITi1qUlTISBcNs/ET/B/S5efz4ulMpgIi/MwiHmO6U05stXYty5
- tVdmNtWcBqe8E81ADtOHdBCPSh2ljFQORv1Dne9Nhgk6Py/wSMw88jQ+in3hqgCoGv2ygpHjWR7
- /b7HW8k0h4tq1QjObs9Xa3VGV89vIxyLYulDE6QyRjsdiDDrpubK1LX3MgeMailp96i6ZiK3+7v
- SLHJQlEf/NJoniwSD6kiJ8PSWLB9XV/wiuk1s0+KZIlEf7Ou/MpWNIsk1NugFnxoA8aVrg8+m26
- Gk=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WS3W7bMAyFXyXw9RToX3YwDH2PYRekSDXabCezn
+ aBFkXcf4+Yi6VbskhLOd8hDvjUzT5XnZrd5ayY+17keRinCl02T9zA+s6okdWO1jdprq4BIDfm
+ kCozq1x4IZnWug1eQTUYOweUOG1EfJy71ZSV///FeT/z7JAbL+2ODMLPKh2Goy24z8suiVhNn0
+ 1U/8DzDar/bfL19RN3Z6MPW6CCFUUb9rDBu96cnGPrDc81bwX1b3WHJ+1UbAwRKsRRC6cwBoHN
+ tQIwho7ZJa5+d5sSPKuuSjV2rTWsjkQNKBU1k9JQokmfAoL1N7aMqJO5Qt9DFFphK8I4caQoxF
+ 5PBE1qNFkxs7tMVs9t0a7aYB+9SsNdkhFyxZ8UyNfiSuuRgd7aPppicLoG9RTbUdmQ6x9GBMIP
+ vQiYsNidK+E9Tp5VsSdXxDH0ldZwOR56WV4WySk+dcyWZm+PfWrNqJXq1JDWe+l5NPLOsEaNuG
+ UtH4Hdn01zXv6/zcphe1zuTp+v+/3tSZ6O0wIyV3CEn1E/SJPfbMq1IaesO4z7HWMEkOZmI1nr
+ XwQeMu8OY9DnGCQYipBKSRmPwA8bfYaz5HOMF430yxoNti6U7zOVy+QPGXp2IkQMAAA==
+X-Change-ID: 20260402-add-mcu-fan-khadas-vim4-ac1cbe553c9b
+To: Neil Armstrong <neil.armstrong@linaro.org>, Lee Jones <lee@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Andi Shyti <andi.shyti@kernel.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Beniamino Galvani <b.galvani@gmail.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-i2c@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-pm@vger.kernel.org, 
+ Ronald Claveau <linux-kernel-dev@aliel.fr>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4844;
+ i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
+ bh=tjPcTbHATZZVk2EWmuWBPpmcu6B3OW4hKOS1rdd7OQ4=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ+br6vdvC7yMozQOCZkcCvBfyNhQULs4oGzCUdvSGYbCr
+ zbte5jWUcrCIMbFICumyNI/1/LEu8tHz3zdo54CM4eVCWQIAxenAExkiQPD/7qkGapKioK/J368
+ r37r2Z6GzlnJTz3Oxss8U6g42HC05jnD/4hze/Py951zTNjMcXPRX2ZuxaMHPS6e3/Ng0mbF/50
+ T+XkB
+X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
+ fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
+X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add userspace ioctl interface for CDQ (Controller Data Queue)
-management. This allows userspace applications to create, configure,
-and delete CDQs.
+The Khadas VIM4 board features a different MCU variant compared to
+previous VIM boards.
+While it shares the same I2C-based communication model,
+it differs in some ways:
 
-The interface includes:
-- struct nvme_cdq_cmd for passing CDQ parameters
-- NVME_IOCTL_CDQ ioctl command (0x50)
-- Support for both controller and device ioctls
+  - A distinct register map with its own volatile/writeable register set
+  - A fan control with 0–100 levels instead of the 0–3 levels previously
+  - A fan power supply gated through a regulator
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+This series adds support for this new variant by:
+
+  1. Refactoring the khadas-mcu MFD driver to use per-variant data
+     structures (regmap config, cells, fan platform data),
+     and adding the khadas,vim4-mcu compatible string.
+
+  2. Extending the fan thermal driver to retrieve the fan register
+     and maximum level from platform_data,
+     and to optionally manage a power regulator for the fan supply.
+
+  3. Adding the corresponding DTS node for the VIM4, wiring the MCU to
+     the I2C AO_A bus and exposing it as a thermal cooling device.
+
+Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- drivers/nvme/host/ioctl.c       | 53 ++++++++++++++++++++++++++++++++++++++++-
- include/uapi/linux/nvme_ioctl.h | 29 ++++++++++++++++++++++
- 2 files changed, 81 insertions(+), 1 deletion(-)
+Changes in v5:
+- PATCH 5: Replace devm_regulator_get_optional() with devm_regulator_get()
+           to simplify error handling and remove NULL checks, also
+           ordering as reverse christmas according to Neil's feedback.
+- Link to v4: https://lore.kernel.org/r/20260421-add-mcu-fan-khadas-vim4-v4-0-447114a28f2d@aliel.fr
 
-diff --git a/drivers/nvme/host/ioctl.c b/drivers/nvme/host/ioctl.c
-index 8844bbd395159e544218db413e066cae6c24b2f1..98441439bd6be67e20717fed4ffc4d32c9b37725 100644
---- a/drivers/nvme/host/ioctl.c
-+++ b/drivers/nvme/host/ioctl.c
-@@ -8,6 +8,7 @@
- #include <linux/nvme_ioctl.h>
- #include <linux/io_uring/cmd.h>
- #include "nvme.h"
-+#include "trace.h"
- 
- enum {
- 	NVME_IOCTL_VEC		= (1 << 0),
-@@ -373,6 +374,51 @@ static int nvme_user_cmd64(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
- 	return status;
- }
- 
-+static int nvme_user_cdq(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
-+		struct nvme_cdq_cmd __user *ucmd, unsigned int flags,
-+		bool open_for_write)
-+{
-+	int status;
-+	u16 cdq_id = 0;
-+	struct nvme_cdq_cmd cmd = {};
-+
-+	if (copy_from_user(&cmd, ucmd, sizeof(cmd)))
-+		return -EFAULT;
-+
-+	/* 21 = 12 (PAGE_SHIFT) + 9 (PAGE_SHIFT / sizeof(u64)) */
-+	if (cmd.size_nbyte > MAX_NR_CDQ_PRPS << 21)
-+		return -EINVAL;
-+
-+	if (cmd.size_nbyte == 0) {
-+		status = nvme_cdq_delete(ctrl, cmd.id);
-+	} else {
-+		status = nvme_cdq_create(ctrl, cmd.mos, cmd.cqs, cmd.entries,
-+					 cmd.size_nbyte, &cdq_id);
-+		if (status)
-+			return status;
-+
-+		if (cmd.tpt_fd > 0) {
-+			status = nvme_cdq_set_tpt(ctrl, cdq_id, cmd.tpt_fd);
-+			if (status)
-+				goto del_cdq;
-+		}
-+
-+		cmd.id = cdq_id;
-+
-+		if (copy_to_user(ucmd, &cmd, sizeof(cmd))) {
-+			status = -EINVAL;
-+			goto del_cdq;
-+		}
-+	}
-+
-+	return status;
-+
-+del_cdq:
-+	// Ignore return; already in error
-+	nvme_cdq_delete(ctrl, cdq_id);
-+	return status;
-+}
-+
- struct nvme_uring_data {
- 	__u64	metadata;
- 	__u64	addr;
-@@ -540,7 +586,8 @@ static int nvme_uring_cmd_io(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
- 
- static bool is_ctrl_ioctl(unsigned int cmd)
- {
--	if (cmd == NVME_IOCTL_ADMIN_CMD || cmd == NVME_IOCTL_ADMIN64_CMD)
-+	if (cmd == NVME_IOCTL_ADMIN_CMD || cmd == NVME_IOCTL_ADMIN64_CMD ||
-+	    cmd == NVME_IOCTL_CDQ)
- 		return true;
- 	if (is_sed_ioctl(cmd))
- 		return true;
-@@ -555,6 +602,8 @@ static int nvme_ctrl_ioctl(struct nvme_ctrl *ctrl, unsigned int cmd,
- 		return nvme_user_cmd(ctrl, NULL, argp, 0, open_for_write);
- 	case NVME_IOCTL_ADMIN64_CMD:
- 		return nvme_user_cmd64(ctrl, NULL, argp, 0, open_for_write);
-+	case NVME_IOCTL_CDQ:
-+		return nvme_user_cdq(ctrl, NULL, argp, 0, open_for_write);
- 	default:
- 		return sed_ioctl(ctrl->opal_dev, cmd, argp);
- 	}
-@@ -873,6 +922,8 @@ long nvme_dev_ioctl(struct file *file, unsigned int cmd,
- 			return -EACCES;
- 		nvme_queue_scan(ctrl);
- 		return 0;
-+	case NVME_IOCTL_CDQ:
-+		return nvme_user_cdq(ctrl, NULL, argp, 0, open_for_write);
- 	default:
- 		return -ENOTTY;
- 	}
-diff --git a/include/uapi/linux/nvme_ioctl.h b/include/uapi/linux/nvme_ioctl.h
-index 2f76cba6716637baff53e167a6141b68420d75c3..8d220c276d959dbd45f224d8ed300fe02dea2f20 100644
---- a/include/uapi/linux/nvme_ioctl.h
-+++ b/include/uapi/linux/nvme_ioctl.h
-@@ -92,6 +92,34 @@ struct nvme_uring_cmd {
- 	__u32   rsvd2;
- };
- 
-+struct nvme_cdq_cmd {
-+	/*
-+	 * CDQ size in bytes:
-+	 * (Number of entries) * (entry size in bytes)
-+	 */
-+	__u32	size_nbyte;
-+
-+	/*
-+	 * Virtual mem (returned by mmap). Start of the entries buf in virtual mem.
-+	 */
-+	__u64	entries;
-+
-+	/*
-+	 * Tail Pointer Trigger eventfd File Descriptor
-+	 * Passed when creating the cdq.
-+	 * -1 means that there is no FD and AER should not be forwarded.
-+	 */
-+	int	tpt_fd;
-+
-+	/*
-+	 * Returned by controller; CDQ ID
-+	 */
-+	__u16	id;
-+
-+	__u16	cqs;
-+	__u16	mos;
-+};
-+
- #define nvme_admin_cmd nvme_passthru_cmd
- 
- #define NVME_IOCTL_ID		_IO('N', 0x40)
-@@ -104,6 +132,7 @@ struct nvme_uring_cmd {
- #define NVME_IOCTL_ADMIN64_CMD	_IOWR('N', 0x47, struct nvme_passthru_cmd64)
- #define NVME_IOCTL_IO64_CMD	_IOWR('N', 0x48, struct nvme_passthru_cmd64)
- #define NVME_IOCTL_IO64_CMD_VEC	_IOWR('N', 0x49, struct nvme_passthru_cmd64)
-+#define NVME_IOCTL_CDQ		_IOR('N', 0x50, struct nvme_cdq_cmd)
- 
- /* io_uring async commands: */
- #define NVME_URING_CMD_IO	_IOWR('N', 0x80, struct nvme_uring_cmd)
+Changes in v4:
+- PATCH 1: limit fan-supply property by compatible according to Conor's feedback.
+- Link to v3: https://lore.kernel.org/r/20260417-add-mcu-fan-khadas-vim4-v3-0-a6a7f570b11b@aliel.fr
 
+Changes in v3:
+- PATCH 1: adding comment on vim4 compatible saying it is not discoverable,
+           thanks to Rob's and Neil's feedback.
+- Link to v2: https://lore.kernel.org/r/20260403-add-mcu-fan-khadas-vim4-v2-0-70536b22439a@aliel.fr
+
+Changes in v2:
+- PATCH 5: Add regulator_disable on suspend thanks to Neil's feedback.
+- Link to v1: https://lore.kernel.org/r/20260402-add-mcu-fan-khadas-vim4-v1-0-2b12eb4ac7b0@aliel.fr
+
+---
+Ronald Claveau (8):
+      dt-bindings: mfd: khadas: Add new compatible for Khadas VIM4 MCU
+      dt-bindings: i2c: amlogic: Add compatible for T7 SOC
+      mfd: khadas-mcu: Add per-variant configuration infrastructure and VIM4 support
+      mfd: khadas-mcu: Add support for VIM4 MCU variant
+      thermal: khadas-mcu-fan: Add fan config from platform data Add regulator support
+      arm64: dts: amlogic: t7: Add i2c pinctrl node
+      arm64: dts: amlogic: t7: Add i2c controller node
+      arm64: dts: amlogic: t7: khadas-vim4: Add i2c MCU fan node
+
+ .../bindings/i2c/amlogic,meson6-i2c.yaml           |  13 ++-
+ .../devicetree/bindings/mfd/khadas,mcu.yaml        |  18 ++++
+ .../dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts  |  13 +++
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        |  20 ++++
+ drivers/mfd/khadas-mcu.c                           | 106 ++++++++++++++++++---
+ drivers/thermal/khadas_mcu_fan.c                   |  37 +++++--
+ include/linux/mfd/khadas-mcu.h                     |  39 +++++++-
+ 7 files changed, 222 insertions(+), 24 deletions(-)
+---
+base-commit: f7b64ed948718290209074a50bb0df17e5944873
+change-id: 20260402-add-mcu-fan-khadas-vim4-ac1cbe553c9b
+prerequisite-message-id: <20260326092645.1053261-1-jian.hu@amlogic.com>
+prerequisite-patch-id: f03a086b4137158412b2d47b3de793b858de8dde
+prerequisite-patch-id: 123970c9b29c2090440f2fd71c85d3c6fd8e36de
+prerequisite-patch-id: 3e2e56b0926ba327b520f935df4ced5089bbe503
+prerequisite-patch-id: 65a5d76ffdbc9b3aab3385bb65cb027004c30e7e
+prerequisite-patch-id: 237269801826dd3ad7fb16eb4d7d6d4eab504278
+prerequisite-patch-id: 57e9b08a968aedf543d3d0d56cf1ca4db20b2a16
+prerequisite-change-id: 20260326-add-bcm43752-compatible-e264a4f7973a:v2
+prerequisite-patch-id: cd98b74fa56af72af2553f391c400981d83cd4f4
+prerequisite-patch-id: b730f5e42be1d89d193e63a0265495cdbf2c7d7b
+prerequisite-change-id: 20260330-fix-invalid-property-bbe54d933f71:v2
+prerequisite-patch-id: 8d675e7a239985c762843515b241f0a2f45f9c92
+prerequisite-change-id: 20260331-fix-aml-t7-null-reset-2b608ebf9da4:v1
+prerequisite-patch-id: 5b5de77af11747ce964404fb827d2ee2bff47ea5
+prerequisite-patch-id: 1e37fc75fed1e533adee0f3e7e6ead1f8ff3c55c
+prerequisite-patch-id: 65a5d76ffdbc9b3aab3385bb65cb027004c30e7e
+prerequisite-patch-id: 2daf583fb5e7449a02bd217d8aca330171b598aa
+prerequisite-patch-id: 237269801826dd3ad7fb16eb4d7d6d4eab504278
+prerequisite-patch-id: d1ddf9b7710e91f8062de83bd7ba55afb2c4c112
+prerequisite-patch-id: 57e9b08a968aedf543d3d0d56cf1ca4db20b2a16
+prerequisite-patch-id: cd98b74fa56af72af2553f391c400981d83cd4f4
+prerequisite-patch-id: b730f5e42be1d89d193e63a0265495cdbf2c7d7b
+prerequisite-patch-id: 9debd88fa60febed9cd7208f86603b4c2d270520
+prerequisite-patch-id: 314ef9ff0c4d1d15dab1dea9d92aa065f1eac3e9
+
+Best regards,
 -- 
-2.50.1
+Ronald Claveau <linux-kernel-dev@aliel.fr>
 
