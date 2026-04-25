@@ -1,180 +1,64 @@
-From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Date: Fri, 24 Apr 2026 18:40:17 +0100
-Subject: [PATCH v4 4/4] dmaengine: dma-axi-dmac: use DMA pool to manange
- DMA descriptor
+From: Abid Ali <dev.taqnialabs@gmail.com>
+Date: Sat, 25 Apr 2026 12:38:34 +0000
+Subject: [PATCH] net: stmmac: fix RX DMA leak on TX alloc failure
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260424-dma-dmac-handle-vunmap-v4-4-90f43412fdc0@analog.com>
-References: <20260424-dma-dmac-handle-vunmap-v4-0-90f43412fdc0@analog.com>
-In-Reply-To: <20260424-dma-dmac-handle-vunmap-v4-0-90f43412fdc0@analog.com>
-To: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: Lars-Peter Clausen <lars@metafoo.de>, Vinod Koul <vkoul@kernel.org>, 
- Frank Li <Frank.Li@kernel.org>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777052415; l=5323;
- i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=HqWNkCDI0VfeVEb5KKgxsi/P7bet+YEciX6Acpcld7Q=;
- b=zl7ajjc9sDfmd7eFj4L/AZLliMugd/RhFG9WpDr23VCMGb60Mi96x70gRoUaX5rapp93fPBEi
- A7DeYvKWXMEDxZGKSGhHVLKaKPD472buAM/tUPoTJ3pJ9f7cqph8lYP
-X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
- pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
-X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260425-stmmac-rx-desc-cleanup-v1-1-1a18a704c422@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAMm17GkC/x3MQQqEMAxA0atI1gZqScXxKoOLUqMGtCPNKELx7
+ haXb/F/BuUkrNBXGRKfovKLBU1dQVh8nBllLAZrbGvIOtT/tvmA6cKRNWBY2cdjRyIzGdeRo4+
+ FEu+JJ7ne8Xe47we0+LlFaAAAAA==
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>
+Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Abid Ali <dev.taqnialabs@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777120721; l=998;
+ i=dev.taqnialabs@gmail.com; s=20260425; h=from:subject:message-id;
+ bh=6KNXYVuQw7qzkBuKkHzTHDqB5iOSzE7NC8yleiDYCcg=;
+ b=EahVl7YbST7PFQZTcka11Q36pigH8utz9YqMXE8P+DU+sn23jzKVHG85DfrDfWEzR+sWFhWOw
+ /h/aEKBo3ucCFAMZBnSU4000q8fFB8aF7BvvRihgWI7wK5bi7GsKhhe
+X-Developer-Key: i=dev.taqnialabs@gmail.com; a=ed25519;
+ pk=4Syx51HH/MOySSUpi79M2ToLOdwt1yiNb338eKZBJNk=
+X-Endpoint-Received: by B4 Relay for dev.taqnialabs@gmail.com/20260425 with auth_id=752
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For architectures like Microblaze or arm64 (where this IP is used),
-DMA_DIRECT_REMAP is set which means that dma_alloc_coherent() might
-remap (and hence vmalloc()) some memory. This became visible in a design
-where dma_direct_use_pool() is not possible.
+Free RX DMA resources when alloc_dma_tx_desc_resources() fails in
+alloc_dma_desc_resources().
 
-With the above, when calling dma_free_coherent(), vunmap() would be
-called from softirq context and thus leading to a BUG().
-
-To fix it, use a dma pool that is allocated in
-.device_alloc_chan_resources() and allocate blocks from it. The key
-point is that now dma_pool_free() is used in axi_dmac_free_desc() to
-free the blocks and that just frees the blocks from the pool in the
-sense they can be used again. In other words, no actual call to
-dma_free_coherent() happens. That only happens when destroying the pool
-in axi_dmac_free_chan_resources() which does not happen in any interrupt
-context.
-
-Fixes: 3f8fd25936ee ("dmaengine: axi-dmac: Allocate hardware descriptors")
-Signed-off-by: Nuno Sá <nuno.sa@analog.com>
+Signed-off-by: Abid Ali <dev.taqnialabs@gmail.com>
 ---
- drivers/dma/dma-axi-dmac.c | 66 ++++++++++++++++++++++++++++------------------
- 1 file changed, 40 insertions(+), 26 deletions(-)
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/dma/dma-axi-dmac.c b/drivers/dma/dma-axi-dmac.c
-index 41898d594be7..d47ff27e1408 100644
---- a/drivers/dma/dma-axi-dmac.c
-+++ b/drivers/dma/dma-axi-dmac.c
-@@ -13,6 +13,7 @@
- #include <linux/device.h>
- #include <linux/dma-mapping.h>
- #include <linux/dmaengine.h>
-+#include <linux/dmapool.h>
- #include <linux/err.h>
- #include <linux/interrupt.h>
- #include <linux/io.h>
-@@ -147,6 +148,7 @@ struct axi_dmac_chan {
- 	struct virt_dma_chan vchan;
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+index 13d3cac05..8bb843b55 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -2370,8 +2370,12 @@ static int alloc_dma_desc_resources(struct stmmac_priv *priv,
+ 		return ret;
  
- 	struct axi_dmac_desc *next_desc;
-+	void *pool;
- 	struct list_head active_descs;
- 	enum dma_transfer_direction direction;
+ 	ret = alloc_dma_tx_desc_resources(priv, dma_conf);
++	if (ret) {
++		free_dma_rx_desc_resources(priv, dma_conf);
++		return ret;
++	}
  
-@@ -648,11 +650,17 @@ static void axi_dmac_issue_pending(struct dma_chan *c)
- 	spin_unlock_irqrestore(&chan->vchan.lock, flags);
- }
- 
-+static void axi_dmac_free_desc(struct axi_dmac_desc *desc)
-+{
-+	for (unsigned int i = 0; i < desc->num_sgs; i++)
-+		dma_pool_free(desc->chan->pool, desc->sg[i].hw, desc->sg[i].hw_phys);
-+
-+	kfree(desc);
-+}
-+
- static struct axi_dmac_desc *
- axi_dmac_alloc_desc(struct axi_dmac_chan *chan, unsigned int num_sgs)
- {
--	struct axi_dmac *dmac = chan_to_axi_dmac(chan);
--	struct device *dev = dmac->dma_dev.dev;
- 	struct axi_dmac_hw_desc *hws;
- 	struct axi_dmac_desc *desc;
- 	dma_addr_t hw_phys;
-@@ -664,22 +672,22 @@ axi_dmac_alloc_desc(struct axi_dmac_chan *chan, unsigned int num_sgs)
- 	desc->num_sgs = num_sgs;
- 	desc->chan = chan;
- 
--	hws = dma_alloc_coherent(dev, PAGE_ALIGN(num_sgs * sizeof(*hws)),
--				&hw_phys, GFP_ATOMIC);
--	if (!hws) {
--		kfree(desc);
--		return NULL;
--	}
--
- 	for (i = 0; i < num_sgs; i++) {
--		desc->sg[i].hw = &hws[i];
--		desc->sg[i].hw_phys = hw_phys + i * sizeof(*hws);
-+		hws = dma_pool_zalloc(chan->pool, GFP_NOWAIT, &hw_phys);
-+		if (!hws) {
-+			desc->num_sgs = i;
-+			axi_dmac_free_desc(desc);
-+			return NULL;
-+		}
- 
--		hws[i].id = AXI_DMAC_SG_UNUSED;
--		hws[i].flags = 0;
-+		desc->sg[i].hw = hws;
-+		desc->sg[i].hw_phys = hw_phys;
-+
-+		hws->id = AXI_DMAC_SG_UNUSED;
- 
- 		/* Link hardware descriptors */
--		hws[i].next_sg_addr = hw_phys + (i + 1) * sizeof(*hws);
-+		if (i)
-+			desc->sg[i - 1].hw->next_sg_addr = hw_phys;
- 	}
- 
- 	/* The last hardware descriptor will trigger an interrupt */
-@@ -688,18 +696,6 @@ axi_dmac_alloc_desc(struct axi_dmac_chan *chan, unsigned int num_sgs)
- 	return desc;
- }
- 
--static void axi_dmac_free_desc(struct axi_dmac_desc *desc)
--{
--	struct axi_dmac *dmac = chan_to_axi_dmac(desc->chan);
--	struct device *dev = dmac->dma_dev.dev;
--	struct axi_dmac_hw_desc *hw = desc->sg[0].hw;
--	dma_addr_t hw_phys = desc->sg[0].hw_phys;
--
--	dma_free_coherent(dev, PAGE_ALIGN(desc->num_sgs * sizeof(*hw)),
--			  hw, hw_phys);
--	kfree(desc);
--}
--
- static struct axi_dmac_sg *axi_dmac_fill_linear_sg(struct axi_dmac_chan *chan,
- 	enum dma_transfer_direction direction, dma_addr_t addr,
- 	unsigned int num_periods, unsigned int period_len,
-@@ -933,9 +929,26 @@ static struct dma_async_tx_descriptor *axi_dmac_prep_interleaved(
- 	return vchan_tx_prep(&chan->vchan, &desc->vdesc, flags);
- }
- 
-+static int axi_dmac_alloc_chan_resources(struct dma_chan *c)
-+{
-+	struct axi_dmac_chan *chan = to_axi_dmac_chan(c);
-+	struct device *dev = c->device->dev;
-+
-+	chan->pool = dma_pool_create(dev_name(dev), dev,
-+				     sizeof(struct axi_dmac_hw_desc),
-+				     __alignof__(struct axi_dmac_hw_desc), 0);
-+	if (!chan->pool)
-+		return -ENOMEM;
-+
+-	return ret;
 +	return 0;
-+}
-+
- static void axi_dmac_free_chan_resources(struct dma_chan *c)
- {
-+	struct axi_dmac_chan *chan = to_axi_dmac_chan(c);
-+
- 	vchan_free_chan_resources(to_virt_chan(c));
-+	dma_pool_destroy(chan->pool);
  }
  
- static void axi_dmac_desc_free(struct virt_dma_desc *vdesc)
-@@ -1238,6 +1251,7 @@ static int axi_dmac_probe(struct platform_device *pdev)
- 	dma_cap_set(DMA_SLAVE, dma_dev->cap_mask);
- 	dma_cap_set(DMA_CYCLIC, dma_dev->cap_mask);
- 	dma_cap_set(DMA_INTERLEAVE, dma_dev->cap_mask);
-+	dma_dev->device_alloc_chan_resources = axi_dmac_alloc_chan_resources;
- 	dma_dev->device_free_chan_resources = axi_dmac_free_chan_resources;
- 	dma_dev->device_tx_status = dma_cookie_status;
- 	dma_dev->device_issue_pending = axi_dmac_issue_pending;
+ /**
 
+---
+base-commit: 028ef9c96e96197026887c0f092424679298aae8
+change-id: 20260425-stmmac-rx-desc-cleanup-440f05845492
+
+Best regards,
 -- 
-2.54.0
+Abid Ali <dev.taqnialabs@gmail.com>
 
