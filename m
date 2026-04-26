@@ -1,10 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Sun, 26 Apr 2026 09:38:09 +0100
-Subject: [PATCH 08/10] iio: dac: ad5686: fix input raw value check
+Date: Sun, 26 Apr 2026 09:38:10 +0100
+Subject: [PATCH 09/10] iio: dac: ad5686: cleanup doc header of local
+ structs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260426-ad5686-fixes-v1-8-7c946a77794e@analog.com>
+Message-Id: <20260426-ad5686-fixes-v1-9-7c946a77794e@analog.com>
 References: <20260426-ad5686-fixes-v1-0-7c946a77794e@analog.com>
 In-Reply-To: <20260426-ad5686-fixes-v1-0-7c946a77794e@analog.com>
 To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
@@ -18,40 +19,64 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Andy Shevchenko <andy@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777192698; l=1053;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777192698; l=1834;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=Jyqj3+FFKyypdm39jK5VmyJy5lEuvWoM3X8faV9LnaQ=;
- b=J5VdC3SHKabbzhvICo8tYevq7BRLLWVqWZ3f9aqHns8S2D7KAC0WikGTH7VKArqdonMt1rbpW
- gyG88+gu0leD+oMUTrOAa0WpB1KnHzVdHwNbmrQFfxSnBjEogV60WvB
+ bh=c0BEZ1A0gywVZfdklIC/KEzn/5Gdqo24dUnmHYw5Cxg=;
+ b=NF9zuAarSReVuhrh5bh3ca6e5Kf+m8duh0w3KuYSZyn/jvnDWaMEqhP1BdtVQT4xph/Y5+mx5
+ hrp3V7hSCSSDLoB6UxhlfCP+FjfexNL2+3MwpCPqHn9J9xUHyVyHN47
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use in_range() to fix range check for input raw value, which is off by
-one, i.e., for a 10-bit DAC the max valid value is 1023, but 1 << 10
-equals 1024, which passes the previous check, allowing an out-of-range
-write. The issue exists since the ad5686 driver was first introduced.
+Review documentation comment header for ad5686_chip_info and ad5686_state.
+Update variable names and description and remove unnecessary blank line
+between comment and struct declaration.
 
-Fixes: c2f37c8dcadc ("iio: dac: New driver for AD5686R, AD5685R, AD5684R Digital to analog converters")
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/dac/ad5686.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/iio/dac/ad5686.h | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
-index 040a24c62c9a..ab498ec2ed5c 100644
---- a/drivers/iio/dac/ad5686.c
-+++ b/drivers/iio/dac/ad5686.c
-@@ -186,7 +186,7 @@ static int ad5686_write_raw(struct iio_dev *indio_dev,
+diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
+index 7004d0d1d97a..8043cb4ab3cf 100644
+--- a/drivers/iio/dac/ad5686.h
++++ b/drivers/iio/dac/ad5686.h
+@@ -63,12 +63,11 @@ typedef int (*ad5686_read_func)(struct ad5686_state *st, u8 addr);
  
- 	switch (mask) {
- 	case IIO_CHAN_INFO_RAW:
--		if (val > (1 << chan->scan_type.realbits) || val < 0)
-+		if (!in_range(val, 0, 1 << chan->scan_type.realbits))
- 			return -EINVAL;
+ /**
+  * struct ad5686_chip_info - chip specific information
+- * @int_vref_mv:	AD5620/40/60: the internal reference voltage
++ * @int_vref_mv:	the internal reference voltage
+  * @num_channels:	number of channels
+  * @channel:		channel specification
+  * @regmap_type:	register map layout variant
+  */
+-
+ struct ad5686_chip_info {
+ 	u16				int_vref_mv;
+ 	unsigned int			num_channels;
+@@ -106,16 +105,16 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
  
- 		return st->write(st, AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
+ /**
+  * struct ad5686_state - driver instance specific data
+- * @spi:		spi_device
++ * @dev:		device instance
+  * @chip_info:		chip model specific constants, available modes etc
+  * @vref_mv:		actual reference voltage used
+  * @pwr_down_mask:	power down mask
+  * @pwr_down_mode:	current power down mode
+  * @use_internal_vref:	set to true if the internal reference voltage is used
+- * @lock		lock to protect the data buffer during regmap ops
+- * @data:		spi transfer buffers
++ * @lock:		lock to protect access to state fields, which includes
++ *			the data buffer during regmap ops
++ * @data:		transfer buffers
+  */
+-
+ struct ad5686_state {
+ 	struct device			*dev;
+ 	const struct ad5686_chip_info	*chip_info;
 
 -- 
 2.43.0
