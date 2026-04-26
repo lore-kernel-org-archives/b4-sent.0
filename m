@@ -1,242 +1,100 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Sun, 26 Apr 2026 09:38:11 +0100
-Subject: [PATCH 10/10] iio: dac: ad5686: create bus ops struct
+From: Shivam Kalra <shivamkalra98@zohomail.in>
+Date: Sun, 26 Apr 2026 19:38:41 +0530
+Subject: [PATCH] ACPI: video: force native backlight on HP OMEN 16 (8A44)
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260426-ad5686-fixes-v1-10-7c946a77794e@analog.com>
-References: <20260426-ad5686-fixes-v1-0-7c946a77794e@analog.com>
-In-Reply-To: <20260426-ad5686-fixes-v1-0-7c946a77794e@analog.com>
-To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Stefan Popa <stefan.popa@analog.com>, Jonathan Cameron <jic23@cam.ac.uk>, 
- Greg Kroah-Hartman <gregkh@suse.de>, 
- Michael Auchter <michael.auchter@ni.com>, 
- Jonathan Cameron <jic23@kernel.org>
-Cc: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777192698; l=7468;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=bK22PGl2VrIUK5DK/y4pieYUa43QpgH09CHKivfjINY=;
- b=fVu1ipzQHekJ35CkveskcP//upkXsT8pz8qUtzglNFfXSoUGVqH6vUCAXfCi91JDzJGPdeBsg
- ORarXJIj8WPCcvtkyQoemDxaMxS88IVGFe5I9Se3EUyLV/EPULnlQbi
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260426-omen-16-backlight-fix-v1-1-62364f268ea6@zohomail.in>
+X-B4-Tracking: v=1; b=H4sIAGgc7mkC/yXM0Q5DQBCF4VeRuTYJS1Gv0rjYWYPRdjW7iES8u
+ y2X30nOv4NnJ+yhjnZwvIqXyQakcQRm0LZnlDYYVKKKJFcPnL5sMS2QtHl/pB9m7GTDMuuoIpN
+ rRU8I35/jMF/dV3PbLzSymf8xOI4TdT+L03kAAAA=
+X-Change-ID: 20260425-omen-16-backlight-fix-73fb8bc4a2b9
+To: "Rafael J. Wysocki" <rafael@kernel.org>, Len Brown <lenb@kernel.org>
+Cc: linux-acpi@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Shivam Kalra <shivamkalra98@zohomail.in>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777212528; l=3008;
+ i=shivamkalra98@zohomail.in; s=20260402; h=from:subject:message-id;
+ bh=Ks75/0yCMSiPZ5NGPSiLdDntV/e7UFJBadOo45wysJA=;
+ b=ImzlN1NF/yjSEwdic/vHSQlDyh2HDbuxm3ilC7wHeE26rJSBVCMfn4V3XByKns2e2Sekc/Yrj
+ AA+AbNfO0kDAJPvHDEDPFsh+D+binV7lvoEReIkEwJGdwwIhdYKWZAB
+X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
+ pk=U8kQSxcte8P8iZ6zB7phIj+Yl+i/5ntifBGuclgypx8=
+X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260402 with auth_id=716
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Create struct with bus operations, which will be used to extend bus
-implementation features. Auxiliary functions ad5686_write() and
-ad5686_read() are created and ad5686_probe() now receives an ops struct
-pointer rather than individual read and write functions.
+The HP OMEN 16 Gaming Laptop (board name 8A44) has a mux-less hybrid
+GPU configuration with AMD Rembrandt (Radeon 680M) and NVIDIA GA104
+(RTX 3070 Ti). The internal eDP panel is wired to the AMD iGPU.
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+When Nouveau loads without GSP firmware, the ACPI video backlight
+device (acpi_video0) gets registered alongside the native AMD
+backlight (amdgpu_bl2). In this state, writes to amdgpu_bl2 update
+the software brightness value but fail to change the physical panel
+brightness.
+
+Force native backlight to prevent acpi_video0 from registering.
+Confirmed that booting with acpi_backlight=native resolves the issue.
+
+Cc: stable@vger.kernel.org
+Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
- drivers/iio/dac/ad5686-spi.c |  7 ++++++-
- drivers/iio/dac/ad5686.c     | 30 ++++++++++++++----------------
- drivers/iio/dac/ad5686.h     | 29 +++++++++++++++++++++--------
- drivers/iio/dac/ad5696-i2c.c |  7 ++++++-
- 4 files changed, 47 insertions(+), 26 deletions(-)
+This patch adds a DMI quirk to force native backlight control on the
+HP OMEN 16 Gaming Laptop (board name 8A44), which has a mux-less
+hybrid GPU configuration with AMD Rembrandt (680M iGPU) and NVIDIA
+GA104 (RTX 3070 Ti).
+On this laptop the internal eDP panel is wired to the AMD iGPU. The
+amdgpu driver registers amdgpu_bl2 as the native backlight device.
+When the Nouveau driver is loaded without GSP firmware (as is the
+case on v6.17 where GSP is not the default for Ampere GPUs), writes
+to amdgpu_bl2 fail silently — the brightness sysfs value updates
+but the physical panel brightness does not change.
+Testing:
+- Tested on HP OMEN 16 with AMD Ryzen 9 6900HX + NVIDIA RTX 3070 Ti.
+- On v6.17, without this quirk, brightness control is broken.
+- On v6.17, booting with acpi_backlight=native restores correct
+  brightness control. This patch applies that workaround
+  automatically via DMI match.
+- On v6.18+, the issue does not reproduce because commit
+  e0ed674acbac ("drm/nouveau: Remove DRM_NOUVEAU_GSP_DEFAULT
+  config") made GSP firmware the default for Ampere, which avoids
+  the ACPI conflict entirely.  
+I have only tested this on v6.17 and v7.0. I am leaving it to the
+stable/LTS maintainers to determine whether this quirk should be
+backported, as I have not verified the stability of the GSP firmware
+path on intermediate releases.
 
-diff --git a/drivers/iio/dac/ad5686-spi.c b/drivers/iio/dac/ad5686-spi.c
-index 8fef0e6d33ff..857b9e4f54ab 100644
---- a/drivers/iio/dac/ad5686-spi.c
-+++ b/drivers/iio/dac/ad5686-spi.c
-@@ -92,10 +92,15 @@ static int ad5686_spi_read(struct ad5686_state *st, u8 addr)
- 	return be32_to_cpu(st->data[2].d32);
- }
- 
-+static const struct ad5686_bus_ops ad5686_spi_ops = {
-+	.write = ad5686_spi_write,
-+	.read = ad5686_spi_read,
-+};
-+
- static int ad5686_spi_probe(struct spi_device *spi)
- {
- 	return ad5686_probe(&spi->dev, spi_get_device_match_data(spi),
--			    spi->modalias, ad5686_spi_write, ad5686_spi_read);
-+			    spi->modalias, &ad5686_spi_ops);
- }
- 
- static const struct spi_device_id ad5686_spi_id[] = {
-diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
-index ab498ec2ed5c..490faed85976 100644
---- a/drivers/iio/dac/ad5686.c
-+++ b/drivers/iio/dac/ad5686.c
-@@ -26,18 +26,18 @@ static int ad5310_control_sync(struct ad5686_state *st)
- {
- 	unsigned int pd_val = st->pwr_down_mask & st->pwr_down_mode;
- 
--	return st->write(st, AD5686_CMD_CONTROL_REG, 0,
--			 FIELD_PREP(AD5310_PD_MSK, pd_val) |
--			 FIELD_PREP(AD5310_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
-+	return ad5686_write(st, AD5686_CMD_CONTROL_REG, 0,
-+			    FIELD_PREP(AD5310_PD_MSK, pd_val) |
-+			    FIELD_PREP(AD5310_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
- }
- 
- static int ad5683_control_sync(struct ad5686_state *st)
- {
- 	unsigned int pd_val = st->pwr_down_mask & st->pwr_down_mode;
- 
--	return st->write(st, AD5686_CMD_CONTROL_REG, 0,
--			 FIELD_PREP(AD5683_PD_MSK, pd_val) |
--			 FIELD_PREP(AD5683_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
-+	return ad5686_write(st, AD5686_CMD_CONTROL_REG, 0,
-+			    FIELD_PREP(AD5683_PD_MSK, pd_val) |
-+			    FIELD_PREP(AD5683_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
- }
- 
- static inline unsigned int ad5686_pd_mask_shift(const struct iio_chan_spec *chan)
-@@ -136,7 +136,7 @@ static ssize_t ad5686_write_dac_powerdown(struct iio_dev *indio_dev,
- 			address = 0x0;
- 			val = lower_16_bits(val);
- 		}
--		ret = st->write(st, AD5686_CMD_POWERDOWN_DAC, address, val);
-+		ret = ad5686_write(st, AD5686_CMD_POWERDOWN_DAC, address, val);
- 		if (ret)
- 			return ret;
- 		break;
-@@ -160,7 +160,7 @@ static int ad5686_read_raw(struct iio_dev *indio_dev,
- 
- 	switch (m) {
- 	case IIO_CHAN_INFO_RAW:
--		ret = st->read(st, chan->address);
-+		ret = ad5686_read(st, chan->address);
- 		if (ret < 0)
- 			return ret;
- 		*val = (ret >> chan->scan_type.shift) &
-@@ -189,8 +189,8 @@ static int ad5686_write_raw(struct iio_dev *indio_dev,
- 		if (!in_range(val, 0, 1 << chan->scan_type.realbits))
- 			return -EINVAL;
- 
--		return st->write(st, AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
--				 chan->address, val << chan->scan_type.shift);
-+		return ad5686_write(st, AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
-+				    chan->address, val << chan->scan_type.shift);
- 	default:
- 		return -EINVAL;
- 	}
-@@ -447,8 +447,7 @@ EXPORT_SYMBOL_NS_GPL(ad5679r_chip_info, "IIO_AD5686");
- 
- int ad5686_probe(struct device *dev,
- 		 const struct ad5686_chip_info *chip_info,
--		 const char *name, ad5686_write_func write,
--		 ad5686_read_func read)
-+		 const char *name, const struct ad5686_bus_ops *ops)
- {
- 	struct iio_dev *indio_dev;
- 	struct ad5686_state *st;
-@@ -462,8 +461,7 @@ int ad5686_probe(struct device *dev,
- 	st = iio_priv(indio_dev);
- 
- 	st->dev = dev;
--	st->write = write;
--	st->read = read;
-+	st->ops = ops;
- 	st->chip_info = chip_info;
- 
- 	ret = devm_regulator_get_enable_read_voltage(dev, "vcc");
-@@ -505,8 +503,8 @@ int ad5686_probe(struct device *dev,
- 			return ret;
- 		break;
- 	case AD5686_REGMAP:
--		ret = st->write(st, AD5686_CMD_INTERNAL_REFER_SETUP, 0,
--				st->use_internal_vref ? 0 : 1);
-+		ret = ad5686_write(st, AD5686_CMD_INTERNAL_REFER_SETUP, 0,
-+				   st->use_internal_vref ? 0 : 1);
- 		if (ret)
- 			return ret;
- 		break;
-diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
-index 8043cb4ab3cf..679831881ae2 100644
---- a/drivers/iio/dac/ad5686.h
-+++ b/drivers/iio/dac/ad5686.h
-@@ -56,10 +56,15 @@ enum ad5686_regmap_type {
- 
- struct ad5686_state;
- 
--typedef int (*ad5686_write_func)(struct ad5686_state *st,
--				 u8 cmd, u8 addr, u16 val);
--
--typedef int (*ad5686_read_func)(struct ad5686_state *st, u8 addr);
-+/**
-+ * struct ad5686_bus_ops - bus specific read/write operations
-+ * @read: read a register value at the given address
-+ * @write: write a command, address and value to the device
-+ */
-+struct ad5686_bus_ops {
-+	int (*read)(struct ad5686_state *st, u8 addr);
-+	int (*write)(struct ad5686_state *st, u8 cmd, u8 addr, u16 val);
-+};
- 
- /**
-  * struct ad5686_chip_info - chip specific information
-@@ -107,6 +112,7 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
-  * struct ad5686_state - driver instance specific data
-  * @dev:		device instance
-  * @chip_info:		chip model specific constants, available modes etc
-+ * @ops:		bus specific operations
-  * @vref_mv:		actual reference voltage used
-  * @pwr_down_mask:	power down mask
-  * @pwr_down_mode:	current power down mode
-@@ -118,11 +124,10 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
- struct ad5686_state {
- 	struct device			*dev;
- 	const struct ad5686_chip_info	*chip_info;
-+	const struct ad5686_bus_ops	*ops;
- 	unsigned short			vref_mv;
- 	unsigned int			pwr_down_mask;
- 	unsigned int			pwr_down_mode;
--	ad5686_write_func		write;
--	ad5686_read_func		read;
- 	bool				use_internal_vref;
- 	struct mutex			lock;
- 
-@@ -141,8 +146,16 @@ struct ad5686_state {
- 
- int ad5686_probe(struct device *dev,
- 		 const struct ad5686_chip_info *chip_info,
--		 const char *name, ad5686_write_func write,
--		 ad5686_read_func read);
-+		 const char *name, const struct ad5686_bus_ops *ops);
- 
-+static inline int ad5686_write(struct ad5686_state *st, u8 cmd, u8 addr, u16 val)
-+{
-+	return st->ops->write(st, cmd, addr, val);
-+}
-+
-+static inline int ad5686_read(struct ad5686_state *st, u8 addr)
-+{
-+	return st->ops->read(st, addr);
-+}
- 
- #endif /* __DRIVERS_IIO_DAC_AD5686_H__ */
-diff --git a/drivers/iio/dac/ad5696-i2c.c b/drivers/iio/dac/ad5696-i2c.c
-index fd047c01f8f6..30c48d937a38 100644
---- a/drivers/iio/dac/ad5696-i2c.c
-+++ b/drivers/iio/dac/ad5696-i2c.c
-@@ -62,10 +62,15 @@ static int ad5686_i2c_write(struct ad5686_state *st,
- 	return (ret != 3) ? -EIO : 0;
- }
- 
-+static const struct ad5686_bus_ops ad5686_i2c_ops = {
-+	.write = ad5686_i2c_write,
-+	.read = ad5686_i2c_read,
-+};
-+
- static int ad5686_i2c_probe(struct i2c_client *i2c)
- {
- 	return ad5686_probe(&i2c->dev, i2c_get_match_data(i2c),
--			    i2c->name, ad5686_i2c_write, ad5686_i2c_read);
-+			    i2c->name, &ad5686_i2c_ops);
- }
- 
- static const struct i2c_device_id ad5686_i2c_id[] = {
+Thanks,
+Shivam Kalra
+---
+ drivers/acpi/video_detect.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
--- 
-2.43.0
+diff --git a/drivers/acpi/video_detect.c b/drivers/acpi/video_detect.c
+index 0a3c8232d15d..458efa4fe9d4 100644
+--- a/drivers/acpi/video_detect.c
++++ b/drivers/acpi/video_detect.c
+@@ -916,6 +916,14 @@ static const struct dmi_system_id video_detect_dmi_table[] = {
+ 		DMI_MATCH(DMI_PRODUCT_NAME, "82K8"),
+ 		},
+ 	},
++	{
++	 .callback = video_detect_force_native,
++	 /* HP OMEN Gaming Laptop 16-n0xxx */
++	 .matches = {
++		DMI_MATCH(DMI_SYS_VENDOR, "HP"),
++		DMI_MATCH(DMI_PRODUCT_NAME, "OMEN by HP Gaming Laptop 16-n0xxx"),
++		},
++	},
+ 
+ 	/*
+ 	 * x86 android tablets which directly control the backlight through
+
+---
+base-commit: 27d128c1cff64c3b8012cc56dd5a1391bb4f1821
+change-id: 20260425-omen-16-backlight-fix-73fb8bc4a2b9
+
+Best regards,
+--  
+Shivam Kalra <shivamkalra98@zohomail.in>
 
