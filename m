@@ -1,16 +1,13 @@
 From: Markus Probst <markus.probst@posteo.de>
-Subject: [PATCH v6 0/4] rust: add basic serial device bus abstractions
-Date: Mon, 27 Apr 2026 20:05:40 +0200
-Message-Id: <20260427-rust_serdev-v6-0-173798d5e1a3@posteo.de>
+Date: Mon, 27 Apr 2026 20:05:41 +0200
+Subject: [PATCH v6 1/4] rust: devres: return reference in
+ `devres::register`
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAHSl72kC/13RQW7DIBAF0KtYrEvEDAzYWfUeVVXZeNywSJyAg
- 1pFuXtx0qq2lx/xvmDmJhLHwEnsq5uInEMK46kE+1IJf2hPnyxDX7JAhQQITsZrmj4K6jlLZjI
- 1cKNq8qKIc+QhfD3a3t5LPoQ0jfH7UZ5hPv3tQbXqySCVZGOsIWedRXg9j2nicdezmHsy/lmrt
- LJri7NtOtSdwQ6JtlYvLOi11cX6ptXtgGAGN2yt+bcGYG1NsbUhbqzy1qLbWlrY7X+pWHJcd60
- iaAa9tPfnICNfrmUb03OaomsTSz8ej2HaV9ntymM8lMv3H31IKkPCAQAA
-X-Change-ID: 20251217-rust_serdev-ee5481e9085c
+Message-Id: <20260427-rust_serdev-v6-1-173798d5e1a3@posteo.de>
+References: <20260427-rust_serdev-v6-0-173798d5e1a3@posteo.de>
+In-Reply-To: <20260427-rust_serdev-v6-0-173798d5e1a3@posteo.de>
 To: Rob Herring <robh@kernel.org>, 
  Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  Jiri Slaby <jirislaby@kernel.org>, Miguel Ojeda <ojeda@kernel.org>, 
@@ -29,105 +26,102 @@ Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org,
  driver-core@lists.linux.dev, dri-devel@lists.freedesktop.org, 
  Markus Probst <markus.probst@posteo.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3366;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2621;
  i=markus.probst@posteo.de; h=from:subject:message-id;
- bh=+Q0IVsPy5EjKTMnmjpdabqL8rz9x6TxNbFuyErUFjNM=;
- b=owEBiQJ2/ZANAwAIATR2H/jnrUPSAcsmYgBp76V9j/M+p9viNbc8aF8xk3p4Lo5fNvPF2YUnD
- T20G+NTyy+JAk8EAAEIADkWIQSCdBjE9KxY53IwxHM0dh/4561D0gUCae+lfRsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwyLDIACgkQNHYf+OetQ9Jf5A//cyDq0cgtBmO1jjmgFCpuB96iGbP7OSI
- tk9hDnGbQTZsPxU0hU+45/oj5o4bY9Tof0E/HFNseSZEeSZ+9bbzm8FVdfzDNqowOdIjGqyKAbI
- i0/NBhgPOBAX+BiMtIgm3HFYiiEa8Pav2xbMR3/blM1hQTCDBwbyBI3P37EIs9Lypg26IGN91cU
- h5hEbLR5ErBW66IbyL/p9nsxLfCg+VDDWzMolixt1oJFonldb2ZFuKm3a4G1YUrf11Sg4D8pVnW
- hIPBqi96U7Ko6NYuysVxNnUApBLF6aH7fpyzu/ONudoShE23eRobFlKdWom9JZn6nl8NZvXw6Tt
- ViB1hLCdsHriv5oXl8QjPRSp2RCZ8m1y7SCV6iLTDioqpM+sfLcn5EBqOhAKdzqwdE8z83rawK7
- uoxzsBM9eHMzjInfJi2+BziJY+nm0BbxosTWl7Y6RU6swRABbhUQ1nhBNXbkI4U/Ik6fAZNjA7b
- R1RFwFW0Gf+c4gekLgj8MzLvjDQrtQil2m1LQs6Hbr6XWChr4XknQ+nEq0Mvaz55gHanqIeuSEg
- RR88pimxjAALxGeIR7jD4A7+tzB7IT3t7xOsv2XobEjuZX1Xt2oRJMoiL9dY/R0oHQ1aZ8DYfXT
- 5WqeYm7R5Q2nteFN5LD3kINo25lF//4+eNCPGFmifaDCRNwDgZUU=
+ bh=oQKYQhuICX5DBtHaowGZbnJGuwpyDpM+GsZaRCaIX4M=;
+ b=owEBiQJ2/ZANAwAIATR2H/jnrUPSAcsmYgBp76V9jveQ0d8UFFWCXH/ZYKXYbx1j5Z3L5kn+E
+ Syf+XW02bKJAk8EAAEIADkWIQSCdBjE9KxY53IwxHM0dh/4561D0gUCae+lfRsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwyLDIACgkQNHYf+OetQ9KVHhAAjJc7tGq49faeum6CZGHoCRQI0UaRoRu
+ 6SmBsvh1p2l28DUKaEn/dvKXyexu///bZNXPbFw/is3zD6RUn6CHPOmGQ/RHKq7Dhr9/yMCPKvb
+ RwkRt/jgEL8fdG0R6doRrnQWtYVmu4CSv4H/mPq1LkoVbNv/6SSYrbhReWEpQyfzMk5ORou8Xhv
+ 0rEhZmD7zmItkdBdgSh/T08HvqEGCwQavXjQjGOetef8e8lrNYTZY/6GZwQWlsKycoJkmgsIuWV
+ gX89cUjDlTCdkkAAWOolNHgJ7ejQOu2fo/vZ2KcDpyofLKla2fBZOw6i3T66sYb9IfnJ2m5aawQ
+ ZjTq0BAbX1Lgs6BAQh3bq2UQ1aPzAzjm4usmDfXYzcbed0W5NIj9g/55sdRTJpOifmXmpHun++8
+ kqKuTOjxGWpqtK1Vz+bFbjldF8iBvpo9n+D6C3uT/K1Pek7c4uqbZH2HMogF1WUCKX0RdVBa9j0
+ VcTAh+543GRxWWoYH3cPkRWH4ya5bKfC4ZtvV4cQLhO8oePehDW6Ttj3P4FUK+fqAq0zjcdmIsa
+ hfFR6O7+3AXDXYWISRlFV1O2z0PpctoL7fOBK/0qC4DO0ZXHUVhXCQWDR5KEXHfYBnMzkD2vnYk
+ GyvJAqtOI42mCna/Hr9ypH/8EsZz9urdeQ7I21Po3E0TZHc0bhKU=
 X-Developer-Key: i=markus.probst@posteo.de; a=openpgp;
  fpr=827418C4F4AC58E77230C47334761FF8E7AD43D2
 X-Endpoint-Received: by B4 Relay for markus.probst@posteo.de/default with auth_id=680
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch series adds the serdev device bus rust abstraction into the
-kernel.
+Return the reference to the initialized data in the `devres::register`
+function.
 
-This abstraction will be used by a driver,
-which targets the MCU devices in Synology devices.
+This is needed in a following commit (rust: add basic serial device bus
+abstractions).
 
-Kari Argillander also messaged me, stating that he wants to write a
-watchdog driver with this abstraction (needing initial device data).
-
-@Rob: Are you willing to maintain these rust abstractions yourself,
-as you are the expert on this subsystem, otherwise I would take care of
-it with a "SERIAL DEVICE BUS [RUST]" section in the MAINTAINERS file. In
-the second case, I assume you are going to pick those patches as-is into
-your tree, after they have been reviewed?
-
+Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
 Signed-off-by: Markus Probst <markus.probst@posteo.de>
 ---
-Changes in v6:
-- rebased onto v7.1-rc1
-- Link to v5: https://patch.msgid.link/20260420-rust_serdev-v5-0-57e8ba0519f3@posteo.de
+ rust/kernel/cpufreq.rs    |  3 ++-
+ rust/kernel/devres.rs     | 15 +++++++++++++--
+ rust/kernel/drm/driver.rs |  3 ++-
+ 3 files changed, 17 insertions(+), 4 deletions(-)
 
-Changes in v5:
-- fix typo in documentation
-- Link to v4: https://lore.kernel.org/r/20260411-rust_serdev-v4-0-845e960c6627@posteo.de
+diff --git a/rust/kernel/cpufreq.rs b/rust/kernel/cpufreq.rs
+index d8d26870bea2..e1228530598f 100644
+--- a/rust/kernel/cpufreq.rs
++++ b/rust/kernel/cpufreq.rs
+@@ -1052,7 +1052,8 @@ pub fn new_foreign_owned(dev: &Device<Bound>) -> Result
+     where
+         T: 'static,
+     {
+-        devres::register(dev, Self::new()?, GFP_KERNEL)
++        devres::register(dev, Self::new()?, GFP_KERNEL)?;
++        Ok(())
+     }
+ }
+ 
+diff --git a/rust/kernel/devres.rs b/rust/kernel/devres.rs
+index 9e5f93aed20c..d3c9c376693d 100644
+--- a/rust/kernel/devres.rs
++++ b/rust/kernel/devres.rs
+@@ -419,15 +419,26 @@ fn register_foreign<P>(dev: &Device<Bound>, data: P) -> Result
+ /// }
+ ///
+ /// fn from_bound_context(dev: &Device<Bound>) -> Result {
+-///     devres::register(dev, Registration::new(), GFP_KERNEL)
++///     devres::register(dev, Registration::new(), GFP_KERNEL)?;
++///     Ok(())
+ /// }
+ /// ```
+-pub fn register<T, E>(dev: &Device<Bound>, data: impl PinInit<T, E>, flags: Flags) -> Result
++pub fn register<'a, T, E>(
++    dev: &'a Device<Bound>,
++    data: impl PinInit<T, E>,
++    flags: Flags,
++) -> Result<&'a T>
+ where
+     T: Send + 'static,
+     Error: From<E>,
+ {
+     let data = KBox::pin_init(data, flags)?;
+ 
++    let data_ptr = &raw const *data;
++
+     register_foreign(dev, data)
++        // SAFETY: `dev` is valid for the lifetime of 'a. As long as there is a reference to
++        // `Device<Bound>`, it is guaranteed that the device is not unbound and data has not been
++        // dropped. Thus `data_ptr` is also valid for the lifetime of 'a.
++        .map(|()| unsafe { &*data_ptr })
+ }
+diff --git a/rust/kernel/drm/driver.rs b/rust/kernel/drm/driver.rs
+index 5233bdebc9fc..1edfd7bacddb 100644
+--- a/rust/kernel/drm/driver.rs
++++ b/rust/kernel/drm/driver.rs
+@@ -147,7 +147,8 @@ pub fn new_foreign_owned(
+ 
+         let reg = Registration::<T>::new(drm, flags)?;
+ 
+-        devres::register(dev, reg, GFP_KERNEL)
++        devres::register(dev, reg, GFP_KERNEL)?;
++        Ok(())
+     }
+ 
+     /// Returns a reference to the `Device` instance for this registration.
 
-Changes in v4:
-- fixed not selecting rust serdev abstraction in sample
-- Link to v3: https://lore.kernel.org/r/20260313-rust_serdev-v3-0-c9a3af214f7f@posteo.de
-
-Changes in v3:
-- fix vertical import style
-- add Kconfig entry for the rust abstraction
-- fix documentation in include/linux/serdev.h
-- rename private_data to rust_private_data
-- fix `complete_all` <-> `wait_for_completion` typo
-- move drvdata_borrow call after the completion
-- Link to v2: https://lore.kernel.org/r/20260306-rust_serdev-v2-0-e9b23b42b255@posteo.de
-
-Changes in v2:
-- fix documentation in `serdev::Driver::write` and
-  `serdev::Driver::write_all`
-- remove use of `dev_info` in probe from the sample
-- remove `properties_parse` from the sample
-- add optional `baudrate` property to the sample
-- remove 1. patch
-- remove `TryFrom<&device::Device<Ctx>> for &serdev::Device<Ctx>`
-  implementation
-- fix import style
-- add patch to return reference in `devres::register` to fix safety
-  issue
-- add patch to add private data to serdev_device, to fix
-  `Device.drvdata()` from failing
-- simplify abstraction by removing ability to receive the initial
-  transmission. It may be added later in a separate patch series if
-  needed.
-- Link to v1: https://lore.kernel.org/r/20251220-rust_serdev-v1-0-e44645767621@posteo.de
-
----
-Markus Probst (4):
-      rust: devres: return reference in `devres::register`
-      serdev: add rust private data to serdev_device
-      rust: add basic serial device bus abstractions
-      samples: rust: add Rust serial device bus sample device driver
-
- drivers/tty/serdev/Kconfig         |   7 +
- include/linux/serdev.h             |  15 +-
- rust/bindings/bindings_helper.h    |   1 +
- rust/helpers/helpers.c             |   1 +
- rust/helpers/serdev.c              |  22 ++
- rust/kernel/cpufreq.rs             |   3 +-
- rust/kernel/devres.rs              |  15 +-
- rust/kernel/drm/driver.rs          |   3 +-
- rust/kernel/lib.rs                 |   2 +
- rust/kernel/serdev.rs              | 536 +++++++++++++++++++++++++++++++++++++
- samples/rust/Kconfig               |  11 +
- samples/rust/Makefile              |   1 +
- samples/rust/rust_driver_serdev.rs |  86 ++++++
- 13 files changed, 693 insertions(+), 10 deletions(-)
----
-base-commit: 5e9b7d093f3f77cb0af4409559e3d139babfb443
-change-id: 20251217-rust_serdev-ee5481e9085c
+-- 
+2.53.0
 
