@@ -1,76 +1,81 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 27 Apr 2026 08:44:42 +0200
-Subject: [PATCH 2/2] arm64: dts: qcom: sdm845-lg: Enable
- qcom,snoc-host-cap-skip-quirk
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH v2 00/11] Fixes and cleanups for the AD5686 IIO driver
+Date: Mon, 27 Apr 2026 12:30:07 +0100
+Message-Id: <20260427-ad5686-fixes-v2-0-188e05199368@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260427-b4-skip-host-cam-qmi-req-fixup-v1-2-4398e94bde70@ixit.cz>
-References: <20260427-b4-skip-host-cam-qmi-req-fixup-v1-0-4398e94bde70@ixit.cz>
-In-Reply-To: <20260427-b4-skip-host-cam-qmi-req-fixup-v1-0-4398e94bde70@ixit.cz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Amit Pundir <amit.pundir@linaro.org>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
- Paul Sajna <sajattack@postmarketos.org>
-Cc: Konrad Dybcio <konradybcio@gmail.com>, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- David Heidelberg <david@ixit.cz>, stable@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAL9I72kC/3WMwQ7CIBAFf6XZsxhAXKgn/8P0QGFtSbQ0YIim4
+ d/F3j3Oe5nZIFMKlOHSbZCohBzi0kAeOnCzXSZiwTcGySVyJZFZf0aD7B7elBmeyKIxQox+hKa
+ sifajGbeh8RzyK6bPXi/it/4JFcE4065XaLXWvaKrXewjTkcXnzDUWr/ceN4LqQAAAA==
+X-Change-ID: 20260426-ad5686-fixes-63ea68811bdb
+To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Stefan Popa <stefan.popa@analog.com>, Jonathan Cameron <jic23@cam.ac.uk>, 
+ Greg Kroah-Hartman <gregkh@suse.de>, 
+ Michael Auchter <michael.auchter@ni.com>, 
+ Jonathan Cameron <jic23@kernel.org>
+Cc: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>, 
+ Andy Shevchenko <andriy.shevchenko@intel.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1150; i=david@ixit.cz;
- h=from:subject:message-id; bh=rjReFmShlnTaM2lZx/85DqjUqhkr2W2r+NrmMgLxkjg=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBp7wXaphRDQGvH4XoK/VOPxmZ+p4W1VgL/Papcr
- 7665zCi8+WJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCae8F2gAKCRBgAj/E00kg
- cpTQD/439i8fIE09B6ex6xtz9if7DkBu8PuwBU2Taq7vE95PPMAYRaAxfb2HHnj9Exj1hQxiKg6
- Zkr5TgcSzT1jLsXLy/OWrkQt+Tc1m3JY6DTyZaCn0fHJhwx684MhKV1kVXUb0oz+OXyoYpOHUFT
- jfHpb0UlTi7yMh0S8fFLwWNBg7d/TB/bNznOZcM+n0PU6sW1pxzpo7o2hbakWsH0Fxmi1QLRcV3
- 7nT8y/dy/AM7zrzwNtF+EbWM+C71JOL/7thBCjL70snDCRa+MefTjQVThQXfj54t06ZaeuzXA5O
- M/o3kFNYam3hu63t09cagRi35TJZCZgSV+rSCWUwkpevQKjkMcv848t2P9ECb5XMGLnMwqyqAVn
- KbaVgFwB9bXNYgbcrDkO6Te1AvVRwYaD+HBcJqArBmHdFjIkTO/smAbWY3iQ1DHKG+G3H7Bc3E+
- sgTCLwZQ0GpijqeE1oacU8tswlZIYrajT8QiwlTBbKAyk/p9vEH8kaFt2AXiaJIV35GeeVjJIhm
- sdVXtgjnGlWQHAZjMQViJz52rGYd3rdvcIm0JubgTknhSQupMhCgp5uI+s3A3w0M7vdZ4fRAMLB
- yZOyI6VHul6bpKaxJ4K2CKUiVZS5DdTTlyTba+XZFItCvOg8qRoIJj/2Hy0TkRC3EICWVHDL1PT
- wWt8eMFw4yleEjQ==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777289409; l=1986;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=FU47icc8xWRwMiP7j8yRR3TjrZtfwFeEVK2tkPTLzC0=;
+ b=APTRVDGVmPNtfHS813U3LydidIykxD8VrF19rPHhrwUwCg/DRoB7mO7FsGSVRtqfJZmLMHYOA
+ 7gs+kZfWgb6D5r+1oVROqyazxezhgC3r7FpQGJi2Q51qsDE+SIFp/3L
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Paul Sajna <sajattack@postmarketos.org>
+This is the first series of three on updating the AD5686 driver.
 
-The WCN3990 firmware for judyln does not respond to the request for
-host capabilities. Add the devicetree quirk to skip this request.
+A bigger patch series was sent before ("Extend device support for AD5686 driver"),
+but this is not exactly a v2:
 
-Fixes: eb8fa3208526 ("arm64: dts: qcom: sdm845-lg: Add wifi nodes")
-Cc: <stable@vger.kernel.org> # 7.1.x
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Reviewed-by: David Heidelberg <david@ixit.cz>
-Signed-off-by: Paul Sajna <sajattack@postmarketos.org>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+https://lore.kernel.org/r/20260422-ad5313r-iio-support-v1-0-ed7dca001d1b@analog.com
+
+This one adds a number of cleanups and fixes, like:
+- Refactor include headers (IWYU);
+- Remove redundant register definition;
+- Drop enum chip id in favor of per-device chip_info structs;
+- Fix internal voltage reference control for single-channel devices;
+- Acquire lock when doing power down control;
+- Fix powerdown control for dual-channel devices;
+
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi | 2 ++
- 1 file changed, 2 insertions(+)
+Changes in v2:
+- Bring fixes first and cleanups later
+- Link to v1: https://lore.kernel.org/r/20260426-ad5686-fixes-v1-0-7c946a77794e@analog.com
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi
-index 71d070619ad73..2d02d77d35ea7 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-lg-common.dtsi
-@@ -675,10 +675,12 @@ &venus {
- 
- &wifi {
- 	vdd-0.8-cx-mx-supply = <&vreg_l5a_0p8>;
- 	vdd-1.8-xo-supply = <&vreg_l7a_1p8>;
- 	vdd-1.3-rfa-supply = <&vreg_l17a_1p3>;
- 	vdd-3.3-ch0-supply = <&vreg_l25a_3p3>;
- 	vdd-3.3-ch1-supply = <&vreg_l23a_3p3>;
- 
-+	qcom,snoc-host-cap-skip-quirk;
-+
- 	status = "okay";
- };
+---
+Rodrigo Alencar (11):
+      iio: dac: ad5686: fix ref bit initialization for single-channel parts
+      iio: dac: ad5686: fix input raw value check
+      iio: dac: ad5686: acquire lock when doing powerdown control
+      iio: dac: ad5686: fix powerdown control on dual-channel devices
+      iio: dac: ad5686: refactor include headers
+      iio: dac: ad5686: remove redundant register definition
+      iio: dac: ad5686: drop enum id
+      iio: dac: ad5686: add of_match table to the spi driver
+      iio: dac: ad5686: add control_sync() for single-channel devices
+      iio: dac: ad5686: cleanup doc header of local structs
+      iio: dac: ad5686: create bus ops struct
 
+ drivers/iio/dac/ad5686-spi.c |  73 ++++--
+ drivers/iio/dac/ad5686.c     | 521 +++++++++++++++++++++----------------------
+ drivers/iio/dac/ad5686.h     | 116 +++++-----
+ drivers/iio/dac/ad5696-i2c.c |  80 ++++---
+ 4 files changed, 409 insertions(+), 381 deletions(-)
+---
+base-commit: d86db1905add39f905cf9f04252804b359914ed6
+change-id: 20260426-ad5686-fixes-63ea68811bdb
+
+Best regards,
 -- 
-2.53.0
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
