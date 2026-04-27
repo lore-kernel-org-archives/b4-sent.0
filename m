@@ -1,11 +1,11 @@
 From: Alexandre MINETTE <contact@alex-min.fr>
-Date: Mon, 27 Apr 2026 21:34:48 +0200
-Subject: [PATCH v2 2/8] dt-bindings: extcon: qcom,pm8941-misc: Add PM8921
- compatible
+Date: Mon, 27 Apr 2026 21:34:49 +0200
+Subject: [PATCH v2 3/8] pinctrl: qcom: Register functions before enabling
+ pinctrl
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260427-mainline-send-v1-sending-v2-2-dcaa9178007b@alex-min.fr>
+Message-Id: <20260427-mainline-send-v1-sending-v2-3-dcaa9178007b@alex-min.fr>
 References: <20260427-mainline-send-v1-sending-v2-0-dcaa9178007b@alex-min.fr>
 In-Reply-To: <20260427-mainline-send-v1-sending-v2-0-dcaa9178007b@alex-min.fr>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -23,73 +23,68 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  iommu@lists.linux.dev, phone-devel@vger.kernel.org, 
  Alexandre MINETTE <contact@alex-min.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777318488; l=1745;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777318488; l=2004;
  i=contact@alex-min.fr; s=20260421; h=from:subject:message-id;
- bh=5UIfYQUdRZLRDt1LSWl5X2pDrLJ84c7SqdbQApH5K2U=;
- b=oXTU0+0R9FAs0PpW+YQSjiyd25xzBt0VxQScacWPCwQ9P7UXv7hzkwboxvLfIMU37he/4Vjoy
- r0DacSZ8fOPDldzx0fPqoSi1Pc+1UQJtvhfL+NhA96KdmwTvbizGOkd
+ bh=gqK5qmgCceA2ln5R06RBqAB8HOklQ9gk21qwB8S51xo=;
+ b=oOWG34jZy36RGXXAHLq5QkZ6h3qiGytJ7F+UT5O5j57647flrE8MXSuHSuDk/C3BpUuYHsd+Y
+ 3GNF3MxsuCRB3xQLR/it0HBYwwA+q1E+5mxpRqUbYAGLRKCi+ZAebw3
 X-Developer-Key: i=contact@alex-min.fr; a=ed25519;
  pk=KOCaxY4v16ptaT0uk1FRkuaDF2n1JhmnYwLiqWD76M4=
 X-Endpoint-Received: by B4 Relay for contact@alex-min.fr/20260421 with auth_id=743
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-PM8921 provides USB ID detection through the USB_ID_IN interrupt, which
-APQ8064 boards use for OTG role detection.
+pinctrl consumers can request states while the pinctrl core enables the
+controller. On Qualcomm pinctrl drivers this can happen before the SoC
+function list has been registered, which leaves the function table
+incomplete during state lookup.
 
-The Qualcomm PMIC misc extcon binding only needs the interrupt
-description for this use case. Allow qcom,pm8921-misc without requiring
-a register resource so boards can describe PM8921 USB ID detection.
+On APQ8064 this can fail while claiming pinctrl hogs:
+
+   apq8064-pinctrl 800000.pinctrl: invalid function ps_hold in map table
+   apq8064-pinctrl 800000.pinctrl: error claiming hogs: -22
+   apq8064-pinctrl 800000.pinctrl: could not claim hogs: -22
+
+Register Qualcomm pinctrl with devm_pinctrl_register_and_init(), add the
+SoC pin functions, and only then enable the pinctrl device.
 
 Signed-off-by: Alexandre MINETTE <contact@alex-min.fr>
 ---
- .../devicetree/bindings/extcon/qcom,pm8941-misc.yaml    | 17 +++++++++++++----
- 1 file changed, 13 insertions(+), 4 deletions(-)
+ drivers/pinctrl/qcom/pinctrl-msm.c | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/extcon/qcom,pm8941-misc.yaml b/Documentation/devicetree/bindings/extcon/qcom,pm8941-misc.yaml
-index 6b80518cbf62..4e3d0aadb83c 100644
---- a/Documentation/devicetree/bindings/extcon/qcom,pm8941-misc.yaml
-+++ b/Documentation/devicetree/bindings/extcon/qcom,pm8941-misc.yaml
-@@ -4,7 +4,7 @@
- $id: http://devicetree.org/schemas/extcon/qcom,pm8941-misc.yaml#
- $schema: http://devicetree.org/meta-schemas/core.yaml#
+diff --git a/drivers/pinctrl/qcom/pinctrl-msm.c b/drivers/pinctrl/qcom/pinctrl-msm.c
+index 45b3a2763eb8..a2a1e0835735 100644
+--- a/drivers/pinctrl/qcom/pinctrl-msm.c
++++ b/drivers/pinctrl/qcom/pinctrl-msm.c
+@@ -1593,11 +1593,11 @@ int msm_pinctrl_probe(struct platform_device *pdev,
+ 	pctrl->desc.pins = pctrl->soc->pins;
+ 	pctrl->desc.npins = pctrl->soc->npins;
  
--title: Qualcomm Technologies, Inc. PM8941 USB ID Extcon device
-+title: Qualcomm Technologies, Inc. PMIC USB ID Extcon device
+-	pctrl->pctrl = devm_pinctrl_register(&pdev->dev, &pctrl->desc, pctrl);
+-	if (IS_ERR(pctrl->pctrl)) {
+-		dev_err(&pdev->dev, "Couldn't register pinctrl driver\n");
+-		return PTR_ERR(pctrl->pctrl);
+-	}
++	ret = devm_pinctrl_register_and_init(&pdev->dev, &pctrl->desc,
++					     pctrl, &pctrl->pctrl);
++	if (ret)
++		return dev_err_probe(&pdev->dev, ret,
++				     "Couldn't register pinctrl driver\n");
  
- maintainers:
-   - Guru Das Srinagesh <quic_gurus@quicinc.com>
-@@ -15,8 +15,9 @@ description: |
+ 	for (i = 0; i < soc_data->nfunctions; i++) {
+ 		func = &soc_data->functions[i];
+@@ -1607,6 +1607,11 @@ int msm_pinctrl_probe(struct platform_device *pdev,
+ 			return ret;
+ 	}
  
- properties:
-   compatible:
--    items:
--      - const: qcom,pm8941-misc
-+    enum:
-+      - qcom,pm8921-misc
-+      - qcom,pm8941-misc
- 
-   reg:
-     maxItems: 1
-@@ -37,10 +38,18 @@ properties:
-           - const: usb_vbus
- required:
-   - compatible
--  - reg
-   - interrupts
-   - interrupt-names
- 
-+allOf:
-+  - if:
-+      properties:
-+        compatible:
-+          const: qcom,pm8941-misc
-+    then:
-+      required:
-+        - reg
++	ret = pinctrl_enable(pctrl->pctrl);
++	if (ret)
++		return dev_err_probe(&pdev->dev, ret,
++				     "Couldn't enable pinctrl driver\n");
 +
- additionalProperties: false
- 
- examples:
+ 	ret = msm_gpio_init(pctrl);
+ 	if (ret)
+ 		return ret;
 
 -- 
 2.43.0
