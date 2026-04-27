@@ -1,100 +1,107 @@
-From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Sun, 26 Apr 2026 19:38:41 +0530
-Subject: [PATCH] ACPI: video: force native backlight on HP OMEN 16 (8A44)
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v7 0/2] drm/panel: Add panel driver for ChipWealth CH13726A
+ based panels
+Date: Sun, 26 Apr 2026 23:39:36 -0500
+Message-Id: <20260426-ch13726a-v7-0-554247c569e5@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260426-omen-16-backlight-fix-v1-1-62364f268ea6@zohomail.in>
-X-B4-Tracking: v=1; b=H4sIAGgc7mkC/yXM0Q5DQBCF4VeRuTYJS1Gv0rjYWYPRdjW7iES8u
- y2X30nOv4NnJ+yhjnZwvIqXyQakcQRm0LZnlDYYVKKKJFcPnL5sMS2QtHl/pB9m7GTDMuuoIpN
- rRU8I35/jMF/dV3PbLzSymf8xOI4TdT+L03kAAAA=
-X-Change-ID: 20260425-omen-16-backlight-fix-73fb8bc4a2b9
-To: "Rafael J. Wysocki" <rafael@kernel.org>, Len Brown <lenb@kernel.org>
-Cc: linux-acpi@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Shivam Kalra <shivamkalra98@zohomail.in>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777212528; l=3008;
- i=shivamkalra98@zohomail.in; s=20260402; h=from:subject:message-id;
- bh=Ks75/0yCMSiPZ5NGPSiLdDntV/e7UFJBadOo45wysJA=;
- b=ImzlN1NF/yjSEwdic/vHSQlDyh2HDbuxm3ilC7wHeE26rJSBVCMfn4V3XByKns2e2Sekc/Yrj
- AA+AbNfO0kDAJPvHDEDPFsh+D+binV7lvoEReIkEwJGdwwIhdYKWZAB
-X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
- pk=U8kQSxcte8P8iZ6zB7phIj+Yl+i/5ntifBGuclgypx8=
-X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260402 with auth_id=716
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2XRzW7CMAwH8FdBOS+T4zSOy2nvMe2QT4g06GhZN
+ YR494UyqRE7OsrPfzu5iimNJU1iu7mKMc1lKsOxFvZlI8LeHXdJllhrgYAEiCDDXmmL5KTpA5H
+ laHRkUa9/jSmXn6XV+8ejHtPpu3Y8Pw6Fd1OSYTgcyrkmAEPSGHWGPjIxh86xjax8DMGqbDMBe
+ UWinWS7ecyhrHSXozyFiY0BqSiA9aRjQtrORtzj92U6D+NlWWxWS/7fDrjuMCsJMhlQ0XJSYNz
+ b7uDK52sdcmky4wp1DV0hVojsXEc+RIrwDHUDUTdQ3xORPeXe5sT/YLfCDriBXYW998r1nrPG/
+ hmaBqJqoKnw/py5yxoSmGdILWwfhyoETQyxfrTOuYW32+0Xv4W8eTwCAAA=
+X-Change-ID: 20260220-ch13726a-59c6678d53d8
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Teguh Sobirin <teguh@sobir.in>, 
+ Aaron Kling <webgeek1234@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777264782; l=2886;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=h66IYY6ltdWW82uv6ZEGFRb8Lc+1/b/cWqAH+0NPf+0=;
+ b=xm9Z/XMRY1yj+o4BtkFQ/WlfNpF/zM+aWQXjzOT9pyXmOE2q+AOh+GHRWG8kowT834DDlFTUh
+ wVPVgCwL/eyBdk7UQjfh9lqAOk/7ll50mqA9TT8ORiuBqei8VnV6z7G
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HP OMEN 16 Gaming Laptop (board name 8A44) has a mux-less hybrid
-GPU configuration with AMD Rembrandt (Radeon 680M) and NVIDIA GA104
-(RTX 3070 Ti). The internal eDP panel is wired to the AMD iGPU.
+This driver is based on the one by Teguh Sobirin [0], cut down to only
+support the AYN Thor bottom panel.
 
-When Nouveau loads without GSP firmware, the ACPI video backlight
-device (acpi_video0) gets registered alongside the native AMD
-backlight (amdgpu_bl2). In this state, writes to amdgpu_bl2 update
-the software brightness value but fail to change the physical panel
-brightness.
+Due to [1], the AYN vendor description patch has been folded into the
+AYN QCS8550 dt series. Which means this series now depends on said
+series and it must be picked up before this.
 
-Force native backlight to prevent acpi_video0 from registering.
-Confirmed that booting with acpi_backlight=native resolves the issue.
+[0] https://github.com/AYNTechnologies/linux/commit/d0ff75b09e66023c5f88992706dee4601aa7a437
+[1] https://lore.kernel.org/linux-arm-msm/c7fb3f89-6574-4761-9ef2-2fdf6d4801b5@kernel.org
 
-Cc: stable@vger.kernel.org
-Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-This patch adds a DMI quirk to force native backlight control on the
-HP OMEN 16 Gaming Laptop (board name 8A44), which has a mux-less
-hybrid GPU configuration with AMD Rembrandt (680M iGPU) and NVIDIA
-GA104 (RTX 3070 Ti).
-On this laptop the internal eDP panel is wired to the AMD iGPU. The
-amdgpu driver registers amdgpu_bl2 as the native backlight device.
-When the Nouveau driver is loaded without GSP firmware (as is the
-case on v6.17 where GSP is not the default for Ampere GPUs), writes
-to amdgpu_bl2 fail silently — the brightness sysfs value updates
-but the physical panel brightness does not change.
-Testing:
-- Tested on HP OMEN 16 with AMD Ryzen 9 6900HX + NVIDIA RTX 3070 Ti.
-- On v6.17, without this quirk, brightness control is broken.
-- On v6.17, booting with acpi_backlight=native restores correct
-  brightness control. This patch applies that workaround
-  automatically via DMI match.
-- On v6.18+, the issue does not reproduce because commit
-  e0ed674acbac ("drm/nouveau: Remove DRM_NOUVEAU_GSP_DEFAULT
-  config") made GSP firmware the default for Ampere, which avoids
-  the ACPI conflict entirely.  
-I have only tested this on v6.17 and v7.0. I am leaving it to the
-stable/LTS maintainers to determine whether this quirk should be
-backported, as I have not verified the stability of the GSP firmware
-path on intermediate releases.
+Changes in v7:
+- Invert reset gpio logic and instead expect the correct active high or
+  low setting in kernel dt.
+- Link to v6: https://lore.kernel.org/r/20260422-ch13726a-v6-0-03680d6673ff@gmail.com
 
-Thanks,
-Shivam Kalra
----
- drivers/acpi/video_detect.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+Changes in v6:
+- Add trailers from v4
+- Link to v5: https://lore.kernel.org/r/20260421-ch13726a-v5-0-f7f6f4f30e05@gmail.com
 
-diff --git a/drivers/acpi/video_detect.c b/drivers/acpi/video_detect.c
-index 0a3c8232d15d..458efa4fe9d4 100644
---- a/drivers/acpi/video_detect.c
-+++ b/drivers/acpi/video_detect.c
-@@ -916,6 +916,14 @@ static const struct dmi_system_id video_detect_dmi_table[] = {
- 		DMI_MATCH(DMI_PRODUCT_NAME, "82K8"),
- 		},
- 	},
-+	{
-+	 .callback = video_detect_force_native,
-+	 /* HP OMEN Gaming Laptop 16-n0xxx */
-+	 .matches = {
-+		DMI_MATCH(DMI_SYS_VENDOR, "HP"),
-+		DMI_MATCH(DMI_PRODUCT_NAME, "OMEN by HP Gaming Laptop 16-n0xxx"),
-+		},
-+	},
- 
- 	/*
- 	 * x86 android tablets which directly control the backlight through
+Changes in v5:
+- Don't duplicate prepared tracking
+- Use devm_regulator_bulk_get_const() instead of setting names in probe
+- Use devm_drm_panel_alloc() instead of drm_panel_init()
+- Link to v4: https://lore.kernel.org/r/20260408-ch13726a-v4-0-9bb1a9b8f329@gmail.com
+
+Changes in v4:
+- Add fallback compatible to bindings doc in patch 1
+- Link to v3: https://lore.kernel.org/r/20260323-ch13726a-v3-0-e28b6f97fe80@gmail.com
+
+Changes in v3:
+- Reword patch 1 commit message for clarity
+- Order properties properly in patch 1
+- Track vendor description dependency series change
+- Link to v2: https://lore.kernel.org/r/20260317-ch13726a-v2-0-28aa46bcd6d0@gmail.com
+
+Changes in v2:
+- Add Neil Armstrong to binding maintainer list
+- Add 120hz mode, which required a minor restructure of the driver
+- Link to v1: https://lore.kernel.org/r/20260222-ch13726a-v1-0-e501d78e105a@gmail.com
 
 ---
-base-commit: 27d128c1cff64c3b8012cc56dd5a1391bb4f1821
-change-id: 20260425-omen-16-backlight-fix-73fb8bc4a2b9
+Aaron Kling (1):
+      dt-bindings: display: panel: Add ChipWealth CH13726A AMOLED driver
+
+Teguh Sobirin (1):
+      drm/panel: Add panel driver for ChipWealth CH13726A based panels
+
+ .../display/panel/chipwealth,ch13726a.yaml         |  67 +++++
+ drivers/gpu/drm/panel/Kconfig                      |  11 +
+ drivers/gpu/drm/panel/Makefile                     |   1 +
+ drivers/gpu/drm/panel/panel-chipwealth-ch13726a.c  | 333 +++++++++++++++++++++
+ 4 files changed, 412 insertions(+)
+---
+base-commit: 7080e32d3f09d8688c4a87d81bdcc71f7f606b16
+change-id: 20260220-ch13726a-59c6678d53d8
+prerequisite-change-id: 20260217-ayn-qcs8550-16c07b63de26:v5
+prerequisite-patch-id: 2b010637c46f5ea0e19a2fa87cc5ccb19bfd9204
+prerequisite-patch-id: d0c633dc17f0aba726a8e8d21fee52b944bf67ff
+prerequisite-patch-id: 76ac126273870a96f05e1bd87f4f31bdc3746440
+prerequisite-patch-id: 76b61799dba520fc7fa3ff39b044e24103337af3
+prerequisite-patch-id: 3844bef2eda3cf59031b1d131eb6ba9295629bb4
+prerequisite-patch-id: 3331648bc6f4ac3bb156f0525aa1ede92bfc57f1
 
 Best regards,
---  
-Shivam Kalra <shivamkalra98@zohomail.in>
+-- 
+Aaron Kling <webgeek1234@gmail.com>
 
