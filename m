@@ -1,11 +1,10 @@
 From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Tue, 28 Apr 2026 01:54:18 +0530
-Subject: [PATCH v12 3/5] mm/vmalloc: use physical page count in
- vread_iter()
+Date: Tue, 28 Apr 2026 01:54:19 +0530
+Subject: [PATCH v12 4/5] mm/vmalloc: free unused pages on vrealloc() shrink
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260428-vmalloc-shrink-v12-3-3c18c9172eb1@zohomail.in>
+Message-Id: <20260428-vmalloc-shrink-v12-4-3c18c9172eb1@zohomail.in>
 References: <20260428-vmalloc-shrink-v12-0-3c18c9172eb1@zohomail.in>
 In-Reply-To: <20260428-vmalloc-shrink-v12-0-3c18c9172eb1@zohomail.in>
 To: Andrew Morton <akpm@linux-foundation.org>, 
@@ -14,51 +13,121 @@ Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
  Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
  Shivam Kalra <shivamkalra98@zohomail.in>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777321463; l=1268;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777321463; l=4129;
  i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
- bh=IzrpuvbBn3WlkxnhP3YgMF2kBytQxCzQDInbnNPSh4s=;
- b=7okzB/Cxu/mR4PDwNKA/wjJi+ud8fSilxvYtTPmIBHwgQcROTwxb+qvGA2qDyliVp7ZkuFDAG
- RegZNLcWwF8AwQM9LeqZlGIJDhqt2qCGxdYJTi9QcfN3eckCxdVshlG
+ bh=5NJsZJhr4gxLdNkrGrcBoAv03CvvDNrlYCw3Jjj+FFo=;
+ b=MyOLz6qbpCthFvegsA2v+ZrsVHbTI7LcbjCvhYHTrQiWSnDquffPxjeOpeRjoWlNN33niXLX3
+ DPYYLQbB9RhChU6zUQXVVXuNJixa87jFnfg44ArFOtDTxE5naseWcGJ
 X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
  pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
 X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update vread_iter() to derive the vm area size from vm->nr_pages rather
-than get_vm_area_size().
+When vrealloc() shrinks an allocation and the new size crosses a page
+boundary, unmap and free the tail pages that are no longer needed. This
+reclaims physical memory that was previously wasted for the lifetime
+of the allocation.
 
-Currently both values are equivalent, but the upcoming vrealloc() shrink
-functionality will free pages without reducing the virtual reservation
-size. After such a shrink, the old get_vm_area_size() based calculation
-would overestimate the mapped range, causing vread_iter() to attempt
-reading from unmapped addresses. Switch to vm->nr_pages now so the
-reader remains correct once shrink support is added.
+The heuristic is simple: always free when at least one full page becomes
+unused. Huge page allocations (page_order > 0) are skipped, as partial
+freeing would require splitting. Allocations with VM_FLUSH_RESET_PERMS
+are also skipped, as their direct-map permissions must be reset before
+pages are returned to the page allocator, which is handled by
+vm_reset_perms() during vfree().
 
+Additionally, allocations with VM_USERMAP are skipped because
+remap_vmalloc_range_partial() validates mapping requests against the
+unchanged vm->size; freeing tail pages would cause vmalloc_to_page()
+to return NULL for the unmapped range.
+
+To protect concurrent readers, the shrink path uses Node lock to
+synchronize before freeing the pages.
+
+Finally, we notify kmemleak of the reduced allocation size using
+kmemleak_free_part() to prevent the kmemleak scanner from faulting on
+the newly unmapped virtual addresses.
+
+The virtual address reservation (vm->size / vmap_area) is intentionally
+kept unchanged, preserving the address for potential future grow-in-place
+support.
+
+Suggested-by: Danilo Krummrich <dakr@kernel.org>
 Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
- mm/vmalloc.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ mm/vmalloc.c | 56 ++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 52 insertions(+), 4 deletions(-)
 
 diff --git a/mm/vmalloc.c b/mm/vmalloc.c
-index 9cb3e287a1e8..65e0a23efb3b 100644
+index 65e0a23efb3b..9f810d306db9 100644
 --- a/mm/vmalloc.c
 +++ b/mm/vmalloc.c
-@@ -4661,7 +4661,14 @@ long vread_iter(struct iov_iter *iter, const char *addr, size_t count)
- 		smp_rmb();
+@@ -4346,14 +4346,62 @@ void *vrealloc_node_align_noprof(const void *p, size_t size, unsigned long align
+ 		goto need_realloc;
+ 	}
  
- 		vaddr = (char *) va->va_start;
--		size = vm ? get_vm_area_size(vm) : va_size(va);
-+		if (vm)
+-	/*
+-	 * TODO: Shrink the vm_area, i.e. unmap and free unused pages. What
+-	 * would be a good heuristic for when to shrink the vm_area?
+-	 */
+ 	if (size <= old_size) {
++		unsigned int new_nr_pages = PAGE_ALIGN(size) >> PAGE_SHIFT;
++
+ 		/* Zero out "freed" memory, potentially for future realloc. */
+ 		if (want_init_on_free() || want_init_on_alloc(flags))
+ 			memset((void *)p + size, 0, old_size - size);
++
++		/*
++		 * Free tail pages when shrink crosses a page boundary.
++		 *
++		 * Skip huge page allocations (page_order > 0) as partial
++		 * freeing would require splitting.
++		 *
++		 * Skip VM_FLUSH_RESET_PERMS, as direct-map permissions must
++		 * be reset before pages are returned to the allocator.
++		 *
++		 * Skip VM_USERMAP, as remap_vmalloc_range_partial() validates
++		 * mapping requests against the unchanged vm->size; freeing
++		 * tail pages would cause vmalloc_to_page() to return NULL for
++		 * the unmapped range.
++		 *
++		 * Skip if either GFP_NOFS or GFP_NOIO are used.
++		 * kmemleak_free_part() internally allocates with
++		 * GFP_KERNEL, which could trigger a recursive deadlock
++		 * if we are under filesystem or I/O reclaim.
++		 */
++		if (new_nr_pages < vm->nr_pages && !vm_area_page_order(vm) &&
++		    !(vm->flags & (VM_FLUSH_RESET_PERMS | VM_USERMAP)) &&
++		    gfp_has_io_fs(flags)) {
++			unsigned long addr = (unsigned long)kasan_reset_tag(p);
++			unsigned int old_nr_pages = vm->nr_pages;
++
 +			/*
-+			 * Cannot use get_vm_area_size() because realloc()
-+			 * may shrink the mapping and area->size may be outdated.
++			 * Use the node lock to synchronize with concurrent
++			 * readers (vmalloc_info_show).
 +			 */
-+			size = vm->nr_pages << PAGE_SHIFT;
-+		else
-+			size = va_size(va);
- 
- 		if (addr >= vaddr + size)
- 			goto next_va;
++			struct vmap_node *vn = addr_to_node(addr);
++
++			spin_lock(&vn->busy.lock);
++			vm->nr_pages = new_nr_pages;
++			spin_unlock(&vn->busy.lock);
++
++			/* Notify kmemleak of the reduced allocation size before unmapping. */
++			kmemleak_free_part(
++				(void *)addr + ((unsigned long)new_nr_pages
++						<< PAGE_SHIFT),
++				(unsigned long)(old_nr_pages - new_nr_pages)
++					<< PAGE_SHIFT);
++
++			vunmap_range(addr + ((unsigned long)new_nr_pages
++					     << PAGE_SHIFT),
++				     addr + ((unsigned long)old_nr_pages
++					     << PAGE_SHIFT));
++
++			vm_area_free_pages(vm, new_nr_pages, old_nr_pages);
++		}
+ 		vm->requested_size = size;
+ 		kasan_vrealloc(p, old_size, size);
+ 		return (void *)p;
 
 -- 
 2.43.0
