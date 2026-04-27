@@ -1,11 +1,10 @@
 From: Markus Probst <markus.probst@posteo.de>
-Date: Mon, 27 Apr 2026 20:05:41 +0200
-Subject: [PATCH v6 1/4] rust: devres: return reference in
- `devres::register`
+Date: Mon, 27 Apr 2026 20:05:42 +0200
+Subject: [PATCH v6 2/4] serdev: add rust private data to serdev_device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260427-rust_serdev-v6-1-173798d5e1a3@posteo.de>
+Message-Id: <20260427-rust_serdev-v6-2-173798d5e1a3@posteo.de>
 References: <20260427-rust_serdev-v6-0-173798d5e1a3@posteo.de>
 In-Reply-To: <20260427-rust_serdev-v6-0-173798d5e1a3@posteo.de>
 To: Rob Herring <robh@kernel.org>, 
@@ -26,101 +25,68 @@ Cc: linux-serial@vger.kernel.org, linux-kernel@vger.kernel.org,
  driver-core@lists.linux.dev, dri-devel@lists.freedesktop.org, 
  Markus Probst <markus.probst@posteo.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2621;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1683;
  i=markus.probst@posteo.de; h=from:subject:message-id;
- bh=oQKYQhuICX5DBtHaowGZbnJGuwpyDpM+GsZaRCaIX4M=;
- b=owEBiQJ2/ZANAwAIATR2H/jnrUPSAcsmYgBp76V9jveQ0d8UFFWCXH/ZYKXYbx1j5Z3L5kn+E
- Syf+XW02bKJAk8EAAEIADkWIQSCdBjE9KxY53IwxHM0dh/4561D0gUCae+lfRsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwyLDIACgkQNHYf+OetQ9KVHhAAjJc7tGq49faeum6CZGHoCRQI0UaRoRu
- 6SmBsvh1p2l28DUKaEn/dvKXyexu///bZNXPbFw/is3zD6RUn6CHPOmGQ/RHKq7Dhr9/yMCPKvb
- RwkRt/jgEL8fdG0R6doRrnQWtYVmu4CSv4H/mPq1LkoVbNv/6SSYrbhReWEpQyfzMk5ORou8Xhv
- 0rEhZmD7zmItkdBdgSh/T08HvqEGCwQavXjQjGOetef8e8lrNYTZY/6GZwQWlsKycoJkmgsIuWV
- gX89cUjDlTCdkkAAWOolNHgJ7ejQOu2fo/vZ2KcDpyofLKla2fBZOw6i3T66sYb9IfnJ2m5aawQ
- ZjTq0BAbX1Lgs6BAQh3bq2UQ1aPzAzjm4usmDfXYzcbed0W5NIj9g/55sdRTJpOifmXmpHun++8
- kqKuTOjxGWpqtK1Vz+bFbjldF8iBvpo9n+D6C3uT/K1Pek7c4uqbZH2HMogF1WUCKX0RdVBa9j0
- VcTAh+543GRxWWoYH3cPkRWH4ya5bKfC4ZtvV4cQLhO8oePehDW6Ttj3P4FUK+fqAq0zjcdmIsa
- hfFR6O7+3AXDXYWISRlFV1O2z0PpctoL7fOBK/0qC4DO0ZXHUVhXCQWDR5KEXHfYBnMzkD2vnYk
- GyvJAqtOI42mCna/Hr9ypH/8EsZz9urdeQ7I21Po3E0TZHc0bhKU=
+ bh=Lci9sJZ/Hd89WrWg8pDQ/wKU3djKPRT47wh61HUUHxo=;
+ b=owEBiQJ2/ZANAwAIATR2H/jnrUPSAcsmYgBp76V9RbMszIgYWJvSWd0DQQvpRFArS72LDlcV3
+ 7DTy3b7pj+JAk8EAAEIADkWIQSCdBjE9KxY53IwxHM0dh/4561D0gUCae+lfRsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwyLDIACgkQNHYf+OetQ9JuqA/+KWXf7SvsT8sOhGfeNvEPjyBdh3Zb7Su
+ QYx71x8wz5G4X2BfWc1y3I4E6K+R9FeOjMzKGGZxSsgbKk95TumVive0o4+rG4hyNk7WD1RbeAp
+ cQ+uOCUbhWlwSR+Iwnd+5AEADEBWxzOWn+QzvHa6RxMKhhMUwNd5QNumBtMy6JSyjrrpeG4v3v/
+ 7BWxPOHhooqtdbhhxSgSl+dub5IQCubhPEySPAhwQ3BdeD1iEXW2leQHDErHk/L6GoNn2fyf4aj
+ 4tUqsX0qKBTnj8NbBHJ+txkl0BxRdEAWnoHqc8Bfx2F8JW7tjw/hahr10t+efWWTwg84ePqumlz
+ RiBXatCl8m4Ju2QZGKhKl4VKOoi6KDrGxI6IoadKSDoWyWYBveZmqcN/TCe2MfgX/lx3K1nAv+2
+ 0VbxqgLssAVYp+B1cbXp8XdwMvYyBSrPkdiVHRrqwT1/j5dKjY2RFrpYCGZ6gnpPD04n/OejVTv
+ QRPyF4vx5fznUKHxFofDtbjrB6AevRJ7CwgS1rKq6O+ZaNiTk7l+CGg22EYwaqwXgIs2JJdov11
+ Jb+t1kQs1cmmcLu6qI8l6WUmcx2ai+z1+6I+UqhNiIespcshLjw1fBW3FzVAESd0zFt7ek5a/+S
+ DKUZ1Qp6Fm5MT1NeJ8dQn7y2P2mHr2eh8IZJl2zZ0KmusC9UngJk=
 X-Developer-Key: i=markus.probst@posteo.de; a=openpgp;
  fpr=827418C4F4AC58E77230C47334761FF8E7AD43D2
 X-Endpoint-Received: by B4 Relay for markus.probst@posteo.de/default with auth_id=680
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Return the reference to the initialized data in the `devres::register`
-function.
+Add rust private data to `struct serdev_device`, as it is required by the
+rust abstraction added in the following commit
+(rust: add basic serial device bus abstractions).
 
-This is needed in a following commit (rust: add basic serial device bus
-abstractions).
-
-Acked-by: Viresh Kumar <viresh.kumar@linaro.org>
 Signed-off-by: Markus Probst <markus.probst@posteo.de>
 ---
- rust/kernel/cpufreq.rs    |  3 ++-
- rust/kernel/devres.rs     | 15 +++++++++++++--
- rust/kernel/drm/driver.rs |  3 ++-
- 3 files changed, 17 insertions(+), 4 deletions(-)
+ include/linux/serdev.h | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/rust/kernel/cpufreq.rs b/rust/kernel/cpufreq.rs
-index d8d26870bea2..e1228530598f 100644
---- a/rust/kernel/cpufreq.rs
-+++ b/rust/kernel/cpufreq.rs
-@@ -1052,7 +1052,8 @@ pub fn new_foreign_owned(dev: &Device<Bound>) -> Result
-     where
-         T: 'static,
-     {
--        devres::register(dev, Self::new()?, GFP_KERNEL)
-+        devres::register(dev, Self::new()?, GFP_KERNEL)?;
-+        Ok(())
-     }
- }
+diff --git a/include/linux/serdev.h b/include/linux/serdev.h
+index b6c3d957ec15..048ef5857786 100644
+--- a/include/linux/serdev.h
++++ b/include/linux/serdev.h
+@@ -33,12 +33,14 @@ struct serdev_device_ops {
  
-diff --git a/rust/kernel/devres.rs b/rust/kernel/devres.rs
-index 9e5f93aed20c..d3c9c376693d 100644
---- a/rust/kernel/devres.rs
-+++ b/rust/kernel/devres.rs
-@@ -419,15 +419,26 @@ fn register_foreign<P>(dev: &Device<Bound>, data: P) -> Result
- /// }
- ///
- /// fn from_bound_context(dev: &Device<Bound>) -> Result {
--///     devres::register(dev, Registration::new(), GFP_KERNEL)
-+///     devres::register(dev, Registration::new(), GFP_KERNEL)?;
-+///     Ok(())
- /// }
- /// ```
--pub fn register<T, E>(dev: &Device<Bound>, data: impl PinInit<T, E>, flags: Flags) -> Result
-+pub fn register<'a, T, E>(
-+    dev: &'a Device<Bound>,
-+    data: impl PinInit<T, E>,
-+    flags: Flags,
-+) -> Result<&'a T>
- where
-     T: Send + 'static,
-     Error: From<E>,
- {
-     let data = KBox::pin_init(data, flags)?;
+ /**
+  * struct serdev_device - Basic representation of an serdev device
+- * @dev:	Driver model representation of the device.
+- * @nr:		Device number on serdev bus.
+- * @ctrl:	serdev controller managing this device.
+- * @ops:	Device operations.
+- * @write_comp:	Completion used by serdev_device_write() internally
+- * @write_lock:	Lock to serialize access when writing data
++ * @dev:		Driver model representation of the device.
++ * @nr:			Device number on serdev bus.
++ * @ctrl:		serdev controller managing this device.
++ * @ops:		Device operations.
++ * @write_comp:		Completion used by serdev_device_write() internally
++ * @write_lock:		Lock to serialize access when writing data
++ * @rust_private_data:	Private data for the rust abstraction. This should
++ *			not be used by the C drivers.
+  */
+ struct serdev_device {
+ 	struct device dev;
+@@ -47,6 +49,7 @@ struct serdev_device {
+ 	const struct serdev_device_ops *ops;
+ 	struct completion write_comp;
+ 	struct mutex write_lock;
++	void *rust_private_data;
+ };
  
-+    let data_ptr = &raw const *data;
-+
-     register_foreign(dev, data)
-+        // SAFETY: `dev` is valid for the lifetime of 'a. As long as there is a reference to
-+        // `Device<Bound>`, it is guaranteed that the device is not unbound and data has not been
-+        // dropped. Thus `data_ptr` is also valid for the lifetime of 'a.
-+        .map(|()| unsafe { &*data_ptr })
- }
-diff --git a/rust/kernel/drm/driver.rs b/rust/kernel/drm/driver.rs
-index 5233bdebc9fc..1edfd7bacddb 100644
---- a/rust/kernel/drm/driver.rs
-+++ b/rust/kernel/drm/driver.rs
-@@ -147,7 +147,8 @@ pub fn new_foreign_owned(
- 
-         let reg = Registration::<T>::new(drm, flags)?;
- 
--        devres::register(dev, reg, GFP_KERNEL)
-+        devres::register(dev, reg, GFP_KERNEL)?;
-+        Ok(())
-     }
- 
-     /// Returns a reference to the `Device` instance for this registration.
+ #define to_serdev_device(d) container_of_const(d, struct serdev_device, dev)
 
 -- 
 2.53.0
