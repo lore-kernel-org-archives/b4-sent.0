@@ -1,14 +1,13 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Subject: [PATCH v2 00/11] Fixes and cleanups for the AD5686 IIO driver
-Date: Mon, 27 Apr 2026 12:30:07 +0100
-Message-Id: <20260427-ad5686-fixes-v2-0-188e05199368@analog.com>
+Date: Mon, 27 Apr 2026 12:30:08 +0100
+Subject: [PATCH v2 01/11] iio: dac: ad5686: fix ref bit initialization for
+ single-channel parts
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAL9I72kC/3WMwQ7CIBAFf6XZsxhAXKgn/8P0QGFtSbQ0YIim4
- d/F3j3Oe5nZIFMKlOHSbZCohBzi0kAeOnCzXSZiwTcGySVyJZFZf0aD7B7elBmeyKIxQox+hKa
- sifajGbeh8RzyK6bPXi/it/4JFcE4065XaLXWvaKrXewjTkcXnzDUWr/ceN4LqQAAAA==
-X-Change-ID: 20260426-ad5686-fixes-63ea68811bdb
+Message-Id: <20260427-ad5686-fixes-v2-1-188e05199368@analog.com>
+References: <20260427-ad5686-fixes-v2-0-188e05199368@analog.com>
+In-Reply-To: <20260427-ad5686-fixes-v2-0-188e05199368@analog.com>
 To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Stefan Popa <stefan.popa@analog.com>, Jonathan Cameron <jic23@cam.ac.uk>, 
  Greg Kroah-Hartman <gregkh@suse.de>, 
@@ -18,64 +17,70 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Michael Hennerich <Michael.Hennerich@analog.com>, 
  Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
  Andy Shevchenko <andy@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>, 
- Andy Shevchenko <andriy.shevchenko@intel.com>
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777289409; l=1986;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777289409; l=1787;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=FU47icc8xWRwMiP7j8yRR3TjrZtfwFeEVK2tkPTLzC0=;
- b=APTRVDGVmPNtfHS813U3LydidIykxD8VrF19rPHhrwUwCg/DRoB7mO7FsGSVRtqfJZmLMHYOA
- 7gs+kZfWgb6D5r+1oVROqyazxezhgC3r7FpQGJi2Q51qsDE+SIFp/3L
+ bh=xzPfTOvqELCSXjM2q6f7n3lj/43Dt23++PuhGryImaI=;
+ b=/VSNs5CjaTaSZrcComveElieZt3qqqjmLcEMRGuWauxKdCNfqeu4zlQjmTuDUrNtn3TmiU1Pw
+ FuQWajvkCCoCMLfD5XvgQmc+gMCEOe6ejh3eUmiR/B6dVR+d2eHM/b2
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is the first series of three on updating the AD5686 driver.
+The reference bit position was ignored when writing the register at the
+probe() function (!!val was used). When such bit is 1, internal voltage
+reference is disabled so that an external one can be used. For
+multi-channel devices, bit 0 of the Internal Reference Setup command
+behaves the same way, so AD5686_REF_BIT_MSK is created. The issue exists
+since support for single-channel devices were first introduced.
 
-A bigger patch series was sent before ("Extend device support for AD5686 driver"),
-but this is not exactly a v2:
-
-https://lore.kernel.org/r/20260422-ad5313r-iio-support-v1-0-ed7dca001d1b@analog.com
-
-This one adds a number of cleanups and fixes, like:
-- Refactor include headers (IWYU);
-- Remove redundant register definition;
-- Drop enum chip id in favor of per-device chip_info structs;
-- Fix internal voltage reference control for single-channel devices;
-- Acquire lock when doing power down control;
-- Fix powerdown control for dual-channel devices;
-
+Fixes: be1b24d24541 ("iio:dac:ad5686: Add AD5691R/AD5692R/AD5693/AD5693R support")
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
-Changes in v2:
-- Bring fixes first and cleanups later
-- Link to v1: https://lore.kernel.org/r/20260426-ad5686-fixes-v1-0-7c946a77794e@analog.com
+ drivers/iio/dac/ad5686.c | 6 +++---
+ drivers/iio/dac/ad5686.h | 1 +
+ 2 files changed, 4 insertions(+), 3 deletions(-)
 
----
-Rodrigo Alencar (11):
-      iio: dac: ad5686: fix ref bit initialization for single-channel parts
-      iio: dac: ad5686: fix input raw value check
-      iio: dac: ad5686: acquire lock when doing powerdown control
-      iio: dac: ad5686: fix powerdown control on dual-channel devices
-      iio: dac: ad5686: refactor include headers
-      iio: dac: ad5686: remove redundant register definition
-      iio: dac: ad5686: drop enum id
-      iio: dac: ad5686: add of_match table to the spi driver
-      iio: dac: ad5686: add control_sync() for single-channel devices
-      iio: dac: ad5686: cleanup doc header of local structs
-      iio: dac: ad5686: create bus ops struct
+diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
+index 9a384c50929b..3b48ddf8dd3c 100644
+--- a/drivers/iio/dac/ad5686.c
++++ b/drivers/iio/dac/ad5686.c
+@@ -511,7 +511,7 @@ int ad5686_probe(struct device *dev,
+ 		break;
+ 	case AD5686_REGMAP:
+ 		cmd = AD5686_CMD_INTERNAL_REFER_SETUP;
+-		ref_bit_msk = 0;
++		ref_bit_msk = AD5686_REF_BIT_MSK;
+ 		break;
+ 	case AD5693_REGMAP:
+ 		cmd = AD5686_CMD_CONTROL_REG;
+@@ -522,9 +522,9 @@ int ad5686_probe(struct device *dev,
+ 		return -EINVAL;
+ 	}
+ 
+-	val = (has_external_vref | ref_bit_msk);
++	val = (has_external_vref) ? ref_bit_msk : 0;
+ 
+-	ret = st->write(st, cmd, 0, !!val);
++	ret = st->write(st, cmd, 0, val);
+ 	if (ret)
+ 		return ret;
+ 
+diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
+index e7d36bae3e59..36e16c5c4581 100644
+--- a/drivers/iio/dac/ad5686.h
++++ b/drivers/iio/dac/ad5686.h
+@@ -46,6 +46,7 @@
+ 
+ #define AD5310_REF_BIT_MSK			BIT(8)
+ #define AD5683_REF_BIT_MSK			BIT(12)
++#define AD5686_REF_BIT_MSK			BIT(0)
+ #define AD5693_REF_BIT_MSK			BIT(12)
+ 
+ /**
 
- drivers/iio/dac/ad5686-spi.c |  73 ++++--
- drivers/iio/dac/ad5686.c     | 521 +++++++++++++++++++++----------------------
- drivers/iio/dac/ad5686.h     | 116 +++++-----
- drivers/iio/dac/ad5696-i2c.c |  80 ++++---
- 4 files changed, 409 insertions(+), 381 deletions(-)
----
-base-commit: d86db1905add39f905cf9f04252804b359914ed6
-change-id: 20260426-ad5686-fixes-63ea68811bdb
-
-Best regards,
 -- 
-Rodrigo Alencar <rodrigo.alencar@analog.com>
+2.43.0
 
