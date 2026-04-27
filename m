@@ -1,553 +1,166 @@
-From: Alexandre MINETTE <contact@alex-min.fr>
-Date: Mon, 27 Apr 2026 21:34:54 +0200
-Subject: [PATCH v2 8/8] ARM: dts: qcom: Add Samsung Galaxy S4
+From: Shivam Kalra <shivamkalra98@zohomail.in>
+Subject: [PATCH v12 0/5] mm/vmalloc: free unused pages on vrealloc() shrink
+Date: Tue, 28 Apr 2026 01:54:15 +0530
+Message-Id: <20260428-vmalloc-shrink-v12-0-3c18c9172eb1@zohomail.in>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260427-mainline-send-v1-sending-v2-8-dcaa9178007b@alex-min.fr>
-References: <20260427-mainline-send-v1-sending-v2-0-dcaa9178007b@alex-min.fr>
-In-Reply-To: <20260427-mainline-send-v1-sending-v2-0-dcaa9178007b@alex-min.fr>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, MyungJoo Ham <myungjoo.ham@samsung.com>, 
- Chanwoo Choi <cw00.choi@samsung.com>, 
- Guru Das Srinagesh <linux@gurudas.dev>, Linus Walleij <linusw@kernel.org>, 
- Rob Clark <robin.clark@oss.qualcomm.com>, Joerg Roedel <joro@8bytes.org>, 
- Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
- Kees Cook <kees@kernel.org>, Tony Luck <tony.luck@intel.com>, 
- "Guilherme G. Piccoli" <gpiccoli@igalia.com>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-gpio@vger.kernel.org, 
- iommu@lists.linux.dev, phone-devel@vger.kernel.org, 
- Alexandre MINETTE <contact@alex-min.fr>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777318488; l=11896;
- i=contact@alex-min.fr; s=20260421; h=from:subject:message-id;
- bh=8l39pJZ1XlJEGDJr7HTipgmonQLz2z3pssZs5Flyka0=;
- b=r1xReAPtYr6VIQqDDlltlUXVfpZJNtFpfOqK64Xz6MI8YQLlZ7vr3Xxoa8Yh7XU2XzdupT7RE
- Jm2glgrmCqiA3sQ++uxDgs/zH/uqy1R+xoHSrdozoP+tUm1dW3UxspU
-X-Developer-Key: i=contact@alex-min.fr; a=ed25519;
- pk=KOCaxY4v16ptaT0uk1FRkuaDF2n1JhmnYwLiqWD76M4=
-X-Endpoint-Received: by B4 Relay for contact@alex-min.fr/20260421 with auth_id=743
+X-B4-Tracking: v=1; b=H4sIAO/F72kC/3XSzU7DMAwH8FeZeqbIceN87MR7IA75pBFbi1pUA
+ dPenXQXIjyOtuRf8rd86da0lLR2x8OlW9JW1jJPtRD4cOjC6KbX1JdYGx0CKhgA++3sTqc59Ou
+ 4lOmtB+kxO2WME7KrQ+9LyuXzJj6/1Hos68e8fN0e2MTe/ZfaRA+9VDHlLBV5nZ6+53E+u3J6L
+ FO3Yxu2gGQAVgBNQCuiAgHAgaEFLAOGChBZyNHEhMlzQDaA4D+QFQiijoL3JIk4QC2gGUAV8D7
+ 7TDIQqjuAagAUDFAVAIXBaa9D8sgB3QI8gt4jQFLoTaJoBg6YFuARzA4E5UkD2RQ1B+wvIIFHs
+ PsOMpmYvbU6Gg4IaAWeQdQd9MNAmqxQFLO7QzTHKBE4sV9jcNGABzA0/CGu1+sPsrMFlT0DAAA
+ =
+X-Change-ID: 20260302-vmalloc-shrink-04b2fa688a14
+To: Andrew Morton <akpm@linux-foundation.org>, 
+ Uladzislau Rezki <urezki@gmail.com>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
+ Shivam Kalra <shivamkalra98@zohomail.in>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777321463; l=6375;
+ i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
+ bh=/vbwUZlEvQW84DNFF37oYxnG9tvXZo2w8ipSb1Z3yhE=;
+ b=2Ntb+k//yx8QwJXeldKc/dtUE3xI+gBZYj+98N9m1twGdvVBYPZpSegt/58A3629yLTygym7g
+ wo/NtfZgpFdAXNXlzPKIUc5kXcqZfv3WOOju79J/9Uu1ymXxPfGV6pH
+X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
+ pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
+X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a device tree for the Samsung Galaxy S4, codenamed jflte.
+This series implements the TODO in vrealloc() to unmap and free unused
+pages when shrinking across a page boundary.
 
-This has been tested on a Samsung Galaxy S4 GT-I9505. The initial support
-covers UART, USB peripheral mode with USB networking, the front LED and
-the physical buttons.
+Problem:
+When vrealloc() shrinks an allocation, it updates bookkeeping
+(requested_size, KASAN shadow) but does not free the underlying physical
+pages. This wastes memory for the lifetime of the allocation.
 
-Signed-off-by: Alexandre MINETTE <contact@alex-min.fr>
+Solution:
+- Patch 1: Extracts a vm_area_free_pages(vm, start_idx, end_idx) helper
+  from vfree() that frees a range of pages with memcg and nr_vmalloc_pages
+  accounting. Freed page pointers are set to NULL to prevent stale
+  references.
+- Patch 2: Update the grow-in-place check in vrealloc() to compare the
+  requested size against the actual physical page count (vm->nr_pages) 
+  rather than the virtual area sizes. This is a prerequisite for shrinking.
+- Patch 3: Update vread_iter() to derive the vm area size from
+  vm->nr_pages rather than get_vm_area_size(), which would overestimate
+  the mapped range after a shrink.
+- Patch 4: Uses the helper to free tail pages when vrealloc() shrinks
+  across a page boundary. 
+- Patch 5: Adds a vrealloc test case to lib/test_vmalloc that exercises
+  grow-realloc, shrink-across-boundary, shrink-within-page, and
+  grow-in-place paths.
+
+The virtual address reservation is kept intact to preserve the range
+for potential future grow-in-place support.
+A concrete user is the Rust binder driver's KVVec::shrink_to [1], which
+performs explicit vrealloc() shrinks for memory reclamation.
+
+Tested:
+- KASAN KUnit (vmalloc_oob passes)
+- lib/test_vmalloc stress tests (3/3, 1M iterations each)
+- checkpatch, sparse, W=1, allmodconfig, coccicheck clean
+
+[1] https://lore.kernel.org/all/20260216-binder-shrink-vec-v3-v6-0-ece8e8593e53@zohomail.in/
+
+Suggested-by: Danilo Krummrich <dakr@kernel.org>
+Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
- arch/arm/boot/dts/qcom/Makefile                    |   1 +
- .../boot/dts/qcom/qcom-apq8064-samsung-jflte.dts   | 485 +++++++++++++++++++++
- 2 files changed, 486 insertions(+)
+Changes in v12:
+- Rewrite vm_area_free_pages() to use free_pages_bulk() 
+  following the upstream vfree() refactoring.(Andrew)
+- Drop Reviewed-by tags from Patch 1 due to the rewrite
+- Rebase to latest mm-new
+- Link to v11: https://lore.kernel.org/r/20260420-vmalloc-shrink-v11-0-cad80b00853a@zohomail.in
 
-diff --git a/arch/arm/boot/dts/qcom/Makefile b/arch/arm/boot/dts/qcom/Makefile
-index 32a44b02d2fa..c23c961f79e3 100644
---- a/arch/arm/boot/dts/qcom/Makefile
-+++ b/arch/arm/boot/dts/qcom/Makefile
-@@ -12,6 +12,7 @@ dtb-$(CONFIG_ARCH_QCOM) += \
- 	qcom-apq8064-ifc6410.dtb \
- 	qcom-apq8064-sony-xperia-lagan-yuga.dtb \
- 	qcom-apq8064-asus-nexus7-flo.dtb \
-+	qcom-apq8064-samsung-jflte.dtb \
- 	qcom-apq8064-lg-nexus4-mako.dtb \
- 	qcom-apq8074-dragonboard.dtb \
- 	qcom-ipq4018-ap120c-ac.dtb \
-diff --git a/arch/arm/boot/dts/qcom/qcom-apq8064-samsung-jflte.dts b/arch/arm/boot/dts/qcom/qcom-apq8064-samsung-jflte.dts
-new file mode 100644
-index 000000000000..2f10466077c7
---- /dev/null
-+++ b/arch/arm/boot/dts/qcom/qcom-apq8064-samsung-jflte.dts
-@@ -0,0 +1,485 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/input.h>
-+#include <dt-bindings/mfd/qcom-rpm.h>
-+#include <dt-bindings/leds/common.h>
-+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
-+
-+#include "qcom-apq8064-v2.0.dtsi"
-+#include "pm8821.dtsi"
-+#include "pm8921.dtsi"
-+
-+/ {
-+	model = "Samsung Galaxy S4 (jflte)";
-+	compatible = "samsung,jflte", "qcom,apq8064";
-+	chassis-type = "handset";
-+
-+	aliases {
-+		serial0 = &gsbi7_serial;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+	};
-+
-+	reserved-memory {
-+		#address-cells = <1>;
-+		#size-cells = <1>;
-+		ranges;
-+
-+		ramoops@88d00000 {
-+			compatible = "ramoops";
-+			reg = <0x88d00000 0x100000>;
-+			record-size = <0x20000>;
-+			console-size = <0x20000>;
-+			ftrace-size = <0x20000>;
-+		};
-+	};
-+
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+		pinctrl-0 = <&gpio_keys_default>;
-+		pinctrl-names = "default";
-+
-+		key-home {
-+			label = "Home";
-+			gpios = <&pm8921_gpio 30 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <5>;
-+			linux,code = <KEY_HOME>;
-+			wakeup-source;
-+		};
-+
-+		key-volume-up {
-+			label = "Volume Up";
-+			gpios = <&pm8921_gpio 35 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <5>;
-+			linux,code = <KEY_VOLUMEUP>;
-+			wakeup-source;
-+		};
-+
-+		key-volume-down {
-+			label = "Volume Down";
-+			gpios = <&pm8921_gpio 37 GPIO_ACTIVE_LOW>;
-+			debounce-interval = <5>;
-+			linux,code = <KEY_VOLUMEDOWN>;
-+			wakeup-source;
-+		};
-+	};
-+
-+	i2c-led {
-+		compatible = "i2c-gpio";
-+		sda-gpios = <&tlmm_pinmux 6 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-+		scl-gpios = <&tlmm_pinmux 7 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-+		i2c-gpio,delay-us = <2>;
-+
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		led-controller@30 {
-+			compatible = "panasonic,an30259a";
-+			reg = <0x30>;
-+
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			led@1 {
-+				reg = <1>;
-+				function = LED_FUNCTION_STATUS;
-+				color = <LED_COLOR_ID_RED>;
-+			};
-+
-+			led@2 {
-+				reg = <2>;
-+				function = LED_FUNCTION_STATUS;
-+				color = <LED_COLOR_ID_GREEN>;
-+			};
-+
-+			led@3 {
-+				reg = <3>;
-+				function = LED_FUNCTION_STATUS;
-+				color = <LED_COLOR_ID_BLUE>;
-+			};
-+		};
-+	};
-+
-+	i2c-muic {
-+		compatible = "i2c-gpio";
-+		sda-gpios = <&tlmm_pinmux 22 GPIO_ACTIVE_HIGH>;
-+		scl-gpios = <&tlmm_pinmux 23 GPIO_ACTIVE_HIGH>;
-+		i2c-gpio,delay-us = <2>;
-+
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+
-+		max77693: pmic@66 {
-+			compatible = "maxim,max77693";
-+			reg = <0x66>;
-+			interrupt-parent = <&tlmm_pinmux>;
-+			interrupts = <55 IRQ_TYPE_EDGE_FALLING>;
-+			pinctrl-0 = <&muic_int_default_state>;
-+			pinctrl-names = "default";
-+
-+			muic: muic {
-+				compatible = "maxim,max77693-muic";
-+				safeout1-supply = <&esafeout1_reg>;
-+				safeout2-supply = <&esafeout2_reg>;
-+			};
-+
-+			regulators {
-+				esafeout1_reg: ESAFEOUT1 {
-+					regulator-name = "ESAFEOUT1";
-+				};
-+
-+				esafeout2_reg: ESAFEOUT2 {
-+					regulator-name = "ESAFEOUT2";
-+				};
-+			};
-+		};
-+	};
-+};
-+
-+&gsbi7 {
-+	qcom,mode = <GSBI_PROT_I2C_UART>;
-+
-+	status = "okay";
-+};
-+
-+&gsbi7_serial {
-+	pinctrl-0 = <&gsbi7_uart_pin_a>;
-+	pinctrl-names = "default";
-+
-+	status = "okay";
-+};
-+
-+&pm8821 {
-+	interrupts-extended = <&tlmm_pinmux 76 IRQ_TYPE_LEVEL_LOW>;
-+};
-+
-+&pm8921 {
-+	interrupts-extended = <&tlmm_pinmux 74 IRQ_TYPE_LEVEL_LOW>;
-+};
-+
-+&riva {
-+	pinctrl-0 = <&riva_wlan_pin_a>, <&riva_bt_pin_a>, <&riva_fm_pin_a>;
-+	pinctrl-names = "default";
-+
-+	vddcx-supply = <&pm8921_s3>;
-+	vddmx-supply = <&pm8921_l24>;
-+	vddpx-supply = <&pm8921_s4>;
-+
-+	status = "okay";
-+
-+	iris {
-+		vddxo-supply = <&pm8921_l4>;
-+		vddrfa-supply = <&pm8921_s2>;
-+		vddpa-supply = <&pm8921_l10>;
-+		vdddig-supply = <&pm8921_lvs2>;
-+	};
-+};
-+
-+&rpm {
-+	regulators {
-+		compatible = "qcom,rpm-pm8921-regulators";
-+
-+		vdd_l1_l2_l12_l18-supply = <&pm8921_s4>;
-+		vdd_l24-supply = <&pm8921_s1>;
-+		vdd_l25-supply = <&pm8921_s1>;
-+		vdd_l26-supply = <&pm8921_s7>;
-+		vdd_l27-supply = <&pm8921_s7>;
-+		vdd_l28-supply = <&pm8921_s7>;
-+		vin_lvs1_3_6-supply = <&pm8921_s4>;
-+		vin_lvs2-supply = <&pm8921_s1>;
-+		vin_lvs4_5_7-supply = <&pm8921_s4>;
-+
-+		pm8921_l1: l1 {
-+			regulator-min-microvolt = <1100000>;
-+			regulator-max-microvolt = <1100000>;
-+			regulator-always-on;
-+			bias-pull-down;
-+		};
-+
-+		/* mipi_dsi.1-dsi1_pll_vdda */
-+		pm8921_l2: l2 {
-+			regulator-min-microvolt = <1200000>;
-+			regulator-max-microvolt = <1200000>;
-+			bias-pull-down;
-+		};
-+
-+		/* msm_otg-HSUSB_3p3 */
-+		pm8921_l3: l3 {
-+			regulator-min-microvolt = <3075000>;
-+			regulator-max-microvolt = <3500000>;
-+			bias-pull-down;
-+		};
-+
-+		/* msm_otg-HSUSB_1p8 */
-+		pm8921_l4: l4 {
-+			regulator-always-on;
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+		};
-+
-+		/* msm_sdcc.1-sdc_vdd */
-+		pm8921_l5: l5 {
-+			regulator-min-microvolt = <2950000>;
-+			regulator-max-microvolt = <2950000>;
-+			bias-pull-down;
-+		};
-+
-+		/* earjack_debug */
-+		pm8921_l6: l6 {
-+			regulator-min-microvolt = <3000000>;
-+			regulator-max-microvolt = <3000000>;
-+			bias-pull-down;
-+		};
-+
-+		/* mipi_dsi.1-dsi_vci */
-+		pm8921_l8: l8 {
-+			regulator-min-microvolt = <2800000>;
-+			regulator-max-microvolt = <3000000>;
-+			bias-pull-down;
-+		};
-+
-+		/* wcnss_wlan.0-iris_vddpa */
-+		pm8921_l10: l10 {
-+			regulator-min-microvolt = <2900000>;
-+			regulator-max-microvolt = <2900000>;
-+			bias-pull-down;
-+		};
-+
-+		/* mipi_dsi.1-dsi1_avdd */
-+		pm8921_l11: l11 {
-+			regulator-min-microvolt = <2850000>;
-+			regulator-max-microvolt = <2850000>;
-+			bias-pull-down;
-+		};
-+
-+		/* touch_vdd */
-+		pm8921_l15: l15 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <2950000>;
-+			bias-pull-down;
-+		};
-+
-+		/* slimport_dvdd */
-+		pm8921_l18: l18 {
-+			regulator-min-microvolt = <1100000>;
-+			regulator-max-microvolt = <1100000>;
-+			bias-pull-down;
-+		};
-+
-+		/* touch_io */
-+		pm8921_l22: l22 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			bias-pull-down;
-+		};
-+
-+		/*
-+		 * mipi_dsi.1-dsi_vddio
-+		 * pil_qdsp6v4.1-pll_vdd
-+		 * pil_qdsp6v4.2-pll_vdd
-+		 * msm_ehci_host.0-HSUSB_1p8
-+		 * msm_ehci_host.1-HSUSB_1p8
-+		 */
-+		pm8921_l23: l23 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			bias-pull-down;
-+		};
-+
-+		/*
-+		 * tabla2x-slim-CDC_VDDA_A_1P2V
-+		 * tabla2x-slim-VDDD_CDC_D
-+		 */
-+		pm8921_l24: l24 {
-+			regulator-min-microvolt = <750000>;
-+			regulator-max-microvolt = <1150000>;
-+			bias-pull-down;
-+		};
-+
-+		pm8921_l25: l25 {
-+			regulator-min-microvolt = <1250000>;
-+			regulator-max-microvolt = <1250000>;
-+			regulator-always-on;
-+			bias-pull-down;
-+		};
-+
-+		pm8921_l26: l26 {
-+			regulator-min-microvolt = <375000>;
-+			regulator-max-microvolt = <1050000>;
-+			regulator-always-on;
-+			bias-pull-down;
-+		};
-+
-+		pm8921_l27: l27 {
-+			regulator-min-microvolt = <1100000>;
-+			regulator-max-microvolt = <1100000>;
-+		};
-+
-+		pm8921_l28: l28 {
-+			regulator-min-microvolt = <1050000>;
-+			regulator-max-microvolt = <1050000>;
-+			bias-pull-down;
-+		};
-+
-+		/* wcnss_wlan.0-iris_vddio */
-+		pm8921_lvs1: lvs1 {
-+			bias-pull-down;
-+		};
-+
-+		/* wcnss_wlan.0-iris_vdddig */
-+		pm8921_lvs2: lvs2 {
-+			bias-pull-down;
-+		};
-+
-+		pm8921_lvs3: lvs3 {
-+			bias-pull-down;
-+		};
-+
-+		pm8921_lvs4: lvs4 {
-+			bias-pull-down;
-+		};
-+
-+		pm8921_lvs5: lvs5 {
-+			bias-pull-down;
-+		};
-+
-+		/* mipi_dsi.1-dsi_iovcc */
-+		pm8921_lvs6: lvs6 {
-+			bias-pull-down;
-+		};
-+
-+		/*
-+		 * pil_riva-pll_vdd
-+		 * lvds.0-lvds_vdda
-+		 * mipi_dsi.1-dsi1_vddio
-+		 * hdmi_msm.0-hdmi_vdda
-+		 */
-+		pm8921_lvs7: lvs7 {
-+			bias-pull-down;
-+		};
-+
-+		pm8921_ncp: ncp {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			qcom,switch-mode-frequency = <1600000>;
-+		};
-+
-+		/* Buck SMPS */
-+		pm8921_s1: s1 {
-+			regulator-always-on;
-+			regulator-min-microvolt = <1225000>;
-+			regulator-max-microvolt = <1225000>;
-+			qcom,switch-mode-frequency = <3200000>;
-+			bias-pull-down;
-+		};
-+
-+		pm8921_s2: s2 {
-+			regulator-min-microvolt = <1300000>;
-+			regulator-max-microvolt = <1300000>;
-+			qcom,switch-mode-frequency = <1600000>;
-+			bias-pull-down;
-+		};
-+
-+		/* msm otg HSUSB_VDDCX */
-+		pm8921_s3: s3 {
-+			regulator-min-microvolt = <500000>;
-+			regulator-max-microvolt = <1150000>;
-+			qcom,switch-mode-frequency = <4800000>;
-+			bias-pull-down;
-+		};
-+
-+		/*
-+		 * msm_sdcc.1-sdc-vdd_io
-+		 * tabla2x-slim-CDC_VDDA_RX
-+		 * tabla2x-slim-CDC_VDDA_TX
-+		 * tabla2x-slim-CDC_VDD_CP
-+		 * tabla2x-slim-VDDIO_CDC
-+		 */
-+		pm8921_s4: s4 {
-+			regulator-always-on;
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <1800000>;
-+			qcom,switch-mode-frequency = <1600000>;
-+			bias-pull-down;
-+			qcom,force-mode = <QCOM_RPM_FORCE_MODE_AUTO>;
-+		};
-+
-+		/*
-+		 * supply vdd_l26, vdd_l27, vdd_l28
-+		 */
-+		pm8921_s7: s7 {
-+			regulator-min-microvolt = <1300000>;
-+			regulator-max-microvolt = <1300000>;
-+			qcom,switch-mode-frequency = <3200000>;
-+		};
-+
-+		pm8921_s8: s8 {
-+			regulator-min-microvolt = <2200000>;
-+			regulator-max-microvolt = <2200000>;
-+			qcom,switch-mode-frequency = <1600000>;
-+		};
-+	};
-+};
-+
-+/* eMMC */
-+&sdcc1 {
-+	vmmc-supply = <&pm8921_l5>;
-+	vqmmc-supply = <&pm8921_s4>;
-+
-+	status = "okay";
-+};
-+
-+&pm8921_gpio {
-+	gpio_keys_default: gpio-keys-default-state {
-+		pins = "gpio30", "gpio35", "gpio37";
-+		function = PMIC_GPIO_FUNC_NORMAL;
-+		input-enable;
-+		bias-pull-up;
-+		power-source = <PM8921_GPIO_S4>;
-+	};
-+};
-+
-+&tlmm_pinmux {
-+	gsbi7_uart_pin_a: gsbi7-uart-pin-active-state {
-+		rx-pins {
-+			pins = "gpio83";
-+			function = "gsbi7";
-+			drive-strength = <2>;
-+			bias-pull-up;
-+		};
-+
-+		tx-pins {
-+			pins = "gpio82";
-+			function = "gsbi7";
-+			drive-strength = <4>;
-+			bias-disable;
-+		};
-+	};
-+
-+	muic_int_default_state: muic-int-default-state {
-+		pins = "gpio55";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		input-enable;
-+		bias-disable;
-+	};
-+};
-+
-+&usb_hs1_phy {
-+	v3p3-supply = <&pm8921_l3>;
-+	v1p8-supply = <&pm8921_l4>;
-+	extcon = <&muic>;
-+};
-+
-+&usb_id {
-+	status = "okay";
-+};
-+
-+&usb1 {
-+	dr_mode = "otg";
-+	extcon = <&muic>, <&usb_id>;
-+
-+	status = "okay";
-+};
+Changes in v11:
+- Prepare vread_iter() to use vm->nr_pages instead of
+  get_vm_area_size() (Uladzislau Rezki, Sashiko)
+- Drop (size_t) cast from nr_pages << PAGE_SHIFT (Uladzislau Rezki)
+- Link to v10: https://lore.kernel.org/r/20260404-vmalloc-shrink-v10-0-335759165dfa@zohomail.in
 
+Changes in v10:
+- Reorder vm->nr_pages to the beginning (Alice Ryhl)
+- Link to v9: https://lore.kernel.org/r/20260401-vmalloc-shrink-v9-0-bf58dfb997d8@zohomail.in
+
+Changes in v9:
+- Remove READ_ONCE, WRITE_ONCE and drop commit
+  about show_numa_info. (Uladzislau Rezki)
+- Update the commit message in Patch 2. (Alice Ryhl)
+- Remove zero newly exposed memory commit.
+- Link to v8: https://lore.kernel.org/r/20260327-vmalloc-shrink-v8-0-cc6b57059ed7@zohomail.in
+
+Changes in v8:
+- Strip the KASAN tag from the pointer before addr_to_node()
+  to avoid acquiring the wrong node lock (Sashiko).
+- Rebase to latest mm-new.
+- Link to v7: https://lore.kernel.org/r/20260324-vmalloc-shrink-v7-0-c0e62b8e5d83@zohomail.in
+
+Changes in v7:
+- Fix NULL pointer dereference in shrink path (Sashiko)
+- Acquire vn->busy.lock when updating vm->nr_pages to synchronize 
+  with concurrent readers (Uladzislau Rezki)
+- Use READ_ONCE in vmalloc_dump_obj (Sashiko)
+- Skip shrink path on GFP_NIO or GFP_NOFS. (Sashiko)
+- Fix Overflow issue for large allocations. (Sashiko)
+- Use vrealloc instead of vmalloc in vrealloc test.  
+- Link to v6: https://lore.kernel.org/r/20260321-vmalloc-shrink-v6-0-062ca7b7ceb2@zohomail.in
+
+Changes in v6:
+- Fix VM_USERMAP crash by explicitly bypassing early in the shrink path if the flag is set.(Sashiko)
+- Fix Kmemleak scanner panic by calling kmemleak_free_part() to update tracking on shrink.(Sashiko)
+- Fix /proc/vmallocinfo race condition by protecting vm->nr_pages access with 
+  READ_ONCE()/WRITE_ONCE() for concurrent readers.(Sashiko)
+- Fix stale data leak on grow-after-shrink by enforcing mandatory zeroing of the newly exposed memory.(Sashiko)
+- Fix memory leaks in vrealloc_test() by using a temporary pointer to preserve and 
+  free the original allocation upon failure.(Sashiko)
+- Rename vmalloc_free_pages parameters from start/end to start_idx/end_idx for better clarity.(Uladzislau Rezki)
+- Link to v5: https://lore.kernel.org/r/20260317-vmalloc-shrink-v5-0-bbfbf54c5265@zohomail.in
+- Link to Sashiko: https://sashiko.dev/#/patchset/20260317-vmalloc-shrink-v5-0-bbfbf54c5265%40zohomail.in
+
+Changes in v5:
+- Skip vrealloc shrink for VM_FLUSH_RESET_PERMS (Uladzislau Rezki)
+- Link to v4: https://lore.kernel.org/r/20260314-vmalloc-shrink-v4-0-c1e2e0bb5455@zohomail.in
+
+Changes in v4:
+- Rename vmalloc_free_pages() to vm_area_free_pages() to align with
+  vm_area_alloc_pages() (Uladzislau Rezki)
+- NULL out freed vm->pages[] entries to prevent stale pointers (Alice Ryhl)
+- Remove redundant if (vm->nr_pages) guard in vfree() (Uladzislau Rezki)
+- Add vrealloc test case to lib/test_vmalloc (new patch 3/3)
+- Link to v3: https://lore.kernel.org/r/20260309-vmalloc-shrink-v3-0-5590fd8de2eb@zohomail.in
+
+Changes in v3:
+- Restore the comment.
+- Rebase to the latest mm-new 
+- Link to v2: https://lore.kernel.org/r/20260304-vmalloc-shrink-v2-0-28c291d60100@zohomail.in
+
+Changes in v2:
+- Updated the base-commit to mm-new
+- Fix conflicts after rebase
+- Ran `clang-format` on the changes made
+- Use a single `kasan_vrealloc` (Alice Ryhl)
+- Link to v1: https://lore.kernel.org/r/20260302-vmalloc-shrink-v1-0-46deff465b7e@zohomail.in
+
+---
+Shivam Kalra (5):
+      mm/vmalloc: extract vm_area_free_pages() helper from vfree()
+      mm/vmalloc: use physical page count for vrealloc() grow-in-place check
+      mm/vmalloc: use physical page count in vread_iter()
+      mm/vmalloc: free unused pages on vrealloc() shrink
+      lib/test_vmalloc: add vrealloc test case
+
+ lib/test_vmalloc.c |  62 +++++++++++++++++++++++++++++++
+ mm/vmalloc.c       | 107 ++++++++++++++++++++++++++++++++++++++++++++++-------
+ 2 files changed, 156 insertions(+), 13 deletions(-)
+---
+base-commit: 4f7b2cc1ad8719d55a8de9675a0aca65cb17c364
+change-id: 20260302-vmalloc-shrink-04b2fa688a14
+
+Best regards,
 -- 
-2.43.0
+Shivam Kalra <shivamkalra98@zohomail.in>
 
