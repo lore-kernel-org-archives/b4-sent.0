@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Tue, 28 Apr 2026 16:25:36 -0700
-Subject: [PATCH RFC v5 41/53] KVM: selftests: Test conversion with elevated
- page refcount
+Date: Tue, 28 Apr 2026 16:25:37 -0700
+Subject: [PATCH RFC v5 42/53] KVM: selftests: Test that conversion to
+ private does not support ZERO
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260428-gmem-inplace-conversion-v5-41-d8608ccfca22@google.com>
+Message-Id: <20260428-gmem-inplace-conversion-v5-42-d8608ccfca22@google.com>
 References: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 In-Reply-To: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -38,126 +38,46 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=3828;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=1307;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=/d2k8NxefQGN/ufZ9LnHGnYMKu34ADHcjvHKBhIXD7M=;
- b=1ULjpSvvqj0ZTKtSpsiMXgqtnYm7Snt35jmtyNxH17oWl3wy/V4Zf+IcNqc9/2lh+FZYBo3Rq
- O2h2lMIWdAOD1Tm3Ek0K9e45/q64b7b1AAg3Q7GDSAgbTfaw74Lzcqm
+ bh=1/xHeFjZTWhRZczDGwQ1Jx9lj8BRoFI4Rw461HTrIgs=;
+ b=9CgTbYMxC9JsFpzII614O+d7fbdprDVtfo6d7D8lw8ni08UNZgZcln0uVEjpkx6k04MiPFJfg
+ QxJe2dg02RkACTOyS3Hdd2KOFVsbBQx6ftQ808D36NvFDwoR9KUB/VQ
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a selftest to verify that converting a shared guest_memfd page to a
-private page fails if the page has an elevated reference count.
-
-When KVM converts a shared page to a private one, it expects the page to
-have a reference count equal to the reference counts taken by the
-filemap. If another kernel subsystem holds a reference to the page, for
-example via pin_user_pages(), the conversion must be aborted.
-
-This test uses vmsplice to increment the refcount of a specific page. The
-reference is kept on the page by not reading data out from vmsplice's
-destination pipe. It then attempts to convert a range of pages, including
-the page with elevated refcount, from shared to private.
-
-The test asserts that both bulk and single-page conversion attempts
-correctly fail with EAGAIN for the pinned page. After the page is unpinned,
-the test verifies that subsequent conversions succeed.
+Test that conversion to private specifying the
+KVM_SET_MEMORY_ATTRIBUTES2_ZERO flag returns -1 and sets errno to
+EOPNOTSUPP.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
-Co-developed-by: Sean Christopherson <seanjc@google.com>
-Signed-off-by: Sean Christopherson <seanjc@google.com>
 ---
- .../kvm/x86/guest_memfd_conversions_test.c         | 80 ++++++++++++++++++++++
- 1 file changed, 80 insertions(+)
+ .../selftests/kvm/x86/guest_memfd_conversions_test.c      | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
 diff --git a/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c b/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-index 21918b83d3792..13bbc361eaeda 100644
+index 13bbc361eaeda..922261ebaff96 100644
 --- a/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
 +++ b/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-@@ -408,6 +408,86 @@ GMEM_CONVERSION_TEST_INIT_SHARED(forked_accesses)
- 	kvm_munmap(test_state, sizeof(*test_state));
+@@ -488,6 +488,21 @@ GMEM_CONVERSION_MULTIPAGE_TEST_INIT_SHARED(elevated_refcount, 4)
+ 	}
  }
  
-+static int pin_pipe[2] = { -1, -1 };
-+
-+static void pin_pages(void *vaddr, size_t size)
++GMEM_CONVERSION_TEST_INIT_SHARED(convert_to_private_does_not_support_zero)
 +{
-+	struct iovec iov = {
-+		.iov_base = vaddr,
-+		.iov_len = size,
-+	};
-+
-+	if (pin_pipe[1] < 0)
-+		TEST_ASSERT_EQ(pipe(pin_pipe), 0);
-+
-+	TEST_ASSERT_EQ(vmsplice(pin_pipe[1], &iov, 1, 0), size);
-+}
-+
-+static void unpin_pages(void)
-+{
-+	close(pin_pipe[1]);
-+	pin_pipe[1] = -1;
-+	close(pin_pipe[0]);
-+	pin_pipe[0] = -1;
-+}
-+
-+static void test_convert_to_private_fails(test_data_t *t, loff_t pgoff,
-+					  size_t nr_pages,
-+					  loff_t expected_error_offset)
-+{
-+	loff_t offset = pgoff * page_size;
++	const loff_t start_offset = 0;
 +	loff_t error_offset = 0;
 +	int ret;
 +
-+	do {
-+		ret = __gmem_set_private(t->gmem_fd, offset,
-+					 nr_pages * page_size, &error_offset,
-+					 KVM_SET_MEMORY_ATTRIBUTES2_PRESERVE);
-+	} while (ret == -1 && errno == EINTR);
-+	TEST_ASSERT(ret == -1 && errno == EAGAIN,
-+		    "Wanted EAGAIN on page %lu, got %d (ret = %d)", pgoff,
-+		    errno, ret);
-+	TEST_ASSERT_EQ(error_offset, expected_error_offset);
-+}
++	ret = __gmem_set_private(t->gmem_fd, start_offset, nr_pages * page_size,
++				 &error_offset,
++				 KVM_SET_MEMORY_ATTRIBUTES2_ZERO);
 +
-+GMEM_CONVERSION_MULTIPAGE_TEST_INIT_SHARED(elevated_refcount, 4)
-+{
-+	int i;
-+
-+	pin_pages(t->mem + test_page * page_size, page_size);
-+
-+	for (i = 0; i < nr_pages; i++)
-+		test_shared(t, i, 0, 'A', 'B');
-+
-+	/*
-+	 * Converting in bulk should fail as long any page in the range has
-+	 * unexpected refcounts.
-+	 */
-+	test_convert_to_private_fails(t, 0, nr_pages, test_page * page_size);
-+
-+	for (i = 0; i < nr_pages; i++) {
-+		/*
-+		 * Converting page-wise should also fail as long any page in the
-+		 * range has unexpected refcounts.
-+		 */
-+		if (i == test_page)
-+			test_convert_to_private_fails(t, i, 1, test_page * page_size);
-+		else
-+			test_convert_to_private(t, i, 'B', 'C');
-+	}
-+
-+	unpin_pages();
-+
-+	gmem_set_private(t->gmem_fd, 0, nr_pages * page_size,
-+			 KVM_SET_MEMORY_ATTRIBUTES2_PRESERVE);
-+
-+	for (i = 0; i < nr_pages; i++) {
-+		char expected = i == test_page ? 'B' : 'C';
-+
-+		test_private(t, i, expected, 'D');
-+	}
++	TEST_ASSERT_EQ(ret, -1);
++	TEST_ASSERT_EQ(errno, EOPNOTSUPP);
++	TEST_ASSERT_EQ(error_offset, start_offset);
 +}
 +
  int main(int argc, char *argv[])
