@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Tue, 28 Apr 2026 16:25:21 -0700
-Subject: [PATCH RFC v5 26/53] KVM: x86: Support SNP and TDX applying
- content modes
+Date: Tue, 28 Apr 2026 16:25:22 -0700
+Subject: [PATCH RFC v5 27/53] KVM: x86: Bug CoCo VM on page fault before
+ finalizing
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260428-gmem-inplace-conversion-v5-26-d8608ccfca22@google.com>
+Message-Id: <20260428-gmem-inplace-conversion-v5-27-d8608ccfca22@google.com>
 References: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 In-Reply-To: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -38,124 +38,48 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=4286;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=1213;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=i6q4uvrNtDgNcr9CUmAU4UKURJOJAI1o/insHn6kLI8=;
- b=foRZV+tCQRN2/9dqQLMIWhiR8IkHAAal9ueWWCez/CvrtzIdOAsEjakqSz8gPfly9NNY9T4yW
- o8g90xsHHZlBcopXzRcG+cTT1Wpw3RzkLcw9qlFNF/cbBuXd7+GBfv/
+ bh=tiTenJm2569v5eEA4Z7Xk+parAwNdRT4spl4m/ukMSc=;
+ b=Ddok4n3bkINYasSG44K3iwGimZ3Lx7mZtFodZ99SfqY6+rmIB6rUmN3BUBBQoCmaMltcVCYvA
+ 9LeCHnRTzRhCqSGRL1TQUNOKoyvJhWw8WcEOLkkGetGbfg7UvhxOVAp
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Define supported content modes for TDX and SNP.
+In-place conversion of guest_memfd memory to private is allowed with the
+PRESERVE flag to enable populating guest memory only before CoCo VMs are
+finalized.
 
-For now, content preservation is not generally supported for conversions.
-
-Allow conversion only from shared to private before the VM is finalized to
-support this VM set up flow from userspace:
-
-1. Set up guest_memfd as shared.
-2. Write directly to guest_memfd.
-3. Set memory attributes to private with the PRESERVE flag
-4. Call KVM_TDX_INIT_MEM_REGION/KVM_SEV_SNP_LAUNCH_UPDATE to load and
-   encrypt memory
-
-An alternative would be to the work done by the kernel in step 3 into 4,
-but the process of conversion is complicated (needs to check refcounts,
-handle failures, etc) and plumbing the errors out through the
-platform-specific ioctl is complex and pollutes the platform-specific
-ioctl.
-
-Allow conversion with content preservation only to_private since preserving
-content on a to-shared conversion after population cannot be supported.
+Allowing CoCo VMs to fault memory could mess up memory contents. Hence, as
+a second layer check, bug CoCo VMs if they try to fault in memory from
+guest_memfd before the VMs are finalized.
 
 Suggested-by: Sean Christopherson <seanjc@google.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
-Co-developed-by: Michael Roth <michael.roth@amd.com>
-Signed-off-by: Michael Roth <michael.roth@amd.com>
 ---
- Documentation/virt/kvm/api.rst |  3 +++
- arch/x86/kvm/x86.c             | 38 ++++++++++++++++++++++++++++++++++++++
- 2 files changed, 41 insertions(+)
+ arch/x86/kvm/mmu/mmu.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/Documentation/virt/kvm/api.rst b/Documentation/virt/kvm/api.rst
-index 61b9974ba52e9..aaa4a82f0b75d 100644
---- a/Documentation/virt/kvm/api.rst
-+++ b/Documentation/virt/kvm/api.rst
-@@ -6659,6 +6659,9 @@ The content modes available are as follows:
-   converts the memory to shared, the host (and guest) will read
-   ``0xbeef`` (if the memory is accessible).
- 
-+  For TDX and SNP, content preservation is only supported before the
-+  VM is finalized, and only on conversion to private.
-+
- Note: These content modes apply to the entire requested range, not
- just the parts of the range that underwent conversion. For example, if
- this was the initial state:
-diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
-index e8abff71001eb..296ed3b8ace6c 100644
---- a/arch/x86/kvm/x86.c
-+++ b/arch/x86/kvm/x86.c
-@@ -14206,6 +14206,32 @@ u64 kvm_arch_gmem_supported_content_modes(struct kvm *kvm, bool to_private)
- 	case KVM_X86_SW_PROTECTED_VM:
- 		return KVM_SET_MEMORY_ATTRIBUTES2_ZERO |
- 		       KVM_SET_MEMORY_ATTRIBUTES2_PRESERVE;
-+	case KVM_X86_SNP_VM:
-+	case KVM_X86_TDX_VM: {
-+		u64 supported = KVM_SET_MEMORY_ATTRIBUTES2_ZERO;
-+
-+		/*
-+		 * Preservation is only supported for VMs with
-+		 * protected state up until the guest is launched and
-+		 * vCPUs become capable of generating KVM MMU faults,
-+		 * since those faults can be destructive to the
-+		 * initial memory contents from the guest point of
-+		 * view, i.e. plaintext data will become random data,
-+		 * or zeroed, after a shared->private conversion.
-+		 *
-+		 * Use pre_fault_allowed to guard PRESERVE support,
-+		 * since that is set to true when VMs are finalized.
-+		 *
-+		 * Along the same lines, only support PRESERVE for
-+		 * to_private conversions, since when converting to
-+		 * shared, memory contents for pages that had already
-+		 * been faulted could be zeroed.
-+		 */
-+		if (to_private && !kvm->arch.pre_fault_allowed)
-+			supported |= KVM_SET_MEMORY_ATTRIBUTES2_PRESERVE;
-+
-+		return supported;
-+	}
- 	default:
- 		return 0;
+diff --git a/arch/x86/kvm/mmu/mmu.c b/arch/x86/kvm/mmu/mmu.c
+index d3da387340a9d..8c5a3d2a7470b 100644
+--- a/arch/x86/kvm/mmu/mmu.c
++++ b/arch/x86/kvm/mmu/mmu.c
+@@ -4599,6 +4599,13 @@ static int kvm_mmu_faultin_pfn_gmem(struct kvm_vcpu *vcpu,
+ 		return -EFAULT;
  	}
-@@ -14216,6 +14242,16 @@ int kvm_arch_gmem_apply_content_mode_zero(struct kvm *kvm, struct inode *inode,
- {
- 	switch (kvm->arch.vm_type) {
- 	case KVM_X86_SW_PROTECTED_VM:
-+	case KVM_X86_SNP_VM:
-+	case KVM_X86_TDX_VM:
-+		/*
-+		 * TDX firmware will zero on unmapping from the
-+		 * Secure-EPTs, but suppose a shared page with
-+		 * contents was converted to private, and then
-+		 * converted back without ever being mapped into
-+		 * Secure-EPTs: guest_memfd can't rely on TDX firmware
-+		 * for zeroing then.
-+		 */
- 		return kvm_gmem_apply_content_mode_zero(inode, start, end);
- 	default:
- 		return 0;
-@@ -14228,6 +14264,8 @@ int kvm_arch_gmem_apply_content_mode_preserve(struct kvm *kvm,
- {
- 	switch (kvm->arch.vm_type) {
- 	case KVM_X86_SW_PROTECTED_VM:
-+	case KVM_X86_SNP_VM:
-+	case KVM_X86_TDX_VM:
- 		/* Do nothing to preserve content. */
- 		return 0;
- 	default:
+ 
++	/* Cannot fault from guest_memfd before CoCo VM is finalized. */
++	if (KVM_BUG_ON(vcpu->kvm->arch.has_protected_state &&
++			       !vcpu->kvm->arch.pre_fault_allowed,
++		       vcpu->kvm)) {
++		return -EFAULT;
++	}
++
+ 	r = kvm_gmem_get_pfn(vcpu->kvm, fault->slot, fault->gfn, &fault->pfn,
+ 			     &fault->refcounted_page, &max_order);
+ 	if (r) {
 
 -- 
 2.54.0.545.g6539524ca2-goog
