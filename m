@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Tue, 28 Apr 2026 16:25:35 -0700
-Subject: [PATCH RFC v5 40/53] KVM: selftests: Test that shared/private
- status is consistent across processes
+Date: Tue, 28 Apr 2026 16:25:36 -0700
+Subject: [PATCH RFC v5 41/53] KVM: selftests: Test conversion with elevated
+ page refcount
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260428-gmem-inplace-conversion-v5-40-d8608ccfca22@google.com>
+Message-Id: <20260428-gmem-inplace-conversion-v5-41-d8608ccfca22@google.com>
 References: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 In-Reply-To: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -38,116 +38,126 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=3473;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=3828;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=za9mbinhXQlrBGNX8T7yWO9RNCSzSfL649W98OVJnA0=;
- b=lkg9YFQlIbB1hlTVjPrGIukY3fzR7s6d2zyamzlqVzgGFcxL3JfBdyNqZw0C9MA3wGvekD5Qw
- vGC5eHP/UQ6DLO56Vn4ZHsd+yy/F3u/Qr3S2vgUpUxAbrEbmXmlAi+g
+ bh=/d2k8NxefQGN/ufZ9LnHGnYMKu34ADHcjvHKBhIXD7M=;
+ b=1ULjpSvvqj0ZTKtSpsiMXgqtnYm7Snt35jmtyNxH17oWl3wy/V4Zf+IcNqc9/2lh+FZYBo3Rq
+ O2h2lMIWdAOD1Tm3Ek0K9e45/q64b7b1AAg3Q7GDSAgbTfaw74Lzcqm
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Sean Christopherson <seanjc@google.com>
+Add a selftest to verify that converting a shared guest_memfd page to a
+private page fails if the page has an elevated reference count.
 
-Add a test to verify that a guest_memfd's shared/private status is
-consistent across processes, and that any shared pages previously mapped in
-any process are unmapped from all processes.
+When KVM converts a shared page to a private one, it expects the page to
+have a reference count equal to the reference counts taken by the
+filemap. If another kernel subsystem holds a reference to the page, for
+example via pin_user_pages(), the conversion must be aborted.
 
-The test forks a child process after creating the shared guest_memfd
-region so that the second process exists alongside the main process for the
-entire test.
+This test uses vmsplice to increment the refcount of a specific page. The
+reference is kept on the page by not reading data out from vmsplice's
+destination pipe. It then attempts to convert a range of pages, including
+the page with elevated refcount, from shared to private.
 
-The processes then take turns to access memory to check that the
-shared/private status is consistent across processes.
+The test asserts that both bulk and single-page conversion attempts
+correctly fail with EAGAIN for the pinned page. After the page is unpinned,
+the test verifies that subsequent conversions succeed.
 
-Signed-off-by: Sean Christopherson <seanjc@google.com>
-Co-developed-by: Ackerley Tng <ackerleytng@google.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
+Co-developed-by: Sean Christopherson <seanjc@google.com>
+Signed-off-by: Sean Christopherson <seanjc@google.com>
 ---
- .../kvm/x86/guest_memfd_conversions_test.c         | 74 ++++++++++++++++++++++
- 1 file changed, 74 insertions(+)
+ .../kvm/x86/guest_memfd_conversions_test.c         | 80 ++++++++++++++++++++++
+ 1 file changed, 80 insertions(+)
 
 diff --git a/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c b/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-index 8dfbf3630cec2..21918b83d3792 100644
+index 21918b83d3792..13bbc361eaeda 100644
 --- a/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
 +++ b/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-@@ -334,6 +334,80 @@ GMEM_CONVERSION_TEST_INIT_SHARED(truncate)
- 	test_private(t, 0, 0, 'A');
+@@ -408,6 +408,86 @@ GMEM_CONVERSION_TEST_INIT_SHARED(forked_accesses)
+ 	kvm_munmap(test_state, sizeof(*test_state));
  }
  
-+/* Test that shared/private memory protections work and are seen from any process. */
-+GMEM_CONVERSION_TEST_INIT_SHARED(forked_accesses)
++static int pin_pipe[2] = { -1, -1 };
++
++static void pin_pages(void *vaddr, size_t size)
 +{
++	struct iovec iov = {
++		.iov_base = vaddr,
++		.iov_len = size,
++	};
++
++	if (pin_pipe[1] < 0)
++		TEST_ASSERT_EQ(pipe(pin_pipe), 0);
++
++	TEST_ASSERT_EQ(vmsplice(pin_pipe[1], &iov, 1, 0), size);
++}
++
++static void unpin_pages(void)
++{
++	close(pin_pipe[1]);
++	pin_pipe[1] = -1;
++	close(pin_pipe[0]);
++	pin_pipe[0] = -1;
++}
++
++static void test_convert_to_private_fails(test_data_t *t, loff_t pgoff,
++					  size_t nr_pages,
++					  loff_t expected_error_offset)
++{
++	loff_t offset = pgoff * page_size;
++	loff_t error_offset = 0;
++	int ret;
++
++	do {
++		ret = __gmem_set_private(t->gmem_fd, offset,
++					 nr_pages * page_size, &error_offset,
++					 KVM_SET_MEMORY_ATTRIBUTES2_PRESERVE);
++	} while (ret == -1 && errno == EINTR);
++	TEST_ASSERT(ret == -1 && errno == EAGAIN,
++		    "Wanted EAGAIN on page %lu, got %d (ret = %d)", pgoff,
++		    errno, ret);
++	TEST_ASSERT_EQ(error_offset, expected_error_offset);
++}
++
++GMEM_CONVERSION_MULTIPAGE_TEST_INIT_SHARED(elevated_refcount, 4)
++{
++	int i;
++
++	pin_pages(t->mem + test_page * page_size, page_size);
++
++	for (i = 0; i < nr_pages; i++)
++		test_shared(t, i, 0, 'A', 'B');
++
 +	/*
-+	 * No races are intended in this test, shared memory is only used to
-+	 * coordinate between processes.
++	 * Converting in bulk should fail as long any page in the range has
++	 * unexpected refcounts.
 +	 */
-+	static enum {
-+		STATE_INIT,
-+		STATE_CHECK_SHARED,
-+		STATE_DONE_CHECKING_SHARED,
-+		STATE_CHECK_PRIVATE,
-+		STATE_DONE_CHECKING_PRIVATE,
-+	} *test_state;
-+	pid_t child_pid;
++	test_convert_to_private_fails(t, 0, nr_pages, test_page * page_size);
 +
-+	test_state = kvm_mmap(sizeof(*test_state), PROT_READ | PROT_WRITE,
-+			      MAP_SHARED | MAP_ANONYMOUS, -1);
-+
-+#define TEST_STATE_AWAIT(__state)						\
-+	while (READ_ONCE(*test_state) != __state) {				\
-+		if (child_pid != 0) {						\
-+			int status;						\
-+			pid_t pid;						\
-+			do {							\
-+				pid = waitpid(child_pid, &status, WNOHANG);	\
-+			} while (pid == -1 && errno == EINTR);			\
-+			if (pid == -1)						\
-+				TEST_FAIL("Couldn't check child status.");	\
-+			else if (pid != 0)					\
-+				TEST_FAIL("Child exited prematurely.");		\
-+		}								\
-+	}
-+
-+#define TEST_STATE_SET(__state) WRITE_ONCE(*test_state, __state)
-+
-+	child_pid = fork();
-+	TEST_ASSERT(child_pid != -1, "fork failed");
-+
-+	if (child_pid == 0) {
-+		const char inconsequential = 0xdd;
-+
-+		TEST_STATE_AWAIT(STATE_CHECK_SHARED);
-+
++	for (i = 0; i < nr_pages; i++) {
 +		/*
-+		 * This maps the pages into the child process as well, and tests
-+		 * that the conversion process will unmap the guest_memfd memory
-+		 * from all processes.
++		 * Converting page-wise should also fail as long any page in the
++		 * range has unexpected refcounts.
 +		 */
-+		host_do_rmw(t->mem, 0, 0xB, 0xC);
-+
-+		TEST_STATE_SET(STATE_DONE_CHECKING_SHARED);
-+		TEST_STATE_AWAIT(STATE_CHECK_PRIVATE);
-+
-+		TEST_EXPECT_SIGBUS(READ_ONCE(t->mem[0]));
-+		TEST_EXPECT_SIGBUS(WRITE_ONCE(t->mem[0], inconsequential));
-+
-+		TEST_STATE_SET(STATE_DONE_CHECKING_PRIVATE);
-+		exit(0);
++		if (i == test_page)
++			test_convert_to_private_fails(t, i, 1, test_page * page_size);
++		else
++			test_convert_to_private(t, i, 'B', 'C');
 +	}
 +
-+	test_shared(t, 0, 0, 0xA, 0xB);
++	unpin_pages();
 +
-+	TEST_STATE_SET(STATE_CHECK_SHARED);
-+	TEST_STATE_AWAIT(STATE_DONE_CHECKING_SHARED);
++	gmem_set_private(t->gmem_fd, 0, nr_pages * page_size,
++			 KVM_SET_MEMORY_ATTRIBUTES2_PRESERVE);
 +
-+	test_convert_to_private(t, 0, 0xC, 0xD);
++	for (i = 0; i < nr_pages; i++) {
++		char expected = i == test_page ? 'B' : 'C';
 +
-+	TEST_STATE_SET(STATE_CHECK_PRIVATE);
-+	TEST_STATE_AWAIT(STATE_DONE_CHECKING_PRIVATE);
-+
-+	kvm_munmap(test_state, sizeof(*test_state));
++		test_private(t, i, expected, 'D');
++	}
 +}
 +
  int main(int argc, char *argv[])
