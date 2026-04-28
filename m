@@ -1,244 +1,210 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 28 Apr 2026 18:02:26 +0100
-Subject: [PATCH v3 11/11] iio: dac: ad5686: create bus ops struct
+From: Dmitry Safonov <dima@arista.com>
+Date: Tue, 28 Apr 2026 18:35:31 +0100
+Subject: [PATCH] x86/CPU/AMD: Clear RDRAND CPUID if Built-In-Self-Test
+ failed on boot
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260428-ad5686-fixes-v3-11-9cff7bd67a15@analog.com>
-References: <20260428-ad5686-fixes-v3-0-9cff7bd67a15@analog.com>
-In-Reply-To: <20260428-ad5686-fixes-v3-0-9cff7bd67a15@analog.com>
-To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Stefan Popa <stefan.popa@analog.com>, Jonathan Cameron <jic23@cam.ac.uk>, 
- Greg Kroah-Hartman <gregkh@suse.de>, 
- Michael Auchter <michael.auchter@ni.com>, 
- Jonathan Cameron <jic23@kernel.org>
-Cc: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
+Message-Id: <20260428-rdrand-cpubug-v1-1-ac8384c841f3@arista.com>
+X-B4-Tracking: v=1; b=H4sIAOLv8GkC/x3MQQrDIBBA0auEWXdoFLHQq5QuRp0kA60NYwxCy
+ N1ru3yL/w8orMIF7sMByrsU+eQOcxkgLpRnRkndYEfrR2dvqEkpJ4xrDXVGb5g8Td44F6E3q/I
+ k7f97PLsDFcbQi7j8Li/JtWHmtl3fVDZWOM8vixJMzoMAAAA=
+X-Change-ID: 20260427-rdrand-cpubug-61ea6af6144c
+To: Borislav Petkov <bp@alien8.de>, 
+ Dave Hansen <dave.hansen@linux.intel.com>, "H. Peter Anvin" <hpa@zytor.com>, 
+ Ingo Molnar <mingo@redhat.com>, Thomas Gleixner <tglx@kernel.org>
+Cc: Dmitry Safonov <0x7f454c46@gmail.com>, 
+ Tom Lendacky <thomas.lendacky@amd.com>, Peter Edwards <peadar@arista.com>, 
+ linux-kernel@vger.kernel.org, x86@kernel.org, 
+ Dmitry Safonov <dima@arista.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777395737; l=7506;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=5iWTiJTqvvtzMa3UXQUfEyAQq2H0OecTkzq4mBOSHMs=;
- b=V5vtNJuknFPCyirq0ytkSmxQ5gKFq8nIFaBLEJ3JhaL3iBayfy3OzRROGOTGivWrrrn1+L1z1
- Z5+u3RWeAv3BHU6I/s3Zu9Bj49sn1GDMWatXpnosor+aXD/q3Rlvc70
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777397760; l=6222;
+ i=dima@arista.com; s=20250521; h=from:subject:message-id;
+ bh=zY+/MadCaKRzhuk03rxiuRI9MDX1T0Cjb1oF6jSoXlk=;
+ b=1/59vjE9pz0UUKGsNFUNAMOyCKCamwtkhrtxCFdV32i7bNx1DB0Q3xtl7v1/ivXGFKcJBNqGS
+ B5dSF1AZJl8CA55gUAc+B5Znz9ro/1Tj7Dhz5TLOWdUOdVwrDLEbkrA
+X-Developer-Key: i=dima@arista.com; a=ed25519;
+ pk=/z94x2T59rICwjRqYvDsBe0MkpbkkdYrSW2J1G2gIcU=
+X-Endpoint-Received: by B4 Relay for dima@arista.com/20250521 with auth_id=405
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Create struct with bus operations, which will be used to extend bus
-implementation features. Auxiliary functions ad5686_write() and
-ad5686_read() are created and ad5686_probe() now receives an ops struct
-pointer rather than individual read and write functions.
+On AMD Embedded R-Series RX-421ND (family: 0x15, model: 0x60, stepping: 0x1)
+with microcode revision 0x0600611a RDRAND is constantly giving zeros:
+: #include <stdio.h>
+: #include <stdint.h>
+: #define _rdrand(x) ({ unsigned char err; asm volatile("rdrand %0; setc %1":"=r"(*x), "=qm"(err)); err; })
+:
+: int main(int argc, char *argv[])
+: {
+:         uint64_t x;
+:         int i;
+:
+:         for (i = 0; i < 20; i++) {
+:                 _rdrand(&x);
+:                 printf("%llx ", x);
+:         }
+:         putchar('\n');
+:         return 0;
+: }
+Prints:
+: # /tmp/check
+: 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+BIST correctly detects a broken implementation on boot:
+[..] RDRAND is not reliable on this platform; disabling.
+...
+[..] smpboot: x86: Booting SMP configuration:
+[..] .... node  #0, CPUs:      #1 #2 #3
+[..] RDRAND is not reliable on this platform; disabling.
+[..] RDRAND is not reliable on this platform; disabling.
+[..] RDRAND is not reliable on this platform; disabling.
+[..] smp: Brought up 1 node, 4 CPUs
+
+Yet, CPUID gets cleared only for previously known broken
+implementations, see i.e., commit c49a0a80137c ("x86/CPU/AMD: Clear
+RDRAND CPUID bit on AMD family 15h/16h"), that disabled RDRAND on
+the same CPU family, where it was broken only after suspend-resume.
+
+As RDRAND is not masked in CPUID, some userspace may attempt using it,
+for example, libstdc++ with the following reproducer (thanks to Peter):
+: #include <random>
+: #include <iostream>
+: int main() {
+:    std::random_device rd;
+:    std::uniform_int_distribution<int> dist(0, 9);
+:    for (int i = 0; i < 10; ++i)
+:       std::cout << dist(rd) << " ";
+:    std::cout << "\n";
+: }
+crashes when RDRAND is unmasked:
+: # /tmp/rdrand
+: terminate called after throwing an instance of 'std::runtime_error'
+:   what():  random_device: rdrand failed
+: Aborted (core dumped)
+
+Some userspace already migrated to vgetrandom() instead of raw RDRAND,
+i.e. systemd [1] and glibc [2], yet unfortunately, some hasn't.
+
+Let Built-In-Self-Test mask CPUID on AMD with MSR register when
+it detects that implementation is not functioning.
+
+[1]: https://github.com/systemd/systemd/commit/ffa047a03e4c5f6bd3af73b7eecb99cd230fe204
+[2]: https://sourceware.org/git/?p=glibc.git;a=commit;h=461cab1de747f3842f27a5d24977d78d561d45f9
+
+Signed-off-by: Dmitry Safonov <dima@arista.com>
 ---
- drivers/iio/dac/ad5686-spi.c |  7 ++++++-
- drivers/iio/dac/ad5686.c     | 32 ++++++++++++++------------------
- drivers/iio/dac/ad5686.h     | 29 +++++++++++++++++++++--------
- drivers/iio/dac/ad5696-i2c.c |  7 ++++++-
- 4 files changed, 47 insertions(+), 28 deletions(-)
+ arch/x86/include/asm/processor.h |  5 +++++
+ arch/x86/kernel/cpu/amd.c        | 28 +++++++++++++++-------------
+ arch/x86/kernel/cpu/rdrand.c     |  1 +
+ 3 files changed, 21 insertions(+), 13 deletions(-)
 
-diff --git a/drivers/iio/dac/ad5686-spi.c b/drivers/iio/dac/ad5686-spi.c
-index 8fef0e6d33ff..857b9e4f54ab 100644
---- a/drivers/iio/dac/ad5686-spi.c
-+++ b/drivers/iio/dac/ad5686-spi.c
-@@ -92,10 +92,15 @@ static int ad5686_spi_read(struct ad5686_state *st, u8 addr)
- 	return be32_to_cpu(st->data[2].d32);
+diff --git a/arch/x86/include/asm/processor.h b/arch/x86/include/asm/processor.h
+index 10b5355b323e..23c980697cc5 100644
+--- a/arch/x86/include/asm/processor.h
++++ b/arch/x86/include/asm/processor.h
+@@ -716,9 +716,14 @@ static __always_inline void amd_clear_divider(void)
  }
  
-+static const struct ad5686_bus_ops ad5686_spi_ops = {
-+	.write = ad5686_spi_write,
-+	.read = ad5686_spi_read,
-+};
-+
- static int ad5686_spi_probe(struct spi_device *spi)
- {
- 	return ad5686_probe(&spi->dev, spi_get_device_match_data(spi),
--			    spi->modalias, ad5686_spi_write, ad5686_spi_read);
-+			    spi->modalias, &ad5686_spi_ops);
+ extern void amd_check_microcode(void);
++extern int amd_try_clear_rdrand_cpuid(struct cpuinfo_x86 *c);
+ #else
+ static inline void amd_clear_divider(void)		{ }
+ static inline void amd_check_microcode(void)		{ }
++static inline int amd_try_clear_rdrand_cpuid(struct cpuinfo_x86 *c)
++{
++	return 0;
++}
+ #endif
+ 
+ extern unsigned long arch_align_stack(unsigned long sp);
+diff --git a/arch/x86/kernel/cpu/amd.c b/arch/x86/kernel/cpu/amd.c
+index 2d9ae6ab1701..37a2ce19845a 100644
+--- a/arch/x86/kernel/cpu/amd.c
++++ b/arch/x86/kernel/cpu/amd.c
+@@ -808,22 +808,16 @@ static int __init rdrand_cmdline(char *str)
  }
+ early_param("rdrand", rdrand_cmdline);
  
- static const struct spi_device_id ad5686_spi_id[] = {
-diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
-index 73a3178ac2b8..690f2fe2ffdf 100644
---- a/drivers/iio/dac/ad5686.c
-+++ b/drivers/iio/dac/ad5686.c
-@@ -28,18 +28,18 @@ static int ad5310_control_sync(struct ad5686_state *st)
+-static void clear_rdrand_cpuid_bit(struct cpuinfo_x86 *c)
++int amd_try_clear_rdrand_cpuid(struct cpuinfo_x86 *c)
  {
- 	unsigned int pd_val = st->pwr_down_mask & st->pwr_down_mode;
- 
--	return st->write(st, AD5686_CMD_CONTROL_REG, 0,
--			 FIELD_PREP(AD5310_PD_MSK, pd_val) |
--			 FIELD_PREP(AD5310_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
-+	return ad5686_write(st, AD5686_CMD_CONTROL_REG, 0,
-+			    FIELD_PREP(AD5310_PD_MSK, pd_val) |
-+			    FIELD_PREP(AD5310_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
- }
- 
- static int ad5683_control_sync(struct ad5686_state *st)
- {
- 	unsigned int pd_val = st->pwr_down_mask & st->pwr_down_mode;
- 
--	return st->write(st, AD5686_CMD_CONTROL_REG, 0,
--			 FIELD_PREP(AD5683_PD_MSK, pd_val) |
--			 FIELD_PREP(AD5683_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
-+	return ad5686_write(st, AD5686_CMD_CONTROL_REG, 0,
-+			    FIELD_PREP(AD5683_PD_MSK, pd_val) |
-+			    FIELD_PREP(AD5683_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
- }
- 
- static inline unsigned int ad5686_pd_mask_shift(const struct iio_chan_spec *chan)
-@@ -135,7 +135,7 @@ static ssize_t ad5686_write_dac_powerdown(struct iio_dev *indio_dev,
- 			address = 0x0;
- 			val = lower_16_bits(val);
- 		}
--		ret = st->write(st, AD5686_CMD_POWERDOWN_DAC, address, val);
-+		ret = ad5686_write(st, AD5686_CMD_POWERDOWN_DAC, address, val);
- 		if (ret)
- 			return ret;
- 		break;
-@@ -158,7 +158,7 @@ static int ad5686_read_raw(struct iio_dev *indio_dev,
- 	switch (m) {
- 	case IIO_CHAN_INFO_RAW:
- 		mutex_lock(&st->lock);
--		ret = st->read(st, chan->address);
-+		ret = ad5686_read(st, chan->address);
- 		mutex_unlock(&st->lock);
- 		if (ret < 0)
- 			return ret;
-@@ -188,10 +188,8 @@ static int ad5686_write_raw(struct iio_dev *indio_dev,
- 			return -EINVAL;
- 
- 		mutex_lock(&st->lock);
--		ret = st->write(st,
--				AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
--				chan->address,
--				val << chan->scan_type.shift);
-+		ret = ad5686_write(st, AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
-+				   chan->address, val << chan->scan_type.shift);
- 		mutex_unlock(&st->lock);
- 		break;
- 	default:
-@@ -452,8 +450,7 @@ EXPORT_SYMBOL_NS_GPL(ad5679r_chip_info, "IIO_AD5686");
- 
- int ad5686_probe(struct device *dev,
- 		 const struct ad5686_chip_info *chip_info,
--		 const char *name, ad5686_write_func write,
--		 ad5686_read_func read)
-+		 const char *name, const struct ad5686_bus_ops *ops)
- {
- 	struct ad5686_state *st;
- 	struct iio_dev *indio_dev;
-@@ -467,8 +464,7 @@ int ad5686_probe(struct device *dev,
- 	st = iio_priv(indio_dev);
- 
- 	st->dev = dev;
--	st->write = write;
--	st->read = read;
-+	st->ops = ops;
- 	st->chip_info = chip_info;
- 
- 	ret = devm_regulator_get_enable_read_voltage(dev, "vcc");
-@@ -510,8 +506,8 @@ int ad5686_probe(struct device *dev,
- 			return ret;
- 		break;
- 	case AD5686_REGMAP:
--		ret = st->write(st, AD5686_CMD_INTERNAL_REFER_SETUP, 0,
--				st->use_internal_vref ? 0 : AD5686_REF_BIT_MSK);
-+		ret = ad5686_write(st, AD5686_CMD_INTERNAL_REFER_SETUP, 0,
-+				   st->use_internal_vref ? 0 : AD5686_REF_BIT_MSK);
- 		if (ret)
- 			return ret;
- 		break;
-diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
-index 48b2b60001b0..ea3ee43015c1 100644
---- a/drivers/iio/dac/ad5686.h
-+++ b/drivers/iio/dac/ad5686.h
-@@ -60,10 +60,15 @@ enum ad5686_regmap_type {
- 
- struct ad5686_state;
- 
--typedef int (*ad5686_write_func)(struct ad5686_state *st,
--				 u8 cmd, u8 addr, u16 val);
+ 	/*
+ 	 * Saving of the MSR used to hide the RDRAND support during
+-	 * suspend/resume is done by arch/x86/power/cpu.c, which is
+-	 * dependent on CONFIG_PM_SLEEP.
+-	 */
+-	if (!IS_ENABLED(CONFIG_PM_SLEEP))
+-		return;
 -
--typedef int (*ad5686_read_func)(struct ad5686_state *st, u8 addr);
-+/**
-+ * struct ad5686_bus_ops - bus specific read/write operations
-+ * @read: read a register value at the given address
-+ * @write: write a command, address and value to the device
-+ */
-+struct ad5686_bus_ops {
-+	int (*read)(struct ad5686_state *st, u8 addr);
-+	int (*write)(struct ad5686_state *st, u8 cmd, u8 addr, u16 val);
-+};
+-	/*
++	 * suspend/resume is done by arch/x86/power/cpu.c
+ 	 * The self-test can clear X86_FEATURE_RDRAND, so check for
+ 	 * RDRAND support using the CPUID function directly.
+ 	 */
+ 	if (!(cpuid_ecx(1) & BIT(30)) || rdrand_force)
+-		return;
++		return -1;
  
- /**
-  * struct ad5686_chip_info - chip specific information
-@@ -111,6 +116,7 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
-  * struct ad5686_state - driver instance specific data
-  * @dev:		device instance
-  * @chip_info:		chip model specific constants, available modes etc
-+ * @ops:		bus specific operations
-  * @vref_mv:		actual reference voltage used
-  * @pwr_down_mask:	power down mask
-  * @pwr_down_mode:	current power down mode
-@@ -122,11 +128,10 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
- struct ad5686_state {
- 	struct device			*dev;
- 	const struct ad5686_chip_info	*chip_info;
-+	const struct ad5686_bus_ops	*ops;
- 	unsigned short			vref_mv;
- 	unsigned int			pwr_down_mask;
- 	unsigned int			pwr_down_mode;
--	ad5686_write_func		write;
--	ad5686_read_func		read;
- 	bool				use_internal_vref;
- 	struct mutex			lock;
+ 	msr_clear_bit(MSR_AMD64_CPUID_FN_1, 62);
  
-@@ -145,8 +150,16 @@ struct ad5686_state {
+@@ -833,11 +827,17 @@ static void clear_rdrand_cpuid_bit(struct cpuinfo_x86 *c)
+ 	 */
+ 	if (cpuid_ecx(1) & BIT(30)) {
+ 		pr_info_once("BIOS may not properly restore RDRAND after suspend, but hypervisor does not support hiding RDRAND via CPUID.\n");
+-		return;
++		return -1;
+ 	}
  
- int ad5686_probe(struct device *dev,
- 		 const struct ad5686_chip_info *chip_info,
--		 const char *name, ad5686_write_func write,
--		 ad5686_read_func read);
-+		 const char *name, const struct ad5686_bus_ops *ops);
- 
-+static inline int ad5686_write(struct ad5686_state *st, u8 cmd, u8 addr, u16 val)
-+{
-+	return st->ops->write(st, cmd, addr, val);
+-	clear_cpu_cap(c, X86_FEATURE_RDRAND);
+ 	pr_info_once("BIOS may not properly restore RDRAND after suspend, hiding RDRAND via CPUID. Use rdrand=force to reenable.\n");
++	return 0;
 +}
 +
-+static inline int ad5686_read(struct ad5686_state *st, u8 addr)
++static void clear_rdrand_cpuid(struct cpuinfo_x86 *c)
 +{
-+	return st->ops->read(st, addr);
-+}
- 
- #endif /* __DRIVERS_IIO_DAC_AD5686_H__ */
-diff --git a/drivers/iio/dac/ad5696-i2c.c b/drivers/iio/dac/ad5696-i2c.c
-index fd047c01f8f6..30c48d937a38 100644
---- a/drivers/iio/dac/ad5696-i2c.c
-+++ b/drivers/iio/dac/ad5696-i2c.c
-@@ -62,10 +62,15 @@ static int ad5686_i2c_write(struct ad5686_state *st,
- 	return (ret != 3) ? -EIO : 0;
++	if (!amd_try_clear_rdrand_cpuid(c))
++		clear_cpu_cap(c, X86_FEATURE_RDRAND);
  }
  
-+static const struct ad5686_bus_ops ad5686_i2c_ops = {
-+	.write = ad5686_i2c_write,
-+	.read = ad5686_i2c_read,
-+};
-+
- static int ad5686_i2c_probe(struct i2c_client *i2c)
- {
- 	return ad5686_probe(&i2c->dev, i2c_get_match_data(i2c),
--			    i2c->name, ad5686_i2c_write, ad5686_i2c_read);
-+			    i2c->name, &ad5686_i2c_ops);
+ static void init_amd_jg(struct cpuinfo_x86 *c)
+@@ -847,7 +847,8 @@ static void init_amd_jg(struct cpuinfo_x86 *c)
+ 	 * across suspend and resume. Check on whether to hide the RDRAND
+ 	 * instruction support via CPUID.
+ 	 */
+-	clear_rdrand_cpuid_bit(c);
++	if (IS_ENABLED(CONFIG_PM_SLEEP))
++		clear_rdrand_cpuid(c);
  }
  
- static const struct i2c_device_id ad5686_i2c_id[] = {
+ static void init_amd_bd(struct cpuinfo_x86 *c)
+@@ -870,7 +871,8 @@ static void init_amd_bd(struct cpuinfo_x86 *c)
+ 	 * across suspend and resume. Check on whether to hide the RDRAND
+ 	 * instruction support via CPUID.
+ 	 */
+-	clear_rdrand_cpuid_bit(c);
++	if (IS_ENABLED(CONFIG_PM_SLEEP))
++		clear_rdrand_cpuid(c);
+ }
+ 
+ static const struct x86_cpu_id erratum_1386_microcode[] = {
+diff --git a/arch/x86/kernel/cpu/rdrand.c b/arch/x86/kernel/cpu/rdrand.c
+index eeac00d20926..1075e18a75f6 100644
+--- a/arch/x86/kernel/cpu/rdrand.c
++++ b/arch/x86/kernel/cpu/rdrand.c
+@@ -43,6 +43,7 @@ void x86_init_rdrand(struct cpuinfo_x86 *c)
+ 		failure = true;
+ 
+ 	if (failure) {
++		amd_try_clear_rdrand_cpuid(c);
+ 		clear_cpu_cap(c, X86_FEATURE_RDRAND);
+ 		clear_cpu_cap(c, X86_FEATURE_RDSEED);
+ 		pr_emerg("RDRAND is not reliable on this platform; disabling.\n");
 
+---
+base-commit: 9974969c14031a097d6b45bcb7a06bb4aa525c40
+change-id: 20260427-rdrand-cpubug-61ea6af6144c
+
+Best regards,
 -- 
-2.43.0
+Dmitry Safonov <dima@arista.com>
 
