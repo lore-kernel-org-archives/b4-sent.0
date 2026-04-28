@@ -1,74 +1,66 @@
-From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
-Date: Mon, 27 Apr 2026 17:18:08 -0700
-Subject: [PATCH 3/3] i2c: xiic: don't clobber msg->len to signal block-read
- completion
+From: Prasanna S <prasanna.s@oss.qualcomm.com>
+Date: Tue, 28 Apr 2026 09:56:13 +0530
+Subject: [PATCH v1] serial: qcom-geni: fix UART_RX_PAR_EN bit position
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260427-i2c-xiic-v1-3-e6207f9aa5ad@nexthop.ai>
-References: <20260427-i2c-xiic-v1-0-e6207f9aa5ad@nexthop.ai>
-In-Reply-To: <20260427-i2c-xiic-v1-0-e6207f9aa5ad@nexthop.ai>
-To: Michal Simek <michal.simek@amd.com>, Andi Shyti <andi.shyti@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-i2c@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Abdurrahman Hussain <abdurrahman@nexthop.ai>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1863;
- i=abdurrahman@nexthop.ai; h=from:subject:message-id;
- bh=OktgHJV/MKY6BGPhmYAbpjHL8E9xIEfPx0WNo7EeXKg=;
- b=owJ4nJvAy8zAJbYltPXv6rsCXxhPqyUxZL7/c1D+/YWV3ude8c44uo171kVreYnc4A9ndzgYc
- 5v1WZ2R7P3SUcrCIMbFICumyDLnkf+bto62iA0xh+xh5rAygQxh4OIUgImUhDIy/OkTW7nm6/x5
- 1+NvPnzWVc+QrPBm6t+rbz7kn9jLVvuo14uRYXtA04SNf9iNs+V+fn4mfn3LJqP/D0ptNn9M092
- 1Lc5uBxsA3YtVpw==
-X-Developer-Key: i=abdurrahman@nexthop.ai; a=openpgp;
- fpr=9CE24FEC86888658B05CC23FB45585FDABDD10F4
-X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/default with auth_id=756
+Message-Id: <20260428-serial-bit-correct-v1-1-9131ad5b97d8@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAOQ28GkC/x2MSQqAMAwAvyI5G7C1LvgV8aA1akBaSaUI4t+tH
+ gdm5oZAwhSgy24QihzYuwQqz8Buo1sJeU4MutB1YbTBzx93nPhE60XInrhUpTJTrZtGtZDCQ2j
+ h65/2EBUMz/MCME1V9mgAAAA=
+X-Change-ID: 20260424-serial-bit-correct-f5314b627718
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Jiri Slaby <jirislaby@kernel.org>, Sagar Dharia <sdharia@codeaurora.org>, 
+ Girish Mahadevan <girishm@codeaurora.org>, 
+ Karthikeyan Ramasubramanian <kramasub@codeaurora.org>, 
+ Doug Anderson <dianders@google.com>
+Cc: linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-serial@vger.kernel.org, stable@vger.kernel.org, 
+ Prasanna S <prasanna.s@oss.qualcomm.com>
+X-Mailer: b4 0.16-dev
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777350374; l=1216;
+ i=prasanna.s@oss.qualcomm.com; s=20260428; h=from:subject:message-id;
+ bh=92DZEPQq9gzbYu7wxhkrplbhyodAhccJZR/6Ys8Jr0E=;
+ b=DF47/MZOJAkYmbFDkpCZ6t2dylwkyIF5j4bIvczMVo4KyYsJNj6KNfuEMpzXss606rJZzzhSG
+ S0SN8xMx2SLAqD39rCyJMDR1wjYT7CE36RGrZiwcm4TIdVZOlgMU+FF
+X-Developer-Key: i=prasanna.s@oss.qualcomm.com; a=ed25519;
+ pk=ECtn3EnrN+3RY2I0/e72LjFYKGNLhhH+6UU2lBNO4+k=
+X-Endpoint-Received: by B4 Relay for prasanna.s@oss.qualcomm.com/20260428 with auth_id=758
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-At the end of a SMBus block read the BNB handler force-set
-tx_msg->len = 1 to push xiic_tx_space() to zero so the STATE_DONE
-branch would fire. Two problems:
+UART_RX_PAR_EN is incorrectly defined as bit 3, which triggers false
+framing errors (S_GP_IRQ_1_EN) and causes received data to be dropped
+when parity is enabled and the parity bit is 0.
 
-1. tx_msg and rx_msg alias the same i2c_msg struct during a receive
-   (see xiic_start_recv), so overwriting tx_msg->len also changes
-   rx_msg->len. The i2c core's i2c_smbus_check_pec() then reads the
-   PEC from the wrong offset -- buf[0] instead of buf[rxmsg_len + 1]
-   -- and either mis-validates or returns -EBADMSG.
+Define UART_RX_PAR_EN as bit 4 of the SE_UART_RX_TRANS_CFG register, as
+specified in the reference manual.
 
-2. xiic_start_recv sets tx_pos = msg->len (typically 2 when PEC is
-   enabled). xiic_tx_space() is unsigned msg->len - tx_pos, so
-   setting msg->len = 1 with tx_pos = 2 underflows to 0xFFFFFFFF and
-   xiic_tx_space() never compares equal to 0 -- the STATE_DONE check
-   falls through to STATE_ERROR, giving -EIO.
-
-Instead, advance tx_pos up to msg->len. That drives tx_space to 0
-without touching msg->len, preserving the buffer length that
-xiic_smbus_block_read_setup() already grew to cover the length byte,
-the payload and the optional PEC byte.
-
-Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Fixes: c4f528795d1a ("tty: serial: msm_geni_serial: Add serial driver support for GENI based QUP")
+Cc: stable@vger.kernel.org
+Signed-off-by: Prasanna S <prasanna.s@oss.qualcomm.com>
 ---
- drivers/i2c/busses/i2c-xiic.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ drivers/tty/serial/qcom_geni_serial.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/i2c/busses/i2c-xiic.c b/drivers/i2c/busses/i2c-xiic.c
-index 946e3ed2d760..27715646a9fb 100644
---- a/drivers/i2c/busses/i2c-xiic.c
-+++ b/drivers/i2c/busses/i2c-xiic.c
-@@ -864,8 +864,11 @@ static irqreturn_t xiic_process(int irq, void *dev_id)
+diff --git a/drivers/tty/serial/qcom_geni_serial.c b/drivers/tty/serial/qcom_geni_serial.c
+index b365dd5da3cb..5139a9d21b2b 100644
+--- a/drivers/tty/serial/qcom_geni_serial.c
++++ b/drivers/tty/serial/qcom_geni_serial.c
+@@ -50,7 +50,7 @@
+ #define TX_STOP_BIT_LEN_2		2
  
- 		if (i2c->tx_msg && i2c->smbus_block_read) {
- 			i2c->smbus_block_read = false;
--			/* Set requested message len=1 to indicate STATE_DONE */
--			i2c->tx_msg->len = 1;
-+			/*
-+			 * Drive xiic_tx_space() to 0 to signal STATE_DONE
-+			 * without truncating the rx_msg length.
-+			 */
-+			i2c->tx_pos = i2c->tx_msg->len;
- 		}
+ /* SE_UART_RX_TRANS_CFG */
+-#define UART_RX_PAR_EN			BIT(3)
++#define UART_RX_PAR_EN			BIT(4)
  
- 		if (!i2c->tx_msg)
+ /* SE_UART_RX_WORD_LEN */
+ #define RX_WORD_LEN_MASK		GENMASK(9, 0)
 
--- 
-2.53.0
+---
+base-commit: dd6c438c3e64a5ff0b5d7e78f7f9be547803ef1b
+change-id: 20260424-serial-bit-correct-f5314b627718
+
+Best regards,
+--  
+Prasanna S <prasanna.s@oss.qualcomm.com>
 
