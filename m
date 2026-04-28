@@ -1,11 +1,11 @@
 From: Michael Riesch <michael.riesch@collabora.com>
-Date: Tue, 28 Apr 2026 09:27:23 +0200
-Subject: [PATCH v5 1/2] media: dt-bindings: rockchip,rk3568-mipi-csi2: add
- rk3588 compatible
+Date: Tue, 28 Apr 2026 09:27:24 +0200
+Subject: [PATCH v5 2/2] arm64: dts: rockchip: add mipi csi-2 receiver nodes
+ to rk3588
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260305-rk3588-csi2rx-v5-1-3b7061d043ea@collabora.com>
+Message-Id: <20260305-rk3588-csi2rx-v5-2-3b7061d043ea@collabora.com>
 References: <20260305-rk3588-csi2rx-v5-0-3b7061d043ea@collabora.com>
 In-Reply-To: <20260305-rk3588-csi2rx-v5-0-3b7061d043ea@collabora.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -20,48 +20,94 @@ Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777361244; l=1181;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777361244; l=2502;
  i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=3TFnv9jZJHx3KielBqkTXBZA/OzvBwjOjzm/HycqX7Y=;
- b=LOfsEque3uFY0iPZ7ZEm7rPYYPcYNnE+Vx2+6d9h7128ksPQXRUj+QLjIX7yWCPq3qfLrG0gJ
- 9iYL8AInDACCefoS9vFUprB073RWSMpEQq5ravShDKZb3PEhp5VDt3w
+ bh=QDfqcbJrT0FfjmyC+y7b4XMGt2ND2RSPd6Nzsjmcagk=;
+ b=tzBpqb+biprATyCYOADHv3ffINsOlbTfx79xtKUveu9fGstM/74z31mom4wpaqSAype1f5mws
+ gFs2EQESeXADtvPYFfeKGLkDG5k3lnfQTM18E7YwrRWf3iXrVi9y5Gi
 X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
  pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
 X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The RK3588 MIPI CSI-2 receivers are compatible to the ones found in the
-RK3568. Introduce a list of compatible variants and add the RK3588 variant
-to it.
+The Rockchip RK3588 features six MIPI CSI-2 receiver units:
+ - MIPI0: connected to MIPI DCPHY0 (not supported)
+ - MIPI1: connected to MIPI DCPHY1 (not supported)
+ - MIPI2: connected to MIPI DPHY0
+ - MIPI3: connected to MIPI DPHY0-1 (not supported)
+ - MIPI4: connected to MIPI DPHY1
+ - MIPI5: connected to MIPI DPHY1-1 (not supported)
+As the MIPI DCPHYs as well as the split DPHY mode of the DPHYs are not yet
+supported, add only the device tree nodes for the MIPI2 and MIPI4 units.
 
-Acked-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- .../devicetree/bindings/media/rockchip,rk3568-mipi-csi2.yaml  | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi | 52 +++++++++++++++++++++++++++
+ 1 file changed, 52 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/media/rockchip,rk3568-mipi-csi2.yaml b/Documentation/devicetree/bindings/media/rockchip,rk3568-mipi-csi2.yaml
-index 4ac4a3b6f406..fbcf28e9e1da 100644
---- a/Documentation/devicetree/bindings/media/rockchip,rk3568-mipi-csi2.yaml
-+++ b/Documentation/devicetree/bindings/media/rockchip,rk3568-mipi-csi2.yaml
-@@ -16,9 +16,14 @@ description:
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
+index 4fb8888c281c..4d80e5e1f033 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588-base.dtsi
+@@ -1430,6 +1430,58 @@ av1d: video-codec@fdc70000 {
+ 		resets = <&cru SRST_A_AV1>, <&cru SRST_P_AV1>, <&cru SRST_A_AV1_BIU>, <&cru SRST_P_AV1_BIU>;
+ 	};
  
- properties:
-   compatible:
--    enum:
--      - fsl,imx93-mipi-csi2
--      - rockchip,rk3568-mipi-csi2
-+    oneOf:
-+      - enum:
-+          - fsl,imx93-mipi-csi2
-+          - rockchip,rk3568-mipi-csi2
-+      - items:
-+          - enum:
-+              - rockchip,rk3588-mipi-csi2
-+          - const: rockchip,rk3568-mipi-csi2
- 
-   reg:
-     maxItems: 1
++	csi2: csi@fdd30000 {
++		compatible = "rockchip,rk3588-mipi-csi2", "rockchip,rk3568-mipi-csi2";
++		reg = <0x0 0xfdd30000 0x0 0x10000>;
++		interrupts = <GIC_SPI 147 IRQ_TYPE_LEVEL_HIGH 0>,
++			     <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH 0>;
++		interrupt-names = "err1", "err2";
++		clocks = <&cru PCLK_CSI_HOST_2>;
++		phys = <&csi_dphy0>;
++		power-domains = <&power RK3588_PD_VI>;
++		resets = <&cru SRST_P_CSI_HOST_2>;
++		status = "disabled";
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			csi2_in: port@0 {
++				reg = <0>;
++			};
++
++			csi2_out: port@1 {
++				reg = <1>;
++			};
++		};
++	};
++
++	csi4: csi@fdd50000 {
++		compatible = "rockchip,rk3588-mipi-csi2", "rockchip,rk3568-mipi-csi2";
++		reg = <0x0 0xfdd50000 0x0 0x10000>;
++		interrupts = <GIC_SPI 151 IRQ_TYPE_LEVEL_HIGH 0>,
++			     <GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH 0>;
++		interrupt-names = "err1", "err2";
++		clocks = <&cru PCLK_CSI_HOST_4>;
++		phys = <&csi_dphy1>;
++		power-domains = <&power RK3588_PD_VI>;
++		resets = <&cru SRST_P_CSI_HOST_4>;
++		status = "disabled";
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			csi4_in: port@0 {
++				reg = <0>;
++			};
++
++			csi4_out: port@1 {
++				reg = <1>;
++			};
++		};
++	};
++
+ 	vop: vop@fdd90000 {
+ 		compatible = "rockchip,rk3588-vop";
+ 		reg = <0x0 0xfdd90000 0x0 0x4200>, <0x0 0xfdd95000 0x0 0x1000>;
 
 -- 
 2.39.5
