@@ -1,77 +1,92 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Tue, 28 Apr 2026 16:24:38 +0200
-Subject: [PATCH net] MAINTAINERS: Add myself as NFC subsystem maintainer
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH v10 0/3] hwmon: Add support for the LTC4283 Hot Swap
+ Controller
+Date: Tue, 28 Apr 2026 17:07:25 +0100
+Message-Id: <20260428-ltc4283-support-v10-0-4f26f46491c3@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260428-nfc-maintainer-v1-1-4cb9d9e121f3@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIACXD8GkC/x2MQQqAIBAAvxJ7TjCLtL4SHUzX2kNbqEQQ/T3pM
- Ic5zDyQMBImGKsHIl6U6OAiTV2B2yyvKMgXByVVLztlBAcndkucCxiFWgxK3Q5SOw8lOiMGuv/
- hBIwZ5vf9AM4Q/sFlAAAA
-X-Change-ID: 20260428-nfc-maintainer-2b8e073907cd
-To: Jakub Kicinski <kuba@kernel.org>
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
- oe-linux-nfc@lists.linux.dev, David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1098; i=david@ixit.cz;
- h=from:subject:message-id; bh=l6GCIdQ39L6+WcAMCIoelwcZypwDUixePdWvyKCAZ8Q=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBp8MMnHps7MFKV1kNGTk/fEYaGbLDN8GvIuYFWB
- j50YZGtST+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCafDDJwAKCRBgAj/E00kg
- ciVjD/9EOsjFTYPuYzrgDUFKmKvA59BuFz4TJgTbiiIpawkjUtFOxUJOFgT5A4KrWj9q+oAOWoe
- Omkz3QmXQQfeWaT2j3OvVBNT/dhK5TFgmZxxn3lA9D3/TsCP//NA+4kYFKBLHVlLP3xKDws3ewL
- fFFauToM2i6xjl6o4zbsC8dcvxohaSRJUhywQKxBT5CNoy/UJjY1yHOF5unb5LqO1phg4gaFTfM
- V2vvWkcREEUoDeFr/9NnyAtfd/FGIQV0xNR1nGjXajx84pB7sc8MMOaBzV9eV6nPsYxccdbo9XN
- nGHbH48zeHtG73EzHXHNBzeexq3WneJurwOdMm2ZyI4n4hlHre6S2j0s5UWdZJvnI7nHr/3c5QO
- 5M8uIaH82aaovaItqnf3JGXmvG842ursIaUZ5nu13AoYnJ7aP0lNc7Wl0X2H1Fff4nTYnEl0p60
- kZfjysqWaX6i2mH/CfHsFOEYl56EadnpMlfhpsPSb/iHn0YftxYHF67Q5PztMvnWC7s+5i9KCt8
- s5vJeZbXkpeWCB9UsxFMl7AlnnsDG6wWw5DECNQ4BMFfq0eHNI0+G/6sfyTbHj3U7WWEpWDsi/z
- +FqJVppBOKOGcFw/cRln0zveKBBcrlFA8DNKZB2u2FUd3Cxk4L9VB0VXLsLVPSvh+LyP+B8lwUd
- 6xQBsNV7hXw/B2Q==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XN0Q6CIBgF4FdxXEeDXwTsqvdoXRCCspk4MFZzv
+ nvoTTXX5Tnb+c6MognORHQqZhRMctH5IQdKDgXSnRpag12TCwQEOClJiftJM5Aljo9x9GHChJd
+ WSKV1pRjKqzEY654bebnm3Lk4+fDaHhJf2/9W4phgYw2lFQGrGjirQfW+PWp/RyuW5BcAYg/ID
+ DBBGwNV1QiQO6D+AIzwPVBn4Ma5tlqwGjj9AZZleQOU2LccMgEAAA==
+X-Change-ID: 20260303-ltc4283-support-063f78acc5a4
+To: linux-gpio@vger.kernel.org, linux-hwmon@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-doc@vger.kernel.org
+Cc: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777392450; l=2621;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=wJpZOr7WpcpInKgvVGac/trrFN9ZpHJHZEoCiuPdrYs=;
+ b=JKTAEyv8cj4/a5R73is9A5no+jJH+LIDC8oOOPpDWV5LA7qj9M6fnD7uU0fVpMp8GjS21gyUf
+ 75zEL7JTuzwDsHKjW2OhuDP0gP+IHitPpIWLldEjAKerHCrfhk668N/
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add myself and update the mailing list.
+This is v8 for the LTC4283 how swap controller. 
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
----
- MAINTAINERS | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+Similar to the LTC4282 device, we're clearing some fault logs in the
+reset_history attributes.
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 21288a3a7d930..176390ef4275d 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -18824,18 +18824,20 @@ M:	David Ahern <dsahern@kernel.org>
- L:	netdev@vger.kernel.org
- S:	Maintained
- F:	include/net/netns/nexthop.h
- F:	include/net/nexthop.h
- F:	include/uapi/linux/nexthop.h
- F:	net/ipv4/nexthop.c
- 
- NFC SUBSYSTEM
--L:	netdev@vger.kernel.org
--S:	Orphan
-+M:	David Heidelberg <david+nfc@ixit.cz>
-+L:	oe-linux-nfc@lists.linux.dev
-+S:	Maintained
-+T:	git https://codeberg.org/linux-nfc/linux.git
- F:	Documentation/devicetree/bindings/net/nfc/
- F:	drivers/nfc/
- F:	include/net/nfc/
- F:	include/uapi/linux/nfc.h
- F:	net/nfc/
- 
- NFC VIRTUAL NCI DEVICE DRIVER
- M:	Bongsu Jeon <bongsu.jeon@samsung.com>
+Guenter, for my last email worrying about rsense low values, this is
+what I got internally:
+
+"10uOhm at the smallest sense voltage of 15mV would be 1500A and 72kW, which
+seems a tad excessive. The highest currents I’ve seen are around 200A, and
+the -48V market 4283 serves is generally a lot lower than that. Normal values
+are around 200uOhm.  I’d say the resolution should be around 1uohm and if a
+minimum is needed, 50uOhm is probably safe."
+
+For the resolution, I'm pretty sure I got the tenths of micro
+resolution for ltc4282 so I just kept it in here. So, if you don't mind
+I would prefer to keep it this way to be safer and changing that now would
+require me to change some formulas and I would prefer not to do that at
+this stage.
 
 ---
-base-commit: 46f74a3f7d57d9cc0110b09cbc8163fa0a01afa2
-change-id: 20260428-nfc-maintainer-2b8e073907cd
+Changes in v10:
+- Patch 2:
+ * Replace regmap_clear_bits() with direct regmap_write() in
+   ltc4283_read_alarm();
+ * Simplify ltc4283_read_energy() overflow handling using
+   mul_u64_u64_div_u64() for 128-bit intermediate precision;
+ * Simplify ltc4283_write_power_word() overflow handling using
+   mul_u64_u64_div_u64();
+ * Fix clamp-before-multiply overflow in ltc4283_write_minmax() by
+   clamping against LONG_MAX/MILLI first;
+ * Drop broken %*ph format from ltc4283_parse_array_prop() error
+   message;
+ * Remove unused #include <linux/overflow.h>.
+- Link to v9: https://patch.msgid.link/20260406-ltc4283-support-v9-0-b66cfc749261@analog.com
 
-Best regards,
--- 
-David Heidelberg <david@ixit.cz>
+---
+Nuno Sá (3):
+      dt-bindings: hwmon: Document the LTC4283 Swap Controller
+      hwmon: ltc4283: Add support for the LTC4283 Swap Controller
+      gpio: gpio-ltc4283: Add support for the LTC4283 Swap Controller
+
+ .../devicetree/bindings/hwmon/adi,ltc4283.yaml     |  272 +++
+ Documentation/hwmon/index.rst                      |    1 +
+ Documentation/hwmon/ltc4283.rst                    |  266 +++
+ MAINTAINERS                                        |    9 +
+ drivers/gpio/Kconfig                               |   15 +
+ drivers/gpio/Makefile                              |    1 +
+ drivers/gpio/gpio-ltc4283.c                        |  218 +++
+ drivers/hwmon/Kconfig                              |   12 +
+ drivers/hwmon/Makefile                             |    1 +
+ drivers/hwmon/ltc4283.c                            | 1795 ++++++++++++++++++++
+ 10 files changed, 2590 insertions(+)
+---
+base-commit: 30a90fa04af6937493fbba20e3e923b5b5a162b4
+change-id: 20260303-ltc4283-support-063f78acc5a4
+--
+
+Thanks!
+- Nuno Sá
 
