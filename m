@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Tue, 28 Apr 2026 16:25:00 -0700
-Subject: [PATCH RFC v5 05/53] KVM: guest_memfd: Wire up
- kvm_get_memory_attributes() to per-gmem attributes
+Date: Tue, 28 Apr 2026 16:25:01 -0700
+Subject: [PATCH RFC v5 06/53] KVM: x86/mmu: Bug the VM if gmem attributes
+ are queried to determine max mapping level
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260428-gmem-inplace-conversion-v5-5-d8608ccfca22@google.com>
+Message-Id: <20260428-gmem-inplace-conversion-v5-6-d8608ccfca22@google.com>
 References: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 In-Reply-To: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -38,118 +38,60 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=3888;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=1802;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=EYm5H+HZKG4huNzVvIwI6VbVarVyCkhtRQI1zH0BvXc=;
- b=l8oQnEGJFxSn4EiTXE9P6FteSO5rSVnbUWVF00usM5p6WOsYdDAKlFUyKJoLPK+1ALTEHeZey
- 13tyngurIdlAeB99TrW25+XBk4+2F65hxFbWt3QsxqTVrvWAtbflm0S
+ bh=mE1k3tJABrFyLvPsAUThPSR13SSUuI4MykLoB5ZQsPI=;
+ b=CMxTYYNPO2Cg0DwwVYx4rM0CeYzUOqMMYtEiADkSrj386FCCj4wMlpDsBDm5m+GMCeMOCbzOi
+ lMB9ng0Vh81CYdMxjc8AIWrpzjoE01tqhLnJELjyZNXaKHIOyygmT3c
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Sean Christopherson <seanjc@google.com>
+When the maximum mapping level is queried, KVM's MMU lock is held, and
+while the MMU lock is held, guest_memfd cannot take the
+filemap_invalidate_lock() to look up the current shared/private state of
+the gfn, for these reasons:
 
-Implement kvm_gmem_get_memory_attributes() for guest_memfd to allow the KVM
-core and architecture code to query per-GFN memory attributes.
++ The MMU lock is a spinlock or rwlock and cannot be held while taking a
+  lock that can sleep.
++ In guest_memfd's code paths (such as truncate), the
+  filemap_invalidate_lock() is held while taking the MMU lock, and taking
+  the locks in reverse order would introduce a AB-BA deadlock.
 
-kvm_gmem_get_memory_attributes() finds the memory slot for a given GFN and
-queries the guest_memfd file's to determine if the page is marked as
-private.
+Currently, the maximum mapping level is only queried from guest_memfd in
+the process of recovering huge pages, if dirty logging is disabled on a
+memslot. Dirty logging is not currently supported for guest_memfd, and
+guest_memfd memslots also cannot be updated.
 
-If vm_memory_attributes is not enabled, there is no shared/private tracking
-at the VM level. Install the guest_memfd implementation as long as
-guest_memfd is enabled to give guest_memfd a chance to respond on
-attributes.
+For now, bug the VM if guest_memfd needs to be queried to determine the
+maximum mapping level. This guard can be removed if/when support is added.
 
-guest_memfd should look up attributes regardless of whether this memslot is
-gmem-only since attributes are now tracked by gmem regardless of whether
-mmap() is enabled.
-
-Signed-off-by: Sean Christopherson <seanjc@google.com>
-Co-developed-by: Ackerley Tng <ackerleytng@google.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- include/linux/kvm_host.h |  2 ++
- virt/kvm/guest_memfd.c   | 37 +++++++++++++++++++++++++++++++++++++
- virt/kvm/kvm_main.c      |  3 +++
- 3 files changed, 42 insertions(+)
+ arch/x86/kvm/mmu/mmu.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/include/linux/kvm_host.h b/include/linux/kvm_host.h
-index c5ba2cb34e45c..28a54298d27db 100644
---- a/include/linux/kvm_host.h
-+++ b/include/linux/kvm_host.h
-@@ -2557,6 +2557,8 @@ bool kvm_arch_post_set_memory_attributes(struct kvm *kvm,
- 					 struct kvm_gfn_range *range);
- #endif /* CONFIG_KVM_VM_MEMORY_ATTRIBUTES */
- 
-+unsigned long kvm_gmem_get_memory_attributes(struct kvm *kvm, gfn_t gfn);
+diff --git a/arch/x86/kvm/mmu/mmu.c b/arch/x86/kvm/mmu/mmu.c
+index 8276d7ca02036..2cc848bddf190 100644
+--- a/arch/x86/kvm/mmu/mmu.c
++++ b/arch/x86/kvm/mmu/mmu.c
+@@ -3364,6 +3364,15 @@ int kvm_mmu_max_mapping_level(struct kvm *kvm, struct kvm_page_fault *fault,
+ 		max_level = fault->max_level;
+ 		is_private = fault->is_private;
+ 	} else {
++		/*
++		 * Memory attributes cannot be obtained from guest_memfd while
++		 * the MMU lock is held.
++		 */
++		if (KVM_BUG_ON(static_call_query(__kvm_get_memory_attributes) ==
++			       kvm_gmem_get_memory_attributes, kvm)) {
++			return 0;
++		}
 +
- #ifdef CONFIG_KVM_GUEST_MEMFD
- int kvm_gmem_get_pfn(struct kvm *kvm, struct kvm_memory_slot *slot,
- 		     gfn_t gfn, kvm_pfn_t *pfn, struct page **page,
-diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index 17e5a23fec0a1..e56f89640d050 100644
---- a/virt/kvm/guest_memfd.c
-+++ b/virt/kvm/guest_memfd.c
-@@ -515,6 +515,43 @@ static int kvm_gmem_mmap(struct file *file, struct vm_area_struct *vma)
- 	return 0;
- }
- 
-+unsigned long kvm_gmem_get_memory_attributes(struct kvm *kvm, gfn_t gfn)
-+{
-+	struct kvm_memory_slot *slot = gfn_to_memslot(kvm, gfn);
-+	struct inode *inode;
-+	unsigned long attrs;
-+
-+	/*
-+	 * If this gfn has no associated memslot, there's no chance of the gfn
-+	 * being backed by private memory, since guest_memfd must be used for
-+	 * private memory, and guest_memfd must be associated with some memslot.
-+	 */
-+	if (!slot)
-+		return 0;
-+
-+	CLASS(gmem_get_file, file)(slot);
-+	if (!file)
-+		return 0;
-+
-+	inode = file_inode(file);
-+
-+	/*
-+	 * Acquire the filemap lock to ensure the mtree lookup gets a
-+	 * stable result.  The caller _must_ still protect consumption
-+	 * of private vs. shared by checking
-+	 * mmu_invalidate_retry_gfn() under mmu_lock to serialize
-+	 * against ongoing attribute updates.  Acquiring the filemap
-+	 * lock only ensures a stable _lookup_, the result can become
-+	 * stale as soon as the lock is dropped.
-+	 */
-+	filemap_invalidate_lock_shared(inode->i_mapping);
-+	attrs = kvm_gmem_get_attributes(inode, kvm_gmem_get_index(slot, gfn));
-+	filemap_invalidate_unlock_shared(inode->i_mapping);
-+
-+	return attrs;
-+}
-+EXPORT_SYMBOL_FOR_KVM_INTERNAL(kvm_gmem_get_memory_attributes);
-+
- static struct file_operations kvm_gmem_fops = {
- 	.mmap		= kvm_gmem_mmap,
- 	.open		= generic_file_open,
-diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
-index ee26f1d9b5fda..4139e903f756a 100644
---- a/virt/kvm/kvm_main.c
-+++ b/virt/kvm/kvm_main.c
-@@ -2653,6 +2653,9 @@ static void kvm_init_memory_attributes(void)
- 	if (vm_memory_attributes)
- 		static_call_update(__kvm_get_memory_attributes,
- 				   kvm_get_vm_memory_attributes);
-+	else if (IS_ENABLED(CONFIG_KVM_GUEST_MEMFD))
-+		static_call_update(__kvm_get_memory_attributes,
-+				   kvm_gmem_get_memory_attributes);
- 	else
- 		static_call_update(__kvm_get_memory_attributes,
- 				   (void *)__static_call_return0);
+ 		max_level = PG_LEVEL_NUM;
+ 		is_private = kvm_mem_is_private(kvm, gfn);
+ 	}
 
 -- 
 2.54.0.545.g6539524ca2-goog
