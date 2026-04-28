@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Tue, 28 Apr 2026 16:25:15 -0700
-Subject: [PATCH RFC v5 20/53] KVM: guest_memfd: Enable INIT_SHARED on
- guest_memfd for x86 Coco VMs
+Date: Tue, 28 Apr 2026 16:25:16 -0700
+Subject: [PATCH RFC v5 21/53] KVM: guest_memfd: Introduce default handlers
+ for content modes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260428-gmem-inplace-conversion-v5-20-d8608ccfca22@google.com>
+Message-Id: <20260428-gmem-inplace-conversion-v5-21-d8608ccfca22@google.com>
 References: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 In-Reply-To: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -38,54 +38,131 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=1390;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=3682;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=9LP/svD9TvgxKqvednNMupCSsWJ+AFS+3tUCHtCnRqA=;
- b=7TverXUJlngRxhJ4vEWJkucYIO7XShyfSISUb/HZPT3irzIwFpodwZIaXKo0xt09LhSOu99cl
- vzzDW2Ybw7TASLiyA7ny4f0JXMSI7+HJSNDTw51rwwdQnOzO+yzu59J
+ bh=bExntzDH4eJvOXiKEEI4Mzgx/0x0zxgpmzImhSYoC1o=;
+ b=PNbqwo9hcIQwsAQRGjQHX21H24S4wh3bsXFlO6MkquX+OHrZREiPkkpErhDiU7/NBi84pETDV
+ vHMROayf7h/AC/UbqBdSyOejE+v/B0mVu0oQwwqp5Kacfunrp/JDX78
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Sean Christopherson <seanjc@google.com>
+Currently, when setting memory attributes, KVM provides no guarantees about
+the memory contents.
 
-Now that guest_memfd supports tracking private vs. shared within gmem
-itself, allow userspace to specify INIT_SHARED on a guest_memfd instance
-for x86 Confidential Computing (CoCo) VMs, so long as per-VM attributes
-are disabled, i.e. when it's actually possible for a guest_memfd instance
-to contain shared memory.
+Introduce default handlers for applying memory content modes, which
+different architectures should override.
 
-Signed-off-by: Sean Christopherson <seanjc@google.com>
+These handlers will be used later to apply memory content modes during set
+memory attributes requests.
+
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- arch/x86/kvm/x86.c | 11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
+ include/linux/kvm_host.h | 12 +++++++++
+ virt/kvm/guest_memfd.c   | 66 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 78 insertions(+)
 
-diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
-index 1560de1e95be0..6609957ecfea3 100644
---- a/arch/x86/kvm/x86.c
-+++ b/arch/x86/kvm/x86.c
-@@ -14172,14 +14172,13 @@ bool kvm_arch_no_poll(struct kvm_vcpu *vcpu)
- }
+diff --git a/include/linux/kvm_host.h b/include/linux/kvm_host.h
+index f9ea95e33d050..458bad0083c37 100644
+--- a/include/linux/kvm_host.h
++++ b/include/linux/kvm_host.h
+@@ -741,6 +741,18 @@ static inline u64 kvm_gmem_get_supported_flags(struct kvm *kvm)
  
- #ifdef CONFIG_KVM_GUEST_MEMFD
--/*
-- * KVM doesn't yet support initializing guest_memfd memory as shared for VMs
-- * with private memory (the private vs. shared tracking needs to be moved into
-- * guest_memfd).
-- */
- bool kvm_arch_supports_gmem_init_shared(struct kvm *kvm)
- {
--	return !kvm_arch_has_private_mem(kvm);
-+	/*
-+	 * INIT_SHARED isn't supported if the memory attributes are per-VM,
-+	 * in which case guest_memfd can _only_ be used for private memory.
-+	 */
-+	return !vm_memory_attributes || !kvm_arch_has_private_mem(kvm);
+ 	return flags;
  }
++
++u64 kvm_arch_gmem_supported_content_modes(struct kvm *kvm, bool to_private);
++int kvm_gmem_apply_content_mode_zero(struct inode *inode, pgoff_t start,
++				     pgoff_t end);
++int kvm_arch_gmem_apply_content_mode_zero(struct kvm *kvm, struct inode *inode,
++					  pgoff_t start, pgoff_t end);
++int kvm_arch_gmem_apply_content_mode_preserve(struct kvm *kvm,
++					      struct inode *inode,
++					      pgoff_t start, pgoff_t end);
++int kvm_arch_gmem_apply_content_mode_unspecified(struct kvm *kvm,
++						 struct inode *inode,
++						 pgoff_t start, pgoff_t end);
+ #endif
  
- #ifdef CONFIG_HAVE_KVM_ARCH_GMEM_PREPARE
+ #ifndef kvm_arch_has_readonly_mem
+diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
+index 85e8b3a981307..b0e4bb554cdf3 100644
+--- a/virt/kvm/guest_memfd.c
++++ b/virt/kvm/guest_memfd.c
+@@ -693,6 +693,72 @@ static void kvm_gmem_invalidate(struct inode *inode, pgoff_t start, pgoff_t end)
+ static void kvm_gmem_invalidate(struct inode *inode, pgoff_t start, pgoff_t end) {}
+ #endif
+ 
++u64 __weak kvm_arch_gmem_supported_content_modes(struct kvm *kvm, bool to_private)
++{
++	/* Architectures must override with supported modes. */
++	return 0;
++}
++
++int kvm_gmem_apply_content_mode_zero(struct inode *inode, pgoff_t start,
++				     pgoff_t end)
++{
++	struct address_space *mapping = inode->i_mapping;
++	struct folio_batch fbatch;
++	int ret = 0;
++	int i;
++
++	folio_batch_init(&fbatch);
++	while (!ret && filemap_get_folios(mapping, &start, end - 1, &fbatch)) {
++		for (i = 0; !ret && i < folio_batch_count(&fbatch); ++i) {
++			struct folio *folio = fbatch.folios[i];
++
++			folio_lock(folio);
++
++			if (folio_test_hwpoison(folio)) {
++				ret = -EHWPOISON;
++			} else {
++				/*
++				 * Hard-coding zeroed range since
++				 * guest_memfd only supports PAGE_SIZE
++				 * folios and start and end have been
++				 * checked to be PAGE_SIZE aligned.
++				 */
++				WARN_ON_ONCE(folio_test_large(folio));
++				folio_zero_segment(folio, 0, PAGE_SIZE);
++			}
++
++			folio_unlock(folio);
++		}
++
++		folio_batch_release(&fbatch);
++		cond_resched();
++	}
++
++	return ret;
++}
++
++int __weak kvm_arch_gmem_apply_content_mode_unspecified(struct kvm *kvm,
++							struct inode *inode,
++							pgoff_t start,
++							pgoff_t end)
++{
++	return 0;
++}
++
++int __weak kvm_arch_gmem_apply_content_mode_zero(struct kvm *kvm,
++						 struct inode *inode,
++						 pgoff_t start, pgoff_t end)
++{
++	return kvm_gmem_apply_content_mode_zero(inode, start, end);
++}
++
++int __weak kvm_arch_gmem_apply_content_mode_preserve(struct kvm *kvm,
++						     struct inode *inode,
++						     pgoff_t start, pgoff_t end)
++{
++	return -EOPNOTSUPP;
++}
++
+ static int __kvm_gmem_set_attributes(struct inode *inode, pgoff_t start,
+ 				     size_t nr_pages, uint64_t attrs,
+ 				     pgoff_t *err_index)
 
 -- 
 2.54.0.545.g6539524ca2-goog
