@@ -1,102 +1,94 @@
-From: Joshua Crofts <joshua.crofts1@gmail.com>
-Date: Tue, 28 Apr 2026 15:18:37 +0200
-Subject: [PATCH v2 5/5] iio: light: si1133: use guard(mutex)() macro
+From: Radu Sabau <radu.sabau@analog.com>
+Date: Tue, 28 Apr 2026 16:45:46 +0300
+Subject: [PATCH] iio: adc: ad_sigma_delta: fix CS held asserted after
+ single conversion
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260428-si1133-checkup-v2-5-70ad14bfefe2@gmail.com>
-References: <20260428-si1133-checkup-v2-0-70ad14bfefe2@gmail.com>
-In-Reply-To: <20260428-si1133-checkup-v2-0-70ad14bfefe2@gmail.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
+Message-Id: <20260428-ad_sigma_delta-fix-v1-1-8e3f925ee8d2@analog.com>
+X-B4-Tracking: v=1; b=H4sIAAm68GkC/x2MWwqAIBAAryL7nWBSEl0lQlbdaqEXGhGEd0/6n
+ IGZFxJFpgS9eCHSzYmPvUBdCfAL7jNJDoVBK21UozuJwSaeN7SB1gvlxI90zrShNd47p6CEZ6S
+ i/+kw5vwBtbVOJGQAAAA=
+X-Change-ID: 20260428-ad_sigma_delta-fix-bb65d56ccbb0
+To: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
  =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
+ Andy Shevchenko <andy@kernel.org>, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joshua Crofts <joshua.crofts1@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777382314; l=2115;
- i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
- bh=GjpeLCBEZ33hvOHDtnqIc83HA4qlDRcZtYHurZdxMdI=;
- b=HCFYRM9n+KCvW2xqz9Qnj51nvSA24dcEEA4pWjEHT3GFVF3EdbP3iNYGKAVauKaBRRHcW7TRt
- QhsGncuxC4dDiIbkyMyV+uv5a4tevbAtFiUk7Y/DWAjxkw+M1EoA9SF
-X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
- pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
-X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
+ Jonathan Cameron <jic23@kernel.org>, Radu Sabau <radu.sabau@analog.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777383964; l=2920;
+ i=radu.sabau@analog.com; s=20260220; h=from:subject:message-id;
+ bh=kPmJkQCTQ3xk2SjVNsLsQpVpwwpGNlBuBFiGkHVxLzY=;
+ b=ITQxPzwixorBEfnYOWcwuGheO7Nv+EDzs6EFlrAsbNMPEuqFHYwJ3bYH1TcKhhDBNGIdd04SJ
+ La958GA+JI0CtReTuaWHbNq9vV016AZcncUoQImAQC8YldIia7fe78J
+X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
+ pk=lDPQHgn9jTdt0vo58Na9lLxLaE2mb330if71Cn+EvFU=
+X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20260220 with auth_id=642
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remove mutex_lock()/mutex_unlock() and goto instances and add
-guard(mutex)() macro to modernize driver and improve mutex handling.
+Commit 132d44dc6966 ("iio: adc: ad_sigma_delta: Check for previous
+ready signals") introduced a new out_unlock: label for an early-exit
+path and moved sigma_delta->keep_cs_asserted = false there.
+Unfortunately it left ad_sigma_delta_disable_one() in the out: block
+above that label, so disable_one()'s SPI write is issued while
+keep_cs_asserted is still true.  keep_cs_asserted feeds directly into
+the cs_change field of the spi_transfer, so the final write to the
+device carries cs_change=1.  The SPI framework only calls spi_set_cs()
+to deassert CS as part of message teardown when cs_change is not set on
+the last transfer; with cs_change=1, that teardown is skipped and CS
+stays physically asserted.  No further transfer to the device is made,
+so the driver never deasserts CS.  The framework provides no automatic
+CS deassert on bus unlock or when switching to another device, so CS
+remains stuck low until the next SPI operation to that same device.
 
-Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
+On a shared SPI bus this is problematic: with CS stuck low the ADC
+remains selected and subsequent SPI traffic intended for another device
+is interpreted as commands by the ADC.  Devices like the AD7124 that
+multiplex /RDY onto the MISO line will start spurious conversions and
+pull MISO low, corrupting reads from the other device and causing a
+deadlock.
+
+Fix by moving ad_sigma_delta_disable_one() into the out_unlock: block,
+after keep_cs_asserted is cleared.  The final SPI write now carries
+cs_change=0, so the SPI framework deasserts CS as part of normal
+message teardown.
+
+As a side effect this also calls disable_one() on the early-exit path
+when ad_sigma_delta_clear_pending_event() fails.  That path already had
+ad_sigma_delta_set_channel() called, so calling disable_one() to undo
+it is the right thing to do and is consistent with ad_sd_calibrate().
+
+Fixes: 132d44dc6966 ("iio: adc: ad_sigma_delta: Check for previous ready signals")
+Signed-off-by: Radu Sabau <radu.sabau@analog.com>
 ---
- drivers/iio/light/si1133.c | 18 +++++++-----------
- 1 file changed, 7 insertions(+), 11 deletions(-)
+ drivers/iio/adc/ad_sigma_delta.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/iio/light/si1133.c b/drivers/iio/light/si1133.c
-index f2a79675c026c86bb56d85a65cd035d7540d0ef8..3b40defda383bcbe731dc0b413903e0267f03b01 100644
---- a/drivers/iio/light/si1133.c
-+++ b/drivers/iio/light/si1133.c
-@@ -8,6 +8,7 @@
+diff --git a/drivers/iio/adc/ad_sigma_delta.c b/drivers/iio/adc/ad_sigma_delta.c
+index a955556f9ec8..43aa296922c6 100644
+--- a/drivers/iio/adc/ad_sigma_delta.c
++++ b/drivers/iio/adc/ad_sigma_delta.c
+@@ -442,10 +442,10 @@ int ad_sigma_delta_single_conversion(struct iio_dev *indio_dev,
+ 	ad_sd_disable_irq(sigma_delta);
  
- #include <linux/array_size.h>
- #include <linux/bitops.h>
-+#include <linux/cleanup.h>
- #include <linux/completion.h>
- #include <linux/delay.h>
- #include <linux/dev_printk.h>
-@@ -392,7 +393,7 @@ static int si1133_command(struct si1133_data *data, u8 cmd)
- 	int err;
- 	int expected_seq;
+ 	ad_sigma_delta_set_mode(sigma_delta, AD_SD_MODE_IDLE);
+-	ad_sigma_delta_disable_one(sigma_delta, chan->address);
  
--	mutex_lock(&data->mutex);
-+	guard(mutex)(&data->mutex);
- 
- 	expected_seq = (data->rsp_seq + 1) & SI1133_MAX_CMD_CTR;
- 
-@@ -403,19 +404,17 @@ static int si1133_command(struct si1133_data *data, u8 cmd)
- 	if (err) {
- 		dev_warn(dev, "Failed to write command 0x%02x, ret=%d\n", cmd,
- 			 err);
--		goto out;
-+		return err;
- 	}
- 
- 	if (cmd == SI1133_CMD_FORCE) {
- 		/* wait for irq */
- 		if (!wait_for_completion_timeout(&data->completion,
--			msecs_to_jiffies(SI1133_COMPLETION_TIMEOUT_MS))) {
--			err = -ETIMEDOUT;
--			goto out;
--		}
-+			msecs_to_jiffies(SI1133_COMPLETION_TIMEOUT_MS)))
-+			return -ETIMEDOUT;
- 		err = regmap_read(data->regmap, SI1133_REG_RESPONSE0, &resp);
- 		if (err)
--			goto out;
-+			return err;
- 	} else {
- 		err = regmap_read_poll_timeout(data->regmap,
- 					       SI1133_REG_RESPONSE0, resp,
-@@ -428,7 +427,7 @@ static int si1133_command(struct si1133_data *data, u8 cmd)
- 			dev_warn(dev,
- 				 "Failed to read command 0x%02x, ret=%d\n",
- 				 cmd, err);
--			goto out;
-+			return err;
- 		}
- 	}
- 
-@@ -439,9 +438,6 @@ static int si1133_command(struct si1133_data *data, u8 cmd)
- 		data->rsp_seq = expected_seq;
- 	}
- 
--out:
--	mutex_unlock(&data->mutex);
--
- 	return err;
- }
- 
+ out_unlock:
+ 	sigma_delta->keep_cs_asserted = false;
++	ad_sigma_delta_disable_one(sigma_delta, chan->address);
+ 	sigma_delta->bus_locked = false;
+ 	spi_bus_unlock(sigma_delta->spi->controller);
+ out_release:
 
+---
+base-commit: 3b3bea6d4b9c162f9e555905d96b8c1da67ecd5b
+change-id: 20260428-ad_sigma_delta-fix-bb65d56ccbb0
+
+Best regards,
 -- 
-2.47.3
+Radu Sabau <radu.sabau@analog.com>
 
