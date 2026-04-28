@@ -1,10 +1,10 @@
 From: Joshua Crofts <joshua.crofts1@gmail.com>
-Date: Tue, 28 Apr 2026 15:18:35 +0200
-Subject: [PATCH v2 3/5] iio: light: si1133: add missing include headers
+Date: Tue, 28 Apr 2026 15:18:36 +0200
+Subject: [PATCH v2 4/5] iio: light: si1133: group generic <linux/*> headers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260428-si1133-checkup-v2-3-70ad14bfefe2@gmail.com>
+Message-Id: <20260428-si1133-checkup-v2-4-70ad14bfefe2@gmail.com>
 References: <20260428-si1133-checkup-v2-0-70ad14bfefe2@gmail.com>
 In-Reply-To: <20260428-si1133-checkup-v2-0-70ad14bfefe2@gmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -14,51 +14,46 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Joshua Crofts <joshua.crofts1@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777382314; l=1193;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777382314; l=901;
  i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
- bh=MpzT4gTigdm0pGKTWDLW4wW/fRg5QLjpB5QmAWAztOo=;
- b=UcUtVPhbosFV6g0gpCRCpa5IQsYlORL0hsqkOwRjauhr1Obz60kEiTFmKFH7l0v5uB4cG5a7O
- KXtJ+zbUH6xAxNRaO/3lJAvHBgUUT3RgFzevXu7xZfimOYi9uAjdGat
+ bh=Hvej5eqSWeD7xV4MQtx/PHfw5MbA/CGHl9BhtamspOQ=;
+ b=Jq6Mm6BMuxPeRSM/zgyQQlhBls3VQKeMNzAmuCPCkeqSIrBztw1/V0FZ5zaPc4Un2nzcNBwSP
+ S5pD6WHm1qSAwPpXC38Plocga5bLjyIq36kw6o7eBLVti2OJCrAQw1m
 X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
  pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
 X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add missing include headers to prevent compilation relying on transient
-dependencies (array_size.h, bitops.h, completion.h, dev_printk.h, err.h,
-irqreturn.h, jiffies.h, math.h, mutex.h, types.h).
+Group generic <linux/*> include headers to improve code style.
+
+No functional change.
 
 Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
 ---
- drivers/iio/light/si1133.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ drivers/iio/light/si1133.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/iio/light/si1133.c b/drivers/iio/light/si1133.c
-index ada8da122b76c9a0a55751baa6522a145f0fc7e8..5c5c5ae0535a9592522c0b21496f47068044c6ff 100644
+index 5c5c5ae0535a9592522c0b21496f47068044c6ff..f2a79675c026c86bb56d85a65cd035d7540d0ef8 100644
 --- a/drivers/iio/light/si1133.c
 +++ b/drivers/iio/light/si1133.c
-@@ -6,11 +6,21 @@
-  * Copyright 2018 Maxime Roussin-Belanger <maxime.roussinbelanger@gmail.com>
-  */
- 
-+#include <linux/array_size.h>
-+#include <linux/bitops.h>
-+#include <linux/completion.h>
- #include <linux/delay.h>
-+#include <linux/dev_printk.h>
-+#include <linux/err.h>
- #include <linux/i2c.h>
- #include <linux/interrupt.h>
-+#include <linux/irqreturn.h>
-+#include <linux/jiffies.h>
-+#include <linux/math.h>
- #include <linux/module.h>
-+#include <linux/mutex.h>
+@@ -21,14 +21,12 @@
+ #include <linux/mutex.h>
  #include <linux/regmap.h>
-+#include <linux/types.h>
+ #include <linux/types.h>
++#include <linux/unaligned.h>
++#include <linux/util_macros.h>
  
  #include <linux/iio/iio.h>
  #include <linux/iio/sysfs.h>
+ 
+-#include <linux/util_macros.h>
+-
+-#include <linux/unaligned.h>
+-
+ #define SI1133_REG_PART_ID		0x00
+ #define SI1133_REG_REV_ID		0x01
+ #define SI1133_REG_MFR_ID		0x02
 
 -- 
 2.47.3
