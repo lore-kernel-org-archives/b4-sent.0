@@ -1,16 +1,13 @@
 From: Michael Riesch <michael.riesch@collabora.com>
-Subject: [PATCH v5 0/2] media: synopsys: csi2rx: add support for rk3588
- variant
-Date: Tue, 28 Apr 2026 09:27:22 +0200
-Message-Id: <20260305-rk3588-csi2rx-v5-0-3b7061d043ea@collabora.com>
+Date: Tue, 28 Apr 2026 09:27:23 +0200
+Subject: [PATCH v5 1/2] media: dt-bindings: rockchip,rk3568-mipi-csi2: add
+ rk3588 compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFph8GkC/33NzW7DIBAE4FeJOJeK5c+4p7xH1MOyhhrVNRUkV
- qrI716cY5T4OCPNNzdWQ0mhso/DjZWwpJry3IJ5OzAacf4KPA0tMymkFUoYXr6VcY5TTbJcOQL
- EjsCgFsjaxmMN3BecaWyr+TJNrfwtIabr/eT02fKY6jmXv/vnAlv7il+ACy5ocIP0UToSR8rTh
- D4XfKf8wzZtkbuCbELXDwK8BaOdfSaoXUFtgtG6U72DqPpngt4VdBMckPUUQ0SrHoV1Xf8By+V
- gWokBAAA=
+Message-Id: <20260305-rk3588-csi2rx-v5-1-3b7061d043ea@collabora.com>
+References: <20260305-rk3588-csi2rx-v5-0-3b7061d043ea@collabora.com>
+In-Reply-To: <20260305-rk3588-csi2rx-v5-0-3b7061d043ea@collabora.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
  Sakari Ailus <sakari.ailus@linux.intel.com>, 
  Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
@@ -23,85 +20,49 @@ Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>
 X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777361244; l=2718;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777361244; l=1181;
  i=michael.riesch@collabora.com; s=20250410; h=from:subject:message-id;
- bh=cOCFZjd7RXNktRNhFi+WwngiMUpyxWBbJzfzYRqEYPM=;
- b=b8eDH2iJ05fbZA2wyw0TtBzDDkPV2Zzh+lBJWn6y5BFw94DYqjngvqOHPn1r3X/lhDIcFPnw6
- uzKk2S0vf5+CBJx+SUaJ4mpulhuEzqL5FaXORdcnnCz35Umel6rJMt4
+ bh=3TFnv9jZJHx3KielBqkTXBZA/OzvBwjOjzm/HycqX7Y=;
+ b=LOfsEque3uFY0iPZ7ZEm7rPYYPcYNnE+Vx2+6d9h7128ksPQXRUj+QLjIX7yWCPq3qfLrG0gJ
+ 9iYL8AInDACCefoS9vFUprB073RWSMpEQq5ravShDKZb3PEhp5VDt3w
 X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
  pk=+MWX1fffLFZtTPG/I6XdYm/+OSvpRE8D9evQaWbiN04=
 X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20250410 with auth_id=371
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Habidere,
+The RK3588 MIPI CSI-2 receivers are compatible to the ones found in the
+RK3568. Introduce a list of compatible variants and add the RK3588 variant
+to it.
 
-The Rockchip RK3588 features six MIPI CSI-2 receiver units:
- - MIPI0: connected to MIPI DCPHY0
- - MIPI1: connected to MIPI DCPHY1
- - MIPI2: connected to MIPI DPHY0
- - MIPI3: connected to MIPI DPHY0-1 (only with split DPHY0)
- - MIPI4: connected to MIPI DPHY1
- - MIPI5: connected to MIPI DPHY1-1 (only with split DPHY1)
-
-The MIPI DCPHYs (at least the CSI-2 features of them) as well as the split
-DPHY mode of the DPHYs are not yet supported by mainline. However, we can 
-already provide support for the MIPI2 and MIPI4 units.
-
-When support for the split DPHY mode is introduced, the DPHY nodes should 
-have the property
-    #phy-cells = <1>;
-and the MIPI CSI-2 receiver nodes should have the property
-    phys = <&csi_dphy{0,1} {0,1}>;
-in case the split mode is desired. Since this is a board specific hardware 
-design, the properties need to be changed in the board device tree (or any 
-overlays).
-
-As reasonable default, however, we can define, e.g., 
-    #phy-cells = <0>;
-and
-    phys = <&csi_dphy{0,1}>;
-in the SoC device tree include. This series introduces initial support for 
-this default configuration.
-
-Looking forward to your comments!
-
+Acked-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
-Changes in v5:
-- rebased onto new media-committers/next (= v7.1-rc1)
-- reflowed commit messages (Sakari)
-- Link to v4: https://lore.kernel.org/r/20260305-rk3588-csi2rx-v4-0-81c6bcfefa63@collabora.com
+ .../devicetree/bindings/media/rockchip,rk3568-mipi-csi2.yaml  | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
-Changes in v4:
-- rebased onto media-commiters/next again (as Frank's patches
-  are now there)
-- changed "oneOf entries to enum in dt binding (Rob)
-- Link to v3: https://lore.kernel.org/r/20260305-rk3588-csi2rx-v3-0-754473981f39@collabora.com
+diff --git a/Documentation/devicetree/bindings/media/rockchip,rk3568-mipi-csi2.yaml b/Documentation/devicetree/bindings/media/rockchip,rk3568-mipi-csi2.yaml
+index 4ac4a3b6f406..fbcf28e9e1da 100644
+--- a/Documentation/devicetree/bindings/media/rockchip,rk3568-mipi-csi2.yaml
++++ b/Documentation/devicetree/bindings/media/rockchip,rk3568-mipi-csi2.yaml
+@@ -16,9 +16,14 @@ description:
+ 
+ properties:
+   compatible:
+-    enum:
+-      - fsl,imx93-mipi-csi2
+-      - rockchip,rk3568-mipi-csi2
++    oneOf:
++      - enum:
++          - fsl,imx93-mipi-csi2
++          - rockchip,rk3568-mipi-csi2
++      - items:
++          - enum:
++              - rockchip,rk3588-mipi-csi2
++          - const: rockchip,rk3568-mipi-csi2
+ 
+   reg:
+     maxItems: 1
 
-Changes in v3:
-- rebased onto Sakari's cleanup branch (as Frank's patches were merged)
-  (Sakari)
-- added Rob's Acked-by
-- Link to v2: https://lore.kernel.org/r/20260305-rk3588-csi2rx-v2-0-79d01b615486@collabora.com
-
-Changes in v2:
-- use fallback compatible instead of separate compatible (Krzysztof)
-- dropped patch 2 and 4 (as a consequence thereof)
-- Link to v1: https://lore.kernel.org/r/20260305-rk3588-csi2rx-v1-0-0cd8d2bf28c0@collabora.com
-
----
-Michael Riesch (2):
-      media: dt-bindings: rockchip,rk3568-mipi-csi2: add rk3588 compatible
-      arm64: dts: rockchip: add mipi csi-2 receiver nodes to rk3588
-
- .../bindings/media/rockchip,rk3568-mipi-csi2.yaml  | 11 +++--
- arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      | 52 ++++++++++++++++++++++
- 2 files changed, 60 insertions(+), 3 deletions(-)
----
-base-commit: 254f49634ee16a731174d2ae34bc50bd5f45e731
-change-id: 20260305-rk3588-csi2rx-a11f7c15a40a
-
-Best regards,
 -- 
-Michael Riesch <michael.riesch@collabora.com>
+2.39.5
 
