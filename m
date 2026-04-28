@@ -1,15 +1,13 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Subject: [PATCH RFC v5 00/53] guest_memfd: In-place conversion support
-Date: Tue, 28 Apr 2026 16:24:55 -0700
-Message-Id: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
+Date: Tue, 28 Apr 2026 16:24:56 -0700
+Subject: [PATCH RFC v5 01/53] KVM: guest_memfd: Introduce per-gmem
+ attributes, use to guard user mappings
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAMdB8WkC/3WOsQ7CIBRFf6VhFqUg1jqZmPgBrsaBwqMlttBAQ
- 2pM/13KpIPjfbnn3PdGAbyBgE7FG3mIJhhnU+CbAslO2BawUSkjSuiBUMpxO8CAjR17IQFLZyP
- 4lcGNIqpRrK44EyjRowdt5my+o9v1gh7p2IgAuPHCym6VPuOwszBPa78zYXL+lR+JLFN5k5Xs7
- 2ZkmGCuZUlFRUAe63PrXNvDVroh78X9l4ge/ov2SQSppqHmRGv1I1qW5QNanisVKAEAAA==
-X-Change-ID: 20260225-gmem-inplace-conversion-bd0dbd39753a
+Message-Id: <20260428-gmem-inplace-conversion-v5-1-d8608ccfca22@google.com>
+References: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
+In-Reply-To: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
  brauner@kernel.org, chao.p.peng@linux.intel.com, david@kernel.org, 
  ira.weiny@intel.com, jmattson@google.com, jthoughton@google.com, 
@@ -40,233 +38,257 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=12535;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=8485;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=svzUpBBdu7c/okzZHdk95phkHOtm8MccWFmUfZ97Ar8=;
- b=0QkV8hZP8hOH+hNCjeSswDYv3vwtP0XxQooAEB0MYPOPaJ61NRztWoDddvIp3XyKA8ztoEmSN
- kkCot+LkiE4DyIM4Rvv4GTzuOq5tFyFCn3jEr0j4bB0zWVpIPJWfHca
+ bh=VhY0EBZ0RTKWdcAwSWu4Lq81A+YiOZd/S+bEc8Z1k9Y=;
+ b=b4P91BjoE2PJEKSJlp0D2B+heZp6+cTk/PWBfQJqGO1pgl/9pBWwG/3B3cZpa/neOpp4I7a8S
+ GtY7DtLmbBfCdsH80d+/LyYX8c9VNobZffJUSnksl6+ZVxrjGLDBgUW
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is RFC v5 of guest_memfd in-place conversion support.
+From: Sean Christopherson <seanjc@google.com>
 
-Up till now, guest_memfd supports the entire inode worth of memory being
-used as all-shared, or all-private. CoCo VMs may request guest memory to be
-converted between private and shared states, and the only way to support
-that currently would be to have the userspace VMM provide two sources of
-backing memory from completely different areas of physical memory.
+Start plumbing in guest_memfd support for in-place private<=>shared
+conversions by tracking attributes via a maple tree.  KVM currently tracks
+private vs. shared attributes on a per-VM basis, which made sense when a
+guest_memfd _only_ supported private memory, but tracking per-VM simply
+can't work for in-place conversions as the shareability of a given page
+needs to be per-gmem_inode, not per-VM.
 
-pKVM has a use case for in-place sharing: the guest and host may be
-cooperating on given data, and pKVM doesn't protect data through
-encryption, so copying that given data between different areas of physical
-memory as part of conversions would be unnecessary work.
+Use the filemap invalidation lock to protect the maple tree, as taking the
+lock for read when faulting in memory (for userspace or the guest) isn't
+expected to result in meaningful contention, and using a separate lock
+would add significant complexity (avoid deadlock is quite difficult).
 
-This series also serves as a foundation for guest_memfd huge page
-support. Now, guest_memfd only supports PAGE_SIZE pages, so if two sources
-of backing memory are used, the userspace VMM could maintain a steady total
-memory utilized by punching out the pages that are not used. When huge
-pages are available in guest_memfd, even if the backing memory source
-supports hole punching within a huge page, punching out pages to maintain
-the total memory utilized by a VM would be introducing lots of
-fragmentation.
-
-In-place conversion avoids fragmentation by allowing the same physical
-memory to be used for both shared and private memory, with guest_memfd
-tracks the shared/private status of all the pages at a per-page
-granularity.
-
-The central principle, which guest_memfd continues to uphold, is that any
-guest-private page will not be mappable to host userspace. All pages will
-be mmap()-able in host userspace, but accesses to guest-private pages (as
-tracked by guest_memfd) will result in a SIGBUS.
-
-This series introduces a guest_memfd ioctl (not kvm, vm or vcpu, but
-guest_memfd ioctl) that allows userspace to set memory
-attributes (shared/private) directly through the guest_memfd. This is the
-appropriate interface because shared/private-ness is a property of memory
-and hence the request should be sent directly to the memory provider -
-guest_memfd.
-
-Tested with both CONFIG_KVM_VM_MEMORY_ATTRIBUTES enabled and disabled:
-
-+ tools/testing/selftests/kvm/guest_memfd_test.c
-+ tools/testing/selftests/kvm/pre_fault_memory_test.c
-+ tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-+ tools/testing/selftests/kvm/x86/private_mem_conversions_test.c
-+ tools/testing/selftests/kvm/x86/private_mem_conversions_test.sh
-+ tools/testing/selftests/kvm/x86/private_mem_kvm_exits_test.c
-
-Updates for this revision:
-
-+ For TDX and SNP, PRESERVE supported only before VM is finalized only for
-  to_private conversions.
-    + This allows PRESERVE to be used as part of the VM memory
-      loading/encryption flow
-    + Only support PRESERVE for to_private conversions (to_shared on
-      populated memory on TDX would cause zeroing)
-    + Relaxed constraints for SNP and TDX to allow NULL to be passed as
-      source address.
-+ Dropped KVM_CAP_MEMORY_ATTRIBUTES2. KVM_CAP_MEMORY_ATTRIBUTES reports
-  attributes supported by the KVM_SET_MEMORY_ATTRIBUTES VM ioctl, and
-  KVM_CAP_GUEST_MEMFD_MEMORY_ATTRIBUTES reports attributes supported bt the
-  KVM_SET_MEMORY_ATTRIBUTES2 guest_memfd ioctl.
-    + KVM_SET_MEMORY_ATTRIBUTES2 is not supported by the VM ioctl
-+ Resolve locking issue when kvm_gmem_get_attribute() is called from
-  kvm_mmu_zap_collapsible_spte() by bugging the VM. guest_memfd memslots
-  don't support dirty tracking, so the locking issue is not on an
-  accessible code path.
-+ Moved guest_memfd_conversions_test.c to only be compiled and tested for
-  x86, since it depends so heavily on KVM_X86_SW_PROTECTED_VM's as a
-  testing vehicle
-
-TODOs
-
-+ Perhaps further clarify PRESERVE flag: [8]
-+ Resolve issue where guest_memfd_conversions_test, which uses the
-  kselftest framework, doesn't perform teardown on assertion
-  failure. Please see proposal at [9]
-+ Test with TDX selftests. We're in the process of rebasing TDX selftests
-  on this series and will post updates when that's tested.
-
-I would like feedback on:
-
-+ Content modes: 0 (MODE_UNSPECIFIED), ZERO, and PRESERVE. Is that all
-  good, or does anyone think there is a use case for something else?
-+ Should the content modes apply even if no attribute changes are required?
-    + See notes added in "KVM: guest_memfd: Apply content modes while
-      setting memory attributes"
-    + Possibly related: should setting attributes be allowed if some
-      sub-range requested already has the requested attribute?
-+ Structure of how various content modes are checked for support or
-  applied? I used overridable weak functions for architectures that haven't
-  defined support, and defined overrides for x86 to show how I think it would
-  work. For CoCo platforms, I only implemented TDX for illustration purposes
-  and might need help with the other platforms. Should I have used
-  kvm_x86_ops? I tried and found myself defining lots of boilerplate.
-+ The use of private_mem_conversions_test.sh to run different options in
-  private_mem_conversions_test. If this makes sense, I'll adjust the
-  Makefile to have private_mem_conversions_test tested only via the script.
-
-This series is based on kvm/next, and here's the tree for your convenience:
-
-https://github.com/googleprodkernel/linux-cc/commits/guest_memfd-inplace-conversion-v5
-
-Older series:
-
-+ RFCv4 is at [7]
-+ RFCv3 is at [6]
-+ RFCv2 is at [5]
-+ RFCv1 is at [4]
-+ Previous versions of this feature, part of other series, are available at
-  [1][2][3].
-
-[1] https://lore.kernel.org/all/bd163de3118b626d1005aa88e71ef2fb72f0be0f.1726009989.git.ackerleytng@google.com/
-[2] https://lore.kernel.org/all/20250117163001.2326672-6-tabba@google.com/
-[3] https://lore.kernel.org/all/b784326e9ccae6a08388f1bf39db70a2204bdc51.1747264138.git.ackerleytng@google.com/
-[4] https://lore.kernel.org/all/cover.1760731772.git.ackerleytng@google.com/T/
-[5] https://lore.kernel.org/all/cover.1770071243.git.ackerleytng@google.com/T/
-[6] https://lore.kernel.org/r/20260313-gmem-inplace-conversion-v3-0-5fc12a70ec89@google.com/T/
-[7] https://lore.kernel.org/all/20260326-gmem-inplace-conversion-v4-0-e202fe950ffd@google.com/T/
-[8] https://lore.kernel.org/all/CAEvNRgGbMhkX310CkFY_M5x-zod=BDTiuznrZ0XvFPUK7weL1A@mail.gmail.com/
-[9] https://lore.kernel.org/all/20260414-selftest-global-metadata-v1-0-fd223922bc57@google.com/T/
-
+Signed-off-by: Sean Christopherson <seanjc@google.com>
+Co-developed-by: Ackerley Tng <ackerleytng@google.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
+Co-developed-by: Vishal Annapurve <vannapurve@google.com>
+Signed-off-by: Vishal Annapurve <vannapurve@google.com>
+Co-developed-by: Fuad Tabba <tabba@google.com>
+Signed-off-by: Fuad Tabba <tabba@google.com>
 ---
-Ackerley Tng (34):
-      KVM: x86/mmu: Bug the VM if gmem attributes are queried to determine max mapping level
-      KVM: guest_memfd: Update kvm_gmem_populate() to use gmem attributes
-      KVM: guest_memfd: Only prepare folios for private pages
-      KVM: Move kvm_supported_mem_attributes() to kvm_host.h
-      KVM: guest_memfd: Add basic support for KVM_SET_MEMORY_ATTRIBUTES2
-      KVM: guest_memfd: Ensure pages are not in use before conversion
-      KVM: guest_memfd: Call arch invalidate hooks on conversion
-      KVM: guest_memfd: Return early if range already has requested attributes
-      KVM: guest_memfd: Advertise KVM_SET_MEMORY_ATTRIBUTES2 ioctl
-      KVM: guest_memfd: Handle lru_add fbatch refcounts during conversion safety check
-      KVM: guest_memfd: Use actual size for invalidation in kvm_gmem_release()
-      KVM: guest_memfd: Determine invalidation filter from memory attributes
-      KVM: guest_memfd: Introduce default handlers for content modes
-      KVM: guest_memfd: Apply content modes while setting memory attributes
-      KVM: x86: Support SW_PROTECTED_VM in applying content modes
-      KVM: TDX: Make source page optional for KVM_TDX_INIT_MEM_REGION
-      KVM: x86: Support SNP and TDX applying content modes
-      KVM: x86: Bug CoCo VM on page fault before finalizing
-      KVM: Add CAP to enumerate supported SET_MEMORY_ATTRIBUTES2 flags
-      KVM: selftests: Test basic single-page conversion flow
-      KVM: selftests: Test conversion flow when INIT_SHARED
-      KVM: selftests: Test conversion precision in guest_memfd
-      KVM: selftests: Test conversion before allocation
-      KVM: selftests: Convert with allocated folios in different layouts
-      KVM: selftests: Test that truncation does not change shared/private status
-      KVM: selftests: Test conversion with elevated page refcount
-      KVM: selftests: Test that conversion to private does not support ZERO
-      KVM: selftests: Support checking that data not equal expected
-      KVM: selftests: Test that not specifying a conversion flag scrambles memory contents
-      KVM: selftests: Reset shared memory after hole-punching
-      KVM: selftests: Provide function to look up guest_memfd details from gpa
-      KVM: selftests: Make TEST_EXPECT_SIGBUS thread-safe
-      KVM: selftests: Update private_mem_conversions_test to mmap() guest_memfd
-      KVM: selftests: Add script to exercise private_mem_conversions_test
+ virt/kvm/guest_memfd.c | 139 +++++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 123 insertions(+), 16 deletions(-)
 
-Michael Roth (1):
-      KVM: SEV: Make 'uaddr' parameter optional for KVM_SEV_SNP_LAUNCH_UPDATE
+diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
+index 69c9d6d546b28..17e5a23fec0a1 100644
+--- a/virt/kvm/guest_memfd.c
++++ b/virt/kvm/guest_memfd.c
+@@ -4,6 +4,7 @@
+ #include <linux/falloc.h>
+ #include <linux/fs.h>
+ #include <linux/kvm_host.h>
++#include <linux/maple_tree.h>
+ #include <linux/mempolicy.h>
+ #include <linux/pseudo_fs.h>
+ #include <linux/pagemap.h>
+@@ -33,6 +34,12 @@ struct gmem_inode {
+ 	struct list_head gmem_file_list;
+ 
+ 	u64 flags;
++	/*
++	 * Every index in this inode, whether memory is populated or
++	 * not, is tracked in attributes. There are no gaps in this
++	 * maple tree.
++	 */
++	struct maple_tree attributes;
+ };
+ 
+ static __always_inline struct gmem_inode *GMEM_I(struct inode *inode)
+@@ -60,6 +67,31 @@ static pgoff_t kvm_gmem_get_index(struct kvm_memory_slot *slot, gfn_t gfn)
+ 	return gfn - slot->base_gfn + slot->gmem.pgoff;
+ }
+ 
++static u64 kvm_gmem_get_attributes(struct inode *inode, pgoff_t index)
++{
++	struct maple_tree *mt = &GMEM_I(inode)->attributes;
++	void *entry = mtree_load(mt, index);
++
++	/*
++	 * The lock _must_ be held for lookups, as some maple tree operations,
++	 * e.g. append, are unsafe (return inaccurate information) with respect
++	 * to concurrent RCU-protected lookups.
++	 */
++	lockdep_assert(mt_lock_is_held(mt));
++
++	return WARN_ON_ONCE(!entry) ? 0 : xa_to_value(entry);
++}
++
++static bool kvm_gmem_is_private_mem(struct inode *inode, pgoff_t index)
++{
++	return kvm_gmem_get_attributes(inode, index) & KVM_MEMORY_ATTRIBUTE_PRIVATE;
++}
++
++static bool kvm_gmem_is_shared_mem(struct inode *inode, pgoff_t index)
++{
++	return !kvm_gmem_is_private_mem(inode, index);
++}
++
+ static int __kvm_gmem_prepare_folio(struct kvm *kvm, struct kvm_memory_slot *slot,
+ 				    pgoff_t index, struct folio *folio)
+ {
+@@ -397,10 +429,13 @@ static vm_fault_t kvm_gmem_fault_user_mapping(struct vm_fault *vmf)
+ 	if (((loff_t)vmf->pgoff << PAGE_SHIFT) >= i_size_read(inode))
+ 		return VM_FAULT_SIGBUS;
+ 
+-	if (!(GMEM_I(inode)->flags & GUEST_MEMFD_FLAG_INIT_SHARED))
+-		return VM_FAULT_SIGBUS;
++	filemap_invalidate_lock_shared(inode->i_mapping);
++	if (kvm_gmem_is_shared_mem(inode, vmf->pgoff))
++		folio = kvm_gmem_get_folio(inode, vmf->pgoff);
++	else
++		folio = ERR_PTR(-EACCES);
++	filemap_invalidate_unlock_shared(inode->i_mapping);
+ 
+-	folio = kvm_gmem_get_folio(inode, vmf->pgoff);
+ 	if (IS_ERR(folio)) {
+ 		if (PTR_ERR(folio) == -EAGAIN)
+ 			return VM_FAULT_RETRY;
+@@ -556,6 +591,51 @@ bool __weak kvm_arch_supports_gmem_init_shared(struct kvm *kvm)
+ 	return true;
+ }
+ 
++static int kvm_gmem_init_inode(struct inode *inode, loff_t size, u64 flags)
++{
++	struct gmem_inode *gi = GMEM_I(inode);
++	MA_STATE(mas, &gi->attributes, 0, (size >> PAGE_SHIFT) - 1);
++	u64 attrs;
++	int r;
++
++	inode->i_op = &kvm_gmem_iops;
++	inode->i_mapping->a_ops = &kvm_gmem_aops;
++	inode->i_mode |= S_IFREG;
++	inode->i_size = size;
++	mapping_set_gfp_mask(inode->i_mapping, GFP_HIGHUSER);
++
++	/*
++	 * guest_memfd memory is neither migratable nor swappable: set
++	 * inaccessible to gate off both.
++	 */
++	mapping_set_inaccessible(inode->i_mapping);
++	WARN_ON_ONCE(!mapping_unevictable(inode->i_mapping));
++
++	gi->flags = flags;
++
++	mt_set_external_lock(&gi->attributes,
++			     &inode->i_mapping->invalidate_lock);
++
++	/*
++	 * Store default attributes for the entire gmem instance. Ensuring every
++	 * index is represented in the maple tree at all times simplifies the
++	 * conversion and merging logic.
++	 */
++	attrs = gi->flags & GUEST_MEMFD_FLAG_INIT_SHARED ? 0 : KVM_MEMORY_ATTRIBUTE_PRIVATE;
++
++	/*
++	 * Acquire the invalidation lock purely to make lockdep happy.  The
++	 * maple tree library expects all stores to be protected via the lock,
++	 * and the library can't know when the tree is reachable only by the
++	 * caller, as is the case here.
++	 */
++	filemap_invalidate_lock(inode->i_mapping);
++	r = mas_store_gfp(&mas, xa_mk_value(attrs), GFP_KERNEL);
++	filemap_invalidate_unlock(inode->i_mapping);
++
++	return r;
++}
++
+ static int __kvm_gmem_create(struct kvm *kvm, loff_t size, u64 flags)
+ {
+ 	static const char *name = "[kvm-gmem]";
+@@ -586,16 +666,9 @@ static int __kvm_gmem_create(struct kvm *kvm, loff_t size, u64 flags)
+ 		goto err_fops;
+ 	}
+ 
+-	inode->i_op = &kvm_gmem_iops;
+-	inode->i_mapping->a_ops = &kvm_gmem_aops;
+-	inode->i_mode |= S_IFREG;
+-	inode->i_size = size;
+-	mapping_set_gfp_mask(inode->i_mapping, GFP_HIGHUSER);
+-	mapping_set_inaccessible(inode->i_mapping);
+-	/* Unmovable mappings are supposed to be marked unevictable as well. */
+-	WARN_ON_ONCE(!mapping_unevictable(inode->i_mapping));
+-
+-	GMEM_I(inode)->flags = flags;
++	err = kvm_gmem_init_inode(inode, size, flags);
++	if (err)
++		goto err_inode;
+ 
+ 	file = alloc_file_pseudo(inode, kvm_gmem_mnt, name, O_RDWR, &kvm_gmem_fops);
+ 	if (IS_ERR(file)) {
+@@ -797,9 +870,13 @@ int kvm_gmem_get_pfn(struct kvm *kvm, struct kvm_memory_slot *slot,
+ 	if (!file)
+ 		return -EFAULT;
+ 
++	filemap_invalidate_lock_shared(file_inode(file)->i_mapping);
++
+ 	folio = __kvm_gmem_get_pfn(file, slot, index, pfn, max_order);
+-	if (IS_ERR(folio))
+-		return PTR_ERR(folio);
++	if (IS_ERR(folio)) {
++		r = PTR_ERR(folio);
++		goto out;
++	}
+ 
+ 	if (!folio_test_uptodate(folio)) {
+ 		clear_highpage(folio_page(folio, 0));
+@@ -815,6 +892,8 @@ int kvm_gmem_get_pfn(struct kvm *kvm, struct kvm_memory_slot *slot,
+ 	else
+ 		folio_put(folio);
+ 
++out:
++	filemap_invalidate_unlock_shared(file_inode(file)->i_mapping);
+ 	return r;
+ }
+ EXPORT_SYMBOL_FOR_KVM_INTERNAL(kvm_gmem_get_pfn);
+@@ -944,6 +1023,15 @@ static struct inode *kvm_gmem_alloc_inode(struct super_block *sb)
+ 
+ 	mpol_shared_policy_init(&gi->policy, NULL);
+ 
++	/*
++	 * Memory attributes are protected by the filemap invalidation lock, but
++	 * the lock structure isn't available at this time.  Immediately mark
++	 * maple tree as using external locking so that accessing the tree
++	 * before it's fully initialized results in NULL pointer dereferences
++	 * and not more subtle bugs.
++	 */
++	mt_init_flags(&gi->attributes, MT_FLAGS_LOCK_EXTERN);
++
+ 	gi->flags = 0;
+ 	INIT_LIST_HEAD(&gi->gmem_file_list);
+ 	return &gi->vfs_inode;
+@@ -951,7 +1039,26 @@ static struct inode *kvm_gmem_alloc_inode(struct super_block *sb)
+ 
+ static void kvm_gmem_destroy_inode(struct inode *inode)
+ {
+-	mpol_free_shared_policy(&GMEM_I(inode)->policy);
++	struct gmem_inode *gi = GMEM_I(inode);
++
++	mpol_free_shared_policy(&gi->policy);
++
++	/*
++	 * Note!  Checking for an empty tree is functionally necessary
++	 * to avoid explosions if the tree hasn't been fully
++	 * initialized, i.e. if the inode is being destroyed before
++	 * guest_memfd can set the external lock, lockdep would find
++	 * that the tree's internal ma_lock was not held.
++	 */
++	if (!mtree_empty(&gi->attributes)) {
++		/*
++		 * Acquire the invalidation lock purely to make lockdep happy,
++		 * the inode is unreachable at this point.
++		 */
++		filemap_invalidate_lock(inode->i_mapping);
++		__mt_destroy(&gi->attributes);
++		filemap_invalidate_unlock(inode->i_mapping);
++	}
+ }
+ 
+ static void kvm_gmem_free_inode(struct inode *inode)
 
-Sean Christopherson (18):
-      KVM: guest_memfd: Introduce per-gmem attributes, use to guard user mappings
-      KVM: Rename KVM_GENERIC_MEMORY_ATTRIBUTES to KVM_VM_MEMORY_ATTRIBUTES
-      KVM: Enumerate support for PRIVATE memory iff kvm_arch_has_private_mem is defined
-      KVM: Stub in ability to disable per-VM memory attribute tracking
-      KVM: guest_memfd: Wire up kvm_get_memory_attributes() to per-gmem attributes
-      KVM: Move KVM_VM_MEMORY_ATTRIBUTES config definition to x86
-      KVM: Let userspace disable per-VM mem attributes, enable per-gmem attributes
-      KVM: guest_memfd: Enable INIT_SHARED on guest_memfd for x86 Coco VMs
-      KVM: selftests: Create gmem fd before "regular" fd when adding memslot
-      KVM: selftests: Rename guest_memfd{,_offset} to gmem_{fd,offset}
-      KVM: selftests: Add support for mmap() on guest_memfd in core library
-      KVM: selftests: Add selftests global for guest memory attributes capability
-      KVM: selftests: Add helpers for calling ioctls on guest_memfd
-      KVM: selftests: Test that shared/private status is consistent across processes
-      KVM: selftests: Provide common function to set memory attributes
-      KVM: selftests: Check fd/flags provided to mmap() when setting up memslot
-      KVM: selftests: Update pre-fault test to work with per-guest_memfd attributes
-      KVM: selftests: Update private memory exits test to work with per-gmem attributes
-
- Documentation/virt/kvm/api.rst                     | 139 ++++-
- .../virt/kvm/x86/amd-memory-encryption.rst         |  19 +-
- Documentation/virt/kvm/x86/intel-tdx.rst           |   4 +
- arch/x86/include/asm/kvm_host.h                    |   2 +-
- arch/x86/kvm/Kconfig                               |  15 +-
- arch/x86/kvm/mmu/mmu.c                             |  20 +-
- arch/x86/kvm/svm/sev.c                             |  18 +-
- arch/x86/kvm/vmx/tdx.c                             |   8 +-
- arch/x86/kvm/x86.c                                 | 145 ++++-
- include/linux/kvm_host.h                           |  74 ++-
- include/trace/events/kvm.h                         |   4 +-
- include/uapi/linux/kvm.h                           |  21 +
- mm/swap.c                                          |   2 +
- tools/testing/selftests/kvm/Makefile.kvm           |   5 +
- tools/testing/selftests/kvm/include/kvm_util.h     | 141 ++++-
- tools/testing/selftests/kvm/include/test_util.h    |  34 +-
- .../selftests/kvm/kvm_has_gmem_attributes.c        |  17 +
- tools/testing/selftests/kvm/lib/kvm_util.c         | 130 +++--
- tools/testing/selftests/kvm/lib/test_util.c        |   7 -
- tools/testing/selftests/kvm/lib/x86/sev.c          |   2 +-
- .../testing/selftests/kvm/pre_fault_memory_test.c  |   4 +-
- .../kvm/x86/guest_memfd_conversions_test.c         | 552 +++++++++++++++++++
- .../kvm/x86/private_mem_conversions_test.c         |  55 +-
- .../kvm/x86/private_mem_conversions_test.sh        | 128 +++++
- .../selftests/kvm/x86/private_mem_kvm_exits_test.c |  38 +-
- virt/kvm/Kconfig                                   |   3 +-
- virt/kvm/guest_memfd.c                             | 591 ++++++++++++++++++++-
- virt/kvm/kvm_main.c                                |  87 ++-
- 28 files changed, 2075 insertions(+), 190 deletions(-)
----
-base-commit: 39f1c201b93f4ff71631bac72cff6eb155f976a4
-change-id: 20260225-gmem-inplace-conversion-bd0dbd39753a
-
-Best regards,
---
-Ackerley Tng <ackerleytng@google.com>
+-- 
+2.54.0.545.g6539524ca2-goog
 
