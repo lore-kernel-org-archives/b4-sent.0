@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Tue, 28 Apr 2026 16:25:18 -0700
-Subject: [PATCH RFC v5 23/53] KVM: x86: Support SW_PROTECTED_VM in applying
- content modes
+Date: Tue, 28 Apr 2026 16:25:19 -0700
+Subject: [PATCH RFC v5 24/53] KVM: SEV: Make 'uaddr' parameter optional for
+ KVM_SEV_SNP_LAUNCH_UPDATE
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260428-gmem-inplace-conversion-v5-23-d8608ccfca22@google.com>
+Message-Id: <20260428-gmem-inplace-conversion-v5-24-d8608ccfca22@google.com>
 References: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 In-Reply-To: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -38,138 +38,142 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=3447;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=6631;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=9ksW1lIO9ZmZXIT5xvo0JGaOScZO9eFAx8q/FWxGah8=;
- b=Cy4xUfQRFEwNJDgZS17EsIHexFRRfCGZCJzHnrfM2HPN/NoecocgbvmuMuwK8/LWmqP1BNxCk
- G0AVsZtj4TUBD2z0PWLopI3VJCmZQUh+/Miluf8cH7GpfDGSe8Qxxx0
+ bh=6I5qY356QuKhvOxH1JQe8xcoUJLrBsuBlWTdyFO/bYI=;
+ b=3BKZsofxSpmgNd3PfWxQbf4StcoBe8YmYcPFtSyrf7dW6HwahUfNHnny0P0z2E9XtxJTwkPtk
+ oW/xZZKZ1dNAcwDaMXpkp9YNj3ce2/puK45bRgGtx1pY7P5UFEHe9vZ
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Override the architecture-specific guest_memfd content mode functions for
-x86 to provide support for KVM_X86_SW_PROTECTED_VM.
+From: Michael Roth <michael.roth@amd.com>
 
-For software-protected VMs, specify KVM_SET_MEMORY_ATTRIBUTES2_ZERO and
-KVM_SET_MEMORY_ATTRIBUTES2_PRESERVE as supported content modes. Implement
-the logic for these modes as follows:
+For vm_memory_attributes=1, in-place conversion/population is not
+supported, so the initial contents necessarily must need to come
+from a separate src address, which is enforced by the current
+implementation. However, for vm_memory_attributes=0, it is possible for
+guest memory to be initialized directly from userspace by mmap()'ing the
+guest_memfd and writing to it while the corresponding GPA ranges are in
+a 'shared' state before converting them to the 'private' state expected
+by KVM_SEV_SNP_LAUNCH_UPDATE.
 
-+ ZERO: Zero out the memory using the generic guest_memfd helper.
-+ PRESERVE: Maintain the existing memory content without modification.
-+ UNSPECIFIED: KVM_X86_SW_PROTECTED_VM is guest_memfd's testing
-  vehicle. Scramble the memory range by filling it with random bytes so
-  test behavior will differ from that of PRESERVE.
+Update the handling/documentation for KVM_SEV_SNP_LAUNCH_UPDATE to allow
+for 'uaddr' to be set to NULL when vm_memory_attributes=0, which
+SNP_LAUNCH_UPDATE will then use to determine when it should/shouldn't
+copy in data from a separate memory location. Continue to enforce
+non-NULL for the original vm_memory_attributes=1 case.
 
+Signed-off-by: Michael Roth <michael.roth@amd.com>
+[Added src_page check in error handling path when the firmware command fails]
+[Dropped ifdef CONFIG_KVM_VM_MEMORY_ATTRIBUTES]
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- arch/x86/kvm/x86.c | 93 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 93 insertions(+)
+ Documentation/virt/kvm/x86/amd-memory-encryption.rst | 19 +++++++++++++++----
+ arch/x86/kvm/svm/sev.c                               | 18 +++++++++++++-----
+ virt/kvm/kvm_main.c                                  |  1 +
+ 3 files changed, 29 insertions(+), 9 deletions(-)
 
-diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
-index 6609957ecfea3..e8abff71001eb 100644
---- a/arch/x86/kvm/x86.c
-+++ b/arch/x86/kvm/x86.c
-@@ -14194,6 +14194,99 @@ void kvm_arch_gmem_invalidate(kvm_pfn_t start, kvm_pfn_t end)
- 	kvm_x86_call(gmem_invalidate)(start, end);
- }
- #endif
-+
-+u64 kvm_arch_gmem_supported_content_modes(struct kvm *kvm, bool to_private)
-+{
-+	if (!kvm) {
-+		return KVM_SET_MEMORY_ATTRIBUTES2_ZERO |
-+		       KVM_SET_MEMORY_ATTRIBUTES2_PRESERVE;
-+	}
-+
-+	switch (kvm->arch.vm_type) {
-+	case KVM_X86_SW_PROTECTED_VM:
-+		return KVM_SET_MEMORY_ATTRIBUTES2_ZERO |
-+		       KVM_SET_MEMORY_ATTRIBUTES2_PRESERVE;
-+	default:
-+		return 0;
-+	}
-+}
-+
-+int kvm_arch_gmem_apply_content_mode_zero(struct kvm *kvm, struct inode *inode,
-+					  pgoff_t start, pgoff_t end)
-+{
-+	switch (kvm->arch.vm_type) {
-+	case KVM_X86_SW_PROTECTED_VM:
-+		return kvm_gmem_apply_content_mode_zero(inode, start, end);
-+	default:
-+		return 0;
-+	}
-+}
-+
-+int kvm_arch_gmem_apply_content_mode_preserve(struct kvm *kvm,
-+					      struct inode *inode,
-+					      pgoff_t start, pgoff_t end)
-+{
-+	switch (kvm->arch.vm_type) {
-+	case KVM_X86_SW_PROTECTED_VM:
-+		/* Do nothing to preserve content. */
-+		return 0;
-+	default:
-+		/* Not a valid content mode for other types, so do nothing. */
-+		return 0;
-+	}
-+}
-+
-+static int __scramble_range(struct inode *inode, pgoff_t start, pgoff_t end)
-+{
-+	struct address_space *mapping = inode->i_mapping;
-+	struct folio_batch fbatch;
-+	struct folio *f;
-+	char *kaddr;
-+	int ret = 0;
-+	int i;
-+
-+	folio_batch_init(&fbatch);
-+	while (!ret && filemap_get_folios(mapping, &start, end - 1, &fbatch)) {
-+		for (i = 0; !ret && i < folio_batch_count(&fbatch); ++i) {
-+			f = fbatch.folios[i];
-+
-+			folio_lock(f);
-+
-+			if (folio_test_hwpoison(f)) {
-+				ret = -EHWPOISON;
-+			} else {
-+				/*
-+				 * Hard-coding range to scramble since
-+				 * guest_memfd only supports PAGE_SIZE
-+				 * folios now.
-+				 */
-+				kaddr = kmap_local_folio(f, 0);
-+				get_random_bytes(kaddr, PAGE_SIZE);
-+				kunmap_local(kaddr);
-+			}
-+
-+			folio_unlock(f);
-+		}
-+
-+		folio_batch_release(&fbatch);
-+		cond_resched();
-+	}
-+
-+	return ret;
-+}
-+
-+int kvm_arch_gmem_apply_content_mode_unspecified(struct kvm *kvm,
-+						 struct inode *inode,
-+						 pgoff_t start, pgoff_t end)
-+{
-+	switch (kvm->arch.vm_type) {
-+	case KVM_X86_SW_PROTECTED_VM:
-+		return __scramble_range(inode, start, end);
-+	default:
-+		return 0;
-+	}
-+}
-+
- #endif
+diff --git a/Documentation/virt/kvm/x86/amd-memory-encryption.rst b/Documentation/virt/kvm/x86/amd-memory-encryption.rst
+index b2395dd4769de..3b9f36a55a95b 100644
+--- a/Documentation/virt/kvm/x86/amd-memory-encryption.rst
++++ b/Documentation/virt/kvm/x86/amd-memory-encryption.rst
+@@ -503,7 +503,12 @@ secrets.
  
- int kvm_spec_ctrl_test_value(u64 value)
+ It is required that the GPA ranges initialized by this command have had the
+ KVM_MEMORY_ATTRIBUTE_PRIVATE attribute set in advance. See the documentation
+-for KVM_SET_MEMORY_ATTRIBUTES for more details on this aspect.
++for KVM_SET_MEMORY_ATTRIBUTES/KVM_SET_MEMORY_ATTRIBUTES2 for more details on
++this aspect. If running with kvm.vm_memory_attributes=0 (to allow for
++guest_memfd to handle memory attributes and allow for in-place conversion of
++pages between shared/private), the 'PRESERVED' flag/content mode (which is
++only available via the KVM_SET_MEMORY_ATTRIBUTES2 interface) must be used
++when setting the range to private prior to issuing this ioctl.
+ 
+ Upon success, this command is not guaranteed to have processed the entire
+ range requested. Instead, the ``gfn_start``, ``uaddr``, and ``len`` fields of
+@@ -511,9 +516,15 @@ range requested. Instead, the ``gfn_start``, ``uaddr``, and ``len`` fields of
+ remaining range that has yet to be processed. The caller should continue
+ calling this command until those fields indicate the entire range has been
+ processed, e.g. ``len`` is 0, ``gfn_start`` is equal to the last GFN in the
+-range plus 1, and ``uaddr`` is the last byte of the userspace-provided source
+-buffer address plus 1. In the case where ``type`` is KVM_SEV_SNP_PAGE_TYPE_ZERO,
+-``uaddr`` will be ignored completely.
++range plus 1, and ``uaddr`` (if specified) is the last byte of the
++userspace-provided source buffer address plus 1.
++
++In the case where ``type`` is KVM_SEV_SNP_PAGE_TYPE_ZERO, ``uaddr`` will be
++ignored completely. Otherwise, ``uaddr`` is required if
++kvm.vm_memory_attributes=0 and optional if kvm.vm_memory_attributes=1, since
++in the latter case guest memory can be initialized directly from userspace
++prior to converting it to private and passing the GPA range on to this
++interface.
+ 
+ Parameters (in): struct  kvm_sev_snp_launch_update
+ 
+diff --git a/arch/x86/kvm/svm/sev.c b/arch/x86/kvm/svm/sev.c
+index c2126b3c30724..bf10d24907a00 100644
+--- a/arch/x86/kvm/svm/sev.c
++++ b/arch/x86/kvm/svm/sev.c
+@@ -2343,7 +2343,15 @@ static int sev_gmem_post_populate(struct kvm *kvm, gfn_t gfn, kvm_pfn_t pfn,
+ 	int level;
+ 	int ret;
+ 
+-	if (WARN_ON_ONCE(sev_populate_args->type != KVM_SEV_SNP_PAGE_TYPE_ZERO && !src_page))
++	/*
++	 * For vm_memory_attributes=1, in-place conversion/population is not
++	 * supported, so the initial contents necessarily need to come from a
++	 * separate src address. For vm_memory_attributes=0, this isn't
++	 * necessarily the case, since the pages may have been populated
++	 * directly from userspace before calling KVM_SEV_SNP_LAUNCH_UPDATE.
++	 */
++	if (vm_memory_attributes &&
++	    sev_populate_args->type != KVM_SEV_SNP_PAGE_TYPE_ZERO && !src_page)
+ 		return -EINVAL;
+ 
+ 	ret = snp_lookup_rmpentry((u64)pfn, &assigned, &level);
+@@ -2390,7 +2398,7 @@ static int sev_gmem_post_populate(struct kvm *kvm, gfn_t gfn, kvm_pfn_t pfn,
+ 	 */
+ 	if (ret && !snp_page_reclaim(kvm, pfn) &&
+ 	    sev_populate_args->type == KVM_SEV_SNP_PAGE_TYPE_CPUID &&
+-	    sev_populate_args->fw_error == SEV_RET_INVALID_PARAM) {
++	    sev_populate_args->fw_error == SEV_RET_INVALID_PARAM && src_page) {
+ 		void *src_vaddr = kmap_local_page(src_page);
+ 		void *dst_vaddr = kmap_local_pfn(pfn);
+ 
+@@ -2422,8 +2430,8 @@ static int snp_launch_update(struct kvm *kvm, struct kvm_sev_cmd *argp)
+ 	if (copy_from_user(&params, u64_to_user_ptr(argp->data), sizeof(params)))
+ 		return -EFAULT;
+ 
+-	pr_debug("%s: GFN start 0x%llx length 0x%llx type %d flags %d\n", __func__,
+-		 params.gfn_start, params.len, params.type, params.flags);
++	pr_debug("%s: GFN start 0x%llx length 0x%llx type %d flags %d src %llx\n", __func__,
++		 params.gfn_start, params.len, params.type, params.flags, params.uaddr);
+ 
+ 	if (!params.len || !PAGE_ALIGNED(params.len) || params.flags ||
+ 	    (params.type != KVM_SEV_SNP_PAGE_TYPE_NORMAL &&
+@@ -2479,7 +2487,7 @@ static int snp_launch_update(struct kvm *kvm, struct kvm_sev_cmd *argp)
+ 
+ 	params.gfn_start += count;
+ 	params.len -= count * PAGE_SIZE;
+-	if (params.type != KVM_SEV_SNP_PAGE_TYPE_ZERO)
++	if (src && params.type != KVM_SEV_SNP_PAGE_TYPE_ZERO)
+ 		params.uaddr += count * PAGE_SIZE;
+ 
+ 	if (copy_to_user(u64_to_user_ptr(argp->data), &params, sizeof(params)))
+diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
+index ba195bb239aaa..3bf212fd99193 100644
+--- a/virt/kvm/kvm_main.c
++++ b/virt/kvm/kvm_main.c
+@@ -105,6 +105,7 @@ module_param(allow_unsafe_mappings, bool, 0444);
+ #ifdef CONFIG_KVM_VM_MEMORY_ATTRIBUTES
+ bool vm_memory_attributes = true;
+ module_param(vm_memory_attributes, bool, 0444);
++EXPORT_SYMBOL_FOR_KVM_INTERNAL(vm_memory_attributes);
+ #endif
+ DEFINE_STATIC_CALL_RET0(__kvm_get_memory_attributes, kvm_get_memory_attributes_t);
+ EXPORT_SYMBOL_FOR_KVM_INTERNAL(STATIC_CALL_KEY(__kvm_get_memory_attributes));
 
 -- 
 2.54.0.545.g6539524ca2-goog
