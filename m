@@ -1,135 +1,74 @@
-From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Tue, 28 Apr 2026 01:54:20 +0530
-Subject: [PATCH v12 5/5] lib/test_vmalloc: add vrealloc test case
+From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Subject: [PATCH 0/3] i2c: xiic: fix SMBus block read and PEC support
+Date: Mon, 27 Apr 2026 17:18:05 -0700
+Message-Id: <20260427-i2c-xiic-v1-0-e6207f9aa5ad@nexthop.ai>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260428-vmalloc-shrink-v12-5-3c18c9172eb1@zohomail.in>
-References: <20260428-vmalloc-shrink-v12-0-3c18c9172eb1@zohomail.in>
-In-Reply-To: <20260428-vmalloc-shrink-v12-0-3c18c9172eb1@zohomail.in>
-To: Andrew Morton <akpm@linux-foundation.org>, 
- Uladzislau Rezki <urezki@gmail.com>
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
- Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
- Shivam Kalra <shivamkalra98@zohomail.in>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777321463; l=2905;
- i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
- bh=yP1QXayDidKnNU2S8I7BqJprRzQI2mQyl0fytHsaqPM=;
- b=i8Z3ANl5DezVl1EY2eeSaDzeTmV1WTIADSFw6u2DzPbrVpqLqS6cK9lt8QLacgjK4BLOJVLXB
- J32q5iaBFqqB+yk1MmiZT3ZRr34vFpbA0+ttS+zQoW7zWEU9VTUdExq
-X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
- pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
-X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
+X-B4-Tracking: v=1; b=H4sIAL3872kC/yXMSwqAMAxF0a1IxhZq8ANuRRzUGDUOqrQqQuner
+ To8cN8L4NkJe2izAI4v8bLZhCLPgBZjZ1YyJgNqrHWJjRIkdYuQQsNDpQsmjQZSvjue5P6uuv6
+ 3P4eV6Xj3EOMD+w3U4mwAAAA=
+X-Change-ID: 20260427-i2c-xiic-2aeb501ec02a
+To: Michal Simek <michal.simek@amd.com>, Andi Shyti <andi.shyti@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, linux-i2c@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Abdurrahman Hussain <abdurrahman@nexthop.ai>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2226;
+ i=abdurrahman@nexthop.ai; h=from:subject:message-id;
+ bh=CsiHZ5vb7Sf7aVyvtEGZ7+CNeUx8W/SFG7JbsXLjEQE=;
+ b=owJ4nJvAy8zAJbYltPXv6rsCXxhPqyUxZL7/c1CCcemG8lNB+zimTlrSqKJ59d31H1dZVm4w5
+ 98clSr9LMigo5SFQYyLQVZMkWXOI/83bR1tERtiDtnDzGFlAhnCwMUpABOZspaRYfvjn5c6/q7r
+ K/zJrHWW7Wi07ZYaD+d7W91UKkJ+MvtfMWBkuPRz4joViehXlfpOOT+yFizSF1rYPEfR2m31H6k
+ rynYrmQAl5VAE
+X-Developer-Key: i=abdurrahman@nexthop.ai; a=openpgp;
+ fpr=9CE24FEC86888658B05CC23FB45585FDABDD10F4
+X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/default with auth_id=756
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce a new test case "vrealloc_test" that exercises the vrealloc()
-shrink and in-place grow paths:
+This series fixes three independent bugs in the Xilinx AXI IIC driver
+that together make SMBus block reads with PEC return -EBADMSG or -EIO
+on otherwise clean transfers. They only surface when the client has
+I2C_CLIENT_PEC set; non-PEC block reads happen to mask each issue in
+turn.
 
-  - Grow beyond allocated pages (triggers full reallocation).
-  - Shrink crossing a page boundary (frees tail pages).
-  - Shrink within the same page (no page freeing).
-  - Grow within the already allocated page count (in-place).
+The problems were uncovered driving an adm1266 PMBus device behind a
+Xilinx AXI IIC FPGA block and reading its 64-byte blackbox record.
 
-Data integrity is validated after each realloc step by checking that
-the first byte of the original allocation is preserved.
+Patch 1 stops xiic_smbus_block_read_setup() from truncating rx_msg->len.
+The i2c core appends a byte to msg->len when PEC is enabled, so
+overwriting the length to "block size + 1" silently drops the PEC byte
+and i2c_smbus_check_pec() then reads the last payload byte as the PEC.
 
-The test is gated behind run_test_mask bit 12 (id 4096).
+Patch 2 raises the RX_FULL threshold so the interrupt only fires once
+every remaining byte (payload plus optional PEC) is already buffered in
+the FIFO. The previous threshold of rxmsg_len - 2 caused the
+bytes_rem == 1 path in xiic_read_rx() to NACK a byte still on the wire.
 
-Reviewed-by: Uladzislau Rezki (Sony) <urezki@gmail.com>
-Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
+Patch 3 stops the BNB handler from forcing tx_msg->len = 1 to signal
+completion. tx_msg and rx_msg alias the same i2c_msg during a receive,
+so this also clobbered rx_msg->len; and because tx_pos is already at 2
+in the PEC case, the unsigned subtraction in xiic_tx_space() underflowed
+and the STATE_DONE check fell through to STATE_ERROR. Advancing tx_pos
+up to msg->len drives tx_space to zero without touching the length.
+
+All three patches are pure bug fixes; non-PEC behaviour is unchanged.
+Tested on real hardware -- a Xilinx AXI IIC controller talking to an
+adm1266, where 64-byte PEC-checked block reads now complete cleanly.
+
+Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
 ---
- lib/test_vmalloc.c | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 62 insertions(+)
+Abdurrahman Hussain (3):
+      i2c: xiic: preserve PEC byte length in SMBus block read setup
+      i2c: xiic: defer RX_FULL until all trailing bytes are in FIFO
+      i2c: xiic: don't clobber msg->len to signal block-read completion
 
-diff --git a/lib/test_vmalloc.c b/lib/test_vmalloc.c
-index 876c72c18a0c..b23f85e8f8ca 100644
---- a/lib/test_vmalloc.c
-+++ b/lib/test_vmalloc.c
-@@ -55,6 +55,7 @@ __param(int, run_test_mask, 7,
- 		"\t\tid: 512,  name: kvfree_rcu_2_arg_vmalloc_test\n"
- 		"\t\tid: 1024, name: vm_map_ram_test\n"
- 		"\t\tid: 2048, name: no_block_alloc_test\n"
-+		"\t\tid: 4096, name: vrealloc_test\n"
- 		/* Add a new test case description here. */
- );
- 
-@@ -421,6 +422,66 @@ vm_map_ram_test(void)
- 	return nr_allocated != map_nr_pages;
- }
- 
-+static int vrealloc_test(void)
-+{
-+	void *ptr, *tmp;
-+	int i;
-+
-+	for (i = 0; i < test_loop_count; i++) {
-+		int err = -1;
-+
-+		ptr = vrealloc(NULL, PAGE_SIZE, GFP_KERNEL);
-+		if (!ptr)
-+			return -1;
-+
-+		*((__u8 *)ptr) = 'a';
-+
-+		/* Grow: beyond allocated pages, triggers full realloc. */
-+		tmp = vrealloc(ptr, 4 * PAGE_SIZE, GFP_KERNEL);
-+		if (!tmp)
-+			goto error;
-+		ptr = tmp;
-+
-+		if (*((__u8 *)ptr) != 'a')
-+			goto error;
-+
-+		/* Shrink: crosses page boundary, frees tail pages. */
-+		tmp = vrealloc(ptr, PAGE_SIZE, GFP_KERNEL);
-+		if (!tmp)
-+			goto error;
-+		ptr = tmp;
-+
-+		if (*((__u8 *)ptr) != 'a')
-+			goto error;
-+
-+		/* Shrink: within same page, no page freeing. */
-+		tmp = vrealloc(ptr, PAGE_SIZE / 2, GFP_KERNEL);
-+		if (!tmp)
-+			goto error;
-+		ptr = tmp;
-+
-+		if (*((__u8 *)ptr) != 'a')
-+			goto error;
-+
-+		/* Grow: within allocated page, in-place, no realloc. */
-+		tmp = vrealloc(ptr, PAGE_SIZE, GFP_KERNEL);
-+		if (!tmp)
-+			goto error;
-+		ptr = tmp;
-+
-+		if (*((__u8 *)ptr) != 'a')
-+			goto error;
-+
-+		err = 0;
-+error:
-+		vfree(ptr);
-+		if (err)
-+			return err;
-+	}
-+
-+	return 0;
-+}
-+
- struct test_case_desc {
- 	const char *test_name;
- 	int (*test_func)(void);
-@@ -440,6 +501,7 @@ static struct test_case_desc test_case_array[] = {
- 	{ "kvfree_rcu_2_arg_vmalloc_test", kvfree_rcu_2_arg_vmalloc_test, },
- 	{ "vm_map_ram_test", vm_map_ram_test, },
- 	{ "no_block_alloc_test", no_block_alloc_test, true },
-+	{ "vrealloc_test", vrealloc_test, },
- 	/* Add a new test case here. */
- };
- 
+ drivers/i2c/busses/i2c-xiic.c | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
+---
+base-commit: 254f49634ee16a731174d2ae34bc50bd5f45e731
+change-id: 20260427-i2c-xiic-2aeb501ec02a
 
--- 
-2.43.0
+Best regards,
+--  
+Abdurrahman Hussain <abdurrahman@nexthop.ai>
 
