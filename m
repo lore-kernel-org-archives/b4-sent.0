@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Tue, 28 Apr 2026 16:25:39 -0700
-Subject: [PATCH RFC v5 44/53] KVM: selftests: Test that not specifying a
- conversion flag scrambles memory contents
+Date: Tue, 28 Apr 2026 16:25:40 -0700
+Subject: [PATCH RFC v5 45/53] KVM: selftests: Reset shared memory after
+ hole-punching
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260428-gmem-inplace-conversion-v5-44-d8608ccfca22@google.com>
+Message-Id: <20260428-gmem-inplace-conversion-v5-45-d8608ccfca22@google.com>
 References: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 In-Reply-To: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -38,68 +38,71 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=2091;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=2491;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=Avy1yjuj5TLXjW+gFYQvsB+PRbonfW+tVbhN8u3NZik=;
- b=fb9rZViAfwmrwJD9SGoXVoob6TT9WaSRJ4Wrr/TWhXnHc57g7FFxpcP7viuqXx3r+qwjvVnmr
- KXKhGbWj4CZCYiavrYR0ULbUfm3YqEoUTcfGzy/jE7G4hkJglBe7CP0
+ bh=WSIF8DMlvu4DIEQtmUrMjtQfocHXchi9Geu1zzxLD0I=;
+ b=kuPxD2GFOGoFfxlviY04qf8Sq3zByZ44zvRNeBcRqsFNI56KizuLJBgckTtLQ4utLIPJ7dv8b
+ EBG4IOrjJg1ApGbwerboMAotA0X/Wbh8yTgowQ9HiOfeFlD83CgcFa6
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When using KVM_SET_MEMORY_ATTRIBUTES2, not specifying flags for the ioctl
-implies no guarantees on memory contents.
+private_mem_conversions_test used to reset the shared memory that was used
+for the test to an initial pattern at the end of each test iteration. Then,
+it would punch out the pages, which would zero memory.
 
-For KVM_X86_SW_PROTECTED_VM, this mode is implemented by scrambling
-contents of converted memory ranges. Add a test to check that the
-unspecified conversion mode was handled in KVM by checking the expected
-behavior, that existing memory contents are scrambled.
+Without in-place conversion, the resetting would write shared memory, and
+hole-punching will zero private memory, hence resetting the test to the
+state at the beginning of the for loop.
 
+With in-place conversion, resetting writes memory as shared, and
+hole-punching zeroes the same physical memory, hence undoing the reset
+done before the hole punch.
+
+Move the resetting after the hole-punching, and reset the entire
+PER_CPU_DATA_SIZE instead of just the tested range.
+
+With in-place conversion, this zeroes and then resets the same physical
+memory. Without in-place conversion, the private memory is zeroed, and the
+shared memory is reset to init_p.
+
+This is sufficient since at each test stage, the memory is assumed to start
+as shared, and private memory is always assumed to start zeroed. Conversion
+zeroes memory, so the future test stages will work as expected.
+
+Fixes: 43f623f350ce1 ("KVM: selftests: Add x86-only selftest for private memory conversions")
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- .../kvm/x86/guest_memfd_conversions_test.c         | 28 ++++++++++++++++++++++
- 1 file changed, 28 insertions(+)
+ tools/testing/selftests/kvm/x86/private_mem_conversions_test.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c b/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-index 57adb6d84a053..f4705dc700879 100644
---- a/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-+++ b/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-@@ -512,6 +512,34 @@ GMEM_CONVERSION_TEST_INIT_SHARED(convert_to_private_does_not_support_zero)
- 	TEST_ASSERT_EQ(error_offset, start_offset);
+diff --git a/tools/testing/selftests/kvm/x86/private_mem_conversions_test.c b/tools/testing/selftests/kvm/x86/private_mem_conversions_test.c
+index 861baff201e78..289ad10063fca 100644
+--- a/tools/testing/selftests/kvm/x86/private_mem_conversions_test.c
++++ b/tools/testing/selftests/kvm/x86/private_mem_conversions_test.c
+@@ -202,15 +202,18 @@ static void guest_test_explicit_conversion(u64 base_gpa, bool do_fallocate)
+ 		guest_sync_shared(gpa, size, p3, p4);
+ 		memcmp_g(gpa, p4, size);
+ 
+-		/* Reset the shared memory back to the initial pattern. */
+-		memset((void *)gpa, init_p, size);
+-
+ 		/*
+ 		 * Free (via PUNCH_HOLE) *all* private memory so that the next
+ 		 * iteration starts from a clean slate, e.g. with respect to
+ 		 * whether or not there are pages/folios in guest_mem.
+ 		 */
+ 		guest_map_shared(base_gpa, PER_CPU_DATA_SIZE, true);
++
++		/*
++		 * Hole-punching above zeroed private memory. Reset shared
++		 * memory in preparation for the next GUEST_STAGE.
++		 */
++		memset((void *)base_gpa, init_p, PER_CPU_DATA_SIZE);
+ 	}
  }
  
-+GMEM_CONVERSION_TEST_INIT_SHARED(convert_mode_unspecified_scrambles)
-+{
-+	loff_t error_offset = 0;
-+	int ret;
-+
-+	test_shared(t, 0, 0, 'A', 'B');
-+	ret = __gmem_set_private(t->gmem_fd, 0, nr_pages * page_size,
-+				 &error_offset, 0);
-+	TEST_ASSERT_EQ(ret, 0);
-+	TEST_ASSERT_EQ(error_offset, 0);
-+
-+	/*
-+	 * Since the content mode 0 scrambles data in memory, there is
-+	 * a small chance that this test will falsely fail when the
-+	 * scrambled value matches the initial value.
-+	 */
-+	run_guest_do_rmw(t->vcpu, 0, 'B', 'C', true);
-+
-+	ret = __gmem_set_shared(t->gmem_fd, 0, nr_pages * page_size,
-+				&error_offset, 0);
-+	TEST_ASSERT_EQ(ret, 0);
-+	TEST_ASSERT_EQ(error_offset, 0);
-+
-+	/* Same small chance of falsely failing test applies here. */
-+	TEST_ASSERT(READ_ONCE(t->mem[0]) != 'C',
-+		    "Conversion without specifying mode should scramble memory.");
-+}
-+
- int main(int argc, char *argv[])
- {
- 	TEST_REQUIRE(kvm_check_cap(KVM_CAP_VM_TYPES) & BIT(KVM_X86_SW_PROTECTED_VM));
 
 -- 
 2.54.0.545.g6539524ca2-goog
