@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Tue, 28 Apr 2026 16:25:08 -0700
-Subject: [PATCH RFC v5 13/53] KVM: guest_memfd: Return early if range
- already has requested attributes
+Date: Tue, 28 Apr 2026 16:25:09 -0700
+Subject: [PATCH RFC v5 14/53] KVM: guest_memfd: Advertise
+ KVM_SET_MEMORY_ATTRIBUTES2 ioctl
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260428-gmem-inplace-conversion-v5-13-d8608ccfca22@google.com>
+Message-Id: <20260428-gmem-inplace-conversion-v5-14-d8608ccfca22@google.com>
 References: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 In-Reply-To: <20260428-gmem-inplace-conversion-v5-0-d8608ccfca22@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -38,90 +38,175 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=2437;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777418714; l=5936;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=2jwl4vZPlGQvOmnwH/oYNhanxNv5t/UdBGux+AjU5aQ=;
- b=1XrRoXlZ6YyE/8zRKL/CERwfqop5gZw5Z1bMhGmpG5iD5nCUiQ9BfUkM3SKtE7wFQPAeWBH9t
- qnBc56ZHLjWD+SmyF3p6GdHGVRlIhFa7pRDpwx9wFvKpRHafBXps6VW
+ bh=tu+JlRkYHR1IXTuUBVoULvQy7xjaIDUUYI8NTjhnxms=;
+ b=mrTIaTLDrZxGt/EbqQxPyT5JpCnDYB9pIjvwlVNRpC1BZCmqzBP+bFEx8nXGN2ewa9bJYCDE6
+ sNYXWkfdQ3/C3Lhmox9HSJZgUHo4eLbBzOaJeyyyVidANnKH7vvxFAF
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Extract a helper out of kvm_gmem_range_is_private() that checks that a
-range has given attributes.
+Introduce KVM_CAP_GUEST_MEMFD_MEMORY_ATTRIBUTES to advertise the
+availability of the KVM_SET_MEMORY_ATTRIBUTES2 ioctl.
 
-Optimize setting memory attributes by returning early if all pages in the
-requested range already has the requested attributes.
+KVM_SET_MEMORY_ATTRIBUTES2 is a guest_memfd-scoped version of the existing
+KVM_SET_MEMORY_ATTRIBUTES VM ioctl. It allows userspace to manage memory
+attributes, such as KVM_MEMORY_ATTRIBUTE_PRIVATE, directly on a guest_memfd
+file descriptor.
 
+This new version uses struct kvm_memory_attributes2, which adds an
+error_offset field to the output. This allows KVM to return the specific
+offset that triggered an error, which is especially useful for handling
+EAGAIN results caused by transient page reference counts during attribute
+conversions.
+
+Update the KVM API documentation to define the new ioctl and its behavior,
+and add the necessary UAPI definitions and capability checks.
+
+Suggested-by: Sean Christopherson <seanjc@google.com>
+Suggested-by: Michael Roth <michael.roth@amd.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- virt/kvm/guest_memfd.c | 33 ++++++++++++++++++++++++---------
- 1 file changed, 24 insertions(+), 9 deletions(-)
+ Documentation/virt/kvm/api.rst | 72 +++++++++++++++++++++++++++++++++++++++++-
+ include/uapi/linux/kvm.h       |  2 ++
+ virt/kvm/kvm_main.c            |  5 +++
+ 3 files changed, 78 insertions(+), 1 deletion(-)
 
-diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index d563d80d4accb..d8bdb51c50cf0 100644
---- a/virt/kvm/guest_memfd.c
-+++ b/virt/kvm/guest_memfd.c
-@@ -92,6 +92,23 @@ static bool kvm_gmem_is_shared_mem(struct inode *inode, pgoff_t index)
- 	return !kvm_gmem_is_private_mem(inode, index);
- }
+diff --git a/Documentation/virt/kvm/api.rst b/Documentation/virt/kvm/api.rst
+index 52bbbb553ce10..6ce10c8ddb634 100644
+--- a/Documentation/virt/kvm/api.rst
++++ b/Documentation/virt/kvm/api.rst
+@@ -117,7 +117,7 @@ description:
+       x86 includes both i386 and x86_64.
  
-+static bool kvm_gmem_range_has_attributes(struct maple_tree *mt,
-+					  pgoff_t index, size_t nr_pages,
-+					  u64 attributes)
-+{
-+	pgoff_t end = index + nr_pages - 1;
-+	void *entry;
-+
-+	lockdep_assert(mt_lock_is_held(mt));
-+
-+	mt_for_each(mt, entry, index, end) {
-+		if (xa_to_value(entry) != attributes)
-+			return false;
-+	}
-+
-+	return true;
-+}
-+
- static int __kvm_gmem_prepare_folio(struct kvm *kvm, struct kvm_memory_slot *slot,
- 				    pgoff_t index, struct folio *folio)
- {
-@@ -667,6 +684,11 @@ static int __kvm_gmem_set_attributes(struct inode *inode, pgoff_t start,
+   Type:
+-      system, vm, or vcpu.
++      system, vm, vcpu or guest_memfd.
  
- 	filemap_invalidate_lock(mapping);
+   Parameters:
+       what parameters are accepted by the ioctl.
+@@ -6361,6 +6361,8 @@ S390:
+ Returns -EINVAL if the VM has the KVM_VM_S390_UCONTROL flag set.
+ Returns -EINVAL if called on a protected VM.
  
-+	if (kvm_gmem_range_has_attributes(mt, start, nr_pages, attrs)) {
-+		r = 0;
-+		goto out;
-+	}
++.. _KVM_SET_MEMORY_ATTRIBUTES:
 +
- 	mas_init(&mas, mt, start);
- 	r = kvm_gmem_mas_preallocate(&mas, attrs, start, nr_pages);
- 	if (r) {
-@@ -1152,20 +1174,13 @@ EXPORT_SYMBOL_FOR_KVM_INTERNAL(kvm_gmem_get_pfn);
- static bool kvm_gmem_range_is_private(struct gmem_inode *gi, pgoff_t index,
- 				      size_t nr_pages, struct kvm *kvm, gfn_t gfn)
- {
--	pgoff_t end = index + nr_pages - 1;
--	void *entry;
--
- 	if (vm_memory_attributes)
- 		return kvm_range_has_vm_memory_attributes(kvm, gfn, gfn + nr_pages,
- 						       KVM_MEMORY_ATTRIBUTE_PRIVATE,
- 						       KVM_MEMORY_ATTRIBUTE_PRIVATE);
+ 4.141 KVM_SET_MEMORY_ATTRIBUTES
+ -------------------------------
  
--	mt_for_each(&gi->attributes, entry, index, end) {
--		if (xa_to_value(entry) != KVM_MEMORY_ATTRIBUTE_PRIVATE)
--			return false;
--	}
--
--	return true;
-+	return kvm_gmem_range_has_attributes(&gi->attributes, index, nr_pages,
-+					     KVM_MEMORY_ATTRIBUTE_PRIVATE);
- }
+@@ -6553,6 +6555,74 @@ KVM_S390_KEYOP_SSKE
+   Sets the storage key for the guest address ``guest_addr`` to the key
+   specified in ``key``, returning the previous value in ``key``.
  
- static long __kvm_gmem_populate(struct kvm *kvm, struct kvm_memory_slot *slot,
++4.145 KVM_SET_MEMORY_ATTRIBUTES2
++---------------------------------
++
++:Capability: KVM_CAP_GUEST_MEMFD_MEMORY_ATTRIBUTES
++:Architectures: all
++:Type: guest_memfd ioctl
++:Parameters: struct kvm_memory_attributes2 (in/out)
++:Returns: 0 on success, <0 on error
++
++Errors:
++
++  ========== ===============================================================
++  EINVAL     The specified `offset` or `size` were invalid (e.g. not
++             page aligned, causes an overflow, or size is zero).
++  EFAULT     The parameter address was invalid.
++  EAGAIN     Some page within requested range had unexpected refcounts. The
++             offset of the page will be returned in `error_offset`.
++  ENOMEM     Ran out of memory trying to track private/shared state
++  ========== ===============================================================
++
++KVM_SET_MEMORY_ATTRIBUTES2 is an extension to
++KVM_SET_MEMORY_ATTRIBUTES that supports returning (writing) values to
++userspace.  The original (pre-extension) fields are shared with
++KVM_SET_MEMORY_ATTRIBUTES identically.
++
++Attribute values are shared with KVM_SET_MEMORY_ATTRIBUTES.
++
++::
++
++  struct kvm_memory_attributes2 {
++	/* in */
++	union {
++		__u64 address;
++		__u64 offset;
++	};
++	__u64 size;
++	__u64 attributes;
++	__u64 flags;
++	/* out */
++	__u64 error_offset;
++	__u64 reserved[11];
++  };
++
++  #define KVM_MEMORY_ATTRIBUTE_PRIVATE           (1ULL << 3)
++
++Set attributes for a range of offsets within a guest_memfd to
++KVM_MEMORY_ATTRIBUTE_PRIVATE to limit the specified guest_memfd backed
++memory range for guest_use. Even if KVM_CAP_GUEST_MEMFD_MMAP is
++supported, after a successful call to set
++KVM_MEMORY_ATTRIBUTE_PRIVATE, the requested range will not be mappable
++into host userspace and will only be mappable by the guest.
++
++To allow the range to be mappable into host userspace again, call
++KVM_SET_MEMORY_ATTRIBUTES2 on the guest_memfd again with
++KVM_MEMORY_ATTRIBUTE_PRIVATE unset.
++
++If this ioctl returns -EAGAIN, the offset of the page with unexpected
++refcounts will be returned in `error_offset`. This can occur if there
++are transient refcounts on the pages, taken by other parts of the
++kernel.
++
++Userspace is expected to figure out how to remove all known refcounts
++on the shared pages, such as refcounts taken by get_user_pages(), and
++try the ioctl again. A possible source of these long term refcounts is
++if the guest_memfd memory was pinned in IOMMU page tables.
++
++See also: :ref: `KVM_SET_MEMORY_ATTRIBUTES`.
++
+ .. _kvm_run:
+ 
+ 5. The kvm_run structure
+diff --git a/include/uapi/linux/kvm.h b/include/uapi/linux/kvm.h
+index 0b55258573d3d..f437fd0f1350c 100644
+--- a/include/uapi/linux/kvm.h
++++ b/include/uapi/linux/kvm.h
+@@ -996,6 +996,7 @@ struct kvm_enable_cap {
+ #define KVM_CAP_S390_USER_OPEREXEC 246
+ #define KVM_CAP_S390_KEYOP 247
+ #define KVM_CAP_S390_VSIE_ESAMODE 248
++#define KVM_CAP_GUEST_MEMFD_MEMORY_ATTRIBUTES 249
+ 
+ struct kvm_irq_routing_irqchip {
+ 	__u32 irqchip;
+@@ -1648,6 +1649,7 @@ struct kvm_memory_attributes {
+ 	__u64 flags;
+ };
+ 
++/* Available with KVM_CAP_GUEST_MEMFD_MEMORY_ATTRIBUTES */
+ #define KVM_SET_MEMORY_ATTRIBUTES2              _IOWR(KVMIO,  0xd2, struct kvm_memory_attributes2)
+ 
+ struct kvm_memory_attributes2 {
+diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
+index 4d7bf52b7b717..cec02d68d7039 100644
+--- a/virt/kvm/kvm_main.c
++++ b/virt/kvm/kvm_main.c
+@@ -4972,6 +4972,11 @@ static int kvm_vm_ioctl_check_extension_generic(struct kvm *kvm, long arg)
+ 		return 1;
+ 	case KVM_CAP_GUEST_MEMFD_FLAGS:
+ 		return kvm_gmem_get_supported_flags(kvm);
++	case KVM_CAP_GUEST_MEMFD_MEMORY_ATTRIBUTES:
++		if (vm_memory_attributes)
++			return 0;
++
++		return kvm_supported_mem_attributes(kvm);
+ #endif
+ 	default:
+ 		break;
 
 -- 
 2.54.0.545.g6539524ca2-goog
