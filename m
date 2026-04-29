@@ -1,15 +1,12 @@
 From: Joshua Crofts <joshua.crofts1@gmail.com>
-Subject: [PATCH v3 0/8] iio: light: si1133: driver cleanup
-Date: Wed, 29 Apr 2026 17:04:48 +0200
-Message-Id: <20260429-si1133-checkup-v3-0-469f21d960eb@gmail.com>
+Date: Wed, 29 Apr 2026 17:04:49 +0200
+Subject: [PATCH v3 1/8] iio: light: si1133: remove unused macros
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIABAe8mkC/3WOywrCMBBFf6Vk7Uhm0heu/A9xkaaTNmhtSTQop
- f9u2lVBXJ4L53BnEdg7DuKUzcJzdMGNjwTqkAnT60fH4NrEgiSVMqcKgkNUCkzP5vaaQDfGFFR
- L3VolkjR5tu69BS/XxL0Lz9F/tn7Edf2biggIJG1hEbnRpTl3g3b3oxkHsaYi7fX6RyeQUKUjm
- DeWLdNeX5blC3S11MXrAAAA
-X-Change-ID: 20260427-si1133-checkup-abcc5280adf3
+Message-Id: <20260429-si1133-checkup-v3-1-469f21d960eb@gmail.com>
+References: <20260429-si1133-checkup-v3-0-469f21d960eb@gmail.com>
+In-Reply-To: <20260429-si1133-checkup-v3-0-469f21d960eb@gmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
  David Lechner <dlechner@baylibre.com>, 
  =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
@@ -17,62 +14,44 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Joshua Crofts <joshua.crofts1@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777475147; l=1807;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777475147; l=969;
  i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
- bh=3i5szcPoHjj8uGVodLvIQA137dR7oTUd3FYQWzKjtv4=;
- b=hAwCMJl/2Gy9Xo0cb21LEs85I0s8nXyMid4lHADjvlolpkFlHMoTROSuUY/YaHBvBxvTur1Xe
- 2MUr8vzS75NB42lbtb9lTayJS9ByvXZv1nrAuQL8NDM8nvpZTAD2WcN
+ bh=Ecef6Lis4KUDy5wkginYFApj5UHLvf6O9wthv94jeNY=;
+ b=VOfiDrlq/09SWdsT4tH+FwToLIP84cp1zHZoWoN1tklDogUu705H3koPJEFE1QiG7nuhOzDv5
+ cMoZM4DNrlZD9bjZVO80h2qUfB+C+2nbEbN/Ry1vfS3HYYFp1QAkWMy
 X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
  pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
 X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series deals with the cleanup and modernization of the Silicon
-Labs SI1133 UV/Ambient light sensor.
+Remove unused macros to improve readability.
 
-What seemed like a simple checkpatch cleanup turned out to be more
-complex, therefore I've ended up doing a patch series instead.
-
-Changes include:
- - adding missing headers
- - removing unused macros
- - adding guard(mutex)() support
- - code style fixes
- - race condition fixes reported by Sashiko
+No functional change.
 
 Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
 ---
-Changes in v3:
-- PATCH 6: add local variable for timeout
-- PATCH 7 & 8: fix potential race conditions as pointed out by Sashiko
-- Link to v2: https://lore.kernel.org/r/20260428-si1133-checkup-v2-0-70ad14bfefe2@gmail.com
+ drivers/iio/light/si1133.c | 4 ----
+ 1 file changed, 4 deletions(-)
 
-Changes in v2:
-- Change v2 to patch series
-- PATCH 2: remove unused macros
-- PATCH 3: add missing include headers
-- PATCH 4: group generic <linux/*> headers
-- PATCH 5: add guard(mutex)() support
-- Link to v1: https://lore.kernel.org/r/20260427-si1133-checkup-v1-1-20f5f11eba6c@gmail.com
+diff --git a/drivers/iio/light/si1133.c b/drivers/iio/light/si1133.c
+index 44fa152dbd24c26c97cc778cbe641d92ecd56afa..73b0ce21e017cd4ab6c6b280229f417763866502 100644
+--- a/drivers/iio/light/si1133.c
++++ b/drivers/iio/light/si1133.c
+@@ -86,13 +86,9 @@
+ #define SI1133_CMD_MINSLEEP_US_LOW	5000
+ #define SI1133_CMD_MINSLEEP_US_HIGH	7500
+ #define SI1133_CMD_TIMEOUT_MS		25
+-#define SI1133_CMD_LUX_TIMEOUT_MS	5000
+-#define SI1133_CMD_TIMEOUT_US		SI1133_CMD_TIMEOUT_MS * 1000
+ 
+ #define SI1133_REG_HOSTOUT(x)		(x) + 0x13
+ 
+-#define SI1133_MEASUREMENT_FREQUENCY 1250
+-
+ #define SI1133_X_ORDER_MASK            0x0070
+ #define SI1133_Y_ORDER_MASK            0x0007
+ #define si1133_get_x_order(m)          ((m) & SI1133_X_ORDER_MASK) >> 4
 
----
-Joshua Crofts (8):
-      iio: light: si1133: remove unused macros
-      iio: light: si1133: prefer complex macros enclosed in parenthesis
-      iio: light: si1133: add missing include headers
-      iio: light: si1133: group generic <linux/*> headers
-      iio: light: si1133: use guard(mutex)() macro
-      iio: light: si1133: add local variable for timeout
-      iio: light: si1133: reset counter to prevent race condition
-      iio: light: si1133: prevent race condition on timeout
-
- drivers/iio/light/si1133.c | 73 ++++++++++++++++++++++++++++------------------
- 1 file changed, 45 insertions(+), 28 deletions(-)
----
-base-commit: d86db1905add39f905cf9f04252804b359914ed6
-change-id: 20260427-si1133-checkup-abcc5280adf3
-
-Best regards,
 -- 
-Joshua Crofts <joshua.crofts1@gmail.com>
+2.47.3
 
