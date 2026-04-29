@@ -1,139 +1,93 @@
-From: Colin Huang <u8813345@gmail.com>
-Date: Wed, 29 Apr 2026 17:42:00 +0800
-Subject: [PATCH 3/3] hwmon: (pmbus) add support for Delta E50SN12051
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH v4 00/13] Fixes and cleanups for the AD5686 IIO driver
+Date: Wed, 29 Apr 2026 14:07:30 +0100
+Message-Id: <20260429-ad5686-fixes-v4-0-bb8f1cbd68e1@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260429-add-e50sn12051-v1-3-c101e6c80bbb@gmail.com>
-References: <20260429-add-e50sn12051-v1-0-c101e6c80bbb@gmail.com>
-In-Reply-To: <20260429-add-e50sn12051-v1-0-c101e6c80bbb@gmail.com>
-To: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Kevin Chang <kevin.chang2@amd.com>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>
-Cc: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- Colin Huang <colin.huang2@amd.com>, Colin Huang <u8813345@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAJMC8mkC/3XM0Q6CIBTG8VdxXEcDxAN01Xu0LhCOylbapLGa8
+ 91Dr8zW5XfOfv+JRBwDRnIqJjJiCjEMfR7yUBDX2b5FGnzeRDABTAqg1leggTbhhZFCiRa05rz
+ 2NcnkMeL6yOJyzbsL8TmM77We+HL9E0qcMqqckWCVUkbi2fb2NrRHN9zJUkpiq9VOi6y51sgqb
+ kwJ+keXW613uszauKZRtQdlefWl53n+AMetmPMlAQAA
+X-Change-ID: 20260426-ad5686-fixes-63ea68811bdb
+To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Stefan Popa <stefan.popa@analog.com>, Jonathan Cameron <jic23@cam.ac.uk>, 
+ Greg Kroah-Hartman <gregkh@suse.de>, 
+ Michael Auchter <michael.auchter@ni.com>, 
+ Jonathan Cameron <jic23@kernel.org>
+Cc: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>, 
+ Andy Shevchenko <andriy.shevchenko@intel.com>, 
+ Rodrigo Alencar <rdealencar@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777455724; l=3531;
- i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
- bh=oOfgVU8xJ23RAc8R7rLid7SuguEX/M0GzcoNaRye0hw=;
- b=jarYjTXPvj4km61NsJwQXm0GK3UGwAeHLJM7WJvJTCBuUOS1odnDwNauakyjdtfNNLzm/Vt9O
- ioWDlSYvmLVCWwPFk4kA4oIKYAPX397nkAtfhMtjgjx+2WjWUZzFn7c
-X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
- pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
-X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777468056; l=2426;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=PuiIpU+Ax2bnVFiBydUv+NptiuYYg0kGR4hs6vHFVNQ=;
+ b=h4bdcsdiSSPEQpwI0W4uEKKuCXNInOi7kFEi12myLiqogKIwfSYIt46c8r1dbBG5pqws9+uzX
+ Vr5d9D2ogffDcNQJwo5CjdPdy99Q+5kGZvtDyW4GNgB4aBEJbR/qF1T
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the pmbus driver for Delta E50SN12051 600W Non-isolated
-1/8th Brick DCDC Power Modules.
+This is the first series of three on updating the AD5686 driver.
 
-Signed-off-by: Colin Huang <u8813345@gmail.com>
+A bigger patch series was sent before ("Extend device support for AD5686 driver"),
+but this is not exactly a v2:
+
+https://lore.kernel.org/r/20260422-ad5313r-iio-support-v1-0-ed7dca001d1b@analog.com
+
+This one adds a number of cleanups and fixes, like:
+- Refactor include headers (IWYU);
+- Remove redundant register definition;
+- Drop enum chip id in favor of per-device chip_info structs;
+- Fix internal voltage reference control for single-channel devices;
+- Acquire lock when doing power down control;
+- Fix powerdown control for dual-channel devices;
+
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/hwmon/pmbus/Kconfig      |  9 ++++++
- drivers/hwmon/pmbus/Makefile     |  1 +
- drivers/hwmon/pmbus/e50sn12051.c | 60 ++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 70 insertions(+)
+Changes in v4:
+- Address issues spotted by sashiko.
+- Link to v3: https://lore.kernel.org/r/20260428-ad5686-fixes-v3-0-9cff7bd67a15@analog.com
 
-diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
-index 8f4bff375ecb..4fbfcbc4a9c5 100644
---- a/drivers/hwmon/pmbus/Kconfig
-+++ b/drivers/hwmon/pmbus/Kconfig
-@@ -161,6 +161,15 @@ config SENSORS_DPS920AB
- 	  This driver can also be built as a module. If so, the module will
- 	  be called dps920ab.
- 
-+config SENSORS_E50SN12051
-+	tristate "Delta E50SN12051 Power Modules"
-+	help
-+	  If you say yes here you get hardware monitoring support for Delta
-+	  E50SN12051 Power Modules.
-+
-+	  This driver can also be built as a module. If so, the module will
-+	  be called e50sn12051.
-+
- config SENSORS_INA233
- 	tristate "Texas Instruments INA233 and compatibles"
- 	help
-diff --git a/drivers/hwmon/pmbus/Makefile b/drivers/hwmon/pmbus/Makefile
-index 7129b62bc00f..fc910bf34fe3 100644
---- a/drivers/hwmon/pmbus/Makefile
-+++ b/drivers/hwmon/pmbus/Makefile
-@@ -17,6 +17,7 @@ obj-$(CONFIG_SENSORS_FSP_3Y)	+= fsp-3y.o
- obj-$(CONFIG_SENSORS_HAC300S)	+= hac300s.o
- obj-$(CONFIG_SENSORS_IBM_CFFPS)	+= ibm-cffps.o
- obj-$(CONFIG_SENSORS_DPS920AB)	+= dps920ab.o
-+obj-$(CONFIG_SENSORS_E50SN12051) += e50sn12051.o
- obj-$(CONFIG_SENSORS_INA233)	+= ina233.o
- obj-$(CONFIG_SENSORS_INSPUR_IPSPS) += inspur-ipsps.o
- obj-$(CONFIG_SENSORS_IR35221)	+= ir35221.o
-diff --git a/drivers/hwmon/pmbus/e50sn12051.c b/drivers/hwmon/pmbus/e50sn12051.c
-new file mode 100644
-index 000000000000..56935e9543b6
---- /dev/null
-+++ b/drivers/hwmon/pmbus/e50sn12051.c
-@@ -0,0 +1,60 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * Hardware monitoring driver for E50SN12051
-+ */
-+
-+#include <linux/debugfs.h>
-+#include <linux/i2c.h>
-+#include <linux/kstrtox.h>
-+#include <linux/module.h>
-+#include <linux/of_device.h>
-+#include "pmbus.h"
-+
-+static struct pmbus_driver_info e50sn12051_info = {
-+	.pages = 1,
-+	.format[PSC_VOLTAGE_IN] = linear,
-+	.format[PSC_VOLTAGE_OUT] = linear,
-+	.format[PSC_CURRENT_OUT] = linear,
-+	.format[PSC_TEMPERATURE] = linear,
-+	.func[0] = PMBUS_HAVE_VIN | PMBUS_HAVE_STATUS_INPUT |
-+		   PMBUS_HAVE_VOUT | PMBUS_HAVE_STATUS_VOUT |
-+		   PMBUS_HAVE_IOUT | PMBUS_HAVE_STATUS_IOUT |
-+		   PMBUS_HAVE_TEMP | PMBUS_HAVE_STATUS_TEMP,
-+};
-+
-+static const struct i2c_device_id e50sn12051_id[] = { { "e50sn12051", 0 }, {} };
-+MODULE_DEVICE_TABLE(i2c, e50sn12051_id);
-+
-+static const struct of_device_id e50sn12051_of_match[] = {
-+	{ .compatible = "delta,e50sn12051" },
-+	{},
-+};
-+MODULE_DEVICE_TABLE(of, e50sn12051_of_match);
-+
-+static int e50sn12051_probe(struct i2c_client *client)
-+{
-+	struct pmbus_driver_info *info;
-+
-+	info = devm_kmemdup(&client->dev, &e50sn12051_info, sizeof(*info),
-+			    GFP_KERNEL);
-+	if (!info)
-+		return -ENOMEM;
-+
-+	return pmbus_do_probe(client, info);
-+}
-+
-+static struct i2c_driver e50sn12051_driver = {
-+	.driver = {
-+		.name = "e50sn12051",
-+		.of_match_table = e50sn12051_of_match,
-+	},
-+	.probe = e50sn12051_probe,
-+
-+	.id_table = e50sn12051_id,
-+};
-+
-+module_i2c_driver(e50sn12051_driver);
-+
-+MODULE_AUTHOR("Kevin Chang <kevin.chang2@amd.com>");
-+MODULE_DESCRIPTION("PMBus driver for E50SN12051");
-+MODULE_LICENSE("GPL");
+Changes in v3:
+- Misc changes like parenthesis removal and line breaks
+- Link to v2: https://lore.kernel.org/r/20260427-ad5686-fixes-v2-0-188e05199368@analog.com
 
+Changes in v2:
+- Bring fixes first and cleanups later
+- Link to v1: https://lore.kernel.org/r/20260426-ad5686-fixes-v1-0-7c946a77794e@analog.com
+
+---
+Rodrigo Alencar (13):
+      iio: dac: ad5686: fix ref bit initialization for single-channel parts
+      iio: dac: ad5686: fix input raw value check
+      iio: dac: ad5686: acquire lock when doing powerdown control
+      iio: dac: ad5686: fix powerdown control on dual-channel devices
+      iio: dac: ad5686: fix overlapping DMA buffers in I2C read
+      iio: dac: ad5686: refactor include headers
+      iio: dac: ad5686: remove redundant register definition
+      iio: dac: ad5686: drop enum id
+      iio: dac: ad5686: add of_match table to the spi driver
+      iio: dac: ad5686: remove powerdown mask magic number
+      iio: dac: ad5686: add control_sync() for single-channel devices
+      iio: dac: ad5686: cleanup doc header of local structs
+      iio: dac: ad5686: create bus ops struct
+
+ drivers/iio/dac/ad5686-spi.c |  73 ++++--
+ drivers/iio/dac/ad5686.c     | 526 +++++++++++++++++++++----------------------
+ drivers/iio/dac/ad5686.h     | 120 +++++-----
+ drivers/iio/dac/ad5696-i2c.c |  84 +++----
+ 4 files changed, 419 insertions(+), 384 deletions(-)
+---
+base-commit: d86db1905add39f905cf9f04252804b359914ed6
+change-id: 20260426-ad5686-fixes-63ea68811bdb
+
+Best regards,
 -- 
-2.34.1
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
