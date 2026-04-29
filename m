@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Wed, 29 Apr 2026 14:07:39 +0100
-Subject: [PATCH v4 09/13] iio: dac: ad5686: add of_match table to the spi
- driver
+Date: Wed, 29 Apr 2026 14:07:40 +0100
+Subject: [PATCH v4 10/13] iio: dac: ad5686: remove powerdown mask magic
+ number
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260429-ad5686-fixes-v4-9-bb8f1cbd68e1@analog.com>
+Message-Id: <20260429-ad5686-fixes-v4-10-bb8f1cbd68e1@analog.com>
 References: <20260429-ad5686-fixes-v4-0-bb8f1cbd68e1@analog.com>
 In-Reply-To: <20260429-ad5686-fixes-v4-0-bb8f1cbd68e1@analog.com>
 To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
@@ -17,63 +17,94 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Michael Hennerich <Michael.Hennerich@analog.com>, 
  Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
  Andy Shevchenko <andy@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>, 
- Andy Shevchenko <andriy.shevchenko@intel.com>
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777468056; l=1909;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777468056; l=2952;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=wFk8LhEhsvyl3awicLq5nznLuet66NPWLXqtRqBdDRo=;
- b=Uy1DSFQruTXgTBzSVnGSQhz9L1j8GGk318zwa0z2EY1yCRgk0nvkS6dSR3klKv035+utIAPVZ
- jofZDvaHFZZBYLVaP1O/dITQBKI+3caZYpSIWuHaiin/2SuB9zAjC/c
+ bh=x+f5X9G+QgQmbzFHF+5ueLvHY+KAC7dvWbfcoQHYU34=;
+ b=X2uVsE4M/sgiAOEaPE2oy3tNs+ey1gwQCHd2/J4JwZu3egSDguRYLm7Ok+A6/Kr4YVErYcQD8
+ ZYhNTC83U81A7ZC8dH0fTfHk7eyABP16PBLY8AGPZxcyNxSE5KzeqF8
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add of_match table for the SPI device variants to be consistent with the
-AD5696 I2C driver.
+Define macro AD5686_PD_MSK to hold powerdown mask value.
 
-Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/dac/ad5686-spi.c | 21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
+ drivers/iio/dac/ad5686.c | 16 ++++++++--------
+ drivers/iio/dac/ad5686.h |  1 +
+ 2 files changed, 9 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/iio/dac/ad5686-spi.c b/drivers/iio/dac/ad5686-spi.c
-index 5cf60a6e19d1..9493511d9e7f 100644
---- a/drivers/iio/dac/ad5686-spi.c
-+++ b/drivers/iio/dac/ad5686-spi.c
-@@ -119,9 +119,30 @@ static const struct spi_device_id ad5686_spi_id[] = {
- };
- MODULE_DEVICE_TABLE(spi, ad5686_spi_id);
+diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
+index 4bcabdbaf1d8..0590716191c1 100644
+--- a/drivers/iio/dac/ad5686.c
++++ b/drivers/iio/dac/ad5686.c
+@@ -39,7 +39,7 @@ static int ad5686_get_powerdown_mode(struct iio_dev *indio_dev,
+ 	unsigned int shift = ad5686_pd_mask_shift(chan);
+ 	struct ad5686_state *st = iio_priv(indio_dev);
  
-+static const struct of_device_id ad5686_of_match[] = {
-+	{ .compatible = "adi,ad5310r", .data = &ad5310r_chip_info },
-+	{ .compatible = "adi,ad5672r", .data = &ad5672r_chip_info },
-+	{ .compatible = "adi,ad5674r", .data = &ad5674r_chip_info },
-+	{ .compatible = "adi,ad5676",  .data = &ad5676_chip_info },
-+	{ .compatible = "adi,ad5676r", .data = &ad5676r_chip_info },
-+	{ .compatible = "adi,ad5679r", .data = &ad5679r_chip_info },
-+	{ .compatible = "adi,ad5681r", .data = &ad5681r_chip_info },
-+	{ .compatible = "adi,ad5682r", .data = &ad5682r_chip_info },
-+	{ .compatible = "adi,ad5683",  .data = &ad5683_chip_info },
-+	{ .compatible = "adi,ad5683r", .data = &ad5683r_chip_info },
-+	{ .compatible = "adi,ad5684",  .data = &ad5684_chip_info },
-+	{ .compatible = "adi,ad5684r", .data = &ad5684r_chip_info },
-+	{ .compatible = "adi,ad5685r", .data = &ad5685r_chip_info },
-+	{ .compatible = "adi,ad5686",  .data = &ad5686_chip_info },
-+	{ .compatible = "adi,ad5686r", .data = &ad5686r_chip_info },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, ad5686_of_match);
-+
- static struct spi_driver ad5686_spi_driver = {
- 	.driver = {
- 		.name = "ad5686",
-+		.of_match_table = ad5686_of_match,
- 	},
- 	.probe = ad5686_spi_probe,
- 	.id_table = ad5686_spi_id,
+-	return ((st->pwr_down_mode >> shift) & 0x3) - 1;
++	return ((st->pwr_down_mode >> shift) & AD5686_PD_MSK) - 1;
+ }
+ 
+ static int ad5686_set_powerdown_mode(struct iio_dev *indio_dev,
+@@ -51,8 +51,8 @@ static int ad5686_set_powerdown_mode(struct iio_dev *indio_dev,
+ 
+ 	guard(mutex)(&st->lock);
+ 
+-	st->pwr_down_mode &= ~(0x3 << shift);
+-	st->pwr_down_mode |= (mode + 1) << shift;
++	st->pwr_down_mode &= ~(AD5686_PD_MSK << shift);
++	st->pwr_down_mode |= ((mode + 1) & AD5686_PD_MSK) << shift;
+ 
+ 	return 0;
+ }
+@@ -70,7 +70,7 @@ static ssize_t ad5686_read_dac_powerdown(struct iio_dev *indio_dev,
+ 	unsigned int shift = ad5686_pd_mask_shift(chan);
+ 	struct ad5686_state *st = iio_priv(indio_dev);
+ 
+-	return sysfs_emit(buf, "%d\n", !!(st->pwr_down_mask & (0x3 << shift)));
++	return sysfs_emit(buf, "%d\n", !!(st->pwr_down_mask & (AD5686_PD_MSK << shift)));
+ }
+ 
+ static ssize_t ad5686_write_dac_powerdown(struct iio_dev *indio_dev,
+@@ -92,9 +92,9 @@ static ssize_t ad5686_write_dac_powerdown(struct iio_dev *indio_dev,
+ 	guard(mutex)(&st->lock);
+ 
+ 	if (readin)
+-		st->pwr_down_mask |= 0x3 << ad5686_pd_mask_shift(chan);
++		st->pwr_down_mask |= AD5686_PD_MSK << ad5686_pd_mask_shift(chan);
+ 	else
+-		st->pwr_down_mask &= ~(0x3 << ad5686_pd_mask_shift(chan));
++		st->pwr_down_mask &= ~(AD5686_PD_MSK << ad5686_pd_mask_shift(chan));
+ 
+ 	switch (st->chip_info->regmap_type) {
+ 	case AD5310_REGMAP:
+@@ -468,8 +468,8 @@ int ad5686_probe(struct device *dev,
+ 	/* Set all the power down mode for all channels to 1K pulldown */
+ 	for (i = 0; i < st->chip_info->num_channels; i++) {
+ 		shift = ad5686_pd_mask_shift(&st->chip_info->channels[i]);
+-		st->pwr_down_mask &= ~(0x3 << shift); /* powered up state */
+-		st->pwr_down_mode &= ~(0x3 << shift);
++		st->pwr_down_mask &= ~(AD5686_PD_MSK << shift); /* powered up state */
++		st->pwr_down_mode &= ~(AD5686_PD_MSK << shift);
+ 		st->pwr_down_mode |= 0x01 << shift;
+ 	}
+ 
+diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
+index caadc7403da1..b9eee3ad4dc8 100644
+--- a/drivers/iio/dac/ad5686.h
++++ b/drivers/iio/dac/ad5686.h
+@@ -47,6 +47,7 @@
+ #define AD5683_REF_BIT_MSK			BIT(12)
+ #define AD5686_REF_BIT_MSK			BIT(0)
+ 
++#define AD5686_PD_MSK				GENMASK(1, 0)
+ 
+ enum ad5686_regmap_type {
+ 	AD5310_REGMAP,
 
 -- 
 2.43.0
