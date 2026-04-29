@@ -1,246 +1,85 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Wed, 29 Apr 2026 14:07:43 +0100
-Subject: [PATCH v4 13/13] iio: dac: ad5686: create bus ops struct
+From: David Heidelberg <david@ixit.cz>
+Date: Wed, 29 Apr 2026 15:16:53 +0200
+Subject: [PATCH] arm64: dts: qcom: sdm845-xiaomi-beryllium: Correct IPA FW
+ path
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260429-ad5686-fixes-v4-13-bb8f1cbd68e1@analog.com>
-References: <20260429-ad5686-fixes-v4-0-bb8f1cbd68e1@analog.com>
-In-Reply-To: <20260429-ad5686-fixes-v4-0-bb8f1cbd68e1@analog.com>
-To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Stefan Popa <stefan.popa@analog.com>, Jonathan Cameron <jic23@cam.ac.uk>, 
- Greg Kroah-Hartman <gregkh@suse.de>, 
- Michael Auchter <michael.auchter@ni.com>, 
- Jonathan Cameron <jic23@kernel.org>
-Cc: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>, 
- Andy Shevchenko <andriy.shevchenko@intel.com>
+Message-Id: <20260429-beryllium-ipa-fix-v1-1-816326ba9047@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAMQE8mkC/x2MWw5AMBAAr9Lst02qFcpVxIfHYhNKtiFE3F3jc
+ yaZeSCQMAWo1ANCJwfefIQ0UdDPrZ8IeYgMRptcZ6bEjuReFj5W5L3FkS8sqHRF7pzV1kHsdqG
+ o/2fdvO8H65RbMmMAAAA=
+X-Change-ID: 20260429-beryllium-ipa-fix-7e9876883038
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Robert Eckelmann <longnoserob@gmail.com>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ Joel Selvaraj <foss@joelselvaraj.com>, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777468056; l=7566;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=LuP1ax2zq6YT04bIBwYyw9AJEsK6qS3wccsB9OfuPxA=;
- b=tZSNC+Ace8IuxliSDceImaRkbkvwwKKuqGEYup4Ow0DVKkxhokbh84UNAYEJTr49gqHv8DrxD
- c1BGhMiHqoAAZ4mEtsNATf5ne8PsuVJjQIbaFL60nqs/hB3CtCiPUyt
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1313; i=david@ixit.cz;
+ h=from:subject:message-id; bh=XlrWu6+s0yzcZbPOuqwUJ1OG+3gH3ACkoRurIxaFbys=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBp8gTUUmKZ9rMDMP4he+SdSlNbVNxIugNU0O8Ni
+ MZMl2tA2MSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCafIE1AAKCRBgAj/E00kg
+ cvzGEACNCAxF/J4o22AFXb6r0uX1FmcnZjznlEbXhaWpLqT4+tAJcREq+AkxPDRwQ9VVZbSkIqr
+ EUEAt32Mhyd2jZJDWBUNcjIXPqLXLtYREyiGYNf9cPS9Y/c4EKdRugBUwW33ks/GBAtnEJOvbAC
+ QsmF2eiyOJBvezknOrj9Hhru1Ov1BOSGN3ECAb2Hk4mYBPugnDPfAp5Fj16j+35MZb8/d2YL73O
+ JrPk0R4qSjfy8AooCsNx81my9fZU+3JNCV3aIYxvrIeIjf8ZVlVRTp83kqcaBNcs2A3e2WEIYhn
+ r7SLguPkJp8G8bJenvHWRFPeC6Kl1jadJSeI1NSJcNbMMQNucSN77b5OrCch/Tgb8J9QToYddac
+ MWHIn04OC6pWSHW/Me9ZT2EpegMrYBMNmz1wdIZjzQrKw6Vgus2rkLjmLCOjlTwGaIoqgVIi4kT
+ U869bTS/4JTP2mZrXBKkmwfATqKTCWSlf3PAfdpjU/1CC6uV8yMnU11sqFk2uC6+0Ju2YQHjBAj
+ bpOVb+pXFtpJ8sKF2H+fXulDdJjiq1bXqb3VMYIKs2jbxsTSaZan3GRe+Aqeh6iYbxwwWyJmdLq
+ uZoTP6cCZDa/iNSy4Xs/j1AgPfmZBwpe28hcIGQYoCY4h4vL4bCNAfun2aQc8D4tkHGeawbdGdA
+ dA2J159BbDNZxPA==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Create struct with bus operations, which will be used to extend bus
-implementation features. Auxiliary functions ad5686_write() and
-ad5686_read() are created and ad5686_probe() now receives an ops struct
-pointer rather than individual read and write functions.
+From: Joel Selvaraj <foss@joelselvaraj.com>
 
-Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+The path was accidentally reverted back to old while refactoring of the
+device-tree.
+
+Fixes: 5bde31dc7b17 ("arm64: dts: qcom: sdm845-xiaomi-beryllium: Add placeholders and sort")
+Signed-off-by: Joel Selvaraj <foss@joelselvaraj.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/iio/dac/ad5686-spi.c |  7 ++++++-
- drivers/iio/dac/ad5686.c     | 32 ++++++++++++++------------------
- drivers/iio/dac/ad5686.h     | 29 +++++++++++++++++++++--------
- drivers/iio/dac/ad5696-i2c.c |  7 ++++++-
- 4 files changed, 47 insertions(+), 28 deletions(-)
+ arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/iio/dac/ad5686-spi.c b/drivers/iio/dac/ad5686-spi.c
-index 9493511d9e7f..7409624b954b 100644
---- a/drivers/iio/dac/ad5686-spi.c
-+++ b/drivers/iio/dac/ad5686-spi.c
-@@ -92,10 +92,15 @@ static int ad5686_spi_read(struct ad5686_state *st, u8 addr)
- 	return be32_to_cpu(st->data[2].d32);
- }
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
+index 1298485c42142..22354968aeaa3 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
+@@ -266,17 +266,17 @@ &ibb {
+ 	regulator-pull-down;
+ 	regulator-soft-start;
+ 	qcom,discharge-resistor-kohms = <300>;
+ };
  
-+static const struct ad5686_bus_ops ad5686_spi_ops = {
-+	.write = ad5686_spi_write,
-+	.read = ad5686_spi_read,
-+};
-+
- static int ad5686_spi_probe(struct spi_device *spi)
- {
- 	return ad5686_probe(&spi->dev, spi_get_device_match_data(spi),
--			    spi->modalias, ad5686_spi_write, ad5686_spi_read);
-+			    spi->modalias, &ad5686_spi_ops);
- }
+ &ipa {
+ 	qcom,gsi-loader = "self";
+ 	memory-region = <&ipa_fw_mem>;
+-	firmware-name = "qcom/sdm845/beryllium/ipa_fws.mbn";
++	firmware-name = "qcom/sdm845/Xiaomi/beryllium/ipa_fws.mbn";
  
- static const struct spi_device_id ad5686_spi_id[] = {
-diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
-index bf3dc3903346..5df2527b3a2e 100644
---- a/drivers/iio/dac/ad5686.c
-+++ b/drivers/iio/dac/ad5686.c
-@@ -30,18 +30,18 @@ static int ad5310_control_sync(struct ad5686_state *st)
- {
- 	unsigned int pd_val = st->pwr_down_mask & st->pwr_down_mode;
+ 	status = "okay";
+ };
  
--	return st->write(st, AD5686_CMD_CONTROL_REG, 0,
--			 FIELD_PREP(AD5310_PD_MSK, pd_val) |
--			 FIELD_PREP(AD5310_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
-+	return ad5686_write(st, AD5686_CMD_CONTROL_REG, 0,
-+			    FIELD_PREP(AD5310_PD_MSK, pd_val) |
-+			    FIELD_PREP(AD5310_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
- }
+ &i2c5 {
+ 	clock-frequency = <400000>;
  
- static int ad5683_control_sync(struct ad5686_state *st)
- {
- 	unsigned int pd_val = st->pwr_down_mask & st->pwr_down_mode;
- 
--	return st->write(st, AD5686_CMD_CONTROL_REG, 0,
--			 FIELD_PREP(AD5683_PD_MSK, pd_val) |
--			 FIELD_PREP(AD5683_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
-+	return ad5686_write(st, AD5686_CMD_CONTROL_REG, 0,
-+			    FIELD_PREP(AD5683_PD_MSK, pd_val) |
-+			    FIELD_PREP(AD5683_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
- }
- 
- static inline unsigned int ad5686_pd_mask_shift(const struct iio_chan_spec *chan)
-@@ -137,7 +137,7 @@ static ssize_t ad5686_write_dac_powerdown(struct iio_dev *indio_dev,
- 			address = 0x0;
- 			val = lower_16_bits(val);
- 		}
--		ret = st->write(st, AD5686_CMD_POWERDOWN_DAC, address, val);
-+		ret = ad5686_write(st, AD5686_CMD_POWERDOWN_DAC, address, val);
- 		if (ret)
- 			return ret;
- 		break;
-@@ -160,7 +160,7 @@ static int ad5686_read_raw(struct iio_dev *indio_dev,
- 	switch (m) {
- 	case IIO_CHAN_INFO_RAW:
- 		mutex_lock(&st->lock);
--		ret = st->read(st, chan->address);
-+		ret = ad5686_read(st, chan->address);
- 		mutex_unlock(&st->lock);
- 		if (ret < 0)
- 			return ret;
-@@ -190,10 +190,8 @@ static int ad5686_write_raw(struct iio_dev *indio_dev,
- 			return -EINVAL;
- 
- 		mutex_lock(&st->lock);
--		ret = st->write(st,
--				AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
--				chan->address,
--				val << chan->scan_type.shift);
-+		ret = ad5686_write(st, AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
-+				   chan->address, val << chan->scan_type.shift);
- 		mutex_unlock(&st->lock);
- 		break;
- 	default:
-@@ -454,8 +452,7 @@ EXPORT_SYMBOL_NS_GPL(ad5679r_chip_info, "IIO_AD5686");
- 
- int ad5686_probe(struct device *dev,
- 		 const struct ad5686_chip_info *chip_info,
--		 const char *name, ad5686_write_func write,
--		 ad5686_read_func read)
-+		 const char *name, const struct ad5686_bus_ops *ops)
- {
- 	struct ad5686_state *st;
- 	struct iio_dev *indio_dev;
-@@ -469,8 +466,7 @@ int ad5686_probe(struct device *dev,
- 	st = iio_priv(indio_dev);
- 
- 	st->dev = dev;
--	st->write = write;
--	st->read = read;
-+	st->ops = ops;
- 	st->chip_info = chip_info;
- 
- 	ret = devm_regulator_get_enable_read_voltage(dev, "vcc");
-@@ -515,8 +511,8 @@ int ad5686_probe(struct device *dev,
- 			return ret;
- 		break;
- 	case AD5686_REGMAP:
--		ret = st->write(st, AD5686_CMD_INTERNAL_REFER_SETUP, 0,
--				st->use_internal_vref ? 0 : AD5686_REF_BIT_MSK);
-+		ret = ad5686_write(st, AD5686_CMD_INTERNAL_REFER_SETUP, 0,
-+				   st->use_internal_vref ? 0 : AD5686_REF_BIT_MSK);
- 		if (ret)
- 			return ret;
- 		break;
-diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
-index 4397ffd2e236..e8dc21ecc0c5 100644
---- a/drivers/iio/dac/ad5686.h
-+++ b/drivers/iio/dac/ad5686.h
-@@ -60,10 +60,15 @@ enum ad5686_regmap_type {
- 
- struct ad5686_state;
- 
--typedef int (*ad5686_write_func)(struct ad5686_state *st,
--				 u8 cmd, u8 addr, u16 val);
--
--typedef int (*ad5686_read_func)(struct ad5686_state *st, u8 addr);
-+/**
-+ * struct ad5686_bus_ops - bus specific read/write operations
-+ * @read: read a register value at the given address
-+ * @write: write a command, address and value to the device
-+ */
-+struct ad5686_bus_ops {
-+	int (*read)(struct ad5686_state *st, u8 addr);
-+	int (*write)(struct ad5686_state *st, u8 cmd, u8 addr, u16 val);
-+};
- 
- /**
-  * struct ad5686_chip_info - chip specific information
-@@ -111,6 +116,7 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
-  * struct ad5686_state - driver instance specific data
-  * @dev:		device instance
-  * @chip_info:		chip model specific constants, available modes etc
-+ * @ops:		bus specific operations
-  * @vref_mv:		actual reference voltage used
-  * @pwr_down_mask:	power down mask
-  * @pwr_down_mode:	current power down mode
-@@ -122,11 +128,10 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
- struct ad5686_state {
- 	struct device			*dev;
- 	const struct ad5686_chip_info	*chip_info;
-+	const struct ad5686_bus_ops	*ops;
- 	unsigned short			vref_mv;
- 	unsigned int			pwr_down_mask;
- 	unsigned int			pwr_down_mode;
--	ad5686_write_func		write;
--	ad5686_read_func		read;
- 	bool				use_internal_vref;
- 	struct mutex			lock;
- 
-@@ -145,8 +150,16 @@ struct ad5686_state {
- 
- int ad5686_probe(struct device *dev,
- 		 const struct ad5686_chip_info *chip_info,
--		 const char *name, ad5686_write_func write,
--		 ad5686_read_func read);
-+		 const char *name, const struct ad5686_bus_ops *ops);
- 
-+static inline int ad5686_write(struct ad5686_state *st, u8 cmd, u8 addr, u16 val)
-+{
-+	return st->ops->write(st, cmd, addr, val);
-+}
-+
-+static inline int ad5686_read(struct ad5686_state *st, u8 addr)
-+{
-+	return st->ops->read(st, addr);
-+}
- 
- #endif /* __DRIVERS_IIO_DAC_AD5686_H__ */
-diff --git a/drivers/iio/dac/ad5696-i2c.c b/drivers/iio/dac/ad5696-i2c.c
-index 6943616eace3..6f3842ef8f9c 100644
---- a/drivers/iio/dac/ad5696-i2c.c
-+++ b/drivers/iio/dac/ad5696-i2c.c
-@@ -62,10 +62,15 @@ static int ad5686_i2c_write(struct ad5686_state *st,
- 	return (ret != 3) ? -EIO : 0;
- }
- 
-+static const struct ad5686_bus_ops ad5686_i2c_ops = {
-+	.write = ad5686_i2c_write,
-+	.read = ad5686_i2c_read,
-+};
-+
- static int ad5686_i2c_probe(struct i2c_client *i2c)
- {
- 	return ad5686_probe(&i2c->dev, i2c_get_match_data(i2c),
--			    i2c->name, ad5686_i2c_write, ad5686_i2c_read);
-+			    i2c->name, &ad5686_i2c_ops);
- }
- 
- static const struct i2c_device_id ad5686_i2c_id[] = {
+ 	status = "okay";
 
+---
+base-commit: dca922e019dd758b4c1b4bec8f1d509efddeaab4
+change-id: 20260429-beryllium-ipa-fix-7e9876883038
+
+Best regards,
 -- 
-2.43.0
+David Heidelberg <david@ixit.cz>
 
