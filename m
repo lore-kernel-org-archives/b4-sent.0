@@ -1,11 +1,10 @@
 From: Colin Huang <u8813345@gmail.com>
-Date: Wed, 29 Apr 2026 17:41:59 +0800
-Subject: [PATCH 2/3] Documentation/hwmon: add Delta E50SN12051
- documentation
+Date: Wed, 29 Apr 2026 17:42:00 +0800
+Subject: [PATCH 3/3] hwmon: (pmbus) add support for Delta E50SN12051
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260429-add-e50sn12051-v1-2-c101e6c80bbb@gmail.com>
+Message-Id: <20260429-add-e50sn12051-v1-3-c101e6c80bbb@gmail.com>
 References: <20260429-add-e50sn12051-v1-0-c101e6c80bbb@gmail.com>
 In-Reply-To: <20260429-add-e50sn12051-v1-0-c101e6c80bbb@gmail.com>
 To: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
@@ -16,127 +15,124 @@ Cc: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
  Colin Huang <colin.huang2@amd.com>, Colin Huang <u8813345@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777455724; l=3926;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777455724; l=3531;
  i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
- bh=fjIHEdGdFgCZriZJJHZn9TW0wcDHjeFCHvbUS0lc100=;
- b=OQYAtUS5gceSbMFz9dZPyD2rf4Qm0AflH+UO2NrCetAs6F6sEafEl25322aXmtL3nAJdcfcn5
- NgmOVNwn0XuBDGS8Ksi5B0N+F+YdlZ/TzBFRut/b25qai0q2ovsvhJW
+ bh=oOfgVU8xJ23RAc8R7rLid7SuguEX/M0GzcoNaRye0hw=;
+ b=jarYjTXPvj4km61NsJwQXm0GK3UGwAeHLJM7WJvJTCBuUOS1odnDwNauakyjdtfNNLzm/Vt9O
+ ioWDlSYvmLVCWwPFk4kA4oIKYAPX397nkAtfhMtjgjx+2WjWUZzFn7c
 X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
  pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
 X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the hardware monitoring support for the Delta E50SN12051
-device.
-
-The documentation describes the supported sensors exposed via the
-hwmon subsystem, including voltage, current, and temperature measurements.
+Add the pmbus driver for Delta E50SN12051 600W Non-isolated
+1/8th Brick DCDC Power Modules.
 
 Signed-off-by: Colin Huang <u8813345@gmail.com>
 ---
- Documentation/hwmon/e50sn12051.rst | 81 ++++++++++++++++++++++++++++++++++++++
- Documentation/hwmon/index.rst      |  1 +
- 2 files changed, 82 insertions(+)
+ drivers/hwmon/pmbus/Kconfig      |  9 ++++++
+ drivers/hwmon/pmbus/Makefile     |  1 +
+ drivers/hwmon/pmbus/e50sn12051.c | 60 ++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 70 insertions(+)
 
-diff --git a/Documentation/hwmon/e50sn12051.rst b/Documentation/hwmon/e50sn12051.rst
+diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
+index 8f4bff375ecb..4fbfcbc4a9c5 100644
+--- a/drivers/hwmon/pmbus/Kconfig
++++ b/drivers/hwmon/pmbus/Kconfig
+@@ -161,6 +161,15 @@ config SENSORS_DPS920AB
+ 	  This driver can also be built as a module. If so, the module will
+ 	  be called dps920ab.
+ 
++config SENSORS_E50SN12051
++	tristate "Delta E50SN12051 Power Modules"
++	help
++	  If you say yes here you get hardware monitoring support for Delta
++	  E50SN12051 Power Modules.
++
++	  This driver can also be built as a module. If so, the module will
++	  be called e50sn12051.
++
+ config SENSORS_INA233
+ 	tristate "Texas Instruments INA233 and compatibles"
+ 	help
+diff --git a/drivers/hwmon/pmbus/Makefile b/drivers/hwmon/pmbus/Makefile
+index 7129b62bc00f..fc910bf34fe3 100644
+--- a/drivers/hwmon/pmbus/Makefile
++++ b/drivers/hwmon/pmbus/Makefile
+@@ -17,6 +17,7 @@ obj-$(CONFIG_SENSORS_FSP_3Y)	+= fsp-3y.o
+ obj-$(CONFIG_SENSORS_HAC300S)	+= hac300s.o
+ obj-$(CONFIG_SENSORS_IBM_CFFPS)	+= ibm-cffps.o
+ obj-$(CONFIG_SENSORS_DPS920AB)	+= dps920ab.o
++obj-$(CONFIG_SENSORS_E50SN12051) += e50sn12051.o
+ obj-$(CONFIG_SENSORS_INA233)	+= ina233.o
+ obj-$(CONFIG_SENSORS_INSPUR_IPSPS) += inspur-ipsps.o
+ obj-$(CONFIG_SENSORS_IR35221)	+= ir35221.o
+diff --git a/drivers/hwmon/pmbus/e50sn12051.c b/drivers/hwmon/pmbus/e50sn12051.c
 new file mode 100644
-index 000000000000..cbbfa7895d82
+index 000000000000..56935e9543b6
 --- /dev/null
-+++ b/Documentation/hwmon/e50sn12051.rst
-@@ -0,0 +1,81 @@
-+.. SPDX-License-Identifier: GPL-2.0-or-later
++++ b/drivers/hwmon/pmbus/e50sn12051.c
+@@ -0,0 +1,60 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * Hardware monitoring driver for E50SN12051
++ */
 +
-+Kernel driver e50sn12051
-+========================
++#include <linux/debugfs.h>
++#include <linux/i2c.h>
++#include <linux/kstrtox.h>
++#include <linux/module.h>
++#include <linux/of_device.h>
++#include "pmbus.h"
 +
-+Supported chips:
++static struct pmbus_driver_info e50sn12051_info = {
++	.pages = 1,
++	.format[PSC_VOLTAGE_IN] = linear,
++	.format[PSC_VOLTAGE_OUT] = linear,
++	.format[PSC_CURRENT_OUT] = linear,
++	.format[PSC_TEMPERATURE] = linear,
++	.func[0] = PMBUS_HAVE_VIN | PMBUS_HAVE_STATUS_INPUT |
++		   PMBUS_HAVE_VOUT | PMBUS_HAVE_STATUS_VOUT |
++		   PMBUS_HAVE_IOUT | PMBUS_HAVE_STATUS_IOUT |
++		   PMBUS_HAVE_TEMP | PMBUS_HAVE_STATUS_TEMP,
++};
 +
-+  * Delta E50SN12051
++static const struct i2c_device_id e50sn12051_id[] = { { "e50sn12051", 0 }, {} };
++MODULE_DEVICE_TABLE(i2c, e50sn12051_id);
 +
-+    Prefix: 'e50sn12051'
++static const struct of_device_id e50sn12051_of_match[] = {
++	{ .compatible = "delta,e50sn12051" },
++	{},
++};
++MODULE_DEVICE_TABLE(of, e50sn12051_of_match);
 +
-+    Addresses scanned: -
++static int e50sn12051_probe(struct i2c_client *client)
++{
++	struct pmbus_driver_info *info;
 +
-+    Datasheet:
++	info = devm_kmemdup(&client->dev, &e50sn12051_info, sizeof(*info),
++			    GFP_KERNEL);
++	if (!info)
++		return -ENOMEM;
 +
-+      Provided by Delta upon request and NDA
++	return pmbus_do_probe(client, info);
++}
 +
-+Description
-+-----------
++static struct i2c_driver e50sn12051_driver = {
++	.driver = {
++		.name = "e50sn12051",
++		.of_match_table = e50sn12051_of_match,
++	},
++	.probe = e50sn12051_probe,
 +
-+E50SN12051 is a 600W non-isolated 1/8th brick DC-DC power module.
++	.id_table = e50sn12051_id,
++};
 +
-+This driver supports the E50SN12051 PMBus compliant monitor device.
++module_i2c_driver(e50sn12051_driver);
 +
-+The device provides measurements for:
-+
-+* Input voltage
-+* Output current
-+* Output voltage
-+* Temperature
-+
-+The driver is based on the PMBus core and exposes standard hwmon
-+sysfs attributes.
-+
-+Sysfs attributes
-+----------------
-+
-+======================= =======================================================
-+curr1_label             "iout1"
-+curr1_crit              Critical maximum current.
-+                        From IOUT_OC_FAULT_LIMIT register.
-+curr1_crit_alarm        Current critical high alarm.
-+                        From IOUT_OC_FAULT status.
-+curr1_input             Measured current.
-+                        From READ_IOUT register.
-+curr1_max               Maximum current.
-+                        From IOUT_OC_WARN_LIMIT register.
-+curr1_max_alarm         Current high alarm.
-+                        From IOUT_OC_WARN_LIMIT status.
-+
-+in1_label               "vin"
-+in1_alarm               Input voltage alarm.
-+in1_input               Measured voltage.
-+                        From READ_VIN register.
-+
-+in2_label               "vout1"
-+in2_crit                Critical maximum voltage.
-+                        From VOUT_OV_FAULT_LIMIT register.
-+in2_crit_alarm          Voltage critical high alarm.
-+                        From VOLTAGE_OV_FAULT status.
-+in2_input               Measured voltage.
-+                        From READ_VOUT register.
-+in2_max                 Maximum voltage.
-+                        From VOUT_OV_WARN_LIMIT register.
-+in2_max_alarm           Voltage high alarm.
-+                        From VOLTAGE_OV_WARNING status.
-+
-+temp1_crit              Critical high temperature.
-+                        From OT_FAULT_LIMIT register.
-+temp1_crit_alarm        Module temperature critical high alarm.
-+                        Set by comparing READ_TEMPERATURE_1 with OT_FAULT_LIMIT
-+                        if TEMP_OT_FAULT status is set.
-+temp1_input             Measured module's hot spot temperature.
-+                        From READ_TEMPERATURE_1 register.
-+temp1_max               Maximum temperature.
-+                        From OT_WARN_LIMIT register.
-+temp1_max_alarm         Module temperature high alarm.
-+                        Set by comparing READ_TEMPERATURE_1 with OT_WARN_LIMIT if
-+                        TEMP_OT_WARNING status is set.
-+======================= =======================================================
-+
-diff --git a/Documentation/hwmon/index.rst b/Documentation/hwmon/index.rst
-index 8b655e5d6b68..ba08655fc496 100644
---- a/Documentation/hwmon/index.rst
-+++ b/Documentation/hwmon/index.rst
-@@ -68,6 +68,7 @@ Hardware Monitoring Kernel Drivers
-    drivetemp
-    ds1621
-    ds620
-+   e50sn12051
-    emc1403
-    emc2103
-    emc2305
++MODULE_AUTHOR("Kevin Chang <kevin.chang2@amd.com>");
++MODULE_DESCRIPTION("PMBus driver for E50SN12051");
++MODULE_LICENSE("GPL");
 
 -- 
 2.34.1
