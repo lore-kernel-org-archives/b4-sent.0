@@ -1,85 +1,83 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Wed, 29 Apr 2026 15:16:53 +0200
-Subject: [PATCH] arm64: dts: qcom: sdm845-xiaomi-beryllium: Correct IPA FW
- path
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH v11 0/3] hwmon: Add support for the LTC4283 Hot Swap
+ Controller
+Date: Wed, 29 Apr 2026 15:28:25 +0100
+Message-Id: <20260429-ltc4283-support-v11-0-27ccde619dad@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260429-beryllium-ipa-fix-v1-1-816326ba9047@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAMQE8mkC/x2MWw5AMBAAr9Lst02qFcpVxIfHYhNKtiFE3F3jc
- yaZeSCQMAWo1ANCJwfefIQ0UdDPrZ8IeYgMRptcZ6bEjuReFj5W5L3FkS8sqHRF7pzV1kHsdqG
- o/2fdvO8H65RbMmMAAAA=
-X-Change-ID: 20260429-beryllium-ipa-fix-7e9876883038
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XOQW7DIBAF0KtErEs0DHjAWfUeURcUQ4KUGgtcK
+ 1Xkuxdnk0Qoy/+leX9urPgcfWGH3Y1lv8QS01iDEB875s52PHkeh1owBCSQIPlldgqN5OV3mlK
+ eOZAM2ljnOqtYvZqyD/F6J49fNZ9jmVP+uy8stLXvrYU4cB+8EB1gsAN+2tFe0mnv0g/bsMU8A
+ ahbwFRAaTF47LpBo2mA/gEooBboK/BN5ILTqkcSDSDgSUDTCgK2HwJSUKR64eQLsa7rP79Y2VF
+ 1AQAA
+X-Change-ID: 20260303-ltc4283-support-063f78acc5a4
+To: linux-gpio@vger.kernel.org, linux-hwmon@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-doc@vger.kernel.org
+Cc: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
- Robert Eckelmann <longnoserob@gmail.com>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- Joel Selvaraj <foss@joelselvaraj.com>, David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1313; i=david@ixit.cz;
- h=from:subject:message-id; bh=XlrWu6+s0yzcZbPOuqwUJ1OG+3gH3ACkoRurIxaFbys=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBp8gTUUmKZ9rMDMP4he+SdSlNbVNxIugNU0O8Ni
- MZMl2tA2MSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCafIE1AAKCRBgAj/E00kg
- cvzGEACNCAxF/J4o22AFXb6r0uX1FmcnZjznlEbXhaWpLqT4+tAJcREq+AkxPDRwQ9VVZbSkIqr
- EUEAt32Mhyd2jZJDWBUNcjIXPqLXLtYREyiGYNf9cPS9Y/c4EKdRugBUwW33ks/GBAtnEJOvbAC
- QsmF2eiyOJBvezknOrj9Hhru1Ov1BOSGN3ECAb2Hk4mYBPugnDPfAp5Fj16j+35MZb8/d2YL73O
- JrPk0R4qSjfy8AooCsNx81my9fZU+3JNCV3aIYxvrIeIjf8ZVlVRTp83kqcaBNcs2A3e2WEIYhn
- r7SLguPkJp8G8bJenvHWRFPeC6Kl1jadJSeI1NSJcNbMMQNucSN77b5OrCch/Tgb8J9QToYddac
- MWHIn04OC6pWSHW/Me9ZT2EpegMrYBMNmz1wdIZjzQrKw6Vgus2rkLjmLCOjlTwGaIoqgVIi4kT
- U869bTS/4JTP2mZrXBKkmwfATqKTCWSlf3PAfdpjU/1CC6uV8yMnU11sqFk2uC6+0Ju2YQHjBAj
- bpOVb+pXFtpJ8sKF2H+fXulDdJjiq1bXqb3VMYIKs2jbxsTSaZan3GRe+Aqeh6iYbxwwWyJmdLq
- uZoTP6cCZDa/iNSy4Xs/j1AgPfmZBwpe28hcIGQYoCY4h4vL4bCNAfun2aQc8D4tkHGeawbdGdA
- dA2J159BbDNZxPA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+ Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777472958; l=2151;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=NG7wnStbNGVSAyuO0z858ZLJDnWlS6H44BMy/Yc3QyU=;
+ b=gUGEFQCje73mGm/tKWu/14p63uX6sHrdYTPKrCSRt8QAir2sDiCmCa7D2DItWF0PGosEJ/Mp2
+ Vhz5mDIKiJQADoYmyy6Ws5DoYACSB+kweAMtxjZlw5RGo8vAY8goH54
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Joel Selvaraj <foss@joelselvaraj.com>
+This is v8 for the LTC4283 how swap controller. 
 
-The path was accidentally reverted back to old while refactoring of the
-device-tree.
+Similar to the LTC4282 device, we're clearing some fault logs in the
+reset_history attributes.
 
-Fixes: 5bde31dc7b17 ("arm64: dts: qcom: sdm845-xiaomi-beryllium: Add placeholders and sort")
-Signed-off-by: Joel Selvaraj <foss@joelselvaraj.com>
-Signed-off-by: David Heidelberg <david@ixit.cz>
----
- arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Guenter, for my last email worrying about rsense low values, this is
+what I got internally:
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-index 1298485c42142..22354968aeaa3 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-xiaomi-beryllium-common.dtsi
-@@ -266,17 +266,17 @@ &ibb {
- 	regulator-pull-down;
- 	regulator-soft-start;
- 	qcom,discharge-resistor-kohms = <300>;
- };
- 
- &ipa {
- 	qcom,gsi-loader = "self";
- 	memory-region = <&ipa_fw_mem>;
--	firmware-name = "qcom/sdm845/beryllium/ipa_fws.mbn";
-+	firmware-name = "qcom/sdm845/Xiaomi/beryllium/ipa_fws.mbn";
- 
- 	status = "okay";
- };
- 
- &i2c5 {
- 	clock-frequency = <400000>;
- 
- 	status = "okay";
+"10uOhm at the smallest sense voltage of 15mV would be 1500A and 72kW, which
+seems a tad excessive. The highest currents I’ve seen are around 200A, and
+the -48V market 4283 serves is generally a lot lower than that. Normal values
+are around 200uOhm.  I’d say the resolution should be around 1uohm and if a
+minimum is needed, 50uOhm is probably safe."
+
+For the resolution, I'm pretty sure I got the tenths of micro
+resolution for ltc4282 so I just kept it in here. So, if you don't mind
+I would prefer to keep it this way to be safer and changing that now would
+require me to change some formulas and I would prefer not to do that at
+this stage.
 
 ---
-base-commit: dca922e019dd758b4c1b4bec8f1d509efddeaab4
-change-id: 20260429-beryllium-ipa-fix-7e9876883038
+Changes in v11:
+- Patch 2:
+  * s/LTC4283_VPWR/LTC4283_CHAN_VPWR in ltc4283_read_in_alarm()
+- Link to v10: https://patch.msgid.link/20260428-ltc4283-support-v10-0-4f26f46491c3@analog.com
 
-Best regards,
--- 
-David Heidelberg <david@ixit.cz>
+---
+Nuno Sá (3):
+      dt-bindings: hwmon: Document the LTC4283 Swap Controller
+      hwmon: ltc4283: Add support for the LTC4283 Swap Controller
+      gpio: gpio-ltc4283: Add support for the LTC4283 Swap Controller
+
+ .../devicetree/bindings/hwmon/adi,ltc4283.yaml     |  272 +++
+ Documentation/hwmon/index.rst                      |    1 +
+ Documentation/hwmon/ltc4283.rst                    |  266 +++
+ MAINTAINERS                                        |    9 +
+ drivers/gpio/Kconfig                               |   15 +
+ drivers/gpio/Makefile                              |    1 +
+ drivers/gpio/gpio-ltc4283.c                        |  218 +++
+ drivers/hwmon/Kconfig                              |   12 +
+ drivers/hwmon/Makefile                             |    1 +
+ drivers/hwmon/ltc4283.c                            | 1795 ++++++++++++++++++++
+ 10 files changed, 2590 insertions(+)
+---
+base-commit: 30a90fa04af6937493fbba20e3e923b5b5a162b4
+change-id: 20260303-ltc4283-support-063f78acc5a4
+--
+
+Thanks!
+- Nuno Sá
 
