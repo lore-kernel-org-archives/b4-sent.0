@@ -1,11 +1,11 @@
 From: Jesung Yang <y.j3ms.n@gmail.com>
-Date: Thu, 30 Apr 2026 21:15:48 +0900
-Subject: [PATCH v5 1/2] scripts: generate_rust_analyzer.py: add versioning
- infrastructure
+Date: Thu, 30 Apr 2026 21:15:49 +0900
+Subject: [PATCH v5 2/2] scripts: generate_rust_analyzer.py: fix IDE support
+ for primitive types
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260430-ra-fix-primitive-v5-1-6364d2258e14@gmail.com>
+Message-Id: <20260430-ra-fix-primitive-v5-2-6364d2258e14@gmail.com>
 References: <20260430-ra-fix-primitive-v5-0-6364d2258e14@gmail.com>
 In-Reply-To: <20260430-ra-fix-primitive-v5-0-6364d2258e14@gmail.com>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -17,228 +17,300 @@ To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>,
 Cc: Eliot Courtney <ecourtney@nvidia.com>, rust-for-linux@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Jesung Yang <y.j3ms.n@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777551349; l=7680;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777551349; l=9491;
  i=y.j3ms.n@gmail.com; s=kernel; h=from:subject:message-id;
- bh=FawDxUBpo7Rf6mGpoFGMfNonYwDFf7PmnnEfxIP+2dw=;
- b=UlcVyPuBvN/7Wik3lDyrmxdMv3vSjv+pYjzGqnDw2OfTxA4b7hOwNAmx4BoAjECbxvZKndM2K
- VY6WHrMGV6+CSbtCtjqSDksHkaeIqvPsaFhf+dtZQklCQYkZumcM9mG
+ bh=Rz+cEco/0hVGRSdqLiVYj+cvw1lt7WQL1eY3hSn48eU=;
+ b=HU04em8HvLLG75G75v5t4zVaJp+6yLyC8Oz48y4Zvk8u59ZYT9/DSdVUBo24eiB3F4+HZsms1
+ s9Ga9g5IOEoDIKRFyIMxUze6Dc5ovmgWru5+a7VymdLdd06DMeYXHcX
 X-Developer-Key: i=y.j3ms.n@gmail.com; a=ed25519;
  pk=4nSlncQuTIIYLyLXkNxS0ssInM3uK0snxLSeQ2tdG/o=
 X-Endpoint-Received: by B4 Relay for y.j3ms.n@gmail.com/kernel with auth_id=755
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce multi-version support for rust-analyzer. The script now
-executes `rust-analyzer --version` to query the version string.
+Update `generate_rust_analyzer.py` so that the generated
+`rust-project.json` contains the `sysroot_src` field with
+`"crate_attrs": ["no_std"]` specified for relevant crates. This ensures
+that rust-analyzer provides proper IDE support for inherent methods of
+primitive types.
 
-This is a preparatory patch to address inherent method resolution
-failures for primitive types occurring in rust-analyzer v0.3.2693
-(2025-11-24) or later when used with our current `rust-project.json`
-generation logic. Since the actual fix requires using the `sysroot_src`
-field with a feature only available in rust-analyzer v0.3.2727
-(2025-12-22) or later, this infrastructure is necessary to maintain
-compatibility with older rust-analyzer releases.
+Since commit 50384460c68f ("Rewrite method resolution to follow rustc
+more closely") to rust-analyzer, it no longer provides language server
+features like code completion and go-to-definition for inherent methods
+of primitive types when sysroot crates (e.g., `core`, `std`) are inlined
+in `rust-project.json` [1]. As `generate_rust_analyzer.py` currently
+inlines these crates, our setup is affected by this change.
 
+Specifying the `sysroot_src` field restores this functionality by
+allowing rust-analyzer to locate sysroot crates by itself. However, this
+causes `std` to be treated as a dependency for all local crates by
+default. To align with our compilation settings, provide the `no_std`
+attribute via the `crate_attrs` field, as the `-Zcrate-attr=no_std`
+compiler flag is not visible to rust-analyzer. This combined approach
+removes manual manipulation of sysroot dependencies while preventing
+incorrect symbol resolution against the standard library.
+
+Note that this configuration requires rust-analyzer release 2025-12-22
+(v0.3.2727) or later, which introduced support for the `crate_attrs`
+field.
+
+Link: https://rust-lang.zulipchat.com/#narrow/channel/x/topic/x/near/561607963 [1]
+Link: https://rust-for-linux.zulipchat.com/#narrow/channel/x/topic/x/near/561607753
 Signed-off-by: Jesung Yang <y.j3ms.n@gmail.com>
 ---
- scripts/generate_rust_analyzer.py | 171 +++++++++++++++++++++++++++++++++++++-
- 1 file changed, 167 insertions(+), 4 deletions(-)
+ scripts/generate_rust_analyzer.py | 107 ++++++++++++++++++++++++++++++--------
+ 1 file changed, 86 insertions(+), 21 deletions(-)
 
 diff --git a/scripts/generate_rust_analyzer.py b/scripts/generate_rust_analyzer.py
-index d5f9a0ca742c..f1828620bbbf 100755
+index f1828620bbbf..f335cbd30fcf 100755
 --- a/scripts/generate_rust_analyzer.py
 +++ b/scripts/generate_rust_analyzer.py
-@@ -4,6 +4,9 @@
+@@ -4,6 +4,7 @@
  """
  
  import argparse
-+from datetime import datetime, date
-+import enum
-+import re
- import json
- import logging
- import os
-@@ -343,6 +346,148 @@ def generate_crates(
++from dataclasses import dataclass
+ from datetime import datetime, date
+ import enum
+ import re
+@@ -39,14 +40,28 @@ class Source(TypedDict):
+     exclude_dirs: List[str]
+ 
+ 
+-class Crate(TypedDict):
+-    display_name: str
+-    root_module: str
+-    is_workspace_member: bool
+-    deps: List[Dependency]
+-    cfg: List[str]
+-    edition: str
+-    env: Dict[str, str]
++# TODO: clean up once Python 3.11 is adopted.
++if sys.version_info < (3, 11):
++    class Crate(TypedDict, total=False):
++        display_name: str
++        root_module: str
++        is_workspace_member: bool
++        deps: List[Dependency]
++        cfg: List[str]
++        crate_attrs: List[str]
++        edition: str
++        env: Dict[str, str]
++else:
++    from typing import NotRequired
++    class Crate(TypedDict):
++        display_name: str
++        root_module: str
++        is_workspace_member: bool
++        deps: List[Dependency]
++        cfg: List[str]
++        crate_attrs: NotRequired[List[str]]
++        edition: str
++        env: Dict[str, str]
+ 
+ 
+ class ProcMacroCrate(Crate):
+@@ -58,7 +73,14 @@ class CrateWithGenerated(Crate):
+     source: Source
+ 
+ 
++@dataclass(frozen=True)
++class RaVersionCtx:
++    manual_sysroot_crates: bool
++    use_crate_attrs: bool
++
++
+ def generate_crates(
++    ctx: RaVersionCtx,
+     srctree: pathlib.Path,
+     objtree: pathlib.Path,
+     sysroot_src: pathlib.Path,
+@@ -84,22 +106,24 @@ def generate_crates(
+     def build_crate(
+         display_name: str,
+         root_module: pathlib.Path,
+-        deps: List[Dependency],
++        deps: List[Optional[Dependency]],
+         *,
+         cfg: Optional[List[str]],
++        crate_attrs: Optional[List[str]],
+         is_workspace_member: Optional[bool],
+         edition: Optional[str],
+     ) -> Crate:
++        filtered_deps = [dep for dep in deps if dep is not None]
+         cfg = cfg if cfg is not None else crates_cfgs.get(display_name, [])
+         is_workspace_member = (
+             is_workspace_member if is_workspace_member is not None else True
+         )
+         edition = edition if edition is not None else "2021"
+-        return {
++        crate: Crate = {
+             "display_name": display_name,
+             "root_module": str(root_module),
+             "is_workspace_member": is_workspace_member,
+-            "deps": deps,
++            "deps": filtered_deps,
+             "cfg": cfg,
+             "edition": edition,
+             "env": {
+@@ -107,10 +131,15 @@ def generate_crates(
+             }
+         }
+ 
++        if ctx.use_crate_attrs and crate_attrs is not None:
++            crate["crate_attrs"] = crate_attrs
++
++        return crate
++
+     def append_proc_macro_crate(
+         display_name: str,
+         root_module: pathlib.Path,
+-        deps: List[Dependency],
++        deps: List[Optional[Dependency]],
+         *,
+         cfg: Optional[List[str]] = None,
+         is_workspace_member: Optional[bool] = None,
+@@ -121,6 +150,7 @@ def generate_crates(
+             root_module,
+             deps,
+             cfg=cfg,
++            crate_attrs=None,
+             is_workspace_member=is_workspace_member,
+             edition=edition,
+         )
+@@ -148,9 +178,10 @@ def generate_crates(
+     def append_crate(
+         display_name: str,
+         root_module: pathlib.Path,
+-        deps: List[Dependency],
++        deps: List[Optional[Dependency]],
+         *,
+         cfg: Optional[List[str]] = None,
++        crate_attrs: Optional[List[str]] = None,
+         is_workspace_member: Optional[bool] = None,
+         edition: Optional[str] = None,
+     ) -> Dependency:
+@@ -160,6 +191,7 @@ def generate_crates(
+                 root_module,
+                 deps,
+                 cfg=cfg,
++                crate_attrs=crate_attrs,
+                 is_workspace_member=is_workspace_member,
+                 edition=edition,
+             )
+@@ -167,10 +199,12 @@ def generate_crates(
+ 
+     def append_sysroot_crate(
+         display_name: str,
+-        deps: List[Dependency],
++        deps: List[Optional[Dependency]],
+         *,
+         cfg: Optional[List[str]] = None,
+-    ) -> Dependency:
++    ) -> Optional[Dependency]:
++        if not ctx.manual_sysroot_crates:
++            return None
+         return append_crate(
+             display_name,
+             sysroot_src / display_name / "src" / "lib.rs",
+@@ -269,13 +303,14 @@ def generate_crates(
+ 
+     def append_crate_with_generated(
+         display_name: str,
+-        deps: List[Dependency],
++        deps: List[Optional[Dependency]],
+     ) -> Dependency:
+         crate = build_crate(
+             display_name,
+             srctree / "rust"/ display_name / "lib.rs",
+             deps,
+             cfg=generated_cfg,
++            crate_attrs=None,
+             is_workspace_member=True,
+             edition=None,
+         )
+@@ -342,6 +377,7 @@ def generate_crates(
+                 path,
+                 [core, kernel, pin_init],
+                 cfg=generated_cfg,
++                crate_attrs=["no_std"],
+             )
  
      return crates
- 
-+
-+Version = tuple[int, int, int]
-+
-+
-+@enum.unique
-+class RaVersionInfo(enum.Enum):
-+    """
-+    Represents rust-analyzer compatibility baselines. Concrete versions are mapped to the most
-+    recent baseline they have reached. Must be in release order.
-+    """
-+
-+    # NOTE:
-+    # This rust-analyzer release should be kept in sync with our MSRV (currently 1.85.0).
-+    # When the MSRV is bumped, follow the steps below to retrieve the information needed
-+    # to update this:
-+    #
-+    #   1) Clone both Rust and rust-analyzer repositories.
-+    #      ```console
-+    #      $ git clone https://github.com/rust-lang/rust.git
-+    #      $ git clone https://github.com/rust-lang/rust-analyzer.git
-+    #      ```
-+    #   2) Run the following script, providing the new MSRV as an argument.
-+    #      It uses `xdg-open` to open the matching [1] rust-analyzer release page.
-+    #      ```bash
-+    #      #!/usr/bin/env bash
-+    #
-+    #      RUST_VERSION=$1
-+    #      LOOKAHEAD=50
-+    #
-+    #      subject_string=$(
-+    #        git -C ./rust log -n "$LOOKAHEAD" --format='%s' "$RUST_VERSION" \
-+    #          -- src/tools/rust-analyzer | grep 'Merge pull request #'
-+    #      )
-+    #      readarray -t subject_array <<< "$subject_string"
-+    #
-+    #      hash=$(
-+    #        git -C ./rust-analyzer log -n 1 --format='%H' --fixed-strings \
-+    #          "${subject_array[@]/#/--grep=}"
-+    #      )
-+    #
-+    #      tag_predates=$(git -C ./rust-analyzer describe --tags --abbrev=0 "$hash")
-+    #
-+    #      link_prefix="https://github.com/rust-lang/rust-analyzer/releases/tag"
-+    #      xdg-open "$link_prefix/$tag_predates"
-+    #      ```
-+    #   3) Grab the release date and the version string.
-+    #
-+    # [1] Note that rust-analyzer releases may not perfectly align with those shipped
-+    #     in upstream Rust. We take a conservative approach here: use the tag that
-+    #     directly predates the latest merge commit found upstream.
-+    #
-+    # v0.3.2228, released on 2024-12-23; shipped with the rustup 1.85.0 toolchain.
-+    MSRV = (
-+        datetime.strptime("2024-12-23", "%Y-%m-%d"),
-+        (0, 3, 2228),
-+        (1, 85, 0),
-+    )
-+
-+    def __init__(
-+        self,
-+        release_date: date,
-+        ra_version: Version,
-+        rust_version: Version,
-+    ) -> None:
-+        self.release_date = release_date
-+        self.ra_version = ra_version
-+        self.rust_version = rust_version
-+
-+
-+class RustProject(TypedDict):
-+    crates: List[Crate]
-+    sysroot: str
-+
-+
-+def generate_rust_project(
-+    _version_info: RaVersionInfo,
-+    srctree: pathlib.Path,
-+    objtree: pathlib.Path,
-+    sysroot: pathlib.Path,
-+    sysroot_src: pathlib.Path,
-+    external_src: Optional[pathlib.Path],
-+    cfgs: List[str],
-+    core_edition: str,
-+) -> RustProject:
-+    rust_project: RustProject = {
-+        "crates": generate_crates(
-+            srctree, objtree, sysroot_src, external_src, cfgs, core_edition
+@@ -402,6 +438,20 @@ class RaVersionInfo(enum.Enum):
+         datetime.strptime("2024-12-23", "%Y-%m-%d"),
+         (0, 3, 2228),
+         (1, 85, 0),
++        RaVersionCtx(
++            use_crate_attrs=False,
++            manual_sysroot_crates=True,
 +        ),
-+        "sysroot": str(sysroot),
-+    }
-+
-+    return rust_project
-+
-+def query_ra_version() -> Optional[str]:
-+    try:
-+        # Use the rust-analyzer binary found in $PATH.
-+        ra_version_output = (
-+            subprocess.check_output(
-+                ["rust-analyzer", "--version"],
-+                stdin=subprocess.DEVNULL,
-+            )
-+            .decode("utf-8")
-+            .strip()
-+        )
-+        return ra_version_output
-+    except FileNotFoundError:
-+        logging.warning("Failed to find rust-analyzer in $PATH")
-+        return None
-+
-+def map_ra_version_baseline(ra_version_output: str) -> RaVersionInfo:
-+    baselines = reversed(RaVersionInfo)
-+
-+    version_match = re.search(r"\d+\.\d+\.\d+", ra_version_output)
-+    if version_match:
-+        version_string = version_match.group()
-+        found_version = tuple(map(int, version_string.split(".")))
-+
-+        # `rust-analyzer --version` shows a different version string depending on how the binary
-+        # is built: it may print either the Rust version or the rust-analyzer version itself.
-+        # To distinguish between them, we leverage rust-analyzer's versioning convention.
-+        #
-+        # See:
-+        # - https://github.com/rust-lang/rust-analyzer/blob/fad5c3d2d642/xtask/src/dist.rs#L19-L21
-+        is_ra_version = version_string.startswith(("0.3", "0.4", "0.5"))
-+        if is_ra_version:
-+            for info in baselines:
-+                if found_version >= info.ra_version:
-+                    return info
-+        else:
-+            for info in baselines:
-+                if found_version >= info.rust_version:
-+                    return info
-+
-+    date_match = re.search(r"\d{4}-\d{2}-\d{2}", ra_version_output)
-+    if date_match:
-+        found_date = datetime.strptime(date_match.group(), "%Y-%m-%d")
-+        for info in baselines:
-+            if found_date >= info.release_date:
-+                return info
-+
-+    return RaVersionInfo.MSRV
-+
- def main() -> None:
-     parser = argparse.ArgumentParser()
-     parser.add_argument('--verbose', '-v', action='store_true')
-@@ -371,10 +516,28 @@ def main() -> None:
-         level=logging.INFO if args.verbose else logging.WARNING
++    )
++    # v0.3.2727, released on 2025-12-22; v0.3.2743 is shipped with the rustup 1.94.0 toolchain.
++    SUPPROTS_CRATE_ATTRS = (
++        datetime.strptime("2025-12-22", "%Y-%m-%d"),
++        (0, 3, 2727),
++        (1, 94, 0),
++        RaVersionCtx(
++            use_crate_attrs=True,
++            manual_sysroot_crates=False,
++        ),
      )
  
--    rust_project = {
--        "crates": generate_crates(args.srctree, args.objtree, args.sysroot_src, args.exttree, args.cfgs, args.core_edition),
--        "sysroot": str(args.sysroot),
--    }
-+    ra_version_output = query_ra_version()
-+    if ra_version_output:
-+        compatible_ra_version = map_ra_version_baseline(ra_version_output)
-+    else:
-+        logging.warning(
-+            "Falling back to `rust-project.json` for rust-analyzer %s, %s (shipped with Rust %s)",
-+            ".".join(map(str, RaVersionInfo.MSRV.ra_version)),
-+            datetime.strftime(RaVersionInfo.MSRV.release_date, "%Y-%m-%d"),
-+            ".".join(map(str, RaVersionInfo.MSRV.rust_version)),
-+        )
-+        compatible_ra_version = RaVersionInfo.MSRV
+     def __init__(
+@@ -409,19 +459,30 @@ class RaVersionInfo(enum.Enum):
+         release_date: date,
+         ra_version: Version,
+         rust_version: Version,
++        ctx: RaVersionCtx,
+     ) -> None:
+         self.release_date = release_date
+         self.ra_version = ra_version
+         self.rust_version = rust_version
++        self.ctx = ctx
+ 
+ 
+-class RustProject(TypedDict):
+-    crates: List[Crate]
+-    sysroot: str
++# TODO: clean up once Python 3.11 is adopted.
++if sys.version_info < (3, 11):
++    class RustProject(TypedDict, total=False):
++        crates: List[Crate]
++        sysroot: str
++        sysroot_src: str
++else:
++    from typing import NotRequired
++    class RustProject(TypedDict):
++        crates: List[Crate]
++        sysroot: str
++        sysroot_src: NotRequired[str]
+ 
+ 
+ def generate_rust_project(
+-    _version_info: RaVersionInfo,
++    version_info: RaVersionInfo,
+     srctree: pathlib.Path,
+     objtree: pathlib.Path,
+     sysroot: pathlib.Path,
+@@ -430,13 +491,17 @@ def generate_rust_project(
+     cfgs: List[str],
+     core_edition: str,
+ ) -> RustProject:
++    ctx = version_info.ctx
+     rust_project: RustProject = {
+         "crates": generate_crates(
+-            srctree, objtree, sysroot_src, external_src, cfgs, core_edition
++            ctx, srctree, objtree, sysroot_src, external_src, cfgs, core_edition
+         ),
+         "sysroot": str(sysroot),
+     }
+ 
++    if not ctx.manual_sysroot_crates:
++        rust_project["sysroot_src"] = str(sysroot_src)
 +
-+    rust_project = generate_rust_project(
-+        compatible_ra_version,
-+        args.srctree,
-+        args.objtree,
-+        args.sysroot,
-+        args.sysroot_src,
-+        args.exttree,
-+        args.cfgs,
-+        args.core_edition,
-+    )
+     return rust_project
  
-     json.dump(rust_project, sys.stdout, sort_keys=True, indent=4)
- 
+ def query_ra_version() -> Optional[str]:
 
 -- 
 2.53.0
