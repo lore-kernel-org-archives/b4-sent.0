@@ -1,10 +1,10 @@
 From: Joshua Crofts <joshua.crofts1@gmail.com>
-Date: Thu, 30 Apr 2026 17:04:26 +0200
-Subject: [PATCH v4 6/8] iio: light: si1133: group generic <linux/*> headers
+Date: Thu, 30 Apr 2026 17:04:27 +0200
+Subject: [PATCH v4 7/8] iio: light: si1133: add local variable for timeout
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260430-si1133-checkup-v4-6-fb3e9dce41bf@gmail.com>
+Message-Id: <20260430-si1133-checkup-v4-7-fb3e9dce41bf@gmail.com>
 References: <20260430-si1133-checkup-v4-0-fb3e9dce41bf@gmail.com>
 In-Reply-To: <20260430-si1133-checkup-v4-0-fb3e9dce41bf@gmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -14,46 +14,48 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Joshua Crofts <joshua.crofts1@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777561514; l=901;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777561514; l=1250;
  i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
- bh=ONajTyOwYWFLpIXERWtWPSYo2OZuZwtQVCrvlP4IvVA=;
- b=zFQ9q4yHzYzchaZOHJ0HpqICQ+p88AI00TjJdoTLw5icaEP6DfGiKfK1hsrfjbDjdi6MGht+C
- mq1U5aXqqi/Bm0uAKHMXplGuaj7r1J60acP1QUw4qmX2izffuaf0pMm
+ bh=/XJFGcdvil+2we7+TC+ip157GN0rAXA5yY6shTe6uEY=;
+ b=qc7vESqAYJ7OClprO/OxaEbdS0t5aHvvJREc+18PKy6wypT0amXWx4S6T1d/jSO1UG7RzBItS
+ In9YBRYYvUwBnP8kJ49618ejEuu+3fTaCgB/xu7FkF8vZpyDpjdF4AS
 X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
  pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
 X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Group generic <linux/*> include headers to improve code style.
+Add local variable for timeout to improve readability.
 
 No functional change.
 
+Suggested-by: Jonathan Cameron <jic23@kernel.org>
 Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
 ---
- drivers/iio/light/si1133.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ drivers/iio/light/si1133.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/iio/light/si1133.c b/drivers/iio/light/si1133.c
-index ab66a5a9ffb4a89bbba7474b6e984ddb61cfeebe..fdffdee16e493277d95c369ec2f6c0678cf9f61c 100644
+index fdffdee16e493277d95c369ec2f6c0678cf9f61c..a3e4ab25acdc105d3800994f4391a7e4291e1c74 100644
 --- a/drivers/iio/light/si1133.c
 +++ b/drivers/iio/light/si1133.c
-@@ -21,14 +21,12 @@
- #include <linux/mutex.h>
- #include <linux/regmap.h>
- #include <linux/types.h>
-+#include <linux/unaligned.h>
-+#include <linux/util_macros.h>
+@@ -390,6 +390,7 @@ static int si1133_cmd_reset_counter(struct si1133_data *data)
  
- #include <linux/iio/iio.h>
- #include <linux/iio/sysfs.h>
+ static int si1133_command(struct si1133_data *data, u8 cmd)
+ {
++	unsigned long timeout = msecs_to_jiffies(SI1133_COMPLETION_TIMEOUT_MS);
+ 	struct device *dev = &data->client->dev;
+ 	u32 resp;
+ 	int err;
+@@ -417,8 +418,7 @@ static int si1133_command(struct si1133_data *data, u8 cmd)
  
--#include <linux/util_macros.h>
--
--#include <linux/unaligned.h>
--
- #define SI1133_REG_PART_ID		0x00
- #define SI1133_REG_REV_ID		0x01
- #define SI1133_REG_MFR_ID		0x02
+ 	if (cmd == SI1133_CMD_FORCE) {
+ 		/* wait for irq */
+-		if (!wait_for_completion_timeout(&data->completion,
+-			msecs_to_jiffies(SI1133_COMPLETION_TIMEOUT_MS))) {
++		if (!wait_for_completion_timeout(&data->completion, timeout)) {
+ 			regmap_write(data->regmap, SI1133_REG_IRQ_ENABLE, 0);
+ 			err = -ETIMEDOUT;
+ 			goto out;
 
 -- 
 2.47.3
