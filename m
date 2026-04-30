@@ -1,290 +1,131 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Thu, 30 Apr 2026 13:43:41 -0500
-Subject: [PATCH v7 6/6] arm64: dts: qcom: Add AYN Thor
+From: Alireza Haghdoost <haghdoost@uber.com>
+Date: Thu, 30 Apr 2026 22:52:53 +0000
+Subject: [PATCH] checkpatch: recognize the Assisted-by: trailer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260430-ayn-qcs8550-v7-6-591a96735fa3@gmail.com>
-References: <20260430-ayn-qcs8550-v7-0-591a96735fa3@gmail.com>
-In-Reply-To: <20260430-ayn-qcs8550-v7-0-591a96735fa3@gmail.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>, 
- Teguh Sobirin <teguh@sobir.in>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777574629; l=6227;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=Aoe59zShJAm9LqsbtTeOAxSKG37xMv+KPZP6UxGeHpY=;
- b=qPqbW/D79WFStJFG7J8oUsQZogILi9KIr2P1iGfCXHvgbN4/jz1qxqEKhdB7CmzXqJna2SjPm
- nidlV/zLaV7DKZxuBqphgmNMTMa5EpSbZw8t3fubIUKKCji8m6cP2fc
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+Message-Id: <20260430-fix-checkpatch-assisted-by-v1-1-46d3ef68a1de@uber.com>
+X-B4-Tracking: v=1; b=H4sIAETd82kC/x2NQQrCQAxFr1KyNjCtVtSriItMJnWCOJZJEUvp3
+ Zu6fLzP+wuYVBWDW7NAla+afopDe2iAM5WnoCZn6EJ3DqdjwEF/yFn4NdLEGclMbZKEccaL9Ne
+ hFwqcWvBAJBOMlQrnPfEmH9ZdjFU883+9P9Z1A463cSaFAAAA
+To: Andy Whitcroft <apw@canonical.com>, Joe Perches <joe@perches.com>, 
+ Dwaipayan Ray <dwaipayanray1@gmail.com>, 
+ Lukas Bulwahn <lukas.bulwahn@gmail.com>
+Cc: linux-kernel@vger.kernel.org, Alireza Haghdoost <haghdoost@uber.com>
+X-Mailer: b4 0.12.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3855; i=haghdoost@uber.com;
+ h=from:subject:message-id; bh=1L/K7YExDBD3NfbBSUkBDm0Ajzp1G2Obp39ZJ72g7eA=;
+ b=owEBbQKS/ZANAwAKAVNlBDxl2ALYAcsmYgBp891RZReFtwOsixLJxYkesTWsqVMS87Nhh4/4I
+ tECZCcIo5+JAjMEAAEKAB0WIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCafPdUQAKCRBTZQQ8ZdgC
+ 2F6FD/0b91gYN3TXa7oA8ym71E7i6/GIo05VSmrE4BlVFu1sL2MsjoR6bAX7uDcWY3jbfWSmHfu
+ wJodNeNbtLEAoDtq7woGEABLYA0001icm2g6/Xh7QaZQwAYHxrMyoih7ERZRQrCI62ZnVoAxBa8
+ dVkb0YtpCf3A4JcjuBC6q9Ci4YmJ7aQEM3RJAK+qp0ttz3BPoCcEO34Z4dPsZMAGrlTo2HHKDPA
+ y5uX8zlfWRtNtnHpS16XzOIEaEndKxckZlNUm+Pd2Nz6e54/oDLipH6rjMxdkjIqpXtgqDDMPy0
+ uH27ZAPRA+mOQ0uWlqvyQ5UTe1DZDTvrIRX1B9rh88u+N5EawyaZDWAQh9pp8YbC0Anqb5NWjpE
+ XEe5V3/E82zPP6AzSV4MoKl31gS3g2sP8ZukBKrXThn5uvnh2kdWbNQIFDDFTFCZym266tH0xwV
+ 5Ut3Dy/hWh/DkAyBE7j7WORR3G3cwIgqQwJBcAJlXWb0waVuTPQWccV6wumStKK/sYuMqe7CfYq
+ Kwg93FFxLNI/dzfCl4xCUzf9DkAdsW2wF2Ph428VnZK7ll3Wzm307hykl4BkAkIL21SEOW1bhnk
+ vhkvWicpFzdmLXfS1oNy2KMCWr7/bQiqMzA6GXSO5/qwZLbx8Ely2LLTQeRRP9vfJmGliY8WRbd
+ 8he4nmayIekDUWw==
+X-Developer-Key: i=haghdoost@uber.com; a=openpgp;
+ fpr=B9FAC14BDE05FFF0FAC0D12D5365043C65D802D8
+X-Endpoint-Received: by B4 Relay for haghdoost@uber.com/default with auth_id=764
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Teguh Sobirin <teguh@sobir.in>
+Documentation/process/coding-assistants.rst, added in commit
+78d979db6cef ("docs: add AI Coding Assistants documentation"),
+mandates an Assisted-by trailer for any patch developed with help
+from an AI coding assistant. The documented format is
+"Assisted-by: AGENT_NAME:MODEL_VERSION [TOOL1] [TOOL2]" (for example,
+"Assisted-by: Claude:claude-3-opus coccinelle sparse").
 
-The AYN Thor is a high-performance Android-based handheld gaming console
-powered by the Qualcomm Snapdragon 8 Gen 2 processor featuring dual
-AMOLED touchscreens.
+scripts/checkpatch.pl was not updated alongside the documentation.
+The trailer name matches the script's generic [a-z0-9_-]+by: pattern,
+so checkpatch (a) emits a "Non-standard signature: Assisted-by:"
+WARNING because Assisted-by: is absent from $signature_tags, and
+(b) emits an "Unrecognized email address" ERROR because the value
+is not an RFC 5322 email but the AGENT_NAME:MODEL_VERSION form
+prescribed by the spec. Both fire on every correctly-formed
+Assisted-by: tag, making it impossible to satisfy both the
+documentation and checkpatch at the same time.
 
-Signed-off-by: Teguh Sobirin <teguh@sobir.in>
-Co-developed-by: Aaron Kling <webgeek1234@gmail.com>
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Add Assisted-by: to $signature_tags and to the @standard_signature_tags
+list (so suggested-typo correction works for it). Introduce a new
+$no_email_signature_tags pattern listing trailers that, by spec, do
+not carry an email address, and gate the email parse / format / stable
+address checks on it; today only Assisted-by: is in that list, but the
+mechanism is general for future tags with similar conventions.
+
+A regression test confirms a malformed sign-off line still triggers
+the "Unrecognized email address" ERROR after this change, since
+Signed-off-by is not in $no_email_signature_tags.
+
+Signed-off-by: Alireza Haghdoost <haghdoost@uber.com>
+Assisted-by: Cursor:claude-sonnet-4.5
 ---
- arch/arm64/boot/dts/qcom/Makefile                |   1 +
- arch/arm64/boot/dts/qcom/qcs8550-ayntec-thor.dts | 227 +++++++++++++++++++++++
- 2 files changed, 228 insertions(+)
+Single patch. The commit message contains the full rationale and
+a description of the mechanism. No cover needed beyond what is there.
+---
+ scripts/checkpatch.pl | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 6bfc4554580bd5..6feecd62e01546 100644
---- a/arch/arm64/boot/dts/qcom/Makefile
-+++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -186,6 +186,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= qcs8300-ride-el2.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-aim300-aiot.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-odin2mini.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-odin2portal.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-thor.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs9100-ride.dtb
- dtb-$(CONFIG_ARCH_QCOM)	+= qcs9100-ride-r3.dtb
+diff --git a/scripts/checkpatch.pl b/scripts/checkpatch.pl
+index e56374662ff7..a9ebb67686ea 100755
+--- a/scripts/checkpatch.pl
++++ b/scripts/checkpatch.pl
+@@ -641,10 +641,19 @@ our $signature_tags = qr{(?xi:
+ 	Reviewed-by:|
+ 	Reported-by:|
+ 	Suggested-by:|
++	Assisted-by:|
+ 	To:|
+ 	Cc:
+ )};
  
-diff --git a/arch/arm64/boot/dts/qcom/qcs8550-ayntec-thor.dts b/arch/arm64/boot/dts/qcom/qcs8550-ayntec-thor.dts
-new file mode 100644
-index 00000000000000..641146a9a7798e
---- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/qcs8550-ayntec-thor.dts
-@@ -0,0 +1,227 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/*
-+ * Copyright (c) 2025, Teguh Sobirin.
-+ */
++# Trailers that do not carry an RFC 5322 email address.
++# Documentation/process/coding-assistants.rst defines Assisted-by: as
++# carrying "AGENT_NAME:MODEL_VERSION [TOOL1] [TOOL2]" rather than an
++# email address; skip the email-format checks for these tags.
++our $no_email_signature_tags = qr{(?xi:
++	Assisted-by:
++)};
 +
-+/dts-v1/;
-+
-+#include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/input.h>
-+#include <dt-bindings/interrupt-controller/irq.h>
-+#include "qcs8550-ayntec-common.dtsi"
-+
-+&{/} {
-+	model = "AYN Thor";
-+	compatible = "ayntec,thor", "qcom,qcs8550", "qcom,sm8550";
-+
-+	vdd_bl_5v0: vdd-bl-5v0-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vdd_bl_5v0";
-+
-+		regulator-min-microvolt = <5000000>;
-+		regulator-max-microvolt = <5000000>;
-+
-+		gpio = <&tlmm 52 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	vdd_disp_1v8: vdd-disp-1v8-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vdd_disp_1v8";
-+
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+
-+		gpio = <&tlmm 70 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	vdd_disp1_2v8: vdd-disp1-2v8-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vdd_disp1_2v8";
-+
-+		regulator-min-microvolt = <2800000>;
-+		regulator-max-microvolt = <2800000>;
-+
-+		gpio = <&tlmm 142 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	vdd_disp2_2v8: vdd-disp2-2v8-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vdd_disp2_2v8";
-+
-+		regulator-min-microvolt = <2800000>;
-+		regulator-max-microvolt = <2800000>;
-+
-+		gpio = <&tlmm 143 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	vdd_ts_3v0: vdd-ts-3v0-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vdd_ts_3v0";
-+
-+		regulator-min-microvolt = <3000000>;
-+		regulator-max-microvolt = <3000000>;
-+
-+		gpio = <&tlmm 144 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+
-+	vdd_ts_1v8: vdd-ts-1v8-regulator {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vdd_ts_1v8";
-+
-+		regulator-min-microvolt = <1800000>;
-+		regulator-max-microvolt = <1800000>;
-+
-+		gpio = <&tlmm 102 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+	};
-+};
-+
-+&gpio_keys {
-+	pinctrl-0 = <&volume_up_n &key_ayn_n>;
-+
-+	key-ayn {
-+		label = "AYN Key";
-+		debounce-interval = <15>;
-+		gpios = <&tlmm 41 GPIO_ACTIVE_LOW>;
-+		linux,code = <KEY_F24>;
-+		linux,can-disable;
-+	};
-+
-+	switch-lid {
-+		label = "Hall Lid Sensor";
-+		gpios = <&tlmm 17 GPIO_ACTIVE_LOW>;
-+		linux,input-type = <EV_SW>;
-+		linux,code = <SW_LID>;
-+		linux,can-disable;
-+		wakeup-source;
-+	};
-+};
-+
-+&i2c4 {
-+	clock-frequency = <400000>;
-+
-+	status = "okay";
-+
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	touchscreen@38 {
-+		compatible = "focaltech,ft5426";
-+		reg = <0x38>;
-+
-+		interrupt-parent = <&tlmm>;
-+		interrupts = <25 IRQ_TYPE_EDGE_FALLING>;
-+
-+		reset-gpios = <&tlmm 24 GPIO_ACTIVE_LOW>;
-+
-+		vcc-supply = <&vreg_l14b_3p2>;
-+		iovcc-supply = <&vreg_l12b_1p8>;
-+
-+		pinctrl-0 = <&ts_p_rst_default &ts_p_int_default>;
-+		pinctrl-1 = <&ts_p_rst_sleep &ts_p_int_sleep>;
-+		pinctrl-names = "default", "sleep";
-+
-+		touchscreen-size-x = <1080>;
-+		touchscreen-size-y = <1920>;
-+		touchscreen-swapped-x-y;
-+		touchscreen-inverted-x;
-+	};
-+};
-+
-+&i2c_hub_3 {
-+	clock-frequency = <100000>;
-+
-+	status = "okay";
-+
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	touchscreen@38 {
-+		compatible = "focaltech,ft5452";
-+		reg = <0x38>;
-+
-+		interrupt-parent = <&tlmm>;
-+		interrupts = <15 IRQ_TYPE_EDGE_FALLING>;
-+
-+		reset-gpios = <&tlmm 14 GPIO_ACTIVE_LOW>;
-+
-+		vcc-supply = <&vdd_ts_3v0>;
-+		iovcc-supply = <&vdd_ts_1v8>;
-+
-+		pinctrl-0 = <&ts_s_rst_default &ts_s_int_default>;
-+		pinctrl-1 = <&ts_s_rst_sleep &ts_s_int_sleep>;
-+		pinctrl-names = "default", "sleep";
-+
-+		touchscreen-size-x = <1080>;
-+		touchscreen-size-y = <1240>;
-+		touchscreen-swapped-x-y;
-+		touchscreen-inverted-x;
-+	};
-+};
-+
-+&mdss_dsi0 {
-+	vdda-supply = <&vreg_l3e_1p2>;
-+
-+	status = "okay";
-+
-+	#address-cells = <1>;
-+	#size-cells = <0>;
-+
-+	panel@0 {
-+		reg = <0>;
-+
-+		port {
-+			panel0_in: endpoint {
-+				remote-endpoint = <&mdss_dsi0_out>;
-+			};
-+		};
-+	};
-+};
-+
-+&mdss_dsi0_out {
-+	remote-endpoint = <&panel0_in>;
-+	data-lanes = <0 1 2 3>;
-+};
-+
-+&mdss_dsi0_phy {
-+	vdds-supply = <&vreg_l1e_0p88>;
-+
-+	status = "okay";
-+};
-+
-+&mdss_dsi1_out {
-+	qcom,te-source = "mdp_vsync_s";
-+};
-+
-+&pm8550_multi_led {
-+	status = "disabled";
-+};
-+
-+&remoteproc_adsp {
-+	firmware-name = "qcom/sm8550/ayntec/thor/adsp.mbn",
-+			"qcom/sm8550/ayntec/thor/adsp_dtb.mbn";
-+
-+	status = "okay";
-+};
-+
-+&spk_amp_l {
-+	firmware-name = "qcom/sm8550/ayntec/thor/aw883xx_acf.bin";
-+};
-+
-+&spk_amp_r {
-+	firmware-name = "qcom/sm8550/ayntec/thor/aw883xx_acf.bin";
-+};
-+
-+&tlmm {
-+	key_ayn_n: key-ayn-n-state {
-+		pins = "gpio41";
-+		function = "gpio";
-+		bias-pull-up;
-+		output-disable;
-+	};
-+};
+ our @link_tags = qw(Link Closes);
+ 
+ #Create a search and print patterns for all these strings to be used directly below
+@@ -737,7 +746,7 @@ sub find_standard_signature {
+ 	my ($sign_off) = @_;
+ 	my @standard_signature_tags = (
+ 		'Signed-off-by:', 'Co-developed-by:', 'Acked-by:', 'Tested-by:',
+-		'Reviewed-by:', 'Reported-by:', 'Suggested-by:'
++		'Reviewed-by:', 'Reported-by:', 'Suggested-by:', 'Assisted-by:'
+ 	);
+ 	foreach my $signature (@standard_signature_tags) {
+ 		return $signature if (get_edit_distance($sign_off, $signature) <= 2);
+@@ -3105,6 +3114,9 @@ sub process {
+ 				}
+ 			}
+ 
++			# Skip email-format checks for trailers that, by spec, do
++			# not carry an email address (e.g. Assisted-by:).
++			if ($sign_off !~ /$no_email_signature_tags/) {
+ 			my ($email_name, $name_comment, $email_address, $comment) = parse_email($email);
+ 			my $suggested_email = format_email(($email_name, $name_comment, $email_address, $comment));
+ 			if ($suggested_email eq "") {
+@@ -3189,6 +3201,7 @@ sub process {
+ 					}
+ 				}
+ 			}
++			}
+ 
+ # Check for duplicate signatures
+ 			my $sig_nospace = $line;
 
+---
+base-commit: 46b513250491a7bfc97d98791dbe6a10bcc8129d
+change-id: 20260430-fix-checkpatch-assisted-by-8e59f5ea0cd1
+
+Best regards,
 -- 
-2.53.0
+Alireza Haghdoost <haghdoost@uber.com>
 
