@@ -1,287 +1,155 @@
-From: Radu Sabau <radu.sabau@analog.com>
-Date: Thu, 30 Apr 2026 13:16:48 +0300
-Subject: [PATCH v9 6/6] docs: iio: adc: ad4691: add driver documentation
+From: Jesung Yang <y.j3ms.n@gmail.com>
+Subject: [PATCH v5 0/2] rust: take advantage of newer rust-analyzer
+ features
+Date: Thu, 30 Apr 2026 21:15:47 +0900
+Message-Id: <20260430-ra-fix-primitive-v5-0-6364d2258e14@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260430-ad4692-multichannel-sar-adc-driver-v9-6-33e439e4fb87@analog.com>
-References: <20260430-ad4692-multichannel-sar-adc-driver-v9-0-33e439e4fb87@analog.com>
-In-Reply-To: <20260430-ad4692-multichannel-sar-adc-driver-v9-0-33e439e4fb87@analog.com>
-To: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>
-Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-pwm@vger.kernel.org, 
- linux-gpio@vger.kernel.org, linux-doc@vger.kernel.org, 
- Radu Sabau <radu.sabau@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777544205; l=9306;
- i=radu.sabau@analog.com; s=20260220; h=from:subject:message-id;
- bh=8iXZp0x1X1defWWuJJgYTk6WrDF1PVndw2AvlFcwSLA=;
- b=GOldAqQrUypbvpafnuuJZA3+S5WQFTGZAJ1cfroK0ltdhZnnr9tSSIUHcIp9qJghTUpWu8obu
- Qra/scBEpIBDIjKRKjYVF4hEOf5dr9UyjL19XkDxgwzuCqrrq9Pqtdg
-X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
- pk=lDPQHgn9jTdt0vo58Na9lLxLaE2mb330if71Cn+EvFU=
-X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20260220 with auth_id=642
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAPNH82kC/33NS47CMAyA4augrAmy8yDJrOYeIxZp6oAlSlGKo
+ kGod5/AZipUsfwt+/NDTFSYJvG1eYhClSceLy3sdiPSKV6OJLlvLRSoPSCgLFFm/pXXwgPfuJJ
+ 0Hq3J5NHpLNrZtVBbeJE/h9Ynnm5jub8+VHxOP2AVJcqesoegresMfR+HyOddGgfxxKpaAmEFU
+ BKkMsFbFQ0aG98B/Q9o8CuAboANHtB1iXLv3wGzANCtAKYBXYK9g5C8MnoJzPP8B5VywglzAQA
+ A
+X-Change-ID: 20260101-ra-fix-primitive-78154fe8173f
+To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, Tamir Duberstein <tamird@kernel.org>
+Cc: Eliot Courtney <ecourtney@nvidia.com>, rust-for-linux@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Jesung Yang <y.j3ms.n@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777551349; l=5317;
+ i=y.j3ms.n@gmail.com; s=kernel; h=from:subject:message-id;
+ bh=zKw0oaBr+Wg3YuJsjBzOcpYqmgj50s3i0S8gwq9BgQo=;
+ b=gekZ1FEDjjv/n1fbBy0WEurj1jkUrDcWsU4KgZ/Vo+kcqDyfoetbgP7X764e/TRBeuXVMa5jZ
+ fbgHB6b1ag3CpGBlbxRxN4v0q1sSul5VjpxnnNxUeIoJ/JyEnQmhFxd
+X-Developer-Key: i=y.j3ms.n@gmail.com; a=ed25519;
+ pk=4nSlncQuTIIYLyLXkNxS0ssInM3uK0snxLSeQ2tdG/o=
+X-Endpoint-Received: by B4 Relay for y.j3ms.n@gmail.com/kernel with auth_id=755
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add RST documentation for the AD4691 family ADC driver covering
-supported devices, IIO channels, operating modes, oversampling,
-reference voltage, LDO supply, reset, GP pins, SPI offload support,
-and buffer data format.
+As discussed in [1], we need to support multiple versions of
+rust-analyzer to take advantage of newer features without breaking
+compatibility for users on older toolchains.
 
-Signed-off-by: Radu Sabau <radu.sabau@analog.com>
+In this specific patch series addressing IDE support for inherent methods
+of primitive types, the main compatibility issue arises from using
+`sysroot_src`, which brings `std` as a dependency for crates in
+`drivers/` and `samples/` (please see PATCH [2/2] for more details). This
+causes rust-analyzer to incorrectly resolve symbols from `std` in those
+crates.
+
+Hence, this series revises the approach taken in [2] by first adding
+multi-version support for rust-analyzer. Specifically, it enables
+support for the v0.3.2727 (2025-12-22) release and newer, which is
+required to resolve inherent method resolution issues for primitive
+types found in recent versions of rust-analyzer.
+
+As Eliot mentioned in [3], we might also want to do the `include_dirs`
+trick on top of this series to support rust-analyzer releases older than
+v0.3.2727, but it should be handled in a dedicated patch series.
+
+----- [QUICK TEST INSTRUCTIONS] -----
+
+[Example 1]
+1) Apply this patch series.
+2) Run `mypy --strict scripts/generate_rust_analyzer.py` against
+   different Python versions (e.g., `--python-version 3.9`,
+   `--python-version 3.11`)
+3) Verify that there is no type errors.
+
+[Example 2]
+1) Make rust-analyzer>=v0.3.2727 (2025-12-22) available in `$PATH`.
+2) Compile one of the crates under `driver/` or `samples/rust`.
+3) Run `make LLVM=1 rust-analyzer`.
+4) Check that autocompletion for inherent methods does not work for
+   primitive types (e.g., `0i32.rotate_left()`).
+5) Apply this patch series.
+6) Re-run `make LLVM=1 rust-analyzer`.
+7) Verify that autocompletion works properly now.
+8) Verify that no autocompletion is provided for `std`.
+
+[Example 3]
+1) Make rust-analyzer<v0.3.2727 (2025-12-22) available in `$PATH`.
+2) Compile one of the crates under `driver/` or `samples/rust`.
+3) Run `make LLVM=1 rust-analyzer`.
+4) Run `mv rust-project.json rust-project.json.old`.
+5) Apply this patch series.
+6) Re-run `make LLVM=1 rust-analyzer`.
+7) Run `diff -s rust-project.json rust-project.json.old` to verify that
+   they are identical.
+
+[Example 4]
+1) Apply this patch series.
+2) Ensure `rust-analyzer` is not available in `$PATH`.
+3) Run `make V=1 LLVM=1 rust-analyzer`.
+4) Verify that the fallback warning message appears.
+
+[1] https://lore.kernel.org/rust-for-linux/20260101-rust-project-reduce-size-v1-1-4cd66e9e02d9@gmail.com/
+[2] https://lore.kernel.org/r/20260101-ra-fix-primitive-v1-1-def809357b4e@gmail.com/
+[3] https://lore.kernel.org/rust-for-linux/DFVQBFD54CJO.2D3VQ091URH2B@nvidia.com/
+
+Signed-off-by: Jesung Yang <y.j3ms.n@gmail.com>
 ---
- Documentation/iio/ad4691.rst | 205 +++++++++++++++++++++++++++++++++++++++++++
- Documentation/iio/index.rst  |   1 +
- MAINTAINERS                  |   1 +
- 3 files changed, 207 insertions(+)
+Changes in v5:
+- Document how to retrieve rust-analyzer version information.
+- Rename `RaVersionInfo.DEFAULT` to `RaVersionInfo.MSRV`.
+- Move the introduction of `RaVersionCtx` to the second patch.
+- Embed `RaVersionCtx` into `RaVersionInfo`.
+- Conditionally add `sysroot_src` field depending on
+  `manual_sysroot_crates`.
+- Conditionally add `crate_attrs` field depending on `use_crate_attrs`.
+- Conditionally define `RustProject` and `Crate` for stricter type
+  checking in newer Python versions.
+- Move the dependency filtering logic to `build_crate`.
+- Move `RustProject` closer to its point of use.
+- Fix grammar.
+- Link to v4: https://lore.kernel.org/r/20260317-ra-fix-primitive-v4-0-bc06709c8243@gmail.com
 
-diff --git a/Documentation/iio/ad4691.rst b/Documentation/iio/ad4691.rst
-new file mode 100644
-index 000000000000..38e2ad28a713
---- /dev/null
-+++ b/Documentation/iio/ad4691.rst
-@@ -0,0 +1,205 @@
-+.. SPDX-License-Identifier: GPL-2.0-only
-+
-+=============
-+AD4691 driver
-+=============
-+
-+ADC driver for Analog Devices Inc. AD4691 family of multichannel SAR ADCs.
-+The module name is ``ad4691``.
-+
-+
-+Supported devices
-+=================
-+
-+The following chips are supported by this driver:
-+
-+* `AD4691 <https://www.analog.com/en/products/ad4691.html>`_ — 16-channel, 500 kSPS
-+* `AD4692 <https://www.analog.com/en/products/ad4692.html>`_ — 16-channel, 1 MSPS
-+* `AD4693 <https://www.analog.com/en/products/ad4693.html>`_ — 8-channel, 500 kSPS
-+* `AD4694 <https://www.analog.com/en/products/ad4694.html>`_ — 8-channel, 1 MSPS
-+
-+
-+IIO channels
-+============
-+
-+Each physical ADC input maps to one IIO voltage channel. The AD4691 and AD4692
-+expose 16 channels (``voltage0`` through ``voltage15``); the AD4693 and AD4694
-+expose 8 channels (``voltage0`` through ``voltage7``).
-+
-+All channels share a common scale (``in_voltage_scale``), derived from the
-+reference voltage. Each channel independently exposes:
-+
-+* ``in_voltageN_raw`` — single-shot ADC result
-+* ``in_voltageN_sampling_frequency`` — per-channel effective output rate,
-+  defined as the internal oscillator frequency divided by the channel's
-+  oversampling ratio. Writing this attribute selects the nearest achievable
-+  rate for the current OSR; the value read back reflects the actual rate after
-+  snapping to the closest valid oscillator entry.
-+* ``in_voltageN_sampling_frequency_available`` — list of achievable effective
-+  rates for the channel's current oversampling ratio. The list updates
-+  dynamically when the oversampling ratio changes.
-+
-+The following attributes are only available in CNV Burst Mode:
-+
-+* ``in_voltageN_oversampling_ratio`` — per-channel hardware oversampling depth;
-+  see `Oversampling`_ below.
-+* ``in_voltageN_oversampling_ratio_available`` — valid ratios: 1, 2, 4, 8, 16,
-+  32.
-+
-+
-+Operating modes
-+===============
-+
-+The driver supports two operating modes, selected automatically from the
-+device tree at probe time.
-+
-+Manual Mode
-+-----------
-+
-+Selected when no ``pwms`` property is present in the device tree. The CNV pin
-+is tied to the SPI chip-select: every CS assertion triggers a conversion and
-+returns the previous result. A user-defined IIO trigger (e.g. hrtimer trigger)
-+drives the buffer.
-+
-+Oversampling is not supported in Manual Mode.
-+
-+CNV Burst Mode
-+--------------
-+
-+Selected when a ``pwms`` property is present in the device tree. A PWM drives
-+the CNV pin at the configured conversion rate. A GP pin wired to the SoC and
-+declared in the device tree signals DATA_READY at the end of each burst,
-+triggering a readout of all active channel results into the IIO buffer.
-+
-+The buffer output rate is controlled by the ``sampling_frequency`` attribute
-+on the IIO buffer. In practice the PWM rate should be set low enough to allow
-+the SPI readout to complete before the next conversion burst begins.
-+
-+Autonomous Mode (idle / single-shot)
-+-------------------------------------
-+
-+When the IIO buffer is disabled, ``in_voltageN_raw`` reads perform a single
-+conversion on the requested channel using the internal oscillator. The
-+oscillator is started and stopped around each read to save power.
-+
-+
-+Oversampling
-+============
-+
-+In CNV Burst Mode each channel has an independent hardware accumulator that
-+averages a configurable number of successive conversions. The result is always
-+returned as a 16-bit mean, so ``realbits`` and ``storagebits`` are unaffected
-+by the oversampling ratio. Valid ratios are 1, 2, 4, 8, 16 and 32; the default
-+is 1 (no averaging). Oversampling is not supported in Manual Mode.
-+
-+.. code-block:: bash
-+
-+    # Set oversampling ratio to 16 on channel 0
-+    echo 16 > /sys/bus/iio/devices/iio:device0/in_voltage0_oversampling_ratio
-+
-+    # Read the resulting effective sampling frequency
-+    cat /sys/bus/iio/devices/iio:device0/in_voltage0_sampling_frequency
-+
-+Writing ``oversampling_ratio`` stores the new depth for that channel;
-+the internal oscillator is unaffected. The effective rate read back via
-+``in_voltageN_sampling_frequency`` becomes ``osc_freq / new_osr``
-+automatically. ``oversampling_ratio`` and ``sampling_frequency`` are
-+orthogonal: one controls averaging depth, the other controls the oscillator.
-+
-+All channels share one internal oscillator. Writing ``sampling_frequency`` for
-+any channel updates the oscillator and therefore affects the effective rate
-+read back from all other channels.
-+
-+
-+Reference voltage
-+=================
-+
-+The driver supports two reference configurations, mutually exclusive:
-+
-+* **External reference** (``ref-supply``): a voltage between 2.4 V and 5.25 V
-+  supplied externally.
-+* **Buffered internal reference** (``refin-supply``): an internal reference
-+  buffer is enabled by the driver.
-+
-+Exactly one of ``ref-supply`` or ``refin-supply`` must be present in the
-+device tree. The reference voltage determines the full-scale range reported
-+via ``in_voltage_scale``.
-+
-+
-+LDO supply
-+==========
-+
-+The chip contains an internal LDO that powers part of the analog front-end.
-+The supply configuration is mutually exclusive:
-+
-+* **External VDD** (``vdd-supply``): an external 1.8 V supply is used directly;
-+  the internal LDO is disabled.
-+* **Internal LDO** (``ldo-in-supply``): the internal LDO is enabled and fed
-+  from the ``ldo-in`` regulator. Use this when no external 1.8 V VDD is present.
-+
-+Exactly one of ``vdd-supply`` or ``ldo-in-supply`` must be provided.
-+
-+
-+Reset
-+=====
-+
-+The driver supports two reset mechanisms:
-+
-+* **Hardware reset** (``reset-gpios`` in device tree): asserted at probe by
-+  the reset controller framework.
-+* **Software reset** (fallback when ``reset-gpios`` is absent): written
-+  automatically at probe.
-+
-+
-+GP pins and interrupts
-+======================
-+
-+The chip exposes up to four general-purpose (GP) pins. In CNV Burst Mode
-+(non-offload), one GP pin must be wired to an interrupt-capable SoC input and
-+declared in the device tree using the ``interrupts`` and ``interrupt-names``
-+properties. The ``interrupt-names`` value identifies which GP pin is used
-+(``"gp0"`` through ``"gp3"``).
-+
-+Example device tree fragment::
-+
-+    adc@0 {
-+        compatible = "adi,ad4692";
-+        ...
-+        interrupts = <17 IRQ_TYPE_LEVEL_HIGH>;
-+        interrupt-parent = <&gpio0>;
-+        interrupt-names = "gp0";
-+    };
-+
-+
-+SPI offload support
-+===================
-+
-+When a SPI offload engine (e.g. the AXI SPI Engine) is present, the driver
-+uses DMA-backed transfers for CPU-independent, high-throughput data capture.
-+SPI offload is detected automatically at probe; if no offload hardware is
-+available the driver falls back to the software triggered-buffer path.
-+
-+Two SPI offload sub-modes exist:
-+
-+CNV Burst offload
-+-----------------
-+
-+Used when a ``pwms`` property is present and SPI offload is available. The PWM
-+drives CNV at the configured rate; on DATA_READY the offload engine reads all
-+active channel results and streams them directly to the IIO DMA buffer with no
-+CPU involvement. The GP pin used as DATA_READY trigger is supplied by the
-+trigger-source consumer at buffer enable time; no ``interrupt-names`` entry is
-+required.
-+
-+Manual offload
-+--------------
-+
-+Used when no ``pwms`` property is present and SPI offload is available. A
-+periodic SPI offload trigger controls the conversion rate and the offload engine
-+streams results directly to the IIO DMA buffer.
-+
-+The ``sampling_frequency`` attribute on the IIO buffer controls the trigger
-+rate (in Hz). The initial rate is 100 kHz.
-+
-+Oversampling is not supported in Manual Mode.
-+
-diff --git a/Documentation/iio/index.rst b/Documentation/iio/index.rst
-index ba3e609c6a13..007e0a1fcc5a 100644
---- a/Documentation/iio/index.rst
-+++ b/Documentation/iio/index.rst
-@@ -23,6 +23,7 @@ Industrial I/O Kernel Drivers
-    ad4000
-    ad4030
-    ad4062
-+   ad4691
-    ad4695
-    ad7191
-    ad7380
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 24e4502b8292..819d8b6eb6bb 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1491,6 +1491,7 @@ S:	Supported
- W:	https://ez.analog.com/linux-software-drivers
- F:	Documentation/devicetree/bindings/iio/adc/adi,ad4691.yaml
- F:	drivers/iio/adc/ad4691.c
-+F:	drivers/iio/adc/ad4691.rst
- 
- ANALOG DEVICES INC AD4695 DRIVER
- M:	Michael Hennerich <michael.hennerich@analog.com>
+Changes in v4:
+- Use `dataclass` for internal data structures.
+- Change `RaVersionInfo` to an enum.
+- Move `RaVersionInfo` closer to its point of use.
+- Statically check if all `RaVersionInfo` variants are properly handled
+  (using mypy).
+- Relocate `ctx.manual_sysroot_crates` check in `append_sysroot_crate`.
+- Move `crate_attrs=["no_std"]` addition to `scripts:
+  generate_rust_analyzer.py: fix IDE support for primitive types`.
+- Move `typing.NotRequired` closer to the relevant field.
+- Link to v3: https://lore.kernel.org/r/20260308-ra-fix-primitive-v3-0-598017bcefd8@gmail.com
 
--- 
-2.43.0
+Changes in v3:
+- Remove extra `crate_attrs=["no_std"]` for crates that specify
+  `#![no_std]` by themselves.
+- Fix rust-analyzer version for Rust 1.78.
+- Tweak `map_ra_version_baseline` to distinguish between Rust version
+  and rust-analyzer version.
+- Simplify overall structure.
+- Rebase on 6c02871d258 ("scripts: generate_rust_analyzer.py: reduce cfg
+  plumbing")
+- Link to v2: https://lore.kernel.org/r/20260109-ra-fix-primitive-v2-0-249852a4145a@gmail.com
+
+Changes in v2:
+- Implement multiple rust-analyzer version support.
+- Rebase on 9ace4753a520 (Linux 6.19-rc4).
+- Remove an unnecessary new line between tags.
+- Link to v1: https://lore.kernel.org/r/20260101-ra-fix-primitive-v1-1-def809357b4e@gmail.com
+
+---
+Jesung Yang (2):
+      scripts: generate_rust_analyzer.py: add versioning infrastructure
+      scripts: generate_rust_analyzer.py: fix IDE support for primitive types
+
+ scripts/generate_rust_analyzer.py | 268 +++++++++++++++++++++++++++++++++++---
+ 1 file changed, 248 insertions(+), 20 deletions(-)
+---
+base-commit: b4e07588e743c989499ca24d49e752c074924a9a
+change-id: 20260101-ra-fix-primitive-78154fe8173f
+
+Best regards,
+--  
+Jesung Yang <y.j3ms.n@gmail.com>
 
