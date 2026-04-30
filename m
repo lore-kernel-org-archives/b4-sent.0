@@ -1,84 +1,74 @@
-From: Rex Fu <Rex.Fu@amd.com>
-Date: Thu, 30 Apr 2026 13:44:28 +0800
-Subject: [PATCH] ARM: dts: aspeed: anacapa: name EDSFF and thermtrip SGPIO
- lines
+From: Colin Huang <u8813345@gmail.com>
+Subject: [PATCH v3 0/3] add support for Delta E50SN12051
+Date: Thu, 30 Apr 2026 14:16:19 +0800
+Message-Id: <20260430-add-e50sn12051-v3-0-f6d4e043ec7c@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260430-anacapa-sgpio-edsff-thermtrip-v1-1-2fd5e72435d0@amd.com>
-X-B4-Tracking: v=1; b=H4sIADvs8mkC/yXMwQrCMAwA0F8ZORvoqgzxV8RD2qVbBLuSVBHG/
- n2dHt/lrWCswga3bgXlj5gsuaE/dRBnyhOjjM3gnR/c5eyQMkUqhDYVWZBHSwnrzPqqKgUpBu+
- vIQ19YGhHUU7y/f33x9/2Dk+O9Uhh23ZG96kXgQAAAA==
-X-Change-ID: 20260430-anacapa-sgpio-edsff-thermtrip-acb228bf61be
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
- Andrew Jeffery <andrew@codeconstruct.com.au>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
- Rex Fu <Rex.Fu@amd.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777527924; l=1868;
- i=Rex.Fu@amd.com; s=20260417; h=from:subject:message-id;
- bh=FKvzsI9xHFmGcGo9UHVCAjhAhv7ytsitasP4Y5ub01A=;
- b=GPiFDR+/ibGE0NwGTxGFGmQdcKyr+YrgZyfg43LrcwIi2ZH7TGSoZmO77kXGMks/g4aHs7xEr
- 73Dk+5T4CraD5T71ecP2h9D4jP6C68jM1Nj8r/ozRB7Hvh1j+k7MeL/
-X-Developer-Key: i=Rex.Fu@amd.com; a=ed25519;
- pk=26ECoh24fxrbXDKgA4hCmgg0xjQ+IxU97kXb46ovwgc=
-X-Endpoint-Received: by B4 Relay for Rex.Fu@amd.com/20260417 with auth_id=738
+X-B4-Tracking: v=1; b=H4sIALPz8mkC/2WMSw6CMBQAr0K6tub1AW115T2Mi9I+oImAaU2jI
+ dzdghs/y5lkZmaRgqfIjsXMAiUf/TRmKHcFs70ZO+LeZWYIKKEUkhvnONUQR4FQi4watXFSKWV
+ Yjm6BWv/YhudL5t7H+xSe2z+J1b5XFR5+V0lw4FaAIGk1NE1z6gbjr3s7DWxdJfzIS/jLMedOy
+ ZYqrDSar3xZlhcVOVtY6wAAAA==
+X-Change-ID: 20260316-add-e50sn12051-ad828ad6777a
+To: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Kevin Chang <kevin.chang2@amd.com>, 
+ Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>
+Cc: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Colin Huang <colin.huang2@amd.com>, Colin Huang <u8813345@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777529782; l=1777;
+ i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
+ bh=oBgPU0ydwALQl3qIwEqmaToaIV3W/b8yAthgaWa/kQQ=;
+ b=MJCpHh3s6Klg5DyEsYd1zAt40UXgIurJ+nlj5CE3VVN4EWAMFNKCUQ2iOSnCuXupVOSp6p3tJ
+ VPBzu9gEDpiDWVFhW/orCN6YSuV83Sxh3kqthNYZ/VS4Nl0XcjcGqJg
+X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
+ pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
+X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Name the Anacapa SGPIO lines used for EDSFF power-good and thermtrip
-assertion signals.
+Delta E50SN12051 is a 600W non-isolated 1/8th brick DC-DC power module.
+With this series applied, voltage, current and temperature sensors can 
+be exposed through the standard hwmon interface.
 
-The affected lines replace legacy or unused CPU-related names with the
-platform signal names used by userspace monitoring.
+Changes in this series:
+- Introduce device-tree binding documentation for the new device
+- Add hwmon documentation describing the supported sensors
+- Add PMBus driver support for Delta E50SN12051
 
-Signed-off-by: Rex Fu <Rex.Fu@amd.com>
+Signed-off-by: Colin Huang <u8813345@gmail.com>
 ---
- arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+Changes in v3:
+- Simplify to pass &e50sn12051_info directly to pmbus_do_probe() 
+  to avoid the extra memory allocation
+- Link to v2: https://lore.kernel.org/r/20260430-add-e50sn12051-v2-0-d76fe42482ab@gmail.com
 
-diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
-index 2cb7bd128d24..fe960bb7bc27 100644
---- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
-+++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
-@@ -912,7 +912,7 @@ &sgpiom0 {
- 	"PWRGD_PVDDIO_P0", "",
- 	"PWRGD_PVDDIO_MEM_S3_P0", "",
- 	"PWRGD_CHMP_CPU0_FPGA", "",
--	"PWRGD_CHIL_CPU0_FPGA", "",
-+	"HPM_EDSFF_PG", "",
- 	"PWRGD_CHEH_CPU0_FPGA", "",
- 	"PWRGD_CHAD_CPU0_FPGA", "FM_BMC_READY_PLD",
- 	"", "",
-@@ -957,8 +957,8 @@ &sgpiom0 {
- 	"PDB_ALERT_R_N", "",
- 
- 	/* L0-L7 line 176-191 */
--	"CPU0_SP7R1", "", "CPU0_SP7R2", "",
--	"CPU0_SP7R3", "", "CPU0_SP7R4", "",
-+	"L_EDSFF2_PG", "", "L_EDSFF3_PG", "",
-+	"R_EDSFF2_PG", "", "R_EDSFF3_PG", "",
- 	"CPU0_CORETYPE0", "", "CPU0_CORETYPE1", "",
- 	"CPU0_CORETYPE2", "", "FM_BIOS_POST_CMPLT_R_N", "",
- 
-@@ -984,8 +984,8 @@ &sgpiom0 {
- 	"HPM_PWR_FAIL", "Port80_b0",
- 	"FM_DIMM_IP_FAIL", "Port80_b1",
- 	"FM_DIMM_AH_FAIL", "Port80_b2",
--	"HPM_AMC_THERMTRIP_R_L", "Port80_b3",
--	"FM_CPU0_THERMTRIP_N", "Port80_b4",
-+	"AMC_THERMTRIP_ASSERT", "Port80_b3",
-+	"CPU_THERMTRIP_ASSERT", "Port80_b4",
- 	"PVDDCR_SOC_P0_OCP_L", "Port80_b5",
- 	"CPLD_SGPIO_RDY", "Port80_b6",
- 	"", "Port80_b7",
+Changes in v2:
+- Add %YAML 1.2 declaration in binding document.
+- Use a generic node name in examples in binding document.
+- Add MODULE_IMPORT_NS("PMBUS")
+- Remove unused / incorrect headers
+- Link to v1: https://lore.kernel.org/r/20260429-add-e50sn12051-v1-0-c101e6c80bbb@gmail.com
 
 ---
-base-commit: 9974969c14031a097d6b45bcb7a06bb4aa525c40
-change-id: 20260430-anacapa-sgpio-edsff-thermtrip-acb228bf61be
+Colin Huang (3):
+      dt-bindings: hwmon: pmbus: add Delta E50SN12051 binding
+      Documentation/hwmon: add Delta E50SN12051 documentation
+      hwmon: (pmbus) add support for Delta E50SN12051
+
+ .../bindings/hwmon/pmbus/delta,e50sn12051.yaml     | 41 +++++++++++
+ Documentation/hwmon/e50sn12051.rst                 | 81 ++++++++++++++++++++++
+ Documentation/hwmon/index.rst                      |  1 +
+ drivers/hwmon/pmbus/Kconfig                        |  9 +++
+ drivers/hwmon/pmbus/Makefile                       |  1 +
+ drivers/hwmon/pmbus/e50sn12051.c                   | 52 ++++++++++++++
+ 6 files changed, 185 insertions(+)
+---
+base-commit: b584e7d50af502462349910bf4ed30057620b69f
+change-id: 20260316-add-e50sn12051-ad828ad6777a
 
 Best regards,
---  
-Rex Fu <Rex.Fu@amd.com>
+-- 
+Colin Huang <u8813345@gmail.com>
 
