@@ -1,138 +1,84 @@
-From: Colin Huang <u8813345@gmail.com>
-Date: Thu, 30 Apr 2026 11:01:36 +0800
-Subject: [PATCH v2 3/3] hwmon: (pmbus) add support for Delta E50SN12051
+From: Rex Fu <Rex.Fu@amd.com>
+Date: Thu, 30 Apr 2026 13:44:28 +0800
+Subject: [PATCH] ARM: dts: aspeed: anacapa: name EDSFF and thermtrip SGPIO
+ lines
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260430-add-e50sn12051-v2-3-d76fe42482ab@gmail.com>
-References: <20260430-add-e50sn12051-v2-0-d76fe42482ab@gmail.com>
-In-Reply-To: <20260430-add-e50sn12051-v2-0-d76fe42482ab@gmail.com>
-To: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Kevin Chang <kevin.chang2@amd.com>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>
-Cc: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- Colin Huang <colin.huang2@amd.com>, Colin Huang <u8813345@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777518101; l=3508;
- i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
- bh=OGhWi+bekUqcc357O5gemEEvGFRmgZ9FlDjulLzIoNE=;
- b=uJvnntVQKU3Bo2r/cX5NSxmXbZXB8VKlkids9lilv/BClc9+tNqFScm8aXMOon2wPmrMAL7HJ
- U8TFTgpC71VB3NJ9YckxX/LNLw0eKhBMpaSk/ZgNThEO9QiktllivFa
-X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
- pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
-X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
+Message-Id: <20260430-anacapa-sgpio-edsff-thermtrip-v1-1-2fd5e72435d0@amd.com>
+X-B4-Tracking: v=1; b=H4sIADvs8mkC/yXMwQrCMAwA0F8ZORvoqgzxV8RD2qVbBLuSVBHG/
+ n2dHt/lrWCswga3bgXlj5gsuaE/dRBnyhOjjM3gnR/c5eyQMkUqhDYVWZBHSwnrzPqqKgUpBu+
+ vIQ19YGhHUU7y/f33x9/2Dk+O9Uhh23ZG96kXgQAAAA==
+X-Change-ID: 20260430-anacapa-sgpio-edsff-thermtrip-acb228bf61be
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
+ Andrew Jeffery <andrew@codeconstruct.com.au>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ Rex Fu <Rex.Fu@amd.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777527924; l=1868;
+ i=Rex.Fu@amd.com; s=20260417; h=from:subject:message-id;
+ bh=FKvzsI9xHFmGcGo9UHVCAjhAhv7ytsitasP4Y5ub01A=;
+ b=GPiFDR+/ibGE0NwGTxGFGmQdcKyr+YrgZyfg43LrcwIi2ZH7TGSoZmO77kXGMks/g4aHs7xEr
+ 73Dk+5T4CraD5T71ecP2h9D4jP6C68jM1Nj8r/ozRB7Hvh1j+k7MeL/
+X-Developer-Key: i=Rex.Fu@amd.com; a=ed25519;
+ pk=26ECoh24fxrbXDKgA4hCmgg0xjQ+IxU97kXb46ovwgc=
+X-Endpoint-Received: by B4 Relay for Rex.Fu@amd.com/20260417 with auth_id=738
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the pmbus driver for Delta E50SN12051 600W Non-isolated
-1/8th Brick DCDC Power Modules.
+Name the Anacapa SGPIO lines used for EDSFF power-good and thermtrip
+assertion signals.
 
-Signed-off-by: Colin Huang <u8813345@gmail.com>
+The affected lines replace legacy or unused CPU-related names with the
+platform signal names used by userspace monitoring.
+
+Signed-off-by: Rex Fu <Rex.Fu@amd.com>
 ---
- drivers/hwmon/pmbus/Kconfig      |  9 ++++++
- drivers/hwmon/pmbus/Makefile     |  1 +
- drivers/hwmon/pmbus/e50sn12051.c | 59 ++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 69 insertions(+)
+ arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
-index 8f4bff375ecb..4fbfcbc4a9c5 100644
---- a/drivers/hwmon/pmbus/Kconfig
-+++ b/drivers/hwmon/pmbus/Kconfig
-@@ -161,6 +161,15 @@ config SENSORS_DPS920AB
- 	  This driver can also be built as a module. If so, the module will
- 	  be called dps920ab.
+diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
+index 2cb7bd128d24..fe960bb7bc27 100644
+--- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
++++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
+@@ -912,7 +912,7 @@ &sgpiom0 {
+ 	"PWRGD_PVDDIO_P0", "",
+ 	"PWRGD_PVDDIO_MEM_S3_P0", "",
+ 	"PWRGD_CHMP_CPU0_FPGA", "",
+-	"PWRGD_CHIL_CPU0_FPGA", "",
++	"HPM_EDSFF_PG", "",
+ 	"PWRGD_CHEH_CPU0_FPGA", "",
+ 	"PWRGD_CHAD_CPU0_FPGA", "FM_BMC_READY_PLD",
+ 	"", "",
+@@ -957,8 +957,8 @@ &sgpiom0 {
+ 	"PDB_ALERT_R_N", "",
  
-+config SENSORS_E50SN12051
-+	tristate "Delta E50SN12051 Power Modules"
-+	help
-+	  If you say yes here you get hardware monitoring support for Delta
-+	  E50SN12051 Power Modules.
-+
-+	  This driver can also be built as a module. If so, the module will
-+	  be called e50sn12051.
-+
- config SENSORS_INA233
- 	tristate "Texas Instruments INA233 and compatibles"
- 	help
-diff --git a/drivers/hwmon/pmbus/Makefile b/drivers/hwmon/pmbus/Makefile
-index 7129b62bc00f..fc910bf34fe3 100644
---- a/drivers/hwmon/pmbus/Makefile
-+++ b/drivers/hwmon/pmbus/Makefile
-@@ -17,6 +17,7 @@ obj-$(CONFIG_SENSORS_FSP_3Y)	+= fsp-3y.o
- obj-$(CONFIG_SENSORS_HAC300S)	+= hac300s.o
- obj-$(CONFIG_SENSORS_IBM_CFFPS)	+= ibm-cffps.o
- obj-$(CONFIG_SENSORS_DPS920AB)	+= dps920ab.o
-+obj-$(CONFIG_SENSORS_E50SN12051) += e50sn12051.o
- obj-$(CONFIG_SENSORS_INA233)	+= ina233.o
- obj-$(CONFIG_SENSORS_INSPUR_IPSPS) += inspur-ipsps.o
- obj-$(CONFIG_SENSORS_IR35221)	+= ir35221.o
-diff --git a/drivers/hwmon/pmbus/e50sn12051.c b/drivers/hwmon/pmbus/e50sn12051.c
-new file mode 100644
-index 000000000000..3d61db949afb
---- /dev/null
-+++ b/drivers/hwmon/pmbus/e50sn12051.c
-@@ -0,0 +1,59 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * Hardware monitoring driver for E50SN12051
-+ */
-+
-+#include <linux/i2c.h>
-+#include <linux/module.h>
-+#include <linux/mod_devicetable.h>
-+#include "pmbus.h"
-+
-+static struct pmbus_driver_info e50sn12051_info = {
-+	.pages = 1,
-+	.format[PSC_VOLTAGE_IN] = linear,
-+	.format[PSC_VOLTAGE_OUT] = linear,
-+	.format[PSC_CURRENT_OUT] = linear,
-+	.format[PSC_TEMPERATURE] = linear,
-+	.func[0] = PMBUS_HAVE_VIN | PMBUS_HAVE_STATUS_INPUT |
-+		   PMBUS_HAVE_VOUT | PMBUS_HAVE_STATUS_VOUT |
-+		   PMBUS_HAVE_IOUT | PMBUS_HAVE_STATUS_IOUT |
-+		   PMBUS_HAVE_TEMP | PMBUS_HAVE_STATUS_TEMP,
-+};
-+
-+static const struct i2c_device_id e50sn12051_id[] = { { "e50sn12051", 0 }, {} };
-+MODULE_DEVICE_TABLE(i2c, e50sn12051_id);
-+
-+static const struct of_device_id e50sn12051_of_match[] = {
-+	{ .compatible = "delta,e50sn12051" },
-+	{},
-+};
-+MODULE_DEVICE_TABLE(of, e50sn12051_of_match);
-+
-+static int e50sn12051_probe(struct i2c_client *client)
-+{
-+	struct pmbus_driver_info *info;
-+
-+	info = devm_kmemdup(&client->dev, &e50sn12051_info, sizeof(*info),
-+			    GFP_KERNEL);
-+	if (!info)
-+		return -ENOMEM;
-+
-+	return pmbus_do_probe(client, info);
-+}
-+
-+static struct i2c_driver e50sn12051_driver = {
-+	.driver = {
-+		.name = "e50sn12051",
-+		.of_match_table = e50sn12051_of_match,
-+	},
-+	.probe = e50sn12051_probe,
-+
-+	.id_table = e50sn12051_id,
-+};
-+
-+module_i2c_driver(e50sn12051_driver);
-+
-+MODULE_AUTHOR("Kevin Chang <kevin.chang2@amd.com>");
-+MODULE_DESCRIPTION("PMBus driver for E50SN12051");
-+MODULE_LICENSE("GPL");
-+MODULE_IMPORT_NS("PMBUS");
+ 	/* L0-L7 line 176-191 */
+-	"CPU0_SP7R1", "", "CPU0_SP7R2", "",
+-	"CPU0_SP7R3", "", "CPU0_SP7R4", "",
++	"L_EDSFF2_PG", "", "L_EDSFF3_PG", "",
++	"R_EDSFF2_PG", "", "R_EDSFF3_PG", "",
+ 	"CPU0_CORETYPE0", "", "CPU0_CORETYPE1", "",
+ 	"CPU0_CORETYPE2", "", "FM_BIOS_POST_CMPLT_R_N", "",
+ 
+@@ -984,8 +984,8 @@ &sgpiom0 {
+ 	"HPM_PWR_FAIL", "Port80_b0",
+ 	"FM_DIMM_IP_FAIL", "Port80_b1",
+ 	"FM_DIMM_AH_FAIL", "Port80_b2",
+-	"HPM_AMC_THERMTRIP_R_L", "Port80_b3",
+-	"FM_CPU0_THERMTRIP_N", "Port80_b4",
++	"AMC_THERMTRIP_ASSERT", "Port80_b3",
++	"CPU_THERMTRIP_ASSERT", "Port80_b4",
+ 	"PVDDCR_SOC_P0_OCP_L", "Port80_b5",
+ 	"CPLD_SGPIO_RDY", "Port80_b6",
+ 	"", "Port80_b7",
 
--- 
-2.34.1
+---
+base-commit: 9974969c14031a097d6b45bcb7a06bb4aa525c40
+change-id: 20260430-anacapa-sgpio-edsff-thermtrip-acb228bf61be
+
+Best regards,
+--  
+Rex Fu <Rex.Fu@amd.com>
 
