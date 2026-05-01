@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 02 May 2026 05:04:12 +0800
-Subject: [PATCH RFC 26/32] mm/workingset: properly define the format of a
- folio shadow
+Date: Sat, 02 May 2026 05:04:13 +0800
+Subject: [PATCH RFC 27/32] mm/workingset: move refault distance checking
+ into a helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260502-mglru-fg-v1-26-913619b014d9@tencent.com>
+Message-Id: <20260502-mglru-fg-v1-27-913619b014d9@tencent.com>
 References: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 In-Reply-To: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 To: linux-mm@kvack.org
@@ -31,158 +31,206 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=6409;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=7913;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=BHsPRvLdIXuKL3/5pLqvcCuBLzJEpjMu3hI5uV7aekI=;
- b=AcTOgAnvvy963ARcizG0u5Uont1pyDQrOxeIwl5U9ZU8DRZnP0MT4tUKr19pgaGqHDFeirdzz
- XLtUak8Rg5sBgd6KvulitmR+E8YDSYWip1TC4e5UormFnuF5hLwTJ2u
+ bh=bwYzIJmY3Hqa83k+2m4zOivhjtGZdKIukV17N5RFO4g=;
+ b=406q4TDrkyFVDQ5IMpGCHCP44WNYxwuZQGPzaniAOeZA2dwckbGSgUqvgkWv/KqqeqF9PROsP
+ Cb4l7vx1BkkC9r/wmxg3Sx2QxppoNWXmWgFDYcIRETQ5+fcG45eU5gT
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The shadow of an evicted folio can be roughly divided into two parts:
-
-- The common and mandatory pack info: which contains the memcg info,
-  workingset bit, and pgdat.
-- LRU specific eviction info: which is a "timestamp" for Active/Inactive
-  LRU, and generation sequence for MGLRU.
-
-The common pack part is the same for both Active/Inactive and MGLRU, and
-the data stored presents the exact information. Meanwhile, the eviction
-info part could be truncated, which is OK since the eviction info is
-just a hint for LRU to determine what to do with a refaulted folio, and
-in the worst case, only has a limited effect on the system's
-performance.
-
-Add some comments on this, and consolidate the macros for these two
-parts.
+There isn't any feature change, just move the refault distance checking
+logic into a standalone helper so it can be reused later.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/workingset.c | 61 +++++++++++++++++++++++++++++++++++++--------------------
- 1 file changed, 40 insertions(+), 21 deletions(-)
+ mm/workingset.c | 136 ++++++++++++++++++++++++++++++++------------------------
+ 1 file changed, 78 insertions(+), 58 deletions(-)
 
 diff --git a/mm/workingset.c b/mm/workingset.c
-index b472ac34943e..622e00ac28b6 100644
+index 622e00ac28b6..e756b0cc14b5 100644
 --- a/mm/workingset.c
 +++ b/mm/workingset.c
-@@ -184,13 +184,35 @@
-  * refault distance will immediately activate the refaulting page.
-  */
- 
--#define WORKINGSET_SHIFT 1
--#define EVICTION_SHIFT	((BITS_PER_LONG - BITS_PER_XA_VALUE) +	\
--			 WORKINGSET_SHIFT + NODES_SHIFT + \
--			 MEM_CGROUP_ID_SHIFT)
--#define EVICTION_SHIFT_ANON	(EVICTION_SHIFT + SWAP_COUNT_SHIFT)
--#define EVICTION_MASK	(~0UL >> EVICTION_SHIFT)
--#define EVICTION_MASK_ANON	(~0UL >> EVICTION_SHIFT_ANON)
-+/*
-+ * Active/Inactive LRU, MGLRU have different info embedded in the shadow.
-+ * Shadow format:
-+ *                   /     LRU Eviction Info    \ / LRU Pack Info \
-+ *                  +----------------------------+----------------+-+
-+ * non-MGLRU:       |SC|   eviction timestamp    | NID | MCID | W |1|
-+ * MGLRU:           |SC|     seq number   | refs | NID | MCID | W |1|
-+ *                   ^                              ^      ^    ^  ^
-+ *    Swap Count (anon only)  NUMA ID (NODES_SHIFT)-+      |    | XA_VALUE
-+ *          Memory Cgroup ID (MEM_CGROUP_ID_SHIFT) --------+    | mark
-+ *                    Workingset Bit (WORKINGSET_SHIFT) --------+
-+ *
-+ * Shadow is a XA_VALUE, 63 / 31 bits are usable.
-+ *
-+ * The LRU pack info part is used to identify which lruvec a folio was
-+ * evicted from. This part is always accurate so we never lose the
-+ * basic track of faults on each lruvec.
-+ *
-+ * Eviction info is either a snapshot of the `evictions` counter of an
-+ * lruvec when the folio was evicted (lru timestamp, for active/inactive
-+ * LRU), or the min_seq number when the folio was evicted (MGLRU). This
-+ * part may have shrunk, so we may get inaccurate info, which is usually
-+ * fine and could be tolerated.
-+ */
-+#define WORKINGSET_SHIFT	1
-+#define LRU_PACK_BITS		(NODES_SHIFT + MEM_CGROUP_ID_SHIFT + \
-+				 WORKINGSET_SHIFT)
-+#define LRU_EVICT_BITS		(BITS_PER_XA_VALUE - LRU_PACK_BITS)
-+#define LRU_EVICT_BITS_ANON	(LRU_EVICT_BITS - SWAP_COUNT_SHIFT)
- 
- /*
-  * LRU refs uses LRU_REFS_WIDTH + 2 bits, the 2 bits are PG_workingset and
-@@ -212,7 +234,9 @@ static unsigned int bucket_order[ANON_AND_FILE] __read_mostly;
+@@ -234,9 +234,6 @@ static unsigned int bucket_order[ANON_AND_FILE] __read_mostly;
  static void *pack_shadow(int memcgid, pg_data_t *pgdat, unsigned long eviction,
  			 bool workingset, bool file)
  {
--	eviction &= file ? EVICTION_MASK : EVICTION_MASK_ANON;
-+	BUILD_BUG_ON(LRU_EVICT_BITS_ANON <= SWAP_COUNT_SHIFT);
-+
-+	eviction &= BIT(file ? LRU_EVICT_BITS : LRU_EVICT_BITS_ANON) - 1;
+-	BUILD_BUG_ON(LRU_EVICT_BITS_ANON <= SWAP_COUNT_SHIFT);
+-
+-	eviction &= BIT(file ? LRU_EVICT_BITS : LRU_EVICT_BITS_ANON) - 1;
  	eviction = (eviction << MEM_CGROUP_ID_SHIFT) | memcgid;
  	eviction = (eviction << NODES_SHIFT) | pgdat->node_id;
  	eviction = (eviction << WORKINGSET_SHIFT) | workingset;
-@@ -257,8 +281,7 @@ static void *lru_gen_eviction(struct folio *folio)
- 	struct pglist_data *pgdat = folio_pgdat(folio);
- 	unsigned short memcg_id;
- 
--	BUILD_BUG_ON(LRU_GEN_WIDTH + LRU_REFS_BITS >
--		     BITS_PER_LONG - max(EVICTION_SHIFT, EVICTION_SHIFT_ANON));
-+	BUILD_BUG_ON(LRU_GEN_WIDTH + LRU_REFS_BITS > LRU_EVICT_BITS_ANON);
- 
- 	rcu_read_lock();
- 	memcg = folio_memcg(folio);
-@@ -284,7 +307,7 @@ static bool lru_gen_test_recent(struct lruvec *lruvec,
- 	unsigned long max_seq;
- 
- 	max_seq = READ_ONCE((lruvec)->lrugen.max_seq);
--	max_seq &= (file ? EVICTION_MASK : EVICTION_MASK_ANON) >> LRU_REFS_BITS;
-+	max_seq &= BIT((file ? LRU_EVICT_BITS : LRU_EVICT_BITS_ANON) - LRU_REFS_BITS) - 1;
- 
- 	return abs_diff(max_seq, token >> LRU_REFS_BITS) < MAX_NR_GENS;
+@@ -264,6 +261,77 @@ static void unpack_shadow(void *shadow, int *memcgidp, pg_data_t **pgdat,
+ 	*workingsetp = workingset;
  }
-@@ -512,7 +535,7 @@ bool workingset_test_recent(void *shadow, bool file, bool *workingset,
- 	 */
- 	eviction <<= bucket_order[file];
- 	distance = ((refault - eviction) &
--		    (file ? EVICTION_MASK : EVICTION_MASK_ANON));
-+		    (BIT(file ? LRU_EVICT_BITS : LRU_EVICT_BITS_ANON) - 1));
+ 
++/**
++ * lru_eviction - notifies eviction of an folio on an lruvec
++ * @lruvec: the lruvec the folio belongs to
++ * @nr_pages: size of the folio
++ *
++ * As in-memory folio is evicted, increase the eviction counter on
++ * the LRU and return its current reading.
++ */
++static inline unsigned long lru_eviction(struct lruvec *lruvec, int nr_pages,
++					 int bits, int bucket_order)
++{
++	unsigned long eviction;
++
++	/*
++	 * Reclaiming a cgroup means reclaiming all its children in a
++	 * round-robin fashion. That means that each cgroup has an LRU
++	 * order that is composed of the LRU orders of its child
++	 * cgroups; and every page has an LRU position not just in the
++	 * cgroup that owns it, but in all of that group's ancestors.
++	 *
++	 * So when the physical inactive list of a leaf cgroup ages,
++	 * the virtual inactive lists of all its parents, including
++	 * the root cgroup's, age as well.
++	 */
++	BUILD_BUG_ON(LRU_EVICT_BITS_ANON <= SWAP_COUNT_SHIFT);
++	eviction = atomic_long_fetch_add_relaxed(nr_pages, &lruvec->evictions);
++	while ((lruvec = parent_lruvec(lruvec)))
++		atomic_long_add(nr_pages, &lruvec->evictions);
++
++	/* Truncate the timestamp to fit in limited bits */
++	eviction >>= bucket_order;
++	eviction &= (BIT(bits) - 1);
++	return eviction;
++}
++
++/**
++ * lru_distance - calculate the refault distance of a refaulted folio
++ * @lruvec: the lruvec the folio belongs to before eviction
++ * @eviction: eviction timestamp recorded in the shadow
++ * @bits: number of bits used to encode the timestamp
++ * @bucket_order: bucket order used to truncate the timestamp
++ *
++ * Read the lruvec's current eviction counter and return the refault
++ * distance.
++ */
++static inline unsigned long lru_distance(struct lruvec *lruvec,
++					 unsigned long eviction,
++					 int bits, int bucket_order)
++{
++	unsigned long refault;
++
++	eviction <<= bucket_order;
++	refault = atomic_long_read(&lruvec->evictions);
++
++	/*
++	 * The unsigned subtraction here gives an accurate distance
++	 * across evictions overflows in most cases. There is a
++	 * special case: usually, shadow entries have a short lifetime
++	 * and are either refaulted or reclaimed along with the inode
++	 * before they get too old.  But it is not impossible for the
++	 * evictions to lap a shadow entry in the field, which
++	 * can then result in a false small refault distance, leading
++	 * to a false activation should this old entry actually
++	 * refault again.  However, earlier kernels used to deactivate
++	 * unconditionally with *every* reclaim invocation for the
++	 * longest time, so the occasional inappropriate activation
++	 * leading to pressure on the active list is not a problem.
++	 */
++	return (refault - eviction) & (BIT(bits) - 1);
++}
++
+ #ifdef CONFIG_LRU_GEN
+ 
+ static void *lru_gen_eviction(struct folio *folio)
+@@ -379,37 +447,6 @@ static void lru_gen_refault(struct folio *folio, void *shadow)
+ 
+ #endif /* CONFIG_LRU_GEN */
+ 
+-/**
+- * workingset_age_nonresident - age non-resident entries as LRU ages
+- * @lruvec: the lruvec that was aged
+- * @nr_pages: the number of pages to count
+- *
+- * As in-memory pages are aged, non-resident pages need to be aged as
+- * well, in order for the refault distances later on to be comparable
+- * to the in-memory dimensions. This function allows reclaim and LRU
+- * operations to drive the non-resident aging along in parallel.
+- */
+-static long workingset_age_nonresident(struct lruvec *lruvec, unsigned long nr_pages)
+-{
+-	unsigned long eviction;
+-
+-	/*
+-	 * Reclaiming a cgroup means reclaiming all its children in a
+-	 * round-robin fashion. That means that each cgroup has an LRU
+-	 * order that is composed of the LRU orders of its child
+-	 * cgroups; and every page has an LRU position not just in the
+-	 * cgroup that owns it, but in all of that group's ancestors.
+-	 *
+-	 * So when the physical inactive list of a leaf cgroup ages,
+-	 * the virtual inactive lists of all its parents, including
+-	 * the root cgroup's, age as well.
+-	 */
+-	eviction = atomic_long_fetch_add_relaxed(nr_pages, &lruvec->evictions);
+-	while ((lruvec = parent_lruvec(lruvec)))
+-		atomic_long_add(nr_pages, &lruvec->evictions);
+-	return eviction;
+-}
+-
+ /**
+  * workingset_eviction - note the eviction of a folio from memory
+  * @target_memcg: the cgroup that is causing the reclaim
+@@ -437,8 +474,9 @@ void *workingset_eviction(struct folio *folio, struct mem_cgroup *target_memcg)
+ 	lruvec = mem_cgroup_lruvec(target_memcg, pgdat);
+ 	/* XXX: target_memcg can be NULL, go through lruvec */
+ 	memcgid = mem_cgroup_private_id(lruvec_memcg(lruvec));
+-	eviction = workingset_age_nonresident(lruvec, folio_nr_pages(folio));
+-	eviction >>= bucket_order[file];
++	eviction = lru_eviction(lruvec, folio_nr_pages(folio),
++				file ? LRU_EVICT_BITS : LRU_EVICT_BITS_ANON,
++				bucket_order[file]);
+ 	return pack_shadow(memcgid, pgdat, eviction,
+ 			   folio_is_workingset(folio), file);
+ }
+@@ -458,7 +496,7 @@ void *workingset_eviction(struct folio *folio, struct mem_cgroup *target_memcg)
+ bool workingset_test_recent(void *shadow, bool file, bool *workingset,
+ 				bool flush)
+ {
+-	unsigned long refault, distance, active, inactive;
++	unsigned long distance, active, inactive;
+ 	struct mem_cgroup *eviction_memcg;
+ 	struct lruvec *eviction_lruvec;
+ 	struct pglist_data *pgdat;
+@@ -515,27 +553,9 @@ bool workingset_test_recent(void *shadow, bool file, bool *workingset,
+ 	if (flush)
+ 		mem_cgroup_flush_stats_ratelimited(eviction_memcg);
+ 
+-	refault = atomic_long_read(&eviction_lruvec->evictions);
+-
+-	/*
+-	 * Calculate the refault distance
+-	 *
+-	 * The unsigned subtraction here gives an accurate distance
+-	 * across evictions overflows in most cases. There is a
+-	 * special case: usually, shadow entries have a short lifetime
+-	 * and are either refaulted or reclaimed along with the inode
+-	 * before they get too old.  But it is not impossible for the
+-	 * evictions to lap a shadow entry in the field, which
+-	 * can then result in a false small refault distance, leading
+-	 * to a false activation should this old entry actually
+-	 * refault again.  However, earlier kernels used to deactivate
+-	 * unconditionally with *every* reclaim invocation for the
+-	 * longest time, so the occasional inappropriate activation
+-	 * leading to pressure on the active list is not a problem.
+-	 */
+-	eviction <<= bucket_order[file];
+-	distance = ((refault - eviction) &
+-		    (BIT(file ? LRU_EVICT_BITS : LRU_EVICT_BITS_ANON) - 1));
++	distance = lru_distance(eviction_lruvec, eviction,
++				file ? LRU_EVICT_BITS : LRU_EVICT_BITS_ANON,
++				bucket_order[file]);
  
  	/*
  	 * Compare the distance to the existing workingset size. We
-@@ -781,12 +804,10 @@ static struct lock_class_key shadow_nodes_key;
- 
- static int __init workingset_init(void)
- {
--	unsigned int timestamp_bits, timestamp_bits_anon;
- 	struct shrinker *workingset_shadow_shrinker;
- 	unsigned int max_order;
- 	int ret = -ENOMEM;
- 
--	BUILD_BUG_ON(BITS_PER_LONG < EVICTION_SHIFT);
- 	/*
- 	 * Calculate the eviction bucket size to cover the longest
- 	 * actionable refault distance, which is currently half of
-@@ -794,15 +815,13 @@ static int __init workingset_init(void)
- 	 * some more pages at runtime, so keep working with up to
- 	 * double the initial memory by using totalram_pages as-is.
- 	 */
--	timestamp_bits = BITS_PER_LONG - EVICTION_SHIFT;
--	timestamp_bits_anon = BITS_PER_LONG - EVICTION_SHIFT_ANON;
- 	max_order = fls_long(totalram_pages() - 1);
--	if (max_order > (BITS_PER_LONG - EVICTION_SHIFT))
--		bucket_order[WORKINGSET_FILE] = max_order - timestamp_bits;
--	if (max_order > timestamp_bits_anon)
--		bucket_order[WORKINGSET_ANON] = max_order - timestamp_bits_anon;
-+	if (max_order > LRU_EVICT_BITS)
-+		bucket_order[WORKINGSET_FILE] = max_order - LRU_EVICT_BITS;
-+	if (max_order > LRU_EVICT_BITS_ANON)
-+		bucket_order[WORKINGSET_ANON] = max_order - LRU_EVICT_BITS_ANON;
- 	pr_info("workingset: timestamp_bits=%d (anon: %d) max_order=%d bucket_order=%u (anon: %d)\n",
--		timestamp_bits, timestamp_bits_anon, max_order,
-+		LRU_EVICT_BITS, LRU_EVICT_BITS_ANON, max_order,
- 		bucket_order[WORKINGSET_FILE], bucket_order[WORKINGSET_ANON]);
- 
- 	workingset_shadow_shrinker = shrinker_alloc(SHRINKER_NUMA_AWARE |
 
 -- 
 2.54.0
