@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 02 May 2026 05:04:01 +0800
-Subject: [PATCH RFC 15/32] mm/gup: use new helpers for marking folios as
- referenced
+Date: Sat, 02 May 2026 05:04:02 +0800
+Subject: [PATCH RFC 16/32] mm: convert folio referenced flag usages to new
+ bitwise identical helpers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260502-mglru-fg-v1-15-913619b014d9@tencent.com>
+Message-Id: <20260502-mglru-fg-v1-16-913619b014d9@tencent.com>
 References: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 In-Reply-To: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 To: linux-mm@kvack.org
@@ -31,64 +31,48 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=1672;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=999;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=zzj2htF5O3Boz+i6Si7xd6bJD7nkf/a9RkvvaueQ9so=;
- b=sZi3qcG1zBUsLAgNczKqAvDXvOrUzPJS593cEkUbvLcZSL+TA/nS/UnQHUw8/BbKhSltO+z1A
- MbjywAvxq4tDfpfGluN3y7BIjR9yZGpQIA1+BNH1U2QKP35eubRjqAL
+ bh=+5qun8U2KQYDmQH0ZIm/6ejG1bASGFZfAJQuD/re23Y=;
+ b=lSMsnUvxGGUaYG0E/v+f1nxrr3TYC9U+s6XCF5kTjEYfQM7zbRpIjFFhSJ4RiZ/Cp9u0YGRqE
+ oaQcIqhCOdFBSP97uzGceWG0hU5snTAOcZ2U8TXEw2Y4nZ5E9KEBA6c
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Marking the folio as referenced in gup fast was first introduced by commit
-8ee53820edfd ("thp: mmu_notifier_test_young"). Then later refractored
-but still basically the samething in commit e93480537fd7 ("mm/gup: Mark all
-pages PageReferenced in generic get_user_pages_fast()"). Some implementation
-may changed over days by the goal is the same: provide hotness info for better
-memory management.
-
-We have made all users that cares about a folio's hotness info to the
-new helper, so convert this updater too.
-
-NOTE: it would be better to convert to folio_mark_referenced later.
+To prepare for removal of this page flag, use the new introduced
+standalone helper.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/gup.c | 6 +++---
+ mm/swap.c | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/mm/gup.c b/mm/gup.c
-index 21ea90baefb1..78ffa364ff18 100644
---- a/mm/gup.c
-+++ b/mm/gup.c
-@@ -2898,7 +2898,7 @@ static int gup_fast_pte_range(pmd_t pmd, pmd_t *pmdp, unsigned long addr,
- 			gup_put_folio(folio, 1, flags);
- 			goto pte_unmap;
- 		}
+diff --git a/mm/swap.c b/mm/swap.c
+index 6e0397ff881d..2250d9db1395 100644
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -525,8 +525,8 @@ void folio_mark_accessed(struct folio *folio)
+ 		return;
+ 	}
+ 
+-	if (!folio_test_referenced(folio)) {
 -		folio_set_referenced(folio);
++	if (!folio_is_referenced_by_bit(folio)) {
 +		folio_mark_referenced_by_bit(folio);
- 		pages[*nr] = page;
- 		(*nr)++;
- 	} while (ptep++, addr += PAGE_SIZE, addr != end);
-@@ -2967,7 +2967,7 @@ static int gup_fast_pmd_leaf(pmd_t orig, pmd_t *pmdp, unsigned long addr,
- 	*nr += refs;
- 	for (; refs; refs--)
- 		*(pages++) = page++;
--	folio_set_referenced(folio);
-+	folio_mark_referenced_by_bit(folio);
- 	return 1;
- }
- 
-@@ -3011,7 +3011,7 @@ static int gup_fast_pud_leaf(pud_t orig, pud_t *pudp, unsigned long addr,
- 	*nr += refs;
- 	for (; refs; refs--)
- 		*(pages++) = page++;
--	folio_set_referenced(folio);
-+	folio_mark_referenced_by_bit(folio);
- 	return 1;
- }
- 
+ 	} else if (folio_test_unevictable(folio)) {
+ 		/*
+ 		 * Unevictable pages are on the "LRU_UNEVICTABLE" list. But,
+@@ -544,7 +544,7 @@ void folio_mark_accessed(struct folio *folio)
+ 			folio_activate(folio);
+ 		else
+ 			__lru_cache_activate_folio(folio);
+-		folio_clear_referenced(folio);
++		folio_clear_referenced_by_bit(folio);
+ 		workingset_activation(folio);
+ 	}
+ 	if (folio_test_idle(folio))
 
 -- 
 2.54.0
