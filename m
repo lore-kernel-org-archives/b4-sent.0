@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 02 May 2026 05:04:15 +0800
-Subject: [PATCH RFC 29/32] mm/mglru: convert avg_total and avg_refaulted to
- atomic
+Date: Sat, 02 May 2026 05:04:16 +0800
+Subject: [PATCH RFC 30/32] mm/mglru, workingset: apply refault-distance
+ based re-activation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260502-mglru-fg-v1-29-913619b014d9@tencent.com>
+Message-Id: <20260502-mglru-fg-v1-30-913619b014d9@tencent.com>
 References: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 In-Reply-To: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 To: linux-mm@kvack.org
@@ -31,86 +31,268 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=3247;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=9815;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=hmT6vqop0NqUJUmZIf0OMLsTgQI+2TaaPPU/LnVzSzc=;
- b=g+0w/grZtdu1EfjPTqryehzK0cTREjDFDKafsOtlliKbG3uXxYucXFymfVL6KoJwofcPFE2cs
- gfKrnc8/qUECWpRaVLAaJ6HpGiIuc964Lmc3JDsXDYQuw5ArvJXTStI
+ bh=3SDg1UIwE2lOt/3QEIDXKbHVzTms1xk8wQaCfFECvFg=;
+ b=IVyQkXaCapdKIeTGy01jKs/3iCm+Yy/0+bi99dDFnHITieJXGhW1YYpbViK7xMYWbGx8vZTm7
+ ri+vMaIdqD0Ceelh1IhYMLmwcQ1jYrRjxSGiLndWjW7SCZTFXvN1zJV
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-No feature change, make it possible to update these value parallelly.
+I noticed MGLRU not working very well on certain workflows, which is
+observed on some heavily stressed databases. That is when the file
+page workingset size exceeds total memory, and the access distance
+of file pages also larger than total memory. All file pages could stuck
+on the oldest generation and getting read-in then evicted permutably.
+Despite anon pages being idle, they never get aged. PID controller
+didn't kickin until there are some minor access pattern changes.
+And file pages are not promoted or reused.
+
+Even though the memory can't cover the whole workingset, the
+refault-distance based re-activation can help hold part of the
+workingset in-memory to help reduce the IO workload significantly.
+
+So apply it for MGLRU as well. The updated refault-distance model
+fits well for MGLRU in most cases, if we just consider the last two
+generation as the inactive LRU and the first two generations as
+active LRU.
+
+Some adjustment is done to fit the logic better, also make the
+refault-distance contributed to page tiering and PID refault detection
+of MGLRU.
+
+NOTE: This also changed the meaning of workingset_* fields in
+/proc/vmstat.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/mmzone.h |  4 ++--
- mm/vmscan.c            | 16 ++++++++--------
- 2 files changed, 10 insertions(+), 10 deletions(-)
+ mm/workingset.c | 116 +++++++++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 81 insertions(+), 35 deletions(-)
 
-diff --git a/include/linux/mmzone.h b/include/linux/mmzone.h
-index 6747e1c6079c..aa27627b0406 100644
---- a/include/linux/mmzone.h
-+++ b/include/linux/mmzone.h
-@@ -603,9 +603,9 @@ struct lru_gen_folio {
- 	/* the multi-gen LRU sizes, eventually consistent */
- 	atomic_long_t nr_pages[MAX_NR_GENS][ANON_AND_FILE][MAX_NR_ZONES];
- 	/* the exponential moving average of refaulted */
--	unsigned long avg_refaulted[ANON_AND_FILE][MAX_NR_TIERS];
-+	atomic_long_t avg_refaulted[ANON_AND_FILE][MAX_NR_TIERS];
- 	/* the exponential moving average of evicted+protected */
--	unsigned long avg_total[ANON_AND_FILE][MAX_NR_TIERS];
-+	atomic_long_t avg_total[ANON_AND_FILE][MAX_NR_TIERS];
- 	/* can only be modified under the LRU lock */
- 	unsigned long protected[NR_HIST_GENS][ANON_AND_FILE][MAX_NR_TIERS];
- 	/* can be modified without holding the LRU lock */
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index e6631ad03caa..22e77450c1b4 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -3140,9 +3140,9 @@ static void read_ctrl_pos(struct lruvec *lruvec, int type, int tier, int gain,
- 	pos->refaulted = pos->total = 0;
+diff --git a/mm/workingset.c b/mm/workingset.c
+index 5c52dd835a92..25a8eda233ef 100644
+--- a/mm/workingset.c
++++ b/mm/workingset.c
+@@ -190,7 +190,7 @@
+  *                   /     LRU Eviction Info    \ / LRU Pack Info \
+  *                  +----------------------------+----------------+-+
+  * non-MGLRU:       |SC|   eviction timestamp    | NID | MCID | W |1|
+- * MGLRU:           |SC|     seq number   | refs | NID | MCID | W |1|
++ * MGLRU:           |SC| refs|eviction timestamp | NID | MCID | W |1|
+  *                   ^                              ^      ^    ^  ^
+  *    Swap Count (anon only)  NUMA ID (NODES_SHIFT)-+      |    | XA_VALUE
+  *          Memory Cgroup ID (MEM_CGROUP_ID_SHIFT) --------+    | mark
+@@ -219,7 +219,9 @@
+  * PG_referenced. But here we record PG_workingset separately (to reuse
+  * pack_shadow).
+  */
+-#define LRU_REFS_BITS ((LRU_REFS_WIDTH + 2) - 1)
++#define LRU_REFS_BITS		((LRU_REFS_WIDTH + 2) - 1)
++#define LRU_GEN_EVICT_BITS	(LRU_EVICT_BITS - LRU_REFS_BITS)
++#define LRU_GEN_EVICT_BITS_ANON	(LRU_EVICT_BITS_ANON - LRU_REFS_BITS)
  
- 	for (i = tier % MAX_NR_TIERS; i <= min(tier, MAX_NR_TIERS - 1); i++) {
--		pos->refaulted += lrugen->avg_refaulted[type][i] +
-+		pos->refaulted += atomic_long_read(&lrugen->avg_refaulted[type][i]) +
- 				  atomic_long_read(&lrugen->refaulted[hist][type][i]);
--		pos->total += lrugen->avg_total[type][i] +
-+		pos->total += atomic_long_read(&lrugen->avg_total[type][i]) +
- 			      lrugen->protected[hist][type][i] +
- 			      atomic_long_read(&lrugen->evicted[hist][type][i]);
+ /*
+  * Eviction timestamps need to be able to cover the full range of
+@@ -230,6 +232,7 @@
+  * evictions into coarser buckets by shaving off lower timestamp bits.
+  */
+ static unsigned int bucket_order[ANON_AND_FILE] __read_mostly;
++static unsigned int lru_gen_bucket_order[ANON_AND_FILE] __read_mostly;
+ 
+ static void *pack_shadow(int memcgid, pg_data_t *pgdat, unsigned long eviction,
+ 			 bool workingset, bool file)
+@@ -392,7 +395,6 @@ static void *lru_gen_eviction(struct folio *folio)
+ {
+ 	int hist;
+ 	unsigned long token;
+-	unsigned long min_seq;
+ 	struct lruvec *lruvec;
+ 	struct lru_gen_folio *lrugen;
+ 	int type = folio_is_file_lru(folio);
+@@ -403,16 +405,19 @@ static void *lru_gen_eviction(struct folio *folio)
+ 	struct pglist_data *pgdat = folio_pgdat(folio);
+ 	unsigned short memcg_id;
+ 
+-	BUILD_BUG_ON(LRU_GEN_WIDTH + LRU_REFS_BITS > LRU_EVICT_BITS_ANON);
++	BUILD_BUG_ON(LRU_GEN_WIDTH + LRU_REFS_BITS > LRU_GEN_EVICT_BITS_ANON);
+ 
+ 	rcu_read_lock();
+ 	memcg = folio_memcg(folio);
+ 	lruvec = mem_cgroup_lruvec(memcg, pgdat);
+ 	lrugen = &lruvec->lrugen;
+-	min_seq = READ_ONCE(lrugen->min_seq[type]);
+-	token = (min_seq << LRU_REFS_BITS) | refs >> 1;
++	hist = lru_hist_from_seq(READ_ONCE(lrugen->min_seq[type]));
+ 
+-	hist = lru_hist_from_seq(min_seq);
++	token = refs >> 1;
++	token <<= type ? LRU_GEN_EVICT_BITS : LRU_GEN_EVICT_BITS_ANON;
++	token |= lru_eviction(lruvec, delta,
++			      type ? LRU_GEN_EVICT_BITS : LRU_GEN_EVICT_BITS_ANON,
++			      lru_gen_bucket_order[type]);
+ 	atomic_long_add(delta, &lrugen->evicted[hist][type][tier]);
+ 	memcg_id = mem_cgroup_private_id(memcg);
+ 	rcu_read_unlock();
+@@ -423,56 +428,87 @@ static void *lru_gen_eviction(struct folio *folio)
+ /*
+  * Tests if the shadow entry is for a folio that was recently evicted.
+  */
+-static bool lru_gen_test_recent(struct lruvec *lruvec,
+-				unsigned long token, bool file)
++static bool lru_gen_test_recent(struct lruvec *lruvec, bool file,
++				unsigned long distance)
+ {
+-	unsigned long max_seq;
++	struct lru_gen_folio *lrugen;
++	unsigned long recent = 0;
++	int hist, tier;
+ 
+-	max_seq = READ_ONCE((lruvec)->lrugen.max_seq);
+-	max_seq &= BIT((file ? LRU_EVICT_BITS : LRU_EVICT_BITS_ANON) - LRU_REFS_BITS) - 1;
++	lrugen = &lruvec->lrugen;
++	hist = lru_hist_from_seq(READ_ONCE(lrugen->min_seq[file]));
++	for (tier = 0; tier < MAX_NR_TIERS; tier++)
++		recent += atomic_long_read(&lrugen->evicted[hist][file][tier]);
+ 
+-	return abs_diff(max_seq, token >> LRU_REFS_BITS) < MAX_NR_GENS;
++	return distance <= recent;
+ }
+ 
+ static void lru_gen_refault(struct folio *folio, void *shadow)
+ {
+ 	bool recent;
+-	int hist, tier, refs;
+ 	bool workingset;
+-	unsigned long token;
++	int hist, tier, refs;
+ 	struct lruvec *lruvec;
+ 	struct lru_gen_folio *lrugen;
+ 	int type = folio_is_file_lru(folio);
+ 	int delta = folio_nr_pages(folio);
++	unsigned long token, distance, total;
+ 
+-	lruvec = try_unpack_get_lruvec(shadow, &token, &workingset, false);
++	lruvec = try_unpack_get_lruvec(shadow, &token, &workingset, true);
+ 	if (!lruvec)
+ 		return;
+ 	if (lruvec != folio_lruvec(folio))
+ 		goto out_put;
+ 
+-	recent = lru_gen_test_recent(lruvec, token, type);
+ 	mod_lruvec_state(lruvec, WORKINGSET_REFAULT_BASE + type, delta);
+ 
+-	if (!recent)
+-		goto out_put;
+-
+ 	lrugen = &lruvec->lrugen;
+-
+ 	hist = lru_hist_from_seq(READ_ONCE(lrugen->min_seq[type]));
+-	refs = ((token & (BIT(LRU_REFS_BITS) - 1)) << 1) + workingset;
+-	tier = lru_tier_from_refs(refs);
+ 
+-	atomic_long_add(delta, &lrugen->refaulted[hist][type][tier]);
++	distance = lru_distance(lruvec, token,
++				type ? LRU_GEN_EVICT_BITS : LRU_GEN_EVICT_BITS_ANON,
++				lru_gen_bucket_order[type]);
++	recent = lru_gen_test_recent(lruvec, type, distance);
++
++	total = lruvec_page_state(lruvec, NR_ACTIVE_FILE) +
++		lruvec_page_state(lruvec, NR_INACTIVE_FILE);
++	if (!type || mem_cgroup_get_nr_swap_pages(lruvec_memcg(lruvec))) {
++		total += lruvec_page_state(lruvec, NR_ACTIVE_ANON) +
++			lruvec_page_state(lruvec, NR_INACTIVE_ANON);
++	}
++
++	/* Return if it's neither recently evicted nor fits workingset. */
++	if (!recent && distance > total)
++		goto out_put;
+ 
+-	/* see folio_add_lru() where folio_set_active() will be called */
+-	if (lru_gen_in_fault())
++	token >>= type ? LRU_GEN_EVICT_BITS : LRU_GEN_EVICT_BITS_ANON;
++	token &= (BIT(LRU_REFS_BITS) - 1);
++	refs = (token << 1) + workingset;
++	tier = lru_tier_from_refs(refs);
++
++	/* Set refault as active. */
++	if (distance < total / 2) {
++		folio_set_active(folio);
+ 		mod_lruvec_state(lruvec, WORKINGSET_ACTIVATE_BASE + type, delta);
++	}
+ 
++	/* Restore reference count. */
+ 	if (refs) {
+ 		folio_set_lru_refs(folio, refs);
+ 		mod_lruvec_state(lruvec, WORKINGSET_RESTORE_BASE + type, delta);
  	}
-@@ -3166,14 +3166,14 @@ static void reset_ctrl_pos(struct lruvec *lruvec, int type, bool carryover)
- 		if (carryover) {
- 			unsigned long sum;
++
++	/*
++	 * If it's recently evicted, update the recent gen's counter. Else,
++	 * update the global counter, increase total too to avoid having
++	 * a refault rate > 1.
++	 */
++	if (recent) {
++		atomic_long_add(delta, &lrugen->refaulted[hist][type][tier]);
++	} else {
++		atomic_long_add(delta, &lrugen->avg_total[type][tier]);
++		atomic_long_add(delta, &lrugen->avg_refaulted[type][tier]);
++	}
+ out_put:
+ 	put_lruvec(lruvec);
+ }
+@@ -484,8 +520,8 @@ static void *lru_gen_eviction(struct folio *folio)
+ 	return NULL;
+ }
  
--			sum = lrugen->avg_refaulted[type][tier] +
-+			sum = atomic_long_read(&lrugen->avg_refaulted[type][tier]) +
- 			      atomic_long_read(&lrugen->refaulted[hist][type][tier]);
--			WRITE_ONCE(lrugen->avg_refaulted[type][tier], sum / 2);
-+			atomic_long_set(&lrugen->avg_refaulted[type][tier], sum / 2);
+-static bool lru_gen_test_recent(struct lruvec *lruvec,
+-				unsigned long token, bool file)
++static bool lru_gen_test_recent(struct lruvec *lruvec, bool file,
++				unsigned long distance)
+ {
+ 	return false;
+ }
+@@ -551,15 +587,16 @@ bool workingset_test_recent(void *shadow, bool file, bool *workingset,
+ 	unsigned long distance;
+ 	bool recent;
  
--			sum = lrugen->avg_total[type][tier] +
-+			sum = atomic_long_read(&lrugen->avg_total[type][tier]) +
- 			      lrugen->protected[hist][type][tier] +
- 			      atomic_long_read(&lrugen->evicted[hist][type][tier]);
--			WRITE_ONCE(lrugen->avg_total[type][tier], sum / 2);
-+			atomic_long_set(&lrugen->avg_total[type][tier], sum / 2);
- 		}
++	lruvec = try_unpack_get_lruvec(shadow, &eviction, workingset, flush);
++	if (!lruvec)
++		return false;
++
+ 	if (lru_gen_enabled()) {
+-		lruvec = try_unpack_get_lruvec(shadow, &eviction, workingset, false);
+-		if (!lruvec)
+-			return false;
+-		recent = lru_gen_test_recent(lruvec, eviction, file);
++		distance = lru_distance(lruvec, eviction,
++					file ? LRU_GEN_EVICT_BITS : LRU_GEN_EVICT_BITS_ANON,
++					lru_gen_bucket_order[file]);
++		recent = lru_gen_test_recent(lruvec, file, distance);
+ 	} else {
+-		lruvec = try_unpack_get_lruvec(shadow, &eviction, workingset, flush);
+-		if (!lruvec)
+-			return false;
+ 		distance = lru_distance(lruvec, eviction,
+ 					file ? LRU_EVICT_BITS : LRU_EVICT_BITS_ANON,
+ 					bucket_order[file]);
+@@ -850,6 +887,15 @@ static int __init workingset_init(void)
+ 	pr_info("workingset: timestamp_bits=%d (anon: %d) max_order=%d bucket_order=%u (anon: %d)\n",
+ 		LRU_EVICT_BITS, LRU_EVICT_BITS_ANON, max_order,
+ 		bucket_order[WORKINGSET_FILE], bucket_order[WORKINGSET_ANON]);
++#ifdef CONFIG_LRU_GEN
++	if (max_order > LRU_GEN_EVICT_BITS)
++		lru_gen_bucket_order[WORKINGSET_FILE] = max_order - LRU_GEN_EVICT_BITS;
++	if (max_order > LRU_GEN_EVICT_BITS_ANON)
++		lru_gen_bucket_order[WORKINGSET_ANON] = max_order - LRU_GEN_EVICT_BITS_ANON;
++	pr_info("workingset: lru_gen_timestamp_bits=%d (anon: %d) lru_gen_bucket_order=%u (anon %d)\n",
++		LRU_GEN_EVICT_BITS, LRU_GEN_EVICT_BITS_ANON,
++		lru_gen_bucket_order[WORKINGSET_FILE], lru_gen_bucket_order[WORKINGSET_ANON]);
++#endif
  
- 		if (clear) {
-@@ -5466,8 +5466,8 @@ static void lru_gen_seq_show_full(struct seq_file *m, struct lruvec *lruvec,
- 
- 			if (seq == max_seq) {
- 				s = "RTx";
--				n[0] = READ_ONCE(lrugen->avg_refaulted[type][tier]);
--				n[1] = READ_ONCE(lrugen->avg_total[type][tier]);
-+				n[0] = atomic_long_read(&lrugen->avg_refaulted[type][tier]);
-+				n[1] = atomic_long_read(&lrugen->avg_total[type][tier]);
- 			} else if (seq == min_seq[type] || NR_HIST_GENS > 1) {
- 				s = "rep";
- 				n[0] = atomic_long_read(&lrugen->refaulted[hist][type][tier]);
+ 	workingset_shadow_shrinker = shrinker_alloc(SHRINKER_NUMA_AWARE |
+ 						    SHRINKER_MEMCG_AWARE,
 
 -- 
 2.54.0
