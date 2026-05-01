@@ -1,11 +1,10 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 02 May 2026 05:04:10 +0800
-Subject: [PATCH RFC 24/32] mm/workingset: use a single atomic operation for
- read and age
+Date: Sat, 02 May 2026 05:04:11 +0800
+Subject: [PATCH RFC 25/32] mm/workingset, lru_gen: simplify lru_gen recent
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260502-mglru-fg-v1-24-913619b014d9@tencent.com>
+Message-Id: <20260502-mglru-fg-v1-25-913619b014d9@tencent.com>
 References: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 In-Reply-To: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 To: linux-mm@kvack.org
@@ -31,64 +30,150 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=2020;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=4396;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=wgOBUng+uTQYm5twq6Yy1hA/jkGiMMQo7dEmYz74ui0=;
- b=ir6e0a5kqtAwGqvbIavgrfnZJL15MwneqaCVg2lgFlnO9FBbjWzjQcm7j0Nc4ykvHkerskNIx
- VRDLrU4BOj7CxHp3RBUP3d15PVMDXtxI4aCutuGdbgjQxeqMnPjkN6q
+ bh=KbFTzFXmhJEXcTUabj/0KGmAdVaMVZsImEKHZnTCyNA=;
+ b=RZb8GTAX1xI9h34O7aHTxF8zmM5P2cs1w7khJykb58iQUXdSl8fVGbsw1OfZz9Bg07EHTDjJK
+ Yd9ndllnZ4bBx8uRFgZBRXfjzVFN8DheBQywHs+6Y1ygX8I9k5cFIlo
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-One single atomic operation should be faster than two for most archs,
-and be more accurate.
+Move the commont part in the common caller. Also let it return early if
+the memcg doesn't match.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/workingset.c | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+ mm/workingset.c | 55 ++++++++++++++++++++++++++-----------------------------
+ 1 file changed, 26 insertions(+), 29 deletions(-)
 
 diff --git a/mm/workingset.c b/mm/workingset.c
-index aac68cecdfbf..a77a6c0c3e15 100644
+index a77a6c0c3e15..b472ac34943e 100644
 --- a/mm/workingset.c
 +++ b/mm/workingset.c
-@@ -369,8 +369,10 @@ static void lru_gen_refault(struct folio *folio, void *shadow)
-  * to the in-memory dimensions. This function allows reclaim and LRU
-  * operations to drive the non-resident aging along in parallel.
+@@ -277,44 +277,41 @@ static void *lru_gen_eviction(struct folio *folio)
+ 
+ /*
+  * Tests if the shadow entry is for a folio that was recently evicted.
+- * Fills in @lruvec, @token, @workingset with the values unpacked from shadow.
   */
--static void workingset_age_nonresident(struct lruvec *lruvec, unsigned long nr_pages)
-+static long workingset_age_nonresident(struct lruvec *lruvec, unsigned long nr_pages)
+-static bool lru_gen_test_recent(void *shadow, struct lruvec **lruvec,
+-				unsigned long *token, bool *workingset, bool file)
++static bool lru_gen_test_recent(struct lruvec *lruvec,
++				unsigned long token, bool file)
  {
-+	unsigned long eviction;
-+
- 	/*
- 	 * Reclaiming a cgroup means reclaiming all its children in a
- 	 * round-robin fashion. That means that each cgroup has an LRU
-@@ -382,9 +384,10 @@ static void workingset_age_nonresident(struct lruvec *lruvec, unsigned long nr_p
- 	 * the virtual inactive lists of all its parents, including
- 	 * the root cgroup's, age as well.
- 	 */
--	do {
-+	eviction = atomic_long_fetch_add_relaxed(nr_pages, &lruvec->evictions);
-+	while ((lruvec = parent_lruvec(lruvec)))
- 		atomic_long_add(nr_pages, &lruvec->evictions);
--	} while ((lruvec = parent_lruvec(lruvec)));
-+	return eviction;
+-	int memcg_id;
+ 	unsigned long max_seq;
+-	struct mem_cgroup *memcg;
+-	struct pglist_data *pgdat;
+-
+-	unpack_shadow(shadow, &memcg_id, &pgdat, token, workingset);
+ 
+-	memcg = mem_cgroup_from_private_id(memcg_id);
+-	*lruvec = mem_cgroup_lruvec(memcg, pgdat);
+-
+-	max_seq = READ_ONCE((*lruvec)->lrugen.max_seq);
++	max_seq = READ_ONCE((lruvec)->lrugen.max_seq);
+ 	max_seq &= (file ? EVICTION_MASK : EVICTION_MASK_ANON) >> LRU_REFS_BITS;
+ 
+-	return abs_diff(max_seq, *token >> LRU_REFS_BITS) < MAX_NR_GENS;
++	return abs_diff(max_seq, token >> LRU_REFS_BITS) < MAX_NR_GENS;
  }
  
- /**
-@@ -414,9 +417,8 @@ void *workingset_eviction(struct folio *folio, struct mem_cgroup *target_memcg)
- 	lruvec = mem_cgroup_lruvec(target_memcg, pgdat);
- 	/* XXX: target_memcg can be NULL, go through lruvec */
- 	memcgid = mem_cgroup_private_id(lruvec_memcg(lruvec));
--	eviction = atomic_long_read(&lruvec->evictions);
-+	eviction = workingset_age_nonresident(lruvec, folio_nr_pages(folio));
- 	eviction >>= bucket_order[file];
--	workingset_age_nonresident(lruvec, folio_nr_pages(folio));
- 	return pack_shadow(memcgid, pgdat, eviction,
- 			   folio_is_workingset(folio), file);
+ static void lru_gen_refault(struct folio *folio, void *shadow)
+ {
+ 	bool recent;
++	int memcg_id;
+ 	int hist, tier, refs;
+ 	bool workingset;
+ 	unsigned long token;
+ 	struct lruvec *lruvec;
++	struct mem_cgroup *memcg;
++	struct pglist_data *pgdat;
+ 	struct lru_gen_folio *lrugen;
+ 	int type = folio_is_file_lru(folio);
+ 	int delta = folio_nr_pages(folio);
+ 
+-	rcu_read_lock();
++	unpack_shadow(shadow, &memcg_id, &pgdat, &token, &workingset);
+ 
+-	recent = lru_gen_test_recent(shadow, &lruvec, &token, &workingset, type);
++	rcu_read_lock();
++	memcg = mem_cgroup_from_private_id(memcg_id);
++	lruvec = mem_cgroup_lruvec(memcg, pgdat);
+ 	if (lruvec != folio_lruvec(folio))
+ 		goto unlock;
+ 
++	recent = lru_gen_test_recent(lruvec, token, type);
+ 	mod_lruvec_state(lruvec, WORKINGSET_REFAULT_BASE + type, delta);
+ 
+ 	if (!recent)
+@@ -347,8 +344,8 @@ static void *lru_gen_eviction(struct folio *folio)
+ 	return NULL;
  }
+ 
+-static bool lru_gen_test_recent(void *shadow, struct lruvec **lruvec,
+-				unsigned long *token, bool *workingset, bool file)
++static bool lru_gen_test_recent(struct lruvec *lruvec,
++				unsigned long token, bool file)
+ {
+ 	return false;
+ }
+@@ -445,19 +442,8 @@ bool workingset_test_recent(void *shadow, bool file, bool *workingset,
+ 	unsigned long eviction;
+ 	int memcgid;
+ 
+-	if (lru_gen_enabled()) {
+-		bool recent;
+-
+-		rcu_read_lock();
+-		recent = lru_gen_test_recent(shadow, &eviction_lruvec, &eviction,
+-					     workingset, file);
+-		rcu_read_unlock();
+-		return recent;
+-	}
+-
+ 	rcu_read_lock();
+ 	unpack_shadow(shadow, &memcgid, &pgdat, &eviction, workingset);
+-	eviction <<= bucket_order[file];
+ 
+ 	/*
+ 	 * Look up the memcg associated with the stored ID. It might
+@@ -482,6 +468,17 @@ bool workingset_test_recent(void *shadow, bool file, bool *workingset,
+ 
+ 	if (!mem_cgroup_disabled() && !eviction_memcg)
+ 		return false;
++
++	eviction_lruvec = mem_cgroup_lruvec(eviction_memcg, pgdat);
++
++	if (lru_gen_enabled()) {
++		bool recent;
++
++		recent = lru_gen_test_recent(eviction_lruvec, eviction, file);
++		mem_cgroup_put(eviction_memcg);
++		return recent;
++	}
++
+ 	/*
+ 	 * Flush stats (and potentially sleep) outside the RCU read section.
+ 	 *
+@@ -495,7 +492,6 @@ bool workingset_test_recent(void *shadow, bool file, bool *workingset,
+ 	if (flush)
+ 		mem_cgroup_flush_stats_ratelimited(eviction_memcg);
+ 
+-	eviction_lruvec = mem_cgroup_lruvec(eviction_memcg, pgdat);
+ 	refault = atomic_long_read(&eviction_lruvec->evictions);
+ 
+ 	/*
+@@ -514,6 +510,7 @@ bool workingset_test_recent(void *shadow, bool file, bool *workingset,
+ 	 * longest time, so the occasional inappropriate activation
+ 	 * leading to pressure on the active list is not a problem.
+ 	 */
++	eviction <<= bucket_order[file];
+ 	distance = ((refault - eviction) &
+ 		    (file ? EVICTION_MASK : EVICTION_MASK_ANON));
+ 
 
 -- 
 2.54.0
