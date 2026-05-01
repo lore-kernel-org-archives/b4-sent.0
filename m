@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 02 May 2026 05:03:59 +0800
-Subject: [PATCH RFC 13/32] mm/khugepaged: consider workingset folios as
- referenced
+Date: Sat, 02 May 2026 05:04:00 +0800
+Subject: [PATCH RFC 14/32] mm: convert rest folio LRU referenced usages to
+ new helpers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260502-mglru-fg-v1-13-913619b014d9@tencent.com>
+Message-Id: <20260502-mglru-fg-v1-14-913619b014d9@tencent.com>
 References: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 In-Reply-To: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 To: linux-mm@kvack.org
@@ -31,65 +31,51 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=1950;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=1270;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=UByiLYjFt2+kqAxm04OpzowbaWLuDjdJ8bJGsAYOXBE=;
- b=rN+ZBnZrzZD6vSDJMUHL0q+E5ZYHa/RaFdPJvCTAyQgAUBzFuz+g/IdZd5U6SrCWwaRFYnHSv
- Iys2yTORjLYCkFTarebaM66SXYa0dlv8YaJMk+cjtcUCldB69BmOlrO
+ bh=s9IM5saCZOi1yMrQ9wd37CGnZKAxDY3IwusY5KAp2fM=;
+ b=AjjRfwfd76/c82mEMrSgQlxsNUhdUausxOPl6q2Enso4MgBpO0AY3ccxZG3B8/BDqvylfIBb0
+ ERx+uZevY/aDpfqVoUhUizG7Af7iJlG4HWFUFRPpixkNa46KQ/KyKiL
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The folio_test_referenced check here is clearly trying to test if the
-folio was ever referenced. It was first introduced by commit
-8ee53820edfd ("thp: mmu_notifier_test_young") as an supplement of the
-young bit check.
-
-Folios are marked as PG_referenced on first access, but following access
-will clear their PG_referenced on second access. So checking only the referenced
-flag is not accurate enough.
-
-Switch to use the new helper, so we can cover the secondary and following
-access from MGLRU side. For non-MGLRU, this will make it return positve
-for workingset folios too, which should be OK.
+No feature change, everything is bitwisely same with before, just
+preparing to drop the page flag.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/khugepaged.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ mm/filemap.c | 2 +-
+ mm/swap.c    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/mm/khugepaged.c b/mm/khugepaged.c
-index 7d48d4fbd5f3..af9217e19eac 100644
---- a/mm/khugepaged.c
-+++ b/mm/khugepaged.c
-@@ -815,7 +815,7 @@ static enum scan_result __collapse_huge_page_isolate(struct vm_area_struct *vma,
- 		 */
- 		if (cc->is_khugepaged &&
- 		    (pte_young(pteval) || folio_test_young(folio) ||
--		     folio_test_referenced(folio) ||
-+		     folio_is_referenced(folio) ||
- 		     mmu_notifier_test_young(vma->vm_mm, addr)))
- 			referenced++;
- 	}
-@@ -1743,7 +1743,7 @@ static enum scan_result collapse_scan_pmd(struct mm_struct *mm,
- 		 */
- 		if (cc->is_khugepaged &&
- 		    (pte_young(pteval) || folio_test_young(folio) ||
--		     folio_test_referenced(folio) ||
-+		     folio_is_referenced(folio) ||
- 		     mmu_notifier_test_young(vma->vm_mm, addr)))
- 			referenced++;
- 	}
-@@ -2729,7 +2729,7 @@ static enum scan_result collapse_scan_file(struct mm_struct *mm,
- 		/*
- 		 * We probably should check if the folio is referenced
- 		 * here, but nobody would transfer pte_young() to
--		 * folio_test_referenced() for us.  And rmap walk here
-+		 * folio_is_referenced() for us.  And rmap walk here
- 		 * is just too costly...
- 		 */
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 50897ca1d74e..91a1d1c03475 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -2015,7 +2015,7 @@ struct folio *__filemap_get_folio_mpol(struct address_space *mapping,
  
+ 			/* Init accessed so avoid atomic mark_page_accessed later */
+ 			if (fgp_flags & FGP_ACCESSED)
+-				__folio_set_referenced(folio);
++				__folio_init_referenced(folio);
+ 			if (fgp_flags & FGP_DONTCACHE)
+ 				__folio_set_dropbehind(folio);
+ 
+diff --git a/mm/swap.c b/mm/swap.c
+index 5fc8a9ffbedb..6e0397ff881d 100644
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -514,7 +514,7 @@ static bool lru_gen_clear_refs(struct folio *folio)
+  * * active,unreferenced	->	active,referenced
+  *
+  * When a newly allocated folio is not yet visible, so safe for non-atomic ops,
+- * __folio_set_referenced() may be substituted for folio_mark_accessed().
++ * __folio_init_referenced() may be substituted for folio_mark_accessed().
+  */
+ void folio_mark_accessed(struct folio *folio)
+ {
 
 -- 
 2.54.0
