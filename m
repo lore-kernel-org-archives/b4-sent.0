@@ -1,246 +1,204 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Fri, 01 May 2026 10:15:05 +0100
-Subject: [PATCH v5 12/12] iio: dac: ad5686: create bus ops struct
+From: Kairui Song <kasong@tencent.com>
+Subject: [PATCH RFC 00/32] mm/mglru: MGLRU-FG and refault distance support
+Date: Sat, 02 May 2026 05:03:46 +0800
+Message-Id: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260501-ad5686-fixes-v5-12-0b2f45488418@analog.com>
-References: <20260501-ad5686-fixes-v5-0-0b2f45488418@analog.com>
-In-Reply-To: <20260501-ad5686-fixes-v5-0-0b2f45488418@analog.com>
-To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Stefan Popa <stefan.popa@analog.com>, Jonathan Cameron <jic23@cam.ac.uk>, 
- Greg Kroah-Hartman <gregkh@suse.de>, 
- Michael Auchter <michael.auchter@ni.com>, 
- Jonathan Cameron <jic23@kernel.org>
-Cc: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>, 
- Andy Shevchenko <andriy.shevchenko@intel.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777626920; l=7630;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=R3ZcXIDA8Ei+0XBUOZtKsoDqu9PKMLX4OLhx5MnXzf0=;
- b=pNzgcwNp6mfiNpncULm36VVKS69kFTxBX/7rHcHR1QHxsF2V8jXQUyPCCN9T3yMxnN+gQ1T6K
- R49neFVqGSvAimE0e1uA8M4Mv1T8xWagrtarYcyM/EvenzgvjZ89+xu
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDEyMT3dz0nKJS3bR0XYukJAtTo9Q0CyODNCWg8oKi1LTMCrBR0UpBbs5
+ KsRDB4tKkrNTkEpAhSrW1AJ2j1E5xAAAA
+X-Change-ID: 20260424-mglru-fg-8bb852ef820f
+To: linux-mm@kvack.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, 
+ Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
+ Roman Gushchin <roman.gushchin@linux.dev>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, David Hildenbrand <david@kernel.org>, 
+ Lorenzo Stoakes <ljs@kernel.org>, Barry Song <baohua@kernel.org>, 
+ Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
+ Wei Xu <weixugc@google.com>, Vlastimil Babka <vbabka@kernel.org>, 
+ Suren Baghdasaryan <surenb@google.com>, 
+ Kemeng Shi <shikemeng@huaweicloud.com>, Nhat Pham <nphamcs@gmail.com>, 
+ Baoquan He <bhe@redhat.com>, Youngjun Park <youngjun.park@lge.com>, 
+ Zi Yan <ziy@nvidia.com>, Gregory Price <gourry@gourry.net>, 
+ "Matthew Wilcox (Oracle)" <willy@infradead.org>, 
+ Baolin Wang <baolin.wang@linux.alibaba.com>, Nico Pache <npache@redhat.com>, 
+ Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>, 
+ Lance Yang <lance.yang@linux.dev>, Hugh Dickins <hughd@google.com>, 
+ SeongJae Park <sj@kernel.org>, David Rientjes <rientjes@google.com>, 
+ Yu Zhao <yuzhao@google.com>, Vernon Yang <vernon2gm@gmail.com>, 
+ Zicheng Wang <wangzicheng@honor.com>, 
+ Chen Ridong <chenridong@huaweicloud.com>, Tal Zussman <tz2294@columbia.edu>, 
+ Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
+ Kairui Song <kasong@tencent.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=7590;
+ i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
+ bh=DBOpIru7jqacweorBAeXDkuyacrHQhA4NDUgZl7zFQ0=;
+ b=1KI9TPY28o+QlUdOb0aHnPYcmh5Khm9aqozsCx0JrNb1IBSBovc+nlEFzVo52Jle+W0+f5u8E
+ V29tnRKWiYCCgFwOUtd2uQJvr2ZwYxL0wUy1u9+4JQFwQkKJznMKnat
+X-Developer-Key: i=kasong@tencent.com; a=ed25519;
+ pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
+X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Create struct with bus operations, which will be used to extend bus
-implementation features. Auxiliary functions ad5686_write() and
-ad5686_read() are created and ad5686_probe() now receives an ops struct
-pointer rather than individual read and write functions.
+This is an RFC following the idea proposed as LSFMMBPF topic [1] this
+year for demonstrating the design and improvements, sending it out so it
+can be discussed better before or after the event. It's stable and
+performing well, but obviously, it's too long for review, so I plan to
+send these out step by step if we are OK with the basic ideas here.
+Worth noting that the design is still not finalized yet, the tier and
+refault calculation can still be better adjusted, and with more
+benchmarking and testing. This is rebased on top of the current
+mm-unstable as it is supposed to work on top of another series which is
+currently there [4].
 
-Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+With this series, I'm seeing an obviously performance gain for tests
+like GET/SCAN with LevelDB (which is borrowed from Tal's paper [2])
+and MongoDB with TPCC [3] or YCSB [4]:
+
+GET/SCAN LevelDB [2]:
+Classical LRU: throughput_avg: 993.64 Ops/s
+MGLRU before:  throughput_avg: 951.12 Ops/s
+MGLRU after:   throughput_avg: 1344.72 Ops/s (+41% faster)
+
+MongoDB YCSB workloadb (MGLRU):
+Before: 82127.65 ops/sec
+After:  95933.99 ops/sec (+16.8%)
+
+Build kernel test (MGLRU):
+Before: refault_file: 259681   refault_anon: 3006202  real: 1m49.005s
+After:  refault_file: 201472   refault_anon: 3048107  reaL: 1m49.050s
+
+FIO with zipf:
+Before: 73557.72 MB/s
+After:  74553.44 MB/s
+
+Also, mechanisms like PSI, smap, readahead, will all have better
+accuracy since this series unified the flag usage between classical
+LRU and MGLRU.
+
+This also reduces MGLRU's max flag usage by one, and hopefully provides
+a generic API for other components like DAMON to contribute to MGLRU's
+hotness tracking.
+
+Other tests like the MySQL are looking fine, no regression. Filesearch
+test in [2] also shows some improvement, not comparable to cache_ext, since
+this still need to rely on things like the refault distance to establish a
+pattern before it takes any effect, but more generic.
+
+This series basically composed of three parts:
+
+1) Make the MGLRU be frequency guided and rework MGLRU's flag format
+   to shrink the bit usage. The format rework and MGLRU-FG design is
+   strongly bound togther with 2) below.
+
+   The main patch implementing MGLRU-FG is:
+   mm/mglru: frequency guided workingset promotion (MGLRU-FG)
+
+2) Convert all workingset / referenced flag user to use the new generic
+   LRU refs API introduced by above.
+
+3) Refault distance support for MGLRU.
+
+   Refault distance refactor and support starts with:
+   mm/workingset: simplify and use a more intuitive model
+
+Step 1) and 2) are working well. But the overhead from 3) is still having
+slightly higher than expected overhead (dozens of more atomic operations
+upon refault, and an extra rstat flush, which is just like classical LRU),
+and not a fully optimized work, so I'm still looking into it.
+
+More detailes are in the commit message.
+
+It's recommaneded to test it seperately for these three parts. Sending as
+a long whole series to avoid conflict and provide a complete view of the
+ongoing project.
+
+NOTE for an RFC quality series: several helpers like folio_mark_referenced
+might need further improvement, currently the implementation may lead to
+inaccurate hotness info, only in theory and doesn't seems a new issue, but
+could be improved easily later.
+
+And the page flag removal can be decoupled from the workingset series easily.
+
+Link: https://lore.kernel.org/linux-mm/CAMgjq7BoekNjg-Ra3C8M7=8=75su38w=HD782T5E_cxyeCeH_g@mail.gmail.com/ [1]
+Link: https://dl.acm.org/doi/10.1145/3731569.3764820 [2]
+Link: https://lwn.net/Articles/945266/ [3]
+Link: https://lore.kernel.org/linux-mm/20260428-mglru-reclaim-v7-0-02fabb92dc43@tencent.com/ [4]
+
+Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- drivers/iio/dac/ad5686-spi.c |  7 ++++++-
- drivers/iio/dac/ad5686.c     | 32 ++++++++++++++------------------
- drivers/iio/dac/ad5686.h     | 29 +++++++++++++++++++++--------
- drivers/iio/dac/ad5696-i2c.c |  7 ++++++-
- 4 files changed, 47 insertions(+), 28 deletions(-)
+Kairui Song (32):
+      mm/memcontrol: make lru_zone_size atomic and simplify sanity check
+      mm/memcontrol: allow update of LRU statistic without holding LRU lock
+      mm/mglru: wrap all access to folio flags with accessor
+      mm/mglru: introduce and use helpers for updating lru_gen refs and gen
+      mm/mglru: make generation page counters atomic
+      mm/mglru: frequency guided workingset promotion (MGLRU-FG)
+      mm/mglru: don't reset folios LRU refs count on protection by default
+      mm: make folio lru referenced times count a generic API
+      mm: replace folio_set_workingset with folio_mark_workingset
+      mm: replace folio_test_workingset with folio_is_workingset
+      mm/smap: report workingset folios as referenced
+      mm/huge_memory: mark file folio as accessed more accurately on split
+      mm/khugepaged: consider workingset folios as referenced
+      mm: convert rest folio LRU referenced usages to new helpers
+      mm/gup: use new helpers for marking folios as referenced
+      mm: convert folio referenced flag usages to new bitwise identical helpers
+      mm/shmem: mark folio as referenced use new helper
+      mm/vmscan: convert to new bitwise identical helper
+      mm/madvise: convert to new lru refs API and better support for MGLRU
+      mm/damon: don't clear the lruref for MGLRU
+      mm/swap: convert to new bitwise identical helper
+      mm/workingset: simplify and use a more intuitive model
+      mm/workingset: rename the nonresistence age counter
+      mm/workingset: use a single atomic operation for read and age
+      mm/workingset, lru_gen: simplify lru_gen recent
+      mm/workingset: properly define the format of a folio shadow
+      mm/workingset: move refault distance checking into a helper
+      mm/workingset: split lruvec retrieving and flush into a helper
+      mm/mglru: convert avg_total and avg_refaulted to atomic
+      mm/mglru, workingset: apply refault-distance based re-activation
+      mm: remove PG_workingset
+      mm: remove PG_referenced
 
-diff --git a/drivers/iio/dac/ad5686-spi.c b/drivers/iio/dac/ad5686-spi.c
-index 9493511d9e7f..7409624b954b 100644
---- a/drivers/iio/dac/ad5686-spi.c
-+++ b/drivers/iio/dac/ad5686-spi.c
-@@ -92,10 +92,15 @@ static int ad5686_spi_read(struct ad5686_state *st, u8 addr)
- 	return be32_to_cpu(st->data[2].d32);
- }
- 
-+static const struct ad5686_bus_ops ad5686_spi_ops = {
-+	.write = ad5686_spi_write,
-+	.read = ad5686_spi_read,
-+};
-+
- static int ad5686_spi_probe(struct spi_device *spi)
- {
- 	return ad5686_probe(&spi->dev, spi_get_device_match_data(spi),
--			    spi->modalias, ad5686_spi_write, ad5686_spi_read);
-+			    spi->modalias, &ad5686_spi_ops);
- }
- 
- static const struct spi_device_id ad5686_spi_id[] = {
-diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
-index b94efa6de16e..8ebd1d4c73d4 100644
---- a/drivers/iio/dac/ad5686.c
-+++ b/drivers/iio/dac/ad5686.c
-@@ -30,18 +30,18 @@ static int ad5310_control_sync(struct ad5686_state *st)
- {
- 	unsigned int pd_val = st->pwr_down_mask & st->pwr_down_mode;
- 
--	return st->write(st, AD5686_CMD_CONTROL_REG, 0,
--			 FIELD_PREP(AD5310_PD_MSK, pd_val & AD5686_PD_MSK) |
--			 FIELD_PREP(AD5310_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
-+	return ad5686_write(st, AD5686_CMD_CONTROL_REG, 0,
-+			    FIELD_PREP(AD5310_PD_MSK, pd_val & AD5686_PD_MSK) |
-+			    FIELD_PREP(AD5310_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
- }
- 
- static int ad5683_control_sync(struct ad5686_state *st)
- {
- 	unsigned int pd_val = st->pwr_down_mask & st->pwr_down_mode;
- 
--	return st->write(st, AD5686_CMD_CONTROL_REG, 0,
--			 FIELD_PREP(AD5683_PD_MSK, pd_val & AD5686_PD_MSK) |
--			 FIELD_PREP(AD5683_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
-+	return ad5686_write(st, AD5686_CMD_CONTROL_REG, 0,
-+			    FIELD_PREP(AD5683_PD_MSK, pd_val & AD5686_PD_MSK) |
-+			    FIELD_PREP(AD5683_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
- }
- 
- static inline unsigned int ad5686_pd_mask_shift(const struct iio_chan_spec *chan)
-@@ -148,7 +148,7 @@ static ssize_t ad5686_write_dac_powerdown(struct iio_dev *indio_dev,
- 			address = 0x0;
- 			val = lower_16_bits(val);
- 		}
--		ret = st->write(st, AD5686_CMD_POWERDOWN_DAC, address, val);
-+		ret = ad5686_write(st, AD5686_CMD_POWERDOWN_DAC, address, val);
- 		if (ret)
- 			return ret;
- 		break;
-@@ -171,7 +171,7 @@ static int ad5686_read_raw(struct iio_dev *indio_dev,
- 	switch (m) {
- 	case IIO_CHAN_INFO_RAW:
- 		mutex_lock(&st->lock);
--		ret = st->read(st, chan->address);
-+		ret = ad5686_read(st, chan->address);
- 		mutex_unlock(&st->lock);
- 		if (ret < 0)
- 			return ret;
-@@ -201,10 +201,8 @@ static int ad5686_write_raw(struct iio_dev *indio_dev,
- 			return -EINVAL;
- 
- 		mutex_lock(&st->lock);
--		ret = st->write(st,
--				AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
--				chan->address,
--				val << chan->scan_type.shift);
-+		ret = ad5686_write(st, AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
-+				   chan->address, val << chan->scan_type.shift);
- 		mutex_unlock(&st->lock);
- 		break;
- 	default:
-@@ -465,8 +463,7 @@ EXPORT_SYMBOL_NS_GPL(ad5679r_chip_info, "IIO_AD5686");
- 
- int ad5686_probe(struct device *dev,
- 		 const struct ad5686_chip_info *chip_info,
--		 const char *name, ad5686_write_func write,
--		 ad5686_read_func read)
-+		 const char *name, const struct ad5686_bus_ops *ops)
- {
- 	struct ad5686_state *st;
- 	struct iio_dev *indio_dev;
-@@ -479,8 +476,7 @@ int ad5686_probe(struct device *dev,
- 	st = iio_priv(indio_dev);
- 
- 	st->dev = dev;
--	st->write = write;
--	st->read = read;
-+	st->ops = ops;
- 	st->chip_info = chip_info;
- 
- 	ret = devm_regulator_get_enable_read_voltage(dev, "vcc");
-@@ -524,8 +520,8 @@ int ad5686_probe(struct device *dev,
- 			return ret;
- 		break;
- 	case AD5686_REGMAP:
--		ret = st->write(st, AD5686_CMD_INTERNAL_REFER_SETUP, 0,
--				st->use_internal_vref ? 0 : AD5686_REF_BIT_MSK);
-+		ret = ad5686_write(st, AD5686_CMD_INTERNAL_REFER_SETUP, 0,
-+				   st->use_internal_vref ? 0 : AD5686_REF_BIT_MSK);
- 		if (ret)
- 			return ret;
- 		break;
-diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
-index 4c38dd43d4bb..51fb5a8cb756 100644
---- a/drivers/iio/dac/ad5686.h
-+++ b/drivers/iio/dac/ad5686.h
-@@ -64,10 +64,15 @@ enum ad5686_regmap_type {
- 
- struct ad5686_state;
- 
--typedef int (*ad5686_write_func)(struct ad5686_state *st,
--				 u8 cmd, u8 addr, u16 val);
--
--typedef int (*ad5686_read_func)(struct ad5686_state *st, u8 addr);
-+/**
-+ * struct ad5686_bus_ops - bus specific read/write operations
-+ * @read: read a register value at the given address
-+ * @write: write a command, address and value to the device
-+ */
-+struct ad5686_bus_ops {
-+	int (*read)(struct ad5686_state *st, u8 addr);
-+	int (*write)(struct ad5686_state *st, u8 cmd, u8 addr, u16 val);
-+};
- 
- /**
-  * struct ad5686_chip_info - chip specific information
-@@ -115,6 +120,7 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
-  * struct ad5686_state - driver instance specific data
-  * @dev:		device instance
-  * @chip_info:		chip model specific constants, available modes etc
-+ * @ops:		bus specific operations
-  * @vref_mv:		actual reference voltage used
-  * @pwr_down_mask:	power down mask
-  * @pwr_down_mode:	current power down mode
-@@ -126,11 +132,10 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
- struct ad5686_state {
- 	struct device			*dev;
- 	const struct ad5686_chip_info	*chip_info;
-+	const struct ad5686_bus_ops	*ops;
- 	unsigned short			vref_mv;
- 	unsigned int			pwr_down_mask;
- 	unsigned int			pwr_down_mode;
--	ad5686_write_func		write;
--	ad5686_read_func		read;
- 	bool				use_internal_vref;
- 	struct mutex			lock;
- 
-@@ -149,8 +154,16 @@ struct ad5686_state {
- 
- int ad5686_probe(struct device *dev,
- 		 const struct ad5686_chip_info *chip_info,
--		 const char *name, ad5686_write_func write,
--		 ad5686_read_func read);
-+		 const char *name, const struct ad5686_bus_ops *ops);
- 
-+static inline int ad5686_write(struct ad5686_state *st, u8 cmd, u8 addr, u16 val)
-+{
-+	return st->ops->write(st, cmd, addr, val);
-+}
-+
-+static inline int ad5686_read(struct ad5686_state *st, u8 addr)
-+{
-+	return st->ops->read(st, addr);
-+}
- 
- #endif /* __DRIVERS_IIO_DAC_AD5686_H__ */
-diff --git a/drivers/iio/dac/ad5696-i2c.c b/drivers/iio/dac/ad5696-i2c.c
-index e15b01d0b768..6250c227293c 100644
---- a/drivers/iio/dac/ad5696-i2c.c
-+++ b/drivers/iio/dac/ad5696-i2c.c
-@@ -62,10 +62,15 @@ static int ad5686_i2c_write(struct ad5686_state *st,
- 	return (ret != 3) ? -EIO : 0;
- }
- 
-+static const struct ad5686_bus_ops ad5686_i2c_ops = {
-+	.write = ad5686_i2c_write,
-+	.read = ad5686_i2c_read,
-+};
-+
- static int ad5686_i2c_probe(struct i2c_client *i2c)
- {
- 	return ad5686_probe(&i2c->dev, i2c_get_match_data(i2c),
--			    i2c->name, ad5686_i2c_write, ad5686_i2c_read);
-+			    i2c->name, &ad5686_i2c_ops);
- }
- 
- static const struct i2c_device_id ad5686_i2c_id[] = {
+ fs/btrfs/compression.c                 |   3 +-
+ fs/erofs/zdata.c                       |   3 +-
+ fs/fuse/dev.c                          |   2 -
+ fs/proc/page.c                         |   1 -
+ fs/proc/task_mmu.c                     |  22 +-
+ include/linux/memcontrol.h             |   9 +-
+ include/linux/mm.h                     |   2 +-
+ include/linux/mm_inline.h              | 257 ++++++++++---
+ include/linux/mmzone.h                 | 113 ++++--
+ include/linux/page-flags.h             |  13 +-
+ include/linux/swap.h                   |   2 -
+ include/trace/events/mmflags.h         |   2 -
+ include/uapi/linux/kernel-page-flags.h |   1 -
+ kernel/bounds.c                        |   2 +-
+ mm/damon/paddr.c                       |   3 +-
+ mm/filemap.c                           |  12 +-
+ mm/gup.c                               |   6 +-
+ mm/huge_memory.c                       |  12 +-
+ mm/khugepaged.c                        |   6 +-
+ mm/madvise.c                           |  37 +-
+ mm/memcontrol.c                        |  22 +-
+ mm/migrate.c                           |   4 -
+ mm/page_io.c                           |   3 +-
+ mm/readahead.c                         |   8 +-
+ mm/shmem.c                             |   2 +-
+ mm/slub.c                              |   2 +-
+ mm/swap.c                              | 109 ++++--
+ mm/vmscan.c                            | 189 +++++-----
+ mm/workingset.c                        | 666 ++++++++++++++++++---------------
+ tools/mm/page-types.c                  |   1 -
+ 30 files changed, 916 insertions(+), 598 deletions(-)
+---
+base-commit: 2ed06bf65cef2e7b763ce59a9fc2e4a42ecfa1ce
+change-id: 20260424-mglru-fg-8bb852ef820f
 
--- 
-2.43.0
+Best regards,
+--  
+Kairui Song <kasong@tencent.com>
 
