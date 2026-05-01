@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 02 May 2026 05:03:58 +0800
-Subject: [PATCH RFC 12/32] mm/huge_memory: mark file folio as accessed more
- accurately on split
+Date: Sat, 02 May 2026 05:03:59 +0800
+Subject: [PATCH RFC 13/32] mm/khugepaged: consider workingset folios as
+ referenced
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260502-mglru-fg-v1-12-913619b014d9@tencent.com>
+Message-Id: <20260502-mglru-fg-v1-13-913619b014d9@tencent.com>
 References: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 In-Reply-To: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 To: linux-mm@kvack.org
@@ -31,59 +31,65 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=1863;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=1950;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=k9aFXwHSgVQ00njEcryM7TIGI1VaTNApzaY86FSiuv4=;
- b=QqCHLzigIMmqtIvHrFqvpIctYLj4s2so+ICW0Z0obHQIhpFKNjP3tQFD/+qeGoRVwmacXTFqZ
- uxnxT2yFKm2DzyUAKs9L1I8OUW5nQDZogw7ArbrYJaph0LCJt25LX1B
+ bh=UByiLYjFt2+kqAxm04OpzowbaWLuDjdJ8bJGsAYOXBE=;
+ b=rN+ZBnZrzZD6vSDJMUHL0q+E5ZYHa/RaFdPJvCTAyQgAUBzFuz+g/IdZd5U6SrCWwaRFYnHSv
+ Iys2yTORjLYCkFTarebaM66SXYa0dlv8YaJMk+cjtcUCldB69BmOlrO
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The behavior of updating the folio's access info isn't consistent for
-huge mapping splitting or ordinary unmapping. Actually right now, there
-is no huge mapping splitting for such folios, we simply unmap it, so the
-page table's young flag has to be translated into folio's access info.
+The folio_test_referenced check here is clearly trying to test if the
+folio was ever referenced. It was first introduced by commit
+8ee53820edfd ("thp: mmu_notifier_test_young") as an supplement of the
+young bit check.
 
-Right now it only check and set folio's referenced flag, which isn't
-enough since folio flags update on access have its rules. For example,
-ordinary unmapping (zapping) calls folio_mark_accessed(), and it also
-checks if the VMA has recency to avoid false updates.
+Folios are marked as PG_referenced on first access, but following access
+will clear their PG_referenced on second access. So checking only the referenced
+flag is not accurate enough.
 
-So use the right helper here and be consistent.
+Switch to use the new helper, so we can cover the secondary and following
+access from MGLRU side. For non-MGLRU, this will make it return positve
+for workingset folios too, which should be OK.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/huge_memory.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ mm/khugepaged.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 1f0d0b780943..87a2640e3396 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -3023,8 +3023,8 @@ static void __split_huge_pud_locked(struct vm_area_struct *vma, pud_t *pud,
+diff --git a/mm/khugepaged.c b/mm/khugepaged.c
+index 7d48d4fbd5f3..af9217e19eac 100644
+--- a/mm/khugepaged.c
++++ b/mm/khugepaged.c
+@@ -815,7 +815,7 @@ static enum scan_result __collapse_huge_page_isolate(struct vm_area_struct *vma,
+ 		 */
+ 		if (cc->is_khugepaged &&
+ 		    (pte_young(pteval) || folio_test_young(folio) ||
+-		     folio_test_referenced(folio) ||
++		     folio_is_referenced(folio) ||
+ 		     mmu_notifier_test_young(vma->vm_mm, addr)))
+ 			referenced++;
+ 	}
+@@ -1743,7 +1743,7 @@ static enum scan_result collapse_scan_pmd(struct mm_struct *mm,
+ 		 */
+ 		if (cc->is_khugepaged &&
+ 		    (pte_young(pteval) || folio_test_young(folio) ||
+-		     folio_test_referenced(folio) ||
++		     folio_is_referenced(folio) ||
+ 		     mmu_notifier_test_young(vma->vm_mm, addr)))
+ 			referenced++;
+ 	}
+@@ -2729,7 +2729,7 @@ static enum scan_result collapse_scan_file(struct mm_struct *mm,
+ 		/*
+ 		 * We probably should check if the folio is referenced
+ 		 * here, but nobody would transfer pte_young() to
+-		 * folio_test_referenced() for us.  And rmap walk here
++		 * folio_is_referenced() for us.  And rmap walk here
+ 		 * is just too costly...
+ 		 */
  
- 	if (!folio_test_dirty(folio) && pud_dirty(old_pud))
- 		folio_mark_dirty(folio);
--	if (!folio_test_referenced(folio) && pud_young(old_pud))
--		folio_set_referenced(folio);
-+	if (pud_young(old_pud) && vma_has_recency(vma))
-+		folio_mark_accessed(folio);
- 	folio_remove_rmap_pud(folio, page, vma);
- 	folio_put(folio);
- 	add_mm_counter(vma->vm_mm, mm_counter_file(folio),
-@@ -3141,8 +3141,8 @@ static void __split_huge_pmd_locked(struct vm_area_struct *vma, pmd_t *pmd,
- 			folio = page_folio(page);
- 			if (!folio_test_dirty(folio) && pmd_dirty(old_pmd))
- 				folio_mark_dirty(folio);
--			if (!folio_test_referenced(folio) && pmd_young(old_pmd))
--				folio_set_referenced(folio);
-+			if (pmd_young(old_pmd) && vma_has_recency(vma))
-+				folio_mark_accessed(folio);
- 			folio_remove_rmap_pmd(folio, page, vma);
- 			folio_put(folio);
- 		}
 
 -- 
 2.54.0
