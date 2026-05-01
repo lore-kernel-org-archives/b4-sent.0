@@ -1,14 +1,13 @@
 From: Kairui Song <kasong@tencent.com>
-Subject: [PATCH RFC 00/32] mm/mglru: MGLRU-FG and refault distance support
-Date: Sat, 02 May 2026 05:03:46 +0800
-Message-Id: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
+Date: Sat, 02 May 2026 05:03:47 +0800
+Subject: [PATCH RFC 01/32] mm/memcontrol: make lru_zone_size atomic and
+ simplify sanity check
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDEyMT3dz0nKJS3bR0XYukJAtTo9Q0CyODNCWg8oKi1LTMCrBR0UpBbs5
- KsRDB4tKkrNTkEpAhSrW1AJ2j1E5xAAAA
-X-Change-ID: 20260424-mglru-fg-8bb852ef820f
+Message-Id: <20260502-mglru-fg-v1-1-913619b014d9@tencent.com>
+References: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
+In-Reply-To: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 To: linux-mm@kvack.org
 Cc: Andrew Morton <akpm@linux-foundation.org>, 
  Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
@@ -32,173 +31,143 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=7590;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=4666;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=DBOpIru7jqacweorBAeXDkuyacrHQhA4NDUgZl7zFQ0=;
- b=1KI9TPY28o+QlUdOb0aHnPYcmh5Khm9aqozsCx0JrNb1IBSBovc+nlEFzVo52Jle+W0+f5u8E
- V29tnRKWiYCCgFwOUtd2uQJvr2ZwYxL0wUy1u9+4JQFwQkKJznMKnat
+ bh=IkFEgPrNnMULleiYp1UZ+qFJc4vNB+W+MgG/aidkTiM=;
+ b=6EU6Ld0m0s7fh+UjdoyV2mk70KaMjPaHaHpHNPNMEwb7zV+0OY9j1iIwRJGitS6PnymWdKxNA
+ Fg86q+QfaGpCOJmVc3UGWg+5+l9KKYo0E3RxEGsZjoPuIOrcmx5BO1o
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is an RFC following the idea proposed as LSFMMBPF topic [1] this
-year for demonstrating the design and improvements, sending it out so it
-can be discussed better before or after the event. It's stable and
-performing well, but obviously, it's too long for review, so I plan to
-send these out step by step if we are OK with the basic ideas here.
-Worth noting that the design is still not finalized yet, the tier and
-refault calculation can still be better adjusted, and with more
-benchmarking and testing. This is rebased on top of the current
-mm-unstable as it is supposed to work on top of another series which is
-currently there [4].
+commit ca707239e8a7 ("mm: update_lru_size warn and reset bad lru_size")
+introduced a sanity check to catch memcg counter underflow, which is
+more like a workaround for another bug: lru_zone_size is unsigned, so
+underflow will wrap it around and return an enormously large number,
+then the memcg shrinker will loop almost forever as the calculated
+number of folios to shrink is huge. That commit also checks if a zero
+value matches the empty LRU list, so we have to hold the LRU lock, and
+do the counter adding differently depending on whether the nr_pages is
+negative.
 
-With this series, I'm seeing an obviously performance gain for tests
-like GET/SCAN with LevelDB (which is borrowed from Tal's paper [2])
-and MongoDB with TPCC [3] or YCSB [4]:
+But later commit b4536f0c829c ("mm, memcg: fix the active list aging for
+lowmem requests when memcg is enabled") already removed the LRU
+emptiness check, doing the adding differently is meaningless now. And if
+we just turn it into an atomic long, underflow isn't a big issue either,
+and can be checked at the reader side. The reader size is much less
+frequently called than the updater.
 
-GET/SCAN LevelDB [2]:
-Classical LRU: throughput_avg: 993.64 Ops/s
-MGLRU before:  throughput_avg: 951.12 Ops/s
-MGLRU after:   throughput_avg: 1344.72 Ops/s (+41% faster)
+So let's turn the counter into an atomic long and check at the
+reader side instead, which has a smaller overhead. Use atomic to avoid
+potential locking issue. The underflow correction is removed, which
+should be fine as if there is a mass leaking of the LRU size counter,
+something else may also have gone very wrong, and one should fix that
+leaking site instead. Besides, doing the sanity check in updater is
+unlikely to catch the leaking site, e.g. a folio was removed minutes ago
+without updating the counter, while there are still other folios on the
+LRU, the WARN won't be triggered until other folios are removed from a
+likely correct callsite.
 
-MongoDB YCSB workloadb (MGLRU):
-Before: 82127.65 ops/sec
-After:  95933.99 ops/sec (+16.8%)
-
-Build kernel test (MGLRU):
-Before: refault_file: 259681   refault_anon: 3006202  real: 1m49.005s
-After:  refault_file: 201472   refault_anon: 3048107  reaL: 1m49.050s
-
-FIO with zipf:
-Before: 73557.72 MB/s
-After:  74553.44 MB/s
-
-Also, mechanisms like PSI, smap, readahead, will all have better
-accuracy since this series unified the flag usage between classical
-LRU and MGLRU.
-
-This also reduces MGLRU's max flag usage by one, and hopefully provides
-a generic API for other components like DAMON to contribute to MGLRU's
-hotness tracking.
-
-Other tests like the MySQL are looking fine, no regression. Filesearch
-test in [2] also shows some improvement, not comparable to cache_ext, since
-this still need to rely on things like the refault distance to establish a
-pattern before it takes any effect, but more generic.
-
-This series basically composed of three parts:
-
-1) Make the MGLRU be frequency guided and rework MGLRU's flag format
-   to shrink the bit usage. The format rework and MGLRU-FG design is
-   strongly bound togther with 2) below.
-
-   The main patch implementing MGLRU-FG is:
-   mm/mglru: frequency guided workingset promotion (MGLRU-FG)
-
-2) Convert all workingset / referenced flag user to use the new generic
-   LRU refs API introduced by above.
-
-3) Refault distance support for MGLRU.
-
-   Refault distance refactor and support starts with:
-   mm/workingset: simplify and use a more intuitive model
-
-Step 1) and 2) are working well. But the overhead from 3) is still having
-slightly higher than expected overhead (dozens of more atomic operations
-upon refault, and an extra rstat flush, which is just like classical LRU),
-and not a fully optimized work, so I'm still looking into it.
-
-More detailes are in the commit message.
-
-It's recommaneded to test it seperately for these three parts. Sending as
-a long whole series to avoid conflict and provide a complete view of the
-ongoing project.
-
-NOTE for an RFC quality series: several helpers like folio_mark_referenced
-might need further improvement, currently the implementation may lead to
-inaccurate hotness info, only in theory and doesn't seems a new issue, but
-could be improved easily later.
-
-And the page flag removal can be decoupled from the workingset series easily.
-
-Link: https://lore.kernel.org/linux-mm/CAMgjq7BoekNjg-Ra3C8M7=8=75su38w=HD782T5E_cxyeCeH_g@mail.gmail.com/ [1]
-Link: https://dl.acm.org/doi/10.1145/3731569.3764820 [2]
-Link: https://lwn.net/Articles/945266/ [3]
-Link: https://lore.kernel.org/linux-mm/20260428-mglru-reclaim-v7-0-02fabb92dc43@tencent.com/ [4]
+For now still keep the LRU lock context, in theory that can be removed
+too since the update is atomic, if we can tolerate a temporary
+inaccurate reading, but currently there is no benefit doing so yet.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
-Kairui Song (32):
-      mm/memcontrol: make lru_zone_size atomic and simplify sanity check
-      mm/memcontrol: allow update of LRU statistic without holding LRU lock
-      mm/mglru: wrap all access to folio flags with accessor
-      mm/mglru: introduce and use helpers for updating lru_gen refs and gen
-      mm/mglru: make generation page counters atomic
-      mm/mglru: frequency guided workingset promotion (MGLRU-FG)
-      mm/mglru: don't reset folios LRU refs count on protection by default
-      mm: make folio lru referenced times count a generic API
-      mm: replace folio_set_workingset with folio_mark_workingset
-      mm: replace folio_test_workingset with folio_is_workingset
-      mm/smap: report workingset folios as referenced
-      mm/huge_memory: mark file folio as accessed more accurately on split
-      mm/khugepaged: consider workingset folios as referenced
-      mm: convert rest folio LRU referenced usages to new helpers
-      mm/gup: use new helpers for marking folios as referenced
-      mm: convert folio referenced flag usages to new bitwise identical helpers
-      mm/shmem: mark folio as referenced use new helper
-      mm/vmscan: convert to new bitwise identical helper
-      mm/madvise: convert to new lru refs API and better support for MGLRU
-      mm/damon: don't clear the lruref for MGLRU
-      mm/swap: convert to new bitwise identical helper
-      mm/workingset: simplify and use a more intuitive model
-      mm/workingset: rename the nonresistence age counter
-      mm/workingset: use a single atomic operation for read and age
-      mm/workingset, lru_gen: simplify lru_gen recent
-      mm/workingset: properly define the format of a folio shadow
-      mm/workingset: move refault distance checking into a helper
-      mm/workingset: split lruvec retrieving and flush into a helper
-      mm/mglru: convert avg_total and avg_refaulted to atomic
-      mm/mglru, workingset: apply refault-distance based re-activation
-      mm: remove PG_workingset
-      mm: remove PG_referenced
+ include/linux/memcontrol.h |  9 +++++++--
+ mm/memcontrol.c            | 18 +-----------------
+ mm/vmscan.c                |  5 -----
+ 3 files changed, 8 insertions(+), 24 deletions(-)
 
- fs/btrfs/compression.c                 |   3 +-
- fs/erofs/zdata.c                       |   3 +-
- fs/fuse/dev.c                          |   2 -
- fs/proc/page.c                         |   1 -
- fs/proc/task_mmu.c                     |  22 +-
- include/linux/memcontrol.h             |   9 +-
- include/linux/mm.h                     |   2 +-
- include/linux/mm_inline.h              | 257 ++++++++++---
- include/linux/mmzone.h                 | 113 ++++--
- include/linux/page-flags.h             |  13 +-
- include/linux/swap.h                   |   2 -
- include/trace/events/mmflags.h         |   2 -
- include/uapi/linux/kernel-page-flags.h |   1 -
- kernel/bounds.c                        |   2 +-
- mm/damon/paddr.c                       |   3 +-
- mm/filemap.c                           |  12 +-
- mm/gup.c                               |   6 +-
- mm/huge_memory.c                       |  12 +-
- mm/khugepaged.c                        |   6 +-
- mm/madvise.c                           |  37 +-
- mm/memcontrol.c                        |  22 +-
- mm/migrate.c                           |   4 -
- mm/page_io.c                           |   3 +-
- mm/readahead.c                         |   8 +-
- mm/shmem.c                             |   2 +-
- mm/slub.c                              |   2 +-
- mm/swap.c                              | 109 ++++--
- mm/vmscan.c                            | 189 +++++-----
- mm/workingset.c                        | 666 ++++++++++++++++++---------------
- tools/mm/page-types.c                  |   1 -
- 30 files changed, 916 insertions(+), 598 deletions(-)
----
-base-commit: 2ed06bf65cef2e7b763ce59a9fc2e4a42ecfa1ce
-change-id: 20260424-mglru-fg-8bb852ef820f
+diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
+index dc3fa687759b..345a6ba8a3a7 100644
+--- a/include/linux/memcontrol.h
++++ b/include/linux/memcontrol.h
+@@ -112,7 +112,7 @@ struct mem_cgroup_per_node {
+ 	/* Fields which get updated often at the end. */
+ 	struct lruvec		lruvec;
+ 	CACHELINE_PADDING(_pad2_);
+-	unsigned long		lru_zone_size[MAX_NR_ZONES][NR_LRU_LISTS];
++	atomic_long_t		lru_zone_size[MAX_NR_ZONES][NR_LRU_LISTS];
+ 	struct mem_cgroup_reclaim_iter	iter;
+ 
+ 	/*
+@@ -884,10 +884,15 @@ static inline
+ unsigned long mem_cgroup_get_zone_lru_size(struct lruvec *lruvec,
+ 		enum lru_list lru, int zone_idx)
+ {
++	long val;
+ 	struct mem_cgroup_per_node *mz;
+ 
+ 	mz = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
+-	return READ_ONCE(mz->lru_zone_size[zone_idx][lru]);
++	val = atomic_long_read(&mz->lru_zone_size[zone_idx][lru]);
++	if (WARN_ON_ONCE(val < 0))
++		return 0;
++
++	return val;
+ }
+ 
+ void __mem_cgroup_handle_over_high(gfp_t gfp_mask);
+diff --git a/mm/memcontrol.c b/mm/memcontrol.c
+index c03d4787d466..71fad2239973 100644
+--- a/mm/memcontrol.c
++++ b/mm/memcontrol.c
+@@ -1484,28 +1484,12 @@ void mem_cgroup_update_lru_size(struct lruvec *lruvec, enum lru_list lru,
+ 				int zid, long nr_pages)
+ {
+ 	struct mem_cgroup_per_node *mz;
+-	unsigned long *lru_size;
+-	long size;
+ 
+ 	if (mem_cgroup_disabled())
+ 		return;
+ 
+ 	mz = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
+-	lru_size = &mz->lru_zone_size[zid][lru];
+-
+-	if (nr_pages < 0)
+-		*lru_size += nr_pages;
+-
+-	size = *lru_size;
+-	if (WARN_ONCE(size < 0,
+-		"%s(%p, %d, %ld): lru_size %ld\n",
+-		__func__, lruvec, lru, nr_pages, size)) {
+-		VM_BUG_ON(1);
+-		*lru_size = 0;
+-	}
+-
+-	if (nr_pages > 0)
+-		*lru_size += nr_pages;
++	atomic_long_add(nr_pages, &mz->lru_zone_size[zid][lru]);
+ }
+ 
+ /**
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 8df21364ef71..53b43e3f5795 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -1641,10 +1641,6 @@ unsigned int reclaim_clean_pages_from_list(struct zone *zone,
+ 	return nr_reclaimed;
+ }
+ 
+-/*
+- * Update LRU sizes after isolating pages. The LRU size updates must
+- * be complete before mem_cgroup_update_lru_size due to a sanity check.
+- */
+ static __always_inline void update_lru_sizes(struct lruvec *lruvec,
+ 			enum lru_list lru, unsigned long *nr_zone_taken)
+ {
+@@ -1656,7 +1652,6 @@ static __always_inline void update_lru_sizes(struct lruvec *lruvec,
+ 
+ 		update_lru_size(lruvec, lru, zid, -nr_zone_taken[zid]);
+ 	}
+-
+ }
+ 
+ /*
 
-Best regards,
---  
-Kairui Song <kasong@tencent.com>
+-- 
+2.54.0
 
