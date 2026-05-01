@@ -1,131 +1,98 @@
-From: Alireza Haghdoost <haghdoost@uber.com>
-Date: Thu, 30 Apr 2026 22:52:53 +0000
-Subject: [PATCH] checkpatch: recognize the Assisted-by: trailer
+From: Per Larsen <perlarsen@google.com>
+Subject: [PATCH v6 0/2] KVM: arm64: Support FF-A direct messaging
+ interfaces
+Date: Fri, 01 May 2026 05:34:31 +0000
+Message-Id: <20260501-host-direct-messages-v6-0-3f4af727ed85@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260430-fix-checkpatch-assisted-by-v1-1-46d3ef68a1de@uber.com>
-X-B4-Tracking: v=1; b=H4sIAETd82kC/x2NQQrCQAxFr1KyNjCtVtSriItMJnWCOJZJEUvp3
- Zu6fLzP+wuYVBWDW7NAla+afopDe2iAM5WnoCZn6EJ3DqdjwEF/yFn4NdLEGclMbZKEccaL9Ne
- hFwqcWvBAJBOMlQrnPfEmH9ZdjFU883+9P9Z1A463cSaFAAAA
-To: Andy Whitcroft <apw@canonical.com>, Joe Perches <joe@perches.com>, 
- Dwaipayan Ray <dwaipayanray1@gmail.com>, 
- Lukas Bulwahn <lukas.bulwahn@gmail.com>
-Cc: linux-kernel@vger.kernel.org, Alireza Haghdoost <haghdoost@uber.com>
-X-Mailer: b4 0.12.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3855; i=haghdoost@uber.com;
- h=from:subject:message-id; bh=1L/K7YExDBD3NfbBSUkBDm0Ajzp1G2Obp39ZJ72g7eA=;
- b=owEBbQKS/ZANAwAKAVNlBDxl2ALYAcsmYgBp891RZReFtwOsixLJxYkesTWsqVMS87Nhh4/4I
- tECZCcIo5+JAjMEAAEKAB0WIQS5+sFL3gX/8PrA0S1TZQQ8ZdgC2AUCafPdUQAKCRBTZQQ8ZdgC
- 2F6FD/0b91gYN3TXa7oA8ym71E7i6/GIo05VSmrE4BlVFu1sL2MsjoR6bAX7uDcWY3jbfWSmHfu
- wJodNeNbtLEAoDtq7woGEABLYA0001icm2g6/Xh7QaZQwAYHxrMyoih7ERZRQrCI62ZnVoAxBa8
- dVkb0YtpCf3A4JcjuBC6q9Ci4YmJ7aQEM3RJAK+qp0ttz3BPoCcEO34Z4dPsZMAGrlTo2HHKDPA
- y5uX8zlfWRtNtnHpS16XzOIEaEndKxckZlNUm+Pd2Nz6e54/oDLipH6rjMxdkjIqpXtgqDDMPy0
- uH27ZAPRA+mOQ0uWlqvyQ5UTe1DZDTvrIRX1B9rh88u+N5EawyaZDWAQh9pp8YbC0Anqb5NWjpE
- XEe5V3/E82zPP6AzSV4MoKl31gS3g2sP8ZukBKrXThn5uvnh2kdWbNQIFDDFTFCZym266tH0xwV
- 5Ut3Dy/hWh/DkAyBE7j7WORR3G3cwIgqQwJBcAJlXWb0waVuTPQWccV6wumStKK/sYuMqe7CfYq
- Kwg93FFxLNI/dzfCl4xCUzf9DkAdsW2wF2Ph428VnZK7ll3Wzm307hykl4BkAkIL21SEOW1bhnk
- vhkvWicpFzdmLXfS1oNy2KMCWr7/bQiqMzA6GXSO5/qwZLbx8Ely2LLTQeRRP9vfJmGliY8WRbd
- 8he4nmayIekDUWw==
-X-Developer-Key: i=haghdoost@uber.com; a=openpgp;
- fpr=B9FAC14BDE05FFF0FAC0D12D5365043C65D802D8
-X-Endpoint-Received: by B4 Relay for haghdoost@uber.com/default with auth_id=764
+X-B4-Tracking: v=1; b=H4sIAGc79GkC/43P3UrEMBAF4FdZcm0kM/lrvfI9xItuMmkD7kaSE
+ nZZ+u6mi6JSC16egflmzo0VypEKezrcWKYaS0znFszDgblpOI/Eo2+ZoUANAns+pTJzHzO5mZ+
+ olGGkwjUK8DZoPRw9a6vvmUK83NmX15anWOaUr/crFdbpJyjF32AFLrgykrTtLLguPI8pjW/06
+ NKJrWLF/yjYlD6gdRSksVJsFPmtAOyUq7IpziovVK/UEc1GUV+KESD2FLX+ov2gEMFDt1X0DwV
+ hR9FNQQcGlOsVdb8bLcvyAXfhNLbRAQAA
+X-Change-ID: 20251029-host-direct-messages-5201d7f55abd
+To: Marc Zyngier <maz@kernel.org>, Joey Gouly <joey.gouly@arm.com>, 
+ Suzuki K Poulose <suzuki.poulose@arm.com>, 
+ Zenghui Yu <yuzenghui@huawei.com>, 
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
+ Yeoreum Yun <yeoreum.yun@arm.com>, Ben Horgan <ben.horgan@arm.com>, 
+ Oliver Upton <oupton@kernel.org>
+Cc: Armelle Laine <armellel@google.com>, 
+ Sebastien Ene <sebastianene@google.com>, 
+ linux-arm-kernel@lists.infradead.org, kvmarm@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Per Larsen <perlarsen@google.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777613681; l=2488;
+ i=perlarsen@google.com; s=20250508; h=from:subject:message-id;
+ bh=IJOP1QjdMLA8jJRRjWnWIz8Iw1BhlCSTBd7eJQAsNEI=;
+ b=Dxaofd6X807oR6U7U5Ui78E2f1FQFaKs+SYpUR/QH2ZGlXVKOHPM2gU7WiDfchfvm474lHDdW
+ 6ap1TvouJE/B4+slty0QWylyDymrQq7O7EdqI58zasLyndB4zXrHwwM
+X-Developer-Key: i=perlarsen@google.com; a=ed25519;
+ pk=jjc/Ta4VmrLRmMoahP6d1mBcKzvWU+nsmdtYe2oS2kQ=
+X-Endpoint-Received: by B4 Relay for perlarsen@google.com/20250508 with auth_id=402
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Documentation/process/coding-assistants.rst, added in commit
-78d979db6cef ("docs: add AI Coding Assistants documentation"),
-mandates an Assisted-by trailer for any patch developed with help
-from an AI coding assistant. The documented format is
-"Assisted-by: AGENT_NAME:MODEL_VERSION [TOOL1] [TOOL2]" (for example,
-"Assisted-by: Claude:claude-3-opus coccinelle sparse").
+Support FFA_MSG_SEND_DIRECT_REQ unconditionally.
+Support FFA_MSG_SEND_DIRECT_REQ2 if hypervisor negotiated version 1.2+.
 
-scripts/checkpatch.pl was not updated alongside the documentation.
-The trailer name matches the script's generic [a-z0-9_-]+by: pattern,
-so checkpatch (a) emits a "Non-standard signature: Assisted-by:"
-WARNING because Assisted-by: is absent from $signature_tags, and
-(b) emits an "Unrecognized email address" ERROR because the value
-is not an RFC 5322 email but the AGENT_NAME:MODEL_VERSION form
-prescribed by the spec. Both fire on every correctly-formed
-Assisted-by: tag, making it impossible to satisfy both the
-documentation and checkpatch at the same time.
+Framework messages (FF-A control plane) are filtered out. For
+FFA_MSG_SEND_DIRECT_REQ, we look at flags in w2. Messages using the REQ2
+interface are always partition messages.
 
-Add Assisted-by: to $signature_tags and to the @standard_signature_tags
-list (so suggested-typo correction works for it). Introduce a new
-$no_email_signature_tags pattern listing trailers that, by spec, do
-not carry an email address, and gate the email parse / format / stable
-address checks on it; today only Assisted-by: is in that list, but the
-mechanism is general for future tags with similar conventions.
+The second patch was part of a previous patch set [0] but was dropped
+since the use case was unclear. A clear use case has now appeared: use
+TPM device with CRB over FF-A when kernel boots with pkvm [1].
 
-A regression test confirms a malformed sign-off line still triggers
-the "Unrecognized email address" ERROR after this change, since
-Signed-off-by is not in $no_email_signature_tags.
+Tested by booting Android under QEMU.
 
-Signed-off-by: Alireza Haghdoost <haghdoost@uber.com>
-Assisted-by: Cursor:claude-sonnet-4.5
+Best Regards,
+Per
+
+[0]: https://lore.kernel.org/all/20250730-virtio-msg-ffa-v9-0-7f1b55c8d149@google.com/
+[1]: https://lore.kernel.org/all/20251027191729.1704744-1-yeoreum.yun@arm.com/
+ 
+
+Signed-off-by: Per Larsen <perlarsen@google.com>
 ---
-Single patch. The commit message contains the full rationale and
-a description of the mechanism. No cover needed beyond what is there.
----
- scripts/checkpatch.pl | 15 ++++++++++++++-
- 1 file changed, 14 insertions(+), 1 deletion(-)
+Changes in v6:
+- 1/2: validate that bits 31:16 of w1 is HOST_FFA_ID.
+- Link to v5: https://lore.kernel.org/r/20260121-host-direct-messages-v5-0-2c1614c94e80@google.com
 
-diff --git a/scripts/checkpatch.pl b/scripts/checkpatch.pl
-index e56374662ff7..a9ebb67686ea 100755
---- a/scripts/checkpatch.pl
-+++ b/scripts/checkpatch.pl
-@@ -641,10 +641,19 @@ our $signature_tags = qr{(?xi:
- 	Reviewed-by:|
- 	Reported-by:|
- 	Suggested-by:|
-+	Assisted-by:|
- 	To:|
- 	Cc:
- )};
- 
-+# Trailers that do not carry an RFC 5322 email address.
-+# Documentation/process/coding-assistants.rst defines Assisted-by: as
-+# carrying "AGENT_NAME:MODEL_VERSION [TOOL1] [TOOL2]" rather than an
-+# email address; skip the email-format checks for these tags.
-+our $no_email_signature_tags = qr{(?xi:
-+	Assisted-by:
-+)};
-+
- our @link_tags = qw(Link Closes);
- 
- #Create a search and print patterns for all these strings to be used directly below
-@@ -737,7 +746,7 @@ sub find_standard_signature {
- 	my ($sign_off) = @_;
- 	my @standard_signature_tags = (
- 		'Signed-off-by:', 'Co-developed-by:', 'Acked-by:', 'Tested-by:',
--		'Reviewed-by:', 'Reported-by:', 'Suggested-by:'
-+		'Reviewed-by:', 'Reported-by:', 'Suggested-by:', 'Assisted-by:'
- 	);
- 	foreach my $signature (@standard_signature_tags) {
- 		return $signature if (get_edit_distance($sign_off, $signature) <= 2);
-@@ -3105,6 +3114,9 @@ sub process {
- 				}
- 			}
- 
-+			# Skip email-format checks for trailers that, by spec, do
-+			# not carry an email address (e.g. Assisted-by:).
-+			if ($sign_off !~ /$no_email_signature_tags/) {
- 			my ($email_name, $name_comment, $email_address, $comment) = parse_email($email);
- 			my $suggested_email = format_email(($email_name, $name_comment, $email_address, $comment));
- 			if ($suggested_email eq "") {
-@@ -3189,6 +3201,7 @@ sub process {
- 					}
- 				}
- 			}
-+			}
- 
- # Check for duplicate signatures
- 			my $sig_nospace = $line;
+Changes in v5:
+- 1/2: do_ffa_direct_msg: validate that sender is HOST_FFA_ID.
+- Link to v4: https://lore.kernel.org/r/20260109-host-direct-messages-v4-0-95da4221d186@google.com
+
+Changes in v4:
+- 1/2: do_ffa_direct_msg: check that flag in w2 is zero; drop unused vm_handle parameter.
+- 2/2: ffa_call_supported: simplify logic by reordering cases.
+-      do_ffa_direct_msg: switch polarity of check and update comment.
+- Link to v3: https://lore.kernel.org/r/20251119-host-direct-messages-v3-0-c74d04944b26@google.com
+
+Changes in v3:
+- Filter out framework messages as suggested by Will Deacon. Update cover letter accordingly.
+- Update trailers: Reviewed-by: Yeoreum Yun <yeoreum.yun@arm.com>
+- Link to v2: https://lore.kernel.org/r/20251030-host-direct-messages-v2-0-9f27cef36730@google.com
+
+Changes in v2:
+- 1/2: Drop support for FFA_ID_GET interface in host handler.
+- Link to v1: https://lore.kernel.org/r/20251030-host-direct-messages-v1-0-463e57871c8f@google.com
 
 ---
-base-commit: 46b513250491a7bfc97d98791dbe6a10bcc8129d
-change-id: 20260430-fix-checkpatch-assisted-by-8e59f5ea0cd1
+Per Larsen (1):
+      KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ2 in host handler
+
+Sebastian Ene (1):
+      KVM: arm64: Support FFA_MSG_SEND_DIRECT_REQ in host handler
+
+ arch/arm64/kvm/hyp/nvhe/ffa.c | 39 ++++++++++++++++++++++++++++++++++++++-
+ include/linux/arm_ffa.h       |  2 ++
+ 2 files changed, 40 insertions(+), 1 deletion(-)
+---
+base-commit: 26fd6bff2c050196005312d1d306889220952a99
+change-id: 20251029-host-direct-messages-5201d7f55abd
 
 Best regards,
 -- 
-Alireza Haghdoost <haghdoost@uber.com>
+Per Larsen <perlarsen@google.com>
 
