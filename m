@@ -1,11 +1,10 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 02 May 2026 05:04:05 +0800
-Subject: [PATCH RFC 19/32] mm/madvise: convert to new lru refs API and
- better support for MGLRU
+Date: Sat, 02 May 2026 05:04:06 +0800
+Subject: [PATCH RFC 20/32] mm/damon: don't clear the lruref for MGLRU
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260502-mglru-fg-v1-19-913619b014d9@tencent.com>
+Message-Id: <20260502-mglru-fg-v1-20-913619b014d9@tencent.com>
 References: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 In-Reply-To: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 To: linux-mm@kvack.org
@@ -31,89 +30,35 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=2598;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=635;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=nsdGkqQnIhHZ9iD9iPaPkGtCBxehUPo1DWGXdON6M/Y=;
- b=GSF6KP7HamzrOX9fc6KaEbpwG7F0Vpq9uEZhUQSmAd6gKmp3/uajUtaj2M8du2Qu6ADDYhGQB
- k20Lra60ZzLCHE+D9B7reUUbU0PFsXCZpaolFWS7eQ2d+CUIx2JH4Pz
+ bh=aHsc1nk/FwDwd1lG6O1KFNt7Wktso+y56WV9FF+FyW4=;
+ b=mQ1ilv6x/6GtozJZhXvoobsbJ9AwqNI8htvVQf2Xp8Esl58NF8vs+4uOuU/WIwknj7Ts5Z1Ok
+ wXwKliweL9CDMi4L7r0NeohOyUPT3TIx6Z/hv/jKA2Tw2fVQF04dSsD
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For active/inactive LRU, madvise wants evicted folios from active LRU to
-be considered for PSI too, so some special handling are added. But MGLRU
-doesn't really need this, as it has a different activation logic.
-
-Switch to new helpers and improve the support for MGLRU here.
-
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/madvise.c | 37 +++++++++++++++++++++++--------------
- 1 file changed, 23 insertions(+), 14 deletions(-)
+ mm/damon/paddr.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/mm/madvise.c b/mm/madvise.c
-index 930939c55cd5..e42266a03fe9 100644
---- a/mm/madvise.c
-+++ b/mm/madvise.c
-@@ -351,6 +351,27 @@ static inline int madvise_folio_pte_batch(unsigned long addr, unsigned long end,
- 				     FPB_MERGE_YOUNG_DIRTY);
- }
- 
-+/*
-+ * We are deactivating a folio for accelerating reclaiming.
-+ * VM couldn't reclaim the folio unless we clear PG_young.
-+ * As a side effect, it makes confuse idle-page tracking
-+ * because they will miss recent referenced history.
-+ */
-+static void madvise_cold_or_pageout_prep_folio(struct folio *folio)
-+{
-+	folio_test_clear_young(folio);
-+
-+	/*
-+	 * MGLRU clears all reference flags in folio_deactivate,
-+	 * no need to touch it here.
-+	 */
-+	if (!lru_gen_enabled()) {
-+		folio_clear_referenced_by_bit(folio);
-+		if (folio_test_active(folio))
-+			folio_mark_workingset_by_bit(folio);
-+	}
-+}
-+
- static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
- 				unsigned long addr, unsigned long end,
- 				struct mm_walk *walk)
-@@ -425,10 +446,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
- 			tlb_remove_pmd_tlb_entry(tlb, pmd, addr);
- 		}
+diff --git a/mm/damon/paddr.c b/mm/damon/paddr.c
+index 5cdcc5037cbc..7718cd9ac959 100644
+--- a/mm/damon/paddr.c
++++ b/mm/damon/paddr.c
+@@ -186,7 +186,8 @@ static unsigned long damon_pa_pageout(struct damon_region *r,
+ 		else
+ 			*sz_filter_passed += folio_size(folio) / addr_unit;
  
 -		folio_clear_referenced(folio);
--		folio_test_clear_young(folio);
--		if (folio_test_active(folio))
--			folio_mark_workingset_by_bit(folio);
-+		madvise_cold_or_pageout_prep_folio(folio);
- 		if (pageout) {
- 			if (folio_isolate_lru(folio)) {
- 				if (folio_test_unevictable(folio))
-@@ -534,16 +552,7 @@ static int madvise_cold_or_pageout_pte_range(pmd_t *pmd,
- 			tlb_remove_tlb_entries(tlb, pte, nr, addr);
- 		}
- 
--		/*
--		 * We are deactivating a folio for accelerating reclaiming.
--		 * VM couldn't reclaim the folio unless we clear PG_young.
--		 * As a side effect, it makes confuse idle-page tracking
--		 * because they will miss recent referenced history.
--		 */
--		folio_clear_referenced(folio);
--		folio_test_clear_young(folio);
--		if (folio_test_active(folio))
--			folio_mark_workingset_by_bit(folio);
-+		madvise_cold_or_pageout_prep_folio(folio);
- 		if (pageout) {
- 			if (folio_isolate_lru(folio)) {
- 				if (folio_test_unevictable(folio))
++		if (!lru_gen_enabled())
++			folio_clear_referenced_by_bit(folio);
+ 		folio_test_clear_young(folio);
+ 		if (!folio_isolate_lru(folio))
+ 			goto put_folio;
 
 -- 
 2.54.0
