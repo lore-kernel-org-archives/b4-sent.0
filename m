@@ -1,100 +1,95 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Fri, 01 May 2026 11:11:29 +0200
-Subject: [PATCH] arm64: dts: qcom: sc8280xp-blackrock: switch to uefi rtc
- offset
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH v5 00/12] Fixes and cleanups for the AD5686 IIO driver
+Date: Fri, 01 May 2026 10:14:53 +0100
+Message-Id: <20260501-ad5686-fixes-v5-0-0b2f45488418@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260501-blackrock-rtc-v1-1-bddf3e37fa94@oldschoolsolutions.biz>
-X-B4-Tracking: v=1; b=H4sIAEBu9GkC/x3M0QpAMBSH8VfRubaaxcSryMXMHydCZ5LS3t1y+
- bv4vpcChBGozV4S3Bz42BOKPCO/uH2G4jGZjDZWV7pQw+b8KodflVxeGUyoHRoHW1JqTsHEz//
- r+hg/WILRP18AAAA=
-X-Change-ID: 20260501-blackrock-rtc-2efe7ae9ae64
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Johan Hovold <johan@kernel.org>, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777626698; l=2425;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=tDNNxwtejUYdaPAby/1L+xoKUke9uWqBJlZ4wJWTrYY=;
- b=QLmw6GvnBSprPtboyVQDUmTXvT3P8+o1OoUgdHW47BtpgmxO+wiJSKesDiW5WC0ir0TSOHEEF
- U1US5Wev/LUCBehjoMxx1+XpYnJl1RJpuzW1RMOOs/dnlUfJEeqS3Gl
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+X-B4-Tracking: v=1; b=H4sIAA1v9GkC/3XMwW6DMAzG8Vepcl4mHILj7LT3qHpIgmkjbVCRC
+ rWqePe6nBhox8/W7/9UhcfMRX0dnmrkKZc89DKaj4NKl9CfWedWtjKVwcoa1KFtkFB3+c5FY80
+ BiQBiG5WQ68jLQ8TxJPuSy20YH0t9gvf1n9AEutIueYvBOectf4c+/AznzzT8qndpMmvtNtqIB
+ iKuGvC+Rtrpeq1po2vRPnWdiy26AM1O27X2G21Fx0gdJOHE8EfP8/wCEcDeZmMBAAA=
+X-Change-ID: 20260426-ad5686-fixes-63ea68811bdb
+To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Stefan Popa <stefan.popa@analog.com>, Jonathan Cameron <jic23@cam.ac.uk>, 
+ Greg Kroah-Hartman <gregkh@suse.de>, 
+ Michael Auchter <michael.auchter@ni.com>, 
+ Jonathan Cameron <jic23@kernel.org>
+Cc: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>, 
+ Andy Shevchenko <andriy.shevchenko@intel.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777626920; l=2541;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=cmSeLtpdK8sBLV8JfrstZZeDMUoyRzYR7/Dd7zdGNMc=;
+ b=q+4qqila/0f4fr2RZszZl6nC3mlZuFBZuKTSKgk3Tg99DBiaaj117drxNN1T4z5LUe/yLcFOF
+ iRtjXhCks+WD8oWLiVGmU+IAvMcFdIqYCX7hDWDChTLZdZ55my2CRmE
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On many Qualcomm platforms the PMIC RTC control and time registers are
-read-only so that the RTC time can not be updated. Instead an offset
-needs be stored in some machine-specific non-volatile memory, which a
-driver can take into account.
+This is the first series of three on updating the AD5686 driver.
 
-On platforms where the offset is stored in a Qualcomm specific UEFI
-variable the variables are also accessed in a non-standard way, which
-means that the OS cannot assume that the variable service is available
-by the time the RTC driver probes.
+A bigger patch series was sent before ("Extend device support for AD5686 driver"):
 
-Use the new 'qcom,uefi-rtc-info' property to indicate that the offset is
-stored in a UEFI variable so that the OS can determine whether to wait
-for it to become available.
+https://lore.kernel.org/r/20260422-ad5313r-iio-support-v1-0-ed7dca001d1b@analog.com
 
-[1]: https://lore.kernel.org/r/20250423075143.11157-4-johan+linaro@kernel.org
+This one adds a number of cleanups and fixes, like:
+- Refactor include headers (IWYU);
+- Remove redundant register definition;
+- Drop enum chip id in favor of per-device chip_info structs;
+- Fix internal voltage reference control for single-channel devices;
+- Acquire lock when doing power down control;
+- Fix powerdown control for dual-channel devices;
 
-Fixes: 16a7fed11714 ("arm64: dts: qcom: sc8280xp-blackrock: dt definition for WDK2023")
-
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
-This is the first of a small series of incremental updates for the
-Microsoft Windows Dev Kit 2023 (sc8280xp-blackrock / Project Volterra).
+Changes in v5:
+- Drop I2C read operation changes.
+- Create helpers for reading and writing powerdown mask bits
+- Link to v4: https://lore.kernel.org/r/20260429-ad5686-fixes-v4-0-bb8f1cbd68e1@analog.com
 
-Subsequent patches will address:
-  - USB-C DP altmode support on the rear port (USB0)
-  - Audio on all three DisplayPort-capable connectors
-  - A few other cleanups cherry-picked from the Lenovo X13s
+Changes in v4:
+- Address issues spotted by sashiko.
+- Link to v3: https://lore.kernel.org/r/20260428-ad5686-fixes-v3-0-9cff7bd67a15@analog.com
 
-The goal is to keep changes small and reviewable.
+Changes in v3:
+- Misc changes like parenthesis removal and line breaks
+- Link to v2: https://lore.kernel.org/r/20260427-ad5686-fixes-v2-0-188e05199368@analog.com
 
-base-commit: b9303e6bff706758c167af686b5315ad00233bf8
----
- arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts | 11 +----------
- 1 file changed, 1 insertion(+), 10 deletions(-)
-
-diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
-index 00bbeeef6f14dd89de506e33742f8f73435ac021..3dc3d7ae928d0a509c564a32908e33f5ca934c98 100644
---- a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
-+++ b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-blackrock.dts
-@@ -763,20 +763,11 @@ &pmk8280_pon_resin {
- };
- 
- &pmk8280_rtc {
--	nvmem-cells = <&rtc_offset>;
--	nvmem-cell-names = "offset";
-+	qcom,uefi-rtc-info;
- 
- 	status = "okay";
- };
- 
--&pmk8280_sdam_6 {
--	status = "okay";
--
--	rtc_offset: rtc-offset@bc {
--		reg = <0xbc 0x4>;
--	};
--};
--
- &pmk8280_vadc {
- 	channel@144 {
- 		reg = <PM8350_ADC7_AMUX_THM1_100K_PU(1)>;
+Changes in v2:
+- Bring fixes first and cleanups later
+- Link to v1: https://lore.kernel.org/r/20260426-ad5686-fixes-v1-0-7c946a77794e@analog.com
 
 ---
-base-commit: b9303e6bff706758c167af686b5315ad00233bf8
-change-id: 20260501-blackrock-rtc-2efe7ae9ae64
+Rodrigo Alencar (12):
+      iio: dac: ad5686: fix ref bit initialization for single-channel parts
+      iio: dac: ad5686: fix input raw value check
+      iio: dac: ad5686: acquire lock when doing powerdown control
+      iio: dac: ad5686: fix powerdown control on dual-channel devices
+      iio: dac: ad5686: refactor include headers
+      iio: dac: ad5686: remove redundant register definition
+      iio: dac: ad5686: drop enum id
+      iio: dac: ad5686: add of_match table to the spi driver
+      iio: dac: ad5686: add helpers to handle powerdown masks
+      iio: dac: ad5686: add control_sync() for single-channel devices
+      iio: dac: ad5686: cleanup doc header of local structs
+      iio: dac: ad5686: create bus ops struct
+
+ drivers/iio/dac/ad5686-spi.c |  73 ++++--
+ drivers/iio/dac/ad5686.c     | 539 ++++++++++++++++++++++---------------------
+ drivers/iio/dac/ad5686.h     | 124 +++++-----
+ drivers/iio/dac/ad5696-i2c.c |  80 ++++---
+ 4 files changed, 432 insertions(+), 384 deletions(-)
+---
+base-commit: 39b80c5c9830d12d2d6531059001301c4265322a
+change-id: 20260426-ad5686-fixes-63ea68811bdb
 
 Best regards,
 -- 
-Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
