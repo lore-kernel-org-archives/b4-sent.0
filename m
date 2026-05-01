@@ -1,10 +1,10 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 02 May 2026 05:04:06 +0800
-Subject: [PATCH RFC 20/32] mm/damon: don't clear the lruref for MGLRU
+Date: Sat, 02 May 2026 05:04:07 +0800
+Subject: [PATCH RFC 21/32] mm/swap: convert to new bitwise identical helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260502-mglru-fg-v1-20-913619b014d9@tencent.com>
+Message-Id: <20260502-mglru-fg-v1-21-913619b014d9@tencent.com>
 References: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 In-Reply-To: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 To: linux-mm@kvack.org
@@ -30,35 +30,54 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=635;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=1323;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=aHsc1nk/FwDwd1lG6O1KFNt7Wktso+y56WV9FF+FyW4=;
- b=mQ1ilv6x/6GtozJZhXvoobsbJ9AwqNI8htvVQf2Xp8Esl58NF8vs+4uOuU/WIwknj7Ts5Z1Ok
- wXwKliweL9CDMi4L7r0NeohOyUPT3TIx6Z/hv/jKA2Tw2fVQF04dSsD
+ bh=eeiiyy+su7zYF2XxxCJkB0ii+3kNLayc6qTsNhWAGbI=;
+ b=FyZO3KOY9qKBaiu/DIWFcROSEhhGKBxTqumQl6RrGU/2X5SJ5Pyl15i0sP1V8AB44wIWdPUMO
+ AKnyGEbam5xBgtdf2RYhHf1fGBdJpGpa9Ss1FHDNVjXiSSeafhu8cev
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+No feature change, just prepare for removal of PG_referenced.
+
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/damon/paddr.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ mm/swap.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/mm/damon/paddr.c b/mm/damon/paddr.c
-index 5cdcc5037cbc..7718cd9ac959 100644
---- a/mm/damon/paddr.c
-+++ b/mm/damon/paddr.c
-@@ -186,7 +186,8 @@ static unsigned long damon_pa_pageout(struct damon_region *r,
- 		else
- 			*sz_filter_passed += folio_size(folio) / addr_unit;
+diff --git a/mm/swap.c b/mm/swap.c
+index 2250d9db1395..043c4ec708d7 100644
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -629,7 +629,7 @@ static void lru_deactivate_file(struct lruvec *lruvec, struct folio *folio)
  
+ 	lruvec_del_folio(lruvec, folio);
+ 	folio_clear_active(folio);
+-	folio_clear_referenced(folio);
++	folio_clear_referenced_by_bit(folio);
+ 
+ 	if (folio_test_writeback(folio) || folio_test_dirty(folio)) {
+ 		/*
+@@ -665,7 +665,7 @@ static void lru_deactivate(struct lruvec *lruvec, struct folio *folio)
+ 
+ 	lruvec_del_folio(lruvec, folio);
+ 	folio_clear_active(folio);
+-	folio_clear_referenced(folio);
++	folio_clear_referenced_by_bit(folio);
+ 	lruvec_add_folio(lruvec, folio);
+ 
+ 	__count_vm_events(PGDEACTIVATE, nr_pages);
+@@ -685,7 +685,7 @@ static void lru_lazyfree(struct lruvec *lruvec, struct folio *folio)
+ 	if (lru_gen_enabled())
+ 		lru_gen_clear_refs(folio);
+ 	else
 -		folio_clear_referenced(folio);
-+		if (!lru_gen_enabled())
-+			folio_clear_referenced_by_bit(folio);
- 		folio_test_clear_young(folio);
- 		if (!folio_isolate_lru(folio))
- 			goto put_folio;
++		folio_clear_referenced_by_bit(folio);
+ 	/*
+ 	 * Lazyfree folios are clean anonymous folios.  They have
+ 	 * the swapbacked flag cleared, to distinguish them from normal
 
 -- 
 2.54.0
