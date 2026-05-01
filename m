@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 02 May 2026 05:04:09 +0800
-Subject: [PATCH RFC 23/32] mm/workingset: rename the nonresistence age
- counter
+Date: Sat, 02 May 2026 05:04:10 +0800
+Subject: [PATCH RFC 24/32] mm/workingset: use a single atomic operation for
+ read and age
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260502-mglru-fg-v1-23-913619b014d9@tencent.com>
+Message-Id: <20260502-mglru-fg-v1-24-913619b014d9@tencent.com>
 References: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 In-Reply-To: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 To: linux-mm@kvack.org
@@ -31,123 +31,64 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=4861;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=2020;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=RZ75CFKx9NHBtI4cGuTrtP6eqoZNh7E9CBvqbHcahSE=;
- b=6CUaoS9oIH44bJ2AntcJ9Npik2Ryxt5O6dYw7eQBmQWbjWLTWtWLbYQjxusIpbsC+fbHre9/X
- LYWbK2P1T1OCsWFUfQfEBXJKiNAl+i7YwNq4D52rScVPa3Jkg1GqBLa
+ bh=wgOBUng+uTQYm5twq6Yy1hA/jkGiMMQo7dEmYz74ui0=;
+ b=ir6e0a5kqtAwGqvbIavgrfnZJL15MwneqaCVg2lgFlnO9FBbjWzjQcm7j0Nc4ykvHkerskNIx
+ VRDLrU4BOj7CxHp3RBUP3d15PVMDXtxI4aCutuGdbgjQxeqMnPjkN6q
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Clearly, now nonresistence_age just means how many pages has been evicted
-from this lruvec. Rename it.
+One single atomic operation should be faster than two for most archs,
+and be more accurate.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/mmzone.h |  4 ++--
- mm/workingset.c        | 27 ++++++++++-----------------
- 2 files changed, 12 insertions(+), 19 deletions(-)
+ mm/workingset.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/mmzone.h b/include/linux/mmzone.h
-index 393bbea75838..6747e1c6079c 100644
---- a/include/linux/mmzone.h
-+++ b/include/linux/mmzone.h
-@@ -799,8 +799,8 @@ struct lruvec {
- 	 */
- 	unsigned long			anon_cost;
- 	unsigned long			file_cost;
--	/* Non-resident age, driven by LRU movement */
--	atomic_long_t			nonresident_age;
-+	/* How many evictions has happened */
-+	atomic_long_t			evictions;
- 	/* Refaults at the time of last reclaim cycle */
- 	unsigned long			refaults[ANON_AND_FILE];
- 	/* Various lruvec state flags (enum lruvec_flags) */
 diff --git a/mm/workingset.c b/mm/workingset.c
-index 01f6e9a72cdb..aac68cecdfbf 100644
+index aac68cecdfbf..a77a6c0c3e15 100644
 --- a/mm/workingset.c
 +++ b/mm/workingset.c
-@@ -66,12 +66,12 @@
-  * thrashing on the inactive list, after which refaulting pages can be
-  * activated optimistically to compete with the existing active pages.
-  *
-- * For such approximation, introduce a counter `nonresident_age` (NA)
-- * per lruvec. NA is incremented once for every evicted page, and each
-- * evicted page's shadow entry records the NA value at eviction time as
-+ * For such approximation, introduce a counter `evictions` (E)
-+ * per lruvec. E is incremented once for every evicted page, and each
-+ * evicted page's shadow entry records the E value at eviction time as
-  * a timestamp. So when an evicted page is faulted in again, we have:
-  *
-- *   Let SP = ((NA's reading @ current) - (NA's reading @ eviction))
-+ *   Let SP = ((E's reading @ current) - (E's reading @ eviction))
-  *
-  *                            +-memory available to cache-+
-  *                            |                           |
-@@ -143,13 +143,6 @@
-  *    the benefit extends across a broader range of S/M as a smooth
-  *    transition rather than a cliff.
-  *
-- * A secondary effect: NA over-counts pages that are refaulted and
-- * then re-evicted (they contribute to NA twice over their lifetime),
-- * which inflates SP for older shadows under heavy refault churn. The
-- * feasibility bound SP <= NR_ACTIVE would over-activate in that
-- * regime; tightening to (A+I)/2 dampens this without a separate
-- * correction.
-- *
-  *		Refaulting inactive pages
-  *
-  * All that is known about the active list is that the pages have been
-@@ -180,7 +173,7 @@
-  *
-  *		Implementation
-  *
-- * For each lruvec, a non-resident age counter (lruvec->nonresident_age)
-+ * For each lruvec, a non-resident age counter (lruvec->evictions)
-  * is maintained. It is incremented once per evicted page.
-  *
-  * On eviction, a snapshot of this counter (along with some bits to
-@@ -390,7 +383,7 @@ static void workingset_age_nonresident(struct lruvec *lruvec, unsigned long nr_p
+@@ -369,8 +369,10 @@ static void lru_gen_refault(struct folio *folio, void *shadow)
+  * to the in-memory dimensions. This function allows reclaim and LRU
+  * operations to drive the non-resident aging along in parallel.
+  */
+-static void workingset_age_nonresident(struct lruvec *lruvec, unsigned long nr_pages)
++static long workingset_age_nonresident(struct lruvec *lruvec, unsigned long nr_pages)
+ {
++	unsigned long eviction;
++
+ 	/*
+ 	 * Reclaiming a cgroup means reclaiming all its children in a
+ 	 * round-robin fashion. That means that each cgroup has an LRU
+@@ -382,9 +384,10 @@ static void workingset_age_nonresident(struct lruvec *lruvec, unsigned long nr_p
+ 	 * the virtual inactive lists of all its parents, including
  	 * the root cgroup's, age as well.
  	 */
- 	do {
--		atomic_long_add(nr_pages, &lruvec->nonresident_age);
-+		atomic_long_add(nr_pages, &lruvec->evictions);
- 	} while ((lruvec = parent_lruvec(lruvec)));
+-	do {
++	eviction = atomic_long_fetch_add_relaxed(nr_pages, &lruvec->evictions);
++	while ((lruvec = parent_lruvec(lruvec)))
+ 		atomic_long_add(nr_pages, &lruvec->evictions);
+-	} while ((lruvec = parent_lruvec(lruvec)));
++	return eviction;
  }
  
-@@ -421,7 +414,7 @@ void *workingset_eviction(struct folio *folio, struct mem_cgroup *target_memcg)
+ /**
+@@ -414,9 +417,8 @@ void *workingset_eviction(struct folio *folio, struct mem_cgroup *target_memcg)
  	lruvec = mem_cgroup_lruvec(target_memcg, pgdat);
  	/* XXX: target_memcg can be NULL, go through lruvec */
  	memcgid = mem_cgroup_private_id(lruvec_memcg(lruvec));
--	eviction = atomic_long_read(&lruvec->nonresident_age);
-+	eviction = atomic_long_read(&lruvec->evictions);
+-	eviction = atomic_long_read(&lruvec->evictions);
++	eviction = workingset_age_nonresident(lruvec, folio_nr_pages(folio));
  	eviction >>= bucket_order[file];
- 	workingset_age_nonresident(lruvec, folio_nr_pages(folio));
+-	workingset_age_nonresident(lruvec, folio_nr_pages(folio));
  	return pack_shadow(memcgid, pgdat, eviction,
-@@ -501,17 +494,17 @@ bool workingset_test_recent(void *shadow, bool file, bool *workingset,
- 		mem_cgroup_flush_stats_ratelimited(eviction_memcg);
- 
- 	eviction_lruvec = mem_cgroup_lruvec(eviction_memcg, pgdat);
--	refault = atomic_long_read(&eviction_lruvec->nonresident_age);
-+	refault = atomic_long_read(&eviction_lruvec->evictions);
- 
- 	/*
- 	 * Calculate the refault distance
- 	 *
- 	 * The unsigned subtraction here gives an accurate distance
--	 * across nonresident_age overflows in most cases. There is a
-+	 * across evictions overflows in most cases. There is a
- 	 * special case: usually, shadow entries have a short lifetime
- 	 * and are either refaulted or reclaimed along with the inode
- 	 * before they get too old.  But it is not impossible for the
--	 * nonresident_age to lap a shadow entry in the field, which
-+	 * evictions to lap a shadow entry in the field, which
- 	 * can then result in a false small refault distance, leading
- 	 * to a false activation should this old entry actually
- 	 * refault again.  However, earlier kernels used to deactivate
+ 			   folio_is_workingset(folio), file);
+ }
 
 -- 
 2.54.0
