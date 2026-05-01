@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 02 May 2026 05:04:02 +0800
-Subject: [PATCH RFC 16/32] mm: convert folio referenced flag usages to new
- bitwise identical helpers
+Date: Sat, 02 May 2026 05:04:03 +0800
+Subject: [PATCH RFC 17/32] mm/shmem: mark folio as referenced use new
+ helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260502-mglru-fg-v1-16-913619b014d9@tencent.com>
+Message-Id: <20260502-mglru-fg-v1-17-913619b014d9@tencent.com>
 References: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 In-Reply-To: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 To: linux-mm@kvack.org
@@ -31,48 +31,39 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=999;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=790;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=+5qun8U2KQYDmQH0ZIm/6ejG1bASGFZfAJQuD/re23Y=;
- b=lSMsnUvxGGUaYG0E/v+f1nxrr3TYC9U+s6XCF5kTjEYfQM7zbRpIjFFhSJ4RiZ/Cp9u0YGRqE
- oaQcIqhCOdFBSP97uzGceWG0hU5snTAOcZ2U8TXEw2Y4nZ5E9KEBA6c
+ bh=W5OkGQddy603UwQXhANOZyCkcCJwnjswXrRu8xbbvTA=;
+ b=GUAAPFmU7MszYrfNginsHgKTjAvgcDq9vIizybjDxJCcex326WcuVpbP3Hh9Dp2GtnN6N7719
+ rpCI6b4Y3uvCwBERqQGsOLtcnYs0KEYEyRMq4NDXYQ6X2mn2AtV3Ild
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To prepare for removal of this page flag, use the new introduced
-standalone helper.
+Shmem will mark a new allocated folio as referenced for a write request,
+convert it to use the new helper. Stay atomic as the folio, although
+being locked, is already in shmem mapping and could be sharely used or
+even have its flags field modified by others.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/swap.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ mm/shmem.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/mm/swap.c b/mm/swap.c
-index 6e0397ff881d..2250d9db1395 100644
---- a/mm/swap.c
-+++ b/mm/swap.c
-@@ -525,8 +525,8 @@ void folio_mark_accessed(struct folio *folio)
- 		return;
+diff --git a/mm/shmem.c b/mm/shmem.c
+index bab3529af23c..2aed99c9f70e 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -2595,7 +2595,7 @@ static int shmem_get_folio_gfp(struct inode *inode, pgoff_t index,
  	}
  
--	if (!folio_test_referenced(folio)) {
+ 	if (sgp == SGP_WRITE)
 -		folio_set_referenced(folio);
-+	if (!folio_is_referenced_by_bit(folio)) {
-+		folio_mark_referenced_by_bit(folio);
- 	} else if (folio_test_unevictable(folio)) {
- 		/*
- 		 * Unevictable pages are on the "LRU_UNEVICTABLE" list. But,
-@@ -544,7 +544,7 @@ void folio_mark_accessed(struct folio *folio)
- 			folio_activate(folio);
- 		else
- 			__lru_cache_activate_folio(folio);
--		folio_clear_referenced(folio);
-+		folio_clear_referenced_by_bit(folio);
- 		workingset_activation(folio);
- 	}
- 	if (folio_test_idle(folio))
++		folio_mark_referenced(folio);
+ 	/*
+ 	 * Let SGP_FALLOC use the SGP_WRITE optimization on a new folio.
+ 	 */
 
 -- 
 2.54.0
