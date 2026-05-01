@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Sat, 02 May 2026 05:04:03 +0800
-Subject: [PATCH RFC 17/32] mm/shmem: mark folio as referenced use new
+Date: Sat, 02 May 2026 05:04:04 +0800
+Subject: [PATCH RFC 18/32] mm/vmscan: convert to new bitwise identical
  helper
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260502-mglru-fg-v1-17-913619b014d9@tencent.com>
+Message-Id: <20260502-mglru-fg-v1-18-913619b014d9@tencent.com>
 References: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 In-Reply-To: <20260502-mglru-fg-v1-0-913619b014d9@tencent.com>
 To: linux-mm@kvack.org
@@ -31,39 +31,45 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
  Kairui Song <ryncsn@gmail.com>, linux-kernel@vger.kernel.org, 
  Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=790;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777669448; l=1005;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=W5OkGQddy603UwQXhANOZyCkcCJwnjswXrRu8xbbvTA=;
- b=GUAAPFmU7MszYrfNginsHgKTjAvgcDq9vIizybjDxJCcex326WcuVpbP3Hh9Dp2GtnN6N7719
- rpCI6b4Y3uvCwBERqQGsOLtcnYs0KEYEyRMq4NDXYQ6X2mn2AtV3Ild
+ bh=g0CjYTRIe9ngM5FeeFowlBKRaYV4naFyb1v+5e6oewY=;
+ b=1O08Fjuv7dDsUSN65/Nh/EKQX5Zn+CfMlt8A8CHIlb4oXMYvuDZNoL/N8ajhstsKC7eU8DLsw
+ Xvzd7PgG+K0BufVemZT87auAAygwRgKn3y6d7OMjSqe/ca16Fjp1BzM
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Shmem will mark a new allocated folio as referenced for a write request,
-convert it to use the new helper. Stay atomic as the folio, although
-being locked, is already in shmem mapping and could be sharely used or
-even have its flags field modified by others.
+No feature change, just prepare for removal of PG_referenced.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/shmem.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ mm/vmscan.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/mm/shmem.c b/mm/shmem.c
-index bab3529af23c..2aed99c9f70e 100644
---- a/mm/shmem.c
-+++ b/mm/shmem.c
-@@ -2595,7 +2595,7 @@ static int shmem_get_folio_gfp(struct inode *inode, pgoff_t index,
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 2fd62d02a83a..a3200020b9c2 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -901,7 +901,7 @@ static enum folio_references folio_check_references(struct folio *folio,
+ 		return folio_promote_lru_refs(folio) ? FOLIOREF_ACTIVATE : FOLIOREF_KEEP;
  	}
  
- 	if (sgp == SGP_WRITE)
+-	referenced_folio = folio_test_clear_referenced(folio);
++	referenced_folio = folio_test_clear_referenced_bit(folio);
+ 
+ 	if (referenced_ptes) {
+ 		/*
+@@ -918,7 +918,7 @@ static enum folio_references folio_check_references(struct folio *folio,
+ 		 * so that recently deactivated but used folios are
+ 		 * quickly recovered.
+ 		 */
 -		folio_set_referenced(folio);
-+		folio_mark_referenced(folio);
- 	/*
- 	 * Let SGP_FALLOC use the SGP_WRITE optimization on a new folio.
- 	 */
++		folio_mark_referenced_by_bit(folio);
+ 
+ 		if (referenced_folio || referenced_ptes > 1)
+ 			return FOLIOREF_ACTIVATE;
 
 -- 
 2.54.0
