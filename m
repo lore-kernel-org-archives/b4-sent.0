@@ -1,11 +1,10 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Fri, 01 May 2026 10:14:57 +0100
-Subject: [PATCH v5 04/12] iio: dac: ad5686: fix powerdown control on
- dual-channel devices
+Date: Fri, 01 May 2026 10:14:58 +0100
+Subject: [PATCH v5 05/12] iio: dac: ad5686: refactor include headers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260501-ad5686-fixes-v5-4-0b2f45488418@analog.com>
+Message-Id: <20260501-ad5686-fixes-v5-5-0b2f45488418@analog.com>
 References: <20260501-ad5686-fixes-v5-0-0b2f45488418@analog.com>
 In-Reply-To: <20260501-ad5686-fixes-v5-0-0b2f45488418@analog.com>
 To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
@@ -17,132 +16,122 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Michael Hennerich <Michael.Hennerich@analog.com>, 
  Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
  Andy Shevchenko <andy@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
+ Rodrigo Alencar <rodrigo.alencar@analog.com>, 
+ Andy Shevchenko <andriy.shevchenko@intel.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777626920; l=4523;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777626920; l=2872;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=W7kLkmqYDobLBwqnuuqx8gF9sREn36byIbemRQVPp+E=;
- b=5nhT/9K6wJDAnvGlUYMjh+DiE1zRsg09lPbdQx0qhhet7cVMnQ3V8VNNdyclP6pVcXtynxss1
- jgLsI8hhYj5D/lc3IqAZDd9lH6/XiRHa2If5jwlPsw6kGPaxjJwkpP/
+ bh=fT+WGMtNMPeUhUax2FW9XspbCkjX+ZahzFFizGq24EQ=;
+ b=ypfv+gqVz0Zrhw2QrGhO/MTT+ySLc0fvW39LA7jxca1tN3ong/HRN80jwxb8dJQZ76loCBi/O
+ RwFCkMQFTsODg0P0VUo2oLG+sNJglgUnYNeZjBf223toddPnF3g5RBf
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix powerdown control by using a proper bit shift for the powerdown mask
-values. During initialization, powerdown bits are initialized so that
-unused bits are set to 1 and the correct bit shift is used. Dual-channel
-devices use one-hot encoding in the address and that reflects on the
-position of the powerdown bits, which are not channel-index based
-for that case. Quad-channel devices also use one-hot encoding for the
-channel address but the result of log2(address) coincides with the channel
-index value. The issue was introduced when first adding support for
-dual-channel devices, which overlooked powerdown control differences.
+Apply IWYU principle, replacing unused/generic headers for
+specific/missing headers. The resulting include directive lists are sorted
+accordingly.
 
-Fixes: 7dc8faeab3e3 ("iio: dac: ad5686: add support for AD5338R")
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/dac/ad5686.c | 40 ++++++++++++++++++++++++++++++----------
- 1 file changed, 30 insertions(+), 10 deletions(-)
+ drivers/iio/dac/ad5686-spi.c |  9 +++++++--
+ drivers/iio/dac/ad5686.c     | 13 ++++++-------
+ drivers/iio/dac/ad5686.h     |  5 ++---
+ drivers/iio/dac/ad5696-i2c.c | 10 +++++++---
+ 4 files changed, 22 insertions(+), 15 deletions(-)
 
+diff --git a/drivers/iio/dac/ad5686-spi.c b/drivers/iio/dac/ad5686-spi.c
+index df8619e0c092..cec784b617e6 100644
+--- a/drivers/iio/dac/ad5686-spi.c
++++ b/drivers/iio/dac/ad5686-spi.c
+@@ -8,11 +8,16 @@
+  * Copyright 2018 Analog Devices Inc.
+  */
+ 
+-#include "ad5686.h"
+-
++#include <linux/array_size.h>
++#include <linux/errno.h>
++#include <linux/mod_devicetable.h>
+ #include <linux/module.h>
+ #include <linux/spi/spi.h>
+ 
++#include <asm/byteorder.h>
++
++#include "ad5686.h"
++
+ static int ad5686_spi_write(struct ad5686_state *st,
+ 			    u8 cmd, u8 addr, u16 val)
+ {
 diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
-index 69358dd66cbc..c607251b82a0 100644
+index c607251b82a0..572dcc918ef2 100644
 --- a/drivers/iio/dac/ad5686.c
 +++ b/drivers/iio/dac/ad5686.c
-@@ -25,24 +25,35 @@ static const char * const ad5686_powerdown_modes[] = {
- 	"three_state"
- };
+@@ -5,17 +5,16 @@
+  * Copyright 2011 Analog Devices Inc.
+  */
  
-+static inline unsigned int ad5686_pd_mask_shift(const struct iio_chan_spec *chan)
-+{
-+	if (chan->channel == chan->address)
-+		return chan->channel * 2;
+-#include <linux/interrupt.h>
+-#include <linux/fs.h>
+-#include <linux/device.h>
++#include <linux/array_size.h>
++#include <linux/bitops.h>
++#include <linux/errno.h>
++#include <linux/export.h>
++#include <linux/kstrtox.h>
+ #include <linux/module.h>
+-#include <linux/kernel.h>
+-#include <linux/slab.h>
+-#include <linux/sysfs.h>
+ #include <linux/regulator/consumer.h>
++#include <linux/sysfs.h>
+ 
+ #include <linux/iio/iio.h>
+-#include <linux/iio/sysfs.h>
+ 
+ #include "ad5686.h"
+ 
+diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
+index 36e16c5c4581..d08160e7fad9 100644
+--- a/drivers/iio/dac/ad5686.h
++++ b/drivers/iio/dac/ad5686.h
+@@ -8,10 +8,9 @@
+ #ifndef __DRIVERS_IIO_DAC_AD5686_H__
+ #define __DRIVERS_IIO_DAC_AD5686_H__
+ 
+-#include <linux/types.h>
+-#include <linux/cache.h>
++#include <linux/bits.h>
+ #include <linux/mutex.h>
+-#include <linux/kernel.h>
++#include <linux/types.h>
+ 
+ #include <linux/iio/iio.h>
+ 
+diff --git a/drivers/iio/dac/ad5696-i2c.c b/drivers/iio/dac/ad5696-i2c.c
+index d3327bca0e07..20f04b74d831 100644
+--- a/drivers/iio/dac/ad5696-i2c.c
++++ b/drivers/iio/dac/ad5696-i2c.c
+@@ -7,10 +7,14 @@
+  * Copyright 2018 Analog Devices Inc.
+  */
+ 
+-#include "ad5686.h"
+-
+-#include <linux/module.h>
++#include <linux/errno.h>
+ #include <linux/i2c.h>
++#include <linux/mod_devicetable.h>
++#include <linux/module.h>
 +
-+	/* one-hot encoding is used in dual/quad channel devices */
-+	return __ffs(chan->address) * 2;
-+}
++#include <asm/byteorder.h>
 +
- static int ad5686_get_powerdown_mode(struct iio_dev *indio_dev,
- 				     const struct iio_chan_spec *chan)
++#include "ad5686.h"
+ 
+ static int ad5686_i2c_read(struct ad5686_state *st, u8 addr)
  {
-+	unsigned int shift = ad5686_pd_mask_shift(chan);
- 	struct ad5686_state *st = iio_priv(indio_dev);
- 
--	return ((st->pwr_down_mode >> (chan->channel * 2)) & 0x3) - 1;
-+	return ((st->pwr_down_mode >> shift) & 0x3) - 1;
- }
- 
- static int ad5686_set_powerdown_mode(struct iio_dev *indio_dev,
- 				     const struct iio_chan_spec *chan,
- 				     unsigned int mode)
- {
-+	unsigned int shift = ad5686_pd_mask_shift(chan);
- 	struct ad5686_state *st = iio_priv(indio_dev);
- 
- 	guard(mutex)(&st->lock);
- 
--	st->pwr_down_mode &= ~(0x3 << (chan->channel * 2));
--	st->pwr_down_mode |= ((mode + 1) << (chan->channel * 2));
-+	st->pwr_down_mode &= ~(0x3 << shift);
-+	st->pwr_down_mode |= (mode + 1) << shift;
- 
- 	return 0;
- }
-@@ -57,10 +68,10 @@ static const struct iio_enum ad5686_powerdown_mode_enum = {
- static ssize_t ad5686_read_dac_powerdown(struct iio_dev *indio_dev,
- 		uintptr_t private, const struct iio_chan_spec *chan, char *buf)
- {
-+	unsigned int shift = ad5686_pd_mask_shift(chan);
- 	struct ad5686_state *st = iio_priv(indio_dev);
- 
--	return sysfs_emit(buf, "%d\n", !!(st->pwr_down_mask &
--				       (0x3 << (chan->channel * 2))));
-+	return sysfs_emit(buf, "%d\n", !!(st->pwr_down_mask & (0x3 << shift)));
- }
- 
- static ssize_t ad5686_write_dac_powerdown(struct iio_dev *indio_dev,
-@@ -82,9 +93,9 @@ static ssize_t ad5686_write_dac_powerdown(struct iio_dev *indio_dev,
- 	guard(mutex)(&st->lock);
- 
- 	if (readin)
--		st->pwr_down_mask |= (0x3 << (chan->channel * 2));
-+		st->pwr_down_mask |= 0x3 << ad5686_pd_mask_shift(chan);
- 	else
--		st->pwr_down_mask &= ~(0x3 << (chan->channel * 2));
-+		st->pwr_down_mask &= ~(0x3 << ad5686_pd_mask_shift(chan));
- 
- 	switch (st->chip_info->regmap_type) {
- 	case AD5310_REGMAP:
-@@ -464,7 +475,7 @@ int ad5686_probe(struct device *dev,
- {
- 	struct ad5686_state *st;
- 	struct iio_dev *indio_dev;
--	unsigned int val, ref_bit_msk;
-+	unsigned int val, ref_bit_msk, shift;
- 	bool has_external_vref;
- 	u8 cmd;
- 	int ret, i;
-@@ -488,9 +499,18 @@ int ad5686_probe(struct device *dev,
- 	has_external_vref = ret != -ENODEV;
- 	st->vref_mv = has_external_vref ? ret / 1000 : st->chip_info->int_vref_mv;
- 
-+	/* Initialize masks to all ones provided the max shift (last channel) */
-+	shift = ad5686_pd_mask_shift(&st->chip_info->channels[st->chip_info->num_channels - 1]);
-+	st->pwr_down_mask = GENMASK(shift + 1, 0);
-+	st->pwr_down_mode = GENMASK(shift + 1, 0);
-+
- 	/* Set all the power down mode for all channels to 1K pulldown */
--	for (i = 0; i < st->chip_info->num_channels; i++)
--		st->pwr_down_mode |= (0x01 << (i * 2));
-+	for (i = 0; i < st->chip_info->num_channels; i++) {
-+		shift = ad5686_pd_mask_shift(&st->chip_info->channels[i]);
-+		st->pwr_down_mask &= ~(0x3 << shift); /* powered up state */
-+		st->pwr_down_mode &= ~(0x3 << shift);
-+		st->pwr_down_mode |= 0x01 << shift;
-+	}
- 
- 	indio_dev->name = name;
- 	indio_dev->info = &ad5686_info;
 
 -- 
 2.43.0
