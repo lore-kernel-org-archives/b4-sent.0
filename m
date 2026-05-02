@@ -1,57 +1,83 @@
-From: Fernando Antunez Antonio <fer.antunez24antonio@gmail.com>
-Date: Fri, 01 May 2026 21:12:25 -0600
-Subject: [PATCH] SOUND: hda/realtek: Fix mute and mic-mute LEDs for HP Envy
- X360 15-fh0xxx
+From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+Subject: [PATCH v13 0/3] hwmon: Add support for the LTC4283 Hot Swap
+ Controller
+Date: Sat, 02 May 2026 10:56:51 +0100
+Message-Id: <20260502-ltc4283-support-v13-0-1c206542e652@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260501-hpenvy-muteled-fix-v1-1-8c903e3608ee@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDUwND3YyC1LyySt3c0pLUnNQU3bTMCl0zI1PDpERLSzMTcwsloMaColS
- gMNjQ6FgIv7g0KSs1uQRkklJtLQDAhTAPdgAAAA==
-X-Change-ID: 20260501-hpenvy-muteled-fix-6251ba996478
-To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Fernando Antunez Antonio <fer.antunez24antonio@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XOTW7DIBAF4KtErEvFDDBAVr1H1AXlJ0FKbct2r
+ VSR716cTV2RLt+T5ntzZ1MaS5rY8XBnY1rKVPquBpAvBxYuvjsnXmItGAokIYXk1zkotJJPX8P
+ QjzMXJLOxPgTtFatXw5hyuT3I03vNlzLN/fj9WFhoa/+3FuKCp5wAtMDsI775zl/782voP9mGL
+ XYHoGkBWwFlICbUOhq0DeB+ASWoBVwFPohCDkY5JGgAEDsBbSuA2H7ISFmRchBkS8CecE8IqAS
+ aEGIicNHHlsAdIcUTAiuhY3BOQEZN5g+xrusPVc8HOvsBAAA=
+X-Change-ID: 20260303-ltc4283-support-063f78acc5a4
+To: linux-gpio@vger.kernel.org, linux-hwmon@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-doc@vger.kernel.org
+Cc: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777691685; l=1533;
- i=fer.antunez24antonio@gmail.com; s=20260501; h=from:subject:message-id;
- bh=rizJAej4eULwlK5TkysaXIIDGp528Tn54JOsQuo8xus=;
- b=pKeigPO0uYwIs6K3LZvcGupuBUokA9iMFOWxYy/rqvSuoFYBPFuKgAXr4i8VetuPBYks/g+wp
- lY6sjMilv5hBlaO3t2/2O1t3Q5RV82iJEIDVYA9Pa1uixJvkolHRxVY
-X-Developer-Key: i=fer.antunez24antonio@gmail.com; a=ed25519;
- pk=KtAZSzHv34SEFf0i38Wjweb1kiwZdCAcJmQ8koSweKY=
-X-Endpoint-Received: by B4 Relay for fer.antunez24antonio@gmail.com/20260501 with auth_id=765
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777715816; l=2159;
+ i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
+ bh=1qCobfoCEucgrjRGXrCQ3vKcmNt1JqyTqC3CN//BeTg=;
+ b=2lD4JiD7HXmz7ICmwv1z6+5Qet99RmrVlaltpn/Focc/QXX+JPWkpzj+DaEU4TL5LGUfout9r
+ vuW1Qo/ZJ8IBW+kTu4Yt997g/CISjNBTJsH9T3DiZYwHyMOVLWZm2u9
+X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
+ pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
+X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This enables the mute and mic-mute LEDs on the HP Envy X360 15-fh0xxx
-2-in-1 laptops.
-The quirk 'ALC245_FIXUP_HP_X360_MUTE_LEDS' already exists and is now
-enabled for this device.
+This is v8 for the LTC4283 how swap controller. 
 
-Signed-off-by: Fernando Antunez Antonio <fer.antunez24antonio@gmail.com>
----
- sound/hda/codecs/realtek/alc269.c | 1 +
- 1 file changed, 1 insertion(+)
+Similar to the LTC4282 device, we're clearing some fault logs in the
+reset_history attributes.
 
-diff --git a/sound/hda/codecs/realtek/alc269.c b/sound/hda/codecs/realtek/alc269.c
-index a9cd03bb73c4..3194fc1737e8 100644
---- a/sound/hda/codecs/realtek/alc269.c
-+++ b/sound/hda/codecs/realtek/alc269.c
-@@ -6975,6 +6975,7 @@ static const struct hda_quirk alc269_fixup_tbl[] = {
- 	SND_PCI_QUIRK(0x103c, 0x887a, "HP Laptop 15s-eq2xxx", ALC236_FIXUP_HP_MUTE_LED_COEFBIT2),
- 	SND_PCI_QUIRK(0x103c, 0x887c, "HP Laptop 14s-fq1xxx", ALC236_FIXUP_HP_MUTE_LED_COEFBIT2),
- 	SND_PCI_QUIRK(0x103c, 0x888a, "HP ENVY x360 Convertible 15-eu0xxx", ALC245_FIXUP_HP_X360_MUTE_LEDS),
-+	SND_PCI_QUIRK(0x103c, 0x8be9, "Laptop: HP Envy x360 2-in-1 Laptop 15-fh0xxx", ALC245_FIXUP_HP_X360_MUTE_LEDS),
- 	SND_PCI_QUIRK(0x103c, 0x888d, "HP ZBook Power 15.6 inch G8 Mobile Workstation PC", ALC236_FIXUP_HP_GPIO_LED),
- 	SND_PCI_QUIRK(0x103c, 0x8895, "HP EliteBook 855 G8 Notebook PC", ALC285_FIXUP_HP_SPEAKERS_MICMUTE_LED),
- 	SND_PCI_QUIRK(0x103c, 0x8896, "HP EliteBook 855 G8 Notebook PC", ALC285_FIXUP_HP_MUTE_LED),
+Guenter, for my last email worrying about rsense low values, this is
+what I got internally:
+
+"10uOhm at the smallest sense voltage of 15mV would be 1500A and 72kW, which
+seems a tad excessive. The highest currents I’ve seen are around 200A, and
+the -48V market 4283 serves is generally a lot lower than that. Normal values
+are around 200uOhm.  I’d say the resolution should be around 1uohm and if a
+minimum is needed, 50uOhm is probably safe."
+
+For the resolution, I'm pretty sure I got the tenths of micro
+resolution for ltc4282 so I just kept it in here. So, if you don't mind
+I would prefer to keep it this way to be safer and changing that now would
+require me to change some formulas and I would prefer not to do that at
+this stage.
 
 ---
-base-commit: f1a5e78a55ebf2b05777fd5eb738038ddae609d6
-change-id: 20260501-hpenvy-muteled-fix-6251ba996478
+Changes in v13:
+- Patch 2
+   * Properly register debugfs fet faults to match DRAIN channel (in11).
+- Link to v12: https://patch.msgid.link/20260430-ltc4283-support-v12-0-5dc9901f2567@analog.com
 
-Best regards,
---  
-Fernando Antunez <fer.antunez24antonio@gmail.com>
+---
+Nuno Sá (3):
+      dt-bindings: hwmon: Document the LTC4283 Swap Controller
+      hwmon: ltc4283: Add support for the LTC4283 Swap Controller
+      gpio: gpio-ltc4283: Add support for the LTC4283 Swap Controller
+
+ .../devicetree/bindings/hwmon/adi,ltc4283.yaml     |  272 +++
+ Documentation/hwmon/index.rst                      |    1 +
+ Documentation/hwmon/ltc4283.rst                    |  267 +++
+ MAINTAINERS                                        |    9 +
+ drivers/gpio/Kconfig                               |   15 +
+ drivers/gpio/Makefile                              |    1 +
+ drivers/gpio/gpio-ltc4283.c                        |  218 +++
+ drivers/hwmon/Kconfig                              |   12 +
+ drivers/hwmon/Makefile                             |    1 +
+ drivers/hwmon/ltc4283.c                            | 1795 ++++++++++++++++++++
+ 10 files changed, 2591 insertions(+)
+---
+base-commit: 992920ad25f27f41521c1bb905d0e1062ecb9e93
+change-id: 20260303-ltc4283-support-063f78acc5a4
+--
+
+Thanks!
+- Nuno Sá
 
