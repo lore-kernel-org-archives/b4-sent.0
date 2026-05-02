@@ -1,11 +1,10 @@
 From: Ciprian Regus <ciprian.regus@analog.com>
-Date: Sun, 03 May 2026 02:24:50 +0300
-Subject: [PATCH net-next 1/5] net: ethernet: oa_tc6: Handle the OA TC6 SPI
- protected mode
+Date: Sun, 03 May 2026 02:24:51 +0300
+Subject: [PATCH net-next 2/5] net: ethernet: oa_tc6: Allow custom mii_bus
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260503-adin1140-driver-v1-1-dd043cdd88f0@analog.com>
+Message-Id: <20260503-adin1140-driver-v1-2-dd043cdd88f0@analog.com>
 References: <20260503-adin1140-driver-v1-0-dd043cdd88f0@analog.com>
 In-Reply-To: <20260503-adin1140-driver-v1-0-dd043cdd88f0@analog.com>
 To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
@@ -22,274 +21,253 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-doc@vger.kernel.org, devicetree@vger.kernel.org, 
  Ciprian Regus <ciprian.regus@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777764335; l=8778;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777764335; l=8828;
  i=ciprian.regus@analog.com; s=20260330; h=from:subject:message-id;
- bh=smd/ALBtlVdeWdMQcAG2kvWHkVX9YyfLReANHzFrjYA=;
- b=NgfRGoWt8KE67G6lRWZb1Ea1QUW1DMXqpn2nuURz9Uy0/fttF0/WI/FJp0hgkjR6YkutURFiR
- o6O1K0tt6zoCj9ktDT1nEyqhWrapNUHQFKi69YfpTPE0z3TciutYAol
+ bh=i2IZDXFhSiWWDn9rUet0TbTRwmDcB1jlwrQRqyKLBfM=;
+ b=j2nbNGaipLRK/u1xIXBvUubr0GD80MDP1a9NnSREu10kT692oHrykvzN3rnYq+pJuYBraZkAI
+ y2b55NeHWy8BxW7NSgrk2Xo51GJRNFWBg3BmmR0Fr/5sNxwD62u6Czu
 X-Developer-Key: i=ciprian.regus@analog.com; a=ed25519;
  pk=8WoNhI0kQcQUl8YqJO5ZevROYk9HP8lOIeIgIYgjfbc=
 X-Endpoint-Received: by B4 Relay for ciprian.regus@analog.com/20260330 with auth_id=703
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement the OA TC6 standard defined protected mode for control (register
-access) transactions. In addition to the current register access formats
-the oa_tc6 driver handles, 1's complement values of the data field
-are included (by both the host and the MACPHY) in the SPI transfer frames.
-This feature acts as an integrity check.
+Some drivers that use oa_tc6 have to use their own mdio bus access
+functions as a workaround for hardware issues. Support these cases by
+adding a new parameter for the mii_bus in the oa_tc6_init(). In this
+case, drivers are responsible for allocating the mii_bus struct, assign
+the bus access methods and free the memory after it's no longer used
+by oa_tc6. The mii_bus is registered/unregistered by oa_tc6. The phy
+connection process does not change and it's still done by oa_tc6.
 
-Control write transactions look like this:
-
-          |<- 32 bits ->|<--- data_size --->|<- 32 bits ->|
-    MOSI: | ctrl header | reg write data    | ignored     |
-    MISO: | (discard)   | echoed ctrl hdr   | echoed data |
-
-    data_size (LEN = number of registers to read in a sequence):
-      Unprotected: 32 x (LEN + 1) bits
-      Protected:   2 x 32 x (LEN + 1) bits
-
-Control read transaction:
-
-          |<- 32 bits ->|<--- 32 bits --> |<- data_size ->|
-    MOSI: | ctrl header | ignored ...                     |
-    MISO: | (discard)   | echoed ctrl hdr | reg read data |
-
-    data_size (LEN = number of registers to read in a sequence):
-      Unprotected: 32 x (LEN + 1) bits
-      Protected:   2 x 32 x (LEN + 1) bits
-
-Register data format ("reg write data" and "reg read data"):
-
-    Unprotected:
-      | W1 (normal) | W2 (normal) | ... | Wx (normal) |
-
-    Protected:
-    | W1 (normal) | W1 (complement) | ... | Wx (normal) | Wx (complement)|
-
-The protected mode state can be read from the bit 5 of CONFIG0 (0x4)
-register, and this setting is usually only configured during the
-MACPHY's reset (depending on the device it can be done by setting the
-state of a pin). We can read the protected mode configuration before any
-other register access and since the SPI transfer is initially sized for an
-unprotected read, the MACPHY's complement words are never clocked out
-and no checking is required. The data transactions (Ethernet frames)
-remain unchanged.
+Drivers can still choose to use the default mii_bus access functions
+implemented by oa_tc6 by passing a NULL reference in the mii_bus param.
+To avoid extending the function signature every time a new configuration
+option is needed, convert oa_tc6_init() to take a config struct.
+Also, update the affected drivers and the oa_tc6 framework documentation.
 
 Signed-off-by: Ciprian Regus <ciprian.regus@analog.com>
 ---
- drivers/net/ethernet/oa_tc6.c | 105 ++++++++++++++++++++++++++++++++++++------
- 1 file changed, 92 insertions(+), 13 deletions(-)
+ Documentation/networking/oa-tc6-framework.rst    |  3 +-
+ drivers/net/ethernet/microchip/lan865x/lan865x.c |  6 +-
+ drivers/net/ethernet/oa_tc6.c                    | 89 +++++++++++++++---------
+ include/linux/oa_tc6.h                           |  9 ++-
+ 4 files changed, 70 insertions(+), 37 deletions(-)
 
+diff --git a/Documentation/networking/oa-tc6-framework.rst b/Documentation/networking/oa-tc6-framework.rst
+index fe2aabde923a..eaa5b4b85b34 100644
+--- a/Documentation/networking/oa-tc6-framework.rst
++++ b/Documentation/networking/oa-tc6-framework.rst
+@@ -453,8 +453,7 @@ Device drivers API
+ 
+ The include/linux/oa_tc6.h defines the following functions:
+ 
+-.. c:function:: struct oa_tc6 *oa_tc6_init(struct spi_device *spi, \
+-                                           struct net_device *netdev)
++.. c:function:: struct oa_tc6 *oa_tc6_init(struct oa_tc6_config *config);
+ 
+ Initialize OA TC6 lib.
+ 
+diff --git a/drivers/net/ethernet/microchip/lan865x/lan865x.c b/drivers/net/ethernet/microchip/lan865x/lan865x.c
+index 0277d9737369..c509c8a3e321 100644
+--- a/drivers/net/ethernet/microchip/lan865x/lan865x.c
++++ b/drivers/net/ethernet/microchip/lan865x/lan865x.c
+@@ -332,6 +332,7 @@ static const struct net_device_ops lan865x_netdev_ops = {
+ 
+ static int lan865x_probe(struct spi_device *spi)
+ {
++	struct oa_tc6_config tc6_config = {};
+ 	struct net_device *netdev;
+ 	struct lan865x_priv *priv;
+ 	int ret;
+@@ -346,7 +347,10 @@ static int lan865x_probe(struct spi_device *spi)
+ 	spi_set_drvdata(spi, priv);
+ 	INIT_WORK(&priv->multicast_work, lan865x_multicast_work_handler);
+ 
+-	priv->tc6 = oa_tc6_init(spi, netdev);
++	tc6_config.spi = spi;
++	tc6_config.netdev = netdev;
++
++	priv->tc6 = oa_tc6_init(&tc6_config);
+ 	if (!priv->tc6) {
+ 		ret = -ENODEV;
+ 		goto free_netdev;
 diff --git a/drivers/net/ethernet/oa_tc6.c b/drivers/net/ethernet/oa_tc6.c
-index 91a906a7918a..546ca652d974 100644
+index 546ca652d974..fa89b820133f 100644
 --- a/drivers/net/ethernet/oa_tc6.c
 +++ b/drivers/net/ethernet/oa_tc6.c
-@@ -24,6 +24,7 @@
- #define OA_TC6_REG_CONFIG0			0x0004
- #define CONFIG0_SYNC				BIT(15)
- #define CONFIG0_ZARFE_ENABLE			BIT(12)
-+#define CONFIG0_PROTE				BIT(5)
- 
- /* Status Register #0 */
- #define OA_TC6_REG_STATUS0			0x0008
-@@ -87,6 +88,7 @@
- #define OA_TC6_PHY_C45_AUTO_NEG_MMS5		5	/* MMD 7 */
- #define OA_TC6_PHY_C45_POWER_UNIT_MMS6		6	/* MMD 13 */
- 
-+#define OA_TC6_CTRL_PROT_REPLY_SIZE		4
- #define OA_TC6_CTRL_HEADER_SIZE			4
- #define OA_TC6_CTRL_REG_VALUE_SIZE		4
- #define OA_TC6_CTRL_IGNORED_SIZE		4
-@@ -95,6 +97,13 @@
- 						(OA_TC6_CTRL_MAX_REGISTERS *\
- 						OA_TC6_CTRL_REG_VALUE_SIZE) +\
- 						OA_TC6_CTRL_IGNORED_SIZE)
-+
-+#define OA_TC6_CTRL_SPI_BUF_PROT_SIZE		(OA_TC6_CTRL_HEADER_SIZE +\
-+						(OA_TC6_CTRL_MAX_REGISTERS *\
-+						(OA_TC6_CTRL_REG_VALUE_SIZE +\
-+						 OA_TC6_CTRL_PROT_REPLY_SIZE)) +\
-+						OA_TC6_CTRL_IGNORED_SIZE)
-+
- #define OA_TC6_CHUNK_PAYLOAD_SIZE		64
- #define OA_TC6_DATA_HEADER_SIZE			4
- #define OA_TC6_CHUNK_SIZE			(OA_TC6_DATA_HEADER_SIZE +\
-@@ -129,6 +138,7 @@ struct oa_tc6 {
- 	u8 rx_chunks_available;
+@@ -139,6 +139,7 @@ struct oa_tc6 {
  	bool rx_buf_overflow;
  	bool int_flag;
-+	bool prot_ctrl;
+ 	bool prot_ctrl;
++	bool own_mdiobus;
  };
  
  enum oa_tc6_header_type {
-@@ -212,25 +222,36 @@ static void oa_tc6_update_ctrl_write_data(struct oa_tc6 *tc6, u32 value[],
+@@ -538,32 +539,37 @@ static int oa_tc6_mdiobus_register(struct oa_tc6 *tc6)
  {
- 	__be32 *tx_buf = tc6->spi_ctrl_tx_buf + OA_TC6_CTRL_HEADER_SIZE;
- 
--	for (int i = 0; i < length; i++)
-+	for (int i = 0; i < length; i++) {
- 		*tx_buf++ = cpu_to_be32(value[i]);
-+		if (tc6->prot_ctrl)
-+			*tx_buf++ = cpu_to_be32(~value[i]);
-+	}
- }
- 
--static u16 oa_tc6_calculate_ctrl_buf_size(u8 length)
-+static u16 oa_tc6_calculate_ctrl_buf_size(u8 length, bool ctrl_prot)
- {
-+	u32 reply_size = OA_TC6_CTRL_REG_VALUE_SIZE;
-+
-+	if (ctrl_prot)
-+		reply_size += OA_TC6_CTRL_PROT_REPLY_SIZE;
-+
- 	/* Control command consists 4 bytes header + 4 bytes register value for
--	 * each register + 4 bytes ignored value.
-+	 * each register (+ 4 bytes for the register value complement in case
-+	 * protected mode is used) + 4 bytes ignored value.
- 	 */
--	return OA_TC6_CTRL_HEADER_SIZE + OA_TC6_CTRL_REG_VALUE_SIZE * length +
-+	return OA_TC6_CTRL_HEADER_SIZE + reply_size * length +
- 	       OA_TC6_CTRL_IGNORED_SIZE;
- }
- 
- static void oa_tc6_prepare_ctrl_spi_buf(struct oa_tc6 *tc6, u32 address,
- 					u32 value[], u8 length,
--					enum oa_tc6_register_op reg_op)
-+					enum oa_tc6_register_op reg_op,
-+					u16 buf_size)
- {
- 	__be32 *tx_buf = tc6->spi_ctrl_tx_buf;
- 
-+	memset(tx_buf, 0, buf_size);
- 	*tx_buf = oa_tc6_prepare_ctrl_header(address, length, reg_op);
- 
- 	if (reg_op == OA_TC6_CTRL_REG_WRITE)
-@@ -253,10 +274,12 @@ static int oa_tc6_check_ctrl_write_reply(struct oa_tc6 *tc6, u8 size)
- 	return 0;
- }
- 
--static int oa_tc6_check_ctrl_read_reply(struct oa_tc6 *tc6, u8 size)
-+static int oa_tc6_check_ctrl_read_reply(struct oa_tc6 *tc6, u8 length)
- {
--	u32 *rx_buf = tc6->spi_ctrl_rx_buf + OA_TC6_CTRL_IGNORED_SIZE;
--	u32 *tx_buf = tc6->spi_ctrl_tx_buf;
-+	__be32 *rx_buf = tc6->spi_ctrl_rx_buf + OA_TC6_CTRL_IGNORED_SIZE;
-+	__be32 *tx_buf = tc6->spi_ctrl_tx_buf;
-+	u32 complement;
-+	u32 reply;
- 
- 	/* The echoed control read header must match with the one that was
- 	 * transmitted.
-@@ -264,6 +287,20 @@ static int oa_tc6_check_ctrl_read_reply(struct oa_tc6 *tc6, u8 size)
- 	if (*tx_buf != *rx_buf)
- 		return -EPROTO;
- 
-+	if (tc6->prot_ctrl) {
-+		/* Skip past the echoed header to the value/complement pairs */
-+		rx_buf += 1;
-+		for (int i = 0; i < length; i++) {
-+			reply = be32_to_cpu(rx_buf[0]);
-+			complement = be32_to_cpu(rx_buf[1]);
-+
-+			if (complement != ~reply)
-+				return -EPROTO;
-+
-+			rx_buf += 2;
-+		}
-+	}
-+
- 	return 0;
- }
- 
-@@ -273,8 +310,13 @@ static void oa_tc6_copy_ctrl_read_data(struct oa_tc6 *tc6, u32 value[],
- 	__be32 *rx_buf = tc6->spi_ctrl_rx_buf + OA_TC6_CTRL_IGNORED_SIZE +
- 			 OA_TC6_CTRL_HEADER_SIZE;
- 
--	for (int i = 0; i < length; i++)
-+	for (int i = 0; i < length; i++) {
- 		value[i] = be32_to_cpu(*rx_buf++);
-+
-+		/* skip complement word */
-+		if (tc6->prot_ctrl)
-+			rx_buf++;
-+	}
- }
- 
- static int oa_tc6_perform_ctrl(struct oa_tc6 *tc6, u32 address, u32 value[],
-@@ -283,10 +325,10 @@ static int oa_tc6_perform_ctrl(struct oa_tc6 *tc6, u32 address, u32 value[],
- 	u16 size;
  	int ret;
  
--	/* Prepare control command and copy to SPI control buffer */
--	oa_tc6_prepare_ctrl_spi_buf(tc6, address, value, length, reg_op);
-+	size = oa_tc6_calculate_ctrl_buf_size(length, tc6->prot_ctrl);
+-	tc6->mdiobus = mdiobus_alloc();
+ 	if (!tc6->mdiobus) {
+-		netdev_err(tc6->netdev, "MDIO bus alloc failed\n");
+-		return -ENOMEM;
++		tc6->mdiobus = mdiobus_alloc();
++		if (!tc6->mdiobus) {
++			netdev_err(tc6->netdev, "MDIO bus alloc failed\n");
++			return -ENOMEM;
++		}
++
++		tc6->mdiobus->read = oa_tc6_mdiobus_read;
++		tc6->mdiobus->write = oa_tc6_mdiobus_write;
++		/* OPEN Alliance 10BASE-T1x compliance MAC-PHYs will have both C22 and
++		 * C45 registers space. If the PHY is discovered via C22 bus protocol it
++		 * assumes it uses C22 protocol and always uses C22 registers indirect
++		 * access to access C45 registers. This is because, we don't have a
++		 * clean separation between C22/C45 register space and C22/C45 MDIO bus
++		 * protocols. Resulting, PHY C45 registers direct access can't be used
++		 * which can save multiple SPI bus access. To support this feature, PHY
++		 * drivers can set .read_mmd/.write_mmd in the PHY driver to call
++		 * .read_c45/.write_c45. Ex: drivers/net/phy/microchip_t1s.c
++		 */
++		tc6->mdiobus->read_c45 = oa_tc6_mdiobus_read_c45;
++		tc6->mdiobus->write_c45 = oa_tc6_mdiobus_write_c45;
++
++		tc6->own_mdiobus = true;
+ 	}
  
--	size = oa_tc6_calculate_ctrl_buf_size(length);
-+	/* Prepare control command and copy to SPI control buffer */
-+	oa_tc6_prepare_ctrl_spi_buf(tc6, address, value, length, reg_op, size);
+ 	tc6->mdiobus->priv = tc6;
+-	tc6->mdiobus->read = oa_tc6_mdiobus_read;
+-	tc6->mdiobus->write = oa_tc6_mdiobus_write;
+-	/* OPEN Alliance 10BASE-T1x compliance MAC-PHYs will have both C22 and
+-	 * C45 registers space. If the PHY is discovered via C22 bus protocol it
+-	 * assumes it uses C22 protocol and always uses C22 registers indirect
+-	 * access to access C45 registers. This is because, we don't have a
+-	 * clean separation between C22/C45 register space and C22/C45 MDIO bus
+-	 * protocols. Resulting, PHY C45 registers direct access can't be used
+-	 * which can save multiple SPI bus access. To support this feature, PHY
+-	 * drivers can set .read_mmd/.write_mmd in the PHY driver to call
+-	 * .read_c45/.write_c45. Ex: drivers/net/phy/microchip_t1s.c
+-	 */
+-	tc6->mdiobus->read_c45 = oa_tc6_mdiobus_read_c45;
+-	tc6->mdiobus->write_c45 = oa_tc6_mdiobus_write_c45;
+-	tc6->mdiobus->name = "oa-tc6-mdiobus";
+ 	tc6->mdiobus->parent = tc6->dev;
++	tc6->mdiobus->name = "oa-tc6-mdiobus";
  
- 	/* Perform SPI transfer */
- 	ret = oa_tc6_spi_transfer(tc6, OA_TC6_CTRL_HEADER, size);
-@@ -301,7 +343,7 @@ static int oa_tc6_perform_ctrl(struct oa_tc6 *tc6, u32 address, u32 value[],
- 		return oa_tc6_check_ctrl_write_reply(tc6, size);
+ 	snprintf(tc6->mdiobus->id, ARRAY_SIZE(tc6->mdiobus->id), "%s",
+-		 dev_name(&tc6->spi->dev));
++			 dev_name(&tc6->spi->dev));
  
- 	/* Check echoed/received control read command reply for errors */
--	ret = oa_tc6_check_ctrl_read_reply(tc6, size);
-+	ret = oa_tc6_check_ctrl_read_reply(tc6, length);
- 	if (ret)
- 		return ret;
+ 	ret = mdiobus_register(tc6->mdiobus);
+ 	if (ret) {
+@@ -577,19 +583,30 @@ static int oa_tc6_mdiobus_register(struct oa_tc6 *tc6)
  
-@@ -1224,6 +1266,20 @@ netdev_tx_t oa_tc6_start_xmit(struct oa_tc6 *tc6, struct sk_buff *skb)
+ static void oa_tc6_mdiobus_unregister(struct oa_tc6 *tc6)
+ {
++	if (!tc6->mdiobus)
++		return;
++
+ 	mdiobus_unregister(tc6->mdiobus);
+-	mdiobus_free(tc6->mdiobus);
++
++	if (tc6->own_mdiobus)
++		mdiobus_free(tc6->mdiobus);
  }
- EXPORT_SYMBOL_GPL(oa_tc6_start_xmit);
  
-+static int oa_tc6_check_ctrl_protection(struct oa_tc6 *tc6)
-+{
-+	u32 regval;
-+	int ret;
+ static int oa_tc6_phy_init(struct oa_tc6 *tc6)
+ {
+ 	int ret;
+ 
+-	ret = oa_tc6_check_phy_reg_direct_access_capability(tc6);
+-	if (ret) {
+-		netdev_err(tc6->netdev,
+-			   "Direct PHY register access is not supported by the MAC-PHY\n");
+-		return ret;
++	/* If the driver provided a mii_bus, it is also responsible for
++	 * implementing the bus access methods, so we don't have to worry
++	 * about checking the PHY access mode.
++	 */
++	if (!tc6->mdiobus) {
++		ret = oa_tc6_check_phy_reg_direct_access_capability(tc6);
++		if (ret) {
++			netdev_err(tc6->netdev,
++				"Direct PHY register access is not supported by the MAC-PHY\n");
++			return ret;
++		}
+ 	}
+ 
+ 	ret = oa_tc6_mdiobus_register(tc6);
+@@ -621,7 +638,9 @@ static int oa_tc6_phy_init(struct oa_tc6 *tc6)
+ 
+ static void oa_tc6_phy_exit(struct oa_tc6 *tc6)
+ {
+-	phy_disconnect(tc6->phydev);
++	if (tc6->phydev)
++		phy_disconnect(tc6->phydev);
 +
-+	ret = oa_tc6_read_register(tc6, OA_TC6_REG_CONFIG0, &regval);
-+	if (ret)
-+		return ret;
-+
-+	tc6->prot_ctrl = FIELD_GET(CONFIG0_PROTE, regval);
-+
-+	return 0;
-+}
-+
+ 	oa_tc6_mdiobus_unregister(tc6);
+ }
+ 
+@@ -1282,24 +1301,28 @@ static int oa_tc6_check_ctrl_protection(struct oa_tc6 *tc6)
+ 
  /**
   * oa_tc6_init - allocates and initializes oa_tc6 structure.
-  * @spi: device with which data will be exchanged.
-@@ -1276,6 +1332,29 @@ struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev)
- 	if (!tc6->spi_data_rx_buf)
+- * @spi: device with which data will be exchanged.
+- * @netdev: network device interface structure.
++ * @config: pointer to a caller-filled structure describing the MACPHY
++ *          (SPI device, net_device, and config flags).
+  *
+  * Return: pointer reference to the oa_tc6 structure if the MAC-PHY
+  * initialization is successful otherwise NULL.
+  */
+-struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev)
++struct oa_tc6 *oa_tc6_init(struct oa_tc6_config *config)
+ {
+ 	struct oa_tc6 *tc6;
+ 	int ret;
+ 
+-	tc6 = devm_kzalloc(&spi->dev, sizeof(*tc6), GFP_KERNEL);
++	if (!config)
++		return NULL;
++
++	tc6 = devm_kzalloc(&config->spi->dev, sizeof(*tc6), GFP_KERNEL);
+ 	if (!tc6)
  		return NULL;
  
-+	ret = oa_tc6_check_ctrl_protection(tc6);
-+	if (ret) {
-+		dev_err(&tc6->spi->dev,
-+			"Failed to check the protection mode: %d\n", ret);
-+		return NULL;
-+	}
+-	tc6->spi = spi;
+-	tc6->netdev = netdev;
+-	SET_NETDEV_DEV(netdev, &spi->dev);
++	tc6->spi = config->spi;
++	tc6->netdev = config->netdev;
++	tc6->mdiobus = config->mii_bus;
++	SET_NETDEV_DEV(tc6->netdev, &tc6->spi->dev);
+ 	mutex_init(&tc6->spi_ctrl_lock);
+ 	spin_lock_init(&tc6->tx_skb_lock);
+ 
+diff --git a/include/linux/oa_tc6.h b/include/linux/oa_tc6.h
+index 15f58e3c56c7..7ed7769bac88 100644
+--- a/include/linux/oa_tc6.h
++++ b/include/linux/oa_tc6.h
+@@ -8,11 +8,18 @@
+  */
+ 
+ #include <linux/etherdevice.h>
++#include <linux/mdio.h>
+ #include <linux/spi/spi.h>
+ 
+ struct oa_tc6;
+ 
+-struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev);
++struct oa_tc6_config {
++	struct spi_device *spi;
++	struct net_device *netdev;
++	struct mii_bus *mii_bus;
++};
 +
-+	if (tc6->prot_ctrl) {
-+		tc6->spi_ctrl_tx_buf = devm_krealloc(&tc6->spi->dev,
-+						     tc6->spi_ctrl_tx_buf,
-+						     OA_TC6_CTRL_SPI_BUF_PROT_SIZE,
-+						     GFP_KERNEL);
-+		if (!tc6->spi_ctrl_tx_buf)
-+			return NULL;
-+
-+		tc6->spi_ctrl_rx_buf = devm_krealloc(&tc6->spi->dev,
-+						     tc6->spi_ctrl_rx_buf,
-+						     OA_TC6_CTRL_SPI_BUF_PROT_SIZE,
-+						     GFP_KERNEL);
-+		if (!tc6->spi_ctrl_rx_buf)
-+			return NULL;
-+	}
-+
- 	ret = oa_tc6_sw_reset_macphy(tc6);
- 	if (ret) {
- 		dev_err(&tc6->spi->dev,
++struct oa_tc6 *oa_tc6_init(struct oa_tc6_config *config);
+ void oa_tc6_exit(struct oa_tc6 *tc6);
+ int oa_tc6_write_register(struct oa_tc6 *tc6, u32 address, u32 value);
+ int oa_tc6_write_registers(struct oa_tc6 *tc6, u32 address, u32 value[],
 
 -- 
 2.43.0
