@@ -1,10 +1,10 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sun, 03 May 2026 16:48:46 -0500
-Subject: [PATCH v8 4/6] arm64: dts: qcom: Add AYN Odin 2 Mini
+Date: Sun, 03 May 2026 16:48:47 -0500
+Subject: [PATCH v8 5/6] arm64: dts: qcom: Add AYN Odin 2 Portal
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260503-ayn-qcs8550-v8-4-d733f5e57446@gmail.com>
+Message-Id: <20260503-ayn-qcs8550-v8-5-d733f5e57446@gmail.com>
 References: <20260503-ayn-qcs8550-v8-0-d733f5e57446@gmail.com>
 In-Reply-To: <20260503-ayn-qcs8550-v8-0-d733f5e57446@gmail.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -16,11 +16,11 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  Teguh Sobirin <teguh@sobir.in>, 
  Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777844950; l=2485;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777844950; l=3427;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=hvP9BgkF6tPhwnSOK85AN090trYQSQgH+S/xQKgJ9aQ=;
- b=5Qcg/JnNEBDkbpvWtnPKOGavCAmfeohgpLdBNL0qkZ68FajPvCIhki67BLV1x3t0FiO0gUBvk
- Nx9N2xd44++Bm6B9/kiSi5VqQRdbjsh2ppfOGxJIi+AUVTac23jSiXq
+ bh=2+SChY6IQHBKh8njjJBPKeyneYyYCGd/QTq8yhLM+4k=;
+ b=crKG9+OMbHlepjGFPuRvB8Syus2fjQf3g5SxSWZtvgbPWISFnlZzrQlEEZrGYg222QkGABk1P
+ DLSFSGwgvO8CcfQDNjXdsco7odpH9KZVWOzfFWQ/vbPLuHZdI0W9HBv
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
@@ -28,9 +28,9 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Teguh Sobirin <teguh@sobir.in>
 
-The AYN Odin 2 Mini is a high-performance Android-based handheld gaming
+The AYN Odin 2 Portal is a high-performance Android-based handheld gaming
 console powered by the Qualcomm Snapdragon 8 Gen 2 processor featuring a
-5-inch mini-led touchscreen.
+7-inch OLED touchscreen.
 
 Signed-off-by: Teguh Sobirin <teguh@sobir.in>
 Co-developed-by: Aaron Kling <webgeek1234@gmail.com>
@@ -38,27 +38,27 @@ Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 ---
  arch/arm64/boot/dts/qcom/Makefile                  |  1 +
- .../boot/dts/qcom/qcs8550-ayntec-odin2mini.dts     | 44 ++++++++++++++++++++++
- 2 files changed, 45 insertions(+)
+ .../boot/dts/qcom/qcs8550-ayntec-odin2portal.dts   | 84 ++++++++++++++++++++++
+ 2 files changed, 85 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 4ba8e730641949..aceb84a060f80e 100644
+index aceb84a060f80e..6bfc4554580bd5 100644
 --- a/arch/arm64/boot/dts/qcom/Makefile
 +++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -184,6 +184,7 @@ qcs8300-ride-el2-dtbs := qcs8300-ride.dtb monaco-el2.dtbo
- 
+@@ -185,6 +185,7 @@ qcs8300-ride-el2-dtbs := qcs8300-ride.dtb monaco-el2.dtbo
  dtb-$(CONFIG_ARCH_QCOM)	+= qcs8300-ride-el2.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-aim300-aiot.dtb
-+dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-odin2mini.dtb
+ dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-odin2mini.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= qcs8550-ayntec-odin2portal.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= qcs9100-ride.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= qcs9100-ride-r3.dtb
  
-diff --git a/arch/arm64/boot/dts/qcom/qcs8550-ayntec-odin2mini.dts b/arch/arm64/boot/dts/qcom/qcs8550-ayntec-odin2mini.dts
+diff --git a/arch/arm64/boot/dts/qcom/qcs8550-ayntec-odin2portal.dts b/arch/arm64/boot/dts/qcom/qcs8550-ayntec-odin2portal.dts
 new file mode 100644
-index 00000000000000..cc894bdd0c9020
+index 00000000000000..bd6ba0ab941d33
 --- /dev/null
-+++ b/arch/arm64/boot/dts/qcom/qcs8550-ayntec-odin2mini.dts
-@@ -0,0 +1,44 @@
++++ b/arch/arm64/boot/dts/qcom/qcs8550-ayntec-odin2portal.dts
+@@ -0,0 +1,84 @@
 +// SPDX-License-Identifier: BSD-3-Clause
 +/*
 + * Copyright (c) 2025, Teguh Sobirin.
@@ -71,8 +71,19 @@ index 00000000000000..cc894bdd0c9020
 +#include "qcs8550-ayntec-common.dtsi"
 +
 +&{/} {
-+	model = "AYN Odin 2 Mini";
-+	compatible = "ayntec,odin2mini", "qcom,qcs8550", "qcom,sm8550";
++	model = "AYN Odin 2 Portal";
++	compatible = "ayntec,odin2portal", "qcom,qcs8550", "qcom,sm8550";
++
++	vdd_bl_5v0: vdd-bl-5v0-regulator {
++		compatible = "regulator-fixed";
++		regulator-name = "vdd_bl_5v0";
++
++		regulator-min-microvolt = <5000000>;
++		regulator-max-microvolt = <5000000>;
++
++		gpio = <&tlmm 52 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++	};
 +
 +	vdd_disp_2v8: vdd-disp-2v8-regulator {
 +		compatible = "regulator-fixed";
@@ -86,21 +97,50 @@ index 00000000000000..cc894bdd0c9020
 +	};
 +};
 +
-+/* There is an hdmi bridge on i2c_hub_0@48, but it is not currently supported */
++&i2c4 {
++	clock-frequency = <400000>;
++
++	status = "okay";
++
++	#address-cells = <1>;
++	#size-cells = <0>;
++
++	touchscreen@38 {
++		compatible = "focaltech,ft5426";
++		reg = <0x38>;
++
++		interrupt-parent = <&tlmm>;
++		interrupts = <25 IRQ_TYPE_EDGE_FALLING>;
++
++		reset-gpios = <&tlmm 24 GPIO_ACTIVE_LOW>;
++
++		vcc-supply = <&vreg_l14b_3p2>;
++		iovcc-supply = <&vreg_l12b_1p8>;
++
++		pinctrl-0 = <&ts_p_rst_default &ts_p_int_default>;
++		pinctrl-1 = <&ts_p_rst_sleep &ts_p_int_sleep>;
++		pinctrl-names = "default", "sleep";
++
++		touchscreen-size-x = <1080>;
++		touchscreen-size-y = <1920>;
++		touchscreen-swapped-x-y;
++		touchscreen-inverted-y;
++	};
++};
 +
 +&remoteproc_adsp {
-+	firmware-name = "qcom/sm8550/ayntec/odin2mini/adsp.mbn",
-+			"qcom/sm8550/ayntec/odin2mini/adsp_dtb.mbn";
++	firmware-name = "qcom/sm8550/ayntec/odin2portal/adsp.mbn",
++			"qcom/sm8550/ayntec/odin2portal/adsp_dtb.mbn";
 +
 +	status = "okay";
 +};
 +
 +&spk_amp_l {
-+	firmware-name = "qcom/sm8550/ayntec/odin2mini/aw883xx_acf.bin";
++	firmware-name = "qcom/sm8550/ayntec/odin2portal/aw883xx_acf.bin";
 +};
 +
 +&spk_amp_r {
-+	firmware-name = "qcom/sm8550/ayntec/odin2mini/aw883xx_acf.bin";
++	firmware-name = "qcom/sm8550/ayntec/odin2portal/aw883xx_acf.bin";
 +};
 +
 
