@@ -1,134 +1,179 @@
-From: Ciprian Regus <ciprian.regus@analog.com>
-Date: Sun, 03 May 2026 02:24:54 +0300
-Subject: [PATCH net-next 5/5] dt-bindings: net: Add bindings for the
- ADIN1140
+From: Rudraksha Gupta <guptarud@gmail.com>
+Date: Sun, 03 May 2026 14:24:48 -0700
+Subject: [PATCH RESEND] ARM: dts: qcom: msm8960: expressatt: Add
+ coreriver,tc360-touchkey
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260503-adin1140-driver-v1-5-dd043cdd88f0@analog.com>
-References: <20260503-adin1140-driver-v1-0-dd043cdd88f0@analog.com>
-In-Reply-To: <20260503-adin1140-driver-v1-0-dd043cdd88f0@analog.com>
-To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, Andrew Lunn <andrew@lunn.ch>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, Rob Herring <robh@kernel.org>, 
+Message-Id: <20260503-expressatt-touchkey-v1-1-f7dd5db64e0d@gmail.com>
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-doc@vger.kernel.org, devicetree@vger.kernel.org, 
- Ciprian Regus <ciprian.regus@analog.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777764335; l=2909;
- i=ciprian.regus@analog.com; s=20260330; h=from:subject:message-id;
- bh=fsypCuzG+8KsvoEcvGQ6yCJv/rH7hOitcPb70G23Ry8=;
- b=IfQ3JGxqRuCDGFpO/P9bRwjhIFJQOyUBMejKbfs/rBS33QxPU7X5rXn5hE4r4EhqBykipUBB2
- dkVrqgIOr5ZAehaPGZErUqfkPGoO24jQjlt5vghv6N9DQoutLODifLf
-X-Developer-Key: i=ciprian.regus@analog.com; a=ed25519;
- pk=8WoNhI0kQcQUl8YqJO5ZevROYk9HP8lOIeIgIYgjfbc=
-X-Endpoint-Received: by B4 Relay for ciprian.regus@analog.com/20260330 with auth_id=703
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777843496; l=5243;
+ i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
+ bh=bVqnx5maQ2+0asrPWYudZakdqnY0csCZUYY5fznTxHc=;
+ b=yZ0PEuekOalrlzaGvBnW1A/GLx9mmN6pRqQ9tYU+XIh/RjcNhnjr+j/ZFWkqbEwvm7tmuEyCr
+ RIohpm0judADFOJnQ5quFeFssZHzCQJ/Rt/4n3B/1WqFvjecsN+RoFf
+X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
+ pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
+X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add DT bindings for the ADIN1140 10BASE-T1S MACPHY. Update the
-MAINTAINERS entry to include the bindings file as well.
+Add the tc360 touchkey. It's unknown if this is the actual model of the
+touchkey, as downstream doesn't mention a variant, but this works.
 
-Signed-off-by: Ciprian Regus <ciprian.regus@analog.com>
+Link:
+https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/input/keyboard/cypress_touchkey_236/Makefile#L5
+
+Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
- .../devicetree/bindings/net/adi,adin1140.yaml      | 69 ++++++++++++++++++++++
- MAINTAINERS                                        |  1 +
- 2 files changed, 70 insertions(+)
+Add the tc360 touchkey. It's unknown if this is the actual model of the
+touchkey, as downstream doesn't mention a variant, but this works.
 
-diff --git a/Documentation/devicetree/bindings/net/adi,adin1140.yaml b/Documentation/devicetree/bindings/net/adi,adin1140.yaml
-new file mode 100644
-index 000000000000..26cd40d36f9b
---- /dev/null
-+++ b/Documentation/devicetree/bindings/net/adi,adin1140.yaml
-@@ -0,0 +1,69 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/net/adi,adin1140.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
+Link:
+https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/input/keyboard/cypress_touchkey_236/Makefile#L5
+
+Test:
+=============
+- LEDs:
+samsung-expressatt:/sys/class/leds/tm2-touchkey$ echo heartbeat > trigger
+// Flashes LEDs :)
+
+- Touching buttons:
+samsung-expressatt:/sys/class/leds/tm2-touchkey$ evtest
+No device specified, trying to scan all of /dev/input/event*
+Not running as root, no devices may be available.
+Available devices:
+/dev/input/event0:      pmic8xxx_pwrkey
+/dev/input/event1:      gpio-keys
+/dev/input/event2:      tm2-touchkey
+/dev/input/event3:      Atmel maXTouch Touchscreen
+Select the device event number [0-3]: 2
+Input driver version is 1.0.1
+Input device ID: bus 0x18 vendor 0x0 product 0x0 version 0x0
+Input device name: "tm2-touchkey"
+Supported events:
+  Event type 0 (EV_SYN)
+  Event type 1 (EV_KEY)
+    Event code 139 (KEY_MENU)
+    Event code 158 (KEY_BACK)
+  Event type 4 (EV_MSC)
+    Event code 4 (MSC_SCAN)
+Properties:
+Testing ... (interrupt to exit)
+Event: time 1761059686.899755, type 4 (EV_MSC), code 4 (MSC_SCAN), value 00
+Event: time 1761059686.899755, type 1 (EV_KEY), code 139 (KEY_MENU), value 1
+Event: time 1761059686.899755, -------------- SYN_REPORT ------------
+Event: time 1761059687.113489, type 4 (EV_MSC), code 4 (MSC_SCAN), value 00
+Event: time 1761059687.113489, type 1 (EV_KEY), code 139 (KEY_MENU), value 0
+Event: time 1761059687.113489, -------------- SYN_REPORT ------------
+Event: time 1761059688.764757, type 4 (EV_MSC), code 4 (MSC_SCAN), value 01
+Event: time 1761059688.764757, type 1 (EV_KEY), code 158 (KEY_BACK), value 1
+Event: time 1761059688.764757, -------------- SYN_REPORT ------------
+Event: time 1761059688.817516, type 4 (EV_MSC), code 4 (MSC_SCAN), value 01
+Event: time 1761059688.817516, type 1 (EV_KEY), code 158 (KEY_BACK), value 0
+Event: time 1761059688.817516, -------------- SYN_REPORT ------------
+---
+ .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 55 ++++++++++++++++++++++
+ 1 file changed, 55 insertions(+)
+
+diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
+index 5a39abd6f3ce..c4b98af6955d 100644
+--- a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
++++ b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
+@@ -52,6 +52,41 @@ key-volume-down {
+ 			linux,code = <KEY_VOLUMEDOWN>;
+ 		};
+ 	};
 +
-+title: ADI ADIN1140 10BASE-T1S MAC-PHY
++	touchkey_enable: touchkey-enable {
++		compatible = "regulator-fixed";
++		regulator-name = "touchkey_enable";
++		gpio = <&tlmm 51 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++		regulator-boot-on;
++	};
 +
-+maintainers:
-+  - Ciprian Regus <ciprian.regus@analog.com>
++	i2c-gpio-touchkey {
++		compatible = "i2c-gpio";
++		#address-cells = <1>;
++		#size-cells = <0>;
++		sda-gpios = <&tlmm 71 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++		scl-gpios = <&tlmm 72 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&touchkey_i2c_pins>;
++		status = "okay";
++		i2c-gpio,delay-us = <2>;
 +
-+description: |
-+  The ADIN1140 (also called AD3306) is a low power single port
-+  10BASE-T1S MAC-PHY. It integrates an Ethernet PHY with a MAC
-+  and all the associated analog circuitry.
-+  The device implements the Open Alliance TC6 10BASE-T1x MAC-PHY
-+  Serial Interface specification and is compliant with the
-+  IEEE 802.3cg-2019 Ethernet standard for 10 Mbps single pair
-+  Ethernet (SPE). The device has a 4-wire SPI interface for
-+  communication between the MAC and host processor.
++		touchkey@20 {
++			compatible = "coreriver,tc360-touchkey";
++			reg = <0x20>;
 +
-+allOf:
-+  - $ref: /schemas/net/ethernet-controller.yaml#
-+  - $ref: /schemas/spi/spi-peripheral-props.yaml#
++			interrupts-extended = <&tlmm 52 IRQ_TYPE_EDGE_FALLING>;
++			pinctrl-names = "default";
++			pinctrl-0 = <&touchkey_irq_pin>;
 +
-+properties:
-+  compatible:
-+    enum:
-+      - adi,adin1140
-+      - adi,ad3306
++			vddio-supply = <&touchkey_enable>;
++			vdd-supply = <&pm8921_l29>;
++			vcc-supply = <&pm8921_l29>;
 +
-+  reg:
-+    maxItems: 1
-+
-+  spi-max-frequency:
-+    maximum: 25000000
-+
-+  interrupts:
-+    maxItems: 1
-+    description: Interrupt from the MAC-PHY for receive data available
-+      and error conditions
-+
-+required:
-+  - compatible
-+  - reg
-+  - interrupts
-+  - spi-max-frequency
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/interrupt-controller/irq.h>
-+
-+    spi {
-+        #address-cells = <1>;
-+        #size-cells = <0>;
-+
-+        ethernet@0 {
-+            compatible = "adi,adin1140";
-+            reg = <0>;
-+            spi-max-frequency = <23000000>;
-+
-+            interrupt-parent = <&gpio>;
-+            interrupts = <6 IRQ_TYPE_EDGE_FALLING>;
-+
-+            local-mac-address = [ 00 11 22 33 44 55 ];
-+        };
-+    };
-diff --git a/MAINTAINERS b/MAINTAINERS
-index f9784c25beac..55e1e78fe04e 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1848,6 +1848,7 @@ M:	Ciprian Regus <ciprian.regus@analog.com>
- L:	netdev@vger.kernel.org
- S:	Maintained
- W:	https://ez.analog.com/linux-software-drivers
-+F:	Documentation/devicetree/bindings/net/adi,adin1140.yaml
- F:	drivers/net/ethernet/adi/adin1140.c
++			linux,keycodes = <KEY_MENU KEY_BACK>;
++		};
++	};
+ };
  
- ANALOG DEVICES INC ETHERNET PHY DRIVERS
+ &gsbi2 {
+@@ -198,6 +233,20 @@ firmware-pins {
+ 			bias-disable;
+ 		};
+ 	};
++
++	touchkey_i2c_pins: touchkey-i2c-state {
++		pins = "gpio71", "gpio72";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
++	touchkey_irq_pin: touchkey-irq-state {
++		pins = "gpio52";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
+ };
+ 
+ &pm8921 {
+@@ -420,6 +469,12 @@ pm8921_l25: l25 {
+ 			bias-pull-down;
+ 		};
+ 
++		pm8921_l29: l29 {
++			regulator-min-microvolt = <1800000>;
++			regulator-max-microvolt = <3300000>;
++			bias-pull-down;
++		};
++
+ 		/* Low Voltage Switch */
+ 		pm8921_lvs1: lvs1 {
+ 			bias-pull-down;
 
+---
+base-commit: 0ccd3ddf45c93ab06c9b1a9d266dcab1e52bf3d2
+change-id: 20251205-expressatt-touchkey-1747c503a2f3
+prerequisite-change-id: 20251119-expressatt_nfc_accel_magn_light-f78e02897186:v4
+prerequisite-patch-id: 6fdd0efa5eda512b442b885df80774d1a7037df7
+prerequisite-patch-id: 12d296f83ccb1bdfb8d06a72e476bf51ae5f4e6c
+prerequisite-patch-id: a970acf2080143f41ae0935dd2c57bb71f5bf338
+prerequisite-patch-id: fd25fef58503c5e5cf742e79b124948c7f6b98d9
+prerequisite-patch-id: 966ae746687ebf8eb29c6185a8909b047e70dbb1
+prerequisite-patch-id: 68603a680b24921759425fc289e61fc4435e5ccd
+
+Best regards,
 -- 
-2.43.0
+Rudraksha Gupta <guptarud@gmail.com>
 
