@@ -1,10 +1,10 @@
 From: Roman Vivchar <rva333@protonmail.com>
-Date: Mon, 04 May 2026 21:25:03 +0300
-Subject: [PATCH 11/13] ARM: dts: mediatek: mt6323: add support for EFUSE
+Date: Mon, 04 May 2026 21:25:04 +0300
+Subject: [PATCH 12/13] ARM: dts: mediatek: mt6323: add support for thermal
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260504-mt6323-v1-11-799b58b355ff@protonmail.com>
+Message-Id: <20260504-mt6323-v1-12-799b58b355ff@protonmail.com>
 References: <20260504-mt6323-v1-0-799b58b355ff@protonmail.com>
 In-Reply-To: <20260504-mt6323-v1-0-799b58b355ff@protonmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -25,41 +25,83 @@ Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org,
  Ben Grisdale <bengris32@protonmail.ch>, 
  Roman Vivchar <rva333@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777919095; l=819;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777919095; l=1739;
  i=rva333@protonmail.com; s=20260325; h=from:subject:message-id;
- bh=D++I3Bv55Tj53B0+HYj0FqRkAmuZ8JRO4SRqrQ1v3kE=;
- b=R3R3H7pkJl3SJUsgkp3G8bZc23LQ5YY0fHmstJk6moZH4EJsDmbtoGRjL08m4XlCYoOWSwz31
- FlLs6lfwy17D4sKpkub4ktmaXHGzhwXdwRg7E6rcWqbUXkR1+orSxOX
+ bh=RnX15Bbq0POSOMld8rImsDthXoY2gvxd4clxXzA+bLs=;
+ b=jW2y5q+4ec0II0RivLcNCB19jAdPdayHabag4j3LyuTqfh8CcsUQSchx+QYvx94osw2zOF/wY
+ JeaBhZfg5ODAnnCm2PTOt7Ne47BabO61K4FNAWW8mMO1afuvQNniTBz
 X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
  pk=euuVBZGtA2Cqb8Dju84qpQPhvwxyUirJlXpqEPQWKBM=
 X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260325 with auth_id=695
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the efuse node for the mt6323 efuse.
+Add the devicetree node for the mt6323 thermal.
 
 Tested-by: Ben Grisdale <bengris32@protonmail.ch> # Amazon Echo Dot (2nd Generation)
 Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- arch/arm/boot/dts/mediatek/mt6323.dtsi | 6 ++++++
- 1 file changed, 6 insertions(+)
+ arch/arm/boot/dts/mediatek/mt6323.dtsi | 35 ++++++++++++++++++++++++++++++++--
+ 1 file changed, 33 insertions(+), 2 deletions(-)
 
 diff --git a/arch/arm/boot/dts/mediatek/mt6323.dtsi b/arch/arm/boot/dts/mediatek/mt6323.dtsi
-index c070f4b0936c..3fe6a5e35e70 100644
+index 3fe6a5e35e70..bdfa177aa1e3 100644
 --- a/arch/arm/boot/dts/mediatek/mt6323.dtsi
 +++ b/arch/arm/boot/dts/mediatek/mt6323.dtsi
-@@ -19,6 +19,12 @@ mt6323_adc: adc {
- 			#io-channel-cells = <1>;
+@@ -6,6 +6,8 @@
+  *
+  */
+ 
++#include <dt-bindings/iio/adc/mediatek,mt6323-auxadc.h>
++
+ &pwrap {
+ 	pmic: mt6323 {
+ 		compatible = "mediatek,mt6323";
+@@ -21,8 +23,16 @@ mt6323_adc: adc {
+ 
+ 		mt6323_efuse: efuse {
+ 			compatible = "mediatek,mt6323-efuse";
+-			#address-cells = <1>;
+-			#size-cells = <1>;
++
++			nvmem-layout {
++				compatible = "fixed-layout";
++				#address-cells = <1>;
++				#size-cells = <1>;
++
++				mt6323_thermal_calibration_data: thermal-data@14 {
++					reg = <0x14 0x4>;
++				};
++			};
  		};
  
-+		mt6323_efuse: efuse {
-+			compatible = "mediatek,mt6323-efuse";
-+			#address-cells = <1>;
-+			#size-cells = <1>;
-+		};
-+
  		mt6323_leds: leds {
- 			compatible = "mediatek,mt6323-led";
- 			#address-cells = <1>;
+@@ -276,5 +286,26 @@ power-controller {
+ 		rtc {
+ 			compatible = "mediatek,mt6323-rtc";
+ 		};
++
++		mt6323_thermal: thermal {
++			compatible = "mediatek,mt6323-thermal";
++			nvmem-cells = <&mt6323_thermal_calibration_data>;
++			nvmem-cell-names = "calibration-data";
++
++			io-channels = <&mt6323_adc MT6323_AUXADC_CHIP_TEMP>;
++			io-channel-names = "vts";
++			#thermal-sensor-cells = <1>;
++		};
++	};
++};
++
++/ {
++	thermal-zones {
++		pmic_vts_thermal {
++			polling-delay-passive = <1000>;
++			polling-delay = <1000>;
++
++			thermal-sensors = <&mt6323_thermal 0>;
++		};
+ 	};
+ };
 
 -- 
 2.53.0
