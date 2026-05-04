@@ -1,84 +1,98 @@
-From: Massimiliano Minella <massimiliano.minella@se.com>
-Date: Mon, 04 May 2026 11:31:31 +0200
-Subject: [PATCH RESEND] libvirt: fix python3 compatibility in
- hook_support.py
+From: Joshua Crofts <joshua.crofts1@gmail.com>
+Subject: [PATCH v4 00/17] iio: magnetometer: ak8975: modernize and cleanup
+ driver
+Date: Mon, 04 May 2026 11:48:12 +0200
+Message-Id: <20260504-magnetometer-fixes-v4-0-a291c2a7c71a@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260504-fix_libvirt_hook_script-v1-1-9838f5c96a1a@se.com>
-To: meta-virtualization@lists.yoctoproject.org
-Cc: Massimiliano Minella <massimiliano.minella@se.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777887118; l=2695;
- i=massimiliano.minella@se.com; s=20250121; h=from:subject:message-id;
- bh=WIm3+HRBDm95euJ7aoFgH+VcB3BkwzHKs9HUhk3P1KA=;
- b=uVO8jLFFdzxDdmiKnXCr5xsmNAwmibZ9yfDBZqnXeQkkve1qnuANQXoHC/HZ8Oz6+M8T9x+2r
- X2b7U/k7I3eCbREGcvgBclUogd4m/64kNE2zMCyEa/oDKQZrFUDbFTI
-X-Developer-Key: i=massimiliano.minella@se.com; a=ed25519;
- pk=p6Og4stDBPm4cBEySH8oVWARLO52pxVayNFqHslSXU0=
-X-Endpoint-Received: by B4 Relay for massimiliano.minella@se.com/20250121 with auth_id=325
+X-B4-Tracking: v=1; b=H4sIAFxr+GkC/x3LSwqAIBRG4a3EHSeYSmVbiQY9/uoOtFCJINp70
+ vDjcB6KCIxIXfFQwMWRD59hyoLmffQbBC/ZpKSqpVFauHHzSIdDQhAr34iiaidrtTRVU2vK4xn
+ wh/z1w/t+VSo/CmQAAAA=
+X-Change-ID: 20260423-magnetometer-fixes-18b993041763
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Joshua Crofts <joshua.crofts1@gmail.com>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777888111; l=2889;
+ i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
+ bh=/5fSpP51PHXB+k25lXRZKfzlV436exQDvCr475uJgGU=;
+ b=ehHJSEwzSqsF4f792mQRVAKObHEGtp9kyTu5QWXbyfkf9OkmWerfyyPQLmPyHjVeSVrPEFBlp
+ FaN6LPT0QJlAI45okwqC6skYxTTUAdnRrZZ8q90zhy7qAZuoGA5OY1v
+X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
+ pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
+X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-By default Popen expects all the streams to be bytes-like objects but,
-in the Popen.communicate() function call, the "input" argument is a
-string, making the call fail with the error:
+This series modernizes and cleans up the ak8975 driver, migrating to
+more modern kernel APIs and cleaning up legacy code. Patches 7 through
+17 were provided by Andy Shevchenko.
 
-qemu hook error: a bytes-like object is required, not 'str'
+The series was compile-tested and ran in QEMU with i2c-stub and
+no issues were found.
 
-Fix the error by setting text mode to True in the subprocess creation.
+The patch regarding switching to devm_* functions might have to
+go through an additional revision, otherwise everything else seems
+good to go.
 
-Also fix the "SyntaxWarning: invalid escape sequence '\w'" in the regex
-used to match script names.
+Changes include:
+ - replacing usleep_range() with fsleep() for optimization
+ - migrating to iopoll macros for better device polling
+ - removing unused headers and adding new ones
+ - checkpatch.pl fixes
+ - switching driver to use devm_* functions
 
-Signed-off-by: Massimiliano Minella <massimiliano.minella@se.com>
+v2:
+ - PATCH 1: reverted alphabetical header ordering per logical change
+   separation
+ - PATCH 2: added newline between fsleep() and return
+ - PATCH 3: fixed open parenthesis formatting
+ - PATCH 4: fixed whitespace issues, added <linux/time.h> for
+   USEC_PER_MSEC macro
+v3:
+ - PATCH 1 & 2: split alphabetical ordering and header removal into two
+   separate patches
+ - PATCH 4: commit message fix
+ - PATCH 5 & 6: split error handling and polling loop replacement into
+   two separate patches
+v4:
+ - PATCH 7-17: am Andy's changes into this series
+ - PATCH 2, 5, 6: fixup Andy's changes to existing patches
+
+Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
 ---
- recipes-extended/libvirt/libvirt/hook_support.py | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Andy Shevchenko (11):
+      iio: magnetometer: ak8975: pass conversion timeouts as arguments
+      iio: magnetometer: ak8975: avoid using temporary variable
+      iio: magnetometer: ak8975: drop duplicate NULL check
+      iio: magnetometer: ak8975: remove duplicate error message
+      iio: magnetometer: ak8975: reduce usage of magic lengths of the buffer
+      iio: magnetometer: ak8975: unify return code variable name
+      iio: magnetometer: ak8975: switch to using managed resources
+      iio: magnetometer: ak8975: consistently use 'data' parameter
+      iio: magnetometer: ak8975: unify messages with help of dev_err_probe()
+      iio: magnetometer: ak8975: use temporary variable for struct device
+      iio: magnetometer: ak8975: make use of the macros from bits.h
 
-diff --git recipes-extended/libvirt/libvirt/hook_support.py recipes-extended/libvirt/libvirt/hook_support.py
-index 7c5e2a94..63e78b79 100755
---- recipes-extended/libvirt/libvirt/hook_support.py
-+++ recipes-extended/libvirt/libvirt/hook_support.py
-@@ -35,7 +35,7 @@ def main():
- 			stdin_save = sys.stdin.readlines()
- 		# Match the name name of the hook + a dash + atleast
- 		# one alpha-numeric character.
--		matcher = re.compile( "%s-\w+" % hook_name )
-+		matcher = re.compile( rf"%s-\w+" % hook_name )
- 		for file_name in sorted( os.listdir( hook_dir ) ):
- 			file_path = os.path.join( hook_dir, file_name )
- 			if matcher.match( file_name ) \
-@@ -43,7 +43,7 @@ def main():
- 			   and os.path.isfile( file_path ) \
- 			   and return_value == 0:
- 				cmd = [ file_path ] + hook_args
--				p = subprocess.Popen( cmd, stdin=subprocess.PIPE )
-+				p = subprocess.Popen( cmd, stdin=subprocess.PIPE, text=True )
- 				p.communicate( input = ''.join( stdin_save ) )[0]
- 				return_value = p.wait()
- 	except Exception as e:
+Joshua Crofts (6):
+      iio: magnetometer: ak8975: sort headers alphabetically
+      iio: magnetometer: ak8975: update headers per IWYU principle
+      iio: magnetometer: ak8975: replace usleep_range() with fsleep()
+      iio: magnetometer: ak8975: change 'u8*' to 'u8 *' in cast
+      iio: magnetometer: ak8975: fix wrong errno on return
+      iio: magnetometer: ak8975: modernize polling loops with iopoll() macros
 
+ drivers/iio/magnetometer/ak8975.c | 375 ++++++++++++++++++--------------------
+ 1 file changed, 181 insertions(+), 194 deletions(-)
 ---
-base-commit: 28d26fd95397bf575e65fcca0cbb302b1e9bc7ff
-change-id: 20260107-fix_libvirt_hook_script-c31e952080e9
+base-commit: eade2b843d9b1f668fc1775f15611bb0a1999cd9
+change-id: 20260423-magnetometer-fixes-18b993041763
 
 Best regards,
------BEGIN PGP SIGNATURE-----
-
-iQIzBAABCgAdFiEEmyckwKYPNcpMkpYoTLqAMKbmymMFAmleiv0ACgkQTLqAMKbm
-ymMqMg//Tf36TeanEuR7dC2FhYcBCxEGl+hoG3OGpD4CJNLmUSN37aqCByV5P0kM
-2Tc9JKFZr7fXTNTtkmUoiBRm+3+evDliwdQOCRhGK5Ujen2cYP1BTd8hhkHvzb3U
-mswUqFOCEFeCkqt6j/dYc5JtJ//9S22sATEQ6fdUrLLoZRsCRy6we1qXK+Fmpkd0
-7UdQd4WLKjFTg+mIGQ3MdEGI9TP5+EcLHziKhb6AnLZ0S0ejV3xdjrnNDneV1yMq
-xisdj3Car6N1k39+9aMWYssOUiibKeiQLz0YKJayCfoIk69QtM5bnAx7QNquroAa
-fbC7jFjqnSq4yvtlBjQ5d1MuFGSHlE7RSSd6DSz+wbkte4zAFbKWushuGxS08Hf/
-qYo9aSZv+ifbB1uPfH49/C3MLp7j+its2l8KTGUbHfwe9yN4IWT1F5cYgJEzeOuO
-WjP8G22ym4h/82w+2C0de6eAYCNAL5BuXFaAJfxC74fb2UIn/rh6zGIn6m+EK8sp
-AvclYgU1SHwWNUPzCchdSJP6twIhESHdPbMJLxSpwJVT0IYg5ONod4/lS3JFKpvI
-bjpF18k0b3orSeS61KyEUiXkazDa34I9biml0TC00wW2I/13Z3c36ztamKHmUmmv
-rLEfAunD20nlsbxfXCApgEMwt0OoeiueeI/BKm/9raoYqcmJvdg=
-=pK58
------END PGP SIGNATURE-----
 -- 
-Massimiliano Minella <massimiliano.minella@se.com>
+Joshua Crofts <joshua.crofts1@gmail.com>
 
