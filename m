@@ -1,11 +1,11 @@
 From: Joshua Crofts <joshua.crofts1@gmail.com>
-Date: Mon, 04 May 2026 11:48:14 +0200
-Subject: [PATCH v4 02/17] iio: magnetometer: ak8975: update headers per
- IWYU principle
+Date: Mon, 04 May 2026 11:48:15 +0200
+Subject: [PATCH v4 03/17] iio: magnetometer: ak8975: replace usleep_range()
+ with fsleep()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260504-magnetometer-fixes-v4-2-a291c2a7c71a@gmail.com>
+Message-Id: <20260504-magnetometer-fixes-v4-3-a291c2a7c71a@gmail.com>
 References: <20260504-magnetometer-fixes-v4-0-a291c2a7c71a@gmail.com>
 In-Reply-To: <20260504-magnetometer-fixes-v4-0-a291c2a7c71a@gmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -13,71 +13,52 @@ To: Jonathan Cameron <jic23@kernel.org>,
  =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
  Andy Shevchenko <andy@kernel.org>
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joshua Crofts <joshua.crofts1@gmail.com>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+ Joshua Crofts <joshua.crofts1@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777888111; l=1776;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777888111; l=1188;
  i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
- bh=BdAwGxFbW7o2amP8FH9H+4YQxsDM8p5KHZL35H1tc4w=;
- b=gCXO8QDFJElmD8P9ntRVSiZLMIYN8dNWWacyJf210PxdmVwIlpTOt5TFyWw8chMlsh2RThDb4
- 0rWRC8dyGPyDT0iEprTHYtWmrh/+xPmkbg8KKB2YFLNm16I0+5+iDrr
+ bh=pYNXSLcsScB1UFEjU4yV7Zvmf3IflZ84nydrNj+FmrM=;
+ b=kdSsSuCWY1z/qJqtyJXW2Q6dxOy7BKEipYDgYV/AEIYkLhgB/KS9PsBNQ0WHoG3Wdusn3ra4Z
+ o8vIWwb6VZ1Afn3qXEoiDz7PRAiTaKcLgaEKXWnirZljidtmii020NI
 X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
  pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
 X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Remove kernel.h proxy header and unused headers (slab.h, iio/sysfs.h,
-iio/trigger.h). Add missing headers to ensure atomicity (array_size.h,
-dev_printk.h, asm/byteorder.h, irqreturn.h, minmax.h, property.h,
-types.h, wait.h).
+Replace usleep_range() calls with fsleep(), passing the minimum value
+required by the sensor for hardware delays.
 
-Audited using the include-what-you-use tool.
+fsleep() automatically selects the optimal sleep mechanism, simplifying
+driver code and time management.
 
-Co-developed-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
 ---
- drivers/iio/magnetometer/ak8975.c | 13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+ drivers/iio/magnetometer/ak8975.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/iio/magnetometer/ak8975.c b/drivers/iio/magnetometer/ak8975.c
-index 569cd6fa839aec6ee8758a261d0e659fc20131c6..dac0a90c33eebd43f8aeed846c9cbf5fd1a6ab91 100644
+index dac0a90c33eebd43f8aeed846c9cbf5fd1a6ab91..a84a05a1b64280e26c428e9752a39380e386c234 100644
 --- a/drivers/iio/magnetometer/ak8975.c
 +++ b/drivers/iio/magnetometer/ak8975.c
-@@ -7,24 +7,29 @@
-  * Copyright (c) 2010, NVIDIA Corporation.
-  */
- 
-+#include <linux/array_size.h>
- #include <linux/bitops.h>
- #include <linux/delay.h>
-+#include <linux/dev_printk.h>
- #include <linux/err.h>
- #include <linux/gpio/consumer.h>
- #include <linux/i2c.h>
- #include <linux/interrupt.h>
--#include <linux/kernel.h>
-+#include <linux/iopoll.h>
-+#include <linux/minmax.h>
- #include <linux/mod_devicetable.h>
- #include <linux/module.h>
- #include <linux/mutex.h>
- #include <linux/pm_runtime.h>
-+#include <linux/property.h>
- #include <linux/regulator/consumer.h>
--#include <linux/slab.h>
-+#include <linux/types.h>
-+#include <linux/wait.h>
+@@ -461,7 +461,8 @@ static int ak8975_power_on(const struct ak8975_data *data)
+ 	 * and the minimum wait time before mode setting is 100us, in
+ 	 * total 300us. Add some margin and say minimum 500us here.
+ 	 */
+-	usleep_range(500, 1000);
++	fsleep(500);
 +
-+#include <asm/byteorder.h>
+ 	return 0;
+ }
  
- #include <linux/iio/buffer.h>
- #include <linux/iio/iio.h>
--#include <linux/iio/sysfs.h>
--#include <linux/iio/trigger.h>
- #include <linux/iio/trigger_consumer.h>
- #include <linux/iio/triggered_buffer.h>
+@@ -551,7 +552,7 @@ static int ak8975_set_mode(struct ak8975_data *data, enum ak_ctrl_mode mode)
  
+ 	data->cntl_cache = regval;
+ 	/* After mode change wait at least 100us */
+-	usleep_range(100, 500);
++	fsleep(100);
+ 
+ 	return 0;
+ }
 
 -- 
 2.47.3
