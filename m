@@ -1,115 +1,101 @@
-From: Joshua Crofts <joshua.crofts1@gmail.com>
-Date: Tue, 05 May 2026 13:46:14 +0200
-Subject: [PATCH v5 18/18] iio: magnetometer: ak8975: make use of the macros
- from bits.h
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH v6 00/12] Fixes and cleanups for the AD5686 IIO driver
+Date: Tue, 05 May 2026 13:35:01 +0100
+Message-Id: <20260505-ad5686-fixes-v6-0-c2d5f7be32be@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260505-magnetometer-fixes-v5-18-831b9b5550fc@gmail.com>
-References: <20260505-magnetometer-fixes-v5-0-831b9b5550fc@gmail.com>
-In-Reply-To: <20260505-magnetometer-fixes-v5-0-831b9b5550fc@gmail.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joshua Crofts <joshua.crofts1@gmail.com>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777981558; l=2953;
- i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
- bh=7tIHbpJzTq6eyf+S362H0gx+618ZgmkBgJqjoS1nCrQ=;
- b=cAge5PY5Rx6PwGz4MQm/l6nZOrDeK8tTEFIq487hceR75CoDITWN6UblUEeYcQkbZcLGiJ1Iw
- 0fdFkgs9wP2DtbSitudVfiW99wB8TAUjuo1q7eTIZ3YDZafbBV5dNjZ
-X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
- pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
-X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
+X-B4-Tracking: v=1; b=H4sIAPXj+WkC/3XOQU7EMAwF0KuMsiYoThPHYcU9EIskdWciQYsaV
+ IFGvTue2VBasfzfel++qsZz5aaeTlc181JbnUYJ+HBS5ZLGM+vaS1bWWDTOok69R0I91C9uGjt
+ OSASQ+6yEfMx8P4h4eZV8qe1zmr/v6wvc2n+GFtBGhxIdphBCdPycxvQ2nR/L9K5uS4vd6rDTV
+ jQQsfEQY4d00N1W0053omMZhpB7DAn8QbutjjvtROdMAxThxHDQ/ld7AzvtRZtsB+cdkYO/n6/
+ r+gNvkWNeoQEAAA==
+X-Change-ID: 20260426-ad5686-fixes-63ea68811bdb
+To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Stefan Popa <stefan.popa@analog.com>, Jonathan Cameron <jic23@cam.ac.uk>, 
+ Greg Kroah-Hartman <gregkh@suse.de>, 
+ Michael Auchter <michael.auchter@ni.com>, 
+ Jonathan Cameron <jic23@kernel.org>
+Cc: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>, 
+ Andy Shevchenko <andriy.shevchenko@intel.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777984508; l=2754;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=QTL82xOz4e77lhCganyluulqrithzLwRJgJ+SEVrS0o=;
+ b=AFnOwXIcenbvdgaqnoZ1yb05zzlq7l95VJ/zImtkQUMDy/6zycXEv9kNbDp1tkcgBYIJFb2Ft
+ gRMGyzynIOZB1HEvY55BZ11NlY/Qd26xyhXyrcmXzTKrZ7S5Cjq+eDb
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+This is the first series of three on updating the AD5686 driver.
 
-Make use of BIT() and GENMASK() where it makes sense.
+A bigger patch series was sent before ("Extend device support for AD5686 driver"):
 
-Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Co-developed-by: Joshua Crofts <joshua.crofts1@gmail.com>
-Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
+https://lore.kernel.org/r/20260422-ad5313r-iio-support-v1-0-ed7dca001d1b@analog.com
+
+This one adds a number of cleanups and fixes, like:
+- Refactor include headers (IWYU);
+- Remove redundant register definition;
+- Drop enum chip id in favor of per-device chip_info structs;
+- Fix internal voltage reference control for single-channel devices;
+- Acquire lock when doing power down control;
+- Fix powerdown control for dual-channel devices;
+
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/magnetometer/ak8975.c | 23 ++++++++---------------
- 1 file changed, 8 insertions(+), 15 deletions(-)
+Changes in v6:
+- Protect powerdown masks on read access too.
+- Minor changes to power down handling and constants.
+- Link to v5: https://lore.kernel.org/r/20260501-ad5686-fixes-v5-0-0b2f45488418@analog.com
 
-diff --git a/drivers/iio/magnetometer/ak8975.c b/drivers/iio/magnetometer/ak8975.c
-index 1c96df3e1ad95d268470609c61be8ee4a709675d..ea024390b36d4a13185ec605de9d808655cab261 100644
---- a/drivers/iio/magnetometer/ak8975.c
-+++ b/drivers/iio/magnetometer/ak8975.c
-@@ -45,8 +45,7 @@
- #define AK8975_REG_INFO			0x01
- 
- #define AK8975_REG_ST1			0x02
--#define AK8975_REG_ST1_DRDY_SHIFT	0
--#define AK8975_REG_ST1_DRDY_MASK	(1 << AK8975_REG_ST1_DRDY_SHIFT)
-+#define AK8975_REG_ST1_DRDY_MASK	BIT(0)
- 
- #define AK8975_REG_HXL			0x03
- #define AK8975_REG_HXH			0x04
-@@ -55,15 +54,12 @@
- #define AK8975_REG_HZL			0x07
- #define AK8975_REG_HZH			0x08
- #define AK8975_REG_ST2			0x09
--#define AK8975_REG_ST2_DERR_SHIFT	2
--#define AK8975_REG_ST2_DERR_MASK	(1 << AK8975_REG_ST2_DERR_SHIFT)
-+#define AK8975_REG_ST2_DERR_MASK	BIT(2)
- 
--#define AK8975_REG_ST2_HOFL_SHIFT	3
--#define AK8975_REG_ST2_HOFL_MASK	(1 << AK8975_REG_ST2_HOFL_SHIFT)
-+#define AK8975_REG_ST2_HOFL_MASK	BIT(3)
- 
- #define AK8975_REG_CNTL			0x0A
--#define AK8975_REG_CNTL_MODE_SHIFT	0
--#define AK8975_REG_CNTL_MODE_MASK	(0xF << AK8975_REG_CNTL_MODE_SHIFT)
-+#define AK8975_REG_CNTL_MODE_MASK	GENMASK(3, 0)
- #define AK8975_REG_CNTL_MODE_POWER_DOWN	0x00
- #define AK8975_REG_CNTL_MODE_ONCE	0x01
- #define AK8975_REG_CNTL_MODE_SELF_TEST	0x08
-@@ -95,8 +91,7 @@
- 
- #define AK09912_REG_ST1			0x10
- 
--#define AK09912_REG_ST1_DRDY_SHIFT	0
--#define AK09912_REG_ST1_DRDY_MASK	(1 << AK09912_REG_ST1_DRDY_SHIFT)
-+#define AK09912_REG_ST1_DRDY_MASK	BIT(0)
- 
- #define AK09912_REG_HXL			0x11
- #define AK09912_REG_HXH			0x12
-@@ -107,8 +102,7 @@
- #define AK09912_REG_TMPS		0x17
- 
- #define AK09912_REG_ST2			0x18
--#define AK09912_REG_ST2_HOFL_SHIFT	3
--#define AK09912_REG_ST2_HOFL_MASK	(1 << AK09912_REG_ST2_HOFL_SHIFT)
-+#define AK09912_REG_ST2_HOFL_MASK	BIT(3)
- 
- #define AK09912_REG_CNTL1		0x30
- 
-@@ -117,8 +111,7 @@
- #define AK09912_REG_CNTL_MODE_ONCE	0x01
- #define AK09912_REG_CNTL_MODE_SELF_TEST	0x10
- #define AK09912_REG_CNTL_MODE_FUSE_ROM	0x1F
--#define AK09912_REG_CNTL2_MODE_SHIFT	0
--#define AK09912_REG_CNTL2_MODE_MASK	(0x1F << AK09912_REG_CNTL2_MODE_SHIFT)
-+#define AK09912_REG_CNTL2_MODE_MASK	GENMASK(4, 0)
- 
- #define AK09912_REG_CNTL3		0x32
- 
-@@ -840,7 +833,7 @@ static const struct iio_chan_spec ak8975_channels[] = {
- 	IIO_CHAN_SOFT_TIMESTAMP(3),
- };
- 
--static const unsigned long ak8975_scan_masks[] = { 0x7, 0 };
-+static const unsigned long ak8975_scan_masks[] = { GENMASK(2, 0), 0 };
- 
- static const struct iio_info ak8975_info = {
- 	.read_raw = &ak8975_read_raw,
+Changes in v5:
+- Drop I2C read operation changes.
+- Create helpers for reading and writing powerdown mask bits
+- Link to v4: https://lore.kernel.org/r/20260429-ad5686-fixes-v4-0-bb8f1cbd68e1@analog.com
 
+Changes in v4:
+- Address issues spotted by sashiko.
+- Link to v3: https://lore.kernel.org/r/20260428-ad5686-fixes-v3-0-9cff7bd67a15@analog.com
+
+Changes in v3:
+- Misc changes like parenthesis removal and line breaks
+- Link to v2: https://lore.kernel.org/r/20260427-ad5686-fixes-v2-0-188e05199368@analog.com
+
+Changes in v2:
+- Bring fixes first and cleanups later
+- Link to v1: https://lore.kernel.org/r/20260426-ad5686-fixes-v1-0-7c946a77794e@analog.com
+
+---
+Rodrigo Alencar (12):
+      iio: dac: ad5686: fix ref bit initialization for single-channel parts
+      iio: dac: ad5686: fix input raw value check
+      iio: dac: ad5686: acquire lock when doing powerdown control
+      iio: dac: ad5686: fix powerdown control on dual-channel devices
+      iio: dac: ad5686: refactor include headers
+      iio: dac: ad5686: remove redundant register definition
+      iio: dac: ad5686: drop enum id
+      iio: dac: ad5686: add of_match table to the spi driver
+      iio: dac: ad5686: add helpers to handle powerdown masks
+      iio: dac: ad5686: add control_sync() for single-channel devices
+      iio: dac: ad5686: cleanup doc header of local structs
+      iio: dac: ad5686: create bus ops struct
+
+ drivers/iio/dac/ad5686-spi.c |  73 ++++--
+ drivers/iio/dac/ad5686.c     | 542 ++++++++++++++++++++++---------------------
+ drivers/iio/dac/ad5686.h     | 132 ++++++-----
+ drivers/iio/dac/ad5696-i2c.c |  80 ++++---
+ 4 files changed, 438 insertions(+), 389 deletions(-)
+---
+base-commit: 39b80c5c9830d12d2d6531059001301c4265322a
+change-id: 20260426-ad5686-fixes-63ea68811bdb
+
+Best regards,
 -- 
-2.47.3
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
