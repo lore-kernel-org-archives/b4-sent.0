@@ -1,11 +1,11 @@
 From: Joshua Crofts <joshua.crofts1@gmail.com>
-Date: Tue, 05 May 2026 13:46:06 +0200
-Subject: [PATCH v5 10/18] iio: magnetometer: ak8975: drop duplicate NULL
- check
+Date: Tue, 05 May 2026 13:46:07 +0200
+Subject: [PATCH v5 11/18] iio: magnetometer: ak8975: remove duplicate error
+ message
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260505-magnetometer-fixes-v5-10-831b9b5550fc@gmail.com>
+Message-Id: <20260505-magnetometer-fixes-v5-11-831b9b5550fc@gmail.com>
 References: <20260505-magnetometer-fixes-v5-0-831b9b5550fc@gmail.com>
 In-Reply-To: <20260505-magnetometer-fixes-v5-0-831b9b5550fc@gmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -16,11 +16,11 @@ Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org,
  Joshua Crofts <joshua.crofts1@gmail.com>, 
  Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1777981558; l=997;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1777981558; l=1086;
  i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
- bh=XCs0GN+NbiGoXI2dfBbrODJcBvdjPZeVOf17jMKlR/o=;
- b=dHnX2TM5lF4yuVOe+fssLPd8Vy7wN2ARVf04Zv71ct3NnRWHaMx6oTNgTU5h10ownvM7cYjFV
- +xqmgtS7nGaAECPiU5bEmyk2CZzCIMAcuchUpRTMHzVQAKnbZry4SQL
+ bh=TunL/JHu5yEjyxC5fcTuS8qbC8VTvXFU4WWogOsSh38=;
+ b=UWFAVkyfhVY7WQOqC9mXRginoYEKuqTo2p0VDaaIBSJ5Zm/jvrPxKsD44HgDgKFOoFO71NwAi
+ 5HAuO9g3dqrAFNrs5Y9fvzSI9Pwk81hVzflsSbx9D2SK63v1dJYIE3t
 X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
  pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
 X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
@@ -28,29 +28,38 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 
-The gpiod_set_consumer_name() is NULL-aware, no need to perform the same
-check in the caller.
+The devm_request_irq() already prints an error message.
+Remove the duplicate.
 
 Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
 ---
- drivers/iio/magnetometer/ak8975.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ drivers/iio/magnetometer/ak8975.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
 
 diff --git a/drivers/iio/magnetometer/ak8975.c b/drivers/iio/magnetometer/ak8975.c
-index c36d068081066ef6b42cc2f9c3c2e8978ec51623..7a971de2eebf127fc8ab68300fb82f38d9476c0c 100644
+index 7a971de2eebf127fc8ab68300fb82f38d9476c0c..f58cbafb491a5e039b22fc928a6c58dd6ec0f297 100644
 --- a/drivers/iio/magnetometer/ak8975.c
 +++ b/drivers/iio/magnetometer/ak8975.c
-@@ -918,8 +918,7 @@ static int ak8975_probe(struct i2c_client *client)
- 	eoc_gpiod = devm_gpiod_get_optional(&client->dev, NULL, GPIOD_IN);
- 	if (IS_ERR(eoc_gpiod))
- 		return PTR_ERR(eoc_gpiod);
--	if (eoc_gpiod)
--		gpiod_set_consumer_name(eoc_gpiod, "ak_8975");
-+	gpiod_set_consumer_name(eoc_gpiod, "ak_8975");
+@@ -584,17 +584,14 @@ static int ak8975_setup_irq(struct ak8975_data *data)
+ 	rc = devm_request_irq(&client->dev, irq, ak8975_irq_handler,
+ 			      IRQF_TRIGGER_RISING,
+ 			      dev_name(&client->dev), data);
+-	if (rc < 0) {
+-		dev_err(&client->dev, "irq %d request failed: %d\n", irq, rc);
++	if (rc < 0)
+ 		return rc;
+-	}
  
- 	/*
- 	 * According to AK09911 datasheet, if reset GPIO is provided then
+ 	data->eoc_irq = irq;
+ 
+ 	return rc;
+ }
+ 
+-
+ /*
+  * Perform some start-of-day setup, including reading the asa calibration
+  * values and caching them.
 
 -- 
 2.47.3
