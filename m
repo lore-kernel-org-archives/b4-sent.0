@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Wed, 06 May 2026 08:54:40 -0700
-Subject: [PATCH v2 4/6] mm: hugetlb: Use error variable in
- alloc_hugetlb_folio
+Date: Wed, 06 May 2026 08:54:41 -0700
+Subject: [PATCH v2 5/6] mm: hugetlb: Move mem_cgroup_charge_hugetlb()
+ earlier in allocation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260506-hugetlb-open-up-v2-4-826a0c5f28fc@google.com>
+Message-Id: <20260506-hugetlb-open-up-v2-5-826a0c5f28fc@google.com>
 References: <20260506-hugetlb-open-up-v2-0-826a0c5f28fc@google.com>
 In-Reply-To: <20260506-hugetlb-open-up-v2-0-826a0c5f28fc@google.com>
 To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
@@ -21,84 +21,85 @@ To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>,
 Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778082886; l=2128;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778082886; l=2460;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=eGP3URO25a2yJfXjXfljDSZfxvkXYHSvdYeyD7MI+ek=;
- b=7RdhDIfpu2hRHtT21qfwETAVWbSePUPaxz9JrwOIiwwAWtPE6ipWXGpk2G8+NkmVEBhRnCSRm
- dv6BvSt6FHdDvL8xQXod9qkE63QOT2QnsHlTzCbxf64nENwkYBB79re
+ bh=MPbeDKNyLcbnXQ1xH9ZoNE3gcjhnProATlB2NU584e0=;
+ b=MOe7vO6p8nmK9LtfzZoHWqxWO9rab9/pRCiXIaTQpCsX0qT0RUFUF8USA1VfyA7gflpQBiBnN
+ YGA/0QFBYpYB+KI9ayI9sSIXOmTRv/VCNKint5FcRJbYweNG5u6hQDt
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Refactor alloc_hugetlb_folio to use a local variable for returning error
-codes. Instead of returning ERR_PTR(-ENOSPC) at the end of the error
-path, assign -ENOSPC to a return variable at each failure point and
-return that variable at the end.
+Move mem_cgroup_charge_hugetlb() earlier in the folio allocation
+process. This change draws a cleaner line between memcg charging and the
+subsequent hugetlb-specific reservation logic for VMAs and subpools.
 
-This allows the cleanup goto targets to be used with other errors in a
-later patch.
+While it would be ideal to make all accounting and reservations perfectly
+symmetric, mem_cgroup_charge_hugetlb() is a complex operation that cannot
+be performed under the hugetlb_lock. Moving the charge to this earlier
+point ensures that memcg charging is handled before the code begins
+manipulating subpool and VMA-specific state. These two types of accounting
+will be separated in a future patch.
 
-No functional change intended.
+If mem_cgroup_charge_hugetlb() fails, the code now branches to
+out_subpool_put to ensure the folio is freed and the subpool references are
+handled correctly.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- mm/hugetlb.c | 15 +++++++++++----
- 1 file changed, 11 insertions(+), 4 deletions(-)
+ mm/hugetlb.c | 31 ++++++++++++++++++-------------
+ 1 file changed, 18 insertions(+), 13 deletions(-)
 
 diff --git a/mm/hugetlb.c b/mm/hugetlb.c
-index 3395de4d0999a..68c21305fc86a 100644
+index 68c21305fc86a..4159b3565a9be 100644
 --- a/mm/hugetlb.c
 +++ b/mm/hugetlb.c
-@@ -2894,8 +2894,10 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 	 */
- 	if (map_chg) {
- 		gbl_chg = hugepage_subpool_get_pages(spool, 1);
--		if (gbl_chg < 0)
-+		if (gbl_chg < 0) {
-+			ret = -ENOSPC;
- 			goto out_end_reservation;
-+		}
- 	} else {
- 		/*
- 		 * If we have the vma reservation ready, no need for extra
-@@ -2911,13 +2913,17 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 	if (map_chg) {
- 		ret = hugetlb_cgroup_charge_cgroup_rsvd(
- 			idx, pages_per_huge_page(h), &h_cg);
--		if (ret)
-+		if (ret) {
-+			ret = -ENOSPC;
- 			goto out_subpool_put;
-+		}
+@@ -2975,6 +2975,24 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
+ 
+ 	spin_unlock_irq(&hugetlb_lock);
+ 
++	ret = mem_cgroup_charge_hugetlb(folio, gfp | __GFP_RETRY_MAYFAIL);
++	/*
++	 * Unconditionally increment NR_HUGETLB here. If it turns out that
++	 * mem_cgroup_charge_hugetlb failed, then immediately free the page and
++	 * decrement NR_HUGETLB.
++	 */
++	lruvec_stat_mod_folio(folio, NR_HUGETLB, pages_per_huge_page(h));
++
++	if (ret == -ENOMEM) {
++		free_huge_folio(folio);
++		/*
++		 * Skip uncharging hugetlb_cgroup since the charges
++		 * were committed to the folio and freeing the folio
++		 * would have cleared those up.
++		 */
++		goto out_subpool_put;
++	}
++
+ 	hugetlb_set_folio_subpool(folio, spool);
+ 
+ 	if (map_chg != MAP_CHG_ENFORCED) {
+@@ -3002,19 +3020,6 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
+ 		}
  	}
  
- 	ret = hugetlb_cgroup_charge_cgroup(idx, pages_per_huge_page(h), &h_cg);
--	if (ret)
-+	if (ret) {
-+		ret = -ENOSPC;
- 		goto out_uncharge_cgroup_reservation;
-+	}
+-	ret = mem_cgroup_charge_hugetlb(folio, gfp | __GFP_RETRY_MAYFAIL);
+-	/*
+-	 * Unconditionally increment NR_HUGETLB here. If it turns out that
+-	 * mem_cgroup_charge_hugetlb failed, then immediately free the page and
+-	 * decrement NR_HUGETLB.
+-	 */
+-	lruvec_stat_mod_folio(folio, NR_HUGETLB, pages_per_huge_page(h));
+-
+-	if (ret == -ENOMEM) {
+-		free_huge_folio(folio);
+-		return ERR_PTR(-ENOMEM);
+-	}
+-
+ 	return folio;
  
- 	spin_lock_irq(&hugetlb_lock);
- 
-@@ -2938,6 +2944,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 		folio = alloc_buddy_hugetlb_folio_with_mpol(h, mpol, nid, nodemask);
- 		if (!folio) {
- 			mpol_cond_put(mpol);
-+			ret = -ENOSPC;
- 			goto out_uncharge_cgroup;
- 		}
- 		spin_lock_irq(&hugetlb_lock);
-@@ -3030,7 +3037,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- out_end_reservation:
- 	if (map_chg != MAP_CHG_ENFORCED)
- 		vma_end_reservation(h, vma, addr);
--	return ERR_PTR(-ENOSPC);
-+	return ERR_PTR(ret);
- }
- 
- static __init void *alloc_bootmem(struct hstate *h, int nid, bool node_exact)
+ out_uncharge_cgroup:
 
 -- 
 2.54.0.545.g6539524ca2-goog
