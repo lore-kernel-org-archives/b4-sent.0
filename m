@@ -1,118 +1,166 @@
-From: Rohan Joshi <rohan1sj@cadence.com>
-Date: Wed, 06 May 2026 14:34:47 +0530
-Subject: [PATCH v2 2/2] mmc: sdhci-cadence: add CQE support
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH v11 00/11] ADF41513/ADF41510 PLL frequency synthesizers
+Date: Wed, 06 May 2026 15:08:44 +0100
+Message-Id: <20260506-adf41513-iio-driver-v11-0-2b7e99cfe8f2@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260506-cdns_sdhci_cqe-support-v2-2-754fe4de8b65@cadence.com>
-References: <20260506-cdns_sdhci_cqe-support-v2-0-754fe4de8b65@cadence.com>
-In-Reply-To: <20260506-cdns_sdhci_cqe-support-v2-0-754fe4de8b65@cadence.com>
-To: Ulf Hansson <ulfh@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Masahiro Yamada <yamada.masahiro@socionext.com>, 
- Adrian Hunter <adrian.hunter@intel.com>
-Cc: linux-mmc@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, mparab@cadence.com, pawell@cadence.com, 
- sjakhade@cadence.com, mpillai@cadence.com, rohan1sj@cadence.com
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778058299; l=2938;
- i=rohan1sj@cadence.com; s=20260406; h=from:subject:message-id;
- bh=eE87dnPJ2d6imQCE9+pL8jia/mRxfjYC8/OHMviUC94=;
- b=hNsboodWZoL6e9MwECUReMdw7cdWnM+8PutK9IQrFH6/y/9/DrH9i7T6dj0XUcl5GxUQipuEh
- rkntK4kDQ1MD0Pty3q6N/3vMByIrsT+1J3GfhvlgnahkiNG1w8R8oAC
-X-Developer-Key: i=rohan1sj@cadence.com; a=ed25519;
- pk=YuwylizMVlVj8I4+VPMZ6xrFR2wyqJAWZyj90OVZgD0=
-X-Endpoint-Received: by B4 Relay for rohan1sj@cadence.com/20260406 with auth_id=723
+X-B4-Tracking: v=1; b=H4sIAG1L+2kC/33SzU7DMAwA4FeZciYodv458R6IQxonWyRYUYsq0
+ NR3J52EWpSWo634S2znxsY0lDSyp9ONDWkqY+mvNQB4OLF4Cddz4oVqgqFADQCCB8oKNEheSs9
+ pKFMaeAgxuGCzEy6xWvkxpFy+7uzLa40vZfzsh+/7LRMs2f+9CbjgSNl1SWSKJj2Ha3jrz4+xf
+ 2cLOOGKIPh9BCvSJfTBSdLWywaRv4gRINw+IpeXSAJpIaSsXIOoDQJmH1EVoa6zZKxDBNsgeoO
+ g3Ef0fSYxOcCARKFBzAaRB4M1FYlZGZS+nutig9gVwaN27DJYkUg6GzqtfYO4FZHioB1XEUeEC
+ myMyugG8RsED9rxFQGJWZCwRlrVICBWpZYf/Dax7CcbEMqQVvrvfuZ5/gGhnN0EJwMAAA==
+X-Change-ID: 20251110-adf41513-iio-driver-aaca8a7f808e
+To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-doc@vger.kernel.org
+Cc: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, 
+ Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Andrew Morton <akpm@linux-foundation.org>, Petr Mladek <pmladek@suse.com>, 
+ Steven Rostedt <rostedt@goodmis.org>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ Rasmus Villemoes <linux@rasmusvillemoes.dk>, 
+ Sergey Senozhatsky <senozhatsky@chromium.org>, 
+ Shuah Khan <skhan@linuxfoundation.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778076527; l=5889;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=9T34lIYMMufUI1hOrDM8Ghom9aEkOAJSf/mp9A1tSPM=;
+ b=w03wwz4pCaU83jzJ5vDPve6ZZg/StSnoLJ+nCVF4P5wEXc0bBzKYtDFKYGR6F9rUO3hTLAgaJ
+ psUZXlooX5hBlJkLJJo/N1KDw7+fIvW+ZMuPAaFaGzmSIXMf2xJaMtl
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add CQE (Command Queuing Engine) support for all platforms
-which use sdhci_cdns_ops. Read additional host capability
-register to detect CQE presence
+This patch series adds support for the Analog Devices ADF41513 and ADF41510
+ultralow noise PLL frequency synthesizers. These devices are designed for
+implementing local oscillators (LOs) in high-frequency applications.
+The ADF41513 covers frequencies from 1 GHz to 26.5 GHz, while the ADF41510
+operates from 1 GHz to 10 GHz.
 
-Signed-off-by: Rohan Joshi <rohan1sj@cadence.com>
+Key features supported by this driver:
+- Integer-N and fractional-N operation modes
+- High maximum PFD frequency (250 MHz integer-N, 125 MHz fractional-N)
+- 25-bit fixed modulus or 49-bit variable modulus fractional modes
+- Digital lock detect functionality
+- Phase resync capability for consistent output phase
+- Load Enable vs Reference signal syncronization
+
+The series includes:
+1. PLL driver implementation
+2. Device tree bindings documentation
+3. IIO ABI documentation
+
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/mmc/host/Kconfig         |  1 +
- drivers/mmc/host/sdhci-cadence.c | 13 ++++---------
- 2 files changed, 5 insertions(+), 9 deletions(-)
+Changes in v11:
+- Cleanup ext info attribute read/write callbacks.
+- Adjust attribute names in the documentation.
+- Turn s64 compose macros into static inline functions.
+- Link to v10: https://lore.kernel.org/r/20260415-adf41513-iio-driver-v10-0-df61046d5457@analog.com
 
-diff --git a/drivers/mmc/host/Kconfig b/drivers/mmc/host/Kconfig
-index 4f060d3e5636..2cc8133e8ef3 100644
---- a/drivers/mmc/host/Kconfig
-+++ b/drivers/mmc/host/Kconfig
-@@ -293,6 +293,7 @@ config MMC_SDHCI_CADENCE
- 	depends on MMC_SDHCI_PLTFM
- 	depends on OF
- 	select MMC_SDHCI_IO_ACCESSORS
-+	select MMC_CQHCI
- 	help
- 	  This selects the Cadence SD/SDIO/eMMC driver.
- 
-diff --git a/drivers/mmc/host/sdhci-cadence.c b/drivers/mmc/host/sdhci-cadence.c
-index 14b12272dae9..1aba8c89821b 100644
---- a/drivers/mmc/host/sdhci-cadence.c
-+++ b/drivers/mmc/host/sdhci-cadence.c
-@@ -40,7 +40,7 @@
- 
- /* Host capabilities not covered by the standard capability registers (SRS16-SRS18) */
- #define SDHCI_CDNS_HRS30		0x78	/* Host capabilities */
--#define   SDHCI_CDNS_HRS30_CQE_SUPPORTED	BIT(0)
-+#define SDHCI_CDNS_HRS30_CQE_SUPPORTED	BIT(0)
- 
- /* Read block gap */
- #define SDHCI_CDNS_HRS37		0x94	/* interface mode select */
-@@ -94,7 +94,7 @@ struct sdhci_cdns_priv {
- 	void __iomem *ctl_addr;	/* write control */
- 	spinlock_t wrlock;	/* write lock */
- 	bool enhanced_strobe;
--	bool cqe_support;   /* Command Queuing Engine support */
-+	bool cqe_support;	/* Command Queuing Engine support */
- 	void (*priv_writel)(struct sdhci_cdns_priv *priv, u32 val, void __iomem *reg);
- 	struct reset_control *rst_hw;
- 	unsigned int nr_phy_params;
-@@ -417,16 +417,14 @@ static int sdhci_cdns_cqe_add_host(struct sdhci_host *host, struct platform_devi
- 	bool dma64;
- 	int ret;
- 
--	/* setup SDHCI host first */
- 	ret = sdhci_setup_host(host);
--
- 	if (ret)
- 		return ret;
- 
--	/* Init CQE */
- 	cq_host = cqhci_pltfm_init(pdev);
- 	if (IS_ERR(cq_host)) {
- 		ret = PTR_ERR(cq_host);
-+		dev_err_probe(&pdev->dev, ret, "cqhci platform init failed\n");
- 		goto cleanup;
- 	}
- 
-@@ -438,10 +436,9 @@ static int sdhci_cdns_cqe_add_host(struct sdhci_host *host, struct platform_devi
- 
- 	host->mmc->caps2 |= MMC_CAP2_CQE | MMC_CAP2_CQE_DCMD;
- 
--	/* Finally initialize CQHCI */
- 	ret = cqhci_init(cq_host, host->mmc, dma64);
- 	if (ret) {
--		dev_err(mmc_dev(host->mmc), "Failed to initialize CQHCI: %d\n", ret);
-+		dev_err_probe(&pdev->dev, ret, "cqhci init failed\n");
- 		goto cleanup;
- 	}
- 
-@@ -450,11 +447,9 @@ static int sdhci_cdns_cqe_add_host(struct sdhci_host *host, struct platform_devi
- 	if (ret)
- 		goto cleanup;
- 
--	dev_info(mmc_dev(host->mmc), "CQE init: success\n");
- 	return 0;
- 
- cleanup:
--	dev_err(mmc_dev(host->mmc), "CQE init: failed for %s\n", mmc_hostname(host->mmc));
- 	sdhci_cleanup_host(host);
- 	return ret;
- }
+Changes in v10:
+- Drop simple_strntoull() changes
+- Create kstrtodec64() and kstrtoudec64() helpers. 
+- Add IIO value format for 64-bit decimal values.
+- PLL driver code implements new decimal format for frequency attr. 
+- Link to v9: https://lore.kernel.org/r/20260320-adf41513-iio-driver-v9-0-132f0d076374@analog.com
 
+Changes in v9:
+- Expose simple_strntoull() in a safer prototype instead of new kstrntoull()
+- Link to v8: https://lore.kernel.org/r/20260303-adf41513-iio-driver-v8-0-8dd2417cc465@analog.com
+
+Changes in v8:
+- Add new function kstrntoull() to lib/kstrtox.c and tests to lib/test-kstrtox.c.
+- Drop custom iio u64 parser, replacing it for kstrntoull().
+- Dedicated MAINTAINERS entry for drivers/iio/test/iio-test-fixpoint-parse.c.
+- Link to v7: https://lore.kernel.org/r/20260216-adf41513-iio-driver-v7-0-b0ed387ab559@analog.com
+
+Changes in v7:
+- Addressed minor suggestions.
+- frequency_resolution ABI for AD4350 removed in favor of generic one.
+- Link to v6: https://lore.kernel.org/r/20260130-adf41513-iio-driver-v6-0-cf46239026bc@analog.com
+
+Changes in v6:
+- Drop usage of simple_strtoull().
+- Implement better overflow checks with iio_safe_strntou64().
+- Link to v5: https://lore.kernel.org/r/20260123-adf41513-iio-driver-v5-0-2dce812a2dda@analog.com
+
+Changes in v5:
+- Drop local parsing of 64-bit plus fractional parts
+- Add iio_str_to_fixpoint64() to iio core with parsing tests
+- Add DT property dependency for adi,charge-pump-resistor-ohms
+- Add local definition for ADF41513_HZ_PER_GHZ and drop units.h patch
+- Link to v4: https://lore.kernel.org/r/20260116-adf41513-iio-driver-v4-0-dbb7d6782217@analog.com
+
+Changes in v4:
+- Proper usage of units.h macros
+- Simplifications to DT property parsing
+- Adjustments to return value handling
+- Drop of simple DT property node example
+- Link to v3: https://lore.kernel.org/r/20260108-adf41513-iio-driver-v3-0-23d1371aef48@analog.com
+
+Changes in v3:
+- Use FIELD_MODIFY macro in driver implementation
+- Drop refin_frequency iio attribute
+- Drop muxout-select property from dt-bindings (and rename logic-level property)
+- Use -mhz suffix in power-up frequency property
+- Address documentation issues
+- Link to v2: https://lore.kernel.org/r/20251219-adf41513-iio-driver-v2-0-be29a83d5793@analog.com
+
+Changes in v2:
+- separate driver implementation from extra features and improve commit messages
+- use macros from units.h
+- explanation of custom parse function: adf41513_parse_uhz
+- reorganize driver data structures
+- drop clock framework support for now
+- reorganize documentation
+- Link to v1: https://lore.kernel.org/r/20251110-adf41513-iio-driver-v1-0-2df8be0fdc6e@analog.com
+
+---
+Rodrigo Alencar (11):
+      dt-bindings: iio: frequency: add adf41513
+      lib: kstrtox: add kstrtoudec64() and kstrtodec64()
+      lib: test-kstrtox: tests for kstrtodec64() and kstrtoudec64()
+      lib: math: div64: add div64_s64_rem()
+      iio: core: add decimal value formatting into 64-bit value
+      iio: test: iio-test-format: add test case for decimal format
+      iio: frequency: adf41513: driver implementation
+      iio: frequency: adf41513: handle LE synchronization feature
+      iio: frequency: adf41513: features on frequency change
+      docs: iio: add documentation for adf41513 driver
+      Documentation: ABI: testing: add common ABI file for iio/frequency
+
+ Documentation/ABI/testing/sysfs-bus-iio-frequency  |   11 +
+ .../ABI/testing/sysfs-bus-iio-frequency-adf4350    |   10 -
+ .../bindings/iio/frequency/adi,adf41513.yaml       |  215 ++++
+ Documentation/iio/adf41513.rst                     |  199 ++++
+ Documentation/iio/index.rst                        |    1 +
+ MAINTAINERS                                        |    9 +
+ drivers/iio/frequency/Kconfig                      |   10 +
+ drivers/iio/frequency/Makefile                     |    1 +
+ drivers/iio/frequency/adf41513.c                   | 1197 ++++++++++++++++++++
+ drivers/iio/industrialio-core.c                    |   46 +-
+ drivers/iio/test/iio-test-format.c                 |   97 +-
+ include/linux/iio/types.h                          |   28 +
+ include/linux/kstrtox.h                            |    3 +
+ include/linux/math64.h                             |   18 +
+ lib/kstrtox.c                                      |  105 ++
+ lib/math/div64.c                                   |   15 +
+ lib/test-kstrtox.c                                 |  156 +++
+ 17 files changed, 2080 insertions(+), 41 deletions(-)
+---
+base-commit: 39b80c5c9830d12d2d6531059001301c4265322a
+change-id: 20251110-adf41513-iio-driver-aaca8a7f808e
+
+Best regards,
 -- 
-2.34.1
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
