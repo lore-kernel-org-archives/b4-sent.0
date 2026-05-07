@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Thu, 07 May 2026 21:36:09 +0530
-Subject: [PATCH v2 1/9] power: sequencing: pcie-m2: Fix inconsistent
- function prefixes
+Date: Thu, 07 May 2026 21:36:10 +0530
+Subject: [PATCH v2 2/9] power: sequencing: pcie-m2: Allow creating serdev
+ for multiple PCI devices
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260507-pwrseq-m2-bt-v2-1-1740bd478539@oss.qualcomm.com>
+Message-Id: <20260507-pwrseq-m2-bt-v2-2-1740bd478539@oss.qualcomm.com>
 References: <20260507-pwrseq-m2-bt-v2-0-1740bd478539@oss.qualcomm.com>
 In-Reply-To: <20260507-pwrseq-m2-bt-v2-0-1740bd478539@oss.qualcomm.com>
 To: Bartosz Golaszewski <brgl@kernel.org>, 
@@ -19,69 +19,306 @@ Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org,
  Luiz Augusto von Dentz <luiz.von.dentz@intel.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 X-Mailer: b4 0.15.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2033;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8785;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=Uc7cveSGHgeTaUIcgh89hECpJqoA4JfjoqnuyhFDQqg=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBp/Lh2LT2yjjAir33NLBnHxeeoubmgYStCcAq9M
- xXXFJ3vkVqJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCafy4dgAKCRBVnxHm/pHO
- 9YQpCACbSKaEjzH4pTRNlOO9MMv4qGNFvDJbCSKU+rW0kuy1AOdzEK8DRjMYSniR3vacNqgAaW7
- jfdD3nhST6J/Rnf9+jev5SQpRAkKinqaxWh3/1fShDsrtFUvB1F3jwhMJlzRr8YGNtSd2tdfDiF
- dFxAGaP52L1gOiOsWOlhNYxfiVDVsMcr5nZ9nK5CztsGDPpOA2s4/Pxqi9TgU/bVFHMVN6EFp+p
- LfzPkrfYv23hVFoB2h+b2zu7McFmTkz4ghpi3o5nxCP/Rp+2I6P67dQdDdgUiJOLvSRQr11o1mP
- zUCGoHRa1Ex6V0kwn8pQwiMpDRpYEsmiDHurAlsVIiwooNOh
+ bh=vzhbGjUjbRiDUlIlvxgj075kXyfrRp5oZqumtPMUE+I=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBp/Lh2alH/xZrJjq3IVk/9KPmJNzniwtHHME9uQ
+ HfFyroPGtuJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCafy4dgAKCRBVnxHm/pHO
+ 9fJ/B/4umDHDmrck6qjthpJzuaDZucEctawMPCxoSsxqCfikju7Fb3u6hBgM01gWhIxM36ozeil
+ ilWAOIGEg2drfyNofkN722mlRMgHlWbyoa0NdQBpTfZe8ftaQMLBmhxnq1oqMO3LDkmtigZsoOg
+ TwIOsCmt6FpHmGf9XU3tFEMJdGWghgKwoDDHCZZ6ZACrcxV9keKkP8jYT91Nq3l1XyTcKFRhNv7
+ iUYP2jsT96y6j59CBlPv0m4ckoXIYdUcA6NFzS5NH1A0A7Agp1Opr/BHhcW8MMYQ6Kn2dyc1C74
+ WnlzusMn6M0Zc1JA7wJAlOJm2aHjQHitEB6UF1ib+61Qn7rd
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-All functions in this driver follow 'pwrseq_pcie_m2' prefix except a few.
-Fix them to avoid inconsistency.
+Current code makes it possible to create serdev for only one PCI device.
+But for scaling this driver, it is necessary to allow creating serdev for
+multiple PCI devices.
+
+Hence, add provision for it by creating 'struct pwrseq_pci_dev' for each
+PCI device that requires serdev and add them to
+'pwrseq_pcie_m2_ctx::pci_devices' list.
 
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/power/sequencing/pwrseq-pcie-m2.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ drivers/power/sequencing/pwrseq-pcie-m2.c | 127 +++++++++++++++++++++---------
+ 1 file changed, 88 insertions(+), 39 deletions(-)
 
 diff --git a/drivers/power/sequencing/pwrseq-pcie-m2.c b/drivers/power/sequencing/pwrseq-pcie-m2.c
-index ef69ae268059..b2ed336fd5ad 100644
+index b2ed336fd5ad..469e130330fa 100644
 --- a/drivers/power/sequencing/pwrseq-pcie-m2.c
 +++ b/drivers/power/sequencing/pwrseq-pcie-m2.c
-@@ -177,7 +177,7 @@ static int pwrseq_pcie_m2_match(struct pwrseq_device *pwrseq,
- 	return PWRSEQ_NO_MATCH;
+@@ -7,6 +7,7 @@
+ #include <linux/device.h>
+ #include <linux/delay.h>
+ #include <linux/gpio/consumer.h>
++#include <linux/list.h>
+ #include <linux/mod_devicetable.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
+@@ -19,6 +20,13 @@
+ #include <linux/serdev.h>
+ #include <linux/slab.h>
+ 
++struct pwrseq_pci_dev {
++	struct serdev_device *serdev;
++	struct of_changeset *ocs;
++	struct pci_dev *pdev;
++	struct list_head list;
++};
++
+ struct pwrseq_pcie_m2_pdata {
+ 	const struct pwrseq_target_data **targets;
+ };
+@@ -32,9 +40,9 @@ struct pwrseq_pcie_m2_ctx {
+ 	struct notifier_block nb;
+ 	struct gpio_desc *w_disable1_gpio;
+ 	struct gpio_desc *w_disable2_gpio;
+-	struct serdev_device *serdev;
+-	struct of_changeset *ocs;
+ 	struct device *dev;
++	struct list_head pci_devices;
++	struct mutex list_lock;
+ };
+ 
+ static int pwrseq_pcie_m2_vregs_enable(struct pwrseq_device *pwrseq)
+@@ -178,38 +186,39 @@ static int pwrseq_pcie_m2_match(struct pwrseq_device *pwrseq,
  }
  
--static int pwrseq_m2_pcie_create_bt_node(struct pwrseq_pcie_m2_ctx *ctx,
-+static int pwrseq_pcie_m2_create_bt_node(struct pwrseq_pcie_m2_ctx *ctx,
+ static int pwrseq_pcie_m2_create_bt_node(struct pwrseq_pcie_m2_ctx *ctx,
++					struct pwrseq_pci_dev *pci_dev,
  					struct device_node *parent)
  {
  	struct device *dev = ctx->dev;
-@@ -254,7 +254,7 @@ static int pwrseq_pcie_m2_create_serdev(struct pwrseq_pcie_m2_ctx *ctx)
+ 	struct device_node *np;
+ 	int ret;
+ 
+-	ctx->ocs = kzalloc_obj(*ctx->ocs);
+-	if (!ctx->ocs)
++	pci_dev->ocs = kzalloc_obj(*pci_dev->ocs);
++	if (!pci_dev->ocs)
+ 		return -ENOMEM;
+ 
+-	of_changeset_init(ctx->ocs);
++	of_changeset_init(pci_dev->ocs);
+ 
+-	np = of_changeset_create_node(ctx->ocs, parent, "bluetooth");
++	np = of_changeset_create_node(pci_dev->ocs, parent, "bluetooth");
+ 	if (!np) {
+ 		dev_err(dev, "Failed to create bluetooth node\n");
+ 		ret = -ENODEV;
+ 		goto err_destroy_changeset;
+ 	}
+ 
+-	ret = of_changeset_add_prop_string(ctx->ocs, np, "compatible", "qcom,wcn7850-bt");
++	ret = of_changeset_add_prop_string(pci_dev->ocs, np, "compatible", "qcom,wcn7850-bt");
+ 	if (ret) {
+ 		dev_err(dev, "Failed to add bluetooth compatible: %d\n", ret);
+ 		goto err_destroy_changeset;
+ 	}
+ 
+-	ret = of_changeset_apply(ctx->ocs);
++	ret = of_changeset_apply(pci_dev->ocs);
+ 	if (ret) {
+ 		dev_err(dev, "Failed to apply changeset: %d\n", ret);
+ 		goto err_destroy_changeset;
+ 	}
+ 
+-	ret = device_add_of_node(&ctx->serdev->dev, np);
++	ret = device_add_of_node(&pci_dev->serdev->dev, np);
+ 	if (ret) {
+ 		dev_err(dev, "Failed to add OF node: %d\n", ret);
+ 		goto err_revert_changeset;
+@@ -218,19 +227,21 @@ static int pwrseq_pcie_m2_create_bt_node(struct pwrseq_pcie_m2_ctx *ctx,
+ 	return 0;
+ 
+ err_revert_changeset:
+-	of_changeset_revert(ctx->ocs);
++	of_changeset_revert(pci_dev->ocs);
+ err_destroy_changeset:
+-	of_changeset_destroy(ctx->ocs);
+-	kfree(ctx->ocs);
+-	ctx->ocs = NULL;
++	of_changeset_destroy(pci_dev->ocs);
++	kfree(pci_dev->ocs);
++	pci_dev->ocs = NULL;
+ 
+ 	return ret;
+ }
+ 
+-static int pwrseq_pcie_m2_create_serdev(struct pwrseq_pcie_m2_ctx *ctx)
++static int pwrseq_pcie_m2_create_serdev(struct pwrseq_pcie_m2_ctx *ctx,
++					struct pci_dev *pdev)
+ {
+ 	struct serdev_controller *serdev_ctrl;
+ 	struct device *dev = ctx->dev;
++	struct pwrseq_pci_dev *pci_dev;
+ 	int ret;
+ 
+ 	struct device_node *serdev_parent __free(device_node) =
+@@ -248,17 +259,23 @@ static int pwrseq_pcie_m2_create_serdev(struct pwrseq_pcie_m2_ctx *ctx)
+ 		return 0;
+ 	}
+ 
+-	ctx->serdev = serdev_device_alloc(serdev_ctrl);
+-	if (!ctx->serdev) {
++	pci_dev = kzalloc(sizeof(*pci_dev), GFP_KERNEL);
++	if (!pci_dev) {
+ 		ret = -ENOMEM;
  		goto err_put_ctrl;
  	}
  
--	ret = pwrseq_m2_pcie_create_bt_node(ctx, serdev_parent);
-+	ret = pwrseq_pcie_m2_create_bt_node(ctx, serdev_parent);
+-	ret = pwrseq_pcie_m2_create_bt_node(ctx, serdev_parent);
++	pci_dev->serdev = serdev_device_alloc(serdev_ctrl);
++	if (!pci_dev->serdev) {
++		ret = -ENOMEM;
++		goto err_free_pci_dev;
++	}
++
++	ret = pwrseq_pcie_m2_create_bt_node(ctx, pci_dev, serdev_parent);
  	if (ret)
  		goto err_free_serdev;
  
-@@ -299,7 +299,7 @@ static void pwrseq_pcie_m2_remove_serdev(struct pwrseq_pcie_m2_ctx *ctx)
- 	}
+-	ret = serdev_device_add(ctx->serdev);
++	ret = serdev_device_add(pci_dev->serdev);
+ 	if (ret) {
+ 		dev_err(dev, "Failed to add serdev for WCN7850: %d\n", ret);
+ 		goto err_free_dt_node;
+@@ -266,37 +283,64 @@ static int pwrseq_pcie_m2_create_serdev(struct pwrseq_pcie_m2_ctx *ctx)
+ 
+ 	serdev_controller_put(serdev_ctrl);
+ 
++	pci_dev->pdev = pci_dev_get(pdev);
++
++	mutex_lock(&ctx->list_lock);
++	list_add_tail(&pci_dev->list, &ctx->pci_devices);
++	mutex_unlock(&ctx->list_lock);
++
+ 	return 0;
+ 
+ err_free_dt_node:
+-	device_remove_of_node(&ctx->serdev->dev);
+-	of_changeset_revert(ctx->ocs);
+-	of_changeset_destroy(ctx->ocs);
+-	kfree(ctx->ocs);
+-	ctx->ocs = NULL;
++	device_remove_of_node(&pci_dev->serdev->dev);
++	of_changeset_revert(pci_dev->ocs);
++	of_changeset_destroy(pci_dev->ocs);
++	kfree(pci_dev->ocs);
++	pci_dev->ocs = NULL;
+ err_free_serdev:
+-	serdev_device_put(ctx->serdev);
+-	ctx->serdev = NULL;
++	serdev_device_put(pci_dev->serdev);
++	pci_dev->serdev = NULL;
++err_free_pci_dev:
++	kfree(pci_dev);
+ err_put_ctrl:
+ 	serdev_controller_put(serdev_ctrl);
+ 
+ 	return ret;
  }
  
--static int pwrseq_m2_pcie_notify(struct notifier_block *nb, unsigned long action,
-+static int pwrseq_pcie_m2_notify(struct notifier_block *nb, unsigned long action,
- 			      void *data)
+-static void pwrseq_pcie_m2_remove_serdev(struct pwrseq_pcie_m2_ctx *ctx)
++static void __pwrseq_pcie_m2_remove_serdev(struct pwrseq_pcie_m2_ctx *ctx,
++					   struct pwrseq_pci_dev *pci_dev)
  {
- 	struct pwrseq_pcie_m2_ctx *ctx = container_of(nb, struct pwrseq_pcie_m2_ctx, nb);
-@@ -364,7 +364,7 @@ static int pwrseq_pcie_m2_register_notifier(struct pwrseq_pcie_m2_ctx *ctx, stru
- 	if (pwrseq_pcie_m2_check_remote_node(dev, 3, 0, "serial")) {
- 		if (pwrseq_pcie_m2_check_remote_node(dev, 0, 0, "pcie")) {
- 			ctx->dev = dev;
--			ctx->nb.notifier_call = pwrseq_m2_pcie_notify;
-+			ctx->nb.notifier_call = pwrseq_pcie_m2_notify;
- 			ret = bus_register_notifier(&pci_bus_type, &ctx->nb);
+-	if (ctx->serdev) {
+-		device_remove_of_node(&ctx->serdev->dev);
+-		serdev_device_remove(ctx->serdev);
+-		ctx->serdev = NULL;
++	if (pci_dev->serdev) {
++		device_remove_of_node(&pci_dev->serdev->dev);
++		serdev_device_remove(pci_dev->serdev);
+ 	}
+ 
+-	if (ctx->ocs) {
+-		of_changeset_revert(ctx->ocs);
+-		of_changeset_destroy(ctx->ocs);
+-		kfree(ctx->ocs);
+-		ctx->ocs = NULL;
++	if (pci_dev->ocs) {
++		of_changeset_revert(pci_dev->ocs);
++		of_changeset_destroy(pci_dev->ocs);
++		kfree(pci_dev->ocs);
+ 	}
++
++	pci_dev_put(pci_dev->pdev);
++	list_del(&pci_dev->list);
++	kfree(pci_dev);
++}
++
++static void pwrseq_pcie_m2_remove_serdev(struct pwrseq_pcie_m2_ctx *ctx,
++					 struct pci_dev *pdev)
++{
++	struct pwrseq_pci_dev *pci_dev, *tmp;
++
++	mutex_lock(&ctx->list_lock);
++	list_for_each_entry_safe(pci_dev, tmp, &ctx->pci_devices, list) {
++		if (!pdev || pci_dev->pdev == pdev) {
++			__pwrseq_pcie_m2_remove_serdev(ctx, pci_dev);
++			if (pdev)
++				break;
++		}
++	}
++	mutex_unlock(&ctx->list_lock);
+ }
+ 
+ static int pwrseq_pcie_m2_notify(struct notifier_block *nb, unsigned long action,
+@@ -320,7 +364,7 @@ static int pwrseq_pcie_m2_notify(struct notifier_block *nb, unsigned long action
+ 	case BUS_NOTIFY_ADD_DEVICE:
+ 		/* Create serdev device for WCN7850 */
+ 		if (pdev->vendor == PCI_VENDOR_ID_QCOM && pdev->device == 0x1107) {
+-			ret = pwrseq_pcie_m2_create_serdev(ctx);
++			ret = pwrseq_pcie_m2_create_serdev(ctx, pdev);
  			if (ret)
- 				return dev_err_probe(dev, ret,
+ 				return notifier_from_errno(ret);
+ 		}
+@@ -328,7 +372,7 @@ static int pwrseq_pcie_m2_notify(struct notifier_block *nb, unsigned long action
+ 	case BUS_NOTIFY_REMOVED_DEVICE:
+ 		/* Destroy serdev device for WCN7850 */
+ 		if (pdev->vendor == PCI_VENDOR_ID_QCOM && pdev->device == 0x1107)
+-			pwrseq_pcie_m2_remove_serdev(ctx);
++			pwrseq_pcie_m2_remove_serdev(ctx, pdev);
+ 
+ 		break;
+ 	}
+@@ -432,16 +476,20 @@ static int pwrseq_pcie_m2_probe(struct platform_device *pdev)
+ 		goto err_free_regulators;
+ 	}
+ 
++	mutex_init(&ctx->list_lock);
++	INIT_LIST_HEAD(&ctx->pci_devices);
+ 	/*
+ 	 * Register a notifier for creating protocol devices for
+ 	 * non-discoverable busses like UART.
+ 	 */
+ 	ret = pwrseq_pcie_m2_register_notifier(ctx, dev);
+ 	if (ret)
+-		goto err_free_regulators;
++		goto err_destroy_mutex;
+ 
+ 	return 0;
+ 
++err_destroy_mutex:
++	mutex_destroy(&ctx->list_lock);
+ err_free_regulators:
+ 	regulator_bulk_free(ctx->num_vregs, ctx->regs);
+ 
+@@ -453,7 +501,8 @@ static void pwrseq_pcie_m2_remove(struct platform_device *pdev)
+ 	struct pwrseq_pcie_m2_ctx *ctx = platform_get_drvdata(pdev);
+ 
+ 	bus_unregister_notifier(&pci_bus_type, &ctx->nb);
+-	pwrseq_pcie_m2_remove_serdev(ctx);
++	pwrseq_pcie_m2_remove_serdev(ctx, NULL);
++	mutex_destroy(&ctx->list_lock);
+ 
+ 	regulator_bulk_free(ctx->num_vregs, ctx->regs);
+ }
 
 -- 
 2.51.0
