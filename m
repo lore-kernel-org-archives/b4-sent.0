@@ -1,132 +1,194 @@
-From: Colin Huang <u8813345@gmail.com>
-Date: Thu, 07 May 2026 13:12:28 +0800
-Subject: [PATCH v4 3/3] hwmon: (pmbus) add support for Delta E50SN12051
+From: Haritha S K <haritha.k@oss.qualcomm.com>
+Date: Thu, 07 May 2026 11:59:50 +0530
+Subject: [PATCH] arm64: dts: qcom: glymur: Enable cpufreq cooling devices
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260507-add-e50sn12051-v4-3-ff2b3768ac7e@gmail.com>
-References: <20260507-add-e50sn12051-v4-0-ff2b3768ac7e@gmail.com>
-In-Reply-To: <20260507-add-e50sn12051-v4-0-ff2b3768ac7e@gmail.com>
-To: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
+Message-Id: <20260507-glymur_cpu_freq-v1-1-d566cc1d32c3@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAF4x/GkC/yXMTQqDMBBA4avIrA1kUnThVYpIjKOOWH8mRiri3
+ Zvq8lu8d4InYfJQJCcI7ex5niIwTcD1dupIcRMNRptcZzpT3Xh8glRuCVUrtCq0mBMaaw2+IFa
+ LUMvf+/guH/tQD+S2/wau6wf9E9cTcwAAAA==
+X-Change-ID: 20260505-glymur_cpu_freq-1a16e12aa213
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Kevin Chang <kevin.chang2@amd.com>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>
-Cc: linux-hwmon@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- Colin Huang <colin.huang2@amd.com>, Colin Huang <u8813345@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778130752; l=3403;
- i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
- bh=kdG0eiaCamlrenMRC/OYLox58O/g4hUW+Ptrly3KsCw=;
- b=3SFF8ddWjwcxaAKTICC2yQlTlq07wUkwe+AZvba1ZEqbveZXQpsMZrA7COET8+tZ97m365kAE
- aIS+Y9BGg0UBNkt/XN4iuKfee6Bfw6VIKqHgch2/UDpEdK7yWFLirrG
-X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
- pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
-X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, manaf.pallikunhi@oss.qualcomm.com, 
+ gaurav.kohli@oss.qualcomm.com, Haritha S K <haritha.k@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778135396; l=4683;
+ i=haritha.k@oss.qualcomm.com; s=20260422; h=from:subject:message-id;
+ bh=bI7+4pLky4jLFMKlYUdkSEXsFPxmbXV05qBezAGMXV8=;
+ b=vd06qx7K61rX/W13PKZ+5bHGXS2kvn3Z8fN6QWD/HgTp8qTCd3NX9xoNYazwfhcKIIdHw3sNu
+ laIVCGb84aLBpc1XqtfhowRGd1cxv1KvyXzJ62yLWeAc1UpXv2fJ1aL
+X-Developer-Key: i=haritha.k@oss.qualcomm.com; a=ed25519;
+ pk=ivp2P9RgsC6IkOe8JaqweeahT9pd0BVtL2d1YD8ICSg=
+X-Endpoint-Received: by B4 Relay for haritha.k@oss.qualcomm.com/20260422 with auth_id=745
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the pmbus driver for Delta E50SN12051 600W Non-isolated
-1/8th Brick DCDC Power Modules.
+Add cooling-cells property to the CPU nodes to support cpufreq
+cooling devices.
 
-Signed-off-by: Colin Huang <u8813345@gmail.com>
-Reviewed-by: Guenter Roeck <linux@roeck-us.net>
+Signed-off-by: Haritha S K <haritha.k@oss.qualcomm.com>
 ---
- drivers/hwmon/pmbus/Kconfig      |  9 +++++++
- drivers/hwmon/pmbus/Makefile     |  1 +
- drivers/hwmon/pmbus/e50sn12051.c | 52 ++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 62 insertions(+)
+ arch/arm64/boot/dts/qcom/glymur.dtsi | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
 
-diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
-index 8f4bff375ecb..4fbfcbc4a9c5 100644
---- a/drivers/hwmon/pmbus/Kconfig
-+++ b/drivers/hwmon/pmbus/Kconfig
-@@ -161,6 +161,15 @@ config SENSORS_DPS920AB
- 	  This driver can also be built as a module. If so, the module will
- 	  be called dps920ab.
+diff --git a/arch/arm64/boot/dts/qcom/glymur.dtsi b/arch/arm64/boot/dts/qcom/glymur.dtsi
+index f23cf81ddb77..5fb685664370 100644
+--- a/arch/arm64/boot/dts/qcom/glymur.dtsi
++++ b/arch/arm64/boot/dts/qcom/glymur.dtsi
+@@ -39,6 +39,7 @@ cpu0: cpu@0 {
+ 			power-domains = <&cpu_pd0>, <&scmi_perf 0>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_0>;
++			#cooling-cells = <2>;
  
-+config SENSORS_E50SN12051
-+	tristate "Delta E50SN12051 Power Modules"
-+	help
-+	  If you say yes here you get hardware monitoring support for Delta
-+	  E50SN12051 Power Modules.
-+
-+	  This driver can also be built as a module. If so, the module will
-+	  be called e50sn12051.
-+
- config SENSORS_INA233
- 	tristate "Texas Instruments INA233 and compatibles"
- 	help
-diff --git a/drivers/hwmon/pmbus/Makefile b/drivers/hwmon/pmbus/Makefile
-index 7129b62bc00f..fc910bf34fe3 100644
---- a/drivers/hwmon/pmbus/Makefile
-+++ b/drivers/hwmon/pmbus/Makefile
-@@ -17,6 +17,7 @@ obj-$(CONFIG_SENSORS_FSP_3Y)	+= fsp-3y.o
- obj-$(CONFIG_SENSORS_HAC300S)	+= hac300s.o
- obj-$(CONFIG_SENSORS_IBM_CFFPS)	+= ibm-cffps.o
- obj-$(CONFIG_SENSORS_DPS920AB)	+= dps920ab.o
-+obj-$(CONFIG_SENSORS_E50SN12051) += e50sn12051.o
- obj-$(CONFIG_SENSORS_INA233)	+= ina233.o
- obj-$(CONFIG_SENSORS_INSPUR_IPSPS) += inspur-ipsps.o
- obj-$(CONFIG_SENSORS_IR35221)	+= ir35221.o
-diff --git a/drivers/hwmon/pmbus/e50sn12051.c b/drivers/hwmon/pmbus/e50sn12051.c
-new file mode 100644
-index 000000000000..efb4d62b2603
---- /dev/null
-+++ b/drivers/hwmon/pmbus/e50sn12051.c
-@@ -0,0 +1,52 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * Hardware monitoring driver for E50SN12051
-+ */
-+
-+#include <linux/i2c.h>
-+#include <linux/module.h>
-+#include <linux/mod_devicetable.h>
-+#include "pmbus.h"
-+
-+static struct pmbus_driver_info e50sn12051_info = {
-+	.pages = 1,
-+	.format[PSC_VOLTAGE_IN] = linear,
-+	.format[PSC_VOLTAGE_OUT] = linear,
-+	.format[PSC_CURRENT_OUT] = linear,
-+	.format[PSC_TEMPERATURE] = linear,
-+	.func[0] = PMBUS_HAVE_VIN | PMBUS_HAVE_STATUS_INPUT |
-+		   PMBUS_HAVE_VOUT | PMBUS_HAVE_STATUS_VOUT |
-+		   PMBUS_HAVE_IOUT | PMBUS_HAVE_STATUS_IOUT |
-+		   PMBUS_HAVE_TEMP | PMBUS_HAVE_STATUS_TEMP,
-+};
-+
-+static const struct i2c_device_id e50sn12051_id[] = { { "e50sn12051", 0 }, {} };
-+MODULE_DEVICE_TABLE(i2c, e50sn12051_id);
-+
-+static const struct of_device_id e50sn12051_of_match[] = {
-+	{ .compatible = "delta,e50sn12051" },
-+	{},
-+};
-+MODULE_DEVICE_TABLE(of, e50sn12051_of_match);
-+
-+static int e50sn12051_probe(struct i2c_client *client)
-+{
-+	return pmbus_do_probe(client, &e50sn12051_info);
-+}
-+
-+static struct i2c_driver e50sn12051_driver = {
-+	.driver = {
-+		.name = "e50sn12051",
-+		.of_match_table = e50sn12051_of_match,
-+	},
-+	.probe = e50sn12051_probe,
-+
-+	.id_table = e50sn12051_id,
-+};
-+
-+module_i2c_driver(e50sn12051_driver);
-+
-+MODULE_AUTHOR("Kevin Chang <kevin.chang2@amd.com>");
-+MODULE_DESCRIPTION("PMBus driver for E50SN12051");
-+MODULE_LICENSE("GPL");
-+MODULE_IMPORT_NS("PMBUS");
+ 			l2_0: l2-cache {
+ 				compatible = "cache";
+@@ -55,6 +56,7 @@ cpu1: cpu@100 {
+ 			power-domains = <&cpu_pd1>, <&scmi_perf 0>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_0>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu2: cpu@200 {
+@@ -65,6 +67,7 @@ cpu2: cpu@200 {
+ 			power-domains = <&cpu_pd2>, <&scmi_perf 0>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_0>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu3: cpu@300 {
+@@ -75,6 +78,7 @@ cpu3: cpu@300 {
+ 			power-domains = <&cpu_pd3>, <&scmi_perf 0>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_0>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu4: cpu@400 {
+@@ -85,6 +89,7 @@ cpu4: cpu@400 {
+ 			power-domains = <&cpu_pd4>, <&scmi_perf 0>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_0>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu5: cpu@500 {
+@@ -95,6 +100,7 @@ cpu5: cpu@500 {
+ 			power-domains = <&cpu_pd5>, <&scmi_perf 0>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_0>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu6: cpu@10000 {
+@@ -105,6 +111,7 @@ cpu6: cpu@10000 {
+ 			power-domains = <&cpu_pd6>, <&scmi_perf 1>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_1>;
++			#cooling-cells = <2>;
+ 
+ 			l2_1: l2-cache {
+ 				compatible = "cache";
+@@ -121,6 +128,7 @@ cpu7: cpu@10100 {
+ 			power-domains = <&cpu_pd7>, <&scmi_perf 1>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_1>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu8: cpu@10200 {
+@@ -131,6 +139,7 @@ cpu8: cpu@10200 {
+ 			power-domains = <&cpu_pd8>, <&scmi_perf 1>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_1>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu9: cpu@10300 {
+@@ -141,6 +150,7 @@ cpu9: cpu@10300 {
+ 			power-domains = <&cpu_pd9>, <&scmi_perf 1>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_1>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu10: cpu@10400 {
+@@ -151,6 +161,7 @@ cpu10: cpu@10400 {
+ 			power-domains = <&cpu_pd10>, <&scmi_perf 1>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_1>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu11: cpu@10500 {
+@@ -161,6 +172,7 @@ cpu11: cpu@10500 {
+ 			power-domains = <&cpu_pd11>, <&scmi_perf 1>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_1>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu12: cpu@20000 {
+@@ -171,6 +183,7 @@ cpu12: cpu@20000 {
+ 			power-domains = <&cpu_pd12>, <&scmi_perf 2>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_2>;
++			#cooling-cells = <2>;
+ 
+ 			l2_2: l2-cache {
+ 				compatible = "cache";
+@@ -187,6 +200,7 @@ cpu13: cpu@20100 {
+ 			power-domains = <&cpu_pd13>, <&scmi_perf 2>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_2>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu14: cpu@20200 {
+@@ -197,6 +211,7 @@ cpu14: cpu@20200 {
+ 			power-domains = <&cpu_pd14>, <&scmi_perf 2>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_2>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu15: cpu@20300 {
+@@ -207,6 +222,7 @@ cpu15: cpu@20300 {
+ 			power-domains = <&cpu_pd15>, <&scmi_perf 2>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_2>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu16: cpu@20400 {
+@@ -217,6 +233,7 @@ cpu16: cpu@20400 {
+ 			power-domains = <&cpu_pd16>, <&scmi_perf 2>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_2>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu17: cpu@20500 {
+@@ -227,6 +244,7 @@ cpu17: cpu@20500 {
+ 			power-domains = <&cpu_pd17>, <&scmi_perf 2>;
+ 			power-domain-names = "psci", "perf";
+ 			next-level-cache = <&l2_2>;
++			#cooling-cells = <2>;
+ 		};
+ 
+ 		cpu-map {
 
--- 
-2.34.1
+---
+base-commit: 82a481aae4502d10ebaeeb387a3e0a5462c05b4d
+change-id: 20260505-glymur_cpu_freq-1a16e12aa213
+
+Best regards,
+--  
+Haritha S K <haritha.k@oss.qualcomm.com>
 
