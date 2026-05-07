@@ -1,118 +1,167 @@
-From: Joshua Crofts <joshua.crofts1@gmail.com>
-Date: Thu, 07 May 2026 16:35:57 +0200
-Subject: [PATCH 8/8] iio: magnetometer: ak8975: make use of the macros from
- bits.h
+From: Jesung Yang <y.j3ms.n@gmail.com>
+Subject: [PATCH v7 0/2] rust: take advantage of newer rust-analyzer
+ features
+Date: Thu, 07 May 2026 23:47:23 +0900
+Message-Id: <20260507-ra-fix-primitive-v7-0-cb8e3791f2b5@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260507-magnetometer-fixes-post-pickup-v1-8-37827ca68fb3@gmail.com>
-References: <20260507-magnetometer-fixes-post-pickup-v1-0-37827ca68fb3@gmail.com>
-In-Reply-To: <20260507-magnetometer-fixes-post-pickup-v1-0-37827ca68fb3@gmail.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joshua Crofts <joshua.crofts1@gmail.com>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778164567; l=3026;
- i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
- bh=uSqUkNKA96dxORbdKRT87CB6VtK79Lmf39ap3WDBEeU=;
- b=qD/2bhyCsROnAtQrqwOMwyy58y58ehGB9jrvSyCqxQJFaUn9qL/7hCq16zSM7x/keSTvk6ozU
- YGMgB2t93TEDn41b7elkUpHH9QHFMv/g1Zl4pOT8xlMJhQTkX+GWFyF
-X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
- pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
-X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
+X-B4-Tracking: v=1; b=H4sIAPul/GkC/33NzWrDMAzA8VcpPs9DsuWP9LT3GDskttwalqY4J
+ bSUvPvcXhJC2PEvpJ+eYuSSeRTHw1MUnvKYh0sN93EQ4dxeTixzrC0UKAsIKEsrU77La8l9vuW
+ JpfNoKLFHp5OoZ9fCdeFNfv/UPufxNpTH+8OEr+k/2IQSZeTkodHGdcRfp77Nv59h6MULm9Qaa
+ HYAJUEqarxRLSGZdgvoBdDgdwBdAdN4QNcFTtFvAVoB6HYAqkAXwDpoglekt4BZANKwA5gKWG0
+ pKmU8I20BuwAGaAewFXAUUkD2VkVYA/M8/wHJ3wNu9QEAAA==
+X-Change-ID: 20260101-ra-fix-primitive-78154fe8173f
+To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, Tamir Duberstein <tamird@kernel.org>
+Cc: Eliot Courtney <ecourtney@nvidia.com>, rust-for-linux@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Jesung Yang <y.j3ms.n@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778165245; l=5769;
+ i=y.j3ms.n@gmail.com; s=kernel; h=from:subject:message-id;
+ bh=7jGW2PI6/V8bvOxyn3kbpeGPArnpLS1TcRupmJ7nWOg=;
+ b=toxgHgsmOZLtxDKRcq7nu2IVl+rssvOf3VYQRLFo87sSRcr7gcrdRTe2Geup6MpB4GJiZd9M0
+ MwYx6XvRy+VABipgz+KMnUl7nR5MH9Lkkmnsj8rMPQyXprUMc0fzC/B
+X-Developer-Key: i=y.j3ms.n@gmail.com; a=ed25519;
+ pk=4nSlncQuTIIYLyLXkNxS0ssInM3uK0snxLSeQ2tdG/o=
+X-Endpoint-Received: by B4 Relay for y.j3ms.n@gmail.com/kernel with auth_id=755
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+As discussed in [1], we need to support multiple versions of
+rust-analyzer to take advantage of newer features without breaking
+compatibility for users on older toolchains.
 
-Make use of BIT() and GENMASK() where it makes sense.
+In this specific patch series addressing IDE support for inherent methods
+of primitive types, the main compatibility issue arises from using
+`sysroot_src`, which brings `std` as a dependency for crates in
+`drivers/` and `samples/` (please see PATCH [2/2] for more details). This
+causes rust-analyzer to incorrectly resolve symbols from `std` in those
+crates.
 
-Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Co-developed-by: Joshua Crofts <joshua.crofts1@gmail.com>
-Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
+Hence, this series revises the approach taken in [2] by first adding
+multi-version support for rust-analyzer. Specifically, it enables
+support for the v0.3.2727 (2025-12-22) release and newer, which is
+required to resolve inherent method resolution issues for primitive
+types found in recent versions of rust-analyzer.
+
+As Eliot mentioned in [3], we might also want to do the `include_dirs`
+trick on top of this series to support rust-analyzer releases older than
+v0.3.2727, but it should be handled in a dedicated patch series.
+
+----- [QUICK TEST INSTRUCTIONS] -----
+
+[Example 1]
+1) Apply this patch series.
+2) Run `mypy --strict scripts/generate_rust_analyzer.py` against
+   different Python versions (e.g., `--python-version 3.9`,
+   `--python-version 3.11`)
+3) Verify that there is no type errors.
+
+[Example 2]
+1) Make rust-analyzer>=v0.3.2727 (2025-12-22) available in `$PATH`.
+2) Compile one of the crates under `driver/` or `samples/rust`.
+3) Run `make LLVM=1 rust-analyzer`.
+4) Check that autocompletion for inherent methods does not work for
+   primitive types (e.g., `0i32.rotate_left()`).
+5) Apply this patch series.
+6) Re-run `make LLVM=1 rust-analyzer`.
+7) Verify that autocompletion works properly now.
+8) Verify that no autocompletion is provided for `std`.
+
+[Example 3]
+1) Make rust-analyzer<v0.3.2727 (2025-12-22) available in `$PATH`.
+2) Compile one of the crates under `driver/` or `samples/rust`.
+3) Run `make LLVM=1 rust-analyzer`.
+4) Run `mv rust-project.json rust-project.json.old`.
+5) Apply this patch series.
+6) Re-run `make LLVM=1 rust-analyzer`.
+7) Run `diff -s rust-project.json rust-project.json.old` to verify that
+   they are identical.
+
+[Example 4]
+1) Apply this patch series.
+2) Ensure `rust-analyzer` is not available in `$PATH`.
+3) Run `make V=1 LLVM=1 rust-analyzer`.
+4) Verify that the fallback warning message appears.
+
+[1] https://lore.kernel.org/rust-for-linux/20260101-rust-project-reduce-size-v1-1-4cd66e9e02d9@gmail.com/
+[2] https://lore.kernel.org/r/20260101-ra-fix-primitive-v1-1-def809357b4e@gmail.com/
+[3] https://lore.kernel.org/rust-for-linux/DFVQBFD54CJO.2D3VQ091URH2B@nvidia.com/
+
+Signed-off-by: Jesung Yang <y.j3ms.n@gmail.com>
 ---
- drivers/iio/magnetometer/ak8975.c | 26 +++++++++++---------------
- 1 file changed, 11 insertions(+), 15 deletions(-)
+Changes in v7:
+- Streamline the bash script.
+- Wrap `reversed(RaVersionInfo)` with `list()`.
+- Link to v6: https://patch.msgid.link/20260504-ra-fix-primitive-v6-0-74cfc1e862d0@gmail.com
 
-diff --git a/drivers/iio/magnetometer/ak8975.c b/drivers/iio/magnetometer/ak8975.c
-index d11f025e146d098508f35ef31c1ccad544612535..d8d9f706f96bae3be19e8db17b9473e6e0eef4fc 100644
---- a/drivers/iio/magnetometer/ak8975.c
-+++ b/drivers/iio/magnetometer/ak8975.c
-@@ -45,8 +45,7 @@
- #define AK8975_REG_INFO			0x01
- 
- #define AK8975_REG_ST1			0x02
--#define AK8975_REG_ST1_DRDY_SHIFT	0
--#define AK8975_REG_ST1_DRDY_MASK	(1 << AK8975_REG_ST1_DRDY_SHIFT)
-+#define AK8975_REG_ST1_DRDY_MASK	BIT(0)
- 
- #define AK8975_REG_HXL			0x03
- #define AK8975_REG_HXH			0x04
-@@ -55,15 +54,12 @@
- #define AK8975_REG_HZL			0x07
- #define AK8975_REG_HZH			0x08
- #define AK8975_REG_ST2			0x09
--#define AK8975_REG_ST2_DERR_SHIFT	2
--#define AK8975_REG_ST2_DERR_MASK	(1 << AK8975_REG_ST2_DERR_SHIFT)
-+#define AK8975_REG_ST2_DERR_MASK	BIT(2)
- 
--#define AK8975_REG_ST2_HOFL_SHIFT	3
--#define AK8975_REG_ST2_HOFL_MASK	(1 << AK8975_REG_ST2_HOFL_SHIFT)
-+#define AK8975_REG_ST2_HOFL_MASK	BIT(3)
- 
- #define AK8975_REG_CNTL			0x0A
--#define AK8975_REG_CNTL_MODE_SHIFT	0
--#define AK8975_REG_CNTL_MODE_MASK	(0xF << AK8975_REG_CNTL_MODE_SHIFT)
-+#define AK8975_REG_CNTL_MODE_MASK	GENMASK(3, 0)
- #define AK8975_REG_CNTL_MODE_POWER_DOWN	0x00
- #define AK8975_REG_CNTL_MODE_ONCE	0x01
- #define AK8975_REG_CNTL_MODE_SELF_TEST	0x08
-@@ -95,8 +91,7 @@
- 
- #define AK09912_REG_ST1			0x10
- 
--#define AK09912_REG_ST1_DRDY_SHIFT	0
--#define AK09912_REG_ST1_DRDY_MASK	(1 << AK09912_REG_ST1_DRDY_SHIFT)
-+#define AK09912_REG_ST1_DRDY_MASK	BIT(0)
- 
- #define AK09912_REG_HXL			0x11
- #define AK09912_REG_HXH			0x12
-@@ -107,8 +102,7 @@
- #define AK09912_REG_TMPS		0x17
- 
- #define AK09912_REG_ST2			0x18
--#define AK09912_REG_ST2_HOFL_SHIFT	3
--#define AK09912_REG_ST2_HOFL_MASK	(1 << AK09912_REG_ST2_HOFL_SHIFT)
-+#define AK09912_REG_ST2_HOFL_MASK	BIT(3)
- 
- #define AK09912_REG_CNTL1		0x30
- 
-@@ -117,8 +111,7 @@
- #define AK09912_REG_CNTL_MODE_ONCE	0x01
- #define AK09912_REG_CNTL_MODE_SELF_TEST	0x10
- #define AK09912_REG_CNTL_MODE_FUSE_ROM	0x1F
--#define AK09912_REG_CNTL2_MODE_SHIFT	0
--#define AK09912_REG_CNTL2_MODE_MASK	(0x1F << AK09912_REG_CNTL2_MODE_SHIFT)
-+#define AK09912_REG_CNTL2_MODE_MASK	GENMASK(4, 0)
- 
- #define AK09912_REG_CNTL3		0x32
- 
-@@ -848,7 +841,10 @@ static const struct iio_chan_spec ak8975_channels[] = {
- 	IIO_CHAN_SOFT_TIMESTAMP(AK8975_SCAN_TS),
- };
- 
--static const unsigned long ak8975_scan_masks[] = { 0x7, 0 };
-+static const unsigned long ak8975_scan_masks[] = {
-+	BIT(AK8975_SCAN_X) | BIT(AK8975_SCAN_Y) | BIT(AK8975_SCAN_Z),
-+	0
-+};
- 
- static const struct iio_info ak8975_info = {
- 	.read_raw = &ak8975_read_raw,
+Changes in v6:
+- Make bash script more portable.
+- Aggregate fallback logs into one.
+- Use `date` instead of `datetime`.
+- Limit line length to 80 characters.
+- Link to v5: https://patch.msgid.link/20260430-ra-fix-primitive-v5-0-6364d2258e14@gmail.com
 
--- 
-2.47.3
+Changes in v5:
+- Document how to retrieve rust-analyzer version information.
+- Rename `RaVersionInfo.DEFAULT` to `RaVersionInfo.MSRV`.
+- Move the introduction of `RaVersionCtx` to the second patch.
+- Embed `RaVersionCtx` into `RaVersionInfo`.
+- Conditionally add `sysroot_src` field depending on
+  `manual_sysroot_crates`.
+- Conditionally add `crate_attrs` field depending on `use_crate_attrs`.
+- Conditionally define `RustProject` and `Crate` for stricter type
+  checking in newer Python versions.
+- Move the dependency filtering logic to `build_crate`.
+- Move `RustProject` closer to its point of use.
+- Fix grammar.
+- Link to v4: https://lore.kernel.org/r/20260317-ra-fix-primitive-v4-0-bc06709c8243@gmail.com
+
+Changes in v4:
+- Use `dataclass` for internal data structures.
+- Change `RaVersionInfo` to an enum.
+- Move `RaVersionInfo` closer to its point of use.
+- Statically check if all `RaVersionInfo` variants are properly handled
+  (using mypy).
+- Relocate `ctx.manual_sysroot_crates` check in `append_sysroot_crate`.
+- Move `crate_attrs=["no_std"]` addition to `scripts:
+  generate_rust_analyzer.py: fix IDE support for primitive types`.
+- Move `typing.NotRequired` closer to the relevant field.
+- Link to v3: https://lore.kernel.org/r/20260308-ra-fix-primitive-v3-0-598017bcefd8@gmail.com
+
+Changes in v3:
+- Remove extra `crate_attrs=["no_std"]` for crates that specify
+  `#![no_std]` by themselves.
+- Fix rust-analyzer version for Rust 1.78.
+- Tweak `map_ra_version_baseline` to distinguish between Rust version
+  and rust-analyzer version.
+- Simplify overall structure.
+- Rebase on 6c02871d258 ("scripts: generate_rust_analyzer.py: reduce cfg
+  plumbing")
+- Link to v2: https://lore.kernel.org/r/20260109-ra-fix-primitive-v2-0-249852a4145a@gmail.com
+
+Changes in v2:
+- Implement multiple rust-analyzer version support.
+- Rebase on 9ace4753a520 (Linux 6.19-rc4).
+- Remove an unnecessary new line between tags.
+- Link to v1: https://lore.kernel.org/r/20260101-ra-fix-primitive-v1-1-def809357b4e@gmail.com
+
+---
+Jesung Yang (2):
+      scripts: generate_rust_analyzer.py: add versioning infrastructure
+      scripts: generate_rust_analyzer.py: fix IDE support for primitive types
+
+ scripts/generate_rust_analyzer.py | 284 +++++++++++++++++++++++++++++++++++---
+ 1 file changed, 264 insertions(+), 20 deletions(-)
+---
+base-commit: b4e07588e743c989499ca24d49e752c074924a9a
+change-id: 20260101-ra-fix-primitive-78154fe8173f
+
+Best regards,
+--  
+Jesung Yang <y.j3ms.n@gmail.com>
 
