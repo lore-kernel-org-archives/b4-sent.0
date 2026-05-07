@@ -1,11 +1,11 @@
 From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Thu, 07 May 2026 21:36:14 +0530
-Subject: [PATCH v2 6/9] Bluetooth: hci_qca: Add M.2 Bluetooth device
- support using pwrseq
+Date: Thu, 07 May 2026 21:36:15 +0530
+Subject: [PATCH v2 7/9] Bluetooth: hci_qca: Rename 'power_ctrl_enabled' to
+ 'bt_en_available'
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260507-pwrseq-m2-bt-v2-6-1740bd478539@oss.qualcomm.com>
+Message-Id: <20260507-pwrseq-m2-bt-v2-7-1740bd478539@oss.qualcomm.com>
 References: <20260507-pwrseq-m2-bt-v2-0-1740bd478539@oss.qualcomm.com>
 In-Reply-To: <20260507-pwrseq-m2-bt-v2-0-1740bd478539@oss.qualcomm.com>
 To: Bartosz Golaszewski <brgl@kernel.org>, 
@@ -18,68 +18,75 @@ Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-bluetooth@vger.kernel.org, Wei Deng <wei.deng@oss.qualcomm.com>, 
  Luiz Augusto von Dentz <luiz.von.dentz@intel.com>, 
  Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
- Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
  Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.15.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1718;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1922;
  i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=IvZ9CIq//p0HdqR9ryzttaoiBLfV1zSyMeR7RNa/KYI=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBp/Lh3/yNB+NsR8etCxiPVXy5R8wdmBIwBzwR2x
- TgElyscP1mJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCafy4dwAKCRBVnxHm/pHO
- 9Xu2B/9xt6sFExZbI2SblITHoNVnKQOz1ua7YHC/biIJgmPcV1nLazK2H/1bpFfwZvPsBwMVHjY
- Eh8+0b3c9eIP1fmRcoLuAIL7nahCNE8H1itohGdhjYxoqMOYrVUilw9fXzRiggM8OTYSdKvI0n4
- YEVrM8XWSJ0So63GVk/JU2quPE5Woy3rjiONApOjH4FcLgSpctKPlqFkGqsgqr8RSsN4Jo5U3Mg
- 2upVXxEcg/Vu/Tu2lacdvOviSLjHR2WEm2cCG2nDpCCyYlVg3S6BRTO23KGVRlCv0D/30NmfLXx
- PZk3xUiYcymv6WhGsdeX9VGRqO3Nh7MeFtccs8qHE0UfbuX7
+ bh=EanTaWVkJi/ee+/EvgVfMzEF7nvDtp3Ra7zj0YVTEu8=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBp/Lh3AUrUdWPJerwKqiSDQnGP7jLUXCOkt69bI
+ wCasFbC1YWJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCafy4dwAKCRBVnxHm/pHO
+ 9R0ZB/9PqwLllRQIitwVELu/cyLrU3c2SxfZ6j2vDtm+eKOc1zu0oX8PHyavxaIn925MSs2S3s9
+ waVuR+chhcuSwamnL+x6Z0ZmvbaKJbb+sYdssMFHq8UhU3JOj4jLOSKAYBQo/h4uI/lrcs+1Z0P
+ fxwQsjsbyHt5h68igZ/em2YfMVdL7lsWLBOaSZVInHtoXAJdOFNR70SrG9tGbOv9Iv+Wrjijyuh
+ uT5WZ4f1hLLfaFxVl5REYIrQwL+nlJ5jwDhHNp8W8nxv4EpmttjYDXp+5QQ3uORYbHB3CxYsH0q
+ 1Or5nJUDE9EyEuHMGBdO5WjOU3IplVOjpIaayOrwk4pm6F+r
 X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
  fpr=C668AEC3C3188E4C611465E7488550E901166008
 X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Power supply to the M.2 Bluetooth device attached to the host using M.2
-connector is controlled using the 'uart' pwrseq device. So add support for
-getting the pwrseq device if the OF graph link is present. Once obtained,
-the existing pwrseq APIs can be used to control the power supplies of the
-M.2 card.
+'power_ctrl_enabled' flag is used to indicate the availability of the BT_EN
+GPIO in devicetree. But the naming causes confusion with the new pwrctrl
+framework.
 
-Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
+So rename it to 'bt_en_available' to make it clear and explicit.
+
 Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/bluetooth/hci_qca.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+ drivers/bluetooth/hci_qca.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/bluetooth/hci_qca.c b/drivers/bluetooth/hci_qca.c
-index cd1834246b47..c83fe72bc549 100644
+index c83fe72bc549..3e71a72ea7c7 100644
 --- a/drivers/bluetooth/hci_qca.c
 +++ b/drivers/bluetooth/hci_qca.c
-@@ -26,6 +26,7 @@
- #include <linux/mod_devicetable.h>
- #include <linux/module.h>
- #include <linux/of.h>
-+#include <linux/of_graph.h>
- #include <linux/acpi.h>
- #include <linux/platform_device.h>
- #include <linux/pwrseq/consumer.h>
-@@ -2443,6 +2444,18 @@ static int qca_serdev_probe(struct serdev_device *serdev)
- 	case QCA_WCN6750:
- 	case QCA_WCN6855:
- 	case QCA_WCN7850:
-+		/*
-+		 * OF graph link is only present for BT devices attached through
-+		 * the M.2 Key E connector.
-+		 */
-+		if (of_graph_is_present(dev_of_node(&serdev->ctrl->dev))) {
-+			qcadev->bt_power->pwrseq = devm_pwrseq_get(&serdev->ctrl->dev,
-+								   "uart");
-+			if (IS_ERR(qcadev->bt_power->pwrseq))
-+				return PTR_ERR(qcadev->bt_power->pwrseq);
-+			break;
-+		}
-+
- 		if (!device_property_present(&serdev->dev, "enable-gpios")) {
- 			/*
- 			 * Backward compatibility with old DT sources. If the
+@@ -2391,7 +2391,7 @@ static int qca_serdev_probe(struct serdev_device *serdev)
+ 	struct hci_dev *hdev;
+ 	const struct qca_device_data *data;
+ 	int err;
+-	bool power_ctrl_enabled = true;
++	bool bt_en_available = true;
+ 
+ 	qcadev = devm_kzalloc(&serdev->dev, sizeof(*qcadev), GFP_KERNEL);
+ 	if (!qcadev)
+@@ -2499,7 +2499,7 @@ static int qca_serdev_probe(struct serdev_device *serdev)
+ 		    (data->soc_type == QCA_WCN6750 ||
+ 		     data->soc_type == QCA_WCN6855 ||
+ 		     data->soc_type == QCA_WCN7850))
+-			power_ctrl_enabled = false;
++			bt_en_available = false;
+ 
+ 		qcadev->sw_ctrl = devm_gpiod_get_optional(&serdev->dev, "swctrl",
+ 					       GPIOD_IN);
+@@ -2537,7 +2537,7 @@ static int qca_serdev_probe(struct serdev_device *serdev)
+ 		}
+ 
+ 		if (!qcadev->bt_en)
+-			power_ctrl_enabled = false;
++			bt_en_available = false;
+ 
+ 		qcadev->susclk = devm_clk_get_optional_enabled_with_rate(
+ 					&serdev->dev, NULL, SUSCLK_RATE_32KHZ);
+@@ -2555,7 +2555,7 @@ static int qca_serdev_probe(struct serdev_device *serdev)
+ 
+ 	hdev = qcadev->serdev_hu.hdev;
+ 
+-	if (power_ctrl_enabled) {
++	if (bt_en_available) {
+ 		hci_set_quirk(hdev, HCI_QUIRK_NON_PERSISTENT_SETUP);
+ 		hdev->shutdown = qca_hci_shutdown;
+ 	}
 
 -- 
 2.51.0
