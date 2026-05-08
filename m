@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Fri, 08 May 2026 18:00:24 +0100
-Subject: [PATCH RFC v4 08/10] iio: frequency: ad9910: show channel priority
- in debugfs
+Date: Fri, 08 May 2026 18:00:25 +0100
+Subject: [PATCH RFC v4 09/10] Documentation: ABI: testing: add docs for
+ ad9910 sysfs entries
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260508-ad9910-iio-driver-v4-8-d26bfd20ee3d@analog.com>
+Message-Id: <20260508-ad9910-iio-driver-v4-9-d26bfd20ee3d@analog.com>
 References: <20260508-ad9910-iio-driver-v4-0-d26bfd20ee3d@analog.com>
 In-Reply-To: <20260508-ad9910-iio-driver-v4-0-d26bfd20ee3d@analog.com>
 To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
@@ -21,215 +21,116 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778259632; l=7383;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778259632; l=4185;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=JUDJpIjdx9vJJEoYazFgsJZuvoEyk0321++06VhTXds=;
- b=QbhTDNJjISYrblveZ2Qh1NqFtn3eFGamz/jfWMo0fhxCrFChkjwHISiCbT8yqkeAvHAim6VIU
- UmzFHMW8YU1A+P3VPj+d3Lrs4SqO4KylYbtqCvQEncQHX5+GHCf7VB3
+ bh=dE4RjDJ3jXYz/rWtGJ4gRTQISFMbwtkVtOgifyBJx3Y=;
+ b=Gn0rPCIlonlfYr1Xkw5LmC1wDnq4KqUWvtJG7BfXNEiXnU+G1GR5/iVvKM9+kiUf4qOaNVMAG
+ tJ0RkiKfT/XCFxMpnqlIw/z49llpyZX07mT481ogIrTNGKlMDY0HLGJ
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Expose frequency_source, phase_source and amplitude_source attributes in
-debugfs. Those indicate from which channel the specific DDS parameter is
-being sourced by returning the its label. The implementation follows the
-priority table found in the datasheet.
+Add custom ABI documentation file for the DDS AD9910 with sysfs entries to
+control Parallel Port, Digital Ramp Generator and OSK parameters.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/frequency/ad9910.c | 171 +++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 171 insertions(+)
+ .../ABI/testing/sysfs-bus-iio-frequency-ad9910     | 73 ++++++++++++++++++++++
+ MAINTAINERS                                        |  1 +
+ 2 files changed, 74 insertions(+)
 
-diff --git a/drivers/iio/frequency/ad9910.c b/drivers/iio/frequency/ad9910.c
-index 1fdbaba356d7..d8fe88259f22 100644
---- a/drivers/iio/frequency/ad9910.c
-+++ b/drivers/iio/frequency/ad9910.c
-@@ -2082,6 +2082,170 @@ static int ad9910_setup(struct device *dev, struct ad9910_state *st,
- 	return ad9910_io_update(st);
- }
+diff --git a/Documentation/ABI/testing/sysfs-bus-iio-frequency-ad9910 b/Documentation/ABI/testing/sysfs-bus-iio-frequency-ad9910
+new file mode 100644
+index 000000000000..eb0ff96a6e10
+--- /dev/null
++++ b/Documentation/ABI/testing/sysfs-bus-iio-frequency-ad9910
+@@ -0,0 +1,73 @@
++What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_frequency_offset
++KernelVersion:
++Contact:	linux-iio@vger.kernel.org
++Description:
++		For a channel that allows frequency control through buffers, this
++		represents the base frequency value in Hz. The actual output frequency
++		is a result with the sum of this value.
++
++What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_frequency_scale
++KernelVersion:
++Contact:	linux-iio@vger.kernel.org
++Description:
++		For a channel that allows frequency control through buffers, this
++		represents the frequency modulation gain. This value multiplies the
++		buffer input sample value before it is added to a frequency offset.
++
++What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_phase_offset
++KernelVersion:
++Contact:	linux-iio@vger.kernel.org
++Description:
++		For a channel that allows phase control through buffers, this
++		represents the base phase value in radians. The actual output phase
++		is a result with the sum of this value.
++
++What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_scale_offset
++KernelVersion:
++Contact:	linux-iio@vger.kernel.org
++Description:
++		For a channel that allows amplitude control through buffers, this
++		represents the value for a base amplitude scale. The actual output
++		amplitude scale is a result with the sum of this value.
++
++What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_dwell_en
++KernelVersion:
++Contact:	linux-iio@vger.kernel.org
++Description:
++		For a channel that produces parametric sweeps, this attribute controls
++		the sweep behavior at the configured limits. It enables dwell mode at a
++		sweep limit when set to 1. Otherwise, the sweep may stop at the initial
++		position or restart from that initial position or continue by reversing
++		its direction.
++
++What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_frequency_roc
++KernelVersion:
++Contact:	linux-iio@vger.kernel.org
++Description:
++		Frequency rate of change in Hz/s for channels that produce linear
++		frequency sweeps. This value may be influenced by the channel's
++		sampling_frequency setting.
++
++What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_phase_roc
++KernelVersion:
++Contact:	linux-iio@vger.kernel.org
++Description:
++		Phase rate of change in rad/s for channels that produce linear
++		phase sweeps. This value may be influenced by the channel's
++		sampling_frequency setting.
++
++What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_scale_roc
++KernelVersion:
++Contact:	linux-iio@vger.kernel.org
++Description:
++		Amplitude scale rate of change in 1/s for channels that ramp
++		amplitude. This value may be influenced by the channel's
++		sampling_frequency setting.
++
++What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_scale_roc_available
++KernelVersion:
++Contact:	linux-iio@vger.kernel.org
++Description:
++		Lists the available scale_roc values for the channel based on
++		the current sampling_frequency. Values are space-separated in
++		ascending order.
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 6a53b202a84d..b52c0aae96b7 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -1643,6 +1643,7 @@ M:	Rodrigo Alencar <rodrigo.alencar@analog.com>
+ L:	linux-iio@vger.kernel.org
+ S:	Supported
+ W:	https://ez.analog.com/linux-software-drivers
++F:	Documentation/ABI/testing/sysfs-bus-iio-frequency-ad9910
+ F:	Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
+ F:	drivers/iio/frequency/ad9910.c
  
-+static inline const char *ad9910_frequency_source_get(struct iio_dev *indio_dev)
-+{
-+	struct ad9910_state *st = iio_priv(indio_dev);
-+	bool ram_en, mode_en;
-+
-+	guard(mutex)(&st->lock);
-+
-+	/* RAM enabled and data destination is frequency */
-+	ram_en = AD9910_RAM_ENABLED(st);
-+	if (ram_en && AD9910_DEST_FREQUENCY ==
-+		      FIELD_GET(AD9910_CFR1_RAM_PLAYBACK_DEST_MSK,
-+				st->reg[AD9910_REG_CFR1].val32))
-+		return ad9910_channel_str[AD9910_CHAN_IDX_RAM];
-+
-+	/* DRG enabled and data destination is frequency */
-+	mode_en = FIELD_GET(AD9910_CFR2_DRG_ENABLE_MSK,
-+			    st->reg[AD9910_REG_CFR2].val32);
-+	if (mode_en && AD9910_DEST_FREQUENCY ==
-+		       FIELD_GET(AD9910_CFR2_DRG_DEST_MSK,
-+				 st->reg[AD9910_REG_CFR2].val32))
-+		return ad9910_channel_str[AD9910_CHAN_IDX_DRG];
-+
-+	/* Parallel data port enabled and data destination is frequency */
-+	mode_en = FIELD_GET(AD9910_CFR2_PARALLEL_DATA_PORT_EN_MSK,
-+			    st->reg[AD9910_REG_CFR1].val32);
-+	if (mode_en) /* TODO: get destination from backend once it is supported */
-+		return ad9910_channel_str[AD9910_CHAN_IDX_PARALLEL_PORT];
-+
-+	/* FTW: RAM enabled and data destination is phase, amplitude, or polar */
-+	if (ram_en)
-+		return ad9910_channel_str[AD9910_CHAN_IDX_RAM];
-+
-+	/* single tone profiles */
-+	return ad9910_channel_str[AD9910_CHAN_IDX_PROFILE_0 + st->profile];
-+}
-+
-+static int ad9910_frequency_source_show(struct file *file, char __user *userbuf,
-+					size_t count, loff_t *ppos)
-+{
-+	struct iio_dev *indio_dev = file->private_data;
-+	const char *src = ad9910_frequency_source_get(indio_dev);
-+
-+	return simple_read_from_buffer(userbuf, count, ppos, src, strlen(src));
-+}
-+
-+static inline const char *ad9910_phase_source_get(struct iio_dev *indio_dev)
-+{
-+	struct ad9910_state *st = iio_priv(indio_dev);
-+	bool ram_en, mode_en;
-+	u32 destination;
-+
-+	guard(mutex)(&st->lock);
-+
-+	/* RAM enabled and data destination is phase or polar  */
-+	ram_en = AD9910_RAM_ENABLED(st);
-+	if (ram_en) {
-+		destination = FIELD_GET(AD9910_CFR1_RAM_PLAYBACK_DEST_MSK,
-+					st->reg[AD9910_REG_CFR1].val32);
-+		if (destination == AD9910_DEST_PHASE ||
-+		    destination == AD9910_DEST_POLAR)
-+			return ad9910_channel_str[AD9910_CHAN_IDX_RAM];
-+	}
-+
-+	/* DRG enabled and data destination is phase */
-+	mode_en = FIELD_GET(AD9910_CFR2_DRG_ENABLE_MSK,
-+			    st->reg[AD9910_REG_CFR2].val32);
-+	if (mode_en && AD9910_DEST_PHASE ==
-+		       FIELD_GET(AD9910_CFR2_DRG_DEST_MSK,
-+				 st->reg[AD9910_REG_CFR2].val32))
-+		return ad9910_channel_str[AD9910_CHAN_IDX_DRG];
-+
-+	/* Parallel data port enabled and data destination is phase */
-+	mode_en = FIELD_GET(AD9910_CFR2_PARALLEL_DATA_PORT_EN_MSK,
-+			    st->reg[AD9910_REG_CFR1].val32);
-+	if (mode_en) /* TODO: get destination from backend once it is supported */
-+		return ad9910_channel_str[AD9910_CHAN_IDX_PARALLEL_PORT];
-+
-+	/* POW: RAM enabled and data destination is frequency, amplitude, or polar */
-+	if (ram_en)
-+		return ad9910_channel_str[AD9910_CHAN_IDX_RAM];
-+
-+	/* single tone profiles */
-+	return ad9910_channel_str[AD9910_CHAN_IDX_PROFILE_0 + st->profile];
-+}
-+
-+static int ad9910_phase_source_show(struct file *file, char __user *userbuf,
-+				    size_t count, loff_t *ppos)
-+{
-+	struct iio_dev *indio_dev = file->private_data;
-+	const char *src = ad9910_phase_source_get(indio_dev);
-+
-+	return simple_read_from_buffer(userbuf, count, ppos, src, strlen(src));
-+}
-+
-+static inline const char *ad9910_amplitude_source_get(struct iio_dev *indio_dev)
-+{
-+	struct ad9910_state *st = iio_priv(indio_dev);
-+	bool ram_en, mode_en;
-+	u32 destination;
-+
-+	guard(mutex)(&st->lock);
-+
-+	/* OSK enabled */
-+	mode_en = FIELD_GET(AD9910_CFR1_OSK_ENABLE_MSK,
-+			    st->reg[AD9910_REG_CFR2].val32);
-+	if (mode_en)
-+		return ad9910_channel_str[AD9910_CHAN_IDX_OSK];
-+
-+	/* RAM enabled and data destination is amplitude or polar */
-+	ram_en = AD9910_RAM_ENABLED(st);
-+	if (ram_en) {
-+		destination = FIELD_GET(AD9910_CFR1_RAM_PLAYBACK_DEST_MSK,
-+					st->reg[AD9910_REG_CFR1].val32);
-+		if (destination == AD9910_DEST_AMPLITUDE ||
-+		    destination == AD9910_DEST_POLAR)
-+			return ad9910_channel_str[AD9910_CHAN_IDX_RAM];
-+	}
-+
-+	/* DRG enabled and data destination is amplitude */
-+	mode_en = FIELD_GET(AD9910_CFR2_DRG_ENABLE_MSK,
-+			    st->reg[AD9910_REG_CFR2].val32);
-+	if (mode_en && AD9910_DEST_AMPLITUDE ==
-+		       FIELD_GET(AD9910_CFR2_DRG_DEST_MSK,
-+				 st->reg[AD9910_REG_CFR2].val32))
-+		return ad9910_channel_str[AD9910_CHAN_IDX_DRG];
-+
-+	/* Parallel data port enabled and data destination is phase */
-+	mode_en = FIELD_GET(AD9910_CFR2_PARALLEL_DATA_PORT_EN_MSK,
-+			    st->reg[AD9910_REG_CFR1].val32);
-+	if (mode_en) /* TODO: get destination from backend once it is supported */
-+		return ad9910_channel_str[AD9910_CHAN_IDX_PARALLEL_PORT];
-+
-+	/* only way to control amplitude at this point is through OSK */
-+	if (ram_en)
-+		return ad9910_channel_str[AD9910_CHAN_IDX_OSK];
-+
-+	/* single tone profiles */
-+	return ad9910_channel_str[AD9910_CHAN_IDX_PROFILE_0 + st->profile];
-+}
-+
-+static int ad9910_amplitude_source_show(struct file *file, char __user *userbuf,
-+					size_t count, loff_t *ppos)
-+{
-+	struct iio_dev *indio_dev = file->private_data;
-+	const char *src = ad9910_amplitude_source_get(indio_dev);
-+
-+	return simple_read_from_buffer(userbuf, count, ppos, src, strlen(src));
-+}
-+
-+static const struct file_operations ad9910_frequency_source_fops = {
-+	.owner = THIS_MODULE,
-+	.read = ad9910_frequency_source_show,
-+};
-+
-+static const struct file_operations ad9910_phase_source_fops = {
-+	.owner = THIS_MODULE,
-+	.read = ad9910_phase_source_show,
-+};
-+
-+static const struct file_operations ad9910_amplitude_source_fops = {
-+	.owner = THIS_MODULE,
-+	.read = ad9910_amplitude_source_show,
-+};
-+
- static inline void ad9910_debugfs_init(struct ad9910_state *st,
- 				       struct iio_dev *indio_dev)
- {
-@@ -2097,6 +2261,13 @@ static inline void ad9910_debugfs_init(struct ad9910_state *st,
- 
- 	snprintf(buf, sizeof(buf), "/sys/class/firmware/%s/data", st->ram_fwu_name);
- 	debugfs_create_symlink("ram_data", d, buf);
-+
-+	debugfs_create_file("frequency_source", 0400, d, indio_dev,
-+			    &ad9910_frequency_source_fops);
-+	debugfs_create_file("phase_source", 0400, d, indio_dev,
-+			    &ad9910_phase_source_fops);
-+	debugfs_create_file("amplitude_source", 0400, d, indio_dev,
-+			    &ad9910_amplitude_source_fops);
- }
- 
- static int ad9910_probe(struct spi_device *spi)
 
 -- 
 2.43.0
