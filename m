@@ -1,10 +1,10 @@
 From: Michael Riesch <michael.riesch@collabora.com>
-Date: Fri, 08 May 2026 21:31:44 +0200
-Subject: [PATCH v4 1/8] Documentation: admin-guide: media: add rk3588 vicap
+Date: Fri, 08 May 2026 21:31:45 +0200
+Subject: [PATCH v4 2/8] media: dt-bindings: add rockchip rk3588 vicap
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260508-rk3588-vicap-v4-1-6a6cd6f7c90b@collabora.com>
+Message-Id: <20260508-rk3588-vicap-v4-2-6a6cd6f7c90b@collabora.com>
 References: <20260508-rk3588-vicap-v4-0-6a6cd6f7c90b@collabora.com>
 In-Reply-To: <20260508-rk3588-vicap-v4-0-6a6cd6f7c90b@collabora.com>
 To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
@@ -22,102 +22,274 @@ To: Mehdi Djait <mehdi.djait@linux.intel.com>,
  Sakari Ailus <sakari.ailus@linux.intel.com>
 Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>
+ linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778268716; l=4871;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778268716; l=6664;
  i=michael.riesch@collabora.com; s=20260428; h=from:subject:message-id;
- bh=eS5mY4EZ7XDsw0jrDI/5w4/ofpel/2YcT5yOuU60IhQ=;
- b=eo5zgOtrqWV7F7L14CC47Z6U10rVZx6uBh4oDQ4DnhvcLQywH22RMvguVCbnkKeh8g+UFIWbG
- DMeDrld3/x7ANP7ooKwyNqz+Be9GhnIADR6R28ui9mrzKfQCVSc3Y9i
+ bh=MB2lleeaGfpkbdhgTXXp4XKQh5zMC0P0DcNIMyC6fmY=;
+ b=XJoI0fZNnztASZOkRLnbaF1URsqneqh8Mjkub4osBOqzvVU0d5Hd/YHIlRMDFGxYsJIBrzJMs
+ ed6800azDNLDnLxhPBCgBW5eP86DOYEpqlryltYNW/gMbwEksfpKQ4r
 X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
  pk=tAbmpPTE1MELYweXqqDU40fa18uCO6s32GJL/RzyW2Y=
 X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20260428 with auth_id=759
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a section that describes the Rockchip RK3588 VICAP.
+Add documentation for the Rockchip RK3588 Video Capture (VICAP) unit. To
+that end, make the existing rockchip,rk3568-vicap documentation more
+general and introduce variant specific constraints.
 
-Reviewed-by: Mehdi Djait <mehdi.djait@linux.intel.com>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- .../admin-guide/media/rkcif-rk3588-vicap.dot       | 29 ++++++++++++++++++++
- Documentation/admin-guide/media/rkcif.rst          | 32 ++++++++++++++++++++++
- 2 files changed, 61 insertions(+)
+ .../bindings/media/rockchip,rk3568-vicap.yaml      | 187 ++++++++++++++++++---
+ 1 file changed, 163 insertions(+), 24 deletions(-)
 
-diff --git a/Documentation/admin-guide/media/rkcif-rk3588-vicap.dot b/Documentation/admin-guide/media/rkcif-rk3588-vicap.dot
-new file mode 100644
-index 0000000000000000000000000000000000000000..f6d3404920b544f921987d3240f89987b340e138
---- /dev/null
-+++ b/Documentation/admin-guide/media/rkcif-rk3588-vicap.dot
-@@ -0,0 +1,29 @@
-+digraph board {
-+        rankdir=TB
-+        n00000007 [label="{{<port0> 0} | rkcif-mipi2\n/dev/v4l-subdev0 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+        n00000007:port1 -> n0000000a
-+        n00000007:port1 -> n00000010 [style=dashed]
-+        n00000007:port1 -> n00000016 [style=dashed]
-+        n00000007:port1 -> n0000001c [style=dashed]
-+        n0000000a [label="rkcif-mipi2-id0\n/dev/video0", shape=box, style=filled, fillcolor=yellow]
-+        n00000010 [label="rkcif-mipi2-id1\n/dev/video1", shape=box, style=filled, fillcolor=yellow]
-+        n00000016 [label="rkcif-mipi2-id2\n/dev/video2", shape=box, style=filled, fillcolor=yellow]
-+        n0000001c [label="rkcif-mipi2-id3\n/dev/video3", shape=box, style=filled, fillcolor=yellow]
-+        n00000025 [label="{{<port0> 0} | rkcif-mipi4\n/dev/v4l-subdev1 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+        n00000025:port1 -> n00000028
-+        n00000025:port1 -> n0000002e [style=dashed]
-+        n00000025:port1 -> n00000034 [style=dashed]
-+        n00000025:port1 -> n0000003a [style=dashed]
-+        n00000028 [label="rkcif-mipi4-id0\n/dev/video4", shape=box, style=filled, fillcolor=yellow]
-+        n0000002e [label="rkcif-mipi4-id1\n/dev/video5", shape=box, style=filled, fillcolor=yellow]
-+        n00000034 [label="rkcif-mipi4-id2\n/dev/video6", shape=box, style=filled, fillcolor=yellow]
-+        n0000003a [label="rkcif-mipi4-id3\n/dev/video7", shape=box, style=filled, fillcolor=yellow]
-+        n00000043 [label="{{<port0> 0} | dw-mipi-csi2rx fdd30000.csi\n/dev/v4l-subdev2 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+        n00000043:port1 -> n00000007:port0
-+        n00000048 [label="{{<port0> 0} | dw-mipi-csi2rx fdd50000.csi\n/dev/v4l-subdev3 | {<port1> 1}}", shape=Mrecord, style=filled, fillcolor=green]
-+        n00000048:port1 -> n00000025:port0
-+        n0000004d [label="{{} | imx415 3-001a\n/dev/v4l-subdev4 | {<port0> 0}}", shape=Mrecord, style=filled, fillcolor=green]
-+        n0000004d:port0 -> n00000043:port0
-+        n00000051 [label="{{} | imx415 4-001a\n/dev/v4l-subdev5 | {<port0> 0}}", shape=Mrecord, style=filled, fillcolor=green]
-+        n00000051:port0 -> n00000048:port0
-+}
-diff --git a/Documentation/admin-guide/media/rkcif.rst b/Documentation/admin-guide/media/rkcif.rst
-index 2558c121abc466393b4a132e0d9abd2d37f2d25b..313a0ea45d16fe9bbb79d0798e8f8b1dbe1cb83f 100644
---- a/Documentation/admin-guide/media/rkcif.rst
-+++ b/Documentation/admin-guide/media/rkcif.rst
-@@ -77,3 +77,35 @@ and the following video devices:
- .. kernel-figure:: rkcif-rk3568-vicap.dot
-     :alt:   Topology of the RK3568 Video Capture (VICAP) unit
-     :align: center
+diff --git a/Documentation/devicetree/bindings/media/rockchip,rk3568-vicap.yaml b/Documentation/devicetree/bindings/media/rockchip,rk3568-vicap.yaml
+index 18cd0a5a5318174910e04f6ef7558c92cbfec899..897ed00c239bdfe33777a8f8474fb27fa6265e49 100644
+--- a/Documentation/devicetree/bindings/media/rockchip,rk3568-vicap.yaml
++++ b/Documentation/devicetree/bindings/media/rockchip,rk3568-vicap.yaml
+@@ -15,9 +15,15 @@ description:
+   the data from camera sensors, video decoders, or other companion ICs and
+   transfers it into system main memory by AXI bus.
+ 
++  The Rockchip RK3588 Video Capture (VICAP) is similar to its RK3568
++  counterpart, but features six MIPI CSI-2 ports and additional connections
++  to the image signal processor (ISP) blocks.
 +
-+Rockchip RK3588 Video Capture (VICAP)
-+-------------------------------------
+ properties:
+   compatible:
+-    const: rockchip,rk3568-vicap
++    enum:
++      - rockchip,rk3568-vicap
++      - rockchip,rk3588-vicap
+ 
+   reg:
+     maxItems: 1
+@@ -26,37 +32,23 @@ properties:
+     maxItems: 1
+ 
+   clocks:
+-    items:
+-      - description: ACLK
+-      - description: HCLK
+-      - description: DCLK
+-      - description: ICLK
++    minItems: 4
++    maxItems: 5
+ 
+   clock-names:
+-    items:
+-      - const: aclk
+-      - const: hclk
+-      - const: dclk
+-      - const: iclk
++    minItems: 4
++    maxItems: 5
+ 
+   iommus:
+     maxItems: 1
+ 
+   resets:
+-    items:
+-      - description: ARST
+-      - description: HRST
+-      - description: DRST
+-      - description: PRST
+-      - description: IRST
++    minItems: 5
++    maxItems: 9
+ 
+   reset-names:
+-    items:
+-      - const: arst
+-      - const: hrst
+-      - const: drst
+-      - const: prst
+-      - const: irst
++    minItems: 5
++    maxItems: 9
+ 
+   rockchip,grf:
+     $ref: /schemas/types.yaml#/definitions/phandle
+@@ -67,8 +59,15 @@ properties:
+ 
+   ports:
+     $ref: /schemas/graph.yaml#/properties/ports
++    additionalProperties: false
+ 
+     properties:
++      "#address-cells":
++        const: 1
 +
-+The RK3588 Video Capture (VICAP) unit features a digital video port and six
-+MIPI CSI-2 capture interfaces that can receive video data independently.
-+The DVP accepts parallel video data, BT.656 and BT.1120.
-+Since the BT.1120 protocol may feature more than one stream, the RK3588 VICAP
-+DVP features four DMA engines that can capture different streams.
-+Similarly, the RK3588 VICAP MIPI CSI-2 receivers feature four DMA engines each
-+to handle different Virtual Channels (VCs).
++      "#size-cells":
++        const: 0
 +
-+The rkcif driver represents this hardware variant by exposing the following
-+V4L2 subdevices:
+       port@0:
+         $ref: /schemas/graph.yaml#/$defs/port-base
+         unevaluatedProperties: false
+@@ -100,13 +99,75 @@ properties:
+ 
+       port@1:
+         $ref: /schemas/graph.yaml#/properties/port
+-        description: Port connected to the MIPI CSI-2 receiver output.
++        description: Port connected to the MIPI CSI-2 receiver 0 output.
 +
-+* dw-mipi-csi2rx fdd30000.csi: MIPI CSI-2 receiver connected to MIPI DPHY0
-+* dw-mipi-csi2rx fdd50000.csi: MIPI CSI-2 receiver connected to MIPI DPHY1
-+* rkcif-mipi2: INTERFACE/CROP block for the MIPI CSI-2 receiver connected to
-+  MIPI DPHY0
-+* rkcif-mipi4: INTERFACE/CROP block for the MIPI CSI-2 receiver connected to
-+  MIPI DPHY1
++        properties:
++          endpoint:
++            $ref: video-interfaces.yaml#
++            unevaluatedProperties: false
 +
-+and the following video devices:
++      port@2:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Port connected to the MIPI CSI-2 receiver 1 output.
 +
-+* rkcif-mipi2-id{0,1,2,3}: The DMA engines connected to the rkcif-mipi2
-+  INTERFACE/CROP block.
-+* rkcif-mipi4-id{0,1,2,3}: The DMA engines connected to the rkcif-mipi4
-+  INTERFACE/CROP block.
++        properties:
++          endpoint:
++            $ref: video-interfaces.yaml#
++            unevaluatedProperties: false
 +
-+.. kernel-figure:: rkcif-rk3588-vicap.dot
-+    :alt:   Topology of the RK3588 Video Capture (VICAP) unit
-+    :align: center
++      port@3:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Port connected to the MIPI CSI-2 receiver 2 output.
++
++        properties:
++          endpoint:
++            $ref: video-interfaces.yaml#
++            unevaluatedProperties: false
++
++      port@4:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Port connected to the MIPI CSI-2 receiver 3 output.
++
++        properties:
++          endpoint:
++            $ref: video-interfaces.yaml#
++            unevaluatedProperties: false
++
++      port@5:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Port connected to the MIPI CSI-2 receiver 4 output.
++
++        properties:
++          endpoint:
++            $ref: video-interfaces.yaml#
++            unevaluatedProperties: false
++
++      port@6:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Port connected to the MIPI CSI-2 receiver 5 output.
+ 
+         properties:
+           endpoint:
+             $ref: video-interfaces.yaml#
+             unevaluatedProperties: false
+ 
++      port@10:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Port connected to the ISP0 input.
++
++        properties:
++          endpoint:
++            $ref: video-interfaces.yaml#
++            unevaluatedProperties: false
++
++      port@11:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Port connected to the ISP1 input.
++
++        properties:
++          endpoint:
++            $ref: video-interfaces.yaml#
++            unevaluatedProperties: false
+ required:
+   - compatible
+   - reg
+@@ -114,6 +175,84 @@ required:
+   - clocks
+   - ports
+ 
++allOf:
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: rockchip,rk3568-vicap
++    then:
++      properties:
++        clocks:
++          maxItems: 4
++
++        clock-names:
++          items:
++            - const: aclk
++            - const: hclk
++            - const: dclk
++            - const: iclk
++
++        resets:
++          maxItems: 5
++
++        reset-names:
++          items:
++            - const: arst
++            - const: hrst
++            - const: drst
++            - const: prst
++            - const: irst
++
++        ports:
++          properties:
++            port@2: false
++
++            port@3: false
++
++            port@4: false
++
++            port@5: false
++
++            port@6: false
++
++            port@10: false
++
++            port@11: false
++
++  - if:
++      properties:
++        compatible:
++          contains:
++            const: rockchip,rk3588-vicap
++    then:
++      properties:
++        clocks:
++          minItems: 5
++
++        clock-names:
++          items:
++            - const: aclk
++            - const: hclk
++            - const: dclk
++            - const: iclk0
++            - const: iclk1
++
++        resets:
++          minItems: 9
++
++        reset-names:
++          items:
++            - const: arst
++            - const: hrst
++            - const: drst
++            - const: irst0
++            - const: irst1
++            - const: irst2
++            - const: irst3
++            - const: irst4
++            - const: irst5
++
+ additionalProperties: false
+ 
+ examples:
 
 -- 
 2.47.3
