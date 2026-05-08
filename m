@@ -1,684 +1,159 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Fri, 08 May 2026 18:00:26 +0100
-Subject: [PATCH RFC v4 10/10] docs: iio: add documentation for ad9910
- driver
+From: Michael Riesch <michael.riesch@collabora.com>
+Subject: [PATCH v4 0/8] media: rockchip: rkcif: add support for rk3588
+ vicap
+Date: Fri, 08 May 2026 21:31:43 +0200
+Message-Id: <20260508-rk3588-vicap-v4-0-6a6cd6f7c90b@collabora.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260508-ad9910-iio-driver-v4-10-d26bfd20ee3d@analog.com>
-References: <20260508-ad9910-iio-driver-v4-0-d26bfd20ee3d@analog.com>
-In-Reply-To: <20260508-ad9910-iio-driver-v4-0-d26bfd20ee3d@analog.com>
-To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-hardening@vger.kernel.org
-Cc: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIACA6/mkC/33PTW7DIBAF4KtYrEuFYbDBq96jyoKfoUZNg4MT1
+ Cjy3UtsRa2qKMs30nxv5kpmzBFnMjRXkrHEOaZDDfDSEDeawwfS6GsmnHHJQDCaP4VUipbozES
+ 1bztwSnJlelJXpowhfq/c+27LGY/nqp624S86NJUExvlGdnfSaiuC1lwGgKEo8veQdUeyru3uZ
+ 7g5Uj+NF+o0em48OK/DUFpyax/jfEr5sv5WR7f6x2+UljJqhfU+9KB1C28u7ffGpmxeXfpascK
+ fAbwCfe9RImoGCh8B4hkgKoBCIXClOuXcf2BZlh/OrLhbrAEAAA==
+X-Change-ID: 20250430-rk3588-vicap-9d164c8528a7
+To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
+ Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
- Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778259632; l=21317;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=M0ddDkNcI0EAVjeMxFP3dp9+bFk1C5z81T7bSHiOG+s=;
- b=HOigM4I1TKhJyK1yR6h4r/zjiA+rpzuEYR6lC7tTv67JyPvd8caw1oZG4PiTCBgOWvWTIjQC9
- TVWL808F15NBFNMzzk10++eKcDL0FT/HZnOWnVPVQ/ExJiFq6sjBggQ
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
+ Kever Yang <kever.yang@rock-chips.com>, 
+ Jagan Teki <jagan@amarulasolutions.com>, 
+ =?utf-8?q?=D0=9A=D1=83=D0=B7=D0=BD=D0=B5=D1=86=D0=BE=D0=B2_=D0=9C=D0=B8=D1=85=D0=B0=D0=B8=D0=BB?= <mai.kuznetsov.misha@gmail.com>, 
+ Charalampos Mitrodimas <charmitro@posteo.net>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
+ Collabora Kernel Team <kernel@collabora.com>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778268716; l=5682;
+ i=michael.riesch@collabora.com; s=20260428; h=from:subject:message-id;
+ bh=zcj5tPO8EGUHQ3PblHwCpCRwy3qPyWzeVvgrXptAkfI=;
+ b=QfbZin3HGccgWUmIGD7UhdPllAKhiJVq+tje5bF0sxrheQ5A5YX3+5LUERfQfOJC6dkEkVBpY
+ C/WG+Nkt1ZpCUsGYZq2HWUqhvCD3wbsDIwAwqyit6WWuHzHYgwVE0sg
+X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
+ pk=tAbmpPTE1MELYweXqqDU40fa18uCO6s32GJL/RzyW2Y=
+X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20260428 with auth_id=759
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add documentation for the AD9910 DDS IIO driver, which describes channels,
-DDS modes, attributes and ABI usage examples.
+Habidere,
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+The RK3588 Video Capture (VICAP) constitutes an essential piece of the 
+RK3588 camera interface with one DVP, six MIPI CSI-2 receivers, scale/crop 
+units, and a data path multiplexer (to scaler units, to ISP, ...). This 
+series introduces basic support for the RK3588 VICAP unit to the rkcif 
+driver, thus paving the way for video capture in general and for camera 
+sensor image processing in particular.
+
+The changes have been tested successfully on a Radxa ROCK 5B+ with two 
+Radxa 4K cameras attached to it. The raw images from the sensors can be 
+streamed after configuring the hardware pipeline with
+
+media-ctl -d 0 --set-v4l2 '"dw-mipi-csi2rx fdd30000.csi":0
+  [fmt:SGBRG10_1X10/3864x2192 field:none colorspace:raw xfer:none]'
+
+media-ctl -d 0 --set-v4l2 '"rkcif-mipi2":0
+  [fmt:SGBRG10_1X10/3864x2192 field:none colorspace:raw xfer:none]'
+
+media-ctl -d 0 --set-v4l2 '"dw-mipi-csi2rx fdd50000.csi":0
+  [fmt:SGBRG10_1X10/3864x2192 field:none colorspace:raw xfer:none]'
+
+media-ctl -d 0 --set-v4l2 '"rkcif-mipi4":0 
+  [fmt:SGBRG10_1X10/3864x2192 field:none colorspace:raw xfer:none]'
+
+and using e.g., GStreamer
+
+gst-launch-1.0 v4l2src \
+  device=/dev/v4l/by-path/platform-fdce0000.video-capture-video-index0 \
+  ! video/x-bayer,format=gbrg10le,width=3864,height=2192 ! bayer2rgb \
+  ! ...
+(or -index4 for the other camera sensor).
+
+Note that this series requires the RK3588 MIPI CSI-2 receiver patches [0]. 
+The dt-bindings patch is already included in media-committers/next and the 
+DT patch is already in Heiko's tree. I included the DT patch here to avoid 
+nasty merge conflicts.
+
+Looking forward to your comments!
+
+[0] https://lore.kernel.org/all/20260305-rk3588-csi2rx-v2-0-79d01b615486@collabora.com
+
+Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
 ---
- Documentation/iio/ad9910.rst | 607 +++++++++++++++++++++++++++++++++++++++++++
- Documentation/iio/index.rst  |   1 +
- MAINTAINERS                  |   1 +
- 3 files changed, 609 insertions(+)
+Changes in v4:
+- rebased onto latest media-committers/next
+- applied Conor's A-b and Mehdi's R-b
+- reflowed commit messages
+- Link to v3: https://lore.kernel.org/r/20250430-rk3588-vicap-v3-0-e38e428868cc@collabora.com
 
-diff --git a/Documentation/iio/ad9910.rst b/Documentation/iio/ad9910.rst
-new file mode 100644
-index 000000000000..7c5dad054d5f
---- /dev/null
-+++ b/Documentation/iio/ad9910.rst
-@@ -0,0 +1,607 @@
-+.. SPDX-License-Identifier: GPL-2.0-only
-+
-+=============
-+AD9910 driver
-+=============
-+
-+Direct Digital Synthesizer (DDS) driver for the Analog Devices Inc. AD9910.
-+The module name is ``ad9910``.
-+
-+* `AD9910 <https://www.analog.com/en/products/ad9910.html>`_
-+
-+The AD9910 is a 1 GSPS DDS with a 14-bit DAC, controlled over SPI. The driver
-+exposes the device through the IIO ``altvoltage`` channel type and supports
-+five DDS operating modes: single tone, parallel port modulation, digital ramp
-+generation (DRG), RAM playback and output shift keying (OSK). The device has
-+8 hardware profiles, each capable of storing independent single tone and RAM
-+playback parameters.
-+
-+
-+Channel hierarchy
-+=================
-+
-+The driver exposes the following IIO output channels, each identified by a
-+unique channel number and a human-readable label:
-+
-+* ``out_altvoltage100``: ``phy``: Physical output: system clock and profile control
-+
-+  * ``out_altvoltage101``: ``profile[0]``: Single tone control for profile 0:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage102``: ``profile[1]``: Single tone control for profile 1:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage103``: ``profile[2]``: Single tone control for profile 2:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage104``: ``profile[3]``: Single tone control for profile 3:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage105``: ``profile[4]``: Single tone control for profile 4:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage106``: ``profile[5]``: Single tone control for profile 5:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage107``: ``profile[6]``: Single tone control for profile 6:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage108``: ``profile[7]``: Single tone control for profile 7:
-+    frequency, phase, amplitude
-+
-+  * ``out_altvoltage110``: ``parallel_port``: Parallel port modulation channel
-+
-+  * ``out_altvoltage120``: ``digital_ramp_generator``: DRG control: enable
-+
-+    * ``out_altvoltage121``: ``digital_ramp_up``: DRG ramp-up parameters:
-+      dwell enable, limits, rate of change, ramp rate
-+    * ``out_altvoltage122``: ``digital_ramp_down``: DRG ramp-down parameters:
-+      dwell enable, limits, rate of change, ramp rate
-+
-+  * ``out_altvoltage130``: ``ram_control``: RAM playback: enable, frequency,
-+    phase and sampling frequency for active profile. Other configurations are
-+    provided through a firmware upload interface.
-+
-+  * ``out_altvoltage150``: ``output_shift_keying``: OSK: enable, amplitude
-+    scale, ramp rate, rate of change control
-+
-+The ``phy`` channel is the root of the hierarchy. Changing its
-+``sampling_frequency`` reconfigures the system clock (SYSCLK) which affects all
-+other channels.
-+
-+Most of the mode-specific channels (single-tone, DRG, RAM, OSK) have an
-+``enable`` attribute that turns the mode on/off.
-+
-+DDS modes
-+=========
-+
-+The AD9910 supports multiple modes of operation that can be configured
-+independently or in combination. Such modes and their corresponding IIO channels
-+are described in this section. Each DDS core parameter (frequency, phase and
-+amplitude) value can come from different sources, but only one is active at a
-+time. This activation depends on a priority list, which is based on the enable
-+and destination configurations for such modes. The following tables are
-+extracted from the AD9910 datasheet and summarizes the control parameters for
-+each mode and their priority when multiple sources are enabled simultaneously:
-+
-+.. flat-table:: DDS Frequency Control
-+   :header-rows: 1
-+
-+   * - Priority
-+     - Data Source
-+     - Conditions
-+
-+   * - Highest Priority
-+     - RAM
-+     - RAM enabled and data destination is frequency
-+
-+   * -
-+     - DRG
-+     - DRG enabled and data destination is frequency
-+
-+   * -
-+     - Parallel data and FTW (frequency_offset)
-+     - Parallel data port enabled and data destination is frequency
-+
-+   * -
-+     - FTW register (frequency)
-+     - RAM enabled and data destination is not frequency
-+
-+   * - Lowest Priority
-+     - FTW (frequency) in single tone channel for the active profile
-+     - All other cases
-+
-+.. flat-table:: DDS Phase Control
-+   :header-rows: 1
-+
-+   * - Priority
-+     - Data Source
-+     - Conditions
-+
-+   * - Highest Priority
-+     - RAM
-+     - RAM enabled and data destination is phase or polar
-+
-+   * -
-+     - DRG
-+     - DRG enabled and data destination is phase
-+
-+   * -
-+     - Parallel data port
-+     - Parallel data port enabled and data destination is phase
-+
-+   * -
-+     - Parallel data port and POW register LSBs (phase_offset)
-+     - Parallel data port enabled and data destination is polar
-+
-+   * -
-+     - POW register (phase)
-+     - RAM enabled and destination is not phase nor polar
-+
-+   * - Lowest Priority
-+     - POW (phase) in single tone channel for the active profile
-+     - All other cases
-+
-+.. flat-table:: DDS Amplitude Control
-+   :header-rows: 1
-+
-+   * - Priority
-+     - Data Source
-+     - Conditions
-+
-+   * - Highest Priority
-+     - ASF register and OSK generator
-+     - OSK enabled
-+
-+   * -
-+     - RAM
-+     - RAM enabled and data destination is amplitude or polar
-+
-+   * -
-+     - DRG
-+     - DRG enabled and data destination is amplitude
-+
-+   * -
-+     - Parallel data port
-+     - Parallel data port enabled and data destination is amplitude
-+
-+   * -
-+     - Parallel data port and ASF register LSBs (scale_offset)
-+     - Parallel data port enabled and data destination is polar
-+
-+   * - Lowest Priority
-+     - ASF (scale) in single tone channel for the active profile
-+     - (Amplitude scale is already enabled by default)
-+
-+While debugging or testing, the debug attributes ``frequency_source``,
-+``phase_source`` and ``amplitude_source`` can be used to read the label of
-+the channel that is actively controlling the correspondent DDS parameter,
-+which reflects the priority list described above.
-+
-+Single Tone mode
-+----------------
-+
-+Single tone is the baseline operating mode. The ``profile[Y]`` channels
-+provides enable, frequency, phase and amplitude control:
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``en``
-+     - boolean (0 or 1)
-+     - Enable/disable profile Y. Only one profile can be active at a
-+       time. Then enabling a profile disables the current active profile.
-+       Disabling an active profile brings the device to a powered down state.
-+
-+   * - ``frequency``
-+     - Hz
-+     - Output frequency. Range :math:`[0, f_{SYSCLK}/2)`. Stored in the
-+       profile's frequency tuning word (FTW).
-+
-+   * - ``phase``
-+     - rad
-+     - Phase offset. Range :math:`[0, 2\pi)`. Stored in the profile's phase
-+       offset word (POW).
-+
-+   * - ``scale``
-+     - fractional
-+     - Amplitude scale factor. Range :math:`[0, 1]`. Stored in the profile's
-+       amplitude scale factor (ASF).
-+
-+Profile switching is allowed while RAM mode is enabled. In that case single tone
-+parameters are stored in a shadow register and are not written to hardware until
-+RAM mode is disabled.
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Configure a 100 MHz tone in profile to 2 and set it as the active profile:
-+
-+.. code-block:: bash
-+
-+  echo 100000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage103_frequency
-+  echo 0.5 > /sys/bus/iio/devices/iio:device0/out_altvoltage103_scale
-+  echo 0 > /sys/bus/iio/devices/iio:device0/out_altvoltage103_phase
-+
-+  # Activate profile 2
-+  echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage103_en
-+
-+Read back the current single tone frequency:
-+
-+.. code-block:: bash
-+
-+  cat /sys/bus/iio/devices/iio:device0/out_altvoltage103_frequency
-+
-+Parallel Port mode
-+------------------
-+
-+The parallel port allows real-time modulation of DDS parameters through a
-+16-bit external data bus.
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``frequency_scale``
-+     - power-of-2
-+     - FM gain multiplier applied to 16-bit parallel input. Range :math:`[1, 32768]`,
-+       must be a power of 2.
-+
-+   * - ``frequency_offset``
-+     - Hz
-+     - Base FTW to which scaled parallel data is added. Range :math:`[0, f_{SYSCLK}/2)`.
-+
-+   * - ``phase_offset``
-+     - rad
-+     - Base phase for polar modulation. Lower 8 bits of POW register.
-+       Range :math:`[0, 2\pi/256)`.
-+
-+   * - ``scale_offset``
-+     - fractional
-+     - Base amplitude for polar modulation. Lower 6 bits of ASF register.
-+       Range :math:`[0, 1/256)`.
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Set parallel port frequency modulation with a scale of 16 and a 50 MHz
-+offset:
-+
-+.. code-block:: bash
-+
-+  echo 16 > /sys/bus/iio/devices/iio:device0/out_altvoltage113_frequency_scale
-+  echo 50000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage113_frequency_offset
-+
-+Digital ramp generator (DRG)
-+----------------------------
-+
-+The DRG produces linear frequency, phase or amplitude sweeps using dedicated
-+hardware. It is controlled through three channels: a parent control channel
-+(``digital_ramp_generator``) and two child ramp channels
-+(``digital_ramp_up``, ``digital_ramp_down``). DRG destination is set when
-+ramp attributes are written, i.e. writing to ``frequency`` or ``frequency_roc``
-+sets the destination to frequency.
-+
-+Control channel attributes
-+^^^^^^^^^^^^^^^^^^^^^^^^^^
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``en``
-+     - boolean
-+     - Enable/disable the DRG.
-+
-+Ramp channel attributes
-+^^^^^^^^^^^^^^^^^^^^^^^^
-+
-+The ``digital_ramp_up`` and ``digital_ramp_down`` channels share the same
-+attribute set but configure ascending and descending ramp parameters
-+independently:
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``dwell_en``
-+     - boolean
-+     - Enable dwell at the ramp limit. When disabled, the ramp auto-transitions
-+       at this limit without waiting for the DRCTL pin. Disabling both creates a
-+       bidirectional continuous ramp (Triangular pattern). Other configurations
-+       create a single-shot ramp at the transition of the DRCTL pin: ramp-up
-+       only, ramp-down only or bidirectional with dwell at the limits.
-+
-+   * - ``frequency``
-+     - Hz
-+     - Frequency ramp limit. Range: :math:`[0, f_{SYSCLK}/2)`. Writing a value
-+       sets the ramp destination to frequency. Reading back returns the
-+       currently active frequency limit or -EBUSY if other destination is
-+       active (phase or amplitude).
-+
-+   * - ``phase``
-+     - rad
-+     - Phase ramp limit. Range: :math:`[0, 2\pi)`. Writing a value sets the
-+       ramp destination to phase. Reading back returns the currently active
-+       phase limit or -EBUSY if other destination is active (frequency or
-+       amplitude).
-+
-+   * - ``scale``
-+     - fractional
-+     - Amplitude scale ramp limit. Range: :math:`[0, 1)`. Writing a value sets
-+       the ramp destination to amplitude. Reading back returns the currently
-+       active scale limit or -EBUSY if other destination is active (frequency
-+       or phase).
-+
-+   * - ``sampling_frequency``
-+     - Hz
-+     - Ramp clock rate. It is controlled by an integer divider so the requested
-+       value will adjust to nearest supported value.
-+
-+   * - ``frequency_roc``
-+     - Hz/s
-+     - Frequency rate of change. Sets the per-tick frequency increment/decrement
-+       based on the current ramp clock rate.
-+
-+   * - ``phase_roc``
-+     - rad/s
-+     - Phase rate of change. Sets the per-tick phase increment/decrement based
-+       on the current ramp clock rate.
-+
-+   * - ``scale_roc``
-+     - 1/s
-+     - Amplitude scale rate of change. Sets the per-tick amplitude scale
-+       increment/decrement based on the current ramp clock rate.
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Configure a frequency sweep from 40 MHz to 60 MHz with a rate of change of
-+25 GHz/s:
-+
-+.. code-block:: bash
-+
-+  # Disable dwell on both limits for a bidirectional continuous ramp
-+  echo 0 > /sys/bus/iio/devices/iio:device0/out_altvoltage121_dwell_en
-+  echo 0 > /sys/bus/iio/devices/iio:device0/out_altvoltage122_dwell_en
-+
-+  # Set ramp limits
-+  echo 60000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage121_frequency
-+  echo 40000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage122_frequency
-+
-+  # Set ramp rate
-+  echo 25000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage121_sampling_frequency
-+  echo 25000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage122_sampling_frequency
-+
-+  # Set frequency rate of change (Hz/s)
-+  echo 25000000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage121_frequency_roc
-+  echo 25000000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage122_frequency_roc
-+
-+  # Enable the DRG
-+  echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage120_en
-+
-+RAM mode
-+--------
-+
-+The AD9910 contains a 1024 x 32-bit RAM that can be loaded with waveform data
-+and played back to modulate frequency, phase, amplitude, or polar (phase +
-+amplitude) parameters.
-+
-+RAM control channel attributes
-+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``en``
-+     - boolean
-+     - Enable/disable RAM playback. Toggling swaps profile registers between
-+       single tone and RAM configurations across all 8 profiles.
-+
-+   * - ``frequency``
-+     - Hz
-+     - Frequency tuning word used as the single tone frequency when
-+       RAM destination is not ``frequency``. Range: :math:`[0, f_{SYSCLK}/2)`.
-+
-+   * - ``phase``
-+     - rad
-+     - Phase offset word used as the single tone phase when RAM destination
-+       is not ``phase``. Range: :math:`[0, 2\pi)`.
-+
-+   * - ``sampling_frequency``
-+     - Hz
-+     - RAM playback step rate of the active profile, which controls how fast the
-+       address counter advances. It is controlled by an integer divider so the
-+       requested value will adjust to nearest supported value.
-+
-+Loading RAM data
-+^^^^^^^^^^^^^^^^
-+
-+RAM data is loaded through the firmware upload framework. The driver registers
-+a firmware upload sysfs entry named ``iio_deviceX:ram``. The FW data follows
-+a simple binary format:
-+
-+- 80-byte header:
-+
-+  - 4-byte big-endian magic word: 0x00AD9910;
-+  - 4-byte big-endian CFR1 value: configuration for the CFR1 register. Only
-+    bits relevant to RAM mode (data destination and internal profile control)
-+    are considered. Other bits are ignored and have no effect:
-+
-+    - Bits [30:29]: RAM data destination:
-+
-+      - 00: frequency;
-+      - 01: phase;
-+      - 10: amplitude;
-+      - 11: polar;
-+
-+    - Bits [20:17]: Internal profile control (see Table 14 of the datasheet);
-+
-+  - 8 sets of 8-byte big-endian profile data for profiles 0-7. Each set contains:
-+
-+    - Bits [55:40]: Address step rate value;
-+    - Bits [39:30]: End address for the profile;
-+    - Bits [23:14]: Start address for the profile;
-+    - Bit [5]: no-dwell high for ramp-up mode;
-+    - Bit [3]: zero-crossing for direct-switch mode;
-+    - Bits [2:0]: operating mode:
-+
-+      - 000: direct switch;
-+      - 001: ramp-up;
-+      - 010: bidirectional;
-+      - 011: bidirectional continuous;
-+      - 100: ramp-up continuous;
-+
-+  - 4-byte big-endian reserved word: set to 0;
-+  - 4-byte big-endian word count: number of 32-bit words to be loaded (0-1024);
-+
-+- Followed by the specified number of 32-bit big-endian data words.
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Configure RAM mode with firmware data and enable it:
-+
-+.. code-block:: bash
-+
-+  # Load RAM data via firmware upload
-+  echo 1 > /sys/class/firmware/iio\:device0\:ram/loading
-+  cat ad9910-ram.bin > /sys/class/firmware/iio\:device0\:ram/data
-+  echo 0 > /sys/class/firmware/iio\:device0\:ram/loading
-+
-+  # Enable RAM mode
-+  echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage130_en
-+
-+Output Shift Keying (OSK)
-+-------------------------
-+
-+OSK controls the output amplitude envelope, allowing the output to be ramped
-+on/off rather than switched abruptly.
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``en``
-+     - boolean (0 or 1)
-+     - Enable/disable OSK.
-+
-+   * - ``scale``
-+     - fractional
-+     - Target amplitude for the OSK ramp. 14-bit ASF field. Range: :math:`[0, 1)`.
-+
-+   * - ``sampling_frequency``
-+     - Hz
-+     - OSK ramp rate. It is controlled by an integer divider so the requested
-+       value will adjust to nearest supported value.
-+
-+   * - ``scale_roc``
-+     - 1/s
-+     - Amplitude scale rate of change. Writing a non-zero value enables
-+       automatic OSK and selects the closest hardware step size. Writing ``0``
-+       disables automatic ramping (manual control of the ASK register using
-+       ``scale``). Writing the maximum available value enables pin-controlled
-+       immediate transition with no ramping.
-+
-+   * - ``scale_roc_available``
-+     - 1/s
-+     - Lists the available ``scale_roc`` values based on the current
-+       ``sampling_frequency``. The first value is always ``0`` (disabled) and
-+       the last value corresponds to pin-controlled immediate mode.
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Enable OSK with automatic ramping:
-+
-+.. code-block:: bash
-+
-+  # Set ramp rate
-+  echo 1000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage150_sampling_frequency
-+
-+  # Check available rate of change values
-+  cat /sys/bus/iio/devices/iio:device0/out_altvoltage150_scale_roc_available
-+
-+  # Enable automatic OSK with a rate of change
-+  echo 61.035000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage150_scale_roc
-+
-+  # Enable OSK
-+  echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage150_en
-+
-+Enable pin-controlled immediate OSK:
-+
-+.. code-block:: bash
-+
-+  # Read the last (highest) available value for pin-controlled mode
-+  cat /sys/bus/iio/devices/iio:device0/out_altvoltage150_scale_roc_available
-+
-+  # Enable OSK in manual mode (no rate of change)
-+  echo 0 > /sys/bus/iio/devices/iio:device0/out_altvoltage150_scale_roc
-+  echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage150_en
-+
-+  # Set target amplitude to full scale
-+  echo 1.0 > /sys/bus/iio/devices/iio:device0/out_altvoltage150_scale
-+
-+Physical channel
-+================
-+
-+The ``phy`` channel provides device-level control:
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``sampling_frequency``
-+     - Hz
-+     - System clock (SYSCLK) frequency. With PLL enabled, configures the PLL
-+       multiplier (range 420-1000 MHz). Without PLL, ref clock can only be
-+       divided by 2.
-+
-+   * - ``powerdown``
-+     - boolean (0 or 1)
-+     - Software power-down. Writing 1 powers down the digital core, DAC,
-+       reference clock input and auxiliary DAC simultaneously.
-+
-+Usage examples
-+--------------
-+
-+Set the system clock to 1 GHz:
-+
-+.. code-block:: bash
-+
-+  echo 1000000000 > /sys/bus/iio/devices/iio:device0/out_altvoltage100_sampling_frequency
-+
-+Read current system clock frequency:
-+
-+.. code-block:: bash
-+
-+  cat /sys/bus/iio/devices/iio:device0/out_altvoltage100_sampling_frequency
-+
-+Power down the device:
-+
-+.. code-block:: bash
-+
-+  echo 1 > /sys/bus/iio/devices/iio:device0/out_altvoltage100_powerdown
-diff --git a/Documentation/iio/index.rst b/Documentation/iio/index.rst
-index 007e0a1fcc5a..1ada7b460066 100644
---- a/Documentation/iio/index.rst
-+++ b/Documentation/iio/index.rst
-@@ -30,6 +30,7 @@ Industrial I/O Kernel Drivers
-    ad7606
-    ad7625
-    ad7944
-+   ad9910
-    ade9000
-    adis16475
-    adis16480
-diff --git a/MAINTAINERS b/MAINTAINERS
-index b52c0aae96b7..57bff3d169d5 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1645,6 +1645,7 @@ S:	Supported
- W:	https://ez.analog.com/linux-software-drivers
- F:	Documentation/ABI/testing/sysfs-bus-iio-frequency-ad9910
- F:	Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
-+F:	Documentation/iio/ad9910.rst
- F:	drivers/iio/frequency/ad9910.c
- 
- ANALOG DEVICES INC MAX22007 DRIVER
+Changes in v3:
+- fixed copy-paste mistake "RK3568" -> "RK3588" in docs (Charalampos)
+- fixed reg properties of ports in dtsi (port@10 <=> <16>, ...)
+- added comment w.r.t. RKCIF_MIPI_CTRL_CAP_EN bit (Mehdi)
+- removed redundant minItems and maxItems from dt-binding (Conor)
+- revised device tree overlays for the Radxa CAMs according to the
+  schematics that I recently received
+- Link to v2: https://lore.kernel.org/r/20250430-rk3588-vicap-v2-0-77de5ee9048e@collabora.com
 
+Changes in v2:
+- modified rockchip,rk3568-vicap binding instead of creating a new one
+  (Conor)
+- aligned clock names and reset names with rockchip,rk3568-vicap
+- Link to v1: https://lore.kernel.org/r/20250430-rk3588-vicap-v1-0-b3bddf749914@collabora.com
+
+---
+Michael Riesch (8):
+      Documentation: admin-guide: media: add rk3588 vicap
+      media: dt-bindings: add rockchip rk3588 vicap
+      media: rockchip: rkcif: add support for rk3588 vicap mipi capture
+      [DONOTMERGE] arm64: dts: rockchip: add mipi csi-2 receiver nodes to rk3588
+      arm64: dts: rockchip: add vicap node to rk3588
+      arm64: dts: rockchip: add radxa camera 4k on rock 5b+ cam0
+      arm64: dts: rockchip: add radxa camera 4k on rock 5b+ cam1
+      arm64: defconfig: enable designware mipi csi-2 receiver
+
+ .../admin-guide/media/rkcif-rk3588-vicap.dot       |  29 ++++
+ Documentation/admin-guide/media/rkcif.rst          |  32 ++++
+ .../bindings/media/rockchip,rk3568-vicap.yaml      | 187 ++++++++++++++++++---
+ arch/arm64/boot/dts/rockchip/Makefile              |   7 +
+ arch/arm64/boot/dts/rockchip/rk3588-base.dtsi      | 143 ++++++++++++++++
+ .../rk3588-rock-5b-plus-radxa-cam4k-cam0.dtso      |  99 +++++++++++
+ .../rk3588-rock-5b-plus-radxa-cam4k-cam1.dtso      |  99 +++++++++++
+ arch/arm64/configs/defconfig                       |   1 +
+ .../platform/rockchip/rkcif/rkcif-capture-mipi.c   | 141 ++++++++++++++++
+ .../platform/rockchip/rkcif/rkcif-capture-mipi.h   |   1 +
+ .../media/platform/rockchip/rkcif/rkcif-common.h   |   2 +-
+ drivers/media/platform/rockchip/rkcif/rkcif-dev.c  |  18 ++
+ 12 files changed, 734 insertions(+), 25 deletions(-)
+---
+base-commit: bc1ba628e37c93cf2abeb2c79716f49087f8a024
+change-id: 20250430-rk3588-vicap-9d164c8528a7
+prerequisite-change-id: 20240220-rk3568-vicap-b9b3f9925f44:v8
+prerequisite-patch-id: 150941d095374b150cd42fb7fc80af6d8dbb8c86
+prerequisite-patch-id: 30d5217a4407e6ace34fd4be24a4641648713a13
+prerequisite-patch-id: 466779634f7b55d70ac7046915ef5ef506d77976
+prerequisite-patch-id: 5df54cf4ca76e8de8537513f8bc7f6c31a5106d8
+prerequisite-patch-id: 693172b2bb630bd6e6390c55503cb5860d162124
+prerequisite-patch-id: baf24b164ddd829d69ec6a50a870a0d6d281b561
+prerequisite-patch-id: eb8ab8365c9772b8329199944c6f9821eef162b3
+prerequisite-patch-id: fcc8cbab463cb4350c2b660d27d235d17484eb4f
+prerequisite-patch-id: 91f6289b43121946f8e0dbfad3851a30be4b693e
+prerequisite-patch-id: 594a59bef892e49482d8d2ed8db02d5ff7375c06
+prerequisite-patch-id: da8e3b4a4d7a035e101b9921daa64a3f8e231983
+prerequisite-patch-id: c8b88c860169b2c36865935c2624e91b1241888f
+prerequisite-patch-id: 39bd0d207bd5edd18e54864c6123871f71f103e0
+prerequisite-change-id: 20250616-rk3588-csi-dphy-c9ed2ad4cd9f:v1
+prerequisite-patch-id: 8fb47b87efb5bb9a818fc5743e4d0b2d859614b7
+prerequisite-patch-id: f0c121481b08b70e32e5d03b166d87e0c0e051e8
+prerequisite-patch-id: aa2c6542eaaf49350681ce4d0f124d4b1cc9b9f5
+prerequisite-patch-id: 66a77411c75b2acde23a199a4521493949d14a14
+prerequisite-patch-id: e1d4bea12bf7688d6dacb9d724ff5dd9078c5975
+
+Best regards,
 -- 
-2.43.0
+Michael Riesch <michael.riesch@collabora.com>
 
