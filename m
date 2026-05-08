@@ -1,14 +1,12 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH 0/3] irqchip: Add GPIO interrupt support for Amlogic A9
-Date: Fri, 08 May 2026 07:36:53 +0000
-Message-Id: <20260508-a9-gpio-irqchip-v1-0-9dc5f3e022e0@amlogic.com>
+Date: Fri, 08 May 2026 07:36:54 +0000
+Subject: [PATCH 1/3] irqchip/meson-gpio: fix incorrect register address
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJWS/WkC/x3MQQqAIBBA0avIrBswKcuuEi1Ep5pNmkIE4t2Tl
- m/xf4FMiSnDIgokejhzuBr6ToA77XUQsm8GJZWWo5zRGjwiB+R0u5Mj+kmrfiBnnPbQqpho5/c
- /rlutHzYDPXxhAAAA
-X-Change-ID: 20260508-a9-gpio-irqchip-d76214ec9c6d
+Message-Id: <20260508-a9-gpio-irqchip-v1-1-9dc5f3e022e0@amlogic.com>
+References: <20260508-a9-gpio-irqchip-v1-0-9dc5f3e022e0@amlogic.com>
+In-Reply-To: <20260508-a9-gpio-irqchip-v1-0-9dc5f3e022e0@amlogic.com>
 To: Thomas Gleixner <tglx@kernel.org>, 
  Neil Armstrong <neil.armstrong@linaro.org>, 
  Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
@@ -19,35 +17,40 @@ Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778225816; l=772;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778225816; l=1007;
  i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=A1soFdD0r4US6yDMTZRbjriVCP7JZmrk16cvvRa11AQ=;
- b=PUTdu/0oehvaqyiIMJg5q4YOtOBv59FaV+RpC//iZQ+5aZeSr4vf6dcdVuwfqIsiVqReLzPDw
- OKi3Ww8/M0fBXQg4RCaMvXhk4co7hps3vShnklLRi4S2usQtF9OByqP
+ bh=M9zM13CLYOdG+lkNB/tDdOWTKQ5cZ8tHYqZIsNYUo+4=;
+ b=qZctPN2tSMJSPBgkkvRhlV2W+Ntn38soTuIOLXMPw7l1tQGc2KIYT5X8SsQjTaTjoAzgCj9i+
+ 3tfomMZgj8gASyXaPOMb3Rs1X/ws7vR2ku7AfIfYNw9mKkB/EB2f9SQ
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix one error about reg address when set irq type for S4.
+When set gpio irq type(level and single-edge) for S4, register address is
+REG_EDGE_POL, not both-edge trigger register. This patch fix it.
 
-Add string of bindings and driver to support A9 GPIO interrupt.
-
+Fixes: bbd6fcc76b39 ("irqchip: Add support for Amlogic A4 and A5 SoCs")
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Xianwei Zhao (3):
-      irqchip/meson-gpio: fix incorrect register address
-      dt-bindings: interrupt-controller: Add support for Amlogic A9 SoCs
-      irqchip/meson-gpio: Add support for Amlogic A9 SoCs
+ drivers/irqchip/irq-meson-gpio.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
- .../amlogic,meson-gpio-intc.yaml                   | 21 ++++--
- drivers/irqchip/irq-meson-gpio.c                   | 78 +++++++++++++++++++++-
- 2 files changed, 93 insertions(+), 6 deletions(-)
----
-base-commit: 8b379d5e9eb7933c73e77e768d95f11ef2833c26
-change-id: 20260508-a9-gpio-irqchip-d76214ec9c6d
+diff --git a/drivers/irqchip/irq-meson-gpio.c b/drivers/irqchip/irq-meson-gpio.c
+index f722e9c57e2e..74a376ef452e 100644
+--- a/drivers/irqchip/irq-meson-gpio.c
++++ b/drivers/irqchip/irq-meson-gpio.c
+@@ -415,8 +415,7 @@ static int meson_s4_gpio_irq_set_type(struct meson_gpio_irq_controller *ctl,
+ 	if (type & (IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING))
+ 		val |= BIT(ctl->params->edge_single_offset + idx);
+ 
+-	meson_gpio_irq_update_bits(ctl, params->edge_pol_reg,
+-				   BIT(idx) | BIT(12 + idx), val);
++	meson_gpio_irq_update_bits(ctl, REG_EDGE_POL, BIT(idx) | BIT(12 + idx), val);
+ 	return 0;
+ };
+ 
 
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.52.0
 
