@@ -1,65 +1,87 @@
-From: Michael Riesch <michael.riesch@collabora.com>
-Date: Fri, 08 May 2026 21:31:51 +0200
-Subject: [PATCH v4 8/8] arm64: defconfig: enable designware mipi csi-2
- receiver
+From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Subject: [PATCH 0/7] hwmon: (pmbus/adm1266) RTC fix, blackbox, FW rev,
+ rtc_class
+Date: Fri, 08 May 2026 16:33:12 -0700
+Message-Id: <20260508-adm1266-v1-0-ec08bf29e0ce@nexthop.ai>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260508-rk3588-vicap-v4-8-6a6cd6f7c90b@collabora.com>
-References: <20260508-rk3588-vicap-v4-0-6a6cd6f7c90b@collabora.com>
-In-Reply-To: <20260508-rk3588-vicap-v4-0-6a6cd6f7c90b@collabora.com>
-To: Mehdi Djait <mehdi.djait@linux.intel.com>, 
- Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>, 
- Kever Yang <kever.yang@rock-chips.com>, 
- Jagan Teki <jagan@amarulasolutions.com>, 
- =?utf-8?q?=D0=9A=D1=83=D0=B7=D0=BD=D0=B5=D1=86=D0=BE=D0=B2_=D0=9C=D0=B8=D1=85=D0=B0=D0=B8=D0=BB?= <mai.kuznetsov.misha@gmail.com>, 
- Charalampos Mitrodimas <charmitro@posteo.net>, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Nicolas Dufresne <nicolas.dufresne@collabora.com>, 
- Collabora Kernel Team <kernel@collabora.com>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-rockchip@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Michael Riesch <michael.riesch@collabora.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778268716; l=1048;
- i=michael.riesch@collabora.com; s=20260428; h=from:subject:message-id;
- bh=a8sioWJftfSyXN0rqDXq8bBppSiXX8eZImBE70llAi8=;
- b=k+9b89ylohfx4XhLo13ZZ8+1xS+5spcQu5ypNg2QKU4QuObf5FXVwZudj+nb4bW5JLkDETZsV
- E6/bPi+jYKaBNXJiVjojvUp0VQTHopdEZ5A9spZGsuw0nW8j9CBO/w8
-X-Developer-Key: i=michael.riesch@collabora.com; a=ed25519;
- pk=tAbmpPTE1MELYweXqqDU40fa18uCO6s32GJL/RzyW2Y=
-X-Endpoint-Received: by B4 Relay for michael.riesch@collabora.com/20260428 with auth_id=759
+X-B4-Tracking: v=1; b=H4sIALhy/mkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDUwNz3cSUXEMjMzPd5DTjxDQTo5Rk4xQjJaDqgqLUtMwKsEnRsRB+cWl
+ SVmpyCUi7Um0tAH79X4hrAAAA
+X-Change-ID: 20260507-adm1266-cf3af42dc3d2
+To: Guenter Roeck <linux@roeck-us.net>, 
+ Alexandru Tachici <alexandru.tachici@analog.com>
+Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Abdurrahman Hussain <abdurrahman@nexthop.ai>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2581;
+ i=abdurrahman@nexthop.ai; h=from:subject:message-id;
+ bh=jt0U3NVrVS1sKLM6aSFaTtJhs6yLPAuUJNrXgqbkitg=;
+ b=owJ4nJvAy8zAJbYltPXv6rsCXxhPqyUxZP4r2p+ZsuDQpJOV5jeuBCUtnlPwfeOFcx4+Vxl57
+ vT5WM55NKOyo5SFQYyLQVZMkWXOI/83bR1tERtiDtnDzGFlAhnCwMUpABN5OpHhf6Dufk1G0+Jj
+ 64NuXj7Es3fOnOBSJfO7m26onDkp4+rmGMDwP+J7ncqVmOnRZ9+s6ZibfMNgg1OZ6s+Vshb7Ij6
+ c/iktxA8A3JdTJg==
+X-Developer-Key: i=abdurrahman@nexthop.ai; a=openpgp;
+ fpr=9CE24FEC86888658B05CC23FB45585FDABDD10F4
+X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/default with auth_id=756
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Synopsys DesignWare MIPI CSI-2 Receiver is integrated into recent
-Rockchip SoCs, such as the RK3568 and the RK3588. As a consequence, they
-are used on a lot of Rockchip-based single board computers and/or
-corresponding camera modules, such as the Radxa Camera 4K. Enable the
-driver for it in the default configuration.
+This series fixes a few issues in the adm1266 driver and fills in
+some gaps, as listed below.
 
-Reviewed-by: Mehdi Djait <mehdi.djait@linux.intel.com>
-Signed-off-by: Michael Riesch <michael.riesch@collabora.com>
+Patch 1 is a wall-clock RTC bug fix: the driver currently seeds the
+device's timestamp counter with CLOCK_MONOTONIC seconds, which makes
+blackbox record timestamps non-comparable across reboots. It carries
+a Fixes: tag.
+
+Patch 2 writes the 16-bit fractional-seconds field of SET_RTC that
+the driver was zeroing, restoring sub-second resolution on records.
+
+Patch 3 exposes the firmware revision (IC_DEVICE_REV, 0xAE) via
+debugfs alongside the existing sequencer_state entry.
+
+Patch 4 adds a write-only clear_blackbox debugfs file. Devices
+configured for single-recording mode (BLACKBOX_CONFIG[0] = 0) need
+an explicit clear once the 32-record buffer fills; the documented
+sub-command ({0xFE, 0x00} block-write to 0xDE) wasn't reachable
+from userspace.
+
+Patch 5 exposes the non-volatile POWERUP_COUNTER (0xE4) via debugfs.
+The same value is embedded in every blackbox record, so the live
+value lets userspace match a captured record back to the boot it
+came from when correlating logs.
+
+Patch 6 registers an rtc_class device backed by SET_RTC. The data
+sheet (Rev. D, p. 22) explicitly recommends "frequently send the
+time stamp to the ADM1266 to synchronize the UNIX time and reduce
+the time from drifting" when running on the internal oscillator
+(no external 32.768 kHz crystal). With this patch userspace can
+drive the re-sync via standard tooling (hwclock, chrony,
+systemd-timesyncd) against /dev/rtcN, with no driver-specific
+sysfs ABI.
+
+Patch 7 disambiguates GPIO line labels on platforms that fit two
+ADM1266 devices on different I2C buses at the same slave address.
+
+Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
 ---
- arch/arm64/configs/defconfig | 1 +
- 1 file changed, 1 insertion(+)
+Abdurrahman Hussain (7):
+      hwmon: (pmbus/adm1266) use wall-clock seconds for SET_RTC
+      hwmon: (pmbus/adm1266) write fractional-seconds field of SET_RTC
+      hwmon: (pmbus/adm1266) add firmware_revision debugfs entry
+      hwmon: (pmbus/adm1266) add clear_blackbox debugfs entry
+      hwmon: (pmbus/adm1266) add powerup_counter debugfs entry
+      hwmon: (pmbus/adm1266) register rtc_class device backed by SET_RTC
+      hwmon: (pmbus/adm1266) include adapter number in GPIO line label
 
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index d905a0777f939c51cc39df6230591a31058b765f..9171f750337e540f0feec998c7aa33d3444b806e 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -918,6 +918,7 @@ CONFIG_SDR_PLATFORM_DRIVERS=y
- CONFIG_V4L_MEM2MEM_DRIVERS=y
- CONFIG_VIDEO_AMPHION_VPU=m
- CONFIG_VIDEO_CADENCE_CSI2RX=m
-+CONFIG_VIDEO_DW_MIPI_CSI2RX=m
- CONFIG_VIDEO_MEDIATEK_JPEG=m
- CONFIG_VIDEO_MEDIATEK_VCODEC=m
- CONFIG_VIDEO_WAVE_VPU=m
+ drivers/hwmon/pmbus/adm1266.c | 177 +++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 167 insertions(+), 10 deletions(-)
+---
+base-commit: 917719c412c48687d4a176965d1fa35320ec457c
+change-id: 20260507-adm1266-cf3af42dc3d2
 
--- 
-2.47.3
+Best regards,
+--  
+Abdurrahman Hussain <abdurrahman@nexthop.ai>
 
