@@ -1,87 +1,67 @@
 From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
-Subject: [PATCH 0/7] hwmon: (pmbus/adm1266) RTC fix, blackbox, FW rev,
- rtc_class
-Date: Fri, 08 May 2026 16:33:12 -0700
-Message-Id: <20260508-adm1266-v1-0-ec08bf29e0ce@nexthop.ai>
+Date: Fri, 08 May 2026 16:33:13 -0700
+Subject: [PATCH 1/7] hwmon: (pmbus/adm1266) use wall-clock seconds for
+ SET_RTC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIALhy/mkC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDUwNz3cSUXEMjMzPd5DTjxDQTo5Rk4xQjJaDqgqLUtMwKsEnRsRB+cWl
- SVmpyCUi7Um0tAH79X4hrAAAA
-X-Change-ID: 20260507-adm1266-cf3af42dc3d2
+Message-Id: <20260508-adm1266-v1-1-ec08bf29e0ce@nexthop.ai>
+References: <20260508-adm1266-v1-0-ec08bf29e0ce@nexthop.ai>
+In-Reply-To: <20260508-adm1266-v1-0-ec08bf29e0ce@nexthop.ai>
 To: Guenter Roeck <linux@roeck-us.net>, 
  Alexandru Tachici <alexandru.tachici@analog.com>
 Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Abdurrahman Hussain <abdurrahman@nexthop.ai>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2581;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1535;
  i=abdurrahman@nexthop.ai; h=from:subject:message-id;
- bh=jt0U3NVrVS1sKLM6aSFaTtJhs6yLPAuUJNrXgqbkitg=;
- b=owJ4nJvAy8zAJbYltPXv6rsCXxhPqyUxZP4r2p+ZsuDQpJOV5jeuBCUtnlPwfeOFcx4+Vxl57
- vT5WM55NKOyo5SFQYyLQVZMkWXOI/83bR1tERtiDtnDzGFlAhnCwMUpABN5OpHhf6Dufk1G0+Jj
- 64NuXj7Es3fOnOBSJfO7m26onDkp4+rmGMDwP+J7ncqVmOnRZ9+s6ZibfMNgg1OZ6s+Vshb7Ij6
- c/iktxA8A3JdTJg==
+ bh=ilxPiiB4ccinJ7vJjFyIeKd85ogX/E6EI9hbrqCCbB4=;
+ b=owJ4nJvAy8zAJbYltPXv6rsCXxhPqyUxZP4rOnyAdcas3bP+hx03nBD3QepsOosI999zO3wkl
+ 728phiwesvajlIWBjEuBlkxRZY5j/zftHW0RWyIOWQPM4eVCWQIAxenAEzkdAQjQ4vja+cQ87/y
+ 15yOGaqz/r9pWCoiP1N/5keWuW4eZ8PtrBgZdrRytZpE5vLOeyiRsUHL5/6MewknN6g1vjN8uZn
+ 7qME2NgCWJU2l
 X-Developer-Key: i=abdurrahman@nexthop.ai; a=openpgp;
  fpr=9CE24FEC86888658B05CC23FB45585FDABDD10F4
 X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/default with auth_id=756
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series fixes a few issues in the adm1266 driver and fills in
-some gaps, as listed below.
+The ADM1266 RTC seeds the timestamp embedded in every blackbox record.
+The driver currently sets it from ktime_get_seconds(), which returns
+CLOCK_MONOTONIC seconds (i.e. seconds since boot). The intent of the
+register, per the data sheet (Rev. D, "Setting UNIX Time Using
+SET_RTC"), is the elapsed time since 1970-01-01 UTC.
 
-Patch 1 is a wall-clock RTC bug fix: the driver currently seeds the
-device's timestamp counter with CLOCK_MONOTONIC seconds, which makes
-blackbox record timestamps non-comparable across reboots. It carries
-a Fixes: tag.
+As a result, blackbox records are stamped with "seconds since this
+boot," making cross-reboot correlation against host syslog impossible
+and making the timestamps in two records taken on different boots
+non-comparable.
 
-Patch 2 writes the 16-bit fractional-seconds field of SET_RTC that
-the driver was zeroing, restoring sub-second resolution on records.
+Switch to ktime_get_real_seconds() so the device is seeded with
+wall-clock time, as the data sheet specifies. The internal RTC will
+drift from this seed (the data sheet recommends periodic re-sync from
+the host); a follow-up patch exposes the device via rtc_class so
+standard userspace time-sync tooling can keep it aligned.
 
-Patch 3 exposes the firmware revision (IC_DEVICE_REV, 0xAE) via
-debugfs alongside the existing sequencer_state entry.
-
-Patch 4 adds a write-only clear_blackbox debugfs file. Devices
-configured for single-recording mode (BLACKBOX_CONFIG[0] = 0) need
-an explicit clear once the 32-record buffer fills; the documented
-sub-command ({0xFE, 0x00} block-write to 0xDE) wasn't reachable
-from userspace.
-
-Patch 5 exposes the non-volatile POWERUP_COUNTER (0xE4) via debugfs.
-The same value is embedded in every blackbox record, so the live
-value lets userspace match a captured record back to the boot it
-came from when correlating logs.
-
-Patch 6 registers an rtc_class device backed by SET_RTC. The data
-sheet (Rev. D, p. 22) explicitly recommends "frequently send the
-time stamp to the ADM1266 to synchronize the UNIX time and reduce
-the time from drifting" when running on the internal oscillator
-(no external 32.768 kHz crystal). With this patch userspace can
-drive the re-sync via standard tooling (hwclock, chrony,
-systemd-timesyncd) against /dev/rtcN, with no driver-specific
-sysfs ABI.
-
-Patch 7 disambiguates GPIO line labels on platforms that fit two
-ADM1266 devices on different I2C buses at the same slave address.
-
+Fixes: 15609d189302 ("hwmon: (pmbus/adm1266) read blackbox")
 Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
 ---
-Abdurrahman Hussain (7):
-      hwmon: (pmbus/adm1266) use wall-clock seconds for SET_RTC
-      hwmon: (pmbus/adm1266) write fractional-seconds field of SET_RTC
-      hwmon: (pmbus/adm1266) add firmware_revision debugfs entry
-      hwmon: (pmbus/adm1266) add clear_blackbox debugfs entry
-      hwmon: (pmbus/adm1266) add powerup_counter debugfs entry
-      hwmon: (pmbus/adm1266) register rtc_class device backed by SET_RTC
-      hwmon: (pmbus/adm1266) include adapter number in GPIO line label
+ drivers/hwmon/pmbus/adm1266.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- drivers/hwmon/pmbus/adm1266.c | 177 +++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 167 insertions(+), 10 deletions(-)
----
-base-commit: 917719c412c48687d4a176965d1fa35320ec457c
-change-id: 20260507-adm1266-cf3af42dc3d2
+diff --git a/drivers/hwmon/pmbus/adm1266.c b/drivers/hwmon/pmbus/adm1266.c
+index d90f8f80be8e..a86666c73a5e 100644
+--- a/drivers/hwmon/pmbus/adm1266.c
++++ b/drivers/hwmon/pmbus/adm1266.c
+@@ -432,7 +432,7 @@ static int adm1266_set_rtc(struct adm1266_data *data)
+ 	char write_buf[6];
+ 	int i;
+ 
+-	kt = ktime_get_seconds();
++	kt = ktime_get_real_seconds();
+ 
+ 	memset(write_buf, 0, sizeof(write_buf));
+ 
 
-Best regards,
---  
-Abdurrahman Hussain <abdurrahman@nexthop.ai>
+-- 
+2.53.0
 
