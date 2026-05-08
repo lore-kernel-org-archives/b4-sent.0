@@ -1,99 +1,154 @@
-From: Bernd Schubert <bernd@bsbernd.com>
-Date: Fri, 08 May 2026 18:39:13 +0200
-Subject: [PATCH 10/10] highlevel: Switch fuse_main_real_versioned() to
- fuse_daemonize_early()
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH RFC v4 00/10] AD9910 Direct Digital Synthesizer
+Date: Fri, 08 May 2026 18:00:16 +0100
+Message-Id: <20260508-ad9910-iio-driver-v4-0-d26bfd20ee3d@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260508-new-mount-fixes-and-tests-v1-10-c67a0893ddbc@bsbernd.com>
-References: <20260508-new-mount-fixes-and-tests-v1-0-c67a0893ddbc@bsbernd.com>
-In-Reply-To: <20260508-new-mount-fixes-and-tests-v1-0-c67a0893ddbc@bsbernd.com>
-To: fuse-devel@lists.linux.dev
-Cc: "Darrick J. Wong" <djwong@kernel.org>, 
- Bernd Schubert <bernd@bsbernd.com>, Miklos Szeredi <miklos@szeredi.hu>
+X-B4-Tracking: v=1; b=H4sIAKAW/mkC/23OwQrCMAwG4FcZPVtp0rqtngTBB/AqHrqt2wK6S
+ itFGXt3yzwMccc/4f+SkQXryQa2z0bmbaRAbkhBbTJW92boLKcmZYYCc4FQctNoDYITOd54itZ
+ zXckGQdW4g5al3sPbll6zeWHn05Fd07Cn8HT+Pd+JMK++JIoVMgIXXFaYK2NUaUAczGBurtvW7
+ j5zERdCrn4VMRG20K2Wla1bgD9CLoSCYo2QiUBdaVkAGsTyh5im6QMKQJetPgEAAA==
+X-Change-ID: 20260218-ad9910-iio-driver-9b3d214c251f
+To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
+ linux-hardening@vger.kernel.org
+Cc: Lars-Peter Clausen <lars@metafoo.de>, 
+ Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
+ Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
+ Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2145; i=bernd@bsbernd.com;
- h=from:subject:message-id; bh=CwL4o77lSnyZfSeFpGCE3rBWhucH/pM1dNHMqvfex3g=;
- b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGDL/Ca6/ctAj08ajPL1mZlFw6pb7s+we1jKWhhYquz/1n
- JnRdf1qRykLgxgHg6yYIkuXxB7bKf/4ZNW+rr8OM4eVCWQIAxenAEzkgAjDX6Fm+S0i3UYbr08I
- 9b++s2Sbz/uSe9Mm7HEvXNDrmffxzBVGhi3V8+bo+nvsO3TUs+L0wQP1//Z6vKtYdtaUrYRl0aO
- InYwA
-X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
- fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
-X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778259632; l=6178;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=fufvz3D3Ed+0Vx3B7r+7ZrpCMU/irXf5wqRVZ6Rm4uk=;
+ b=wIkMQtQcYZN0KDHnFvW3yjOLjt5CiSp9nvYy0Zw5lJrN0JaQPtSqeE2l+m9AyqHun3ynRWsoV
+ CL3HlcpOP07Ckn2TrGazpsBlHnqxX5gQlimyzCxfi+h6f94OlE+H+Em
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For high level we can switch directly in that function to the new daemonize
-API. Additionally we need to check if the daemon has already acticated
-daemonization to avoid warning messages.
+This patch series adds support for the Analog Devices AD9910 DDS.
+This is a RFC so that we can agree/discuss on the design that follows:
 
-Suggested-by: Miklos Szeredi <miklos@szeredi.hu>
-Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
+This is a follow-up of the V3 discussion. For V1, we reached into
+this channel composition agreement where physical channels may have
+sub-channels. That adds the flexibility necessary for this design.
+During V2, some feedback indicated that the ABI is too device-specific,
+so DRG/RAM destination and operating modes are configured through
+alternate paths and profile channels are created. In V3, there was
+further discussion on the ABI and on mode priority debug.
+
+The AD9910 DDS core can be driven through several independent mechanisms:
+single tone profiles, a digital ramp generator, an internal RAM playback
+engine, a parallel data port, and output shift keying. Each of these
+represents a distinct signal path into the DDS accumulator, so the driver
+models them as separate IIO output channels (all IIO_ALTVOLTAGE type).
+This per-channel separation allows userspace to configure each mode
+independently through its own set of sysfs attributes, and to
+enable/disable modes individually via IIO_CHAN_INFO_ENABLE, relying on
+the hardware's own mode selection architecture.
+
+The AD9910 register map is not suited for the regmap framework: register
+widths vary across the map (16, 32, and 64 bits). The driver instead
+implements direct SPI access helpers with a software register cache, using
+type-specific read/write/update functions (ad9910_reg{16,32,64}_{read,
+write,update}) that handle endianness conversion and cache coherency.
+
+Registers are cached for several reasons. The control/function registers
+(CFR1, CFR2) are frequently queried to determine the current operating
+mode (e.g., checking RAM_ENABLE before every profile register access),
+and caching avoids repeated SPI read transactions for what are
+essentially state checks. The cache also enables efficient
+read-modify-write updates on multi-byte registers: the update functions
+merge new field values with the cached register content without issuing
+a SPI read, and skip the write entirely when the value is unchanged.
+Finally, the profile registers serve dual purposes depending on whether
+RAM mode is active -- they hold single tone parameters (FTW, POW, ASF)
+in normal operation but are repurposed for RAM playback configuration
+(start/end address, step rate, operating mode) when RAM is enabled. A
+shadow register array (reg_profile[]) preserves the inactive mode's
+settings across transitions, so no state is lost when switching between
+single tone and RAM operation.
+
+RAM data is loaded through firmware upload infrastructure. Userspace
+writes the waveform data as a raw binary buffer (up to 4096 bytes for
+the full 1024x32-bit RAM), and the driver reverses the byte array and
+transfers it to the device in a single SPI transaction. Per-profile
+start/end addresses and playback parameters (operating mode, step rate,
+no-dwell control) are also configured through firmware update, using
+metadata in the header.
+
+Streaming data to the DDS core through the parallel data port at the
+PD_CLK rate is not covered by this series. That functionality would
+be added in a separate patch series, building on top of the IIO backend
+infrastructure to provide a proper buffered data path.
+
+As I am pushing implementation, as lot has been done already without much
+supervision or agreement, still I would be interested on hearing about
+the design choices discussed above.
+
+Kind regards,
+
+Rodrigo Alencar
+
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- lib/helper.c | 30 +++++++++++++++++++-----------
- 1 file changed, 19 insertions(+), 11 deletions(-)
+Changes in v4:
+- Digital Ramp step exposed as a rate of change.
+- Dwell modes of Digital Ramp are controlled with dwell_en attribute. 
+- Disable of active profile behaves as a software powerdown.
+- Expose debugfs attributes to show mode priority.
+- Add 64-bit debugfs reg access support into iio core.
+- Link to v3: https://lore.kernel.org/r/20260417-ad9910-iio-driver-v3-0-29b93712a228@analog.com
 
-diff --git a/lib/helper.c b/lib/helper.c
-index 4d7c2b7f..15de3fbf 100644
---- a/lib/helper.c
-+++ b/lib/helper.c
-@@ -260,6 +260,7 @@ int fuse_main_real_versioned(int argc, char *argv[],
- 	struct fuse_cmdline_opts opts;
- 	int res;
- 	struct fuse_loop_config *loop_config = NULL;
-+	bool self_daemonize = false;
- 
- 	if (fuse_parse_cmdline(&args, &opts) != 0)
- 		return 1;
-@@ -289,6 +290,21 @@ int fuse_main_real_versioned(int argc, char *argv[],
- 		goto out1;
- 	}
- 
-+	/* The application might have already started daemonization itself */
-+	if (!fuse_daemonize_early_is_active()) {
-+		int daemonize_early_flags = 0;
-+
-+		if (opts.foreground)
-+			daemonize_early_flags |= FUSE_DAEMONIZE_NO_BACKGROUND;
-+
-+		self_daemonize = true;
-+		res = fuse_daemonize_early_start(daemonize_early_flags);
-+		if (res != 0) {
-+			fuse_log(FUSE_LOG_ERR, "fuse: daemonize_early_start failed\n");
-+			goto out1;
-+		}
-+	}
-+
- 	struct fuse *_fuse_new_31(struct fuse_args *args,
- 			       const struct fuse_operations *op, size_t op_size,
- 			       struct libfuse_version *version,
-@@ -305,22 +321,14 @@ int fuse_main_real_versioned(int argc, char *argv[],
- 		goto out2;
- 	}
- 
--	/*
--	 * fuse_daemonize() already checks and fails then, but we need to
--	 * handle it gracefully here, as this is done libfuse internal
--	 * and caller didn't ask to daemonize with old API.
--	 */
--	if (!fuse_daemonize_early_is_active()) {
--		if (fuse_daemonize(opts.foreground) != 0) {
--			res = 5;
--			goto out3;
--		}
--	}
- 	if (fuse_set_signal_handlers(se) != 0) {
- 		res = 6;
- 		goto out3;
- 	}
- 
-+	if (self_daemonize)
-+		fuse_daemonize_early_success();
-+
- 	if (opts.singlethread)
- 		res = fuse_loop(fuse);
- 	else {
+Changes in v3:
+- RAM custom configs (address range, destination, modes) loaded during firmware write.
+- DRG destination defined when attrs are written.
+- DRG modes broken down into enable attrs for ramp up/down channels.
+- Add separate profile channels, switching done through enable attr
+- Link to v2: https://lore.kernel.org/r/20260318-ad9910-iio-driver-v2-0-e79f93becf11@analog.com
 
+Changes in v2:
+- Device-tree bindings changes.
+- RAM loading to use firmware update interface.
+- Rearrange of channels into a hierarchy.
+- Link to v1: https://lore.kernel.org/r/20260220-ad9910-iio-driver-v1-0-3b264aa48a10@analog.com
+
+---
+Rodrigo Alencar (10):
+      dt-bindings: iio: frequency: add ad9910
+      iio: core: support 64-bit register through debugfs
+      iio: frequency: ad9910: initial driver implementation
+      iio: frequency: ad9910: add basic parallel port support
+      iio: frequency: ad9910: add digital ramp generator support
+      iio: frequency: ad9910: add RAM mode support
+      iio: frequency: ad9910: add output shift keying support
+      iio: frequency: ad9910: show channel priority in debugfs
+      Documentation: ABI: testing: add docs for ad9910 sysfs entries
+      docs: iio: add documentation for ad9910 driver
+
+ .../ABI/testing/sysfs-bus-iio-frequency-ad9910     |   73 +
+ .../bindings/iio/frequency/adi,ad9910.yaml         |  198 ++
+ Documentation/iio/ad9910.rst                       |  607 +++++
+ Documentation/iio/index.rst                        |    1 +
+ MAINTAINERS                                        |   10 +
+ drivers/iio/frequency/Kconfig                      |   20 +
+ drivers/iio/frequency/Makefile                     |    1 +
+ drivers/iio/frequency/ad9910.c                     | 2398 ++++++++++++++++++++
+ drivers/iio/industrialio-core.c                    |   33 +-
+ include/linux/iio/iio.h                            |    4 +
+ 10 files changed, 3336 insertions(+), 9 deletions(-)
+---
+base-commit: 9e62a5d329f8f0f07c4d5f80a691e3f16dcb957c
+change-id: 20260218-ad9910-iio-driver-9b3d214c251f
+
+Best regards,
 -- 
-2.53.0
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
