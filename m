@@ -1,61 +1,71 @@
-From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
-Date: Fri, 08 May 2026 16:33:19 -0700
-Subject: [PATCH 7/7] hwmon: (pmbus/adm1266) include adapter number in GPIO
- line label
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH 0/2] drm/panel: Add panel driver for Chipone ICNA35XX based
+ panels
+Date: Sat, 09 May 2026 15:18:56 -0500
+Message-Id: <20260509-icna35xx-v1-0-688d3d4e10f9@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260508-adm1266-v1-7-ec08bf29e0ce@nexthop.ai>
-References: <20260508-adm1266-v1-0-ec08bf29e0ce@nexthop.ai>
-In-Reply-To: <20260508-adm1266-v1-0-ec08bf29e0ce@nexthop.ai>
-To: Guenter Roeck <linux@roeck-us.net>, 
- Alexandru Tachici <alexandru.tachici@analog.com>
-Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Abdurrahman Hussain <abdurrahman@nexthop.ai>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1311;
- i=abdurrahman@nexthop.ai; h=from:subject:message-id;
- bh=+gb9rQVuX3txw2uuwV5b1v1Re6m0IUjLCe0dbdU21mk=;
- b=owJ4nJvAy8zAJbYltPXv6rsCXxhPqyUxZP4rOpIisG5KOtceX/+PzKf3yb98/M5V7adgQ6TPH
- aloAcH9V1M6SlkYxLgYZMUUWeY88n/T1tEWsSHmkD3MHFYmkCEMXJwCMJEsM4a/cls61kWyZN3Y
- lbm7yP9YgSGDuPdsHlfdnaGrirR3PhI5w/C/8tDCCXubz3z+2Lrn+860H5+6RWdZMC/XKHqf1mp
- 2eIMtAwA9C1Bp
-X-Developer-Key: i=abdurrahman@nexthop.ai; a=openpgp;
- fpr=9CE24FEC86888658B05CC23FB45585FDABDD10F4
-X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/default with auth_id=756
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/02OywqDMBBFf0Vm3cBMgvHxK8XFJJm0WajVWLGI/
+ 16pmy7P5XI4O2SZk2Roix1mWVNO43AC3QrwTx4eolI4GTRqi1qjSn5gU26bEt9wZDJCzHDeX7P
+ EtP1U9+7iWab3aVyuERxnUX7s+7S0hTR10OSpQocUgkRjbURtnIs+WmeoxCZybeC/pC2uDqoUf
+ wY1+VyXJSqyHitnTRBt27WG7ji+bO+btdkAAAA=
+X-Change-ID: 20260220-icna35xx-ec9afa13e1aa
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>, 
+ Teguh Sobirin <teguh@sobir.in>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778357952; l=1595;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=aAuuip6jS0fKuG58+qmMYaxBKre4x4rRCnB9dSliLlQ=;
+ b=W7yzeZSuAG+gNcWHDCymdVfQpoQHfwZMr+LHYNxrWwRcnGUx5J14Lwt2j8439cTAlRcDEM0wR
+ tbNtrRtqJaXDI9O7MjUmsS6rpxfUfIjPkJK4Yn4v3HrjfzLHlXX2UU8
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Platforms that fit more than one ADM1266 on different I2C buses at
-the same 7-bit slave address (a common shelf-management pattern,
-e.g. one device per power domain) end up with duplicate GPIO line
-labels because the existing format only includes the slave address.
-Including the adapter number disambiguates them.
+This driver is based on the one by Teguh Sobirin [0].
+    
+Due to [1], the AYN vendor description patch has been folded into the
+AYN QCS8550 dt series. Which means this series depends on said series
+and it must be picked up before this.
 
-The label is purely informational (visible via gpioinfo and the
-gpiochip /sys/class/gpio name); no DT or ABI consumer parses it.
+[0] https://github.com/AYNTechnologies/linux/commit/4c5e76e974db7cca853619ca138eecd8f004622f
+[1] https://lore.kernel.org/linux-arm-msm/c7fb3f89-6574-4761-9ef2-2fdf6d4801b5@kernel.org
 
-Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/hwmon/pmbus/adm1266.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Aaron Kling (1):
+      dt-bindings: display: panel: Add Chipone ICNA 35xx OLED driver bindings
 
-diff --git a/drivers/hwmon/pmbus/adm1266.c b/drivers/hwmon/pmbus/adm1266.c
-index 07c20746f083..ec6a2c9167d8 100644
---- a/drivers/hwmon/pmbus/adm1266.c
-+++ b/drivers/hwmon/pmbus/adm1266.c
-@@ -293,8 +293,9 @@ static int adm1266_config_gpio(struct adm1266_data *data)
- 	int i;
- 
- 	for (i = 0; i < ARRAY_SIZE(data->gpio_names); i++) {
--		gpio_name = devm_kasprintf(&data->client->dev, GFP_KERNEL, "adm1266-%x-%s",
--					   data->client->addr, adm1266_names[i]);
-+		gpio_name = devm_kasprintf(&data->client->dev, GFP_KERNEL, "adm1266-%x-%x-%s",
-+					   data->client->adapter->nr, data->client->addr,
-+					   adm1266_names[i]);
- 		if (!gpio_name)
- 			return -ENOMEM;
- 
+Teguh Sobirin (1):
+      drm/panel: Add panel driver for Chipone ICNA35XX based panels
 
+ .../bindings/display/panel/chipone,icna35xx.yaml   |  77 +++
+ drivers/gpu/drm/panel/Kconfig                      |  11 +
+ drivers/gpu/drm/panel/Makefile                     |   1 +
+ drivers/gpu/drm/panel/panel-chipone-icna35xx.c     | 618 +++++++++++++++++++++
+ 4 files changed, 707 insertions(+)
+---
+base-commit: e98d21c170b01ddef366f023bbfcf6b31509fa83
+change-id: 20260220-icna35xx-ec9afa13e1aa
+prerequisite-change-id: 20260217-ayn-qcs8550-16c07b63de26:v8
+prerequisite-patch-id: 2b010637c46f5ea0e19a2fa87cc5ccb19bfd9204
+prerequisite-patch-id: d0c633dc17f0aba726a8e8d21fee52b944bf67ff
+prerequisite-patch-id: 11f4208bd788df984cec7404088c7d071ec49dfc
+prerequisite-patch-id: 76b61799dba520fc7fa3ff39b044e24103337af3
+prerequisite-patch-id: 3844bef2eda3cf59031b1d131eb6ba9295629bb4
+prerequisite-patch-id: 3331648bc6f4ac3bb156f0525aa1ede92bfc57f1
+
+Best regards,
 -- 
-2.53.0
+Aaron Kling <webgeek1234@gmail.com>
 
