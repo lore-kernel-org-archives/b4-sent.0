@@ -1,10 +1,11 @@
 From: Alexandre Hamamdjian <azkali.limited@gmail.com>
-Date: Sun, 10 May 2026 23:45:26 +0700
-Subject: [PATCH 1/2] dt-bindings: regulator: add SGMicro SGM3804
+Date: Sun, 10 May 2026 23:45:27 +0700
+Subject: [PATCH 2/2] regulator: sgm3804: add SGMicro SGM3804 charge-pump
+ regulator driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260510-sgm3804-v1-1-e5e8799e0aa0@gmail.com>
+Message-Id: <20260510-sgm3804-v1-2-e5e8799e0aa0@gmail.com>
 References: <20260510-sgm3804-v1-0-e5e8799e0aa0@gmail.com>
 In-Reply-To: <20260510-sgm3804-v1-0-e5e8799e0aa0@gmail.com>
 To: Philippe Simons <simons.philippe@gmail.com>, 
@@ -14,117 +15,239 @@ To: Philippe Simons <simons.philippe@gmail.com>,
 Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  Alexandre Hamamdjian <azkali.limited@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778431530; l=3403;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778431530; l=7075;
  i=azkali.limited@gmail.com; s=20260510; h=from:subject:message-id;
- bh=XWCit0ZA8mWCGZuR1y+fa+IVWSjOU74cPNIGW9a/Ktg=;
- b=q+S2dD3+5X5wiS4eT8yx5WrFzrWAMjwfyP7tLlbhkN/NMfC15a/0lX3B7erDP9wzJsLsBfzJG
- Ozp7cAjPws9A7AaLohjX6+5Wqx02KVdZCtwcR2VTSzhH2YuQfljTisV
+ bh=E41RJwBDNAULV6SEI17A9O0P6Si0eY2vOQkwOD/TtCE=;
+ b=H38fPMAp6FRQn5M9M13oPGUVbVK+VvGLJ7jaWnpqj//Ua9Yvn78n3WJzMESAS1ovSac0bVNhy
+ Nj4WHOlRjIhAVe8W7O7tGOp6Wv/hFr+Q9YkOaCSJ19Aheot4KLhBcjC
 X-Developer-Key: i=azkali.limited@gmail.com; a=ed25519;
  pk=I0Z0IdCdQJqNGX+FQUnXhrHg950u3cM6Xzz3YT6JOyQ=
 X-Endpoint-Received: by B4 Relay for azkali.limited@gmail.com/20260510 with auth_id=774
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The SGMicro SGM3804 is an I2C-controlled positive and negative output
-charge-pump regulator. It is commonly used to provide the AVDD and AVEE
-supplies for display panels, and exposes two reset GPIOs to sequence the
-positive and negative output rails independently.
+Add a driver for the SGMicro SGM3804, an I2C-controlled positive and
+negative output charge-pump regulator. The chip is typically used to
+generate the AVDD/AVEE rails of display panels, and is for example
+present on the Ayaneo Pocket DS handheld where it powers the panel.
 
-Document the binding for the new compatible "sgmicro,sgm3804" so it can
-be referenced by board device trees and the matching driver, and add a
-MAINTAINERS entry covering both the binding and the upcoming driver.
+The driver exposes a single 5V regulator and uses two reset GPIOs to
+sequence the positive and negative outputs. Initialisation values for
+the charge-pump configuration registers are written on enable, and the
+GPIOs are dropped on disable.
 
 Co-developed-by: Philippe Simons <simons.philippe@gmail.com>
 Signed-off-by: Philippe Simons <simons.philippe@gmail.com>
 Signed-off-by: Alexandre Hamamdjian <azkali.limited@gmail.com>
 ---
- .../bindings/regulator/sgmicro,sgm3804.yaml        | 60 ++++++++++++++++++++++
- MAINTAINERS                                        |  7 +++
- 2 files changed, 67 insertions(+)
+ drivers/regulator/Kconfig             |  11 +++
+ drivers/regulator/Makefile            |   1 +
+ drivers/regulator/sgm3804-regulator.c | 164 ++++++++++++++++++++++++++++++++++
+ 3 files changed, 176 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/regulator/sgmicro,sgm3804.yaml b/Documentation/devicetree/bindings/regulator/sgmicro,sgm3804.yaml
-new file mode 100644
-index 000000000000..f1de17bd5395
---- /dev/null
-+++ b/Documentation/devicetree/bindings/regulator/sgmicro,sgm3804.yaml
-@@ -0,0 +1,60 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/regulator/sgmicro,sgm3804.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: SGMicro SGM3804 I2C charge-pump regulator
-+
-+maintainers:
-+  - Alexandre Hamamdjian <azkali.limited@gmail.com>
-+  - Philippe Simons <simons.philippe@gmail.com>
-+
-+description:
-+  The SGM3804 is an I2C-controlled positive and negative output charge-pump
-+  regulator typically used to provide the AVDD and AVEE supplies for display
-+  panels. Two reset GPIOs are used to sequence the positive and negative
-+  outputs independently.
-+
-+allOf:
-+  - $ref: regulator.yaml#
-+
-+properties:
-+  compatible:
-+    const: sgmicro,sgm3804
-+
-+  reg:
-+    maxItems: 1
-+
-+  reset-gpios:
-+    minItems: 1
-+    maxItems: 2
-+    description:
-+      Reset/enable GPIOs for the positive (index 0) and, optionally, the
-+      negative (index 1) output rails.
-+
-+required:
-+  - compatible
-+  - reg
-+  - reset-gpios
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/gpio/gpio.h>
-+
-+    i2c {
-+        #address-cells = <1>;
-+        #size-cells = <0>;
-+
-+        regulator@3e {
-+            compatible = "sgmicro,sgm3804";
-+            reg = <0x3e>;
-+            reset-gpios = <&tlmm 10 GPIO_ACTIVE_HIGH>,
-+                          <&tlmm 11 GPIO_ACTIVE_HIGH>;
-+            regulator-name = "panel-avdd";
-+            regulator-min-microvolt = <5000000>;
-+            regulator-max-microvolt = <5000000>;
-+        };
-+    };
-diff --git a/MAINTAINERS b/MAINTAINERS
-index f877e5aaf2c7..394216175d2e 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -24391,6 +24391,13 @@ M:	Steve Wahl <steve.wahl@hpe.com>
- S:	Maintained
- F:	drivers/misc/sgi-xp/
+diff --git a/drivers/regulator/Kconfig b/drivers/regulator/Kconfig
+index d71dac9436e3..e1adb0bda75d 100644
+--- a/drivers/regulator/Kconfig
++++ b/drivers/regulator/Kconfig
+@@ -1490,6 +1490,17 @@ config REGULATOR_SC2731
+ 	  This driver provides support for the voltage regulators on the
+ 	  SC2731 PMIC.
  
-+SGMICRO SGM3804 REGULATOR DRIVER
-+M:	Alexandre Hamamdjian <azkali.limited@gmail.com>
-+M:	Philippe Simons <simons.philippe@gmail.com>
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/regulator/sgmicro,sgm3804.yaml
-+F:	drivers/regulator/sgm3804-regulator.c
++config REGULATOR_SGM3804
++	tristate "SGMicro sgm3804 voltage regulator"
++	depends on I2C && OF
++	help
++	  This driver supports the SGMicro SGM3804 I2C-controlled positive
++	  and negative output charge-pump regulator, commonly used to supply
++	  AVDD/AVEE rails to display panels. Two reset GPIOs are used to
++	  sequence the positive and negative outputs.
 +
- SHARED MEMORY COMMUNICATIONS (SMC) SOCKETS
- M:	D. Wythe <alibuda@linux.alibaba.com>
- M:	Dust Li <dust.li@linux.alibaba.com>
++	  Say M here to build the driver as a module called sgm3804-regulator.
++
+ config REGULATOR_SKY81452
+ 	tristate "Skyworks Solutions SKY81452 voltage regulator"
+ 	depends on MFD_SKY81452
+diff --git a/drivers/regulator/Makefile b/drivers/regulator/Makefile
+index 35639f3115fd..98ecbbc3c6b7 100644
+--- a/drivers/regulator/Makefile
++++ b/drivers/regulator/Makefile
+@@ -172,6 +172,7 @@ obj-$(CONFIG_REGULATOR_S2MPA01) += s2mpa01.o
+ obj-$(CONFIG_REGULATOR_S2MPS11) += s2mps11.o
+ obj-$(CONFIG_REGULATOR_S5M8767) += s5m8767.o
+ obj-$(CONFIG_REGULATOR_SC2731) += sc2731-regulator.o
++obj-$(CONFIG_REGULATOR_SGM3804) += sgm3804-regulator.o
+ obj-$(CONFIG_REGULATOR_SKY81452) += sky81452-regulator.o
+ obj-$(CONFIG_REGULATOR_SLG51000) += slg51000-regulator.o
+ obj-$(CONFIG_REGULATOR_SPACEMIT_P1) += spacemit-p1.o
+diff --git a/drivers/regulator/sgm3804-regulator.c b/drivers/regulator/sgm3804-regulator.c
+new file mode 100644
+index 000000000000..c52f0596acf3
+--- /dev/null
++++ b/drivers/regulator/sgm3804-regulator.c
+@@ -0,0 +1,164 @@
++// SPDX-License-Identifier: GPL-2.0-only
++
++#include <linux/err.h>
++#include <linux/i2c.h>
++#include <linux/module.h>
++#include <linux/regmap.h>
++#include <linux/regulator/driver.h>
++#include <linux/regulator/of_regulator.h>
++#include <linux/gpio/consumer.h>
++
++struct sgm3804_data {
++	struct regmap *regmap;
++	struct gpio_desc *reset_gpio[2];
++	bool enabled;
++};
++
++static const struct regmap_config sgm3804_regmap_config = {
++	.reg_bits = 8,
++	.val_bits = 8,
++	.max_register = 0x03,
++};
++
++static int sgm3804_enable(struct regulator_dev *rdev)
++{
++	struct sgm3804_data *data = rdev_get_drvdata(rdev);
++	struct regmap *regmap = data->regmap;
++	int ret = 0;
++
++	/* Set reset GPIO high to enable the device if available */
++	if (data->reset_gpio[0])
++		gpiod_set_value_cansleep(data->reset_gpio[0], 1);
++
++	if (data->reset_gpio[1])
++		gpiod_set_value_cansleep(data->reset_gpio[1], 1);
++
++	ret |= regmap_write(regmap, 0x00, 0x0c);
++	ret |= regmap_write(regmap, 0x01, 0x0c);
++	ret |= regmap_write(regmap, 0x03, 0x03);
++	if (ret) {
++		dev_err(rdev->dev.parent,
++			"Failed to enable SGM3804 regulator\n");
++		return ret;
++	}
++
++	data->enabled = true;
++	return 0;
++}
++
++static int sgm3804_disable(struct regulator_dev *rdev)
++{
++	struct sgm3804_data *data = rdev_get_drvdata(rdev);
++
++	if (data->reset_gpio[0])
++		gpiod_set_value_cansleep(data->reset_gpio[0], 0);
++
++	if (data->reset_gpio[1])
++		gpiod_set_value_cansleep(data->reset_gpio[1], 0);
++
++	data->enabled = false;
++	return 0;
++}
++
++static int sgm3804_is_enabled(struct regulator_dev *rdev)
++{
++	struct sgm3804_data *data = rdev_get_drvdata(rdev);
++
++	return data->enabled;
++}
++
++static int sgm3804_get_voltage(struct regulator_dev *rdev)
++{
++	return 5000000;
++}
++
++static const struct regulator_ops sgm3804_ops = {
++	.enable = sgm3804_enable,
++	.disable = sgm3804_disable,
++	.is_enabled = sgm3804_is_enabled,
++	.get_voltage = sgm3804_get_voltage,
++};
++
++static const struct regulator_desc sgm3804_reg = {
++	.name = "SGM3804",
++	.id = 0,
++	.ops = &sgm3804_ops,
++	.type = REGULATOR_VOLTAGE,
++	.n_voltages = 1,
++	.min_uV = 5000000,
++	.owner = THIS_MODULE,
++};
++
++static int sgm3804_i2c_probe(struct i2c_client *i2c)
++{
++	struct device *dev = &i2c->dev;
++	struct regulator_config config = {};
++	struct regulator_dev *rdev;
++	struct sgm3804_data *data;
++	int error;
++
++	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
++	if (!data)
++		return -ENOMEM;
++
++	data->regmap = devm_regmap_init_i2c(i2c, &sgm3804_regmap_config);
++	if (IS_ERR(data->regmap))
++		return dev_err_probe(dev, PTR_ERR(data->regmap),
++				     "failed to init regmap\n");
++
++	/* Get reset-gpio from device tree */
++	data->reset_gpio[0] =
++		devm_gpiod_get_index(dev, "reset", 0, GPIOD_OUT_HIGH);
++	if (IS_ERR(data->reset_gpio[0]))
++		return dev_err_probe(dev, PTR_ERR(data->reset_gpio[0]),
++				     "failed to get first reset GPIO\n");
++
++	data->reset_gpio[1] =
++		devm_gpiod_get_index(dev, "reset", 1, GPIOD_OUT_HIGH);
++	if (IS_ERR(data->reset_gpio[1]))
++		dev_warn(dev, "failed to get second reset GPIO\n");
++
++	config.dev = dev;
++	config.regmap = data->regmap;
++	config.driver_data = data;
++	config.of_node = dev->of_node;
++	config.init_data =
++		of_get_regulator_init_data(dev, dev->of_node, &sgm3804_reg);
++	if (!config.init_data)
++		return -ENOMEM;
++	data->enabled = false;
++	rdev = devm_regulator_register(dev, &sgm3804_reg, &config);
++	if (IS_ERR(rdev)) {
++		error = PTR_ERR(rdev);
++		dev_err(dev, "Failed to register SGM3804 regulator: %d\n",
++			error);
++		return error;
++	}
++
++	return 0;
++}
++
++static const struct i2c_device_id sgm3804_i2c_id[] = { { "sgm3804" }, {} };
++MODULE_DEVICE_TABLE(i2c, sgm3804_i2c_id);
++
++static const struct of_device_id sgm3804_i2c_of_match[] = {
++	{ .compatible = "sgmicro,sgm3804" },
++	{}
++};
++MODULE_DEVICE_TABLE(of, sgm3804_i2c_of_match);
++
++static struct i2c_driver sgm3804_regulator_driver = {
++	.driver = {
++		.name = "sgm3804",
++		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
++		.of_match_table = sgm3804_i2c_of_match,
++	},
++	.probe = sgm3804_i2c_probe,
++	.id_table = sgm3804_i2c_id,
++};
++
++module_i2c_driver(sgm3804_regulator_driver);
++
++MODULE_DESCRIPTION("SGMicro sgm3804 regulator Driver");
++MODULE_AUTHOR("Kancy Joe <kancy2333@outlook.com>");
++MODULE_LICENSE("GPL");
 
 -- 
 2.54.0
