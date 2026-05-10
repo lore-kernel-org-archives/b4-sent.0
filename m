@@ -1,84 +1,61 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Sun, 10 May 2026 13:42:29 +0100
-Subject: [PATCH v12 11/11] Documentation: ABI: testing: add common ABI file
- for iio/frequency
+From: Alexandre Hamamdjian <azkali.limited@gmail.com>
+Subject: [PATCH 0/2] arm64: qcom: add Ayaneo Pocket DS gaming console
+Date: Sun, 10 May 2026 23:05:55 +0700
+Message-Id: <20260510-pocketds-v1-0-cf05acec06af@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260510-adf41513-iio-driver-v12-11-34af2ed2779f@analog.com>
-References: <20260510-adf41513-iio-driver-v12-0-34af2ed2779f@analog.com>
-In-Reply-To: <20260510-adf41513-iio-driver-v12-0-34af2ed2779f@analog.com>
-To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-doc@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Andrew Morton <akpm@linux-foundation.org>, Petr Mladek <pmladek@suse.com>, 
- Steven Rostedt <rostedt@goodmis.org>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Rasmus Villemoes <linux@rasmusvillemoes.dk>, 
- Sergey Senozhatsky <senozhatsky@chromium.org>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778416952; l=2210;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=OhPLAamt4hmbeCatH+/iPHehi/HIntujTnWeOacWI/A=;
- b=QbNEOv+PFcz7zmhNCff9j9BIJa1rBKnnAAbRV01BXDtQYo75xzl51R2D7DCcmMts+7LhEggdZ
- 4ovpLabCEuTDjUDBKz9ENgM3FYPgMwZb71sLR6bfFjndBsBw6d1xwci
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0QpAQBSE4VfRuba1CK1XkQvW4FBoD1Ly7haXX
+ /0zFwkcQ6gILnI4WHiZPaIwIDvUcw/FrTfFOs50Gmm1LnbC1oqCRt4YY7skM+Tz1aHj87sqq9+
+ yNyPs9u7pvh9tj0WwbAAAAA==
+X-Change-ID: 20260510-pocketds-e0e7b99cf369
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Alexandre Hamamdjian <azkali.limited@gmail.com>, 
+ Teguh Sobirin <teguh@sobir.in>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778429157; l=1248;
+ i=azkali.limited@gmail.com; s=20260510; h=from:subject:message-id;
+ bh=zWM0yjWhrBGeyNEsiYlhIjWmf8MR0q9DFMYfprO6DpQ=;
+ b=pAr7WUGqunWuaodzubJ4K97YlUN6/wr7s/x78Tdh18R7mtAjc6EJbe0vIoF7nnuqe6MooiF2E
+ JqqvhAk/kNeCDO+uA+uhpbJLwpl1cPbuiMJhevB43lJ2z35qlK4gVui
+X-Developer-Key: i=azkali.limited@gmail.com; a=ed25519;
+ pk=I0Z0IdCdQJqNGX+FQUnXhrHg950u3cM6Xzz3YT6JOyQ=
+X-Endpoint-Received: by B4 Relay for azkali.limited@gmail.com/20260510 with auth_id=774
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add ABI documentation file for PLL/DDS devices with frequency_resolution
-sysfs entry attribute used by both ADF4350 and ADF41513.
+This series adds initial support for the Ayaneo Pocket DS, a handheld
+gaming console built around the Qualcomm QCS8550 SoC.
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+This introduces the device tree itself, split into:
+- qcs8550-ayaneo-pocket-common.dtsi: shared QCS8550 board base
+  intended to be reused by future siblings in the same family.
+- qcs8550-ayaneo-pocketds.dts: This device's DTS
+
+Only the basics are wired up at this stage (boot to console, core
+peripherals enabled in the common dtsi); additional functionality
+will follow in later submissions.
+
+Signed-off-by: Alexandre Hamamdjian <azkali.limited@gmail.com>
 ---
- Documentation/ABI/testing/sysfs-bus-iio-frequency         | 11 +++++++++++
- Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350 | 10 ----------
- 2 files changed, 11 insertions(+), 10 deletions(-)
+Teguh Sobirin (2):
+      dt-bindings: arm: qcom: document the Ayaneo Pocket DS
+      arm64: dts: qcom: add basic devicetree for Ayaneo Pocket DS gaming console
 
-diff --git a/Documentation/ABI/testing/sysfs-bus-iio-frequency b/Documentation/ABI/testing/sysfs-bus-iio-frequency
-new file mode 100644
-index 000000000000..1ce8ae578fd6
---- /dev/null
-+++ b/Documentation/ABI/testing/sysfs-bus-iio-frequency
-@@ -0,0 +1,11 @@
-+What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_frequency_resolution
-+KernelVersion:	6.20
-+Contact:	linux-iio@vger.kernel.org
-+Description:
-+		Stores channel Y frequency resolution/channel spacing in Hz for PLL
-+		devices. The given value directly influences the operating mode when
-+		fractional-N synthesis is required, as it derives values for
-+		configurable modulus parameters used in the calculation of the output
-+		frequency. It is assumed that the algorithm that is used to compute
-+		the various dividers, is able to generate proper values for multiples
-+		of channel spacing.
-diff --git a/Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350 b/Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350
-index 1254457a726e..76987a119feb 100644
---- a/Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350
-+++ b/Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350
-@@ -1,13 +1,3 @@
--What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_frequency_resolution
--KernelVersion:	3.4.0
--Contact:	linux-iio@vger.kernel.org
--Description:
--		Stores channel Y frequency resolution/channel spacing in Hz.
--		The value given directly influences the MODULUS used by
--		the fractional-N PLL. It is assumed that the algorithm
--		that is used to compute the various dividers, is able to
--		generate proper values for multiples of channel spacing.
--
- What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_refin_frequency
- KernelVersion:	3.4.0
- Contact:	linux-iio@vger.kernel.org
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    6 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    1 +
+ .../dts/qcom/qcs8550-ayaneo-pocket-common.dtsi     | 1596 ++++++++++++++++++++
+ .../boot/dts/qcom/qcs8550-ayaneo-pocketds.dts      |  170 +++
+ 4 files changed, 1773 insertions(+)
+---
+base-commit: e98d21c170b01ddef366f023bbfcf6b31509fa83
+change-id: 20260510-pocketds-e0e7b99cf369
 
--- 
-2.43.0
+Best regards,
+--  
+Alexandre Hamamdjian <azkali.limited@gmail.com>
 
