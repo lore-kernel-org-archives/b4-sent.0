@@ -1,265 +1,69 @@
-From: Alexandre Hamamdjian <azkali.limited@gmail.com>
-Date: Mon, 11 May 2026 00:08:03 +0700
-Subject: [PATCH 2/2] backlight: sy7758: add Silergy SY7758 backlight driver
+From: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+Subject: [PATCH v2 0/2] A proposal to add a gpio-locked fixed clock driver.
+Date: Sun, 10 May 2026 18:06:21 +0000
+Message-Id: <20260510-feature-clock-guard-v2-0-6c25458d5340@bruker.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260511-sy7758-v1-2-999a33081304@gmail.com>
-References: <20260511-sy7758-v1-0-999a33081304@gmail.com>
-In-Reply-To: <20260511-sy7758-v1-0-999a33081304@gmail.com>
-To: Philippe Simons <simons.philippe@gmail.com>, Lee Jones <lee@kernel.org>, 
- Daniel Thompson <danielt@kernel.org>, Jingoo Han <jingoohan1@gmail.com>, 
- Pavel Machek <pavel@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAB3JAGoC/32NTQ6CMBBGr0Jm7Zi2/OrKexgWbRmgQamZQqMh3
+ N3KAVy+l3zv2yAQOwpwzTZgii44PydQpwzsqOeB0HWJQQlViVw22JNeVia0D28nHFbNHfZKaGX
+ z0lyqEtLyxdS791G9t4lHFxbPn+Mkyp/934sSBVYyr60pRFOY+mZ4nYjP1j+h3ff9C7X2O5S3A
+ AAA
+X-Change-ID: 20260318-feature-clock-guard-f20a2c35b965
+To: Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Helge Deller <deller@gmx.de>
-Cc: dri-devel@lists.freedesktop.org, linux-leds@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-fbdev@vger.kernel.org, 
- Alexandre Hamamdjian <azkali.limited@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778432883; l=7264;
- i=azkali.limited@gmail.com; s=20260510; h=from:subject:message-id;
- bh=9XCTIbMoV49y1xex8SxBrgLyf7GaS0QW2nGCwz+d0Fo=;
- b=w4H2miBquw/vmK2oBk/P8SIhaq7vtIOc/wuxLqy86jD5m7ltkZiQxcjgmCFBNgBFKnldsN/BO
- fcTis5LJoKpBXYppCZ6M53MTP2DNEAyOuwxpjFdBL2UR9TNFq50R97r
-X-Developer-Key: i=azkali.limited@gmail.com; a=ed25519;
- pk=I0Z0IdCdQJqNGX+FQUnXhrHg950u3cM6Xzz3YT6JOyQ=
-X-Endpoint-Received: by B4 Relay for azkali.limited@gmail.com/20260510 with auth_id=774
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, Vyacheslav Yurkov <uvv.mail@gmail.com>, 
+ Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778436398; l=1674;
+ i=V.Yurkov.EXT@bruker.com; s=20260318; h=from:subject:message-id;
+ bh=Q/WCDKfdbN0bfbKBiTsXu/nT2ph+oMQHG9vFZrTe+28=;
+ b=9sI8m7AMOU1hB1Gsotg8yQlFziYmA2hoYnJRQ2muNBU8CFQ3oNbFgQxoa0RNRbyPqVMj0tsZ0
+ C3AkhgZf0F/A4HqFiCvJMOsLwFYrzSyz2AeMa8d6z9OCDGdM/o8jQqg
+X-Developer-Key: i=V.Yurkov.EXT@bruker.com; a=ed25519;
+ pk=snJmgYVOKlp7aQtK9tWnEI7QTYxpPpJJvxdVsnxA7Fk=
+X-Endpoint-Received: by B4 Relay for V.Yurkov.EXT@bruker.com/20260318 with auth_id=686
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a driver for the Silergy SY7758 I2C-controlled multi-channel LED
-backlight controller. The chip drives the edge-lit LED strings of LCD
-panels in handheld and embedded devices, and is for example present on
-the Ayaneo Pocket DS handheld where it drives the panel backlight.
+A gpio-locked fixed clock aggregates one or more input clocks and/or one
+or more GPIOs. It's similar to a gated-fixed-clock, but GPIO direction is
+inverted. Consumers can use the output clock to wait until all input
+clocks are locked and only then initialize / access dependent peripherals.
 
-The driver registers a backlight class device with a 12-bit linear
-brightness range. On the first non-zero update, the chip's mode and
-current configuration registers are programmed; subsequent brightness
-updates only rewrite the two brightness registers. A mutex serialises
-concurrent updates against the deferred init path.
+The usage example for such a driver is when peripherals depend on PLLs in
+a FPGA, which can't be directly accessed by the CPU, but need a GPIO pin
+to check whether clock is actually usable. E.g. some of the IPs might not
+have a proper split between registers and IP core, which means that if an
+external clock and/or PLL lock is missing and one tries to access the 
+registers, the response never comes, thus the CPU stalls.
 
-Co-developed-by: Philippe Simons <simons.philippe@gmail.com>
-Signed-off-by: Philippe Simons <simons.philippe@gmail.com>
-Signed-off-by: Alexandre Hamamdjian <azkali.limited@gmail.com>
+Signed-off-by: Vyacheslav Yurkov <uvv.mail@gmail.com>
+Signed-off-by: Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 ---
- drivers/video/backlight/Kconfig  |  14 ++++
- drivers/video/backlight/Makefile |   1 +
- drivers/video/backlight/sy7758.c | 169 +++++++++++++++++++++++++++++++++++++++
- 3 files changed, 184 insertions(+)
+Changes in v2:
+- Renamed to clk-gpio-locked to express intent.
+- Provide enable() / is_enabled() operations so the clock behaves as
+  expected
+- Fixed DTS errors / warnings
+- Link to v1: https://lore.kernel.org/r/20260318-feature-clock-guard-v1-0-6137cb4084b7@bruker.com
 
-diff --git a/drivers/video/backlight/Kconfig b/drivers/video/backlight/Kconfig
-index a7a3fbaf7c29..c529d2861525 100644
---- a/drivers/video/backlight/Kconfig
-+++ b/drivers/video/backlight/Kconfig
-@@ -461,6 +461,20 @@ config BACKLIGHT_SKY81452
- 	  To compile this driver as a module, choose M here: the module will
- 	  be called sky81452-backlight
- 
-+config BACKLIGHT_SY7758
-+	tristate "Backlight Driver for Silergy SY7758"
-+	depends on I2C
-+	select REGMAP_I2C
-+	help
-+	  This enables support for the Silergy SY7758 I2C-controlled
-+	  multi-channel LED backlight driver, commonly used to drive the
-+	  edge-lit LED strings of LCD panels in handheld and embedded
-+	  devices. The driver exposes a 12-bit linear brightness control
-+	  through the standard backlight class.
-+
-+	  To compile this driver as a module, choose M here: the module
-+	  will be called sy7758.
-+
- config BACKLIGHT_TPS65217
- 	tristate "TPS65217 Backlight"
- 	depends on MFD_TPS65217
-diff --git a/drivers/video/backlight/Makefile b/drivers/video/backlight/Makefile
-index 794820a98ed4..00d3e379b297 100644
---- a/drivers/video/backlight/Makefile
-+++ b/drivers/video/backlight/Makefile
-@@ -57,6 +57,7 @@ obj-$(CONFIG_BACKLIGHT_QCOM_WLED)	+= qcom-wled.o
- obj-$(CONFIG_BACKLIGHT_RT4831)		+= rt4831-backlight.o
- obj-$(CONFIG_BACKLIGHT_SAHARA)		+= kb3886_bl.o
- obj-$(CONFIG_BACKLIGHT_SKY81452)	+= sky81452-backlight.o
-+obj-$(CONFIG_BACKLIGHT_SY7758)		+= sy7758.o
- obj-$(CONFIG_BACKLIGHT_TPS65217)	+= tps65217_bl.o
- obj-$(CONFIG_BACKLIGHT_WM831X)		+= wm831x_bl.o
- obj-$(CONFIG_BACKLIGHT_ARCXCNN) 	+= arcxcnn_bl.o
-diff --git a/drivers/video/backlight/sy7758.c b/drivers/video/backlight/sy7758.c
-new file mode 100644
-index 000000000000..6a318bd62030
---- /dev/null
-+++ b/drivers/video/backlight/sy7758.c
-@@ -0,0 +1,169 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Backlight driver for the Silergy sy7758
-+ *
-+ * Copyright (C) 2025 Kancy Joe <kancy2333@outlook.com>
-+ */
-+
-+#include <linux/backlight.h>
-+#include <linux/err.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/i2c.h>
-+#include <linux/module.h>
-+#include <linux/of.h>
-+#include <linux/regmap.h>
-+
-+#define DEFAULT_BRIGHTNESS 1500
-+#define MAX_BRIGHTNESS 4080
-+#define REG_MAX 0xa9
-+
-+#define BL_BRT_L 0x10
-+#define BL_BRT_H 0x11
-+
-+static DEFINE_MUTEX(sy7758_update_backlight_mutex);
-+
-+struct sy7758 {
-+	struct i2c_client *client;
-+	struct regmap *regmap;
-+	bool led_on;
-+};
-+
-+static void sy7758_init(struct sy7758 *sydev);
-+
-+static const struct regmap_config sy7758_regmap_config = {
-+	.reg_bits = 8,
-+	.val_bits = 8,
-+	.max_register = REG_MAX,
-+};
-+
-+static int sy7758_write(struct sy7758 *sydev, unsigned int reg,
-+			 unsigned int val)
-+{
-+	return regmap_write(sydev->regmap, reg, val);
-+}
-+
-+static int sy7758_backlight_update_status(struct backlight_device *backlight_dev)
-+{
-+	struct sy7758 *sydev = bl_get_data(backlight_dev);
-+	unsigned int brightness = backlight_get_brightness(backlight_dev);
-+
-+	mutex_lock(&sy7758_update_backlight_mutex);
-+
-+	if (!sydev->led_on && brightness > 0) {
-+		sy7758_init(sydev);
-+		sydev->led_on = true;
-+	} else if (brightness == 0) {
-+		sydev->led_on = false;
-+	}
-+
-+	sy7758_write(sydev, BL_BRT_L, brightness & 0xf0);
-+
-+	sy7758_write(sydev, BL_BRT_H, (brightness >> 8) & 0xf);
-+
-+	mutex_unlock(&sy7758_update_backlight_mutex);
-+	return 0;
-+}
-+
-+static const struct backlight_ops sy7758_backlight_ops = {
-+	.options = BL_CORE_SUSPENDRESUME,
-+	.update_status = sy7758_backlight_update_status,
-+};
-+
-+static void sy7758_init(struct sy7758 *sydev)
-+{
-+	sy7758_write(sydev, 0x01, 0x85);
-+	sy7758_write(sydev, 0x10, 0x00);
-+	sy7758_write(sydev, 0x11, 0x00);
-+	sy7758_write(sydev, 0xa5, 0x64);
-+	sy7758_write(sydev, 0xa0, 0x55);
-+	sy7758_write(sydev, 0xa1, 0x9a);
-+	sy7758_write(sydev, 0xa9, 0x80);
-+	sy7758_write(sydev, 0xa2, 0x28);
-+
-+	usleep_range(10000, 11000);
-+
-+	sy7758_write(sydev, 0x10, 0x40);
-+	sy7758_write(sydev, 0x11, 0x01);
-+	// Max brightness
-+	// 0x10: 0xf0 Low
-+	// 0x11: 0x0f High
-+
-+	// Min brightness
-+	// 0x10: 0x10  Low
-+	// 0x11: 0x00  High
-+	sydev->led_on = true;
-+}
-+
-+static int sy7758_probe(struct i2c_client *client)
-+{
-+	struct backlight_device *backlight_dev;
-+	struct backlight_properties props;
-+	struct sy7758 *sydev;
-+
-+	sydev = devm_kzalloc(&client->dev, sizeof(*sydev), GFP_KERNEL);
-+	if (!sydev)
-+		return -ENOMEM;
-+
-+	sydev->client = client;
-+	sydev->regmap = devm_regmap_init_i2c(client, &sy7758_regmap_config);
-+	if (IS_ERR(sydev->regmap))
-+		return dev_err_probe(&client->dev, PTR_ERR(sydev->regmap),
-+			"failed to init regmap\n");
-+
-+	memset(&props, 0, sizeof(props));
-+	props.type = BACKLIGHT_RAW;
-+	props.max_brightness = MAX_BRIGHTNESS;
-+	props.brightness = DEFAULT_BRIGHTNESS;
-+	props.scale = BACKLIGHT_SCALE_LINEAR;
-+
-+	backlight_dev = devm_backlight_device_register(&client->dev, "sy7758-backlight",
-+					&client->dev, sydev, &sy7758_backlight_ops, &props);
-+	if (IS_ERR(backlight_dev))
-+		return dev_err_probe(&client->dev, PTR_ERR(backlight_dev),
-+				"failed to register backlight device\n");
-+
-+	sy7758_init(sydev);
-+
-+	i2c_set_clientdata(client, backlight_dev);
-+	backlight_update_status(backlight_dev);
-+
-+	return 0;
-+}
-+
-+static void sy7758_remove(struct i2c_client *client)
-+{
-+	struct backlight_device *backlight_dev = i2c_get_clientdata(client);
-+
-+	backlight_dev->props.brightness = 0;
-+	backlight_update_status(backlight_dev);
-+}
-+
-+static const struct i2c_device_id sy7758_ids[] = {
-+	{ "sy7758" },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(i2c, sy7758_ids);
-+
-+static const struct of_device_id sy7758_match_table[] = {
-+	{
-+		.compatible = "silergy,sy7758",
-+	},
-+	{},
-+};
-+MODULE_DEVICE_TABLE(of, sy7758_match_table);
-+
-+static struct i2c_driver sy7758_driver = {
-+	.driver = {
-+		.name = "sy7758",
-+		.of_match_table = sy7758_match_table,
-+	},
-+	.probe = sy7758_probe,
-+	.remove = sy7758_remove,
-+	.id_table = sy7758_ids,
-+};
-+
-+module_i2c_driver(sy7758_driver);
-+
-+MODULE_DESCRIPTION("Silergy sy7758 Backlight Driver");
-+MODULE_AUTHOR("Kancy Joe <kancy2333@outlook.com>");
-+MODULE_LICENSE("GPL");
+---
+Vyacheslav Yurkov (2):
+      clk: Add gpio-locked clock driver
+      dt-bindings: Add GPIO locked fixed clock
 
+ .../bindings/clock/gpio-locked-fixed-clock.yaml    |  77 ++++++
+ drivers/clk/Makefile                               |   1 +
+ drivers/clk/clk-gpio-locked.c                      | 306 +++++++++++++++++++++
+ 3 files changed, 384 insertions(+)
+---
+base-commit: 917719c412c48687d4a176965d1fa35320ec457c
+change-id: 20260318-feature-clock-guard-f20a2c35b965
+
+Best regards,
 -- 
-2.54.0
+Vyacheslav Yurkov <V.Yurkov.EXT@bruker.com>
 
