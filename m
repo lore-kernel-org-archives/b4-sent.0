@@ -1,197 +1,59 @@
 From: Alexandre Hamamdjian <azkali.limited@gmail.com>
-Date: Sun, 10 May 2026 23:08:55 +0700
-Subject: [PATCH 2/2] dt-bindings: usb: add Rohm BM92TXX Type-C controller
+Subject: [PATCH 0/2] regulator: add support for SGMicro SGM3804
+Date: Sun, 10 May 2026 23:45:25 +0700
+Message-Id: <20260510-sgm3804-v1-0-e5e8799e0aa0@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260510-bm92t-v1-2-dff3c9d22426@gmail.com>
-References: <20260510-bm92t-v1-0-dff3c9d22426@gmail.com>
-In-Reply-To: <20260510-bm92t-v1-0-dff3c9d22426@gmail.com>
-To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, CTCaer <ctcaer@gmail.com>, 
- Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDU0MD3eL0XGMLAxPdZGPzRIPEVLMU8zRjJaDqgqLUtMwKsEnRsRB+cWl
+ SVmpyCUi7Um0tAJ9MDt9rAAAA
+X-Change-ID: 20260510-sgm3804-c37a0ae6d7f3
+To: Philippe Simons <simons.philippe@gmail.com>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
+Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
  Alexandre Hamamdjian <azkali.limited@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778429339; l=5274;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778431530; l=1363;
  i=azkali.limited@gmail.com; s=20260510; h=from:subject:message-id;
- bh=ozSJxakD3nLP0mwcFo/HHRulxXgmVTFqvb1G9vOg8aA=;
- b=5UedgQhPGodFtSd/RZPXCz4svuo7xyrzsx02xAKjnxj8A1rklJ/tuGf7fgJ46ypmUoYHYG8Rz
- UsZPZ2gUehIDgMOPhc+xKGB3i+Q0QWyaXKJuMU2RJcX3zMp45WOFqLN
+ bh=/WuZUeZCMZrnceyX7+bS1/qqA7M8L6zQXpaUctGOv1U=;
+ b=GHTf8dI7l6dDpUncMLK2xLs1wfa08vt/n8RslM9p+yYSOk2hB/5tFRvrxlu9Q8Eer0wm1HF3W
+ af0qFx78JSrBpVK/3QrNebK13uYSZctpCgyPJZGb8bfM77Qthz1YDnE
 X-Developer-Key: i=azkali.limited@gmail.com; a=ed25519;
  pk=I0Z0IdCdQJqNGX+FQUnXhrHg950u3cM6Xzz3YT6JOyQ=
 X-Endpoint-Received: by B4 Relay for azkali.limited@gmail.com/20260510 with auth_id=774
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the device-tree binding documentation for the Rohm BM92TXX family
-of USB Type-C and Power Delivery controllers. The device is controlled
-over I2C and signals state changes through a dedicated interrupt line.
+This series adds support for the SGMicro SGM3804, an I2C-controlled
+positive/negative output charge-pump regulator. The chip is used to
+generate the AVDD/AVEE rails for display panels and is present on the
+Ayaneo Pocket DS handheld, where it powers the panel and is required
+before any panel driver can light up the display.
 
-Document the rohm,* properties consumed by the driver: the optional
-VCONN-enable GPIO, the DisplayPort alternate-mode toggles
-(rohm,dp-disable, rohm,dp-alerts-enable, rohm,dp-signal-toggle-on-resume,
-rohm,dp-lanes), the suspend/dock tunables (rohm,led-static-on-suspend,
-rohm,dock-power-limit-disable) and the four
-rohm,pd-{5,9,12,15}v-current-limit-ma per-PDO charging current limits.
-A graph port is required to link the controller to a USB role switch
-consumer.
+The Ayaneo Pocket DS device tree, posted as a separate series, depends
+on the binding introduced here to describe its panel power supply, so
+this series is a prerequisite for that work and for any subsequent
+panel-related patches targeting the same board.
 
 Signed-off-by: Alexandre Hamamdjian <azkali.limited@gmail.com>
 ---
- .../devicetree/bindings/usb/rohm,bm92t.yaml        | 128 +++++++++++++++++++++
- MAINTAINERS                                        |   1 +
- 2 files changed, 129 insertions(+)
+Alexandre Hamamdjian (2):
+      dt-bindings: regulator: add SGMicro SGM3804
+      regulator: sgm3804: add SGMicro SGM3804 charge-pump regulator driver
 
-diff --git a/Documentation/devicetree/bindings/usb/rohm,bm92t.yaml b/Documentation/devicetree/bindings/usb/rohm,bm92t.yaml
-new file mode 100644
-index 000000000000..007f70a8f5bb
---- /dev/null
-+++ b/Documentation/devicetree/bindings/usb/rohm,bm92t.yaml
-@@ -0,0 +1,128 @@
-+# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/usb/rohm,bm92t.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Rohm BM92TXX USB Type-C and Power Delivery controller
-+
-+maintainers:
-+  - CTCaer <ctcaer@gmail.com>
-+  - Alexandre Hamamdjian <azkali.limited@gmail.com>
-+
-+description:
-+  The Rohm BM92TXX is a family of USB Type-C and Power Delivery
-+  controllers with an integrated MCU. The host communicates with the
-+  device over I2C and is notified of state changes through a dedicated
-+  interrupt line.
-+
-+properties:
-+  compatible:
-+    const: rohm,bm92t
-+
-+  reg:
-+    maxItems: 1
-+
-+  interrupts:
-+    maxItems: 1
-+
-+  vbus-supply:
-+    description: VBUS sink regulator.
-+
-+  vbus-source-supply:
-+    description: VBUS source (provider) regulator.
-+
-+  pd_bat_chg-supply:
-+    description: Battery charger regulator gated by Power Delivery state.
-+
-+  rohm,vconn-en-gpio:
-+    maxItems: 1
-+    description: GPIO controlling the external VCONN switch.
-+
-+  rohm,dp-disable:
-+    type: boolean
-+    description: Disable DisplayPort alternate-mode handling.
-+
-+  rohm,dp-alerts-enable:
-+    type: boolean
-+    description: Enable DisplayPort status alerts.
-+
-+  rohm,dp-signal-toggle-on-resume:
-+    type: boolean
-+    description:
-+      Toggle the DisplayPort signal on resume to work around sinks that
-+      do not re-train after system resume.
-+
-+  rohm,dp-lanes:
-+    $ref: /schemas/types.yaml#/definitions/uint32
-+    enum: [2, 4]
-+    default: 2
-+    description: Number of DisplayPort lanes to negotiate.
-+
-+  rohm,led-static-on-suspend:
-+    type: boolean
-+    description:
-+      Keep the charge LED in a static state during system suspend
-+      instead of letting the controller animate it.
-+
-+  rohm,dock-power-limit-disable:
-+    type: boolean
-+    description:
-+      Disable the lower power limit applied when a dock is detected.
-+
-+  rohm,pd-5v-current-limit-ma:
-+    description: Charging current limit in mA when 5V PD contract is active.
-+
-+  rohm,pd-9v-current-limit-ma:
-+    description: Charging current limit in mA when 9V PD contract is active.
-+
-+  rohm,pd-12v-current-limit-ma:
-+    description: Charging current limit in mA when 12V PD contract is active.
-+
-+  rohm,pd-15v-current-limit-ma:
-+    description: Charging current limit in mA when 15V PD contract is active.
-+
-+  port:
-+    $ref: /schemas/graph.yaml#/properties/port
-+    description:
-+      Output port linking to a USB role switch consumer endpoint.
-+
-+required:
-+  - compatible
-+  - reg
-+  - interrupts
-+  - port
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    #include <dt-bindings/interrupt-controller/irq.h>
-+
-+    i2c {
-+        #address-cells = <1>;
-+        #size-cells = <0>;
-+
-+        typec@18 {
-+            compatible = "rohm,bm92t";
-+            reg = <0x18>;
-+            interrupt-parent = <&gpio>;
-+            interrupts = <42 IRQ_TYPE_LEVEL_LOW>;
-+
-+            vbus-supply = <&vbus_reg>;
-+            vbus-source-supply = <&vbus_src_reg>;
-+            pd_bat_chg-supply = <&pd_bat_chg_reg>;
-+
-+            rohm,dp-lanes = <4>;
-+            rohm,pd-5v-current-limit-ma = <2000>;
-+            rohm,pd-9v-current-limit-ma = <2000>;
-+            rohm,pd-12v-current-limit-ma = <1500>;
-+            rohm,pd-15v-current-limit-ma = <1200>;
-+
-+            port {
-+                bm92t_ep: endpoint {
-+                    remote-endpoint = <&usb_role_sw>;
-+                };
-+            };
-+        };
-+    };
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 01e06d87b926..8e8a23cad7c8 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -23311,6 +23311,7 @@ M:	CTCaer <ctcaer@gmail.com>
- M:	Alexandre Hamamdjian <azkali.limited@gmail.com>
- L:	linux-usb@vger.kernel.org
- S:	Maintained
-+F:	Documentation/devicetree/bindings/usb/rohm,bm92t.yaml
- F:	drivers/usb/typec/bm92txx.c
- 
- ROHM BU270xx LIGHT SENSOR DRIVERs
+ .../bindings/regulator/sgmicro,sgm3804.yaml        |  60 ++++++++
+ MAINTAINERS                                        |   7 +
+ drivers/regulator/Kconfig                          |  11 ++
+ drivers/regulator/Makefile                         |   1 +
+ drivers/regulator/sgm3804-regulator.c              | 164 +++++++++++++++++++++
+ 5 files changed, 243 insertions(+)
+---
+base-commit: e98d21c170b01ddef366f023bbfcf6b31509fa83
+change-id: 20260510-sgm3804-c37a0ae6d7f3
 
--- 
-2.54.0
+Best regards,
+--  
+Alexandre Hamamdjian <azkali.limited@gmail.com>
 
