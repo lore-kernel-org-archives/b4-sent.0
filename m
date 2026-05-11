@@ -1,11 +1,11 @@
 From: Dumitru Ceclan <dumitru.ceclan@analog.com>
-Date: Mon, 11 May 2026 15:26:33 +0300
-Subject: [PATCH v11 10/22] dt-bindings: media: i2c: max96712: add
- control-channel-port property
+Date: Mon, 11 May 2026 15:26:34 +0300
+Subject: [PATCH v11 11/22] dt-bindings: media: i2c: max96714: add support
+ for MAX96714R
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260511-gmsl2-3_serdes-v11-10-fc163073c16b@analog.com>
+Message-Id: <20260511-gmsl2-3_serdes-v11-11-fc163073c16b@analog.com>
 References: <20260511-gmsl2-3_serdes-v11-0-fc163073c16b@analog.com>
 In-Reply-To: <20260511-gmsl2-3_serdes-v11-0-fc163073c16b@analog.com>
 To: Tomi Valkeinen <tomi.valkeinen+renesas@ideasonboard.com>, 
@@ -21,48 +21,52 @@ Cc: mitrutzceclan@gmail.com, linux-media@vger.kernel.org,
  linux-staging@lists.linux.dev, linux-gpio@vger.kernel.org, 
  =?utf-8?q?Niklas_S=C3=B6derlund?= <niklas.soderlund+renesas@ragnatech.se>, 
  Martin Hecht <Martin.Hecht@avnet.eu>, 
- Vivekananda Dayananda <vivekana@amd.com>, 
- Dumitru Ceclan <dumitru.ceclan@analog.com>
+ Cosmin Tanislav <demonsingur@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778502401; l=1192;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778502401; l=1267;
  i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
- bh=IA/m8rGuBEmpF2gcpL400GZdflPXopNmk1jtZEjpf1M=;
- b=2y3RWpfC/oIXAMq/zlp3NV+WfEfRIJO0Qm2t2ooLMoQim5jd8tWR7dfF11spbyCBm9XbhCxMf
- aFKA0S0P37aDyWljq5Vqog41fdrS1Or0XHkK+eLxr60XdlAZ8hIoA5E
+ bh=7ctH/2Vx+KX20AODScSmND3oP+TtSyOrnfglXDuMGh0=;
+ b=SKbYJgWk8bNxbxCkx7LRIiba/J5rSe3+oFl8q/LoK0G3mmMo6Q9XCtwwb/6nMFUSVrxbPXld/
+ ofGqG9OHpcbDKWOsK437rrcokQtX6nv/wHM9p/mxNaIqIhLDRo95sXl
 X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
  pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
 X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add maxim,control-channel-port property to allow platforms choose which
-control-channel port MAX96724 exposes to the upstream I2C host.
+From: Cosmin Tanislav <demonsingur@gmail.com>
 
-Suggested-by: Vivekananda Dayananda <vivekana@amd.com>
-Signed-off-by: Dumitru Ceclan <dumitru.ceclan@analog.com>
+MAX96714R is a lower capability variant of the MAX96714 which only
+supports a fixed rate of 3Gbps in the forward direction.
+
+Signed-off-by: Cosmin Tanislav <demonsingur@gmail.com>
 Acked-by: Rob Herring (Arm) <robh@kernel.org>
 ---
- Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ Documentation/devicetree/bindings/media/i2c/maxim,max96714.yaml | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml b/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
-index 161d40acdd28..538b639d4f54 100644
---- a/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
-+++ b/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
-@@ -41,6 +41,14 @@ properties:
+diff --git a/Documentation/devicetree/bindings/media/i2c/maxim,max96714.yaml b/Documentation/devicetree/bindings/media/i2c/maxim,max96714.yaml
+index 3ace50e11921..ec6a91c4a51c 100644
+--- a/Documentation/devicetree/bindings/media/i2c/maxim,max96714.yaml
++++ b/Documentation/devicetree/bindings/media/i2c/maxim,max96714.yaml
+@@ -22,7 +22,9 @@ description:
  
-   enable-gpios: true
- 
-+  maxim,control-channel-port:
-+    description:
-+      Selects which deserializer control-channel port is connected to the
-+      upstream I2C segment when the device resets. 0 selects port 0, 1 selects
-+      port 1. Defaults to 0 when omitted.
-+    $ref: /schemas/types.yaml#/definitions/uint32
-+    enum: [0, 1]
+   The GMSL2 serial link operates at a fixed rate of 3Gbps or 6Gbps in the
+   forward direction and 187.5Mbps in the reverse direction.
+-  MAX96714F only supports a fixed rate of 3Gbps in the forward direction.
 +
-   i2c-alias-pool:
-     maxItems: 4
++  MAX96714F and MAX96714R only support a fixed rate of 3Gbps in the forward
++  direction.
  
+ properties:
+   compatible:
+@@ -31,6 +33,7 @@ properties:
+       - items:
+           - enum:
+               - maxim,max96714
++              - maxim,max96714r
+           - const: maxim,max96714f
+ 
+   reg:
 
 -- 
 2.51.0
