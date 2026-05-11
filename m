@@ -1,15 +1,13 @@
 From: Joshua Crofts <joshua.crofts1@gmail.com>
-Subject: [PATCH v7 0/8] iio: magnetometer: ak8975: driver cleanup
-Date: Mon, 11 May 2026 13:26:09 +0200
-Message-Id: <20260511-magnetometer-fixes-post-pickup-v7-0-9d910faa28b6@gmail.com>
+Date: Mon, 11 May 2026 13:26:10 +0200
+Subject: [PATCH v7 1/8] iio: magnetometer: ak8975: modernize polling loops
+ with iopoll() macros
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANG8AWoC/42NQQ6DIBBFr2JYdxrECqar3qNxgTDqpEUIUNPGe
- PdST9Dle/l5f2MJI2Fi12pjEVdK5JcC6lQxM+tlQiBbmAkuJG+5AqenBbN3mDHCSG9MEHzKEMg
- 8XgGMtHqwVsqxvbASCRGPUWnc+8Izpezj5/hb65/9O73WwKFRnVBGy24cmtvkND3PxjvW7/v+B
- bMHRB/MAAAA
-X-Change-ID: 20260507-magnetometer-fixes-post-pickup-c6dabdd66f54
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260511-magnetometer-fixes-post-pickup-v7-1-9d910faa28b6@gmail.com>
+References: <20260511-magnetometer-fixes-post-pickup-v7-0-9d910faa28b6@gmail.com>
+In-Reply-To: <20260511-magnetometer-fixes-post-pickup-v7-0-9d910faa28b6@gmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
  David Lechner <dlechner@baylibre.com>, 
  =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
@@ -18,54 +16,108 @@ Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org,
  Joshua Crofts <joshua.crofts1@gmail.com>, 
  Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778498777; l=1610;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778498777; l=2939;
  i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
- bh=pATk6uJhpz24bzKtqgctD3eFXWA+8lzLS0KDy1+wEwk=;
- b=92D5u7R3Sknaw658T8q6n3XQl8Bl8Rb+isc+2WAqK82vvHoJe4a52CTYiL60ikdtpeuTtR0cc
- 4XGIcvNY+b9Atbuu5A/S2XjIH6XetMSFPRzty9GnxbyWt3lZ7HIlTJc
+ bh=kQ9W4qXTnkaxb6Nx4nCjqQxYeSpg8Dr0Owtif3h7z2A=;
+ b=5K1lOK3vwdwAa1YCQ5oLKFNufIT/AxyugQS3JPhlgzvpSU3scBX5rPHU/1+MuK6sdPhNFUWTd
+ 8sWpY6uRc24DaX4wOfMj4N+w8H+H4WU3eAR7CNrb8opF0pWVzgBs8Sm
 X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
  pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
 X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series is a continuation of the previous ak8975 driver cleanup
-effort, as most of the patches were picked.
+The driver currently uses while loops and msleep() for polling during
+conversion waits.
 
-Changes include:
-- using BIT() and GENMASK() macros
-- moving to devm_* resource management
-- adding a scan index enum
-- moving from using wait loops to iopoll functions
-- various code style changes
+Replace the custom polling loops with readx_poll_timeout() and
+read_poll_timeout() macros from <linux/iopoll.h>. This reduces
+boilerplate, standardizes timeout handling and improves overall code
+readability, keeping the original timing and error behaviour. Add
+<linux/time.h> for USEC_PER_MSEC macro instead of using magic numbers.
 
+Assisted-by: Gemini:3.1-Pro
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Reviewed-by: Nuno Sá <nuno.sa@analog.com>
 Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
 ---
-Changes in v7:
-- Changed revision to v7 as series is a continuation of previous series
-- Added Nuno's Reviewed-by tag
-- PATCH 3: change order of pm_runtime initialization
-- Link to v6: https://lore.kernel.org/r/20260507-magnetometer-fixes-post-pickup-v1-0-37827ca68fb3@gmail.com
+ drivers/iio/magnetometer/ak8975.c | 43 ++++++++++++++++-----------------------
+ 1 file changed, 18 insertions(+), 25 deletions(-)
 
----
-Andy Shevchenko (5):
-      iio: magnetometer: ak8975: switch to using managed resources
-      iio: magnetometer: ak8975: consistently use 'data' parameter
-      iio: magnetometer: ak8975: unify messages with help of dev_err_probe()
-      iio: magnetometer: ak8975: use temporary variable for struct device
-      iio: magnetometer: ak8975: make use of the macros from bits.h
+diff --git a/drivers/iio/magnetometer/ak8975.c b/drivers/iio/magnetometer/ak8975.c
+index 6be72e1cc0a8321e767da5e65d54c0fe88712304..b990c123e2808c2078abcfaf6b2ef86c09393e6b 100644
+--- a/drivers/iio/magnetometer/ak8975.c
++++ b/drivers/iio/magnetometer/ak8975.c
+@@ -24,6 +24,7 @@
+ #include <linux/pm_runtime.h>
+ #include <linux/property.h>
+ #include <linux/regulator/consumer.h>
++#include <linux/time.h>
+ #include <linux/types.h>
+ #include <linux/wait.h>
+ 
+@@ -649,16 +650,14 @@ static int wait_conversion_complete_gpio(struct ak8975_data *data,
+ {
+ 	struct i2c_client *client = data->client;
+ 	int ret;
++	int val;
+ 
+ 	/* Wait for the conversion to complete. */
+-	while (timeout_ms) {
+-		msleep(poll_ms);
+-		if (gpiod_get_value(data->eoc_gpiod))
+-			break;
+-		timeout_ms -= poll_ms;
+-	}
+-	if (!timeout_ms)
+-		return -ETIMEDOUT;
++	ret = readx_poll_timeout(gpiod_get_value, data->eoc_gpiod, val, val != 0,
++				 poll_ms * USEC_PER_MSEC,
++				 timeout_ms * USEC_PER_MSEC);
++	if (ret)
++		return ret;
+ 
+ 	ret = i2c_smbus_read_byte_data(client, data->def->ctrl_regs[ST1]);
+ 	if (ret < 0)
+@@ -672,27 +671,21 @@ static int wait_conversion_complete_polled(struct ak8975_data *data,
+ 					   unsigned int timeout_ms)
+ {
+ 	struct i2c_client *client = data->client;
+-	u8 read_status;
+ 	int ret;
++	int val;
+ 
+ 	/* Wait for the conversion to complete. */
+-	while (timeout_ms) {
+-		msleep(poll_ms);
+-		ret = i2c_smbus_read_byte_data(client,
+-					       data->def->ctrl_regs[ST1]);
+-		if (ret < 0) {
+-			dev_err(&client->dev, "Error in reading ST1\n");
+-			return ret;
+-		}
+-		read_status = ret;
+-		if (read_status)
+-			break;
+-		timeout_ms -= poll_ms;
+-	}
+-	if (!timeout_ms)
+-		return -ETIMEDOUT;
++	ret = read_poll_timeout(i2c_smbus_read_byte_data, val, val != 0,
++				poll_ms * USEC_PER_MSEC,
++				timeout_ms * USEC_PER_MSEC,
++				true,
++				client, data->def->ctrl_regs[ST1]);
++	if (ret)
++		return ret;
++	if (val < 0)
++		dev_err(&client->dev, "Error in reading ST1\n");
+ 
+-	return read_status;
++	return val;
+ }
+ 
+ /* Returns 0 if the end of conversion interrupt occurred or -ETIMEDOUT otherwise */
 
-Joshua Crofts (3):
-      iio: magnetometer: ak8975: modernize polling loops with iopoll() macros
-      iio: magnetometer: ak8975: check if gpiod read was successful
-      iio: magnetometer: ak8975: add scan mask index enum
-
- drivers/iio/magnetometer/ak8975.c | 269 +++++++++++++++++++-------------------
- 1 file changed, 134 insertions(+), 135 deletions(-)
----
-base-commit: 74d173f29572951629d1e0b7456b424006e51b87
-change-id: 20260507-magnetometer-fixes-post-pickup-c6dabdd66f54
-
-Best regards,
 -- 
-Joshua Crofts <joshua.crofts1@gmail.com>
+2.47.3
 
