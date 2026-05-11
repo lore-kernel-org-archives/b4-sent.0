@@ -1,11 +1,11 @@
 From: Nathan Lynch <nathan.lynch@amd.com>
-Date: Mon, 11 May 2026 14:16:21 -0500
-Subject: [PATCH v2 09/23] dmaengine: sdxi: Start functions on probe, stop
- on remove
+Date: Mon, 11 May 2026 14:16:22 -0500
+Subject: [PATCH v2 10/23] dmaengine: sdxi: Complete administrative context
+ jump start
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260511-sdxi-base-v2-9-889cfed17e3f@amd.com>
+Message-Id: <20260511-sdxi-base-v2-10-889cfed17e3f@amd.com>
 References: <20260511-sdxi-base-v2-0-889cfed17e3f@amd.com>
 In-Reply-To: <20260511-sdxi-base-v2-0-889cfed17e3f@amd.com>
 To: Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>
@@ -19,141 +19,77 @@ Cc: Bjorn Helgaas <bhelgaas@google.com>,
  linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org, 
  Jonathan Cameron <jic23@kernel.org>, Nathan Lynch <nathan.lynch@amd.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778526994; l=3870;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778526994; l=2061;
  i=nathan.lynch@amd.com; s=20260410; h=from:subject:message-id;
- bh=w38fFzvZT8cwDFoe83kJ8+kmcasB/It8RRA2HbLwDYg=;
- b=UlyvxlY9BI1oKdHNamgkKLqtbyKJqV1da+FzmaanliZSHxIhi9Nw0sV3WBDw5s9HOPRn7tXKA
- P7zBYedD6RfCSlvbVuvWKcOsX+T6k0jq4H6kNI6fbUFuKoVte7F0yKU
+ bh=qZNHCbrTwVMWVauKeGKxVay61YI1RSEUJLtl5aJfQj8=;
+ b=7TVXYXsPfHvgr1ReZZ0PJAF7bkOEu4IJ/XJL0fLrlKosSSb1Sh3cZuQOwKN7Gzbx+6Ji1xcpl
+ 7LNGttcAAm2B+bdM/45+xEMBsHosj48kzrz7K2YU7wsbax1KvLYuNx/
 X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
  pk=PK4ozhq+/z9/2Jl5rgDmvHa9raVomv79qM8p1RAFpEw=
 X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20260410 with auth_id=728
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Following admin context setup in the previous patch, drive each SDXI
-function to active state during probe. This is done by writing
-GSRV_ACTIVE to MMIO_CTL0.fn_gsr and polling MMIO_STS0.fn_gsv until the
-function reaches GSV_ACTIVE or an error state. A 1-second timeout has
-been sufficient in practice so far.
-
-Introduce sdxi_unregister() to stop the function during remove and wire
-it up via the pci_driver .remove callback.
+Now that the SDXI function has been placed in active state, the admin
+context can finally be started by writing its doorbell. Introduce
+a sdxi_cxt_push_doorbell() helper to simplify this for callers; it
+will be used in all descriptor submission paths.
 
 Co-developed-by: Wei Huang <wei.huang2@amd.com>
 Signed-off-by: Wei Huang <wei.huang2@amd.com>
 Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
 ---
- drivers/dma/sdxi/device.c | 49 ++++++++++++++++++++++++++++++++++++++++++++++-
- drivers/dma/sdxi/pci.c    |  6 ++++++
- drivers/dma/sdxi/sdxi.h   |  1 +
- 3 files changed, 55 insertions(+), 1 deletion(-)
+ drivers/dma/sdxi/context.h |  6 ++++++
+ drivers/dma/sdxi/device.c  | 15 ++++++++++++++-
+ 2 files changed, 20 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/dma/sdxi/device.c b/drivers/dma/sdxi/device.c
-index 9d8729b62685..204841afa5b7 100644
---- a/drivers/dma/sdxi/device.c
-+++ b/drivers/dma/sdxi/device.c
-@@ -89,6 +89,42 @@ static void sdxi_write_fn_gsr(struct sdxi_dev *sdxi, enum sdxi_fn_gsr cmd)
- 	sdxi_write64(sdxi, SDXI_MMIO_CTL0, ctl0);
- }
+diff --git a/drivers/dma/sdxi/context.h b/drivers/dma/sdxi/context.h
+index 65b773446ba3..8dd6beb7a642 100644
+--- a/drivers/dma/sdxi/context.h
++++ b/drivers/dma/sdxi/context.h
+@@ -7,6 +7,7 @@
+ #define DMA_SDXI_CONTEXT_H
  
-+/*
-+ * Transition the function from stopped state to active.
-+ * See SDXI 1.0 4.1 SDXI Function State.
-+ */
-+static int sdxi_dev_start(struct sdxi_dev *sdxi)
+ #include <linux/dma-mapping.h>
++#include <linux/io-64-nonatomic-lo-hi.h>
+ #include <linux/types.h>
+ 
+ #include "hw.h"
+@@ -58,4 +59,9 @@ struct sdxi_cxt {
+ 
+ int sdxi_admin_cxt_init(struct sdxi_dev *sdxi);
+ 
++static inline void sdxi_cxt_push_doorbell(struct sdxi_cxt *cxt, u64 index)
 +{
-+	enum sdxi_fn_gsv status = sdxi_dev_gsv(sdxi);
-+	int ret;
-+
-+	if (status != SDXI_GSV_STOP) {
-+		dev_err(sdxi->dev,
-+			"can't activate busy device (unexpected gsv: %s)\n",
-+			gsv_str(status));
-+		return -EBUSY;
-+	}
-+
-+	sdxi_write_fn_gsr(sdxi, SDXI_GSRV_ACTIVE);
-+
-+	ret = sdxi_dev_gsv_poll(sdxi, status,
-+				status == SDXI_GSV_ACTIVE ||
-+				status == SDXI_GSV_ERROR);
-+	if (ret) {
-+		dev_err(sdxi->dev, "activation timed out, current state: %s\n",
-+			gsv_str(status));
-+		return ret;
-+	}
-+
-+	if (status == SDXI_GSV_ERROR) {
-+		dev_err(sdxi->dev, "went to error state during activation\n");
-+		return -EIO;
-+	}
-+
-+	dev_dbg(sdxi->dev, "activated\n");
-+	return 0;
++	iowrite64(index, cxt->db);
 +}
 +
- /* Get the device to the GSV_STOP state. */
- static int sdxi_dev_stop(struct sdxi_dev *sdxi)
- {
-@@ -222,7 +258,11 @@ static int sdxi_fn_activate(struct sdxi_dev *sdxi)
- 	if (err)
- 		return err;
- 
--	return 0;
+ #endif /* DMA_SDXI_CONTEXT_H */
+diff --git a/drivers/dma/sdxi/device.c b/drivers/dma/sdxi/device.c
+index 204841afa5b7..8e621875b10b 100644
+--- a/drivers/dma/sdxi/device.c
++++ b/drivers/dma/sdxi/device.c
+@@ -262,7 +262,20 @@ static int sdxi_fn_activate(struct sdxi_dev *sdxi)
+ 	 * SDXI 1.0 4.1.8.9: Set MMIO_CTL0.fn_gsr to GSRV_ACTIVE and
+ 	 * wait for MMIO_STS0.fn_gsv to reach GSV_ACTIVE or GSV_ERROR.
+ 	 */
+-	return sdxi_dev_start(sdxi);
++	err = sdxi_dev_start(sdxi);
++	if (err)
++		return err;
++
 +	/*
-+	 * SDXI 1.0 4.1.8.9: Set MMIO_CTL0.fn_gsr to GSRV_ACTIVE and
-+	 * wait for MMIO_STS0.fn_gsv to reach GSV_ACTIVE or GSV_ERROR.
++	 * SDXI 1.0 4.1.8.10.b: Start the admin context using method
++	 * #3 ("Jump Start 1") from 4.3.4 Starting A Context and
++	 * Context Signaling. We haven't queued any descriptors to the
++	 * admin context at this point, so the appropriate value for
++	 * the doorbell is 0.
 +	 */
-+	return sdxi_dev_start(sdxi);
++	sdxi_cxt_push_doorbell(sdxi->admin_cxt, 0);
++
++	return 0;
  }
  
  static int sdxi_device_init(struct sdxi_dev *sdxi)
-@@ -281,3 +321,10 @@ int sdxi_register(struct device *dev, const struct sdxi_bus_ops *ops)
- 
- 	return sdxi_device_init(sdxi);
- }
-+
-+void sdxi_unregister(struct device *dev)
-+{
-+	struct sdxi_dev *sdxi = dev_get_drvdata(dev);
-+
-+	sdxi_dev_stop(sdxi);
-+}
-diff --git a/drivers/dma/sdxi/pci.c b/drivers/dma/sdxi/pci.c
-index 9ac94d6f8b96..0f72cd359cf5 100644
---- a/drivers/dma/sdxi/pci.c
-+++ b/drivers/dma/sdxi/pci.c
-@@ -63,6 +63,11 @@ static int sdxi_pci_probe(struct pci_dev *pdev,
- 	return sdxi_register(&pdev->dev, &sdxi_pci_ops);
- }
- 
-+static void sdxi_pci_remove(struct pci_dev *pdev)
-+{
-+	sdxi_unregister(&pdev->dev);
-+}
-+
- static const struct pci_device_id sdxi_id_table[] = {
- 	{ PCI_DEVICE_CLASS(PCI_CLASS_ACCELERATOR_SDXI, 0xffffff) },
- 	{ }
-@@ -73,6 +78,7 @@ static struct pci_driver sdxi_driver = {
- 	.name = "sdxi",
- 	.id_table = sdxi_id_table,
- 	.probe = sdxi_pci_probe,
-+	.remove = sdxi_pci_remove,
- 	.sriov_configure = pci_sriov_configure_simple,
- };
- 
-diff --git a/drivers/dma/sdxi/sdxi.h b/drivers/dma/sdxi/sdxi.h
-index a0fef057b00b..7462fb912dc6 100644
---- a/drivers/dma/sdxi/sdxi.h
-+++ b/drivers/dma/sdxi/sdxi.h
-@@ -64,6 +64,7 @@ struct sdxi_dev {
- };
- 
- int sdxi_register(struct device *dev, const struct sdxi_bus_ops *ops);
-+void sdxi_unregister(struct device *dev);
- 
- static inline u64 sdxi_read64(const struct sdxi_dev *sdxi, enum sdxi_reg reg)
- {
 
 -- 
 2.54.0
