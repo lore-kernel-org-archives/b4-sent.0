@@ -1,11 +1,11 @@
 From: Dumitru Ceclan <dumitru.ceclan@analog.com>
-Date: Mon, 11 May 2026 15:26:30 +0300
-Subject: [PATCH v11 07/22] dt-bindings: media: i2c: max96712: add support
- for I2C ATR
+Date: Mon, 11 May 2026 15:26:31 +0300
+Subject: [PATCH v11 08/22] dt-bindings: media: i2c: max96712: add support
+ for POC supplies
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260511-gmsl2-3_serdes-v11-7-fc163073c16b@analog.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260511-gmsl2-3_serdes-v11-8-fc163073c16b@analog.com>
 References: <20260511-gmsl2-3_serdes-v11-0-fc163073c16b@analog.com>
 In-Reply-To: <20260511-gmsl2-3_serdes-v11-0-fc163073c16b@analog.com>
 To: Tomi Valkeinen <tomi.valkeinen+renesas@ideasonboard.com>, 
@@ -23,11 +23,11 @@ Cc: mitrutzceclan@gmail.com, linux-media@vger.kernel.org,
  Martin Hecht <Martin.Hecht@avnet.eu>, 
  Cosmin Tanislav <demonsingur@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778502401; l=1871;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778502401; l=998;
  i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
- bh=RSvh87m8UTUuPKmdiJPBrCURSGQkmSAhRt3cRzeUwAs=;
- b=LId3ReWR1dg+k7eEh2bvx790OgZntiJBVt2Q4HR2xvaQdyEg5NCryXd60yiBTrD5FfHShNVQU
- 4wixTlyo6OXAaz89TO2NflC5yjk3mqSfJBtCdZOZUm9kMhSGrpTnEFF
+ bh=qHuwnHnH5Gp9JKhOtp7Ej/Lg9rykd9GgxcARp32ip7E=;
+ b=aTbScgHOkOlxa0paAipqrzNJLBflpFJTgUPagABAZaAjtWw4Cbzwff/aSXp4Y0e2BlZOOiD8o
+ KvDkKnoyZP3DEeOQMszrBmC2pMKrN5pAMZyiCUGFcYm980CXo1rvXhM
 X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
  pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
 X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
@@ -35,72 +35,33 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Cosmin Tanislav <demonsingur@gmail.com>
 
-MAX96712 and MAX96724 have more than one GMSL2 link, and each link is
-capable of connecting to a separate serializer. If these serializers
-have the same CFG pins configuration, they will also have the same I2C
-address, causing conflicts unless the deserializer changes the address
-of the connected serializers.
-
-The MAX96712 and MAX96724 support changing the I2C address of the
-connected serializers.
+The GMSL links can carry power to the serializer when using coaxial
+cables.
 
 Document this capability.
 
 Signed-off-by: Cosmin Tanislav <demonsingur@gmail.com>
 Acked-by: Rob Herring (Arm) <robh@kernel.org>
+Reviewed-by: Niklas Söderlund <niklas.soderlund+renesas@ragnatech.se>
 ---
- .../bindings/media/i2c/maxim,max96712.yaml         | 31 ++++++++++++++++++++++
- 1 file changed, 31 insertions(+)
+ Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml | 4 ++++
+ 1 file changed, 4 insertions(+)
 
 diff --git a/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml b/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
-index 583bbd60157c..abacc3c874a9 100644
+index abacc3c874a9..d2dd72f2e924 100644
 --- a/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
 +++ b/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
-@@ -36,6 +36,30 @@ properties:
+@@ -95,6 +95,10 @@ properties:
+       - required: [port@6]
+       - required: [port@7]
  
-   enable-gpios: true
- 
-+  i2c-alias-pool:
-+    maxItems: 4
++patternProperties:
++  '^port[0-3]-poc-supply$':
++    description: Regulator providing Power over Coax for GMSL ports
 +
-+  i2c-atr:
-+    type: object
-+    additionalProperties: false
-+
-+    properties:
-+      '#address-cells':
-+        const: 1
-+
-+      '#size-cells':
-+        const: 0
-+
-+    patternProperties:
-+      '^i2c@[0-3]$':
-+        $ref: /schemas/i2c/i2c-controller.yaml#
-+        unevaluatedProperties: false
-+        properties:
-+          reg:
-+            items:
-+              minimum: 0
-+              maximum: 3
-+
-   ports:
-     $ref: /schemas/graph.yaml#/properties/ports
- 
-@@ -78,6 +102,13 @@ required:
- 
- additionalProperties: false
- 
-+allOf:
-+  - $ref: /schemas/i2c/i2c-atr.yaml#
-+
-+dependentRequired:
-+  i2c-atr: [i2c-alias-pool]
-+  i2c-alias-pool: [i2c-atr]
-+
- examples:
-   - |
-     #include <dt-bindings/gpio/gpio.h>
+ required:
+   - compatible
+   - reg
 
 -- 
 2.51.0
