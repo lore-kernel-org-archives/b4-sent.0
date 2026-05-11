@@ -1,224 +1,71 @@
-From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-Date: Mon, 11 May 2026 12:50:43 +0200
-Subject: [PATCH] riscv: Add ERRATA_MIPS_P8700_WFI to replace WFI with
- mips.pause
+From: Joshua Crofts <joshua.crofts1@gmail.com>
+Subject: [PATCH v7 0/8] iio: magnetometer: ak8975: driver cleanup
+Date: Mon, 11 May 2026 13:26:09 +0200
+Message-Id: <20260511-magnetometer-fixes-post-pickup-v7-0-9d910faa28b6@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260511-p8700-wfi-v1-1-099b1d10fcf2@htecgroup.com>
-X-B4-Tracking: v=1; b=H4sIAIK0AWoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDE0NT3QILcwMD3fK0TF1LAwvjJMMUC/MUIyMloPqCotS0zAqwWdGxtbU
- AXMx1A1sAAAA=
-X-Change-ID: 20260415-p8700-wfi-9083b1d87d22
-To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
- Albert Ou <aou@eecs.berkeley.edu>, Alexandre Ghiti <alex@ghiti.fr>
-Cc: linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
- Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+X-B4-Tracking: v=1; b=H4sIANG8AWoC/42NQQ6DIBBFr2JYdxrECqar3qNxgTDqpEUIUNPGe
+ PdST9Dle/l5f2MJI2Fi12pjEVdK5JcC6lQxM+tlQiBbmAkuJG+5AqenBbN3mDHCSG9MEHzKEMg
+ 8XgGMtHqwVsqxvbASCRGPUWnc+8Izpezj5/hb65/9O73WwKFRnVBGy24cmtvkND3PxjvW7/v+B
+ bMHRB/MAAAA
+X-Change-ID: 20260507-magnetometer-fixes-post-pickup-c6dabdd66f54
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Joshua Crofts <joshua.crofts1@gmail.com>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778496899; l=6792;
- i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
- bh=mYf6QfV2es6fc3DDH6Apg44OtuXdeSmwhrWl6VF62r0=;
- b=gLIQCoQ+3bp8+MeVcd0BIaOLge9OjPPwuUnf5YZyoqfob79CpIb2Um2SIcgqdmUZ7MJCm7rT4
- x/vHrcAxoP2BuzlHabSQvWwd/gO1BZKFqGAmYjnc+9PHFTXfrBUe6Gn
-X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
- pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
-X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778498777; l=1610;
+ i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
+ bh=pATk6uJhpz24bzKtqgctD3eFXWA+8lzLS0KDy1+wEwk=;
+ b=92D5u7R3Sknaw658T8q6n3XQl8Bl8Rb+isc+2WAqK82vvHoJe4a52CTYiL60ikdtpeuTtR0cc
+ 4XGIcvNY+b9Atbuu5A/S2XjIH6XetMSFPRzty9GnxbyWt3lZ7HIlTJc
+X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
+ pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
+X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Djordje Todorovic <djordje.todorovic@htecgroup.com>
+This series is a continuation of the previous ak8975 driver cleanup
+effort, as most of the patches were picked.
 
-The MIPS P8700 has bugs with the WFI instruction. This errata
-uses the RISC-V alternatives framework to patch all WFI
-instructions with the MIPS P8700 pause opcode (0x00501013)
-at runtime when running on P8700 hardware.
+Changes include:
+- using BIT() and GENMASK() macros
+- moving to devm_* resource management
+- adding a scan index enum
+- moving from using wait loops to iopoll functions
+- various code style changes
 
-Two call sites are patched:
- - arch/riscv/kernel/head.S: secondary hart parking loop
- - arch/riscv/include/asm/processor.h: wait_for_interrupt()
-
-Signed-off-by: Djordje Todorovic <djordje.todorovic@htecgroup.com>
-Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
 ---
-This patch was tested on QEMU configured with eight P8700 harts,
-as well as on the MIPS Boston board, configured with a single P8700 CPU.
-Errata application was tested by disassembling with GDB on QEMU
-and inserting an illegal instruction on the Boston board.
-Correctness was tested with a combination of kselftests
-and torture tests (rcu, locktorture), along with coremark testing.
----
- arch/riscv/Kconfig.errata                    | 11 +++++++++++
- arch/riscv/errata/mips/errata.c              | 14 ++++++++++++++
- arch/riscv/include/asm/errata_list.h         | 27 +++++++++++++++++++++++++++
- arch/riscv/include/asm/errata_list_vendors.h |  5 +++--
- arch/riscv/include/asm/processor.h           |  3 ++-
- arch/riscv/kernel/head.S                     |  4 +++-
- 6 files changed, 60 insertions(+), 4 deletions(-)
-
-diff --git a/arch/riscv/Kconfig.errata b/arch/riscv/Kconfig.errata
-index 3c945d086c7d0266b685f9506d58b0662af071c4..cc75e6f70513d08afeedf650b14dba83eea84632 100644
---- a/arch/riscv/Kconfig.errata
-+++ b/arch/riscv/Kconfig.errata
-@@ -44,6 +44,17 @@ config ERRATA_MIPS_P8700_PAUSE_OPCODE
- 
- 	   If you are not using the P8700 processor, say n.
- 
-+config ERRATA_MIPS_P8700_WFI
-+	bool "Replace WFI with mips.pause for MIPS P8700"
-+	depends on ERRATA_MIPS && 64BIT
-+	default n
-+	help
-+	   The RISCV MIPS P8700 has bugs with the WFI instruction.
-+	   This errata replaces all WFI instructions with the MIPS
-+	   P8700 pause opcode to avoid these issues.
-+
-+	   If you are not using the P8700 processor, say n.
-+
- config ERRATA_SIFIVE
- 	bool "SiFive errata"
- 	depends on RISCV_ALTERNATIVE
-diff --git a/arch/riscv/errata/mips/errata.c b/arch/riscv/errata/mips/errata.c
-index e984a8152208c34690f89d8101571b097485c360..67b59f8c1708ea8b7a040f7939e111b8f30e6a75 100644
---- a/arch/riscv/errata/mips/errata.c
-+++ b/arch/riscv/errata/mips/errata.c
-@@ -23,6 +23,17 @@ static inline bool errata_probe_pause(void)
- 	return true;
- }
- 
-+static inline bool errata_probe_wfi(void)
-+{
-+	if (!IS_ENABLED(CONFIG_ERRATA_MIPS_P8700_WFI))
-+		return false;
-+
-+	if (!riscv_isa_vendor_extension_available(MIPS_VENDOR_ID, XMIPSEXECTL))
-+		return false;
-+
-+	return true;
-+}
-+
- static u32 mips_errata_probe(void)
- {
- 	u32 cpu_req_errata = 0;
-@@ -30,6 +41,9 @@ static u32 mips_errata_probe(void)
- 	if (errata_probe_pause())
- 		cpu_req_errata |= BIT(ERRATA_MIPS_P8700_PAUSE_OPCODE);
- 
-+	if (errata_probe_wfi())
-+		cpu_req_errata |= BIT(ERRATA_MIPS_P8700_WFI);
-+
- 	return cpu_req_errata;
- }
- 
-diff --git a/arch/riscv/include/asm/errata_list.h b/arch/riscv/include/asm/errata_list.h
-index 6694b5ccdcf85cfe7e767ea4de981b34f2b17b04..cbe90b19556203e1462cfb345b164c9061887e74 100644
---- a/arch/riscv/include/asm/errata_list.h
-+++ b/arch/riscv/include/asm/errata_list.h
-@@ -25,6 +25,16 @@ ALTERNATIVE(__stringify(RISCV_PTR do_page_fault),			\
- 	    __stringify(RISCV_PTR sifive_cip_453_page_fault_trp),	\
- 	    SIFIVE_VENDOR_ID, ERRATA_SIFIVE_CIP_453,			\
- 	    CONFIG_ERRATA_SIFIVE_CIP_453)
-+
-+#ifdef CONFIG_ERRATA_MIPS_P8700_WFI
-+#define ALT_WFI								\
-+ALTERNATIVE("wfi; .rept 7; nop; .endr;",				\
-+	".rept 8; .insn 0x00501013; .endr;", MIPS_VENDOR_ID,		\
-+	ERRATA_MIPS_P8700_WFI, CONFIG_ERRATA_MIPS_P8700_WFI)
-+#else
-+#define ALT_WFI	wfi
-+#endif
-+
- #else /* !__ASSEMBLER__ */
- 
- #define ALT_SFENCE_VMA_ASID(asid)					\
-@@ -53,6 +63,23 @@ asm(ALTERNATIVE(	\
- 	: /* no inputs */	\
- 	: "memory")
- 
-+#ifdef CONFIG_ERRATA_MIPS_P8700_WFI
-+#define ALT_RISCV_WFI()										\
-+asm volatile(ALTERNATIVE(									\
-+		"wfi\n" /* Original RISC-V wfi insn */						\
-+		__nops(7),									\
-+		".rept 8;" MIPS_PAUSE ".endr;\n", /* Replacement: mips.pause for P8700 */	\
-+		MIPS_VENDOR_ID, /* Vendor ID to match */					\
-+		ERRATA_MIPS_P8700_WFI, /* patch_id */						\
-+		CONFIG_ERRATA_MIPS_P8700_WFI)							\
-+		: /* no outputs */								\
-+		: /* no inputs */								\
-+		: "memory")
-+#else
-+#define ALT_RISCV_WFI()		\
-+	__asm__ __volatile__ ("wfi")
-+#endif
-+
- /*
-  * _val is marked as "will be overwritten", so need to set it to 0
-  * in the default case.
-diff --git a/arch/riscv/include/asm/errata_list_vendors.h b/arch/riscv/include/asm/errata_list_vendors.h
-index ec7eba3734371a2d8b68fbd4cbd88a8e7135a413..4505317a6b949be602f507547fc9cd495c923e32 100644
---- a/arch/riscv/include/asm/errata_list_vendors.h
-+++ b/arch/riscv/include/asm/errata_list_vendors.h
-@@ -22,8 +22,9 @@
- #endif
- 
- #ifdef CONFIG_ERRATA_MIPS
--#define	ERRATA_MIPS_P8700_PAUSE_OPCODE 0
--#define	ERRATA_MIPS_NUMBER 1
-+#define ERRATA_MIPS_P8700_PAUSE_OPCODE 0
-+#define ERRATA_MIPS_P8700_WFI 1
-+#define ERRATA_MIPS_NUMBER 2
- #endif
- 
- #endif /* ASM_ERRATA_LIST_VENDORS_H */
-diff --git a/arch/riscv/include/asm/processor.h b/arch/riscv/include/asm/processor.h
-index 4c3dd94d0f63844fecc32a7e2c1a184113ee49d9..ae4faed371c16ba33f31373561de03e89d35d04c 100644
---- a/arch/riscv/include/asm/processor.h
-+++ b/arch/riscv/include/asm/processor.h
-@@ -17,6 +17,7 @@
- #include <asm/alternative-macros.h>
- #include <asm/hwcap.h>
- #include <asm/usercfi.h>
-+#include <asm/errata_list.h>
- 
- #define arch_get_mmap_end(addr, len, flags)			\
- ({								\
-@@ -176,7 +177,7 @@ extern unsigned long __get_wchan(struct task_struct *p);
- 
- static inline void wait_for_interrupt(void)
- {
--	__asm__ __volatile__ ("wfi");
-+	ALT_RISCV_WFI();
- }
- 
- extern phys_addr_t dma32_phys_limit;
-diff --git a/arch/riscv/kernel/head.S b/arch/riscv/kernel/head.S
-index 9c99c5ad6fe8a32e24c8ce7e0badd63469d2c387..14935e8eec2639844c45bd37db29db74fee38a22 100644
---- a/arch/riscv/kernel/head.S
-+++ b/arch/riscv/kernel/head.S
-@@ -16,6 +16,8 @@
- #include <asm/scs.h>
- #include <asm/xip_fixup.h>
- #include <asm/usercfi.h>
-+#include <asm/alternative.h>
-+#include <asm/errata_list.h>
- #include "efi-header.S"
- 
- __HEAD
-@@ -196,7 +198,7 @@ secondary_start_sbi:
- 	 *  - receive an early trap, before setup_trap_vector finished
- 	 *  - fail in smp_callin(), as a successful one wouldn't return
- 	 */
--	wfi
-+	ALT_WFI
- 	j .Lsecondary_park
- 
- .align 2
+Changes in v7:
+- Changed revision to v7 as series is a continuation of previous series
+- Added Nuno's Reviewed-by tag
+- PATCH 3: change order of pm_runtime initialization
+- Link to v6: https://lore.kernel.org/r/20260507-magnetometer-fixes-post-pickup-v1-0-37827ca68fb3@gmail.com
 
 ---
-base-commit: c369299895a591d96745d6492d4888259b004a9e
-change-id: 20260415-p8700-wfi-9083b1d87d22
+Andy Shevchenko (5):
+      iio: magnetometer: ak8975: switch to using managed resources
+      iio: magnetometer: ak8975: consistently use 'data' parameter
+      iio: magnetometer: ak8975: unify messages with help of dev_err_probe()
+      iio: magnetometer: ak8975: use temporary variable for struct device
+      iio: magnetometer: ak8975: make use of the macros from bits.h
+
+Joshua Crofts (3):
+      iio: magnetometer: ak8975: modernize polling loops with iopoll() macros
+      iio: magnetometer: ak8975: check if gpiod read was successful
+      iio: magnetometer: ak8975: add scan mask index enum
+
+ drivers/iio/magnetometer/ak8975.c | 269 +++++++++++++++++++-------------------
+ 1 file changed, 134 insertions(+), 135 deletions(-)
+---
+base-commit: 74d173f29572951629d1e0b7456b424006e51b87
+change-id: 20260507-magnetometer-fixes-post-pickup-c6dabdd66f54
 
 Best regards,
 -- 
-Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Joshua Crofts <joshua.crofts1@gmail.com>
 
