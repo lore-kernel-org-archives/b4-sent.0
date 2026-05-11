@@ -1,119 +1,89 @@
-From: Joshua Crofts <joshua.crofts1@gmail.com>
-Date: Mon, 11 May 2026 13:26:17 +0200
-Subject: [PATCH v7 8/8] iio: magnetometer: ak8975: make use of the macros
- from bits.h
+From: Alexandre Hamamdjian <azkali.limited@gmail.com>
+Subject: [PATCH v2 0/3] arm64: qcom: add Ayaneo Pocket DS gaming console
+Date: Mon, 11 May 2026 18:33:52 +0700
+Message-Id: <20260511-pocketds-v2-0-299dd4247f2f@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260511-magnetometer-fixes-post-pickup-v7-8-9d910faa28b6@gmail.com>
-References: <20260511-magnetometer-fixes-post-pickup-v7-0-9d910faa28b6@gmail.com>
-In-Reply-To: <20260511-magnetometer-fixes-post-pickup-v7-0-9d910faa28b6@gmail.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joshua Crofts <joshua.crofts1@gmail.com>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778498777; l=3070;
- i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
- bh=raM4Osn4NOSANS9V3gWU6boxJNZiWShxAROFiRWtIAY=;
- b=TP0D4CypFbMuyzjysRkUKOG9vatbV58hCmoS0rYS/KDF5K6851oG/XMMb2uT5UulpQlwTpKFg
- UXP04o0RjTIDNnmBF/HBrDf9Nx0GSe2GS8rY+9PB23LgdtKxiAfIAiw
-X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
- pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
-X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NQQ6CMBBFr0Jmbc1QAwZX3sOwKMMURoWSFhsN4
+ e4W3Lp8yfvvLxDYCwe4ZAt4jhLEjQn0IQPqzdixkjYxaNQlFjmqydGD5zYoRj43VUX2VFaQ9Mm
+ zlfeeutU/Dq/mzjRv+83oJczOf/avmG/en2zMFSqyWBhiwtLYazcYeR7JDVCv6/oFVcZiSrIAA
+ AA=
+X-Change-ID: 20260510-pocketds-e0e7b99cf369
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Alexandre Hamamdjian <azkali.limited@gmail.com>, 
+ Teguh Sobirin <teguh@sobir.in>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778499232; l=2566;
+ i=azkali.limited@gmail.com; s=20260510; h=from:subject:message-id;
+ bh=tvd6ZTLuJ7HOkMjrrvnOyh5A5zjUjdnNxtckDH8Po7s=;
+ b=byuN/FB3pvbmX47hyTt1leLWKl0EB3jX+h4Du7RnqYGbBML8/bOLrTSBW+RuIcetr/SBLPFrK
+ l5JzezcUyFSA7oYbq42pQToLxq086CWh3t8hqwp+p4cgAXg/lAnCGtD
+X-Developer-Key: i=azkali.limited@gmail.com; a=ed25519;
+ pk=I0Z0IdCdQJqNGX+FQUnXhrHg950u3cM6Xzz3YT6JOyQ=
+X-Endpoint-Received: by B4 Relay for azkali.limited@gmail.com/20260510 with auth_id=774
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+This series adds initial support for the Ayaneo Pocket DS, a handheld
+gaming console built around the Qualcomm QCS8550 SoC. It has UFS
+storage, WiFi/Bluetooth, gaming buttons, microSD, dual displays, and
+USB-C with DisplayPort. Game controls are exposed through a Renesas
+uPD720201 PCIe USB 3.0 host controller on PCIe1.
 
-Make use of BIT() and GENMASK() where it makes sense.
+The first patch adds labels to the sm8550 thermal zones so the board
+can attach its trip points and cooling maps through the &label override
+syntax. The second introduces the Pocket DS device tree itself.
 
-Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Reviewed-by: Nuno Sá <nuno.sa@analog.com>
-Co-developed-by: Joshua Crofts <joshua.crofts1@gmail.com>
-Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
+Only the basics are wired up at this stage (boot to console, core
+peripherals, USB-C and DP); the display panel will follow in a later
+submission.
+
+Signed-off-by: Alexandre Hamamdjian <azkali.limited@gmail.com>
 ---
- drivers/iio/magnetometer/ak8975.c | 26 +++++++++++---------------
- 1 file changed, 11 insertions(+), 15 deletions(-)
+Changes in v2:
+- Inlined the board into a single qcs8550-ayaneo-pocketds.dts, matching
+  the sm8650-ayaneo-pocket-s2 layout
+- Added qcom,qcs8550 to the compatible chain
+- Prerequisite patch labelling the sm8550 thermal zones so the board
+  can extend them via &label overrides (and refactored the board's
+  thermal-zones to use them)
+- Added the Renesas uPD720201 USB 3.0 controller as a child of pcie1
+  with proper avdd33 / vdd10 / vdd33 regulators
+- Moved gamepad_pwr_en off &pcie1's pinctrl-0 and onto the
+  usb-controller node
+- Split the lumped upd720201_active pinctrl into per-regulator states
+- Fixed mdss_dp0_out data-lanes to <0 1 2 3> (all four wired)
+- Fixed gpio-reserved-ranges to <32 4> (gpio 38-39 drive the Goodix
+  touchscreen)
+- Renamed nodes with underscores (llcc-lpi-region, splash-region,
+  gpio@20) per DT conventions
+- Reordered pinctrl-names after pinctrl-N file-wide
+- Dropped the unused cont_splash_region label
+- Link to v1: https://patch.msgid.link/20260510-pocketds-v1-0-cf05acec06af@gmail.com
 
-diff --git a/drivers/iio/magnetometer/ak8975.c b/drivers/iio/magnetometer/ak8975.c
-index d87a98090c991508ac835839286da0371d689cd8..d8fbdc5debc1cc65ea6e86167a79c860d019cc32 100644
---- a/drivers/iio/magnetometer/ak8975.c
-+++ b/drivers/iio/magnetometer/ak8975.c
-@@ -45,8 +45,7 @@
- #define AK8975_REG_INFO			0x01
- 
- #define AK8975_REG_ST1			0x02
--#define AK8975_REG_ST1_DRDY_SHIFT	0
--#define AK8975_REG_ST1_DRDY_MASK	(1 << AK8975_REG_ST1_DRDY_SHIFT)
-+#define AK8975_REG_ST1_DRDY_MASK	BIT(0)
- 
- #define AK8975_REG_HXL			0x03
- #define AK8975_REG_HXH			0x04
-@@ -55,15 +54,12 @@
- #define AK8975_REG_HZL			0x07
- #define AK8975_REG_HZH			0x08
- #define AK8975_REG_ST2			0x09
--#define AK8975_REG_ST2_DERR_SHIFT	2
--#define AK8975_REG_ST2_DERR_MASK	(1 << AK8975_REG_ST2_DERR_SHIFT)
-+#define AK8975_REG_ST2_DERR_MASK	BIT(2)
- 
--#define AK8975_REG_ST2_HOFL_SHIFT	3
--#define AK8975_REG_ST2_HOFL_MASK	(1 << AK8975_REG_ST2_HOFL_SHIFT)
-+#define AK8975_REG_ST2_HOFL_MASK	BIT(3)
- 
- #define AK8975_REG_CNTL			0x0A
--#define AK8975_REG_CNTL_MODE_SHIFT	0
--#define AK8975_REG_CNTL_MODE_MASK	(0xF << AK8975_REG_CNTL_MODE_SHIFT)
-+#define AK8975_REG_CNTL_MODE_MASK	GENMASK(3, 0)
- #define AK8975_REG_CNTL_MODE_POWER_DOWN	0x00
- #define AK8975_REG_CNTL_MODE_ONCE	0x01
- #define AK8975_REG_CNTL_MODE_SELF_TEST	0x08
-@@ -95,8 +91,7 @@
- 
- #define AK09912_REG_ST1			0x10
- 
--#define AK09912_REG_ST1_DRDY_SHIFT	0
--#define AK09912_REG_ST1_DRDY_MASK	(1 << AK09912_REG_ST1_DRDY_SHIFT)
-+#define AK09912_REG_ST1_DRDY_MASK	BIT(0)
- 
- #define AK09912_REG_HXL			0x11
- #define AK09912_REG_HXH			0x12
-@@ -107,8 +102,7 @@
- #define AK09912_REG_TMPS		0x17
- 
- #define AK09912_REG_ST2			0x18
--#define AK09912_REG_ST2_HOFL_SHIFT	3
--#define AK09912_REG_ST2_HOFL_MASK	(1 << AK09912_REG_ST2_HOFL_SHIFT)
-+#define AK09912_REG_ST2_HOFL_MASK	BIT(3)
- 
- #define AK09912_REG_CNTL1		0x30
- 
-@@ -117,8 +111,7 @@
- #define AK09912_REG_CNTL_MODE_ONCE	0x01
- #define AK09912_REG_CNTL_MODE_SELF_TEST	0x10
- #define AK09912_REG_CNTL_MODE_FUSE_ROM	0x1F
--#define AK09912_REG_CNTL2_MODE_SHIFT	0
--#define AK09912_REG_CNTL2_MODE_MASK	(0x1F << AK09912_REG_CNTL2_MODE_SHIFT)
-+#define AK09912_REG_CNTL2_MODE_MASK	GENMASK(4, 0)
- 
- #define AK09912_REG_CNTL3		0x32
- 
-@@ -848,7 +841,10 @@ static const struct iio_chan_spec ak8975_channels[] = {
- 	IIO_CHAN_SOFT_TIMESTAMP(AK8975_SCAN_TS),
- };
- 
--static const unsigned long ak8975_scan_masks[] = { 0x7, 0 };
-+static const unsigned long ak8975_scan_masks[] = {
-+	BIT(AK8975_SCAN_X) | BIT(AK8975_SCAN_Y) | BIT(AK8975_SCAN_Z),
-+	0
-+};
- 
- static const struct iio_info ak8975_info = {
- 	.read_raw = &ak8975_read_raw,
+---
+Alexandre Hamamdjian (1):
+      arm64: dts: qcom: sm8550: add labels for thermal zones
 
--- 
-2.47.3
+Teguh Sobirin (2):
+      dt-bindings: arm: qcom: document the Ayaneo Pocket DS
+      arm64: dts: qcom: add basic devicetree for Ayaneo Pocket DS gaming console
+
+ Documentation/devicetree/bindings/arm/qcom.yaml    |    6 +
+ arch/arm64/boot/dts/qcom/Makefile                  |    1 +
+ .../boot/dts/qcom/qcs8550-ayaneo-pocketds.dts      | 1861 ++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/sm8550.dtsi               |   26 +-
+ 4 files changed, 1881 insertions(+), 13 deletions(-)
+---
+base-commit: e98d21c170b01ddef366f023bbfcf6b31509fa83
+change-id: 20260510-pocketds-e0e7b99cf369
+
+Best regards,
+--  
+Alexandre Hamamdjian <azkali.limited@gmail.com>
 
