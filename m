@@ -1,11 +1,10 @@
 From: Nathan Lynch <nathan.lynch@amd.com>
-Date: Mon, 11 May 2026 14:16:23 -0500
-Subject: [PATCH v2 11/23] dmaengine: sdxi: Add client context alloc and
- release APIs
+Date: Mon, 11 May 2026 14:16:24 -0500
+Subject: [PATCH v2 12/23] dmaengine: sdxi: Add descriptor ring management
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260511-sdxi-base-v2-11-889cfed17e3f@amd.com>
+Message-Id: <20260511-sdxi-base-v2-12-889cfed17e3f@amd.com>
 References: <20260511-sdxi-base-v2-0-889cfed17e3f@amd.com>
 In-Reply-To: <20260511-sdxi-base-v2-0-889cfed17e3f@amd.com>
 To: Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>
@@ -19,280 +18,314 @@ Cc: Bjorn Helgaas <bhelgaas@google.com>,
  linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org, 
  Jonathan Cameron <jic23@kernel.org>, Nathan Lynch <nathan.lynch@amd.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778526994; l=7937;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778526994; l=9273;
  i=nathan.lynch@amd.com; s=20260410; h=from:subject:message-id;
- bh=VjGJJnutoIQBzqsUQGWQ33TreaYKPWyLs/IDOcXPrp8=;
- b=qFqIfPrdinaFVKsG2COdP5+uxfBDd/0Zru/4vojw3xUi5j8hAExWYU+/TDQW3979TVp924INf
- dByxOAxq740Do+YWTBhxaweagZ/MmXL/o9MSweTe9wpmfab0GxFc+wt
+ bh=deLGQ/iAEakcVPuXq4KEWexXIBlxgCax58+70kcxFbk=;
+ b=lPn/zTVE4dr0tLPJuRAwYkwn+eRYi5rcdthpkYEa8EWJcoeS1Q3fuy5R+RMnWSvxRYCRlSVNP
+ Z/H7o/Ibx1aChZ+GKCE+6ZGkeg0oWfcbn02EOKYKwqMT51hxqVspix2
 X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
  pk=PK4ozhq+/z9/2Jl5rgDmvHa9raVomv79qM8p1RAFpEw=
 X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20260410 with auth_id=728
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Expose sdxi_cxt_new() and sdxi_cxt_exit(), which are the rest of the
-driver's entry points to creating and releasing SDXI contexts.
+Introduce a library for managing SDXI descriptor ring state. It
+encapsulates determining the next free space in the ring to deposit
+descriptors and performing the update of the write index correctly, as
+well as iterating over slices (reservations) of the ring without
+dealing directly with ring offsets/indexes.
 
-Track client contexts in a device-wide allocating xarray, mapping
-context ID to the context object. The admin context always has ID 0,
-so begin allocations at 1. Define a local sdxi_cxt_id class to
-facilitate early allocation (before committing more resources) and
-automatic release of context IDs.
+The central abstraction is sdxi_ring_state, which maintains the write
+index and a wait queue. An internal spin lock serializes checks for
+space in the ring and updates to the write index.
 
-Introduce new code to invalidate a context's entry in the L1 table on
-deallocation.
+Reservations (sdxi_ring_resv) are intended to be short-lived on-stack
+objects representing slices of the ring for callers to populate with
+descriptors. Both blocking and non-blocking reservation APIs are
+provided.
 
-Support for starting and stopping contexts will be added in changes to
-follow.
+Descriptor access within a reservation is provided via
+sdxi_ring_resv_next() and sdxi_ring_resv_foreach().
 
-The only expected user of sdxi_cxt_new() and sdxi_cxt_exit() at this
-point is the DMA engine provider code where a client context per
-channel will be created.
+Completion handlers must call sdxi_ring_wake_up() when descriptors
+have been consumed so that blocked reservations can proceed.
 
 Co-developed-by: Wei Huang <wei.huang2@amd.com>
 Signed-off-by: Wei Huang <wei.huang2@amd.com>
 Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
 ---
- drivers/dma/sdxi/context.c | 122 +++++++++++++++++++++++++++++++++++++++++++++
- drivers/dma/sdxi/context.h |  13 +++++
- drivers/dma/sdxi/device.c  |   8 +++
- drivers/dma/sdxi/sdxi.h    |   2 +
- 4 files changed, 145 insertions(+)
+ drivers/dma/sdxi/Makefile |   3 +-
+ drivers/dma/sdxi/ring.c   | 159 ++++++++++++++++++++++++++++++++++++++++++++++
+ drivers/dma/sdxi/ring.h   |  84 ++++++++++++++++++++++++
+ 3 files changed, 245 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/dma/sdxi/context.c b/drivers/dma/sdxi/context.c
-index c0b55c945cc4..c0b294836ede 100644
---- a/drivers/dma/sdxi/context.c
-+++ b/drivers/dma/sdxi/context.c
-@@ -44,6 +44,10 @@ static void sdxi_free_cxt(struct sdxi_cxt *cxt)
- 	struct sdxi_dev *sdxi = cxt->sdxi;
- 	struct sdxi_sq *sq = cxt->sq;
+diff --git a/drivers/dma/sdxi/Makefile b/drivers/dma/sdxi/Makefile
+index 2178f274831c..23536a1defc3 100644
+--- a/drivers/dma/sdxi/Makefile
++++ b/drivers/dma/sdxi/Makefile
+@@ -3,6 +3,7 @@ obj-$(CONFIG_SDXI) += sdxi.o
  
-+	/* Release the id if this is a client context. */
-+	if (cxt->id)
-+		WARN_ON(xa_erase(&sdxi->client_cxts, cxt->id) != cxt);
-+
- 	if (cxt->cxt_ctl)
- 		dma_pool_free(sdxi->cxt_ctl_pool, cxt->cxt_ctl,
- 			      cxt->cxt_ctl_dma);
-@@ -154,6 +158,16 @@ static int configure_cxt_ctl(struct sdxi_cxt_ctl *ctl, const struct sdxi_cxt_ctl
- 	return 0;
- }
+ sdxi-objs += \
+ 	context.o     \
+-	device.o
++	device.o      \
++	ring.o
  
-+static void invalidate_cxtl_ctl(struct sdxi_cxt_ctl *ctl)
-+{
-+	u64 ds_ring_ptr = le64_to_cpu(ctl->ds_ring_ptr);
+ sdxi-$(CONFIG_PCI_MSI) += pci.o
+diff --git a/drivers/dma/sdxi/ring.c b/drivers/dma/sdxi/ring.c
+new file mode 100644
+index 000000000000..91b28c7afbbf
+--- /dev/null
++++ b/drivers/dma/sdxi/ring.c
+@@ -0,0 +1,159 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * SDXI descriptor ring state management. Handles advancing the write
++ * index correctly and supplies "reservations" i.e. slices of the ring
++ * to be filled with descriptors.
++ *
++ * Copyright Advanced Micro Devices, Inc.
++ */
++#include <kunit/visibility.h>
++#include <linux/io-64-nonatomic-lo-hi.h>
++#include <linux/lockdep.h>
++#include <linux/range.h>
++#include <linux/sched.h>
++#include <linux/spinlock.h>
++#include <linux/types.h>
++#include <linux/wait.h>
++#include <asm/barrier.h>
++#include <asm/byteorder.h>
++#include <asm/div64.h>
++#include <asm/rwonce.h>
 +
-+	FIELD_MODIFY(SDXI_CXT_CTL_VL, &ds_ring_ptr, 0);
-+	WRITE_ONCE(ctl->ds_ring_ptr, cpu_to_le64(ds_ring_ptr));
-+	dma_wmb();
-+	*ctl = (typeof(*ctl)) { 0 };
-+}
-+
- /*
-  * Logical representation of CXT_L1_ENT subfields.
-  */
-@@ -208,6 +222,16 @@ static int configure_L1_entry(struct sdxi_cxt_L1_ent *ent,
- 	return 0;
- }
- 
-+static void invalidate_L1_entry(struct sdxi_cxt_L1_ent *ent)
-+{
-+	u64 cxt_ctl_ptr = le64_to_cpu(ent->cxt_ctl_ptr);
-+
-+	FIELD_MODIFY(SDXI_CXT_L1_ENT_VL, &cxt_ctl_ptr, 0);
-+	WRITE_ONCE(ent->cxt_ctl_ptr, cpu_to_le64(cxt_ctl_ptr));
-+	dma_wmb();
-+	*ent = (typeof(*ent)) { 0 };
-+}
-+
- /*
-  * Make the context control structure hierarchy valid from the POV of
-  * the SDXI implementation. This may eventually involve allocation of
-@@ -258,6 +282,17 @@ static int sdxi_publish_cxt(const struct sdxi_cxt *cxt)
- 	/* todo: need to send DSC_CXT_UPD to admin */
- }
- 
-+/* Invalidate a context. */
-+static void sdxi_rescind_cxt(struct sdxi_cxt *cxt)
-+{
-+	u8 l1_idx = ID_TO_L1_INDEX(cxt->id);
-+	struct sdxi_cxt_L1_ent *ent = &cxt->sdxi->L1_table->entry[l1_idx];
-+
-+	invalidate_L1_entry(ent);
-+	invalidate_cxtl_ctl(cxt->cxt_ctl);
-+	/* todo: need to send DSC_CXT_UPD to admin */
-+}
-+
- static void free_admin_cxt(void *ptr)
- {
- 	struct sdxi_dev *sdxi = ptr;
-@@ -288,3 +323,90 @@ int sdxi_admin_cxt_init(struct sdxi_dev *sdxi)
- 
- 	return devm_add_action_or_reset(sdxi->dev, free_admin_cxt, sdxi);
- }
++#include "ring.h"
++#include "hw.h"
 +
 +/*
-+ * Temporary owner for context id until it can be assigned to a
-+ * context object; enables scope-based cleanup.
++ * Initialize ring management state. Caller is responsible for
++ * allocating, mapping, and initializing the actual control structures
++ * shared with hardware: the indexes and ring array.
 + */
-+struct sdxi_cxt_id {
-+	struct sdxi_dev *sdxi;
-+	u16 index;
++void sdxi_ring_state_init(struct sdxi_ring_state *rs, const __le64 *read_index,
++			  __le64 *write_index, u32 entries,
++			  struct sdxi_desc descs[static SZ_1K])
++{
++	WARN_ON_ONCE(!read_index);
++	WARN_ON_ONCE(!write_index);
++	/*
++	 * See SDXI 1.0 Table 3-1 Memory Structure Summary. Minimum
++	 * descriptor ring size in bytes is 64KB; thus 1024 64-byte
++	 * entries.
++	 */
++	WARN_ON_ONCE(entries < SZ_1K);
++
++	*rs = (typeof(*rs)) {
++		.write_index = le64_to_cpu(*write_index),
++		.write_index_ptr = write_index,
++		.read_index_ptr = read_index,
++		.entries = entries,
++		.entry = descs,
++	};
++	spin_lock_init(&rs->lock);
++	init_waitqueue_head(&rs->wqh);
++}
++EXPORT_SYMBOL_IF_KUNIT(sdxi_ring_state_init);
++
++static u64 sdxi_ring_state_load_ridx(struct sdxi_ring_state *rs)
++{
++	lockdep_assert_held(&rs->lock);
++	return le64_to_cpu(READ_ONCE(*rs->read_index_ptr));
++}
++
++static void sdxi_ring_state_store_widx(struct sdxi_ring_state *rs, u64 new_widx)
++{
++	lockdep_assert_held(&rs->lock);
++	rs->write_index = new_widx;
++	WRITE_ONCE(*rs->write_index_ptr, cpu_to_le64(new_widx));
++}
++
++/* Non-blocking ring reservation. Callers must handle ring full (-EBUSY). */
++int sdxi_ring_try_reserve(struct sdxi_ring_state *rs, size_t nr,
++			  struct sdxi_ring_resv *resv)
++{
++	u64 new_widx;
++
++	/*
++	 * Caller bug, warn and reject.
++	 */
++	if (WARN_ONCE(nr < 1 || nr > rs->entries,
++		      "Reservation of size %zu requested from ring of size %u\n",
++		      nr, rs->entries))
++		return -EINVAL;
++
++	scoped_guard(spinlock_irqsave, &rs->lock) {
++		u64 ridx = sdxi_ring_state_load_ridx(rs);
++
++		/*
++		 * Bug: the read index should never exceed the write index.
++		 * TODO: sdxi_err() or similar; need a reference to
++		 * the device.
++		 */
++		if (ridx > rs->write_index)
++			return -EIO;
++
++		new_widx = rs->write_index + nr;
++
++		/*
++		 * Not enough space available right now.
++		 * TODO: sdxi_dbg() or tracepoint here.
++		 */
++		if (new_widx - ridx > rs->entries)
++			return -EBUSY;
++
++		sdxi_ring_state_store_widx(rs, new_widx);
++	}
++
++	*resv = (typeof(*resv)) {
++		.rs = rs,
++		.range = {
++			.start = new_widx - nr,
++			.end = new_widx - 1,
++		},
++		.iter = new_widx - nr,
++	};
++
++	return 0;
++}
++EXPORT_SYMBOL_IF_KUNIT(sdxi_ring_try_reserve);
++
++/* Blocking ring reservation. Retries until success or non-transient error. */
++int sdxi_ring_reserve(struct sdxi_ring_state *rs, size_t nr,
++		      struct sdxi_ring_resv *resv)
++{
++	int ret;
++
++	wait_event(rs->wqh,
++		   (ret = sdxi_ring_try_reserve(rs, nr, resv)) != -EBUSY);
++
++	return ret;
++}
++
++/* Completion code should call this whenever descriptors have been consumed. */
++void sdxi_ring_wake_up(struct sdxi_ring_state *rs)
++{
++	wake_up_all(&rs->wqh);
++}
++
++static struct sdxi_desc *
++sdxi_desc_ring_entry(const struct sdxi_ring_state *rs, u64 index)
++{
++	return &rs->entry[do_div(index, rs->entries)];
++}
++
++struct sdxi_desc *sdxi_ring_resv_next(struct sdxi_ring_resv *resv)
++{
++	if (resv->range.start <= resv->iter && resv->iter <= resv->range.end)
++		return sdxi_desc_ring_entry(resv->rs, resv->iter++);
++	/*
++	 * Caller has iterated to the end of the reservation.
++	 */
++	if (resv->iter == resv->range.end + 1)
++		return NULL;
++	/*
++	 * Should happen only if caller messed with internal
++	 * reservation state.
++	 */
++	WARN_ONCE(1, "reservation[%llu,%llu] with iter %llu",
++		  resv->range.start, resv->range.end, resv->iter);
++	return NULL;
++}
++EXPORT_SYMBOL_IF_KUNIT(sdxi_ring_resv_next);
+diff --git a/drivers/dma/sdxi/ring.h b/drivers/dma/sdxi/ring.h
+new file mode 100644
+index 000000000000..d5682687c05c
+--- /dev/null
++++ b/drivers/dma/sdxi/ring.h
+@@ -0,0 +1,84 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++/* Copyright Advanced Micro Devices, Inc. */
++#ifndef DMA_SDXI_RING_H
++#define DMA_SDXI_RING_H
++
++#include <linux/io-64-nonatomic-lo-hi.h>
++#include <linux/range.h>
++#include <linux/spinlock.h>
++#include <linux/types.h>
++#include <linux/wait.h>
++#include <asm/barrier.h>
++#include <asm/byteorder.h>
++#include <asm/div64.h>
++#include <asm/rwonce.h>
++
++#include "hw.h"
++
++/*
++ * struct sdxi_ring_state - Descriptor ring management.
++ *
++ * @lock: Guards *read_index_ptr (RO), *write_index_ptr (RW),
++ *   write_index (RW). *read_index is incremented by hw.
++ * @write_index: Cached write index value, minimizes dereferences in
++ *   critical sections.
++ * @write_index_ptr: Location of the architected write index shared with
++ *   the SDXI implementation.
++ * @read_index_ptr: Location of the architected read index shared with
++ *   the SDXI implementation.
++ * @entries: Number of entries in the ring.
++ * @entry: The descriptor ring itself, shared with the SDXI implementation.
++ * @wqh: Pending reservations.
++ */
++struct sdxi_ring_state {
++	spinlock_t lock;
++	u64 write_index; /* Cache current value of write index. */
++	__le64 *write_index_ptr;
++	const __le64 *read_index_ptr;
++	u32 entries;
++	struct sdxi_desc *entry;
++	wait_queue_head_t wqh;
 +};
 +
-+static void sdxi_cxt_id_dtor(const struct sdxi_cxt_id *cxt_id)
++/*
++ * Ring reservation and iteration state.
++ */
++struct sdxi_ring_resv {
++	const struct sdxi_ring_state *rs;
++	struct range range;
++	u64 iter;
++};
++
++void sdxi_ring_state_init(struct sdxi_ring_state *ring, const __le64 *read_index,
++			  __le64 *write_index, u32 entries,
++			  struct sdxi_desc descs[static SZ_1K]);
++void sdxi_ring_wake_up(struct sdxi_ring_state *rs);
++int sdxi_ring_reserve(struct sdxi_ring_state *ring, size_t nr,
++		      struct sdxi_ring_resv *resv);
++int sdxi_ring_try_reserve(struct sdxi_ring_state *ring, size_t nr,
++			  struct sdxi_ring_resv *resv);
++struct sdxi_desc *sdxi_ring_resv_next(struct sdxi_ring_resv *resv);
++
++/* Reset reservation's internal iterator. */
++static inline void sdxi_ring_resv_reset(struct sdxi_ring_resv *resv)
 +{
-+	if (cxt_id->index == 0)
-+		return;
-+	WARN_ON(xa_erase(&cxt_id->sdxi->client_cxts, cxt_id->index) != NULL);
-+}
-+
-+static struct sdxi_cxt_id sdxi_cxt_id_ctor(struct sdxi_dev *sdxi)
-+{
-+	struct xa_limit limit = XA_LIMIT(1, sdxi->max_cxtid);
-+	u32 index;
-+
-+	return (struct sdxi_cxt_id) {
-+		.sdxi = sdxi,
-+		.index = xa_alloc(&sdxi->client_cxts, &index, NULL,
-+				  limit, GFP_KERNEL) ? 0 : (u16)index,
-+	};
-+}
-+
-+DEFINE_CLASS(sdxi_cxt_id, struct sdxi_cxt_id, sdxi_cxt_id_dtor(&_T),
-+	     sdxi_cxt_id_ctor(sdxi), struct sdxi_dev *sdxi)
-+
-+static bool sdxi_cxt_id_valid(const struct sdxi_cxt_id *cxt_id)
-+{
-+	return cxt_id->index > 0;
++	resv->iter = resv->range.start;
 +}
 +
 +/*
-+ * Transfer ownership of the id to the context object, recording the
-+ * context pointer in the device's client_cxt xarray. sdxi_cxt_free()
-+ * is responsible for releasing the id from now on.
++ * Return the value that should be written to the doorbell after
++ * serializing descriptors for this reservation, i.e. the value of the
++ * write index after obtaining the reservation.
 + */
-+static void sdxi_cxt_id_assign(struct sdxi_cxt *cxt, struct sdxi_cxt_id *cxt_id)
++static inline u64 sdxi_ring_resv_dbval(const struct sdxi_ring_resv *resv)
 +{
-+	/* We reserved the space in the constructor so this should not fail. */
-+	WARN_ON(xa_store(&cxt_id->sdxi->client_cxts,
-+			 cxt_id->index, cxt, GFP_KERNEL));
-+	cxt->id = cxt_id->index;
-+	cxt_id->index = 0;
++	return resv->range.end + 1;
 +}
 +
-+/*
-+ * Allocate a context for in-kernel use. Starting the context is the
-+ * caller's responsibility.
-+ */
-+struct sdxi_cxt *sdxi_cxt_new(struct sdxi_dev *sdxi)
-+{
-+	/*
-+	 * Ensure an ID is available before allocating memory for the
-+	 * context and its control structures.
-+	 */
-+	CLASS(sdxi_cxt_id, id)(sdxi);
-+	if (!sdxi_cxt_id_valid(&id))
-+		return NULL;
++#define sdxi_ring_resv_foreach(resv_, desc_)			\
++	for (sdxi_ring_resv_reset(resv_),			\
++	     desc_ = sdxi_ring_resv_next(resv_);		\
++	     desc_;						\
++	     desc_ = sdxi_ring_resv_next(resv_))
 +
-+	struct sdxi_cxt *cxt __free(sdxi_cxt) = sdxi_alloc_cxt(sdxi);
-+	if (!cxt)
-+		return NULL;
-+
-+	sdxi_cxt_id_assign(cxt, &id);
-+
-+	cxt->db = sdxi->dbs + cxt->id * sdxi->db_stride;
-+
-+	if (sdxi_publish_cxt(cxt))
-+		return NULL;
-+
-+	return_ptr(cxt);
-+}
-+
-+void sdxi_cxt_exit(struct sdxi_cxt *cxt)
-+{
-+	if (WARN_ON(sdxi_cxt_is_admin(cxt)))
-+		return;
-+
-+	sdxi_rescind_cxt(cxt);
-+	sdxi_free_cxt(cxt);
-+}
-diff --git a/drivers/dma/sdxi/context.h b/drivers/dma/sdxi/context.h
-index 8dd6beb7a642..b422a04ae4db 100644
---- a/drivers/dma/sdxi/context.h
-+++ b/drivers/dma/sdxi/context.h
-@@ -59,6 +59,19 @@ struct sdxi_cxt {
- 
- int sdxi_admin_cxt_init(struct sdxi_dev *sdxi);
- 
-+struct sdxi_cxt *sdxi_cxt_new(struct sdxi_dev *sdxi);
-+void sdxi_cxt_exit(struct sdxi_cxt *cxt);
-+
-+static inline struct sdxi_cxt *to_admin_cxt(const struct sdxi_cxt *cxt)
-+{
-+	return cxt->sdxi->admin_cxt;
-+}
-+
-+static inline bool sdxi_cxt_is_admin(const struct sdxi_cxt *cxt)
-+{
-+	return cxt == to_admin_cxt(cxt);
-+}
-+
- static inline void sdxi_cxt_push_doorbell(struct sdxi_cxt *cxt, u64 index)
- {
- 	iowrite64(index, cxt->db);
-diff --git a/drivers/dma/sdxi/device.c b/drivers/dma/sdxi/device.c
-index 8e621875b10b..cc289b271ae2 100644
---- a/drivers/dma/sdxi/device.c
-+++ b/drivers/dma/sdxi/device.c
-@@ -17,6 +17,7 @@
- #include <linux/minmax.h>
- #include <linux/slab.h>
- #include <linux/time.h>
-+#include <linux/xarray.h>
- 
- #include "context.h"
- #include "hw.h"
-@@ -326,6 +327,7 @@ int sdxi_register(struct device *dev, const struct sdxi_bus_ops *ops)
- 
- 	sdxi->dev = dev;
- 	sdxi->bus_ops = ops;
-+	xa_init_flags(&sdxi->client_cxts, XA_FLAGS_ALLOC1);
- 	dev_set_drvdata(dev, sdxi);
- 
- 	err = sdxi->bus_ops->init(sdxi);
-@@ -338,6 +340,12 @@ int sdxi_register(struct device *dev, const struct sdxi_bus_ops *ops)
- void sdxi_unregister(struct device *dev)
- {
- 	struct sdxi_dev *sdxi = dev_get_drvdata(dev);
-+	struct sdxi_cxt *cxt;
-+	unsigned long index;
-+
-+	xa_for_each(&sdxi->client_cxts, index, cxt)
-+		sdxi_cxt_exit(cxt);
-+	xa_destroy(&sdxi->client_cxts);
- 
- 	sdxi_dev_stop(sdxi);
- }
-diff --git a/drivers/dma/sdxi/sdxi.h b/drivers/dma/sdxi/sdxi.h
-index 7462fb912dc6..1786da7642cc 100644
---- a/drivers/dma/sdxi/sdxi.h
-+++ b/drivers/dma/sdxi/sdxi.h
-@@ -12,6 +12,7 @@
- #include <linux/dev_printk.h>
- #include <linux/io-64-nonatomic-lo-hi.h>
- #include <linux/types.h>
-+#include <linux/xarray.h>
- 
- #include "mmio.h"
- 
-@@ -59,6 +60,7 @@ struct sdxi_dev {
- 	struct dma_pool *cst_blk_pool;
- 
- 	struct sdxi_cxt *admin_cxt;
-+	struct xarray client_cxts; /* context id -> (struct sdxi_cxt *) */
- 
- 	const struct sdxi_bus_ops *bus_ops;
- };
++#endif /* DMA_SDXI_RING_H */
 
 -- 
 2.54.0
