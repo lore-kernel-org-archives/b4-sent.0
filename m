@@ -1,101 +1,100 @@
 From: Abdurrahman Hussain <abdurrahman@nexthop.ai>
-Subject: [PATCH v2 0/5] hwmon: (pmbus/adm1266) blackbox, FW rev, rtc_class,
- GPIO label
-Date: Sun, 10 May 2026 21:48:06 -0700
-Message-Id: <20260510-adm1266-v2-0-3a22b903c2f1@nexthop.ai>
+Date: Sun, 10 May 2026 21:48:07 -0700
+Subject: [PATCH v2 1/5] hwmon: (pmbus/adm1266) add firmware_revision
+ debugfs entry
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIZfAWoC/z2NQQ6CMBBFr0JmbU0ZtKIr72FYlOnUjolAWiQYw
- t0FjC5f8v77EySOwgku2QSRB0nSNgvgLgMKtrmzErcwoEajj/qkrHvmaIwiX1h/QEeFQ1jsLrK
- XcSvdqi+nV/1g6tf5agRJfRvf29WQr96vWv6rQ660YtJl7fHMmvja8NiHtttbgWqe5w9DT6F8s
- QAAAA==
-X-Change-ID: 20260507-adm1266-cf3af42dc3d2
+Message-Id: <20260510-adm1266-v2-1-3a22b903c2f1@nexthop.ai>
+References: <20260510-adm1266-v2-0-3a22b903c2f1@nexthop.ai>
+In-Reply-To: <20260510-adm1266-v2-0-3a22b903c2f1@nexthop.ai>
 To: Guenter Roeck <linux@roeck-us.net>, 
  Alexandru Tachici <alexandru.tachici@analog.com>
 Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Abdurrahman Hussain <abdurrahman@nexthop.ai>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3349;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2492;
  i=abdurrahman@nexthop.ai; h=from:subject:message-id;
- bh=ge4OQCXy0fmwgEqR1w3vvbQqKhQjN1Vu7qZH9VrR5JI=;
- b=owJ4nJvAy8zAJbYltPXv6rsCXxhPqyUxZDHGL2Fk89+qyNzOx629o7F7Y2Z3iSSf6+W4CXxBa
- y6nZGftndNRysIgxsUgK6bIMueR/5u2jraIDTGH7GHmsDKBDGHg4hSAifhqM/zT+HzF493XuROu
- 5uzzCy0462Hzy0pd4uzvA+UFk+d2FT/KZPifI74iwDeH59akOEGbR4w1Tw8VXKh6t2zJMRav1a9
- mdYjxAAArI0y1
+ bh=6vBEHLMLOSh3PUQH6ftcKyQ9NFmKypGaweZdjAsCnfo=;
+ b=owJ4nJvAy8zAJbYltPXv6rsCXxhPqyUxZDHGL1l17nXQx33LmJd98VQ756K6Yy7r059z01keJ
+ Aetnyi7X6umo5SFQYyLQVZMkWXOI/83bR1tERtiDtnDzGFlAhnCwMUpABNR72H4K5TQasqgxecW
+ NZPta3kf38HaOS/fVFgbPN/g89VrlijQIf8s37Qfj1ow9XCSDFee8VyHe2WP+memVZkz3q5/Z/i
+ ZuZkTANB1THc=
 X-Developer-Key: i=abdurrahman@nexthop.ai; a=openpgp;
  fpr=9CE24FEC86888658B05CC23FB45585FDABDD10F4
 X-Endpoint-Received: by B4 Relay for abdurrahman@nexthop.ai/default with auth_id=756
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series fills in some gaps in the adm1266 driver and removes a
-probe-time RTC seed that was clobbering valid device state.
+The ADM1266 reports its firmware revision via the IC_DEVICE_REV
+manufacturer-specific block-read command (0xAE, datasheet Rev. D
+Table 80). The first three returned bytes are the firmware
+major.minor.patch fields. This is useful when correlating field
+behaviour against ADI release notes; expose it through debugfs
+alongside the existing sequencer_state entry.
 
-Patch 1 exposes the firmware revision (IC_DEVICE_REV, 0xAE) via
-debugfs alongside the existing sequencer_state entry.
-
-Patch 2 adds a write-only clear_blackbox debugfs file. Devices
-configured for single-recording mode (BLACKBOX_CONFIG[0] = 0) need
-an explicit clear once the 32-record buffer fills; the documented
-sub-command ({0xFE, 0x00} block-write to 0xDE) wasn't reachable
-from userspace.
-
-Patch 3 exposes the non-volatile POWERUP_COUNTER (0xE4) via debugfs.
-The same value is embedded in every blackbox record, so the live
-value lets userspace match a captured record back to the boot it
-came from when correlating logs.
-
-Patch 4 replaces the probe-time SET_RTC seed with an rtc_class
-device backed by SET_RTC. The existing seed used CLOCK_MONOTONIC
-seconds, which is meaningless as a wall-clock time and clobbers
-whatever the device retained across a warm reboot. The data sheet
-(Rev. D, p. 22) explicitly recommends "frequently send the time
-stamp to the ADM1266 to synchronize the UNIX time and reduce the
-time from drifting" when running on the internal oscillator (no
-external 32.768 kHz crystal). Letting userspace own the policy via
-standard tooling (hwclock, chrony, systemd-timesyncd) against
-/dev/rtcN is both more correct and avoids any driver-specific
-sysfs ABI.
-
-Patch 5 disambiguates GPIO line labels on platforms that fit two
-ADM1266 devices on different I2C buses at the same slave address.
+The standard PMBus MFR_REVISION (0x9B) register is already exposed
+by pmbus_core's debugfs auto-create path and reports the
+manufacturer revision, which is a separate thing from the firmware
+running on the device.
 
 Signed-off-by: Abdurrahman Hussain <abdurrahman@nexthop.ai>
 ---
-Changes in v2:
-- Drop the v1 "use wall-clock seconds for SET_RTC" and "write
-  fractional-seconds field of SET_RTC" patches. v1 patch 6 already
-  added an rtc_class device, so userspace now owns the time-set
-  policy and the probe-time seed is no longer needed - removing it
-  also fixes the cross-reboot blackbox-correlation regression the
-  seed introduced.
-- In the rtc_class patch, write the SET_RTC fractional-seconds
-  bytes as zero rather than computing them from a timespec64. The
-  rtc_class API is second-precision, so the divide that v1 patch 2
-  was adding never produced a non-zero result anyway. This also
-  drops the 64-bit divide that would have failed to link on 32-bit
-  builds (Sashiko review).
-- Use %d (decimal) for the I2C adapter number in GPIO line labels,
-  matching the i2c-N convention used elsewhere in Linux. v1 used
-  %x, which rendered bus numbers >= 10 in hexadecimal (Sashiko
-  review).
-- Link to v1: https://patch.msgid.link/20260508-adm1266-v1-0-ec08bf29e0ce@nexthop.ai
+ drivers/hwmon/pmbus/adm1266.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
 
----
-Abdurrahman Hussain (5):
-      hwmon: (pmbus/adm1266) add firmware_revision debugfs entry
-      hwmon: (pmbus/adm1266) add clear_blackbox debugfs entry
-      hwmon: (pmbus/adm1266) add powerup_counter debugfs entry
-      hwmon: (pmbus/adm1266) replace probe-time RTC seed with rtc_class device
-      hwmon: (pmbus/adm1266) include adapter number in GPIO line label
+diff --git a/drivers/hwmon/pmbus/adm1266.c b/drivers/hwmon/pmbus/adm1266.c
+index d90f8f80be8e..7b8433226176 100644
+--- a/drivers/hwmon/pmbus/adm1266.c
++++ b/drivers/hwmon/pmbus/adm1266.c
+@@ -21,6 +21,7 @@
+ #include <linux/slab.h>
+ #include <linux/timekeeping.h>
+ 
++#define ADM1266_IC_DEVICE_REV	0xAE
+ #define ADM1266_BLACKBOX_CONFIG	0xD3
+ #define ADM1266_PDIO_CONFIG	0xD4
+ #define ADM1266_READ_STATE	0xD9
+@@ -331,6 +332,30 @@ static int adm1266_state_read(struct seq_file *s, void *pdata)
+ 	return 0;
+ }
+ 
++/*
++ * IC_DEVICE_REV (0xAE) returns an 8-byte block (datasheet Rev. D, Table 80):
++ *   [2:0] firmware revision  major.minor.patch
++ *   [5:3] bootloader revision major.minor.patch
++ *   [7:6] silicon revision    two ASCII characters
++ */
++static int adm1266_firmware_revision_read(struct seq_file *s, void *pdata)
++{
++	struct device *dev = s->private;
++	struct i2c_client *client = to_i2c_client(dev);
++	u8 buf[I2C_SMBUS_BLOCK_MAX];
++	int ret;
++
++	ret = i2c_smbus_read_block_data(client, ADM1266_IC_DEVICE_REV, buf);
++	if (ret < 0)
++		return ret;
++	if (ret < 3)
++		return -EIO;
++
++	seq_printf(s, "%u.%u.%u\n", buf[0], buf[1], buf[2]);
++
++	return 0;
++}
++
+ static void adm1266_init_debugfs(struct adm1266_data *data)
+ {
+ 	struct dentry *root;
+@@ -343,6 +368,8 @@ static void adm1266_init_debugfs(struct adm1266_data *data)
+ 
+ 	debugfs_create_devm_seqfile(&data->client->dev, "sequencer_state", data->debugfs_dir,
+ 				    adm1266_state_read);
++	debugfs_create_devm_seqfile(&data->client->dev, "firmware_revision", data->debugfs_dir,
++				    adm1266_firmware_revision_read);
+ }
+ 
+ static int adm1266_nvmem_read_blackbox(struct adm1266_data *data, u8 *read_buff)
 
- drivers/hwmon/pmbus/adm1266.c | 162 ++++++++++++++++++++++++++++++++++++++----
- 1 file changed, 150 insertions(+), 12 deletions(-)
----
-base-commit: 917719c412c48687d4a176965d1fa35320ec457c
-change-id: 20260507-adm1266-cf3af42dc3d2
-
-Best regards,
---  
-Abdurrahman Hussain <abdurrahman@nexthop.ai>
+-- 
+2.53.0
 
