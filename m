@@ -1,11 +1,11 @@
 From: Jian Hu <jian.hu@amlogic.com>
-Date: Mon, 11 May 2026 20:47:26 +0800
-Subject: [PATCH 04/10] dt-bindings: clock: Add Amlogic A9 AO clock
- controller
+Date: Mon, 11 May 2026 20:47:27 +0800
+Subject: [PATCH 05/10] clk: amlogic: PLL l_detect signal supports
+ active-high configuration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260511-b4-a9_clk-v1-4-41cb4071b7c9@amlogic.com>
+Message-Id: <20260511-b4-a9_clk-v1-5-41cb4071b7c9@amlogic.com>
 References: <20260511-b4-a9_clk-v1-0-41cb4071b7c9@amlogic.com>
 In-Reply-To: <20260511-b4-a9_clk-v1-0-41cb4071b7c9@amlogic.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -21,189 +21,64 @@ Cc: linux-kernel@vger.kernel.org, linux-clk@vger.kernel.org,
  devicetree@vger.kernel.org, linux-amlogic@lists.infradead.org, 
  linux-arm-kernel@lists.infradead.org, Jian Hu <jian.hu@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778503655; l=5288;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778503655; l=1711;
  i=jian.hu@amlogic.com; s=20260415; h=from:subject:message-id;
- bh=1QLomhykNDYNajB5yiiTnaHai4+LlJ1tM/UJHnRhMtk=;
- b=mc8AnKvg95IWoepADRRSErgQT/iLxxGLJSBqtm/1TQEe9I/BML41uCKtbkYyW8aYotSRt+L/L
- g07pH/6PYCtDpO7QPI6jXIo1eeS3DqOjtLtEh7zIb9W/EihuQ8mEjVp
+ bh=DXN+IQPJ4BKXUT+MsvhFjUrvj1rynvZ3xsZLA9vL75E=;
+ b=xYUqx+WQEC8C0eWT8llqWOt68I4oN7NE6r3Glr5Ph/So3/wLTVAkTES95+7mvotxuaXyx8vQG
+ SKinXt7bnDUBdwGt2ZpbVm4qaKXOnjov17nNSG0qVxzEjahD5ujrvak
 X-Developer-Key: i=jian.hu@amlogic.com; a=ed25519;
  pk=zHUE+rNtH9z+Sb8au1/elWknjFQmy5QDVkBoxleuOIA=
 X-Endpoint-Received: by B4 Relay for jian.hu@amlogic.com/20260415 with auth_id=735
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the Always-On clock controller dt-bindings for the Amlogic A9
-SoC family.
+l_detect controls the enable/disable of the PLL lock-detect module.
+
+For A9, the l_detect signal is active-high:
+0 -> Disable lock-detect module;
+1 -> Enable lock-detect module.
+
+Here, a flag CLK_MESON_PLL_L_DETECT_ACTIVE_HIGH is added to handle cases
+like A9, where the signal is active-high.
 
 Signed-off-by: Jian Hu <jian.hu@amlogic.com>
 ---
- .../bindings/clock/amlogic,a9-aoclkc.yaml          | 76 ++++++++++++++++++++++
- include/dt-bindings/clock/amlogic,a9-aoclkc.h      | 76 ++++++++++++++++++++++
- 2 files changed, 152 insertions(+)
+ drivers/clk/meson/clk-pll.c | 9 +++++++--
+ drivers/clk/meson/clk-pll.h | 2 ++
+ 2 files changed, 9 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/clock/amlogic,a9-aoclkc.yaml b/Documentation/devicetree/bindings/clock/amlogic,a9-aoclkc.yaml
-new file mode 100644
-index 000000000000..973cac3c6988
---- /dev/null
-+++ b/Documentation/devicetree/bindings/clock/amlogic,a9-aoclkc.yaml
-@@ -0,0 +1,76 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+# Copyright (C) 2026 Amlogic, Inc. All rights reserved
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/clock/amlogic,a9-aoclkc.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Amlogic A9 Series Always-On Clock Controller
-+
-+maintainers:
-+  - Neil Armstrong <neil.armstrong@linaro.org>
-+  - Jerome Brunet <jbrunet@baylibre.com>
-+  - Jian Hu <jian.hu@amlogic.com>
-+  - Xianwei Zhao <xianwei.zhao@amlogic.com>
-+
-+properties:
-+  compatible:
-+    const: amlogic,a9-aoclkc
-+
-+  reg:
-+    maxItems: 1
-+
-+  '#clock-cells':
-+    const: 1
-+
-+  clocks:
-+    minItems: 5
-+    items:
-+      - description: input oscillator
-+      - description: input fclk div 3
-+      - description: input fclk div 4
-+      - description: input fclk div 5
-+      - description: input sys clk
-+      - description: external fixed 32k (optional)
-+
-+  clock-names:
-+    minItems: 5
-+    items:
-+      - const: xtal
-+      - const: fdiv3
-+      - const: fdiv4
-+      - const: fdiv5
-+      - const: sys
-+      - const: ext_32k
-+
-+required:
-+  - compatible
-+  - reg
-+  - '#clock-cells'
-+  - clocks
-+  - clock-names
-+
-+additionalProperties: false
-+
-+examples:
-+  - |
-+    aobus {
-+        #address-cells = <2>;
-+        #size-cells = <2>;
-+
-+        clock-controller@0 {
-+            compatible = "amlogic,a9-aoclkc";
-+            reg = <0x0 0x0 0x0 0x58>;
-+            #clock-cells = <1>;
-+            clocks = <&xtal>,
-+                     <&scmi_clk 14>,
-+                     <&scmi_clk 16>,
-+                     <&scmi_clk 18>,
-+                     <&scmi_clk 21>;
-+            clock-names = "xtal",
-+                          "fdiv3",
-+                          "fdiv4",
-+                          "fdiv5",
-+                          "sys";
-+        };
-+    };
-diff --git a/include/dt-bindings/clock/amlogic,a9-aoclkc.h b/include/dt-bindings/clock/amlogic,a9-aoclkc.h
-new file mode 100644
-index 000000000000..a7d704d4b58e
---- /dev/null
-+++ b/include/dt-bindings/clock/amlogic,a9-aoclkc.h
-@@ -0,0 +1,76 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
-+/*
-+ * Copyright (C) 2026 Amlogic, Inc. All rights reserved.
-+ */
-+
-+#ifndef __AMLOGIC_A9_AO_CLKC_H
-+#define __AMLOGIC_A9_AO_CLKC_H
-+
-+#define CLKID_AO_XTAL_IN			0
-+#define CLKID_AO_XTAL				1
-+#define CLKID_AO_SYS				2
-+#define CLKID_AO_SYS_I3C			3
-+#define CLKID_AO_SYS_RTC_REG			4
-+#define CLKID_AO_SYS_CLKTREE			5
-+#define CLKID_AO_SYS_RST_CTRL			6
-+#define CLKID_AO_SYS_PAD			7
-+#define CLKID_AO_SYS_RTC_DIG			8
-+#define CLKID_AO_SYS_IRQ			9
-+#define CLKID_AO_SYS_PWRCTRL			10
-+#define CLKID_AO_SYS_PWM_A			11
-+#define CLKID_AO_SYS_PWM_B			12
-+#define CLKID_AO_SYS_PWM_C			13
-+#define CLKID_AO_SYS_PWM_D			14
-+#define CLKID_AO_SYS_PWM_E			15
-+#define CLKID_AO_SYS_PWM_F			16
-+#define CLKID_AO_SYS_PWM_G			17
-+#define CLKID_AO_SYS_I2C_A			18
-+#define CLKID_AO_SYS_I2C_B			19
-+#define CLKID_AO_SYS_I2C_C			20
-+#define CLKID_AO_SYS_I2C_D			21
-+#define CLKID_AO_SYS_SED			22
-+#define CLKID_AO_SYS_IR_CTRL			23
-+#define CLKID_AO_SYS_UART_B			24
-+#define CLKID_AO_SYS_UART_C			25
-+#define CLKID_AO_SYS_UART_D			26
-+#define CLKID_AO_SYS_UART_E			27
-+#define CLKID_AO_SYS_SPISG_0			28
-+#define CLKID_AO_SYS_RTC_SECURE			29
-+#define CLKID_AO_SYS_CEC			30
-+#define CLKID_AO_SYS_AOCPU			31
-+#define CLKID_AO_SYS_SRAM			32
-+#define CLKID_AO_SYS_SPISG_1			33
-+#define CLKID_AO_SYS_SPISG_2			34
-+#define CLKID_AO_PWM_A_SEL			35
-+#define CLKID_AO_PWM_A_DIV			36
-+#define CLKID_AO_PWM_A				37
-+#define CLKID_AO_PWM_B_SEL			38
-+#define CLKID_AO_PWM_B_DIV			39
-+#define CLKID_AO_PWM_B				40
-+#define CLKID_AO_PWM_C_SEL			41
-+#define CLKID_AO_PWM_C_DIV			42
-+#define CLKID_AO_PWM_C				43
-+#define CLKID_AO_PWM_D_SEL			44
-+#define CLKID_AO_PWM_D_DIV			45
-+#define CLKID_AO_PWM_D				46
-+#define CLKID_AO_PWM_E_SEL			47
-+#define CLKID_AO_PWM_E_DIV			48
-+#define CLKID_AO_PWM_E				49
-+#define CLKID_AO_PWM_F_SEL			50
-+#define CLKID_AO_PWM_F_DIV			51
-+#define CLKID_AO_PWM_F				52
-+#define CLKID_AO_PWM_G_SEL			53
-+#define CLKID_AO_PWM_G_DIV			54
-+#define CLKID_AO_PWM_G				55
-+#define CLKID_AO_RTC_DUALDIV_IN			56
-+#define CLKID_AO_RTC_DUALDIV_DIV		57
-+#define CLKID_AO_RTC_DUALDIV_SEL		58
-+#define CLKID_AO_RTC_DUALDIV			59
-+#define CLKID_AO_RTC				60
-+#define CLKID_AO_CEC_DUALDIV_IN			61
-+#define CLKID_AO_CEC_DUALDIV_DIV		62
-+#define CLKID_AO_CEC_DUALDIV_SEL		63
-+#define CLKID_AO_CEC_DUALDIV			64
-+#define CLKID_AO_CEC				65
-+
-+#endif  /* __AMLOGIC_A9_AO_CLKC_H */
+diff --git a/drivers/clk/meson/clk-pll.c b/drivers/clk/meson/clk-pll.c
+index 1ea6579a760f..5a0bd75f85a9 100644
+--- a/drivers/clk/meson/clk-pll.c
++++ b/drivers/clk/meson/clk-pll.c
+@@ -388,8 +388,13 @@ static int meson_clk_pll_enable(struct clk_hw *hw)
+ 	}
+ 
+ 	if (MESON_PARM_APPLICABLE(&pll->l_detect)) {
+-		meson_parm_write(clk->map, &pll->l_detect, 1);
+-		meson_parm_write(clk->map, &pll->l_detect, 0);
++		if (pll->flags & CLK_MESON_PLL_L_DETECT_ACTIVE_HIGH) {
++			meson_parm_write(clk->map, &pll->l_detect, 0);
++			meson_parm_write(clk->map, &pll->l_detect, 1);
++		} else {
++			meson_parm_write(clk->map, &pll->l_detect, 1);
++			meson_parm_write(clk->map, &pll->l_detect, 0);
++		}
+ 	}
+ 
+ 	if (meson_clk_pll_wait_lock(hw))
+diff --git a/drivers/clk/meson/clk-pll.h b/drivers/clk/meson/clk-pll.h
+index 949157fb7bf5..97b7c70376a3 100644
+--- a/drivers/clk/meson/clk-pll.h
++++ b/drivers/clk/meson/clk-pll.h
+@@ -29,6 +29,8 @@ struct pll_mult_range {
+ 
+ #define CLK_MESON_PLL_ROUND_CLOSEST	BIT(0)
+ #define CLK_MESON_PLL_NOINIT_ENABLED	BIT(1)
++/* l_detect signal is active-high */
++#define CLK_MESON_PLL_L_DETECT_ACTIVE_HIGH	BIT(2)
+ 
+ struct meson_clk_pll_data {
+ 	struct parm en;
 
 -- 
 2.47.1
