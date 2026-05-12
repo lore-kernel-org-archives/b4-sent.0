@@ -1,11 +1,11 @@
 From: Roman Vivchar <rva333@protonmail.com>
-Date: Tue, 12 May 2026 08:18:16 +0300
-Subject: [PATCH v2 02/16] dt-bindings: iio: adc: mt6359: add mt6323 PMIC
- AUXADC
+Date: Tue, 12 May 2026 08:18:17 +0300
+Subject: [PATCH v2 03/16] dt-bindings: mfd: mediatek: mt6397: add mt6323
+ PMIC EFUSE
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260512-mt6323-v2-2-3efcba579e88@protonmail.com>
+Message-Id: <20260512-mt6323-v2-3-3efcba579e88@protonmail.com>
 References: <20260512-mt6323-v2-0-3efcba579e88@protonmail.com>
 In-Reply-To: <20260512-mt6323-v2-0-3efcba579e88@protonmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -28,70 +28,65 @@ Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org,
  linux-mediatek@lists.infradead.org, linux-pm@vger.kernel.org, 
  Ben Grisdale <bengris32@protonmail.ch>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778563297; l=2076;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778563297; l=1478;
  i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=c+cho/PX2cVaRg83PkB7K4s9HbnpwnddIKtcnK+QK9k=;
- b=W7KS0FHZxgzCrz3uoUR4XNBLsEDNUbCPF9yCBrCkA6/sQUCqk5mobEFYHMenvIGL1QQYOBSqf
- ftGX9yLmp7bD0duUSPjiUK2UC95xLJR11EZkRen5tQbZ1DTrigd7T99
+ bh=yiuy4PGnRwz74HO4/jgt05FoYcB7zWTmsPkZR1/Xj18=;
+ b=qpWJ/FFKQ7H4cEJoojhJZrG1CP5nnngA5fUWP41wO+9Dp4TKaGwfB+ZnIsc+rAX+u8oexlUrf
+ i0ujFuGiNQdAXMz8Hzc6SMdBTwi08J5rYz5EUXycsV9ng7HoxYgDQgj
 X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
  pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
 X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The MediaTek mt6323 PMIC includes an AUXADC used for battery voltage,
-temperature, and other internal measurements.
+The MediaTek mt6323 PMIC includes an EFUSE used for storing calibration
+data.
 
-Add the devicetree binding documentation and the associated header file
-defining the ADC channel constants.
+Add the devicetree binding documentation for the MediaTek mt6323 EFUSE.
 
 Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- .../bindings/iio/adc/mediatek,mt6359-auxadc.yaml   |  1 +
- .../dt-bindings/iio/adc/mediatek,mt6323-auxadc.h   | 24 ++++++++++++++++++++++
- 2 files changed, 25 insertions(+)
+ .../devicetree/bindings/mfd/mediatek,mt6397.yaml    | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/iio/adc/mediatek,mt6359-auxadc.yaml b/Documentation/devicetree/bindings/iio/adc/mediatek,mt6359-auxadc.yaml
-index 2e8857e104f5..1cafc314b8ab 100644
---- a/Documentation/devicetree/bindings/iio/adc/mediatek,mt6359-auxadc.yaml
-+++ b/Documentation/devicetree/bindings/iio/adc/mediatek,mt6359-auxadc.yaml
-@@ -19,6 +19,7 @@ description:
- properties:
-   compatible:
-     enum:
-+      - mediatek,mt6323-auxadc
-       - mediatek,mt6357-auxadc
-       - mediatek,mt6358-auxadc
-       - mediatek,mt6359-auxadc
-diff --git a/include/dt-bindings/iio/adc/mediatek,mt6323-auxadc.h b/include/dt-bindings/iio/adc/mediatek,mt6323-auxadc.h
-new file mode 100644
-index 000000000000..6ee9a9ecffc1
---- /dev/null
-+++ b/include/dt-bindings/iio/adc/mediatek,mt6323-auxadc.h
-@@ -0,0 +1,24 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
+diff --git a/Documentation/devicetree/bindings/mfd/mediatek,mt6397.yaml b/Documentation/devicetree/bindings/mfd/mediatek,mt6397.yaml
+index 05c121b0cb3d..beaa67bf0df2 100644
+--- a/Documentation/devicetree/bindings/mfd/mediatek,mt6397.yaml
++++ b/Documentation/devicetree/bindings/mfd/mediatek,mt6397.yaml
+@@ -145,6 +145,23 @@ properties:
+     required:
+       - compatible
+ 
++  efuse:
++    type: object
++    unevaluatedProperties: false
++    description:
++      The efuse is responsible for storing calibration data, such as thermal
++      sensor calibration.
 +
-+#ifndef _DT_BINDINGS_MEDIATEK_MT6323_AUXADC_H
-+#define _DT_BINDINGS_MEDIATEK_MT6323_AUXADC_H
++    properties:
++      compatible:
++        const: mediatek,mt6323-efuse
 +
-+#define MT6323_AUXADC_BATON2		0
-+#define MT6323_AUXADC_CH6		1
-+#define MT6323_AUXADC_BAT_TEMP		2
-+#define MT6323_AUXADC_CHIP_TEMP		3
-+#define MT6323_AUXADC_VCDT		4
-+#define MT6323_AUXADC_BATON1		5
-+#define MT6323_AUXADC_ISENSE		6
-+#define MT6323_AUXADC_BATSNS		7
-+#define MT6323_AUXADC_ACCDET		8
-+#define MT6323_AUXADC_AUDIO0		9
-+#define MT6323_AUXADC_AUDIO1		10
-+#define MT6323_AUXADC_AUDIO2		11
-+#define MT6323_AUXADC_AUDIO3		12
-+#define MT6323_AUXADC_AUDIO4		13
-+#define MT6323_AUXADC_AUDIO5		14
-+#define MT6323_AUXADC_AUDIO6		15
-+#define MT6323_AUXADC_AUDIO7		16
++      nvmem-layout:
++        $ref: /schemas/nvmem/layouts/nvmem-layout.yaml#
 +
-+#endif
++    required:
++      - compatible
++
+   leds:
+     type: object
+     additionalProperties: false
+@@ -243,6 +260,10 @@ examples:
+         interrupt-controller;
+         #interrupt-cells = <2>;
+ 
++        efuse {
++          compatible = "mediatek,mt6323-efuse";
++        };
++
+         leds {
+             compatible = "mediatek,mt6323-led";
+             #address-cells = <1>;
 
 -- 
 2.54.0
