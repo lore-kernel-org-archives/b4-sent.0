@@ -1,11 +1,11 @@
 From: Joshua Crofts <joshua.crofts1@gmail.com>
-Date: Tue, 12 May 2026 12:57:28 +0200
-Subject: [PATCH v2 08/10] iio: light: opt3001: move driver to
- guard(mutex)() use
+Date: Tue, 12 May 2026 12:57:29 +0200
+Subject: [PATCH v2 09/10] iio: light: opt3001: switch driver to managed
+ resources
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260512-opt3001-cleanup-v2-8-8018cf3a8a0a@gmail.com>
+Message-Id: <20260512-opt3001-cleanup-v2-9-8018cf3a8a0a@gmail.com>
 References: <20260512-opt3001-cleanup-v2-0-8018cf3a8a0a@gmail.com>
 In-Reply-To: <20260512-opt3001-cleanup-v2-0-8018cf3a8a0a@gmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -14,203 +14,149 @@ To: Jonathan Cameron <jic23@kernel.org>,
  Andy Shevchenko <andy@kernel.org>, Alexander Koch <mail@alexanderkoch.net>, 
  Michael Hornung <mhornung.linux@gmail.com>
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joshua Crofts <joshua.crofts1@gmail.com>, 
- Andy Shevchenko <andriy.shevchenko@intel.com>
+ Joshua Crofts <joshua.crofts1@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778583471; l=4962;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778583471; l=4086;
  i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
- bh=E9XaiRNPCXjAZv0bmOpRuAak9EP1Bj7kFnRGE0Loxl0=;
- b=aR3Fe4N4ftppBOmhbO2Iv/LOnYifaiUb31sC2v9KjMeG8K+h7U8kolAt6AWqUOIrFeKfgEA28
- XHFIC+LPwNtC0zVlvF+BQ4yYoNA+Wx0JXWcJafUDVD4n9KOUoD7vZCj
+ bh=4ANghW89O8ZSpqGz7kIpA1BQnkewSIVLpoxIZNOp8yY=;
+ b=4HRc9GwvUYI7ODsQzNSL6+ce3CLIubOU7ws0Unyhwph3i9wfBEtMzWu3iDqWhXFVEPYpcLPPf
+ YxJGsJ1ytAzBesZZ3b26QLwuJM6hEK4+ZKbFnYgUZoiEyLckLP4umon
 X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
  pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
 X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move driver to use guard(mutex)() macro, to facilitate automatic
-locking/unlocking of resources. This modernizes the driver and
-improves code style.
+Move the driver to use devm_* functions to automate resource
+management and simplify error handling. This also allows removal
+of the opt3001_remove() function.
 
-While at it, remove unnecessary gotos and return variables.
-
-Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
 Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
 ---
- drivers/iio/light/opt3001.c | 61 +++++++++++++--------------------------------
- 1 file changed, 18 insertions(+), 43 deletions(-)
+ drivers/iio/light/opt3001.c | 75 +++++++++++++++++++++++----------------------
+ 1 file changed, 39 insertions(+), 36 deletions(-)
 
 diff --git a/drivers/iio/light/opt3001.c b/drivers/iio/light/opt3001.c
-index 6f7c524d3a7a41c5177c9b02ebe1b7858294a0b4..39ea60c0af2c1ec7473d49b73778cac1f9bb6086 100644
+index 39ea60c0af2c1ec7473d49b73778cac1f9bb6086..1319e5941b66bd82e4dc2badf5ea27cacbcfd54a 100644
 --- a/drivers/iio/light/opt3001.c
 +++ b/drivers/iio/light/opt3001.c
-@@ -10,6 +10,7 @@
- 
- #include <linux/array_size.h>
- #include <linux/bits.h>
-+#include <linux/cleanup.h>
- #include <linux/delay.h>
- #include <linux/dev_printk.h>
- #include <linux/errno.h>
-@@ -478,7 +479,6 @@ static int opt3001_read_raw(struct iio_dev *iio,
- 			    int *val, int *val2, long mask)
- {
- 	struct opt3001 *opt = iio_priv(iio);
--	int ret;
- 
- 	if (opt->mode == OPT3001_CONFIGURATION_M_CONTINUOUS)
- 		return -EBUSY;
-@@ -486,23 +486,17 @@ static int opt3001_read_raw(struct iio_dev *iio,
- 	if (chan->type != opt->chip_info->chan_type)
- 		return -EINVAL;
- 
--	mutex_lock(&opt->lock);
-+	guard(mutex)(&opt->lock);
- 
- 	switch (mask) {
- 	case IIO_CHAN_INFO_RAW:
- 	case IIO_CHAN_INFO_PROCESSED:
--		ret = opt3001_get_processed(opt, val, val2);
--		break;
-+		return opt3001_get_processed(opt, val, val2);
- 	case IIO_CHAN_INFO_INT_TIME:
--		ret = opt3001_get_int_time(opt, val, val2);
--		break;
-+		return opt3001_get_int_time(opt, val, val2);
- 	default:
--		ret = -EINVAL;
-+		return -EINVAL;
- 	}
--
--	mutex_unlock(&opt->lock);
--
--	return ret;
+@@ -702,6 +702,31 @@ static int opt3001_read_id(struct opt3001 *opt)
+ 	return 0;
  }
  
- static int opt3001_write_raw(struct iio_dev *iio,
-@@ -510,7 +504,6 @@ static int opt3001_write_raw(struct iio_dev *iio,
- 			     int val, int val2, long mask)
- {
- 	struct opt3001 *opt = iio_priv(iio);
--	int ret;
- 
- 	if (opt->mode == OPT3001_CONFIGURATION_M_CONTINUOUS)
- 		return -EBUSY;
-@@ -524,11 +517,9 @@ static int opt3001_write_raw(struct iio_dev *iio,
- 	if (val != 0)
- 		return -EINVAL;
- 
--	mutex_lock(&opt->lock);
--	ret = opt3001_set_int_time(opt, val2);
--	mutex_unlock(&opt->lock);
-+	guard(mutex)(&opt->lock);
- 
--	return ret;
-+	return opt3001_set_int_time(opt, val2);
- }
- 
- static int opt3001_read_event_value(struct iio_dev *iio,
-@@ -539,28 +530,23 @@ static int opt3001_read_event_value(struct iio_dev *iio,
- 				    int *val, int *val2)
- {
- 	struct opt3001 *opt = iio_priv(iio);
--	int ret = IIO_VAL_INT_PLUS_MICRO;
- 
--	mutex_lock(&opt->lock);
-+	guard(mutex)(&opt->lock);
- 
- 	switch (dir) {
- 	case IIO_EV_DIR_RISING:
- 		opt3001_to_iio_ret(opt, opt->high_thresh_exp,
- 				   opt->high_thresh_mantissa,
- 				   val, val2);
--		break;
-+		return IIO_VAL_INT_PLUS_MICRO;
- 	case IIO_EV_DIR_FALLING:
- 		opt3001_to_iio_ret(opt, opt->low_thresh_exp,
- 				   opt->low_thresh_mantissa,
- 				   val, val2);
--		break;
-+		return IIO_VAL_INT_PLUS_MICRO;
- 	default:
--		ret = -EINVAL;
-+		return -EINVAL;
- 	}
--
--	mutex_unlock(&opt->lock);
--
--	return ret;
- }
- 
- static int opt3001_write_event_value(struct iio_dev *iio,
-@@ -587,12 +573,12 @@ static int opt3001_write_event_value(struct iio_dev *iio,
- 	if (val < 0)
- 		return -EINVAL;
- 
--	mutex_lock(&opt->lock);
-+	guard(mutex)(&opt->lock);
- 
- 	ret = opt3001_find_scale(opt, val, val2, &exponent);
- 	if (ret < 0) {
- 		dev_err(dev, "can't find scale for %d.%06u\n", val, val2);
--		goto err;
-+		return ret;
- 	}
- 
- 	whole = opt->chip_info->factor_whole;
-@@ -615,18 +601,12 @@ static int opt3001_write_event_value(struct iio_dev *iio,
- 		opt->low_thresh_exp = exponent;
- 		break;
- 	default:
--		ret = -EINVAL;
--		goto err;
-+		return -EINVAL;
- 	}
- 
- 	ret = i2c_smbus_write_word_swapped(client, reg, value);
--	if (ret < 0) {
++static void opt3001_power_off(void *data)
++{
++	struct opt3001 *opt = data;
++	struct i2c_client *client = opt->client;
++	struct device *dev = opt->dev;
++
++	int ret;
++	u16 reg;
++
++	ret = i2c_smbus_read_word_swapped(client, OPT3001_CONFIGURATION);
++	if (ret < 0) {
++		dev_err(dev, "failed to read register %02x\n",
++			OPT3001_CONFIGURATION);
++		return;
++	}
++
++	reg = ret;
++	opt3001_set_mode(opt, &reg, OPT3001_CONFIGURATION_M_SHUTDOWN);
++
++	ret = i2c_smbus_write_word_swapped(client, OPT3001_CONFIGURATION, reg);
 +	if (ret < 0)
- 		dev_err(dev, "failed to write register %02x\n", reg);
--		goto err;
++		dev_err(dev, "failed to write to register %02x\n",
++			OPT3001_CONFIGURATION);
++}
++
+ static int opt3001_configure(struct opt3001 *opt)
+ {
+ 	struct i2c_client *client = opt->client;
+@@ -740,6 +765,11 @@ static int opt3001_configure(struct opt3001 *opt)
+ 		return dev_err_probe(dev, ret, "failed to write register %02x\n",
+ 				     OPT3001_CONFIGURATION);
+ 
++	ret = devm_add_action_or_reset(dev, opt3001_power_off, opt);
++	if (ret)
++		return dev_err_probe(dev, ret,
++				     "failed to register power off function\n");
++
+ 	ret = i2c_smbus_read_word_swapped(client, OPT3001_LOW_LIMIT);
+ 	if (ret < 0)
+ 		return dev_err_probe(dev, ret, "failed to read register %02x\n",
+@@ -834,7 +864,10 @@ static int opt3001_probe(struct i2c_client *client)
+ 	opt->dev = dev;
+ 	opt->chip_info = i2c_get_match_data(client);
+ 
+-	mutex_init(&opt->lock);
++	ret = devm_mutex_init(dev, &opt->lock);
++	if (ret)
++		return ret;
++
+ 	init_waitqueue_head(&opt->result_ready_queue);
+ 	i2c_set_clientdata(client, iio);
+ 
+@@ -856,13 +889,12 @@ static int opt3001_probe(struct i2c_client *client)
+ 
+ 	/* Make use of INT pin only if valid IRQ no. is given */
+ 	if (irq > 0) {
+-		ret = request_threaded_irq(irq, NULL, opt3001_irq,
+-					   IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+-					   "opt3001", iio);
++		ret = devm_request_threaded_irq(dev, irq, NULL, opt3001_irq,
++						IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
++						"opt3001", iio);
+ 		if (ret)
+-			return dev_err_probe(dev, ret,
+-					     "failed to request IRQ #%d\n",
+-					     irq);
++			return ret;
++
+ 		opt->use_irq = true;
+ 	} else {
+ 		dev_dbg(dev, "enabling interrupt-less operation\n");
+@@ -876,34 +908,6 @@ static int opt3001_probe(struct i2c_client *client)
+ 	return 0;
+ }
+ 
+-static void opt3001_remove(struct i2c_client *client)
+-{
+-	struct iio_dev *iio = i2c_get_clientdata(client);
+-	struct opt3001 *opt = iio_priv(iio);
+-	struct device *dev = opt->dev;
+-	int ret;
+-	u16 reg;
+-
+-	if (opt->use_irq)
+-		free_irq(client->irq, iio);
+-
+-	ret = i2c_smbus_read_word_swapped(client, OPT3001_CONFIGURATION);
+-	if (ret < 0) {
+-		dev_err(dev, "failed to read register %02x\n",
+-			OPT3001_CONFIGURATION);
+-		return;
 -	}
 -
--err:
--	mutex_unlock(&opt->lock);
- 
- 	return ret;
- }
-@@ -660,7 +640,7 @@ static int opt3001_write_event_config(struct iio_dev *iio,
- 	if (!state && opt->mode == OPT3001_CONFIGURATION_M_SHUTDOWN)
- 		return 0;
- 
--	mutex_lock(&opt->lock);
-+	guard(mutex)(&opt->lock);
- 
- 	mode = state ? OPT3001_CONFIGURATION_M_CONTINUOUS
- 		: OPT3001_CONFIGURATION_M_SHUTDOWN;
-@@ -669,21 +649,16 @@ static int opt3001_write_event_config(struct iio_dev *iio,
- 	if (ret < 0) {
- 		dev_err(dev, "failed to read register %02x\n",
- 			OPT3001_CONFIGURATION);
--		goto err;
-+		return ret;
- 	}
- 
- 	reg = ret;
- 	opt3001_set_mode(opt, &reg, mode);
- 
- 	ret = i2c_smbus_write_word_swapped(client, OPT3001_CONFIGURATION, reg);
--	if (ret < 0) {
-+	if (ret < 0)
- 		dev_err(dev, "failed to write register %02x\n",
- 			OPT3001_CONFIGURATION);
--		goto err;
--	}
+-	reg = ret;
+-	opt3001_set_mode(opt, &reg, OPT3001_CONFIGURATION_M_SHUTDOWN);
 -
--err:
--	mutex_unlock(&opt->lock);
+-	ret = i2c_smbus_write_word_swapped(client, OPT3001_CONFIGURATION, reg);
+-	if (ret < 0) {
+-		dev_err(dev, "failed to write register %02x\n",
+-			OPT3001_CONFIGURATION);
+-	}
+-}
+-
+ static const struct opt3001_chip_info opt3001_chip_information = {
+ 	.channels = &opt3001_channels,
+ 	.chan_type = IIO_LIGHT,
+@@ -942,7 +946,6 @@ MODULE_DEVICE_TABLE(of, opt3001_of_match);
  
- 	return ret;
- }
+ static struct i2c_driver opt3001_driver = {
+ 	.probe = opt3001_probe,
+-	.remove = opt3001_remove,
+ 	.id_table = opt3001_id,
+ 
+ 	.driver = {
 
 -- 
 2.47.3
