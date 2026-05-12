@@ -1,82 +1,66 @@
-From: Chia-I Wu <olvaffe@gmail.com>
-Date: Tue, 12 May 2026 10:36:28 -0700
-Subject: [PATCH] drm/panthor: set __GFP_SKIP_KASAN
+From: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Subject: [PATCH 0/2] Khadas VIM4 PWM status LED support
+Date: Tue, 12 May 2026 19:47:27 +0200
+Message-Id: <20260512-add-kvim4-sysled-v1-0-7178719a43e7@aliel.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260512-panthor-kasan-v1-1-d8d3e275d71b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIABtlA2oC/yXMzQ5FMBBA4VeRWWvS1l94FbEYDIakpIPcRLz7L
- Zbf4pwLhDyTQBVd4Olk4dUFmDiCbkI3kuI+GKy2uc6MVRu6fVq9WlDQKaPTorBJ2WJvIDSbp4F
- /769uPsvRztTtzwTu+w/4oywpcQAAAA==
-X-Change-ID: 20260512-panthor-kasan-10477239bad1
-To: Boris Brezillon <boris.brezillon@collabora.com>, 
- Steven Price <steven.price@arm.com>, Liviu Dudau <liviu.dudau@arm.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Rob Clark <robin.clark@oss.qualcomm.com>, Chia-I Wu <olvaffe@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2047; i=olvaffe@gmail.com;
- h=from:subject:message-id; bh=ASiB3HunlPGvoW9uuO3lUbsW+ch1/3mXojcsoRe+zik=;
- b=owGbwMvMwCV2uuv6dHcvAWnG02pJDFnMqbL1Pebrfpx8uyloobn8sZj7fL0r47uNtzUZW+YnM
- avPmcXZUcrCIMbFICumyLJT6fPXwIzCy3eEG9fBzGFlAhnCwMUpABORXMnwP+LmBr44/VUCwtKf
- bFe/WZOrLOxsoVPTsKP6zuc9ZzJ+ZzH8LyqyeB+omLZcm8Xpbf60k86/o9xUF04LeK/tpSf8/Ec
- sNwA=
-X-Developer-Key: i=olvaffe@gmail.com; a=openpgp;
- fpr=8C8F791802BBB330399230F27CB6CD58BE1B6831
-X-Endpoint-Received: by B4 Relay for olvaffe@gmail.com/default with auth_id=776
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQrCMBCF4auUWTvQhKRoryJdxGTUQZNqJi2V0
+ rsb2uX/4H0rCGUmgb5ZIdPMwmOqoU4N+KdLD0IOtUG3umut0uhCwNfM0aD85E0Bz94re7Ha2E5
+ BvX0y3XnZyetwdKbvVOVyjHBzQujHGLn0TaKl4K4bbWDYtj9QbGYBkwAAAA==
+X-Change-ID: 20260512-add-kvim4-sysled-8cc159524561
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Ronald Claveau <linux-kernel-dev@aliel.fr>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1413;
+ i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
+ bh=GdO8sMea8p5bxncxQmac1W2vVytj8wlQkstRRnaIfAw=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQxZz+l2bwpmb9nEdfroq6MT7tJSbjdYdzIs/NZ3OnCU26
+ 17jLKGzHaUsDGJcDLJiiiz9cy1PvLt89MzXPeopMHNYmUCGMHBxCsBEggMYGc5/zeMyzspUTWFZ
+ Gl72LNu1ZZZKoHS9Wu2KmImXrJZ6JDL84VtbeO3ww98eX1LWeBjbsdTxJPh/6XSTCuKV9X3h7/S
+ bCQA=
+X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
+ fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
+X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Pages that can be swapped out should be allocated with __GFP_SKIP_KASAN.
-Rather than setting the flag directly, replace GFP_HIGHUSER by
-(GFP_HIGHUSER_MOVABLE & ~__GFP_MOVABLE) instead, which should match the
-preceding comment better.
+This series adds support for the PWM-driven status LED on the Khadas
+VIM4 board (Amlogic T7).
 
-On a CONFIG_KASAN_HW_TAGS=y system, without __GFP_SKIP_KASAN, the page
-allocator assigns a valid tag to both the kernel mapping and MTE,
-instead of assigning the match-all KASAN_TAG_KERNEL tag to the kernel
-mapping. If userspace also maps the page with PROT_MTE and modifies the
-MTE tag, accessing the page via the kernel mapping results in KASAN
-invalid-access, such as
+The VIM4 exposes a heartbeat LED wired to the PWM_AO_C output, routed
+through pin group pwm_ao_c_d. Before wiring it up in the board DTS,
+the SoC pinmux definitions had to be corrected: the original
+pwm_ao_c node was conflating two distinct pin groups (pwm_ao_c_d and
+pwm_ao_c_e) into a single ambiguous entry.
 
-  BUG: KASAN: invalid-access in swap_writepage+0xb0/0x21c
-  Read at addr f5ffff81aa71dff8 by task WM.task-4/6956
-  Pointer tag: [f5], memory tag: [f9]
+Patch 1 fixes the pwm_ao_c pinmux entries in the T7 DTSI by splitting
+them into two properly named nodes. Neither alternate is in use yet,
+so there is no functional impact on existing boards.
 
-While userspace cannot map drm gem objects with PROT_MTE, the problem is
-shmem_swapin_cluster. When it swaps in a cluster of pages using our gfp
-flags, some of the pages might belong to other mappings that have
-PROT_MTE.
+Patch 2 enables the pwm_ao_cd controller on the VIM4 and adds a
+pwm-leds node with a heartbeat trigger. The xtal-clk node is also
+moved to restore alphabetical ordering among root node children.
 
-Signed-off-by: Chia-I Wu <olvaffe@gmail.com>
+Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
-The latest snapdragons appear to have MTE support. drm/msm might need
-the same treatment.
----
- drivers/gpu/drm/panthor/panthor_gem.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Ronald Claveau (2):
+      arm64: dts: amlogic: t7: Fix pwm_ao_c pinmux definitions
+      arm64: dts: amlogic: t7: khadas-vim4: add PWM-driven status LED
 
-diff --git a/drivers/gpu/drm/panthor/panthor_gem.c b/drivers/gpu/drm/panthor/panthor_gem.c
-index 13295d7a593df..08c03aa0db2f7 100644
---- a/drivers/gpu/drm/panthor/panthor_gem.c
-+++ b/drivers/gpu/drm/panthor/panthor_gem.c
-@@ -1013,7 +1013,8 @@ panthor_gem_create(struct drm_device *dev, size_t size, uint32_t flags,
- 	 * going to pin these pages.
- 	 */
- 	mapping_set_gfp_mask(bo->base.filp->f_mapping,
--			     GFP_HIGHUSER | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);
-+			     (GFP_HIGHUSER_MOVABLE & ~__GFP_MOVABLE) |
-+				     __GFP_RETRY_MAYFAIL | __GFP_NOWARN);
- 
- 	ret = drm_gem_create_mmap_offset(&bo->base);
- 	if (ret)
-
+ .../dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts  | 30 +++++++++++++++++-----
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        | 12 +++++++--
+ 2 files changed, 33 insertions(+), 9 deletions(-)
 ---
-base-commit: 6101f78b684895d5860a96322e607e0f46f433ad
-change-id: 20260512-panthor-kasan-10477239bad1
+base-commit: 31f32e8cdf59291e467250dfc57d1a8c718f63d2
+change-id: 20260512-add-kvim4-sysled-8cc159524561
 
 Best regards,
---  
-Chia-I Wu <olvaffe@gmail.com>
+-- 
+Ronald Claveau <linux-kernel-dev@aliel.fr>
 
