@@ -1,10 +1,10 @@
 From: Roman Vivchar <rva333@protonmail.com>
-Date: Tue, 12 May 2026 08:18:22 +0300
-Subject: [PATCH v2 08/16] mfd: mt6397-core: add mt6323 AUXADC support
+Date: Tue, 12 May 2026 08:18:23 +0300
+Subject: [PATCH v2 09/16] mfd: mt6397-core: add mt6323 EFUSE support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260512-mt6323-v2-8-3efcba579e88@protonmail.com>
+Message-Id: <20260512-mt6323-v2-9-3efcba579e88@protonmail.com>
 References: <20260512-mt6323-v2-0-3efcba579e88@protonmail.com>
 In-Reply-To: <20260512-mt6323-v2-0-3efcba579e88@protonmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -27,17 +27,17 @@ Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org,
  linux-mediatek@lists.infradead.org, linux-pm@vger.kernel.org, 
  Ben Grisdale <bengris32@protonmail.ch>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778563297; l=903;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778563297; l=882;
  i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=AtpQuSBNMLgpeH1t4ADFZid08i2lKNvKchWt3/88KCc=;
- b=CuuD+NcafOOWOnzD4gAzv4G+oQMeaNEqepGujqJAyjg0Fp7F4zUaoi+IKcpL2KxTTSA2Sdbsj
- pHiclbcM/m9B6YhYoPuAL8FrVBvXxn4HLVAZ0IW2g6YWP2X/XvD3/rI
+ bh=GPch+58r1L1I1B+sfDoMb6oSqyH40wZP5mRd3W4Ge0A=;
+ b=tidA5C6NziO4sL+9a0SjQtog/7ftV7CvyorPKf+60ZERSXZz2+v5rX/xDIdLu57Z7UiXac42D
+ iV0kIewiS6lB0Hk3oYfitPbziysOltdHyhzIiYHcUz9FDMuHQWXA0A6
 X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
  pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
 X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The mt6323 PMIC includes an AUXADC. Register the AUXADC in the mt6323
+The mt6323 PMIC includes an EFUSE. Register the EFUSE in the mt6323
 devices array to allow the corresponding driver to probe using compatible
 string.
 
@@ -48,19 +48,19 @@ Signed-off-by: Roman Vivchar <rva333@protonmail.com>
  1 file changed, 3 insertions(+)
 
 diff --git a/drivers/mfd/mt6397-core.c b/drivers/mfd/mt6397-core.c
-index 3e58d0764c7e..013b0857fb54 100644
+index 013b0857fb54..2d9419b80a5c 100644
 --- a/drivers/mfd/mt6397-core.c
 +++ b/drivers/mfd/mt6397-core.c
-@@ -125,6 +125,9 @@ static const struct resource mt6323_pwrc_resources[] = {
- 
- static const struct mfd_cell mt6323_devs[] = {
+@@ -127,6 +127,9 @@ static const struct mfd_cell mt6323_devs[] = {
  	{
-+		.name = "mt6323-auxadc",
-+		.of_compatible = "mediatek,mt6323-auxadc",
+ 		.name = "mt6323-auxadc",
+ 		.of_compatible = "mediatek,mt6323-auxadc",
 +	}, {
++		.name = "mt6323-efuse",
++		.of_compatible = "mediatek,mt6323-efuse",
+ 	}, {
  		.name = "mt6323-rtc",
  		.num_resources = ARRAY_SIZE(mt6323_rtc_resources),
- 		.resources = mt6323_rtc_resources,
 
 -- 
 2.54.0
