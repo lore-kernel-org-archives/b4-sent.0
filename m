@@ -1,10 +1,10 @@
 From: Roman Vivchar <rva333@protonmail.com>
-Date: Tue, 12 May 2026 08:18:24 +0300
-Subject: [PATCH v2 10/16] mfd: mt6397-core: add mt6323 thermal support
+Date: Tue, 12 May 2026 08:18:25 +0300
+Subject: [PATCH v2 11/16] ARM: dts: mediatek: mt6323: add AUXADC support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260512-mt6323-v2-10-3efcba579e88@protonmail.com>
+Message-Id: <20260512-mt6323-v2-11-3efcba579e88@protonmail.com>
 References: <20260512-mt6323-v2-0-3efcba579e88@protonmail.com>
 In-Reply-To: <20260512-mt6323-v2-0-3efcba579e88@protonmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -27,40 +27,40 @@ Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org,
  linux-mediatek@lists.infradead.org, linux-pm@vger.kernel.org, 
  Ben Grisdale <bengris32@protonmail.ch>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778563297; l=903;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778563297; l=814;
  i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=f25MLIxZo0sPtnvFl6vrSY704ngfNfhTeXij+CteVzw=;
- b=gyPil4oXfmTpgD/7W0i+3qHrxuUh6dVoPL7OX6gtnwVi4yQJxCuZdxkC+ZFZx3i2k8xcdKil4
- zhRoRic8tRhBYWeYzWDOqy8bAWNm86j5fGNDpkxfACex+zoC3Qug76Z
+ bh=WC9jUSlABoGBdBqPU8PZ4ZIU5LJl1TAO11/EPH3tS8U=;
+ b=3qtgFRciMoUckjSNO7VTrPE9ieY0L5529M/VxTvWqzOOHDk9VjZjaxi2hzKxvQSyrCg6zKp/8
+ QU/yYGTzFiTCBsiGIYlFT9aDwbe5vWpjfSWwGZ5ZVeom80zxVB2AbOw
 X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
  pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
 X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The mt6323 PMIC temperature can be measured using AUXADC channel.
-Register the thermal in the mt6323 devices array to allow the
-corresponding driver to probe using compatible string.
+Add the devicetree node for the mt6323 AUXADC.
 
 Tested-by: Ben Grisdale <bengris32@protonmail.ch> # Amazon Echo Dot (2nd Generation)
 Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- drivers/mfd/mt6397-core.c | 3 +++
- 1 file changed, 3 insertions(+)
+ arch/arm/boot/dts/mediatek/mt6323.dtsi | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/drivers/mfd/mt6397-core.c b/drivers/mfd/mt6397-core.c
-index 2d9419b80a5c..061ac242f1f8 100644
---- a/drivers/mfd/mt6397-core.c
-+++ b/drivers/mfd/mt6397-core.c
-@@ -151,6 +151,9 @@ static const struct mfd_cell mt6323_devs[] = {
- 		.num_resources = ARRAY_SIZE(mt6323_pwrc_resources),
- 		.resources = mt6323_pwrc_resources,
- 		.of_compatible = "mediatek,mt6323-pwrc"
-+	}, {
-+		.name = "mt6323-thermal",
-+		.of_compatible = "mediatek,mt6323-thermal",
- 	},
- };
+diff --git a/arch/arm/boot/dts/mediatek/mt6323.dtsi b/arch/arm/boot/dts/mediatek/mt6323.dtsi
+index c230c865116d..c070f4b0936c 100644
+--- a/arch/arm/boot/dts/mediatek/mt6323.dtsi
++++ b/arch/arm/boot/dts/mediatek/mt6323.dtsi
+@@ -14,6 +14,11 @@ pmic: mt6323 {
+ 		interrupt-controller;
+ 		#interrupt-cells = <2>;
  
++		mt6323_adc: adc {
++			compatible = "mediatek,mt6323-auxadc";
++			#io-channel-cells = <1>;
++		};
++
+ 		mt6323_leds: leds {
+ 			compatible = "mediatek,mt6323-led";
+ 			#address-cells = <1>;
 
 -- 
 2.54.0
