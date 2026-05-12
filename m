@@ -1,52 +1,62 @@
-From: Joshua Crofts <joshua.crofts1@gmail.com>
-Date: Tue, 12 May 2026 12:57:30 +0200
-Subject: [PATCH v2 10/10] iio: light: opt3001: add comment to mutex
+From: Dipa Ramesh Mantre <dipa.mantre@oss.qualcomm.com>
+Date: Tue, 12 May 2026 16:43:36 +0530
+Subject: [PATCH] dt-bindings: thermal: qcom-tsens: Document the Hawi
+ Temperature Sensor
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260512-opt3001-cleanup-v2-10-8018cf3a8a0a@gmail.com>
-References: <20260512-opt3001-cleanup-v2-0-8018cf3a8a0a@gmail.com>
-In-Reply-To: <20260512-opt3001-cleanup-v2-0-8018cf3a8a0a@gmail.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Alexander Koch <mail@alexanderkoch.net>, 
- Michael Hornung <mhornung.linux@gmail.com>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joshua Crofts <joshua.crofts1@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778583471; l=692;
- i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
- bh=9LCbzPQ+voynoNiKus4VNoaaKdzkjvLt3vAM6THTWlQ=;
- b=C7b7QpXCOmCiaZBpNtXGQLqJYiad35EF6gLzN59OCN+4R+cAJn0jx9wPt4oIGoqeXSi5FRx7U
- Fl2SHx38W0qAnvYCWY5WxMLAOGWGCSMFOvODqtHYuRh0ggI8QvK8daU
-X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
- pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
-X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
+Message-Id: <20260512-dtbinding-hawi-v1-1-96149d06cccf@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAF8LA2oC/x3MQQqAIBBA0avErBPUMLCrRAvTUWdjoVGBePek5
+ Vv8X6FgJiywDBUy3lToSB1iHMBGkwIyct0guZy5EpK5a6fkKAUWzUOMW++1cEr5SUOPzoye3n+
+ 4bq19fdQfvWAAAAA=
+X-Change-ID: 20260512-dtbinding-hawi-0cff91d55f39
+To: Amit Kucheria <amitk@kernel.org>, 
+ Thara Gopinath <thara.gopinath@gmail.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-pm@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ manaf.pallikunhi@oss.qualcomm.com, gaurav.kohli@oss.qualcomm.com, 
+ Dipa Ramesh Mantre <dipa.mantre@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778584419; l=995;
+ i=dipa.mantre@oss.qualcomm.com; s=20260415; h=from:subject:message-id;
+ bh=KOQ0xKaM2gpSifvcaPimSMSf2hpELPm2eIvMUK4YQpE=;
+ b=rXhPDH9HDtxmlzKe2QNLiJ5FOTq62qlnuEqZjTPLFbZelHTpVqb/fm8DfNrPOB9NuV+B/SGeM
+ tuG8TYpq/s5DVrlKRcV6AvgfPBFEU0ijGVvtWpxGp3TtV3RfbXj8Sso
+X-Developer-Key: i=dipa.mantre@oss.qualcomm.com; a=ed25519;
+ pk=IcrgHu2jFHNILPVydQwFqCQq05WcA8wBixw5s+yRMVI=
+X-Endpoint-Received: by B4 Relay for dipa.mantre@oss.qualcomm.com/20260415 with auth_id=736
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add comment to mutex per checkpatch.pl report.
+Document the Temperature Sensor (TSENS) on the Qualcomm Hawi SoC.
 
-No functional change.
-
-Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
+Signed-off-by: Dipa Ramesh Mantre <dipa.mantre@oss.qualcomm.com>
 ---
- drivers/iio/light/opt3001.c | 1 +
+ Documentation/devicetree/bindings/thermal/qcom-tsens.yaml | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/drivers/iio/light/opt3001.c b/drivers/iio/light/opt3001.c
-index 1319e5941b66bd82e4dc2badf5ea27cacbcfd54a..81afee6993d08b1126f07b1c63c3d3496d8b380c 100644
---- a/drivers/iio/light/opt3001.c
-+++ b/drivers/iio/light/opt3001.c
-@@ -104,6 +104,7 @@ struct opt3001 {
- 	struct i2c_client	*client;
- 	struct device		*dev;
- 
-+	/* Mutex for ensuring one executed command at a time */
- 	struct mutex		lock;
- 	bool			ok_to_ignore_lock;
- 	bool			result_ready;
+diff --git a/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml b/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
+index 7d34ba00e684..4fce027e44ad 100644
+--- a/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
++++ b/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
+@@ -56,6 +56,7 @@ properties:
+           - enum:
+               - qcom,eliza-tsens
+               - qcom,glymur-tsens
++              - qcom,hawi-tsens
+               - qcom,kaanapali-tsens
+               - qcom,milos-tsens
+               - qcom,msm8953-tsens
 
+---
+base-commit: e98d21c170b01ddef366f023bbfcf6b31509fa83
+change-id: 20260512-dtbinding-hawi-0cff91d55f39
+
+Best regards,
 -- 
-2.47.3
+Dipa Ramesh Mantre <dipa.mantre@oss.qualcomm.com>
 
