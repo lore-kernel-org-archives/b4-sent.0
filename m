@@ -1,102 +1,94 @@
-From: Joshua Crofts <joshua.crofts1@gmail.com>
-Date: Wed, 13 May 2026 16:35:52 +0200
-Subject: [PATCH] iio: magnetometer: ak8975: ensure device is awake for
- buffered capture
+From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Subject: [PATCH RESEND v7 0/3] riscv: Use GCR.U timer device as clocksource
+Date: Wed, 13 May 2026 17:29:07 +0200
+Message-Id: <20260513-riscv-time-mmio-v7-0-f8925ffc226b@htecgroup.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260513-ak8975-fix-v1-1-104ea605dd54@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAEeMBGoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDU0Nj3cRsC0tzU920zApdU+MkwyQDIwtT85QUJaCGgqJUoDDYsOjY2lo
- AUQqcPFwAAAA=
-X-Change-ID: 20260513-ak8975-fix-53b1b02857dd
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Gregor Boirie <gregor.boirie@parrot.com>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sashiko <sashiko-bot@kernel.org>, Joshua Crofts <joshua.crofts1@gmail.com>
+To: Daniel Lezcano <daniel.lezcano@linaro.org>, 
+ Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Paul Walmsley <paul.walmsley@sifive.com>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ Alexandre Ghiti <alex@ghiti.fr>, Paul Walmsley <pjw@kernel.org>, 
+ John Stultz <jstultz@google.com>, Stephen Boyd <sboyd@kernel.org>, 
+ Vivian Wang <wangruikang@iscas.ac.cn>
+Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-riscv@lists.infradead.org, 
+ Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
+ Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
+ Chao-ying Fu <cfu@mips.com>, Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778682953; l=2687;
- i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
- bh=t9KRDGrt1AwFqcezKrfyVWVsvRmTCT6cOir8KV8zCzQ=;
- b=pgfmeaJf5C7P8Kn+b50rdXeQMnMKI9HhvqalTRYgdX7Eq+EWidWuVRKwcWCLx5AcFXZbiwSLr
- 4X08gT1EMmsB50JpPvnF/vYqgneka5z8V/FvPwo3WN3l+IchwNVM0yv
-X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
- pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
-X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778686158; l=2879;
+ i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
+ bh=ePHchjnhwuY+HtMvCqWbW0nK976smbTfakDyyaKGCPs=;
+ b=DRwgnHWwrSwfSEw/0SDTGvuurI0sp5QwEl0FVn05Jy5bdnIGSmh1xaYASOkbddAcYPWueIr9/
+ v1NHBx13zYlCHo8sodGK1FrRikC6SQbYWb8rQnzeLOnyk62KO6l4trp
+X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
+ pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
+X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently, the ak8975_start_read_axis() can be called while the device
-is autosuspended, causing two issues:
+This series adds bindings for the GCR.U timer device and corresponding
+driver support. Accessing the memory mapped shadow of the mtime register
+in the GCR.U region should be faster
+than trapping to M mode each time the timer needs to be read.
+The timer device does not implement any interrupts, therefore the
+timer-riscv clockevent implementation should suffice.
 
-1. I2C transfers in the aforementioned function will fail or timeout
-because ak8975_runtime_suspend() disables the device regulators.
-2. Since ak8975_fill_buffer() does not hold runtime references,
-ak8975_runtime_suspend() can run concurrently, and since PM callbacks
-do not use a locking mechanism, it may cause a race accessing the
-control register via the I2C bus.
+We tested the patchset both on QEMU and the Boston board with the P8700 bitfile:
+- Coremark and timer kselftests on QEMU emulating an 8 core CPU
+- Coremark and timer kselftests on the Boston board with a single core CPU.
 
-Fix this issue by adding struct iio_buffer_setup_ops that contains
-preenable and postdisable functions to ensure correct that device is
-powered on when running a buffered capture.
-
-Fixes: bc11ca4a0b84 ("iio:magnetometer:ak8975: triggered buffer support")
-Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://sashiko.dev/#/patchset/20260511-magnetometer-fixes-post-pickup-v7-0-9d910faa28b6%40gmail.com
-Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
+Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Signed-off-by: Djordje Todorovic <djordje.todorovic@htecgroup.com>
+Signed-off-by: Chao-ying Fu <cfu@mips.com>
 ---
- drivers/iio/magnetometer/ak8975.c | 24 +++++++++++++++++++++++-
- 1 file changed, 23 insertions(+), 1 deletion(-)
+Changes in v7:
+- Replace the previous implementation with a new timer driver for mips,p8700-gcru
+- Add a patch for 64bit reads for timer mmio
+- Link to v6: https://lore.kernel.org/r/20250806-riscv-time-mmio-v6-0-2df0e8219998@htecgroup.com
 
-diff --git a/drivers/iio/magnetometer/ak8975.c b/drivers/iio/magnetometer/ak8975.c
-index dbab4d0bba348be70e5c8b71678de935879bff42..0fb2fd03d11ce195a67949056c000c473a8d3e99 100644
---- a/drivers/iio/magnetometer/ak8975.c
-+++ b/drivers/iio/magnetometer/ak8975.c
-@@ -899,6 +899,28 @@ static irqreturn_t ak8975_handle_trigger(int irq, void *p)
- 	return IRQ_HANDLED;
- }
- 
-+static int ak8975_buffer_preenable(struct iio_dev *indio_dev)
-+{
-+	struct ak8975_data *data = iio_priv(indio_dev);
-+	struct device *dev = &data->client->dev;
-+
-+	return pm_runtime_resume_and_get(dev);
-+}
-+
-+static int ak8975_buffer_postdisable(struct iio_dev *indio_dev)
-+{
-+	struct ak8975_data *data = iio_priv(indio_dev);
-+	struct device *dev = &data->client->dev;
-+
-+	pm_runtime_put_autosuspend(dev);
-+
-+	return 0;
-+}
-+
-+static const struct iio_buffer_setup_ops ak8975_buffer_setup_ops = {
-+	.preenable = ak8975_buffer_preenable,
-+	.postdisable = ak8975_buffer_postdisable,
-+};
- static int ak8975_probe(struct i2c_client *client)
- {
- 	const struct i2c_device_id *id = i2c_client_get_device_id(client);
-@@ -992,7 +1014,7 @@ static int ak8975_probe(struct i2c_client *client)
- 	indio_dev->name = name;
- 
- 	ret = iio_triggered_buffer_setup(indio_dev, NULL, ak8975_handle_trigger,
--					 NULL);
-+					 &ak8975_buffer_setup_ops);
- 	if (ret) {
- 		dev_err(&client->dev, "triggered buffer setup failed\n");
- 		goto power_off;
+Changes in v6:
+- Rename mti,gcru to mips,p8700-gcru
+- Link to v5: https://lore.kernel.org/r/20250711-riscv-time-mmio-v5-0-9ed1f825ad5e@htecgroup.com
+
+Changes in v5:
+- Fixed build issues on 32-bit RISC-V and sparse warnings
+- Remove clint_time_val and clint.h, replace with riscv_time_val
+- Depend on RISCV_TIMER in Kconfig
+
+Changes in v4:
+- Remove "select" from mti,gcru.yaml.
+- Refactor the driver to use function pointers instead of static keys.
+
+Previous versions:
+v1: https://lore.kernel.org/lkml/20241227150056.191794-1-arikalo@gmail.com/#t
+v2: https://lore.kernel.org/linux-riscv/20250409143816.15802-1-aleksa.paunovic@htecgroup.com/
+v3: https://lore.kernel.org/linux-riscv/DU0PR09MB61968695A2A3146EE83B7708F6BA2@DU0PR09MB6196.eurprd09.prod.outlook.com/
+v4: https://lore.kernel.org/r/20250514-riscv-time-mmio-v4-0-cb0cf2922d66@htecgroup.com
+v5: https://lore.kernel.org/r/20250711-riscv-time-mmio-v5-0-9ed1f825ad5e@htecgroup.com
+v6: https://lore.kernel.org/r/20250806-riscv-time-mmio-v6-0-2df0e8219998@htecgroup.com
 
 ---
-base-commit: 1548c54e9adc32a719499216f63fba14b2fc07c3
-change-id: 20260513-ak8975-fix-53b1b02857dd
+Aleksa Paunovic (3):
+      dt-bindings: timer: mips,p8700-gcru
+      riscv: clocksource: Add readq options to clocksource mmio
+      riscv: clocksource: Add p8700-gcru driver
+
+ .../devicetree/bindings/timer/mips,p8700-gcru.yaml | 38 ++++++++++++++++++
+ drivers/clocksource/Kconfig                        |  9 +++++
+ drivers/clocksource/Makefile                       |  1 +
+ drivers/clocksource/mmio.c                         | 14 +++++++
+ drivers/clocksource/timer-p8700.c                  | 45 ++++++++++++++++++++++
+ include/linux/clocksource.h                        |  4 ++
+ 6 files changed, 111 insertions(+)
+---
+base-commit: ac3fd01e4c1efce8f2c054cdeb2ddd2fc0fb150d
+change-id: 20250424-riscv-time-mmio-5628e0fca8af
 
 Best regards,
 -- 
-Joshua Crofts <joshua.crofts1@gmail.com>
+Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 
