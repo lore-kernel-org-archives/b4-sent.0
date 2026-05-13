@@ -1,78 +1,114 @@
-From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Wed, 13 May 2026 12:43:55 +0200
-Subject: [PATCH v2 3/3] arm64: dts: amlogic: t7: khadas-vim4: add
- PWM-driven status LED
+From: Pawel Laszczak <pawell@cadence.com>
+Subject: [PATCH v6 0/2] usb: cdns3: support configurations without DRD
+ block
+Date: Wed, 13 May 2026 13:44:18 +0200
+Message-Id: <20260513-b4-no_drd_config-v6-0-e7789cd0e581@cadence.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260513-add-kvim4-sysled-v2-3-3ec9779e8875@aliel.fr>
-References: <20260513-add-kvim4-sysled-v2-0-3ec9779e8875@aliel.fr>
-In-Reply-To: <20260513-add-kvim4-sysled-v2-0-3ec9779e8875@aliel.fr>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+X-B4-Tracking: v=1; b=H4sIABJkBGoC/33N0QrCIBgF4FcJrzOmU9u66j0ihv7+bgZp6BrF2
+ Lu3rZuC6PLAOd8ZScbkMZPDZiQJB599DHNQ2w2BTocWqbdzJrzgqpCMUyNoiI1NtoEYnG+pk2X
+ hmGPKVprMs1tC5x8reTq/c76bC0K/OEuj87mP6bl+DmLp/eEHQQu6NwKlhVq5ih1BWwyAO4hXs
+ hwM8pMofxByJhiostTC1JrX38Q0TS+W8S/IBwEAAA==
+X-Change-ID: 20260512-b4-no_drd_config-f530f1f16d8a
+To: Peter Chen <peter.chen@kernel.org>, Roger Quadros <rogerq@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Ronald Claveau <linux-kernel-dev@aliel.fr>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1280;
- i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=2xdbcwmGmHmxRvinJQMTjDVB63/BF5fZ22AOjpf30NU=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQxZLGAe/2O2a+3P475ob7pLlVj5TH3PE96Vip/GKqam2/
- LtVTP53lLIwiHExyIopsvTPtTzx7vLRM1/3qKfAzGFlAhnCwMUpABOxZWb4H8rz9ZbCD4fdmnPv
- fm6YeX9D6AqvSVOr/7fvWzMjwq193XuG/26NkW8q47RFz+RJuS00FPyzrT+VY/eZGWc3+OzWeFQ
- 3lR0A
-X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
- fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
-X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
+Cc: linux-usb@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Pawel Laszczak <pawell@cadence.com>, 
+ Bjorn Helgaas <bhelgaas@google.com>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778672670; l=3527;
+ i=pawell@cadence.com; h=from:subject:message-id;
+ bh=R4JDpEwqyp7vUWVCK1KADNQAmcCo5wwLCVQ4YmtJdts=;
+ b=r/o2bDuIm3XmuKHFtqGGN403hJHsPUwU4uVVxTPvX7KkOqdsZgMO/YhYJ0tOktmo2pubeXwxy
+ cJpNlbDrgGtD3yTNXLwWlLlyG4+zNvbkzuljKsNjssapdV7pw6RTtJC
+X-Developer-Key: i=pawell@cadence.com; a=ed25519;
+ pk=EUPBvLO9CDg7j6defeDl2iqi+z5Ivqu4Z46aiqe7dYc=
+X-Endpoint-Received: by B4 Relay for pawell@cadence.com/default with auth_id=707
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The VIM4 board exposes a status LED wired to the PWM_AO_C_D output.
-Enable the pwm_ao_cd controller with its pinmux, and declare a
-pwm-leds node with a heartbeat trigger.
+usb: cdns3: support configurations without DRD block
 
-Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
+This series adds support for Cadence USBSSP controllers in hardware
+layouts where the Dual-Role Device (DRD) register block is either
+missing or inaccessible.
+
+In such configurations, the controller is hardwired to a single role
+(either host or device) and the driver must skip all OTG/DRD register
+accesses to avoid bus errors or incorrect role detection.
+
+The solution introduces a new 'no_drd' property that can be passed
+via DT or software nodes. When set, the driver:
+1. Skips DRD register mapping and IRQ requests.
+2. Uses a different BAR indexing logic for PCI-based configurations
+   (32-bit addressing layout).
+3. Hardwires the role based on 'dr_mode'.
+
+Signed-off-by: Pawel Laszczak <pawell@cadence.com>
 ---
- .../boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts   | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+Note: This series is based on current linux-next. I am aware of Peter
+Chen's recent refactoring series ("usb: cdns3: plat: Expose platform
+core driver as library"). Although there is a minor conflict in
+cdns3-plat.c, Peter has already provided an Acked-by for this version.
+I am happy to provide a rebased v7 as soon as Peter's changes land in
+linux-next if required.
+---
+v6:
+- Fixed validation error for 'interrupt-names' by correcting
+  the items definition.
+- Adjusted 'minItems'/'maxItems' to properly support the optional
+ 'wakeup' interrupt.
+- Fixed 'too long' schema error in examples.
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
-index fd1b983354a01..c41525a34b721 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
-@@ -53,6 +53,16 @@ dc_in: regulator-dc-in {
- 		regulator-always-on;
- 	};
- 
-+	pwm-leds {
-+		compatible = "pwm-leds";
-+
-+		status {
-+			linux,default-trigger="heartbeat";
-+			max-brightness = <255>;
-+			pwms = <&pwm_ao_cd 0 30040 0>;
-+		};
-+	};
-+
- 	sd_3v3: regulator-sdcard-3v3 {
- 		compatible = "regulator-fixed";
- 		regulator-name = "SD_3V3";
-@@ -163,6 +173,12 @@ &pwm_ab {
- 	pinctrl-names = "default";
- };
- 
-+&pwm_ao_cd {
-+	status = "okay";
-+	pinctrl-0 = <&pwm_ao_c_d_pins>;
-+	pinctrl-names = "default";
-+};
-+
- /* SDIO */
- &sd_emmc_a {
- 	status = "okay";
+v5:
+- Implemented strict conditional validation using if-then-else logic.
+- Enforced 2 register/interrupt items and required 'dr_mode'
+  (host or peripheral) when 'no_drd' is present.
+- Enforced the standard 3 register/interrupt items (otg, host, dev)
+  when 'no_drd' is absent to ensure backward compatibility.
+- Updated 'reg-names' and 'interrupt-names' to use enums in the main
+  properties section to support flexible resource ordering during
+  validation.
 
--- 
-2.49.0
+v4:
+  - Added DT binding documentation for the 'no_drd' property.
+  - Relaxed 'reg' and 'interrupts' requirements in the DT schema (minItems 2)
+    to allow configurations where the OTG/DRD register block is missing.
+  - Moved PCI_DEVICE_ID_CDNS_UDC_USBSSP from pci_ids.h to cdnsp-pci.c
+    to keep the global PCI ID list clean.
+
+v3:
+  - Improved descriptions and comments for better clarity.
+  - Introduced the 'no_drd' property to indicate missing DRD register block.
+  - Added support for fixed host-only and device-only configurations.
+  - Ensured cdns_otg_disable_irq is called only when no_drd is false.
+  - Updated cdns_drd_gadget_on/off to ensure PHY mode is correctly
+    handled even if DRD is disabled.
+
+v2:
+  - Changed otg_irq to be optional.
+  - Added cdns->no_drd check in cdns_power_is_lost.
+  - Added cdns->no_drd check in cdns_get_id.
+
+---
+Pawel Laszczak (2):
+      dt-bindings: usb: cdns3: Add no_drd property
+      usb: cdnsp: Add support for device-only configuration
+
+ .../devicetree/bindings/usb/cdns,usb3.yaml         | 70 +++++++++++++++++++---
+ drivers/usb/cdns3/cdns3-plat.c                     | 26 ++++----
+ drivers/usb/cdns3/cdnsp-pci.c                      | 47 ++++++++++++---
+ drivers/usb/cdns3/core.c                           |  3 +-
+ drivers/usb/cdns3/core.h                           |  4 ++
+ drivers/usb/cdns3/drd.c                            | 44 +++++++++++++-
+ 6 files changed, 162 insertions(+), 32 deletions(-)
+---
+base-commit: e98d21c170b01ddef366f023bbfcf6b31509fa83
+change-id: 20260512-b4-no_drd_config-f530f1f16d8a
+
+Best regards,
+--  
+Pawel Laszczak <pawell@cadence.com>
 
