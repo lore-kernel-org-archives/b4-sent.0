@@ -1,11 +1,10 @@
 From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-Date: Wed, 13 May 2026 17:29:09 +0200
-Subject: [PATCH RESEND v7 2/3] riscv: clocksource: Add readq options to
- clocksource mmio
+Date: Wed, 13 May 2026 17:29:10 +0200
+Subject: [PATCH RESEND v7 3/3] riscv: clocksource: Add p8700-gcru driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260513-riscv-time-mmio-v7-2-f8925ffc226b@htecgroup.com>
+Message-Id: <20260513-riscv-time-mmio-v7-3-f8925ffc226b@htecgroup.com>
 References: <20260513-riscv-time-mmio-v7-0-f8925ffc226b@htecgroup.com>
 In-Reply-To: <20260513-riscv-time-mmio-v7-0-f8925ffc226b@htecgroup.com>
 To: Daniel Lezcano <daniel.lezcano@linaro.org>, 
@@ -23,65 +22,111 @@ Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org,
  Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
  Chao-ying Fu <cfu@mips.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778686158; l=1888;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778686158; l=3250;
  i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
- bh=Jv3vpBN1+Uh24vJH4CQZDSOQFXoXTNQJWJ4G2f0Tyms=;
- b=4kpf+EMPbfGjaxnf9vD+A3laptT18SJFJPnFZcHz0/gp0ClnPrnSu6ztZBVE1qtPrVPDSCWWt
- HLh7kE+l0TlDLy24QvKcp1en65ukAK/sfikCj/NO6GXMKOD948ksd+w
+ bh=6tKjaKViZn8P2amTu2oO3Kpu4d2sX/LUMZ6acjvMpRY=;
+ b=yqFqFT2FlIVTgi2TVjxUCDiuHbeM0zfUfHwtCFK/BVCMLLwbzX6HmPi9VsScWzC1TmZZKh3M1
+ yIQ6AE1h1zgBSAo5e/Uu/YHaPEOJqniGucbSIFilTsV15hi6KHCnTOm
 X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
  pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
 X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add read functions for 64-bit register size to the generic
-mmio clocksource, covering both up and down counters.
+Add a clocksource driver for the P8700 GCRU.
+
+Initialization uses helper functions
+provided by clocksource/mmio.c and timer-of.c.
+
+Since the GCRU does not support any kind of interrupts,
+the default RISC-V clockevent implementation should suffice.
 
 Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
 ---
- drivers/clocksource/mmio.c  | 14 ++++++++++++++
- include/linux/clocksource.h |  4 ++++
- 2 files changed, 18 insertions(+)
+ drivers/clocksource/Kconfig       |  9 ++++++++
+ drivers/clocksource/Makefile      |  1 +
+ drivers/clocksource/timer-p8700.c | 45 +++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 55 insertions(+)
 
-diff --git a/drivers/clocksource/mmio.c b/drivers/clocksource/mmio.c
-index 9de75153183124cc8997c6ab61d0c01d9b2637bc..6329d8ce2c0911b5c6de34346b5ca8de40b93099 100644
---- a/drivers/clocksource/mmio.c
-+++ b/drivers/clocksource/mmio.c
-@@ -17,6 +17,20 @@ static inline struct clocksource_mmio *to_mmio_clksrc(struct clocksource *c)
- 	return container_of(c, struct clocksource_mmio, clksrc);
- }
+diff --git a/drivers/clocksource/Kconfig b/drivers/clocksource/Kconfig
+index ffcd23668763fe7707a4e917bf240caadbb09a8c..861e7b8c93376b345e3a488dabe435d06a42f357 100644
+--- a/drivers/clocksource/Kconfig
++++ b/drivers/clocksource/Kconfig
+@@ -672,6 +672,15 @@ config CLINT_TIMER
+ 	  This option enables the CLINT timer for RISC-V systems.  The CLINT
+ 	  driver is usually used for NoMMU RISC-V systems.
  
-+#if defined(readq_relaxed)
++config P8700_TIMER
++	bool "MIPS P8700 timer driver"
++	depends on GENERIC_SCHED_CLOCK && RISCV && RISCV_SBI
++	select CLKSRC_MMIO
++	select TIMER_PROBE
++	select TIMER_OF
++	help
++	  Enables support for MIPS P8700 timer driver.
 +
-+u64 clocksource_mmio_readq_up(struct clocksource *c)
+ config CSKY_MP_TIMER
+ 	bool "SMP Timer for the C-SKY platform" if COMPILE_TEST
+ 	depends on CSKY
+diff --git a/drivers/clocksource/Makefile b/drivers/clocksource/Makefile
+index ec4452ee958f1a814c708aeba6412bea61d24892..fae9a58d6c8663a7c857b9ab7fdae05782b3551c 100644
+--- a/drivers/clocksource/Makefile
++++ b/drivers/clocksource/Makefile
+@@ -95,3 +95,4 @@ obj-$(CONFIG_CLKSRC_LOONGSON1_PWM)	+= timer-loongson1-pwm.o
+ obj-$(CONFIG_EP93XX_TIMER)		+= timer-ep93xx.o
+ obj-$(CONFIG_RALINK_TIMER)		+= timer-ralink.o
+ obj-$(CONFIG_NXP_STM_TIMER)		+= timer-nxp-stm.o
++obj-$(CONFIG_P8700_TIMER)		+= timer-p8700.o
+diff --git a/drivers/clocksource/timer-p8700.c b/drivers/clocksource/timer-p8700.c
+new file mode 100644
+index 0000000000000000000000000000000000000000..220ed8efdfe5544a3f925ad43b8faf2e0565557b
+--- /dev/null
++++ b/drivers/clocksource/timer-p8700.c
+@@ -0,0 +1,45 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (C) 2025 MIPS.
++ */
++
++#include <linux/sched_clock.h>
++#include <linux/delay.h>
++#include <linux/of_address.h>
++#include <linux/init.h>
++#include <linux/interrupt.h>
++#include <linux/clocksource.h>
++
++#include "timer-of.h"
++
++static struct timer_of gcru_of = { .flags = TIMER_OF_BASE };
++static u64 __iomem *p8700_time_val __ro_after_init;
++
++static u64 notrace p8700_timer_sched_read(void)
 +{
-+	return (u64)readq_relaxed(to_mmio_clksrc(c)->reg);
++	return (u64)readq_relaxed(p8700_time_val);
 +}
 +
-+u64 clocksource_mmio_readq_down(struct clocksource *c)
++static int __init p8700_timer_init(struct device_node *node)
 +{
-+	return ~(u64)readq_relaxed(to_mmio_clksrc(c)->reg) & c->mask;
++	int error = 0;
++
++	error = timer_of_init(node, &gcru_of);
++	if (error)
++		return error;
++
++	p8700_time_val = timer_of_base(&gcru_of);
++	/* Now init the mmio timer with the address we got from DT */
++	error = clocksource_mmio_init(p8700_time_val, "mips,p8700-gcru",
++				      riscv_timebase, 450, 64,
++				      clocksource_mmio_readq_up);
++	if (error)
++		return error;
++
++	/* Sched clock */
++	sched_clock_register(p8700_timer_sched_read, 64, riscv_timebase);
++
++	return error;
 +}
 +
-+#endif
-+
- u64 clocksource_mmio_readl_up(struct clocksource *c)
- {
- 	return (u64)readl_relaxed(to_mmio_clksrc(c)->reg);
-diff --git a/include/linux/clocksource.h b/include/linux/clocksource.h
-index 65b7c41471c390463770c2da13694e58e83b84ea..df8ea45ec60a28e0276020cb95ab5328bec89879 100644
---- a/include/linux/clocksource.h
-+++ b/include/linux/clocksource.h
-@@ -276,6 +276,10 @@ static inline void clocksource_arch_init(struct clocksource *cs) { }
- 
- extern int timekeeping_notify(struct clocksource *clock);
- 
-+#if defined(readq_relaxed)
-+extern u64 clocksource_mmio_readq_up(struct clocksource *c);
-+extern u64 clocksource_mmio_readq_down(struct clocksource *c);
-+#endif
- extern u64 clocksource_mmio_readl_up(struct clocksource *);
- extern u64 clocksource_mmio_readl_down(struct clocksource *);
- extern u64 clocksource_mmio_readw_up(struct clocksource *);
++TIMER_OF_DECLARE(p8700_timer, "mips,p8700-gcru", p8700_timer_init);
 
 -- 
 2.43.0
