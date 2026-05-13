@@ -1,11 +1,11 @@
 From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Wed, 13 May 2026 12:43:54 +0200
-Subject: [PATCH v2 2/3] arm64: dts: amlogic: t7: khadas-vim4: reorder root
- node
+Date: Wed, 13 May 2026 12:43:55 +0200
+Subject: [PATCH v2 3/3] arm64: dts: amlogic: t7: khadas-vim4: add
+ PWM-driven status LED
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260513-add-kvim4-sysled-v2-2-3ec9779e8875@aliel.fr>
+Message-Id: <20260513-add-kvim4-sysled-v2-3-3ec9779e8875@aliel.fr>
 References: <20260513-add-kvim4-sysled-v2-0-3ec9779e8875@aliel.fr>
 In-Reply-To: <20260513-add-kvim4-sysled-v2-0-3ec9779e8875@aliel.fr>
 To: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -17,57 +17,61 @@ Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Ronald Claveau <linux-kernel-dev@aliel.fr>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1197;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1280;
  i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=3G/s+tL1aEZqmNnatksprjAgR3heihJkkWRnLe3A2sA=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQxZLGNv1+I0r086/u3rve8enBxNKzk5j6ttW4f/N6P3zC
- sufopyFHaUsDGJcDLJiiiz9cy1PvLt89MzXPeopMHNYmUCGMHBxCsBE4rYwMqzYztjWVZ20+8XC
- VWesIuae+2tocXK3j+Fqz798R9coHF/N8D/yQNV77SCOUwGTPq49bTTHY8HTmOQJNzSlZ3DUulq
- ZqrADAA==
+ bh=2xdbcwmGmHmxRvinJQMTjDVB63/BF5fZ22AOjpf30NU=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQxZLGAe/2O2a+3P475ob7pLlVj5TH3PE96Vip/GKqam2/
+ LtVTP53lLIwiHExyIopsvTPtTzx7vLRM1/3qKfAzGFlAhnCwMUpABOxZWb4H8rz9ZbCD4fdmnPv
+ fm6YeX9D6AqvSVOr/7fvWzMjwq193XuG/26NkW8q47RFz+RJuS00FPyzrT+VY/eZGWc3+OzWeFQ
+ 3lR0A
 X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
  fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
 X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move the xtal-clk node to restore alphabetical ordering.
+The VIM4 board exposes a status LED wired to the PWM_AO_C_D output.
+Enable the pwm_ao_cd controller with its pinmux, and declare a
+pwm-leds node with a heartbeat trigger.
 
 Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- .../boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts     | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+ .../boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts   | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
 diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
-index 69d6118ba57e7..fd1b983354a01 100644
+index fd1b983354a01..c41525a34b721 100644
 --- a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
 +++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
-@@ -45,13 +45,6 @@ secmon_reserved_bl32: secmon@5300000 {
- 		};
+@@ -53,6 +53,16 @@ dc_in: regulator-dc-in {
+ 		regulator-always-on;
  	};
  
--	xtal: xtal-clk {
--		compatible = "fixed-clock";
--		clock-frequency = <24000000>;
--		clock-output-names = "xtal";
--		#clock-cells = <0>;
--	};
--
- 	dc_in: regulator-dc-in {
- 		compatible = "regulator-fixed";
- 		regulator-name = "DC_IN";
-@@ -155,6 +148,13 @@ wifi32k: wifi32k {
- 		clock-frequency = <32768>;
- 			pwms = <&pwm_ab 0 30518 0>;
- 	};
++	pwm-leds {
++		compatible = "pwm-leds";
 +
-+	xtal: xtal-clk {
-+		compatible = "fixed-clock";
-+		clock-frequency = <24000000>;
-+		clock-output-names = "xtal";
-+		#clock-cells = <0>;
++		status {
++			linux,default-trigger="heartbeat";
++			max-brightness = <255>;
++			pwms = <&pwm_ao_cd 0 30040 0>;
++		};
 +	};
++
+ 	sd_3v3: regulator-sdcard-3v3 {
+ 		compatible = "regulator-fixed";
+ 		regulator-name = "SD_3V3";
+@@ -163,6 +173,12 @@ &pwm_ab {
+ 	pinctrl-names = "default";
  };
  
- &pwm_ab {
++&pwm_ao_cd {
++	status = "okay";
++	pinctrl-0 = <&pwm_ao_c_d_pins>;
++	pinctrl-names = "default";
++};
++
+ /* SDIO */
+ &sd_emmc_a {
+ 	status = "okay";
 
 -- 
 2.49.0
