@@ -1,117 +1,85 @@
-From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Thu, 14 May 2026 23:18:13 +0530
-Subject: [PATCH] Bluetooth: btmtk: Fix FUNC_CTRL parsing for devices with
- zero-length payloads
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v3 0/2] drm/panel: Add panel driver for Chipone ICNA35XX
+ based panels
+Date: Thu, 14 May 2026 16:29:15 -0500
+Message-Id: <20260514-icna35xx-v3-0-c304f04c32c4@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260514-bluetooh-fix-mt7922-v1-1-499c878af1e5@zohomail.in>
-X-B4-Tracking: v=1; b=H4sIANwKBmoC/yXMQQqDMBCF4avIrB3QwSrpVYoLx050RE1JohTEu
- zfW5cfj/QcE8SoBntkBXnYN6taEMs+gH7t1ENR3MlBBdfEoK+R5k+jciFa/uMTGEKEhZhZriQx
- Den68pPVffbW3w8aT9PFKwXn+AIppPYt3AAAA
-X-Change-ID: 20260514-bluetooh-fix-mt7922-92bbbeff229b
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Tristan Madani <tristan@talencesecurity.com>
-Cc: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>, 
- linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
- stable@vger.kernel.org, Shivam Kalra <shivamkalra98@zohomail.in>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778780918; l=3281;
- i=shivamkalra98@zohomail.in; s=20260402; h=from:subject:message-id;
- bh=bcjmkVn6V3NtLKEjGgmZqORTUn19c/SPpadc1fesit4=;
- b=/01nuKC6TNTxIJytg/c6BI11qqo/OIDmX6XK3217Rpx6jibl/qWUCcWwasbS3GKv892fZ2oGI
- SPlPJOfwOb7Bb7mBGJhTkzaJRnWAUswPzEcElVilQ2/qgwkjMgJeW7S
-X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
- pk=U8kQSxcte8P8iZ6zB7phIj+Yl+i/5ntifBGuclgypx8=
-X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260402 with auth_id=716
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/02PTW6DMBCFr4K8riuPjY1h1XtUWYztcWKpQIIJI
+ oq4e11YlOUbzfd+3izTlCizrnqziZaU0zgUoT4q5m84XImnUDSTQhohpeDJD6j0unLyLUYERYD
+ Iyvt9opjW3er7cuiJHs/iOB9H5jAT92Pfp7mrqLVBgodGOAEhUFTGRCGVc9FH4xRo0Ua0ip2bd
+ NXRAxqOr4E/fLZaCw7Gi8YZFUiabrHsL/6W8jxOr33YAnv+zhbb/w0LcMGNtUGFmkDE9uvaY/r
+ 5LCV3k0WeQKhPoCxgrdEHCBG1MWdw27ZfEJCflFgBAAA=
+X-Change-ID: 20260220-icna35xx-ec9afa13e1aa
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>, 
+ Teguh Sobirin <teguh@sobir.in>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778794180; l=2148;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=SbsBVDltEsAEw0XMf+/R1l5EehsrIDBu3yBrZiL89Zg=;
+ b=eRgWM/GviVsKIIMDZ42FpgkiCbQMwLJ+9I+tXq38amhmUz/86ZpxrRJyoDbrzOrZQuybHEWFx
+ P8KPlqiXipeDfq0JVg0/gdcpwp+9XtdJpq/4N9sanKd1yf3dWImW+xI
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 634a4408c061 ("Bluetooth: btmtk: validate WMT event SKB length
-before struct access") added strict SKB length checks to prevent OOB
-memory reads when parsing WMT events.
+This driver is based on the one by Teguh Sobirin [0].
+    
+Due to [1], the AYN vendor description patch has been folded into the
+AYN QCS8550 dt series. Which means this series depends on said series
+and it must be picked up before this.
 
-However, when enabling the protocol (flag = 0), the MT7922 returns a WMT
-event with a zero-length payload (skb->len == 7), omitting the 2-byte
-status field entirely.
+[0] https://github.com/AYNTechnologies/linux/commit/4c5e76e974db7cca853619ca138eecd8f004622f
+[1] https://lore.kernel.org/linux-arm-msm/c7fb3f89-6574-4761-9ef2-2fdf6d4801b5@kernel.org
 
-The strict sizeof() check unconditionally enforced the presence of the
-status field for all BTMTK_WMT_FUNC_CTRL events. This caused the driver
-to reject these payload-less responses with -EINVAL, failing Bluetooth
-initialization ("Failed to send wmt func ctrl (-22)").
-
-Fix this by making skb_pull_data() conditional: if the status payload is
-present, parse it as before; if omitted, default to BTMTK_WMT_ON_UNDONE.
-This restores the pre-regression initialization behavior while
-maintaining the memory safety bounds of the previous patch.
-
-Fixes: 634a4408c061 ("Bluetooth: btmtk: validate WMT event SKB length before struct access")
-Closes: https://bugzilla.kernel.org/show_bug.cgi?id=221511
-Cc: stable@vger.kernel.org
-Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-Tested on a laptop with a single MediaTek MT7922 (USB ID 0489:e0e0)
-Bluetooth controller. Before this patch, Bluetooth initialization failed
-with "Failed to send wmt func ctrl (-22)" on every boot. After applying
-this patch, initialization succeeds reliably.
+Changes in v3:
+- Rename binding in patch 1 to icna3512 to match a compatible being used
+- Edit commit messages in both patches 1 and 2 to better clarify the
+  supported hardware and differences
+- Link to v2: https://lore.kernel.org/r/20260514-icna35xx-v2-0-45acd1dfa566@gmail.com
 
-This regression is also reported by other users on the kernel bug
-tracker [1].
-
-Note: btmtksdio.c and btmtkuart.c have similar FUNC_CTRL parsing code
-but were not modified by the original commit 634a4408c061, so they are
-not affected by this regression and do not require changes.
-
-[1] https://bugzilla.kernel.org/show_bug.cgi?id=221511
----
- drivers/bluetooth/btmtk.c | 24 ++++++++++++------------
- 1 file changed, 12 insertions(+), 12 deletions(-)
-
-diff --git a/drivers/bluetooth/btmtk.c b/drivers/bluetooth/btmtk.c
-index f70c1b0f8990..026e5a76b086 100644
---- a/drivers/bluetooth/btmtk.c
-+++ b/drivers/bluetooth/btmtk.c
-@@ -717,19 +717,19 @@ static int btmtk_usb_hci_wmt_sync(struct hci_dev *hdev,
- 			status = BTMTK_WMT_PATCH_DONE;
- 		break;
- 	case BTMTK_WMT_FUNC_CTRL:
--		if (!skb_pull_data(data->evt_skb,
--				   sizeof(wmt_evt_funcc->status))) {
--			err = -EINVAL;
--			goto err_free_skb;
--		}
--
--		wmt_evt_funcc = (struct btmtk_hci_wmt_evt_funcc *)wmt_evt;
--		if (be16_to_cpu(wmt_evt_funcc->status) == 0x404)
--			status = BTMTK_WMT_ON_DONE;
--		else if (be16_to_cpu(wmt_evt_funcc->status) == 0x420)
--			status = BTMTK_WMT_ON_PROGRESS;
--		else
-+		if (skb_pull_data(data->evt_skb,
-+				  sizeof(wmt_evt_funcc->status))) {
-+			wmt_evt_funcc =
-+				(struct btmtk_hci_wmt_evt_funcc *)wmt_evt;
-+			if (be16_to_cpu(wmt_evt_funcc->status) == 0x404)
-+				status = BTMTK_WMT_ON_DONE;
-+			else if (be16_to_cpu(wmt_evt_funcc->status) == 0x420)
-+				status = BTMTK_WMT_ON_PROGRESS;
-+			else
-+				status = BTMTK_WMT_ON_UNDONE;
-+		} else {
- 			status = BTMTK_WMT_ON_UNDONE;
-+		}
- 		break;
- 	case BTMTK_WMT_PATCH_DWNLD:
- 		if (wmt_evt->whdr.flag == 2)
+Changes in v2:
+- Fix lint warning in patch 1
+- Add ayaneo,pocketds-panel-top compatible to patches 1 and 2, it uses the
+  same init sequence as the odin 2 portal panel.
+- Link to v1: https://lore.kernel.org/r/20260509-icna35xx-v1-0-688d3d4e10f9@gmail.com
 
 ---
-base-commit: 5d6919055dec134de3c40167a490f33c74c12581
-change-id: 20260514-bluetooh-fix-mt7922-92bbbeff229b
+Aaron Kling (1):
+      dt-bindings: display: panel: Add Chipone ICNA3512 OLED driver bindings
+
+Teguh Sobirin (1):
+      drm/panel: Add panel driver for Chipone ICNA35XX based panels
+
+ .../bindings/display/panel/chipone,icna3512.yaml   |  79 +++
+ drivers/gpu/drm/panel/Kconfig                      |  11 +
+ drivers/gpu/drm/panel/Makefile                     |   1 +
+ drivers/gpu/drm/panel/panel-chipone-icna35xx.c     | 619 +++++++++++++++++++++
+ 4 files changed, 710 insertions(+)
+---
+base-commit: e98d21c170b01ddef366f023bbfcf6b31509fa83
+change-id: 20260220-icna35xx-ec9afa13e1aa
+prerequisite-change-id: 20260217-ayn-qcs8550-16c07b63de26:v8
+prerequisite-patch-id: 2b010637c46f5ea0e19a2fa87cc5ccb19bfd9204
+prerequisite-patch-id: d0c633dc17f0aba726a8e8d21fee52b944bf67ff
+prerequisite-patch-id: 11f4208bd788df984cec7404088c7d071ec49dfc
+prerequisite-patch-id: 76b61799dba520fc7fa3ff39b044e24103337af3
+prerequisite-patch-id: 3844bef2eda3cf59031b1d131eb6ba9295629bb4
+prerequisite-patch-id: 3331648bc6f4ac3bb156f0525aa1ede92bfc57f1
 
 Best regards,
---  
-Shivam Kalra <shivamkalra98@zohomail.in>
+-- 
+Aaron Kling <webgeek1234@gmail.com>
 
