@@ -1,709 +1,117 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Thu, 14 May 2026 12:24:50 -0500
-Subject: [PATCH v2 2/2] drm/panel: Add panel driver for Chipone ICNA35XX
- based panels
+From: Shivam Kalra <shivamkalra98@zohomail.in>
+Date: Thu, 14 May 2026 23:18:13 +0530
+Subject: [PATCH] Bluetooth: btmtk: Fix FUNC_CTRL parsing for devices with
+ zero-length payloads
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260514-icna35xx-v2-2-45acd1dfa566@gmail.com>
-References: <20260514-icna35xx-v2-0-45acd1dfa566@gmail.com>
-In-Reply-To: <20260514-icna35xx-v2-0-45acd1dfa566@gmail.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>, 
- Teguh Sobirin <teguh@sobir.in>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778779494; l=21463;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=WYsvMww8D6mqwDduuTpzx3oa6Jo1gmXztRQGqBA6MWQ=;
- b=7B2VC9hgvmIW1R2cWcgmedNvn4VPDzRQ/aarg5CqKO9qbJXpeNputJnDuEflw6JdzQ/kmhQXT
- xR+sbEwyCvnDDv6RJeAM0IeOAsHio246io6fIVY+9K0TdTatYKo3/yH
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+Message-Id: <20260514-bluetooh-fix-mt7922-v1-1-499c878af1e5@zohomail.in>
+X-B4-Tracking: v=1; b=H4sIANwKBmoC/yXMQQqDMBCF4avIrB3QwSrpVYoLx050RE1JohTEu
+ zfW5cfj/QcE8SoBntkBXnYN6taEMs+gH7t1ENR3MlBBdfEoK+R5k+jciFa/uMTGEKEhZhZriQx
+ Den68pPVffbW3w8aT9PFKwXn+AIppPYt3AAAA
+X-Change-ID: 20260514-bluetooh-fix-mt7922-92bbbeff229b
+To: Marcel Holtmann <marcel@holtmann.org>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Tristan Madani <tristan@talencesecurity.com>
+Cc: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>, 
+ linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
+ stable@vger.kernel.org, Shivam Kalra <shivamkalra98@zohomail.in>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778780918; l=3281;
+ i=shivamkalra98@zohomail.in; s=20260402; h=from:subject:message-id;
+ bh=bcjmkVn6V3NtLKEjGgmZqORTUn19c/SPpadc1fesit4=;
+ b=/01nuKC6TNTxIJytg/c6BI11qqo/OIDmX6XK3217Rpx6jibl/qWUCcWwasbS3GKv892fZ2oGI
+ SPlPJOfwOb7Bb7mBGJhTkzaJRnWAUswPzEcElVilQ2/qgwkjMgJeW7S
+X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
+ pk=U8kQSxcte8P8iZ6zB7phIj+Yl+i/5ntifBGuclgypx8=
+X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260402 with auth_id=716
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Teguh Sobirin <teguh@sobir.in>
+Commit 634a4408c061 ("Bluetooth: btmtk: validate WMT event SKB length
+before struct access") added strict SKB length checks to prevent OOB
+memory reads when parsing WMT events.
 
-This adds support for the ICNA3512 and ICNA3520 DDICs used in the AYN
-Odin 2 Portal and for both the AYN Odin 3 and the AYN Thor top panel
-respectively.
+However, when enabling the protocol (flag = 0), the MT7922 returns a WMT
+event with a zero-length payload (skb->len == 7), omitting the 2-byte
+status field entirely.
 
-Signed-off-by: Teguh Sobirin <teguh@sobir.in>
-Co-developed-by: Aaron Kling <webgeek1234@gmail.com>
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+The strict sizeof() check unconditionally enforced the presence of the
+status field for all BTMTK_WMT_FUNC_CTRL events. This caused the driver
+to reject these payload-less responses with -EINVAL, failing Bluetooth
+initialization ("Failed to send wmt func ctrl (-22)").
+
+Fix this by making skb_pull_data() conditional: if the status payload is
+present, parse it as before; if omitted, default to BTMTK_WMT_ON_UNDONE.
+This restores the pre-regression initialization behavior while
+maintaining the memory safety bounds of the previous patch.
+
+Fixes: 634a4408c061 ("Bluetooth: btmtk: validate WMT event SKB length before struct access")
+Closes: https://bugzilla.kernel.org/show_bug.cgi?id=221511
+Cc: stable@vger.kernel.org
+Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
- drivers/gpu/drm/panel/Kconfig                  |  11 +
- drivers/gpu/drm/panel/Makefile                 |   1 +
- drivers/gpu/drm/panel/panel-chipone-icna35xx.c | 619 +++++++++++++++++++++++++
- 3 files changed, 631 insertions(+)
+Tested on a laptop with a single MediaTek MT7922 (USB ID 0489:e0e0)
+Bluetooth controller. Before this patch, Bluetooth initialization failed
+with "Failed to send wmt func ctrl (-22)" on every boot. After applying
+this patch, initialization succeeds reliably.
 
-diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
-index 7450b27622a233..1368b5a0b6c912 100644
---- a/drivers/gpu/drm/panel/Kconfig
-+++ b/drivers/gpu/drm/panel/Kconfig
-@@ -105,6 +105,17 @@ config DRM_PANEL_BOE_TV101WUM_LL2
- 	  Say Y here if you want to support for BOE TV101WUM-LL2
- 	  WUXGA PANEL DSI Video Mode panel
- 
-+config DRM_PANEL_CHIPONE_ICNA35XX
-+	tristate "Chipone ICNA35XX panel driver"
-+	depends on OF
-+	depends on DRM_MIPI_DSI
-+	depends on BACKLIGHT_CLASS_DEVICE
-+	select DRM_DISPLAY_HELPER
-+	help
-+	  Say Y here if you want to enable support for the panels built
-+	  around the Chipone ICNA3512 and ICNA3520 display controllers,
-+	  such as some Tianma panels used in AYN Odin2 Portal and Thor.
-+
- config DRM_PANEL_CHIPWEALTH_CH13726A
- 	tristate "CHIPWEALTH CH13726A-based DSI panel"
- 	depends on OF
-diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
-index c2c5cf81711633..d39a8f82fa8c06 100644
---- a/drivers/gpu/drm/panel/Makefile
-+++ b/drivers/gpu/drm/panel/Makefile
-@@ -9,6 +9,7 @@ obj-$(CONFIG_DRM_PANEL_BOE_TD4320) += panel-boe-td4320.o
- obj-$(CONFIG_DRM_PANEL_BOE_TH101MB31UIG002_28A) += panel-boe-th101mb31ig002-28a.o
- obj-$(CONFIG_DRM_PANEL_BOE_TV101WUM_LL2) += panel-boe-tv101wum-ll2.o
- obj-$(CONFIG_DRM_PANEL_BOE_TV101WUM_NL6) += panel-boe-tv101wum-nl6.o
-+obj-$(CONFIG_DRM_PANEL_CHIPONE_ICNA35XX) += panel-chipone-icna35xx.o
- obj-$(CONFIG_DRM_PANEL_CHIPWEALTH_CH13726A) += panel-chipwealth-ch13726a.o
- obj-$(CONFIG_DRM_PANEL_DSI_CM) += panel-dsi-cm.o
- obj-$(CONFIG_DRM_PANEL_LVDS) += panel-lvds.o
-diff --git a/drivers/gpu/drm/panel/panel-chipone-icna35xx.c b/drivers/gpu/drm/panel/panel-chipone-icna35xx.c
-new file mode 100644
-index 00000000000000..958f205a7f4f93
---- /dev/null
-+++ b/drivers/gpu/drm/panel/panel-chipone-icna35xx.c
-@@ -0,0 +1,619 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Chipone ICNA35XX Driver IC panels driver
-+ *
-+ * Copyright (c) 2025 Teguh Sobirin <teguh@sobir.in>
-+ */
-+
-+#include <linux/backlight.h>
-+#include <linux/delay.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/module.h>
-+#include <linux/of.h>
-+#include <linux/of_graph.h>
-+#include <linux/regulator/consumer.h>
-+
-+#include <video/mipi_display.h>
-+
-+#include <drm/display/drm_dsc.h>
-+#include <drm/display/drm_dsc_helper.h>
-+#include <drm/drm_connector.h>
-+#include <drm/drm_crtc.h>
-+#include <drm/drm_mipi_dsi.h>
-+#include <drm/drm_modes.h>
-+#include <drm/drm_panel.h>
-+
-+struct panel_info {
-+	struct drm_panel panel;
-+	struct drm_connector *connector;
-+	struct mipi_dsi_device *dsi;
-+	struct panel_desc *desc;
-+	enum drm_panel_orientation orientation;
-+
-+	struct gpio_desc *reset_gpio;
-+	struct regulator_bulk_data *supplies;
-+};
-+
-+struct panel_desc {
-+	unsigned int width_mm;
-+	unsigned int height_mm;
-+
-+	unsigned int bpc;
-+	unsigned int lanes;
-+	unsigned long mode_flags;
-+	enum mipi_dsi_pixel_format format;
-+
-+	const struct drm_display_mode *modes;
-+	unsigned int num_modes;
-+	int (*init_sequence)(struct panel_info *pinfo);
-+
-+	struct drm_dsc_config dsc;
-+};
-+
-+static const struct regulator_bulk_data panel_supplies[] = {
-+	{ .supply = "vdd" },
-+	{ .supply = "vddio" },
-+	{ .supply = "vci" },
-+	{ .supply = "disp" },
-+	{ .supply = "blvdd" },
-+};
-+
-+static inline struct panel_info *to_panel_info(struct drm_panel *panel)
-+{
-+	return container_of(panel, struct panel_info, panel);
-+}
-+
-+static int icna35xx_get_current_mode(struct panel_info *pinfo)
-+{
-+	struct drm_connector *connector = pinfo->connector;
-+	struct drm_crtc_state *crtc_state;
-+	int i;
-+
-+	/* Return the default (first) mode if no info available yet */
-+	if (!connector->state || !connector->state->crtc)
-+		return 0;
-+
-+	crtc_state = connector->state->crtc->state;
-+
-+	for (i = 0; i < pinfo->desc->num_modes; i++) {
-+		if (drm_mode_match(&crtc_state->mode,
-+				   &pinfo->desc->modes[i],
-+				   DRM_MODE_MATCH_TIMINGS | DRM_MODE_MATCH_CLOCK))
-+			return i;
-+	}
-+
-+	return 0;
-+}
-+
-+static int icna3512_init_sequence(struct panel_info *pinfo)
-+{
-+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = pinfo->dsi };
-+	struct drm_dsc_picture_parameter_set pps;
-+
-+	int cur_mode = icna35xx_get_current_mode(pinfo);
-+	int cur_vrefresh = drm_mode_vrefresh(&pinfo->desc->modes[cur_mode]);
-+
-+	pinfo->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9C, 0xA5, 0xA5);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xFD, 0x5A, 0x5A);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x53, 0xE0);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x35, 0x00);
-+
-+	mipi_dsi_dcs_exit_sleep_mode_multi(&dsi_ctx);
-+
-+	mipi_dsi_msleep(&dsi_ctx, 120);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x0F);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xCE, 0x22);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x01);
-+	if (cur_vrefresh == 165) {
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x20);
-+	} else if (cur_vrefresh == 144) {
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB3,
-+			0x00, 0xE0, 0xA0, 0x10, 0xC8, 0x00, 0x02, 0x83,
-+			0x00, 0x10, 0x14, 0x00, 0x00, 0xC3, 0x00, 0x10,
-+			0x14, 0x00, 0x00, 0xE0, 0x00, 0x10, 0x14, 0x00,
-+			0x00, 0xE0, 0xA0, 0x10, 0xC8, 0x22, 0x18, 0x18,
-+			0x18, 0x18, 0x18);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x07);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB5,
-+			0x04, 0x0A, 0x08, 0x0A, 0x04, 0x00, 0xC4);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xD9,
-+			0x66, 0xE4, 0xE4, 0x66, 0xE4, 0xE4, 0x00, 0xC4,
-+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xCE,
-+			0x01, 0x01, 0x01, 0x01, 0x04, 0x07, 0xA4);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x30);
-+	} else if (cur_vrefresh == 120) {
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB3,
-+			0x00, 0xE0, 0xA0, 0x10, 0xC8, 0x00, 0x02, 0x83,
-+			0x00, 0x10, 0x14, 0x00, 0x00, 0xC3, 0x00, 0x10,
-+			0x14, 0x00, 0x00, 0xE0, 0x10, 0x10, 0x9C, 0x00,
-+			0x00, 0xE0, 0xA0, 0x10, 0xC8, 0x22, 0x18, 0x18,
-+			0x18, 0x18, 0x18);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x07);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB5,
-+			0x04, 0x0C, 0x08, 0x0C, 0x04, 0x00, 0xC4);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xD9,
-+			0x88, 0x40, 0x40, 0x88, 0x40, 0x40, 0x00, 0xEB,
-+			0x11, 0xFF);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xCE,
-+			0x01, 0x01, 0x01, 0x01, 0x04, 0x09, 0x2C);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x30);
-+	} else if (cur_vrefresh == 90) {
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB3,
-+			0x00, 0xE0, 0x40, 0x10, 0xA8, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x07);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB2,
-+			0x04, 0x10, 0x08, 0x0C, 0x04, 0x00, 0xC4);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xD3,
-+			0x55, 0x80, 0x80, 0x55, 0x80, 0xB0, 0x00, 0x9C,
-+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xCB,
-+			0x01, 0x01, 0x01, 0x01, 0x04, 0x06, 0x1C);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x00);
-+	} else {
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB3,
-+			0x00, 0xE0, 0xA0, 0x10, 0xC8, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x07);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB2,
-+			0x04, 0x18, 0x08, 0x0C, 0x02, 0x00, 0xC4);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xD3,
-+			0x88, 0x4A, 0x4A, 0x88, 0x4A, 0x4A, 0x00, 0xEB,
-+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xCB,
-+			0x01, 0x01, 0x01, 0x01, 0x04, 0x2C);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x00);
-+	}
-+
-+	drm_dsc_pps_payload_pack(&pps, &pinfo->desc->dsc);
-+	mipi_dsi_picture_parameter_set_multi(&dsi_ctx, &pps);
-+
-+	mipi_dsi_msleep(&dsi_ctx, 20);
-+
-+	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
-+
-+	return dsi_ctx.accum_err;
-+}
-+
-+static int icna3520_init_sequence(struct panel_info *pinfo)
-+{
-+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = pinfo->dsi };
-+	struct drm_dsc_picture_parameter_set pps;
-+
-+	int cur_mode = icna35xx_get_current_mode(pinfo);
-+	int cur_vrefresh = drm_mode_vrefresh(&pinfo->desc->modes[cur_mode]);
-+
-+	pinfo->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9C, 0xA5, 0xA5);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xFD, 0x5A, 0x5A);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x53, 0xE0);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x35, 0x00);
-+
-+	mipi_dsi_dcs_exit_sleep_mode_multi(&dsi_ctx);
-+
-+	mipi_dsi_msleep(&dsi_ctx, 120);
-+
-+	if (cur_vrefresh == 120) {
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB3,
-+			0x00, 0xD8, 0x00, 0x1C, 0x00, 0x4C);
-+	} else {
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x10);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB3,
-+			0x00, 0xDB, 0x00, 0x1C, 0x00, 0x1C, 0x00, 0x00,
-+			0xDB, 0x00, 0x1C, 0x07, 0xD6, 0x00);
-+	}
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x01);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB2, 0x00);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x0D);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB2, 0x27);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB6, 0x03);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xBB, 0x01);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB2, 0x24);
-+
-+	drm_dsc_pps_payload_pack(&pps, &pinfo->desc->dsc);
-+	mipi_dsi_picture_parameter_set_multi(&dsi_ctx, &pps);
-+
-+	mipi_dsi_msleep(&dsi_ctx, 20);
-+
-+	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
-+
-+	return dsi_ctx.accum_err;
-+}
-+
-+static const struct drm_display_mode odin2portal_modes[] = {
-+	{
-+		/* 165Hz */
-+		.clock = (1080 + 98 + 1 + 23) * (1920 + 20 + 1 + 15) * 165 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 98,
-+		.hsync_end = 1080 + 98 + 1,
-+		.htotal = 1080 + 98 + 1 + 23,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 20,
-+		.vsync_end = 1920 + 20 + 1,
-+		.vtotal = 1920 + 20 + 1 + 15,
-+	},
-+	{
-+		/* 144Hz */
-+		.clock = (1080 + 156 + 1 + 23) * (1920 + 20 + 1 + 15) * 144 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 156,
-+		.hsync_end = 1080 + 156 + 1,
-+		.htotal = 1080 + 156 + 1 + 23,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 20,
-+		.vsync_end = 1920 + 20 + 1,
-+		.vtotal = 1920 + 20 + 1 + 15,
-+	},
-+	{
-+		/* 120Hz */
-+		.clock = (1080 + 156 + 1 + 23) * (1920 + 412 + 1 + 15) * 120 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 156,
-+		.hsync_end = 1080 + 156 + 1,
-+		.htotal = 1080 + 156 + 1 + 23,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 412,
-+		.vsync_end = 1920 + 412 + 1,
-+		.vtotal = 1920 + 412 + 1 + 15,
-+	},
-+	{
-+		/* 90Hz */
-+		.clock = (1080 + 156 + 1 + 23) * (1920 + 1192 + 1 + 15) * 90 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 156,
-+		.hsync_end = 1080 + 156 + 1,
-+		.htotal = 1080 + 156 + 1 + 23,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 1192,
-+		.vsync_end = 1920 + 1192 + 1,
-+		.vtotal = 1920 + 1192 + 1 + 15,
-+	},
-+	{
-+		/* 60Hz */
-+		.clock = (1080 + 156 + 1 + 23) * (1920 + 2760 + 1 + 15) * 60 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 156,
-+		.hsync_end = 1080 + 156 + 1,
-+		.htotal = 1080 + 156 + 1 + 23,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 2760,
-+		.vsync_end = 1920 + 2760 + 1,
-+		.vtotal = 1920 + 2760 + 1 + 15,
-+	}
-+};
-+
-+static const struct drm_display_mode thor_top_modes[] = {
-+	{
-+		/* 120Hz */
-+		.clock = (1080 + 24 + 1 + 24) * (1920 + 28 + 1 + 28) * 120 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 24,
-+		.hsync_end = 1080 + 24 + 1,
-+		.htotal = 1080 + 24 + 1 + 24,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 28,
-+		.vsync_end = 1920 + 28 + 1,
-+		.vtotal = 1920 + 28 + 1 + 28,
-+	},
-+	{
-+		/* 60Hz */
-+		.clock = (1080 + 24 + 1 + 24) * (1920 + 2006 + 1 + 28) * 60 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 24,
-+		.hsync_end = 1080 + 24 + 1,
-+		.htotal = 1080 + 24 + 1 + 24,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 2006,
-+		.vsync_end = 1920 + 2006 + 1,
-+		.vtotal = 1920 + 2006 + 1 + 28,
-+	}
-+};
-+
-+static struct panel_desc odin2portal_desc = {
-+	.modes = odin2portal_modes,
-+	.num_modes = ARRAY_SIZE(odin2portal_modes),
-+	.width_mm = 160,
-+	.height_mm = 89,
-+	.bpc = 8,
-+	.lanes = 4,
-+	.format = MIPI_DSI_FMT_RGB888,
-+	.mode_flags = MIPI_DSI_MODE_NO_EOT_PACKET | MIPI_DSI_CLOCK_NON_CONTINUOUS |
-+			MIPI_DSI_MODE_LPM,
-+	.init_sequence = icna3512_init_sequence,
-+	.dsc = {
-+		.dsc_version_major = 0x1,
-+		.dsc_version_minor = 0x1,
-+		.slice_height = 20,
-+		.slice_width = 540,
-+		.slice_count = 2,
-+		.bits_per_component = 8,
-+		.bits_per_pixel = 8 << 4,
-+		.block_pred_enable = true,
-+	},
-+};
-+
-+static struct panel_desc thor_top_desc = {
-+	.modes = thor_top_modes,
-+	.num_modes = ARRAY_SIZE(thor_top_modes),
-+	.width_mm = 136,
-+	.height_mm = 68,
-+	.bpc = 8,
-+	.lanes = 4,
-+	.format = MIPI_DSI_FMT_RGB888,
-+	.mode_flags =  MIPI_DSI_MODE_NO_EOT_PACKET | MIPI_DSI_CLOCK_NON_CONTINUOUS |
-+			MIPI_DSI_MODE_LPM,
-+	.init_sequence = icna3520_init_sequence,
-+	.dsc = {
-+		.dsc_version_major = 0x1,
-+		.dsc_version_minor = 0x1,
-+		.slice_height = 12,
-+		.slice_width = 540,
-+		.slice_count = 2,
-+		.bits_per_component = 8,
-+		.bits_per_pixel = 8 << 4,
-+		.block_pred_enable = true,
-+	},
-+};
-+
-+static void icna35xx_reset(struct panel_info *pinfo)
-+{
-+	gpiod_set_value_cansleep(pinfo->reset_gpio, 0);
-+	usleep_range(20000, 21000);
-+	gpiod_set_value_cansleep(pinfo->reset_gpio, 1);
-+	usleep_range(20000, 21000);
-+	gpiod_set_value_cansleep(pinfo->reset_gpio, 0);
-+	usleep_range(20000, 21000);
-+}
-+
-+static int icna35xx_prepare(struct drm_panel *panel)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+	int ret;
-+
-+	ret = regulator_bulk_enable(ARRAY_SIZE(panel_supplies), pinfo->supplies);
-+	if (ret < 0) {
-+		dev_err(panel->dev, "failed to enable regulators: %d\n", ret);
-+		return ret;
-+	}
-+
-+	icna35xx_reset(pinfo);
-+
-+	ret = pinfo->desc->init_sequence(pinfo);
-+	if (ret < 0) {
-+		regulator_bulk_disable(ARRAY_SIZE(panel_supplies), pinfo->supplies);
-+		dev_err(panel->dev, "failed to initialize panel: %d\n", ret);
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static int icna35xx_disable(struct drm_panel *panel)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = pinfo->dsi };
-+
-+	pinfo->dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
-+
-+	mipi_dsi_dcs_set_display_off_multi(&dsi_ctx);
-+	mipi_dsi_msleep(&dsi_ctx, 50);
-+	mipi_dsi_dcs_enter_sleep_mode_multi(&dsi_ctx);
-+	mipi_dsi_msleep(&dsi_ctx, 120);
-+
-+	return dsi_ctx.accum_err;
-+}
-+
-+static int icna35xx_unprepare(struct drm_panel *panel)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+
-+	gpiod_set_value_cansleep(pinfo->reset_gpio, 1);
-+	regulator_bulk_disable(ARRAY_SIZE(panel_supplies), pinfo->supplies);
-+
-+	return 0;
-+}
-+
-+static void icna35xx_remove(struct mipi_dsi_device *dsi)
-+{
-+	struct panel_info *pinfo = mipi_dsi_get_drvdata(dsi);
-+	int ret;
-+
-+	ret = mipi_dsi_detach(pinfo->dsi);
-+	if (ret < 0)
-+		dev_err(&dsi->dev, "failed to detach from DSI host: %d\n", ret);
-+
-+	drm_panel_remove(&pinfo->panel);
-+}
-+
-+static int icna35xx_get_modes(struct drm_panel *panel,
-+			       struct drm_connector *connector)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+	int i;
-+
-+	for (i = 0; i < pinfo->desc->num_modes; i++) {
-+		const struct drm_display_mode *m = &pinfo->desc->modes[i];
-+		struct drm_display_mode *mode;
-+
-+		mode = drm_mode_duplicate(connector->dev, m);
-+		if (!mode) {
-+			dev_err(panel->dev, "failed to add mode %ux%u@%u\n",
-+				m->hdisplay, m->vdisplay, drm_mode_vrefresh(m));
-+			return -ENOMEM;
+This regression is also reported by other users on the kernel bug
+tracker [1].
+
+Note: btmtksdio.c and btmtkuart.c have similar FUNC_CTRL parsing code
+but were not modified by the original commit 634a4408c061, so they are
+not affected by this regression and do not require changes.
+
+[1] https://bugzilla.kernel.org/show_bug.cgi?id=221511
+---
+ drivers/bluetooth/btmtk.c | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/bluetooth/btmtk.c b/drivers/bluetooth/btmtk.c
+index f70c1b0f8990..026e5a76b086 100644
+--- a/drivers/bluetooth/btmtk.c
++++ b/drivers/bluetooth/btmtk.c
+@@ -717,19 +717,19 @@ static int btmtk_usb_hci_wmt_sync(struct hci_dev *hdev,
+ 			status = BTMTK_WMT_PATCH_DONE;
+ 		break;
+ 	case BTMTK_WMT_FUNC_CTRL:
+-		if (!skb_pull_data(data->evt_skb,
+-				   sizeof(wmt_evt_funcc->status))) {
+-			err = -EINVAL;
+-			goto err_free_skb;
+-		}
+-
+-		wmt_evt_funcc = (struct btmtk_hci_wmt_evt_funcc *)wmt_evt;
+-		if (be16_to_cpu(wmt_evt_funcc->status) == 0x404)
+-			status = BTMTK_WMT_ON_DONE;
+-		else if (be16_to_cpu(wmt_evt_funcc->status) == 0x420)
+-			status = BTMTK_WMT_ON_PROGRESS;
+-		else
++		if (skb_pull_data(data->evt_skb,
++				  sizeof(wmt_evt_funcc->status))) {
++			wmt_evt_funcc =
++				(struct btmtk_hci_wmt_evt_funcc *)wmt_evt;
++			if (be16_to_cpu(wmt_evt_funcc->status) == 0x404)
++				status = BTMTK_WMT_ON_DONE;
++			else if (be16_to_cpu(wmt_evt_funcc->status) == 0x420)
++				status = BTMTK_WMT_ON_PROGRESS;
++			else
++				status = BTMTK_WMT_ON_UNDONE;
++		} else {
+ 			status = BTMTK_WMT_ON_UNDONE;
 +		}
-+
-+		mode->type = DRM_MODE_TYPE_DRIVER;
-+		if (i == 0)
-+			mode->type |= DRM_MODE_TYPE_PREFERRED;
-+
-+		drm_mode_set_name(mode);
-+		drm_mode_probed_add(connector, mode);
-+	}
-+
-+	connector->display_info.width_mm = pinfo->desc->width_mm;
-+	connector->display_info.height_mm = pinfo->desc->height_mm;
-+	connector->display_info.bpc = pinfo->desc->bpc;
-+	pinfo->connector = connector;
-+
-+	return pinfo->desc->num_modes;
-+}
-+
-+static enum drm_panel_orientation icna35xx_get_orientation(struct drm_panel *panel)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+
-+	return pinfo->orientation;
-+}
-+
-+static const struct drm_panel_funcs icna35xx_panel_funcs = {
-+	.disable = icna35xx_disable,
-+	.prepare = icna35xx_prepare,
-+	.unprepare = icna35xx_unprepare,
-+	.get_modes = icna35xx_get_modes,
-+	.get_orientation = icna35xx_get_orientation,
-+};
-+
-+static int icna35xx_bl_update_status(struct backlight_device *bl)
-+{
-+	struct mipi_dsi_device *dsi = bl_get_data(bl);
-+	u16 brightness = backlight_get_brightness(bl);
-+	int ret;
-+
-+	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
-+
-+	ret = mipi_dsi_dcs_set_display_brightness_large(dsi, brightness);
-+	if (ret < 0)
-+		return ret;
-+
-+	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
-+	return 0;
-+}
-+
-+static int icna35xx_bl_get_brightness(struct backlight_device *bl)
-+{
-+	struct mipi_dsi_device *dsi = bl_get_data(bl);
-+	u16 brightness;
-+	int ret;
-+
-+	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
-+
-+	ret = mipi_dsi_dcs_get_display_brightness_large(dsi, &brightness);
-+	if (ret < 0)
-+		return ret;
-+
-+	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
-+	return brightness;
-+}
-+
-+static const struct backlight_ops icna35xx_bl_ops = {
-+	.update_status = icna35xx_bl_update_status,
-+	.get_brightness = icna35xx_bl_get_brightness,
-+};
-+
-+static struct backlight_device *icna35xx_create_backlight(struct mipi_dsi_device *dsi)
-+{
-+	struct device *dev = &dsi->dev;
-+	const struct backlight_properties props = {
-+		.type = BACKLIGHT_RAW,
-+		.brightness = 4096,
-+		.max_brightness = 4096,
-+	};
-+
-+	return devm_backlight_device_register(dev, dev_name(dev), dev, dsi,
-+					      &icna35xx_bl_ops, &props);
-+}
-+
-+static int icna35xx_probe(struct mipi_dsi_device *dsi)
-+{
-+	struct device *dev = &dsi->dev;
-+	struct panel_info *pinfo;
-+	int ret;
-+
-+	pinfo = devm_drm_panel_alloc(dev, __typeof(*pinfo), panel,
-+				     &icna35xx_panel_funcs,
-+				     DRM_MODE_CONNECTOR_DSI);
-+	if (IS_ERR(pinfo))
-+		return PTR_ERR(pinfo);
-+
-+	ret = devm_regulator_bulk_get_const(dev, ARRAY_SIZE(panel_supplies),
-+	panel_supplies, &pinfo->supplies);
-+	if (ret < 0)
-+		return dev_err_probe(dev, ret, "Failed to get regulators\n");
-+
-+	pinfo->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
-+	if (IS_ERR(pinfo->reset_gpio))
-+		return dev_err_probe(dev, PTR_ERR(pinfo->reset_gpio), "failed to get reset gpio\n");
-+
-+	pinfo->desc = (struct panel_desc *)of_device_get_match_data(dev);
-+	if (!pinfo->desc)
-+		return -ENODEV;
-+
-+	pinfo->dsi = dsi;
-+	mipi_dsi_set_drvdata(dsi, pinfo);
-+
-+	ret = of_drm_get_panel_orientation(dev->of_node, &pinfo->orientation);
-+	if (ret < 0) {
-+		dev_err(dev, "%pOF: failed to get orientation %d\n", dev->of_node, ret);
-+		return ret;
-+	}
-+
-+	pinfo->panel.prepare_prev_first = true;
-+
-+	pinfo->panel.backlight = icna35xx_create_backlight(dsi);
-+	if (IS_ERR(pinfo->panel.backlight))
-+		return dev_err_probe(dev, PTR_ERR(pinfo->panel.backlight),
-+				     "Failed to create backlight\n");
-+
-+	drm_panel_add(&pinfo->panel);
-+
-+	pinfo->dsi->lanes = pinfo->desc->lanes;
-+	pinfo->dsi->format = pinfo->desc->format;
-+	pinfo->dsi->mode_flags = pinfo->desc->mode_flags;
-+	pinfo->dsi->dsc = &pinfo->desc->dsc;
-+
-+	ret = mipi_dsi_attach(pinfo->dsi);
-+	if (ret < 0) {
-+		dev_err_probe(dev, ret, "Failed to attach to DSI host\n");
-+		drm_panel_remove(&pinfo->panel);
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static const struct of_device_id icna35xx_of_match[] = {
-+	{ .compatible = "ayaneo,pocketds-panel-top", .data = &odin2portal_desc },
-+	{ .compatible = "ayntec,odin2portal-panel", .data = &odin2portal_desc },
-+	{ .compatible = "ayntec,odin3-panel", .data = &thor_top_desc },
-+	{ .compatible = "ayntec,thor-panel-top", .data = &thor_top_desc },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, icna35xx_of_match);
-+
-+static struct mipi_dsi_driver icna35xx_driver = {
-+	.probe = icna35xx_probe,
-+	.remove = icna35xx_remove,
-+	.driver = {
-+		.name = "panel-chipone-icna35xx",
-+		.of_match_table = icna35xx_of_match,
-+	},
-+};
-+module_mipi_dsi_driver(icna35xx_driver);
-+
-+MODULE_AUTHOR("Teguh Sobirin <teguh@sobir.in>");
-+MODULE_DESCRIPTION("DRM driver for Chipone ICNA35XX based MIPI DSI panels");
-+MODULE_LICENSE("GPL");
+ 		break;
+ 	case BTMTK_WMT_PATCH_DWNLD:
+ 		if (wmt_evt->whdr.flag == 2)
 
--- 
-2.53.0
+---
+base-commit: 5d6919055dec134de3c40167a490f33c74c12581
+change-id: 20260514-bluetooh-fix-mt7922-92bbbeff229b
+
+Best regards,
+--  
+Shivam Kalra <shivamkalra98@zohomail.in>
 
