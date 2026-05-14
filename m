@@ -1,236 +1,48 @@
-From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Thu, 14 May 2026 00:04:02 -0700
-Subject: [PATCH 3/3] ARM: dts: qcom: msm8960: Add CPU frequency scaling
- support
+From: Colin Huang <u8813345@gmail.com>
+Subject: [PATCH linux dev-6.6 0/3] add support for Delta E50SN12051
+Date: Thu, 14 May 2026 18:49:40 +0800
+Message-Id: <20260514-backport-dev-6-6-e50sn12051-driver-v1-0-44d2ef6c18dd@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260514-expressatt_cpufreq-v1-3-487fd2d78859@gmail.com>
-References: <20260514-expressatt_cpufreq-v1-0-487fd2d78859@gmail.com>
-In-Reply-To: <20260514-expressatt_cpufreq-v1-0-487fd2d78859@gmail.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Andy Gross <agross@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAMWoBWoC/x2NwQrCMBBEfyXs2ZUkbXLwV8RDmqx1UdKy0VAo/
+ XeXMqfH8GZ2aCRMDW5mB6HOjZeq4C4G8ivVmZCLMnjrow1uxCnl97rIFwt1jBoKtlXntcQi3En
+ QpRCo5DwMUwQdWoWevJ0nd/hw/W3mlK8RHsfxBzA3DSyDAAAA
+X-Change-ID: 20260514-backport-dev-6-6-e50sn12051-driver-1a55edcc33b6
+To: openbmc@lists.ozlabs.org, joel@jms.id.au, andrew@codeconstruct.com.au
+Cc: Colin Huang <colin.huang2@amd.com>, Colin Huang <u8813345@gmail.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Guenter Roeck <linux@roeck-us.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778742241; l=6751;
- i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=IeR+d4K/5j6SSF3Qt1EdfG/VVX1WUOv9oq94PSWVQE8=;
- b=bYHSWaiN6ctsmGuqClUdwNTMbOR524TV4dwpCN/60kVY5WqQZme+KATZUqeGM0UQ8niBHZ2pv
- BoaBESE/9aQBbtAIKYgQy65kWQngsEiJkmGnDj7E5CNcbN12fkEWF5R
-X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
- pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
-X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778755785; l=868;
+ i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
+ bh=mV96jkCInMcJlapCpMzF/AaUl98egkYPeqsOYfjbenU=;
+ b=ofc6r3neO6bv4jVclSqiWnA/JX1TkqbpJ8ysforIVHfV4uI65FQqEc7tqKPXAXuZBNQ+gjB6O
+ dtXbXd/XdsAATO4f76Z+AhaGC6985SkfM40zwad9c/8WyuIEHhTgMAd
+X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
+ pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
+X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable Krait DVFS on MSM8960 by adding the required device tree nodes:
-
-- OPP table with 12 operating points from 384 MHz to 1.512 GHz, with
-  per-PVS voltages for slow, nominal, and fast silicon bins.
-- Krait clock controller (krait-cc-v1) driving the CPU muxes from
-  PLL9/PLL10, ACC aux outputs, and PXO.
-- PVS efuse nvmem cell in qfprom for the cpufreq-nvmem driver to
-  read the speed-bin and process voltage class.
-- CPU idle state for Standalone Power Collapse (SPC).
-- operating-points-v2, clocks, cpu-supply, and cpu-idle-states wired
-  into both CPU nodes.
-
-Link: https://github.com/CyanogenMod/android_kernel_samsung_d2/blob/0dbe2b56847b304d30b809dfd08ba3b4a61d9af8/arch/arm/mach-msm/acpuclock-8960.c#L120-L235
-Assisted-by: Claude:claude-opus-4.6
-Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
+Signed-off-by: Colin Huang <u8813345@gmail.com>
 ---
- arch/arm/boot/dts/qcom/qcom-msm8960.dtsi | 133 ++++++++++++++++++++++++++++++-
- 1 file changed, 131 insertions(+), 2 deletions(-)
+Colin Huang (3):
+      dt-bindings: trivial-devices: Add Delta E50SN12051
+      Documentation/hwmon: add Delta E50SN12051 documentation
+      hwmon: (pmbus) add support for Delta E50SN12051
 
-diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
-index a427f0f41cd1..b5b9239c7aa0 100644
---- a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
-+++ b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
-@@ -54,6 +54,10 @@ cpu@0 {
- 			reg = <0>;
- 			enable-method = "qcom,kpss-acc-v1";
- 			device_type = "cpu";
-+			operating-points-v2 = <&cpu_opp_table>;
-+			clocks = <&kraitcc 0>;
-+			cpu-supply = <&saw0_vreg>;
-+			cpu-idle-states = <&cpu_spc>;
- 			next-level-cache = <&l2>;
- 			qcom,acc = <&acc0>;
- 			qcom,saw = <&saw0>;
-@@ -64,6 +68,10 @@ cpu@1 {
- 			reg = <1>;
- 			enable-method = "qcom,kpss-acc-v1";
- 			device_type = "cpu";
-+			operating-points-v2 = <&cpu_opp_table>;
-+			clocks = <&kraitcc 1>;
-+			cpu-supply = <&saw1_vreg>;
-+			cpu-idle-states = <&cpu_spc>;
- 			next-level-cache = <&l2>;
- 			qcom,acc = <&acc1>;
- 			qcom,saw = <&saw1>;
-@@ -74,6 +82,116 @@ l2: l2-cache {
- 			cache-level = <2>;
- 			cache-unified;
- 		};
-+
-+		idle-states {
-+			cpu_spc: cpu-spc {
-+				compatible = "qcom,idle-state-spc", "arm,idle-state";
-+				entry-latency-us = <400>;
-+				exit-latency-us = <900>;
-+				min-residency-us = <3000>;
-+			};
-+		};
-+	};
-+
-+	cpu_opp_table: opp-table-cpu {
-+		compatible = "operating-points-v2-krait-cpu";
-+		nvmem-cells = <&pvs_efuse>;
-+
-+		opp-384000000 {
-+			opp-hz = /bits/ 64 <384000000>;
-+			opp-microvolt-speed0-pvs0-v0 = <950000>;
-+			opp-microvolt-speed0-pvs1-v0 = <900000>;
-+			opp-microvolt-speed0-pvs3-v0 = <850000>;
-+			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
-+		};
-+
-+		opp-486000000 {
-+			opp-hz = /bits/ 64 <486000000>;
-+			opp-microvolt-speed0-pvs0-v0 = <975000>;
-+			opp-microvolt-speed0-pvs1-v0 = <925000>;
-+			opp-microvolt-speed0-pvs3-v0 = <875000>;
-+			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
-+		};
-+
-+		opp-594000000 {
-+			opp-hz = /bits/ 64 <594000000>;
-+			opp-microvolt-speed0-pvs0-v0 = <1000000>;
-+			opp-microvolt-speed0-pvs1-v0 = <950000>;
-+			opp-microvolt-speed0-pvs3-v0 = <900000>;
-+			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
-+		};
-+
-+		opp-702000000 {
-+			opp-hz = /bits/ 64 <702000000>;
-+			opp-microvolt-speed0-pvs0-v0 = <1025000>;
-+			opp-microvolt-speed0-pvs1-v0 = <975000>;
-+			opp-microvolt-speed0-pvs3-v0 = <925000>;
-+			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
-+		};
-+
-+		opp-810000000 {
-+			opp-hz = /bits/ 64 <810000000>;
-+			opp-microvolt-speed0-pvs0-v0 = <1075000>;
-+			opp-microvolt-speed0-pvs1-v0 = <1025000>;
-+			opp-microvolt-speed0-pvs3-v0 = <975000>;
-+			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
-+		};
-+
-+		opp-918000000 {
-+			opp-hz = /bits/ 64 <918000000>;
-+			opp-microvolt-speed0-pvs0-v0 = <1100000>;
-+			opp-microvolt-speed0-pvs1-v0 = <1050000>;
-+			opp-microvolt-speed0-pvs3-v0 = <1000000>;
-+			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
-+		};
-+
-+		opp-1026000000 {
-+			opp-hz = /bits/ 64 <1026000000>;
-+			opp-microvolt-speed0-pvs0-v0 = <1125000>;
-+			opp-microvolt-speed0-pvs1-v0 = <1075000>;
-+			opp-microvolt-speed0-pvs3-v0 = <1025000>;
-+			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
-+		};
-+
-+		opp-1134000000 {
-+			opp-hz = /bits/ 64 <1134000000>;
-+			opp-microvolt-speed0-pvs0-v0 = <1175000>;
-+			opp-microvolt-speed0-pvs1-v0 = <1125000>;
-+			opp-microvolt-speed0-pvs3-v0 = <1075000>;
-+			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
-+		};
-+
-+		opp-1242000000 {
-+			opp-hz = /bits/ 64 <1242000000>;
-+			opp-microvolt-speed0-pvs0-v0 = <1200000>;
-+			opp-microvolt-speed0-pvs1-v0 = <1150000>;
-+			opp-microvolt-speed0-pvs3-v0 = <1100000>;
-+			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
-+		};
-+
-+		opp-1350000000 {
-+			opp-hz = /bits/ 64 <1350000000>;
-+			opp-microvolt-speed0-pvs0-v0 = <1225000>;
-+			opp-microvolt-speed0-pvs1-v0 = <1175000>;
-+			opp-microvolt-speed0-pvs3-v0 = <1125000>;
-+			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
-+		};
-+
-+		opp-1458000000 {
-+			opp-hz = /bits/ 64 <1458000000>;
-+			opp-microvolt-speed0-pvs0-v0 = <1237500>;
-+			opp-microvolt-speed0-pvs1-v0 = <1187500>;
-+			opp-microvolt-speed0-pvs3-v0 = <1137500>;
-+			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
-+		};
-+
-+		opp-1512000000 {
-+			opp-hz = /bits/ 64 <1512000000>;
-+			opp-microvolt-speed0-pvs0-v0 = <1250000>;
-+			opp-microvolt-speed0-pvs1-v0 = <1200000>;
-+			opp-microvolt-speed0-pvs3-v0 = <1150000>;
-+			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
-+		};
- 	};
- 
- 	memory@80000000 {
-@@ -81,6 +199,13 @@ memory@80000000 {
- 		reg = <0x80000000 0>;
- 	};
- 
-+	kraitcc: clock-controller {
-+		compatible = "qcom,krait-cc-v1";
-+		clocks = <&gcc PLL9>, <&gcc PLL10>, <&acc0>, <&acc1>, <&pxo_board>;
-+		clock-names = "hfpll0", "hfpll1", "acpu0_aux", "acpu1_aux", "qsb";
-+		#clock-cells = <1>;
-+	};
-+
- 	soc: soc {
- 		compatible = "simple-bus";
- 		ranges;
-@@ -112,6 +237,10 @@ qfprom: efuse@700000 {
- 			#address-cells = <1>;
- 			#size-cells = <1>;
- 
-+			pvs_efuse: pvs@c0 {
-+				reg = <0xc0 0x04>;
-+			};
-+
- 			tsens_calib: calib@404 {
- 				reg = <0x404 0x10>;
- 			};
-@@ -348,7 +477,7 @@ acc0: clock-controller@2088000 {
- 		};
- 
- 		saw0: power-manager@2089000 {
--			compatible = "qcom,msm8960-saw2-cpu", "qcom,saw2";
-+			compatible = "qcom,msm8960-saw2-v1.1-cpu", "qcom,saw2";
- 			reg = <0x02089000 0x1000>, <0x02009000 0x1000>;
- 
- 			saw0_vreg: regulator {
-@@ -367,7 +496,7 @@ acc1: clock-controller@2098000 {
- 		};
- 
- 		saw1: power-manager@2099000 {
--			compatible = "qcom,msm8960-saw2-cpu", "qcom,saw2";
-+			compatible = "qcom,msm8960-saw2-v1.1-cpu", "qcom,saw2";
- 			reg = <0x02099000 0x1000>, <0x02009000 0x1000>;
- 
- 			saw1_vreg: regulator {
+ .../devicetree/bindings/trivial-devices.yaml       |  2 +
+ Documentation/hwmon/e50sn12051.rst                 | 81 ++++++++++++++++++++++
+ Documentation/hwmon/index.rst                      |  1 +
+ drivers/hwmon/pmbus/Kconfig                        |  9 +++
+ drivers/hwmon/pmbus/Makefile                       |  1 +
+ drivers/hwmon/pmbus/e50sn12051.c                   | 52 ++++++++++++++
+ 6 files changed, 146 insertions(+)
+---
+base-commit: e11fa6b1ff6c27c808d17e479bd7d5582e772062
+change-id: 20260514-backport-dev-6-6-e50sn12051-driver-1a55edcc33b6
 
+Best regards,
 -- 
-2.54.0
+Colin Huang <u8813345@gmail.com>
 
