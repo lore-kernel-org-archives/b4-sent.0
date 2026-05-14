@@ -1,48 +1,53 @@
 From: Colin Huang <u8813345@gmail.com>
-Subject: [PATCH linux dev-6.6 0/3] add support for Delta E50SN12051
-Date: Thu, 14 May 2026 18:49:40 +0800
-Message-Id: <20260514-backport-dev-6-6-e50sn12051-driver-v1-0-44d2ef6c18dd@gmail.com>
+Date: Thu, 14 May 2026 18:49:41 +0800
+Subject: [PATCH linux dev-6.6 1/3] dt-bindings: trivial-devices: Add Delta
+ E50SN12051
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAMWoBWoC/x2NwQrCMBBEfyXs2ZUkbXLwV8RDmqx1UdKy0VAo/
- XeXMqfH8GZ2aCRMDW5mB6HOjZeq4C4G8ivVmZCLMnjrow1uxCnl97rIFwt1jBoKtlXntcQi3En
- QpRCo5DwMUwQdWoWevJ0nd/hw/W3mlK8RHsfxBzA3DSyDAAAA
-X-Change-ID: 20260514-backport-dev-6-6-e50sn12051-driver-1a55edcc33b6
+Message-Id: <20260514-backport-dev-6-6-e50sn12051-driver-v1-1-44d2ef6c18dd@gmail.com>
+References: <20260514-backport-dev-6-6-e50sn12051-driver-v1-0-44d2ef6c18dd@gmail.com>
+In-Reply-To: <20260514-backport-dev-6-6-e50sn12051-driver-v1-0-44d2ef6c18dd@gmail.com>
 To: openbmc@lists.ozlabs.org, joel@jms.id.au, andrew@codeconstruct.com.au
 Cc: Colin Huang <colin.huang2@amd.com>, Colin Huang <u8813345@gmail.com>, 
  Conor Dooley <conor.dooley@microchip.com>, 
  Guenter Roeck <linux@roeck-us.net>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778755785; l=868;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778755785; l=1160;
  i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
- bh=mV96jkCInMcJlapCpMzF/AaUl98egkYPeqsOYfjbenU=;
- b=ofc6r3neO6bv4jVclSqiWnA/JX1TkqbpJ8ysforIVHfV4uI65FQqEc7tqKPXAXuZBNQ+gjB6O
- dtXbXd/XdsAATO4f76Z+AhaGC6985SkfM40zwad9c/8WyuIEHhTgMAd
+ bh=dL4vhMXFrasZpErKAdl5LN0MNubz6LqrPWme1lMtYIU=;
+ b=SrbUXv02qXbIJKx99eaZJEEYtmM3SfxW//o4R2YD+QK3+eJHManmIzKWvAJh28ldnzLXLOKpj
+ J6HNlrEcekMD+cidOlYTglHWHatgJOCzsC+6x0m9bVjpZA5BsykhJJp
 X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
  pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
 X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
+Add 600W Non-isolated 1/8th Brick DC/DC Power Modules, E50SN12051.
+
 Signed-off-by: Colin Huang <u8813345@gmail.com>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Link: https://lore.kernel.org/r/20260508-add-e50sn12051-v5-1-abebdcc29665@gmail.com
+[groeck: Swapped comment and definition]
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
 ---
-Colin Huang (3):
-      dt-bindings: trivial-devices: Add Delta E50SN12051
-      Documentation/hwmon: add Delta E50SN12051 documentation
-      hwmon: (pmbus) add support for Delta E50SN12051
+ Documentation/devicetree/bindings/trivial-devices.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
- .../devicetree/bindings/trivial-devices.yaml       |  2 +
- Documentation/hwmon/e50sn12051.rst                 | 81 ++++++++++++++++++++++
- Documentation/hwmon/index.rst                      |  1 +
- drivers/hwmon/pmbus/Kconfig                        |  9 +++
- drivers/hwmon/pmbus/Makefile                       |  1 +
- drivers/hwmon/pmbus/e50sn12051.c                   | 52 ++++++++++++++
- 6 files changed, 146 insertions(+)
----
-base-commit: e11fa6b1ff6c27c808d17e479bd7d5582e772062
-change-id: 20260514-backport-dev-6-6-e50sn12051-driver-1a55edcc33b6
+diff --git a/Documentation/devicetree/bindings/trivial-devices.yaml b/Documentation/devicetree/bindings/trivial-devices.yaml
+index 4f291690420f..266e3c316c9c 100644
+--- a/Documentation/devicetree/bindings/trivial-devices.yaml
++++ b/Documentation/devicetree/bindings/trivial-devices.yaml
+@@ -91,6 +91,8 @@ properties:
+           - delta,dps650ab
+             # Delta Electronics DPS920AB 920W 54V Power Supply
+           - delta,dps920ab
++            # 600W Non-isolated 1/8th Brick DC/DC Power Modules
++          - delta,e50sn12051
+             # 1/4 Brick DC/DC Regulated Power Module
+           - delta,q54sj108a2
+             # Devantech SRF02 ultrasonic ranger in I2C mode
 
-Best regards,
 -- 
-Colin Huang <u8813345@gmail.com>
+2.34.1
 
