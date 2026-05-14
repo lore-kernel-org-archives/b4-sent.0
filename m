@@ -1,71 +1,79 @@
-From: Antony Kurniawan Soemardi <linux@smankusors.com>
-Date: Thu, 14 May 2026 21:08:39 +0700
-Subject: [PATCH v2 10/10] ARM: dts: qcom: msm8960: huashan: enable Wi-Fi
- and Bluetooth
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v2 0/2] drm/panel: Add panel driver for Chipone ICNA35XX
+ based panels
+Date: Thu, 14 May 2026 12:24:48 -0500
+Message-Id: <20260514-icna35xx-v2-0-45acd1dfa566@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260514-msm8960-wifi-v2-10-7cbae45dab5e@smankusors.com>
-References: <20260514-msm8960-wifi-v2-0-7cbae45dab5e@smankusors.com>
-In-Reply-To: <20260514-msm8960-wifi-v2-0-7cbae45dab5e@smankusors.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Lee Jones <lee@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-arm-msm@vger.kernel.org, 
- linux-clk@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- Rudraksha Gupta <guptarud@gmail.com>, 
- Antony Kurniawan Soemardi <linux@smankusors.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778767762; l=1040;
- i=linux@smankusors.com; s=20250609; h=from:subject:message-id;
- bh=SLa77ZNp7lfbDqaVc3OTTZcPOotiwNceDTW3KD4D7DQ=;
- b=wenOAgoSYUbFmEFqpoDXTncdQcdFpkHhnzibnktdaM3GvNB6AGKz2bc5M63fs3bDrT6o+scuJ
- dTpr8VSPUFTBkiyXBE/OUo1S/YQH4ROqu9QmvQoVMoSG4nFIjVMqhGu
-X-Developer-Key: i=linux@smankusors.com; a=ed25519;
- pk=65wTy06fJl2/h/EJwjr704YG+yjHFhZObJBWzzK+N00=
-X-Endpoint-Received: by B4 Relay for linux@smankusors.com/20250609 with auth_id=733
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/02PwW7DIBBEf8XiXKpdiDH2qf9R5bDAkiDVdgOu5
+ Sjyv4c6h/Y4q52ZNw9ROCcuYmgeIvOaSpqnKtRbI/yVpgvLFKoWCpQBpUAmP5Fut02y7ykSakY
+ iUd+/M8e0HVGf55fOfPupicvrKBwVln4ex7QMDfc2KPTYgQMMgaM2JoLSzkUfjdPYQh/JavGfp
+ IIdHNhJuk/y5ottW5BoPHTO6MDKDKsVv/XXVJY5349hKx79h7fG/m1YUYI01gYdTowQ+4/LSOn
+ rvUKK877vT0WbP6kfAQAA
+X-Change-ID: 20260220-icna35xx-ec9afa13e1aa
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>, 
+ Teguh Sobirin <teguh@sobir.in>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778779494; l=1862;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=3PC5Cuco5w85pnBqFY1Ju+w2SKqZmWd6DZncQX5MeUw=;
+ b=Wh1N5cpYCZdga0nk4wOwnV9ABC9/lY5pPUnc2HrUszpEudGn4yPoOv3IIUW0tPlU6/ZaiVvfm
+ iVO9k/+gM0kBNR++MRDKXEvdjND/zRrMYVSYXGDKl1fFwsIXCb9YS7v
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Wi-Fi and Bluetooth support for Sony Xperia SP.
+This driver is based on the one by Teguh Sobirin [0].
+    
+Due to [1], the AYN vendor description patch has been folded into the
+AYN QCS8550 dt series. Which means this series depends on said series
+and it must be picked up before this.
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Antony Kurniawan Soemardi <linux@smankusors.com>
+[0] https://github.com/AYNTechnologies/linux/commit/4c5e76e974db7cca853619ca138eecd8f004622f
+[1] https://lore.kernel.org/linux-arm-msm/c7fb3f89-6574-4761-9ef2-2fdf6d4801b5@kernel.org
+
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- arch/arm/boot/dts/qcom/qcom-msm8960-sony-huashan.dts | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+Changes in v2:
+- Fix lint warning in patch 1
+- Add ayaneo,pocketds-panel-top compatible to patches 1 and 2, it uses the
+  same init sequence as the odin 2 portal panel.
+- Link to v1: https://lore.kernel.org/r/20260509-icna35xx-v1-0-688d3d4e10f9@gmail.com
 
-diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-sony-huashan.dts b/arch/arm/boot/dts/qcom/qcom-msm8960-sony-huashan.dts
-index 591dc837e600..7d54ced3641f 100644
---- a/arch/arm/boot/dts/qcom/qcom-msm8960-sony-huashan.dts
-+++ b/arch/arm/boot/dts/qcom/qcom-msm8960-sony-huashan.dts
-@@ -95,6 +95,21 @@ MATRIX_KEY(1, 1, KEY_CAMERA)
- 	status = "okay";
- };
- 
-+&riva {
-+	vddcx-supply = <&pm8921_s3>;
-+	vddmx-supply = <&pm8921_l24>;
-+	vddpx-supply = <&pm8921_s4>;
-+
-+	status = "okay";
-+
-+	iris {
-+		vdddig-supply = <&pm8921_lvs2>;
-+		vddpa-supply = <&pm8921_l10>;
-+		vddrfa-supply = <&pm8921_s2>;
-+		vddxo-supply = <&pm8921_l4>;
-+	};
-+};
-+
- &rpm {
- 	regulators {
- 		compatible = "qcom,rpm-pm8921-regulators";
+---
+Aaron Kling (1):
+      dt-bindings: display: panel: Add Chipone ICNA 35xx OLED driver bindings
 
+Teguh Sobirin (1):
+      drm/panel: Add panel driver for Chipone ICNA35XX based panels
+
+ .../bindings/display/panel/chipone,icna35xx.yaml   |  79 +++
+ drivers/gpu/drm/panel/Kconfig                      |  11 +
+ drivers/gpu/drm/panel/Makefile                     |   1 +
+ drivers/gpu/drm/panel/panel-chipone-icna35xx.c     | 619 +++++++++++++++++++++
+ 4 files changed, 710 insertions(+)
+---
+base-commit: e98d21c170b01ddef366f023bbfcf6b31509fa83
+change-id: 20260220-icna35xx-ec9afa13e1aa
+prerequisite-change-id: 20260217-ayn-qcs8550-16c07b63de26:v8
+prerequisite-patch-id: 2b010637c46f5ea0e19a2fa87cc5ccb19bfd9204
+prerequisite-patch-id: d0c633dc17f0aba726a8e8d21fee52b944bf67ff
+prerequisite-patch-id: 11f4208bd788df984cec7404088c7d071ec49dfc
+prerequisite-patch-id: 76b61799dba520fc7fa3ff39b044e24103337af3
+prerequisite-patch-id: 3844bef2eda3cf59031b1d131eb6ba9295629bb4
+prerequisite-patch-id: 3331648bc6f4ac3bb156f0525aa1ede92bfc57f1
+
+Best regards,
 -- 
-2.34.1
+Aaron Kling <webgeek1234@gmail.com>
 
