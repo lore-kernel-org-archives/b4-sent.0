@@ -1,10 +1,11 @@
 From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Thu, 14 May 2026 00:04:01 -0700
-Subject: [PATCH 2/3] soc: qcom: spm: Add MSM8960 SAW2 CPU support
+Date: Thu, 14 May 2026 00:04:02 -0700
+Subject: [PATCH 3/3] ARM: dts: qcom: msm8960: Add CPU frequency scaling
+ support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260514-expressatt_cpufreq-v1-2-487fd2d78859@gmail.com>
+Message-Id: <20260514-expressatt_cpufreq-v1-3-487fd2d78859@gmail.com>
 References: <20260514-expressatt_cpufreq-v1-0-487fd2d78859@gmail.com>
 In-Reply-To: <20260514-expressatt_cpufreq-v1-0-487fd2d78859@gmail.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -14,76 +15,221 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778742241; l=2299;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778742241; l=6751;
  i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=nrLplu9+cKSqhALRTglWbMzBGC3bon3VtGeZsCT7sGQ=;
- b=UIKrGrwHTX76SeWIsGzDcTrzwRTiJPsh3jweNO+73SQm4NCLT+K87OiaDN45ldZp/Z1rBhkd9
- RzmFjmz8/sPBCpO0h7hUObP/pr30DMtR9rWXN0sO95ox/k5Vlkf+E9Z
+ bh=IeR+d4K/5j6SSF3Qt1EdfG/VVX1WUOv9oq94PSWVQE8=;
+ b=bYHSWaiN6ctsmGuqClUdwNTMbOR524TV4dwpCN/60kVY5WqQZme+KATZUqeGM0UQ8niBHZ2pv
+ BoaBESE/9aQBbtAIKYgQy65kWQngsEiJkmGnDj7E5CNcbN12fkEWF5R
 X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
  pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
 X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The MSM8960 uses SAW2 v1.1, the same hardware version as the APQ8064.
-Add SPM register data so that the SAW2 driver can program the correct
-SPM sequences and PMIC parameters for MSM8960 CPUs.
+Enable Krait DVFS on MSM8960 by adding the required device tree nodes:
 
-The register layout, SPM sequences, voltage range, and regulator
-parameters are shared with APQ8064. The only difference is pmic_dly:
-0x03020004 on MSM8960 vs 0x02020004 on APQ8064.
+- OPP table with 12 operating points from 384 MHz to 1.512 GHz, with
+  per-PVS voltages for slow, nominal, and fast silicon bins.
+- Krait clock controller (krait-cc-v1) driving the CPU muxes from
+  PLL9/PLL10, ACC aux outputs, and PXO.
+- PVS efuse nvmem cell in qfprom for the cpufreq-nvmem driver to
+  read the speed-bin and process voltage class.
+- CPU idle state for Standalone Power Collapse (SPC).
+- operating-points-v2, clocks, cpu-supply, and cpu-idle-states wired
+  into both CPU nodes.
 
-Link: https://github.com/CyanogenMod/android_kernel_samsung_d2/blob/0dbe2b56847b304d30b809dfd08ba3b4a61d9af8/arch/arm/mach-msm/board-express.c#L3353-L3381
+Link: https://github.com/CyanogenMod/android_kernel_samsung_d2/blob/0dbe2b56847b304d30b809dfd08ba3b4a61d9af8/arch/arm/mach-msm/acpuclock-8960.c#L120-L235
 Assisted-by: Claude:claude-opus-4.6
 Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
- drivers/soc/qcom/spm.c | 20 +++++++++++++++++++-
- 1 file changed, 19 insertions(+), 1 deletion(-)
+ arch/arm/boot/dts/qcom/qcom-msm8960.dtsi | 133 ++++++++++++++++++++++++++++++-
+ 1 file changed, 131 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/soc/qcom/spm.c b/drivers/soc/qcom/spm.c
-index f75659fff287..596431b00a03 100644
---- a/drivers/soc/qcom/spm.c
-+++ b/drivers/soc/qcom/spm.c
-@@ -233,7 +233,7 @@ static const u16 spm_reg_offset_v1_1[SPM_REG_NR] = {
- 
- static void smp_set_vdd_v1_1(void *data);
- 
--/* SPM register data for 8064 */
-+/* SPM register data for 8064, 8960 */
- static struct linear_range spm_v1_1_regulator_range =
- 	REGULATOR_LINEAR_RANGE(700000, 0, 56, 12500);
- 
-@@ -253,6 +253,22 @@ static const struct spm_reg_data spm_reg_8064_cpu = {
- 	.ramp_delay = 1250,
- };
- 
-+static const struct spm_reg_data spm_reg_8960_cpu = {
-+	.reg_offset = spm_reg_offset_v1_1,
-+	.spm_cfg = 0x1F,
-+	.pmic_dly = 0x03020004,
-+	.pmic_data[0] = 0x0084009C,
-+	.pmic_data[1] = 0x00A4001C,
-+	.seq = { 0x03, 0x0F, 0x00, 0x24, 0x54, 0x10, 0x09, 0x03, 0x01,
-+		0x10, 0x54, 0x30, 0x0C, 0x24, 0x30, 0x0F },
-+	.start_index[PM_SLEEP_MODE_STBY] = 0,
-+	.start_index[PM_SLEEP_MODE_SPC] = 2,
-+	.set_vdd = smp_set_vdd_v1_1,
-+	.range = &spm_v1_1_regulator_range,
-+	.init_uV = 1300000,
-+	.ramp_delay = 1250,
-+};
+diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
+index a427f0f41cd1..b5b9239c7aa0 100644
+--- a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
++++ b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
+@@ -54,6 +54,10 @@ cpu@0 {
+ 			reg = <0>;
+ 			enable-method = "qcom,kpss-acc-v1";
+ 			device_type = "cpu";
++			operating-points-v2 = <&cpu_opp_table>;
++			clocks = <&kraitcc 0>;
++			cpu-supply = <&saw0_vreg>;
++			cpu-idle-states = <&cpu_spc>;
+ 			next-level-cache = <&l2>;
+ 			qcom,acc = <&acc0>;
+ 			qcom,saw = <&saw0>;
+@@ -64,6 +68,10 @@ cpu@1 {
+ 			reg = <1>;
+ 			enable-method = "qcom,kpss-acc-v1";
+ 			device_type = "cpu";
++			operating-points-v2 = <&cpu_opp_table>;
++			clocks = <&kraitcc 1>;
++			cpu-supply = <&saw1_vreg>;
++			cpu-idle-states = <&cpu_spc>;
+ 			next-level-cache = <&l2>;
+ 			qcom,acc = <&acc1>;
+ 			qcom,saw = <&saw1>;
+@@ -74,6 +82,116 @@ l2: l2-cache {
+ 			cache-level = <2>;
+ 			cache-unified;
+ 		};
 +
- static inline void spm_register_write(struct spm_driver_data *drv,
- 					enum spm_reg reg, u32 val)
- {
-@@ -501,6 +517,8 @@ static const struct of_device_id spm_match_table[] = {
- 	  .data = &spm_reg_8974_8084_cpu },
- 	{ .compatible = "qcom,apq8064-saw2-v1.1-cpu",
- 	  .data = &spm_reg_8064_cpu },
-+	{ .compatible = "qcom,msm8960-saw2-v1.1-cpu",
-+	  .data = &spm_reg_8960_cpu },
- 	{ },
- };
- MODULE_DEVICE_TABLE(of, spm_match_table);
++		idle-states {
++			cpu_spc: cpu-spc {
++				compatible = "qcom,idle-state-spc", "arm,idle-state";
++				entry-latency-us = <400>;
++				exit-latency-us = <900>;
++				min-residency-us = <3000>;
++			};
++		};
++	};
++
++	cpu_opp_table: opp-table-cpu {
++		compatible = "operating-points-v2-krait-cpu";
++		nvmem-cells = <&pvs_efuse>;
++
++		opp-384000000 {
++			opp-hz = /bits/ 64 <384000000>;
++			opp-microvolt-speed0-pvs0-v0 = <950000>;
++			opp-microvolt-speed0-pvs1-v0 = <900000>;
++			opp-microvolt-speed0-pvs3-v0 = <850000>;
++			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
++		};
++
++		opp-486000000 {
++			opp-hz = /bits/ 64 <486000000>;
++			opp-microvolt-speed0-pvs0-v0 = <975000>;
++			opp-microvolt-speed0-pvs1-v0 = <925000>;
++			opp-microvolt-speed0-pvs3-v0 = <875000>;
++			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
++		};
++
++		opp-594000000 {
++			opp-hz = /bits/ 64 <594000000>;
++			opp-microvolt-speed0-pvs0-v0 = <1000000>;
++			opp-microvolt-speed0-pvs1-v0 = <950000>;
++			opp-microvolt-speed0-pvs3-v0 = <900000>;
++			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
++		};
++
++		opp-702000000 {
++			opp-hz = /bits/ 64 <702000000>;
++			opp-microvolt-speed0-pvs0-v0 = <1025000>;
++			opp-microvolt-speed0-pvs1-v0 = <975000>;
++			opp-microvolt-speed0-pvs3-v0 = <925000>;
++			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
++		};
++
++		opp-810000000 {
++			opp-hz = /bits/ 64 <810000000>;
++			opp-microvolt-speed0-pvs0-v0 = <1075000>;
++			opp-microvolt-speed0-pvs1-v0 = <1025000>;
++			opp-microvolt-speed0-pvs3-v0 = <975000>;
++			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
++		};
++
++		opp-918000000 {
++			opp-hz = /bits/ 64 <918000000>;
++			opp-microvolt-speed0-pvs0-v0 = <1100000>;
++			opp-microvolt-speed0-pvs1-v0 = <1050000>;
++			opp-microvolt-speed0-pvs3-v0 = <1000000>;
++			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
++		};
++
++		opp-1026000000 {
++			opp-hz = /bits/ 64 <1026000000>;
++			opp-microvolt-speed0-pvs0-v0 = <1125000>;
++			opp-microvolt-speed0-pvs1-v0 = <1075000>;
++			opp-microvolt-speed0-pvs3-v0 = <1025000>;
++			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
++		};
++
++		opp-1134000000 {
++			opp-hz = /bits/ 64 <1134000000>;
++			opp-microvolt-speed0-pvs0-v0 = <1175000>;
++			opp-microvolt-speed0-pvs1-v0 = <1125000>;
++			opp-microvolt-speed0-pvs3-v0 = <1075000>;
++			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
++		};
++
++		opp-1242000000 {
++			opp-hz = /bits/ 64 <1242000000>;
++			opp-microvolt-speed0-pvs0-v0 = <1200000>;
++			opp-microvolt-speed0-pvs1-v0 = <1150000>;
++			opp-microvolt-speed0-pvs3-v0 = <1100000>;
++			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
++		};
++
++		opp-1350000000 {
++			opp-hz = /bits/ 64 <1350000000>;
++			opp-microvolt-speed0-pvs0-v0 = <1225000>;
++			opp-microvolt-speed0-pvs1-v0 = <1175000>;
++			opp-microvolt-speed0-pvs3-v0 = <1125000>;
++			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
++		};
++
++		opp-1458000000 {
++			opp-hz = /bits/ 64 <1458000000>;
++			opp-microvolt-speed0-pvs0-v0 = <1237500>;
++			opp-microvolt-speed0-pvs1-v0 = <1187500>;
++			opp-microvolt-speed0-pvs3-v0 = <1137500>;
++			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
++		};
++
++		opp-1512000000 {
++			opp-hz = /bits/ 64 <1512000000>;
++			opp-microvolt-speed0-pvs0-v0 = <1250000>;
++			opp-microvolt-speed0-pvs1-v0 = <1200000>;
++			opp-microvolt-speed0-pvs3-v0 = <1150000>;
++			opp-supported-hw = <0xFFFFFFFF 0xFFFFFFFF 0xFFFFFFFF>;
++		};
+ 	};
+ 
+ 	memory@80000000 {
+@@ -81,6 +199,13 @@ memory@80000000 {
+ 		reg = <0x80000000 0>;
+ 	};
+ 
++	kraitcc: clock-controller {
++		compatible = "qcom,krait-cc-v1";
++		clocks = <&gcc PLL9>, <&gcc PLL10>, <&acc0>, <&acc1>, <&pxo_board>;
++		clock-names = "hfpll0", "hfpll1", "acpu0_aux", "acpu1_aux", "qsb";
++		#clock-cells = <1>;
++	};
++
+ 	soc: soc {
+ 		compatible = "simple-bus";
+ 		ranges;
+@@ -112,6 +237,10 @@ qfprom: efuse@700000 {
+ 			#address-cells = <1>;
+ 			#size-cells = <1>;
+ 
++			pvs_efuse: pvs@c0 {
++				reg = <0xc0 0x04>;
++			};
++
+ 			tsens_calib: calib@404 {
+ 				reg = <0x404 0x10>;
+ 			};
+@@ -348,7 +477,7 @@ acc0: clock-controller@2088000 {
+ 		};
+ 
+ 		saw0: power-manager@2089000 {
+-			compatible = "qcom,msm8960-saw2-cpu", "qcom,saw2";
++			compatible = "qcom,msm8960-saw2-v1.1-cpu", "qcom,saw2";
+ 			reg = <0x02089000 0x1000>, <0x02009000 0x1000>;
+ 
+ 			saw0_vreg: regulator {
+@@ -367,7 +496,7 @@ acc1: clock-controller@2098000 {
+ 		};
+ 
+ 		saw1: power-manager@2099000 {
+-			compatible = "qcom,msm8960-saw2-cpu", "qcom,saw2";
++			compatible = "qcom,msm8960-saw2-v1.1-cpu", "qcom,saw2";
+ 			reg = <0x02099000 0x1000>, <0x02009000 0x1000>;
+ 
+ 			saw1_vreg: regulator {
 
 -- 
 2.54.0
