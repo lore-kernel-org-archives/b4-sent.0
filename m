@@ -1,133 +1,104 @@
-From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-Date: Wed, 13 May 2026 17:29:10 +0200
-Subject: [PATCH RESEND v7 3/3] riscv: clocksource: Add p8700-gcru driver
+From: Kyle Farnung <kfarnung@gmail.com>
+Date: Wed, 13 May 2026 21:52:12 -0700
+Subject: [PATCH] wifi: ath11k: clear shared SRNG pointer state on restart
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260513-riscv-time-mmio-v7-3-f8925ffc226b@htecgroup.com>
-References: <20260513-riscv-time-mmio-v7-0-f8925ffc226b@htecgroup.com>
-In-Reply-To: <20260513-riscv-time-mmio-v7-0-f8925ffc226b@htecgroup.com>
-To: Daniel Lezcano <daniel.lezcano@linaro.org>, 
- Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Paul Walmsley <paul.walmsley@sifive.com>, 
- Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
- Alexandre Ghiti <alex@ghiti.fr>, Paul Walmsley <pjw@kernel.org>, 
- John Stultz <jstultz@google.com>, Stephen Boyd <sboyd@kernel.org>, 
- Vivian Wang <wangruikang@iscas.ac.cn>
-Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-riscv@lists.infradead.org, 
- Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
- Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
- Chao-ying Fu <cfu@mips.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778686158; l=3250;
- i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
- bh=6tKjaKViZn8P2amTu2oO3Kpu4d2sX/LUMZ6acjvMpRY=;
- b=yqFqFT2FlIVTgi2TVjxUCDiuHbeM0zfUfHwtCFK/BVCMLLwbzX6HmPi9VsScWzC1TmZZKh3M1
- yIQ6AE1h1zgBSAo5e/Uu/YHaPEOJqniGucbSIFilTsV15hi6KHCnTOm
-X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
- pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
-X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
+Message-Id: <20260513-kfarnung-ath11k-srng-clear-pointer-state-v1-1-bc700dd8b333@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2NywrCQAwAf6XkbGCzUl+/Ih5im7ahkpZkFaH03
+ 128zVxmNghxlYBbs4HLR0MXq0KHBrqJbRTUvjrklE+ppSPOA7u9bUQuE9GM4ZW7l7DjuqgVcYz
+ CRfBK/YWf6SytZKi51WXQ7391f+z7D53Sk4N6AAAA
+X-Change-ID: 20260513-kfarnung-ath11k-srng-clear-pointer-state-91d8ab07e5e2
+To: Jeff Johnson <jjohnson@kernel.org>, 
+ Muhammad Usama Anjum <usama.anjum@arm.com>, 
+ Baochen Qiang <baochen.qiang@oss.qualcomm.com>
+Cc: Jeff Johnson <jeff.johnson@oss.qualcomm.com>, 
+ linux-wireless@vger.kernel.org, ath11k@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, santiagorr@riseup.net, stable@vger.kernel.org, 
+ Kyle Farnung <kfarnung@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778734359; l=3434;
+ i=kfarnung@gmail.com; s=20260330; h=from:subject:message-id;
+ bh=XJuJhNZPkZzqwmUgFybWgxjzGDftVSfNEsebbvGwSDA=;
+ b=uj7RAdlKe6Dq/MwIimfTIXag4PerG+bL1bff/qD6gwXGRjbtWzbh36slDaJOSLak3IznIwRpm
+ ar/zYfA0NsxAGXHHHBc4Xm9CJt9sATCa6ej8etG2xVD+0f9x5qdbc0l
+X-Developer-Key: i=kfarnung@gmail.com; a=ed25519;
+ pk=47jis5OdLKFgZynNQVqkx1mTGiEgFTUX+MecmG9rbmE=
+X-Endpoint-Received: by B4 Relay for kfarnung@gmail.com/20260330 with auth_id=706
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a clocksource driver for the P8700 GCRU.
+LMAC rings reuse the shared rdp/wrp pointer buffers without going
+through the normal SRNG hw-init path that zeros non-LMAC ring
+pointers. After restart, ath11k_hal_srng_clear() can therefore hand
+stale hp/tp state from the previous firmware instance back to the new
+one.
 
-Initialization uses helper functions
-provided by clocksource/mmio.c and timer-of.c.
+Clear the shared pointer buffers while keeping the allocations in
+place so restart still avoids reallocating SRNG DMA memory, but starts
+with fresh ring-pointer state.
 
-Since the GCRU does not support any kind of interrupts,
-the default RISC-V clockevent implementation should suffice.
-
-Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Fixes: 32be3ca4cf78b ("wifi: ath11k: HAL SRNG: don't deinitialize and re-initialize again")
+Cc: stable@vger.kernel.org
+Link: https://lore.kernel.org/all/CAOPSVF04q6uvVdq8GTRLHBrVMdpt9=o9wVcFMc6f-yhmSBcZqQ@mail.gmail.com/
+Signed-off-by: Kyle Farnung <kfarnung@gmail.com>
 ---
- drivers/clocksource/Kconfig       |  9 ++++++++
- drivers/clocksource/Makefile      |  1 +
- drivers/clocksource/timer-p8700.c | 45 +++++++++++++++++++++++++++++++++++++++
- 3 files changed, 55 insertions(+)
+This patch is the result of investigating suspend/resume failures on a
+Lenovo ThinkPad P14s Gen 5 AMD with ath11k.
 
-diff --git a/drivers/clocksource/Kconfig b/drivers/clocksource/Kconfig
-index ffcd23668763fe7707a4e917bf240caadbb09a8c..861e7b8c93376b345e3a488dabe435d06a42f357 100644
---- a/drivers/clocksource/Kconfig
-+++ b/drivers/clocksource/Kconfig
-@@ -672,6 +672,15 @@ config CLINT_TIMER
- 	  This option enables the CLINT timer for RISC-V systems.  The CLINT
- 	  driver is usually used for NoMMU RISC-V systems.
+I originally proposed extending the existing ath11k PM quirk for this
+platform, but after discussion in [1] and bisection the issue appears to
+be a regression introduced by [2]. There is also a parallel report in [3]
+that appears consistent with the same root cause. This patch keeps the
+intended no-reallocation behavior from that change, but clears the
+preserved shared SRNG pointer state so restart begins from a clean state.
+
+Testing so far has been limited to local suspend/resume cycling on the
+affected system. The issue was originally reproduced on v7.0.4, and the
+patch was also built and tested on top of ath-current with repeated
+suspend/resume cycles on a Lenovo ThinkPad P14s Gen 5 AMD.
+
+[1] https://lore.kernel.org/all/CAOPSVF04q6uvVdq8GTRLHBrVMdpt9=o9wVcFMc6f-yhmSBcZqQ@mail.gmail.com/
+[2] 32be3ca4cf78b ("wifi: ath11k: HAL SRNG: don't deinitialize and re-initialize again")
+[3] https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1132343
+---
+ drivers/net/wireless/ath/ath11k/hal.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/net/wireless/ath/ath11k/hal.c b/drivers/net/wireless/ath/ath11k/hal.c
+index e821e5a62c1c0..0c0aeb803018e 100644
+--- a/drivers/net/wireless/ath/ath11k/hal.c
++++ b/drivers/net/wireless/ath/ath11k/hal.c
+@@ -1387,14 +1387,21 @@ EXPORT_SYMBOL(ath11k_hal_srng_deinit);
  
-+config P8700_TIMER
-+	bool "MIPS P8700 timer driver"
-+	depends on GENERIC_SCHED_CLOCK && RISCV && RISCV_SBI
-+	select CLKSRC_MMIO
-+	select TIMER_PROBE
-+	select TIMER_OF
-+	help
-+	  Enables support for MIPS P8700 timer driver.
-+
- config CSKY_MP_TIMER
- 	bool "SMP Timer for the C-SKY platform" if COMPILE_TEST
- 	depends on CSKY
-diff --git a/drivers/clocksource/Makefile b/drivers/clocksource/Makefile
-index ec4452ee958f1a814c708aeba6412bea61d24892..fae9a58d6c8663a7c857b9ab7fdae05782b3551c 100644
---- a/drivers/clocksource/Makefile
-+++ b/drivers/clocksource/Makefile
-@@ -95,3 +95,4 @@ obj-$(CONFIG_CLKSRC_LOONGSON1_PWM)	+= timer-loongson1-pwm.o
- obj-$(CONFIG_EP93XX_TIMER)		+= timer-ep93xx.o
- obj-$(CONFIG_RALINK_TIMER)		+= timer-ralink.o
- obj-$(CONFIG_NXP_STM_TIMER)		+= timer-nxp-stm.o
-+obj-$(CONFIG_P8700_TIMER)		+= timer-p8700.o
-diff --git a/drivers/clocksource/timer-p8700.c b/drivers/clocksource/timer-p8700.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..220ed8efdfe5544a3f925ad43b8faf2e0565557b
---- /dev/null
-+++ b/drivers/clocksource/timer-p8700.c
-@@ -0,0 +1,45 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (C) 2025 MIPS.
-+ */
-+
-+#include <linux/sched_clock.h>
-+#include <linux/delay.h>
-+#include <linux/of_address.h>
-+#include <linux/init.h>
-+#include <linux/interrupt.h>
-+#include <linux/clocksource.h>
-+
-+#include "timer-of.h"
-+
-+static struct timer_of gcru_of = { .flags = TIMER_OF_BASE };
-+static u64 __iomem *p8700_time_val __ro_after_init;
-+
-+static u64 notrace p8700_timer_sched_read(void)
-+{
-+	return (u64)readq_relaxed(p8700_time_val);
-+}
-+
-+static int __init p8700_timer_init(struct device_node *node)
-+{
-+	int error = 0;
-+
-+	error = timer_of_init(node, &gcru_of);
-+	if (error)
-+		return error;
-+
-+	p8700_time_val = timer_of_base(&gcru_of);
-+	/* Now init the mmio timer with the address we got from DT */
-+	error = clocksource_mmio_init(p8700_time_val, "mips,p8700-gcru",
-+				      riscv_timebase, 450, 64,
-+				      clocksource_mmio_readq_up);
-+	if (error)
-+		return error;
-+
-+	/* Sched clock */
-+	sched_clock_register(p8700_timer_sched_read, 64, riscv_timebase);
-+
-+	return error;
-+}
-+
-+TIMER_OF_DECLARE(p8700_timer, "mips,p8700-gcru", p8700_timer_init);
+ void ath11k_hal_srng_clear(struct ath11k_base *ab)
+ {
+-	/* No need to memset rdp and wrp memory since each individual
+-	 * segment would get cleared in ath11k_hal_srng_src_hw_init()
+-	 * and ath11k_hal_srng_dst_hw_init().
++	/* Preserve the shared pointer buffers, but clear the previous
++	 * firmware instance's hp/tp state before handing them back to FW.
++	 * LMAC rings reuse this shared memory without going through the
++	 * normal SRNG hw-init path that zeros non-LMAC ring pointers.
+ 	 */
+ 	memset(ab->hal.srng_list, 0,
+ 	       sizeof(ab->hal.srng_list));
+ 	memset(ab->hal.shadow_reg_addr, 0,
+ 	       sizeof(ab->hal.shadow_reg_addr));
++	if (ab->hal.rdp.vaddr)
++		memset(ab->hal.rdp.vaddr, 0,
++		       sizeof(*ab->hal.rdp.vaddr) * HAL_SRNG_RING_ID_MAX);
++	if (ab->hal.wrp.vaddr)
++		memset(ab->hal.wrp.vaddr, 0,
++		       sizeof(*ab->hal.wrp.vaddr) * HAL_SRNG_NUM_LMAC_RINGS);
+ 	ab->hal.avail_blk_resource = 0;
+ 	ab->hal.current_blk_index = 0;
+ 	ab->hal.num_shadow_reg_configured = 0;
 
+---
+base-commit: 54a5b38e4396530e5b2f12b54d3844e860ab6784
+change-id: 20260513-kfarnung-ath11k-srng-clear-pointer-state-91d8ab07e5e2
+
+Best regards,
 -- 
-2.43.0
+Kyle Farnung <kfarnung@gmail.com>
 
