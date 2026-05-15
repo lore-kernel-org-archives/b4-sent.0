@@ -1,15 +1,13 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Subject: [PATCH 0/3] arm64: tegra: Add iommu and dma properties for
+Date: Fri, 15 May 2026 15:35:27 -0500
+Subject: [PATCH 1/3] spi: dt-bindings: tegra: Support IOMMU property for
  Tegra194 QSPI
-Date: Fri, 15 May 2026 15:35:26 -0500
-Message-Id: <20260515-tegra194-qspi-iommu-v1-0-57dfb63cd3d6@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBvIGIW6SrSIHG0WaWlFEN09a
- fkW/z+QOQln6KsHEl+SJYYCVVcwL1PwjGKLoW1a02il8WCfJtUR7nkTlLiuJzIxGSKrnXVQyi2
- xk/u/DuP7fgRpoz1lAAAA
-X-Change-ID: 20260515-tegra194-qspi-iommu-e4e4644d5fdf
+Message-Id: <20260515-tegra194-qspi-iommu-v1-1-57dfb63cd3d6@gmail.com>
+References: <20260515-tegra194-qspi-iommu-v1-0-57dfb63cd3d6@gmail.com>
+In-Reply-To: <20260515-tegra194-qspi-iommu-v1-0-57dfb63cd3d6@gmail.com>
 To: Mark Brown <broonie@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -19,36 +17,39 @@ Cc: Thierry Reding <thierry.reding@gmail.com>, linux-spi@vger.kernel.org,
  devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778877338; l=904;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778877338; l=874;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=Tp/WyJ9SuV++kB1/ECxssyYjII+IBNRjHnQoniBaOW0=;
- b=4QKrUmyw8OB12fTPNgswQKz/NOJUvCF8pFGN5F24/IJctgZRkBmS26CSDh2hbTcCXH4FSQE+e
- H0SxcZaxGoKBabxGuHSZX9loqaxCcviBAMgO2uqVJGR6vKfIsYBUM84
+ bh=Ctj0vZsUccyi2YsBh7ZigPaDzSk51BPiMWEp4e5pg7E=;
+ b=ETf8WHKvOVF54Tby8QTiO3pg3xFXtE0sSvz3/FUu76xcn4Z8AsBBghTdraxufAwXpLT7mPe5+
+ wbsgXEVb4pRBNfEbhq7ojKO8P1H0my5U+5/vLXBp/EMMdSJ/SZjma+P
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The reason for this is to properly support the spi nor chip on the
-Jetson Xavier NX module. Prior to this, it would time out on all
-transfers and sometimes even trigger a cbb fault, locking up the entire
-unit. With this, reading and writing to the flash memory works as
-expected.
+This is supported via an external dma controller
 
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-Aaron Kling (3):
-      spi: dt-bindings: tegra: Support IOMMU property for Tegra194 QSPI
-      spi: dt-bindings: tegra: Support dma-coherent property for QSPI
-      arm64: tegra: Add iommu and dma properties for Tegra194 QSPI
+ Documentation/devicetree/bindings/spi/nvidia,tegra210-quad.yaml | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
- Documentation/devicetree/bindings/spi/nvidia,tegra210-quad.yaml | 6 +++++-
- arch/arm64/boot/dts/nvidia/tegra194.dtsi                        | 8 ++++++++
- 2 files changed, 13 insertions(+), 1 deletion(-)
----
-base-commit: e98d21c170b01ddef366f023bbfcf6b31509fa83
-change-id: 20260515-tegra194-qspi-iommu-e4e4644d5fdf
+diff --git a/Documentation/devicetree/bindings/spi/nvidia,tegra210-quad.yaml b/Documentation/devicetree/bindings/spi/nvidia,tegra210-quad.yaml
+index 909c204b8adf81..62233eb3101aeb 100644
+--- a/Documentation/devicetree/bindings/spi/nvidia,tegra210-quad.yaml
++++ b/Documentation/devicetree/bindings/spi/nvidia,tegra210-quad.yaml
+@@ -78,7 +78,9 @@ allOf:
+         compatible:
+           not:
+             contains:
+-              const: nvidia,tegra234-qspi
++              enum:
++                - nvidia,tegra194-qspi
++                - nvidia,tegra234-qspi
+     then:
+       properties:
+         iommus: false
 
-Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+2.53.0
 
