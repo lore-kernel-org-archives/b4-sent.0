@@ -1,14 +1,13 @@
 From: Amit Sunil Dhamne <amitsd@google.com>
-Subject: [PATCH 0/3] Add support for Battery Status AMS
-Date: Fri, 15 May 2026 05:48:38 +0000
-Message-Id: <20260515-batt-status-v1-0-fed6b7d8cea7@google.com>
+Date: Fri, 15 May 2026 05:48:39 +0000
+Subject: [PATCH 1/3] power: Add power_supply_get_battery_all() to fetch
+ battery psy handles
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIALazBmoC/x3MQQqAIBBA0avErBMcIYOuEi3UppqNhWMRiHdPW
- r7F/wWEEpPA1BVI9LDwGRuw7yAcLu6keG0Go43Vg0blXc5Kssu3KLTejhaD9h6hFVeijd//Ni+
- 1fvGjbN1dAAAA
-X-Change-ID: 20260501-batt-status-16b6761c0bb1
+Message-Id: <20260515-batt-status-v1-1-fed6b7d8cea7@google.com>
+References: <20260515-batt-status-v1-0-fed6b7d8cea7@google.com>
+In-Reply-To: <20260515-batt-status-v1-0-fed6b7d8cea7@google.com>
 To: Sebastian Reichel <sre@kernel.org>, 
  Badhri Jagan Sridharan <badhri@google.com>, 
  Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
@@ -24,65 +23,184 @@ Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org,
  Peter Griffin <peter.griffin@linaro.org>, RD Babiera <rdbabiera@google.com>, 
  Kyle Tso <kyletso@google.com>, Amit Sunil Dhamne <amitsd@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778824256; l=2299;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778824256; l=5048;
  i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=6rjMPk1stk8aZ3fMDqacMHJU1ErCel3DsuDHgbgKPm8=;
- b=tO+0UgaaM/areUwX3b52bA9j0nJ7mOlUiPQ/fzlUEIz2mEckUae8JpJ8IkOA3lHB/J0K8mcTa
- FvSL4BmlyCsCqlubwfSSV8n+1IyWPf1updfDOOi+aSjSrcL0m3n8xeQ
+ bh=dFElzGvQasU7y5gAnjIepqrRB4ceeHil0GBlXrTuj7Q=;
+ b=vQGrPaC36jMAjEK6RXyLkLAdq4BlXijz8krNqyDCGC+gu4Rg5eY9Kzj390Xv25deDtaiKrGo4
+ 85xONKnKRd5BYcU0x+khDqfGLGToG3x6jR4l5p4wQ2C/6MRWs2HU4D2
 X-Developer-Key: i=amitsd@google.com; a=ed25519;
  pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
 X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-PD 3.1 v1.8 Spec necessitates a response to Get_Battery_Status request
-from the port partner (see "6.13.2 Applicability of Data Message").
-This patchset adds support to get all the battery type power supplies
-and query them to report the telemetry required to build a Battery
-Status Message. Right now, this submission assumes all the battery type
-power supplies that exist in the system are fixed (meaning cannot be hot
-swapped).
-
-Previously, I had sent a patch series [1]. However there were some
-concerns. Broadly:
-  * No client drivers
-  * Duplicating dt properties
-To address the above issues, we now have Fuel Gauge and Charger drivers.
-Also, I have rectified my approach to fetch information about batteries
-from the power supply core.
-
-While, the original patch series [1] added support for Battery Caps as
-well, this patch series only adds support for Battery Status. Therefore,
-I am sending it as a new series while incorporating relevant feedback.
-
-[1] https://lore.kernel.org/all/20250507-batt_ops-v2-0-8d06130bffe6@google.com/
-
-Patches in series:
-[A] "power: supply: core: Add power_supply_get_battery_all()"
-[B] "usb: typec: tcpm: Add support for Battery Status response message"
-[C] "power: supply: max17042: add handler for energy_now property"
-
-Technical dependency of patches:
-[C] is independent and can be applied in any order.
-[B] depends on [A] due to `power_supply_get_battery_all` symbol.
+Add power_supply_get_battery_all() to allow drivers to obtain a list of
+registered battery type power supply references in the system.
 
 Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
 ---
-Amit Sunil Dhamne (3):
-      power: Add power_supply_get_battery_all() to fetch battery psy handles
-      usb: typec: tcpm: Add support for Battery Status response message
-      power: supply: max17042: add handler for energy_now property
+ drivers/power/supply/power_supply_core.c | 122 +++++++++++++++++++++++++++++++
+ include/linux/power_supply.h             |   9 +++
+ 2 files changed, 131 insertions(+)
 
- drivers/power/supply/max17042_battery.c  |  60 ++++++++++---
- drivers/power/supply/power_supply_core.c | 122 +++++++++++++++++++++++++++
- drivers/usb/typec/tcpm/tcpm.c            | 140 ++++++++++++++++++++++++++++++-
- include/linux/power_supply.h             |   9 ++
- include/linux/usb/pd.h                   |  29 +++++++
- 5 files changed, 344 insertions(+), 16 deletions(-)
----
-base-commit: 57b8e2d666a31fa201432d58f5fe3469a0dd83ba
-change-id: 20260501-batt-status-16b6761c0bb1
+diff --git a/drivers/power/supply/power_supply_core.c b/drivers/power/supply/power_supply_core.c
+index a446d3d086fc..697645426fb1 100644
+--- a/drivers/power/supply/power_supply_core.c
++++ b/drivers/power/supply/power_supply_core.c
+@@ -482,6 +482,128 @@ struct power_supply *power_supply_get_by_name(const char *name)
+ }
+ EXPORT_SYMBOL_GPL(power_supply_get_by_name);
+ 
++static int __power_supply_get_num_battery(struct power_supply *epsy, void *data)
++{
++	int *count = data;
++
++	if (epsy->desc->type == POWER_SUPPLY_TYPE_BATTERY)
++		(*count)++;
++
++	return 0;
++}
++
++static int power_supply_get_num_battery(struct device *dev)
++{
++	int ret, count = 0;
++
++	ret = power_supply_for_each_psy(&count, __power_supply_get_num_battery);
++
++	dev_dbg(dev, "%s: count: %d ret %d\n", __func__, count, ret);
++
++	if (ret)
++		return ret;
++
++	return count;
++}
++
++struct psy_get_supplies_data {
++	int cnt;
++	int size;
++	struct power_supply **psys;
++};
++
++static int __power_supply_populate_battery_array(struct power_supply *epsy,
++						 void *_data)
++{
++	struct psy_get_supplies_data *data = _data;
++
++	if (epsy->desc->type == POWER_SUPPLY_TYPE_BATTERY) {
++		if (data->size <= data->cnt)
++			return -EOVERFLOW;
++
++		get_device(&epsy->dev);
++		data->psys[data->cnt] = epsy;
++		atomic_inc(&epsy->use_cnt);
++		data->cnt++;
++	}
++
++	return 0;
++}
++
++static int power_supply_populate_battery_array(struct device *dev, int size,
++					       struct power_supply **batteries)
++{
++	int ret, i;
++
++	struct psy_get_supplies_data data = {
++		.cnt = 0,
++		.size = size,
++		.psys = batteries,
++	};
++
++	ret = power_supply_for_each_psy(&data, __power_supply_populate_battery_array);
++
++	dev_dbg(dev, "%s Found %d batteries with array size %d ret %d\n",
++		__func__, data.cnt, data.size, ret);
++
++	if (ret < 0) {
++		for (i = 0; i < data.cnt; i++)
++			power_supply_put(batteries[i]);
++		return ret;
++	}
++
++	return data.cnt;
++}
++
++/**
++ * power_supply_get_battery_all() - Searches for all battery type power supplies
++ *				    and returns their references.
++ * @dev: Pointer to device requesting the power supply refs.
++ * @psys: Pointer to an array of power supply refs that will be filled by this
++ *	  function.
++ *
++ * This function helps drivers get handles to all battery type power supplies.
++ * If acquiring a ref to a power supply results in error, then the search for
++ * battery type power supplies will abort and the acquired power supplies will
++ * be "put".
++ *
++ * Return: Indicates the number of battery type power supplies returned on
++ * success or the negative error code on failure.
++ *
++ * It's the responsibility of the caller to invoke power_supply_put() on the
++ * individual psy refs and free the array returned by this function using kfree().
++ */
++int __must_check power_supply_get_battery_all(struct device *dev,
++					      struct power_supply ***psys)
++{
++	int ret;
++
++	if (!psys)
++		return -EINVAL;
++
++	ret = power_supply_get_num_battery(dev);
++	if (ret < 0)
++		return ret;
++
++	if (!ret) {
++		*psys = NULL;
++		return 0;
++	}
++
++	*psys = kzalloc_objs(**psys, ret);
++	if (!*psys)
++		return -ENOMEM;
++
++	ret = power_supply_populate_battery_array(dev, ret, *psys);
++	if (ret <= 0) {
++		kfree(*psys);
++		*psys = NULL;
++	}
++
++	return ret;
++}
++EXPORT_SYMBOL_GPL(power_supply_get_battery_all);
++
+ /**
+  * power_supply_put() - Drop reference obtained with power_supply_get_by_name
+  * @psy: Reference to put
+diff --git a/include/linux/power_supply.h b/include/linux/power_supply.h
+index 7a5e4c3242a0..2467530a5740 100644
+--- a/include/linux/power_supply.h
++++ b/include/linux/power_supply.h
+@@ -806,11 +806,20 @@ extern int power_supply_reg_notifier(struct notifier_block *nb);
+ extern void power_supply_unreg_notifier(struct notifier_block *nb);
+ #if IS_ENABLED(CONFIG_POWER_SUPPLY)
+ extern struct power_supply *power_supply_get_by_name(const char *name);
++extern int __must_check power_supply_get_battery_all(struct device *dev,
++						     struct power_supply ***psys);
+ extern void power_supply_put(struct power_supply *psy);
+ #else
+ static inline void power_supply_put(struct power_supply *psy) {}
+ static inline struct power_supply *power_supply_get_by_name(const char *name)
+ { return NULL; }
++static inline int __must_check power_supply_get_battery_all(struct device *dev,
++							    struct power_supply ***psys)
++{
++	if (psys)
++		*psys = NULL;
++	return 0;
++}
+ #endif
+ extern struct power_supply *power_supply_get_by_reference(struct fwnode_handle *fwnode,
+ 							  const char *property);
 
-Best regards,
 -- 
-Amit Sunil Dhamne <amitsd@google.com>
+2.54.0.563.g4f69b47b94-goog
 
