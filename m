@@ -1,10 +1,11 @@
 From: Jia Wang <wangjia@ultrarisc.com>
-Date: Fri, 15 May 2026 09:18:03 +0800
-Subject: [PATCH 7/9] riscv: dts: ultrarisc: add Rongda M0 board device tree
+Date: Fri, 15 May 2026 09:18:04 +0800
+Subject: [PATCH 8/9] riscv: dts: ultrarisc: add Milk-V Titan board device
+ tree
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260515-ultrarisc-pinctrl-v1-7-bf559589ea8a@ultrarisc.com>
+Message-Id: <20260515-ultrarisc-pinctrl-v1-8-bf559589ea8a@ultrarisc.com>
 References: <20260515-ultrarisc-pinctrl-v1-0-bf559589ea8a@ultrarisc.com>
 In-Reply-To: <20260515-ultrarisc-pinctrl-v1-0-bf559589ea8a@ultrarisc.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -19,49 +20,39 @@ Cc: Paul Walmsley <paul.walmsley@sifive.com>,
  linux-kernel@vger.kernel.org, linux-gpio@vger.kernel.org, 
  Jia Wang <wangjia@ultrarisc.com>
 X-Mailer: b4 0.15-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778807890; l=5336;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778807890; l=7121;
  i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
- bh=t/R0mLPTbNUZPAL58YRehEFOhBPdOUX92xeh2IinM2w=;
- b=bT1IuSu9q223icKQubL2BmVf3Yu/tWmMhB7XitawJ8tOZWGSfNzx/DGXFJHZ2lPy6MR+hq3Jp
- qnAT0mbxXslCKi23braHdfI83aXi4xEm+qG0hOSJAx3yGKwNTUuhFyb
+ bh=xX1Mb67eueb8njtg09s4f3y/jZXeNZx3JHf6ugsERgg=;
+ b=hO9vbV/B71IzWvgeBG1C/Y3C9z9QXaKWDM4yTnc6xy/nC8RaxNRqRQQhO6Qf+AEN+QbbdWczR
+ oBI7NBSDAL+AfHRZBimTcRSzhzmIknJrYko1v+ZssmHXmlxdUDdDzv7
 X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
  pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
 X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Rongda M0 is an mATX motherboard based on the UltraRISC DP1000 SoC.
+Milk-V Titan is an ITX motherboard based on the UltraRISC DP1000 SoC.
 
 Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
 ---
- arch/riscv/boot/dts/Makefile                       |   1 +
- arch/riscv/boot/dts/ultrarisc/Makefile             |   2 +
- .../dts/ultrarisc/dp1000-rongda-m0-pinctrl.dtsi    |  85 ++++++++++++++++
- arch/riscv/boot/dts/ultrarisc/dp1000-rongda-m0.dts | 111 +++++++++++++++++++++
- 4 files changed, 199 insertions(+)
+ arch/riscv/boot/dts/ultrarisc/Makefile             |   1 +
+ .../dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi  | 107 ++++++++++++
+ .../boot/dts/ultrarisc/dp1000-milkv-titan.dts      | 182 +++++++++++++++++++++
+ 3 files changed, 290 insertions(+)
 
-diff --git a/arch/riscv/boot/dts/Makefile b/arch/riscv/boot/dts/Makefile
-index 69d8751fb17c..702882974251 100644
---- a/arch/riscv/boot/dts/Makefile
-+++ b/arch/riscv/boot/dts/Makefile
-@@ -12,3 +12,4 @@ subdir-y += spacemit
- subdir-y += starfive
- subdir-y += tenstorrent
- subdir-y += thead
-+subdir-y += ultrarisc
 diff --git a/arch/riscv/boot/dts/ultrarisc/Makefile b/arch/riscv/boot/dts/ultrarisc/Makefile
-new file mode 100644
-index 000000000000..d01a770d3cba
---- /dev/null
+index d01a770d3cba..9c27256a2f67 100644
+--- a/arch/riscv/boot/dts/ultrarisc/Makefile
 +++ b/arch/riscv/boot/dts/ultrarisc/Makefile
-@@ -0,0 +1,2 @@
-+# SPDX-License-Identifier: GPL-2.0
-+dtb-$(CONFIG_ARCH_ULTRARISC) += dp1000-rongda-m0.dtb
-diff --git a/arch/riscv/boot/dts/ultrarisc/dp1000-rongda-m0-pinctrl.dtsi b/arch/riscv/boot/dts/ultrarisc/dp1000-rongda-m0-pinctrl.dtsi
+@@ -1,2 +1,3 @@
+ # SPDX-License-Identifier: GPL-2.0
++dtb-$(CONFIG_ARCH_ULTRARISC) += dp1000-milkv-titan.dtb
+ dtb-$(CONFIG_ARCH_ULTRARISC) += dp1000-rongda-m0.dtb
+diff --git a/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi b/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi
 new file mode 100644
-index 000000000000..101b416b1079
+index 000000000000..053206190ec7
 --- /dev/null
-+++ b/arch/riscv/boot/dts/ultrarisc/dp1000-rongda-m0-pinctrl.dtsi
-@@ -0,0 +1,85 @@
++++ b/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi
+@@ -0,0 +1,107 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Copyright(C) 2026 UltraRISC Technology (Shanghai) Co., Ltd.
@@ -98,22 +89,37 @@ index 000000000000..101b416b1079
 +		drive-strength = <33>;
 +	};
 +
-+	pciex4a_link_pins: pciex4a-link-pins {
-+		pins = "PC0";
-+		function = "func1";
-+		bias-pull-down;
++	io_pins: io-pins {
++		pins = "PA10", "PA15", "PB0", "PB1", "PB2", "PD6", "PD7";
++		function = "gpio";
++		bias-pull-up;
 +		drive-strength = <33>;
 +	};
 +
-+	pciex4b_link_pins: pciex4b-link-pins {
-+		pins = "PC1";
-+		function = "func1";
-+		bias-pull-down;
++	gpio_keys_pins: gpio-keys-pins {
++		pins = "PA4", "PA11", "PA14";
++		function = "gpio";
++		bias-pull-up;
 +		drive-strength = <33>;
++	};
++
++	mux_dcdc_pins: mux-dcdc-pins {
++		pins = "PA5";
++		function = "gpio";
++	};
++
++	mux_i2c3_pins: mux-i2c3-pins {
++		pins = "PA6";
++		function = "gpio";
++	};
++
++	mux_uart0_pins: mux-uart0-pins {
++		pins = "PA7";
++		function = "gpio";
 +	};
 +
 +	spi0_pins: spi0-pins {
-+		pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5", "PD6", "PD7";
++		pins = "PD0", "PD1", "PD2", "PD3", "PD4", "PD5";
 +		function = "func1";
 +		bias-pull-up;
 +		drive-strength = <33>;
@@ -146,24 +152,34 @@ index 000000000000..101b416b1079
 +		bias-pull-up;
 +		drive-strength = <33>;
 +	};
++
++	uart3_pins: uart3-pins {
++		pins = "PC6", "PC7";
++		function = "func0";
++		bias-pull-up;
++		drive-strength = <33>;
++	};
 +};
-diff --git a/arch/riscv/boot/dts/ultrarisc/dp1000-rongda-m0.dts b/arch/riscv/boot/dts/ultrarisc/dp1000-rongda-m0.dts
+diff --git a/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan.dts b/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan.dts
 new file mode 100644
-index 000000000000..6f72d60ad55e
+index 000000000000..21d85c03abe1
 --- /dev/null
-+++ b/arch/riscv/boot/dts/ultrarisc/dp1000-rongda-m0.dts
-@@ -0,0 +1,111 @@
++++ b/arch/riscv/boot/dts/ultrarisc/dp1000-milkv-titan.dts
+@@ -0,0 +1,182 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Copyright(C) 2026 UltraRISC Technology (Shanghai) Co., Ltd.
 + */
 +
-+#include "dp1000-rongda-m0-pinctrl.dtsi"
++#include "dp1000-milkv-titan-pinctrl.dtsi"
 +#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
++#include <dt-bindings/input/gpio-keys.h>
++#include <dt-bindings/leds/common.h>
 +
 +/ {
-+	model = "Rongda M0 Board";
-+	compatible = "rongda,m0", "ultrarisc,dp1000";
++	model = "Milk-V Titan";
++	compatible = "milkv,titan", "ultrarisc,dp1000";
 +
 +	aliases {
 +		serial0 = &uart0;
@@ -178,7 +194,7 @@ index 000000000000..6f72d60ad55e
 +
 +	gpio-poweroff {
 +		compatible = "gpio-poweroff";
-+		gpios = <&gpio_b 0 GPIO_ACTIVE_HIGH>;
++		gpios = <&gpio_b 0 GPIO_ACTIVE_LOW>;
 +		active-delay-ms = <100>;
 +
 +		status = "disabled";
@@ -186,10 +202,46 @@ index 000000000000..6f72d60ad55e
 +
 +	gpio-restart {
 +		compatible = "gpio-restart";
-+		gpios = <&gpio_b 1 GPIO_ACTIVE_HIGH>;
++		gpios = <&gpio_b 1 GPIO_ACTIVE_LOW>;
 +		active-delay = <100>;
 +
 +		status = "disabled";
++	};
++
++	gpio-keys {
++		compatible = "gpio-keys";
++		pinctrl-names = "default";
++		pinctrl-0 = <&gpio_keys_pins>;
++
++		key-wakeup-0 {
++			label = "Wake-Up";
++			gpios = <&gpio_a 14 GPIO_ACTIVE_LOW>;
++			linux,code = <KEY_WAKEUP>;
++			linux,input-type = <EV_KEY>;
++			debounce-interval = <10>;
++			wakeup-source;
++			wakeup-event-action = <EV_ACT_DEASSERTED>;
++		};
++
++		key-wakeup-1 {
++			label = "Power";
++			gpios = <&gpio_a 11 GPIO_ACTIVE_LOW>;
++			linux,code = <KEY_POWER>;
++			linux,input-type = <EV_KEY>;
++			debounce-interval = <10>;
++			wakeup-source;
++			wakeup-event-action = <EV_ACT_DEASSERTED>;
++		};
++
++		key-wakeup-2 {
++			label = "Wake-Up-by-USB";
++			gpios = <&gpio_a 4 GPIO_ACTIVE_LOW>;
++			linux,code = <KEY_WAKEUP>;
++			linux,input-type = <EV_KEY>;
++			debounce-interval = <10>;
++			wakeup-source;
++			wakeup-event-action = <EV_ACT_DEASSERTED>;
++		};
 +	};
 +};
 +
@@ -207,9 +259,9 @@ index 000000000000..6f72d60ad55e
 +	pinctrl-names = "default";
 +	pinctrl-0 = <&i2c2_pins>;
 +
-+	rtc@32 {
-+		compatible = "whwave,sd3078";
-+		reg = <0x32>;
++	rtc@68 {
++		compatible = "st,m41t11";
++		reg = <0x68>;
 +	};
 +};
 +
@@ -245,12 +297,21 @@ index 000000000000..6f72d60ad55e
 +	pinctrl-0 = <&uart2_pins>;
 +};
 +
++&uart3 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&uart3_pins>;
++};
++
++&gpio {
++	pinctrl-names = "default";
++	pinctrl-0 = <&io_pins &mux_dcdc_pins &mux_i2c3_pins &mux_uart0_pins>;
++};
++
 +&ethernet {
 +	phy-handle = <&phy0>;
 +	/*
-+	 * YT8531 RGMII timing on this board requires no PHY internal delays.
-+	 * Using "rgmii-id" together with rx/tx-internal-delay-ps results in RX CRC
-+	 * errors and no usable traffic, so keep plain "rgmii" here.
++	 * RTL8211F: board timing uses PHY strap delays; keep plain "rgmii".
++	 * Enabling PHY internal delays via "rgmii-id" breaks Ethernet traffic.
 +	 */
 +	phy-mode = "rgmii";
 +
@@ -261,6 +322,29 @@ index 000000000000..6f72d60ad55e
 +
 +		phy0: phy@0 {
 +			reg = <0x00>;
++
++			leds {
++				#address-cells = <1>;
++				#size-cells = <0>;
++
++				led@1 {
++					label = "eth-link";
++					reg = <0x01>;
++					color = <LED_COLOR_ID_YELLOW>;
++					function = LED_FUNCTION_INDICATOR;
++					default-state = "keep";
++					linux,default-trigger = "netdev";
++				};
++
++				led@2 {
++					label = "eth-activity";
++					reg = <0x02>;
++					color = <LED_COLOR_ID_GREEN>;
++					function = LED_FUNCTION_ACTIVITY;
++					default-state = "keep";
++					linux,default-trigger = "netdev";
++				};
++			};
 +		};
 +	};
 +};
