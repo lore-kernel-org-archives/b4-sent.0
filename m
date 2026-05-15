@@ -1,713 +1,110 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Thu, 14 May 2026 16:29:17 -0500
-Subject: [PATCH v3 2/2] drm/panel: Add panel driver for Chipone ICNA35XX
- based panels
+From: Jia Wang <wangjia@ultrarisc.com>
+Subject: [PATCH 0/9] riscv: ultrarisc: add DP1000 SoC DT and pinctrl
+ support
+Date: Fri, 15 May 2026 09:17:56 +0800
+Message-Id: <20260515-ultrarisc-pinctrl-v1-0-bf559589ea8a@ultrarisc.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260514-icna35xx-v3-2-c304f04c32c4@gmail.com>
-References: <20260514-icna35xx-v3-0-c304f04c32c4@gmail.com>
-In-Reply-To: <20260514-icna35xx-v3-0-c304f04c32c4@gmail.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>, 
- Teguh Sobirin <teguh@sobir.in>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778794180; l=21674;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=gfjqTsXJhWvidziFJjKpr6H0Olyvt1R6kS1KfpDVTRk=;
- b=zhfrr21menSV4Tqzm1I7ukyFvZQPtRq0L42qCvMuwiHF+VFfREweM+9LpOj6Nsyrw9W4gj3ma
- wnAn2dK9iIeB6J4X9e9j3q7Yu5zKdfEHZZ9RSKAlgH92BHyNx5vYFdY
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-B4-Tracking: v=1; b=H4sIAER0BmoC/yXMQQqEMAxA0atI1hZqlSJzlcFFjVEj0pGkiiDe3
+ c7M8i3+v0BJmBRexQVCByt/YkZVFoBziBMZHrLBWedtXXmzr0mCsKLZOGKS1dAYPLkGm9bWkLt
+ NaOTz93x3f+veL4TpO4L7fgAwkAmRdQAAAA==
+X-Change-ID: 20260316-ultrarisc-pinctrl-efa6e24c4803
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Paul Walmsley <pjw@kernel.org>, 
+ Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
+ Alexandre Ghiti <alex@ghiti.fr>, Linus Walleij <linusw@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>, 
+ Samuel Holland <samuel.holland@sifive.com>
+Cc: Paul Walmsley <paul.walmsley@sifive.com>, 
+ Palmer Dabbelt <palmer@sifive.com>, Conor Dooley <conor@kernel.org>, 
+ devicetree@vger.kernel.org, linux-riscv@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, linux-gpio@vger.kernel.org, 
+ Jia Wang <wangjia@ultrarisc.com>
+X-Mailer: b4 0.15-dev
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778807890; l=3939;
+ i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
+ bh=CIzqu3iSXQE7WxLBaG2FjLAc8gxifDDaK5d1TURsWzw=;
+ b=Dc3d8WwB4MLDtzdPDDLY4xc9u1QECszdJWuus/oTWcJL6qCseT8wQhfxrgPWTLdMqoNvJ2MJ9
+ GoaIZaZQjVpC7juOougB38kb6ZoCx5T2PubrnD9nuZnupQ/FfpHQfw3
+X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
+ pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
+X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Teguh Sobirin <teguh@sobir.in>
+This series adds initial Devicetree support for the UltraRISC DP1000 RISC-V
+SoC and two DP1000-based boards (Milk-V Titan and Rongda M0).
 
-This adds support for the ICNA3512 and ICNA3520 DDICs used in both the
-AYN Odin 2 Portal and Ayaneo Pocket DS top panel respectively and for
-for both the AYN Odin 3 and the AYN Thor top panel respectively.
+The series introduces the required DT bindings, adds the DP1000 pinctrl
+driver, and provides the initial SoC/board DTS files.
 
-These all have unique compatibles because the panels themselves are
-likely unique hardware with only the ddic's and thus api and driver
-handling shared.
+Notes:
+  - Clocks are configured and enabled by firmware before Linux boots. Linux
+    does not manage clock rates or gating at runtime on this platform.
+    Therefore the initial DT only models the fixed clocks required by
+    standard drivers, and no clock controller/driver is provided.
+  - The DP1000 pinctrl binding supports two child node styles under the same
+    controller compatible:
+      * legacy DP1000-specific nodes using phandle-array properties
+        "pinctrl-pins" and "pinconf-pins"
+      * generic pinctrl nodes using "pins", "function" and generic pin
+        configuration properties
+    The legacy form is kept for compatibility with existing vendor DTs.
+  - The bindings for "ultrarisc,dp1000-uart" and "ultrarisc,dp1000-pcie" are
+    being reviewed in separate series, since the DP1000 SoC DTS introduced
+    here uses those compatibles:
+    * Link: https://lore.kernel.org/lkml/20260429-ultrarisc-serial-v7-3-e475cce9e274@ultrarisc.com/
+    * Link: https://lore.kernel.org/lkml/20260427-ultrarisc-pcie-v4-2-98935f6cdfb5@ultrarisc.com/
+  - ARCH_ULTRARISC support is being reviewed separately:
+    * Link: https://lore.kernel.org/lkml/20260427-ultrarisc-pcie-v4-1-98935f6cdfb5@ultrarisc.com/
 
-Signed-off-by: Teguh Sobirin <teguh@sobir.in>
-Co-developed-by: Aaron Kling <webgeek1234@gmail.com>
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Testing:
+  - dt_binding_check and yamllint (all new/modified binding YAMLs)
+  - dtbs_check and dtbs (RISC-V, including dp1000-milkv-titan.dtb and
+    dp1000-rongda-m0.dtb)
+  - Kernel build for RISC-V and boot-tested on DP1000 (Milk-V Titan and
+    Rongda M0)
+
+Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
 ---
- drivers/gpu/drm/panel/Kconfig                  |  11 +
- drivers/gpu/drm/panel/Makefile                 |   1 +
- drivers/gpu/drm/panel/panel-chipone-icna35xx.c | 619 +++++++++++++++++++++++++
- 3 files changed, 631 insertions(+)
+Jia Wang (9):
+      dt-bindings: vendor-prefixes: add Rongda
+      dt-bindings: riscv: cpus: Add UltraRISC CP100 compatible
+      dt-bindings: riscv: Add UltraRISC DP1000 bindings
+      dt-bindings: pinctrl: Add UltraRISC DP1000 pinctrl bindings
+      riscv: dts: ultrarisc: Add initial device tree for UltraRISC DP1000
+      pinctrl: ultrarisc: Add UltraRISC DP1000 pinctrl driver
+      riscv: dts: ultrarisc: add Rongda M0 board device tree
+      riscv: dts: ultrarisc: add Milk-V Titan board device tree
+      riscv: defconfig: enable ARCH_ULTRARISC
 
-diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
-index 7450b27622a233..1368b5a0b6c912 100644
---- a/drivers/gpu/drm/panel/Kconfig
-+++ b/drivers/gpu/drm/panel/Kconfig
-@@ -105,6 +105,17 @@ config DRM_PANEL_BOE_TV101WUM_LL2
- 	  Say Y here if you want to support for BOE TV101WUM-LL2
- 	  WUXGA PANEL DSI Video Mode panel
- 
-+config DRM_PANEL_CHIPONE_ICNA35XX
-+	tristate "Chipone ICNA35XX panel driver"
-+	depends on OF
-+	depends on DRM_MIPI_DSI
-+	depends on BACKLIGHT_CLASS_DEVICE
-+	select DRM_DISPLAY_HELPER
-+	help
-+	  Say Y here if you want to enable support for the panels built
-+	  around the Chipone ICNA3512 and ICNA3520 display controllers,
-+	  such as some Tianma panels used in AYN Odin2 Portal and Thor.
-+
- config DRM_PANEL_CHIPWEALTH_CH13726A
- 	tristate "CHIPWEALTH CH13726A-based DSI panel"
- 	depends on OF
-diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
-index c2c5cf81711633..d39a8f82fa8c06 100644
---- a/drivers/gpu/drm/panel/Makefile
-+++ b/drivers/gpu/drm/panel/Makefile
-@@ -9,6 +9,7 @@ obj-$(CONFIG_DRM_PANEL_BOE_TD4320) += panel-boe-td4320.o
- obj-$(CONFIG_DRM_PANEL_BOE_TH101MB31UIG002_28A) += panel-boe-th101mb31ig002-28a.o
- obj-$(CONFIG_DRM_PANEL_BOE_TV101WUM_LL2) += panel-boe-tv101wum-ll2.o
- obj-$(CONFIG_DRM_PANEL_BOE_TV101WUM_NL6) += panel-boe-tv101wum-nl6.o
-+obj-$(CONFIG_DRM_PANEL_CHIPONE_ICNA35XX) += panel-chipone-icna35xx.o
- obj-$(CONFIG_DRM_PANEL_CHIPWEALTH_CH13726A) += panel-chipwealth-ch13726a.o
- obj-$(CONFIG_DRM_PANEL_DSI_CM) += panel-dsi-cm.o
- obj-$(CONFIG_DRM_PANEL_LVDS) += panel-lvds.o
-diff --git a/drivers/gpu/drm/panel/panel-chipone-icna35xx.c b/drivers/gpu/drm/panel/panel-chipone-icna35xx.c
-new file mode 100644
-index 00000000000000..958f205a7f4f93
---- /dev/null
-+++ b/drivers/gpu/drm/panel/panel-chipone-icna35xx.c
-@@ -0,0 +1,619 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Chipone ICNA35XX Driver IC panels driver
-+ *
-+ * Copyright (c) 2025 Teguh Sobirin <teguh@sobir.in>
-+ */
-+
-+#include <linux/backlight.h>
-+#include <linux/delay.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/module.h>
-+#include <linux/of.h>
-+#include <linux/of_graph.h>
-+#include <linux/regulator/consumer.h>
-+
-+#include <video/mipi_display.h>
-+
-+#include <drm/display/drm_dsc.h>
-+#include <drm/display/drm_dsc_helper.h>
-+#include <drm/drm_connector.h>
-+#include <drm/drm_crtc.h>
-+#include <drm/drm_mipi_dsi.h>
-+#include <drm/drm_modes.h>
-+#include <drm/drm_panel.h>
-+
-+struct panel_info {
-+	struct drm_panel panel;
-+	struct drm_connector *connector;
-+	struct mipi_dsi_device *dsi;
-+	struct panel_desc *desc;
-+	enum drm_panel_orientation orientation;
-+
-+	struct gpio_desc *reset_gpio;
-+	struct regulator_bulk_data *supplies;
-+};
-+
-+struct panel_desc {
-+	unsigned int width_mm;
-+	unsigned int height_mm;
-+
-+	unsigned int bpc;
-+	unsigned int lanes;
-+	unsigned long mode_flags;
-+	enum mipi_dsi_pixel_format format;
-+
-+	const struct drm_display_mode *modes;
-+	unsigned int num_modes;
-+	int (*init_sequence)(struct panel_info *pinfo);
-+
-+	struct drm_dsc_config dsc;
-+};
-+
-+static const struct regulator_bulk_data panel_supplies[] = {
-+	{ .supply = "vdd" },
-+	{ .supply = "vddio" },
-+	{ .supply = "vci" },
-+	{ .supply = "disp" },
-+	{ .supply = "blvdd" },
-+};
-+
-+static inline struct panel_info *to_panel_info(struct drm_panel *panel)
-+{
-+	return container_of(panel, struct panel_info, panel);
-+}
-+
-+static int icna35xx_get_current_mode(struct panel_info *pinfo)
-+{
-+	struct drm_connector *connector = pinfo->connector;
-+	struct drm_crtc_state *crtc_state;
-+	int i;
-+
-+	/* Return the default (first) mode if no info available yet */
-+	if (!connector->state || !connector->state->crtc)
-+		return 0;
-+
-+	crtc_state = connector->state->crtc->state;
-+
-+	for (i = 0; i < pinfo->desc->num_modes; i++) {
-+		if (drm_mode_match(&crtc_state->mode,
-+				   &pinfo->desc->modes[i],
-+				   DRM_MODE_MATCH_TIMINGS | DRM_MODE_MATCH_CLOCK))
-+			return i;
-+	}
-+
-+	return 0;
-+}
-+
-+static int icna3512_init_sequence(struct panel_info *pinfo)
-+{
-+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = pinfo->dsi };
-+	struct drm_dsc_picture_parameter_set pps;
-+
-+	int cur_mode = icna35xx_get_current_mode(pinfo);
-+	int cur_vrefresh = drm_mode_vrefresh(&pinfo->desc->modes[cur_mode]);
-+
-+	pinfo->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9C, 0xA5, 0xA5);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xFD, 0x5A, 0x5A);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x53, 0xE0);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x35, 0x00);
-+
-+	mipi_dsi_dcs_exit_sleep_mode_multi(&dsi_ctx);
-+
-+	mipi_dsi_msleep(&dsi_ctx, 120);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x0F);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xCE, 0x22);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x01);
-+	if (cur_vrefresh == 165) {
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x20);
-+	} else if (cur_vrefresh == 144) {
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB3,
-+			0x00, 0xE0, 0xA0, 0x10, 0xC8, 0x00, 0x02, 0x83,
-+			0x00, 0x10, 0x14, 0x00, 0x00, 0xC3, 0x00, 0x10,
-+			0x14, 0x00, 0x00, 0xE0, 0x00, 0x10, 0x14, 0x00,
-+			0x00, 0xE0, 0xA0, 0x10, 0xC8, 0x22, 0x18, 0x18,
-+			0x18, 0x18, 0x18);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x07);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB5,
-+			0x04, 0x0A, 0x08, 0x0A, 0x04, 0x00, 0xC4);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xD9,
-+			0x66, 0xE4, 0xE4, 0x66, 0xE4, 0xE4, 0x00, 0xC4,
-+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xCE,
-+			0x01, 0x01, 0x01, 0x01, 0x04, 0x07, 0xA4);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x30);
-+	} else if (cur_vrefresh == 120) {
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB3,
-+			0x00, 0xE0, 0xA0, 0x10, 0xC8, 0x00, 0x02, 0x83,
-+			0x00, 0x10, 0x14, 0x00, 0x00, 0xC3, 0x00, 0x10,
-+			0x14, 0x00, 0x00, 0xE0, 0x10, 0x10, 0x9C, 0x00,
-+			0x00, 0xE0, 0xA0, 0x10, 0xC8, 0x22, 0x18, 0x18,
-+			0x18, 0x18, 0x18);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x07);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB5,
-+			0x04, 0x0C, 0x08, 0x0C, 0x04, 0x00, 0xC4);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xD9,
-+			0x88, 0x40, 0x40, 0x88, 0x40, 0x40, 0x00, 0xEB,
-+			0x11, 0xFF);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xCE,
-+			0x01, 0x01, 0x01, 0x01, 0x04, 0x09, 0x2C);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x30);
-+	} else if (cur_vrefresh == 90) {
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB3,
-+			0x00, 0xE0, 0x40, 0x10, 0xA8, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x07);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB2,
-+			0x04, 0x10, 0x08, 0x0C, 0x04, 0x00, 0xC4);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xD3,
-+			0x55, 0x80, 0x80, 0x55, 0x80, 0xB0, 0x00, 0x9C,
-+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xCB,
-+			0x01, 0x01, 0x01, 0x01, 0x04, 0x06, 0x1C);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x00);
-+	} else {
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB3,
-+			0x00, 0xE0, 0xA0, 0x10, 0xC8, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x07);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB2,
-+			0x04, 0x18, 0x08, 0x0C, 0x02, 0x00, 0xC4);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xD3,
-+			0x88, 0x4A, 0x4A, 0x88, 0x4A, 0x4A, 0x00, 0xEB,
-+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xCB,
-+			0x01, 0x01, 0x01, 0x01, 0x04, 0x2C);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x00);
-+	}
-+
-+	drm_dsc_pps_payload_pack(&pps, &pinfo->desc->dsc);
-+	mipi_dsi_picture_parameter_set_multi(&dsi_ctx, &pps);
-+
-+	mipi_dsi_msleep(&dsi_ctx, 20);
-+
-+	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
-+
-+	return dsi_ctx.accum_err;
-+}
-+
-+static int icna3520_init_sequence(struct panel_info *pinfo)
-+{
-+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = pinfo->dsi };
-+	struct drm_dsc_picture_parameter_set pps;
-+
-+	int cur_mode = icna35xx_get_current_mode(pinfo);
-+	int cur_vrefresh = drm_mode_vrefresh(&pinfo->desc->modes[cur_mode]);
-+
-+	pinfo->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9C, 0xA5, 0xA5);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xFD, 0x5A, 0x5A);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x53, 0xE0);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x35, 0x00);
-+
-+	mipi_dsi_dcs_exit_sleep_mode_multi(&dsi_ctx);
-+
-+	mipi_dsi_msleep(&dsi_ctx, 120);
-+
-+	if (cur_vrefresh == 120) {
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB3,
-+			0x00, 0xD8, 0x00, 0x1C, 0x00, 0x4C);
-+	} else {
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x10);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x00);
-+		mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB3,
-+			0x00, 0xDB, 0x00, 0x1C, 0x00, 0x1C, 0x00, 0x00,
-+			0xDB, 0x00, 0x1C, 0x07, 0xD6, 0x00);
-+	}
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x01);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB2, 0x00);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x0D);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB2, 0x27);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB6, 0x03);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xBB, 0x01);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB2, 0x24);
-+
-+	drm_dsc_pps_payload_pack(&pps, &pinfo->desc->dsc);
-+	mipi_dsi_picture_parameter_set_multi(&dsi_ctx, &pps);
-+
-+	mipi_dsi_msleep(&dsi_ctx, 20);
-+
-+	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
-+
-+	return dsi_ctx.accum_err;
-+}
-+
-+static const struct drm_display_mode odin2portal_modes[] = {
-+	{
-+		/* 165Hz */
-+		.clock = (1080 + 98 + 1 + 23) * (1920 + 20 + 1 + 15) * 165 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 98,
-+		.hsync_end = 1080 + 98 + 1,
-+		.htotal = 1080 + 98 + 1 + 23,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 20,
-+		.vsync_end = 1920 + 20 + 1,
-+		.vtotal = 1920 + 20 + 1 + 15,
-+	},
-+	{
-+		/* 144Hz */
-+		.clock = (1080 + 156 + 1 + 23) * (1920 + 20 + 1 + 15) * 144 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 156,
-+		.hsync_end = 1080 + 156 + 1,
-+		.htotal = 1080 + 156 + 1 + 23,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 20,
-+		.vsync_end = 1920 + 20 + 1,
-+		.vtotal = 1920 + 20 + 1 + 15,
-+	},
-+	{
-+		/* 120Hz */
-+		.clock = (1080 + 156 + 1 + 23) * (1920 + 412 + 1 + 15) * 120 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 156,
-+		.hsync_end = 1080 + 156 + 1,
-+		.htotal = 1080 + 156 + 1 + 23,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 412,
-+		.vsync_end = 1920 + 412 + 1,
-+		.vtotal = 1920 + 412 + 1 + 15,
-+	},
-+	{
-+		/* 90Hz */
-+		.clock = (1080 + 156 + 1 + 23) * (1920 + 1192 + 1 + 15) * 90 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 156,
-+		.hsync_end = 1080 + 156 + 1,
-+		.htotal = 1080 + 156 + 1 + 23,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 1192,
-+		.vsync_end = 1920 + 1192 + 1,
-+		.vtotal = 1920 + 1192 + 1 + 15,
-+	},
-+	{
-+		/* 60Hz */
-+		.clock = (1080 + 156 + 1 + 23) * (1920 + 2760 + 1 + 15) * 60 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 156,
-+		.hsync_end = 1080 + 156 + 1,
-+		.htotal = 1080 + 156 + 1 + 23,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 2760,
-+		.vsync_end = 1920 + 2760 + 1,
-+		.vtotal = 1920 + 2760 + 1 + 15,
-+	}
-+};
-+
-+static const struct drm_display_mode thor_top_modes[] = {
-+	{
-+		/* 120Hz */
-+		.clock = (1080 + 24 + 1 + 24) * (1920 + 28 + 1 + 28) * 120 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 24,
-+		.hsync_end = 1080 + 24 + 1,
-+		.htotal = 1080 + 24 + 1 + 24,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 28,
-+		.vsync_end = 1920 + 28 + 1,
-+		.vtotal = 1920 + 28 + 1 + 28,
-+	},
-+	{
-+		/* 60Hz */
-+		.clock = (1080 + 24 + 1 + 24) * (1920 + 2006 + 1 + 28) * 60 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 24,
-+		.hsync_end = 1080 + 24 + 1,
-+		.htotal = 1080 + 24 + 1 + 24,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 2006,
-+		.vsync_end = 1920 + 2006 + 1,
-+		.vtotal = 1920 + 2006 + 1 + 28,
-+	}
-+};
-+
-+static struct panel_desc odin2portal_desc = {
-+	.modes = odin2portal_modes,
-+	.num_modes = ARRAY_SIZE(odin2portal_modes),
-+	.width_mm = 160,
-+	.height_mm = 89,
-+	.bpc = 8,
-+	.lanes = 4,
-+	.format = MIPI_DSI_FMT_RGB888,
-+	.mode_flags = MIPI_DSI_MODE_NO_EOT_PACKET | MIPI_DSI_CLOCK_NON_CONTINUOUS |
-+			MIPI_DSI_MODE_LPM,
-+	.init_sequence = icna3512_init_sequence,
-+	.dsc = {
-+		.dsc_version_major = 0x1,
-+		.dsc_version_minor = 0x1,
-+		.slice_height = 20,
-+		.slice_width = 540,
-+		.slice_count = 2,
-+		.bits_per_component = 8,
-+		.bits_per_pixel = 8 << 4,
-+		.block_pred_enable = true,
-+	},
-+};
-+
-+static struct panel_desc thor_top_desc = {
-+	.modes = thor_top_modes,
-+	.num_modes = ARRAY_SIZE(thor_top_modes),
-+	.width_mm = 136,
-+	.height_mm = 68,
-+	.bpc = 8,
-+	.lanes = 4,
-+	.format = MIPI_DSI_FMT_RGB888,
-+	.mode_flags =  MIPI_DSI_MODE_NO_EOT_PACKET | MIPI_DSI_CLOCK_NON_CONTINUOUS |
-+			MIPI_DSI_MODE_LPM,
-+	.init_sequence = icna3520_init_sequence,
-+	.dsc = {
-+		.dsc_version_major = 0x1,
-+		.dsc_version_minor = 0x1,
-+		.slice_height = 12,
-+		.slice_width = 540,
-+		.slice_count = 2,
-+		.bits_per_component = 8,
-+		.bits_per_pixel = 8 << 4,
-+		.block_pred_enable = true,
-+	},
-+};
-+
-+static void icna35xx_reset(struct panel_info *pinfo)
-+{
-+	gpiod_set_value_cansleep(pinfo->reset_gpio, 0);
-+	usleep_range(20000, 21000);
-+	gpiod_set_value_cansleep(pinfo->reset_gpio, 1);
-+	usleep_range(20000, 21000);
-+	gpiod_set_value_cansleep(pinfo->reset_gpio, 0);
-+	usleep_range(20000, 21000);
-+}
-+
-+static int icna35xx_prepare(struct drm_panel *panel)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+	int ret;
-+
-+	ret = regulator_bulk_enable(ARRAY_SIZE(panel_supplies), pinfo->supplies);
-+	if (ret < 0) {
-+		dev_err(panel->dev, "failed to enable regulators: %d\n", ret);
-+		return ret;
-+	}
-+
-+	icna35xx_reset(pinfo);
-+
-+	ret = pinfo->desc->init_sequence(pinfo);
-+	if (ret < 0) {
-+		regulator_bulk_disable(ARRAY_SIZE(panel_supplies), pinfo->supplies);
-+		dev_err(panel->dev, "failed to initialize panel: %d\n", ret);
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static int icna35xx_disable(struct drm_panel *panel)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = pinfo->dsi };
-+
-+	pinfo->dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
-+
-+	mipi_dsi_dcs_set_display_off_multi(&dsi_ctx);
-+	mipi_dsi_msleep(&dsi_ctx, 50);
-+	mipi_dsi_dcs_enter_sleep_mode_multi(&dsi_ctx);
-+	mipi_dsi_msleep(&dsi_ctx, 120);
-+
-+	return dsi_ctx.accum_err;
-+}
-+
-+static int icna35xx_unprepare(struct drm_panel *panel)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+
-+	gpiod_set_value_cansleep(pinfo->reset_gpio, 1);
-+	regulator_bulk_disable(ARRAY_SIZE(panel_supplies), pinfo->supplies);
-+
-+	return 0;
-+}
-+
-+static void icna35xx_remove(struct mipi_dsi_device *dsi)
-+{
-+	struct panel_info *pinfo = mipi_dsi_get_drvdata(dsi);
-+	int ret;
-+
-+	ret = mipi_dsi_detach(pinfo->dsi);
-+	if (ret < 0)
-+		dev_err(&dsi->dev, "failed to detach from DSI host: %d\n", ret);
-+
-+	drm_panel_remove(&pinfo->panel);
-+}
-+
-+static int icna35xx_get_modes(struct drm_panel *panel,
-+			       struct drm_connector *connector)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+	int i;
-+
-+	for (i = 0; i < pinfo->desc->num_modes; i++) {
-+		const struct drm_display_mode *m = &pinfo->desc->modes[i];
-+		struct drm_display_mode *mode;
-+
-+		mode = drm_mode_duplicate(connector->dev, m);
-+		if (!mode) {
-+			dev_err(panel->dev, "failed to add mode %ux%u@%u\n",
-+				m->hdisplay, m->vdisplay, drm_mode_vrefresh(m));
-+			return -ENOMEM;
-+		}
-+
-+		mode->type = DRM_MODE_TYPE_DRIVER;
-+		if (i == 0)
-+			mode->type |= DRM_MODE_TYPE_PREFERRED;
-+
-+		drm_mode_set_name(mode);
-+		drm_mode_probed_add(connector, mode);
-+	}
-+
-+	connector->display_info.width_mm = pinfo->desc->width_mm;
-+	connector->display_info.height_mm = pinfo->desc->height_mm;
-+	connector->display_info.bpc = pinfo->desc->bpc;
-+	pinfo->connector = connector;
-+
-+	return pinfo->desc->num_modes;
-+}
-+
-+static enum drm_panel_orientation icna35xx_get_orientation(struct drm_panel *panel)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+
-+	return pinfo->orientation;
-+}
-+
-+static const struct drm_panel_funcs icna35xx_panel_funcs = {
-+	.disable = icna35xx_disable,
-+	.prepare = icna35xx_prepare,
-+	.unprepare = icna35xx_unprepare,
-+	.get_modes = icna35xx_get_modes,
-+	.get_orientation = icna35xx_get_orientation,
-+};
-+
-+static int icna35xx_bl_update_status(struct backlight_device *bl)
-+{
-+	struct mipi_dsi_device *dsi = bl_get_data(bl);
-+	u16 brightness = backlight_get_brightness(bl);
-+	int ret;
-+
-+	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
-+
-+	ret = mipi_dsi_dcs_set_display_brightness_large(dsi, brightness);
-+	if (ret < 0)
-+		return ret;
-+
-+	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
-+	return 0;
-+}
-+
-+static int icna35xx_bl_get_brightness(struct backlight_device *bl)
-+{
-+	struct mipi_dsi_device *dsi = bl_get_data(bl);
-+	u16 brightness;
-+	int ret;
-+
-+	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
-+
-+	ret = mipi_dsi_dcs_get_display_brightness_large(dsi, &brightness);
-+	if (ret < 0)
-+		return ret;
-+
-+	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
-+	return brightness;
-+}
-+
-+static const struct backlight_ops icna35xx_bl_ops = {
-+	.update_status = icna35xx_bl_update_status,
-+	.get_brightness = icna35xx_bl_get_brightness,
-+};
-+
-+static struct backlight_device *icna35xx_create_backlight(struct mipi_dsi_device *dsi)
-+{
-+	struct device *dev = &dsi->dev;
-+	const struct backlight_properties props = {
-+		.type = BACKLIGHT_RAW,
-+		.brightness = 4096,
-+		.max_brightness = 4096,
-+	};
-+
-+	return devm_backlight_device_register(dev, dev_name(dev), dev, dsi,
-+					      &icna35xx_bl_ops, &props);
-+}
-+
-+static int icna35xx_probe(struct mipi_dsi_device *dsi)
-+{
-+	struct device *dev = &dsi->dev;
-+	struct panel_info *pinfo;
-+	int ret;
-+
-+	pinfo = devm_drm_panel_alloc(dev, __typeof(*pinfo), panel,
-+				     &icna35xx_panel_funcs,
-+				     DRM_MODE_CONNECTOR_DSI);
-+	if (IS_ERR(pinfo))
-+		return PTR_ERR(pinfo);
-+
-+	ret = devm_regulator_bulk_get_const(dev, ARRAY_SIZE(panel_supplies),
-+	panel_supplies, &pinfo->supplies);
-+	if (ret < 0)
-+		return dev_err_probe(dev, ret, "Failed to get regulators\n");
-+
-+	pinfo->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
-+	if (IS_ERR(pinfo->reset_gpio))
-+		return dev_err_probe(dev, PTR_ERR(pinfo->reset_gpio), "failed to get reset gpio\n");
-+
-+	pinfo->desc = (struct panel_desc *)of_device_get_match_data(dev);
-+	if (!pinfo->desc)
-+		return -ENODEV;
-+
-+	pinfo->dsi = dsi;
-+	mipi_dsi_set_drvdata(dsi, pinfo);
-+
-+	ret = of_drm_get_panel_orientation(dev->of_node, &pinfo->orientation);
-+	if (ret < 0) {
-+		dev_err(dev, "%pOF: failed to get orientation %d\n", dev->of_node, ret);
-+		return ret;
-+	}
-+
-+	pinfo->panel.prepare_prev_first = true;
-+
-+	pinfo->panel.backlight = icna35xx_create_backlight(dsi);
-+	if (IS_ERR(pinfo->panel.backlight))
-+		return dev_err_probe(dev, PTR_ERR(pinfo->panel.backlight),
-+				     "Failed to create backlight\n");
-+
-+	drm_panel_add(&pinfo->panel);
-+
-+	pinfo->dsi->lanes = pinfo->desc->lanes;
-+	pinfo->dsi->format = pinfo->desc->format;
-+	pinfo->dsi->mode_flags = pinfo->desc->mode_flags;
-+	pinfo->dsi->dsc = &pinfo->desc->dsc;
-+
-+	ret = mipi_dsi_attach(pinfo->dsi);
-+	if (ret < 0) {
-+		dev_err_probe(dev, ret, "Failed to attach to DSI host\n");
-+		drm_panel_remove(&pinfo->panel);
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static const struct of_device_id icna35xx_of_match[] = {
-+	{ .compatible = "ayaneo,pocketds-panel-top", .data = &odin2portal_desc },
-+	{ .compatible = "ayntec,odin2portal-panel", .data = &odin2portal_desc },
-+	{ .compatible = "ayntec,odin3-panel", .data = &thor_top_desc },
-+	{ .compatible = "ayntec,thor-panel-top", .data = &thor_top_desc },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, icna35xx_of_match);
-+
-+static struct mipi_dsi_driver icna35xx_driver = {
-+	.probe = icna35xx_probe,
-+	.remove = icna35xx_remove,
-+	.driver = {
-+		.name = "panel-chipone-icna35xx",
-+		.of_match_table = icna35xx_of_match,
-+	},
-+};
-+module_mipi_dsi_driver(icna35xx_driver);
-+
-+MODULE_AUTHOR("Teguh Sobirin <teguh@sobir.in>");
-+MODULE_DESCRIPTION("DRM driver for Chipone ICNA35XX based MIPI DSI panels");
-+MODULE_LICENSE("GPL");
+ .../bindings/pinctrl/ultrarisc,dp1000-pinctrl.yaml | 168 ++++
+ Documentation/devicetree/bindings/riscv/cpus.yaml  |   1 +
+ .../devicetree/bindings/riscv/ultrarisc.yaml       |  27 +
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ MAINTAINERS                                        |  15 +
+ arch/riscv/boot/dts/Makefile                       |   1 +
+ arch/riscv/boot/dts/ultrarisc/Makefile             |   3 +
+ .../dts/ultrarisc/dp1000-milkv-titan-pinctrl.dtsi  | 107 +++
+ .../boot/dts/ultrarisc/dp1000-milkv-titan.dts      | 182 +++++
+ .../dts/ultrarisc/dp1000-rongda-m0-pinctrl.dtsi    |  85 ++
+ arch/riscv/boot/dts/ultrarisc/dp1000-rongda-m0.dts | 111 +++
+ arch/riscv/boot/dts/ultrarisc/dp1000.dtsi          | 851 +++++++++++++++++++++
+ arch/riscv/configs/defconfig                       |   1 +
+ drivers/pinctrl/Kconfig                            |   1 +
+ drivers/pinctrl/Makefile                           |   1 +
+ drivers/pinctrl/ultrarisc/Kconfig                  |  23 +
+ drivers/pinctrl/ultrarisc/Makefile                 |   4 +
+ drivers/pinctrl/ultrarisc/pinctrl-dp1000.c         | 112 +++
+ drivers/pinctrl/ultrarisc/pinctrl-ultrarisc.c      | 746 ++++++++++++++++++
+ drivers/pinctrl/ultrarisc/pinctrl-ultrarisc.h      |  71 ++
+ .../dt-bindings/pinctrl/ultrarisc,dp1000-pinctrl.h |  65 ++
+ 21 files changed, 2577 insertions(+)
+---
+base-commit: 50897c955902c93ae71c38698abb910525ebdc89
+change-id: 20260316-ultrarisc-pinctrl-efa6e24c4803
 
--- 
-2.53.0
+Best regards,
+--  
+Jia Wang <wangjia@ultrarisc.com>
 
