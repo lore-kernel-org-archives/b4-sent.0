@@ -1,67 +1,81 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Fri, 15 May 2026 15:35:29 -0500
-Subject: [PATCH 3/3] arm64: tegra: Add iommu and dma properties for
- Tegra194 QSPI
+From: Frank Li <Frank.Li@nxp.com>
+Subject: [PATCH 0/6] ARM: dts: cleanup some CHECK_DTBS warning for imx5/6
+ (round 2)
+Date: Fri, 15 May 2026 17:40:31 -0400
+Message-Id: <20260515-imx25_dts_simple_warning_2-v1-0-b06bff192a05@nxp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260515-tegra194-qspi-iommu-v1-3-57dfb63cd3d6@gmail.com>
-References: <20260515-tegra194-qspi-iommu-v1-0-57dfb63cd3d6@gmail.com>
-In-Reply-To: <20260515-tegra194-qspi-iommu-v1-0-57dfb63cd3d6@gmail.com>
-To: Mark Brown <broonie@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@kernel.org>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: Thierry Reding <thierry.reding@gmail.com>, linux-spi@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-tegra@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778877338; l=1187;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=Np/pDfMhrl4vh3eC9VslgUn4DVBcUQmUCasGPdu9S6s=;
- b=XNElFQVNTMTXCC1rsHQEhqgqighB+BXthtnfT1GQGvp9+UcgAvg2MufyoHJKVYT7dCA8LSXGx
- ImTaWbQKrbrBQPjCga4kRxY7DIcgD6WmFx8mv8dZq6NsB2fS3mxUkZ9
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-B4-Tracking: v=1; b=H4sIAM+SB2oC/x3M0QqDIBQA0F+J+5ygDjfbr0SI5Z27UC68sQLp3
+ 5Mez8spwJgJGd5NgYx/YvqlCtU2MH19iigoVIOW+imNUoKWQxsXNnZMyzqj231OlKLTQsnwmF5
+ mtNZ2UIM144eOO++H87wAHsckwGwAAAA=
+X-Change-ID: 20260511-imx25_dts_simple_warning_2-10d3c75b8889
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: devicetree@vger.kernel.org, imx@lists.linux.dev, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Frank Li <Frank.Li@nxp.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1778881235; l=2816;
+ i=Frank.Li@nxp.com; s=20240130; h=from:subject:message-id;
+ bh=ZgnGA9okakYMuZu+by2Y7wPlPP6A0aJoPJm5SI2Osc8=;
+ b=PI91V3n2RjPoohGVCRMOLez5qVgFkw8tTuop8AYUwuwJSz2RX165/XwpLMjxUFDbpPjZULm1Z
+ orRGajT2PvHBRw7b2gAyylYqxEdnnZMg7GuuNYN4hU7GvxdLm4RjNq8
+X-Developer-Key: i=Frank.Li@nxp.com; a=ed25519;
+ pk=I0L1sDUfPxpAkRvPKy7MdauTuSENRq+DnA+G4qcS94Q=
+X-Endpoint-Received: by B4 Relay for Frank.Li@nxp.com/20240130 with auth_id=121
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Without iommu and dma enabled, flash storage such as the spi-nor on the
-p3668 module times out and cannot complete any transfers.
+Cleanup CHECK_DTBS warning for imx_v6_v7_defconfig. (below 500 line warning
+left) after apply pending binding doc patch.
 
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+Signed-off-by: Frank Li <Frank.Li@nxp.com>
 ---
- arch/arm64/boot/dts/nvidia/tegra194.dtsi | 8 ++++++++
- 1 file changed, 8 insertions(+)
+Frank Li (6):
+      ARM: dts: imx: add (power|vdd)-supply for related node
+      ARM: dts: imx: remove redundant bus-width for video-mux
+      ARM: dts: imx: Add bus-type for ov5642/ov5640
+      ARM: dts: imx6qdl-tx6: remove undocumented karo,imx6qdl-tx6-sgtl5000 and keep only simple-audio-card
+      ARM: dts: imx: replace undocumented compatible string edt,edt-ft5x06 with edt,edt-ft5206
+      ARM: dts: imx6-display5: replace marvell,88E1510 with ethernet-phy-ieee802.3-c22
 
-diff --git a/arch/arm64/boot/dts/nvidia/tegra194.dtsi b/arch/arm64/boot/dts/nvidia/tegra194.dtsi
-index 1d659454a6f9fe..0e0a20befe9e68 100644
---- a/arch/arm64/boot/dts/nvidia/tegra194.dtsi
-+++ b/arch/arm64/boot/dts/nvidia/tegra194.dtsi
-@@ -923,6 +923,10 @@ spi@3270000 {
- 				 <&bpmp TEGRA194_CLK_QSPI0_PM>;
- 			clock-names = "qspi", "qspi_out";
- 			resets = <&bpmp TEGRA194_RESET_QSPI0>;
-+			iommus = <&smmu TEGRA194_SID_GPCDMA_0>;
-+			dma-coherent;
-+			dmas = <&gpcdma 5>, <&gpcdma 5>;
-+			dma-names = "rx", "tx";
- 			status = "disabled";
- 		};
- 
-@@ -1013,6 +1017,10 @@ spi@3300000 {
- 				 <&bpmp TEGRA194_CLK_QSPI1_PM>;
- 			clock-names = "qspi", "qspi_out";
- 			resets = <&bpmp TEGRA194_RESET_QSPI1>;
-+			iommus = <&smmu TEGRA194_SID_GPCDMA_0>;
-+			dma-coherent;
-+			dmas = <&gpcdma 6>, <&gpcdma 6>;
-+			dma-names = "rx", "tx";
- 			status = "disabled";
- 		};
- 
+ arch/arm/boot/dts/nxp/imx/imx53-m53menlo.dts            | 11 ++++++++++-
+ arch/arm/boot/dts/nxp/imx/imx53-sk-imx53-atm0700d4.dtsi |  1 +
+ arch/arm/boot/dts/nxp/imx/imx53-sk-imx53.dts            |  7 +++++++
+ arch/arm/boot/dts/nxp/imx/imx53-smd.dts                 |  2 ++
+ arch/arm/boot/dts/nxp/imx/imx53-tx53-x03x.dts           |  2 +-
+ arch/arm/boot/dts/nxp/imx/imx6dl-gw52xx.dts             |  2 --
+ arch/arm/boot/dts/nxp/imx/imx6dl-gw53xx.dts             |  2 --
+ arch/arm/boot/dts/nxp/imx/imx6dl-gw54xx.dts             |  2 --
+ arch/arm/boot/dts/nxp/imx/imx6q-display5.dtsi           |  2 +-
+ arch/arm/boot/dts/nxp/imx/imx6q-gw52xx.dts              |  2 --
+ arch/arm/boot/dts/nxp/imx/imx6q-gw53xx.dts              |  2 --
+ arch/arm/boot/dts/nxp/imx/imx6q-gw54xx.dts              |  4 ----
+ arch/arm/boot/dts/nxp/imx/imx6q-novena.dts              |  1 +
+ arch/arm/boot/dts/nxp/imx/imx6q-var-dt6customboard.dts  |  2 +-
+ arch/arm/boot/dts/nxp/imx/imx6qdl-gw51xx.dtsi           |  2 --
+ arch/arm/boot/dts/nxp/imx/imx6qdl-gw551x.dtsi           |  2 --
+ arch/arm/boot/dts/nxp/imx/imx6qdl-gw553x.dtsi           |  2 --
+ arch/arm/boot/dts/nxp/imx/imx6qdl-nit6xlite.dtsi        |  2 +-
+ arch/arm/boot/dts/nxp/imx/imx6qdl-nitrogen6_max.dtsi    |  2 +-
+ arch/arm/boot/dts/nxp/imx/imx6qdl-nitrogen6x.dtsi       |  2 +-
+ arch/arm/boot/dts/nxp/imx/imx6qdl-pico.dtsi             |  2 +-
+ arch/arm/boot/dts/nxp/imx/imx6qdl-sabreauto.dtsi        |  2 --
+ arch/arm/boot/dts/nxp/imx/imx6qdl-tx6.dtsi              |  5 ++---
+ arch/arm/boot/dts/nxp/imx/imx6ul-14x14-evk.dtsi         |  1 +
+ arch/arm/boot/dts/nxp/imx/imx6ul-pico-hobbit.dts        |  2 +-
+ arch/arm/boot/dts/nxp/imx/imx6ul-pico-pi.dts            |  2 +-
+ arch/arm/boot/dts/nxp/imx/imx6ul-tx6ul.dtsi             |  2 +-
+ arch/arm/boot/dts/nxp/imx/imx7d-pico-dwarf.dts          |  2 +-
+ arch/arm/boot/dts/nxp/imx/imx7d-pico-pi.dts             |  2 +-
+ 29 files changed, 36 insertions(+), 38 deletions(-)
+---
+base-commit: d26bfe9856a36453f591b9620dac996ff9f02443
+change-id: 20260511-imx25_dts_simple_warning_2-10d3c75b8889
 
--- 
-2.53.0
+Best regards,
+--
+Frank Li <Frank.Li@nxp.com>
 
