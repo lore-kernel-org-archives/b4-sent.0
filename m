@@ -1,126 +1,150 @@
-From: Carl Lee <carl.lee@amd.com>
-Date: Sat, 16 May 2026 19:55:18 +0800
-Subject: [PATCH v3] nfc: nxp-nci: i2c: use rising-edge IRQ on ACPI systems
+From: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Subject: [PATCH v6 0/8] Add VIM4 MCU/FAN support
+Date: Sat, 16 May 2026 19:17:00 +0200
+Message-Id: <20260516-add-mcu-fan-khadas-vim4-v6-0-cccc9b61f465@aliel.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260516-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-v3-1-37ba4b6e9086@amd.com>
-X-B4-Tracking: v=1; b=H4sIACVbCGoC/52NzQ6CMBAGX4X07Jp2W0E9+R7GQ+0PbISChRAM4
- d0tXPSqx9nsNzOz3kVyPTtnM4tupJ7akEDuMmYqHUoHZBMz5JhzKQQEbyBMHQRDQGggun5oY3q
- LTxgilaWL4HVd37V5gLH6pPAguck5S8ouOk/TlrveEle0jl9bfRTr9c/QKEDAySEvhFJC2OKiG
- 7s3bcPWzIjfavxRjUktc5Tq6AuvJf+ol2V5AyxLRqVBAQAA
-X-Change-ID: 20260311-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-cda942530c60
-To: netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: Carl Lee <carl.lee@amd.com>, krzk@kernel.org, carl.lee@amd.com, 
- peter.shen@amd.com, colin.huang2@amd.com, kuba@kernel.org, david@ixit.cz, 
- luca.stefani.ge1@gmail.com, brgl@kernel.org, mpearson@squebb.ca
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WS3Y7aQAyFXwXluoPm3wmqqn2Pqhf22LNMSwJNA
+ trVinfvkOUCaFEvPaPzHfvYH80kY5Gp2aw+mlFOZSr7oRbxy6pJWxxeRRWudWO1jdprq5BZ9em
+ oMg7q1xYZJ3UqvVeYTCIJwaWOmqo+jJLL20L+/uOzHuX3sRrMn48N4SQq7fu+zJvVIG+zWkych
+ Yu+l2nCxX6z+nr9iLqz0Ye10aEWRhn1s+Cw3h5fsN/tX0taV9y3xR3ntF20MWBgiDkz1c4cIjn
+ XBqIYEmkLWvvktIDcq6wDG7tWm9ZGZocMmUwU8gwc2QtS0N5Ce68KIB3pFrvYonAO3rFjzSGmb
+ BJ6JqvJoonNbbrV7Drdki2l3jsI9pJMJRfaiZI6NfoMHTjcnOy9KYHTOYi3JIbbjk3nJDqszOC
+ 7kJiyTcBA/zR1WtUtqTKccFdYHcb9Qcb5XVFdpefOuQzm6vi31izaGr2aQQ3H3U6NMkldI0XdC
+ uWO0W9Oprmsf1umeT++L3dWny77/+9JnYzSFWZszR0TkH6pTcpunccFWdu6wbjnGFsxUE8mkrX
+ edfiAcTcYA88xrmIwIuQAmoyhB4y/wVjzHOMrxnswxqNts+UHTLjF+OeYcOkmp4xgApB1N5jz+
+ fwHghdgrtgDAAA=
+X-Change-ID: 20260402-add-mcu-fan-khadas-vim4-ac1cbe553c9b
+To: Neil Armstrong <neil.armstrong@linaro.org>, Lee Jones <lee@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Andi Shyti <andi.shyti@kernel.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Beniamino Galvani <b.galvani@gmail.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-i2c@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-pm@vger.kernel.org, 
+ Ronald Claveau <linux-kernel-dev@aliel.fr>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1778932520; l=3257;
- i=carl.lee@amd.com; s=20260203; h=from:subject:message-id;
- bh=AMSt9loXPyaoOpf5Py15SrUAJJFo8zGMLjoVxukd9fM=;
- b=e8EQLMWG6SkcKINegth5pIbCvRerCIZ38zgG62J9x+VNmzI8PCoOO/6oiL+tPg0EpWcZkk0Nm
- DACZRtwbQc7BCNz+cmTy412m4yDEbV7F+7D9KVfqmuIGFDlula/QlE3
-X-Developer-Key: i=carl.lee@amd.com; a=ed25519;
- pk=pyq7QaQvoxMg806KVkRwpCbiah+7ncWr4MBpK1AEyjA=
-X-Endpoint-Received: by B4 Relay for carl.lee@amd.com/20260203 with auth_id=623
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5349;
+ i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
+ bh=b14MshZ4cn6b/s8l7UQsBfswQZyULPwSuj5MH7P9aME=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQxbHssNhFxZOYfme+D3mSdeumzMnel1JOmqvKzbdJt1Sw
+ sd57UWzjlIWBjEuBlkxRZb+uZYn3l0+eubrHvUUmDmsTCBDGLg4BWAi8S6MDN92mzP2ywjVy1uW
+ yG12enVXSeHVu4/LOcpN7EvqGJwf5DMy7Hr1RubbO5m5jRPs7YynJPu4LHGpC/SSWa21+tGESI1
+ brAA=
+X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
+ fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
+X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some ACPI-based platforms report incorrect IRQ trigger types (e.g.
-IRQF_TRIGGER_HIGH), which can lead to interrupt storms.
+The Khadas VIM4 board features a different MCU variant compared to
+previous VIM boards.
+While it shares the same I2C-based communication model,
+it differs in some ways:
 
-Use the historically working rising-edge trigger on ACPI systems to
-avoid this regression.
+  - A distinct register map with its own volatile/writeable register set
+  - A fan control with 0–100 levels instead of the 0–3 levels previously
+  - A fan power supply gated through a regulator
 
-Device Tree-based systems continue to use the firmware-provided
-trigger type.
+This series adds support for this new variant by:
 
-Signed-off-by: Carl Lee <carl.lee@amd.com>
+  1. Refactoring the khadas-mcu MFD driver to use per-variant data
+     structures (regmap config, cells, fan platform data),
+     and adding the khadas,vim4-mcu compatible string.
+
+  2. Extending the fan thermal driver to retrieve the fan register
+     and maximum level from platform_data,
+     and to optionally manage a power regulator for the fan supply.
+
+  3. Adding the corresponding DTS node for the VIM4, wiring the MCU to
+     the I2C AO_A bus and exposing it as a thermal cooling device.
+
+Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
-Some ACPI-based platforms report incorrect IRQ trigger types,
-which can lead to interrupt storms.
+Changes in v6:
+- PATCH 4: Address Lee's review comments:
+  - Use an enum to discriminate between MCU types instead of passing
+    MFD data through the DT match table
+  - Fix error code from -EINVAL to -ENODEV when no MCU type is matched
+  - Make khadas_mcu_fan_cells and khadas_mcu_cells const
+  - Use dev_err_probe() for regmap initialization error
+  - Document fan speed levels for max_level
+- Link to v5: https://lore.kernel.org/r/20260424-add-mcu-fan-khadas-vim4-v5-0-afcfa7157b23@aliel.fr
 
-Use rising-edge IRQ on ACPI systems to avoid this regression,
-while keeping firmware-provided trigger types on non-ACPI systems.
+Changes in v5:
+- PATCH 5: Replace devm_regulator_get_optional() with devm_regulator_get()
+           to simplify error handling and remove NULL checks, also
+           ordering as reverse christmas according to Neil's feedback.
+- Link to v4: https://lore.kernel.org/r/20260421-add-mcu-fan-khadas-vim4-v4-0-447114a28f2d@aliel.fr
 
-Cc: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Cc: krzk@kernel.org
-Cc: carl.lee@amd.com
-Cc: peter.shen@amd.com
-Cc: colin.huang2@amd.com
-Cc: kuba@kernel.org
-Cc: david@ixit.cz
-Cc: luca.stefani.ge1@gmail.com
-Cc: brgl@kernel.org
-Cc: mpearson@squebb.ca
----
+Changes in v4:
+- PATCH 1: limit fan-supply property by compatible according to Conor's feedback.
+- Link to v3: https://lore.kernel.org/r/20260417-add-mcu-fan-khadas-vim4-v3-0-a6a7f570b11b@aliel.fr
+
 Changes in v3:
-- Use rising-edge IRQ on ACPI systems to avoid interrupt storms
-- Keep using firmware-provided trigger type on non-ACPI systems
-- Refine commit message to focus on regression on ACPI platforms
-- Link to v2: https://lore.kernel.org/r/20260312-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-v2-1-362348f7fa30@amd.com
+- PATCH 1: adding comment on vim4 compatible saying it is not discoverable,
+           thanks to Rob's and Neil's feedback.
+- Link to v2: https://lore.kernel.org/r/20260403-add-mcu-fan-khadas-vim4-v2-0-70536b22439a@aliel.fr
 
 Changes in v2:
-- Add missing <linux/irq.h> include for irq_get_trigger_type().
-- Link to v1: https://lore.kernel.org/r/20260311-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-v1-1-9e20714411d7@amd.com
----
- drivers/nfc/nxp-nci/i2c.c | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
-
-diff --git a/drivers/nfc/nxp-nci/i2c.c b/drivers/nfc/nxp-nci/i2c.c
-index 6a5ce8ff91f0..266dc231c47d 100644
---- a/drivers/nfc/nxp-nci/i2c.c
-+++ b/drivers/nfc/nxp-nci/i2c.c
-@@ -16,6 +16,7 @@
- #include <linux/delay.h>
- #include <linux/i2c.h>
- #include <linux/interrupt.h>
-+#include <linux/irq.h>
- #include <linux/module.h>
- #include <linux/nfc.h>
- #include <linux/gpio/consumer.h>
-@@ -267,6 +268,7 @@ static int nxp_nci_i2c_probe(struct i2c_client *client)
- {
- 	struct device *dev = &client->dev;
- 	struct nxp_nci_i2c_phy *phy;
-+	unsigned long irqflags;
- 	int r;
- 
- 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
-@@ -303,9 +305,26 @@ static int nxp_nci_i2c_probe(struct i2c_client *client)
- 	if (r < 0)
- 		return r;
- 
-+	/*
-+	 * ACPI platforms may report incorrect IRQ trigger types
-+	 * (e.g. level-high), which can lead to interrupt storms.
-+	 *
-+	 * Use the historically stable rising-edge trigger for ACPI devices.
-+	 *
-+	 * On non-ACPI systems (e.g. Device Tree), prefer the firmware-
-+	 * provided trigger type, falling back to rising-edge if not set.
-+	 */
-+	if (ACPI_COMPANION(dev)) {
-+		irqflags = IRQF_TRIGGER_RISING;
-+	} else {
-+		irqflags = irq_get_trigger_type(client->irq);
-+		if (!irqflags)
-+			irqflags = IRQF_TRIGGER_RISING;
-+	}
-+
- 	r = request_threaded_irq(client->irq, NULL,
- 				 nxp_nci_i2c_irq_thread_fn,
--				 IRQF_ONESHOT,
-+				 irqflags | IRQF_ONESHOT,
- 				 NXP_NCI_I2C_DRIVER_NAME, phy);
- 	if (r < 0)
- 		nfc_err(&client->dev, "Unable to register IRQ handler\n");
+- PATCH 5: Add regulator_disable on suspend thanks to Neil's feedback.
+- Link to v1: https://lore.kernel.org/r/20260402-add-mcu-fan-khadas-vim4-v1-0-2b12eb4ac7b0@aliel.fr
 
 ---
-base-commit: 7109a2155340cc7b21f27e832ece6df03592f2e8
-change-id: 20260311-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-cda942530c60
+Ronald Claveau (8):
+      dt-bindings: mfd: khadas: Add new compatible for Khadas VIM4 MCU
+      dt-bindings: i2c: amlogic: Add compatible for T7 SOC
+      mfd: khadas-mcu: Add per-variant configuration infrastructure and VIM4 support
+      mfd: khadas-mcu: Add support for VIM4 MCU variant
+      thermal: khadas-mcu-fan: Add fan config from platform data Add regulator support
+      arm64: dts: amlogic: t7: Add i2c pinctrl node
+      arm64: dts: amlogic: t7: Add i2c controller node
+      arm64: dts: amlogic: t7: khadas-vim4: Add i2c MCU fan node
+
+ .../bindings/i2c/amlogic,meson6-i2c.yaml           |  13 ++-
+ .../devicetree/bindings/mfd/khadas,mcu.yaml        |  18 ++++
+ .../dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts  |  13 +++
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        |  20 ++++
+ drivers/mfd/khadas-mcu.c                           | 119 ++++++++++++++++++---
+ drivers/thermal/khadas_mcu_fan.c                   |  37 +++++--
+ include/linux/mfd/khadas-mcu.h                     |  44 +++++++-
+ 7 files changed, 236 insertions(+), 28 deletions(-)
+---
+base-commit: f7b64ed948718290209074a50bb0df17e5944873
+change-id: 20260402-add-mcu-fan-khadas-vim4-ac1cbe553c9b
+prerequisite-message-id: <20260326092645.1053261-1-jian.hu@amlogic.com>
+prerequisite-patch-id: f03a086b4137158412b2d47b3de793b858de8dde
+prerequisite-patch-id: 123970c9b29c2090440f2fd71c85d3c6fd8e36de
+prerequisite-patch-id: 3e2e56b0926ba327b520f935df4ced5089bbe503
+prerequisite-patch-id: 65a5d76ffdbc9b3aab3385bb65cb027004c30e7e
+prerequisite-patch-id: 237269801826dd3ad7fb16eb4d7d6d4eab504278
+prerequisite-patch-id: 57e9b08a968aedf543d3d0d56cf1ca4db20b2a16
+prerequisite-change-id: 20260326-add-bcm43752-compatible-e264a4f7973a:v2
+prerequisite-patch-id: cd98b74fa56af72af2553f391c400981d83cd4f4
+prerequisite-patch-id: b730f5e42be1d89d193e63a0265495cdbf2c7d7b
+prerequisite-change-id: 20260330-fix-invalid-property-bbe54d933f71:v2
+prerequisite-patch-id: 8d675e7a239985c762843515b241f0a2f45f9c92
+prerequisite-change-id: 20260331-fix-aml-t7-null-reset-2b608ebf9da4:v1
+prerequisite-patch-id: 5b5de77af11747ce964404fb827d2ee2bff47ea5
+prerequisite-patch-id: 1e37fc75fed1e533adee0f3e7e6ead1f8ff3c55c
+prerequisite-patch-id: 65a5d76ffdbc9b3aab3385bb65cb027004c30e7e
+prerequisite-patch-id: 2daf583fb5e7449a02bd217d8aca330171b598aa
+prerequisite-patch-id: 237269801826dd3ad7fb16eb4d7d6d4eab504278
+prerequisite-patch-id: d1ddf9b7710e91f8062de83bd7ba55afb2c4c112
+prerequisite-patch-id: 57e9b08a968aedf543d3d0d56cf1ca4db20b2a16
+prerequisite-patch-id: cd98b74fa56af72af2553f391c400981d83cd4f4
+prerequisite-patch-id: b730f5e42be1d89d193e63a0265495cdbf2c7d7b
+prerequisite-patch-id: 9debd88fa60febed9cd7208f86603b4c2d270520
+prerequisite-patch-id: 314ef9ff0c4d1d15dab1dea9d92aa065f1eac3e9
 
 Best regards,
 -- 
-Carl Lee <carl.lee@amd.com>
+Ronald Claveau <linux-kernel-dev@aliel.fr>
 
