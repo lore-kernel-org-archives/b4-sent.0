@@ -1,16 +1,13 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Subject: [PATCH v5 00/13] AD9910 Direct Digital Synthesizer
-Date: Sun, 17 May 2026 19:37:44 +0100
-Message-Id: <20260517-ad9910-iio-driver-v5-0-31599c88314a@analog.com>
+Date: Sun, 17 May 2026 19:37:45 +0100
+Subject: [PATCH v5 01/13] iio: core: validate file offset in
+ iio_debugfs_write_reg()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPgKCmoC/23OTWrDMBAF4KsErauiGck/6qr3CFlI1igZaK0gB
- 5EQfPcopmCKvXwD8733FBNlpkl8HZ4iU+GJ01hD83EQw8WNZ5IcahaosFUIvXTBWlCSOcmQuVC
- W1uuAYAZsIIr6d80U+b6Yx1PNF55uKT+WigLv65+GakcrIJXUHlvjnOkdqG83up90/hzSr3hzB
- VdC7w4qWAnqbLTa0xABNoReCQPdHqErgdZb3QE6xH5DmJVo1O4KU4mArY8BFZEO/4h5nl89A2A
- 4fAEAAA==
-X-Change-ID: 20260218-ad9910-iio-driver-9b3d214c251f
+Message-Id: <20260517-ad9910-iio-driver-v5-1-31599c88314a@analog.com>
+References: <20260517-ad9910-iio-driver-v5-0-31599c88314a@analog.com>
+In-Reply-To: <20260517-ad9910-iio-driver-v5-0-31599c88314a@analog.com>
 To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
  linux-hardening@vger.kernel.org
@@ -24,140 +21,43 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>, sashiko-bot@kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779043094; l=6582;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779043094; l=1108;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=jJbvAyYWCaaR4HHbj0wUyPm5hNqowZplYr+B7Rtnmug=;
- b=W0WzRUsnHLur9Iqkg5mwdG70w6EP7UsQ/N2zIK2DB9lqcGwwUUDIjV1HlvnIoZDpk++/xXAlh
- bH/dqujENT6BGWLmbtVwLNhx0I/MXa8NbskWj9H9gRJ/81Orxg28BFX
+ bh=rpvrvxHbTOo5EkMCZusLPjn94XbWzpS5zKDDEjpU2jk=;
+ b=BUCN7UhT4hmZxpaaGhdA7LrjXns0A75goPn3s2+S4yaVEr9TuKBEURlCtB52ip/HlPOJOi0fE
+ 8wEFa6dVUUkC7jGaRj3a1WBv5qF8rZn0kQiQvz24qf6tTaU2pmLMmT8
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch series adds support for the Analog Devices AD9910 DDS.
+Check that a file offset is zero so that simple_write_to_buffer() can be
+used safely, i.e., buf array is not left with uninitialized memory at its
+start. It is not a big concern as it is a debug interface, but it is still
+a hardening measure. The issue was introduced when direct call to
+copy_from_user() was replaced by simple_write_to_buffer().
 
-This is a follow-up of the V3/V4 discussion. For V1, we reached into
-this channel composition agreement where physical channels may have
-sub-channels. That adds the flexibility necessary for this design.
-During V2, some feedback indicated that the ABI is too device-specific,
-so DRG/RAM destination and operating modes are configured through
-alternate paths and profile channels are created. In V3, there was
-further discussion on the ABI and on mode priority debug.
-
-The AD9910 DDS core can be driven through several independent mechanisms:
-single tone profiles, a digital ramp generator, an internal RAM playback
-engine, a parallel data port, and output shift keying. Each of these
-represents a distinct signal path into the DDS accumulator, so the driver
-models them as separate IIO output channels (all IIO_ALTVOLTAGE type).
-This per-channel separation allows userspace to configure each mode
-independently through its own set of sysfs attributes, and to
-enable/disable modes individually via IIO_CHAN_INFO_ENABLE, relying on
-the hardware's own mode selection architecture.
-
-The AD9910 register map is not suited for the regmap framework: register
-widths vary across the map (16, 32, and 64 bits). The driver instead
-implements direct SPI access helpers with a software register cache, using
-type-specific read/write/update functions (ad9910_reg{16,32,64}_{read,
-write,update}) that handle endianness conversion and cache coherency.
-
-Registers are cached for several reasons. The control/function registers
-(CFR1, CFR2) are frequently queried to determine the current operating
-mode (e.g., checking RAM_ENABLE before every profile register access),
-and caching avoids repeated SPI read transactions for what are
-essentially state checks. The cache also enables efficient
-read-modify-write updates on multi-byte registers: the update functions
-merge new field values with the cached register content without issuing
-a SPI read, and skip the write entirely when the value is unchanged.
-Finally, the profile registers serve dual purposes depending on whether
-RAM mode is active -- they hold single tone parameters (FTW, POW, ASF)
-in normal operation but are repurposed for RAM playback configuration
-(start/end address, step rate, operating mode) when RAM is enabled. A
-shadow register array (reg_profile[]) preserves the inactive mode's
-settings across transitions, so no state is lost when switching between
-single tone and RAM operation.
-
-RAM data is loaded through firmware upload infrastructure. Userspace
-writes the waveform data as a raw binary buffer (up to 4096 bytes for
-the full 1024x32-bit RAM), and the driver reverses the byte array and
-transfers it to the device in a single SPI transaction. Per-profile
-start/end addresses and playback parameters (operating mode, step rate,
-no-dwell control) are also configured through firmware update, using
-metadata in the header.
-
-Streaming data to the DDS core through the parallel data port at the
-PD_CLK rate is not covered by this series. That functionality would
-be added in a separate patch series, building on top of the IIO backend
-infrastructure to provide a proper buffered data path.
-
-Kind regards,
-
-Rodrigo Alencar
-
+Fixes: 6d5dd486c715 ("iio: core: make use of simple_write_to_buffer()")
+Reported-by: sashiko-bot@kernel.org
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
-Changes in v5:
-- Drop RFC tag to the patch series.
-- Address sashiko's comments.
-- Add parent-child relationship between iio channels.
-- List vs Table changes in documentation.
-- Add crc and version check to RAM mode firmware update.
-- Link to v4: https://lore.kernel.org/r/20260508-ad9910-iio-driver-v4-0-d26bfd20ee3d@analog.com
+ drivers/iio/industrialio-core.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Changes in v4:
-- Digital Ramp step exposed as a rate of change.
-- Dwell modes of Digital Ramp are controlled with dwell_en attribute. 
-- Disable of active profile behaves as a software powerdown.
-- Expose debugfs attributes to show mode priority.
-- Add 64-bit debugfs reg access support into iio core.
-- Link to v3: https://lore.kernel.org/r/20260417-ad9910-iio-driver-v3-0-29b93712a228@analog.com
+diff --git a/drivers/iio/industrialio-core.c b/drivers/iio/industrialio-core.c
+index bd6f4f9f4533..e587aca79b8e 100644
+--- a/drivers/iio/industrialio-core.c
++++ b/drivers/iio/industrialio-core.c
+@@ -419,7 +419,7 @@ static ssize_t iio_debugfs_write_reg(struct file *file,
+ 	char buf[80];
+ 	int ret;
+ 
+-	if (count >= sizeof(buf))
++	if (count >= sizeof(buf) || *ppos != 0)
+ 		return -EINVAL;
+ 
+ 	ret = simple_write_to_buffer(buf, sizeof(buf) - 1, ppos, userbuf,
 
-Changes in v3:
-- RAM custom configs (address range, destination, modes) loaded during firmware write.
-- DRG destination defined when attrs are written.
-- DRG modes broken down into enable attrs for ramp up/down channels.
-- Add separate profile channels, switching done through enable attr
-- Link to v2: https://lore.kernel.org/r/20260318-ad9910-iio-driver-v2-0-e79f93becf11@analog.com
-
-Changes in v2:
-- Device-tree bindings changes.
-- RAM loading to use firmware update interface.
-- Rearrange of channels into a hierarchy.
-- Link to v1: https://lore.kernel.org/r/20260220-ad9910-iio-driver-v1-0-3b264aa48a10@analog.com
-
----
-Rodrigo Alencar (13):
-      iio: core: validate file offset in iio_debugfs_write_reg()
-      iio: core: support 64-bit register through debugfs
-      iio: core: add hierarchical channel relationships
-      Documentation: ABI: testing: add parent entry for iio channels
-      dt-bindings: iio: frequency: add ad9910
-      iio: frequency: ad9910: initial driver implementation
-      iio: frequency: ad9910: add basic parallel port support
-      iio: frequency: ad9910: add digital ramp generator support
-      iio: frequency: ad9910: add RAM mode support
-      iio: frequency: ad9910: add output shift keying support
-      iio: frequency: ad9910: show channel priority in debugfs
-      Documentation: ABI: testing: add docs for ad9910 sysfs entries
-      docs: iio: add documentation for ad9910 driver
-
- Documentation/ABI/testing/sysfs-bus-iio            |   13 +
- .../ABI/testing/sysfs-bus-iio-frequency-ad9910     |   76 +
- .../bindings/iio/frequency/adi,ad9910.yaml         |  200 ++
- Documentation/iio/ad9910.rst                       |  666 ++++++
- Documentation/iio/index.rst                        |    1 +
- MAINTAINERS                                        |   10 +
- drivers/iio/frequency/Kconfig                      |   21 +
- drivers/iio/frequency/Makefile                     |    1 +
- drivers/iio/frequency/ad9910.c                     | 2413 ++++++++++++++++++++
- drivers/iio/industrialio-core.c                    |   73 +-
- include/linux/iio/iio-opaque.h                     |    2 +-
- include/linux/iio/iio.h                            |    9 +
- 12 files changed, 3474 insertions(+), 11 deletions(-)
----
-base-commit: 1548c54e9adc32a719499216f63fba14b2fc07c3
-change-id: 20260218-ad9910-iio-driver-9b3d214c251f
-
-Best regards,
 -- 
-Rodrigo Alencar <rodrigo.alencar@analog.com>
+2.43.0
 
