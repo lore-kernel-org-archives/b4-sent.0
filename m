@@ -1,103 +1,61 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Mon, 18 May 2026 20:29:17 +0530
-Subject: [PATCH v8 5/5] misc: pci_endpoint_test: Add AER error handlers
+From: Bernd Schubert <bernd@bsbernd.com>
+Subject: [PATCH 0/4] fuse: Fix several io-uring race conditions
+Date: Mon, 18 May 2026 18:37:28 +0200
+Message-Id: <20260518-fuse-io-uring-race-fixes-v1-0-36c9eba8ab18@bsbernd.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260518-pci-port-reset-v8-5-eb5a7d331dfc@oss.qualcomm.com>
-References: <20260518-pci-port-reset-v8-0-eb5a7d331dfc@oss.qualcomm.com>
-In-Reply-To: <20260518-pci-port-reset-v8-0-eb5a7d331dfc@oss.qualcomm.com>
-To: Bjorn Helgaas <bhelgaas@google.com>, 
- Mahesh J Salgaonkar <mahesh@linux.ibm.com>, 
- Oliver O'Halloran <oohall@gmail.com>, Will Deacon <will@kernel.org>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
- Heiko Stuebner <heiko@sntech.de>, Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linuxppc-dev@lists.ozlabs.org, linux-arm-kernel@lists.infradead.org, 
- linux-arm-msm@vger.kernel.org, linux-rockchip@lists.infradead.org, 
- Niklas Cassel <cassel@kernel.org>, 
- Wilfred Mallawa <wilfred.mallawa@wdc.com>, 
- Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
- mani@kernel.org, Lukas Wunner <lukas@wunner.de>, 
- Richard Zhu <hongxing.zhu@nxp.com>, Brian Norris <briannorris@chromium.org>, 
- Wilson Ding <dingwei@marvell.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1915;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=JH7YrfnPbbQwcHA61MAIZvihPkNzj1YvLFKf+5eniiA=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqCylVusbtosdeWvULWFlkHh78IbQMGqm1IAOx+
- tGRKk7zI06JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCagspVQAKCRBVnxHm/pHO
- 9WBGB/9M4YSDd/u8GygRb+Q9NR+sR+xkzlGX6Arf72nQo8iLfuIZSfmmo3tNIE252mRjE4SBjep
- u9Mu4Rk2sVPFLvxd+u5GSzGgsDTa8tcVuYDAtw+xFjz5MRwDWTgKgxr38lidrHbLRqiqtzL5uz4
- KychY6gPdaMcbHKno6gaMz9PA9pV3VzJGng6rKL8yL8uODtIyLvIlMslDX2Hq190bXbkex0fwWC
- cjULNwNhFecOlIu5lUUhaomXfvTFH0/sue5mbjRY9aOppS+5rzT7TOHdXs3ETXD0xXVSgMt/306
- Ux/uIMKhNVNouKfGHOjox249GhFX61Hck5JeWw2KFHfEmY46
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2LSQqAMAwAv1JyNlCL+1fEQ9GouVRJqAji3w0eZ
+ 4Z5QEmYFAb3gNDFykcyKAsH8x7TRsiLMQQfGl+XHa5ZzR2YhdOGEmfClW9SrPu28VXwS4gEtp9
+ Cf7B7nN73A69LtUZqAAAA
+X-Change-ID: 20260518-fuse-io-uring-race-fixes-59760420d2ae
+To: security@kernel.org, Pavel Begunkov <asml.silence@gmail.com>, 
+ Luis Henriques <luis@igalia.com>, Joanne Koong <joannelkoong@gmail.com>
+Cc: Miklos Szeredi <mszeredi@redhat.com>, Berkant Koc <me@berkoc.com>, 
+ Zhenghang Xiao <kipreyyy@gmail.com>, Bernd Schubert <bernd@bsbernd.com>, 
+ stable@kernel.org, xlabai <xlabai@tencent.com>
+X-Mailer: b4 0.16-dev-d5d98
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1157; i=bernd@bsbernd.com;
+ h=from:subject:message-id; bh=h/KF1TqMRvuy4P4rPpT3qqO89Nwq5jpTLdk3RhsWkKs=;
+ b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLK4HfxyORjPvZh56QsPo8jam+GvX60388++aD9dYYlWw
+ NMFpY6nOkpZGMQ4GGTFFFm6JPbYTvnHJ6v2df11mDmsTCBDGLg4BWAiU3wZ/ifd3Llnsf2U21Ov
+ zjijHKl/+j1Hsub0yiVfFd4bzzydu6OL4Z/lidNZyqZW9z5vu/efWUv7xRWhJ6Gc0/7MUDhWpzm
+ Xfz47AA==
+X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
+ fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
+X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This Endpoint test driver doesn't need to do anything fancy in its error
-handlers, but just restore the config space that was saved during probe and
-report the correct result. This helps in making sure that the AER recovery
-succeeds.
+This is to fix race conditions reported by Berkant and Zhenghang.
 
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+So far not well tested yet, update about that will follow tomorrow.
+
+To: security@kernel.org
+To: Pavel Begunkov <asml.silence@gmail.com>
+To: Luis Henriques <luis@igalia.com>
+To: Joanne Koong <joannelkoong@gmail.com>
+Cc: Miklos Szeredi <mszeredi@redhat.com>
+Cc: Berkant Koc <me@berkoc.com>
+Cc: Zhenghang Xiao <kipreyyy@gmail.com>
+Cc: Joanne Koong <joannelkoong@gmail.com>
+
+Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
 ---
- drivers/misc/pci_endpoint_test.c | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+Bernd Schubert (3):
+      fuse: Avoid use-after-free in fuse_uring_async_stop_queues
+      fuse: Avoid queue->stopped races and set/read that value under lock
+      fuse: {io-uring} Make a fuse_req on SQE commit only findable after memcpy
 
-diff --git a/drivers/misc/pci_endpoint_test.c b/drivers/misc/pci_endpoint_test.c
-index dbd017cabbb9..3e89bd48c196 100644
---- a/drivers/misc/pci_endpoint_test.c
-+++ b/drivers/misc/pci_endpoint_test.c
-@@ -1327,6 +1327,8 @@ static int pci_endpoint_test_probe(struct pci_dev *pdev,
- 		goto err_kfree_name;
- 	}
- 
-+	pci_save_state(pdev);
-+
- 	return 0;
- 
- err_kfree_name:
-@@ -1448,12 +1450,33 @@ static const struct pci_device_id pci_endpoint_test_tbl[] = {
- };
- MODULE_DEVICE_TABLE(pci, pci_endpoint_test_tbl);
- 
-+static pci_ers_result_t pci_endpoint_test_error_detected(struct pci_dev *pdev,
-+					      pci_channel_state_t state)
-+{
-+	if (state == pci_channel_io_perm_failure)
-+		return PCI_ERS_RESULT_DISCONNECT;
-+
-+	return PCI_ERS_RESULT_NEED_RESET;
-+}
-+
-+static pci_ers_result_t pci_endpoint_test_slot_reset(struct pci_dev *pdev)
-+{
-+	pci_restore_state(pdev);
-+	return PCI_ERS_RESULT_RECOVERED;
-+}
-+
-+static const struct pci_error_handlers pci_endpoint_test_err_handler = {
-+	.error_detected = pci_endpoint_test_error_detected,
-+	.slot_reset = pci_endpoint_test_slot_reset,
-+};
-+
- static struct pci_driver pci_endpoint_test_driver = {
- 	.name		= DRV_MODULE_NAME,
- 	.id_table	= pci_endpoint_test_tbl,
- 	.probe		= pci_endpoint_test_probe,
- 	.remove		= pci_endpoint_test_remove,
- 	.sriov_configure = pci_sriov_configure_simple,
-+	.err_handler    = &pci_endpoint_test_err_handler,
- };
- module_pci_driver(pci_endpoint_test_driver);
- 
+Zhenghang Xiao (1):
+      fuse: clear ent->fuse_req in commit_fetch error path to prevent UAF
 
--- 
-2.48.1
+ fs/fuse/dev_uring.c | 48 +++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 31 insertions(+), 17 deletions(-)
+---
+base-commit: 040d71ac647099f7bb5e480fcd74ba68abc3cb18
+change-id: 20260518-fuse-io-uring-race-fixes-59760420d2ae
+
+Best regards,
+--  
+Bernd Schubert <bernd@bsbernd.com>
 
