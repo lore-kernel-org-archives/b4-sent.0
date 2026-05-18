@@ -1,130 +1,97 @@
-From: Colin Huang <u8813345@gmail.com>
-Date: Mon, 18 May 2026 16:10:19 +0800
-Subject: [PATCH linux dev-6.6 3/3] hwmon: (pmbus) add support for Delta
- E50SN12051
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Date: Mon, 18 May 2026 08:26:20 +0000
+Subject: [PATCH] pinctrl: meson: amlogic-a4: fix gpio output glitch
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260518-dev-6-6-e50sn12051-driver-v1-3-8025fb61706e@gmail.com>
-References: <20260518-dev-6-6-e50sn12051-driver-v1-0-8025fb61706e@gmail.com>
-In-Reply-To: <20260518-dev-6-6-e50sn12051-driver-v1-0-8025fb61706e@gmail.com>
-To: openbmc@lists.ozlabs.org, joel@jms.id.au, andrew@codeconstruct.com.au
-Cc: Colin Huang <colin.huang2@amd.com>, Colin Huang <u8813345@gmail.com>
+Message-Id: <20260518-fix-set-value-glitch-v1-1-d350732dc934@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIACvNCmoC/x2MQQqAIBAAvxJ7biG1pPpKdBDdaiEstCIQ/550H
+ JiZBJECU4SxShDo4ciHLyDqCuxm/ErIrjDIRuqmEz0u/GKkCx+z34TrzpfdcGmVdUprK4cOSno
+ GKt6/neacP6WFXLJmAAAA
+X-Change-ID: 20260518-fix-set-value-glitch-f43cd366c295
+To: Linus Walleij <linusw@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-amlogic@lists.infradead.org, linux-gpio@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779091827; l=3559;
- i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
- bh=2rz+C1dqYzxrgqZAGjitlJyEgxXTPBWZesnlebJDpVg=;
- b=JRZ2k8ytZw9k5mGkI5yGN33wK9lHf4/WCgCKCucRGAA1IZEMjNUBd6z8GNwaBJJrCDuPiElRS
- MZ/YNcQiwGXDNTvEf4GA9R66VaMTjZPqgMX/m/q4wjQmBuVIAr4iI10
-X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
- pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
-X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779092781; l=2464;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=HQut5DoHHLHMAAEMHfB1ndnbzPoAfeLWYAz1btYy/v4=;
+ b=iSGDTNSp99CxN/n337nlmpKipA9olU98cB3IT8K22NnaIVpfwhI4C4MCEB0dIVlmR3IlTXd9Y
+ FhrDNoLUCdxC0Nekxu1rUksY4RIWqW9zWwDlGWEmyCvbAmOWryO6CqJ
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the pmbus driver for Delta E50SN12051 600W Non-isolated
-1/8th Brick DCDC Power Modules.
+When the system transitions from bootloader to kernel, the GPIO is
+expected to keep driving high.
 
-Signed-off-by: Colin Huang <u8813345@gmail.com>
-Reviewed-by: Guenter Roeck <linux@roeck-us.net>
-Link: https://lore.kernel.org/r/20260508-add-e50sn12051-v5-3-abebdcc29665@gmail.com
-Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+However, the Linux kernel first configures the pin direction and then
+sets the output value. This may cause a brief low-level glitch on the
+GPIO line, which can be problematic for regulator control.
+
+By configuring the output value before switching the pin direction to
+output, the glitch can be avoided.
+
+This commit fixes the issue by swapping the configuration order.
+
+Fixes: 6e9be3abb78c ("pinctrl: Add driver support for Amlogic SoCs")
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- drivers/hwmon/pmbus/Kconfig      |  9 +++++++
- drivers/hwmon/pmbus/Makefile     |  1 +
- drivers/hwmon/pmbus/e50sn12051.c | 52 ++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 62 insertions(+)
+fix one issue when set gpio line high.
+---
+ drivers/pinctrl/meson/pinctrl-amlogic-a4.c | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
-index 60e74ced989a..a17050857da2 100644
---- a/drivers/hwmon/pmbus/Kconfig
-+++ b/drivers/hwmon/pmbus/Kconfig
-@@ -123,6 +123,15 @@ config SENSORS_DPS920AB
- 	  This driver can also be built as a module. If so, the module will
- 	  be called dps920ab.
+diff --git a/drivers/pinctrl/meson/pinctrl-amlogic-a4.c b/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
+index 35d27626a336..1bd58fbbd26a 100644
+--- a/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
++++ b/drivers/pinctrl/meson/pinctrl-amlogic-a4.c
+@@ -548,11 +548,11 @@ static int aml_pinconf_set_output_drive(struct aml_pinctrl *info,
+ {
+ 	int ret;
  
-+config SENSORS_E50SN12051
-+	tristate "Delta E50SN12051 Power Modules"
-+	help
-+	  If you say yes here you get hardware monitoring support for Delta
-+	  E50SN12051 Power Modules.
-+
-+	  This driver can also be built as a module. If so, the module will
-+	  be called e50sn12051.
-+
- config SENSORS_INA233
- 	tristate "Texas Instruments INA233 and compatibles"
- 	help
-diff --git a/drivers/hwmon/pmbus/Makefile b/drivers/hwmon/pmbus/Makefile
-index 741eee9128b7..80e9d3a72906 100644
---- a/drivers/hwmon/pmbus/Makefile
-+++ b/drivers/hwmon/pmbus/Makefile
-@@ -14,6 +14,7 @@ obj-$(CONFIG_SENSORS_DELTA_AHE50DC_FAN) += delta-ahe50dc-fan.o
- obj-$(CONFIG_SENSORS_FSP_3Y)	+= fsp-3y.o
- obj-$(CONFIG_SENSORS_IBM_CFFPS)	+= ibm-cffps.o
- obj-$(CONFIG_SENSORS_DPS920AB)	+= dps920ab.o
-+obj-$(CONFIG_SENSORS_E50SN12051) += e50sn12051.o
- obj-$(CONFIG_SENSORS_INA233)	+= ina233.o
- obj-$(CONFIG_SENSORS_INSPUR_IPSPS) += inspur-ipsps.o
- obj-$(CONFIG_SENSORS_IR35221)	+= ir35221.o
-diff --git a/drivers/hwmon/pmbus/e50sn12051.c b/drivers/hwmon/pmbus/e50sn12051.c
-new file mode 100644
-index 000000000000..efb4d62b2603
---- /dev/null
-+++ b/drivers/hwmon/pmbus/e50sn12051.c
-@@ -0,0 +1,52 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * Hardware monitoring driver for E50SN12051
-+ */
-+
-+#include <linux/i2c.h>
-+#include <linux/module.h>
-+#include <linux/mod_devicetable.h>
-+#include "pmbus.h"
-+
-+static struct pmbus_driver_info e50sn12051_info = {
-+	.pages = 1,
-+	.format[PSC_VOLTAGE_IN] = linear,
-+	.format[PSC_VOLTAGE_OUT] = linear,
-+	.format[PSC_CURRENT_OUT] = linear,
-+	.format[PSC_TEMPERATURE] = linear,
-+	.func[0] = PMBUS_HAVE_VIN | PMBUS_HAVE_STATUS_INPUT |
-+		   PMBUS_HAVE_VOUT | PMBUS_HAVE_STATUS_VOUT |
-+		   PMBUS_HAVE_IOUT | PMBUS_HAVE_STATUS_IOUT |
-+		   PMBUS_HAVE_TEMP | PMBUS_HAVE_STATUS_TEMP,
-+};
-+
-+static const struct i2c_device_id e50sn12051_id[] = { { "e50sn12051", 0 }, {} };
-+MODULE_DEVICE_TABLE(i2c, e50sn12051_id);
-+
-+static const struct of_device_id e50sn12051_of_match[] = {
-+	{ .compatible = "delta,e50sn12051" },
-+	{},
-+};
-+MODULE_DEVICE_TABLE(of, e50sn12051_of_match);
-+
-+static int e50sn12051_probe(struct i2c_client *client)
-+{
-+	return pmbus_do_probe(client, &e50sn12051_info);
-+}
-+
-+static struct i2c_driver e50sn12051_driver = {
-+	.driver = {
-+		.name = "e50sn12051",
-+		.of_match_table = e50sn12051_of_match,
-+	},
-+	.probe = e50sn12051_probe,
-+
-+	.id_table = e50sn12051_id,
-+};
-+
-+module_i2c_driver(e50sn12051_driver);
-+
-+MODULE_AUTHOR("Kevin Chang <kevin.chang2@amd.com>");
-+MODULE_DESCRIPTION("PMBus driver for E50SN12051");
-+MODULE_LICENSE("GPL");
-+MODULE_IMPORT_NS("PMBUS");
+-	ret = aml_pinconf_set_output(info, pin, true);
++	ret = aml_pinconf_set_drive(info, pin, high);
+ 	if (ret)
+ 		return ret;
+ 
+-	return aml_pinconf_set_drive(info, pin, high);
++	return aml_pinconf_set_output(info, pin, true);
+ }
+ 
+ static int aml_pinconf_set(struct pinctrl_dev *pcdev, unsigned int pin,
+@@ -921,15 +921,14 @@ static int aml_gpio_direction_output(struct gpio_chip *chip, unsigned int gpio,
+ 	unsigned int bit, reg;
+ 	int ret;
+ 
+-	aml_gpio_calc_reg_and_bit(bank, AML_REG_DIR, gpio, &reg, &bit);
+-	ret = regmap_update_bits(bank->reg_gpio, reg, BIT(bit), 0);
++	aml_gpio_calc_reg_and_bit(bank, AML_REG_OUT, gpio, &reg, &bit);
++	ret = regmap_update_bits(bank->reg_gpio, reg, BIT(bit),
++				 value ? BIT(bit) : 0);
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	aml_gpio_calc_reg_and_bit(bank, AML_REG_OUT, gpio, &reg, &bit);
+-
+-	return regmap_update_bits(bank->reg_gpio, reg, BIT(bit),
+-				  value ? BIT(bit) : 0);
++	aml_gpio_calc_reg_and_bit(bank, AML_REG_DIR, gpio, &reg, &bit);
++	return regmap_update_bits(bank->reg_gpio, reg, BIT(bit), 0);
+ }
+ 
+ static int aml_gpio_set(struct gpio_chip *chip, unsigned int gpio, int value)
 
+---
+base-commit: 73d4991a6949eedb51e442d4e81415017d85975b
+change-id: 20260518-fix-set-value-glitch-f43cd366c295
+
+Best regards,
 -- 
-2.34.1
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
