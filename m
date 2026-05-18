@@ -1,84 +1,69 @@
-From: Ackerley Tng <ackerleytng@google.com>
-Date: Mon, 18 May 2026 11:17:37 -0700
-Subject: [PATCH RFC 5/5] mm: selftests: Port readback test logic from
- libhugetlbfs
+From: Bernd Schubert <bernd@bsbernd.com>
+Subject: [PATCH v2 0/4] fuse: Fix several io-uring race conditions
+Date: Tue, 19 May 2026 00:13:30 +0200
+Message-Id: <20260519-fuse-io-uring-race-fixes-v2-0-ea5036dfe4ce@bsbernd.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260518-port-hugetlb-selftests-v1-5-d64ba3a785fe@google.com>
-References: <20260518-port-hugetlb-selftests-v1-0-d64ba3a785fe@google.com>
-In-Reply-To: <20260518-port-hugetlb-selftests-v1-0-d64ba3a785fe@google.com>
-To: Andrew Morton <akpm@linux-foundation.org>, 
- David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, 
- "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
- Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
- Michal Hocko <mhocko@suse.com>, Shuah Khan <shuah@kernel.org>, 
- muchun.song@linux.dev, osalvador@suse.de
-Cc: linux-mm@kvack.org, linux-kselftest@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ackerley Tng <ackerleytng@google.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779128265; l=1602;
- i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=89off7URPXKpNOqQZuCiXrCqLPNnXfaicuty8kmghyM=;
- b=2EmdrC/gCQ3MioA72AfovP0JnhYZTfmTmBwAMfNu2EP7oCwZxCKgxIPZaCXufUhQE+ZEiaPpM
- EdlNF/U6uRBBLfpGgRNE33I/AxPAC835iYY/3i4b0CTZgeAgV36UEn3
-X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
- pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
-X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NQQ6CMBBFr0Jm7Zi2CoIr72FYtGWALmzNjBAN6
+ d2tnMDl+z/v/w2EOJDAtdqAaQ0SUixgDhX42caJMAyFwSjTqFq3OC5SsoQLhzghW084hjcJ1t2
+ lUWejBmMJiv5k2oti3/vCc5BX4s/+tOpf+sfoqlHhqfEdOdtap9ubE0cch6NPD+hzzl9ZSI0Tw
+ gAAAA==
+X-Change-ID: 20260518-fuse-io-uring-race-fixes-59760420d2ae
+To: security@kernel.org, Pavel Begunkov <asml.silence@gmail.com>, 
+ Luis Henriques <luis@igalia.com>, Joanne Koong <joannelkoong@gmail.com>
+Cc: Miklos Szeredi <mszeredi@redhat.com>, Berkant Koc <me@berkoc.com>, 
+ Zhenghang Xiao <kipreyyy@gmail.com>, Bernd Schubert <bernd@bsbernd.com>, 
+ stable@kernel.org, xlabai <xlabai@tencent.com>
+X-Mailer: b4 0.16-dev-d5d98
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1418; i=bernd@bsbernd.com;
+ h=from:subject:message-id; bh=t6WboOaAxufuH9tyqG7W/Wb/XzQpy+XyWO3TbJ63jXY=;
+ b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLK4+3nZzj47+83p6Rsznd8zFZvTjPRX1Jz5v2xz0gTvp
+ TuZ1xUv7ShlYRDjYJAVU2TpkthjO+Ufn6za1/XXYeawMoEMYeDiFICJMH1n+J/fzVfk+iDpzRXp
+ 9TzTP63/debuB+PEY/POtk7tOD/t3RYGhv+hr5ZXyUx693rpCuODZ6P3haq7LpUsu7hC1zXa0Xb
+ vnVnMAA==
+X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
+ fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
+X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Port verification logic from libhugetlbfs' tests/readback.c.
+This is to fix race conditions reported by Berkant and Zhenghang.
 
-Iterate using an unsigned int pointer instead of a char pointer, which
-enables testing against a greater range of stored values beyond [0, 255].
+So far not well tested yet, update about that will follow tomorrow.
 
-Signed-off-by: Ackerley Tng <ackerleytng@google.com>
+To: security@kernel.org
+To: Pavel Begunkov <asml.silence@gmail.com>
+To: Luis Henriques <luis@igalia.com>
+To: Joanne Koong <joannelkoong@gmail.com>
+Cc: Miklos Szeredi <mszeredi@redhat.com>
+Cc: Berkant Koc <me@berkoc.com>
+Cc: Zhenghang Xiao <kipreyyy@gmail.com>
+Cc: Joanne Koong <joannelkoong@gmail.com>
+
+Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
 ---
- tools/testing/selftests/mm/hugepage-mmap.c | 16 +++++++++-------
- 1 file changed, 9 insertions(+), 7 deletions(-)
+Changes in v2:
+- fuse_uring_add_req_to_ring_ent() needs to re-initialize req->list
+  after moving fuse_uring_add_to_pq() from fuse_uring_add_req_to_ring_ent
+  to fuse_uring_send in orer to avoid handling fuse requests
+  multiple times (Joanne).
 
-diff --git a/tools/testing/selftests/mm/hugepage-mmap.c b/tools/testing/selftests/mm/hugepage-mmap.c
-index dd9fccb209b10..a7d4a3eba3dd7 100644
---- a/tools/testing/selftests/mm/hugepage-mmap.c
-+++ b/tools/testing/selftests/mm/hugepage-mmap.c
-@@ -45,7 +45,7 @@ enum fd_kind {
- FIXTURE(hugepage_mmap)
- {
- 	int fd;
--	char *addr;
-+	unsigned int *addr;
- 	char mount_dir[PATH_MAX];
- };
- 
-@@ -122,19 +122,21 @@ FIXTURE_TEARDOWN(hugepage_mmap)
- 	}
- }
- 
-+#define RANDOM_CONSTANT 0x1234ABCD
-+
- TEST_F(hugepage_mmap, read_write)
- {
- 	unsigned long i;
- 
--	TH_LOG("First hex is %x", *((unsigned int *)self->addr));
-+	TH_LOG("First hex is %x", *self->addr);
- 
--	for (i = 0; i < LENGTH; i++)
--		self->addr[i] = (char)i;
-+	for (i = 0; i < LENGTH / sizeof(*self->addr); i++)
-+		self->addr[i] = RANDOM_CONSTANT ^ i;
- 
--	TH_LOG("First hex is %x", *((unsigned int *)self->addr));
-+	TH_LOG("First hex is %x", *self->addr);
- 
--	for (i = 0; i < LENGTH; i++) {
--		ASSERT_EQ(self->addr[i], (char)i) {
-+	for (i = 0; i < LENGTH / sizeof(*self->addr); i++) {
-+		ASSERT_EQ(self->addr[i], RANDOM_CONSTANT ^ i) {
- 			TH_LOG("Error: Mismatch at %lu\n", i);
- 		};
- 	}
+---
+Bernd Schubert (3):
+      fuse: Avoid use-after-free in fuse_uring_async_stop_queues
+      fuse: Avoid queue->stopped races and set/read that value under lock
+      fuse: {io-uring} Make a fuse_req on SQE commit only findable after memcpy
 
--- 
-2.54.0.563.g4f69b47b94-goog
+Zhenghang Xiao (1):
+      fuse: clear ent->fuse_req in commit_fetch error path to prevent UAF
+
+ fs/fuse/dev_uring.c | 52 +++++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 35 insertions(+), 17 deletions(-)
+---
+base-commit: 040d71ac647099f7bb5e480fcd74ba68abc3cb18
+change-id: 20260518-fuse-io-uring-race-fixes-59760420d2ae
+
+Best regards,
+--  
+Bernd Schubert <bernd@bsbernd.com>
 
