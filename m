@@ -1,130 +1,46 @@
 From: Colin Huang <u8813345@gmail.com>
-Date: Mon, 18 May 2026 16:08:26 +0800
-Subject: [PATCH linux dev-6.18 3/3] hwmon: (pmbus) add support for Delta
- E50SN12051
+Subject: [PATCH linux dev-6.6 0/3] add support for Delta E50SN12051
+Date: Mon, 18 May 2026 16:10:16 +0800
+Message-Id: <20260518-dev-6-6-e50sn12051-driver-v1-0-8025fb61706e@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260518-dev-6-18-e50sn12051-driver-v1-3-238e4e08a759@gmail.com>
-References: <20260518-dev-6-18-e50sn12051-driver-v1-0-238e4e08a759@gmail.com>
-In-Reply-To: <20260518-dev-6-18-e50sn12051-driver-v1-0-238e4e08a759@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAGnJCmoC/x2MwQqDMBBEfyXsuSlJwDT0V6QHSUZdKGnZYBDEf
+ 3eROb0Z3hzUIIxGb3OQoHPjX1XwD0N5neoCy0WZggvRDT7Zgm6jBoNr1QftbBHuEF1eGTmF5KZ
+ E6v8FM+/390hfrttubvkZ6XOeF1uuKOR6AAAA
+X-Change-ID: 20260518-dev-6-6-e50sn12051-driver-de7cec8280a8
 To: openbmc@lists.ozlabs.org, joel@jms.id.au, andrew@codeconstruct.com.au
 Cc: Colin Huang <colin.huang2@amd.com>, Colin Huang <u8813345@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779091725; l=3559;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779091827; l=859;
  i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
- bh=oQXcXDwqb+g+aytJTyR2me1soooGBsS+f6T7Xr6b7LE=;
- b=80Sx8huQAsC3Z69nF4T+XsX5T+TLL1H6MLizu2uidZeYhZ6my58gHjpAWvo8VasCz1pIdh+4B
- /W7iblSf8sDBQG2MrIEryHeCKTXZQ4phsckpohIMZwONUCRJ/s7xDFN
+ bh=cPO+2Z78cAr68BCxS8UwzG/BZ4oa8eNTgVIcbGKSBQc=;
+ b=SatA+iDWZIJssVMDEvg1QfFWXoawK5C9Ugje34VIENe19p/iZr/sXlfAVGLmaCBl30v1yauv1
+ Wl+cPO8Ou6RBBNPKc20XfcXPUntkfvtecCgeg5imtqpm4yLZ4e3uMoz
 X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
  pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
 X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the pmbus driver for Delta E50SN12051 600W Non-isolated
-1/8th Brick DCDC Power Modules.
-
 Signed-off-by: Colin Huang <u8813345@gmail.com>
-Reviewed-by: Guenter Roeck <linux@roeck-us.net>
-Link: https://lore.kernel.org/r/20260508-add-e50sn12051-v5-3-abebdcc29665@gmail.com
-Signed-off-by: Guenter Roeck <linux@roeck-us.net>
 ---
- drivers/hwmon/pmbus/Kconfig      |  9 +++++++
- drivers/hwmon/pmbus/Makefile     |  1 +
- drivers/hwmon/pmbus/e50sn12051.c | 52 ++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 62 insertions(+)
+Colin Huang (3):
+      dt-bindings: trivial-devices: Add Delta E50SN12051
+      Documentation/hwmon: add Delta E50SN12051 documentation
+      hwmon: (pmbus) add support for Delta E50SN12051
 
-diff --git a/drivers/hwmon/pmbus/Kconfig b/drivers/hwmon/pmbus/Kconfig
-index 76668322a4ce..3043d1899a7e 100644
---- a/drivers/hwmon/pmbus/Kconfig
-+++ b/drivers/hwmon/pmbus/Kconfig
-@@ -143,6 +143,15 @@ config SENSORS_DPS920AB
- 	  This driver can also be built as a module. If so, the module will
- 	  be called dps920ab.
- 
-+config SENSORS_E50SN12051
-+	tristate "Delta E50SN12051 Power Modules"
-+	help
-+	  If you say yes here you get hardware monitoring support for Delta
-+	  E50SN12051 Power Modules.
-+
-+	  This driver can also be built as a module. If so, the module will
-+	  be called e50sn12051.
-+
- config SENSORS_INA233
- 	tristate "Texas Instruments INA233 and compatibles"
- 	help
-diff --git a/drivers/hwmon/pmbus/Makefile b/drivers/hwmon/pmbus/Makefile
-index b9e57f74ae4a..bd2dd3bb2e48 100644
---- a/drivers/hwmon/pmbus/Makefile
-+++ b/drivers/hwmon/pmbus/Makefile
-@@ -15,6 +15,7 @@ obj-$(CONFIG_SENSORS_DELTA_AHE50DC_FAN) += delta-ahe50dc-fan.o
- obj-$(CONFIG_SENSORS_FSP_3Y)	+= fsp-3y.o
- obj-$(CONFIG_SENSORS_IBM_CFFPS)	+= ibm-cffps.o
- obj-$(CONFIG_SENSORS_DPS920AB)	+= dps920ab.o
-+obj-$(CONFIG_SENSORS_E50SN12051) += e50sn12051.o
- obj-$(CONFIG_SENSORS_INA233)	+= ina233.o
- obj-$(CONFIG_SENSORS_INSPUR_IPSPS) += inspur-ipsps.o
- obj-$(CONFIG_SENSORS_IR35221)	+= ir35221.o
-diff --git a/drivers/hwmon/pmbus/e50sn12051.c b/drivers/hwmon/pmbus/e50sn12051.c
-new file mode 100644
-index 000000000000..efb4d62b2603
---- /dev/null
-+++ b/drivers/hwmon/pmbus/e50sn12051.c
-@@ -0,0 +1,52 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/*
-+ * Hardware monitoring driver for E50SN12051
-+ */
-+
-+#include <linux/i2c.h>
-+#include <linux/module.h>
-+#include <linux/mod_devicetable.h>
-+#include "pmbus.h"
-+
-+static struct pmbus_driver_info e50sn12051_info = {
-+	.pages = 1,
-+	.format[PSC_VOLTAGE_IN] = linear,
-+	.format[PSC_VOLTAGE_OUT] = linear,
-+	.format[PSC_CURRENT_OUT] = linear,
-+	.format[PSC_TEMPERATURE] = linear,
-+	.func[0] = PMBUS_HAVE_VIN | PMBUS_HAVE_STATUS_INPUT |
-+		   PMBUS_HAVE_VOUT | PMBUS_HAVE_STATUS_VOUT |
-+		   PMBUS_HAVE_IOUT | PMBUS_HAVE_STATUS_IOUT |
-+		   PMBUS_HAVE_TEMP | PMBUS_HAVE_STATUS_TEMP,
-+};
-+
-+static const struct i2c_device_id e50sn12051_id[] = { { "e50sn12051", 0 }, {} };
-+MODULE_DEVICE_TABLE(i2c, e50sn12051_id);
-+
-+static const struct of_device_id e50sn12051_of_match[] = {
-+	{ .compatible = "delta,e50sn12051" },
-+	{},
-+};
-+MODULE_DEVICE_TABLE(of, e50sn12051_of_match);
-+
-+static int e50sn12051_probe(struct i2c_client *client)
-+{
-+	return pmbus_do_probe(client, &e50sn12051_info);
-+}
-+
-+static struct i2c_driver e50sn12051_driver = {
-+	.driver = {
-+		.name = "e50sn12051",
-+		.of_match_table = e50sn12051_of_match,
-+	},
-+	.probe = e50sn12051_probe,
-+
-+	.id_table = e50sn12051_id,
-+};
-+
-+module_i2c_driver(e50sn12051_driver);
-+
-+MODULE_AUTHOR("Kevin Chang <kevin.chang2@amd.com>");
-+MODULE_DESCRIPTION("PMBus driver for E50SN12051");
-+MODULE_LICENSE("GPL");
-+MODULE_IMPORT_NS("PMBUS");
+ .../devicetree/bindings/trivial-devices.yaml       |  2 +
+ Documentation/hwmon/e50sn12051.rst                 | 81 ++++++++++++++++++++++
+ Documentation/hwmon/index.rst                      |  1 +
+ drivers/hwmon/pmbus/Kconfig                        |  9 +++
+ drivers/hwmon/pmbus/Makefile                       |  1 +
+ drivers/hwmon/pmbus/e50sn12051.c                   | 52 ++++++++++++++
+ 6 files changed, 146 insertions(+)
+---
+base-commit: e11fa6b1ff6c27c808d17e479bd7d5582e772062
+change-id: 20260518-dev-6-6-e50sn12051-driver-de7cec8280a8
 
+Best regards,
 -- 
-2.34.1
+Colin Huang <u8813345@gmail.com>
 
