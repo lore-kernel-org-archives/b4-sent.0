@@ -1,151 +1,105 @@
-From: Rex Fu <Rex.Fu@amd.com>
-Date: Mon, 18 May 2026 18:00:40 +0800
-Subject: [PATCH v2] ARM: dts: aspeed: anacapa: correct SGPIO names for
- monitoring
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Subject: [PATCH v7 0/5] soc: qcom: ice: Fix race between qcom_ice_probe()
+ and of_qcom_ice_get()
+Date: Mon, 18 May 2026 19:22:16 +0530
+Message-Id: <20260518-qcom-ice-fix-v7-0-2a595382185b@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260518-anacapa-sgpio-edsff-thermtrip-v2-1-e43b1847b2dc@amd.com>
-X-B4-Tracking: v=1; b=H4sIAEfjCmoC/42OSwrCMBRFt1Iy9kmSfhRH7kM6yOelfUKbkMSgl
- O7dtm7A4YHDuXdhCSNhYrdqYRELJfLzBvJUMTOqeUAguzGTXHa8qTmoWRkVFKQhkAe0yTnII8Y
- pRwqgjJbyql0nNLKtESI6eh/9R//j9NJPNHmP7sZIKfv4OQ4UsXv/bhUBAqSzLV5kU7eW39Vkz
- 8ZPrF/X9QvqpmBx2gAAAA==
-X-Change-ID: 20260430-anacapa-sgpio-edsff-thermtrip-acb228bf61be
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
- Andrew Jeffery <andrew@codeconstruct.com.au>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
- Rex Fu <Rex.Fu@amd.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779098465; l=4551;
- i=Rex.Fu@amd.com; s=20260417; h=from:subject:message-id;
- bh=R6pEDyauTB50Fmhvxn0QsYGtV2og2/4FKpGrDbJds/8=;
- b=RC64u2ytJ72iyOUFotIilIIvQnQwyvi5OfqMn3hKP+rzzxF8q2th+T0U1TtU6hXd+NbgacbZ0
- kRDPXrW5GeECk58Ywm1UgI3Pjx7idCfONhNhX9W2thRQSbad/63mm9J
-X-Developer-Key: i=Rex.Fu@amd.com; a=ed25519;
- pk=26ECoh24fxrbXDKgA4hCmgg0xjQ+IxU97kXb46ovwgc=
-X-Endpoint-Received: by B4 Relay for Rex.Fu@amd.com/20260417 with auth_id=738
+X-B4-Tracking: v=1; b=H4sIAJAZC2oC/3XOwQrCMAwG4FeRnq3ENO2mJ99DPHRt1II6XXUos
+ nc320UZ7hL4f5KPvFXmJnFW69lbNdymnOqLhGI+U+HoLwfWKUpWCOgAl6BvoT7rFFjv01NH9MY
+ D2cpgVHJybVjqgdvuJB9TvtfNa9Bb7NsJqEUNehWWvrLRWcCwqXNe3B7+JFvnhQzVe635MdCMD
+ COGC96W5Ayu9sWEQV/DAI4MEgPY2YLA2xim/rC/RjkyrBhMBZeeqHKB/hhd130Al7QznHsBAAA
+ =
+X-Change-ID: 20260210-qcom-ice-fix-d2a3a045b32d
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Abel Vesa <abelvesa@kernel.org>, 
+ Adrian Hunter <adrian.hunter@intel.com>, Ulf Hansson <ulfh@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, 
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ "Martin K. Petersen" <martin.petersen@oracle.com>
+Cc: linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-mmc@vger.kernel.org, linux-scsi@vger.kernel.org, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>, 
+ Sumit Garg <sumit.garg@oss.qualcomm.com>, stable@vger.kernel.org, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Ulf Hansson <ulfh@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2360;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=kWISkeVRfd8jvFcHNKLpQ1GFOQCP73gX7K3vEQF5lPE=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqCxmYCvvALWkQZC2rYZ1PvIwFlbeupGGU1KLFO
+ g0x8cKNlvGJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCagsZmAAKCRBVnxHm/pHO
+ 9Q6zB/0fF5aKOehEDnZHrPz34NODgyB+ECsieVqHX9VV4Kmy3+UxjD5MrLQiO8dYt2/0eVBbgQ1
+ FnQhTG+rKcCBvS3gPmMFwehUwnQSGpymnBi9DASd6nHpef6sZxXTA0Sw/ORiZSBdKpNK4lLgqON
+ P+seFQ/0DljEM6jrlzS73Ewh3Or9C0W+V3f8+X3x5NfvL/mlg/gi0kdsZjwL75zzw1WCNnDTJAc
+ njmjXmcOnT7tM4ucirlONeEQFW4TbyFRlNi12CIx+LFAGXjBEtzV0V0OpAUfNZIVl3p+STo+Q2q
+ Fnjlm661UD6dOH3wDv1LjuxiGvIb1+HBk0zxEhCaP/UTwVJ8
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update several Anacapa SGPIO line names to match the existing platform
-hardware design and the signal names consumed by userspace monitoring.
+Hi,
 
-The previous names did not match the actual Anacapa SGPIO usage. Some
-lines were named as CPU or CPU power-good signals, but they are wired and
-used on Anacapa for EDSFF presence, EDSFF power-good, boot EDSFF
-presence, and thermal-trip assertion monitoring.
+This series fixes the race betwen qcom_ice_probe() and of_qcom_ice_get()
+but synchronizing the two APIs and properly propagating the error codes to
+clients.
 
-Correct the mappings as follows:
+Merge Strategy
+==============
 
-  PWRGD_PVDDCR_SOC_P0     -> L_PRSNT_EDSFF0_N
-  PWRGD_PVDDIO_P0         -> L_PRSNT_EDSFF1_N
-  PWRGD_PVDDIO_MEM_S3_P0  -> R_PRSNT_EDSFF2_N
-  PWRGD_CHMP_CPU0_FPGA    -> R_PRSNT_EDSFF3_N
-  PWRGD_CHIL_CPU0_FPGA    -> HPM_EDSFF_PG
-  EAM2_CPU_MOD_PWR_GD_R   -> PRSNT_EDSFF_BOOT_N
-  CPU0_SP7R1              -> L_EDSFF0_PG
-  CPU0_SP7R2              -> L_EDSFF1_PG
-  CPU0_SP7R3              -> R_EDSFF2_PG
-  CPU0_SP7R4              -> R_EDSFF3_PG
-  HPM_AMC_THERMTRIP_R_L   -> AMC_THERMTRIP_ASSERT
-  FM_CPU0_THERMTRIP_N     -> CPU_THERMTRIP_ASSERT
+Due to dependency, all patches should go through Qcom SoC tree.
 
-The left-side EDSFF slots are numbered as EDSFF0 and EDSFF1 to match
-the platform slot numbering used by userspace. The thermtrip names are
-also updated to describe the asserted condition monitored by userspace
-instead of the raw active-low signal names.
-
-This is a naming correction for the existing Anacapa hardware design.
-There is no new board revision or underlying hardware change involved.
-
-Signed-off-by: Rex Fu <Rex.Fu@amd.com>
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
-Update the Anacapa SGPIO line names to match the existing hardware
-design and the platform signal names used by userspace monitoring.
+Changes in v7:
+- Rebased on top of v7.1-rc1
+- Collected tags
 
-The v2 commit message now explains why changing these userspace-visible
-GPIO line names is appropriate and lists the exact old-to-new mappings.
----
+Changes in v6:
+- Fixed sparse warnings
+- Link to v5: https://lore.kernel.org/r/20260308-qcom-ice-fix-v5-0-e47e8a44b6c4@oss.qualcomm.com
+
+Changes in v5:
+- Used Xarray instead of platform drvdata for passing the pointer since driver
+  core frees drvdata on probe failure.
+- Link to v4: https://lore.kernel.org/r/20260302-qcom-ice-fix-v4-0-0e65740a5dcc@oss.qualcomm.com
+
+Changes in v4:
+- For supporting multi-ice instances in a SoC, stored the err ptr in platform
+  drvdata instead of in a global pointer.
+- Link to v3: https://lore.kernel.org/r/20260223-qcom-ice-fix-v3-0-6ca5846329f7@oss.qualcomm.com
+
+Changes in v3:
+- Dropped the platform driver removal patch and used the ice_handle to pass
+  error codes. This was done as I learned that we need to have the platform
+  driver design going forward and also removing it introduces other issues.
+- Link to v2: https://lore.kernel.org/r/20260210-qcom-ice-fix-v2-0-9c1ab5d6502c@oss.qualcomm.com
+
 Changes in v2:
-- Reworked the commit message to explain why these userspace-visible
-  GPIO line names are changed.
-- Listed the exact old-to-new SGPIO line name mappings.
-- Clarified that this is a naming correction for the existing hardware
-  design and not a board revision or hardware change.
-- Link to v1: https://patch.msgid.link/20260430-anacapa-sgpio-edsff-thermtrip-v1-1-2fd5e72435d0@amd.com
 
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Joel Stanley <joel@jms.id.au>
-To: Andrew Jeffery <andrew@codeconstruct.com.au>
-Cc: devicetree@vger.kernel.org
-Cc: linux-arm-kernel@lists.infradead.org
-Cc: linux-aspeed@lists.ozlabs.org
-Cc: linux-kernel@vger.kernel.org
----
- .../boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts  | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
-
-diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
-index 2cb7bd128d24..e898bc11e6f5 100644
---- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
-+++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
-@@ -908,11 +908,11 @@ &sgpiom0 {
- 	"", "", "", "",
- 
- 	/* G0-G7 line 96-111 */
--	"PWRGD_PVDDCR_SOC_P0", "",
--	"PWRGD_PVDDIO_P0", "",
--	"PWRGD_PVDDIO_MEM_S3_P0", "",
--	"PWRGD_CHMP_CPU0_FPGA", "",
--	"PWRGD_CHIL_CPU0_FPGA", "",
-+	"L_PRSNT_EDSFF0_N", "",
-+	"L_PRSNT_EDSFF1_N", "",
-+	"R_PRSNT_EDSFF2_N", "",
-+	"R_PRSNT_EDSFF3_N", "",
-+	"HPM_EDSFF_PG", "",
- 	"PWRGD_CHEH_CPU0_FPGA", "",
- 	"PWRGD_CHAD_CPU0_FPGA", "FM_BMC_READY_PLD",
- 	"", "",
-@@ -934,7 +934,7 @@ &sgpiom0 {
- 	"EAM3_BRD_PRSNT_R_L", "",
- 	"EAM0_CPU_MOD_PWR_GD_R", "",
- 	"EAM1_CPU_MOD_PWR_GD_R", "",
--	"EAM2_CPU_MOD_PWR_GD_R", "",
-+	"PRSNT_EDSFF_BOOT_N", "",
- 	"EAM3_CPU_MOD_PWR_GD_R", "",
- 
- 	/* J0-J7 line 144-159 */
-@@ -957,8 +957,8 @@ &sgpiom0 {
- 	"PDB_ALERT_R_N", "",
- 
- 	/* L0-L7 line 176-191 */
--	"CPU0_SP7R1", "", "CPU0_SP7R2", "",
--	"CPU0_SP7R3", "", "CPU0_SP7R4", "",
-+	"L_EDSFF0_PG", "", "L_EDSFF1_PG", "",
-+	"R_EDSFF2_PG", "", "R_EDSFF3_PG", "",
- 	"CPU0_CORETYPE0", "", "CPU0_CORETYPE1", "",
- 	"CPU0_CORETYPE2", "", "FM_BIOS_POST_CMPLT_R_N", "",
- 
-@@ -984,8 +984,8 @@ &sgpiom0 {
- 	"HPM_PWR_FAIL", "Port80_b0",
- 	"FM_DIMM_IP_FAIL", "Port80_b1",
- 	"FM_DIMM_AH_FAIL", "Port80_b2",
--	"HPM_AMC_THERMTRIP_R_L", "Port80_b3",
--	"FM_CPU0_THERMTRIP_N", "Port80_b4",
-+	"AMC_THERMTRIP_ASSERT", "Port80_b3",
-+	"CPU_THERMTRIP_ASSERT", "Port80_b4",
- 	"PVDDCR_SOC_P0_OCP_L", "Port80_b5",
- 	"CPLD_SGPIO_RDY", "Port80_b6",
- 	"", "Port80_b7",
+- Added MODULE_* macros back
+- Removed spurious platform_device_put()
+- Added patches to remove NULL return
 
 ---
-base-commit: 9974969c14031a097d6b45bcb7a06bb4aa525c40
-change-id: 20260430-anacapa-sgpio-edsff-thermtrip-acb228bf61be
+Manivannan Sadhasivam (5):
+      soc: qcom: ice: Fix race between qcom_ice_probe() and of_qcom_ice_get()
+      soc: qcom: ice: Return -ENODEV if the ICE platform device is not found
+      soc: qcom: ice: Return proper error codes from devm_of_qcom_ice_get() instead of NULL
+      mmc: sdhci-msm: Remove NULL check from devm_of_qcom_ice_get()
+      scsi: ufs: ufs-qcom: Remove NULL check from devm_of_qcom_ice_get()
+
+ drivers/mmc/host/sdhci-msm.c | 10 ++++-----
+ drivers/soc/qcom/ice.c       | 49 ++++++++++++++++++++++++++++++++------------
+ drivers/ufs/host/ufs-qcom.c  | 10 ++++-----
+ 3 files changed, 46 insertions(+), 23 deletions(-)
+---
+base-commit: 254f49634ee16a731174d2ae34bc50bd5f45e731
+change-id: 20260210-qcom-ice-fix-d2a3a045b32d
 
 Best regards,
---  
-Rex Fu <Rex.Fu@amd.com>
+-- 
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
