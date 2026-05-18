@@ -1,100 +1,151 @@
-From: Radu Sabau <radu.sabau@analog.com>
-Date: Mon, 18 May 2026 12:59:04 +0300
-Subject: [PATCH v3 2/2] iio: adc: ad_sigma_delta: fix clear_pending_event
- for registerless devices
+From: Rex Fu <Rex.Fu@amd.com>
+Date: Mon, 18 May 2026 18:00:40 +0800
+Subject: [PATCH v2] ARM: dts: aspeed: anacapa: correct SGPIO names for
+ monitoring
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260518-ad_sigma_delta-fix-v3-2-a2a92b0c36f3@analog.com>
-References: <20260518-ad_sigma_delta-fix-v3-0-a2a92b0c36f3@analog.com>
-In-Reply-To: <20260518-ad_sigma_delta-fix-v3-0-a2a92b0c36f3@analog.com>
-To: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <u.kleine-koenig@baylibre.com>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Radu Sabau <radu.sabau@analog.com>, Jonathan Cameron <jic23@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779098343; l=3198;
- i=radu.sabau@analog.com; s=20260220; h=from:subject:message-id;
- bh=ik2MMWjPIciaEPWACoIeOi+XWz2Jq+3CxsOakr8Y31w=;
- b=mjtWt97UmSf1N+y14ywsO1BC0YuGZlRbohpvwDZ96pDVYmkrMh7+Iel+jWLecvhbAPlDtolil
- LQLh6qlasfTCE2n0CY8Rl649E+lt60a8vbR0Rg3+MWhsPsomPcWZBso
-X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
- pk=lDPQHgn9jTdt0vo58Na9lLxLaE2mb330if71Cn+EvFU=
-X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20260220 with auth_id=642
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260518-anacapa-sgpio-edsff-thermtrip-v2-1-e43b1847b2dc@amd.com>
+X-B4-Tracking: v=1; b=H4sIAEfjCmoC/42OSwrCMBRFt1Iy9kmSfhRH7kM6yOelfUKbkMSgl
+ O7dtm7A4YHDuXdhCSNhYrdqYRELJfLzBvJUMTOqeUAguzGTXHa8qTmoWRkVFKQhkAe0yTnII8Y
+ pRwqgjJbyql0nNLKtESI6eh/9R//j9NJPNHmP7sZIKfv4OQ4UsXv/bhUBAqSzLV5kU7eW39Vkz
+ 8ZPrF/X9QvqpmBx2gAAAA==
+X-Change-ID: 20260430-anacapa-sgpio-edsff-thermtrip-acb228bf61be
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Joel Stanley <joel@jms.id.au>, 
+ Andrew Jeffery <andrew@codeconstruct.com.au>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
+ Rex Fu <Rex.Fu@amd.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779098465; l=4551;
+ i=Rex.Fu@amd.com; s=20260417; h=from:subject:message-id;
+ bh=R6pEDyauTB50Fmhvxn0QsYGtV2og2/4FKpGrDbJds/8=;
+ b=RC64u2ytJ72iyOUFotIilIIvQnQwyvi5OfqMn3hKP+rzzxF8q2th+T0U1TtU6hXd+NbgacbZ0
+ kRDPXrW5GeECk58Ywm1UgI3Pjx7idCfONhNhX9W2thRQSbad/63mm9J
+X-Developer-Key: i=Rex.Fu@amd.com; a=ed25519;
+ pk=26ECoh24fxrbXDKgA4hCmgg0xjQ+IxU97kXb46ovwgc=
+X-Endpoint-Received: by B4 Relay for Rex.Fu@amd.com/20260417 with auth_id=738
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ad_sigma_delta_clear_pending_event() falls through to the status register
-read path for devices with has_registers = false and no rdy_gpiod. For
-such devices, ad_sd_read_reg() skips the address byte entirely and clocks
-raw MISO bytes with no address phase — making it byte-for-byte identical
-to reading conversion data. If a pending conversion result is present,
-this partially consumes it and corrupts the data stream for the subsequent
-ad_sd_read_reg() call in ad_sigma_delta_single_conversion().
+Update several Anacapa SGPIO line names to match the existing platform
+hardware design and the signal names consumed by userspace monitoring.
 
-Furthermore, with num_resetclks = 0 on these devices, data_read_len
-evaluates to 0. If the clocked byte has bit 7 clear, pending_event is set
-and the code attempts memset(data + 2, 0xff, 0 - 1), overflowing to
-SIZE_MAX and corrupting the heap.
+The previous names did not match the actual Anacapa SGPIO usage. Some
+lines were named as CPU or CPU power-good signals, but they are wired and
+used on Anacapa for EDSFF presence, EDSFF power-good, boot EDSFF
+presence, and thermal-trip assertion monitoring.
 
-Fix by returning 0 immediately when neither rdy_gpiod nor has_registers
-is set. This is safe because the IRQ is requested with IRQF_NO_AUTOEN and
-IRQ_DISABLE_UNLAZY, which keeps the hardware IRQ line unmasked even while
-software-disabled. Any falling edge from a completed conversion is latched
-by the IRQ controller. When ad_sd_enable_irq() is subsequently called the
-latched edge fires immediately, and the existing ad_sd_read_reg() call in
-ad_sigma_delta_single_conversion() reads the complete stale result from
-the beginning with no prior partial clock corruption.
+Correct the mappings as follows:
 
-Signed-off-by: Radu Sabau <radu.sabau@analog.com>
+  PWRGD_PVDDCR_SOC_P0     -> L_PRSNT_EDSFF0_N
+  PWRGD_PVDDIO_P0         -> L_PRSNT_EDSFF1_N
+  PWRGD_PVDDIO_MEM_S3_P0  -> R_PRSNT_EDSFF2_N
+  PWRGD_CHMP_CPU0_FPGA    -> R_PRSNT_EDSFF3_N
+  PWRGD_CHIL_CPU0_FPGA    -> HPM_EDSFF_PG
+  EAM2_CPU_MOD_PWR_GD_R   -> PRSNT_EDSFF_BOOT_N
+  CPU0_SP7R1              -> L_EDSFF0_PG
+  CPU0_SP7R2              -> L_EDSFF1_PG
+  CPU0_SP7R3              -> R_EDSFF2_PG
+  CPU0_SP7R4              -> R_EDSFF3_PG
+  HPM_AMC_THERMTRIP_R_L   -> AMC_THERMTRIP_ASSERT
+  FM_CPU0_THERMTRIP_N     -> CPU_THERMTRIP_ASSERT
+
+The left-side EDSFF slots are numbered as EDSFF0 and EDSFF1 to match
+the platform slot numbering used by userspace. The thermtrip names are
+also updated to describe the asserted condition monitored by userspace
+instead of the raw active-low signal names.
+
+This is a naming correction for the existing Anacapa hardware design.
+There is no new board revision or underlying hardware change involved.
+
+Signed-off-by: Rex Fu <Rex.Fu@amd.com>
 ---
- drivers/iio/adc/ad_sigma_delta.c | 12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
+Update the Anacapa SGPIO line names to match the existing hardware
+design and the platform signal names used by userspace monitoring.
 
-diff --git a/drivers/iio/adc/ad_sigma_delta.c b/drivers/iio/adc/ad_sigma_delta.c
-index a33a7e8c264f..88dcaa910b2d 100644
---- a/drivers/iio/adc/ad_sigma_delta.c
-+++ b/drivers/iio/adc/ad_sigma_delta.c
-@@ -262,11 +262,16 @@ static int ad_sigma_delta_clear_pending_event(struct ad_sigma_delta *sigma_delta
- 
- 	/*
- 	 * Read R̅D̅Y̅ pin (if possible) or status register to check if there is an
--	 * old event.
-+	 * old event. For devices with neither an RDY GPIO nor registers,
-+	 * ad_sd_read_reg() transmits no address byte and clocks raw MISO bytes,
-+	 * which is indistinguishable from reading conversion data and would
-+	 * partially consume a pending result. Skip the check for such devices;
-+	 * IRQ_DISABLE_UNLAZY ensures any pending falling edge is latched and
-+	 * fires naturally on the next ad_sd_enable_irq() call.
- 	 */
- 	if (sigma_delta->rdy_gpiod) {
- 		pending_event = gpiod_get_value(sigma_delta->rdy_gpiod);
--	} else {
-+	} else if (sigma_delta->info->has_registers) {
- 		unsigned int status_reg;
- 
- 		ret = ad_sd_read_reg(sigma_delta, AD_SD_REG_STATUS, 1, &status_reg);
-@@ -274,6 +279,8 @@ static int ad_sigma_delta_clear_pending_event(struct ad_sigma_delta *sigma_delta
- 			return ret;
- 
- 		pending_event = !(status_reg & AD_SD_REG_STATUS_RDY);
-+	} else {
-+		return 0;
- 	}
- 
- 	if (!pending_event)
-@@ -578,6 +585,7 @@ static int ad_sd_buffer_postenable(struct iio_dev *indio_dev)
- 
- err_unlock:
- 	sigma_delta->keep_cs_asserted = false;
-+	ad_sigma_delta_set_mode(sigma_delta, AD_SD_MODE_IDLE);
- 	sigma_delta->bus_locked = false;
- 	spi_bus_unlock(sigma_delta->spi->controller);
- 	spi_unoptimize_message(&sigma_delta->sample_msg);
+The v2 commit message now explains why changing these userspace-visible
+GPIO line names is appropriate and lists the exact old-to-new mappings.
+---
+Changes in v2:
+- Reworked the commit message to explain why these userspace-visible
+  GPIO line names are changed.
+- Listed the exact old-to-new SGPIO line name mappings.
+- Clarified that this is a naming correction for the existing hardware
+  design and not a board revision or hardware change.
+- Link to v1: https://patch.msgid.link/20260430-anacapa-sgpio-edsff-thermtrip-v1-1-2fd5e72435d0@amd.com
 
--- 
-2.43.0
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Joel Stanley <joel@jms.id.au>
+To: Andrew Jeffery <andrew@codeconstruct.com.au>
+Cc: devicetree@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-aspeed@lists.ozlabs.org
+Cc: linux-kernel@vger.kernel.org
+---
+ .../boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts  | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
+index 2cb7bd128d24..e898bc11e6f5 100644
+--- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
++++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
+@@ -908,11 +908,11 @@ &sgpiom0 {
+ 	"", "", "", "",
+ 
+ 	/* G0-G7 line 96-111 */
+-	"PWRGD_PVDDCR_SOC_P0", "",
+-	"PWRGD_PVDDIO_P0", "",
+-	"PWRGD_PVDDIO_MEM_S3_P0", "",
+-	"PWRGD_CHMP_CPU0_FPGA", "",
+-	"PWRGD_CHIL_CPU0_FPGA", "",
++	"L_PRSNT_EDSFF0_N", "",
++	"L_PRSNT_EDSFF1_N", "",
++	"R_PRSNT_EDSFF2_N", "",
++	"R_PRSNT_EDSFF3_N", "",
++	"HPM_EDSFF_PG", "",
+ 	"PWRGD_CHEH_CPU0_FPGA", "",
+ 	"PWRGD_CHAD_CPU0_FPGA", "FM_BMC_READY_PLD",
+ 	"", "",
+@@ -934,7 +934,7 @@ &sgpiom0 {
+ 	"EAM3_BRD_PRSNT_R_L", "",
+ 	"EAM0_CPU_MOD_PWR_GD_R", "",
+ 	"EAM1_CPU_MOD_PWR_GD_R", "",
+-	"EAM2_CPU_MOD_PWR_GD_R", "",
++	"PRSNT_EDSFF_BOOT_N", "",
+ 	"EAM3_CPU_MOD_PWR_GD_R", "",
+ 
+ 	/* J0-J7 line 144-159 */
+@@ -957,8 +957,8 @@ &sgpiom0 {
+ 	"PDB_ALERT_R_N", "",
+ 
+ 	/* L0-L7 line 176-191 */
+-	"CPU0_SP7R1", "", "CPU0_SP7R2", "",
+-	"CPU0_SP7R3", "", "CPU0_SP7R4", "",
++	"L_EDSFF0_PG", "", "L_EDSFF1_PG", "",
++	"R_EDSFF2_PG", "", "R_EDSFF3_PG", "",
+ 	"CPU0_CORETYPE0", "", "CPU0_CORETYPE1", "",
+ 	"CPU0_CORETYPE2", "", "FM_BIOS_POST_CMPLT_R_N", "",
+ 
+@@ -984,8 +984,8 @@ &sgpiom0 {
+ 	"HPM_PWR_FAIL", "Port80_b0",
+ 	"FM_DIMM_IP_FAIL", "Port80_b1",
+ 	"FM_DIMM_AH_FAIL", "Port80_b2",
+-	"HPM_AMC_THERMTRIP_R_L", "Port80_b3",
+-	"FM_CPU0_THERMTRIP_N", "Port80_b4",
++	"AMC_THERMTRIP_ASSERT", "Port80_b3",
++	"CPU_THERMTRIP_ASSERT", "Port80_b4",
+ 	"PVDDCR_SOC_P0_OCP_L", "Port80_b5",
+ 	"CPLD_SGPIO_RDY", "Port80_b6",
+ 	"", "Port80_b7",
+
+---
+base-commit: 9974969c14031a097d6b45bcb7a06bb4aa525c40
+change-id: 20260430-anacapa-sgpio-edsff-thermtrip-acb228bf61be
+
+Best regards,
+--  
+Rex Fu <Rex.Fu@amd.com>
 
