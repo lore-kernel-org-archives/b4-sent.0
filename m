@@ -1,11 +1,11 @@
 From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Tue, 19 May 2026 17:42:15 +0530
-Subject: [PATCH v14 2/5] mm/vmalloc: use physical page count for vrealloc()
- grow-in-place check
+Date: Tue, 19 May 2026 17:42:16 +0530
+Subject: [PATCH v14 3/5] mm/vmalloc: use physical page count in
+ vread_iter() for VM_ALLOC areas
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260519-vmalloc-shrink-v14-2-70b96ee3e9c9@zohomail.in>
+Message-Id: <20260519-vmalloc-shrink-v14-3-70b96ee3e9c9@zohomail.in>
 References: <20260519-vmalloc-shrink-v14-0-70b96ee3e9c9@zohomail.in>
 In-Reply-To: <20260519-vmalloc-shrink-v14-0-70b96ee3e9c9@zohomail.in>
 To: Andrew Morton <akpm@linux-foundation.org>, 
@@ -14,59 +14,55 @@ Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
  Alice Ryhl <aliceryhl@google.com>, Danilo Krummrich <dakr@kernel.org>, 
  Shivam Kalra <shivamkalra98@zohomail.in>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779192749; l=1768;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779192749; l=1455;
  i=shivamkalra98@zohomail.in; s=20260212; h=from:subject:message-id;
- bh=PlRn+4ky3xwmAe2MvESYvdRi8E+mwHTHUGmONHypEP0=;
- b=g7jXo2qEkXEzlGxmL3RUHs8WUq5wxnSpq8dRxDH/mQxZsNKZZ5CmZoXNomzQByJsSW7j2bPS5
- Ugb1mu+cfOEBXXUAtEfpvE4X+5IKZuGn0sqGH4hdeRPKgRmRCUxDJZM
+ bh=17YglxgG2ppUqTmOumv09d5uhEbrPDSaz3Teo6shawQ=;
+ b=15zXYsWKqHJrAve7nV5Lj3j6NhR1QbpkCVzs/TxDWjJT14PEhptP1gVhj2ucTu11Cb1lwn2Qx
+ 5SiREPfwJ02C/Z3uoyWrH9NoY6YBtHeGjLyWDQJn182X/2d4P8Kfa3G
 X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
  pk=9Q+S1LD/xjbjL7bEaLIlwRADBwU/6LJq7lYm8LFrkQE=
 X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260212 with auth_id=633
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update the grow-in-place check in vrealloc() to compare the requested size
-against the actual physical page count (vm->nr_pages) rather than the
-virtual area size (alloced_size, derived from get_vm_area_size()).
+For VM_ALLOC areas in vread_iter(), derive the vm area size from
+vm->nr_pages rather than get_vm_area_size().
 
-Currently both values are equivalent, but the upcoming vrealloc() shrink
-functionality will free pages without reducing the virtual reservation
-size. After such a shrink, the old alloced_size-based comparison would
-incorrectly allow a grow-in-place operation to succeed and attempt to
-access freed pages. Switch to vm->nr_pages now so the check remains
-correct once shrink support is added.
+Only VM_ALLOC areas are subject to vrealloc() shrinking, which frees
+pages without reducing the virtual reservation size. Switch to using
+vm->nr_pages for VM_ALLOC areas so the reader remains correct once
+shrink support is added. Other mapping types (vmap, ioremap) do not
+initialize nr_pages and will continue using get_vm_area_size().
 
 Reviewed-by: Uladzislau Rezki (Sony) <urezki@gmail.com>
 Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
 ---
- mm/vmalloc.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+ mm/vmalloc.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
 
 diff --git a/mm/vmalloc.c b/mm/vmalloc.c
-index 5555601b9529..3e159b74cfab 100644
+index 3e159b74cfab..2f606cfade9b 100644
 --- a/mm/vmalloc.c
 +++ b/mm/vmalloc.c
-@@ -4343,6 +4343,12 @@ void *vrealloc_node_align_noprof(const void *p, size_t size, unsigned long align
- 		if (unlikely(flags & __GFP_THISNODE) && nid != NUMA_NO_NODE &&
- 			     nid != page_to_nid(vmalloc_to_page(p)))
- 			goto need_realloc;
-+	} else {
-+		/*
-+		 * If p is NULL, vrealloc behaves exactly like vmalloc.
-+		 * Skip the shrink and in-place grow paths.
-+		 */
-+		goto need_realloc;
- 	}
+@@ -4666,7 +4666,18 @@ long vread_iter(struct iov_iter *iter, const char *addr, size_t count)
+ 		smp_rmb();
  
- 	/*
-@@ -4361,7 +4367,7 @@ void *vrealloc_node_align_noprof(const void *p, size_t size, unsigned long align
- 	/*
- 	 * We already have the bytes available in the allocation; use them.
- 	 */
--	if (size <= alloced_size) {
-+	if (size <= vm->nr_pages << PAGE_SHIFT) {
- 		/*
- 		 * No need to zero memory here, as unused memory will have
- 		 * already been zeroed at initial allocation time or during
+ 		vaddr = (char *) va->va_start;
+-		size = vm ? get_vm_area_size(vm) : va_size(va);
++		if (vm)
++			/*
++			 * For VM_ALLOC areas, use nr_pages rather than
++			 * get_vm_area_size() because vrealloc() may shrink
++			 * the mapping without updating area->size. Other
++			 * mapping types (vmap, ioremap) don't set nr_pages.
++			 */
++			size = (vm->flags & VM_ALLOC) ?
++				       (vm->nr_pages << PAGE_SHIFT) :
++				       get_vm_area_size(vm);
++		else
++			size = va_size(va);
+ 
+ 		if (addr >= vaddr + size)
+ 			goto next_va;
 
 -- 
 2.43.0
