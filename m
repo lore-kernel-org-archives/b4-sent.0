@@ -1,16 +1,13 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Subject: [PATCH v3 0/6] Open HugeTLB allocation routine for more generic
- use
-Date: Mon, 18 May 2026 17:19:39 -0700
-Message-Id: <20260518-hugetlb-open-up-v3-0-e14b302477f8@google.com>
+Date: Mon, 18 May 2026 17:19:40 -0700
+Subject: [PATCH v3 1/6] mm: hugetlb: Consolidate interpretation of gbl_chg
+ within alloc_hugetlb_folio()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJusC2oC/2XO0QqDIBiG4VsJj/eHc2VtR7uP0YG5P5OVhposo
- nufBYPBDt+D7+FbiUen0ZNbthKHUXttTYrLKSOyF0Yh6GdqwijjtKQF9LPCMLRgJzQwT4CiFTU
- tq3NLryStJoedfh/io0ndOTtC6B2Kw5E2osvPVUXrsuCc5UqHXMgXugGXYNRdWasGzKUdd63XP
- li3HPci283vE/73JDKgUDMuqCw7Vnfy12q2bfsAJrdSeu0AAAA=
-X-Change-ID: 20260504-hugetlb-open-up-eaba80571b09
+Message-Id: <20260518-hugetlb-open-up-v3-1-e14b302477f8@google.com>
+References: <20260518-hugetlb-open-up-v3-0-e14b302477f8@google.com>
+In-Reply-To: <20260518-hugetlb-open-up-v3-0-e14b302477f8@google.com>
 To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
  David Hildenbrand <david@kernel.org>, 
  Andrew Morton <akpm@linux-foundation.org>, fvdl@google.com, 
@@ -28,133 +25,97 @@ To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>,
 Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779149988; l=5617;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779149988; l=2912;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=bPcX7aY0Fv5p+iHJmDPvkygslezqtdpkp18CjrGXqeo=;
- b=xtN4dDlhtwURik8shZJTiObc9tr0HJGnHBGTfMUDXaOXq3Gy199/XnGMAjV9DOZqhIQQOEfLX
- X5mt6sImpmjAbMV4xcqGvQzplXhMDJurY+WAq/lDUOdeKNg9Ha3Anpk
+ bh=AePQ5ge08BDvno3Z2sz00AANV/evPZ/MLFYsGkJ3Hf0=;
+ b=0skywfukH1jzfYFODEad/4ypPJF3H2kngkFerrbzsvccVY7o7T5yItuX2PowuUM77EcPbwDhF
+ MwzZdmsTk/RBAMrVi2w8pIQySnBvDmHLk/qra4e6oRCSiyOsn5aDJ5F
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi,
+The dequeue_hugetlb_folio_vma() function currently handles the gbl_chg
+parameter to determine if a folio can be dequeued based on global page
+availability. This leaks reservation-specific logic into the dequeueing
+path.
 
-The motivation for this patch series is guest_memfd, which would like
-to use HugeTLB as a generic source of huge pages but not adopt
-HugeTLB's reservation at mmap() time.
+Relocate this logic to alloc_hugetlb_folio() so that
+dequeue_hugetlb_folio_vma() focuses solely on selecting and dequeuing a
+folio. In alloc_hugetlb_folio(), only attempt to dequeue a folio if a
+reservation exists (gbl_chg == 0) or if there are available huge pages in
+the global pool.
 
-By refactoring alloc_hugetlb_folio() and some dependent functions,
-there is now an option to allocate HugeTLB folios without providing a
-VMA. Specifically, HugeTLB allocation used to be dependent on the VMA
-to
+No functional change intended.
 
-1. Look up reservations in the resv_map
-2. Get mpol, stored at vma->vm_policy
-
-This refactoring provides hugetlb_alloc_folio(), which focuses on just
-the allocation itself, and associated memory and HugeTLB charging
-(cgroups). alloc_hugetlb_folio() still handles reservations in the
-resv_map and subpools.
-
-Regarding naming, I'm definitely open to alternative names :) I chose
-hugetlb_alloc_folio() because I'm seeing this function as a general
-allocation function that is provided by the HugeTLB subsystem (hence
-the hugetlb_ prefix). I'm intending for alloc_hugetlb_folio() to be
-later refactored as a static function for use just by HugeTLB, and
-HugeTLBfs should probably use hugetlb_alloc_folio() directly.
-
-To see how hugetlb_alloc_folio() is used by guest_memfd, the most
-recent patch series that uses this more generic HugeTLB allocation
-routine is at [1], and a newer revision of that patch series is at
-[2].
-
-Independently of guest_memfd, I believe this change is useful in
-simplifying alloc_hugetlb_folio(). alloc_hugetlb_folio() was so
-coupled to a VMA that even HugeTLBfs allocates HugeTLB folios using a
-pseudo-VMA.
-
-Testing:
-
-+ libhugetlbfs tests pass
-+ ./tools/testing/selftests/mm/ksft_hugetlb.sh passes
-
-Changes in this revision:
-
-+ Clarified comment on when alloc_hugetlb_folio() chooses to dequeue a page
-  as requested by Oscar
-    + After refactoring out hugetlb_alloc_folio(), hugetlb_alloc_folio()
-      just acts on alloc_flags, so I think the reason for dequeueing is
-      sufficiently clear, so I dropped the comment
-+ Introduced concept of an interpreted mempolicy (struct mempolicy_interpreted).
-    + dequeue_hugetlb_folio() and alloc_buddy_hugetlb_folio() are actually
-      operating on an interpreted mempolicy, which comprises nid, nodemask, and
-      a mempolicy_mode. mempolicy_mode tells the allocation function how to
-      interpret the provided nid and nodemask.
-    + I think mempolicy_interpreted could be generalized further outside of
-      hugetlb. I think every caller of policy_nodemask() will eventually use the
-      information in interpreted mempolicy to make the allocation.
-    + Let me know if this makes sense, and if I should go ahead to do more
-      refactoring!
-
-Oscar, in my responses to v2, I agreed with your idea of an allocation ctxt, but
-after doing some initial refactoring, I think the ctxt isn't really an
-allocation context, I felt like I was just putting all the parameters for
-hugetlb_alloc_folio() into a struct to get named parameters in C.
-
-Here's my rationale for hugetlb_alloc_folio()'s parameters:
-
-+ hstate
-+ subpool
-   + I think it makes sense to explicitly provide above two as parameters since
-     these are always required for allocation of a hugetlb folio. subpool can be
-     NULL, but we do want the caller to explicitly pass something in so subpool
-     accounting can be performed within hugetlb_alloc_folio().
-+ interpreted mempolicy
-   + This summarizes what node the folio should be allocated from.
-+ gfp
-   + gfp is used in a few ways, relating to the actual allocation and zone to
-     allocate from:
-       1. It was used to interpret the mempolicy, if there was something
-          requested in the gfp.
-       2. It is used to determine which zone to allocate from in
-          dequeue_hugetlb_folio()
-       3. A modified version is used in alloc_buddy_hugetlb_folio() if
-          MPOL_PREFERRED_MANY, otherwise it is used as-is to allocate a hugetlb
-          folio.
-    + I retained gfp as a separate parameter, and not part of
-      mempolicy_interpreted, because after the mempolicy is interpreted, gfp is
-      no longer used in relation to mempolicy to determine which node to
-      allocate on.
-+ allocation flags
-    + I implemented Oscar's suggestion partially in allocation flags, which will
-      allow us to add more allocation knobs without adding more parameters to
-      hugetlb_alloc_folio().
-
-[1] https://lore.kernel.org/all/cover.1747264138.git.ackerleytng@google.com/T/
-[2] https://github.com/googleprodkernel/linux-cc/tree/wip-gmem-conversions-hugetlb-restructuring-12-08-25
-
-RFC v1: https://lore.kernel.org/all/bb35a69a-5be9-45f5-a557-1902487a1bc2@linux.dev/
-v2: https://lore.kernel.org/r/20260506-hugetlb-open-up-v2-0-826a0c5f28fc@google.com
-
+Reviewed-by: James Houghton <jthoughton@google.com>
+Acked-by: Oscar Salvador <osalvador@suse.de>
+Reviewed-by: Joshua Hahn <joshua.hahnjy@gmail.com>
+Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
-Ackerley Tng (6):
-      mm: hugetlb: Consolidate interpretation of gbl_chg within alloc_hugetlb_folio()
-      mm: hugetlb: Move mpol interpretation out of alloc_buddy_hugetlb_folio_with_mpol()
-      mm: hugetlb: Move mpol interpretation out of dequeue_hugetlb_folio_vma()
-      mm: hugetlb: Use error variable in alloc_hugetlb_folio
-      mm: hugetlb: Move mem_cgroup_charge_hugetlb() earlier in allocation
-      mm: hugetlb: Refactor out hugetlb_alloc_folio()
+ mm/hugetlb.c | 25 ++++++++++---------------
+ 1 file changed, 10 insertions(+), 15 deletions(-)
 
- include/linux/hugetlb.h        |  19 ++++
- include/uapi/linux/mempolicy.h |   2 +-
- mm/hugetlb.c                   | 246 +++++++++++++++++++++++------------------
- 3 files changed, 157 insertions(+), 110 deletions(-)
----
-base-commit: 4d3a2a466b8d68d852a1f3bbf11204b718428dc4
-change-id: 20260504-hugetlb-open-up-eaba80571b09
+diff --git a/mm/hugetlb.c b/mm/hugetlb.c
+index f24bf49be047e..190ab539a97d4 100644
+--- a/mm/hugetlb.c
++++ b/mm/hugetlb.c
+@@ -1336,7 +1336,7 @@ static unsigned long available_huge_pages(struct hstate *h)
+ 
+ static struct folio *dequeue_hugetlb_folio_vma(struct hstate *h,
+ 				struct vm_area_struct *vma,
+-				unsigned long address, long gbl_chg)
++				unsigned long address)
+ {
+ 	struct folio *folio = NULL;
+ 	struct mempolicy *mpol;
+@@ -1344,13 +1344,6 @@ static struct folio *dequeue_hugetlb_folio_vma(struct hstate *h,
+ 	nodemask_t *nodemask;
+ 	int nid;
+ 
+-	/*
+-	 * gbl_chg==1 means the allocation requires a new page that was not
+-	 * reserved before.  Making sure there's at least one free page.
+-	 */
+-	if (gbl_chg && !available_huge_pages(h))
+-		goto err;
+-
+ 	gfp_mask = htlb_alloc_mask(h);
+ 	nid = huge_node(vma, address, gfp_mask, &mpol, &nodemask);
+ 
+@@ -1368,9 +1361,6 @@ static struct folio *dequeue_hugetlb_folio_vma(struct hstate *h,
+ 
+ 	mpol_cond_put(mpol);
+ 	return folio;
+-
+-err:
+-	return NULL;
+ }
+ 
+ #if defined(CONFIG_ARCH_HAS_GIGANTIC_PAGE) && defined(CONFIG_CONTIG_ALLOC)
+@@ -2939,12 +2929,17 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
+ 		goto out_uncharge_cgroup_reservation;
+ 
+ 	spin_lock_irq(&hugetlb_lock);
++
+ 	/*
+-	 * glb_chg is passed to indicate whether or not a page must be taken
+-	 * from the global free pool (global change).  gbl_chg == 0 indicates
+-	 * a reservation exists for the allocation.
++	 * gbl_chg == 0 indicates a reservation exists for the
++	 * allocation, so try dequeuing a page. In case there was no
++	 * reservation, try dequeuing a page if there are available
++	 * pages in the global pool.
+ 	 */
+-	folio = dequeue_hugetlb_folio_vma(h, vma, addr, gbl_chg);
++	folio = NULL;
++	if (!gbl_chg || available_huge_pages(h))
++		folio = dequeue_hugetlb_folio_vma(h, vma, addr);
++
+ 	if (!folio) {
+ 		spin_unlock_irq(&hugetlb_lock);
+ 		folio = alloc_buddy_hugetlb_folio_with_mpol(h, vma, addr);
 
-Best regards,
---
-Ackerley Tng <ackerleytng@google.com>
+-- 
+2.54.0.563.g4f69b47b94-goog
 
