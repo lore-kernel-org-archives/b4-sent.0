@@ -1,88 +1,68 @@
-From: Alvin Sun <alvin.sun@linux.dev>
-Date: Tue, 19 May 2026 13:34:42 +0800
-Subject: [PATCH 2/2] samples: rust_misc_device: use vertical import style
+From: George Moussalem <george.moussalem@outlook.com>
+Date: Tue, 19 May 2026 09:56:06 +0400
+Subject: [PATCH] arm64: dts: qcom: ipq5018: Correct CMN PLL reference clock
+ rate
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260519-miscdev-use-format-v1-2-11d526ba0edc@linux.dev>
-References: <20260519-miscdev-use-format-v1-0-11d526ba0edc@linux.dev>
-In-Reply-To: <20260519-miscdev-use-format-v1-0-11d526ba0edc@linux.dev>
-To: Arnd Bergmann <arnd@arndb.de>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>
-Cc: rust-for-linux@vger.kernel.org, Alvin Sun <alvin.sun@linux.dev>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779168918; l=1443;
- i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=MzOQ5Pt5s4zhpYWvG5X1Gx7JCP+doFfRKRAXWizMD0s=;
- b=PhTXsILOq2s+5tTEFUo9io3ipRSI7Enl3eczdH5Q5o/rHdAnqvAlfdiH4ZwQn2Wht5ryUdViT
- DQ2nzApDszOBT03h8KplssmKqvv+iOlyE/s8Zx0I0E/S+QAk+Z7S4Py
-X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
- pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
-X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
+Message-Id: <20260519-ipq5018-cmn-pll-rate-fix-v1-1-3c83a173c27f@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAHX7C2oC/yXM0Q5EMBCF4VeRuTZJS9jaVxEXVcPOxnarRSTi3
+ RWX30nOv0MgzxTgnezgaeXAfxsh0wTMR9uBkLtoyERWikJWyG4qhFRofhbdOKLXM2HPG+ZK6fx
+ VtT1JAfHuPMX5TtfN47C0XzLz1YPjOAHWP1SbfAAAAA==
+X-Change-ID: 20260519-ipq5018-cmn-pll-rate-fix-388a379bfe10
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Luo Jie <jie.luo@oss.qualcomm.com>, 
+ George Moussalem <george.moussalem@outlook.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779170166; l=1302;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=U/e+sHep+NDUEPBbykGQ7tknr4hOCzaANIv9del2SXY=;
+ b=ylGeyNJlRJtXoZrDQ8onYc6fVQ67HU+OqwbJXah/CZ/VC+tBBGi/OrRlMD7X9btf2HSWoVuQX
+ f0Wfwsw/6Y+BLbMG2hqRoXedwxRGe4QJfWSM7p5xJUYY4YUcRSitaaG
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Convert `use` imports to vertical layout for better readability and
-maintainability.
+The correct CMN PLL reference clock rate for IPQ5018 is 4.8 GHz.
 
-Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
+The CMN PLL driver did not account for the ref clock divider which is 2
+for IPQ5018. Therefore, the computed rate was twice the actual output.
+
+With the driver now accounting for the CMN PLL reference clock
+divider (commit: 88c543fff756), set the correct reference clock rate.
+
+Fixes: c006b249c544 ("arm64: dts: ipq5018: Add CMN PLL node")
+
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- samples/rust/rust_misc_device.rs | 34 ++++++++++++++++++++++++++++------
- 1 file changed, 28 insertions(+), 6 deletions(-)
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/samples/rust/rust_misc_device.rs b/samples/rust/rust_misc_device.rs
-index 87a1fe63533ae..41e26c825060b 100644
---- a/samples/rust/rust_misc_device.rs
-+++ b/samples/rust/rust_misc_device.rs
-@@ -97,14 +97,36 @@
+diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+index 6f8004a22a1f..f6cf2cca44eb 100644
+--- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+@@ -256,7 +256,7 @@ cmn_pll: clock-controller@9b000 {
+ 				      "sys";
+ 			#clock-cells = <1>;
+ 			assigned-clocks = <&cmn_pll IPQ5018_CMN_PLL_CLK>;
+-			assigned-clock-rates-u64 = /bits/ 64 <9600000000>;
++			assigned-clock-rates-u64 = /bits/ 64 <4800000000>;
+ 		};
  
- use kernel::{
-     device::Device,
--    fs::{File, Kiocb},
--    ioctl::{_IO, _IOC_SIZE, _IOR, _IOW},
--    iov::{IovIterDest, IovIterSource},
--    miscdevice::{MiscDevice, MiscDeviceOptions, MiscDeviceRegistration},
-+    fs::{
-+        File,
-+        Kiocb, //
-+    },
-+    ioctl::{
-+        _IO,
-+        _IOC_SIZE,
-+        _IOR,
-+        _IOW, //
-+    },
-+    iov::{
-+        IovIterDest,
-+        IovIterSource, //
-+    },
-+    miscdevice::{
-+        MiscDevice,
-+        MiscDeviceOptions,
-+        MiscDeviceRegistration, //
-+    },
-     new_mutex,
-     prelude::*,
--    sync::{aref::ARef, Mutex},
--    uaccess::{UserSlice, UserSliceReader, UserSliceWriter},
-+    sync::{
-+        aref::ARef,
-+        Mutex, //
-+    },
-+    uaccess::{
-+        UserSlice,
-+        UserSliceReader,
-+        UserSliceWriter, //
-+    },
- };
- 
- const RUST_MISC_DEV_HELLO: u32 = _IO('|' as u32, 0x80);
+ 		qfprom: qfprom@a0000 {
 
--- 
-2.43.0
+---
+base-commit: 80dd246accce631c328ea43294e53b2b2dd2aa32
+change-id: 20260519-ipq5018-cmn-pll-rate-fix-388a379bfe10
+
+Best regards,
+--  
+George Moussalem <george.moussalem@outlook.com>
 
