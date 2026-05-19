@@ -1,15 +1,13 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Subject: [PATCH 0/8] Fix missing fops.owner in Rust DRM/misc abstractions
-Date: Tue, 19 May 2026 14:26:12 +0800
-Message-Id: <20260519-fix-fops-owner-v1-0-2ded9830da14@linux.dev>
+Date: Tue, 19 May 2026 14:26:13 +0800
+Subject: [PATCH 1/8] rust: module: add `MODULE_PTR` const to
+ `ModuleMetadata` trait
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAIUCDGoC/02NwQ6CMBBEf6XZs2soKNX+iuHQLov2UIotVBPCv
- 9tIYjy+ybyZFRJHxwm0WCFydsmFsYA8CKCHGe+Mri8MdVW31VlecXBvHMKUMLxGjsiNUcraWlF
- LUKQpcml8B2/dzpGfS9md9xCsSYwUvHezFlkdJUY6wf+fFr837xL1nHEpzhCiNzNejVV8aawkK
- XWW0G3bB1ik0zfGAAAA
-X-Change-ID: 20260519-fix-fops-owner-e3a77bb27c6c
+Message-Id: <20260519-fix-fops-owner-v1-1-2ded9830da14@linux.dev>
+References: <20260519-fix-fops-owner-v1-0-2ded9830da14@linux.dev>
+In-Reply-To: <20260519-fix-fops-owner-v1-0-2ded9830da14@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
  Gary Guo <gary@garyguo.net>, 
  =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
@@ -28,117 +26,66 @@ Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org,
  dri-devel@lists.freedesktop.org, nova-gpu@lists.linux.dev, 
  Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779171974; l=6176;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779171975; l=2011;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=gnozQPQnkJBReVQYxjjuPb5BYLWwTWhcOmK2QpLcVnM=;
- b=ku5YXdgCRDoVUxetEP7cdBpVNgktrDn7dvpwKArd3hsyV982SOcsuuUsTEKUvoNG+8A9/HY3a
- OCKwkMoHehXD0cHMm6QkiSSjJxFWt5rBQG0fdhbiUz2L3t/Pgi/prGo
+ bh=ZxczDP1VleS2E+h97aaS99GWrdXeqA4F9FKMUPVF+a8=;
+ b=nZswdxITOGGBNtXxziHC46ym73dmkEpgBRSKXECBrIkKx63Q6fXF2BcQ9Wu99HlqtRv32iuS7
+ nenSNwiKIxRDsSSvybK6NrQ/NmLMOgegWv7aRnPdYLyeBWx7+qzexiI
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-During tyr debugfs development, a kernel NULL pointer dereference was
-encountered after `rmmod tyr` while gnome-shell still held /dev/card1 open:
-
-```
-  [158827.868132] Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000
-  [158827.868918] Mem abort info:
-  [158827.869177]   ESR = 0x0000000086000004
-  [158827.869519]   EC = 0x21: IABT (current EL), IL = 32 bits
-  [158827.870000]   SET = 0, FnV = 0
-  [158827.870281]   EA = 0, S1PTW = 0
-  [158827.870571]   FSC = 0x04: level 0 translation fault
-  [158827.871043] user pgtable: 4k pages, 48-bit VAs, pgdp=0000000108dec000
-  [158827.871623] [0000000000000000] pgd=0000000000000000, p4d=0000000000000000
-  [158827.872242] Internal error: Oops: 0000000086000004 [#1]  SMP
-  [158827.872246] Modules linked in: tyr sunrpc snd_soc_simple_card rk805_pwrkey snd_soc_simple_card_utils rtw88_8822bu display_connector rtw88_usb rtw88_8822b snd_soc_rockchip_i2s_tdm snd_soc_hdmi_codec
-  rtw88_core]
-  [158827.872337] CPU: 4 UID: 1000 PID: 11276 Comm: gnome-s:disk$0 Tainted: G                 N  7.1.0-rc1+ #331 PREEMPT
-  [158827.880534] Tainted: [N]=TEST
-  [158827.880535] Hardware name: FriendlyElec NanoPi R6C/NanoPi R6C, BIOS v1.1 04/09/2025
-  [158827.880538] pstate: 60400009 (nZCv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
-  [158827.880542] pc : 0x0
-  [158827.880547] lr : _RNvNtCs257m05FHVbX_3tyr2vm8pt_unmap+0x8c/0x12c [tyr]
-  [158827.880578] sp : ffff800083c236b0
-  [158827.880579] x29: ffff800083c236d0 x28: ffff00013f8a0000 x27: 0000000000000000
-  [158827.880585] x26: 000000000000007c x25: ffff000108e6ed80 x24: 0000000000401000
-  [158827.880590] x23: 0000000000000000 x22: 0000000040000000 x21: 0000000000001000
-  [158827.880595] x20: ffff00010f778138 x19: 0000000000400000 x18: 00000000ffffffff
-  [158827.880600] x17: 000000040044ffff x16: 045000f2b5503510 x15: 0720072007200720
-  [158827.880606] x14: 0720072007200720 x13: 0000000000401000 x12: 0000000000400000
-  [158827.880611] x11: ffff800083c239d0 x10: ffff000141e4fd88 x9 : 0000000000000000
-  [158827.880615] x8 : 0000000000000000 x7 : 0000000000000000 x6 : 0000000000400000
-  [158827.880620] x5 : ffff00013f8a0000 x4 : 0000000000000000 x3 : 0000000000000001
-  [158827.880625] x2 : 0000000000001000 x1 : 0000000000400000 x0 : ffff00010f778138
-  [158827.880630] Call trace:
-  [158827.880632]  0x0 (P)
-  [158827.880635]  _RNvXs6_NtCs257m05FHVbX_3tyr2vmNtB5_9GpuVmDataNtNtNtCsgmSOfgXi5CZ_6kernel3drm5gpuvm11DriverGpuVm13sm_step_unmap+0x3c/0x120 [tyr]
-  [158827.891166]  _RNvMs4_NtNtNtCsgmSOfgXi5CZ_6kernel3drm5gpuvm6sm_opsINtB7_5GpuVmNtNtCs257m05FHVbX_3tyr2vm9GpuVmDataE13sm_step_unmapB13_+0x18/0x34 [tyr]
-  [158827.891187]  op_unmap_cb+0x78/0xb0
-  [158827.891196]  __drm_gpuvm_sm_unmap+0x18c/0x1b4
-  [158827.891204]  drm_gpuvm_sm_unmap+0x38/0x4c
-  [158827.891209]  _RNvMs5_NtCs257m05FHVbX_3tyr2vmNtB5_2Vm7exec_op+0x1cc/0x254 [tyr]
-  [158827.894085]  _RNvMs5_NtCs257m05FHVbX_3tyr2vmNtB5_2Vm11unmap_range+0x124/0x188 [tyr]
-  [158827.894105]  _RINvNtCs5hGKnPbRUFW_4core3ptr13drop_in_placeNtNtCs257m05FHVbX_3tyr3gem8KernelBoEBK_+0x44/0xd8 [tyr]
-  [158827.894125]  _RINvNtCs5hGKnPbRUFW_4core3ptr13drop_in_placeINtNtNtCsgmSOfgXi5CZ_6kernel5alloc4kvec3VecNtNtCs257m05FHVbX_3tyr2fw7SectionNtNtBL_9allocator7KmallocEEB1r_+0x3c/0x100 [tyr]
-  [158827.894147]  _RINvNtCs5hGKnPbRUFW_4core3ptr13drop_in_placeINtNtNtCsgmSOfgXi5CZ_6kernel4sync3arc3ArcNtNtCs257m05FHVbX_3tyr2fw8FirmwareEEB1p_+0x94/0x190 [tyr]
-  [158827.894167]  _RNvMs4_NtNtCsgmSOfgXi5CZ_6kernel3drm6deviceINtB5_6DeviceNtNtCs257m05FHVbX_3tyr6driver12TyrDrmDriverE7releaseBW_+0x30/0x98 [tyr]
-  [158827.899550]  drm_dev_put.part.0+0x88/0xc0
-  [158827.899557]  drm_minor_release+0x18/0x28
-  [158827.899562]  drm_release+0x144/0x170
-  [158827.899567]  __fput+0xe4/0x30c
-  [158827.899573]  ____fput+0x14/0x20
-  [158827.899579]  task_work_run+0x7c/0xe8
-  [158827.899586]  do_exit+0x2a8/0xac4
-  [158827.899590]  do_group_exit+0x34/0x90
-  [158827.899594]  get_signal+0xaac/0xabc
-  [158827.899599]  arch_do_signal_or_restart+0x90/0x3e8
-  [158827.899606]  exit_to_user_mode_loop+0x140/0x1d0
-  [158827.899613]  el0_svc+0x2f4/0x2f8
-  [158827.899620]  el0t_64_sync_handler+0xa0/0xe4
-  [158827.899627]  el0t_64_sync+0x198/0x19c
-  [158827.899632] ---[ end trace 0000000000000000 ]---
-```
-
-The root cause: fops.owner was NULL in Rust DRM drivers, so the kernel never
-blocked module unloading while file descriptors were open. This leads to
-use-after-free when drm_release (or other fops) is called on freed module code. 
-
-The series adds MODULE_PTR to ModuleMetadata, threads ThisModule through the
-DRM Driver trait into create_fops(), and applies the same fix to miscdevice.
+Add a `MODULE_PTR` const to the `ModuleMetadata` trait so that
+modules can provide a constant pointer to their `struct module`
+usable in const contexts such as static file_operations.
 
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
-Alvin Sun (8):
-      rust: module: add `MODULE_PTR` const to `ModuleMetadata` trait
-      rust: driver: make `DriverModule` struct pub(crate) in `module_driver!`
-      rust: drm: add `ThisModule` associated type to `Driver` trait
-      gpu: nova: implement `ThisModule`
-      gpu: tyr: implement `ThisModule`
-      rust: drm: set fops.owner from driver module pointer
-      rust: miscdevice: add `ThisModule` associated type to `MiscDevice` trait
-      samples: rust: rust_misc_device: implement `ThisModule` for `RustMiscDevice`
+ rust/kernel/lib.rs    |  3 +++
+ rust/macros/module.rs | 14 ++++++++++++++
+ 2 files changed, 17 insertions(+)
 
- drivers/gpu/drm/nova/driver.rs   |  1 +
- drivers/gpu/drm/tyr/driver.rs    |  1 +
- rust/kernel/driver.rs            |  2 +-
- rust/kernel/drm/device.rs        |  3 ++-
- rust/kernel/drm/driver.rs        |  3 +++
- rust/kernel/drm/gem/mod.rs       |  4 ++--
- rust/kernel/lib.rs               |  3 +++
- rust/kernel/miscdevice.rs        |  5 +++++
- rust/macros/module.rs            | 14 ++++++++++++++
- samples/rust/rust_misc_device.rs |  1 +
- 10 files changed, 33 insertions(+), 4 deletions(-)
----
-base-commit: aa61612ab641d7d62b0b6889f2c7c9251489f6e3
-change-id: 20260519-fix-fops-owner-e3a77bb27c6c
-prerequisite-change-id: 20260519-miscdev-use-format-9ab7e83b1c11:v1
-prerequisite-patch-id: 405b334ff0d48ad350014f05a2321bdbaa025400
-prerequisite-patch-id: 604b631c81d5423f4ebb2e12ba2d22e9ce371bfc
+diff --git a/rust/kernel/lib.rs b/rust/kernel/lib.rs
+index b72b2fbe046d6..c7e809636e1a9 100644
+--- a/rust/kernel/lib.rs
++++ b/rust/kernel/lib.rs
+@@ -184,6 +184,9 @@ fn init(module: &'static ThisModule) -> impl pin_init::PinInit<Self, error::Erro
+ pub trait ModuleMetadata {
+     /// The name of the module as specified in the `module!` macro.
+     const NAME: &'static crate::str::CStr;
++
++    /// The pointer to the kernel `struct module` for this module.
++    const MODULE_PTR: *mut bindings::module;
+ }
+ 
+ /// Equivalent to `THIS_MODULE` in the C API.
+diff --git a/rust/macros/module.rs b/rust/macros/module.rs
+index 06c18e2075083..7204fe604f24a 100644
+--- a/rust/macros/module.rs
++++ b/rust/macros/module.rs
+@@ -519,6 +519,20 @@ pub(crate) fn module(info: ModuleInfo) -> Result<TokenStream> {
+ 
+         impl ::kernel::ModuleMetadata for #type_ {
+             const NAME: &'static ::kernel::str::CStr = #name_cstr;
++
++            #[cfg(MODULE)]
++            const MODULE_PTR: *mut ::kernel::bindings::module = {
++                extern "C" {
++                    static __this_module: ::kernel::types::Opaque<::kernel::bindings::module>;
++                }
++
++                // SAFETY: `__this_module` is constructed by the kernel at load time
++                // and lives until the module is unloaded.
++                unsafe { __this_module.get() }
++            };
++
++            #[cfg(not(MODULE))]
++            const MODULE_PTR: *mut ::kernel::bindings::module = ::core::ptr::null_mut();
+         }
+ 
+         // Double nested modules, since then nobody can access the public items inside.
 
-Best regards,
 -- 
-Alvin Sun <alvin.sun@linux.dev>
+2.43.0
 
