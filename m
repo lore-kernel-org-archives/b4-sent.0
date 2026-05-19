@@ -1,11 +1,10 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Tue, 19 May 2026 14:26:15 +0800
-Subject: [PATCH 3/8] rust: drm: add `ThisModule` associated type to
- `Driver` trait
+Date: Tue, 19 May 2026 14:26:16 +0800
+Subject: [PATCH 4/8] gpu: nova: implement `ThisModule`
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260519-fix-fops-owner-v1-3-2ded9830da14@linux.dev>
+Message-Id: <20260519-fix-fops-owner-v1-4-2ded9830da14@linux.dev>
 References: <20260519-fix-fops-owner-v1-0-2ded9830da14@linux.dev>
 In-Reply-To: <20260519-fix-fops-owner-v1-0-2ded9830da14@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -26,39 +25,36 @@ Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org,
  dri-devel@lists.freedesktop.org, nova-gpu@lists.linux.dev, 
  Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779171975; l=819;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779171975; l=694;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=M3dpPwalF2NocfqTid6q3XDvlD/d7Tn+i9Og7LQzuig=;
- b=dljVO2vk92ayJATiwozOI2qCWLcVZLtXkz//3VFX2GABwDBBjyg9sQBeD0lchTq996i2OwnoG
- n7BHGuiImStAmxErDZevujd6j3jUS4LrqRkaP0/+KeO9J+MGxSCUbWp
+ bh=9Z9wAsI6CYGM9qPQGM6HbNxhzSLG4aRh4Z3ixoqvDE8=;
+ b=5tu+ljTbic4iFxV8s9jKyOts11sBxBoViBntzSvf9qqyEQD+HdB1HSeUaRJ6XehDZwXtw/HCj
+ XOplTY2EhRQCkwdT+ebmsCgDQb4BBXxhNMiT7mIAHqaAR0Wd7uZ+o/F
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a `ThisModule` associated type bound by `ModuleMetadata` to the
-`drm::Driver` trait, allowing DRM drivers to expose their module
-pointer for use in file operations.
+Set `ThisModule = super::DriverModule` to provide the correct module
+pointer for file operations ownership.
 
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- rust/kernel/drm/driver.rs | 3 +++
- 1 file changed, 3 insertions(+)
+ drivers/gpu/drm/nova/driver.rs | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/rust/kernel/drm/driver.rs b/rust/kernel/drm/driver.rs
-index 5233bdebc9fcd..c798961650c1a 100644
---- a/rust/kernel/drm/driver.rs
-+++ b/rust/kernel/drm/driver.rs
-@@ -115,6 +115,9 @@ pub trait Driver {
+diff --git a/drivers/gpu/drm/nova/driver.rs b/drivers/gpu/drm/nova/driver.rs
+index b1af0a099551d..6353c19d319c6 100644
+--- a/drivers/gpu/drm/nova/driver.rs
++++ b/drivers/gpu/drm/nova/driver.rs
+@@ -68,6 +68,7 @@ impl drm::Driver for NovaDriver {
+     type Data = NovaData;
+     type File = File;
+     type Object = gem::Object<NovaObject>;
++    type ThisModule = super::DriverModule;
  
-     /// IOCTL list. See `kernel::drm::ioctl::declare_drm_ioctls!{}`.
-     const IOCTLS: &'static [drm::ioctl::DrmIoctlDescriptor];
-+
-+    /// The module implementing this driver.
-+    type ThisModule: crate::ModuleMetadata;
- }
+     const INFO: drm::DriverInfo = INFO;
  
- /// The registration type of a `drm::Device`.
 
 -- 
 2.43.0
