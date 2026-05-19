@@ -1,83 +1,160 @@
-From: Bernd Schubert <bernd@bsbernd.com>
-Date: Tue, 19 May 2026 00:13:34 +0200
-Subject: [PATCH v2 4/4] fuse: clear ent->fuse_req in commit_fetch error
- path to prevent UAF
+From: Ackerley Tng <ackerleytng@google.com>
+Subject: [PATCH v3 0/6] Open HugeTLB allocation routine for more generic
+ use
+Date: Mon, 18 May 2026 17:19:39 -0700
+Message-Id: <20260518-hugetlb-open-up-v3-0-e14b302477f8@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260519-fuse-io-uring-race-fixes-v2-4-ea5036dfe4ce@bsbernd.com>
-References: <20260519-fuse-io-uring-race-fixes-v2-0-ea5036dfe4ce@bsbernd.com>
-In-Reply-To: <20260519-fuse-io-uring-race-fixes-v2-0-ea5036dfe4ce@bsbernd.com>
-To: security@kernel.org, Pavel Begunkov <asml.silence@gmail.com>, 
- Luis Henriques <luis@igalia.com>, Joanne Koong <joannelkoong@gmail.com>
-Cc: Miklos Szeredi <mszeredi@redhat.com>, Berkant Koc <me@berkoc.com>, 
- Zhenghang Xiao <kipreyyy@gmail.com>, Bernd Schubert <bernd@bsbernd.com>
-X-Mailer: b4 0.16-dev-d5d98
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2192; i=bernd@bsbernd.com;
- h=from:subject:message-id; bh=n0vMjMN5WT35tO+XTmzA0GJmU8M0rXF2VBA/9DhhDWo=;
- b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLK4+/km+0mse835hWU9590k/rp98l7PXkzPSLxoGK2Vs
- E/g+aZzHaUsDGIcDLJiiixdEntsp/zjk1X7uv46zBxWJpAhDFycAjCRGYUM/8sC2ewfcRqFyso8
- /qF99pzy/vTE959SVOc1yMYLWP5+JsHI0LmicF6/6Ayme1tcjR/ITjnG/vXol9blPRrLq32jBOK
- LOAE=
-X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
- fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
-X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
+X-B4-Tracking: v=1; b=H4sIAJusC2oC/2XO0QqDIBiG4VsJj/eHc2VtR7uP0YG5P5OVhposo
+ nufBYPBDt+D7+FbiUen0ZNbthKHUXttTYrLKSOyF0Yh6GdqwijjtKQF9LPCMLRgJzQwT4CiFTU
+ tq3NLryStJoedfh/io0ndOTtC6B2Kw5E2osvPVUXrsuCc5UqHXMgXugGXYNRdWasGzKUdd63XP
+ li3HPci283vE/73JDKgUDMuqCw7Vnfy12q2bfsAJrdSeu0AAAA=
+X-Change-ID: 20260504-hugetlb-open-up-eaba80571b09
+To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
+ David Hildenbrand <david@kernel.org>, 
+ Andrew Morton <akpm@linux-foundation.org>, fvdl@google.com, 
+ jiaqiyan@google.com, joshua.hahnjy@gmail.com, jthoughton@google.com, 
+ mhocko@kernel.org, michael.roth@amd.com, pasha.tatashin@soleen.com, 
+ pbonzini@redhat.com, peterx@redhat.com, pratyush@kernel.org, 
+ rick.p.edgecombe@intel.com, rientjes@google.com, roman.gushchin@linux.dev, 
+ seanjc@google.com, shakeel.butt@linux.dev, shivankg@amd.com, 
+ vannapurve@google.com, yan.y.zhao@intel.com, Zi Yan <ziy@nvidia.com>, 
+ Matthew Brost <matthew.brost@intel.com>, Rakie Kim <rakie.kim@sk.com>, 
+ Byungchul Park <byungchul@sk.com>, Gregory Price <gourry@gourry.net>, 
+ Ying Huang <ying.huang@linux.alibaba.com>, 
+ Alistair Popple <apopple@nvidia.com>, Dan Williams <djbw@kernel.org>, 
+ Jason Gunthorpe <jgg@ziepe.ca>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Ackerley Tng <ackerleytng@google.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779149988; l=5617;
+ i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
+ bh=bPcX7aY0Fv5p+iHJmDPvkygslezqtdpkp18CjrGXqeo=;
+ b=xtN4dDlhtwURik8shZJTiObc9tr0HJGnHBGTfMUDXaOXq3Gy199/XnGMAjV9DOZqhIQQOEfLX
+ X5mt6sImpmjAbMV4xcqGvQzplXhMDJurY+WAq/lDUOdeKNg9Ha3Anpk
+X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
+ pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
+X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Zhenghang Xiao <kipreyyy@gmail.com>
+Hi,
 
-fuse_uring_commit_fetch() error path calls fuse_request_end(req) without
-clearing ent->fuse_req when fuse_ring_ent_set_commit() fails. The
-still-pending fuse_uring_send_in_task() task-work later dereferences the
-dangling pointer through fuse_uring_prepare_send(), causing a
-use-after-free.
+The motivation for this patch series is guest_memfd, which would like
+to use HugeTLB as a generic source of huge pages but not adopt
+HugeTLB's reservation at mmap() time.
 
-Clear ent->fuse_req under queue->lock in the error path, matching the
-pattern in fuse_uring_req_end(). Add a NULL check in
-fuse_uring_send_in_task() so the entry is gracefully recycled if the
-request was detached.
+By refactoring alloc_hugetlb_folio() and some dependent functions,
+there is now an option to allocate HugeTLB folios without providing a
+VMA. Specifically, HugeTLB allocation used to be dependent on the VMA
+to
 
-Annotation/edition by Bernd: The UAF should be fixed by other means already
-and actually has to be avoided that way.
-Just checking for ent->fuse_req == NULL in fuse_uring_send_in_task()
-would be prone to race conditions, because if malicious userspace
-would commit requests that have passed the NULL check, but are
-in doing args copy, it would still trigger a use-after-free.
-Setting ent->fuse_req = NULL in fuse_uring_commit_fetch() still
-makes sense, though. And an additional sanity check in
-fuse_uring_send_in_task() does not hurt either.
+1. Look up reservations in the resv_map
+2. Get mpol, stored at vma->vm_policy
 
-Also reported by: Berkant Koc <me@berkoc.com>
+This refactoring provides hugetlb_alloc_folio(), which focuses on just
+the allocation itself, and associated memory and HugeTLB charging
+(cgroups). alloc_hugetlb_folio() still handles reservations in the
+resv_map and subpools.
 
-Fixes: c090c8abae4b ("fuse: Add io-uring sqe commit and fetch support")
-Signed-off-by: Zhenghang Xiao <kipreyyy@gmail.com>
-Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
+Regarding naming, I'm definitely open to alternative names :) I chose
+hugetlb_alloc_folio() because I'm seeing this function as a general
+allocation function that is provided by the HugeTLB subsystem (hence
+the hugetlb_ prefix). I'm intending for alloc_hugetlb_folio() to be
+later refactored as a static function for use just by HugeTLB, and
+HugeTLBfs should probably use hugetlb_alloc_folio() directly.
+
+To see how hugetlb_alloc_folio() is used by guest_memfd, the most
+recent patch series that uses this more generic HugeTLB allocation
+routine is at [1], and a newer revision of that patch series is at
+[2].
+
+Independently of guest_memfd, I believe this change is useful in
+simplifying alloc_hugetlb_folio(). alloc_hugetlb_folio() was so
+coupled to a VMA that even HugeTLBfs allocates HugeTLB folios using a
+pseudo-VMA.
+
+Testing:
+
++ libhugetlbfs tests pass
++ ./tools/testing/selftests/mm/ksft_hugetlb.sh passes
+
+Changes in this revision:
+
++ Clarified comment on when alloc_hugetlb_folio() chooses to dequeue a page
+  as requested by Oscar
+    + After refactoring out hugetlb_alloc_folio(), hugetlb_alloc_folio()
+      just acts on alloc_flags, so I think the reason for dequeueing is
+      sufficiently clear, so I dropped the comment
++ Introduced concept of an interpreted mempolicy (struct mempolicy_interpreted).
+    + dequeue_hugetlb_folio() and alloc_buddy_hugetlb_folio() are actually
+      operating on an interpreted mempolicy, which comprises nid, nodemask, and
+      a mempolicy_mode. mempolicy_mode tells the allocation function how to
+      interpret the provided nid and nodemask.
+    + I think mempolicy_interpreted could be generalized further outside of
+      hugetlb. I think every caller of policy_nodemask() will eventually use the
+      information in interpreted mempolicy to make the allocation.
+    + Let me know if this makes sense, and if I should go ahead to do more
+      refactoring!
+
+Oscar, in my responses to v2, I agreed with your idea of an allocation ctxt, but
+after doing some initial refactoring, I think the ctxt isn't really an
+allocation context, I felt like I was just putting all the parameters for
+hugetlb_alloc_folio() into a struct to get named parameters in C.
+
+Here's my rationale for hugetlb_alloc_folio()'s parameters:
+
++ hstate
++ subpool
+   + I think it makes sense to explicitly provide above two as parameters since
+     these are always required for allocation of a hugetlb folio. subpool can be
+     NULL, but we do want the caller to explicitly pass something in so subpool
+     accounting can be performed within hugetlb_alloc_folio().
++ interpreted mempolicy
+   + This summarizes what node the folio should be allocated from.
++ gfp
+   + gfp is used in a few ways, relating to the actual allocation and zone to
+     allocate from:
+       1. It was used to interpret the mempolicy, if there was something
+          requested in the gfp.
+       2. It is used to determine which zone to allocate from in
+          dequeue_hugetlb_folio()
+       3. A modified version is used in alloc_buddy_hugetlb_folio() if
+          MPOL_PREFERRED_MANY, otherwise it is used as-is to allocate a hugetlb
+          folio.
+    + I retained gfp as a separate parameter, and not part of
+      mempolicy_interpreted, because after the mempolicy is interpreted, gfp is
+      no longer used in relation to mempolicy to determine which node to
+      allocate on.
++ allocation flags
+    + I implemented Oscar's suggestion partially in allocation flags, which will
+      allow us to add more allocation knobs without adding more parameters to
+      hugetlb_alloc_folio().
+
+[1] https://lore.kernel.org/all/cover.1747264138.git.ackerleytng@google.com/T/
+[2] https://github.com/googleprodkernel/linux-cc/tree/wip-gmem-conversions-hugetlb-restructuring-12-08-25
+
+RFC v1: https://lore.kernel.org/all/bb35a69a-5be9-45f5-a557-1902487a1bc2@linux.dev/
+v2: https://lore.kernel.org/r/20260506-hugetlb-open-up-v2-0-826a0c5f28fc@google.com
+
 ---
- fs/fuse/dev_uring.c | 3 +++
- 1 file changed, 3 insertions(+)
+Ackerley Tng (6):
+      mm: hugetlb: Consolidate interpretation of gbl_chg within alloc_hugetlb_folio()
+      mm: hugetlb: Move mpol interpretation out of alloc_buddy_hugetlb_folio_with_mpol()
+      mm: hugetlb: Move mpol interpretation out of dequeue_hugetlb_folio_vma()
+      mm: hugetlb: Use error variable in alloc_hugetlb_folio
+      mm: hugetlb: Move mem_cgroup_charge_hugetlb() earlier in allocation
+      mm: hugetlb: Refactor out hugetlb_alloc_folio()
 
-diff --git a/fs/fuse/dev_uring.c b/fs/fuse/dev_uring.c
-index 5dde86e8653b..df5103679c8e 100644
---- a/fs/fuse/dev_uring.c
-+++ b/fs/fuse/dev_uring.c
-@@ -935,6 +935,7 @@ static int fuse_uring_commit_fetch(struct io_uring_cmd *cmd, int issue_flags,
- 	if (err != 0) {
- 		pr_info_ratelimited("qid=%d commit_id %llu state %d",
- 				    queue->qid, commit_id, ent->state);
-+		ent->fuse_req = NULL;
- 		spin_unlock(&queue->lock);
- 		req->out.h.error = err;
- 		clear_bit(FR_SENT, &req->flags);
-@@ -1233,6 +1234,8 @@ static void fuse_uring_send_in_task(struct io_tw_req tw_req, io_tw_token_t tw)
- 	int err;
- 
- 	if (!tw.cancel) {
-+		if (WARN_ON_ONCE(!ent->fuse_req))
-+			return;
- 		err = fuse_uring_prepare_send(ent, ent->fuse_req);
- 		if (err) {
- 			fuse_uring_next_fuse_req(ent, queue, issue_flags);
+ include/linux/hugetlb.h        |  19 ++++
+ include/uapi/linux/mempolicy.h |   2 +-
+ mm/hugetlb.c                   | 246 +++++++++++++++++++++++------------------
+ 3 files changed, 157 insertions(+), 110 deletions(-)
+---
+base-commit: 4d3a2a466b8d68d852a1f3bbf11204b718428dc4
+change-id: 20260504-hugetlb-open-up-eaba80571b09
 
--- 
-2.53.0
+Best regards,
+--
+Ackerley Tng <ackerleytng@google.com>
 
