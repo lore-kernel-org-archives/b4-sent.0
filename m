@@ -1,27 +1,28 @@
 From: Carl Lee <carl.lee@amd.com>
-Date: Tue, 19 May 2026 17:06:42 +0800
-Subject: [PATCH v4] nfc: nxp-nci: i2c: use rising-edge IRQ on ACPI systems
+Date: Tue, 19 May 2026 17:32:53 +0800
+Subject: [PATCH v5] nfc: nxp-nci: i2c: use rising-edge IRQ on ACPI systems
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260519-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-v4-1-8580d8e18016@amd.com>
-X-B4-Tracking: v=1; b=H4sIACEoDGoC/53NQW7CMBCF4asgrzuVZ2wcwqr3QCwcZxxGBYc6K
- AqKcnccNrRLunyW5/tnNXAWHtR+M6vMowzSpzLsx0aFk08dg7RlK9LktEGEFAOk6QopCAgFyDz
- c+ly+5R+4Zek6zhD9+dz48A2h9bWlrdHBaVXIa+Yo0zN3OJZ9kvX4/qyPuL7+MzQiINRMukJrE
- dvqy1/az9Bf1JoZ6TdNb9JUaOPI2F2sojf6L21e9Bbdm7RZ6arxtnFc65170cuyPACQvfTdnAE
- AAA==
+Message-Id: <20260519-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-v5-1-1a826cfbc128@amd.com>
+X-B4-Tracking: v=1; b=H4sIAEQuDGoC/53NQW7DIBCF4atErDsVAxjjrnqPqgsMgzNqglMcW
+ aki3704mzpLd/kQ8/13MVFhmsTb4S4KzTzxmOtoXg4iHH0eCDjWLZRUVmpEyClAvl0gBwZWAQp
+ N17HUb+UbroWHgQokfzr1PnxBiL4zqtEyWCkqeSmU+PbIfXzWfeT1+OdRn3F9/WdoRkDoSMkWj
+ UGM7bs/x9cwnsWamdWWVjtpVWltlTYutclr+UzrP7pBu5PWK9323vSWOunsM222dLeTNpV2jZP
+ RETqJG3pZll9X+str9wEAAA==
 X-Change-ID: 20260311-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-cda942530c60
 To: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
  stable@vger.kernel.org, krzk@kernel.org, carl.lee@amd.com, 
  peter.shen@amd.com, colin.huang2@amd.com, kuba@kernel.org, david@ixit.cz, 
  luca.stefani.ge1@gmail.com, brgl@kernel.org, mpearson@squebb.ca
-Cc: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
+Cc: Mark Pearson <mpearson-lenovo@squebb.ca>, 
+ Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779181624; l=3416;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779183174; l=3788;
  i=carl.lee@amd.com; s=20260203; h=from:subject:message-id;
- bh=I6n0L9eb1IHalW1YqScUbq1aaruqpfXyz2Bqif4BPPQ=;
- b=P8Fx4sPh+ns6A89txt1r/WXw111Hu3eAigKcHtshKjOuTKAHXR3UaAD8xjES+guySNyh+Mc1u
- gDBXvJ5gbWyBARyuV+wH6mdOPO0+cNlj5ewKezTP4b364v4sK2rZli+
+ bh=AuJE8naMhN8VuJ0Xkt3hE9rAU8BuKShRUpf+0Ld/H78=;
+ b=+nkcf9jeJ6vKQ5w1r1mJahWWd1a9UhYHs8pHNRr6OI7EWQ0ABp+xQ5psnJJzSPb06KK5Gdaqc
+ m0/zySMbxyMA8Bphn4KY3AcN9/huCEfkvZaBPiR8o0HFZjkI0SHiQGS
 X-Developer-Key: i=carl.lee@amd.com; a=ed25519;
  pk=pyq7QaQvoxMg806KVkRwpCbiah+7ncWr4MBpK1AEyjA=
 X-Endpoint-Received: by B4 Relay for carl.lee@amd.com/20260203 with auth_id=623
@@ -39,7 +40,10 @@ trigger type.
 Fixes: 57be33f85e36 ("nfc: nxp-nci: remove interrupt trigger type")
 Cc: stable@vger.kernel.org
 
+Tested-by: Luca Stefani <luca.stefani.ge1@gmail.com>
+Tested-by: Mark Pearson <mpearson-lenovo@squebb.ca>
 Tested-by: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
+Reviewed-by: Mark Pearson <mpearson-lenovo@squebb.ca>
 Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
 Signed-off-by: Carl Lee <carl.lee@amd.com>
 ---
@@ -49,6 +53,11 @@ which can lead to interrupt storms.
 Use rising-edge IRQ on ACPI systems to avoid this regression,
 while keeping firmware-provided trigger types on non-ACPI systems.
 ---
+Changes in v5:
+- Add missing Reviewed-by and Tested-by tags
+- No functional changes
+- Link to v4: https://lore.kernel.org/r/20260519-nfc-nxp-nci-i2c-restore-irq-trigger-fallback-v4-1-8580d8e18016@amd.com
+
 Changes in v4:
 - Add Fixes tag
 - Add Cc: stable@vger.kernel.org
