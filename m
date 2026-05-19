@@ -1,11 +1,11 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Tue, 19 May 2026 14:26:19 +0800
-Subject: [PATCH 7/8] rust: miscdevice: add `ThisModule` associated type to
- `MiscDevice` trait
+Date: Tue, 19 May 2026 14:26:20 +0800
+Subject: [PATCH 8/8] samples: rust: rust_misc_device: implement
+ `ThisModule` for `RustMiscDevice`
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260519-fix-fops-owner-v1-7-2ded9830da14@linux.dev>
+Message-Id: <20260519-fix-fops-owner-v1-8-2ded9830da14@linux.dev>
 References: <20260519-fix-fops-owner-v1-0-2ded9830da14@linux.dev>
 In-Reply-To: <20260519-fix-fops-owner-v1-0-2ded9830da14@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -26,55 +26,36 @@ Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org,
  dri-devel@lists.freedesktop.org, nova-gpu@lists.linux.dev, 
  Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779171975; l=1248;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779171975; l=782;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=w1EoH2KiN5QmfxawPU8PJaSlqVT8J3DiMsT2xzxxCS8=;
- b=2boe+1XQRLD4hO3skU1aJJQcbDXlgDARy7PBUJ88luhYe/WLmSsDSDrEExQl2YbOWZ2Tl8h0e
- pmNkBMmnQSyAdamOhFMpfzrTeCuM7HWH36VOSdl/5OJbzmR7hEcHgBQ
+ bh=I3viC+xei+z7Du+zKhaAbdeTTw0QaX58PY37KUiWlx0=;
+ b=rU+vsujc7ps9LVjZzU2EMVWbRxlsY4wFfumiMPvocW2zu/qAFSe1VduxhoLk7OyuG0fnmJIIt
+ Eprmd69bn3tAxqv+SqqTQzC3dXJdIYh/YoZDUxIWVdu64Gch28eCwMA
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a `ThisModule` associated type bound by `ModuleMetadata` to the
-`MiscDevice` trait, and use it to set the miscdevice fops owner field
-instead of defaulting to null.
+Set `ThisModule = RustMiscDeviceModule` to provide the correct module
+pointer for file operations ownership.
 
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- rust/kernel/miscdevice.rs | 5 +++++
- 1 file changed, 5 insertions(+)
+ samples/rust/rust_misc_device.rs | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/rust/kernel/miscdevice.rs b/rust/kernel/miscdevice.rs
-index 05a6b6b9770f2..007caaae62697 100644
---- a/rust/kernel/miscdevice.rs
-+++ b/rust/kernel/miscdevice.rs
-@@ -38,6 +38,7 @@
-         ForeignOwnable,
-         Opaque, //
-     },
-+    ModuleMetadata, //
- };
- use core::{
-     marker::PhantomData,
-@@ -137,6 +138,9 @@ pub trait MiscDevice: Sized {
-     /// What kind of pointer should `Self` be wrapped in.
-     type Ptr: ForeignOwnable + Send + Sync;
+diff --git a/samples/rust/rust_misc_device.rs b/samples/rust/rust_misc_device.rs
+index 41e26c825060b..a4b012a35b5ec 100644
+--- a/samples/rust/rust_misc_device.rs
++++ b/samples/rust/rust_misc_device.rs
+@@ -176,6 +176,7 @@ struct RustMiscDevice {
+ #[vtable]
+ impl MiscDevice for RustMiscDevice {
+     type Ptr = Pin<KBox<Self>>;
++    type ThisModule = RustMiscDeviceModule;
  
-+    /// The module implementing this driver.
-+    type ThisModule: ModuleMetadata;
-+
-     /// Called when the misc device is opened.
-     ///
-     /// The returned pointer will be stored as the private data for the file.
-@@ -441,6 +445,7 @@ impl<T: MiscDevice> MiscdeviceVTable<T> {
-         } else {
-             None
-         },
-+        owner: <T::ThisModule as ModuleMetadata>::MODULE_PTR,
-         ..pin_init::zeroed()
-     };
- 
+     fn open(_file: &File, misc: &MiscDeviceRegistration<Self>) -> Result<Pin<KBox<Self>>> {
+         let dev = ARef::from(misc.device());
 
 -- 
 2.43.0
