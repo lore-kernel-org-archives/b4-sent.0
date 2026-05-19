@@ -1,359 +1,144 @@
-From: Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
-Date: Tue, 19 May 2026 11:46:05 +0530
-Subject: [PATCH 15/15] accel/qda: Add remote memory unmap from DSP address
- space
+From: Alvin Sun <alvin.sun@linux.dev>
+Subject: [PATCH 0/8] Fix missing fops.owner in Rust DRM/misc abstractions
+Date: Tue, 19 May 2026 14:26:12 +0800
+Message-Id: <20260519-fix-fops-owner-v1-0-2ded9830da14@linux.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260519-qda-series-v1-15-b2d984c297f8@oss.qualcomm.com>
-References: <20260519-qda-series-v1-0-b2d984c297f8@oss.qualcomm.com>
-In-Reply-To: <20260519-qda-series-v1-0-b2d984c297f8@oss.qualcomm.com>
-To: Oded Gabbay <ogabbay@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>, Joerg Roedel <joro@8bytes.org>, 
- Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Sumit Semwal <sumit.semwal@linaro.org>, 
- =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>
-Cc: Bharath Kumar <quic_bkumar@quicinc.com>, 
- Chenna Kesava Raju <quic_chennak@quicinc.com>, srini@kernel.org, 
- dmitry.baryshkov@oss.qualcomm.com, andersson@kernel.org, 
- konradybcio@kernel.org, robin.clark@oss.qualcomm.com, 
- linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- linux-doc@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- iommu@lists.linux.dev, linux-media@vger.kernel.org, 
- linaro-mm-sig@lists.linaro.org, 
- Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAIUCDGoC/02NwQ6CMBBEf6XZs2soKNX+iuHQLov2UIotVBPCv
+ 9tIYjy+ybyZFRJHxwm0WCFydsmFsYA8CKCHGe+Mri8MdVW31VlecXBvHMKUMLxGjsiNUcraWlF
+ LUKQpcml8B2/dzpGfS9md9xCsSYwUvHezFlkdJUY6wf+fFr837xL1nHEpzhCiNzNejVV8aawkK
+ XWW0G3bB1ik0zfGAAAA
+X-Change-ID: 20260519-fix-fops-owner-e3a77bb27c6c
+To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, Luis Chamberlain <mcgrof@kernel.org>, 
+ Petr Pavlu <petr.pavlu@suse.com>, Daniel Gomez <da.gomez@kernel.org>, 
+ Sami Tolvanen <samitolvanen@google.com>, Aaron Tomlin <atomlin@atomlin.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Arnd Bergmann <arnd@arndb.de>
+Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-modules@vger.kernel.org, driver-core@lists.linux.dev, 
+ dri-devel@lists.freedesktop.org, nova-gpu@lists.linux.dev, 
+ Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779171352; l=11684;
- i=ekansh.gupta@oss.qualcomm.com; s=20260223; h=from:subject:message-id;
- bh=/fQu1UAz3gyMqR3NFZpJX4rpM/wwR7jVltKg2M1B+DU=;
- b=72Y34omiJ0pH6eH3TjgrzGhfH0pIU59j8J/43VANXh+n8/tZffL9Y1uIHokwT5VZoT6IjXqws
- XpdsbbgKvkoDGQjDTS6MiWkzLPEsSABcWvS6//F1VQ4hTleSHoj3T3L
-X-Developer-Key: i=ekansh.gupta@oss.qualcomm.com; a=ed25519;
- pk=n0SepARizye+pYjhjg1RA5J+Nq4+IJbyRcBybU+/ERQ=
-X-Endpoint-Received: by B4 Relay for ekansh.gupta@oss.qualcomm.com/20260223 with auth_id=647
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779171974; l=6176;
+ i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
+ bh=gnozQPQnkJBReVQYxjjuPb5BYLWwTWhcOmK2QpLcVnM=;
+ b=ku5YXdgCRDoVUxetEP7cdBpVNgktrDn7dvpwKArd3hsyV982SOcsuuUsTEKUvoNG+8A9/HY3a
+ OCKwkMoHehXD0cHMm6QkiSSjJxFWt5rBQG0fdhbiUz2L3t/Pgi/prGo
+X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
+ pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
+X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement DRM_IOCTL_QDA_REMOTE_MUNMAP (command 0x06), which unmaps
-a previously mapped memory region from the DSP's virtual address space.
-Two unmap modes mirror the two map modes:
+During tyr debugfs development, a kernel NULL pointer dereference was
+encountered after `rmmod tyr` while gnome-shell still held /dev/card1 open:
 
-QDA_MUNMAP_REQUEST_LEGACY (FASTRPC_RMID_INIT_MUNMAP)
-  Legacy single-argument unmap: sends a fastrpc_munmap_req_msg
-  containing the session ID, the DSP virtual address (vaddrout from
-  the original map response), and the region size.
+```
+  [158827.868132] Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000
+  [158827.868918] Mem abort info:
+  [158827.869177]   ESR = 0x0000000086000004
+  [158827.869519]   EC = 0x21: IABT (current EL), IL = 32 bits
+  [158827.870000]   SET = 0, FnV = 0
+  [158827.870281]   EA = 0, S1PTW = 0
+  [158827.870571]   FSC = 0x04: level 0 translation fault
+  [158827.871043] user pgtable: 4k pages, 48-bit VAs, pgdp=0000000108dec000
+  [158827.871623] [0000000000000000] pgd=0000000000000000, p4d=0000000000000000
+  [158827.872242] Internal error: Oops: 0000000086000004 [#1]  SMP
+  [158827.872246] Modules linked in: tyr sunrpc snd_soc_simple_card rk805_pwrkey snd_soc_simple_card_utils rtw88_8822bu display_connector rtw88_usb rtw88_8822b snd_soc_rockchip_i2s_tdm snd_soc_hdmi_codec
+  rtw88_core]
+  [158827.872337] CPU: 4 UID: 1000 PID: 11276 Comm: gnome-s:disk$0 Tainted: G                 N  7.1.0-rc1+ #331 PREEMPT
+  [158827.880534] Tainted: [N]=TEST
+  [158827.880535] Hardware name: FriendlyElec NanoPi R6C/NanoPi R6C, BIOS v1.1 04/09/2025
+  [158827.880538] pstate: 60400009 (nZCv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+  [158827.880542] pc : 0x0
+  [158827.880547] lr : _RNvNtCs257m05FHVbX_3tyr2vm8pt_unmap+0x8c/0x12c [tyr]
+  [158827.880578] sp : ffff800083c236b0
+  [158827.880579] x29: ffff800083c236d0 x28: ffff00013f8a0000 x27: 0000000000000000
+  [158827.880585] x26: 000000000000007c x25: ffff000108e6ed80 x24: 0000000000401000
+  [158827.880590] x23: 0000000000000000 x22: 0000000040000000 x21: 0000000000001000
+  [158827.880595] x20: ffff00010f778138 x19: 0000000000400000 x18: 00000000ffffffff
+  [158827.880600] x17: 000000040044ffff x16: 045000f2b5503510 x15: 0720072007200720
+  [158827.880606] x14: 0720072007200720 x13: 0000000000401000 x12: 0000000000400000
+  [158827.880611] x11: ffff800083c239d0 x10: ffff000141e4fd88 x9 : 0000000000000000
+  [158827.880615] x8 : 0000000000000000 x7 : 0000000000000000 x6 : 0000000000400000
+  [158827.880620] x5 : ffff00013f8a0000 x4 : 0000000000000000 x3 : 0000000000000001
+  [158827.880625] x2 : 0000000000001000 x1 : 0000000000400000 x0 : ffff00010f778138
+  [158827.880630] Call trace:
+  [158827.880632]  0x0 (P)
+  [158827.880635]  _RNvXs6_NtCs257m05FHVbX_3tyr2vmNtB5_9GpuVmDataNtNtNtCsgmSOfgXi5CZ_6kernel3drm5gpuvm11DriverGpuVm13sm_step_unmap+0x3c/0x120 [tyr]
+  [158827.891166]  _RNvMs4_NtNtNtCsgmSOfgXi5CZ_6kernel3drm5gpuvm6sm_opsINtB7_5GpuVmNtNtCs257m05FHVbX_3tyr2vm9GpuVmDataE13sm_step_unmapB13_+0x18/0x34 [tyr]
+  [158827.891187]  op_unmap_cb+0x78/0xb0
+  [158827.891196]  __drm_gpuvm_sm_unmap+0x18c/0x1b4
+  [158827.891204]  drm_gpuvm_sm_unmap+0x38/0x4c
+  [158827.891209]  _RNvMs5_NtCs257m05FHVbX_3tyr2vmNtB5_2Vm7exec_op+0x1cc/0x254 [tyr]
+  [158827.894085]  _RNvMs5_NtCs257m05FHVbX_3tyr2vmNtB5_2Vm11unmap_range+0x124/0x188 [tyr]
+  [158827.894105]  _RINvNtCs5hGKnPbRUFW_4core3ptr13drop_in_placeNtNtCs257m05FHVbX_3tyr3gem8KernelBoEBK_+0x44/0xd8 [tyr]
+  [158827.894125]  _RINvNtCs5hGKnPbRUFW_4core3ptr13drop_in_placeINtNtNtCsgmSOfgXi5CZ_6kernel5alloc4kvec3VecNtNtCs257m05FHVbX_3tyr2fw7SectionNtNtBL_9allocator7KmallocEEB1r_+0x3c/0x100 [tyr]
+  [158827.894147]  _RINvNtCs5hGKnPbRUFW_4core3ptr13drop_in_placeINtNtNtCsgmSOfgXi5CZ_6kernel4sync3arc3ArcNtNtCs257m05FHVbX_3tyr2fw8FirmwareEEB1p_+0x94/0x190 [tyr]
+  [158827.894167]  _RNvMs4_NtNtCsgmSOfgXi5CZ_6kernel3drm6deviceINtB5_6DeviceNtNtCs257m05FHVbX_3tyr6driver12TyrDrmDriverE7releaseBW_+0x30/0x98 [tyr]
+  [158827.899550]  drm_dev_put.part.0+0x88/0xc0
+  [158827.899557]  drm_minor_release+0x18/0x28
+  [158827.899562]  drm_release+0x144/0x170
+  [158827.899567]  __fput+0xe4/0x30c
+  [158827.899573]  ____fput+0x14/0x20
+  [158827.899579]  task_work_run+0x7c/0xe8
+  [158827.899586]  do_exit+0x2a8/0xac4
+  [158827.899590]  do_group_exit+0x34/0x90
+  [158827.899594]  get_signal+0xaac/0xabc
+  [158827.899599]  arch_do_signal_or_restart+0x90/0x3e8
+  [158827.899606]  exit_to_user_mode_loop+0x140/0x1d0
+  [158827.899613]  el0_svc+0x2f4/0x2f8
+  [158827.899620]  el0t_64_sync_handler+0xa0/0xe4
+  [158827.899627]  el0t_64_sync+0x198/0x19c
+  [158827.899632] ---[ end trace 0000000000000000 ]---
+```
 
-QDA_MUNMAP_REQUEST_ATTR (FASTRPC_RMID_INIT_MEM_UNMAP)
-  Attribute-based unmap: sends a fastrpc_mem_unmap_req_msg which
-  additionally carries the original DMA-BUF fd and virtual address,
-  matching the fd-based MEM_MAP path.
+The root cause: fops.owner was NULL in Rust DRM drivers, so the kernel never
+blocked module unloading while file descriptors were open. This leads to
+use-after-free when drm_release (or other fops) is called on freed module code. 
 
-DRM_QDA_REMOTE_MUNMAP is assigned command number 0x06, filling the
-slot that was previously reserved for this purpose.
+The series adds MODULE_PTR to ModuleMetadata, threads ThisModule through the
+DRM Driver trait into create_fops(), and applies the same fix to miscdevice.
 
-Assisted-by: Claude:claude-4-6-sonnet
-Signed-off-by: Ekansh Gupta <ekansh.gupta@oss.qualcomm.com>
+Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- drivers/accel/qda/qda_drv.c     |  1 +
- drivers/accel/qda/qda_fastrpc.c | 84 +++++++++++++++++++++++++++++++++++++++++
- drivers/accel/qda/qda_fastrpc.h | 34 +++++++++++++++++
- drivers/accel/qda/qda_ioctl.c   | 28 ++++++++++++++
- drivers/accel/qda/qda_ioctl.h   |  1 +
- include/uapi/drm/qda_accel.h    | 36 +++++++++++++++++-
- 6 files changed, 183 insertions(+), 1 deletion(-)
+Alvin Sun (8):
+      rust: module: add `MODULE_PTR` const to `ModuleMetadata` trait
+      rust: driver: make `DriverModule` struct pub(crate) in `module_driver!`
+      rust: drm: add `ThisModule` associated type to `Driver` trait
+      gpu: nova: implement `ThisModule`
+      gpu: tyr: implement `ThisModule`
+      rust: drm: set fops.owner from driver module pointer
+      rust: miscdevice: add `ThisModule` associated type to `MiscDevice` trait
+      samples: rust: rust_misc_device: implement `ThisModule` for `RustMiscDevice`
 
-diff --git a/drivers/accel/qda/qda_drv.c b/drivers/accel/qda/qda_drv.c
-index 3640e4a41605..41cc207447b4 100644
---- a/drivers/accel/qda/qda_drv.c
-+++ b/drivers/accel/qda/qda_drv.c
-@@ -68,6 +68,7 @@ static const struct drm_ioctl_desc qda_ioctls[] = {
- 	DRM_IOCTL_DEF_DRV(QDA_GEM_MMAP_OFFSET, qda_ioctl_gem_mmap_offset, 0),
- 	DRM_IOCTL_DEF_DRV(QDA_REMOTE_SESSION_CREATE, qda_ioctl_init_create, 0),
- 	DRM_IOCTL_DEF_DRV(QDA_REMOTE_MAP, qda_ioctl_mmap, 0),
-+	DRM_IOCTL_DEF_DRV(QDA_REMOTE_MUNMAP, qda_ioctl_munmap, 0),
- 	DRM_IOCTL_DEF_DRV(QDA_REMOTE_INVOKE, qda_ioctl_invoke, 0),
- };
- 
-diff --git a/drivers/accel/qda/qda_fastrpc.c b/drivers/accel/qda/qda_fastrpc.c
-index cab3a560ceb5..0513beede428 100644
---- a/drivers/accel/qda/qda_fastrpc.c
-+++ b/drivers/accel/qda/qda_fastrpc.c
-@@ -887,6 +887,84 @@ static int fastrpc_prepare_args_mem_map_attr(struct fastrpc_invoke_context *ctx,
- 	return err;
- }
- 
-+static int fastrpc_prepare_args_munmap(struct fastrpc_invoke_context *ctx, char __user *argp)
-+{
-+	struct drm_qda_fastrpc_invoke_args *args;
-+	struct fastrpc_munmap_req_msg *req_msg;
-+	struct drm_qda_mem_unmap uargs;
-+	void *req;
-+	int err;
-+
-+	memcpy(&uargs, argp, sizeof(uargs));
-+
-+	args = kzalloc_obj(*args);
-+	if (!args)
-+		return -ENOMEM;
-+
-+	req = kzalloc_obj(*req_msg);
-+	if (!req) {
-+		err = -ENOMEM;
-+		goto err_free_args;
-+	}
-+	req_msg = (struct fastrpc_munmap_req_msg *)req;
-+
-+	req_msg->remote_session_id = ctx->remote_session_id;
-+	req_msg->size  = uargs.size;
-+	req_msg->vaddr = uargs.vaddrout;
-+
-+	setup_single_arg(args, req_msg, sizeof(*req_msg));
-+	ctx->sc = FASTRPC_SCALARS(FASTRPC_RMID_INIT_MUNMAP, 1, 0);
-+	ctx->args = args;
-+	ctx->req = req;
-+	ctx->handle = FASTRPC_INIT_HANDLE;
-+
-+	return 0;
-+
-+err_free_args:
-+	kfree(args);
-+	return err;
-+}
-+
-+static int fastrpc_prepare_args_mem_unmap_attr(struct fastrpc_invoke_context *ctx,
-+					       char __user *argp)
-+{
-+	struct drm_qda_fastrpc_invoke_args *args;
-+	struct fastrpc_mem_unmap_req_msg *req_msg;
-+	struct drm_qda_mem_unmap uargs;
-+	void *req;
-+	int err;
-+
-+	memcpy(&uargs, argp, sizeof(uargs));
-+
-+	args = kzalloc_obj(*args);
-+	if (!args)
-+		return -ENOMEM;
-+
-+	req = kzalloc_obj(*req_msg);
-+	if (!req) {
-+		err = -ENOMEM;
-+		goto err_free_args;
-+	}
-+	req_msg = (struct fastrpc_mem_unmap_req_msg *)req;
-+
-+	req_msg->remote_session_id = ctx->remote_session_id;
-+	req_msg->fd      = uargs.fd;		/* DMA-BUF fd forwarded to DSP */
-+	req_msg->vaddrin = uargs.vaddr;
-+	req_msg->len     = uargs.size;
-+
-+	setup_single_arg(args, req_msg, sizeof(*req_msg));
-+	ctx->sc = FASTRPC_SCALARS(FASTRPC_RMID_INIT_MEM_UNMAP, 1, 0);
-+	ctx->args = args;
-+	ctx->req = req;
-+	ctx->handle = FASTRPC_INIT_HANDLE;
-+
-+	return 0;
-+
-+err_free_args:
-+	kfree(args);
-+	return err;
-+}
-+
- static int fastrpc_prepare_args_invoke(struct fastrpc_invoke_context *ctx, char __user *argp)
- {
- 	struct drm_qda_invoke_args invoke_args;
-@@ -945,6 +1023,12 @@ int qda_fastrpc_prepare_args(struct fastrpc_invoke_context *ctx, char __user *ar
- 	case FASTRPC_RMID_INIT_MEM_MAP:
- 		err = fastrpc_prepare_args_mem_map_attr(ctx, argp);
- 		break;
-+	case FASTRPC_RMID_INIT_MUNMAP:
-+		err = fastrpc_prepare_args_munmap(ctx, argp);
-+		break;
-+	case FASTRPC_RMID_INIT_MEM_UNMAP:
-+		err = fastrpc_prepare_args_mem_unmap_attr(ctx, argp);
-+		break;
- 	case FASTRPC_RMID_INVOKE_DYNAMIC:
- 		err = fastrpc_prepare_args_invoke(ctx, argp);
- 		break;
-diff --git a/drivers/accel/qda/qda_fastrpc.h b/drivers/accel/qda/qda_fastrpc.h
-index 71812eaf9a54..030e9b954f7a 100644
---- a/drivers/accel/qda/qda_fastrpc.h
-+++ b/drivers/accel/qda/qda_fastrpc.h
-@@ -275,9 +275,11 @@ struct fastrpc_invoke_context {
- /* Remote Method ID table - identifies initialization and control operations */
- #define FASTRPC_RMID_INIT_RELEASE	1	/* Release DSP process */
- #define FASTRPC_RMID_INIT_MMAP		4	/* Map memory region to DSP */
-+#define FASTRPC_RMID_INIT_MUNMAP	5	/* Unmap DSP memory region */
- #define FASTRPC_RMID_INIT_CREATE	6	/* Create DSP process */
- #define FASTRPC_RMID_INIT_CREATE_ATTR	7	/* Create DSP process with attributes */
- #define FASTRPC_RMID_INIT_MEM_MAP	10	/* Map DMA buffer with attributes to DSP */
-+#define FASTRPC_RMID_INIT_MEM_UNMAP	11	/* Unmap DMA buffer from DSP */
- #define FASTRPC_RMID_INVOKE_DYNAMIC	0xFFFFFFFF	/* Dynamic method invocation */
- 
- /* Common handle for initialization operations */
-@@ -345,6 +347,38 @@ struct fastrpc_map_rsp_msg {
- 	u64 vaddrout;
- };
- 
-+/**
-+ * struct fastrpc_mem_unmap_req_msg - Memory unmap request message with attributes
-+ *
-+ * This message structure is sent to the DSP to request unmapping
-+ * of a previously mapped memory region (ATTR request).
-+ */
-+struct fastrpc_mem_unmap_req_msg {
-+	/** @remote_session_id: Client identifier for the session */
-+	s32 remote_session_id;
-+	/** @fd: DMA-BUF file descriptor of the buffer to unmap */
-+	s32 fd;
-+	/** @vaddrin: DSP virtual address of the mapped region to unmap */
-+	u64 vaddrin;
-+	/** @len: Size of the region to unmap in bytes */
-+	u64 len;
-+};
-+
-+/**
-+ * struct fastrpc_munmap_req_msg - Legacy memory unmap request message
-+ *
-+ * This message structure is sent to the DSP to request unmapping
-+ * of a previously mapped memory region.
-+ */
-+struct fastrpc_munmap_req_msg {
-+	/** @remote_session_id: Client identifier for the session */
-+	s32 remote_session_id;
-+	/** @vaddr: DSP virtual address of the mapped region to unmap */
-+	u64 vaddr;
-+	/** @size: Size of the region to unmap in bytes */
-+	u64 size;
-+};
-+
- void qda_fastrpc_context_free(struct kref *ref);
- struct fastrpc_invoke_context *qda_fastrpc_context_alloc(void);
- int qda_fastrpc_prepare_args(struct fastrpc_invoke_context *ctx, char __user *argp);
-diff --git a/drivers/accel/qda/qda_ioctl.c b/drivers/accel/qda/qda_ioctl.c
-index 283eb7535c45..aeba6190182e 100644
---- a/drivers/accel/qda/qda_ioctl.c
-+++ b/drivers/accel/qda/qda_ioctl.c
-@@ -254,6 +254,34 @@ int qda_ioctl_mmap(struct drm_device *dev, void *data, struct drm_file *file_pri
- 	}
- }
- 
-+/**
-+ * qda_ioctl_munmap() - Unmap memory from DSP address space
-+ * @dev: DRM device structure
-+ * @data: User-space data (struct drm_qda_mem_unmap)
-+ * @file_priv: DRM file private data
-+ *
-+ * Return: 0 on success, negative error code on failure
-+ */
-+int qda_ioctl_munmap(struct drm_device *dev, void *data, struct drm_file *file_priv)
-+{
-+	struct drm_qda_mem_unmap *unmap_req;
-+
-+	if (!data)
-+		return -EINVAL;
-+
-+	unmap_req = (struct drm_qda_mem_unmap *)data;
-+
-+	switch (unmap_req->request) {
-+	case QDA_MUNMAP_REQUEST_LEGACY:
-+		return fastrpc_invoke(FASTRPC_RMID_INIT_MUNMAP, dev, data, file_priv);
-+	case QDA_MUNMAP_REQUEST_ATTR:
-+		return fastrpc_invoke(FASTRPC_RMID_INIT_MEM_UNMAP, dev, data, file_priv);
-+	default:
-+		drm_err(dev, "Invalid munmap request type: %u\n", unmap_req->request);
-+		return -EINVAL;
-+	}
-+}
-+
- /**
-  * qda_ioctl_invoke() - Perform a dynamic FastRPC method invocation
-  * @dev: DRM device structure
-diff --git a/drivers/accel/qda/qda_ioctl.h b/drivers/accel/qda/qda_ioctl.h
-index 457ceccede08..e14a39050d09 100644
---- a/drivers/accel/qda/qda_ioctl.h
-+++ b/drivers/accel/qda/qda_ioctl.h
-@@ -14,5 +14,6 @@ int qda_ioctl_gem_create(struct drm_device *dev, void *data, struct drm_file *fi
- int qda_ioctl_gem_mmap_offset(struct drm_device *dev, void *data, struct drm_file *file_priv);
- int qda_ioctl_invoke(struct drm_device *dev, void *data, struct drm_file *file_priv);
- int qda_ioctl_mmap(struct drm_device *dev, void *data, struct drm_file *file_priv);
-+int qda_ioctl_munmap(struct drm_device *dev, void *data, struct drm_file *file_priv);
- 
- #endif /* __QDA_IOCTL_H__ */
-diff --git a/include/uapi/drm/qda_accel.h b/include/uapi/drm/qda_accel.h
-index 173f59abd361..e3b5c9a963bf 100644
---- a/include/uapi/drm/qda_accel.h
-+++ b/include/uapi/drm/qda_accel.h
-@@ -21,9 +21,10 @@ extern "C" {
- #define DRM_QDA_QUERY		0x00
- #define DRM_QDA_GEM_CREATE		0x01
- #define DRM_QDA_GEM_MMAP_OFFSET	0x02
--/* Command number 0x03 reserved for INIT_ATTACH; 0x06 reserved for MUNMAP */
-+/* Command number 0x03 reserved for INIT_ATTACH */
- #define DRM_QDA_REMOTE_SESSION_CREATE		0x04
- #define DRM_QDA_REMOTE_MAP			0x05
-+#define DRM_QDA_REMOTE_MUNMAP			0x06
- #define DRM_QDA_REMOTE_INVOKE			0x07
- 
- /*
-@@ -44,6 +45,8 @@ extern "C" {
- 		 struct drm_qda_init_create)
- #define DRM_IOCTL_QDA_REMOTE_MAP	DRM_IOWR(DRM_COMMAND_BASE + DRM_QDA_REMOTE_MAP, \
- 					  struct drm_qda_mem_map)
-+#define DRM_IOCTL_QDA_REMOTE_MUNMAP	DRM_IOWR(DRM_COMMAND_BASE + DRM_QDA_REMOTE_MUNMAP, \
-+					  struct drm_qda_mem_unmap)
- #define DRM_IOCTL_QDA_REMOTE_INVOKE	DRM_IOWR(DRM_COMMAND_BASE + DRM_QDA_REMOTE_INVOKE, \
- 					  struct drm_qda_invoke_args)
- 
-@@ -51,6 +54,10 @@ extern "C" {
- #define QDA_MAP_REQUEST_LEGACY    1  /* Legacy MMAP operation */
- #define QDA_MAP_REQUEST_ATTR      2  /* Handle-based MEM_MAP operation with attributes */
- 
-+/* Request type definitions for qda_mem_unmap */
-+#define QDA_MUNMAP_REQUEST_LEGACY    1  /* Legacy MUNMAP operation */
-+#define QDA_MUNMAP_REQUEST_ATTR      2  /* Handle-based MEM_UNMAP operation */
-+
- /**
-  * struct drm_qda_query - Device information query structure
-  * @dsp_name: Name of DSP (e.g., "adsp", "cdsp", "cdsp1", "gdsp0", "gdsp1")
-@@ -188,6 +195,33 @@ struct drm_qda_mem_map {
- 	__u64 vaddrout;
- };
- 
-+/**
-+ * struct drm_qda_mem_unmap - Memory unmapping request structure
-+ * @request: Request type (QDA_MUNMAP_REQUEST_LEGACY or QDA_MUNMAP_REQUEST_ATTR)
-+ * @fd: DMA-BUF file descriptor (used for ATTR request)
-+ * @vaddr: Virtual address (used for ATTR request)
-+ * @vaddrout: DSP virtual address (used for LEGACY request)
-+ * @size: Size of the memory region to unmap in bytes
-+ *
-+ * This structure is used to request unmapping of a previously mapped
-+ * memory region from the DSP's virtual address space.
-+ *
-+ * For QDA_MUNMAP_REQUEST_LEGACY (value 1):
-+ *   - Uses fields: vaddrout, size
-+ *   - Legacy MUNMAP operation for backward compatibility
-+ *
-+ * For QDA_MUNMAP_REQUEST_ATTR (value 2):
-+ *   - Uses fields: fd, vaddr, size
-+ *   - Handle-based MEM_UNMAP operation
-+ */
-+struct drm_qda_mem_unmap {
-+	__u32 request;
-+	__s32 fd;
-+	__u64 vaddr;
-+	__u64 vaddrout;
-+	__u64 size;
-+};
-+
- #if defined(__cplusplus)
- }
- #endif
+ drivers/gpu/drm/nova/driver.rs   |  1 +
+ drivers/gpu/drm/tyr/driver.rs    |  1 +
+ rust/kernel/driver.rs            |  2 +-
+ rust/kernel/drm/device.rs        |  3 ++-
+ rust/kernel/drm/driver.rs        |  3 +++
+ rust/kernel/drm/gem/mod.rs       |  4 ++--
+ rust/kernel/lib.rs               |  3 +++
+ rust/kernel/miscdevice.rs        |  5 +++++
+ rust/macros/module.rs            | 14 ++++++++++++++
+ samples/rust/rust_misc_device.rs |  1 +
+ 10 files changed, 33 insertions(+), 4 deletions(-)
+---
+base-commit: aa61612ab641d7d62b0b6889f2c7c9251489f6e3
+change-id: 20260519-fix-fops-owner-e3a77bb27c6c
+prerequisite-change-id: 20260519-miscdev-use-format-9ab7e83b1c11:v1
+prerequisite-patch-id: 405b334ff0d48ad350014f05a2321bdbaa025400
+prerequisite-patch-id: 604b631c81d5423f4ebb2e12ba2d22e9ce371bfc
 
+Best regards,
 -- 
-2.34.1
+Alvin Sun <alvin.sun@linux.dev>
 
