@@ -1,10 +1,11 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Tue, 19 May 2026 14:26:18 +0800
-Subject: [PATCH 6/8] rust: drm: set fops.owner from driver module pointer
+Date: Tue, 19 May 2026 14:26:19 +0800
+Subject: [PATCH 7/8] rust: miscdevice: add `ThisModule` associated type to
+ `MiscDevice` trait
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260519-fix-fops-owner-v1-6-2ded9830da14@linux.dev>
+Message-Id: <20260519-fix-fops-owner-v1-7-2ded9830da14@linux.dev>
 References: <20260519-fix-fops-owner-v1-0-2ded9830da14@linux.dev>
 In-Reply-To: <20260519-fix-fops-owner-v1-0-2ded9830da14@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -25,57 +26,55 @@ Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org,
  dri-devel@lists.freedesktop.org, nova-gpu@lists.linux.dev, 
  Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779171975; l=1749;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779171975; l=1248;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=OYexPkFtbNXLRo2lAEdq2hETmjni7pCbYaSDRmMBwas=;
- b=ZyFmcBxw1iqk+SIxcFeBTJnMObx+OCnY/wJV2uLHPgpVqGkQc8wSk9AV2oIMUMbAUJCcFOIHy
- y/WAWqV40x1DC2MLK8BHskY3T8WYx1cAY5qNGMhhCRZZXMt4iSuiHzp
+ bh=w1EoH2KiN5QmfxawPU8PJaSlqVT8J3DiMsT2xzxxCS8=;
+ b=2boe+1XQRLD4hO3skU1aJJQcbDXlgDARy7PBUJ88luhYe/WLmSsDSDrEExQl2YbOWZ2Tl8h0e
+ pmNkBMmnQSyAdamOhFMpfzrTeCuM7HWH36VOSdl/5OJbzmR7hEcHgBQ
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Change `create_fops()` to accept an owner module pointer instead of
-hardcoding `null_mut()`, ensuring the kernel correctly tracks the
-module owning the DRM device's file operations.
+Add a `ThisModule` associated type bound by `ModuleMetadata` to the
+`MiscDevice` trait, and use it to set the miscdevice fops owner field
+instead of defaulting to null.
 
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- rust/kernel/drm/device.rs  | 3 ++-
- rust/kernel/drm/gem/mod.rs | 4 ++--
- 2 files changed, 4 insertions(+), 3 deletions(-)
+ rust/kernel/miscdevice.rs | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/rust/kernel/drm/device.rs b/rust/kernel/drm/device.rs
-index 403fc35353c74..97bee53823346 100644
---- a/rust/kernel/drm/device.rs
-+++ b/rust/kernel/drm/device.rs
-@@ -111,7 +111,8 @@ impl<T: drm::Driver> Device<T> {
-         fops: &Self::GEM_FOPS,
+diff --git a/rust/kernel/miscdevice.rs b/rust/kernel/miscdevice.rs
+index 05a6b6b9770f2..007caaae62697 100644
+--- a/rust/kernel/miscdevice.rs
++++ b/rust/kernel/miscdevice.rs
+@@ -38,6 +38,7 @@
+         ForeignOwnable,
+         Opaque, //
+     },
++    ModuleMetadata, //
+ };
+ use core::{
+     marker::PhantomData,
+@@ -137,6 +138,9 @@ pub trait MiscDevice: Sized {
+     /// What kind of pointer should `Self` be wrapped in.
+     type Ptr: ForeignOwnable + Send + Sync;
+ 
++    /// The module implementing this driver.
++    type ThisModule: ModuleMetadata;
++
+     /// Called when the misc device is opened.
+     ///
+     /// The returned pointer will be stored as the private data for the file.
+@@ -441,6 +445,7 @@ impl<T: MiscDevice> MiscdeviceVTable<T> {
+         } else {
+             None
+         },
++        owner: <T::ThisModule as ModuleMetadata>::MODULE_PTR,
+         ..pin_init::zeroed()
      };
  
--    const GEM_FOPS: bindings::file_operations = drm::gem::create_fops();
-+    const GEM_FOPS: bindings::file_operations =
-+        drm::gem::create_fops(<T::ThisModule as crate::ModuleMetadata>::MODULE_PTR);
- 
-     /// Create a new `drm::Device` for a `drm::Driver`.
-     pub fn new(dev: &device::Device, data: impl PinInit<T::Data, Error>) -> Result<ARef<Self>> {
-diff --git a/rust/kernel/drm/gem/mod.rs b/rust/kernel/drm/gem/mod.rs
-index 01b5bd47a3332..9a203efc59116 100644
---- a/rust/kernel/drm/gem/mod.rs
-+++ b/rust/kernel/drm/gem/mod.rs
-@@ -357,10 +357,10 @@ impl<T: DriverObject> AllocImpl for Object<T> {
-     };
- }
- 
--pub(super) const fn create_fops() -> bindings::file_operations {
-+pub(super) const fn create_fops(owner: *mut bindings::module) -> bindings::file_operations {
-     let mut fops: bindings::file_operations = pin_init::zeroed();
- 
--    fops.owner = core::ptr::null_mut();
-+    fops.owner = owner;
-     fops.open = Some(bindings::drm_open);
-     fops.release = Some(bindings::drm_release);
-     fops.unlocked_ioctl = Some(bindings::drm_ioctl);
 
 -- 
 2.43.0
