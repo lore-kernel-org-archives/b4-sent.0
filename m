@@ -1,11 +1,10 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Wed, 20 May 2026 10:40:09 +0800
-Subject: [PATCH v2 2/5] samples: rust_misc_device: use vertical import
- style
+Date: Wed, 20 May 2026 10:40:10 +0800
+Subject: [PATCH v2 3/5] rust: miscdevice: remove redundant imports
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260520-miscdev-use-format-v2-2-64dc48fc1345@linux.dev>
+Message-Id: <20260520-miscdev-use-format-v2-3-64dc48fc1345@linux.dev>
 References: <20260520-miscdev-use-format-v2-0-64dc48fc1345@linux.dev>
 In-Reply-To: <20260520-miscdev-use-format-v2-0-64dc48fc1345@linux.dev>
 To: Arnd Bergmann <arnd@arndb.de>, 
@@ -19,71 +18,57 @@ To: Arnd Bergmann <arnd@arndb.de>,
 Cc: rust-for-linux@vger.kernel.org, linux-block@vger.kernel.org, 
  Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779244810; l=1443;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779244810; l=994;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=MzOQ5Pt5s4zhpYWvG5X1Gx7JCP+doFfRKRAXWizMD0s=;
- b=7j21eCYWyyxZxanuzpBiIKhrTgSOV1G9OPU/XinnQvmGMPYYl0oB5SVev1C/Z1VmgI2KjXtjH
- gwvejn59cvXCmLCrfyR/lN8HzdXA8foSEQMxexQ8lEKZn50o4vlVNvE
+ bh=uxbSDDBiUmtFEUXe6RQ/fhwb3WKp/e+Dv491N2iFhjE=;
+ b=nIiEQpCRCQxzwxU7nG8LskCvHlORHcgEBXMHXdnjmMhAt7hAPeeUSnksZbGkz+soNZAceM2eE
+ CV4phwJU0crBEEDl3toGGxGMm9hFCmhv1pvmoMX+XiuCQGdke2yia+8
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Convert `use` imports to vertical layout for better readability and
-maintainability.
+Drop `Error`, `Result`, `Pin`, `c_int`, `c_long`, `c_uint`, and
+`c_ulong` imports already provided by `kernel::prelude`.
 
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- samples/rust/rust_misc_device.rs | 34 ++++++++++++++++++++++++++++------
- 1 file changed, 28 insertions(+), 6 deletions(-)
+ rust/kernel/miscdevice.rs | 13 +------------
+ 1 file changed, 1 insertion(+), 12 deletions(-)
 
-diff --git a/samples/rust/rust_misc_device.rs b/samples/rust/rust_misc_device.rs
-index 87a1fe63533ae..41e26c825060b 100644
---- a/samples/rust/rust_misc_device.rs
-+++ b/samples/rust/rust_misc_device.rs
-@@ -97,14 +97,36 @@
- 
- use kernel::{
+diff --git a/rust/kernel/miscdevice.rs b/rust/kernel/miscdevice.rs
+index 05a6b6b9770f2..83ce50def5ac9 100644
+--- a/rust/kernel/miscdevice.rs
++++ b/rust/kernel/miscdevice.rs
+@@ -13,16 +13,8 @@
      device::Device,
--    fs::{File, Kiocb},
--    ioctl::{_IO, _IOC_SIZE, _IOR, _IOW},
--    iov::{IovIterDest, IovIterSource},
--    miscdevice::{MiscDevice, MiscDeviceOptions, MiscDeviceRegistration},
-+    fs::{
-+        File,
-+        Kiocb, //
-+    },
-+    ioctl::{
-+        _IO,
-+        _IOC_SIZE,
-+        _IOR,
-+        _IOW, //
-+    },
-+    iov::{
-+        IovIterDest,
-+        IovIterSource, //
-+    },
-+    miscdevice::{
-+        MiscDevice,
-+        MiscDeviceOptions,
-+        MiscDeviceRegistration, //
-+    },
-     new_mutex,
-     prelude::*,
--    sync::{aref::ARef, Mutex},
--    uaccess::{UserSlice, UserSliceReader, UserSliceWriter},
-+    sync::{
-+        aref::ARef,
-+        Mutex, //
-+    },
-+    uaccess::{
-+        UserSlice,
-+        UserSliceReader,
-+        UserSliceWriter, //
-+    },
+     error::{
+         to_result,
+-        Error,
+-        Result,
+         VTABLE_DEFAULT_ERROR, //
+     },
+-    ffi::{
+-        c_int,
+-        c_long,
+-        c_uint,
+-        c_ulong, //
+-    },
+     fs::{
+         File,
+         Kiocb, //
+@@ -39,10 +31,7 @@
+         Opaque, //
+     },
  };
+-use core::{
+-    marker::PhantomData,
+-    pin::Pin, //
+-};
++use core::marker::PhantomData;
  
- const RUST_MISC_DEV_HELLO: u32 = _IO('|' as u32, 0x80);
+ /// Options for creating a misc device.
+ #[derive(Copy, Clone)]
 
 -- 
 2.43.0
