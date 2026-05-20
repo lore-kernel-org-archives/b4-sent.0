@@ -1,58 +1,73 @@
-From: Abid Ali <dev.taqnialabs@gmail.com>
-Date: Wed, 20 May 2026 14:25:12 +0000
-Subject: [PATCH] net: stmmac: mmc: Remove duplicate mmc_rx crc
+From: =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
+Subject: [PATCH 00/11] Microsoft Surface Pro 9 5G update
+Date: Wed, 20 May 2026 18:40:04 +0200
+Message-Id: <20260520-surface-sp9-5g-for-next-v1-0-9df52552bf87@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260520-xgmac-mmc_rx_crc-cleanup-v1-1-7133f529859f@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAEfEDWoC/x3MQQqEMAxA0atI1gY6BUXmKjJIJqYamFZJcSiId
- 7e4fIv/T8hiKhnezQkmf826pYpX2wCvlBZBnavBO9+7zjssSyTGGHmyMrEx8k8oHTtSYKE+EA3
- 0hZrvJkHLsx4/13UDz9N5oWoAAAA=
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Abid Ali <dev.taqnialabs@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779287113; l=1169;
- i=dev.taqnialabs@gmail.com; s=20260425; h=from:subject:message-id;
- bh=utjrD6shew6tFykTsrj0bAnoJoit1s0RWNNHVzKqLU8=;
- b=NXVGghpu3DrYDgU1IEKAByx2WJBLoEnBEgQZdMPa5C1VCDN5XDktpigly5SEq3LSFM1EXKlCn
- ZO/KUbnUElnAF4ecknXrNJjeTn+7H0lnAzl2cm4akf7MlUABjM4th4k
-X-Developer-Key: i=dev.taqnialabs@gmail.com; a=ed25519;
- pk=4Syx51HH/MOySSUpi79M2ToLOdwt1yiNb338eKZBJNk=
-X-Endpoint-Received: by B4 Relay for dev.taqnialabs@gmail.com/20260425 with auth_id=752
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAOTjDWoC/x3MwQ6CMAyA4VchPVtTF2HiqxgP2+igl0FaJCSEd
+ 3d6/A7/f4CxChs8mwOUNzGZS8Xt0kCaQhkZZagGR66j1hHaR3NIjLb02I6YZ8XC+4r+0fsUI+W
+ 7S1DrRTnL/j+/3tUxGGPUUNL0+23+SnCeX4YdOrKAAAAA
+X-Change-ID: 20260520-surface-sp9-5g-for-next-7897cbb0f42c
+To: Douglas Anderson <dianders@chromium.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ Krzysztof Kozlowski <krzk@kernel.org>, 
+ =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>, 
+ Bartosz Golaszewski <brgl@kernel.org>, Johan Hovold <johan@kernel.org>, 
+ Stephan Gerhold <stephan.gerhold@linaro.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779295238; l=1578;
+ i=jerome.debretagne@gmail.com; s=20260520; h=from:subject:message-id;
+ bh=C+bAsxrO7Hwqd7h3A17Hh+Wk9te7bvjVSu4G652FOSE=;
+ b=TxYunP+RMjqX6ztukqcbFSA9ok7XwP4bO3nlR9H9+xVWj1Xay+n9Ee8UnjAKgLVtfFf5+ndDL
+ lfsAqQJ15CeBEwbFacPNIhbr5cf+0/QkZR0U+O/1CQ1wqrd3TNeUcLZ
+X-Developer-Key: i=jerome.debretagne@gmail.com; a=ed25519;
+ pk=3/JYhgYjGg5V9mlFxc0A0+pFiyjsuDB/TtDlNMId9fk=
+X-Endpoint-Received: by B4 Relay for jerome.debretagne@gmail.com/20260520 with auth_id=785
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Double read of mmc_rx_crc_error in XGMAC is removed.
+This series updates the support for the Microsoft Surface 9 5G
+(Arcata), bringing it more up-to-date and aligned with the other
+sc8280xp models such as the Lenovo ThinkPad X13s.
 
-Signed-off-by: Abid Ali <dev.taqnialabs@gmail.com>
+As highlights, it finally enables the built-in screen, it fixes
+Display Port alt mode on the top left-side USB-C port, it enables
+the volume up/down keys and the lid switch.
+
+Signed-off-by: Jérôme de Bretagne <jerome.debretagne@gmail.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/mmc_core.c | 2 --
- 1 file changed, 2 deletions(-)
+Jérôme de Bretagne (11):
+      drm/panel: edp: Add LG LP129WT232166 panel
+      arm64: dts: qcom: sc8280xp-arcata: Enable backlight
+      arm64: dts: qcom: sc8280xp-arcata: Enable the eDP display
+      arm64: dts: qcom: sc8280xp-arcata: add USB-C orientation GPIOs
+      arm64: dts: qcom: sc8280xp-arcata: Fix top USB-C DP alt mode
+      arm64: dts: qcom: sc8280xp-arcata: Enable 4-lane DP support
+      arm64: dts: qcom: sc8280xp-arcata: Add volume up/down GPIO keys
+      arm64: dts: qcom: sc8280xp-arcata: Add lid switch
+      arm64: dts: qcom: sc8280xp-arcata: model the PMU of the on-board wcn6855
+      arm64: dts: qcom: sc8280xp-arcata: Switch to uefi rtc offset
+      arm64: dts: qcom: sc8280xp-arcata: Drop duplicate DMIC supplies
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/mmc_core.c b/drivers/net/ethernet/stmicro/stmmac/mmc_core.c
-index 1b3b114e7..d81581dfa 100644
---- a/drivers/net/ethernet/stmicro/stmmac/mmc_core.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/mmc_core.c
-@@ -479,8 +479,6 @@ static void dwxgmac_mmc_read(void __iomem *mmcaddr, struct stmmac_counters *mmc)
- 			     &mmc->mmc_rx_multicastframe_g);
- 	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_CRC_ERR,
- 			     &mmc->mmc_rx_crc_error);
--	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_CRC_ERR,
--			     &mmc->mmc_rx_crc_error);
- 	mmc->mmc_rx_run_error += readl(mmcaddr + MMC_XGMAC_RX_RUNT_ERR);
- 	mmc->mmc_rx_jabber_error += readl(mmcaddr + MMC_XGMAC_RX_JABBER_ERR);
- 	mmc->mmc_rx_undersize_g += readl(mmcaddr + MMC_XGMAC_RX_UNDER);
-
+ .../boot/dts/qcom/sc8280xp-microsoft-arcata.dts    | 301 ++++++++++++++++++---
+ drivers/gpu/drm/panel/panel-edp.c                  |   1 +
+ 2 files changed, 266 insertions(+), 36 deletions(-)
 ---
 base-commit: 028ef9c96e96197026887c0f092424679298aae8
-change-id: 20260520-xgmac-mmc_rx_crc-cleanup-afcea6faa8ab
+change-id: 20260520-surface-sp9-5g-for-next-7897cbb0f42c
 
 Best regards,
 -- 
-Abid Ali <dev.taqnialabs@gmail.com>
+Jérôme de Bretagne <jerome.debretagne@gmail.com>
 
