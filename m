@@ -1,11 +1,10 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Thu, 21 May 2026 15:52:53 +0800
-Subject: [PATCH v2 1/7] rust: module: add `THIS_MODULE` const to
- `ModuleMetadata` trait
+Date: Thu, 21 May 2026 15:52:54 +0800
+Subject: [PATCH v2 2/7] rust: macros: auto-insert ThisModule in #[vtable]
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260521-fix-fops-owner-v2-1-fd99079c5a04@linux.dev>
+Message-Id: <20260521-fix-fops-owner-v2-2-fd99079c5a04@linux.dev>
 References: <20260521-fix-fops-owner-v2-0-fd99079c5a04@linux.dev>
 In-Reply-To: <20260521-fix-fops-owner-v2-0-fd99079c5a04@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -29,102 +28,119 @@ Cc: rust-for-linux@vger.kernel.org, linux-modules@vger.kernel.org,
  kunit-dev@googlegroups.com, linux-block@vger.kernel.org, 
  Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779349975; l=3841;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779349975; l=4177;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=g5lNOWZdFZ078Eg8FihJThI93jDxzsjGBAigjw8fo38=;
- b=FhGtAlbF3396Z+dQAsyxXzU2I9Oz+YJMiNSCAigLuceECR4JjS9R0/Tvaps4sBC+ytD60pqQZ
- Arr+EzySJNWBLxRc55m2GilIMFF4U2MTiMxCo80BR4hrhjbfpnj+i/w
+ bh=o0NVwirES5UBqa+dDLOUFzSJEpbDhFbK8hdfhxeciEw=;
+ b=Q6DTbV7+PYfAMn/D2wleruFS9xF8ZeX0LkKJ4lQ3KJ9pAlD1ePSSYkJDIUEFG7J7bjgi4m6yG
+ SlPaIh4AX5MA9Gos3sDeR7pI9c3YzSVg0Y89M2pSvYmn9amiF6SQMDP
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a `THIS_MODULE` const to the `ModuleMetadata` trait so that
-modules can provide their `ThisModule` pointer usable in const
-contexts such as static file_operations.
-
-Move the `THIS_MODULE` static from the `module!` macro into the
-`ModuleMetadata` impl, and update `__init` to use
-`LocalModule::THIS_MODULE` instead.
+Auto-add `type ThisModule: ::kernel::ModuleMetadata;` as a required
+associated type on the trait side if not already defined, and
+auto-insert `type ThisModule = crate::LocalModule;` on the impl side
+if not explicitly provided, eliminating the need to manually declare
+and implement `ThisModule` in every vtable trait and impl.
 
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- rust/kernel/lib.rs    |  3 +++
- rust/macros/module.rs | 34 +++++++++++++++++-----------------
- 2 files changed, 20 insertions(+), 17 deletions(-)
+ rust/macros/lib.rs    |  6 ++++++
+ rust/macros/vtable.rs | 38 +++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 43 insertions(+), 1 deletion(-)
 
-diff --git a/rust/kernel/lib.rs b/rust/kernel/lib.rs
-index b72b2fbe046d6..f0cf0705d9697 100644
---- a/rust/kernel/lib.rs
-+++ b/rust/kernel/lib.rs
-@@ -184,6 +184,9 @@ fn init(module: &'static ThisModule) -> impl pin_init::PinInit<Self, error::Erro
- pub trait ModuleMetadata {
-     /// The name of the module as specified in the `module!` macro.
-     const NAME: &'static crate::str::CStr;
-+
-+    /// The module's `THIS_MODULE` pointer.
-+    const THIS_MODULE: ThisModule;
- }
+diff --git a/rust/macros/lib.rs b/rust/macros/lib.rs
+index 2cfd59e0f9e7c..d35e45ea745c0 100644
+--- a/rust/macros/lib.rs
++++ b/rust/macros/lib.rs
+@@ -176,6 +176,12 @@ pub fn module(input: TokenStream) -> TokenStream {
+ ///
+ /// This macro should not be used when all functions are required.
+ ///
++/// Additionally, this macro automatically handles the `ThisModule`
++/// associated type: on the trait side, `type ThisModule: ModuleMetadata;`
++/// is added as a required associated type if not already defined; on the
++/// impl side, `type ThisModule = LocalModule;` is automatically inserted
++/// if not explicitly defined.
++///
+ /// # Examples
+ ///
+ /// ```
+diff --git a/rust/macros/vtable.rs b/rust/macros/vtable.rs
+index c6510b0c4ea1d..d3d0e9cbd7172 100644
+--- a/rust/macros/vtable.rs
++++ b/rust/macros/vtable.rs
+@@ -23,6 +23,7 @@
  
- /// Equivalent to `THIS_MODULE` in the C API.
-diff --git a/rust/macros/module.rs b/rust/macros/module.rs
-index 06c18e2075083..b6d7b3299fbf9 100644
---- a/rust/macros/module.rs
-+++ b/rust/macros/module.rs
-@@ -497,28 +497,28 @@ pub(crate) fn module(info: ModuleInfo) -> Result<TokenStream> {
-         /// Used by the printing macros, e.g. [`info!`].
-         const __LOG_PREFIX: &[u8] = #name_cstr.to_bytes_with_nul();
+ fn handle_trait(mut item: ItemTrait) -> Result<ItemTrait> {
+     let mut gen_items = Vec::new();
++    let mut has_this_module = false;
  
--        // SAFETY: `__this_module` is constructed by the kernel at load time and will not be
--        // freed until the module is unloaded.
--        #[cfg(MODULE)]
--        static THIS_MODULE: ::kernel::ThisModule = unsafe {
--            extern "C" {
--                static __this_module: ::kernel::types::Opaque<::kernel::bindings::module>;
--            };
--
--            ::kernel::ThisModule::from_ptr(__this_module.get())
--        };
--
--        #[cfg(not(MODULE))]
--        static THIS_MODULE: ::kernel::ThisModule = unsafe {
--            ::kernel::ThisModule::from_ptr(::core::ptr::null_mut())
--        };
--
-         /// The `LocalModule` type is the type of the module created by `module!`,
-         /// `module_pci_driver!`, `module_platform_driver!`, etc.
-         type LocalModule = #type_;
+     gen_items.push(parse_quote! {
+          /// A marker to prevent implementors from forgetting to use [`#[vtable]`](vtable)
+@@ -30,6 +31,28 @@ fn handle_trait(mut item: ItemTrait) -> Result<ItemTrait> {
+          const USE_VTABLE_ATTR: ();
+     });
  
-         impl ::kernel::ModuleMetadata for #type_ {
-             const NAME: &'static ::kernel::str::CStr = #name_cstr;
++    // Detect existing type ThisModule so we don't add a duplicate.
++    for i in &item.items {
++        if let TraitItem::Type(type_item) = i {
++            if type_item.ident == "ThisModule" {
++                has_this_module = true;
++            }
++        }
++    }
 +
-+            #[cfg(MODULE)]
-+            const THIS_MODULE: ::kernel::ThisModule = {
-+                extern "C" {
-+                    static __this_module: ::kernel::types::Opaque<::kernel::bindings::module>;
-+                }
++    // Add `type ThisModule: ModuleMetadata` as a required associated type if
++    // the trait does not already define it. No default is used because
++    // `associated_type_defaults` is unstable (issue #29661).
++    if !has_this_module {
++        gen_items.push(parse_quote! {
++            /// The module implementing this vtable trait.
++            ///
++            /// Automatically set to `crate::LocalModule` by the `#[vtable]`
++            /// impl macro.
++            type ThisModule: ::kernel::ModuleMetadata;
++        });
++    }
 +
-+                // SAFETY: `__this_module` is constructed by the kernel at load time
-+                // and lives until the module is unloaded.
-+                unsafe { ::kernel::ThisModule::from_ptr(__this_module.get()) }
-+            };
-+
-+            #[cfg(not(MODULE))]
-+            const THIS_MODULE: ::kernel::ThisModule = unsafe {
-+                ::kernel::ThisModule::from_ptr(::core::ptr::null_mut())
-+            };
+     for item in &item.items {
+         if let TraitItem::Fn(fn_item) = item {
+             let name = &fn_item.sig.ident;
+@@ -58,18 +81,31 @@ fn handle_trait(mut item: ItemTrait) -> Result<ItemTrait> {
+ fn handle_impl(mut item: ItemImpl) -> Result<ItemImpl> {
+     let mut gen_items = Vec::new();
+     let mut defined_consts = HashSet::new();
++    let mut defined_types = HashSet::new();
+ 
+-    // Iterate over all user-defined constants to gather any possible explicit overrides.
++    // Iterate over all user-defined constants and types to gather any possible explicit overrides.
+     for item in &item.items {
+         if let ImplItem::Const(const_item) = item {
+             defined_consts.insert(const_item.ident.clone());
          }
++        if let ImplItem::Type(type_item) = item {
++            defined_types.insert(type_item.ident.clone());
++        }
+     }
  
-         // Double nested modules, since then nobody can access the public items inside.
-@@ -616,7 +616,7 @@ pub extern "C" fn #ident_exit() {
-                 /// This function must only be called once.
-                 unsafe fn __init() -> ::kernel::ffi::c_int {
-                     let initer = <super::super::LocalModule as ::kernel::InPlaceModule>::init(
--                        &super::super::THIS_MODULE
-+                        &<super::super::LocalModule as ::kernel::ModuleMetadata>::THIS_MODULE
-                     );
-                     // SAFETY: No data race, since `__MOD` can only be accessed by this module
-                     // and there only `__init` and `__exit` access it. These functions are only
+     gen_items.push(parse_quote! {
+         const USE_VTABLE_ATTR: () = ();
+     });
+ 
++    // Auto-insert `type ThisModule = crate::LocalModule` if not explicitly defined.
++    // `crate::LocalModule` resolves to the real module type (via `module!`) or a
++    // dummy fallback in non-module contexts (e.g., doctests).
++    if !defined_types.contains(&parse_quote!(ThisModule)) {
++        gen_items.push(parse_quote! {
++            type ThisModule = crate::LocalModule;
++        });
++    }
++
+     for item in &item.items {
+         if let ImplItem::Fn(fn_item) = item {
+             let name = &fn_item.sig.ident;
 
 -- 
 2.43.0
