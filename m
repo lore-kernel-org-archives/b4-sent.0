@@ -1,281 +1,89 @@
-From: Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
-Date: Thu, 21 May 2026 14:24:23 +0530
-Subject: [PATCH v7 3/3] rust: workqueue: add KUnit and sample stress tests
+From: Joshua Crofts <joshua.crofts1@gmail.com>
+Subject: [PATCH v3 0/7] iio: light: opt3001: driver cleanup
+Date: Thu, 21 May 2026 11:55:37 +0200
+Message-Id: <20260521-opt3001-cleanup-v3-0-820169dec8c3@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260521-workqueue-v5-sent-v7-3-fb4b4dde35ec@multicorewareinc.com>
-References: <20260521-workqueue-v5-sent-v7-0-fb4b4dde35ec@multicorewareinc.com>
-In-Reply-To: <20260521-workqueue-v5-sent-v7-0-fb4b4dde35ec@multicorewareinc.com>
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779353663; l=8550;
- i=aakash.bollineni@multicorewareinc.com; s=20260402;
- h=from:subject:message-id; bh=rft5BGStO8+C5FxdozwOciq5arZiJ9dndtfJWrmdFbU=;
- b=d41lYReC2q0fHxByOtlQCLx6EeYv9uDpvxZ8/Si+gtCe2pr359OQSLDmjsupwcOT8N9Ozso6K
- t0x066NzsPyDrBrsilgyQj7q6KjINGYbXtFSQd0DjprqNeWhWoGVB/z
-X-Developer-Key: i=aakash.bollineni@multicorewareinc.com; a=ed25519;
- pk=r3Gonl+2k+8RozN9U/XwfICQdnRlAcLeeAfsExmurdE=
-X-Endpoint-Received: by B4 Relay for aakash.bollineni@multicorewareinc.com/20260402 with auth_id=711
+X-B4-Tracking: v=1; b=H4sIAJnWDmoC/3WNwQqDMBAFf0X23JRsojV66n+UHkKMuqBGEhtax
+ H9v9CSUHufBzFshWE82QJ2t4G2kQG5KIC8ZmF5PnWXUJAbBxY0XiMzNi+QcmRmsnl4zM5gjNhZ
+ zWQlI1uxtS++j+Hgm7ikszn+Og4j7+r8VkXHWlqqsGiPzojD3btQ0XI0bYW9FcfbFry+Srzgq0
+ 0qtNNdnf9u2L/2iPifuAAAA
+X-Change-ID: 20260511-opt3001-cleanup-c1411de14392
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>, Alexander Koch <mail@alexanderkoch.net>, 
+ Michael Hornung <mhornung.linux@gmail.com>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Joshua Crofts <joshua.crofts1@gmail.com>, Sashiko <sashiko-bot@kernel.org>, 
+ Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
+ Andy Shevchenko <andriy.shevchenko@intel.com>, 
+ Maxwell Doose <m32285159@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779357341; l=2320;
+ i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
+ bh=+qVy/VEiV6aWMIQfz0KhAEFfds0UKkgkJir8yJUDAmc=;
+ b=dYMNm1aBsbzIl2yV7fBNsQ5XFgkQhmMUyDbril7YGcSwwdCoWbVMpr90SSR3eKQy0ITRpqiZL
+ DkUrZz+DxK6Cqtv4Q//XiUTi40l0MRtRgmnc8ez7tjHTGBv6onR7khA
+X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
+ pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
+X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-To ensure the safety and correctness of the improved workqueue API,
-this patch adds comprehensive testing infrastructure:
-1. KUnit Tests: Adds an internal 'rust_kernel_workqueue' test suite
-   to rust/kernel/workqueue.rs. These tests verify basic and
-   synchronous cancellation, refcount stability, and concurrency
-   safety for both standard and delayed work.
-2. Sample Module: Adds samples/rust/rust_workqueue_test.rs as a
-   standalone module that performs a 1000-iteration stress test
-   designed to verify race-free pointer handover during concurrent
-   enqueue/cancel operations.
-The tests use distinct types for standard and delayed work items to
-ensure clear trait dispatch and prevent field offset conflicts.
+This series deals with cleaning up the TI OPT3001 sensor driver,
+moving it to more modern kernel practices and improving the code style.
 
-Signed-off-by: Aakash Bollineni <aakash.bollineni@multicorewareinc.com>
+While reviewing, Jonathan Cameron (and eventually Sashiko) found a race
+condition where userspace could start interacting with the device
+before the hardware IRQ was set up.
+
+Changes include:
+- moving the driver to use devm_* functions
+- IWYU cleanups
+- removal of unnecessary macros and comments
+- using dev_err_probe() in probe and probe path functions
+- checkpatch.pl warning cleanups
+- fixing a race condition found in opt3001_probe() function
+
+Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
 ---
- samples/rust/Kconfig                |  11 +++
- samples/rust/Makefile               |   2 +
- samples/rust/rust_workqueue_test.rs | 191 ++++++++++++++++++++++++++++++++++++
- 3 files changed, 204 insertions(+)
+Changes in v3:
+- PATCH 1: fix build error
+- PATCH 2: remove struct device member from struct opt3001
+- PATCH 6: edit return statements
+- Pull additional trailers from previous version's reviews
+- Edit commit messages
+- Link to v2: https://lore.kernel.org/r/20260512-opt3001-cleanup-v2-0-8018cf3a8a0a@gmail.com
 
-diff --git a/samples/rust/Kconfig b/samples/rust/Kconfig
-index c49ab9106345..03288a7ffe96 100644
---- a/samples/rust/Kconfig
-+++ b/samples/rust/Kconfig
-@@ -172,6 +172,17 @@ config SAMPLE_RUST_SOC
- 
- 	  If unsure, say N.
- 
-+config SAMPLE_RUST_WORKQUEUE
-+	tristate "Workqueue"
-+	depends on KUNIT
-+	help
-+	  This option builds the Rust workqueue robust stress test sample.
-+
-+	  To compile this as a module, choose M here:
-+	  the module will be called rust_workqueue_test.
-+
-+	  If unsure, say N.
-+
- config SAMPLE_RUST_HOSTPROGS
- 	bool "Host programs"
- 	help
-diff --git a/samples/rust/Makefile b/samples/rust/Makefile
-index 6c0aaa58cccc..261aa67b6502 100644
---- a/samples/rust/Makefile
-+++ b/samples/rust/Makefile
-@@ -20,3 +20,5 @@ obj-$(CONFIG_SAMPLE_RUST_SOC)			+= rust_soc.o
- rust_print-y := rust_print_main.o rust_print_events.o
- 
- subdir-$(CONFIG_SAMPLE_RUST_HOSTPROGS)		+= hostprogs
-+
-+obj-$(CONFIG_SAMPLE_RUST_WORKQUEUE)		+= rust_workqueue_test.o
-diff --git a/samples/rust/rust_workqueue_test.rs b/samples/rust/rust_workqueue_test.rs
-new file mode 100644
-index 000000000000..9b28065f23a8
---- /dev/null
-+++ b/samples/rust/rust_workqueue_test.rs
-@@ -0,0 +1,191 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+//! Robust stress test for Rust workqueue API.
-+
-+use kernel::prelude::*;
-+use kernel::sync::Arc;
-+use kernel::time::msecs_to_jiffies;
-+use kernel::workqueue::{self, new_work, Work, WorkItem};
-+
-+#[pin_data]
-+struct TestWorkItem {
-+    #[pin]
-+    work: Work<TestWorkItem>,
-+    value: i32,
-+}
-+
-+kernel::impl_has_work! {
-+    impl HasWork<Self> for TestWorkItem { self.work }
-+}
-+
-+impl WorkItem for TestWorkItem {
-+    type Pointer = Arc<TestWorkItem>;
-+
-+    fn run(this: Arc<TestWorkItem>) {
-+        pr_info!(
-+            "Rust workqueue test: Work item running (value: {})\n",
-+            this.value
-+        );
-+    }
-+}
-+
-+#[pin_data]
-+struct TestDelayedWorkItem {
-+    #[pin]
-+    delayed_work: workqueue::DelayedWork<TestDelayedWorkItem>,
-+    value: i32,
-+}
-+
-+kernel::impl_has_delayed_work! {
-+    impl HasDelayedWork<Self> for TestDelayedWorkItem { self.delayed_work }
-+}
-+
-+impl WorkItem for TestDelayedWorkItem {
-+    type Pointer = Arc<TestDelayedWorkItem>;
-+
-+    fn run(this: Arc<TestDelayedWorkItem>) {
-+        pr_info!(
-+            "Rust workqueue test: Delayed work item running (value: {})\n",
-+            this.value
-+        );
-+    }
-+}
-+
-+struct RustWorkqueueTest;
-+
-+impl kernel::Module for RustWorkqueueTest {
-+    fn init(_module: &'static ThisModule) -> Result<Self> {
-+        pr_info!("Rust workqueue test: starting robust verification (v3)\n");
-+
-+        // 1. Basic Lifecycle with Refcount Validation (Standard Work)
-+        {
-+            let work_item = Arc::pin_init(
-+                pin_init!(TestWorkItem {
-+                    work <- new_work!("TestWorkItem::work"),
-+                    value: 42,
-+                }),
-+                GFP_KERNEL,
-+            )?;
-+
-+            let initial_count = workqueue::arc_count(&work_item);
-+            pr_info!("Initial Arc strong count: {}\n", initial_count);
-+
-+            // Enqueue
-+            let enqueued_item = work_item.clone();
-+
-+            if let Err(returned_item) = workqueue::system().enqueue(enqueued_item) {
-+                pr_warn!("Work already pending, unexpected!\n");
-+                let _ = returned_item;
-+            } else {
-+                pr_info!(
-+                    "Work enqueued successfully. Strong count: {}\n",
-+                    workqueue::arc_count(&work_item)
-+                );
-+            }
-+
-+            // Cancel immediately
-+            if let Some(reclaimed) = work_item.work.cancel() {
-+                let count_after_cancel = workqueue::arc_count(&work_item);
-+                pr_info!(
-+                    "Success: Work cancelled and Arc reclaimed. Strong count: {}\n",
-+                    count_after_cancel
-+                );
-+
-+                if count_after_cancel != initial_count + 1 {
-+                    pr_err!(
-+                        "ERROR: Refcount mismatch after cancel! Expected {}, got {}\n",
-+                        initial_count + 1,
-+                        count_after_cancel
-+                    );
-+                    return Err(ENXIO);
-+                }
-+                drop(reclaimed);
-+                if workqueue::arc_count(&work_item) != initial_count {
-+                    pr_err!("ERROR: Refcount mismatch after drop!\n");
-+                    return Err(ENXIO);
-+                }
-+            } else {
-+                pr_info!("Work already running or finished.\n");
-+            }
-+        }
-+
-+        // 2. Stress Testing: Enqueue/Cancel Sync Loop
-+        {
-+            pr_info!("Starting stress test (1000 iterations)...\n");
-+            let work_item = Arc::pin_init(
-+                pin_init!(TestWorkItem {
-+                    work <- new_work!("TestWorkItem::work"),
-+                    value: 99,
-+                }),
-+                GFP_KERNEL,
-+            )?;
-+
-+            for i in 0..1000 {
-+                let _ = workqueue::system().enqueue(work_item.clone());
-+                let _ = work_item.work.cancel_sync();
-+                if i % 250 == 0 {
-+                    pr_info!("Stress test progress: {}/1000\n", i);
-+                }
-+            }
-+
-+            if workqueue::arc_count(&work_item) != 1 {
-+                pr_err!("ERROR: Refcount leak detected after stress test!\n");
-+                return Err(ENXIO);
-+            } else {
-+                pr_info!("Stress test completed successfully.\n");
-+            }
-+        }
-+
-+        // 3. Delayed Work Cancellation Test
-+        {
-+            let delayed_item = Arc::pin_init(
-+                pin_init!(TestDelayedWorkItem {
-+                    delayed_work <- workqueue::new_delayed_work!("TestDWorkItem::delayed_work"),
-+                    value: 7,
-+                }),
-+                GFP_KERNEL,
-+            )?;
-+
-+            let initial_count = workqueue::arc_count(&delayed_item);
-+
-+            // Schedule with a long delay (5 seconds)
-+            if let Err(returned) =
-+                workqueue::system().enqueue_delayed(delayed_item.clone(), msecs_to_jiffies(5000))
-+            {
-+                drop(returned);
-+            } else {
-+                pr_info!(
-+                    "Delayed work enqueued. count: {}\n",
-+                    workqueue::arc_count(&delayed_item)
-+                );
-+            }
-+
-+            if let Some(reclaimed) = delayed_item.delayed_work.cancel() {
-+                pr_info!("Success: Delayed work reclaimed. No leak.\n");
-+                drop(reclaimed);
-+            }
-+
-+            if workqueue::arc_count(&delayed_item) != initial_count {
-+                pr_err!("ERROR: Refcount leak after delayed cancel!\n");
-+                return Err(ENXIO);
-+            }
-+        }
-+
-+        pr_info!("Rust workqueue test: all robust checks passed\n");
-+        Ok(RustWorkqueueTest)
-+    }
-+}
-+
-+impl Drop for RustWorkqueueTest {
-+    fn drop(&mut self) {
-+        pr_info!("Rust workqueue test: exit\n");
-+    }
-+}
-+
-+module! {
-+    type: RustWorkqueueTest,
-+    name: "rust_workqueue_test",
-+    authors: ["Aakash Bollineni"],
-+    description: "Robust stress test for Rust workqueue API",
-+    license: "GPL",
-+}
+Changes in v2:
+- PATCH 1: added patch that fixes race condition
+- PATCH 3: remove wrong usage of GENMASK()
+- PATCH 4: add patch that moves driver to use local structs
+- PATCH 5: add patch that ensures correct parenthesis alignment
+- PATCH 6: change int to unsigned int
+- PATCH 7: moved opt3001_read_id() function to use dev_err_probe()
+- PATCH 9: removed unnecessary dev_err_probe() calls, reordering
+- PATCH 10: added patch that adds a comment to mutex declaration
+- Link to v1: https://lore.kernel.org/r/20260511-opt3001-cleanup-v1-0-f7879dc3455c@gmail.com
 
+---
+Joshua Crofts (7):
+      iio: light: opt3001: move device registration to end of probe()
+      iio: light: opt3001: use local struct device and i2c_client variables
+      iio: light: opt3001: ensure correct parenthesis alignment
+      iio: light: opt3001: localize for loop iterator
+      iio: light: opt3001: prefer dev_err_probe()
+      iio: light: opt3001: move driver to guard(mutex)() use
+      iio: light: opt3001: add comment to mutex
+
+ drivers/iio/light/opt3001.c | 378 +++++++++++++++++++++-----------------------
+ 1 file changed, 179 insertions(+), 199 deletions(-)
+---
+base-commit: 8678fb54958893818ddeccd05fea560a4e1fc759
+change-id: 20260511-opt3001-cleanup-c1411de14392
+
+Best regards,
 -- 
-2.43.0
+Joshua Crofts <joshua.crofts1@gmail.com>
 
