@@ -1,11 +1,11 @@
 From: Dumitru Ceclan <dumitru.ceclan@analog.com>
-Date: Thu, 21 May 2026 15:44:15 +0300
-Subject: [PATCH v12 09/22] dt-bindings: media: i2c: max96712: add support
- for MAX96724F/R
+Date: Thu, 21 May 2026 15:44:16 +0300
+Subject: [PATCH v12 10/22] dt-bindings: media: i2c: max96712: add
+ control-channel-port property
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260521-gmsl2-3_serdes-v12-9-b26d92931196@analog.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260521-gmsl2-3_serdes-v12-10-b26d92931196@analog.com>
 References: <20260521-gmsl2-3_serdes-v12-0-b26d92931196@analog.com>
 In-Reply-To: <20260521-gmsl2-3_serdes-v12-0-b26d92931196@analog.com>
 To: Tomi Valkeinen <tomi.valkeinen+renesas@ideasonboard.com>, 
@@ -20,52 +20,48 @@ Cc: mitrutzceclan@gmail.com, linux-media@vger.kernel.org,
  linux-staging@lists.linux.dev, linux-gpio@vger.kernel.org, 
  =?utf-8?q?Niklas_S=C3=B6derlund?= <niklas.soderlund+renesas@ragnatech.se>, 
  Martin Hecht <Martin.Hecht@avnet.eu>, 
- Cosmin Tanislav <demonsingur@gmail.com>
+ Vivekananda Dayananda <vivekana@amd.com>, 
+ Dumitru Ceclan <dumitru.ceclan@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779367457; l=1289;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779367457; l=1192;
  i=dumitru.ceclan@analog.com; s=20240313; h=from:subject:message-id;
- bh=ZSTakNbBz4Qus1NiPPbe76vFnVEQ3NLtF7fl+Vgxvf8=;
- b=65Y2bwVcYsk/XbzbG6NETHs/hT2yrZaOyPlOwFUQzh9Jkf0lWj+AtZpQKYyPMDe2Ivs/GSxVp
- OhilUJ/gbqpB9SNYZi/RpiyCV+uF45aSdiPKh47oFdLHXPu7cfDAV50
+ bh=WKlYD0eiVlHNx0Fb7+p6Th7PFjpFBfxW7UWVkEB+CEM=;
+ b=MqSTYJY0KmbFDYttBHiDm/N8xv4B8LQa721Z2xTuyDDxXMSgS3DPbOj1BtbhAeIcp+NweRIoK
+ Ny9Ni60AklsAqJ3OPNdBawFclJusZlOVVAxPLSyHsTWJsD1eEZL8erh
 X-Developer-Key: i=dumitru.ceclan@analog.com; a=ed25519;
  pk=HdqMlVyrcazwoiai7oN6ghU+Bj1pusGUFRl30jhS7Bo=
 X-Endpoint-Received: by B4 Relay for dumitru.ceclan@analog.com/20240313 with auth_id=140
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Cosmin Tanislav <demonsingur@gmail.com>
+Add maxim,control-channel-port property to allow platforms choose which
+control-channel port MAX96724 exposes to the upstream I2C host.
 
-MAX96724F/MAX96724R are a lower capability variant of the MAX96724 which
-only support a fixed rate of 3Gbps in the forward direction.
-
-Signed-off-by: Cosmin Tanislav <demonsingur@gmail.com>
+Suggested-by: Vivekananda Dayananda <vivekana@amd.com>
+Signed-off-by: Dumitru Ceclan <dumitru.ceclan@analog.com>
 Acked-by: Rob Herring (Arm) <robh@kernel.org>
-Reviewed-by: Niklas Söderlund <niklas.soderlund+renesas@ragnatech.se>
 ---
- Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml | 5 +++++
- 1 file changed, 5 insertions(+)
+ Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
 diff --git a/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml b/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
-index d2dd72f2e924..161d40acdd28 100644
+index 161d40acdd28..538b639d4f54 100644
 --- a/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
 +++ b/Documentation/devicetree/bindings/media/i2c/maxim,max96712.yaml
-@@ -23,12 +23,17 @@ description: |
-   MAX96712 can be paired with first-generation 3.12Gbps or 1.5Gbps GMSL1
-   serializers or operate up to 3.12Gbps with GMSL2 serializers in GMSL1 mode.
+@@ -41,6 +41,14 @@ properties:
  
-+  MAX96724F and MAX96724R only support a fixed rate of 3Gbps in the forward
-+  direction.
+   enable-gpios: true
+ 
++  maxim,control-channel-port:
++    description:
++      Selects which deserializer control-channel port is connected to the
++      upstream I2C segment when the device resets. 0 selects port 0, 1 selects
++      port 1. Defaults to 0 when omitted.
++    $ref: /schemas/types.yaml#/definitions/uint32
++    enum: [0, 1]
 +
- properties:
-   compatible:
-     items:
-       - enum:
-           - maxim,max96712
-           - maxim,max96724
-+          - maxim,max96724f
-+          - maxim,max96724r
+   i2c-alias-pool:
+     maxItems: 4
  
-   reg:
-     description: I2C device address
 
 -- 
 2.53.0
