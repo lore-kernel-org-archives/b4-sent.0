@@ -1,72 +1,138 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Thu, 21 May 2026 11:55:58 +0400
-Subject: [PATCH v2] arm64: dts: qcom: ipq5018: Correct CMN PLL reference
- clock rate
+From: Pawel Laszczak <pawell@cadence.com>
+Subject: [PATCH v9 0/2] usb: cdns3: support configurations without DRD
+ block
+Date: Thu, 21 May 2026 10:16:22 +0200
+Message-Id: <20260521-no_drd_config_v9-v9-0-2512cef10104@cadence.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260521-ipq5018-cmn-pll-rate-fix-v2-1-04b28a92e0f2@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAI26DmoC/42NQQ6CMBREr0K69pv+Nkhx5T0Mi1I/UgWKbSEaw
- t0teAGXbzIzb2GBvKXAztnCPM02WDckEIeMmVYPdwJ7S8wEFyeeYwl2fOUcFZh+gLHrwOtI0Ng
- 3SKW0LMq6IeQszUdPKd6vr9WPw1Q/yMTtb2u0NkTnP7t7xq33h2ZGQJBGSY2FNKJoLm6KnXPPo
- 3E9q9Z1/QLBrr0s1AAAAA==
-X-Change-ID: 20260519-ipq5018-cmn-pll-rate-fix-388a379bfe10
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAFa/DmoC/yXMSwqAIBRA0a3EGyfYF2wrEeLnVa+BhlYE0d6zG
+ p7BvRdEDIQRuuyCgAdF8i5B5BmYWbkJGdlkKHnZ8qYQzHlpg5XGu5EmeQimRdFopeoKNYeUrQF
+ HOr9lP/yOu17QbO8H7vsBGdalR3QAAAA=
+X-Change-ID: 20260519-no_drd_config_v9-b915baa43eb0
+To: Peter Chen <peter.chen@kernel.org>, Roger Quadros <rogerq@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Luo Jie <jie.luo@oss.qualcomm.com>, 
- George Moussalem <george.moussalem@outlook.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779350162; l=1492;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=DLb/tXUr0dUrKVVXoLsmCJhHr76Y7PIwpW35qV9SqTo=;
- b=B8YbIqqllT59DBqqIioopKJlmiOy6l1WtFqFuFnd01++rRQ7meOpv1u/QHS6GaikX24qwJY3f
- 3ie6CK8U/PaDt/YSbSvLHNEkiiZBXZjsAy3HSlbaWwG4XuHu4hEk9RV
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+Cc: linux-usb@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Pawel Laszczak <pawell@cadence.com>, 
+ Bjorn Helgaas <bhelgaas@google.com>, kernel test robot <lkp@intel.com>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779351391; l=4730;
+ i=pawell@cadence.com; h=from:subject:message-id;
+ bh=30DopE8A0+MuAJawRPhY3T0K2+zbu52aiZ71gD+Krpc=;
+ b=xppJ9QL6VhG7iLIKEfM5jdYn/SXDJLlCR+xnSokRv1ppemfH8hJTXv/HlHeVvpu6N4jcxq3E4
+ xBu2K1/+hiDCOUMPgb7vMmNPgcOZeDVfICkB7OEKOvnf7492CnfROg1
+X-Developer-Key: i=pawell@cadence.com; a=ed25519;
+ pk=EUPBvLO9CDg7j6defeDl2iqi+z5Ivqu4Z46aiqe7dYc=
+X-Endpoint-Received: by B4 Relay for pawell@cadence.com/default with auth_id=707
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The correct CMN PLL reference clock rate for IPQ5018 is 4.8 GHz.
+This series adds support for Cadence USBSSP controllers in hardware
+layouts where the Dual-Role Device (DRD) register block is either
+missing or inaccessible.
 
-The CMN PLL driver did not account for the ref clock divider which is 2
-for IPQ5018. Therefore, the computed rate was twice the actual output.
+In such configurations, the controller is hardwired to a single role
+(either host or device) and the driver must skip all OTG/DRD register
+accesses to avoid bus errors or incorrect role detection.
 
-With the driver now accounting for the CMN PLL reference clock
-divider (commit: 88c543fff756), set the correct reference clock rate.
+The solution introduces a new 'cdns,cdnsp' compatible string
+that can be passed via DT or software nodes.
+When set, the driver:
+1. Skips DRD register mapping and IRQ requests.
+2. Uses a different BAR indexing logic for PCI-based configurations
+   (32-bit addressing layout).
+3. Hardwires the role based on 'dr_mode'.
 
-Fixes: c006b249c544 ("arm64: dts: ipq5018: Add CMN PLL node")
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Signed-off-by: Pawel Laszczak <pawell@cadence.com>
 ---
-Changes in v2:
-- Removed line break in commit message between Fixes and SOB tags
-- Link to v1: https://patch.msgid.link/20260519-ipq5018-cmn-pll-rate-fix-v1-1-3c83a173c27f@outlook.com
+Note: This series is based on current linux-next. I am aware of Peter
+Chen's recent refactoring series ("usb: cdns3: plat: Expose platform
+core driver as library"). Although there is a minor conflict in
+cdns3-plat.c, Peter has already provided an Acked-by for this version.
+I am happy to provide a rebased v10 as soon as Peter's changes land in
+linux-next if required.
 ---
- arch/arm64/boot/dts/qcom/ipq5018.dtsi | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+v9:
+- Dropped the "cdns,cdnsp-no-drd" string to avoid generic property-like 
+  naming as requested by Conor.
+- Introduced the clean generic fallback "cdns,cdnsp"
+- Updated the patch description and commit message to reflect the new naming.
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-index 6f8004a22a1f..f6cf2cca44eb 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-@@ -256,7 +256,7 @@ cmn_pll: clock-controller@9b000 {
- 				      "sys";
- 			#clock-cells = <1>;
- 			assigned-clocks = <&cmn_pll IPQ5018_CMN_PLL_CLK>;
--			assigned-clock-rates-u64 = /bits/ 64 <9600000000>;
-+			assigned-clock-rates-u64 = /bits/ 64 <4800000000>;
- 		};
- 
- 		qfprom: qfprom@a0000 {
+v8:
+- Update commit message to reflect schema changes.
+- Removed 'cdns,no-drd' boolean property as per Rob Herring's suggestion.
+- Introduced a new compatible string 'cdns,cdnsp-no-drd' for controller
+  variants that lack the DRD/OTG register block.
+- Use 'cdns,cdnsp-no-drd' compatible string to trigger no-DRD logic.
+- Update PCI glue layer to inject the new compatible string.
 
+v7:
+- Rename 'no_drd' to 'cdns,no-drd' (added vendor prefix).
+- Update commit message to reflect property renaming and schema changes.
+- Simplify 'reg-names' using a single enum for items.
+- Revert 'interrupt-names' to a list of constants for strict ordering.
+- Move 'reg' item descriptions to if/else blocks for better accuracy.
+- Clean up 'if' logic (remove redundant 'true' check and 'dr_mode'
+  requirement).
+- Add explicit 'items' list for 'interrupt-names' in the 'else' block.
+- Fix "uninitialized variable" warning in cdns_drd_host_on() by
+  initializing 'ret' to 0.
+
+v6:
+- Fixed validation error for 'interrupt-names' by correcting
+  the items definition.
+- Adjusted 'minItems'/'maxItems' to properly support the optional
+ 'wakeup' interrupt.
+- Fixed 'too long' schema error in examples.
+
+v5:
+- Implemented strict conditional validation using if-then-else logic.
+- Enforced 2 register/interrupt items and required 'dr_mode'
+  (host or peripheral) when 'no_drd' is present.
+- Enforced the standard 3 register/interrupt items (otg, host, dev)
+  when 'no_drd' is absent to ensure backward compatibility.
+- Updated 'reg-names' and 'interrupt-names' to use enums in the main
+  properties section to support flexible resource ordering during
+  validation.
+
+v4:
+  - Added DT binding documentation for the 'no_drd' property.
+  - Relaxed 'reg' and 'interrupts' requirements in the DT schema (minItems 2)
+    to allow configurations where the OTG/DRD register block is missing.
+  - Moved PCI_DEVICE_ID_CDNS_UDC_USBSSP from pci_ids.h to cdnsp-pci.c
+    to keep the global PCI ID list clean.
+
+v3:
+  - Improved descriptions and comments for better clarity.
+  - Introduced the 'no_drd' property to indicate missing DRD register block.
+  - Added support for fixed host-only and device-only configurations.
+  - Ensured cdns_otg_disable_irq is called only when no_drd is false.
+  - Updated cdns_drd_gadget_on/off to ensure PHY mode is correctly
+    handled even if DRD is disabled.
+
+v2:
+  - Changed otg_irq to be optional.
+  - Added cdns->no_drd check in cdns_power_is_lost.
+  - Added cdns->no_drd check in cdns_get_id.
+
+---
+Pawel Laszczak (2):
+      dt-bindings: usb: cdns3: Add cdns,cdnsp compatible string
+      usb: cdnsp: Add support for device-only configuration
+
+ .../devicetree/bindings/usb/cdns,usb3.yaml         | 63 ++++++++++++++++++----
+ drivers/usb/cdns3/cdns3-plat.c                     | 30 +++++++----
+ drivers/usb/cdns3/cdnsp-pci.c                      | 48 +++++++++++++----
+ drivers/usb/cdns3/core.c                           |  3 +-
+ drivers/usb/cdns3/core.h                           |  4 ++
+ drivers/usb/cdns3/drd.c                            | 45 ++++++++++++++--
+ 6 files changed, 159 insertions(+), 34 deletions(-)
 ---
 base-commit: 80dd246accce631c328ea43294e53b2b2dd2aa32
-change-id: 20260519-ipq5018-cmn-pll-rate-fix-388a379bfe10
+change-id: 20260519-no_drd_config_v9-b915baa43eb0
 
 Best regards,
 --  
-George Moussalem <george.moussalem@outlook.com>
+Pawel Laszczak <pawell@cadence.com>
 
