@@ -1,70 +1,131 @@
-From: Abid Ali <dev.taqnialabs@gmail.com>
-Date: Thu, 21 May 2026 16:32:46 +0000
-Subject: [PATCH v2] net: stmmac: mmc: Remove duplicate mmc_rx crc
+From: Federico Amedeo Izzo <federico@izzo.pro>
+Date: Thu, 21 May 2026 20:39:30 +0200
+Subject: [PATCH] ufs: qcom: Add UFS host regulator support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260521-xgmac-mmc_rx_crc-cleanup-v2-1-7d9de09f5898@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAK0zD2oC/42NUQ6CMBBEr0L67RpaAoJf3sMQsq5b2IQCaZVgS
- O9u5QR+vsnMm10F9sJBXbNdeV4lyDwlMKdM0YBTzyDPxMrkpspLk8PWOyRwjjq/deQJaGSc3gu
- gJcbKItb4UGm+eLayHep7m3iQ8Jr953ha9S/9Q7pq0HDRRWFL09RlY2+pKeOZZqfaGOMX/Bkb+
- 8AAAAA=
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>
-Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Abid Ali <dev.taqnialabs@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779381166; l=1735;
- i=dev.taqnialabs@gmail.com; s=20260425; h=from:subject:message-id;
- bh=YT6MwxbT32LmsJ0Q4toXiSUGLZ0LUkCCQs3ZtA9Xc6A=;
- b=4nb99cKuWhzcka7MVU0baeVQGR1KS14hPy/Qj6o+FR+zkwGaooEwyN2rZln4L5Ctvpa4Fl4/0
- VoiHf/eHZF6CxH9tbvd1DO3g0ClGL8324bUtCG3NHSJgcWl2owhEIwL
-X-Developer-Key: i=dev.taqnialabs@gmail.com; a=ed25519;
- pk=4Syx51HH/MOySSUpi79M2ToLOdwt1yiNb338eKZBJNk=
-X-Endpoint-Received: by B4 Relay for dev.taqnialabs@gmail.com/20260425 with auth_id=752
+Message-Id: <20260521-dpu-add-dspp-gc-driver-v1-1-83372488cdcf@izzo.pro>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CQAxA0auQrm0yM4mIXIW4gLZgWeCkFWJCu
+ LujLN/i/x1cTMWhrXYw2dT1tRTESwX07JdJULkYUkh1uKaInFfsmZE9Z5wI2XQTw0B3oWYIY0w
+ 3KHE2GfXzH3eP074Os9D7d4Pj+AKKzVFXegAAAA==
+X-Change-ID: 20260521-dpu-add-dspp-gc-driver-0c9ec8b0f127
+To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
+ u-boot@lists.denx.de
+Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Bhupesh Sharma <bhupesh.linux@gmail.com>, 
+ Neha Malcom Francis <n-francis@ti.com>, 
+ Casey Connolly <casey.connolly@linaro.org>, Tom Rini <trini@konsulko.com>, 
+ Julien Stephan <jstephan@baylibre.com>, 
+ Marek Vasut <marek.vasut+renesas@mailbox.org>, 
+ Federico Amedeo Izzo <federico@izzo.pro>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779388783; l=3453;
+ i=federico@izzo.pro; s=20251017; h=from:subject:message-id;
+ bh=kImFQ15hiUAyNumZVACuN2HK3ivvLJIDhRhAaCelwwI=;
+ b=JHF21JXVprnUPrVb2djGiLTwC1pNU3JRCqM4KXHyKHcALuCY9MRAPi1+xTuOTR7bzOkQhaVm2
+ Tw3r0vAi11HC0gtKX/D7H7/C3xrOrJ7oQea8POREjiQDyG1db9Lrgb6
+X-Developer-Key: i=federico@izzo.pro; a=ed25519;
+ pk=XfmNfpH48k8jLbId5NKrp0yoKoFb/uLjr97qIxBImBw=
+X-Endpoint-Received: by B4 Relay for federico@izzo.pro/20251017 with auth_id=544
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-MMC_XGMAC_RX_CRC_ERR is clear-on-read, and just a single read would
-update the mmc_rx_crc_error counter.
+The qcom UFS driver works without touching the regulators on most platforms
+as ABL leaves them already configured and enabled.
+On some SC7280 phones with UFS 3.1 like nothing-spacewar, vcc regulator is
+not enabled by ABL, so we need to configure and enable it to use the UFS
+storage.
 
-[1] commit b6cdf09 ("net: stmmac: xgmac: Implement MMC counters").
-The duplicate read appears to have been unintentionally introduced in
-the intial MMC counter implementation. The databook does not mention
-MMC_XGMAC_RX_CRC_ERR needing the additional read.
+Tested on nothing-spacewar and motorola-dubai using Tauchgang U-Boot.
 
-Fixes: b6cdf09 ("net: stmmac: xgmac: Implement MMC counters")
-Signed-off-by: Abid Ali <dev.taqnialabs@gmail.com>
+Signed-off-by: Federico Amedeo Izzo <federico@izzo.pro>
 ---
-Changes in v2:
-- Updated why the redundant read is removed based on feedback.
-- Link to v1: https://lore.kernel.org/r/20260520-xgmac-mmc_rx_crc-cleanup-v1-1-7133f529859f@gmail.com
----
- drivers/net/ethernet/stmicro/stmmac/mmc_core.c | 2 --
- 1 file changed, 2 deletions(-)
+Add support to qcom-ufs driver for vcc-supply and vccq-supply
+regulators to enable UFS support on SC7280 devices with UFS3.1.
+SC7280 devices with UFS2.2 were already working.
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/mmc_core.c b/drivers/net/ethernet/stmicro/stmmac/mmc_core.c
-index 1b3b114e7..d81581dfa 100644
---- a/drivers/net/ethernet/stmicro/stmmac/mmc_core.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/mmc_core.c
-@@ -479,8 +479,6 @@ static void dwxgmac_mmc_read(void __iomem *mmcaddr, struct stmmac_counters *mmc)
- 			     &mmc->mmc_rx_multicastframe_g);
- 	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_CRC_ERR,
- 			     &mmc->mmc_rx_crc_error);
--	dwxgmac_read_mmc_reg(mmcaddr, MMC_XGMAC_RX_CRC_ERR,
--			     &mmc->mmc_rx_crc_error);
- 	mmc->mmc_rx_run_error += readl(mmcaddr + MMC_XGMAC_RX_RUNT_ERR);
- 	mmc->mmc_rx_jabber_error += readl(mmcaddr + MMC_XGMAC_RX_JABBER_ERR);
- 	mmc->mmc_rx_undersize_g += readl(mmcaddr + MMC_XGMAC_RX_UNDER);
+The root cause was ABL leaving vcc-supply regulator disabled on UFS3.1
+devices, and enabled on UFS2.2 devices that worked fine without
+regulator support.
+
+The tricky part was enabling the regulator in HPM mode (3), which required
+setting LPM mode (1) first, otherwise reg would stay in LPM mode.
+I discovered this by changing the regulator settings from U-Boot
+console. Enabling the regulator in LPM mode resets the phone.
+---
+ drivers/ufs/ufs-qcom.c | 22 +++++++++++++++++++++-
+ drivers/ufs/ufs-qcom.h |  3 +++
+ 2 files changed, 24 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/ufs/ufs-qcom.c b/drivers/ufs/ufs-qcom.c
+index dc40ee62daf..6c4599a6453 100644
+--- a/drivers/ufs/ufs-qcom.c
++++ b/drivers/ufs/ufs-qcom.c
+@@ -16,6 +16,7 @@
+ #include <generic-phy.h>
+ #include <asm/gpio.h>
+ #include <interconnect.h>
++#include <power/regulator.h>
+ 
+ #include <linux/bitops.h>
+ #include <linux/delay.h>
+@@ -557,10 +558,21 @@ static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_hba *hba, bool enable)
+ static int ufs_qcom_init(struct ufs_hba *hba)
+ {
+ 	struct ufs_qcom_priv *priv = dev_get_priv(hba->dev);
+-	int err;
++	int ret, err;
+ 
+ 	priv->hba = hba;
+ 
++	/* Set regulator to LPM mode first otherwise HPM does not get applied */
++	ret = regulator_set_mode(priv->vcc, 1);
++	ret = regulator_set_mode(priv->vcc, 3);
++	ret = regulator_set_enable(priv->vcc, true);
++	if (ret && ret != -ENOSYS)
++		dev_warn(hba->dev, "failed to enable regulator vcc-supply:%d\n", ret);
++
++	ret = regulator_set_enable(priv->vccq, true);
++	if (ret && ret != -ENOSYS)
++		dev_warn(hba->dev, "failed to enable regulator vccq-supply:%d\n", ret);
++
+ 	/* setup clocks */
+ 	ufs_qcom_setup_clocks(hba, true, PRE_CHANGE);
+ 
+@@ -651,6 +663,14 @@ static int ufs_qcom_probe(struct udevice *dev)
+ 		dev_err(dev, "Warning: cannot get reset GPIO\n");
+ 	}
+ 
++	ret = device_get_supply_regulator(dev, "vcc-supply", &priv->vcc);
++	if (ret)
++		dev_warn(dev, "failed to get regulator vcc-supply:%d\n", ret);
++
++	ret = device_get_supply_regulator(dev, "vccq-supply", &priv->vccq);
++	if (ret)
++		dev_warn(dev, "failed to get regulator vccq-supply:%d\n", ret);
++
+ 	ret = ufshcd_probe(dev, &ufs_qcom_hba_ops);
+ 	if (ret) {
+ 		dev_err(dev, "ufshcd_probe() failed, ret:%d\n", ret);
+diff --git a/drivers/ufs/ufs-qcom.h b/drivers/ufs/ufs-qcom.h
+index de957ae60f3..4e502e7b3ca 100644
+--- a/drivers/ufs/ufs-qcom.h
++++ b/drivers/ufs/ufs-qcom.h
+@@ -134,6 +134,9 @@ struct ufs_qcom_priv {
+ 	struct clk_bulk clks;
+ 	bool is_clks_enabled;
+ 
++	struct udevice *vcc;
++	struct udevice *vccq;
++
+ 	struct ufs_hw_version hw_ver;
+ 
+ 	/* Reset control of HCI */
 
 ---
-base-commit: 028ef9c96e96197026887c0f092424679298aae8
-change-id: 20260520-xgmac-mmc_rx_crc-cleanup-afcea6faa8ab
+base-commit: 744cf5d4e398c5f657e5c3eeb44d00fa5175dc85
+change-id: 20260521-dpu-add-dspp-gc-driver-0c9ec8b0f127
 
 Best regards,
--- 
-Abid Ali <dev.taqnialabs@gmail.com>
+--  
+Federico Amedeo Izzo <federico@izzo.pro>
 
