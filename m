@@ -1,72 +1,88 @@
-From: =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
-Date: Wed, 20 May 2026 18:40:15 +0200
-Subject: [PATCH 11/11] arm64: dts: qcom: sc8280xp-arcata: Drop duplicate
- DMIC supplies
+From: Alvin Sun <alvin.sun@linux.dev>
+Subject: [PATCH v3 0/7] rust: use vertical import style and remove
+ redundant imports
+Date: Thu, 21 May 2026 14:57:06 +0800
+Message-Id: <20260521-miscdev-use-format-v3-0-56240ca70d0c@linux.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260520-surface-sp9-5g-for-next-v1-11-9df52552bf87@gmail.com>
-References: <20260520-surface-sp9-5g-for-next-v1-0-9df52552bf87@gmail.com>
-In-Reply-To: <20260520-surface-sp9-5g-for-next-v1-0-9df52552bf87@gmail.com>
-To: Douglas Anderson <dianders@chromium.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- Krzysztof Kozlowski <krzk@kernel.org>, 
- =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>, 
- Stephan Gerhold <stephan.gerhold@linaro.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779295238; l=1355;
- i=jerome.debretagne@gmail.com; s=20260520; h=from:subject:message-id;
- bh=zKav9HnHTj8DgP+Z9y+E814drSGNPU5bW2do5oedD5A=;
- b=jd63XVNVGo/QGrpVcEm+/DDF4Q/3SVr5c2azDz7Dhq8sS+H+BzUrp5rqDGwTydj26e1IU4R6W
- aMgOb7aIf4zD9WFH9SSEPHvEOAEo9UHNfDMJOBHTLhsuIHiZdo0YfNQ
-X-Developer-Key: i=jerome.debretagne@gmail.com; a=ed25519;
- pk=3/JYhgYjGg5V9mlFxc0A0+pFiyjsuDB/TtDlNMId9fk=
-X-Endpoint-Received: by B4 Relay for jerome.debretagne@gmail.com/20260520 with auth_id=785
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAMKsDmoC/33NzQ6CMAzA8VchO1uzjg/Bk+9hPIytSBMBs8GCI
+ by7gxMH4/HftL8uwpNj8uKaLMJRYM9DHyM9JcK0un8SsI0tlFSFzLGCjr2xFGDyBM3gOj1Cpes
+ LlWmNBlHEw7ejhucdvT9it+zHwX32HwG36V8uIEhAtLkqai3JmtuL+2k+xzWxcUEdCCV/EioSR
+ WZNVjYG0yw/Euu6fgGytJ6W9wAAAA==
+X-Change-ID: 20260519-miscdev-use-format-9ab7e83b1c11
+To: Arnd Bergmann <arnd@arndb.de>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
+ Brendan Higgins <brendan.higgins@linux.dev>, David Gow <david@davidgow.net>, 
+ Rae Moar <raemoar63@gmail.com>
+Cc: rust-for-linux@vger.kernel.org, linux-block@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, kunit-dev@googlegroups.com, 
+ Alvin Sun <alvin.sun@linux.dev>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779346631; l=2046;
+ i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
+ bh=GpYuZvdDKSuZ1FkselZsxzc4wSkWmWm7XFBxDLF6Dfo=;
+ b=9TEu8Yc9XNqL9wX0FvAYfA0lvscmTHZs2twn+GcDzJhNe5UnPm8lthdGPe11tTpP2XTfpTgo3
+ JcXbyTOrc1gDOUZSajW+eZGDIefXk0kBSHzEZIvvVqnOjic1rkaxH4B
+X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
+ pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
+X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Align with the reference implementation from the ThinkPad X13s.
+Adopt the vertical import style and drop redundant imports already
+re-exported via `kernel::prelude`.
 
-The audio-routing setup specifies two power supplies for each DMIC,
-but only one of them can be active at the same time.
+Changes include:
+- Convert use statements to vertical import style in miscdevice,
+  samples, doctest, and block/mq
+- Remove imports covered by prelude and apply minor formatting
 
-Drop the redundant routes to the pull-up "VA MIC BIASn" supplies as
-done in commit a2e617f4e698 ("arm64: dts: qcom: sc8280xp-x13s: Drop
-duplicate DMIC supplies").
-
-There is no functional difference except that we skip briefly switching
-to pull-up mode when shutting down the microphone.
-
-Cc: Stephan Gerhold <stephan.gerhold@linaro.org>
-Signed-off-by: Jérôme de Bretagne <jerome.debretagne@gmail.com>
+Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts | 3 ---
- 1 file changed, 3 deletions(-)
+Changes in v3:
+- Add trailing // to last items and closing braces in block/mq imports
+- Add rnull vertical import style
+- Add doctest vertical import style
+- Link to v2: https://lore.kernel.org/r/20260520-miscdev-use-format-v2-0-64dc48fc1345@linux.dev
 
-diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts
-index ae0a054f2f9d90c9341766528d6be0b9561a530f..f938e68c69ea9276ca89d75b659dbea6a7a832f7 100644
---- a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts
-+++ b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts
-@@ -793,9 +793,6 @@ &sound {
- 			"VA DMIC0", "MIC BIAS1",
- 			"VA DMIC1", "MIC BIAS1",
- 			"VA DMIC2", "MIC BIAS3",
--			"VA DMIC0", "VA MIC BIAS1",
--			"VA DMIC1", "VA MIC BIAS1",
--			"VA DMIC2", "VA MIC BIAS3",
- 			"TX SWR_ADC1", "ADC2_OUTPUT";
- 
- 	wcd-playback-dai-link {
+Changes in v2:
+- Reformat use statements and drop redundant imports in
+  rust/kernel/block/mq
+- Drop redundant imports in rust/kernel/miscdevice
+- Link to v1: https://lore.kernel.org/r/20260519-miscdev-use-format-v1-0-11d526ba0edc@linux.dev
 
+---
+Alvin Sun (7):
+      rust: miscdevice: use vertical import style
+      samples: rust_misc_device: use vertical import style
+      rust: miscdevice: remove redundant imports
+      rust: block: mq: use vertical import style
+      rust: block: mq: remove redundant imports and format
+      rust: block: rnull: use vertical import style
+      rust: doctest: use vertical import style
+
+ drivers/block/rnull/configfs.rs    | 27 +++++++++++++++++++++------
+ drivers/block/rnull/rnull.rs       | 15 +++++++++++----
+ rust/kernel/block/mq/gen_disk.rs   | 24 ++++++++++++++++++------
+ rust/kernel/block/mq/operations.rs | 14 ++++++++++----
+ rust/kernel/block/mq/request.rs    | 16 +++++++++++-----
+ rust/kernel/block/mq/tag_set.rs    | 28 ++++++++++++++--------------
+ rust/kernel/miscdevice.rs          | 23 +++++++++++++++++------
+ samples/rust/rust_misc_device.rs   | 34 ++++++++++++++++++++++++++++------
+ scripts/rustdoc_test_gen.rs        | 11 +++++++++--
+ 9 files changed, 139 insertions(+), 53 deletions(-)
+---
+base-commit: 5200f5f493f79f14bbdc349e402a40dfb32f23c8
+change-id: 20260519-miscdev-use-format-9ab7e83b1c11
+
+Best regards,
 -- 
-2.47.3
+Alvin Sun <alvin.sun@linux.dev>
 
