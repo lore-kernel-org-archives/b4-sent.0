@@ -1,11 +1,10 @@
 From: =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
-Date: Fri, 22 May 2026 12:43:22 +0200
-Subject: [PATCH v2 06/10] arm64: dts: qcom: sc8280xp-arcata: Add volume
- up/down GPIO keys
+Date: Fri, 22 May 2026 12:43:23 +0200
+Subject: [PATCH v2 07/10] arm64: dts: qcom: sc8280xp-arcata: Add lid switch
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260522-surface-sp9-5g-for-next-v2-6-dd9d477407f5@gmail.com>
+Message-Id: <20260522-surface-sp9-5g-for-next-v2-7-dd9d477407f5@gmail.com>
 References: <20260522-surface-sp9-5g-for-next-v2-0-dd9d477407f5@gmail.com>
 In-Reply-To: <20260522-surface-sp9-5g-for-next-v2-0-dd9d477407f5@gmail.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -17,92 +16,76 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>, 
  Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779446623; l=2100;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779446623; l=1819;
  i=jerome.debretagne@gmail.com; s=20260520; h=from:subject:message-id;
- bh=tpMMqCuXTpiFyNTUXE4sxQpXvBNTdGkNZVRFY5KiZGY=;
- b=667Epu556yOoO1R1q99p0L2nR/7HIAhQUqIj7Ol2x0jyOHTS74DvM5LDsjglQidQgPade2dzW
- ieETzxNjVqhDjSFJip9OX/TbPh3wXRfMAmj/2Cab28+sALSTJnIIZa5
+ bh=eXPIcn94S5Hm7RTrURBC+0aQj8vVybWb4S2yauykrIU=;
+ b=4NYAFQoBCjauafEUyz0sFsSQHoOZdYH0C79GT0WBsAvkXurEiBRRDZ7ssLgLYZdwJAcEZe8yn
+ 33UC6yNkTtSAzSImL+ad3siHcj2QPWgyhsn03Y2i4J1rZYFjeWuXvTz
 X-Developer-Key: i=jerome.debretagne@gmail.com; a=ed25519;
  pk=3/JYhgYjGg5V9mlFxc0A0+pFiyjsuDB/TtDlNMId9fk=
 X-Endpoint-Received: by B4 Relay for jerome.debretagne@gmail.com/20260520 with auth_id=785
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Configure gpio6 to serve as volume down and gpio9 as volume up to enable
-the volume up/down keys located at the top of the screen.
+Enable the lid switch for the Microsoft Surface Pro 9 5G using
+GPIO pin 180.
 
 Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Signed-off-by: Jérôme de Bretagne <jerome.debretagne@gmail.com>
 ---
- .../boot/dts/qcom/sc8280xp-microsoft-arcata.dts    | 42 ++++++++++++++++++++++
- 1 file changed, 42 insertions(+)
+ .../arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts | 19 ++++++++++++++++++-
+ 1 file changed, 18 insertions(+), 1 deletion(-)
 
 diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts
-index 10fafd752734450ecddb2113ff972a08793a763c..4e601eb4165b1eea16d2772786ac0a18f6177e60 100644
+index 4e601eb4165b1eea16d2772786ac0a18f6177e60..f92c37bfe9c72d1854ab9893747991da9cbf033e 100644
 --- a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts
 +++ b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts
-@@ -6,6 +6,7 @@
- /dts-v1/;
+@@ -7,6 +7,7 @@
  
  #include <dt-bindings/gpio/gpio.h>
-+#include <dt-bindings/input/gpio-keys.h>
+ #include <dt-bindings/input/gpio-keys.h>
++#include <dt-bindings/input/input.h>
  #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
  
  #include "sc8280xp.dtsi"
-@@ -55,6 +56,31 @@ backlight: backlight {
+@@ -59,7 +60,7 @@ backlight: backlight {
+ 	gpio-keys {
+ 		compatible = "gpio-keys";
+ 
+-		pinctrl-0 = <&vol_down_n>, <&vol_up_n>;
++		pinctrl-0 = <&hall_int_n_default>, <&vol_down_n>, <&vol_up_n>;
  		pinctrl-names = "default";
+ 
+ 		key-vol-down {
+@@ -79,6 +80,15 @@ key-vol-up {
+ 			linux,can-disable;
+ 			wakeup-source;
+ 		};
++
++		switch-lid {
++			label = "lid";
++			gpios = <&tlmm 180 GPIO_ACTIVE_LOW>;
++			linux,input-type = <EV_SW>;
++			linux,code = <SW_LID>;
++			wakeup-source;
++			wakeup-event-action = <EV_ACT_DEASSERTED>;
++		};
  	};
  
-+	gpio-keys {
-+		compatible = "gpio-keys";
-+
-+		pinctrl-0 = <&vol_down_n>, <&vol_up_n>;
-+		pinctrl-names = "default";
-+
-+		key-vol-down {
-+			label = "Volume Down";
-+			gpios = <&pmc8280_1_gpios 6 GPIO_ACTIVE_LOW>;
-+			linux,code = <KEY_VOLUMEDOWN>;
-+			debounce-interval = <15>;
-+			linux,can-disable;
-+			wakeup-source;
-+		};
-+
-+		key-vol-up {
-+			label = "Volume Up";
-+			gpios = <&pmc8280_1_gpios 9 GPIO_ACTIVE_LOW>;
-+			linux,code = <KEY_VOLUMEUP>;
-+			debounce-interval = <15>;
-+			linux,can-disable;
-+			wakeup-source;
-+		};
-+	};
-+
  	pmic-glink {
- 		compatible = "qcom,sc8280xp-pmic-glink", "qcom,pmic-glink";
- 
-@@ -922,6 +948,22 @@ edp_bl_en: edp-bl-en-state {
- 		pins = "gpio8";
- 		function = "normal";
+@@ -1010,6 +1020,13 @@ edp_reg_en: edp-reg-en-state {
+ 		bias-disable;
  	};
-+
-+	vol_down_n: vol-down-n-state {
-+		pins = "gpio6";
-+		function = "normal";
-+		power-source = <1>;
-+		input-enable;
-+		bias-pull-up;
-+	};
-+
-+	vol_up_n: vol-up-n-state {
-+		pins = "gpio9";
-+		function = "normal";
-+		power-source = <1>;
-+		input-enable;
-+		bias-pull-up;
-+	};
- };
  
- &pmc8280_2_gpios {
++	hall_int_n_default: hall-int-n-state {
++		pins = "gpio180";
++		function = "gpio";
++		drive-strength = <2>;
++		bias-disable;
++	};
++
+ 	nvme_reg_en: nvme-reg-en-state {
+ 		pins = "gpio135";
+ 		function = "gpio";
 
 -- 
 2.47.3
