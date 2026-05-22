@@ -1,87 +1,64 @@
-From: Ferdinand Schwenk <ferdinand.schwenk@advastore.com>
-Date: Fri, 22 May 2026 09:03:04 +0200
-Subject: [PATCH 2/2] hwmon: ina238: use microseconds for update_interval
+From: Abid Ali <dev.taqnialabs@gmail.com>
+Date: Fri, 22 May 2026 07:09:27 +0000
+Subject: [PATCH v2] net: stmmac: fix RX DMA leak on TX alloc failure
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260522-hwmon-ina238-add-samples-update-interval-v1-2-e1acfceb447e@advastore.com>
-References: <20260522-hwmon-ina238-add-samples-update-interval-v1-0-e1acfceb447e@advastore.com>
-In-Reply-To: <20260522-hwmon-ina238-add-samples-update-interval-v1-0-e1acfceb447e@advastore.com>
-To: Guenter Roeck <linux@roeck-us.net>
-Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Ferdinand Schwenk <ferdinand.schwenk@advastore.com>, 
- richard.leitner@linux.dev
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779433387; l=2579;
- i=ferdinand.schwenk@advastore.com; h=from:subject:message-id;
- bh=KeLuR0DMJGXjRXZhPZZdfG5JTrn6BSTR1NGiLJba5h0=;
- b=58JhpNE8ZcsEFAY2pQ2npS/aRIX7Nz5LWfQ7pjRbRXeVJQLAqAPz03EMPSDzGnTB1f3CcQ7UO
- mTcfZpza7sMBZUaMfc/1EGT0cYey6sj08ATGffT/fqt1a54h+nhYCLQ
-X-Developer-Key: i=ferdinand.schwenk@advastore.com; a=ed25519;
- pk=HyA9NdHJ7NystP+1SyuWJeyXNH2EO4A09FXli9mfs9Q=
-X-Endpoint-Received: by B4 Relay for ferdinand.schwenk@advastore.com/default with auth_id=788
+Message-Id: <20260522-stmmac-rx-desc-cleanup-v2-1-76e78eb471e1@gmail.com>
+X-B4-Tracking: v=1; b=H4sIACYBEGoC/4WNQQqDMBBFryKz7pQ4jK3tynsUFyGOOmBUEisW8
+ e5NvUD5q/fhv79DlKAS4ZntEGTVqNOYgC4ZuN6OnaA2iYEM3QxTgXHx3joMGzYSHbpB7Piekdm
+ 0pii54AdBGs9BWt1O8atO3GtcpvA5f9b81/5Vrjmm2Ly0d8OOiarOWx2ubvJQH8fxBRZJ+qW8A
+ AAA
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>
+Cc: netdev@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Abid Ali <dev.taqnialabs@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779433768; l=1102;
+ i=dev.taqnialabs@gmail.com; s=20260425; h=from:subject:message-id;
+ bh=EIgrw7dXm9oPWp3zniVVX0HGvfR5iqNaEldPBGWkDIg=;
+ b=hdVWBxzASNSfqv2s2Nbdsqb2HKzuMkf5yETC5Qk0aOAbyTz2fCbXgQSNPGOm5QD6odXNFnEhV
+ SQbDhBYjaBMCsywRVUjkT/8JlHiG/CY7a+CIU++RSilyke3vIhGeR7s
+X-Developer-Key: i=dev.taqnialabs@gmail.com; a=ed25519;
+ pk=4Syx51HH/MOySSUpi79M2ToLOdwt1yiNb338eKZBJNk=
+X-Endpoint-Received: by B4 Relay for dev.taqnialabs@gmail.com/20260425 with auth_id=752
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The INA238 family supports conversion times as low as 50 us.  The
-standard hwmon sysfs ABI unit for update_interval is milliseconds,
-which causes sub-millisecond conversion times to round to zero and
-makes fine-grained control impossible.
+Free RX DMA resources when alloc_dma_tx_desc_resources() fails in
+alloc_dma_desc_resources().
 
-Change the unit of chip/update_interval from milliseconds to
-microseconds so that all eight conversion-time steps (50, 84, 150,
-280, 540, 1052, 2074, 4120 us for INA238 and 66, 118, 310, 566,
-1070, 2090, 4140, 8230 us for SQ52206) are accessible without loss
-of precision.
-
-Signed-off-by: Ferdinand Schwenk <ferdinand.schwenk@advastore.com>
+Signed-off-by: Abid Ali <dev.taqnialabs@gmail.com>
 ---
- drivers/hwmon/ina238.c | 17 ++++++++++-------
- 1 file changed, 10 insertions(+), 7 deletions(-)
+Changes in v2:
+- Restructured return path based on feedback.
+- Link to v1: https://lore.kernel.org/r/20260425-stmmac-rx-desc-cleanup-v1-1-1a18a704c422@gmail.com
+---
+ drivers/net/ethernet/stmicro/stmmac/stmmac_main.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/hwmon/ina238.c b/drivers/hwmon/ina238.c
-index 7bc18e5445b2..db0c0b5344d6 100644
---- a/drivers/hwmon/ina238.c
-+++ b/drivers/hwmon/ina238.c
-@@ -310,11 +310,14 @@ static inline u32 ina238_reg_to_interval_us(struct ina238_data *data)
- 	return vbusct + vshct + vtct;
- }
+diff --git a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+index 13d3cac05..240453daa 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -2370,6 +2370,8 @@ static int alloc_dma_desc_resources(struct stmmac_priv *priv,
+ 		return ret;
  
--/* Converting update_interval in msec to a single conversion time in usec */
--static inline u32 ina238_interval_ms_to_conv_time(long interval)
-+/* Converting update_interval in usec to a single conversion time in usec.
-+ * update_interval represents the raw ADC cycle time (VBUSCT + VSHCT + VTCT),
-+ * independent of averaging.  Since all three fields are always set equal,
-+ * the target per-field conversion time is simply interval / 3.
-+ */
-+static inline u32 ina238_interval_us_to_conv_time(long interval)
- {
--	/* 3 equal conversion times (VBUSCT, VSHCT, VTCT) cover all measurement types */
--	return DIV_ROUND_CLOSEST(interval * 1000, 3);
-+	return DIV_ROUND_CLOSEST(interval, 3);
- }
+ 	ret = alloc_dma_tx_desc_resources(priv, dma_conf);
++	if (ret)
++		free_dma_rx_desc_resources(priv, dma_conf);
  
- static int ina238_read_chip(struct device *dev, u32 attr, long *val)
-@@ -327,8 +330,8 @@ static int ina238_read_chip(struct device *dev, u32 attr, long *val)
- 					  INA238_ADC_CONFIG_AVG_SHIFT];
- 		return 0;
- 	case hwmon_chip_update_interval:
--		/* Return in msec */
--		*val = DIV_ROUND_CLOSEST(ina238_reg_to_interval_us(data), 1000);
-+		/* Return in usec */
-+		*val = ina238_reg_to_interval_us(data);
- 		return 0;
- 	default:
- 		return -EOPNOTSUPP;
-@@ -353,7 +356,7 @@ static int ina238_write_chip(struct device *dev, u32 attr, long val)
- 		data->adc_config = adc_config;
- 		return 0;
- 	case hwmon_chip_update_interval:
--		val = ina238_interval_ms_to_conv_time(val);
-+		val = ina238_interval_us_to_conv_time(val);
- 		idx = find_closest(val, data->config->conv_time,
- 				   ARRAY_SIZE(ina238_conv_time));
- 		adc_config = (data->adc_config &
+ 	return ret;
+ }
 
+---
+base-commit: 028ef9c96e96197026887c0f092424679298aae8
+change-id: 20260425-stmmac-rx-desc-cleanup-440f05845492
+
+Best regards,
 -- 
-2.54.0
+Abid Ali <dev.taqnialabs@gmail.com>
 
