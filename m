@@ -1,11 +1,10 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 22 May 2026 15:46:08 -0700
-Subject: [PATCH v2 3/5] KVM: guest_memfd: Handle errors from
- xa_store_range() when binding
+Date: Fri, 22 May 2026 15:46:09 -0700
+Subject: [PATCH v2 4/5] KVM: SNP: Fix kunmap_local() unmapping order
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260522-fix-sev-gmem-post-populate-v2-3-3f196bfad5a1@google.com>
+Message-Id: <20260522-fix-sev-gmem-post-populate-v2-4-3f196bfad5a1@google.com>
 References: <20260522-fix-sev-gmem-post-populate-v2-0-3f196bfad5a1@google.com>
 In-Reply-To: <20260522-fix-sev-gmem-post-populate-v2-0-3f196bfad5a1@google.com>
 To: Sean Christopherson <seanjc@google.com>, 
@@ -23,64 +22,57 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-coco@lists.linux.dev, Yu Zhang <yu.c.zhang@linux.intel.com>, 
  Fuad Tabba <tabba@google.com>, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779489969; l=1708;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779489969; l=1450;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=IUci/DrJoi/pXPstnReU0IiJiRojPWLPI0HoQxzkXfg=;
- b=Amt1w5AFQnzejoJxCw29NWfrlwfW6wOUsNMYv7ermZIU5gGfnwJSb+05ToXZTdPKj+VforE4J
- AAZgTZ0DIT/Bn4PsYTeG5+piXbBgrdlMgmGl0ENRjiDP3UlybUnTtV7
+ bh=VX9xGFMfWmL5HGm1mHjTtC4xZdzEbomljfer0iqVaEQ=;
+ b=FqRXMgrQiAATjkjhq9UmxaSoOh/KdH1pj4wJC6/RV9QZBUUylr1KVoYNH10wJ+vMYjySGY31T
+ vsuLxRE2R4rB46qc+v+yCu6HlrhMPWNheqkAo+RrKYcFSmJtFBBLGKU
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Unhandled errors from xa_store_range() means kvm_gmem_bind() might falsely
-reporting success, leading to false assumptions in guest_memfd's lifecycle
-later.
+Mappings created with kmap_local_page() or kmap_local_pfn() must be
+unmapped in the reverse order they were acquired, following a LIFO
+(last-in, first-out) stack-based approach.
 
-On error, restore the unbound state and return the error to userspace.
+In sev_gmem_post_populate(), src_vaddr is mapped first and dst_vaddr is
+mapped second. The current code incorrectly calls kunmap_local() for
+src_vaddr before dst_vaddr.
 
-Fixes: a7800aa80ea4d ("KVM: Add KVM_CREATE_GUEST_MEMFD ioctl() for guest-specific backing memory")
+Swap the kunmap_local() calls to ensure the mappings are released in the
+correct order.
+
+Fixes: 2a62345b3052 ("KVM: guest_memfd: GUP source pages prior to populating guest memory")
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- virt/kvm/guest_memfd.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ arch/x86/kvm/svm/sev.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index d203135969d13..5b4911ffa208a 100644
---- a/virt/kvm/guest_memfd.c
-+++ b/virt/kvm/guest_memfd.c
-@@ -648,6 +648,7 @@ int kvm_gmem_bind(struct kvm *kvm, struct kvm_memory_slot *slot,
- 	struct inode *inode;
- 	struct file *file;
- 	int r = -EINVAL;
-+	void *result;
+diff --git a/arch/x86/kvm/svm/sev.c b/arch/x86/kvm/svm/sev.c
+index 2f254c447923e..dbf75326a40f4 100644
+--- a/arch/x86/kvm/svm/sev.c
++++ b/arch/x86/kvm/svm/sev.c
+@@ -2360,8 +2360,8 @@ static int sev_gmem_post_populate(struct kvm *kvm, gfn_t gfn, kvm_pfn_t pfn,
  
- 	BUILD_BUG_ON(sizeof(gfn_t) != sizeof(slot->gmem.pgoff));
+ 		memcpy(dst_vaddr, src_vaddr, PAGE_SIZE);
  
-@@ -688,7 +689,14 @@ int kvm_gmem_bind(struct kvm *kvm, struct kvm_memory_slot *slot,
- 	if (kvm_gmem_supports_mmap(inode))
- 		slot->flags |= KVM_MEMSLOT_GMEM_ONLY;
+-		kunmap_local(src_vaddr);
+ 		kunmap_local(dst_vaddr);
++		kunmap_local(src_vaddr);
+ 	}
  
--	xa_store_range(&f->bindings, start, end - 1, slot, GFP_KERNEL);
-+	result = xa_store_range(&f->bindings, start, end - 1, slot, GFP_KERNEL);
-+	if (xa_is_err(result)) {
-+		r = xa_err(result);
-+		xa_store_range(&f->bindings, start, end - 1, NULL, GFP_KERNEL);
-+	} else {
-+		r = 0;
-+	}
-+
- 	filemap_invalidate_unlock(inode->i_mapping);
+ 	ret = rmp_make_private(pfn, gfn << PAGE_SHIFT, PG_LEVEL_4K,
+@@ -2396,8 +2396,8 @@ static int sev_gmem_post_populate(struct kvm *kvm, gfn_t gfn, kvm_pfn_t pfn,
  
- 	/*
-@@ -696,7 +704,6 @@ int kvm_gmem_bind(struct kvm *kvm, struct kvm_memory_slot *slot,
- 	 * not the other way 'round.  Active bindings are invalidated if the
- 	 * file is closed before memslots are destroyed.
- 	 */
--	r = 0;
- err:
- 	fput(file);
- 	return r;
+ 		memcpy(src_vaddr, dst_vaddr, PAGE_SIZE);
+ 
+-		kunmap_local(src_vaddr);
+ 		kunmap_local(dst_vaddr);
++		kunmap_local(src_vaddr);
+ 	}
+ 
+ out:
 
 -- 
 2.54.0.794.g4f17f83d09-goog
