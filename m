@@ -1,67 +1,68 @@
-From: =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>
-Date: Fri, 22 May 2026 12:43:26 +0200
-Subject: [PATCH v2 10/10] arm64: dts: qcom: sc8280xp-arcata: Drop duplicate
- DMIC supplies
+From: Cedric Jehasse <cedric.jehasse@luminex.be>
+Subject: [PATCH net-next 0/2] net: dsa: mv88e6xxx: add support for credit
+ based shaper
+Date: Fri, 22 May 2026 12:56:21 +0200
+Message-Id: <20260522-net-next-mv88e6xxx-cbs-v1-0-c87a8e6bcc0c@luminex.be>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260522-surface-sp9-5g-for-next-v2-10-dd9d477407f5@gmail.com>
-References: <20260522-surface-sp9-5g-for-next-v2-0-dd9d477407f5@gmail.com>
-In-Reply-To: <20260522-surface-sp9-5g-for-next-v2-0-dd9d477407f5@gmail.com>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Johan Hovold <johan@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Krzysztof Kozlowski <krzk@kernel.org>, 
- =?utf-8?q?J=C3=A9r=C3=B4me_de_Bretagne?= <jerome.debretagne@gmail.com>, 
- Stephan Gerhold <stephan.gerhold@linaro.org>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779446623; l=1416;
- i=jerome.debretagne@gmail.com; s=20260520; h=from:subject:message-id;
- bh=JlRG4nTcgg3o5MKMFi2SWQY9MXhILWt8VcNKctZNamw=;
- b=8qu1s7ecMCbQOFhN3sTt5DFnmB6ExgzvNv057us0GMNE3dcWrNZVlHucqpnZDpkqo3wbhbODp
- XAC/8BfDmMGB5hyIceCbdwAgVxFmuf6LvOLTeJZEsmOFKj6hMvCKbea
-X-Developer-Key: i=jerome.debretagne@gmail.com; a=ed25519;
- pk=3/JYhgYjGg5V9mlFxc0A0+pFiyjsuDB/TtDlNMId9fk=
-X-Endpoint-Received: by B4 Relay for jerome.debretagne@gmail.com/20260520 with auth_id=785
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAFU2EGoC/zWMMQqEMBAAvyJbu5DkJES/Iha5uOoWRklEFsS/G
+ wSLKaaYuSBTYsrQVRckOjnzFovouoKw+DgT8lgcjDJWNT+FkY6CHLiezpEVEQz/jEYbrW0bvLc
+ OSrwnmljecQ9fA8N9P4k21w1yAAAA
+X-Change-ID: 20260430-net-next-mv88e6xxx-cbs-2121169caa68
+To: Andrew Lunn <andrew@lunn.ch>, Vladimir Oltean <olteanv@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, Russell King <linux@armlinux.org.uk>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Cedric Jehasse <cedric.jehasse@luminex.be>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779447397; l=1489;
+ i=cedric.jehasse@luminex.be; s=20260213; h=from:subject:message-id;
+ bh=Mr7Hc2ODOulp1s+Oi+BCeb6z+UktMYFDq2MlyfBh6a8=;
+ b=P/LPoeETUB+0eM6OJFiiIXC8w+XDQUqR+Y9v43gk2phBF54tnR8c1T1lXeKGHAy+UZ6fiUOpn
+ 7bOCdaTWPjXCpEJ/8x63oIw9SvLI+S4P5e4V9OlO5X2CBYCFTVbY2Lf
+X-Developer-Key: i=cedric.jehasse@luminex.be; a=ed25519;
+ pk=DL2RaHc2bc7tTDTMJdugm42BtJk4Ip+7V41Gkj+Avjk=
+X-Endpoint-Received: by B4 Relay for cedric.jehasse@luminex.be/20260213 with auth_id=638
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Align with the reference implementation from the ThinkPad X13s.
+Several of the switch families in this driver have switches with AVB
+support. The switches with AVB support have support for Credit based
+shaping. This series adds support for the 6352, 6390 and 6393 families.
+The difference between the families is:
+- total number of queues
+- which queues support credit based shaping
+- shaping granularity
 
-The audio-routing setup specifies two power supplies for each DMIC,
-but only one of them can be active at the same time.
+Eg. setting up 20mbps credit based shaper on a 1GBit link:
+tc qdisc add dev p8 parent root handle 100: mqprio \
+    num_tc 8 \
+    map 0 0 6 7 0 5 0 0 0 0 0 0 0 0 0 0 \
+    queues 1@0 1@1 1@2 1@3 1@4 1@5 1@6 1@7 \
+    hw 0
 
-Drop the redundant routes to the pull-up "VA MIC BIASn" supplies as
-done in commit a2e617f4e698 ("arm64: dts: qcom: sc8280xp-x13s: Drop
-duplicate DMIC supplies").
+tc qdisc replace dev p8 parent 100:8 cbs locredit -1470 hicredit 30 \
+    sendslope -980000 idleslope 20000 offload 1
 
-There is no functional difference except that we skip briefly switching
-to pull-up mode when shutting down the microphone.
-
-Cc: Stephan Gerhold <stephan.gerhold@linaro.org>
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: Jérôme de Bretagne <jerome.debretagne@gmail.com>
+Signed-off-by: Cedric Jehasse <cedric.jehasse@luminex.be>
 ---
- arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts | 3 ---
- 1 file changed, 3 deletions(-)
+Cedric Jehasse (2):
+      net: dsa: mv88e6xxx: use the hw tx queues
+      net: dsa: mv88e6xxx: add support for credit based shaper
 
-diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts
-index 60f65fd450ecba8196509a620be029314e5efc05..74e218cf8aaaa5658982c5cda0b231802712650d 100644
---- a/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts
-+++ b/arch/arm64/boot/dts/qcom/sc8280xp-microsoft-arcata.dts
-@@ -776,9 +776,6 @@ &sound {
- 			"VA DMIC0", "MIC BIAS1",
- 			"VA DMIC1", "MIC BIAS1",
- 			"VA DMIC2", "MIC BIAS3",
--			"VA DMIC0", "VA MIC BIAS1",
--			"VA DMIC1", "VA MIC BIAS1",
--			"VA DMIC2", "VA MIC BIAS3",
- 			"TX SWR_ADC1", "ADC2_OUTPUT";
- 
- 	wcd-playback-dai-link {
+ drivers/net/dsa/mv88e6xxx/chip.c        | 137 ++++++++++++++++++++++++++++++++
+ drivers/net/dsa/mv88e6xxx/chip.h        |  22 +++++
+ drivers/net/dsa/mv88e6xxx/global2_avb.c |  21 +++++
+ drivers/net/dsa/mv88e6xxx/port.c        |  38 +++++++++
+ drivers/net/dsa/mv88e6xxx/port.h        |  16 ++++
+ net/dsa/tag_dsa.c                       |   3 +-
+ 6 files changed, 236 insertions(+), 1 deletion(-)
+---
+base-commit: 022bdd9c0d036863c4bacd1688b73c6be3001cee
+change-id: 20260430-net-next-mv88e6xxx-cbs-2121169caa68
 
+Best regards,
 -- 
-2.47.3
+Cedric Jehasse <cedric.jehasse@luminex.be>
 
