@@ -1,88 +1,77 @@
-From: Shivam Kalra <shivamkalra98@zohomail.in>
-Date: Sat, 23 May 2026 00:24:32 +0530
-Subject: [PATCH] rust: helpers: add is_vmalloc_addr wrapper for NOMMU
- builds
+From: Ackerley Tng <ackerleytng@google.com>
+Subject: [PATCH 0/3] guest_memfd fixes for bind and populate
+Date: Fri, 22 May 2026 13:45:06 -0700
+Message-Id: <20260522-fix-sev-gmem-post-populate-v1-0-9fc8d6437b65@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260523-is-vmalloc-addr-build-fix-v1-1-73c919440c41@zohomail.in>
-X-B4-Tracking: v=1; b=H4sIAGemEGoC/yXMywqDMBCF4VeRWTtggjXiq4iLXKbtlKgloyKI7
- 95Yl9+B8x8glJgEuuKARBsLz1OGKgvwbzu9CDlkg650Uz20RhbcRhvj7NGGkNCtHAM+eUfrfKN
- qp0xrDOT/N1Ge/+1+uC2r+5BfriCc5w9BUuNAfQAAAA==
-X-Change-ID: 20260522-is-vmalloc-addr-build-fix-abc614b17877
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org, 
- kernel test robot <lkp@intel.com>, Shivam Kalra <shivamkalra98@zohomail.in>
-X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779476076; l=2056;
- i=shivamkalra98@zohomail.in; s=20260402; h=from:subject:message-id;
- bh=LJ4TLD8iJ3hsEvAhMLjG4dWdTD0MC/CjygrBq8gPX58=;
- b=pA2fdl437H22PmNqGMoo/efVY7f1qPypW1Nj6rG9s33a/tAaNMoDjP+i9jW4eAqR2mJpWKZZ2
- tUfMTtlTf7MCyWxWH4enLgjkWWGyMtXJYCZDFuCEalOmzRVNHbkUtJD
-X-Developer-Key: i=shivamkalra98@zohomail.in; a=ed25519;
- pk=U8kQSxcte8P8iZ6zB7phIj+Yl+i/5ntifBGuclgypx8=
-X-Endpoint-Received: by B4 Relay for shivamkalra98@zohomail.in/20260402 with auth_id=716
+X-B4-Tracking: v=1; b=H4sIAFLAEGoC/x3MywrCMBCF4Vcps3YwRoyXVxEXSTtpgyYNmRgKp
+ e/e0c2BDw7/CkwlEMOjW6FQCxzmJDgdOugnm0bCMIhBK23URWv0YUGmhmOkiHnmKpO/H1sJ7dk
+ 48levzP0GEsiF5P2PP19iZ5nQFZv66Zd8t3hMtFTYth3MFdoahwAAAA==
+X-Change-ID: 20260522-fix-sev-gmem-post-populate-a36bef7f0698
+To: Sean Christopherson <seanjc@google.com>, 
+ Paolo Bonzini <pbonzini@redhat.com>, Thomas Gleixner <tglx@kernel.org>, 
+ Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
+ Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
+ "H. Peter Anvin" <hpa@zytor.com>, Kiryl Shutsemau <kas@kernel.org>, 
+ Rick Edgecombe <rick.p.edgecombe@intel.com>, 
+ Vishal Annapurve <vannapurve@google.com>, Yan Zhao <yan.y.zhao@intel.com>, 
+ Michael Roth <michael.roth@amd.com>, 
+ Isaku Yamahata <isaku.yamahata@intel.com>, 
+ Chao Peng <chao.p.peng@linux.intel.com>, Xiaoyao Li <xiaoyao.li@intel.com>, 
+ Zongyao Chen <ZongYao.Chen@linux.alibaba.com>
+Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-coco@lists.linux.dev, Yu Zhang <yu.c.zhang@linux.intel.com>, 
+ Fuad Tabba <tabba@google.com>, Ackerley Tng <ackerleytng@google.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779482720; l=1493;
+ i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
+ bh=f8qzetz34djYUY8P15NPDcr/IAQAFdGPjF0QHjGshe8=;
+ b=9rI/i+NUcIJGIRRuU71ssW12eUDlO0B9KL8Jtm8isUGo5UNz1jdJmpC1Qa9+ewkCCnRObODbS
+ TkxI12RqUEiAlaR9Mee4GXxZCobzFvyba+mWgRCRTF5fxpiVNR7upCN
+X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
+ pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
+X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 47ac2a4b5cd8 ("rust: kvec: implement shrink_to for KVVec")
-introduced a call to bindings::is_vmalloc_addr(). However, this
-fails to compile on architectures where CONFIG_MMU is disabled,
-resulting in the following build error:
+This series is a group of fixes for the bind and populate flows for
+guest_memfd, and fixes some issues reported by Sashiko after reviewing the
+guest_memfd in-place conversions series [1] and another fixup series Sean
+posted [3].
 
-    error[E0425]: cannot find function is_vmalloc_addr in crate bindings
+Sashiko pointed out
 
-When CONFIG_MMU is not set, is_vmalloc_addr() is defined as a
-static inline function in <linux/mm.h> that unconditionally
-returns false. Because bindgen skips static inline functions
-when generating bindings, the symbol is completely missing from
-the Rust bindings crate.
++ Possible write to read-only page [1]
+    => Fixed in patch 1
++ Signed integer overflow in kvm_gmem_bind() twice: [2][3]
+    => Fixed in patch 2
++ Unchecked xa_store_range() [3]
+    => Fixed in patch 3
 
-Fix this by providing a C helper wrapper, rust_helper_is_vmalloc_addr(),
-in rust/helpers/vmalloc.c. This ensures the function is reliably
-exposed to Rust regardless of the MMU configuration. On NOMMU builds,
-this allows KVVec::shrink_to() to successfully compile and correctly
-route all allocations through the kmalloc realloc path.
+[1] https://lore.kernel.org/all/CA+EHjTwrygfMrZZSw4y7-ry8fidW2x0C7iuF2Q=dnPNHUmNtUg@mail.gmail.com/
+[2] https://lore.kernel.org/all/CA+EHjTxcadguOfOo7RpJVtAzcY5JAFZTbrAT_wcN6akMi8gCUg@mail.gmail.com/
+[3] https://lore.kernel.org/all/20260522180530.EE9101F00A3E@smtp.kernel.org/
 
-Fixes: 47ac2a4b5cd8 ("rust: kvec: implement shrink_to for KVVec")
-Reported-by: kernel test robot <lkp@intel.com>
-Closes: https://lore.kernel.org/oe-kbuild-all/202605220811.LRplxeBR-lkp@intel.com/
-Signed-off-by: Shivam Kalra <shivamkalra98@zohomail.in>
+Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- rust/helpers/vmalloc.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+Ackerley Tng (1):
+      KVM: guest_memfd: Handle errors from xa_store_range() when binding
 
-diff --git a/rust/helpers/vmalloc.c b/rust/helpers/vmalloc.c
-index 326b030487a2..6aed13292313 100644
---- a/rust/helpers/vmalloc.c
-+++ b/rust/helpers/vmalloc.c
-@@ -1,5 +1,6 @@
- // SPDX-License-Identifier: GPL-2.0
- 
-+#include <linux/mm.h>
- #include <linux/vmalloc.h>
- 
- __rust_helper void *__must_check __realloc_size(2)
-@@ -8,3 +9,8 @@ rust_helper_vrealloc_node_align(const void *p, size_t size, unsigned long align,
- {
- 	return vrealloc_node_align(p, size, align, flags, node);
- }
-+
-+__rust_helper bool rust_helper_is_vmalloc_addr(const void *x)
-+{
-+	return is_vmalloc_addr(x);
-+}
+Sean Christopherson (2):
+      KVM: guest_memfd: Use write permissions when GUP-ing source pages
+      KVM: guest_memfd: Fix possible signed integer overflow
 
+ arch/x86/kvm/svm/sev.c   |  1 +
+ arch/x86/kvm/vmx/tdx.c   |  2 +-
+ include/linux/kvm_host.h |  3 ++-
+ virt/kvm/guest_memfd.c   | 18 ++++++++++--------
+ virt/kvm/kvm_mm.h        |  2 +-
+ 5 files changed, 15 insertions(+), 11 deletions(-)
 ---
-base-commit: 6779b50faa562e6cca1aa6a4649a4d764c6c7e28
-change-id: 20260522-is-vmalloc-addr-build-fix-abc614b17877
+base-commit: b7fbe9a1bf9ee6c967ef77d366ca58c35fcf1887
+change-id: 20260522-fix-sev-gmem-post-populate-a36bef7f0698
 
 Best regards,
---  
-Shivam Kalra <shivamkalra98@zohomail.in>
+--
+Ackerley Tng <ackerleytng@google.com>
 
