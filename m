@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 22 May 2026 17:18:03 -0700
-Subject: [PATCH v7 21/42] KVM: TDX: Make source page optional for
- KVM_TDX_INIT_MEM_REGION
+Date: Fri, 22 May 2026 17:18:04 -0700
+Subject: [PATCH v7 22/42] KVM: selftests: Create gmem fd before "regular"
+ fd when adding memslot
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260522-gmem-inplace-conversion-v7-21-2f0fae496530@google.com>
+Message-Id: <20260522-gmem-inplace-conversion-v7-22-2f0fae496530@google.com>
 References: <20260522-gmem-inplace-conversion-v7-0-2f0fae496530@google.com>
 In-Reply-To: <20260522-gmem-inplace-conversion-v7-0-2f0fae496530@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -39,74 +39,93 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779495480; l=2365;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779495480; l=2867;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=qEh0ecCMb3AtWBwHsBoDwlnjw7N0xSkCrtG8wLVz2oM=;
- b=wxVMOV4LQFR6IuShk6BvYMeA+aIOjFgxfoyY1Bj9fMQrdswrooNt3z4OVuWOY1PuEjk9DhYnC
- Eo89wKHhcY0CTMuHtS5FDVWu9cx9a+bkJKhR/bMgAEqQmn0JjLXWUfS
+ bh=RNvMuyEG81zAjIH6ngsYAi4wtfdbjpEfP2b7U2HhIp8=;
+ b=Jkl9z/IG9o3DTV9dsZ1c0XCWBPN8lK8b08doDKG38G29qtueGYT0i4yhJbhA9PDnyvpYXt1dF
+ 2X/Mz2S7AlXA96lZ8ff9rqUSTNiD0eDrguT2M4eDnCgNoD6EA9kW+lE
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update tdx_gmem_post_populate() to handle cases where a source page is
-not explicitly provided. Instead of returning -EOPNOTSUPP when src_page
-is NULL, default to using the page associated with the destination PFN.
+From: Sean Christopherson <seanjc@google.com>
 
-This change allows for in-place memory conversion where the data is
-already present in the target PFN, ensuring the TDX module has a valid
-source page reference for the TDH.MEM.PAGE.ADD operation.
+When adding a memslot associated a guest_memfd instance, create/dup the
+guest_memfd before creating the "normal" backing file.  This will allow
+dup'ing the gmem fd as the normal fd when guest_memfd supports mmap(),
+i.e. to make guest_memfd the _only_ backing source for the memslot.
 
+Signed-off-by: Sean Christopherson <seanjc@google.com>
+Reviewed-by: Fuad Tabba <tabba@google.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- Documentation/virt/kvm/x86/intel-tdx.rst |  4 ++++
- arch/x86/kvm/vmx/tdx.c                   | 11 ++++++++---
- 2 files changed, 12 insertions(+), 3 deletions(-)
+ tools/testing/selftests/kvm/lib/kvm_util.c | 45 +++++++++++++++---------------
+ 1 file changed, 23 insertions(+), 22 deletions(-)
 
-diff --git a/Documentation/virt/kvm/x86/intel-tdx.rst b/Documentation/virt/kvm/x86/intel-tdx.rst
-index 6a222e9d09541..fbc0f179dc750 100644
---- a/Documentation/virt/kvm/x86/intel-tdx.rst
-+++ b/Documentation/virt/kvm/x86/intel-tdx.rst
-@@ -158,6 +158,10 @@ KVM_TDX_INIT_MEM_REGION
- Initialize @nr_pages TDX guest private memory starting from @gpa with userspace
- provided data from @source_addr. @source_addr must be PAGE_SIZE-aligned.
+diff --git a/tools/testing/selftests/kvm/lib/kvm_util.c b/tools/testing/selftests/kvm/lib/kvm_util.c
+index 2a76eca7029d3..df73b23a4c66a 100644
+--- a/tools/testing/selftests/kvm/lib/kvm_util.c
++++ b/tools/testing/selftests/kvm/lib/kvm_util.c
+@@ -1054,6 +1054,29 @@ void vm_mem_add(struct kvm_vm *vm, enum vm_mem_backing_src_type src_type,
+ 	if (alignment > 1)
+ 		region->mmap_size += alignment;
  
-+If memory attributes are tracked in guest_memfd, pass NULL for
-+@source_addr to initialize the memory region using memory contents
-+already populated in guest_memfd memory.
++	if (flags & KVM_MEM_GUEST_MEMFD) {
++		if (guest_memfd < 0) {
++			u32 guest_memfd_flags = 0;
 +
- Note, before calling this sub command, memory attribute of the range
- [gpa, gpa + nr_pages] needs to be private.  Userspace can use
- KVM_SET_MEMORY_ATTRIBUTES to set the attribute.
-diff --git a/arch/x86/kvm/vmx/tdx.c b/arch/x86/kvm/vmx/tdx.c
-index 00dcfcbc47f68..63c6ba30f05b2 100644
---- a/arch/x86/kvm/vmx/tdx.c
-+++ b/arch/x86/kvm/vmx/tdx.c
-@@ -3116,8 +3116,12 @@ static int tdx_gmem_post_populate(struct kvm *kvm, gfn_t gfn, kvm_pfn_t pfn,
- 	if (KVM_BUG_ON(kvm_tdx->page_add_src, kvm))
- 		return -EIO;
- 
--	if (!src_page)
--		return -EOPNOTSUPP;
-+	if (!src_page) {
-+		if (vm_memory_attributes)
-+			return -EOPNOTSUPP;
++			TEST_ASSERT(!guest_memfd_offset,
++				    "Offset must be zero when creating new guest_memfd");
++			guest_memfd = vm_create_guest_memfd(vm, mem_size, guest_memfd_flags);
++		} else {
++			/*
++			 * Install a unique fd for each memslot so that the fd
++			 * can be closed when the region is deleted without
++			 * needing to track if the fd is owned by the framework
++			 * or by the caller.
++			 */
++			guest_memfd = kvm_dup(guest_memfd);
++		}
 +
-+		src_page = pfn_to_page(pfn);
++		region->region.guest_memfd = guest_memfd;
++		region->region.guest_memfd_offset = guest_memfd_offset;
++	} else {
++		region->region.guest_memfd = -1;
 +	}
++
+ 	region->fd = -1;
+ 	if (backing_src_is_shared(src_type))
+ 		region->fd = kvm_memfd_alloc(region->mmap_size,
+@@ -1083,28 +1106,6 @@ void vm_mem_add(struct kvm_vm *vm, enum vm_mem_backing_src_type src_type,
  
- 	kvm_tdx->page_add_src = src_page;
- 	ret = kvm_tdp_mmu_map_private_pfn(arg->vcpu, gfn, pfn);
-@@ -3196,7 +3200,8 @@ static int tdx_vcpu_init_mem_region(struct kvm_vcpu *vcpu, struct kvm_tdx_cmd *c
- 			break;
- 		}
+ 	region->backing_src_type = src_type;
  
--		region.source_addr += PAGE_SIZE;
-+		if (region.source_addr)
-+			region.source_addr += PAGE_SIZE;
- 		region.gpa += PAGE_SIZE;
- 		region.nr_pages--;
- 
+-	if (flags & KVM_MEM_GUEST_MEMFD) {
+-		if (guest_memfd < 0) {
+-			u32 guest_memfd_flags = 0;
+-			TEST_ASSERT(!guest_memfd_offset,
+-				    "Offset must be zero when creating new guest_memfd");
+-			guest_memfd = vm_create_guest_memfd(vm, mem_size, guest_memfd_flags);
+-		} else {
+-			/*
+-			 * Install a unique fd for each memslot so that the fd
+-			 * can be closed when the region is deleted without
+-			 * needing to track if the fd is owned by the framework
+-			 * or by the caller.
+-			 */
+-			guest_memfd = kvm_dup(guest_memfd);
+-		}
+-
+-		region->region.guest_memfd = guest_memfd;
+-		region->region.guest_memfd_offset = guest_memfd_offset;
+-	} else {
+-		region->region.guest_memfd = -1;
+-	}
+-
+ 	region->unused_phy_pages = sparsebit_alloc();
+ 	if (vm_arch_has_protected_memory(vm))
+ 		region->protected_phy_pages = sparsebit_alloc();
 
 -- 
 2.54.0.794.g4f17f83d09-goog
