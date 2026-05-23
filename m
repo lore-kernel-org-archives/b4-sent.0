@@ -1,12 +1,16 @@
 From: Federico Amedeo Izzo <federico@izzo.pro>
-Date: Sat, 23 May 2026 12:25:52 +0200
-Subject: [PATCH v3 2/2] ufs: qcom: add ufs host regulator support
+Subject: [PATCH v4 0/2] Add regulator support to qcom-ufs driver
+Date: Sat, 23 May 2026 15:04:23 +0200
+Message-Id: <20260523-qcom-ufs-regulator-support-v4-0-45639533b06d@izzo.pro>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260523-qcom-ufs-regulator-support-v3-2-1be2a80a2577@izzo.pro>
-References: <20260523-qcom-ufs-regulator-support-v3-0-1be2a80a2577@izzo.pro>
-In-Reply-To: <20260523-qcom-ufs-regulator-support-v3-0-1be2a80a2577@izzo.pro>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43PS07EMBAE0KuMvKZRYudjseIeiEXH7iRGMDbt2
+ JqPcnfsYcGwQSxLar2qvopI7CiKp8NVMGUXnT+W0D0chFnxuBA4W7KQjRyaXrbwafwHpDkC05L
+ ecfMMMYXgeYNuGAgHtOUWRQEC0+xON/zl9TvHNL2R2apYL2Yu2LYy4e8SGxKgtWBjCLAYsOwyM
+ eQWWtBKjbLT2lgzP7vLxT8G9hVbXSxrzrdXsqyl/1qdZUGtIqMlUm8n84PW0VndS+pPSUED7UQ
+ SdYOyH8c7ad/3L4vyQfxsAQAA
+X-Change-ID: 20260521-qcom-ufs-regulator-support-466ea6ad202a
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
  u-boot@lists.denx.de
 Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -20,108 +24,70 @@ Cc: Neil Armstrong <neil.armstrong@linaro.org>,
  Luca Weiss <luca.weiss@fairphone.com>, 
  Aswin Murugan <aswin.murugan@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779531961; l=3104;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779541471; l=2251;
  i=federico@izzo.pro; s=20251017; h=from:subject:message-id;
- bh=P+cGFj4YFRvaiYLl3OlzTsjPTMmktRwICoqneTQvwJY=;
- b=Nxe+dJV+W2Ia4tQZ4YGRhz66VSthJDMm92tAs14VUqjfw+G0sug54f/ZTp7hHV5e53/5mH0r0
- 7gnNxV6iVK/A4ycWPvtGBLzxtarYjHBJnEk4sK79PnakBAYwNNf4jBQ
+ bh=iGFuAXRx0a5aMTjvWY84INYa4b+EoFMclzVkqykBRBA=;
+ b=Cyug6TTghLgg2J7c4C5IIB2j0tRiHW3wkE5pHYJbzrdIO5E8Gia/h4wE0DAVpiW7R5Q8Jc0eZ
+ 1VhitaYDZ1yCTwfi4qHCv9oP2pmBlLi3R/DOnLoVCngEEGFf9tSjGZn
 X-Developer-Key: i=federico@izzo.pro; a=ed25519;
  pk=XfmNfpH48k8jLbId5NKrp0yoKoFb/uLjr97qIxBImBw=
 X-Endpoint-Received: by B4 Relay for federico@izzo.pro/20251017 with auth_id=544
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The qcom UFS driver works without touching the regulators on most platforms
-as ABL leaves them already configured and enabled.
-On some SC7280 phones with UFS 3.1 like nothing-spacewar, vcc regulator is
-not enabled by ABL, so we need to configure and enable it to use the UFS
-storage.
+This series enables UFS support on SC7280 devices with UFS3.1.
+SC7280 devices with UFS2.2 were already working.
 
-Tested on nothing-spacewar and motorola-dubai using Tauchgang U-Boot.
+The root cause was ABL leaving vcc-supply regulator disabled on UFS3.1
+devices, and enabled on UFS2.2 devices that worked fine without
+regulator support.
 
 Signed-off-by: Federico Amedeo Izzo <federico@izzo.pro>
 ---
- drivers/ufs/ufs-qcom.c | 33 +++++++++++++++++++++++++++++++++
- drivers/ufs/ufs-qcom.h |  4 ++++
- 2 files changed, 37 insertions(+)
+Changes in v4:
+- Improve regulator mode fix: apply current mode during enable
+- Remove regulator mode code from qcom-ufs driver
+- Link to v3: https://patch.msgid.link/20260523-qcom-ufs-regulator-support-v3-0-1be2a80a2577@izzo.pro
 
-diff --git a/drivers/ufs/ufs-qcom.c b/drivers/ufs/ufs-qcom.c
-index dc40ee62daf..376be2eeaaf 100644
---- a/drivers/ufs/ufs-qcom.c
-+++ b/drivers/ufs/ufs-qcom.c
-@@ -16,6 +16,7 @@
- #include <generic-phy.h>
- #include <asm/gpio.h>
- #include <interconnect.h>
-+#include <power/regulator.h>
- 
- #include <linux/bitops.h>
- #include <linux/delay.h>
-@@ -557,10 +558,31 @@ static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_hba *hba, bool enable)
- static int ufs_qcom_init(struct ufs_hba *hba)
- {
- 	struct ufs_qcom_priv *priv = dev_get_priv(hba->dev);
-+	int mode;
- 	int err;
- 
- 	priv->hba = hba;
- 
-+	/* Apply regulator initial-mode from dts */
-+	err = dev_read_u32(priv->vcc, "regulator-initial-mode", &mode);
-+	if (!err) {
-+		err = regulator_set_mode(priv->vcc, mode);
-+		if (err && err != -ENOSYS)
-+			dev_warn(hba->dev, "failed to set vcc-supply mode:%d\n", err);
-+	}
-+
-+	err = regulator_set_enable(priv->vcc, true);
-+	if (err && err != -ENOSYS)
-+		dev_warn(hba->dev, "failed to enable regulator vcc-supply:%d\n", err);
-+
-+	err = regulator_set_enable(priv->vccq, true);
-+	if (err && err != -ENOSYS)
-+		dev_warn(hba->dev, "failed to enable regulator vccq-supply:%d\n", err);
-+
-+	err = regulator_set_enable(priv->vccq2, true);
-+	if (err && err != -ENOSYS)
-+		dev_warn(hba->dev, "failed to enable regulator vccq2-supply:%d\n", err);
-+
- 	/* setup clocks */
- 	ufs_qcom_setup_clocks(hba, true, PRE_CHANGE);
- 
-@@ -651,6 +673,17 @@ static int ufs_qcom_probe(struct udevice *dev)
- 		dev_err(dev, "Warning: cannot get reset GPIO\n");
- 	}
- 
-+	ret = device_get_supply_regulator(dev, "vcc-supply", &priv->vcc);
-+	if (ret)
-+		dev_warn(dev, "failed to get regulator vcc-supply:%d\n", ret);
-+
-+	ret = device_get_supply_regulator(dev, "vccq-supply", &priv->vccq);
-+	if (ret)
-+		dev_warn(dev, "failed to get regulator vccq-supply:%d\n", ret);
-+
-+	/* vccq2 is optional on UFS2 and missing on UFS3 and later */
-+	device_get_supply_regulator(dev, "vccq2-supply", &priv->vccq2);
-+
- 	ret = ufshcd_probe(dev, &ufs_qcom_hba_ops);
- 	if (ret) {
- 		dev_err(dev, "ufshcd_probe() failed, ret:%d\n", ret);
-diff --git a/drivers/ufs/ufs-qcom.h b/drivers/ufs/ufs-qcom.h
-index de957ae60f3..115565db7e9 100644
---- a/drivers/ufs/ufs-qcom.h
-+++ b/drivers/ufs/ufs-qcom.h
-@@ -134,6 +134,10 @@ struct ufs_qcom_priv {
- 	struct clk_bulk clks;
- 	bool is_clks_enabled;
- 
-+	struct udevice *vcc;
-+	struct udevice *vccq;
-+	struct udevice *vccq2;
-+
- 	struct ufs_hw_version hw_ver;
- 
- 	/* Reset control of HCI */
+Changes in v3:
+- Fix bug causing HPM mode not being applied. Removed LPM/HPM hack
+- Read regulator mode from dts property instead of hardcoding it
+- Link to v2: https://patch.msgid.link/20260521-qcom-ufs-regulator-support-v2-1-d3ec82ae5dbc@izzo.pro
 
--- 
-2.54.0
+Changes in v2:
+- Add vccq2-supply for UFS2.2 devices without internal eLDO regulator
+- Fix wrong topic
+- Link to v1: https://patch.msgid.link/20260521-dpu-add-dspp-gc-driver-v1-1-83372488cdcf@izzo.pro
+
+To: Sumit Garg <sumit.garg@kernel.org>
+To: u-boot-qcom@groups.io
+To: u-boot@lists.denx.de
+Cc: Jaehoon Chung <jh80.chung@samsung.com>
+Cc: Peng Fan <peng.fan@nxp.com>
+Cc: Casey Connolly <casey.connolly@linaro.org>
+Cc: Neil Armstrong <neil.armstrong@linaro.org>
+Cc: Tom Rini <trini@konsulko.com>
+Cc: Luca Weiss <luca.weiss@fairphone.com>
+Cc: Aswin Murugan <aswin.murugan@oss.qualcomm.com>
+Cc: Federico Amedeo Izzo <federico@izzo.pro>
+Cc: Bhupesh Sharma <bhupesh.linux@gmail.com>
+Cc: Neha Malcom Francis <n-francis@ti.com>
+Cc: Julien Stephan <jstephan@baylibre.com>
+Cc: Marek Vasut <marek.vasut+renesas@mailbox.org>
+
+---
+Federico Amedeo Izzo (2):
+      regulator: qcom-rpmh-regulator: fix regulator mode mismatch
+      ufs: qcom: add ufs host regulator support
+
+ drivers/power/regulator/qcom-rpmh-regulator.c | 106 ++++++++++++++------------
+ drivers/ufs/ufs-qcom.c                        |  25 ++++++
+ drivers/ufs/ufs-qcom.h                        |   4 +
+ 3 files changed, 85 insertions(+), 50 deletions(-)
+---
+base-commit: 744cf5d4e398c5f657e5c3eeb44d00fa5175dc85
+change-id: 20260521-qcom-ufs-regulator-support-466ea6ad202a
+
+Best regards,
+--  
+Federico Amedeo Izzo <federico@izzo.pro>
 
