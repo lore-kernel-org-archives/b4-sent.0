@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 22 May 2026 17:17:49 -0700
-Subject: [PATCH v7 07/42] KVM: guest_memfd: Only prepare folios for private
- pages
+Date: Fri, 22 May 2026 17:17:50 -0700
+Subject: [PATCH v7 08/42] KVM: Move kvm_supported_mem_attributes() to
+ kvm_host.h
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260522-gmem-inplace-conversion-v7-7-2f0fae496530@google.com>
+Message-Id: <20260522-gmem-inplace-conversion-v7-8-2f0fae496530@google.com>
 References: <20260522-gmem-inplace-conversion-v7-0-2f0fae496530@google.com>
 In-Reply-To: <20260522-gmem-inplace-conversion-v7-0-2f0fae496530@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -39,80 +39,72 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779495480; l=2294;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779495480; l=1948;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=k0GJtJCOrjGjQI95D+GhdW9n00EktV+r4Umq57n6oz4=;
- b=DgBXtRSO8YUbWrYPOUpFuN/lWiyQHQD9BYKmFnu6yYxzCDVI8yW0Hc1kGO/ML41OKO1E6nWa8
- K02oEVELiOtAEOvR2XnhnXcE4UkyGRsRZRLff37cR0rgAWvLSTVHwA4
+ bh=efw6NUHcHLRdRk3uPvWSSZaXmjqUPOR/HwNza8dJmHY=;
+ b=B5lunaP9bPm36pOBF1WpXomZpQHYcSiiA3pF7kR7bYZ+1X60uYHWizr+JKmDOu0UPCYEqw5j/
+ qRmSJ+EXwocBeQEXU4B9jDFBeR7D4lyVv3+zIN3h3yBNjoSA6FXUDNq
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-All-shared guest_memfd used to be only supported for non-CoCo VMs where
-preparation doesn't apply. INIT_SHARED is about to be supported for
-non-CoCo VMs in a later patch in this series.
+Move kvm_supported_mem_attributes() from kvm_main.c to kvm_host.h and
+make it a static inline function. This allows the helper to be used in
+other parts of the KVM subsystem outside of kvm_main.c. This helper will be
+used later by guest_memfd.
 
-In addition, KVM_SET_MEMORY_ATTRIBUTES2 is about to be supported in
-guest_memfd in a later patch in this series.
+No functional change intended.
 
-This means that the kvm fault handler may now call kvm_gmem_get_pfn() on a
-shared folio for a CoCo VM where preparation applies.
-
-Add a check to make sure that preparation is only performed for private
-folios.
-
-Preparation will be undone on freeing (see kvm_gmem_free_folio()) and on
-conversion to shared.
-
-Signed-off-by: Michael Roth <michael.roth@amd.com>
 Reviewed-by: Fuad Tabba <tabba@google.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- virt/kvm/guest_memfd.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ include/linux/kvm_host.h | 10 ++++++++++
+ virt/kvm/kvm_main.c      | 10 ----------
+ 2 files changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index 78e5435967341..adf57a3a1f5dd 100644
---- a/virt/kvm/guest_memfd.c
-+++ b/virt/kvm/guest_memfd.c
-@@ -894,6 +894,7 @@ int kvm_gmem_get_pfn(struct kvm *kvm, struct kvm_memory_slot *slot,
- 		     int *max_order)
- {
- 	pgoff_t index = kvm_gmem_get_index(slot, gfn);
-+	struct inode *inode;
- 	struct folio *folio;
- 	int r = 0;
- 
-@@ -901,7 +902,8 @@ int kvm_gmem_get_pfn(struct kvm *kvm, struct kvm_memory_slot *slot,
- 	if (!file)
- 		return -EFAULT;
- 
--	filemap_invalidate_lock_shared(file_inode(file)->i_mapping);
-+	inode = file_inode(file);
-+	filemap_invalidate_lock_shared(inode->i_mapping);
- 
- 	folio = __kvm_gmem_get_pfn(file, slot, index, pfn, max_order);
- 	if (IS_ERR(folio)) {
-@@ -914,7 +916,8 @@ int kvm_gmem_get_pfn(struct kvm *kvm, struct kvm_memory_slot *slot,
- 		folio_mark_uptodate(folio);
- 	}
- 
--	r = kvm_gmem_prepare_folio(kvm, slot, gfn, folio);
-+	if (kvm_gmem_is_private_mem(inode, index))
-+		r = kvm_gmem_prepare_folio(kvm, slot, gfn, folio);
- 
- 	folio_unlock(folio);
- 
-@@ -924,7 +927,7 @@ int kvm_gmem_get_pfn(struct kvm *kvm, struct kvm_memory_slot *slot,
- 		folio_put(folio);
- 
- out:
--	filemap_invalidate_unlock_shared(file_inode(file)->i_mapping);
-+	filemap_invalidate_unlock_shared(inode->i_mapping);
- 	return r;
+diff --git a/include/linux/kvm_host.h b/include/linux/kvm_host.h
+index 3039b291e4b09..b67e7b308d280 100644
+--- a/include/linux/kvm_host.h
++++ b/include/linux/kvm_host.h
+@@ -2529,6 +2529,16 @@ static inline bool kvm_memslot_is_gmem_only(const struct kvm_memory_slot *slot)
  }
- EXPORT_SYMBOL_FOR_KVM_INTERNAL(kvm_gmem_get_pfn);
+ 
+ #ifdef CONFIG_KVM_MEMORY_ATTRIBUTES
++static inline u64 kvm_supported_mem_attributes(struct kvm *kvm)
++{
++#ifdef kvm_arch_has_private_mem
++	if (!kvm || kvm_arch_has_private_mem(kvm))
++		return KVM_MEMORY_ATTRIBUTE_PRIVATE;
++#endif
++
++	return 0;
++}
++
+ typedef unsigned long (kvm_get_memory_attributes_t)(struct kvm *kvm, gfn_t gfn);
+ DECLARE_STATIC_CALL(__kvm_get_memory_attributes, kvm_get_memory_attributes_t);
+ 
+diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
+index 0a4024948711a..ff20e63143642 100644
+--- a/virt/kvm/kvm_main.c
++++ b/virt/kvm/kvm_main.c
+@@ -2428,16 +2428,6 @@ static int kvm_vm_ioctl_clear_dirty_log(struct kvm *kvm,
+ #endif /* CONFIG_KVM_GENERIC_DIRTYLOG_READ_PROTECT */
+ 
+ #ifdef CONFIG_KVM_MEMORY_ATTRIBUTES
+-static u64 kvm_supported_mem_attributes(struct kvm *kvm)
+-{
+-#ifdef kvm_arch_has_private_mem
+-	if (!kvm || kvm_arch_has_private_mem(kvm))
+-		return KVM_MEMORY_ATTRIBUTE_PRIVATE;
+-#endif
+-
+-	return 0;
+-}
+-
+ #ifdef CONFIG_KVM_VM_MEMORY_ATTRIBUTES
+ static unsigned long kvm_get_vm_memory_attributes(struct kvm *kvm, gfn_t gfn)
+ {
 
 -- 
 2.54.0.794.g4f17f83d09-goog
