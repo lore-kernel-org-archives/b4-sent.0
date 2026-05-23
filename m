@@ -1,16 +1,13 @@
 From: Federico Amedeo Izzo <federico@izzo.pro>
-Subject: [PATCH v4 0/2] Add regulator support to qcom-ufs driver
-Date: Sat, 23 May 2026 15:04:23 +0200
-Message-Id: <20260523-qcom-ufs-regulator-support-v4-0-45639533b06d@izzo.pro>
+Date: Sat, 23 May 2026 15:04:24 +0200
+Subject: [PATCH v4 1/2] regulator: qcom-rpmh-regulator: fix regulator mode
+ mismatch
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43PS07EMBAE0KuMvKZRYudjseIeiEXH7iRGMDbt2
- JqPcnfsYcGwQSxLar2qvopI7CiKp8NVMGUXnT+W0D0chFnxuBA4W7KQjRyaXrbwafwHpDkC05L
- ecfMMMYXgeYNuGAgHtOUWRQEC0+xON/zl9TvHNL2R2apYL2Yu2LYy4e8SGxKgtWBjCLAYsOwyM
- eQWWtBKjbLT2lgzP7vLxT8G9hVbXSxrzrdXsqyl/1qdZUGtIqMlUm8n84PW0VndS+pPSUED7UQ
- SdYOyH8c7ad/3L4vyQfxsAQAA
-X-Change-ID: 20260521-qcom-ufs-regulator-support-466ea6ad202a
+Message-Id: <20260523-qcom-ufs-regulator-support-v4-1-45639533b06d@izzo.pro>
+References: <20260523-qcom-ufs-regulator-support-v4-0-45639533b06d@izzo.pro>
+In-Reply-To: <20260523-qcom-ufs-regulator-support-v4-0-45639533b06d@izzo.pro>
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
  u-boot@lists.denx.de
 Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
@@ -24,70 +21,159 @@ Cc: Neil Armstrong <neil.armstrong@linaro.org>,
  Luca Weiss <luca.weiss@fairphone.com>, 
  Aswin Murugan <aswin.murugan@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779541471; l=2251;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779541471; l=4160;
  i=federico@izzo.pro; s=20251017; h=from:subject:message-id;
- bh=iGFuAXRx0a5aMTjvWY84INYa4b+EoFMclzVkqykBRBA=;
- b=Cyug6TTghLgg2J7c4C5IIB2j0tRiHW3wkE5pHYJbzrdIO5E8Gia/h4wE0DAVpiW7R5Q8Jc0eZ
- 1VhitaYDZ1yCTwfi4qHCv9oP2pmBlLi3R/DOnLoVCngEEGFf9tSjGZn
+ bh=gIA86klRMSfHRKLYFrFp1T+qxtIMBgdBtmC5m0tq2AE=;
+ b=1qGgd4Gw7UcodrxhQP+CDV1WCTEy7QAKjpEDxhDapR8Aa+cPoTn8oEcoQ0KOXFiaqGfbO5gIL
+ qYBchOfjyffCLuv/ICrHsmiYQPZAQBlcKAflDwk3+vJOk0niaQBSAjS
 X-Developer-Key: i=federico@izzo.pro; a=ed25519;
  pk=XfmNfpH48k8jLbId5NKrp0yoKoFb/uLjr97qIxBImBw=
 X-Endpoint-Received: by B4 Relay for federico@izzo.pro/20251017 with auth_id=544
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series enables UFS support on SC7280 devices with UFS3.1.
-SC7280 devices with UFS2.2 were already working.
+Initial regulator mode was read from dts but never applied.
+This caused a mismatch between saved mode and actual regulator mode.
 
-The root cause was ABL leaving vcc-supply regulator disabled on UFS3.1
-devices, and enabled on UFS2.2 devices that worked fine without
-regulator support.
+Apply the current mode from priv->mode during enable() and move
+rpmh_regulator_vrm_set_mode function before rpmh_regulator_set_enable_state().
 
 Signed-off-by: Federico Amedeo Izzo <federico@izzo.pro>
 ---
-Changes in v4:
-- Improve regulator mode fix: apply current mode during enable
-- Remove regulator mode code from qcom-ufs driver
-- Link to v3: https://patch.msgid.link/20260523-qcom-ufs-regulator-support-v3-0-1be2a80a2577@izzo.pro
-
-Changes in v3:
-- Fix bug causing HPM mode not being applied. Removed LPM/HPM hack
-- Read regulator mode from dts property instead of hardcoding it
-- Link to v2: https://patch.msgid.link/20260521-qcom-ufs-regulator-support-v2-1-d3ec82ae5dbc@izzo.pro
-
-Changes in v2:
-- Add vccq2-supply for UFS2.2 devices without internal eLDO regulator
-- Fix wrong topic
-- Link to v1: https://patch.msgid.link/20260521-dpu-add-dspp-gc-driver-v1-1-83372488cdcf@izzo.pro
-
-To: Sumit Garg <sumit.garg@kernel.org>
-To: u-boot-qcom@groups.io
-To: u-boot@lists.denx.de
-Cc: Jaehoon Chung <jh80.chung@samsung.com>
-Cc: Peng Fan <peng.fan@nxp.com>
-Cc: Casey Connolly <casey.connolly@linaro.org>
-Cc: Neil Armstrong <neil.armstrong@linaro.org>
-Cc: Tom Rini <trini@konsulko.com>
-Cc: Luca Weiss <luca.weiss@fairphone.com>
-Cc: Aswin Murugan <aswin.murugan@oss.qualcomm.com>
-Cc: Federico Amedeo Izzo <federico@izzo.pro>
-Cc: Bhupesh Sharma <bhupesh.linux@gmail.com>
-Cc: Neha Malcom Francis <n-francis@ti.com>
-Cc: Julien Stephan <jstephan@baylibre.com>
-Cc: Marek Vasut <marek.vasut+renesas@mailbox.org>
-
----
-Federico Amedeo Izzo (2):
-      regulator: qcom-rpmh-regulator: fix regulator mode mismatch
-      ufs: qcom: add ufs host regulator support
-
  drivers/power/regulator/qcom-rpmh-regulator.c | 106 ++++++++++++++------------
- drivers/ufs/ufs-qcom.c                        |  25 ++++++
- drivers/ufs/ufs-qcom.h                        |   4 +
- 3 files changed, 85 insertions(+), 50 deletions(-)
----
-base-commit: 744cf5d4e398c5f657e5c3eeb44d00fa5175dc85
-change-id: 20260521-qcom-ufs-regulator-support-466ea6ad202a
+ 1 file changed, 56 insertions(+), 50 deletions(-)
 
-Best regards,
---  
-Federico Amedeo Izzo <federico@izzo.pro>
+diff --git a/drivers/power/regulator/qcom-rpmh-regulator.c b/drivers/power/regulator/qcom-rpmh-regulator.c
+index 4d65aae1690..f789b5b6f86 100644
+--- a/drivers/power/regulator/qcom-rpmh-regulator.c
++++ b/drivers/power/regulator/qcom-rpmh-regulator.c
+@@ -295,6 +295,56 @@ static int rpmh_regulator_vrm_get_value(struct udevice *rdev)
+ 	return vreg->uv;
+ }
+ 
++static int rpmh_regulator_vrm_set_mode_bypass(struct rpmh_vreg *vreg,
++					      unsigned int mode, bool bypassed)
++{
++	struct tcs_cmd cmd = {
++		.addr = vreg->addr + RPMH_REGULATOR_REG_VRM_MODE,
++	};
++	struct dm_regulator_mode *pmic_mode;
++	int i;
++
++	if (mode > REGULATOR_MODE_HPM)
++		return -EINVAL;
++
++	for (i = 0; i < vreg->hw_data->n_modes; i++) {
++		pmic_mode = &vreg->hw_data->pmic_mode_map[i];
++		if (pmic_mode->id == mode)
++			break;
++	}
++	if (pmic_mode->id != mode) {
++		printf("Invalid mode %d\n", mode);
++		return -EINVAL;
++	}
++
++	if (bypassed)
++		// XXX: should have a version check for PMIC4 but we don't have any yet
++		// and we don't use bypass mode
++		cmd.data = PMIC5_BOB_MODE_PASS;
++	else
++		cmd.data = pmic_mode->register_value;
++
++	return rpmh_regulator_send_request(vreg, &cmd, true);
++}
++
++static int rpmh_regulator_vrm_set_mode(struct udevice *rdev,
++				       int mode)
++{
++	struct rpmh_vreg *vreg = dev_get_priv(rdev);
++	int ret;
++
++	debug("%s: set_mode %d (current %d)\n", rdev->name, mode, vreg->mode);
++
++	if (mode == vreg->mode)
++		return 0;
++
++	ret = rpmh_regulator_vrm_set_mode_bypass(vreg, mode, vreg->bypassed);
++	if (!ret)
++		vreg->mode = mode;
++
++	return ret;
++}
++
+ static int rpmh_regulator_is_enabled(struct udevice *rdev)
+ {
+ 	struct rpmh_vreg *vreg = dev_get_priv(rdev);
+@@ -331,6 +381,12 @@ static int rpmh_regulator_set_enable_state(struct udevice *rdev,
+ 	debug("%s: set_enable %d (current %d)\n", rdev->name, enable,
+ 	      vreg->enabled);
+ 
++	if (vreg->mode != -EINVAL) {
++		ret = rpmh_regulator_vrm_set_mode_bypass(vreg, vreg->mode, vreg->bypassed);
++		if (ret < 0)
++			return ret;
++	}
++
+ 	if (vreg->enabled == -EINVAL &&
+ 	    vreg->uv != -ENOTRECOVERABLE) {
+ 		ret = _rpmh_regulator_vrm_set_value(rdev,
+@@ -346,56 +402,6 @@ static int rpmh_regulator_set_enable_state(struct udevice *rdev,
+ 	return ret;
+ }
+ 
+-static int rpmh_regulator_vrm_set_mode_bypass(struct rpmh_vreg *vreg,
+-					      unsigned int mode, bool bypassed)
+-{
+-	struct tcs_cmd cmd = {
+-		.addr = vreg->addr + RPMH_REGULATOR_REG_VRM_MODE,
+-	};
+-	struct dm_regulator_mode *pmic_mode;
+-	int i;
+-
+-	if (mode > REGULATOR_MODE_HPM)
+-		return -EINVAL;
+-
+-	for (i = 0; i < vreg->hw_data->n_modes; i++) {
+-		pmic_mode = &vreg->hw_data->pmic_mode_map[i];
+-		if (pmic_mode->id == mode)
+-			break;
+-	}
+-	if (pmic_mode->id != mode) {
+-		printf("Invalid mode %d\n", mode);
+-		return -EINVAL;
+-	}
+-
+-	if (bypassed)
+-		// XXX: should have a version check for PMIC4 but we don't have any yet
+-		// and we don't use bypass mode
+-		cmd.data = PMIC5_BOB_MODE_PASS;
+-	else
+-		cmd.data = pmic_mode->register_value;
+-
+-	return rpmh_regulator_send_request(vreg, &cmd, true);
+-}
+-
+-static int rpmh_regulator_vrm_set_mode(struct udevice *rdev,
+-				       int mode)
+-{
+-	struct rpmh_vreg *vreg = dev_get_priv(rdev);
+-	int ret;
+-
+-	debug("%s: set_mode %d (current %d)\n", rdev->name, mode, vreg->mode);
+-
+-	if (mode == vreg->mode)
+-		return 0;
+-
+-	ret = rpmh_regulator_vrm_set_mode_bypass(vreg, mode, vreg->bypassed);
+-	if (!ret)
+-		vreg->mode = mode;
+-
+-	return ret;
+-}
+-
+ static int rpmh_regulator_vrm_get_pmic_mode(struct rpmh_vreg *vreg, int *pmic_mode)
+ {
+ 	struct tcs_cmd cmd = {
+
+-- 
+2.54.0
 
