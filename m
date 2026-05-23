@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Fri, 22 May 2026 17:17:53 -0700
-Subject: [PATCH v7 11/42] KVM: guest_memfd: Call arch invalidate hooks on
- conversion
+Date: Fri, 22 May 2026 17:17:54 -0700
+Subject: [PATCH v7 12/42] KVM: guest_memfd: Return early if range already
+ has requested attributes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260522-gmem-inplace-conversion-v7-11-2f0fae496530@google.com>
+Message-Id: <20260522-gmem-inplace-conversion-v7-12-2f0fae496530@google.com>
 References: <20260522-gmem-inplace-conversion-v7-0-2f0fae496530@google.com>
 In-Reply-To: <20260522-gmem-inplace-conversion-v7-0-2f0fae496530@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -39,95 +39,96 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779495480; l=2764;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779495480; l=2602;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=KKlrH/+vEe/uL6U892opPXNT4vrkNzXgjvBg7IfPYQY=;
- b=Tk1j2vugUg4JNwXyXMDf53PpEXMSRXkL1Gqt+WI8HTzRPPCmiEB30NPCU7IJoT5vXjXsSvwDZ
- jS7wGv24KeVA8GGWNylGpeKsK1fsZtzIRYSKw7Q0ltVIoCKay83MpSH
+ bh=R4WZ+o+WdEBDAk7/n7jmXkf0CoBYN2q7KUKZekzzJ7A=;
+ b=pVYkdvwbpCdTvtSX7Qmuzxp7g9xI8EkCBZ99waBSS4PMz3lgB5MjKFI8kUP7v3VIFzqXwichj
+ HA4bzVNqcxzDx2mbBnBRwxkoLs00Z51mHtT++JBfHdVskrak+sRLoA/
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When memory in guest_memfd is converted from private to shared, the
-platform-specific state associated with the guest-private pages must be
-invalidated or cleaned up.
+Extract a helper out of kvm_gmem_range_is_private() that checks that a
+range has given attributes.
 
-Iterate over the folios in the affected range and call the
-kvm_arch_gmem_invalidate() hook for each PFN range. This allows
-architectures to perform necessary teardown, such as updating hardware
-metadata or encryption states, before the pages are transitioned to the
-shared state.
-
-Invoke this helper after indicating to KVM's mmu code that an invalidation
-is in progress to stop in-flight page faults from succeeding.
+Optimize setting memory attributes by returning early if all pages in the
+requested range already has the requested attributes.
 
 Reviewed-by: Fuad Tabba <tabba@google.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- virt/kvm/guest_memfd.c | 41 +++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 41 insertions(+)
+ virt/kvm/guest_memfd.c | 33 +++++++++++++++++++++++----------
+ 1 file changed, 23 insertions(+), 10 deletions(-)
 
 diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index 2767992955752..c9c5b9f074baf 100644
+index c9c5b9f074baf..4e1028843953d 100644
 --- a/virt/kvm/guest_memfd.c
 +++ b/virt/kvm/guest_memfd.c
-@@ -606,6 +606,42 @@ static bool kvm_gmem_is_safe_for_conversion(struct inode *inode, pgoff_t start,
- 	return safe;
+@@ -86,6 +86,23 @@ static bool kvm_gmem_is_shared_mem(struct inode *inode, pgoff_t index)
+ 	return !kvm_gmem_is_private_mem(inode, index);
  }
  
-+#ifdef CONFIG_HAVE_KVM_ARCH_GMEM_INVALIDATE
-+static void kvm_gmem_invalidate(struct inode *inode, pgoff_t start, pgoff_t end)
++static bool kvm_gmem_range_has_attributes(struct maple_tree *mt,
++					  pgoff_t index, size_t nr_pages,
++					  u64 attributes)
 +{
-+	struct folio_batch fbatch;
-+	pgoff_t next = start;
-+	int i;
++	pgoff_t end = index + nr_pages - 1;
++	void *entry;
 +
-+	folio_batch_init(&fbatch);
-+	while (filemap_get_folios(inode->i_mapping, &next, end - 1, &fbatch)) {
-+		for (i = 0; i < folio_batch_count(&fbatch); ++i) {
-+			struct folio *folio = fbatch.folios[i];
-+			pgoff_t start_index, end_index;
-+			kvm_pfn_t start_pfn, end_pfn;
++	lockdep_assert(mt_lock_is_held(mt));
 +
-+			start_index = max(start, folio->index);
-+			end_index = min(end, folio_next_index(folio));
-+			/*
-+			 * end_index is either in folio or points to
-+			 * the first page of the next folio. Hence,
-+			 * all pages in range [start_index, end_index)
-+			 * are contiguous.
-+			 */
-+			start_pfn = folio_file_pfn(folio, start_index);
-+			end_pfn = start_pfn + end_index - start_index;
-+
-+			kvm_arch_gmem_invalidate(start_pfn, end_pfn);
-+		}
-+
-+		folio_batch_release(&fbatch);
-+		cond_resched();
++	mt_for_each(mt, entry, index, end) {
++		if (xa_to_value(entry) != attributes)
++			return false;
 +	}
++
++	return true;
 +}
-+#else
-+static void kvm_gmem_invalidate(struct inode *inode, pgoff_t start, pgoff_t end) {}
-+#endif
 +
- static int __kvm_gmem_set_attributes(struct inode *inode, pgoff_t start,
- 				     size_t nr_pages, uint64_t attrs,
- 				     pgoff_t *err_index)
-@@ -646,7 +682,12 @@ static int __kvm_gmem_set_attributes(struct inode *inode, pgoff_t start,
- 	 */
+ static int __kvm_gmem_prepare_folio(struct kvm *kvm, struct kvm_memory_slot *slot,
+ 				    pgoff_t index, struct folio *folio)
+ {
+@@ -652,12 +669,15 @@ static int __kvm_gmem_set_attributes(struct inode *inode, pgoff_t start,
+ 	pgoff_t end = start + nr_pages;
+ 	struct maple_tree *mt;
+ 	struct ma_state mas;
+-	int r;
++	int r = 0;
  
- 	kvm_gmem_invalidate_begin(inode, start, end);
+ 	mt = &gi->attributes;
+ 
+ 	filemap_invalidate_lock(mapping);
+ 
++	if (kvm_gmem_range_has_attributes(mt, start, nr_pages, attrs))
++		goto out;
 +
-+	if (!to_private)
-+		kvm_gmem_invalidate(inode, start, end);
-+
- 	mas_store_prealloc(&mas, xa_mk_value(attrs));
-+
- 	kvm_gmem_invalidate_end(inode, start, end);
- out:
- 	filemap_invalidate_unlock(mapping);
+ 	mas_init(&mas, mt, start);
+ 	r = kvm_gmem_mas_preallocate(&mas, attrs, start, nr_pages);
+ 	if (r) {
+@@ -1149,20 +1169,13 @@ EXPORT_SYMBOL_FOR_KVM_INTERNAL(kvm_gmem_get_pfn);
+ static bool kvm_gmem_range_is_private(struct gmem_inode *gi, pgoff_t index,
+ 				      size_t nr_pages, struct kvm *kvm, gfn_t gfn)
+ {
+-	pgoff_t end = index + nr_pages - 1;
+-	void *entry;
+-
+ 	if (vm_memory_attributes)
+ 		return kvm_range_has_vm_memory_attributes(kvm, gfn, gfn + nr_pages,
+ 						       KVM_MEMORY_ATTRIBUTE_PRIVATE,
+ 						       KVM_MEMORY_ATTRIBUTE_PRIVATE);
+ 
+-	mt_for_each(&gi->attributes, entry, index, end) {
+-		if (xa_to_value(entry) != KVM_MEMORY_ATTRIBUTE_PRIVATE)
+-			return false;
+-	}
+-
+-	return true;
++	return kvm_gmem_range_has_attributes(&gi->attributes, index, nr_pages,
++					     KVM_MEMORY_ATTRIBUTE_PRIVATE);
+ }
+ 
+ static long __kvm_gmem_populate(struct kvm *kvm, struct kvm_memory_slot *slot,
 
 -- 
 2.54.0.794.g4f17f83d09-goog
