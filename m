@@ -1,11 +1,10 @@
 From: Federico Amedeo Izzo <federico@izzo.pro>
-Date: Sat, 23 May 2026 12:25:51 +0200
-Subject: [PATCH v3 1/2] regulator: qcom-rpmh-regulator: fix regulator mode
- mismatch
+Date: Sat, 23 May 2026 12:25:52 +0200
+Subject: [PATCH v3 2/2] ufs: qcom: add ufs host regulator support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260523-qcom-ufs-regulator-support-v3-1-1be2a80a2577@izzo.pro>
+Message-Id: <20260523-qcom-ufs-regulator-support-v3-2-1be2a80a2577@izzo.pro>
 References: <20260523-qcom-ufs-regulator-support-v3-0-1be2a80a2577@izzo.pro>
 In-Reply-To: <20260523-qcom-ufs-regulator-support-v3-0-1be2a80a2577@izzo.pro>
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
@@ -21,45 +20,107 @@ Cc: Neil Armstrong <neil.armstrong@linaro.org>,
  Luca Weiss <luca.weiss@fairphone.com>, 
  Aswin Murugan <aswin.murugan@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779531961; l=1222;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779531961; l=3104;
  i=federico@izzo.pro; s=20251017; h=from:subject:message-id;
- bh=mMP8o/Jp8TjuIhb6AjVw+YfOd0lr+gWRIANKnyT1Oz0=;
- b=gIZUkAKMz6ZTMy516CiaQPLAG9R8/I8NbK7GAp4I2EFiGHFRJpQYZbd3jJ+7UOwIrChwHOb95
- vaUchT4kDDFBGidPyXQuvl0lqIubHKER4VKycbreQF6DLDYPvscjE+G
+ bh=P+cGFj4YFRvaiYLl3OlzTsjPTMmktRwICoqneTQvwJY=;
+ b=Nxe+dJV+W2Ia4tQZ4YGRhz66VSthJDMm92tAs14VUqjfw+G0sug54f/ZTp7hHV5e53/5mH0r0
+ 7gnNxV6iVK/A4ycWPvtGBLzxtarYjHBJnEk4sK79PnakBAYwNNf4jBQ
 X-Developer-Key: i=federico@izzo.pro; a=ed25519;
  pk=XfmNfpH48k8jLbId5NKrp0yoKoFb/uLjr97qIxBImBw=
 X-Endpoint-Received: by B4 Relay for federico@izzo.pro/20251017 with auth_id=544
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix issue where regulator mode could not be set to the
-"regulator-initial-mode" value from dts.
+The qcom UFS driver works without touching the regulators on most platforms
+as ABL leaves them already configured and enabled.
+On some SC7280 phones with UFS 3.1 like nothing-spacewar, vcc regulator is
+not enabled by ABL, so we need to configure and enable it to use the UFS
+storage.
 
-priv->mode was initialized to "regulator-initial-mode", but this could
-differ from the actual regulator mode.
-In this case rpmh_regulator_vrm_set_mode() would return early, thinking
-that the mode is already correct.
-
-Setting an invalid mode on probe solves the issue.
+Tested on nothing-spacewar and motorola-dubai using Tauchgang U-Boot.
 
 Signed-off-by: Federico Amedeo Izzo <federico@izzo.pro>
 ---
- drivers/power/regulator/qcom-rpmh-regulator.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ drivers/ufs/ufs-qcom.c | 33 +++++++++++++++++++++++++++++++++
+ drivers/ufs/ufs-qcom.h |  4 ++++
+ 2 files changed, 37 insertions(+)
 
-diff --git a/drivers/power/regulator/qcom-rpmh-regulator.c b/drivers/power/regulator/qcom-rpmh-regulator.c
-index 4d65aae1690..06c3c14c46e 100644
---- a/drivers/power/regulator/qcom-rpmh-regulator.c
-+++ b/drivers/power/regulator/qcom-rpmh-regulator.c
-@@ -882,8 +882,7 @@ static int rpmh_regulator_probe(struct udevice *dev)
- 	priv->hw_data = init_data->hw_data;
- 	priv->enabled = -EINVAL;
- 	priv->uv = -ENOTRECOVERABLE;
--	if (ofnode_read_u32(dev_ofnode(dev), "regulator-initial-mode", &priv->mode))
--		priv->mode = -EINVAL;
-+	priv->mode = -EINVAL;
+diff --git a/drivers/ufs/ufs-qcom.c b/drivers/ufs/ufs-qcom.c
+index dc40ee62daf..376be2eeaaf 100644
+--- a/drivers/ufs/ufs-qcom.c
++++ b/drivers/ufs/ufs-qcom.c
+@@ -16,6 +16,7 @@
+ #include <generic-phy.h>
+ #include <asm/gpio.h>
+ #include <interconnect.h>
++#include <power/regulator.h>
  
- 	plat_data->mode = priv->hw_data->pmic_mode_map;
- 	plat_data->mode_count = priv->hw_data->n_modes;
+ #include <linux/bitops.h>
+ #include <linux/delay.h>
+@@ -557,10 +558,31 @@ static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_hba *hba, bool enable)
+ static int ufs_qcom_init(struct ufs_hba *hba)
+ {
+ 	struct ufs_qcom_priv *priv = dev_get_priv(hba->dev);
++	int mode;
+ 	int err;
+ 
+ 	priv->hba = hba;
+ 
++	/* Apply regulator initial-mode from dts */
++	err = dev_read_u32(priv->vcc, "regulator-initial-mode", &mode);
++	if (!err) {
++		err = regulator_set_mode(priv->vcc, mode);
++		if (err && err != -ENOSYS)
++			dev_warn(hba->dev, "failed to set vcc-supply mode:%d\n", err);
++	}
++
++	err = regulator_set_enable(priv->vcc, true);
++	if (err && err != -ENOSYS)
++		dev_warn(hba->dev, "failed to enable regulator vcc-supply:%d\n", err);
++
++	err = regulator_set_enable(priv->vccq, true);
++	if (err && err != -ENOSYS)
++		dev_warn(hba->dev, "failed to enable regulator vccq-supply:%d\n", err);
++
++	err = regulator_set_enable(priv->vccq2, true);
++	if (err && err != -ENOSYS)
++		dev_warn(hba->dev, "failed to enable regulator vccq2-supply:%d\n", err);
++
+ 	/* setup clocks */
+ 	ufs_qcom_setup_clocks(hba, true, PRE_CHANGE);
+ 
+@@ -651,6 +673,17 @@ static int ufs_qcom_probe(struct udevice *dev)
+ 		dev_err(dev, "Warning: cannot get reset GPIO\n");
+ 	}
+ 
++	ret = device_get_supply_regulator(dev, "vcc-supply", &priv->vcc);
++	if (ret)
++		dev_warn(dev, "failed to get regulator vcc-supply:%d\n", ret);
++
++	ret = device_get_supply_regulator(dev, "vccq-supply", &priv->vccq);
++	if (ret)
++		dev_warn(dev, "failed to get regulator vccq-supply:%d\n", ret);
++
++	/* vccq2 is optional on UFS2 and missing on UFS3 and later */
++	device_get_supply_regulator(dev, "vccq2-supply", &priv->vccq2);
++
+ 	ret = ufshcd_probe(dev, &ufs_qcom_hba_ops);
+ 	if (ret) {
+ 		dev_err(dev, "ufshcd_probe() failed, ret:%d\n", ret);
+diff --git a/drivers/ufs/ufs-qcom.h b/drivers/ufs/ufs-qcom.h
+index de957ae60f3..115565db7e9 100644
+--- a/drivers/ufs/ufs-qcom.h
++++ b/drivers/ufs/ufs-qcom.h
+@@ -134,6 +134,10 @@ struct ufs_qcom_priv {
+ 	struct clk_bulk clks;
+ 	bool is_clks_enabled;
+ 
++	struct udevice *vcc;
++	struct udevice *vccq;
++	struct udevice *vccq2;
++
+ 	struct ufs_hw_version hw_ver;
+ 
+ 	/* Reset control of HCI */
 
 -- 
 2.54.0
