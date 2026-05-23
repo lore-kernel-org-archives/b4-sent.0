@@ -1,115 +1,80 @@
-From: Federico Amedeo Izzo <federico@izzo.pro>
-Date: Sat, 23 May 2026 15:04:25 +0200
-Subject: [PATCH v4 2/2] ufs: qcom: add ufs host regulator support
+From: Demi Marie Obenour <demiobenour@gmail.com>
+Subject: [PATCH 0/2] Delete the Qualcomm crypto engine
+Date: Sat, 23 May 2026 15:03:55 -0400
+Message-Id: <20260523-delete-qce-v1-0-86105cd7f406@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260523-qcom-ufs-regulator-support-v4-2-45639533b06d@izzo.pro>
-References: <20260523-qcom-ufs-regulator-support-v4-0-45639533b06d@izzo.pro>
-In-Reply-To: <20260523-qcom-ufs-regulator-support-v4-0-45639533b06d@izzo.pro>
-To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
- u-boot@lists.denx.de
-Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
- Bhupesh Sharma <bhupesh.linux@gmail.com>, 
- Neha Malcom Francis <n-francis@ti.com>, 
- Casey Connolly <casey.connolly@linaro.org>, Tom Rini <trini@konsulko.com>, 
- Marek Vasut <marek.vasut+renesas@mailbox.org>, 
- Federico Amedeo Izzo <federico@izzo.pro>, 
- Julien Stephan <jstephan@baylibre.com>, 
- Jaehoon Chung <jh80.chung@samsung.com>, Peng Fan <peng.fan@nxp.com>, 
- Luca Weiss <luca.weiss@fairphone.com>, 
- Aswin Murugan <aswin.murugan@oss.qualcomm.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779541471; l=2680;
- i=federico@izzo.pro; s=20251017; h=from:subject:message-id;
- bh=J7WFWpRyAfQxDHcsg9NBe0inkMTwOgLG5fNLYDlsgpw=;
- b=RWTo0LBEYhBztKRxCncIYEGrHLQltQpYHv5iZokE39in7iWgBK0OcvKUUEkpAejY7KUoo2g75
- RBlxETpsYwXDQ9J4VAbwOUUhEt+JYMsSOuZNsN60FrDDEja0eJZQesQ
-X-Developer-Key: i=federico@izzo.pro; a=ed25519;
- pk=XfmNfpH48k8jLbId5NKrp0yoKoFb/uLjr97qIxBImBw=
-X-Endpoint-Received: by B4 Relay for federico@izzo.pro/20251017 with auth_id=544
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDUyNj3ZTUnNSSVN3C5FRdA2Mz4xQjo0QLU0szJaCGgqLUtMwKsGHRsbW
+ 1AAdO39VcAAAA
+X-Change-ID: 20260523-delete-qce-0363d22a8596
+To: Herbert Xu <herbert@gondor.apana.org.au>, 
+ "David S. Miller" <davem@davemloft.net>, 
+ Thara Gopinath <thara.gopinath@gmail.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Russell King <linux@armlinux.org.uk>
+Cc: linux-kernel@vger.kernel.org, linux-crypto@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, Eric Biggers <ebiggers@kernel.org>, 
+ Ard Biesheuvel <ardb@kernel.org>, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, 
+ Demi Marie Obenour <demiobenour@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779563043; l=2071;
+ i=demiobenour@gmail.com; s=20250731; h=from:subject:message-id;
+ bh=qKdKW12reljmkI9Y5GL96UhP5eGpAEu75do6kp2GrbQ=;
+ b=TtSJ+IKiIz4+J8ZUozDqY5sbAF3vqtXPpM9l1sFNxConO52NyijO6g3Vw49p+zAa/n1QHX5tt
+ xTSDIB65+CJC+aZ2Q+K518avBn4FicGdDE2+6UFcs1UfpBdkIoLYdjs
+X-Developer-Key: i=demiobenour@gmail.com; a=ed25519;
+ pk=4iGY+ynEKxIfs+fIUK9EzsvZ44yGE0GvXLeLTPKKPhI=
+X-Endpoint-Received: by B4 Relay for demiobenour@gmail.com/20250731 with auth_id=473
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The qcom UFS driver works without touching the regulators on most platforms
-as ABL leaves them already configured and enabled.
-On some SC7280 phones with UFS 3.1 like nothing-spacewar, vcc regulator is
-not enabled by ABL, so we need to configure and enable it to use the UFS
-storage.
+The only realistic uses I can think of are:
 
-Tested on nothing-spacewar and motorola-dubai using Tauchgang U-Boot.
+1. Very weak devices where QCE is actually faster.
+2. Devices without bitsliced NEON.
 
-Signed-off-by: Federico Amedeo Izzo <federico@izzo.pro>
+Do any such devices exist in the wild?  I have no idea.
+
+Not even compile-tested, but should be trivial as it just deletes code.
+I didn't change the device tree beyond marking the bindings as
+deprecated.
+
+Signed-off-by: Demi Marie Obenour <demiobenour@gmail.com>
 ---
- drivers/ufs/ufs-qcom.c | 25 +++++++++++++++++++++++++
- drivers/ufs/ufs-qcom.h |  4 ++++
- 2 files changed, 29 insertions(+)
+Demi Marie Obenour (2):
+      crypto: Delete Qualcomm crypto engine driver
+      devicetree: Mark QCE bindings as deprecated
 
-diff --git a/drivers/ufs/ufs-qcom.c b/drivers/ufs/ufs-qcom.c
-index dc40ee62daf..0e2e45f1075 100644
---- a/drivers/ufs/ufs-qcom.c
-+++ b/drivers/ufs/ufs-qcom.c
-@@ -16,6 +16,7 @@
- #include <generic-phy.h>
- #include <asm/gpio.h>
- #include <interconnect.h>
-+#include <power/regulator.h>
- 
- #include <linux/bitops.h>
- #include <linux/delay.h>
-@@ -561,6 +562,19 @@ static int ufs_qcom_init(struct ufs_hba *hba)
- 
- 	priv->hba = hba;
- 
-+	/* enable regulators */
-+	err = regulator_set_enable(priv->vcc, true);
-+	if (err && err != -ENOSYS)
-+		dev_warn(hba->dev, "failed to enable regulator vcc-supply:%d\n", err);
-+
-+	err = regulator_set_enable(priv->vccq, true);
-+	if (err && err != -ENOSYS)
-+		dev_warn(hba->dev, "failed to enable regulator vccq-supply:%d\n", err);
-+
-+	err = regulator_set_enable(priv->vccq2, true);
-+	if (err && err != -ENOSYS)
-+		dev_warn(hba->dev, "failed to enable regulator vccq2-supply:%d\n", err);
-+
- 	/* setup clocks */
- 	ufs_qcom_setup_clocks(hba, true, PRE_CHANGE);
- 
-@@ -651,6 +665,17 @@ static int ufs_qcom_probe(struct udevice *dev)
- 		dev_err(dev, "Warning: cannot get reset GPIO\n");
- 	}
- 
-+	ret = device_get_supply_regulator(dev, "vcc-supply", &priv->vcc);
-+	if (ret)
-+		dev_warn(dev, "failed to get regulator vcc-supply:%d\n", ret);
-+
-+	ret = device_get_supply_regulator(dev, "vccq-supply", &priv->vccq);
-+	if (ret)
-+		dev_warn(dev, "failed to get regulator vccq-supply:%d\n", ret);
-+
-+	/* vccq2 is optional on UFS2 and missing on UFS3 and later */
-+	device_get_supply_regulator(dev, "vccq2-supply", &priv->vccq2);
-+
- 	ret = ufshcd_probe(dev, &ufs_qcom_hba_ops);
- 	if (ret) {
- 		dev_err(dev, "ufshcd_probe() failed, ret:%d\n", ret);
-diff --git a/drivers/ufs/ufs-qcom.h b/drivers/ufs/ufs-qcom.h
-index de957ae60f3..115565db7e9 100644
---- a/drivers/ufs/ufs-qcom.h
-+++ b/drivers/ufs/ufs-qcom.h
-@@ -134,6 +134,10 @@ struct ufs_qcom_priv {
- 	struct clk_bulk clks;
- 	bool is_clks_enabled;
- 
-+	struct udevice *vcc;
-+	struct udevice *vccq;
-+	struct udevice *vccq2;
-+
- 	struct ufs_hw_version hw_ver;
- 
- 	/* Reset control of HCI */
+ .../devicetree/bindings/crypto/qcom-qce.yaml       |   3 +
+ MAINTAINERS                                        |   8 -
+ arch/arm/configs/multi_v7_defconfig                |   1 -
+ arch/arm64/configs/defconfig                       |   1 -
+ drivers/crypto/Kconfig                             | 111 ---
+ drivers/crypto/Makefile                            |   1 -
+ drivers/crypto/qce/Makefile                        |   9 -
+ drivers/crypto/qce/aead.c                          | 841 ---------------------
+ drivers/crypto/qce/aead.h                          |  56 --
+ drivers/crypto/qce/cipher.h                        |  56 --
+ drivers/crypto/qce/common.c                        | 595 ---------------
+ drivers/crypto/qce/common.h                        | 104 ---
+ drivers/crypto/qce/core.c                          | 271 -------
+ drivers/crypto/qce/core.h                          |  64 --
+ drivers/crypto/qce/dma.c                           | 135 ----
+ drivers/crypto/qce/dma.h                           |  47 --
+ drivers/crypto/qce/regs-v5.h                       | 326 --------
+ drivers/crypto/qce/sha.c                           | 545 -------------
+ drivers/crypto/qce/sha.h                           |  72 --
+ drivers/crypto/qce/skcipher.c                      | 529 -------------
+ 20 files changed, 3 insertions(+), 3772 deletions(-)
+---
+base-commit: 49e05bb00f2e8168695f7af4d694c39e1423e8a2
+change-id: 20260523-delete-qce-0363d22a8596
 
+Best regards,
 -- 
-2.54.0
+Demi Marie Obenour <demiobenour@gmail.com>
 
