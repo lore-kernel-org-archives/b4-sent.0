@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Sun, 24 May 2026 11:35:26 +0100
-Subject: [PATCH v14 09/12] iio: frequency: adf41513: handle LE
- synchronization feature
+Date: Sun, 24 May 2026 11:35:27 +0100
+Subject: [PATCH v14 10/12] iio: frequency: adf41513: features on frequency
+ change
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260524-adf41513-iio-driver-v14-9-06824d9c15f4@analog.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260524-adf41513-iio-driver-v14-10-06824d9c15f4@analog.com>
 References: <20260524-adf41513-iio-driver-v14-0-06824d9c15f4@analog.com>
 In-Reply-To: <20260524-adf41513-iio-driver-v14-0-06824d9c15f4@analog.com>
 To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
@@ -24,97 +24,197 @@ Cc: Jonathan Cameron <jic23@kernel.org>,
  Shuah Khan <skhan@linuxfoundation.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779618938; l=2690;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779618938; l=6090;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=zmkJcNOMxyjybaEg7liQf0jE/fQEjr0YjWYo2BC84cw=;
- b=/tLPJvOS0ZgwxtTxsdWPvRdvIW3s6teqaVsvKpUjyigqCqd1FNFj7Yq0vENTzLgJRmyPWC2/T
- tfiokjnVDJ1Duox/EQl3+wrDnMTgDAenPd2k78eHoixS+4nSqzz3UM6
+ bh=8IfAGT4KE3XVA9QAl7cqwMohYPT/5znW/x2FgZPV7Wg=;
+ b=n5FuG/dl/rW1EtO1YgGZ+GyJ8xFtfh0e5XASdYEJS7v15muSjgWLU695HRpPI6ZU1ZYbFk4ng
+ 4iGtVBs1X4ZD79zA1jLAFZn7TM2kZzEFOS0MtnS1j6pZvPf9ly5XL0T
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When LE sync is enabled, it must be set after powering up and it must be
-disabled when powering down. It is recommended when using the PLL as
-a frequency synthesizer, where reference signal will always be present
-while the device is being configured.
+Set Bleed current when PFD frequency changes (bleed enabled when in
+fractional mode). Set lock detector window size, handling bias and
+precision. Add phase resync support, setting clock dividers when
+PFD frequency changes.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/frequency/adf41513.c | 33 +++++++++++++++++++++++++++++++--
- 1 file changed, 31 insertions(+), 2 deletions(-)
+ drivers/iio/frequency/adf41513.c | 108 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 108 insertions(+)
 
 diff --git a/drivers/iio/frequency/adf41513.c b/drivers/iio/frequency/adf41513.c
-index 6f952ccc675e..43726b2d4879 100644
+index 43726b2d4879..4f52c6f5df25 100644
 --- a/drivers/iio/frequency/adf41513.c
 +++ b/drivers/iio/frequency/adf41513.c
-@@ -226,6 +226,7 @@ struct adf41513_data {
- 	bool phase_detector_polarity;
+@@ -26,6 +26,7 @@
+ #include <linux/regulator/consumer.h>
+ #include <linux/spi/spi.h>
+ #include <linux/sysfs.h>
++#include <linux/time64.h>
+ #include <linux/types.h>
+ #include <linux/units.h>
  
- 	bool logic_lvl_1v8_en;
-+	bool le_sync_en;
+@@ -152,6 +153,10 @@
+ #define ADF41513_PRESCALER_8_9			1
+ #define ADF41513_PRESCALER_AUTO			2
+ 
++/* CLK Divider mode */
++#define ADF41513_CLK_DIV_MODE_OFF		0
++#define ADF41513_CLK_DIV_MODE_PHASE_RESYNC	2
++
+ /* Specifications */
+ #define ADF41510_MAX_RF_FREQ_HZ			(10ULL * HZ_PER_GHZ)
+ #define ADF41513_MIN_RF_FREQ_HZ			(1ULL * HZ_PER_GHZ)
+@@ -217,6 +222,7 @@ struct adf41513_chip_info {
+ struct adf41513_data {
+ 	u64 power_up_frequency_hz;
+ 	u64 freq_resolution_uhz;
++	u32 phase_resync_period_ns;
+ 	u32 charge_pump_voltage_mv;
+ 	u32 lock_detect_count;
+ 
+@@ -276,6 +282,16 @@ struct adf41513_state {
+ 	bool powerdown;
  };
  
- struct adf41513_pll_settings {
-@@ -635,13 +636,28 @@ static int adf41513_set_frequency(struct adf41513_state *st, u64 freq_uhz, u16 s
- static int adf41513_suspend(struct adf41513_state *st)
- {
- 	st->regs[ADF41513_REG6] |= FIELD_PREP(ADF41513_REG6_POWER_DOWN_MSK, 1);
-+	st->regs[ADF41513_REG12] &= ~ADF41513_REG12_LE_SELECT_MSK;
- 	return adf41513_sync_config(st, ADF41513_SYNC_DIFF);
++static const u16 adf41513_ld_window_x10_ns[] = {
++	9, 12, 16, 17, 21, 28, 29, 35,			/* 0 - 7 */
++	43, 47, 49, 52, 70, 79, 115,			/* 8 - 14 */
++};
++
++static const u8 adf41513_ldp_bias[] = {
++	0xC, 0xD, 0xE, 0x8, 0x9, 0x4, 0xA, 0x5,		/* 0 - 7 */
++	0x0, 0x6, 0xB, 0x1, 0x2, 0x7, 0x3,		/* 8 - 14 */
++};
++
+ static const char * const adf41513_power_supplies[] = {
+ 	"avdd1", "avdd2", "avdd3", "avdd4", "avdd5", "vp",
+ };
+@@ -579,9 +595,86 @@ static int adf41513_calc_pll_settings(struct adf41513_state *st,
+ 	return 0;
  }
  
- static int adf41513_resume(struct adf41513_state *st)
- {
-+	int ret;
++static void adf41513_set_bleed_val(struct adf41513_state *st)
++{
++	u32 bleed_value, cp_index;
 +
- 	st->regs[ADF41513_REG6] &= ~ADF41513_REG6_POWER_DOWN_MSK;
--	return adf41513_sync_config(st, ADF41513_SYNC_ALL);
-+	st->regs[ADF41513_REG12] &= ~ADF41513_REG12_LE_SELECT_MSK;
-+	ret = adf41513_sync_config(st, ADF41513_SYNC_ALL);
-+	if (ret)
-+		return ret;
++	if (!(st->regs[ADF41513_REG6] & ADF41513_REG6_BLEED_ENABLE_MSK))
++		return;
 +
-+	if (st->data.le_sync_en) {
-+		st->regs[ADF41513_REG12] |= ADF41513_REG12_LE_SELECT_MSK;
-+		ret = adf41513_sync_config(st, ADF41513_SYNC_DIFF);
-+		if (ret)
-+			return ret;
++	if (st->data.phase_detector_polarity)
++		bleed_value = 90;
++	else
++		bleed_value = 144;
++
++	cp_index = 1 + FIELD_GET(ADF41513_REG5_CP_CURRENT_MSK,
++				 st->regs[ADF41513_REG5]);
++	bleed_value = div64_u64(st->settings.pfd_frequency_uhz * cp_index * bleed_value,
++				1600ULL * MEGA * MICROHZ_PER_HZ);
++
++	FIELD_MODIFY(ADF41513_REG6_BLEED_CURRENT_MSK, &st->regs[ADF41513_REG6],
++		     bleed_value);
++}
++
++static void adf41513_set_ld_window(struct adf41513_state *st)
++{
++	/*
++	 * The ideal lock detector window size is halfway between the max
++	 * window, set by the phase comparison period t_PFD = (1 / f_PFD),
++	 * and the minimum is set by (I_BLEED/I_CP) × t_PFD
++	 */
++	u16 ld_window_10x_ns = div64_u64(10ULL * NSEC_PER_SEC * MICROHZ_PER_HZ,
++					 st->settings.pfd_frequency_uhz << 1);
++	u8 ld_idx, ldp, ld_bias;
++
++	if (st->settings.mode != ADF41513_MODE_INTEGER_N) {
++		/* account for bleed current (deduced from eq.6 and eq.7) */
++		if (st->data.phase_detector_polarity)
++			ld_window_10x_ns += 4;
++		else
++			ld_window_10x_ns += 6;
 +	}
 +
-+	return 0;
- }
++	ld_idx = find_closest(ld_window_10x_ns, adf41513_ld_window_x10_ns,
++			      ARRAY_SIZE(adf41513_ld_window_x10_ns));
++	ldp = (adf41513_ldp_bias[ld_idx] >> 2) & 0x3;
++	ld_bias = adf41513_ldp_bias[ld_idx] & 0x3;
++
++	FIELD_MODIFY(ADF41513_REG6_LDP_MSK, &st->regs[ADF41513_REG6], ldp);
++	FIELD_MODIFY(ADF41513_REG9_LD_BIAS_MSK, &st->regs[ADF41513_REG9], ld_bias);
++}
++
++static void adf41513_set_phase_resync(struct adf41513_state *st)
++{
++	u32 total_div, clk1_div, clk2_div;
++
++	if (!st->data.phase_resync_period_ns)
++		return;
++
++	/* assuming both clock dividers hold similar values */
++	total_div = mul_u64_u64_div_u64(st->settings.pfd_frequency_uhz,
++					st->data.phase_resync_period_ns,
++					1ULL * MICROHZ_PER_HZ * NSEC_PER_SEC);
++	clk1_div = clamp(int_sqrt(total_div), 1,
++			 ADF41513_MAX_CLK_DIVIDER);
++	clk2_div = clamp(DIV_ROUND_CLOSEST(total_div, clk1_div), 1,
++			 ADF41513_MAX_CLK_DIVIDER);
++
++	FIELD_MODIFY(ADF41513_REG5_CLK1_DIV_MSK, &st->regs[ADF41513_REG5],
++		     clk1_div);
++	FIELD_MODIFY(ADF41513_REG7_CLK2_DIV_MSK, &st->regs[ADF41513_REG7],
++		     clk2_div);
++
++	/* enable phase resync */
++	FIELD_MODIFY(ADF41513_REG7_CLK_DIV_MODE_MSK, &st->regs[ADF41513_REG7],
++		     ADF41513_CLK_DIV_MODE_PHASE_RESYNC);
++}
++
+ static int adf41513_set_frequency(struct adf41513_state *st, u64 freq_uhz, u16 sync_mask)
+ {
+ 	struct adf41513_pll_settings result;
++	bool pfd_change = false;
++	bool mode_change = false;
+ 	int ret;
  
- static ssize_t adf41513_read_resolution(struct iio_dev *indio_dev,
-@@ -914,6 +930,8 @@ static int adf41513_parse_fw(struct adf41513_state *st)
- 				     "invalid lock detect count: %u\n", tmp);
- 	st->data.lock_detect_count = tmp;
- 
-+	/* load enable sync */
-+	st->data.le_sync_en = device_property_read_bool(dev, "adi,le-sync-enable");
- 	st->data.freq_resolution_uhz = MICROHZ_PER_HZ;
- 
- 	return 0;
-@@ -970,7 +988,18 @@ static int adf41513_setup(struct device *dev, struct adf41513_state *st)
- 	if (ret)
+ 	ret = adf41513_calc_pll_settings(st, &result, freq_uhz);
+@@ -589,6 +682,8 @@ static int adf41513_set_frequency(struct adf41513_state *st, u64 freq_uhz, u16 s
  		return ret;
  
--	return devm_add_action_or_reset(dev, adf41513_close, st);
-+	ret = devm_add_action_or_reset(dev, adf41513_close, st);
-+	if (ret)
-+		return ret;
-+
-+	if (st->data.le_sync_en) {
-+		st->regs[ADF41513_REG12] |= ADF41513_REG12_LE_SELECT_MSK;
-+		ret = adf41513_sync_config(st, ADF41513_SYNC_DIFF);
-+		if (ret)
-+			return ret;
+ 	/* apply computed results to pll settings */
++	pfd_change = st->settings.pfd_frequency_uhz != result.pfd_frequency_uhz;
++	mode_change = st->settings.mode != result.mode;
+ 	st->settings = result;
+ 
+ 	dev_dbg(&st->spi->dev,
+@@ -630,6 +725,14 @@ static int adf41513_set_frequency(struct adf41513_state *st, u64 freq_uhz, u16 s
+ 		st->regs[ADF41513_REG6] |= ADF41513_REG6_BLEED_ENABLE_MSK;
+ 	}
+ 
++	if (pfd_change) {
++		adf41513_set_bleed_val(st);
++		adf41513_set_phase_resync(st);
 +	}
 +
-+	return 0;
++	if (pfd_change || mode_change)
++		adf41513_set_ld_window(st);
++
+ 	return adf41513_sync_config(st, sync_mask | ADF41513_SYNC_REG0);
  }
  
- static int adf41513_pm_suspend(struct device *dev)
+@@ -920,6 +1023,11 @@ static int adf41513_parse_fw(struct adf41513_state *st)
+ 	st->data.phase_detector_polarity =
+ 		device_property_read_bool(dev, "adi,phase-detector-polarity-positive-enable");
+ 
++	st->data.phase_resync_period_ns = 0;
++	ret = device_property_read_u32(dev, "adi,phase-resync-period-ns", &tmp);
++	if (!ret)
++		st->data.phase_resync_period_ns = tmp;
++
+ 	st->data.logic_lvl_1v8_en = device_property_read_bool(dev, "adi,logic-level-1v8-enable");
+ 
+ 	tmp = ADF41513_LD_COUNT_MIN;
 
 -- 
 2.43.0
