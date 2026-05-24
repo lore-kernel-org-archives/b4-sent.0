@@ -1,16 +1,12 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Subject: [PATCH v7 0/8] Fixes and cleanups for the AD5686 IIO driver
-Date: Sun, 24 May 2026 11:17:00 +0100
-Message-Id: <20260524-ad5686-fixes-v7-0-b6bf395d08bd@analog.com>
+Date: Sun, 24 May 2026 11:17:01 +0100
+Subject: [PATCH v7 1/8] iio: dac: ad5686: refactor include headers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIABzQEmoC/3XQTU7EMAwF4KuMsiYoThPHYcU9EIv8uDORoEUtq
- kCj3h3PbCitWD5b35Plq5p5ajyrp9NVTby0uY2DhPBwUuWShjPrViUraywaZ1Gn6pFQ9+2LZ40
- dJyQCyDUrIR8T3xciXl4lX9r8OU7f9/YFbtN/ihbQRocSHaYQQnT8nIb0Np4fy/iubk2L3eqw0
- 1Y0ELHxEGOHdNDdVtNOd6Jj6fuQK4YE/qDdVseddqJzph6KcGI4aP+rvYGd9qJNtr3zjsjB8XL
- car/TKLrY6uV07mz++7V1XX8AMLaomt8BAAA=
-X-Change-ID: 20260426-ad5686-fixes-63ea68811bdb
+Message-Id: <20260524-ad5686-fixes-v7-1-b6bf395d08bd@analog.com>
+References: <20260524-ad5686-fixes-v7-0-b6bf395d08bd@analog.com>
+In-Reply-To: <20260524-ad5686-fixes-v7-0-b6bf395d08bd@analog.com>
 To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Stefan Popa <stefan.popa@analog.com>, Jonathan Cameron <jic23@cam.ac.uk>, 
  Greg Kroah-Hartman <gregkh@suse.de>, 
@@ -23,80 +19,120 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Rodrigo Alencar <rodrigo.alencar@analog.com>, 
  Andy Shevchenko <andriy.shevchenko@intel.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779617840; l=2669;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779617840; l=2872;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=iLaDup/VAr36l8p281EDtTj0H41cn1wISQs1uP+345Y=;
- b=pJkDXANbpV/nZm/XAprwdEdj9iuRo9KnSTg6gl4ASWxWVw62KWGqVmi+G5BiVTQAzTUqKhh87
- b5i8YuPrrKYCNLXFFIls7P9lsaCcBxdtsdipclUvkEa6hzxU3GRV1Ab
+ bh=poBTgs/vqszB17NX9Jl2Qq8zDSw7aFqp3htw7xmIt6E=;
+ b=zx1Gzw8ONp2R6Z6FT0/Btffsm4uZxB9DLlZrsmPmzDSSseuj2C/mqSuhYfDzAGxPtz8trGg4H
+ Tp26Ck9C3pFCUA6vtma7uPEH50jfCmAPk6yh8FAFQbi7L+9391ZiIgx
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is the first series of three on updating the AD5686 driver.
+Apply IWYU principle, replacing unused/generic headers for
+specific/missing headers. The resulting include directive lists are sorted
+accordingly.
 
-A bigger patch series was sent before ("Extend device support for AD5686 driver"):
-
-https://lore.kernel.org/r/20260422-ad5313r-iio-support-v1-0-ed7dca001d1b@analog.com
-
-This one adds a number of cleanups and fixes, like:
-- Refactor include headers (IWYU);
-- Remove redundant register definition;
-- Drop enum chip id in favor of per-device chip_info structs;
-- Fix internal voltage reference control for single-channel devices;
-- Acquire lock when doing power down control;
-- Fix powerdown control for dual-channel devices;
-
+Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
-Changes in v7:
-- Drop fixes (already accepted).
-- Use named fields in device tables.
-- Link to v6: https://lore.kernel.org/r/20260505-ad5686-fixes-v6-0-c2d5f7be32be@analog.com
+ drivers/iio/dac/ad5686-spi.c |  9 +++++++--
+ drivers/iio/dac/ad5686.c     | 13 ++++++-------
+ drivers/iio/dac/ad5686.h     |  5 ++---
+ drivers/iio/dac/ad5696-i2c.c | 10 +++++++---
+ 4 files changed, 22 insertions(+), 15 deletions(-)
 
-Changes in v6:
-- Protect powerdown masks on read access too.
-- Minor changes to power down handling and constants.
-- Link to v5: https://lore.kernel.org/r/20260501-ad5686-fixes-v5-0-0b2f45488418@analog.com
+diff --git a/drivers/iio/dac/ad5686-spi.c b/drivers/iio/dac/ad5686-spi.c
+index df8619e0c092..cec784b617e6 100644
+--- a/drivers/iio/dac/ad5686-spi.c
++++ b/drivers/iio/dac/ad5686-spi.c
+@@ -8,11 +8,16 @@
+  * Copyright 2018 Analog Devices Inc.
+  */
+ 
+-#include "ad5686.h"
+-
++#include <linux/array_size.h>
++#include <linux/errno.h>
++#include <linux/mod_devicetable.h>
+ #include <linux/module.h>
+ #include <linux/spi/spi.h>
+ 
++#include <asm/byteorder.h>
++
++#include "ad5686.h"
++
+ static int ad5686_spi_write(struct ad5686_state *st,
+ 			    u8 cmd, u8 addr, u16 val)
+ {
+diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
+index a7213bc6b156..ae1ef52b62a2 100644
+--- a/drivers/iio/dac/ad5686.c
++++ b/drivers/iio/dac/ad5686.c
+@@ -5,17 +5,16 @@
+  * Copyright 2011 Analog Devices Inc.
+  */
+ 
+-#include <linux/interrupt.h>
+-#include <linux/fs.h>
+-#include <linux/device.h>
++#include <linux/array_size.h>
++#include <linux/bitops.h>
++#include <linux/errno.h>
++#include <linux/export.h>
++#include <linux/kstrtox.h>
+ #include <linux/module.h>
+-#include <linux/kernel.h>
+-#include <linux/slab.h>
+-#include <linux/sysfs.h>
+ #include <linux/regulator/consumer.h>
++#include <linux/sysfs.h>
+ 
+ #include <linux/iio/iio.h>
+-#include <linux/iio/sysfs.h>
+ 
+ #include "ad5686.h"
+ 
+diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
+index 36e16c5c4581..d08160e7fad9 100644
+--- a/drivers/iio/dac/ad5686.h
++++ b/drivers/iio/dac/ad5686.h
+@@ -8,10 +8,9 @@
+ #ifndef __DRIVERS_IIO_DAC_AD5686_H__
+ #define __DRIVERS_IIO_DAC_AD5686_H__
+ 
+-#include <linux/types.h>
+-#include <linux/cache.h>
++#include <linux/bits.h>
+ #include <linux/mutex.h>
+-#include <linux/kernel.h>
++#include <linux/types.h>
+ 
+ #include <linux/iio/iio.h>
+ 
+diff --git a/drivers/iio/dac/ad5696-i2c.c b/drivers/iio/dac/ad5696-i2c.c
+index d3327bca0e07..20f04b74d831 100644
+--- a/drivers/iio/dac/ad5696-i2c.c
++++ b/drivers/iio/dac/ad5696-i2c.c
+@@ -7,10 +7,14 @@
+  * Copyright 2018 Analog Devices Inc.
+  */
+ 
+-#include "ad5686.h"
+-
+-#include <linux/module.h>
++#include <linux/errno.h>
+ #include <linux/i2c.h>
++#include <linux/mod_devicetable.h>
++#include <linux/module.h>
++
++#include <asm/byteorder.h>
++
++#include "ad5686.h"
+ 
+ static int ad5686_i2c_read(struct ad5686_state *st, u8 addr)
+ {
 
-Changes in v5:
-- Drop I2C read operation changes.
-- Create helpers for reading and writing powerdown mask bits
-- Link to v4: https://lore.kernel.org/r/20260429-ad5686-fixes-v4-0-bb8f1cbd68e1@analog.com
-
-Changes in v4:
-- Address issues spotted by sashiko.
-- Link to v3: https://lore.kernel.org/r/20260428-ad5686-fixes-v3-0-9cff7bd67a15@analog.com
-
-Changes in v3:
-- Misc changes like parenthesis removal and line breaks
-- Link to v2: https://lore.kernel.org/r/20260427-ad5686-fixes-v2-0-188e05199368@analog.com
-
-Changes in v2:
-- Bring fixes first and cleanups later
-- Link to v1: https://lore.kernel.org/r/20260426-ad5686-fixes-v1-0-7c946a77794e@analog.com
-
----
-Rodrigo Alencar (8):
-      iio: dac: ad5686: refactor include headers
-      iio: dac: ad5686: remove redundant register definition
-      iio: dac: ad5686: drop enum id
-      iio: dac: ad5686: add of_match table to the spi driver
-      iio: dac: ad5686: add helpers to handle powerdown masks
-      iio: dac: ad5686: add control_sync() for single-channel devices
-      iio: dac: ad5686: cleanup doc header of local structs
-      iio: dac: ad5686: create bus ops struct
-
- drivers/iio/dac/ad5686-spi.c |  73 ++++--
- drivers/iio/dac/ad5686.c     | 528 +++++++++++++++++++++----------------------
- drivers/iio/dac/ad5686.h     | 133 +++++------
- drivers/iio/dac/ad5696-i2c.c |  80 ++++---
- 4 files changed, 418 insertions(+), 396 deletions(-)
----
-base-commit: bbc109ae655c8a5d4db117fea01947eb6bf51e71
-change-id: 20260426-ad5686-fixes-63ea68811bdb
-
-Best regards,
 -- 
-Rodrigo Alencar <rodrigo.alencar@analog.com>
+2.43.0
 
