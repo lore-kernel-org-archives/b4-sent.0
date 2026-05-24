@@ -1,11 +1,10 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Sun, 24 May 2026 11:17:07 +0100
-Subject: [PATCH v7 7/8] iio: dac: ad5686: cleanup doc header of local
- structs
+Date: Sun, 24 May 2026 11:17:08 +0100
+Subject: [PATCH v7 8/8] iio: dac: ad5686: create bus ops struct
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260524-ad5686-fixes-v7-7-b6bf395d08bd@analog.com>
+Message-Id: <20260524-ad5686-fixes-v7-8-b6bf395d08bd@analog.com>
 References: <20260524-ad5686-fixes-v7-0-b6bf395d08bd@analog.com>
 In-Reply-To: <20260524-ad5686-fixes-v7-0-b6bf395d08bd@analog.com>
 To: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
@@ -20,65 +19,227 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Rodrigo Alencar <rodrigo.alencar@analog.com>, 
  Andy Shevchenko <andriy.shevchenko@intel.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779617840; l=1894;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779617840; l=7630;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=9M9FWK1fBxPndrzRZIkO8E7OkPdoP0n0+s7M4QAkbIw=;
- b=yCmhXMZo8mBz11L9Psc3URynDqCrZQUsnl2DQyTcgx1vYMU7gawVdXzv6cWEVagkK2tcvbKSn
- X1HEVFalWDnAmAGQgXvyLU7p+OEuVcM0l5Afb8qp3pWlgblXrSqf87K
+ bh=mOXNB7/8ld6fo9tZYAuunZZtgTfZvwHs7OCnRKguixY=;
+ b=4NwyCz4kLy6ers8W+lx/KiziBzhEzvYS96IOarmao/ffoee5LsRywpfvg6pm/hjub8/YUhYP5
+ W7TXgt88h5yAIQ0FuSkIlyJBGS2poGfkqYq4cS+Zgrp5EUWtgExXvgl
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Review documentation comment header for ad5686_chip_info and ad5686_state.
-Update variable names and description and remove unnecessary blank line
-between comment and struct declaration.
+Create struct with bus operations, which will be used to extend bus
+implementation features. Auxiliary functions ad5686_write() and
+ad5686_read() are created and ad5686_probe() now receives an ops struct
+pointer rather than individual read and write functions.
 
 Reviewed-by: Andy Shevchenko <andriy.shevchenko@intel.com>
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/dac/ad5686.h | 11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
+ drivers/iio/dac/ad5686-spi.c |  7 ++++++-
+ drivers/iio/dac/ad5686.c     | 32 ++++++++++++++------------------
+ drivers/iio/dac/ad5686.h     | 29 +++++++++++++++++++++--------
+ drivers/iio/dac/ad5696-i2c.c |  7 ++++++-
+ 4 files changed, 47 insertions(+), 28 deletions(-)
 
+diff --git a/drivers/iio/dac/ad5686-spi.c b/drivers/iio/dac/ad5686-spi.c
+index 7eddffe86c00..6b6ef1d7071f 100644
+--- a/drivers/iio/dac/ad5686-spi.c
++++ b/drivers/iio/dac/ad5686-spi.c
+@@ -92,10 +92,15 @@ static int ad5686_spi_read(struct ad5686_state *st, u8 addr)
+ 	return be32_to_cpu(st->data[2].d32);
+ }
+ 
++static const struct ad5686_bus_ops ad5686_spi_ops = {
++	.write = ad5686_spi_write,
++	.read = ad5686_spi_read,
++};
++
+ static int ad5686_spi_probe(struct spi_device *spi)
+ {
+ 	return ad5686_probe(&spi->dev, spi_get_device_match_data(spi),
+-			    spi->modalias, ad5686_spi_write, ad5686_spi_read);
++			    spi->modalias, &ad5686_spi_ops);
+ }
+ 
+ static const struct spi_device_id ad5686_spi_id[] = {
+diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
+index 98a027224b05..337ebad39ab4 100644
+--- a/drivers/iio/dac/ad5686.c
++++ b/drivers/iio/dac/ad5686.c
+@@ -30,18 +30,18 @@ static int ad5310_control_sync(struct ad5686_state *st)
+ {
+ 	unsigned int pd_val = st->pwr_down_mask & st->pwr_down_mode;
+ 
+-	return st->write(st, AD5686_CMD_CONTROL_REG, 0,
+-			 FIELD_PREP(AD5310_PD_MSK, pd_val & AD5686_PD_MSK) |
+-			 FIELD_PREP(AD5310_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
++	return ad5686_write(st, AD5686_CMD_CONTROL_REG, 0,
++			    FIELD_PREP(AD5310_PD_MSK, pd_val & AD5686_PD_MSK) |
++			    FIELD_PREP(AD5310_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
+ }
+ 
+ static int ad5683_control_sync(struct ad5686_state *st)
+ {
+ 	unsigned int pd_val = st->pwr_down_mask & st->pwr_down_mode;
+ 
+-	return st->write(st, AD5686_CMD_CONTROL_REG, 0,
+-			 FIELD_PREP(AD5683_PD_MSK, pd_val & AD5686_PD_MSK) |
+-			 FIELD_PREP(AD5683_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
++	return ad5686_write(st, AD5686_CMD_CONTROL_REG, 0,
++			    FIELD_PREP(AD5683_PD_MSK, pd_val & AD5686_PD_MSK) |
++			    FIELD_PREP(AD5683_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
+ }
+ 
+ static inline unsigned int ad5686_pd_mask_shift(const struct iio_chan_spec *chan)
+@@ -153,7 +153,7 @@ static ssize_t ad5686_write_dac_powerdown(struct iio_dev *indio_dev,
+ 			address = 0x0;
+ 			val = lower_16_bits(val);
+ 		}
+-		ret = st->write(st, AD5686_CMD_POWERDOWN_DAC, address, val);
++		ret = ad5686_write(st, AD5686_CMD_POWERDOWN_DAC, address, val);
+ 		if (ret)
+ 			return ret;
+ 		break;
+@@ -176,7 +176,7 @@ static int ad5686_read_raw(struct iio_dev *indio_dev,
+ 	switch (m) {
+ 	case IIO_CHAN_INFO_RAW:
+ 		mutex_lock(&st->lock);
+-		ret = st->read(st, chan->address);
++		ret = ad5686_read(st, chan->address);
+ 		mutex_unlock(&st->lock);
+ 		if (ret < 0)
+ 			return ret;
+@@ -206,10 +206,8 @@ static int ad5686_write_raw(struct iio_dev *indio_dev,
+ 			return -EINVAL;
+ 
+ 		mutex_lock(&st->lock);
+-		ret = st->write(st,
+-				AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
+-				chan->address,
+-				val << chan->scan_type.shift);
++		ret = ad5686_write(st, AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
++				   chan->address, val << chan->scan_type.shift);
+ 		mutex_unlock(&st->lock);
+ 		break;
+ 	default:
+@@ -470,8 +468,7 @@ EXPORT_SYMBOL_NS_GPL(ad5679r_chip_info, "IIO_AD5686");
+ 
+ int ad5686_probe(struct device *dev,
+ 		 const struct ad5686_chip_info *chip_info,
+-		 const char *name, ad5686_write_func write,
+-		 ad5686_read_func read)
++		 const char *name, const struct ad5686_bus_ops *ops)
+ {
+ 	struct ad5686_state *st;
+ 	struct iio_dev *indio_dev;
+@@ -484,8 +481,7 @@ int ad5686_probe(struct device *dev,
+ 	st = iio_priv(indio_dev);
+ 
+ 	st->dev = dev;
+-	st->write = write;
+-	st->read = read;
++	st->ops = ops;
+ 	st->chip_info = chip_info;
+ 
+ 	ret = devm_regulator_get_enable_read_voltage(dev, "vcc");
+@@ -527,8 +523,8 @@ int ad5686_probe(struct device *dev,
+ 			return ret;
+ 		break;
+ 	case AD5686_REGMAP:
+-		ret = st->write(st, AD5686_CMD_INTERNAL_REFER_SETUP, 0,
+-				st->use_internal_vref ? 0 : AD5686_REF_BIT_MSK);
++		ret = ad5686_write(st, AD5686_CMD_INTERNAL_REFER_SETUP, 0,
++				   st->use_internal_vref ? 0 : AD5686_REF_BIT_MSK);
+ 		if (ret)
+ 			return ret;
+ 		break;
 diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
-index 17980c54839c..3945f5fb6b7e 100644
+index 3945f5fb6b7e..a06fe7d89305 100644
 --- a/drivers/iio/dac/ad5686.h
 +++ b/drivers/iio/dac/ad5686.h
-@@ -69,12 +69,11 @@ typedef int (*ad5686_read_func)(struct ad5686_state *st, u8 addr);
+@@ -62,10 +62,15 @@ enum ad5686_regmap_type {
+ 
+ struct ad5686_state;
+ 
+-typedef int (*ad5686_write_func)(struct ad5686_state *st,
+-				 u8 cmd, u8 addr, u16 val);
+-
+-typedef int (*ad5686_read_func)(struct ad5686_state *st, u8 addr);
++/**
++ * struct ad5686_bus_ops - bus specific read/write operations
++ * @read: read a register value at the given address
++ * @write: write a command, address and value to the device
++ */
++struct ad5686_bus_ops {
++	int (*read)(struct ad5686_state *st, u8 addr);
++	int (*write)(struct ad5686_state *st, u8 cmd, u8 addr, u16 val);
++};
  
  /**
   * struct ad5686_chip_info - chip specific information
-- * @int_vref_mv:	AD5620/40/60: the internal reference voltage
-+ * @int_vref_mv:	the internal reference voltage
-  * @num_channels:	number of channels
-  * @channel:		channel specification
-  * @regmap_type:	register map layout variant
-  */
--
- struct ad5686_chip_info {
- 	u16				int_vref_mv;
- 	unsigned int			num_channels;
-@@ -112,16 +111,16 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
- 
- /**
+@@ -113,6 +118,7 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
   * struct ad5686_state - driver instance specific data
-- * @spi:		spi_device
-+ * @dev:		device instance
+  * @dev:		device instance
   * @chip_info:		chip model specific constants, available modes etc
++ * @ops:		bus specific operations
   * @vref_mv:		actual reference voltage used
   * @pwr_down_mask:	power down mask
   * @pwr_down_mode:	current power down mode
-  * @use_internal_vref:	set to true if the internal reference voltage is used
-- * @lock		lock to protect the data buffer during regmap ops
-- * @data:		spi transfer buffers
-+ * @lock:		lock to protect access to state fields, which includes
-+ *			the data buffer during regmap ops
-+ * @data:		transfer buffers
-  */
--
+@@ -124,11 +130,10 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
  struct ad5686_state {
  	struct device			*dev;
  	const struct ad5686_chip_info	*chip_info;
++	const struct ad5686_bus_ops	*ops;
+ 	unsigned short			vref_mv;
+ 	unsigned int			pwr_down_mask;
+ 	unsigned int			pwr_down_mode;
+-	ad5686_write_func		write;
+-	ad5686_read_func		read;
+ 	bool				use_internal_vref;
+ 	struct mutex			lock;
+ 
+@@ -147,8 +152,16 @@ struct ad5686_state {
+ 
+ int ad5686_probe(struct device *dev,
+ 		 const struct ad5686_chip_info *chip_info,
+-		 const char *name, ad5686_write_func write,
+-		 ad5686_read_func read);
++		 const char *name, const struct ad5686_bus_ops *ops);
+ 
++static inline int ad5686_write(struct ad5686_state *st, u8 cmd, u8 addr, u16 val)
++{
++	return st->ops->write(st, cmd, addr, val);
++}
++
++static inline int ad5686_read(struct ad5686_state *st, u8 addr)
++{
++	return st->ops->read(st, addr);
++}
+ 
+ #endif /* __DRIVERS_IIO_DAC_AD5686_H__ */
+diff --git a/drivers/iio/dac/ad5696-i2c.c b/drivers/iio/dac/ad5696-i2c.c
+index c1f3cebabaf8..279309329b64 100644
+--- a/drivers/iio/dac/ad5696-i2c.c
++++ b/drivers/iio/dac/ad5696-i2c.c
+@@ -62,10 +62,15 @@ static int ad5686_i2c_write(struct ad5686_state *st,
+ 	return (ret != 3) ? -EIO : 0;
+ }
+ 
++static const struct ad5686_bus_ops ad5686_i2c_ops = {
++	.write = ad5686_i2c_write,
++	.read = ad5686_i2c_read,
++};
++
+ static int ad5686_i2c_probe(struct i2c_client *i2c)
+ {
+ 	return ad5686_probe(&i2c->dev, i2c_get_match_data(i2c),
+-			    i2c->name, ad5686_i2c_write, ad5686_i2c_read);
++			    i2c->name, &ad5686_i2c_ops);
+ }
+ 
+ static const struct i2c_device_id ad5686_i2c_id[] = {
 
 -- 
 2.43.0
