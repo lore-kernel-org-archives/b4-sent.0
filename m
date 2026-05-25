@@ -1,142 +1,102 @@
-From: Ricardo Pardini <ricardo@pardini.net>
-Date: Mon, 25 May 2026 12:12:12 +0200
-Subject: [PATCH] arm64: dts: rockchip: describe PCIe Ethernet controllers
- on NanoPC-T6
+From: Maurice Hieronymus <mhi@mailbox.org>
+Date: Mon, 25 May 2026 15:11:02 +0200
+Subject: [PATCH RESEND] pwm: th1520: Remove requirement for
+ mul_u64_u64_div_u64_roundup
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260525-rk3588-dts-rtl-eth-describe-dt-alias-v1-1-a6fcda563ac7@pardini.net>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNSw7CMAxF0a1UHmMpCQ2N2ApikI+hhqogO6BKV
- fdOgOF5g/tWUBImhWO3gtCblR9zg911kMc4Xwm5NIMz7mC861Huex8ClqoodUKqIxbSLJyojRg
- njorZUrFhSEP2BlrqKXTh5XdzOv+tr3SjXL9t2LYPxz+gY4gAAAA=
-X-Change-ID: 20260524-rk3588-dts-rtl-eth-describe-dt-alias-c1ed187b7c50
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
-Cc: Sebastian Reichel <sebastian.reichel@collabora.com>, 
- devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Ricardo Pardini <ricardo@pardini.net>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3532; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=ATDxgV+aVRYA1qwVl5QQNVkoTUqIMI+aNMm96MahMCc=;
- b=owEBiQF2/pANAwAIATteP+Oex+3pAcsmYgBqFCB9KNIKy16b9ZOZvEfenPlRdjMemK/hkmuEK
- v7F67/+EWSJAU8EAAEIADkWIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCahQgfRsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwwLDMACgkQO14/457H7ekCeAgAhETNghtgglmhDGNt9QFfL3n73Tw10Gc
- FzHh8hLZmz5mFgbpWN31ixqkFdOtvj6xz4ba3rSh/T0zezG3EObvlNMtmyPe9YfaDtOtSndYlMZ
- 4mKo83ioOZWwzJJMxuXdWWxe6siI7IWEQ7Zz0861Tf1qDaGyeDMj45dKMZq5bFhpsg8n619HJNd
- IVF7Mhc9uWFnTmE3V0xxaVl2sOc60rjztOgkT8EgUH9gEhk9ygegkxGOPs+jDIUDvYo+frdpe5c
- UVuwbJ6ax1BCseH9JqPOpLh38agQGmxWxXQBXlNAtVA2GEz8yfLj/qLIlfgjz89zkNa9C6f9q+F
- u96ZM+5/MSg==
-X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
- fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
-X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
+Message-Id: <20260525-pwm-th1520-fix-v1-1-814e537c6812@mailbox.org>
+To: Drew Fustini <fustini@kernel.org>, Guo Ren <guoren@kernel.org>, 
+ Fu Wei <wefu@redhat.com>, Michal Wilczynski <m.wilczynski@samsung.com>, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
+ Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>
+Cc: linux-riscv@lists.infradead.org, linux-pwm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
+ Maurice Hieronymus <mhi@mailbox.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779714665; l=2775;
+ i=mhi@mailbox.org; s=20260525; h=from:subject:message-id;
+ bh=pPwMlhdLEIKx7tKQw28S2ur5hibHwE9OvuL0BMwNJFI=;
+ b=2CY1YOoHuBr6u2vNL2LHaCbZfS8c/Z4MpUQbK76cVxR4pFQ7J6JKYPOmCZp6RzS5uoV/ehCKe
+ ehBfc6H4FxyCb4WyrRuUDfbLeENx3YhhB4ifWpzHxSRGYx63rQBQft2
+X-Developer-Key: i=mhi@mailbox.org; a=ed25519;
+ pk=AHlEkGG3hpXZHntlEzF42Ip/LFyXWOgsNUvaHqAnV80=
+X-Endpoint-Received: by B4 Relay for mhi@mailbox.org/20260525 with auth_id=790
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The FriendlyElec NanoPC-T6 carries two on-board Realtek RTL8125BG
-(r8169 family, PCI 10ec:8125) NICs, each behind its own RK3588 PCIe2x1
-controller (pcie2x1l1 and pcie2x1l2). Both host bridges were already
-enabled by the board DT, but the Ethernet function nodes themselves
-were not described, leaving the kernel without DT handles on the two
-NICs.
+The cycle register is always u32, so cycles_to_ns() can take a u32
+instead of a u64. With that narrowing, cycles * NSEC_PER_SEC is at most
+u32::MAX * 1e9 (~4.3e18), which fits in u64 without overflow. The
+saturating arithmetic is therefore no longer needed, and the ceiling
+division can use Rust's u64::div_ceil() directly instead of the
+open-coded numerator/denominator form.
 
-Describe the fixed PCI function nodes and attach ethernet0/ethernet1
-aliases to them.
+This also drops the TODO referring to a future
+mul_u64_u64_div_u64_roundup kernel helper, which is no longer required.
 
-Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
+Signed-off-by: Maurice Hieronymus <mhi@mailbox.org>
 ---
-This describes the two on-board Realtek RTL8125BG PCIe Ethernet
-controllers on the FriendlyElec NanoPC-T6 (RK3588) board and aliases
-them to ethernet0/ethernet1.
-
-Many Rockchip boards have on-board RTL8125 PCIe NICs, wired to
-pcie2x1l1 and pcie2x1l2. The controllers were already enabled in the
-board DT, but the Ethernet function nodes themselves are not
-described, so the kernel (and u-boot) has no DT handle on the NICs.
-
-Adding the function nodes lets us:
-- expose stable ethernet0/ethernet1 aliases for the two NICs, the
-  same way other rk3588 boards alias their GMAC interfaces; and
-- let U-Boot's fdt_fixup_ethernet() patch mac-address properties in
-  at boot time from its ethaddr/eth1addr environment - useful on
-  boards (like this one) whose on-NIC EEPROM is not pre-programmed
-  with a unique MAC. The kernel and U-Boot then agree on the MAC,
-  which matters for network-boot setups.
-
-Checkpatch warnings:
--  WARNING: DT compatible string "pci10ec,8125" appears un-documented
--  WARNING: DT compatible string vendor "pci10ec" appears un-documented
-Both are expected. "pciVVVV,DDDD" is the Open Firmware PCI Bus
-Binding spelling, where VVVV/DDDD are the PCI vendor and device IDs
-allocated by the PCI-SIG (10ec = Realtek, 8125 = RTL8125). It is not a
-DT vendor prefix.
-
-If this is seen as a good thing, it would apply very similarly to
-the Radxa Rock 5 series and others.
+Note: Resending v1 because my mail server (mailbox.org) was
+unable to deliver the original submission to @kernerl.org
+recipients. Going through the b4 web submission endpoint this
+time. No changes to the patch content.
 ---
- arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi | 30 ++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+ drivers/pwm/pwm_th1520.rs | 16 +++++-----------
+ 1 file changed, 5 insertions(+), 11 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
-index 84b6b53f016ab..5d28c74847c58 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
-@@ -20,6 +20,8 @@ / {
- 	compatible = "friendlyarm,nanopc-t6", "rockchip,rk3588";
+diff --git a/drivers/pwm/pwm_th1520.rs b/drivers/pwm/pwm_th1520.rs
+index ddd44a5ce497..933c1ec59c2a 100644
+--- a/drivers/pwm/pwm_th1520.rs
++++ b/drivers/pwm/pwm_th1520.rs
+@@ -67,16 +67,10 @@ fn ns_to_cycles(ns: u64, rate_hz: u64) -> u64 {
+     ns.saturating_mul(rate_hz) / NSEC_PER_SEC_U64
+ }
  
- 	aliases {
-+		ethernet0 = &rtl_eth0;
-+		ethernet1 = &rtl_eth1;
- 		mmc0 = &sdhci;
- 		mmc1 = &sdmmc;
- 	};
-@@ -643,6 +645,20 @@ &pcie2x1l1 {
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&pcie2_1_rst>;
- 	status = "okay";
-+
-+	pcie@0,0 {
-+		reg = <0x200000 0 0 0 0>;
-+		#address-cells = <3>;
-+		#size-cells = <2>;
-+		ranges;
-+		device_type = "pci";
-+		bus-range = <0x20 0x2f>;
-+
-+		rtl_eth0: ethernet@0,0 {
-+			compatible = "pci10ec,8125";
-+			reg = <0x210000 0 0 0 0>;
-+		};
-+	};
- };
+-fn cycles_to_ns(cycles: u64, rate_hz: u64) -> u64 {
++fn cycles_to_ns(cycles: u32, rate_hz: u64) -> u64 {
+     const NSEC_PER_SEC_U64: u64 = time::NSEC_PER_SEC as u64;
  
- &pcie2x1l2 {
-@@ -651,6 +667,20 @@ &pcie2x1l2 {
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&pcie2_2_rst>;
- 	status = "okay";
-+
-+	pcie@0,0 {
-+		reg = <0x400000 0 0 0 0>;
-+		#address-cells = <3>;
-+		#size-cells = <2>;
-+		ranges;
-+		device_type = "pci";
-+		bus-range = <0x40 0x4f>;
-+
-+		rtl_eth1: ethernet@0,0 {
-+			compatible = "pci10ec,8125";
-+			reg = <0x410000 0 0 0 0>;
-+		};
-+	};
- };
+-    // TODO: Replace with a kernel helper like `mul_u64_u64_div_u64_roundup`
+-    // once available in Rust.
+-    let numerator = cycles
+-        .saturating_mul(NSEC_PER_SEC_U64)
+-        .saturating_add(rate_hz - 1);
+-
+-    numerator / rate_hz
++    (u64::from(cycles) * NSEC_PER_SEC_U64).div_ceil(rate_hz)
+ }
  
- &pcie30phy {
+ /// Hardware-specific waveform representation for TH1520.
+@@ -192,15 +186,15 @@ fn round_waveform_fromhw(
+             return Ok(());
+         }
+ 
+-        wf.period_length_ns = cycles_to_ns(u64::from(wfhw.period_cycles), rate_hz);
++        wf.period_length_ns = cycles_to_ns(wfhw.period_cycles, rate_hz);
+ 
+-        let duty_cycles = u64::from(wfhw.duty_cycles);
++        let duty_cycles = wfhw.duty_cycles;
+ 
+         if (wfhw.ctrl_val & TH1520_PWM_FPOUT) != 0 {
+             wf.duty_length_ns = cycles_to_ns(duty_cycles, rate_hz);
+             wf.duty_offset_ns = 0;
+         } else {
+-            let period_cycles = u64::from(wfhw.period_cycles);
++            let period_cycles = wfhw.period_cycles;
+             let original_duty_cycles = period_cycles.saturating_sub(duty_cycles);
+ 
+             // For an inverted signal, `duty_length_ns` is the high time (period - low_time).
 
 ---
-base-commit: e7ae89a0c97ce2b68b0983cd01eda67cf373517d
-change-id: 20260524-rk3588-dts-rtl-eth-describe-dt-alias-c1ed187b7c50
+base-commit: 3936b25815ee686a273ca7bbdc9ae19af5e608a3
+change-id: 20260521-pwm-th1520-fix-8e45558bbd31
 
 Best regards,
---  
-Ricardo Pardini <ricardo@pardini.net>
+-- 
+Maurice Hieronymus <mhi@mailbox.org>
 
