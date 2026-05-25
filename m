@@ -1,15 +1,13 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Subject: [PATCH v2 0/2] arm64: tegra: Enable DMA Support on Tegra194 QSPI
-Date: Mon, 25 May 2026 01:47:43 -0500
-Message-Id: <20260525-tegra194-qspi-iommu-v2-0-a11c53f804b2@gmail.com>
+Date: Mon, 25 May 2026 01:47:44 -0500
+Subject: [PATCH v2 1/2] spi: tegra210-quad: Allocate DMA memory for DMA
+ engine
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0Jm7RgKbY2uvIdhge0UJrEUW2w0h
- LtbOYDL95L//gqJIlOCS7VCpMyJw1SgOVRgxn4aCNkWhqZudK2EwoWG2IuzxGeaGTl4/0KSJLW
- UVjnroCznSI7fe/XWFR45LSF+9pMsfvZ/LwusUZ2su+vW2Nbq6+B7fhxN8NBt2/YFvaqvCLYAA
- AA=
-X-Change-ID: 20260515-tegra194-qspi-iommu-e4e4644d5fdf
+Message-Id: <20260525-tegra194-qspi-iommu-v2-1-a11c53f804b2@gmail.com>
+References: <20260525-tegra194-qspi-iommu-v2-0-a11c53f804b2@gmail.com>
+In-Reply-To: <20260525-tegra194-qspi-iommu-v2-0-a11c53f804b2@gmail.com>
 To: Thierry Reding <thierry.reding@kernel.org>, 
  Jonathan Hunter <jonathanh@nvidia.com>, 
  Sowjanya Komatineni <skomatineni@nvidia.com>, 
@@ -24,53 +22,135 @@ Cc: linux-tegra@vger.kernel.org, linux-spi@vger.kernel.org,
  devicetree@vger.kernel.org, Thierry Reding <treding@nvidia.com>, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779691675; l=1598;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779691675; l=4772;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=kj5kq9WD/UeIGGomDPvQJ5qz0l33I6XGMyKKg4VQXdc=;
- b=FgtyycY/WO9UF+dLOgSpwlPMx83PaD2wpdDr/spM/8ugUqsL+0skVAlc7O0wcEJkKGlESI3Kw
- FBcCnN0pvl3BDr1dCFTbv6fFITPSScZWnGo/y30gVf/9lkMVfN50TJU
+ bh=l7YzDxh5xjjzC7rsRABKlUS2hzABVlzgeHIZyzIWkrM=;
+ b=1CpmXZNayhDytsA6U5Qt3+xyw/X7Eb6AGh0QR7nvO2tUVzPwtmzzzjdw398yo30DQVIpDEIyd
+ bl3Q0/WH8EFCpg1Oe/n3LOBMq4SK7Mpln8fxiexCXagp6RW6EfEmPtX
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The reason for this is to properly support the spi nor chip on the
-Jetson Xavier NX module. Prior to this, it would time out on all
-transfers and sometimes even trigger a cbb fault, locking up the entire
-unit. With this, reading and writing to the flash memory works as
-expected.
+When the SPI controllers are running in DMA mode, it is the DMA engine
+that performs the memory accesses rather than the SPI controller. Pass
+the DMA engine's struct device pointer to the DMA API to make sure the
+correct DMA operations are used.
 
-This also fixes the tegra210-quad spi driver to properly use the dma
-memory space instead of the spi controllers. Without this, enabling dma
-on the controllers results in mmu faults.
-
-The driver change has only been tested on tegra210 / p3450 and tegra194
-/ p3518 as that is the only available test platforms. Tegra234 and
-Tegra241 should also be verified. I have p3766 for tegra234, but the
-qspi flash memory is firewalled by mb1 on all publicly available
-bootloaders, and no other spi devices are part of the devkit.
-
+Suggested-by: Thierry Reding <treding@nvidia.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
-Changes in v2:
-- Drop bindings patches
-- Add patch to use dma memory space instead of the spi controllers when
-  dma is enabled.
-- Drop iommu properties from final patch
-- Link to v1: https://lore.kernel.org/r/20260515-tegra194-qspi-iommu-v1-0-57dfb63cd3d6@gmail.com
+ drivers/spi/spi-tegra210-quad.c | 29 ++++++++++++++++++-----------
+ 1 file changed, 18 insertions(+), 11 deletions(-)
 
----
-Aaron Kling (2):
-      spi: tegra210-quad: Allocate DMA memory for DMA engine
-      arm64: tegra: Enable DMA Support on Tegra194 QSPI
+diff --git a/drivers/spi/spi-tegra210-quad.c b/drivers/spi/spi-tegra210-quad.c
+index db28dd556484b2..588a929a97850a 100644
+--- a/drivers/spi/spi-tegra210-quad.c
++++ b/drivers/spi/spi-tegra210-quad.c
+@@ -226,11 +226,13 @@ struct tegra_qspi {
+ 	struct completion			xfer_completion;
+ 	struct spi_transfer			*curr_xfer;
+ 
++	struct device				*rx_dma_dev;
+ 	struct dma_chan				*rx_dma_chan;
+ 	u32					*rx_dma_buf;
+ 	dma_addr_t				rx_dma_phys;
+ 	struct dma_async_tx_descriptor		*rx_dma_desc;
+ 
++	struct device				*tx_dma_dev;
+ 	struct dma_chan				*tx_dma_chan;
+ 	u32					*tx_dma_buf;
+ 	dma_addr_t				tx_dma_phys;
+@@ -574,15 +576,15 @@ static int tegra_qspi_dma_map_xfer(struct tegra_qspi *tqspi, struct spi_transfer
+ 	len = DIV_ROUND_UP(tqspi->curr_dma_words * tqspi->bytes_per_word, 4) * 4;
+ 
+ 	if (t->tx_buf) {
+-		t->tx_dma = dma_map_single(tqspi->dev, (void *)tx_buf, len, DMA_TO_DEVICE);
+-		if (dma_mapping_error(tqspi->dev, t->tx_dma))
++		t->tx_dma = dma_map_single(tqspi->tx_dma_dev, (void *)tx_buf, len, DMA_TO_DEVICE);
++		if (dma_mapping_error(tqspi->tx_dma_dev, t->tx_dma))
+ 			return -ENOMEM;
+ 	}
+ 
+ 	if (t->rx_buf) {
+-		t->rx_dma = dma_map_single(tqspi->dev, (void *)rx_buf, len, DMA_FROM_DEVICE);
+-		if (dma_mapping_error(tqspi->dev, t->rx_dma)) {
+-			dma_unmap_single(tqspi->dev, t->tx_dma, len, DMA_TO_DEVICE);
++		t->rx_dma = dma_map_single(tqspi->rx_dma_dev, (void *)rx_buf, len, DMA_FROM_DEVICE);
++		if (dma_mapping_error(tqspi->rx_dma_dev, t->rx_dma)) {
++			dma_unmap_single(tqspi->tx_dma_dev, t->tx_dma, len, DMA_TO_DEVICE);
+ 			return -ENOMEM;
+ 		}
+ 	}
+@@ -597,9 +599,9 @@ static void tegra_qspi_dma_unmap_xfer(struct tegra_qspi *tqspi, struct spi_trans
+ 	len = DIV_ROUND_UP(tqspi->curr_dma_words * tqspi->bytes_per_word, 4) * 4;
+ 
+ 	if (t->tx_buf)
+-		dma_unmap_single(tqspi->dev, t->tx_dma, len, DMA_TO_DEVICE);
++		dma_unmap_single(tqspi->tx_dma_dev, t->tx_dma, len, DMA_TO_DEVICE);
+ 	if (t->rx_buf)
+-		dma_unmap_single(tqspi->dev, t->rx_dma, len, DMA_FROM_DEVICE);
++		dma_unmap_single(tqspi->rx_dma_dev, t->rx_dma, len, DMA_FROM_DEVICE);
+ }
+ 
+ static int tegra_qspi_start_dma_based_transfer(struct tegra_qspi *tqspi, struct spi_transfer *t)
+@@ -745,7 +747,7 @@ static int tegra_qspi_start_cpu_based_transfer(struct tegra_qspi *qspi, struct s
+ static void tegra_qspi_deinit_dma(struct tegra_qspi *tqspi)
+ {
+ 	if (tqspi->tx_dma_buf) {
+-		dma_free_coherent(tqspi->dev, tqspi->dma_buf_size,
++		dma_free_coherent(tqspi->tx_dma_dev, tqspi->dma_buf_size,
+ 				  tqspi->tx_dma_buf, tqspi->tx_dma_phys);
+ 		tqspi->tx_dma_buf = NULL;
+ 	}
+@@ -756,7 +758,7 @@ static void tegra_qspi_deinit_dma(struct tegra_qspi *tqspi)
+ 	}
+ 
+ 	if (tqspi->rx_dma_buf) {
+-		dma_free_coherent(tqspi->dev, tqspi->dma_buf_size,
++		dma_free_coherent(tqspi->rx_dma_dev, tqspi->dma_buf_size,
+ 				  tqspi->rx_dma_buf, tqspi->rx_dma_phys);
+ 		tqspi->rx_dma_buf = NULL;
+ 	}
+@@ -782,6 +784,7 @@ static int tegra_qspi_init_dma(struct tegra_qspi *tqspi)
+ 		}
+ 
+ 		tqspi->rx_dma_chan = dma_chan;
++		tqspi->rx_dma_dev = dmaengine_get_dma_device(tqspi->rx_dma_chan);
+ 
+ 		dma_chan = dma_request_chan(tqspi->dev, "tx");
+ 		if (IS_ERR(dma_chan)) {
+@@ -790,15 +793,19 @@ static int tegra_qspi_init_dma(struct tegra_qspi *tqspi)
+ 		}
+ 
+ 		tqspi->tx_dma_chan = dma_chan;
++		tqspi->tx_dma_dev = dmaengine_get_dma_device(tqspi->tx_dma_chan);
+ 	} else {
+ 		if (!device_iommu_mapped(tqspi->dev)) {
+ 			dev_warn(tqspi->dev,
+ 				 "IOMMU not enabled in device-tree, falling back to PIO mode\n");
+ 			return 0;
+ 		}
++
++		tqspi->rx_dma_dev = tqspi->dev;
++		tqspi->tx_dma_dev = tqspi->dev;
+ 	}
+ 
+-	dma_buf = dma_alloc_coherent(tqspi->dev, tqspi->dma_buf_size, &dma_phys, GFP_KERNEL);
++	dma_buf = dma_alloc_coherent(tqspi->rx_dma_dev, tqspi->dma_buf_size, &dma_phys, GFP_KERNEL);
+ 	if (!dma_buf) {
+ 		err = -ENOMEM;
+ 		goto err_out;
+@@ -807,7 +814,7 @@ static int tegra_qspi_init_dma(struct tegra_qspi *tqspi)
+ 	tqspi->rx_dma_buf = dma_buf;
+ 	tqspi->rx_dma_phys = dma_phys;
+ 
+-	dma_buf = dma_alloc_coherent(tqspi->dev, tqspi->dma_buf_size, &dma_phys, GFP_KERNEL);
++	dma_buf = dma_alloc_coherent(tqspi->tx_dma_dev, tqspi->dma_buf_size, &dma_phys, GFP_KERNEL);
+ 	if (!dma_buf) {
+ 		err = -ENOMEM;
+ 		goto err_out;
 
- arch/arm64/boot/dts/nvidia/tegra194.dtsi |  4 ++++
- drivers/spi/spi-tegra210-quad.c          | 29 ++++++++++++++++++-----------
- 2 files changed, 22 insertions(+), 11 deletions(-)
----
-base-commit: c1ecb239fa3456529a32255359fc78b69eb9d847
-change-id: 20260515-tegra194-qspi-iommu-e4e4644d5fdf
-
-Best regards,
 -- 
-Aaron Kling <webgeek1234@gmail.com>
+2.53.0
 
