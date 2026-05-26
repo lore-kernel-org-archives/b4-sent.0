@@ -1,78 +1,77 @@
-From: Carl Lee <carl.lee@amd.com>
-Date: Tue, 26 May 2026 09:50:29 +0800
-Subject: [PATCH] nfc: nxp-nci: treat -ENXIO in IRQ thread as no data
- available
+From: Florian Schmaus <flo@geekplace.eu>
+Date: Tue, 26 May 2026 10:01:08 +0200
+Subject: [PATCH] selftests: Fix Makefile target for nsfs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260526-nfc-nxp-nci-treat-enxio-as-no-data-available-yet-v1-1-305bb11b9147@amd.com>
-X-B4-Tracking: v=1; b=H4sIAGT8FGoC/x3NywqDMBBG4VeRrPtDTLG3VyldjOPYDshEkiAp4
- rs3dPltztldlqSS3aPbXZJNs0Zr6E+d4w/ZW6BTsws+XPwQPGxmWF1hrChJqECsagRlWMREhUA
- b6ULjIvhKATH35+EWxjtfXcuuSWat/+XzdRw/n6zVDYIAAAA=
-X-Change-ID: 20260520-nfc-nxp-nci-treat-enxio-as-no-data-available-yet-acc13582b9c7
-To: David Heidelberg <david+nfc@ixit.cz>
-Cc: oe-linux-nfc@lists.linux.dev, linux-kernel@vger.kernel.org, 
- carl.lee@amd.com
+Message-Id: <20260526-kselftest-nsfs-v1-1-7b042ebe42d6@geekplace.eu>
+X-B4-Tracking: v=1; b=H4sIAENTFWoC/3XMSw7CIBSF4a00dywGqGjqyH2YDnhcWtKmbbhIN
+ A17Fzt3+J/kfDsQxoAE92aHiDlQWJca4tSAHfUyIAuuNkgur1yJlk2Es09IiS3kiRmjldfyYg2
+ /QT1tEX14H+Czrz0GSmv8HH4Wv/UvlQUTTKnOmI47J0X7GBCnbdYWz/iCvpTyBTGZdsyvAAAA
+X-Change-ID: 20260513-kselftest-nsfs-bba5fa24cb07
+To: Shuah Khan <shuah@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ Christian Brauner <brauner@kernel.org>
+Cc: linux-kselftest@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Florian Schmaus <flo@geekplace.eu>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779760230; l=1735;
- i=carl.lee@amd.com; s=20260203; h=from:subject:message-id;
- bh=1ZJQP4AB1kE0xU7kjZUMkXjaZv6GrF/sYeABGXqI9i0=;
- b=uMq5mPbkyw9Aay6onfye0xUPFUU+XOQbl54U4yv+BMr2L6j6jZdbqishmammC0IZQfj9tntgB
- sHZ0jhUyQ/MBIcmX2A4qiyxRQZfuJY6Dmj6eVZxXYKEnnv0XJsjlBNv
-X-Developer-Key: i=carl.lee@amd.com; a=ed25519;
- pk=pyq7QaQvoxMg806KVkRwpCbiah+7ncWr4MBpK1AEyjA=
-X-Endpoint-Received: by B4 Relay for carl.lee@amd.com/20260203 with auth_id=623
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1450; i=flo@geekplace.eu;
+ h=from:subject:message-id; bh=TUlHqQjYGKoBvaYsSZ35pR+AMu2KoxpwBqlSKvhoHdg=;
+ b=owGbwMvMwMWoZLn8xddWhSDG02pJDFmiwa49cvcr12gyP+9Iu7VejtXJ6fXFJ8ILtZMvBO0xv
+ /HKRCu/k3E9CwMjF8NMMUWW6aWs860U7zzMfvJ7HcwgViaQKdIiDQxAwMLAl5uYV2qkY6Rnqm2o
+ Zwhk6BjFQ+T0GDQyi4tLU4t00wqKHPLySxJLMvPzivXyC1LzCtIL9NIy00oyMvKLilOBRujlpZZ
+ YmpubGphauhk7Ghm6OLsamjm5mrg5OboaGRlbOpq7WriZWpgaGZgaMXBxCsBck1jD/t/dR57pxX
+ rmR+3PvndWtWxSE605/9aXq6LCl/cJw8ONUwQT3Wpe7ejyb7/nMHPhhjlnyr6ej2o8yXDEwESgX
+ dtfhL8s2r5RcNsOecnlHn3TWrx4L2SVMnBvvqdfY/jRpu9NVBBn6N6mT0LNzRqsrvZ3a3jubFHs
+ NljCr2psN/WaR5ztCe6qMkufuLUBL9Okv1yzlanKZH+5wJWLLbHyzC3d4LpORkPuYkmrTX0Fqw8
+ 9PDXn0ZcZMjbbQ2vV9N5vORLza/HOnM5Jt/rZrhakC3ydqnBa3/1+d3DpIdUfHrPSbb1rlftvP9
+ iUwr7hlVa1bVPCLvfIAIsuiyd/2Za7+6y8eKer8lEgQ+29P8cB
+X-Developer-Key: i=flo@geekplace.eu; a=openpgp;
+ fpr=1357B01865B2503C18453D208CAC2A9678548E35
+X-Endpoint-Received: by B4 Relay for flo@geekplace.eu/default with auth_id=792
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The I2C read operation in the IRQ thread may return -ENXIO
-when the controller has not yet provided data after asserting IRQ.
+The kselftests for nsfs where moved under filesystem/ with
+commit cae73d3bdce5 ("seltests: move nsfs into filesystems
+subfolder"). However, the kselftest TARGETS declaration was not
+adjusted.
 
-IRQ assertion does not guarantee that data is immediately
-available on the I2C bus. In such cases, the read request may
-be NACKed, resulting in -ENXIO.
+Since the kselftest Makefile ignores errors unless no target builds,
+the invalid target declaration can easily be missed.
 
-Treat this condition as "no data available yet" and log it at
-debug level instead of reporting it as a read failure.
+Fix this by adjusting the TARGETS accordingly.
 
-This avoids misleading error messages during normal operation.
-
-Signed-off-by: Carl Lee <carl.lee@amd.com>
+Fixes: cae73d3bdce5 ("seltests: move nsfs into filesystems subfolder")
+Signed-off-by: Florian Schmaus <flo@geekplace.eu>
 ---
-Repeated -ENXIO read errors were observed during normal NFC
-operation. This appears to happen when reads are performed
-before data becomes available after IRQ assertion.
+ tools/testing/selftests/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Handle this case as "no data available yet" and avoid
-reporting it as an error.
----
- drivers/nfc/nxp-nci/i2c.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
-
-diff --git a/drivers/nfc/nxp-nci/i2c.c b/drivers/nfc/nxp-nci/i2c.c
-index a6c08175d9dd..1d9d7d6fd542 100644
---- a/drivers/nfc/nxp-nci/i2c.c
-+++ b/drivers/nfc/nxp-nci/i2c.c
-@@ -231,6 +231,14 @@ static irqreturn_t nxp_nci_i2c_irq_thread_fn(int irq, void *phy_id)
- 		if (info->mode == NXP_NCI_MODE_FW)
- 			nxp_nci_fw_recv_frame(phy->ndev, NULL);
- 	}
-+	if (r == -ENXIO) {
-+		/*
-+		 * -ENXIO may occur if the controller has not yet
-+		 * provided data after asserting IRQ.
-+		 */
-+		dev_dbg(&client->dev, "No data available yet\n");
-+		goto exit_irq_handled;
-+	}
- 	if (r < 0) {
- 		nfc_err(&client->dev, "Read failed with error %d\n", r);
- 		goto exit_irq_handled;
+diff --git a/tools/testing/selftests/Makefile b/tools/testing/selftests/Makefile
+index 6e59b8f63e41..641a180fb35f 100644
+--- a/tools/testing/selftests/Makefile
++++ b/tools/testing/selftests/Makefile
+@@ -37,6 +37,7 @@ TARGETS += filesystems/fat
+ TARGETS += filesystems/overlayfs
+ TARGETS += filesystems/statmount
+ TARGETS += filesystems/mount-notify
++TARGETS += filesystems/nsfs
+ TARGETS += filesystems/fuse
+ TARGETS += filesystems/move_mount
+ TARGETS += filesystems/empty_mntns
+@@ -85,7 +86,6 @@ TARGETS += net/ppp
+ TARGETS += net/rds
+ TARGETS += net/tcp_ao
+ TARGETS += nolibc
+-TARGETS += nsfs
+ TARGETS += pci_endpoint
+ TARGETS += pcie_bwctrl
+ TARGETS += perf_events
 
 ---
-base-commit: 6a50ba100ace43f43c87384367eb2d2605fcc16c
-change-id: 20260520-nfc-nxp-nci-treat-enxio-as-no-data-available-yet-acc13582b9c7
+base-commit: 1d5dcaa3bd65f2e8c9baa14a393d3a2dc5db7524
+change-id: 20260513-kselftest-nsfs-bba5fa24cb07
 
 Best regards,
 -- 
-Carl Lee <carl.lee@amd.com>
+Florian Schmaus <flo@geekplace.eu>
 
