@@ -1,21 +1,26 @@
 From: Jack Wu <jackbb_wu@compal.com>
-Date: Tue, 26 May 2026 17:46:16 +0800
-Subject: [PATCH] platform/x86: dell-dw5826e: Add reset driver for DW5826e
+Date: Tue, 26 May 2026 18:36:37 +0800
+Subject: [PATCH v8] platform/x86: dell-dw5826e: Add reset driver for
+ DW5826e
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260526-dell-reset-v8-v1-1-8db4183f1ca6@compal.com>
-X-B4-Tracking: v=1; b=H4sIAOdrFWoC/yXMQQqDMBBG4avIrB2IoYniVcSFNb92iljJqBTEu
- zfV5bd47yBFFCjV2UERu6h85oQiz6h/dfMIlpBM1lhvnPUcME0coVh5r9g4X7pH6W3lAqVmiRj
- ke/2a9rZuzzf69T+h8/wBkfOeW3EAAAA=
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260526-dell-reset-v8-v8-1-d3a29cb4cf2f@compal.com>
+X-B4-Tracking: v=1; b=H4sIALR3FWoC/3WNQQ6CMBREr0L+2m9opaVxxT0Mi9J+pAaBtNhoS
+ O9uwbWryUtm3mwQyDsKcC028BRdcPOUQZ0KMIOe7oTOZgZeclkKLtHSOKKnQCtGhaWQtahqyZW
+ wkDeLp969D9+t/XF4dQ8y6y7ZG4ML6+w/x2Fke++fOzJkqGxXMXXpmdGyMfNz0eM5B7QppS9SM
+ cBavQAAAA==
 X-Change-ID: 20260526-dell-reset-v8-05675476285d
-To: test@vger.kernel.org
+To: hansg@kernel.org, ilpo.jarvinen@linux.intel.com
+Cc: linux-kernel@vger.kernel.org, platform-driver-x86@vger.kernel.org, 
+ "Mario Limonciello (AMD)" <superm1@kernel.org>, Armin Wolf <W_Armin@gmx.de>, 
+ Jack Wu <jackbb_wu@compal.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779788779; l=6060;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779791800; l=6449;
  i=jackbb_wu@compal.com; s=20260526; h=from:subject:message-id;
- bh=3C1RKOyhQwldHN29eewp6UoyZtueZVLe3+YDqs7EE1M=;
- b=7qEvjMHVHDXyRfotIteMYcfWjfOvXYXIIJD1Zouc6BErkRUCAJBlGUDbOWkJkdM96FPeT8EVi
- Ozm19550eyyDiWUNF3qge1sOvxZFz7LE3m45Po6/3pOkgRmg1/b1EA7
+ bh=cojydgSYQ+PTRiOczi2WPz3yWI1NZfPHWXOMON/wOhA=;
+ b=P6XfhEZbvFuh6PyeWCGqDDNOdJXQLlsv7PoH8PEavV9NjnxLihNrXKtSUKDIRRKfhOmKs/ZiK
+ fFpnTb57uiGCie/3qrblgfVXCi0t/3szaI2Ct8lvWEGs7Pco6c4Jt7J
 X-Developer-Key: i=jackbb_wu@compal.com; a=ed25519;
  pk=VH1prTWixNl8OEUPPSfII3p46MzJpQN8J3+ecE1tZXg=
 X-Endpoint-Received: by B4 Relay for jackbb_wu@compal.com/20260526 with auth_id=793
@@ -29,6 +34,16 @@ E.g: echo 1 > /sys/bus/platform/devices/PALC0001\:00/wwan_reset
 Reviewed-by: Mario Limonciello (AMD) <superm1@kernel.org>
 Reviewed-by: Armin Wolf <W_Armin@gmx.de>
 Signed-off-by: Jack Wu <jackbb_wu@compal.com>
+---
+Changes in v8:
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v1: https://patch.msgid.link/20260526-dell-reset-v8-v1-1-8db4183f1ca6@compal.com
+
+To: Hans de Goede <hansg@kernel.org>
+To: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Cc: linux-kernel@vger.kernel.org
+Cc: platform-driver-x86@vger.kernel.org
 ---
 v8:
   - use b4 tool to send to avoiding tabs being replaced by spaces in Compal mail server.
