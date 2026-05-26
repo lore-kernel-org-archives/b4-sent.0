@@ -1,102 +1,78 @@
-From: Maurice Hieronymus <mhi@mailbox.org>
-Date: Mon, 25 May 2026 15:11:02 +0200
-Subject: [PATCH RESEND] pwm: th1520: Remove requirement for
- mul_u64_u64_div_u64_roundup
+From: Carl Lee <carl.lee@amd.com>
+Date: Tue, 26 May 2026 09:50:29 +0800
+Subject: [PATCH] nfc: nxp-nci: treat -ENXIO in IRQ thread as no data
+ available
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260525-pwm-th1520-fix-v1-1-814e537c6812@mailbox.org>
-To: Drew Fustini <fustini@kernel.org>, Guo Ren <guoren@kernel.org>, 
- Fu Wei <wefu@redhat.com>, Michal Wilczynski <m.wilczynski@samsung.com>, 
- =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
- Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>
-Cc: linux-riscv@lists.infradead.org, linux-pwm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
- Maurice Hieronymus <mhi@mailbox.org>
+Message-Id: <20260526-nfc-nxp-nci-treat-enxio-as-no-data-available-yet-v1-1-305bb11b9147@amd.com>
+X-B4-Tracking: v=1; b=H4sIAGT8FGoC/x3NywqDMBBG4VeRrPtDTLG3VyldjOPYDshEkiAp4
+ rs3dPltztldlqSS3aPbXZJNs0Zr6E+d4w/ZW6BTsws+XPwQPGxmWF1hrChJqECsagRlWMREhUA
+ b6ULjIvhKATH35+EWxjtfXcuuSWat/+XzdRw/n6zVDYIAAAA=
+X-Change-ID: 20260520-nfc-nxp-nci-treat-enxio-as-no-data-available-yet-acc13582b9c7
+To: David Heidelberg <david+nfc@ixit.cz>
+Cc: oe-linux-nfc@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ carl.lee@amd.com
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779714665; l=2775;
- i=mhi@mailbox.org; s=20260525; h=from:subject:message-id;
- bh=pPwMlhdLEIKx7tKQw28S2ur5hibHwE9OvuL0BMwNJFI=;
- b=2CY1YOoHuBr6u2vNL2LHaCbZfS8c/Z4MpUQbK76cVxR4pFQ7J6JKYPOmCZp6RzS5uoV/ehCKe
- ehBfc6H4FxyCb4WyrRuUDfbLeENx3YhhB4ifWpzHxSRGYx63rQBQft2
-X-Developer-Key: i=mhi@mailbox.org; a=ed25519;
- pk=AHlEkGG3hpXZHntlEzF42Ip/LFyXWOgsNUvaHqAnV80=
-X-Endpoint-Received: by B4 Relay for mhi@mailbox.org/20260525 with auth_id=790
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779760230; l=1735;
+ i=carl.lee@amd.com; s=20260203; h=from:subject:message-id;
+ bh=1ZJQP4AB1kE0xU7kjZUMkXjaZv6GrF/sYeABGXqI9i0=;
+ b=uMq5mPbkyw9Aay6onfye0xUPFUU+XOQbl54U4yv+BMr2L6j6jZdbqishmammC0IZQfj9tntgB
+ sHZ0jhUyQ/MBIcmX2A4qiyxRQZfuJY6Dmj6eVZxXYKEnnv0XJsjlBNv
+X-Developer-Key: i=carl.lee@amd.com; a=ed25519;
+ pk=pyq7QaQvoxMg806KVkRwpCbiah+7ncWr4MBpK1AEyjA=
+X-Endpoint-Received: by B4 Relay for carl.lee@amd.com/20260203 with auth_id=623
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The cycle register is always u32, so cycles_to_ns() can take a u32
-instead of a u64. With that narrowing, cycles * NSEC_PER_SEC is at most
-u32::MAX * 1e9 (~4.3e18), which fits in u64 without overflow. The
-saturating arithmetic is therefore no longer needed, and the ceiling
-division can use Rust's u64::div_ceil() directly instead of the
-open-coded numerator/denominator form.
+The I2C read operation in the IRQ thread may return -ENXIO
+when the controller has not yet provided data after asserting IRQ.
 
-This also drops the TODO referring to a future
-mul_u64_u64_div_u64_roundup kernel helper, which is no longer required.
+IRQ assertion does not guarantee that data is immediately
+available on the I2C bus. In such cases, the read request may
+be NACKed, resulting in -ENXIO.
 
-Signed-off-by: Maurice Hieronymus <mhi@mailbox.org>
+Treat this condition as "no data available yet" and log it at
+debug level instead of reporting it as a read failure.
+
+This avoids misleading error messages during normal operation.
+
+Signed-off-by: Carl Lee <carl.lee@amd.com>
 ---
-Note: Resending v1 because my mail server (mailbox.org) was
-unable to deliver the original submission to @kernerl.org
-recipients. Going through the b4 web submission endpoint this
-time. No changes to the patch content.
----
- drivers/pwm/pwm_th1520.rs | 16 +++++-----------
- 1 file changed, 5 insertions(+), 11 deletions(-)
+Repeated -ENXIO read errors were observed during normal NFC
+operation. This appears to happen when reads are performed
+before data becomes available after IRQ assertion.
 
-diff --git a/drivers/pwm/pwm_th1520.rs b/drivers/pwm/pwm_th1520.rs
-index ddd44a5ce497..933c1ec59c2a 100644
---- a/drivers/pwm/pwm_th1520.rs
-+++ b/drivers/pwm/pwm_th1520.rs
-@@ -67,16 +67,10 @@ fn ns_to_cycles(ns: u64, rate_hz: u64) -> u64 {
-     ns.saturating_mul(rate_hz) / NSEC_PER_SEC_U64
- }
- 
--fn cycles_to_ns(cycles: u64, rate_hz: u64) -> u64 {
-+fn cycles_to_ns(cycles: u32, rate_hz: u64) -> u64 {
-     const NSEC_PER_SEC_U64: u64 = time::NSEC_PER_SEC as u64;
- 
--    // TODO: Replace with a kernel helper like `mul_u64_u64_div_u64_roundup`
--    // once available in Rust.
--    let numerator = cycles
--        .saturating_mul(NSEC_PER_SEC_U64)
--        .saturating_add(rate_hz - 1);
--
--    numerator / rate_hz
-+    (u64::from(cycles) * NSEC_PER_SEC_U64).div_ceil(rate_hz)
- }
- 
- /// Hardware-specific waveform representation for TH1520.
-@@ -192,15 +186,15 @@ fn round_waveform_fromhw(
-             return Ok(());
-         }
- 
--        wf.period_length_ns = cycles_to_ns(u64::from(wfhw.period_cycles), rate_hz);
-+        wf.period_length_ns = cycles_to_ns(wfhw.period_cycles, rate_hz);
- 
--        let duty_cycles = u64::from(wfhw.duty_cycles);
-+        let duty_cycles = wfhw.duty_cycles;
- 
-         if (wfhw.ctrl_val & TH1520_PWM_FPOUT) != 0 {
-             wf.duty_length_ns = cycles_to_ns(duty_cycles, rate_hz);
-             wf.duty_offset_ns = 0;
-         } else {
--            let period_cycles = u64::from(wfhw.period_cycles);
-+            let period_cycles = wfhw.period_cycles;
-             let original_duty_cycles = period_cycles.saturating_sub(duty_cycles);
- 
-             // For an inverted signal, `duty_length_ns` is the high time (period - low_time).
+Handle this case as "no data available yet" and avoid
+reporting it as an error.
+---
+ drivers/nfc/nxp-nci/i2c.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/drivers/nfc/nxp-nci/i2c.c b/drivers/nfc/nxp-nci/i2c.c
+index a6c08175d9dd..1d9d7d6fd542 100644
+--- a/drivers/nfc/nxp-nci/i2c.c
++++ b/drivers/nfc/nxp-nci/i2c.c
+@@ -231,6 +231,14 @@ static irqreturn_t nxp_nci_i2c_irq_thread_fn(int irq, void *phy_id)
+ 		if (info->mode == NXP_NCI_MODE_FW)
+ 			nxp_nci_fw_recv_frame(phy->ndev, NULL);
+ 	}
++	if (r == -ENXIO) {
++		/*
++		 * -ENXIO may occur if the controller has not yet
++		 * provided data after asserting IRQ.
++		 */
++		dev_dbg(&client->dev, "No data available yet\n");
++		goto exit_irq_handled;
++	}
+ 	if (r < 0) {
+ 		nfc_err(&client->dev, "Read failed with error %d\n", r);
+ 		goto exit_irq_handled;
 
 ---
-base-commit: 3936b25815ee686a273ca7bbdc9ae19af5e608a3
-change-id: 20260521-pwm-th1520-fix-8e45558bbd31
+base-commit: 6a50ba100ace43f43c87384367eb2d2605fcc16c
+change-id: 20260520-nfc-nxp-nci-treat-enxio-as-no-data-available-yet-acc13582b9c7
 
 Best regards,
 -- 
-Maurice Hieronymus <mhi@mailbox.org>
+Carl Lee <carl.lee@amd.com>
 
