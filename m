@@ -1,11 +1,11 @@
 From: Maurice Hieronymus <mhi@mailbox.org>
-Date: Tue, 26 May 2026 19:04:57 +0200
-Subject: [PATCH 1/2] rust: clk: Add ExclusiveClk wrapper for
+Date: Tue, 26 May 2026 19:04:58 +0200
+Subject: [PATCH 2/2] pwm: th1520: Lock clock rate with
  clk_rate_exclusive_get
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260526-rate-exclusive-get-th1520-v1-1-34cf034e1764@mailbox.org>
+Message-Id: <20260526-rate-exclusive-get-th1520-v1-2-34cf034e1764@mailbox.org>
 References: <20260526-rate-exclusive-get-th1520-v1-0-34cf034e1764@mailbox.org>
 In-Reply-To: <20260526-rate-exclusive-get-th1520-v1-0-34cf034e1764@mailbox.org>
 To: Michael Turquette <mturquette@baylibre.com>, 
@@ -22,112 +22,60 @@ Cc: linux-clk@vger.kernel.org, rust-for-linux@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-riscv@lists.infradead.org, 
  linux-pwm@vger.kernel.org, Maurice Hieronymus <mhi@mailbox.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779815100; l=3630;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779815100; l=1525;
  i=mhi@mailbox.org; s=20260525; h=from:subject:message-id;
- bh=eeAOAa6Y2zm3Hajnun7vvZ2u6PShjeRY9qX+W/KRP+c=;
- b=7Z8IQMFi5xKCCFeuAal3K7kJkXYyGA1HDWZvUu0uVf9KwQYky55CqLDF3yCnETma2JXvhfW9b
- CtNi39i0kGcBkhMafUkqL9gOIVXwCe6aHH0kw4epFcVmIWMtrRdEIcI
+ bh=ijdGRfoTVRxXfNyIw+J4I55qYh5/j8fCJaQQLZ2ik/o=;
+ b=FPRu4JUed3iOmruEs1DxB2Ies0lJTysltEPmsJb+yRb3RbZgYri/ak4s5sUuEOq5AhAWxdm6S
+ 5ZDPX57xtalDvqgMwlQkE/6IdDfz4ZwAwsotRXKRDMAcrokkQv8J2PE
 X-Developer-Key: i=mhi@mailbox.org; a=ed25519;
  pk=AHlEkGG3hpXZHntlEzF42Ip/LFyXWOgsNUvaHqAnV80=
 X-Endpoint-Received: by B4 Relay for mhi@mailbox.org/20260525 with auth_id=790
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Rust bindings for clk_rate_exclusive_get() and
-clk_rate_exclusive_put().
-
-Clk::rate_exclusive_get() consumes the Clk and returns an ExclusiveClk;
-the matching put is issued from its Drop impl. ExclusiveClk derefs to
-Clk so existing rate / prepare / enable APIs remain available on the
-locked handle.
+The driver derives period and duty cycle from the clock rate read at
+probe, so a later rate change would silently miscompute waveforms.
+Switch to the new ExclusiveClk wrapper to hold the rate for the lifetime
+of the driver data and drop the corresponding TODO.
 
 Signed-off-by: Maurice Hieronymus <mhi@mailbox.org>
 ---
- rust/kernel/clk.rs | 65 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 65 insertions(+)
+ drivers/pwm/pwm_th1520.rs | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
 
-diff --git a/rust/kernel/clk.rs b/rust/kernel/clk.rs
-index 7abbd0767d8c..8cda40cb01e4 100644
---- a/rust/kernel/clk.rs
-+++ b/rust/kernel/clk.rs
-@@ -249,6 +249,23 @@ pub fn set_rate(&self, rate: Hertz) -> Result {
-             // [`clk_set_rate`].
-             to_result(unsafe { bindings::clk_set_rate(self.as_raw(), rate.as_hz()) })
-         }
-+
-+        /// Acquire exclusive control over the clock's rate.
-+        ///
-+        /// Consumes the [`Clk`] and returns an [`ExclusiveClk`] that releases the exclusivity
-+        /// when dropped. While held, no other consumer may change the clock's rate.
-+        ///
-+        /// Equivalent to the kernel's [`clk_rate_exclusive_get`] API. Must not be called from
-+        /// atomic context.
-+        ///
-+        /// [`clk_rate_exclusive_get`]:
-+        /// https://docs.kernel.org/core-api/kernel-api.html#c.clk_rate_exclusive_get
-+        pub fn rate_exclusive_get(self) -> Result<ExclusiveClk> {
-+            // SAFETY: By the type invariants, self.as_raw() is a valid argument for
-+            // [`clk_rate_exclusive_get`].
-+            to_result(unsafe { bindings::clk_rate_exclusive_get(self.as_raw()) })?;
-+            Ok(ExclusiveClk(self))
-+        }
-     }
+diff --git a/drivers/pwm/pwm_th1520.rs b/drivers/pwm/pwm_th1520.rs
+index ddd44a5ce497..19e8621bc52c 100644
+--- a/drivers/pwm/pwm_th1520.rs
++++ b/drivers/pwm/pwm_th1520.rs
+@@ -22,7 +22,7 @@
  
-     impl Drop for Clk {
-@@ -329,6 +346,54 @@ fn deref(&self) -> &Clk {
-             &self.0
-         }
-     }
-+
-+    /// A [`Clk`] with exclusive control over its rate.
-+    ///
-+    /// While an [`ExclusiveClk`] exists, no other consumer of the same clock may change its rate.
-+    /// Obtained by calling [`Clk::rate_exclusive_get`]; the exclusivity is released automatically
-+    /// when the value is dropped, after which the inner [`Clk`] is dropped as usual.
-+    ///
-+    /// # Invariants
-+    ///
-+    /// An [`ExclusiveClk`] instance owns a [`Clk`] for which `clk_rate_exclusive_get` has been
-+    /// called and the matching `clk_rate_exclusive_put` has not yet been called.
-+    ///
-+    /// # Examples
-+    ///
-+    /// ```
-+    /// use kernel::clk::{Clk, ExclusiveClk};
-+    /// use kernel::device::Device;
-+    /// use kernel::error::Result;
-+    ///
-+    /// fn lock_rate(dev: &Device) -> Result<ExclusiveClk> {
-+    ///     let clk = Clk::get(dev, None)?;
-+    ///     clk.prepare_enable()?;
-+    ///     clk.rate_exclusive_get()
-+    /// }
-+    /// ```
-+    ///
-+    /// [`struct clk`]: https://docs.kernel.org/driver-api/clk.html
-+    pub struct ExclusiveClk(Clk);
-+
-+    // Make [`ExclusiveClk`] behave like [`Clk`].
-+    impl Deref for ExclusiveClk {
-+        type Target = Clk;
-+
-+        fn deref(&self) -> &Clk {
-+            &self.0
-+        }
-+    }
-+
-+    impl Drop for ExclusiveClk {
-+        fn drop(&mut self) {
-+            // SAFETY: By the type invariants, self.as_raw() is a valid argument for
-+            // [`clk_rate_exclusive_put`] and balances the [`clk_rate_exclusive_get`] call from
-+            // [`Clk::rate_exclusive_get`].
-+            unsafe {
-+                bindings::clk_rate_exclusive_put(self.as_raw());
-+            }
-+        }
-+    }
+ use core::ops::Deref;
+ use kernel::{
+-    clk::Clk,
++    clk::{Clk, ExclusiveClk},
+     device::{Bound, Core, Device},
+     devres,
+     io::{
+@@ -93,7 +93,7 @@ struct Th1520WfHw {
+ struct Th1520PwmDriverData {
+     #[pin]
+     iomem: devres::Devres<IoMem<TH1520_PWM_REG_SIZE>>,
+-    clk: Clk,
++    clk: ExclusiveClk,
  }
  
- #[cfg(CONFIG_COMMON_CLK)]
+ impl pwm::PwmOps for Th1520PwmDriverData {
+@@ -328,10 +328,8 @@ fn probe(
+         let clk = Clk::get(dev, None)?;
+ 
+         clk.prepare_enable()?;
++        let clk = clk.rate_exclusive_get()?;
+ 
+-        // TODO: Get exclusive ownership of the clock to prevent rate changes.
+-        // The Rust equivalent of `clk_rate_exclusive_get()` is not yet available.
+-        // This should be updated once it is implemented.
+         let rate_hz = clk.rate().as_hz();
+         if rate_hz == 0 {
+             dev_err!(dev, "Clock rate is zero\n");
 
 -- 
 2.51.2
