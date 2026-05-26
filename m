@@ -1,73 +1,74 @@
-From: Joshua Crofts <joshua.crofts1@gmail.com>
-Date: Tue, 26 May 2026 13:15:29 +0200
-Subject: [PATCH] iio: light: opt3001: fix missing state reset on timeout
+From: Cedric Jehasse <cedric.jehasse@luminex.be>
+Subject: [PATCH net-next v2 0/2] net: dsa: mv88e6xxx: add support for
+ credit based shaper
+Date: Tue, 26 May 2026 13:41:13 +0200
+Message-Id: <20260526-net-next-mv88e6xxx-cbs-v2-0-13eb49c29b83@luminex.be>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260526-fix-early-return-v1-1-c70e886329f3@gmail.com>
-X-B4-Tracking: v=1; b=H4sIANCAFWoC/x2MQQqAMAzAviI9W9gqDvEr4kG0akGmdCrK2N8dH
- gNJIgRW4QBtEUH5liC7z2DLAsZ18AujTJmBDDlTk8NZHuRBtxeVz0s9Ms12qpwj2xjI2aGcnX/
- Z9Sl9llFvmWIAAAA=
-X-Change-ID: 20260526-fix-early-return-e2f1d3662180
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Jiri Valek - 2N <valek@2n.cz>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jonathan Cameron <jic23@kernel.org>, Sashiko <sashiko-bot@kernel.org>, 
- stable@vger.kernel.org, Joshua Crofts <joshua.crofts1@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779794147; l=1681;
- i=joshua.crofts1@gmail.com; s=20260422; h=from:subject:message-id;
- bh=t1vAsfv7B7LZdWUZQljLoYaL7Vobksl8g4LhkH8Ck5M=;
- b=2yocHaz4/GslAVgqXwiLfzhUVXdUsmZd3OY3tNGHW2oaS7yNIUt1roT9g9QfPzimU3oczQ1yQ
- F93sH8jlbP/BAMTTjGjeAdxRFRJGGH/BPF8ahmdXgjbsmIDul1w/9hs
-X-Developer-Key: i=joshua.crofts1@gmail.com; a=ed25519;
- pk=Xd+UVoRPiiI0K3LHQ2XIcXmO0jvVuFTv9eTx3lgBphI=
-X-Endpoint-Received: by B4 Relay for joshua.crofts1@gmail.com/20260422 with auth_id=746
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIANmGFWoC/3WNsQ7CMAxEf6XyjFFiIAQm/gN1SIOhlmiLkhIFV
+ f13okiMDDfcne95gchBOMK5WSBwkijTWAxtGvC9Gx+MciseSJFR+53CkeeiPOOQrGWTc0bfRSR
+ NWpuTd85YKONX4LvkCr7CbwNtaXqJ8xQ+9WPSta/wA9E/eNKo0NujK1nnvfKX53uQcrjtGNp1X
+ b+8S8XUxwAAAA==
+X-Change-ID: 20260430-net-next-mv88e6xxx-cbs-2121169caa68
+To: Andrew Lunn <andrew@lunn.ch>, Vladimir Oltean <olteanv@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, Russell King <linux@armlinux.org.uk>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Cedric Jehasse <cedric.jehasse@luminex.be>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779795677; l=1698;
+ i=cedric.jehasse@luminex.be; s=20260213; h=from:subject:message-id;
+ bh=gsBMOqckNew79nqSk38co9T/p1xGYyM8joscT6dFzlw=;
+ b=9Z/Kxlm4nnbXY7ex5AR29/rzFU9jQ7Uq1ABUsumK8TzhsfrgCrnQs7o4f2CB3lkxan6sdTM9q
+ baYQHU2hDGTAsFBHcK+evUAh/yeTtPFBmK/jhkh98DIjLL9TmHNY+RP
+X-Developer-Key: i=cedric.jehasse@luminex.be; a=ed25519;
+ pk=DL2RaHc2bc7tTDTMJdugm42BtJk4Ip+7V41Gkj+Avjk=
+X-Endpoint-Received: by B4 Relay for cedric.jehasse@luminex.be/20260213 with auth_id=638
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Currently in the function opt3001_get_processed(), there is a check
-that directly returns -ETIMEDOUT if the conversion IRQ times out,
-completely bypassing the err label, leaving ok_to_ignore_lock
-permanently true, potentially breaking the device's falling threshold
-interrupt detection.
+Several of the switch families in this driver have switches with AVB
+support. The switches with AVB support have support for Credit based
+shaping. This series adds support for the 6352, 6390 and 6393 families.
+The difference between the families is:
+- total number of queues
+- which queues support credit based shaping
+- shaping granularity
 
-Assign -ETIMEDOUT to the return variable and jump to the error label
-to ensure ok_to_ignore_lock is properly reset.
+Eg. setting up 20mbps credit based shaper on a 1GBit link:
+tc qdisc add dev p8 parent root handle 100: mqprio \
+    num_tc 8 \
+    map 0 0 6 7 0 5 0 0 0 0 0 0 0 0 0 0 \
+    queues 1@0 1@1 1@2 1@3 1@4 1@5 1@6 1@7 \
+    hw 0
 
-Fixes: 26d90b559057 ("iio: light: opt3001: Fixed timeout error when 0 lux")
-Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://sashiko.dev/#/patchset/20260525-opt3001-cleanup-v4-0-65b36a174f78%40gmail.com?part=1
-Cc: stable@vger.kernel.org
-Signed-off-by: Joshua Crofts <joshua.crofts1@gmail.com>
+tc qdisc replace dev p8 parent 100:8 cbs locredit -1470 hicredit 30 \
+    sendslope -980000 idleslope 20000 offload 1
+
+Signed-off-by: Cedric Jehasse <cedric.jehasse@luminex.be>
 ---
- drivers/iio/light/opt3001.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/iio/light/opt3001.c b/drivers/iio/light/opt3001.c
-index 03c7a87b4a8eef13bbdcf48dcaf969781aa76bd1..0743e16f2a8fa0f07acd19c7dd6b54bec9e5c7b2 100644
---- a/drivers/iio/light/opt3001.c
-+++ b/drivers/iio/light/opt3001.c
-@@ -366,8 +366,10 @@ static int opt3001_get_processed(struct opt3001 *opt, int *val, int *val2)
- 		ret = wait_event_timeout(opt->result_ready_queue,
- 				opt->result_ready,
- 				msecs_to_jiffies(OPT3001_RESULT_READY_LONG));
--		if (ret == 0)
--			return -ETIMEDOUT;
-+		if (ret == 0) {
-+			ret = -ETIMEDOUT;
-+			goto err;
-+		}
- 	} else {
- 		/* Sleep for result ready time */
- 		timeout = (opt->int_time == OPT3001_INT_TIME_SHORT) ?
+Changes in v2:
+- tx_queues defined for all devices (which could be found). Thanks to Marek Behún.
+- Link to v1: https://lore.kernel.org/r/20260522-net-next-mv88e6xxx-cbs-v1-0-c87a8e6bcc0c@luminex.be
 
 ---
-base-commit: 0e7dbde323808f28c5220295bfc1c5bc6f08c3f4
-change-id: 20260526-fix-early-return-e2f1d3662180
+Cedric Jehasse (2):
+      net: dsa: mv88e6xxx: use the hw tx queues
+      net: dsa: mv88e6xxx: add support for credit based shaper
+
+ drivers/net/dsa/mv88e6xxx/chip.c        | 157 ++++++++++++++++++++++++++++++++
+ drivers/net/dsa/mv88e6xxx/chip.h        |  22 +++++
+ drivers/net/dsa/mv88e6xxx/global2_avb.c |  21 +++++
+ drivers/net/dsa/mv88e6xxx/port.c        |  38 ++++++++
+ drivers/net/dsa/mv88e6xxx/port.h        |  16 ++++
+ net/dsa/tag_dsa.c                       |   3 +-
+ 6 files changed, 256 insertions(+), 1 deletion(-)
+---
+base-commit: 022bdd9c0d036863c4bacd1688b73c6be3001cee
+change-id: 20260430-net-next-mv88e6xxx-cbs-2121169caa68
 
 Best regards,
 -- 
-Joshua Crofts <joshua.crofts1@gmail.com>
+Cedric Jehasse <cedric.jehasse@luminex.be>
 
