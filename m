@@ -1,23 +1,23 @@
 From: Xiubo Li <xiubo.lee@gmail.com>
-Date: Wed, 27 May 2026 13:43:08 +0800
-Subject: [PATCH] Revert "drm/msm: Restore second parameter name in purge()
- and evict()"
+Date: Wed, 27 May 2026 13:45:11 +0800
+Subject: [PATCH v2] Revert "drm/msm: Restore second parameter name in
+ purge() and evict()"
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260527-mybr2-v1-1-a992ce7f9e86@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDUyNz3dzKpCIj3aTUNBNTIzPD5FSDFCWg2oKi1LTMCrA50bG1tQC7N5L
- 5VwAAAA==
+Message-Id: <20260527-mybr2-v2-1-0d1a14a7a06c@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/13MQQ7CIBCF4as0sxYDE9uKK+9huqB0aCeRYsAQm
+ 4a7i126/F9evh0SRaYEt2aHSJkTh7UGnhqwi1lnEjzVBpTYyRZ74bcxohjJXVrslCU5Qf2+Ijn
+ +HM5jqL1weoe4HWxWv/VfyEooYbRGS73TdO3uszf8PNvgYSilfAEdMdbnmgAAAA==
 X-Change-ID: 20260527-mybr2-bef45261ce0d
 To: xiubli@kernel.org
 Cc: Xiubo Li <xiubli@redhat.com>, Xiubo Li <xiubo.lee@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779860591; l=1241;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779860714; l=1455;
  i=xiubo.lee@gmail.com; s=20260527; h=from:subject:message-id;
- bh=7tYayk6Z8aFbWLMjw7I5OJLeFO5/MJDO6e+sBWPMlic=;
- b=XOVqOgEiTxwgGLqo+PSeJYN54R4ac1G1KTOsQlDIz3GdaKqTbPj7EO/WCz9PEMVPAe4FNDKyS
- o3QmHkylnItB2J23EARFaiGlBhDj/z2/k3MV446z3HO8DFj3fKvhFB0
+ bh=kmDYJMU1VPsFDEtQtpK+BXRc+fIaQudJPb2iCdVxiR0=;
+ b=XX1dmFXL2H4FoaIbPxFRID80BqZknlnoszq/iOv86TjUTdYHOEhNMka+O3Hslptp9pelfRFcb
+ fgfccAtSw1rAjjYPgTDIyNMz880YzVYHbmxPu4aFBIbq2dfR4kG7ymE
 X-Developer-Key: i=xiubo.lee@gmail.com; a=ed25519;
  pk=x2BSkeQcykT+nbQKshFk72C0c70TVkHCI1Mz9+ywY+M=
 X-Endpoint-Received: by B4 Relay for xiubo.lee@gmail.com/20260527 with auth_id=794
@@ -32,6 +32,11 @@ Signed-off-by: Xiubo Li <xiubli@kernel.org>
 Test.
 
 Signed-off-by: Xiubo Li <xiubo.lee@gmail.com>
+---
+Changes in v2:
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v1: https://lore.kernel.org/r/20260527-mybr2-v1-1-a992ce7f9e86@gmail.com
 ---
  drivers/gpu/drm/msm/msm_gem_shrinker.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
