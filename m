@@ -1,11 +1,10 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Wed, 27 May 2026 08:33:15 -0700
-Subject: [PATCH RFC 03/12] Documentation: KVM: Consolidate notes about
- kvm->slots_lock and irq_lock
+Date: Wed, 27 May 2026 08:33:16 -0700
+Subject: [PATCH RFC 04/12] Documentation: KVM: Turn - into bullet point
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260527-kvm-locking-docs-v1-3-4fe8b602ff47@google.com>
+Message-Id: <20260527-kvm-locking-docs-v1-4-4fe8b602ff47@google.com>
 References: <20260527-kvm-locking-docs-v1-0-4fe8b602ff47@google.com>
 In-Reply-To: <20260527-kvm-locking-docs-v1-0-4fe8b602ff47@google.com>
 To: Paolo Bonzini <pbonzini@redhat.com>, Jonathan Corbet <corbet@lwn.net>, 
@@ -20,43 +19,38 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kernel@vger.kernel.org, loongarch@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779896001; l=1205;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779896001; l=909;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=5xqYuflg/lHRaHVhIbofzsJqCQI4L326JDxGJuO8b0U=;
- b=/bIlnjfndGdNS+ll2dxYYvqLLoNppW84HDwXhvbpWFF04ZPlHUMWp75WsSLCcKYSYWt61B5P7
- mXli/FQOdC4BvZ0ynYtyfQjBM8Q6lsysXNUKDjZXn5ui6jUMED+c4jb
+ bh=CVJlxPT0bvHHOwHsW6J5heOXwU/ZjkdVD+6fUMJnWDE=;
+ b=KkPJHF+eM7NDmHDSEhDOiOBWhwesjg7rIQXxnzpWgTB9I02vfYnNi5BaXX0a183XJ1mq7TDDx
+ YhG5/AGb4N7Df+nmEUADJYfEvIEoR/I+w01Jm8766xS2x9bSTAeKxa+
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move the detail about ordering between kvm->slots_lock and kvm->irq_lock to
-where the two locks are first mentioned.
+For the :Protects: section of kvm->mmu_lock, a missing space causes the -
+to render as a literal - instead of a bullet point. Add space to make it
+render as a bullet point.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- Documentation/virt/kvm/locking.rst | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ Documentation/virt/kvm/locking.rst | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Documentation/virt/kvm/locking.rst b/Documentation/virt/kvm/locking.rst
-index 1e8cbbe3ba706..67dd2066f6d98 100644
+index 67dd2066f6d98..e349c2cb94943 100644
 --- a/Documentation/virt/kvm/locking.rst
 +++ b/Documentation/virt/kvm/locking.rst
-@@ -21,12 +21,11 @@ The acquisition orders for mutexes are as follows:
- - kvm->lock is taken outside vcpu->mutex
+@@ -283,7 +283,7 @@ time it will be set using the Dirty tracking mechanism described above.
+ ^^^^^^^^^^^^^^^^^
+ :Type:		spinlock_t or rwlock_t
+ :Arch:		any
+-:Protects:	-shadow page/shadow tlb entry
++:Protects:	- shadow page/shadow tlb entry
+ :Comment:	it is a spinlock since it is used in mmu notifier.
  
- - kvm->lock is taken outside kvm->slots_lock and kvm->irq_lock
-+    - kvm->slots_lock is taken outside kvm->irq_lock, though acquiring
-+      them together is quite rare.
- 
- - vcpu->mutex is taken outside kvm->slots_lock and kvm->slots_arch_lock
- 
--- kvm->slots_lock is taken outside kvm->irq_lock, though acquiring
--  them together is quite rare.
--
- - kvm->mn_active_invalidate_count ensures that pairs of
-   invalidate_range_start() and invalidate_range_end() callbacks
-   use the same memslots array.  kvm->slots_lock and kvm->slots_arch_lock
+ ``kvm->srcu``
 
 -- 
 2.54.0.823.g6e5bcc1fc9-goog
