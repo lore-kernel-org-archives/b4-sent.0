@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Wed, 27 May 2026 08:33:18 -0700
-Subject: [PATCH RFC 06/12] Documentation: KVM: Have actual headings for
- exceptions
+Date: Wed, 27 May 2026 08:33:19 -0700
+Subject: [PATCH RFC 07/12] Documentation: KVM: Drop mention of kvm->lock in
+ SRCU documentation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260527-kvm-locking-docs-v1-6-4fe8b602ff47@google.com>
+Message-Id: <20260527-kvm-locking-docs-v1-7-4fe8b602ff47@google.com>
 References: <20260527-kvm-locking-docs-v1-0-4fe8b602ff47@google.com>
 In-Reply-To: <20260527-kvm-locking-docs-v1-0-4fe8b602ff47@google.com>
 To: Paolo Bonzini <pbonzini@redhat.com>, Jonathan Corbet <corbet@lwn.net>, 
@@ -20,51 +20,40 @@ Cc: kvm@vger.kernel.org, linux-doc@vger.kernel.org,
  linux-kernel@vger.kernel.org, loongarch@lists.linux.dev, 
  Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779896001; l=1576;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779896001; l=1115;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=omLCISL/Cs1+39lE29MDupCtm4WwTzGw7vDPKSySNYo=;
- b=hprWgud3QVI1IKRiPLGBIYGbG2occ7We7PsN9/HJiCR/0rZEaqlqEP39d5vxdyx0Gpkil7MJV
- OZNw5t9xeHOAhY9qTRJPjQQyqfcQdggNLhA0ARfSxEm8DrBNtkxx0PE
+ bh=AfvnWtgsVpXIKXd9EvhdAVtlR2WiGKaxMZJotHAsjr8=;
+ b=q6xZf/5/u1rdMaAEebXfbdUD15CwiaRJEQv8wy+OHzvYq94cMmo+p9Vjs5r6IZMkazcCQ+cOA
+ vGzpCQxTs4EDZVCNaYIQXAThy7QIfLWsIT9Wzdwv9O1z6Mi7/54mSVg
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Exceptions documented are described but without headings, making it hard to
-identify where each exception description ended.
-
-Use actual headings at a lower level than that of the heading used for
-Exception to improve readability.
+The original comment says that synchronize_srcu(&kvm->srcu) is called
+inside critical sections for kvm->lock, vcpu->mutex and
+kvm->slots_lock. Drop mention of kvm->lock since this is no longer true.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- Documentation/virt/kvm/locking.rst | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ Documentation/virt/kvm/locking.rst | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/virt/kvm/locking.rst b/Documentation/virt/kvm/locking.rst
-index 5161636cec481..fc4537a7659a9 100644
+index fc4537a7659a9..437dbfa0030b9 100644
 --- a/Documentation/virt/kvm/locking.rst
 +++ b/Documentation/virt/kvm/locking.rst
-@@ -65,7 +65,8 @@ The general rule in KVM is that any modification to shadow page tables
- (and their entries (SPTEs)) must be protected by ``kvm->mmu_lock``,
- with the exceptions described below.
+@@ -35,8 +35,8 @@ The acquisition orders for mutexes are as follows:
+ For SRCU:
  
--Fast page fault:
-+2.1. Fast page fault
-+^^^^^^^^^^^^^^^^^^^^
+ - ``synchronize_srcu(&kvm->srcu)`` is called inside critical sections
+-  for kvm->lock, vcpu->mutex and kvm->slots_lock.  These locks _cannot_
+-  be taken inside a kvm->srcu read-side critical section; that is, the
++  for vcpu->mutex and kvm->slots_lock.  These locks _cannot_ be taken
++  inside a kvm->srcu read-side critical section; that is, the
+   following is broken::
  
- Fast page fault is the fast path which fixes the guest page fault out of
- the mmu-lock on x86. Currently, the page fault can be fast in one of the
-@@ -217,7 +218,8 @@ Since the spte is "volatile" if it can be updated out of mmu-lock, we always
- atomically update the spte and the race caused by fast page fault can be avoided.
- See the comments in spte_needs_atomic_update() and mmu_spte_update().
- 
--Lockless Access Tracking:
-+2.2 Lockless Access Tracking
-+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- 
- This is used for Intel CPUs that are using EPT but do not support the EPT A/D
- bits. In this case, PTEs are tagged as A/D disabled (using ignored bits), and
+       srcu_read_lock(&kvm->srcu);
 
 -- 
 2.54.0.823.g6e5bcc1fc9-goog
