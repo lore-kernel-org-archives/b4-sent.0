@@ -1,22 +1,23 @@
 From: Xiubo Li <xiubli@kernel.org>
-Date: Wed, 27 May 2026 14:40:49 +0800
-Subject: [PATCH v2] Revert "drm/msm: Restore second parameter name in
+Date: Wed, 27 May 2026 14:41:11 +0800
+Subject: [PATCH v3] Revert "drm/msm: Restore second parameter name in
  purge() and evict()"
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260527-mybr4-v2-1-28c4c2effb9f@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/13MQQ7CIBCF4as0sxYDkwLWlfcwXRSctkQtZjDEp
- uHuYpcu/5eXb4NEHCjBudmAKYcU4lIDDw34eVgmEuFWG1CikRqteK6OW+EMUedHP+jWQv2+mMb
- w2Z1rX3sO6R153dmsfuu/kJVQonMnRElWG4+XO/FCj2PkCfpSyhcDo4onmwAAAA==
+Message-Id: <20260527-mybr4-v3-1-718acd92c1c1@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22Myw6CMBBFf4XM2hoYebryP4wLWqcwUYuZmkZC+
+ u8WdhqX5+aes4AnYfJwzBYQCux5cgkOuwzM2LuBFF8TA+ZY5xU26jFrKZWuiTpjTV+VDaTvU8j
+ ye+ucL4lH9q9J5i0binX9LYRCFarTLWJOTVUbPN1IHN33kwywJgL+1TBp2JrSIFmrO/ulxRg/T
+ zFHZtIAAAA=
 X-Change-ID: 20260527-mybr4-b6ee9cfca547
 To: xiubli@kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779864050; l=1404;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779864073; l=1616;
  i=xiubli@kernel.org; s=20260527; h=from:subject:message-id;
- bh=nOvXcXVU60D22fqlX5jn3QPHLDSP3KArKvMLVm4f5MU=;
- b=VYhfu0DbrbVacmIRap5B2R65Zo5kR+WNjOia24sJFpKBOajEjCgsr12NK5M6XBwSVJ4y3Up6p
- ImlwNH4UJrlBlO6Yw2zr3zHkMN+KMx6ewN7qSnjxtBMh03nhKW85l1K
+ bh=5itwi7GE+ZjzCRxQZkMnJDLeeEz0QCOGlyw96KZfWcs=;
+ b=mrOJtwXVicNGIJEGjMn8vWfkJpesxcgeEMWlplJVO9+NaORNNNN/wAqDzRUV33q6RxVHOphCc
+ Ohv1Jn/uSIzAxbC2wSv0H0Fnb2iqcOOnsDaRrt2pIDtlwL0hnVxENhK
 X-Developer-Key: i=xiubli@kernel.org; a=ed25519;
  pk=x2BSkeQcykT+nbQKshFk72C0c70TVkHCI1Mz9+ywY+M=
 X-Endpoint-Received: by B4 Relay for xiubli@kernel.org/20260527 with auth_id=795
@@ -28,6 +29,11 @@ Signed-off-by: Xiubo Li <xiubli@kernel.org>
 ---
 Test
 ---
+Changes in v3:
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v2: https://lore.kernel.org/r/20260527-mybr4-v2-1-28c4c2effb9f@kernel.org
+
 Changes in v2:
 - EDITME: describe what is new in this series revision.
 - EDITME: use bulletpoints and terse descriptions.
