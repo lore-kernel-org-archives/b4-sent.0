@@ -1,23 +1,23 @@
 From: Bernd Schubert <bernd@bsbernd.com>
-Date: Fri, 29 May 2026 00:55:10 +0200
-Subject: [PATCH v5 6/7] fuse: {io-uring} Add retry attempts for numa local
- queues for load distribution
+Date: Fri, 29 May 2026 00:55:11 +0200
+Subject: [PATCH v5 7/7] fuse: {io-uring} Prefer the current core over
+ mapping
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260529-reduced-nr-ring-queues_3-v5-6-1dc08c2fccf6@bsbernd.com>
+Message-Id: <20260529-reduced-nr-ring-queues_3-v5-7-1dc08c2fccf6@bsbernd.com>
 References: <20260529-reduced-nr-ring-queues_3-v5-0-1dc08c2fccf6@bsbernd.com>
 In-Reply-To: <20260529-reduced-nr-ring-queues_3-v5-0-1dc08c2fccf6@bsbernd.com>
 To: Miklos Szeredi <miklos@szeredi.hu>
 Cc: Joanne Koong <joannelkoong@gmail.com>, Luis Henriques <luis@igalia.com>, 
  Gang He <dchg2000@gmail.com>, fuse-devel@lists.linux.dev, 
- Bernd Schubert <bschubert@ddn.com>
+ Bernd Schubert <bschubert@ddn.com>, Bernd Schubert <bernd@bsbernd.com>
 X-Mailer: b4 0.15-dev-2a633
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780008905; l=2695;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780008905; l=1481;
  i=bernd@bsbernd.com; s=20240529; h=from:subject:message-id;
- bh=/JoNay03ra6U1JLIygA2pq3cl7kfAQ5Hf2U4zr91+WM=;
- b=EzBKzAKFwKs/ZnEONPUIehZkwsvic94RA1MhUM/cAAty2i9IGAIWgoPJnfx+laQrgjDCyNhUX
- w7859xBXV4WDmqsxOkedc8+v9fHeW5QuEmOhm0lE07jUemFARf1dG+5
+ bh=DDk8GODTMyIIUdkclqSrJjrdLiMt8anI7InbsdR24Rg=;
+ b=Ns4gsGgN5qDWQSLd7p2REXqa0sUSJgl60HCmPrCpik6ku1J97j8tupL3mrLQogu6PE0Ih9t4g
+ iaH+3URpDBtA7y7X0Dr/9NzpQsLy0R1JZ6vvLE853+Z4EjMcSJ8KWY3
 X-Developer-Key: i=bernd@bsbernd.com; a=ed25519;
  pk=EZVU4bq64+flgoWFCVQoj0URAs3Urjno+1fIq9ZJx8Y=
 X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/20240529 with auth_id=732
@@ -25,96 +25,47 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Bernd Schubert <bschubert@ddn.com>
 
-This is to further improve performance.
+Update the mapping to prefer queues that belong to the
+current cpu. If no queue is registered for the current cpu,
+fall back is to the existing round robin logic.
 
-fio --directory=/tmp/dest --name=iops.\$jobnum --rw=randread \
---bs=4k --size=1G --numjobs=1 --iodepth=4 --time_based\
---runtime=30s --group_reporting --ioengine=io_uring\
---direct=1
+Example (with core binding)
 
-unpatched
-   READ: bw=650MiB/s (682MB/s)
-patched:
-   READ: bw=995MiB/s (1043MB/s)
+unpatched WRITE: bw=841MiB/s
+patched   WRITE: bw=1363MiB/s
 
-with --iodepth=8
+With
+fio --name=test --ioengine=psync --direct=1 \
+    --rw=write --bs=1M --iodepth=1 --numjobs=1 \
+    --filename_format=/redfs/testfile.\$jobnum --size=100G \
+    --thread --create_on_open=1 --runtime=30s --cpus_allowed=1
 
-unpatched
-   READ: bw=641MiB/s (672MB/s)
-patched
-   READ: bw=966MiB/s (1012MB/s)
+In order to get the good number `--cpus_allowed=1` is needed.
+This could be improved by a future change that avoids
+cpu migration in fuse_request_end() on wake_up() call.
 
-Reason is that with --iodepth=x (x > 1) fio submits multiple async
-requests and a single queue might become CPU limited. I.e. spreading
-the load helps.
+Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
 ---
- fs/fuse/dev_uring.c | 33 +++++++++++++++++++++++++++++++--
- 1 file changed, 31 insertions(+), 2 deletions(-)
+ fs/fuse/dev_uring.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
 diff --git a/fs/fuse/dev_uring.c b/fs/fuse/dev_uring.c
-index a79007c36e6be33f662bd5bcb80949a814d426c8..b68b2153dd11fd06962c06aa227a5144f4210aa0 100644
+index b68b2153dd11fd06962c06aa227a5144f4210aa0..7465b513c17eb9901d2dcf12237f2be8684ad6a2 100644
 --- a/fs/fuse/dev_uring.c
 +++ b/fs/fuse/dev_uring.c
-@@ -19,6 +19,10 @@ MODULE_PARM_DESC(enable_uring,
+@@ -347,6 +347,12 @@ static void fuse_uring_cpu_qid_mapping(struct fuse_ring *ring, int qid,
+ 		if (node != -1 && cpu_to_node(cpu) != node)
+ 			continue;
  
- #define FUSE_URING_IOV_SEGS 2 /* header and payload */
- 
-+/* Number of requests in the queue until another queue is checked */
-+#define FUSE_URING_Q_THRESHOLD 2
-+
-+#define FUSE_URING_Q_RETRIES 2 /* number of retries for a better queue */
- 
- bool fuse_uring_enabled(void)
- {
-@@ -1312,9 +1316,10 @@ static struct fuse_ring_queue *fuse_uring_select_queue(struct fuse_ring *ring,
- 						       bool background)
- {
- 	unsigned int qid;
--	int node;
-+	int node, retries = 0;
- 	unsigned int nr_queues;
- 	unsigned int cpu = task_cpu(current);
-+	struct fuse_ring_queue *queue, *primary_queue = NULL;
- 
- 	cpu = cpu % ring->max_nr_queues;
- 
-@@ -1344,11 +1349,35 @@ static struct fuse_ring_queue *fuse_uring_select_queue(struct fuse_ring *ring,
- 		if (qid == cpu && background)
- 			qid = cpumask_next_wrap(qid, mask);
- 
-+retry:
- 		if (WARN_ON_ONCE(qid >= ring->max_nr_queues))
- 			return NULL;
--		return READ_ONCE(ring->queues[qid]);
-+		queue = READ_ONCE(ring->queues[qid]);
-+
-+		/* Might happen on teardown */
-+		if (unlikely(!queue))
-+			return NULL;
-+
-+		/* Not atomic and with lock, approximate is enough */
-+		if (READ_ONCE(queue->nr_reqs) < FUSE_URING_Q_THRESHOLD)
-+			return queue;
-+
-+		/* Retries help for load balancing */
-+		if (retries < FUSE_URING_Q_RETRIES) {
-+			if (!retries)
-+				primary_queue = queue;
-+
-+			/* Increase cpu, assuming it will map to a differet qid*/
-+			qid = cpumask_next_wrap(qid, mask);
-+			retries++;
-+			goto retry;
++		/* Prefer the queue belonging to the current cpu */
++		if (cpumask_test_cpu(cpu, q_map->registered_q_mask)) {
++			q_map->cpu_to_qid[cpu] = cpu;
++			continue;
 +		}
- 	}
- 
-+	/* Retries exceeded, take the primary target queue */
-+	if (primary_queue)
-+		return primary_queue;
 +
- 	/* global registered queue bitmap */
- 	if (!smp_load_acquire(&ring->q_map.nr_queues))
- 		return NULL;
+ 		qid_idx = mapping_count % nr_queues;
+ 		q_map->cpu_to_qid[cpu] = cpumask_nth(qid_idx,
+ 						     q_map->registered_q_mask);
 
 -- 
 2.43.0
