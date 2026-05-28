@@ -1,184 +1,173 @@
 From: Rudraksha Gupta <guptarud@gmail.com>
-Date: Wed, 27 May 2026 19:13:41 -0700
-Subject: [PATCH v2] ARM: dts: qcom: msm8960: expressatt: Add
- coreriver,tc360-touchkey
+Subject: [PATCH v6 0/3] Samsung Expressatt: Camera Flash
+Date: Wed, 27 May 2026 19:34:29 -0700
+Message-Id: <20260527-expressatt_camera_flash-v6-0-de0f150024e4@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260527-expressatt-touchkey-v2-1-049dca41fc3a@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32OQQ6DIBBFr2JmXQwgxuiq92hcIB110lpaQKIx3
- r1U982s3uTNn7+BR0foock2cBjJk30lkJcMzKhfAzK6JwbJZSkkLxkub4fe6xBYsLMZH7gyUan
- KlLzQsi8gXSajp+VIvbUnO/zMKTycS+i0R2bsNFFosljlHH7eSD5Ytx5lojjEv3+jYGmUUl0tK
- 1P3xXWYND3zFAztvu9fZL55KN4AAAA=
-X-Change-ID: 20251205-expressatt-touchkey-1747c503a2f3
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
- Rudraksha Gupta <guptarud@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XPS2rDMBCA4asYraug11iRKaX3KCWM9YhF47i1H
+ JMQfPfKziImkHY5Qvp+zZUk30efSFVcSe/HmGJ3zEP5UhDb4HHvaXR5JoKJkklWUn/+7n1KOAw
+ 7i63vcRcOmBrKpeWAWgmNSPLrfCvE8yJ/fN7m3v+ccmC4HZJ2ZpZAVbwuPgi98unQnWzz5S90F
+ JRTpoyzqHiwEt/3LcbDxnbt29yqMXmahzYOVTHqDSNzsYlp6PrLstrIl+S/W4y5Q2tuTBm0dcG
+ 5e2kxR7Fy+Pa5I7IDVtQGSyGdrR8duXLEH/+R2fEaPDjYGsPCo6NWjuTPHZWdwL0xQWkFXD46c
+ HeAyecOZMcACAWsRG3M2pmm6Rd4b9JaUAIAAA==
+X-Change-ID: 20260306-expressatt_camera_flash-13c15a7427aa
+To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Linus Walleij <linusw@kernel.org>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>
+Cc: linux-leds@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ phone-devel@vger.kernel.org, Rudraksha Gupta <guptarud@gmail.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, David Heidelberg <david@ixit.cz>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1779934422; l=5127;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1779935671; l=4870;
  i=guptarud@gmail.com; s=20240916; h=from:subject:message-id;
- bh=QKeXmWv32UYGOnYCe6uOdzYUC+QSTTFeTGr6mUqA+oU=;
- b=KtaXdbdrs6N2DxKOXa8+rKWRxO8BoT+09CU2hHO8sm5itm2N3tRFNhPx45NgTaHcP4MirEGtT
- kwu4Iw9uH07ACUrK9BCpSDo6UHQTRp5yFjxY7vBcd7ptj/10wq2T8W8
+ bh=J+2nkkgXcCLD+tG5tT12zCWjVq1fGvc4r680m2gpWrs=;
+ b=1WdZlTXwS4Jb+lCGhynv0ZnTjkNbvCzqZkvvOq6qZkvTcarK89IvoSxZ/FsKsnMuvgI3n+S9m
+ WURMm5o0CMrDaRoexTis8p8xfa996cE6NWh0pDfqGm0bTv3o2Jz7mjh
 X-Developer-Key: i=guptarud@gmail.com; a=ed25519;
  pk=ETrudRugWAtOpr0OhRiheQ1lXM4Kk4KGFnBySlKDi2I=
 X-Endpoint-Received: by B4 Relay for guptarud@gmail.com/20240916 with auth_id=211
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the tc360 touchkey. It's unknown if this is the actual model of the
-touchkey, as downstream doesn't mention a variant, but this works.
+This small series adds camera flash to an existing similar mainline
+driver and adds it to the Samsung Expressatt's DTS
 
-Link:
-https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/input/keyboard/cypress_touchkey_236/Makefile#L5
+// Tests
 
-Assisted-by: Claude:claude-opus-4.6
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+// # Navigate to LED
+sudo su
+cd /sys/class/leds/white:flash
+
+// # Should stay at dim brightness
+echo 1 > brightness
+echo 1 > brightness
+echo 1 > brightness
+echo 1 > brightness
+echo 0 > brightness           # LED_OFF
+
+// # Max Brightness
+echo 50 > brightness
+echo 0 > brightness           # LED_OFF
+echo 99 > brightness
+echo 0 > brightness           # LED_OFF
+echo 1000 > brightness
+echo 0 > brightness           # LED_OFF
+echo 100 > brightness
+echo 0 > brightness           # LED_OFF
+
+// # Should increase in brightness
+for i in $(seq 1 16); do echo $i > brightness; sleep 1; done
+echo 0 > brightness           # LED_OFF
+
+// # Test flash strobe (rt8515_led_flash_strobe_set)
+cat max_flash_timeout          # check max
+echo 200000 > flash_timeout    # 200ms
+echo 1 > flash_strobe          # strobe ON → brightness_commit + timer
+cat flash_strobe               # should read 1, then 0 after timeout
+sleep 1
+cat flash_strobe               # should be 0 (timer fired)
+
+// # Test manual strobe cancel
+echo 1 > flash_strobe ; echo 0 > flash_strobe          # immediate off
+
+// # Check regulator error handling
+dmesg | tail -20                     # look for any "failed to turn off LED" msgs
+
+// # Multiple strobes shouldn't cause errors
+echo 200000 > flash_timeout
+echo 1 > flash_strobe
+echo 1 > flash_strobe
+sleep 1
+cat flash_strobe
+dmesg | tail -20
+
+// # Multiple strobes shouldn't cause errors (extreme test)
+for i in $(seq 1 500); do echo 1 > flash_strobe; echo 0 > flash_strobe; done
+dmesg | tail -20
+
+// # Test minimal timeout (turns on briefly)
+echo 1 > flash_timeout
+echo 1 > flash_strobe
+sleep 0.1
+cat flash_strobe
+dmesg | tail -20
+
+// # Flash strobe overrides brightness and flashes at full brightness
+echo 200000 > flash_timeout
+echo 1 > brightness
+echo 1 > flash_strobe
+sleep 1
+cat flash_strobe
+cat brightness
+dmesg | tail -20
+
+Downstream reference:
+Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/leds/Makefile#L51
+Link: https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/arch/arm/mach-msm/board-apexq-camera.c#L591
+
 Signed-off-by: Rudraksha Gupta <guptarud@gmail.com>
 ---
-Add the tc360 touchkey. It's unknown if this is the actual model of the
-touchkey, as downstream doesn't mention a variant, but this works.
+Changes in v6:
+- Address Lee Jones's comments:
+    - formatting
+    - use cancel_delayed_work_sync()
+- Link to v5: https://lore.kernel.org/r/20260503-expressatt_camera_flash-v5-0-95524506a799@gmail.com
 
-Link:
-https://github.com/LineageOS/android_kernel_samsung_d2/blob/stable/cm-12.0-YNG4N/drivers/input/keyboard/cypress_touchkey_236/Makefile#L5
+Changes in v5:
+- Address Lee Jones's comments:
+    - formatting
+    - use devm_regulator_get_optional()
+    - use a workqueue instead of a timer
+    - previously we were validating ent-gpios xor vin-supply at probe,
+        but was removed. update the commit msg to reflect this
+- Link to v4: https://lore.kernel.org/r/20260331-expressatt_camera_flash-v4-0-f1e99f474513@gmail.com
 
-Test:
-=============
-- LEDs:
-samsung-expressatt:/sys/class/leds/tm2-touchkey$ echo heartbeat > trigger
-// Flashes LEDs :)
+Changes in v4:
+- Driver:
+    - revert function renames
+    - add comment to use flash instead if torch pin not available
+- Link to v3: https://lore.kernel.org/r/20260326-expressatt_camera_flash-v3-0-e75e5d58990f@gmail.com
 
-- Touching buttons:
-samsung-expressatt:/sys/class/leds/tm2-touchkey$ evtest
-No device specified, trying to scan all of /dev/input/event*
-Not running as root, no devices may be available.
-Available devices:
-/dev/input/event0:      pmic8xxx_pwrkey
-/dev/input/event1:      gpio-keys
-/dev/input/event2:      tm2-touchkey
-/dev/input/event3:      Atmel maXTouch Touchscreen
-Select the device event number [0-3]: 2
-Input driver version is 1.0.1
-Input device ID: bus 0x18 vendor 0x0 product 0x0 version 0x0
-Input device name: "tm2-touchkey"
-Supported events:
-  Event type 0 (EV_SYN)
-  Event type 1 (EV_KEY)
-    Event code 139 (KEY_MENU)
-    Event code 158 (KEY_BACK)
-  Event type 4 (EV_MSC)
-    Event code 4 (MSC_SCAN)
-Properties:
-Testing ... (interrupt to exit)
-Event: time 1761059686.899755, type 4 (EV_MSC), code 4 (MSC_SCAN), value 00
-Event: time 1761059686.899755, type 1 (EV_KEY), code 139 (KEY_MENU), value 1
-Event: time 1761059686.899755, -------------- SYN_REPORT ------------
-Event: time 1761059687.113489, type 4 (EV_MSC), code 4 (MSC_SCAN), value 00
-Event: time 1761059687.113489, type 1 (EV_KEY), code 139 (KEY_MENU), value 0
-Event: time 1761059687.113489, -------------- SYN_REPORT ------------
-Event: time 1761059688.764757, type 4 (EV_MSC), code 4 (MSC_SCAN), value 01
-Event: time 1761059688.764757, type 1 (EV_KEY), code 158 (KEY_BACK), value 1
-Event: time 1761059688.764757, -------------- SYN_REPORT ------------
-Event: time 1761059688.817516, type 4 (EV_MSC), code 4 (MSC_SCAN), value 01
-Event: time 1761059688.817516, type 1 (EV_KEY), code 158 (KEY_BACK), value 0
-Event: time 1761059688.817516, -------------- SYN_REPORT ------------
----
+Changes in v3:
+- DTS:
+    - Renamed and reordered nodes
+- Driver:
+    - Use regulator_is_enabled() instead of reg_enabled
+    - remove ent xor vin check
+    - remove rt->reg == -ENODEV check
+    - rename functions to reflect what they do and added ret's
+    - Fixed: LED was increasing in brightness when setting the same
+        brightness multiple times
+- Link to v2: https://lore.kernel.org/r/20260318-expressatt_camera_flash-v2-0-5c2b9a623dcb@gmail.com
+
 Changes in v2:
-- drop status = okay
-- reorder pinctrl-{n,names}
-- Resend of v1: https://lore.kernel.org/all/20260503-expressatt-touchkey-v1-1-f7dd5db64e0d@gmail.com/
-- Link to v1: https://lore.kernel.org/r/20251205-expressatt-touchkey-v1-1-1444b927c9f3@gmail.com
+- dt-bindings: Explain the hardware and not the driver
+- **/*: Use vin-supply instead of unlock-gpio
+- expressatt DTS: Reorder pinctrl-*
+- expressatt DTS: Define rfs-ohms to a default (couldn't find
+                  information about this)
+- Link to v1: https://lore.kernel.org/r/20260306-expressatt_camera_flash-v1-0-b1996f7cdfdd@gmail.com
+
 ---
- .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   | 54 ++++++++++++++++++++++
- 1 file changed, 54 insertions(+)
+Rudraksha Gupta (3):
+      dt-bindings: leds: rt8515: Support single-GPIO flash ICs with vin supply
+      leds: flash: rt8515: Support single-GPIO flash ICs with vin supply
+      ARM: dts: qcom: msm8960: expressatt: Add camera flash
 
-diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-index 5a39abd6f3ce..5a3d88e31cf5 100644
---- a/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-+++ b/arch/arm/boot/dts/qcom/qcom-msm8960-samsung-expressatt.dts
-@@ -52,6 +52,40 @@ key-volume-down {
- 			linux,code = <KEY_VOLUMEDOWN>;
- 		};
- 	};
-+
-+	touchkey_enable: touchkey-enable {
-+		compatible = "regulator-fixed";
-+		regulator-name = "touchkey_enable";
-+		gpio = <&tlmm 51 GPIO_ACTIVE_HIGH>;
-+		enable-active-high;
-+		regulator-boot-on;
-+	};
-+
-+	i2c-gpio-touchkey {
-+		compatible = "i2c-gpio";
-+		#address-cells = <1>;
-+		#size-cells = <0>;
-+		sda-gpios = <&tlmm 71 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-+		scl-gpios = <&tlmm 72 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
-+		pinctrl-0 = <&touchkey_i2c_pins>;
-+		pinctrl-names = "default";
-+		i2c-gpio,delay-us = <2>;
-+
-+		touchkey@20 {
-+			compatible = "coreriver,tc360-touchkey";
-+			reg = <0x20>;
-+
-+			interrupts-extended = <&tlmm 52 IRQ_TYPE_EDGE_FALLING>;
-+			pinctrl-0 = <&touchkey_irq_pin>;
-+			pinctrl-names = "default";
-+
-+			vddio-supply = <&touchkey_enable>;
-+			vdd-supply = <&pm8921_l29>;
-+			vcc-supply = <&pm8921_l29>;
-+
-+			linux,keycodes = <KEY_MENU KEY_BACK>;
-+		};
-+	};
- };
- 
- &gsbi2 {
-@@ -198,6 +232,20 @@ firmware-pins {
- 			bias-disable;
- 		};
- 	};
-+
-+	touchkey_i2c_pins: touchkey-i2c-state {
-+		pins = "gpio71", "gpio72";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
-+
-+	touchkey_irq_pin: touchkey-irq-state {
-+		pins = "gpio52";
-+		function = "gpio";
-+		drive-strength = <2>;
-+		bias-disable;
-+	};
- };
- 
- &pm8921 {
-@@ -420,6 +468,12 @@ pm8921_l25: l25 {
- 			bias-pull-down;
- 		};
- 
-+		pm8921_l29: l29 {
-+			regulator-min-microvolt = <1800000>;
-+			regulator-max-microvolt = <3300000>;
-+			bias-pull-down;
-+		};
-+
- 		/* Low Voltage Switch */
- 		pm8921_lvs1: lvs1 {
- 			bias-pull-down;
-
+ .../devicetree/bindings/leds/richtek,rt8515.yaml   |  34 ++++-
+ .../dts/qcom/qcom-msm8960-samsung-expressatt.dts   |  43 ++++++
+ drivers/leds/flash/leds-rt8515.c                   | 148 ++++++++++++++++-----
+ 3 files changed, 188 insertions(+), 37 deletions(-)
 ---
 base-commit: 3131ff5a117498bb4b9db3a238bb311cbf8383ce
-change-id: 20251205-expressatt-touchkey-1747c503a2f3
+change-id: 20260306-expressatt_camera_flash-13c15a7427aa
+prerequisite-message-id: <20260527-expressatt-touchkey-v2-1-049dca41fc3a@gmail.com>
+prerequisite-patch-id: 2b24e9ba47500ef05d38e37b40d8ca2dceb4716a
 
 Best regards,
 -- 
