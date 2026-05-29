@@ -1,64 +1,102 @@
-From: Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
-Date: Fri, 29 May 2026 09:28:14 -0500
-Subject: [PATCH] i2c: virtio: mark device ready before registering the
- adapter
+From: Ricardo Pardini <ricardo@pardini.net>
+Subject: [PATCH v2 0/2] describe PCIe ethernet interfaces and alias
+ ethernet0/1 on NanoPC-T6
+Date: Fri, 29 May 2026 17:31:23 +0200
+Message-Id: <20260529-rk3588-dts-rtl-eth-describe-dt-alias-v2-0-49700248143f@pardini.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260529-virtio-i2c-driver-ok-v1-1-ecf2504f6a56@JohnDeere.com>
-X-B4-Tracking: v=1; b=H4sIAH2iGWoC/x3MQQqDMBBG4avIrB3QaZTGq4iLkoztT8HIRIIg3
- r2hy2/x3kVZDZppai4yLchIW0XfNhQ+r+2tjFhN0snYDeK5wA4khgSOhqLG6ct+dM4F0eHhn1T
- T3XTF+d/Oy33/ABQZNFdmAAAA
-To: Viresh Kumar <viresh.kumar@linaro.org>, 
- Andi Shyti <andi.shyti@kernel.org>
-Cc: linux-i2c@vger.kernel.org, virtualization@lists.linux.dev, 
- linux-kernel@vger.kernel.org, 
- Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780064893; l=1298;
- i=BouziguesAlexis@JohnDeere.com; s=20260527; h=from:subject:message-id;
- bh=iPwimaClnP4+pM+SMSAbPbbHxIEK/XLSHtxDtApz4AY=;
- b=eToR/52uFUF29AE4RN1+uvqSOsg3sZ2bMRNc1c29cCgA5nCagFpEEoIkP0QMJovGBAwjUJQeS
- oMRbCXyXn2GA7QEhvCEG3Sea87kyPPzWzbuJFXhdqGPnqma3u/p2TJD
-X-Developer-Key: i=BouziguesAlexis@JohnDeere.com; a=ed25519;
- pk=5KJ7ArL00x5flpPhi9zRLC2p88V1rZXDQ5SXhpRvTDk=
-X-Endpoint-Received: by B4 Relay for BouziguesAlexis@JohnDeere.com/20260527 with auth_id=797
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42OwQ6CMBBEf4X07BpaLBBP/ofhUNpFVkkh20o0h
+ H+3YLx7fJPJvFlEQCYM4pwtgnGmQKNPoA6ZsL3xNwRyiYXKVZlrdQJ+FLquwcUAHAfA2IPDYJl
+ aTCGYgUwAK9HJumorq3ORpibGjl675tp8OTzbO9q4bW+NnkIc+b3/mOXW+yn1f8pZggRTdtYZX
+ RbGVpfJsCNPR49RNOu6fgA3sv5v7AAAAA==
+X-Change-ID: 20260524-rk3588-dts-rtl-eth-describe-dt-alias-c1ed187b7c50
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: Sebastian Reichel <sebastian.reichel@collabora.com>, 
+ devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Ricardo Pardini <ricardo@pardini.net>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2868; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=Wc7i4dF9ygiTQTaQ/gCEQkz1kc+L4fUW6J/05ngPp7E=;
+ b=owEBiQF2/pANAwAIATteP+Oex+3pAcsmYgBqGbFSPnLISoKIp2YOdD3mlPG61DJUOBfi9o1sC
+ thxlsVlILWJAU8EAAEIADkWIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCahmxUhsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQO14/457H7emM8Af+I/ztaHtuESg8K7PXiX+dQ+qkRAk6nPQ
+ btd0McxQmrWGrJ57QoTBbgthgPt7E7fbINDputVTOkME8dq4b+6MsSN+VrtbR3HDjbDe6VC2daD
+ w7zGtsEVV5yXRmLZllu6R+mLVvoilpLL534zYGM4N/QEGH2sIShyq+HI8vgS7V3fCx5fz6yFMzF
+ aymwSBhN6/t1EV0UfTGisW/WOIbvxSIimh2vlNLvI/F7rXvgzG874uRx25yDtWylzIY3JpQoGpn
+ +620KC3UsuZNwQ/HTlUQ+QxRI5Mqb+iM2PBGEN7RSM1M/SF18cPjMuv2fUG/0SRjoi0/J2/DUm0
+ EkyPm173ZMA==
+X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
+ fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
+X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-virtio_i2c_probe() synchronously probes child i2c drivers on the bus,
-but peripherals may use the bus at probe for tasks like reading a chip
-id. The vhost-user-i2c backend stalls at such probes unless DRIVER_OK
-is already set before the virtqueue is first kicked.
+This describes the two on-board Realtek RTL8125BG PCIe Ethernet
+controllers on the FriendlyElec NanoPC-T6 (RK3588) board and aliases
+them to ethernet0/ethernet1.
 
-Set DRIVER_OK explicitly before i2c_add_adapter(), as done for the
-same reason in commit f5866db64f34 ("virtio_console: enable VQs
-early") and commit 71e4b8bf0482 ("virtio_rpmsg: set DRIVER_OK before
-using device").
+Many Rockchip boards have on-board RTL8125 PCIe NICs, wired to
+pcie2x1l0 and pcie2x1l2. The controllers were already enabled in the
+board DT, but the Ethernet function nodes themselves are not
+described, so the kernel (and u-boot) has no DT handle on the NICs.
 
-Signed-off-by: Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
+Adding the function nodes lets us:
+- expose stable ethernet0/ethernet1 aliases for the two NICs, the
+  same way other rk3588 boards alias their GMAC interfaces; and
+- let U-Boot's fdt_fixup_ethernet() patch mac-address properties in
+  at boot time from its ethaddr/eth1addr environment - useful on
+  boards (like this one) whose on-NIC EEPROM is not pre-programmed
+  with a unique MAC. The kernel and U-Boot then agree on the MAC,
+  which matters for network-boot setups.
+
+Checkpatch warnings:
+-  WARNING: DT compatible string "pci10ec,8125" appears un-documented
+-  WARNING: DT compatible string vendor "pci10ec" appears un-documented
+Both are expected. "pciVVVV,DDDD" is the Open Firmware PCI Bus
+Binding spelling, where VVVV/DDDD are the PCI vendor and device IDs
+allocated by the PCI-SIG (10ec = Realtek, 8125 = RTL8125). It is not a
+DT vendor prefix.
+
+If this is seen as a good thing, it would apply very similarly to
+the Radxa Rock 5 series and others.
+
+While at it, rename regulator vcc3v3_pcie2x1l0 to l1, since that is
+what is actually powers; since only cosmetic, I did not include
+a Fixes tag.
+
 ---
- drivers/i2c/busses/i2c-virtio.c | 2 ++
- 1 file changed, 2 insertions(+)
+Changes in v2:
+- fix: pcie2x1l0, not pcie2x1l1; indirectly caught by Sashiko's review [1]
+- while-at-it: rename regulator vcc3v3_pcie2x1l0 to l1
+- Link to v1: https://patch.msgid.link/20260525-rk3588-dts-rtl-eth-describe-dt-alias-v1-1-a6fcda563ac7@pardini.net
 
-diff --git a/drivers/i2c/busses/i2c-virtio.c b/drivers/i2c/busses/i2c-virtio.c
-index 7b0b0bff8000..5da6fef92bec 100644
---- a/drivers/i2c/busses/i2c-virtio.c
-+++ b/drivers/i2c/busses/i2c-virtio.c
-@@ -222,6 +222,8 @@ static int virtio_i2c_probe(struct virtio_device *vdev)
- 	 */
- 	ACPI_COMPANION_SET(&vi->adap.dev, ACPI_COMPANION(vdev->dev.parent));
- 
-+	virtio_device_ready(vdev);
-+
- 	ret = i2c_add_adapter(&vi->adap);
- 	if (ret)
- 		virtio_i2c_del_vqs(vdev);
+[1] https://sashiko.dev/#/patchset/20260525-rk3588-dts-rtl-eth-describe-dt-alias-v1-1-a6fcda563ac7%40pardini.net
+
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Heiko Stuebner <heiko@sntech.de>
+Cc: Sebastian Reichel <sebastian.reichel@collabora.com>
+Cc: devicetree@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-rockchip@lists.infradead.org
+Cc: linux-kernel@vger.kernel.org
+Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
 
 ---
-base-commit: 7fd2df204f342fc17d1a0bfcd474b24232fb0f32
-change-id: 20260529-virtio-i2c-driver-ok-96444c2e5398
+Ricardo Pardini (2):
+      arm64: dts: rockchip: describe PCIe Ethernet controllers on NanoPC-T6
+      arm64: dts: rockchip: fix PCIe regulator name on NanoPC-T6
+
+ arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi | 36 ++++++++++++++++++++--
+ 1 file changed, 33 insertions(+), 3 deletions(-)
+---
+base-commit: e7ae89a0c97ce2b68b0983cd01eda67cf373517d
+change-id: 20260524-rk3588-dts-rtl-eth-describe-dt-alias-c1ed187b7c50
 
 Best regards,
--- 
-Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
+--  
+Ricardo Pardini <ricardo@pardini.net>
 
