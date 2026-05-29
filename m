@@ -1,16 +1,13 @@
 From: Ricardo Pardini <ricardo@pardini.net>
-Subject: [PATCH v2 0/2] describe PCIe ethernet interfaces and alias
- ethernet0/1 on NanoPC-T6
-Date: Fri, 29 May 2026 17:31:23 +0200
-Message-Id: <20260529-rk3588-dts-rtl-eth-describe-dt-alias-v2-0-49700248143f@pardini.net>
+Date: Fri, 29 May 2026 17:31:24 +0200
+Subject: [PATCH v2 1/2] arm64: dts: rockchip: describe PCIe Ethernet
+ controllers on NanoPC-T6
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42OwQ6CMBBEf4X07BpaLBBP/ofhUNpFVkkh20o0h
- H+3YLx7fJPJvFlEQCYM4pwtgnGmQKNPoA6ZsL3xNwRyiYXKVZlrdQJ+FLquwcUAHAfA2IPDYJl
- aTCGYgUwAK9HJumorq3ORpibGjl675tp8OTzbO9q4bW+NnkIc+b3/mOXW+yn1f8pZggRTdtYZX
- RbGVpfJsCNPR49RNOu6fgA3sv5v7AAAAA==
-X-Change-ID: 20260524-rk3588-dts-rtl-eth-describe-dt-alias-c1ed187b7c50
+Message-Id: <20260529-rk3588-dts-rtl-eth-describe-dt-alias-v2-1-49700248143f@pardini.net>
+References: <20260529-rk3588-dts-rtl-eth-describe-dt-alias-v2-0-49700248143f@pardini.net>
+In-Reply-To: <20260529-rk3588-dts-rtl-eth-describe-dt-alias-v2-0-49700248143f@pardini.net>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
 Cc: Sebastian Reichel <sebastian.reichel@collabora.com>, 
@@ -18,85 +15,92 @@ Cc: Sebastian Reichel <sebastian.reichel@collabora.com>,
  linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Ricardo Pardini <ricardo@pardini.net>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2868; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=Wc7i4dF9ygiTQTaQ/gCEQkz1kc+L4fUW6J/05ngPp7E=;
- b=owEBiQF2/pANAwAIATteP+Oex+3pAcsmYgBqGbFSPnLISoKIp2YOdD3mlPG61DJUOBfi9o1sC
- thxlsVlILWJAU8EAAEIADkWIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCahmxUhsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwwLDMACgkQO14/457H7emM8Af+I/ztaHtuESg8K7PXiX+dQ+qkRAk6nPQ
- btd0McxQmrWGrJ57QoTBbgthgPt7E7fbINDputVTOkME8dq4b+6MsSN+VrtbR3HDjbDe6VC2daD
- w7zGtsEVV5yXRmLZllu6R+mLVvoilpLL534zYGM4N/QEGH2sIShyq+HI8vgS7V3fCx5fz6yFMzF
- aymwSBhN6/t1EV0UfTGisW/WOIbvxSIimh2vlNLvI/F7rXvgzG874uRx25yDtWylzIY3JpQoGpn
- +620KC3UsuZNwQ/HTlUQ+QxRI5Mqb+iM2PBGEN7RSM1M/SF18cPjMuv2fUG/0SRjoi0/J2/DUm0
- EkyPm173ZMA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1935; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=2PbNzuIjWPVmiNZE+VGSo9E5JFZNjeHgejELWlx8zA0=;
+ b=owEBiQF2/pANAwAIATteP+Oex+3pAcsmYgBqGbFSPJENa/7M0hIsX8QZTVDKL5ybziDJ32Mcv
+ 0CUdDRXgfOJAU8EAAEIADkWIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCahmxUhsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQO14/457H7enxQwf/f4efDbsFjixVgO0r+qirfD7qwBnLeRi
+ +T+sYVCzBeLicYRWVses2atOVpWutNM6EPMYL9DcBsdrMuZkCRm7a2HVTQJ0Q1eqRP/qBi9RRvi
+ pfqn6tfaduxxSvKMl1JI0/SGeYLTET2pQXF/aeQLjjl8Kr7ve6a0KDRo8l+loFH0BNWzQGcQleY
+ oSL9DCAyMYAsTjatOIX6lhslGtVSToxmfezDpvQ9N8Ss+KF57Chv2zeAVuwQn61dlqj1KQXqsGA
+ qKsdlfK1W2omSV0sY9Xa5mBakuqRl7zkPIT0BF9K98avb3nAXiTg461fGtw3X7DNMVLOqHrlWrg
+ JEMpmisjdDA==
 X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
  fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
 X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This describes the two on-board Realtek RTL8125BG PCIe Ethernet
-controllers on the FriendlyElec NanoPC-T6 (RK3588) board and aliases
-them to ethernet0/ethernet1.
+The FriendlyElec NanoPC-T6 carries two on-board Realtek RTL8125BG
+(r8169 family, PCI 10ec:8125) NICs, each behind its own RK3588 PCIe2x1
+controller (pcie2x1l0 and pcie2x1l2). Both host bridges were already
+enabled by the board DT, but the Ethernet function nodes themselves
+were not described, leaving the kernel without DT handles on the two
+NICs.
 
-Many Rockchip boards have on-board RTL8125 PCIe NICs, wired to
-pcie2x1l0 and pcie2x1l2. The controllers were already enabled in the
-board DT, but the Ethernet function nodes themselves are not
-described, so the kernel (and u-boot) has no DT handle on the NICs.
+Describe the fixed PCI function nodes and attach ethernet0/ethernet1
+aliases to them.
 
-Adding the function nodes lets us:
-- expose stable ethernet0/ethernet1 aliases for the two NICs, the
-  same way other rk3588 boards alias their GMAC interfaces; and
-- let U-Boot's fdt_fixup_ethernet() patch mac-address properties in
-  at boot time from its ethaddr/eth1addr environment - useful on
-  boards (like this one) whose on-NIC EEPROM is not pre-programmed
-  with a unique MAC. The kernel and U-Boot then agree on the MAC,
-  which matters for network-boot setups.
-
-Checkpatch warnings:
--  WARNING: DT compatible string "pci10ec,8125" appears un-documented
--  WARNING: DT compatible string vendor "pci10ec" appears un-documented
-Both are expected. "pciVVVV,DDDD" is the Open Firmware PCI Bus
-Binding spelling, where VVVV/DDDD are the PCI vendor and device IDs
-allocated by the PCI-SIG (10ec = Realtek, 8125 = RTL8125). It is not a
-DT vendor prefix.
-
-If this is seen as a good thing, it would apply very similarly to
-the Radxa Rock 5 series and others.
-
-While at it, rename regulator vcc3v3_pcie2x1l0 to l1, since that is
-what is actually powers; since only cosmetic, I did not include
-a Fixes tag.
-
----
-Changes in v2:
-- fix: pcie2x1l0, not pcie2x1l1; indirectly caught by Sashiko's review [1]
-- while-at-it: rename regulator vcc3v3_pcie2x1l0 to l1
-- Link to v1: https://patch.msgid.link/20260525-rk3588-dts-rtl-eth-describe-dt-alias-v1-1-a6fcda563ac7@pardini.net
-
-[1] https://sashiko.dev/#/patchset/20260525-rk3588-dts-rtl-eth-describe-dt-alias-v1-1-a6fcda563ac7%40pardini.net
-
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Heiko Stuebner <heiko@sntech.de>
-Cc: Sebastian Reichel <sebastian.reichel@collabora.com>
-Cc: devicetree@vger.kernel.org
-Cc: linux-arm-kernel@lists.infradead.org
-Cc: linux-rockchip@lists.infradead.org
-Cc: linux-kernel@vger.kernel.org
 Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
-
 ---
-Ricardo Pardini (2):
-      arm64: dts: rockchip: describe PCIe Ethernet controllers on NanoPC-T6
-      arm64: dts: rockchip: fix PCIe regulator name on NanoPC-T6
+ arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi | 30 ++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
 
- arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi | 36 ++++++++++++++++++++--
- 1 file changed, 33 insertions(+), 3 deletions(-)
----
-base-commit: e7ae89a0c97ce2b68b0983cd01eda67cf373517d
-change-id: 20260524-rk3588-dts-rtl-eth-describe-dt-alias-c1ed187b7c50
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
+index 84b6b53f016ab..04c4479f08170 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
+@@ -20,6 +20,8 @@ / {
+ 	compatible = "friendlyarm,nanopc-t6", "rockchip,rk3588";
+ 
+ 	aliases {
++		ethernet0 = &rtl_eth0;
++		ethernet1 = &rtl_eth1;
+ 		mmc0 = &sdhci;
+ 		mmc1 = &sdmmc;
+ 	};
+@@ -635,6 +637,20 @@ &pcie2x1l0 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pcie2_0_rst>;
+ 	status = "okay";
++
++	pcie@0,0 {
++		reg = <0x200000 0 0 0 0>;
++		#address-cells = <3>;
++		#size-cells = <2>;
++		ranges;
++		device_type = "pci";
++		bus-range = <0x20 0x2f>;
++
++		rtl_eth0: ethernet@0,0 {
++			compatible = "pci10ec,8125";
++			reg = <0x210000 0 0 0 0>;
++		};
++	};
+ };
+ 
+ &pcie2x1l1 {
+@@ -651,6 +667,20 @@ &pcie2x1l2 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pcie2_2_rst>;
+ 	status = "okay";
++
++	pcie@0,0 {
++		reg = <0x400000 0 0 0 0>;
++		#address-cells = <3>;
++		#size-cells = <2>;
++		ranges;
++		device_type = "pci";
++		bus-range = <0x40 0x4f>;
++
++		rtl_eth1: ethernet@0,0 {
++			compatible = "pci10ec,8125";
++			reg = <0x410000 0 0 0 0>;
++		};
++	};
+ };
+ 
+ &pcie30phy {
 
-Best regards,
---  
-Ricardo Pardini <ricardo@pardini.net>
+-- 
+2.54.0
 
