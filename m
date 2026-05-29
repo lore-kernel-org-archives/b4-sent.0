@@ -1,10 +1,10 @@
 From: Jack Wu <jackbb_wu@compal.com>
-Date: Fri, 29 May 2026 18:31:48 +0800
-Subject: [PATCH 09/11] net: wwan: t9xx: Introduce WWAN interface
+Date: Fri, 29 May 2026 18:31:49 +0800
+Subject: [PATCH 10/11] net: wwan: t9xx: Add power management support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260529-t9xx_driver_v1-v1-9-bdbfe2c01e57@compal.com>
+Message-Id: <20260529-t9xx_driver_v1-v1-10-bdbfe2c01e57@compal.com>
 References: <20260529-t9xx_driver_v1-v1-0-bdbfe2c01e57@compal.com>
 In-Reply-To: <20260529-t9xx_driver_v1-v1-0-bdbfe2c01e57@compal.com>
 To: Loic Poulain <loic.poulain@oss.qualcomm.com>, 
@@ -24,718 +24,348 @@ Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
  linux-doc@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780050705; l=18978;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780050705; l=10360;
  i=jackbb_wu@compal.com; s=20260526; h=from:subject:message-id;
- bh=96jycljl/8lLh45uXKB7LKNt4I3aPon4/QXr3kDaNnY=;
- b=8XY1Gbu80GkaOSoOtpuQ9cr4TdYYqEx31A3odVniPmk9PDnYUYRhMrM29tRrh2rqhtTrOgDNp
- ePRE99l7qezBw/1exHzV2kjihDAtQ2w+luCg6HwiK6WL9GwDC1pOSP/
+ bh=oxy53zFq580oeEjL4U9JeBfxFpvxUooy4zoOd7IIEQk=;
+ b=VhMB0H5ZNWUhc0CPzJL67eqE4knVI+CxK6ZS0/DkmHP3gf3tmDJ7vHgV0var2J8s+b5UVjkBM
+ pZeVpPqhCpzCMTGV4Hb4ZwWF9G4kdMZDcLMgJ9wjW62TeQzFlhV15wl
 X-Developer-Key: i=jackbb_wu@compal.com; a=ed25519;
  pk=VH1prTWixNl8OEUPPSfII3p46MzJpQN8J3+ecE1tZXg=
 X-Endpoint-Received: by B4 Relay for jackbb_wu@compal.com/20260526 with auth_id=793
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Creates the WWAN interface which implements the wwan_ops
-for registration with the WWAN framework. WWAN interface
-also implements the net_device_ops functions used by the
-network devices. Network device operations include open,
-stop, start transmission and get states.
+Add s2idle (S0ix) power management support for the t9xx WWAN driver.
+
+In s2idle the modem remains powered. The driver must quiesce host-side
+DMA engines and service threads before the platform enters low-power
+state, then restore them on resume.
+
+- Suspend: park TRB service threads, stop CLDMA TX/RX queues,
+  disable DPMAIF data path, mask MHCCIF and MSIX interrupts,
+  save PCIe state
+- Resume: restore PCIe state, re-initialize ATR, unmask MHCCIF,
+  resume CLDMA queues, re-enable DPMAIF data path, unpark TRB
+  service threads
 
 Signed-off-by: Jack Wu <jackbb_wu@compal.com>
 ---
- drivers/net/wwan/t9xx/Makefile              |   3 +-
- drivers/net/wwan/t9xx/mtk_data_plane.c      |  14 +-
- drivers/net/wwan/t9xx/mtk_data_plane.h      |   2 +
- drivers/net/wwan/t9xx/mtk_wwan.c            | 475 ++++++++++++++++++++++++++++
- drivers/net/wwan/t9xx/mtk_wwan.h            |  17 +
- drivers/net/wwan/t9xx/pcie/mtk_dpmaif.c     |  15 +-
- drivers/net/wwan/t9xx/pcie/mtk_dpmaif_drv.c |   1 -
- 7 files changed, 521 insertions(+), 6 deletions(-)
+ drivers/net/wwan/t9xx/pcie/mtk_cldma.c  | 94 +++++++++++++++++++++++++++++++++
+ drivers/net/wwan/t9xx/pcie/mtk_cldma.h  |  3 ++
+ drivers/net/wwan/t9xx/pcie/mtk_dpmaif.c | 35 +++++++++++-
+ drivers/net/wwan/t9xx/pcie/mtk_dpmaif.h |  2 +
+ drivers/net/wwan/t9xx/pcie/mtk_pci.c    | 85 ++++++++++++++++++++++++++++-
+ 5 files changed, 216 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/net/wwan/t9xx/Makefile b/drivers/net/wwan/t9xx/Makefile
-index 3776ccb4952f..6927216021cd 100644
---- a/drivers/net/wwan/t9xx/Makefile
-+++ b/drivers/net/wwan/t9xx/Makefile
-@@ -12,4 +12,5 @@ mtk_t9xx-y := \
- 	mtk_port.o \
- 	mtk_port_io.o \
- 	mtk_fsm.o \
--	mtk_data_plane.o
-+	mtk_data_plane.o \
-+	mtk_wwan.o
-diff --git a/drivers/net/wwan/t9xx/mtk_data_plane.c b/drivers/net/wwan/t9xx/mtk_data_plane.c
-index d11c7de45e17..6266915f08bb 100644
---- a/drivers/net/wwan/t9xx/mtk_data_plane.c
-+++ b/drivers/net/wwan/t9xx/mtk_data_plane.c
-@@ -6,10 +6,13 @@
- #include "mtk_data_plane.h"
- #include "mtk_dev.h"
- #include "mtk_fsm.h"
-+#include "mtk_wwan.h"
- 
- static void mtk_data_stop(struct mtk_data_blk *data_blk, struct mtk_md_dev *mdev)
- {
-+	mtk_wwan_notify(data_blk, DATA_EVT_TX_STOP, 0xff);
- 	data_blk->hif_ops->stop(mdev);
-+	mtk_wwan_notify(data_blk, DATA_EVT_UNREG_DEV, 0);
- 	data_blk->hif_ops->clear(mdev);
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_cldma.c b/drivers/net/wwan/t9xx/pcie/mtk_cldma.c
+index aacb4177d914..a5227eb546f4 100644
+--- a/drivers/net/wwan/t9xx/pcie/mtk_cldma.c
++++ b/drivers/net/wwan/t9xx/pcie/mtk_cldma.c
+@@ -1113,6 +1113,100 @@ int mtk_cldma_exit(struct mtk_ctrl_trans *trans)
+ 	return 0;
  }
  
-@@ -31,6 +34,7 @@ static void mtk_data_fsm_callback(struct mtk_fsm_param *fsm_param, void *data)
- 			data_blk->hif_ops->start(data);
- 		break;
- 	case FSM_STATE_READY:
-+		mtk_wwan_notify(data_blk, DATA_EVT_REG_DEV, 0);
- 		break;
- 	default:
- 		break;
-@@ -54,15 +58,21 @@ int mtk_data_init(struct mtk_md_dev *mdev, struct mtk_data_hif_ops *ops)
- 	if (ret < 0)
- 		goto data_blk_free;
- 
-+	ret = mtk_wwan_init(data_blk);
-+	if (ret < 0)
-+		goto hif_exit;
-+
- 	ret = mtk_fsm_notifier_register(mdev, MTK_USER_DATA, mtk_data_fsm_callback, mdev,
- 					FSM_PRIO_1, false);
- 	if (ret < 0) {
- 		dev_err(mdev->dev, "Failed to register FSM notifier\n");
--		goto hif_exit;
-+		goto wwan_exit;
- 	}
- 
- 	return 0;
- 
-+wwan_exit:
-+	mtk_wwan_exit(data_blk);
- hif_exit:
- 	data_blk->hif_ops->exit(mdev);
- data_blk_free:
-@@ -82,6 +92,8 @@ int mtk_data_exit(struct mtk_md_dev *mdev)
- 
- 	mtk_fsm_notifier_unregister(mdev, MTK_USER_DATA);
- 
-+	mtk_wwan_exit(data_blk);
-+
- 	data_blk->hif_ops->exit(mdev);
- 
- 	devm_kfree(mdev->dev, data_blk);
-diff --git a/drivers/net/wwan/t9xx/mtk_data_plane.h b/drivers/net/wwan/t9xx/mtk_data_plane.h
-index 1464fab544f1..351b30ebbbe5 100644
---- a/drivers/net/wwan/t9xx/mtk_data_plane.h
-+++ b/drivers/net/wwan/t9xx/mtk_data_plane.h
-@@ -31,6 +31,7 @@ struct mtk_data_trans_info {
- 
- struct mtk_data_blk {
- 	struct mtk_md_dev *mdev;
-+	struct mtk_wwan_ctlb *wcb;
- 	void *dcb;
- 	struct mtk_data_hif_ops *hif_ops;
- 	struct mtk_data_trans_info trans_info;
-@@ -80,6 +81,7 @@ enum mtk_data_evt {
- 	DATA_EVT_MIN,
- 	DATA_EVT_TX_START,
- 	DATA_EVT_TX_STOP,
-+	DATA_EVT_RX_START,
- 	DATA_EVT_RX_STOP,
- 	DATA_EVT_REG_DEV,
- 	DATA_EVT_UNREG_DEV,
-diff --git a/drivers/net/wwan/t9xx/mtk_wwan.c b/drivers/net/wwan/t9xx/mtk_wwan.c
-new file mode 100644
-index 000000000000..a1534c312358
---- /dev/null
-+++ b/drivers/net/wwan/t9xx/mtk_wwan.c
-@@ -0,0 +1,475 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (c) 2022, MediaTek Inc.
-+ */
-+
-+#include <linux/if_arp.h>
-+#include <linux/netdevice.h>
-+#include <linux/skbuff.h>
-+#include <linux/types.h>
-+#include <linux/wwan.h>
-+#include <net/pkt_sched.h>
-+
-+#include "mtk_data_plane.h"
-+#include "mtk_dev.h"
-+#include "mtk_wwan.h"
-+
-+#define MTK_NETDEV_MAX		20
-+#define MTK_DFLT_INTF_ID	0
-+#define MTK_NETDEV_WDT (HZ)
-+#define MTK_CMD_WDT (HZ)
-+#define MTK_MAX_INTF_ID (MTK_NETDEV_MAX - 1)
-+#define MTK_NAPI_POLL_WEIGHT	128
-+
-+static unsigned int napi_budget = MTK_NAPI_POLL_WEIGHT;
-+
-+struct mtk_wwan_instance {
-+	struct mtk_wwan_ctlb *wcb;
-+	struct net_device *netdev;
-+	unsigned int intf_id;
-+	struct mtk_data_hif_ops *hif_ops;
-+};
-+
-+struct mtk_wwan_ctlb {
-+	struct mtk_data_blk *data_blk;
-+	struct mtk_md_dev *mdev;
-+	struct mtk_wwan_instance __rcu *wwan_inst[MTK_NETDEV_MAX];
-+	struct net_device *dummy_dev;
-+	struct napi_struct **gro_napis;
-+	atomic_t napi_enabled;
-+	unsigned int active_cnt;
-+	bool reg_done;
-+};
-+
-+int mtk_wwan_recv(struct mtk_data_blk *data_blk, struct sk_buff *skb)
++void mtk_cldma_pm_suspend(struct mtk_md_dev *mdev)
 +{
-+	union mtk_data_pkt_info *pkt_info = DATA_SKB_CB(skb);
-+	struct mtk_wwan_instance *wwan_inst;
-+	unsigned char q_id;
++	struct mtk_ctrl_trans *trans = ((struct mtk_ctrl_blk *)mdev->ctrl_blk)->ctrl_hw_priv;
++	struct cldma_dev *cd = trans->dev;
++	struct cldma_drv_info *drv_info;
++	struct cldma_drv_ops *drv_ops;
++	struct rxq *rxq;
++	struct txq *txq;
++	int i, q;
 +
-+	if (unlikely(pkt_info->rx.ch_id > MTK_MAX_INTF_ID)) {
-+		dev_warn(data_blk->mdev->dev,
-+			 "Invalid interface id=%d\n", pkt_info->rx.ch_id);
-+		goto free_skb;
-+	}
++	for (i = 0; i < NR_CLDMA; i++) {
++		drv_info = cd->cldma_drv_info[i];
++		if (!drv_info)
++			continue;
 +
-+	q_id = pkt_info->rx.q_id;
++		drv_ops = drv_info->drv_ops;
 +
-+	rcu_read_lock();
-+	wwan_inst = rcu_dereference(data_blk->wcb->wwan_inst[pkt_info->rx.ch_id]);
-+	if (unlikely(!wwan_inst)) {
-+		rcu_read_unlock();
-+		goto free_skb;
-+	}
++		/* Stop TX queues and flush pending tx_done_work (suspend phase) */
++		drv_ops->cldma_stop_queue(drv_info, DIR_TX, ALLQ);
++		for (q = 0; q < HW_QUEUE_NUM; q++) {
++			txq = drv_info->txq[q];
++			if (txq)
++				flush_work(&txq->tx_done_work);
++		}
 +
-+	skb->dev = wwan_inst->netdev;
-+
-+	napi_gro_receive(data_blk->wcb->gro_napis[q_id], skb);
-+
-+	rcu_read_unlock();
-+	return 0;
-+
-+free_skb:
-+	dev_kfree_skb_any(skb);
-+	return -EINVAL;
-+}
-+EXPORT_SYMBOL(mtk_wwan_recv);
-+
-+static void mtk_wwan_napi_enable(struct mtk_wwan_ctlb *wcb)
-+{
-+	int i;
-+
-+	if (atomic_cmpxchg(&wcb->napi_enabled, 0, 1) == 0) {
-+		for (i = 0; i < wcb->data_blk->trans_info.rxq_cnt; i++)
-+			napi_enable(wcb->data_blk->trans_info.napis[i]);
++		for (q = 0; q < HW_QUEUE_NUM; q++) {
++			rxq = drv_info->rxq[q];
++			if (!rxq)
++				continue;
++			atomic_set(&rxq->need_exit, 1);
++			drv_ops->cldma_stop_queue(drv_info, DIR_RX, q);
++			flush_work(&rxq->rx_done_work);
++		}
++		mtk_pci_mask_irq(mdev, drv_info->pci_ext_irq_id);
 +	}
 +}
 +
-+static void mtk_wwan_napi_disable(struct mtk_wwan_ctlb *wcb)
++void mtk_cldma_pm_resume_early(struct mtk_md_dev *mdev)
 +{
-+	int i;
++	struct mtk_ctrl_trans *trans = ((struct mtk_ctrl_blk *)mdev->ctrl_blk)->ctrl_hw_priv;
++	struct cldma_dev *cd = trans->dev;
++	struct cldma_drv_info *drv_info;
++	struct cldma_drv_ops *drv_ops;
++	struct rxq *rxq;
++	int i, q;
 +
-+	if (atomic_cmpxchg(&wcb->napi_enabled, 1, 0) == 1) {
-+		for (i = 0; i < wcb->data_blk->trans_info.rxq_cnt; i++) {
-+			napi_synchronize(wcb->data_blk->trans_info.napis[i]);
-+			napi_disable(wcb->data_blk->trans_info.napis[i]);
++	for (i = 0; i < NR_CLDMA; i++) {
++		drv_info = cd->cldma_drv_info[i];
++		if (!drv_info)
++			continue;
++
++		drv_ops = drv_info->drv_ops;
++
++		/* Resume RX queues from current HW ring position (no addr reset) */
++		for (q = 0; q < HW_QUEUE_NUM; q++) {
++			rxq = drv_info->rxq[q];
++			if (!rxq)
++				continue;
++			atomic_set(&rxq->need_exit, 0);
++			drv_ops->cldma_resume_queue(drv_info, DIR_RX, q);
++		}
++
++		/* Unmask CLDMA L1 interrupt */
++		mtk_pci_unmask_irq(mdev, drv_info->pci_ext_irq_id);
++	}
++}
++
++void mtk_cldma_pm_resume(struct mtk_md_dev *mdev)
++{
++	struct mtk_ctrl_trans *trans = ((struct mtk_ctrl_blk *)mdev->ctrl_blk)->ctrl_hw_priv;
++	struct cldma_dev *cd = trans->dev;
++	struct cldma_drv_info *drv_info;
++	struct cldma_drv_ops *drv_ops;
++	struct txq *txq;
++	int i, q;
++
++	for (i = 0; i < NR_CLDMA; i++) {
++		drv_info = cd->cldma_drv_info[i];
++		if (!drv_info)
++			continue;
++
++		drv_ops = drv_info->drv_ops;
++
++		/* Restart TX queues that have pending descriptors */
++		for (q = 0; q < HW_QUEUE_NUM; q++) {
++			txq = drv_info->txq[q];
++			if (!txq)
++				continue;
++			if (atomic_read(&txq->req_budget) < txq->nr_gpds)
++				mtk_cldma_start_xfer(drv_info, q);
 +		}
 +	}
 +}
 +
-+static int mtk_wwan_open(struct net_device *dev)
-+{
-+	struct mtk_wwan_instance *wwan_inst = wwan_netdev_drvpriv(dev);
-+	struct mtk_wwan_ctlb *wcb = wwan_inst->wcb;
-+	struct mtk_data_trans_ctl trans_ctl;
-+	int ret;
-+
-+	if (wcb->active_cnt == 0) {
-+		trans_ctl.enable = true;
-+		ret = mtk_wwan_cmd_execute(dev, DATA_CMD_TRANS_CTL, &trans_ctl);
-+		if (ret < 0) {
-+			dev_err(wcb->mdev->dev, "Failed to enable trans\n");
-+			return ret;
-+		}
-+	}
-+
-+	wcb->active_cnt++;
-+
-+	netif_tx_start_all_queues(dev);
-+	netif_carrier_on(dev);
-+
-+	return 0;
-+}
-+
-+static int mtk_wwan_stop(struct net_device *dev)
-+{
-+	struct mtk_wwan_instance *wwan_inst = wwan_netdev_drvpriv(dev);
-+	struct mtk_wwan_ctlb *wcb = wwan_inst->wcb;
-+	struct mtk_data_trans_ctl trans_ctl;
-+	int ret;
-+
-+	netif_carrier_off(dev);
-+	netif_tx_disable(dev);
-+
-+	if (wcb->active_cnt == 1) {
-+		trans_ctl.enable = false;
-+		ret = mtk_wwan_cmd_execute(dev, DATA_CMD_TRANS_CTL, &trans_ctl);
-+		if (ret < 0)
-+			dev_err(wcb->mdev->dev, "Failed to disable trans\n");
-+	}
-+	wcb->active_cnt--;
-+
-+	return 0;
-+}
-+
-+static netdev_tx_t mtk_wwan_start_xmit(struct sk_buff *skb, struct net_device *dev)
-+{
-+	struct mtk_wwan_instance *wwan_inst = wwan_netdev_drvpriv(dev);
-+	union mtk_data_pkt_info *pkt_info = DATA_SKB_CB(skb);
-+	int ret;
-+
-+	skb_set_queue_mapping(skb, 0);
-+	pkt_info->tx.intf_id = wwan_inst->intf_id;
-+
-+	ret = wwan_inst->hif_ops->send(wwan_inst->wcb->data_blk, DATA_PKT, skb);
-+	if (ret == -EBUSY)
-+		return NETDEV_TX_BUSY;
-+	else if (ret == -EINVAL)
-+		dev_kfree_skb_any(skb);
-+
-+	return NETDEV_TX_OK;
-+}
-+
-+static const struct net_device_ops mtk_netdev_ops = {
-+	.ndo_open = mtk_wwan_open,
-+	.ndo_stop = mtk_wwan_stop,
-+	.ndo_start_xmit = mtk_wwan_start_xmit,
-+};
-+
-+static int mtk_wwan_cmd_check(struct net_device *dev, enum mtk_data_cmd_type cmd)
-+{
-+	int ret = 0;
-+
-+	switch (cmd) {
-+	case DATA_CMD_TRANS_CTL:
-+		break;
-+	default:
-+		ret = -EOPNOTSUPP;
-+		break;
-+	}
-+
-+	return ret;
-+}
-+
-+static struct sk_buff *mtk_wwan_cmd_alloc(enum mtk_data_cmd_type cmd, unsigned int len)
-+{
-+	struct mtk_data_cmd *event;
-+	struct sk_buff *skb;
-+
-+	skb = dev_alloc_skb(sizeof(*event) + len);
-+	if (unlikely(!skb))
-+		return NULL;
-+
-+	skb_put(skb, len + sizeof(*event));
-+	event = (struct mtk_data_cmd *)skb->data;
-+	event->cmd = cmd;
-+	event->len = len;
-+
-+	return skb;
-+}
-+
-+static int mtk_wwan_cmd_send(struct net_device *dev, struct sk_buff *skb)
-+{
-+	struct mtk_wwan_instance *wwan_inst = wwan_netdev_drvpriv(dev);
-+
-+	return wwan_inst->hif_ops->send(wwan_inst->wcb->data_blk, DATA_CMD, skb);
-+}
-+
-+int mtk_wwan_cmd_execute(struct net_device *dev,
-+			 enum mtk_data_cmd_type cmd, void *data)
-+{
-+	struct mtk_wwan_instance *wwan_inst;
-+	struct sk_buff *skb;
-+	int ret;
-+
-+	if (mtk_wwan_cmd_check(dev, cmd))
-+		return -EOPNOTSUPP;
-+
-+	skb = mtk_wwan_cmd_alloc(cmd, sizeof(void *));
-+	if (unlikely(!skb))
-+		return -ENOMEM;
-+
-+	SKB_TO_CMD_DATA(skb) = data;
-+
-+	ret = mtk_wwan_cmd_send(dev, skb);
-+	if (ret < 0) {
-+		wwan_inst = wwan_netdev_drvpriv(dev);
-+		dev_err(wwan_inst->wcb->mdev->dev,
-+			"Failed to excute command:ret=%d,cmd=%d\n", ret, cmd);
-+	}
-+
-+	dev_consume_skb_any(skb);
-+
-+	return ret;
-+}
-+
-+static int mtk_wwan_start_txq(struct mtk_wwan_ctlb *wcb, u32 qmask)
-+{
-+	struct mtk_wwan_instance *wwan_inst;
-+	struct net_device *dev;
-+	int i;
-+
-+	rcu_read_lock();
-+	for (i = 0; i < MTK_NETDEV_MAX; i++) {
-+		wwan_inst = rcu_dereference(wcb->wwan_inst[i]);
-+		if (!wwan_inst)
-+			continue;
-+
-+		dev = wwan_inst->netdev;
-+
-+		if (!(dev->flags & IFF_UP))
-+			continue;
-+
-+		netif_tx_wake_all_queues(dev);
-+		netif_carrier_on(dev);
-+	}
-+	rcu_read_unlock();
-+
-+	return 0;
-+}
-+
-+static int mtk_wwan_stop_txq(struct mtk_wwan_ctlb *wcb, u32 qmask)
-+{
-+	struct mtk_wwan_instance *wwan_inst;
-+	struct net_device *dev;
-+	int i;
-+
-+	rcu_read_lock();
-+	for (i = 0; i < MTK_NETDEV_MAX; i++) {
-+		wwan_inst = rcu_dereference(wcb->wwan_inst[i]);
-+		if (!wwan_inst)
-+			continue;
-+
-+		dev = wwan_inst->netdev;
-+
-+		if (!(dev->flags & IFF_UP))
-+			continue;
-+
-+		netif_carrier_off(dev);
-+		netif_tx_stop_all_queues(dev);
-+	}
-+	rcu_read_unlock();
-+
-+	return 0;
-+}
-+
-+static void mtk_wwan_napi_exit(struct mtk_wwan_ctlb *wcb)
-+{
-+	int i;
-+
-+	for (i = 0; i < wcb->data_blk->trans_info.rxq_cnt; i++) {
-+		if (!wcb->data_blk->trans_info.napis[i])
-+			continue;
-+		netif_napi_del(wcb->data_blk->trans_info.napis[i]);
-+	}
-+}
-+
-+static int mtk_wwan_napi_init(struct mtk_wwan_ctlb *wcb, struct net_device *dev)
-+{
-+	int i;
-+
-+	for (i = 0; i < wcb->data_blk->trans_info.rxq_cnt; i++) {
-+		if (!wcb->data_blk->trans_info.napis[i]) {
-+			dev_err(wcb->mdev->dev, "Invalid napi pointer, napi=%d\n", i);
-+			goto out;
-+		}
-+		netif_napi_add_weight(dev, wcb->data_blk->trans_info.napis[i],
-+				      wcb->data_blk->hif_ops->poll, napi_budget);
-+	}
-+
-+	return 0;
-+
-+out:
-+	for (--i; i >= 0; i--)
-+		netif_napi_del(wcb->data_blk->trans_info.napis[i]);
-+	return -EINVAL;
-+}
-+
-+static void mtk_wwan_setup(struct net_device *dev)
-+{
-+	dev->watchdog_timeo = MTK_NETDEV_WDT;
-+	dev->mtu = ETH_DATA_LEN;
-+	dev->min_mtu = ETH_MIN_MTU;
-+
-+	dev->features = NETIF_F_SG;
-+	dev->hw_features = NETIF_F_SG;
-+
-+	dev->features |= NETIF_F_GRO;
-+	dev->hw_features |= NETIF_F_GRO;
-+
-+	dev->tx_queue_len = DEFAULT_TX_QUEUE_LEN;
-+
-+	dev->flags = IFF_NOARP;
-+	dev->type = ARPHRD_NONE;
-+
-+	dev->needs_free_netdev = true;
-+
-+	dev->netdev_ops = &mtk_netdev_ops;
-+}
-+
-+static int mtk_wwan_newlink(void *ctxt, struct net_device *dev, u32 intf_id,
-+			    struct netlink_ext_ack *extack)
-+{
-+	struct mtk_wwan_instance *wwan_inst = wwan_netdev_drvpriv(dev);
-+	struct mtk_wwan_ctlb *wcb = ctxt;
-+	int ret;
-+
-+	if (intf_id > MTK_MAX_INTF_ID)
-+		return -EINVAL;
-+
-+	if (rcu_access_pointer(wcb->wwan_inst[intf_id]))
-+		return -EBUSY;
-+
-+	dev->max_mtu = wcb->data_blk->trans_info.max_mtu;
-+
-+	wwan_inst->wcb = wcb;
-+	wwan_inst->netdev = dev;
-+	wwan_inst->intf_id = intf_id;
-+	wwan_inst->hif_ops = wcb->data_blk->hif_ops;
-+
-+	ret = register_netdevice(dev);
-+	if (ret)
-+		return ret;
-+
-+	rcu_assign_pointer(wcb->wwan_inst[intf_id], wwan_inst);
-+
-+	netif_device_attach(dev);
-+
-+	return 0;
-+}
-+
-+static void mtk_wwan_dellink(void *ctxt, struct net_device *dev,
-+			     struct list_head *head)
-+{
-+	struct mtk_wwan_instance *wwan_inst = wwan_netdev_drvpriv(dev);
-+	int intf_id = wwan_inst->intf_id;
-+	struct mtk_wwan_ctlb *wcb = ctxt;
-+
-+	if (WARN_ON(rcu_access_pointer(wcb->wwan_inst[intf_id]) != wwan_inst))
-+		return;
-+
-+	RCU_INIT_POINTER(wcb->wwan_inst[intf_id], NULL);
-+	unregister_netdevice_queue(dev, head);
-+}
-+
-+static const struct wwan_ops mtk_wwan_ops = {
-+	.priv_size = sizeof(struct mtk_wwan_instance),
-+	.setup = mtk_wwan_setup,
-+	.newlink = mtk_wwan_newlink,
-+	.dellink = mtk_wwan_dellink,
-+};
-+
-+void mtk_wwan_notify(struct mtk_data_blk *data_blk, enum mtk_data_evt evt, u64 data)
-+{
-+	struct mtk_wwan_ctlb *wcb;
-+
-+	if (unlikely(!data_blk || !data_blk->wcb))
-+		return;
-+
-+	wcb = data_blk->wcb;
-+
-+	switch (evt) {
-+	case DATA_EVT_TX_START:
-+		mtk_wwan_start_txq(wcb, data);
-+		break;
-+	case DATA_EVT_TX_STOP:
-+		mtk_wwan_stop_txq(wcb, data);
-+		break;
-+	case DATA_EVT_RX_START:
-+		mtk_wwan_napi_enable(wcb);
-+		break;
-+	case DATA_EVT_RX_STOP:
-+		mtk_wwan_napi_disable(wcb);
-+		break;
-+	case DATA_EVT_REG_DEV:
-+		if (!wcb->reg_done) {
-+			wwan_register_ops(wcb->mdev->dev, &mtk_wwan_ops, wcb, MTK_DFLT_INTF_ID);
-+			wcb->reg_done = true;
-+		}
-+		break;
-+	case DATA_EVT_UNREG_DEV:
-+		if (wcb->reg_done) {
-+			wwan_unregister_ops(wcb->mdev->dev);
-+			wcb->reg_done = false;
-+		}
-+		break;
-+	default:
-+		break;
-+	}
-+}
-+EXPORT_SYMBOL(mtk_wwan_notify);
-+
-+int mtk_wwan_init(struct mtk_data_blk *data_blk)
-+{
-+	struct mtk_wwan_ctlb *wcb;
-+	int ret;
-+
-+	wcb = devm_kzalloc(data_blk->mdev->dev, sizeof(*wcb), GFP_KERNEL);
-+	if (unlikely(!wcb))
-+		return -ENOMEM;
-+
-+	wcb->mdev = data_blk->mdev;
-+	wcb->data_blk = data_blk;
-+
-+	wcb->dummy_dev = alloc_netdev_dummy(0);
-+	if (!wcb->dummy_dev) {
-+		devm_kfree(data_blk->mdev->dev, wcb);
-+		return -ENOMEM;
-+	}
-+
-+	data_blk->wcb = wcb;
-+
-+	wcb->gro_napis = data_blk->trans_info.napis;
-+	ret = mtk_wwan_napi_init(wcb, wcb->dummy_dev);
-+	if (ret < 0) {
-+		free_netdev(wcb->dummy_dev);
-+		devm_kfree(data_blk->mdev->dev, wcb);
-+		data_blk->wcb = NULL;
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+void mtk_wwan_exit(struct mtk_data_blk *data_blk)
-+{
-+	struct mtk_wwan_ctlb *wcb = data_blk->wcb;
-+
-+	if (unlikely(!wcb))
-+		return;
-+
-+	mtk_wwan_napi_exit(wcb);
-+	free_netdev(wcb->dummy_dev);
-+	devm_kfree(data_blk->mdev->dev, wcb);
-+	data_blk->wcb = NULL;
-+}
-diff --git a/drivers/net/wwan/t9xx/mtk_wwan.h b/drivers/net/wwan/t9xx/mtk_wwan.h
-new file mode 100644
-index 000000000000..8005aeb1ed97
---- /dev/null
-+++ b/drivers/net/wwan/t9xx/mtk_wwan.h
-@@ -0,0 +1,17 @@
-+/* SPDX-License-Identifier: GPL-2.0-only
-+ *
-+ * Copyright (c) 2022, MediaTek Inc.
-+ */
-+
-+#ifndef __MTK_WWAN_H__
-+#define __MTK_WWAN_H__
-+#include <linux/netdevice.h>
-+#include "mtk_data_plane.h"
-+
-+int mtk_wwan_init(struct mtk_data_blk *data_blk);
-+void mtk_wwan_exit(struct mtk_data_blk *data_blk);
-+int mtk_wwan_recv(struct mtk_data_blk *data_blk, struct sk_buff *skb);
-+void mtk_wwan_notify(struct mtk_data_blk *data_blk, enum mtk_data_evt evt, u64 data);
-+int mtk_wwan_cmd_execute(struct net_device *dev, enum mtk_data_cmd_type cmd, void *data);
-+
-+#endif /* __MTK_WWAN_H__ */
+ static int mtk_cldma_open(struct cldma_dev *cd, struct sk_buff *skb)
+ {
+ 	struct trb_open_priv *trb_open_priv = (struct trb_open_priv *)skb->data;
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_cldma.h b/drivers/net/wwan/t9xx/pcie/mtk_cldma.h
+index 04f83ff0e37d..fd39985f75e7 100644
+--- a/drivers/net/wwan/t9xx/pcie/mtk_cldma.h
++++ b/drivers/net/wwan/t9xx/pcie/mtk_cldma.h
+@@ -163,6 +163,9 @@ int mtk_cldma_get_tx_budget(void *dev, enum mtk_hif_id hif_id, u32 qno);
+ int mtk_cldma_trb_process(void *dev, struct sk_buff *skb);
+ void mtk_cldma_fsm_state_listener(struct mtk_fsm_param *param, struct mtk_ctrl_trans *trans);
+ int mtk_cldma_check_ch_cfg(void *dev, struct queue_info *que);
++void mtk_cldma_pm_suspend(struct mtk_md_dev *mdev);
++void mtk_cldma_pm_resume_early(struct mtk_md_dev *mdev);
++void mtk_cldma_pm_resume(struct mtk_md_dev *mdev);
+ 
+ #define drv_ops_name(NAME) cldma_drv_ops_##NAME
+ #define cldma_regs_name(NAME) mtk_cldma_regs_##NAME
 diff --git a/drivers/net/wwan/t9xx/pcie/mtk_dpmaif.c b/drivers/net/wwan/t9xx/pcie/mtk_dpmaif.c
-index 1c58dba738fa..43803587bfc3 100644
+index 43803587bfc3..63273a85e532 100644
 --- a/drivers/net/wwan/t9xx/pcie/mtk_dpmaif.c
 +++ b/drivers/net/wwan/t9xx/pcie/mtk_dpmaif.c
-@@ -20,9 +20,11 @@
- #include "mtk_dev.h"
- #include "mtk_dpmaif.h"
- #include "mtk_dpmaif_drv.h"
-+#include "mtk_dpmaif_reg.h"
- #include "mtk_dpmaif_ring.h"
- #include "mtk_pci_reg.h"
- #include "mtk_pci.h"
-+#include "mtk_wwan.h"
+@@ -205,6 +205,7 @@ struct mtk_dpmaif_ctlb {
+ 	struct dpmaif_irq_param *irq_params;
  
- #define MTK_DATA_WS_NAME_LEN		32
- #define DPMAIF_PIT_CNT_UPDATE_THRESHOLD 60
-@@ -741,6 +743,7 @@ static void mtk_dpmaif_sw_stop_rx(struct mtk_dpmaif_ctlb *dcb)
+ 	bool dpmaif_sw_reset;
++	bool trans_enabled;
+ 	unsigned char rxq_cnt;
+ 	unsigned char txq_cnt;
+ };
+@@ -1687,10 +1688,16 @@ static void mtk_dpmaif_trans_disable(struct mtk_dpmaif_ctlb *dcb)
+ static void mtk_dpmaif_trans_ctl(struct mtk_dpmaif_ctlb *dcb, bool enable)
+ {
+ 	if (enable) {
+-		if (dcb->dpmaif_state == DPMAIF_STATE_PWRON)
++		if (!dcb->trans_enabled &&
++		    dcb->dpmaif_state == DPMAIF_STATE_PWRON) {
++			dcb->trans_enabled = true;
+ 			mtk_dpmaif_trans_enable(dcb);
++		}
+ 	} else {
+-		mtk_dpmaif_trans_disable(dcb);
++		if (dcb->trans_enabled) {
++			dcb->trans_enabled = false;
++			mtk_dpmaif_trans_disable(dcb);
++		}
  	}
- 
- 	/* Stop PIT polling NAPI. */
-+	mtk_wwan_notify(dcb->data_blk, DATA_EVT_RX_STOP, 0xff);
  }
  
- static void mtk_dpmaif_sw_start_rx(struct mtk_dpmaif_ctlb *dcb)
-@@ -749,6 +752,7 @@ static void mtk_dpmaif_sw_start_rx(struct mtk_dpmaif_ctlb *dcb)
- 	int i;
- 
- 	/* Start PIT polling NAPI. */
-+	mtk_wwan_notify(dcb->data_blk, DATA_EVT_RX_START, 0xff);
- 
- 	for (i = 0; i < dcb->rxq_cnt; i++) {
- 		rxq = &dcb->rxqs[i];
-@@ -910,6 +914,7 @@ static int mtk_dpmaif_tx_rel_internal(struct dpmaif_txq *txq,
- 		tx_srv = &dcb->tx_srvs[srv_id];
- 		clear_bit(txq->id, &tx_srv->txq_drb_lack_sta);
- 		wake_up(&tx_srv->wait);
-+		mtk_wwan_notify(dcb->data_blk, DATA_EVT_TX_START, (u64)1 << txq->id);
- 	}
- 
+@@ -2060,6 +2067,30 @@ static int mtk_dpmaif_stop(struct mtk_md_dev *mdev)
  	return 0;
-@@ -1426,6 +1431,7 @@ static void mtk_dpmaif_tx_update_ring(struct mtk_dpmaif_ctlb *dcb, struct dpmaif
- 		if (drb_available_cnt < skb_drb_cnt) {
- 			skb_queue_head(&vq->list, skb);
- 			set_bit(q_id, &tx_srv->txq_drb_lack_sta);
-+			mtk_wwan_notify(dcb->data_blk, DATA_EVT_TX_STOP, (u64)1 << q_id);
- 			break;
- 		}
+ }
  
-@@ -2346,6 +2352,7 @@ static int mtk_dpmaif_update_rx_skb_info(struct sk_buff *skb,
- 
- static int mtk_dpmaif_rx_skb(struct dpmaif_rxq *rxq, struct dpmaif_rx_record *rx_record)
++void mtk_dpmaif_pm_suspend(struct mtk_md_dev *mdev)
++{
++	struct mtk_dpmaif_ctlb *dcb = ((struct mtk_data_blk *)(mdev->data_blk))->dcb;
++
++	if (!dcb)
++		return;
++
++	mutex_lock(&dcb->trans_ctl_lock);
++	mtk_dpmaif_trans_ctl(dcb, false);
++	mutex_unlock(&dcb->trans_ctl_lock);
++}
++
++void mtk_dpmaif_pm_resume(struct mtk_md_dev *mdev)
++{
++	struct mtk_dpmaif_ctlb *dcb = ((struct mtk_data_blk *)(mdev->data_blk))->dcb;
++
++	if (!dcb)
++		return;
++
++	mutex_lock(&dcb->trans_ctl_lock);
++	mtk_dpmaif_trans_ctl(dcb, true);
++	mutex_unlock(&dcb->trans_ctl_lock);
++}
++
+ static void mtk_dpmaif_clear(struct mtk_md_dev *mdev)
  {
-+	struct mtk_dpmaif_ctlb *dcb = rxq->dcb;
- 	struct sk_buff *new_skb;
- 	int ret;
+ 	struct mtk_dpmaif_ctlb *dcb = ((struct mtk_data_blk *)(mdev->data_blk))->dcb;
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_dpmaif.h b/drivers/net/wwan/t9xx/pcie/mtk_dpmaif.h
+index e7e2f333141c..20fd53fd44b5 100644
+--- a/drivers/net/wwan/t9xx/pcie/mtk_dpmaif.h
++++ b/drivers/net/wwan/t9xx/pcie/mtk_dpmaif.h
+@@ -10,5 +10,7 @@
  
-@@ -2362,7 +2369,7 @@ static int mtk_dpmaif_rx_skb(struct dpmaif_rxq *rxq, struct dpmaif_rx_record *rx
- 			continue;
+ int mtk_pcie_data_init(struct mtk_md_dev *mdev);
+ int mtk_pcie_data_exit(struct mtk_md_dev *mdev);
++void mtk_dpmaif_pm_suspend(struct mtk_md_dev *mdev);
++void mtk_dpmaif_pm_resume(struct mtk_md_dev *mdev);
  
- 		/* Send skb to data port. */
--		/* Data would be sent to network stack here */
-+		mtk_wwan_recv(dcb->data_blk, new_skb);
- 	} while (!skb_queue_empty(&rx_record->rx_list));
+ #endif /* __MTK_DPMAIF_H__ */
+diff --git a/drivers/net/wwan/t9xx/pcie/mtk_pci.c b/drivers/net/wwan/t9xx/pcie/mtk_pci.c
+index baac3692f1e3..f659c9a7aa96 100644
+--- a/drivers/net/wwan/t9xx/pcie/mtk_pci.c
++++ b/drivers/net/wwan/t9xx/pcie/mtk_pci.c
+@@ -11,8 +11,10 @@
+ #include <linux/device.h>
+ #include <linux/dma-mapping.h>
+ #include <linux/kernel.h>
++#include <linux/kthread.h>
+ #include <linux/module.h>
  
- 	return ret;
-@@ -2600,10 +2607,12 @@ static int mtk_dpmaif_send_pkt(struct mtk_dpmaif_ctlb *dcb, struct sk_buff *skb)
- 	int ret = 0;
- 
- 	vq = &dcb->tx_vqs[vq_id];
--	if (likely(skb_queue_len(&vq->list) < vq->max_len))
-+	if (likely(skb_queue_len(&vq->list) < vq->max_len)) {
- 		skb_queue_tail(&vq->list, skb);
--	else
-+	} else {
-+		mtk_wwan_notify(dcb->data_blk, DATA_EVT_TX_STOP, (u64)1 << vq_id);
- 		ret = -EBUSY;
-+	}
- 
- 	wake_up(&dcb->tx_srvs[vq->srv_id].wait);
- 
-diff --git a/drivers/net/wwan/t9xx/pcie/mtk_dpmaif_drv.c b/drivers/net/wwan/t9xx/pcie/mtk_dpmaif_drv.c
-index 077600389ab4..3fd2b33d1199 100644
---- a/drivers/net/wwan/t9xx/pcie/mtk_dpmaif_drv.c
-+++ b/drivers/net/wwan/t9xx/pcie/mtk_dpmaif_drv.c
-@@ -8,7 +8,6 @@
- #include <linux/delay.h>
- 
++#include "mtk_cldma.h"
  #include "mtk_dev.h"
--#include "mtk_data_plane.h"
- #include "mtk_dpmaif_drv.h"
- #include "mtk_dpmaif_reg.h"
- #include "mtk_pci.h"
+ #include "mtk_dpmaif.h"
+ #include "mtk_trans_ctrl.h"
+@@ -199,7 +201,6 @@ int mtk_pci_register_irq(struct mtk_md_dev *mdev, int irq_id,
+ 	}
+ 	priv->irq_cb_list[irq_id] = irq_cb;
+ 	priv->irq_cb_data[irq_id] = data;
+-
+ 	return 0;
+ }
+ 
+@@ -970,11 +971,93 @@ static const struct pci_error_handlers mtk_pci_err_handler = {
+ 	.error_detected = mtk_pci_error_detected,
+ };
+ 
++static void mtk_pci_pm_trb_park(struct mtk_md_dev *mdev)
++{
++	struct mtk_ctrl_trans *trans = ((struct mtk_ctrl_blk *)mdev->ctrl_blk)->ctrl_hw_priv;
++	int i;
++
++	for (i = 0; i < trans->trb_srv_num; i++)
++		kthread_park(trans->trb_srv[i]->trb_thread);
++}
++
++static void mtk_pci_pm_trb_unpark(struct mtk_md_dev *mdev)
++{
++	struct mtk_ctrl_trans *trans = ((struct mtk_ctrl_blk *)mdev->ctrl_blk)->ctrl_hw_priv;
++	int i;
++
++	for (i = 0; i < trans->trb_srv_num; i++)
++		kthread_unpark(trans->trb_srv[i]->trb_thread);
++}
++
++static int __maybe_unused mtk_pci_pm_suspend(struct device *dev)
++{
++	struct pci_dev *pdev = to_pci_dev(dev);
++	struct mtk_md_dev *mdev = pci_get_drvdata(pdev);
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++
++	mtk_pci_pm_trb_park(mdev);
++
++	mtk_cldma_pm_suspend(mdev);
++
++	mtk_dpmaif_pm_suspend(mdev);
++
++	/* Mask MHCCIF interrupt */
++	mtk_pci_mask_irq(mdev, priv->mhccif_irq_id);
++
++	/* Mask all MSI-X interrupts at the device level */
++	mtk_pci_mac_write32(priv, REG_IMASK_HOST_MSIX_CLR_GRP0_0, U32_MAX);
++
++	/* Save PCI configuration space */
++	pci_save_state(pdev);
++
++	return 0;
++}
++
++static int __maybe_unused mtk_pci_pm_resume(struct device *dev)
++{
++	struct pci_dev *pdev = to_pci_dev(dev);
++	struct mtk_md_dev *mdev = pci_get_drvdata(pdev);
++	struct mtk_pci_priv *priv = mdev->hw_priv;
++	int ret;
++
++	/* Restore PCIe configuration space (including MSI-X enable bits) */
++	pci_restore_state(pdev);
++
++	/* Re-enable bus mastering for DMA */
++	pci_set_master(pdev);
++
++	/* Restore ATR (address translation registers in MMIO BAR space) */
++	ret = priv->cfg->atr_init(mdev);
++	if (ret) {
++		dev_err(mdev->dev, "PM: failed to re-init ATR on resume\n");
++		return ret;
++	}
++
++	/* Unmask MHCCIF interrupt */
++	mtk_pci_unmask_irq(mdev, priv->mhccif_irq_id);
++
++	mtk_cldma_pm_resume_early(mdev);
++
++	/* Restart CLDMA TX queues that have pending descriptors */
++	mtk_cldma_pm_resume(mdev);
++
++	mtk_dpmaif_pm_resume(mdev);
++
++	mtk_pci_pm_trb_unpark(mdev);
++
++	return 0;
++}
++
++static const struct dev_pm_ops mtk_pci_pm_ops = {
++	SET_SYSTEM_SLEEP_PM_OPS(mtk_pci_pm_suspend, mtk_pci_pm_resume)
++};
++
+ static struct pci_driver mtk_pci_drv = {
+ 	.name = "mtk_pci_drv",
+ 	.id_table = t9xx_pci_table,
+ 	.probe = mtk_pci_probe,
+ 	.remove = mtk_pci_remove,
++	.driver.pm = &mtk_pci_pm_ops,
+ 	.err_handler = &mtk_pci_err_handler
+ };
+ 
 
 -- 
 2.34.1
