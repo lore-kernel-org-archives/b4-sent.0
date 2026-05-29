@@ -1,124 +1,64 @@
-From: Jack Wu <jackbb_wu@compal.com>
-Date: Fri, 29 May 2026 18:31:50 +0800
-Subject: [PATCH 11/11] net: wwan: t9xx: Add maintainers and documentation
+From: Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
+Date: Fri, 29 May 2026 09:28:14 -0500
+Subject: [PATCH] i2c: virtio: mark device ready before registering the
+ adapter
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260529-t9xx_driver_v1-v1-11-bdbfe2c01e57@compal.com>
-References: <20260529-t9xx_driver_v1-v1-0-bdbfe2c01e57@compal.com>
-In-Reply-To: <20260529-t9xx_driver_v1-v1-0-bdbfe2c01e57@compal.com>
-To: Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Sergey Ryazanov <ryazanov.s.a@gmail.com>, 
- Johannes Berg <johannes@sipsolutions.net>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Jack Wu <jackbb_wu@compal.com>, Wen-Zhi Huang <wen-zhi.huang@mediatek.com>, 
- Shi-Wei Yeh <shi-wei.yeh@mediatek.com>, 
- Minano Tseng <Minano.tseng@mediatek.com>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
- linux-doc@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780050705; l=3341;
- i=jackbb_wu@compal.com; s=20260526; h=from:subject:message-id;
- bh=gZ/Ej1LYBDfojFwAl08IAxUspPvBD4Ms/KxsQD2QGDY=;
- b=kngBuXKPlROTIHaDSxrYnkBefpd0CriRtU4rD4eRMfi6UiklYLZpHoraj7G+8IMsOfKLihMqZ
- mPsd53cbmeFCVJngDTeaMuDmGGGc8oKK6cEb/m/bez0EzQLL4rvhGgO
-X-Developer-Key: i=jackbb_wu@compal.com; a=ed25519;
- pk=VH1prTWixNl8OEUPPSfII3p46MzJpQN8J3+ecE1tZXg=
-X-Endpoint-Received: by B4 Relay for jackbb_wu@compal.com/20260526 with auth_id=793
+Message-Id: <20260529-virtio-i2c-driver-ok-v1-1-ecf2504f6a56@JohnDeere.com>
+X-B4-Tracking: v=1; b=H4sIAH2iGWoC/x3MQQqDMBBG4avIrB3QaZTGq4iLkoztT8HIRIIg3
+ r2hy2/x3kVZDZppai4yLchIW0XfNhQ+r+2tjFhN0snYDeK5wA4khgSOhqLG6ct+dM4F0eHhn1T
+ T3XTF+d/Oy33/ABQZNFdmAAAA
+To: Viresh Kumar <viresh.kumar@linaro.org>, 
+ Andi Shyti <andi.shyti@kernel.org>
+Cc: linux-i2c@vger.kernel.org, virtualization@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, 
+ Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780064893; l=1298;
+ i=BouziguesAlexis@JohnDeere.com; s=20260527; h=from:subject:message-id;
+ bh=iPwimaClnP4+pM+SMSAbPbbHxIEK/XLSHtxDtApz4AY=;
+ b=eToR/52uFUF29AE4RN1+uvqSOsg3sZ2bMRNc1c29cCgA5nCagFpEEoIkP0QMJovGBAwjUJQeS
+ oMRbCXyXn2GA7QEhvCEG3Sea87kyPPzWzbuJFXhdqGPnqma3u/p2TJD
+X-Developer-Key: i=BouziguesAlexis@JohnDeere.com; a=ed25519;
+ pk=5KJ7ArL00x5flpPhi9zRLC2p88V1rZXDQ5SXhpRvTDk=
+X-Endpoint-Received: by B4 Relay for BouziguesAlexis@JohnDeere.com/20260527 with auth_id=797
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Adds maintainers and documentation for MediaTek T9XX 5G WWAN modem
-device driver.
+virtio_i2c_probe() synchronously probes child i2c drivers on the bus,
+but peripherals may use the bus at probe for tasks like reading a chip
+id. The vhost-user-i2c backend stalls at such probes unless DRIVER_OK
+is already set before the virtqueue is first kicked.
 
-Signed-off-by: Jack Wu <jackbb_wu@compal.com>
+Set DRIVER_OK explicitly before i2c_add_adapter(), as done for the
+same reason in commit f5866db64f34 ("virtio_console: enable VQs
+early") and commit 71e4b8bf0482 ("virtio_rpmsg: set DRIVER_OK before
+using device").
+
+Signed-off-by: Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
 ---
- .../networking/device_drivers/wwan/t9xx.rst        | 48 ++++++++++++++++++++++
- MAINTAINERS                                        | 10 +++++
- 2 files changed, 58 insertions(+)
+ drivers/i2c/busses/i2c-virtio.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/Documentation/networking/device_drivers/wwan/t9xx.rst b/Documentation/networking/device_drivers/wwan/t9xx.rst
-new file mode 100644
-index 000000000000..eaba82f18c1b
---- /dev/null
-+++ b/Documentation/networking/device_drivers/wwan/t9xx.rst
-@@ -0,0 +1,48 @@
-+.. SPDX-License-Identifier: GPL-2.0-only
-+
-+.. Copyright (c) 2025, MediaTek Inc.
-+
-+.. _t9xx_driver_doc:
-+
-+====================================================
-+T9XX driver for MTK PCIe based T-series 5G Modem
-+====================================================
-+The T9XX driver is a WWAN PCIe host driver developed
-+for data exchange over PCIe interface between Host platform and MediaTek's
-+T-series 5G modem. The driver exposes control plane and data plane interfaces
-+to applications. The control plane provides device node interfaces for control
-+data transactions. The data plane provides network link interfaces for IP data
-+transactions.
-+
-+Control channel userspace ABI
-+=============================
-+/dev/wwan0at0 character device
-+------------------------------
-+The driver exposes an AT port by implementing AT WWAN Port.
-+The userspace end of the control channel pipe is a /dev/wwan0at0 character
-+device. Application shall use this interface to issue AT commands.
-+
-+/dev/wwan0mbim0 character device
-+--------------------------------
-+The driver exposes an MBIM interface to the MBIM function by implementing
-+MBIM WWAN Port. The userspace end of the control channel pipe is a
-+/dev/wwan0mbim0 character device. Applications shall use this interface
-+for MBIM protocol communication.
-+
-+Data channel userspace ABI
-+==========================
-+wwan0-X network device
-+----------------------
-+The T9XX driver exposes IP link interfaces "wwan0-X" of type "wwan" for IP
-+traffic. Iproute network utility is used for creating "wwan0-X" network
-+interfaces and for associating it with the MBIM IP session.
-+
-+The userspace management application is responsible for creating a new IP link
-+prior to establishing an MBIM IP session where the SessionId is greater than 0.
-+
-+For example, creating a new IP link for an MBIM IP session with SessionId 1:
-+
-+  ip link add dev wwan0-1 parentdev wwan0 type wwan linkid 1
-+
-+The driver will automatically map the "wwan0-1" network device to MBIM IP
-+session 1.
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 461a3eed6129..3fab2b47f531 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -16494,6 +16494,16 @@ L:	netdev@vger.kernel.org
- S:	Supported
- F:	drivers/net/wwan/t7xx/
+diff --git a/drivers/i2c/busses/i2c-virtio.c b/drivers/i2c/busses/i2c-virtio.c
+index 7b0b0bff8000..5da6fef92bec 100644
+--- a/drivers/i2c/busses/i2c-virtio.c
++++ b/drivers/i2c/busses/i2c-virtio.c
+@@ -222,6 +222,8 @@ static int virtio_i2c_probe(struct virtio_device *vdev)
+ 	 */
+ 	ACPI_COMPANION_SET(&vi->adap.dev, ACPI_COMPANION(vdev->dev.parent));
  
-+MEDIATEK T9XX 5G WWAN MODEM DRIVER
-+M:	Jack Wu <jackbb_wu@compal.com>
-+R:	Wen-Zhi Huang <wen-zhi.huang@mediatek.com>
-+R:	Shi-Wei Yeh <shi-wei.yeh@mediatek.com>
-+R:	Minano Tseng <Minano.tseng@mediatek.com>
-+L:	netdev@vger.kernel.org
-+S:	Supported
-+F:	Documentation/networking/device_drivers/wwan/t9xx.rst
-+F:	drivers/net/wwan/t9xx/
++	virtio_device_ready(vdev);
 +
- MEDIATEK USB3 DRD IP DRIVER
- M:	Chunfeng Yun <chunfeng.yun@mediatek.com>
- L:	linux-usb@vger.kernel.org
+ 	ret = i2c_add_adapter(&vi->adap);
+ 	if (ret)
+ 		virtio_i2c_del_vqs(vdev);
 
+---
+base-commit: 7fd2df204f342fc17d1a0bfcd474b24232fb0f32
+change-id: 20260529-virtio-i2c-driver-ok-96444c2e5398
+
+Best regards,
 -- 
-2.34.1
+Alexis Bouzigues <BouziguesAlexis@JohnDeere.com>
 
