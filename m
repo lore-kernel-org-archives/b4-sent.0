@@ -1,91 +1,96 @@
-From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Sat, 30 May 2026 09:05:57 +0200
-Subject: [PATCH] firmware: meson: sm: add stub functions when
- CONFIG_MESON_SM is disabled
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Date: Sat, 30 May 2026 10:20:22 +0200
+Subject: [PATCH] Revert "usb: typec: mux: avoid duplicated mux switches"
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260530-fix-missing-meson_sm-symbol-v1-1-3fb672b989d4@aliel.fr>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3M0QpAMBSA4VfRuXZqVrZ4FUnYwSnbtFMieXfL5
- Vd//wNCiUmgLR5IdLJwDBlVWcC8jWElZJcNWmmjat3gwhd6FuGwoieJYRCPcvsp7mitNU65xlm
- jIB+ORDn/713/vh+4IbHLbQAAAA==
-X-Change-ID: 20260529-fix-missing-meson_sm-symbol-7776d0d9d760
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Lukasz Luba <lukasz.luba@arm.com>
-Cc: Guillaume La Roque <glaroque@baylibre.com>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
- Mark Brown <broonie@kernel.org>, Ronald Claveau <linux-kernel-dev@aliel.fr>
+Message-Id: <20260530-typc-mux-modeset-v1-1-64b0281e2cd6@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBuYCkO6SrQQm2oWWmhFId49a
+ fkW/yeIHIQjDFWCwLdE2X1BU1dgN+NXRpmLoaW2J9URnu9h0V0Pun3myCeyWrTptGmILJTsCLz
+ I8y/HKecPE3cNz2IAAAA=
+X-Change-ID: 20260530-typc-mux-modeset-e5f8a38a100c
+To: Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Sebastian Reichel <sebastian.reichel@collabora.com>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2190;
- i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=9bC21YQnPxgGtSXVEFJabEi6tIt8Ai/WeaIfr6J2d/Q=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ5ZUT5nA3z2OrJe9ZwYLTfr6ViGqZJ7CyVPVm2zvevK4T
- 4ic5n2go5SFQYyLQVZMkaV/ruWJd5ePnvm6Rz0FZg4rE8gQBi5OAZhIgxgjw/fgkB1dR1beYNyR
- UPFhTUdUUsRmsdIPSyZ8Z1biO7vDrYiRYdaCuRtzbG7OK9J4Ivw0wyDg+KwERsmG8ANcFrd6M4S
- VGQA=
-X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
- fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
-X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780129223; l=2278;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=DsZwGjXI8H6vKbDo005iChwLLRz9y8hmwTBYCgo3fxg=;
+ b=FQ+2pUnmupin9eRRqG37HNI8PVQy6nXa4FefM8P6Os36IVBWoa+JJXbStSiNHl8c7M34qNk3p
+ Us0k47MlUpyAeLAV0JNH9B6pSbsQRRRW5Cw15RlhpkvRbhOVnZsYY7F
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After merging the thermal tree, linux-next build (arm_multi_v7
-defconfig) failed like this:
+This reverts commit b145c3f29d62f71cc9d2d714e2d4ae4c8d3f863d.
 
-arm-linux-gnueabihf-ld: drivers/thermal/amlogic_thermal.o: in function `amlogic_thermal_probe_sm':
-/tmp/next/build/drivers/thermal/amlogic_thermal.c:196:(.text+0x2f4): undefined reference to `meson_sm_get'
-arm-linux-gnueabihf-ld: /tmp/next/build/drivers/thermal/amlogic_thermal.c:205:(.text+0x320): undefined reference to `meson_sm_get_thermal_calib'
+The deduplication logic appears to cause issues with separate
+SBU muxes. The mode-switch call on these (like gpio-sbu-mux)
+never appeared, so no successful mode-switch happened. The more
+high-end Parade PS883X redrivers are not affected due to being
+retimer-switch. The revert fixes dp altmode mode-switch for both.
 
-Add inline stub implementations of meson_sm_get() and
-meson_sm_get_thermal_calib() behind an #else guard so that drivers
-including this header can be compiled without CONFIG_MESON_SM .
+Tested on:
+  Lenovo Thinkbook 16 G7 QOY
+  Lenovo Ideapad 5 2in1 14Q8X9
+  Microsoft Windows Dev Kit 2023 (Blackrock)
+  Lenovo Thinkpad T14s G6
 
-Fixes: b21d88de6918 ("thermal/drivers/amlogic: Add support for secure monitor calibration readout")
-Reported-by: Mark Brown <broonie@kernel.org>
-Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Fixes: b145c3f29d62 ("usb: typec: mux: avoid duplicated mux switches")
+
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- include/linux/firmware/meson/meson_sm.h | 17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
+ drivers/usb/typec/mux.c | 13 +------------
+ 1 file changed, 1 insertion(+), 12 deletions(-)
 
-diff --git a/include/linux/firmware/meson/meson_sm.h b/include/linux/firmware/meson/meson_sm.h
-index 3ebc2bd9a9760..813166ccedd1d 100644
---- a/include/linux/firmware/meson/meson_sm.h
-+++ b/include/linux/firmware/meson/meson_sm.h
-@@ -27,8 +27,25 @@ int meson_sm_call_write(struct meson_sm_firmware *fw, void *buffer,
- int meson_sm_call_read(struct meson_sm_firmware *fw, void *buffer,
- 		       unsigned int bsize, unsigned int cmd_index, u32 arg0,
- 		       u32 arg1, u32 arg2, u32 arg3, u32 arg4);
-+
-+#ifdef CONFIG_MESON_SM
-+
- struct meson_sm_firmware *meson_sm_get(struct device_node *firmware_node);
- int meson_sm_get_thermal_calib(struct meson_sm_firmware *fw, u32 *trim_info,
- 			       u32 tsensor_id);
+diff --git a/drivers/usb/typec/mux.c b/drivers/usb/typec/mux.c
+index db5e4a4c0a996..9b908c46bd7df 100644
+--- a/drivers/usb/typec/mux.c
++++ b/drivers/usb/typec/mux.c
+@@ -275,9 +275,7 @@ static int mux_fwnode_match(struct device *dev, const void *fwnode)
+ static void *typec_mux_match(const struct fwnode_handle *fwnode,
+ 			     const char *id, void *data)
+ {
+-	struct typec_mux_dev **mux_devs = data;
+ 	struct device *dev;
+-	int i;
  
-+#else
-+
-+static inline struct meson_sm_firmware *meson_sm_get(struct device_node *firmware_node)
-+{
-+	return NULL;
-+}
-+static inline int meson_sm_get_thermal_calib(struct meson_sm_firmware *fw,
-+					     u32 *trim_info, u32 tsensor_id)
-+{
-+	return -EINVAL;
-+}
-+
-+#endif
-+
- #endif /* _MESON_SM_FW_H_ */
+ 	/*
+ 	 * Device graph (OF graph) does not give any means to identify the
+@@ -293,14 +291,6 @@ static void *typec_mux_match(const struct fwnode_handle *fwnode,
+ 	dev = class_find_device(&typec_mux_class, NULL, fwnode,
+ 				mux_fwnode_match);
+ 
+-	/* Skip duplicates */
+-	for (i = 0; i < TYPEC_MUX_MAX_DEVS; i++)
+-		if (to_typec_mux_dev(dev) == mux_devs[i]) {
+-			put_device(dev);
+-			return NULL;
+-		}
+-
+-
+ 	return dev ? to_typec_mux_dev(dev) : ERR_PTR(-EPROBE_DEFER);
+ }
+ 
+@@ -326,8 +316,7 @@ struct typec_mux *fwnode_typec_mux_get(struct fwnode_handle *fwnode)
+ 		return ERR_PTR(-ENOMEM);
+ 
+ 	count = fwnode_connection_find_matches(fwnode, "mode-switch",
+-					       (void **)mux_devs,
+-					       typec_mux_match,
++					       NULL, typec_mux_match,
+ 					       (void **)mux_devs,
+ 					       ARRAY_SIZE(mux_devs));
+ 	if (count <= 0) {
 
 ---
-base-commit: 3929405c64376a8a54c794e8a4485023b108a97e
-change-id: 20260529-fix-missing-meson_sm-symbol-7776d0d9d760
+base-commit: 7da7f07112610a520567421dd2ffcb51beaefbcc
+change-id: 20260530-typc-mux-modeset-e5f8a38a100c
 
 Best regards,
 -- 
-Ronald Claveau <linux-kernel-dev@aliel.fr>
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
