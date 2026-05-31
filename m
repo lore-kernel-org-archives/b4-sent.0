@@ -1,11 +1,11 @@
 From: Yassine Oudjana <y.oudjana@protonmail.com>
-Date: Sun, 31 May 2026 11:10:43 +0200
-Subject: [PATCH v2 2/4] soc: mediatek: pwrap: Add support for MT6735 and
- MT6328 SoC/PMIC pair
+Date: Sun, 31 May 2026 11:10:44 +0200
+Subject: [PATCH v2 3/4] regulator: Add driver for MediaTek MT6328 PMIC
+ regulators
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260531-mt6735-pwrap-mt6328-pmic-v2-2-dac37bf92894@protonmail.com>
+Message-Id: <20260531-mt6735-pwrap-mt6328-pmic-v2-3-dac37bf92894@protonmail.com>
 References: <20260531-mt6735-pwrap-mt6328-pmic-v2-0-dac37bf92894@protonmail.com>
 In-Reply-To: <20260531-mt6735-pwrap-mt6328-pmic-v2-0-dac37bf92894@protonmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -19,322 +19,619 @@ Cc: Yassine Oudjana <y.oudjana@protonmail.com>, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-mediatek@lists.infradead.org, linux-input@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780218643; l=9618;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780218643; l=20909;
  i=y.oudjana@protonmail.com; s=20260531; h=from:subject:message-id;
- bh=4sX0Mc13Y67E7+CkHSrLBQ5VssU6E+LoNwfXa6SDJOY=;
- b=uZ2KaiWCsnQzgGRnS2AGox7rSF2hzKvF5lZ6gXm5v3a+j29oP4H4cvHKueLEKep/3BZEMeV2J
- uV5eMgqx09iBo8Nf1Bz3VSAjqK5TqwzIf6vtFzDbWkYbavg8croRITD
+ bh=ZV16eUJqqhhkDsRYYP9hM6ap9Qo59vq8Wp4PUhyZHVU=;
+ b=W8t9FvvKZhuZP+j4vECBTgcsXhD4zBoArzrZkqBDMx7AojbQ9tLViEm4BEV6mg0aB7mWCwzSV
+ EKVv0UKLRT3D83wEoABi8ye5sCYBZQOemlQMopSZHZ9V6brrD/9Dua2
 X-Developer-Key: i=y.oudjana@protonmail.com; a=ed25519;
  pk=sr7uwnyVqGKAIhvwnIwormkDM3d2VNc3VOTEU1GmsEM=
 X-Endpoint-Received: by B4 Relay for y.oudjana@protonmail.com/20260531 with auth_id=802
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add register definitions and configuration for the MT6735 SoC and the
-MT6328 PMIC which are commonly paired and communicate through the PMIC
-wrapper.
-
-Note that the PMIC wrapper on MT6735M has a slightly different register
-map and is therefore NOT compatible with MT6735.
+Add a driver for the regulators on the MT6328 PMIC.
 
 Signed-off-by: Yassine Oudjana <y.oudjana@protonmail.com>
 ---
- drivers/soc/mediatek/mtk-pmic-wrap.c | 177 ++++++++++++++++++++++++++++++++++-
- 1 file changed, 174 insertions(+), 3 deletions(-)
+ drivers/regulator/Kconfig                  |   9 +
+ drivers/regulator/Makefile                 |   1 +
+ drivers/regulator/mt6328-regulator.c       | 500 +++++++++++++++++++++++++++++
+ include/linux/regulator/mt6328-regulator.h |  49 +++
+ 4 files changed, 559 insertions(+)
 
-diff --git a/drivers/soc/mediatek/mtk-pmic-wrap.c b/drivers/soc/mediatek/mtk-pmic-wrap.c
-index 0bcd85826375..0f14dca5609d 100644
---- a/drivers/soc/mediatek/mtk-pmic-wrap.c
-+++ b/drivers/soc/mediatek/mtk-pmic-wrap.c
-@@ -3,6 +3,7 @@
-  * Copyright (c) 2014 MediaTek Inc.
-  * Author: Flora Fu, MediaTek
-  */
+diff --git a/drivers/regulator/Kconfig b/drivers/regulator/Kconfig
+index a54a549196fe..a4f0c21aa6ea 100644
+--- a/drivers/regulator/Kconfig
++++ b/drivers/regulator/Kconfig
+@@ -919,6 +919,15 @@ config REGULATOR_MT6323
+ 	  This driver supports the control of different power rails of device
+ 	  through regulator interface.
+ 
++config REGULATOR_MT6328
++	tristate "MediaTek MT6328 PMIC"
++	depends on MFD_MT6397
++	help
++	  Say y here to select this option to enable the power regulator of
++	  MediaTek MT6328 PMIC.
++	  This driver supports the control of different power rails of device
++	  through regulator interface.
 +
- #include <linux/clk.h>
- #include <linux/interrupt.h>
- #include <linux/io.h>
-@@ -100,7 +101,7 @@ enum dew_regs {
- 	PWRAP_DEW_CIPHER_MODE,
- 	PWRAP_DEW_CIPHER_SWRST,
- 
--	/* MT6323 only regs */
-+	/* MT6323 and MT6328 only regs */
- 	PWRAP_DEW_CIPHER_EN,
- 	PWRAP_DEW_RDDMY_NO,
- 
-@@ -121,8 +122,10 @@ enum dew_regs {
- 	PWRAP_RG_SPI_CON13,
- 	PWRAP_SPISLV_KEY,
- 
--	/* MT6359 only regs */
-+	/* MT6359 and MT6328 only regs */
- 	PWRAP_DEW_CRC_SWRST,
+ config REGULATOR_MT6331
+ 	tristate "MediaTek MT6331 PMIC"
+ 	depends on MFD_MT6397
+diff --git a/drivers/regulator/Makefile b/drivers/regulator/Makefile
+index 134eee274dbf..4d1e40f0f911 100644
+--- a/drivers/regulator/Makefile
++++ b/drivers/regulator/Makefile
+@@ -109,6 +109,7 @@ obj-$(CONFIG_REGULATOR_MT6311) += mt6311-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6315) += mt6315-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6315)  += mt6316-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6323)	+= mt6323-regulator.o
++obj-$(CONFIG_REGULATOR_MT6328)	+= mt6328-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6331)	+= mt6331-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6332)	+= mt6332-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6357)	+= mt6357-regulator.o
+diff --git a/drivers/regulator/mt6328-regulator.c b/drivers/regulator/mt6328-regulator.c
+new file mode 100644
+index 000000000000..a0e4226ffe37
+--- /dev/null
++++ b/drivers/regulator/mt6328-regulator.c
+@@ -0,0 +1,500 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * MediaTek MT6328 regulator driver
++ * Based on MT6323 driver.
++ *
++ * Copyright (c) 2016 MediaTek Inc.
++ * Copyright (c) 2022 Yassine Oudjana <y.oudjana@protonmail.com>
++ */
 +
-+	/* MT6359 only regs */
- 	PWRAP_DEW_RG_EN_RECORD,
- 	PWRAP_DEW_RECORD_CMD0,
- 	PWRAP_DEW_RECORD_CMD1,
-@@ -171,6 +174,23 @@ static const u32 mt6323_regs[] = {
- 	[PWRAP_DEW_RDDMY_NO] =		0x01a4,
- };
- 
-+static const u32 mt6328_regs[] = {
-+	[PWRAP_DEW_DIO_EN] =		0x02d4,
-+	[PWRAP_DEW_READ_TEST] =		0x02d6,
-+	[PWRAP_DEW_WRITE_TEST] =	0x02d8,
-+	[PWRAP_DEW_CRC_SWRST] =		0x02da,
-+	[PWRAP_DEW_CRC_EN] =		0x02dc,
-+	[PWRAP_DEW_CRC_VAL] =		0x02de,
-+	[PWRAP_DEW_MON_GRP_SEL] =	0x02e0,
-+	[PWRAP_DEW_CIPHER_KEY_SEL] =	0x02e2,
-+	[PWRAP_DEW_CIPHER_IV_SEL] =	0x02e4,
-+	[PWRAP_DEW_CIPHER_EN] =		0x02e6,
-+	[PWRAP_DEW_CIPHER_RDY] =	0x02e8,
-+	[PWRAP_DEW_CIPHER_MODE] =	0x02ea,
-+	[PWRAP_DEW_CIPHER_SWRST] =	0x02ec,
-+	[PWRAP_DEW_RDDMY_NO] =		0x02ee,
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/platform_device.h>
++#include <linux/regmap.h>
++#include <linux/mfd/mt6397/core.h>
++#include <linux/mfd/mt6328/registers.h>
++#include <linux/regulator/driver.h>
++#include <linux/regulator/machine.h>
++#include <linux/regulator/mt6328-regulator.h>
++#include <linux/regulator/of_regulator.h>
++
++#define MT6328_LDO_TABLE_MODE_NORMAL	0
++#define MT6328_LDO_TABLE_MODE_LP	1
++
++/*
++ * MT6328 regulators' information
++ *
++ * @desc: standard fields of regulator description.
++ * @qi: Mask for query enable signal status of regulators
++ * @vselon_reg: Register sections for hardware control mode of bucks
++ * @vselctrl_reg: Register for controlling the buck control mode.
++ * @vselctrl_mask: Mask for query buck's voltage control mode.
++ */
++struct mt6328_regulator_info {
++	struct regulator_desc desc;
++	u32 qi;
++	u32 vselon_reg;
++	u32 vselctrl_reg;
++	u32 vselctrl_mask;
++	u32 modeset_reg;
++	u32 modeset_mask;
 +};
 +
- static const u32 mt6331_regs[] = {
- 	[PWRAP_DEW_DIO_EN] =		0x018c,
- 	[PWRAP_DEW_READ_TEST] =		0x018e,
-@@ -394,7 +414,7 @@ enum pwrap_regs {
- 	PWRAP_ADC_RDATA_ADDR1,
- 	PWRAP_ADC_RDATA_ADDR2,
- 
--	/* MT7622 only regs */
-+	/* MT7622 and MT6735 only regs */
- 	PWRAP_STA,
- 	PWRAP_CLR,
- 	PWRAP_DVFS_ADR8,
-@@ -417,6 +437,8 @@ enum pwrap_regs {
- 	PWRAP_ADC_RDATA_ADDR,
- 	PWRAP_GPS_STA,
- 	PWRAP_SW_RST,
++#define MT6328_BUCK(match, vreg, min, max, step, volt_ranges, enreg,	\
++		    vosel, vosel_mask, voselon, vosel_ctrl)		\
++[MT6328_ID_##vreg] = {							\
++	.desc = {							\
++		.name = #vreg,						\
++		.of_match = of_match_ptr(match),			\
++		.ops = &mt6328_volt_range_ops,				\
++		.type = REGULATOR_VOLTAGE,				\
++		.id = MT6328_ID_##vreg,					\
++		.owner = THIS_MODULE,					\
++		.n_voltages = (max - min)/step + 1,			\
++		.linear_ranges = volt_ranges,				\
++		.n_linear_ranges = ARRAY_SIZE(volt_ranges),		\
++		.vsel_reg = vosel,					\
++		.vsel_mask = vosel_mask,				\
++		.enable_reg = enreg,					\
++		.enable_mask = BIT(0),					\
++	},								\
++	.qi = BIT(13),							\
++	.vselon_reg = voselon,						\
++	.vselctrl_reg = vosel_ctrl,					\
++	.vselctrl_mask = BIT(1),					\
++}
 +
-+	/* MT7622 only regs */
- 	PWRAP_DVFS_STEP_CTRL0,
- 	PWRAP_DVFS_STEP_CTRL1,
- 	PWRAP_DVFS_STEP_CTRL2,
-@@ -481,6 +503,13 @@ enum pwrap_regs {
- 	/* MT8516 only regs */
- 	PWRAP_OP_TYPE,
- 	PWRAP_MSB_FIRST,
++#define MT6328_LDO_RANGE(match, vreg, min, max, step, volt_ranges,	\
++			 enreg, enbit, vosel, vosel_mask, _modeset_reg,	\
++			 _modeset_mask)					\
++[MT6328_ID_##vreg] = {							\
++	.desc = {							\
++		.name = #vreg,						\
++		.of_match = of_match_ptr(match),			\
++		.ops = &mt6328_volt_range_ops,				\
++		.type = REGULATOR_VOLTAGE,				\
++		.id = MT6328_ID_##vreg,					\
++		.owner = THIS_MODULE,					\
++		.n_voltages = (max - min)/step + 1,			\
++		.linear_ranges = volt_ranges,				\
++		.n_linear_ranges = ARRAY_SIZE(volt_ranges),		\
++		.vsel_reg = vosel,					\
++		.vsel_mask = vosel_mask,				\
++		.enable_reg = enreg,					\
++		.enable_mask = BIT(enbit),				\
++	},								\
++	.qi = BIT(15),							\
++	.modeset_reg = _modeset_reg,					\
++	.modeset_mask = _modeset_mask,					\
++}
 +
-+	/* MT6735 only regs */
-+	PWRAP_WACS3_EN,
-+	PWRAP_INIT_DONE3,
-+	PWRAP_WACS3_CMD,
-+	PWRAP_WACS3_RDATA,
-+	PWRAP_WACS3_VLDCLR,
- };
- 
- static const int mt2701_regs[] = {
-@@ -569,6 +598,119 @@ static const int mt2701_regs[] = {
- 	[PWRAP_ADC_RDATA_ADDR2] =	0x154,
- };
- 
-+static const int mt6735_regs[] = {
-+	[PWRAP_MUX_SEL] =			0x0,
-+	[PWRAP_WRAP_EN] =			0x4,
-+	[PWRAP_DIO_EN] =			0x8,
-+	[PWRAP_SIDLY] =				0xc,
-+	[PWRAP_RDDMY] =				0x10,
-+	[PWRAP_SI_CK_CON] =			0x14,
-+	[PWRAP_CSHEXT_WRITE] =			0x18,
-+	[PWRAP_CSHEXT_READ] =			0x1c,
-+	[PWRAP_CSLEXT_START] =			0x20,
-+	[PWRAP_CSLEXT_END] =			0x24,
-+	[PWRAP_STAUPD_PRD] =			0x28,
-+	[PWRAP_STAUPD_GRPEN] =			0x2c,
-+	[PWRAP_EINT_STA0_ADR] =			0x30,
-+	[PWRAP_EINT_STA1_ADR] =			0x34,
-+	[PWRAP_STA] =				0x38,
-+	[PWRAP_CLR] =				0x3c,
-+	[PWRAP_STAUPD_MAN_TRIG] =		0x40,
-+	[PWRAP_STAUPD_STA] =			0x44,
-+	[PWRAP_WRAP_STA] =			0x48,
-+	[PWRAP_HARB_INIT] =			0x4c,
-+	[PWRAP_HARB_HPRIO] =			0x50,
-+	[PWRAP_HIPRIO_ARB_EN] =			0x54,
-+	[PWRAP_HARB_STA0] =			0x58,
-+	[PWRAP_HARB_STA1] =			0x5c,
-+	[PWRAP_MAN_EN] =			0x60,
-+	[PWRAP_MAN_CMD] =			0x64,
-+	[PWRAP_MAN_RDATA] =			0x68,
-+	[PWRAP_MAN_VLDCLR] =			0x6c,
-+	[PWRAP_WACS0_EN] =			0x70,
-+	[PWRAP_INIT_DONE0] =			0x74,
-+	[PWRAP_WACS0_CMD] =			0x78,
-+	[PWRAP_WACS0_RDATA] =			0x7c,
-+	[PWRAP_WACS0_VLDCLR] =			0x80,
-+	[PWRAP_WACS1_EN] =			0x84,
-+	[PWRAP_INIT_DONE1] =			0x88,
-+	[PWRAP_WACS1_CMD] =			0x8c,
-+	[PWRAP_WACS1_RDATA] =			0x90,
-+	[PWRAP_WACS1_VLDCLR] =			0x94,
-+	[PWRAP_WACS2_EN] =			0x98,
-+	[PWRAP_INIT_DONE2] =			0x9c,
-+	[PWRAP_WACS2_CMD] =			0xa0,
-+	[PWRAP_WACS2_RDATA] =			0xa4,
-+	[PWRAP_WACS2_VLDCLR] =			0xa8,
-+	[PWRAP_WACS3_EN] =			0xac,
-+	[PWRAP_INIT_DONE3] =			0xb0,
-+	[PWRAP_WACS3_CMD] =			0xb4,
-+	[PWRAP_WACS3_RDATA] =			0xb8,
-+	[PWRAP_WACS3_VLDCLR] =			0xbc,
-+	[PWRAP_INT_EN] =			0xc0,
-+	[PWRAP_INT_FLG_RAW] =			0xc4,
-+	[PWRAP_INT_FLG] =			0xc8,
-+	[PWRAP_INT_CLR] =			0xcc,
-+	[PWRAP_SIG_ADR] =			0xd0,
-+	[PWRAP_SIG_MODE] =			0xd4,
-+	[PWRAP_SIG_VALUE] =			0xd8,
-+	[PWRAP_SIG_ERRVAL] =			0xdc,
-+	[PWRAP_CRC_EN] =			0xe0,
-+	[PWRAP_TIMER_EN] =			0xe4,
-+	[PWRAP_TIMER_STA] =			0xe8,
-+	[PWRAP_WDT_UNIT] =			0xec,
-+	[PWRAP_WDT_SRC_EN] =			0xf0,
-+	[PWRAP_WDT_FLG] =			0xf4,
-+	[PWRAP_DEBUG_INT_SEL] =			0xf8,
-+	[PWRAP_DVFS_ADR0] =			0xfc,
-+	[PWRAP_DVFS_WDATA0] =			0x100,
-+	[PWRAP_DVFS_ADR1] =			0x104,
-+	[PWRAP_DVFS_WDATA1] =			0x108,
-+	[PWRAP_DVFS_ADR2] =			0x10c,
-+	[PWRAP_DVFS_WDATA2] =			0x110,
-+	[PWRAP_DVFS_ADR3] =			0x114,
-+	[PWRAP_DVFS_WDATA3] =			0x118,
-+	[PWRAP_DVFS_ADR4] =			0x11c,
-+	[PWRAP_DVFS_WDATA4] =			0x120,
-+	[PWRAP_DVFS_ADR5] =			0x124,
-+	[PWRAP_DVFS_WDATA5] =			0x128,
-+	[PWRAP_DVFS_ADR6] =			0x12c,
-+	[PWRAP_DVFS_WDATA6] =			0x130,
-+	[PWRAP_DVFS_ADR7] =			0x134,
-+	[PWRAP_DVFS_WDATA7] =			0x138,
-+	[PWRAP_DVFS_ADR8] =			0x13c,
-+	[PWRAP_DVFS_WDATA8] =			0x140,
-+	[PWRAP_DVFS_ADR9] =			0x144,
-+	[PWRAP_DVFS_WDATA9] =			0x148,
-+	[PWRAP_DVFS_ADR10] =			0x14c,
-+	[PWRAP_DVFS_WDATA10] =			0x150,
-+	[PWRAP_DVFS_ADR11] =			0x154,
-+	[PWRAP_DVFS_WDATA11] =			0x158,
-+	[PWRAP_DVFS_ADR12] =			0x15c,
-+	[PWRAP_DVFS_WDATA12] =			0x160,
-+	[PWRAP_DVFS_ADR13] =			0x164,
-+	[PWRAP_DVFS_WDATA13] =			0x168,
-+	[PWRAP_DVFS_ADR14] =			0x16c,
-+	[PWRAP_DVFS_WDATA14] =			0x170,
-+	[PWRAP_DVFS_ADR15] =			0x174,
-+	[PWRAP_DVFS_WDATA15] =			0x178,
-+	[PWRAP_SPMINF_STA] =			0x17c,
-+	[PWRAP_CIPHER_KEY_SEL] =		0x180,
-+	[PWRAP_CIPHER_IV_SEL] =			0x184,
-+	[PWRAP_CIPHER_EN] =			0x188,
-+	[PWRAP_CIPHER_RDY] =			0x18c,
-+	[PWRAP_CIPHER_MODE] =			0x190,
-+	[PWRAP_CIPHER_SWRST] =			0x194,
-+	[PWRAP_DCM_EN] =			0x198,
-+	[PWRAP_DCM_DBC_PRD] =			0x19c,
-+	[PWRAP_EXT_CK] =			0x1a0,
-+	[PWRAP_ADC_CMD_ADDR] =			0x1a4,
-+	[PWRAP_PWRAP_ADC_CMD] =			0x1a8,
-+	[PWRAP_ADC_RDATA_ADDR] =		0x1ac,
-+	[PWRAP_GPS_STA] =			0x1b0,
-+	[PWRAP_SW_RST] =			0x1b4,
++#define MT6328_LDO_TABLE(match, vreg, ldo_volt_table, enreg, enbit,	\
++			 vosel, vosel_mask, _modeset_reg, _modeset_mask)\
++[MT6328_ID_##vreg] = {							\
++	.desc = {							\
++		.name = #vreg,						\
++		.of_match = of_match_ptr(match),			\
++		.ops = &mt6328_volt_table_ops,				\
++		.type = REGULATOR_VOLTAGE,				\
++		.id = MT6328_ID_##vreg,					\
++		.owner = THIS_MODULE,					\
++		.n_voltages = ARRAY_SIZE(ldo_volt_table),		\
++		.volt_table = ldo_volt_table,				\
++		.vsel_reg = vosel,					\
++		.vsel_mask = vosel_mask,				\
++		.enable_reg = enreg,					\
++		.enable_mask = BIT(enbit),				\
++	},								\
++	.qi = BIT(15),							\
++	.modeset_reg = _modeset_reg,					\
++	.modeset_mask = _modeset_mask,					\
++}
++
++#define MT6328_LDO_TABLE_SINGLE_MODE(match, vreg, ldo_volt_table, enreg,\
++				     enbit, vosel, vosel_mask)		\
++[MT6328_ID_##vreg] = {							\
++	.desc = {							\
++		.name = #vreg,						\
++		.of_match = of_match_ptr(match),			\
++		.ops = &mt6328_volt_table_single_mode_ops,		\
++		.type = REGULATOR_VOLTAGE,				\
++		.id = MT6328_ID_##vreg,					\
++		.owner = THIS_MODULE,					\
++		.n_voltages = ARRAY_SIZE(ldo_volt_table),		\
++		.volt_table = ldo_volt_table,				\
++		.vsel_reg = vosel,					\
++		.vsel_mask = vosel_mask,				\
++		.enable_reg = enreg,					\
++		.enable_mask = BIT(enbit),				\
++	},								\
++	.qi = BIT(15),							\
++	.modeset_reg = 0,						\
++	.modeset_mask = 0,						\
++}
++
++#define MT6328_REG_FIXED(match, vreg, enreg, enbit, volt,		\
++		_modeset_reg, _modeset_mask)				\
++[MT6328_ID_##vreg] = {							\
++	.desc = {							\
++		.name = #vreg,						\
++		.of_match = of_match_ptr(match),			\
++		.ops = &mt6328_volt_fixed_ops,				\
++		.type = REGULATOR_VOLTAGE,				\
++		.id = MT6328_ID_##vreg,					\
++		.owner = THIS_MODULE,					\
++		.n_voltages = 1,					\
++		.enable_reg = enreg,					\
++		.enable_mask = BIT(enbit),				\
++		.min_uV = volt,						\
++	},								\
++	.qi = BIT(15),							\
++	.modeset_reg = _modeset_reg,					\
++	.modeset_mask = _modeset_mask,					\
++}
++
++#define MT6328_REG_FIXED_SINGLE_MODE(match, vreg, enreg, enbit, volt,	\
++				     _modeset_reg, _modeset_mask)	\
++[MT6328_ID_##vreg] = {							\
++	.desc = {							\
++		.name = #vreg,						\
++		.of_match = of_match_ptr(match),			\
++		.ops = &mt6328_volt_fixed_ops,				\
++		.type = REGULATOR_VOLTAGE,				\
++		.id = MT6328_ID_##vreg,					\
++		.owner = THIS_MODULE,					\
++		.n_voltages = 1,					\
++		.enable_reg = enreg,					\
++		.enable_mask = BIT(enbit),				\
++		.min_uV = volt,						\
++	},								\
++	.qi = BIT(15),							\
++	.modeset_reg = _modeset_reg,					\
++	.modeset_mask = _modeset_mask,					\
++}
++
++static const struct linear_range buck_volt_range1[] = {
++	REGULATOR_LINEAR_RANGE(500000, 0, 0x3f, 50000)
 +};
 +
- static const int mt6765_regs[] = {
- 	[PWRAP_MUX_SEL] =		0x0,
- 	[PWRAP_WRAP_EN] =		0x4,
-@@ -1302,6 +1444,7 @@ static const int mt8186_regs[] = {
- 
- enum pmic_type {
- 	PMIC_MT6323,
-+	PMIC_MT6328,
- 	PMIC_MT6331,
- 	PMIC_MT6332,
- 	PMIC_MT6351,
-@@ -1314,6 +1457,7 @@ enum pmic_type {
- 
- enum pwrap_type {
- 	PWRAP_MT2701,
-+	PWRAP_MT6735,
- 	PWRAP_MT6765,
- 	PWRAP_MT6779,
- 	PWRAP_MT6795,
-@@ -1733,6 +1877,10 @@ static void pwrap_init_chip_select_ext(struct pmic_wrapper *wrp, u8 hext_write,
- static int pwrap_common_init_reg_clock(struct pmic_wrapper *wrp)
- {
- 	switch (wrp->master->type) {
-+	case PWRAP_MT6735:
-+		pwrap_write(wrp, wrp->slave->dew_regs[PWRAP_DEW_RDDMY_NO], 0x8);
-+		pwrap_init_chip_select_ext(wrp, 0, 6, 0, 0);
++static const struct linear_range buck_volt_range2[] = {
++	REGULATOR_LINEAR_RANGE(600000, 0, 0x7f, 6250)
++};
++
++static const struct linear_range buck_volt_range3[] = {
++	REGULATOR_LINEAR_RANGE(1200000, 0, 0x7f, 6250)
++};
++
++static const unsigned int ldo_volt_table1[] = {
++	1500000, 1800000, 2500000, 2800000
++};
++
++static const unsigned int ldo_volt_table2[] = {
++	3300000, 3400000, 3500000, 3600000
++};
++
++static const unsigned int ldo_volt_table3[] = {
++	0, 0, 0, 1800000, 1900000, 2000000, 2100000, 2200000
++};
++
++static const unsigned int ldo_volt_table4[] = {
++	1700000, 1800000, 1860000, 2760000, 3000000, 3100000
++};
++
++static const unsigned int ldo_volt_table5[] = {
++	1800000, 2900000, 3000000, 3300000
++};
++
++static const unsigned int ldo_volt_table6[] = {
++	2900000, 3000000, 3300000
++};
++
++static const unsigned int ldo_volt_table7[] = {
++	2500000, 2900000, 3000000, 3300000
++};
++
++static const unsigned int ldo_volt_table8[] = {
++	1300000, 1800000, 2900000, 3300000
++};
++
++static const unsigned int ldo_volt_table9[] = {
++	1200000, 1300000, 1500000, 1800000, 2000000, 2800000, 3000000, 3300000
++};
++
++static const unsigned int ldo_volt_table10[] = {
++	1200000, 1300000, 1500000, 1800000, 2500000, 2800000, 3000000, 3300000
++};
++
++static const unsigned int ldo_volt_table11[] = {
++	900000, 1000000, 1100000, 1200000, 1300000, 1500000
++};
++
++static const unsigned int ldo_volt_table12[] = {
++	1200000, 1300000, 1500000, 1800000, 1825000
++};
++
++static const unsigned int ldo_volt_table13[] = {
++	1200000, 1300000, 1500000, 1800000
++};
++
++static const unsigned int ldo_volt_table14[] = {
++	1240000, 1390000, 1540000
++};
++
++static const struct linear_range ldo_volt_range1[] = {
++	REGULATOR_LINEAR_RANGE(700000, 0, 0x7f, 6250)
++};
++
++static int mt6328_get_status(struct regulator_dev *rdev)
++{
++	int ret;
++	u32 regval;
++	struct mt6328_regulator_info *info = rdev_get_drvdata(rdev);
++
++	ret = regmap_read(rdev->regmap, info->desc.enable_reg, &regval);
++	if (ret != 0) {
++		dev_err(&rdev->dev, "Failed to get enable reg: %d\n", ret);
++		return ret;
++	}
++
++	return (regval & info->qi) ? REGULATOR_STATUS_ON : REGULATOR_STATUS_OFF;
++}
++
++static int mt6328_ldo_table_set_mode(struct regulator_dev *rdev, unsigned int mode)
++{
++	int ret, val = 0;
++	struct mt6328_regulator_info *info = rdev_get_drvdata(rdev);
++
++	switch (mode) {
++	case REGULATOR_MODE_STANDBY:
++		val = MT6328_LDO_TABLE_MODE_LP;
 +		break;
- 	case PWRAP_MT6795:
- 		if (wrp->slave->type == PMIC_MT6331) {
- 			const u32 *dew_regs = wrp->slave->dew_regs;
-@@ -1839,6 +1987,7 @@ static int pwrap_init_cipher(struct pmic_wrapper *wrp)
- 		pwrap_writel(wrp, 1, PWRAP_CIPHER_START);
- 		break;
- 	case PWRAP_MT2701:
-+	case PWRAP_MT6735:
- 	case PWRAP_MT6765:
- 	case PWRAP_MT6779:
- 	case PWRAP_MT6795:
-@@ -2194,6 +2343,14 @@ static const struct pwrap_slv_type pmic_mt6323 = {
- 		PWRAP_SLV_CAP_SECURITY,
- };
- 
-+static const struct pwrap_slv_type pmic_mt6328 = {
-+	.dew_regs = mt6328_regs,
-+	.type = PMIC_MT6328,
-+	.regops = &pwrap_regops16,
-+	.caps = PWRAP_SLV_CAP_SPI | PWRAP_SLV_CAP_DUALIO |
-+		PWRAP_SLV_CAP_SECURITY,
++	case REGULATOR_MODE_NORMAL:
++		val = MT6328_LDO_TABLE_MODE_NORMAL;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	val <<= ffs(info->modeset_mask) - 1;
++
++	ret = regmap_update_bits(rdev->regmap, info->modeset_reg,
++				  info->modeset_mask, val);
++
++	return ret;
++}
++
++static unsigned int mt6328_ldo_table_get_mode(struct regulator_dev *rdev)
++{
++	unsigned int val;
++	unsigned int mode;
++	int ret;
++	struct mt6328_regulator_info *info = rdev_get_drvdata(rdev);
++
++	ret = regmap_read(rdev->regmap, info->modeset_reg, &val);
++	if (ret < 0)
++		return ret;
++
++	val &= info->modeset_mask;
++	val >>= ffs(info->modeset_mask) - 1;
++
++	if (val & 0x1)
++		mode = REGULATOR_MODE_STANDBY;
++	else
++		mode = REGULATOR_MODE_NORMAL;
++
++	return mode;
++}
++
++static const struct regulator_ops mt6328_volt_range_ops = {
++	.list_voltage = regulator_list_voltage_linear_range,
++	.map_voltage = regulator_map_voltage_linear_range,
++	.set_voltage_sel = regulator_set_voltage_sel_regmap,
++	.get_voltage_sel = regulator_get_voltage_sel_regmap,
++	.set_voltage_time_sel = regulator_set_voltage_time_sel,
++	.enable = regulator_enable_regmap,
++	.disable = regulator_disable_regmap,
++	.is_enabled = regulator_is_enabled_regmap,
++	.get_status = mt6328_get_status,
 +};
 +
- static const struct pwrap_slv_type pmic_mt6331 = {
- 	.dew_regs = mt6331_regs,
- 	.type = PMIC_MT6331,
-@@ -2249,6 +2406,7 @@ static const struct pwrap_slv_type pmic_mt6397 = {
- 
- static const struct of_device_id of_slave_match_tbl[] = {
- 	{ .compatible = "mediatek,mt6323", .data = &pmic_mt6323 },
-+	{ .compatible = "mediatek,mt6328", .data = &pmic_mt6328 },
- 	{ .compatible = "mediatek,mt6331", .data = &pmic_mt6331 },
- 	{ .compatible = "mediatek,mt6351", .data = &pmic_mt6351 },
- 	{ .compatible = "mediatek,mt6357", .data = &pmic_mt6357 },
-@@ -2277,6 +2435,18 @@ static const struct pmic_wrapper_type pwrap_mt2701 = {
- 	.init_soc_specific = pwrap_mt2701_init_soc_specific,
- };
- 
-+static const struct pmic_wrapper_type pwrap_mt6735 = {
-+	.regs = mt6735_regs,
-+	.type = PWRAP_MT6735,
-+	.arb_en_all = GENMASK(9, 0),
-+	.int_en_all = GENMASK(31, 0),
-+	.spi_w = PWRAP_MAN_CMD_SPI_WRITE,
-+	.wdt_src = PWRAP_WDT_SRC_MASK_ALL,
-+	.caps = PWRAP_CAP_RESET | PWRAP_CAP_DCM,
-+	.init_reg_clock = pwrap_common_init_reg_clock,
-+	.init_soc_specific = NULL,
++static const struct regulator_ops mt6328_volt_table_ops = {
++	.list_voltage = regulator_list_voltage_table,
++	.map_voltage = regulator_map_voltage_iterate,
++	.set_voltage_sel = regulator_set_voltage_sel_regmap,
++	.get_voltage_sel = regulator_get_voltage_sel_regmap,
++	.set_voltage_time_sel = regulator_set_voltage_time_sel,
++	.enable = regulator_enable_regmap,
++	.disable = regulator_disable_regmap,
++	.is_enabled = regulator_is_enabled_regmap,
++	.get_status = mt6328_get_status,
++	.set_mode = mt6328_ldo_table_set_mode,
++	.get_mode = mt6328_ldo_table_get_mode,
 +};
 +
- static const struct pmic_wrapper_type pwrap_mt6765 = {
- 	.regs = mt6765_regs,
- 	.type = PWRAP_MT6765,
-@@ -2446,6 +2616,7 @@ static const struct pmic_wrapper_type pwrap_mt8186 = {
- 
- static const struct of_device_id of_pwrap_match_tbl[] = {
- 	{ .compatible = "mediatek,mt2701-pwrap", .data = &pwrap_mt2701 },
-+	{ .compatible = "mediatek,mt6735-pwrap", .data = &pwrap_mt6735 },
- 	{ .compatible = "mediatek,mt6765-pwrap", .data = &pwrap_mt6765 },
- 	{ .compatible = "mediatek,mt6779-pwrap", .data = &pwrap_mt6779 },
- 	{ .compatible = "mediatek,mt6795-pwrap", .data = &pwrap_mt6795 },
++static const struct regulator_ops mt6328_volt_table_single_mode_ops = {
++	.list_voltage = regulator_list_voltage_table,
++	.map_voltage = regulator_map_voltage_iterate,
++	.set_voltage_sel = regulator_set_voltage_sel_regmap,
++	.get_voltage_sel = regulator_get_voltage_sel_regmap,
++	.set_voltage_time_sel = regulator_set_voltage_time_sel,
++	.enable = regulator_enable_regmap,
++	.disable = regulator_disable_regmap,
++	.is_enabled = regulator_is_enabled_regmap,
++	.get_status = mt6328_get_status,
++};
++
++static const struct regulator_ops mt6328_volt_fixed_ops = {
++	.list_voltage = regulator_list_voltage_linear,
++	.enable = regulator_enable_regmap,
++	.disable = regulator_disable_regmap,
++	.is_enabled = regulator_is_enabled_regmap,
++	.get_status = mt6328_get_status,
++	.set_mode = mt6328_ldo_table_set_mode,
++	.get_mode = mt6328_ldo_table_get_mode,
++};
++
++/* The array is indexed by id(MT6328_ID_XXX) */
++static struct mt6328_regulator_info mt6328_regulators[] = {
++	MT6328_BUCK("buck_vpa", VPA, 500000, 3650000, 50000, buck_volt_range1, MT6328_VPA_CON9,
++		    MT6328_VPA_CON11, 0x3f, MT6328_VPA_CON12, MT6328_VPA_CON7),
++	MT6328_BUCK("buck_vproc", VPROC, 600000, 1393750, 6250, buck_volt_range2, MT6328_VPROC_CON9,
++		    MT6328_VPA_CON11, 0x7f, MT6328_VPROC_CON12, MT6328_VPROC_CON7),
++	MT6328_BUCK("buck_vcore1", VCORE1, 600000, 1393750, 6250, buck_volt_range2,
++		    MT6328_VCORE1_CON9, MT6328_VCORE1_CON11, 0x7f, MT6328_VCORE1_CON12,
++		    MT6328_VCORE1_CON7),
++	MT6328_BUCK("buck_vsys22", VSYS22, 1200000, 1993750, 6250, buck_volt_range3,
++		    MT6328_VSYS22_CON9, MT6328_VSYS22_CON11, 0x7f, MT6328_VSYS22_CON12,
++		    MT6328_VSYS22_CON7),
++	MT6328_BUCK("buck_vlte", VLTE, 600000, 1393750, 6250, buck_volt_range2, MT6328_VLTE_CON9,
++		    MT6328_VLTE_CON11, 0x7f, MT6328_VLTE_CON12, MT6328_VLTE_CON7),
++	MT6328_REG_FIXED("ldo_vaux18", VAUX18, MT6328_VAUX18_CON0, 1, 1800000, MT6328_VAUX18_CON0,
++			 BIT(0)),
++	MT6328_REG_FIXED("ldo_vtcxo_0", VTCXO_0, MT6328_VTCXO_0_CON0, 1, 2800000,
++			 MT6328_VTCXO_0_CON0, BIT(0)),
++	MT6328_REG_FIXED("ldo_vtcxo_1", VTCXO_1, MT6328_VTCXO_1_CON0, 1, 2800000,
++			 MT6328_VTCXO_1_CON0, BIT(0)),
++	MT6328_REG_FIXED("ldo_vaud28", VAUD28, MT6328_VAUD28_CON0, 1, 2800000, MT6328_VAUD28_CON0,
++			 BIT(0)),
++	MT6328_REG_FIXED("ldo_vcn28", VCN28, MT6328_VCN28_CON0, 1, 2800000, MT6328_VCN28_CON0,
++			 BIT(0)),
++	MT6328_LDO_TABLE_SINGLE_MODE("ldo_vcama", VCAMA, ldo_volt_table1, MT6328_VCAMA_CON0, 1,
++				     MT6328_ADLDO_ANA_CON5, 0x30),
++	MT6328_LDO_TABLE("ldo_vcn33_bt", VCN33_BT, ldo_volt_table2, MT6328_VCN33_CON2, 1,
++			 MT6328_ADLDO_ANA_CON6, 0x70, MT6328_VCN33_CON0, BIT(0)),
++	MT6328_LDO_TABLE("ldo_vcn33_wifi", VCN33_WIFI, ldo_volt_table2, MT6328_VCN33_CON1, 1,
++			 MT6328_ADLDO_ANA_CON6, 0x70, MT6328_VCN33_CON0, BIT(0)),
++	MT6328_REG_FIXED("ldo_vusb33", VUSB33, MT6328_VUSB33_CON0, 1, 3300000, MT6328_VUSB33_CON0,
++			 BIT(0)),
++	MT6328_LDO_TABLE("ldo_vefuse", VEFUSE, ldo_volt_table3, MT6328_VEFUSE_CON0, 1,
++			 MT6328_ADLDO_ANA_CON8, 0x70, MT6328_VEFUSE_CON0, BIT(0)),
++	MT6328_LDO_TABLE("ldo_vsim1", VSIM1, ldo_volt_table4, MT6328_VSIM1_CON0, 1,
++			 MT6328_ADLDO_ANA_CON9, 0x70, MT6328_VSIM1_CON0, BIT(0)),
++	MT6328_LDO_TABLE("ldo_vsim2", VSIM2, ldo_volt_table4, MT6328_VSIM2_CON0, 1,
++			 MT6328_ADLDO_ANA_CON10, 0x70, MT6328_VSIM2_CON0, BIT(0)),
++	MT6328_LDO_TABLE("ldo_vemc_3v3", VEMC_3V3, ldo_volt_table5, MT6328_VEMC_3V3_CON0, 1,
++			 MT6328_ADLDO_ANA_CON11, 0x30, MT6328_VEMC_3V3_CON0, BIT(0)),
++	MT6328_LDO_TABLE("ldo_vmch", VMCH, ldo_volt_table6, MT6328_VMCH_CON0, 1,
++			 MT6328_ADLDO_ANA_CON12, 0x30, MT6328_VMCH_CON0, BIT(0)),
++	MT6328_REG_FIXED("ldo_vtref", VTREF, MT6328_VTREF_CON0, 1, 1800000, 0, 0),
++	MT6328_LDO_TABLE("ldo_vmc", VMC, ldo_volt_table5, MT6328_VMC_CON0, 1, MT6328_DLDO_ANA_CON0,
++			 0x30, MT6328_VMC_CON0, BIT(0)),
++	MT6328_LDO_TABLE("ldo_vcamaf", VCAMAF, ldo_volt_table9, MT6328_VCAMAF_CON0, 1,
++			 MT6328_DLDO_ANA_CON1, 0x70, MT6328_VCAMAF_CON0, BIT(0)),
++	MT6328_LDO_TABLE("ldo_vibr", VIBR, ldo_volt_table9, MT6328_VIBR_CON0, 1,
++			 MT6328_DLDO_ANA_CON2, 0x70, MT6328_VIBR_CON0, BIT(0)),
++	MT6328_REG_FIXED("ldo_vio28", VIO28, MT6328_VIO28_CON0, 1, 2800000, MT6328_VIO28_CON0,
++			 BIT(0)),
++	MT6328_LDO_TABLE("ldo_vgp1", VGP1, ldo_volt_table10, MT6328_VGP1_CON0, 1,
++			 MT6328_DLDO_ANA_CON4, 0x70, MT6328_VGP1_CON0, BIT(0)),
++	MT6328_LDO_TABLE("ldo_vcamd", VCAMD, ldo_volt_table11, MT6328_VCAM_CON0, 1,
++			 MT6328_SLDO_ANA_CON2, 0x70, MT6328_VCAM_CON0, BIT(0)),
++	MT6328_REG_FIXED("ldo_vrf18_0", VRF18_0, MT6328_VRF18_0_CON0, 1, 1825000,
++			 MT6328_VRF18_0_CON0, BIT(0)),
++	MT6328_LDO_TABLE("ldo_vrf18_1", VRF18_1, ldo_volt_table12, MT6328_VRF18_1_CON0, 1,
++			 MT6328_SLDO_ANA_CON4, 0x30, MT6328_VRF18_1_CON0, BIT(0)),
++	MT6328_REG_FIXED("ldo_vio18", VIO18, MT6328_VIO18_CON0, 1, 1800000, MT6328_VIO18_CON0,
++			 BIT(0)),
++	MT6328_REG_FIXED("ldo_vcn18", VCN18, MT6328_VCN18_CON0, 1, 1800000, MT6328_VCN18_CON0,
++			 BIT(0)),
++	MT6328_LDO_TABLE("ldo_vcamio", VCAMIO, ldo_volt_table13, MT6328_VCAMIO_CON0, 1,
++			 MT6328_SLDO_ANA_CON7, 0x30, MT6328_VCAMIO_CON0, BIT(0)),
++	MT6328_LDO_TABLE("ldo_vcamio", VCAMIO, ldo_volt_table13, MT6328_VCAMIO_CON0, 1,
++			 MT6328_SLDO_ANA_CON7, 0x30, MT6328_VCAMIO_CON0, BIT(0)),
++	MT6328_LDO_RANGE("ldo_vsram", VSRAM, 700000, 1493750, 6250, ldo_volt_range1,
++			 MT6328_VSRAM_CON9, 1, MT6328_SLDO_ANA_CON9, 0x7f, MT6328_LDO_VSRAM_CON0,
++			 BIT(0)),
++	MT6328_LDO_TABLE("ldo_vm", VM, ldo_volt_table14, MT6328_VM_CON0, 1, MT6328_SLDO_ANA_CON0,
++			 0x3, MT6328_VM_CON0, BIT(0)),
++};
++
++static int mt6328_set_buck_vosel_reg(struct platform_device *pdev)
++{
++	struct mt6397_chip *mt6328 = dev_get_drvdata(pdev->dev.parent);
++	int i;
++	u32 regval;
++
++	for (i = 0; i < MT6328_MAX_REGULATOR; i++) {
++		if (mt6328_regulators[i].vselctrl_reg) {
++			if (regmap_read(mt6328->regmap,
++				mt6328_regulators[i].vselctrl_reg,
++				&regval) < 0) {
++				dev_err(&pdev->dev,
++					"Failed to read buck ctrl\n");
++				return -EIO;
++			}
++
++			if (regval & mt6328_regulators[i].vselctrl_mask) {
++				mt6328_regulators[i].desc.vsel_reg =
++				mt6328_regulators[i].vselon_reg;
++			}
++		}
++	}
++
++	return 0;
++}
++
++static int mt6328_regulator_probe(struct platform_device *pdev)
++{
++	struct mt6397_chip *mt6328 = dev_get_drvdata(pdev->dev.parent);
++	struct regulator_config config = {};
++	struct regulator_dev *rdev;
++	int i;
++
++	/* Query buck controller to select activated voltage register part */
++	if (mt6328_set_buck_vosel_reg(pdev))
++		return -EIO;
++
++	for (i = 0; i < MT6328_MAX_REGULATOR; i++) {
++		config.dev = &pdev->dev;
++		config.driver_data = &mt6328_regulators[i];
++		config.regmap = mt6328->regmap;
++		rdev = devm_regulator_register(&pdev->dev,
++				&mt6328_regulators[i].desc, &config);
++		if (IS_ERR(rdev)) {
++			dev_err(&pdev->dev, "failed to register %s\n",
++				mt6328_regulators[i].desc.name);
++			return PTR_ERR(rdev);
++		}
++	}
++	return 0;
++}
++
++static const struct platform_device_id mt6328_platform_ids[] = {
++	{ "mt6328-regulator" },
++	{ /* sentinel */ },
++};
++MODULE_DEVICE_TABLE(platform, mt6328_platform_ids);
++
++static struct platform_driver mt6328_regulator_driver = {
++	.driver = {
++		.name = "mt6328-regulator",
++	},
++	.probe = mt6328_regulator_probe,
++	.id_table = mt6328_platform_ids,
++};
++
++module_platform_driver(mt6328_regulator_driver);
++
++MODULE_AUTHOR("Yassine Oudjana <y.oudjana@protonmail.com>");
++MODULE_DESCRIPTION("Regulator Driver for MediaTek MT6328 PMIC");
++MODULE_LICENSE("GPL");
+diff --git a/include/linux/regulator/mt6328-regulator.h b/include/linux/regulator/mt6328-regulator.h
+new file mode 100644
+index 000000000000..0f82aa88493b
+--- /dev/null
++++ b/include/linux/regulator/mt6328-regulator.h
+@@ -0,0 +1,49 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++/*
++ * Copyright (c) 2016 MediaTek Inc.
++ * Copyright (c) 2022 Yassine Oudjana <y.oudjana@protonmail.com>
++ */
++
++#ifndef __LINUX_REGULATOR_MT6328_H
++#define __LINUX_REGULATOR_MT6328_H
++
++enum {
++	MT6328_ID_VPA = 0,
++	MT6328_ID_VPROC,
++	MT6328_ID_VCORE1,
++	MT6328_ID_VSYS22,
++	MT6328_ID_VLTE,
++	MT6328_ID_VAUX18,
++	MT6328_ID_VTCXO_0,
++	MT6328_ID_VTCXO_1,
++	MT6328_ID_VAUD28,
++	MT6328_ID_VCN28,
++	MT6328_ID_VCAMA,
++	MT6328_ID_VCN33_BT,
++	MT6328_ID_VCN33_WIFI,
++	MT6328_ID_VUSB33,
++	MT6328_ID_VEFUSE,
++	MT6328_ID_VSIM1,
++	MT6328_ID_VSIM2,
++	MT6328_ID_VEMC_3V3,
++	MT6328_ID_VMCH,
++	MT6328_ID_VTREF,
++	MT6328_ID_VMC,
++	MT6328_ID_VCAMAF,
++	MT6328_ID_VIBR,
++	MT6328_ID_VIO28,
++	MT6328_ID_VGP1,
++	MT6328_ID_VCAMD,
++	MT6328_ID_VRF18_0,
++	MT6328_ID_VRF18_1,
++	MT6328_ID_VIO18,
++	MT6328_ID_VCN18,
++	MT6328_ID_VCAMIO,
++	MT6328_ID_VSRAM,
++	MT6328_ID_VM,
++	MT6328_ID_RG_MAX,
++};
++
++#define MT6328_MAX_REGULATOR	MT6328_ID_RG_MAX
++
++#endif /* __LINUX_REGULATOR_MT6328_H */
 
 -- 
 2.54.0
