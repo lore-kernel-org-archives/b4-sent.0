@@ -1,112 +1,137 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Sun, 31 May 2026 23:16:51 +0200
-Subject: [PATCH] drm/msm/dp: add EDID re-read retry in
- msm_dp_panel_get_modes()
+From: "Samin Y. Chowdhury" <samin_c@outlook.com>
+Date: Sun, 31 May 2026 18:45:07 -0400
+Subject: [PATCH RFC] blk-integrity: fix slab-out-of-bounds in t10_pi_verify
+ on namespace revalidation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260531-drm_plug_flaky_edid-v1-1-2708c16dce97@oldschoolsolutions.biz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQqAIBBA4avErBNM+6GuEiGiYw2VhVIU0d2Tl
- t/ivQciBsIIXfZAwJMibT6hyDMwk/YjMrLJILioeSULZsOq9uUYlVv0fCu0ZJkxTVNKV7uWt5D
- KPaCj67/2w/t+pFTkKmUAAAA=
-X-Change-ID: 20260531-drm_plug_flaky_edid-cc7743f6f909
-To: Rob Clark <robin.clark@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780262215; l=2645;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=LLV/YX7XX1GqZAGEgoltmCK2iL/5xctBrdp5zxAObKo=;
- b=GLYLpyJ3FvnDVIbCdCUxHGXOTUaswQADP+GHzOeIi2qhcCoAlZ0jzcODmoI9JDRZtetZK6chQ
- gVkQC5yQIGPDzai1VWFPfxL0t+lcFo2vpqclOYDlQGoYhwoCzMPgEqp
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+Message-Id: <20260531-blk-integrity-fix-v1-1-cc7084f42cf1@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAPK5HGoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDU2ND3aScbN3MvJLU9KLMkkrdtMwK3VQLQwNLAwOLxDRTEyWgvoKiVKA
+ w2MxopSA3Z6VYiGBxaVJWanIJyDSl2loAKVhpn3oAAAA=
+X-Change-ID: 20260531-blk-integrity-fix-e8109008af54
+To: Jens Axboe <axboe@kernel.dk>, 
+ "Martin K. Petersen" <martin.petersen@oracle.com>, 
+ Keith Busch <kbusch@kernel.org>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ "Samin Y. Chowdhury" <samin_c@outlook.com>, Sungwoo Kim <iam@sung-woo.kim>, 
+ Dave Tian <daveti@purdue.edu>, Weidong Zhu <weizhu@fiu.edu>, 
+ Ruimin Sun <rsun@fiu.edu>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780267537; l=3868;
+ i=samin_c@outlook.com; s=20260531; h=from:subject:message-id;
+ bh=FkeOPgXRBosTQ74NzcoJaEx11Qy3el90YLb0xvy/x8c=;
+ b=yybthjaFNIzhCYNjL8VcfvYMrqAqCK63+hEE1YJAArc0bD4S5Cf2ygKs2cTMdpTl4DBTUR0tO
+ aptvoVo4h3+BvWoMRnxVCcO4saBJRMlz92C+ZJ/gR8JgHp9Nsbpt5fY
+X-Developer-Key: i=samin_c@outlook.com; a=ed25519;
+ pk=bhYTQ8dsutJTQ/B9OCMAespkxDADq+Ik/7wRt0sTlPQ=
+X-Endpoint-Received: by B4 Relay for samin_c@outlook.com/20260531 with auth_id=801
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-drm_edid_read_ddc() can return a structurally valid EDID from which
-drm_edid_connector_add_modes() still returns zero modes. This triggers
-the error:
+Abort early with BLK_STS_PROTECTION if a namespace revalidation changed
+bi->metadata_size after bio_integrity_prep() sized the allocation.
 
-  [drm:msm_dp_bridge_get_modes [msm]] *ERROR* failed to get DP sink
-   modes, rc=0
+Found by FuzzNvme (Syzkaller with FEMU fuzzing framework).
 
-even though the link is ready. Since the EDID is only read once, this
-error persists and the display comes up with 640x480 resolution.
+When a namespace is revalidated between bio_integrity_prep() and
+bio_integrity_verify_fn(), the integrity profile's metadata_size may
+change under the in-flight bio. bio_integrity_verify_fn() re-reads the
+live blk_integrity via blk_get_integrity(), so blk_integrity_iterate()
+uses the new metadata_size as the per-interval step size against a
+buffer sized for the old one, advancing iter->prot_buf past the end of
+the allocation.
 
-Add a retry of drm_edid_read_ddc() inside get_modes() when the initial
-read produces no usable modes. The bad EDID is freed before retrying
-and container_of ensures access to the DDC channel. This directly
-addresses the observed "valid but empty/garbage" EDID case on
-flaky DP plugs and adapters.
+task 1:
+  bio_integrity_prep()
+    bio_integrity_alloc_buf()
+      len = bio_integrity_bytes(bi, bio_sectors(bio))   ...(1)
+      bip->bip_iter.bi_size = len
 
-I tested this on a few of my "flaky" type-c to HDMI adapters and hubs,
-getting no "retry failed" messages and the desired resolution. Without
-the patch most plugs would result in 640x480 external display.
+task 2:
+  nvme_update_ns_info_block()
+    blk_mq_freeze_queue()
+    nvme_init_integrity()
+      bi->metadata_size = head->ms                      ...(2)
+    blk_mq_unfreeze_queue()
 
-Fixes: [5bea90ad9743d2] "drm/msm/dp: switch to struct drm_edid"
+task 3:
+  bio_integrity_verify_fn()
+    bio_integrity_verify()
+      blk_integrity_iterate()
+        bi = blk_get_integrity()                        ...(3)
+        iter->interval_remaining = 1 << bi->interval_exp
+        iter->prot_buf += bi->metadata_size per interval
+        /* step size from (3), buffer sized at (1): overrun */
 
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Fixes: 8098514bd5ca ("block: always allocate integrity buffer when required")
+Signed-off-by: Samin Y. Chowdhury <samin_c@outlook.com>
+Acked-by: Sungwoo Kim <iam@sung-woo.kim>
+Acked-by: Dave Tian <daveti@purdue.edu>
+Acked-by: Weidong Zhu <weizhu@fiu.edu>
+Acked-by: Ruimin Sun <rsun@fiu.edu>
 ---
- drivers/gpu/drm/msm/dp/dp_panel.c | 28 ++++++++++++++++++++++++++++
- 1 file changed, 28 insertions(+)
+When a namespace is revalidated between bio_integrity_prep() and
+bio_integrity_verify_fn(), the integrity profile's metadata_size may
+change under the in-flight bio. bio_integrity_verify_fn() re-reads the
+live blk_integrity via blk_get_integrity(), so blk_integrity_iterate()
+uses the new metadata_size as the per-interval step size against a
+buffer sized for the old one, advancing iter->prot_buf past the end of
+the allocation.
 
-diff --git a/drivers/gpu/drm/msm/dp/dp_panel.c b/drivers/gpu/drm/msm/dp/dp_panel.c
-index 6bb021820d7c5..4f27c8129b0ef 100644
---- a/drivers/gpu/drm/msm/dp/dp_panel.c
-+++ b/drivers/gpu/drm/msm/dp/dp_panel.c
-@@ -327,11 +327,39 @@ u32 msm_dp_panel_get_mode_bpp(struct msm_dp_panel *msm_dp_panel,
- int msm_dp_panel_get_modes(struct msm_dp_panel *msm_dp_panel,
- 	struct drm_connector *connector)
- {
-+	int modes;
-+	int retry;
-+	struct msm_dp_panel_private *panel;
+task 1:
+  bio_integrity_prep()
+    bio_integrity_alloc_buf()
+      len = bio_integrity_bytes(bi, bio_sectors(bio))   ...(1)
+      bip->bip_iter.bi_size = len
+
+task 2:
+  nvme_update_ns_info_block()
+    blk_mq_freeze_queue()
+    nvme_init_integrity()
+      bi->metadata_size = head->ms                      ...(2)
+    blk_mq_unfreeze_queue()
+
+task 3:
+  bio_integrity_verify_fn()
+    bio_integrity_verify()
+      blk_integrity_iterate()
+        bi = blk_get_integrity()                        ...(3)
+        iter->interval_remaining = 1 << bi->interval_exp
+        iter->prot_buf += bi->metadata_size per interval
+        /* step size from (3), buffer sized at (1): overrun */
+---
+ block/bio-integrity-auto.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/block/bio-integrity-auto.c b/block/bio-integrity-auto.c
+index 353eed632fc..b404dbaa9f8 100644
+--- a/block/bio-integrity-auto.c
++++ b/block/bio-integrity-auto.c
+@@ -38,6 +38,18 @@ static void bio_integrity_verify_fn(struct work_struct *work)
+ 	struct bio_integrity_data *bid =
+ 		container_of(work, struct bio_integrity_data, work);
+ 	struct bio *bio = bid->bio;
++	struct blk_integrity *bi = blk_get_integrity(bio->bi_bdev->bd_disk);
 +
- 	if (!msm_dp_panel) {
- 		DRM_ERROR("invalid input\n");
- 		return -EINVAL;
- 	}
- 
-+	panel = container_of(msm_dp_panel, struct msm_dp_panel_private, msm_dp_panel);
++	if (bi) {
++		unsigned int required = bio_integrity_bytes(bi, bio_sectors(bio));
 +
-+	if (msm_dp_panel->drm_edid) {
-+		modes = drm_edid_connector_add_modes(connector);
-+		if (modes > 0)
-+			return modes;
-+
-+		drm_edid_free(msm_dp_panel->drm_edid);
-+		msm_dp_panel->drm_edid = NULL;
++		if (unlikely(required > bid->bip.bip_iter.bi_size)) {
++			bio->bi_status = BLK_STS_PROTECTION;
++			bio_integrity_finish(bid);
++			bio_endio(bio);
++			return;
++		}
 +	}
-+
-+	for (retry = 0; retry < 5; retry++) {
-+		usleep_range(20000, 25000);
-+		msm_dp_panel->drm_edid =
-+			drm_edid_read_ddc(connector, &panel->aux->ddc);
-+		if (msm_dp_panel->drm_edid)
-+			break;
-+
-+		drm_dbg_dp(connector->dev,
-+			   "get_modes re-read attempt %d/5 failed\n",
-+			   retry + 1);
-+	}
-+
-+	drm_edid_connector_update(connector, msm_dp_panel->drm_edid);
- 	if (msm_dp_panel->drm_edid)
- 		return drm_edid_connector_add_modes(connector);
  
+ 	bio->bi_status = bio_integrity_verify(bio, &bid->saved_bio_iter);
+ 	bio_integrity_finish(bid);
 
 ---
-base-commit: 7da7f07112610a520567421dd2ffcb51beaefbcc
-change-id: 20260531-drm_plug_flaky_edid-cc7743f6f909
+base-commit: 174914ea551314c52a61713b9c4bde9e42d48073
+change-id: 20260531-blk-integrity-fix-e8109008af54
 
 Best regards,
--- 
-Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+--  
+Samin Y. Chowdhury <samin_c@outlook.com>
 
