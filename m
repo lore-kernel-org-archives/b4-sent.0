@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Sun, 31 May 2026 09:30:49 +0100
-Subject: [PATCH v15 06/12] iio: core: add decimal value formatting into
- 64-bit value
+Date: Sun, 31 May 2026 09:30:50 +0100
+Subject: [PATCH v15 07/12] iio: test: iio-test-format: add test case for
+ decimal format
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260531-adf41513-iio-driver-v15-6-da09adf1c0dd@analog.com>
+Message-Id: <20260531-adf41513-iio-driver-v15-7-da09adf1c0dd@analog.com>
 References: <20260531-adf41513-iio-driver-v15-0-da09adf1c0dd@analog.com>
 In-Reply-To: <20260531-adf41513-iio-driver-v15-0-da09adf1c0dd@analog.com>
 To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
@@ -24,205 +24,169 @@ Cc: Jonathan Cameron <jic23@kernel.org>,
  Shuah Khan <skhan@linuxfoundation.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780216295; l=6182;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780216295; l=6587;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=QMpUYZEXYXwnvsDVpW1EnRH1hiYPiI4UJaERVqd0EzQ=;
- b=cYaHOwBBXOk3VeFNnOmCHCyW63QLaiH2HJteO9pZnyjztIpVKt+4Ck6XM7esiZZyw1cUWzuY0
- Rhbz9DtlUr2CTxgC4Tcyx48gaScOgVWUxH26kqd65U9FJfz/V0SpTyT
+ bh=0lpyDhmAFr7NU6uTBMJtxvjRKP6i/Gy9oeerjG9/EKc=;
+ b=Xbtm49lnhG67G2o+a8e+qMclak6q0yVi6LciwhwKFbS4pkh846D2Q8zJmAK43ORBpYIQbRW35
+ XMJYwLMxXCpDKRJNb4HXnqhx4wz5ecvfW0KQ1q5ZSgwIcBoJcBO2NGL
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Create new format types for iio values (IIO_VAL_DECIMAL64_*), which
-defines the representation of fixed decimal point values into a single
-64-bit number. This new format increases the range of represented values,
-allowing for integer parts greater than 2^32, as bits are not "wasted"
-in the fractional part, which can be seen in IIO_VAL_INT_PLUS_MICRO and
-IIO_VAL_INT_PLUS_NANO. Helpers are created to compose and decompose 64-bit
-decimals into integer values used in IIO formatting interfaces, which
-creates consistency and avoid error-prone manual assignments when using
-wordpart macros. When doing the parsing, kstrtodec64() is used with the
-scale defined by the specific decimal format type.
+Add iio_test_iio_format_value_decimal_64() kunit test case for decimal
+value formatting, exploring different scales types. Also, the same
+iio_val_s64_to_s32s() macro used to populate local array is used in
+iio_test_iio_format_value_integer_64().
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/industrialio-core.c | 47 +++++++++++++++++++++++++++++++++--------
- include/linux/iio/types.h       | 30 ++++++++++++++++++++++++++
- 2 files changed, 68 insertions(+), 9 deletions(-)
+ drivers/iio/test/iio-test-format.c | 97 +++++++++++++++++++++++++++++---------
+ 1 file changed, 75 insertions(+), 22 deletions(-)
 
-diff --git a/drivers/iio/industrialio-core.c b/drivers/iio/industrialio-core.c
-index bd6f4f9f4533..a88088cac641 100644
---- a/drivers/iio/industrialio-core.c
-+++ b/drivers/iio/industrialio-core.c
-@@ -19,6 +19,7 @@
- #include <linux/idr.h>
- #include <linux/kdev_t.h>
- #include <linux/kernel.h>
-+#include <linux/math64.h>
- #include <linux/module.h>
- #include <linux/mutex.h>
- #include <linux/poll.h>
-@@ -26,7 +27,6 @@
- #include <linux/sched.h>
- #include <linux/slab.h>
- #include <linux/wait.h>
--#include <linux/wordpart.h>
- 
- #include <linux/iio/buffer.h>
- #include <linux/iio/buffer_impl.h>
-@@ -655,6 +655,7 @@ static ssize_t __iio_format_value(char *buf, size_t offset, unsigned int type,
- 				  int size, const int *vals)
+diff --git a/drivers/iio/test/iio-test-format.c b/drivers/iio/test/iio-test-format.c
+index 872dd8582003..1920dee3bfb0 100644
+--- a/drivers/iio/test/iio-test-format.c
++++ b/drivers/iio/test/iio-test-format.c
+@@ -200,56 +200,108 @@ static void iio_test_iio_format_value_multiple(struct kunit *test)
+ static void iio_test_iio_format_value_integer_64(struct kunit *test)
  {
- 	int tmp0, tmp1;
-+	int l = 0;
- 	s64 tmp2;
- 	bool scale_db = false;
+ 	int values[2];
+-	s64 value;
+ 	char *buf;
+ 	int ret;
  
-@@ -698,7 +699,6 @@ static ssize_t __iio_format_value(char *buf, size_t offset, unsigned int type,
- 	case IIO_VAL_INT_MULTIPLE:
- 	{
- 		int i;
--		int l = 0;
+ 	buf = kunit_kmalloc(test, PAGE_SIZE, GFP_KERNEL);
+ 	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, buf);
  
- 		for (i = 0; i < size; ++i)
- 			l += sysfs_emit_at(buf, offset + l, "%d ", vals[i]);
-@@ -707,8 +707,25 @@ static ssize_t __iio_format_value(char *buf, size_t offset, unsigned int type,
- 	case IIO_VAL_CHAR:
- 		return sysfs_emit_at(buf, offset, "%c", (char)vals[0]);
- 	case IIO_VAL_INT_64:
--		tmp2 = (s64)((((u64)vals[1]) << 32) | (u32)vals[0]);
-+		tmp2 = iio_val_s64_from_s32s(vals);
- 		return sysfs_emit_at(buf, offset, "%lld", tmp2);
-+	case IIO_VAL_DECIMAL64_MILLI:
-+	case IIO_VAL_DECIMAL64_MICRO:
-+	case IIO_VAL_DECIMAL64_NANO:
-+	case IIO_VAL_DECIMAL64_PICO:
-+	{
-+		int scale = type - IIO_VAL_DECIMAL64_BASE;
-+		s64 frac;
-+
-+		tmp2 = div64_s64_rem(iio_val_s64_from_s32s(vals),
-+				     int_pow(10, scale), &frac);
-+		if (tmp2 == 0 && frac < 0)
-+			l += sysfs_emit_at(buf, offset, "-");
-+
-+		l += sysfs_emit_at(buf, offset + l, "%lld.%0*lld", tmp2, scale,
-+				   abs(frac));
-+		return l;
-+	}
- 	default:
- 		return 0;
- 	}
-@@ -978,6 +995,7 @@ static ssize_t iio_write_channel_info(struct device *dev,
- 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
- 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
- 	int ret, fract_mult = 100000;
-+	int type, dec_scale = 0;
- 	int integer, fract = 0;
- 	long long integer64;
- 	bool is_char = false;
-@@ -988,9 +1006,11 @@ static ssize_t iio_write_channel_info(struct device *dev,
- 	if (!indio_dev->info->write_raw)
- 		return -EINVAL;
+-	value = 24;
+-	values[0] = lower_32_bits(value);
+-	values[1] = upper_32_bits(value);
++	iio_val_s64_to_s32s(24, values);
+ 	ret = iio_format_value(buf, IIO_VAL_INT_64, ARRAY_SIZE(values), values);
+ 	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "24\n");
  
--	if (indio_dev->info->write_raw_get_fmt)
--		switch (indio_dev->info->write_raw_get_fmt(indio_dev,
--			this_attr->c, this_attr->address)) {
-+	if (indio_dev->info->write_raw_get_fmt) {
-+		type = indio_dev->info->write_raw_get_fmt(indio_dev,
-+							  this_attr->c,
-+							  this_attr->address);
-+		switch (type) {
- 		case IIO_VAL_INT:
- 			fract_mult = 0;
- 			break;
-@@ -1006,12 +1026,19 @@ static ssize_t iio_write_channel_info(struct device *dev,
- 		case IIO_VAL_CHAR:
- 			is_char = true;
- 			break;
-+		case IIO_VAL_DECIMAL64_MILLI:
-+		case IIO_VAL_DECIMAL64_MICRO:
-+		case IIO_VAL_DECIMAL64_NANO:
-+		case IIO_VAL_DECIMAL64_PICO:
-+			dec_scale = type - IIO_VAL_DECIMAL64_BASE;
-+			fallthrough;
- 		case IIO_VAL_INT_64:
- 			is_64bit = true;
- 			break;
- 		default:
- 			return -EINVAL;
- 		}
-+	}
+-	value = -24;
+-	values[0] = lower_32_bits(value);
+-	values[1] = upper_32_bits(value);
++	iio_val_s64_to_s32s(-24, values);
+ 	ret = iio_format_value(buf, IIO_VAL_INT_64, ARRAY_SIZE(values), values);
+ 	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "-24\n");
  
- 	if (is_char) {
- 		char ch;
-@@ -1020,12 +1047,14 @@ static ssize_t iio_write_channel_info(struct device *dev,
- 			return -EINVAL;
- 		integer = ch;
- 	} else if (is_64bit) {
--		ret = kstrtoll(buf, 0, &integer64);
-+		if (dec_scale)
-+			ret = kstrtodec64(buf, dec_scale, &integer64);
-+		else
-+			ret = kstrtoll(buf, 0, &integer64);
- 		if (ret)
- 			return ret;
+-	value = 0;
+-	values[0] = lower_32_bits(value);
+-	values[1] = upper_32_bits(value);
++	iio_val_s64_to_s32s(0, values);
+ 	ret = iio_format_value(buf, IIO_VAL_INT_64, ARRAY_SIZE(values), values);
+ 	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "0\n");
  
--		fract = upper_32_bits(integer64);
--		integer = lower_32_bits(integer64);
-+		iio_val_s64_decompose(integer64, &integer, &fract);
- 	} else {
- 		ret = __iio_str_to_fixpoint(buf, fract_mult, &integer, &fract,
- 					    scale_db);
-diff --git a/include/linux/iio/types.h b/include/linux/iio/types.h
-index 4e3099defc1d..a47a3d7500c9 100644
---- a/include/linux/iio/types.h
-+++ b/include/linux/iio/types.h
-@@ -7,6 +7,9 @@
- #ifndef _IIO_TYPES_H_
- #define _IIO_TYPES_H_
+-	value = UINT_MAX;
+-	values[0] = lower_32_bits(value);
+-	values[1] = upper_32_bits(value);
++	iio_val_s64_to_s32s(UINT_MAX, values);
+ 	ret = iio_format_value(buf, IIO_VAL_INT_64, ARRAY_SIZE(values), values);
+ 	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "4294967295\n");
  
-+#include <linux/types.h>
-+#include <linux/wordpart.h>
-+
- #include <uapi/linux/iio/types.h>
+-	value = -((s64)UINT_MAX);
+-	values[0] = lower_32_bits(value);
+-	values[1] = upper_32_bits(value);
++	iio_val_s64_to_s32s(-((s64)UINT_MAX), values);
+ 	ret = iio_format_value(buf, IIO_VAL_INT_64, ARRAY_SIZE(values), values);
+ 	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "-4294967295\n");
  
- enum iio_event_info {
-@@ -34,6 +37,33 @@ enum iio_event_info {
- #define IIO_VAL_FRACTIONAL_LOG2 11
- #define IIO_VAL_CHAR 12
+-	value = LLONG_MAX;
+-	values[0] = lower_32_bits(value);
+-	values[1] = upper_32_bits(value);
++	iio_val_s64_to_s32s(LLONG_MAX, values);
+ 	ret = iio_format_value(buf, IIO_VAL_INT_64, ARRAY_SIZE(values), values);
+ 	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "9223372036854775807\n");
  
-+#define IIO_VAL_DECIMAL64_BASE		32
-+#define IIO_VAL_DECIMAL64_MILLI		(IIO_VAL_DECIMAL64_BASE + 3)
-+#define IIO_VAL_DECIMAL64_MICRO		(IIO_VAL_DECIMAL64_BASE + 6)
-+#define IIO_VAL_DECIMAL64_NANO		(IIO_VAL_DECIMAL64_BASE + 9)
-+#define IIO_VAL_DECIMAL64_PICO		(IIO_VAL_DECIMAL64_BASE + 12)
-+
-+static inline s64 iio_val_s64_compose(s32 val0, s32 val1)
+-	value = LLONG_MIN;
+-	values[0] = lower_32_bits(value);
+-	values[1] = upper_32_bits(value);
++	iio_val_s64_to_s32s(LLONG_MIN, values);
+ 	ret = iio_format_value(buf, IIO_VAL_INT_64, ARRAY_SIZE(values), values);
+ 	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "-9223372036854775808\n");
+ }
+ 
++static void iio_test_iio_format_value_decimal_64(struct kunit *test)
 +{
-+	return (s64)(((u64)val1 << 32) | (u32)val0);
++	int values[2];
++	char *buf;
++	int ret;
++
++	buf = kunit_kmalloc(test, PAGE_SIZE, GFP_KERNEL);
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, buf);
++
++	/* DECIMAL64_MILLI: positive >= 1, value 1.234 */
++	iio_val_s64_to_s32s(1234, values);
++	ret = iio_format_value(buf, IIO_VAL_DECIMAL64_MILLI, ARRAY_SIZE(values), values);
++	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "1.234\n");
++
++	/* DECIMAL64_MICRO: positive >= 1, value 3.141592 */
++	iio_val_s64_to_s32s(3141592, values);
++	ret = iio_format_value(buf, IIO_VAL_DECIMAL64_MICRO, ARRAY_SIZE(values), values);
++	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "3.141592\n");
++
++	/* DECIMAL64_MILLI: positive < 1, value 0.042 */
++	iio_val_s64_to_s32s(42, values);
++	ret = iio_format_value(buf, IIO_VAL_DECIMAL64_MILLI, ARRAY_SIZE(values), values);
++	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "0.042\n");
++
++	/* DECIMAL64_MILLI: negative <= -1, value -1.234 */
++	iio_val_s64_to_s32s(-1234, values);
++	ret = iio_format_value(buf, IIO_VAL_DECIMAL64_MILLI, ARRAY_SIZE(values), values);
++	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "-1.234\n");
++
++	/* DECIMAL64_MILLI: negative > -1, value -0.123 */
++	iio_val_s64_to_s32s(-123, values);
++	ret = iio_format_value(buf, IIO_VAL_DECIMAL64_MILLI, ARRAY_SIZE(values), values);
++	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "-0.123\n");
++
++	/* DECIMAL64_MILLI: zero */
++	iio_val_s64_to_s32s(0, values);
++	ret = iio_format_value(buf, IIO_VAL_DECIMAL64_MILLI, ARRAY_SIZE(values), values);
++	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "0.000\n");
++
++	/* DECIMAL64_NANO: value 1.000000001 */
++	iio_val_s64_to_s32s(1000000001, values);
++	ret = iio_format_value(buf, IIO_VAL_DECIMAL64_NANO, ARRAY_SIZE(values), values);
++	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "1.000000001\n");
++
++	/* DECIMAL64_MICRO: large value using upper 32 bits */
++	iio_val_s64_to_s32s(5000000000000042LL, values);
++	ret = iio_format_value(buf, IIO_VAL_DECIMAL64_MICRO, ARRAY_SIZE(values), values);
++	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "5000000000.000042\n");
++
++	/* limits */
++	iio_val_s64_to_s32s(LLONG_MAX, values);
++	ret = iio_format_value(buf, IIO_VAL_DECIMAL64_PICO, ARRAY_SIZE(values), values);
++	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "9223372.036854775807\n");
++	ret = iio_format_value(buf, IIO_VAL_DECIMAL64_NANO, ARRAY_SIZE(values), values);
++	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "9223372036.854775807\n");
++	ret = iio_format_value(buf, IIO_VAL_DECIMAL64_MICRO, ARRAY_SIZE(values), values);
++	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "9223372036854.775807\n");
++
++	iio_val_s64_to_s32s(LLONG_MIN, values);
++	ret = iio_format_value(buf, IIO_VAL_DECIMAL64_PICO, ARRAY_SIZE(values), values);
++	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "-9223372.036854775808\n");
++	ret = iio_format_value(buf, IIO_VAL_DECIMAL64_NANO, ARRAY_SIZE(values), values);
++	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "-9223372036.854775808\n");
++	ret = iio_format_value(buf, IIO_VAL_DECIMAL64_MICRO, ARRAY_SIZE(values), values);
++	IIO_TEST_FORMAT_EXPECT_EQ(test, buf, ret, "-9223372036854.775808\n");
 +}
 +
-+static inline s64 iio_val_s64_from_s32s(const s32 *vals)
-+{
-+	return iio_val_s64_compose(vals[0], vals[1]);
-+}
-+
-+static inline void iio_val_s64_decompose(s64 dec64, s32 *val0, s32 *val1)
-+{
-+	*val0 = lower_32_bits(dec64);
-+	*val1 = upper_32_bits(dec64);
-+}
-+
-+static inline void iio_val_s64_to_s32s(s64 dec64, s32 *vals)
-+{
-+	iio_val_s64_decompose(dec64, &vals[0], &vals[1]);
-+}
-+
- enum iio_available_type {
- 	IIO_AVAIL_LIST,
- 	IIO_AVAIL_RANGE,
+ static struct kunit_case iio_format_test_cases[] = {
+ 		KUNIT_CASE(iio_test_iio_format_value_integer),
+ 		KUNIT_CASE(iio_test_iio_format_value_fixedpoint),
+@@ -257,6 +309,7 @@ static struct kunit_case iio_format_test_cases[] = {
+ 		KUNIT_CASE(iio_test_iio_format_value_fractional_log2),
+ 		KUNIT_CASE(iio_test_iio_format_value_multiple),
+ 		KUNIT_CASE(iio_test_iio_format_value_integer_64),
++		KUNIT_CASE(iio_test_iio_format_value_decimal_64),
+ 		{ }
+ };
+ 
 
 -- 
 2.43.0
