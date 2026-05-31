@@ -1,87 +1,74 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sun, 31 May 2026 15:08:17 +0200
-Subject: [PATCH WIP v5 9/9] media: qcom: camss: Enable C-PHY where
- available
+From: Gabriel Prostitis <prostitisgabriel@gmail.com>
+Subject: [PATCH 0/2] USB: gadget: fix mm lifetime use-after-free in async
+ read paths
+Date: Sun, 31 May 2026 23:04:39 +0200
+Message-Id: <20260531-mm-uaf-fix-v1-0-91571cc6ca46@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260531-qcom-cphy-v5-9-6be0f62b4d65@ixit.cz>
-References: <20260531-qcom-cphy-v5-0-6be0f62b4d65@ixit.cz>
-In-Reply-To: <20260531-qcom-cphy-v5-0-6be0f62b4d65@ixit.cz>
-To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Luca Weiss <luca.weiss@fairphone.com>, Petr Hodina <phodina@protonmail.com>, 
- Casey Connolly <casey.connolly@linaro.org>, "Dr. Git" <drgitx@gmail.com>, 
- Cory Keitz <ckeitz@amazon.com>, 
- Loic Poulain <loic.poulain@oss.qualcomm.com>
-Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Joel Selvaraj <foss@joelselvaraj.com>, Kieran Bingham <kbingham@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, linux-media@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1302; i=david@ixit.cz;
- h=from:subject:message-id; bh=WvoNxYtj1sUqw5yG8DzYK/GGXWIIvs0AM/cwzkoEgMc=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqHDK7hetDp3vpxAgr4G++P32MskYK9DBrT6G+E
- ieQj3Kp836JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCahwyuwAKCRBgAj/E00kg
- cvLkEACoPbM3rHce6UNhOnbN21d16SIVm2/tEsCQ6HAQSHnk2g4pLTKDTpHx5ADRalvzxRcadQj
- NnVSG5Q5raIopmCDix57N6IvHIdQABB+1FXb1wW8gn1ud3y9NztmfqkudKK9nJZTYThVyTZeaYP
- yrQJ4RugQRq+empnvLaYvb+AdU6TmVfZsaHPeNhZWUg5mapcbqKptRGnVNoa7hIc6h5YqsPWbws
- rJ40CPuQo9F3ZIs83eSquk8JhispxoP21Pv3ZUl2gJOFNIvrBBdBsepKe6JyigBn6xKKGBxSf4T
- Ht0lA4nIRyW0ek5atq3r0yYZXcxYb8N9EypVM5/a/UU6jQrhDf9QaR8NrNGyZjtvfNiIvuaxI2g
- hziMF9uC1/6VjZ2lEAQrs3Au89Zi2VvIaImrc1FTGkjbWIn2YajVPH3c+6CK0jTi9Ng45g8qu/l
- rGd01odrkNhhl0VlknYLKDmb1ogqrOMXyH81DdRPCVHedYh6LepEnpVWPzIbNOm/RUUSNT8PfXQ
- wASPAwvJv4JHiGmiOSAqVCC3LcuHnfBgR1Konyhec1+i9wMhKA69dkuoh48RmNuzmrxVYuvgN4j
- DSRRub7fyszqqwf3rPf2QAlYB3aDIWd5ntxHbqMCQ20KjJsbvI/vn9n+IM48cy5Wr96t8gMw30H
- iCIffkhdq+yxLdA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIAGeiHGoC/yXM0QpAMBTG8VfRuXZqm6h5FbmY7eCooQ0peXfD5
+ e+r739BpMAUoc4uCHRw5GVOkHkGdjTzQMguGZRQlSgLid7jbnrs+UQtnXbGGltpBemwBkrzF2v
+ a33HvJrLbW4D7fgCpR8VlbgAAAA==
+X-Change-ID: 20260531-mm-uaf-fix-91d9dacac692
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Gabriel Prostitis <prostitisgabriel@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780261550; l=1813;
+ i=prostitisgabriel@gmail.com; s=20260530; h=from:subject:message-id;
+ bh=9xHmw36KDmoY3u+JBaKiwE1xkfzVDG8gdznwLgAwKC4=;
+ b=RzkI0hNCePrSRxMfjkqz0VDak9y0kh1TjLp01zBROSZG5GOmfu5kQ/UY3ABwLLlrRPqZwbJyo
+ TM/g2fRVhpyDkNQwz6n2H2yNaqyZJUf9fTOqf5X+TT3bHew4gu8F1wY
+X-Developer-Key: i=prostitisgabriel@gmail.com; a=ed25519;
+ pk=FwuU+O6ZnvvnFVA45nfqkGlhSmC1P64HLtxRgBebOuY=
+X-Endpoint-Received: by B4 Relay for prostitisgabriel@gmail.com/20260530 with auth_id=800
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After all the changes done we can now safely enable C-PHY for a SoC
-where it's available.
+There is a use-after-free in the USB gadget FunctionFS and legacy
+GadgetFS asynchronous read paths. Both implementations store
+current->mm in per-request state without taking a reference, and
+later use it in a workqueue context via kthread_use_mm().
 
-Acked-by: Cory Keitz <ckeitz@amazon.com>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+If the submitting task exits before the USB request completes,
+the stored mm_struct may be freed while a pending request still
+references it, leading to a use-after-free.
+
+The issue affects:
+
+- FunctionFS: drivers/usb/gadget/function/f_fs.c
+- GadgetFS legacy: drivers/usb/gadget/legacy/inode.c
+
+Fix this by taking a reference to mm_struct with mmgrab() when
+queueing the request and releasing it with mmdrop() after
+completion. Before using the saved mm_struct, acquire a temporary 
+reference with mmget_not_zero() to ensure it is still alive.
+
+The issue can be triggered by submitting asynchronous reads on
+OUT endpoints (e.g. via io_uring for FunctionFS) and exiting the
+submitting task before completion. This may result in memory
+corruption in the address space of another process if the freed
+mm_struct is reclaimed during the race window.
+
+KASAN reports confirm use-after-free in the workqueue completion
+path when accessing the stale mm_struct.
+
+Best regards,
+Gabriel
+
+Signed-off-by: Gabriel Prostitis <prostitisgabriel@gmail.com>
 ---
- drivers/media/platform/qcom/camss/camss.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+Gabriel Prostitis (2):
+      USB: gadget: ffs: fix mm lifetime handling
+      USB: gadget: inode: fix mm lifetime handling
 
-diff --git a/drivers/media/platform/qcom/camss/camss.c b/drivers/media/platform/qcom/camss/camss.c
-index db4e14a84a95f..555c53343a1e9 100644
---- a/drivers/media/platform/qcom/camss/camss.c
-+++ b/drivers/media/platform/qcom/camss/camss.c
-@@ -4761,21 +4761,21 @@ static int camss_parse_endpoint_node(struct device *dev,
- 	struct v4l2_fwnode_endpoint vep = { { 0 } };
- 	unsigned int i;
- 	int ret;
- 
- 	ret = v4l2_fwnode_endpoint_parse(ep, &vep);
- 	if (ret)
- 		return ret;
- 
--	/*
--	 * Most SoCs support both D-PHY and C-PHY standards, but currently only
--	 * D-PHY is supported in the driver.
--	 */
--	if (vep.bus_type != V4L2_MBUS_CSI2_DPHY) {
-+	switch (vep.bus_type) {
-+	case V4L2_MBUS_CSI2_CPHY:
-+	case V4L2_MBUS_CSI2_DPHY:
-+		break;
-+	default:
- 		dev_err(dev, "Unsupported bus type %d\n", vep.bus_type);
- 		return -EINVAL;
- 	}
- 
- 	csd->interface.csiphy_id = vep.base.port;
- 
- 	mipi_csi2 = &vep.bus.mipi_csi2;
- 	lncfg->num_data = mipi_csi2->num_data_lanes;
+ drivers/usb/gadget/function/f_fs.c | 27 ++++++++++++++++++++-------
+ drivers/usb/gadget/legacy/inode.c  | 17 +++++++++++++----
+ 2 files changed, 33 insertions(+), 11 deletions(-)
+---
+base-commit: 22d91cef94b5b86cff0d68ebfce7741740672704
+change-id: 20260531-mm-uaf-fix-91d9dacac692
 
--- 
-2.53.0
+Best regards,
+--  
+Gabriel Prostitis <prostitisgabriel@gmail.com>
 
