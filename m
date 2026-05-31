@@ -1,92 +1,112 @@
-From: Gabriel Prostitis <prostitisgabriel@gmail.com>
-Date: Sun, 31 May 2026 23:04:41 +0200
-Subject: [PATCH 2/2] USB: gadget: inode: fix mm lifetime handling
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Date: Sun, 31 May 2026 23:16:51 +0200
+Subject: [PATCH] drm/msm/dp: add EDID re-read retry in
+ msm_dp_panel_get_modes()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260531-mm-uaf-fix-v1-2-91571cc6ca46@gmail.com>
-References: <20260531-mm-uaf-fix-v1-0-91571cc6ca46@gmail.com>
-In-Reply-To: <20260531-mm-uaf-fix-v1-0-91571cc6ca46@gmail.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Gabriel Prostitis <prostitisgabriel@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780261550; l=2138;
- i=prostitisgabriel@gmail.com; s=20260530; h=from:subject:message-id;
- bh=vEsZ4QwqvYlH70rsOhB9QVTgchod8aGQd1KQsxPk2MY=;
- b=CBMq6EY2jYW4/qQuk4vuyeWMbY/35Da4Bx0LXIeCPcDKA4uhhbwz2m2t2EByNaQw3putwapkH
- cfOA3ye99+DB0OWBbu0xy8d5KHCejS5yQQp21HaO4GpBjo0xSlsf4lI
-X-Developer-Key: i=prostitisgabriel@gmail.com; a=ed25519;
- pk=FwuU+O6ZnvvnFVA45nfqkGlhSmC1P64HLtxRgBebOuY=
-X-Endpoint-Received: by B4 Relay for prostitisgabriel@gmail.com/20260530 with auth_id=800
+Message-Id: <20260531-drm_plug_flaky_edid-v1-1-2708c16dce97@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQqAIBBA4avErBNM+6GuEiGiYw2VhVIU0d2Tl
+ t/ivQciBsIIXfZAwJMibT6hyDMwk/YjMrLJILioeSULZsOq9uUYlVv0fCu0ZJkxTVNKV7uWt5D
+ KPaCj67/2w/t+pFTkKmUAAAA=
+X-Change-ID: 20260531-drm_plug_flaky_edid-cc7743f6f909
+To: Rob Clark <robin.clark@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780262215; l=2645;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=LLV/YX7XX1GqZAGEgoltmCK2iL/5xctBrdp5zxAObKo=;
+ b=GLYLpyJ3FvnDVIbCdCUxHGXOTUaswQADP+GHzOeIi2qhcCoAlZ0jzcODmoI9JDRZtetZK6chQ
+ gVkQC5yQIGPDzai1VWFPfxL0t+lcFo2vpqclOYDlQGoYhwoCzMPgEqp
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-priv stores a pointer to the submitting task's mm_struct,
-but does not currently hold a reference to it while async
-requests are pending.
+drm_edid_read_ddc() can return a structurally valid EDID from which
+drm_edid_connector_add_modes() still returns zero modes. This triggers
+the error:
 
-This can result in a use-after-free if the task exits before
-completion handling finishes.
+  [drm:msm_dp_bridge_get_modes [msm]] *ERROR* failed to get DP sink
+   modes, rc=0
 
-Take a reference with mmgrab() when queuing the read request
-and release it with mmdrop() on request completion.
+even though the link is ready. Since the EDID is only read once, this
+error persists and the display comes up with 640x480 resolution.
 
-Signed-off-by: Gabriel Prostitis <prostitisgabriel@gmail.com>
+Add a retry of drm_edid_read_ddc() inside get_modes() when the initial
+read produces no usable modes. The bad EDID is freed before retrying
+and container_of ensures access to the DDC channel. This directly
+addresses the observed "valid but empty/garbage" EDID case on
+flaky DP plugs and adapters.
+
+I tested this on a few of my "flaky" type-c to HDMI adapters and hubs,
+getting no "retry failed" messages and the desired resolution. Without
+the patch most plugs would result in 640x480 external display.
+
+Fixes: [5bea90ad9743d2] "drm/msm/dp: switch to struct drm_edid"
+
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- drivers/usb/gadget/legacy/inode.c | 17 +++++++++++++----
- 1 file changed, 13 insertions(+), 4 deletions(-)
+ drivers/gpu/drm/msm/dp/dp_panel.c | 28 ++++++++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
 
-diff --git a/drivers/usb/gadget/legacy/inode.c b/drivers/usb/gadget/legacy/inode.c
-index d87a8ab51510..f9b7199afc9e 100644
---- a/drivers/usb/gadget/legacy/inode.c
-+++ b/drivers/usb/gadget/legacy/inode.c
-@@ -471,11 +471,17 @@ static void ep_user_copy_worker(struct work_struct *work)
- 	struct kiocb *iocb = priv->iocb;
- 	size_t ret;
+diff --git a/drivers/gpu/drm/msm/dp/dp_panel.c b/drivers/gpu/drm/msm/dp/dp_panel.c
+index 6bb021820d7c5..4f27c8129b0ef 100644
+--- a/drivers/gpu/drm/msm/dp/dp_panel.c
++++ b/drivers/gpu/drm/msm/dp/dp_panel.c
+@@ -327,11 +327,39 @@ u32 msm_dp_panel_get_mode_bpp(struct msm_dp_panel *msm_dp_panel,
+ int msm_dp_panel_get_modes(struct msm_dp_panel *msm_dp_panel,
+ 	struct drm_connector *connector)
+ {
++	int modes;
++	int retry;
++	struct msm_dp_panel_private *panel;
++
+ 	if (!msm_dp_panel) {
+ 		DRM_ERROR("invalid input\n");
+ 		return -EINVAL;
+ 	}
  
--	kthread_use_mm(mm);
--	ret = copy_to_iter(priv->buf, priv->actual, &priv->to);
--	kthread_unuse_mm(mm);
--	if (!ret)
-+	if (mmget_not_zero(mm)) {
-+		kthread_use_mm(mm);
-+		ret = copy_to_iter(priv->buf, priv->actual, &priv->to);
-+		kthread_unuse_mm(mm);
-+		mmput(mm);
-+		if (!ret)
-+			ret = -EFAULT;
-+	} else {
- 		ret = -EFAULT;
++	panel = container_of(msm_dp_panel, struct msm_dp_panel_private, msm_dp_panel);
++
++	if (msm_dp_panel->drm_edid) {
++		modes = drm_edid_connector_add_modes(connector);
++		if (modes > 0)
++			return modes;
++
++		drm_edid_free(msm_dp_panel->drm_edid);
++		msm_dp_panel->drm_edid = NULL;
 +	}
-+	mmdrop(mm);
++
++	for (retry = 0; retry < 5; retry++) {
++		usleep_range(20000, 25000);
++		msm_dp_panel->drm_edid =
++			drm_edid_read_ddc(connector, &panel->aux->ddc);
++		if (msm_dp_panel->drm_edid)
++			break;
++
++		drm_dbg_dp(connector->dev,
++			   "get_modes re-read attempt %d/5 failed\n",
++			   retry + 1);
++	}
++
++	drm_edid_connector_update(connector, msm_dp_panel->drm_edid);
+ 	if (msm_dp_panel->drm_edid)
+ 		return drm_edid_connector_add_modes(connector);
  
- 	/* completing the iocb can drop the ctx and mm, don't touch mm after */
- 	iocb->ki_complete(iocb, ret);
-@@ -501,6 +507,7 @@ static void ep_aio_complete(struct usb_ep *ep, struct usb_request *req)
- 	 * complete the aio request immediately.
- 	 */
- 	if (priv->to_free == NULL || unlikely(req->actual == 0)) {
-+		mmdrop(priv->mm);
- 		kfree(req->buf);
- 		kfree(priv->to_free);
- 		kfree(priv);
-@@ -540,6 +547,7 @@ static ssize_t ep_aio(struct kiocb *iocb,
- 	get_ep(epdata);
- 	priv->epdata = epdata;
- 	priv->actual = 0;
-+	mmgrab(priv->mm);
- 	priv->mm = current->mm; /* mm teardown waits for iocbs in exit_aio() */
- 
- 	/* each kiocb is coupled to one usb_request, but we can't
-@@ -570,6 +578,7 @@ static ssize_t ep_aio(struct kiocb *iocb,
- 
- fail:
- 	spin_unlock_irq(&epdata->dev->lock);
-+	mmdrop(priv->mm);
- 	kfree(priv->to_free);
- 	kfree(priv);
- 	put_ep(epdata);
 
+---
+base-commit: 7da7f07112610a520567421dd2ffcb51beaefbcc
+change-id: 20260531-drm_plug_flaky_edid-cc7743f6f909
+
+Best regards,
 -- 
-2.54.0
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
