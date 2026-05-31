@@ -1,84 +1,71 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Sun, 31 May 2026 09:30:55 +0100
-Subject: [PATCH v15 12/12] Documentation: ABI: testing: add common ABI file
- for iio/frequency
+From: Yassine Oudjana <y.oudjana@protonmail.com>
+Subject: [PATCH v2 0/4] MediaTek MT6735+MT6328 SoC/PMIC pair base support
+Date: Sun, 31 May 2026 11:10:41 +0200
+Message-Id: <20260531-mt6735-pwrap-mt6328-pmic-v2-0-dac37bf92894@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260531-adf41513-iio-driver-v15-12-da09adf1c0dd@analog.com>
-References: <20260531-adf41513-iio-driver-v15-0-da09adf1c0dd@analog.com>
-In-Reply-To: <20260531-adf41513-iio-driver-v15-0-da09adf1c0dd@analog.com>
-To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-doc@vger.kernel.org
-Cc: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>, 
- Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Andrew Morton <akpm@linux-foundation.org>, Petr Mladek <pmladek@suse.com>, 
- Steven Rostedt <rostedt@goodmis.org>, 
- Andy Shevchenko <andriy.shevchenko@linux.intel.com>, 
- Rasmus Villemoes <linux@rasmusvillemoes.dk>, 
- Sergey Senozhatsky <senozhatsky@chromium.org>, 
- Shuah Khan <skhan@linuxfoundation.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780216295; l=2211;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=swStfLGThUgetsoO5JlOQerjXKGwa5yLnNDxX9LhxH8=;
- b=de0z8neivuKOvRMhxA4AMSelLOg/TZ59JbdehhZ3s4UNhNotpzc2ApIQoe6mRHhJisJEcPqyT
- 3XqerNxsNV9AX7p3iiTsoGDbSXanHgTTVB42KmTqzB6faugh3MeeGfz
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6DIBBA0auYWTuJQlHqVUwXFkYdEy0BrCbGu
+ xfr8i3+PyCQZwrQZAd4+nLgz5Ig8gzM2C0DIdtkEIWoCiVLnGNVS4Vu8527IIVGN7NBSw9dWmU
+ U6Sek3Hnqef+v29ftsL4nMvH6wXn+ACxelj58AAAA
+X-Change-ID: 20260531-mt6735-pwrap-mt6328-pmic-de481d5c5e89
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Flora Fu <flora.fu@mediatek.com>, Alexandre Mergnat <amergnat@baylibre.com>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Cc: Yassine Oudjana <y.oudjana@protonmail.com>, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, linux-input@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780218643; l=1752;
+ i=y.oudjana@protonmail.com; s=20260531; h=from:subject:message-id;
+ bh=qCSXdL7UxE/qWT/uKT+Nivjqkn1rjsbMggSsnxkbbJI=;
+ b=BErCPRXo/UmHpL4V4wTM++8swxKEM9ihvG6lllxqkHzSSemqvXk3gF3LIB3ZuJUlbddkmnxdG
+ LzTHPsEoeuCA68WBkRzcvpASMMtAFSnN9O0TMQ330sRYmlETgOTzC57
+X-Developer-Key: i=y.oudjana@protonmail.com; a=ed25519;
+ pk=sr7uwnyVqGKAIhvwnIwormkDM3d2VNc3VOTEU1GmsEM=
+X-Endpoint-Received: by B4 Relay for y.oudjana@protonmail.com/20260531 with auth_id=802
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add ABI documentation file for PLL/DDS devices with frequency_resolution
-sysfs entry attribute used by both ADF4350 and ADF41513.
+These patches are part of a larger effort to support the MT6735 SoC family in
+mainline Linux. More patches (unsent or sent and pending review or revision)
+can be found here[1].
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+This series adds base support for the MediaTek MT6735 SoC and MT6328 PMIC pair.
+This includes PMIC wrapper support on the SoC side and regulators and keys on
+the PMIC side. The PMIC has other blocks such as an audio codec and battery
+charger which can be supported in the future.
+
+Changes since v1:
+- Fit regulator definitions in 2 lines and 100 characters whenever possible.
+- Remove get_mode and set_mode ops for regulators that don't support them.
+
+[1] https://gitlab.com/mt6735-mainline/linux/-/commits/mt6735-staging
+
+Signed-off-by: Yassine Oudjana <y.oudjana@protonmail.com>
 ---
- Documentation/ABI/testing/sysfs-bus-iio-frequency         | 11 +++++++++++
- Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350 | 10 ----------
- 2 files changed, 11 insertions(+), 10 deletions(-)
+Yassine Oudjana (4):
+      dt-bindings: mediatek: pwrap: Add MT6735 compatible
+      soc: mediatek: pwrap: Add support for MT6735 and MT6328 SoC/PMIC pair
+      regulator: Add driver for MediaTek MT6328 PMIC regulators
+      Input: mtk-pmic-keys - Add support for MT6328
 
-diff --git a/Documentation/ABI/testing/sysfs-bus-iio-frequency b/Documentation/ABI/testing/sysfs-bus-iio-frequency
-new file mode 100644
-index 000000000000..5af31b5b3a19
---- /dev/null
-+++ b/Documentation/ABI/testing/sysfs-bus-iio-frequency
-@@ -0,0 +1,11 @@
-+What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_frequency_resolution
-+KernelVersion:	3.4.0
-+Contact:	linux-iio@vger.kernel.org
-+Description:
-+		Stores channel Y frequency resolution/channel spacing in Hz for PLL
-+		devices. The given value directly influences the operating mode when
-+		fractional-N synthesis is required, as it derives values for
-+		configurable modulus parameters used in the calculation of the output
-+		frequency. It is assumed that the algorithm that is used to compute
-+		the various dividers, is able to generate proper values for multiples
-+		of channel spacing.
-diff --git a/Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350 b/Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350
-index 1254457a726e..76987a119feb 100644
---- a/Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350
-+++ b/Documentation/ABI/testing/sysfs-bus-iio-frequency-adf4350
-@@ -1,13 +1,3 @@
--What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_frequency_resolution
--KernelVersion:	3.4.0
--Contact:	linux-iio@vger.kernel.org
--Description:
--		Stores channel Y frequency resolution/channel spacing in Hz.
--		The value given directly influences the MODULUS used by
--		the fractional-N PLL. It is assumed that the algorithm
--		that is used to compute the various dividers, is able to
--		generate proper values for multiples of channel spacing.
--
- What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_refin_frequency
- KernelVersion:	3.4.0
- Contact:	linux-iio@vger.kernel.org
+ .../bindings/soc/mediatek/mediatek,pwrap.yaml      |   1 +
+ drivers/input/keyboard/mtk-pmic-keys.c             |  15 +
+ drivers/regulator/Kconfig                          |   9 +
+ drivers/regulator/Makefile                         |   1 +
+ drivers/regulator/mt6328-regulator.c               | 500 +++++++++++++++++++++
+ drivers/soc/mediatek/mtk-pmic-wrap.c               | 177 +++++++-
+ include/linux/regulator/mt6328-regulator.h         |  49 ++
+ 7 files changed, 749 insertions(+), 3 deletions(-)
+---
+base-commit: 7da7f07112610a520567421dd2ffcb51beaefbcc
+change-id: 20260531-mt6735-pwrap-mt6328-pmic-de481d5c5e89
 
--- 
-2.43.0
+Best regards,
+--  
+Yassine Oudjana <y.oudjana@protonmail.com>
 
