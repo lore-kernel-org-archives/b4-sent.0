@@ -1,10 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Mon, 01 Jun 2026 18:12:52 +1000
-Subject: [PATCH RESEND 11/16] pinctrl: qcom: introduce MSM8960 driver
+Date: Mon, 01 Jun 2026 18:12:53 +1000
+Subject: [PATCH RESEND 12/16] mach-snapdragon: parse incoming ARM32 ATAGS
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-qcom-armv7-v1-11-05a08d87e476@samcday.com>
+Message-Id: <20260601-qcom-armv7-v1-12-05a08d87e476@samcday.com>
 References: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 In-Reply-To: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
@@ -35,214 +35,199 @@ Cc: Casey Connolly <casey.connolly@linaro.org>,
  Balaji Selvanathan <balaji.selvanathan@oss.qualcomm.com>, 
  Jens Reidel <adrian@mainlining.org>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=6209;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=5615;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=xDD2p3z3mdqk9kHEZI4iBzCE48rjVFGfMvUtRYCXN98=;
- b=0jHuOZn9tXkCytiuLN918RAiZLnaW70WeBQBbtAoqE34Uxotf9MKWDHUXkkbCuAJ4o62e/i9J
- qkKoVi8WoHJDUNQJTTc0P2dq06/ujH8Zr+1Ki5ypVkikUPrf9qG+yDp
+ bh=1IbKZZVRHheo07MgFndHTzIn40/6vZ4NQ9WPRDlkx/c=;
+ b=f6xk/oYaImOVq9Nh1Im9Rq+N+K0JfqVyt+jDcoTUS48YVTPoxKOMXVAKJ8dXCxefQbwrN+Jyl
+ BWEWaZnSplvBOq3bdYeYCphYC/j3dpcjehqLzTBOhuFKx6FNr8sUpTb
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This flavour of TLMM has a different layout to the existing versions
-already supported in U-Boot. The GPIOs are offset by 0x1000 and have a
-stride of 0x10. We prepared the generic pinctrl-qcom infra for that in
-the previous commit. Otherwise, this driver quacks like the others.
+Many (often fused) bootloaders on older ARMv7 qcom SoCs do not support
+FDTs at all, and instead pass along ATAGS in r2.
+
+Minimal support for parsing memory info out of these tags is introduced,
+so that we can support mainline devicetrees, which expect the bootloader
+to populate /memory nodes.
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- configs/qcom_armv7_defconfig           |   1 +
- drivers/pinctrl/qcom/Kconfig           |   9 +++
- drivers/pinctrl/qcom/Makefile          |   1 +
- drivers/pinctrl/qcom/pinctrl-msm8960.c | 135 +++++++++++++++++++++++++++++++++
- 4 files changed, 146 insertions(+)
+ arch/arm/mach-snapdragon/board.c | 119 ++++++++++++++++++++++++++++++---------
+ 1 file changed, 91 insertions(+), 28 deletions(-)
 
-diff --git a/configs/qcom_armv7_defconfig b/configs/qcom_armv7_defconfig
-index 7d64ee68ecd..aef8838c8a8 100644
---- a/configs/qcom_armv7_defconfig
-+++ b/configs/qcom_armv7_defconfig
-@@ -43,6 +43,7 @@ CONFIG_MSM_GPIO=y
- CONFIG_DM_KEYBOARD=y
- CONFIG_BUTTON_KEYBOARD=y
- CONFIG_PINCTRL=y
-+CONFIG_PINCTRL_QCOM_MSM8960=y
- CONFIG_MSM_SERIAL=y
- CONFIG_SYSRESET_QCOM_PSHOLD=y
- CONFIG_TIMER=y
-diff --git a/drivers/pinctrl/qcom/Kconfig b/drivers/pinctrl/qcom/Kconfig
-index 11e6763b5f3..04d888535fa 100644
---- a/drivers/pinctrl/qcom/Kconfig
-+++ b/drivers/pinctrl/qcom/Kconfig
-@@ -30,6 +30,15 @@ config PINCTRL_QCOM_APQ8096
- 	  Say Y here to enable support for pinctrl on the MSM8996 / APQ8096
- 	  Snapdragon 820 SoC, as well as the associated GPIO driver.
+diff --git a/arch/arm/mach-snapdragon/board.c b/arch/arm/mach-snapdragon/board.c
+index 627b566d178..753983467a0 100644
+--- a/arch/arm/mach-snapdragon/board.c
++++ b/arch/arm/mach-snapdragon/board.c
+@@ -11,6 +11,7 @@
  
-+config PINCTRL_QCOM_MSM8960
-+	bool "Qualcomm MSM8960 Pinctrl"
-+	default y if PINCTRL_QCOM_GENERIC
-+	select PINCTRL_QCOM
-+	help
-+	  Say Y here to enable TLMM support on the MSM8960 family, including
-+	  MSM8930. This provides pinctrl/GPIO support as well as the PS_HOLD
-+	  sysreset child exposed by TLMM.
-+
- config PINCTRL_QCOM_IPQ4019
- 	bool "Qualcomm IPQ4019 Pinctrl"
- 	default y if PINCTRL_QCOM_GENERIC
-diff --git a/drivers/pinctrl/qcom/Makefile b/drivers/pinctrl/qcom/Makefile
-index 4096c1aa491..d518f488db2 100644
---- a/drivers/pinctrl/qcom/Makefile
-+++ b/drivers/pinctrl/qcom/Makefile
-@@ -8,6 +8,7 @@ obj-$(CONFIG_PINCTRL_QCOM_IPQ4019) += pinctrl-ipq4019.o
- obj-$(CONFIG_PINCTRL_QCOM_IPQ5424) += pinctrl-ipq5424.o
- obj-$(CONFIG_PINCTRL_QCOM_IPQ9574) += pinctrl-ipq9574.o
- obj-$(CONFIG_PINCTRL_QCOM_APQ8096) += pinctrl-apq8096.o
-+obj-$(CONFIG_PINCTRL_QCOM_MSM8960) += pinctrl-msm8960.o
- obj-$(CONFIG_PINCTRL_QCOM_MILOS) += pinctrl-milos.o
- obj-$(CONFIG_PINCTRL_QCOM_QCM2290) += pinctrl-qcm2290.o
- obj-$(CONFIG_PINCTRL_QCOM_QCS404) += pinctrl-qcs404.o
-diff --git a/drivers/pinctrl/qcom/pinctrl-msm8960.c b/drivers/pinctrl/qcom/pinctrl-msm8960.c
-new file mode 100644
-index 00000000000..32a474c89bc
---- /dev/null
-+++ b/drivers/pinctrl/qcom/pinctrl-msm8960.c
-@@ -0,0 +1,135 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+#include <dm.h>
-+#include <dm/device-internal.h>
-+#include <dm/lists.h>
-+#include <errno.h>
-+
-+#include "pinctrl-qcom.h"
-+#include "dm/device_compat.h"
-+
-+#define MSM8960_PS_HOLD_OFFSET 0x820
-+
-+#define MAX_PIN_NAME_LEN   32
-+#define MSM8960_NUM_GPIO   152
-+#define MSM8960_NUM_PINS   158
-+#define MSM8960_GPIO_BASE  0x1000
-+#define MSM8960_GPIO_STRIDE 0x10
-+
-+static char pin_name[MAX_PIN_NAME_LEN] __section(".data");
-+
-+static const struct pinctrl_function msm8960_functions[] = {
-+	{ "gpio", 0 },
-+	{ "gsbi1", 1 },
-+	{ "gsbi2", 1 },
-+	{ "gsbi3", 1 },
-+	{ "gsbi4", 1 },
-+	{ "gsbi5", 1 },
-+	{ "gsbi6", 1 },
-+	{ "gsbi7", 1 },
-+	{ "gsbi8", 1 },
-+	{ "gsbi9", 1 },
-+	{ "gsbi10", 1 },
-+	{ "gsbi11", 1 },
-+	{ "gsbi12", 1 },
-+};
-+
-+#define SDC_PINGROUP(pg_name, ctl, pull, drv) \
-+	{ \
-+		.name = pg_name, \
-+		.ctl_reg = ctl, \
-+		.io_reg = 0, \
-+		.pull_bit = pull, \
-+		.drv_bit = drv, \
-+		.oe_bit = -1, \
-+		.in_bit = -1, \
-+		.out_bit = -1, \
-+	}
-+
-+static const struct msm_special_pin_data msm8960_special_pins_data[] = {
-+	SDC_PINGROUP("sdc1_clk", 0x20a0, 13, 6),
-+	SDC_PINGROUP("sdc1_cmd", 0x20a0, 11, 3),
-+	SDC_PINGROUP("sdc1_data", 0x20a0, 9, 0),
-+	SDC_PINGROUP("sdc3_clk", 0x20a4, 14, 6),
-+	SDC_PINGROUP("sdc3_cmd", 0x20a4, 11, 3),
-+	SDC_PINGROUP("sdc3_data", 0x20a4, 9, 0),
-+};
-+
-+static const char *msm8960_get_function_name(struct udevice *dev,
-+					     unsigned int selector)
+ #include <asm/gpio.h>
+ #include <asm/io.h>
++#include <asm/setup.h>
+ #include <asm/system.h>
+ #include <dm/device.h>
+ #include <dm/pinctrl.h>
+@@ -175,6 +176,67 @@ static int qcom_parse_memory(const void *fdt)
+ 	return 0;
+ }
+ 
++static bool qcom_atags_valid(const phys_addr_t p)
 +{
-+	return msm8960_functions[selector].name;
++	const struct tag *tags = (const struct tag *)p;
++
++	return tags && tags->hdr.tag == ATAG_CORE &&
++	       tags->hdr.size >= sizeof(struct tag_header) / sizeof(u32);
 +}
 +
-+static int msm8960_get_function_mux(__maybe_unused unsigned int pin,
-+				    unsigned int selector)
++static int qcom_parse_atags(const struct tag *tags)
 +{
-+	if (selector >= ARRAY_SIZE(msm8960_functions))
++	phys_addr_t ram_end = 0;
++	const struct tag *t;
++	bool atags_end = false;
++	u32 words = 0;
++	int j = 0;
++
++	memset(prevbl_ddr_banks, 0, sizeof(prevbl_ddr_banks));
++
++	for (t = tags; words < SZ_16K / sizeof(u32); t = tag_next(t)) {
++		if (t->hdr.tag == ATAG_NONE) {
++			atags_end = true;
++			break;
++		}
++		if (t->hdr.size < sizeof(struct tag_header) / sizeof(u32))
++			return -EINVAL;
++		if (t->hdr.size > SZ_16K / sizeof(u32) - words)
++			return -EINVAL;
++
++		words += t->hdr.size;
++
++		if (t->hdr.tag != ATAG_MEM)
++			continue;
++		if (t->hdr.size < tag_size(tag_mem32))
++			return -EINVAL;
++		if (!t->u.mem.size)
++			continue;
++
++		prevbl_ddr_banks[j].start = t->u.mem.start;
++		prevbl_ddr_banks[j].size = t->u.mem.size;
++		ram_end = max(ram_end, (phys_addr_t)t->u.mem.start + t->u.mem.size);
++		j++;
++
++		if (j == CONFIG_NR_DRAM_BANKS)
++			break;
++	}
++
++	if (!atags_end && j < CONFIG_NR_DRAM_BANKS) {
++		log_err("Provided more memory banks than we can handle\n");
 +		return -EINVAL;
-+
-+	return msm8960_functions[selector].val;
-+}
-+
-+static const char *msm8960_get_pin_name(struct udevice *dev,
-+					unsigned int selector)
-+{
-+	if (selector < MSM8960_NUM_GPIO)
-+		snprintf(pin_name, MAX_PIN_NAME_LEN, "gpio%u", selector);
-+	else
-+		snprintf(pin_name, MAX_PIN_NAME_LEN, "%s",
-+			 msm8960_special_pins_data[selector -
-+						   MSM8960_NUM_GPIO].name);
-+
-+	return pin_name;
-+}
-+
-+static const struct msm_pinctrl_data msm8960_data = {
-+	.pin_data = {
-+		.pin_count = MSM8960_NUM_PINS,
-+		.gpio_base = MSM8960_GPIO_BASE,
-+		.gpio_stride = MSM8960_GPIO_STRIDE,
-+		.special_pins_start = MSM8960_NUM_GPIO,
-+		.special_pins_data = msm8960_special_pins_data,
-+	},
-+	.functions_count = ARRAY_SIZE(msm8960_functions),
-+	.get_function_name = msm8960_get_function_name,
-+	.get_function_mux = msm8960_get_function_mux,
-+	.get_pin_name = msm8960_get_pin_name,
-+};
-+
-+static int msm8960_bind_pshold(struct udevice *dev)
-+{
-+	struct driver *drv;
-+
-+	drv = lists_driver_lookup_name("qcom_pshold");
-+	if (!drv)
-+		return -ENOENT;
-+
-+	return device_bind_with_driver_data(dev, drv, "msm8960-pshold",
-+					    MSM8960_PS_HOLD_OFFSET,
-+					    dev_ofnode(dev), NULL);
-+}
-+
-+static int msm8960_pinctrl_bind(struct udevice *dev)
-+{
-+	int ret;
-+
-+	if (IS_ENABLED(CONFIG_SYSRESET_QCOM_PSHOLD)) {
-+		ret = msm8960_bind_pshold(dev);
-+		if (ret)
-+			dev_err(dev, "Failed to bind pshold: %d\n", ret);
 +	}
++	if (!j)
++		return -ENODATA;
 +
-+	return msm_pinctrl_bind(dev);
++	qsort(prevbl_ddr_banks, j, sizeof(prevbl_ddr_banks[0]), ddr_bank_cmp);
++
++	gd->ram_base = prevbl_ddr_banks[0].start;
++	gd->ram_size = ram_end - gd->ram_base;
++
++	return 0;
 +}
 +
-+static const struct udevice_id msm8960_pinctrl_ids[] = {
-+	{ .compatible = "qcom,msm8960-pinctrl", .data = (ulong)&msm8960_data },
-+	{ }
-+};
-+
-+U_BOOT_DRIVER(pinctrl_msm8960) = {
-+	.name = "pinctrl_msm8960",
-+	.id = UCLASS_NOP,
-+	.of_match = msm8960_pinctrl_ids,
-+	.bind = msm8960_pinctrl_bind,
-+};
+ static void show_psci_version(void)
+ {
+ #ifdef CONFIG_ARM64
+@@ -227,42 +289,52 @@ static void qcom_psci_fixup(void *fdt)
+  */
+ int board_fdt_blob_setup(void **fdtp)
+ {
+-	struct fdt_header *external_fdt, *internal_fdt;
+-	bool internal_valid, external_valid;
+-	int ret = -ENODATA;
+-
+-	internal_fdt = (struct fdt_header *)*fdtp;
+-	external_fdt = (struct fdt_header *)get_prev_bl_fdt_addr();
+-	external_valid = external_fdt && !fdt_check_header(external_fdt);
+-	internal_valid = !fdt_check_header(internal_fdt);
++	int ret = -ENODATA, setup_ret = -EEXIST;
++	struct fdt_header *internal_fdt = *fdtp;
++	phys_addr_t prev_bl_arg = get_prev_bl_fdt_addr();
++	bool internal_valid = internal_fdt && !fdt_check_header(internal_fdt);
++	bool external_is_fdt = prev_bl_arg &&
++			       !fdt_check_header((const void *)prev_bl_arg);
+ 
+-	/*
+-	 * There is no point returning an error here, U-Boot can't do anything useful in this situation.
+-	 * Bail out while we can still print a useful error message.
+-	 */
+-	if (!internal_valid && !external_valid)
++	if (internal_valid) {
++		debug("Using built in FDT\n");
++	} else if (external_is_fdt) {
++		debug("Using external FDT\n");
++		*fdtp = (void *)prev_bl_arg;
++		setup_ret = 0;
++	} else {
++		/*
++		 * There is no point returning an error here, U-Boot can't do
++		 * anything useful in this situation. Bail out while we can
++		 * still print a useful error message.
++		 */
+ 		panic("Internal FDT is invalid and no external FDT was provided! (fdt=%p)\n",
+-		      external_fdt);
++		      (void *)prev_bl_arg);
++	}
+ 
+ 	/* Prefer memory information from internal DT if it's present */
+ 	if (internal_valid)
+ 		ret = qcom_parse_memory(internal_fdt);
+ 
+-	if (ret < 0 && external_valid) {
++	if (ret < 0 && prev_bl_arg) {
+ 		/* No internal FDT or it lacks a proper /memory node.
+ 		 * The previous bootloader handed us something, let's try that.
+ 		 */
+ 		if (internal_valid)
+ 			debug("No memory info in internal FDT, falling back to external\n");
+ 
+-		ret = qcom_parse_memory(external_fdt);
++		/* the prev BL arg is either an FDT or ATAGS */
++		if (external_is_fdt)
++			ret = qcom_parse_memory((const void *)prev_bl_arg);
++		if (ret < 0 && qcom_atags_valid(prev_bl_arg))
++			ret = qcom_parse_atags((const struct tag *)prev_bl_arg);
+ 	}
+ 
+ 	if (ret < 0)
+ 		panic("No valid memory ranges found!\n");
+ 
+-	/* If we have an external FDT, it can only have come from the Android bootloader. */
+-	if (external_valid)
++	/* If we have a prev BL arg, we assume it came from ABL */
++	if (prev_bl_arg)
+ 		qcom_boot_source = QCOM_BOOT_SOURCE_ANDROID;
+ 	else
+ 		qcom_boot_source = QCOM_BOOT_SOURCE_XBL;
+@@ -270,18 +342,9 @@ int board_fdt_blob_setup(void **fdtp)
+ 	debug("ram_base = %#011lx, ram_size = %#011llx\n",
+ 	      gd->ram_base, (unsigned long long)gd->ram_size);
+ 
+-	if (internal_valid) {
+-		debug("Using built in FDT\n");
+-		ret = -EEXIST;
+-	} else {
+-		debug("Using external FDT\n");
+-		*fdtp = external_fdt;
+-		ret = 0;
+-	}
+-
+ 	qcom_psci_fixup(*fdtp);
+ 
+-	return ret;
++	return setup_ret;
+ }
+ 
+ /*
 
 -- 
 2.54.0
