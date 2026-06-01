@@ -1,10 +1,11 @@
 From: Antony Kurniawan Soemardi <linux@smankusors.com>
-Date: Mon, 01 Jun 2026 15:51:22 +0700
-Subject: [PATCH v3 09/10] ARM: dts: qcom: msm8960: add Riva
+Date: Mon, 01 Jun 2026 15:51:23 +0700
+Subject: [PATCH v3 10/10] ARM: dts: qcom: msm8960: huashan: enable Wi-Fi
+ and Bluetooth
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-msm8960-wifi-v3-9-fec6ac8dba02@smankusors.com>
+Message-Id: <20260601-msm8960-wifi-v3-10-fec6ac8dba02@smankusors.com>
 References: <20260601-msm8960-wifi-v3-0-fec6ac8dba02@smankusors.com>
 In-Reply-To: <20260601-msm8960-wifi-v3-0-fec6ac8dba02@smankusors.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -18,145 +19,52 @@ Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-arm-msm@vger.kernel.org,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  Rudraksha Gupta <guptarud@gmail.com>, 
  Antony Kurniawan Soemardi <linux@smankusors.com>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780304027; l=3618;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780304027; l=1040;
  i=linux@smankusors.com; s=20250609; h=from:subject:message-id;
- bh=NO876SML6vSrC8ii+BaxpGZKwRLkKw+vlpNP59pPkt0=;
- b=xVkMVOdbAvinZN+rk3v5IsHzXtpXZ8++tsi+NM/3ChtPMlQALxdnCGGb815G1HKsXibMK2/6o
- 7jBSg8ycD/1Bhs08iVFvDa6GToW7RQZ5JFdHai9BWWV/wkIynjry14W
+ bh=SLa77ZNp7lfbDqaVc3OTTZcPOotiwNceDTW3KD4D7DQ=;
+ b=ieLZQfTCpZpJFbPAPB3yanH8FouLtHpIsVKpXO7w09BkfxK2ms4VXrprsnHsQSBLKafQqMWei
+ cglfq2TdAGDCvAjogu/2kIvuCUZfrjVOSkEKk5Oeh+4uguYcvVgjPwz
 X-Developer-Key: i=linux@smankusors.com; a=ed25519;
  pk=65wTy06fJl2/h/EJwjr704YG+yjHFhZObJBWzzK+N00=
 X-Endpoint-Received: by B4 Relay for linux@smankusors.com/20250609 with auth_id=733
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the Riva Peripheral Image Loader node to support the Wireless
-Connectivity and Networking Subsystem on MSM8960. This includes:
+Add Wi-Fi and Bluetooth support for Sony Xperia SP.
 
-- Reserved memory region for WCNSS firmware
-- WCN3660 iris radio controller
-- Bluetooth and Wi-Fi sub-devices exposed via the SMD edge
-- Pinctrl states for Bluetooth and Wi-Fi power management
-
-Tested-by: Rudraksha Gupta <guptarud@gmail.com>
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Signed-off-by: Antony Kurniawan Soemardi <linux@smankusors.com>
 ---
- arch/arm/boot/dts/qcom/qcom-msm8960.dtsi | 87 ++++++++++++++++++++++++++++++++
- 1 file changed, 87 insertions(+)
+ arch/arm/boot/dts/qcom/qcom-msm8960-sony-huashan.dts | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
 
-diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
-index 662e2e45bbb8..2ecf33078f8b 100644
---- a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
-+++ b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
-@@ -100,6 +100,11 @@ smem_region: smem@80000000 {
- 			reg = <0x80000000 0x200000>;
- 			no-map;
- 		};
-+
-+		wcnss_mem: wcnss@8f000000 {
-+			reg = <0x8f000000 0x700000>;
-+			no-map;
-+		};
- 	};
+diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960-sony-huashan.dts b/arch/arm/boot/dts/qcom/qcom-msm8960-sony-huashan.dts
+index 591dc837e600..7d54ced3641f 100644
+--- a/arch/arm/boot/dts/qcom/qcom-msm8960-sony-huashan.dts
++++ b/arch/arm/boot/dts/qcom/qcom-msm8960-sony-huashan.dts
+@@ -95,6 +95,21 @@ MATRIX_KEY(1, 1, KEY_CAMERA)
+ 	status = "okay";
+ };
  
- 	smem {
-@@ -321,6 +326,34 @@ i2c12-pins {
- 				};
- 			};
- 
-+			riva_bt_default_state: riva-bt-active-state {
-+				pins = "gpio28", "gpio29";
-+				function = "bt";
-+				drive-strength = <2>;
-+				bias-disable;
-+			};
++&riva {
++	vddcx-supply = <&pm8921_s3>;
++	vddmx-supply = <&pm8921_l24>;
++	vddpx-supply = <&pm8921_s4>;
 +
-+			riva_bt_sleep_state: riva-bt-sleep-state {
-+				pins = "gpio28", "gpio29";
-+				function = "bt";
-+				drive-strength = <2>;
-+				bias-pull-down;
-+			};
++	status = "okay";
 +
-+			riva_wlan_default_state: riva-wlan-active-state {
-+				pins = "gpio84", "gpio85", "gpio86", "gpio87", "gpio88";
-+				function = "wlan";
-+				drive-strength = <6>;
-+				bias-pull-down;
-+			};
++	iris {
++		vdddig-supply = <&pm8921_lvs2>;
++		vddpa-supply = <&pm8921_l10>;
++		vddrfa-supply = <&pm8921_s2>;
++		vddxo-supply = <&pm8921_l4>;
++	};
++};
 +
-+			riva_wlan_sleep_state: riva-wlan-sleep-state {
-+				pins = "gpio84", "gpio85", "gpio86", "gpio87", "gpio88";
-+				function = "wlan";
-+				drive-strength = <2>;
-+				bias-pull-up;
-+			};
-+
- 			sdcc3_default_state: sdcc3-default-state {
- 				clk-pins {
- 					pins = "sdc3_clk";
-@@ -460,6 +493,60 @@ saw1_vreg: regulator {
- 			};
- 		};
- 
-+		riva: riva-pil@3200800 {
-+			compatible = "qcom,riva-pil";
-+			reg = <0x03200800 0x1000>,
-+			      <0x03202000 0x2000>,
-+			      <0x03204000 0x100>;
-+			reg-names = "ccu",
-+				    "dxe",
-+				    "pmu";
-+			pinctrl-0 = <&riva_wlan_default_state>, <&riva_bt_default_state>;
-+			pinctrl-1 = <&riva_wlan_sleep_state>, <&riva_bt_sleep_state>;
-+			pinctrl-names = "default", "sleep";
-+			interrupts-extended = <&intc GIC_SPI 199 IRQ_TYPE_EDGE_RISING>,
-+					      <&wcnss_smsm 6 IRQ_TYPE_EDGE_RISING>;
-+			interrupt-names = "wdog", "fatal";
-+			memory-region = <&wcnss_mem>;
-+
-+			status = "disabled";
-+
-+			iris {
-+				compatible = "qcom,wcn3660";
-+				clocks = <&cxo_board>;
-+				clock-names = "xo";
-+			};
-+
-+			smd-edge {
-+				interrupts = <GIC_SPI 198 IRQ_TYPE_EDGE_RISING>;
-+				label = "riva";
-+				qcom,ipc = <&l2cc 8 25>;
-+				qcom,smd-edge = <6>;
-+
-+				wcnss {
-+					compatible = "qcom,wcnss";
-+					qcom,smd-channels = "WCNSS_CTRL";
-+					qcom,mmio = <&riva>;
-+
-+					bluetooth {
-+						compatible = "qcom,wcnss-bt";
-+					};
-+
-+					wifi {
-+						compatible = "qcom,wcnss-wlan";
-+						interrupts = <GIC_SPI 203 IRQ_TYPE_LEVEL_HIGH>,
-+							     <GIC_SPI 202 IRQ_TYPE_LEVEL_HIGH>;
-+						interrupt-names = "tx",
-+								  "rx";
-+						qcom,smem-states = <&apps_smsm 10>,
-+								   <&apps_smsm 9>;
-+						qcom,smem-state-names = "tx-enable",
-+									"tx-rings-empty";
-+					};
-+				};
-+			};
-+		};
-+
- 		clock-controller@4000000 {
- 			compatible = "qcom,mmcc-msm8960";
- 			reg = <0x4000000 0x1000>;
+ &rpm {
+ 	regulators {
+ 		compatible = "qcom,rpm-pm8921-regulators";
 
 -- 
 2.34.1
