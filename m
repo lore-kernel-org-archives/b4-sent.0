@@ -1,10 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Mon, 01 Jun 2026 18:12:56 +1000
-Subject: [PATCH RESEND 15/16] serial: msm: wait for TX empty before reinit
+Date: Mon, 01 Jun 2026 18:12:57 +1000
+Subject: [PATCH RESEND 16/16] button: remap phone HOMEPAGE button
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-qcom-armv7-v1-15-05a08d87e476@samcday.com>
+Message-Id: <20260601-qcom-armv7-v1-16-05a08d87e476@samcday.com>
 References: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 In-Reply-To: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
@@ -35,40 +35,52 @@ Cc: Casey Connolly <casey.connolly@linaro.org>,
  Balaji Selvanathan <balaji.selvanathan@oss.qualcomm.com>, 
  Jens Reidel <adrian@mainlining.org>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=940;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=1243;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=6h2JS7vb3rrgMzpe4XUkpAHDk1EZODZWYc14tqNSuVo=;
- b=XP/ENLw6bNzwF850cp92wJHgfDa/DU5Vfro42lB2S9GD2fwgqcpctpS2aPmp+ONGczJL+q/on
- fDpNoU3MW60C12tRC6pS/t3d1FmUXpLQzvYMpcH7xdbPUN01HqpYafF
+ bh=zFKECPQUM7NXvjsAPsLT2XslIs2BY83r61O3tGD/uCE=;
+ b=M9ItX/5UZSwvRutBeR32p/VPoxOYEMDcaq5ri5tzw2TR8KMbLOvccUDKqXrr8U29ePmlHWbsS
+ DIfOKdOXokQB2z+wITnbfgYNKFDOgEevYHqaGOqgpbYfi62HyEH1U81
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-At least on UARTDM 1.3, I was noticing the early UART debug banner
-getting corrupted. It turns out this is because U-Boot was
-re-initializing the UARTDM block and writing to it before it had
-finished shifting out the FIFO from the previous bootloader. Waiting for
-TX_EMPTY in the status register consistently fixes the issue.
+If I'm being honest, I thought of doing this primarily because I
+haven't wired up the PMIC power button on my samsung-expressltexx yet.
+But, I think it does make sense to remap the center button on older
+Android phones to act as the Enter key anyway.
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- drivers/serial/serial_msm.c | 2 ++
- 1 file changed, 2 insertions(+)
+ drivers/button/Kconfig         | 2 +-
+ drivers/button/button-uclass.c | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/serial/serial_msm.c b/drivers/serial/serial_msm.c
-index 10948e2aede..db085d68a0d 100644
---- a/drivers/serial/serial_msm.c
-+++ b/drivers/serial/serial_msm.c
-@@ -351,6 +351,8 @@ static inline void _debug_uart_init(void)
- 	 *   - HMIBSC: GCC_BLSP1_UART1_APPS_CLK
- 	 */
- 	//apq8016_clk_init_uart(0x1800000, <uart_clk_id>);
-+	while (!(readl(init_serial_data.base + UARTDM_SR) & UARTDM_SR_TX_EMPTY))
-+		;
- 	uart_dm_init(&init_serial_data);
- }
+diff --git a/drivers/button/Kconfig b/drivers/button/Kconfig
+index 6cae16fcc8b..8e6bab74cf1 100644
+--- a/drivers/button/Kconfig
++++ b/drivers/button/Kconfig
+@@ -18,7 +18,7 @@ config BUTTON_REMAP_PHONE_KEYS
+ 	  are remapped to the following navigation keys:
+ 	  - Volume up: Up
+ 	  - Volume down: Down
+-	  - Power: Enter
++	  - Home/Power: Enter
  
+ config BUTTON_ADC
+ 	bool "Button adc"
+diff --git a/drivers/button/button-uclass.c b/drivers/button/button-uclass.c
+index 025917887e8..4e37180fc09 100644
+--- a/drivers/button/button-uclass.c
++++ b/drivers/button/button-uclass.c
+@@ -45,6 +45,7 @@ static int button_remap_phone_keys(int code)
+ 		return KEY_UP;
+ 	case KEY_VOLUMEDOWN:
+ 		return KEY_DOWN;
++	case KEY_HOMEPAGE:
+ 	case KEY_POWER:
+ 		return KEY_ENTER;
+ 	default:
 
 -- 
 2.54.0
