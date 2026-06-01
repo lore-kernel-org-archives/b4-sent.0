@@ -1,10 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Mon, 01 Jun 2026 18:12:55 +1000
-Subject: [PATCH RESEND 14/16] clk: qcom: arch-agnostic pointer fmtstrings
+Date: Mon, 01 Jun 2026 18:12:56 +1000
+Subject: [PATCH RESEND 15/16] serial: msm: wait for TX empty before reinit
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-qcom-armv7-v1-14-05a08d87e476@samcday.com>
+Message-Id: <20260601-qcom-armv7-v1-15-05a08d87e476@samcday.com>
 References: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 In-Reply-To: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
@@ -35,49 +35,40 @@ Cc: Casey Connolly <casey.connolly@linaro.org>,
  Balaji Selvanathan <balaji.selvanathan@oss.qualcomm.com>, 
  Jens Reidel <adrian@mainlining.org>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=1199;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=940;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=arEZXUejhz2XTT4qW5woBRmseXPtJT361FuxHNEfPWE=;
- b=YGl6s7PYpglxC0Ra9nY75aSB2l0cLhQD/4/Kc9HWWB+sV/W/HW0rrPnuafrWqPXb1VLm3uUyd
- 1eq5pHfUWP4AHV1aZRfQKoKCZgVaJLQgkePvT+SpqIvlyPOkpfPz0pk
+ bh=6h2JS7vb3rrgMzpe4XUkpAHDk1EZODZWYc14tqNSuVo=;
+ b=XP/ENLw6bNzwF850cp92wJHgfDa/DU5Vfro42lB2S9GD2fwgqcpctpS2aPmp+ONGczJL+q/on
+ fDpNoU3MW60C12tRC6pS/t3d1FmUXpLQzvYMpcH7xdbPUN01HqpYafF
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Cleans up some warnings when building on arm32.
+At least on UARTDM 1.3, I was noticing the early UART debug banner
+getting corrupted. It turns out this is because U-Boot was
+re-initializing the UARTDM block and writing to it before it had
+finished shifting out the FIFO from the previous bootloader. Waiting for
+TX_EMPTY in the status register consistently fixes the issue.
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- drivers/clk/qcom/clock-qcom.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ drivers/serial/serial_msm.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/clk/qcom/clock-qcom.c b/drivers/clk/qcom/clock-qcom.c
-index 6b46d9db744..0f8c7155784 100644
---- a/drivers/clk/qcom/clock-qcom.c
-+++ b/drivers/clk/qcom/clock-qcom.c
-@@ -77,8 +77,8 @@ void clk_enable_vote_clk(phys_addr_t base, const struct vote_clk *vclk)
- int qcom_gate_clk_en(const struct msm_clk_priv *priv, unsigned long id)
- {
- 	if (id >= priv->data->num_clks || priv->data->clks[id].reg == 0) {
--		log_err("gcc@%#08llx: unknown clock ID %lu!\n",
--			priv->base, id);
-+		log_err("gcc@%p: unknown clock ID %lu!\n",
-+			(void *)priv->base, id);
- 		return -ENOENT;
- 	}
- 
-@@ -115,8 +115,8 @@ void clk_bcr_update(phys_addr_t apps_cmd_rcgr)
- 			break;
- 		udelay(1);
- 	}
--	WARN(count == 50000, "WARNING: RCG @ %#llx [%#010x] stuck at off\n",
--	     apps_cmd_rcgr, readl(apps_cmd_rcgr));
-+	WARN(count == 50000, "WARNING: RCG @ %p [%#010x] stuck at off\n",
-+	     (void *)apps_cmd_rcgr, readl(apps_cmd_rcgr));
+diff --git a/drivers/serial/serial_msm.c b/drivers/serial/serial_msm.c
+index 10948e2aede..db085d68a0d 100644
+--- a/drivers/serial/serial_msm.c
++++ b/drivers/serial/serial_msm.c
+@@ -351,6 +351,8 @@ static inline void _debug_uart_init(void)
+ 	 *   - HMIBSC: GCC_BLSP1_UART1_APPS_CLK
+ 	 */
+ 	//apq8016_clk_init_uart(0x1800000, <uart_clk_id>);
++	while (!(readl(init_serial_data.base + UARTDM_SR) & UARTDM_SR_TX_EMPTY))
++		;
+ 	uart_dm_init(&init_serial_data);
  }
  
- #define CFG_SRC_DIV_MASK	0b11111
 
 -- 
 2.54.0
