@@ -1,137 +1,95 @@
-From: "Samin Y. Chowdhury" <samin_c@outlook.com>
-Date: Sun, 31 May 2026 18:45:07 -0400
-Subject: [PATCH RFC] blk-integrity: fix slab-out-of-bounds in t10_pi_verify
- on namespace revalidation
+From: Jack Wu <jackbb_wu@compal.com>
+Date: Mon, 01 Jun 2026 10:52:01 +0800
+Subject: [PATCH] USB: serial: option: add new usb-id for Dell Wireless
+ DW5826e-m
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260531-blk-integrity-fix-v1-1-cc7084f42cf1@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAPK5HGoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDU2ND3aScbN3MvJLU9KLMkkrdtMwK3VQLQwNLAwOLxDRTEyWgvoKiVKA
- w2MxopSA3Z6VYiGBxaVJWanIJyDSl2loAKVhpn3oAAAA=
-X-Change-ID: 20260531-blk-integrity-fix-e8109008af54
-To: Jens Axboe <axboe@kernel.dk>, 
- "Martin K. Petersen" <martin.petersen@oracle.com>, 
- Keith Busch <kbusch@kernel.org>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
- "Samin Y. Chowdhury" <samin_c@outlook.com>, Sungwoo Kim <iam@sung-woo.kim>, 
- Dave Tian <daveti@purdue.edu>, Weidong Zhu <weizhu@fiu.edu>, 
- Ruimin Sun <rsun@fiu.edu>
+Message-Id: <20260601-dw5826e-option-driver-v1-1-e0a0a72cfe1b@compal.com>
+X-B4-Tracking: v=1; b=H4sIANDzHGoC/yXMwQqDMBCE4VeRPXchphhsX6X0YJJR14PKRm1Bf
+ Pemevxg5t8pQQWJnsVOik2STGNGeSso9M3YgSVmkzXWGWdKjp+qtg48zUueclTZoIyHb4K517C
+ +ovydFa18z+7rfTmtfkBY/jE6jh95huZpeQAAAA==
+X-Change-ID: 20260601-dw5826e-option-driver-e9bac038e2b5
+To: Johan Hovold <johan@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jack Wu <jackbb_wu@compal.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780267537; l=3868;
- i=samin_c@outlook.com; s=20260531; h=from:subject:message-id;
- bh=FkeOPgXRBosTQ74NzcoJaEx11Qy3el90YLb0xvy/x8c=;
- b=yybthjaFNIzhCYNjL8VcfvYMrqAqCK63+hEE1YJAArc0bD4S5Cf2ygKs2cTMdpTl4DBTUR0tO
- aptvoVo4h3+BvWoMRnxVCcO4saBJRMlz92C+ZJ/gR8JgHp9Nsbpt5fY
-X-Developer-Key: i=samin_c@outlook.com; a=ed25519;
- pk=bhYTQ8dsutJTQ/B9OCMAespkxDADq+Ik/7wRt0sTlPQ=
-X-Endpoint-Received: by B4 Relay for samin_c@outlook.com/20260531 with auth_id=801
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780282322; l=2993;
+ i=jackbb_wu@compal.com; s=20260526; h=from:subject:message-id;
+ bh=oLGr2MBmaHaVF3yGoDC09WgaV1UaQJ2oj62gl0Nv3Vk=;
+ b=U9qVeaGN82mBG+a8oU//dTL8mbR9c27hVxQSQkmt4+mJ/Y2QR9I+D+69G3FSCK6N7Ux98uO9h
+ 3u0vcLSvAYRCoZQ/b6DVSrPQxj8zeHcsiWxH44TE2hPoQu+oVK/BO7I
+X-Developer-Key: i=jackbb_wu@compal.com; a=ed25519;
+ pk=VH1prTWixNl8OEUPPSfII3p46MzJpQN8J3+ecE1tZXg=
+X-Endpoint-Received: by B4 Relay for jackbb_wu@compal.com/20260526 with auth_id=793
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Abort early with BLK_STS_PROTECTION if a namespace revalidation changed
-bi->metadata_size after bio_integrity_prep() sized the allocation.
+Add support for Dell DW5826e-m with USB-id 0x413c:0x81ea
 
-Found by FuzzNvme (Syzkaller with FEMU fuzzing framework).
+T:  Bus=03 Lev=01 Prnt=01 Port=04 Cnt=01 Dev#=  8 Spd=480  MxCh= 0
+D:  Ver= 2.10 Cls=ef(misc ) Sub=02 Prot=01 MxPS=64 #Cfgs=  1
+P:  Vendor=413c ProdID=81ea Rev= 5.04
+S:  Manufacturer=DELL
+S:  Product=DW5826e-m Qualcomm Snapdragon X12 Global LTE-A
+S:  SerialNumber=358988870177734
+C:* #Ifs= 7 Cfg#= 1 Atr=a0 MxPwr=500mA
+A:  FirstIf#=12 IfCount= 2 Cls=02(comm.) Sub=0e Prot=00
+I:* If#= 0 Alt= 0 #EPs= 2 Cls=ff(vend.) Sub=ff Prot=30 Driver=option
+E:  Ad=01(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=81(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+I:* If#= 1 Alt= 0 #EPs= 2 Cls=ff(vend.) Sub=42 Prot=01 Driver=usbfs
+E:  Ad=02(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=82(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+I:* If#= 2 Alt= 0 #EPs= 3 Cls=ff(vend.) Sub=ff Prot=60 Driver=option
+E:  Ad=84(I) Atr=03(Int.) MxPS=  10 Ivl=32ms
+E:  Ad=83(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=03(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+I:* If#= 3 Alt= 0 #EPs= 3 Cls=ff(vend.) Sub=ff Prot=40 Driver=option
+E:  Ad=86(I) Atr=03(Int.) MxPS=  10 Ivl=32ms
+E:  Ad=85(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=04(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+I:* If#= 4 Alt= 0 #EPs= 1 Cls=ff(vend.) Sub=ff Prot=ff Driver=option
+E:  Ad=87(I) Atr=03(Int.) MxPS=  64 Ivl=32ms
+I:* If#=12 Alt= 0 #EPs= 1 Cls=02(comm.) Sub=0e Prot=00 Driver=cdc_mbim
+E:  Ad=88(I) Atr=03(Int.) MxPS=  64 Ivl=32ms
+I:  If#=13 Alt= 0 #EPs= 0 Cls=0a(data ) Sub=00 Prot=02 Driver=cdc_mbim
+I:* If#=13 Alt= 1 #EPs= 2 Cls=0a(data ) Sub=00 Prot=02 Driver=cdc_mbim
+E:  Ad=8e(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=0f(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
 
-When a namespace is revalidated between bio_integrity_prep() and
-bio_integrity_verify_fn(), the integrity profile's metadata_size may
-change under the in-flight bio. bio_integrity_verify_fn() re-reads the
-live blk_integrity via blk_get_integrity(), so blk_integrity_iterate()
-uses the new metadata_size as the per-interval step size against a
-buffer sized for the old one, advancing iter->prot_buf past the end of
-the allocation.
-
-task 1:
-  bio_integrity_prep()
-    bio_integrity_alloc_buf()
-      len = bio_integrity_bytes(bi, bio_sectors(bio))   ...(1)
-      bip->bip_iter.bi_size = len
-
-task 2:
-  nvme_update_ns_info_block()
-    blk_mq_freeze_queue()
-    nvme_init_integrity()
-      bi->metadata_size = head->ms                      ...(2)
-    blk_mq_unfreeze_queue()
-
-task 3:
-  bio_integrity_verify_fn()
-    bio_integrity_verify()
-      blk_integrity_iterate()
-        bi = blk_get_integrity()                        ...(3)
-        iter->interval_remaining = 1 << bi->interval_exp
-        iter->prot_buf += bi->metadata_size per interval
-        /* step size from (3), buffer sized at (1): overrun */
-
-Fixes: 8098514bd5ca ("block: always allocate integrity buffer when required")
-Signed-off-by: Samin Y. Chowdhury <samin_c@outlook.com>
-Acked-by: Sungwoo Kim <iam@sung-woo.kim>
-Acked-by: Dave Tian <daveti@purdue.edu>
-Acked-by: Weidong Zhu <weizhu@fiu.edu>
-Acked-by: Ruimin Sun <rsun@fiu.edu>
+Signed-off-by: Jack Wu <jackbb_wu@compal.com>
 ---
-When a namespace is revalidated between bio_integrity_prep() and
-bio_integrity_verify_fn(), the integrity profile's metadata_size may
-change under the in-flight bio. bio_integrity_verify_fn() re-reads the
-live blk_integrity via blk_get_integrity(), so blk_integrity_iterate()
-uses the new metadata_size as the per-interval step size against a
-buffer sized for the old one, advancing iter->prot_buf past the end of
-the allocation.
+ drivers/usb/serial/option.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-task 1:
-  bio_integrity_prep()
-    bio_integrity_alloc_buf()
-      len = bio_integrity_bytes(bi, bio_sectors(bio))   ...(1)
-      bip->bip_iter.bi_size = len
-
-task 2:
-  nvme_update_ns_info_block()
-    blk_mq_freeze_queue()
-    nvme_init_integrity()
-      bi->metadata_size = head->ms                      ...(2)
-    blk_mq_unfreeze_queue()
-
-task 3:
-  bio_integrity_verify_fn()
-    bio_integrity_verify()
-      blk_integrity_iterate()
-        bi = blk_get_integrity()                        ...(3)
-        iter->interval_remaining = 1 << bi->interval_exp
-        iter->prot_buf += bi->metadata_size per interval
-        /* step size from (3), buffer sized at (1): overrun */
----
- block/bio-integrity-auto.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
-
-diff --git a/block/bio-integrity-auto.c b/block/bio-integrity-auto.c
-index 353eed632fc..b404dbaa9f8 100644
---- a/block/bio-integrity-auto.c
-+++ b/block/bio-integrity-auto.c
-@@ -38,6 +38,18 @@ static void bio_integrity_verify_fn(struct work_struct *work)
- 	struct bio_integrity_data *bid =
- 		container_of(work, struct bio_integrity_data, work);
- 	struct bio *bio = bid->bio;
-+	struct blk_integrity *bi = blk_get_integrity(bio->bi_bdev->bd_disk);
-+
-+	if (bi) {
-+		unsigned int required = bio_integrity_bytes(bi, bio_sectors(bio));
-+
-+		if (unlikely(required > bid->bip.bip_iter.bi_size)) {
-+			bio->bi_status = BLK_STS_PROTECTION;
-+			bio_integrity_finish(bid);
-+			bio_endio(bio);
-+			return;
-+		}
-+	}
+diff --git a/drivers/usb/serial/option.c b/drivers/usb/serial/option.c
+index 48ae0188f2e9..e37013a6956a 100644
+--- a/drivers/usb/serial/option.c
++++ b/drivers/usb/serial/option.c
+@@ -203,6 +203,8 @@ static void option_instat_callback(struct urb *urb);
+ #define DELL_PRODUCT_5829E_ESIM			0x81e4
+ #define DELL_PRODUCT_5829E			0x81e6
  
- 	bio->bi_status = bio_integrity_verify(bio, &bid->saved_bio_iter);
- 	bio_integrity_finish(bid);
++#define DELL_PRODUCT_DW5826E_ESIM	0x81ea
++
+ #define DELL_PRODUCT_FM101R_ESIM		0x8213
+ #define DELL_PRODUCT_FM101R			0x8215
+ 
+@@ -1125,6 +1127,7 @@ static const struct usb_device_id option_ids[] = {
+ 	  .driver_info = RSVD(0) | RSVD(6) },
+ 	{ USB_DEVICE_INTERFACE_CLASS(DELL_VENDOR_ID, DELL_PRODUCT_FM101R, 0xff) },
+ 	{ USB_DEVICE_INTERFACE_CLASS(DELL_VENDOR_ID, DELL_PRODUCT_FM101R_ESIM, 0xff) },
++	{ USB_DEVICE_INTERFACE_CLASS(DELL_VENDOR_ID, DELL_PRODUCT_DW5826E_ESIM, 0xff) },
+ 	{ USB_DEVICE(ANYDATA_VENDOR_ID, ANYDATA_PRODUCT_ADU_E100A) },	/* ADU-E100, ADU-310 */
+ 	{ USB_DEVICE(ANYDATA_VENDOR_ID, ANYDATA_PRODUCT_ADU_500A) },
+ 	{ USB_DEVICE(ANYDATA_VENDOR_ID, ANYDATA_PRODUCT_ADU_620UW) },
 
 ---
-base-commit: 174914ea551314c52a61713b9c4bde9e42d48073
-change-id: 20260531-blk-integrity-fix-e8109008af54
+base-commit: e43ffb69e0438cddd72aaa30898b4dc446f664f8
+change-id: 20260601-dw5826e-option-driver-e9bac038e2b5
 
 Best regards,
 --  
-Samin Y. Chowdhury <samin_c@outlook.com>
+Jack Wu <jackbb_wu@compal.com>
 
