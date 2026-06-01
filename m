@@ -1,10 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Mon, 01 Jun 2026 18:12:43 +1000
-Subject: [PATCH RESEND 02/16] timer: Qualcomm KPSS timer support
+Date: Mon, 01 Jun 2026 18:12:44 +1000
+Subject: [PATCH RESEND 03/16] arm: save_prev_bl_data: ARM32 support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-qcom-armv7-v1-2-05a08d87e476@samcday.com>
+Message-Id: <20260601-qcom-armv7-v1-3-05a08d87e476@samcday.com>
 References: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 In-Reply-To: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
@@ -35,160 +35,130 @@ Cc: Casey Connolly <casey.connolly@linaro.org>,
  Balaji Selvanathan <balaji.selvanathan@oss.qualcomm.com>, 
  Jens Reidel <adrian@mainlining.org>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=4404;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=3484;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=fkCXHf02iVs19zps8lhn7zcn6c95chvxbrw76ilJgQ8=;
- b=iTCrwpnjLQ9Q69cfwgd3hhty5KPUofuxpiFBdiTcwHrqFM+W8E7meyPtTiHGnlUAeY9+gAPFZ
- 3Shrdp0qXayA72xBxexOJV7Mw0CuLdIWKCqScjF0TrtjcYQ2r16cnwI
+ bh=+BNM3pjGz3YO1/+L5soCN/xvFf8ElKZj/cCDYKJmZL8=;
+ b=MI1i7o4mLVZ1+l78JmTu57Sqg1pJe2zXqlfsAbL+JuvN7PI1SMj35uPKWEFyrGhM6eTCpKH5e
+ hKNXshY3gxgDt/UWm/yGPEfhDA4/Aiisf0MzVJRzQnvNdwO37WenzT9
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SoCs like MSM8960 and APQ8064 do not support the generic ARM CP15 timer.
-Instead KPSS must be used as a timer source.
+The main change here is to make is_addr_accessible() portable, by using
+gd->bd->bi_ram rather than the ARMv8 memory map. AFAICT, at the point
+that this is running, these two things are 1:1 anyway (see
+qcom_configure_bi_dram).
+
+Once that's out of the way, we add ARM32 support by looking at r2 rather
+than r0 and using portable pointer types.
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- drivers/timer/Kconfig           |  7 +++
- drivers/timer/Makefile          |  1 +
- drivers/timer/qcom-kpss-timer.c | 98 +++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 106 insertions(+)
+ arch/arm/lib/save_prev_bl_data.c | 49 ++++++++++++++++++++++++----------------
+ 1 file changed, 29 insertions(+), 20 deletions(-)
 
-diff --git a/drivers/timer/Kconfig b/drivers/timer/Kconfig
-index 500a25638a9..8de8ce6c14a 100644
---- a/drivers/timer/Kconfig
-+++ b/drivers/timer/Kconfig
-@@ -223,6 +223,13 @@ config ORION_TIMER
- 	  Select this to enable an timer for Orion and Armada devices
- 	  like Armada XP etc.
+diff --git a/arch/arm/lib/save_prev_bl_data.c b/arch/arm/lib/save_prev_bl_data.c
+index 4357acaef6c..83670541c50 100644
+--- a/arch/arm/lib/save_prev_bl_data.c
++++ b/arch/arm/lib/save_prev_bl_data.c
+@@ -12,33 +12,41 @@
+ #include <fdt.h>
+ #include <linux/errno.h>
+ #include <asm/system.h>
+-#include <asm/armv8/mmu.h>
  
-+config QCOM_KPSS_TIMER
-+	bool "Qualcomm KPSS/SCSS timer support"
-+	depends on TIMER && ARM
-+	help
-+	  Select this to enable the Qualcomm KPSS/SCSS digital general
-+	  purpose timer used on older 32-bit Snapdragon SoCs.
-+
- config RISCV_TIMER
- 	bool "RISC-V timer support"
- 	depends on TIMER && RISCV
-diff --git a/drivers/timer/Makefile b/drivers/timer/Makefile
-index d8b3f2b65d4..3bd167d73c2 100644
---- a/drivers/timer/Makefile
-+++ b/drivers/timer/Makefile
-@@ -21,6 +21,7 @@ obj-$(CONFIG_NOMADIK_MTU_TIMER)	+= nomadik-mtu-timer.o
- obj-$(CONFIG_NPCM_TIMER)        += npcm-timer.o
- obj-$(CONFIG_OMAP_TIMER)	+= omap-timer.o
- obj-$(CONFIG_ORION_TIMER)	+= orion-timer.o
-+obj-$(CONFIG_QCOM_KPSS_TIMER)	+= qcom-kpss-timer.o
- obj-$(CONFIG_RENESAS_OSTM_TIMER) += ostm_timer.o
- obj-$(CONFIG_RISCV_TIMER) += riscv_timer.o
- obj-$(CONFIG_ROCKCHIP_TIMER) += rockchip_timer.o
-diff --git a/drivers/timer/qcom-kpss-timer.c b/drivers/timer/qcom-kpss-timer.c
-new file mode 100644
-index 00000000000..543fb2fa44f
---- /dev/null
-+++ b/drivers/timer/qcom-kpss-timer.c
-@@ -0,0 +1,98 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Qualcomm KPSS/SCSS timer driver
-+ * Adapted from Linux drivers/clocksource/timer-qcom.c
-+ *
-+ * Copyright (C) 2007 Google, Inc.
-+ * Copyright (c) 2009-2012,2014, The Linux Foundation. All rights reserved.
-+ */
-+
-+#include <dm.h>
-+#include <div64.h>
-+#include <errno.h>
-+#include <timer.h>
+-static ulong reg0 __section(".data");
 +#include <asm/global_data.h>
-+#include <asm/io.h>
-+#include <linux/bitops.h>
 +
 +DECLARE_GLOBAL_DATA_PTR;
 +
-+#define TIMER_COUNT_VAL   0x04
-+#define TIMER_ENABLE      0x08
-+#define TIMER_ENABLE_EN   BIT(0)
-+#define DGT_CLK_CTL       0x10
-+#define DGT_CLK_CTL_DIV_4 0x3
++static phys_addr_t prev_bl_fdt_addr __section(".data");
+ 
+ /**
+- * Save x0 register value, assuming previous bootloader set it to
+- * point on loaded fdt or (for older linux kernels)atags.
++ * Save the register value used by Linux boot ABI to pass the FDT or ATAGS.
+  */
+-void save_boot_params(ulong r0)
++void save_boot_params(ulong r0, ulong __always_unused r1, ulong r2)
+ {
+-	reg0 = r0;
++	if (IS_ENABLED(CONFIG_ARM64))
++		prev_bl_fdt_addr = r0;
++	else
++		prev_bl_fdt_addr = r2;
 +
-+#define QCOM_TIMER_DGT_OFFSET   0x24
-+#define QCOM_TIMER_DGT_RATE_DIV 4
+ 	save_boot_params_ret();
+ }
+ 
+ bool is_addr_accessible(phys_addr_t addr)
+ {
+-	struct mm_region *mem = mem_map;
+ 	phys_addr_t bank_start;
+ 	phys_addr_t bank_end;
+ 
+-	while (mem->size) {
+-		bank_start = mem->phys;
+-		bank_end = bank_start + mem->size;
+-		debug("check if block %pap - %pap includes %pap\n", &bank_start, &bank_end, &addr);
+-		if (addr > bank_start && addr < bank_end)
++	for (int i = 0; i < CONFIG_NR_DRAM_BANKS; i++) {
++		if (!gd->bd->bi_dram[i].size)
++			continue;
 +
-+struct qcom_kpss_timer_priv {
-+	void __iomem *source_base;
-+	void __iomem *counter;
-+};
-+
-+static u64 notrace qcom_kpss_timer_get_count(struct udevice *dev)
-+{
-+	struct qcom_kpss_timer_priv *priv = dev_get_priv(dev);
-+
-+	return timer_conv_64(readl(priv->counter));
-+}
-+
-+static int qcom_kpss_timer_probe(struct udevice *dev)
-+{
-+	struct timer_dev_priv *uc_priv = dev_get_uclass_priv(dev);
-+	struct qcom_kpss_timer_priv *priv = dev_get_priv(dev);
-+	u32 rate;
-+	int ret;
-+
-+	ret = dev_read_u32(dev, "clock-frequency", &rate);
-+	if (ret)
-+		return ret;
-+
-+	uc_priv->clock_rate = rate / QCOM_TIMER_DGT_RATE_DIV;
-+
-+	writel(DGT_CLK_CTL_DIV_4, priv->source_base + DGT_CLK_CTL);
-+	writel(TIMER_ENABLE_EN, priv->source_base + TIMER_ENABLE);
-+
-+	return 0;
-+}
-+
-+static int qcom_kpss_timer_of_to_plat(struct udevice *dev)
-+{
-+	struct qcom_kpss_timer_priv *priv = dev_get_priv(dev);
-+	phys_addr_t base;
-+	phys_addr_t source_base;
-+	u32 cpu_offset;
-+
-+	base = dev_read_addr(dev);
-+	if (base == FDT_ADDR_T_NONE)
-+		return -EINVAL;
-+
-+	cpu_offset = dev_read_u32_default(dev, "cpu-offset", 0);
-+	source_base = base + cpu_offset + QCOM_TIMER_DGT_OFFSET;
-+	priv->source_base = map_physmem(source_base, 0x100, MAP_NOCACHE);
-+	priv->counter = priv->source_base + TIMER_COUNT_VAL;
-+
-+	return 0;
-+}
-+
-+static const struct timer_ops qcom_kpss_timer_ops = {
-+	.get_count = qcom_kpss_timer_get_count,
-+};
-+
-+static const struct udevice_id qcom_kpss_timer_ids[] = {
-+	{ .compatible = "qcom,kpss-timer" },
-+	{ .compatible = "qcom,scss-timer" },
-+	{ }
-+};
-+
-+U_BOOT_DRIVER(qcom_kpss_timer) = {
-+	.name		= "qcom_kpss_timer",
-+	.id		= UCLASS_TIMER,
-+	.of_match	= qcom_kpss_timer_ids,
-+	.of_to_plat	= qcom_kpss_timer_of_to_plat,
-+	.probe		= qcom_kpss_timer_probe,
-+	.ops		= &qcom_kpss_timer_ops,
-+	.priv_auto	= sizeof(struct qcom_kpss_timer_priv),
-+	.flags		= DM_FLAG_PRE_RELOC,
-+};
++		bank_start = gd->bd->bi_dram[i].start;
++		bank_end = bank_start + gd->bd->bi_dram[i].size;
++		debug("check if block %pap - %pap includes %pap\n",
++		      &bank_start, &bank_end, &addr);
++		if (addr >= bank_start && addr < bank_end)
+ 			return true;
+-		mem++;
+ 	}
+ 
+ 	return false;
+@@ -46,33 +54,34 @@ bool is_addr_accessible(phys_addr_t addr)
+ 
+ phys_addr_t get_prev_bl_fdt_addr(void)
+ {
+-	return reg0;
++	return prev_bl_fdt_addr;
+ }
+ 
+ int save_prev_bl_data(void)
+ {
+ 	struct fdt_header *fdt_blob;
+ 	int node;
+-	u64 initrd_start_prop;
++	phys_addr_t initrd_start_prop;
+ 
+-	if (!is_addr_accessible((phys_addr_t)reg0))
++	if (!is_addr_accessible(prev_bl_fdt_addr))
+ 		return -ENODATA;
+ 
+-	fdt_blob = (struct fdt_header *)reg0;
++	fdt_blob = (struct fdt_header *)prev_bl_fdt_addr;
+ 	if (!fdt_valid(&fdt_blob)) {
+-		pr_warn("%s: address 0x%lx is not a valid fdt\n", __func__, reg0);
++		pr_warn("%s: address 0x%lx is not a valid fdt\n",
++			__func__, prev_bl_fdt_addr);
+ 		return -ENODATA;
+ 	}
+ 
+ 	if (IS_ENABLED(CONFIG_SAVE_PREV_BL_FDT_ADDR))
+-		env_set_addr("prevbl_fdt_addr", (void *)reg0);
++		env_set_addr("prevbl_fdt_addr", (const void *)prev_bl_fdt_addr);
+ 	if (!IS_ENABLED(CONFIG_SAVE_PREV_BL_INITRAMFS_START_ADDR))
+ 		return 0;
+ 
+ 	node = fdt_path_offset(fdt_blob, "/chosen");
+ 	if (!node) {
+ 		pr_warn("%s: chosen node not found in device tree at addr: 0x%lx\n",
+-					__func__, reg0);
++					__func__, prev_bl_fdt_addr);
+ 		return -ENODATA;
+ 	}
+ 	/*
 
 -- 
 2.54.0
