@@ -1,10 +1,11 @@
 From: Sam Day <me@samcday.com>
-Date: Mon, 01 Jun 2026 18:12:50 +1000
-Subject: [PATCH RESEND 09/16] sysreset: qcom-pshold: offset support
+Date: Mon, 01 Jun 2026 18:12:51 +1000
+Subject: [PATCH RESEND 10/16] pinctrl: qcom: configurable GPIO
+ offset/stride
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-qcom-armv7-v1-9-05a08d87e476@samcday.com>
+Message-Id: <20260601-qcom-armv7-v1-10-05a08d87e476@samcday.com>
 References: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 In-Reply-To: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
@@ -35,54 +36,84 @@ Cc: Casey Connolly <casey.connolly@linaro.org>,
  Balaji Selvanathan <balaji.selvanathan@oss.qualcomm.com>, 
  Jens Reidel <adrian@mainlining.org>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=1203;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=2547;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=TxwSM2ajegUQsXtmSlBraUNkwazoTxuWpd5kLnaPIW4=;
- b=PvIFJ2cP06HF8dG74yIJlHZZfnGq+ruzycAEVRimICDzK8fCsnUZ/1aSkEs/t03wllajqeXGq
- tVCPEzr/9XRBimT+snkTmCY7DaKOZhG8/kw6aGvhc0zH5WJsEhb9C76
+ bh=6bPzR204m6EqF0qblxuJserSk3E5YIYcDCv48l6t78E=;
+ b=2ocu89xIu6mXSy4gfcnBJi+ui2u9sF9ai0pClDff+dMGP0/me3Oe6QVYtMD3mwfjIuR0dQDsj
+ CM103NGau3dDTmu4zWDPY0tyjkQ6ZxMLr6vjFa8Kgi9InJbAnc10gAM
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On older SoCs (such as MSM8960/MSM8930), PS_HOLD is exposed through
-the TLMM aperture. To prepare for that use-case, this driver is updated
-to accept arbitrary offsets from regbase.
+The infra currently assumes that each GPIO register block is 0x1000
+wide. This is not the case on older TLMM versions.
+
+For example, the GPIOs on MSM8960's TLMM hav an *offset* of 0x1000,
+and each register block is only 0x10 wide.
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- drivers/sysreset/sysreset_qcom-pshold.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ arch/arm/mach-snapdragon/include/mach/gpio.h | 12 ++++++++----
+ drivers/gpio/msm_gpio.c                      |  2 +-
+ drivers/pinctrl/qcom/pinctrl-qcom.c          |  2 +-
+ 3 files changed, 10 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/sysreset/sysreset_qcom-pshold.c b/drivers/sysreset/sysreset_qcom-pshold.c
-index 45290478536..f8be1f2f593 100644
---- a/drivers/sysreset/sysreset_qcom-pshold.c
-+++ b/drivers/sysreset/sysreset_qcom-pshold.c
-@@ -10,6 +10,7 @@
-  */
+diff --git a/arch/arm/mach-snapdragon/include/mach/gpio.h b/arch/arm/mach-snapdragon/include/mach/gpio.h
+index 11e8104baf2..49bf480c903 100644
+--- a/arch/arm/mach-snapdragon/include/mach/gpio.h
++++ b/arch/arm/mach-snapdragon/include/mach/gpio.h
+@@ -27,16 +27,20 @@ struct msm_special_pin_data {
+ struct msm_pin_data {
+ 	int pin_count;
+ 	const unsigned int *pin_offsets;
++	u32 gpio_base;
++	/* defaults to 0x1000 */
++	u32 gpio_stride;
+ 	unsigned int special_pins_start;
+ 	const struct msm_special_pin_data *special_pins_data;
+ };
  
- #include <dm.h>
-+#include <errno.h>
- #include <sysreset.h>
- #include <asm/io.h>
- #include <linux/delay.h>
-@@ -35,9 +36,15 @@ static struct sysreset_ops qcom_pshold_ops = {
- static int qcom_pshold_probe(struct udevice *dev)
+-static inline u32 qcom_pin_offset(const unsigned int *offs, unsigned int selector)
++static inline u32 qcom_pin_offset(const struct msm_pin_data *pindata, unsigned int selector)
  {
- 	struct qcom_pshold_priv *priv = dev_get_priv(dev);
-+	ulong offset = dev_get_driver_data(dev);
+-	u32 out = (selector * 0x1000);
++	u32 stride = pindata->gpio_stride ? pindata->gpio_stride : 0x1000;
++	u32 out = pindata->gpio_base + selector * stride;
  
- 	priv->base = dev_read_addr(dev);
--	return priv->base == FDT_ADDR_T_NONE ? -EINVAL : 0;
-+	if (priv->base == FDT_ADDR_T_NONE)
-+		return -EINVAL;
-+
-+	priv->base += offset;
-+
-+	return 0;
+-	if (offs)
+-		return out + offs[selector];
++	if (pindata->pin_offsets)
++		return out + pindata->pin_offsets[selector];
+ 
+ 	return out;
  }
+diff --git a/drivers/gpio/msm_gpio.c b/drivers/gpio/msm_gpio.c
+index 7de332c66ae..a24d0f03398 100644
+--- a/drivers/gpio/msm_gpio.c
++++ b/drivers/gpio/msm_gpio.c
+@@ -29,7 +29,7 @@ struct msm_gpio_bank {
+ };
  
- static const struct udevice_id qcom_pshold_ids[] = {
+ #define GPIO_CONFIG_REG(dev, x) \
+-	(qcom_pin_offset(((struct msm_gpio_bank *)dev_get_priv(dev))->pin_data->pin_offsets, x))
++	(qcom_pin_offset(((struct msm_gpio_bank *)dev_get_priv(dev))->pin_data, x))
+ 
+ #define GPIO_IN_OUT_REG(dev, x) \
+ 	(GPIO_CONFIG_REG(dev, x) + 0x4)
+diff --git a/drivers/pinctrl/qcom/pinctrl-qcom.c b/drivers/pinctrl/qcom/pinctrl-qcom.c
+index c95db56bc47..82817c2316f 100644
+--- a/drivers/pinctrl/qcom/pinctrl-qcom.c
++++ b/drivers/pinctrl/qcom/pinctrl-qcom.c
+@@ -30,7 +30,7 @@ struct msm_pinctrl_priv {
+ };
+ 
+ #define GPIO_CONFIG_REG(priv, x) \
+-	(qcom_pin_offset((priv)->data->pin_data.pin_offsets, x))
++	(qcom_pin_offset(&(priv)->data->pin_data, x))
+ 
+ #define GPIO_IN_OUT_REG(priv, x) \
+ 	(GPIO_CONFIG_REG(priv, x) + 0x4)
 
 -- 
 2.54.0
