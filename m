@@ -1,10 +1,10 @@
 From: Antony Kurniawan Soemardi <linux@smankusors.com>
-Date: Mon, 01 Jun 2026 15:51:19 +0700
-Subject: [PATCH v3 06/10] ARM: dts: qcom: msm8960: add SCM
+Date: Mon, 01 Jun 2026 15:51:20 +0700
+Subject: [PATCH v3 07/10] ARM: dts: qcom: msm8960: add SMEM & hwlock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-msm8960-wifi-v3-6-fec6ac8dba02@smankusors.com>
+Message-Id: <20260601-msm8960-wifi-v3-7-fec6ac8dba02@smankusors.com>
 References: <20260601-msm8960-wifi-v3-0-fec6ac8dba02@smankusors.com>
 In-Reply-To: <20260601-msm8960-wifi-v3-0-fec6ac8dba02@smankusors.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -18,49 +18,73 @@ Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-arm-msm@vger.kernel.org,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  Rudraksha Gupta <guptarud@gmail.com>, 
  Antony Kurniawan Soemardi <linux@smankusors.com>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780304027; l=1008;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780304027; l=1523;
  i=linux@smankusors.com; s=20250609; h=from:subject:message-id;
- bh=qT+aUgqFF9QVn4kMFHM+lNR6npK+SDGWHwtcgzB9u/4=;
- b=Olu0QWkFipf+Y/t4e9s3bpyKBgnAVTu4SJrMOjAQ1cRpxwAveN6JLL5/guhrYbRn3/LySZ897
- VeQno9fKn8TAul+NadxBiiF/5YaUqpAviAumYjwyJW+gYKRfA0bmhJ4
+ bh=Oht/cFl6U3V6NzWGOX7GKn9DSQ6ZGNZg8IzNcNz1o6A=;
+ b=nnIamnuAmt9aV0KPVHQQN/J2+DEjC3baj5RwCdg4w7RzI5GxIDICimKA/JhNoiNnlqz6aU0Z1
+ epXMqTq55u7CFAIQYF8UsB7JXB2apBAXVlmjATS36wp6PbjBbgzHn2V
 X-Developer-Key: i=linux@smankusors.com; a=ed25519;
  pk=65wTy06fJl2/h/EJwjr704YG+yjHFhZObJBWzzK+N00=
 X-Endpoint-Received: by B4 Relay for linux@smankusors.com/20250609 with auth_id=733
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the Secure Channel Manager firmware device node to the MSM8960
-device tree. The SCM is required for secure communication between the
-application processor and other subsystems.
+Enable shared memory communication and add the SFPB lock for MSM8960.
+These provide the foundation for inter-processor communication with the
+Riva (BT + Wi-Fi) subsystem.
 
 Tested-by: Rudraksha Gupta <guptarud@gmail.com>
 Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
 Signed-off-by: Antony Kurniawan Soemardi <linux@smankusors.com>
 ---
- arch/arm/boot/dts/qcom/qcom-msm8960.dtsi | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ arch/arm/boot/dts/qcom/qcom-msm8960.dtsi | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
 diff --git a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
-index 1ae399c5a81f..3c1640188982 100644
+index 3c1640188982..cb7199d0366e 100644
 --- a/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
 +++ b/arch/arm/boot/dts/qcom/qcom-msm8960.dtsi
-@@ -77,6 +77,15 @@ l2: l2-cache {
- 		};
+@@ -91,6 +91,24 @@ memory@80000000 {
+ 		reg = <0x80000000 0>;
  	};
  
-+	firmware {
-+		scm {
-+			compatible = "qcom,scm-msm8960", "qcom,scm";
++	reserved-memory {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		ranges;
 +
-+			clocks = <&rpmcc RPM_DAYTONA_FABRIC_CLK>;
-+			clock-names = "core";
++		smem_region: smem@80000000 {
++			reg = <0x80000000 0x200000>;
++			no-map;
 +		};
 +	};
 +
- 	memory@80000000 {
- 		device_type = "memory";
- 		reg = <0x80000000 0>;
++	smem {
++		compatible = "qcom,smem";
++		memory-region = <&smem_region>;
++
++		hwlocks = <&sfpb_mutex 3>;
++	};
++
+ 	soc: soc {
+ 		compatible = "simple-bus";
+ 		ranges;
+@@ -344,6 +362,12 @@ tsens: thermal-sensor {
+ 			};
+ 		};
+ 
++		sfpb_mutex: hwlock@1200600 {
++			compatible = "qcom,sfpb-mutex";
++			reg = <0x01200600 0x100>;
++			#hwlock-cells = <1>;
++		};
++
+ 		intc: interrupt-controller@2000000 {
+ 			compatible = "qcom,msm-qgic2";
+ 			reg = <0x02000000 0x1000>,
 
 -- 
 2.34.1
