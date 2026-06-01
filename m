@@ -1,11 +1,11 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Mon, 01 Jun 2026 09:07:18 -0700
-Subject: [PATCH net v3 1/2] net: ethernet: oa_tc6: Interrupt is active low,
- level triggered.
+Date: Mon, 01 Jun 2026 09:07:19 -0700
+Subject: [PATCH net v3 2/2] dt-bindings: net: updated interrupt type to be
+ active low, level triggered
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-level-trigger-v3-1-da73e7010532@onsemi.com>
+Message-Id: <20260601-level-trigger-v3-2-da73e7010532@onsemi.com>
 References: <20260601-level-trigger-v3-0-da73e7010532@onsemi.com>
 In-Reply-To: <20260601-level-trigger-v3-0-da73e7010532@onsemi.com>
 To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
@@ -20,38 +20,38 @@ Cc: Piergiorgio Beruto <pier.beruto@onsemi.com>,
  devicetree@vger.kernel.org, 
  Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780330051; l=994;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780330051; l=1094;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=PqRuuDbw4zLWSskW8G1FH424GyCxxpkBl/f2rNkAlbg=;
- b=qGXpWOEDACG/EIW3bVEn/p3fl4bx4qiapy453UbY4aGCkOdU/2LuQ5xi60yy22fYnE0nEZ/4k
- 9YS5rBnV20YAKtBwalaGBnNDqAbQoQblWs99VomGhEiy4prdX7dwz0O
+ bh=GztGW1jH4UUIPIbBXxAULogoffd23r57arWdgZSVKTk=;
+ b=/FVvECJAcKodmarFTdpBNLAQgCzvs6rJj2fMqRMZgMkVEeMtZjcF6d//WUyXmcBOdA5R83fy0
+ AIKNJUsMIZ5D2H/ElUSe/K6JLWdD0fYjW6vYvoN3cLjQcUghET9TTE6
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-According OPEN Alliance 10BASET1x MAC-PHY Serial Interface
-specification, interrupt is active low, level triggered.
+According to OPEN Alliance 10BASE-T1x MACPHY Serial Interface (TC6)
+specification, interrupt type is active low, level triggered interrupt.
 
-Fixes: 2c6ce5354453 ("net: ethernet: oa_tc6: implement mac-phy interrupt")
+Fixes: ac49b950bea9 ("dt-bindings: net: add Microchip's LAN865X 10BASE-T1S MACPHY")
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 ---
- drivers/net/ethernet/oa_tc6.c | 2 +-
+ Documentation/devicetree/bindings/net/microchip,lan8650.yaml | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/net/ethernet/oa_tc6.c b/drivers/net/ethernet/oa_tc6.c
-index 91a906a7918a..667faf155405 100644
---- a/drivers/net/ethernet/oa_tc6.c
-+++ b/drivers/net/ethernet/oa_tc6.c
-@@ -1323,7 +1323,7 @@ struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev)
- 	sched_set_fifo(tc6->spi_thread);
- 
- 	ret = devm_request_irq(&tc6->spi->dev, tc6->spi->irq, oa_tc6_macphy_isr,
--			       IRQF_TRIGGER_FALLING, dev_name(&tc6->spi->dev),
-+			       IRQF_TRIGGER_LOW, dev_name(&tc6->spi->dev),
- 			       tc6);
- 	if (ret) {
- 		dev_err(&tc6->spi->dev, "Failed to request macphy isr %d\n",
+diff --git a/Documentation/devicetree/bindings/net/microchip,lan8650.yaml b/Documentation/devicetree/bindings/net/microchip,lan8650.yaml
+index 61e11d4a07c4..766ff58147ae 100644
+--- a/Documentation/devicetree/bindings/net/microchip,lan8650.yaml
++++ b/Documentation/devicetree/bindings/net/microchip,lan8650.yaml
+@@ -67,7 +67,7 @@ examples:
+         pinctrl-names = "default";
+         pinctrl-0 = <&eth0_pins>;
+         interrupt-parent = <&gpio>;
+-        interrupts = <6 IRQ_TYPE_EDGE_FALLING>;
++        interrupts = <6 IRQ_TYPE_LEVEL_LOW>;
+         local-mac-address = [04 05 06 01 02 03];
+         spi-max-frequency = <15000000>;
+       };
 
 -- 
 2.43.0
