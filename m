@@ -1,10 +1,10 @@
 From: Antony Kurniawan Soemardi <linux@smankusors.com>
-Date: Mon, 01 Jun 2026 15:51:16 +0700
-Subject: [PATCH v3 03/10] mfd: qcom_rpm: add msm8960 QDSS clock resource
+Date: Mon, 01 Jun 2026 15:51:17 +0700
+Subject: [PATCH v3 04/10] clk: qcom: clk-rpm: add msm8960 compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-msm8960-wifi-v3-3-fec6ac8dba02@smankusors.com>
+Message-Id: <20260601-msm8960-wifi-v3-4-fec6ac8dba02@smankusors.com>
 References: <20260601-msm8960-wifi-v3-0-fec6ac8dba02@smankusors.com>
 In-Reply-To: <20260601-msm8960-wifi-v3-0-fec6ac8dba02@smankusors.com>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -19,38 +19,40 @@ Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-arm-msm@vger.kernel.org,
  Rudraksha Gupta <guptarud@gmail.com>, 
  Antony Kurniawan Soemardi <linux@smankusors.com>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780304027; l=915;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780304027; l=1065;
  i=linux@smankusors.com; s=20250609; h=from:subject:message-id;
- bh=AgmB2laCl0GbrLmySaaFvH5zEfoQVILWo5cDVyOQJOw=;
- b=BRysQZ7GyivQYs5wyfSietZmu19sdA4GIUcz7fTo/t5VXgk6TTXWu7/mwfgsS6ldyFp28ReZT
- IORUOPvvnKgA78gRgjKaoebxJ373WecuLdval+tesGvq+GCcLYoAQT3
+ bh=lm6L9ISuVUk452Tk3hf1nHmfNzhGhKGjXfsugz6Twlw=;
+ b=ow1l7b52Ct6t4kTpM8zNEEWEQ5edgKWE3lVCE/rpwIj9w/1Fz1IuACy6TBojKF+/ZWcoJpBqZ
+ dJ1UDh2a4e8AHbtvx801SavZVTue+aDgEc5pLKq911knGztLVgWeGAR
 X-Developer-Key: i=linux@smankusors.com; a=ed25519;
  pk=65wTy06fJl2/h/EJwjr704YG+yjHFhZObJBWzzK+N00=
 X-Endpoint-Received: by B4 Relay for linux@smankusors.com/20250609 with auth_id=733
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The msm8960 RPM resource table is missing the QDSS clock entry (resource
-ID 209) that is present in the android-msm-mako-3.4 downstream kernel.
-Add it so that RPM clock initialization succeeds.
+Add support for the "qcom,rpmcc-msm8960" compatible string to the
+RPM clock driver.
+
+msm8960 uses the same RPM clock descriptions as apq8064, so reuse
+rpm_clk_apq8064 for this compatible.
 
 Tested-by: Rudraksha Gupta <guptarud@gmail.com>
 Signed-off-by: Antony Kurniawan Soemardi <linux@smankusors.com>
 ---
- drivers/mfd/qcom_rpm.c | 1 +
+ drivers/clk/qcom/clk-rpm.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/drivers/mfd/qcom_rpm.c b/drivers/mfd/qcom_rpm.c
-index 27446f43e3f3..0defb3279af1 100644
---- a/drivers/mfd/qcom_rpm.c
-+++ b/drivers/mfd/qcom_rpm.c
-@@ -324,6 +324,7 @@ static const struct qcom_rpm_resource msm8960_rpm_resource_table[] = {
- 	[QCOM_RPM_USB_OTG_SWITCH] =		{ 205, 119, 82, 1 },
- 	[QCOM_RPM_HDMI_SWITCH] =		{ 206, 120, 83, 1 },
- 	[QCOM_RPM_DDR_DMM] =			{ 207, 121, 84, 2 },
-+	[QCOM_RPM_QDSS_CLK] =			{ 209, ~0, 7, 1 },
- };
- 
- static const struct qcom_rpm_data msm8960_template = {
+diff --git a/drivers/clk/qcom/clk-rpm.c b/drivers/clk/qcom/clk-rpm.c
+index be0145631197..601f60274113 100644
+--- a/drivers/clk/qcom/clk-rpm.c
++++ b/drivers/clk/qcom/clk-rpm.c
+@@ -502,6 +502,7 @@ static const struct rpm_clk_desc rpm_clk_ipq806x = {
+ static const struct of_device_id rpm_clk_match_table[] = {
+ 	{ .compatible = "qcom,rpmcc-msm8660", .data = &rpm_clk_msm8660 },
+ 	{ .compatible = "qcom,rpmcc-apq8060", .data = &rpm_clk_msm8660 },
++	{ .compatible = "qcom,rpmcc-msm8960", .data = &rpm_clk_apq8064 },
+ 	{ .compatible = "qcom,rpmcc-apq8064", .data = &rpm_clk_apq8064 },
+ 	{ .compatible = "qcom,rpmcc-ipq806x", .data = &rpm_clk_ipq806x },
+ 	{ }
 
 -- 
 2.34.1
