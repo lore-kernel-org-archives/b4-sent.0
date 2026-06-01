@@ -1,94 +1,58 @@
-From: Gabriel Prostitis <prostitisgabriel@gmail.com>
-Date: Mon, 01 Jun 2026 08:44:11 +0200
-Subject: [PATCH v2 2/2] USB: gadget: inode: fix mm lifetime handling
+From: Rouven Czerwinski <rouven.czerwinski@linaro.org>
+Subject: [PATCH 0/6] Small package manager cleanup series
+Date: Mon, 01 Jun 2026 09:13:01 +0200
+Message-Id: <20260601-topic-packagemanager-cleanup-v1-0-926e4d5b724d@linaro.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-mm-uaf-fix-v2-2-3c942a707bce@gmail.com>
-References: <20260601-mm-uaf-fix-v2-0-3c942a707bce@gmail.com>
-In-Reply-To: <20260601-mm-uaf-fix-v2-0-3c942a707bce@gmail.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Alan Stern <stern@rowland.harvard.edu>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780296264; l=2287;
- i=prostitisgabriel@gmail.com; s=20260530; h=from:subject:message-id;
- bh=zX5aUkyPq0VfaywNfJGd5qPxQieZO7597nqMJ938NSY=;
- b=CuuO+XhPmqlT1WwlhxRnifyczfr7I4Ae7DKspYKwsPADj7f42CmZEnQWd0dxKBk6UCfFBUI+b
- JCs+vAVXyC2DK4UZfJRYRI5reAdp9Jj28LWSzUdBp58rq81DARyPSv5
-X-Developer-Key: i=prostitisgabriel@gmail.com; a=ed25519;
- pk=FwuU+O6ZnvvnFVA45nfqkGlhSmC1P64HLtxRgBebOuY=
-X-Endpoint-Received: by B4 Relay for prostitisgabriel@gmail.com/20260530 with auth_id=800
+X-B4-Tracking: v=1; b=H4sIAP0wHWoC/x3MTQqEMAxA4atI1hOoP1T0KjKLkEYNztTSqgji3
+ S1uHnybd0GSqJKgLy6IcmjS1WeUnwJ4Jj8JqsuGylTWWFPitgZlDMQLTfInnxuRf0J+D1izNF3
+ bOOu4g7wIUUY93/3wve8HywKT6G4AAAA=
+X-Change-ID: 20260601-topic-packagemanager-cleanup-3ce4974d6dc9
+To: openembedded-core@lists.openembedded.org
+Cc: Rouven Czerwinski <rouven.czerwinski@linaro.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780297982; l=1346;
+ i=rouven.czerwinski@linaro.org; s=20260126; h=from:subject:message-id;
+ bh=Edi49FmuxF7FRRimEZBIR+9Rdk0eXhHDi7yyvuVGiFg=;
+ b=CgtLhjHH9ukmSwrHuDeq4WwsmuQSjz+vN8mlzW0rZlgGx3Ta9eNou46vVStZSEkMIzZOpln8a
+ RlBnq14x3/xBnePDuMIhhCMkksdc4piO4HyIaBg1e/n0/+IoxwitEDc
+X-Developer-Key: i=rouven.czerwinski@linaro.org; a=ed25519;
+ pk=/5pmUK/XIAIIo8JA0axgfy1k8NRhRTQkxVwZYa1ga7U=
+X-Endpoint-Received: by B4 Relay for rouven.czerwinski@linaro.org/20260126 with auth_id=616
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-priv stores a pointer to the submitting task's mm_struct,
-but does not currently hold a reference to it while async
-requests are pending.
+Small cleanups I collected while writing my APK package manager talk.
+These should introduce no functional changes.
 
-This can result in a use-after-free if the task exits before
-completion handling finishes.
+Smoke tested by building core-image-minimal with all package managers
+enabled.
 
-Take a reference with mmgrab() when queuing the read request
-and release it with mmdrop() on request completion.
-
-Reported-by: Gabriel Prostitis <prostitisgabriel@gmail.com>
-Signed-off-by: Gabriel Prostitis <prostitisgabriel@gmail.com>
-Acked-by: Alan Stern <stern@rowland.harvard.edu>
+Signed-off-by: Rouven Czerwinski <rouven.czerwinski@linaro.org>
 ---
- drivers/usb/gadget/legacy/inode.c | 17 +++++++++++++----
- 1 file changed, 13 insertions(+), 4 deletions(-)
+Rouven Czerwinski (6):
+      package_manager: sdk: remove install_order
+      package_manager: rootfs: remove install_order
+      package_manager: sdk: remove sdk_host_sysroot
+      package_manager: remove [True, False] list eval
+      documentation.conf: remove do_package_write_tar doc
+      nopackages: remove do_package_write_tar deltask
 
-diff --git a/drivers/usb/gadget/legacy/inode.c b/drivers/usb/gadget/legacy/inode.c
-index d87a8ab51510..db961aaa3740 100644
---- a/drivers/usb/gadget/legacy/inode.c
-+++ b/drivers/usb/gadget/legacy/inode.c
-@@ -471,11 +471,17 @@ static void ep_user_copy_worker(struct work_struct *work)
- 	struct kiocb *iocb = priv->iocb;
- 	size_t ret;
- 
--	kthread_use_mm(mm);
--	ret = copy_to_iter(priv->buf, priv->actual, &priv->to);
--	kthread_unuse_mm(mm);
--	if (!ret)
-+	if (mmget_not_zero(mm)) {
-+		kthread_use_mm(mm);
-+		ret = copy_to_iter(priv->buf, priv->actual, &priv->to);
-+		kthread_unuse_mm(mm);
-+		mmput(mm);
-+		if (!ret)
-+			ret = -EFAULT;
-+	} else {
- 		ret = -EFAULT;
-+	}
-+	mmdrop(mm);
- 
- 	/* completing the iocb can drop the ctx and mm, don't touch mm after */
- 	iocb->ki_complete(iocb, ret);
-@@ -501,6 +507,7 @@ static void ep_aio_complete(struct usb_ep *ep, struct usb_request *req)
- 	 * complete the aio request immediately.
- 	 */
- 	if (priv->to_free == NULL || unlikely(req->actual == 0)) {
-+		mmdrop(priv->mm);
- 		kfree(req->buf);
- 		kfree(priv->to_free);
- 		kfree(priv);
-@@ -541,6 +548,7 @@ static ssize_t ep_aio(struct kiocb *iocb,
- 	priv->epdata = epdata;
- 	priv->actual = 0;
- 	priv->mm = current->mm; /* mm teardown waits for iocbs in exit_aio() */
-+	mmgrab(priv->mm);
- 
- 	/* each kiocb is coupled to one usb_request, but we can't
- 	 * allocate or submit those if the host disconnected.
-@@ -570,6 +578,7 @@ static ssize_t ep_aio(struct kiocb *iocb,
- 
- fail:
- 	spin_unlock_irq(&epdata->dev->lock);
-+	mmdrop(priv->mm);
- 	kfree(priv->to_free);
- 	kfree(priv);
- 	put_ep(epdata);
+ meta/classes-recipe/nopackages.bbclass    | 1 -
+ meta/conf/documentation.conf              | 1 -
+ meta/lib/oe/package_manager/deb/rootfs.py | 4 ++--
+ meta/lib/oe/package_manager/deb/sdk.py    | 6 +++---
+ meta/lib/oe/package_manager/ipk/rootfs.py | 4 ++--
+ meta/lib/oe/package_manager/ipk/sdk.py    | 8 ++++----
+ meta/lib/oe/package_manager/rpm/sdk.py    | 2 +-
+ meta/lib/oe/rootfs.py                     | 2 --
+ meta/lib/oe/sdk.py                        | 5 +----
+ 9 files changed, 13 insertions(+), 20 deletions(-)
+---
+base-commit: 31edc0b82a3dc7b1dd0338da4a8d0d8f5a1dc138
+change-id: 20260601-topic-packagemanager-cleanup-3ce4974d6dc9
 
+Best regards,
 -- 
-2.54.0
+Rouven Czerwinski <rouven.czerwinski@linaro.org>
 
