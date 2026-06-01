@@ -1,11 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Mon, 01 Jun 2026 18:12:45 +1000
-Subject: [PATCH RESEND 04/16] mach-snapdragon: qcom_parse_memory 32-bit
- support
+Date: Mon, 01 Jun 2026 18:12:46 +1000
+Subject: [PATCH RESEND 05/16] mach-snapdragon: gate ARM64 features
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-qcom-armv7-v1-4-05a08d87e476@samcday.com>
+Message-Id: <20260601-qcom-armv7-v1-5-05a08d87e476@samcday.com>
 References: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 In-Reply-To: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
@@ -36,100 +35,138 @@ Cc: Casey Connolly <casey.connolly@linaro.org>,
  Balaji Selvanathan <balaji.selvanathan@oss.qualcomm.com>, 
  Jens Reidel <adrian@mainlining.org>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=2862;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=3504;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=kQo2M8SlSKYZvJ8hXNOdulomZMDlixNj/rjODXhG9g8=;
- b=mK/QSnAUj7pD1oZAXtCoevdwYT5FPuTd7/qHwBzd2TA1+7uEqMCvFS3t2L8rYOd+hZQG/tl0W
- 7k69783JilgAL74zvJTYwaq2VsiQjBjEagPeKieviS330XtMQh+6NH3
+ bh=bIJ7cYF6vytERhAUWslfSVzczauhvqi7mIbsGwwGNTw=;
+ b=0dQl4/Xpv+rUY+KgHDQf+5AmOhjo5+fEX6Zj2EizI1CmMY1U4P5o57BW0q5qC9E756ciTALH0
+ GgDaXregaopAHM9nAHndXzaAskkoQEyEwfITFohDdtC42Xce1alcKCe
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-qcom_parse_memory is updated to handle varying address/size cell counts,
-rather than assuming a count of 2 (64 bit). This means it can now parse
-/memory nodes in both arm64 and arm32 devicetrees.
+With some strategic (and minimal) #ifdef ARM64 gating, we can ensure
+that mach-snapdragon board code compiles cleanly on arm32 toolchains.
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- arch/arm/mach-snapdragon/board.c | 42 ++++++++++++++++++++++++++--------------
- 1 file changed, 28 insertions(+), 14 deletions(-)
+ arch/arm/mach-snapdragon/board.c | 29 +++++++++++++++++++----------
+ 1 file changed, 19 insertions(+), 10 deletions(-)
 
 diff --git a/arch/arm/mach-snapdragon/board.c b/arch/arm/mach-snapdragon/board.c
-index 829a0109ac7..56e943058ed 100644
+index 56e943058ed..627b566d178 100644
 --- a/arch/arm/mach-snapdragon/board.c
 +++ b/arch/arm/mach-snapdragon/board.c
-@@ -115,8 +115,9 @@ int dram_init_banksize(void)
- static int qcom_parse_memory(const void *fdt)
- {
- 	int offset;
--	const fdt64_t *memory;
-+	const fdt32_t *memory;
- 	int memsize;
-+	int parent, addr_cells, size_cells, entry_cells;
- 	phys_addr_t ram_end = 0;
- 	int i, j, banks;
+@@ -9,10 +9,8 @@
+ #define LOG_CATEGORY LOGC_BOARD
+ #define pr_fmt(fmt) "QCOM: " fmt
  
-@@ -124,33 +125,46 @@ static int qcom_parse_memory(const void *fdt)
- 	if (offset < 0)
- 		return -ENODATA;
+-#include <asm/armv8/mmu.h>
+ #include <asm/gpio.h>
+ #include <asm/io.h>
+-#include <asm/psci.h>
+ #include <asm/system.h>
+ #include <dm/device.h>
+ #include <dm/pinctrl.h>
+@@ -22,9 +20,7 @@
+ #include <env.h>
+ #include <fdt_support.h>
+ #include <init.h>
+-#include <linux/arm-smccc.h>
+ #include <linux/bug.h>
+-#include <linux/psci.h>
+ #include <linux/sizes.h>
+ #include <lmb.h>
+ #include <malloc.h>
+@@ -35,13 +31,20 @@
  
-+	parent = fdt_parent_offset(fdt, offset);
-+	if (parent < 0)
-+		return -ENODATA;
-+
-+	addr_cells = fdt_address_cells(fdt, parent);
-+	size_cells = fdt_size_cells(fdt, parent);
-+	entry_cells = addr_cells + size_cells;
-+	if (addr_cells <= 0 || size_cells <= 0)
-+		return -ENODATA;
-+
- 	memory = fdt_getprop(fdt, offset, "reg", &memsize);
- 	if (!memory)
- 		return -ENODATA;
+ #include "qcom-priv.h"
  
--	banks = min(memsize / (2 * sizeof(u64)), (ulong)CONFIG_NR_DRAM_BANKS);
+-DECLARE_GLOBAL_DATA_PTR;
 -
--	if (memsize / sizeof(u64) > CONFIG_NR_DRAM_BANKS * 2)
--		log_err("Provided more than the max of %d memory banks\n", CONFIG_NR_DRAM_BANKS);
-+	banks = min(memsize / (entry_cells * (int)sizeof(fdt32_t)),
-+		    (int)CONFIG_NR_DRAM_BANKS);
+-enum qcom_boot_source qcom_boot_source __section(".data") = 0;
++#ifdef CONFIG_ARM64
++#include <asm/armv8/mmu.h>
++#include <asm/psci.h>
++#include <linux/arm-smccc.h>
++#include <linux/psci.h>
  
- 	if (banks > CONFIG_NR_DRAM_BANKS)
- 		log_err("Provided more memory banks than we can handle\n");
+ static struct mm_region rbx_mem_map[CONFIG_NR_DRAM_BANKS + 2] = { { 0 } };
  
--	for (i = 0, j = 0; i < banks * 2; i += 2, j++) {
--		prevbl_ddr_banks[j].start = get_unaligned_be64(&memory[i]);
--		prevbl_ddr_banks[j].size = get_unaligned_be64(&memory[i + 1]);
--		if (!prevbl_ddr_banks[j].size) {
--			j--;
-+	for (i = 0, j = 0; i < banks; i++) {
-+		phys_addr_t start = fdt_read_number(memory, addr_cells);
-+		phys_size_t size = fdt_read_number(memory + addr_cells,
-+						   size_cells);
+ struct mm_region *mem_map = rbx_mem_map;
++#endif
 +
-+		memory += entry_cells;
-+		if (!size)
- 			continue;
--		}
--		ram_end = max(ram_end, prevbl_ddr_banks[j].start + prevbl_ddr_banks[j].size);
++DECLARE_GLOBAL_DATA_PTR;
 +
-+		prevbl_ddr_banks[j].start = start;
-+		prevbl_ddr_banks[j].size = size;
-+		ram_end = max(ram_end, start + size);
-+		j++;
++enum qcom_boot_source qcom_boot_source __section(".data") = 0;
+ 
+ static struct {
+ 	phys_addr_t start;
+@@ -174,6 +177,7 @@ static int qcom_parse_memory(const void *fdt)
+ 
+ static void show_psci_version(void)
+ {
++#ifdef CONFIG_ARM64
+ 	struct arm_smccc_res res;
+ 
+ 	arm_smccc_smc(ARM_PSCI_0_2_FN_PSCI_VERSION, 0, 0, 0, 0, 0, 0, 0, &res);
+@@ -185,6 +189,7 @@ static void show_psci_version(void)
+ 	debug("PSCI:  v%ld.%ld\n",
+ 	      PSCI_VERSION_MAJOR(res.a0),
+ 	      PSCI_VERSION_MINOR(res.a0));
++#endif
+ }
+ 
+ /**
+@@ -196,6 +201,7 @@ static void show_psci_version(void)
+  */
+ static void qcom_psci_fixup(void *fdt)
+ {
++#ifdef CONFIG_ARM64
+ 	int offset, ret;
+ 	struct arm_smccc_res res;
+ 
+@@ -212,6 +218,7 @@ static void qcom_psci_fixup(void *fdt)
+ 	ret = fdt_del_node(fdt, offset);
+ 	if (ret)
+ 		log_err("Failed to delete /psci node: %d\n", ret);
++#endif
+ }
+ 
+ /* We support booting U-Boot with an internal DT when running as a first-stage bootloader
+@@ -234,8 +241,8 @@ int board_fdt_blob_setup(void **fdtp)
+ 	 * Bail out while we can still print a useful error message.
+ 	 */
+ 	if (!internal_valid && !external_valid)
+-		panic("Internal FDT is invalid and no external FDT was provided! (fdt=%#llx)\n",
+-		      (phys_addr_t)external_fdt);
++		panic("Internal FDT is invalid and no external FDT was provided! (fdt=%p)\n",
++		      external_fdt);
+ 
+ 	/* Prefer memory information from internal DT if it's present */
+ 	if (internal_valid)
+@@ -261,7 +268,7 @@ int board_fdt_blob_setup(void **fdtp)
+ 		qcom_boot_source = QCOM_BOOT_SOURCE_XBL;
+ 
+ 	debug("ram_base = %#011lx, ram_size = %#011llx\n",
+-	      gd->ram_base, gd->ram_size);
++	      gd->ram_base, (unsigned long long)gd->ram_size);
+ 
+ 	if (internal_valid) {
+ 		debug("Using built in FDT\n");
+@@ -595,6 +602,7 @@ int board_late_init(void)
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_ARM64
+ static void build_mem_map(void)
+ {
+ 	int i, j;
+@@ -768,3 +776,4 @@ void enable_caches(void)
  	}
- 
--	if (!banks || !prevbl_ddr_banks[0].size)
-+	if (!j)
- 		return -ENODATA;
- 
- 	/* Sort our RAM banks -_- */
--	qsort(prevbl_ddr_banks, banks, sizeof(prevbl_ddr_banks[0]), ddr_bank_cmp);
-+	qsort(prevbl_ddr_banks, j, sizeof(prevbl_ddr_banks[0]), ddr_bank_cmp);
- 
- 	gd->ram_base = prevbl_ddr_banks[0].start;
- 	gd->ram_size = ram_end - gd->ram_base;
+ 	dcache_enable();
+ }
++#endif
 
 -- 
 2.54.0
