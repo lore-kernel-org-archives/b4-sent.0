@@ -1,55 +1,83 @@
-From: Petr Hodina <petr.hodina@protonmail.com>
-Date: Mon, 01 Jun 2026 13:52:36 +0200
-Subject: [PATCH 2/2] gpio: qcom_pmic_gpio: don't reset pull on direction
- change
+From: George Moussalem <george.moussalem@outlook.com>
+Subject: [PATCH 0/3] IPQ5018: Add and enable GEPHY RX and TX clocks
+Date: Mon, 01 Jun 2026 17:19:07 +0400
+Message-Id: <20260601-ipq5018-gephy-clocks-v1-0-2df8287712c3@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-qcom-gpio-v1-2-e24bcdb35da0@protonmail.com>
-References: <20260601-qcom-gpio-v1-0-e24bcdb35da0@protonmail.com>
-In-Reply-To: <20260601-qcom-gpio-v1-0-e24bcdb35da0@protonmail.com>
-To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
- u-boot@lists.denx.de
-Cc: Casey Connolly <casey.connolly@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Tom Rini <trini@konsulko.com>, 
- Rui Miguel Silva <rui.silva@linaro.org>, phone-devel@vger.kernel.org, 
- Petr Hodina <petr.hodina@protonmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780314756; l=884;
- i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
- bh=gfww1vaKc2KBXsBrPUOGZ84bFFgF2PKWqI3AaBSBrPE=;
- b=jHHTaHG0AoqAD11uxsXZ2qXBg7gbZWuiLEJuhvUIu5J3HurRf7TK/1pdnDlixgQxt7DjLdlka
- DXk7gj+VN8LC3etU4cLgl4lWhV7Q1QbUJHsd9+qhRp0giKVqImH4Bb/
-X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
- pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
-X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBsYxUq6SrQQm2ooyhSiiO6et
+ HyL/x9IHIUTtMUDkU9Jsm8ZqizAz26bGGXIBk26ppoUSjgqUhYnDvONft39kpCt08aQaqwjyGm
+ IPMr1b7v+fT8UZsxAZgAAAA==
+X-Change-ID: 20260601-ipq5018-gephy-clocks-e8a2440178a0
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Florian Fainelli <f.fainelli@gmail.com>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ linux-arm-msm@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780319950; l=2139;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=97pdXoZiUaNbUg/dCgG8k67el3mw2yrvAWwxG2/xB7E=;
+ b=NlWHkSLpvAxs/YmwWdPWhmxX66Jul+YmsKCW5EBMAYOgKHG7r/f6ZLNRlKX8EBD4I2V2bcMSf
+ TyI9Kk35NwFDwxTdmAO3aF8TzLdJz7Jva0N9C9gWzyE6dXUhdTe9Zfj
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fix for pull-up/pull-down/disable as that's independent of the direction.
+Greetings,
 
-Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
+This patch series addresses a missing hardware description issue for the
+Qualcomm IPQ5018 Internal Ethernet PHY, where the data paths fail to
+function correctly unless their dedicated RX and TX clocks are
+explicitly enabled.
+
+Further testing revealed that leaving these clocks unmanaged by the
+kernel, they were inadvertently left enabled by the bootloader / QSDK
+platform, which masked the issue. Testing a fresh network configuration
+path exposed that the data link fails to work without explicit software
+gating.
+
+To correctly introduce the required multi-clock properties, the IPQ5018
+binding definition must first be split away from the shared
+qca,ar803x.yaml schema. This isolation is required because ar803x
+references the generic ethernet-phy.yaml, which enforces a strict
+single-clock limit constraint. 
+
+- Patch 1: Splits the IPQ5018 definitions to its own bindings schema 
+           to accommodate the multi-clock requirement.
+- Patch 2: Appends the missing RX/TX clock definitions into the IPQ5018
+           device tree before driver modification to avoid the driver
+	   failing to probe.
+- Patch 3: Updates the Qualcomm AT803x PHY driver framework to safely
+	   acquire, enable, and gate these clocks upon link state
+	   changes for runtime power optimization.
+
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/gpio/qcom_pmic_gpio.c | 6 ------
- 1 file changed, 6 deletions(-)
+George Moussalem (3):
+      dt-bindings: net: qca,ipq5018: Split IPQ5018 PHY bindings from ar803x
+      arm64: qcom: ipq5018: Add GEPHY RX and TX clocks
+      net: phy: qca,at803x: add RX and TX clock management for IPQ5018 PHY
 
-diff --git a/drivers/gpio/qcom_pmic_gpio.c b/drivers/gpio/qcom_pmic_gpio.c
-index 71cc76fef2f..e67e138ede2 100644
---- a/drivers/gpio/qcom_pmic_gpio.c
-+++ b/drivers/gpio/qcom_pmic_gpio.c
-@@ -129,12 +129,6 @@ static int qcom_gpio_set_direction(struct udevice *dev, unsigned int offset,
- 
- 	_qcom_gpio_set_direction(dev, offset, input, value);
- 
--	/* Set the right pull (no pull) */
--	ret = pmic_reg_write(plat->pmic, gpio_base + REG_DIG_PULL_CTL,
--			     REG_DIG_PULL_NO_PU);
--	if (ret < 0)
--		return ret;
--
- 	/* Configure output pin drivers if needed */
- 	if (!input) {
- 		/* Select the VIN - VIN0, pin is input so it doesn't matter */
+ .../devicetree/bindings/net/qca,ar803x.yaml        | 43 -------------
+ .../devicetree/bindings/net/qca,ipq5018.yaml       | 75 ++++++++++++++++++++++
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi              |  3 +
+ drivers/net/phy/qcom/at803x.c                      | 23 +++++++
+ 4 files changed, 101 insertions(+), 43 deletions(-)
+---
+base-commit: 7da7f07112610a520567421dd2ffcb51beaefbcc
+change-id: 20260601-ipq5018-gephy-clocks-e8a2440178a0
 
+Best regards,
 -- 
-2.53.0
+George Moussalem <george.moussalem@outlook.com>
 
