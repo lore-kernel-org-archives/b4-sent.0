@@ -1,104 +1,66 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Mon, 01 Jun 2026 17:19:10 +0400
-Subject: [PATCH 3/3] net: phy: qca,at803x: add RX and TX clock management
- for IPQ5018 PHY
+From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+Subject: [PATCH net v3 0/2] Resubmitting with cover-letter and threaded
+ patch series.
+Date: Mon, 01 Jun 2026 09:07:17 -0700
+Message-Id: <20260601-level-trigger-v3-0-da73e7010532@onsemi.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-ipq5018-gephy-clocks-v1-3-2df8287712c3@outlook.com>
-References: <20260601-ipq5018-gephy-clocks-v1-0-2df8287712c3@outlook.com>
-In-Reply-To: <20260601-ipq5018-gephy-clocks-v1-0-2df8287712c3@outlook.com>
-To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
+X-B4-Tracking: v=1; b=H4sIADWuHWoC/x3MQQqAIBBG4avErBMsK6SrRAurPxsQizEiiO6et
+ PwW7z2UIIxEffGQ4OLEe8wwZUHz5qKH4iWbal13ujWVCrgQ1CnsPUTZeaqcNW7VpqHcHIKV7/8
+ 3UMRJ4/t+M1JklWQAAAA=
+To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Florian Fainelli <f.fainelli@gmail.com>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- linux-arm-msm@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780319950; l=2335;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=k3J1uSCRHsxM9xs2etq4AynajTAyY7ew0xbYTGGX5vo=;
- b=T1QR/m5s94c/CPkXHvBNE2KhtPL7PM1qxAywEQga6mFxr+JUiu9n+jBVP6FSfepUu5C0nvxuv
- pu3taMBlZx8CHsA39HzlvDSNypDiHadRKmlsOptmUKgoPNigkbaDPgl
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Piergiorgio Beruto <pier.beruto@onsemi.com>, 
+ Andrew Lunn <andrew@lunn.ch>, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Conor Dooley <conor.dooley@microchip.com>, 
+ devicetree@vger.kernel.org, 
+ Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780330051; l=1287;
+ i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
+ bh=kw2fWl3/kggl+8QoaAiMjksNRBNP+AfA83rL8vln0fk=;
+ b=SS/YfqGoPg9wOTPHlmfv/m8D1xooz6roiF1ub99TrzArgzjzL5VxnIisRzP3B7LTiInntQGS4
+ 2NyLmUlB7iaA3sLOMe7S8Ly4Y0yK93snp81QnuKCJZxIk1bnHf2Ot5i
+X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
+ pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
+X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Acquire and enable the RX and TX clocks for the IPQ5018 PHY. These
-clocks are required for the PHY's datapath to function correctly.
-In addition, gate the clocks upon link state changes for improved power
-management.
+According to OPEN Alliance 10BASE-T1x MAC-PHY Serial Interface
+specification, MAC-PHY interrupt is "active low, level triggered".
+The specification mentions about the conditions in which the IRQ
+is asserted and deasserted.
 
-Fixes: d46502279a11 ("net: phy: qcom: at803x: Add Qualcomm IPQ5018 Internal PHY support")
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Bug is inadvertently introduced by treating the IRQ in the OA TC6
+framework driver and in dt-binding YAML file as edge triggered.
+
+Changes are done in two files
+ - OA TC6 framework Ethernet driver
+ - YAML file for the vendor that already uses OA TC6 framework.
+
+Maintainer for this driver is already informed and aware of these
+changes. Testing for these changes was done in onsemi's setup and
+found to be working.
+
+Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 ---
- drivers/net/phy/qcom/at803x.c | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+Selvamani Rajagopal (2):
+      net: ethernet: oa_tc6: Interrupt is active low, level triggered.
+      dt-bindings: net: updated interrupt type to be active low, level triggered
 
-diff --git a/drivers/net/phy/qcom/at803x.c b/drivers/net/phy/qcom/at803x.c
-index 63726cf98cd4..b7361a14220d 100644
---- a/drivers/net/phy/qcom/at803x.c
-+++ b/drivers/net/phy/qcom/at803x.c
-@@ -19,6 +19,7 @@
- #include <linux/regulator/consumer.h>
- #include <linux/of.h>
- #include <linux/phylink.h>
-+#include <linux/clk.h>
- #include <linux/reset.h>
- #include <linux/phy_port.h>
- #include <dt-bindings/net/qca-ar803x.h>
-@@ -176,6 +177,8 @@ struct at803x_context {
- };
- 
- struct ipq5018_priv {
-+	struct clk *rx_clk;
-+	struct clk *tx_clk;
- 	struct reset_control *rst;
- 	bool set_short_cable_dac;
- };
-@@ -1062,6 +1065,16 @@ static int ipq5018_config_init(struct phy_device *phydev)
- 
- static void ipq5018_link_change_notify(struct phy_device *phydev)
- {
-+	struct ipq5018_priv *priv = phydev->priv;
-+
-+	if (phydev->link) {
-+		clk_enable(priv->rx_clk);
-+		clk_enable(priv->tx_clk);
-+	} else {
-+		clk_disable(priv->rx_clk);
-+		clk_disable(priv->tx_clk);
-+	}
-+
- 	/*
- 	 * Reset the FIFO buffer upon link disconnects to clear any residual data
- 	 * which may cause issues with the FIFO which it cannot recover from.
-@@ -1084,6 +1097,16 @@ static int ipq5018_probe(struct phy_device *phydev)
- 	priv->set_short_cable_dac = of_property_read_bool(dev->of_node,
- 							  "qcom,dac-preset-short-cable");
- 
-+	priv->rx_clk = devm_clk_get_enabled(dev, "rx");
-+	if (IS_ERR(priv->rx_clk))
-+		return dev_err_probe(dev, PTR_ERR(priv->rx_clk),
-+				     "failed to get and enable RX clock\n");
-+
-+	priv->tx_clk = devm_clk_get_enabled(dev, "tx");
-+	if (IS_ERR(priv->tx_clk))
-+		return dev_err_probe(dev, PTR_ERR(priv->tx_clk),
-+				     "failed to get and enable TX clock\n");
-+
- 	priv->rst = devm_reset_control_array_get_exclusive(dev);
- 	if (IS_ERR(priv->rst))
- 		return dev_err_probe(dev, PTR_ERR(priv->rst),
+ Documentation/devicetree/bindings/net/microchip,lan8650.yaml | 2 +-
+ drivers/net/ethernet/oa_tc6.c                                | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+---
+base-commit: 02896a7fa4cd3ec61d60ba30136841e4f04bdeac
+change-id: 20260531-level-trigger-8cb1a83af034
 
+Best regards,
 -- 
-2.53.0
+Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
