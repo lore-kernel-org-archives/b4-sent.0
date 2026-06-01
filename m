@@ -1,10 +1,11 @@
 From: Sam Day <me@samcday.com>
-Date: Mon, 01 Jun 2026 18:12:46 +1000
-Subject: [PATCH RESEND 05/16] mach-snapdragon: gate ARM64 features
+Date: Mon, 01 Jun 2026 18:12:47 +1000
+Subject: [PATCH RESEND 06/16] mach-snapdragon: introduce
+ ARCH_SNAPDRAGON_ARM32
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-qcom-armv7-v1-5-05a08d87e476@samcday.com>
+Message-Id: <20260601-qcom-armv7-v1-6-05a08d87e476@samcday.com>
 References: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 In-Reply-To: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
@@ -35,138 +36,71 @@ Cc: Casey Connolly <casey.connolly@linaro.org>,
  Balaji Selvanathan <balaji.selvanathan@oss.qualcomm.com>, 
  Jens Reidel <adrian@mainlining.org>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=3504;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=1775;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=bIJ7cYF6vytERhAUWslfSVzczauhvqi7mIbsGwwGNTw=;
- b=0dQl4/Xpv+rUY+KgHDQf+5AmOhjo5+fEX6Zj2EizI1CmMY1U4P5o57BW0q5qC9E756ciTALH0
- GgDaXregaopAHM9nAHndXzaAskkoQEyEwfITFohDdtC42Xce1alcKCe
+ bh=CeQPeO7BRJn6Vqd3ZzjZhpN9ywFiQJrT8v1EeDohT0w=;
+ b=JFpVi8NeqYEBoFlfy88EhE2INqOUNfzpB9nzTMtZo+gBxpqBaiVY6VdcBYTItUYzav6HqT6df
+ 8PynJM+l943BEwSY7xOnX0+zZ5uRieaB66gaLfoJvoIT5zj4xtcm5CK
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With some strategic (and minimal) #ifdef ARM64 gating, we can ensure
-that mach-snapdragon board code compiles cleanly on arm32 toolchains.
+This config symbol lays the groundwork for arm32 support in the
+Snapdragon board code.
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- arch/arm/mach-snapdragon/board.c | 29 +++++++++++++++++++----------
- 1 file changed, 19 insertions(+), 10 deletions(-)
+ arch/arm/Kconfig                 | 11 ++++++-----
+ arch/arm/mach-snapdragon/Kconfig |  6 ++++++
+ 2 files changed, 12 insertions(+), 5 deletions(-)
 
-diff --git a/arch/arm/mach-snapdragon/board.c b/arch/arm/mach-snapdragon/board.c
-index 56e943058ed..627b566d178 100644
---- a/arch/arm/mach-snapdragon/board.c
-+++ b/arch/arm/mach-snapdragon/board.c
-@@ -9,10 +9,8 @@
- #define LOG_CATEGORY LOGC_BOARD
- #define pr_fmt(fmt) "QCOM: " fmt
+diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
+index 514bf2000b4..0847985a367 100644
+--- a/arch/arm/Kconfig
++++ b/arch/arm/Kconfig
+@@ -1134,7 +1134,8 @@ config ARCH_RENESAS
  
--#include <asm/armv8/mmu.h>
- #include <asm/gpio.h>
- #include <asm/io.h>
--#include <asm/psci.h>
- #include <asm/system.h>
- #include <dm/device.h>
- #include <dm/pinctrl.h>
-@@ -22,9 +20,7 @@
- #include <env.h>
- #include <fdt_support.h>
- #include <init.h>
--#include <linux/arm-smccc.h>
- #include <linux/bug.h>
--#include <linux/psci.h>
- #include <linux/sizes.h>
- #include <lmb.h>
- #include <malloc.h>
-@@ -35,13 +31,20 @@
+ config ARCH_SNAPDRAGON
+ 	bool "Qualcomm Snapdragon SoCs"
+-	select ARM64
++	select ARM64 if !ARCH_SNAPDRAGON_ARM32
++	select CPU_V7A if ARCH_SNAPDRAGON_ARM32
+ 	select DM
+ 	select DM_GPIO
+ 	select DM_SERIAL
+@@ -1148,11 +1149,11 @@ config ARCH_SNAPDRAGON
+ 	select BOARD_LATE_INIT
+ 	select OF_BOARD
+ 	select SAVE_PREV_BL_FDT_ADDR if !ENABLE_ARM_SOC_BOOT0_HOOK
+-	select LINUX_KERNEL_IMAGE_HEADER if !ENABLE_ARM_SOC_BOOT0_HOOK
++	select LINUX_KERNEL_IMAGE_HEADER if ARM64 && !ENABLE_ARM_SOC_BOOT0_HOOK
+ 	select SYSRESET
+-	select SYSRESET_PSCI
+-	select ANDROID_BOOT_IMAGE_IGNORE_BLOB_ADDR
+-	select MMU_PGPROT
++	select SYSRESET_PSCI if ARM64
++	select ANDROID_BOOT_IMAGE_IGNORE_BLOB_ADDR if ARM64
++	select MMU_PGPROT if ARM64
+ 	imply OF_UPSTREAM
+ 	imply CMD_DM
+ 	imply DM_USB_GADGET
+diff --git a/arch/arm/mach-snapdragon/Kconfig b/arch/arm/mach-snapdragon/Kconfig
+index d3de8693b5a..e663b0015c7 100644
+--- a/arch/arm/mach-snapdragon/Kconfig
++++ b/arch/arm/mach-snapdragon/Kconfig
+@@ -1,5 +1,11 @@
+ if ARCH_SNAPDRAGON
  
- #include "qcom-priv.h"
- 
--DECLARE_GLOBAL_DATA_PTR;
--
--enum qcom_boot_source qcom_boot_source __section(".data") = 0;
-+#ifdef CONFIG_ARM64
-+#include <asm/armv8/mmu.h>
-+#include <asm/psci.h>
-+#include <linux/arm-smccc.h>
-+#include <linux/psci.h>
- 
- static struct mm_region rbx_mem_map[CONFIG_NR_DRAM_BANKS + 2] = { { 0 } };
- 
- struct mm_region *mem_map = rbx_mem_map;
-+#endif
++config ARCH_SNAPDRAGON_ARM32
++	bool "Build Snapdragon support for ARMv7-A SoCs"
++	help
++	  Enable this when building U-Boot for older 32-bit Snapdragon
++	  platforms, such as the MSM8960 family.
 +
-+DECLARE_GLOBAL_DATA_PTR;
-+
-+enum qcom_boot_source qcom_boot_source __section(".data") = 0;
+ config SYS_SOC
+ 	default "snapdragon"
  
- static struct {
- 	phys_addr_t start;
-@@ -174,6 +177,7 @@ static int qcom_parse_memory(const void *fdt)
- 
- static void show_psci_version(void)
- {
-+#ifdef CONFIG_ARM64
- 	struct arm_smccc_res res;
- 
- 	arm_smccc_smc(ARM_PSCI_0_2_FN_PSCI_VERSION, 0, 0, 0, 0, 0, 0, 0, &res);
-@@ -185,6 +189,7 @@ static void show_psci_version(void)
- 	debug("PSCI:  v%ld.%ld\n",
- 	      PSCI_VERSION_MAJOR(res.a0),
- 	      PSCI_VERSION_MINOR(res.a0));
-+#endif
- }
- 
- /**
-@@ -196,6 +201,7 @@ static void show_psci_version(void)
-  */
- static void qcom_psci_fixup(void *fdt)
- {
-+#ifdef CONFIG_ARM64
- 	int offset, ret;
- 	struct arm_smccc_res res;
- 
-@@ -212,6 +218,7 @@ static void qcom_psci_fixup(void *fdt)
- 	ret = fdt_del_node(fdt, offset);
- 	if (ret)
- 		log_err("Failed to delete /psci node: %d\n", ret);
-+#endif
- }
- 
- /* We support booting U-Boot with an internal DT when running as a first-stage bootloader
-@@ -234,8 +241,8 @@ int board_fdt_blob_setup(void **fdtp)
- 	 * Bail out while we can still print a useful error message.
- 	 */
- 	if (!internal_valid && !external_valid)
--		panic("Internal FDT is invalid and no external FDT was provided! (fdt=%#llx)\n",
--		      (phys_addr_t)external_fdt);
-+		panic("Internal FDT is invalid and no external FDT was provided! (fdt=%p)\n",
-+		      external_fdt);
- 
- 	/* Prefer memory information from internal DT if it's present */
- 	if (internal_valid)
-@@ -261,7 +268,7 @@ int board_fdt_blob_setup(void **fdtp)
- 		qcom_boot_source = QCOM_BOOT_SOURCE_XBL;
- 
- 	debug("ram_base = %#011lx, ram_size = %#011llx\n",
--	      gd->ram_base, gd->ram_size);
-+	      gd->ram_base, (unsigned long long)gd->ram_size);
- 
- 	if (internal_valid) {
- 		debug("Using built in FDT\n");
-@@ -595,6 +602,7 @@ int board_late_init(void)
- 	return 0;
- }
- 
-+#ifdef CONFIG_ARM64
- static void build_mem_map(void)
- {
- 	int i, j;
-@@ -768,3 +776,4 @@ void enable_caches(void)
- 	}
- 	dcache_enable();
- }
-+#endif
 
 -- 
 2.54.0
