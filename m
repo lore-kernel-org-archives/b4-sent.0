@@ -1,11 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Mon, 01 Jun 2026 18:12:49 +1000
-Subject: [PATCH RESEND 08/16] board: qualcomm: add MSM8960 debug UART
- config
+Date: Mon, 01 Jun 2026 18:12:50 +1000
+Subject: [PATCH RESEND 09/16] sysreset: qcom-pshold: offset support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260601-qcom-armv7-v1-8-05a08d87e476@samcday.com>
+Message-Id: <20260601-qcom-armv7-v1-9-05a08d87e476@samcday.com>
 References: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 In-Reply-To: <20260601-qcom-armv7-v1-0-05a08d87e476@samcday.com>
 To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
@@ -36,34 +35,54 @@ Cc: Casey Connolly <casey.connolly@linaro.org>,
  Balaji Selvanathan <balaji.selvanathan@oss.qualcomm.com>, 
  Jens Reidel <adrian@mainlining.org>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=569;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780301569; l=1203;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=zBx9nPRXUJGfUzhNFQZkEcLyWbHes4L4hN58aIa1GkI=;
- b=+TbtBSAftNrytJBF7o1f9UfoD/A2+OKjnQSFqT2RqGKUp/FtRNcK5Lgsuag3XjWRrU+sPfiX8
- 9z/StxXhezdABzgs08Y2TF0QOppM4iFxDue10aBb8oNnkzx5RGmi3hq
+ bh=TxwSM2ajegUQsXtmSlBraUNkwazoTxuWpd5kLnaPIW4=;
+ b=PvIFJ2cP06HF8dG74yIJlHZZfnGq+ruzycAEVRimICDzK8fCsnUZ/1aSkEs/t03wllajqeXGq
+ tVCPEzr/9XRBimT+snkTmCY7DaKOZhG8/kw6aGvhc0zH5WJsEhb9C76
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-UARTDM lives in the GSBI aperture for this SoC family.
+On older SoCs (such as MSM8960/MSM8930), PS_HOLD is exposed through
+the TLMM aperture. To prepare for that use-case, this driver is updated
+to accept arbitrary offsets from regbase.
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- board/qualcomm/debug-msm8960.config | 5 +++++
- 1 file changed, 5 insertions(+)
+ drivers/sysreset/sysreset_qcom-pshold.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/board/qualcomm/debug-msm8960.config b/board/qualcomm/debug-msm8960.config
-new file mode 100644
-index 00000000000..f33f6b64920
---- /dev/null
-+++ b/board/qualcomm/debug-msm8960.config
-@@ -0,0 +1,5 @@
-+CONFIG_DEBUG_UART=y
-+CONFIG_DEBUG_UART_ANNOUNCE=y
-+CONFIG_DEBUG_UART_BASE=0x16440000
-+CONFIG_DEBUG_UART_MSM=y
-+CONFIG_DEBUG_UART_CLOCK=1843200
+diff --git a/drivers/sysreset/sysreset_qcom-pshold.c b/drivers/sysreset/sysreset_qcom-pshold.c
+index 45290478536..f8be1f2f593 100644
+--- a/drivers/sysreset/sysreset_qcom-pshold.c
++++ b/drivers/sysreset/sysreset_qcom-pshold.c
+@@ -10,6 +10,7 @@
+  */
+ 
+ #include <dm.h>
++#include <errno.h>
+ #include <sysreset.h>
+ #include <asm/io.h>
+ #include <linux/delay.h>
+@@ -35,9 +36,15 @@ static struct sysreset_ops qcom_pshold_ops = {
+ static int qcom_pshold_probe(struct udevice *dev)
+ {
+ 	struct qcom_pshold_priv *priv = dev_get_priv(dev);
++	ulong offset = dev_get_driver_data(dev);
+ 
+ 	priv->base = dev_read_addr(dev);
+-	return priv->base == FDT_ADDR_T_NONE ? -EINVAL : 0;
++	if (priv->base == FDT_ADDR_T_NONE)
++		return -EINVAL;
++
++	priv->base += offset;
++
++	return 0;
+ }
+ 
+ static const struct udevice_id qcom_pshold_ids[] = {
 
 -- 
 2.54.0
