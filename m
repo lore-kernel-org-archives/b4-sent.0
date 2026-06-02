@@ -1,11 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Tue, 02 Jun 2026 10:50:37 +0400
-Subject: [PATCH v2 1/4] dt-bindings: net: ethernet-phy: move clocks
- property to invidivual PHY bindings
+Date: Tue, 02 Jun 2026 10:50:38 +0400
+Subject: [PATCH v2 2/4] dt-bindings: net: qca,ar803x: Add clocks property
+ for IPQ5018 PHY
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260602-ipq5018-gephy-clocks-v2-1-65a1f1d881f3@outlook.com>
+Message-Id: <20260602-ipq5018-gephy-clocks-v2-2-65a1f1d881f3@outlook.com>
 References: <20260602-ipq5018-gephy-clocks-v2-0-65a1f1d881f3@outlook.com>
 In-Reply-To: <20260602-ipq5018-gephy-clocks-v2-0-65a1f1d881f3@outlook.com>
 To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -22,74 +22,64 @@ Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780383045; l=2564;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780383045; l=1550;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=JF+9D9ibIujy3R8OCamEf63tGtDhuH5LrP1BT4APw7g=;
- b=qmYr1njuSRFfbA8TCMCe9/wzVxkvnZ1e2EEziVPHMEjgm/0ygSsOwXmDxgPIyLpZtgeytdr6a
- szM4/13e3aHAdGZmNX96G2RXH4GxbYkH1Yme64KJh+r6Ip29QK6vCIs
+ bh=rp75ghzSXcjDqIvT5opgDmpxqQkfyYFvfhT3Z1yNuHo=;
+ b=Usttx2e8YKj6zXboagFAnbpDINjy3YqTzY2if/dIYtg3G4sMensrQbZYOGUT1lOykjyPhygM5
+ NY8rA1NJG3sDWI7ObRa3WovAWDWe/MKbUPmlyx/iCNx/zG72OMrrrd5
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move the clock property and restriction from the ethernet-phy.yaml file
-to the individual PHY binding files. This allows each PHY to manage its
-own clock requirements.
+Further testing revealed that the RX and TX clocks of the IPQ5018 PHY
+need to be explicitly enabled. As such, add the clocks property to the
+schema.
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
-Commit 350b7a258f20 introduced the clocks property with a restriction to
-maximum 1 to the main ethernet-phy.yaml binding for Realtek to add an
-optional external clock source. This is restrictive to all PHY bindings,
-as some PHYs may require more than 1 clock such as the IPQ5018 PHY which
-requires 2 clocks (for RX and TX).
+ Documentation/devicetree/bindings/net/qca,ar803x.yaml | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
-There are three other PHY drivers that require clock management:
-- Micrel: requires 1 optional clock and the micrel.yaml file already
-accomodates for the clock property.
-- SMSC: requires an optional clock and the legacy bindings file
-(smsc-lan87xx.txt) already accomodates for the clock property.
-- BCM7xxx: requires an optional clock. I could not find a bindings file
-for this PHY family.
----
- Documentation/devicetree/bindings/net/ethernet-phy.yaml    | 6 ------
- Documentation/devicetree/bindings/net/realtek,rtl82xx.yaml | 6 ++++++
- 2 files changed, 6 insertions(+), 6 deletions(-)
-
-diff --git a/Documentation/devicetree/bindings/net/ethernet-phy.yaml b/Documentation/devicetree/bindings/net/ethernet-phy.yaml
-index 21a1a63506f0..709ea976ef79 100644
---- a/Documentation/devicetree/bindings/net/ethernet-phy.yaml
-+++ b/Documentation/devicetree/bindings/net/ethernet-phy.yaml
-@@ -105,12 +105,6 @@ properties:
-       1BR-10 names. The PHY must be configured to operate in BroadR-Reach mode
-       by software.
+diff --git a/Documentation/devicetree/bindings/net/qca,ar803x.yaml b/Documentation/devicetree/bindings/net/qca,ar803x.yaml
+index 7ae5110e7aa2..07615640b0ed 100644
+--- a/Documentation/devicetree/bindings/net/qca,ar803x.yaml
++++ b/Documentation/devicetree/bindings/net/qca,ar803x.yaml
+@@ -28,6 +28,16 @@ allOf:
+         reg:
+           const: 7  # This PHY is always at MDIO address 7 in the IPQ5018 SoC
  
--  clocks:
--    maxItems: 1
--    description:
--      External clock connected to the PHY. If not specified it is assumed
--      that the PHY uses a fixed crystal or an internal oscillator.
--
-   enet-phy-lane-swap:
-     $ref: /schemas/types.yaml#/definitions/flag
-     description:
-diff --git a/Documentation/devicetree/bindings/net/realtek,rtl82xx.yaml b/Documentation/devicetree/bindings/net/realtek,rtl82xx.yaml
-index 45033c31a2d5..8a26f6941dc4 100644
---- a/Documentation/devicetree/bindings/net/realtek,rtl82xx.yaml
-+++ b/Documentation/devicetree/bindings/net/realtek,rtl82xx.yaml
-@@ -38,6 +38,12 @@ properties:
-       - ethernet-phy-id001c.cad0
-       - ethernet-phy-id001c.cb00
- 
-+  clocks:
-+    maxItems: 1
-+    description:
-+      External clock connected to the PHY. If not specified it is assumed
-+      that the PHY uses a fixed crystal or an internal oscillator.
++        clocks:
++          items:
++            - description: RX clock
++            - description: TX clock
 +
-   leds: true
++        clock-names:
++          items:
++            - const: rx
++            - const: tx
++
+         resets:
+           items:
+             - description:
+@@ -162,6 +172,7 @@ examples:
+         };
+     };
+   - |
++    #include <dt-bindings/clock/qcom,gcc-ipq5018.h>
+     #include <dt-bindings/reset/qcom,gcc-ipq5018.h>
  
-   realtek,aldps-enable:
+     mdio {
+@@ -172,6 +183,9 @@ examples:
+             compatible = "ethernet-phy-id004d.d0c0";
+             reg = <7>;
+ 
++            clocks = <&gcc GCC_GEPHY_RX_CLK>,
++                     <&gcc GCC_GEPHY_TX_CLK>;
++            clock-names = "rx", "tx";
+             resets = <&gcc GCC_GEPHY_MISC_ARES>;
+         };
+     };
 
 -- 
 2.53.0
