@@ -1,17 +1,12 @@
 From: Cedric Jehasse <cedric.jehasse@luminex.be>
-Subject: [PATCH net-next v5 0/2] net: dsa: mv88e6xxx: add support for
- credit based shaper
-Date: Tue, 02 Jun 2026 11:10:30 +0200
-Message-Id: <20260602-net-next-mv88e6xxx-cbs-v5-0-1969758d1fa3@luminex.be>
+Date: Tue, 02 Jun 2026 11:10:31 +0200
+Subject: [PATCH net-next v5 1/2] net: dsa: mv88e6xxx: use the hw tx queues
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAAaeHmoC/3XNSwrCMBAG4KtI1kaSSZqmrryHuGjiVAPaSlNDR
- Hp3h4BQkS5m8c/jmzeLOAaMbL95sxFTiGHoKVTbDfPXtr8gD2fKDAQYoZXgPU5UeeL3ZC2anDP
- 3LnKQIKVpfNsay+j4MWIXcoGP7HvDTjS5hjgN46t8TLLMC14BrOFJcsG9rVvqOe+FP9ye90CLO
- 4fFTLB0zKoD5EiFTjceGmfVn6OWTr3qKHKgU7ZGV3Wd+Xf00rGrjibHurNUrhFGV/WPM8/zBx7
- Vi2WfAQAA
-X-Change-ID: 20260430-net-next-mv88e6xxx-cbs-2121169caa68
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260602-net-next-mv88e6xxx-cbs-v5-1-1969758d1fa3@luminex.be>
+References: <20260602-net-next-mv88e6xxx-cbs-v5-0-1969758d1fa3@luminex.be>
+In-Reply-To: <20260602-net-next-mv88e6xxx-cbs-v5-0-1969758d1fa3@luminex.be>
 To: Andrew Lunn <andrew@lunn.ch>, Vladimir Oltean <olteanv@gmail.com>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
@@ -22,84 +17,363 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Cedric Jehasse <cedric.jehasse@gmail.com>, 
  Cedric Jehasse <cedric.jehasse@luminex.be>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780391432; l=2984;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780391432; l=11505;
  i=cedric.jehasse@luminex.be; s=20260213; h=from:subject:message-id;
- bh=8qVp8OJnYqWyfP+y1omCNI0j4JnaXCuTn0chqe6ckI8=;
- b=VKtmQvxukl3qdywHlKILHb6nMtCcDVPLAh956GpCmgNc9cdoZbjQ3iO0RzAPvyxB+kkweepUo
- PdCsLmLKVCGD1nOoo8hi2Vackb7JmfjCOQPRLLM2oTailLyPUb8/CA6
+ bh=N73EMbDeMk4TXkTfSVwg8qX1Kj5tDWt/w+RuUrgiY1M=;
+ b=HEXvpyv61wD7gNIVn6sX3NK3W9flqN/Dg+Ubnmw6+9STptUIOCpYL61ktZ3H4WWuXEwsdxLAi
+ BBswESL9oqOAzCKGFg2HBrPsbs8D4g4vHo5XhiJUX9U0s7ai3zFCGbv
 X-Developer-Key: i=cedric.jehasse@luminex.be; a=ed25519;
  pk=DL2RaHc2bc7tTDTMJdugm42BtJk4Ip+7V41Gkj+Avjk=
 X-Endpoint-Received: by B4 Relay for cedric.jehasse@luminex.be/20260213 with auth_id=638
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Several of the switch families in this driver have switches with AVB
-support. The switches with AVB support have support for Credit based
-shaping. This series adds support for the 6341, 6352, 6390 and 6393
-families.
-The difference between the families is:
-- total number of queues
-- which queues support credit based shaping
-- shaping granularity
-
-Eg. setting up 20mbps credit based shaper on a 1GBit link:
-tc qdisc add dev p8 parent root handle 100: mqprio \
-    num_tc 8 \
-    map 0 0 6 7 0 5 0 0 0 0 0 0 0 0 0 0 \
-    queues 1@0 1@1 1@2 1@3 1@4 1@5 1@6 1@7 \
-    hw 0
-
-tc qdisc replace dev p8 parent 100:8 cbs locredit -1470 hicredit 30 \
-    sendslope -980000 idleslope 20000 offload 1
+When transmitting fill in the PRI field in the dsa tag to select the
+egress queue is sent to.
+From the datasheets i've looked at these switches have 4 or 8 transmit
+queues per port.
+Note: skbs with skb->fw_offload_fwd_mark set use the DSA_CMD_FORWARD
+tag. These are processed as normal ingress frames, meaning the queue
+they end up in can still be altered by other switch config. eg. priority
+overrides, tcam policies.
+This isn't done for vlan tagged frames because this would overwrite the
+PCP value in the vlan tag (The PRI field in the dsa
+tag is used as the PCP value in the vlan tag).
 
 Signed-off-by: Cedric Jehasse <cedric.jehasse@luminex.be>
 ---
-Changes in v5:
-- only set the scheduling mode when no queues are active
-- use u32 for rate calculation to avoid truncation
-- Link to v4: https://lore.kernel.org/r/20260528-net-next-mv88e6xxx-cbs-v4-0-8bd13b906457@luminex.be
+ drivers/net/dsa/mv88e6xxx/chip.c | 35 +++++++++++++++++++++++++++++++++++
+ drivers/net/dsa/mv88e6xxx/chip.h |  1 +
+ net/dsa/tag_dsa.c                | 11 ++++++++++-
+ 3 files changed, 46 insertions(+), 1 deletion(-)
 
-Changes in v4:
-- add qav info for the 6341
-- remove max_rate from mv88e6xxx_qav_info. It looks like the max rate
-  mentioned in the docs is just the maximum rate that fits in the
-  registers. This is already represented by rate_mask.
-- remove validation on sendslope. This isn't used by the driver.
-- use accessors for qav_write and set_scheduling
-- Link to v3: https://lore.kernel.org/r/20260527-net-next-mv88e6xxx-cbs-v3-0-2f387eb5ff63@luminex.be
+diff --git a/drivers/net/dsa/mv88e6xxx/chip.c b/drivers/net/dsa/mv88e6xxx/chip.c
+index 8ca5fd40df92..ffd4fa41b7c5 100644
+--- a/drivers/net/dsa/mv88e6xxx/chip.c
++++ b/drivers/net/dsa/mv88e6xxx/chip.c
+@@ -3979,6 +3979,7 @@ static int mv88e6xxx_setup(struct dsa_switch *ds)
+ 
+ 	chip->ds = ds;
+ 	ds->user_mii_bus = mv88e6xxx_default_mdio_bus(chip);
++	ds->num_tx_queues = chip->info->num_tx_queues;
+ 
+ 	/* Since virtual bridges are mapped in the PVT, the number we support
+ 	 * depends on the physical switch topology. We need to let DSA figure
+@@ -5689,6 +5690,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		 */
+ 		.num_ports = 7,
+ 		.num_internal_phys = 2,
++		.num_tx_queues = 4,
+ 		.invalid_port_mask = BIT(2) | BIT(3) | BIT(4),
+ 		.max_vid = 4095,
+ 		.port_base_addr = 0x8,
+@@ -5711,6 +5713,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_databases = 64,
+ 		.num_ports = 7,
+ 		.num_internal_phys = 5,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.port_base_addr = 0x08,
+ 		.phy_base_addr = 0x00,
+@@ -5733,6 +5736,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_macs = 8192,
+ 		.num_ports = 10,
+ 		.num_internal_phys = 5,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -5757,6 +5761,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_macs = 8192,
+ 		.num_ports = 11,
+ 		.num_internal_phys = 0,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.port_base_addr = 0x10,
+ 		.phy_base_addr = 0x0,
+@@ -5778,6 +5783,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_macs = 8192,
+ 		.num_ports = 11,
+ 		.num_internal_phys = 8,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -5803,6 +5809,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_macs = 1024,
+ 		.num_ports = 3,
+ 		.num_internal_phys = 5,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -5828,6 +5835,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_macs = 8192,
+ 		.num_ports = 8,
+ 		.num_internal_phys = 0,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.port_base_addr = 0x10,
+ 		.phy_base_addr = 0x0,
+@@ -5850,6 +5858,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_ports = 6,
+ 		.num_internal_phys = 5,
+ 		.num_gpio = 11,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -5875,6 +5884,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_macs = 1024,
+ 		.num_ports = 6,
+ 		.num_internal_phys = 5,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -5901,6 +5911,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_macs = 8192,
+ 		.num_ports = 6,
+ 		.num_internal_phys = 0,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -5926,6 +5937,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_macs = 8192,
+ 		.num_ports = 7,
+ 		.num_internal_phys = 5,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -5952,6 +5964,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_ports = 7,
+ 		.num_internal_phys = 5,
+ 		.num_gpio = 15,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -5977,6 +5990,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_macs = 8192,
+ 		.num_ports = 7,
+ 		.num_internal_phys = 5,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -6003,6 +6017,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_ports = 7,
+ 		.num_internal_phys = 5,
+ 		.num_gpio = 15,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -6028,6 +6043,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_macs = 8192,
+ 		.num_ports = 10,
+ 		.num_internal_phys = 0,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.port_base_addr = 0x10,
+ 		.phy_base_addr = 0x0,
+@@ -6051,6 +6067,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_ports = 11,	/* 10 + Z80 */
+ 		.num_internal_phys = 9,
+ 		.num_gpio = 16,
++		.num_tx_queues = 8,
+ 		.max_vid = 8191,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x0,
+@@ -6076,6 +6093,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_ports = 11,	/* 10 + Z80 */
+ 		.num_internal_phys = 9,
+ 		.num_gpio = 16,
++		.num_tx_queues = 8,
+ 		.max_vid = 8191,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x0,
+@@ -6100,6 +6118,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_macs = 16384,
+ 		.num_ports = 11,	/* 10 + Z80 */
+ 		.num_internal_phys = 9,
++		.num_tx_queues = 8,
+ 		.max_vid = 8191,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x0,
+@@ -6125,6 +6144,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_ports = 11,	/* 10 + Z80 */
+ 		.num_internal_phys = 8,
+ 		.internal_phys_offset = 1,
++		.num_tx_queues = 8,
+ 		.max_vid = 8191,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x0,
+@@ -6151,6 +6171,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_internal_phys = 8,
+ 		.num_tcam_entries = 256,
+ 		.internal_phys_offset = 1,
++		.num_tx_queues = 8,
+ 		.max_vid = 8191,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x0,
+@@ -6181,6 +6202,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_ports = 7,
+ 		.num_internal_phys = 2,
+ 		.invalid_port_mask = BIT(2) | BIT(3) | BIT(4),
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.port_base_addr = 0x08,
+ 		.phy_base_addr = 0x00,
+@@ -6205,6 +6227,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_ports = 7,
+ 		.num_internal_phys = 5,
+ 		.num_gpio = 15,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -6230,6 +6253,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_databases = 64,
+ 		.num_ports = 7,
+ 		.num_internal_phys = 5,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.port_base_addr = 0x08,
+ 		.phy_base_addr = 0x00,
+@@ -6254,6 +6278,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_internal_phys = 9,
+ 		.num_gpio = 16,
+ 		.num_tcam_entries = 256,
++		.num_tx_queues = 8,
+ 		.max_vid = 8191,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x0,
+@@ -6282,6 +6307,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_internal_phys = 2,
+ 		.internal_phys_offset = 3,
+ 		.num_gpio = 15,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -6310,6 +6336,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_internal_phys = 2,
+ 		.internal_phys_offset = 3,
+ 		.num_gpio = 15,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -6337,6 +6364,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_internal_phys = 5,
+ 		.num_ports = 6,
+ 		.num_gpio = 11,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -6363,6 +6391,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_macs = 8192,
+ 		.num_ports = 7,
+ 		.num_internal_phys = 5,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -6388,6 +6417,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_macs = 8192,
+ 		.num_ports = 7,
+ 		.num_internal_phys = 5,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -6414,6 +6444,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_ports = 7,
+ 		.num_internal_phys = 5,
+ 		.num_gpio = 15,
++		.num_tx_queues = 4,
+ 		.max_vid = 4095,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x10,
+@@ -6442,6 +6473,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.invalid_port_mask = BIT(1) | BIT(2) | BIT(8),
+ 		.num_internal_phys = 5,
+ 		.internal_phys_offset = 3,
++		.num_tx_queues = 8,
+ 		.max_vid = 8191,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x0,
+@@ -6468,6 +6500,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_internal_phys = 9,
+ 		.num_gpio = 16,
+ 		.num_tcam_entries = 256,
++		.num_tx_queues = 8,
+ 		.max_vid = 8191,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x0,
+@@ -6495,6 +6528,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_ports = 11,	/* 10 + Z80 */
+ 		.num_internal_phys = 9,
+ 		.num_gpio = 16,
++		.num_tx_queues = 8,
+ 		.max_vid = 8191,
+ 		.max_sid = 63,
+ 		.port_base_addr = 0x0,
+@@ -6521,6 +6555,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
+ 		.num_ports = 11,	/* 10 + Z80 */
+ 		.num_internal_phys = 8,
+ 		.num_tcam_entries = 256,
++		.num_tx_queues = 8,
+ 		.internal_phys_offset = 1,
+ 		.max_vid = 8191,
+ 		.max_sid = 63,
+diff --git a/drivers/net/dsa/mv88e6xxx/chip.h b/drivers/net/dsa/mv88e6xxx/chip.h
+index cde71828e9d9..19d8eda19b78 100644
+--- a/drivers/net/dsa/mv88e6xxx/chip.h
++++ b/drivers/net/dsa/mv88e6xxx/chip.h
+@@ -136,6 +136,7 @@ struct mv88e6xxx_info {
+ 	unsigned int num_internal_phys;
+ 	unsigned int num_gpio;
+ 	unsigned int num_tcam_entries;
++	unsigned int num_tx_queues;
+ 	unsigned int max_vid;
+ 	unsigned int max_sid;
+ 	unsigned int port_base_addr;
+diff --git a/net/dsa/tag_dsa.c b/net/dsa/tag_dsa.c
+index 2a2c4fb61a65..cc27b2994c6b 100644
+--- a/net/dsa/tag_dsa.c
++++ b/net/dsa/tag_dsa.c
+@@ -179,8 +179,17 @@ static struct sk_buff *dsa_xmit_ll(struct sk_buff *skb, struct net_device *dev,
+ 			dsa_header[2] &= ~0x10;
+ 		}
+ 	} else {
++		u16 queue = skb_get_queue_mapping(skb) & 0x7;
+ 		u16 vid;
+ 
++		/* The PRI field is 3 bits. According to the documentation the
++		 * 2 highest bits specify the egress queue in From_CPU DSA
++		 * tagged frames. On devices with 8 queues it's possible to
++		 * send to the 8 queues, which means the 3 bits are used.
++		 */
++		if (dp->ds->num_tx_queues == 4)
++			queue <<= 1;
++
+ 		vid = br_dev ? MV88E6XXX_VID_BRIDGED : MV88E6XXX_VID_STANDALONE;
+ 
+ 		skb_push(skb, DSA_HLEN + extra);
+@@ -191,7 +200,7 @@ static struct sk_buff *dsa_xmit_ll(struct sk_buff *skb, struct net_device *dev,
+ 
+ 		dsa_header[0] = (cmd << 6) | tag_dev;
+ 		dsa_header[1] = tag_port << 3;
+-		dsa_header[2] = vid >> 8;
++		dsa_header[2] = (queue << 5) | vid >> 8;
+ 		dsa_header[3] = vid & 0xff;
+ 	}
+ 
 
-Changes in v3:
-- clear cbs_active_queues bit when the rate is set to 0 on
-  port_set_scheduling_mode failure
-- wait for the MV88E6390_PORT_QUEUE_CTL_UPDATE bit to be cleared after
-  writing the scheduling mode
-- add num_tx_queues for mv88e6191 based on it's family, as nobody is
-  able to find a datasheet for this device
-- reverse christmas tree variable declarations
-- fix egress queue selection for devices with 4 queues
-- Link to v2: https://lore.kernel.org/r/20260526-net-next-mv88e6xxx-cbs-v2-0-13eb49c29b83@luminex.be
-
-Changes in v2:
-- tx_queues defined for all devices (which could be found). Thanks to Marek Behún.
-- Link to v1: https://lore.kernel.org/r/20260522-net-next-mv88e6xxx-cbs-v1-0-c87a8e6bcc0c@luminex.be
-
----
-Cedric Jehasse (2):
-      net: dsa: mv88e6xxx: use the hw tx queues
-      net: dsa: mv88e6xxx: add support for credit based shaper
-
- drivers/net/dsa/mv88e6xxx/chip.c        | 169 ++++++++++++++++++++++++++++++++
- drivers/net/dsa/mv88e6xxx/chip.h        |  21 ++++
- drivers/net/dsa/mv88e6xxx/global2.h     |   3 +
- drivers/net/dsa/mv88e6xxx/global2_avb.c |  21 ++++
- drivers/net/dsa/mv88e6xxx/port.c        |  63 ++++++++++++
- drivers/net/dsa/mv88e6xxx/port.h        |  20 ++++
- net/dsa/tag_dsa.c                       |  11 ++-
- 7 files changed, 307 insertions(+), 1 deletion(-)
----
-base-commit: 022bdd9c0d036863c4bacd1688b73c6be3001cee
-change-id: 20260430-net-next-mv88e6xxx-cbs-2121169caa68
-
-Best regards,
 -- 
-Cedric Jehasse <cedric.jehasse@luminex.be>
+2.43.0
 
