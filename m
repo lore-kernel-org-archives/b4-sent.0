@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 02 Jun 2026 17:33:51 +0100
-Subject: [PATCH 04/12] dt-bindings: iio: dac: ad5686: rework on power
+Date: Tue, 02 Jun 2026 17:33:52 +0100
+Subject: [PATCH 05/12] iio: dac: ad5686: add support for missing power
  supplies
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260602-ad5686-new-features-v1-4-691e01883d27@analog.com>
+Message-Id: <20260602-ad5686-new-features-v1-5-691e01883d27@analog.com>
 References: <20260602-ad5686-new-features-v1-0-691e01883d27@analog.com>
 In-Reply-To: <20260602-ad5686-new-features-v1-0-691e01883d27@analog.com>
 To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
@@ -19,89 +19,72 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780418030; l=2482;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780418030; l=2269;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=SZ+4+Wyz9VHuj/4IF6ruPdi67TJbJTwam23OqhjqJG4=;
- b=Pd05U39JY446ke6lGgbOgMTMy07LDnyKYr0NO97Syn2+SXjbWvi709evDDHpV5NCnDNLlK01I
- yFftrufzlC2CF+RHkBzkwXdAHUTWK39iQtPr3bbilgZ4aBUazyyDeQX
+ bh=f/SVtqpON4GK4wHV3s6GhGXHVZxtYozoTOlTjmn+Yy8=;
+ b=uWeDrdqU+kZ4O7T4U9kQChYAQ5HNPchDVuXfQjwbwh5sWuvTvVbiCr5i7NDLsvDMz7rAxrPg8
+ n0J9uTbMUhjBcT6CDIte4gJtRVXOAr8seSWKobjIEFr+V6kKzyIqozd
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add supplies for VDD, VLOGIC and VREF input voltage pins. The vcc-supply
-property is deprecated, once it does not really exist as none of the
-devices describe any power input with that name. VCC is also misleading as
-it sounds like the input power supply, but it is being used as an external
-voltage reference, which should be called VREF. Certain devices require
-vref-supply to be available once an internal reference voltage is absent.
-For correct operation vdd and vlogic supplies are required.
+Get and enable regulators for vdd, vlogic and vref input power pins. Vdd
+is the input power supply, while vlogic powers the digital side. vref is
+replacing vcc, which is being deprecated, but still supported. The value
+of vref_mv is checked so that a device without internal voltage reference
+cannot proceed without an explicit supply. For correct operation, vdd and
+vlogic are required, then devm_regulator_get_enable() is used so the
+driver can still work without them by using the stub/dummy regulators.
+Error report uses dev_err_probe(), which helps debugging an init issue.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- .../devicetree/bindings/iio/dac/adi,ad5686.yaml    | 31 ++++++++++++++++++++--
- 1 file changed, 29 insertions(+), 2 deletions(-)
+ drivers/iio/dac/ad5686.c | 19 +++++++++++++++++--
+ 1 file changed, 17 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/iio/dac/adi,ad5686.yaml b/Documentation/devicetree/bindings/iio/dac/adi,ad5686.yaml
-index 4680d4753dd4..2abdbf325392 100644
---- a/Documentation/devicetree/bindings/iio/dac/adi,ad5686.yaml
-+++ b/Documentation/devicetree/bindings/iio/dac/adi,ad5686.yaml
-@@ -32,8 +32,19 @@ properties:
-   reg:
-     maxItems: 1
+diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
+index 5840fda4b011..4a8c587ff116 100644
+--- a/drivers/iio/dac/ad5686.c
++++ b/drivers/iio/dac/ad5686.c
+@@ -8,6 +8,7 @@
+ #include <linux/array_size.h>
+ #include <linux/bitfield.h>
+ #include <linux/bitops.h>
++#include <linux/dev_printk.h>
+ #include <linux/errno.h>
+ #include <linux/export.h>
+ #include <linux/kstrtox.h>
+@@ -484,13 +485,27 @@ int ad5686_probe(struct device *dev,
+ 	st->ops = ops;
+ 	st->chip_info = chip_info;
  
-+  vdd-supply:
-+    description: Input power supply.
+-	ret = devm_regulator_get_enable_read_voltage(dev, "vcc");
++	ret = devm_regulator_get_enable(dev, "vdd");
++	if (ret)
++		return dev_err_probe(dev, ret, "failed to enable vdd supply\n");
 +
-+  vlogic-supply:
-+    description: Digital power supply.
++	ret = devm_regulator_get_enable(dev, "vlogic");
++	if (ret)
++		return dev_err_probe(dev, ret, "failed to enable vlogic supply\n");
 +
-+  vref-supply:
-+    description:
-+      Reference voltage supply. If not supplied the internal reference is used.
-+
-   vcc-supply:
--    description: If not supplied the internal reference is used.
-+    deprecated: true
-+    description: Use vref-supply instead.
++	ret = devm_regulator_get_enable_read_voltage(dev, "vref");
++	if (ret == -ENODEV) /* vcc-supply is deprecated, but supported still */
++		ret = devm_regulator_get_enable_read_voltage(dev, "vcc");
+ 	if (ret < 0 && ret != -ENODEV)
+-		return ret;
++		return dev_err_probe(dev, ret, "failed to read vref voltage\n");
  
-   reset-gpios:
-     description: Active-low RESET pin to reset the device.
-@@ -53,9 +64,23 @@ properties:
- required:
-   - compatible
-   - reg
-+  - vdd-supply
-+  - vlogic-supply
+ 	st->use_internal_vref = ret == -ENODEV;
+ 	st->vref_mv = st->use_internal_vref ? st->chip_info->int_vref_mv : ret / 1000;
  
- allOf:
-   - $ref: /schemas/spi/spi-peripheral-props.yaml#
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            anyOf:
-+              - const: adi,ad5676
-+              - const: adi,ad5683
-+              - const: adi,ad5684
-+              - const: adi,ad5686
-+    then:
-+      required:
-+        - vref-supply
-   - if:
-       properties:
-         compatible:
-@@ -81,7 +106,9 @@ examples:
-         dac@0 {
-             reg = <0>;
-             compatible = "adi,ad5310r";
--            vcc-supply = <&dac_vref0>;
-+            vdd-supply = <&dac_vdd>;
-+            vlogic-supply = <&dac_vlogic>;
-+            vref-supply = <&dac_vref>;
-             reset-gpios = <&gpio0 0 GPIO_ACTIVE_LOW>;
-             ldac-gpios = <&gpio0 1 GPIO_ACTIVE_LOW>;
-         };
++	if (!st->vref_mv)
++		return dev_err_probe(dev, -EINVAL,
++				     "invalid or not provided vref voltage\n");
++
+ 	/* Initialize masks to all ones */
+ 	st->pwr_down_mask = ~0;
+ 	st->pwr_down_mode = ~0;
 
 -- 
 2.43.0
