@@ -1,83 +1,81 @@
-From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Tue, 02 Jun 2026 16:19:20 +0200
-Subject: [PATCH v3] thermal: amlogic: add missing dependency on MESON_SM
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH 00/12] New features for the AD5686 IIO driver
+Date: Tue, 02 Jun 2026 17:33:47 +0100
+Message-Id: <20260602-ad5686-new-features-v1-0-691e01883d27@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260602-fix-missing-meson_sm-symbol-v3-1-6f7f69cd7d6c@aliel.fr>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33NQQ6DIBCF4asY1qUBbEG66j2aplEBnUSwYRpSY
- 7x70XThyuX/MvlmJmgjWCS3YibRJkAYQ47yVJC2r0NnKZjcRDAh2VVo6uBLPSBC6Ki3OIYXeoq
- Tb8aBKqWkYUYbJRnJwjvafL7pj2fuHvAzxml7lvi6/t2SHbqJU05L10glGl1pc7nXA9jh7CJZ2
- ST2FD+mRKa4sa5qy5ZL7XbUsiw/nGGjcxABAAA=
-X-Change-ID: 20260529-fix-missing-meson_sm-symbol-7776d0d9d760
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, Lukasz Luba <lukasz.luba@arm.com>
-Cc: Guillaume La Roque <glaroque@baylibre.com>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-pm@vger.kernel.org, 
- Mark Brown <broonie@kernel.org>, kernel test robot <lkp@intel.com>, 
- Ronald Claveau <linux-kernel-dev@aliel.fr>
+X-B4-Tracking: v=1; b=H4sIAOsFH2oC/x3MQQqDMBBG4avIrB1Igg7qVcRFNL/tbNKSqC2Id
+ ze4/BbvnZSRFJmG6qSEQ7N+YoGtK1rePr7AGorJGSdGjGMfWumEI368wm97QmZYK4tp5hDmnkr
+ 5TVj1/1zH6bpuO9vkBWUAAAA=
+X-Change-ID: 20260602-ad5686-new-features-e116c04bddb9
+To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
+ linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org
+Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
+ Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1769;
- i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=Ugj/bC+OamV3jyF8WcVc9eTJZxuCATwhl48WC6wVttE=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ5bc88YZf93YKuZbvUs0urjHhjFyltZXW8tXjJrH173aH
- 8wqovmqo5SFQYyLQVZMkaV/ruWJd5ePnvm6Rz0FZg4rE8gQBi5OAZhIhRHDP7upL/kyYjSthN9t
- V4/k/yC493zz9qe5b7r2HD1fMOP35k0Mf7gjVVZsajNQ618UsM587vaA6X9u7Qxb6mX9+nMz04t
- 9v/gA
-X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
- fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
-X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780418030; l=2210;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=dcsHKAoQP64Fz4xl/KKbSuqrRQCZoXXSHYxQq69uwEQ=;
+ b=YQcJxhCXAdZjqbq0PTcmgbJdHmJnFTw39NM1lD/TLpGichFY1mMwDrXvtgKJ2VlDpv4FCv3Jf
+ i7Dl/EGxMwjDyAXWpJpZHuXkvGyqfUarsn9FKHyCzvbc+foBztTPR+T
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The amlogic thermal driver calls meson_sm_get() and
-meson_sm_get_thermal_calib() which are exported by the meson_sm
-driver. Without CONFIG_MESON_SM enabled, the build fails with
-undefined references to these symbols.
+This is the second series of three on updating the AD5686 driver.
 
-Add a proper Kconfig dependency on MESON_SM instead of relying on
-stub functions, which makes the dependency explicit and prevents
-invalid configurations.
+Initially, a big patch series was sent:
+https://lore.kernel.org/r/20260422-ad5313r-iio-support-v1-0-ed7dca001d1b@analog.com
 
-Closes: https://lore.kernel.org/oe-kbuild-all/202605291530.en7aGn7w-lkp@intel.com/
-Reported-by: Mark Brown <broonie@kernel.org>
-Reported-by: kernel test robot <lkp@intel.com>
-Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Then, the first patch series added fixes and cleanups:
+https://lore.kernel.org/linux-iio/20260524-ad5686-fixes-v7-0-b6bf395d08bd@analog.com/
+
+This one is introducing new features:
+- Consume optional reset and correct power supplies;
+- LDAC GPIO handling (active-low, held low when unused);
+- SPI bus sync() implementation for batching multiple transfers;
+- Triggered buffer support, leveraging LDAC and sync() to flush
+  all channel writes atomically;
+- Gain control support through the scale property.
+
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
-Changes in v3:
-- Add a dependency on MESON_SM instead of stub functions.
-- Link to v2: https://lore.kernel.org/r/20260531-fix-missing-meson_sm-symbol-v2-1-1def8c3c169f@aliel.fr
+Rodrigo Alencar (12):
+      dt-bindings: iio: dac: ad5696: add reset/ldac/gain gpio support
+      dt-bindings: iio: dac: ad5696: rework on power supplies
+      dt-bindings: iio: dac: ad5686: add reset/ldac/gain gpio support
+      dt-bindings: iio: dac: ad5686: rework on power supplies
+      iio: dac: ad5686: add support for missing power supplies
+      iio: dac: ad5686: consume optional reset signal
+      iio: dac: ad5686: add ldac gpio
+      iio: dac: ad5686: introduce sync operation
+      iio: dac: ad5686: implement new sync() op for the spi bus
+      iio: dac: ad5686: add triggered buffer support
+      iio: dac: ad5686: write_raw: use guard(mutex)()
+      iio: dac: ad5686: add gain control support
 
-Changes in v2:
-- Replace #ifdef CONFIG_MESON_SM by #if IS_ENABLED(CONFIG_MESON_SM)
-  to cover builtin and module in config.
-- Add missing trailers for kernel test robot.
-- Link to v1: https://lore.kernel.org/r/20260530-fix-missing-meson_sm-symbol-v1-1-3fb672b989d4@aliel.fr
+ .../devicetree/bindings/iio/dac/adi,ad5686.yaml    |  62 +++++-
+ .../devicetree/bindings/iio/dac/adi,ad5696.yaml    |  65 ++++++-
+ drivers/iio/dac/Kconfig                            |   2 +
+ drivers/iio/dac/ad5686-spi.c                       | 109 ++++++++---
+ drivers/iio/dac/ad5686.c                           | 212 +++++++++++++++++++--
+ drivers/iio/dac/ad5686.h                           |  29 ++-
+ drivers/iio/dac/ad5696-i2c.c                       |   2 +-
+ 7 files changed, 422 insertions(+), 59 deletions(-)
 ---
- drivers/thermal/Kconfig | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/drivers/thermal/Kconfig b/drivers/thermal/Kconfig
-index 1c4a5cd5a23ee..810eeccedfbab 100644
---- a/drivers/thermal/Kconfig
-+++ b/drivers/thermal/Kconfig
-@@ -436,6 +436,7 @@ config AMLOGIC_THERMAL
- 	tristate "Amlogic Thermal Support"
- 	default ARCH_MESON
- 	depends on OF && ARCH_MESON
-+	depends on MESON_SM
- 	help
- 	  If you say yes here you get support for Amlogic Thermal
- 	  for G12 SoC Family.
-
----
-base-commit: 3929405c64376a8a54c794e8a4485023b108a97e
-change-id: 20260529-fix-missing-meson_sm-symbol-7776d0d9d760
+base-commit: 3dee3cddb9b2f78447bf1077f3eb8ae0b8251247
+change-id: 20260602-ad5686-new-features-e116c04bddb9
 
 Best regards,
 -- 
-Ronald Claveau <linux-kernel-dev@aliel.fr>
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
