@@ -1,10 +1,11 @@
 From: Sam Day <me@samcday.com>
-Date: Tue, 02 Jun 2026 17:19:00 +1000
-Subject: [PATCH v2 4/6] mach-snapdragon: fixup CPUs with PSCI enable-method
+Date: Tue, 02 Jun 2026 17:19:01 +1000
+Subject: [PATCH v2 5/6] mach-snapdragon: MSM8916 spin-table CPU boot
+ support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260602-msm8916-smp-support-v2-4-792e53dac374@samcday.com>
+Message-Id: <20260602-msm8916-smp-support-v2-5-792e53dac374@samcday.com>
 References: <20260602-msm8916-smp-support-v2-0-792e53dac374@samcday.com>
 In-Reply-To: <20260602-msm8916-smp-support-v2-0-792e53dac374@samcday.com>
 To: Tom Rini <trini@konsulko.com>, 
@@ -30,88 +31,179 @@ Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io,
  Luca Weiss <luca.weiss@fairphone.com>, 
  Ilias Apalodimas <ilias.apalodimas@linaro.org>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780384740; l=2527;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780384740; l=4774;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=oyW4SjIaPw8uMUpJo0OqFTwzoLj2elwRTqTh9Cf/umk=;
- b=gVb1kgCfLjKaa+d9kuzBilStJA2K8MjfV90IfBscl+QA+mCOOSqhNZe+Ni09Op7BhTRRxlw3U
- EmD1y7NQS+pCQ9gfg/HEoGRf9X3z/py77qP2p/wYPOjHEYZEhqvz2po
+ bh=0/tcg4B+FG8c0znBkfL/bXBmugnneb14sAtnVLQt5Ac=;
+ b=mBCoz5bSPKJGrj8XXkqwcsuZo+B3mLzJGP7zHDdPgssXsdghOaQmp7IuPZL9gPEuI/QGBGA/W
+ VJ3prhLzKwXA8qDzeFesRwsryP2Oke58RMa82H452WbtS4NyW05x33X
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If there's no PSCI implementation, then change the enable-method of all
-CPUs from "psci" to "spin-table". Later, when spin_table_update_dt runs,
-it will further patch the CPU nodes with the necessary cpu-release-addr.
-
-This new fixup is only applied when CONFIG_ARMV8_SPIN_TABLE is enabled,
-since that also determines whether spin_table_update_dt runs.
+Most MSM8916 devices lack PSCI support, instead they're brought online
+with a qcom SCM call to set the boot address, and some register poking
+of the APCS register block.
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- arch/arm/mach-snapdragon/board.c | 41 ++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 41 insertions(+)
+ arch/arm/mach-snapdragon/Makefile      |   1 +
+ arch/arm/mach-snapdragon/msm8916-smp.c | 138 +++++++++++++++++++++++++++++++++
+ 2 files changed, 139 insertions(+)
 
-diff --git a/arch/arm/mach-snapdragon/board.c b/arch/arm/mach-snapdragon/board.c
-index 829a0109ac7..3b08069af98 100644
---- a/arch/arm/mach-snapdragon/board.c
-+++ b/arch/arm/mach-snapdragon/board.c
-@@ -183,7 +183,9 @@ static void show_psci_version(void)
- static void qcom_psci_fixup(void *fdt)
- {
- 	int offset, ret;
-+	uint reg;
- 	struct arm_smccc_res res;
-+	const char *prop;
- 
- 	arm_smccc_smc(ARM_PSCI_0_2_FN_PSCI_VERSION, 0, 0, 0, 0, 0, 0, 0, &res);
- 
-@@ -198,6 +200,45 @@ static void qcom_psci_fixup(void *fdt)
- 	ret = fdt_del_node(fdt, offset);
- 	if (ret)
- 		log_err("Failed to delete /psci node: %d\n", ret);
+diff --git a/arch/arm/mach-snapdragon/Makefile b/arch/arm/mach-snapdragon/Makefile
+index 343e825c6fd..584b8af055a 100644
+--- a/arch/arm/mach-snapdragon/Makefile
++++ b/arch/arm/mach-snapdragon/Makefile
+@@ -5,3 +5,4 @@
+ obj-y += board.o
+ obj-$(CONFIG_EFI_HAVE_CAPSULE_SUPPORT) += capsule_update.o
+ obj-$(CONFIG_OF_LIVE) += of_fixup.o
++obj-$(CONFIG_ARMV8_SPIN_TABLE) += msm8916-smp.o
+diff --git a/arch/arm/mach-snapdragon/msm8916-smp.c b/arch/arm/mach-snapdragon/msm8916-smp.c
+new file mode 100644
+index 00000000000..24f5590ccc3
+--- /dev/null
++++ b/arch/arm/mach-snapdragon/msm8916-smp.c
+@@ -0,0 +1,138 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * On MSM8916 devices that lack a PSCI implementation, firing up the secondary
++ * cores requires a call to TZ to set the boot address, and some poking of ACPS
++ * register block.
++ *
++ * Copyright (c) 2025 Linaro Ltd.
++ */
 +
-+	if (!CONFIG_IS_ENABLED(ARMV8_SPIN_TABLE))
-+		return;
++#include <asm/io.h>
++#include <asm/spin_table.h>
++#include <asm/system.h>
++#include <cpu_func.h>
++#include <dm/ofnode.h>
++#include <firmware/qcom/scm.h>
++#include <linux/arm-smccc.h>
++#include <linux/delay.h>
 +
-+	/* If spin-table support is enabled, make sure any CPU nodes with a
-+	 * PSCI enable-method are updated to spin-table. Further, any PSCI
-+	 * power-domains properties are removed.
-+	 */
++#define APCS_CPU_PWR_CTL	0x04
++#define CORE_PWRD_UP		BIT(7)
++#define COREPOR_RST		BIT(5)
++#define CORE_RST		BIT(4)
++#define CORE_MEM_HS		BIT(3)
++#define CORE_MEM_CLAMP		BIT(1)
++#define CLAMP			BIT(0)
 +
-+	offset = fdt_path_offset(fdt, "/cpus");
-+	if (offset < 0)
-+		return;
++#define APC_PWR_GATE_CTL	0x14
++#define GDHS_CNT_SHIFT		24
++#define GDHS_EN			BIT(0)
 +
-+	for (offset = fdt_first_subnode(fdt, offset);
-+	     offset >= 0;
-+	     offset = fdt_next_subnode(fdt, offset)) {
-+		prop = fdt_getprop(fdt, offset, "device_type", NULL);
-+		if (!prop || strcmp(prop, "cpu"))
-+			continue;
++static void qcom_boot_cortex_a53(phys_addr_t acc_base)
++{
++	u32 reg_val;
 +
-+		prop = fdt_getprop(fdt, offset, "enable-method", NULL);
-+		if (!prop || strcmp(prop, "psci"))
-+			continue;
++	/* Put the CPU into reset. */
++	reg_val = CORE_RST | COREPOR_RST | CLAMP | CORE_MEM_CLAMP;
++	writel(reg_val, acc_base + APCS_CPU_PWR_CTL);
 +
-+		reg = fdtdec_get_uint(fdt, offset, "reg", 0);
-+		ret = fdt_setprop_string(fdt, offset,
-+					 "enable-method", "spin-table");
-+		if (ret)
-+			log_err("Failed to set CPU%d enable-method to 'spin-table', this CPU will not be available to booted OS! %d\n",
-+				reg, ret);
++	/* Turn on the GDHS and set the GDHS_CNT to 16 XO clock cycles */
++	writel(GDHS_EN | (0x10 << GDHS_CNT_SHIFT), acc_base + APC_PWR_GATE_CTL);
++	/* Wait for the GDHS to settle */
++	udelay(2);
 +
-+		log_info("Patched CPU%d enable-method to 'spin-table'\n", reg);
++	reg_val &= ~CORE_MEM_CLAMP;
++	writel(reg_val, acc_base + APCS_CPU_PWR_CTL);
++	reg_val |= CORE_MEM_HS;
++	writel(reg_val, acc_base + APCS_CPU_PWR_CTL);
++	udelay(2);
 +
-+		prop = fdt_getprop(fdt, offset, "power-domain-names", NULL);
-+		if (prop && !strcmp(prop, "psci")) {
-+			fdt_delprop(fdt, offset, "power-domains");
-+			fdt_delprop(fdt, offset, "power-domain-names");
-+		}
++	reg_val &= ~CLAMP;
++	writel(reg_val, acc_base + APCS_CPU_PWR_CTL);
++	udelay(2);
++
++	/* Release CPU out of reset and bring it to life. */
++	reg_val &= ~(CORE_RST | COREPOR_RST);
++	writel(reg_val, acc_base + APCS_CPU_PWR_CTL);
++	reg_val |= CORE_PWRD_UP;
++	writel(reg_val, acc_base + APCS_CPU_PWR_CTL);
++}
++
++static int qcom_scm_set_boot_addr_mc(void *entry, unsigned int flags)
++{
++	struct qcom_scm_desc desc = {
++		.svc = QCOM_SCM_SVC_BOOT,
++		.cmd = QCOM_SCM_BOOT_SET_ADDR_MC,
++		.owner = ARM_SMCCC_OWNER_SIP,
++		.arginfo = QCOM_SCM_ARGS(6),
++		.args = {
++			(u64)entry,
++			/* Apply to all CPUs in all affinity levels */
++			~0ULL, ~0ULL, ~0ULL, ~0ULL,
++			flags,
++		},
++	};
++
++	if (!qcom_scm_is_call_available(desc.svc, desc.cmd))
++		return -EOPNOTSUPP;
++
++	return qcom_scm_call(&desc, NULL);
++}
++
++static bool boot_addr_set;
++
++int spin_table_boot_cpu(void *fdt, int cpu_offset)
++{
++	struct fdtdec_phandle_args acc;
++	u32 mpidr_aff, acc_base, reg;
++	int ret;
++
++	if (fdt_node_check_compatible(fdt, 0, "qcom,msm8916"))
++		return 0;
++
++	reg = fdtdec_get_uint(fdt, cpu_offset, "reg", 0);
++
++	if (fdt_node_check_compatible(fdt, cpu_offset, "arm,cortex-a53")) {
++		log_warning("CPU%d is not arm,cortex-a53 compatible\n", reg);
++		return -EINVAL;
 +	}
- }
- 
- /* We support booting U-Boot with an internal DT when running as a first-stage bootloader
++
++	if (!boot_addr_set) {
++		debug("Setting CPU boot address to 0x%llx\n",
++		      (phys_addr_t)&spin_table_reserve_begin);
++		ret = qcom_scm_set_boot_addr_mc(&spin_table_reserve_begin,
++						QCOM_SCM_BOOT_MC_FLAG_AARCH64 |
++						QCOM_SCM_BOOT_MC_FLAG_COLDBOOT);
++		if (ret) {
++			log_err("Failed to set CPU boot addr: %d\n", ret);
++			return ret;
++		}
++
++		boot_addr_set = true;
++	}
++
++	mpidr_aff = read_mpidr() & 0xffffff;
++
++	if (reg == mpidr_aff) {
++		debug("Skipping boot of current CPU%d\n", reg);
++		return 0;
++	}
++
++	ret = fdtdec_parse_phandle_with_args(fdt, cpu_offset, "qcom,acc",
++					     NULL, 0, 0, &acc);
++	if (ret) {
++		log_err("Failed to parse qcom,acc phandle: %d\n", reg);
++		return ret;
++	}
++
++	acc_base = fdtdec_get_addr_size_auto_noparent(fdt, acc.node, "reg", 0,
++						      NULL, true);
++	if (!acc_base) {
++		log_err("Failed to parse qcom,acc regbase\n");
++		return -EINVAL;
++	}
++
++	log_info("Booting CPU%d @ 0x%x\n", reg, acc_base);
++	qcom_boot_cortex_a53(acc_base);
++	return 0;
++}
 
 -- 
 2.54.0
