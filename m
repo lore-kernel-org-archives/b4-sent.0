@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 02 Jun 2026 17:33:48 +0100
-Subject: [PATCH 01/12] dt-bindings: iio: dac: ad5696: add reset/ldac/gain
- gpio support
+Date: Tue, 02 Jun 2026 17:33:49 +0100
+Subject: [PATCH 02/12] dt-bindings: iio: dac: ad5696: rework on power
+ supplies
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260602-ad5686-new-features-v1-1-691e01883d27@analog.com>
+Message-Id: <20260602-ad5686-new-features-v1-2-691e01883d27@analog.com>
 References: <20260602-ad5686-new-features-v1-0-691e01883d27@analog.com>
 In-Reply-To: <20260602-ad5686-new-features-v1-0-691e01883d27@analog.com>
 To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
@@ -17,89 +17,90 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
  Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>, 
- Conor Dooley <conor.dooley@microchip.com>
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780418030; l=2173;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780418030; l=2331;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=Uodwb5bj6wApJ0FYWPX0bGa/9JMjqxNyEKnyBWSUBgI=;
- b=/cO5cMmyoPmYi5A6C4aj/zj3Qe3VDU/ZaYzlWkznciljoLVbTLa8DvCAk1Wf6Y+DvJQLXY6/x
- nE99fKAPayACWfSUqog5pWO2jaAC/o+EvlfIIMtSa1U8c7XAc0hDBeO
+ bh=VM8uU+sbzNkXZ9pYeXkANlRpKN8chnD0VXo09VsEx34=;
+ b=WAqADsMtZ1/nb+nA5zkqFvMUOU2PtbfmgiZ+e3KQRlY2u9nYhbgMvyPGTIcECefCyLnZkYBoo
+ /6ob1a8iUUqA2IkrPSt/qKHdSO7evo7u3zPD/7AXiYKzsC0V7UExKJn
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add GPIO property for RESET, LDAC and GAIN pin. RESET is active-low, LDAC
-is used to load DAC channels with values from input registers and GAIN
-can double the voltage in output channels. The gain-gpios property is
-not available to all supported parts.
+Add supplies for VDD, VLOGIC and VREF input voltage pins. The vcc-supply
+property is deprecated, once it does not really exist as none of the
+devices describe any power input with that name. VCC is also misleading as
+it sounds like the input power supply, but it is being used as an external
+voltage reference, which should be called VREF. Certain devices require
+vref-supply to be available once an internal reference voltage is absent.
+For correct operation vdd and vlogic supplies are required.
 
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- .../devicetree/bindings/iio/dac/adi,ad5696.yaml    | 34 +++++++++++++++++++++-
- 1 file changed, 33 insertions(+), 1 deletion(-)
+ .../devicetree/bindings/iio/dac/adi,ad5696.yaml    | 31 +++++++++++++++++++---
+ 1 file changed, 28 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml b/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml
-index b5a88b03dc2f..2dcc049f30e9 100644
+index 2dcc049f30e9..e5fbaec4adf7 100644
 --- a/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml
 +++ b/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml
-@@ -37,14 +37,45 @@ properties:
-     description: |
-       The regulator supply for DAC reference voltage.
+@@ -33,9 +33,19 @@ properties:
+   reg:
+     maxItems: 1
  
-+  reset-gpios:
-+    description: Active-low RESET pin to reset the device.
-+    maxItems: 1
++  vdd-supply:
++    description: Input power supply.
 +
-+  ldac-gpios:
++  vlogic-supply:
++    description: Digital power supply.
++
++  vref-supply:
 +    description:
-+      Active-low LDAC pin used to asynchronously update the DAC channels.
-+    maxItems: 1
++      Reference voltage supply. If not supplied the internal reference is used.
 +
-+  gain-gpios:
-+    description:
-+      GAIN pin that sets a multiplier for the DAC output voltage. When high,
-+      the DAC output voltage is multiplied by 2, otherwise it is unchanged.
-+    maxItems: 1
-+
+   vcc-supply:
+-    description: |
+-      The regulator supply for DAC reference voltage.
++    deprecated: true
++    description: Use vref-supply instead.
+ 
+   reset-gpios:
+     description: Active-low RESET pin to reset the device.
+@@ -55,8 +65,21 @@ properties:
  required:
    - compatible
    - reg
++  - vdd-supply
++  - vlogic-supply
  
--additionalProperties: false
-+allOf:
+ allOf:
 +  - if:
 +      properties:
 +        compatible:
 +          contains:
 +            anyOf:
-+              - const: adi,ad5311r
-+              - const: adi,ad5691r
-+              - const: adi,ad5692r
 +              - const: adi,ad5693
-+              - const: adi,ad5693r
++              - const: adi,ad5694
++              - const: adi,ad5696
 +    then:
-+      properties:
-+        gain-gpios: false
-+
-+unevaluatedProperties: false
- 
- examples:
-   - |
-+    #include <dt-bindings/gpio/gpio.h>
-     i2c {
-       #address-cells = <1>;
-       #size-cells = <0>;
-@@ -53,6 +84,7 @@ examples:
++      required:
++        - vref-supply
+   - if:
+       properties:
+         compatible:
+@@ -83,7 +106,9 @@ examples:
+       ad5696: dac@0 {
          compatible = "adi,ad5696";
          reg = <0>;
-         vcc-supply = <&dac_vref>;
-+        ldac-gpios = <&gpio0 1 GPIO_ACTIVE_LOW>;
+-        vcc-supply = <&dac_vref>;
++        vdd-supply = <&dac_vdd>;
++        vlogic-supply = <&dac_vlogic>;
++        vref-supply = <&dac_vref>;
+         ldac-gpios = <&gpio0 1 GPIO_ACTIVE_LOW>;
        };
      };
- ...
 
 -- 
 2.43.0
