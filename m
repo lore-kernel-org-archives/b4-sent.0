@@ -1,10 +1,10 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 02 Jun 2026 17:33:54 +0100
-Subject: [PATCH 07/12] iio: dac: ad5686: add ldac gpio
+Date: Tue, 02 Jun 2026 17:33:55 +0100
+Subject: [PATCH 08/12] iio: dac: ad5686: introduce sync operation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260602-ad5686-new-features-v1-7-691e01883d27@analog.com>
+Message-Id: <20260602-ad5686-new-features-v1-8-691e01883d27@analog.com>
 References: <20260602-ad5686-new-features-v1-0-691e01883d27@analog.com>
 In-Reply-To: <20260602-ad5686-new-features-v1-0-691e01883d27@analog.com>
 To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
@@ -18,70 +18,57 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780418030; l=2056;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780418030; l=1436;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=pQX+cKvJ4ibMApwzGdCAG2JhxzWSWbPGxwsmPRVd0Ks=;
- b=0fBdx4J+O+ZGJpTFZA1nz9YeD0BAqPDKODvAx1L3d+H0nwIMntPim294gNjuEYIHiWjCHzZJQ
- qW2BMeXTfF1CGmsMX/iMPgJIQR1RGVa/xQoaiWw1MrvGBNha5pYe6Ic
+ bh=5dYkJ2OZkHyAKxl2jNuORfMox/fLJ07hRjAKClskDvk=;
+ b=fE08Oihthsp9HKS+Qe5GTjSDrJ+BfaalpgM/JL8G189wPX747TK8mdStR0bvoNh2qUxc/jbW+
+ TyP5o4N16D5Akal256r4ppDrRhFiK0IAxKpGZCOfOwk3yOHxkfRXuOz
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If wired LDAC, should be held low when unused (pin is active-low), which
-allows for synchronous DAC updates. This will be used to update all the
-channels at the same time when adding buffer support.
+Add sync() to operation to ad5686_bus_ops, which can be used to flush
+multiple pending data transfers at once. This is going to be used when
+implementing triggered buffer support.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/dac/ad5686.c | 5 +++++
- drivers/iio/dac/ad5686.h | 3 +++
- 2 files changed, 8 insertions(+)
+ drivers/iio/dac/ad5686.h | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
-index 345ca2436332..8f91838c5b53 100644
---- a/drivers/iio/dac/ad5686.c
-+++ b/drivers/iio/dac/ad5686.c
-@@ -514,6 +514,11 @@ int ad5686_probe(struct device *dev,
- 		return dev_err_probe(dev, PTR_ERR(rstc),
- 				     "Failed to get reset control\n");
- 
-+	st->ldac_gpio = devm_gpiod_get_optional(dev, "ldac", GPIOD_OUT_HIGH);
-+	if (IS_ERR(st->ldac_gpio))
-+		return dev_err_probe(dev, PTR_ERR(st->ldac_gpio),
-+				     "Failed to get LDAC GPIO\n");
-+
- 	udelay(5); /* power-up time */
- 	reset_control_assert(rstc);
- 	udelay(1); /* reset pulse: comfortably bigger than the spec */
 diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
-index a06fe7d89305..498d05ab12ee 100644
+index 498d05ab12ee..414d39863004 100644
 --- a/drivers/iio/dac/ad5686.h
 +++ b/drivers/iio/dac/ad5686.h
-@@ -9,6 +9,7 @@
- #define __DRIVERS_IIO_DAC_AD5686_H__
+@@ -67,10 +67,12 @@ struct ad5686_state;
+  * struct ad5686_bus_ops - bus specific read/write operations
+  * @read: read a register value at the given address
+  * @write: write a command, address and value to the device
++ * @sync: ensure the completion of the write operation (optional)
+  */
+ struct ad5686_bus_ops {
+ 	int (*read)(struct ad5686_state *st, u8 addr);
+ 	int (*write)(struct ad5686_state *st, u8 cmd, u8 addr, u16 val);
++	int (*sync)(struct ad5686_state *st);
+ };
  
- #include <linux/bits.h>
-+#include <linux/gpio/consumer.h>
- #include <linux/mutex.h>
- #include <linux/types.h>
+ /**
+@@ -159,7 +161,13 @@ int ad5686_probe(struct device *dev,
  
-@@ -119,6 +120,7 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
-  * @dev:		device instance
-  * @chip_info:		chip model specific constants, available modes etc
-  * @ops:		bus specific operations
-+ * @ldac_gpio:		LDAC pin GPIO descriptor
-  * @vref_mv:		actual reference voltage used
-  * @pwr_down_mask:	power down mask
-  * @pwr_down_mode:	current power down mode
-@@ -131,6 +133,7 @@ struct ad5686_state {
- 	struct device			*dev;
- 	const struct ad5686_chip_info	*chip_info;
- 	const struct ad5686_bus_ops	*ops;
-+	struct gpio_desc		*ldac_gpio;
- 	unsigned short			vref_mv;
- 	unsigned int			pwr_down_mask;
- 	unsigned int			pwr_down_mode;
+ static inline int ad5686_write(struct ad5686_state *st, u8 cmd, u8 addr, u16 val)
+ {
+-	return st->ops->write(st, cmd, addr, val);
++	int ret;
++
++	ret = st->ops->write(st, cmd, addr, val);
++	if (ret)
++		return ret;
++
++	return st->ops->sync ? st->ops->sync(st) : 0;
+ }
+ 
+ static inline int ad5686_read(struct ad5686_state *st, u8 addr)
 
 -- 
 2.43.0
