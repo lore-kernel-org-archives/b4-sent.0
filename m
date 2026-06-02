@@ -1,574 +1,66 @@
-From: Cedric Jehasse <cedric.jehasse@luminex.be>
-Date: Tue, 02 Jun 2026 11:10:32 +0200
-Subject: [PATCH net-next v5 2/2] net: dsa: mv88e6xxx: add support for
- credit based shaper
+From: Giorgi Tchankvetadze <giorgitchankvetadze1997@gmail.com>
+Date: Tue, 02 Jun 2026 15:32:45 +0400
+Subject: [PATCH v2] mm: mm_init: use div64_ul() instead of do_div()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260602-net-next-mv88e6xxx-cbs-v5-2-1969758d1fa3@luminex.be>
-References: <20260602-net-next-mv88e6xxx-cbs-v5-0-1969758d1fa3@luminex.be>
-In-Reply-To: <20260602-net-next-mv88e6xxx-cbs-v5-0-1969758d1fa3@luminex.be>
-To: Andrew Lunn <andrew@lunn.ch>, Vladimir Oltean <olteanv@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Russell King <linux@armlinux.org.uk>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Luke Howard <lukeh@padl.com>, 
- =?utf-8?q?Marek_Beh=C3=BAn?= <kabel@kernel.org>, 
- Cedric Jehasse <cedric.jehasse@gmail.com>, 
- Cedric Jehasse <cedric.jehasse@luminex.be>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780391432; l=19762;
- i=cedric.jehasse@luminex.be; s=20260213; h=from:subject:message-id;
- bh=3Dw7OdqMuTSa19ildXnspghfv3yzMYk88EZ8WakGmOU=;
- b=9tuLcbF/dYPf9cGdLhmW8CmNC9VRHchMScNa542hp5VaAJkiyXaLGRRkFHdyOE+62U78H0W60
- R8V8ZbAe9q/CH6UfZj8oXFrUvMa4pjXni9F10uqe49I7wLNKKdXY0kq
-X-Developer-Key: i=cedric.jehasse@luminex.be; a=ed25519;
- pk=DL2RaHc2bc7tTDTMJdugm42BtJk4Ip+7V41Gkj+Avjk=
-X-Endpoint-Received: by B4 Relay for cedric.jehasse@luminex.be/20260213 with auth_id=638
+Message-Id: <20260602-mm-div64-cleanup-v1-1-bf5d67d89d93@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MQQqAMAzAviI9W6hFd/Ar4mG4qgU3x4ZDEP/u8
+ BhC8kCWpJJhbB5IUjTrGSp0bQPLbsMmqK4yMLEhQ4zeo9NielwOseGKOJB11dLKzkLNYpJV738
+ 5QWGY3/cD8nlNO2YAAAA=
+X-Change-ID: 20260602-mm-div64-cleanup-50ad2020f2da
+To: Mike Rapoport <rppt@kernel.org>, 
+ Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org, 
+ Giorgi Tchankvetadze <giorgitchankvetadze1997@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780399980; l=1366;
+ i=giorgitchankvetadze1997@gmail.com; s=20260602; h=from:subject:message-id;
+ bh=J2B8gGLDwptZpFtucevPEHSpg8qUokxrjp8b+S4c/dY=;
+ b=IHwk3v2WYj8xDPtjn66FVDPMkmX2ieJh93XUEOtNj8TQxXIWSL2vr6Zkn7vrk4523G/Hpp2WF
+ FwFTOOWtAp3CXDFOFZchH3Tof7Jyj1gdbiBJe9KWcPfbUA9GJuHOlOL
+X-Developer-Key: i=giorgitchankvetadze1997@gmail.com; a=ed25519;
+ pk=D0cYZsZ7i5cTf2kRt6N7un+iLfmUPM7OwMURPmVnmEI=
+X-Endpoint-Received: by B4 Relay for giorgitchankvetadze1997@gmail.com/20260602 with auth_id=804
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some of the chips supported by this driver have credit based shaper
-support. Support is added for the 6341, 6352, 6390 and 6393 families.
-This is configured using the Qav registers in the AVB register block.
-There are small differences in the Qav registers between the chip
-families (eg. the unit used for the rate and number of bits in the
-registers). mv88e6xxx_qav_info is introduced to configure this per chip.
+Fixes Coccinelle/coccicheck warning reported by do_div.cocci.
 
-Eg. setting up 20mbps credit based shaper on a 1GBit link:
-tc qdisc add dev p8 parent root handle 100: mqprio \
-                num_tc 8 \
-                map 0 0 6 7 0 5 0 0 0 0 0 0 0 0 0 0 \
-                queues 1@0 1@1 1@2 1@3 1@4 1@5 1@6 1@7 \
-                hw 0
+Compared to do_div(), div64_ul() does not implicitly cast the divisor and
+does not unnecessarily calculate the remainder.
 
-tc qdisc replace dev p8 parent 100:8 cbs locredit -1470 hicredit 30 \
-    sendslope -980000 idleslope 20000 offload 1
+There are no functional changes. The benefit is purely a semantic cleanup
+that better communicates the intent of the division and resolves the
+static analysis warning.
 
-Note: only idleslope and hicredit can be programmed in the switch
-registers, other parameters won't affect settings.
-
-Signed-off-by: Cedric Jehasse <cedric.jehasse@luminex.be>
+Signed-off-by: Giorgi Tchankvetadze <giorgitchankvetadze1997@gmail.com>
 ---
- drivers/net/dsa/mv88e6xxx/chip.c        | 134 ++++++++++++++++++++++++++++++++
- drivers/net/dsa/mv88e6xxx/chip.h        |  20 +++++
- drivers/net/dsa/mv88e6xxx/global2.h     |   3 +
- drivers/net/dsa/mv88e6xxx/global2_avb.c |  21 +++++
- drivers/net/dsa/mv88e6xxx/port.c        |  63 +++++++++++++++
- drivers/net/dsa/mv88e6xxx/port.h        |  20 +++++
- 6 files changed, 261 insertions(+)
+v2:
+- Add changelog text explaining that the change is a semantic cleanup
+  with no functional impact, as requested by Mike Rapoport.
+---
+ mm/mm_init.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/net/dsa/mv88e6xxx/chip.c b/drivers/net/dsa/mv88e6xxx/chip.c
-index ffd4fa41b7c5..5bbf5e69de9a 100644
---- a/drivers/net/dsa/mv88e6xxx/chip.c
-+++ b/drivers/net/dsa/mv88e6xxx/chip.c
-@@ -32,6 +32,7 @@
- #include <linux/gpio/consumer.h>
- #include <linux/phylink.h>
- #include <net/dsa.h>
-+#include <net/pkt_sched.h>
+diff --git a/mm/mm_init.c b/mm/mm_init.c
+index f9f8e1af921cda91d812cffdad2f1a0698cfd6ac..4e0909a721d227b097653ed6aaa019960a7c3383 100644
+--- a/mm/mm_init.c
++++ b/mm/mm_init.c
+@@ -2412,7 +2412,7 @@ void *__init alloc_large_system_hash(const char *tablename,
+ 	/* limit allocation size to 1/16 total memory by default */
+ 	if (max == 0) {
+ 		max = ((unsigned long long)nr_all_pages << PAGE_SHIFT) >> 4;
+-		do_div(max, bucketsize);
++		max = div64_ul(max, bucketsize);
+ 	}
+ 	max = min(max, 0x80000000ULL);
  
- #include "chip.h"
- #include "devlink.h"
-@@ -5015,6 +5016,7 @@ static const struct mv88e6xxx_ops mv88e6240_ops = {
- 	.port_set_ether_type = mv88e6351_port_set_ether_type,
- 	.port_set_jumbo_size = mv88e6165_port_set_jumbo_size,
- 	.port_egress_rate_limiting = mv88e6097_port_egress_rate_limiting,
-+	.port_set_scheduling_mode = mv88e6352_port_set_scheduling_mode,
- 	.port_pause_limit = mv88e6097_port_pause_limit,
- 	.port_disable_learn_limit = mv88e6xxx_port_disable_learn_limit,
- 	.port_disable_pri_override = mv88e6xxx_port_disable_pri_override,
-@@ -5288,6 +5290,7 @@ static const struct mv88e6xxx_ops mv88e6341_ops = {
- 	.port_set_ether_type = mv88e6351_port_set_ether_type,
- 	.port_set_jumbo_size = mv88e6165_port_set_jumbo_size,
- 	.port_egress_rate_limiting = mv88e6097_port_egress_rate_limiting,
-+	.port_set_scheduling_mode = mv88e6352_port_set_scheduling_mode,
- 	.port_pause_limit = mv88e6097_port_pause_limit,
- 	.port_disable_learn_limit = mv88e6xxx_port_disable_learn_limit,
- 	.port_disable_pri_override = mv88e6xxx_port_disable_pri_override,
-@@ -5446,6 +5449,7 @@ static const struct mv88e6xxx_ops mv88e6352_ops = {
- 	.port_set_ether_type = mv88e6351_port_set_ether_type,
- 	.port_set_jumbo_size = mv88e6165_port_set_jumbo_size,
- 	.port_egress_rate_limiting = mv88e6097_port_egress_rate_limiting,
-+	.port_set_scheduling_mode = mv88e6352_port_set_scheduling_mode,
- 	.port_pause_limit = mv88e6097_port_pause_limit,
- 	.port_disable_learn_limit = mv88e6xxx_port_disable_learn_limit,
- 	.port_disable_pri_override = mv88e6xxx_port_disable_pri_override,
-@@ -5515,6 +5519,7 @@ static const struct mv88e6xxx_ops mv88e6390_ops = {
- 	.port_get_cmode = mv88e6352_port_get_cmode,
- 	.port_set_cmode = mv88e6390_port_set_cmode,
- 	.port_setup_message_port = mv88e6xxx_setup_message_port,
-+	.port_set_scheduling_mode = mv88e6390_port_set_scheduling_mode,
- 	.stats_snapshot = mv88e6390_g1_stats_snapshot,
- 	.stats_set_histogram = mv88e6390_g1_stats_set_histogram,
- 	.stats_get_sset_count = mv88e6320_stats_get_sset_count,
-@@ -5580,6 +5585,7 @@ static const struct mv88e6xxx_ops mv88e6390x_ops = {
- 	.port_get_cmode = mv88e6352_port_get_cmode,
- 	.port_set_cmode = mv88e6390x_port_set_cmode,
- 	.port_setup_message_port = mv88e6xxx_setup_message_port,
-+	.port_set_scheduling_mode = mv88e6390_port_set_scheduling_mode,
- 	.stats_snapshot = mv88e6390_g1_stats_snapshot,
- 	.stats_set_histogram = mv88e6390_g1_stats_set_histogram,
- 	.stats_get_sset_count = mv88e6320_stats_get_sset_count,
-@@ -5637,6 +5643,7 @@ static const struct mv88e6xxx_ops mv88e6393x_ops = {
- 	.port_set_ether_type = mv88e6393x_port_set_ether_type,
- 	.port_set_jumbo_size = mv88e6165_port_set_jumbo_size,
- 	.port_egress_rate_limiting = mv88e6097_port_egress_rate_limiting,
-+	.port_set_scheduling_mode = mv88e6390_port_set_scheduling_mode,
- 	.port_pause_limit = mv88e6390_port_pause_limit,
- 	.port_disable_learn_limit = mv88e6xxx_port_disable_learn_limit,
- 	.port_disable_pri_override = mv88e6xxx_port_disable_pri_override,
-@@ -5679,6 +5686,27 @@ static const struct mv88e6xxx_ops mv88e6393x_ops = {
- 	.tcam_ops = &mv88e6393_tcam_ops,
- };
- 
-+static const struct mv88e6xxx_qav_info mv88e6352_qav_info = {
-+	.rate_unit = 32,
-+	.rate_mask = GENMASK(14, 0),
-+	.hi_limit_mask = GENMASK(14, 0),
-+	.queue_mask = GENMASK(3, 0),
-+};
-+
-+static const struct mv88e6xxx_qav_info mv88e6341_qav_info = {
-+	.rate_unit = 64,
-+	.rate_mask = GENMASK(15, 0),
-+	.hi_limit_mask = GENMASK(14, 0),
-+	.queue_mask = GENMASK(3, 0),
-+};
-+
-+static const struct mv88e6xxx_qav_info mv88e6390_qav_info = {
-+	.rate_unit = 64,
-+	.rate_mask = GENMASK(15, 0),
-+	.hi_limit_mask = GENMASK(13, 0),
-+	.queue_mask = GENMASK(7, 0),
-+};
-+
- static const struct mv88e6xxx_info mv88e6xxx_table[] = {
- 	[MV88E6020] = {
- 		.prod_num = MV88E6XXX_PORT_SWITCH_ID_PROD_6020,
-@@ -6243,6 +6271,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
- 		.multi_chip = true,
- 		.edsa_support = MV88E6XXX_EDSA_SUPPORTED,
- 		.ptp_support = true,
-+		.qav = &mv88e6352_qav_info,
- 		.ops = &mv88e6240_ops,
- 	},
- 
-@@ -6380,6 +6409,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
- 		.multi_chip = true,
- 		.edsa_support = MV88E6XXX_EDSA_SUPPORTED,
- 		.ptp_support = true,
-+		.qav = &mv88e6341_qav_info,
- 		.ops = &mv88e6341_ops,
- 	},
- 
-@@ -6460,6 +6490,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
- 		.multi_chip = true,
- 		.edsa_support = MV88E6XXX_EDSA_SUPPORTED,
- 		.ptp_support = true,
-+		.qav = &mv88e6352_qav_info,
- 		.ops = &mv88e6352_ops,
- 	},
- 	[MV88E6361] = {
-@@ -6517,6 +6548,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
- 		.multi_chip = true,
- 		.edsa_support = MV88E6XXX_EDSA_UNDOCUMENTED,
- 		.ptp_support = true,
-+		.qav = &mv88e6390_qav_info,
- 		.ops = &mv88e6390_ops,
- 	},
- 	[MV88E6390X] = {
-@@ -6544,6 +6576,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
- 		.multi_chip = true,
- 		.edsa_support = MV88E6XXX_EDSA_UNDOCUMENTED,
- 		.ptp_support = true,
-+		.qav = &mv88e6390_qav_info,
- 		.ops = &mv88e6390x_ops,
- 	},
- 
-@@ -6572,6 +6605,7 @@ static const struct mv88e6xxx_info mv88e6xxx_table[] = {
- 		.pvt = true,
- 		.multi_chip = true,
- 		.ptp_support = true,
-+		.qav = &mv88e6390_qav_info,
- 		.ops = &mv88e6393x_ops,
- 	},
- };
-@@ -7193,6 +7227,105 @@ static int mv88e6xxx_crosschip_lag_leave(struct dsa_switch *ds, int sw_index,
- 	return err_sync ? : err_pvt;
- }
- 
-+static int mv88e6xxx_setup_tc_cbs(struct dsa_switch *ds, int port,
-+				  struct tc_cbs_qopt_offload *cbs)
-+{
-+	const struct mv88e6xxx_avb_ops *avb_ops;
-+	struct mv88e6xxx_chip *chip = ds->priv;
-+	const struct mv88e6xxx_qav_info *qav;
-+	const struct mv88e6xxx_ops *ops;
-+	int hilimit_reg;
-+	int rate_reg;
-+	u8 queue_bit;
-+	u16 hi_limit;
-+	u32 rate = 0;
-+	int err;
-+
-+	ops = chip->info->ops;
-+	avb_ops = ops->avb_ops;
-+	qav = chip->info->qav;
-+
-+	if (!qav || !avb_ops || !avb_ops->port_qav_write ||
-+	    !ops->port_set_scheduling_mode)
-+		return -EOPNOTSUPP;
-+
-+	if (!dsa_is_user_port(ds, port))
-+		return -EOPNOTSUPP;
-+
-+	if (!(qav->queue_mask & BIT(cbs->queue)))
-+		return -EOPNOTSUPP;
-+
-+	queue_bit = BIT(cbs->queue);
-+	rate_reg = MV88E6XXX_PORT_QAV_CFG_RATE(cbs->queue);
-+	hilimit_reg = MV88E6XXX_PORT_QAV_CFG_HI_LIMIT(cbs->queue);
-+
-+	if (cbs->enable) {
-+		if (cbs->hicredit <= 0 ||
-+		    cbs->hicredit > qav->hi_limit_mask)
-+			return -ERANGE;
-+
-+		rate = DIV_ROUND_UP(cbs->idleslope, qav->rate_unit);
-+		if (rate > qav->rate_mask)
-+			return -ERANGE;
-+		/* avoid using zero rate */
-+		rate = max_t(u16, rate, 1);
-+	}
-+
-+	mv88e6xxx_reg_lock(chip);
-+
-+	if (!cbs->enable) {
-+		err = mv88e6xxx_port_qav_write(chip, port, rate_reg, 0);
-+		if (err)
-+			goto unlock;
-+
-+		if (!(chip->ports[port].cbs_active_queues & ~queue_bit)) {
-+			err = mv88e6xxx_port_set_scheduling_mode(chip, port, 0);
-+			if (err)
-+				goto unlock;
-+		}
-+		chip->ports[port].cbs_active_queues &= ~queue_bit;
-+		goto unlock;
-+	}
-+
-+	hi_limit = cbs->hicredit & qav->hi_limit_mask;
-+	err = mv88e6xxx_port_qav_write(chip, port, hilimit_reg, hi_limit);
-+	if (err)
-+		goto unlock;
-+
-+	err = mv88e6xxx_port_qav_write(chip, port, rate_reg, rate);
-+	if (err)
-+		goto unlock;
-+
-+	if (!chip->ports[port].cbs_active_queues) {
-+		u8 sched_mode = chip->info->num_tx_queues - 1;
-+
-+		err = mv88e6xxx_port_set_scheduling_mode(chip, port,
-+							 sched_mode);
-+		if (err) {
-+			mv88e6xxx_port_qav_write(chip, port, rate_reg, 0);
-+			chip->ports[port].cbs_active_queues &= ~queue_bit;
-+			goto unlock;
-+		}
-+	}
-+	chip->ports[port].cbs_active_queues |= queue_bit;
-+
-+unlock:
-+	mv88e6xxx_reg_unlock(chip);
-+
-+	return err;
-+}
-+
-+static int mv88e6xxx_port_setup_tc(struct dsa_switch *ds, int port,
-+				   enum tc_setup_type type, void *type_data)
-+{
-+	switch (type) {
-+	case TC_SETUP_QDISC_CBS:
-+		return mv88e6xxx_setup_tc_cbs(ds, port, type_data);
-+	default:
-+		return -EOPNOTSUPP;
-+	}
-+}
-+
- static const struct phylink_mac_ops mv88e6xxx_phylink_mac_ops = {
- 	.mac_select_pcs		= mv88e6xxx_mac_select_pcs,
- 	.mac_prepare		= mv88e6xxx_mac_prepare,
-@@ -7252,6 +7385,7 @@ static const struct dsa_switch_ops mv88e6xxx_switch_ops = {
- 	.port_hwtstamp_get	= mv88e6xxx_port_hwtstamp_get,
- 	.port_txtstamp		= mv88e6xxx_port_txtstamp,
- 	.port_rxtstamp		= mv88e6xxx_port_rxtstamp,
-+	.port_setup_tc		= mv88e6xxx_port_setup_tc,
- 	.cls_flower_add		= mv88e6xxx_cls_flower_add,
- 	.cls_flower_del         = mv88e6xxx_cls_flower_del,
- 	.get_ts_info		= mv88e6xxx_get_ts_info,
-diff --git a/drivers/net/dsa/mv88e6xxx/chip.h b/drivers/net/dsa/mv88e6xxx/chip.h
-index 19d8eda19b78..e563cfe8ab2a 100644
---- a/drivers/net/dsa/mv88e6xxx/chip.h
-+++ b/drivers/net/dsa/mv88e6xxx/chip.h
-@@ -125,6 +125,7 @@ enum mv88e6xxx_edsa_support {
- };
- 
- struct mv88e6xxx_ops;
-+struct mv88e6xxx_qav_info;
- 
- struct mv88e6xxx_info {
- 	enum mv88e6xxx_family family;
-@@ -177,6 +178,9 @@ struct mv88e6xxx_info {
- 	/* Supports PTP */
- 	bool ptp_support;
- 
-+	/* 802.1Qav credit based shaping */
-+	const struct mv88e6xxx_qav_info *qav;
-+
- 	/* Internal PHY start index. 0 means that internal PHYs range starts at
- 	 * port 0, 1 means internal PHYs range starts at port 1, etc
- 	 */
-@@ -304,6 +308,9 @@ struct mv88e6xxx_port {
- 
- 	/* MacAuth Bypass control flag */
- 	bool mab;
-+
-+	/* Queues with CBS currently enabled. */
-+	u8 cbs_active_queues;
- };
- 
- enum mv88e6xxx_region_id {
-@@ -607,6 +614,8 @@ struct mv88e6xxx_ops {
- 				   size_t size);
- 
- 	int (*port_egress_rate_limiting)(struct mv88e6xxx_chip *chip, int port);
-+	int (*port_set_scheduling_mode)(struct mv88e6xxx_chip *chip, int port,
-+					u8 mode);
- 	int (*port_pause_limit)(struct mv88e6xxx_chip *chip, int port, u8 in,
- 				u8 out);
- 	int (*port_disable_learn_limit)(struct mv88e6xxx_chip *chip, int port);
-@@ -764,6 +773,10 @@ struct mv88e6xxx_avb_ops {
- 	int (*tai_read)(struct mv88e6xxx_chip *chip, int addr, u16 *data,
- 			int len);
- 	int (*tai_write)(struct mv88e6xxx_chip *chip, int addr, u16 data);
-+
-+	/* Access port-scoped 802.1Qav registers */
-+	int (*port_qav_write)(struct mv88e6xxx_chip *chip, int port, int addr,
-+			      u16 data);
- };
- 
- struct mv88e6xxx_ptp_ops {
-@@ -799,6 +812,13 @@ struct mv88e6xxx_tcam_ops {
- 	int (*flush_tcam)(struct mv88e6xxx_chip *chip);
- };
- 
-+struct mv88e6xxx_qav_info {
-+	u16 rate_unit; /* in kbps */
-+	u16 rate_mask; /* QPri Rate valid bits mask */
-+	u16 hi_limit_mask; /* QPri HiLimit bits mask*/
-+	u8 queue_mask; /* supported queues bitmask */
-+};
-+
- static inline bool mv88e6xxx_has_stu(struct mv88e6xxx_chip *chip)
- {
- 	return chip->info->max_sid > 0 &&
-diff --git a/drivers/net/dsa/mv88e6xxx/global2.h b/drivers/net/dsa/mv88e6xxx/global2.h
-index 82f9b410de0b..f1cdc33dd418 100644
---- a/drivers/net/dsa/mv88e6xxx/global2.h
-+++ b/drivers/net/dsa/mv88e6xxx/global2.h
-@@ -186,6 +186,9 @@
- #define MV88E6352_G2_AVB_CMD_BLOCK_MASK		0x00e0
- #define MV88E6352_G2_AVB_CMD_ADDR_MASK		0x001f
- 
-+#define MV88E6XXX_PORT_QAV_CFG_RATE(queue)	(((queue) & 0x7) << 1)
-+#define MV88E6XXX_PORT_QAV_CFG_HI_LIMIT(queue)	((((queue) & 0x7) << 1) + 1)
-+
- /* Offset 0x17: AVB Data Register */
- #define MV88E6352_G2_AVB_DATA		0x17
- 
-diff --git a/drivers/net/dsa/mv88e6xxx/global2_avb.c b/drivers/net/dsa/mv88e6xxx/global2_avb.c
-index 657783e043ff..6b54e275d21a 100644
---- a/drivers/net/dsa/mv88e6xxx/global2_avb.c
-+++ b/drivers/net/dsa/mv88e6xxx/global2_avb.c
-@@ -110,6 +110,15 @@ static int mv88e6352_g2_avb_port_ptp_write(struct mv88e6xxx_chip *chip,
- 	return mv88e6xxx_g2_avb_write(chip, writeop, data);
- }
- 
-+static int mv88e6352_g2_avb_port_qav_write(struct mv88e6xxx_chip *chip,
-+					   int port, int addr, u16 data)
-+{
-+	u16 writeop = MV88E6352_G2_AVB_CMD_OP_WRITE | (port << 8) |
-+		      (MV88E6352_G2_AVB_CMD_BLOCK_QAV << 5) | addr;
-+
-+	return mv88e6xxx_g2_avb_write(chip, writeop, data);
-+}
-+
- static int mv88e6352_g2_avb_ptp_read(struct mv88e6xxx_chip *chip, int addr,
- 				     u16 *data, int len)
- {
-@@ -149,6 +158,7 @@ const struct mv88e6xxx_avb_ops mv88e6352_avb_ops = {
- 	.ptp_write		= mv88e6352_g2_avb_ptp_write,
- 	.tai_read		= mv88e6352_g2_avb_tai_read,
- 	.tai_write		= mv88e6352_g2_avb_tai_write,
-+	.port_qav_write		= mv88e6352_g2_avb_port_qav_write,
- };
- 
- static int mv88e6165_g2_avb_tai_read(struct mv88e6xxx_chip *chip, int addr,
-@@ -174,6 +184,7 @@ const struct mv88e6xxx_avb_ops mv88e6165_avb_ops = {
- 	.ptp_write		= mv88e6352_g2_avb_ptp_write,
- 	.tai_read		= mv88e6165_g2_avb_tai_read,
- 	.tai_write		= mv88e6165_g2_avb_tai_write,
-+	.port_qav_write		= mv88e6352_g2_avb_port_qav_write,
- };
- 
- static int mv88e6390_g2_avb_port_ptp_read(struct mv88e6xxx_chip *chip,
-@@ -197,6 +208,15 @@ static int mv88e6390_g2_avb_port_ptp_write(struct mv88e6xxx_chip *chip,
- 	return mv88e6xxx_g2_avb_write(chip, writeop, data);
- }
- 
-+static int mv88e6390_g2_avb_port_qav_write(struct mv88e6xxx_chip *chip,
-+					   int port, int addr, u16 data)
-+{
-+	u16 writeop = MV88E6390_G2_AVB_CMD_OP_WRITE | (port << 8) |
-+		      (MV88E6352_G2_AVB_CMD_BLOCK_QAV << 5) | addr;
-+
-+	return mv88e6xxx_g2_avb_write(chip, writeop, data);
-+}
-+
- static int mv88e6390_g2_avb_ptp_read(struct mv88e6xxx_chip *chip, int addr,
- 				     u16 *data, int len)
- {
-@@ -236,4 +256,5 @@ const struct mv88e6xxx_avb_ops mv88e6390_avb_ops = {
- 	.ptp_write		= mv88e6390_g2_avb_ptp_write,
- 	.tai_read		= mv88e6390_g2_avb_tai_read,
- 	.tai_write		= mv88e6390_g2_avb_tai_write,
-+	.port_qav_write		= mv88e6390_g2_avb_port_qav_write,
- };
-diff --git a/drivers/net/dsa/mv88e6xxx/port.c b/drivers/net/dsa/mv88e6xxx/port.c
-index c90117d2dd83..23d1435db0d8 100644
---- a/drivers/net/dsa/mv88e6xxx/port.c
-+++ b/drivers/net/dsa/mv88e6xxx/port.c
-@@ -1348,6 +1348,51 @@ int mv88e6097_port_egress_rate_limiting(struct mv88e6xxx_chip *chip, int port)
- 				    0x0001);
- }
- 
-+int mv88e6352_port_set_scheduling_mode(struct mv88e6xxx_chip *chip, int port,
-+				       u8 mode)
-+{
-+	u16 reg;
-+	int err;
-+
-+	if (mode > 3)
-+		return -EINVAL;
-+
-+	err = mv88e6xxx_port_read(chip, port, MV88E6XXX_PORT_EGRESS_RATE_CTL2,
-+				  &reg);
-+	if (err)
-+		return err;
-+
-+	reg &= ~MV88E6XXX_PORT_EGRESS_RATE_CTL2_SCHEDULE_MASK;
-+	reg |= mode << MV88E6XXX_PORT_EGRESS_RATE_CTL2_SCHEDULE_SHIFT;
-+
-+	return mv88e6xxx_port_write(chip, port,
-+				    MV88E6XXX_PORT_EGRESS_RATE_CTL2, reg);
-+}
-+
-+int mv88e6390_port_set_scheduling_mode(struct mv88e6xxx_chip *chip, int port,
-+				       u8 mode)
-+{
-+	u16 reg;
-+	int err;
-+
-+	if (mode > MV88E6390_PORT_QUEUE_CTL_SCHEDULE_MASK)
-+		return -EINVAL;
-+
-+	reg = MV88E6390_PORT_QUEUE_CTL_UPDATE |
-+	      (MV88E6390_PORT_QUEUE_CTL_SCHEDULE <<
-+	       MV88E6390_PORT_QUEUE_CTL_PTR_SHIFT) |
-+	      (mode & MV88E6390_PORT_QUEUE_CTL_SCHEDULE_MASK);
-+
-+	err = mv88e6xxx_port_write(chip, port, MV88E6390_PORT_QUEUE_CTL,
-+				   reg);
-+	if (err)
-+		return err;
-+
-+	return mv88e6xxx_port_wait_bit(chip, port, MV88E6390_PORT_QUEUE_CTL,
-+				       __bf_shf(MV88E6390_PORT_QUEUE_CTL_UPDATE)
-+				       , 0);
-+}
-+
- /* Offset 0x0B: Port Association Vector */
- 
- int mv88e6xxx_port_set_assoc_vector(struct mv88e6xxx_chip *chip, int port,
-@@ -1761,3 +1806,21 @@ int mv88e6393x_port_set_policy(struct mv88e6xxx_chip *chip, int port,
- 
- 	return mv88e6393x_port_policy_write(chip, port, ptr, reg);
- }
-+
-+int mv88e6xxx_port_qav_write(struct mv88e6xxx_chip *chip, int port, int addr,
-+			     u16 data)
-+{
-+	if (!chip->info->ops->avb_ops->port_qav_write)
-+		return -EOPNOTSUPP;
-+
-+	return chip->info->ops->avb_ops->port_qav_write(chip, port, addr, data);
-+}
-+
-+int mv88e6xxx_port_set_scheduling_mode(struct mv88e6xxx_chip *chip, int port,
-+				       u8 mode)
-+{
-+	if (!chip->info->ops->port_set_scheduling_mode)
-+		return -EOPNOTSUPP;
-+
-+	return chip->info->ops->port_set_scheduling_mode(chip, port, mode);
-+}
-diff --git a/drivers/net/dsa/mv88e6xxx/port.h b/drivers/net/dsa/mv88e6xxx/port.h
-index f6041f91215e..cf8655a13729 100644
---- a/drivers/net/dsa/mv88e6xxx/port.h
-+++ b/drivers/net/dsa/mv88e6xxx/port.h
-@@ -241,6 +241,18 @@
- 
- /* Offset 0x0A: Egress Rate Control 2 */
- #define MV88E6XXX_PORT_EGRESS_RATE_CTL2		0x0a
-+#define MV88E6XXX_PORT_EGRESS_RATE_CTL2_SCHEDULE_MASK	0x3000
-+#define MV88E6XXX_PORT_EGRESS_RATE_CTL2_SCHEDULE_SHIFT	12
-+
-+/* Offset 0x1C: Port Queue Control */
-+#define MV88E6390_PORT_QUEUE_CTL			0x1c
-+#define MV88E6390_PORT_QUEUE_CTL_UPDATE			0x8000
-+#define MV88E6390_PORT_QUEUE_CTL_PTR_MASK		0x7f00
-+#define MV88E6390_PORT_QUEUE_CTL_PTR_SHIFT		8
-+#define MV88E6390_PORT_QUEUE_CTL_DATA_MASK		0x00ff
-+#define MV88E6390_PORT_QUEUE_CTL_SCHEDULE		0x00
-+#define MV88E6390_PORT_QUEUE_CTL_SCHEDULE_MASK		0x07
-+
- 
- /* Offset 0x0B: Port Association Vector */
- #define MV88E6XXX_PORT_ASSOC_VECTOR			0x0b
-@@ -569,6 +581,10 @@ int mv88e6165_port_set_jumbo_size(struct mv88e6xxx_chip *chip, int port,
- 				  size_t size);
- int mv88e6095_port_egress_rate_limiting(struct mv88e6xxx_chip *chip, int port);
- int mv88e6097_port_egress_rate_limiting(struct mv88e6xxx_chip *chip, int port);
-+int mv88e6352_port_set_scheduling_mode(struct mv88e6xxx_chip *chip, int port,
-+				       u8 mode);
-+int mv88e6390_port_set_scheduling_mode(struct mv88e6xxx_chip *chip, int port,
-+				       u8 mode);
- int mv88e6xxx_port_set_assoc_vector(struct mv88e6xxx_chip *chip, int port,
- 				    u16 pav);
- int mv88e6097_port_pause_limit(struct mv88e6xxx_chip *chip, int port, u8 in,
-@@ -613,5 +629,9 @@ int mv88e6xxx_port_hidden_read(struct mv88e6xxx_chip *chip, int block, int port,
- 			       int reg, u16 *val);
- 
- int mv88e6xxx_port_enable_tcam(struct mv88e6xxx_chip *chip, int port);
-+int mv88e6xxx_port_qav_write(struct mv88e6xxx_chip *chip, int port, int addr,
-+			     u16 data);
-+int mv88e6xxx_port_set_scheduling_mode(struct mv88e6xxx_chip *chip, int port,
-+				       u8 mode);
- 
- #endif /* _MV88E6XXX_PORT_H */
 
+---
+base-commit: 6f3ed7fec72fc8979b2a8c7219c0a9fcfc8d07b5
+change-id: 20260602-mm-div64-cleanup-50ad2020f2da
+
+Best regards,
 -- 
-2.43.0
+Giorgi Tchankvetadze <giorgitchankvetadze1997@gmail.com>
 
