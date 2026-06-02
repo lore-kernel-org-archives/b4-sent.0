@@ -1,14 +1,13 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Subject: [PATCH 00/12] New features for the AD5686 IIO driver
-Date: Tue, 02 Jun 2026 17:33:47 +0100
-Message-Id: <20260602-ad5686-new-features-v1-0-691e01883d27@analog.com>
+Date: Tue, 02 Jun 2026 17:33:48 +0100
+Subject: [PATCH 01/12] dt-bindings: iio: dac: ad5696: add reset/ldac/gain
+ gpio support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOsFH2oC/x3MQQqDMBBG4avIrB1Igg7qVcRFNL/tbNKSqC2Id
- ze4/BbvnZSRFJmG6qSEQ7N+YoGtK1rePr7AGorJGSdGjGMfWumEI368wm97QmZYK4tp5hDmnkr
- 5TVj1/1zH6bpuO9vkBWUAAAA=
-X-Change-ID: 20260602-ad5686-new-features-e116c04bddb9
+Message-Id: <20260602-ad5686-new-features-v1-1-691e01883d27@analog.com>
+References: <20260602-ad5686-new-features-v1-0-691e01883d27@analog.com>
+In-Reply-To: <20260602-ad5686-new-features-v1-0-691e01883d27@analog.com>
 To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
  linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org
@@ -21,61 +20,87 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Rodrigo Alencar <rodrigo.alencar@analog.com>, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780418030; l=2210;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780418030; l=2173;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=dcsHKAoQP64Fz4xl/KKbSuqrRQCZoXXSHYxQq69uwEQ=;
- b=YQcJxhCXAdZjqbq0PTcmgbJdHmJnFTw39NM1lD/TLpGichFY1mMwDrXvtgKJ2VlDpv4FCv3Jf
- i7Dl/EGxMwjDyAXWpJpZHuXkvGyqfUarsn9FKHyCzvbc+foBztTPR+T
+ bh=Uodwb5bj6wApJ0FYWPX0bGa/9JMjqxNyEKnyBWSUBgI=;
+ b=/cO5cMmyoPmYi5A6C4aj/zj3Qe3VDU/ZaYzlWkznciljoLVbTLa8DvCAk1Wf6Y+DvJQLXY6/x
+ nE99fKAPayACWfSUqog5pWO2jaAC/o+EvlfIIMtSa1U8c7XAc0hDBeO
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is the second series of three on updating the AD5686 driver.
+Add GPIO property for RESET, LDAC and GAIN pin. RESET is active-low, LDAC
+is used to load DAC channels with values from input registers and GAIN
+can double the voltage in output channels. The gain-gpios property is
+not available to all supported parts.
 
-Initially, a big patch series was sent:
-https://lore.kernel.org/r/20260422-ad5313r-iio-support-v1-0-ed7dca001d1b@analog.com
-
-Then, the first patch series added fixes and cleanups:
-https://lore.kernel.org/linux-iio/20260524-ad5686-fixes-v7-0-b6bf395d08bd@analog.com/
-
-This one is introducing new features:
-- Consume optional reset and correct power supplies;
-- LDAC GPIO handling (active-low, held low when unused);
-- SPI bus sync() implementation for batching multiple transfers;
-- Triggered buffer support, leveraging LDAC and sync() to flush
-  all channel writes atomically;
-- Gain control support through the scale property.
-
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
-Rodrigo Alencar (12):
-      dt-bindings: iio: dac: ad5696: add reset/ldac/gain gpio support
-      dt-bindings: iio: dac: ad5696: rework on power supplies
-      dt-bindings: iio: dac: ad5686: add reset/ldac/gain gpio support
-      dt-bindings: iio: dac: ad5686: rework on power supplies
-      iio: dac: ad5686: add support for missing power supplies
-      iio: dac: ad5686: consume optional reset signal
-      iio: dac: ad5686: add ldac gpio
-      iio: dac: ad5686: introduce sync operation
-      iio: dac: ad5686: implement new sync() op for the spi bus
-      iio: dac: ad5686: add triggered buffer support
-      iio: dac: ad5686: write_raw: use guard(mutex)()
-      iio: dac: ad5686: add gain control support
+ .../devicetree/bindings/iio/dac/adi,ad5696.yaml    | 34 +++++++++++++++++++++-
+ 1 file changed, 33 insertions(+), 1 deletion(-)
 
- .../devicetree/bindings/iio/dac/adi,ad5686.yaml    |  62 +++++-
- .../devicetree/bindings/iio/dac/adi,ad5696.yaml    |  65 ++++++-
- drivers/iio/dac/Kconfig                            |   2 +
- drivers/iio/dac/ad5686-spi.c                       | 109 ++++++++---
- drivers/iio/dac/ad5686.c                           | 212 +++++++++++++++++++--
- drivers/iio/dac/ad5686.h                           |  29 ++-
- drivers/iio/dac/ad5696-i2c.c                       |   2 +-
- 7 files changed, 422 insertions(+), 59 deletions(-)
----
-base-commit: 3dee3cddb9b2f78447bf1077f3eb8ae0b8251247
-change-id: 20260602-ad5686-new-features-e116c04bddb9
+diff --git a/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml b/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml
+index b5a88b03dc2f..2dcc049f30e9 100644
+--- a/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml
++++ b/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml
+@@ -37,14 +37,45 @@ properties:
+     description: |
+       The regulator supply for DAC reference voltage.
+ 
++  reset-gpios:
++    description: Active-low RESET pin to reset the device.
++    maxItems: 1
++
++  ldac-gpios:
++    description:
++      Active-low LDAC pin used to asynchronously update the DAC channels.
++    maxItems: 1
++
++  gain-gpios:
++    description:
++      GAIN pin that sets a multiplier for the DAC output voltage. When high,
++      the DAC output voltage is multiplied by 2, otherwise it is unchanged.
++    maxItems: 1
++
+ required:
+   - compatible
+   - reg
+ 
+-additionalProperties: false
++allOf:
++  - if:
++      properties:
++        compatible:
++          contains:
++            anyOf:
++              - const: adi,ad5311r
++              - const: adi,ad5691r
++              - const: adi,ad5692r
++              - const: adi,ad5693
++              - const: adi,ad5693r
++    then:
++      properties:
++        gain-gpios: false
++
++unevaluatedProperties: false
+ 
+ examples:
+   - |
++    #include <dt-bindings/gpio/gpio.h>
+     i2c {
+       #address-cells = <1>;
+       #size-cells = <0>;
+@@ -53,6 +84,7 @@ examples:
+         compatible = "adi,ad5696";
+         reg = <0>;
+         vcc-supply = <&dac_vref>;
++        ldac-gpios = <&gpio0 1 GPIO_ACTIVE_LOW>;
+       };
+     };
+ ...
 
-Best regards,
 -- 
-Rodrigo Alencar <rodrigo.alencar@analog.com>
+2.43.0
 
