@@ -1,104 +1,104 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Tue, 02 Jun 2026 10:50:40 +0400
-Subject: [PATCH v2 4/4] net: phy: at803x: add RX and TX clock management
- for IPQ5018 PHY
+From: Sam Day <me@samcday.com>
+Subject: [PATCH v2 0/6] MSM8916: Bring secondary cores online with
+ spin-table
+Date: Tue, 02 Jun 2026 17:18:56 +1000
+Message-Id: <20260602-msm8916-smp-support-v2-0-792e53dac374@samcday.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260602-ipq5018-gephy-clocks-v2-4-65a1f1d881f3@outlook.com>
-References: <20260602-ipq5018-gephy-clocks-v2-0-65a1f1d881f3@outlook.com>
-In-Reply-To: <20260602-ipq5018-gephy-clocks-v2-0-65a1f1d881f3@outlook.com>
-To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Florian Fainelli <f.fainelli@gmail.com>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- linux-arm-msm@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NQQ7CIBQFr9KwFgMoQl15D9NFhY9lQUF+29g0v
+ btYY9y4nJe8mYUgZA9IztVCMkwefewLiF1FTNf2d6DeFiaCCcm4UDRg0DU/UQyJ4phSzAOVToK
+ 6HWvLFJDyTBmcf27Wa/PhDI+xyIff2HkcYp638sTf6zei/0YmThk91FIrx7VxzFywDca2897EQ
+ Jp1XV/gohYkzQAAAA==
+X-Change-ID: 20250127-msm8916-smp-support-5f5e7b49d07e
+To: Tom Rini <trini@konsulko.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Mark Kettenis <mark.kettenis@xs4all.nl>, Sumit Garg <sumit.garg@kernel.org>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Sumit Garg <sumit.garg@kernel.org>
+Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io, 
+ Casey Connolly <casey.connolly@linaro.org>, Simon Glass <sjg@chromium.org>, 
+ Kory Maincent <kory.maincent@bootlin.com>, Yao Zi <me@ziyao.cc>, 
+ Peng Fan <peng.fan@nxp.com>, Kuan-Wei Chiu <visitorckw@gmail.com>, 
+ Raymond Mao <raymond.mao@riscstar.com>, 
+ Quentin Schulz <quentin.schulz@cherry.de>, 
+ Stefan Roese <stefan.roese@mailbox.org>, 
+ Jerome Forissier <jerome.forissier@arm.com>, 
+ Philip Molloy <philip.molloy@analog.com>, 
+ Michael Trimarchi <michael@amarulasolutions.com>, 
+ Michal Simek <michal.simek@amd.com>, Sughosh Ganu <sughosh.ganu@arm.com>, 
+ Antony Kurniawan Soemardi <linux@smankusors.com>, 
+ Aswin Murugan <aswin.murugan@oss.qualcomm.com>, 
+ Varadarajan Narayanan <varadarajan.narayanan@oss.qualcomm.com>, 
+ Marek Vasut <marek.vasut+renesas@mailbox.org>, 
+ Luca Weiss <luca.weiss@fairphone.com>, 
+ Ilias Apalodimas <ilias.apalodimas@linaro.org>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780383045; l=2335;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=k3J1uSCRHsxM9xs2etq4AynajTAyY7ew0xbYTGGX5vo=;
- b=XC5MLpTjeARQV5btxnH3uknIg5JztVn3Er5vSILfOriN654qinR4wnWCSN1B5UZvEJ7YlWLqc
- 0iQjrlnoEJwC2KaGibXI3KCX9TFRvlgCfTjHcqt1nqkAfBJbc8wP2hi
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780384740; l=2524;
+ i=me@samcday.com; s=20240502; h=from:subject:message-id;
+ bh=isRyibY0H+lkNaujLtRY0btlPaqJyqRSHaBLQFbwFiU=;
+ b=iFhHh4pMqtNlVMoMA5WecbooVSaEtSHaaMmN2BOQ2B5JT3QoHMODvbu13uPKcW66AV3LCgTrB
+ pzIt8tDv3YOC/GRWGxpUA6Rcyoq1bAxBFUR8bJp8TljDtvCcm29N1g9
+X-Developer-Key: i=me@samcday.com; a=ed25519;
+ pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
+X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Acquire and enable the RX and TX clocks for the IPQ5018 PHY. These
-clocks are required for the PHY's datapath to function correctly.
-In addition, gate the clocks upon link state changes for improved power
-management.
+This patch series depends on the "mach-snapdragon: handle platforms
+without PSCI support" patch that was submitted earlier today. That first
+patch lays some groundwork to handle detecting when a device is booting
+without PSCI and deletes the /psci node in that case.
 
-Fixes: d46502279a11 ("net: phy: qcom: at803x: Add Qualcomm IPQ5018 Internal PHY support")
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+This series builds on top of that detection by rewriting all CPUs with
+enable-method="psci" to "spin-table".
+
+Once this is done, the existing spin-table support in U-Boot handles
+further patching the nodes with the appropriate cpu-release-addr and
+reserving the memory with the spin-table instructions.
+
+Interestingly, this spin-table code doesn't seem to be in active use
+anywhere, and it had bitrotted a little. But after blowing the dust off
+it and fixing a couple of missing #includes, it works great.
+
+I extended the spin-table support a little to make it easier for
+consumers to plug in a method that is called for each CPU that needs to
+be brought online. This saves the qcom board code from needing to hook
+into ft_board_setup or something that runs before booting the OS.
+
+Signed-off-by: Sam Day <me@samcday.com>
 ---
- drivers/net/phy/qcom/at803x.c | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+Changes in v2:
+- Reworked the SCM impl to be a proper firmware driver, and streamlined
+  the API so callers aren't forced to deal with calling conventions
+  (thanks Casey).
+- Link to v1: https://lore.kernel.org/r/20250128-msm8916-smp-support-v1-0-39587f18cf0c@samcday.com
 
-diff --git a/drivers/net/phy/qcom/at803x.c b/drivers/net/phy/qcom/at803x.c
-index 63726cf98cd4..b7361a14220d 100644
---- a/drivers/net/phy/qcom/at803x.c
-+++ b/drivers/net/phy/qcom/at803x.c
-@@ -19,6 +19,7 @@
- #include <linux/regulator/consumer.h>
- #include <linux/of.h>
- #include <linux/phylink.h>
-+#include <linux/clk.h>
- #include <linux/reset.h>
- #include <linux/phy_port.h>
- #include <dt-bindings/net/qca-ar803x.h>
-@@ -176,6 +177,8 @@ struct at803x_context {
- };
- 
- struct ipq5018_priv {
-+	struct clk *rx_clk;
-+	struct clk *tx_clk;
- 	struct reset_control *rst;
- 	bool set_short_cable_dac;
- };
-@@ -1062,6 +1065,16 @@ static int ipq5018_config_init(struct phy_device *phydev)
- 
- static void ipq5018_link_change_notify(struct phy_device *phydev)
- {
-+	struct ipq5018_priv *priv = phydev->priv;
-+
-+	if (phydev->link) {
-+		clk_enable(priv->rx_clk);
-+		clk_enable(priv->tx_clk);
-+	} else {
-+		clk_disable(priv->rx_clk);
-+		clk_disable(priv->tx_clk);
-+	}
-+
- 	/*
- 	 * Reset the FIFO buffer upon link disconnects to clear any residual data
- 	 * which may cause issues with the FIFO which it cannot recover from.
-@@ -1084,6 +1097,16 @@ static int ipq5018_probe(struct phy_device *phydev)
- 	priv->set_short_cable_dac = of_property_read_bool(dev->of_node,
- 							  "qcom,dac-preset-short-cable");
- 
-+	priv->rx_clk = devm_clk_get_enabled(dev, "rx");
-+	if (IS_ERR(priv->rx_clk))
-+		return dev_err_probe(dev, PTR_ERR(priv->rx_clk),
-+				     "failed to get and enable RX clock\n");
-+
-+	priv->tx_clk = devm_clk_get_enabled(dev, "tx");
-+	if (IS_ERR(priv->tx_clk))
-+		return dev_err_probe(dev, PTR_ERR(priv->tx_clk),
-+				     "failed to get and enable TX clock\n");
-+
- 	priv->rst = devm_reset_control_array_get_exclusive(dev);
- 	if (IS_ERR(priv->rst))
- 		return dev_err_probe(dev, PTR_ERR(priv->rst),
+---
+Sam Day (6):
+      armv8: spin_table: Fix missing includes
+      armv8: spin_table: add hook for booting cores
+      firmware: Add qcom SCM driver
+      mach-snapdragon: fixup CPUs with PSCI enable-method
+      mach-snapdragon: MSM8916 spin-table CPU boot support
+      qcom_defconfig: enable spin-table support
 
+ MAINTAINERS                            |   2 +
+ arch/arm/cpu/armv8/spin_table.c        |  20 +++
+ arch/arm/include/asm/spin_table.h      |   3 +
+ arch/arm/mach-snapdragon/Makefile      |   1 +
+ arch/arm/mach-snapdragon/board.c       |  41 +++++
+ arch/arm/mach-snapdragon/msm8916-smp.c | 138 +++++++++++++++++
+ configs/qcom_defconfig                 |   3 +
+ drivers/firmware/Kconfig               |   9 ++
+ drivers/firmware/Makefile              |   1 +
+ drivers/firmware/qcom-scm.c            | 274 +++++++++++++++++++++++++++++++++
+ include/firmware/qcom/scm.h            |  71 +++++++++
+ 11 files changed, 563 insertions(+)
+---
+base-commit: 30b77f6aa146c96b831cb4ece038130b655b6a41
+change-id: 20250127-msm8916-smp-support-5f5e7b49d07e
+
+Best regards,
 -- 
-2.53.0
+Sam Day <me@samcday.com>
 
