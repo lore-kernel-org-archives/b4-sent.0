@@ -1,191 +1,169 @@
-From: Sam Day <me@samcday.com>
-Date: Wed, 03 Jun 2026 08:56:21 +1000
-Subject: [PATCH] mach-snapdragon: formalize APQ8016 debug UART init
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v6 0/8] media: camss: Add support for C-PHY configuration
+ on Qualcomm platforms
+Date: Wed, 03 Jun 2026 01:30:38 +0200
+Message-Id: <20260603-qcom-cphy-v6-0-e50de0b557a8@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260603-apq8016-debug-uart-v1-1-1e46b2cd0fe6@samcday.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MywqAIBAAfyX23MIqYdGvRAez1fbSQyuC8N+Tj
- gMz80LiKJygr16IfEuSbS2g6grcYtfAKHNh0KQNGdJo96MjZXDm6Qp42XgitY6cb1gVAUq4R/b
- y/NNhzPkDDHCsZWQAAAA=
-X-Change-ID: 20260602-apq8016-debug-uart-07c0cf4e1060
-To: u-boot@lists.denx.de, Sumit Garg <sumit.garg@kernel.org>, 
- u-boot-qcom@groups.io
-Cc: Tom Rini <trini@konsulko.com>, Dmitrii Sharshakov <d3dx12.xx@gmail.com>, 
- Brian Sune <briansune@gmail.com>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, Simon Glass <sjg@chromium.org>, 
- Kuan-Wei Chiu <visitorckw@gmail.com>, Daniel Palmer <daniel@0x0f.com>, 
- Luca Weiss <luca.weiss@fairphone.com>, 
- Quentin Schulz <quentin.schulz@cherry.de>, 
- Stephan Gerhold <stephan.gerhold@linaro.org>, Yao Zi <me@ziyao.cc>, 
- Sam Day <me@samcday.com>
+X-B4-Tracking: v=1; b=H4sIAJ5nH2oC/23OTWrDMBCG4asErasyo5+R01XvUbqwRqNai8aJH
+ UzS4LtXMRTb0OU36HnRQ40yFBnV2+GhBpnKWPpTHfRyUNy1py/RJdWtDBiPCEd94f5b87m76xg
+ bjqlFJudUfX8eJJfb0vr4rLsr47Uf7kt6wuf1v8qEGjSSz0HCMYLge7mV6yv/qGdjMqsz4LbOV
+ EfReslNhICyd/bPESCGrbPVNSyBWqAcUtw7tzoLuHWuOvHWIiXDTH7v/Oq83Tm//FMgk4kubd0
+ 8z7/nOvhOgAEAAA==
+X-Change-ID: 20251109-qcom-cphy-bb8cbda1c644
+To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Bryan O'Donoghue <bod@kernel.org>, 
+ Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Luca Weiss <luca.weiss@fairphone.com>, Petr Hodina <phodina@protonmail.com>, 
+ "Dr. Git" <drgitx@gmail.com>, Cory Keitz <ckeitz@amazon.com>, 
+ Loic Poulain <loic.poulain@oss.qualcomm.com>
+Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Kieran Bingham <kbingham@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, linux-media@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780440984; l=5825;
- i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=eOlqaNI5vfQ5kyzDO3QgLKmC5+z6GbvHUzd9+0eIS8A=;
- b=13LInEw1Rf9t6cB8MxZH0Lkr2QGXzsIYgwHiOFRp2Oi4lJehHQ4HE3XF9lwUeznfZGFeMJpXx
- 0hGllIskD+9DhEbXAhmV+zH2PQezi7gNjl2nlAfJsC3kL0pXzsbx9gV
-X-Developer-Key: i=me@samcday.com; a=ed25519;
- pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
-X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5747; i=david@ixit.cz;
+ h=from:subject:message-id; bh=FQSGsxJUavVmIbh1PvZEytyiaMY/zidGTGCoSvDEAkg=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqH2ep7nbK5dTtpq95ihAgQkfyuvPJS9obA8Xib
+ EAE5R1I8mmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCah9nqQAKCRBgAj/E00kg
+ cuysEAC16VFplCtzOM6q48ppiN4rKxPYJMT79NqDnarWODRUJlU1tiKrUxy1dU2vlaQbjSOBLMT
+ N57YfYv4JC7tp+zkdKG1LLWFIsNkwTw7U4abM4cI/ZYI2gjOWJTH+Cp/vIQ8oEF9sN4Tgnk1BUK
+ dlTpQXDsPO4QoM1Bb+C5RYxZI4BYaIAx1DkfFHF0p1mypM1i0BqAh7a+eCYytc++OaA+Sc7hRZb
+ GSGwz3qcU52w+mKQtEVts0gaygxxcAb7A9LytUWv01bwW3CADWSpc3srZz6TR79eQxmGKCFYnd8
+ HR0t4IMGHABPbkpr/KR3gROaDvmzKe6tWHMAxGjuLteDhiIa65MyXzm2OoPQ/Geq3+WKPKeFy3S
+ h5G4lU6xJBqCU/ztL1UURF9gs1rdIjEUOrcJ8PevxPYR5S3wUIKXGlhmq3Teb17lZSjJe1liwRZ
+ LdLeOqd7q/bLshRb0b3WSuHHU6xiRRpdD2SGM6FSGJl/qrbF7Afqyb+jjWLIDWsc6e6PLt/nRfC
+ 4EpbplBejLMA4NTDGd5qYdDHflSpo6UEQWhCFs68GzgIqUzrnR3eISbgAMah8lbQifa+R27D34s
+ novDoWzZGfnQLcyDEu7cQ1chZpGz4yKhS+Pynjr4mjf4yUCjjaUGsF4x38/Gnc/iSV7G64swFrs
+ 3EAh6iZL4eoJbSA==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The dragonboard410c (and likely other SB-off devices) can run U-Boot
-early enough in the boot chain such that UART clock isn't started, and
-pins aren't configured.
+Note: WIP tag added, as not everything from the previous review round has
+been addressed.
 
-APQ8016 has two UART peripherals, each with its own clock and TLMM pins.
+# Short summary
 
-Two new debug-apq8016-uartN.config fragments are provided. Each
-configures the appropriate UARTDM aperture. The newly introduced
-DEBUG_UART_APQ8016 Kconfig symbol pulls in MSM debug UART, and enables a
-board-level debug_uart_init function to start the right clock and mux
-the right TX pin.
+This patch series extends the Qualcomm CAMSS (Camera Subsystem),
+including CSID and CSIPHY components, to support C-PHY mode configuration.
 
-Signed-off-by: Sam Day <me@samcday.com>
+# Background and motivation
+
+Modern smartphone cameras increasingly rely on MIPI C-PHY rather than 
+D-PHY, thanks to its higher data throughput and signal efficiency.
+As a result, many OEMs adopt C-PHY interfaces for main (rear) cameras on
+Qualcomm-based devices.
+
+Until now, mainline Linux lacked C-PHY configuration support for Qualcomm
+chipsets, preventing bring-up of primary camera sensors on several
+Snapdragon platforms. This series closes that gap.
+
+ - Introduces C-PHY configuration support for the CAMSS driver stack,
+   covering both CSID and CSIPHY blocks.
+ - Successfully enables C-PHY operation on the Snapdragon 845 platform.
+ - Tested on OnePlus 6 and 6T phones running mainline Linux,
+   using the Sony IMX519 main camera sensor.
+ - The new configuration allows other chipsets versionsto enable C-PHY by
+   simply adding corresponding sensor driver support and csiphy
+   initialization data, following the example set for sdm845.
+
+With this patch series, mainline Linux gains working C-PHY support for
+Snapdragon 845, paving the way for improved main camera functionality
+across many Qualcomm-based devices. The groundwork also simplifies
+future enablement efforts for additional SoCs and sensors.
+
+Until merged, the series will be also available at:
+  https://codeberg.org/sdm845/linux/commits/branch/b4/qcom-cphy
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- arch/arm/mach-snapdragon/Kconfig              |  9 +++++++
- arch/arm/mach-snapdragon/Makefile             |  1 +
- arch/arm/mach-snapdragon/debug-uart-apq8016.c | 37 +++++++++++++++++++++++++++
- board/qualcomm/debug-apq8016-uart1.config     |  4 +++
- board/qualcomm/debug-apq8016-uart2.config     |  4 +++
- drivers/serial/Kconfig                        |  1 +
- drivers/serial/serial_msm.c                   | 10 --------
- 7 files changed, 56 insertions(+), 10 deletions(-)
+Changes in v6:
+- lanes_enable now uses WARN_ONCE instead of return values. (Sakari)
+- Dropped Kodiak patch until it gets better documented.
+- Document the 3ph C-PHY sdm845 registers a bit.
+- Link to v5: https://lore.kernel.org/r/20260531-qcom-cphy-v5-0-6be0f62b4d65@ixit.cz
 
-diff --git a/arch/arm/mach-snapdragon/Kconfig b/arch/arm/mach-snapdragon/Kconfig
-index d3de8693b5a..43e6fd1bc42 100644
---- a/arch/arm/mach-snapdragon/Kconfig
-+++ b/arch/arm/mach-snapdragon/Kconfig
-@@ -1,5 +1,14 @@
- if ARCH_SNAPDRAGON
- 
-+config DEBUG_UART_APQ8016
-+	bool "APQ8016 early debug initialization"
-+	select CLK_QCOM_APQ8016
-+	select CONFIG_DEBUG_UART_MSM
-+	select DEBUG_UART_BOARD_INIT
-+	help
-+	  Ensures BLSP UART clocks+pins are setup. Useful when U-Boot is running from
-+	  aboot (such as on the dragonboard410c).
-+
- config SYS_SOC
- 	default "snapdragon"
- 
-diff --git a/arch/arm/mach-snapdragon/Makefile b/arch/arm/mach-snapdragon/Makefile
-index 343e825c6fd..824bb4d5daf 100644
---- a/arch/arm/mach-snapdragon/Makefile
-+++ b/arch/arm/mach-snapdragon/Makefile
-@@ -5,3 +5,4 @@
- obj-y += board.o
- obj-$(CONFIG_EFI_HAVE_CAPSULE_SUPPORT) += capsule_update.o
- obj-$(CONFIG_OF_LIVE) += of_fixup.o
-+obj-$(CONFIG_DEBUG_UART_APQ8016) += debug-uart-apq8016.o
-diff --git a/arch/arm/mach-snapdragon/debug-uart-apq8016.c b/arch/arm/mach-snapdragon/debug-uart-apq8016.c
-new file mode 100644
-index 00000000000..2de9d99bed5
---- /dev/null
-+++ b/arch/arm/mach-snapdragon/debug-uart-apq8016.c
-@@ -0,0 +1,37 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+/*
-+ * SoC-specific debug UART initialization (clocks/pins) lives here
-+ */
-+
-+#include <asm/io.h>
-+#include <dt-bindings/clock/qcom,gcc-msm8916.h>
-+
-+extern int apq8016_clk_init_uart(phys_addr_t gcc_base, unsigned long id);
-+
-+#define APQ8016_GCC_BASE		((phys_addr_t)0x01800000)
-+
-+#define APQ8016_TLMM_BASE		((phys_addr_t)0x01000000)
-+#define APQ8016_TLMM_FUNC_BLSP_UART	(2 << 2)
-+#define APQ8016_TLMM_DRV_8MA		(3 << 6)
-+#define APQ8016_TLMM_GPIO_ENABLE	BIT(9)
-+#define APQ8016_GPIO_CFG(gpio)		(APQ8016_TLMM_BASE + (phys_addr_t)(gpio) * 0x1000)
-+#define APQ8016_DEBUG_UART_PINCFG	(APQ8016_TLMM_FUNC_BLSP_UART | \
-+					 APQ8016_TLMM_DRV_8MA | \
-+					 APQ8016_TLMM_GPIO_ENABLE)
-+
-+void board_debug_uart_init(void)
-+{
-+	/* infer BLSP clock and TX pin by the configured UART base */
-+	switch (CONFIG_VAL(DEBUG_UART_BASE)) {
-+	case 0x078af000:
-+		apq8016_clk_init_uart(APQ8016_GCC_BASE,
-+				      GCC_BLSP1_UART1_APPS_CLK);
-+		writel(APQ8016_DEBUG_UART_PINCFG, APQ8016_GPIO_CFG(0));
-+		break;
-+	case 0x078b0000:
-+		apq8016_clk_init_uart(APQ8016_GCC_BASE,
-+				      GCC_BLSP1_UART2_APPS_CLK);
-+		writel(APQ8016_DEBUG_UART_PINCFG, APQ8016_GPIO_CFG(4));
-+		break;
-+	}
-+}
-diff --git a/board/qualcomm/debug-apq8016-uart1.config b/board/qualcomm/debug-apq8016-uart1.config
-new file mode 100644
-index 00000000000..283fbf20ff8
---- /dev/null
-+++ b/board/qualcomm/debug-apq8016-uart1.config
-@@ -0,0 +1,4 @@
-+CONFIG_DEBUG_UART=y
-+CONFIG_DEBUG_UART_ANNOUNCE=y
-+CONFIG_DEBUG_UART_BASE=0x078af000
-+CONFIG_DEBUG_UART_APQ8016=y
-diff --git a/board/qualcomm/debug-apq8016-uart2.config b/board/qualcomm/debug-apq8016-uart2.config
-new file mode 100644
-index 00000000000..61e56d4eb5a
---- /dev/null
-+++ b/board/qualcomm/debug-apq8016-uart2.config
-@@ -0,0 +1,4 @@
-+CONFIG_DEBUG_UART=y
-+CONFIG_DEBUG_UART_ANNOUNCE=y
-+CONFIG_DEBUG_UART_BASE=0x078b0000
-+CONFIG_DEBUG_UART_APQ8016=y
-diff --git a/drivers/serial/Kconfig b/drivers/serial/Kconfig
-index 5f8b98f0704..698205aa035 100644
---- a/drivers/serial/Kconfig
-+++ b/drivers/serial/Kconfig
-@@ -565,6 +565,7 @@ config DEBUG_UART_CLOCK
- 	default 100000000 if DEBUG_UART_ZYNQ && ARCH_ZYNQMP
- 	default 50000000 if DEBUG_UART_ZYNQ && ARCH_ZYNQ
- 	default 100000000 if DEBUG_UART_PL011 && (ARCH_VERSAL || ARCH_VERSAL_NET || ARCH_VERSAL2)
-+	default 7372800 if DEBUG_UART_APQ8016
- 	help
- 	  The UART input clock determines the speed of the internal UART
- 	  circuitry. The baud rate is derived from this by dividing the input
-diff --git a/drivers/serial/serial_msm.c b/drivers/serial/serial_msm.c
-index 18d15b7b15b..e25cb71696f 100644
---- a/drivers/serial/serial_msm.c
-+++ b/drivers/serial/serial_msm.c
-@@ -235,18 +235,8 @@ static struct msm_serial_data init_serial_data = {
- 
- #include <debug_uart.h>
- 
--/* Uncomment to turn on UART clocks when debugging U-Boot as aboot on MSM8916 */
--//int apq8016_clk_init_uart(phys_addr_t gcc_base, unsigned long id);
--
- static inline void _debug_uart_init(void)
- {
--	/*
--	 * Uncomment to turn on UART clocks when debugging U-Boot as aboot
--	 * on MSM8916. Supported debug UART clock IDs:
--	 *   - db410c: GCC_BLSP1_UART2_APPS_CLK
--	 *   - HMIBSC: GCC_BLSP1_UART1_APPS_CLK
--	 */
--	//apq8016_clk_init_uart(0x1800000, <uart_clk_id>);
- 	uart_dm_init(&init_serial_data);
- }
- 
+Changes in v5:
+- Split first patch enabling C-PHY part into last patch. (Bryan)
+- Fix the camss_get_link_freq crash. (Cory)
+- Dropped patch whitelisting C-PHY, instead use nullptr check. (Bryan)
+- Dropped A-b/R-b from
+ "media: qcom: camss: Initialize lanes after lane configuration is available"
+ and changed Petr to Co-developed by and owned the patch.
+- Link to v4: https://lore.kernel.org/r/20260301-qcom-cphy-v4-0-e53316d2cc65@ixit.cz
+
+Changes in v4:
+- Documented cphy parametr to camss_get_link_freq.
+- Use BIT() macro for lane_mask. (Bryan)
+- Correct lane_mask calculation. (Kieran + me)
+- Removed comment for the D/C-PHY sequences init. (Bryan)
+- Pass &csid->phy for calculate freq. (Bryan)
+- Added missing cphy description to camss_get_link_freq. (kernel test robot)
+- Gen2 v1.1 MIPI CSI-2 CPHY init hex to lowercase.
+- Added back missed commit with improved electrical for sdm845 3ph.
+- NOT addressed yet:
+  - Proliferating special cases in switch statements on a per-SoC basis is verboten. 
+  - is it possible to set clock_lane to say 0xff in DT ? 
+- Link to v3: https://lore.kernel.org/r/20260117-qcom-cphy-v3-0-8ce76a06f7db@ixit.cz
+
+Changes in v3:
+- Make lanes_enable return sucess or error, since I couldn't move the
+  configuration to the _init.
+- Dropped R-b tags on
+  "media: qcom: camss: Initialize lanes after lane configuration is available"
+  as I changed formatting.
+- Link to v2: https://lore.kernel.org/r/20251204-qcom-cphy-v2-0-6b35ef8b071e@ixit.cz
+
+Changes in v2:
+- This is still WIP patch series, thus I wanted to publish already
+  changed parts to get feedback regarding to the direction of patchset.
+- When switch to using odd bits, zeroed val which was left unitialized in v1.
+- Accidentally missed archs added back in the commit moving lane regs to
+  new location.
+- Remove commit with reverting check for only D-PHY is supported and
+  adjusted the check to also account for C-PHY.
+- Documented link frequency calculation with defines. (Casey)
+- Changed the cphy boolean to phy_cfg enum in the camss/camss-csiphy.
+  (Brian)
+- Added patch for csiphy-3ph enablement for sm7280 from Luca as I'm
+  meanwhile trying to bring up the C-PHY sensor on FairPhone 5.
+- Merged these two commits together
+    csiphy-3ph: Enable sdm845 C-PHY sequence
+    csiphy-3ph: Add Gen2 v1.1 MIPI CSI-2 CPHY init
+  merged R-b.
+- Link to v1: https://lore.kernel.org/r/20251109-qcom-cphy-v1-0-165f7e79b0e1@ixit.cz
 
 ---
-base-commit: f76fb6495b2df5163f4c88dc222acc934caffbfb
-change-id: 20260602-apq8016-debug-uart-07c0cf4e1060
+David Heidelberg (8):
+      media: qcom: camss: csiphy: Introduce PHY configuration
+      media: qcom: camss: csiphy-3ph: Use odd bits for configuring C-PHY lanes
+      media: qcom: camss: Prepare CSID for C-PHY support
+      media: qcom: camss: Initialize lanes after lane configuration is available
+      media: qcom: camss: csiphy-3ph: Add Gen2 v1.1 MIPI CSI-2 C-PHY init
+      media: qcom: camss: csiphy-3ph: Update Gen2 v1.1 MIPI CSI-2 C-PHY init
+      media: qcom: camss: Account for C-PHY when calculating link frequency
+      media: qcom: camss: Enable C-PHY where available
+
+ .../media/platform/qcom/camss/camss-csid-gen2.c    |   1 +
+ drivers/media/platform/qcom/camss/camss-csid.c     |   8 +-
+ drivers/media/platform/qcom/camss/camss-csid.h     |   1 +
+ .../platform/qcom/camss/camss-csiphy-3ph-1-0.c     | 243 +++++++++++++++++----
+ drivers/media/platform/qcom/camss/camss-csiphy.c   |   6 +-
+ drivers/media/platform/qcom/camss/camss-csiphy.h   |   2 +
+ drivers/media/platform/qcom/camss/camss.c          |  36 ++-
+ drivers/media/platform/qcom/camss/camss.h          |   2 +-
+ 8 files changed, 236 insertions(+), 63 deletions(-)
+---
+base-commit: b7bee4ca5688e30ca50fbc87b1b8f7eed7006c17
+change-id: 20251109-qcom-cphy-bb8cbda1c644
 
 Best regards,
 -- 
-Sam Day <me@samcday.com>
+David Heidelberg <david@ixit.cz>
 
