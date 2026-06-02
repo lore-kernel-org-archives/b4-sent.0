@@ -1,11 +1,10 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 02 Jun 2026 17:33:52 +0100
-Subject: [PATCH 05/12] iio: dac: ad5686: add support for missing power
- supplies
+Date: Tue, 02 Jun 2026 17:33:53 +0100
+Subject: [PATCH 06/12] iio: dac: ad5686: consume optional reset signal
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260602-ad5686-new-features-v1-5-691e01883d27@analog.com>
+Message-Id: <20260602-ad5686-new-features-v1-6-691e01883d27@analog.com>
 References: <20260602-ad5686-new-features-v1-0-691e01883d27@analog.com>
 In-Reply-To: <20260602-ad5686-new-features-v1-0-691e01883d27@analog.com>
 To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
@@ -19,68 +18,65 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780418030; l=2269;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780418030; l=1771;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=f/SVtqpON4GK4wHV3s6GhGXHVZxtYozoTOlTjmn+Yy8=;
- b=uWeDrdqU+kZ4O7T4U9kQChYAQ5HNPchDVuXfQjwbwh5sWuvTvVbiCr5i7NDLsvDMz7rAxrPg8
- n0J9uTbMUhjBcT6CDIte4gJtRVXOAr8seSWKobjIEFr+V6kKzyIqozd
+ bh=vXNN1mglGgjf48pZPy8eNX8aBxzrQUf3QPxVDN45sSE=;
+ b=W4TrsPcJ/Kxj21ft0cLAe96AbCbgBo5ZD5cs9uFqRZEOoIMDfhQOWbJrjUIWclDq+xhJRSqFt
+ VEOavaFWZ4hBj7Pw5UGrHuEbSj9sXaykfzXh7KLbp3iRgLxkmjx2daS
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Get and enable regulators for vdd, vlogic and vref input power pins. Vdd
-is the input power supply, while vlogic powers the digital side. vref is
-replacing vcc, which is being deprecated, but still supported. The value
-of vref_mv is checked so that a device without internal voltage reference
-cannot proceed without an explicit supply. For correct operation, vdd and
-vlogic are required, then devm_regulator_get_enable() is used so the
-driver can still work without them by using the stub/dummy regulators.
-Error report uses dev_err_probe(), which helps debugging an init issue.
+Add RESET pin GPIO support through an optional reset control, which is
+local to the probe function. Also, include delays for power-up time and
+reset pulse width.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/dac/ad5686.c | 19 +++++++++++++++++--
- 1 file changed, 17 insertions(+), 2 deletions(-)
+ drivers/iio/dac/ad5686.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
 diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
-index 5840fda4b011..4a8c587ff116 100644
+index 4a8c587ff116..345ca2436332 100644
 --- a/drivers/iio/dac/ad5686.c
 +++ b/drivers/iio/dac/ad5686.c
-@@ -8,6 +8,7 @@
+@@ -8,12 +8,14 @@
  #include <linux/array_size.h>
  #include <linux/bitfield.h>
  #include <linux/bitops.h>
-+#include <linux/dev_printk.h>
++#include <linux/delay.h>
+ #include <linux/dev_printk.h>
  #include <linux/errno.h>
  #include <linux/export.h>
  #include <linux/kstrtox.h>
-@@ -484,13 +485,27 @@ int ad5686_probe(struct device *dev,
- 	st->ops = ops;
- 	st->chip_info = chip_info;
+ #include <linux/module.h>
+ #include <linux/regulator/consumer.h>
++#include <linux/reset.h>
+ #include <linux/sysfs.h>
+ #include <linux/wordpart.h>
  
--	ret = devm_regulator_get_enable_read_voltage(dev, "vcc");
-+	ret = devm_regulator_get_enable(dev, "vdd");
-+	if (ret)
-+		return dev_err_probe(dev, ret, "failed to enable vdd supply\n");
+@@ -471,6 +473,7 @@ int ad5686_probe(struct device *dev,
+ 		 const struct ad5686_chip_info *chip_info,
+ 		 const char *name, const struct ad5686_bus_ops *ops)
+ {
++	struct reset_control *rstc;
+ 	struct ad5686_state *st;
+ 	struct iio_dev *indio_dev;
+ 	int ret, i;
+@@ -506,6 +509,16 @@ int ad5686_probe(struct device *dev,
+ 		return dev_err_probe(dev, -EINVAL,
+ 				     "invalid or not provided vref voltage\n");
+ 
++	rstc = devm_reset_control_get_optional_exclusive(dev, NULL);
++	if (IS_ERR(rstc))
++		return dev_err_probe(dev, PTR_ERR(rstc),
++				     "Failed to get reset control\n");
 +
-+	ret = devm_regulator_get_enable(dev, "vlogic");
-+	if (ret)
-+		return dev_err_probe(dev, ret, "failed to enable vlogic supply\n");
-+
-+	ret = devm_regulator_get_enable_read_voltage(dev, "vref");
-+	if (ret == -ENODEV) /* vcc-supply is deprecated, but supported still */
-+		ret = devm_regulator_get_enable_read_voltage(dev, "vcc");
- 	if (ret < 0 && ret != -ENODEV)
--		return ret;
-+		return dev_err_probe(dev, ret, "failed to read vref voltage\n");
- 
- 	st->use_internal_vref = ret == -ENODEV;
- 	st->vref_mv = st->use_internal_vref ? st->chip_info->int_vref_mv : ret / 1000;
- 
-+	if (!st->vref_mv)
-+		return dev_err_probe(dev, -EINVAL,
-+				     "invalid or not provided vref voltage\n");
++	udelay(5); /* power-up time */
++	reset_control_assert(rstc);
++	udelay(1); /* reset pulse: comfortably bigger than the spec */
++	reset_control_deassert(rstc);
 +
  	/* Initialize masks to all ones */
  	st->pwr_down_mask = ~0;
