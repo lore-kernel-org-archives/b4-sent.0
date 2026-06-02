@@ -1,10 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Tue, 02 Jun 2026 17:18:59 +1000
-Subject: [PATCH v2 3/6] firmware: Add qcom SCM driver
+Date: Tue, 02 Jun 2026 17:19:00 +1000
+Subject: [PATCH v2 4/6] mach-snapdragon: fixup CPUs with PSCI enable-method
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260602-msm8916-smp-support-v2-3-792e53dac374@samcday.com>
+Message-Id: <20260602-msm8916-smp-support-v2-4-792e53dac374@samcday.com>
 References: <20260602-msm8916-smp-support-v2-0-792e53dac374@samcday.com>
 In-Reply-To: <20260602-msm8916-smp-support-v2-0-792e53dac374@samcday.com>
 To: Tom Rini <trini@konsulko.com>, 
@@ -30,432 +30,88 @@ Cc: u-boot@lists.denx.de, u-boot-qcom@groups.io,
  Luca Weiss <luca.weiss@fairphone.com>, 
  Ilias Apalodimas <ilias.apalodimas@linaro.org>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780384740; l=11747;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780384740; l=2527;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=yjkx6tMQFC5csAnhtp4IuAVZ88N8NV+TzhaAGFoLdkU=;
- b=AM0Pm4FAZHbd+sOQocG8Ubi3jUSS3D8sv6Bb5ONNUuc+Jmg0zxAqiXlm9BlwbXuG0jf4ZR4ni
- 405xL8HnMnCByLN9EQhWCfg1RNayfu7M68v1NY3DKQR9v+v8wSTvuaa
+ bh=oyW4SjIaPw8uMUpJo0OqFTwzoLj2elwRTqTh9Cf/umk=;
+ b=gVb1kgCfLjKaa+d9kuzBilStJA2K8MjfV90IfBscl+QA+mCOOSqhNZe+Ni09Op7BhTRRxlw3U
+ EmD1y7NQS+pCQ9gfg/HEoGRf9X3z/py77qP2p/wYPOjHEYZEhqvz2po
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Qualcomm's Secure Channel Manager (SCM) handles secure world calls. SCM
-calls introduce extra ceremony on top of the standard SMCCC instruction
-to support passing more arguments than a typical SMC call can
-accommodate. There's also a qcom-specific smccc quirk.
+If there's no PSCI implementation, then change the enable-method of all
+CPUs from "psci" to "spin-table". Later, when spin_table_update_dt runs,
+it will further patch the CPU nodes with the necessary cpu-release-addr.
 
-This new driver determines the expected calling convention on probe. A
-simple API is introduced to handle querying and calling SCM services.
+This new fixup is only applied when CONFIG_ARMV8_SPIN_TABLE is enabled,
+since that also determines whether spin_table_update_dt runs.
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- MAINTAINERS                 |   2 +
- drivers/firmware/Kconfig    |   9 ++
- drivers/firmware/Makefile   |   1 +
- drivers/firmware/qcom-scm.c | 274 ++++++++++++++++++++++++++++++++++++++++++++
- include/firmware/qcom/scm.h |  71 ++++++++++++
- 5 files changed, 357 insertions(+)
+ arch/arm/mach-snapdragon/board.c | 41 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 41 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 571af196465..16b1e8e45dd 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -688,6 +688,8 @@ S:	Maintained
- T:	git https://source.denx.de/u-boot/custodians/u-boot-snapdragon.git
- F:	configs/qcm6490_defconfig
- F:	configs/qcs9100_defconfig
-+F:	drivers/firmware/qcom-scm.c
-+F:	include/firmware/qcom/
- F:	drivers/*/*/pm8???-*
- F:	drivers/gpio/msm_gpio.c
- F:	drivers/mmc/msm_sdhci.c
-diff --git a/drivers/firmware/Kconfig b/drivers/firmware/Kconfig
-index 220de731950..2d5ae35d07f 100644
---- a/drivers/firmware/Kconfig
-+++ b/drivers/firmware/Kconfig
-@@ -47,5 +47,14 @@ config ARM_SMCCC_FEATURES
- 	  the PSCI driver is always probed and binds dirvers registered to the Arm SMCCC
- 	  services if any and reported as supported by the SMCCC firmware.
+diff --git a/arch/arm/mach-snapdragon/board.c b/arch/arm/mach-snapdragon/board.c
+index 829a0109ac7..3b08069af98 100644
+--- a/arch/arm/mach-snapdragon/board.c
++++ b/arch/arm/mach-snapdragon/board.c
+@@ -183,7 +183,9 @@ static void show_psci_version(void)
+ static void qcom_psci_fixup(void *fdt)
+ {
+ 	int offset, ret;
++	uint reg;
+ 	struct arm_smccc_res res;
++	const char *prop;
  
-+config QCOM_SCM
-+	bool "Qualcomm Secure Channel Manager"
-+	depends on ARM_SMCCC
-+	select FIRMWARE
-+	help
-+	  Enable support for Qualcomm Secure Channel Manager calls. These
-+	  calls are used to ask the platform firmware to perform operations
-+	  such as configuring secondary CPU boot addresses.
+ 	arm_smccc_smc(ARM_PSCI_0_2_FN_PSCI_VERSION, 0, 0, 0, 0, 0, 0, 0, &res);
+ 
+@@ -198,6 +200,45 @@ static void qcom_psci_fixup(void *fdt)
+ 	ret = fdt_del_node(fdt, offset);
+ 	if (ret)
+ 		log_err("Failed to delete /psci node: %d\n", ret);
 +
- source "drivers/firmware/arm-ffa/Kconfig"
- source "drivers/firmware/scmi/Kconfig"
-diff --git a/drivers/firmware/Makefile b/drivers/firmware/Makefile
-index 9e7b118b074..0945a2e828d 100644
---- a/drivers/firmware/Makefile
-+++ b/drivers/firmware/Makefile
-@@ -3,4 +3,5 @@ obj-$(CONFIG_$(PHASE_)ARM_PSCI_FW)	+= psci.o
- obj-$(CONFIG_TI_SCI_PROTOCOL)	+= ti_sci.o
- obj-$(CONFIG_SANDBOX)		+= firmware-sandbox.o
- obj-$(CONFIG_ZYNQMP_FIRMWARE)	+= firmware-zynqmp.o
-+obj-$(CONFIG_QCOM_SCM)		+= qcom-scm.o
- obj-$(CONFIG_SCMI_FIRMWARE)	+= scmi/
-diff --git a/drivers/firmware/qcom-scm.c b/drivers/firmware/qcom-scm.c
-new file mode 100644
-index 00000000000..7bb13c6b372
---- /dev/null
-+++ b/drivers/firmware/qcom-scm.c
-@@ -0,0 +1,274 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/* Copyright (c) 2025 Linaro Ltd. */
++	if (!CONFIG_IS_ENABLED(ARMV8_SPIN_TABLE))
++		return;
 +
-+/* Much of this code was adapted from Linux kernel */
-+/* Copyright (c) 2010-2015,2019 The Linux Foundation.	 All rights reserved.
-+ */
++	/* If spin-table support is enabled, make sure any CPU nodes with a
++	 * PSCI enable-method are updated to spin-table. Further, any PSCI
++	 * power-domains properties are removed.
++	 */
 +
-+#include <compiler.h>
-+#include <cpu_func.h>
-+#include <dm.h>
-+#include <errno.h>
-+#include <firmware/qcom/scm.h>
-+#include <linux/arm-smccc.h>
-+#include <linux/delay.h>
-+#include <linux/types.h>
-+#include <malloc.h>
-+#include <memalign.h>
++	offset = fdt_path_offset(fdt, "/cpus");
++	if (offset < 0)
++		return;
 +
-+#define QCOM_SCM_EBUSY_WAIT_MS 30
-+#define QCOM_SCM_EBUSY_MAX_RETRY 20
++	for (offset = fdt_first_subnode(fdt, offset);
++	     offset >= 0;
++	     offset = fdt_next_subnode(fdt, offset)) {
++		prop = fdt_getprop(fdt, offset, "device_type", NULL);
++		if (!prop || strcmp(prop, "cpu"))
++			continue;
 +
-+#define SCM_SMC_N_REG_ARGS	4
-+#define SCM_SMC_FIRST_EXT_IDX	(SCM_SMC_N_REG_ARGS - 1)
-+#define SCM_SMC_N_EXT_ARGS	(MAX_QCOM_SCM_ARGS - SCM_SMC_N_REG_ARGS + 1)
-+#define SCM_SMC_FIRST_REG_IDX	2
-+#define SCM_SMC_LAST_REG_IDX	(SCM_SMC_FIRST_REG_IDX + SCM_SMC_N_REG_ARGS - 1)
++		prop = fdt_getprop(fdt, offset, "enable-method", NULL);
++		if (!prop || strcmp(prop, "psci"))
++			continue;
 +
-+enum qcom_scm_convention {
-+	SMC_CONVENTION_UNKNOWN,
-+	SMC_CONVENTION_LEGACY,
-+	SMC_CONVENTION_ARM_32,
-+	SMC_CONVENTION_ARM_64,
-+};
++		reg = fdtdec_get_uint(fdt, offset, "reg", 0);
++		ret = fdt_setprop_string(fdt, offset,
++					 "enable-method", "spin-table");
++		if (ret)
++			log_err("Failed to set CPU%d enable-method to 'spin-table', this CPU will not be available to booted OS! %d\n",
++				reg, ret);
 +
-+#define SCM_SMC_FNID(s, c)	((((s) & 0xFF) << 8) | ((c) & 0xFF))
++		log_info("Patched CPU%d enable-method to 'spin-table'\n", reg);
 +
-+#define QCOM_SCM_SVC_INFO		0x06
-+#define QCOM_SCM_INFO_IS_CALL_AVAIL	0x01
-+
-+/* common error codes */
-+#define QCOM_SCM_V2_EBUSY	-12
-+#define QCOM_SCM_ENOMEM		-5
-+#define QCOM_SCM_EOPNOTSUPP	-4
-+#define QCOM_SCM_EINVAL_ADDR	-3
-+#define QCOM_SCM_EINVAL_ARG	-2
-+#define QCOM_SCM_ERROR		-1
-+#define QCOM_SCM_INTERRUPTED	1
-+
-+static inline int qcom_scm_remap_error(int err)
-+{
-+	switch (err) {
-+	case QCOM_SCM_ERROR:
-+		return -EIO;
-+	case QCOM_SCM_EINVAL_ADDR:
-+	case QCOM_SCM_EINVAL_ARG:
-+		return -EINVAL;
-+	case QCOM_SCM_EOPNOTSUPP:
-+		return -EOPNOTSUPP;
-+	case QCOM_SCM_ENOMEM:
-+		return -ENOMEM;
-+	case QCOM_SCM_V2_EBUSY:
-+		return -EBUSY;
-+	}
-+	return -EINVAL;
-+}
-+
-+/**
-+ * struct arm_smccc_args
-+ * @args:	The array of values used in registers in smc instruction
-+ */
-+struct arm_smccc_args {
-+	unsigned long args[8];
-+};
-+
-+struct qcom_scm {
-+	enum qcom_scm_convention convention;
-+};
-+
-+static void __scm_smc_do_quirk(const struct arm_smccc_args *smc,
-+			       struct arm_smccc_res *res)
-+{
-+	unsigned long a0 = smc->args[0];
-+	struct arm_smccc_quirk quirk = { .id = ARM_SMCCC_QUIRK_QCOM_A6 };
-+
-+	quirk.state.a6 = 0;
-+
-+	do {
-+		arm_smccc_smc_quirk(a0, smc->args[1], smc->args[2],
-+				    smc->args[3], smc->args[4], smc->args[5],
-+				    quirk.state.a6, smc->args[7], res, &quirk);
-+
-+		if (res->a0 == QCOM_SCM_INTERRUPTED)
-+			a0 = res->a0;
-+
-+	} while (res->a0 == QCOM_SCM_INTERRUPTED);
-+}
-+
-+static int __scm_smc_do(struct arm_smccc_args *smc, struct arm_smccc_res *res)
-+{
-+	int retry_count = 0;
-+
-+	do {
-+		__scm_smc_do_quirk(smc, res);
-+
-+		if (res->a0 == QCOM_SCM_V2_EBUSY) {
-+			if (retry_count++ > QCOM_SCM_EBUSY_MAX_RETRY)
-+				break;
-+			mdelay(QCOM_SCM_EBUSY_WAIT_MS);
++		prop = fdt_getprop(fdt, offset, "power-domain-names", NULL);
++		if (prop && !strcmp(prop, "psci")) {
++			fdt_delprop(fdt, offset, "power-domains");
++			fdt_delprop(fdt, offset, "power-domain-names");
 +		}
-+	}  while (res->a0 == QCOM_SCM_V2_EBUSY);
-+
-+	return 0;
-+}
-+
-+static int __qcom_scm_call(const struct qcom_scm_desc *desc,
-+			   enum qcom_scm_convention qcom_convention,
-+			   struct qcom_scm_res *res)
-+{
-+	int arglen = desc->arginfo & 0xf;
-+	void *args = NULL;
-+	int i, ret;
-+	struct arm_smccc_args smc = {0};
-+	struct arm_smccc_res smc_res;
-+	u32 qcom_smccc_convention;
-+	u32 fnid = SCM_SMC_FNID(desc->svc, desc->cmd);
-+
-+	switch (qcom_convention) {
-+	case SMC_CONVENTION_ARM_32:
-+		qcom_smccc_convention = ARM_SMCCC_SMC_32;
-+		break;
-+	case SMC_CONVENTION_ARM_64:
-+		qcom_smccc_convention = ARM_SMCCC_SMC_64;
-+		break;
-+	default:
-+		return -EINVAL;
 +	}
-+
-+	smc.args[0] = ARM_SMCCC_CALL_VAL(ARM_SMCCC_STD_CALL,
-+					 qcom_smccc_convention, desc->owner, fnid);
-+	smc.args[1] = desc->arginfo;
-+	for (i = 0; i < SCM_SMC_N_REG_ARGS; i++)
-+		smc.args[i + SCM_SMC_FIRST_REG_IDX] = desc->args[i];
-+
-+	if (unlikely(arglen > SCM_SMC_N_REG_ARGS)) {
-+		args = malloc_cache_aligned(SCM_SMC_N_EXT_ARGS * sizeof(u64));
-+		if (!args)
-+			return -ENOMEM;
-+
-+		if (qcom_smccc_convention == ARM_SMCCC_SMC_32) {
-+			__le32 *args32 = args;
-+
-+			for (i = 0; i < SCM_SMC_N_EXT_ARGS; i++)
-+				args32[i] = cpu_to_le32(desc->args[i +
-+							SCM_SMC_FIRST_EXT_IDX]);
-+		} else {
-+			__le64 *args64 = args;
-+
-+			for (i = 0; i < SCM_SMC_N_EXT_ARGS; i++)
-+				args64[i] = cpu_to_le64(desc->args[i +
-+							SCM_SMC_FIRST_EXT_IDX]);
-+		}
-+
-+		smc.args[SCM_SMC_LAST_REG_IDX] = (phys_addr_t)args;
-+		flush_cache((unsigned long)args,
-+			    SCM_SMC_N_EXT_ARGS * sizeof(u64));
-+	}
-+
-+	ret = __scm_smc_do(&smc, &smc_res);
-+
-+	if (args)
-+		free(args);
-+
-+	if (ret)
-+		return ret;
-+
-+	if (res) {
-+		res->result[0] = smc_res.a1;
-+		res->result[1] = smc_res.a2;
-+		res->result[2] = smc_res.a3;
-+	}
-+
-+	return (long)smc_res.a0 ? qcom_scm_remap_error(smc_res.a0) : 0;
-+}
-+
-+static enum qcom_scm_convention qcom_scm_detect_convention(void)
-+{
-+	struct qcom_scm_desc desc = {
-+		.svc = QCOM_SCM_SVC_INFO,
-+		.cmd = QCOM_SCM_INFO_IS_CALL_AVAIL,
-+		.owner = ARM_SMCCC_OWNER_SIP,
-+		.arginfo = QCOM_SCM_ARGS(1),
-+		.args = {
-+			SCM_SMC_FNID(QCOM_SCM_SVC_INFO,
-+				     QCOM_SCM_INFO_IS_CALL_AVAIL) |
-+			(ARM_SMCCC_OWNER_SIP << ARM_SMCCC_OWNER_SHIFT)
-+		},
-+	};
-+	struct qcom_scm_res scm_ret = {0};
-+
-+	if (IS_ENABLED(CONFIG_ARM64) &&
-+	    !__qcom_scm_call(&desc, SMC_CONVENTION_ARM_64, &scm_ret) &&
-+	    scm_ret.result[0] == 1)
-+		return SMC_CONVENTION_ARM_64;
-+
-+	if (!__qcom_scm_call(&desc, SMC_CONVENTION_ARM_32, &scm_ret) &&
-+	    scm_ret.result[0] == 1)
-+		return SMC_CONVENTION_ARM_32;
-+
-+	return SMC_CONVENTION_UNKNOWN;
-+}
-+
-+static int qcom_scm_get_device(struct udevice **devp)
-+{
-+	return uclass_get_device_by_driver(UCLASS_FIRMWARE,
-+					   DM_DRIVER_GET(qcom_scm), devp);
-+}
-+
-+int qcom_scm_call(const struct qcom_scm_desc *desc, struct qcom_scm_res *res)
-+{
-+	struct qcom_scm *scm;
-+	struct udevice *dev;
-+	int ret;
-+
-+	ret = qcom_scm_get_device(&dev);
-+	if (ret)
-+		return ret;
-+
-+	scm = dev_get_priv(dev);
-+	return __qcom_scm_call(desc, scm->convention, res);
-+}
-+
-+bool qcom_scm_is_call_available(u32 svc_id, u32 cmd_id)
-+{
-+	u32 fnid = SCM_SMC_FNID(svc_id, cmd_id);
-+	struct qcom_scm_res scm_ret = {0};
-+	struct qcom_scm_desc desc = {
-+		.svc = QCOM_SCM_SVC_INFO,
-+		.cmd = QCOM_SCM_INFO_IS_CALL_AVAIL,
-+		.owner = ARM_SMCCC_OWNER_SIP,
-+		.arginfo = QCOM_SCM_ARGS(1),
-+		.args = {
-+			fnid | (ARM_SMCCC_OWNER_SIP << ARM_SMCCC_OWNER_SHIFT)
-+		},
-+	};
-+
-+	if (qcom_scm_call(&desc, &scm_ret))
-+		return false;
-+
-+	return scm_ret.result[0];
-+}
-+
-+static int qcom_scm_probe(struct udevice *dev)
-+{
-+	struct qcom_scm *scm = dev_get_priv(dev);
-+
-+	scm->convention = qcom_scm_detect_convention();
-+	if (scm->convention == SMC_CONVENTION_UNKNOWN)
-+		return -EOPNOTSUPP;
-+
-+	return 0;
-+}
-+
-+static const struct udevice_id qcom_scm_of_match[] = {
-+	{ .compatible = "qcom,scm" },
-+	{ }
-+};
-+
-+U_BOOT_DRIVER(qcom_scm) = {
-+	.name = "qcom_scm",
-+	.id = UCLASS_FIRMWARE,
-+	.of_match = qcom_scm_of_match,
-+	.probe = qcom_scm_probe,
-+	.priv_auto = sizeof(struct qcom_scm),
-+};
-diff --git a/include/firmware/qcom/scm.h b/include/firmware/qcom/scm.h
-new file mode 100644
-index 00000000000..9f10c769928
---- /dev/null
-+++ b/include/firmware/qcom/scm.h
-@@ -0,0 +1,71 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
-+/* This header was adapted from linux/drivers/firmware/qcom/qcom_scm.h
-+ * Copyright (c) 2010-2015,2019 The Linux Foundation. All rights reserved.
-+ */
-+
-+#ifndef QCOM_SCM_H
-+#define QCOM_SCM_H
-+
-+#include <linux/errno.h>
-+#include <linux/types.h>
-+
-+#define QCOM_SCM_SVC_BOOT		0x01
-+#define QCOM_SCM_BOOT_SET_ADDR_MC	0x11
-+#define QCOM_SCM_BOOT_MC_FLAG_AARCH64	BIT(0)
-+#define QCOM_SCM_BOOT_MC_FLAG_COLDBOOT	BIT(1)
-+
-+#define MAX_QCOM_SCM_ARGS 10
-+#define MAX_QCOM_SCM_RETS 3
-+
-+#define QCOM_SCM_ARGS_IMPL(num, a, b, c, d, e, f, g, h, i, j, ...) (\
-+				   (((a) & 0x3) << 4) | \
-+				   (((b) & 0x3) << 6) | \
-+				   (((c) & 0x3) << 8) | \
-+				   (((d) & 0x3) << 10) | \
-+				   (((e) & 0x3) << 12) | \
-+				   (((f) & 0x3) << 14) | \
-+				   (((g) & 0x3) << 16) | \
-+				   (((h) & 0x3) << 18) | \
-+				   (((i) & 0x3) << 20) | \
-+				   (((j) & 0x3) << 22) | \
-+				   ((num) & 0xf))
-+#define QCOM_SCM_ARGS(...) \
-+	QCOM_SCM_ARGS_IMPL(__VA_ARGS__, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-+
-+/**
-+ * struct qcom_scm_desc
-+ * @arginfo:	Metadata describing the arguments in args[]
-+ * @args:	The array of arguments for the secure syscall
-+ */
-+struct qcom_scm_desc {
-+	u32 svc;
-+	u32 cmd;
-+	u32 arginfo;
-+	u64 args[MAX_QCOM_SCM_ARGS];
-+	u32 owner;
-+};
-+
-+/**
-+ * struct qcom_scm_res
-+ * @result:	The values returned by the secure syscall
-+ */
-+struct qcom_scm_res {
-+	u64 result[MAX_QCOM_SCM_RETS];
-+};
-+
-+#if CONFIG_IS_ENABLED(QCOM_SCM)
-+bool qcom_scm_is_call_available(u32 svc_id, u32 cmd_id);
-+int qcom_scm_call(const struct qcom_scm_desc *desc, struct qcom_scm_res *res);
-+#else
-+static inline bool qcom_scm_is_call_available(u32 svc_id, u32 cmd_id)
-+{
-+	return false;
-+}
-+
-+int qcom_scm_call(const struct qcom_scm_desc *desc, struct qcom_scm_res *res)
-+{
-+	return -ENOSYS;
-+}
-+#endif
-+
-+#endif
+ }
+ 
+ /* We support booting U-Boot with an internal DT when running as a first-stage bootloader
 
 -- 
 2.54.0
