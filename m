@@ -1,14 +1,13 @@
 From: Roman Vivchar <rva333@protonmail.com>
-Subject: [PATCH 0/4] AUXADC driver for the MediaTek mt6323 PMIC
-Date: Tue, 02 Jun 2026 15:46:53 +0300
-Message-Id: <20260602-mt6323-adc-v1-0-68ec737508ee@protonmail.com>
+Date: Tue, 02 Jun 2026 15:46:54 +0300
+Subject: [PATCH 1/4] dt-bindings: iio: adc: mediatek,mt6359-auxadc: add
+ mt6323 PMIC AUXADC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ5AMBBA4avIrDVhGl24iljodMpI/KRFJOLui
- uW3eO+CyEE4Qp1dEPiQKMucUOYZ0NDNPStxyYAFmqLCSk2b0ahV50hpy55YG7IeIQVrYC/nN2v
- a33G3I9P2HuC+H2I4g2luAAAA
-X-Change-ID: 20260525-mt6323-adc-3befce36cbf2
+Message-Id: <20260602-mt6323-adc-v1-1-68ec737508ee@protonmail.com>
+References: <20260602-mt6323-adc-v1-0-68ec737508ee@protonmail.com>
+In-Reply-To: <20260602-mt6323-adc-v1-0-68ec737508ee@protonmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
  David Lechner <dlechner@baylibre.com>, 
  =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
@@ -23,72 +22,83 @@ Cc: linux-iio@vger.kernel.org, devicetree@vger.kernel.org,
  linux-mediatek@lists.infradead.org, Ben Grisdale <bengris32@protonmail.ch>, 
  Roman Vivchar <rva333@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780404414; l=2643;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780404414; l=2572;
  i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=7JSIVJME0qcwrQkDU0f3aTxdQOaohzA3I2n+ATF6Cqc=;
- b=0JbMx2y6tCQJ3dd9ZlUioB5ryHJQg5jI2blGOCtlbQ6SkPy7gHQ8050y5eQKPoicbwzx0Hnsg
- abvtLeSslqPAqYkIExaK3VblfKmPSMfXmth7sUz2Ec+Ybrc3QcZ880Z
+ bh=jMfKWstu+T8IwFVfEIbxc9fRDKEABkD/ksMe6fGugAE=;
+ b=MkqBdlNVRGVUXe60gRZL7buQ5mbme0yP4EhtfIX7YkbEMK18P50xxDbkAfxj9MOXP8KmEMcH+
+ v/Z8/EWYkhbCoad9wjWfCt+UMU6dJjTDy3KFvhatpo4HgLpC7qeIR/F
 X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
  pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
 X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds support for the 15-bit AUXADC hardware block found on
-the MediaTek mt6323 PMIC.
+The MediaTek mt6323 PMIC includes an AUXADC used for battery voltage,
+temperature, and other internal measurements.
 
-The previous version of the series for all AUXADC, EFUSE and thermal
-drivers was split after Krzysztof's comment [1].
+Add the devicetree binding documentation and the associated header file
+defining the ADC channel constants.
 
-Tested on the MediaTek mt6572 and mt8163 SoCs (Ben), both paired with a
-mt6323.
+Also change the description to the 'MT6350 series and similar' because
+the binding already includes more than mt635x series PMICs.
 
-The other parts (EFUSE and thermal) will probably be sent next week.
-
-[1]: https://lore.kernel.org/linux-mediatek/20260504-mt6323-v1-0-799b58b355ff@protonmail.com/T/#med30fad67a090be35f549231336b2dec295233f6
-
-Tested-by: Ben Grisdale <bengris32@protonmail.ch> # Amazon Echo Dot (2nd Generation)
 Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
-Changes after split:
-- dt-bindings: Change 'MT63xx' to 'MT6350 series and similar' (Jonathan)
-- AUXADC driver:
-    - Add missing headers (Andy)
-    - Fix AUXADC_TRIM_CH* values (Andy)
-    - Rename masks to include their register name (Jonathan)
-    - Fix formatting (Andy, Jonathan)
-    - Replace channel address with actual register value (Jonathan), align the table
-    - Replace IIO_TEMP with IIO_VOLTAGE, since the actual output is still mV, not mC
-    - Rename constants to match their registers (Jonathan)
-    - Remove 'if/else if/else' in the mt6323_auxadc_read_raw (Andy)
-    - Add comments for fsleep, ADC range and resolution (Andy, Jonathan)
-    - Remove useless error messages (Andy)
-- Maintainers:
-    - Explicitly include mt6323 in the name (Jonathan)
-    - Squash with AUXADC driver commit (Krzysztof)
-    - Set status back to 'Maintained'
-- Link to a previous series: https://patch.msgid.link/20260512-mt6323-v2-0-3efcba579e88@protonmail.com
+ .../bindings/iio/adc/mediatek,mt6359-auxadc.yaml   |  3 ++-
+ .../dt-bindings/iio/adc/mediatek,mt6323-auxadc.h   | 24 ++++++++++++++++++++++
+ 2 files changed, 26 insertions(+), 1 deletion(-)
 
----
-Roman Vivchar (4):
-      dt-bindings: iio: adc: mediatek,mt6359-auxadc: add mt6323 PMIC AUXADC
-      iio: adc: mt6323-auxadc: add mt6323 PMIC AUXADC driver
-      mfd: mt6397-core: add mt6323 AUXADC support
-      ARM: dts: mediatek: mt6323: add AUXADC support
+diff --git a/Documentation/devicetree/bindings/iio/adc/mediatek,mt6359-auxadc.yaml b/Documentation/devicetree/bindings/iio/adc/mediatek,mt6359-auxadc.yaml
+index 5d4ab701f51a..852eb7336a5a 100644
+--- a/Documentation/devicetree/bindings/iio/adc/mediatek,mt6359-auxadc.yaml
++++ b/Documentation/devicetree/bindings/iio/adc/mediatek,mt6359-auxadc.yaml
+@@ -4,7 +4,7 @@
+ $id: http://devicetree.org/schemas/iio/adc/mediatek,mt6359-auxadc.yaml#
+ $schema: http://devicetree.org/meta-schemas/core.yaml#
+ 
+-title: MediaTek MT6350 series PMIC AUXADC
++title: MediaTek MT6350 series and similar PMIC AUXADC
+ 
+ maintainers:
+   - AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+@@ -19,6 +19,7 @@ description:
+ properties:
+   compatible:
+     enum:
++      - mediatek,mt6323-auxadc
+       - mediatek,mt6357-auxadc
+       - mediatek,mt6358-auxadc
+       - mediatek,mt6359-auxadc
+diff --git a/include/dt-bindings/iio/adc/mediatek,mt6323-auxadc.h b/include/dt-bindings/iio/adc/mediatek,mt6323-auxadc.h
+new file mode 100644
+index 000000000000..6ee9a9ecffc1
+--- /dev/null
++++ b/include/dt-bindings/iio/adc/mediatek,mt6323-auxadc.h
+@@ -0,0 +1,24 @@
++/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
++
++#ifndef _DT_BINDINGS_MEDIATEK_MT6323_AUXADC_H
++#define _DT_BINDINGS_MEDIATEK_MT6323_AUXADC_H
++
++#define MT6323_AUXADC_BATON2		0
++#define MT6323_AUXADC_CH6		1
++#define MT6323_AUXADC_BAT_TEMP		2
++#define MT6323_AUXADC_CHIP_TEMP		3
++#define MT6323_AUXADC_VCDT		4
++#define MT6323_AUXADC_BATON1		5
++#define MT6323_AUXADC_ISENSE		6
++#define MT6323_AUXADC_BATSNS		7
++#define MT6323_AUXADC_ACCDET		8
++#define MT6323_AUXADC_AUDIO0		9
++#define MT6323_AUXADC_AUDIO1		10
++#define MT6323_AUXADC_AUDIO2		11
++#define MT6323_AUXADC_AUDIO3		12
++#define MT6323_AUXADC_AUDIO4		13
++#define MT6323_AUXADC_AUDIO5		14
++#define MT6323_AUXADC_AUDIO6		15
++#define MT6323_AUXADC_AUDIO7		16
++
++#endif
 
- .../bindings/iio/adc/mediatek,mt6359-auxadc.yaml   |   3 +-
- MAINTAINERS                                        |   8 +
- arch/arm/boot/dts/mediatek/mt6323.dtsi             |   5 +
- drivers/iio/adc/Kconfig                            |  11 +
- drivers/iio/adc/Makefile                           |   1 +
- drivers/iio/adc/mt6323-auxadc.c                    | 299 +++++++++++++++++++++
- drivers/mfd/mt6397-core.c                          |   3 +
- .../dt-bindings/iio/adc/mediatek,mt6323-auxadc.h   |  24 ++
- 8 files changed, 353 insertions(+), 1 deletion(-)
----
-base-commit: 028ef9c96e96197026887c0f092424679298aae8
-change-id: 20260525-mt6323-adc-3befce36cbf2
-
-Best regards,
---  
-Roman Vivchar <rva333@protonmail.com>
+-- 
+2.54.0
 
