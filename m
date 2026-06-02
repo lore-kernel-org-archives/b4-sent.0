@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Wed, 03 Jun 2026 01:30:39 +0200
-Subject: [PATCH v6 1/8] media: qcom: camss: csiphy: Introduce PHY
- configuration
+Date: Wed, 03 Jun 2026 01:30:40 +0200
+Subject: [PATCH v6 2/8] media: qcom: camss: csiphy-3ph: Use odd bits for
+ configuring C-PHY lanes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260603-qcom-cphy-v6-1-e50de0b557a8@ixit.cz>
+Message-Id: <20260603-qcom-cphy-v6-2-e50de0b557a8@ixit.cz>
 References: <20260603-qcom-cphy-v6-0-e50de0b557a8@ixit.cz>
 In-Reply-To: <20260603-qcom-cphy-v6-0-e50de0b557a8@ixit.cz>
 To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
@@ -22,96 +22,135 @@ Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>,
  linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2386; i=david@ixit.cz;
- h=from:subject:message-id; bh=KqK7CczWYX/iIrUS5Nv8VtWWkWE2d7OmmtIR810fNRE=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqH2eqIY7n1nYt0dC+7KaI6/rvWxHbk90teL16L
- FoElXc/9iuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCah9nqgAKCRBgAj/E00kg
- cqr6D/0UyrGMxN8RIkODM7OEU3BX1HeqrVc+JAqk+QGldd6wy9xOFU/c/Gz/r7NqtKrnClDOcbI
- 8kNaOSWQDX0BqcKEBm5XUDbuA2TkNyvxQa14B3JYwHKz4heijzwhdktrwA6Feu3rRnHRtmY4irb
- bCV51YZmrisDh/Xnjp2JyFVDA7vo+ZLY7WRGaARbmhr0hZde3ITLReVnYa0jWkm5Voc3eNp4NpM
- jAZXWcSQunJuTeg/Yz7mmJJsvD4RLm2M3VTT7beqHjVtr1XeCXhvBzlPU8bLb6JuiC3Z0wWXT+q
- /iTTO2TLxmYPGF/U9aPIyu7K6Aq8cEE2KLDTb3JCuCYph8Q1qV6cFSQTnV6+jTYXGnQCUFM3pvE
- BYFl6XICOTH6un+DQhlKUV/nNL0kZ+8/sHoiVkFECPr+EQYL+Ra6uW2e5BcrPr/LIvoIso0CbVI
- HwNSYlWC6WKIF1+8l+j3/FH2Yte9+b4GPR8V/lIn1CLyv9eAcCxJHvUwlzLLJGZoF0BAicF02sY
- z5zP7tk8ayL6FaJay6Y86vlQ4yJB+FC9PlAQ+5ZHBaTU704k8bMB/vV+3dE/9dSYGGmYoHlcUyc
- vU1LGbaoAtzQ9J4R8OwDPAA6mdzla1BfB9j4thYecShQT+pcAYfUBfTq0r3nzQIlpL9Oa6fVPim
- t3wxbakRiryAFLw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3582; i=david@ixit.cz;
+ h=from:subject:message-id; bh=2iwXEDgsMZxXz7yxAHZuSfLV4jh0Xg07CX8XjfBaN+4=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqH2eqzAg3D+4xv7/TiJT9BmF7mT4LRN59s3VjO
+ lrOMm6H402JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCah9nqgAKCRBgAj/E00kg
+ ctyzD/4ipYEqsPBUfgonbaz2EJKf5OvTAeYOqpgq8whhJs98wHaX9GIzCE9hvdI5oZodg+mx0gd
+ pNlbHXKgra3z2sNPKraoDNE9e5iY+eqpX+QwtU6JS7K7E2e5m2CWs9MEowMEmDrZbbnaTGIKQti
+ FqXOPYyS6JMzXEnA8g7bVPo4SQCUVEhMfrsuWV6cxh1u2FQS2b8l96J9/6NLTEb1kLnJA1MY5f2
+ wqcDAbn6OTu7mywLaOtin0k9c0qTL/pZ8wdvN7LDvsgmEMsIBX1zxGLnT/f8XviTpQmPMS253HB
+ KXllsI/oy5bJ+jWVBYSuoYzaPJTPU6dPxTnbVsPjesbX7wwz8k1MlbbK5N1LXCb0w0+ccW5W5i4
+ OBrTEZTiaZIu6JGtqYmJzeVqMVN6nplADe70/dWtM+fGKXhJXfDiqit7a7QgNUFRxLL8kB1Pqxn
+ FDDxhJOXCd835HxSQSFoqMiZHdWz7XEDyTwEW1MQ6dRDNfsY3kZTSlXh24FUQ9cZ+SumSKIdH16
+ PUeQX6LqsLiIz23cov0uRo6GjAe/Bjpfy263Z3mDrqObisHZsOZEeMGvvWXui/y72tIO9Bc1zmL
+ 4jGtoyl+GiUCT1caSg+mFd1iNeadH7c8EEFurqat3keEUfAMIb3FmOy/N3PnHY5KgfH70Vg32cN
+ O23vZV9IVznw0cQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Read PHY configuration from the device-tree bus-type and save it into
-the csiphy structure for later use.
+So far, only D-PHY mode was supported, which uses even bits when enabling
+or masking lanes. For C-PHY configuration, the hardware instead requires
+using the odd bits.
 
-For C-PHY, skip clock line configuration, as there is none.
+Since there can be unrecognized configuration allow returning failure.
 
+Reviewed-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
 Acked-by: Cory Keitz <ckeitz@amazon.com>
 Reviewed-by: Bryan O'Donoghue <bod@kernel.org>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/media/platform/qcom/camss/camss-csiphy.h | 2 ++
- drivers/media/platform/qcom/camss/camss.c        | 8 ++++++--
- 2 files changed, 8 insertions(+), 2 deletions(-)
+ .../platform/qcom/camss/camss-csiphy-3ph-1-0.c     | 39 +++++++++++++++++-----
+ 1 file changed, 31 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/media/platform/qcom/camss/camss-csiphy.h b/drivers/media/platform/qcom/camss/camss-csiphy.h
-index 9d9657b82f748..2ebb307be18ba 100644
---- a/drivers/media/platform/qcom/camss/camss-csiphy.h
-+++ b/drivers/media/platform/qcom/camss/camss-csiphy.h
-@@ -25,21 +25,23 @@
- 
- struct csiphy_lane {
- 	u8 pos;
- 	u8 pol;
- };
- 
- /**
-  * struct csiphy_lanes_cfg - CSIPHY lanes configuration
-+ * @phy_cfg:  interface selection (C-PHY or D-PHY)
-  * @num_data: number of data lanes
-  * @data:     data lanes configuration
-  * @clk:      clock lane configuration (only for D-PHY)
+diff --git a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
+index dac8d2ecf7995..15876eb973718 100644
+--- a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
++++ b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
+@@ -9,16 +9,17 @@
   */
- struct csiphy_lanes_cfg {
-+	enum v4l2_mbus_type phy_cfg;
- 	int num_data;
- 	struct csiphy_lane *data;
- 	struct csiphy_lane clk;
- };
  
- struct csiphy_csi2_cfg {
- 	struct csiphy_lanes_cfg lane_cfg;
- };
-diff --git a/drivers/media/platform/qcom/camss/camss.c b/drivers/media/platform/qcom/camss/camss.c
-index 2123f6388e3d7..072c428e25166 100644
---- a/drivers/media/platform/qcom/camss/camss.c
-+++ b/drivers/media/platform/qcom/camss/camss.c
-@@ -4761,19 +4761,23 @@ static int camss_parse_endpoint_node(struct device *dev,
- 	if (vep.bus_type != V4L2_MBUS_CSI2_DPHY) {
- 		dev_err(dev, "Unsupported bus type %d\n", vep.bus_type);
- 		return -EINVAL;
+ #include "camss.h"
+ #include "camss-csiphy.h"
+ 
+ #include <linux/delay.h>
+ #include <linux/interrupt.h>
+ #include <linux/io.h>
++#include <linux/media-bus-format.h>
+ 
+ #define CSIPHY_3PH_LNn_CFG1(n)			(0x000 + 0x100 * (n))
+ #define CSIPHY_3PH_LNn_CFG1_SWI_REC_DLY_PRG	(BIT(7) | BIT(6))
+ #define CSIPHY_3PH_LNn_CFG2(n)			(0x004 + 0x100 * (n))
+ #define CSIPHY_3PH_LNn_CFG2_LP_REC_EN_INT	BIT(3)
+ #define CSIPHY_3PH_LNn_CFG3(n)			(0x008 + 0x100 * (n))
+ #define CSIPHY_3PH_LNn_CFG4(n)			(0x00c + 0x100 * (n))
+ #define CSIPHY_3PH_LNn_CFG4_T_HS_CLK_MISS	0xa4
+@@ -1108,23 +1109,32 @@ static void csiphy_gen2_config_lanes(struct csiphy_device *csiphy,
+ 		writel_relaxed(val, csiphy->base + r->reg_addr);
+ 		if (r->delay_us)
+ 			udelay(r->delay_us);
  	}
+ }
  
- 	csd->interface.csiphy_id = vep.base.port;
+ static u8 csiphy_get_lane_mask(struct csiphy_lanes_cfg *lane_cfg)
+ {
+-	u8 lane_mask;
+-	int i;
++	u8 lane_mask = 0;
  
- 	mipi_csi2 = &vep.bus.mipi_csi2;
--	lncfg->clk.pos = mipi_csi2->clock_lane;
--	lncfg->clk.pol = mipi_csi2->lane_polarities[0];
- 	lncfg->num_data = mipi_csi2->num_data_lanes;
-+	lncfg->phy_cfg = vep.bus_type;
-+
-+	if (lncfg->phy_cfg != V4L2_MBUS_CSI2_CPHY) {
-+		lncfg->clk.pos = mipi_csi2->clock_lane;
-+		lncfg->clk.pol = mipi_csi2->lane_polarities[0];
+-	lane_mask = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
++	switch (lane_cfg->phy_cfg) {
++	case V4L2_MBUS_CSI2_CPHY:
++		for (int i = 0; i < lane_cfg->num_data; i++)
++			lane_mask |= BIT(lane_cfg->data[i].pos + 1);
++		break;
++	case V4L2_MBUS_CSI2_DPHY:
++		lane_mask = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
+ 
+-	for (i = 0; i < lane_cfg->num_data; i++)
+-		lane_mask |= 1 << lane_cfg->data[i].pos;
++		for (int i = 0; i < lane_cfg->num_data; i++)
++			lane_mask |= BIT(lane_cfg->data[i].pos);
++		break;
++	default:
++		break;
 +	}
  
- 	lncfg->data = devm_kcalloc(dev,
- 				   lncfg->num_data, sizeof(*lncfg->data),
- 				   GFP_KERNEL);
- 	if (!lncfg->data)
- 		return -ENOMEM;
+ 	return lane_mask;
+ }
  
- 	for (i = 0; i < lncfg->num_data; i++) {
+ static bool csiphy_is_gen2(u32 version)
+ {
+ 	bool ret = false;
+ 
+@@ -1155,19 +1165,32 @@ static void csiphy_lanes_enable(struct csiphy_device *csiphy,
+ 	struct csiphy_lanes_cfg *c = &cfg->csi2->lane_cfg;
+ 	struct csiphy_device_regs *regs = csiphy->regs;
+ 	u8 settle_cnt;
+ 	u8 val;
+ 	int i;
+ 
+ 	settle_cnt = csiphy_settle_cnt_calc(link_freq, csiphy->timer_clk_rate);
+ 
+-	val = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
+-	for (i = 0; i < c->num_data; i++)
+-		val |= BIT(c->data[i].pos * 2);
++	val = 0;
++
++	switch (c->phy_cfg) {
++	case V4L2_MBUS_CSI2_CPHY:
++		for (i = 0; i < c->num_data; i++)
++			val |= BIT((c->data[i].pos * 2) + 1);
++		break;
++	case V4L2_MBUS_CSI2_DPHY:
++		val = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
++
++		for (i = 0; i < c->num_data; i++)
++			val |= BIT(c->data[i].pos * 2);
++		break;
++	default:
++		WARN_ONCE(1, "Unsupported bus type %d!\n", c->phy_cfg);
++	}
+ 
+ 	writel_relaxed(val, csiphy->base +
+ 		       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 5));
+ 
+ 	val = CSIPHY_3PH_CMN_CSI_COMMON_CTRL6_COMMON_PWRDN_B;
+ 	writel_relaxed(val, csiphy->base +
+ 		       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 6));
+ 
 
 -- 
 2.53.0
