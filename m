@@ -1,11 +1,10 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Tue, 02 Jun 2026 10:50:38 +0400
-Subject: [PATCH v2 2/4] dt-bindings: net: qca,ar803x: Add clocks property
- for IPQ5018 PHY
+Date: Tue, 02 Jun 2026 10:50:39 +0400
+Subject: [PATCH v2 3/4] arm64: qcom: ipq5018: Add GEPHY RX and TX clocks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260602-ipq5018-gephy-clocks-v2-2-65a1f1d881f3@outlook.com>
+Message-Id: <20260602-ipq5018-gephy-clocks-v2-3-65a1f1d881f3@outlook.com>
 References: <20260602-ipq5018-gephy-clocks-v2-0-65a1f1d881f3@outlook.com>
 In-Reply-To: <20260602-ipq5018-gephy-clocks-v2-0-65a1f1d881f3@outlook.com>
 To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -22,64 +21,38 @@ Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-msm@vger.kernel.org, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780383045; l=1550;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780383045; l=821;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=rp75ghzSXcjDqIvT5opgDmpxqQkfyYFvfhT3Z1yNuHo=;
- b=Usttx2e8YKj6zXboagFAnbpDINjy3YqTzY2if/dIYtg3G4sMensrQbZYOGUT1lOykjyPhygM5
- NY8rA1NJG3sDWI7ObRa3WovAWDWe/MKbUPmlyx/iCNx/zG72OMrrrd5
+ bh=ZUcDzKT3pAn1GyMp8FWZKORP9V8n09/s7Z10uOma/1w=;
+ b=hYmsbMQ3fMK4DDwf3ak4gIISvaF2g/SUFPxa+jH6K/jRD+NdcwfZrCKIF2+fxWqVJc4XB2d5y
+ yYpto1t9q0jBUCeVMlkeTguvV5chLRkX84lzcm7RqAD2dI/lHrWH9RR
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Further testing revealed that the RX and TX clocks of the IPQ5018 PHY
-need to be explicitly enabled. As such, add the clocks property to the
-schema.
+Add RX and TX clocks for the IPQ5018 GEPHY to enable the datapath.
 
+Fixes: f5f2b835e316 ("arm64: dts: qcom: ipq5018: Add GE PHY to internal mdio bus")
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- Documentation/devicetree/bindings/net/qca,ar803x.yaml | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/net/qca,ar803x.yaml b/Documentation/devicetree/bindings/net/qca,ar803x.yaml
-index 7ae5110e7aa2..07615640b0ed 100644
---- a/Documentation/devicetree/bindings/net/qca,ar803x.yaml
-+++ b/Documentation/devicetree/bindings/net/qca,ar803x.yaml
-@@ -28,6 +28,16 @@ allOf:
-         reg:
-           const: 7  # This PHY is always at MDIO address 7 in the IPQ5018 SoC
+diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+index 6f8004a22a1f..60c27a6f2b10 100644
+--- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+@@ -229,6 +229,9 @@ ge_phy: ethernet-phy@7 {
+ 				compatible = "ethernet-phy-id004d.d0c0";
+ 				reg = <7>;
  
-+        clocks:
-+          items:
-+            - description: RX clock
-+            - description: TX clock
-+
-+        clock-names:
-+          items:
-+            - const: rx
-+            - const: tx
-+
-         resets:
-           items:
-             - description:
-@@ -162,6 +172,7 @@ examples:
-         };
-     };
-   - |
-+    #include <dt-bindings/clock/qcom,gcc-ipq5018.h>
-     #include <dt-bindings/reset/qcom,gcc-ipq5018.h>
- 
-     mdio {
-@@ -172,6 +183,9 @@ examples:
-             compatible = "ethernet-phy-id004d.d0c0";
-             reg = <7>;
- 
-+            clocks = <&gcc GCC_GEPHY_RX_CLK>,
-+                     <&gcc GCC_GEPHY_TX_CLK>;
-+            clock-names = "rx", "tx";
-             resets = <&gcc GCC_GEPHY_MISC_ARES>;
-         };
-     };
++				clocks = <&gcc GCC_GEPHY_RX_CLK>,
++					 <&gcc GCC_GEPHY_TX_CLK>;
++				clock-names = "rx", "tx";
+ 				resets = <&gcc GCC_GEPHY_MISC_ARES>;
+ 			};
+ 		};
 
 -- 
 2.53.0
