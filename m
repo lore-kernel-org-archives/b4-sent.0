@@ -1,11 +1,11 @@
 From: Colin Huang <u8813345@gmail.com>
-Date: Tue, 02 Jun 2026 21:24:58 +0800
-Subject: [PATCH v3 3/9] ARM: dts: aspeed: anacapa: add EVT2 devicetree
- inheriting EVT1
+Date: Tue, 02 Jun 2026 21:24:59 +0800
+Subject: [PATCH v3 4/9] ARM: dts: aspeed: anacapa: add DVT devicetree
+ inheriting EVT2
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260602-anacapa-devlop-phase-devicetree-v3-3-7c93c5df8d9b@gmail.com>
+Message-Id: <20260602-anacapa-devlop-phase-devicetree-v3-4-7c93c5df8d9b@gmail.com>
 References: <20260602-anacapa-devlop-phase-devicetree-v3-0-7c93c5df8d9b@gmail.com>
 In-Reply-To: <20260602-anacapa-devlop-phase-devicetree-v3-0-7c93c5df8d9b@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -15,40 +15,40 @@ Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-aspeed@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
  colin.huang2@amd.com, Colin Huang <u8813345@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780406700; l=5864;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780406700; l=6004;
  i=u8813345@gmail.com; s=20260202; h=from:subject:message-id;
- bh=uFd3k24VxEypaHLespXpLRjwFFWss5Y43arELHuz9Hk=;
- b=IGP+iwYoH8nNBTlhrnVf3e6Q8EdQ+EObT8CXIpcKo8f0tIyghQWm+WP3fgr7aKGBibkBfcub4
- 3jYd4pPkaTJDiXkaMD+W8G1UbuNtG3iPvAj5j6R5O/0ugYIT0/9e1ZD
+ bh=4qBFnetVkREYSIu12suaMhNwE7VlH8Jb8tWdL8ayTVM=;
+ b=y4Ut/IWY6TCuDjo7AuJdNB+H+w0A5uQ76yXjqgGzhKx/3Z5t0AUeRAdSgmqT/6/n8cZCkFlg/
+ i6gB8BSAipBDWZO9jDbsxjd2HnP8/VWplsQB55e35O1/YC9YusoHiPg
 X-Developer-Key: i=u8813345@gmail.com; a=ed25519;
  pk=Zlg0WqpCw4qbswOqamTBTXIchwR/3SnYZpy7rjaGMdQ=
 X-Endpoint-Received: by B4 Relay for u8813345@gmail.com/20260202 with auth_id=761
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a development-phase devicetree for the Facebook Anacapa BMC EVT2
+Add a development-phase devicetree for the Facebook Anacapa BMC DVT
 hardware revision and update the Anacapa wrapper DTS to reference
 it.
 
 Signed-off-by: Colin Huang <u8813345@gmail.com>
 ---
- .../aspeed/aspeed-bmc-facebook-anacapa-evt2.dts    | 178 +++++++++++++++++++++
+ .../dts/aspeed/aspeed-bmc-facebook-anacapa-dvt.dts | 178 +++++++++++++++++++++
  .../dts/aspeed/aspeed-bmc-facebook-anacapa.dts     |   2 +-
  2 files changed, 179 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts
+diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-dvt.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-dvt.dts
 new file mode 100644
-index 000000000000..4a6ae7c6cbf8
+index 000000000000..0eb547ad0ec1
 --- /dev/null
-+++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-evt2.dts
++++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa-dvt.dts
 @@ -0,0 +1,178 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
 +
 +/dts-v1/;
-+#include "aspeed-bmc-facebook-anacapa-evt1.dts"
++#include "aspeed-bmc-facebook-anacapa-evt2.dts"
 +
 +/ {
 +	model = "Facebook Anacapa BMC";
-+	compatible = "facebook,anacapa-bmc-evt2", "aspeed,ast2600";
++	compatible = "facebook,anacapa-bmc-dvt", "aspeed,ast2600";
 +};
 +
 +&sgpiom0 {
@@ -81,10 +81,10 @@ index 000000000000..4a6ae7c6cbf8
 +	"LEAK_DETECT_RMC_N", "RTM_MUX_R",
 +	"HDR_P0_NMI_BTN_BUF_R_N", "FPGA_JTAG_SCM_DBREQ_N",
 +	"Channel6_leakage_present_CPU_DIMM", "whdt_sel",
-+	"", "JTAG_CPLD_TRST_R_N",
-+	"", "",
-+	"", "",
-+	"", "",
++	"R_EAM0_NIC_CBL_PRSNT_L", "JTAG_CPLD_TRST_R_N",
++	"R_EAM1_NIC_CBL_PRSNT_L", "",
++	"L_EAM0_NIC_CBL_PRSNT_L", "",
++	"L_EAM1_NIC_CBL_PRSNT_L", "",
 +
 +	/* D0-D7 line 48-63 */
 +	"Channel0_leakage_present_EAM3", "",
@@ -123,7 +123,7 @@ index 000000000000..4a6ae7c6cbf8
 +	"R_PRSNT_EDSFF3_N", "",
 +	"HPM_EDSFF_PG", "",
 +	"", "",
-+	"", "FM_BMC_READY_PLD",
++	"P12V_PWR_CABLE_PRSNT_L_R", "FM_BMC_READY_PLD",
 +	"PRSNT_NFC_BOARD_R", "",
 +
 +	/* H0-H7 line 112-127 */
@@ -133,8 +133,8 @@ index 000000000000..4a6ae7c6cbf8
 +	"R_BNIC2_FLT", "",
 +	"R_BNIC3_FLT", "",
 +	"R_RTM_SW_FLT", "",
-+	"", "",
-+	"", "",
++	"RBB_Cable_Present", "",
++	"LBB_Cable_Present", "",
 +
 +	/* I0-I7 line 128-143 */
 +	"EAM0_BRD_PRSNT_R_L", "",
@@ -220,14 +220,14 @@ index 000000000000..4a6ae7c6cbf8
 +};
 +
 diff --git a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
-index 209eef65cedb..1848ca347621 100644
+index 1848ca347621..c74b211c42e6 100644
 --- a/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
 +++ b/arch/arm/boot/dts/aspeed/aspeed-bmc-facebook-anacapa.dts
 @@ -1,4 +1,4 @@
  // SPDX-License-Identifier: GPL-2.0-or-later
  
--#include "aspeed-bmc-facebook-anacapa-evt1.dts"
-+#include "aspeed-bmc-facebook-anacapa-evt2.dts"
+-#include "aspeed-bmc-facebook-anacapa-evt2.dts"
++#include "aspeed-bmc-facebook-anacapa-dvt.dts"
  
 
 -- 
