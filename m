@@ -1,319 +1,191 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Tue, 02 Jun 2026 22:47:07 +0000
-Subject: [PATCH v3 2/2] usb: typec: tcpm: Add support for Battery Status
- response message
+From: Sam Day <me@samcday.com>
+Date: Wed, 03 Jun 2026 08:56:21 +1000
+Subject: [PATCH] mach-snapdragon: formalize APQ8016 debug UART init
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260602-batt-status-v3-2-a7c1c271f3b0@google.com>
-References: <20260602-batt-status-v3-0-a7c1c271f3b0@google.com>
-In-Reply-To: <20260602-batt-status-v3-0-a7c1c271f3b0@google.com>
-To: Sebastian Reichel <sre@kernel.org>, 
- Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Hans de Goede <hansg@kernel.org>, Krzysztof Kozlowski <krzk@kernel.org>, 
- Marek Szyprowski <m.szyprowski@samsung.com>, 
- Sebastian Krzyszkowiak <sebastian.krzyszkowiak@puri.sm>, 
- Purism Kernel Team <kernel@puri.sm>
-Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-usb@vger.kernel.org, 
- =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
- Tudor Ambarus <tudor.ambarus@linaro.org>, 
- Peter Griffin <peter.griffin@linaro.org>, RD Babiera <rdbabiera@google.com>, 
- Kyle Tso <kyletso@google.com>, Amit Sunil Dhamne <amitsd@google.com>
+Message-Id: <20260603-apq8016-debug-uart-v1-1-1e46b2cd0fe6@samcday.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MywqAIBAAfyX23MIqYdGvRAez1fbSQyuC8N+Tj
+ gMz80LiKJygr16IfEuSbS2g6grcYtfAKHNh0KQNGdJo96MjZXDm6Qp42XgitY6cb1gVAUq4R/b
+ y/NNhzPkDDHCsZWQAAAA=
+X-Change-ID: 20260602-apq8016-debug-uart-07c0cf4e1060
+To: u-boot@lists.denx.de, Sumit Garg <sumit.garg@kernel.org>, 
+ u-boot-qcom@groups.io
+Cc: Tom Rini <trini@konsulko.com>, Dmitrii Sharshakov <d3dx12.xx@gmail.com>, 
+ Brian Sune <briansune@gmail.com>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Simon Glass <sjg@chromium.org>, 
+ Kuan-Wei Chiu <visitorckw@gmail.com>, Daniel Palmer <daniel@0x0f.com>, 
+ Luca Weiss <luca.weiss@fairphone.com>, 
+ Quentin Schulz <quentin.schulz@cherry.de>, 
+ Stephan Gerhold <stephan.gerhold@linaro.org>, Yao Zi <me@ziyao.cc>, 
+ Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780440449; l=9481;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=LtQPX30JkC4ZworANXcCi/qB6cz6ACMq5glLqVcmXn0=;
- b=SXKPei/rD2ErbvzJQ/L9iPatk3aPWIYZKMVWzFVwTj3pDHNShJqQKbcJAjPJdCgaV1ZFH2toP
- S6audv4GW8gAhSTdplRAKN7PoYp/aexyz66TquzQO7rw8OruX/U488E
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780440984; l=5825;
+ i=me@samcday.com; s=20240502; h=from:subject:message-id;
+ bh=eOlqaNI5vfQ5kyzDO3QgLKmC5+z6GbvHUzd9+0eIS8A=;
+ b=13LInEw1Rf9t6cB8MxZH0Lkr2QGXzsIYgwHiOFRp2Oi4lJehHQ4HE3XF9lwUeznfZGFeMJpXx
+ 0hGllIskD+9DhEbXAhmV+zH2PQezi7gNjl2nlAfJsC3kL0pXzsbx9gV
+X-Developer-Key: i=me@samcday.com; a=ed25519;
+ pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
+X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for responding to a Get_Battery_Status request with a
-Battery_Status message. The port partner shall request the status of a
-port's battery by providing an index in the Get_Battery_Status AMS. In
-case of failure to identify the battery, the port shall reply with an
-appropriate message indicating so.
+The dragonboard410c (and likely other SB-off devices) can run U-Boot
+early enough in the boot chain such that UART clock isn't started, and
+pins aren't configured.
 
-Support for Battery_Status message is required for sinks that contain
-battery as specified in USB PD Rev3.1 v1.8
-("Applicability of Data Messages" section).
+APQ8016 has two UART peripherals, each with its own clock and TLMM pins.
 
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
+Two new debug-apq8016-uartN.config fragments are provided. Each
+configures the appropriate UARTDM aperture. The newly introduced
+DEBUG_UART_APQ8016 Kconfig symbol pulls in MSM debug UART, and enables a
+board-level debug_uart_init function to start the right clock and mux
+the right TX pin.
+
+Signed-off-by: Sam Day <me@samcday.com>
 ---
- drivers/usb/typec/tcpm/tcpm.c | 135 +++++++++++++++++++++++++++++++++++++++++-
- include/linux/usb/pd.h        |  29 +++++++++
- 2 files changed, 161 insertions(+), 3 deletions(-)
+ arch/arm/mach-snapdragon/Kconfig              |  9 +++++++
+ arch/arm/mach-snapdragon/Makefile             |  1 +
+ arch/arm/mach-snapdragon/debug-uart-apq8016.c | 37 +++++++++++++++++++++++++++
+ board/qualcomm/debug-apq8016-uart1.config     |  4 +++
+ board/qualcomm/debug-apq8016-uart2.config     |  4 +++
+ drivers/serial/Kconfig                        |  1 +
+ drivers/serial/serial_msm.c                   | 10 --------
+ 7 files changed, 56 insertions(+), 10 deletions(-)
 
-diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
-index dfbb94ddc98a..4ef3a82d046f 100644
---- a/drivers/usb/typec/tcpm/tcpm.c
-+++ b/drivers/usb/typec/tcpm/tcpm.c
-@@ -232,7 +232,8 @@ enum pd_msg_request {
- 	PD_MSG_DATA_SINK_CAP,
- 	PD_MSG_DATA_SOURCE_CAP,
- 	PD_MSG_DATA_REV,
--	PD_MSG_EXT_SINK_CAP_EXT
-+	PD_MSG_EXT_SINK_CAP_EXT,
-+	PD_MSG_DATA_BATT_STATUS
- };
+diff --git a/arch/arm/mach-snapdragon/Kconfig b/arch/arm/mach-snapdragon/Kconfig
+index d3de8693b5a..43e6fd1bc42 100644
+--- a/arch/arm/mach-snapdragon/Kconfig
++++ b/arch/arm/mach-snapdragon/Kconfig
+@@ -1,5 +1,14 @@
+ if ARCH_SNAPDRAGON
  
- enum adev_actions {
-@@ -389,6 +390,14 @@ struct pd_timings {
- /* Convert microwatt to watt */
- #define UW_TO_W(pow)					((pow) / 1000000)
++config DEBUG_UART_APQ8016
++	bool "APQ8016 early debug initialization"
++	select CLK_QCOM_APQ8016
++	select CONFIG_DEBUG_UART_MSM
++	select DEBUG_UART_BOARD_INIT
++	help
++	  Ensures BLSP UART clocks+pins are setup. Useful when U-Boot is running from
++	  aboot (such as on the dragonboard410c).
++
+ config SYS_SOC
+ 	default "snapdragon"
  
+diff --git a/arch/arm/mach-snapdragon/Makefile b/arch/arm/mach-snapdragon/Makefile
+index 343e825c6fd..824bb4d5daf 100644
+--- a/arch/arm/mach-snapdragon/Makefile
++++ b/arch/arm/mach-snapdragon/Makefile
+@@ -5,3 +5,4 @@
+ obj-y += board.o
+ obj-$(CONFIG_EFI_HAVE_CAPSULE_SUPPORT) += capsule_update.o
+ obj-$(CONFIG_OF_LIVE) += of_fixup.o
++obj-$(CONFIG_DEBUG_UART_APQ8016) += debug-uart-apq8016.o
+diff --git a/arch/arm/mach-snapdragon/debug-uart-apq8016.c b/arch/arm/mach-snapdragon/debug-uart-apq8016.c
+new file mode 100644
+index 00000000000..2de9d99bed5
+--- /dev/null
++++ b/arch/arm/mach-snapdragon/debug-uart-apq8016.c
+@@ -0,0 +1,37 @@
++// SPDX-License-Identifier: GPL-2.0+
 +/*
-+ * As per USB PD Spec Rev 3.18 (Sec. 6.5.13.11), the number of fixed batteries
-+ * that a port can be queried is restricted to 4.
++ * SoC-specific debug UART initialization (clocks/pins) lives here
 + */
-+#define MAX_NUM_FIXED_BATT				4
 +
-+#define BATTERY_PROPERTY_UNKNOWN			0xffff
++#include <asm/io.h>
++#include <dt-bindings/clock/qcom,gcc-msm8916.h>
 +
- /*
-  * struct pd_identifier - Contains info about PD identifiers
-  * @vid: Vendor ID (assigned by USB-IF)
-@@ -683,6 +692,9 @@ struct tcpm_port {
- 
- 	struct pd_identifier pd_ident;
- 	struct sink_caps_ext_data sink_caps_ext;
-+	struct power_supply **fixed_batt;
-+	u32 fixed_batt_cnt;
-+	u32 batt_request_id;
- #ifdef CONFIG_DEBUG_FS
- 	struct dentry *dentry;
- 	struct mutex logbuffer_lock;	/* log buffer access lock */
-@@ -1465,6 +1477,20 @@ static int tcpm_pd_send_sink_caps(struct tcpm_port *port)
- 	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
- }
- 
-+static void tcpm_get_fixed_batt(struct tcpm_port *port)
++extern int apq8016_clk_init_uart(phys_addr_t gcc_base, unsigned long id);
++
++#define APQ8016_GCC_BASE		((phys_addr_t)0x01800000)
++
++#define APQ8016_TLMM_BASE		((phys_addr_t)0x01000000)
++#define APQ8016_TLMM_FUNC_BLSP_UART	(2 << 2)
++#define APQ8016_TLMM_DRV_8MA		(3 << 6)
++#define APQ8016_TLMM_GPIO_ENABLE	BIT(9)
++#define APQ8016_GPIO_CFG(gpio)		(APQ8016_TLMM_BASE + (phys_addr_t)(gpio) * 0x1000)
++#define APQ8016_DEBUG_UART_PINCFG	(APQ8016_TLMM_FUNC_BLSP_UART | \
++					 APQ8016_TLMM_DRV_8MA | \
++					 APQ8016_TLMM_GPIO_ENABLE)
++
++void board_debug_uart_init(void)
 +{
-+	int ret;
-+
-+	if (!port->self_powered || port->fixed_batt_cnt > 0)
-+		return;
-+
-+	ret = power_supply_get_battery_all(port->dev, &port->fixed_batt);
-+	if (ret < 0)
-+		tcpm_log(port, "Failed to get battery array, ret=%d", ret);
-+	else
-+		port->fixed_batt_cnt = ret;
-+}
-+
- static int tcpm_pd_send_sink_cap_ext(struct tcpm_port *port)
- {
- 	u16 operating_snk_watt = port->operating_snk_mw / 1000;
-@@ -1477,6 +1503,8 @@ static int tcpm_pd_send_sink_cap_ext(struct tcpm_port *port)
- 	if (!port->self_powered)
- 		data->spr_op_pdp = operating_snk_watt;
- 
-+	tcpm_get_fixed_batt(port);
-+
- 	/*
- 	 * SPR Sink Minimum PDP indicates the minimum power required to operate
- 	 * a sink device in its lowest level of functionality without requiring
-@@ -1502,6 +1530,7 @@ static int tcpm_pd_send_sink_cap_ext(struct tcpm_port *port)
- 	skedb.load_step = data->load_step;
- 	skedb.load_char = cpu_to_le16(data->load_char);
- 	skedb.compliance = data->compliance;
-+	skedb.batt_info = min(port->fixed_batt_cnt, MAX_NUM_FIXED_BATT);
- 	skedb.modes = data->modes;
- 	skedb.spr_min_pdp = data->spr_min_pdp;
- 	skedb.spr_op_pdp = data->spr_op_pdp;
-@@ -1520,6 +1549,88 @@ static int tcpm_pd_send_sink_cap_ext(struct tcpm_port *port)
- 					   port->message_id,
- 					   data_obj_cnt,
- 					   1 /* Denotes if ext header */));
-+
-+	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
-+}
-+
-+static int tcpm_pd_send_batt_status(struct tcpm_port *port)
-+{
-+	u16 present_charge = BATTERY_PROPERTY_UNKNOWN;
-+	bool batt_present = false, invalid_ref = true;
-+	u32 batt_id = port->batt_request_id;
-+	union power_supply_propval val;
-+	struct power_supply *batt;
-+	u8 charging_status = 0;
-+	struct pd_message msg;
-+	int ret, charge_now;
-+	u64 energy_now;
-+	u32 bsdo;
-+
-+	tcpm_get_fixed_batt(port);
-+	memset(&msg, 0, sizeof(msg));
-+
-+	if (batt_id >= port->fixed_batt_cnt || batt_id >= MAX_NUM_FIXED_BATT)
-+		goto send_status;
-+
-+	invalid_ref = false;
-+	batt = port->fixed_batt[batt_id];
-+	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_PRESENT, &val);
-+	if (ret)
-+		tcpm_log(port,
-+			 "Failed to fetch power_supply_prop_present ret %d",
-+			 ret);
-+	else
-+		batt_present = val.intval > 0;
-+
-+	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_CHARGE_NOW,
-+					&val);
-+	if (!ret) {
-+		charge_now = val.intval;
-+
-+		ret = power_supply_get_property(batt,
-+						POWER_SUPPLY_PROP_VOLTAGE_AVG,
-+						&val);
-+		if (!ret) {
-+			energy_now = ((u64)charge_now * val.intval) / 1000000;
-+
-+			/*
-+			 * Battery Present Charge is reported in
-+			 * increments of 0.1WH.
-+			 */
-+			present_charge = (u16)UW_TO_W(energy_now * 10);
-+		}
-+	}
-+
-+	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_STATUS, &val);
-+	if (!ret) {
-+		switch (val.intval) {
-+		case POWER_SUPPLY_STATUS_CHARGING:
-+			charging_status = BSDO_BATTERY_INFO_CHARGING;
-+			break;
-+		case POWER_SUPPLY_STATUS_DISCHARGING:
-+			charging_status = BSDO_BATTERY_INFO_DISCHARGING;
-+			break;
-+		case POWER_SUPPLY_STATUS_NOT_CHARGING:
-+		case POWER_SUPPLY_STATUS_FULL:
-+			charging_status = BSDO_BATTERY_INFO_IDLE;
-+			break;
-+		default:
-+			charging_status = BSDO_BATTERY_INFO_RSVD;
-+			break;
-+		}
-+	}
-+
-+send_status:
-+
-+	bsdo = BSDO(present_charge, charging_status, batt_present, invalid_ref);
-+	msg.payload[0] = cpu_to_le32(bsdo);
-+	msg.header = PD_HEADER_LE(PD_DATA_BATT_STATUS,
-+				  port->pwr_role,
-+				  port->data_role,
-+				  port->negotiated_rev,
-+				  port->message_id,
-+				  1);
-+
- 	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
- }
- 
-@@ -3854,6 +3965,7 @@ static void tcpm_pd_ext_msg_request(struct tcpm_port *port,
- {
- 	enum pd_ext_msg_type type = pd_header_type_le(msg->header);
- 	unsigned int data_size = pd_ext_header_data_size_le(msg->ext_msg.header);
-+	const struct pd_chunked_ext_message_data *ext_msg = &msg->ext_msg;
- 
- 	/* stopping VDM state machine if interrupted by other Messages */
- 	if (tcpm_vdm_ams(port)) {
-@@ -3862,7 +3974,7 @@ static void tcpm_pd_ext_msg_request(struct tcpm_port *port,
- 		mod_vdm_delayed_work(port, 0);
- 	}
- 
--	if (!(le16_to_cpu(msg->ext_msg.header) & PD_EXT_HDR_CHUNKED)) {
-+	if (!(le16_to_cpu(ext_msg->header) & PD_EXT_HDR_CHUNKED)) {
- 		tcpm_pd_handle_msg(port, PD_MSG_CTRL_NOT_SUPP, NONE_AMS);
- 		tcpm_log(port, "Unchunked extended messages unsupported");
- 		return;
-@@ -3887,9 +3999,17 @@ static void tcpm_pd_ext_msg_request(struct tcpm_port *port,
- 					     NONE_AMS, 0);
- 		}
- 		break;
-+	case PD_EXT_GET_BATT_STATUS:
-+		if (data_size >= 1) {
-+			port->batt_request_id = ext_msg->data[0];
-+			tcpm_pd_handle_msg(port, PD_MSG_DATA_BATT_STATUS,
-+					   GETTING_BATTERY_STATUS);
-+		} else {
-+			tcpm_set_state(port, SOFT_RESET_SEND, 0);
-+		}
++	/* infer BLSP clock and TX pin by the configured UART base */
++	switch (CONFIG_VAL(DEBUG_UART_BASE)) {
++	case 0x078af000:
++		apq8016_clk_init_uart(APQ8016_GCC_BASE,
++				      GCC_BLSP1_UART1_APPS_CLK);
++		writel(APQ8016_DEBUG_UART_PINCFG, APQ8016_GPIO_CFG(0));
 +		break;
- 	case PD_EXT_SOURCE_CAP_EXT:
- 	case PD_EXT_GET_BATT_CAP:
--	case PD_EXT_GET_BATT_STATUS:
- 	case PD_EXT_BATT_CAP:
- 	case PD_EXT_GET_MANUFACTURER_INFO:
- 	case PD_EXT_MANUFACTURER_INFO:
-@@ -4100,6 +4220,14 @@ static bool tcpm_send_queued_message(struct tcpm_port *port)
- 					 ret);
- 			tcpm_ams_finish(port);
- 			break;
-+		case PD_MSG_DATA_BATT_STATUS:
-+			ret = tcpm_pd_send_batt_status(port);
-+			if (ret)
-+				tcpm_log(port,
-+					 "Failed to send battery status ret=%d",
-+					 ret);
-+			tcpm_ams_finish(port);
-+			break;
- 		default:
- 			break;
- 		}
-@@ -8597,6 +8725,7 @@ void tcpm_unregister_port(struct tcpm_port *port)
- 	hrtimer_cancel(&port->vdm_state_machine_timer);
- 	hrtimer_cancel(&port->state_machine_timer);
++	case 0x078b0000:
++		apq8016_clk_init_uart(APQ8016_GCC_BASE,
++				      GCC_BLSP1_UART2_APPS_CLK);
++		writel(APQ8016_DEBUG_UART_PINCFG, APQ8016_GPIO_CFG(4));
++		break;
++	}
++}
+diff --git a/board/qualcomm/debug-apq8016-uart1.config b/board/qualcomm/debug-apq8016-uart1.config
+new file mode 100644
+index 00000000000..283fbf20ff8
+--- /dev/null
++++ b/board/qualcomm/debug-apq8016-uart1.config
+@@ -0,0 +1,4 @@
++CONFIG_DEBUG_UART=y
++CONFIG_DEBUG_UART_ANNOUNCE=y
++CONFIG_DEBUG_UART_BASE=0x078af000
++CONFIG_DEBUG_UART_APQ8016=y
+diff --git a/board/qualcomm/debug-apq8016-uart2.config b/board/qualcomm/debug-apq8016-uart2.config
+new file mode 100644
+index 00000000000..61e56d4eb5a
+--- /dev/null
++++ b/board/qualcomm/debug-apq8016-uart2.config
+@@ -0,0 +1,4 @@
++CONFIG_DEBUG_UART=y
++CONFIG_DEBUG_UART_ANNOUNCE=y
++CONFIG_DEBUG_UART_BASE=0x078b0000
++CONFIG_DEBUG_UART_APQ8016=y
+diff --git a/drivers/serial/Kconfig b/drivers/serial/Kconfig
+index 5f8b98f0704..698205aa035 100644
+--- a/drivers/serial/Kconfig
++++ b/drivers/serial/Kconfig
+@@ -565,6 +565,7 @@ config DEBUG_UART_CLOCK
+ 	default 100000000 if DEBUG_UART_ZYNQ && ARCH_ZYNQMP
+ 	default 50000000 if DEBUG_UART_ZYNQ && ARCH_ZYNQ
+ 	default 100000000 if DEBUG_UART_PL011 && (ARCH_VERSAL || ARCH_VERSAL_NET || ARCH_VERSAL2)
++	default 7372800 if DEBUG_UART_APQ8016
+ 	help
+ 	  The UART input clock determines the speed of the internal UART
+ 	  circuitry. The baud rate is derived from this by dividing the input
+diff --git a/drivers/serial/serial_msm.c b/drivers/serial/serial_msm.c
+index 18d15b7b15b..e25cb71696f 100644
+--- a/drivers/serial/serial_msm.c
++++ b/drivers/serial/serial_msm.c
+@@ -235,18 +235,8 @@ static struct msm_serial_data init_serial_data = {
  
-+	power_supply_put_battery_all(port->fixed_batt, port->fixed_batt_cnt);
- 	tcpm_reset_port(port);
+ #include <debug_uart.h>
  
- 	tcpm_port_unregister_pd(port);
-diff --git a/include/linux/usb/pd.h b/include/linux/usb/pd.h
-index 337a5485af7c..afb9c2c65588 100644
---- a/include/linux/usb/pd.h
-+++ b/include/linux/usb/pd.h
-@@ -724,4 +724,33 @@ void usb_power_delivery_unlink_device(struct usb_power_delivery *pd, struct devi
+-/* Uncomment to turn on UART clocks when debugging U-Boot as aboot on MSM8916 */
+-//int apq8016_clk_init_uart(phys_addr_t gcc_base, unsigned long id);
+-
+ static inline void _debug_uart_init(void)
+ {
+-	/*
+-	 * Uncomment to turn on UART clocks when debugging U-Boot as aboot
+-	 * on MSM8916. Supported debug UART clock IDs:
+-	 *   - db410c: GCC_BLSP1_UART2_APPS_CLK
+-	 *   - HMIBSC: GCC_BLSP1_UART1_APPS_CLK
+-	 */
+-	//apq8016_clk_init_uart(0x1800000, <uart_clk_id>);
+ 	uart_dm_init(&init_serial_data);
+ }
  
- #endif /* CONFIG_TYPEC */
- 
-+/* Battery Status Data Object */
-+#define BSDO_PRESENT_CAPACITY				GENMASK(31, 16)
-+#define BSDO_CHG_STATUS					GENMASK(11, 10)
-+#define BSDO_BATTERY_PRESENT				BIT(9)
-+#define BSDO_INVALID_BATTERY_REFERENCE			BIT(8)
-+
-+/*
-+ * Battery Charge Status: Battery Charging Status Values as defined in
-+ * "USB PD Spec Rev3.1 Ver1.8", "Table 6-46 Battery Status Data Object (BSDO)".
-+ */
-+#define BSDO_BATTERY_INFO_CHARGING			0x0
-+#define BSDO_BATTERY_INFO_DISCHARGING			0x1
-+#define BSDO_BATTERY_INFO_IDLE				0x2
-+#define BSDO_BATTERY_INFO_RSVD				0x3
-+
-+/**
-+ * BSDO() - Pack data into Battery Status Data Object format.
-+ * @batt_charge: Battery's present state of charge in 0.1WH increment.
-+ * @chg_status: Battery charge status.
-+ * @batt_present: Indicates that battery is present/attached when set else absent when unset.
-+ * @invalid_ref: Indicates that an invalid battery reference was made in the Get_Battery_Status
-+ *		 request.
-+ */
-+#define BSDO(batt_charge, chg_status, batt_present, invalid_ref)	\
-+	((FIELD_PREP(BSDO_PRESENT_CAPACITY, batt_charge)) |		\
-+	 (FIELD_PREP(BSDO_CHG_STATUS, chg_status)) |			\
-+	 ((batt_present) ? BSDO_BATTERY_PRESENT : 0) |			\
-+	 ((invalid_ref) ? BSDO_INVALID_BATTERY_REFERENCE : 0))
-+
- #endif /* __LINUX_USB_PD_H */
 
+---
+base-commit: f76fb6495b2df5163f4c88dc222acc934caffbfb
+change-id: 20260602-apq8016-debug-uart-07c0cf4e1060
+
+Best regards,
 -- 
-2.54.0.1013.g208068f2d8-goog
+Sam Day <me@samcday.com>
 
