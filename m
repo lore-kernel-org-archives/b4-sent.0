@@ -1,11 +1,11 @@
 From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Wed, 03 Jun 2026 20:05:23 +0200
-Subject: [PATCH v7 1/8] dt-bindings: mfd: khadas: Add new compatible for
- Khadas VIM4 MCU
+Date: Wed, 03 Jun 2026 20:05:24 +0200
+Subject: [PATCH v7 2/8] dt-bindings: i2c: amlogic: Add compatible for T7
+ SOC
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260603-add-mcu-fan-khadas-vim4-v7-1-594ba8a965d8@aliel.fr>
+Message-Id: <20260603-add-mcu-fan-khadas-vim4-v7-2-594ba8a965d8@aliel.fr>
 References: <20260603-add-mcu-fan-khadas-vim4-v7-0-594ba8a965d8@aliel.fr>
 In-Reply-To: <20260603-add-mcu-fan-khadas-vim4-v7-0-594ba8a965d8@aliel.fr>
 To: Neil Armstrong <neil.armstrong@linaro.org>, Lee Jones <lee@kernel.org>, 
@@ -21,71 +21,52 @@ To: Neil Armstrong <neil.armstrong@linaro.org>, Lee Jones <lee@kernel.org>,
 Cc: linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-i2c@vger.kernel.org, 
  linux-arm-kernel@lists.infradead.org, linux-pm@vger.kernel.org, 
- Ronald Claveau <linux-kernel-dev@aliel.fr>, 
- Conor Dooley <conor.dooley@microchip.com>
+ Ronald Claveau <linux-kernel-dev@aliel.fr>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1479;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1268;
  i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=eCKy2chdqFWw8sHr2BRKBa6cnfiYWQdTnn103pMuJ+4=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ5ZCLpNFVNbF+nux6bsPHFl0h1dCs0MjammbktRppwCbs
- 9vmfo7tKGVhEONikBVTZOmfa3ni3eWjZ77uUU+BmcPKBDKEgYtTACZyS5jhn+mx4gPTwnVrtG/1
- bIjJviuXNMd8kf+R29mvfNw4n9TzNjP8U4o1b/6Su1LyrXJbacLR+vcMPCoV+3f6qAd8dIpfzWP
- MCwA=
+ bh=dSGVBP6Kwid380fHwj/yvIcbmVkBngDKwALA0QzKSyw=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ5ZCLkvEl4QN1eqKBstn2AWrbNUqn/t24aNXqnl7rPOEb
+ nz0fvi9o5SFQYyLQVZMkaV/ruWJd5ePnvm6Rz0FZg4rE8gQBi5OAZiI5naGfzo7Hovd4zTm2nDV
+ xWOZnGOfyfH4Nzv+KRk9+Zi/uPdrTjLD/7qrBwNtpbJiP1qLqip8yr11jvHXVeGGv8WLr0nfU9i
+ ezgEA
 X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
  fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
 X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Khadas VIM4 MCU register is slightly different
-from previous boards' MCU.
-This board also features a switchable power source for its fan.
+Add the T7 SOC compatible which fallback to AXG compatible.
 
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
+Acked-by: Rob Herring (Arm) <robh@kernel.org>
 Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
- Documentation/devicetree/bindings/mfd/khadas,mcu.yaml | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
+ .../devicetree/bindings/i2c/amlogic,meson6-i2c.yaml         | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/mfd/khadas,mcu.yaml b/Documentation/devicetree/bindings/mfd/khadas,mcu.yaml
-index 084960fd5a1fd..1f135618e3b6f 100644
---- a/Documentation/devicetree/bindings/mfd/khadas,mcu.yaml
-+++ b/Documentation/devicetree/bindings/mfd/khadas,mcu.yaml
-@@ -18,6 +18,7 @@ properties:
-   compatible:
-     enum:
-       - khadas,mcu # MCU revision is discoverable
-+      - khadas,vim4-mcu # Different MCU variant, not discoverable
+diff --git a/Documentation/devicetree/bindings/i2c/amlogic,meson6-i2c.yaml b/Documentation/devicetree/bindings/i2c/amlogic,meson6-i2c.yaml
+index c4cc8af182807..7b59b60b62e5b 100644
+--- a/Documentation/devicetree/bindings/i2c/amlogic,meson6-i2c.yaml
++++ b/Documentation/devicetree/bindings/i2c/amlogic,meson6-i2c.yaml
+@@ -16,10 +16,15 @@ allOf:
  
-   "#cooling-cells": # Only needed for boards having FAN control feature
-     const: 2
-@@ -25,10 +26,27 @@ properties:
+ properties:
+   compatible:
+-    enum:
+-      - amlogic,meson6-i2c # Meson6, Meson8 and compatible SoCs
+-      - amlogic,meson-gxbb-i2c # GXBB and compatible SoCs
+-      - amlogic,meson-axg-i2c # AXG and compatible SoCs
++    oneOf:
++      - items:
++          - enum:
++              - amlogic,t7-i2c
++          - const: amlogic,meson-axg-i2c
++      - enum:
++          - amlogic,meson6-i2c # Meson6, Meson8 and compatible SoCs
++          - amlogic,meson-gxbb-i2c # GXBB and compatible SoCs
++          - amlogic,meson-axg-i2c # AXG and compatible SoCs
+ 
    reg:
      maxItems: 1
- 
-+  fan-supply:
-+    description: Phandle to the regulator that powers the fan.
-+    $ref: /schemas/types.yaml#/definitions/phandle
-+
- required:
-   - compatible
-   - reg
- 
-+allOf:
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: khadas,vim4-mcu
-+    then:
-+      required:
-+        - fan-supply
-+    else:
-+      properties:
-+        fan-supply: false
-+
- additionalProperties: false
- 
- examples:
 
 -- 
 2.49.0
