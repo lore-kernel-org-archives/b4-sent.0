@@ -1,512 +1,155 @@
-From: Korenberg Mark <socketpair@gmail.com>
-Date: Wed, 03 Jun 2026 22:39:53 +0500
-Subject: [PATCH] bpftool: Make the LLVM disassembler an optional runtime
- dependency
+From: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Subject: [PATCH v7 0/8] Add VIM4 MCU/FAN support
+Date: Wed, 03 Jun 2026 20:05:22 +0200
+Message-Id: <20260603-add-mcu-fan-khadas-vim4-v7-0-594ba8a965d8@aliel.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260603-bpftool-plugin-v1-1-68c0ac91f5a3@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqAIBBA0avErBMsQ7CrRIu00QZERSuC8O5Jy
- 7f4/4WCmbDA3L2Q8aZCMTQMfQfm2IJDRnszjHyUXHLBdLJnjJ4lfzkKzCg1aSOQy0lAi1JGS88
- /XNZaP9YWoPxgAAAA
-X-Change-ID: 20260603-bpftool-plugin-c994bc3e0643
-To: Quentin Monnet <qmo@kernel.org>, Alexei Starovoitov <ast@kernel.org>, 
- Daniel Borkmann <daniel@iogearbox.net>, Andrii Nakryiko <andrii@kernel.org>, 
- Martin KaFai Lau <martin.lau@linux.dev>, 
- Eduard Zingerman <eddyz87@gmail.com>, 
- Kumar Kartikeya Dwivedi <memxor@gmail.com>, Song Liu <song@kernel.org>, 
- Yonghong Song <yonghong.song@linux.dev>, Jiri Olsa <jolsa@kernel.org>, 
- Nathan Chancellor <nathan@kernel.org>, 
- Nick Desaulniers <nick.desaulniers+lkml@gmail.com>, 
- Bill Wendling <morbo@google.com>, Justin Stitt <justinstitt@google.com>
-Cc: linux-kernel@vger.kernel.org, bpf@vger.kernel.org, llvm@lists.linux.dev, 
- Korenberg Mark <socketpair@gmail.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WS3W7bMAyFXyXw9RTon1YwDH2PYRekRC3aYqezn
+ aBF0Xcf4xZYmi2Y7ijhfIfi4Us389R47nabl27ic5vbcZQCPm26vMfxO6tWpO6stlF7bRWWooZ
+ 8UhVH9XOPBWd1boNXmE0mDsHlRJ2oHyeu7Wklf/32Vk/86yQGy9tlRzizysdhaMtuM/LTolYTZ
+ +GiH3iecbXfbT6/P0SdbPRha3SQwiijfjQct/vTAw6H4/eWt4L7srrjkverNgYMBWKthaQzh0j
+ O9YEohkzagtY+O83AH1XWgY2p16a3sRSHBSqZyOQLlFg8IwXtLfQfVQE4ke4xxR651OBdcUWXE
+ HM1GX0hq8miid31dMXs/XfrbCkP3kGwl8kIudGBFcuv0VdI4HB3th9NCZyugb0lNqVPxSTH0aE
+ wg08hF6o2QwH6p6nTSlJSbTzjoRX1OB0feVqeFUmUviTnKph3x7+1ZtXK6NUCajwdDmrimSVGi
+ rpnqqmg351Nd4l/3+blOD2veyZXl/z/u1Jno7TAjJW5YwbSD9IkH7Z1WpHS1hXG3cdYwYCsTCR
+ rvUt4g3FXGAP3MU4wGBFqAE3G0A3GX2GsuY/xgvEejPFo+2rLDSZcY/x9TLh0U3NFMAHIuhtM/
+ IMJJt7HRMFkOYmiqT6GK8zr6+tvC1Uf1R8EAAA=
+X-Change-ID: 20260402-add-mcu-fan-khadas-vim4-ac1cbe553c9b
+To: Neil Armstrong <neil.armstrong@linaro.org>, Lee Jones <lee@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Andi Shyti <andi.shyti@kernel.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Beniamino Galvani <b.galvani@gmail.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Liam Girdwood <lgirdwood@gmail.com>, 
+ Mark Brown <broonie@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-i2c@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-pm@vger.kernel.org, 
+ Ronald Claveau <linux-kernel-dev@aliel.fr>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780508396; l=17763;
- i=socketpair@gmail.com; s=20260603; h=from:subject:message-id;
- bh=aP25w5DlRMlpRD13hPXrY+sdA/kazAuiqSIzsN6jCjo=;
- b=KO2gDX0W+nZYLgZElcrJXmy1YebBcl8lyEaNBrgdrldgnNmGQcB8fotxNzTDKTGXHmgwBtBgy
- wOYA2Fu/PB+AqbHme1fxuiUuJcm/Eb/FtP0IK03y7L+VJnJybh7yVAR
-X-Developer-Key: i=socketpair@gmail.com; a=ed25519;
- pk=2iAMjWhs7kA9X8ccetT2YVX8dvniXua2okQogw3Don8=
-X-Endpoint-Received: by B4 Relay for socketpair@gmail.com/20260603 with auth_id=806
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5648;
+ i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
+ bh=mW+xaqDNXTlMQUworvAQXvJL5yRZV2v+IskzATtrYqs=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ5ZCzs8LqTOF56nYr3y74sTp6qriz1xyUovKE+drPP3vV
+ tGlKJbRUcrCIMbFICumyNI/1/LEu8tHz3zdo54CM4eVCWQIAxenAEzk4RRGhu+FFeuzGZOzZ8y9
+ eOGwpUtV5guPX1mLGNe/r3mU/938qRMjw6MJm6LWnVx96MD/wEiRc/ZHU2wCkn74fN+jdrLO+UC
+ gKR8A
+X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
+ fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
+X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Fixes https://github.com/libbpf/bpftool/issues/262
+The Khadas VIM4 board features a different MCU variant compared to
+previous VIM boards.
+While it shares the same I2C-based communication model,
+it differs in some ways:
 
-Signed-off-by: Korenberg Mark <socketpair@gmail.com>
+  - A distinct register map with its own volatile/writeable register set
+  - A fan control with 0–100 levels instead of the 0–3 levels previously
+  - A fan power supply gated through a regulator
+
+This series adds support for this new variant by:
+
+  1. Refactoring the khadas-mcu MFD driver to use per-variant data
+     structures (regmap config, cells, fan platform data),
+     and adding the khadas,vim4-mcu compatible string.
+
+  2. Extending the fan thermal driver to retrieve the fan register
+     and maximum level from platform_data,
+     and to optionally manage a power regulator for the fan supply.
+
+  3. Adding the corresponding DTS node for the VIM4, wiring the MCU to
+     the I2C AO_A bus and exposing it as a thermal cooling device.
+
+Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
-On Fedora 43, installing `bpftool` pulls in `llvm20-libs` (~140 MiB) as a hard
-dependency, even though the bpftool binary itself is ~730 KiB:
+Changes in v7:
+- PATCH 3-4: Simplify the per-variant handling by using local variables in khadas_mcu_probe()
+             instead of introducing a dedicated data structure. Thanks to Lee's review.
+- Link to v6: https://lore.kernel.org/r/20260516-add-mcu-fan-khadas-vim4-v6-0-cccc9b61f465@aliel.fr
 
-    # dnf install bpftool
-    Installing:
-     bpftool            x86_64   7.6.0-1.fc43    fedora   731.4 KiB
-    Installing dependencies:
-     llvm20-filesystem  x86_64   20.1.8-2.fc43   fedora   0.0   B
-     llvm20-libs        x86_64   20.1.8-2.fc43   fedora   139.7 MiB
+Changes in v6:
+- PATCH 4: Address Lee's review comments:
+  - Use an enum to discriminate between MCU types instead of passing
+    MFD data through the DT match table
+  - Fix error code from -EINVAL to -ENODEV when no MCU type is matched
+  - Make khadas_mcu_fan_cells and khadas_mcu_cells const
+  - Use dev_err_probe() for regmap initialization error
+  - Document fan speed levels for max_level
+- Link to v5: https://lore.kernel.org/r/20260424-add-mcu-fan-khadas-vim4-v5-0-afcfa7157b23@aliel.fr
 
-The LLVM library is only used to disassemble JIT-compiled (native) programs,
-i.e. `bpftool prog dump jited`. Every other use case  works
-without LLVM. For scripting, automation, and CI, dragging in ~140 MB of LLVM
-just to have a single optional command available is a heavy cost.
+Changes in v5:
+- PATCH 5: Replace devm_regulator_get_optional() with devm_regulator_get()
+           to simplify error handling and remove NULL checks, also
+           ordering as reverse christmas according to Neil's feedback.
+- Link to v4: https://lore.kernel.org/r/20260421-add-mcu-fan-khadas-vim4-v4-0-447114a28f2d@aliel.fr
 
-Load the LLVM disassembler lazily at runtime via `dlopen`/`dlsym` instead of
-linking against it at build time. When `prog dump jited` is invoked and the
-library is unavailable, fall back gracefully (libbfd, or an informative message).
-This would remove the automatic ELF dependency on `libLLVM.so`, allowing distributions to make
-LLVM a weak/optional dependency (e.g. RPM `Recommends`) rather than a hard one.
+Changes in v4:
+- PATCH 1: limit fan-supply property by compatible according to Conor's feedback.
+- Link to v3: https://lore.kernel.org/r/20260417-add-mcu-fan-khadas-vim4-v3-0-a6a7f570b11b@aliel.fr
 
-The `perf` tool is solving the exact same problem (libLLVM/libcapstone
-bloating dependencies for users who never disassemble) by dlopen-ing these
-libraries at runtime, so distributions can ship them as a separate, optional
-package:
+Changes in v3:
+- PATCH 1: adding comment on vim4 compatible saying it is not discoverable,
+           thanks to Rob's and Neil's feedback.
+- Link to v2: https://lore.kernel.org/r/20260403-add-mcu-fan-khadas-vim4-v2-0-70536b22439a@aliel.fr
 
-- Overview: https://lwn.net/Articles/1040879/
-- https://lore.kernel.org/lkml/?q=Capstone%2Fllvm+dlopen
-
-- Build with the libbfd disassembler instead of LLVM (smaller, but a build/
-  packaging choice and subject to libbfd's unstable ABI).
-- Build with no disassembler at all (loses `prog dump jited` entirely).
-- Ship the disassembler in a separate binary (works, but less idiomatic for a
-  single-binary tool; dlopen keeps the existing UX intact).
-
-- bpftool 7.6.0-1.fc43 (Fedora 43), x86_64
----
- tools/bpf/bpftool/Makefile      |  63 ++++++++++++++++++----
- tools/bpf/bpftool/jit_disasm.c  | 112 +++++++++++++++++++++++-----------------
- tools/bpf/bpftool/llvm_disasm.c |  85 ++++++++++++++++++++++++++++++
- tools/bpf/bpftool/llvm_disasm.h |  38 ++++++++++++++
- 4 files changed, 240 insertions(+), 58 deletions(-)
-
-diff --git a/tools/bpf/bpftool/Makefile b/tools/bpf/bpftool/Makefile
-index 0febf60e1..9887ac6fb 100644
---- a/tools/bpf/bpftool/Makefile
-+++ b/tools/bpf/bpftool/Makefile
-@@ -62,6 +62,7 @@ $(LIBBPF_BOOTSTRAP)-clean: FORCE | $(LIBBPF_BOOTSTRAP_OUTPUT)
- 	$(Q)$(MAKE) -C $(BPF_DIR) OUTPUT=$(LIBBPF_BOOTSTRAP_OUTPUT) clean >/dev/null
- 
- prefix ?= /usr/local
-+libdir ?= $(prefix)/lib
- bash_compdir ?= /usr/share/bash-completion/completions
- 
- CFLAGS += -O2
-@@ -157,6 +158,8 @@ include $(wildcard $(OUTPUT)*.d)
- all: $(OUTPUT)bpftool
- 
- SRCS := $(wildcard *.c)
-+# llvm_disasm.c is compiled separately into the bpftool-llvm.so plugin.
-+SRCS := $(filter-out llvm_disasm.c,$(SRCS))
- 
- ifeq ($(feature-llvm),1)
- ifneq ($(SKIP_LLVM),1)
-@@ -165,19 +168,36 @@ endif
- endif
- 
- ifeq ($(HAS_LLVM),1)
-+  # The libLLVM-based JIT disassembler is built as a separate plugin,
-+  # bpftool-llvm.so, which is the only object that links against libLLVM.
-+  # bpftool loads it lazily with dlopen() (see jit_disasm.c), so the bpftool
-+  # binary itself keeps no dependency on the large libLLVM shared object.
-   CFLAGS  += -DHAVE_LLVM_SUPPORT
-+  CFLAGS  += -DLLVM_PLUGIN_DIR='"$(libdir)/bpftool"'
-+  # dlopen() lives in libc on modern glibc, but keep -ldl for portability.
-+  LIBS    += -ldl
-+
-+  # Flags used to build the plugin itself (the only part that needs libLLVM).
-   LLVM_CONFIG_LIB_COMPONENTS := mcdisassembler all-targets
--  # llvm-config always adds -D_GNU_SOURCE, however, it may already be in CFLAGS
--  # (e.g. when bpftool build is called from selftests build as selftests
--  # Makefile includes lib.mk which sets -D_GNU_SOURCE) which would cause
--  # compilation error due to redefinition. Let's filter it out here.
--  CFLAGS  += $(filter-out -D_GNU_SOURCE,$(shell $(LLVM_CONFIG) --cflags))
--  LIBS    += $(shell $(LLVM_CONFIG) --libs $(LLVM_CONFIG_LIB_COMPONENTS))
-+  # llvm-config always adds -D_GNU_SOURCE, which llvm_disasm.c already defines;
-+  # filter it out to avoid a redefinition warning.
-+  LLVM_PLUGIN_CFLAGS := $(filter-out -D_GNU_SOURCE,$(shell $(LLVM_CONFIG) --cflags))
-+
-+  # Embed libLLVM into the plugin statically when requested with
-+  # LLVM_LINK_STATIC=1, or when this LLVM install only ships static libraries
-+  # ("llvm-config --shared-mode" reports "static"). Otherwise link the shared
-+  # libLLVM, which is the only runtime dependency of the plugin.
-   ifeq ($(shell $(LLVM_CONFIG) --shared-mode),static)
--    LIBS += $(shell $(LLVM_CONFIG) --system-libs $(LLVM_CONFIG_LIB_COMPONENTS))
--    LIBS += -lstdc++
-+    LLVM_LINK_STATIC := 1
-+  endif
-+  ifeq ($(LLVM_LINK_STATIC),1)
-+    LLVM_PLUGIN_LIBS := $(shell $(LLVM_CONFIG) --link-static --libs $(LLVM_CONFIG_LIB_COMPONENTS))
-+    LLVM_PLUGIN_LIBS += $(shell $(LLVM_CONFIG) --link-static --system-libs $(LLVM_CONFIG_LIB_COMPONENTS))
-+    LLVM_PLUGIN_LIBS += -lstdc++
-+  else
-+    LLVM_PLUGIN_LIBS := $(shell $(LLVM_CONFIG) --libs $(LLVM_CONFIG_LIB_COMPONENTS))
-   endif
--  LDFLAGS += $(shell $(LLVM_CONFIG) --ldflags)
-+  LLVM_PLUGIN_LDFLAGS := $(shell $(LLVM_CONFIG) --ldflags)
- else
-   ifneq ($(SKIP_LIBBFD),1)
-   # Fall back on libbfd
-@@ -276,6 +296,20 @@ $(BPFTOOL_BOOTSTRAP): $(BOOTSTRAP_OBJS) $(LIBBPF_BOOTSTRAP)
- $(OUTPUT)bpftool: $(OBJS) $(LIBBPF)
- 	$(QUIET_LINK)$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) $(LIBS) -o $@
- 
-+ifeq ($(HAS_LLVM),1)
-+all: $(OUTPUT)bpftool-llvm.so
-+
-+$(OUTPUT)llvm_disasm.o: llvm_disasm.c
-+	$(QUIET_CC)$(CC) $(CFLAGS) $(LLVM_PLUGIN_CFLAGS) -fPIC -c -MMD $< -o $@
-+
-+# The plugin is a shared object by definition, so drop a global -static (e.g.
-+# from EXTRA_LDFLAGS for a static bpftool) which would conflict with -shared.
-+# Embedding libLLVM statically is controlled separately (see LLVM_LINK_STATIC).
-+$(OUTPUT)bpftool-llvm.so: $(OUTPUT)llvm_disasm.o
-+	$(QUIET_LINK)$(CC) $(CFLAGS) $(filter-out -static,$(LDFLAGS)) \
-+		$(LLVM_PLUGIN_LDFLAGS) -shared -o $@ $< $(LLVM_PLUGIN_LIBS)
-+endif
-+
- $(BOOTSTRAP_OUTPUT)%.o: %.c $(LIBBPF_BOOTSTRAP_INTERNAL_HDRS) | $(BOOTSTRAP_OUTPUT)
- 	$(QUIET_CC)$(HOSTCC) $(HOST_CFLAGS) -c -MMD $< -o $@
- 
-@@ -288,17 +322,25 @@ feature-detect-clean:
- 
- clean: $(LIBBPF)-clean $(LIBBPF_BOOTSTRAP)-clean feature-detect-clean
- 	$(call QUIET_CLEAN, bpftool)
--	$(Q)$(RM) -- $(OUTPUT)bpftool $(OUTPUT)*.o $(OUTPUT)*.d
-+	$(Q)$(RM) -- $(OUTPUT)bpftool $(OUTPUT)bpftool-llvm.so $(OUTPUT)*.o $(OUTPUT)*.d
- 	$(Q)$(RM) -- $(OUTPUT)*.skel.h $(OUTPUT)vmlinux.h
- 	$(Q)$(RM) -r -- $(LIBBPF_OUTPUT) $(BOOTSTRAP_OUTPUT)
- 	$(call QUIET_CLEAN, core-gen)
- 	$(Q)$(RM) -- $(OUTPUT)FEATURE-DUMP.bpftool
- 	$(Q)$(RM) -r -- $(OUTPUT)feature/
- 
-+ifeq ($(HAS_LLVM),1)
-+install-bin: $(OUTPUT)bpftool-llvm.so
-+endif
- install-bin: $(OUTPUT)bpftool
- 	$(call QUIET_INSTALL, bpftool)
- 	$(Q)$(INSTALL) -m 0755 -d $(DESTDIR)$(prefix)/sbin
- 	$(Q)$(INSTALL) $(OUTPUT)bpftool $(DESTDIR)$(prefix)/sbin/bpftool
-+ifeq ($(HAS_LLVM),1)
-+	$(call QUIET_INSTALL, bpftool-llvm.so)
-+	$(Q)$(INSTALL) -m 0755 -d $(DESTDIR)$(libdir)/bpftool
-+	$(Q)$(INSTALL) -m 0755 $(OUTPUT)bpftool-llvm.so $(DESTDIR)$(libdir)/bpftool/bpftool-llvm.so
-+endif
- 
- install: install-bin
- 	$(Q)$(INSTALL) -m 0755 -d $(DESTDIR)$(bash_compdir)
-@@ -307,6 +349,7 @@ install: install-bin
- uninstall:
- 	$(call QUIET_UNINST, bpftool)
- 	$(Q)$(RM) -- $(DESTDIR)$(prefix)/sbin/bpftool
-+	$(Q)$(RM) -- $(DESTDIR)$(libdir)/bpftool/bpftool-llvm.so
- 	$(Q)$(RM) -- $(DESTDIR)$(bash_compdir)/bpftool
- 
- doc:
-diff --git a/tools/bpf/bpftool/jit_disasm.c b/tools/bpf/bpftool/jit_disasm.c
-index 04541155e..e8cef2da2 100644
---- a/tools/bpf/bpftool/jit_disasm.c
-+++ b/tools/bpf/bpftool/jit_disasm.c
-@@ -25,10 +25,9 @@
- #include <bpf/libbpf.h>
- 
- #ifdef HAVE_LLVM_SUPPORT
--#include <llvm-c/Core.h>
--#include <llvm-c/Disassembler.h>
--#include <llvm-c/Target.h>
--#include <llvm-c/TargetMachine.h>
-+#include <dlfcn.h>
-+
-+#include "llvm_disasm.h"
- #endif
- 
- #ifdef HAVE_LIBBFD_SUPPORT
-@@ -45,7 +44,32 @@ static int oper_count;
- #ifdef HAVE_LLVM_SUPPORT
- #define DISASM_SPACER
- 
--typedef LLVMDisasmContextRef disasm_ctx_t;
-+/*
-+ * The libLLVM-based disassembler used for "bpftool prog dump jited" lives in a
-+ * separate plugin, bpftool-llvm.so, which is the only object linked against
-+ * libLLVM. This keeps the bpftool binary itself free of a hard dependency on
-+ * the (large) libLLVM shared object: the plugin is loaded lazily with dlopen()
-+ * the first time a JITed image actually needs to be disassembled, with its
-+ * entry points resolved by dlsym(). See llvm_disasm.c for the plugin.
-+ *
-+ * LLVM_PLUGIN_DIR is the install directory baked in at build time
-+ * ($(libdir)/bpftool). When set, the plugin is loaded from that absolute
-+ * location; otherwise only the bare file name is used, i.e. the plugin is
-+ * looked up via the dynamic linker search path (or the current directory).
-+ */
-+#ifdef LLVM_PLUGIN_DIR
-+#define LLVM_PLUGIN_PATH LLVM_PLUGIN_DIR "/bpftool-llvm.so"
-+#else
-+#define LLVM_PLUGIN_PATH "bpftool-llvm.so"
-+#endif
-+
-+typedef void *disasm_ctx_t;
-+
-+static void *llvm_plugin_handle;
-+static __typeof__(&bpftool_llvm_init) p_bpftool_llvm_init;
-+static __typeof__(&bpftool_llvm_create_context) p_bpftool_llvm_create_context;
-+static __typeof__(&bpftool_llvm_destroy_context) p_bpftool_llvm_destroy_context;
-+static __typeof__(&bpftool_llvm_disassemble) p_bpftool_llvm_disassemble;
- 
- static int printf_json(char *s)
- {
-@@ -63,48 +87,13 @@ static int printf_json(char *s)
- 	return 0;
- }
- 
--/* This callback to set the ref_type is necessary to have the LLVM disassembler
-- * print PC-relative addresses instead of byte offsets for branch instruction
-- * targets.
-- */
--static const char *
--symbol_lookup_callback(__maybe_unused void *disasm_info,
--		       __maybe_unused uint64_t ref_value,
--		       uint64_t *ref_type, __maybe_unused uint64_t ref_PC,
--		       __maybe_unused const char **ref_name)
--{
--	*ref_type = LLVMDisassembler_ReferenceType_InOut_None;
--	return NULL;
--}
--
- static int
- init_context(disasm_ctx_t *ctx, const char *arch,
- 	     __maybe_unused const char *disassembler_options,
- 	     __maybe_unused unsigned char *image, __maybe_unused ssize_t len,
- 	     __maybe_unused __u64 func_ksym)
- {
--	char *triple;
--
--	if (arch)
--		triple = LLVMNormalizeTargetTriple(arch);
--	else
--		triple = LLVMGetDefaultTargetTriple();
--	if (!triple) {
--		p_err("Failed to retrieve triple");
--		return -1;
--	}
--
--	/*
--	 * Enable all aarch64 ISA extensions so the disassembler can handle any
--	 * instruction the kernel JIT might emit (e.g. ARM64 LSE atomics).
--	 */
--	if (!strncmp(triple, "aarch64", 7))
--		*ctx = LLVMCreateDisasmCPUFeatures(triple, "", "+all", NULL, 0, NULL,
--						   symbol_lookup_callback);
--	else
--		*ctx = LLVMCreateDisasm(triple, NULL, 0, NULL, symbol_lookup_callback);
--	LLVMDisposeMessage(triple);
--
-+	*ctx = p_bpftool_llvm_create_context(arch);
- 	if (!*ctx) {
- 		p_err("Failed to create disassembler");
- 		return -1;
-@@ -115,7 +104,7 @@ init_context(disasm_ctx_t *ctx, const char *arch,
- 
- static void destroy_context(disasm_ctx_t *ctx)
- {
--	LLVMDisposeMessage(*ctx);
-+	p_bpftool_llvm_destroy_context(*ctx);
- }
- 
- static int
-@@ -125,8 +114,8 @@ disassemble_insn(disasm_ctx_t *ctx, unsigned char *image, ssize_t len, int pc,
- 	char buf[256];
- 	int count;
- 
--	count = LLVMDisasmInstruction(*ctx, image + pc, len - pc, func_ksym + pc,
--				      buf, sizeof(buf));
-+	count = p_bpftool_llvm_disassemble(*ctx, image, len, pc, func_ksym,
-+					   buf, sizeof(buf));
- 	if (json_output)
- 		printf_json(buf);
- 	else
-@@ -137,10 +126,37 @@ disassemble_insn(disasm_ctx_t *ctx, unsigned char *image, ssize_t len, int pc,
- 
- int disasm_init(void)
- {
--	LLVMInitializeAllTargetInfos();
--	LLVMInitializeAllTargetMCs();
--	LLVMInitializeAllDisassemblers();
--	return 0;
-+	if (llvm_plugin_handle)
-+		return p_bpftool_llvm_init();
-+
-+	/* Load the plugin by its absolute install path. */
-+	llvm_plugin_handle = dlopen(LLVM_PLUGIN_PATH, RTLD_NOW | RTLD_LOCAL);
-+	if (!llvm_plugin_handle) {
-+		p_err("failed to load %s, install it to disassemble JITed programs: %s",
-+		      LLVM_PLUGIN_PATH, dlerror());
-+		return -1;
-+	}
-+
-+#define RESOLVE(name)							       \
-+	do {								       \
-+		p_##name = (__typeof__(p_##name))dlsym(llvm_plugin_handle,     \
-+						       #name);		       \
-+		if (!p_##name) {					       \
-+			p_err("%s is missing symbol %s: %s",		       \
-+			      LLVM_PLUGIN_PATH, #name, dlerror());	       \
-+			dlclose(llvm_plugin_handle);			       \
-+			llvm_plugin_handle = NULL;			       \
-+			return -1;					       \
-+		}							       \
-+	} while (0)
-+
-+	RESOLVE(bpftool_llvm_init);
-+	RESOLVE(bpftool_llvm_create_context);
-+	RESOLVE(bpftool_llvm_destroy_context);
-+	RESOLVE(bpftool_llvm_disassemble);
-+#undef RESOLVE
-+
-+	return p_bpftool_llvm_init();
- }
- #endif /* HAVE_LLVM_SUPPORT */
- 
-diff --git a/tools/bpf/bpftool/llvm_disasm.c b/tools/bpf/bpftool/llvm_disasm.c
-new file mode 100644
-index 000000000..b83216191
---- /dev/null
-+++ b/tools/bpf/bpftool/llvm_disasm.c
-@@ -0,0 +1,85 @@
-+// SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+/*
-+ * libLLVM-based BPF JIT disassembler plugin for bpftool.
-+ *
-+ * This translation unit is built into a standalone shared object
-+ * (bpftool-llvm.so) which is the only bpftool component that links against
-+ * libLLVM. bpftool loads it lazily with dlopen() (see jit_disasm.c) so that
-+ * the bpftool binary itself does not depend on the large libLLVM shared
-+ * object. Only the small, stable C ABI declared in llvm_disasm.h is exposed.
-+ */
-+#ifndef _GNU_SOURCE
-+#define _GNU_SOURCE
-+#endif
-+#include <stdint.h>
-+#include <string.h>
-+#include <sys/types.h>
-+
-+#include <llvm-c/Core.h>
-+#include <llvm-c/Disassembler.h>
-+#include <llvm-c/Target.h>
-+#include <llvm-c/TargetMachine.h>
-+
-+#include "llvm_disasm.h"
-+
-+/* This callback to set the ref_type is necessary to have the LLVM disassembler
-+ * print PC-relative addresses instead of byte offsets for branch instruction
-+ * targets.
-+ */
-+static const char *
-+symbol_lookup_callback(void *disasm_info, uint64_t ref_value,
-+		       uint64_t *ref_type, uint64_t ref_PC,
-+		       const char **ref_name)
-+{
-+	*ref_type = LLVMDisassembler_ReferenceType_InOut_None;
-+	return NULL;
-+}
-+
-+int bpftool_llvm_init(void)
-+{
-+	LLVMInitializeAllTargetInfos();
-+	LLVMInitializeAllTargetMCs();
-+	LLVMInitializeAllDisassemblers();
-+
-+	return 0;
-+}
-+
-+void *bpftool_llvm_create_context(const char *arch)
-+{
-+	LLVMDisasmContextRef ctx;
-+	char *triple;
-+
-+	if (arch)
-+		triple = LLVMNormalizeTargetTriple(arch);
-+	else
-+		triple = LLVMGetDefaultTargetTriple();
-+	if (!triple)
-+		return NULL;
-+
-+	/*
-+	 * Enable all aarch64 ISA extensions so the disassembler can handle any
-+	 * instruction the kernel JIT might emit (e.g. ARM64 LSE atomics).
-+	 */
-+	if (!strncmp(triple, "aarch64", 7))
-+		ctx = LLVMCreateDisasmCPUFeatures(triple, "", "+all", NULL, 0,
-+						  NULL, symbol_lookup_callback);
-+	else
-+		ctx = LLVMCreateDisasm(triple, NULL, 0, NULL,
-+				       symbol_lookup_callback);
-+	LLVMDisposeMessage(triple);
-+
-+	return ctx;
-+}
-+
-+void bpftool_llvm_destroy_context(void *ctx)
-+{
-+	LLVMDisasmDispose(ctx);
-+}
-+
-+int bpftool_llvm_disassemble(void *ctx, unsigned char *image, ssize_t len,
-+			     int pc, uint64_t func_ksym, char *buf,
-+			     size_t buf_sz)
-+{
-+	return LLVMDisasmInstruction(ctx, image + pc, len - pc, func_ksym + pc,
-+				     buf, buf_sz);
-+}
-diff --git a/tools/bpf/bpftool/llvm_disasm.h b/tools/bpf/bpftool/llvm_disasm.h
-new file mode 100644
-index 000000000..cd9491ea3
---- /dev/null
-+++ b/tools/bpf/bpftool/llvm_disasm.h
-@@ -0,0 +1,38 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
-+#ifndef __BPFTOOL_LLVM_DISASM_H
-+#define __BPFTOOL_LLVM_DISASM_H
-+
-+#include <stddef.h>
-+#include <stdint.h>
-+#include <sys/types.h>
-+
-+/*
-+ * Stable C ABI between bpftool and its optional libLLVM-based JIT disassembler
-+ * plugin (bpftool-llvm.so). bpftool resolves these symbols with dlsym()
-+ * after dlopen()ing the plugin; the plugin is the only object that links
-+ * against libLLVM. See jit_disasm.c (loader) and llvm_disasm.c (plugin).
-+ */
-+
-+/* Initialize the libLLVM targets and disassemblers. Returns 0 on success. */
-+int bpftool_llvm_init(void);
-+
-+/*
-+ * Create a disassembler context for @arch (NULL selects the host
-+ * architecture). Returns an opaque context pointer, or NULL on failure.
-+ */
-+void *bpftool_llvm_create_context(const char *arch);
-+
-+/* Release a context previously returned by bpftool_llvm_create_context(). */
-+void bpftool_llvm_destroy_context(void *ctx);
-+
-+/*
-+ * Disassemble the single instruction at @image[@pc] into @buf as a NUL
-+ * terminated string. @func_ksym is the kernel address of @image and is used to
-+ * render absolute branch targets. Returns the instruction length in bytes, or
-+ * 0 if the instruction could not be decoded.
-+ */
-+int bpftool_llvm_disassemble(void *ctx, unsigned char *image, ssize_t len,
-+			     int pc, uint64_t func_ksym, char *buf,
-+			     size_t buf_sz);
-+
-+#endif /* __BPFTOOL_LLVM_DISASM_H */
+Changes in v2:
+- PATCH 5: Add regulator_disable on suspend thanks to Neil's feedback.
+- Link to v1: https://lore.kernel.org/r/20260402-add-mcu-fan-khadas-vim4-v1-0-2b12eb4ac7b0@aliel.fr
 
 ---
-base-commit: ba3e43a9e601636f5edb54e259a74f96ca3b8fd8
-change-id: 20260603-bpftool-plugin-c994bc3e0643
+Ronald Claveau (8):
+      dt-bindings: mfd: khadas: Add new compatible for Khadas VIM4 MCU
+      dt-bindings: i2c: amlogic: Add compatible for T7 SOC
+      mfd: khadas-mcu: Add per-variant configuration infrastructure and VIM4 support
+      mfd: khadas-mcu: Add support for VIM4 MCU variant
+      thermal: khadas-mcu-fan: Add fan config from platform data Add regulator support
+      arm64: dts: amlogic: t7: Add i2c pinctrl node
+      arm64: dts: amlogic: t7: Add i2c controller node
+      arm64: dts: amlogic: t7: khadas-vim4: Add i2c MCU fan node
+
+ .../bindings/i2c/amlogic,meson6-i2c.yaml           |  13 ++-
+ .../devicetree/bindings/mfd/khadas,mcu.yaml        |  18 ++++
+ .../dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts  |  13 +++
+ arch/arm64/boot/dts/amlogic/amlogic-t7.dtsi        |  20 ++++
+ drivers/mfd/khadas-mcu.c                           | 115 ++++++++++++++++++---
+ drivers/thermal/khadas_mcu_fan.c                   |  37 +++++--
+ include/linux/mfd/khadas-mcu.h                     |  22 ++++
+ 7 files changed, 211 insertions(+), 27 deletions(-)
+---
+base-commit: f7b64ed948718290209074a50bb0df17e5944873
+change-id: 20260402-add-mcu-fan-khadas-vim4-ac1cbe553c9b
+prerequisite-message-id: <20260326092645.1053261-1-jian.hu@amlogic.com>
+prerequisite-patch-id: f03a086b4137158412b2d47b3de793b858de8dde
+prerequisite-patch-id: 123970c9b29c2090440f2fd71c85d3c6fd8e36de
+prerequisite-patch-id: 3e2e56b0926ba327b520f935df4ced5089bbe503
+prerequisite-patch-id: 65a5d76ffdbc9b3aab3385bb65cb027004c30e7e
+prerequisite-patch-id: 237269801826dd3ad7fb16eb4d7d6d4eab504278
+prerequisite-patch-id: 57e9b08a968aedf543d3d0d56cf1ca4db20b2a16
+prerequisite-change-id: 20260326-add-bcm43752-compatible-e264a4f7973a:v2
+prerequisite-patch-id: cd98b74fa56af72af2553f391c400981d83cd4f4
+prerequisite-patch-id: b730f5e42be1d89d193e63a0265495cdbf2c7d7b
+prerequisite-change-id: 20260330-fix-invalid-property-bbe54d933f71:v2
+prerequisite-patch-id: 8d675e7a239985c762843515b241f0a2f45f9c92
+prerequisite-change-id: 20260331-fix-aml-t7-null-reset-2b608ebf9da4:v1
+prerequisite-patch-id: 5b5de77af11747ce964404fb827d2ee2bff47ea5
+prerequisite-patch-id: 1e37fc75fed1e533adee0f3e7e6ead1f8ff3c55c
+prerequisite-patch-id: 65a5d76ffdbc9b3aab3385bb65cb027004c30e7e
+prerequisite-patch-id: 2daf583fb5e7449a02bd217d8aca330171b598aa
+prerequisite-patch-id: 237269801826dd3ad7fb16eb4d7d6d4eab504278
+prerequisite-patch-id: d1ddf9b7710e91f8062de83bd7ba55afb2c4c112
+prerequisite-patch-id: 57e9b08a968aedf543d3d0d56cf1ca4db20b2a16
+prerequisite-patch-id: cd98b74fa56af72af2553f391c400981d83cd4f4
+prerequisite-patch-id: b730f5e42be1d89d193e63a0265495cdbf2c7d7b
+prerequisite-patch-id: 9debd88fa60febed9cd7208f86603b4c2d270520
+prerequisite-patch-id: 314ef9ff0c4d1d15dab1dea9d92aa065f1eac3e9
 
 Best regards,
 -- 
-Korenberg Mark <socketpair@gmail.com>
+Ronald Claveau <linux-kernel-dev@aliel.fr>
 
