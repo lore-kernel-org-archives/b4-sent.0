@@ -1,108 +1,80 @@
-From: Jack Wu <jackbb_wu@compal.com>
-Date: Thu, 04 Jun 2026 10:04:40 +0800
-Subject: [PATCH v2] USB: serial: option: add new usb-id for Dell Wireless
- DW5826e-m
+From: Cedric Jehasse <cedric.jehasse@luminex.be>
+Subject: [PATCH net-next 0/2] net: dsa: mv88e6xxx: add support for dcb pcp
+ app
+Date: Thu, 04 Jun 2026 10:30:13 +0200
+Message-Id: <20260604-net-next-mv88e6xxx-pcp-prio-v1-0-f9d10fe6cdc8@luminex.be>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260604-dw5826e-option-driver-v2-1-00609f65f5ae@compal.com>
-X-B4-Tracking: v=1; b=H4sIADfdIGoC/4WNQQ6CMBBFr0Jm7Zi2BkRX3MOwaMsgY5Q2LVYN4
- e4WPICrn5e8//8MkQJThHMxQ6DEkd2YQe0KsIMer4TcZQYlVCUqIbF7lbWqCJ2fsopd4EQB6WS
- 0FYealCkhd32gnt/b7qX9cXyaG9lpHVuNgePkwmc7TnL1/n0kiRJJaKGPyvYkTWPdw+v7Pge0y
- 7J8AfdxCtbNAAAA
-X-Change-ID: 20260601-dw5826e-option-driver-e9bac038e2b5
-To: Johan Hovold <johan@kernel.org>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jack Wu <jackbb_wu@compal.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780538683; l=3346;
- i=jackbb_wu@compal.com; s=20260526; h=from:subject:message-id;
- bh=mNxktV602maJJ6fxarOy1fUXtCX74FRUuu0/VykdVZQ=;
- b=UQqPLU2E5ce/2vC3jhJs10G34jmKOAyPgBi2rjTJ/u7r9u2jysq1OKUjbHNbifdM8CsQ3kkrN
- q6/5LCMzqsgD2AXpXPjLTjb9j6AscOa+lKaNXcV/VAScCJdjZvWxo3/
-X-Developer-Key: i=jackbb_wu@compal.com; a=ed25519;
- pk=VH1prTWixNl8OEUPPSfII3p46MzJpQN8J3+ecE1tZXg=
-X-Endpoint-Received: by B4 Relay for jackbb_wu@compal.com/20260526 with auth_id=793
+X-B4-Tracking: v=1; b=H4sIAJY3IWoC/23NOw7DIBAE0KtYWwdpwQaDrxK5MLBOKPwJOBZSl
+ LuHfKsUW4xGO+8GiWKgBF11g0h7SGGZS+CHCtx5mE/Egi8ZBAqFCms201Yub2zatSaVc2arW9k
+ aw8JkK4UbhtYIZaEsrJHGkF/rR/g+Qv9uIl2uhds+9U/rqpfV1PjPcjYxwQXnyhRJ6W6XT8kOi
+ ZhbpilsXYXGNMJ78s4ahaOhVo9e85ZcXY8SuefYoJMW+vv9AYgTS/sBAQAA
+X-Change-ID: 20260603-net-next-mv88e6xxx-pcp-prio-5752caa7926b
+To: Andrew Lunn <andrew@lunn.ch>, Vladimir Oltean <olteanv@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, Russell King <linux@armlinux.org.uk>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Luke Howard <lukeh@padl.com>, Cedric Jehasse <cedric.jehasse@gmail.com>, 
+ Cedric Jehasse <cedric.jehasse@luminex.be>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780561819; l=2032;
+ i=cedric.jehasse@luminex.be; s=20260213; h=from:subject:message-id;
+ bh=bGDZ2KmYMu8TPrWbvyodp+cEnNoB47xZ8xSbg/l4UNA=;
+ b=Pkc1VjKFsVN4zwDEY/02NcavPpe08EC0GqN9rrjLAWxSbSY8Br3Kf/GmPvMdEcmv4fTDTrkIE
+ Bit53QYOoWfBUNvr3AjMZBVJVqZYfQwGg7sTHSiUNTNAXqupyRfdq67
+X-Developer-Key: i=cedric.jehasse@luminex.be; a=ed25519;
+ pk=DL2RaHc2bc7tTDTMJdugm42BtJk4Ip+7V41Gkj+Avjk=
+X-Endpoint-Received: by B4 Relay for cedric.jehasse@luminex.be/20260213 with auth_id=638
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for Dell DW5826e-m with USB-id 0x413c:0x81ea
+This patch series adds support for dcb pcp app to the mv88e6xxx
+driver. The pcp app is there to configure pcp based queue
+classification.
 
-T:  Bus=03 Lev=01 Prnt=01 Port=04 Cnt=01 Dev#=  8 Spd=480  MxCh= 0
-D:  Ver= 2.10 Cls=ef(misc ) Sub=02 Prot=01 MxPS=64 #Cfgs=  1
-P:  Vendor=413c ProdID=81ea Rev= 5.04
-S:  Manufacturer=DELL
-S:  Product=DW5826e-m Qualcomm Snapdragon X12 Global LTE-A
-S:  SerialNumber=358988870177734
-C:* #Ifs= 7 Cfg#= 1 Atr=a0 MxPwr=500mA
-A:  FirstIf#=12 IfCount= 2 Cls=02(comm.) Sub=0e Prot=00
-I:* If#= 0 Alt= 0 #EPs= 2 Cls=ff(vend.) Sub=ff Prot=30 Driver=option
-E:  Ad=01(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
-E:  Ad=81(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
-I:* If#= 1 Alt= 0 #EPs= 2 Cls=ff(vend.) Sub=42 Prot=01 Driver=usbfs
-E:  Ad=02(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
-E:  Ad=82(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
-I:* If#= 2 Alt= 0 #EPs= 3 Cls=ff(vend.) Sub=ff Prot=60 Driver=option
-E:  Ad=84(I) Atr=03(Int.) MxPS=  10 Ivl=32ms
-E:  Ad=83(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
-E:  Ad=03(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
-I:* If#= 3 Alt= 0 #EPs= 3 Cls=ff(vend.) Sub=ff Prot=40 Driver=option
-E:  Ad=86(I) Atr=03(Int.) MxPS=  10 Ivl=32ms
-E:  Ad=85(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
-E:  Ad=04(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
-I:* If#= 4 Alt= 0 #EPs= 1 Cls=ff(vend.) Sub=ff Prot=ff Driver=option
-E:  Ad=87(I) Atr=03(Int.) MxPS=  64 Ivl=32ms
-I:* If#=12 Alt= 0 #EPs= 1 Cls=02(comm.) Sub=0e Prot=00 Driver=cdc_mbim
-E:  Ad=88(I) Atr=03(Int.) MxPS=  64 Ivl=32ms
-I:  If#=13 Alt= 0 #EPs= 0 Cls=0a(data ) Sub=00 Prot=02 Driver=cdc_mbim
-I:* If#=13 Alt= 1 #EPs= 2 Cls=0a(data ) Sub=00 Prot=02 Driver=cdc_mbim
-E:  Ad=8e(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
-E:  Ad=0f(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+In the Marvell switches this is done by configuring the IEEE PRI Mapping
+table. There are different hardware implementations of this table
+depending on the switch:
+* a global table
+* the 6390 has one table per port
+* the 6393 has one table for DEI=0, and another table for DEI=1 per port
 
-Signed-off-by: Jack Wu <jackbb_wu@compal.com>
----
-- Link to v1: https://patch.msgid.link/20260601-dw5826e-option-driver-v1-1-e0a0a72cfe1b@compal.com
+For this the DSA framework needs to be extended. The implementation for
+pcp-prio in the DSA framework is very similar to existing dcsp-prio
+implementation.
 
-To: Johan Hovold <johan@kernel.org>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-usb@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
----
-v2:
- - Blacklist interface #1 (ADB) using RSVD(1)
----
----
- drivers/usb/serial/option.c | 4 ++++
- 1 file changed, 4 insertions(+)
+There's another patch series [1] on the mailing list that uses the same
+IEEE PRI Mapping table to implement MPQRIO. To me the dcb pcp app feels
+like the natural way to configure the pcp to QPri mappings in the
+switch.
 
-diff --git a/drivers/usb/serial/option.c b/drivers/usb/serial/option.c
-index 48ae0188f2e9..070e0c553d7a 100644
---- a/drivers/usb/serial/option.c
-+++ b/drivers/usb/serial/option.c
-@@ -203,6 +203,8 @@ static void option_instat_callback(struct urb *urb);
- #define DELL_PRODUCT_5829E_ESIM			0x81e4
- #define DELL_PRODUCT_5829E			0x81e6
- 
-+#define DELL_PRODUCT_DW5826E_ESIM	0x81ea
-+
- #define DELL_PRODUCT_FM101R_ESIM		0x8213
- #define DELL_PRODUCT_FM101R			0x8215
- 
-@@ -1125,6 +1127,8 @@ static const struct usb_device_id option_ids[] = {
- 	  .driver_info = RSVD(0) | RSVD(6) },
- 	{ USB_DEVICE_INTERFACE_CLASS(DELL_VENDOR_ID, DELL_PRODUCT_FM101R, 0xff) },
- 	{ USB_DEVICE_INTERFACE_CLASS(DELL_VENDOR_ID, DELL_PRODUCT_FM101R_ESIM, 0xff) },
-+	{ USB_DEVICE_INTERFACE_CLASS(DELL_VENDOR_ID, DELL_PRODUCT_DW5826E_ESIM, 0xff),
-+	  .driver_info = RSVD(1) }
- 	{ USB_DEVICE(ANYDATA_VENDOR_ID, ANYDATA_PRODUCT_ADU_E100A) },	/* ADU-E100, ADU-310 */
- 	{ USB_DEVICE(ANYDATA_VENDOR_ID, ANYDATA_PRODUCT_ADU_500A) },
- 	{ USB_DEVICE(ANYDATA_VENDOR_ID, ANYDATA_PRODUCT_ADU_620UW) },
+[1] https://lore.kernel.org/netdev/20260602-mv88e6xxx-8021qat-mqprio-v2-0-72be14522e7c@padl.com/
 
+Signed-off-by: Cedric Jehasse <cedric.jehasse@luminex.be>
 ---
-base-commit: e43ffb69e0438cddd72aaa30898b4dc446f664f8
-change-id: 20260601-dw5826e-option-driver-e9bac038e2b5
+Cedric Jehasse (2):
+      net: dsa: add support for dcb pcp app
+      net: dsa: mv88e6xxx: add support for dcb pcp app
+
+ drivers/net/dsa/mv88e6xxx/Makefile |   1 +
+ drivers/net/dsa/mv88e6xxx/chip.c   |  36 ++++++
+ drivers/net/dsa/mv88e6xxx/chip.h   |  17 +++
+ drivers/net/dsa/mv88e6xxx/dcb.c    | 229 +++++++++++++++++++++++++++++++++++++
+ drivers/net/dsa/mv88e6xxx/dcb.h    |  21 ++++
+ drivers/net/dsa/mv88e6xxx/port.c   |  28 ++++-
+ drivers/net/dsa/mv88e6xxx/port.h   |   8 ++
+ include/net/dsa.h                  |  10 ++
+ net/dsa/user.c                     | 126 ++++++++++++++++++--
+ 9 files changed, 467 insertions(+), 9 deletions(-)
+---
+base-commit: 09942ddedcb960f9e78fd817ec33f501d1040c5b
+change-id: 20260603-net-next-mv88e6xxx-pcp-prio-5752caa7926b
+prerequisite-change-id: 20260430-net-next-mv88e6xxx-cbs-2121169caa68:v5
+prerequisite-patch-id: 8ad59c43368d4639e0cabcc59a7f6e487560d3f7
+prerequisite-patch-id: 88ee88bf34ac3631056bc92c6c6251c29cf7223c
 
 Best regards,
---  
-Jack Wu <jackbb_wu@compal.com>
+-- 
+Cedric Jehasse <cedric.jehasse@luminex.be>
 
