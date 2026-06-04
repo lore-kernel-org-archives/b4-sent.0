@@ -1,16 +1,12 @@
 From: Cedric Jehasse <cedric.jehasse@luminex.be>
-Subject: [PATCH net-next 0/2] net: dsa: mv88e6xxx: add support for dcb pcp
- app
-Date: Thu, 04 Jun 2026 10:30:13 +0200
-Message-Id: <20260604-net-next-mv88e6xxx-pcp-prio-v1-0-f9d10fe6cdc8@luminex.be>
+Date: Thu, 04 Jun 2026 10:30:14 +0200
+Subject: [PATCH net-next 1/2] net: dsa: add support for dcb pcp app
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAJY3IWoC/23NOw7DIBAE0KtYWwdpwQaDrxK5MLBOKPwJOBZSl
- LuHfKsUW4xGO+8GiWKgBF11g0h7SGGZS+CHCtx5mE/Egi8ZBAqFCms201Yub2zatSaVc2arW9k
- aw8JkK4UbhtYIZaEsrJHGkF/rR/g+Qv9uIl2uhds+9U/rqpfV1PjPcjYxwQXnyhRJ6W6XT8kOi
- ZhbpilsXYXGNMJ78s4ahaOhVo9e85ZcXY8SuefYoJMW+vv9AYgTS/sBAQAA
-X-Change-ID: 20260603-net-next-mv88e6xxx-pcp-prio-5752caa7926b
+Message-Id: <20260604-net-next-mv88e6xxx-pcp-prio-v1-1-f9d10fe6cdc8@luminex.be>
+References: <20260604-net-next-mv88e6xxx-pcp-prio-v1-0-f9d10fe6cdc8@luminex.be>
+In-Reply-To: <20260604-net-next-mv88e6xxx-pcp-prio-v1-0-f9d10fe6cdc8@luminex.be>
 To: Andrew Lunn <andrew@lunn.ch>, Vladimir Oltean <olteanv@gmail.com>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
@@ -19,62 +15,248 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Luke Howard <lukeh@padl.com>, Cedric Jehasse <cedric.jehasse@gmail.com>, 
  Cedric Jehasse <cedric.jehasse@luminex.be>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780561819; l=2032;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780561819; l=7081;
  i=cedric.jehasse@luminex.be; s=20260213; h=from:subject:message-id;
- bh=bGDZ2KmYMu8TPrWbvyodp+cEnNoB47xZ8xSbg/l4UNA=;
- b=Pkc1VjKFsVN4zwDEY/02NcavPpe08EC0GqN9rrjLAWxSbSY8Br3Kf/GmPvMdEcmv4fTDTrkIE
- Bit53QYOoWfBUNvr3AjMZBVJVqZYfQwGg7sTHSiUNTNAXqupyRfdq67
+ bh=vAbt2oUZwh/Xl1VBsXEixbjizxp0CkUnxtZsJliOylM=;
+ b=fRYhAMUUjGItSLgK1KBvFXTrF64mRPvaT/fHSgkT2XMW6s1snlpMsIo7J1q7Ion/DSLUt+pBH
+ k2FIxzWGT9iASVhBQiI+cGU5+BGe5UlCvFmDY1GE0VdFzizo2cyskR+
 X-Developer-Key: i=cedric.jehasse@luminex.be; a=ed25519;
  pk=DL2RaHc2bc7tTDTMJdugm42BtJk4Ip+7V41Gkj+Avjk=
 X-Endpoint-Received: by B4 Relay for cedric.jehasse@luminex.be/20260213 with auth_id=638
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch series adds support for dcb pcp app to the mv88e6xxx
-driver. The pcp app is there to configure pcp based queue
-classification.
-
-In the Marvell switches this is done by configuring the IEEE PRI Mapping
-table. There are different hardware implementations of this table
-depending on the switch:
-* a global table
-* the 6390 has one table per port
-* the 6393 has one table for DEI=0, and another table for DEI=1 per port
-
-For this the DSA framework needs to be extended. The implementation for
-pcp-prio in the DSA framework is very similar to existing dcsp-prio
-implementation.
-
-There's another patch series [1] on the mailing list that uses the same
-IEEE PRI Mapping table to implement MPQRIO. To me the dcb pcp app feels
-like the natural way to configure the pcp to QPri mappings in the
-switch.
-
-[1] https://lore.kernel.org/netdev/20260602-mv88e6xxx-8021qat-mqprio-v2-0-72be14522e7c@padl.com/
+Set/get of dscp-prio map is already supported by dsa.
+This adds support for set/get of pcp-prio map in a similar way.
 
 Signed-off-by: Cedric Jehasse <cedric.jehasse@luminex.be>
 ---
-Cedric Jehasse (2):
-      net: dsa: add support for dcb pcp app
-      net: dsa: mv88e6xxx: add support for dcb pcp app
+ include/net/dsa.h |  10 +++++
+ net/dsa/user.c    | 126 +++++++++++++++++++++++++++++++++++++++++++++++++++---
+ 2 files changed, 129 insertions(+), 7 deletions(-)
 
- drivers/net/dsa/mv88e6xxx/Makefile |   1 +
- drivers/net/dsa/mv88e6xxx/chip.c   |  36 ++++++
- drivers/net/dsa/mv88e6xxx/chip.h   |  17 +++
- drivers/net/dsa/mv88e6xxx/dcb.c    | 229 +++++++++++++++++++++++++++++++++++++
- drivers/net/dsa/mv88e6xxx/dcb.h    |  21 ++++
- drivers/net/dsa/mv88e6xxx/port.c   |  28 ++++-
- drivers/net/dsa/mv88e6xxx/port.h   |   8 ++
- include/net/dsa.h                  |  10 ++
- net/dsa/user.c                     | 126 ++++++++++++++++++--
- 9 files changed, 467 insertions(+), 9 deletions(-)
----
-base-commit: 09942ddedcb960f9e78fd817ec33f501d1040c5b
-change-id: 20260603-net-next-mv88e6xxx-pcp-prio-5752caa7926b
-prerequisite-change-id: 20260430-net-next-mv88e6xxx-cbs-2121169caa68:v5
-prerequisite-patch-id: 8ad59c43368d4639e0cabcc59a7f6e487560d3f7
-prerequisite-patch-id: 88ee88bf34ac3631056bc92c6c6251c29cf7223c
+diff --git a/include/net/dsa.h b/include/net/dsa.h
+index 8b6d34e8a6f0..05428c555ccd 100644
+--- a/include/net/dsa.h
++++ b/include/net/dsa.h
+@@ -447,6 +447,11 @@ struct dsa_switch {
+ 	 */
+ 	u32			dscp_prio_mapping_is_global:1;
+ 
++	/* Drivers that have global PCP mapping settings must set this to
++	 * true to automatically apply the settings to all ports.
++	 */
++	u32			pcp_prio_mapping_is_global:1;
++
+ 	/* Listener for switch fabric events */
+ 	struct notifier_block	nb;
+ 
+@@ -970,6 +975,11 @@ struct dsa_switch_ops {
+ 				      u8 prio);
+ 	int	(*port_del_dscp_prio)(struct dsa_switch *ds, int port, u8 dscp,
+ 				      u8 prio);
++	int	(*port_get_pcp_prio)(struct dsa_switch *ds, int port, u8 pcp);
++	int	(*port_add_pcp_prio)(struct dsa_switch *ds, int port, u8 pcp,
++				     u8 prio);
++	int	(*port_del_pcp_prio)(struct dsa_switch *ds, int port, u8 pcp,
++				     u8 prio);
+ 	int	(*port_set_apptrust)(struct dsa_switch *ds, int port,
+ 				     const u8 *sel, int nsel);
+ 	int	(*port_get_apptrust)(struct dsa_switch *ds, int port, u8 *sel,
+diff --git a/net/dsa/user.c b/net/dsa/user.c
+index c4bd6fe90b45..aa6d030968b9 100644
+--- a/net/dsa/user.c
++++ b/net/dsa/user.c
+@@ -2238,11 +2238,11 @@ dsa_user_dcbnl_set_default_prio(struct net_device *dev, struct dcb_app *app)
+ 	return 0;
+ }
+ 
+-/* Update the DSCP prio entries on all user ports of the switch in case
+- * the switch supports global DSCP prio instead of per port DSCP prios.
++/* Update the APP entries on all user ports of the switch in case
++ * the switch supports global prio settings instead of per port prios.
+  */
+-static int dsa_user_dcbnl_ieee_global_dscp_setdel(struct net_device *dev,
+-						  struct dcb_app *app, bool del)
++static int dsa_user_dcbnl_ieee_global_setdel(struct net_device *dev,
++					     struct dcb_app *app, bool del)
+ {
+ 	int (*setdel)(struct net_device *dev, struct dcb_app *app);
+ 	struct dsa_port *dp = dsa_user_to_port(dev);
+@@ -2284,7 +2284,7 @@ static int dsa_user_dcbnl_ieee_global_dscp_setdel(struct net_device *dev,
+ 
+ 		restore_err = setdel(user, app);
+ 		if (restore_err)
+-			netdev_err(user, "Failed to restore DSCP prio entry configuration\n");
++			netdev_err(user, "Failed to restore APP entry configuration\n");
+ 	}
+ 
+ 	return err;
+@@ -2324,7 +2324,7 @@ dsa_user_dcbnl_add_dscp_prio(struct net_device *dev, struct dcb_app *app)
+ 	if (!ds->dscp_prio_mapping_is_global)
+ 		return 0;
+ 
+-	err = dsa_user_dcbnl_ieee_global_dscp_setdel(dev, app, false);
++	err = dsa_user_dcbnl_ieee_global_setdel(dev, app, false);
+ 	if (err) {
+ 		if (ds->ops->port_del_dscp_prio)
+ 			ds->ops->port_del_dscp_prio(ds, port, dscp, new_prio);
+@@ -2335,6 +2335,54 @@ dsa_user_dcbnl_add_dscp_prio(struct net_device *dev, struct dcb_app *app)
+ 	return 0;
+ }
+ 
++static int __maybe_unused
++dsa_user_dcbnl_add_pcp_prio(struct net_device *dev, struct dcb_app *app)
++{
++	struct dsa_port *dp = dsa_user_to_port(dev);
++	struct dsa_switch *ds = dp->ds;
++	unsigned long mask, new_prio;
++	int err, port = dp->index;
++	u8 pcp = app->protocol;
++
++	if (!ds->ops->port_add_pcp_prio)
++		return -EOPNOTSUPP;
++
++	if (app->priority >= IEEE_8021QAZ_MAX_TCS)
++		return -EINVAL;
++
++	if (pcp >= 16) {
++		netdev_err(dev, "PCP APP entry with protocol value %u is invalid\n",
++			   pcp);
++		return -EINVAL;
++	}
++
++	err = dcb_ieee_setapp(dev, app);
++	if (err)
++		return err;
++
++	mask = dcb_ieee_getapp_mask(dev, app);
++	new_prio = __fls(mask);
++
++	err = ds->ops->port_add_pcp_prio(ds, port, pcp, new_prio);
++	if (err) {
++		dcb_ieee_delapp(dev, app);
++		return err;
++	}
++
++	if (!ds->pcp_prio_mapping_is_global)
++		return 0;
++
++	err = dsa_user_dcbnl_ieee_global_setdel(dev, app, false);
++	if (err) {
++		if (ds->ops->port_del_pcp_prio)
++			ds->ops->port_del_pcp_prio(ds, port, pcp, new_prio);
++		dcb_ieee_delapp(dev, app);
++		return err;
++	}
++
++	return 0;
++}
++
+ static int __maybe_unused dsa_user_dcbnl_ieee_setapp(struct net_device *dev,
+ 						     struct dcb_app *app)
+ {
+@@ -2349,6 +2397,8 @@ static int __maybe_unused dsa_user_dcbnl_ieee_setapp(struct net_device *dev,
+ 		break;
+ 	case IEEE_8021QAZ_APP_SEL_DSCP:
+ 		return dsa_user_dcbnl_add_dscp_prio(dev, app);
++	case DCB_APP_SEL_PCP:
++		return dsa_user_dcbnl_add_pcp_prio(dev, app);
+ 	default:
+ 		return -EOPNOTSUPP;
+ 	}
+@@ -2405,7 +2455,7 @@ dsa_user_dcbnl_del_dscp_prio(struct net_device *dev, struct dcb_app *app)
+ 	if (!ds->dscp_prio_mapping_is_global)
+ 		return 0;
+ 
+-	err = dsa_user_dcbnl_ieee_global_dscp_setdel(dev, app, true);
++	err = dsa_user_dcbnl_ieee_global_setdel(dev, app, true);
+ 	if (err) {
+ 		if (ds->ops->port_add_dscp_prio)
+ 			ds->ops->port_add_dscp_prio(ds, port, dscp,
+@@ -2417,6 +2467,42 @@ dsa_user_dcbnl_del_dscp_prio(struct net_device *dev, struct dcb_app *app)
+ 	return 0;
+ }
+ 
++static int __maybe_unused
++dsa_user_dcbnl_del_pcp_prio(struct net_device *dev, struct dcb_app *app)
++{
++	struct dsa_port *dp = dsa_user_to_port(dev);
++	struct dsa_switch *ds = dp->ds;
++	int err, port = dp->index;
++	u8 pcp = app->protocol;
++
++	if (!ds->ops->port_del_pcp_prio)
++		return -EOPNOTSUPP;
++
++	err = dcb_ieee_delapp(dev, app);
++	if (err)
++		return err;
++
++	err = ds->ops->port_del_pcp_prio(ds, port, pcp, app->priority);
++	if (err) {
++		dcb_ieee_setapp(dev, app);
++		return err;
++	}
++
++	if (!ds->pcp_prio_mapping_is_global)
++		return 0;
++
++	err = dsa_user_dcbnl_ieee_global_setdel(dev, app, true);
++	if (err) {
++		if (ds->ops->port_add_pcp_prio)
++			ds->ops->port_add_pcp_prio(ds, port, pcp,
++						   app->priority);
++		dcb_ieee_setapp(dev, app);
++		return err;
++	}
++
++	return 0;
++}
++
+ static int __maybe_unused dsa_user_dcbnl_ieee_delapp(struct net_device *dev,
+ 						     struct dcb_app *app)
+ {
+@@ -2431,6 +2517,8 @@ static int __maybe_unused dsa_user_dcbnl_ieee_delapp(struct net_device *dev,
+ 		break;
+ 	case IEEE_8021QAZ_APP_SEL_DSCP:
+ 		return dsa_user_dcbnl_del_dscp_prio(dev, app);
++	case DCB_APP_SEL_PCP:
++		return dsa_user_dcbnl_del_pcp_prio(dev, app);
+ 	default:
+ 		return -EOPNOTSUPP;
+ 	}
+@@ -2486,6 +2574,30 @@ static int dsa_user_dcbnl_init(struct net_device *dev)
+ 		}
+ 	}
+ 
++	if (ds->ops->port_get_pcp_prio) {
++		int protocol;
++
++		for (protocol = 0; protocol < 16; protocol++) {
++			struct dcb_app app = {
++				.selector = DCB_APP_SEL_PCP,
++				.protocol = protocol,
++			};
++			int prio;
++
++			prio = ds->ops->port_get_pcp_prio(ds, port, protocol);
++			if (prio == -EOPNOTSUPP)
++				continue;
++			if (prio < 0)
++				return prio;
++
++			app.priority = prio;
++
++			err = dcb_ieee_setapp(dev, &app);
++			if (err)
++				return err;
++		}
++	}
++
+ 	return 0;
+ }
+ 
 
-Best regards,
 -- 
-Cedric Jehasse <cedric.jehasse@luminex.be>
+2.43.0
 
