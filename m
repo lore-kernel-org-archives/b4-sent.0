@@ -1,74 +1,111 @@
-From: Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
-Date: Fri, 05 Jun 2026 15:27:21 +0800
-Subject: [PATCH] Input: atkbd - skip deactivate for HONOR BCC-N's internal
- keyboard
+From: George Moussalem <george.moussalem@outlook.com>
+Date: Fri, 05 Jun 2026 12:11:29 +0400
+Subject: [PATCH next-next v2] net: dsa: qca8k: Add support for force mode
+ for fixed link topology
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260605-honor-v1-1-78e05e491193@linux.dev>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDMwNT3Yz8vPwiXdNk45Rkk5Q0C1PjJCWg2oKi1LTMCrA50bEQfnFpUlZ
- qcglIs1JtLQAqqQSLaQAAAA==
-X-Change-ID: 20260605-honor-5c3dc4df853b
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Hans de Goede <hansg@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- zhanjun@uniontech.com, niecheng1@uniontech.com, 
- Mingcong Bai <jeffbai@aosc.io>, Kexy Biscuit <kexybiscuit@aosc.io>, 
- kernel@uniontech.com, Hongfei Ren <lcrhf@outlook.com>, stable@kernel.org, 
- Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780644442; l=1506;
- i=cryolitia.pukngae@linux.dev; s=20260401; h=from:subject:message-id;
- bh=GWUiIg7q9Err0QhQ40mgTt2t3Sl0KinkLwFX/Ry3g3k=;
- b=3OAl+cNxKXdpXzsrO8ofFXw1xxP2uSMpIrDt8MGEXllFFBWRELu6WlslyUCRkHb0lpUhQo8hm
- 5bOcE4iV61tAD9Ms2e9tXAeeST76hBwiACVqMoxTvN47Qs4zJBoP4T2
-X-Developer-Key: i=cryolitia.pukngae@linux.dev; a=ed25519;
- pk=kF6wBkp7j9167keuk8Q9RvPgMRPuHlJztbLy0vbJ3K0=
-X-Endpoint-Received: by B4 Relay for cryolitia.pukngae@linux.dev/20260401 with auth_id=712
+Message-Id: <20260605-qca8337-force-mode-v2-1-d9a6b6545bfa@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NTQ6CMBCFr0Jm7ZjSYlFX3sOwKGUqjdLRFgmGc
+ HcrB3Dzki/vb4FE0VOCc7FApMknzyGD3BVgexNuhL7LDFJILbRQ+LLmqFSNjqMlHLgjdK1tzUG
+ edFVpyMVnJOfnbfQKgeYRfwJNtnqfRo6f7W4qt8C/5anEEq1xta6Fc6ZVF36PD+b73vIAzbquX
+ 0/JJvLBAAAA
+X-Change-ID: 20260603-qca8337-force-mode-fbcba5296446
+To: Andrew Lunn <andrew@lunn.ch>, Vladimir Oltean <olteanv@gmail.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780647089; l=3187;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=/1K49g/Q0+wrB8ffa0QJHaW9eANv5Yae+dqQkwbdI4U=;
+ b=Xn7RwqPiLUqBSMkfjxaoyatDwqn+EhlJZVxXog3mgyAtwLsVAImKiBsVWVvKVPlXJ//K6hwlv
+ IPyVfdFw1CBAI5t89drX8j9nLQevPmF9+g75OyKnuqOsk4jD9ZFIckZ
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After commit 9cf6e24c9fbf17e52de9fff07f12be7565ea6d61 ("Input: atkbd -
-do not skip atkbd_deactivate() when skipping ATKBD_CMD_GETID"), HONOR
-BCC-N, aka HONOR MagicBook 14 2026's internal keyboard stops
-working. Adding the atkbd_deactivate_fixup quirk fixes it.
+A fixed link topology is commonly used to connect this switch (on port
+0 or 6) to a SoC's MAC over SGMII. When inband negotiation is not used,
+the switch needs to be configured to operate in force mode. As such,
+enable support for force mode.
 
-DMI: HONOR BCC-N/BCC-N-PCB, BIOS 1.04 04/07/2026
-
-Fixes: 9cf6e24c9fbf17e52de9fff07f12be7565ea6d61 ("Input: atkbd - do not skip atkbd_deactivate() when skipping ATKBD_CMD_GETID")
-Reported-by: Hongfei Ren <lcrhf@outlook.com>
-Link: https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/1#issuecomment-4562679891
-Tested-by: Hongfei Ren <lcrhf@outlook.com>
-Cc: stable@kernel.org
-Signed-off-by: Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+Reviewed-by: Andrew Lunn <andrew@lunn.ch>
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/input/keyboard/atkbd.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+Changes in v2:
+- Added check for QCA8337 switch ID and build up the register mask
+  accordingly before writing the force mode bit to avoid overwriting the
+  bit on switches other than QCA8337 for which there's no documentation
+  on whether force mode is supported or not.
+- Added comment to state that regardless of port used (0 or 6), the
+  force mode bit is written to the PORT0 PAD register as per vendor SDK.
+- Link to v1: https://lore.kernel.org/r/20260603-qca8337-force-mode-v1-1-caf7670ffab3@outlook.com
+---
+ drivers/net/dsa/qca/qca8k-8xxx.c | 22 ++++++++++++++++------
+ drivers/net/dsa/qca/qca8k.h      |  1 +
+ 2 files changed, 17 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/input/keyboard/atkbd.c b/drivers/input/keyboard/atkbd.c
-index c8ad55f26ea8..de8edab3cb0f 100644
---- a/drivers/input/keyboard/atkbd.c
-+++ b/drivers/input/keyboard/atkbd.c
-@@ -1923,6 +1923,13 @@ static const struct dmi_system_id atkbd_dmi_quirk_table[] __initconst = {
- 		},
- 		.callback = atkbd_deactivate_fixup,
- 	},
-+	{
-+		.matches = {
-+			DMI_MATCH(DMI_SYS_VENDOR, "HONOR"),
-+			DMI_MATCH(DMI_PRODUCT_NAME, "BCC-N"),
-+		},
-+		.callback = atkbd_deactivate_fixup,
-+	},
- 	{ }
- };
+diff --git a/drivers/net/dsa/qca/qca8k-8xxx.c b/drivers/net/dsa/qca/qca8k-8xxx.c
+index a36b8b07030e..4c928983b862 100644
+--- a/drivers/net/dsa/qca/qca8k-8xxx.c
++++ b/drivers/net/dsa/qca/qca8k-8xxx.c
+@@ -1538,7 +1538,7 @@ static int qca8k_pcs_config(struct phylink_pcs *pcs, unsigned int neg_mode,
+ {
+ 	struct qca8k_priv *priv = pcs_to_qca8k_pcs(pcs)->priv;
+ 	int cpu_port_index, ret, port;
+-	u32 reg, val;
++	u32 mask, reg, val;
  
+ 	port = pcs_to_qca8k_pcs(pcs)->port;
+ 	switch (port) {
+@@ -1611,11 +1611,21 @@ static int qca8k_pcs_config(struct phylink_pcs *pcs, unsigned int neg_mode,
+ 	if (priv->ports_config.sgmii_tx_clk_falling_edge)
+ 		val |= QCA8K_PORT0_PAD_SGMII_TXCLK_FALLING_EDGE;
+ 
+-	if (val)
+-		ret = qca8k_rmw(priv, reg,
+-				QCA8K_PORT0_PAD_SGMII_RXCLK_FALLING_EDGE |
+-				QCA8K_PORT0_PAD_SGMII_TXCLK_FALLING_EDGE,
+-				val);
++	mask = (val) ? (QCA8K_PORT0_PAD_SGMII_RXCLK_FALLING_EDGE |
++			QCA8K_PORT0_PAD_SGMII_TXCLK_FALLING_EDGE) : 0;
++
++	/*
++	 * (Un)set force mode on QCA8337 only, don't include it in the mask for
++	 * others. It is written to the PORT0 PAD register for both port 0 and 6.
++	 */
++	if (priv->switch_id == QCA8K_ID_QCA8337) {
++		if (neg_mode == PHYLINK_PCS_NEG_OUTBAND)
++			val |= QCA8K_PORT_PAD_SGMII_FORCE_MODE;
++		mask |= QCA8K_PORT_PAD_SGMII_FORCE_MODE;
++	}
++
++	if (mask)
++		ret = qca8k_rmw(priv, reg, mask, val);
+ 
+ 	return 0;
+ }
+diff --git a/drivers/net/dsa/qca/qca8k.h b/drivers/net/dsa/qca/qca8k.h
+index 1a00e2f62fef..956338893032 100644
+--- a/drivers/net/dsa/qca/qca8k.h
++++ b/drivers/net/dsa/qca/qca8k.h
+@@ -58,6 +58,7 @@
+ #define	  QCA8K_PORT_PAD_RGMII_TX_DELAY_EN		BIT(25)
+ #define   QCA8K_PORT_PAD_RGMII_RX_DELAY_EN		BIT(24)
+ #define   QCA8K_PORT_PAD_SGMII_EN			BIT(7)
++#define   QCA8K_PORT_PAD_SGMII_FORCE_MODE		BIT(3)
+ #define QCA8K_REG_PWS					0x010
+ #define   QCA8K_PWS_POWER_ON_SEL			BIT(31)
+ /* This reg is only valid for QCA832x and toggle the package
 
 ---
-base-commit: ddd664bbff63e09e7a7f9acae9c43605d4cf185f
-change-id: 20260605-honor-5c3dc4df853b
+base-commit: b7bee4ca5688e30ca50fbc87b1b8f7eed7006c17
+change-id: 20260603-qca8337-force-mode-fbcba5296446
 
 Best regards,
---  
-Cryolitia PukNgae <cryolitia.pukngae@linux.dev>
+-- 
+George Moussalem <george.moussalem@outlook.com>
 
