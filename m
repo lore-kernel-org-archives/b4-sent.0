@@ -1,71 +1,72 @@
 From: Bernd Schubert <bernd@bsbernd.com>
-Subject: [PATCH RESEND v3 0/4] fuse: Fix several io-uring race conditions
-Date: Sat, 06 Jun 2026 00:13:05 +0200
-Message-Id: <20260606-fuse-io-uring-race-fixes-v3-0-6fdf5e5b3437@bsbernd.com>
+Date: Sat, 06 Jun 2026 00:13:06 +0200
+Subject: [PATCH RESEND v3 1/4] fuse: Avoid use-after-free in
+ fuse_uring_async_stop_queues
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
+Message-Id: <20260606-fuse-io-uring-race-fixes-v3-1-6fdf5e5b3437@bsbernd.com>
+References: <20260606-fuse-io-uring-race-fixes-v3-0-6fdf5e5b3437@bsbernd.com>
+In-Reply-To: <20260606-fuse-io-uring-race-fixes-v3-0-6fdf5e5b3437@bsbernd.com>
 To: Pavel Begunkov <asml.silence@gmail.com>, 
  Luis Henriques <luis@igalia.com>, Joanne Koong <joannelkoong@gmail.com>, 
  fuse-devel@lists.linux.dev
 Cc: Miklos Szeredi <mszeredi@redhat.com>, Berkant Koc <me@berkoc.com>, 
  Zhenghang Xiao <kipreyyy@gmail.com>, Bernd Schubert <bernd@bsbernd.com>, 
- stable@kernel.org, xlabai <xlabai@tencent.com>
+ stable@kernel.org
 X-Mailer: b4 0.16-dev-d5d98
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1630; i=bernd@bsbernd.com;
- h=from:subject:message-id; bh=zzcjR3tdjVAc0vSCUYm4sf9kV9JI7lchlMuMEr7MUhQ=;
- b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLKUPb+tW3dDuibgg+rBPYsuveMurakXu+uzyeL0sxynT
- Ms/S9KEOkpZGMQ4GGTFFFm6JPbYTvnHJ6v2df11mDmsTCBDGLg4BWAi10sY/orkhT8pD70bISOv
- LLyjymwZf22q3ueiX2qu1q5a2e3Wcxn+1+9y/Prr/kqmjn3n8gQSeY7uklzkYHc10+eIcyjftSO
- WnAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1442; i=bernd@bsbernd.com;
+ h=from:subject:message-id; bh=X2I4I+6k4VRNTubfnToFcPaR3hqdHMhFlXLJDCyP2XY=;
+ b=kA0DAAgWMvNp7peNQvwByyZiAGojSf7IAbUqifyXmN2ExQoiAsoBRSmBOowCh3B3/B4GUzghN
+ oh1BAAWCAAdFiEEihi8PZT+Dh0m9a/XMvNp7peNQvwFAmojSf4ACgkQMvNp7peNQvw1WwD/XKnz
+ 0hPUlNtLF8bBYvf6Z/4rYjrr/wE7aLWVG3sBhwwBAKBt4X77YYyF1f1LjjgQMAIYFRwiW5pBEND
+ k+DzTi/YI
 X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
  fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
 X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is to fix race conditions reported by Berkant and Zhenghang.
+fuse_uring_async_stop_queues() might run when the last reference
+on ring->queue_refs was already dropped.
 
-So far not well tested yet, update about that will follow tomorrow.
+In order to avoid an early destruction a reference on struct fuse_conn
+is now taken before starting fuse_uring_async_stop_queues() and that
+reference is only released when that delayed work queue terminates.
 
-To: fuse-devel.lists.linux.dev
-To: Pavel Begunkov <asml.silence@gmail.com>
-To: Luis Henriques <luis@igalia.com>
-To: Joanne Koong <joannelkoong@gmail.com>
-Cc: Miklos Szeredi <mszeredi@redhat.com>
-Cc: Berkant Koc <me@berkoc.com>
-Cc: Zhenghang Xiao <kipreyyy@gmail.com>
-Cc: Joanne Koong <joannelkoong@gmail.com>
-
+Fixes: 4a9bfb9b6850 ("fuse: {io-uring} Handle teardown of ring entries")
+Cc: stable@kernel.org # 6.14
+Reported-by: Berkant Koc <me@berkoc.com>
 Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
-
-Changes in V3:
-- Just "Fixes: " and CC: stable... updates and removal of security@kernel.org
-  in favour of fuse-devel.lists.linux.dev so that it does not get lost
-
-Changes in v2:
-- fuse_uring_add_req_to_ring_ent() needs to re-initialize req->list
-  after moving fuse_uring_add_to_pq() from fuse_uring_add_req_to_ring_ent
-  to fuse_uring_send in orer to avoid handling fuse requests
-  multiple times (Joanne).
-
 ---
-Bernd Schubert (3):
-      fuse: Avoid use-after-free in fuse_uring_async_stop_queues
-      fuse: Avoid queue->stopped races and set/read that value under lock
-      fuse: {io-uring} Make a fuse_req on SQE commit only findable after memcpy
+ fs/fuse/dev_uring.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-Zhenghang Xiao (1):
-      fuse: clear ent->fuse_req in commit_fetch error path to prevent UAF
+diff --git a/fs/fuse/dev_uring.c b/fs/fuse/dev_uring.c
+index e467b23e6895..c96d72250830 100644
+--- a/fs/fuse/dev_uring.c
++++ b/fs/fuse/dev_uring.c
+@@ -465,7 +465,10 @@ static void fuse_uring_async_stop_queues(struct work_struct *work)
+ 		schedule_delayed_work(&ring->async_teardown_work,
+ 				      FUSE_URING_TEARDOWN_INTERVAL);
+ 	} else {
++		struct fuse_chan *chan = ring->chan;
++
+ 		wake_up_all(&ring->stop_waitq);
++		fuse_conn_put(chan->conn);
+ 	}
+ }
+ 
+@@ -477,6 +480,9 @@ void fuse_uring_stop_queues(struct fuse_ring *ring)
+ 	fuse_uring_teardown_all_queues(ring);
+ 
+ 	if (atomic_read(&ring->queue_refs) > 0) {
++		struct fuse_chan *chan = ring->chan;
++
++		fuse_conn_get(chan->conn);
+ 		ring->teardown_time = jiffies;
+ 		INIT_DELAYED_WORK(&ring->async_teardown_work,
+ 				  fuse_uring_async_stop_queues);
 
- fs/fuse/dev_uring.c | 52 +++++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 35 insertions(+), 17 deletions(-)
----
-base-commit: 040d71ac647099f7bb5e480fcd74ba68abc3cb18
-change-id: 20260518-fuse-io-uring-race-fixes-59760420d2ae
-
-Best regards,
---
-Bernd Schubert <bernd@bsbernd.com>
 -- 
-Bernd Schubert <bernd@bsbernd.com>
+2.53.0
 
