@@ -1,193 +1,106 @@
-From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Fri, 05 Jun 2026 21:27:56 +0800
-Subject: [PATCH] pvscsi: translate data endianness
+From: Petr Hodina <petr.hodina@protonmail.com>
+Date: Fri, 05 Jun 2026 17:09:07 +0200
+Subject: [PATCH v2] gpio: qcom_spmi_gpio: move PM8998 GPIO from legacy pmic
+ driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260605-pvscsi-endianness-v1-1-b0bf472b0f59@gmail.com>
-X-B4-Tracking: v=1; b=H4sIANvOImoC/x3MPQqAMAxA4atIZgO1av25ijiUNmqWKA2IULy7x
- fEb3suglJgU5ipDopuVTylo6grC4WUn5FgM1lhnnOnxujUoI0lkL0KqGExsxymOdugISncl2vj
- 5n8v6vh+FHf2KYwAAAA==
-X-Change-ID: 20260605-pvscsi-endianness-c0d389d8274e
-To: qemu-devel@nongnu.org
-Cc: Paolo Bonzini <pbonzini@redhat.com>, Fam Zheng <fam@euphon.net>, 
- Dmitry Fleytman <dmitry.fleytman@gmail.com>, b4-sent@feeds.kernel.org, 
- Miao Wang <shankerwangmiao@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5870;
- i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
- bh=IDD6ngFrpnNwjIvo7mlAG2CQIH9yKzKqEbqAPfV7ac0=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqIs7iFHWdvYvQ+eHP9PcejZHcy/LnvqNiXlcWM
- e7YklLHYPWJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCaiLO4gAKCRCwMePKe/7Z
- bvS4D/wKIdrGYEL3DI3HZCBXXOk9aU2wsxAtYO5cbqjZ8vLFHR0ATWwCdoaCO70tUyUgBkCO/VW
- vRqEPJBuyFhwhaYLkng7MvnzuvJHMmI9/e2OHtDNMc18nKVv5Mwd9lJ+Se3e3NOCkTSWATS1Jq7
- IZd3jy7YiYzLA7U5N1smRHPGj2ilQG5Mrv6Bej3THc9rHqPwhOZG/Od6KC1PagRZXCRVNcMGqOS
- jkArL8MTqhkD4APNBZGBBaHn7/qjsfq42qrQzAwPMuhqzrtP24OUtkM84RJiskmm1ocQOVs5V3+
- EUp7ogXcFip1xzfLD6DDy0kW4cZAe4/hKvQt5nK6dx+y2ksbez7RXc3w8Q7ecYBVvgZ1AyRNtxd
- JldOH2p+XHWvQiWck8jyhEyNQ3RwREi+qRviNMidpXR9TtJCzdqPtJeU79FkzoLnPzaiyFV4/ja
- eVFc3jlswCd6WrMNH3k6Ob/nKjZbtECWJe8CTd8IGuNyyxwIBoMkk62blKM2HAf6F67wZBgDpn2
- GFRQvWUoyrTHX5Yh7iaFJzRksnTmumoZT/VcdbdFgDZV362qwr0VT30+d1xwqN5a2V/Fmct9N+Z
- qFSAs0oPM7x2xnEUjwVaiVvOSAsQt3otfnFDN42+2AKPn5PAkVV2LU9XVNi/s4w2T52h9xLbTT9
- 0W8OUxDTk5ei9hg==
-X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
- fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
-X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
+Message-Id: <20260605-qcom-gpio-v2-1-c34093041c66@protonmail.com>
+X-B4-Tracking: v=1; b=H4sIAJLmImoC/22NSw6CMBQAr0Le2ppSAdGV9zAs+nnCM0KxrY2G9
+ O4W3LqcZDKzgEdH6OFcLOAwkic7ZRC7AvQgpx4ZmcwguGh4w0v21HZk/UyWnVpsa6mEaKojZH9
+ 2eKP31rp2P/YvdUcd1sBqDOSDdZ9tFsvV+9eNJeMMRaW0UYfaSH6ZnQ12GiU99tmCLqX0BRMxw
+ NK5AAAA
+X-Change-ID: 20260601-qcom-gpio-98e85ab22647
+To: Sumit Garg <sumit.garg@kernel.org>, u-boot-qcom@groups.io, 
+ u-boot@lists.denx.de
+Cc: Casey Connolly <casey.connolly@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Tom Rini <trini@konsulko.com>, 
+ Rui Miguel Silva <rui.silva@linaro.org>, phone-devel@vger.kernel.org, 
+ Petr Hodina <petr.hodina@protonmail.com>, 
+ Luca Weiss <luca.weiss@fairphone.com>, 
+ David Wronek <david.wronek@mainlining.org>, 
+ Jens Reidel <adrian@mainlining.org>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780672157; l=2955;
+ i=petr.hodina@protonmail.com; s=20260107; h=from:subject:message-id;
+ bh=f1sNnGIfocv/L5Gx2f4Rimv78qhXAQcS9qTF8ZwCfwA=;
+ b=ROFiNlQ48fEd7xr/1wgsG6is9rlRXOcx+sP3Vjf2g9P5XF+s5BNIUloDn6Pwit+cCzMZRvrf0
+ D4GxUPEvHi8CjoD9/PU03B0rS0jgZvwDfESBF/KOUu0a7EABlnPyqIf
+X-Developer-Key: i=petr.hodina@protonmail.com; a=ed25519;
+ pk=3QaVc6AaAu1IsyyH86+LIOOFhD7kCws8Xhe+wwyE7Bg=
+X-Endpoint-Received: by B4 Relay for petr.hodina@protonmail.com/20260107 with auth_id=594
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch improves the implementation of the pvscsi device by
-translating the endianness of the data sent or received from the guest.
-This ensures pvscsi can work on big-endian hosts with little-endian
-guests.
+Move the "qcom,pm8998-gpio" compatible from the legacy driver
+qcom_pmic_gpio.c to qcom_spmi_gpio.c. Enables on PM8998-based boards
+(sdm845: SHIFT 6mq, Pixel 3, OnePlus 6, Poco F1, Sony Xperia Akatsuki)
+the Volume UP gpio-key.
 
-Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+Signed-off-by: Petr Hodina <petr.hodina@protonmail.com>
 ---
- hw/scsi/vmw_pvscsi.c | 58 +++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 57 insertions(+), 1 deletion(-)
+Move the "qcom,pm8998-gpio" compatible from the legacy driver
+qcom_pmic_gpio.c to qcom_spmi_gpio.c. Enables on PM8998-based boards
+(sdm845: SHIFT 6mq, Pixel 3, OnePlus 6, Poco F1, Sony Xperia Akatsuki)
+the Volume UP gpio-key.
 
-diff --git a/hw/scsi/vmw_pvscsi.c b/hw/scsi/vmw_pvscsi.c
-index 11ae6b9b7474b9bc87621137eb7911361b5fd721..883dfe9b6b5dc687737de356da02fe5f68aea7ad 100644
---- a/hw/scsi/vmw_pvscsi.c
-+++ b/hw/scsi/vmw_pvscsi.c
-@@ -35,6 +35,7 @@
- #include "hw/pci/msi.h"
- #include "hw/core/qdev-properties.h"
- #include "exec/cpu-common.h"
-+#include "exec/tswap.h"
- #include "vmw_pvscsi.h"
- #include "trace.h"
- #include "qom/object.h"
-@@ -392,9 +393,18 @@ static void
- pvscsi_cmp_ring_put(PVSCSIState *s, struct PVSCSIRingCmpDesc *cmp_desc)
- {
-     hwaddr cmp_descr_pa;
-+    struct PVSCSIRingCmpDesc cmp_desc_conv;
- 
-     cmp_descr_pa = pvscsi_ring_pop_cmp_descr(&s->rings);
-     trace_pvscsi_cmp_ring_put(cmp_descr_pa);
-+    cmp_desc_conv = (struct PVSCSIRingCmpDesc) {
-+        .context = tswap64(cmp_desc->context),
-+        .dataLen = tswap64(cmp_desc->dataLen),
-+        .senseLen = tswap32(cmp_desc->senseLen),
-+        .hostStatus = tswap16(cmp_desc->hostStatus),
-+        .scsiStatus = tswap16(cmp_desc->scsiStatus),
-+    };
-+    cmp_desc = &cmp_desc_conv;
-     cpu_physical_memory_write(cmp_descr_pa, cmp_desc, sizeof(*cmp_desc));
- }
- 
-@@ -402,9 +412,18 @@ static void
- pvscsi_msg_ring_put(PVSCSIState *s, struct PVSCSIRingMsgDesc *msg_desc)
- {
-     hwaddr msg_descr_pa;
-+    struct PVSCSIRingMsgDesc msg_desc_conv;
-+    int i;
- 
-     msg_descr_pa = pvscsi_ring_pop_msg_descr(&s->rings);
-     trace_pvscsi_msg_ring_put(msg_descr_pa);
-+    msg_desc_conv = (struct PVSCSIRingMsgDesc) {
-+        .type = tswap32(msg_desc->type),
-+    };
-+    for (i = 0; i < ARRAY_SIZE(msg_desc->args); i++) {
-+        msg_desc_conv.args[i] = tswap32(msg_desc->args[i]);
-+    }
-+    msg_desc = &msg_desc_conv;
-     cpu_physical_memory_write(msg_descr_pa, msg_desc, sizeof(*msg_desc));
- }
- 
-@@ -481,6 +500,9 @@ pvscsi_get_next_sg_elem(PVSCSISGState *sg)
-     struct PVSCSISGElement elem;
- 
-     cpu_physical_memory_read(sg->elemAddr, &elem, sizeof(elem));
-+    elem.addr = tswap64(elem.addr);
-+    elem.length = tswap32(elem.length);
-+    elem.flags = tswap32(elem.flags);
-     if ((elem.flags & ~PVSCSI_KNOWN_FLAGS) != 0) {
-         /*
-             * There is PVSCSI_SGE_FLAG_CHAIN_ELEMENT flag described in
-@@ -759,6 +781,12 @@ pvscsi_process_io(PVSCSIState *s)
- 
-         trace_pvscsi_process_io(next_descr_pa);
-         cpu_physical_memory_read(next_descr_pa, &descr, sizeof(descr));
-+        descr.context = tswap64(descr.context);
-+        descr.dataAddr = tswap64(descr.dataAddr);
-+        descr.dataLen = tswap64(descr.dataLen);
-+        descr.senseAddr = tswap64(descr.senseAddr);
-+        descr.senseLen = tswap32(descr.senseLen);
-+        descr.flags = tswap32(descr.flags);
-         pvscsi_process_request_descriptor(s, &descr);
-     }
- 
-@@ -808,6 +836,17 @@ pvscsi_on_cmd_setup_rings(PVSCSIState *s)
- {
-     PVSCSICmdDescSetupRings *rc =
-         (PVSCSICmdDescSetupRings *) s->curr_cmd_data;
-+    PVSCSICmdDescSetupRings translated;
-+    int i;
-+
-+    translated.reqRingNumPages = tswap32(rc->reqRingNumPages);
-+    translated.cmpRingNumPages = tswap32(rc->cmpRingNumPages);
-+    translated.ringsStatePPN = tswap64(rc->ringsStatePPN);
-+    for (i = 0; i < PVSCSI_SETUP_RINGS_MAX_NUM_PAGES; i++) {
-+        translated.reqRingPPNs[i] = tswap64(rc->reqRingPPNs[i]);
-+        translated.cmpRingPPNs[i] = tswap64(rc->cmpRingPPNs[i]);
-+    }
-+    rc = &translated;
- 
-     trace_pvscsi_on_cmd_arrived("PVSCSI_CMD_SETUP_RINGS");
- 
-@@ -831,6 +870,11 @@ pvscsi_on_cmd_abort(PVSCSIState *s)
-     PVSCSICmdDescAbortCmd *cmd = (PVSCSICmdDescAbortCmd *) s->curr_cmd_data;
-     PVSCSIRequest *r, *next;
- 
-+    PVSCSICmdDescAbortCmd translated = *cmd;
-+    translated.context = tswap32(cmd->context);
-+    translated.target = tswap32(cmd->target);
-+    cmd = &translated;
-+
-     trace_pvscsi_on_cmd_abort(cmd->context, cmd->target);
- 
-     QTAILQ_FOREACH_SAFE(r, &s->pending_queue, next, next) {
-@@ -862,6 +906,10 @@ pvscsi_on_cmd_reset_device(PVSCSIState *s)
-         (struct PVSCSICmdDescResetDevice *) s->curr_cmd_data;
-     SCSIDevice *sdev;
- 
-+    PVSCSICmdDescResetDevice translated = *cmd;
-+    translated.target = tswap32(cmd->target);
-+    cmd = &translated;
-+
-     sdev = pvscsi_device_find(s, 0, cmd->target, cmd->lun, &target_lun);
- 
-     trace_pvscsi_on_cmd_reset_dev(cmd->target, (int) target_lun, sdev);
-@@ -892,6 +940,14 @@ pvscsi_on_cmd_setup_msg_ring(PVSCSIState *s)
- {
-     PVSCSICmdDescSetupMsgRing *rc =
-         (PVSCSICmdDescSetupMsgRing *) s->curr_cmd_data;
-+    PVSCSICmdDescSetupMsgRing translated = *rc;
-+    int i;
-+
-+    translated.numPages = tswap32(rc->numPages);
-+    for (i = 0; i < PVSCSI_SETUP_MSG_RING_MAX_NUM_PAGES; i++) {
-+        translated.ringPPNs[i] = tswap64(rc->ringPPNs[i]);
-+    }
-+    rc = &translated;
- 
-     trace_pvscsi_on_cmd_arrived("PVSCSI_CMD_SETUP_MSG_RING");
- 
-@@ -994,7 +1050,7 @@ pvscsi_on_command_data(PVSCSIState *s, uint32_t value)
-     size_t bytes_arrived = s->curr_cmd_data_cntr * sizeof(uint32_t);
- 
-     assert(bytes_arrived < sizeof(s->curr_cmd_data));
--    s->curr_cmd_data[s->curr_cmd_data_cntr++] = value;
-+    s->curr_cmd_data[s->curr_cmd_data_cntr++] = tswap32(value);
- 
-     pvscsi_do_command_processing(s);
- }
+Suggested-by: Neil Armstrong <neil.armstrong@linaro.org>
+---
+Changes in v2:
+- Reworked per Neil Armstrong's suggestion on v1: migrate PM8998 to the
+  modern qcom_spmi_gpio driver instead of extending the legacy
+  qcom_pmic_gpio.c.
+- Dropped "gpio: qcom_pmic_gpio: implement standard pinconf parameters".
+- Dropped "gpio: qcom_pmic_gpio: don't reset pull on direction change".
+- Replaced with a single qcom_spmi_gpio.c patch that claims the
+  qcom,pm8998-gpio compatible.
+- Link to v1: https://patch.msgid.link/20260601-qcom-gpio-v1-0-e24bcdb35da0@protonmail.com
+
+To: Sumit Garg <sumit.garg@kernel.org>
+To: u-boot-qcom@groups.io
+To: u-boot@lists.denx.de
+Cc: Casey Connolly <casey.connolly@linaro.org>
+Cc: Neil Armstrong <neil.armstrong@linaro.org>
+Cc: Tom Rini <trini@konsulko.com>
+Cc: Rui Miguel Silva <rui.silva@linaro.org>
+Cc: Petr Hodina <petr.hodina@protonmail.com>
+Cc: Luca Weiss <luca.weiss@fairphone.com>
+Cc: David Wronek <david.wronek@mainlining.org>
+Cc: Jens Reidel <adrian@mainlining.org>
+---
+ drivers/gpio/qcom_pmic_gpio.c | 1 -
+ drivers/gpio/qcom_spmi_gpio.c | 1 +
+ 2 files changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/gpio/qcom_pmic_gpio.c b/drivers/gpio/qcom_pmic_gpio.c
+index 4458c55cd3d..6215f794e09 100644
+--- a/drivers/gpio/qcom_pmic_gpio.c
++++ b/drivers/gpio/qcom_pmic_gpio.c
+@@ -344,7 +344,6 @@ static int qcom_gpio_probe(struct udevice *dev)
+ static const struct udevice_id qcom_gpio_ids[] = {
+ 	{ .compatible = "qcom,pm8916-gpio" },
+ 	{ .compatible = "qcom,pm8994-gpio" },	/* 22 GPIO's */
+-	{ .compatible = "qcom,pm8998-gpio" },
+ 	{ .compatible = "qcom,pms405-gpio" },
+ 	{ .compatible = "qcom,pm6125-gpio" },
+ 	{ .compatible = "qcom,pm8150-gpio" },
+diff --git a/drivers/gpio/qcom_spmi_gpio.c b/drivers/gpio/qcom_spmi_gpio.c
+index 1a7c7c48dfc..8c3323b23b7 100644
+--- a/drivers/gpio/qcom_spmi_gpio.c
++++ b/drivers/gpio/qcom_spmi_gpio.c
+@@ -751,6 +751,7 @@ static const struct udevice_id qcom_spmi_pmic_gpio_ids[] = {
+ 	{ .compatible = "qcom,pm8550b-gpio" },
+ 	{ .compatible = "qcom,pm8550ve-gpio" },
+ 	{ .compatible = "qcom,pm8550vs-gpio" },
++	{ .compatible = "qcom,pm8998-gpio" },
+ 	{ .compatible = "qcom,pmk8550-gpio" },
+ 	{ .compatible = "qcom,pmr735d-gpio" },
+ 	{ }
 
 ---
-base-commit: 29c042c6e9d4a09d4a0ac3fa54aeb7ee08ce0bdc
-change-id: 20260605-pvscsi-endianness-c0d389d8274e
+base-commit: 1f89ddd61cd8c27a3dc1fc7edbeccb55d424eb72
+change-id: 20260601-qcom-gpio-98e85ab22647
 
 Best regards,
--- 
-Miao Wang <shankerwangmiao@gmail.com>
+--  
+Petr Hodina <petr.hodina@protonmail.com>
 
