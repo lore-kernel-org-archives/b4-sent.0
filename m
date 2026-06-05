@@ -1,11 +1,10 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Fri, 05 Jun 2026 15:14:40 +0200
-Subject: [PATCH v7 2/8] media: qcom: camss: csiphy-3ph: Use odd bits for
- configuring C-PHY lanes
+Date: Fri, 05 Jun 2026 15:14:41 +0200
+Subject: [PATCH v7 3/8] media: qcom: camss: Prepare CSID for C-PHY support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260605-qcom-cphy-v7-2-426c37e9008f@ixit.cz>
+Message-Id: <20260605-qcom-cphy-v7-3-426c37e9008f@ixit.cz>
 References: <20260605-qcom-cphy-v7-0-426c37e9008f@ixit.cz>
 In-Reply-To: <20260605-qcom-cphy-v7-0-426c37e9008f@ixit.cz>
 To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
@@ -23,135 +22,131 @@ Cc: Frank Li <Frank.Li@nxp.com>,
  linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
  phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3524; i=david@ixit.cz;
- h=from:subject:message-id; bh=gNGls6uvVNWNZfEwprBXiLdADNtKq3Hax/Bn32z5N40=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqIsvCP3OpNuaAWYcLDEbDg9Y06UpRXZtvbJjxO
- qlT786wrIWJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaiLLwgAKCRBgAj/E00kg
- coETEACl4+9Lu2v/iNhU6bdE9Vo3SAbLrBjvDl5gwYp3w6rXndXgVlOWtmeLUghnp2w27y0cUfj
- zcnEP3laAnt/Sn/wIsg0bJEHXzX9ohN3b6zHj8bR1Z1FdyKd1HZYaG7KOGLUZ7ludNFhJabjgHy
- Tmi0YGMz3yEtFZMkVy6OUyYOPiLXCLPuzZ25QA5VOdk8DktVgpJOBiK/mG2q5g/Ewod8Hr+Nyxe
- cjUWRyVS3C9UMu4QsKoqauakJd/2i6LM9zaalWCR7HT3+UHi0bz56hFG8vI/f20eX3+7R5pGtMD
- +SWTXKTkKz7Ip/7wWJL4X1rUE8B8K36u9KK4Ha9MhjWkG3KbezsNShWKmuJs9lK7sEM0WyVwEvn
- p2TgAaazZcT/ZCswYXH0c/FZbwZnOvqrmVhIzZ49gIKGghvxmTiet0BBlQ1y+tVmWHmGEYpy3Mv
- k+lzF6Z3Qoug9zemJTFJp70Tl2+PzoODOjpC9z+KRnbmOBaD37DZ6K9vXx/SKx0IqxeHzp7lc9r
- 7sPk5fII+EWllT2Diq0fAfLGplqSOr2d9UHcQ95X+Swipkjr141cAfhpHf+sszxdvdUJOUPoXQo
- E2D18RuMfV02z4XMwX+5enBFhgEMUarppQznr8YTH+4++yYo9ZDrfIlUXP4t69sm+ka5ZvdSwPx
- xgwPpshsKMw6eQw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3748; i=david@ixit.cz;
+ h=from:subject:message-id; bh=w/BmjNZrtM9iVXxgRAPn/+3YAOZus8HvqEheY9VGpkA=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqIsvC720GloCvKSrUdWoJHW9yH5S8fZZx8ZZUW
+ eiwBk+VUtaJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaiLLwgAKCRBgAj/E00kg
+ cgzPD/90mTBjxORQUjdW/yQkbGV3rbvndX6tqDlR6RRh4H4iOTG9R7A5m5JPoy5Po1J1YurpTDg
+ Ios035YiB8640A8THnMWYrHVHzmdGn2CbnoA8DK5ZC7yIvKcfLfnyOae4eMPm/lkRRI8Bv6tuM0
+ 1guJLlISwtMy8KC4viw3NSecDGrdOw181wa/OyHzw/v64QwHFzJKtb83dt+qykGjibd3A80fmaS
+ hNWOM4/iUyJXLQkDh/s/aVc7gRIbamZQIIi69+7p66UkOULUpRXvaFyszgHibppxSPiiiuAWkHT
+ EqyzX+JlM4Z9C2nqCHenIi+/DuZjChCvbZ7KXllW9PR13vtfmJbADT2DjMwklLeKFZwTF+d7p+u
+ BVcKPZPaBogYZE41ZbJumOsdMFj3JNoOv6PuM7Tezf2dZMALqGKJxAPakuOkXXWj7/+N/pqFkBY
+ EeT5A2uxfYIiIi5GS+iXuHWnBf3wi1aArr1EhlE+t3V5g1wJr5GNWWTtKnH2DLgp2/D3A0/yAfu
+ S1E20v/R1aTWPBedrrrLJX4/aX6kxSCWlFdVBDXV3c9FYxq6agWRULCQ9a/zkUntKQIVLuGTL9/
+ 9ArttGJPCRCd6KeUMHQhaD/HCgQHx1QMagliP8f+MZWoAPoXHTLVT8w+/uqYyLB8jvFGgSmYCnW
+ aPMKR/UFQ1UgDBg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-So far, only D-PHY mode was supported, which uses even bits when enabling
-or masking lanes. For C-PHY configuration, the hardware instead requires
-using the odd bits.
+Inherit C-PHY information from CSIPHY, so we can configure CSID
+properly.
 
-Since there can be unrecognized configuration allow returning failure.
+CSI2_RX_CFG0_PHY_TYPE_SEL must be set to 1, when C-PHY mode is used.
 
-Acked-by: Cory Keitz <ckeitz@amazon.com>
 Reviewed-by: Bryan O'Donoghue <bryan.odonoghue@linaro.org>
-Reviewed-by: Bryan O'Donoghue <bod@kernel.org>
+Acked-by: Cory Keitz <ckeitz@amazon.com>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../platform/qcom/camss/camss-csiphy-3ph-1-0.c     | 39 +++++++++++++++++-----
- 1 file changed, 31 insertions(+), 8 deletions(-)
+ drivers/media/platform/qcom/camss/camss-csid-gen2.c | 1 +
+ drivers/media/platform/qcom/camss/camss-csid.c      | 5 +++++
+ drivers/media/platform/qcom/camss/camss-csid.h      | 6 ++++++
+ 3 files changed, 12 insertions(+)
 
-diff --git a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
-index dac8d2ecf7995..fa24fc9706748 100644
---- a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
-+++ b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
-@@ -9,16 +9,17 @@
-  */
+diff --git a/drivers/media/platform/qcom/camss/camss-csid-gen2.c b/drivers/media/platform/qcom/camss/camss-csid-gen2.c
+index eadcb2f7e3aaa..a5b406cc8ead3 100644
+--- a/drivers/media/platform/qcom/camss/camss-csid-gen2.c
++++ b/drivers/media/platform/qcom/camss/camss-csid-gen2.c
+@@ -178,16 +178,17 @@ static void __csid_configure_rx(struct csid_device *csid,
+ 	int val;
  
- #include "camss.h"
- #include "camss-csiphy.h"
+ 	if (!lane_cnt)
+ 		lane_cnt = 4;
  
- #include <linux/delay.h>
- #include <linux/interrupt.h>
- #include <linux/io.h>
-+#include <linux/media-bus-format.h>
+ 	val = (lane_cnt - 1) << CSI2_RX_CFG0_NUM_ACTIVE_LANES;
+ 	val |= phy->lane_assign << CSI2_RX_CFG0_DL0_INPUT_SEL;
+ 	val |= phy->csiphy_id << CSI2_RX_CFG0_PHY_NUM_SEL;
++	val |= csid->phy.phy_sel << CSI2_RX_CFG0_PHY_TYPE_SEL;
+ 	writel_relaxed(val, csid->base + CSID_CSI2_RX_CFG0);
  
- #define CSIPHY_3PH_LNn_CFG1(n)			(0x000 + 0x100 * (n))
- #define CSIPHY_3PH_LNn_CFG1_SWI_REC_DLY_PRG	(BIT(7) | BIT(6))
- #define CSIPHY_3PH_LNn_CFG2(n)			(0x004 + 0x100 * (n))
- #define CSIPHY_3PH_LNn_CFG2_LP_REC_EN_INT	BIT(3)
- #define CSIPHY_3PH_LNn_CFG3(n)			(0x008 + 0x100 * (n))
- #define CSIPHY_3PH_LNn_CFG4(n)			(0x00c + 0x100 * (n))
- #define CSIPHY_3PH_LNn_CFG4_T_HS_CLK_MISS	0xa4
-@@ -1108,23 +1109,32 @@ static void csiphy_gen2_config_lanes(struct csiphy_device *csiphy,
- 		writel_relaxed(val, csiphy->base + r->reg_addr);
- 		if (r->delay_us)
- 			udelay(r->delay_us);
+ 	val = 1 << CSI2_RX_CFG1_PACKET_ECC_CORRECTION_EN;
+ 	if (vc > 3)
+ 		val |= 1 << CSI2_RX_CFG1_VC_MODE;
+ 	val |= 1 << CSI2_RX_CFG1_MISR_EN;
+ 	writel_relaxed(val, csid->base + CSID_CSI2_RX_CFG1);
+ }
+diff --git a/drivers/media/platform/qcom/camss/camss-csid.c b/drivers/media/platform/qcom/camss/camss-csid.c
+index 48459b46a981b..bcc34ac9dd212 100644
+--- a/drivers/media/platform/qcom/camss/camss-csid.c
++++ b/drivers/media/platform/qcom/camss/camss-csid.c
+@@ -1286,16 +1286,21 @@ static int csid_link_setup(struct media_entity *entity,
+ 			/* do no allow a link from CSIPHY to CSID */
+ 			if (!csiphy->cfg.csi2)
+ 				return -EPERM;
+ 
+ 			csid->phy.csiphy_id = csiphy->id;
+ 
+ 			lane_cfg = &csiphy->cfg.csi2->lane_cfg;
+ 			csid->phy.lane_cnt = lane_cfg->num_data;
++			if (lane_cfg->phy_cfg == V4L2_MBUS_CSI2_CPHY)
++				csid->phy.phy_sel = CSID_PHY_SEL_CPHY;
++			else
++				csid->phy.phy_sel = CSID_PHY_SEL_DPHY;
++
+ 			csid->phy.lane_assign = csid_get_lane_assign(lane_cfg, lane_cfg->num_data);
+ 			csid->tpg_linked = false;
+ 		}
  	}
- }
+ 	/* Decide which virtual channels to enable based on which source pads are enabled */
+ 	if (local->flags & MEDIA_PAD_FL_SOURCE) {
+ 		struct v4l2_subdev *sd = media_entity_to_v4l2_subdev(entity);
+ 		struct csid_device *csid = v4l2_get_subdevdata(sd);
+diff --git a/drivers/media/platform/qcom/camss/camss-csid.h b/drivers/media/platform/qcom/camss/camss-csid.h
+index 5296b10f6bac8..e65590b0df69f 100644
+--- a/drivers/media/platform/qcom/camss/camss-csid.h
++++ b/drivers/media/platform/qcom/camss/camss-csid.h
+@@ -39,16 +39,21 @@ enum csid_testgen_mode {
+ 	CSID_PAYLOAD_MODE_USER_SPECIFIED = 6,
+ 	CSID_PAYLOAD_MODE_NUM_SUPPORTED_GEN1 = 6, /* excluding disabled */
+ 	CSID_PAYLOAD_MODE_COMPLEX_PATTERN = 7,
+ 	CSID_PAYLOAD_MODE_COLOR_BOX = 8,
+ 	CSID_PAYLOAD_MODE_COLOR_BARS = 9,
+ 	CSID_PAYLOAD_MODE_NUM_SUPPORTED_GEN2 = 9, /* excluding disabled */
+ };
  
- static u8 csiphy_get_lane_mask(struct csiphy_lanes_cfg *lane_cfg)
- {
--	u8 lane_mask;
--	int i;
-+	u8 lane_mask = 0;
-+	u8 offset = 0;
- 
--	lane_mask = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
-+	switch (lane_cfg->phy_cfg) {
-+	case V4L2_MBUS_CSI2_CPHY:
-+		offset = 1;
-+		break;
-+	case V4L2_MBUS_CSI2_DPHY:
-+		lane_mask = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
-+		break;
-+	default:
-+		break;
-+	}
- 
--	for (i = 0; i < lane_cfg->num_data; i++)
--		lane_mask |= 1 << lane_cfg->data[i].pos;
-+	for (int i = 0; i < lane_cfg->num_data; i++)
-+		lane_mask |= BIT(lane_cfg->data[i].pos + offset);
- 
- 	return lane_mask;
- }
- 
- static bool csiphy_is_gen2(u32 version)
- {
- 	bool ret = false;
- 
-@@ -1155,19 +1165,32 @@ static void csiphy_lanes_enable(struct csiphy_device *csiphy,
- 	struct csiphy_lanes_cfg *c = &cfg->csi2->lane_cfg;
- 	struct csiphy_device_regs *regs = csiphy->regs;
- 	u8 settle_cnt;
- 	u8 val;
- 	int i;
- 
- 	settle_cnt = csiphy_settle_cnt_calc(link_freq, csiphy->timer_clk_rate);
- 
--	val = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
--	for (i = 0; i < c->num_data; i++)
--		val |= BIT(c->data[i].pos * 2);
-+	val = 0;
++enum csid_phy_sel {
++	CSID_PHY_SEL_DPHY = 0,
++	CSID_PHY_SEL_CPHY = 1
++};
 +
-+	switch (c->phy_cfg) {
-+	case V4L2_MBUS_CSI2_CPHY:
-+		for (i = 0; i < c->num_data; i++)
-+			val |= BIT((c->data[i].pos * 2) + 1);
-+		break;
-+	case V4L2_MBUS_CSI2_DPHY:
-+		val = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
-+
-+		for (i = 0; i < c->num_data; i++)
-+			val |= BIT(c->data[i].pos * 2);
-+		break;
-+	default:
-+		WARN_ONCE(1, "Unsupported bus type %d!\n", c->phy_cfg);
-+	}
+ struct csid_format_info {
+ 	u32 code;
+ 	u8 data_type;
+ 	u8 decode_format;
+ 	u8 bpp;
+ 	u8 spp; /* bus samples per pixel */
+ };
  
- 	writel_relaxed(val, csiphy->base +
- 		       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 5));
+@@ -65,16 +70,17 @@ struct csid_testgen_config {
+ };
  
- 	val = CSIPHY_3PH_CMN_CSI_COMMON_CTRL6_COMMON_PWRDN_B;
- 	writel_relaxed(val, csiphy->base +
- 		       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 6));
+ struct csid_phy_config {
+ 	u8 csiphy_id;
+ 	u8 lane_cnt;
+ 	u32 lane_assign;
+ 	u32 en_vc;
+ 	u8 need_vc_update;
++	enum csid_phy_sel phy_sel;
+ };
  
+ struct csid_device;
+ 
+ struct csid_hw_ops {
+ 	/*
+ 	 * configure_stream - Configures and starts CSID input stream
+ 	 * @csid: CSID device
 
 -- 
 2.53.0
