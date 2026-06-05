@@ -1,16 +1,13 @@
 From: Ricardo Pardini <ricardo@pardini.net>
-Subject: [PATCH v3 0/3] describe RTL8125 PCIe NICs on Rockchip boards (and
- add DT binding)
-Date: Fri, 05 Jun 2026 13:49:07 +0200
-Message-Id: <20260605-rk3588-dts-rtl-eth-describe-dt-alias-v3-0-8a8857b39daf@pardini.net>
+Date: Fri, 05 Jun 2026 13:49:08 +0200
+Subject: [PATCH v3 1/3] dt-bindings: net: add Realtek r8169 family PCIe
+ Ethernet
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42OzQ6CMBAGX4X07Jq2UH48+R7GQ2kXWTWFtJVoC
- O8uYEz0xnE2X2Z2ZAE9YWCHZGQeBwrUuRnSXcJMq90FgezMTHKZcyUz8LdUlSXYGMDHO2BswWI
- wnmqcj6DvpAMYgVaURV0Yxdms6j029Fwzp/OHw6O+oomLe1m0FGLnX+sfg1h236TalhwECNB5Y
- 6xWeapNcey1t+Ro7zCyJTrIX221USuBQ1YVnMusFFna/GunaXoDhth9zkMBAAA=
-X-Change-ID: 20260524-rk3588-dts-rtl-eth-describe-dt-alias-c1ed187b7c50
+Message-Id: <20260605-rk3588-dts-rtl-eth-describe-dt-alias-v3-1-8a8857b39daf@pardini.net>
+References: <20260605-rk3588-dts-rtl-eth-describe-dt-alias-v3-0-8a8857b39daf@pardini.net>
+In-Reply-To: <20260605-rk3588-dts-rtl-eth-describe-dt-alias-v3-0-8a8857b39daf@pardini.net>
 To: Heiner Kallweit <hkallweit1@gmail.com>, nic_swsd@realtek.com, 
  Andrew Lunn <andrew+netdev@lunn.ch>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
@@ -22,92 +19,111 @@ Cc: Sebastian Reichel <sebastian.reichel@collabora.com>,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-rockchip@lists.infradead.org, Ricardo Pardini <ricardo@pardini.net>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3319; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=tfvXGYpzHzgUbT4fabiFINiO/Hli57gjTIUW/sYiq14=;
- b=owGbwMvMwMFoHWf/eN7xty8ZT6slMWQpbd8l9ppxGm9Z+qldOh58e89cS7V+FJzGyqzcGLDzo
- FtUWf7KTkZ/FgZGDgZLMUWWNRLKPN/Wvzp1x6NjMswgViaQKdIiDQxAwMLAl5uYV2qkY6Rnqm2o
- Z2ikY6BjzMDFKQBTXfiC/X+iBof8pSn+UyotKn6xTXr3xbUg2Pj34n/ztRb/DtSuWOa0b8GhCcH
- MFz8oeW2T7Yov5/5f5vXKTeOXhLAyn4PVp+1BvFGqy69/uyJguMPyynW93YrLNvFyl2SbRwfNe3
- Pmc2P1wjQ2yYq5n9bY+2z6/+DvkZLL8QyvPOW/i7v38f0OsmVKflC1/ny8hOQRljmZL810+xeF3
- SxUyrh69ECWzlZFHRkG9p2dZ4xWiuWdbPPs7vGRuSpjavPkRE695iU9g8b/mvePp+bdYNKaPz3T
- Z+lHIb4dc/i3mjEW7LWM3ftQ6ewmw/VNvYmPF6v90ZW0K5yhxV52YnLyWcOPEott6suLbi9hX6R
- +TVEnHAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2818; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=SwvhGPGzhgbbXrid/Pg1myL4wDhH+eVp/OO6aNuLepE=;
+ b=owGbwMvMwMFoHWf/eN7xty8ZT6slMWQpbd/FWGppYr/MysQiwyooP2dW8OqTcdMl65jLxefU5
+ +/tbgnrZPRnYWDkYLAUU2RZI6HM8239q1N3PDomwwxiZQKZIi3SwAAELAx8uYl5pUY6Rnqm2oZ6
+ hkY6BjrGDFycAjDV7Jnsf7h/aG+smiH5n33aR5fpvm1HGk9JbnOR+ZyvtGbSZr/NEez3vliZRHl
+ cy7E6L+Ks8C9P8m7j7wDDBLH8I0EOmvz8TZ9qFmyIWO1xpnP5v56Gy9/WbjZL3K18Yj9nk8zWfa
+ E1llPti9cd+c8s3l4XMYdt4qtXHh//e3EfPuldmfhwcdpFR+2Up5vcY2+KavrNsgktveWxITQku
+ Nt3m8zNh9z7Fm+qv9j1gfX7Fv8H1eVn8qMjZj2c1Jfgkm35iiHDpjXhQar2FEXm/ZZc8g75vYqn
+ Pr5NWHZLat+KSzHRaXK7Qw/6hy8WaDx/TPSaYZU5q96/O533e1JvOrX/nVA+71utW8T1O3VnTnT
+ 2dJQyAgA=
 X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
  fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
 X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Several Rockchip rk35xx boards carry on-board Realtek RTL8125 2.5GbE
-NICs whose PCI function nodes are not described in the DT. Describing
-them allows for stable ethernetN aliases (matching the GMAC alias
-convention on these boards) and lets U-Boot's fdt_fixup_ethernet()
-inject mac-address properties from its ethaddr/ethNaddr env, so MACs
-stay stable across boots and U-Boot and kernel MAC match.
+Add a binding for fixed/soldered Realtek PCIe Ethernet controllers
+driven by the r8169 driver (RTL8125/8126/8127/8168 and variants).
 
-Patch 1 adds a DT binding for Realtek r8169 family PCIe Ethernet
-controllers.
+The "pciVVVV,DDDD" compatibles are the Open Firmware PCI Bus Binding
+spelling, auto-derived from PCI-SIG vendor/device IDs, but they still
+need a binding when used in a board DT - analogous to "usbVVVV,PPPP"
+compatibles documented in their own bindings (e.g. microchip,lan95xx)
+so board DTs attaching properties (fixed MAC, nvmem cell, ...) to
+these PCI function nodes can be validated.
 
-Patch 2 describes the on-board RTL8125 function nodes on the
-FriendElec NanoPC-T6 (and variants).
-
-Patch 3 is the same, but for the Radxa ROCK 5B / 5B+ / 5T family
-done based on lspci output provided by helpful Armbian folks.
-
----
-Changes in v3:
-- new patch: add a DT binding for Realtek r8169 family PCIe Ethernet
-  controllers, per Sebastian Reichel's review (the "pciVVVV,DDDD" OF
-  spelling still needs a binding when used in a board DT).
-- new patch for Rock5 series, and include a brief rationale in each.
-- retitle the series, since it now covers a few boards and a binding
-  rather than just DeviceTree changes for the NanoPC-T6.
-- drop the v2 "rename vcc3v3_pcie2x1l0 regulator" patch from this
-  series; it will be sent separately as it is not relevant to this.
-- Link to v2: https://patch.msgid.link/20260529-rk3588-dts-rtl-eth-describe-dt-alias-v2-0-49700248143f@pardini.net
-
-Changes in v2:
-- fix: pcie2x1l0, not pcie2x1l1; indirectly caught by Sashiko's review [1]
-- while-at-it: rename regulator vcc3v3_pcie2x1l0 to l1
-- Link to v1: https://patch.msgid.link/20260525-rk3588-dts-rtl-eth-describe-dt-alias-v1-1-a6fcda563ac7@pardini.net
-
-[1] https://sashiko.dev/#/patchset/20260525-rk3588-dts-rtl-eth-describe-dt-alias-v1-1-a6fcda563ac7%40pardini.net
-
-To: Heiner Kallweit <hkallweit1@gmail.com>
-To: nic_swsd@realtek.com
-To: Andrew Lunn <andrew+netdev@lunn.ch>
-To: "David S. Miller" <davem@davemloft.net>
-To: Eric Dumazet <edumazet@google.com>
-To: Jakub Kicinski <kuba@kernel.org>
-To: Paolo Abeni <pabeni@redhat.com>
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Heiko Stuebner <heiko@sntech.de>
-Cc: Sebastian Reichel <sebastian.reichel@collabora.com>
-Cc: netdev@vger.kernel.org
-Cc: devicetree@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Cc: linux-arm-kernel@lists.infradead.org
-Cc: linux-rockchip@lists.infradead.org
+Suggested-by: Sebastian Reichel <sebastian.reichel@collabora.com>
 Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
-
 ---
-Ricardo Pardini (3):
-      dt-bindings: net: add Realtek r8169 family PCIe Ethernet
-      arm64: dts: rockchip: describe PCIe RTL8125 Ethernet on NanoPC-T6
-      arm64: dts: rockchip: describe PCIe RTL8125 Ethernet on Radxa ROCK 5 family
-
  .../devicetree/bindings/net/realtek,r8169.yaml     | 54 ++++++++++++++++++++++
  MAINTAINERS                                        |  1 +
- arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi | 30 ++++++++++++
- .../boot/dts/rockchip/rk3588-rock-5b-5bp-5t.dtsi   | 15 ++++++
- arch/arm64/boot/dts/rockchip/rk3588-rock-5t.dts    | 18 ++++++++
- 5 files changed, 118 insertions(+)
----
-base-commit: e7ae89a0c97ce2b68b0983cd01eda67cf373517d
-change-id: 20260524-rk3588-dts-rtl-eth-describe-dt-alias-c1ed187b7c50
+ 2 files changed, 55 insertions(+)
 
-Best regards,
---  
-Ricardo Pardini <ricardo@pardini.net>
+diff --git a/Documentation/devicetree/bindings/net/realtek,r8169.yaml b/Documentation/devicetree/bindings/net/realtek,r8169.yaml
+new file mode 100644
+index 0000000000000..6923211ff4c93
+--- /dev/null
++++ b/Documentation/devicetree/bindings/net/realtek,r8169.yaml
+@@ -0,0 +1,54 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/net/realtek,r8169.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Realtek r8169 family PCIe Ethernet Controllers
++
++maintainers:
++  - Heiner Kallweit <hkallweit1@gmail.com>
++
++description:
++  PCI function node properties for fixed/soldered Realtek Ethernet
++  controllers driven by the r8169 driver.
++
++allOf:
++  - $ref: ethernet-controller.yaml#
++
++properties:
++  compatible:
++    enum:
++      - pci10ec,8125  # RTL8125 2.5GbE
++      - pci10ec,8126  # RTL8126 5GbE
++      - pci10ec,8127  # RTL8127
++      - pci10ec,8161  # RTL8168 variant
++      - pci10ec,8162  # RTL8168 variant
++      - pci10ec,8168  # RTL8168/8111 GbE
++
++  reg:
++    maxItems: 1
++
++  local-mac-address: true
++  mac-address: true
++  nvmem-cells: true
++  nvmem-cell-names: true
++
++required:
++  - compatible
++  - reg
++
++additionalProperties: false
++
++examples:
++  - |
++    pcie {
++        #address-cells = <3>;
++        #size-cells = <2>;
++
++        ethernet@0,0 {
++            compatible = "pci10ec,8125";
++            reg = <0x10000 0 0 0 0>;
++            local-mac-address = [00 00 00 00 00 00];
++        };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index b539be153f6a4..6341de4fadb6c 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -134,6 +134,7 @@ M:	Heiner Kallweit <hkallweit1@gmail.com>
+ M:	nic_swsd@realtek.com
+ L:	netdev@vger.kernel.org
+ S:	Maintained
++F:	Documentation/devicetree/bindings/net/realtek,r8169.yaml
+ F:	drivers/net/ethernet/realtek/r8169*
+ 
+ 8250/16?50 (AND CLONE UARTS) SERIAL DRIVER
+
+-- 
+2.54.0
 
