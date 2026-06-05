@@ -1,11 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Fri, 05 Jun 2026 16:41:26 +0400
-Subject: [PATCH v3 1/4] dt-bindings: net: ethernet-phy: increase max clock
- count to two
+Date: Fri, 05 Jun 2026 16:41:27 +0400
+Subject: [PATCH v3 2/4] dt-bindings: net: qca,ar803x: Add clocks for
+ IPQ5018 PHY
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260605-ipq5018-gephy-clocks-v3-1-f232d9ca0966@outlook.com>
+Message-Id: <20260605-ipq5018-gephy-clocks-v3-2-f232d9ca0966@outlook.com>
 References: <20260605-ipq5018-gephy-clocks-v3-0-f232d9ca0966@outlook.com>
 In-Reply-To: <20260605-ipq5018-gephy-clocks-v3-0-f232d9ca0966@outlook.com>
 To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -20,55 +20,80 @@ Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, 
  Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
  linux-arm-msm@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>
+ George Moussalem <george.moussalem@outlook.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780663297; l=1689;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780663297; l=1860;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=LaY00tRcmZfFwiKiQy3sLDDbN7PRP6JIqJfZseU/bhY=;
- b=Ej4W7dTZsUe7bJ0nU4A8yVnozkz8GdTH0hVntcxUuPQzJYRIsytXROniAzIPdr//9IZNg5gT7
- v3gRNnJPwSyBrYZgLw1DkNcHByDhSIeIwj8v/9VIfxL8OqOfnSPTCny
+ bh=9Z6aakN1HhLaGxa1OIpuGJQY0KdKMjoTdfWwUAWMHF8=;
+ b=35vQ31A2+T17FdYHX7YbK3+f5sFkkYEKYcD//bJOBSMWqZ/OLQc7yybfbzinL6bN6VT3HtvsI
+ HtS42u2mHmVAmzwfUK7DmlabPItaAz96c6JMzn7Fm1rl0Jok8KiZmES
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The clocks property has a restriction to maximum one.
-Yet, some PHYs may require more than 1 clock such as the IPQ5018 PHY
-which requires two clocks for RX and TX. As such, increase maxItems to
-two.
+Further testing revealed that the RX and TX clocks of the IPQ5018 PHY
+need to be explicitly enabled. As such, add the required clocks to the
+schema.
 
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
-Commit 350b7a258f20 introduced the clocks property with a restriction to
-maximum 1 to the main ethernet-phy.yaml binding for Realtek to add an
-optional external clock source. This is restrictive to all PHY bindings,
-as some PHYs may require more than 1 clock such as the IPQ5018 PHY which
-requires 2 clocks (for RX and TX).
----
- Documentation/devicetree/bindings/net/ethernet-phy.yaml | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ Documentation/devicetree/bindings/net/qca,ar803x.yaml | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/net/ethernet-phy.yaml b/Documentation/devicetree/bindings/net/ethernet-phy.yaml
-index 21a1a63506f0..c3ebb3af8b52 100644
---- a/Documentation/devicetree/bindings/net/ethernet-phy.yaml
-+++ b/Documentation/devicetree/bindings/net/ethernet-phy.yaml
-@@ -106,10 +106,13 @@ properties:
-       by software.
+diff --git a/Documentation/devicetree/bindings/net/qca,ar803x.yaml b/Documentation/devicetree/bindings/net/qca,ar803x.yaml
+index 7ae5110e7aa2..53f648c4135f 100644
+--- a/Documentation/devicetree/bindings/net/qca,ar803x.yaml
++++ b/Documentation/devicetree/bindings/net/qca,ar803x.yaml
+@@ -28,6 +28,16 @@ allOf:
+         reg:
+           const: 7  # This PHY is always at MDIO address 7 in the IPQ5018 SoC
  
-   clocks:
--    maxItems: 1
-+    minItems: 1
-+    maxItems: 2
-     description:
--      External clock connected to the PHY. If not specified it is assumed
--      that the PHY uses a fixed crystal or an internal oscillator.
-+      External clock connected to the PHY or RX and TX clocks that the PHY
-+      requires to enable explicitly. If not specified it is assumed
-+      that the PHY uses a fixed crystal or an internal oscillator or that the
-+      RX/TX clocks are hardware enabled by default.
++        clocks:
++          items:
++            - description: RX clock
++            - description: TX clock
++
++        clock-names:
++          items:
++            - const: rx
++            - const: tx
++
+         resets:
+           items:
+             - description:
+@@ -42,6 +52,11 @@ allOf:
+             of this PHY are directly connected to an RJ45 connector.
+           type: boolean
  
-   enet-phy-lane-swap:
-     $ref: /schemas/types.yaml#/definitions/flag
++      required:
++        - clocks
++        - clock-names
++        - resets
++
+ properties:
+   compatible:
+     enum:
+@@ -162,6 +177,7 @@ examples:
+         };
+     };
+   - |
++    #include <dt-bindings/clock/qcom,gcc-ipq5018.h>
+     #include <dt-bindings/reset/qcom,gcc-ipq5018.h>
+ 
+     mdio {
+@@ -172,6 +188,9 @@ examples:
+             compatible = "ethernet-phy-id004d.d0c0";
+             reg = <7>;
+ 
++            clocks = <&gcc GCC_GEPHY_RX_CLK>,
++                     <&gcc GCC_GEPHY_TX_CLK>;
++            clock-names = "rx", "tx";
+             resets = <&gcc GCC_GEPHY_MISC_ARES>;
+         };
+     };
 
 -- 
 2.53.0
