@@ -1,111 +1,96 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Fri, 05 Jun 2026 12:11:29 +0400
-Subject: [PATCH next-next v2] net: dsa: qca8k: Add support for force mode
- for fixed link topology
+From: Herman van Hazendonk <github.com@herrie.org>
+Subject: [PATCH v2 0/2] power: supply: max8903: add DC and USB input
+ current-limit GPIO controls
+Date: Fri, 05 Jun 2026 11:18:11 +0200
+Message-Id: <20260605-submit-power-max8903-dc-limit-v2-0-0c5396e98f14@herrie.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260605-qca8337-force-mode-v2-1-d9a6b6545bfa@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NTQ6CMBCFr0Jm7ZjSYlFX3sOwKGUqjdLRFgmGc
- HcrB3Dzki/vb4FE0VOCc7FApMknzyGD3BVgexNuhL7LDFJILbRQ+LLmqFSNjqMlHLgjdK1tzUG
- edFVpyMVnJOfnbfQKgeYRfwJNtnqfRo6f7W4qt8C/5anEEq1xta6Fc6ZVF36PD+b73vIAzbquX
- 0/JJvLBAAAA
-X-Change-ID: 20260603-qca8337-force-mode-fbcba5296446
-To: Andrew Lunn <andrew@lunn.ch>, Vladimir Oltean <olteanv@gmail.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780647089; l=3187;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=/1K49g/Q0+wrB8ffa0QJHaW9eANv5Yae+dqQkwbdI4U=;
- b=Xn7RwqPiLUqBSMkfjxaoyatDwqn+EhlJZVxXog3mgyAtwLsVAImKiBsVWVvKVPlXJ//K6hwlv
- IPyVfdFw1CBAI5t89drX8j9nLQevPmF9+g75OyKnuqOsk4jD9ZFIckZ
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-B4-Tracking: v=1; b=H4sIAFOUImoC/x3MTQqEMAxA4atI1hOIFYt6FZlFrFED/tHOqCDe3
+ erye4t3QhCvEqBKTvCyadBljjCfBNzAcy+obTQYMpYs5Rj+zaQ/XJddPE58FCVl2Doc9cnMVvK
+ UraMyg/hYvXR6vP/6e103LdD5yW8AAAA=
+To: Sebastian Reichel <sre@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780651091; l=3526;
+ i=github.com@herrie.org; s=20240417; h=from:subject:message-id;
+ bh=PgFIrdPiYEuUXNFSOa6IHQ/Mq4Zwsl31OM6oXB7RwCg=;
+ b=rKqMdlkUUCxwNQ6qfLr4sWLiKNWPvhisvJwNYX0JzzoZj4dDFnnCOM1dw7VgnurgXrknXc1UB
+ KUVUAUbwZRPBuOhQByJZ7B/MQKVhtGcc1UgsBp9a5u4PXWhafb2zvuh
+X-Developer-Key: i=github.com@herrie.org; a=ed25519;
+ pk=YYxdq8fb5O9vhkW3n2dCH044FPZZO5718v/du7fRhFw=
+X-Endpoint-Received: by B4 Relay for github.com@herrie.org/20240417 with auth_id=809
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-A fixed link topology is commonly used to connect this switch (on port
-0 or 6) to a SoC's MAC over SGMII. When inband negotiation is not used,
-the switch needs to be configured to operate in force mode. As such,
-enable support for force mode.
+v2 addresses two rounds of reviewer feedback on v1.
 
-Reviewed-by: Andrew Lunn <andrew@lunn.ch>
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
----
-Changes in v2:
-- Added check for QCA8337 switch ID and build up the register mask
-  accordingly before writing the force mode bit to avoid overwriting the
-  bit on switches other than QCA8337 for which there's no documentation
-  on whether force mode is supported or not.
-- Added comment to state that regardless of port used (0 or 6), the
-  force mode bit is written to the PORT0 PAD register as per vendor SDK.
-- Link to v1: https://lore.kernel.org/r/20260603-qca8337-force-mode-v1-1-caf7670ffab3@outlook.com
----
- drivers/net/dsa/qca/qca8k-8xxx.c | 22 ++++++++++++++++------
- drivers/net/dsa/qca/qca8k.h      |  1 +
- 2 files changed, 17 insertions(+), 6 deletions(-)
+Sebastian Reichel (1 finding):
+ - Drop usb-current-limit-values DT property. The IUSB pin is
+   silicon-fixed at 100/500 mA per the MAX8903 datasheet Pin
+   Description ("Drive IUSB logic-low to set the USB current limit
+   to 100mA. Drive IUSB logic-high to set the USB current limit to
+   500mA."), so there's nothing board-specific to expose. The two
+   values are bound to MAX8903_USB_CURRENT_LIMIT_{LOW,HIGH}_UA
+   #defines in the driver with the datasheet quote in a header
+   comment; usb-current-limit-gpios stays as the board parameter.
 
-diff --git a/drivers/net/dsa/qca/qca8k-8xxx.c b/drivers/net/dsa/qca/qca8k-8xxx.c
-index a36b8b07030e..4c928983b862 100644
---- a/drivers/net/dsa/qca/qca8k-8xxx.c
-+++ b/drivers/net/dsa/qca/qca8k-8xxx.c
-@@ -1538,7 +1538,7 @@ static int qca8k_pcs_config(struct phylink_pcs *pcs, unsigned int neg_mode,
- {
- 	struct qca8k_priv *priv = pcs_to_qca8k_pcs(pcs)->priv;
- 	int cpu_port_index, ret, port;
--	u32 reg, val;
-+	u32 mask, reg, val;
- 
- 	port = pcs_to_qca8k_pcs(pcs)->port;
- 	switch (port) {
-@@ -1611,11 +1611,21 @@ static int qca8k_pcs_config(struct phylink_pcs *pcs, unsigned int neg_mode,
- 	if (priv->ports_config.sgmii_tx_clk_falling_edge)
- 		val |= QCA8K_PORT0_PAD_SGMII_TXCLK_FALLING_EDGE;
- 
--	if (val)
--		ret = qca8k_rmw(priv, reg,
--				QCA8K_PORT0_PAD_SGMII_RXCLK_FALLING_EDGE |
--				QCA8K_PORT0_PAD_SGMII_TXCLK_FALLING_EDGE,
--				val);
-+	mask = (val) ? (QCA8K_PORT0_PAD_SGMII_RXCLK_FALLING_EDGE |
-+			QCA8K_PORT0_PAD_SGMII_TXCLK_FALLING_EDGE) : 0;
-+
-+	/*
-+	 * (Un)set force mode on QCA8337 only, don't include it in the mask for
-+	 * others. It is written to the PORT0 PAD register for both port 0 and 6.
-+	 */
-+	if (priv->switch_id == QCA8K_ID_QCA8337) {
-+		if (neg_mode == PHYLINK_PCS_NEG_OUTBAND)
-+			val |= QCA8K_PORT_PAD_SGMII_FORCE_MODE;
-+		mask |= QCA8K_PORT_PAD_SGMII_FORCE_MODE;
-+	}
-+
-+	if (mask)
-+		ret = qca8k_rmw(priv, reg, mask, val);
- 
- 	return 0;
- }
-diff --git a/drivers/net/dsa/qca/qca8k.h b/drivers/net/dsa/qca/qca8k.h
-index 1a00e2f62fef..956338893032 100644
---- a/drivers/net/dsa/qca/qca8k.h
-+++ b/drivers/net/dsa/qca/qca8k.h
-@@ -58,6 +58,7 @@
- #define	  QCA8K_PORT_PAD_RGMII_TX_DELAY_EN		BIT(25)
- #define   QCA8K_PORT_PAD_RGMII_RX_DELAY_EN		BIT(24)
- #define   QCA8K_PORT_PAD_SGMII_EN			BIT(7)
-+#define   QCA8K_PORT_PAD_SGMII_FORCE_MODE		BIT(3)
- #define QCA8K_REG_PWS					0x010
- #define   QCA8K_PWS_POWER_ON_SEL			BIT(31)
- /* This reg is only valid for QCA832x and toggle the package
+Kernel test robot / dt-schema reviewer (8 findings):
+ - Binding: add dependentRequired so dc-current-limit-gpios and
+   dc-current-limit-mapping are required together; incomplete DTs
+   cannot pass dtschema with only one half of the pair.
+ - Binding: rename example node "charger-with-current-limit" to the
+   generic "charger" per the Devicetree Specification.
+ - Driver get_property: when DC is online the hardware draws from
+   DC regardless of USB state. Never fall through to reporting the
+   USB cap; refuse with -ENODATA when DC GPIOs aren't configured
+   rather than mis-describe the active source. The set path mirrors
+   this policy.
+ - Driver set_dc_current_limit: drop bitmap_from_arr32(values,
+   &u32_var, 32). On 64-bit, the macro reinterprets its u32* source
+   as unsigned long* and reads past the on-stack scalar; replace
+   with bitmap_zero() + values[0] = gpio_value (the lowest ndescs
+   bits, parse-time bounded to < 32).
+ - Driver set_property: reject val->intval < 0 explicitly. The
+   helpers take a u32 and a negative widen would bypass the upper
+   bounds check, silently programming the maximum permitted current.
+ - Driver IRQs: extend source_lock over the full
+   read-modify-evaluate block in max8903_dcin() and max8903_usbin().
+   With the old scope, simultaneous DC and USB plug events could
+   race in the cen enable calculation and write the wrong bit.
+ - Driver parse_dc_current_limit: switch the scratch map[] buffer
+   from devm_kcalloc to kmalloc_array + explicit kfree on every
+   return path; the buffer is only used during parse.
+ - Driver parse_dc_current_limit: reject ndescs >= 32 at parse time
+   to keep BIT(ndescs) well-defined on 32-bit. Defensive against a
+   DT that somehow slipped past dtschema's maxItems=4 cap.
 
+Tested on a HP TouchPad (APQ8060, MSM8x60 family) post-rework: all
+4 interconnect fabrics still probe; max8903_charger enumerates and
+binds; INPUT_CURRENT_LIMIT writes program the expected GPIO bit
+patterns on both the DC resistor mux (verified against on-board
+MAX8903B IDC wiring) and IUSB; USB link still up; no WARN/BUG/Oops.
+
+The DTS hookup that wires these GPIOs to the MAX8903 on the HP
+TouchPad will be sent separately to the ARM/DTS tree.
+
+Signed-off-by: Herman van Hazendonk <github.com@herrie.org>
 ---
-base-commit: b7bee4ca5688e30ca50fbc87b1b8f7eed7006c17
-change-id: 20260603-qca8337-force-mode-fbcba5296446
+Herman van Hazendonk (2):
+      dt-bindings: power: supply: maxim,max8903: add DC and USB input current-limit controls
+      power: supply: max8903: add DC and USB input current-limit GPIO controls
+
+ .../bindings/power/supply/maxim,max8903.yaml       |  53 +++
+ drivers/power/supply/max8903_charger.c             | 415 ++++++++++++++++++++-
+ 2 files changed, 451 insertions(+), 17 deletions(-)
+---
+base-commit: 944125b4c454b58d2fe6e35f1087a932b2050dff
+change-id: 20260605-submit-power-max8903-dc-limit-aa6e51a6c093
 
 Best regards,
 -- 
-George Moussalem <george.moussalem@outlook.com>
+Herman van Hazendonk <github.com@herrie.org>
 
