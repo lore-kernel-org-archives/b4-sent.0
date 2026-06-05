@@ -1,16 +1,12 @@
 From: David Wales <daviewales@disroot.org>
-Subject: [PATCH v4 0/2] Add initial device tree for Motorola Moto G (2014)
-Date: Fri, 05 Jun 2026 23:19:10 +1000
-Message-Id: <20260605-device-motorola-titan-mainline-v4-0-08a7be31f05c@disroot.org>
+Date: Fri, 05 Jun 2026 23:19:11 +1000
+Subject: [PATCH v4 1/2] dt-bindings: arm: qcom: Add Motorola Moto G2 (2014)
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XOzW7CMBAE4FdBPtfVep0ftyfeA3FwnTVsBXZlm
- wgU5d3rUCRa9ZDjSKNvZhKZElMW75tJJBo5cww1NC8b4Y42HEjyULNAwA4aaORQS47kOZaY4sn
- KwsUGebYcThxIet91xmtsO/SiIl+JPF/vA7v9T86Xj09yZVGXxpFzpW73B6Naeo8x1Gtjo5IgS
- RmlLaBxzmwHzinG8hrTQSxzIz7BFnAVxAq6/k1h37u+Afsf1L/BdhXUFTTeeYsGqB3gLzjP8zc
- GGszWggEAAA==
-X-Change-ID: 20260404-device-motorola-titan-mainline-ff668f32562f
+Message-Id: <20260605-device-motorola-titan-mainline-v4-1-08a7be31f05c@disroot.org>
+References: <20260605-device-motorola-titan-mainline-v4-0-08a7be31f05c@disroot.org>
+In-Reply-To: <20260605-device-motorola-titan-mainline-v4-0-08a7be31f05c@disroot.org>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -18,72 +14,44 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, 
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
- David Wales <daviewales@disroot.org>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+ David Wales <daviewales@disroot.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1857;
- i=daviewales@disroot.org; h=from:subject:message-id;
- bh=J/BBiDOtg87dY6XX/rpTbFHNhKF1CVqcYk+STuw6bIo=;
- b=owEBbQGS/pANAwAKAW1jV4FG9KFmAcsmYgBqIszXmtullhdX19O3o0UI3LZETYtj6yQqyAecw
- 0GWZZfC9/aJATMEAAEKAB0WIQTXikd3yUPmOPWSLPJtY1eBRvShZgUCaiLM1wAKCRBtY1eBRvSh
- ZuSqB/9sSAXxItl+Zc/4i1daKZqk4mpqVE8gdw5+ozK9UxosI684gM/XqmhsbjcuKxQN7dP+es0
- oXWheuLIlSbbd0gt2oKM4iPuXs8EiZHZd4LBBUmESMBUpjW1Ehjn/GQwVQSAbIP3D0xwVIVOjps
- 75Nx4wXqqHmhhcb2fq4o3Mf5BVF7LnbSgPaVGwh7N9q0HrDZtruR+ovKgvf4yAywSChfI9QAV6M
- WvovgR5nkb7bgagTtZIkADj6AYqIUbdTKbtuM3G+ANkLG0EF8Bfmo8w6aCTSQ6uiNHmyRGM/b6T
- 2Hpo9qWc3ME4mZPc+WA26IJSle3oqLpx5rJd2ndWZ9WHVfmh
+X-Developer-Signature: v=1; a=openpgp-sha256; l=871; i=daviewales@disroot.org;
+ h=from:subject:message-id; bh=jBv/WRLzVN0AQTAYpLJKebbhWke/WqhwJrSIev0LDSE=;
+ b=owEBbQGS/pANAwAKAW1jV4FG9KFmAcsmYgBqIszXdatheWB4D+GMsg3dy2VNNVFI9RNKhj8vE
+ aao/Uf6bvuJATMEAAEKAB0WIQTXikd3yUPmOPWSLPJtY1eBRvShZgUCaiLM1wAKCRBtY1eBRvSh
+ ZurpB/9crbf6RjfUb+3kGTIEenHrWZGD5rbK3BaKczpRvVbEO23nAEzycPVUh7bBslnamz1ev5a
+ mnRCBOiV058RFyUFqdeiHYCMUE/nPOlEYMjI4eBl5fli1asnq2yxjC8Q5WjCdZv8qdsI1bWJdRO
+ oRZgQf5s+z242yDy5DiKrk0dAmoY4LQsNxrlRi3GTRxpxFheHFHzDtdBYT4gegZqeky2VRGCYRx
+ X1Ovgl5eFNv71T+hML+vDgSVsO7pGeFGbzKsbUAFIdhPBj5uD7YedCtGArBi6Tz4jQK2fRYbypL
+ f8ZF3NEuDB0qbobe5BD+TpIDkY4e7aUHDspUMWNyqhlRxuKj
 X-Developer-Key: i=daviewales@disroot.org; a=openpgp;
  fpr=8F5BAFB15444A769DC3B61684022B817D275D037
 X-Endpoint-Received: by B4 Relay for daviewales@disroot.org/default with auth_id=737
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Motorola Moto G (2014) is the second device in the Moto G series,
-with codename motorola-titan.
+Document the Motorola Moto G2 (2014), which is a smartphone based on the
+Qualcomm MSM8226 SoC.
 
-This series documents the motorola-titan, and adds an initial device
-tree.
-
-These patches have been previously discussed and merged into the
-downstream msm8226-mainline fork:
-https://github.com/msm8226-mainline/linux/pull/18
-
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Signed-off-by: David Wales <daviewales@disroot.org>
 ---
-Changes in v4:
-- Remove reg_vddio_disp_default as it is not used.
-- Link to v3: https://patch.msgid.link/20260505-device-motorola-titan-mainline-v3-0-8fcfa280e5d0@disroot.org
+ Documentation/devicetree/bindings/arm/qcom.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-Changes in v3:
-- Add missing trailers to commits
-- Link to v2: https://patch.msgid.link/20260502-device-motorola-titan-mainline-v2-0-c791277c740a@disroot.org
+diff --git a/Documentation/devicetree/bindings/arm/qcom.yaml b/Documentation/devicetree/bindings/arm/qcom.yaml
+index d48c625d3fc4..3dec521bfd11 100644
+--- a/Documentation/devicetree/bindings/arm/qcom.yaml
++++ b/Documentation/devicetree/bindings/arm/qcom.yaml
+@@ -72,6 +72,7 @@ properties:
+               - microsoft,makepeace
+               - microsoft,moneypenny
+               - motorola,falcon
++              - motorola,titan
+               - samsung,ms013g
+               - samsung,s3ve3g
+           - const: qcom,msm8226
 
-Changes in v2:
-- Remove active-high from reg_lcd_default.
-- Add reg_vddio_disp_default, which I somehow missed in the last version.
-  (Assuming this also shouldn't use active-high)
-- Link to v1: https://patch.msgid.link/20260423-device-motorola-titan-mainline-v1-0-e1813a028cc8@disroot.org
-
-To: Bjorn Andersson <andersson@kernel.org>
-To: Konrad Dybcio <konradybcio@kernel.org>
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org
-Cc: devicetree@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-
----
-David Wales (2):
-      dt-bindings: arm: qcom: Add Motorola Moto G2 (2014)
-      ARM: dts: qcom: Support Motorola Moto G2 (2014)
-
- Documentation/devicetree/bindings/arm/qcom.yaml   |   1 +
- arch/arm/boot/dts/qcom/Makefile                   |   1 +
- arch/arm/boot/dts/qcom/msm8226-motorola-titan.dts | 350 ++++++++++++++++++++++
- 3 files changed, 352 insertions(+)
----
-base-commit: 028ef9c96e96197026887c0f092424679298aae8
-change-id: 20260404-device-motorola-titan-mainline-ff668f32562f
-
-Best regards,
---  
-David Wales <daviewales@disroot.org>
+-- 
+2.54.0
 
