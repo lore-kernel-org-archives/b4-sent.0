@@ -1,89 +1,89 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Fri, 05 Jun 2026 15:14:46 +0200
-Subject: [PATCH v7 8/8] media: qcom: camss: Enable C-PHY where available
+From: David Wales <daviewales@disroot.org>
+Subject: [PATCH v4 0/2] Add initial device tree for Motorola Moto G (2014)
+Date: Fri, 05 Jun 2026 23:19:10 +1000
+Message-Id: <20260605-device-motorola-titan-mainline-v4-0-08a7be31f05c@disroot.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260605-qcom-cphy-v7-8-426c37e9008f@ixit.cz>
-References: <20260605-qcom-cphy-v7-0-426c37e9008f@ixit.cz>
-In-Reply-To: <20260605-qcom-cphy-v7-0-426c37e9008f@ixit.cz>
-To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
- Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
- Bryan O'Donoghue <bod@kernel.org>, 
- Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Luca Weiss <luca.weiss@fairphone.com>, Petr Hodina <phodina@protonmail.com>, 
- "Dr. Git" <drgitx@gmail.com>, Cory Keitz <ckeitz@amazon.com>, 
- Loic Poulain <loic.poulain@oss.qualcomm.com>
-Cc: Frank Li <Frank.Li@nxp.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Kieran Bingham <kbingham@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, linux-media@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1392; i=david@ixit.cz;
- h=from:subject:message-id; bh=yfuNEpBnQgvYmUSkvI5U4j/G6UateQzCMCBG6SxmfO0=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqIsvCGPCeA6Vs/cZWC74UxxwO3XMTA73Yifj1y
- nb6TtTIXdqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaiLLwgAKCRBgAj/E00kg
- cvDwD/9N0SLyhXrNDXxcob+1QDH1XlDJH/a9IgDU+RMX/2YzGvIj5sE8A/LrCVcQjRW4xv+yVmU
- xhBOqmZRyWEqVJb8JYS3wto2Hjg3x88u5z5Xn7v0bI5J1fS4/pCFnQLlgEmWdm0ObtjDWmt83lH
- RZ7RebCn0YSnhvZwflkWGM5syyA2wBJkl3Mear/zJcXDg7MLysiXNxG62S+tENla3NldYYtook3
- Dwf41MF56Qqo/jPwESXhHqgfLsKjFGlhayui9Gbp5LDrfbph4BBna9pKZ3wsU3FZVoH3IkG7hhS
- 7d2EWCMg2nihfN+6Zuxbog0KajAoKupv6QGXeilQuTlAB8Wu78CSXmI3IMxYOm6yz8uRJqfVtWv
- fn7VifJEjATmL0epGJS4Hat8Ev4NY3vGH/uzuJSO0Bd1GK6FgR0FqCNgZQJi8btNH1N1139HA/H
- xU0HtFCJrBlB8VZS/6KTQf+ot14T8c9aE6gIAj5yxy7+PmyQ/uoni4/wlxo8LMdsVHujyTZD8Fq
- +Yibhb+0GWuSWJf++z2pdKkIVNCCrAMp/7w/sut95OOkDarfuIXhnv3pVbw7GQ5rlJWt/CG/FSO
- XojozBjaDbxwI3h8qI5W7NUqULsmu2Acg1i/aQ4QSPFpnf87+UDxj1GfmxES41+1O9MfH6VllEM
- jHoOngc8lFjLKkA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XOzW7CMBAE4FdBPtfVep0ftyfeA3FwnTVsBXZlm
+ wgU5d3rUCRa9ZDjSKNvZhKZElMW75tJJBo5cww1NC8b4Y42HEjyULNAwA4aaORQS47kOZaY4sn
+ KwsUGebYcThxIet91xmtsO/SiIl+JPF/vA7v9T86Xj09yZVGXxpFzpW73B6Naeo8x1Gtjo5IgS
+ RmlLaBxzmwHzinG8hrTQSxzIz7BFnAVxAq6/k1h37u+Afsf1L/BdhXUFTTeeYsGqB3gLzjP8zc
+ GGszWggEAAA==
+X-Change-ID: 20260404-device-motorola-titan-mainline-ff668f32562f
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ David Wales <daviewales@disroot.org>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1857;
+ i=daviewales@disroot.org; h=from:subject:message-id;
+ bh=J/BBiDOtg87dY6XX/rpTbFHNhKF1CVqcYk+STuw6bIo=;
+ b=owEBbQGS/pANAwAKAW1jV4FG9KFmAcsmYgBqIszXmtullhdX19O3o0UI3LZETYtj6yQqyAecw
+ 0GWZZfC9/aJATMEAAEKAB0WIQTXikd3yUPmOPWSLPJtY1eBRvShZgUCaiLM1wAKCRBtY1eBRvSh
+ ZuSqB/9sSAXxItl+Zc/4i1daKZqk4mpqVE8gdw5+ozK9UxosI684gM/XqmhsbjcuKxQN7dP+es0
+ oXWheuLIlSbbd0gt2oKM4iPuXs8EiZHZd4LBBUmESMBUpjW1Ehjn/GQwVQSAbIP3D0xwVIVOjps
+ 75Nx4wXqqHmhhcb2fq4o3Mf5BVF7LnbSgPaVGwh7N9q0HrDZtruR+ovKgvf4yAywSChfI9QAV6M
+ WvovgR5nkb7bgagTtZIkADj6AYqIUbdTKbtuM3G+ANkLG0EF8Bfmo8w6aCTSQ6uiNHmyRGM/b6T
+ 2Hpo9qWc3ME4mZPc+WA26IJSle3oqLpx5rJd2ndWZ9WHVfmh
+X-Developer-Key: i=daviewales@disroot.org; a=openpgp;
+ fpr=8F5BAFB15444A769DC3B61684022B817D275D037
+X-Endpoint-Received: by B4 Relay for daviewales@disroot.org/default with auth_id=737
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After all the changes done we can now safely enable C-PHY for a SoC
-where it's available.
+The Motorola Moto G (2014) is the second device in the Moto G series,
+with codename motorola-titan.
 
-Acked-by: Cory Keitz <ckeitz@amazon.com>
-Reviewed-by: Bryan O'Donoghue <bod@kernel.org>
-Reviewed-by: Frank Li <Frank.Li@nxp.com>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+This series documents the motorola-titan, and adds an initial device
+tree.
+
+These patches have been previously discussed and merged into the
+downstream msm8226-mainline fork:
+https://github.com/msm8226-mainline/linux/pull/18
+
 ---
- drivers/media/platform/qcom/camss/camss.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+Changes in v4:
+- Remove reg_vddio_disp_default as it is not used.
+- Link to v3: https://patch.msgid.link/20260505-device-motorola-titan-mainline-v3-0-8fcfa280e5d0@disroot.org
 
-diff --git a/drivers/media/platform/qcom/camss/camss.c b/drivers/media/platform/qcom/camss/camss.c
-index db4e14a84a95f..555c53343a1e9 100644
---- a/drivers/media/platform/qcom/camss/camss.c
-+++ b/drivers/media/platform/qcom/camss/camss.c
-@@ -4761,21 +4761,21 @@ static int camss_parse_endpoint_node(struct device *dev,
- 	struct v4l2_fwnode_endpoint vep = { { 0 } };
- 	unsigned int i;
- 	int ret;
- 
- 	ret = v4l2_fwnode_endpoint_parse(ep, &vep);
- 	if (ret)
- 		return ret;
- 
--	/*
--	 * Most SoCs support both D-PHY and C-PHY standards, but currently only
--	 * D-PHY is supported in the driver.
--	 */
--	if (vep.bus_type != V4L2_MBUS_CSI2_DPHY) {
-+	switch (vep.bus_type) {
-+	case V4L2_MBUS_CSI2_CPHY:
-+	case V4L2_MBUS_CSI2_DPHY:
-+		break;
-+	default:
- 		dev_err(dev, "Unsupported bus type %d\n", vep.bus_type);
- 		return -EINVAL;
- 	}
- 
- 	csd->interface.csiphy_id = vep.base.port;
- 
- 	mipi_csi2 = &vep.bus.mipi_csi2;
- 	lncfg->num_data = mipi_csi2->num_data_lanes;
+Changes in v3:
+- Add missing trailers to commits
+- Link to v2: https://patch.msgid.link/20260502-device-motorola-titan-mainline-v2-0-c791277c740a@disroot.org
 
--- 
-2.53.0
+Changes in v2:
+- Remove active-high from reg_lcd_default.
+- Add reg_vddio_disp_default, which I somehow missed in the last version.
+  (Assuming this also shouldn't use active-high)
+- Link to v1: https://patch.msgid.link/20260423-device-motorola-titan-mainline-v1-0-e1813a028cc8@disroot.org
+
+To: Bjorn Andersson <andersson@kernel.org>
+To: Konrad Dybcio <konradybcio@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+David Wales (2):
+      dt-bindings: arm: qcom: Add Motorola Moto G2 (2014)
+      ARM: dts: qcom: Support Motorola Moto G2 (2014)
+
+ Documentation/devicetree/bindings/arm/qcom.yaml   |   1 +
+ arch/arm/boot/dts/qcom/Makefile                   |   1 +
+ arch/arm/boot/dts/qcom/msm8226-motorola-titan.dts | 350 ++++++++++++++++++++++
+ 3 files changed, 352 insertions(+)
+---
+base-commit: 028ef9c96e96197026887c0f092424679298aae8
+change-id: 20260404-device-motorola-titan-mainline-ff668f32562f
+
+Best regards,
+--  
+David Wales <daviewales@disroot.org>
 
