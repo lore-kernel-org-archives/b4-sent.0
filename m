@@ -1,11 +1,11 @@
 From: Ricardo Pardini <ricardo@pardini.net>
-Date: Fri, 05 Jun 2026 13:49:09 +0200
-Subject: [PATCH v3 2/3] arm64: dts: rockchip: describe PCIe RTL8125
- Ethernet on NanoPC-T6
+Date: Fri, 05 Jun 2026 13:49:10 +0200
+Subject: [PATCH v3 3/3] arm64: dts: rockchip: describe PCIe RTL8125
+ Ethernet on Radxa ROCK 5 family
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260605-rk3588-dts-rtl-eth-describe-dt-alias-v3-2-8a8857b39daf@pardini.net>
+Message-Id: <20260605-rk3588-dts-rtl-eth-describe-dt-alias-v3-3-8a8857b39daf@pardini.net>
 References: <20260605-rk3588-dts-rtl-eth-describe-dt-alias-v3-0-8a8857b39daf@pardini.net>
 In-Reply-To: <20260605-rk3588-dts-rtl-eth-describe-dt-alias-v3-0-8a8857b39daf@pardini.net>
 To: Heiner Kallweit <hkallweit1@gmail.com>, nic_swsd@realtek.com, 
@@ -19,72 +19,52 @@ Cc: Sebastian Reichel <sebastian.reichel@collabora.com>,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-rockchip@lists.infradead.org, Ricardo Pardini <ricardo@pardini.net>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1934; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=W2w/PoU4s6DqcVmFVZT9MimBtV8OSlVybuPObx2ytBQ=;
- b=owEBiQF2/pANAwAIATteP+Oex+3pAcsmYgBqIre63bdXcPGOPT4kHwiCkKL0PahvOJ6pVxSe+
- BWucMQ/B6yJAU8EAAEIADkWIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCaiK3uhsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwwLDMACgkQO14/457H7em5JwgAr3H1dC/AWEzT8lrcRvq2n8QfzPECBk+
- upbQ2zekA9NwTeJj3x2xJLfqkd6mLqBQ2tMdkKDARnrbvWOATDdwbvWMXhWbNI0f90L5sdEpgL4
- dM2Yi/gVsmaBCVn9qOqW6qB9IxNAKALyMYMHg0qt9CZVfGY0emxoI2bRfvX2Rps2neyAe4LCOuM
- no8+nUf2Hmjv3TNnOnqciG3Vn98GvYbkFPiSndF+787xYVOsAmNvPPD8o1gbOtqH3GmVMoxZNog
- OoP9MXSdwMgm1okdW6zjv/5R66x2seEn964Q/KCWYqUKg8NPY6u7V41B7F1Tecyy+ds5jZUECyO
- eoUt1v6kAJA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2538; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=LIHBog7PhWwzcEUxupyYX2T61C7BO4xNMja5vQwH5CY=;
+ b=owEBiQF2/pANAwAIATteP+Oex+3pAcsmYgBqIre6wIJM7RZgDPgD8s8SkQDIHoW/1tRPAy5pM
+ btIcvSngIOJAU8EAAEIADkWIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCaiK3uhsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQO14/457H7enuGQf/bFJ3vTxCExUxai35sb1UlnEHaKf+G/g
+ XqJqRHri2pqDatFcSlBlySzP5hmTBcylm3Hyglr1BR2WoGS6A/2KyTVym+a+PqLBoObl5Czbspp
+ oa8Vk4d2WWNdxRFL0kq9De4vFvA93AiYjQ4xfziFiIZ7aj9k7ZrBsvkA0vaRVal8Y5JZ4joxEpp
+ koiyDqBvMgUKUa2JxRJ5trtQAwhjAaf69+6FdFd28Hejxitz+MzQ24gfi60evQMxE9m0vUgRYmr
+ jcvAJpNpTToqnOhedvsVAspBUUUeCwCgtsr2fGoQbaZVQ2GP/awi5bOyD3TskIfvnId7aEHhKO9
+ 7FlDSYuKICQ==
 X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
  fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
 X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The FriendlyElec NanoPC-T6 carries two on-board Realtek RTL8125 NICs
-behind pcie2x1l0 and pcie2x1l2.
+The Radxa ROCK 5B / 5B+ / 5T all carry on-board Realtek RTL8125 NICs.
 
 Describe the fixed function nodes and attach ethernet0/ethernet1
 aliases, so that U-Boot's fdt_fixup_ethernet() can inject mac-address
-properties from its ethaddr/eth1addr env. The on-NIC EEPROMs on this
-board are not pre-programmed with a unique MAC, so this gives a
-stable MAC across boots that both U-Boot and the kernel agree on.
+properties from its ethaddr/eth1addr env, for stable MACs across
+boots that both U-Boot and the kernel agree on.
+
+The RTL8125 on pcie2x1l2 is shared by all three variants. The ROCK 5T
+additionally describes pcie2x1l1 with its second RTL8125.
 
 Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
 ---
- arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi | 30 ++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+ .../arm64/boot/dts/rockchip/rk3588-rock-5b-5bp-5t.dtsi | 15 +++++++++++++++
+ arch/arm64/boot/dts/rockchip/rk3588-rock-5t.dts        | 18 ++++++++++++++++++
+ 2 files changed, 33 insertions(+)
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
-index 84b6b53f016ab..04c4479f08170 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
-@@ -20,6 +20,8 @@ / {
- 	compatible = "friendlyarm,nanopc-t6", "rockchip,rk3588";
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-rock-5b-5bp-5t.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-rock-5b-5bp-5t.dtsi
+index bf4a1d2e55ca3..1b48f57638fca 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588-rock-5b-5bp-5t.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588-rock-5b-5bp-5t.dtsi
+@@ -10,6 +10,7 @@
  
+ / {
  	aliases {
 +		ethernet0 = &rtl_eth0;
-+		ethernet1 = &rtl_eth1;
  		mmc0 = &sdhci;
  		mmc1 = &sdmmc;
- 	};
-@@ -635,6 +637,20 @@ &pcie2x1l0 {
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&pcie2_0_rst>;
- 	status = "okay";
-+
-+	pcie@0,0 {
-+		reg = <0x200000 0 0 0 0>;
-+		#address-cells = <3>;
-+		#size-cells = <2>;
-+		ranges;
-+		device_type = "pci";
-+		bus-range = <0x20 0x2f>;
-+
-+		rtl_eth0: ethernet@0,0 {
-+			compatible = "pci10ec,8125";
-+			reg = <0x210000 0 0 0 0>;
-+		};
-+	};
- };
- 
- &pcie2x1l1 {
-@@ -651,6 +667,20 @@ &pcie2x1l2 {
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&pcie2_2_rst>;
+ 		mmc2 = &sdio;
+@@ -482,6 +483,20 @@ &pcie2x1l2 {
+ 	reset-gpios = <&gpio3 RK_PB0 GPIO_ACTIVE_HIGH>;
+ 	vpcie3v3-supply = <&vcc3v3_pcie2x1l2>;
  	status = "okay";
 +
 +	pcie@0,0 {
@@ -95,9 +75,45 @@ index 84b6b53f016ab..04c4479f08170 100644
 +		device_type = "pci";
 +		bus-range = <0x40 0x4f>;
 +
-+		rtl_eth1: ethernet@0,0 {
++		rtl_eth0: ethernet@0,0 {
 +			compatible = "pci10ec,8125";
 +			reg = <0x410000 0 0 0 0>;
++		};
++	};
+ };
+ 
+ &pcie30phy {
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-rock-5t.dts b/arch/arm64/boot/dts/rockchip/rk3588-rock-5t.dts
+index 425036146b6d9..116e3512c4413 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588-rock-5t.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3588-rock-5t.dts
+@@ -8,6 +8,10 @@ / {
+ 	model = "Radxa ROCK 5T";
+ 	compatible = "radxa,rock-5t", "rockchip,rk3588";
+ 
++	aliases {
++		ethernet1 = &rtl_eth1;
++	};
++
+ 	analog-sound {
+ 		compatible = "audio-graph-card";
+ 		label = "rk3588-es8316";
+@@ -76,6 +80,20 @@ &pcie2x1l1 {
+ 	reset-gpios = <&gpio4 RK_PA2 GPIO_ACTIVE_HIGH>;
+ 	vpcie3v3-supply = <&vcc3v3_pcie2x1l1>;
+ 	status = "okay";
++
++	pcie@0,0 {
++		reg = <0x300000 0 0 0 0>;
++		#address-cells = <3>;
++		#size-cells = <2>;
++		ranges;
++		device_type = "pci";
++		bus-range = <0x30 0x3f>;
++
++		rtl_eth1: ethernet@0,0 {
++			compatible = "pci10ec,8125";
++			reg = <0x310000 0 0 0 0>;
 +		};
 +	};
  };
