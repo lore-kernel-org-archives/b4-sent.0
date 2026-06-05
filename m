@@ -1,144 +1,113 @@
-From: Ricardo Pardini <ricardo@pardini.net>
-Date: Fri, 05 Jun 2026 13:54:35 +0200
-Subject: [PATCH] arm64: dts: rockchip: fix regulator names on NanoPC-T6
+From: George Moussalem <george.moussalem@outlook.com>
+Subject: [PATCH v3 0/4] IPQ5018: Add and enable GEPHY RX and TX clocks
+Date: Fri, 05 Jun 2026 16:41:25 +0400
+Message-Id: <20260605-ipq5018-gephy-clocks-v3-0-f232d9ca0966@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260605-rk3588-dts-rockchip-nanopct6-fix-schematic-names-v1-1-15dd3b23ab1a@pardini.net>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWNQQrCMBBFr1Jm7UCaYhu8irhIJ1MzlqYlE0Uov
- btRl+/zeW8H5SyscGl2yPwSlTVVaE8NUPTpziihMlhje9ObDvPcnZ3DUBTzSjNF2TD5tG5Uepz
- kjUqRF1+E6rywom9HF+wwOcsDVO2Wud5+yevtz/ocH0zl24Hj+AC4kf6rlAAAAA==
-X-Change-ID: 20260603-rk3588-dts-rockchip-nanopct6-fix-schematic-names-a1b8d27f82e7
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Sebastian Reichel <sebastian.reichel@collabora.com>, 
- Ricardo Pardini <ricardo@pardini.net>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4043; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=kgSZTfQ3v8bdt151HvlymrV22R4yaefcQJY9/TyNagE=;
- b=owEBiQF2/pANAwAIATteP+Oex+3pAcsmYgBqIrkCKjjYJPyA0jamo3cGmC4t1a33loZ4y4QVl
- 8IxJe1nsWOJAU8EAAEIADkWIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCaiK5AhsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwwLDMACgkQO14/457H7enpNwf7BYfuQLgrCLiVvn1YHpmkizBLJrhd1kQ
- 78tWZjq4WLqeGryGR/BFiSoyZ0dsYH9tdah9Cz4MPpsLn5RvLv2rKUTRm8Ucy4kEKkijZ5aDytg
- dC7lzmx9l3iMXLbR0q80dUcn4oTRxcW4TZ8WY2MvqOccfl2C+EkQOPVhKRoEzdMCF3XbrBrnnCN
- moTgXuQQ2hDscxrEEsu+eveq2jK3jDfZwNxtmIqC8ZfW7Tv92e9Jai5hJBK5kDvoi5cnIfroKI0
- aEDi6Pp4MNYQU6NLEfnjz+FPHQOKzD4dXbouQAjB1V8hFppyve5pPhcEytS98D5oXjx1RfsrFLp
- wTJyfKLfHLw==
-X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
- fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
-X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XNTQrCMBCG4auUrI1kpn+DK+8hLkKatKHV1KQGS
+ +ndTbsSQVy+H8wzCwvaWx3YKVuY19EG6+4p8kPGVCfvrea2Sc1QYCUqAdyOj1IA8VaP3czV4FQ
+ fuCaJRSGgJilYOh29Nva1s5dr6s6Gyfl5/xJhW/+AEbjg2BhCqmtAlZ/dcxqc64/K3dhGRvxk8
+ AeDialKCQYaIjBfzLqub7iRLNcBAQAA
+X-Change-ID: 20260601-ipq5018-gephy-clocks-e8a2440178a0
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Florian Fainelli <f.fainelli@gmail.com>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ linux-arm-msm@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780663297; l=3562;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=vWoBVXItD2urAe47ImUviMmyYrwl8cRkGI9EK0YXHMU=;
+ b=+DJfZpCccG8Uq/Zp3CvuEj60cWvw3CiDrhxFmmI0lC+JkpERrWg5GCD6uP5MnxXqKQMyTqAw1
+ FBX737mUwTiBu1Ga7HWn7GQL7pFeYxlrYNLFe8Xw9v+AqBmxC6drmcZ
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Three fixed-regulator names on the NanoPC-T6 don't match the board
-schematic [1].
+Greetings,
 
-- vcc3v3_pcie2x1l0 -> vdd_mpcie_3v3
-  This GPIO-switched 3v3 regulator is labeled vcc3v3_pcie2x1l0, but
-  it is wired to and consumed by &pcie2x1l1. Per the schematic,
-  the GPIO PCIE_M2_1_PWREN controls the power net VDD_MPCIE_3.3V;
-  rename to match.
-- vdd_2v0_pldo_s3 -> vcc_2v0_pldo_s3
-  Typo in the regulator-name property of RK806-1 DCDC reg7. The node
-  label and the schematic power-net name both already use the vcc_
-  form; only the regulator-name string had vdd_.
-- vcc3v3_pcie30 -> vcc3v3_pcie_m2_0
-  The GPIO-switched 3v3 feeding the M.2 M-Key (NVMe) slot is named
-  after the PCIe controller it sits behind rather than the schematic
-  power net. The schematic names it VCC3V3_PCIE_M2_0 (produced by an
-  MP2143-based buck off VCC_5V0, enabled by PCIE_M2_0_PWREN); rename
-  to match.
+This patch series addresses a missing hardware description issue for the
+Qualcomm IPQ5018 Internal Ethernet PHY, where the data paths fail to
+function correctly unless their dedicated RX and TX clocks are
+explicitly enabled.
 
-No functional change.
+Further testing revealed that leaving these clocks unmanaged by the
+kernel, they were inadvertently left enabled by the bootloader / QSDK
+platform, which masked the issue. Testing a fresh network configuration
+path exposed that the data link fails to work without explicit software
+gating.
 
-[1] https://wiki.friendlyelec.com/wiki/images/9/97/NanoPC-T6_2301_SCH.PDF
+To correctly introduce the required multi-clock properties, the IPQ5018
+binding definition must first be split away from the shared
+qca,ar803x.yaml schema. This isolation is required because ar803x
+references the generic ethernet-phy.yaml, which enforces a strict
+single-clock limit constraint. 
 
-Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
+- Patch 1: Moves the clocks property and its restriction out of the
+	   generic ethernet-phy.yaml schema to individual bindings files
+	   that need it to allow for PHYs that require multiple clocks.
+- Patch 2: Add clocks property to qca,ar803x.yaml for the IPQ5018 PHY.
+- Patch 3: Appends the missing RX/TX clock definitions into the IPQ5018
+           device tree before driver modification to avoid the driver
+	   failing to probe.
+- Patch 4: Updates the Qualcomm AT803x PHY driver framework to acquire,
+	   enable, and gate these clocks upon link state changes for
+	   runtime power optimization.
+
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
-Align three fixed-regulator names on the NanoPC-T6 (and LTS) with
-the labels used in the board schematic: the mini-PCIe 3v3 regulator
-(whose current name is actively misleading), a vdd_/vcc_ typo on
-RK806-1 DCDC reg7, and the M.2 M-Key 3v3 supply (named after the
-PCIe controller rather than the schematic power net).
+Changes in v3:
+- Revert the change to move the clocks property out of the generic
+  ethernet-phy.yaml schema and simple increase the maxItems limit to 2.
+- Listed clocks, clock-names, and resets as required properties in the
+  schema.
+- Acquire the RX and TX clock during probe without enabling them. Then
+  enable/disable the clocks in the link state change callback to ensure
+  they are only active when needed with checks to avoid redundant
+  enable/disable calls.
+- Re-ran make dt_binding_check on all schemas in net folder without new
+  issues.
+- Link to v2: https://lore.kernel.org/r/20260602-ipq5018-gephy-clocks-v2-0-65a1f1d881f3@outlook.com
 
-Using actual schematic names was pointed out by Sebastian during
-review of an earlier (and mostly unrelated) series [1].
-
-No functional change.
-
-[1] https://lore.kernel.org/linux-rockchip/ah2AYT4XmYR03I7z@venus/
----
- arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
-
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
-index 84b6b53f016ab..b44aff39cb32e 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
-@@ -201,25 +201,25 @@ vbus5v0_usb: regulator-vbus5v0-usb {
- 		vin-supply = <&vcc5v0_sys>;
- 	};
- 
--	vcc3v3_pcie2x1l0: regulator-vcc3v3-pcie2x1l0 {
-+	vdd_mpcie_3v3: regulator-vdd-mpcie-3v3 {
- 		compatible = "regulator-fixed";
- 		enable-active-high;
- 		gpio = <&gpio4 RK_PC2 GPIO_ACTIVE_HIGH>;
- 		pinctrl-names = "default";
- 		pinctrl-0 = <&pcie_m2_1_pwren>;
--		regulator-name = "vcc3v3_pcie2x1l0";
-+		regulator-name = "vdd_mpcie_3v3";
- 		regulator-min-microvolt = <3300000>;
- 		regulator-max-microvolt = <3300000>;
- 		vin-supply = <&vcc5v0_sys>;
- 	};
- 
--	vcc3v3_pcie30: regulator-vcc3v3-pcie30 {
-+	vcc3v3_pcie_m2_0: regulator-vcc3v3-pcie-m2-0 {
- 		compatible = "regulator-fixed";
- 		enable-active-high;
- 		gpios = <&gpio2 RK_PC5 GPIO_ACTIVE_HIGH>;
- 		pinctrl-names = "default";
- 		pinctrl-0 = <&pcie_m2_0_pwren>;
--		regulator-name = "vcc3v3_pcie30";
-+		regulator-name = "vcc3v3_pcie_m2_0";
- 		regulator-min-microvolt = <3300000>;
- 		regulator-max-microvolt = <3300000>;
- 		vin-supply = <&vcc5v0_sys>;
-@@ -639,7 +639,7 @@ &pcie2x1l0 {
- 
- &pcie2x1l1 {
- 	reset-gpios = <&gpio4 RK_PA2 GPIO_ACTIVE_HIGH>;
--	vpcie3v3-supply = <&vcc3v3_pcie2x1l0>;
-+	vpcie3v3-supply = <&vdd_mpcie_3v3>;
- 	pinctrl-names = "default";
- 	pinctrl-0 = <&pcie2_1_rst>;
- 	status = "okay";
-@@ -659,7 +659,7 @@ &pcie30phy {
- 
- &pcie3x4 {
- 	reset-gpios = <&gpio4 RK_PB6 GPIO_ACTIVE_HIGH>;
--	vpcie3v3-supply = <&vcc3v3_pcie30>;
-+	vpcie3v3-supply = <&vcc3v3_pcie_m2_0>;
- 	status = "okay";
- };
- 
-@@ -965,7 +965,7 @@ vcc_2v0_pldo_s3: dcdc-reg7 {
- 				regulator-min-microvolt = <2000000>;
- 				regulator-max-microvolt = <2000000>;
- 				regulator-ramp-delay = <12500>;
--				regulator-name = "vdd_2v0_pldo_s3";
-+				regulator-name = "vcc_2v0_pldo_s3";
- 
- 				regulator-state-mem {
- 					regulator-on-in-suspend;
+Changes in v2:
+- Added patch 1 to move the clocks property and its restriction out of
+  the generic ethernet-phy.yaml schema to individual bindings files that
+  need it to allow for PHYs that require multiple clocks.
+- Reverted splitting out IPQ5018 from the shared qca,ar803x.yaml schema
+  and simply added the clocks and clock-names properties to the
+  definition of the IPQ5018 PHY.
+- Corrected / updated commit title of patch 4 (qca,at803x -> at803x)
+- Link to v1: https://lore.kernel.org/r/20260601-ipq5018-gephy-clocks-v1-0-2df8287712c3@outlook.com
 
 ---
-base-commit: e43ffb69e0438cddd72aaa30898b4dc446f664f8
-change-id: 20260603-rk3588-dts-rockchip-nanopct6-fix-schematic-names-a1b8d27f82e7
+George Moussalem (4):
+      dt-bindings: net: ethernet-phy: increase max clock count to two
+      dt-bindings: net: qca,ar803x: Add clocks for IPQ5018 PHY
+      arm64: qcom: ipq5018: Add GEPHY RX and TX clocks
+      net: phy: at803x: add RX and TX clock management for IPQ5018 PHY
+
+ .../devicetree/bindings/net/ethernet-phy.yaml      |  9 +++--
+ .../devicetree/bindings/net/qca,ar803x.yaml        | 19 ++++++++++
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi              |  3 ++
+ drivers/net/phy/qcom/at803x.c                      | 43 ++++++++++++++++++++++
+ 4 files changed, 71 insertions(+), 3 deletions(-)
+---
+base-commit: 7da7f07112610a520567421dd2ffcb51beaefbcc
+change-id: 20260601-ipq5018-gephy-clocks-e8a2440178a0
 
 Best regards,
---  
-Ricardo Pardini <ricardo@pardini.net>
+-- 
+George Moussalem <george.moussalem@outlook.com>
 
