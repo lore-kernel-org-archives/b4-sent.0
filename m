@@ -1,10 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Sat, 06 Jun 2026 10:52:43 +1000
-Subject: [PATCH 09/13] arch: arm: qcom: samsung-a5u-eur binman config
+Date: Sat, 06 Jun 2026 10:52:44 +1000
+Subject: [PATCH 10/13] arch: arm: qcom: samsung-gt510 binman config
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260606-android-binman-v1-9-c7a3c14b8a3d@samcday.com>
+Message-Id: <20260606-android-binman-v1-10-c7a3c14b8a3d@samcday.com>
 References: <20260606-android-binman-v1-0-c7a3c14b8a3d@samcday.com>
 In-Reply-To: <20260606-android-binman-v1-0-c7a3c14b8a3d@samcday.com>
 To: u-boot@lists.denx.de, Sumit Garg <sumit.garg@kernel.org>, 
@@ -32,11 +32,11 @@ Cc: Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>,
  Kaustabh Chakraborty <kauschluss@disroot.org>, 
  Henrik Grimler <henrik@grimler.se>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780707158; l=1145;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780707158; l=1137;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=YnMpZ/+UQdKrPj5pR1cP+wPKrn18PiGyKsMEs5Alph8=;
- b=oIl1VVLc84UG+T9PorJXSTMe3puNHsedJbxBfLErYaDbQoWrvSw0vcB0o5pa1wG1xcCTPF7/r
- urzoemQsQe4AhVuiAaq6rzVwV33kzm4cYmozBEtWZsW2DhhJ/vOxvx7
+ bh=q0SxIURCjc44eZjkjf69qGVfGy9ts/AdxjjhWGBBf3w=;
+ b=ODaVhvaEro6AvAG3oquLYq9JiOVw1Ml2xrvmSokyAsoQtZPj5rtm34weXnWFGdFNStm8QIuV6
+ AjCVIZv0BNAC2/x2weYr7H0hWNxyncbt8bB7ZJWLoG0K4Pum0NUcf6Y
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
@@ -47,14 +47,14 @@ Emits an Android boot.img that runs U-Boot from the boot partition
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- arch/arm/dts/msm8916-samsung-a5u-eur-u-boot.dtsi | 39 ++++++++++++++++++++++++
+ arch/arm/dts/msm8916-samsung-gt510-u-boot.dtsi | 39 ++++++++++++++++++++++++++
  1 file changed, 39 insertions(+)
 
-diff --git a/arch/arm/dts/msm8916-samsung-a5u-eur-u-boot.dtsi b/arch/arm/dts/msm8916-samsung-a5u-eur-u-boot.dtsi
+diff --git a/arch/arm/dts/msm8916-samsung-gt510-u-boot.dtsi b/arch/arm/dts/msm8916-samsung-gt510-u-boot.dtsi
 new file mode 100644
-index 00000000000..c04109187c8
+index 00000000000..53f301a2b79
 --- /dev/null
-+++ b/arch/arm/dts/msm8916-samsung-a5u-eur-u-boot.dtsi
++++ b/arch/arm/dts/msm8916-samsung-gt510-u-boot.dtsi
 @@ -0,0 +1,39 @@
 +// SPDX-License-Identifier: GPL-2.0
 +
@@ -62,7 +62,7 @@ index 00000000000..c04109187c8
 +
 +/ {
 +	binman {
-+		filename = "u-boot-samsung-a5u-eur.img";
++		filename = "u-boot-samsung-gt510.img";
 +
 +		android-boot {
 +			header-version = <0>;
@@ -86,7 +86,7 @@ index 00000000000..c04109187c8
 +				qcdt {
 +					dtb-0 {
 +						qcom,msm-id = <QCOM_ID_MSM8916 0>;
-+						qcom,board-id = <0xce08ff01 1>;
++						qcom,board-id = <0xce08ff01 7>;
 +
 +						u-boot-dtb {};
 +					};
