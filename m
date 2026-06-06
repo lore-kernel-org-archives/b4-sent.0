@@ -1,11 +1,11 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Fri, 05 Jun 2026 22:42:38 -0700
-Subject: [PATCH net-next v4 07/16] net: ethernet: oa_tc6: Support for
- vendor specific MMS
+Date: Fri, 05 Jun 2026 22:42:39 -0700
+Subject: [PATCH net-next v4 08/16] net: ethernet: oa_tc6: Remove FCS size
+ in RX frame
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260605-s2500-mac-phy-support-v4-7-de0fbc13c6d8@onsemi.com>
+Message-Id: <20260605-s2500-mac-phy-support-v4-8-de0fbc13c6d8@onsemi.com>
 References: <20260605-s2500-mac-phy-support-v4-0-de0fbc13c6d8@onsemi.com>
 In-Reply-To: <20260605-s2500-mac-phy-support-v4-0-de0fbc13c6d8@onsemi.com>
 To: Andrew Lunn <andrew@lunn.ch>, 
@@ -26,104 +26,52 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Jerry Ray <jerry.ray@microchip.com>, 
  Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780724562; l=3139;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780724562; l=1396;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=nbQfy8zsWMbmAyspM8wQU+sSMRnj53ReA9nG6bU9G9A=;
- b=ckfq+FmcO98bmlF271aK9dudpewPWOwYZLOqjE0b9ajRHJWt4VAFWPAVNDYZrUM9bwn8WIbsk
- nLNC+Vr9MJVD2K36i0f9XwMV0KbLKadaTI2vVTU3fuKwWyOe77vF8vh
+ bh=Nwz8ph63R7fgKGIZDndf/9epwjHtj0F853lNYFbk53o=;
+ b=EkPoE0N561Rn6mpFwlh2B8OkMCBA4T9JKP5di9atN9IusrrG4l799ud9ZyAEVXZYpc5C9VJS3
+ +mSc/YXu2pyAT0kjQIiCQ85m8Tqggx1D5x6K486h+gwMsU2u0b79nSm
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-OPEN Alliance 10BASE-T1x Serial Interface specification, table 6
-allows vendors to use any memory map select (MMS) value between
-10 and 15. This new API interface enables vendor to map one of
-thes MMS values to MDIO_MMD_VEND1.
+OA TC6 MAC-PHY appends FCS to the incoming frame.
+It is removed from the frame before being passed to the stack.
 
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 ---
- drivers/net/ethernet/oa_tc6/oa_tc6.c | 20 +++++++++++++++++---
- include/linux/oa_tc6.h               |  1 +
- 2 files changed, 18 insertions(+), 3 deletions(-)
+ drivers/net/ethernet/oa_tc6/oa_tc6.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/net/ethernet/oa_tc6/oa_tc6.c b/drivers/net/ethernet/oa_tc6/oa_tc6.c
-index 9410cecfdc2a..2f9ace655e81 100644
+index 2f9ace655e81..26033373f16f 100644
 --- a/drivers/net/ethernet/oa_tc6/oa_tc6.c
 +++ b/drivers/net/ethernet/oa_tc6/oa_tc6.c
-@@ -202,6 +202,17 @@ int oa_tc6_ioctl(struct oa_tc6 *tc6, struct ifreq *rq, int cmd)
- }
- EXPORT_SYMBOL_GPL(oa_tc6_ioctl);
+@@ -782,12 +782,22 @@ static void oa_tc6_submit_rx_skb(struct oa_tc6 *tc6)
+ {
+ 	oa_tc6_update_ts_in_rx_skb(tc6);
  
-+/**
-+ * Add vendor specific MDIO_MMD to OA TC6 MMS mapper value.
-+ * @tc6: oa_tc6 struct.
-+ * @mms: vendor defined MMS value for VEND1 mdio device.
-+ */
-+void oa_tc6_set_vend1_mms(struct oa_tc6 *tc6, int mms)
-+{
-+	tc6->vend1_mms = mms;
-+}
-+EXPORT_SYMBOL_GPL(oa_tc6_set_vend1_mms);
++	/* MAC-PHY delivers each frame with its Ethernet FCS attached.
++	 * Strip it before handing over to the stack, unless the user
++	 * has asked to keep it via NETIF_F_RXFCS. Keeping the FCS
++	 * in the frame is harmless for IP traffic, but is parsed as
++	 * a (malformed) suffix TLV by PTP, which makes ptp4l reject
++	 * every message with "bad message" error.
++	 */
++	if (!(tc6->netdev->features & NETIF_F_RXFCS) &&
++			tc6->rx_skb->len > ETH_FCS_LEN)
++		skb_trim(tc6->rx_skb, tc6->rx_skb->len - ETH_FCS_LEN);
 +
- static __be32 oa_tc6_prepare_ctrl_header(u32 addr, u8 length,
- 					 enum oa_tc6_register_op reg_op)
- {
-@@ -455,7 +466,7 @@ static int oa_tc6_mdiobus_write(struct mii_bus *bus, int addr, int regnum,
- 				     val);
+ 	tc6->rx_skb->protocol = eth_type_trans(tc6->rx_skb, tc6->netdev);
+ 	tc6->netdev->stats.rx_packets++;
+ 	tc6->netdev->stats.rx_bytes += tc6->rx_skb->len;
+ 
+ 	netif_rx(tc6->rx_skb);
+-
+ 	tc6->rx_skb = NULL;
  }
  
--static int oa_tc6_get_phy_c45_mms(int devnum)
-+static int oa_tc6_get_phy_c45_mms(struct oa_tc6 *tc6, int devnum)
- {
- 	switch (devnum) {
- 	case MDIO_MMD_PCS:
-@@ -468,6 +479,8 @@ static int oa_tc6_get_phy_c45_mms(int devnum)
- 		return OA_TC6_PHY_C45_AUTO_NEG_MMS5;
- 	case MDIO_MMD_POWER_UNIT:
- 		return OA_TC6_PHY_C45_POWER_UNIT_MMS6;
-+	case MDIO_MMD_VEND1:
-+		return tc6->vend1_mms;
- 	default:
- 		return -EOPNOTSUPP;
- 	}
-@@ -480,7 +493,7 @@ static int oa_tc6_mdiobus_read_c45(struct mii_bus *bus, int addr, int devnum,
- 	u32 regval;
- 	int ret;
- 
--	ret = oa_tc6_get_phy_c45_mms(devnum);
-+	ret = oa_tc6_get_phy_c45_mms(tc6, devnum);
- 	if (ret < 0)
- 		return ret;
- 
-@@ -497,7 +510,7 @@ static int oa_tc6_mdiobus_write_c45(struct mii_bus *bus, int addr, int devnum,
- 	struct oa_tc6 *tc6 = bus->priv;
- 	int ret;
- 
--	ret = oa_tc6_get_phy_c45_mms(devnum);
-+	ret = oa_tc6_get_phy_c45_mms(tc6, devnum);
- 	if (ret < 0)
- 		return ret;
- 
-@@ -1281,6 +1294,7 @@ struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev)
- 	SET_NETDEV_DEV(netdev, &spi->dev);
- 	mutex_init(&tc6->spi_ctrl_lock);
- 	spin_lock_init(&tc6->tx_skb_lock);
-+	tc6->vend1_mms = -EOPNOTSUPP;
- 	tc6->tx_ts_idx = OA_TC6_TTSCA_REG_ID;
- 	INIT_LIST_HEAD(&tc6->tx_ts_skb_q);
- 
-diff --git a/include/linux/oa_tc6.h b/include/linux/oa_tc6.h
-index 4047c22a366a..a89151267713 100644
---- a/include/linux/oa_tc6.h
-+++ b/include/linux/oa_tc6.h
-@@ -47,5 +47,6 @@ void oa_tc6_get_ts_stats(struct oa_tc6 *tc6,
- 			 struct ethtool_ts_stats *ts_stats);
- int oa_tc6_hwtstamp_set(struct oa_tc6 *tc6,
- 			struct kernel_hwtstamp_config *cfg);
-+void oa_tc6_set_vend1_mms(struct oa_tc6 *tc6, int mms);
- void oa_tc6_ptp_unregister(struct oa_tc6 *tc6);
- #endif /* _LINUX_OA_TC6_H */
 
 -- 
 2.43.0
