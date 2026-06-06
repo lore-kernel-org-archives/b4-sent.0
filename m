@@ -1,13 +1,12 @@
 From: Herman van Hazendonk <github.com@herrie.org>
-Subject: [PATCH v4 0/2] media: i2c: add Aptina MT9M113 image sensor driver
-Date: Sat, 06 Jun 2026 10:17:57 +0200
-Message-Id: <20260606-submit-media-mt9m113-v4-0-046b4cbc7f94@herrie.org>
+Date: Sat, 06 Jun 2026 10:17:58 +0200
+Subject: [PATCH v4 1/2] dt-bindings: media: i2c: add aptina,mt9m113
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIALbXI2oC/x2MQQqAIBAAvxJ7bsFMJPtKdCjbag9aaEUg/j2JO
- c1hJkGkwBShrxIEejjy4YuougK7T34j5KU4SCG1KGC8Z8cXOlp4QncZ1zQtSiVtN5M2ZASU9Ay
- 08vtvhzHnD9tQ+blmAAAA
+Message-Id: <20260606-submit-media-mt9m113-v4-1-046b4cbc7f94@herrie.org>
+References: <20260606-submit-media-mt9m113-v4-0-046b4cbc7f94@herrie.org>
+In-Reply-To: <20260606-submit-media-mt9m113-v4-0-046b4cbc7f94@herrie.org>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -15,91 +14,161 @@ To: Mauro Carvalho Chehab <mchehab@kernel.org>,
 Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Herman van Hazendonk <github.com@herrie.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780733878; l=3845;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780733878; l=4154;
  i=github.com@herrie.org; s=20240417; h=from:subject:message-id;
- bh=F/6oEepyPd63WZNPjLRITrV5xNoQfnuFOmwjm6Tgq+M=;
- b=+gXCPqcUD2GXQ/cSDcEF8ziXy4lvSawR6zHJDGhNKwlA7UPmHI9NEgXE5nE2Mb5PsgvD5JNNb
- mwqAwRIht3DDkGC1ww6pP2srFw2gf50XuhjFErrFKsyc10Vw82ez8+/
+ bh=4A9cg1j0DPHiAbho6PLcd9YrxAZyAPEE5WDFEqhZNps=;
+ b=dxeWuttAslg8bknKZpipEaLGBE7tKzgFvjZIFUpLSjmxYrOkxVsJ00mEH0xNcjtNkGcx0G6xQ
+ E9nEkcQMTi1AtFB5vkBa5loT5L3CEKDQYhyTmBXF3wUwv7HUGNKn9Zd
 X-Developer-Key: i=github.com@herrie.org; a=ed25519;
  pk=YYxdq8fb5O9vhkW3n2dCH044FPZZO5718v/du7fRhFw=
 X-Endpoint-Received: by B4 Relay for github.com@herrie.org/20240417 with auth_id=809
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a V4L2 subdev driver for the Aptina (now ON Semiconductor) MT9M113
-1.3 megapixel SoC image sensor with embedded ISP, as used on the HP
-TouchPad (apq8060) front camera. The sensor is programmed over I2C and
-streams YUV / RGB / monochrome over a 1-lane MIPI CSI-2 D-PHY link.
+Add the binding for the Aptina (now ON Semiconductor) MT9M113 1.3
+megapixel SoC image sensor with on-die ISP. The chip is used as the
+front (user-facing) camera on the HP TouchPad tablet and connects
+to the host SoC over MIPI CSI-2.
 
-Tested on HP TouchPad (Qualcomm APQ8060), front camera. The 10-mode
-test-camera.sh sweep passes all of pix640 / pix640-nv16 / pix1280 /
-pix1280-nv16 / video640 / video640-nv16 / video1280 / video1280-nv16 /
-zsl640 / zsl1280 with exact frame-size matches and no MCU wedge
-messages in dmesg.
+The binding describes the chip's i2c address, optional reset and
+standby GPIOs, the per-supply regulators (VDD, VDD_IO, VDDA), the
+external clock input, and the CSI-2 endpoint pads exposed via the
+"port" subnode.
 
-Changes since v3:
-
-  - Fix Context B (1280x1024 capture) stream-start regression. The
-    MT9M113_SEQ_STATE_PREVIEW constant was 0x04 (== datasheet's
-    "Leave preview" transient state); the actual stable preview state
-    is 0x03. The Context-B preview-first step in stream_context_b()
-    polled for 0x04 and timed out on every 1280x1024 stream-start
-    with "MCU not ready for CAPTURE command -> stream start failed
-    (-110)". Constant corrected to 0x03 with explanatory comment.
-    Verified by passing pix1280 / video1280 / zsl1280 in the sweep
-    above; Context A (640x480) behaviour unchanged.
-
-  - Document an extensive forensic investigation of the IFP test-
-    pattern generator (R0x0066 mode_test_mode, MCU logical addr
-    0x2766) in a NOTE comment above the MODE_TEST_MODE define. The
-    V4L2_CID_TEST_PATTERN control plumbing is retained, but on the
-    HP TouchPad's MT9M113 die the IFP TPG MUX never engages despite
-    every documented and undocumented enable path: writes to R0x2766
-    stick across REFRESH; SEQ_MODE = 0 verifiably silences the MCU
-    firmware drivers (visible darkening from AE-off); the IFP color
-    pipeline can be stripped to nothing (R0x3210 = 0); none of it
-    yields a visible pattern. R0x321C bit 4 is hardwired to 0 and
-    R0x3246..R0x3252 (where the mt9d111-inherited test-mode register
-    lives in the page-flattened address space) is a continuous dead
-    block - classic Aptina foundry-removal fingerprints. No public
-    driver in the MT9M113/V113/D113 family (HP webOS, codeaurora
-    msm-3.4, esp_cam_sensor mt9d111, upstream mt9m114, etc.) drives
-    this register either, consistent with the silicon-removal
-    diagnosis. The plumbing stays in case a different silicon variant
-    or vendor SROM patch actually wires up the TPG block; setting
-    test_pattern > 0 on the current die is harmless (writes succeed,
-    no pattern appears).
-
-  - No driver behaviour changes for AE / AWB / HFLIP / VFLIP /
-    COLORFX / SATURATION / POWER_LINE_FREQUENCY / EXPOSURE /
-    ANALOGUE_GAIN / AUTO_WHITE_BALANCE controls or for the standard
-    stream-start path; all addressed in v3.
-
-Changes since v2 (already in v3):
-
-  - Address Krzysztof + Sakari binding feedback: maxItems on
-    reset-gpios / powerdown-gpios; drop |- from descriptions; drop
-    redundant link-frequencies / remote-endpoint / data-lanes;
-    rename i2c0 -> i2c in example.
-
-  - Add MAINTAINERS entry per patchwork checkpatch.
-
+Assisted-by: Claude:claude-opus-4-7 Sashiko:claude-haiku-4-5
 Signed-off-by: Herman van Hazendonk <github.com@herrie.org>
 ---
-Herman van Hazendonk (2):
-      dt-bindings: media: i2c: add aptina,mt9m113
-      media: i2c: add Aptina MT9M113 1.3 Mpx SoC sensor driver
+ .../bindings/media/i2c/aptina,mt9m113.yaml         | 122 +++++++++++++++++++++
+ 1 file changed, 122 insertions(+)
 
- .../bindings/media/i2c/aptina,mt9m113.yaml         |  122 +
- MAINTAINERS                                        |    8 +
- drivers/media/i2c/Kconfig                          |   12 +
- drivers/media/i2c/Makefile                         |    1 +
- drivers/media/i2c/mt9m113.c                        | 3114 ++++++++++++++++++++
- 5 files changed, 3257 insertions(+)
----
-base-commit: 944125b4c454b58d2fe6e35f1087a932b2050dff
-change-id: 20260606-submit-media-mt9m113-242c8be69e90
+diff --git a/Documentation/devicetree/bindings/media/i2c/aptina,mt9m113.yaml b/Documentation/devicetree/bindings/media/i2c/aptina,mt9m113.yaml
+new file mode 100644
+index 000000000000..72b827c47b1d
+--- /dev/null
++++ b/Documentation/devicetree/bindings/media/i2c/aptina,mt9m113.yaml
+@@ -0,0 +1,122 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/media/i2c/aptina,mt9m113.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Aptina MT9M113 1.3 Megapixel CMOS Digital Image Sensor
++
++maintainers:
++  - Herman van Hazendonk <github.com@herrie.org>
++
++description:
++  The Aptina MT9M113 is a 1.3 Megapixel CMOS digital image sensor with
++  1280x1024 active pixels. It supports dual context operation
++  Context A (640x480 preview mode with binning) and Context B (1280x1024
++  capture mode). It is programmable through an I2C interface and outputs
++  image data over a 1-lane MIPI CSI-2 connection.
++
++properties:
++  compatible:
++    const: aptina,mt9m113
++
++  reg:
++    description: I2C device address
++    enum:
++      - 0x3c
++      - 0x48
++      - 0x5d
++
++  clocks:
++    description: EXTCLK clock signal (24 MHz typical)
++    maxItems: 1
++
++  vdd-supply:
++    description:
++      Core digital voltage supply, 1.8V
++
++  vddio-supply:
++    description:
++      I/O digital voltage supply, 1.8V or 2.8V
++
++  vaa-supply:
++    description:
++      Analog voltage supply, 2.8V
++
++  reset-gpios:
++    maxItems: 1
++    description:
++      GPIO connected to the RESET_BAR pin, if any (active low). The MT9M113
++      has a single RESET_BAR pin.
++
++  powerdown-gpios:
++    maxItems: 1
++    description:
++      GPIO connected to the STANDBY/PWDN pin, if any (active high). When
++      asserted, the sensor enters low-power standby mode. The MT9M113 has
++      a single STANDBY/PWDN pin.
++
++  port:
++    $ref: /schemas/graph.yaml#/$defs/port-base
++    additionalProperties: false
++
++    properties:
++      endpoint:
++        $ref: /schemas/media/video-interfaces.yaml#
++        unevaluatedProperties: false
++
++        properties:
++          bus-type:
++            const: 4
++            description: MIPI CSI-2 D-PHY
++
++        required:
++          - bus-type
++          - link-frequencies
++
++    required:
++      - endpoint
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - vdd-supply
++  - vddio-supply
++  - vaa-supply
++  - port
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++    #include <dt-bindings/media/video-interfaces.h>
++
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        camera@3c {
++            compatible = "aptina,mt9m113";
++            reg = <0x3c>;
++
++            clocks = <&mmcc 48>;
++
++            reset-gpios = <&pm8058_gpio 29 GPIO_ACTIVE_LOW>;
++            powerdown-gpios = <&pm8058_gpio 30 GPIO_ACTIVE_HIGH>;
++
++            vddio-supply = <&pm8058_l15>;
++            vdd-supply = <&pm8058_l15>;
++            vaa-supply = <&pm8058_l14>;
++
++            port {
++                mt9m113_ep: endpoint {
++                    bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
++                    link-frequencies = /bits/ 64 <384000000>;
++                    remote-endpoint = <&csiphy1_ep>;
++                };
++            };
++        };
++    };
++...
 
-Best regards,
 -- 
-Herman van Hazendonk <github.com@herrie.org>
+2.43.0
 
