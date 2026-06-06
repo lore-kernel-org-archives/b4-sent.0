@@ -1,14 +1,12 @@
 From: Sam Day <me@samcday.com>
-Subject: [PATCH 00/11] PM8916 PON support
-Date: Sat, 06 Jun 2026 18:47:31 +1000
-Message-Id: <20260606-pm8916-pon-v1-0-170c9cbe5099@samcday.com>
+Date: Sat, 06 Jun 2026 18:47:32 +1000
+Subject: [PATCH 01/11] button: qcom-pmic: introduce exported setup method
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDMwNj3YJcC0tDM92C/Dxdc2OLFHMzsyQLAwMzJaCGgqLUtMwKsGHRsbW
- 1APuEVJtcAAAA
-X-Change-ID: 20260603-pm8916-pon-738d766b8006
+Message-Id: <20260606-pm8916-pon-v1-1-170c9cbe5099@samcday.com>
+References: <20260606-pm8916-pon-v1-0-170c9cbe5099@samcday.com>
+In-Reply-To: <20260606-pm8916-pon-v1-0-170c9cbe5099@samcday.com>
 To: u-boot@lists.denx.de, Sumit Garg <sumit.garg@kernel.org>, 
  u-boot-qcom@groups.io
 Cc: Tom Rini <trini@konsulko.com>, 
@@ -33,88 +31,91 @@ Cc: Tom Rini <trini@konsulko.com>,
  Mattijs Korpershoek <mkorpershoek@kernel.org>, 
  Peter Robinson <pbrobinson@gmail.com>, 
  Ariel D'Alessandro <ariel.dalessandro@collabora.com>, 
- Dmitrii Merkurev <dimorinny@google.com>, Sam Day <me@samcday.com>, 
- Simon Glass <sjg@chromium.org>
+ Dmitrii Merkurev <dimorinny@google.com>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780735669; l=3258;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780735669; l=2256;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=ticXsztP8o8s+OSoF+Wy8kc3BBouMVa5KxJj3EXqX6E=;
- b=NrkZfaEIEZBHcA+WCR/lELA1BCf+1KR7SKSDKXk6B+lRRIvYKPaJM8+4qmqiX/ifwomw1favI
- ZMOPQ4CXG4IA6NqjI9HsJaqc1PJsPwMlZ0EU90/q+RM/ujwLDBOdkbB
+ bh=oTF4eBQpgeurSjGv0sN01MsXdq3y55kE5LVS7G1ONMw=;
+ b=JrFh35c8rOLG6/VBROQi+EqmMPeDVSDSc0Ba6wjxWWaiIdtcfypmHpEWqHw5A6ynBOu62JS/t
+ pW4mwq4kGr2D5F+SMmizY3LF43JuSoJS0tRNIuocvAwTwsclsoX41bu
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series introduces sysreset + reboot-mode drivers for PM8916 PON.
+The qcom_pwrkey driver is currently binding to both the individual
+pwrkey/resin nodes, as well as the parent pon node.
 
-Additionally, fastboot gains support for driving DM reboot-mode, so that
-`fastboot reboot bootloader` works as you'd expect.
+In the next commit, a new glue driver will be introduced for pm8916_pon,
+which will continue binding these buttons, as well as additional
+drivers.
 
-This series should be considered supplementary and slightly alternative
-to Aswin's NVMEM-based approach currently on the list. I cherry-picked
-Aswin's commit for adding reboot-mode detection to mach-snapdragon
-board code.
+button_qcom_pmic_bind was renamed to button_qcom_pmic_setup and exported
+in a shared header, which the new pm8916_pon driver will call.
 
-I think a native PON driver for the older (non-SDAM) PMICs should exist,
-rather than trying to bridge the gap with synthetic NVMEM DT nodes. The
-main issue is that we'd need to define these overrides for every
-device/SoC-family since those nodes don't (and won't?) exist in the
-mainline kernel.
-
-The other main differences between this series and Aswin's are:
-
- * A sysreset driver is implemented, in addition to reboot-mode. This is
-   what makes the poweroff command work on MSM8916 and other older
-   platforms lacking a (sane, or any at all) PSCI implementation.
- * The DM reboot-mode-driven fastboot_set_reboot_flag implementation,
-   which is what makes `fastboot reboot bootloader` work.
-
-I think the PON infra introduced in this series can be generalized out
-beyond PM8916, but I decided to stop here and leave further
-generalization up to a follow-up series (or follow-up version, depending
-on feedback!)
-
-Link: https://lore.kernel.org/u-boot/20260521180549.282377-1-aswin.murugan@oss.qualcomm.com/
 Signed-off-by: Sam Day <me@samcday.com>
 ---
-Aswin Murugan (1):
-      mach-snapdragon: Integrate reboot-mode handling
+ drivers/button/button-qcom-pmic.c |  6 +++---
+ include/button/qcom-pmic.h        | 17 +++++++++++++++++
+ 2 files changed, 20 insertions(+), 3 deletions(-)
 
-Sam Day (10):
-      button: qcom-pmic: introduce exported setup method
-      drivers: misc: pm8916_pon: add glue driver
-      qcom_defconfig: enable PM8916_PON
-      drivers: misc: pm8916_pon: support setting reboot type
-      sysreset: qcom-pshold: PM8916 PON reset type support
-      qcom_defconfig: enable poweroff command
-      reboot-mode: pm8916-pon: add new driver
-      reboot-mode: reboot method activation support
-      fastboot: DM_REBOOT_MODE reset support
-      qcom_defconfig: enable reboot modes
+diff --git a/drivers/button/button-qcom-pmic.c b/drivers/button/button-qcom-pmic.c
+index b823490d6d5..d9ac6a51df5 100644
+--- a/drivers/button/button-qcom-pmic.c
++++ b/drivers/button/button-qcom-pmic.c
+@@ -13,9 +13,9 @@
+ #include <dm/lists.h>
+ #include <log.h>
+ #include <power/pmic.h>
+-#include <spmi/spmi.h>
+ #include <linux/bitops.h>
+ #include <time.h>
++#include "button/qcom-pmic.h"
+ 
+ #define REG_TYPE		0x4
+ #define REG_SUBTYPE		0x5
+@@ -174,7 +174,7 @@ static int qcom_pwrkey_probe(struct udevice *dev)
+ 	return 0;
+ }
+ 
+-static int button_qcom_pmic_bind(struct udevice *parent)
++int button_qcom_pmic_setup(struct udevice *parent)
+ {
+ 	struct udevice *dev;
+ 	ofnode node;
+@@ -227,7 +227,7 @@ U_BOOT_DRIVER(qcom_pwrkey) = {
+ 	.name = "qcom_pwrkey",
+ 	.id = UCLASS_BUTTON,
+ 	.of_match = qcom_pwrkey_ids,
+-	.bind = button_qcom_pmic_bind,
++	.bind = button_qcom_pmic_setup,
+ 	.probe = qcom_pwrkey_probe,
+ 	.ops = &button_qcom_pmic_ops,
+ 	.priv_auto = sizeof(struct qcom_pmic_btn_priv),
+diff --git a/include/button/qcom-pmic.h b/include/button/qcom-pmic.h
+new file mode 100644
+index 00000000000..d321bbab460
+--- /dev/null
++++ b/include/button/qcom-pmic.h
+@@ -0,0 +1,17 @@
++/* SPDX-License-Identifier: GPL-2.0+ */
++
++#include <dm/device.h>
++#include <linux/errno.h>
++
++#if CONFIG_IS_ENABLED(BUTTON_QCOM_PMIC)
++/**
++ * Binds the qcom_pwrkey driver to compatible pwrkey/resin child nodes
++ * belonging to @parent
++ */
++int button_qcom_pmic_setup(struct udevice *parent);
++#else
++static int button_qcom_pmic_setup(struct udevice *parent)
++{
++	return -ENOSYS;
++}
++#endif
 
- arch/arm/mach-snapdragon/board.c             |  56 +++++++--
- configs/qcom_defconfig                       |   5 +
- drivers/button/button-qcom-pmic.c            |   7 +-
- drivers/fastboot/Kconfig                     |   7 ++
- drivers/fastboot/Makefile                    |   1 +
- drivers/fastboot/fb_reboot_mode.c            |  51 ++++++++
- drivers/misc/Kconfig                         |   7 ++
- drivers/misc/Makefile                        |   1 +
- drivers/misc/pm8916_pon.c                    | 167 +++++++++++++++++++++++++++
- drivers/reboot-mode/Makefile                 |   1 +
- drivers/reboot-mode/reboot-mode-pm8916-pon.c |  88 ++++++++++++++
- drivers/reboot-mode/reboot-mode-uclass.c     |  18 +++
- drivers/sysreset/sysreset_qcom-pshold.c      |   9 ++
- include/button/qcom-pmic.h                   |  17 +++
- include/pm8916_pon.h                         |  18 +++
- include/reboot-mode/reboot-mode.h            |  12 ++
- 16 files changed, 450 insertions(+), 15 deletions(-)
----
-base-commit: 75daa277941702bf58c88d65c0cb6ed962899d9e
-change-id: 20260603-pm8916-pon-738d766b8006
-
-Best regards,
 -- 
-Sam Day <me@samcday.com>
+2.54.0
 
