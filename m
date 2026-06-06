@@ -1,10 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Sat, 06 Jun 2026 18:47:39 +1000
-Subject: [PATCH 08/11] mach-snapdragon: Integrate reboot-mode handling
+Date: Sat, 06 Jun 2026 18:47:40 +1000
+Subject: [PATCH 09/11] reboot-mode: reboot method activation support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260606-pm8916-pon-v1-8-170c9cbe5099@samcday.com>
+Message-Id: <20260606-pm8916-pon-v1-9-170c9cbe5099@samcday.com>
 References: <20260606-pm8916-pon-v1-0-170c9cbe5099@samcday.com>
 In-Reply-To: <20260606-pm8916-pon-v1-0-170c9cbe5099@samcday.com>
 To: u-boot@lists.denx.de, Sumit Garg <sumit.garg@kernel.org>, 
@@ -31,129 +31,85 @@ Cc: Tom Rini <trini@konsulko.com>,
  Mattijs Korpershoek <mkorpershoek@kernel.org>, 
  Peter Robinson <pbrobinson@gmail.com>, 
  Ariel D'Alessandro <ariel.dalessandro@collabora.com>, 
- Dmitrii Merkurev <dimorinny@google.com>, Sam Day <me@samcday.com>, 
- Simon Glass <sjg@chromium.org>
+ Dmitrii Merkurev <dimorinny@google.com>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780735669; l=3020;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780735669; l=2348;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=0WlTT8AEvmN650XdUlk6qx9h2kaVLx+Xcz/Pldn7PFw=;
- b=6ze8RW6YjXGlwejPD/sDVaBRBQxicAWkG8g9TZQcaTl3SJ3MGEDnaJVH1X1J4DFZjetarkLW1
- SK+stPbj+krCb3c9uSacHIsMZlMXpaSBvTeoHKWvNO0/I74qThV7YBI
+ bh=d6hNRTcjuOCe5Y5dKLR7z3oIjgEst648gdAhzCuHvx0=;
+ b=cIre5IKMI7/rY/2w0xAl/6KcrF4SvOnWmSWpWluTR8AX4BMjvDOqVa5bUJBFruX/fpICOzFzu
+ ssSuQwBW74iDb13BTTi2dFPsbqAQu48AsCzeU6yI083HVimWl8OOc8K
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Aswin Murugan <aswin.murugan@oss.qualcomm.com>
+Until now, the reboot-mode uclass didn't wire up a producer path to
+allow arbitrary changes to the reboot mode. The current impl only uses
+reboot_mode_ops->set to clear the reboot mode once it has been read at
+boot-time.
 
-Add reboot-mode detection and automatic fastboot entry to Qualcomm board
-initialization. This enables 'reboot bootloader' functionality on
-platforms with reboot-mode device tree configuration.
+The public API is expanded with a dm_reboot_mode_activate method, which
+will instruct the given device to activate a particular reboot mode.
 
-Changes:
-- Add qcom_handle_reboot_mode() call in board_late_init()
-- Conditionally compile with CONFIG_DM_REBOOT_MODE
-- Reorganize header includes
+The first producer, `fastboot reboot`, will be introduced in the next
+commit.
 
-Signed-off-by: Aswin Murugan <aswin.murugan@oss.qualcomm.com>
-Reviewed-by: Simon Glass <sjg@chromium.org>
+Signed-off-by: Sam Day <me@samcday.com>
 ---
- arch/arm/mach-snapdragon/board.c | 56 ++++++++++++++++++++++++++++++++--------
- 1 file changed, 45 insertions(+), 11 deletions(-)
+ drivers/reboot-mode/reboot-mode-uclass.c | 18 ++++++++++++++++++
+ include/reboot-mode/reboot-mode.h        | 12 ++++++++++++
+ 2 files changed, 30 insertions(+)
 
-diff --git a/arch/arm/mach-snapdragon/board.c b/arch/arm/mach-snapdragon/board.c
-index 829a0109ac7..c37195def57 100644
---- a/arch/arm/mach-snapdragon/board.c
-+++ b/arch/arm/mach-snapdragon/board.c
-@@ -9,6 +9,15 @@
- #define LOG_CATEGORY LOGC_BOARD
- #define pr_fmt(fmt) "QCOM: " fmt
+diff --git a/drivers/reboot-mode/reboot-mode-uclass.c b/drivers/reboot-mode/reboot-mode-uclass.c
+index 7cbe02eb4ed..c47d11b681e 100644
+--- a/drivers/reboot-mode/reboot-mode-uclass.c
++++ b/drivers/reboot-mode/reboot-mode-uclass.c
+@@ -9,6 +9,24 @@
+ #include <exports.h>
+ #include <reboot-mode/reboot-mode.h>
  
-+#include <command.h>
-+#include <env.h>
-+#include <fdt_support.h>
-+#include <init.h>
-+#include <lmb.h>
-+#include <malloc.h>
-+#include <sort.h>
-+#include <time.h>
-+#include <usb.h>
- #include <asm/armv8/mmu.h>
- #include <asm/gpio.h>
- #include <asm/io.h>
-@@ -16,22 +25,14 @@
- #include <asm/system.h>
- #include <dm/device.h>
- #include <dm/pinctrl.h>
--#include <dm/uclass-internal.h>
- #include <dm/read.h>
--#include <power/regulator.h>
--#include <env.h>
--#include <fdt_support.h>
--#include <init.h>
-+#include <dm/uclass-internal.h>
- #include <linux/arm-smccc.h>
- #include <linux/bug.h>
- #include <linux/psci.h>
- #include <linux/sizes.h>
--#include <lmb.h>
--#include <malloc.h>
--#include <fdt_support.h>
--#include <usb.h>
--#include <sort.h>
--#include <time.h>
-+#include <power/regulator.h>
-+#include <reboot-mode/reboot-mode.h>
- 
- #include "qcom-priv.h"
- 
-@@ -506,6 +507,33 @@ void qcom_show_boot_source(void)
- 	env_set("boot_source", name);
- }
- 
-+/**
-+ * qcom_handle_reboot_mode() - Process reboot-mode detection and handle fastboot entry
-+ *
-+ * This function detects the reboot reason from PMIC registers and automatically
-+ * enters fastboot mode if the reboot reason was "bootloader".
-+ */
-+static void qcom_handle_reboot_mode(void)
++int dm_reboot_mode_activate(struct udevice *dev, const char *mode)
 +{
-+	struct udevice *reboot_dev;
-+	const char *reboot_mode;
-+	int ret;
++	struct reboot_mode_ops *ops = reboot_mode_get_ops(dev);
++	int i;
++	const struct reboot_mode_uclass_platdata *plat_data =
++		dev_get_uclass_plat(dev);
 +
-+	ret = uclass_first_device_err(UCLASS_REBOOT_MODE, &reboot_dev);
-+	if (ret)
-+		return;
++	if (!ops || !ops->set)
++		return -ENOSYS;
 +
-+	ret = dm_reboot_mode_update(reboot_dev);
-+	if (ret)
-+		return;
-+
-+	reboot_mode = env_get("reboot-mode");
-+	if (reboot_mode && !strcmp(reboot_mode, "bootloader")) {
-+		printf("Entering fastboot mode due to reboot reason...\n");
-+		run_command("run fastboot", 0);
++	for (i = 0; i < plat_data->count; i++) {
++		if (!strcmp(plat_data->modes[i].mode_name, mode))
++			return ops->set(dev, plat_data->modes[i].mode_id);
 +	}
++
++	return -ENOENT;
 +}
 +
- void __weak qcom_late_init(void)
+ int dm_reboot_mode_update(struct udevice *dev)
  {
- }
-@@ -575,6 +603,12 @@ int board_late_init(void)
- 	qcom_late_init();
+ 	struct reboot_mode_ops *ops = reboot_mode_get_ops(dev);
+diff --git a/include/reboot-mode/reboot-mode.h b/include/reboot-mode/reboot-mode.h
+index 5fbd7c801af..6510141ff89 100644
+--- a/include/reboot-mode/reboot-mode.h
++++ b/include/reboot-mode/reboot-mode.h
+@@ -53,4 +53,16 @@ struct reboot_mode_ops {
+  */
+ int dm_reboot_mode_update(struct udevice *dev);
  
- 	qcom_show_boot_source();
++/**
++ * dm_reboot_mode_activate() - activate a reboot mode by name
++ *
++ * This will read the given @dev plat_data for a named mode, and write the
++ * magic value for that mode to the device.
++ *
++ * @dev Device to write reboot magic to
++ * @mode name of the mode to lookup for magic value
++ * Return: 0 on success, -ve on error
++ */
++int dm_reboot_mode_activate(struct udevice *dev, const char *mode);
 +
-+	/* Handle reboot-mode detection and fastboot entry */
-+#if IS_ENABLED(CONFIG_DM_REBOOT_MODE)
-+	qcom_handle_reboot_mode();
-+#endif
-+
- 	/* Configure the dfu_string for capsule updates */
- 	qcom_configure_capsule_updates();
- 
+ #endif /* REBOOT_MODE_REBOOT_MODE_H__ */
 
 -- 
 2.54.0
