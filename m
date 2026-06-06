@@ -1,10 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Sat, 06 Jun 2026 10:52:42 +1000
-Subject: [PATCH 08/13] binman: android_boot: SEANDROIDENFORCE support
+Date: Sat, 06 Jun 2026 10:52:43 +1000
+Subject: [PATCH 09/13] arch: arm: qcom: samsung-a5u-eur binman config
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260606-android-binman-v1-8-c7a3c14b8a3d@samcday.com>
+Message-Id: <20260606-android-binman-v1-9-c7a3c14b8a3d@samcday.com>
 References: <20260606-android-binman-v1-0-c7a3c14b8a3d@samcday.com>
 In-Reply-To: <20260606-android-binman-v1-0-c7a3c14b8a3d@samcday.com>
 To: u-boot@lists.denx.de, Sumit Garg <sumit.garg@kernel.org>, 
@@ -32,123 +32,64 @@ Cc: Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>,
  Kaustabh Chakraborty <kauschluss@disroot.org>, 
  Henrik Grimler <henrik@grimler.se>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780707158; l=4423;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780707158; l=1145;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=lG4YyGgMeyAkpsez/qDqni7sEvyORfqtBM9mfabuH+k=;
- b=ovdMjerWsMlNABldtRrETkzuPF2pzxg7+a5rA2nMQPduwkZic0jAopHxKVHVkq/+TOZe+kJl0
- i7sQV8kbHrmCJb+fPy5jDuWTaZdVTu5ljWslcDygwziHN53GU85yIwF
+ bh=YnMpZ/+UQdKrPj5pR1cP+wPKrn18PiGyKsMEs5Alph8=;
+ b=oIl1VVLc84UG+T9PorJXSTMe3puNHsedJbxBfLErYaDbQoWrvSw0vcB0o5pa1wG1xcCTPF7/r
+ urzoemQsQe4AhVuiAaq6rzVwV33kzm4cYmozBEtWZsW2DhhJ/vOxvx7
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some older MSM8916-era bootloaders want to see this string appended to
-the abootimg, or they log an ugly warning to the screen.
+Emits an Android boot.img that runs U-Boot from the boot partition
+(chained from aboot).
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- tools/binman/etype/android_boot.py                 | 11 +++++++++++
- tools/binman/ftest.py                              |  6 ++++++
- .../test/vendor/android_boot_seandroidenforce.dts  | 22 ++++++++++++++++++++++
- 3 files changed, 39 insertions(+)
+ arch/arm/dts/msm8916-samsung-a5u-eur-u-boot.dtsi | 39 ++++++++++++++++++++++++
+ 1 file changed, 39 insertions(+)
 
-diff --git a/tools/binman/etype/android_boot.py b/tools/binman/etype/android_boot.py
-index aa68848f579..7d4543209a1 100644
---- a/tools/binman/etype/android_boot.py
-+++ b/tools/binman/etype/android_boot.py
-@@ -24,6 +24,8 @@ BOOT_IMAGE_HEADER_V2 = (BOOT_IMAGE_HEADER_V0 +
-                         '{}sIQIIQ'.format(BOOT_EXTRA_ARGS_SIZE))
- BOOT_IMAGE_HEADER_V2_SIZE = struct.calcsize(BOOT_IMAGE_HEADER_V2)
- 
-+SEANDROIDENFORCE = b'SEANDROIDENFORCE'
-+
- def _align_up(value, align):
-     return (value + align - 1) & ~(align - 1)
- 
-@@ -56,6 +58,7 @@ class Entry_android_boot(Entry_section):
-         - boot-name: Android boot image board name
-         - cmdline: Android boot command line
-           used by header version 0 only
-+        - append-seandroid-enforce: Append Samsung SEANDROIDENFORCE trailer,
- 
-     This entry uses the following subnodes:
-         - kernel: section containing the executable payload
-@@ -113,6 +116,7 @@ class Entry_android_boot(Entry_section):
- 
-         android-boot {
-             base = <0x80000000>;
-+            append-seandroid-enforce;
- 
-             kernel {
-                 u-boot {
-@@ -152,6 +156,8 @@ class Entry_android_boot(Entry_section):
-         self.os_version = fdt_util.GetInt(self._node, 'os-version', 0)
-         self.boot_name = fdt_util.GetString(self._node, 'boot-name', '')
-         self.cmdline = fdt_util.GetString(self._node, 'cmdline', '')
-+        self.append_seandroid = fdt_util.GetBool(self._node,
-+                                                 'append-seandroid-enforce')
-         self.vendor_dt_node = self._node.FindNode('vendor-dt')
- 
-         if self.header_version not in (0, 2):
-@@ -175,6 +181,9 @@ class Entry_android_boot(Entry_section):
-                 self.Raise('page-size must fit the Android boot image header')
-             if 'dtb' not in self._entries:
-                 self.Raise("Missing required subnode 'dtb'")
-+            if self.append_seandroid:
-+                self.Raise("Property 'append-seandroid-enforce' requires "
-+                           "header-version 0")
-             if self.vendor_dt_node:
-                 self.Raise("Subnode 'vendor-dt' requires header-version 0")
- 
-@@ -344,6 +353,8 @@ class Entry_android_boot(Entry_section):
-         image += _pad(kernel, self.page_size)
-         image += _pad(ramdisk, self.page_size)
-         image += _pad(vendor_dt, self.page_size)
-+        if self.append_seandroid:
-+            image += SEANDROIDENFORCE
- 
-         return bytes(image)
- 
-diff --git a/tools/binman/ftest.py b/tools/binman/ftest.py
-index c96748bd1dd..1f3e94908d9 100644
---- a/tools/binman/ftest.py
-+++ b/tools/binman/ftest.py
-@@ -5673,6 +5673,12 @@ fdt         fdtmap                Extract the devicetree blob from the fdtmap
-                                              vendor_dt), header[13])
-         self.assertEqual(vendor_dt, data[0x1800:0x1805])
- 
-+    def testAndroidBootSeAndroidEnforce(self):
-+        """Test that binman appends SEANDROIDENFORCE"""
-+        data = self._DoReadFile('vendor/android_boot_seandroidenforce.dts')
-+
-+        self.assertEqual(b'SEANDROIDENFORCE', data[-16:])
-+
-     def testAndroidBootQcdt(self):
-         """Test that binman can produce a QCDT container"""
-         data, dtb_data, _map, _dtb = self._DoReadFileDtb(
-diff --git a/tools/binman/test/vendor/android_boot_seandroidenforce.dts b/tools/binman/test/vendor/android_boot_seandroidenforce.dts
+diff --git a/arch/arm/dts/msm8916-samsung-a5u-eur-u-boot.dtsi b/arch/arm/dts/msm8916-samsung-a5u-eur-u-boot.dtsi
 new file mode 100644
-index 00000000000..dc8374f84c7
+index 00000000000..c04109187c8
 --- /dev/null
-+++ b/tools/binman/test/vendor/android_boot_seandroidenforce.dts
-@@ -0,0 +1,22 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+/dts-v1/;
++++ b/arch/arm/dts/msm8916-samsung-a5u-eur-u-boot.dtsi
+@@ -0,0 +1,39 @@
++// SPDX-License-Identifier: GPL-2.0
++
++#include <dt-bindings/arm/qcom,ids.h>
++
 +/ {
-+	#address-cells = <1>;
-+	#size-cells = <1>;
 +	binman {
++		filename = "u-boot-samsung-a5u-eur.img";
++
 +		android-boot {
 +			header-version = <0>;
++			page-size = <2048>;
++			base = <0x80000000>;
 +			append-seandroid-enforce;
++
 +			kernel {
 +				u-boot {
 +					no-expanded;
 +				};
 +			};
++
 +			ramdisk {
 +				fill {
 +					size = <1>;
++				};
++			};
++
++			vendor-dt {
++				qcdt {
++					dtb-0 {
++						qcom,msm-id = <QCOM_ID_MSM8916 0>;
++						qcom,board-id = <0xce08ff01 1>;
++
++						u-boot-dtb {};
++					};
 +				};
 +			};
 +		};
