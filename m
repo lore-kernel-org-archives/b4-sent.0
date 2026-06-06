@@ -1,10 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Sat, 06 Jun 2026 18:47:37 +1000
-Subject: [PATCH 06/11] qcom_defconfig: enable poweroff command
+Date: Sat, 06 Jun 2026 18:47:38 +1000
+Subject: [PATCH 07/11] reboot-mode: pm8916-pon: add new driver
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260606-pm8916-pon-v1-6-170c9cbe5099@samcday.com>
+Message-Id: <20260606-pm8916-pon-v1-7-170c9cbe5099@samcday.com>
 References: <20260606-pm8916-pon-v1-0-170c9cbe5099@samcday.com>
 In-Reply-To: <20260606-pm8916-pon-v1-0-170c9cbe5099@samcday.com>
 To: u-boot@lists.denx.de, Sumit Garg <sumit.garg@kernel.org>, 
@@ -33,48 +33,147 @@ Cc: Tom Rini <trini@konsulko.com>,
  Ariel D'Alessandro <ariel.dalessandro@collabora.com>, 
  Dmitrii Merkurev <dimorinny@google.com>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780735669; l=1014;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780735669; l=4020;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=en+3MOfQE8c2egWvrIqQwiU2u2zLLqoqXQuKxKUBc9g=;
- b=P7be6G2ghnbJXa6073vcAkyh34g2aE4z2GBIryu5F6wGv+kZJT7U9j5c66DcQ6eMZsWIFxUqz
- jLLaQLidaJ9Cjnw4NQeWY20JxzlnVySyubdaz2Cl6IJMgRUPlcV4wOt
+ bh=UukCK74H00/SmwCVzmAYKjrf2eCisaqySlvcxfvl8O8=;
+ b=yJhtI6cw2EJqSD6nsebAnfZ5sQpHLNZhF0zXkQAQmt33aeDUWuj+Gv1YUhpKUX6wKLy4yHp5b
+ AX4mJe6mNqyAJzmE8GLJ52vej5VKHa/KjvNDvYWsA21DQ6Ze3XSCwhD
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-With the newly introduced PM8916 PON driver and support in PSHOLD
-driver, the poweroff command now works on MSM8916 devices.
-
-This should also work on any more recent qcom SoC with a functional PSCI
-implementation in TZ. I confirmed that is the case on my google-sargo
-and oneplus-fajita, at least.
+The PM8916 provides a PON_SOFT_RB_SPARE register that survives across
+reboots.
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- configs/qcom_defconfig | 2 ++
- 1 file changed, 2 insertions(+)
+ drivers/misc/pm8916_pon.c                    |  7 +++
+ drivers/reboot-mode/Makefile                 |  1 +
+ drivers/reboot-mode/reboot-mode-pm8916-pon.c | 88 ++++++++++++++++++++++++++++
+ 3 files changed, 96 insertions(+)
 
-diff --git a/configs/qcom_defconfig b/configs/qcom_defconfig
-index c5649b9b746..c7bc6829014 100644
---- a/configs/qcom_defconfig
-+++ b/configs/qcom_defconfig
-@@ -38,6 +38,7 @@ CONFIG_CMD_DFU=y
- CONFIG_CMD_GPIO=y
- CONFIG_CMD_I2C=y
- CONFIG_CMD_MMC=y
-+CONFIG_CMD_POWEROFF=y
- CONFIG_CMD_UFS=y
- CONFIG_CMD_USB=y
- CONFIG_CMD_USB_MASS_STORAGE=y
-@@ -135,6 +136,7 @@ CONFIG_SPMI_MSM=y
- CONFIG_SYSINFO=y
- CONFIG_SYSINFO_SMBIOS=y
- CONFIG_SYSRESET_CMD_RESET_ARGS=y
-+CONFIG_SYSRESET_CMD_POWEROFF=y
- CONFIG_SYSRESET_QCOM_PSCI=y
- CONFIG_SYSRESET_QCOM_PSHOLD=y
- CONFIG_USB=y
+diff --git a/drivers/misc/pm8916_pon.c b/drivers/misc/pm8916_pon.c
+index 4cd8921a08a..c889d2d4e6e 100644
+--- a/drivers/misc/pm8916_pon.c
++++ b/drivers/misc/pm8916_pon.c
+@@ -142,6 +142,13 @@ static int pm8916_pon_bind(struct udevice *dev)
+ 			dev_warn(dev, "failed to bind qcom_pwrkey: %d\n", ret);
+ 	}
+ 
++	if (CONFIG_IS_ENABLED(DM_REBOOT_MODE)) {
++		ret = device_bind_driver_to_node(dev, "pm8916_pon_reboot_mode",
++						 "reboot_mode", dev_ofnode(dev), NULL);
++		if (ret)
++			dev_warn(dev, "failed to bind reboot_mode: %d\n", ret);
++	}
++
+ 	return 0;
+ }
+ 
+diff --git a/drivers/reboot-mode/Makefile b/drivers/reboot-mode/Makefile
+index 48c8ab7fe71..467334d010e 100644
+--- a/drivers/reboot-mode/Makefile
++++ b/drivers/reboot-mode/Makefile
+@@ -8,3 +8,4 @@ obj-$(CONFIG_DM_REBOOT_MODE) += reboot-mode-uclass.o
+ obj-$(CONFIG_DM_REBOOT_MODE_GPIO) += reboot-mode-gpio.o
+ obj-$(CONFIG_DM_REBOOT_MODE_RTC) += reboot-mode-rtc.o
+ obj-$(CONFIG_REBOOT_MODE_NVMEM) += reboot-mode-nvmem.o
++obj-$(CONFIG_PM8916_PON) += reboot-mode-pm8916-pon.o
+diff --git a/drivers/reboot-mode/reboot-mode-pm8916-pon.c b/drivers/reboot-mode/reboot-mode-pm8916-pon.c
+new file mode 100644
+index 00000000000..fa8d0ecaa77
+--- /dev/null
++++ b/drivers/reboot-mode/reboot-mode-pm8916-pon.c
+@@ -0,0 +1,88 @@
++// SPDX-License-Identifier: GPL-2.0+
++
++#include <dm.h>
++#include <dm/device_compat.h>
++#include <dm/read.h>
++#include <fdtdec.h>
++#include <power/pmic.h>
++#include <reboot-mode/reboot-mode.h>
++
++#define PON_SOFT_RB_SPARE 0x8f
++
++#define GEN1_REASON_SHIFT 2
++
++struct pm8916_pon_reboot_mode_priv {
++	struct udevice *pmic;
++	phys_addr_t base;
++};
++
++static int pm8916_pon_reboot_mode_get(struct udevice *dev, u32 *rebootmode)
++{
++	struct pm8916_pon_reboot_mode_priv *priv = dev_get_priv(dev);
++	int reg;
++	uint mask = GENMASK(7, GEN1_REASON_SHIFT);
++
++	reg = pmic_reg_read(priv->pmic, priv->base + PON_SOFT_RB_SPARE);
++	if (reg < 0) {
++		dev_warn(dev, "Failed to read PON_SOFT_RB_SPARE: %d\n", reg);
++		return reg;
++	}
++
++	*rebootmode = (reg & mask) >> GEN1_REASON_SHIFT;
++
++	return 0;
++}
++
++static int pm8916_pon_reboot_mode_set(struct udevice *dev, u32 rebootmode)
++{
++	struct pm8916_pon_reboot_mode_priv *priv = dev_get_priv(dev);
++	uint mask = GENMASK(7, GEN1_REASON_SHIFT);
++	int ret;
++
++	ret = pmic_clrsetbits(priv->pmic, priv->base + PON_SOFT_RB_SPARE, mask,
++			      rebootmode << GEN1_REASON_SHIFT);
++	if (ret) {
++		dev_warn(dev, "Failed to write PON_SOFT_RB_SPARE: %d\n", ret);
++		return ret;
++	}
++	return 0;
++}
++
++static const struct reboot_mode_ops pm8916_pon_reboot_mode_ops = {
++	.get = pm8916_pon_reboot_mode_get,
++	.set = pm8916_pon_reboot_mode_set,
++};
++
++static int pm8916_pon_reboot_mode_probe(struct udevice *dev)
++{
++	struct pm8916_pon_reboot_mode_priv *priv = dev_get_priv(dev);
++	struct udevice *pon = dev_get_parent(dev);
++	fdt_addr_t base;
++
++	/* this driver only works as a child of pm8916_pon */
++	if (!pon || !pon->driver || strcmp(pon->driver->name, "pm8916_pon"))
++		return -EINVAL;
++
++	priv->pmic = dev_get_parent(pon);
++	if (!priv->pmic) {
++		dev_err(dev, "PMIC driver not found\n");
++		return -EINVAL;
++	}
++
++	base = dev_read_addr(pon);
++	if (base == FDT_ADDR_T_NONE) {
++		dev_err(dev, "missing PON reg base\n");
++		return -EINVAL;
++	}
++	priv->base = base;
++
++	return 0;
++}
++
++U_BOOT_DRIVER(pm8916_pon_reboot_mode) = {
++	.name = "pm8916_pon_reboot_mode",
++	.id = UCLASS_REBOOT_MODE,
++	.probe = pm8916_pon_reboot_mode_probe,
++	.ops = &pm8916_pon_reboot_mode_ops,
++	.priv_auto = sizeof(struct pm8916_pon_reboot_mode_priv),
++};
 
 -- 
 2.54.0
