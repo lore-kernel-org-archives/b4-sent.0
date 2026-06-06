@@ -1,617 +1,143 @@
-From: Nathan Lynch <nathan.lynch@amd.com>
-Date: Fri, 05 Jun 2026 19:02:26 -0500
-Subject: [PATCH v3 23/23] dmaengine: sdxi: Add DMA engine provider
+From: Sam Day <me@samcday.com>
+Subject: [PATCH 00/13] Generate Android boot images with binman
+Date: Sat, 06 Jun 2026 10:52:34 +1000
+Message-Id: <20260606-android-binman-v1-0-c7a3c14b8a3d@samcday.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260605-sdxi-base-v3-23-4d38ca2bdffe@amd.com>
-References: <20260605-sdxi-base-v3-0-4d38ca2bdffe@amd.com>
-In-Reply-To: <20260605-sdxi-base-v3-0-4d38ca2bdffe@amd.com>
-To: Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>
-Cc: Bjorn Helgaas <bhelgaas@google.com>, 
- David Rientjes <rientjes@google.com>, John.Kariuki@amd.com, 
- Jonathan Cameron <jic23@kernel.org>, Kinsey Ho <kinseyho@google.com>, 
- Mario Limonciello <mario.limonciello@amd.com>, 
- PradeepVineshReddy.Kodamati@amd.com, Shivank Garg <shivankg@amd.com>, 
- Stephen Bates <Stephen.Bates@amd.com>, Tycho Andersen <tycho@kernel.org>, 
- Wei Huang <wei.huang2@amd.com>, Wei Xu <weixugc@google.com>, 
- dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-pci@vger.kernel.org, Nathan Lynch <nathan.lynch@amd.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780704140; l=17048;
- i=nathan.lynch@amd.com; s=20260410; h=from:subject:message-id;
- bh=F11Z7ijEZLO1+5NUxTgTWxs5O81cPT3FIiv2kCF1Bkg=;
- b=BvxGqrUKZPk/Hw4EzjNM5dw6jjTqbLhs+g1xPzyawD+4j6U1p86mfusIjCJgv5Nv/F0ys2zIC
- LVWpSqhebMvCWXvw7vydSxodJNppVLlnuGGarns/DkgSX3KGxQpTMzT
-X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
- pk=PK4ozhq+/z9/2Jl5rgDmvHa9raVomv79qM8p1RAFpEw=
-X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20260410 with auth_id=728
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MMQqAMAxA0atIZgtVi1KvIg7RpJrBVFoQQby7x
+ fEN/z+QOQlnGKsHEl+SJWpBU1ew7qgbG6FiaG3b2946g0opCplF9EA1SAO6Ljj2nqBEZ+Ig9z+
+ c5vf9AKuTJqlgAAAA
+X-Change-ID: 20260604-android-binman-ad7a43f4e99d
+To: u-boot@lists.denx.de, Sumit Garg <sumit.garg@kernel.org>, 
+ u-boot-qcom@groups.io
+Cc: Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>, 
+ Alper Nebi Yasak <alpernebiyasak@gmail.com>, 
+ Quentin Schulz <quentin.schulz@cherry.de>, Bryan Brattlof <bb@ti.com>, 
+ Yannic Moog <y.moog@phytec.de>, Wojciech Dubowik <Wojciech.Dubowik@mt.com>, 
+ Yegor Yefremov <yegorslists@googlemail.com>, 
+ Denis Mukhin <dmukhin@ford.com>, Rasmus Villemoes <ravi@prevas.dk>, 
+ Heinrich Schuchardt <xypron.glpk@gmx.de>, Javier Tia <floss@jetm.me>, 
+ Rayagonda Kokatanur <rayagonda.kokatanur@broadcom.com>, 
+ Casey Connolly <casey.connolly@linaro.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Tien Fong Chee <tien.fong.chee@altera.com>, Peng Fan <peng.fan@nxp.com>, 
+ Anshul Dalal <anshuld@ti.com>, 
+ Alif Zakuan Yuslaimi <alif.zakuan.yuslaimi@altera.com>, 
+ Marek Vasut <marek.vasut+renesas@mailbox.org>, 
+ Tingting Meng <tingting.meng@altera.com>, Alice Guo <alice.guo@nxp.com>, 
+ Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
+ Aswin Murugan <aswin.murugan@oss.qualcomm.com>, 
+ Luca Weiss <luca.weiss@fairphone.com>, 
+ Varadarajan Narayanan <varadarajan.narayanan@oss.qualcomm.com>, 
+ Minkyu Kang <mk7.kang@samsung.com>, 
+ Kaustabh Chakraborty <kauschluss@disroot.org>, 
+ Henrik Grimler <henrik@grimler.se>, Sam Day <me@samcday.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780707158; l=4605;
+ i=me@samcday.com; s=20240502; h=from:subject:message-id;
+ bh=ODQrbTXJbY1PGG3lHlFJSANiRvb70foev7oSN9WSeRM=;
+ b=VbDxWUJGpWOfYtLnlL5X089FcG53VTycqbaVoNyxDr/iuE9kKmcMwfP0zrLcyklGlIscrWZ9s
+ 4cyJ2RRjXhhA1hT274oZcgG57NQD5L6bW1+34wH2B1ofPqQfFM1o0kb
+X-Developer-Key: i=me@samcday.com; a=ed25519;
+ pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
+X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Register a DMA engine provider that implements memcpy. The number of
-channels per SDXI function can be controlled via a module
-parameter (dma_channels). The provider uses the virt-dma library.
+U-Boot is seeing increasing adoption on pocket computers, many of which
+(sadly) have fused bootloader chains. Many of these bootloaders have a
+very rigid definition of what a "valid" downstream payload looks like.
+Sometimes it's just a boring old v0/v2 Android boot image. Sometimes
+it's something decidedly more grotesque.
 
-Co-developed-by: Wei Huang <wei.huang2@amd.com>
-Signed-off-by: Wei Huang <wei.huang2@amd.com>
-Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
+To date, this last-mile packaging step has been trapped in downstream CI
+pipelines, blogposts, documentation, etc. This patch series aims to
+gather up all that esoterica and institutional knowledge and codify it
+in U-Boot's build system, using binman.
+
+Put differently: an overwhelming majority of these pocket computer
+devices have a "canonical" payload format that U-Boot currently has no
+support for. Let's fix that.
+
+The first patches in this series introduce an `android_boot` etype. To
+begin with, this is a "typical" abootimg, as defined by canonical AOSP
+sources and reference `fastboot`/`mkbootimg` implementation. There's
+plenty of devices out there with a sane(-ish, nothing in Android-land is
+ever truly sane) bootloader that will happily chain a U-Boot rolled into
+the kernel section of an abootimg.
+
+With that out of the way, the cursed bootloaders are next to be
+supported. Binman etypes for Qualcomm's "QCDT" and Samsung's "DTBH"
+formats are implemented. These are non-standard vendor-specific
+devicetree containers, which the previous bootloader uses to pick a FDT
+to boot the downstream with.
+
+In both cases, these vendor-specific formats are tacked on to the end of
+a v0 abootimg, with the header_version being hijacked to encode the
+length of this following payload. Thus, the android_boot etype is
+retrofitted to allow these shenanigans.
+
+Binman configs that produce flashable boot artifacts are introduced for
+the following devices:
+
+ * google-sargo (vanilla v2)
+ * oneplus-fajita (vanilla v2)
+ * samsung-a5u-eur (QCDT v0)
+ * samsung-gt510 (QCDT v0)
+ * samsung-j7xelte (DTBH v0)
+
+I also successfully tested a vanilla v0 on my samsung-expressltexx, in
+conjunction with the qcom-armv7 series already on the list. However,
+since that work is still in-flight and the expressltexx DTS is
+downstream, I opted not to include it here.
+
+Signed-off-by: Sam Day <me@samcday.com>
 ---
- drivers/dma/sdxi/Kconfig  |   1 +
- drivers/dma/sdxi/Makefile |   1 +
- drivers/dma/sdxi/device.c |   2 +
- drivers/dma/sdxi/dma.c    | 501 ++++++++++++++++++++++++++++++++++++++++++++++
- drivers/dma/sdxi/dma.h    |  11 +
- 5 files changed, 516 insertions(+)
+Sam Day (13):
+      binman: Android boot image support
+      .gitignore: ignore binman-generated blobs
+      arch: arm: qcom: google-sargo binman config
+      qcom: arch: arm: qcom: sdm845-fajita binman configs
+      mach-snapdragon: enable BINMAN
+      binman: android_boot: vendor-dt support
+      binman: Add QCDT support
+      binman: android_boot: SEANDROIDENFORCE support
+      arch: arm: qcom: samsung-a5u-eur binman config
+      arch: arm: qcom: samsung-gt510 binman config
+      binman: Add DTBH support
+      arch: arm: exynos: add j7xelte binman config
+      configs: exynos-mobile: pull in BINMAN
 
-diff --git a/drivers/dma/sdxi/Kconfig b/drivers/dma/sdxi/Kconfig
-index 314b3e725ccb..85e23608405c 100644
---- a/drivers/dma/sdxi/Kconfig
-+++ b/drivers/dma/sdxi/Kconfig
-@@ -4,6 +4,7 @@ config SDXI_CORE
- 	# SDXI 1.0 9 MMIO Control Registers.
- 	depends on 64BIT
- 	select DMA_ENGINE
-+	select DMA_VIRTUAL_CHANNELS
- 	help
- 	  Enable support for Smart Data Accelerator Interface (SDXI)
- 	  Platform Data Mover devices. SDXI is a vendor-neutral
-diff --git a/drivers/dma/sdxi/Makefile b/drivers/dma/sdxi/Makefile
-index 5218ae2c86ae..d7ea5776191e 100644
---- a/drivers/dma/sdxi/Makefile
-+++ b/drivers/dma/sdxi/Makefile
-@@ -5,6 +5,7 @@ sdxi-core-y := \
- 	context.o     \
- 	descriptor.o  \
- 	device.o      \
-+	dma.o         \
- 	ring.o
- 
- obj-$(CONFIG_SDXI_PCI) += sdxi-pci.o
-diff --git a/drivers/dma/sdxi/device.c b/drivers/dma/sdxi/device.c
-index 26be376c9545..d6097a6d8992 100644
---- a/drivers/dma/sdxi/device.c
-+++ b/drivers/dma/sdxi/device.c
-@@ -22,6 +22,7 @@
- #include <linux/xarray.h>
- 
- #include "context.h"
-+#include "dma.h"
- #include "hw.h"
- #include "mmio.h"
- #include "sdxi.h"
-@@ -321,6 +322,7 @@ static int sdxi_device_init(struct sdxi_dev *sdxi)
- 	if (err)
- 		return err;
- 
-+	sdxi_dma_register(sdxi);
- 	return 0;
- }
- 
-diff --git a/drivers/dma/sdxi/dma.c b/drivers/dma/sdxi/dma.c
-new file mode 100644
-index 000000000000..01c85cc2763d
---- /dev/null
-+++ b/drivers/dma/sdxi/dma.c
-@@ -0,0 +1,501 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * SDXI dmaengine provider
-+ *
-+ * Copyright Advanced Micro Devices, Inc.
-+ */
-+
-+#include <linux/cleanup.h>
-+#include <linux/delay.h>
-+#include <linux/dev_printk.h>
-+#include <linux/container_of.h>
-+#include <linux/dma-mapping.h>
-+#include <linux/dmaengine.h>
-+#include <linux/list.h>
-+#include <linux/module.h>
-+#include <linux/overflow.h>
-+#include <linux/spinlock.h>
-+
-+#include "../dmaengine.h"
-+#include "../virt-dma.h"
-+#include "completion.h"
-+#include "context.h"
-+#include "descriptor.h"
-+#include "dma.h"
-+#include "ring.h"
-+#include "sdxi.h"
-+
-+static unsigned short dma_channels = 1;
-+module_param(dma_channels, ushort, 0644);
-+MODULE_PARM_DESC(dma_channels, "DMA channels per function (default: 1)");
-+
-+/*
-+ * An SDXI context is allocated for each channel configured.
-+ *
-+ * Each context has a descriptor ring with a minimum of 1K entries.
-+ * SDXI supports a variety of primitive operations, e.g. copy,
-+ * interrupt, nop. Each Linux virtual DMA descriptor may be composed
-+ * of a grouping of SDXI descriptors in the ring. E.g. two SDXI
-+ * descriptors (copy, then interrupt) to implement a
-+ * dma_async_tx_descriptor for memcpy with DMA_PREP_INTERRUPT flag.
-+ *
-+ * dma_device->device_prep_dma_* functions reserve space in the
-+ * descriptor ring and serialize SDXI descriptors implementing the
-+ * operation to the reserved slots, leaving their valid (vl) bits
-+ * clear. A single virtual descriptor is added to the allocated list.
-+ *
-+ * dma_async_tx_descriptor->tx_submit() invokes vchan_tx_submit(),
-+ * which merely assigns a cookie and moves the txd to the submitted
-+ * list without entering the SDXI provider code.
-+ *
-+ * dma_device->device_issue_pending() (sdxi_dma_issue_pending()) sets vl
-+ * on each SDXI descriptor reachable from the submitted list, then
-+ * rings the context doorbell. The submitted txds are moved to the
-+ * issued list via vchan_issue_pending().
-+ */
-+
-+struct sdxi_dma_chan {
-+	struct virt_dma_chan vchan;
-+	struct sdxi_cxt *cxt;
-+	unsigned int vector;
-+	unsigned int irq;
-+	struct sdxi_akey_ent *akey;
-+};
-+
-+struct sdxi_dma_dev {
-+	struct dma_device dma_dev;
-+	size_t nr_channels;
-+	struct sdxi_dma_chan sdchan[] __counted_by(nr_channels);
-+};
-+
-+/*
-+ * A virtual descriptor can correspond to a group of SDXI hardware descriptors.
-+ */
-+struct sdxi_dma_desc {
-+	struct virt_dma_desc vdesc;
-+	struct sdxi_ring_resv resv;
-+	struct sdxi_completion *completion;
-+};
-+
-+static struct sdxi_dma_chan *to_sdxi_dma_chan(const struct dma_chan *dma_chan)
-+{
-+	const struct virt_dma_chan *vchan;
-+
-+	vchan = container_of_const(dma_chan, struct virt_dma_chan, chan);
-+	return container_of(vchan, struct sdxi_dma_chan, vchan);
-+}
-+
-+static struct sdxi_dma_desc *
-+to_sdxi_dma_desc(const struct virt_dma_desc *vdesc)
-+{
-+	return container_of(vdesc, struct sdxi_dma_desc, vdesc);
-+}
-+
-+static void sdxi_tx_desc_free(struct virt_dma_desc *vdesc)
-+{
-+	struct sdxi_dma_desc *sddesc = to_sdxi_dma_desc(vdesc);
-+
-+	sdxi_completion_free(sddesc->completion);
-+	kfree(to_sdxi_dma_desc(vdesc));
-+}
-+
-+static struct sdxi_dma_desc *
-+prep_memcpy_intr(struct dma_chan *dma_chan, const struct sdxi_copy *params)
-+{
-+	struct sdxi_cxt *cxt = to_sdxi_dma_chan(dma_chan)->cxt;
-+	struct sdxi_akey_ent *akey = to_sdxi_dma_chan(dma_chan)->akey;
-+	struct sdxi_desc *copy, *intr;
-+
-+	struct sdxi_completion *comp __free(sdxi_completion) = sdxi_completion_alloc(cxt->sdxi);
-+	if (!comp)
-+		return NULL;
-+
-+	struct sdxi_dma_desc *sddesc __free(kfree) = kzalloc(sizeof(*sddesc), GFP_NOWAIT);
-+	if (!sddesc)
-+		return NULL;
-+
-+	if (sdxi_ring_try_reserve(cxt->ring_state, 2, &sddesc->resv))
-+		return NULL;
-+
-+	copy = sdxi_ring_resv_next(&sddesc->resv);
-+	(void)sdxi_encode_copy(copy, params); /* Caller checked validity. */
-+	sdxi_desc_set_fence(copy); /* Conservatively fence every descriptor. */
-+	sdxi_completion_attach(copy, comp);
-+
-+	sddesc->completion = no_free_ptr(comp);
-+
-+	intr = sdxi_ring_resv_next(&sddesc->resv);
-+	sdxi_encode_intr(intr, &(const struct sdxi_intr) {
-+			.akey = sdxi_akey_index(cxt, akey),
-+		});
-+	/* Raise the interrupt only after the copy has completed. */
-+	sdxi_desc_set_fence(intr);
-+	return_ptr(sddesc);
-+}
-+
-+static struct sdxi_dma_desc *
-+prep_memcpy_nointr(struct dma_chan *dma_chan, const struct sdxi_copy *params)
-+{
-+	struct sdxi_cxt *cxt = to_sdxi_dma_chan(dma_chan)->cxt;
-+	struct sdxi_desc *copy;
-+
-+	struct sdxi_completion *comp __free(sdxi_completion) = sdxi_completion_alloc(cxt->sdxi);
-+	if (!comp)
-+		return NULL;
-+
-+	struct sdxi_dma_desc *sddesc __free(kfree) = kzalloc(sizeof(*sddesc), GFP_NOWAIT);
-+	if (!sddesc)
-+		return NULL;
-+
-+	if (sdxi_ring_try_reserve(cxt->ring_state, 1, &sddesc->resv))
-+		return NULL;
-+
-+	copy = sdxi_ring_resv_next(&sddesc->resv);
-+	(void)sdxi_encode_copy(copy, params); /* Caller checked validity. */
-+	sdxi_completion_attach(copy, comp);
-+
-+	sddesc->completion = no_free_ptr(comp);
-+	return_ptr(sddesc);
-+}
-+
-+static struct dma_async_tx_descriptor *
-+sdxi_dma_prep_memcpy(struct dma_chan *dma_chan, dma_addr_t dst,
-+		     dma_addr_t src, size_t len, unsigned long flags)
-+{
-+	struct sdxi_akey_ent *akey = to_sdxi_dma_chan(dma_chan)->akey;
-+	struct sdxi_cxt *cxt = to_sdxi_dma_chan(dma_chan)->cxt;
-+	u16 akey_index = sdxi_akey_index(cxt, akey);
-+	struct sdxi_dma_desc *sddesc;
-+	struct sdxi_copy copy = {
-+		.src = src,
-+		.dst = dst,
-+		.src_akey = akey_index,
-+		.dst_akey = akey_index,
-+		.len = len,
-+	};
-+
-+	/*
-+	 * Perform a trial encode to a dummy descriptor on the stack
-+	 * so we can reject bad inputs without touching the ring
-+	 * state.
-+	 */
-+	if (sdxi_encode_copy(&(struct sdxi_desc){}, &copy))
-+		return NULL;
-+
-+	sddesc = (flags & DMA_PREP_INTERRUPT) ?
-+		prep_memcpy_intr(dma_chan, &copy) :
-+		prep_memcpy_nointr(dma_chan, &copy);
-+
-+	if (!sddesc)
-+		return NULL;
-+
-+	return vchan_tx_prep(to_virt_chan(dma_chan), &sddesc->vdesc, flags);
-+}
-+
-+static enum dma_status sdxi_tx_status(struct dma_chan *chan,
-+				      dma_cookie_t cookie,
-+				      struct dma_tx_state *state)
-+{
-+	struct sdxi_dma_chan *sdchan = to_sdxi_dma_chan(chan);
-+	struct sdxi_dma_desc *sddesc;
-+	enum dma_status status;
-+	struct virt_dma_desc *vdesc;
-+
-+	status = dma_cookie_status(chan, cookie, state);
-+	if (status == DMA_COMPLETE)
-+		return status;
-+
-+	guard(spinlock_irqsave)(&sdchan->vchan.lock);
-+
-+	vdesc = vchan_find_desc(&sdchan->vchan, cookie);
-+	if (!vdesc)
-+		return status;
-+
-+	sddesc = to_sdxi_dma_desc(vdesc);
-+
-+	if (WARN_ON_ONCE(!sddesc->completion))
-+		return DMA_ERROR;
-+
-+	if (!sdxi_completion_signaled(sddesc->completion))
-+		return DMA_IN_PROGRESS;
-+
-+	if (sdxi_completion_errored(sddesc->completion))
-+		return DMA_ERROR;
-+
-+	list_del(&vdesc->node);
-+	vchan_cookie_complete(vdesc);
-+
-+	return dma_cookie_status(chan, cookie, state);
-+}
-+
-+static void sdxi_dma_issue_pending(struct dma_chan *dma_chan)
-+{
-+	struct virt_dma_chan *vchan = to_virt_chan(dma_chan);
-+	struct virt_dma_desc *vdesc;
-+	u64 dbval = 0;
-+
-+	scoped_guard(spinlock_irqsave, &vchan->lock) {
-+		/*
-+		 * This can happen with racing submitters.
-+		 */
-+		if (list_empty(&vchan->desc_submitted))
-+			return;
-+
-+		list_for_each_entry(vdesc, &vchan->desc_submitted, node) {
-+			struct sdxi_dma_desc *sddesc = to_sdxi_dma_desc(vdesc);
-+			struct sdxi_desc *hwdesc;
-+
-+			sdxi_ring_resv_foreach(&sddesc->resv, hwdesc)
-+				sdxi_desc_make_valid(hwdesc);
-+			/*
-+			 * The reservations ought to be ordered
-+			 * ascending, but use umax() just in case.
-+			 */
-+			dbval = umax(sdxi_ring_resv_dbval(&sddesc->resv), dbval);
-+		}
-+
-+		vchan_issue_pending(vchan);
-+	}
-+
-+	/*
-+	 * The implementation is required to handle out-of-order
-+	 * doorbell updates; we can do this after dropping the
-+	 * lock.
-+	 */
-+	sdxi_cxt_push_doorbell(to_sdxi_dma_chan(dma_chan)->cxt, dbval);
-+}
-+
-+static int sdxi_dma_terminate_all(struct dma_chan *dma_chan)
-+{
-+	struct virt_dma_chan *vchan = to_virt_chan(dma_chan);
-+	u64 dbval = 0;
-+
-+	/*
-+	 * Allocated and submitted txds are in the ring but not valid
-+	 * yet. Overwrite them with nops and then set their valid
-+	 * bits.
-+	 *
-+	 * The implementation may start consuming these as soon as the
-+	 * valid bits flip. sdxi_dma_synchronize() will ensure they're
-+	 * all done.
-+	 */
-+	scoped_guard(spinlock_irqsave, &vchan->lock) {
-+		struct virt_dma_desc *vdesc;
-+		LIST_HEAD(head);
-+
-+		list_splice_tail_init(&vchan->desc_allocated, &head);
-+		list_splice_tail_init(&vchan->desc_submitted, &head);
-+
-+		if (list_empty(&head))
-+			return 0;
-+
-+		list_for_each_entry(vdesc, &head, node) {
-+			struct sdxi_dma_desc *sddesc = to_sdxi_dma_desc(vdesc);
-+			struct sdxi_desc *hwdesc;
-+
-+			sdxi_ring_resv_foreach(&sddesc->resv, hwdesc) {
-+				sdxi_serialize_nop(hwdesc);
-+				sdxi_desc_make_valid(hwdesc);
-+			}
-+
-+			dbval = umax(sdxi_ring_resv_dbval(&sddesc->resv), dbval);
-+		}
-+
-+		list_splice_tail(&head, &vchan->desc_terminated);
-+	}
-+
-+	sdxi_cxt_push_doorbell(to_sdxi_dma_chan(dma_chan)->cxt, dbval);
-+
-+	return 0;
-+}
-+
-+static void sdxi_dma_synchronize(struct dma_chan *dma_chan)
-+{
-+	struct sdxi_cxt *cxt = to_sdxi_dma_chan(dma_chan)->cxt;
-+	struct sdxi_ring_resv resv;
-+	struct sdxi_desc *nop;
-+	int err;
-+
-+	/* Submit a single nop with fence and wait for it to complete. */
-+
-+	if (sdxi_ring_reserve(cxt->ring_state, 1, &resv))
-+		return;
-+
-+	struct sdxi_completion *comp __free(sdxi_completion) = sdxi_completion_alloc(cxt->sdxi);
-+	if (!comp)
-+		return;
-+
-+	nop = sdxi_ring_resv_next(&resv);
-+	sdxi_serialize_nop(nop);
-+	sdxi_completion_attach(nop, comp);
-+	sdxi_desc_set_fence(nop);
-+	sdxi_desc_make_valid(nop);
-+	sdxi_cxt_push_doorbell(cxt, sdxi_ring_resv_dbval(&resv));
-+
-+	err = sdxi_completion_poll(comp);
-+	WARN_ONCE(err, "got %d polling cst_blk", err);
-+
-+	vchan_synchronize(to_virt_chan(dma_chan));
-+}
-+
-+static irqreturn_t sdxi_dma_cxt_irq(int irq, void *data)
-+{
-+	struct sdxi_dma_chan *sdchan = data;
-+	struct virt_dma_chan *vchan = &sdchan->vchan;
-+	struct virt_dma_desc *vdesc;
-+	bool completed = false;
-+
-+	guard(spinlock_irqsave)(&vchan->lock);
-+
-+	while ((vdesc = vchan_next_desc(vchan))) {
-+		struct sdxi_dma_desc *sddesc = to_sdxi_dma_desc(vdesc);
-+
-+		if (!sdxi_completion_signaled(sddesc->completion))
-+			break;
-+
-+		list_del(&vdesc->node);
-+		vchan_cookie_complete(&sddesc->vdesc);
-+		completed = true;
-+	}
-+
-+	if (completed)
-+		sdxi_ring_wake_up(sdchan->cxt->ring_state);
-+
-+	return IRQ_HANDLED;
-+}
-+
-+static int sdxi_dma_alloc_chan_resources(struct dma_chan *dma_chan)
-+{
-+	struct sdxi_dev *sdxi = dev_get_drvdata(dma_chan->device->dev);
-+	struct sdxi_dma_chan *sdchan = to_sdxi_dma_chan(dma_chan);
-+	int vector, irq, err;
-+
-+	sdchan->cxt = sdxi_cxt_new(sdxi);
-+	if (!sdchan->cxt)
-+		return -ENOMEM;
-+	/*
-+	 * This irq and akey setup should perhaps all be pushed into
-+	 * the context allocation.
-+	 */
-+	err = vector = sdxi_alloc_vector(sdxi);
-+	if (vector < 0)
-+		goto exit_cxt;
-+
-+	sdchan->vector = vector;
-+
-+	err = irq = sdxi_vector_to_irq(sdxi, vector);
-+	if (irq < 0)
-+		goto free_vector;
-+
-+	sdchan->irq = irq;
-+
-+	/*
-+	 * Note this akey entry is used for both the completion
-+	 * interrupt and source and destination access for copies.
-+	 */
-+	sdchan->akey = sdxi_alloc_akey(sdchan->cxt);
-+	if (!sdchan->akey) {
-+		err = -ENOMEM;
-+		goto free_vector;
-+	}
-+
-+	*sdchan->akey = (typeof(*sdchan->akey)) {
-+		.intr_num = cpu_to_le16(FIELD_PREP(SDXI_AKEY_ENT_VL, 1) |
-+					FIELD_PREP(SDXI_AKEY_ENT_IV, 1) |
-+					FIELD_PREP(SDXI_AKEY_ENT_INTR_NUM,
-+						   vector)),
-+	};
-+
-+	err = request_irq(sdchan->irq, sdxi_dma_cxt_irq,
-+			  IRQF_TRIGGER_NONE, "SDXI DMAengine", sdchan);
-+	if (err)
-+		goto free_akey;
-+
-+	err = sdxi_start_cxt(sdchan->cxt);
-+	if (err)
-+		goto free_irq;
-+
-+	return 0;
-+free_irq:
-+	free_irq(sdchan->irq, sdchan);
-+free_akey:
-+	sdxi_free_akey(sdchan->cxt, sdchan->akey);
-+free_vector:
-+	sdxi_free_vector(sdxi, vector);
-+exit_cxt:
-+	sdxi_cxt_exit(sdchan->cxt);
-+	return err;
-+}
-+
-+static void sdxi_dma_free_chan_resources(struct dma_chan *dma_chan)
-+{
-+	struct sdxi_dma_chan *sdchan = to_sdxi_dma_chan(dma_chan);
-+
-+	sdxi_stop_cxt(sdchan->cxt);
-+	free_irq(sdchan->irq, sdchan);
-+	sdxi_free_vector(sdchan->cxt->sdxi, sdchan->vector);
-+	sdxi_free_akey(sdchan->cxt, sdchan->akey);
-+	vchan_free_chan_resources(to_virt_chan(dma_chan));
-+	sdxi_cxt_exit(sdchan->cxt);
-+}
-+
-+int sdxi_dma_register(struct sdxi_dev *sdxi)
-+{
-+	struct device *dev = sdxi->dev;
-+	struct sdxi_dma_dev *sddev;
-+	struct dma_device *dma_dev;
-+	int err;
-+
-+	if (!dma_channels)
-+		return 0;
-+	/*
-+	 * Note that this code assumes the device supports the
-+	 * interrupt operation group (IntrGrp), which is optional. See
-+	 * SDXI 1.0 Table 6-1 SDXI Operation Groups.
-+	 *
-+	 * TODO: check sdxi->op_grp_cap for IntrGrp support and error
-+	 * out if it's missing.
-+	 */
-+
-+	sddev = devm_kzalloc(dev, struct_size(sddev, sdchan, dma_channels),
-+			     GFP_KERNEL);
-+	if (!sddev)
-+		return -ENOMEM;
-+
-+	sddev->nr_channels = dma_channels;
-+
-+	dma_dev = &sddev->dma_dev;
-+	*dma_dev = (typeof(*dma_dev)) {
-+		.dev                 = dev,
-+		.src_addr_widths     = DMA_SLAVE_BUSWIDTH_64_BYTES,
-+		.dst_addr_widths     = DMA_SLAVE_BUSWIDTH_64_BYTES,
-+		.directions          = BIT(DMA_MEM_TO_MEM),
-+		.residue_granularity = DMA_RESIDUE_GRANULARITY_DESCRIPTOR,
-+
-+		.device_alloc_chan_resources = sdxi_dma_alloc_chan_resources,
-+		.device_free_chan_resources  = sdxi_dma_free_chan_resources,
-+
-+		.device_prep_dma_memcpy = sdxi_dma_prep_memcpy,
-+
-+		.device_terminate_all = sdxi_dma_terminate_all,
-+		.device_synchronize = sdxi_dma_synchronize,
-+		.device_tx_status = sdxi_tx_status,
-+		.device_issue_pending = sdxi_dma_issue_pending,
-+	};
-+
-+	dma_cap_set(DMA_MEMCPY, dma_dev->cap_mask);
-+	INIT_LIST_HEAD(&dma_dev->channels);
-+
-+	for (size_t i = 0; i < sddev->nr_channels; ++i) {
-+		struct sdxi_dma_chan *sdchan = &sddev->sdchan[i];
-+
-+		sdchan->vchan.desc_free = sdxi_tx_desc_free;
-+		vchan_init(&sdchan->vchan, &sddev->dma_dev);
-+	}
-+
-+	err = dmaenginem_async_device_register(dma_dev);
-+	if (err)
-+		return dev_warn_probe(dev, err, "failed to register dma device\n");
-+
-+	return 0;
-+}
-diff --git a/drivers/dma/sdxi/dma.h b/drivers/dma/sdxi/dma.h
-new file mode 100644
-index 000000000000..d38870ea7d91
---- /dev/null
-+++ b/drivers/dma/sdxi/dma.h
-@@ -0,0 +1,11 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
-+/* Copyright Advanced Micro Devices, Inc. */
-+
-+#ifndef DMA_SDXI_DMA_H
-+#define DMA_SDXI_DMA_H
-+
-+struct sdxi_dev;
-+
-+int sdxi_dma_register(struct sdxi_dev *sdxi);
-+
-+#endif /* DMA_SDXI_DMA_H */
+ .gitignore                                         |   1 +
+ arch/arm/Kconfig                                   |   1 +
+ arch/arm/dts/exynos-mobile.dtsi                    |   5 +
+ arch/arm/dts/exynos7870-j7xelte-u-boot.dtsi        |  24 ++
+ arch/arm/dts/msm8916-samsung-a5u-eur-u-boot.dtsi   |  39 ++
+ arch/arm/dts/msm8916-samsung-gt510-u-boot.dtsi     |  39 ++
+ arch/arm/dts/qcom.dtsi                             |   5 +
+ arch/arm/dts/sdm670-google-sargo-u-boot.dtsi       |  27 ++
+ arch/arm/dts/sdm845-oneplus-fajita-u-boot.dtsi     |  25 ++
+ arch/arm/mach-exynos/Kconfig                       |   1 +
+ configs/exynos-mobile_defconfig                    |   1 +
+ configs/qcom_defconfig                             |   1 +
+ tools/binman/etype/android_boot.py                 | 408 +++++++++++++++++++++
+ tools/binman/etype/dtbh.py                         | 173 +++++++++
+ tools/binman/etype/qcdt.py                         | 160 ++++++++
+ tools/binman/ftest.py                              | 127 +++++++
+ .../test/vendor/android_boot_seandroidenforce.dts  |  22 ++
+ tools/binman/test/vendor/android_boot_v0.dts       |  29 ++
+ tools/binman/test/vendor/android_boot_v2.dts       |  46 +++
+ .../binman/test/vendor/android_boot_vendor_dt.dts  |  27 ++
+ tools/binman/test/vendor/dtbh.dts                  |  29 ++
+ tools/binman/test/vendor/dtbh_bad_model_info.dts   |  19 +
+ tools/binman/test/vendor/qcdt.dts                  |  20 +
+ tools/binman/test/vendor/qcdt_bad_msm_id.dts       |  17 +
+ 24 files changed, 1246 insertions(+)
+---
+base-commit: a4c8728f225b0d7d591fb9199ce7efb72f48290e
+change-id: 20260604-android-binman-ad7a43f4e99d
 
+Best regards,
 -- 
-2.54.0
+Sam Day <me@samcday.com>
 
