@@ -1,10 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Sat, 06 Jun 2026 18:47:40 +1000
-Subject: [PATCH 09/11] reboot-mode: reboot method activation support
+Date: Sat, 06 Jun 2026 18:47:41 +1000
+Subject: [PATCH 10/11] fastboot: DM_REBOOT_MODE reset support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260606-pm8916-pon-v1-9-170c9cbe5099@samcday.com>
+Message-Id: <20260606-pm8916-pon-v1-10-170c9cbe5099@samcday.com>
 References: <20260606-pm8916-pon-v1-0-170c9cbe5099@samcday.com>
 In-Reply-To: <20260606-pm8916-pon-v1-0-170c9cbe5099@samcday.com>
 To: u-boot@lists.denx.de, Sumit Garg <sumit.garg@kernel.org>, 
@@ -33,83 +33,111 @@ Cc: Tom Rini <trini@konsulko.com>,
  Ariel D'Alessandro <ariel.dalessandro@collabora.com>, 
  Dmitrii Merkurev <dimorinny@google.com>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780735669; l=2348;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780735669; l=3077;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=d6hNRTcjuOCe5Y5dKLR7z3oIjgEst648gdAhzCuHvx0=;
- b=cIre5IKMI7/rY/2w0xAl/6KcrF4SvOnWmSWpWluTR8AX4BMjvDOqVa5bUJBFruX/fpICOzFzu
- ssSuQwBW74iDb13BTTi2dFPsbqAQu48AsCzeU6yI083HVimWl8OOc8K
+ bh=l4a8r26X7bxSHHthrqIXTMNrSQXi82TGfBtJiFdzyYY=;
+ b=5wy8T/FI3oWO8iNQn+rTqq0VRW2r/9YYBEkVDwE+6HHsqjw7qKVZ+japFG1MPQlSFinnhKVAV
+ hArVey8A5cmDOi+yfff539roa3Hdxqk94dZgtAdtQUfWaa8QF8/9CEg
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Until now, the reboot-mode uclass didn't wire up a producer path to
-allow arbitrary changes to the reboot mode. The current impl only uses
-reboot_mode_ops->set to clear the reboot mode once it has been read at
-boot-time.
-
-The public API is expanded with a dm_reboot_mode_activate method, which
-will instruct the given device to activate a particular reboot mode.
-
-The first producer, `fastboot reboot`, will be introduced in the next
-commit.
+The weak symbol currently implements `fastboot reboot` support using the
+BCB. Nowadays, there's robust reboot-mode driver support which is ideal
+for this use-case.
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- drivers/reboot-mode/reboot-mode-uclass.c | 18 ++++++++++++++++++
- include/reboot-mode/reboot-mode.h        | 12 ++++++++++++
- 2 files changed, 30 insertions(+)
+ drivers/fastboot/Kconfig          |  7 ++++++
+ drivers/fastboot/Makefile         |  1 +
+ drivers/fastboot/fb_reboot_mode.c | 51 +++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 59 insertions(+)
 
-diff --git a/drivers/reboot-mode/reboot-mode-uclass.c b/drivers/reboot-mode/reboot-mode-uclass.c
-index 7cbe02eb4ed..c47d11b681e 100644
---- a/drivers/reboot-mode/reboot-mode-uclass.c
-+++ b/drivers/reboot-mode/reboot-mode-uclass.c
-@@ -9,6 +9,24 @@
- #include <exports.h>
- #include <reboot-mode/reboot-mode.h>
+diff --git a/drivers/fastboot/Kconfig b/drivers/fastboot/Kconfig
+index 90212fcf9ef..a1586e79c7e 100644
+--- a/drivers/fastboot/Kconfig
++++ b/drivers/fastboot/Kconfig
+@@ -108,6 +108,13 @@ config FASTBOOT_UUU_SUPPORT
+ 	  feature if you are using verified boot, as it will allow an attacker
+ 	  to bypass any restrictions you have in place.
  
-+int dm_reboot_mode_activate(struct udevice *dev, const char *mode)
++config FASTBOOT_REBOOT_MODE
++	bool "Use reboot-mode for fastboot reboot commands"
++	depends on DM_REBOOT_MODE
++	help
++	  Use a reboot-mode driver to implement fastboot reboot target flags
++	  such as reboot-bootloader, reboot-fastboot and reboot-recovery.
++
+ choice
+ 	prompt "Flash provider for FASTBOOT"
+ 	depends on FASTBOOT_FLASH
+diff --git a/drivers/fastboot/Makefile b/drivers/fastboot/Makefile
+index a341af076d1..531e694f393 100644
+--- a/drivers/fastboot/Makefile
++++ b/drivers/fastboot/Makefile
+@@ -8,3 +8,4 @@ obj-$(CONFIG_FASTBOOT_FLASH_BLOCK) += fb_block.o
+ obj-$(CONFIG_FASTBOOT_FLASH_MMC) += fb_block.o fb_mmc.o
+ obj-$(CONFIG_FASTBOOT_FLASH_NAND) += fb_nand.o
+ obj-$(CONFIG_FASTBOOT_FLASH_SPI) += fb_spi_flash.o
++obj-$(CONFIG_FASTBOOT_REBOOT_MODE) += fb_reboot_mode.o
+diff --git a/drivers/fastboot/fb_reboot_mode.c b/drivers/fastboot/fb_reboot_mode.c
+new file mode 100644
+index 00000000000..abf4066f1f5
+--- /dev/null
++++ b/drivers/fastboot/fb_reboot_mode.c
+@@ -0,0 +1,51 @@
++// SPDX-License-Identifier: GPL-2.0+
++
++#include <dm.h>
++#include <dm/uclass.h>
++#include <errno.h>
++#include <fastboot.h>
++#include <reboot-mode/reboot-mode.h>
++#include <linux/kernel.h>
++
++static int fastboot_set_reboot_mode(const char *mode)
 +{
-+	struct reboot_mode_ops *ops = reboot_mode_get_ops(dev);
-+	int i;
-+	const struct reboot_mode_uclass_platdata *plat_data =
-+		dev_get_uclass_plat(dev);
++	struct udevice *dev;
++	int ret = -ENOENT;
 +
-+	if (!ops || !ops->set)
-+		return -ENOSYS;
++	uclass_foreach_dev_probe(UCLASS_REBOOT_MODE, dev)
++	{
++		ret = dm_reboot_mode_activate(dev, mode);
++		if (!ret || (ret != -ENOENT && ret != -ENOSYS))
++			return ret;
++	}
 +
-+	for (i = 0; i < plat_data->count; i++) {
-+		if (!strcmp(plat_data->modes[i].mode_name, mode))
-+			return ops->set(dev, plat_data->modes[i].mode_id);
++	return ret;
++}
++
++int fastboot_set_reboot_flag(enum fastboot_reboot_reason reason)
++{
++	static const char *const
++		reboot_modes[FASTBOOT_REBOOT_REASONS_COUNT][2] = {
++			[FASTBOOT_REBOOT_REASON_BOOTLOADER] = { "bootloader",
++								NULL },
++			[FASTBOOT_REBOOT_REASON_FASTBOOTD] = { "fastboot",
++							       "bootloader" },
++			[FASTBOOT_REBOOT_REASON_RECOVERY] = { "recovery",
++							      NULL },
++		};
++	int i, ret;
++
++	if (reason >= FASTBOOT_REBOOT_REASONS_COUNT)
++		return -EINVAL;
++
++	for (i = 0; i < ARRAY_SIZE(reboot_modes[reason]); i++) {
++		if (!reboot_modes[reason][i])
++			continue;
++
++		ret = fastboot_set_reboot_mode(reboot_modes[reason][i]);
++		if (!ret || (ret != -ENOENT && ret != -ENOSYS))
++			return ret;
 +	}
 +
 +	return -ENOENT;
 +}
-+
- int dm_reboot_mode_update(struct udevice *dev)
- {
- 	struct reboot_mode_ops *ops = reboot_mode_get_ops(dev);
-diff --git a/include/reboot-mode/reboot-mode.h b/include/reboot-mode/reboot-mode.h
-index 5fbd7c801af..6510141ff89 100644
---- a/include/reboot-mode/reboot-mode.h
-+++ b/include/reboot-mode/reboot-mode.h
-@@ -53,4 +53,16 @@ struct reboot_mode_ops {
-  */
- int dm_reboot_mode_update(struct udevice *dev);
- 
-+/**
-+ * dm_reboot_mode_activate() - activate a reboot mode by name
-+ *
-+ * This will read the given @dev plat_data for a named mode, and write the
-+ * magic value for that mode to the device.
-+ *
-+ * @dev Device to write reboot magic to
-+ * @mode name of the mode to lookup for magic value
-+ * Return: 0 on success, -ve on error
-+ */
-+int dm_reboot_mode_activate(struct udevice *dev, const char *mode);
-+
- #endif /* REBOOT_MODE_REBOOT_MODE_H__ */
 
 -- 
 2.54.0
