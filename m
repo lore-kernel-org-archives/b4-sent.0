@@ -1,141 +1,105 @@
-From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Fri, 05 Jun 2026 22:42:47 -0700
-Subject: [PATCH net-next v4 16/16] Documentation: networking: Add timestamp
- related APIs to OA TC6 framework
+From: Herman van Hazendonk <github.com@herrie.org>
+Subject: [PATCH v4 0/2] media: i2c: add Aptina MT9M113 image sensor driver
+Date: Sat, 06 Jun 2026 10:17:57 +0200
+Message-Id: <20260606-submit-media-mt9m113-v4-0-046b4cbc7f94@herrie.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260605-s2500-mac-phy-support-v4-16-de0fbc13c6d8@onsemi.com>
-References: <20260605-s2500-mac-phy-support-v4-0-de0fbc13c6d8@onsemi.com>
-In-Reply-To: <20260605-s2500-mac-phy-support-v4-0-de0fbc13c6d8@onsemi.com>
-To: Andrew Lunn <andrew@lunn.ch>, 
- Piergiorgio Beruto <pier.beruto@onsemi.com>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
- Selva Rajagopal <selvamani.rajagopal@onsemi.com>, 
- Richard Cochran <richardcochran@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Simon Horman <horms@kernel.org>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-doc@vger.kernel.org, 
- Jerry Ray <jerry.ray@microchip.com>, 
- Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+X-B4-Tracking: v=1; b=H4sIALbXI2oC/x2MQQqAIBAAvxJ7bsFMJPtKdCjbag9aaEUg/j2JO
+ c1hJkGkwBShrxIEejjy4YuougK7T34j5KU4SCG1KGC8Z8cXOlp4QncZ1zQtSiVtN5M2ZASU9Ay
+ 08vtvhzHnD9tQ+blmAAAA
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Herman van Hazendonk <github.com@herrie.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780724562; l=4814;
- i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=qMIzLX0eC5ihmFdaKnhKOPCk6N1TEOL8NPk1LNjEmH4=;
- b=K/RVcj2az8TbAlcs1pGNk3cydG43TjXs/KRPyZsvcKVB3OaD4G9k8JQhjkhDTT5aAmn8cLobV
- zxHaDTIL7c0D3+u/dd3GjUT4UkNsmV0Hi2iBU3pP3IYSv9MncQfKNMF
-X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
- pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
-X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780733878; l=3845;
+ i=github.com@herrie.org; s=20240417; h=from:subject:message-id;
+ bh=F/6oEepyPd63WZNPjLRITrV5xNoQfnuFOmwjm6Tgq+M=;
+ b=+gXCPqcUD2GXQ/cSDcEF8ziXy4lvSawR6zHJDGhNKwlA7UPmHI9NEgXE5nE2Mb5PsgvD5JNNb
+ mwqAwRIht3DDkGC1ww6pP2srFw2gf50XuhjFErrFKsyc10Vw82ez8+/
+X-Developer-Key: i=github.com@herrie.org; a=ed25519;
+ pk=YYxdq8fb5O9vhkW3n2dCH044FPZZO5718v/du7fRhFw=
+X-Endpoint-Received: by B4 Relay for github.com@herrie.org/20240417 with auth_id=809
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Added new APIs to support hardware timestamp feature as defined in
-OPEN Alliance 10BASE-T1x MAC-PHY serial interface specification.
+Add a V4L2 subdev driver for the Aptina (now ON Semiconductor) MT9M113
+1.3 megapixel SoC image sensor with embedded ISP, as used on the HP
+TouchPad (apq8060) front camera. The sensor is programmed over I2C and
+streams YUV / RGB / monochrome over a 1-lane MIPI CSI-2 D-PHY link.
 
-Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+Tested on HP TouchPad (Qualcomm APQ8060), front camera. The 10-mode
+test-camera.sh sweep passes all of pix640 / pix640-nv16 / pix1280 /
+pix1280-nv16 / video640 / video640-nv16 / video1280 / video1280-nv16 /
+zsl640 / zsl1280 with exact frame-size matches and no MCU wedge
+messages in dmesg.
+
+Changes since v3:
+
+  - Fix Context B (1280x1024 capture) stream-start regression. The
+    MT9M113_SEQ_STATE_PREVIEW constant was 0x04 (== datasheet's
+    "Leave preview" transient state); the actual stable preview state
+    is 0x03. The Context-B preview-first step in stream_context_b()
+    polled for 0x04 and timed out on every 1280x1024 stream-start
+    with "MCU not ready for CAPTURE command -> stream start failed
+    (-110)". Constant corrected to 0x03 with explanatory comment.
+    Verified by passing pix1280 / video1280 / zsl1280 in the sweep
+    above; Context A (640x480) behaviour unchanged.
+
+  - Document an extensive forensic investigation of the IFP test-
+    pattern generator (R0x0066 mode_test_mode, MCU logical addr
+    0x2766) in a NOTE comment above the MODE_TEST_MODE define. The
+    V4L2_CID_TEST_PATTERN control plumbing is retained, but on the
+    HP TouchPad's MT9M113 die the IFP TPG MUX never engages despite
+    every documented and undocumented enable path: writes to R0x2766
+    stick across REFRESH; SEQ_MODE = 0 verifiably silences the MCU
+    firmware drivers (visible darkening from AE-off); the IFP color
+    pipeline can be stripped to nothing (R0x3210 = 0); none of it
+    yields a visible pattern. R0x321C bit 4 is hardwired to 0 and
+    R0x3246..R0x3252 (where the mt9d111-inherited test-mode register
+    lives in the page-flattened address space) is a continuous dead
+    block - classic Aptina foundry-removal fingerprints. No public
+    driver in the MT9M113/V113/D113 family (HP webOS, codeaurora
+    msm-3.4, esp_cam_sensor mt9d111, upstream mt9m114, etc.) drives
+    this register either, consistent with the silicon-removal
+    diagnosis. The plumbing stays in case a different silicon variant
+    or vendor SROM patch actually wires up the TPG block; setting
+    test_pattern > 0 on the current die is harmless (writes succeed,
+    no pattern appears).
+
+  - No driver behaviour changes for AE / AWB / HFLIP / VFLIP /
+    COLORFX / SATURATION / POWER_LINE_FREQUENCY / EXPOSURE /
+    ANALOGUE_GAIN / AUTO_WHITE_BALANCE controls or for the standard
+    stream-start path; all addressed in v3.
+
+Changes since v2 (already in v3):
+
+  - Address Krzysztof + Sakari binding feedback: maxItems on
+    reset-gpios / powerdown-gpios; drop |- from descriptions; drop
+    redundant link-frequencies / remote-endpoint / data-lanes;
+    rename i2c0 -> i2c in example.
+
+  - Add MAINTAINERS entry per patchwork checkpatch.
+
+Signed-off-by: Herman van Hazendonk <github.com@herrie.org>
 ---
- Documentation/networking/oa-tc6-framework.rst | 76 +++++++++++++++++++++++++++
- 1 file changed, 76 insertions(+)
+Herman van Hazendonk (2):
+      dt-bindings: media: i2c: add aptina,mt9m113
+      media: i2c: add Aptina MT9M113 1.3 Mpx SoC sensor driver
 
-diff --git a/Documentation/networking/oa-tc6-framework.rst b/Documentation/networking/oa-tc6-framework.rst
-index fe2aabde923a..694d9485b1c5 100644
---- a/Documentation/networking/oa-tc6-framework.rst
-+++ b/Documentation/networking/oa-tc6-framework.rst
-@@ -153,6 +153,10 @@ OPEN Alliance TC6 Framework
- - Forwards the received Ethernet frame from 10Base-T1x MAC-PHY to n/w
-   subsystem.
- 
-+- If supported by the hardware and enabled, updates hardware timestamp
-+  in skb, when indicated by one of the three timestamp capture registers
-+  through TSC fields of the header.
-+
- Data Transaction
- ~~~~~~~~~~~~~~~~
- 
-@@ -495,3 +499,75 @@ the MAC-PHY.
- Zero align receive frame feature can be enabled to align all receive ethernet
- frames data to start at the beginning of any receive data chunk payload with a
- start word offset (SWO) of zero.
-+
-+.. c:function:: int oa_tc6_ptp_register(struct oa_tc6 *tc6, \
-+                                        struct ptp_clock_info *info);
-+
-+Registers the PTP hardware clock related functions with the kernel.
-+This API simply registers. Initialization of the fields in the
-+ptp_clock_info structure are left to the vendor as programming hardware
-+timer is expected to be vendor dependent. The fields max_adj, owner,
-+and all the functions for the clock operations, like adjfine, gettimex64,
-+settime64, adjtime are expected to be initialized in the structure before
-+calling the registering the hardware clock.
-+
-+.. c:function:: void oa_tc6_ptp_unregister(struct oa_tc6 *tc6);
-+
-+Unregisters the PTP hardware clock related callbacks.
-+
-+.. c:function:: int oa_tc6_ioctl(struct oa_tc6 *tc6, struct ifreq *rq, \
-+                                 int cmd);
-+
-+ioctl interface to handle hardware timestamp and PHY related commands.
-+
-+.. c:function:: int oa_tc6_get_ts_info(struct oa_tc6 *tc6, \
-+                                       struct kernel_ethtool_ts_info *info);
-+
-+Provides timestamp related settings that are supported to ethtool.
-+
-+.. c:function:: void oa_tc6_hwtstamp_get(struct oa_tc6 *tc6, \
-+                                         struct kernel_hwtstamp_config *cfg);
-+
-+Returns hardware timestamp configuration. Part of net_device_ops callbacks.
-+
-+.. c:function:: void oa_tc6_get_ts_stats(struct oa_tc6 *tc6, \
-+                                         struct ethtool_ts_stats *ts_stats);
-+
-+Provides hardware timestamp related traffic statistics for ethtool.
-+
-+.. c:function:: int oa_tc6_hwtstamp_set(struct oa_tc6 *tc6, \
-+                                         struct kernel_hwtstamp_config *cfg);
-+
-+Helper to set hardware timestamp configuration. Part of net_device_ops
-+callbacks.
-+
-+.. c:function:: void oa_tc6_set_vend1_mms(struct oa_tc6 *tc6, int mms);
-+
-+Helper to map MDIO_MMD_VEND1 command to vendor specific Memory Map Select
-+(MMS) value. This function offers flexibility for vendors that may have
-+used any MMS value between 10 and 15 as allowed by the specification.
-+MDIO_MMD_VEND2 is already mapped to MMS4 in the OA TC6 frame work code.
-+
-+.. c:function:: int oa_tc6_write_registers_mms(struct oa_tc6 *tc6, \
-+                                               u16 address, u16 mms, \
-+                                               u32 value[], u8 length);
-+Writing multiple consecutive registers starting from @address for the
-+given @mms memory map selector in the MAC-PHY. Maximum of 128 consecutive
-+registers can be written starting at @address.
-+
-+.. c:function:: int oa_tc6_write_register_mms(struct oa_tc6 *tc6, \
-+                                              u16 address, u16 mms, \
-+                                              u32 value);
-+Write a single register addressed by @address and @mms in the MAC-PHY.
-+
-+.. c:function:: int oa_tc6_read_registers_mms(struct oa_tc6 *tc6, \
-+                                              u16 address, u16 mms, \
-+                                              u32 value[], u8 length);
-+Reading multiple consecutive registers starting from @address for the
-+given @mms memory map selector value, in the MAC-PHY. Maximum of 128
-+consecutive registers can be read starting at @address.
-+
-+.. c:function:: int oa_tc6_read_register_mms(struct oa_tc6 *tc6, \
-+                                             u16 address, u16 mms, \
-+                                             u32 *value);
-+Read a single register addressed by @address and @mms in the MAC-PHY.
+ .../bindings/media/i2c/aptina,mt9m113.yaml         |  122 +
+ MAINTAINERS                                        |    8 +
+ drivers/media/i2c/Kconfig                          |   12 +
+ drivers/media/i2c/Makefile                         |    1 +
+ drivers/media/i2c/mt9m113.c                        | 3114 ++++++++++++++++++++
+ 5 files changed, 3257 insertions(+)
+---
+base-commit: 944125b4c454b58d2fe6e35f1087a932b2050dff
+change-id: 20260606-submit-media-mt9m113-242c8be69e90
 
+Best regards,
 -- 
-2.43.0
+Herman van Hazendonk <github.com@herrie.org>
 
