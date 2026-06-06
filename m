@@ -1,10 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Sat, 06 Jun 2026 18:47:38 +1000
-Subject: [PATCH 07/11] reboot-mode: pm8916-pon: add new driver
+Date: Sat, 06 Jun 2026 18:47:39 +1000
+Subject: [PATCH 08/11] mach-snapdragon: Integrate reboot-mode handling
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260606-pm8916-pon-v1-7-170c9cbe5099@samcday.com>
+Message-Id: <20260606-pm8916-pon-v1-8-170c9cbe5099@samcday.com>
 References: <20260606-pm8916-pon-v1-0-170c9cbe5099@samcday.com>
 In-Reply-To: <20260606-pm8916-pon-v1-0-170c9cbe5099@samcday.com>
 To: u-boot@lists.denx.de, Sumit Garg <sumit.garg@kernel.org>, 
@@ -31,149 +31,129 @@ Cc: Tom Rini <trini@konsulko.com>,
  Mattijs Korpershoek <mkorpershoek@kernel.org>, 
  Peter Robinson <pbrobinson@gmail.com>, 
  Ariel D'Alessandro <ariel.dalessandro@collabora.com>, 
- Dmitrii Merkurev <dimorinny@google.com>, Sam Day <me@samcday.com>
+ Dmitrii Merkurev <dimorinny@google.com>, Sam Day <me@samcday.com>, 
+ Simon Glass <sjg@chromium.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780735669; l=4020;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780735669; l=3020;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=UukCK74H00/SmwCVzmAYKjrf2eCisaqySlvcxfvl8O8=;
- b=yJhtI6cw2EJqSD6nsebAnfZ5sQpHLNZhF0zXkQAQmt33aeDUWuj+Gv1YUhpKUX6wKLy4yHp5b
- AX4mJe6mNqyAJzmE8GLJ52vej5VKHa/KjvNDvYWsA21DQ6Ze3XSCwhD
+ bh=0WlTT8AEvmN650XdUlk6qx9h2kaVLx+Xcz/Pldn7PFw=;
+ b=6ze8RW6YjXGlwejPD/sDVaBRBQxicAWkG8g9TZQcaTl3SJ3MGEDnaJVH1X1J4DFZjetarkLW1
+ SK+stPbj+krCb3c9uSacHIsMZlMXpaSBvTeoHKWvNO0/I74qThV7YBI
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PM8916 provides a PON_SOFT_RB_SPARE register that survives across
-reboots.
+From: Aswin Murugan <aswin.murugan@oss.qualcomm.com>
 
-Signed-off-by: Sam Day <me@samcday.com>
+Add reboot-mode detection and automatic fastboot entry to Qualcomm board
+initialization. This enables 'reboot bootloader' functionality on
+platforms with reboot-mode device tree configuration.
+
+Changes:
+- Add qcom_handle_reboot_mode() call in board_late_init()
+- Conditionally compile with CONFIG_DM_REBOOT_MODE
+- Reorganize header includes
+
+Signed-off-by: Aswin Murugan <aswin.murugan@oss.qualcomm.com>
+Reviewed-by: Simon Glass <sjg@chromium.org>
 ---
- drivers/misc/pm8916_pon.c                    |  7 +++
- drivers/reboot-mode/Makefile                 |  1 +
- drivers/reboot-mode/reboot-mode-pm8916-pon.c | 88 ++++++++++++++++++++++++++++
- 3 files changed, 96 insertions(+)
+ arch/arm/mach-snapdragon/board.c | 56 ++++++++++++++++++++++++++++++++--------
+ 1 file changed, 45 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/misc/pm8916_pon.c b/drivers/misc/pm8916_pon.c
-index 4cd8921a08a..c889d2d4e6e 100644
---- a/drivers/misc/pm8916_pon.c
-+++ b/drivers/misc/pm8916_pon.c
-@@ -142,6 +142,13 @@ static int pm8916_pon_bind(struct udevice *dev)
- 			dev_warn(dev, "failed to bind qcom_pwrkey: %d\n", ret);
- 	}
+diff --git a/arch/arm/mach-snapdragon/board.c b/arch/arm/mach-snapdragon/board.c
+index 829a0109ac7..c37195def57 100644
+--- a/arch/arm/mach-snapdragon/board.c
++++ b/arch/arm/mach-snapdragon/board.c
+@@ -9,6 +9,15 @@
+ #define LOG_CATEGORY LOGC_BOARD
+ #define pr_fmt(fmt) "QCOM: " fmt
  
-+	if (CONFIG_IS_ENABLED(DM_REBOOT_MODE)) {
-+		ret = device_bind_driver_to_node(dev, "pm8916_pon_reboot_mode",
-+						 "reboot_mode", dev_ofnode(dev), NULL);
-+		if (ret)
-+			dev_warn(dev, "failed to bind reboot_mode: %d\n", ret);
-+	}
-+
- 	return 0;
++#include <command.h>
++#include <env.h>
++#include <fdt_support.h>
++#include <init.h>
++#include <lmb.h>
++#include <malloc.h>
++#include <sort.h>
++#include <time.h>
++#include <usb.h>
+ #include <asm/armv8/mmu.h>
+ #include <asm/gpio.h>
+ #include <asm/io.h>
+@@ -16,22 +25,14 @@
+ #include <asm/system.h>
+ #include <dm/device.h>
+ #include <dm/pinctrl.h>
+-#include <dm/uclass-internal.h>
+ #include <dm/read.h>
+-#include <power/regulator.h>
+-#include <env.h>
+-#include <fdt_support.h>
+-#include <init.h>
++#include <dm/uclass-internal.h>
+ #include <linux/arm-smccc.h>
+ #include <linux/bug.h>
+ #include <linux/psci.h>
+ #include <linux/sizes.h>
+-#include <lmb.h>
+-#include <malloc.h>
+-#include <fdt_support.h>
+-#include <usb.h>
+-#include <sort.h>
+-#include <time.h>
++#include <power/regulator.h>
++#include <reboot-mode/reboot-mode.h>
+ 
+ #include "qcom-priv.h"
+ 
+@@ -506,6 +507,33 @@ void qcom_show_boot_source(void)
+ 	env_set("boot_source", name);
  }
  
-diff --git a/drivers/reboot-mode/Makefile b/drivers/reboot-mode/Makefile
-index 48c8ab7fe71..467334d010e 100644
---- a/drivers/reboot-mode/Makefile
-+++ b/drivers/reboot-mode/Makefile
-@@ -8,3 +8,4 @@ obj-$(CONFIG_DM_REBOOT_MODE) += reboot-mode-uclass.o
- obj-$(CONFIG_DM_REBOOT_MODE_GPIO) += reboot-mode-gpio.o
- obj-$(CONFIG_DM_REBOOT_MODE_RTC) += reboot-mode-rtc.o
- obj-$(CONFIG_REBOOT_MODE_NVMEM) += reboot-mode-nvmem.o
-+obj-$(CONFIG_PM8916_PON) += reboot-mode-pm8916-pon.o
-diff --git a/drivers/reboot-mode/reboot-mode-pm8916-pon.c b/drivers/reboot-mode/reboot-mode-pm8916-pon.c
-new file mode 100644
-index 00000000000..fa8d0ecaa77
---- /dev/null
-+++ b/drivers/reboot-mode/reboot-mode-pm8916-pon.c
-@@ -0,0 +1,88 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+
-+#include <dm.h>
-+#include <dm/device_compat.h>
-+#include <dm/read.h>
-+#include <fdtdec.h>
-+#include <power/pmic.h>
-+#include <reboot-mode/reboot-mode.h>
-+
-+#define PON_SOFT_RB_SPARE 0x8f
-+
-+#define GEN1_REASON_SHIFT 2
-+
-+struct pm8916_pon_reboot_mode_priv {
-+	struct udevice *pmic;
-+	phys_addr_t base;
-+};
-+
-+static int pm8916_pon_reboot_mode_get(struct udevice *dev, u32 *rebootmode)
++/**
++ * qcom_handle_reboot_mode() - Process reboot-mode detection and handle fastboot entry
++ *
++ * This function detects the reboot reason from PMIC registers and automatically
++ * enters fastboot mode if the reboot reason was "bootloader".
++ */
++static void qcom_handle_reboot_mode(void)
 +{
-+	struct pm8916_pon_reboot_mode_priv *priv = dev_get_priv(dev);
-+	int reg;
-+	uint mask = GENMASK(7, GEN1_REASON_SHIFT);
-+
-+	reg = pmic_reg_read(priv->pmic, priv->base + PON_SOFT_RB_SPARE);
-+	if (reg < 0) {
-+		dev_warn(dev, "Failed to read PON_SOFT_RB_SPARE: %d\n", reg);
-+		return reg;
-+	}
-+
-+	*rebootmode = (reg & mask) >> GEN1_REASON_SHIFT;
-+
-+	return 0;
-+}
-+
-+static int pm8916_pon_reboot_mode_set(struct udevice *dev, u32 rebootmode)
-+{
-+	struct pm8916_pon_reboot_mode_priv *priv = dev_get_priv(dev);
-+	uint mask = GENMASK(7, GEN1_REASON_SHIFT);
++	struct udevice *reboot_dev;
++	const char *reboot_mode;
 +	int ret;
 +
-+	ret = pmic_clrsetbits(priv->pmic, priv->base + PON_SOFT_RB_SPARE, mask,
-+			      rebootmode << GEN1_REASON_SHIFT);
-+	if (ret) {
-+		dev_warn(dev, "Failed to write PON_SOFT_RB_SPARE: %d\n", ret);
-+		return ret;
++	ret = uclass_first_device_err(UCLASS_REBOOT_MODE, &reboot_dev);
++	if (ret)
++		return;
++
++	ret = dm_reboot_mode_update(reboot_dev);
++	if (ret)
++		return;
++
++	reboot_mode = env_get("reboot-mode");
++	if (reboot_mode && !strcmp(reboot_mode, "bootloader")) {
++		printf("Entering fastboot mode due to reboot reason...\n");
++		run_command("run fastboot", 0);
 +	}
-+	return 0;
 +}
 +
-+static const struct reboot_mode_ops pm8916_pon_reboot_mode_ops = {
-+	.get = pm8916_pon_reboot_mode_get,
-+	.set = pm8916_pon_reboot_mode_set,
-+};
+ void __weak qcom_late_init(void)
+ {
+ }
+@@ -575,6 +603,12 @@ int board_late_init(void)
+ 	qcom_late_init();
+ 
+ 	qcom_show_boot_source();
 +
-+static int pm8916_pon_reboot_mode_probe(struct udevice *dev)
-+{
-+	struct pm8916_pon_reboot_mode_priv *priv = dev_get_priv(dev);
-+	struct udevice *pon = dev_get_parent(dev);
-+	fdt_addr_t base;
++	/* Handle reboot-mode detection and fastboot entry */
++#if IS_ENABLED(CONFIG_DM_REBOOT_MODE)
++	qcom_handle_reboot_mode();
++#endif
 +
-+	/* this driver only works as a child of pm8916_pon */
-+	if (!pon || !pon->driver || strcmp(pon->driver->name, "pm8916_pon"))
-+		return -EINVAL;
-+
-+	priv->pmic = dev_get_parent(pon);
-+	if (!priv->pmic) {
-+		dev_err(dev, "PMIC driver not found\n");
-+		return -EINVAL;
-+	}
-+
-+	base = dev_read_addr(pon);
-+	if (base == FDT_ADDR_T_NONE) {
-+		dev_err(dev, "missing PON reg base\n");
-+		return -EINVAL;
-+	}
-+	priv->base = base;
-+
-+	return 0;
-+}
-+
-+U_BOOT_DRIVER(pm8916_pon_reboot_mode) = {
-+	.name = "pm8916_pon_reboot_mode",
-+	.id = UCLASS_REBOOT_MODE,
-+	.probe = pm8916_pon_reboot_mode_probe,
-+	.ops = &pm8916_pon_reboot_mode_ops,
-+	.priv_auto = sizeof(struct pm8916_pon_reboot_mode_priv),
-+};
+ 	/* Configure the dfu_string for capsule updates */
+ 	qcom_configure_capsule_updates();
+ 
 
 -- 
 2.54.0
