@@ -1,10 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Sat, 06 Jun 2026 18:47:36 +1000
-Subject: [PATCH 05/11] sysreset: qcom-pshold: PM8916 PON reset type support
+Date: Sat, 06 Jun 2026 18:47:37 +1000
+Subject: [PATCH 06/11] qcom_defconfig: enable poweroff command
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260606-pm8916-pon-v1-5-170c9cbe5099@samcday.com>
+Message-Id: <20260606-pm8916-pon-v1-6-170c9cbe5099@samcday.com>
 References: <20260606-pm8916-pon-v1-0-170c9cbe5099@samcday.com>
 In-Reply-To: <20260606-pm8916-pon-v1-0-170c9cbe5099@samcday.com>
 To: u-boot@lists.denx.de, Sumit Garg <sumit.garg@kernel.org>, 
@@ -33,61 +33,48 @@ Cc: Tom Rini <trini@konsulko.com>,
  Ariel D'Alessandro <ariel.dalessandro@collabora.com>, 
  Dmitrii Merkurev <dimorinny@google.com>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780735669; l=1606;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780735669; l=1014;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=lMO6yWOp/proHsUHO0eKk6GQnq/J24pQ78nHP3WriT8=;
- b=pCuRpkfL2dEQ4kuRHwatlVXeoKfJbeI5zV48QE5bh2H6VF/r0//T9Lhs1ftNiDofw+Zq1AIJD
- WtZxteJJWTEDNLX3LXLxKPT6r5+2ng2a+BXASQBHbSSmLmh0LK3Aa3R
+ bh=en+3MOfQE8c2egWvrIqQwiU2u2zLLqoqXQuKxKUBc9g=;
+ b=P7be6G2ghnbJXa6073vcAkyh34g2aE4z2GBIryu5F6wGv+kZJT7U9j5c66DcQ6eMZsWIFxUqz
+ jLLaQLidaJ9Cjnw4NQeWY20JxzlnVySyubdaz2Cl6IJMgRUPlcV4wOt
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Before de-asserting PS_HOLD, PM8916 PMIC can be informed of what kind of
-reset should take place.
+With the newly introduced PM8916 PON driver and support in PSHOLD
+driver, the poweroff command now works on MSM8916 devices.
 
-This might seem a little hacky/weird, but it's a byproduct of how the DT
-nodes are structured, and the way u-boot handles sysreset.
-
-The qcom,pshold node does not belong to the PMIC hierarchy. If U-Boot's
-sysreset infra was a little more flexible, we might be able to model the
-qcom,pm8916-pon driver as UCLASS_SYSRESET in order to catch the sysreset
-type and set the appropriate bits in the PMIC, before chaining to the
-pshold driver to de-assert PS_HOLD (which actually triggers the reset
-type that was written in the previous step).
+This should also work on any more recent qcom SoC with a functional PSCI
+implementation in TZ. I confirmed that is the case on my google-sargo
+and oneplus-fajita, at least.
 
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- drivers/sysreset/sysreset_qcom-pshold.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ configs/qcom_defconfig | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/sysreset/sysreset_qcom-pshold.c b/drivers/sysreset/sysreset_qcom-pshold.c
-index 45290478536..20ddb4ae4ec 100644
---- a/drivers/sysreset/sysreset_qcom-pshold.c
-+++ b/drivers/sysreset/sysreset_qcom-pshold.c
-@@ -13,6 +13,8 @@
- #include <sysreset.h>
- #include <asm/io.h>
- #include <linux/delay.h>
-+#include <dm/device_compat.h>
-+#include "pm8916_pon.h"
- 
- struct qcom_pshold_priv {
- 	phys_addr_t base;
-@@ -22,6 +24,13 @@ static int qcom_pshold_request(struct udevice *dev, enum sysreset_t type)
- {
- 	struct qcom_pshold_priv *priv = dev_get_priv(dev);
- 
-+	if (CONFIG_IS_ENABLED(PM8916_PON)) {
-+		int ret = pm8916_pon_set_reboot_type(type);
-+
-+		if (ret)
-+			dev_err(dev, "Failed to set reboot type: %d\n", ret);
-+	}
-+
- 	writel(0, priv->base);
- 	mdelay(10000);
- 
+diff --git a/configs/qcom_defconfig b/configs/qcom_defconfig
+index c5649b9b746..c7bc6829014 100644
+--- a/configs/qcom_defconfig
++++ b/configs/qcom_defconfig
+@@ -38,6 +38,7 @@ CONFIG_CMD_DFU=y
+ CONFIG_CMD_GPIO=y
+ CONFIG_CMD_I2C=y
+ CONFIG_CMD_MMC=y
++CONFIG_CMD_POWEROFF=y
+ CONFIG_CMD_UFS=y
+ CONFIG_CMD_USB=y
+ CONFIG_CMD_USB_MASS_STORAGE=y
+@@ -135,6 +136,7 @@ CONFIG_SPMI_MSM=y
+ CONFIG_SYSINFO=y
+ CONFIG_SYSINFO_SMBIOS=y
+ CONFIG_SYSRESET_CMD_RESET_ARGS=y
++CONFIG_SYSRESET_CMD_POWEROFF=y
+ CONFIG_SYSRESET_QCOM_PSCI=y
+ CONFIG_SYSRESET_QCOM_PSHOLD=y
+ CONFIG_USB=y
 
 -- 
 2.54.0
