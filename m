@@ -1,11 +1,11 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Fri, 05 Jun 2026 22:42:34 -0700
-Subject: [PATCH net-next v4 03/16] net: ethernet: oa_tc6: Move oa_tc6.c to
- its own directory
+Date: Fri, 05 Jun 2026 22:42:35 -0700
+Subject: [PATCH net-next v4 04/16] net: phy: microchip_t1s: Use generic
+ APIs for C45 read and write
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260605-s2500-mac-phy-support-v4-3-de0fbc13c6d8@onsemi.com>
+Message-Id: <20260605-s2500-mac-phy-support-v4-4-de0fbc13c6d8@onsemi.com>
 References: <20260605-s2500-mac-phy-support-v4-0-de0fbc13c6d8@onsemi.com>
 In-Reply-To: <20260605-s2500-mac-phy-support-v4-0-de0fbc13c6d8@onsemi.com>
 To: Andrew Lunn <andrew@lunn.ch>, 
@@ -26,132 +26,74 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Jerry Ray <jerry.ray@microchip.com>, 
  Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780724562; l=4480;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780724562; l=2443;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=TddEWdaAcBzTr+dxkU5ER4ZrAEWHz31C6KRwvs3G1ro=;
- b=CGhyURyY5vFb4OqomOoRzHes+kH4uojl1unGce3AG6BllfuWvM2jeUreK8N5KQWtiKQTt2/Lb
- gXERlWouw+lAu4HCkbEGkBCjOt5uZdab2OhQS8tA7MFH4fOoNKBEdK5
+ bh=6sTUcccS7JT5OwyvQOGywuignQ32VFAFjNX0fljOxUI=;
+ b=itPmpMHWoPWnso/Qb9QuMMu3T6jnObSBOWOdQYubTo9lEaCWR4sEp24QGd3dC7wQXbUd3CyNC
+ Cq6XtW7R34ABTMB+YMKyJsbxyNkRtUUvA4wnS9vHc0/5/3yVvG81sV3
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Moving oa_tc6.c to its own directory, drivers/net/ethernet/oa_tc6. This
-will facilitate adding more files to support other features
-defined by OPEN Alliance 10BASE-T1x Serial Interface specification
-
-This patch series is adding two files, one for hardware
-timestamp related functions and one for PTP related APIs.
+Replace vendor implementation with generic API to read and write
+PHY registers using C45 bus protocol.
 
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 ---
- MAINTAINERS                                |  2 +-
- drivers/net/ethernet/Kconfig               | 12 +-----------
- drivers/net/ethernet/Makefile              |  2 +-
- drivers/net/ethernet/oa_tc6/Kconfig        | 16 ++++++++++++++++
- drivers/net/ethernet/oa_tc6/Makefile       |  7 +++++++
- drivers/net/ethernet/{ => oa_tc6}/oa_tc6.c |  0
- 6 files changed, 26 insertions(+), 13 deletions(-)
+ drivers/net/phy/microchip_t1s.c | 32 ++------------------------------
+ 1 file changed, 2 insertions(+), 30 deletions(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index eb8cdcc76324..7e6b28202e88 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -20001,7 +20001,7 @@ M:	Parthiban Veerasooran <parthiban.veerasooran@microchip.com>
- L:	netdev@vger.kernel.org
- S:	Maintained
- F:	Documentation/networking/oa-tc6-framework.rst
--F:	drivers/net/ethernet/oa_tc6.c
-+F:	drivers/net/ethernet/oa_tc6/oa_tc6*
- F:	include/linux/oa_tc6.h
+diff --git a/drivers/net/phy/microchip_t1s.c b/drivers/net/phy/microchip_t1s.c
+index e601d56b2507..0c4dc70641d8 100644
+--- a/drivers/net/phy/microchip_t1s.c
++++ b/drivers/net/phy/microchip_t1s.c
+@@ -506,34 +506,6 @@ static int lan86xx_read_status(struct phy_device *phydev)
+ 	return 0;
+ }
  
- OPEN FIRMWARE AND FLATTENED DEVICE TREE
-diff --git a/drivers/net/ethernet/Kconfig b/drivers/net/ethernet/Kconfig
-index 78c79ad7bba5..49d93488ba52 100644
---- a/drivers/net/ethernet/Kconfig
-+++ b/drivers/net/ethernet/Kconfig
-@@ -134,6 +134,7 @@ source "drivers/net/ethernet/netronome/Kconfig"
- source "drivers/net/ethernet/8390/Kconfig"
- source "drivers/net/ethernet/nvidia/Kconfig"
- source "drivers/net/ethernet/nxp/Kconfig"
-+source "drivers/net/ethernet/oa_tc6/Kconfig"
- source "drivers/net/ethernet/oki-semi/Kconfig"
- 
- config ETHOC
-@@ -146,17 +147,6 @@ config ETHOC
- 	help
- 	  Say Y here if you want to use the OpenCores 10/100 Mbps Ethernet MAC.
- 
--config OA_TC6
--	tristate "OPEN Alliance TC6 10BASE-T1x MAC-PHY support" if COMPILE_TEST
--	depends on SPI
--	select PHYLIB
--	help
--	  This library implements OPEN Alliance TC6 10BASE-T1x MAC-PHY
--	  Serial Interface protocol for supporting 10BASE-T1x MAC-PHYs.
+-/* OPEN Alliance 10BASE-T1x compliance MAC-PHYs will have both C22 and
+- * C45 registers space. If the PHY is discovered via C22 bus protocol it assumes
+- * it uses C22 protocol and always uses C22 registers indirect access to access
+- * C45 registers. This is because, we don't have a clean separation between
+- * C22/C45 register space and C22/C45 MDIO bus protocols. Resulting, PHY C45
+- * registers direct access can't be used which can save multiple SPI bus access.
+- * To support this feature, set .read_mmd/.write_mmd in the PHY driver to call
+- * .read_c45/.write_c45 in the OPEN Alliance framework
+- * drivers/net/ethernet/oa_tc6.c
+- */
+-static int lan865x_phy_read_mmd(struct phy_device *phydev, int devnum,
+-				u16 regnum)
+-{
+-	struct mii_bus *bus = phydev->mdio.bus;
+-	int addr = phydev->mdio.addr;
 -
--	  To know the implementation details, refer documentation in
--	  <file:Documentation/networking/oa-tc6-framework.rst>.
+-	return __mdiobus_c45_read(bus, addr, devnum, regnum);
+-}
 -
- source "drivers/net/ethernet/pasemi/Kconfig"
- source "drivers/net/ethernet/pensando/Kconfig"
- source "drivers/net/ethernet/qlogic/Kconfig"
-diff --git a/drivers/net/ethernet/Makefile b/drivers/net/ethernet/Makefile
-index bba55d9af387..77b11d5a7abf 100644
---- a/drivers/net/ethernet/Makefile
-+++ b/drivers/net/ethernet/Makefile
-@@ -71,6 +71,7 @@ obj-$(CONFIG_NET_VENDOR_NETRONOME) += netronome/
- obj-$(CONFIG_NET_VENDOR_NI) += ni/
- obj-$(CONFIG_NET_VENDOR_NVIDIA) += nvidia/
- obj-$(CONFIG_LPC_ENET) += nxp/
-+obj-$(CONFIG_OA_TC6) += oa_tc6/
- obj-$(CONFIG_NET_VENDOR_OKI) += oki-semi/
- obj-$(CONFIG_ETHOC) += ethoc.o
- obj-$(CONFIG_NET_VENDOR_PASEMI) += pasemi/
-@@ -104,4 +105,3 @@ obj-$(CONFIG_NET_VENDOR_XILINX) += xilinx/
- obj-$(CONFIG_NET_VENDOR_XIRCOM) += xircom/
- obj-$(CONFIG_NET_VENDOR_SYNOPSYS) += synopsys/
- obj-$(CONFIG_NET_VENDOR_PENSANDO) += pensando/
--obj-$(CONFIG_OA_TC6) += oa_tc6.o
-diff --git a/drivers/net/ethernet/oa_tc6/Kconfig b/drivers/net/ethernet/oa_tc6/Kconfig
-new file mode 100644
-index 000000000000..97345f345fb9
---- /dev/null
-+++ b/drivers/net/ethernet/oa_tc6/Kconfig
-@@ -0,0 +1,16 @@
-+# SPDX-License-Identifier: GPL-2.0-only
-+#
-+# OA TC6 10BASE-T1x MAC-PHY configuration
-+#
-+
-+config OA_TC6
-+	tristate "OPEN Alliance TC6 10BASE-T1x MAC-PHY support"
-+	depends on SPI
-+	select PHYLIB
-+	help
-+	  This library implements OPEN Alliance TC6 10BASE-T1x MAC-PHY
-+	  Serial Interface protocol for supporting 10BASE-T1x MAC-PHYs.
-+
-+	  To know the implementation details, refer documentation in
-+	  <file:Documentation/networking/oa-tc6-framework.rst>.
-+
-diff --git a/drivers/net/ethernet/oa_tc6/Makefile b/drivers/net/ethernet/oa_tc6/Makefile
-new file mode 100644
-index 000000000000..f24aae852ef2
---- /dev/null
-+++ b/drivers/net/ethernet/oa_tc6/Makefile
-@@ -0,0 +1,7 @@
-+# SPDX-License-Identifier: GPL-2.0-only
-+#
-+# Makefile for OA TC6 10BASE-T1x MAC-PHY
-+#
-+
-+obj-$(CONFIG_OA_TC6) := oa_tc6_mod.o
-+oa_tc6_mod-objs := oa_tc6.o
-diff --git a/drivers/net/ethernet/oa_tc6.c b/drivers/net/ethernet/oa_tc6/oa_tc6.c
-similarity index 100%
-rename from drivers/net/ethernet/oa_tc6.c
-rename to drivers/net/ethernet/oa_tc6/oa_tc6.c
+-static int lan865x_phy_write_mmd(struct phy_device *phydev, int devnum,
+-				 u16 regnum, u16 val)
+-{
+-	struct mii_bus *bus = phydev->mdio.bus;
+-	int addr = phydev->mdio.addr;
+-
+-	return __mdiobus_c45_write(bus, addr, devnum, regnum, val);
+-}
+-
+ static struct phy_driver microchip_t1s_driver[] = {
+ 	{
+ 		PHY_ID_MATCH_EXACT(PHY_ID_LAN867X_REVB1),
+@@ -584,8 +556,8 @@ static struct phy_driver microchip_t1s_driver[] = {
+ 		.features           = PHY_BASIC_T1S_P2MP_FEATURES,
+ 		.config_init        = lan865x_revb_config_init,
+ 		.read_status        = lan86xx_read_status,
+-		.read_mmd           = lan865x_phy_read_mmd,
+-		.write_mmd          = lan865x_phy_write_mmd,
++		.read_mmd           = genphy_phy_read_mmd,
++		.write_mmd          = genphy_phy_write_mmd,
+ 		.get_plca_cfg	    = genphy_c45_plca_get_cfg,
+ 		.set_plca_cfg	    = lan86xx_plca_set_cfg,
+ 		.get_plca_status    = genphy_c45_plca_get_status,
 
 -- 
 2.43.0
