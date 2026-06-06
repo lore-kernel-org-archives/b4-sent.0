@@ -1,14 +1,12 @@
 From: Herman van Hazendonk <github.com@herrie.org>
-Subject: [PATCH v5 0/2] media: i2c: add Aptina MT9M113 image sensor driver
-Date: Sat, 06 Jun 2026 14:35:26 +0200
-Message-Id: <20260606-submit-media-mt9m113-v5-0-2088c7358e11@herrie.org>
+Date: Sat, 06 Jun 2026 14:35:27 +0200
+Subject: [PATCH v5 1/2] dt-bindings: media: i2c: add aptina,mt9m113
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAA4UJGoC/4WOTQ6CMBCFr0Jm7ZhSK1pX3sOwoGWAWRTMtBIN6
- d2tXMC81feS97NBJGGKcKs2EFo58jIXOB8q8FM3j4TcFwatdKOKML5c4ISBeu4wJBvq+oTaaH9
- 11FiyCkr0KTTwe699tIUnjmmRz76ymp/7p3A1qFCZxhnv/GWw5j6RlKPHRUZoc85fLQdF3rkAA
- AA=
+Message-Id: <20260606-submit-media-mt9m113-v5-1-2088c7358e11@herrie.org>
+References: <20260606-submit-media-mt9m113-v5-0-2088c7358e11@herrie.org>
+In-Reply-To: <20260606-submit-media-mt9m113-v5-0-2088c7358e11@herrie.org>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -16,155 +14,161 @@ To: Mauro Carvalho Chehab <mchehab@kernel.org>,
 Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Herman van Hazendonk <github.com@herrie.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780749326; l=6552;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780749326; l=4154;
  i=github.com@herrie.org; s=20240417; h=from:subject:message-id;
- bh=Gzx9HxWa4AXbjKi3u14vusmbkNBTIyZW73WJQXjm9uY=;
- b=+O83h6yMB4py5DeUjH1W8QZVz1VIvg7EUlX4ZMlUNzeSDW+jxDBZWcJDuoGZb3kndwdHoD5eQ
- m/ambjDNr1WCofBJou4D2mAac4c3TtLC5HuHdyNm81tgiJ48WXEtMAa
+ bh=4A9cg1j0DPHiAbho6PLcd9YrxAZyAPEE5WDFEqhZNps=;
+ b=6tu+WX851QdGgxoZO4jCta+asSuAc6weT02haWp6c7VRJnYDnN7W4KlB3fgZ5roldrHohdCMR
+ QGfI/HoGcWJAEsFsLp9+Qm+DaL5OriJUbmGGkYKuNi02c+yy1p/V3JN
 X-Developer-Key: i=github.com@herrie.org; a=ed25519;
  pk=YYxdq8fb5O9vhkW3n2dCH044FPZZO5718v/du7fRhFw=
 X-Endpoint-Received: by B4 Relay for github.com@herrie.org/20240417 with auth_id=809
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a V4L2 subdev driver for the Aptina (now ON Semiconductor) MT9M113
-1.3 megapixel SoC image sensor with embedded ISP, as used on the HP
-TouchPad (apq8060) front camera. The sensor is programmed over I2C and
-streams YUV / RGB / monochrome over a 1-lane MIPI CSI-2 D-PHY link.
+Add the binding for the Aptina (now ON Semiconductor) MT9M113 1.3
+megapixel SoC image sensor with on-die ISP. The chip is used as the
+front (user-facing) camera on the HP TouchPad tablet and connects
+to the host SoC over MIPI CSI-2.
 
-v5 addresses 5 Sashiko findings on the v4 patchset plus a follow-up
-regression caught by an on-HW unbind-during-stream-start race test
-(see "Test results" below).
+The binding describes the chip's i2c address, optional reset and
+standby GPIOs, the per-supply regulators (VDD, VDD_IO, VDDA), the
+external clock input, and the CSI-2 endpoint pads exposed via the
+"port" subnode.
 
+Assisted-by: Claude:claude-opus-4-7 Sashiko:claude-haiku-4-5
 Signed-off-by: Herman van Hazendonk <github.com@herrie.org>
 ---
-Changes in v5:
+ .../bindings/media/i2c/aptina,mt9m113.yaml         | 122 +++++++++++++++++++++
+ 1 file changed, 122 insertions(+)
 
-  - [Low]  Kconfig: select V4L2_FWNODE alongside V4L2_CCI_I2C. The
-    driver calls v4l2_fwnode_endpoint_alloc_parse() / _free() and
-    embeds struct v4l2_fwnode_endpoint, so it needs to select the
-    helper rather than rely on transitive selection from the host
-    bridge (qcom-camss).
+diff --git a/Documentation/devicetree/bindings/media/i2c/aptina,mt9m113.yaml b/Documentation/devicetree/bindings/media/i2c/aptina,mt9m113.yaml
+new file mode 100644
+index 000000000000..72b827c47b1d
+--- /dev/null
++++ b/Documentation/devicetree/bindings/media/i2c/aptina,mt9m113.yaml
+@@ -0,0 +1,122 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/media/i2c/aptina,mt9m113.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: Aptina MT9M113 1.3 Megapixel CMOS Digital Image Sensor
++
++maintainers:
++  - Herman van Hazendonk <github.com@herrie.org>
++
++description:
++  The Aptina MT9M113 is a 1.3 Megapixel CMOS digital image sensor with
++  1280x1024 active pixels. It supports dual context operation
++  Context A (640x480 preview mode with binning) and Context B (1280x1024
++  capture mode). It is programmable through an I2C interface and outputs
++  image data over a 1-lane MIPI CSI-2 connection.
++
++properties:
++  compatible:
++    const: aptina,mt9m113
++
++  reg:
++    description: I2C device address
++    enum:
++      - 0x3c
++      - 0x48
++      - 0x5d
++
++  clocks:
++    description: EXTCLK clock signal (24 MHz typical)
++    maxItems: 1
++
++  vdd-supply:
++    description:
++      Core digital voltage supply, 1.8V
++
++  vddio-supply:
++    description:
++      I/O digital voltage supply, 1.8V or 2.8V
++
++  vaa-supply:
++    description:
++      Analog voltage supply, 2.8V
++
++  reset-gpios:
++    maxItems: 1
++    description:
++      GPIO connected to the RESET_BAR pin, if any (active low). The MT9M113
++      has a single RESET_BAR pin.
++
++  powerdown-gpios:
++    maxItems: 1
++    description:
++      GPIO connected to the STANDBY/PWDN pin, if any (active high). When
++      asserted, the sensor enters low-power standby mode. The MT9M113 has
++      a single STANDBY/PWDN pin.
++
++  port:
++    $ref: /schemas/graph.yaml#/$defs/port-base
++    additionalProperties: false
++
++    properties:
++      endpoint:
++        $ref: /schemas/media/video-interfaces.yaml#
++        unevaluatedProperties: false
++
++        properties:
++          bus-type:
++            const: 4
++            description: MIPI CSI-2 D-PHY
++
++        required:
++          - bus-type
++          - link-frequencies
++
++    required:
++      - endpoint
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - vdd-supply
++  - vddio-supply
++  - vaa-supply
++  - port
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/gpio/gpio.h>
++    #include <dt-bindings/media/video-interfaces.h>
++
++    i2c {
++        #address-cells = <1>;
++        #size-cells = <0>;
++
++        camera@3c {
++            compatible = "aptina,mt9m113";
++            reg = <0x3c>;
++
++            clocks = <&mmcc 48>;
++
++            reset-gpios = <&pm8058_gpio 29 GPIO_ACTIVE_LOW>;
++            powerdown-gpios = <&pm8058_gpio 30 GPIO_ACTIVE_HIGH>;
++
++            vddio-supply = <&pm8058_l15>;
++            vdd-supply = <&pm8058_l15>;
++            vaa-supply = <&pm8058_l14>;
++
++            port {
++                mt9m113_ep: endpoint {
++                    bus-type = <MEDIA_BUS_TYPE_CSI2_DPHY>;
++                    link-frequencies = /bits/ 64 <384000000>;
++                    remote-endpoint = <&csiphy1_ep>;
++                };
++            };
++        };
++    };
++...
 
-  - [High] mt9m113_stream_context_a(): propagate the SEQ_CMD_RUN
-    poll timeout instead of unconditionally returning 0. The
-    bounded retry loop in mt9m113_start_streaming() can now
-    actually retry the wedged MCU; previously the silent return 0
-    let the pipeline stream from an unconfigured chip.
-
-  - [High] mt9m113_start_streaming(): take a single PM reference
-    for the whole retry loop and bypass runtime PM between
-    attempts. V4L2 bridges hold a managed DL_FLAG_PM_RUNTIME
-    device-link reference on this sensor for the duration of
-    s_stream, so the prior pm_runtime_put_sync_suspend() /
-    pm_runtime_resume_and_get() pair was rejected with -EBUSY and
-    the MCU was never actually power-cycled between attempts.
-    The retry body now calls mt9m113_power_off() /
-    mt9m113_power_on() / mt9m113_sensor_init() directly; on
-    terminal failure pm_runtime_set_suspended + put_noidle keeps
-    the PM core coherent with the hardware state.
-
-  - [Med]  V4L2_CID_TEST_PATTERN: only set test_pattern_active /
-    test_pattern_value after mt9m113_apply_test_pattern() succeeds.
-    Previously a failed apply left test_pattern_active = true
-    forever, causing every subsequent s_ctrl refresh site to skip
-    its refresh thinking the MCU was halted.
-
-  - [High] mt9m113_remove(): defer per-subdev cleanup
-    (v4l2_subdev_cleanup, v4l2_ctrl_handler_free,
-    media_entity_cleanup) and the kfree of the surrounding sensor
-    struct to per-subdev .release callbacks
-    (mt9m113_ifp_release, mt9m113_pa_release).
-    v4l2_async_unregister_subdev() does NOT block waiting for
-    in-flight ioctls; freeing the ctrl handler (whose mutex an
-    in-flight VIDIOC_S_CTRL may be holding) directly from remove()
-    left the ioctl unlocking freed memory. Switched sensor
-    allocation from devm_kzalloc to kzalloc and gated the kfree
-    behind an atomic release_count so both PA and IFP devnodes
-    must drain before the struct is reclaimed.
-
-  - [High, found in HW test] mt9m113_start_streaming() failure
-    path: the unconditional trailing mt9m113_power_off(sensor)
-    after the retry loop double-disabled clk + regulator on every
-    failure exit because each in-loop break already powered the
-    chip down. The 3-WARN cluster
-    (clk_core_disable / clk_core_unprepare / _regulator_disable
-    underflow) reliably fired during the unbind-during-stream-start
-    race test. Dropped the trailing power_off; rely on each break
-    path to leave the chip off. Re-verified on HW: WARN cluster
-    gone, retry mechanism still works end-to-end.
-
-Test results (v5, HP TouchPad APQ8060, kernel 7.1.0-rc1):
-
-  - test-camera.sh comprehensive: pix640 PASS (1.38 MB),
-    pix1280 PASS (5.9 MB), video640 PASS. Context A (640x480) and
-    Context B (1280x1024) stream-start both functional.
-
-  - 10x rapid pix640 + 10x rapid pix1280 stream stress: 20/20
-    streams started cleanly. No MCU wedge on this session; when
-    a wedge does occur, dmesg now shows the
-    "stream start failed (-110), power-cycle + retry N/M" trace
-    instead of the pre-fix silent return 0.
-
-  - 60s mt9m113_remove() / bind cycle racing concurrent
-    VIDIOC_QUERYCTRL / S_CTRL spammers on both /dev/v4l-subdev*
-    nodes: zero Oops, zero BUG, zero KASAN-style splat
-    (this kernel has no KASAN; latent UAF could still go
-    unobserved, but the macro-symptoms a UAF would produce are
-    absent). Driver re-bound cleanly at the end.
-
-  - 120s concurrent multi-subsystem load (camera stream loop +
-    dd to eMMC + /dev/urandom + filesystem walk): clean,
-    USB stayed up, MDP stayed active. Driver still bound at the
-    end.
-
-  - dmesg post-sweep: 0 WARN, 0 BUG, 0 Oops, 0 clk underflow,
-    0 regulator underflow, 0 v4l2-subdev WARN.
-
-  - Kernel build clean (ARCH=arm, CONFIG_VIDEO_MT9M113=y,
-    arm-linux-gnueabihf-gcc).
-
-Changes since v3 (already in v4):
-
-  - Context B (1280x1024 capture) stream-start regression fix.
-    The MT9M113_SEQ_STATE_PREVIEW constant was 0x04 (== datasheet's
-    "Leave preview" transient state); the actual stable preview
-    state is 0x03. The Context-B preview-first poll in
-    stream_context_b() timed out on every 1280x1024 stream-start.
-
-  - Forensic NOTE comment above MODE_TEST_MODE documenting the IFP
-    test-pattern generator silicon-removal investigation
-    (R0x321C bit 4 hardwired to 0, R0x3246..R0x3252 dead block).
-    V4L2_CID_TEST_PATTERN plumbing retained on the chance a
-    different silicon variant or vendor SROM patch enables the
-    TPG block.
-
-Changes since v2 (already in v3):
-
-  - Address Krzysztof + Sakari binding feedback: maxItems on
-    reset-gpios / powerdown-gpios; drop |- from descriptions; drop
-    redundant link-frequencies / remote-endpoint / data-lanes;
-    rename i2c0 -> i2c in example.
-
-  - Add MAINTAINERS entry per patchwork checkpatch.
-
-- Link to v4: https://lore.kernel.org/r/20260606-submit-media-mt9m113-v4-0-046b4cbc7f94@herrie.org
-
----
-Herman van Hazendonk (2):
-      dt-bindings: media: i2c: add aptina,mt9m113
-      media: i2c: add Aptina MT9M113 1.3 Mpx SoC sensor driver
-
- .../bindings/media/i2c/aptina,mt9m113.yaml         |  122 +
- MAINTAINERS                                        |    8 +
- drivers/media/i2c/Kconfig                          |   13 +
- drivers/media/i2c/Makefile                         |    1 +
- drivers/media/i2c/mt9m113.c                        | 3252 ++++++++++++++++++++
- 5 files changed, 3396 insertions(+)
----
-base-commit: 944125b4c454b58d2fe6e35f1087a932b2050dff
-change-id: 20260606-submit-media-mt9m113-242c8be69e90
-
-Best regards,
 -- 
-Herman van Hazendonk <github.com@herrie.org>
+2.43.0
 
