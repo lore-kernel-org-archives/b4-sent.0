@@ -1,10 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Mon, 08 Jun 2026 09:37:12 +1000
-Subject: [PATCH v2 3/8] binman: android_boot: vendor-dt support
+Date: Mon, 08 Jun 2026 09:37:13 +1000
+Subject: [PATCH v2 4/8] binman: Add QCDT support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260608-android-binman-v2-3-b8203682507f@samcday.com>
+Message-Id: <20260608-android-binman-v2-4-b8203682507f@samcday.com>
 References: <20260608-android-binman-v2-0-b8203682507f@samcday.com>
 In-Reply-To: <20260608-android-binman-v2-0-b8203682507f@samcday.com>
 To: u-boot@lists.denx.de
@@ -21,206 +21,320 @@ Cc: Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>,
  Kaustabh Chakraborty <kauschluss@disroot.org>, 
  Henrik Grimler <henrik@grimler.se>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780875433; l=8105;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780875433; l=10361;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=GQgb51aLgFmcyCU/kZdYTjDq4Hwe1k3YAmd3h0qEd24=;
- b=lqPxszgR4ljxPt908nQxFNgQe5SU2WHYc15yWmMDebffc5+r6VmbCCoGgMEVZs2trYMzMtCiv
- 0gZfq2aawJZC5FcVVmC2jgTJN4HbwAd11I0AINBfnJLkGFj+JbUcrXT
+ bh=A+iiEt8UpUmsDMFCTk8nw9cZeORPpVsKPrQR7yXZfK8=;
+ b=+peG7SbvZ9Dy8wTjfDvoXixyOivwYVzPuPGDi1npaEWkem63H8nyynTmPYl04UuxB0fhAPc5+
+ M2Bmm9Z4gJZCX/ZCvxGz5HMUt7NlSJ/9xOlsqHmZYMJBO/vpXMwdNGT
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There's many Android bootloaders out there that expect non-standard
-abootimgs. Samsung and Qualcomm, and likely many others. This quirk has
-been codified in the widely used osm0sis fork/rewrite of mkbootimg.
+This vendor-specific format is used by many bootloaders on older qcom
+SoCs, such as msm8916. It's a container for N FDTs. Each one is
+contained in a record that includes metadata about the platform/variant
+it targets. The previous bootloader picks the "right" record based on
+this metadata.
 
-Presumably, these vendor-specific abootimgs were conceived before the v2
-format was widely available or specified. The evidence for this is their
-hijacking of the header_version field to specify the length of a payload
-that follows the main abootimg.
+This initial impl targets a streamlined v2 path, with no support for
+different versions or multiple qcom,msm-id/qcom,board-id tuples. If/when
+that's needed it will be implemented in a follow-up.
 
-At least QCDT and DTBH (both of which will be implemented as binman
-etypes in following commits) use this approach.
-
-Link: https://github.com/osm0sis/mkbootimg
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- tools/binman/etype/android_boot.py                 | 37 ++++++++++++++++++++--
- tools/binman/ftest.py                              | 11 ++++++-
- .../binman/test/vendor/android_boot_vendor_dt.dts  | 27 ++++++++++++++++
- 3 files changed, 72 insertions(+), 3 deletions(-)
+ tools/binman/etype/android_boot.py           |  30 +++++
+ tools/binman/etype/qcdt.py                   | 160 +++++++++++++++++++++++++++
+ tools/binman/ftest.py                        |  22 ++++
+ tools/binman/test/vendor/qcdt.dts            |  20 ++++
+ tools/binman/test/vendor/qcdt_bad_msm_id.dts |  17 +++
+ 5 files changed, 249 insertions(+)
 
 diff --git a/tools/binman/etype/android_boot.py b/tools/binman/etype/android_boot.py
-index 5af7d48e16b..5b0f08f27db 100644
+index 5b0f08f27db..0eb59b30312 100644
 --- a/tools/binman/etype/android_boot.py
 +++ b/tools/binman/etype/android_boot.py
-@@ -40,6 +40,9 @@ class Entry_android_boot(Entry_section):
-     A kernel payload, optional ramdisk payload can be supplied. A DTB payload
-     can also be provided when header_version == v2.
- 
-+    Vendor-specific payloads are also supported. These are non-standard
-+    v0 images with a special DT container format appended.
+@@ -107,6 +107,36 @@ class Entry_android_boot(Entry_section):
+                 };
+             };
+         };
 +
-     Properties / Entry arguments:
-         - header-version: Android boot image header version, must be 0 or 2,
-           defaults to 0
-@@ -57,6 +60,7 @@ class Entry_android_boot(Entry_section):
-         - kernel: section containing the executable payload
-         - dtb: section containing the DTB payload, used by header version 2 only
-         - ramdisk: optional section containing a ramdisk payload
-+        - vendor-dt: legacy vendor DT payload, used by header version 0 only
- 
-     Example::
-         A v2 abootimg with control FDT placed in the DTB section:
-@@ -117,6 +121,7 @@ class Entry_android_boot(Entry_section):
-         self.os_version = fdt_util.GetInt(self._node, 'os-version', 0)
-         self.boot_name = fdt_util.GetString(self._node, 'boot-name', '')
-         self.cmdline = fdt_util.GetString(self._node, 'cmdline', '')
-+        self.vendor_dt_node = self._node.FindNode('vendor-dt')
- 
-         if self.header_version not in (0, 2):
-             self.Raise('Only Android boot image header versions 0 and 2 are '
-@@ -131,17 +136,26 @@ class Entry_android_boot(Entry_section):
-                 self.Raise('page-size must fit the Android boot image header')
-             if 'dtb' in self._entries:
-                 self.Raise("Subnode 'dtb' requires header-version 2")
-+            if self.vendor_dt_node and self.os_version:
-+                self.Raise("os_version not allowed when vendor-dt is in use")
-         else:
-             # v2
-             if self.page_size < BOOT_IMAGE_HEADER_V2_SIZE:
-                 self.Raise('page-size must fit the Android boot image header')
-             if 'dtb' not in self._entries:
-                 self.Raise("Missing required subnode 'dtb'")
-+            if self.vendor_dt_node:
-+                self.Raise("Subnode 'vendor-dt' requires header-version 0")
- 
-     def ReadEntries(self):
-         for node in self._node.subnodes:
-             if self.IsSpecialSubnode(node):
-                 continue
++        A legacy QCDT abootimg, the kind msm8916 bootloaders expect:
 +
-+            if node.name == 'vendor-dt':
-+                self._ReadVendorDtEntries(node)
++        android-boot {
++            base = <0x80000000>;
++
++            kernel {
++                u-boot {
++                    no-expanded;
++                };
++            };
++
++            ramdisk {
++                fill {
++                    size = <1>;
++                };
++            };
++
++            vendor-dt {
++                qcdt {
++                    dtb-0 {
++                        qcom,msm-id = <206 0>;
++                        qcom,board-id = <0xce08ff01 1>;
++
++                        u-boot-dtb {
++                        };
++                    };
++                };
++            };
++        };
+     """
+ 
+     def ReadNode(self):
+diff --git a/tools/binman/etype/qcdt.py b/tools/binman/etype/qcdt.py
+new file mode 100644
+index 00000000000..ddfa72eb8d2
+--- /dev/null
++++ b/tools/binman/etype/qcdt.py
+@@ -0,0 +1,160 @@
++# SPDX-License-Identifier: GPL-2.0+
++# Entry-type module for Qualcomm Android device tree tables
++
++import struct
++
++from binman.entry import Entry
++from binman.etype.section import Entry_section
++from dtoc import fdt_util
++
++
++QCDT_MAGIC = b'QCDT'
++QCDT_VERSION = 2
++
++
++def _align_up(value, align):
++    return (value + align - 1) & ~(align - 1)
++
++
++def _pad(data, align):
++    return data + b'\0' * (_align_up(len(data), align) - len(data))
++
++
++class Entry_qcdt(Entry_section):
++    """Qualcomm Android device tree table
++
++    This creates a QCDT table, the legacy device-tree table format used by
++    some Qualcomm Android bootloaders.
++
++    Properties / Entry arguments:
++        - page-size: QCDT page size, defaults to the parent android-boot page
++          size or 2048 when used elsewhere
++
++    This entry uses the following subnodes:
++        - dtb-*: DTB records, each containing qcom,msm-id, qcom,board-id and
++          exactly one DTB payload entry
++
++    Example::
++
++        qcdt {
++            dtb-0 {
++                qcom,msm-id = <206 0>;
++                qcom,board-id = <0xce08ff01 1>;
++
++                u-boot-dtb {
++                };
++            };
++        };
++    """
++
++    @staticmethod
++    def _DtbEntryName(node):
++        return '_dtb_%s' % node.name
++
++    def _GetPayloadSubnodes(self, node):
++        return [subnode for subnode in node.subnodes
++                if not self.IsSpecialSubnode(subnode)]
++
++    def ReadNode(self):
++        super().ReadNode()
++        self._page_size = fdt_util.GetInt(self._node, 'page-size')
++        if (self._page_size is not None and
++                (self._page_size <= 0 or
++                 self._page_size & (self._page_size - 1))):
++            self.Raise('page-size must be a power of two')
++
++    def ReadEntries(self):
++        for node in self._node.subnodes:
++            if self.IsSpecialSubnode(node):
 +                continue
 +
-             if node.name not in ('kernel', 'ramdisk', 'dtb'):
-                 self.Raise("Unexpected subnode '%s'" % node.name)
- 
-@@ -152,6 +166,15 @@ class Entry_android_boot(Entry_section):
-             entry.SetPrefix(self._name_prefix)
-             self._entries[node.name] = entry
- 
-+    def _ReadVendorDtEntries(self, vendor_dt_node):
-+        entry = Entry.Create(self, vendor_dt_node, etype='section',
-+                             expanded=self.GetImage().use_expanded,
-+                             missing_etype=self.GetImage().missing_etype)
-+        entry.page_size = fdt_util.GetInt(self._node, 'page-size', 2048)
-+        entry.ReadNode()
-+        entry.SetPrefix(self._name_prefix)
-+        self._entries[vendor_dt_node.name] = entry
++            payloads = self._GetPayloadSubnodes(node)
++            if len(payloads) > 1:
++                raise ValueError("Node '%s': must contain exactly one DTB "
++                                 "payload subnode" % node.path)
++            if not payloads:
++                continue
 +
-     def _GetIntCells(self, propname, default):
-         prop = self._node.props.get(propname)
-         if not prop:
-@@ -219,11 +242,18 @@ class Entry_android_boot(Entry_section):
- 
-         return data
- 
-+    def _BuildVendorDt(self, required):
-+        if not self.vendor_dt_node:
-+            return b''
-+        return self._GetEntryData('vendor-dt', required)
++            entry = Entry.Create(self, payloads[0],
++                                 expanded=self.GetImage().use_expanded,
++                                 missing_etype=self.GetImage().missing_etype)
++            entry.ReadNode()
++            entry.SetPrefix(self._name_prefix)
++            self._entries[self._DtbEntryName(node)] = entry
 +
-     def _BuildV0SectionData(self, required):
-         kernel = self._GetEntryData('kernel', required)
-         if kernel is None:
-             return None
--
-+        vendor_dt = self._BuildVendorDt(required)
-+        if vendor_dt is None:
++    @staticmethod
++    def _GetU32Cells(node, propname):
++        prop = node.props.get(propname)
++        if not prop:
++            raise ValueError("Node '%s': Missing required property '%s'" %
++                             (node.path, propname))
++
++        values = prop.value if isinstance(prop.value, list) else [prop.value]
++        return [fdt_util.fdt32_to_cpu(value) for value in values]
++
++    @classmethod
++    def _GetU32Tuple(cls, node, propname, width):
++        values = cls._GetU32Cells(node, propname)
++        if len(values) != width:
++            raise ValueError("Node '%s': Property '%s' must contain exactly "
++                             "%d cells" % (node.path, propname, width))
++
++        return tuple(values)
++
++    def _GetPageSize(self):
++        if self._page_size is not None:
++            return self._page_size
++
++        return getattr(self.section, 'page_size', 2048)
++
++    def _GetDtbData(self, node, required):
++        entry = self._entries.get(self._DtbEntryName(node))
++        if not entry:
++            raise ValueError("Node '%s': Missing required DTB payload subnode" %
++                             node.path)
++
++        data = entry.GetData(required)
++        if data is None and not required:
 +            return None
-         ramdisk = self._GetOptionalEntryData('ramdisk', required)
-         if ramdisk is None:
-             return None
-@@ -234,6 +264,8 @@ class Entry_android_boot(Entry_section):
-                                  BOOT_ARGS_SIZE)
- 
-         boot_id_payloads = [kernel, ramdisk, b'']
-+        if self.vendor_dt_node:
-+            boot_id_payloads.append(vendor_dt)
-         image_id = self._BootId(*boot_id_payloads)
- 
-         header = struct.pack(BOOT_IMAGE_HEADER_V0,
-@@ -246,7 +278,7 @@ class Entry_android_boot(Entry_section):
-                              0, # second_offset
-                              self._GetAddr(self.tags_offset, 'tags'),
-                              self.page_size,
--                             self.header_version,
-+                             len(vendor_dt),
-                              self.os_version,
-                              boot_name,
-                              cmdline,
-@@ -256,6 +288,7 @@ class Entry_android_boot(Entry_section):
-         image += _pad(header, self.page_size)
-         image += _pad(kernel, self.page_size)
-         image += _pad(ramdisk, self.page_size)
-+        image += _pad(vendor_dt, self.page_size)
- 
-         return bytes(image)
- 
++
++        return data
++
++    def BuildSectionData(self, required):
++        if not self._node.subnodes:
++            raise ValueError("Node '%s': Missing required DTB subnodes" %
++                             self._node.path)
++
++        page_size = self._GetPageSize()
++        dtbs = []
++        for node in self._node.subnodes:
++            if self.IsSpecialSubnode(node):
++                continue
++
++            msm_id = self._GetU32Tuple(node, 'qcom,msm-id', 2)
++            board_id = self._GetU32Tuple(node, 'qcom,board-id', 2)
++            data = self._GetDtbData(node, required)
++            if data is None and not required:
++                return None
++
++            dtbs.append((msm_id, board_id, data))
++
++        if not dtbs:
++            raise ValueError("Node '%s': Missing required DTB subnodes" %
++                             self._node.path)
++
++        dtb_offset = _align_up(12 + len(dtbs) * 24, page_size)
++        records = []
++        payloads = bytearray()
++        for msm_id, board_id, dtb in dtbs:
++            dtb_size = _align_up(len(dtb), page_size)
++            records.append((*msm_id, *board_id, dtb_offset, dtb_size))
++            payloads += _pad(dtb, page_size)
++            dtb_offset += dtb_size
++
++        qcdt = bytearray(struct.pack('<4sII', QCDT_MAGIC, QCDT_VERSION,
++                                     len(records)))
++        for platform_id, soc_rev, variant_id, subtype, offset, size in records:
++            qcdt += struct.pack('<IIIIII', platform_id, variant_id, subtype,
++                                soc_rev, offset, size)
++
++        return _pad(qcdt, page_size) + bytes(payloads)
 diff --git a/tools/binman/ftest.py b/tools/binman/ftest.py
-index e92a231417b..80219e519f6 100644
+index 80219e519f6..c96748bd1dd 100644
 --- a/tools/binman/ftest.py
 +++ b/tools/binman/ftest.py
-@@ -5662,7 +5662,16 @@ fdt         fdtmap                Extract the devicetree blob from the fdtmap
-         self.assertEqual(U_BOOT_DTB_DATA,
-                          data[0x1000:0x1000 + len(U_BOOT_DTB_DATA)])
+@@ -5673,6 +5673,28 @@ fdt         fdtmap                Extract the devicetree blob from the fdtmap
+                                              vendor_dt), header[13])
+         self.assertEqual(vendor_dt, data[0x1800:0x1805])
  
--        self.assertEqual(U_BOOT_DATA, data[0x800:0x800 + len(U_BOOT_DATA)])
-+    def testAndroidBootVendorDt(self):
-+        """Test that android-boot can embed an arbitrary vendor-dt section"""
-+        data = self._DoReadFile('vendor/android_boot_vendor_dt.dts')
-+        header = struct.unpack_from('<8s10I16s512s32s', data, 0)
-+        vendor_dt = b'howdy'
-+        self.assertEqual(len(vendor_dt), header[9])
-+        self.assertEqual(0, header[10])
-+        self.assertEqual(self._AndroidBootId(U_BOOT_DATA, b'\0', b'',
-+                                             vendor_dt), header[13])
-+        self.assertEqual(vendor_dt, data[0x1800:0x1805])
- 
++    def testAndroidBootQcdt(self):
++        """Test that binman can produce a QCDT container"""
++        data, dtb_data, _map, _dtb = self._DoReadFileDtb(
++            'vendor/qcdt.dts', use_real_dtb=True)
++
++        dtb_size = tools.align(len(dtb_data), 0x800)
++
++        self.assertEqual(b'QCDT', data[:4])
++        self.assertEqual((2, 1), struct.unpack_from('<II', data, 4))
++        self.assertEqual((0xce, 0xce08ff01, 1, 0, 0x800, dtb_size),
++                         struct.unpack_from('<IIIIII', data, 12))
++        self.assertEqual(0xd00dfeed,
++                         struct.unpack_from('>I', data, 0x800)[0])
++        self.assertEqual(dtb_data, data[0x800:0x800 + len(dtb_data)])
++
++    def testAndroidBootQcdtBadMsmId(self):
++        """Test that QCDT rejects invalid msm-id properties"""
++        with self.assertRaises(ValueError) as exc:
++            self._DoReadFile('vendor/qcdt_bad_msm_id.dts')
++        self.assertIn("Property 'qcom,msm-id' must contain exactly 2 cells",
++                      str(exc.exception))
++
      def testFitFdtOper(self):
          """Check handling of a specified FIT operation"""
-diff --git a/tools/binman/test/vendor/android_boot_vendor_dt.dts b/tools/binman/test/vendor/android_boot_vendor_dt.dts
+         entry_args = {
+diff --git a/tools/binman/test/vendor/qcdt.dts b/tools/binman/test/vendor/qcdt.dts
 new file mode 100644
-index 00000000000..194396a0880
+index 00000000000..0d6d7f76870
 --- /dev/null
-+++ b/tools/binman/test/vendor/android_boot_vendor_dt.dts
-@@ -0,0 +1,27 @@
++++ b/tools/binman/test/vendor/qcdt.dts
+@@ -0,0 +1,20 @@
 +// SPDX-License-Identifier: GPL-2.0+
++
 +/dts-v1/;
++
 +/ {
 +	#address-cells = <1>;
 +	#size-cells = <1>;
++
 +	binman {
-+		android-boot {
-+			header-version = <0>;
-+			kernel {
-+				u-boot {
-+					no-expanded;
++		qcdt {
++			dtb-0 {
++				qcom,msm-id = <0xce 0>;
++				qcom,board-id = <0xce08ff01 1>;
++
++				u-boot-dtb {
 +				};
 +			};
-+			ramdisk {
-+				fill {
-+					size = <1>;
-+				};
-+			};
-+			vendor-dt {
-+				text {
-+					size = <5>;
-+					text = "howdy";
-+				};
++		};
++	};
++};
+diff --git a/tools/binman/test/vendor/qcdt_bad_msm_id.dts b/tools/binman/test/vendor/qcdt_bad_msm_id.dts
+new file mode 100644
+index 00000000000..1c3d4ec1a2e
+--- /dev/null
++++ b/tools/binman/test/vendor/qcdt_bad_msm_id.dts
+@@ -0,0 +1,17 @@
++// SPDX-License-Identifier: GPL-2.0+
++
++/dts-v1/;
++
++/ {
++	#address-cells = <1>;
++	#size-cells = <1>;
++
++	binman {
++		qcdt {
++			dtb-0 {
++				qcom,msm-id = <0xce 0 1>;
++				qcom,board-id = <0xce08ff01 1>;
 +			};
 +		};
 +	};
