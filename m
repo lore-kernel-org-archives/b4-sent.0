@@ -1,14 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH 0/2] Convert qcm6490 framebuffers to use memory-region
-Date: Sun, 07 Jun 2026 16:12:17 +0200
-Message-Id: <20260607-shift8-fb-v1-0-72b9dac25f4a@ixit.cz>
+Date: Sun, 07 Jun 2026 16:12:18 +0200
+Subject: [PATCH 1/2] arm64: dts: qcom: qcm6490-shift-otter: Convert fb to
+ use memory-region
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAEF8JWoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDMwNz3eKMzLQSC920JF0zg7QUM7MkA/MUCzMloPqCotS0zAqwWdGxtbU
- ABywqtlsAAAA=
-X-Change-ID: 20260607-shift8-fb-60fd66b07d86
+Message-Id: <20260607-shift8-fb-v1-1-72b9dac25f4a@ixit.cz>
+References: <20260607-shift8-fb-v1-0-72b9dac25f4a@ixit.cz>
+In-Reply-To: <20260607-shift8-fb-v1-0-72b9dac25f4a@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,41 +16,59 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
  David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=635; i=david@ixit.cz;
- h=from:subject:message-id; bh=VXFI2Thg0ZPZn98L4AfzCgC22eFLe52VScYx6+NF/yU=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqJXxHGDqvCtvP8Vvnx1zOU2LExgk5yOf4Ltu8I
- KlzHGelSKyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaiV8RwAKCRBgAj/E00kg
- cjerEAC7ml4ybpC2agnoPSETQiKU7QNKBAJWZEib4uznq4lSZy7DKIwhk4udcgBbI7+RGeLMh4S
- VuTv3wZpRGCbuIIieuZlCrcVrKX1757jsrUOTaoLd180aCWc1ZIDQAGP7Vl2Z/w2Yv3G3XdPgW0
- E9X4mo7pu339AhNKSZuC/7Evzi5FR6ykFd5F889dpiuOM5mn4dfOk4yb+B6B26opvsh8YBIrDjC
- cJ1Wx48il8O4i6GqltQAa7joEMW7d+UVbNnC013ln12dToERGiX4w/v61oOCf1aCHBWCElzkHLq
- pdv7YW49jWMAXzrb4xIEcmqk91yr4OmelxnlyP5/Tr8xskcxM5NZfRPiXnhkz8GiDmdaTwrNm1g
- uC4TKhhRZz+gulJc9XoQ/g+sPH8LgdNmlQjZF1957T/oTWa9PnSDp0RlKmgYi5hgWJQnehlT1Xb
- iRWTzwg2ht/7S1Arh9I2Ca4eLSXGzz7UxBw7X+5oAmr5hr/N3Sph/S7KWfFIvq2HqDj3icg87Ew
- 84EelkKhnKU/h9RfYRsWQuFyY7XTF/oGERY3STRrz+XKQiuftUhMF/k9qpmOxCmaONxzy6RefdV
- LhnEXvtU9UHTglrH9bG9v4OB2ihibwwZFjcVWiDjNkw0FtJDuyWRkC3j1/182y+rIQ8dpInpTJj
- wCtRwoDKT5LM9ew==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1010; i=david@ixit.cz;
+ h=from:subject:message-id; bh=31h4ioQzbcHAXb50MokaSyiYOmg1H0n523N8ZRz5iGE=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqJXxH+olj1QhBfSEcCgVsdItddc0Xa0lU7S+A5
+ GLYM453ssyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaiV8RwAKCRBgAj/E00kg
+ cjCKEACjSjFf012CANltf8ay6OM0l87B7IiCRnqWqFyZsObAonCKbj9zyDXvu5EGjftS75bYrGL
+ ctMD+3x2i9RRpHTKIaJabHUda531b+zJu8uuGANflhFCjNiUhN9qTnYgMwcVE4o2UP8/N86WkCI
+ Ayw3p8pmeezbQHVHsO/iVDOVPLwCGb71gnLFAYanFyai4oBISQn6qQvcDFbIrCZTlFZIAK+6oJu
+ SMgsuszb9Ewq0+8axLNNShE0mETmqOAD/xcLgHrVC+J5cRPJKzjqXZetBEMf1qLMQt5KFrq5OE9
+ oaOcplLAY+otIqCL5lx2W1N4you/rPEDgYxBmuGiBdSKLHOloP11ozq/4X0g6y7coAeNqAKpmex
+ Gh/5corsONX/Z4VN+VwdBKOek6/vxA42Q7KkfQIgRhVte+GQ7HDXeHspwXVR6PvAV179XJMPZMr
+ KgWcR8VsdkpM9hFHULTkrxikYwn3mnbhAW6SJx4NRK+amaYAmfFhtEZwPoPGsfbEKF5rVBIk3x5
+ MstEYsrP6SXo09U7R4rMNaD0Gzww6Ue/qaS/IUxCJlo0cv/iL08Oo2OStKKonDqpiOKasJCZNFT
+ qjSqrK26alLt6//OrIfXKQs6iE52tCdmpUDWuxHPZ8/VszxYaCAVzlKmukdtSQPwHLKgeseRB9U
+ /nZpaWwcRrVYGJA==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now that upstream u-boot recognize it, no reason to not do.
+Instead of manually specifying reg, reuse the memory region.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-David Heidelberg (2):
-      arm64: dts: qcom: qcm6490-shift-otter: Convert fb to use memory-region
-      arm64: dts: qcom: qcm6490-fairphone-fp5: Convert fb to use memory-region
+ arch/arm64/boot/dts/qcom/qcm6490-shift-otter.dts | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
- arch/arm64/boot/dts/qcom/qcm6490-fairphone-fp5.dts | 4 ++--
- arch/arm64/boot/dts/qcom/qcm6490-shift-otter.dts   | 4 ++--
- 2 files changed, 4 insertions(+), 4 deletions(-)
----
-base-commit: b99ae45861eccff1e1d8c7b05a13650be805d437
-change-id: 20260607-shift8-fb-60fd66b07d86
+diff --git a/arch/arm64/boot/dts/qcom/qcm6490-shift-otter.dts b/arch/arm64/boot/dts/qcom/qcm6490-shift-otter.dts
+index 797f37596bf19..9b90143d2c332 100644
+--- a/arch/arm64/boot/dts/qcom/qcm6490-shift-otter.dts
++++ b/arch/arm64/boot/dts/qcom/qcm6490-shift-otter.dts
+@@ -34,19 +34,19 @@ aliases {
+ 
+ 	chosen {
+ 		#address-cells = <2>;
+ 		#size-cells = <2>;
+ 		ranges;
+ 
+ 		stdout-path = "serial0:115200n8";
+ 
+-		framebuffer0: framebuffer@a000000 {
++		framebuffer {
+ 			compatible = "simple-framebuffer";
+-			reg = <0x0 0xe1000000 0x0 (2400 * 1080 * 4)>;
++			memory-region = <&cont_splash_mem>;
+ 			width = <1080>;
+ 			height = <2400>;
+ 			stride = <(1080 * 4)>;
+ 			format = "a8r8g8b8";
+ 			clocks = <&gcc GCC_DISP_HF_AXI_CLK>;
+ 		};
+ 	};
+ 
 
-Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+2.53.0
 
