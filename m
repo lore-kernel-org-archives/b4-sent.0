@@ -1,516 +1,140 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Sun, 07 Jun 2026 15:11:45 -0500
-Subject: [PATCH v4 2/2] drm/panel: Add panel driver for Chipone ICNA35XX
- based panels
+From: Sam Day <me@samcday.com>
+Subject: [PATCH v2 0/8] Generate Android boot images with binman
+Date: Mon, 08 Jun 2026 09:37:09 +1000
+Message-Id: <20260608-android-binman-v2-0-b8203682507f@samcday.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260607-icna35xx-v4-2-64de514add34@gmail.com>
-References: <20260607-icna35xx-v4-0-64de514add34@gmail.com>
-In-Reply-To: <20260607-icna35xx-v4-0-64de514add34@gmail.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: dri-devel@lists.freedesktop.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Aaron Kling <webgeek1234@gmail.com>, 
- Teguh Sobirin <teguh@sobir.in>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/13MQQ6CMBCF4auQWVtTaAPiynsYFkNnkFm0Na0hE
+ sLdrSRuXP4ved8GmZNwhmu1QeJFssRQojlV4GYMD1ZCpaHRTatbbRUGSlFIjRI8BoXUoTWT5b4
+ nKKdn4kneB3gfSs+SXzGth7/U3/VHtf/UUiutXIfG1Xa8oKFbRu8I17OLHoZ93z9soC/7rgAAA
+ A==
+X-Change-ID: 20260604-android-binman-ad7a43f4e99d
+To: u-boot@lists.denx.de
+Cc: Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>, 
+ Alper Nebi Yasak <alpernebiyasak@gmail.com>, 
+ Quentin Schulz <quentin.schulz@cherry.de>, Bryan Brattlof <bb@ti.com>, 
+ Yannic Moog <y.moog@phytec.de>, Wojciech Dubowik <Wojciech.Dubowik@mt.com>, 
+ Yegor Yefremov <yegorslists@googlemail.com>, 
+ Patrice Chotard <patrice.chotard@foss.st.com>, 
+ Heinrich Schuchardt <xypron.glpk@gmx.de>, 
+ Marek Vasut <marek.vasut+renesas@mailbox.org>, 
+ Rasmus Villemoes <ravi@prevas.dk>, Javier Tia <floss@jetm.me>, 
+ Minkyu Kang <mk7.kang@samsung.com>, 
+ Kaustabh Chakraborty <kauschluss@disroot.org>, 
+ Henrik Grimler <henrik@grimler.se>, Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780863114; l=14887;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=ruj2hx04hw8tpI29JrmBbYwip8i07cHx1LaBSO/Bu10=;
- b=mRl4JhfNd3wiYDD0uaaSJEQrypS56XMARzTGqc27LABJ319RrbPbRI4C4P6/QqqH0h51QhIOD
- FdrXP+OaY+xCAxRttvZh7g/05BHSdu4VabNhtQPb7d/gVSAG990sGtT
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780875433; l=4789;
+ i=me@samcday.com; s=20240502; h=from:subject:message-id;
+ bh=C81nZ5K9hUVCD3CApmHBUe1kenGWfpFK6DioWeuIilU=;
+ b=YdyN7J2oadMPl7h6tT3JkFLmIVhkgxi3CQpx2d2T1E7Xofp2D9t9YLPLYcHfepXZxWR9/bK+q
+ tUNCF0npu5VA3YOKuHCNjHfL/11V6sAmH5W3DGHPVCVxaXJy2yRexXp
+X-Developer-Key: i=me@samcday.com; a=ed25519;
+ pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
+X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Teguh Sobirin <teguh@sobir.in>
+U-Boot is seeing increasing adoption on pocket computers, many of which
+(sadly) have fused bootloader chains. Many of these bootloaders have a
+very rigid definition of what a "valid" downstream payload looks like.
+Sometimes it's just a boring old v0/v2 Android boot image. Sometimes
+it's something decidedly more grotesque.
 
-This adds support for the ICNA3512 and ICNA3520 DDICs used in both the
-AYN Odin 2 Portal and Ayaneo Pocket DS top panel respectively and for
-for both the AYN Odin 3 and the AYN Thor top panel respectively.
+To date, this last-mile packaging step has been trapped in downstream CI
+pipelines, blogposts, documentation, etc. This patch series aims to
+gather up all that esoterica and institutional knowledge and codify it
+in U-Boot's build system, using binman.
 
-These all have unique compatibles because the panels themselves are
-likely unique hardware with only the ddic's and thus api and driver
-handling shared.
+Put differently: an overwhelming majority of these pocket computer
+devices have a "canonical" payload format that U-Boot currently has no
+support for. Let's fix that.
 
-Signed-off-by: Teguh Sobirin <teguh@sobir.in>
-Co-developed-by: Aaron Kling <webgeek1234@gmail.com>
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+The first patches in this series introduce an `android_boot` etype. To
+begin with, this is a "typical" abootimg, as defined by canonical AOSP
+sources and reference `fastboot`/`mkbootimg` implementation. There's
+plenty of devices out there with a sane(-ish, nothing in Android-land is
+ever truly sane) bootloader that will happily chain a U-Boot rolled into
+the kernel section of an abootimg.
+
+With that out of the way, the cursed bootloaders are next to be
+supported. Binman etypes for Qualcomm's "QCDT" and Samsung's "DTBH"
+formats are implemented. These are non-standard vendor-specific
+devicetree containers, which the previous bootloader uses to pick a FDT
+to boot the downstream with.
+
+In both cases, these vendor-specific formats are tacked on to the end of
+a v0 abootimg, with the header_version being hijacked to encode the
+length of this following payload. Thus, the android_boot etype is
+retrofitted to allow these shenanigans.
+
+Binman configs that produce flashable boot artifacts are introduced for
+the following devices:
+
+ * google-sargo (vanilla v2)
+ * oneplus-fajita (vanilla v2)
+ * samsung-a5u-eur (QCDT v0)
+ * samsung-gt510 (QCDT v0)
+ * samsung-j7xelte (DTBH v0)
+
+I also successfully tested a vanilla v0 on my samsung-expressltexx, in
+conjunction with the qcom-armv7 series already on the list. However,
+since that work is still in-flight and the expressltexx DTS is
+downstream, I opted not to include it here.
+
+Note that, I dropped the commits that introduce this support for
+Qualcomm devices, as it was NAK'd by "Qualcomm". I still think this is
+worth inclusion upstream for a couple of reasons:
+
+ * It's still useful for Exynos devices.
+ * If/when other non-qcom devices with fused Android bootloaders come
+   along, it will likely be useful there as well.
+ * Downstreams can easily carry DTSI overlays for qcom devices to take
+   advantage of this new native U-Boot support there.
+ * Maybe the hard position against binman will change/soften on the
+   Qualcomm side, in which case we can simply start dropping in DTSIs to
+   add support for those devices.
+
+Signed-off-by: Sam Day <me@samcday.com>
 ---
- drivers/gpu/drm/panel/Kconfig                  |  11 +
- drivers/gpu/drm/panel/Makefile                 |   1 +
- drivers/gpu/drm/panel/panel-chipone-icna35xx.c | 422 +++++++++++++++++++++++++
- 3 files changed, 434 insertions(+)
+Changes in v2:
+- Rebase on next
+- Drop all qcom-related work as it has been NAK'd from mach-snapdragon
+- Link to v1: https://lore.kernel.org/r/20260606-android-binman-v1-0-c7a3c14b8a3d@samcday.com
 
-diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
-index 7450b27622a233..1368b5a0b6c912 100644
---- a/drivers/gpu/drm/panel/Kconfig
-+++ b/drivers/gpu/drm/panel/Kconfig
-@@ -105,6 +105,17 @@ config DRM_PANEL_BOE_TV101WUM_LL2
- 	  Say Y here if you want to support for BOE TV101WUM-LL2
- 	  WUXGA PANEL DSI Video Mode panel
- 
-+config DRM_PANEL_CHIPONE_ICNA35XX
-+	tristate "Chipone ICNA35XX panel driver"
-+	depends on OF
-+	depends on DRM_MIPI_DSI
-+	depends on BACKLIGHT_CLASS_DEVICE
-+	select DRM_DISPLAY_HELPER
-+	help
-+	  Say Y here if you want to enable support for the panels built
-+	  around the Chipone ICNA3512 and ICNA3520 display controllers,
-+	  such as some Tianma panels used in AYN Odin2 Portal and Thor.
-+
- config DRM_PANEL_CHIPWEALTH_CH13726A
- 	tristate "CHIPWEALTH CH13726A-based DSI panel"
- 	depends on OF
-diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
-index c2c5cf81711633..d39a8f82fa8c06 100644
---- a/drivers/gpu/drm/panel/Makefile
-+++ b/drivers/gpu/drm/panel/Makefile
-@@ -9,6 +9,7 @@ obj-$(CONFIG_DRM_PANEL_BOE_TD4320) += panel-boe-td4320.o
- obj-$(CONFIG_DRM_PANEL_BOE_TH101MB31UIG002_28A) += panel-boe-th101mb31ig002-28a.o
- obj-$(CONFIG_DRM_PANEL_BOE_TV101WUM_LL2) += panel-boe-tv101wum-ll2.o
- obj-$(CONFIG_DRM_PANEL_BOE_TV101WUM_NL6) += panel-boe-tv101wum-nl6.o
-+obj-$(CONFIG_DRM_PANEL_CHIPONE_ICNA35XX) += panel-chipone-icna35xx.o
- obj-$(CONFIG_DRM_PANEL_CHIPWEALTH_CH13726A) += panel-chipwealth-ch13726a.o
- obj-$(CONFIG_DRM_PANEL_DSI_CM) += panel-dsi-cm.o
- obj-$(CONFIG_DRM_PANEL_LVDS) += panel-lvds.o
-diff --git a/drivers/gpu/drm/panel/panel-chipone-icna35xx.c b/drivers/gpu/drm/panel/panel-chipone-icna35xx.c
-new file mode 100644
-index 00000000000000..86d096455caa1c
---- /dev/null
-+++ b/drivers/gpu/drm/panel/panel-chipone-icna35xx.c
-@@ -0,0 +1,422 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Chipone ICNA35XX Driver IC panels driver
-+ *
-+ * Copyright (c) 2025 Teguh Sobirin <teguh@sobir.in>
-+ */
-+
-+#include <linux/backlight.h>
-+#include <linux/delay.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/module.h>
-+#include <linux/of.h>
-+#include <linux/of_graph.h>
-+#include <linux/regulator/consumer.h>
-+
-+#include <video/mipi_display.h>
-+
-+#include <drm/display/drm_dsc.h>
-+#include <drm/display/drm_dsc_helper.h>
-+#include <drm/drm_connector.h>
-+#include <drm/drm_crtc.h>
-+#include <drm/drm_mipi_dsi.h>
-+#include <drm/drm_modes.h>
-+#include <drm/drm_panel.h>
-+#include <drm/drm_probe_helper.h>
-+
-+struct panel_info {
-+	struct drm_panel panel;
-+	struct drm_connector *connector;
-+	struct mipi_dsi_device *dsi;
-+	struct panel_desc *desc;
-+	enum drm_panel_orientation orientation;
-+
-+	struct gpio_desc *reset_gpio;
-+	struct regulator_bulk_data *supplies;
-+};
-+
-+struct panel_desc {
-+	unsigned int width_mm;
-+	unsigned int height_mm;
-+
-+	unsigned int bpc;
-+	unsigned int lanes;
-+	unsigned long mode_flags;
-+	enum mipi_dsi_pixel_format format;
-+
-+	const struct drm_display_mode *modes;
-+	unsigned int num_modes;
-+	int (*init_sequence)(struct panel_info *pinfo);
-+
-+	struct drm_dsc_config dsc;
-+};
-+
-+static const struct regulator_bulk_data panel_supplies[] = {
-+	{ .supply = "vdd" },
-+	{ .supply = "vddio" },
-+	{ .supply = "vci" },
-+	{ .supply = "disp" },
-+	{ .supply = "blvdd" },
-+};
-+
-+static inline struct panel_info *to_panel_info(struct drm_panel *panel)
-+{
-+	return container_of(panel, struct panel_info, panel);
-+}
-+
-+static int icna3512_init_sequence(struct panel_info *pinfo)
-+{
-+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = pinfo->dsi };
-+	struct drm_dsc_picture_parameter_set pps;
-+
-+	pinfo->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9C, 0xA5, 0xA5);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xFD, 0x5A, 0x5A);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x53, 0xE0);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x35, 0x00);
-+
-+	mipi_dsi_dcs_exit_sleep_mode_multi(&dsi_ctx);
-+
-+	mipi_dsi_msleep(&dsi_ctx, 120);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x0F);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xCE, 0x22);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x01);
-+
-+	/* 165 hz */
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x20);
-+
-+	drm_dsc_pps_payload_pack(&pps, &pinfo->desc->dsc);
-+	mipi_dsi_picture_parameter_set_multi(&dsi_ctx, &pps);
-+
-+	mipi_dsi_msleep(&dsi_ctx, 20);
-+
-+	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
-+
-+	return dsi_ctx.accum_err;
-+}
-+
-+static int icna3520_init_sequence(struct panel_info *pinfo)
-+{
-+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = pinfo->dsi };
-+	struct drm_dsc_picture_parameter_set pps;
-+
-+	pinfo->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9C, 0xA5, 0xA5);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xFD, 0x5A, 0x5A);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x53, 0xE0);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x35, 0x00);
-+
-+	mipi_dsi_dcs_exit_sleep_mode_multi(&dsi_ctx);
-+
-+	mipi_dsi_msleep(&dsi_ctx, 120);
-+
-+	/* 120 hz */
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x48, 0x00);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x00);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB3,
-+		0x00, 0xD8, 0x00, 0x1C, 0x00, 0x4C);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x01);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB2, 0x00);
-+
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0x9F, 0x0D);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB2, 0x27);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB6, 0x03);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xBB, 0x01);
-+	mipi_dsi_generic_write_seq_multi(&dsi_ctx, 0xB2, 0x24);
-+
-+	drm_dsc_pps_payload_pack(&pps, &pinfo->desc->dsc);
-+	mipi_dsi_picture_parameter_set_multi(&dsi_ctx, &pps);
-+
-+	mipi_dsi_msleep(&dsi_ctx, 20);
-+
-+	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
-+
-+	return dsi_ctx.accum_err;
-+}
-+
-+static const struct drm_display_mode odin2portal_modes[] = {
-+	{
-+		/* 165Hz */
-+		.clock = (1080 + 98 + 1 + 23) * (1920 + 20 + 1 + 15) * 165 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 98,
-+		.hsync_end = 1080 + 98 + 1,
-+		.htotal = 1080 + 98 + 1 + 23,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 20,
-+		.vsync_end = 1920 + 20 + 1,
-+		.vtotal = 1920 + 20 + 1 + 15,
-+	}
-+};
-+
-+static const struct drm_display_mode thor_top_modes[] = {
-+	{
-+		/* 120Hz */
-+		.clock = (1080 + 24 + 1 + 24) * (1920 + 28 + 1 + 28) * 120 / 1000,
-+		.hdisplay = 1080,
-+		.hsync_start = 1080 + 24,
-+		.hsync_end = 1080 + 24 + 1,
-+		.htotal = 1080 + 24 + 1 + 24,
-+		.vdisplay = 1920,
-+		.vsync_start = 1920 + 28,
-+		.vsync_end = 1920 + 28 + 1,
-+		.vtotal = 1920 + 28 + 1 + 28,
-+	}
-+};
-+
-+static struct panel_desc odin2portal_desc = {
-+	.modes = odin2portal_modes,
-+	.num_modes = ARRAY_SIZE(odin2portal_modes),
-+	.width_mm = 160,
-+	.height_mm = 89,
-+	.bpc = 8,
-+	.lanes = 4,
-+	.format = MIPI_DSI_FMT_RGB888,
-+	.mode_flags = MIPI_DSI_MODE_NO_EOT_PACKET | MIPI_DSI_CLOCK_NON_CONTINUOUS |
-+			MIPI_DSI_MODE_LPM,
-+	.init_sequence = icna3512_init_sequence,
-+	.dsc = {
-+		.dsc_version_major = 0x1,
-+		.dsc_version_minor = 0x1,
-+		.slice_height = 20,
-+		.slice_width = 540,
-+		.slice_count = 2,
-+		.bits_per_component = 8,
-+		.bits_per_pixel = 8 << 4,
-+		.block_pred_enable = true,
-+	},
-+};
-+
-+static struct panel_desc thor_top_desc = {
-+	.modes = thor_top_modes,
-+	.num_modes = ARRAY_SIZE(thor_top_modes),
-+	.width_mm = 136,
-+	.height_mm = 68,
-+	.bpc = 8,
-+	.lanes = 4,
-+	.format = MIPI_DSI_FMT_RGB888,
-+	.mode_flags =  MIPI_DSI_MODE_NO_EOT_PACKET | MIPI_DSI_CLOCK_NON_CONTINUOUS |
-+			MIPI_DSI_MODE_LPM,
-+	.init_sequence = icna3520_init_sequence,
-+	.dsc = {
-+		.dsc_version_major = 0x1,
-+		.dsc_version_minor = 0x1,
-+		.slice_height = 12,
-+		.slice_width = 540,
-+		.slice_count = 2,
-+		.bits_per_component = 8,
-+		.bits_per_pixel = 8 << 4,
-+		.block_pred_enable = true,
-+	},
-+};
-+
-+static void icna35xx_reset(struct panel_info *pinfo)
-+{
-+	gpiod_set_value_cansleep(pinfo->reset_gpio, 0);
-+	usleep_range(20000, 21000);
-+	gpiod_set_value_cansleep(pinfo->reset_gpio, 1);
-+	usleep_range(20000, 21000);
-+	gpiod_set_value_cansleep(pinfo->reset_gpio, 0);
-+	usleep_range(20000, 21000);
-+}
-+
-+static int icna35xx_prepare(struct drm_panel *panel)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+	int ret;
-+
-+	ret = regulator_bulk_enable(ARRAY_SIZE(panel_supplies), pinfo->supplies);
-+	if (ret < 0) {
-+		dev_err(panel->dev, "failed to enable regulators: %d\n", ret);
-+		return ret;
-+	}
-+
-+	icna35xx_reset(pinfo);
-+
-+	ret = pinfo->desc->init_sequence(pinfo);
-+	if (ret < 0) {
-+		regulator_bulk_disable(ARRAY_SIZE(panel_supplies), pinfo->supplies);
-+		dev_err(panel->dev, "failed to initialize panel: %d\n", ret);
-+		return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static int icna35xx_disable(struct drm_panel *panel)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = pinfo->dsi };
-+
-+	pinfo->dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
-+
-+	mipi_dsi_dcs_set_display_off_multi(&dsi_ctx);
-+	mipi_dsi_msleep(&dsi_ctx, 50);
-+	mipi_dsi_dcs_enter_sleep_mode_multi(&dsi_ctx);
-+	mipi_dsi_msleep(&dsi_ctx, 120);
-+
-+	return dsi_ctx.accum_err;
-+}
-+
-+static int icna35xx_unprepare(struct drm_panel *panel)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+
-+	gpiod_set_value_cansleep(pinfo->reset_gpio, 1);
-+	regulator_bulk_disable(ARRAY_SIZE(panel_supplies), pinfo->supplies);
-+
-+	return 0;
-+}
-+
-+static int icna35xx_get_modes(struct drm_panel *panel,
-+			       struct drm_connector *connector)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+
-+	return drm_connector_helper_get_modes_fixed(connector, pinfo->desc->modes);
-+}
-+
-+static enum drm_panel_orientation icna35xx_get_orientation(struct drm_panel *panel)
-+{
-+	struct panel_info *pinfo = to_panel_info(panel);
-+
-+	return pinfo->orientation;
-+}
-+
-+static const struct drm_panel_funcs icna35xx_panel_funcs = {
-+	.disable = icna35xx_disable,
-+	.prepare = icna35xx_prepare,
-+	.unprepare = icna35xx_unprepare,
-+	.get_modes = icna35xx_get_modes,
-+	.get_orientation = icna35xx_get_orientation,
-+};
-+
-+static int icna35xx_bl_update_status(struct backlight_device *bl)
-+{
-+	struct mipi_dsi_device *dsi = bl_get_data(bl);
-+	u16 brightness = backlight_get_brightness(bl);
-+	int ret;
-+
-+	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
-+
-+	ret = mipi_dsi_dcs_set_display_brightness_large(dsi, brightness);
-+
-+	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
-+	return ret;
-+}
-+
-+static int icna35xx_bl_get_brightness(struct backlight_device *bl)
-+{
-+	struct mipi_dsi_device *dsi = bl_get_data(bl);
-+	u16 brightness;
-+	int ret;
-+
-+	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
-+
-+	ret = mipi_dsi_dcs_get_display_brightness_large(dsi, &brightness);
-+
-+	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
-+
-+	return ret < 0 ? ret : brightness;
-+}
-+
-+static const struct backlight_ops icna35xx_bl_ops = {
-+	.update_status = icna35xx_bl_update_status,
-+	.get_brightness = icna35xx_bl_get_brightness,
-+};
-+
-+static struct backlight_device *icna35xx_create_backlight(struct mipi_dsi_device *dsi)
-+{
-+	struct device *dev = &dsi->dev;
-+	const struct backlight_properties props = {
-+		.type = BACKLIGHT_RAW,
-+		.brightness = 4096,
-+		.max_brightness = 4096,
-+	};
-+
-+	return devm_backlight_device_register(dev, dev_name(dev), dev, dsi,
-+					      &icna35xx_bl_ops, &props);
-+}
-+
-+static int icna35xx_probe(struct mipi_dsi_device *dsi)
-+{
-+	struct device *dev = &dsi->dev;
-+	struct panel_info *pinfo;
-+	int ret;
-+
-+	pinfo = devm_drm_panel_alloc(dev, __typeof(*pinfo), panel,
-+				     &icna35xx_panel_funcs,
-+				     DRM_MODE_CONNECTOR_DSI);
-+	if (IS_ERR(pinfo))
-+		return PTR_ERR(pinfo);
-+
-+	ret = devm_regulator_bulk_get_const(dev, ARRAY_SIZE(panel_supplies),
-+					    panel_supplies, &pinfo->supplies);
-+	if (ret < 0)
-+		return dev_err_probe(dev, ret, "Failed to get regulators\n");
-+
-+	pinfo->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
-+	if (IS_ERR(pinfo->reset_gpio))
-+		return dev_err_probe(dev, PTR_ERR(pinfo->reset_gpio), "failed to get reset gpio\n");
-+
-+	pinfo->desc = (struct panel_desc *)of_device_get_match_data(dev);
-+	if (!pinfo->desc)
-+		return -ENODEV;
-+
-+	pinfo->dsi = dsi;
-+	mipi_dsi_set_drvdata(dsi, pinfo);
-+
-+	ret = of_drm_get_panel_orientation(dev->of_node, &pinfo->orientation);
-+	if (ret < 0) {
-+		dev_err(dev, "%pOF: failed to get orientation %d\n", dev->of_node, ret);
-+		return ret;
-+	}
-+
-+	pinfo->panel.prepare_prev_first = true;
-+
-+	pinfo->panel.backlight = icna35xx_create_backlight(dsi);
-+	if (IS_ERR(pinfo->panel.backlight))
-+		return dev_err_probe(dev, PTR_ERR(pinfo->panel.backlight),
-+				     "Failed to create backlight\n");
-+
-+	ret = devm_drm_panel_add(dev, &pinfo->panel);
-+	if (ret)
-+		return ret;
-+
-+	pinfo->dsi->lanes = pinfo->desc->lanes;
-+	pinfo->dsi->format = pinfo->desc->format;
-+	pinfo->dsi->mode_flags = pinfo->desc->mode_flags;
-+	pinfo->dsi->dsc = &pinfo->desc->dsc;
-+
-+	return devm_mipi_dsi_attach(dev, dsi);
-+}
-+
-+static const struct of_device_id icna35xx_of_match[] = {
-+	{ .compatible = "ayaneo,pocketds-panel-top", .data = &odin2portal_desc },
-+	{ .compatible = "ayntec,odin2portal-panel", .data = &odin2portal_desc },
-+	{ .compatible = "ayntec,odin3-panel", .data = &thor_top_desc },
-+	{ .compatible = "ayntec,thor-panel-top", .data = &thor_top_desc },
-+	{ /* sentinel */ }
-+};
-+MODULE_DEVICE_TABLE(of, icna35xx_of_match);
-+
-+static struct mipi_dsi_driver icna35xx_driver = {
-+	.probe = icna35xx_probe,
-+	.driver = {
-+		.name = "panel-chipone-icna35xx",
-+		.of_match_table = icna35xx_of_match,
-+	},
-+};
-+module_mipi_dsi_driver(icna35xx_driver);
-+
-+MODULE_AUTHOR("Teguh Sobirin <teguh@sobir.in>");
-+MODULE_DESCRIPTION("DRM driver for Chipone ICNA35XX based MIPI DSI panels");
-+MODULE_LICENSE("GPL");
+---
+Sam Day (8):
+      binman: Android boot image support
+      .gitignore: ignore binman-generated blobs
+      binman: android_boot: vendor-dt support
+      binman: Add QCDT support
+      binman: android_boot: SEANDROIDENFORCE support
+      binman: Add DTBH support
+      arch: arm: exynos: add j7xelte binman config
+      configs: exynos-mobile: pull in BINMAN
 
+ .gitignore                                         |   1 +
+ arch/arm/dts/exynos-mobile.dtsi                    |   5 +
+ arch/arm/dts/exynos7870-j7xelte-u-boot.dtsi        |  24 ++
+ arch/arm/mach-exynos/Kconfig                       |   1 +
+ configs/exynos-mobile_defconfig                    |   1 +
+ tools/binman/etype/android_boot.py                 | 407 +++++++++++++++++++++
+ tools/binman/etype/dtbh.py                         | 173 +++++++++
+ tools/binman/etype/qcdt.py                         | 160 ++++++++
+ tools/binman/ftest.py                              | 127 +++++++
+ .../test/vendor/android_boot_seandroidenforce.dts  |  22 ++
+ tools/binman/test/vendor/android_boot_v0.dts       |  29 ++
+ tools/binman/test/vendor/android_boot_v2.dts       |  46 +++
+ .../binman/test/vendor/android_boot_vendor_dt.dts  |  27 ++
+ tools/binman/test/vendor/dtbh.dts                  |  29 ++
+ tools/binman/test/vendor/dtbh_bad_model_info.dts   |  19 +
+ tools/binman/test/vendor/qcdt.dts                  |  20 +
+ tools/binman/test/vendor/qcdt_bad_msm_id.dts       |  17 +
+ 17 files changed, 1108 insertions(+)
+---
+base-commit: 9e87893c24d1f21350e69bc222e6a3214c933b3b
+change-id: 20260604-android-binman-ad7a43f4e99d
+
+Best regards,
 -- 
-2.53.0
+Sam Day <me@samcday.com>
 
