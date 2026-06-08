@@ -1,93 +1,262 @@
 From: Jia Wang <wangjia@ultrarisc.com>
-Subject: [PATCH v3 0/2] pinctrl: ultrarisc: add DP1000 pinctrl support
-Date: Mon, 08 Jun 2026 15:50:47 +0800
-Message-Id: <20260608-ultrarisc-pinctrl-v3-0-30a09ed74275@ultrarisc.com>
+Date: Mon, 08 Jun 2026 15:50:48 +0800
+Subject: [PATCH v3 1/2] dt-bindings: pinctrl: Add UltraRISC DP1000 pinctrl
+ controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFd0JmoC/23N3QqCMBwF8FeRXbfYh1vaVe8RXcz5Nxemss1Ri
- O/eplAQXh4453dm5MAacOiczchCMM4MfQz8kCHdqv4O2NQxI0aYJJxKPHXeKmucxqPptbcdhkZ
- JYLnOC8JR3I0WGvNazetty26qHqB9glKjNc4P9r2eBpp6my+o2PEDxQRXjRClKEpQhbp8O0c9P
- FH6COynSEL3FBYVclJaUE5UKet/ZVmWD3hde9kOAQAA
-X-Change-ID: 20260316-ultrarisc-pinctrl-efa6e24c4803
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260608-ultrarisc-pinctrl-v3-1-30a09ed74275@ultrarisc.com>
+References: <20260608-ultrarisc-pinctrl-v3-0-30a09ed74275@ultrarisc.com>
+In-Reply-To: <20260608-ultrarisc-pinctrl-v3-0-30a09ed74275@ultrarisc.com>
 To: Linus Walleij <linusw@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
 Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Jia Wang <wangjia@ultrarisc.com>
 X-Mailer: b4 0.15-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780905056; l=2879;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780905056; l=6164;
  i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
- bh=TR9EWDnFRajz+fp+F/iDS8YxrKo4rRALNNn3rqlhyus=;
- b=52L1j+tu4EAMXhYMbjEnV3zO3aWz6RKfCRTMg6KPewwxGj4m5UZT/yh2PmOSWhvMqSp2ZH6h+
- nexCdcSwoB7DWa43VmbM+sMWspvrs0k+LhyxjbcsgAkcFr5tmegPdZq
+ bh=7wc/wuKQeJWHUpB2jV9O8lTrj2MDNsGF0val+jwMTt0=;
+ b=kNDXWzK+1UWP/XsomtpYZC9kyWyikrUUfgyzlmkbSPDh4dGmCQrFwAwdu53+gJB2v/z7mLaqz
+ 7tFL3+gdEBeAm+unh9tj1BLrSuWeQdQME32e0/MYgazCIFu6+1cDWxh
 X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
  pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
 X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds the devicetree schema and the pinctrl driver for the
-DP1000 controller using generic pinctrl bindings.
-
-Compared with v1, this series is narrowed down to the pinctrl binding
-and driver only. v1 patches 1, 2, 3, 5, 7, 8, and 9 (vendor prefix,
-CPU/SoC bindings, DTS files, and defconfig update) are not included in
-v2 and will be sent separately.
-
-Note:
-- ARCH_ULTRARISC support is being reviewed separately:
-  * Link: https://lore.kernel.org/lkml/20260427-ultrarisc-pcie-v4-1-98935f6cdfb5@ultrarisc.com/
-
-Testing:
-- dt_binding_check and yamllint
-- Kernel build for RISC-V and boot-tested on DP1000 (Milk-V Titan and
-  Rongda M0)
+Add doc for the pinctrl controllers on the UltraRISC DP1000 RISC-V SoC.
 
 Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
 ---
-Changes in v3:
-- Re-add the DT binding header and use numeric pin IDs in the binding.
-- Replace instance-specific mux names with generic function names.
-- Tighten the schema constraints for A-D and LPC pins.
-- Switch the driver to pinctrl_generic_pins_function_dt_node_to_map()
-  and resolve mux routes from the pins + function combination.
-- Link to v2: https://patch.msgid.link/20260601-ultrarisc-pinctrl-v2-0-07ac5130a96d@ultrarisc.com
+ .../bindings/pinctrl/ultrarisc,dp1000-pinctrl.yaml | 131 +++++++++++++++++++++
+ MAINTAINERS                                        |   6 +
+ .../dt-bindings/pinctrl/ultrarisc,dp1000-pinctrl.h |  63 ++++++++++
+ 3 files changed, 200 insertions(+)
 
-Changes in v2:
-- Split the vendor prefix, CPU binding, SoC binding, DTS, and defconfig
-  patches out of this series for separate submission.
-- Drop the legacy DT node format from both the binding and the driver,
-  and switch to the generic pinctrl interface with
-  pinconf_generic_dt_node_to_map_all().
-- Drop the DT binding header from the series.
-- Replace the generic func0/func1 mux names with named hardware functions
-  in the binding and driver.
-- Wire the driver through CONFIG_PINCTRL_ULTRARISC and add COMPILE_TEST
-  coverage.
-- Restrict function selection to valid pins in the driver.
-- Link to v1: https://patch.msgid.link/20260515-ultrarisc-pinctrl-v1-0-bf559589ea8a@ultrarisc.com
+diff --git a/Documentation/devicetree/bindings/pinctrl/ultrarisc,dp1000-pinctrl.yaml b/Documentation/devicetree/bindings/pinctrl/ultrarisc,dp1000-pinctrl.yaml
+new file mode 100644
+index 000000000000..a64fbfc616db
+--- /dev/null
++++ b/Documentation/devicetree/bindings/pinctrl/ultrarisc,dp1000-pinctrl.yaml
+@@ -0,0 +1,131 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/pinctrl/ultrarisc,dp1000-pinctrl.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: UltraRISC DP1000 Pin Controller
++
++maintainers:
++  - Jia Wang <wangjia@ultrarisc.com>
++
++description: |
++  UltraRISC RISC-V SoC DP1000 pin controller.
++  The controller manages ports A, B, C, D and LPC. Ports A-D default to
++  GPIO and provide additional SPI, UART, I2C, and PWM mux functions.
++  LPC pins default to the LPC interface and can be muxed to eSPI.
++  All pins also support pin configuration, including drive strength,
++  pull-up, and pull-down settings.
++
++properties:
++  compatible:
++    const: ultrarisc,dp1000-pinctrl
++
++  reg:
++    items:
++      - description: pin controller registers
++
++required:
++  - compatible
++  - reg
++
++patternProperties:
++  '.*-pins$':
++    type: object
++    unevaluatedProperties: false
++    allOf:
++      - $ref: /schemas/pinctrl/pincfg-node.yaml#
++      - $ref: /schemas/pinctrl/pinmux-node.yaml#
++      - if:
++          properties:
++            pins:
++              items:
++                minimum: 40
++                maximum: 52
++        then:
++          properties:
++            function:
++              enum:
++                - lpc
++                - espi
++        else:
++          properties:
++            pins:
++              items:
++                maximum: 39
++            function:
++              enum:
++                - gpio
++                - i2c
++                - pwm
++                - spi
++                - uart
++
++    properties:
++      pins:
++        description: |
++          List of pins affected by this state node, using the numeric pin IDs
++          defined in dt-bindings/pinctrl/ultrarisc,dp1000-pinctrl.h.
++        $ref: /schemas/types.yaml#/definitions/uint32-array
++        minItems: 1
++        uniqueItems: true
++        items:
++          minimum: 0
++          maximum: 52
++
++      function:
++        description: |
++          Mux function to select for the listed pins. Supported functions
++          depend on the selected pins and match the DP1000 hardware mux
++          table.
++        enum:
++          - gpio
++          - i2c
++          - pwm
++          - spi
++          - uart
++          - lpc
++          - espi
++
++      bias-disable: true
++      bias-high-impedance: true
++      bias-pull-up: true
++      bias-pull-down: true
++
++      drive-strength:
++        description: Output drive strength in mA.
++        enum: [20, 27, 33, 40]
++
++    required:
++      - pins
++      - function
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/pinctrl/ultrarisc,dp1000-pinctrl.h>
++
++    soc {
++      #address-cells = <2>;
++      #size-cells = <2>;
++
++      pinctrl@11081000 {
++        compatible = "ultrarisc,dp1000-pinctrl";
++        reg = <0x0 0x11081000 0x0 0x1000>;
++
++        i2c0-pins {
++          pins = <PA12 PA13>;
++          function = "i2c";
++          bias-pull-up;
++          drive-strength = <33>;
++        };
++
++        uart0-pins {
++          pins = <PA8 PA9>;
++          function = "uart";
++          bias-pull-up;
++          drive-strength = <33>;
++        };
++      };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index e035a3be797c..1ef874d342a5 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -27357,6 +27357,12 @@ S:	Maintained
+ F:	drivers/usb/common/ulpi.c
+ F:	include/linux/ulpi/
+ 
++ULTRARISC DP1000 PINCTRL DRIVER
++M:	Jia Wang <wangjia@ultrarisc.com>
++L:	linux-gpio@vger.kernel.org
++S:	Maintained
++F:	Documentation/devicetree/bindings/pinctrl/ultrarisc,dp1000-pinctrl.yaml
++
+ ULTRATRONIK BOARD SUPPORT
+ M:	Goran Rađenović <goran.radni@gmail.com>
+ M:	Börge Strümpfel <boerge.struempfel@gmail.com>
+diff --git a/include/dt-bindings/pinctrl/ultrarisc,dp1000-pinctrl.h b/include/dt-bindings/pinctrl/ultrarisc,dp1000-pinctrl.h
+new file mode 100644
+index 000000000000..f800c9722471
+--- /dev/null
++++ b/include/dt-bindings/pinctrl/ultrarisc,dp1000-pinctrl.h
+@@ -0,0 +1,63 @@
++/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
++/*
++ * Copyright (C) 2026 UltraRISC Technology (Shanghai) Co., Ltd.
++ */
++
++#ifndef _DT_BINDINGS_PINCTRL_ULTRARISC_DP1000_H
++#define _DT_BINDINGS_PINCTRL_ULTRARISC_DP1000_H
++
++#define PA0		0
++#define PA1		1
++#define PA2		2
++#define PA3		3
++#define PA4		4
++#define PA5		5
++#define PA6		6
++#define PA7		7
++#define PA8		8
++#define PA9		9
++#define PA10		10
++#define PA11		11
++#define PA12		12
++#define PA13		13
++#define PA14		14
++#define PA15		15
++#define PB0		16
++#define PB1		17
++#define PB2		18
++#define PB3		19
++#define PB4		20
++#define PB5		21
++#define PB6		22
++#define PB7		23
++#define PC0		24
++#define PC1		25
++#define PC2		26
++#define PC3		27
++#define PC4		28
++#define PC5		29
++#define PC6		30
++#define PC7		31
++#define PD0		32
++#define PD1		33
++#define PD2		34
++#define PD3		35
++#define PD4		36
++#define PD5		37
++#define PD6		38
++#define PD7		39
++#define LPC0		40
++#define LPC1		41
++#define LPC2		42
++#define LPC3		43
++#define LPC4		44
++#define LPC5		45
++#define LPC6		46
++#define LPC7		47
++#define LPC8		48
++#define LPC9		49
++#define LPC10		50
++#define LPC11		51
++#define LPC12		52
++
++#endif /* _DT_BINDINGS_PINCTRL_ULTRARISC_DP1000_H */
 
----
-Jia Wang (2):
-      dt-bindings: pinctrl: Add UltraRISC DP1000 pinctrl controller
-      pinctrl: ultrarisc: Add UltraRISC DP1000 pinctrl driver
-
- .../bindings/pinctrl/ultrarisc,dp1000-pinctrl.yaml | 131 ++++++
- MAINTAINERS                                        |   7 +
- drivers/pinctrl/Kconfig                            |   1 +
- drivers/pinctrl/Makefile                           |   1 +
- drivers/pinctrl/ultrarisc/Kconfig                  |  21 +
- drivers/pinctrl/ultrarisc/Makefile                 |   4 +
- drivers/pinctrl/ultrarisc/pinctrl-dp1000.c         | 168 +++++++
- drivers/pinctrl/ultrarisc/pinctrl-ultrarisc.c      | 503 +++++++++++++++++++++
- drivers/pinctrl/ultrarisc/pinctrl-ultrarisc.h      |  63 +++
- .../dt-bindings/pinctrl/ultrarisc,dp1000-pinctrl.h |  63 +++
- 10 files changed, 962 insertions(+)
----
-base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260316-ultrarisc-pinctrl-efa6e24c4803
-
-Best regards,
---  
-Jia Wang <wangjia@ultrarisc.com>
+-- 
+2.34.1
 
