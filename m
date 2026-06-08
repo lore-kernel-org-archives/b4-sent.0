@@ -1,107 +1,119 @@
-From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
-Date: Mon, 08 Jun 2026 06:54:39 +0200
-Subject: [PATCH v3] drm/msm/dp: add missing drm_edid_connector_update()
- before add_modes on cached EDID
+From: George Moussalem <george.moussalem@outlook.com>
+Subject: [PATCH v4 0/4] IPQ5018: Add and enable GEPHY RX and TX clocks
+Date: Mon, 08 Jun 2026 09:09:15 +0400
+Message-Id: <20260608-ipq5018-gephy-clocks-v4-0-fb2ccd56894b@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260608-drm_plug_flaky_edid-v3-1-1ca632938e7f@oldschoolsolutions.biz>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33OSw6CMBCA4auYrq1pByzWlfcwhkAf0FgpaaERC
- Xe3sHGjLv9J5puZUVDeqIDOuxl5FU0wrkuR7XdItFXXKGxkagQEGDlmFEv/KHs7NqW21X0qlTQ
- SC1EUeaaZ5oSjtNl7pc1zU6+31K0Jg/PTdiTSdfrfixRTDAU5CcqkULy4OCuDaJ2zwdlxSD+GQ
- 21eaMUjfEBG4DsICaTAuK55DsD5T3BZljf8jnCRFAEAAA==
-X-Change-ID: 20260531-drm_plug_flaky_edid-cc7743f6f909
-To: Rob Clark <robin.clark@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Douglas Anderson <dianders@chromium.org>, 
- Jani Nikula <jani.nikula@intel.com>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
- Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XNQQ6CMBCF4auQrq3pDFCKK+9hXDSlhQakSJFIC
+ He3sMJE4vJ/yXwzE697qz25RDPp9Wi9dW2I5BQRVcm21NQWoQky5IwzoLZ7pgwELXVXTVQ1TtW
+ eaiExSRhkQjISTrteG/ve2Ns9dGX94Ppp+zLCuv4BR6CMYmEEiiwDVPHVvYbGufqs3IOs5Ih7B
+ g8YDAxPJRgohADzg4n3THrAxIExGGORK8lyzr+ZZVk+y8m7/UgBAAA=
+X-Change-ID: 20260601-ipq5018-gephy-clocks-e8a2440178a0
+To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Florian Fainelli <f.fainelli@gmail.com>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>
+Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ linux-arm-msm@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780894481; l=2688;
- i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
- bh=55G4LQVrxBJzJlYE3Z1ybkSrDyEmlX4rhTBkpovP1x0=;
- b=dAQQLZtUlP2REJbgAX15/NGYkNWqDsTe/tGnHcSFaGRUxwNNn1zj+Uv7+inVOEEmkB4fzz1Ut
- ucAanTR8vm7AfZs50kVKzzIvKPGuy40yr9sDOjDtfIMfCkdAB2fkAa/
-X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
- pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
-X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780895363; l=3901;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=mUbPbxGPsJq6zrKufoKUIDyht+0XfDJdNp0bjmYdApw=;
+ b=j7PTfT+AVzYO+QNVp70e0WTB6PJKkIvNwd26NqzHAbGAZa614pThDXkeei12jc9rIqCUIC7F2
+ Uy9jcDNr118Di5TGlTudxPyi32XDeR93hQTJflcHcyV8RKbyxdIVuPr
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-After the refactor to struct drm_edid, the fast path in
-msm_dp_panel_get_modes() that already held a cached EDID called
-drm_edid_connector_add_modes() directly without first calling
-drm_edid_connector_update().
+Greetings,
 
-The new API requires the update step to associate the EDID with the
-connector. Add the missing call. This restores correct behaviour for
-the cached-EDID path.
+This patch series addresses a missing hardware description issue for the
+Qualcomm IPQ5018 Internal Ethernet PHY, where the data paths fail to
+function correctly unless their dedicated RX and TX clocks are
+explicitly enabled.
 
-Fixes: 5bea90ad9743 ("drm/msm/dp: switch to struct drm_edid")
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
-Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Further testing revealed that leaving these clocks unmanaged by the
+kernel, they were inadvertently left enabled by the bootloader / QSDK
+platform, which masked the issue. Testing a fresh network configuration
+path exposed that the data link fails to work without explicit software
+gating.
+
+To correctly introduce the required multi-clock properties, the IPQ5018
+binding definition must first be split away from the shared
+qca,ar803x.yaml schema. This isolation is required because ar803x
+references the generic ethernet-phy.yaml, which enforces a strict
+single-clock limit constraint. 
+
+- Patch 1: Moves the clocks property and its restriction out of the
+	   generic ethernet-phy.yaml schema to individual bindings files
+	   that need it to allow for PHYs that require multiple clocks.
+- Patch 2: Add clocks property to qca,ar803x.yaml for the IPQ5018 PHY.
+- Patch 3: Appends the missing RX/TX clock definitions into the IPQ5018
+           device tree before driver modification to avoid the driver
+	   failing to probe.
+- Patch 4: Updates the Qualcomm AT803x PHY driver framework to acquire,
+	   enable, and gate these clocks upon link state changes for
+	   runtime power optimization.
+
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
-Hi there,
+Changes in v4:
+- Removed code to enable/disable clocks upon link state changes.
+- Enable the RX/TX clocks during probe and removed them from priv struct
+  as we don't need to manage them after enabling during probe.
+- Link to v3: https://lore.kernel.org/r/20260605-ipq5018-gephy-clocks-v3-0-f232d9ca0966@outlook.com
 
-thank you for the feedback on V1. I dug a little deeper and heeded Janis'
-and Dmitry's request to print the "garbage" EDID, and to my surprise it 
-was the genuine valid EDID for the display. The code is documented in [1].
-
-That changed the picture a bit - "right" EDID but not tied to the connector.
-The retry code does the drm_edid_connector_update() before 
-drm_edid_connector_add_modes(), so I only added that missing piece in 
-msm_dp_panel_get_modes(). This proves to be sufficient to get a stable
-link with the desired resolution. Therefore I dropped the entire re-read 
-and retry logic, because it is of course an ugly hack.
-I have tested this with my complete collection of adapters and hubs, and
-all work well.
-
-[1]: https://github.com/jglathe/linux_ms_dev_kit/tree/jg/flaky_edid_retry
-
-with best regards,
-
-Jens
----
 Changes in v3:
-- cleaned up trailer spacing, added r-b tag (thank you, Dmitry)
-- Link to v2: https://lore.kernel.org/r/20260602-drm_plug_flaky_edid-v2-1-1269fb942299@oldschoolsolutions.biz
+- Revert the change to move the clocks property out of the generic
+  ethernet-phy.yaml schema and simple increase the maxItems limit to 2.
+- Listed clocks, clock-names, and resets as required properties in the
+  schema.
+- Acquire the RX and TX clock during probe without enabling them. Then
+  enable/disable the clocks in the link state change callback to ensure
+  they are only active when needed with checks to avoid redundant
+  enable/disable calls.
+- Re-ran make dt_binding_check on all schemas in net folder without new
+  issues.
+- Link to v2: https://lore.kernel.org/r/20260602-ipq5018-gephy-clocks-v2-0-65a1f1d881f3@outlook.com
 
 Changes in v2:
-- Dropped the retry + re-read logic
-- Just add the missing drm_edid_connector_update() in the cached EDID path
-- Link to v1: https://lore.kernel.org/r/20260531-drm_plug_flaky_edid-v1-1-2708c16dce97@oldschoolsolutions.biz
+- Added patch 1 to move the clocks property and its restriction out of
+  the generic ethernet-phy.yaml schema to individual bindings files that
+  need it to allow for PHYs that require multiple clocks.
+- Reverted splitting out IPQ5018 from the shared qca,ar803x.yaml schema
+  and simply added the clocks and clock-names properties to the
+  definition of the IPQ5018 PHY.
+- Corrected / updated commit title of patch 4 (qca,at803x -> at803x)
+- Link to v1: https://lore.kernel.org/r/20260601-ipq5018-gephy-clocks-v1-0-2df8287712c3@outlook.com
+
 ---
- drivers/gpu/drm/msm/dp/dp_panel.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+George Moussalem (4):
+      dt-bindings: net: ethernet-phy: increase max clock count to two
+      dt-bindings: net: qca,ar803x: Add clocks for IPQ5018 PHY
+      arm64: qcom: ipq5018: Add GEPHY RX and TX clocks
+      net: phy: at803x: add RX and TX clock management for IPQ5018 PHY
 
-diff --git a/drivers/gpu/drm/msm/dp/dp_panel.c b/drivers/gpu/drm/msm/dp/dp_panel.c
-index 6bb021820d7c5..5b4954e7cb748 100644
---- a/drivers/gpu/drm/msm/dp/dp_panel.c
-+++ b/drivers/gpu/drm/msm/dp/dp_panel.c
-@@ -332,8 +332,10 @@ int msm_dp_panel_get_modes(struct msm_dp_panel *msm_dp_panel,
- 		return -EINVAL;
- 	}
- 
--	if (msm_dp_panel->drm_edid)
-+	if (msm_dp_panel->drm_edid) {
-+		drm_edid_connector_update(connector, msm_dp_panel->drm_edid);
- 		return drm_edid_connector_add_modes(connector);
-+	}
- 
- 	return 0;
- }
-
+ .../devicetree/bindings/net/ethernet-phy.yaml         |  9 ++++++---
+ Documentation/devicetree/bindings/net/qca,ar803x.yaml | 19 +++++++++++++++++++
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi                 |  3 +++
+ drivers/net/phy/qcom/at803x.c                         | 12 ++++++++++++
+ 4 files changed, 40 insertions(+), 3 deletions(-)
 ---
 base-commit: 7da7f07112610a520567421dd2ffcb51beaefbcc
-change-id: 20260531-drm_plug_flaky_edid-cc7743f6f909
+change-id: 20260601-ipq5018-gephy-clocks-e8a2440178a0
 
 Best regards,
 -- 
-Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+George Moussalem <george.moussalem@outlook.com>
 
