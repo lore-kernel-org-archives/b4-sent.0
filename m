@@ -1,68 +1,101 @@
-From: Radu Sabau <radu.sabau@analog.com>
-Date: Mon, 08 Jun 2026 12:02:54 +0300
-Subject: [PATCH] iio: adc: ad_sigma_delta: allow COMPILE_TEST in isolation
+From: Raz Ben Yehuda <raz.benyehuda@mobileye.com>
+Subject: [PATCH v3 0/5] (no cover subject)
+Date: Mon, 08 Jun 2026 13:33:24 +0300
+Message-Id: <20260608-ufs_tool2-v3-0-a9f181e86229@mobileye.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260608-ad_sigma_delta_spi-v1-1-61e37666d9b6@analog.com>
-X-B4-Tracking: v=1; b=H4sIAD2FJmoC/x2M0QpAQBAAf+XaZ1frRPgV6TpuscXRraTk310ep
- 2nmAaHIJNCqByJdLLyHBHmmYFxcmEmzTwwGTYUV1tp5KzxvznpaT2flYJ1EMRnEvCkHSOERaeL
- 7n3b9+37rS1+aZAAAAA==
-X-Change-ID: 20260608-ad_sigma_delta_spi-6063f200195b
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Radu Sabau <radu.sabau@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780909381; l=1341;
- i=radu.sabau@analog.com; s=20260220; h=from:subject:message-id;
- bh=GA54EjBngw5qAiuNb6r1BBeWyhMJfGxCv8whjAQhc6M=;
- b=UK0M5bL9QqeHBi4QSmvPvewHW+zOL4F9Uxuc/DLQAmRv27fffcJObgR/JhgQlzi0Vk/fZqLBM
- j1b2i/O8jlKDx0qbtSvGu9NMXKY2psENCTp8THEnnAYOQogwIjUOK5S
-X-Developer-Key: i=radu.sabau@analog.com; a=ed25519;
- pk=lDPQHgn9jTdt0vo58Na9lLxLaE2mb330if71Cn+EvFU=
-X-Endpoint-Received: by B4 Relay for radu.sabau@analog.com/20260220 with auth_id=642
+X-B4-Tracking: v=1; b=H4sIAHSaJmoC/22NQQqDMBAAvyJ7bkqMEpue/EeRYtJN3aKmJCoV8
+ e9N7LXHgWFmg4CeMMA128DjQoHcGKE4ZWC6dnwio0dkEFxILnnFZhvuk3O9YHluilIVUnFTQvT
+ fHi19jtat+XGY9QvNlALJ6ChMzq/HbBHJ+9ddBOPMVspaIVudX0w9OE09rng2boBm3/cvw92o6
+ bcAAAA=
+X-Change-ID: 20260607-ufs_tool2-11c3493690c4
+To: u-boot@lists.denx.de
+Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Bhupesh Sharma <bhupesh.linux@gmail.com>, 
+ Neha Malcom Francis <n-francis@ti.com>, 
+ Tawfik Bayouk <tawfik.bayouk@mobileye.com>, 
+ Vladimir Kondratiev <vladimir.Kondratiev@mobileye.com>, 
+ Raz Ben Yehuda <raz.benyehuda@mobileye.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2213;
+ i=raz.benyehuda@mobileye.com; h=from:subject:message-id;
+ bh=7fBbCj/9tXFiudNY2vw15eFxlB6lW7s58RlJd1Zt9Jg=;
+ b=owEBbQKS/ZANAwAKAZ+a6ZSW6I45AcsmYgBqJpqPo2gJmhxKDBd6ca+qYarScUGR0WkETSmnn
+ tSCY8jrYOuJAjMEAAEKAB0WIQSC7lz5E3UmOrJvRDqfmumUluiOOQUCaiaajwAKCRCfmumUluiO
+ OYDkD/4ieZK9+V17TX8rOCF8cjXwuJoLT15PwVCFOxHneZF3qhvfMoWzx0IyKFk+O1h/+LHUEqz
+ QRRS+bG2E9YIB9nI9EKFhrNneGGCNFY24Ns2ckP+mdLwc/2wbGt+JBKf/q1TcF1CYazM/378eBv
+ sxn3jSrLkz+cgD+Ox/GR5A1HAImttmBA96DYg/KHcKbopApxQTVtTyuGoYGsKOmLRW2fjsgc2vT
+ xqiKn9JHa0ZvCQ/vAmLZA2DV+LC4roIvh8SdI4DtDEcKpeFfTwE9n0RGIh9cfeWZoSunMqUPJXE
+ HMHE2AFwJC3iU3+rtxqqmY/mkMZtoSN/OlrCEkoE6SGpMX2GVOWWFa7p6UG1jTgrAEzV+vbode6
+ qNwqEYhfPWjHXfry5Zm5EgPgfnYP6s3hd43v+kEwP7fLB0PssTs22rBASWTS0D+L5TtLEnLlb0Z
+ Q17JzJdf+pxoryodEJkzZkZ78tm5BIyoy6IufiW1afQsiLueG3eVlNFEAXySghdZ49BV6H5LYCc
+ VCwm/ZHzROo8jAV5qO6mxesUzYRHBRdz7GpQ7tu1TE2PKVp9+77ibyd+oe085V9O33wgCfQtEO+
+ 01u7B8CKSGeGLHYnOXrLN2IgymwgBUGo6Mgb4+kvcgOvtT2+SsthXcUxKRoA8TMOcNaktLFuQT3
+ SN0RGWoi4z4xVqQ==
+X-Developer-Key: i=raz.benyehuda@mobileye.com; a=openpgp;
+ fpr=82EE5CF91375263AB26F443A9F9AE99496E88E39
+X-Endpoint-Received: by B4 Relay for raz.benyehuda@mobileye.com/default with auth_id=808
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-AD_SIGMA_DELTA is a hidden tristate that can only be enabled by
-selecting drivers (AD7124, AD7192, etc.), all of which require SPI.
-This prevents compile-testing the library code directly with allmodconfig
-or by manually enabling it with COMPILE_TEST.
+Changes in v3:
+- remove set_dev_desc command. DeviceDescriptor is not writable 
+- Beautify the rst document
+- Link to v2: https://patch.msgid.link/20260607-ufs_tool2-v2-0-f79ff26ab18c@mobileye.com
 
-Add a prompt string guarded by "if COMPILE_TEST" so the symbol becomes
-directly selectable when COMPILE_TEST is set.
+ufs: Exted cmd line
 
-Also add an explicit "depends on SPI" since the ad_sigma_delta library
-directly calls SPI core symbols such as spi_bus_lock(), spi_bus_unlock(),
-and spi_sync_locked().
+The UFS command provides utilities for querying, displaying, and modifying
+UFS device configuration and descriptor information. It is commonly used to
+configure UFS logical units (LUNs) in U-Boot, allowing storage devices to be
+provisioned and reconfigured as needed.
 
-Signed-off-by: Radu Sabau <radu.sabau@analog.com>
+Features:
+
+* Display Device, Geometry, Unit, Configuration, and Power Descriptors
+* Display LUN configuration and calculated capacities
+* Modify fields in Device, Configuration, and Unit Descriptors
+* Query common UFS runtime flags
+* Commit configuration changes or clear all LUN configurations
+* Decode and format descriptor contents for easier debugging
+* Provision and configure UFS logical units
+
+Changes in v2:
+
+* Add HBA ID support
+* Move ufs_tool.c to cmd/ufs.c
+* Add myself as reviewer
+* Rename patch subject to  "ufs: document the UFS command"
+
+To: u-boot@lists.denx.de
+Cc:      Neil Armstrong <neil.armstrong@linaro.org>
+Cc:      Bhupesh Sharma <bhupesh.linux@gmail.com>
+Cc:      Neha Malcom Francis <n-francis@ti.com>
+Cc:      Tawfik Bayouk  <tawfik.bayouk@mobileye.com>
+Cc:      Vladimir Kondratiev  <vladimir.Kondratiev@mobileye.com>
+
+Signed-off-by: Raz Ben Yehuda <raz.benyehuda@mobileye.com>
 ---
- drivers/iio/adc/Kconfig | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Raz Ben Yehuda (5):
+      ufs: Expose selected UFS functions
+      ufs: Add flags according
+      ufs: extending ufs cmd line
+      ufs: document the UFS command
+      MAINTAINERS: Add myself to the list of UFS maintainers
 
-diff --git a/drivers/iio/adc/Kconfig b/drivers/iio/adc/Kconfig
-index a9dedbb8eb46..329d1f6e5106 100644
---- a/drivers/iio/adc/Kconfig
-+++ b/drivers/iio/adc/Kconfig
-@@ -33,7 +33,8 @@ config AB8500_GPADC
- 	  and USB voltages integral to the U8500 platform.
- 
- config AD_SIGMA_DELTA
--	tristate
-+	tristate "Analog Devices Sigma-Delta Modulator support" if COMPILE_TEST
-+	depends on SPI
- 	select IIO_BUFFER
- 	select IIO_BUFFER_DMAENGINE
- 	select IIO_TRIGGERED_BUFFER
-
+ MAINTAINERS              |    3 +
+ cmd/Makefile             |    1 +
+ cmd/ufs.c                | 1271 +++++++++++++++++++++++++++++++++++++++++++++-
+ doc/usage/cmd/ufs.rst    |  202 ++++++++
+ drivers/ufs/ufs-uclass.c |   18 +-
+ drivers/ufs/ufs.h        |   16 +
+ include/ufs.h            |  374 +++++++++++++-
+ 7 files changed, 1867 insertions(+), 18 deletions(-)
 ---
-base-commit: 4549871118cf616eecdd2d939f78e3b9e1dddc48
-change-id: 20260608-ad_sigma_delta_spi-6063f200195b
+base-commit: 0c035ff60c1e8caee7fccd2673ce75380dee825b
+change-id: 20260607-ufs_tool2-11c3493690c4
 
 Best regards,
--- 
-Radu Sabau <radu.sabau@analog.com>
+--  
+Raz Ben Yehuda <raz.benyehuda@mobileye.com>
 
