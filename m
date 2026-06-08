@@ -1,85 +1,107 @@
-From: Sam Day <me@samcday.com>
-Date: Mon, 08 Jun 2026 09:37:17 +1000
-Subject: [PATCH v2 8/8] configs: exynos-mobile: pull in BINMAN
+From: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
+Date: Mon, 08 Jun 2026 06:54:39 +0200
+Subject: [PATCH v3] drm/msm/dp: add missing drm_edid_connector_update()
+ before add_modes on cached EDID
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260608-android-binman-v2-8-b8203682507f@samcday.com>
-References: <20260608-android-binman-v2-0-b8203682507f@samcday.com>
-In-Reply-To: <20260608-android-binman-v2-0-b8203682507f@samcday.com>
-To: u-boot@lists.denx.de
-Cc: Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>, 
- Alper Nebi Yasak <alpernebiyasak@gmail.com>, 
- Quentin Schulz <quentin.schulz@cherry.de>, Bryan Brattlof <bb@ti.com>, 
- Yannic Moog <y.moog@phytec.de>, Wojciech Dubowik <Wojciech.Dubowik@mt.com>, 
- Yegor Yefremov <yegorslists@googlemail.com>, 
- Patrice Chotard <patrice.chotard@foss.st.com>, 
- Heinrich Schuchardt <xypron.glpk@gmx.de>, 
- Marek Vasut <marek.vasut+renesas@mailbox.org>, 
- Rasmus Villemoes <ravi@prevas.dk>, Javier Tia <floss@jetm.me>, 
- Minkyu Kang <mk7.kang@samsung.com>, 
- Kaustabh Chakraborty <kauschluss@disroot.org>, 
- Henrik Grimler <henrik@grimler.se>, Sam Day <me@samcday.com>
+Message-Id: <20260608-drm_plug_flaky_edid-v3-1-1ca632938e7f@oldschoolsolutions.biz>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33OSw6CMBCA4auYrq1pByzWlfcwhkAf0FgpaaERC
+ Xe3sHGjLv9J5puZUVDeqIDOuxl5FU0wrkuR7XdItFXXKGxkagQEGDlmFEv/KHs7NqW21X0qlTQ
+ SC1EUeaaZ5oSjtNl7pc1zU6+31K0Jg/PTdiTSdfrfixRTDAU5CcqkULy4OCuDaJ2zwdlxSD+GQ
+ 21eaMUjfEBG4DsICaTAuK55DsD5T3BZljf8jnCRFAEAAA==
+X-Change-ID: 20260531-drm_plug_flaky_edid-cc7743f6f909
+To: Rob Clark <robin.clark@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ Douglas Anderson <dianders@chromium.org>, 
+ Jani Nikula <jani.nikula@intel.com>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
+ Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780875433; l=1723;
- i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=AwJf3/zy873wIvJbnCoM+ZN4PCzMAP0EqTx9xh5hUOY=;
- b=9qSkJDMOVXU+kWOgKNVuzZnmQnL2idHgGf0XOWFyLkH7Ra4M2yPghtRn9+CJuLwn4EQbDS8te
- cPej9kv3/KEA8U9vlyfzfJ2M0hauDRA1xx4HVWaspyXzkquLULoZvwp
-X-Developer-Key: i=me@samcday.com; a=ed25519;
- pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
-X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780894481; l=2688;
+ i=jens.glathe@oldschoolsolutions.biz; s=20240919; h=from:subject:message-id;
+ bh=55G4LQVrxBJzJlYE3Z1ybkSrDyEmlX4rhTBkpovP1x0=;
+ b=dAQQLZtUlP2REJbgAX15/NGYkNWqDsTe/tGnHcSFaGRUxwNNn1zj+Uv7+inVOEEmkB4fzz1Ut
+ ucAanTR8vm7AfZs50kVKzzIvKPGuy40yr9sDOjDtfIMfCkdAB2fkAa/
+X-Developer-Key: i=jens.glathe@oldschoolsolutions.biz; a=ed25519;
+ pk=JcRJqJc/y8LsxOlPakALD3juGfOKmFBWtO+GfELMJVg=
+X-Endpoint-Received: by B4 Relay for jens.glathe@oldschoolsolutions.biz/20240919 with auth_id=216
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-All Exynos7 mobile devices need abootimg+DTBH wrapping to be bootable
-from the fused S-BOOT bootloader. So we enable BINMAN everywhere.
-Ideally we'll have full coverage of these devices with binman configs in
-the overlay DTSIs but, for now, we ensure there's a placeholder node.
-That way no existing devices will regress their cleanly buildable state.
+After the refactor to struct drm_edid, the fast path in
+msm_dp_panel_get_modes() that already held a cached EDID called
+drm_edid_connector_add_modes() directly without first calling
+drm_edid_connector_update().
 
-Signed-off-by: Sam Day <me@samcday.com>
+The new API requires the update step to associate the EDID with the
+connector. Add the missing call. This restores correct behaviour for
+the cached-EDID path.
+
+Fixes: 5bea90ad9743 ("drm/msm/dp: switch to struct drm_edid")
+Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+Signed-off-by: Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 ---
- arch/arm/dts/exynos-mobile.dtsi | 5 +++++
- arch/arm/mach-exynos/Kconfig    | 1 +
- configs/exynos-mobile_defconfig | 1 +
- 3 files changed, 7 insertions(+)
+Hi there,
 
-diff --git a/arch/arm/dts/exynos-mobile.dtsi b/arch/arm/dts/exynos-mobile.dtsi
-new file mode 100644
-index 00000000000..9982e996993
---- /dev/null
-+++ b/arch/arm/dts/exynos-mobile.dtsi
-@@ -0,0 +1,5 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/ {
-+	binman {
-+	};
-+};
-diff --git a/arch/arm/mach-exynos/Kconfig b/arch/arm/mach-exynos/Kconfig
-index b084b7284aa..d4ae182030d 100644
---- a/arch/arm/mach-exynos/Kconfig
-+++ b/arch/arm/mach-exynos/Kconfig
-@@ -255,6 +255,7 @@ endif
- config TARGET_EXYNOS_MOBILE
- 	bool "Samsung Exynos Generic Boards (for mobile devices)"
- 	select ARM64
-+	select BINMAN
- 	select BOARD_EARLY_INIT_F
- 	select CLK_EXYNOS
- 	select LINUX_KERNEL_IMAGE_HEADER
-diff --git a/configs/exynos-mobile_defconfig b/configs/exynos-mobile_defconfig
-index 45ab998bb45..fcaff3d1608 100644
---- a/configs/exynos-mobile_defconfig
-+++ b/configs/exynos-mobile_defconfig
-@@ -32,6 +32,7 @@ CONFIG_EFI_PARTITION=y
- CONFIG_OF_UPSTREAM=y
- CONFIG_OF_UPSTREAM_BUILD_VENDOR=y
- CONFIG_OF_BOARD=y
-+CONFIG_DEVICE_TREE_INCLUDES="exynos-mobile.dtsi"
- CONFIG_BLKMAP=y
- CONFIG_BUTTON_REMAP_PHONE_KEYS=y
- CONFIG_CLK_EXYNOS7870=y
+thank you for the feedback on V1. I dug a little deeper and heeded Janis'
+and Dmitry's request to print the "garbage" EDID, and to my surprise it 
+was the genuine valid EDID for the display. The code is documented in [1].
 
+That changed the picture a bit - "right" EDID but not tied to the connector.
+The retry code does the drm_edid_connector_update() before 
+drm_edid_connector_add_modes(), so I only added that missing piece in 
+msm_dp_panel_get_modes(). This proves to be sufficient to get a stable
+link with the desired resolution. Therefore I dropped the entire re-read 
+and retry logic, because it is of course an ugly hack.
+I have tested this with my complete collection of adapters and hubs, and
+all work well.
+
+[1]: https://github.com/jglathe/linux_ms_dev_kit/tree/jg/flaky_edid_retry
+
+with best regards,
+
+Jens
+---
+Changes in v3:
+- cleaned up trailer spacing, added r-b tag (thank you, Dmitry)
+- Link to v2: https://lore.kernel.org/r/20260602-drm_plug_flaky_edid-v2-1-1269fb942299@oldschoolsolutions.biz
+
+Changes in v2:
+- Dropped the retry + re-read logic
+- Just add the missing drm_edid_connector_update() in the cached EDID path
+- Link to v1: https://lore.kernel.org/r/20260531-drm_plug_flaky_edid-v1-1-2708c16dce97@oldschoolsolutions.biz
+---
+ drivers/gpu/drm/msm/dp/dp_panel.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/gpu/drm/msm/dp/dp_panel.c b/drivers/gpu/drm/msm/dp/dp_panel.c
+index 6bb021820d7c5..5b4954e7cb748 100644
+--- a/drivers/gpu/drm/msm/dp/dp_panel.c
++++ b/drivers/gpu/drm/msm/dp/dp_panel.c
+@@ -332,8 +332,10 @@ int msm_dp_panel_get_modes(struct msm_dp_panel *msm_dp_panel,
+ 		return -EINVAL;
+ 	}
+ 
+-	if (msm_dp_panel->drm_edid)
++	if (msm_dp_panel->drm_edid) {
++		drm_edid_connector_update(connector, msm_dp_panel->drm_edid);
+ 		return drm_edid_connector_add_modes(connector);
++	}
+ 
+ 	return 0;
+ }
+
+---
+base-commit: 7da7f07112610a520567421dd2ffcb51beaefbcc
+change-id: 20260531-drm_plug_flaky_edid-cc7743f6f909
+
+Best regards,
 -- 
-2.54.0
+Jens Glathe <jens.glathe@oldschoolsolutions.biz>
 
