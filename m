@@ -1,65 +1,74 @@
-From: Raz Ben Yehuda <raz.benyehuda@mobileye.com>
-Date: Mon, 08 Jun 2026 13:33:29 +0300
-Subject: [PATCH v3 5/5] MAINTAINERS: Add myself to the list of UFS
- maintainers
+From: Ferdinand Schwenk <ferdinand.schwenk@advastore.com>
+Subject: [PATCH v2 0/3] hwmon: ina238: add samples and update_interval_us
+ support
+Date: Mon, 08 Jun 2026 15:03:53 +0200
+Message-Id: <20260608-hwmon-ina238-update-interval-us-v2-v2-0-2d939fbb2ea1@advastore.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260608-ufs_tool2-v3-5-a9f181e86229@mobileye.com>
-References: <20260608-ufs_tool2-v3-0-a9f181e86229@mobileye.com>
-In-Reply-To: <20260608-ufs_tool2-v3-0-a9f181e86229@mobileye.com>
-To: u-boot@lists.denx.de
-Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
- Bhupesh Sharma <bhupesh.linux@gmail.com>, 
- Neha Malcom Francis <n-francis@ti.com>, 
- Tawfik Bayouk <tawfik.bayouk@mobileye.com>, 
- Vladimir Kondratiev <vladimir.Kondratiev@mobileye.com>, 
- Raz Ben Yehuda <raz.benyehuda@mobileye.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=610;
- i=raz.benyehuda@mobileye.com; h=from:subject:message-id;
- bh=Evo/xayXeA+xDd8mrRtcOpcBO0hiTU23xBCrmgriIpk=;
- b=owEBbQKS/ZANAwAKAZ+a6ZSW6I45AcsmYgBqJpqW1bnCUMTvFfx8ii+6W2MYAw/eB5lqSspBY
- 2phdCKs5/qJAjMEAAEKAB0WIQSC7lz5E3UmOrJvRDqfmumUluiOOQUCaiaalgAKCRCfmumUluiO
- OQmQEACtHxB1TfPueraOdSIpv4DCPBg/nxPo3VKyoQNF+/sFq+YYK5VYSvTQmuHxzfRzse3NL2Q
- jHtzcAFNHhBLCBsb1kQKXBj8ybiD3aCTDfNkcfTxnZ+feaP3iYeqZWjbFLupRL5Tg6N8Pr26RZE
- 0iP1cToRDVBqBaXk4U6M4iiIwORcNU5OL6x0NfG7FRu7pGIrDRX1slvvmZodm7ZZCIqKEREEjLs
- lTP1aDamsFzEcVS42Kn8D9iUC7VE6PTQztT/SZeedCQQEBzlfI6WigNSdCYRs960uo5cWmhPxUl
- jJmfFTWbwPbqE8nSMW6jke2GlGY+OJJJKm/23hnW2xO0iydb2tJChxsmen1/I11DduLxHlimL5P
- Q7ro3IYQbVnStt7OUxPVXdLmdDmNJbA6rlDZWQKMmD0sLI2ebPVnSI/IUr7LfXXMLVCvgA6ZaC7
- 3puWKMH1xCdbx0AS04Q4h7DZUGgC5Dpgke8xYU9+xMAa2WSoEUu1l9BKsrmDpiJ5jnmkyLPjE2q
- 56RQXECORTyQgmbB8tgg50hNsonImhQdnyHn8W87V9y4SORFISu/wMOogum1hWYeSIp4PwEd2Ix
- xg4g2R4yKfpxsjbROi9bHkht0H+/hVUENwwFWlYfrZYrTvouBxMHVv/gjAPEChEmjIVTfNmTvZp
- 6iX5nfV5bqa2xFQ==
-X-Developer-Key: i=raz.benyehuda@mobileye.com; a=openpgp;
- fpr=82EE5CF91375263AB26F443A9F9AE99496E88E39
-X-Endpoint-Received: by B4 Relay for raz.benyehuda@mobileye.com/default with auth_id=808
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2N0QqDMAwAf0XyvECWipT9ythDWOMMbFFa7Qbiv
+ 6/4eHDc7VA0mxa4dTtkrVZs9gZ86eA5ib8ULTUGJh5ooIjT9zM7mguHiNuSZG2Kr5qrvHErWBm
+ voe9jUhKKAVpoyTra75zcH8fxB21awOR0AAAA
+X-Change-ID: 20260608-hwmon-ina238-update-interval-us-v2-13448de0a083
+To: Guenter Roeck <linux@roeck-us.net>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>
+Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-doc@vger.kernel.org, richard.leitner@linux.dev, 
+ ferdinand.schwenk@advastore.com
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780923870; l=2059;
+ i=ferdinand.schwenk@advastore.com; h=from:subject:message-id;
+ bh=knZSIpSnPyE8xSKnsSBICwc7zFH7EviJsK2ZsdUIYnE=;
+ b=karf5InTqgmwXUQey41hm4GWNyEIIzDyLm8CEDUcT6bGJBWHKWYy1U7e84zX0gZvGBv/6TyNa
+ SA6Mb74wTlCCpux0f9J1u697Iyv/Tzb26dJLd3/KYJEKyWmwQe6IfFx
+X-Developer-Key: i=ferdinand.schwenk@advastore.com; a=ed25519;
+ pk=HyA9NdHJ7NystP+1SyuWJeyXNH2EO4A09FXli9mfs9Q=
+X-Endpoint-Received: by B4 Relay for ferdinand.schwenk@advastore.com/default with auth_id=788
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-    Adding myself to ufs.
+The INA238 family exposes ADC averaging and conversion timing controls
+through ADC_CONFIG. Add support for the samples and update_interval
+chip attributes and introduce a generic update_interval_us companion
+attribute for devices that need sub-millisecond resolution.
 
-Signed-off-by: Raz Ben Yehuda <raz.benyehuda@mobileye.com>
+The shortest INA238 conversion time steps are below 1 ms, so several
+valid hardware settings collapse to the same update_interval value when
+reported only in milliseconds. Keep update_interval in milliseconds as
+required by the existing hwmon ABI and provide update_interval_us to
+report and program the same total conversion cycle time with microsecond
+resolution.
+
+Patch 1 adds samples and update_interval support for the INA238 family.
+Patch 2 adds the generic hwmon update_interval_us attribute and
+documents it.
+Patch 3 wires the new attribute up in the INA238 driver.
+
+Link: https://lore.kernel.org/all/20260522-hwmon-ina238-add-samples-update-interval-v1-0-e1acfceb447e@advastore.com/
 ---
- MAINTAINERS | 3 +++
- 1 file changed, 3 insertions(+)
+v2:
+- keep update_interval in milliseconds to preserve the existing ABI
+- add the generic update_interval_us hwmon chip attribute and documentation
+- implement update_interval_us for ina238
+- report and program intervals using the active averaging count
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 571af196465..d2257a8327c 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1920,8 +1920,11 @@ UFS
- M:	Neil Armstrong <neil.armstrong@linaro.org>
- M:	Bhupesh Sharma <bhupesh.linux@gmail.com>
- M:	Neha Malcom Francis <n-francis@ti.com>
-+R:	Raz Ben Yehuda <raz.benyehuda@mobileye.com>
- S:	Maintained
-+F:	cmd/ufs.c
- F:	common/spl/spl_ufs.c
-+F:	doc/usage/cmd/ufs.rst
- F:	drivers/ufs/
- 
- UPL
+---
+Ferdinand Schwenk (3):
+      hwmon: ina238: add support for samples and update_interval
+      hwmon: Add update_interval_us chip attribute
+      hwmon: ina238: add update_interval_us attribute
 
+ Documentation/ABI/testing/sysfs-class-hwmon |  14 +++
+ Documentation/hwmon/ina238.rst              |   4 +
+ Documentation/hwmon/sysfs-interface.rst     |   4 +
+ drivers/hwmon/hwmon.c                       |   1 +
+ drivers/hwmon/ina238.c                      | 160 +++++++++++++++++++++++++++-
+ include/linux/hwmon.h                       |   2 +
+ 6 files changed, 183 insertions(+), 2 deletions(-)
+---
+base-commit: 028ef9c96e96197026887c0f092424679298aae8
+change-id: 20260608-hwmon-ina238-update-interval-us-v2-13448de0a083
+
+Best regards,
 -- 
-2.43.0
+Ferdinand Schwenk <ferdinand.schwenk@advastore.com>
 
