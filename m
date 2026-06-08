@@ -1,84 +1,85 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Mon, 08 Jun 2026 09:09:19 +0400
-Subject: [PATCH v4 4/4] net: phy: at803x: add RX and TX clock management
- for IPQ5018 PHY
+Date: Mon, 08 Jun 2026 11:22:08 +0400
+Subject: [PATCH v3] net: dsa: qca8k: fix led devicename when using external
+ mdio bus
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260608-ipq5018-gephy-clocks-v4-4-fb2ccd56894b@outlook.com>
-References: <20260608-ipq5018-gephy-clocks-v4-0-fb2ccd56894b@outlook.com>
-In-Reply-To: <20260608-ipq5018-gephy-clocks-v4-0-fb2ccd56894b@outlook.com>
-To: Andrew Lunn <andrew@lunn.ch>, Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
+Message-Id: <20260608-qca8k-leds-fix-v3-1-a915bb2f37ae@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/03MywrCMBCF4Vcps3YkpmkdXPke4iKXiQ29pCa1C
+ KXvbhAEl/+B822QOQXOcKk2SLyGHOJUoj5UYDs9PRiDKw1SyFa0gvBpNfU4sMvowxuZjHLk2ai
+ zgXKaE5f5C97upX2KIy5dYv1jGqFk88+sEk9o2pq8q4kaq6/xtQwx9kcbR9j3Dy1x+lqkAAAA
+X-Change-ID: 20260608-qca8k-leds-fix-e8b4d8feb47b
+To: Andrew Lunn <andrew@lunn.ch>, Vladimir Oltean <olteanv@gmail.com>, 
  "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
  Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Florian Fainelli <f.fainelli@gmail.com>, 
- Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>
-Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- linux-arm-msm@vger.kernel.org, 
+ Christian Marangi <ansuelsmth@gmail.com>, 
+ Florian Fainelli <f.fainelli@gmail.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780895363; l=1756;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780903338; l=2408;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=m5xYoQj/G89J7xqhL2YgJahZAGwlkkCV+b0laCqNRBU=;
- b=a9b6VnFuOhU7qXWN2B1DLPAgtbLDyESVPuHBhkQs6Jd27gKLy1uQ+QhPfQyBQnepDm8c+rNSi
- MHqnN6UFaKXAJ/BZidcIBUyQvDrs7SPjT5eUAJRnjP9UwNlGnji3gVd
+ bh=HiUw3Q504F5hs2do7v6tmrj/sdstwjc54LpITglorVY=;
+ b=6akJitugOoduxzekxXr8wUyxaunTXPSPvklTHqMbAzdPnSbxEeFFnt0i8kmIwCy8NxlIWVsL1
+ UFb4R/AmSnvDsmCKI1yyVbZUYEV0weZfCN2/aOR1uGK2stn129rnQ5T
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Acquire and enable the RX and TX clocks for the IPQ5018 PHY.
-These clocks are required for the PHY's datapath to function correctly.
+The qca8k dsa switch can use either an external or internal mdio bus.
+This depends on whether the mdio node is defined under the switch node
+itself. Upon registering the internal mdio bus, the internal_mdio_bus
+of the dsa switch is assigned to this bus. When an external mdio bus is
+used, the driver still uses the internal_mdio_bus id which is used to
+create the device names of the leds.
+This leads to the leds being prefixed with '(efault)' as the
+internal_mii_bus is null. So let's fix this by adding a null check and
+use the devicename of the external bus instead when an external bus is
+configured.
 
-Fixes: d46502279a11 ("net: phy: qcom: at803x: Add Qualcomm IPQ5018 Internal PHY support")
+Fixes: 1e264f9d2918 ("net: dsa: qca8k: add LEDs basic support")
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/net/phy/qcom/at803x.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+Resending this patch as v3 with an updated commit message. There was a
+discussion on removing the notion of having an external and internal
+bus which was never followed up on, yet the issue is still there.
+Link: https://patchwork.kernel.org/project/netdevbpf/patch/20250425151309.30493-1-kabel@kernel.org/
 
-diff --git a/drivers/net/phy/qcom/at803x.c b/drivers/net/phy/qcom/at803x.c
-index 63726cf98cd4..ba4dc07752b6 100644
---- a/drivers/net/phy/qcom/at803x.c
-+++ b/drivers/net/phy/qcom/at803x.c
-@@ -19,6 +19,7 @@
- #include <linux/regulator/consumer.h>
- #include <linux/of.h>
- #include <linux/phylink.h>
-+#include <linux/clk.h>
- #include <linux/reset.h>
- #include <linux/phy_port.h>
- #include <dt-bindings/net/qca-ar803x.h>
-@@ -1074,6 +1075,7 @@ static void ipq5018_link_change_notify(struct phy_device *phydev)
- static int ipq5018_probe(struct phy_device *phydev)
- {
- 	struct device *dev = &phydev->mdio.dev;
-+	struct clk *rx_clk, *tx_clk;
- 	struct ipq5018_priv *priv;
- 	int ret;
- 
-@@ -1084,6 +1086,16 @@ static int ipq5018_probe(struct phy_device *phydev)
- 	priv->set_short_cable_dac = of_property_read_bool(dev->of_node,
- 							  "qcom,dac-preset-short-cable");
- 
-+	rx_clk = devm_clk_get_enabled(dev, "rx");
-+	if (IS_ERR(rx_clk))
-+		return dev_err_probe(dev, PTR_ERR(rx_clk),
-+				     "failed to get and enable RX clock\n");
-+
-+	tx_clk = devm_clk_get_enabled(dev, "tx");
-+	if (IS_ERR(tx_clk))
-+		return dev_err_probe(dev, PTR_ERR(tx_clk),
-+				     "failed to get and enable TX clock\n");
-+
- 	priv->rst = devm_reset_control_array_get_exclusive(dev);
- 	if (IS_ERR(priv->rst))
- 		return dev_err_probe(dev, PTR_ERR(priv->rst),
+Changed in v3:
+- Rebased on top of tree
+- Updated commit message to reflect renaming of slave_mii_bus to
+  internal_mdio_bus
+- Link to v2: https://lore.kernel.org/r/20250425-qca8k-leds-v2-1-b638fd3885ca@outlook.com
+Changes in v2:
+- Fixed c/p error from older kernel version: slave_mii_bus was renamed
+  to internal_mdio_bus
+- Link to v1: https://lore.kernel.org/r/20250425-qca8k-leds-v1-1-6316ad36ad22@outlook.com
+---
+ drivers/net/dsa/qca/qca8k-leds.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
+diff --git a/drivers/net/dsa/qca/qca8k-leds.c b/drivers/net/dsa/qca/qca8k-leds.c
+index 43ac68052baf..ef496e345a4e 100644
+--- a/drivers/net/dsa/qca/qca8k-leds.c
++++ b/drivers/net/dsa/qca/qca8k-leds.c
+@@ -429,7 +429,8 @@ qca8k_parse_port_leds(struct qca8k_priv *priv, struct fwnode_handle *port, int p
+ 		init_data.fwnode = led;
+ 		init_data.devname_mandatory = true;
+ 		init_data.devicename = kasprintf(GFP_KERNEL, "%s:0%d",
+-						 priv->internal_mdio_bus->id,
++						 priv->internal_mdio_bus ?
++						 priv->internal_mdio_bus->id : priv->bus->id,
+ 						 port_num);
+ 		if (!init_data.devicename) {
+ 			fwnode_handle_put(led);
+
+---
+base-commit: 6e845bcb78c95af935094040bd4edc3c2b6dd784
+change-id: 20260608-qca8k-leds-fix-e8b4d8feb47b
+
+Best regards,
 -- 
-2.53.0
+George Moussalem <george.moussalem@outlook.com>
 
