@@ -1,11 +1,10 @@
 From: Alexandre MINETTE <contact@alex-min.fr>
-Date: Tue, 09 Jun 2026 10:13:45 +0200
-Subject: [PATCH v4 2/6] pinctrl: qcom: Register functions before enabling
- pinctrl
+Date: Tue, 09 Jun 2026 10:13:46 +0200
+Subject: [PATCH v4 3/6] ARM: dts: qcom: apq8064: Fix USB controller clocks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260609-mainline-send-v1-sending-v4-2-83768fbf404d@alex-min.fr>
+Message-Id: <20260609-mainline-send-v1-sending-v4-3-83768fbf404d@alex-min.fr>
 References: <20260609-mainline-send-v1-sending-v4-0-83768fbf404d@alex-min.fr>
 In-Reply-To: <20260609-mainline-send-v1-sending-v4-0-83768fbf404d@alex-min.fr>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -19,70 +18,87 @@ To: Bjorn Andersson <andersson@kernel.org>,
  "Guilherme G. Piccoli" <gpiccoli@igalia.com>
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-gpio@vger.kernel.org, 
- phone-devel@vger.kernel.org, Alexandre MINETTE <contact@alex-min.fr>
+ phone-devel@vger.kernel.org, Alexandre MINETTE <contact@alex-min.fr>, 
+ Antony Kurniawan Soemardi <linux@smankusors.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780992834; l=2004;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780992834; l=3024;
  i=contact@alex-min.fr; s=20260421; h=from:subject:message-id;
- bh=gqK5qmgCceA2ln5R06RBqAB8HOklQ9gk21qwB8S51xo=;
- b=oBXpglylxTL8r10fHries+jj6sz0vvWF+pd91bThspg4YbX+vsu5D/py2VN/VVL2saD7OMEIs
- tTcEhnLN/F2BihmfHOaQaRt8roOJubzk8/A0jBBIY2YOXy41lsUczPl
+ bh=GqHsba4If8+Q0/z6LsTrLfjYZUS+n2wsp24jrmw+SmI=;
+ b=WtpNUFqzLuML7j28Xhycbr2yVGrBcroxfjqO4B71uk1XC4A/nZSBPPn6utz7xEYTaGQY3Upe2
+ Dglq3H8GIf0AmVMamW1i5+fs7CFO7Px+xYHakpk4tsrhCUPqx4b4KuE
 X-Developer-Key: i=contact@alex-min.fr; a=ed25519;
  pk=KOCaxY4v16ptaT0uk1FRkuaDF2n1JhmnYwLiqWD76M4=
 X-Endpoint-Received: by B4 Relay for contact@alex-min.fr/20260421 with auth_id=743
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-pinctrl consumers can request states while the pinctrl core enables the
-controller. On Qualcomm pinctrl drivers this can happen before the SoC
-function list has been registered, which leaves the function table
-incomplete during state lookup.
+The APQ8064 HS USB controller nodes describe the transceiver clock as
+"core", but the ChipIdea MSM glue expects "core" to be the controller
+fabric clock and "fs" to be the transceiver clock.
 
-On APQ8064 this can fail while claiming pinctrl hogs:
+This mismatch can leave the fabric clock disabled while the controller is
+accessed. Some boards may tolerate that if the clock is already enabled
+elsewhere, but it is not a correct description of the hardware.
 
-   apq8064-pinctrl 800000.pinctrl: invalid function ps_hold in map table
-   apq8064-pinctrl 800000.pinctrl: error claiming hogs: -22
-   apq8064-pinctrl 800000.pinctrl: could not claim hogs: -22
+Describe the RPM Daytona fabric clock as "core", the AHB clock as
+"iface", and the transceiver clock as "fs" for all APQ8064 HS USB
+controllers. Without this, USB does not probe reliably on Samsung Galaxy
+S4 because the fabric clock remains disabled.
 
-Register Qualcomm pinctrl with devm_pinctrl_register_and_init(), add the
-SoC pin functions, and only then enable the pinctrl device.
-
+Link: https://lore.kernel.org/all/20260516-qcom-ci-hdrc-clock-fix-v2-1-aaec8d33d0aa@smankusors.com/
+Suggested-by: Antony Kurniawan Soemardi <linux@smankusors.com>
 Signed-off-by: Alexandre MINETTE <contact@alex-min.fr>
+Acked-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+Reviewed-by: Linus Walleij <linusw@kernel.org>
 ---
- drivers/pinctrl/qcom/pinctrl-msm.c | 15 ++++++++++-----
- 1 file changed, 10 insertions(+), 5 deletions(-)
+ arch/arm/boot/dts/qcom/qcom-apq8064.dtsi | 18 ++++++++++++------
+ 1 file changed, 12 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/pinctrl/qcom/pinctrl-msm.c b/drivers/pinctrl/qcom/pinctrl-msm.c
-index 45b3a2763eb8..a2a1e0835735 100644
---- a/drivers/pinctrl/qcom/pinctrl-msm.c
-+++ b/drivers/pinctrl/qcom/pinctrl-msm.c
-@@ -1593,11 +1593,11 @@ int msm_pinctrl_probe(struct platform_device *pdev,
- 	pctrl->desc.pins = pctrl->soc->pins;
- 	pctrl->desc.npins = pctrl->soc->npins;
- 
--	pctrl->pctrl = devm_pinctrl_register(&pdev->dev, &pctrl->desc, pctrl);
--	if (IS_ERR(pctrl->pctrl)) {
--		dev_err(&pdev->dev, "Couldn't register pinctrl driver\n");
--		return PTR_ERR(pctrl->pctrl);
--	}
-+	ret = devm_pinctrl_register_and_init(&pdev->dev, &pctrl->desc,
-+					     pctrl, &pctrl->pctrl);
-+	if (ret)
-+		return dev_err_probe(&pdev->dev, ret,
-+				     "Couldn't register pinctrl driver\n");
- 
- 	for (i = 0; i < soc_data->nfunctions; i++) {
- 		func = &soc_data->functions[i];
-@@ -1607,6 +1607,11 @@ int msm_pinctrl_probe(struct platform_device *pdev,
- 			return ret;
- 	}
- 
-+	ret = pinctrl_enable(pctrl->pctrl);
-+	if (ret)
-+		return dev_err_probe(&pdev->dev, ret,
-+				     "Couldn't enable pinctrl driver\n");
-+
- 	ret = msm_gpio_init(pctrl);
- 	if (ret)
- 		return ret;
+diff --git a/arch/arm/boot/dts/qcom/qcom-apq8064.dtsi b/arch/arm/boot/dts/qcom/qcom-apq8064.dtsi
+index 09062b2ad8ba..d64a162abdad 100644
+--- a/arch/arm/boot/dts/qcom/qcom-apq8064.dtsi
++++ b/arch/arm/boot/dts/qcom/qcom-apq8064.dtsi
+@@ -813,8 +813,10 @@ usb1: usb@12500000 {
+ 			reg = <0x12500000 0x200>,
+ 			      <0x12500200 0x200>;
+ 			interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH>;
+-			clocks = <&gcc USB_HS1_XCVR_CLK>, <&gcc USB_HS1_H_CLK>;
+-			clock-names = "core", "iface";
++			clocks = <&gcc USB_HS1_H_CLK>,
++				 <&rpmcc RPM_DAYTONA_FABRIC_CLK>,
++				 <&gcc USB_HS1_XCVR_CLK>;
++			clock-names = "iface", "core", "fs";
+ 			assigned-clocks = <&gcc USB_HS1_XCVR_CLK>;
+ 			assigned-clock-rates = <60000000>;
+ 			resets = <&gcc USB_HS1_RESET>;
+@@ -844,8 +846,10 @@ usb3: usb@12520000 {
+ 			reg = <0x12520000 0x200>,
+ 			      <0x12520200 0x200>;
+ 			interrupts = <GIC_SPI 188 IRQ_TYPE_LEVEL_HIGH>;
+-			clocks = <&gcc USB_HS3_XCVR_CLK>, <&gcc USB_HS3_H_CLK>;
+-			clock-names = "core", "iface";
++			clocks = <&gcc USB_HS3_H_CLK>,
++				 <&rpmcc RPM_DAYTONA_FABRIC_CLK>,
++				 <&gcc USB_HS3_XCVR_CLK>;
++			clock-names = "iface", "core", "fs";
+ 			assigned-clocks = <&gcc USB_HS3_XCVR_CLK>;
+ 			assigned-clock-rates = <60000000>;
+ 			resets = <&gcc USB_HS3_RESET>;
+@@ -875,8 +879,10 @@ usb4: usb@12530000 {
+ 			reg = <0x12530000 0x200>,
+ 			      <0x12530200 0x200>;
+ 			interrupts = <GIC_SPI 215 IRQ_TYPE_LEVEL_HIGH>;
+-			clocks = <&gcc USB_HS4_XCVR_CLK>, <&gcc USB_HS4_H_CLK>;
+-			clock-names = "core", "iface";
++			clocks = <&gcc USB_HS4_H_CLK>,
++				 <&rpmcc RPM_DAYTONA_FABRIC_CLK>,
++				 <&gcc USB_HS4_XCVR_CLK>;
++			clock-names = "iface", "core", "fs";
+ 			assigned-clocks = <&gcc USB_HS4_XCVR_CLK>;
+ 			assigned-clock-rates = <60000000>;
+ 			resets = <&gcc USB_HS4_RESET>;
 
 -- 
 2.43.0
