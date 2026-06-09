@@ -1,11 +1,11 @@
 From: Ciprian Regus <ciprian.regus@analog.com>
-Date: Tue, 09 Jun 2026 18:28:02 +0300
-Subject: [PATCH net-next v4 03/13] net: ethernet: oa_tc6: add
- OA_TC6_BROKEN_PHY quirk flag
+Date: Tue, 09 Jun 2026 18:28:03 +0300
+Subject: [PATCH net-next v4 04/13] net: ethernet: oa_tc6: Export the C45
+ access functions
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260609-adin1140-driver-v4-3-0753e28ee004@analog.com>
+Message-Id: <20260609-adin1140-driver-v4-4-0753e28ee004@analog.com>
 References: <20260609-adin1140-driver-v4-0-0753e28ee004@analog.com>
 In-Reply-To: <20260609-adin1140-driver-v4-0-0753e28ee004@analog.com>
 To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
@@ -22,150 +22,81 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-doc@vger.kernel.org, devicetree@vger.kernel.org, 
  Ciprian Regus <ciprian.regus@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781018886; l=5144;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781018886; l=2337;
  i=ciprian.regus@analog.com; s=20260330; h=from:subject:message-id;
- bh=9TsRGTlIZdU2gO/bs2rZ+BFMFrMlFoFo6knK+fY1b6I=;
- b=yMgeMqIJp7pvAfeWimJ+QZjk8P4MkSO7wwFSlyX1EVn5v9VZTd/3lgz5cNDRcl0aahB76JT5s
- o15u2nG0TKVCGpgWczLqDO7qXMiqLcvOGWOICAbmLUHMsf9XZxjM/+O
+ bh=PXhiTLN/eJwzSVDtbuD8NyXEgUV3FNkSSabnshSdzNo=;
+ b=A7PKiH/bxz6XS2HkdmifsqnrdQ66IhRJOHb8lUtrlDBMGMV5pbcEkHxqT992Fd7P5aqQ//mWJ
+ kYB2vm9d9L1Cqi0Jhb+ThrLT6A5g+wtx9ZXfHeJihcnK2WVhfrpChcl
 X-Developer-Key: i=ciprian.regus@analog.com; a=ed25519;
  pk=8WoNhI0kQcQUl8YqJO5ZevROYk9HP8lOIeIgIYgjfbc=
 X-Endpoint-Received: by B4 Relay for ciprian.regus@analog.com/20260330 with auth_id=703
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some MAC-PHY devices need custom MDIO bus access functions to work
-around hardware issues. Add the OA_TC6_BROKEN_PHY quirk flag so drivers
-can opt in to skip oa_tc6's internal PHY init and manage the PHY
-themselves. When the flag is set, oa_tc6 skips MDIO bus registration,
-PHY discovery and PHY connection, leaving these to the driver.
+The C45 access functions can still be used by some Ethernet drivers
+which set the OA_TC6_BROKEN_PHY flag. Export them.
 
-Drivers that do not set the flag retain the existing behavior. Update
-lan865x and the framework documentation accordingly.
-
+Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Ciprian Regus <ciprian.regus@analog.com>
-
 ---
 v4 changelog:
  - no change
 v3 changelog:
- - add the oa_tc6_quirks struct to the oa_tc6_init() parameters (along
-   the spi_device and net_device), instead of adding everything in a
-   single struct.
+ - no change
 v2 changelog:
- - Added the quirk flag field in the oa_tc6_config struct and a first
-   value entry (OA_TC6_BROKEN_PHY) instead of the mii_bus struct.
+ - New patch
 ---
- Documentation/networking/oa-tc6-framework.rst    |  3 ++-
- drivers/net/ethernet/microchip/lan865x/lan865x.c |  2 +-
- drivers/net/ethernet/oa_tc6.c                    | 14 +++++++++++++-
- include/linux/oa_tc6.h                           | 11 ++++++++++-
- 4 files changed, 26 insertions(+), 4 deletions(-)
+ drivers/net/ethernet/oa_tc6.c | 10 ++++++----
+ include/linux/oa_tc6.h        |  4 ++++
+ 2 files changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/Documentation/networking/oa-tc6-framework.rst b/Documentation/networking/oa-tc6-framework.rst
-index fe2aabde923a..013824078cea 100644
---- a/Documentation/networking/oa-tc6-framework.rst
-+++ b/Documentation/networking/oa-tc6-framework.rst
-@@ -454,7 +454,8 @@ Device drivers API
- The include/linux/oa_tc6.h defines the following functions:
- 
- .. c:function:: struct oa_tc6 *oa_tc6_init(struct spi_device *spi, \
--                                           struct net_device *netdev)
-+                                           struct net_device *netdev, \
-+                                           struct oa_tc6_quirks *quirks)
- 
- Initialize OA TC6 lib.
- 
-diff --git a/drivers/net/ethernet/microchip/lan865x/lan865x.c b/drivers/net/ethernet/microchip/lan865x/lan865x.c
-index 0277d9737369..26a2761332a5 100644
---- a/drivers/net/ethernet/microchip/lan865x/lan865x.c
-+++ b/drivers/net/ethernet/microchip/lan865x/lan865x.c
-@@ -346,7 +346,7 @@ static int lan865x_probe(struct spi_device *spi)
- 	spi_set_drvdata(spi, priv);
- 	INIT_WORK(&priv->multicast_work, lan865x_multicast_work_handler);
- 
--	priv->tc6 = oa_tc6_init(spi, netdev);
-+	priv->tc6 = oa_tc6_init(spi, netdev, NULL);
- 	if (!priv->tc6) {
- 		ret = -ENODEV;
- 		goto free_netdev;
 diff --git a/drivers/net/ethernet/oa_tc6.c b/drivers/net/ethernet/oa_tc6.c
-index baba5aad84df..2a72f0c4b009 100644
+index 2a72f0c4b009..b37e398e30e3 100644
 --- a/drivers/net/ethernet/oa_tc6.c
 +++ b/drivers/net/ethernet/oa_tc6.c
-@@ -134,6 +134,7 @@ struct oa_tc6 {
- 	bool rx_buf_overflow;
- 	bool int_flag;
- 	bool prot_ctrl;
-+	enum oa_tc6_quirk_flag quirk_flags;
- };
- 
- enum oa_tc6_header_type {
-@@ -580,6 +581,9 @@ static int oa_tc6_phy_init(struct oa_tc6 *tc6)
- {
- 	int ret;
- 
-+	if (tc6->quirk_flags & OA_TC6_BROKEN_PHY)
-+		return 0;
-+
- 	ret = oa_tc6_check_phy_reg_direct_access_capability(tc6);
- 	if (ret) {
- 		netdev_err(tc6->netdev,
-@@ -616,6 +620,9 @@ static int oa_tc6_phy_init(struct oa_tc6 *tc6)
- 
- static void oa_tc6_phy_exit(struct oa_tc6 *tc6)
- {
-+	if (tc6->quirk_flags & OA_TC6_BROKEN_PHY)
-+		return;
-+
- 	phy_disconnect(tc6->phydev);
- 	oa_tc6_mdiobus_unregister(tc6);
+@@ -499,8 +499,8 @@ static int oa_tc6_get_phy_c45_mms(int devnum)
+ 	}
  }
-@@ -1279,11 +1286,13 @@ static int oa_tc6_check_ctrl_protection(struct oa_tc6 *tc6)
-  * oa_tc6_init - allocates and initializes oa_tc6 structure.
-  * @spi: device with which data will be exchanged.
-  * @netdev: network device interface structure.
-+ * @quirks: device specific modifiers for the OA TC6 protocol.
-  *
-  * Return: pointer reference to the oa_tc6 structure if the MAC-PHY
-  * initialization is successful otherwise NULL.
-  */
--struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev)
-+struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev,
-+			   struct oa_tc6_quirks *quirks)
- {
- 	struct oa_tc6 *tc6;
- 	int ret;
-@@ -1298,6 +1307,9 @@ struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev)
- 	mutex_init(&tc6->spi_ctrl_lock);
- 	spin_lock_init(&tc6->tx_skb_lock);
  
-+	if (quirks)
-+		tc6->quirk_flags = quirks->quirk_flags;
-+
- 	/* Set the SPI controller to pump at realtime priority */
- 	tc6->spi->rt = true;
- 	if (spi_setup(tc6->spi) < 0)
+-static int oa_tc6_mdiobus_read_c45(struct mii_bus *bus, int addr, int devnum,
+-				   int regnum)
++int oa_tc6_mdiobus_read_c45(struct mii_bus *bus, int addr, int devnum,
++			    int regnum)
+ {
+ 	struct oa_tc6 *tc6 = bus->priv;
+ 	u32 regval;
+@@ -516,9 +516,10 @@ static int oa_tc6_mdiobus_read_c45(struct mii_bus *bus, int addr, int devnum,
+ 
+ 	return regval;
+ }
++EXPORT_SYMBOL_GPL(oa_tc6_mdiobus_read_c45);
+ 
+-static int oa_tc6_mdiobus_write_c45(struct mii_bus *bus, int addr, int devnum,
+-				    int regnum, u16 val)
++int oa_tc6_mdiobus_write_c45(struct mii_bus *bus, int addr, int devnum,
++			     int regnum, u16 val)
+ {
+ 	struct oa_tc6 *tc6 = bus->priv;
+ 	int ret;
+@@ -529,6 +530,7 @@ static int oa_tc6_mdiobus_write_c45(struct mii_bus *bus, int addr, int devnum,
+ 
+ 	return oa_tc6_write_register(tc6, (ret << 16) | regnum, val);
+ }
++EXPORT_SYMBOL_GPL(oa_tc6_mdiobus_write_c45);
+ 
+ static int oa_tc6_mdiobus_register(struct oa_tc6 *tc6)
+ {
 diff --git a/include/linux/oa_tc6.h b/include/linux/oa_tc6.h
-index 15f58e3c56c7..62e3d89f80ed 100644
+index 62e3d89f80ed..2660eefa3504 100644
 --- a/include/linux/oa_tc6.h
 +++ b/include/linux/oa_tc6.h
-@@ -12,7 +12,16 @@
- 
- struct oa_tc6;
- 
--struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev);
-+enum oa_tc6_quirk_flag {
-+	OA_TC6_BROKEN_PHY = BIT(0),
-+};
-+
-+struct oa_tc6_quirks {
-+	enum oa_tc6_quirk_flag quirk_flags;
-+};
-+
-+struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev,
-+			   struct oa_tc6_quirks *quirks);
- void oa_tc6_exit(struct oa_tc6 *tc6);
- int oa_tc6_write_register(struct oa_tc6 *tc6, u32 address, u32 value);
- int oa_tc6_write_registers(struct oa_tc6 *tc6, u32 address, u32 value[],
+@@ -31,3 +31,7 @@ int oa_tc6_read_registers(struct oa_tc6 *tc6, u32 address, u32 value[],
+ 			  u8 length);
+ netdev_tx_t oa_tc6_start_xmit(struct oa_tc6 *tc6, struct sk_buff *skb);
+ int oa_tc6_zero_align_receive_frame_enable(struct oa_tc6 *tc6);
++int oa_tc6_mdiobus_read_c45(struct mii_bus *bus, int addr, int devnum,
++			    int regnum);
++int oa_tc6_mdiobus_write_c45(struct mii_bus *bus, int addr, int devnum,
++			     int regnum, u16 val);
 
 -- 
 2.43.0
