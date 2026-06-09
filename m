@@ -1,10 +1,10 @@
 From: Ferdinand Schwenk <ferdinand.schwenk@advastore.com>
-Date: Tue, 09 Jun 2026 21:43:11 +0200
-Subject: [PATCH v3 2/3] hwmon: Add update_interval_us chip attribute
+Date: Tue, 09 Jun 2026 21:43:12 +0200
+Subject: [PATCH v3 3/3] hwmon: ina238: add update_interval_us attribute
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260609-hwmon-ina238-update-interval-us-v2-v3-2-016b55567950@advastore.com>
+Message-Id: <20260609-hwmon-ina238-update-interval-us-v2-v3-3-016b55567950@advastore.com>
 References: <20260609-hwmon-ina238-update-interval-us-v2-v3-0-016b55567950@advastore.com>
 In-Reply-To: <20260609-hwmon-ina238-update-interval-us-v2-v3-0-016b55567950@advastore.com>
 To: Guenter Roeck <linux@roeck-us.net>, Jonathan Corbet <corbet@lwn.net>, 
@@ -13,106 +13,161 @@ Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-doc@vger.kernel.org, richard.leitner@linux.dev, 
  Ferdinand Schwenk <ferdinand.schwenk@advastore.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781034237; l=3831;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781034237; l=6071;
  i=ferdinand.schwenk@advastore.com; h=from:subject:message-id;
- bh=naArtmSHACSbi3CCOmku0nt+VQ/y8PXcc6k+1ebdK2A=;
- b=iD7Gh8kTWmLkvsX8QqENKxVd0ivfEW38LSCpaJTBASHKxxQMe4CtB78zuRoe3weymSyL+WUk2
- 6H3qRDsGbgIAqVWVWIMuYv2J+e4N5t37X1CiJIiPenCO3KuXMZ2/g0H
+ bh=8av3VXFsfmbe10Pa7bNJeLNXGw8azgybiEdonRhk8Jg=;
+ b=mBCiEEamwEDC7/4cv0XMJbNCqzdHx7xy3WTarNcUiLnfHRIqIBx/sv1GV7M2wE2QN/LdAnZtc
+ E5ARccgYmgWD7lLt5ZDnIvKL6BsD/SNaM387VGC28ZznQjX+k4EBqce
 X-Developer-Key: i=ferdinand.schwenk@advastore.com; a=ed25519;
  pk=HyA9NdHJ7NystP+1SyuWJeyXNH2EO4A09FXli9mfs9Q=
 X-Endpoint-Received: by B4 Relay for ferdinand.schwenk@advastore.com/default with auth_id=788
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some hardware monitoring chips support update intervals below one
-millisecond. The existing update_interval attribute uses millisecond
-granularity, which causes sub-millisecond steps to round to the same
-value and become inaccessible from userspace.
+The INA238 family supports eight conversion time steps from 50 us to
+4120 us (SQ52206: 66 us to 8230 us). At the millisecond granularity of
+update_interval, the four shortest steps (50, 84, 150, 280 us) all
+round to the same value and cannot be individually selected.
 
-Introduce update_interval_us, a companion chip-level attribute that
-expresses the same update interval in microseconds. Drivers
-implementing this attribute should also implement update_interval for
-compatibility with millisecond-based userspace interfaces.
+Add support for the generic update_interval_us attribute, which reports
+and programs the same ADC cycle time as update_interval but in
+microseconds, giving userspace full access to all conversion time steps.
+
+Both attributes reflect the total cycle time including the active
+averaging count: the reported value is the raw conversion time
+multiplied by the number of averaged samples, and writes apply the
+inverse mapping.
 
 Signed-off-by: Ferdinand Schwenk <ferdinand.schwenk@advastore.com>
 ---
- Documentation/ABI/testing/sysfs-class-hwmon | 14 ++++++++++++++
- Documentation/hwmon/sysfs-interface.rst     |  4 ++++
- drivers/hwmon/hwmon.c                       |  1 +
- include/linux/hwmon.h                       |  2 ++
- 4 files changed, 21 insertions(+)
+ Documentation/hwmon/ina238.rst |  4 +++
+ drivers/hwmon/ina238.c         | 70 ++++++++++++++++++++++++++----------------
+ 2 files changed, 48 insertions(+), 26 deletions(-)
 
-diff --git a/Documentation/ABI/testing/sysfs-class-hwmon b/Documentation/ABI/testing/sysfs-class-hwmon
-index cfd0d0bab483..b185bdfc7186 100644
---- a/Documentation/ABI/testing/sysfs-class-hwmon
-+++ b/Documentation/ABI/testing/sysfs-class-hwmon
-@@ -27,6 +27,20 @@ Description:
- 		Some devices have a variable update rate or interval.
- 		This attribute can be used to change it to the desired value.
+diff --git a/Documentation/hwmon/ina238.rst b/Documentation/hwmon/ina238.rst
+index 43950d1ec551..a75b79e17d9d 100644
+--- a/Documentation/hwmon/ina238.rst
++++ b/Documentation/hwmon/ina238.rst
+@@ -106,4 +106,8 @@ energy1_input		Energy measurement (uJ)
+ temp1_input		Die temperature measurement (mC)
+ temp1_max		Maximum die temperature threshold (mC)
+ temp1_max_alarm		Maximum die temperature alarm
++
++samples			ADC averaging count (1, 4, 16, 64, 128, 256, 512, 1024)
++update_interval		Total ADC conversion cycle time including averaging (ms)
++update_interval_us	Total ADC conversion cycle time including averaging (us)
+ ======================= =======================================================
+diff --git a/drivers/hwmon/ina238.c b/drivers/hwmon/ina238.c
+index dc5dd3ad2557..080a93fcc9f7 100644
+--- a/drivers/hwmon/ina238.c
++++ b/drivers/hwmon/ina238.c
+@@ -316,19 +316,36 @@ static inline u32 ina238_samples(struct ina238_data *data)
+ 				  INA238_ADC_CONFIG_AVG_SHIFT];
+ }
  
-+What:		/sys/class/hwmon/hwmonX/update_interval_us
-+Description:
-+		The interval at which the chip will update readings,
-+		expressed in microseconds.
-+		Unit: microsecond
-+
-+		RW
-+
-+		Some devices have a variable update rate or interval and
-+		require finer-than-millisecond control.
-+		This attribute can be used to change it to the desired value.
-+		Drivers implementing this attribute should also implement
-+		update_interval for millisecond-based userspace interfaces.
-+
- What:		/sys/class/hwmon/hwmonX/inY_min
- Description:
- 		Voltage min value.
-diff --git a/Documentation/hwmon/sysfs-interface.rst b/Documentation/hwmon/sysfs-interface.rst
-index f76e9f8cc1ad..94e1bbce172a 100644
---- a/Documentation/hwmon/sysfs-interface.rst
-+++ b/Documentation/hwmon/sysfs-interface.rst
-@@ -106,6 +106,10 @@ Global attributes
- `update_interval`
- 		The interval at which the chip will update readings.
+-/* Converting update_interval in msec to a single conversion time in usec */
+-static inline u32 ina238_interval_ms_to_conv_time(long interval, u32 samples)
++/* Converting update_interval(_us) to a per-field conversion time in usec.
++ * interval_us is the total ADC cycle time including averaging in microseconds.
++ * All three conversion fields (VBUSCT, VSHCT, VTCT) are set equal, so the
++ * per-field time is interval_us / (samples * 3).
++ */
++static inline u32 ina238_interval_us_to_conv_time(u32 interval_us, u32 samples)
+ {
+-	u64 interval_us;
++	return DIV_ROUND_CLOSEST_ULL(interval_us, samples * 3);
++}
  
-+`update_interval_us`
-+		The interval at which the chip will update readings,
-+		expressed in microseconds for finer resolution.
-+
+-	interval = clamp_val(interval, 0, INT_MAX / 1000);
+-	interval_us = (u64)interval * 1000;
++/* Write a per-field conversion time (in usec) to the ADC_CONFIG register */
++static int ina238_write_conv_time(struct ina238_data *data, u32 conv_time_us)
++{
++	u16 adc_config;
++	int idx, ret;
  
- ********
- Voltages
-diff --git a/drivers/hwmon/hwmon.c b/drivers/hwmon/hwmon.c
-index 9695dca62a7e..c481bb535e35 100644
---- a/drivers/hwmon/hwmon.c
-+++ b/drivers/hwmon/hwmon.c
-@@ -572,6 +572,7 @@ static const char * const hwmon_chip_attrs[] = {
- 	[hwmon_chip_curr_reset_history] = "curr_reset_history",
- 	[hwmon_chip_power_reset_history] = "power_reset_history",
- 	[hwmon_chip_update_interval] = "update_interval",
-+	[hwmon_chip_update_interval_us] = "update_interval_us",
- 	[hwmon_chip_alarms] = "alarms",
- 	[hwmon_chip_samples] = "samples",
- 	[hwmon_chip_curr_samples] = "curr_samples",
-diff --git a/include/linux/hwmon.h b/include/linux/hwmon.h
-index 301a83afbd66..5a5882fee299 100644
---- a/include/linux/hwmon.h
-+++ b/include/linux/hwmon.h
-@@ -39,6 +39,7 @@ enum hwmon_chip_attributes {
- 	hwmon_chip_power_reset_history,
- 	hwmon_chip_register_tz,
- 	hwmon_chip_update_interval,
-+	hwmon_chip_update_interval_us,
- 	hwmon_chip_alarms,
- 	hwmon_chip_samples,
- 	hwmon_chip_curr_samples,
-@@ -55,6 +56,7 @@ enum hwmon_chip_attributes {
- #define HWMON_C_POWER_RESET_HISTORY	BIT(hwmon_chip_power_reset_history)
- #define HWMON_C_REGISTER_TZ		BIT(hwmon_chip_register_tz)
- #define HWMON_C_UPDATE_INTERVAL		BIT(hwmon_chip_update_interval)
-+#define HWMON_C_UPDATE_INTERVAL_US	BIT(hwmon_chip_update_interval_us)
- #define HWMON_C_ALARMS			BIT(hwmon_chip_alarms)
- #define HWMON_C_SAMPLES			BIT(hwmon_chip_samples)
- #define HWMON_C_CURR_SAMPLES		BIT(hwmon_chip_curr_samples)
+-	/*
+-	 * update_interval reports the ADC cycle time including averaging.
+-	 * The target per-field conversion time is interval_us / (samples * 3).
+-	 */
+-	return DIV_ROUND_CLOSEST_ULL(interval_us, samples * 3);
++	idx = find_closest(conv_time_us, data->config->conv_time,
++			   ARRAY_SIZE(ina238_conv_time));
++	adc_config = (data->adc_config &
++		      ~(INA238_ADC_CONFIG_VBUSCT_MASK |
++			INA238_ADC_CONFIG_VSHCT_MASK |
++			INA238_ADC_CONFIG_VTCT_MASK)) |
++		     ((u16)idx << INA238_ADC_CONFIG_VBUSCT_SHIFT) |
++		     ((u16)idx << INA238_ADC_CONFIG_VSHCT_SHIFT) |
++		     ((u16)idx << INA238_ADC_CONFIG_VTCT_SHIFT);
++	ret = regmap_write(data->regmap, INA238_ADC_CONFIG, adc_config);
++	if (ret)
++		return ret;
++	data->adc_config = adc_config;
++	return 0;
+ }
+ 
+ static int ina238_read_chip(struct device *dev, u32 attr, long *val)
+@@ -344,6 +361,10 @@ static int ina238_read_chip(struct device *dev, u32 attr, long *val)
+ 		*val = DIV_ROUND_CLOSEST(ina238_reg_to_interval_us(data) *
+ 					ina238_samples(data), 1000);
+ 		return 0;
++	case hwmon_chip_update_interval_us:
++		/* Return in usec */
++		*val = ina238_reg_to_interval_us(data) * ina238_samples(data);
++		return 0;
+ 	default:
+ 		return -EOPNOTSUPP;
+ 	}
+@@ -367,21 +388,16 @@ static int ina238_write_chip(struct device *dev, u32 attr, long val)
+ 		data->adc_config = adc_config;
+ 		return 0;
+ 	case hwmon_chip_update_interval:
+-		val = ina238_interval_ms_to_conv_time(val, ina238_samples(data));
+-		idx = find_closest(val, data->config->conv_time,
+-				   ARRAY_SIZE(ina238_conv_time));
+-		adc_config = (data->adc_config &
+-			      ~(INA238_ADC_CONFIG_VBUSCT_MASK |
+-				INA238_ADC_CONFIG_VSHCT_MASK |
+-				INA238_ADC_CONFIG_VTCT_MASK)) |
+-			     ((u16)idx << INA238_ADC_CONFIG_VBUSCT_SHIFT) |
+-			     ((u16)idx << INA238_ADC_CONFIG_VSHCT_SHIFT) |
+-			     ((u16)idx << INA238_ADC_CONFIG_VTCT_SHIFT);
+-		ret = regmap_write(data->regmap, INA238_ADC_CONFIG, adc_config);
+-		if (ret)
+-			return ret;
+-		data->adc_config = adc_config;
+-		return 0;
++		/* Convert ms to us before passing to the shared helper */
++		val = clamp_val(val, 0, INT_MAX / 1000) * 1000;
++		return ina238_write_conv_time(data,
++			ina238_interval_us_to_conv_time((u32)val,
++						ina238_samples(data)));
++	case hwmon_chip_update_interval_us:
++		val = clamp_val(val, 0, INT_MAX);
++		return ina238_write_conv_time(data,
++			ina238_interval_us_to_conv_time((u32)val,
++						ina238_samples(data)));
+ 	default:
+ 		return -EOPNOTSUPP;
+ 	}
+@@ -763,6 +779,7 @@ static umode_t ina238_is_visible(const void *drvdata,
+ 		switch (attr) {
+ 		case hwmon_chip_samples:
+ 		case hwmon_chip_update_interval:
++		case hwmon_chip_update_interval_us:
+ 			return 0644;
+ 		default:
+ 			return 0;
+@@ -831,7 +848,8 @@ static umode_t ina238_is_visible(const void *drvdata,
+ 
+ static const struct hwmon_channel_info * const ina238_info[] = {
+ 	HWMON_CHANNEL_INFO(chip,
+-			   HWMON_C_SAMPLES | HWMON_C_UPDATE_INTERVAL),
++			   HWMON_C_SAMPLES | HWMON_C_UPDATE_INTERVAL |
++			   HWMON_C_UPDATE_INTERVAL_US),
+ 	HWMON_CHANNEL_INFO(in,
+ 			   /* 0: shunt voltage */
+ 			   INA238_HWMON_IN_CONFIG,
 
 -- 
 2.54.0
