@@ -1,174 +1,102 @@
-From: Ferdinand Schwenk <ferdinand.schwenk@advastore.com>
-Date: Tue, 09 Jun 2026 21:43:12 +0200
-Subject: [PATCH v3 3/3] hwmon: ina238: add update_interval_us attribute
+From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+Subject: [PATCH net v4 0/4] MAC-PHY interrupt changed to level triggered
+ interrupt
+Date: Tue, 09 Jun 2026 12:50:23 -0700
+Message-Id: <20260609-level-trigger-v4-0-6f389abdd192@onsemi.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260609-hwmon-ina238-update-interval-us-v2-v3-3-016b55567950@advastore.com>
-References: <20260609-hwmon-ina238-update-interval-us-v2-v3-0-016b55567950@advastore.com>
-In-Reply-To: <20260609-hwmon-ina238-update-interval-us-v2-v3-0-016b55567950@advastore.com>
-To: Guenter Roeck <linux@roeck-us.net>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>
-Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-doc@vger.kernel.org, richard.leitner@linux.dev, 
- Ferdinand Schwenk <ferdinand.schwenk@advastore.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781034237; l=6071;
- i=ferdinand.schwenk@advastore.com; h=from:subject:message-id;
- bh=8av3VXFsfmbe10Pa7bNJeLNXGw8azgybiEdonRhk8Jg=;
- b=mBCiEEamwEDC7/4cv0XMJbNCqzdHx7xy3WTarNcUiLnfHRIqIBx/sv1GV7M2wE2QN/LdAnZtc
- E5ARccgYmgWD7lLt5ZDnIvKL6BsD/SNaM387VGC28ZznQjX+k4EBqce
-X-Developer-Key: i=ferdinand.schwenk@advastore.com; a=ed25519;
- pk=HyA9NdHJ7NystP+1SyuWJeyXNH2EO4A09FXli9mfs9Q=
-X-Endpoint-Received: by B4 Relay for ferdinand.schwenk@advastore.com/default with auth_id=788
+X-B4-Tracking: v=1; b=H4sIAH9uKGoC/12NywrDIBREfyXcdS0+0iR01f8oWVhzYy4kWlSkJ
+ fjvFZddzgxzzgkRA2GEe3dCwEyRvKuhv3RgNu0sMlpqBsnlwG9KsB0z7iwFshYDm8xL6Enplas
+ e6ucdcKVP4z3BYYK5lhvF5MO3ObJqU8MN/B+XFeNs0aPCkYuqkw/vIh50Nf6AuZTyA7OOn7+wA
+ AAA
+To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Parthiban Veerasooran <Parthiban.Veerasooran@microchip.com>, 
+ Andrew Lunn <andrew@lunn.ch>, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Conor Dooley <conor.dooley@microchip.com>, 
+ devicetree@vger.kernel.org, Piergiorgio Beruto <pier.beruto@onsemi.com>, 
+ Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781034634; l=2779;
+ i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
+ bh=fEc6RgFqgArsWG6l+smx1XCQosDlspRNYDFL91PwLD0=;
+ b=wrNsvzyOigtKx2OTV9speqae9RVqFkm2T1m5PXBBjQ6ub6iumIQb78jQrnNSTDwsxFOrDyWW9
+ EV6Xl8JpGg2Atk8rK6xRLfCR0bzXl0RCB5WN9x+A0iJfaJAtDZpBTqD
+X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
+ pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
+X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The INA238 family supports eight conversion time steps from 50 us to
-4120 us (SQ52206: 66 us to 8230 us). At the millisecond granularity of
-update_interval, the four shortest steps (50, 84, 150, 280 us) all
-round to the same value and cannot be individually selected.
+According to OPEN Alliance 10BASE-T1x MAC-PHY Serial Interface
+specification, MAC-PHY interrupt is "active low, level triggered".
+The specification mentions about the conditions in which the IRQ
+is asserted and deasserted.
 
-Add support for the generic update_interval_us attribute, which reports
-and programs the same ADC cycle time as update_interval but in
-microseconds, giving userspace full access to all conversion time steps.
+Bug is inadvertently introduced by treating the IRQ in the OA TC6
+framework driver and in dt-binding YAML file as edge triggered.
 
-Both attributes reflect the total cycle time including the active
-averaging count: the reported value is the raw conversion time
-multiplied by the number of averaged samples, and writes apply the
-inverse mapping.
+Changes are done in two files
+ - OA TC6 framework Ethernet driver
+ - YAML file for the vendor that already uses OA TC6 framework.
 
-Signed-off-by: Ferdinand Schwenk <ferdinand.schwenk@advastore.com>
+Maintainer for this driver is already informed and aware of these
+changes. Testing for these changes was done in onsemi's setup and
+found to be working.
+
+To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>
+To: Andrew Lunn <andrew+netdev@lunn.ch>
+To: David S. Miller <davem@davemloft.net>
+To: Eric Dumazet <edumazet@google.com>
+To: Jakub Kicinski <kuba@kernel.org>
+To: Paolo Abeni <pabeni@redhat.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+Cc: Piergiorgio Beruto <pier.beruto@onsemi.com>
+Cc: Andrew Lunn <andrew@lunn.ch>
+Cc: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: Conor Dooley <conor.dooley@microchip.com>
+Cc: devicetree@vger.kernel.org
+Cc: Parthiban Veerasooran <Parthiban.Veerasooran@microchip.com>
+Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+
+Changes in v4:
+
+- IRQ handler is changed to interrupt handler + wake up thread
+  to interrupt handler + threaded irq. Threaded irq mechanism
+  is better suited for level triggered interrupt. Because it can
+  keep the interrupt disabled until interrupting conditions are 
+  handled by a handler thread.
+- SPI data handling function is called again on EAGAIN error code
+  as it indicates RX buffer overflow error, which requires draining
+  the bad data chunks.
+ 
+  - Changed wakeup thread to threaded IRQ 
+  - RX buffer overflow is handled before threaded irq returns
+
+- Link to v3: https://lore.kernel.org/r/20260601-level-trigger-v3-0-da73e7010532@onsemi.com
+
 ---
- Documentation/hwmon/ina238.rst |  4 +++
- drivers/hwmon/ina238.c         | 70 ++++++++++++++++++++++++++----------------
- 2 files changed, 48 insertions(+), 26 deletions(-)
+Selvamani Rajagopal (4):
+      net: ethernet: oa_tc6: Interrupt is active low, level triggered.
+      net: ethernet: oa_tc6: No return on rx buffer overflow error
+      net: ethernet: oa_tc6: mdiobus->parent initialized with NULL
+      dt-bindings: net: updated interrupt type to be active low, level triggered
 
-diff --git a/Documentation/hwmon/ina238.rst b/Documentation/hwmon/ina238.rst
-index 43950d1ec551..a75b79e17d9d 100644
---- a/Documentation/hwmon/ina238.rst
-+++ b/Documentation/hwmon/ina238.rst
-@@ -106,4 +106,8 @@ energy1_input		Energy measurement (uJ)
- temp1_input		Die temperature measurement (mC)
- temp1_max		Maximum die temperature threshold (mC)
- temp1_max_alarm		Maximum die temperature alarm
-+
-+samples			ADC averaging count (1, 4, 16, 64, 128, 256, 512, 1024)
-+update_interval		Total ADC conversion cycle time including averaging (ms)
-+update_interval_us	Total ADC conversion cycle time including averaging (us)
- ======================= =======================================================
-diff --git a/drivers/hwmon/ina238.c b/drivers/hwmon/ina238.c
-index dc5dd3ad2557..080a93fcc9f7 100644
---- a/drivers/hwmon/ina238.c
-+++ b/drivers/hwmon/ina238.c
-@@ -316,19 +316,36 @@ static inline u32 ina238_samples(struct ina238_data *data)
- 				  INA238_ADC_CONFIG_AVG_SHIFT];
- }
- 
--/* Converting update_interval in msec to a single conversion time in usec */
--static inline u32 ina238_interval_ms_to_conv_time(long interval, u32 samples)
-+/* Converting update_interval(_us) to a per-field conversion time in usec.
-+ * interval_us is the total ADC cycle time including averaging in microseconds.
-+ * All three conversion fields (VBUSCT, VSHCT, VTCT) are set equal, so the
-+ * per-field time is interval_us / (samples * 3).
-+ */
-+static inline u32 ina238_interval_us_to_conv_time(u32 interval_us, u32 samples)
- {
--	u64 interval_us;
-+	return DIV_ROUND_CLOSEST_ULL(interval_us, samples * 3);
-+}
- 
--	interval = clamp_val(interval, 0, INT_MAX / 1000);
--	interval_us = (u64)interval * 1000;
-+/* Write a per-field conversion time (in usec) to the ADC_CONFIG register */
-+static int ina238_write_conv_time(struct ina238_data *data, u32 conv_time_us)
-+{
-+	u16 adc_config;
-+	int idx, ret;
- 
--	/*
--	 * update_interval reports the ADC cycle time including averaging.
--	 * The target per-field conversion time is interval_us / (samples * 3).
--	 */
--	return DIV_ROUND_CLOSEST_ULL(interval_us, samples * 3);
-+	idx = find_closest(conv_time_us, data->config->conv_time,
-+			   ARRAY_SIZE(ina238_conv_time));
-+	adc_config = (data->adc_config &
-+		      ~(INA238_ADC_CONFIG_VBUSCT_MASK |
-+			INA238_ADC_CONFIG_VSHCT_MASK |
-+			INA238_ADC_CONFIG_VTCT_MASK)) |
-+		     ((u16)idx << INA238_ADC_CONFIG_VBUSCT_SHIFT) |
-+		     ((u16)idx << INA238_ADC_CONFIG_VSHCT_SHIFT) |
-+		     ((u16)idx << INA238_ADC_CONFIG_VTCT_SHIFT);
-+	ret = regmap_write(data->regmap, INA238_ADC_CONFIG, adc_config);
-+	if (ret)
-+		return ret;
-+	data->adc_config = adc_config;
-+	return 0;
- }
- 
- static int ina238_read_chip(struct device *dev, u32 attr, long *val)
-@@ -344,6 +361,10 @@ static int ina238_read_chip(struct device *dev, u32 attr, long *val)
- 		*val = DIV_ROUND_CLOSEST(ina238_reg_to_interval_us(data) *
- 					ina238_samples(data), 1000);
- 		return 0;
-+	case hwmon_chip_update_interval_us:
-+		/* Return in usec */
-+		*val = ina238_reg_to_interval_us(data) * ina238_samples(data);
-+		return 0;
- 	default:
- 		return -EOPNOTSUPP;
- 	}
-@@ -367,21 +388,16 @@ static int ina238_write_chip(struct device *dev, u32 attr, long val)
- 		data->adc_config = adc_config;
- 		return 0;
- 	case hwmon_chip_update_interval:
--		val = ina238_interval_ms_to_conv_time(val, ina238_samples(data));
--		idx = find_closest(val, data->config->conv_time,
--				   ARRAY_SIZE(ina238_conv_time));
--		adc_config = (data->adc_config &
--			      ~(INA238_ADC_CONFIG_VBUSCT_MASK |
--				INA238_ADC_CONFIG_VSHCT_MASK |
--				INA238_ADC_CONFIG_VTCT_MASK)) |
--			     ((u16)idx << INA238_ADC_CONFIG_VBUSCT_SHIFT) |
--			     ((u16)idx << INA238_ADC_CONFIG_VSHCT_SHIFT) |
--			     ((u16)idx << INA238_ADC_CONFIG_VTCT_SHIFT);
--		ret = regmap_write(data->regmap, INA238_ADC_CONFIG, adc_config);
--		if (ret)
--			return ret;
--		data->adc_config = adc_config;
--		return 0;
-+		/* Convert ms to us before passing to the shared helper */
-+		val = clamp_val(val, 0, INT_MAX / 1000) * 1000;
-+		return ina238_write_conv_time(data,
-+			ina238_interval_us_to_conv_time((u32)val,
-+						ina238_samples(data)));
-+	case hwmon_chip_update_interval_us:
-+		val = clamp_val(val, 0, INT_MAX);
-+		return ina238_write_conv_time(data,
-+			ina238_interval_us_to_conv_time((u32)val,
-+						ina238_samples(data)));
- 	default:
- 		return -EOPNOTSUPP;
- 	}
-@@ -763,6 +779,7 @@ static umode_t ina238_is_visible(const void *drvdata,
- 		switch (attr) {
- 		case hwmon_chip_samples:
- 		case hwmon_chip_update_interval:
-+		case hwmon_chip_update_interval_us:
- 			return 0644;
- 		default:
- 			return 0;
-@@ -831,7 +848,8 @@ static umode_t ina238_is_visible(const void *drvdata,
- 
- static const struct hwmon_channel_info * const ina238_info[] = {
- 	HWMON_CHANNEL_INFO(chip,
--			   HWMON_C_SAMPLES | HWMON_C_UPDATE_INTERVAL),
-+			   HWMON_C_SAMPLES | HWMON_C_UPDATE_INTERVAL |
-+			   HWMON_C_UPDATE_INTERVAL_US),
- 	HWMON_CHANNEL_INFO(in,
- 			   /* 0: shunt voltage */
- 			   INA238_HWMON_IN_CONFIG,
+ .../devicetree/bindings/net/microchip,lan8650.yaml |  2 +-
+ drivers/net/ethernet/oa_tc6.c                      | 66 +++++++---------------
+ 2 files changed, 21 insertions(+), 47 deletions(-)
+---
+base-commit: 0aa05daef7848a5ac11158949dc73cd741995dc1
+change-id: 20260531-level-trigger-8cb1a83af034
 
+Best regards,
 -- 
-2.54.0
+Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
