@@ -1,11 +1,11 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Tue, 09 Jun 2026 12:50:26 -0700
-Subject: [PATCH net v4 3/4] net: ethernet: oa_tc6: mdiobus->parent
- initialized with NULL
+Date: Tue, 09 Jun 2026 12:50:27 -0700
+Subject: [PATCH net v4 4/4] dt-bindings: net: updated interrupt type to be
+ active low, level triggered
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260609-level-trigger-v4-3-6f389abdd192@onsemi.com>
+Message-Id: <20260609-level-trigger-v4-4-6f389abdd192@onsemi.com>
 References: <20260609-level-trigger-v4-0-6f389abdd192@onsemi.com>
 In-Reply-To: <20260609-level-trigger-v4-0-6f389abdd192@onsemi.com>
 To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
@@ -20,50 +20,43 @@ Cc: Parthiban Veerasooran <Parthiban.Veerasooran@microchip.com>,
  devicetree@vger.kernel.org, Piergiorgio Beruto <pier.beruto@onsemi.com>, 
  Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781034634; l=1221;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781034634; l=1207;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=9JvUZCq1pALq6vC7gW8b4EQtBM4qeeaqZV2789jkVMw=;
- b=Qe4ffO/zEnjsqkbQGH/QcsHu3tQYGNqSgzzDMWybwPKW8sMwSMr8NENBvAKBU0Ub6VAAdPC5j
- mRbJ21ZicnzARN1XTyXWsXb9KFHo0hnL5hcrpY87Q+2ffs/pzDhIooE
+ bh=bMsW8U5V7GkXjBltoUBoX9kv1yVBsDFF/rrSFoglK5M=;
+ b=N8mr1STIqO4eTYBJILLVX/hqFhKUZCTVDRyE5t0HXhobVyJaj/26YlIwDePI8G3Tf8HHLYeuS
+ aGh6Zn3e2KUDXQOYz1t3ypYZD/o5FrWTcS1NYrg1YYvWhd1YUfSqcUH
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-As "dev" pointer in oa_tc6 structure is never initialized,
-mbiosub->parent was initialized with NULL.  This change
-fixes the issue.
+According to OPEN Alliance 10BASE-T1x MACPHY Serial Interface (TC6)
+specification, interrupt type is active low, level triggered interrupt.
 
-Fixes: 2c6ce5354453 ("net: ethernet: oa_tc6: implement mac-phy interrupt")
+Fixes: ac49b950bea9 ("dt-bindings: net: add Microchip's LAN865X 10BASE-T1S MACPHY")
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
-Changes in v4:
-   new patch
+changes in v4:
+  no change
+changes in v3
+  interrupts entry changed to level triggered from edge triggered
 ---
- drivers/net/ethernet/oa_tc6.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ Documentation/devicetree/bindings/net/microchip,lan8650.yaml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/net/ethernet/oa_tc6.c b/drivers/net/ethernet/oa_tc6.c
-index 20c9e98d1d60..0710a5a8dcde 100644
---- a/drivers/net/ethernet/oa_tc6.c
-+++ b/drivers/net/ethernet/oa_tc6.c
-@@ -108,7 +108,6 @@
- 
- /* Internal structure for MAC-PHY drivers */
- struct oa_tc6 {
--	struct device *dev;
- 	struct net_device *netdev;
- 	struct phy_device *phydev;
- 	struct mii_bus *mdiobus;
-@@ -517,7 +516,7 @@ static int oa_tc6_mdiobus_register(struct oa_tc6 *tc6)
- 	tc6->mdiobus->read_c45 = oa_tc6_mdiobus_read_c45;
- 	tc6->mdiobus->write_c45 = oa_tc6_mdiobus_write_c45;
- 	tc6->mdiobus->name = "oa-tc6-mdiobus";
--	tc6->mdiobus->parent = tc6->dev;
-+	tc6->mdiobus->parent = &tc6->spi->dev;
- 
- 	snprintf(tc6->mdiobus->id, ARRAY_SIZE(tc6->mdiobus->id), "%s",
- 		 dev_name(&tc6->spi->dev));
+diff --git a/Documentation/devicetree/bindings/net/microchip,lan8650.yaml b/Documentation/devicetree/bindings/net/microchip,lan8650.yaml
+index 61e11d4a07c4..766ff58147ae 100644
+--- a/Documentation/devicetree/bindings/net/microchip,lan8650.yaml
++++ b/Documentation/devicetree/bindings/net/microchip,lan8650.yaml
+@@ -67,7 +67,7 @@ examples:
+         pinctrl-names = "default";
+         pinctrl-0 = <&eth0_pins>;
+         interrupt-parent = <&gpio>;
+-        interrupts = <6 IRQ_TYPE_EDGE_FALLING>;
++        interrupts = <6 IRQ_TYPE_LEVEL_LOW>;
+         local-mac-address = [04 05 06 01 02 03];
+         spi-max-frequency = <15000000>;
+       };
 
 -- 
 2.43.0
