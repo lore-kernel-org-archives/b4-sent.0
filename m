@@ -1,10 +1,10 @@
 From: Alexandre MINETTE <contact@alex-min.fr>
-Date: Tue, 09 Jun 2026 10:13:46 +0200
-Subject: [PATCH v4 3/6] ARM: dts: qcom: apq8064: Fix USB controller clocks
+Date: Tue, 09 Jun 2026 10:13:47 +0200
+Subject: [PATCH v4 4/6] mfd: qcom-pm8xxx: register PM8921 USB ID extcon
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260609-mainline-send-v1-sending-v4-3-83768fbf404d@alex-min.fr>
+Message-Id: <20260609-mainline-send-v1-sending-v4-4-83768fbf404d@alex-min.fr>
 References: <20260609-mainline-send-v1-sending-v4-0-83768fbf404d@alex-min.fr>
 In-Reply-To: <20260609-mainline-send-v1-sending-v4-0-83768fbf404d@alex-min.fr>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -18,87 +18,171 @@ To: Bjorn Andersson <andersson@kernel.org>,
  "Guilherme G. Piccoli" <gpiccoli@igalia.com>
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-gpio@vger.kernel.org, 
- phone-devel@vger.kernel.org, Alexandre MINETTE <contact@alex-min.fr>, 
- Antony Kurniawan Soemardi <linux@smankusors.com>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+ phone-devel@vger.kernel.org, Alexandre MINETTE <contact@alex-min.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1780992834; l=3024;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1780992834; l=4481;
  i=contact@alex-min.fr; s=20260421; h=from:subject:message-id;
- bh=GqHsba4If8+Q0/z6LsTrLfjYZUS+n2wsp24jrmw+SmI=;
- b=WtpNUFqzLuML7j28Xhycbr2yVGrBcroxfjqO4B71uk1XC4A/nZSBPPn6utz7xEYTaGQY3Upe2
- Dglq3H8GIf0AmVMamW1i5+fs7CFO7Px+xYHakpk4tsrhCUPqx4b4KuE
+ bh=wPc9N22m75KCBH5Mx8x+Rn9GxrIKl+3I5FlNe49Dud8=;
+ b=IvoIuxNwisTPcXH+KYP8fWilf8j8ySunTiY75aoSMz0Yq0jEWEpw5NXD7p1Lt8W/7X557L0df
+ 2MGBMsieOQqBwsO9zMfmlrNRU2ayRoWAXANhf4ua+yuFZRocnIBI9f0
 X-Developer-Key: i=contact@alex-min.fr; a=ed25519;
  pk=KOCaxY4v16ptaT0uk1FRkuaDF2n1JhmnYwLiqWD76M4=
 X-Endpoint-Received: by B4 Relay for contact@alex-min.fr/20260421 with auth_id=743
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The APQ8064 HS USB controller nodes describe the transceiver clock as
-"core", but the ChipIdea MSM glue expects "core" to be the controller
-fabric clock and "fs" to be the transceiver clock.
+PM8921 reports the USB ID pin through interrupt 49 of its interrupt
+controller. Unlike PM8941, this path has no separate addressable misc
+block to represent as a devicetree child node.
 
-This mismatch can leave the fabric clock disabled while the controller is
-accessed. Some boards may tolerate that if the clock is already enabled
-elsewhere, but it is not a correct description of the hardware.
+Register a child platform device for the existing Qualcomm USB extcon
+driver after creating the PMIC IRQ domain. Pass the USB ID interrupt as
+a named resource and reuse the PM8921 firmware node, allowing consumers
+to reference the PMIC node directly as their extcon provider.
 
-Describe the RPM Daytona fabric clock as "core", the AHB clock as
-"iface", and the transceiver clock as "fs" for all APQ8064 HS USB
-controllers. Without this, USB does not probe reliably on Samsung Galaxy
-S4 because the fabric clock remains disabled.
+Unregister the child device and dispose of the IRQ mapping when the
+PMIC is removed or probing fails.
 
-Link: https://lore.kernel.org/all/20260516-qcom-ci-hdrc-clock-fix-v2-1-aaec8d33d0aa@smankusors.com/
-Suggested-by: Antony Kurniawan Soemardi <linux@smankusors.com>
 Signed-off-by: Alexandre MINETTE <contact@alex-min.fr>
-Acked-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
-Reviewed-by: Linus Walleij <linusw@kernel.org>
 ---
- arch/arm/boot/dts/qcom/qcom-apq8064.dtsi | 18 ++++++++++++------
- 1 file changed, 12 insertions(+), 6 deletions(-)
+ drivers/mfd/qcom-pm8xxx.c | 78 +++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 76 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm/boot/dts/qcom/qcom-apq8064.dtsi b/arch/arm/boot/dts/qcom/qcom-apq8064.dtsi
-index 09062b2ad8ba..d64a162abdad 100644
---- a/arch/arm/boot/dts/qcom/qcom-apq8064.dtsi
-+++ b/arch/arm/boot/dts/qcom/qcom-apq8064.dtsi
-@@ -813,8 +813,10 @@ usb1: usb@12500000 {
- 			reg = <0x12500000 0x200>,
- 			      <0x12500200 0x200>;
- 			interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH>;
--			clocks = <&gcc USB_HS1_XCVR_CLK>, <&gcc USB_HS1_H_CLK>;
--			clock-names = "core", "iface";
-+			clocks = <&gcc USB_HS1_H_CLK>,
-+				 <&rpmcc RPM_DAYTONA_FABRIC_CLK>,
-+				 <&gcc USB_HS1_XCVR_CLK>;
-+			clock-names = "iface", "core", "fs";
- 			assigned-clocks = <&gcc USB_HS1_XCVR_CLK>;
- 			assigned-clock-rates = <60000000>;
- 			resets = <&gcc USB_HS1_RESET>;
-@@ -844,8 +846,10 @@ usb3: usb@12520000 {
- 			reg = <0x12520000 0x200>,
- 			      <0x12520200 0x200>;
- 			interrupts = <GIC_SPI 188 IRQ_TYPE_LEVEL_HIGH>;
--			clocks = <&gcc USB_HS3_XCVR_CLK>, <&gcc USB_HS3_H_CLK>;
--			clock-names = "core", "iface";
-+			clocks = <&gcc USB_HS3_H_CLK>,
-+				 <&rpmcc RPM_DAYTONA_FABRIC_CLK>,
-+				 <&gcc USB_HS3_XCVR_CLK>;
-+			clock-names = "iface", "core", "fs";
- 			assigned-clocks = <&gcc USB_HS3_XCVR_CLK>;
- 			assigned-clock-rates = <60000000>;
- 			resets = <&gcc USB_HS3_RESET>;
-@@ -875,8 +879,10 @@ usb4: usb@12530000 {
- 			reg = <0x12530000 0x200>,
- 			      <0x12530200 0x200>;
- 			interrupts = <GIC_SPI 215 IRQ_TYPE_LEVEL_HIGH>;
--			clocks = <&gcc USB_HS4_XCVR_CLK>, <&gcc USB_HS4_H_CLK>;
--			clock-names = "core", "iface";
-+			clocks = <&gcc USB_HS4_H_CLK>,
-+				 <&rpmcc RPM_DAYTONA_FABRIC_CLK>,
-+				 <&gcc USB_HS4_XCVR_CLK>;
-+			clock-names = "iface", "core", "fs";
- 			assigned-clocks = <&gcc USB_HS4_XCVR_CLK>;
- 			assigned-clock-rates = <60000000>;
- 			resets = <&gcc USB_HS4_RESET>;
+diff --git a/drivers/mfd/qcom-pm8xxx.c b/drivers/mfd/qcom-pm8xxx.c
+index 0cf374c015ce..884fc99a1488 100644
+--- a/drivers/mfd/qcom-pm8xxx.c
++++ b/drivers/mfd/qcom-pm8xxx.c
+@@ -7,6 +7,7 @@
+ 
+ #include <linux/kernel.h>
+ #include <linux/interrupt.h>
++#include <linux/ioport.h>
+ #include <linux/irqchip/chained_irq.h>
+ #include <linux/irq.h>
+ #include <linux/irqdomain.h>
+@@ -64,12 +65,15 @@
+ 
+ struct pm_irq_data {
+ 	int num_irqs;
++	int usb_id_irq;
+ 	struct irq_chip *irq_chip;
+ 	irq_handler_t irq_handler;
+ };
+ 
+ struct pm_irq_chip {
+ 	struct regmap		*regmap;
++	struct platform_device	*usb_extcon;
++	unsigned int		usb_id_irq;
+ 	spinlock_t		pm_irq_lock;
+ 	struct irq_domain	*irqdomain;
+ 	unsigned int		num_blocks;
+@@ -492,6 +496,13 @@ static const struct pm_irq_data pm8xxx_data = {
+ 	.irq_handler = pm8xxx_irq_handler,
+ };
+ 
++static const struct pm_irq_data pm8921_data = {
++	.num_irqs = PM8XXX_NR_IRQS,
++	.usb_id_irq = 49,
++	.irq_chip = &pm8xxx_irq_chip,
++	.irq_handler = pm8xxx_irq_handler,
++};
++
+ static const struct pm_irq_data pm8821_data = {
+ 	.num_irqs = PM8821_NR_IRQS,
+ 	.irq_chip = &pm8821_irq_chip,
+@@ -501,11 +512,60 @@ static const struct pm_irq_data pm8821_data = {
+ static const struct of_device_id pm8xxx_id_table[] = {
+ 	{ .compatible = "qcom,pm8058", .data = &pm8xxx_data},
+ 	{ .compatible = "qcom,pm8821", .data = &pm8821_data},
+-	{ .compatible = "qcom,pm8921", .data = &pm8xxx_data},
++	{ .compatible = "qcom,pm8921", .data = &pm8921_data},
+ 	{ }
+ };
+ MODULE_DEVICE_TABLE(of, pm8xxx_id_table);
+ 
++static int pm8xxx_add_usb_extcon(struct platform_device *pdev,
++				 struct pm_irq_chip *chip,
++				 unsigned int hwirq)
++{
++	struct irq_fwspec fwspec = {
++		.fwnode = dev_fwnode(&pdev->dev),
++		.param_count = 2,
++		.param = { hwirq, IRQ_TYPE_EDGE_BOTH },
++	};
++	struct platform_device_info pdevinfo = {
++		.parent = &pdev->dev,
++		.fwnode = dev_fwnode(&pdev->dev),
++		.of_node_reused = true,
++		.name = "qcom-pm8xxx-usb-id",
++		.id = PLATFORM_DEVID_NONE,
++	};
++	struct resource resource;
++
++	chip->usb_id_irq = irq_create_fwspec_mapping(&fwspec);
++	if (!chip->usb_id_irq)
++		return -ENXIO;
++
++	resource = DEFINE_RES_IRQ_NAMED(chip->usb_id_irq, "usb_id");
++	pdevinfo.res = &resource;
++	pdevinfo.num_res = 1;
++
++	chip->usb_extcon = platform_device_register_full(&pdevinfo);
++	if (IS_ERR(chip->usb_extcon)) {
++		int ret = PTR_ERR(chip->usb_extcon);
++
++		chip->usb_extcon = NULL;
++		irq_dispose_mapping(chip->usb_id_irq);
++		chip->usb_id_irq = 0;
++
++		return ret;
++	}
++
++	return 0;
++}
++
++static void pm8xxx_remove_usb_extcon(struct pm_irq_chip *chip)
++{
++	if (chip->usb_extcon)
++		platform_device_unregister(chip->usb_extcon);
++
++	if (chip->usb_id_irq)
++		irq_dispose_mapping(chip->usb_id_irq);
++}
++
+ static int pm8xxx_probe(struct platform_device *pdev)
+ {
+ 	const struct pm_irq_data *data;
+@@ -570,9 +630,22 @@ static int pm8xxx_probe(struct platform_device *pdev)
+ 
+ 	irq_set_irq_wake(irq, 1);
+ 
++	if (data->usb_id_irq) {
++		rc = pm8xxx_add_usb_extcon(pdev, chip, data->usb_id_irq);
++		if (rc)
++			goto err_domain;
++	}
++
+ 	rc = of_platform_populate(pdev->dev.of_node, NULL, NULL, &pdev->dev);
+ 	if (rc)
+-		irq_domain_remove(chip->irqdomain);
++		goto err_extcon;
++
++	return 0;
++
++err_extcon:
++	pm8xxx_remove_usb_extcon(chip);
++err_domain:
++	irq_domain_remove(chip->irqdomain);
+ 
+ 	return rc;
+ }
+@@ -582,6 +655,7 @@ static void pm8xxx_remove(struct platform_device *pdev)
+ 	struct pm_irq_chip *chip = platform_get_drvdata(pdev);
+ 
+ 	of_platform_depopulate(&pdev->dev);
++	pm8xxx_remove_usb_extcon(chip);
+ 	irq_domain_remove(chip->irqdomain);
+ }
+ 
 
 -- 
 2.43.0
