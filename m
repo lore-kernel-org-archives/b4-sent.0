@@ -1,888 +1,146 @@
-From: Jia Wang <wangjia@ultrarisc.com>
-Date: Wed, 10 Jun 2026 13:29:56 +0800
-Subject: [PATCH v4 2/2] pinctrl: ultrarisc: Add UltraRISC DP1000 pinctrl
- driver
+From: Alexandre MINETTE <contact@alex-min.fr>
+Date: Wed, 10 Jun 2026 09:49:17 +0200
+Subject: [PATCH] drm/msm/a3xx: Drain VBIF before GPU suspend
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260610-ultrarisc-pinctrl-v4-2-b7e9b2a8ed84@ultrarisc.com>
-References: <20260610-ultrarisc-pinctrl-v4-0-b7e9b2a8ed84@ultrarisc.com>
-In-Reply-To: <20260610-ultrarisc-pinctrl-v4-0-b7e9b2a8ed84@ultrarisc.com>
-To: Linus Walleij <linusw@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
-Cc: linux-gpio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Jia Wang <wangjia@ultrarisc.com>
-X-Mailer: b4 0.15-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781069395; l=26753;
- i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
- bh=CKMr0nfz9lHg7FQprNpLIgLV/1LWPDGD60cZAPsXWkA=;
- b=1wGs3h2ktzlUh1+M5jhVcAqO7Jgz23VvMVkEYEisU5rXm7JostEA7FIL0jls6BxNfa1CfEY6F
- OFn7ENia+p/DcqDUsO9Ntaba1++mgxCnijxhXdAo5g/oIsxwu4GqqZR
-X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
- pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
-X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260610-mainline-fix-a3xx-gpu-hang-sending-v1-1-9282182840b5@alex-min.fr>
+X-B4-Tracking: v=1; b=H4sIAPwWKWoC/yWNywrCQAxFf6VkbWAetYK/Ii6mnVgjGsuklYHSf
+ zfV1eXA4dwVlAqTwrlZodCHld9i4A8NDPckIyFnYwgudK7zDl+J5clCeOOKKdaK47TgrqKSZLY
+ NR9f2Mcfc+hNYaCpk8u/kcv2zLv2Dhnkvw7Z9AYguHeSGAAAA
+X-Change-ID: 20260610-mainline-fix-a3xx-gpu-hang-sending-2504b3d3d417
+To: Rob Clark <robin.clark@oss.qualcomm.com>, Sean Paul <sean@poorly.run>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Akhil P Oommen <akhilpo@oss.qualcomm.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, 
+ Abhinav Kumar <abhinav.kumar@linux.dev>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, 
+ Marijn Suijten <marijn.suijten@somainline.org>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, Alexandre MINETTE <contact@alex-min.fr>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781077758; l=4188;
+ i=contact@alex-min.fr; s=20260421; h=from:subject:message-id;
+ bh=U1m7+SxBVxKaqhEGJu1GKuE9XFcw724ySAWY6Dm6jt4=;
+ b=nrWv/4C4ROSaessiJUfrFyLGL8vxGp7iEbTcPpIDVjzhm5GMPY2gubhvQdtpsE1HDsq0fRHUJ
+ N8MMsl3qktVBuMTFr00w7oJnk+2lIfD+kdrBvz16faVmf2QzhyMn59s
+X-Developer-Key: i=contact@alex-min.fr; a=ed25519;
+ pk=KOCaxY4v16ptaT0uk1FRkuaDF2n1JhmnYwLiqWD76M4=
+X-Endpoint-Received: by B4 Relay for contact@alex-min.fr/20260421 with auth_id=743
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the pin controller on the UltraRISC DP1000 SoC.
+A3xx hangs after every runtime suspend on the Samsung Galaxy S4
+GT-I9505. Even simple GPU workloads, such as drawing a single triangle,
+hang reliably once the GPU has been suspended by runtime PM.
 
-The controller provides mux selection for pins in ports A, B, C, D, and
-LPC. Ports A-D default to GPIO and support peripheral muxing. LPC pins
-can be switched to eSPI, but are not available as GPIOs. Basic pin
-configuration controls such as drive strength, pull-up, and pull-down
-are also supported.
+The generic MSM GPU suspend path disables clocks/power, but A3xx also
+needs to ensure that pending VBIF transactions are drained before that
+happens.
 
-Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
+Add an A3xx-specific pm_suspend callback. Wait for the GPU to become
+idle, halt all VBIF XIN clients, wait for the corresponding
+acknowledgment, and only then enter the generic MSM GPU suspend path.
+
+This fixes reliable A3xx GPU hangs observed after runtime PM on the
+Samsung Galaxy S4 GT-I9505, codename jflte. The failure is reported as:
+
+  mdp4 5100000.display-controller: [drm:hangcheck_handler] *ERROR* 3.2.0.2: hangcheck detected gpu lockup rb 0!
+  mdp4 5100000.display-controller: [drm:hangcheck_handler] *ERROR* 3.2.0.2:     completed fence: 4294967041
+  mdp4 5100000.display-controller: [drm:hangcheck_handler] *ERROR* 3.2.0.2:     submitted fence: 4294967049
+  mdp4 5100000.display-controller: [drm:recover_worker] *ERROR* 3.2.0.2: hangcheck recover!
+
+Link: https://github.com/freedreno-zz/freedreno/issues/12
+Signed-off-by: Alexandre MINETTE <contact@alex-min.fr>
 ---
- MAINTAINERS                                   |   1 +
- drivers/pinctrl/Kconfig                       |   1 +
- drivers/pinctrl/Makefile                      |   1 +
- drivers/pinctrl/ultrarisc/Kconfig             |  20 +
- drivers/pinctrl/ultrarisc/Makefile            |   4 +
- drivers/pinctrl/ultrarisc/pinctrl-dp1000.c    | 168 +++++++++
- drivers/pinctrl/ultrarisc/pinctrl-ultrarisc.c | 517 ++++++++++++++++++++++++++
- drivers/pinctrl/ultrarisc/pinctrl-ultrarisc.h |  63 ++++
- 8 files changed, 775 insertions(+)
+Fix A3xx GPU hangs after runtime PM by draining pending VBIF
+transactions before entering the generic MSM GPU suspend path.
+---
+ drivers/gpu/drm/msm/adreno/a3xx_gpu.c         | 36 ++++++++++++++++++++++++++-
+ drivers/gpu/drm/msm/registers/adreno/a3xx.xml |  2 ++
+ 2 files changed, 37 insertions(+), 1 deletion(-)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 1ef874d342a5..04f2126d8af5 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -27362,6 +27362,7 @@ M:	Jia Wang <wangjia@ultrarisc.com>
- L:	linux-gpio@vger.kernel.org
- S:	Maintained
- F:	Documentation/devicetree/bindings/pinctrl/ultrarisc,dp1000-pinctrl.yaml
-+F:	drivers/pinctrl/ultrarisc/*
+diff --git a/drivers/gpu/drm/msm/adreno/a3xx_gpu.c b/drivers/gpu/drm/msm/adreno/a3xx_gpu.c
+index 018183e0ac3f..a37be1241271 100644
+--- a/drivers/gpu/drm/msm/adreno/a3xx_gpu.c
++++ b/drivers/gpu/drm/msm/adreno/a3xx_gpu.c
+@@ -25,6 +25,8 @@
  
- ULTRATRONIK BOARD SUPPORT
- M:	Goran Rađenović <goran.radni@gmail.com>
-diff --git a/drivers/pinctrl/Kconfig b/drivers/pinctrl/Kconfig
-index 03f2e3ee065f..2a5491e3fb47 100644
---- a/drivers/pinctrl/Kconfig
-+++ b/drivers/pinctrl/Kconfig
-@@ -708,6 +708,7 @@ source "drivers/pinctrl/sunplus/Kconfig"
- source "drivers/pinctrl/sunxi/Kconfig"
- source "drivers/pinctrl/tegra/Kconfig"
- source "drivers/pinctrl/ti/Kconfig"
-+source "drivers/pinctrl/ultrarisc/Kconfig"
- source "drivers/pinctrl/uniphier/Kconfig"
- source "drivers/pinctrl/visconti/Kconfig"
- source "drivers/pinctrl/vt8500/Kconfig"
-diff --git a/drivers/pinctrl/Makefile b/drivers/pinctrl/Makefile
-index f7d5d5f76d0c..61d502ba06b9 100644
---- a/drivers/pinctrl/Makefile
-+++ b/drivers/pinctrl/Makefile
-@@ -95,6 +95,7 @@ obj-y				+= sunplus/
- obj-$(CONFIG_PINCTRL_SUNXI)	+= sunxi/
- obj-$(CONFIG_ARCH_TEGRA)	+= tegra/
- obj-y				+= ti/
-+obj-$(CONFIG_PINCTRL_ULTRARISC)	+= ultrarisc/
- obj-$(CONFIG_PINCTRL_UNIPHIER)	+= uniphier/
- obj-$(CONFIG_PINCTRL_VISCONTI)	+= visconti/
- obj-$(CONFIG_ARCH_VT8500)	+= vt8500/
-diff --git a/drivers/pinctrl/ultrarisc/Kconfig b/drivers/pinctrl/ultrarisc/Kconfig
-new file mode 100644
-index 000000000000..80ac997f6c51
---- /dev/null
-+++ b/drivers/pinctrl/ultrarisc/Kconfig
-@@ -0,0 +1,20 @@
-+# SPDX-License-Identifier: GPL-2.0-only
+ extern bool hang_debug;
+ 
++#define A3XX_VBIF_XIN_HALT_CTRL0_MASK	GENMASK(5, 0)
 +
-+config PINCTRL_ULTRARISC
-+	tristate
-+	depends on OF
-+	depends on ARCH_ULTRARISC || COMPILE_TEST
-+	select GENERIC_PINCTRL
-+	select PINMUX
-+
-+config PINCTRL_ULTRARISC_DP1000
-+	tristate "UltraRISC DP1000 SoC Pinctrl driver"
-+	select PINCTRL_ULTRARISC
-+	depends on OF && HAS_IOMEM
-+	depends on ARCH_ULTRARISC || COMPILE_TEST
-+	default ARCH_ULTRARISC
-+	help
-+	  Say Y to select the pinctrl driver for UltraRISC DP1000 SoC.
-+	  This pin controller allows selecting the mux function for
-+	  each pin. This driver can also be built as a module called
-+	  pinctrl-dp1000.
-diff --git a/drivers/pinctrl/ultrarisc/Makefile b/drivers/pinctrl/ultrarisc/Makefile
-new file mode 100644
-index 000000000000..5d49ce1c0af9
---- /dev/null
-+++ b/drivers/pinctrl/ultrarisc/Makefile
-@@ -0,0 +1,4 @@
-+# SPDX-License-Identifier: GPL-2.0-only
-+
-+obj-$(CONFIG_PINCTRL_ULTRARISC)		+= pinctrl-ultrarisc.o
-+obj-$(CONFIG_PINCTRL_ULTRARISC_DP1000)	+= pinctrl-dp1000.o
-diff --git a/drivers/pinctrl/ultrarisc/pinctrl-dp1000.c b/drivers/pinctrl/ultrarisc/pinctrl-dp1000.c
-new file mode 100644
-index 000000000000..f9c85c8c4433
---- /dev/null
-+++ b/drivers/pinctrl/ultrarisc/pinctrl-dp1000.c
-@@ -0,0 +1,168 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (C) 2026 UltraRISC Technology (Shanghai) Co., Ltd.
-+ *
-+ * Author: Jia Wang <wangjia@ultrarisc.com>
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/of.h>
-+#include <linux/platform_device.h>
-+
-+#include "pinctrl-ultrarisc.h"
-+
-+/* Port indices. */
-+#define UR_DP1000_PORT_A_IDX		0
-+#define UR_DP1000_PORT_B_IDX		1
-+#define UR_DP1000_PORT_C_IDX		2
-+#define UR_DP1000_PORT_D_IDX		3
-+#define UR_DP1000_PORT_LPC_IDX		4
-+
-+/* Port mux register offsets. */
-+#define UR_DP1000_PORTA_FUNC_OFFSET	0x2c0
-+#define UR_DP1000_PORTB_FUNC_OFFSET	0x2c4
-+#define UR_DP1000_PORTC_FUNC_OFFSET	0x2c8
-+#define UR_DP1000_PORTD_FUNC_OFFSET	0x2cc
-+#define UR_DP1000_PORTLPC_FUNC_OFFSET	0x2d0
-+
-+/* Port pinconf register offsets. */
-+#define UR_DP1000_PORTA_CONF_OFFSET	0x310
-+#define UR_DP1000_PORTB_CONF_OFFSET	0x318
-+#define UR_DP1000_PORTC_CONF_OFFSET	0x31c
-+#define UR_DP1000_PORTD_CONF_OFFSET	0x320
-+#define UR_DP1000_PORTLPC_CONF_OFFSET	0x324
-+
-+/* Pin ranges for function descriptors. */
-+#define UR_DP1000_PINS_ABCD	GENMASK_ULL(39, 0)
-+#define UR_DP1000_PINS_LPC	GENMASK_ULL(52, 40)
-+
-+/* Static table entry helpers. */
-+#define UR_DP1000_PORT(_base, _npins, _func, _conf, _modes, _gpio) \
-+	{ .pin_base = (_base), .npins = (_npins), .func_offset = (_func), \
-+	  .conf_offset = (_conf), .supported_modes = (_modes), \
-+	  .supports_gpio = (_gpio) }
-+
-+#define UR_DP1000_PIN(_nr, _name, _port) \
-+	{ .number = (_nr), .name = (_name), .drv_data = (void *)&ur_dp1000_ports[_port] }
-+
-+static const struct ur_func_route ur_dp1000_routes[] = {
-+	{ "gpio", UR_FUNC_DEFAULT, UR_DP1000_PINS_ABCD },
-+	{ "i2c", UR_FUNC_0, GENMASK_ULL(13, 12) },
-+	{ "i2c", UR_FUNC_0, GENMASK_ULL(23, 22) },
-+	{ "i2c", UR_FUNC_0, GENMASK_ULL(25, 24) },
-+	{ "i2c", UR_FUNC_0, GENMASK_ULL(27, 26) },
-+	{ "pwm", UR_FUNC_0, GENMASK_ULL(19, 16) },
-+	{ "spi", UR_FUNC_1, GENMASK_ULL(39, 32) },
-+	{ "spi", UR_FUNC_0, GENMASK_ULL(6, 0) },
-+	{ "uart", UR_FUNC_1, GENMASK_ULL(9, 8) },
-+	{ "uart", UR_FUNC_0, GENMASK_ULL(21, 20) },
-+	{ "uart", UR_FUNC_0, GENMASK_ULL(29, 28) },
-+	{ "uart", UR_FUNC_0, GENMASK_ULL(31, 30) },
-+	{ "lpc", UR_FUNC_DEFAULT, UR_DP1000_PINS_LPC },
-+	{ "espi", UR_FUNC_0, UR_DP1000_PINS_LPC },
-+};
-+
-+static const struct ur_port_desc ur_dp1000_ports[] = {
-+	UR_DP1000_PORT(0, 16, UR_DP1000_PORTA_FUNC_OFFSET,
-+		       UR_DP1000_PORTA_CONF_OFFSET,
-+		       UR_FUNC_0 | UR_FUNC_1, true),
-+	UR_DP1000_PORT(16, 8, UR_DP1000_PORTB_FUNC_OFFSET,
-+		       UR_DP1000_PORTB_CONF_OFFSET,
-+		       UR_FUNC_0 | UR_FUNC_1, true),
-+	UR_DP1000_PORT(24, 8, UR_DP1000_PORTC_FUNC_OFFSET,
-+		       UR_DP1000_PORTC_CONF_OFFSET,
-+		       UR_FUNC_0 | UR_FUNC_1, true),
-+	UR_DP1000_PORT(32, 8, UR_DP1000_PORTD_FUNC_OFFSET,
-+		       UR_DP1000_PORTD_CONF_OFFSET,
-+		       UR_FUNC_0 | UR_FUNC_1, true),
-+	UR_DP1000_PORT(40, 13, UR_DP1000_PORTLPC_FUNC_OFFSET,
-+		       UR_DP1000_PORTLPC_CONF_OFFSET,
-+		       UR_FUNC_0,             false),
-+};
-+
-+static const struct pinctrl_pin_desc ur_dp1000_pins[] = {
-+	UR_DP1000_PIN(0, "PA0", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(1, "PA1", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(2, "PA2", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(3, "PA3", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(4, "PA4", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(5, "PA5", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(6, "PA6", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(7, "PA7", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(8, "PA8", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(9, "PA9", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(10, "PA10", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(11, "PA11", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(12, "PA12", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(13, "PA13", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(14, "PA14", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(15, "PA15", UR_DP1000_PORT_A_IDX),
-+	UR_DP1000_PIN(16, "PB0", UR_DP1000_PORT_B_IDX),
-+	UR_DP1000_PIN(17, "PB1", UR_DP1000_PORT_B_IDX),
-+	UR_DP1000_PIN(18, "PB2", UR_DP1000_PORT_B_IDX),
-+	UR_DP1000_PIN(19, "PB3", UR_DP1000_PORT_B_IDX),
-+	UR_DP1000_PIN(20, "PB4", UR_DP1000_PORT_B_IDX),
-+	UR_DP1000_PIN(21, "PB5", UR_DP1000_PORT_B_IDX),
-+	UR_DP1000_PIN(22, "PB6", UR_DP1000_PORT_B_IDX),
-+	UR_DP1000_PIN(23, "PB7", UR_DP1000_PORT_B_IDX),
-+	UR_DP1000_PIN(24, "PC0", UR_DP1000_PORT_C_IDX),
-+	UR_DP1000_PIN(25, "PC1", UR_DP1000_PORT_C_IDX),
-+	UR_DP1000_PIN(26, "PC2", UR_DP1000_PORT_C_IDX),
-+	UR_DP1000_PIN(27, "PC3", UR_DP1000_PORT_C_IDX),
-+	UR_DP1000_PIN(28, "PC4", UR_DP1000_PORT_C_IDX),
-+	UR_DP1000_PIN(29, "PC5", UR_DP1000_PORT_C_IDX),
-+	UR_DP1000_PIN(30, "PC6", UR_DP1000_PORT_C_IDX),
-+	UR_DP1000_PIN(31, "PC7", UR_DP1000_PORT_C_IDX),
-+	UR_DP1000_PIN(32, "PD0", UR_DP1000_PORT_D_IDX),
-+	UR_DP1000_PIN(33, "PD1", UR_DP1000_PORT_D_IDX),
-+	UR_DP1000_PIN(34, "PD2", UR_DP1000_PORT_D_IDX),
-+	UR_DP1000_PIN(35, "PD3", UR_DP1000_PORT_D_IDX),
-+	UR_DP1000_PIN(36, "PD4", UR_DP1000_PORT_D_IDX),
-+	UR_DP1000_PIN(37, "PD5", UR_DP1000_PORT_D_IDX),
-+	UR_DP1000_PIN(38, "PD6", UR_DP1000_PORT_D_IDX),
-+	UR_DP1000_PIN(39, "PD7", UR_DP1000_PORT_D_IDX),
-+	UR_DP1000_PIN(40, "LPC0", UR_DP1000_PORT_LPC_IDX),
-+	UR_DP1000_PIN(41, "LPC1", UR_DP1000_PORT_LPC_IDX),
-+	UR_DP1000_PIN(42, "LPC2", UR_DP1000_PORT_LPC_IDX),
-+	UR_DP1000_PIN(43, "LPC3", UR_DP1000_PORT_LPC_IDX),
-+	UR_DP1000_PIN(44, "LPC4", UR_DP1000_PORT_LPC_IDX),
-+	UR_DP1000_PIN(45, "LPC5", UR_DP1000_PORT_LPC_IDX),
-+	UR_DP1000_PIN(46, "LPC6", UR_DP1000_PORT_LPC_IDX),
-+	UR_DP1000_PIN(47, "LPC7", UR_DP1000_PORT_LPC_IDX),
-+	UR_DP1000_PIN(48, "LPC8", UR_DP1000_PORT_LPC_IDX),
-+	UR_DP1000_PIN(49, "LPC9", UR_DP1000_PORT_LPC_IDX),
-+	UR_DP1000_PIN(50, "LPC10", UR_DP1000_PORT_LPC_IDX),
-+	UR_DP1000_PIN(51, "LPC11", UR_DP1000_PORT_LPC_IDX),
-+	UR_DP1000_PIN(52, "LPC12", UR_DP1000_PORT_LPC_IDX),
-+};
-+
-+static const struct ur_pinctrl_data ur_dp1000_pinctrl_data = {
-+	.pins = ur_dp1000_pins,
-+	.npins = ARRAY_SIZE(ur_dp1000_pins),
-+	.routes = ur_dp1000_routes,
-+	.num_routes = ARRAY_SIZE(ur_dp1000_routes),
-+};
-+
-+static const struct of_device_id ur_pinctrl_of_match[] = {
-+	{ .compatible = "ultrarisc,dp1000-pinctrl" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, ur_pinctrl_of_match);
-+
-+static int ur_dp1000_pinctrl_probe(struct platform_device *pdev)
+ static void a3xx_dump(struct msm_gpu *gpu);
+ static bool a3xx_idle(struct msm_gpu *gpu);
+ 
+@@ -502,6 +504,38 @@ static u64 a3xx_gpu_busy(struct msm_gpu *gpu, unsigned long *out_sample_rate)
+ 	return busy_cycles;
+ }
+ 
++static int a3xx_vbif_halt(struct msm_gpu *gpu)
 +{
-+	return ur_pinctrl_probe(pdev, &ur_dp1000_pinctrl_data);
-+}
++	u32 ack;
++	int ret;
 +
-+static struct platform_driver ur_pinctrl_driver = {
-+	.driver = {
-+		.name = "ultrarisc-pinctrl-dp1000",
-+		.of_match_table = ur_pinctrl_of_match,
-+	},
-+	.probe = ur_dp1000_pinctrl_probe,
-+};
++	gpu_write(gpu, REG_A3XX_VBIF_XIN_HALT_CTRL0,
++		  A3XX_VBIF_XIN_HALT_CTRL0_MASK);
++	ret = spin_until(((ack = gpu_read(gpu, REG_A3XX_VBIF_XIN_HALT_CTRL1)) &
++			  A3XX_VBIF_XIN_HALT_CTRL0_MASK) ==
++			 A3XX_VBIF_XIN_HALT_CTRL0_MASK);
++	gpu_write(gpu, REG_A3XX_VBIF_XIN_HALT_CTRL0, 0);
 +
-+module_platform_driver(ur_pinctrl_driver);
-+
-+MODULE_DESCRIPTION("UltraRISC DP1000 pinctrl driver");
-+MODULE_LICENSE("GPL");
-diff --git a/drivers/pinctrl/ultrarisc/pinctrl-ultrarisc.c b/drivers/pinctrl/ultrarisc/pinctrl-ultrarisc.c
-new file mode 100644
-index 000000000000..8fb5b0ea5b93
---- /dev/null
-+++ b/drivers/pinctrl/ultrarisc/pinctrl-ultrarisc.c
-@@ -0,0 +1,517 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * Copyright (C) 2026 UltraRISC Technology (Shanghai) Co., Ltd.
-+ *
-+ * Author: Jia Wang <wangjia@ultrarisc.com>
-+ */
-+
-+#include <linux/bitfield.h>
-+#include <linux/io.h>
-+#include <linux/module.h>
-+#include <linux/pinctrl/pinconf.h>
-+#include <linux/pinctrl/pinconf-generic.h>
-+#include <linux/pinctrl/pinmux.h>
-+#include <linux/platform_device.h>
-+#include <linux/seq_file.h>
-+#include <linux/slab.h>
-+
-+#include "../core.h"
-+#include "../devicetree.h"
-+#include "../pinconf.h"
-+#include "../pinmux.h"
-+
-+#include "pinctrl-ultrarisc.h"
-+
-+#define UR_CONF_BIT_PER_PIN	4
-+#define UR_CONF_PIN_PER_REG	(32 / UR_CONF_BIT_PER_PIN)
-+static const u32 ur_drive_strengths[] = { 20, 27, 33, 40 };
-+
-+static const struct ur_port_desc *ur_get_pin_port(struct pinctrl_dev *pctldev,
-+						  unsigned int pin)
-+{
-+	const struct pin_desc *desc = pin_desc_get(pctldev, pin);
-+
-+	if (!desc || !desc->drv_data)
-+		return NULL;
-+
-+	return desc->drv_data;
-+}
-+
-+static u32 ur_get_pin_conf_offset(const struct ur_port_desc *port_desc, u32 pin)
-+{
-+	return port_desc->conf_offset +
-+	       (pin / UR_CONF_PIN_PER_REG) * sizeof(u32);
-+}
-+
-+static int ur_read_pin_conf(struct ur_pinctrl *pctrl, unsigned int pin, u32 *conf)
-+{
-+	const struct ur_port_desc *port_desc;
-+	u32 pin_offset;
-+	u32 reg_offset;
-+	u32 shift;
-+	u32 mask;
-+
-+	port_desc = ur_get_pin_port(pctrl->pctl_dev, pin);
-+	if (!port_desc)
-+		return -EINVAL;
-+
-+	pin_offset = pin - port_desc->pin_base;
-+	reg_offset = ur_get_pin_conf_offset(port_desc, pin_offset);
-+	shift = (pin_offset % UR_CONF_PIN_PER_REG) * UR_CONF_BIT_PER_PIN;
-+	mask = GENMASK(UR_CONF_BIT_PER_PIN - 1, 0) << shift;
-+	*conf = field_get(mask, readl_relaxed(pctrl->base + reg_offset));
++	if (ret)
++		return -EBUSY;
 +
 +	return 0;
 +}
 +
-+static int ur_write_pin_conf(struct ur_pinctrl *pctrl, unsigned int pin, u32 conf)
++static int a3xx_pm_suspend(struct msm_gpu *gpu)
 +{
-+	const struct ur_port_desc *port_desc;
-+	void __iomem *reg;
-+	u32 pin_offset;
-+	u32 reg_offset;
-+	u32 shift;
-+	u32 mask;
-+	u32 val;
-+
-+	port_desc = ur_get_pin_port(pctrl->pctl_dev, pin);
-+	if (!port_desc)
-+		return -EINVAL;
-+
-+	pin_offset = pin - port_desc->pin_base;
-+	reg_offset = ur_get_pin_conf_offset(port_desc, pin_offset);
-+	reg = pctrl->base + reg_offset;
-+	shift = (pin_offset % UR_CONF_PIN_PER_REG) * UR_CONF_BIT_PER_PIN;
-+	mask = GENMASK(UR_CONF_BIT_PER_PIN - 1, 0) << shift;
-+
-+	scoped_guard(raw_spinlock_irqsave, &pctrl->lock) {
-+		val = readl_relaxed(reg);
-+		val = (val & ~mask) | field_prep(mask, conf);
-+		writel_relaxed(val, reg);
-+	}
-+
-+	return 0;
-+}
-+
-+static int ur_set_pin_mux(struct ur_pinctrl *pctrl,
-+			  const struct ur_port_desc *port_desc,
-+			  u32 pin_offset, u32 mode)
-+{
-+	void __iomem *reg = pctrl->base + port_desc->func_offset;
-+	u32 val;
-+
-+	if (WARN_ON(pin_offset >= UR_MAX_PINS_PER_PORT))
-+		return -EINVAL;
-+
-+	scoped_guard(raw_spinlock_irqsave, &pctrl->lock) {
-+		val = readl_relaxed(reg);
-+		val &= ~((UR_FUNC_0 | UR_FUNC_1) << pin_offset);
-+		val |= mode << pin_offset;
-+		writel_relaxed(val, reg);
-+	}
-+
-+	return 0;
-+}
-+
-+static int ur_set_pin_mux_by_num(struct ur_pinctrl *pctrl, unsigned int pin, u32 mode)
-+{
-+	const struct ur_port_desc *port_desc = ur_get_pin_port(pctrl->pctl_dev, pin);
-+	u32 pin_offset;
-+
-+	if (!port_desc)
-+		return -EINVAL;
-+
-+	if (mode != UR_FUNC_DEFAULT && !(port_desc->supported_modes & mode))
-+		return -EINVAL;
-+
-+	pin_offset = pin - port_desc->pin_base;
-+
-+	return ur_set_pin_mux(pctrl, port_desc, pin_offset, mode);
-+}
-+
-+static int ur_hw_to_config(unsigned long *config, u32 conf)
-+{
-+	enum pin_config_param param = pinconf_to_config_param(*config);
-+	u32 drive = FIELD_GET(UR_DRIVE_MASK, conf);
-+	u32 pull = FIELD_GET(UR_PULL_MASK, conf);
-+
-+	switch (param) {
-+	case PIN_CONFIG_BIAS_DISABLE:
-+	case PIN_CONFIG_BIAS_HIGH_IMPEDANCE:
-+		if (pull != UR_PULL_DIS)
-+			return -EINVAL;
-+		*config = pinconf_to_config_packed(param, 1);
-+		return 0;
-+	case PIN_CONFIG_BIAS_PULL_UP:
-+		if (pull != UR_PULL_UP)
-+			return -EINVAL;
-+		*config = pinconf_to_config_packed(param, 1);
-+		return 0;
-+	case PIN_CONFIG_BIAS_PULL_DOWN:
-+	case PIN_CONFIG_BIAS_PULL_PIN_DEFAULT:
-+		if (pull != UR_PULL_DOWN)
-+			return -EINVAL;
-+		*config = pinconf_to_config_packed(param, 1);
-+		return 0;
-+	case PIN_CONFIG_DRIVE_STRENGTH:
-+		if (drive >= ARRAY_SIZE(ur_drive_strengths))
-+			return -EINVAL;
-+		*config = pinconf_to_config_packed(param, ur_drive_strengths[drive]);
-+		return 0;
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
-+static int ur_config_to_hw(unsigned long config, u32 *conf)
-+{
-+	enum pin_config_param param = pinconf_to_config_param(config);
-+	u32 arg = pinconf_to_config_argument(config);
-+
-+	switch (param) {
-+	case PIN_CONFIG_BIAS_DISABLE:
-+	case PIN_CONFIG_BIAS_HIGH_IMPEDANCE:
-+		FIELD_MODIFY(UR_PULL_MASK, conf, UR_PULL_DIS);
-+		return 0;
-+	case PIN_CONFIG_BIAS_PULL_UP:
-+		FIELD_MODIFY(UR_PULL_MASK, conf, UR_PULL_UP);
-+		return 0;
-+	case PIN_CONFIG_BIAS_PULL_DOWN:
-+	case PIN_CONFIG_BIAS_PULL_PIN_DEFAULT:
-+		FIELD_MODIFY(UR_PULL_MASK, conf, UR_PULL_DOWN);
-+		return 0;
-+	case PIN_CONFIG_DRIVE_STRENGTH:
-+		for (u32 i = 0; i < ARRAY_SIZE(ur_drive_strengths); i++) {
-+			if (ur_drive_strengths[i] != arg)
-+				continue;
-+			FIELD_MODIFY(UR_DRIVE_MASK, conf, i);
-+			return 0;
-+		}
-+		return -EINVAL;
-+	case PIN_CONFIG_PERSIST_STATE:
-+		/*
-+		 * For PIN_CONFIG_PERSIST_STATE, gpiolib only treats
-+		 * -ENOTSUPP as an optional unsupported result.
-+		 * Do not use -EOPNOTSUPP here.
-+		 */
-+		return -ENOTSUPP;
-+	default:
-+		return -EOPNOTSUPP;
-+	}
-+}
-+
-+/**
-+ * ur_find_group_route() - Find the route matching a function and pin set
-+ * @pctrl: pin controller instance
-+ * @function: mux function name
-+ * @group_mask: bitmap of pins in the selected group
-+ * @route_out: returned route entry on success
-+ *
-+ * A mux function may be associated with multiple hardware routing options,
-+ * each valid for a specific set of pins. This helper finds the unique route
-+ * whose valid_pins mask covers all pins in @group_mask.
-+ *
-+ * The routing table must guarantee that a given function plus pin set
-+ * resolves to exactly one route. If multiple routes match, the routing
-+ * description is considered ambiguous and the lookup fails.
-+ *
-+ * Return: 0 on success, or -EINVAL if no matching route exists or if the
-+ * routing table contains ambiguous entries.
-+ */
-+static int ur_find_group_route(struct ur_pinctrl *pctrl,
-+			       const char *function,
-+			       u64 group_mask,
-+			       const struct ur_func_route **route_out)
-+{
-+	const struct ur_func_route *match = NULL;
-+
-+	for (u32 i = 0; i < pctrl->data->num_routes; i++) {
-+		const struct ur_func_route *route = &pctrl->data->routes[i];
-+
-+		if (strcmp(route->function, function))
-+			continue;
-+
-+		if ((route->valid_pins & group_mask) != group_mask)
-+			continue;
-+
-+		if (match) {
-+			dev_err(pctrl->dev,
-+				"ambiguous route for function %s group_mask=%#llx\n",
-+				function, (unsigned long long)group_mask);
-+			return -EINVAL;
-+		}
-+
-+		match = route;
-+	}
-+
-+	if (match) {
-+		*route_out = match;
-+		return 0;
-+	}
-+
-+	return -EINVAL;
-+}
-+
-+static const char *ur_get_group_function(struct pinctrl_dev *pctldev,
-+					 unsigned int group_selector,
-+					 unsigned int pin_index)
-+{
-+	const struct group_desc *group;
-+	const char * const *functions;
-+
-+	group = pinctrl_generic_get_group(pctldev, group_selector);
-+	if (!group || pin_index >= group->grp.npins || !group->data)
-+		return NULL;
-+
-+	functions = group->data;
-+
-+	return functions[pin_index];
-+}
-+
-+static int ur_resolve_group_mux(struct pinctrl_dev *pctldev,
-+				struct ur_pinctrl *pctrl,
-+				unsigned int group_selector,
-+				const unsigned int *pins,
-+				unsigned int npins,
-+				const struct ur_func_route **route_out)
-+{
-+	const char *function;
-+	u64 group_mask = 0;
-+
-+	if (!npins)
-+		return -EINVAL;
-+
-+	function = ur_get_group_function(pctldev, group_selector, 0);
-+	if (!function)
-+		return -EINVAL;
-+
-+	for (u32 i = 0; i < npins; i++)
-+		group_mask |= BIT_ULL(pins[i]);
-+
-+	return ur_find_group_route(pctrl, function, group_mask, route_out);
-+}
-+
-+static bool ur_function_is_gpio(struct pinctrl_dev *pctldev,
-+				unsigned int selector)
-+{
-+	const struct function_desc *function;
-+
-+	function = pinmux_generic_get_function(pctldev, selector);
-+	if (!function)
-+		return false;
-+
-+	for (u32 i = 0; i < function->func->ngroups; i++) {
-+		const char *func_name;
-+		int group_selector;
-+
-+		group_selector = pinctrl_get_group_selector(pctldev,
-+							    function->func->groups[i]);
-+		if (group_selector < 0)
-+			return false;
-+
-+		func_name = ur_get_group_function(pctldev, group_selector, 0);
-+		if (!func_name || strcmp(func_name, "gpio"))
-+			return false;
-+	}
-+
-+	return true;
-+}
-+
-+static const struct pinctrl_ops ur_pinctrl_ops = {
-+	.get_groups_count = pinctrl_generic_get_group_count,
-+	.get_group_name = pinctrl_generic_get_group_name,
-+	.get_group_pins = pinctrl_generic_get_group_pins,
-+	.dt_node_to_map = pinctrl_generic_pins_function_dt_node_to_map,
-+	.dt_free_map = pinconf_generic_dt_free_map,
-+};
-+
-+static int ur_gpio_request_enable(struct pinctrl_dev *pctldev,
-+				  struct pinctrl_gpio_range *range,
-+				  unsigned int offset)
-+{
-+	struct ur_pinctrl *pctrl = pinctrl_dev_get_drvdata(pctldev);
-+	const struct ur_port_desc *port_desc;
-+	const struct ur_func_route *route;
 +	int ret;
 +
-+	(void)range;
++	if (!a3xx_idle(gpu))
++		return -EBUSY;
 +
-+	port_desc = ur_get_pin_port(pctldev, offset);
-+	if (!port_desc || !port_desc->supports_gpio)
-+		return -EINVAL;
-+
-+	ret = ur_find_group_route(pctrl, "gpio", BIT_ULL(offset), &route);
++	ret = a3xx_vbif_halt(gpu);
 +	if (ret)
 +		return ret;
 +
-+	return ur_set_pin_mux_by_num(pctrl, offset, route->mode);
++	return msm_gpu_pm_suspend(gpu);
 +}
 +
-+static int ur_set_mux(struct pinctrl_dev *pctldev, unsigned int func_selector,
-+		      unsigned int group_selector)
-+{
-+	struct ur_pinctrl *pctrl = pinctrl_dev_get_drvdata(pctldev);
-+	const struct ur_func_route *route;
-+	const unsigned int *pins;
-+	unsigned int npins;
-+	int ret;
-+
-+	(void)func_selector;
-+
-+	ret = pinctrl_generic_get_group_pins(pctldev, group_selector, &pins, &npins);
-+	if (ret)
-+		return ret;
-+
-+	ret = ur_resolve_group_mux(pctldev, pctrl, group_selector, pins, npins,
-+				   &route);
-+	if (ret)
-+		return ret;
-+
-+	for (u32 i = 0; i < npins; i++) {
-+		ret = ur_set_pin_mux_by_num(pctrl, pins[i], route->mode);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static const struct pinmux_ops ur_pinmux_ops = {
-+	.get_functions_count = pinmux_generic_get_function_count,
-+	.get_function_name = pinmux_generic_get_function_name,
-+	.get_function_groups = pinmux_generic_get_function_groups,
-+	.function_is_gpio = ur_function_is_gpio,
-+	.set_mux = ur_set_mux,
-+	.gpio_request_enable = ur_gpio_request_enable,
-+	.strict = true,
-+};
-+
-+static int ur_pin_config_get(struct pinctrl_dev *pctldev,
-+			     unsigned int pin,
-+			     unsigned long *config)
-+{
-+	struct ur_pinctrl *pctrl = pinctrl_dev_get_drvdata(pctldev);
-+	u32 conf;
-+	int ret;
-+
-+	ret = ur_read_pin_conf(pctrl, pin, &conf);
-+	if (ret)
-+		return ret;
-+
-+	return ur_hw_to_config(config, conf);
-+}
-+
-+static int ur_pin_config_set(struct pinctrl_dev *pctldev,
-+			     unsigned int pin,
-+			     unsigned long *configs,
-+			     unsigned int num_configs)
-+{
-+	struct ur_pinctrl *pctrl = pinctrl_dev_get_drvdata(pctldev);
-+	u32 conf;
-+	int ret;
-+
-+	ret = ur_read_pin_conf(pctrl, pin, &conf);
-+	if (ret)
-+		return ret;
-+
-+	for (u32 i = 0; i < num_configs; i++) {
-+		ret = ur_config_to_hw(configs[i], &conf);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	return ur_write_pin_conf(pctrl, pin, conf);
-+}
-+
-+static int ur_pin_config_group_get(struct pinctrl_dev *pctldev,
-+				   unsigned int selector,
-+				   unsigned long *config)
-+{
-+	const unsigned int *pins;
-+	unsigned int npins;
-+	int ret;
-+
-+	ret = pinctrl_generic_get_group_pins(pctldev, selector, &pins, &npins);
-+	if (ret || !npins)
-+		return ret ?: -EINVAL;
-+
-+	return ur_pin_config_get(pctldev, pins[0], config);
-+}
-+
-+static int ur_pin_config_group_set(struct pinctrl_dev *pctldev,
-+				   unsigned int selector,
-+				   unsigned long *configs,
-+				   unsigned int num_configs)
-+{
-+	const unsigned int *pins;
-+	unsigned int npins;
-+	int ret;
-+
-+	ret = pinctrl_generic_get_group_pins(pctldev, selector, &pins, &npins);
-+	if (ret)
-+		return ret;
-+
-+	for (u32 i = 0; i < npins; i++) {
-+		ret = ur_pin_config_set(pctldev, pins[i], configs, num_configs);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+static const struct pinconf_ops ur_pinconf_ops = {
-+	.pin_config_get = ur_pin_config_get,
-+	.pin_config_set = ur_pin_config_set,
-+	.pin_config_group_get = ur_pin_config_group_get,
-+	.pin_config_group_set = ur_pin_config_group_set,
-+	.is_generic = true,
-+	.pin_config_config_dbg_show = pinconf_generic_dump_config,
-+};
-+
-+int ur_pinctrl_probe(struct platform_device *pdev,
-+		     const struct ur_pinctrl_data *data)
-+{
-+	struct pinctrl_desc *desc;
-+	struct ur_pinctrl *pctrl;
-+	int ret;
-+
-+	if (!data)
-+		return -ENODEV;
-+
-+	desc = devm_kzalloc(&pdev->dev, sizeof(*desc), GFP_KERNEL);
-+	if (!desc)
-+		return -ENOMEM;
-+
-+	pctrl = devm_kzalloc(&pdev->dev, sizeof(*pctrl), GFP_KERNEL);
-+	if (!pctrl)
-+		return -ENOMEM;
-+
-+	pctrl->base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(pctrl->base))
-+		return PTR_ERR(pctrl->base);
-+	pctrl->dev = &pdev->dev;
-+	pctrl->data = data;
-+
-+	raw_spin_lock_init(&pctrl->lock);
-+
-+	desc->name = dev_name(&pdev->dev);
-+	desc->owner = THIS_MODULE;
-+	desc->pins = data->pins;
-+	desc->npins = data->npins;
-+	desc->pctlops = &ur_pinctrl_ops;
-+	desc->pmxops = &ur_pinmux_ops;
-+	desc->confops = &ur_pinconf_ops;
-+
-+	ret = devm_pinctrl_register_and_init(&pdev->dev, desc, pctrl, &pctrl->pctl_dev);
-+	if (ret)
-+		return dev_err_probe(&pdev->dev, ret, "failed to register pinctrl\n");
-+
-+	platform_set_drvdata(pdev, pctrl);
-+
-+	return pinctrl_enable(pctrl->pctl_dev);
-+}
-+EXPORT_SYMBOL_GPL(ur_pinctrl_probe);
-+
-+MODULE_DESCRIPTION("UltraRISC pinctrl core driver");
-+MODULE_LICENSE("GPL");
-diff --git a/drivers/pinctrl/ultrarisc/pinctrl-ultrarisc.h b/drivers/pinctrl/ultrarisc/pinctrl-ultrarisc.h
-new file mode 100644
-index 000000000000..c874688aafca
---- /dev/null
-+++ b/drivers/pinctrl/ultrarisc/pinctrl-ultrarisc.h
-@@ -0,0 +1,63 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+/*
-+ * Copyright (C) 2026 UltraRISC Technology (Shanghai) Co., Ltd.
-+ *
-+ * Author: Jia Wang <wangjia@ultrarisc.com>
-+ */
-+
-+#ifndef __PINCTRL_ULTRARISC_H__
-+#define __PINCTRL_ULTRARISC_H__
-+
-+#include <linux/io.h>
-+#include <linux/pinctrl/pinctrl.h>
-+#include <linux/spinlock.h>
-+
-+struct platform_device;
-+
-+#define UR_FUNC_DEFAULT		0U
-+#define UR_FUNC_0		1U
-+#define UR_FUNC_1		0x10000U
-+
-+#define UR_MAX_PINS_PER_PORT	16
-+
-+#define UR_BIAS_MASK		0x0000000F
-+#define UR_PULL_MASK		0x0C
-+#define UR_PULL_DIS		0
-+#define UR_PULL_UP		1
-+#define UR_PULL_DOWN		2
-+#define UR_DRIVE_MASK		0x03
-+
-+struct ur_port_desc {
-+	u32 pin_base;
-+	u32 npins;
-+	u32 func_offset;
-+	u32 conf_offset;
-+	u32 supported_modes;
-+	bool supports_gpio;
-+};
-+
-+struct ur_func_route {
-+	const char *function;
-+	u32 mode;
-+	u64 valid_pins;
-+};
-+
-+struct ur_pinctrl_data {
-+	const struct pinctrl_pin_desc *pins;
-+	u32 npins;
-+	const struct ur_func_route *routes;
-+	u32 num_routes;
-+};
-+
-+struct ur_pinctrl {
-+	struct device *dev;
-+	struct pinctrl_dev *pctl_dev;
-+	const struct ur_pinctrl_data *data;
-+	void __iomem *base;
-+	raw_spinlock_t lock; /* Protects mux and conf registers */
-+};
-+
-+int ur_pinctrl_probe(struct platform_device *pdev,
-+		     const struct ur_pinctrl_data *data);
-+
-+#endif
+ static u32 a3xx_get_rptr(struct msm_gpu *gpu, struct msm_ringbuffer *ring)
+ {
+ 	ring->memptrs->rptr = gpu_read(gpu, REG_AXXX_CP_RB_RPTR);
+@@ -597,7 +631,7 @@ const struct adreno_gpu_funcs a3xx_gpu_funcs = {
+ 		.get_param = adreno_get_param,
+ 		.set_param = adreno_set_param,
+ 		.hw_init = a3xx_hw_init,
+-		.pm_suspend = msm_gpu_pm_suspend,
++		.pm_suspend = a3xx_pm_suspend,
+ 		.pm_resume = msm_gpu_pm_resume,
+ 		.recover = a3xx_recover,
+ 		.submit = a3xx_submit,
+diff --git a/drivers/gpu/drm/msm/registers/adreno/a3xx.xml b/drivers/gpu/drm/msm/registers/adreno/a3xx.xml
+index 6717abc0a897..096de72b0b6c 100644
+--- a/drivers/gpu/drm/msm/registers/adreno/a3xx.xml
++++ b/drivers/gpu/drm/msm/registers/adreno/a3xx.xml
+@@ -1499,6 +1499,8 @@ xsi:schemaLocation="https://gitlab.freedesktop.org/freedreno/ rules-fd.xsd">
+ 	<reg32 offset="0x3058" name="VBIF_OUT_AXI_AMEMTYPE_CONF0"/>
+ 	<reg32 offset="0x305e" name="VBIF_OUT_AXI_AOOO_EN"/>
+ 	<reg32 offset="0x305f" name="VBIF_OUT_AXI_AOOO"/>
++	<reg32 offset="0x3080" name="VBIF_XIN_HALT_CTRL0"/>
++	<reg32 offset="0x3081" name="VBIF_XIN_HALT_CTRL1"/>
+ 
+ 	<bitset name="a3xx_vbif_perf_cnt" inline="yes">
+ 		<bitfield name="CNT0" pos="0" type="boolean"/>
 
--- 
-2.34.1
+---
+base-commit: 2d3090a8aeb596a26935db0955d46c9a5db5c6ce
+change-id: 20260610-mainline-fix-a3xx-gpu-hang-sending-2504b3d3d417
+
+Best regards,
+--  
+Alexandre MINETTE <contact@alex-min.fr>
 
