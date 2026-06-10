@@ -1,10 +1,10 @@
 From: Sam Day <me@samcday.com>
-Date: Wed, 10 Jun 2026 11:27:47 +1000
-Subject: [PATCH v3 09/10] arch: arm: exynos: add j7xelte binman config
+Date: Wed, 10 Jun 2026 11:27:48 +1000
+Subject: [PATCH v3 10/10] configs: exynos-mobile: pull in binman
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260610-android-binman-v3-9-710298a38fcc@samcday.com>
+Message-Id: <20260610-android-binman-v3-10-710298a38fcc@samcday.com>
 References: <20260610-android-binman-v3-0-710298a38fcc@samcday.com>
 In-Reply-To: <20260610-android-binman-v3-0-710298a38fcc@samcday.com>
 To: u-boot@lists.denx.de
@@ -23,58 +23,65 @@ Cc: Tom Rini <trini@konsulko.com>, Simon Glass <sjg@chromium.org>,
  Marek Vasut <marex@nabladev.com>, Denis Mukhin <dmukhin@ford.com>, 
  Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781054859; l=1129;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781054859; l=1768;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=6N86e0nsPC791hYMDJuBq6vEcAt8DN6e0mfDXT4z8F0=;
- b=2qfRC2Sz84ILQ3AjBRog3eCXyVRF/2+ANcmE3Z03ekQTG3i4GjEc8Pj4P8bLi9H7MclrvH0Az
- BaBhcP9ooDkBHBRv2cGN8Cc83ZnaU2w0TDt0JLLMmRIlqJpIiNCexTm
+ bh=NRBHpe34CND7n6voXLMnN6rRvIFMkJs8mIzyqLmR+Uk=;
+ b=C9Z4cucraCqjuataCkCM/TVL3trF5h3nVX46fAmkzi/DEFe8qWoDuW+DzeCMo1vBIy62CzJyE
+ j8pgu6JS32YBIfQRDTncga7FfmJCKruP+DsXB0zOdsb0hMFvw9u/3pN
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Note that, as of this commit, j7xelte does not yet exist in U-Boot's
-upstream DTS tree. It was accepted into next so it should appear here
-eventually.
+All Exynos7 mobile devices need abootimg+DTBH wrapping to be bootable
+from the fused S-BOOT bootloader. So we enable binman everywhere.
+Ideally we'll have full coverage of these devices with binman configs in
+the overlay DTSIs but, for now, we ensure there's a placeholder node.
+That way no existing devices will regress their cleanly buildable state.
 
-Link: https://lore.kernel.org/all/177209522223.26390.6219893536178441080.b4-ty@kernel.org/
+Reviewed-by: Simon Glass <sjg@chromium.org>
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- arch/arm/dts/exynos7870-j7xelte-u-boot.dtsi | 26 ++++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
+ arch/arm/dts/exynos-mobile.dtsi | 5 +++++
+ arch/arm/mach-exynos/Kconfig    | 1 +
+ configs/exynos-mobile_defconfig | 1 +
+ 3 files changed, 7 insertions(+)
 
-diff --git a/arch/arm/dts/exynos7870-j7xelte-u-boot.dtsi b/arch/arm/dts/exynos7870-j7xelte-u-boot.dtsi
+diff --git a/arch/arm/dts/exynos-mobile.dtsi b/arch/arm/dts/exynos-mobile.dtsi
 new file mode 100644
-index 00000000000..0cd4c12a2e4
+index 00000000000..9982e996993
 --- /dev/null
-+++ b/arch/arm/dts/exynos7870-j7xelte-u-boot.dtsi
-@@ -0,0 +1,26 @@
++++ b/arch/arm/dts/exynos-mobile.dtsi
+@@ -0,0 +1,5 @@
 +// SPDX-License-Identifier: GPL-2.0
-+
 +/ {
 +	binman {
-+		filename = "u-boot-samsung-j7xelte.img";
-+
-+		android-boot {
-+			/* S-BOOT ignores offsets, so they are not provided here */
-+			kernel {
-+				u-boot-nodtb { };
-+			};
-+
-+			vendor-dt {
-+				dtbh {
-+					dtb-0 {
-+						model_info-chip = <7870>;
-+						model_info-hw_rev = <0>;
-+						model_info-hw_rev_end = <255>;
-+
-+						u-boot-dtb { };
-+					};
-+				};
-+			};
-+		};
 +	};
 +};
+diff --git a/arch/arm/mach-exynos/Kconfig b/arch/arm/mach-exynos/Kconfig
+index b084b7284aa..d4ae182030d 100644
+--- a/arch/arm/mach-exynos/Kconfig
++++ b/arch/arm/mach-exynos/Kconfig
+@@ -255,6 +255,7 @@ endif
+ config TARGET_EXYNOS_MOBILE
+ 	bool "Samsung Exynos Generic Boards (for mobile devices)"
+ 	select ARM64
++	select BINMAN
+ 	select BOARD_EARLY_INIT_F
+ 	select CLK_EXYNOS
+ 	select LINUX_KERNEL_IMAGE_HEADER
+diff --git a/configs/exynos-mobile_defconfig b/configs/exynos-mobile_defconfig
+index 45ab998bb45..fcaff3d1608 100644
+--- a/configs/exynos-mobile_defconfig
++++ b/configs/exynos-mobile_defconfig
+@@ -32,6 +32,7 @@ CONFIG_EFI_PARTITION=y
+ CONFIG_OF_UPSTREAM=y
+ CONFIG_OF_UPSTREAM_BUILD_VENDOR=y
+ CONFIG_OF_BOARD=y
++CONFIG_DEVICE_TREE_INCLUDES="exynos-mobile.dtsi"
+ CONFIG_BLKMAP=y
+ CONFIG_BUTTON_REMAP_PHONE_KEYS=y
+ CONFIG_CLK_EXYNOS7870=y
 
 -- 
 2.54.0
