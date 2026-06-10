@@ -1,11 +1,11 @@
 From: David Heidelberg <david@ixit.cz>
-Date: Wed, 10 Jun 2026 20:28:22 +0200
-Subject: [PATCH v8 2/9] media: qcom: camss: csiphy-3ph: Fix lane mask
- calculation
+Date: Wed, 10 Jun 2026 20:28:23 +0200
+Subject: [PATCH v8 3/9] media: qcom: camss: csiphy-3ph: Use odd bits for
+ configuring C-PHY lanes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260610-qcom-cphy-v8-2-cd4387785179@ixit.cz>
+Message-Id: <20260610-qcom-cphy-v8-3-cd4387785179@ixit.cz>
 References: <20260610-qcom-cphy-v8-0-cd4387785179@ixit.cz>
 In-Reply-To: <20260610-qcom-cphy-v8-0-cd4387785179@ixit.cz>
 To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
@@ -23,53 +23,92 @@ Cc: Frank Li <Frank.Li@nxp.com>,
  Kieran Bingham <kbingham@kernel.org>, 
  Sakari Ailus <sakari.ailus@linux.intel.com>, linux-media@vger.kernel.org, 
  linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>, 
- stable@vger.kernel.org
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1206; i=david@ixit.cz;
- h=from:subject:message-id; bh=fVr/sKiSUifC1zTyd9NJfz2/7dlahZ+nJFq+MKqII4Q=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqKazHrEq72fCIjBjv5GAwcwAD87AwFCvVFNX8o
- UcaO9akx5uJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaimsxwAKCRBgAj/E00kg
- ctpwD/4/WsbiW6UstsGTs+oI+7288BjF7yxrlnh9CnB6PTSK0uj2fe50jkbGJWP45Gw0aCYoobM
- eabGhwamHCUahsw7Rmw3ewmJbIOcK5UNB/0NC57x/5XVZXMXYRLYF23AfC9O5wzHUh7RxZ4YeMY
- UNmuHdmhcyAahwrjAZTIBjbeqQUO9yFIFyrzXshdLlZE5ChpodZroYN0p2J7WVD/LDHIFsWEcHU
- Z636bAZ/72L9Zv5l3IUm8FgMZFG5vfHgJW1PdMwILI8UM7iVG71T+nTvfgTDRd0jQQ8ekwBkhqY
- DM7Q0qe9gsaXejuf8nA4+FLNOeMxrof7iw10YuVsI099/juO//84+HNWomMEAdbNN91bnFdnWwD
- lFNNDjvYC1AFxK3ApgbiitMZMP1YQN19hevUBOqZMNrvJ2K/v13fsZkts/LKApZuxcmKfoisHNG
- aWNRQfi+W//gqYg7nDBaiLWnO6B4RklvCJvYA68N3z478jkRIdJpmZGh5U6SG8LxUuBBSKthXqB
- 0w+YMH/Zoa8VVbrU2NNq2iQnzQZ7y2UDViAtil3sREALE8OAXeAh8YdNOsxfUVi2w3uv8GYx3LP
- f+BscvKk5Fvs+m+/xtO7udSCXkCUXcb7aXIaQx5wqTa7mzU4sy/k0fVcWCMdmvvvZl4O1yI+wfI
- 5CRlocIMb2+jzfQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3113; i=david@ixit.cz;
+ h=from:subject:message-id; bh=TVUoRIJn5ULvYNpapsB4ZItCc34ZCZTZby6Hd3C8I2o=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqKazHq88a544lmWGFAghH+C0vt7VXhKfnt2e9A
+ 1TmU6njwsuJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaimsxwAKCRBgAj/E00kg
+ co9jEADH1IKGSsgWZ3amcuuM4I389OIuoXYOCheH/7IRPVmwg6zd6Rnd4YPkQ5DpYLr6uSBcg5f
+ gNINwEmj+Vsu4bbel09NThpVotELMHwBTQwQjZaIugQ5s07Rsuap6tXm8OUqbG0gzuAL5EyU5yI
+ Ybks+ND1iq1zu/qcdaaybCnKHKTqQd5iIkytn4gigEfEsgAZlFT1ZjL6+41BebEuDIBAay3YT+c
+ qTzb8zL+n1MPaY+iu1RCQhzTIadZ3AdXUAAfUEJJlRbF/kgmyYUO0G1cy8ApsHaGg5d0+cnR3/c
+ 2JTbUp6UgnM+caWS+JbhbXODltXepef7kwDhm47kgkrZGR+HffV+ta7rfri7SwywIg4hKqFfd6f
+ shesCqbhQsF3KqZxrmXMGST6yZ5c+VJ+qMfrKhnKGHQ/Uo3JzQnwjhfpoyHMqsyXnnXvfj2CHQ2
+ HPF1XFnY+ceKVDUEGgNvIZCa1bIR4X8sq7Y6Q86kqD72V6eyFfdsBJWtNe6wzBgpNoW3rXD1wg1
+ hosDAS3vGzxiMFEZVn3ZF/8TIp+Od+OE0huIicF1rG798Fh2+yUH9WEj1IC9ek3wdciTfGl9zfe
+ AUKZ6LlMvaaUOQsuTyu4HF82RQQvZav/HpSTRr9cS7xftCnlL5adHpO2WyUWVd7XiaiU0j0YsqJ
+ UiW7YA5DHZN2VgQ==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The lane mask must be multiplied by 2, but this was accidentally omitted.
+So far, only D-PHY mode was supported, which uses even bits when enabling
+or masking lanes. For C-PHY configuration, the hardware instead requires
+using the odd bits.
 
-Fixes: c94d21ffa814 ("media: camss: Add CSIPHY files")
-Cc: stable@vger.kernel.org
-Suggested-by: Nihal Kumar Gupta <nihal.gupta@oss.qualcomm.com>
+Since there can be unrecognized configuration allow returning failure.
+
+Acked-by: Cory Keitz <ckeitz@amazon.com>
+Reviewed-by: Bryan O'Donoghue <bod@kernel.org>
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ .../platform/qcom/camss/camss-csiphy-3ph-1-0.c     | 25 ++++++++++++++--------
+ 1 file changed, 16 insertions(+), 9 deletions(-)
 
 diff --git a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
-index dac8d2ecf7995..7c8c0e41bc62f 100644
+index 7c8c0e41bc62f..dfcd9ed2eb7a3 100644
 --- a/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
 +++ b/drivers/media/platform/qcom/camss/camss-csiphy-3ph-1-0.c
-@@ -1114,17 +1114,17 @@ static void csiphy_gen2_config_lanes(struct csiphy_device *csiphy,
+@@ -9,16 +9,17 @@
+  */
+ 
+ #include "camss.h"
+ #include "camss-csiphy.h"
+ 
+ #include <linux/delay.h>
+ #include <linux/interrupt.h>
+ #include <linux/io.h>
++#include <linux/media-bus-format.h>
+ 
+ #define CSIPHY_3PH_LNn_CFG1(n)			(0x000 + 0x100 * (n))
+ #define CSIPHY_3PH_LNn_CFG1_SWI_REC_DLY_PRG	(BIT(7) | BIT(6))
+ #define CSIPHY_3PH_LNn_CFG2(n)			(0x004 + 0x100 * (n))
+ #define CSIPHY_3PH_LNn_CFG2_LP_REC_EN_INT	BIT(3)
+ #define CSIPHY_3PH_LNn_CFG3(n)			(0x008 + 0x100 * (n))
+ #define CSIPHY_3PH_LNn_CFG4(n)			(0x00c + 0x100 * (n))
+ #define CSIPHY_3PH_LNn_CFG4_T_HS_CLK_MISS	0xa4
+@@ -1108,23 +1109,32 @@ static void csiphy_gen2_config_lanes(struct csiphy_device *csiphy,
+ 		writel_relaxed(val, csiphy->base + r->reg_addr);
+ 		if (r->delay_us)
+ 			udelay(r->delay_us);
+ 	}
+ }
+ 
  static u8 csiphy_get_lane_mask(struct csiphy_lanes_cfg *lane_cfg)
  {
- 	u8 lane_mask;
- 	int i;
+-	u8 lane_mask;
+-	int i;
++	u8 lane_mask = 0;
++	u8 offset = 0;
  
- 	lane_mask = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
+-	lane_mask = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
++	switch (lane_cfg->phy_cfg) {
++	case V4L2_MBUS_CSI2_CPHY:
++		offset = 1;
++		break;
++	case V4L2_MBUS_CSI2_DPHY:
++		lane_mask = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
++		break;
++	default:
++		break;
++	}
  
- 	for (i = 0; i < lane_cfg->num_data; i++)
--		lane_mask |= 1 << lane_cfg->data[i].pos;
-+		lane_mask |= BIT(lane_cfg->data[i].pos * 2);
+-	for (i = 0; i < lane_cfg->num_data; i++)
+-		lane_mask |= BIT(lane_cfg->data[i].pos * 2);
++	for (int i = 0; i < lane_cfg->num_data; i++)
++		lane_mask |= BIT((lane_cfg->data[i].pos * 2) + offset);
  
  	return lane_mask;
  }
@@ -78,6 +117,28 @@ index dac8d2ecf7995..7c8c0e41bc62f 100644
  {
  	bool ret = false;
  
+@@ -1155,20 +1165,17 @@ static void csiphy_lanes_enable(struct csiphy_device *csiphy,
+ 	struct csiphy_lanes_cfg *c = &cfg->csi2->lane_cfg;
+ 	struct csiphy_device_regs *regs = csiphy->regs;
+ 	u8 settle_cnt;
+ 	u8 val;
+ 	int i;
+ 
+ 	settle_cnt = csiphy_settle_cnt_calc(link_freq, csiphy->timer_clk_rate);
+ 
+-	val = CSIPHY_3PH_CMN_CSI_COMMON_CTRL5_CLK_ENABLE;
+-	for (i = 0; i < c->num_data; i++)
+-		val |= BIT(c->data[i].pos * 2);
+-
++	val = csiphy_get_lane_mask(c);
+ 	writel_relaxed(val, csiphy->base +
+ 		       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 5));
+ 
+ 	val = CSIPHY_3PH_CMN_CSI_COMMON_CTRL6_COMMON_PWRDN_B;
+ 	writel_relaxed(val, csiphy->base +
+ 		       CSIPHY_3PH_CMN_CSI_COMMON_CTRLn(regs->offset, 6));
+ 
+ 	val = 0x02;
 
 -- 
 2.53.0
