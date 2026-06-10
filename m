@@ -1,517 +1,120 @@
-From: Jian Hu <jian.hu@amlogic.com>
-Date: Wed, 10 Jun 2026 16:23:48 +0800
-Subject: [PATCH v3 2/2] clk: amlogic: Add A9 AO clock controller driver
+From: Cedric Jehasse <cedric.jehasse@luminex.be>
+Date: Wed, 10 Jun 2026 10:31:23 +0200
+Subject: [PATCH RFC] net: bridge: mcast: don't clear L2 host_joined on port
+ group deletion
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260610-a9_aoclk-v3-2-b7592d6c31e2@amlogic.com>
-References: <20260610-a9_aoclk-v3-0-b7592d6c31e2@amlogic.com>
-In-Reply-To: <20260610-a9_aoclk-v3-0-b7592d6c31e2@amlogic.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Jerome Brunet <jbrunet@baylibre.com>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
- Kevin Hilman <khilman@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, Jian Hu <jian.hu@amlogic.com>
+Message-Id: <20260610-mdb_l2_host_joined_fix-v1-1-19746b0b8a5d@luminex.be>
+X-B4-Tracking: v=1; b=H4sIANogKWoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDMwNL3dyUpPgco/iM/OKS+Kz8zLzUlPi0zArdtCSjlFQjQ1MLg2RzJaD
+ mgqJUoDDY4GilIDdnpdjaWgDkt+kAbQAAAA==
+X-Change-ID: 20260609-mdb_l2_host_joined_fix-fb2de21580c7
+To: Nikolay Aleksandrov <razor@blackwall.org>, 
+ Ido Schimmel <idosch@nvidia.com>, "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>
+Cc: bridge@lists.linux.dev, netdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Cedric Jehasse <cedric.jehasse@gmail.com>, 
+ Cedric Jehasse <cedric.jehasse@luminex.be>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781079829; l=16175;
- i=jian.hu@amlogic.com; s=20260415; h=from:subject:message-id;
- bh=Me8VtghHXKGJZt+TDVWMrukUwHnkMplCG7RQBpZnF8w=;
- b=4aBg5xsjjfJwKYx7Fl6ozxXZCl4/MOCq2+G+GvAEa5Mskk41HyuIka3XUp01IrfoVpL63X4RN
- 9ujWGdo73efBk6mXAylt7vY0W9TCFKxjp+ozA2ycQkS0NPb9RI/DXmP
-X-Developer-Key: i=jian.hu@amlogic.com; a=ed25519;
- pk=zHUE+rNtH9z+Sb8au1/elWknjFQmy5QDVkBoxleuOIA=
-X-Endpoint-Received: by B4 Relay for jian.hu@amlogic.com/20260415 with auth_id=735
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781080287; l=4075;
+ i=cedric.jehasse@luminex.be; s=20260213; h=from:subject:message-id;
+ bh=Nc7ftwi5FCk1zbALrXN+jcXd41GY2T6GIvI9xkrpbyI=;
+ b=RibYAWjSHhDpRl4wwKOTGtVn2IwvM9Jw1n97jKA3elr9UsKpNIBvxLOjg/+skCn4QwVhywZJ3
+ a/yHESXt1GWDh5keWxvxnazzZKzdVDZHT+KvQ9hrQixTHvJhFJFZwBV
+X-Developer-Key: i=cedric.jehasse@luminex.be; a=ed25519;
+ pk=DL2RaHc2bc7tTDTMJdugm42BtJk4Ip+7V41Gkj+Avjk=
+X-Endpoint-Received: by B4 Relay for cedric.jehasse@luminex.be/20260213 with auth_id=638
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the Always-on clock controller driver for the Amlogic A9 SoC family.
+For a static L2 multicast group that has both a host entry and a port
+entry, deleting the port entry also removes the host entry, and the
+whole group then disappears from "bridge mdb show".
 
-Signed-off-by: Jian Hu <jian.hu@amlogic.com>
+To reproduce:
+  bridge mdb add dev br0 port br0  grp 01:02:03:04:05:06 permanent
+  bridge mdb add dev br0 port swp1 grp 01:02:03:04:05:06 permanent
+  bridge mdb del dev br0 port swp1 grp 01:02:03:04:05:06 permanent
+  bridge mdb show # the "port br0" host entry is gone, too
+
+br_multicast_del_pg() processes every non-(*,G) entry through the S,G
+path, which removes the port group from br->sg_port_tbl and then calls
+br_multicast_sg_del_exclude_ports(). L2 entries are stored in
+sg_port_tbl as well, so they take this path too.
+
+When the last port is removed in br_multicast_sg_del_exclude_ports it
+sets "sgmp->host_joined = false", clearing the host membership directly
+and bypassing br_multicast_host_leave(). With host_joined now false and
+no ports left, br_multicast_del_pg() arms the group timer and
+br_multicast_group_expired() tears down the whole mdb entry -- even
+though the host membership was explicitly and permanently configured
+from user space.
+
+Keep removing L2 port groups from sg_port_tbl, but skip the S,G
+EXCLUDE-mode handling for them. The host membership of an L2 group is
+managed solely via br_multicast_host_join() / br_multicast_host_leave().
+
+Signed-off-by: Cedric Jehasse <cedric.jehasse@luminex.be>
 ---
- drivers/clk/meson/Kconfig    |  13 ++
- drivers/clk/meson/Makefile   |   1 +
- drivers/clk/meson/a9-aoclk.c | 431 +++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 445 insertions(+)
+For a static L2 multicast group that has both a host entry and a port
+entry, deleting the port entry also removes the host entry, and the
+whole group then disappears from "bridge mdb show".
 
-diff --git a/drivers/clk/meson/Kconfig b/drivers/clk/meson/Kconfig
-index cf8cf3f9e4ee..b71299898197 100644
---- a/drivers/clk/meson/Kconfig
-+++ b/drivers/clk/meson/Kconfig
-@@ -132,6 +132,19 @@ config COMMON_CLK_A1_PERIPHERALS
- 	  device, A1 SoC Family. Say Y if you want A1 Peripherals clock
- 	  controller to work.
- 
-+config COMMON_CLK_A9_AO
-+	tristate "Amlogic A9 SoC AO clock controller support"
-+	depends on ARM64 || COMPILE_TEST
-+	default ARCH_MESON
-+	select COMMON_CLK_MESON_REGMAP
-+	select COMMON_CLK_MESON_CLKC_UTILS
-+	select COMMON_CLK_MESON_DUALDIV
-+	imply COMMON_CLK_SCMI
-+	help
-+	  Support for the AO clock controller on Amlogic A311Y3 based
-+	  device, AKA A9.
-+	  Say Y if you want A9 AO clock controller to work.
-+
- config COMMON_CLK_C3_PLL
- 	tristate "Amlogic C3 PLL clock controller"
- 	depends on ARM64
-diff --git a/drivers/clk/meson/Makefile b/drivers/clk/meson/Makefile
-index c6719694a242..f89d027c282c 100644
---- a/drivers/clk/meson/Makefile
-+++ b/drivers/clk/meson/Makefile
-@@ -19,6 +19,7 @@ obj-$(CONFIG_COMMON_CLK_AXG) += axg.o axg-aoclk.o
- obj-$(CONFIG_COMMON_CLK_AXG_AUDIO) += axg-audio.o
- obj-$(CONFIG_COMMON_CLK_A1_PLL) += a1-pll.o
- obj-$(CONFIG_COMMON_CLK_A1_PERIPHERALS) += a1-peripherals.o
-+obj-$(CONFIG_COMMON_CLK_A9_AO) += a9-aoclk.o
- obj-$(CONFIG_COMMON_CLK_C3_PLL) += c3-pll.o
- obj-$(CONFIG_COMMON_CLK_C3_PERIPHERALS) += c3-peripherals.o
- obj-$(CONFIG_COMMON_CLK_GXBB) += gxbb.o gxbb-aoclk.o
-diff --git a/drivers/clk/meson/a9-aoclk.c b/drivers/clk/meson/a9-aoclk.c
-new file mode 100644
-index 000000000000..dd9fd8d24702
---- /dev/null
-+++ b/drivers/clk/meson/a9-aoclk.c
-@@ -0,0 +1,431 @@
-+// SPDX-License-Identifier: (GPL-2.0-only OR MIT)
-+/*
-+ * Copyright (C) 2026 Amlogic, Inc. All rights reserved
-+ */
-+
-+#include <dt-bindings/clock/amlogic,a9-aoclkc.h>
-+#include <linux/clk-provider.h>
-+#include <linux/platform_device.h>
-+#include "clk-regmap.h"
-+#include "clk-dualdiv.h"
-+#include "meson-clkc-utils.h"
-+
-+#define AO_OSCIN_CTRL			0x00
-+#define AO_SYS_CLK0			0x04
-+#define AO_PWM_CLK_A_CTRL		0x1c
-+#define AO_PWM_CLK_B_CTRL		0x20
-+#define AO_PWM_CLK_C_CTRL		0x24
-+#define AO_PWM_CLK_D_CTRL		0x28
-+#define AO_PWM_CLK_E_CTRL		0x2c
-+#define AO_PWM_CLK_F_CTRL		0x30
-+#define AO_PWM_CLK_G_CTRL		0x34
-+#define AO_CEC_CTRL0			0x38
-+#define AO_CEC_CTRL1			0x3c
-+#define AO_RTC_BY_OSCIN_CTRL0		0x50
-+#define AO_RTC_BY_OSCIN_CTRL1		0x54
-+
-+#define A9_COMP_SEL(_name, _reg, _shift, _mask, _pdata) \
-+	MESON_COMP_SEL(a9_ao_, _name, _reg, _shift, _mask, _pdata, NULL, 0, 0)
-+
-+#define A9_COMP_DIV(_name, _reg, _shift, _width) \
-+	MESON_COMP_DIV(a9_ao_, _name, _reg, _shift, _width, 0, CLK_SET_RATE_PARENT)
-+
-+#define A9_COMP_GATE(_name, _reg, _bit) \
-+	MESON_COMP_GATE(a9_ao_, _name, _reg, _bit, CLK_SET_RATE_PARENT)
-+
-+static struct clk_regmap a9_ao_xtal_in = {
-+	.data = &(struct clk_regmap_gate_data){
-+		.offset = AO_OSCIN_CTRL,
-+		.bit_idx = 3,
-+	},
-+	.hw.init = &(struct clk_init_data) {
-+		.name = "ao_xtal_in",
-+		.ops = &clk_regmap_gate_ops,
-+		.parent_data = &(const struct clk_parent_data) {
-+			.fw_name = "xtal",
-+		},
-+		.num_parents = 1,
-+		/*
-+		 * ao_sys can select different clock sources. One possible clock path is:
-+		 *   ao_xtal_in->ao_xtal->ao_sys-> ao sys gate clocks
-+		 *
-+		 * ao_xtal_in is in the parent chain of AO sys gate clocks.
-+		 * Since some downstream clocks are marked CLK_IS_CRITICAL,
-+		 * ao_xtal_in must remain enabled and is therefore marked
-+		 * CLK_IS_CRITICAL as well.
+To reproduce:
+  bridge mdb add dev br0 port br0  grp 01:02:03:04:05:06 permanent
+  bridge mdb add dev br0 port swp1 grp 01:02:03:04:05:06 permanent
+  bridge mdb del dev br0 port swp1 grp 01:02:03:04:05:06 permanent
+  bridge mdb show # the "port br0" host entry is gone, too
+
+br_multicast_del_pg() processes every non-(*,G) entry through the S,G
+path, which removes the port group from br->sg_port_tbl and then calls
+br_multicast_sg_del_exclude_ports(). L2 entries are stored in
+sg_port_tbl as well, so they take this path too.
+
+When the last port is removed in br_multicast_sg_del_exclude_ports it
+sets "sgmp->host_joined = false", clearing the host membership directly
+and bypassing br_multicast_host_leave(). With host_joined now false and
+no ports left, br_multicast_del_pg() arms the group timer and
+br_multicast_group_expired() tears down the whole mdb entry -- even
+though the host membership was explicitly and permanently configured
+from user space.
+
+Keep removing L2 port groups from sg_port_tbl, but skip the S,G
+EXCLUDE-mode handling for them. The host membership of an L2 group is
+managed solely via br_multicast_host_join() / br_multicast_host_leave().
+
+This fixes the issue, but i'd like a second opinion on if this is the
+correct way to fix it.
+---
+ net/bridge/br_multicast.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/net/bridge/br_multicast.c b/net/bridge/br_multicast.c
+index 881d866d687a..d718a6d1ddb1 100644
+--- a/net/bridge/br_multicast.c
++++ b/net/bridge/br_multicast.c
+@@ -816,7 +816,13 @@ void br_multicast_del_pg(struct net_bridge_mdb_entry *mp,
+ 	if (!br_multicast_is_star_g(&mp->addr)) {
+ 		rhashtable_remove_fast(&br->sg_port_tbl, &pg->rhnode,
+ 				       br_sg_port_rht_params);
+-		br_multicast_sg_del_exclude_ports(mp);
++		/* L2 entries share sg_port_tbl with S,G entries but have no
++		 * *,G/S,G EXCLUDE-mode semantics; their host membership is
++		 * managed explicitly via br_multicast_host_join()/leave() and
++		 * must not be cleared here when the last port group is removed.
 +		 */
-+		.flags = CLK_IS_CRITICAL,
-+	},
-+};
-+
-+static struct clk_regmap a9_ao_xtal = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = AO_OSCIN_CTRL,
-+		.mask = 0x1,
-+		.shift = 0,
-+	},
-+	/* ext_32k is from external PAD, do not automatically reparent */
-+	.hw.init = CLK_HW_INIT_PARENTS_DATA("ao_xtal",
-+			((const struct clk_parent_data []) {
-+				{ .hw = &a9_ao_xtal_in.hw },
-+				{ .fw_name = "ext_32k" }
-+			}), &clk_regmap_mux_ops, CLK_SET_RATE_NO_REPARENT),
-+};
-+
-+static struct clk_regmap a9_ao_sys = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = AO_OSCIN_CTRL,
-+		.mask = 0x1,
-+		.shift = 1,
-+	},
-+	.hw.init = CLK_HW_INIT_PARENTS_DATA("ao_sys",
-+			((const struct clk_parent_data []) {
-+				{ .hw = &a9_ao_xtal.hw },
-+				{ .fw_name = "sys" }
-+			}), &clk_regmap_mux_ops, 0),
-+};
-+
-+static const struct clk_parent_data a9_ao_pclk_parents = { .hw = &a9_ao_sys.hw };
-+
-+#define A9_AO_PCLK(_name, _bit, _flags)		       \
-+	MESON_PCLK(a9_ao_sys_##_name, AO_SYS_CLK0, _bit, \
-+		   &a9_ao_pclk_parents, _flags)
-+
-+/*
-+ * A9 integrates a low-power microprocessor (Always-on CPU: AOCPU). Some AO sys
-+ * clocks control the AOCPU modules. Mark the AOCPU-related clocks with
-+ * CLK_IS_CRITICAL to avoid them being disabled and impacting AOCPU functionality.
-+ * AOCPU-related clocks list:
-+ * - clktree
-+ * - rst_ctrl
-+ * - pad
-+ * - irq
-+ * - pwrctrl
-+ * - aocpu
-+ * - sram
-+ */
-+static A9_AO_PCLK(i3c,		0,	0);
-+static A9_AO_PCLK(rtc_reg,	1,	0);
-+static A9_AO_PCLK(clktree,	2,	CLK_IS_CRITICAL);
-+static A9_AO_PCLK(rst_ctrl,	3,	CLK_IS_CRITICAL);
-+static A9_AO_PCLK(pad,		4,	CLK_IS_CRITICAL);
-+static A9_AO_PCLK(rtc_dig,	5,	0);
-+static A9_AO_PCLK(irq,		6,	CLK_IS_CRITICAL);
-+static A9_AO_PCLK(pwrctrl,	7,	CLK_IS_CRITICAL);
-+static A9_AO_PCLK(pwm_a,	8,	0);
-+static A9_AO_PCLK(pwm_b,	9,	0);
-+static A9_AO_PCLK(pwm_c,	10,	0);
-+static A9_AO_PCLK(pwm_d,	11,	0);
-+static A9_AO_PCLK(pwm_e,	12,	0);
-+static A9_AO_PCLK(pwm_f,	13,	0);
-+static A9_AO_PCLK(pwm_g,	14,	0);
-+static A9_AO_PCLK(i2c_a,	15,	0);
-+static A9_AO_PCLK(i2c_b,	16,	0);
-+static A9_AO_PCLK(i2c_c,	17,	0);
-+static A9_AO_PCLK(i2c_d,	18,	0);
-+static A9_AO_PCLK(sed,		19,	0);
-+static A9_AO_PCLK(ir_ctrl,	20,	0);
-+static A9_AO_PCLK(uart_b,	21,	0);
-+static A9_AO_PCLK(uart_c,	22,	0);
-+static A9_AO_PCLK(uart_d,	23,	0);
-+static A9_AO_PCLK(uart_e,	24,	0);
-+static A9_AO_PCLK(spisg_0,	25,	0);
-+static A9_AO_PCLK(rtc_secure,	26,	0);
-+static A9_AO_PCLK(cec,		27,	0);
-+static A9_AO_PCLK(aocpu,	28,	CLK_IS_CRITICAL);
-+static A9_AO_PCLK(sram,		29,	CLK_IS_CRITICAL);
-+static A9_AO_PCLK(spisg_1,	30,	0);
-+static A9_AO_PCLK(spisg_2,	31,	0);
-+
-+static const struct clk_parent_data a9_ao_pwm_parents[] = {
-+	{ .hw = &a9_ao_xtal.hw },
-+	{ .fw_name = "fdiv5", },
-+	{ .fw_name = "fdiv4", },
-+	{ .fw_name = "fdiv3", }
-+};
-+
-+static A9_COMP_SEL(pwm_a, AO_PWM_CLK_A_CTRL, 9, 0x7, a9_ao_pwm_parents);
-+static A9_COMP_DIV(pwm_a, AO_PWM_CLK_A_CTRL, 0, 8);
-+static A9_COMP_GATE(pwm_a, AO_PWM_CLK_A_CTRL, 8);
-+
-+static A9_COMP_SEL(pwm_b, AO_PWM_CLK_B_CTRL, 9, 0x7, a9_ao_pwm_parents);
-+static A9_COMP_DIV(pwm_b, AO_PWM_CLK_B_CTRL, 0, 8);
-+static A9_COMP_GATE(pwm_b, AO_PWM_CLK_B_CTRL, 8);
-+
-+static A9_COMP_SEL(pwm_c, AO_PWM_CLK_C_CTRL, 9, 0x7, a9_ao_pwm_parents);
-+static A9_COMP_DIV(pwm_c, AO_PWM_CLK_C_CTRL, 0, 8);
-+static A9_COMP_GATE(pwm_c, AO_PWM_CLK_C_CTRL, 8);
-+
-+static A9_COMP_SEL(pwm_d, AO_PWM_CLK_D_CTRL, 9, 0x7, a9_ao_pwm_parents);
-+static A9_COMP_DIV(pwm_d, AO_PWM_CLK_D_CTRL, 0, 8);
-+static A9_COMP_GATE(pwm_d, AO_PWM_CLK_D_CTRL, 8);
-+
-+static A9_COMP_SEL(pwm_e, AO_PWM_CLK_E_CTRL, 9, 0x7, a9_ao_pwm_parents);
-+static A9_COMP_DIV(pwm_e, AO_PWM_CLK_E_CTRL, 0, 8);
-+static A9_COMP_GATE(pwm_e, AO_PWM_CLK_E_CTRL, 8);
-+
-+static A9_COMP_SEL(pwm_f, AO_PWM_CLK_F_CTRL, 9, 0x7, a9_ao_pwm_parents);
-+static A9_COMP_DIV(pwm_f, AO_PWM_CLK_F_CTRL, 0, 8);
-+static A9_COMP_GATE(pwm_f, AO_PWM_CLK_F_CTRL, 8);
-+
-+static A9_COMP_SEL(pwm_g, AO_PWM_CLK_G_CTRL, 9, 0x7, a9_ao_pwm_parents);
-+static A9_COMP_DIV(pwm_g, AO_PWM_CLK_G_CTRL, 0, 8);
-+static A9_COMP_GATE(pwm_g, AO_PWM_CLK_G_CTRL, 8);
-+
-+static struct clk_regmap a9_ao_rtc_dualdiv_in = {
-+	.data = &(struct clk_regmap_gate_data){
-+		.offset = AO_RTC_BY_OSCIN_CTRL0,
-+		.bit_idx = 31,
-+	},
-+	.hw.init = CLK_HW_INIT_HW("ao_rtc_dualdiv_in", &a9_ao_xtal.hw,
-+				   &clk_regmap_gate_ops, 0),
-+};
-+
-+static const struct meson_clk_dualdiv_param a9_ao_dualdiv_table[] = {
-+	{ 733, 732, 8, 11, 1 },
-+	{ /* sentinel */ }
-+};
-+
-+static struct clk_regmap a9_ao_rtc_dualdiv_div = {
-+	.data = &(struct meson_clk_dualdiv_data){
-+		.n1 = {
-+			.reg_off = AO_RTC_BY_OSCIN_CTRL0,
-+			.shift   = 0,
-+			.width   = 12,
-+		},
-+		.n2 = {
-+			.reg_off = AO_RTC_BY_OSCIN_CTRL0,
-+			.shift   = 12,
-+			.width   = 12,
-+		},
-+		.m1 = {
-+			.reg_off = AO_RTC_BY_OSCIN_CTRL1,
-+			.shift   = 0,
-+			.width   = 12,
-+		},
-+		.m2 = {
-+			.reg_off = AO_RTC_BY_OSCIN_CTRL1,
-+			.shift   = 12,
-+			.width   = 12,
-+		},
-+		.dual = {
-+			.reg_off = AO_RTC_BY_OSCIN_CTRL0,
-+			.shift   = 28,
-+			.width   = 1,
-+		},
-+		.table = a9_ao_dualdiv_table,
-+	},
-+	.hw.init = CLK_HW_INIT_HW("a9_ao_rtc_dualdiv_div", &a9_ao_rtc_dualdiv_in.hw,
-+				   &meson_clk_dualdiv_ops, 0),
-+};
-+
-+static struct clk_regmap a9_ao_rtc_dualdiv_sel = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = AO_RTC_BY_OSCIN_CTRL1,
-+		.mask = 0x1,
-+		.shift = 24,
-+	},
-+	.hw.init = CLK_HW_INIT_PARENTS_HW("ao_rtc_dualdiv_sel",
-+			((const struct clk_hw *[]) {
-+				&a9_ao_rtc_dualdiv_div.hw,
-+				&a9_ao_rtc_dualdiv_in.hw,
-+			}), &clk_regmap_mux_ops, CLK_SET_RATE_PARENT),
-+};
-+
-+static struct clk_regmap a9_ao_rtc_dualdiv = {
-+	.data = &(struct clk_regmap_gate_data){
-+		.offset = AO_RTC_BY_OSCIN_CTRL0,
-+		.bit_idx = 30,
-+	},
-+	.hw.init = CLK_HW_INIT_HW("ao_rtc_dualdiv", &a9_ao_rtc_dualdiv_sel.hw,
-+				   &clk_regmap_gate_ops, CLK_SET_RATE_PARENT),
-+};
-+
-+static struct clk_regmap a9_ao_rtc = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = AO_RTC_BY_OSCIN_CTRL1,
-+		.mask = 0x1,
-+		.shift = 30,
-+	},
-+	.hw.init = CLK_HW_INIT_PARENTS_HW("ao_rtc",
-+			((const struct clk_hw *[]) {
-+				&a9_ao_xtal.hw,
-+				&a9_ao_rtc_dualdiv.hw,
-+			}), &clk_regmap_mux_ops, CLK_SET_RATE_PARENT),
-+};
-+
-+static struct clk_regmap a9_ao_cec_dualdiv_in = {
-+	.data = &(struct clk_regmap_gate_data){
-+		.offset = AO_CEC_CTRL0,
-+		.bit_idx = 31,
-+	},
-+	.hw.init = CLK_HW_INIT_HW("ao_cec_dualdiv_in", &a9_ao_xtal.hw,
-+				   &clk_regmap_gate_ops, 0),
-+};
-+
-+static struct clk_regmap a9_ao_cec_dualdiv_div = {
-+	.data = &(struct meson_clk_dualdiv_data){
-+		.n1 = {
-+			.reg_off = AO_CEC_CTRL0,
-+			.shift   = 0,
-+			.width   = 12,
-+		},
-+		.n2 = {
-+			.reg_off = AO_CEC_CTRL0,
-+			.shift   = 12,
-+			.width   = 12,
-+		},
-+		.m1 = {
-+			.reg_off = AO_CEC_CTRL1,
-+			.shift   = 0,
-+			.width   = 12,
-+		},
-+		.m2 = {
-+			.reg_off = AO_CEC_CTRL1,
-+			.shift   = 12,
-+			.width   = 12,
-+		},
-+		.dual = {
-+			.reg_off = AO_CEC_CTRL0,
-+			.shift   = 28,
-+			.width   = 1,
-+		},
-+		.table = a9_ao_dualdiv_table,
-+	},
-+	.hw.init = CLK_HW_INIT_HW("ao_cec_dualdiv_div", &a9_ao_cec_dualdiv_in.hw,
-+				   &meson_clk_dualdiv_ops, 0),
-+};
-+
-+static struct clk_regmap a9_ao_cec_dualdiv_sel = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = AO_CEC_CTRL1,
-+		.mask = 0x1,
-+		.shift = 24,
-+	},
-+	.hw.init = CLK_HW_INIT_PARENTS_HW("ao_cec_dualdiv_sel",
-+			((const struct clk_hw *[]) {
-+				&a9_ao_cec_dualdiv_div.hw,
-+				&a9_ao_cec_dualdiv_in.hw,
-+			}), &clk_regmap_mux_ops, CLK_SET_RATE_PARENT),
-+};
-+
-+static struct clk_regmap a9_ao_cec_dualdiv = {
-+	.data = &(struct clk_regmap_gate_data){
-+		.offset = AO_CEC_CTRL0,
-+		.bit_idx = 30,
-+	},
-+	.hw.init = CLK_HW_INIT_HW("ao_cec_dualdiv", &a9_ao_cec_dualdiv_sel.hw,
-+				   &clk_regmap_gate_ops, CLK_SET_RATE_PARENT),
-+};
-+
-+static struct clk_regmap a9_ao_cec = {
-+	.data = &(struct clk_regmap_mux_data) {
-+		.offset = AO_CEC_CTRL1,
-+		.mask = 0x1,
-+		.shift = 30,
-+	},
-+	.hw.init = CLK_HW_INIT_PARENTS_HW("ao_cec",
-+			((const struct clk_hw *[]) {
-+				&a9_ao_cec_dualdiv.hw,
-+				&a9_ao_rtc.hw,
-+			}), &clk_regmap_mux_ops, CLK_SET_RATE_PARENT),
-+};
-+
-+static struct clk_hw *a9_ao_hw_clks[] = {
-+	[CLKID_AO_XTAL_IN]		= &a9_ao_xtal_in.hw,
-+	[CLKID_AO_XTAL]			= &a9_ao_xtal.hw,
-+	[CLKID_AO_SYS]			= &a9_ao_sys.hw,
-+	[CLKID_AO_SYS_I3C]		= &a9_ao_sys_i3c.hw,
-+	[CLKID_AO_SYS_RTC_REG]		= &a9_ao_sys_rtc_reg.hw,
-+	[CLKID_AO_SYS_CLKTREE]		= &a9_ao_sys_clktree.hw,
-+	[CLKID_AO_SYS_RST_CTRL]		= &a9_ao_sys_rst_ctrl.hw,
-+	[CLKID_AO_SYS_PAD]		= &a9_ao_sys_pad.hw,
-+	[CLKID_AO_SYS_RTC_DIG]		= &a9_ao_sys_rtc_dig.hw,
-+	[CLKID_AO_SYS_IRQ]		= &a9_ao_sys_irq.hw,
-+	[CLKID_AO_SYS_PWRCTRL]		= &a9_ao_sys_pwrctrl.hw,
-+	[CLKID_AO_SYS_PWM_A]		= &a9_ao_sys_pwm_a.hw,
-+	[CLKID_AO_SYS_PWM_B]		= &a9_ao_sys_pwm_b.hw,
-+	[CLKID_AO_SYS_PWM_C]		= &a9_ao_sys_pwm_c.hw,
-+	[CLKID_AO_SYS_PWM_D]		= &a9_ao_sys_pwm_d.hw,
-+	[CLKID_AO_SYS_PWM_E]		= &a9_ao_sys_pwm_e.hw,
-+	[CLKID_AO_SYS_PWM_F]		= &a9_ao_sys_pwm_f.hw,
-+	[CLKID_AO_SYS_PWM_G]		= &a9_ao_sys_pwm_g.hw,
-+	[CLKID_AO_SYS_I2C_A]		= &a9_ao_sys_i2c_a.hw,
-+	[CLKID_AO_SYS_I2C_B]		= &a9_ao_sys_i2c_b.hw,
-+	[CLKID_AO_SYS_I2C_C]		= &a9_ao_sys_i2c_c.hw,
-+	[CLKID_AO_SYS_I2C_D]		= &a9_ao_sys_i2c_d.hw,
-+	[CLKID_AO_SYS_SED]		= &a9_ao_sys_sed.hw,
-+	[CLKID_AO_SYS_IR_CTRL]		= &a9_ao_sys_ir_ctrl.hw,
-+	[CLKID_AO_SYS_UART_B]		= &a9_ao_sys_uart_b.hw,
-+	[CLKID_AO_SYS_UART_C]		= &a9_ao_sys_uart_c.hw,
-+	[CLKID_AO_SYS_UART_D]		= &a9_ao_sys_uart_d.hw,
-+	[CLKID_AO_SYS_UART_E]		= &a9_ao_sys_uart_e.hw,
-+	[CLKID_AO_SYS_SPISG_0]		= &a9_ao_sys_spisg_0.hw,
-+	[CLKID_AO_SYS_RTC_SECURE]	= &a9_ao_sys_rtc_secure.hw,
-+	[CLKID_AO_SYS_CEC]		= &a9_ao_sys_cec.hw,
-+	[CLKID_AO_SYS_AOCPU]		= &a9_ao_sys_aocpu.hw,
-+	[CLKID_AO_SYS_SRAM]		= &a9_ao_sys_sram.hw,
-+	[CLKID_AO_SYS_SPISG_1]		= &a9_ao_sys_spisg_1.hw,
-+	[CLKID_AO_SYS_SPISG_2]		= &a9_ao_sys_spisg_2.hw,
-+	[CLKID_AO_PWM_A_SEL]		= &a9_ao_pwm_a_sel.hw,
-+	[CLKID_AO_PWM_A_DIV]		= &a9_ao_pwm_a_div.hw,
-+	[CLKID_AO_PWM_A]		= &a9_ao_pwm_a.hw,
-+	[CLKID_AO_PWM_B_SEL]		= &a9_ao_pwm_b_sel.hw,
-+	[CLKID_AO_PWM_B_DIV]		= &a9_ao_pwm_b_div.hw,
-+	[CLKID_AO_PWM_B]		= &a9_ao_pwm_b.hw,
-+	[CLKID_AO_PWM_C_SEL]		= &a9_ao_pwm_c_sel.hw,
-+	[CLKID_AO_PWM_C_DIV]		= &a9_ao_pwm_c_div.hw,
-+	[CLKID_AO_PWM_C]		= &a9_ao_pwm_c.hw,
-+	[CLKID_AO_PWM_D_SEL]		= &a9_ao_pwm_d_sel.hw,
-+	[CLKID_AO_PWM_D_DIV]		= &a9_ao_pwm_d_div.hw,
-+	[CLKID_AO_PWM_D]		= &a9_ao_pwm_d.hw,
-+	[CLKID_AO_PWM_E_SEL]		= &a9_ao_pwm_e_sel.hw,
-+	[CLKID_AO_PWM_E_DIV]		= &a9_ao_pwm_e_div.hw,
-+	[CLKID_AO_PWM_E]		= &a9_ao_pwm_e.hw,
-+	[CLKID_AO_PWM_F_SEL]		= &a9_ao_pwm_f_sel.hw,
-+	[CLKID_AO_PWM_F_DIV]		= &a9_ao_pwm_f_div.hw,
-+	[CLKID_AO_PWM_F]		= &a9_ao_pwm_f.hw,
-+	[CLKID_AO_PWM_G_SEL]		= &a9_ao_pwm_g_sel.hw,
-+	[CLKID_AO_PWM_G_DIV]		= &a9_ao_pwm_g_div.hw,
-+	[CLKID_AO_PWM_G]		= &a9_ao_pwm_g.hw,
-+	[CLKID_AO_RTC_DUALDIV_IN]	= &a9_ao_rtc_dualdiv_in.hw,
-+	[CLKID_AO_RTC_DUALDIV_DIV]	= &a9_ao_rtc_dualdiv_div.hw,
-+	[CLKID_AO_RTC_DUALDIV_SEL]	= &a9_ao_rtc_dualdiv_sel.hw,
-+	[CLKID_AO_RTC_DUALDIV]		= &a9_ao_rtc_dualdiv.hw,
-+	[CLKID_AO_RTC]			= &a9_ao_rtc.hw,
-+	[CLKID_AO_CEC_DUALDIV_IN]	= &a9_ao_cec_dualdiv_in.hw,
-+	[CLKID_AO_CEC_DUALDIV_DIV]	= &a9_ao_cec_dualdiv_div.hw,
-+	[CLKID_AO_CEC_DUALDIV_SEL]	= &a9_ao_cec_dualdiv_sel.hw,
-+	[CLKID_AO_CEC_DUALDIV]		= &a9_ao_cec_dualdiv.hw,
-+	[CLKID_AO_CEC]			= &a9_ao_cec.hw,
-+};
-+
-+static const struct meson_clkc_data a9_ao_clkc_data = {
-+	.hw_clks = {
-+		.hws = a9_ao_hw_clks,
-+		.num = ARRAY_SIZE(a9_ao_hw_clks),
-+	},
-+};
-+
-+static const struct of_device_id a9_ao_clkc_match_table[] = {
-+	{
-+		.compatible	= "amlogic,a9-aoclkc",
-+		.data		= &a9_ao_clkc_data,
-+	},
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, a9_ao_clkc_match_table);
-+
-+static struct platform_driver a9_ao_clkc_driver = {
-+	.probe		= meson_clkc_mmio_probe,
-+	.driver		= {
-+		.name	= "a9-aoclkc",
-+		.of_match_table = a9_ao_clkc_match_table,
-+	},
-+};
-+module_platform_driver(a9_ao_clkc_driver);
-+
-+MODULE_DESCRIPTION("Amlogic A9 Always-ON Clock Controller driver");
-+MODULE_AUTHOR("Jian Hu <jian.hu@amlogic.com>");
-+MODULE_LICENSE("GPL");
-+MODULE_IMPORT_NS("CLK_MESON");
++		if (!br_group_is_l2(&mp->addr))
++			br_multicast_sg_del_exclude_ports(mp);
+ 	} else {
+ 		br_multicast_star_g_handle_mode(pg, MCAST_INCLUDE);
+ 	}
 
+---
+base-commit: 022bdd9c0d036863c4bacd1688b73c6be3001cee
+change-id: 20260609-mdb_l2_host_joined_fix-fb2de21580c7
+
+Best regards,
 -- 
-2.47.1
+Cedric Jehasse <cedric.jehasse@luminex.be>
 
