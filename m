@@ -1,329 +1,176 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Thu, 11 Jun 2026 13:42:26 -0500
-Subject: [PATCH v6] scsi: target: bound PR-OUT TransportID parsing to the
- received buffer
+From: Alex Roberts <alex.roberts109@outlook.com>
+Date: Thu, 11 Jun 2026 13:59:10 -0500
+Subject: [PATCH] Add LoadPin support for eBPF program loading
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260611-b4-disp-9f20739e-v6-1-f6630e2aae44@proton.me>
-X-B4-Tracking: v=1; b=H4sIAJEBK2oC/x3MMQqAMAxA0atIZgNtlEq9ijhommoWlRZEKN7d4
- viG/wtkSSoZxqZAkluznkeFaxvgfTk2QQ3VQIaccdbi2mPQfKGPZIbOC7Ijtp5XChyhZleSqM+
- /nOb3/QA2k3J7YgAAAA==
-To: James Bottomley <jejb@linux.ibm.com>, 
- Mike Christie <michael.christie@oracle.com>, 
- "Martin K. Petersen" <martin.petersen@oracle.com>
-Cc: linux-scsi@vger.kernel.org, target-devel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, David Disseldorp <ddiss@suse.de>, 
- John Garry <john.g.garry@oracle.com>, 
- Maurizio Lombardi <mlombard@redhat.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781203345; l=12609;
- i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=nsxrKCb3UtxX4JkOSI2wFRvBHFdqWp9SU0RZVzx58FM=;
- b=XWoWJP2W5Rix1tadiX4wORZcGp4i8hXdxbKopOJTjBXeu1Qrir9cK9vyqnqVrzEd3zL5qbo6V
- Ow5lA0TNECtBqTugaLLBYdisLFEl8UVOWOe7uz6KyJ9ogKtBgFsbDdd
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260611-b4-rfc-loadpin-ebpf-v1-1-11a6c8e6170d@outlook.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWNQQrCMBBFr1Jm7UBSaxCvIi4yk4kdCWlIrAild
+ zfq8n1472/QpKo0uAwbVHlp0yV3sIcBePb5LqihM4xmdMZZizRhjYxp8aFoRqES0ZwdTzYIncw
+ Rukm+CVL1mefu5jWlPpYqUd+/q+vtz22lh/Dz24d9/wBoSuMPjAAAAA==
+X-Change-ID: 20260611-b4-rfc-loadpin-ebpf-086c41deb503
+To: Kees Cook <kees@kernel.org>, Paul Moore <paul@paul-moore.com>, 
+ James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>
+Cc: linux-kernel@vger.kernel.org, linux-security-module@vger.kernel.org, 
+ bpf@vger.kernel.org, Alexei Starovoitov <ast@kernel.org>, 
+ KP Singh <kpsingh@kernel.org>, Alex Roberts <alex.roberts109@outlook.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6115;
+ i=alex.roberts109@outlook.com; h=from:subject:message-id;
+ bh=kja/4mgWlMnUqr7hZArx3pkWuFe/YGd2AE8OlioL1Yg=;
+ b=owGbwMvMwCEWzZjUEpRpN5nxtFoSQ5Y2a1Py18mKdw6lNof73xXkv/9m/qsTW2v/MIZvU2wrS
+ fmo4+3UUcrCIMbBICumyMKnyPP7sYle/asFy6Nh5rAygQxh4OIUgIkIrmZkmCmpFbGhfarsP8mL
+ Gx9ynfE+kfGx+UXSqwYTw+15E3WtjRgZjvWZHJCX+HfK+2vSt7Ajv72Wa6s8dT2+o/LWF+OU115
+ H2QE=
+X-Developer-Key: i=alex.roberts109@outlook.com; a=openpgp;
+ fpr=0E210CFBE3342E7FEAA0A75B5B01628452693E93
+X-Endpoint-Received: by B4 Relay for alex.roberts109@outlook.com/default with auth_id=817
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-core_scsi3_decode_spec_i_port() and core_scsi3_emulate_register_and_move()
-hand the raw PERSISTENT RESERVE OUT parameter buffer to
-target_parse_pr_out_transport_id() without telling it how many bytes are
-valid.  For an iSCSI TransportID (FORMAT CODE 01b),
-iscsi_parse_pr_out_transport_id() locates the ",i,0x" ISID separator with
-an unbounded strstr() (and on the error path prints the name with a
-further unbounded "%s").  An initiator can submit a TransportID whose
-iSCSI name contains neither a ",i,0x" substring nor a NUL terminator,
-filling the parameter list to its end, so the scan runs off the end of the
-buffer.
+Add LoadPin LSM hook to bpf_prog_load to prevent loading of BPF
+programs from untrusted filesystems
 
-When the parameter list spans more than one page the buffer is a
-multi-page vmap (transport_kmap_data_sg()), so the over-read walks into
-the trailing vmalloc guard page and oopses (KASAN: vmalloc-out-of-bounds
-in strstr).  It is reachable by any fabric that delivers a PR OUT to a
-device exported through an iSCSI TPG, including a guest via vhost-scsi.
-
-Pass the number of received bytes down to the parser and validate the
-iSCSI TransportID's own self-described length (ADDITIONAL LENGTH + 4)
-once, up front: reject it if it is below the spc4r17 minimum or larger
-than the received buffer, then bound the separator search, the ISID walk
-and the name copy by that length.  This is the length check the callers
-already perform after the parse (core_scsi3_decode_spec_i_port() compares
-tid_len against tpdl, core_scsi3_emulate_register_and_move() validates it
-against data_length), moved ahead of the scan.  Also drop the unbounded
-"%s" of the unterminated name.
-
-Add per-format explicit name-length checks before copying into i_str,
-rather than silently truncating with min_t: for FORMAT CODE 00b reject
-if the descriptor body (tid_len - 4 bytes) cannot fit in
-i_str[TRANSPORT_IQN_LEN]; for FORMAT CODE 01b reject if the name portion
-(from &buf[4] up to the separator) cannot fit.  Both checks make the
-bounds intent explicit at each format branch.
-
-While here, also reject a FORMAT CODE 01b TransportID whose ",i,0x"
-separator sits at the very end of the descriptor: that leaves an empty
-ISID and points the returned port nexus pointer at buf + tid_len, one past
-the descriptor, which the registration code (__core_scsi3_locate_pr_reg(),
-__core_scsi3_alloc_registration()) then dereferences as the ISID string --
-the same over-read of the parameter buffer for a malformed descriptor.
-
-Fixes: c66ac9db8d4a ("[SCSI] target: Add LIO target core v4.0.0-rc6")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
-Reviewed-by: John Garry <john.g.garry@oracle.com>
-Reviewed-by: David Disseldorp <ddiss@suse.de>
 ---
-This fix was developed and reviewed under embargo on security@kernel.org
-with the SCSI target maintainers and reviewers (John Garry, David
-Disseldorp); the 7-day embargo has elapsed, so it is reposted here on the
-public lists for pickup.  No functional change since that review -- the
-Reviewed-by tags are carried in the patch.
+There have been several efforts to provide a trust mechanism for eBPF programs –
+particularly in the form of a signed program. After many discussions, BPF
+Signing became supported [1].
 
-Impact / reproducer (CONFIG_KASAN_VMALLOC, A/B-proven):
+This patch series intends to provide an alternative trust mechanism for eBPF
+programs using LoadPin and the LoadPin dm-verity support. The approach is to pin
+eBPF userspace loaders to a single filesystem or to one or more dm-verity
+integrity protected filesystems. This is similar to the existing  Loadpin+verity
+implementation and approach of e.g., loading unsigned kernel modules or kexec
+images from a pinned trusted filesystem [2].
 
-A PERSISTENT RESERVE OUT with SPEC_I_PT=1 and a multi-page (>= 2 page)
-parameter list carrying a single FORMAT CODE 01b iSCSI TransportID whose
-iSCSI name is all 'A's -- no ",i,0x" substring and no NUL terminator --
-makes the unbounded strstr() walk off the multi-page vmap into the
-trailing vmalloc guard page:
+When a userspace application attempts to load a BPF program, LoadPin
+first checks whether the exe_file is located on the pinned root, if so
+bpf_prog_load is allowed. Otherwise, Loadpin denies bpf_prog_load. Additionally,
+if verity support is enabled, LoadPin determines whether the exe_file is located
+on a verity backed device and whether the root digest of that device is in the
+list of trusted digests. bpf_prog_load is allowed if the verity device has a
+trusted root digest.
 
-  BUG: KASAN: vmalloc-out-of-bounds in strstr
-   target_parse_pr_out_transport_id [target_core_mod]
-   core_scsi3_decode_spec_i_port [target_core_mod]
-   core_scsi3_emulate_pro_register [target_core_mod]
-   target_scsi3_emulate_pr_out [target_core_mod]
-   __target_execute_cmd [target_core_mod]
-   iscsit_get_rx_pdu [iscsi_target_mod]
+Background:
+In a secure boot environment, secure boot can be extended to the root filesystem
+by means of dm-verity. Placing userspace eBPF programs on trusted filesystems
+and restricting their use to a trusted filesystem implicitly extends the trust
+to the underlying BPF program itself, without having to sign the bytecode.
+Rather than sign each program and load keys into the kernel keyring, it can be
+sufficient to sign the filesystem.
 
-It is reachable by any fabric that delivers a PR OUT to a device exported
-through an iSCSI TPG (iSCSI native, tcm_loop, and guest->host via
-vhost-scsi were all reproduced).  With the patch the same input is
-rejected cleanly (CHECK CONDITION, INVALID FIELD IN PARAMETER LIST) and a
-well-formed TransportID still parses; no KASAN on any arm.
+Additional Considerations:
+Because the userspace loader itself defines the filesystem to pin from, it
+should be acknowledged that this does not necessarily solve the dynamically
+generated eBPF usecase. For example, if the pinned filesystem includes bpftrace
+or other userspace applications that dynamically generate and load eBPF
+bytecode, this trust mechanism does not apply. But for systems that either
+   1) remove/do-not-provide dynamically generating programs or
+   2) loadpin filesystem(s) that exclude such programs,
+then it can be reasoned that only trusted bytecode is loaded.
 
-Changelog:
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/bpf/bpf-next.git/commit/?h=for-next&id=58a5820582e4c809dd26b3f2d396cf072411d6e8
+[2] https://lore.kernel.org/lkml/20220517163437.v4.2.I01c67af41d2f6525c6d023101671d7339a9bc8b5@changeid/
 
-v6: first public posting (v1..v5 were embargoed on security@kernel.org);
-    dropped the redundant Reported-by (it equalled the Signed-off-by);
-    collected Reviewed-by from John Garry and David Disseldorp; reflowed
-    one log message onto a single line to clear a checkpatch warning.  No
-    functional change.
-v5: cite spc4r17 7.5.4.6; move the FORMAT CODE 01b name-length check to the
-    separator so a legal 212..223-byte name is no longer rejected.
-v4: split the shared min_t() name copy into explicit per-format
-    name-length rejects (00b on tid_len - 4, 01b on the name portion).
-v3: keep the name copy bounded by TRANSPORT_IQN_LEN (not an up-front
-    tid_len cap, which would reject legal long iSCSI names); reject an
-    empty ISID (",i,0x" ending the descriptor).
-v2: validate the self-described TransportID length up front and bound the
-    separator search, the ISID walk and the name copy by it; drop the
-    unbounded "%s" print of the unterminated name.
+Signed-off-by: Alex Roberts <alex.roberts109@outlook.com>
 ---
- drivers/target/target_core_fabric_lib.c | 89 +++++++++++++++++++++++++--------
- drivers/target/target_core_internal.h   |  3 +-
- drivers/target/target_core_pr.c         |  4 +-
- 3 files changed, 73 insertions(+), 23 deletions(-)
+ include/linux/kernel_read_file.h |  1 +
+ security/loadpin/Kconfig         | 12 ++++++++++++
+ security/loadpin/loadpin.c       | 29 +++++++++++++++++++++++++++++
+ 3 files changed, 42 insertions(+)
 
-diff --git a/drivers/target/target_core_fabric_lib.c b/drivers/target/target_core_fabric_lib.c
-index 87c5d26a5089..2853b95b2c59 100644
---- a/drivers/target/target_core_fabric_lib.c
-+++ b/drivers/target/target_core_fabric_lib.c
-@@ -290,13 +290,24 @@ static void sbp_parse_pr_out_transport_id(char *buf, char *i_str)
- static bool iscsi_parse_pr_out_transport_id(
- 	struct se_portal_group *se_tpg,
- 	char *buf,
-+	u32 buf_len,
- 	u32 *out_tid_len,
- 	char **port_nexus_ptr,
- 	char *i_str)
- {
- 	char *p;
-+	u32 tid_len;
- 	int i;
--	u8 format_code = (buf[0] & 0xc0);
-+	u8 format_code;
-+
-+	/*
-+	 * The 4-byte iSCSI TransportID header (FORMAT CODE + 2-byte ADDITIONAL
-+	 * LENGTH) must be present before any of it can be parsed.
-+	 */
-+	if (buf_len < 4)
-+		return false;
-+
-+	format_code = buf[0] & 0xc0;
- 	/*
- 	 * Check for FORMAT CODE 00b or 01b from spc4r17, section 7.5.4.6:
- 	 *
-@@ -316,15 +327,17 @@ static bool iscsi_parse_pr_out_transport_id(
- 		return false;
- 	}
- 	/*
--	 * If the caller wants the TransportID Length, we set that value for the
--	 * entire iSCSI Tarnsport ID now.
-+	 * Reconstruct the self-described TransportID length from the ADDITIONAL
-+	 * LENGTH field plus the 4-byte header.  Reject it if it is below the
-+	 * spc4r17 section 7.5.4.6 minimum (ADDITIONAL LENGTH shall be at least
-+	 * 20) or if it runs past the bytes actually received, so that every
-+	 * access below stays inside the TransportID.
- 	 */
--	if (out_tid_len) {
--		/* The shift works thanks to integer promotion rules */
--		*out_tid_len = get_unaligned_be16(&buf[2]);
--		/* Add four bytes for iSCSI Transport ID header */
--		*out_tid_len += 4;
--	}
-+	tid_len = get_unaligned_be16(&buf[2]) + 4;
-+	if (tid_len < 24 || tid_len > buf_len)
-+		return false;
-+	if (out_tid_len)
-+		*out_tid_len = tid_len;
+diff --git a/include/linux/kernel_read_file.h b/include/linux/kernel_read_file.h
+index d613a7b4dd35..75cbd514562f 100644
+--- a/include/linux/kernel_read_file.h
++++ b/include/linux/kernel_read_file.h
+@@ -15,6 +15,7 @@
+ 	id(POLICY, security-policy)		\
+ 	id(X509_CERTIFICATE, x509-certificate)	\
+ 	id(MODULE_COMPRESSED, kernel-module-compressed) \
++	id(EBPF, ebpf) \
+ 	id(MAX_ID, )
  
- 	/*
- 	 * Check for ',i,0x' separator between iSCSI Name and iSCSI Initiator
-@@ -332,16 +345,32 @@ static bool iscsi_parse_pr_out_transport_id(
- 	 * format.
- 	 */
- 	if (format_code == 0x40) {
--		p = strstr(&buf[4], ",i,0x");
-+		p = strnstr(&buf[4], ",i,0x", tid_len - 4);
- 		if (!p) {
--			pr_err("Unable to locate \",i,0x\" separator"
--				" for Initiator port identifier: %s\n",
--				&buf[4]);
-+			pr_err("Unable to locate \",i,0x\" separator in iSCSI TransportID\n");
-+			return false;
-+		}
-+		/*
-+		 * The iSCSI name runs from &buf[4] up to the separator; reject it
-+		 * if it cannot fit in i_str[TRANSPORT_IQN_LEN].
-+		 */
-+		if (p - &buf[4] >= TRANSPORT_IQN_LEN) {
-+			pr_err("iSCSI Initiator port name too long in TransportID\n");
- 			return false;
- 		}
- 		*p = '\0'; /* Terminate iSCSI Name */
- 		p += 5; /* Skip over ",i,0x" separator */
+ #define __fid_enumify(ENUM, dummy) READING_ ## ENUM,
+diff --git a/security/loadpin/Kconfig b/security/loadpin/Kconfig
+index aef63d3e30df..be0754735d5d 100644
+--- a/security/loadpin/Kconfig
++++ b/security/loadpin/Kconfig
+@@ -42,3 +42,15 @@ config SECURITY_LOADPIN_VERITY
  
-+		/*
-+		 * The ISID must follow the separator.  A ",i,0x" sitting at the
-+		 * very end of the TransportID leaves no ISID and would point the
-+		 * port nexus at buf + tid_len, i.e. past the descriptor, which
-+		 * the registration code then reads as the ISID string.
-+		 */
-+		if (p >= buf + tid_len) {
-+			pr_err("Missing ISID in iSCSI Initiator port TransportID\n");
-+			return false;
-+		}
- 		*port_nexus_ptr = p;
- 		/*
- 		 * Go ahead and do the lower case conversion of the received
-@@ -349,7 +378,7 @@ static bool iscsi_parse_pr_out_transport_id(
- 		 * for comparison against the running iSCSI session's ISID from
- 		 * iscsi_target.c:lio_sess_get_initiator_sid()
- 		 */
--		for (i = 0; i < 12; i++) {
-+		for (i = 0; i < 12 && p < buf + tid_len; i++) {
- 			/*
- 			 * The first ISCSI INITIATOR SESSION ID field byte
- 			 * containing an ASCII null character terminates the
-@@ -367,10 +396,22 @@ static bool iscsi_parse_pr_out_transport_id(
- 			*p = tolower(*p);
- 			p++;
- 		}
--	} else
-+		strscpy(i_str, &buf[4], TRANSPORT_IQN_LEN);
-+	} else {
- 		*port_nexus_ptr = NULL;
--
--	strscpy(i_str, &buf[4], TRANSPORT_IQN_LEN);
-+		/*
-+		 * FORMAT CODE 00b: the name occupies buf[4..tid_len-1].  The
-+		 * declared length tid_len - 4 must fit in i_str[TRANSPORT_IQN_LEN].
-+		 * (For 01b the same tid_len bound would be over-restrictive: the
-+		 * descriptor also carries the separator and ISID, so a legal
-+		 * <=223-byte name gives tid_len up to 244.)
-+		 */
-+		if (tid_len - 4 >= TRANSPORT_IQN_LEN) {
-+			pr_err("iSCSI Initiator port name too long in TransportID\n");
-+			return false;
-+		}
-+		strscpy(i_str, &buf[4], tid_len - 4);
-+	}
- 	return true;
+ 	  This is followed by the verity digests, with one digest per
+ 	  line.
++
++config SECURITY_LOADPIN_EBPF
++	bool "Pin ebpf programs to one filesystem"
++	depends on SECURITY_LOADPIN
++	help
++	  eBPF program loading is pinned to the first filesystem from which the
++	  application loading the progam resides. When enabled, applications on
++	  other filesystems that attempt to load an eBPF program will be rejected.
++	  This is best used when applications that load eBPF programs reside on a
++	  read-only filesystem from which tools for dynamically generating eBPF
++	  programs such as bpftrace are not installed. This will not restrict the
++	  kernel from loading a bpf program.
+\ No newline at end of file
+diff --git a/security/loadpin/loadpin.c b/security/loadpin/loadpin.c
+index f71861f98e1a..47fd7e247edb 100644
+--- a/security/loadpin/loadpin.c
++++ b/security/loadpin/loadpin.c
+@@ -23,6 +23,10 @@
+ #include <uapi/linux/loadpin.h>
+ #include <uapi/linux/lsm.h>
+ 
++#ifdef CONFIG_SECURITY_LOADPIN_EBPF
++#include <linux/bpf.h>
++#endif /* CONFIG_SECURITY_LOADPIN_BPF */
++
+ #define VERITY_DIGEST_FILE_HEADER "# LOADPIN_TRUSTED_VERITY_ROOT_DIGESTS"
+ 
+ static void report_load(const char *origin, struct file *file, char *operation)
+@@ -204,6 +208,28 @@ static int loadpin_load_data(enum kernel_load_data_id id, bool contents)
+ 	return loadpin_check(NULL, (enum kernel_read_file_id) id);
  }
  
-@@ -420,8 +461,16 @@ int target_get_pr_transport_id(struct se_node_acl *nacl,
- }
- 
- bool target_parse_pr_out_transport_id(struct se_portal_group *tpg,
--		char *buf, u32 *out_tid_len, char **port_nexus_ptr, char *i_str)
-+		char *buf, u32 buf_len, u32 *out_tid_len,
-+		char **port_nexus_ptr, char *i_str)
- {
-+	/*
-+	 * The fixed-length SAS/SRP/FCP/SBP TransportIDs are 24 bytes; the iSCSI
-+	 * format is variable and bounds itself against buf_len below.
-+	 */
-+	if (tpg->proto_id != SCSI_PROTOCOL_ISCSI && buf_len < 24)
-+		return false;
++#ifdef CONFIG_SECURITY_LOADPIN_EBPF
++static int loadpin_bpf_prog_load(struct bpf_prog *prog, union bpf_attr *attr,
++				  struct bpf_token *token, bool is_kernel)
++{
++	int res = 0;
++	struct file *exe_file = NULL;
++	struct mm_struct *mm = current->mm;
 +
- 	switch (tpg->proto_id) {
- 	case SCSI_PROTOCOL_SAS:
- 		/*
-@@ -440,8 +489,8 @@ bool target_parse_pr_out_transport_id(struct se_portal_group *tpg,
- 		sbp_parse_pr_out_transport_id(buf, i_str);
- 		break;
- 	case SCSI_PROTOCOL_ISCSI:
--		return iscsi_parse_pr_out_transport_id(tpg, buf, out_tid_len,
--					port_nexus_ptr, i_str);
-+		return iscsi_parse_pr_out_transport_id(tpg, buf, buf_len,
-+					out_tid_len, port_nexus_ptr, i_str);
- 	default:
- 		pr_err("Unknown proto_id: 0x%02x\n", tpg->proto_id);
- 		return false;
-diff --git a/drivers/target/target_core_internal.h b/drivers/target/target_core_internal.h
-index 763e6d26e187..f0886ea29034 100644
---- a/drivers/target/target_core_internal.h
-+++ b/drivers/target/target_core_internal.h
-@@ -104,7 +104,8 @@ int	target_get_pr_transport_id(struct se_node_acl *nacl,
- 		struct t10_pr_registration *pr_reg, int *format_code,
- 		unsigned char *buf);
- bool target_parse_pr_out_transport_id(struct se_portal_group *tpg,
--		char *buf, u32 *out_tid_len, char **port_nexus_ptr, char *i_str);
-+		char *buf, u32 buf_len, u32 *out_tid_len,
-+		char **port_nexus_ptr, char *i_str);
++	if (is_kernel || !mm)
++		return 0;
++
++	exe_file = get_mm_exe_file(mm);
++	if (!exe_file)
++		return 0;
++
++	res = loadpin_check(exe_file, READING_EBPF);
++	fput(exe_file);
++
++	return res;
++}
++#endif /* CONFIG_SECURITY_LOADPIN_EBPF */
++
+ static const struct lsm_id loadpin_lsmid = {
+ 	.name = "loadpin",
+ 	.id = LSM_ID_LOADPIN,
+@@ -213,6 +239,9 @@ static struct security_hook_list loadpin_hooks[] __ro_after_init = {
+ 	LSM_HOOK_INIT(sb_free_security, loadpin_sb_free_security),
+ 	LSM_HOOK_INIT(kernel_read_file, loadpin_read_file),
+ 	LSM_HOOK_INIT(kernel_load_data, loadpin_load_data),
++#ifdef CONFIG_SECURITY_LOADPIN_EBPF
++	LSM_HOOK_INIT(bpf_prog_load, loadpin_bpf_prog_load),
++#endif /* CONFIG_SECURITY_LOADPIN_EBPF */
+ };
  
- /* target_core_hba.c */
- struct se_hba *core_alloc_hba(const char *, u32, u32);
-diff --git a/drivers/target/target_core_pr.c b/drivers/target/target_core_pr.c
-index 11790f2c5d80..0b19997c2edd 100644
---- a/drivers/target/target_core_pr.c
-+++ b/drivers/target/target_core_pr.c
-@@ -1573,7 +1573,7 @@ core_scsi3_decode_spec_i_port(
- 
- 			iport_ptr = NULL;
- 			tid_found = target_parse_pr_out_transport_id(tmp_tpg,
--					ptr, &tid_len, &iport_ptr, i_str);
-+					ptr, tpdl, &tid_len, &iport_ptr, i_str);
- 			if (!tid_found)
- 				continue;
- 			/*
-@@ -3285,7 +3285,7 @@ core_scsi3_emulate_pro_register_and_move(struct se_cmd *cmd, u64 res_key,
- 		goto out;
- 	}
- 	tid_found = target_parse_pr_out_transport_id(dest_se_tpg,
--			&buf[24], &tmp_tid_len, &iport_ptr, initiator_str);
-+			&buf[24], tid_len, &tmp_tid_len, &iport_ptr, initiator_str);
- 	if (!tid_found) {
- 		pr_err("SPC-3 PR REGISTER_AND_MOVE: Unable to locate"
- 			" initiator_str from Transport ID\n");
+ static void __init parse_exclude(void)
 
 ---
-base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260611-b4-disp-9f20739e-c62c19cb2dcf
+base-commit: 122b52f0bab007ebeb414c8280c1def17b9ed1f4
+change-id: 20260611-b4-rfc-loadpin-ebpf-086c41deb503
 
 Best regards,
--- 
-Bryam Vargas <hexlabsecurity@proton.me>
+--  
+Alex Roberts <alex.roberts109@outlook.com>
 
