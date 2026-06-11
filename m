@@ -1,11 +1,11 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Thu, 11 Jun 2026 14:55:40 -0700
-Subject: [PATCH net v5 3/4] net: ethernet: oa_tc6: Remove FCS size in RX
- frame
+Date: Thu, 11 Jun 2026 14:55:41 -0700
+Subject: [PATCH net v5 4/4] dt-bindings: net: updated interrupt type to be
+ active low, level triggered
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260611-level-trigger-v5-3-4533a9e85ce2@onsemi.com>
+Message-Id: <20260611-level-trigger-v5-4-4533a9e85ce2@onsemi.com>
 References: <20260611-level-trigger-v5-0-4533a9e85ce2@onsemi.com>
 In-Reply-To: <20260611-level-trigger-v5-0-4533a9e85ce2@onsemi.com>
 To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
@@ -21,61 +21,54 @@ Cc: Andrew Lunn <andrew@lunn.ch>, netdev@vger.kernel.org,
  Parthiban Veerasooran <Parthiban.Veerasooran@microchip.com>, 
  Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781214947; l=1897;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781214947; l=1648;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=YZshO9vJiupuwF8u2s55Iy23XRYxDayecyVSa8eiy20=;
- b=UpSME0oOCYqxWCD3IkDDk6YqIiDW9UbcinlWaws8ptJWT3MI53GJpjSZRJBoA+TIa5JosNOcq
- VOciggEh+NDBc6So4IKCVhZQ05xrhAiD2XSK4/vbOSoL89whQr0k5UX
+ bh=5m7Zn2IB4XfdT3/7b+9FZgcVrhjA695d6nE+ghg/fkM=;
+ b=DlhK1Ndf40Cd6zkXYQ59FA6gg0g6OXNGMlAKRSka+sCuQWUoP4QnExeAkjHibxRa4TovKMg4w
+ ilT57mFnE5oAtFREgF6RrGNjjh2VHAPx3OOXreE8oYAOJ12xuMgHzrx
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-OA TC6 MAC-PHY appends FCS to the incoming frame. It must be
-removed from the frame before being passed to the stack.
+According to OPEN Alliance 10BASE-T1x MACPHY Serial Interface (TC6)
+specification, interrupt type is active low, level triggered interrupt.
 
-With FCS in the frame, many applications, like ping or any
-application that uses IP layer may work as they may
-carry the packet size information in the protocol.
+Specification calls for when interrupt level will be asserted and what
+condition it is de-asserted. By using edge triggered interrupt, there is a
+potential chance to miss it, particularly if it is asserted when interrupt
+is disabled.
 
-Application like ptp4l, particularly if it uses layer 2
-for its communication, it will fail with "bad message" due to
-the extra 4 bytes added by the presence of FCS.
+Level triggered interrupt can't be missed as it gets de-asserted only on
+interrupt handler taking actions on interrupting conditions.
 
-Fixes: d70a0d8f2f2d ("net: ethernet: oa_tc6: implement receive path to receive rx ethernet frames")
+Fixes: ac49b950bea9 ("dt-bindings: net: add Microchip's LAN865X 10BASE-T1S MACPHY")
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
 ---
 changes in v5
-  - Removed FCS present at the end of the MAC frame before being
-    passed to the stack.
-  - new patch
+  Added better, descriptive commit message
+changes in v4
+  no change
+changes in v3
+  interrupts entry changed to level triggered from edge triggered
 ---
- drivers/net/ethernet/oa_tc6.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ Documentation/devicetree/bindings/net/microchip,lan8650.yaml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/net/ethernet/oa_tc6.c b/drivers/net/ethernet/oa_tc6.c
-index 477ceefde2c5..0727d53345a3 100644
---- a/drivers/net/ethernet/oa_tc6.c
-+++ b/drivers/net/ethernet/oa_tc6.c
-@@ -785,6 +785,17 @@ static int oa_tc6_process_rx_chunk_footer(struct oa_tc6 *tc6, u32 footer)
- 
- static void oa_tc6_submit_rx_skb(struct oa_tc6 *tc6)
- {
-+	/* MAC-PHY delivers each frame with its Ethernet FCS attached.
-+	 * Strip it before handing over to the stack, unless the user
-+	 * has asked to keep it via NETIF_F_RXFCS. Keeping the FCS
-+	 * in the frame is harmless for IP traffic, but is parsed as
-+	 * a (malformed) suffix TLV by PTP, which makes ptp4l reject
-+	 * every message with "bad message" error.
-+	 */
-+	if (!(tc6->netdev->features & NETIF_F_RXFCS) &&
-+	    tc6->rx_skb->len > ETH_FCS_LEN)
-+		skb_trim(tc6->rx_skb, tc6->rx_skb->len - ETH_FCS_LEN);
-+
- 	tc6->rx_skb->protocol = eth_type_trans(tc6->rx_skb, tc6->netdev);
- 	tc6->netdev->stats.rx_packets++;
- 	tc6->netdev->stats.rx_bytes += tc6->rx_skb->len;
+diff --git a/Documentation/devicetree/bindings/net/microchip,lan8650.yaml b/Documentation/devicetree/bindings/net/microchip,lan8650.yaml
+index 61e11d4a07c4..766ff58147ae 100644
+--- a/Documentation/devicetree/bindings/net/microchip,lan8650.yaml
++++ b/Documentation/devicetree/bindings/net/microchip,lan8650.yaml
+@@ -67,7 +67,7 @@ examples:
+         pinctrl-names = "default";
+         pinctrl-0 = <&eth0_pins>;
+         interrupt-parent = <&gpio>;
+-        interrupts = <6 IRQ_TYPE_EDGE_FALLING>;
++        interrupts = <6 IRQ_TYPE_LEVEL_LOW>;
+         local-mac-address = [04 05 06 01 02 03];
+         spi-max-frequency = <15000000>;
+       };
 
 -- 
 2.43.0
