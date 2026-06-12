@@ -1,82 +1,77 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Fri, 12 Jun 2026 02:53:31 -0500
-Subject: [PATCH] udf: validate VAT header length against the VAT inode size
+From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
+Date: Fri, 12 Jun 2026 09:55:07 +0200
+Subject: [PATCH] w1: ds2482: add OF device match table
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260612-b4-disp-9a2317ee-v1-1-fefef5736154@proton.me>
-X-B4-Tracking: v=1; b=H4sIAPq6K2oC/x3MQQqAIBBA0avIrBvQyYy6SrSwnGo2JQoRSHdPW
- r7F/wUyJ+EMoyqQ+JYs11lhGgXr4c+dUUI1kCannSFcLAbJEQdPremZUWtLfjOddT1BzWLiTZ5
- /Oc3v+wGBXm8NYgAAAA==
-To: Jan Kara <jack@suse.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781250810; l=2153;
- i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=ZY17IT0BpaH4FEeyUQ1+9vxWALoFy1Q9t97ot9RCyJs=;
- b=+hWVDf6Al1o+d0WlLuXE3/T5kRNm3+rLfWn/Ysq5l85AMOnIiBzRi2ffmKiakyOM8zxBDbIU/
- M/0g3zukuj6Bl0eLeNL2qQ1X+NAI77/4pQfNbQl8MR0n5nBIsxeGF1l
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260612-w1-of-autoload-v1-1-74e8a17626e6@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAFq7K2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDM0ND3XJD3fw03cTSkvyc/MQUXUPzVAPTpJRkk9TUNCWgpoKi1LTMCrC
+ B0bG1tQD0FiSfYAAAAA==
+X-Change-ID: 20260611-w1-of-autoload-17e05bdc4eef
+To: Krzysztof Kozlowski <krzk@kernel.org>
+Cc: Miroslav Ondra <ondra@faster.cz>, linux-kernel@vger.kernel.org, 
+ =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781250913; l=1670;
+ i=cleverline1mc@gmail.com; s=20241112; h=from:subject:message-id;
+ bh=jvWRlBo9AbXM4WqXvJgafF/YG+Z947PiNrJCAur10yc=;
+ b=R86g7VDNgVgiL+LPVPpeaIQsrAgPu1g5WIShBhjc2qvAR4zTlO/VVWNB9lvU0MCWGYqSdbFsC
+ 6K3E3JK+bTSBXBdqKmsT0PjdBK9IYporRixNHPs2s5mdzsXVRy6iZuk
+X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
+ pk=EJoEbw03UiRORQuCiEyNA8gH1Q6fIpEWnn/MyaWOWX0=
+X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20241112 with auth_id=275
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-udf_load_vat() takes the virtual partition's start offset straight from
-the on-disk VAT 2.0 header without checking it against the VAT inode
-size:
+Add an of_device_id table and hook it into the i2c driver so the
+ds2482/ds2484 can be matched and auto-probed from Device Tree.
 
-	map->s_type_specific.s_virtual.s_start_offset =
-		le16_to_cpu(vat20->lengthHeader);
-	map->s_type_specific.s_virtual.s_num_entries =
-		(sbi->s_vat_inode->i_size -
-			map->s_type_specific.s_virtual.s_start_offset) >> 2;
+This allows automatic module loading when instantiated via DT.
 
-lengthHeader is a fully attacker-controlled 16-bit value.  If it exceeds
-the VAT inode size, the s_num_entries subtraction underflows to a huge
-count, which defeats the "block > s_num_entries" bound in
-udf_get_pblock_virt15(); and on the ICB-inline path that function reads
-
-	((__le32 *)(iinfo->i_data + s_start_offset))[block]
-
-so a large s_start_offset indexes past the inode's in-ICB data.  Mounting
-a crafted UDF image with a virtual (VAT) partition then triggers an
-out-of-bounds read.
-
-Reject a VAT whose header length does not leave room for at least one
-entry within the VAT inode.
-
-Fixes: fa5e08156335 ("udf: Handle VAT packed inside inode properly")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
 ---
- fs/udf/super.c | 8 ++++++++
+The ds2482 driver currently lacks an OF match table, which prevents
+automatic driver binding and module autoload when the device is
+described via Device Tree using compatible strings defined in the
+binding.
+
+Even with a correct "maxim,ds2482" compatible, the driver is not
+matched because no of_device_id table is registered.
+
+Add OF match support for ds2482/ds2484 and hook it into the i2c driver
+to enable proper Device Tree based probing and autoloading.
+---
+ drivers/w1/masters/ds2482.c | 8 ++++++++
  1 file changed, 8 insertions(+)
 
-diff --git a/fs/udf/super.c b/fs/udf/super.c
-index cad2e15d633b..561eace476ab 100644
---- a/fs/udf/super.c
-+++ b/fs/udf/super.c
-@@ -1263,6 +1263,14 @@ static int udf_load_vat(struct super_block *sb, int p_index, int type1_index)
+diff --git a/drivers/w1/masters/ds2482.c b/drivers/w1/masters/ds2482.c
+index 0069e6f854d7..9e57c6e487d1 100644
+--- a/drivers/w1/masters/ds2482.c
++++ b/drivers/w1/masters/ds2482.c
+@@ -545,9 +545,17 @@ static const struct i2c_device_id ds2482_id[] = {
+ };
+ MODULE_DEVICE_TABLE(i2c, ds2482_id);
  
- 		map->s_type_specific.s_virtual.s_start_offset =
- 			le16_to_cpu(vat20->lengthHeader);
-+		if (map->s_type_specific.s_virtual.s_start_offset +
-+		    sizeof(__le32) > sbi->s_vat_inode->i_size) {
-+			udf_err(sb, "Corrupted VAT header length %u (VAT inode size %lld)\n",
-+				map->s_type_specific.s_virtual.s_start_offset,
-+				sbi->s_vat_inode->i_size);
-+			brelse(bh);
-+			return -EFSCORRUPTED;
-+		}
- 		map->s_type_specific.s_virtual.s_num_entries =
- 			(sbi->s_vat_inode->i_size -
- 				map->s_type_specific.s_virtual.
++static const struct of_device_id ds2482_of_match[] = {
++	{ .compatible = "maxim,ds2482", },
++	{ .compatible = "maxim,ds2484", },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, ds2482_of_match);
++
+ static struct i2c_driver ds2482_driver = {
+ 	.driver = {
+ 		.name	= "ds2482",
++		.of_match_table  = ds2482_of_match,
+ 	},
+ 	.probe		= ds2482_probe,
+ 	.remove		= ds2482_remove,
 
 ---
-base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260612-b4-disp-9a2317ee-0042af154672
+base-commit: 53371dcd31b8899d851a169cc2a432f62baa9d54
+change-id: 20260611-w1-of-autoload-17e05bdc4eef
 
 Best regards,
--- 
-Bryam Vargas <hexlabsecurity@proton.me>
+--  
+Kryštof Černý <cleverline1mc@gmail.com>
 
