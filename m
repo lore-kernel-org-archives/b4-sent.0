@@ -1,75 +1,83 @@
-From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Thu, 11 Jun 2026 14:55:41 -0700
-Subject: [PATCH net v5 4/4] dt-bindings: net: updated interrupt type to be
- active low, level triggered
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Thu, 11 Jun 2026 22:45:05 -0500
+Subject: [PATCH] exfat: bound uniname advance in exfat_find_dir_entry()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260611-level-trigger-v5-4-4533a9e85ce2@onsemi.com>
-References: <20260611-level-trigger-v5-0-4533a9e85ce2@onsemi.com>
-In-Reply-To: <20260611-level-trigger-v5-0-4533a9e85ce2@onsemi.com>
-To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Piergiorgio Beruto <pier.beruto@onsemi.com>
-Cc: Andrew Lunn <andrew@lunn.ch>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Conor Dooley <conor.dooley@microchip.com>, 
- devicetree@vger.kernel.org, 
- Parthiban Veerasooran <Parthiban.Veerasooran@microchip.com>, 
- Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781214947; l=1648;
- i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=5m7Zn2IB4XfdT3/7b+9FZgcVrhjA695d6nE+ghg/fkM=;
- b=DlhK1Ndf40Cd6zkXYQ59FA6gg0g6OXNGMlAKRSka+sCuQWUoP4QnExeAkjHibxRa4TovKMg4w
- ilT57mFnE5oAtFREgF6RrGNjjh2VHAPx3OOXreE8oYAOJ12xuMgHzrx
-X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
- pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
-X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
+Message-Id: <20260611-b4-disp-c0e7d249-v1-1-7f517046abd7@proton.me>
+X-B4-Tracking: v=1; b=H4sIAMCAK2oC/x3MQQqAIBBA0avErBtwzJS6SrRInWo2FQoRhHdPW
+ r7F/y9kTsIZxuaFxLdkOY8KahsI+3JsjBKrQSttlSVCbzBKvjAodlGbAQNFTz4srus7qNmVeJX
+ nX05zKR+VPQmAYgAAAA==
+To: Namjae Jeon <linkinjeon@kernel.org>
+Cc: Yuezhang Mo <yuezhang.mo@sony.com>, linux-fsdevel@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Sungjong Seo <sj1557.seo@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781235904; l=2084;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=UlikRDJHleDIgL1SJcIrVxgcfhalOWXCOnjUB5CHOiA=;
+ b=zN5kL1j7zq0ttwkTDPniXR7/E6Y2z+vLJb2dIHIX2+dKq88ZsZK4bSMOJcrCizunjpRxFXAkY
+ jo9vVN+49NCCB4yzTWUkk4Ju7QP9zApnc071+6l2VNJ43mAjcfIn4r8
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-According to OPEN Alliance 10BASE-T1x MACPHY Serial Interface (TC6)
-specification, interrupt type is active low, level triggered interrupt.
+In exfat_find_dir_entry(), each TYPE_EXTEND (file name) entry advances the
+output pointer by a fixed amount while the loop guard only tracks the
+accumulated name length:
 
-Specification calls for when interrupt level will be asserted and what
-condition it is de-asserted. By using edge triggered interrupt, there is a
-potential chance to miss it, particularly if it is asserted when interrupt
-is disabled.
+	if (++order == 2)
+		uniname = p_uniname->name;
+	else
+		uniname += EXFAT_FILE_NAME_LEN;
+	len = exfat_extract_uni_name(ep, entry_uniname);
+	name_len += len;
+	unichar = *(uniname+len);
+	*(uniname+len) = 0x0;
 
-Level triggered interrupt can't be missed as it gets de-asserted only on
-interrupt handler taking actions on interrupting conditions.
+uniname grows by EXFAT_FILE_NAME_LEN (15) per name entry, but name_len
+grows only by the actual extracted length, which is shorter when a name
+fragment contains an early NUL.  The only guard is
+`name_len >= MAX_NAME_LENGTH`, so a crafted directory with many short
+name fragments lets uniname run far past the
+p_uniname->name[MAX_NAME_LENGTH + 3] buffer while name_len stays small,
+causing an out-of-bounds read and write at *(uniname+len).
 
-Fixes: ac49b950bea9 ("dt-bindings: net: add Microchip's LAN865X 10BASE-T1S MACPHY")
-Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+The sibling extractor exfat_get_uniname_from_ext_entry() already stops
+on a short fragment (the lockstep `len != EXFAT_FILE_NAME_LEN` guard
+added in commit d42334578eba ("exfat: check if filename entries exceeds
+max filename length")); exfat_find_dir_entry() never got the
+equivalent.  Bound the access to the p_uniname->name buffer.
+
+Fixes: ca06197382bd ("exfat: add directory operations")
+Cc: stable@vger.kernel.org
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+---
+ fs/exfat/dir.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/fs/exfat/dir.c b/fs/exfat/dir.c
+index ac008ccaa97d..d4769a0f9978 100644
+--- a/fs/exfat/dir.c
++++ b/fs/exfat/dir.c
+@@ -1043,6 +1043,11 @@ int exfat_find_dir_entry(struct super_block *sb, struct exfat_inode_info *ei,
+ 					uniname += EXFAT_FILE_NAME_LEN;
+ 
+ 				len = exfat_extract_uni_name(ep, entry_uniname);
++				if (uniname + len >
++				    p_uniname->name + MAX_NAME_LENGTH) {
++					step = DIRENT_STEP_FILE;
++					continue;
++				}
+ 				name_len += len;
+ 
+ 				unichar = *(uniname+len);
 
 ---
-changes in v5
-  Added better, descriptive commit message
-changes in v4
-  no change
-changes in v3
-  interrupts entry changed to level triggered from edge triggered
----
- Documentation/devicetree/bindings/net/microchip,lan8650.yaml | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
+change-id: 20260611-b4-disp-c0e7d249-c1db1bca7353
 
-diff --git a/Documentation/devicetree/bindings/net/microchip,lan8650.yaml b/Documentation/devicetree/bindings/net/microchip,lan8650.yaml
-index 61e11d4a07c4..766ff58147ae 100644
---- a/Documentation/devicetree/bindings/net/microchip,lan8650.yaml
-+++ b/Documentation/devicetree/bindings/net/microchip,lan8650.yaml
-@@ -67,7 +67,7 @@ examples:
-         pinctrl-names = "default";
-         pinctrl-0 = <&eth0_pins>;
-         interrupt-parent = <&gpio>;
--        interrupts = <6 IRQ_TYPE_EDGE_FALLING>;
-+        interrupts = <6 IRQ_TYPE_LEVEL_LOW>;
-         local-mac-address = [04 05 06 01 02 03];
-         spi-max-frequency = <15000000>;
-       };
-
+Best regards,
 -- 
-2.43.0
+Bryam Vargas <hexlabsecurity@proton.me>
 
