@@ -1,152 +1,101 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Fri, 12 Jun 2026 12:50:25 -0500
-Subject: [PATCH v3] nfc: nci: add data_len bound checks to activation
- parameter extractors
+Date: Fri, 12 Jun 2026 14:29:06 -0500
+Subject: [PATCH v2] exfat: bound uniname advance in exfat_find_dir_entry()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260612-b4-disp-6d52d8b0-v3-1-e26221f8826d@proton.me>
-X-B4-Tracking: v=1; b=H4sIAOBGLGoC/x3MMQqAMAxA0auUzAbaqEW8iji0JmoWLS2IIN7d4
- viG/x8oklUKjOaBLJcWPY+KtjGw7OHYBJWrgSx56x1h7JC1JPTcEw/RYhC3kluYhxChZinLqve
- /nOb3/QAIYJgCYgAAAA==
-To: David Heidelberg <david@ixit.cz>
-Cc: linux-kernel@vger.kernel.org, Simon Horman <horms@kernel.org>, 
- netdev@vger.kernel.org, oe-linux-nfc@lists.linux.dev
+Message-Id: <20260612-b4-disp-d3abc2b6-v2-1-258241593ae4@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAFeLGoC/x3MQQqAIBBA0avIrBuwKY26SrRInWo2JQoRhHdPW
+ r7F/y9kTsIZJvVC4luyXGcFNQr8sZ47o4RqIE1W25bQ9RgkRwzd6jw5i2PHvjV6NDRoqFlMvMn
+ zL+ellA8WSXibYgAAAA==
+To: Namjae Jeon <linkinjeon@kernel.org>
+Cc: linux-kernel@vger.kernel.org, Yuezhang Mo <yuezhang.mo@sony.com>, 
+ linux-fsdevel@vger.kernel.org, Sungjong Seo <sj1557.seo@samsung.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781286625; l=5384;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781292545; l=2822;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=BcPYukihDqR5SWpAuWPZtnkwUMfhZZ+Ci4OmUYp2RgA=;
- b=+4IkML7bYD0JoljnnfBm+g3tLOVsiqR6FAHmkAHGeKfMdG6+r2tj7NHIPRfAfn3+su2jrcGp1
- 9tVou56eCqECJ0cziuxps8epVu+qVU0ti+yRCxnBfcSjXdBP7j32gMJ
+ bh=LNI0kDtHH/W947OqR+LGmsyVeZLd+/2r2AH7hli3KHs=;
+ b=cgaTm+fV7pbhuoeL/7pnvudtRyaS1AIPu1BLMoAhGy3lx+FAgOmkGRpdN6ZNBbdbpHM7AHumD
+ A0rRjgwvwrECnz7lh7cgNeEAqjuN33287vk4cwh/p6aUEuYzJS1sKZ2
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-nci_extract_activation_params_iso_dep() and
-nci_extract_activation_params_nfc_dep() read an inner length byte from
-the NCI RF_INTF_ACTIVATED_NTF payload and use it to memcpy() into fixed
-kernel buffers, but neither function receives the caller-validated
-activation_params_len.  A crafted NCI notification with
-activation_params_len=1 and an inner length byte of up to 20 (NFC-A) or
-50 (NFC-B) causes memcpy() to read that many bytes past the one valid
-byte in the activation params region -- a slab out-of-bounds read of
-kernel memory adjacent to the NCI skb.
+In exfat_find_dir_entry(), each TYPE_EXTEND (file name) entry advances the
+output pointer by a fixed amount while the loop guard only tracks the
+accumulated name length:
 
-The sibling nci_extract_rf_params_*() family was given equivalent
-protection by commit 571dcbeb8e63 ("net: nfc: nci: Fix parameter
-validation for packet data"), but the two activation parameter
-extractors were not updated at that time.
+	if (++order == 2)
+		uniname = p_uniname->name;
+	else
+		uniname += EXFAT_FILE_NAME_LEN;
+	len = exfat_extract_uni_name(ep, entry_uniname);
+	name_len += len;
+	unichar = *(uniname+len);
+	*(uniname+len) = 0x0;
 
-Add a data_len parameter to both functions, guard against an empty
-region before consuming the inner length byte, decrement the remaining
-count after consuming it, and clamp the copy length to what is actually
-available.  Update both call sites to pass ntf.activation_params_len,
-which is already validated against the skb at ntf.c:801.
+uniname grows by EXFAT_FILE_NAME_LEN (15) per name entry, but name_len
+grows only by the actual extracted length, which is shorter when a name
+fragment contains an early NUL.  The only guard is
+`name_len >= MAX_NAME_LENGTH`, so a crafted directory with many short
+name fragments lets uniname run far past the
+p_uniname->name[MAX_NAME_LENGTH + 3] buffer while name_len stays small,
+causing an out-of-bounds read and write at *(uniname+len).
 
-Fixes: e8c0dacd9836 ("NFC: Update names and structs to NCI spec 1.0 d18")
+The sibling extractor exfat_get_uniname_from_ext_entry() already stops
+on a short fragment (the lockstep `len != EXFAT_FILE_NAME_LEN` guard
+added in commit d42334578eba ("exfat: check if filename entries exceeds
+max filename length")); exfat_find_dir_entry() never got the
+equivalent.  Track the per-entry write offset as a count and reject a
+fragment once the offset, or the offset plus the extracted length, would
+exceed MAX_NAME_LENGTH, before forming the output pointer.
+
+Fixes: ca06197382bd ("exfat: add directory operations")
 Cc: stable@vger.kernel.org
+Suggested-by: Namjae Jeon <linkinjeon@kernel.org>
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- net/nfc/nci/ntf.c | 26 ++++++++++++++++++++++----
- 1 file changed, 22 insertions(+), 4 deletions(-)
+ fs/exfat/dir.c | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/net/nfc/nci/ntf.c b/net/nfc/nci/ntf.c
-index c96512bb8653..8bc3adbc5b6b 100644
---- a/net/nfc/nci/ntf.c
-+++ b/net/nfc/nci/ntf.c
-@@ -525,15 +525,19 @@ static int nci_rf_discover_ntf_packet(struct nci_dev *ndev,
+diff --git a/fs/exfat/dir.c b/fs/exfat/dir.c
+index 5a85a8ec0cc0..4fd4ec52b8c0 100644
+--- a/fs/exfat/dir.c
++++ b/fs/exfat/dir.c
+@@ -1069,6 +1069,7 @@ int exfat_find_dir_entry(struct super_block *sb, struct exfat_inode_info *ei,
  
- static int nci_extract_activation_params_iso_dep(struct nci_dev *ndev,
- 						 struct nci_rf_intf_activated_ntf *ntf,
--						 const __u8 *data)
-+						 const __u8 *data, __u8 data_len)
- {
- 	struct activation_params_nfca_poll_iso_dep *nfca_poll;
- 	struct activation_params_nfcb_poll_iso_dep *nfcb_poll;
+ 			if (entry_type == TYPE_EXTEND) {
+ 				unsigned short entry_uniname[16], unichar;
++				unsigned int offset;
  
- 	switch (ntf->activation_rf_tech_and_mode) {
- 	case NCI_NFC_A_PASSIVE_POLL_MODE:
-+		if (data_len < 1)
-+			return NCI_STATUS_RF_PROTOCOL_ERROR;
- 		nfca_poll = &ntf->activation_params.nfca_poll_iso_dep;
- 		nfca_poll->rats_res_len = min_t(__u8, *data++, NFC_ATS_MAXSIZE);
-+		data_len--;
-+		nfca_poll->rats_res_len = min_t(__u8, nfca_poll->rats_res_len, data_len);
- 		pr_debug("rats_res_len %d\n", nfca_poll->rats_res_len);
- 		if (nfca_poll->rats_res_len > 0) {
- 			memcpy(nfca_poll->rats_res,
-@@ -542,8 +546,12 @@ static int nci_extract_activation_params_iso_dep(struct nci_dev *ndev,
- 		break;
+ 				if (step != DIRENT_STEP_NAME ||
+ 				    name_len >= MAX_NAME_LENGTH) {
+@@ -1077,13 +1078,15 @@ int exfat_find_dir_entry(struct super_block *sb, struct exfat_inode_info *ei,
+ 					continue;
+ 				}
  
- 	case NCI_NFC_B_PASSIVE_POLL_MODE:
-+		if (data_len < 1)
-+			return NCI_STATUS_RF_PROTOCOL_ERROR;
- 		nfcb_poll = &ntf->activation_params.nfcb_poll_iso_dep;
- 		nfcb_poll->attrib_res_len = min_t(__u8, *data++, 50);
-+		data_len--;
-+		nfcb_poll->attrib_res_len = min_t(__u8, nfcb_poll->attrib_res_len, data_len);
- 		pr_debug("attrib_res_len %d\n", nfcb_poll->attrib_res_len);
- 		if (nfcb_poll->attrib_res_len > 0) {
- 			memcpy(nfcb_poll->attrib_res,
-@@ -562,7 +570,7 @@ static int nci_extract_activation_params_iso_dep(struct nci_dev *ndev,
+-				if (++order == 2)
+-					uniname = p_uniname->name;
+-				else
+-					uniname += EXFAT_FILE_NAME_LEN;
+-
++				offset = (++order - 2) * EXFAT_FILE_NAME_LEN;
+ 				len = exfat_extract_uni_name(ep, entry_uniname);
+ 				brelse(bh);
++				if (offset > MAX_NAME_LENGTH ||
++				    len > MAX_NAME_LENGTH - offset) {
++					step = DIRENT_STEP_FILE;
++					continue;
++				}
++				uniname = p_uniname->name + offset;
+ 				name_len += len;
  
- static int nci_extract_activation_params_nfc_dep(struct nci_dev *ndev,
- 						 struct nci_rf_intf_activated_ntf *ntf,
--						 const __u8 *data)
-+						 const __u8 *data, __u8 data_len)
- {
- 	struct activation_params_poll_nfc_dep *poll;
- 	struct activation_params_listen_nfc_dep *listen;
-@@ -570,9 +578,13 @@ static int nci_extract_activation_params_nfc_dep(struct nci_dev *ndev,
- 	switch (ntf->activation_rf_tech_and_mode) {
- 	case NCI_NFC_A_PASSIVE_POLL_MODE:
- 	case NCI_NFC_F_PASSIVE_POLL_MODE:
-+		if (data_len < 1)
-+			return NCI_STATUS_RF_PROTOCOL_ERROR;
- 		poll = &ntf->activation_params.poll_nfc_dep;
- 		poll->atr_res_len = min_t(__u8, *data++,
- 					  NFC_ATR_RES_MAXSIZE - 2);
-+		data_len--;
-+		poll->atr_res_len = min_t(__u8, poll->atr_res_len, data_len);
- 		pr_debug("atr_res_len %d\n", poll->atr_res_len);
- 		if (poll->atr_res_len > 0)
- 			memcpy(poll->atr_res, data, poll->atr_res_len);
-@@ -580,9 +592,13 @@ static int nci_extract_activation_params_nfc_dep(struct nci_dev *ndev,
- 
- 	case NCI_NFC_A_PASSIVE_LISTEN_MODE:
- 	case NCI_NFC_F_PASSIVE_LISTEN_MODE:
-+		if (data_len < 1)
-+			return NCI_STATUS_RF_PROTOCOL_ERROR;
- 		listen = &ntf->activation_params.listen_nfc_dep;
- 		listen->atr_req_len = min_t(__u8, *data++,
- 					    NFC_ATR_REQ_MAXSIZE - 2);
-+		data_len--;
-+		listen->atr_req_len = min_t(__u8, listen->atr_req_len, data_len);
- 		pr_debug("atr_req_len %d\n", listen->atr_req_len);
- 		if (listen->atr_req_len > 0)
- 			memcpy(listen->atr_req, data, listen->atr_req_len);
-@@ -806,12 +822,14 @@ static int nci_rf_intf_activated_ntf_packet(struct nci_dev *ndev,
- 		switch (ntf.rf_interface) {
- 		case NCI_RF_INTERFACE_ISO_DEP:
- 			err = nci_extract_activation_params_iso_dep(ndev,
--								    &ntf, data);
-+								    &ntf, data,
-+								    ntf.activation_params_len);
- 			break;
- 
- 		case NCI_RF_INTERFACE_NFC_DEP:
- 			err = nci_extract_activation_params_nfc_dep(ndev,
--								    &ntf, data);
-+								    &ntf, data,
-+								    ntf.activation_params_len);
- 			break;
- 
- 		case NCI_RF_INTERFACE_FRAME:
+ 				unichar = *(uniname+len);
 
 ---
-base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260612-b4-disp-6d52d8b0-ae1f21cdd8ab
+base-commit: 56221100f0d37227621217a8551f5dcdda0fb768
+change-id: 20260612-b4-disp-d3abc2b6-93ec15095270
 
 Best regards,
 -- 
