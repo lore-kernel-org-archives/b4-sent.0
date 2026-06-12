@@ -1,78 +1,80 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Fri, 12 Jun 2026 01:40:01 -0500
-Subject: [PATCH] udf: validate sparing table length as an entry count, not
- a byte count
+Date: Fri, 12 Jun 2026 02:53:31 -0500
+Subject: [PATCH] udf: validate VAT header length against the VAT inode size
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260612-b4-disp-91780c4e-v1-1-f15112ff6882@proton.me>
-X-B4-Tracking: v=1; b=H4sIAMCpK2oC/x3MQQqAIBBA0avErBtQMa2uEi00x5qNhUIE0t2Tl
- m/xf4VCmanA3FXIdHPhMzXIvoPtcGkn5NAMSigjjFToNQYuF07SjmLThNEPylltwhQitOzKFPn
- 5l8v6vh+CZBI9YgAAAA==
+Message-Id: <20260612-b4-disp-9a2317ee-v1-1-fefef5736154@proton.me>
+X-B4-Tracking: v=1; b=H4sIAPq6K2oC/x3MQQqAIBBA0avIrBvQyYy6SrSwnGo2JQoRSHdPW
+ r7F/wUyJ+EMoyqQ+JYs11lhGgXr4c+dUUI1kCannSFcLAbJEQdPremZUWtLfjOddT1BzWLiTZ5
+ /Oc3v+wGBXm8NYgAAAA==
 To: Jan Kara <jack@suse.com>
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781246400; l=1995;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781250810; l=2153;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=zBe8mptXEujMyjU6qf+RIqq+0ZlZo1cMKaiqend5j20=;
- b=WeqmhVEN3wupw9o9mRFUUMvTq3vhpzEk39WiJnCSMVuHt7PGWYysDe+ok4w5S2ZGiQHdevz6s
- Jlj5N0Ea7tYBvy/QaKuPdBwTgdtD4u7TLZcYIYQXvZBAEs+PoZt2Jwc
+ bh=ZY17IT0BpaH4FEeyUQ1+9vxWALoFy1Q9t97ot9RCyJs=;
+ b=+hWVDf6Al1o+d0WlLuXE3/T5kRNm3+rLfWn/Ysq5l85AMOnIiBzRi2ffmKiakyOM8zxBDbIU/
+ M/0g3zukuj6Bl0eLeNL2qQ1X+NAI77/4pQfNbQl8MR0n5nBIsxeGF1l
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-udf_load_sparable_map() accepts a sparing table when
+udf_load_vat() takes the virtual partition's start offset straight from
+the on-disk VAT 2.0 header without checking it against the VAT inode
+size:
 
-	sizeof(*st) + le16_to_cpu(st->reallocationTableLen) > sb->s_blocksize
+	map->s_type_specific.s_virtual.s_start_offset =
+		le16_to_cpu(vat20->lengthHeader);
+	map->s_type_specific.s_virtual.s_num_entries =
+		(sbi->s_vat_inode->i_size -
+			map->s_type_specific.s_virtual.s_start_offset) >> 2;
 
-is false, i.e. it treats reallocationTableLen as a number of BYTES that
-must fit in the block.  But the table is walked as an array of 8-byte
-sparingEntry elements:
+lengthHeader is a fully attacker-controlled 16-bit value.  If it exceeds
+the VAT inode size, the s_num_entries subtraction underflows to a huge
+count, which defeats the "block > s_num_entries" bound in
+udf_get_pblock_virt15(); and on the ICB-inline path that function reads
 
-	for (i = 0; i < le16_to_cpu(st->reallocationTableLen); i++) {
-		struct sparingEntry *entry = &st->mapEntry[i];
-		... entry->origLocation ...
-	}
+	((__le32 *)(iinfo->i_data + s_start_offset))[block]
 
-in udf_get_pblock_spar15() and udf_relocate_blocks().  A
-reallocationTableLen of N therefore passes the check whenever
-sizeof(*st) + N <= blocksize, yet the consumers index
-sizeof(*st) + N * sizeof(struct sparingEntry) bytes -- up to ~8x the
-block.  On a crafted UDF image this is an out-of-bounds read in
-udf_get_pblock_spar15(); udf_relocate_blocks() additionally feeds the
-same length to udf_update_tag(), whose crc_itu_t() reads far past the
-block, and its memmove() through st->mapEntry[] is an out-of-bounds
-write.
+so a large s_start_offset indexes past the inode's in-ICB data.  Mounting
+a crafted UDF image with a virtual (VAT) partition then triggers an
+out-of-bounds read.
 
-Validate reallocationTableLen as the entry count it is, with
-struct_size().
+Reject a VAT whose header length does not leave room for at least one
+entry within the VAT inode.
 
-Fixes: 1df2ae31c724 ("udf: Fortify loading of sparing table")
+Fixes: fa5e08156335 ("udf: Handle VAT packed inside inode properly")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- fs/udf/super.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/udf/super.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
 diff --git a/fs/udf/super.c b/fs/udf/super.c
-index cad2e15d633b..d75bfc733975 100644
+index cad2e15d633b..561eace476ab 100644
 --- a/fs/udf/super.c
 +++ b/fs/udf/super.c
-@@ -1418,7 +1418,8 @@ static int udf_load_sparable_map(struct super_block *sb,
- 		if (ident != 0 ||
- 		    strncmp(st->sparingIdent.ident, UDF_ID_SPARING,
- 			    strlen(UDF_ID_SPARING)) ||
--		    sizeof(*st) + le16_to_cpu(st->reallocationTableLen) >
-+		    struct_size(st, mapEntry,
-+				le16_to_cpu(st->reallocationTableLen)) >
- 							sb->s_blocksize) {
- 			brelse(bh);
- 			continue;
+@@ -1263,6 +1263,14 @@ static int udf_load_vat(struct super_block *sb, int p_index, int type1_index)
+ 
+ 		map->s_type_specific.s_virtual.s_start_offset =
+ 			le16_to_cpu(vat20->lengthHeader);
++		if (map->s_type_specific.s_virtual.s_start_offset +
++		    sizeof(__le32) > sbi->s_vat_inode->i_size) {
++			udf_err(sb, "Corrupted VAT header length %u (VAT inode size %lld)\n",
++				map->s_type_specific.s_virtual.s_start_offset,
++				sbi->s_vat_inode->i_size);
++			brelse(bh);
++			return -EFSCORRUPTED;
++		}
+ 		map->s_type_specific.s_virtual.s_num_entries =
+ 			(sbi->s_vat_inode->i_size -
+ 				map->s_type_specific.s_virtual.
 
 ---
 base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260612-b4-disp-91780c4e-fb52a746d9df
+change-id: 20260612-b4-disp-9a2317ee-0042af154672
 
 Best regards,
 -- 
