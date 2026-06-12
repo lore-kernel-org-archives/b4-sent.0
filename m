@@ -1,77 +1,86 @@
-From: =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
-Date: Fri, 12 Jun 2026 09:55:07 +0200
-Subject: [PATCH] w1: ds2482: add OF device match table
+From: Joel Granados <joel.granados@kernel.org>
+Date: Fri, 12 Jun 2026 11:40:23 +0200
+Subject: [PATCH] nvme: unmap the data buffer when metadata mapping fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260612-w1-of-autoload-v1-1-74e8a17626e6@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAFq7K2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDM0ND3XJD3fw03cTSkvyc/MQUXUPzVAPTpJRkk9TUNCWgpoKi1LTMCrC
- B0bG1tQD0FiSfYAAAAA==
-X-Change-ID: 20260611-w1-of-autoload-17e05bdc4eef
-To: Krzysztof Kozlowski <krzk@kernel.org>
-Cc: Miroslav Ondra <ondra@faster.cz>, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Kry=C5=A1tof_=C4=8Cern=C3=BD?= <cleverline1mc@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781250913; l=1670;
- i=cleverline1mc@gmail.com; s=20241112; h=from:subject:message-id;
- bh=jvWRlBo9AbXM4WqXvJgafF/YG+Z947PiNrJCAur10yc=;
- b=R86g7VDNgVgiL+LPVPpeaIQsrAgPu1g5WIShBhjc2qvAR4zTlO/VVWNB9lvU0MCWGYqSdbFsC
- 6K3E3JK+bTSBXBdqKmsT0PjdBK9IYporRixNHPs2s5mdzsXVRy6iZuk
-X-Developer-Key: i=cleverline1mc@gmail.com; a=ed25519;
- pk=EJoEbw03UiRORQuCiEyNA8gH1Q6fIpEWnn/MyaWOWX0=
-X-Endpoint-Received: by B4 Relay for cleverline1mc@gmail.com/20241112 with auth_id=275
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260612-jag-fixes-v1-1-24423dc8afdb@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAbUK2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDM0Mj3azEdN20zIrUYl2zJBNTy9REQ7MUU2MloPqColSwBFB5dGxtLQA
+ lPQ6SWwAAAA==
+X-Change-ID: 20260612-jag-fixes-6b459ea16d53
+To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
+ Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>
+Cc: Daniel Gomez <da.gomez@kernel.org>, linux-nvme@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Joel Granados <joel.granados@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1844;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=dvvJGP8seoXJbEB71BwDcA4pq9Th3sDnGpORJL37W/Y=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGor1A9zkZhR0quHNS7DbnQa0qQrZeirRUPDJ
+ WfxBHF28lrPUokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqK9QPAAoJELqXzVK3
+ lkFP0ocMAIDSLx7nSaxQ7ggaIDFrId2MZPWz9f1Rw6YK1Vj1JiUN264k04uTf2mRv21tas1tQtX
+ 9+CXnCc4F8USqxZyfeZ32om1CDVOpzr5vuDtIiE/bPl+uhxTvysgMpzOVEAl9Z+JzmvpSClrOct
+ StKUznKNkQOKPFoWh7Cx0/ZdI68xILH9k6k1SE7XkaP0Z7MAqxhRXjyfcKE79z7Se8LTNqNfNgf
+ L6LJp9FnTBcfC9Pnjjuwfr19lXKNNi7ynWQlzF9lsbqEpqk+r5rXbvBAhXB6YfrczfiuaGoaRSO
+ n52pY3PYFWIJtKNIzN+VJixbHJ8gAy+aKa7XiwMaSch37xE1kOSHO7S3+om9bxceXBHnah8pJCE
+ KIUJ0zXwweFDIrtJ+u7Ym86EZ6JmO9J207BKWr+etachqxg7x38WxLU8lfSAMSCHyjbzFNV41Y+
+ wNBlR+pALmcjIwQmHpwYlNvOaBw6aV8Mt1wh/t+CQCijwfrKuqbUkS/RNeTvHskzKBhGME+DvC5
+ +Q=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add an of_device_id table and hook it into the i2c driver so the
-ds2482/ds2484 can be matched and auto-probed from Device Tree.
+Commit d0d1d522316e ("blk-map: provide the bdev to bio if one exists")
+dropped the "bio = req->bio" assignment in nvme_map_user_request(), but
+left the local bio variable initialized to NULL and still used it in the
+out_unmap error path.  The "if (bio)" test is therefore always false, so
+a failure of blk_rq_integrity_map_user() no longer unmaps the already
+mapped data buffer.  The callers only call blk_mq_free_request(), which
+does not unmap user pages, leaking the bio and its pinned user pages.
 
-This allows automatic module loading when instantiated via DT.
+Use req->bio directly to unmap the data buffer on the error path, and
+drop the now unused local variable.
 
-Signed-off-by: Kryštof Černý <cleverline1mc@gmail.com>
+Fixes: d0d1d522316e ("blk-map: provide the bdev to bio if one exists")
+
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
-The ds2482 driver currently lacks an OF match table, which prevents
-automatic driver binding and module autoload when the device is
-described via Device Tree using compatible strings defined in the
-binding.
-
-Even with a correct "maxim,ds2482" compatible, the driver is not
-matched because no of_device_id table is registered.
-
-Add OF match support for ds2482/ds2484 and hook it into the i2c driver
-to enable proper Device Tree based probing and autoloading.
+Did we forget to unmap?
 ---
- drivers/w1/masters/ds2482.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ drivers/nvme/host/ioctl.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/w1/masters/ds2482.c b/drivers/w1/masters/ds2482.c
-index 0069e6f854d7..9e57c6e487d1 100644
---- a/drivers/w1/masters/ds2482.c
-+++ b/drivers/w1/masters/ds2482.c
-@@ -545,9 +545,17 @@ static const struct i2c_device_id ds2482_id[] = {
- };
- MODULE_DEVICE_TABLE(i2c, ds2482_id);
+diff --git a/drivers/nvme/host/ioctl.c b/drivers/nvme/host/ioctl.c
+index 9597a87cf05dc32a7eb0373485f575502c32a105..9ae3c0aadfb8f35790c8e57619d1af69ca41af0c 100644
+--- a/drivers/nvme/host/ioctl.c
++++ b/drivers/nvme/host/ioctl.c
+@@ -122,7 +122,6 @@ static int nvme_map_user_request(struct request *req, u64 ubuffer,
+ 	bool supports_metadata = bdev && blk_get_integrity(bdev->bd_disk);
+ 	struct nvme_ctrl *ctrl = nvme_req(req)->ctrl;
+ 	bool has_metadata = meta_buffer && meta_len;
+-	struct bio *bio = NULL;
+ 	int ret;
  
-+static const struct of_device_id ds2482_of_match[] = {
-+	{ .compatible = "maxim,ds2482", },
-+	{ .compatible = "maxim,ds2484", },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, ds2482_of_match);
-+
- static struct i2c_driver ds2482_driver = {
- 	.driver = {
- 		.name	= "ds2482",
-+		.of_match_table  = ds2482_of_match,
- 	},
- 	.probe		= ds2482_probe,
- 	.remove		= ds2482_remove,
+ 	if (!nvme_ctrl_sgl_supported(ctrl))
+@@ -154,8 +153,8 @@ static int nvme_map_user_request(struct request *req, u64 ubuffer,
+ 	return ret;
+ 
+ out_unmap:
+-	if (bio)
+-		blk_rq_unmap_user(bio);
++	if (req->bio)
++		blk_rq_unmap_user(req->bio);
+ 	return ret;
+ }
+ 
 
 ---
-base-commit: 53371dcd31b8899d851a169cc2a432f62baa9d54
-change-id: 20260611-w1-of-autoload-17e05bdc4eef
+base-commit: adeac771f4901bb66267eaddb9fcc538925f92a4
+change-id: 20260612-jag-fixes-6b459ea16d53
 
 Best regards,
---  
-Kryštof Černý <cleverline1mc@gmail.com>
+-- 
+Joel Granados <joel.granados@kernel.org>
 
