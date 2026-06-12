@@ -1,95 +1,96 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Thu, 11 Jun 2026 23:00:36 -0500
-Subject: [PATCH] f2fs: bound i_inline_xattr_size for non-inline-xattr
- inodes
+From: Takahiro Kuwano <takahiro.kuwano@infineon.com>
+Subject: [PATCH 0/4] mtd: spi-nor: split SFDP, ID database, and fixups
+Date: Fri, 12 Jun 2026 14:40:48 +0900
+Message-Id: <20260612-split-id-table-into-vendor-files-v1-0-dfaaa82cc6f0@infineon.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260611-b4-disp-155e8807-v1-1-5d14dcc72b15@proton.me>
-X-B4-Tracking: v=1; b=H4sIAGSEK2oC/x3MMQqAMAxA0auUzAaSom3xKuJQbdQsKi2IIN7d4
- viG/x8oklUK9OaBLJcWPfYKbgzMW9xXQU3VYMk6csw4tZi0nMhdJyGQx8BL8tImojhDzc4si97
- /chjf9wPlp/xSYgAAAA==
-To: Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>
-Cc: linux-f2fs-devel@lists.sourceforge.net, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781236836; l=3068;
- i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=oHjiLW/l5fStezkSvQ/f/so+Q/tgh5KxCxwhyhFZA4o=;
- b=Vhtm7MJlSvpvEZj2JWx/nVSZTDQ4kzGlPiEnzn3C8JgIckF4J+TEZlTl+RJQiiZOFfqM2EvCL
- 3L8DpdkQvyaCNa/SOqOPuplVAYkfVGWdNVfAaSlR/meuxnfGfgUMNo7
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
+X-B4-Tracking: v=1; b=H4sIAOGbK2oC/yWNQQqDMBBFryKzdiCNNEKvUlzEOGlHQiKZVAri3
+ Tttl+99eP8AocokcOsOqLSzcMkKl76D8PT5QciLMlhjnXHGomyJm0psfk665lZwp7yUipETCY7
+ RDeYawkDWg2a2SpHfv4v79Gd5zSuF9u3CeX4A/RcXJIQAAAA=
+X-Change-ID: 20260602-split-id-table-into-vendor-files-7f6305cc3e2a
+To: u-boot@lists.denx.de
+Cc: Tom Rini <trini@konsulko.com>, Vignesh R <vigneshr@ti.com>, 
+ Tudor Ambarus <tudor.ambarus@linaro.org>, Michael Walle <mwalle@kernel.org>, 
+ Pratyush Yadav <pratyush@kernel.org>, 
+ Miquel Raynal <miquel.raynal@bootlin.com>, Marek Vasut <marex@nabladev.com>, 
+ Weijie Gao <weijie.gao@mediatek.com>, 
+ Takahiro Kuwano <takahiro.kuwano@infineon.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781242882; l=2794;
+ i=takahiro.kuwano@infineon.com; s=20250227; h=from:subject:message-id;
+ bh=nPeaQ/w4gli8eyPGqdr8Q7Io5FfTru8yYfswKb9bkI8=;
+ b=1fwfYRdmO07ZO34V/z5ZfMitcV3Ur7XNgId1xRmDNddd8eC264PK+TIHtN+fGLqWiOCOsa8o/
+ wLgPy51HPICDL6KedBlglfqrgLn0XkoP3j7aUX8pepUTV6OoCmSyCFW
+X-Developer-Key: i=takahiro.kuwano@infineon.com; a=ed25519;
+ pk=aS8V9WLuMUkl0vmgD0xJU19ZajdJmuyFBnBfVj0dfDs=
+X-Endpoint-Received: by B4 Relay for takahiro.kuwano@infineon.com/20250227 with auth_id=566
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When the flexible_inline_xattr feature is enabled, do_read_inode() loads
-the on-disk i_inline_xattr_size unconditionally:
+The spi-nor-core.c contains optional logics like SFDP and manufcaturer
+specific fixups. The spi-nor-ids.c has single large ID database. There
+are many #ifdef directives in those files and that negatively affects
+readability and maintainability.
 
-	if (f2fs_sb_has_flexible_inline_xattr(sbi))
-		fi->i_inline_xattr_size = le16_to_cpu(ri->i_inline_xattr_size);
+This series, as the first step of cleanup, move SFDP logic, IDs, and
+fixups to newly source files. Reworking, renaming, and reformating
+existing code is not a scope of this series and further cleanup will be
+taken place in follow-up patches.
 
-but sanity_check_inode() only range-checks it when the inode also has the
-FI_INLINE_XATTR flag set.  An inode that carries an inline dentry or inline
-data but not FI_INLINE_XATTR -- the normal layout for an inline
-directory -- therefore keeps a fully attacker-controlled
-i_inline_xattr_size from a crafted image.
+Here is the code size impact when applying this series.
+Measured by my AMD Zynq-7000 (ARM32) environment with SFDP and all
+manufcaturers are enabled.
 
-get_inline_xattr_addrs() returns that value with no flag gating, so it
-feeds the inode geometry:
+SPI-NOR:
+            text    data     bss     dec     hex filename
+BEFORE    726289   14084       0  740373   b4c15 u-boot
+AFTER     727465   14084       0  741549   b50ad u-boot
+DELTA      +1176       0       0
 
-	MAX_INLINE_DATA()  = 4 * (CUR_ADDRS_PER_INODE - i_inline_xattr_size - 1)
-	NR_INLINE_DENTRY() = MAX_INLINE_DATA() * BITS_PER_BYTE / (...)
-	addrs_per_page()   = CUR_ADDRS_PER_INODE - i_inline_xattr_size
+TINY:
+            text    data     bss     dec     hex filename
+BEFORE     77286    3160     248   80694   13b36 spl/u-boot-spl
+AFTER      77542    3160     248   81086   13cbe spl/u-boot-spl
+DELTA       +256
 
-A large i_inline_xattr_size drives MAX_INLINE_DATA() and NR_INLINE_DENTRY()
-negative, so make_dentry_ptr_inline() sets d->max (int) to a negative
-value.  The inline directory walk then compares an unsigned long bit_pos
-against that negative d->max, which is promoted to a huge unsigned bound,
-and reads far past the inline area:
-
-	while (bit_pos < d->max)		/* fs/f2fs/dir.c */
-		... test_bit_le(bit_pos, d->bitmap) / d->dentry[bit_pos] ...
-
-Mounting a crafted image and reading such a directory triggers an
-out-of-bounds read in f2fs_fill_dentries(); the same underflow also
-corrupts ADDRS_PER_INODE for regular files.
-
-Validate i_inline_xattr_size against MAX_INLINE_XATTR_SIZE whenever the
-flexible_inline_xattr feature is enabled -- i.e. whenever the value is
-loaded from disk and consumed -- and keep the lower MIN_INLINE_XATTR_SIZE
-bound gated on inodes that actually carry an inline xattr, so legitimate
-inodes with i_inline_xattr_size == 0 are still accepted.
-
-Fixes: 6afc662e68b5 ("f2fs: support flexible inline xattr size")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Signed-off-by: Takahiro Kuwano <takahiro.kuwano@infineon.com>
 ---
- fs/f2fs/inode.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Takahiro Kuwano (4):
+      mtd: spi-nor: move SFDP logic out of the core
+      mtd: spi-nor: import manufacturer driver concept from Linux
+      mtd: spi-nor: move flash info entries to manufacturer drivers
+      mtd: spi-nor: move fixups to manufacturer drivers
 
-diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
-index c6dcda447882..5c0f62190875 100644
---- a/fs/f2fs/inode.c
-+++ b/fs/f2fs/inode.c
-@@ -324,9 +324,9 @@ static bool sanity_check_inode(struct inode *inode, struct folio *node_folio)
- 	}
- 
- 	if (f2fs_sb_has_flexible_inline_xattr(sbi) &&
--		f2fs_has_inline_xattr(inode) &&
--		(fi->i_inline_xattr_size < MIN_INLINE_XATTR_SIZE ||
--		fi->i_inline_xattr_size > MAX_INLINE_XATTR_SIZE)) {
-+		(fi->i_inline_xattr_size > MAX_INLINE_XATTR_SIZE ||
-+		(f2fs_has_inline_xattr(inode) &&
-+		fi->i_inline_xattr_size < MIN_INLINE_XATTR_SIZE))) {
- 		f2fs_warn(sbi, "%s: inode (ino=%llx) has corrupted i_inline_xattr_size: %d, min: %zu, max: %lu",
- 			  __func__, inode->i_ino, fi->i_inline_xattr_size,
- 			  MIN_INLINE_XATTR_SIZE, MAX_INLINE_XATTR_SIZE);
-
+ drivers/mtd/spi/Makefile        |   19 +
+ drivers/mtd/spi/atmel.c         |   28 +
+ drivers/mtd/spi/dosilicon.c     |   25 +
+ drivers/mtd/spi/eon.c           |   23 +
+ drivers/mtd/spi/fujitsu.c       |   27 +
+ drivers/mtd/spi/gigadevice.c    |  136 ++
+ drivers/mtd/spi/issi.c          |   84 ++
+ drivers/mtd/spi/macronix.c      |  154 +++
+ drivers/mtd/spi/micron-st.c     |  169 +++
+ drivers/mtd/spi/puya.c          |   56 +
+ drivers/mtd/spi/sf_internal.h   |  135 +-
+ drivers/mtd/spi/sfdp.c          |  720 ++++++++++
+ drivers/mtd/spi/sfdp.h          |  152 +++
+ drivers/mtd/spi/siliconkaiser.c |   18 +
+ drivers/mtd/spi/spansion.c      |  700 ++++++++++
+ drivers/mtd/spi/spi-nor-core.c  | 2751 +++++++--------------------------------
+ drivers/mtd/spi/spi-nor-ids.c   |  747 +----------
+ drivers/mtd/spi/spi-nor-tiny.c  |   11 +-
+ drivers/mtd/spi/sst.c           |   34 +
+ drivers/mtd/spi/winbond.c       |  250 ++++
+ drivers/mtd/spi/xmc.c           |   26 +
+ drivers/mtd/spi/xtx.c           |   54 +
+ drivers/mtd/spi/zbit.c          |   19 +
+ include/linux/mtd/spi-nor.h     |    2 +
+ 24 files changed, 3374 insertions(+), 2966 deletions(-)
 ---
-base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260611-b4-disp-155e8807-81fd7e4d00ac
+base-commit: 2d64a16d2558276fc8095ef2fae131829892d0f3
+change-id: 20260602-split-id-table-into-vendor-files-7f6305cc3e2a
 
 Best regards,
--- 
-Bryam Vargas <hexlabsecurity@proton.me>
+--  
+Takahiro Kuwano <takahiro.kuwano@infineon.com>
 
