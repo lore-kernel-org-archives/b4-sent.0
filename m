@@ -1,187 +1,154 @@
-From: Alberto Ruiz <aruiz@redhat.com>
-Date: Fri, 12 Jun 2026 18:17:19 +0100
-Subject: [PATCH 4/4] drm/solomon: use ssd130x_run_cmd_seq() in
- ssd133x_init()
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Fri, 12 Jun 2026 12:50:25 -0500
+Subject: [PATCH v3] nfc: nci: add data_len bound checks to activation
+ parameter extractors
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260612-ssd-batchcmd-v1-4-c61e5f7c24bc@redhat.com>
-References: <20260612-ssd-batchcmd-v1-0-c61e5f7c24bc@redhat.com>
-In-Reply-To: <20260612-ssd-batchcmd-v1-0-c61e5f7c24bc@redhat.com>
-To: Javier Martinez Canillas <javierm@redhat.com>, 
- Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
- Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- Alberto Ruiz <aruiz@redhat.com>
-X-Mailer: b4 0.15.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781284654; l=4685;
- i=aruiz@redhat.com; s=20260612; h=from:subject:message-id;
- bh=XfwToVbg4j9ZN1qC9nbgANqi/pUtXOP7mQCa6nqKdJ8=;
- b=XJwJcfnF8igU2BhfRkW7j1SNOE4GoJWnP3S847JBzU00U4jDL4G4BN9GhUO+AIWiF61iRA5bj
- hw3sv5/E1leAbLZxHh1xTx2wBoOUELkgEvDjgM85y7KLahc/CBnTCsd
-X-Developer-Key: i=aruiz@redhat.com; a=ed25519;
- pk=d1doFQwve1B/jU9nG5oPl1W5d+t+iFrjkkwk/hD97Ow=
-X-Endpoint-Received: by B4 Relay for aruiz@redhat.com/20260612 with auth_id=818
+Message-Id: <20260612-b4-disp-6d52d8b0-v3-1-e26221f8826d@proton.me>
+X-B4-Tracking: v=1; b=H4sIAOBGLGoC/x3MMQqAMAxA0auUzAbaqEW8iji0JmoWLS2IIN7d4
+ viG/x8oklUKjOaBLJcWPY+KtjGw7OHYBJWrgSx56x1h7JC1JPTcEw/RYhC3kluYhxChZinLqve
+ /nOb3/QAIYJgCYgAAAA==
+To: David Heidelberg <david@ixit.cz>
+Cc: linux-kernel@vger.kernel.org, Simon Horman <horms@kernel.org>, 
+ netdev@vger.kernel.org, oe-linux-nfc@lists.linux.dev
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781286625; l=5384;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=BcPYukihDqR5SWpAuWPZtnkwUMfhZZ+Ci4OmUYp2RgA=;
+ b=+4IkML7bYD0JoljnnfBm+g3tLOVsiqR6FAHmkAHGeKfMdG6+r2tj7NHIPRfAfn3+su2jrcGp1
+ 9tVou56eCqECJ0cziuxps8epVu+qVU0ti+yRCxnBfcSjXdBP7j32gMJ
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace individual ssd130x_write_cmd() calls and per-command error
-checks with a flat command array dispatched through ssd130x_run_cmd_seq().
+nci_extract_activation_params_iso_dep() and
+nci_extract_activation_params_nfc_dep() read an inner length byte from
+the NCI RF_INTF_ACTIVATED_NTF payload and use it to memcpy() into fixed
+kernel buffers, but neither function receives the caller-validated
+activation_params_len.  A crafted NCI notification with
+activation_params_len=1 and an inner length byte of up to 20 (NFC-A) or
+50 (NFC-B) causes memcpy() to read that many bytes past the one valid
+byte in the activation params region -- a slab out-of-bounds read of
+kernel memory adjacent to the NCI skb.
 
-Signed-off-by: Alberto Ruiz <aruiz@redhat.com>
+The sibling nci_extract_rf_params_*() family was given equivalent
+protection by commit 571dcbeb8e63 ("net: nfc: nci: Fix parameter
+validation for packet data"), but the two activation parameter
+extractors were not updated at that time.
+
+Add a data_len parameter to both functions, guard against an empty
+region before consuming the inner length byte, decrement the remaining
+count after consuming it, and clamp the copy length to what is actually
+available.  Update both call sites to pass ntf.activation_params_len,
+which is already validated against the skb at ntf.c:801.
+
+Fixes: e8c0dacd9836 ("NFC: Update names and structs to NCI spec 1.0 d18")
+Cc: stable@vger.kernel.org
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/gpu/drm/solomon/ssd130x.c | 136 +++++++++-----------------------------
- 1 file changed, 30 insertions(+), 106 deletions(-)
+ net/nfc/nci/ntf.c | 26 ++++++++++++++++++++++----
+ 1 file changed, 22 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/gpu/drm/solomon/ssd130x.c b/drivers/gpu/drm/solomon/ssd130x.c
-index a9914365ad27..9466b7353886 100644
---- a/drivers/gpu/drm/solomon/ssd130x.c
-+++ b/drivers/gpu/drm/solomon/ssd130x.c
-@@ -583,113 +583,37 @@ static int ssd132x_init(struct ssd130x_device *ssd130x)
+diff --git a/net/nfc/nci/ntf.c b/net/nfc/nci/ntf.c
+index c96512bb8653..8bc3adbc5b6b 100644
+--- a/net/nfc/nci/ntf.c
++++ b/net/nfc/nci/ntf.c
+@@ -525,15 +525,19 @@ static int nci_rf_discover_ntf_packet(struct nci_dev *ndev,
  
- static int ssd133x_init(struct ssd130x_device *ssd130x)
+ static int nci_extract_activation_params_iso_dep(struct nci_dev *ndev,
+ 						 struct nci_rf_intf_activated_ntf *ntf,
+-						 const __u8 *data)
++						 const __u8 *data, __u8 data_len)
  {
--	int ret;
--
--	/* Set color A contrast */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD133X_CONTRAST_A, 0x91);
--	if (ret < 0)
--		return ret;
--
--	/* Set color B contrast */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD133X_CONTRAST_B, 0x50);
--	if (ret < 0)
--		return ret;
--
--	/* Set color C contrast */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD133X_CONTRAST_C, 0x7d);
--	if (ret < 0)
--		return ret;
--
--	/* Set master current */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD133X_SET_MASTER_CURRENT, 0x06);
--	if (ret < 0)
--		return ret;
--
--	/* Set column start and end */
--	ret = ssd130x_write_cmd(ssd130x, 3, SSD133X_SET_COL_RANGE, 0x00, ssd130x->width - 1);
--	if (ret < 0)
--		return ret;
--
--	/* Set row start and end */
--	ret = ssd130x_write_cmd(ssd130x, 3, SSD133X_SET_ROW_RANGE, 0x00, ssd130x->height - 1);
--	if (ret < 0)
--		return ret;
--
--	/*
--	 * Horizontal Address Increment
--	 * Normal order SA,SB,SC (e.g. RGB)
--	 * COM Split Odd Even
--	 * 256 color format
--	 */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD13XX_SET_SEG_REMAP, 0x20);
--	if (ret < 0)
--		return ret;
--
--	/* Set display start and offset */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD133X_SET_DISPLAY_START, 0x00);
--	if (ret < 0)
--		return ret;
--
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD133X_SET_DISPLAY_OFFSET, 0x00);
--	if (ret < 0)
--		return ret;
--
--	/* Set display mode normal */
--	ret = ssd130x_write_cmd(ssd130x, 1, SSD133X_SET_DISPLAY_NORMAL);
--	if (ret < 0)
--		return ret;
--
--	/* Set multiplex ratio value */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD13XX_SET_MULTIPLEX_RATIO, ssd130x->height - 1);
--	if (ret < 0)
--		return ret;
--
--	/* Set master configuration */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD133X_SET_MASTER_CONFIG, 0x8e);
--	if (ret < 0)
--		return ret;
--
--	/* Set power mode */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD133X_POWER_SAVE_MODE, 0x0b);
--	if (ret < 0)
--		return ret;
--
--	/* Set Phase 1 and 2 period */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD133X_PHASES_PERIOD, 0x31);
--	if (ret < 0)
--		return ret;
--
--	/* Set clock divider */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD133X_SET_CLOCK_FREQ, 0xf0);
--	if (ret < 0)
--		return ret;
--
--	/* Set pre-charge A */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD132X_SET_PRECHARGE_A, 0x64);
--	if (ret < 0)
--		return ret;
--
--	/* Set pre-charge B */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD132X_SET_PRECHARGE_B, 0x78);
--	if (ret < 0)
--		return ret;
--
--	/* Set pre-charge C */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD132X_SET_PRECHARGE_C, 0x64);
--	if (ret < 0)
--		return ret;
--
--	/* Set pre-charge level */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD133X_SET_PRECHARGE_VOLTAGE, 0x3a);
--	if (ret < 0)
--		return ret;
--
--	/* Set VCOMH voltage */
--	ret = ssd130x_write_cmd(ssd130x, 2, SSD133X_SET_VCOMH_VOLTAGE, 0x3e);
--	if (ret < 0)
--		return ret;
-+	const u8 cmds[] = {
-+		2, SSD133X_CONTRAST_A, 0x91,
-+		2, SSD133X_CONTRAST_B, 0x50,
-+		2, SSD133X_CONTRAST_C, 0x7d,
-+		2, SSD133X_SET_MASTER_CURRENT, 0x06,
-+		3, SSD133X_SET_COL_RANGE, 0x00, ssd130x->width - 1,
-+		3, SSD133X_SET_ROW_RANGE, 0x00, ssd130x->height - 1,
-+		/*
-+		 * Horizontal Address Increment
-+		 * Normal order SA,SB,SC (e.g. RGB)
-+		 * COM Split Odd Even
-+		 * 256 color format
-+		 */
-+		2, SSD13XX_SET_SEG_REMAP, 0x20,
-+		2, SSD133X_SET_DISPLAY_START, 0x00,
-+		2, SSD133X_SET_DISPLAY_OFFSET, 0x00,
-+		1, SSD133X_SET_DISPLAY_NORMAL,
-+		2, SSD13XX_SET_MULTIPLEX_RATIO, ssd130x->height - 1,
-+		2, SSD133X_SET_MASTER_CONFIG, 0x8e,
-+		2, SSD133X_POWER_SAVE_MODE, 0x0b,
-+		2, SSD133X_PHASES_PERIOD, 0x31,
-+		2, SSD133X_SET_CLOCK_FREQ, 0xf0,
-+		2, SSD132X_SET_PRECHARGE_A, 0x64,
-+		2, SSD132X_SET_PRECHARGE_B, 0x78,
-+		2, SSD132X_SET_PRECHARGE_C, 0x64,
-+		2, SSD133X_SET_PRECHARGE_VOLTAGE, 0x3a,
-+		2, SSD133X_SET_VCOMH_VOLTAGE, 0x3e,
-+		0,
-+	};
+ 	struct activation_params_nfca_poll_iso_dep *nfca_poll;
+ 	struct activation_params_nfcb_poll_iso_dep *nfcb_poll;
  
--	return 0;
-+	return ssd130x_run_cmd_seq(ssd130x, cmds);
- }
+ 	switch (ntf->activation_rf_tech_and_mode) {
+ 	case NCI_NFC_A_PASSIVE_POLL_MODE:
++		if (data_len < 1)
++			return NCI_STATUS_RF_PROTOCOL_ERROR;
+ 		nfca_poll = &ntf->activation_params.nfca_poll_iso_dep;
+ 		nfca_poll->rats_res_len = min_t(__u8, *data++, NFC_ATS_MAXSIZE);
++		data_len--;
++		nfca_poll->rats_res_len = min_t(__u8, nfca_poll->rats_res_len, data_len);
+ 		pr_debug("rats_res_len %d\n", nfca_poll->rats_res_len);
+ 		if (nfca_poll->rats_res_len > 0) {
+ 			memcpy(nfca_poll->rats_res,
+@@ -542,8 +546,12 @@ static int nci_extract_activation_params_iso_dep(struct nci_dev *ndev,
+ 		break;
  
- static int ssd130x_update_rect(struct ssd130x_device *ssd130x,
+ 	case NCI_NFC_B_PASSIVE_POLL_MODE:
++		if (data_len < 1)
++			return NCI_STATUS_RF_PROTOCOL_ERROR;
+ 		nfcb_poll = &ntf->activation_params.nfcb_poll_iso_dep;
+ 		nfcb_poll->attrib_res_len = min_t(__u8, *data++, 50);
++		data_len--;
++		nfcb_poll->attrib_res_len = min_t(__u8, nfcb_poll->attrib_res_len, data_len);
+ 		pr_debug("attrib_res_len %d\n", nfcb_poll->attrib_res_len);
+ 		if (nfcb_poll->attrib_res_len > 0) {
+ 			memcpy(nfcb_poll->attrib_res,
+@@ -562,7 +570,7 @@ static int nci_extract_activation_params_iso_dep(struct nci_dev *ndev,
+ 
+ static int nci_extract_activation_params_nfc_dep(struct nci_dev *ndev,
+ 						 struct nci_rf_intf_activated_ntf *ntf,
+-						 const __u8 *data)
++						 const __u8 *data, __u8 data_len)
+ {
+ 	struct activation_params_poll_nfc_dep *poll;
+ 	struct activation_params_listen_nfc_dep *listen;
+@@ -570,9 +578,13 @@ static int nci_extract_activation_params_nfc_dep(struct nci_dev *ndev,
+ 	switch (ntf->activation_rf_tech_and_mode) {
+ 	case NCI_NFC_A_PASSIVE_POLL_MODE:
+ 	case NCI_NFC_F_PASSIVE_POLL_MODE:
++		if (data_len < 1)
++			return NCI_STATUS_RF_PROTOCOL_ERROR;
+ 		poll = &ntf->activation_params.poll_nfc_dep;
+ 		poll->atr_res_len = min_t(__u8, *data++,
+ 					  NFC_ATR_RES_MAXSIZE - 2);
++		data_len--;
++		poll->atr_res_len = min_t(__u8, poll->atr_res_len, data_len);
+ 		pr_debug("atr_res_len %d\n", poll->atr_res_len);
+ 		if (poll->atr_res_len > 0)
+ 			memcpy(poll->atr_res, data, poll->atr_res_len);
+@@ -580,9 +592,13 @@ static int nci_extract_activation_params_nfc_dep(struct nci_dev *ndev,
+ 
+ 	case NCI_NFC_A_PASSIVE_LISTEN_MODE:
+ 	case NCI_NFC_F_PASSIVE_LISTEN_MODE:
++		if (data_len < 1)
++			return NCI_STATUS_RF_PROTOCOL_ERROR;
+ 		listen = &ntf->activation_params.listen_nfc_dep;
+ 		listen->atr_req_len = min_t(__u8, *data++,
+ 					    NFC_ATR_REQ_MAXSIZE - 2);
++		data_len--;
++		listen->atr_req_len = min_t(__u8, listen->atr_req_len, data_len);
+ 		pr_debug("atr_req_len %d\n", listen->atr_req_len);
+ 		if (listen->atr_req_len > 0)
+ 			memcpy(listen->atr_req, data, listen->atr_req_len);
+@@ -806,12 +822,14 @@ static int nci_rf_intf_activated_ntf_packet(struct nci_dev *ndev,
+ 		switch (ntf.rf_interface) {
+ 		case NCI_RF_INTERFACE_ISO_DEP:
+ 			err = nci_extract_activation_params_iso_dep(ndev,
+-								    &ntf, data);
++								    &ntf, data,
++								    ntf.activation_params_len);
+ 			break;
+ 
+ 		case NCI_RF_INTERFACE_NFC_DEP:
+ 			err = nci_extract_activation_params_nfc_dep(ndev,
+-								    &ntf, data);
++								    &ntf, data,
++								    ntf.activation_params_len);
+ 			break;
+ 
+ 		case NCI_RF_INTERFACE_FRAME:
 
+---
+base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
+change-id: 20260612-b4-disp-6d52d8b0-ae1f21cdd8ab
+
+Best regards,
 -- 
-2.53.0
+Bryam Vargas <hexlabsecurity@proton.me>
 
