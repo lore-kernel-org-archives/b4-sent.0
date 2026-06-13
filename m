@@ -1,112 +1,115 @@
-From: Laika Price <laikabcprice@gmail.com>
-Date: Sun, 14 Jun 2026 00:13:57 +0100
-Subject: [PATCH net v3] ip_tunnel: drop stale dst from generated PMTU ICMP
- replies
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Sat, 13 Jun 2026 18:57:46 -0500
+Subject: [PATCH] Input: apple_z2 - bound the device-reported finger count
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260614-master-v3-1-9f5060ba1ed1@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM2wpAQBSF4VfRvjblLF5FLsZY2Mqh2UjJuxtcf
- vWvdZHAMoRK7yKLg4WX2SH2PTKDnnsobp0pCqIsyMJYTVo2WNXkSdF2GimMIRevFh2f31FV/5a
- 9GWG2d033/QDp2htLagAAAA==
-X-Change-ID: 20260613-master-b749dfae5ecc
-To: David Ahern <dsahern@kernel.org>, Ido Schimmel <idosch@nvidia.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Shuah Khan <shuah@kernel.org>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-kselftest@vger.kernel.org, Laika Price <laikabcprice@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781392437; l=3515;
- i=laikabcprice@gmail.com; s=20260613; h=from:subject:message-id;
- bh=4R3bk96Acva4pjmtLVNfzqZPE4VBDyqBTO1OdJW0m54=;
- b=46a8YD2fqzTW1iLw1iw6oWYzRsLwrI0LRffoyWRfjrGozZINh2hNQsSyWlSEGSIjcQepVi19k
- 9FYN5oBNvUsBnMA4PwpKjqTFmLEKTnzUSekvP4Zep10Umtl5XH91/Hv
-X-Developer-Key: i=laikabcprice@gmail.com; a=ed25519;
- pk=mFSMw2odvyxt1H4QHAdwZVuwHduNzUMDKbWFOcwhDCg=
-X-Endpoint-Received: by B4 Relay for laikabcprice@gmail.com/20260613 with auth_id=819
+Message-Id: <20260613-b4-disp-f0148c89-v1-1-868a48b2a187@proton.me>
+X-B4-Tracking: v=1; b=H4sIAHnuLWoC/x3MQQqAIBBA0avIrBvQErGuEi0yZ2o2JgoRRHdPW
+ r7F/w9UKkIVJvVAoUuqnKnBdAq2Y007ocRm6HXvtDMDBotRakbWxvrNjxh55cjB2zAwtCwXYrn
+ /5by87weeWEULYgAAAA==
+To: Sasha Finkelstein <k@chaosmail.tech>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Janne Grunau <j@jannau.net>, asahi@lists.linux.dev, 
+ linux-input@vger.kernel.org, Neal Gompa <neal@gompa.dev>, 
+ Sven Peter <sven@kernel.org>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781395065; l=3970;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=+piORlsZ9G+rq1w4Tyy0/0zNo6jPC9e+Ct0NYcVnLBs=;
+ b=dWGh/OzZS92ftQe4q3LGeswyrD8DhpLSDQdRYBZcLlsyMA5R5Ay0ph0okO81sYCXYDNlfdxgV
+ dwrdwpqHMvbBYgdgBei/shLH9p8q5q2omiz5EA/FLXV2M0u8RchxPHz
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-iptunnel_pmtud_build_icmp(...) and iptunnel_pmtud_build_icmpv6(...) take
-in an sk_buff, modify it to create a PMTU ICMP error reply, and return it.
-As part of these modifications, the source/destination ethernet and IP
-addresses are swapped around which makes the sk_buff's current dst invalid.
+apple_z2_parse_touches() takes the finger count from the touch
+controller's report and loops over that many fixed-size finger records
+without ever checking the count against the length of the report:
 
-If the stale dst is left, the packet can skip input routing and be
-forwarded using the original output device. This was observed when sending
-packets to a VXLAN over a WireGuard tunnel - the ICMP reply was generated
-but it was sent over the VXLAN instead of to the WireGuard tunnel.
+	nfingers = msg[APPLE_Z2_NUM_FINGERS_OFFSET];
+	fingers = (struct apple_z2_finger *)(msg + APPLE_Z2_FINGERS_OFFSET);
+	for (i = 0; i < nfingers; i++)
+		/* read fingers[i] ... */
 
-This patch drops the stale dst after building the PMTU reply so that the
-packet is routed using its new headers when it is reinjected.
+msg points into the fixed 4000-byte z2->rx_buf and nfingers is a single
+device-supplied byte, so it can be as large as 255.  A malicious,
+malfunctioning or counterfeit controller (or an interposer on the SPI
+bus) can report a large finger count in a short packet, making the loop
+read up to 255 * sizeof(struct apple_z2_finger) bytes starting 24 bytes
+into msg -- far past the 4000-byte buffer.  This is a controller-driven
+heap out-of-bounds read, and the finger fields that are read (position,
+pressure, touch and tool dimensions) are forwarded to userspace as input
+events, leaking adjacent kernel memory.
 
-The pmtu_ipv4_br_vxlan4_exception test generates PMTU exceptions by
-pinging an IP on the other side of a tunnel. This was incorrect as it
-would return upon the first ICMP Fragmentation Needed due to the -w flag
-being used in conjunction with || return 1.
+Bound the device-reported count to the number of finger records the
+report actually carries.
 
-This patch updates pmtu_ipv4_br_vxlan4_exception to be in line with how
-PMTU exceptions are generated in other tests such as in test_pmtu_ipvX
-
-    run_cmd ${ns_a} ${ping} -q -M want -i 0.1 -w 1 -s 1800 ${dst1}
-    run_cmd ${ns_a} ${ping} -q -M want -i 0.1 -w 1 -s 1800 ${dst2}
-
-Signed-off-by: Laika Price <laikabcprice@gmail.com>
+Reported-by: sashiko-bot@kernel.org
+Closes: https://lore.kernel.org/all/20260613215358.329921F000E9@smtp.kernel.org/
+Fixes: 471a92f8a21a ("Input: apple_z2 - add a driver for Apple Z2 touchscreens")
+Cc: stable@vger.kernel.org
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Changes in v3:
-- Squashed the selftest update into the ip_tunnel fix so the patch remains
-  bisectable.
-- Link to v2: https://patch.msgid.link/20260613-master-v2-0-061b70fd45dd@gmail.com
+Reachable on every touch interrupt once the controller is booted
+(apple_z2_irq -> apple_z2_read_packet -> apple_z2_parse_touches).
 
-Changes in v2:
-- Fixed incorrect PMTU exception generation in the selftest.
-- Link to v1: https://patch.msgid.link/20260613-master-v1-1-df796e8e2d74@gmail.com
+nfingers is a different device field from the packet length handled by
+the in-flight "Input: apple_z2 - bound the device-reported packet length"
+patch, so the two are orthogonal: that one bounds the spi_read() length
+(rx_buf[1..2]); this one bounds the per-report finger count (msg[16]).
+
+The early-return is tightened from NUM_FINGERS_OFFSET (16) to
+FINGERS_OFFSET (24) so the subtraction below cannot underflow; since
+msg_len == pkt_len - 5 and pkt_len is rounded to a multiple of four, the
+only reachable lengths the tighter guard now drops are 19 and 23, both of
+which are too short to hold even the finger-array header.
+
+Verified with a faithful in-kernel KASAN litmus (the verbatim 4000-byte
+buffer, the struct apple_z2_finger layout and the parse loop),
+CONFIG_KASAN=y on x86_64:
+
+  Arm A, nfingers = 255 in a short packet (msg_len 19):
+    BUG: KASAN: slab-out-of-bounds in apple_z2_parse_touches
+    Read of size 2 ... 1 bytes to the right of allocated 4000-byte region
+    ... cache kmalloc-4k of size 4096
+  Arm B, with this patch (count clamped to what the packet holds): clean
+  Arm C, benign device (3 fingers): clean
+
+  AddressSanitizer (x86_64 and i386): heap-buffer-overflow READ, both ABIs.
+
+Reproducer and full logs available on request.
 ---
- net/ipv4/ip_tunnel_core.c           | 2 ++
- tools/testing/selftests/net/pmtu.sh | 4 ++--
- 2 files changed, 4 insertions(+), 2 deletions(-)
+ drivers/input/touchscreen/apple_z2.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/net/ipv4/ip_tunnel_core.c b/net/ipv4/ip_tunnel_core.c
-index d3c677e9b..949150e43 100644
---- a/net/ipv4/ip_tunnel_core.c
-+++ b/net/ipv4/ip_tunnel_core.c
-@@ -267,6 +267,7 @@ static int iptunnel_pmtud_build_icmp(struct sk_buff *skb, int mtu)
+diff --git a/drivers/input/touchscreen/apple_z2.c b/drivers/input/touchscreen/apple_z2.c
+index 271ababf0ad5..61f353553e7c 100644
+--- a/drivers/input/touchscreen/apple_z2.c
++++ b/drivers/input/touchscreen/apple_z2.c
+@@ -88,10 +88,13 @@ static void apple_z2_parse_touches(struct apple_z2 *z2,
+ 	int slot_valid;
+ 	struct apple_z2_finger *fingers;
  
- 	eth_header(skb, skb->dev, ntohs(eh.h_proto), eh.h_source, eh.h_dest, 0);
- 	skb_reset_mac_header(skb);
-+	skb_dst_drop(skb);
- 
- 	return skb->len;
- }
-@@ -370,6 +371,7 @@ static int iptunnel_pmtud_build_icmpv6(struct sk_buff *skb, int mtu)
- 
- 	eth_header(skb, skb->dev, ntohs(eh.h_proto), eh.h_source, eh.h_dest, 0);
- 	skb_reset_mac_header(skb);
-+	skb_dst_drop(skb);
- 
- 	return skb->len;
- }
-diff --git a/tools/testing/selftests/net/pmtu.sh b/tools/testing/selftests/net/pmtu.sh
-index a3323c21f..9498d9f53 100755
---- a/tools/testing/selftests/net/pmtu.sh
-+++ b/tools/testing/selftests/net/pmtu.sh
-@@ -1456,8 +1456,8 @@ test_pmtu_ipvX_over_bridged_vxlanY_or_geneveY_exception() {
- 	mtu "${ns_a}" ${type}_a $((${ll_mtu} + 1000))
- 	mtu "${ns_b}" ${type}_b $((${ll_mtu} + 1000))
- 
--	run_cmd ${ns_c} ${ping} -q -M want -i 0.1 -c 10 -s $((${ll_mtu} + 500)) ${dst} || return 1
--	run_cmd ${ns_a} ${ping} -q -M want -i 0.1 -w 1  -s $((${ll_mtu} + 500)) ${dst} || return 1
-+	run_cmd ${ns_c} ${ping} -q -M want -i 0.1 -w 1 -s $((${ll_mtu} + 500)) ${dst}
-+	run_cmd ${ns_a} ${ping} -q -M want -i 0.1 -w 1 -s $((${ll_mtu} + 500)) ${dst}
- 
- 	# Check that exceptions were created
- 	pmtu="$(route_get_dst_pmtu_from_exception "${ns_c}" ${dst})"
+-	if (msg_len <= APPLE_Z2_NUM_FINGERS_OFFSET)
++	if (msg_len <= APPLE_Z2_FINGERS_OFFSET)
+ 		return;
+ 	nfingers = msg[APPLE_Z2_NUM_FINGERS_OFFSET];
+ 	fingers = (struct apple_z2_finger *)(msg + APPLE_Z2_FINGERS_OFFSET);
++	/* a malicious controller can claim more fingers than the packet holds */
++	nfingers = min_t(int, nfingers,
++			 (msg_len - APPLE_Z2_FINGERS_OFFSET) / sizeof(*fingers));
+ 	for (i = 0; i < nfingers; i++) {
+ 		slot = input_mt_get_slot_by_key(z2->input_dev, fingers[i].finger);
+ 		if (slot < 0) {
 
 ---
-base-commit: 2a2974b5145cdf2f4db134be1a2157e9ca4a1cf0
-change-id: 20260613-master-b749dfae5ecc
+base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
+change-id: 20260613-b4-disp-f0148c89-dfafdfb84b3f
 
 Best regards,
---  
-Laika Price <laikabcprice@gmail.com>
+-- 
+Bryam Vargas <hexlabsecurity@proton.me>
 
