@@ -1,108 +1,101 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sat, 13 Jun 2026 16:42:12 -0500
-Subject: [PATCH] Input: apple_z2 - bound the device-reported packet length
+Date: Sat, 13 Jun 2026 17:46:47 -0500
+Subject: [PATCH] iio: imu: inv_icm45600: clamp the device-reported FIFO
+ sample count
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260613-b4-disp-b1926f1a-v1-1-3a277b7c0cfa@proton.me>
-X-B4-Tracking: v=1; b=H4sIALPOLWoC/x3MQQqAIBBA0avErBtIC8muEi3GHGs2JQoRiHdPW
- r7F/wUyJ+EMS1cg8SNZ7qtB9R3sJ10Ho/hm0IM2g1Ejugm95IhOWW2CItyJ/BzspClYaFlMHOT
- 9l+tW6wfY+4MYYgAAAA==
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Sasha Finkelstein <k@chaosmail.tech>
-Cc: linux-arm-kernel@lists.infradead.org, Neal Gompa <neal@gompa.dev>, 
- linux-input@vger.kernel.org, asahi@lists.linux.dev, 
- linux-kernel@vger.kernel.org, Sven Peter <sven@kernel.org>, 
- Janne Grunau <j@jannau.net>
+Message-Id: <20260613-b4-disp-58b984f3-v1-1-352b2f925f58@proton.me>
+X-B4-Tracking: v=1; b=H4sIANbdLWoC/x3MQQqAIBBA0avErBvQNNGuEi1Sx5qNhUIE0d2Tl
+ m/x/wOVClOFqXug0MWVj9wg+w7CvuaNkGMzDGIwwkiFXmPkeuJovbM6KVRESQgXtFUBWnYWSnz
+ /y3l53w/F0hEGYgAAAA==
+To: Jonathan Cameron <jic23@kernel.org>, 
+ Remi Buisson <remi.buisson@tdk.com>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781386931; l=3413;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781390806; l=3435;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=HJr41MzsNAgdosyjOBWzjfV06tvv0y+yjyYHV/ssUMU=;
- b=uJGd+xWxV/O/9IKWycpqj9CKYM4uyDLxIThyI5YroMJXLg9nuvw2kuBkdcBHSk5VF0aKBIk2+
- 7FQuydudKU6CgHu0E6hF3LagjfSG95afsqzvV9Z3Y++mOEq5dALtSLZ
+ bh=v9HoACtqsgCt5jGG137Jw9QKYokE8rIehp0YKXfbLsQ=;
+ b=71Phw+TgwC3If+2IjJnDpn664vnnU5uqlLYSibalvvYCC/VSOL54m6xH2pxzGtTieNJ96NDKi
+ nEpnwrWwVbCB7PwBem+A9DTWH4/MOfzFh3LXHG6VcU0VNau16GQpA0g
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-apple_z2_read_packet() takes a 16-bit length from the touch controller's
-interrupt-data reply (rx_buf[1..2]) and, only rounded down to a multiple of
-four, uses it as the size of the second SPI transfer into the fixed-size
-rx_buf:
+inv_icm45600_buffer_fifo_read() takes the number of samples to fetch from
+the device's FIFO_COUNT register and uses it, unclamped, as the length of a
+regmap_noinc_read() into the fixed 8 KiB st->fifo.data buffer:
 
-	pkt_len = (get_unaligned_le16(z2->rx_buf + 1) + 8) & 0xfffffffc;
-	error = spi_read(z2->spidev, z2->rx_buf, pkt_len);
+	fifo_nb = le16_to_cpup(raw_fifo_count);
+	...
+	if (max > 0 && fifo_nb > max)
+		fifo_nb = max;
+	st->fifo.count = fifo_nb * packet_size;
+	regmap_noinc_read(st->map, INV_ICM45600_REG_FIFO_DATA,
+			  st->fifo.data, st->fifo.count);
 
-rx_buf is a fixed 4000-byte buffer, but pkt_len is fully controlled by the
-device and is never checked against it, so a malicious, malfunctioning or
-counterfeit controller (or an interposer on the SPI bus) that reports a
-large length makes spi_read() write up to 65540 device-supplied bytes into
-the 4000-byte buffer -- a controller-driven heap out-of-bounds write of up
-to about 61 KiB.  The recently added reply-type check only validates
-rx_buf[0], not the length.
+The only bound on fifo_nb is "max", but the interrupt handler calls
+inv_icm45600_buffer_fifo_read(st, 0), so on that path the clamp is
+skipped. A malfunctioning or malicious device (a counterfeit or
+compromised IMU, or a bus interposer) can then report up to 65535 in
+FIFO_COUNT, making fifo_nb * packet_size (16 bytes per packet) as large
+as ~1 MiB and overflowing the 8 KiB st->fifo.data heap buffer with
+device-controlled data.
 
-Reject any packet whose length exceeds the receive buffer.
+Clamp fifo_nb to the buffer capacity (INV_ICM45600_FIFO_SIZE_MAX /
+packet_size), mirroring the existing watermark cap in
+inv_icm45600_wm_truncate() and the sibling inv_icm42600 driver, which
+bounds its FIFO count to the buffer size. The clamp is a no-op for
+well-behaved hardware, whose FIFO never exceeds the buffer size.
 
-Fixes: 471a92f8a21a ("Input: apple_z2 - add a driver for Apple Z2 touchscreens")
+Fixes: 06674a72cf7a ("iio: imu: inv_icm45600: add buffer support in iio devices")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Reachable on every touch interrupt once the controller is booted
-(apple_z2_irq -> apple_z2_read_packet).
+Reproduced with an in-kernel KASAN litmus mirroring the exact allocation and
+the FIFO_COUNT -> regmap_noinc_read() length computation, plus a userspace
+AddressSanitizer model for the full magnitude:
 
-Verified with a faithful in-kernel KASAN litmus (the verbatim 4000-byte
-allocation, the exact pkt_len computation, and the spi_read transfer modelled
-as a memset of pkt_len controller bytes), CONFIG_KASAN_INLINE=y:
+  Without this patch (device FIFO_COUNT = 0x208 = 520 packets -> 8320 bytes):
+    BUG: KASAN: slab-out-of-bounds ... Write of size 8320
+    ... the buggy address belongs to the cache kmalloc-8k of size 8192
+    ... located 0 bytes inside of allocated 8192-byte region
+  With this patch (count clamped to 8192 bytes): clean, no KASAN report.
+  ASan model at the full magnitude (FIFO_COUNT = 0xFFFF -> 1048560 bytes):
+    AddressSanitizer: heap-buffer-overflow WRITE of size 1048560,
+    0 bytes after the 8192-byte region (reproduces on 64- and 32-bit).
 
-  Arm A, reported length 0x1000 -> pkt_len 4104:
-    BUG: KASAN: slab-out-of-bounds in apple_z2_read_packet
-    Write of size 4104 ... located 0 bytes inside of allocated 4000-byte region
-    ... which belongs to the cache kmalloc-4k of size 4096
-  Arm B, with this patch (length rejected): clean
-  Arm C, benign length: clean
-
-  AddressSanitizer (x86_64 and i386), reported length 0xffff -> pkt_len 65540:
-    heap-buffer-overflow WRITE of size 65540, both ABIs.
+The sibling inv_icm42600 driver bounds its FIFO count to the buffer size on
+the same interrupt path (max == 0 -> max_count = sizeof(st->fifo.data)); this
+restores the equivalent guard for inv_icm45600.
 
 Reproducer and full logs available on request.
 ---
- drivers/input/touchscreen/apple_z2.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/drivers/input/touchscreen/apple_z2.c b/drivers/input/touchscreen/apple_z2.c
-index 271ababf0ad5..ff9ff97be185 100644
---- a/drivers/input/touchscreen/apple_z2.c
-+++ b/drivers/input/touchscreen/apple_z2.c
-@@ -22,6 +22,7 @@
- #define APPLE_Z2_TOUCH_MOVED             4
- #define APPLE_Z2_CMD_READ_INTERRUPT_DATA 0xEB
- #define APPLE_Z2_REPLY_INTERRUPT_DATA    0xE1
-+#define APPLE_Z2_MAX_PACKET              4000
- #define APPLE_Z2_HBPP_CMD_BLOB           0x3001
- #define APPLE_Z2_FW_MAGIC                0x5746325A
- #define LOAD_COMMAND_INIT_PAYLOAD        0
-@@ -147,6 +148,8 @@ static int apple_z2_read_packet(struct apple_z2 *z2)
- 		return 0;
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
+index 2b9ea317385c..0021c3dc0888 100644
+--- a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
+@@ -422,6 +422,9 @@ int inv_icm45600_buffer_fifo_read(struct inv_icm45600_state *st,
+ 	if (max > 0 && fifo_nb > max)
+ 		fifo_nb = max;
  
- 	pkt_len = (get_unaligned_le16(z2->rx_buf + 1) + 8) & 0xfffffffc;
-+	if (pkt_len > APPLE_Z2_MAX_PACKET)
-+		return -EMSGSIZE;
- 
- 	error = spi_read(z2->spidev, z2->rx_buf, pkt_len);
- 	if (error)
-@@ -363,7 +366,7 @@ static int apple_z2_probe(struct spi_device *spi)
- 	if (!z2->tx_buf)
- 		return -ENOMEM;
- 	/* 4096 will end up being rounded up to 8192 due to devres header */
--	z2->rx_buf = devm_kzalloc(dev, 4000, GFP_KERNEL);
-+	z2->rx_buf = devm_kzalloc(dev, APPLE_Z2_MAX_PACKET, GFP_KERNEL);
- 	if (!z2->rx_buf)
- 		return -ENOMEM;
- 
++	/* Limit to the internal buffer capacity; the count is device-provided. */
++	fifo_nb = min_t(size_t, fifo_nb, INV_ICM45600_FIFO_SIZE_MAX / packet_size);
++
+ 	/* Try to read all FIFO data in internal buffer. */
+ 	st->fifo.count = fifo_nb * packet_size;
+ 	ret = regmap_noinc_read(st->map, INV_ICM45600_REG_FIFO_DATA,
 
 ---
 base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260613-b4-disp-b1926f1a-caad8f942af9
+change-id: 20260613-b4-disp-58b984f3-3eef009c483c
 
 Best regards,
 -- 
