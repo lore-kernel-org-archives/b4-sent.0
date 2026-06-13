@@ -1,87 +1,110 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Sat, 13 Jun 2026 21:55:59 +0200
-Subject: [PATCH QUESTION] ASoC: qcom: sdm845: use DSP_A format for TDM
- codec DAIs
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Sat, 13 Jun 2026 16:42:12 -0500
+Subject: [PATCH] Input: apple_z2 - bound the device-reported packet length
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260613-rfc-dsp-b-to-a-v1-1-7d095fe90a05@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIAM61LWoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDM0Nj3aK0ZN2U4gLdJN2SfN1EXUNzi0TjZIPEVPNUQyWgpoKi1LTMCrC
- B0UqBoa7BIZ7+fkqxtbUAYR9AAWoAAAA=
-X-Change-ID: 20260613-rfc-dsp-b-to-a-178a3c0ae7e1
-To: Srinivas Kandagatla <srini@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1593; i=david@ixit.cz;
- h=from:subject:message-id; bh=neg8UtFcZBwtlMB/SdEqzf3x1Nv6xr1NWuiZgMsq2qA=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqLbXUV2DAYE19NFvHsGSAv1VryqAgndBwZCCld
- JE0CEuOCv2JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCai211AAKCRBgAj/E00kg
- csyJD/9d6Vh67hpZ+04lqqTZChLaF1FB8No+Rgo3u0rUKnAyKAEp5EGqL5Rse8VWCMjkiYuJ9df
- rd2bK+2Hr4bBeP/Mb4Riy6V8B7wHZo+d9jdzmALaCOvjTlY7O8a1VpgNJ5tzd3LHUzY51rqOg9J
- G6Y5uYXNQER8jlMgGsEobjp3SiqvjeZW88P7+arplidO5j6sFw1EFStLaGlgRIR6F5yTA+wzfns
- v95bgmpxuNhcpeFlRtBkonAGgBVsnIa+88Ucc2dKk2SjdqC7GUXgQ0PsJ8hHSSJeoj3CIS+r0A5
- GyIN8/K5yGgqqYptI/OPlVLZWygZrGNNlkJUpzR8cCF+SRrTAUTPZtSaC76aLL2/qeWnSe8uMjE
- uIqQbxoeTmiA87axeSzPpZdbhLRVGgjojnXUXJOieys1SfvpFGxLzIhlBXCwufWvtYv8L67J3EF
- KolWhSGsygDHH4R12Zb2UYDZz6Bxfq3cqexYSjZa7vmNHWHUYZasdnrg5iSF80ZKTaxl/eW6l8H
- ox+3ItIqYY7/ZJbEAzadEZfpiA42Z+la4otS0kFcwrxVBLJQoaYU/268HQyFG+7e/SnFVEUDHWg
- S7Po6/p0eFWJjq4bW6J4Z37aHyzdtR7g+BG8gji8J6HSwKjcxA6gMUC9CL67SSawiI5y459iv6T
- OPiPvPcLIA9vp/A==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Message-Id: <20260613-b4-disp-b1926f1a-v1-1-3a277b7c0cfa@proton.me>
+X-B4-Tracking: v=1; b=H4sIALPOLWoC/x3MQQqAIBBA0avErBtIC8muEi3GHGs2JQoRiHdPW
+ r7F/wUyJ+EMS1cg8SNZ7qtB9R3sJ10Ho/hm0IM2g1Ejugm95IhOWW2CItyJ/BzspClYaFlMHOT
+ 9l+tW6wfY+4MYYgAAAA==
+To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
+ Sasha Finkelstein <k@chaosmail.tech>
+Cc: linux-arm-kernel@lists.infradead.org, Neal Gompa <neal@gompa.dev>, 
+ linux-input@vger.kernel.org, asahi@lists.linux.dev, 
+ linux-kernel@vger.kernel.org, Sven Peter <sven@kernel.org>, 
+ Janne Grunau <j@jannau.net>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781386931; l=3413;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=HJr41MzsNAgdosyjOBWzjfV06tvv0y+yjyYHV/ssUMU=;
+ b=uJGd+xWxV/O/9IKWycpqj9CKYM4uyDLxIThyI5YroMJXLg9nuvw2kuBkdcBHSk5VF0aKBIk2+
+ 7FQuydudKU6CgHu0E6hF3LagjfSG95afsqzvV9Z3Y++mOEq5dALtSLZ
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-I'm currently pairing this with cs35l36 codec.
+apple_z2_read_packet() takes a 16-bit length from the touch controller's
+interrupt-data reply (rx_buf[1..2]) and, only rounded down to a multiple of
+four, uses it as the size of the second SPI transfer into the fixed-size
+rx_buf:
 
-Currently this worked only because the cs35l36
-codec mapped both DSP_A and DSP_B to the same hardware register value
-(asp_fmt = 0), which is inherently DSP_A timing.
+	pkt_len = (get_unaligned_le16(z2->rx_buf + 1) + 8) & 0xfffffffc;
+	error = spi_read(z2->spidev, z2->rx_buf, pkt_len);
 
-The CPU-side AFE is configured with qcom,tdm-data-delay = <1> which
-produces DSP_A framing.
-The codec format should match what is actually on the wire.
+rx_buf is a fixed 4000-byte buffer, but pkt_len is fully controlled by the
+device and is never checked against it, so a malicious, malfunctioning or
+counterfeit controller (or an interposer on the SPI bus) that reports a
+large length makes spi_read() write up to 65540 device-supplied bytes into
+the 4000-byte buffer -- a controller-driven heap out-of-bounds write of up
+to about 61 KiB.  The recently added reply-type check only validates
+rx_buf[0], not the length.
 
-So I'm pretty lost if I should go fixing cs35l36 or sdm845.c.
+Reject any packet whose length exceeds the receive buffer.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Fixes: 471a92f8a21a ("Input: apple_z2 - add a driver for Apple Z2 touchscreens")
+Cc: stable@vger.kernel.org
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- sound/soc/qcom/sdm845.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Reachable on every touch interrupt once the controller is booted
+(apple_z2_irq -> apple_z2_read_packet).
 
-diff --git a/sound/soc/qcom/sdm845.c b/sound/soc/qcom/sdm845.c
-index 0ce9dff4dc525..7bf22e24b193a 100644
---- a/sound/soc/qcom/sdm845.c
-+++ b/sound/soc/qcom/sdm845.c
-@@ -376,17 +376,17 @@ static int sdm845_snd_startup(struct snd_pcm_substream *substream)
- 	case QUATERNARY_TDM_RX_0:
- 	case QUATERNARY_TDM_TX_0:
- 		if (++(data->quat_tdm_clk_count) == 1) {
- 			snd_soc_dai_set_sysclk(cpu_dai,
- 				Q6AFE_LPASS_CLK_ID_QUAD_TDM_IBIT,
- 				TDM_BCLK_RATE, SNDRV_PCM_STREAM_PLAYBACK);
- 		}
+Verified with a faithful in-kernel KASAN litmus (the verbatim 4000-byte
+allocation, the exact pkt_len computation, and the spi_read transfer modelled
+as a memset of pkt_len controller bytes), CONFIG_KASAN_INLINE=y:
+
+  Arm A, reported length 0x1000 -> pkt_len 4104:
+    BUG: KASAN: slab-out-of-bounds in apple_z2_read_packet
+    Write of size 4104 ... located 0 bytes inside of allocated 4000-byte region
+    ... which belongs to the cache kmalloc-4k of size 4096
+  Arm B, with this patch (length rejected): clean
+  Arm C, benign length: clean
+
+  AddressSanitizer (x86_64 and i386), reported length 0xffff -> pkt_len 65540:
+    heap-buffer-overflow WRITE of size 65540, both ABIs.
+
+Reproducer and full logs available on request.
+---
+ drivers/input/touchscreen/apple_z2.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/input/touchscreen/apple_z2.c b/drivers/input/touchscreen/apple_z2.c
+index 271ababf0ad5..ff9ff97be185 100644
+--- a/drivers/input/touchscreen/apple_z2.c
++++ b/drivers/input/touchscreen/apple_z2.c
+@@ -22,6 +22,7 @@
+ #define APPLE_Z2_TOUCH_MOVED             4
+ #define APPLE_Z2_CMD_READ_INTERRUPT_DATA 0xEB
+ #define APPLE_Z2_REPLY_INTERRUPT_DATA    0xE1
++#define APPLE_Z2_MAX_PACKET              4000
+ #define APPLE_Z2_HBPP_CMD_BLOB           0x3001
+ #define APPLE_Z2_FW_MAGIC                0x5746325A
+ #define LOAD_COMMAND_INIT_PAYLOAD        0
+@@ -147,6 +148,8 @@ static int apple_z2_read_packet(struct apple_z2 *z2)
+ 		return 0;
  
--		codec_dai_fmt |= SND_SOC_DAIFMT_IB_NF | SND_SOC_DAIFMT_DSP_B;
-+		codec_dai_fmt |= SND_SOC_DAIFMT_IB_NF | SND_SOC_DAIFMT_DSP_A;
+ 	pkt_len = (get_unaligned_le16(z2->rx_buf + 1) + 8) & 0xfffffffc;
++	if (pkt_len > APPLE_Z2_MAX_PACKET)
++		return -EMSGSIZE;
  
- 		for_each_rtd_codec_dais(rtd, j, codec_dai) {
+ 	error = spi_read(z2->spidev, z2->rx_buf, pkt_len);
+ 	if (error)
+@@ -363,7 +366,7 @@ static int apple_z2_probe(struct spi_device *spi)
+ 	if (!z2->tx_buf)
+ 		return -ENOMEM;
+ 	/* 4096 will end up being rounded up to 8192 due to devres header */
+-	z2->rx_buf = devm_kzalloc(dev, 4000, GFP_KERNEL);
++	z2->rx_buf = devm_kzalloc(dev, APPLE_Z2_MAX_PACKET, GFP_KERNEL);
+ 	if (!z2->rx_buf)
+ 		return -ENOMEM;
  
- 			if (!strcmp(codec_dai->component->name_prefix,
- 				    "Left")) {
- 				ret = snd_soc_dai_set_fmt(
- 						codec_dai, codec_dai_fmt);
- 				if (ret < 0) {
 
 ---
-base-commit: ec039126b7fac4e3af35ebccaa7c6f9b6875ba81
-change-id: 20260613-rfc-dsp-b-to-a-178a3c0ae7e1
+base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
+change-id: 20260613-b4-disp-b1926f1a-caad8f942af9
 
 Best regards,
 -- 
-David Heidelberg <david@ixit.cz>
+Bryam Vargas <hexlabsecurity@proton.me>
 
