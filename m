@@ -1,85 +1,86 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Fri, 12 Jun 2026 23:21:14 -0500
-Subject: [PATCH] Input: mms114 - reject an oversized device packet size
+Date: Sat, 13 Jun 2026 00:39:32 -0500
+Subject: [PATCH] Input: synaptics-rmi4 - bound the SMBus block read to the
+ caller buffer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260612-b4-disp-dc4b8dc4-v1-1-d7cb0a828d92@proton.me>
-X-B4-Tracking: v=1; b=H4sIALnaLGoC/x2MQQqAIBAAvxJ7bkFNzPpKdEjdai8lChGIf0+6D
- MxhpkCmxJRh7gokejjzfTWRfQf+3K6DkENzUEIZYaRCpzFwjhi8drYBLQ2Tm4LRSo/Qspho5/d
- fLmutH/8VYphiAAAA
+Message-Id: <20260613-b4-disp-2e033955-v1-1-43ab7281667a@proton.me>
+X-B4-Tracking: v=1; b=H4sIABPtLGoC/x3MOwqAMBBF0a3I1A7EjIpxK2Lh50WnUUlAhODeD
+ ZanuDdRRFBE6otEAbdGPY+Mqixo2adjA+uaTdbY1rSV8FzzqvFiCyPimoa9h3SdWyBwlLMrwOv
+ zL4fxfT/Le4ksYgAAAA==
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-input@vger.kernel.org, 
- Joonyoung Shim <jy0922.shim@samsung.com>, 
- Kyungmin Park <kyungmin.park@samsung.com>
+Cc: Benjamin Tissoires <bentiss@kernel.org>, linux-input@vger.kernel.org, 
+ Andrew Duggan <aduggan@synaptics.com>, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781324473; l=2369;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781329171; l=2461;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=6WV4KDtYyMuVstt+ID8Kq5NDhRv4I0YIkiOyhsfbDHc=;
- b=3EG4JelF3w7WLIYr8LmpS+FPVdyNbSggirjrZTZijCyqetaboJgZpK9v1VlMmNnFvJEY4N3ip
- dgKrM21hmn2AJEQumkdvOnK41RrNK8McqHtg3O6aBOsFs/4zPPD46Uo
+ bh=cj8C56VjTvQj5r/vaode4Mpb2LNoByz6cw/zLdVEHGo=;
+ b=/0AvHtPbyx29w2TCDiByHC3TOp5drI3nPffW6Y7j3m0t4Zr9t/SRrY6uoVYdjENo7931tRBfB
+ KM1Tk9xnbUXCd20XCuYAyi7xBWWkHL24fnj0BEgl/G3WOGmJhNqusRE
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mms114_interrupt() reads a packet of touch data from the device into a
-fixed-size on-stack buffer
+smb_block_read() takes a destination length but passes it nowhere:
 
-	struct mms114_touch touch[MMS114_MAX_TOUCH];
+	static int smb_block_read(struct rmi_transport_dev *xport,
+				  u8 commandcode, void *buf, size_t len)
+	{
+		...
+		retval = i2c_smbus_read_block_data(client, commandcode, buf);
 
-which holds MMS114_MAX_TOUCH (10) events of MMS114_EVENT_SIZE (8) bytes,
-i.e. 80 bytes. The length of the I2C read into it is taken verbatim from
-the device:
+i2c_smbus_read_block_data() has no destination-size argument; it copies
+the block count reported by the device (the first SMBus byte, up to
+I2C_SMBUS_BLOCK_MAX = 32) into buf. The RMI callers pass buffers far
+smaller than 32 bytes - rmi_read_pdt_entry() reads a PDT entry into an
+on-stack u8 buf[RMI_PDT_ENTRY_SIZE] (6 bytes) during the PDT scan - so a
+malfunctioning, malicious or counterfeit RMI4 SMBus controller (or an
+attacker tampering with the I2C bus) that reports a larger block count
+overflows the caller's stack buffer by up to 32 - 6 = 26 bytes,
+clobbering the stack canary, saved registers and the return address.
 
-	packet_size = mms114_read_reg(data, MMS114_PACKET_SIZE);
-	if (packet_size <= 0)
-		goto out;
-	...
-	error = __mms114_read_reg(data, MMS114_INFORMATION, packet_size,
-			(u8 *)touch);
+Read into a local I2C_SMBUS_BLOCK_MAX-sized buffer and copy back at most
+len bytes, so the device can never write past the caller's buffer.
 
-packet_size is a single device register byte (0x0F) and the only check
-is the lower bound packet_size <= 0; it is never bounded against the
-size of touch[]. A malfunctioning, malicious or counterfeit controller
-(or an attacker tampering with the I2C bus) can report a packet_size of
-up to 255, so __mms114_read_reg() writes up to 175 bytes past the end of
-touch[] on the IRQ-thread stack: a stack out-of-bounds write that can
-overwrite the stack canary, saved registers and the return address.
-
-A well-formed device never reports more than the buffer holds, so reject
-an oversized packet and drop the report, consistent with the handler's
-other error paths, rather than reading past the buffer.
-
-Fixes: 07b8481d4aff ("Input: add MELFAS mms114 touchscreen driver")
+Fixes: 82264d0cf7ae ("Input: synaptics-rmi4 - add SMBus support")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/input/touchscreen/mms114.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ drivers/input/rmi4/rmi_smbus.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/input/touchscreen/mms114.c b/drivers/input/touchscreen/mms114.c
-index af462086a65c..4c75f16c503d 100644
---- a/drivers/input/touchscreen/mms114.c
-+++ b/drivers/input/touchscreen/mms114.c
-@@ -226,6 +226,13 @@ static irqreturn_t mms114_interrupt(int irq, void *dev_id)
- 	if (packet_size <= 0)
- 		goto out;
+diff --git a/drivers/input/rmi4/rmi_smbus.c b/drivers/input/rmi4/rmi_smbus.c
+index f3d0b40721df..ea957aba28f1 100644
+--- a/drivers/input/rmi4/rmi_smbus.c
++++ b/drivers/input/rmi4/rmi_smbus.c
+@@ -177,12 +177,20 @@ static int smb_block_read(struct rmi_transport_dev *xport,
+ 	struct rmi_smb_xport *rmi_smb =
+ 		container_of(xport, struct rmi_smb_xport, xport);
+ 	struct i2c_client *client = rmi_smb->client;
++	u8 data[I2C_SMBUS_BLOCK_MAX];
+ 	int retval;
  
-+	/* the device controls packet_size; reject anything too big for touch[] */
-+	if (packet_size > (int)sizeof(touch)) {
-+		dev_err(&client->dev, "Invalid packet size %d (max %zu)\n",
-+			packet_size, sizeof(touch));
-+		goto out;
-+	}
-+
- 	/* MMS136 has slightly different event size */
- 	if (data->type == TYPE_MMS134S || data->type == TYPE_MMS136)
- 		touch_size = packet_size / MMS136_EVENT_SIZE;
+-	retval = i2c_smbus_read_block_data(client, commandcode, buf);
++	/*
++	 * i2c_smbus_read_block_data() copies the device-reported block count
++	 * (up to I2C_SMBUS_BLOCK_MAX) into the destination and has no way to
++	 * know its size, so read into a local buffer and copy back at most
++	 * len bytes - never past the caller's buffer.
++	 */
++	retval = i2c_smbus_read_block_data(client, commandcode, data);
+ 	if (retval < 0)
+ 		return retval;
+ 
++	memcpy(buf, data, min_t(size_t, retval, len));
+ 	return retval;
+ }
+ 
 
 ---
 base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260612-b4-disp-dc4b8dc4-8e39b9d64247
+change-id: 20260613-b4-disp-2e033955-ffe3889ce3e9
 
 Best regards,
 -- 
