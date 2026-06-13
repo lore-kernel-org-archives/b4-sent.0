@@ -1,86 +1,113 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sat, 13 Jun 2026 00:39:32 -0500
-Subject: [PATCH] Input: synaptics-rmi4 - bound the SMBus block read to the
- caller buffer
+Date: Sat, 13 Jun 2026 01:12:34 -0500
+Subject: [PATCH] Input: cyapa - bound the SMBus block reads to the caller
+ buffer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260613-b4-disp-2e033955-v1-1-43ab7281667a@proton.me>
-X-B4-Tracking: v=1; b=H4sIABPtLGoC/x3MOwqAMBBF0a3I1A7EjIpxK2Lh50WnUUlAhODeD
- ZanuDdRRFBE6otEAbdGPY+Mqixo2adjA+uaTdbY1rSV8FzzqvFiCyPimoa9h3SdWyBwlLMrwOv
- zL4fxfT/Le4ksYgAAAA==
+Message-Id: <20260613-b4-disp-8e550272-v1-1-9658cf8292c2@proton.me>
+X-B4-Tracking: v=1; b=H4sIANH0LGoC/x3MQQqAIBBA0avErBtQ06yuEi3MppqNhUIE4t2Tl
+ m/xf4ZEkSnB1GSI9HDiK1TItgF/unAQ8lYNSqhe9LLDVePG6caBjBHKKnTSaW290WIYoWZ3pJ3
+ ffzkvpXxVRhvSYgAAAA==
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: Benjamin Tissoires <bentiss@kernel.org>, linux-input@vger.kernel.org, 
- Andrew Duggan <aduggan@synaptics.com>, linux-kernel@vger.kernel.org
+Cc: Dudley Du <dudl@cypress.com>, Benson Leung <bleung@chromium.org>, 
+ linux-input@vger.kernel.org, Daniel Kurtz <djkurtz@chromium.org>, 
+ linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781329171; l=2461;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781331153; l=3371;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=cj8C56VjTvQj5r/vaode4Mpb2LNoByz6cw/zLdVEHGo=;
- b=/0AvHtPbyx29w2TCDiByHC3TOp5drI3nPffW6Y7j3m0t4Zr9t/SRrY6uoVYdjENo7931tRBfB
- KM1Tk9xnbUXCd20XCuYAyi7xBWWkHL24fnj0BEgl/G3WOGmJhNqusRE
+ bh=GV3OIu9GRRKjdqcaWZ4II7ZaN9d38honFN8iwiNx23I=;
+ b=3CZ2VsGndrYewICriNIQ9fnVkJilLdoqSN4+F9OMOHEaFaDrPxldIzWCYCZS1s4Raaf8L3R8Z
+ RCmFL4lyw8BB4T8yp0vOuvt6y0ggRCSXzrit/hF4vLovmqPGiaXTBTQ
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-smb_block_read() takes a destination length but passes it nowhere:
+cyapa_smbus_read_block() takes the expected length of the result but
+never uses it to bound the destination:
 
-	static int smb_block_read(struct rmi_transport_dev *xport,
-				  u8 commandcode, void *buf, size_t len)
-	{
-		...
-		retval = i2c_smbus_read_block_data(client, commandcode, buf);
+	if (SMBUS_GROUP_BLOCK_CMD_MASK & cmd) {
+		smbus_cmd = SMBUS_ENCODE_RW(cmd, SMBUS_READ);
+		ret = i2c_smbus_read_block_data(client, smbus_cmd, values);
+		goto out;
+	}
+	...
+		buf = values + I2C_SMBUS_BLOCK_MAX * index;
+		ret = i2c_smbus_read_block_data(client, smbus_cmd, buf);
 
 i2c_smbus_read_block_data() has no destination-size argument; it copies
 the block count reported by the device (the first SMBus byte, up to
-I2C_SMBUS_BLOCK_MAX = 32) into buf. The RMI callers pass buffers far
-smaller than 32 bytes - rmi_read_pdt_entry() reads a PDT entry into an
-on-stack u8 buf[RMI_PDT_ENTRY_SIZE] (6 bytes) during the PDT scan - so a
-malfunctioning, malicious or counterfeit RMI4 SMBus controller (or an
-attacker tampering with the I2C bus) that reports a larger block count
-overflows the caller's stack buffer by up to 32 - 6 = 26 bytes,
-clobbering the stack canary, saved registers and the return address.
+I2C_SMBUS_BLOCK_MAX = 32) into the buffer. Several callers pass buffers
+smaller than 32 bytes - cyapa_detect() reads CYAPA_CMD_BL_STATUS into an
+on-stack u8 status[BL_STATUS_SIZE] (3 bytes), and the group-query path
+reads into u8 query_data[QUERY_DATA_SIZE] (27 bytes) - so a
+malfunctioning, malicious or counterfeit trackpad (or an attacker
+tampering with the SMBus) that reports a larger block count overflows
+the caller's stack buffer by up to 32 - 3 = 29 bytes, clobbering the
+stack canary, saved registers and the return address.
 
-Read into a local I2C_SMBUS_BLOCK_MAX-sized buffer and copy back at most
-len bytes, so the device can never write past the caller's buffer.
+Read each block into a local I2C_SMBUS_BLOCK_MAX-sized buffer and copy
+back only the expected number of bytes, in both the group-block branch
+and the multi-block loop, so the device can never write past the
+caller's buffer.
 
-Fixes: 82264d0cf7ae ("Input: synaptics-rmi4 - add SMBus support")
+Fixes: 6ddaf744c9f6 ("Input: cyapa - add support for smbus protocol")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/input/rmi4/rmi_smbus.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+ drivers/input/mouse/cyapa_gen3.c | 16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/input/rmi4/rmi_smbus.c b/drivers/input/rmi4/rmi_smbus.c
-index f3d0b40721df..ea957aba28f1 100644
---- a/drivers/input/rmi4/rmi_smbus.c
-+++ b/drivers/input/rmi4/rmi_smbus.c
-@@ -177,12 +177,20 @@ static int smb_block_read(struct rmi_transport_dev *xport,
- 	struct rmi_smb_xport *rmi_smb =
- 		container_of(xport, struct rmi_smb_xport, xport);
- 	struct i2c_client *client = rmi_smb->client;
-+	u8 data[I2C_SMBUS_BLOCK_MAX];
- 	int retval;
+diff --git a/drivers/input/mouse/cyapa_gen3.c b/drivers/input/mouse/cyapa_gen3.c
+index fc3fb954523b..832775bb7182 100644
+--- a/drivers/input/mouse/cyapa_gen3.c
++++ b/drivers/input/mouse/cyapa_gen3.c
+@@ -247,27 +247,37 @@ ssize_t cyapa_smbus_read_block(struct cyapa *cyapa, u8 cmd, size_t len,
+ 	ssize_t ret;
+ 	u8 index;
+ 	u8 smbus_cmd;
+-	u8 *buf;
++	u8 buf[I2C_SMBUS_BLOCK_MAX];
+ 	struct i2c_client *client = cyapa->client;
  
--	retval = i2c_smbus_read_block_data(client, commandcode, buf);
+ 	if (!(SMBUS_BYTE_BLOCK_CMD_MASK & cmd))
+ 		return -EINVAL;
+ 
 +	/*
 +	 * i2c_smbus_read_block_data() copies the device-reported block count
-+	 * (up to I2C_SMBUS_BLOCK_MAX) into the destination and has no way to
-+	 * know its size, so read into a local buffer and copy back at most
-+	 * len bytes - never past the caller's buffer.
++	 * (up to I2C_SMBUS_BLOCK_MAX) into its buffer and has no way to know
++	 * its size, so read into a local buffer and copy back at most the
++	 * expected number of bytes - never past the caller's buffer.
 +	 */
-+	retval = i2c_smbus_read_block_data(client, commandcode, data);
- 	if (retval < 0)
- 		return retval;
+ 	if (SMBUS_GROUP_BLOCK_CMD_MASK & cmd) {
+ 		/* read specific block registers command. */
+ 		smbus_cmd = SMBUS_ENCODE_RW(cmd, SMBUS_READ);
+-		ret = i2c_smbus_read_block_data(client, smbus_cmd, values);
++		ret = i2c_smbus_read_block_data(client, smbus_cmd, buf);
++		if (ret > 0)
++			memcpy(values, buf, min_t(size_t, ret, len));
+ 		goto out;
+ 	}
  
-+	memcpy(buf, data, min_t(size_t, retval, len));
- 	return retval;
- }
+ 	ret = 0;
+ 	for (index = 0; index * I2C_SMBUS_BLOCK_MAX < len; index++) {
++		size_t offset = index * I2C_SMBUS_BLOCK_MAX;
++
+ 		smbus_cmd = SMBUS_ENCODE_IDX(cmd, index);
+ 		smbus_cmd = SMBUS_ENCODE_RW(smbus_cmd, SMBUS_READ);
+-		buf = values + I2C_SMBUS_BLOCK_MAX * index;
+ 		ret = i2c_smbus_read_block_data(client, smbus_cmd, buf);
+ 		if (ret < 0)
+ 			goto out;
++		memcpy(values + offset, buf, min_t(size_t, ret, len - offset));
+ 	}
  
+ out:
 
 ---
 base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260613-b4-disp-2e033955-ffe3889ce3e9
+change-id: 20260613-b4-disp-8e550272-a1a447c54089
 
 Best regards,
 -- 
