@@ -1,111 +1,105 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sat, 13 Jun 2026 03:13:19 -0500
-Subject: [PATCH] iio: accel: fxls8962af: clamp the device-reported FIFO
- sample count
+From: Enzo Adriano <enzo.adriano.code@gmail.com>
+Subject: [PATCH 0/4] arm64: dts: allwinner: add A733/Cubie A7S DTS support
+Date: Sat, 13 Jun 2026 05:42:12 -0400
+Message-Id: <20260613-a733-dts-v1-public-ready-v1-0-7787c94681db@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260613-b4-disp-22362900-v1-1-c5e49f6af027@proton.me>
-X-B4-Tracking: v=1; b=H4sIAB4RLWoC/x3MMQqAMAxA0atIZgNpWgt6FXFQGzVLlRZEkN7d4
- viG/1/IklQyDM0LSW7NesYK0zawHnPcBTVUAxN78sbi4jBovpDZeu6JcPNk3BKo651Aza4kmz7
- /cpxK+QDbkw+JYgAAAA==
-To: Jonathan Cameron <jic23@kernel.org>
-Cc: linux-iio@vger.kernel.org, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, Sean Nyekjaer <sean@geanix.com>, 
- linux-kernel@vger.kernel.org, David Lechner <dlechner@baylibre.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781338398; l=3598;
- i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=pREP1uFWXVwXkWAbHlcUOetdWzMCYtAeass2fBY2qT0=;
- b=shQQc3236zNSZVFnsbDnoULPUcXvIHQbtvFHgVXQnMnpeW4Z+ucOBouVpbSGkkZytolKsj33O
- ABt4f+wueGcD2hxkWGS5niBY0pO9EJOco1iJG9kzLzd3i+eNu2XJGMt
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42QQW7DIBBFrxKxLhYwgO2oqnKPKosBJgmtnbhgp
+ 02j3L3Y7q6bLr/0/3ujubNMKVJm282dJbrGHC/nEuTThvkTno/EYyiZKaGssBI41gA8jJlfJR8
+ m10XPE2G48cY7B7UEcFazMh8SHeLXgn7drzlP7o38OPN+G4k+puIc1xrrKWdcnNvN86KUSq7KN
+ PpZKXgA02qoDwqw3g3x2F8SdtVI/vQyQ/8iQIoV4bv3FQHWaWqd0tr8B2FEo6QQWoGqGgmal5P
+ OIVE1pO/bJybcYeorf+mXtcNMvIQ+juWPVllPxvnGuAAHRGxVU9dBOmt8q3RoLLZGW7Z/PH4A9
+ 9zWNIwBAAA=
+X-Change-ID: 20260613-a733-dts-v1-public-ready-8cbb37133b64
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
+ Jernej Skrabec <jernej.skrabec@gmail.com>, 
+ Samuel Holland <samuel@sholland.org>, Maxime Ripard <mripard@kernel.org>, 
+ Ulf Hansson <ulfh@kernel.org>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ linux-mmc@vger.kernel.org, Enzo Adriano <enzo.adriano.code@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781343732; l=3787;
+ i=enzo.adriano.code@gmail.com; s=a733-cubie-a7s; h=from:subject:message-id;
+ bh=T8w15Z6UpGoZeormWbXEddQVKmpoMhM5LL7ffQ3jrX0=;
+ b=NpVcmzEJkeow+JZLJUFg5NrSvZvzi4VWISMZ+s+b2GwHFUFpxrVarljFmYyqy15pBrQ9N2uFk
+ T/Auz84g6iVCzcD3gTyGF1TxQBxSomQj4ULfUIgyIKrfS45WsGn4V7s
+X-Developer-Key: i=enzo.adriano.code@gmail.com; a=ed25519;
+ pk=5S3Wmdqa4XfCdeZF/HfeYqnQF8GN9JGt3SE1cxqSX8E=
+X-Endpoint-Received: by B4 Relay for enzo.adriano.code@gmail.com/a733-cubie-a7s with auth_id=820
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-fxls8962af_fifo_flush() copies the number of samples the device reports
-in its hardware FIFO into an on-stack buffer
+This series adds initial devicetree support for the Allwinner A733 SoC and
+Radxa Cubie A7S board.
 
-	u16 buffer[FXLS8962AF_FIFO_LENGTH * 3];
+It includes the Radxa Cubie A7S board compatible, the A733 MMC compatible,
+an initial A733 SoC DTSI with CPUs, timer, GICv3, RTC oscillator provider,
+CCU/R-CCU, pinctrl, UART0, and SDMMC0, and a board DTS enabling UART0 console
+and SD card boot storage.
 
-which is sized for at most FXLS8962AF_FIFO_LENGTH (32) samples. The count
-is read from the BUF_STATUS register and masked with a 6-bit field:
+This series intentionally does not carry local CCU/PRCM or pinctrl driver
+patches. Those areas overlap active A733 RFC work and remain external
+prerequisites unless maintainers ask for a different plan. The A733 CCU RFC
+also depends on the A733 RTC series.
 
-	count = reg & FXLS8962AF_BUF_STATUS_BUF_CNT;
+Ethernet, VPU/Cedrus, display, Wi-Fi, Bluetooth, USB-C, PCIe, and other board
+peripherals are intentionally out of scope. Vendor U-Boot workarounds used for
+local proof collection are not encoded in these device trees.
 
-where FXLS8962AF_BUF_STATUS_BUF_CNT is GENMASK(5, 0), so count can be
-0..63 - nearly double the 32-deep FIFO the buffer is sized for. The only
-check applied to it is the zero test; unlike the bmc150 flush there is no
-caller-supplied bound at all. count samples are then transferred into
-buffer[]:
+Cubie A7S runtime proof has shown the v4 Image and DTB loading, Linux
+7.1.0-rc6-gabc8d07b0a63, Radxa Cubie A7S machine model, 8 CPUs, GICv3
+redistributors, A733 pinctrl/UART0, SDMMC0 enumeration, mmcblk0 partition
+discovery, and a read-only mmcblk0p3 root mount via the corrected PARTUUID
+path.
 
-	fxls8962af_fifo_transfer(data, buffer, count);
-
-fxls8962af_fifo_transfer() reads count * 3 * sizeof(u16) = count * 6
-bytes through regmap, so a malfunctioning, malicious or counterfeit
-accelerometer (or an attacker tampering with the I2C/SPI bus) that
-reports a count of 33..63 writes up to 63 * 6 = 378 bytes into the
-192-byte buffer: a stack out-of-bounds write of up to 186 bytes that
-clobbers the stack canary, saved registers and the return address.
-
-Clamp count to FXLS8962AF_FIFO_LENGTH, the number of samples buffer[] is
-sized for, before the transfer, mirroring the watermark clamp already
-done in fxls8962af_set_watermark(). A well-formed flush reports at most
-FXLS8962AF_FIFO_LENGTH samples, so legitimate devices are unaffected.
-
-Fixes: 79e3a5bdd9ef ("iio: accel: fxls8962af: add hw buffered sampling")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Signed-off-by: Enzo Adriano <enzo.adriano.code@gmail.com>
 ---
-This is a different bug from CVE-2025-38485, the use-after-free in the same
-function fixed by commit 1fe16dc1a2f5 ("iio: accel: fxls8962af: Fix use after
-free in fxls8962af_fifo_flush"): that commit added a synchronize_irq() in
-fxls8962af_buffer_predisable and did not bound the FIFO sample count, so this
-stack overflow is still present at mainline HEAD.
+Enzo Adriano (4):
+      dt-bindings: arm: sunxi: add Radxa Cubie A7S
+      dt-bindings: mmc: add Allwinner A733 compatible
+      arm64: dts: allwinner: add Allwinner A733 SoC
+      arm64: dts: allwinner: add Radxa Cubie A7S
 
-I reproduced the out-of-bounds write with an in-kernel test that drives
-the fxls8962af_fifo_flush() buffer geometry verbatim under KASAN
-(CONFIG_KASAN_STACK=y), with the device-supplied sample count:
-
-  count=36, no clamp:
-    BUG: KASAN: stack-out-of-bounds in ...fifo_flush
-    Write of size 216 ... [32, 224) 'buffer'   (the 192-byte buffer)
-  with this patch (clamp to FXLS8962AF_FIFO_LENGTH): the transfer is
-    bounded to 32 samples, no KASAN report.
-  a well-formed (<= 32 sample) flush is unaffected, no KASAN report.
-
-The full device range - count=63, a 378-byte write = 186 bytes past the
-buffer, smashing the stack canary and the return address - reproduces the
-same way under userspace AddressSanitizer on both -m32 and -m64.
-
-The FIFO sample count is read over I2C/SPI from the accelerometer, so
-triggering this requires a malicious or defective device, or tampering
-on the bus.
+ Documentation/devicetree/bindings/arm/sunxi.yaml   |   5 +
+ .../bindings/mmc/allwinner,sun4i-a10-mmc.yaml      |   3 +
+ arch/arm64/boot/dts/allwinner/Makefile             |   1 +
+ .../boot/dts/allwinner/sun60i-a733-cubie-a7s.dts   |  48 +++++
+ arch/arm64/boot/dts/allwinner/sun60i-a733.dtsi     | 198 +++++++++++++++++++++
+ 5 files changed, 255 insertions(+)
 ---
- drivers/iio/accel/fxls8962af-core.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/drivers/iio/accel/fxls8962af-core.c b/drivers/iio/accel/fxls8962af-core.c
-index 8763e91c63d2..fdd049223006 100644
---- a/drivers/iio/accel/fxls8962af-core.c
-+++ b/drivers/iio/accel/fxls8962af-core.c
-@@ -970,6 +970,8 @@ static int fxls8962af_fifo_flush(struct iio_dev *indio_dev)
- 	if (!count)
- 		return 0;
- 
-+	count = min_t(u8, count, FXLS8962AF_FIFO_LENGTH);
-+
- 	data->old_timestamp = data->timestamp;
- 	data->timestamp = iio_get_time_ns(indio_dev);
- 
-
----
-base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260613-b4-disp-22362900-f6014bd0594e
+base-commit: 1626ce5bc85bd3faaa92877d1b65c924d86a9546
+change-id: 20260613-a733-dts-v1-public-ready-8cbb37133b64
+prerequisite-message-id: <20260121-a733-rtc-v1-0-d359437f23a7@pigmoral.tech>
+prerequisite-patch-id: 042a3289f0d794493871f52adbd992a9f4de1f95
+prerequisite-patch-id: a133b49e027edbb982e1e0e6c5712416ffa8512a
+prerequisite-patch-id: c512a7bc19f2d6d8cd54eb0950db302cc71795df
+prerequisite-patch-id: 1ea3a72e957d15a896a95127908c9c2a188bd46c
+prerequisite-patch-id: df374a147afb6d96e5c3c9ee9f0d3085c57a9076
+prerequisite-patch-id: cd4375ce65c5b79a1c67b33dc373c0bc0af6d308
+prerequisite-patch-id: 4ec938bcd2096388f4c1928b0aa1a9c72ef6fe35
+prerequisite-message-id: <20260310-a733-clk-v1-0-36b4e9b24457@pigmoral.tech>
+prerequisite-patch-id: 42a81ed9298600d95a32d3d61bbfb632580413e7
+prerequisite-patch-id: c5736d2edbcad45007995bcdc6a61e2e1953f87a
+prerequisite-patch-id: 3dc8be31aade04035ca759e75e9c67efd9dcafce
+prerequisite-patch-id: c24ddc9c08cfc410f38f595a8000b4f7dedc74b3
+prerequisite-patch-id: 9fac441fc346bc54b1f09130849aa320c0b912d2
+prerequisite-patch-id: 7c36a3a750676915eec3b1927158d9d61209a460
+prerequisite-patch-id: ed8a7bba18ba5e7c88f6f546fa9fc582aecabc82
+prerequisite-patch-id: ac155f53daee5eaa9f893704d4c3fbb9ff4a184c
+prerequisite-message-id: <20250821004232.8134-1-andre.przywara@arm.com>
+prerequisite-patch-id: 03fdbd2faff5bdeff1e7bfb7b4844cf3fafd655d
+prerequisite-patch-id: 15e73fad7383f55ad6d0592294dcc9e8274c1c02
+prerequisite-patch-id: bea03fba87ae3dffc5ad9920ef5a045d74c6dbd7
+prerequisite-patch-id: c29b0eb9119cb6ea38e3babd689463cc26b66894
+prerequisite-patch-id: 639bf50ff42c85812716fb5dc89b616284481867
+prerequisite-patch-id: 9fc3b375667be361f1279d9f9b976c7f2698136c
+prerequisite-patch-id: 75fc07dc2648e6610e80b21b910d9ae00d31c304
+prerequisite-patch-id: 3214731f042dd5eb1aa1d38388384428548a053f
+prerequisite-patch-id: 69702560a13f180161afb5a48c2ea7ebb3f9ec5c
 
 Best regards,
--- 
-Bryam Vargas <hexlabsecurity@proton.me>
+--  
+Enzo Adriano <enzo.adriano.code@gmail.com>
 
