@@ -1,110 +1,64 @@
-From: Enzo Adriano <enzo.adriano.code@gmail.com>
-Date: Sat, 13 Jun 2026 05:42:16 -0400
-Subject: [PATCH 4/4] arm64: dts: allwinner: add Radxa Cubie A7S
+From: Laika Price <laikabcprice@gmail.com>
+Subject: [PATCH net v2 0/2] ip_tunnel: fix PMTU ICMP reply routing
+Date: Sat, 13 Jun 2026 16:12:16 +0100
+Message-Id: <20260613-master-v2-0-061b70fd45dd@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260613-a733-dts-v1-public-ready-v1-4-7787c94681db@gmail.com>
-References: <20260613-a733-dts-v1-public-ready-v1-0-7787c94681db@gmail.com>
-In-Reply-To: <20260613-a733-dts-v1-public-ready-v1-0-7787c94681db@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Chen-Yu Tsai <wens@kernel.org>, 
- Jernej Skrabec <jernej.skrabec@gmail.com>, 
- Samuel Holland <samuel@sholland.org>, Maxime Ripard <mripard@kernel.org>, 
- Ulf Hansson <ulfh@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-sunxi@lists.linux.dev, linux-kernel@vger.kernel.org, 
- linux-mmc@vger.kernel.org, Enzo Adriano <enzo.adriano.code@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2WNwQ7CIBAFf6XZsxhAQ8WT/2F6oLBt19jSABJN0
+ 3+X1qPHSebNWyBiIIxwrRYImCmSnwrIQwV2MFOPjFxhkFwqrsSJjSYmDMxIrYVSreZKQ5HngB2
+ 999C9+XF8tQ+0aVtvxkAx+fDZn7LYvL9oFkww19Va4QWlq8+3fjT0PFo/QrOu6xcFn+wNrgAAA
+ A==
+X-Change-ID: 20260613-master-a299166b9069
+To: David Ahern <dsahern@kernel.org>, Ido Schimmel <idosch@nvidia.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, Shuah Khan <shuah@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-kselftest@vger.kernel.org, Laika Price <laikabcprice@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781343732; l=2364;
- i=enzo.adriano.code@gmail.com; s=a733-cubie-a7s; h=from:subject:message-id;
- bh=WglawFMrtY9x8pOjuPdnu6SXc40mYnW0SaPFITAFqtE=;
- b=GbPhqn66Lz40aOjXStKHF233v3bsLzM1ml6LsXpvkrLn92HN/jl3uoeOECLYFwLIOOTvAKgWs
- elncJREMxH/DYHkJnIGC2PGIqP1I/hQiHA0jjrPTsST7XrK6bualNwq
-X-Developer-Key: i=enzo.adriano.code@gmail.com; a=ed25519;
- pk=5S3Wmdqa4XfCdeZF/HfeYqnQF8GN9JGt3SE1cxqSX8E=
-X-Endpoint-Received: by B4 Relay for enzo.adriano.code@gmail.com/a733-cubie-a7s with auth_id=820
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781363541; l=1026;
+ i=laikabcprice@gmail.com; s=20260613; h=from:subject:message-id;
+ bh=LedJ39BQchjQxS/5EHaqWA5pNnfquMEPobE2MJNmYB8=;
+ b=LVcIebVR00z6R4p8iujA6Ffn7Eyt9ylqp9uAu6KtwdUZavaUnhQxaCVR4kJGoDUKbhmLrnTv+
+ 43OXDxvCGDAASkchl1qKY6PDPxosYWIA5BCkh6ry/qhLr/9k6Qom3Qj
+X-Developer-Key: i=laikabcprice@gmail.com; a=ed25519;
+ pk=mFSMw2odvyxt1H4QHAdwZVuwHduNzUMDKbWFOcwhDCg=
+X-Endpoint-Received: by B4 Relay for laikabcprice@gmail.com/20260613 with auth_id=819
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the Radxa Cubie A7S board description with serial console and SD card
-boot support.
 
-Ethernet remains disabled until the GMAC210 wrapper, clocks, resets,
-MDIO, PHY reset, PHY power, and link behavior are proven.
 
-Signed-off-by: Enzo Adriano <enzo.adriano.code@gmail.com>
 ---
- arch/arm64/boot/dts/allwinner/Makefile             |  1 +
- .../boot/dts/allwinner/sun60i-a733-cubie-a7s.dts   | 48 ++++++++++++++++++++++
- 2 files changed, 49 insertions(+)
+Changes in v2:
+- Fix incorrect PMTU exceptions test
+- Link to v1: https://patch.msgid.link/20260613-master-v1-1-df796e8e2d74@gmail.com
 
-diff --git a/arch/arm64/boot/dts/allwinner/Makefile b/arch/arm64/boot/dts/allwinner/Makefile
-index d116864b6c2b..824cc35152db 100644
---- a/arch/arm64/boot/dts/allwinner/Makefile
-+++ b/arch/arm64/boot/dts/allwinner/Makefile
-@@ -56,6 +56,7 @@ dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h700-anbernic-rg35xx-2024.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h700-anbernic-rg35xx-h.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h700-anbernic-rg35xx-plus.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun50i-h700-anbernic-rg35xx-sp.dtb
-+dtb-$(CONFIG_ARCH_SUNXI) += sun60i-a733-cubie-a7s.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun55i-a527-cubie-a5e.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun55i-h728-x96qpro+.dtb
- dtb-$(CONFIG_ARCH_SUNXI) += sun55i-t527-avaota-a1.dtb
-diff --git a/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7s.dts b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7s.dts
-new file mode 100644
-index 000000000000..453761a96323
---- /dev/null
-+++ b/arch/arm64/boot/dts/allwinner/sun60i-a733-cubie-a7s.dts
-@@ -0,0 +1,48 @@
-+// SPDX-License-Identifier: (GPL-2.0-only OR MIT)
-+
-+/dts-v1/;
-+
-+#include "sun60i-a733.dtsi"
-+
-+/ {
-+	model = "Radxa Cubie A7S";
-+	compatible = "radxa,cubie-a7s", "allwinner,sun60i-a733";
-+
-+	aliases {
-+		serial0 = &uart0;
-+		mmc0 = &mmc0;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:115200n8";
-+	};
-+
-+	reg_vcc3v3: vcc3v3 {
-+		compatible = "regulator-fixed";
-+		regulator-name = "vcc-3v3";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		regulator-always-on;
-+	};
-+};
-+
-+&mmc0 {
-+	vmmc-supply = <&reg_vcc3v3>;
-+	bus-width = <4>;
-+	no-mmc;
-+	no-sdio;
-+	status = "okay";
-+};
-+
-+&pio {
-+	uart0_pb9_pb10_pins: uart0-pb9-pb10-pins {
-+		pins = "PB9", "PB10";
-+		function = "uart0";
-+	};
-+};
-+
-+&uart0 {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&uart0_pb9_pb10_pins>;
-+	status = "okay";
-+};
+To: David Ahern <dsahern@kernel.org>
+To: Ido Schimmel <idosch@nvidia.com>
+To: "David S. Miller" <davem@davemloft.net>
+To: Eric Dumazet <edumazet@google.com>
+To: Jakub Kicinski <kuba@kernel.org>
+To: Paolo Abeni <pabeni@redhat.com>
+To: Simon Horman <horms@kernel.org>
+To: Shuah Khan <shuah@kernel.org>
+Cc: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-kselftest@vger.kernel.org
 
--- 
-2.53.0
+---
+Laika Price (2):
+      [net] ip_tunnel: drop stale dst from generated PMTU ICMP replies
+      [net] selftests: pmtu: fix incorrect PMTU exception generation
+
+ net/ipv4/ip_tunnel_core.c           | 2 ++
+ tools/testing/selftests/net/pmtu.sh | 4 ++--
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+---
+base-commit: 2a2974b5145cdf2f4db134be1a2157e9ca4a1cf0
+change-id: 20260613-master-a299166b9069
+
+Best regards,
+--  
+Laika Price <laikabcprice@gmail.com>
 
