@@ -1,16 +1,13 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Subject: [PATCH net-next v5 00/15] Support for onsemi's S2500 10Base-T1S
- MAC-PHY
-Date: Sun, 14 Jun 2026 10:00:16 -0700
-Message-Id: <20260614-s2500-mac-phy-support-v5-0-89874b72f725@onsemi.com>
+Date: Sun, 14 Jun 2026 10:00:17 -0700
+Subject: [PATCH net-next v5 01/15] net: phy: Helper to read and write
+ through C45 without lock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIACHeLmoC/3WOOQ6DMBBFr4KmzkTGLFmq3COiADMER8K2PAaBE
- HePIWlTfv3l/RWYvCaGe7KCp0mztiaK4pSA6mvzItRt1CCFLEUpUmRZCIFDrdD1C/LonPUB8y6
- r6SZF11wyiF3nqdPzsfsEQwENzQGqr8Nj8yYV9tk922sO1i/HhSk/Gj9a8Yc25SiwpUhTaabK9
- vqwhmnQZ2UHqLZt+wBG+Vqq1wAAAA==
-X-Change-ID: 20260601-s2500-mac-phy-support-4f3ae920fb73
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260614-s2500-mac-phy-support-v5-1-89874b72f725@onsemi.com>
+References: <20260614-s2500-mac-phy-support-v5-0-89874b72f725@onsemi.com>
+In-Reply-To: <20260614-s2500-mac-phy-support-v5-0-89874b72f725@onsemi.com>
 To: Andrew Lunn <andrew@lunn.ch>, 
  Piergiorgio Beruto <pier.beruto@onsemi.com>, 
  Heiner Kallweit <hkallweit1@gmail.com>, 
@@ -29,130 +26,118 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Jerry Ray <jerry.ray@microchip.com>, 
  Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781456462; l=5680;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781456462; l=3723;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=OB7aGFbniwE4XzaVoqPLH9T+eUI2xxGDdBfkp/BXjTM=;
- b=gUIWk4eWL9zySBQ+B52a6btsVB742eEdlROD1BExiktCpSDAG51pmrF/8EFwu8eZiDV9QANX7
- B5/+sN/ZgjvB17+68bu9PHVWC3bU0ZEZPX+zSS4eoRJRni25U4FHRNF
+ bh=lBQ+674jNGkyaGL8OfZpND02o9ArYGOV5TbVQ5zSlUk=;
+ b=+DEHuzUq5wl3gnTiSd6iU2cw6QXfJxXtOe8oabCSo5/jTnputSHvB/e1MM7+8CBHqkEy4IPSu
+ aUDumvniMZTDO4ASJqnZesfo4ig3BBnGIQwNQLKt2sVTCoJbQhsWxlh
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch series brings support for onsemi's S2500 that iss
-IEEE 802.3cg compliant Ethernet transceiver with an integrated
-Media Access Controller (MAC-PHY)
+Generic helper function to initiate read and write through C45 bus
+protocol without mdio bus lock. This will help PHYs to avoid indirect C22
+API calls for C45 bus protocol which may not be supported by the PHY.
 
-Driver implementation is compatible and works with OA TC6
-framework that is already present. S2500 driver supports
-hardware timestamping.
-
-Driver has support for running selftest and loopback tests.
-Through ethtool, it can provide traffic stats, rmon stats,
-and timestamping related traffic stats.
-
-As S2500 has an internal PHY, changes have been added
-to onsemi's PHY driver to support this device.
-
----
-Changes in v5:
- - kernel doc related changes in oa_tc.c, onsemi driver files and
-  oa tc6 rst file
-- Link to v4: https://lore.kernel.org/r/20260605-s2500-mac-phy-support-v4-0-de0fbc13c6d8@onsemi.com
-
-Changes in v4:
- - Added return value comment for genphy_read/write_phy_mmd functions
- - Added genphy_loopback_fixed_speed helper function to be used in
-   set_loopback callbacks
- - Updated networking documentation for OA TC6 framework to elaborate
-   on what is expected in the ptp_clock_info structure for registration.
- - added spi-max-frequency in YAML file based on alert from sashiko-bot
- - Removed model/version from the onsemi driver's private structure as
-   they were useful as "information-only" data.
- - Replaced the non-standard selftest with Linux's standard selftest
-   and made it as a separate patch
- - Changed bit manipulation, shift operations to use macros so that
-   it is clean and readable.
- - added new read_register and write_register apis with _mms postfix
-   so that MMS (memory map selector) can be given as a parameter.
- - Fixed the wrong condition check with NETIF_F_RXFCS to subtract
-   FCS size from the length of the frame.
-
-To: Andrew Lunn <andrew@lunn.ch>
-To: Piergiorgio Beruto <pier.beruto@onsemi.com>
-To: Heiner Kallweit <hkallweit1@gmail.com>
-To: Russell King <linux@armlinux.org.uk>
-To: David S. Miller <davem@davemloft.net>
-To: Eric Dumazet <edumazet@google.com>
-To: Jakub Kicinski <kuba@kernel.org>
-To: Paolo Abeni <pabeni@redhat.com>
-To: Andrew Lunn <andrew+netdev@lunn.ch>
-To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>
-To: Selva Rajagopal <selvamani.rajagopal@onsemi.com>
-To: Richard Cochran <richardcochran@gmail.com>
-To: Rob Herring <robh@kernel.org>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-To: Simon Horman <horms@kernel.org>
-To: Jonathan Corbet <corbet@lwn.net>
-To: Shuah Khan <skhan@linuxfoundation.org>
-Cc: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Cc: devicetree@vger.kernel.org
-Cc: linux-doc@vger.kernel.org
-Cc: Jerry Ray <jerry.ray@microchip.com>
+Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
 ---
-Selvamani Rajagopal (15):
-      net: phy: Helper to read and write through C45 without lock
-      net: phy: Helper to modify PHY loopback mode only
-      net: ethernet: oa_tc6: Move oa_tc6.c to its own directory
-      net: phy: microchip_t1s: Use generic APIs for C45 read and write
-      net: ethernet: oa_tc6: Move constant definitions to header file
-      net: ethernet: oa_tc6: Support for hardware timestamp
-      net: ethernet: oa_tc6: Support for vendor specific MMS
-      net: ethernet: oa_tc6: read, write interface with MMS option
-      net: phy: ncn26000: Support for onsemi's S2500 internal phy
-      net: phy: ncn26000: Enable enhanced noise immunity
-      net: phy: ncn26000: Support for loopback
-      onsemi: s2500: Add driver support for TS2500 MAC-PHY
-      onsemi: s2500: Added selftest support to onsemi's S2500 driver
-      dt-bindings: net: add onsemi's S2500
-      Documentation: networking: Add timestamp related APIs to OA TC6 framework
-
- .../devicetree/bindings/net/onnn,s2500.yaml        |  67 +++
- Documentation/networking/oa-tc6-framework.rst      |  80 +++
- MAINTAINERS                                        |  13 +-
- drivers/net/ethernet/Kconfig                       |  12 +-
- drivers/net/ethernet/Makefile                      |   2 +-
- drivers/net/ethernet/microchip/lan865x/lan865x.c   |  61 +-
- drivers/net/ethernet/oa_tc6/Kconfig                |  16 +
- drivers/net/ethernet/oa_tc6/Makefile               |   7 +
- drivers/net/ethernet/{ => oa_tc6}/oa_tc6.c         | 465 +++++++++------
- drivers/net/ethernet/oa_tc6/oa_tc6_ptp.c           |  67 +++
- drivers/net/ethernet/oa_tc6/oa_tc6_std_def.h       | 190 +++++++
- drivers/net/ethernet/oa_tc6/oa_tc6_tstamp.c        | 201 +++++++
- drivers/net/ethernet/onsemi/Kconfig                |  21 +
- drivers/net/ethernet/onsemi/Makefile               |   7 +
- drivers/net/ethernet/onsemi/s2500/Kconfig          |  22 +
- drivers/net/ethernet/onsemi/s2500/Makefile         |   7 +
- drivers/net/ethernet/onsemi/s2500/s2500_ethtool.c  | 354 ++++++++++++
- drivers/net/ethernet/onsemi/s2500/s2500_hw_def.h   | 225 ++++++++
- drivers/net/ethernet/onsemi/s2500/s2500_main.c     | 632 +++++++++++++++++++++
- drivers/net/ethernet/onsemi/s2500/s2500_ptp.c      | 233 ++++++++
- drivers/net/phy/dp83867.c                          |  11 +-
- drivers/net/phy/microchip_t1s.c                    |  32 +-
- drivers/net/phy/ncn26000.c                         |  63 +-
- drivers/net/phy/phy_device.c                       |  75 +++
- include/linux/oa_tc6.h                             |  36 ++
- include/linux/phy.h                                |   6 +
- 26 files changed, 2655 insertions(+), 250 deletions(-)
+changes in v5
+  - no change
+changes in v4
+  - lockdep_assert_held added to ensure correct calling convention
+changes in v3
+  - Added the genphy APIs to initiate Clause 45 register read/write
+  - first patch
 ---
-base-commit: 2319688890d97c63da423a3c57c23b4ab5952dfc
-change-id: 20260601-s2500-mac-phy-support-4f3ae920fb73
+ drivers/net/phy/phy_device.c | 55 ++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/phy.h          |  4 ++++
+ 2 files changed, 59 insertions(+)
 
-Best regards,
---  
-Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+diff --git a/drivers/net/phy/phy_device.c b/drivers/net/phy/phy_device.c
+index 0615228459ef..b82b99d08132 100644
+--- a/drivers/net/phy/phy_device.c
++++ b/drivers/net/phy/phy_device.c
+@@ -2787,6 +2787,61 @@ int genphy_write_mmd_unsupported(struct phy_device *phdev, int devnum,
+ }
+ EXPORT_SYMBOL(genphy_write_mmd_unsupported);
+ 
++/**
++ * genphy_phy_read_mmd - Helper for reading a register without lock
++ * from the given MMD and PHY.
++ * @phydev: The phy_device struct
++ * @devnum: The MMD to read from
++ * @regnum: The register on the MMD to read
++ *
++ * Description: PHYs can have both C22 and C45 registers space. Once PHY
++ * is discovered via C22 bus protocol, it uses C22 indirect access to
++ * access C45 registers. Some PHYs, like 10Base-T1S PHYs defined by OPEN
++ * Alliance 10BASE‑T1x, support only direct access.
++ *
++ * If PHY indicates C45 support through DTS entry, it avoid C22 APIs
++ * entirely and therefore generic MDIO registers are inaccessible.
++ *
++ * MDIO bus isn't locked here because when called through read_mmd
++ * callback of phy_driver, caller is expected to lock the bus as
++ * implemented in phy_read_mmd.
++ *
++ * Returns: Register value if successful, negative error code on failure.
++ */
++int genphy_phy_read_mmd(struct phy_device *phydev, int devnum,
++			u16 regnum)
++{
++	struct mii_bus *bus = phydev->mdio.bus;
++	int addr = phydev->mdio.addr;
++
++	lockdep_assert_held(&bus->mdio_lock);
++	return __mdiobus_c45_read(bus, addr, devnum, regnum);
++}
++EXPORT_SYMBOL(genphy_phy_read_mmd);
++
++/**
++ * genphy_phy_write_mmd - Helper for writing a register without lock
++ * to the given MMD and PHY.
++ * @phydev: The phy_device struct
++ * @devnum: The MMD to write to
++ * @regnum: The register on the MMD to write
++ * @val:    Value to write
++ *
++ * Description: Similar to genphy_phy_read_mmd
++ *
++ * Returns: 0 if successful, negative error code on failure.
++ */
++int genphy_phy_write_mmd(struct phy_device *phydev, int devnum,
++			 u16 regnum, u16 val)
++{
++	struct mii_bus *bus = phydev->mdio.bus;
++	int addr = phydev->mdio.addr;
++
++	lockdep_assert_held(&bus->mdio_lock);
++	return __mdiobus_c45_write(bus, addr, devnum, regnum, val);
++}
++EXPORT_SYMBOL(genphy_phy_write_mmd);
++
+ int genphy_suspend(struct phy_device *phydev)
+ {
+ 	return phy_set_bits(phydev, MII_BMCR, BMCR_PDOWN);
+diff --git a/include/linux/phy.h b/include/linux/phy.h
+index 199a7aaa341b..8266dd4a8dbe 100644
+--- a/include/linux/phy.h
++++ b/include/linux/phy.h
+@@ -2301,6 +2301,10 @@ int genphy_read_mmd_unsupported(struct phy_device *phdev, int devad,
+ 				u16 regnum);
+ int genphy_write_mmd_unsupported(struct phy_device *phdev, int devnum,
+ 				 u16 regnum, u16 val);
++int genphy_phy_write_mmd(struct phy_device *phydev, int devnum,
++			 u16 regnum, u16 val);
++int genphy_phy_read_mmd(struct phy_device *phydev, int devnum,
++			u16 regnum);
+ 
+ /* Clause 37 */
+ int genphy_c37_config_aneg(struct phy_device *phydev);
+
+-- 
+2.43.0
 
