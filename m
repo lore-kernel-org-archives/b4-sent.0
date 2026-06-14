@@ -1,11 +1,10 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Sun, 14 Jun 2026 10:00:26 -0700
-Subject: [PATCH net-next v5 10/15] net: phy: ncn26000: Enable enhanced
- noise immunity
+Date: Sun, 14 Jun 2026 10:00:27 -0700
+Subject: [PATCH net-next v5 11/15] net: phy: ncn26000: Support for loopback
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260614-s2500-mac-phy-support-v5-10-89874b72f725@onsemi.com>
+Message-Id: <20260614-s2500-mac-phy-support-v5-11-89874b72f725@onsemi.com>
 References: <20260614-s2500-mac-phy-support-v5-0-89874b72f725@onsemi.com>
 In-Reply-To: <20260614-s2500-mac-phy-support-v5-0-89874b72f725@onsemi.com>
 To: Andrew Lunn <andrew@lunn.ch>, 
@@ -26,91 +25,51 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Jerry Ray <jerry.ray@microchip.com>, 
  Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781456463; l=2554;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781456463; l=1347;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=usMYgNJJhEZGYeEqVGV1sRYJj6gxRACZSQcd65bk+go=;
- b=07iBRZ2kGdlvPsZr2tHHe6BXaqnScjx3Qg5auKTHCi1gzpxxO4jPyALVTri6oSVLMkLNhyxVW
- zvbPm8HqbTQBuhSbuzeotx3sUv73WkFlka5f6TDC5Fd4o4XT1EMJOwF
+ bh=0gfki+nV90XNnL6mx10oRc1MOUlSPYZSVmCnULxXy1g=;
+ b=7K5nsLL3qSxRttYLLi+XTdxwrfeoc5CHyWbtkMV/zGk5NfqTvVwPgGhPVDNU9dBGhH0urKF6i
+ CHzc6p6f2dxCDVtKODmaMUGb8LNBQRmtfn2YhB20Y8EV3RTDV4J6POT
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-By setting ENI bit, noise immunity is improved and it is
-specifically meant for PLCA enabled nodes.
+Adding loopback support for S2500 internal PHY to help running
+loopback test through ethtool.
 
-Reviewed-by: Andrew Lunn <andrew@lunn.ch>
+This instance requires only manipulating the loopback bit in
+the PHY. nothing else. The existing genphy interface
+implementation for loopback, does more than flipping the
+loopback bit. This is the reason to add a new API.
+
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
 ---
 changes in v5
-  - No changes
+  - No change
 changes in v4
-  - No changes
+  - Moved the onsemi implementation to a new, genphy API to
+    make it vendor agnostic.
 changes in v3
-  - Moved as a separate patch
+  - Addd loopback functionality for onsemi's PHY driver
+  - First patch
 ---
- drivers/net/phy/ncn26000.c | 26 ++++++++++++++++++++++++--
- 1 file changed, 24 insertions(+), 2 deletions(-)
+ drivers/net/phy/ncn26000.c | 1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/drivers/net/phy/ncn26000.c b/drivers/net/phy/ncn26000.c
-index 2c8601c3f94a..c3a34b2c524d 100644
+index c3a34b2c524d..afafa81dc22b 100644
 --- a/drivers/net/phy/ncn26000.c
 +++ b/drivers/net/phy/ncn26000.c
-@@ -36,6 +36,10 @@
- 
- #define TO_TMR_DEFAULT			32
- 
-+#define NCN26000_REG_PHYCFG1		0x8001
-+#define NCN26000_PHYCFG1_ENI		BIT(7)
-+#define NCN26000_PHYCFG1_ENI_MASK	BIT(7)
-+
- static int ncn26000_config_init(struct phy_device *phydev)
- {
- 	int ret = 0;
-@@ -106,6 +110,24 @@ static int ncn26000_read_status(struct phy_device *phydev)
- 	return 0;
- }
- 
-+/* Intercept PLCA enable/disable request to
-+ * set the proprietary, ENI mode accordingly
-+ */
-+static int ncn26000_c45_plca_set_cfg(struct phy_device *phydev,
-+				     const struct phy_plca_cfg *plca_cfg)
-+{
-+	int ret = genphy_c45_plca_set_cfg(phydev, plca_cfg);
-+	u16 eni_cfg = 0;
-+
-+	if (ret || plca_cfg->enabled < 0)
-+		return ret;
-+
-+	eni_cfg = (plca_cfg->enabled) ? NCN26000_PHYCFG1_ENI : 0;
-+	return phy_modify_mmd(phydev, MDIO_MMD_VEND2,
-+			      NCN26000_REG_PHYCFG1,
-+			      NCN26000_PHYCFG1_ENI_MASK, eni_cfg);
-+}
-+
- static irqreturn_t ncn26000_handle_interrupt(struct phy_device *phydev)
- {
- 	int ret;
-@@ -156,7 +178,7 @@ static struct phy_driver ncn26000_driver[] = {
+@@ -178,6 +178,7 @@ static struct phy_driver ncn26000_driver[] = {
  		.config_aneg           = ncn26000_config_aneg,
  		.read_status           = ncn26000_read_status,
  		.handle_interrupt      = ncn26000_handle_interrupt,
--		.set_plca_cfg          = genphy_c45_plca_set_cfg,
-+		.set_plca_cfg          = ncn26000_c45_plca_set_cfg,
++		.set_loopback          = genphy_loopback_fixed_speed,
+ 		.set_plca_cfg          = ncn26000_c45_plca_set_cfg,
  		.get_plca_cfg          = genphy_c45_plca_get_cfg,
  		.get_plca_status       = genphy_c45_plca_get_status,
- 		.soft_reset            = genphy_soft_reset,
-@@ -177,7 +199,7 @@ static struct phy_driver ncn26000_driver[] = {
- 		.read_status		= ncn26000_read_status,
- 		.handle_interrupt       = ncn26000_handle_interrupt,
- 		.get_plca_cfg		= genphy_c45_plca_get_cfg,
--		.set_plca_cfg		= genphy_c45_plca_set_cfg,
-+		.set_plca_cfg		= ncn26000_c45_plca_set_cfg,
- 		.get_plca_status	= genphy_c45_plca_get_status,
- 		.soft_reset             = genphy_soft_reset,
- 	},
 
 -- 
 2.43.0
