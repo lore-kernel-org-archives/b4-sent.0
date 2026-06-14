@@ -1,136 +1,97 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sat, 13 Jun 2026 23:01:16 -0500
-Subject: [PATCH] Input: synaptics-rmi4 - bound the F54 report size to the
- allocated buffer
+Subject: [PATCH 0/2] (no cover subject)
+Date: Sun, 14 Jun 2026 00:36:10 -0500
+Message-Id: <20260614-b4-disp-818d6bda-v1-0-cf39a3615085@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260613-b4-disp-6721686c-v1-1-4d5bb84ee520@proton.me>
-X-B4-Tracking: v=1; b=H4sIAIsnLmoC/x3MMQqAMAxA0atIZgNtI1G8ijjUNmqWKi2IIN7d4
- viG/x8oklUKjM0DWS4teqQK2zYQdp82QY3V4Ixjw5Zw6TBqOZF7Z3nggESeluhDXGmAmp1ZVr3
- /5TS/7wcbhn6zYgAAAA==
+X-B4-Tracking: v=1; b=H4sIAMo9LmoC/x3MQQqAIBBA0avIrBtQCbOuEi3UmWo2FQoRSHdPW
+ r7F/xUKZ+ECk6qQ+ZYi59FgOgVpD8fGKNQMVlunnekx9khSLvTGk4sU0NM66nGwIbGDll2ZV3n
+ +5by87wfU3PWSYgAAAA==
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Guenter Roeck <linux@roeck-us.net>, Benjamin Tissoires <bentiss@kernel.org>
+Cc: linux-kernel@vger.kernel.org, Hans de Goede <hansg@kernel.org>, 
+ Vincent Huang <vincent.huang@tw.synaptics.com>, linux-input@vger.kernel.org, 
+ Andrew Duggan <aduggan@synaptics.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781409675; l=4630;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781415370; l=3216;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=sNbCJ52oiyGr4TBOccsRGX4oDsTWqoiOMNGFe75RiB0=;
- b=FzlqKEOczHlHZZE4f2sdpxbPy29RzKHQqiGMPW6NtJer2YdpRUsH6SFqpUBEBYLhw0G7vE6ea
- Wp3qpygDa79AyrUTbWZ59CvmfDXyHyH9fIPM32nhu6QdNT7pP4TVwg4
+ bh=oWzqgZ7CL6oPYCU6oE8l+W2cIUxxJetbxweA08XVCxU=;
+ b=lHKBMfkDxuxX/3b3+4HtYPWm9RtM+VUakuNJwAPq3f6QI0Uk1pOwzv5dU8dElshbkTp06B9X3
+ letACR/8LJCDu1cQdHcn8ouzFQcissLWjZn3dnobXCP1Hw6UPOHKgMH
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-rmi_f54_work() reads a diagnostics report from the device into
-f54->report_data, sizing the transfer with rmi_f54_get_report_size():
+From be2c4843f6145374f28edd25cef43c9373542874 Mon Sep 17 00:00:00 2001
+Message-ID: <cover.1781415009.git.hexlabsecurity@proton.me>
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Sun, 14 Jun 2026 00:30:09 -0500
+Subject: [PATCH 0/2] Input: synaptics-rmi4 - fix out-of-bounds keymap access on large GPIO counts
 
-	report_size = rmi_f54_get_report_size(f54);
-	...
-	for (i = 0; i < report_size; i += F54_REPORT_DATA_SIZE) {
-		int size = min(F54_REPORT_DATA_SIZE, report_size - i);
-		...
-		rmi_read_block(.., f54->report_data + i, size);
-	}
+The RMI4 F3A and F30 function handlers size their GPIO/LED key map to
+min(device_gpio_count, TRACKSTICK_RANGE_END) == at most 6 entries, but
+then consume that map with the full, unclamped device-reported count in
+two places: the attention-interrupt report loop, and input->keycodemax
+(while input->keycode points at the small allocation).
 
-report_data is allocated once at probe from F54's own electrode counts
-(array3_size(f54->num_tx_electrodes, f54->num_rx_electrodes, sizeof(u16))),
-but rmi_f54_get_report_size() computes the size from
-drv_data->num_*_electrodes when those are set, i.e. from the F55
-function's electrode counts. Both counts come straight from device
-queries (F54 and F55 each report up to 255 electrodes) and nothing
-constrains the F55 counts to the F54 ones.
+A device that reports a GPIO/LED count greater than 6 therefore yields a
+key map of at most 12 bytes that is indexed up to count-1:
 
-A malicious or malfunctioning RMI4 device that reports larger F55
-electrode counts than its F54 counts makes report_size exceed the
-allocation, so the read loop writes past report_data (and the V4L2
-dequeue memcpy() then reads past it). On conforming hardware the F55
-configured electrodes are a subset of the F54 physical electrodes, so
-report_size never exceeds the buffer and well-behaved devices are
-unaffected.
+  - rmi_f3a_attention() / rmi_f30_attention() read gpio[led]_key_map[i]
+    out of bounds on every attention interrupt (device-triggered), and
 
-Record the allocation size and reject a report that does not fit,
-mirroring the existing zero-size check.
+  - the input core's default keymap ioctls bound the index only against
+    keycodemax, so EVIOCGKEYCODE reads adjacent slab memory back to user
+    space and EVIOCSKEYCODE writes a caller-controlled u16 past the
+    allocation -- a controlled out-of-bounds heap write reachable by any
+    process that can open the evdev node.
 
-Fixes: c762cc68b6a1 ("Input: synaptics-rmi4 - propagate correct number of rx and tx electrodes to F54")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Both handlers have the same shape; F3A was copied from F30. Patch 1 fixes
+F3A, patch 2 fixes F30. The one-line fix in each sizes the key map to the
+full device count; the mapping loop is unchanged (it still populates only
+the first min(count, 6) entries, the rest stay KEY_RESERVED and are
+skipped on report), and keycodemax now matches the allocation, closing
+the interrupt and both ioctl paths.
+
+Reproduced with KASAN on a faithful in-kernel model of each handler
+(kmalloc-16 bucket, 12-byte request, reported count = 127):
+
+  # without the patch -- attention read path
+  BUG: KASAN: slab-out-of-bounds in rmi_f3a_attention
+  Read of size 2 ... 0 bytes to the right of allocated 12-byte region
+    ... cache kmalloc-16
+
+  # without the patch -- EVIOCSKEYCODE write path
+  BUG: KASAN: slab-out-of-bounds ...
+  Write of size 2 ... 0 bytes to the right of allocated 12-byte region
+
+  # with the patch (key map sized to the full count): clean
+  # benign device (reported count <= 6): clean
+
+The full read and write splats and a 32/64-bit ASan model of the same
+geometry are available on request.
+
+Bryam Vargas (2):
+  Input: synaptics-rmi4 - bound the F3A keymap to the GPIO count
+  Input: synaptics-rmi4 - bound the F30 keymap to the GPIO/LED count
+
+ drivers/input/rmi4/rmi_f30.c | 2 +-
+ drivers/input/rmi4/rmi_f3a.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
 ---
-Reachable from a malicious or counterfeit RMI4 peripheral (HID/I2C/SPI)
-that exposes both an F54 diagnostics function and an F55 sensor-tuning
-function reporting more electrodes than F54; the report is filled when a
-local client drives an F54 capture through the V4L2 touch device node.
+Bryam Vargas (2):
+      Input: synaptics-rmi4 - bound the F3A keymap to the GPIO count
+      Input: synaptics-rmi4 - bound the F30 keymap to the GPIO/LED count
 
-Verified with an in-kernel KASAN litmus that allocates report_data from
-the F54 dims and fills it from the F55-preferred dims (the verbatim
-rmi_f54_get_report_size() preference and the rmi_f54_work() 32-byte read
-loop), Linux 7.1.0-rc5, CONFIG_KASAN=y, kasan.fault=panic, x86_64:
-
-  Arm A, F54 8x8 (capacity 128) vs F55 8x24 (report_size 384):
-    BUG: KASAN: slab-out-of-bounds in ... Write of size 32
-    located 0 bytes to the right of the allocated 128-byte region
-    ... cache kmalloc-128 of size 128
-    Kernel panic - not syncing: kasan.fault=panic set
-  Arm B, with this patch (oversize report rejected): clean
-  Arm C, conforming device (F55 dims == F54 dims): clean
-
-  AddressSanitizer (x86_64 and i386): heap-buffer-overflow WRITE of size 32,
-  0 bytes after the 128-byte region.
-
-The same rmi_f54_get_report_size() value drives the V4L2 dequeue
-memcpy(.., report_size) on the read side, so an oversize report also
-over-reads report_data; rejecting it in rmi_f54_work() (report_size then
-stays 0) closes both. Reproducer and full logs available on request.
-
-This is independent of the in-flight "Input: rmi4 - release F54 queue on
-video registration failure" change, which touches only the probe error
-path (vb2_queue_release in rmi_f54_probe); it applies cleanly alongside it.
----
- drivers/input/rmi4/rmi_f54.c | 12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/input/rmi4/rmi_f54.c b/drivers/input/rmi4/rmi_f54.c
-index 61909e1a39e2..7a7508a4de85 100644
---- a/drivers/input/rmi4/rmi_f54.c
-+++ b/drivers/input/rmi4/rmi_f54.c
-@@ -104,6 +104,7 @@ struct f54_data {
- 
- 	enum rmi_f54_report_type report_type;
- 	u8 *report_data;
-+	size_t report_data_size;
- 	int report_size;
- 
- 	bool is_busy;
-@@ -548,6 +549,13 @@ static void rmi_f54_work(struct work_struct *work)
- 		goto error;     /* retry won't help */
- 	}
- 
-+	if (report_size > f54->report_data_size) {
-+		dev_err(&fn->dev, "Report size %d exceeds buffer size %zu\n",
-+			report_size, f54->report_data_size);
-+		error = -EINVAL;
-+		goto error;
-+	}
-+
- 	/*
- 	 * Need to check if command has completed.
- 	 * If not try again later.
-@@ -678,8 +686,8 @@ static int rmi_f54_probe(struct rmi_function *fn)
- 
- 	rx = f54->num_rx_electrodes;
- 	tx = f54->num_tx_electrodes;
--	f54->report_data = devm_kzalloc(&fn->dev,
--					array3_size(tx, rx, sizeof(u16)),
-+	f54->report_data_size = array3_size(tx, rx, sizeof(u16));
-+	f54->report_data = devm_kzalloc(&fn->dev, f54->report_data_size,
- 					GFP_KERNEL);
- 	if (f54->report_data == NULL)
- 		return -ENOMEM;
-
+ drivers/input/rmi4/rmi_f30.c | 2 +-
+ drivers/input/rmi4/rmi_f3a.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 ---
 base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260613-b4-disp-6721686c-33a3bdacdf38
+change-id: 20260614-b4-disp-818d6bda-8df90972ace6
 
 Best regards,
 -- 
