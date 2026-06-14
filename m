@@ -1,11 +1,11 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Sun, 14 Jun 2026 10:00:17 -0700
-Subject: [PATCH net-next v5 01/15] net: phy: Helper to read and write
- through C45 without lock
+Date: Sun, 14 Jun 2026 10:00:18 -0700
+Subject: [PATCH net-next v5 02/15] net: phy: Helper to modify PHY loopback
+ mode only
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260614-s2500-mac-phy-support-v5-1-89874b72f725@onsemi.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260614-s2500-mac-phy-support-v5-2-89874b72f725@onsemi.com>
 References: <20260614-s2500-mac-phy-support-v5-0-89874b72f725@onsemi.com>
 In-Reply-To: <20260614-s2500-mac-phy-support-v5-0-89874b72f725@onsemi.com>
 To: Andrew Lunn <andrew@lunn.ch>, 
@@ -26,117 +26,108 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Jerry Ray <jerry.ray@microchip.com>, 
  Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781456462; l=3723;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781456462; l=3349;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=lBQ+674jNGkyaGL8OfZpND02o9ArYGOV5TbVQ5zSlUk=;
- b=+DEHuzUq5wl3gnTiSd6iU2cw6QXfJxXtOe8oabCSo5/jTnputSHvB/e1MM7+8CBHqkEy4IPSu
- aUDumvniMZTDO4ASJqnZesfo4ig3BBnGIQwNQLKt2sVTCoJbQhsWxlh
+ bh=LR4dCtu8dt8SKzEEzyzZCEhrOtW1KnkVuUBypOQtpbs=;
+ b=b/Et1WTO8rrTHj7465Vlp+xXWP/x5nNv4glL3X8wkzabvcx3YcK/y83lMpkNrvhUQpnojh3nl
+ w1E3fgR/vxHBhM+O8EzjbS3DcmXSGv2HRdaA4JxGBhiaoBzzXhkT8bV
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Generic helper function to initiate read and write through C45 bus
-protocol without mdio bus lock. This will help PHYs to avoid indirect C22
-API calls for C45 bus protocol which may not be supported by the PHY.
+Generic helper function to modify loopback bit of the PHY without
+modifying any other bit. This will help the PHYs that may have fixed
+speed, like 10Base-T1S or PHYs that don't need any other settings
+to set them in loopback mode.
 
-Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
 ---
 changes in v5
-  - no change
+  - No change
 changes in v4
-  - lockdep_assert_held added to ensure correct calling convention
-changes in v3
-  - Added the genphy APIs to initiate Clause 45 register read/write
-  - first patch
+  - Created a new genphy API to set the loopback. No other PHY
+    registers touched.
 ---
- drivers/net/phy/phy_device.c | 55 ++++++++++++++++++++++++++++++++++++++++++++
- include/linux/phy.h          |  4 ++++
- 2 files changed, 59 insertions(+)
+ drivers/net/phy/dp83867.c    | 11 +----------
+ drivers/net/phy/phy_device.c | 20 ++++++++++++++++++++
+ include/linux/phy.h          |  2 ++
+ 3 files changed, 23 insertions(+), 10 deletions(-)
 
+diff --git a/drivers/net/phy/dp83867.c b/drivers/net/phy/dp83867.c
+index 88255e92b4cd..01ea2e8dd253 100644
+--- a/drivers/net/phy/dp83867.c
++++ b/drivers/net/phy/dp83867.c
+@@ -991,15 +991,6 @@ static void dp83867_link_change_notify(struct phy_device *phydev)
+ 	}
+ }
+ 
+-static int dp83867_loopback(struct phy_device *phydev, bool enable, int speed)
+-{
+-	if (enable && speed)
+-		return -EOPNOTSUPP;
+-
+-	return phy_modify(phydev, MII_BMCR, BMCR_LOOPBACK,
+-			  enable ? BMCR_LOOPBACK : 0);
+-}
+-
+ static int
+ dp83867_led_brightness_set(struct phy_device *phydev,
+ 			   u8 index, enum led_brightness brightness)
+@@ -1204,7 +1195,7 @@ static struct phy_driver dp83867_driver[] = {
+ 		.resume		= dp83867_resume,
+ 
+ 		.link_change_notify = dp83867_link_change_notify,
+-		.set_loopback	= dp83867_loopback,
++		.set_loopback	= genphy_loopback_fixed_speed,
+ 
+ 		.led_brightness_set = dp83867_led_brightness_set,
+ 		.led_hw_is_supported = dp83867_led_hw_is_supported,
 diff --git a/drivers/net/phy/phy_device.c b/drivers/net/phy/phy_device.c
-index 0615228459ef..b82b99d08132 100644
+index b82b99d08132..11fd204eea16 100644
 --- a/drivers/net/phy/phy_device.c
 +++ b/drivers/net/phy/phy_device.c
-@@ -2787,6 +2787,61 @@ int genphy_write_mmd_unsupported(struct phy_device *phdev, int devnum,
+@@ -2842,6 +2842,26 @@ int genphy_phy_write_mmd(struct phy_device *phydev, int devnum,
  }
- EXPORT_SYMBOL(genphy_write_mmd_unsupported);
+ EXPORT_SYMBOL(genphy_phy_write_mmd);
  
 +/**
-+ * genphy_phy_read_mmd - Helper for reading a register without lock
-+ * from the given MMD and PHY.
++ * genphy_loopback_fixed_speed - Helper to modify the PHY loopback mode
++ * without affecting any other settings.
 + * @phydev: The phy_device struct
-+ * @devnum: The MMD to read from
-+ * @regnum: The register on the MMD to read
-+ *
-+ * Description: PHYs can have both C22 and C45 registers space. Once PHY
-+ * is discovered via C22 bus protocol, it uses C22 indirect access to
-+ * access C45 registers. Some PHYs, like 10Base-T1S PHYs defined by OPEN
-+ * Alliance 10BASE‑T1x, support only direct access.
-+ *
-+ * If PHY indicates C45 support through DTS entry, it avoid C22 APIs
-+ * entirely and therefore generic MDIO registers are inaccessible.
-+ *
-+ * MDIO bus isn't locked here because when called through read_mmd
-+ * callback of phy_driver, caller is expected to lock the bus as
-+ * implemented in phy_read_mmd.
-+ *
-+ * Returns: Register value if successful, negative error code on failure.
-+ */
-+int genphy_phy_read_mmd(struct phy_device *phydev, int devnum,
-+			u16 regnum)
-+{
-+	struct mii_bus *bus = phydev->mdio.bus;
-+	int addr = phydev->mdio.addr;
-+
-+	lockdep_assert_held(&bus->mdio_lock);
-+	return __mdiobus_c45_read(bus, addr, devnum, regnum);
-+}
-+EXPORT_SYMBOL(genphy_phy_read_mmd);
-+
-+/**
-+ * genphy_phy_write_mmd - Helper for writing a register without lock
-+ * to the given MMD and PHY.
-+ * @phydev: The phy_device struct
-+ * @devnum: The MMD to write to
-+ * @regnum: The register on the MMD to write
-+ * @val:    Value to write
-+ *
-+ * Description: Similar to genphy_phy_read_mmd
++ * @enable: Flag to enable or disable the PHY level loopback.
++ * @speed: Speed setting. Not expected to be set. Error if it is set.
 + *
 + * Returns: 0 if successful, negative error code on failure.
 + */
-+int genphy_phy_write_mmd(struct phy_device *phydev, int devnum,
-+			 u16 regnum, u16 val)
++int genphy_loopback_fixed_speed(struct phy_device *phydev, bool enable,
++				int speed)
 +{
-+	struct mii_bus *bus = phydev->mdio.bus;
-+	int addr = phydev->mdio.addr;
++	if (enable && speed)
++		return -EOPNOTSUPP;
 +
-+	lockdep_assert_held(&bus->mdio_lock);
-+	return __mdiobus_c45_write(bus, addr, devnum, regnum, val);
++	return phy_modify(phydev, MII_BMCR, BMCR_LOOPBACK,
++			  enable ? BMCR_LOOPBACK : 0);
 +}
-+EXPORT_SYMBOL(genphy_phy_write_mmd);
++EXPORT_SYMBOL(genphy_loopback_fixed_speed);
 +
  int genphy_suspend(struct phy_device *phydev)
  {
  	return phy_set_bits(phydev, MII_BMCR, BMCR_PDOWN);
 diff --git a/include/linux/phy.h b/include/linux/phy.h
-index 199a7aaa341b..8266dd4a8dbe 100644
+index 8266dd4a8dbe..61bcd71a3143 100644
 --- a/include/linux/phy.h
 +++ b/include/linux/phy.h
-@@ -2301,6 +2301,10 @@ int genphy_read_mmd_unsupported(struct phy_device *phdev, int devad,
+@@ -2301,6 +2301,8 @@ int genphy_read_mmd_unsupported(struct phy_device *phdev, int devad,
  				u16 regnum);
  int genphy_write_mmd_unsupported(struct phy_device *phdev, int devnum,
  				 u16 regnum, u16 val);
-+int genphy_phy_write_mmd(struct phy_device *phydev, int devnum,
-+			 u16 regnum, u16 val);
-+int genphy_phy_read_mmd(struct phy_device *phydev, int devnum,
-+			u16 regnum);
- 
- /* Clause 37 */
- int genphy_c37_config_aneg(struct phy_device *phydev);
++int genphy_loopback_fixed_speed(struct phy_device *phydev, bool enable,
++				int speed);
+ int genphy_phy_write_mmd(struct phy_device *phydev, int devnum,
+ 			 u16 regnum, u16 val);
+ int genphy_phy_read_mmd(struct phy_device *phydev, int devnum,
 
 -- 
 2.43.0
