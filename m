@@ -1,135 +1,136 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sat, 13 Jun 2026 21:58:55 -0500
-Subject: [PATCH] Input: iforce - bound the device-reported force-feedback
- effect index
+Date: Sat, 13 Jun 2026 23:01:16 -0500
+Subject: [PATCH] Input: synaptics-rmi4 - bound the F54 report size to the
+ allocated buffer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260613-b4-disp-4828d263-v1-1-02320e1a89dd@proton.me>
-X-B4-Tracking: v=1; b=H4sIAO4YLmoC/x3MQQqAIBBA0avErBvI0Uy6SrQoHWs2FQoRSHdPW
- r7F/wUyJ+EMY1Mg8S1ZzqNCtQ34fTk2RgnVQB3ZziqNq8Eg+ULjyAWyGvvoVrUMnrSxULMrcZT
- nX07z+34R3CGWYgAAAA==
+Message-Id: <20260613-b4-disp-6721686c-v1-1-4d5bb84ee520@proton.me>
+X-B4-Tracking: v=1; b=H4sIAIsnLmoC/x3MMQqAMAxA0atIZgNtI1G8ijjUNmqWKi2IIN7d4
+ viG/x8oklUKjM0DWS4teqQK2zYQdp82QY3V4Ixjw5Zw6TBqOZF7Z3nggESeluhDXGmAmp1ZVr3
+ /5TS/7wcbhn6zYgAAAA==
 To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Guenter Roeck <linux@roeck-us.net>, Benjamin Tissoires <bentiss@kernel.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781405934; l=5020;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781409675; l=4630;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=XxpIXCh7ffZCmu2CG+KPf3GOhwCkdR6xHHjQDVV3JFg=;
- b=oJrxY931L5MvoILgDK06XxvKv8KFwMA0IjyZM+N1uCuzhn3i54GLfqPIpZIpfi17F7buM8BBv
- 4/4ldZM6M6oCZBF2wmASg3zEV4+6OekNaWnHT12qJm0yjyH4nDg1kZH
+ bh=sNbCJ52oiyGr4TBOccsRGX4oDsTWqoiOMNGFe75RiB0=;
+ b=FzlqKEOczHlHZZE4f2sdpxbPy29RzKHQqiGMPW6NtJer2YdpRUsH6SFqpUBEBYLhw0G7vE6ea
+ Wp3qpygDa79AyrUTbWZ59CvmfDXyHyH9fIPM32nhu6QdNT7pP4TVwg4
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-iforce_process_packet() handles a status report (packet id 0x02) by
-taking a force-feedback effect index straight from the device wire and
-using it to address the per-effect state array:
+rmi_f54_work() reads a diagnostics report from the device into
+f54->report_data, sizing the transfer with rmi_f54_get_report_size():
 
-	i = data[1] & 0x7f;
-	if (data[1] & 0x80) {
-		if (!test_and_set_bit(FF_CORE_IS_PLAYED,
-				      iforce->core_effects[i].flags))
-			...
-	} else if (test_and_clear_bit(FF_CORE_IS_PLAYED,
-				      iforce->core_effects[i].flags)) {
+	report_size = rmi_f54_get_report_size(f54);
+	...
+	for (i = 0; i < report_size; i += F54_REPORT_DATA_SIZE) {
+		int size = min(F54_REPORT_DATA_SIZE, report_size - i);
 		...
+		rmi_read_block(.., f54->report_data + i, size);
 	}
 
-The index is masked only with 0x7f, so it ranges 0..127, but
-core_effects[] holds only IFORCE_EFFECTS_MAX (32) entries.  For an index
-of 32..127 the test_and_set_bit()/test_and_clear_bit() is an
-out-of-bounds single-bit read-modify-write past the array.  core_effects[]
-is the second-to-last member of struct iforce, so the write lands in the
-trailing members and beyond the embedding kzalloc()'d iforce_serio /
-iforce_usb object.
+report_data is allocated once at probe from F54's own electrode counts
+(array3_size(f54->num_tx_electrodes, f54->num_rx_electrodes, sizeof(u16))),
+but rmi_f54_get_report_size() computes the size from
+drv_data->num_*_electrodes when those are set, i.e. from the F55
+function's electrode counts. Both counts come straight from device
+queries (F54 and F55 each report up to 255 electrodes) and nothing
+constrains the F55 counts to the F54 ones.
 
-data[1] is unvalidated device payload on both transports (the USB
-interrupt endpoint and serio), and the status path is not gated on force
-feedback being present, so a malicious or counterfeit device can set or
-clear a bit at an attacker-chosen offset past the object.
+A malicious or malfunctioning RMI4 device that reports larger F55
+electrode counts than its F54 counts makes report_size exceed the
+allocation, so the read loop writes past report_data (and the V4L2
+dequeue memcpy() then reads past it). On conforming hardware the F55
+configured electrodes are a subset of the F54 physical electrodes, so
+report_size never exceeds the buffer and well-behaved devices are
+unaffected.
 
-Reject an out-of-range index instead of indexing with it.  Bound against
-the array dimension IFORCE_EFFECTS_MAX rather than dev->ff->max_effects so
-the check guarantees memory safety regardless of how many effects the
-device registered.  A legitimate "effect started/stopped" status always
-carries an index below IFORCE_EFFECTS_MAX, so well-formed devices are
-unaffected; the neighbouring mark_core_as_ready() loop is already bounded
-and is left untouched.
+Record the allocation size and reject a report that does not fit,
+mirroring the existing zero-size check.
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Fixes: c762cc68b6a1 ("Input: synaptics-rmi4 - propagate correct number of rx and tx electrodes to F54")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Reachable from a malicious, malfunctioning or counterfeit iforce
-force-feedback device on either transport: a USB device matching the
-iforce id table (iforce-usb.c forwards the interrupt-IN buffer as
-iforce_process_packet(.., data_in[0], data_in + 1, ..)) or an RS232
-iforce peripheral bound via inputattach (iforce-serio.c forwards data_in).
-data[1] is never validated on the path, and the 0x02 status block runs
-regardless of packet length or whether force feedback was created.
+Reachable from a malicious or counterfeit RMI4 peripheral (HID/I2C/SPI)
+that exposes both an F54 diagnostics function and an F55 sensor-tuning
+function reporting more electrodes than F54; the report is filled when a
+local client drives an F54 capture through the V4L2 touch device node.
 
-struct iforce embeds core_effects[32] as its second-to-last member and is
-itself the first member of the kzalloc()'d iforce_serio / iforce_usb
-object (~4.8 KB, kmalloc-8k).  A status report with data[1] = 0x80 | idx
-sets bit FF_CORE_IS_PLAYED in core_effects[idx].flags; for idx up to 127
-that is about 13 KB past the end of the array.
+Verified with an in-kernel KASAN litmus that allocates report_data from
+the F54 dims and fills it from the F55-preferred dims (the verbatim
+rmi_f54_get_report_size() preference and the rmi_f54_work() 32-byte read
+loop), Linux 7.1.0-rc5, CONFIG_KASAN=y, kasan.fault=panic, x86_64:
 
-Verified with a faithful in-kernel KASAN litmus (the verbatim struct
-iforce / iforce_serio layout and the case-0x02 effect-index block),
-Linux 7.1.0-rc5, CONFIG_KASAN=y, kasan.fault=panic, x86_64:
-
-  Arm A, status report effect index 57 (chosen to clear the kmalloc-8k
-  bucket; KASAN's kmalloc redzone already trips from index 32):
-    BUG: KASAN: slab-out-of-bounds in ... Write of size 8
-    located 3440 bytes to the right of the allocated 4840-byte region
-    ... cache kmalloc-8k of size 8192
+  Arm A, F54 8x8 (capacity 128) vs F55 8x24 (report_size 384):
+    BUG: KASAN: slab-out-of-bounds in ... Write of size 32
+    located 0 bytes to the right of the allocated 128-byte region
+    ... cache kmalloc-128 of size 128
     Kernel panic - not syncing: kasan.fault=panic set
-  Arm B, with this patch (index bounded): clean
-  Arm C, benign in-range index: clean
+  Arm B, with this patch (oversize report rejected): clean
+  Arm C, conforming device (F55 dims == F54 dims): clean
 
-  AddressSanitizer (x86_64 and i386): heap-buffer-overflow WRITE, both ABIs.
+  AddressSanitizer (x86_64 and i386): heap-buffer-overflow WRITE of size 32,
+  0 bytes after the 128-byte region.
 
-The "Write of size 8" is the test_and_set_bit() read-modify-write on the
-flags long.  Reproducer and full logs available on request.
+The same rmi_f54_get_report_size() value drives the V4L2 dequeue
+memcpy(.., report_size) on the read side, so an oversize report also
+over-reads report_data; rejecting it in rmi_f54_work() (report_size then
+stays 0) closes both. Reproducer and full logs available on request.
+
+This is independent of the in-flight "Input: rmi4 - release F54 queue on
+video registration failure" change, which touches only the probe error
+path (vb2_queue_release in rmi_f54_probe); it applies cleanly alongside it.
 ---
- drivers/input/joystick/iforce/iforce-packets.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
+ drivers/input/rmi4/rmi_f54.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/input/joystick/iforce/iforce-packets.c b/drivers/input/joystick/iforce/iforce-packets.c
-index fd1cd731d781..ff266568d586 100644
---- a/drivers/input/joystick/iforce/iforce-packets.c
-+++ b/drivers/input/joystick/iforce/iforce-packets.c
-@@ -186,14 +186,18 @@ void iforce_process_packet(struct iforce *iforce,
+diff --git a/drivers/input/rmi4/rmi_f54.c b/drivers/input/rmi4/rmi_f54.c
+index 61909e1a39e2..7a7508a4de85 100644
+--- a/drivers/input/rmi4/rmi_f54.c
++++ b/drivers/input/rmi4/rmi_f54.c
+@@ -104,6 +104,7 @@ struct f54_data {
  
- 		/* Check if an effect was just started or stopped */
- 		i = data[1] & 0x7f;
--		if (data[1] & 0x80) {
--			if (!test_and_set_bit(FF_CORE_IS_PLAYED, iforce->core_effects[i].flags)) {
--				/* Report play event */
--				input_report_ff_status(dev, i, FF_STATUS_PLAYING);
-+		if (i < IFORCE_EFFECTS_MAX) {
-+			unsigned long *flags = iforce->core_effects[i].flags;
+ 	enum rmi_f54_report_type report_type;
+ 	u8 *report_data;
++	size_t report_data_size;
+ 	int report_size;
+ 
+ 	bool is_busy;
+@@ -548,6 +549,13 @@ static void rmi_f54_work(struct work_struct *work)
+ 		goto error;     /* retry won't help */
+ 	}
+ 
++	if (report_size > f54->report_data_size) {
++		dev_err(&fn->dev, "Report size %d exceeds buffer size %zu\n",
++			report_size, f54->report_data_size);
++		error = -EINVAL;
++		goto error;
++	}
 +
-+			if (data[1] & 0x80) {
-+				if (!test_and_set_bit(FF_CORE_IS_PLAYED, flags)) {
-+					/* Report play event */
-+					input_report_ff_status(dev, i, FF_STATUS_PLAYING);
-+				}
-+			} else if (test_and_clear_bit(FF_CORE_IS_PLAYED, flags)) {
-+				/* Report stop event */
-+				input_report_ff_status(dev, i, FF_STATUS_STOPPED);
- 			}
--		} else if (test_and_clear_bit(FF_CORE_IS_PLAYED, iforce->core_effects[i].flags)) {
--			/* Report stop event */
--			input_report_ff_status(dev, i, FF_STATUS_STOPPED);
- 		}
+ 	/*
+ 	 * Need to check if command has completed.
+ 	 * If not try again later.
+@@ -678,8 +686,8 @@ static int rmi_f54_probe(struct rmi_function *fn)
  
- 		for (j = 3; j < len; j += 2)
+ 	rx = f54->num_rx_electrodes;
+ 	tx = f54->num_tx_electrodes;
+-	f54->report_data = devm_kzalloc(&fn->dev,
+-					array3_size(tx, rx, sizeof(u16)),
++	f54->report_data_size = array3_size(tx, rx, sizeof(u16));
++	f54->report_data = devm_kzalloc(&fn->dev, f54->report_data_size,
+ 					GFP_KERNEL);
+ 	if (f54->report_data == NULL)
+ 		return -ENOMEM;
 
 ---
 base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260613-b4-disp-4828d263-5f8b1a7c2346
+change-id: 20260613-b4-disp-6721686c-33a3bdacdf38
 
 Best regards,
 -- 
