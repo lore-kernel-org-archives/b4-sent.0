@@ -1,113 +1,109 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sat, 13 Jun 2026 18:57:46 -0500
-Subject: [PATCH] Input: apple_z2 - bound the device-reported finger count
+Date: Sat, 13 Jun 2026 20:07:20 -0500
+Subject: [PATCH] Input: touchwin - reset the packet index on every complete
+ packet
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260613-b4-disp-f0148c89-v1-1-868a48b2a187@proton.me>
-X-B4-Tracking: v=1; b=H4sIAHnuLWoC/x3MQQqAIBBA0avIrBvQErGuEi0yZ2o2JgoRRHdPW
- r7F/w9UKkIVJvVAoUuqnKnBdAq2Y007ocRm6HXvtDMDBotRakbWxvrNjxh55cjB2zAwtCwXYrn
- /5by87weeWEULYgAAAA==
-To: Sasha Finkelstein <k@chaosmail.tech>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Janne Grunau <j@jannau.net>, asahi@lists.linux.dev, 
- linux-input@vger.kernel.org, Neal Gompa <neal@gompa.dev>, 
- Sven Peter <sven@kernel.org>
+Message-Id: <20260613-b4-disp-69921bfd-v1-1-82c036899959@proton.me>
+X-B4-Tracking: v=1; b=H4sIAMf+LWoC/x3MPQqAMAxA4atIZgP9s6JXEQdrUs2i0oIIxbtbH
+ L/hvQKZk3CGsSmQ+JYs51Gh2wbWfTk2RqFqMMp45bXF4JAkX+iHwegQCVWnlbdEiws91OxKHOX
+ 5l9P8vh90H9uaYgAAAA==
+To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Cc: linux-input@vger.kernel.org, Rick Koch <n1gp@hotmail.com>, 
+ linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781395065; l=3970;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781399239; l=3554;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=+piORlsZ9G+rq1w4Tyy0/0zNo6jPC9e+Ct0NYcVnLBs=;
- b=dWGh/OzZS92ftQe4q3LGeswyrD8DhpLSDQdRYBZcLlsyMA5R5Ay0ph0okO81sYCXYDNlfdxgV
- dwrdwpqHMvbBYgdgBei/shLH9p8q5q2omiz5EA/FLXV2M0u8RchxPHz
+ bh=0xJe696QjnZ2WzWwmJYPtlGz8d7L6oa0Pm0tSupjsa8=;
+ b=DwvXmr0m0s2O2ewItgGBjfV7+FW0FarE4EcYbadYvnw5OSTm66d0MWo0KkGzcuguM3gGTz9tV
+ o3z5CRV5+KEAPLbH8OC6XaNMwGy0YBONKwsebqSO1mEZ+vHKOfFZgEu
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-apple_z2_parse_touches() takes the finger count from the touch
-controller's report and loops over that many fixed-size finger records
-without ever checking the count against the length of the report:
+tw_interrupt() accumulates each non-zero serial byte into a fixed
+three-byte buffer with a running index that is only reset once a full
+packet has been received *and* the device's two Y bytes agree:
 
-	nfingers = msg[APPLE_Z2_NUM_FINGERS_OFFSET];
-	fingers = (struct apple_z2_finger *)(msg + APPLE_Z2_FINGERS_OFFSET);
-	for (i = 0; i < nfingers; i++)
-		/* read fingers[i] ... */
+	tw->data[tw->idx++] = data;
+	if (tw->idx == TW_LENGTH && tw->data[1] == tw->data[2]) {
+		...
+		tw->idx = 0;
+	}
 
-msg points into the fixed 4000-byte z2->rx_buf and nfingers is a single
-device-supplied byte, so it can be as large as 255.  A malicious,
-malfunctioning or counterfeit controller (or an interposer on the SPI
-bus) can report a large finger count in a short packet, making the loop
-read up to 255 * sizeof(struct apple_z2_finger) bytes starting 24 bytes
-into msg -- far past the 4000-byte buffer.  This is a controller-driven
-heap out-of-bounds read, and the finger fields that are read (position,
-pressure, touch and tool dimensions) are forwarded to userspace as input
-events, leaking adjacent kernel memory.
+The reset is gated on tw->data[1] == tw->data[2], a value the device
+controls.  A malicious, malfunctioning or counterfeit Touchwindow
+peripheral can stream non-zero bytes whose 2nd and 3rd bytes differ: the
+index reaches TW_LENGTH without the equality holding, is never reset, and
+keeps growing, so tw->data[tw->idx++] walks off the end of the three-byte
+array and the rest of the heap-allocated struct tw, one attacker-chosen
+byte at a time -- an unbounded, device-driven heap out-of-bounds write.
 
-Bound the device-reported count to the number of finger records the
-report actually carries.
+Reset the index on every completed packet and report an event only when
+the two Y bytes match, like the other serio touchscreen drivers do.
 
-Reported-by: sashiko-bot@kernel.org
-Closes: https://lore.kernel.org/all/20260613215358.329921F000E9@smtp.kernel.org/
-Fixes: 471a92f8a21a ("Input: apple_z2 - add a driver for Apple Z2 touchscreens")
+Fixes: 11ea3173d5f2 ("Input: add driver for Touchwin serial touchscreens")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Reachable on every touch interrupt once the controller is booted
-(apple_z2_irq -> apple_z2_read_packet -> apple_z2_parse_touches).
+Reachable on every serial byte once the device is bound as SERIO_TOUCHWIN
+(inputattach --touchwin): serport_ldisc_receive -> serio_interrupt ->
+tw_interrupt, with no length validation on the path.  The peripheral need
+only avoid zero bytes (any data != 0) and send a 2nd byte different from
+the 3rd to defeat the reset.
 
-nfingers is a different device field from the packet length handled by
-the in-flight "Input: apple_z2 - bound the device-reported packet length"
-patch, so the two are orthogonal: that one bounds the spi_read() length
-(rx_buf[1..2]); this one bounds the per-report finger count (msg[16]).
+struct tw is a 64-byte kmalloc-64 object; the unbounded store crosses the
+allocation once the running index reaches 40.
 
-The early-return is tightened from NUM_FINGERS_OFFSET (16) to
-FINGERS_OFFSET (24) so the subtraction below cannot underflow; since
-msg_len == pkt_len - 5 and pkt_len is rounded to a multiple of four, the
-only reachable lengths the tighter guard now drops are 19 and 23, both of
-which are too short to hold even the finger-array header.
+Verified with a faithful in-kernel KASAN litmus (the verbatim struct tw
+and the tw_interrupt accumulation), CONFIG_KASAN=y on x86_64:
 
-Verified with a faithful in-kernel KASAN litmus (the verbatim 4000-byte
-buffer, the struct apple_z2_finger layout and the parse loop),
-CONFIG_KASAN=y on x86_64:
+  Arm A, 64 non-zero bytes with byte[1] != byte[2]:
+    BUG: KASAN: slab-out-of-bounds in ... Write of size 1
+    located 0 bytes to the right of the allocated 64-byte region
+    ... cache kmalloc-64 of size 64
+  Arm B, with this patch (index reset every packet): clean
+  Arm C, benign device (byte[1] == byte[2]): clean
 
-  Arm A, nfingers = 255 in a short packet (msg_len 19):
-    BUG: KASAN: slab-out-of-bounds in apple_z2_parse_touches
-    Read of size 2 ... 1 bytes to the right of allocated 4000-byte region
-    ... cache kmalloc-4k of size 4096
-  Arm B, with this patch (count clamped to what the packet holds): clean
-  Arm C, benign device (3 fingers): clean
-
-  AddressSanitizer (x86_64 and i386): heap-buffer-overflow READ, both ABIs.
+  AddressSanitizer (x86_64 and i386): heap-buffer-overflow WRITE, both ABIs.
 
 Reproducer and full logs available on request.
 ---
- drivers/input/touchscreen/apple_z2.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ drivers/input/touchscreen/touchwin.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/input/touchscreen/apple_z2.c b/drivers/input/touchscreen/apple_z2.c
-index 271ababf0ad5..61f353553e7c 100644
---- a/drivers/input/touchscreen/apple_z2.c
-+++ b/drivers/input/touchscreen/apple_z2.c
-@@ -88,10 +88,13 @@ static void apple_z2_parse_touches(struct apple_z2 *z2,
- 	int slot_valid;
- 	struct apple_z2_finger *fingers;
- 
--	if (msg_len <= APPLE_Z2_NUM_FINGERS_OFFSET)
-+	if (msg_len <= APPLE_Z2_FINGERS_OFFSET)
- 		return;
- 	nfingers = msg[APPLE_Z2_NUM_FINGERS_OFFSET];
- 	fingers = (struct apple_z2_finger *)(msg + APPLE_Z2_FINGERS_OFFSET);
-+	/* a malicious controller can claim more fingers than the packet holds */
-+	nfingers = min_t(int, nfingers,
-+			 (msg_len - APPLE_Z2_FINGERS_OFFSET) / sizeof(*fingers));
- 	for (i = 0; i < nfingers; i++) {
- 		slot = input_mt_get_slot_by_key(z2->input_dev, fingers[i].finger);
- 		if (slot < 0) {
+diff --git a/drivers/input/touchscreen/touchwin.c b/drivers/input/touchscreen/touchwin.c
+index 099fd88e65d8..3ed33378dfcd 100644
+--- a/drivers/input/touchscreen/touchwin.c
++++ b/drivers/input/touchscreen/touchwin.c
+@@ -63,12 +63,15 @@ static irqreturn_t tw_interrupt(struct serio *serio,
+ 	if (data) {		/* touch */
+ 		tw->touched = 1;
+ 		tw->data[tw->idx++] = data;
+-		/* verify length and that the two Y's are the same */
+-		if (tw->idx == TW_LENGTH && tw->data[1] == tw->data[2]) {
+-			input_report_abs(dev, ABS_X, tw->data[0]);
+-			input_report_abs(dev, ABS_Y, tw->data[1]);
+-			input_report_key(dev, BTN_TOUCH, 1);
+-			input_sync(dev);
++		/* a full packet ends the accumulation, valid or not */
++		if (tw->idx == TW_LENGTH) {
++			/* report only if the two Y's are the same */
++			if (tw->data[1] == tw->data[2]) {
++				input_report_abs(dev, ABS_X, tw->data[0]);
++				input_report_abs(dev, ABS_Y, tw->data[1]);
++				input_report_key(dev, BTN_TOUCH, 1);
++				input_sync(dev);
++			}
+ 			tw->idx = 0;
+ 		}
+ 	} else if (tw->touched) {	/* untouch */
 
 ---
 base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260613-b4-disp-f0148c89-dfafdfb84b3f
+change-id: 20260613-b4-disp-69921bfd-051063dda4b7
 
 Best regards,
 -- 
