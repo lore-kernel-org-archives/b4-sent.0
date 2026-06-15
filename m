@@ -1,64 +1,61 @@
-From: Keguang Zhang <keguang.zhang@gmail.com>
-Date: Mon, 15 Jun 2026 20:24:17 +0800
-Subject: [PATCH] net: stmmac: loongson1: Use dev_err_probe()
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Date: Mon, 15 Jun 2026 16:51:15 +0100
+Subject: [PATCH] lib: math: test_mul_u64_u64_div_u64: define div64_s64_rem
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260615-dwmac-loongson1-v1-1-cbcf5bc01d9b@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAPDuL2oC/x3MQQqAIBBA0avIrBPUSKirRIvS0QZKQ6EC8e5Jy
- 7f4v0DGRJhhYgUS3pQphgbZMTD7Gjxyss2ghNJCC8Xtc66GHzEGn2OQfEC5jdaZ3mgFrboSOnr
- /47zU+gHKAVm4YQAAAA==
-To: Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
- Alexandre Torgue <alexandre.torgue@foss.st.com>
-Cc: linux-mips@vger.kernel.org, netdev@vger.kernel.org, 
- linux-stm32@st-md-mailman.stormreply.com, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Keguang Zhang <keguang.zhang@gmail.com>
-X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781526276; l=1168;
- i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
- bh=2fl2OBxWH3wOcozENxrt6hZZsu8wzA6vdfleIZixEow=;
- b=/xcmeOq0CIVKL1BbVMNLoT/ceXxJcS0hTcnCvEZ6XK0jr4a/anBT54fyJswBJHk++djVHtRXn
- tJKVWnD0mutDflarcg2J1w0kDRCds4G4jYe4E9akQGFn9N6xspemEK7
-X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
- pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
-X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
+Message-Id: <20260615-test-mul-div-u64-fixup-v1-1-ea186d825745@analog.com>
+X-B4-Tracking: v=1; b=H4sIAHIfMGoC/x2MWwqAIBAArxL73YKG2uMq0UePrRbKQjMC6e5Jn
+ 8MwE8GTY/LQZBEc3ez5sAlknsG49nYh5CkxFKIwwkiNF/kL97DhxDcGo3DmJ5yohdS1Il1Wg4I
+ Un46S+Mdt974ffzi4kGgAAAA=
+X-Change-ID: 20260615-test-mul-div-u64-fixup-501594e578b4
+To: linux-kernel@vger.kernel.org, linux-iio@vger.kernel.org
+Cc: Jonathan Cameron <jic23@kernel.org>, Andy Shevchenko <andy@kernel.org>, 
+ kernel test robot <lkp@intel.com>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781538698; l=1290;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=3SgBmMM2VffDRtuuezVRLfHjFVAyTOp0L7/XpgDfV7g=;
+ b=9HkwyBphFaKPg7JgRsEPuVVqwzST1uKecopMKi4R7lg35cwA9c7HttRox6AXpByqGLpGr6qKm
+ v+llbLZna0OAy4owfzHATkmHksIg5G223yKqQYiOlwWUAAiIzVmO174
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use dev_err_probe() for the missing match data case to simplify
-error handling.
+Define div64_s64_rem to avoid multiple definition or exports.
 
-Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
+Reported-by: kernel test robot <lkp@intel.com>
+Closes: https://lore.kernel.org/oe-kbuild-all/202606152154.P6pwbjhp-lkp@intel.com/
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/net/ethernet/stmicro/stmmac/dwmac-loongson1.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+Recently added div64_s64_rem() is causing issues in a the
+test build. This could be a fixup patch amended to:
 
-diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-loongson1.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-loongson1.c
-index de9aba756aac..ec34adb63f61 100644
---- a/drivers/net/ethernet/stmicro/stmmac/dwmac-loongson1.c
-+++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-loongson1.c
-@@ -176,10 +176,8 @@ static int ls1x_dwmac_probe(struct platform_device *pdev)
- 				     "Unable to find syscon\n");
- 
- 	data = of_device_get_match_data(&pdev->dev);
--	if (!data) {
--		dev_err(&pdev->dev, "No of match data provided\n");
--		return -EINVAL;
--	}
-+	if (!data)
-+		return dev_err_probe(&pdev->dev, -EINVAL, "No of match data provided\n");
- 
- 	dwmac = devm_kzalloc(&pdev->dev, sizeof(*dwmac), GFP_KERNEL);
- 	if (!dwmac)
+https://git.kernel.org/pub/scm/linux/kernel/git/jic23/iio.git/commit/?h=testing&id=adebf76278116a06166d0b5f8b4112ad5dd6389a
+---
+ lib/math/test_mul_u64_u64_div_u64.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/lib/math/test_mul_u64_u64_div_u64.c b/lib/math/test_mul_u64_u64_div_u64.c
+index 338d014f0c73..d12dc05938fb 100644
+--- a/lib/math/test_mul_u64_u64_div_u64.c
++++ b/lib/math/test_mul_u64_u64_div_u64.c
+@@ -157,6 +157,7 @@ static void __exit test_exit(void)
+ #define __div64_32 __div64_32
+ #define div_s64_rem div_s64_rem
+ #define div64_u64_rem div64_u64_rem
++#define div64_s64_rem div64_s64_rem
+ #define div64_u64 div64_u64
+ #define div64_s64 div64_s64
+ #define iter_div_u64_rem iter_div_u64_rem
 
 ---
-base-commit: ec039126b7fac4e3af35ebccaa7c6f9b6875ba81
-change-id: 20260602-dwmac-loongson1-5e1b9dfc3c62
+base-commit: a50909aa46dec46de3c73235fc15a7d6f763d996
+change-id: 20260615-test-mul-div-u64-fixup-501594e578b4
 
 Best regards,
 -- 
-Keguang Zhang <keguang.zhang@gmail.com>
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
