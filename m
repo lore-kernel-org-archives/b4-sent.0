@@ -1,162 +1,112 @@
-From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Sun, 14 Jun 2026 10:00:31 -0700
-Subject: [PATCH net-next v5 15/15] Documentation: networking: Add timestamp
- related APIs to OA TC6 framework
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Mon, 15 Jun 2026 03:04:02 -0500
+Subject: [PATCH] nfc: fdp: reject an oversized device-reported packet
+ length
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260614-s2500-mac-phy-support-v5-15-89874b72f725@onsemi.com>
-References: <20260614-s2500-mac-phy-support-v5-0-89874b72f725@onsemi.com>
-In-Reply-To: <20260614-s2500-mac-phy-support-v5-0-89874b72f725@onsemi.com>
-To: Andrew Lunn <andrew@lunn.ch>, 
- Piergiorgio Beruto <pier.beruto@onsemi.com>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
- Selva Rajagopal <selvamani.rajagopal@onsemi.com>, 
- Richard Cochran <richardcochran@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Simon Horman <horms@kernel.org>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-doc@vger.kernel.org, 
- Jerry Ray <jerry.ray@microchip.com>, 
- Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781456463; l=5374;
- i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=hgvCtdXBO6qNFB6GKYRybc5EVqfwJkm2Gr5Ztb9GTVE=;
- b=CNA0jMAaNWq1ffyVwbBtT4TTNlA7lbUBsbcpsdLQzeSFetL1zey1VVsb86NecKFUIYVrsTjC+
- xcYP7hLs3b9Dbj5qaCgRXTOw9XGL6cPvGOkoijuQhRPG0pGxWa30qTd
-X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
- pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
-X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
+Message-Id: <20260615-b4-disp-f42dce2d-v1-1-186ff3dcbf37@proton.me>
+X-B4-Tracking: v=1; b=H4sIAPGxL2oC/x3MMQqAMAxA0atIZgMxthW8ijhUm2qWKi2IIN7d4
+ viG/x8oklUKjM0DWS4teqSKrm1g3X3aBDVUAxM7cp3FxWDQcmI0HFbhgGQt9VZ8PyweanZmiXr
+ /y2l+3w8CUnDGYgAAAA==
+To: David Heidelberg <david@ixit.cz>
+Cc: linux-kernel@vger.kernel.org, Robert Dolca <robert.dolca@intel.com>, 
+ netdev@vger.kernel.org, oe-linux-nfc@lists.linux.dev, 
+ Samuel Ortiz <sameo@linux.intel.com>, Kang Chen <void0red@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781510641; l=3491;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=YWNzYrdEVobq/LRKI1zxupMwajgzI8infZUte46uWMI=;
+ b=lMWqMpt5U5MP/GG7ddKRwOwBSd9MWJ6TtlybHae3my9qt/5BoiELZa8mYaGivOliaUImlcVXw
+ XeqDRfTa97nCfUbJ6+R0/geT6IxOaSw4EwpnMcWuaNBfy6+opjMso78
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Added new APIs to support hardware timestamp feature as defined in
-OPEN Alliance 10BASE-T1x MAC-PHY serial interface specification.
+fdp_nci_i2c_read() reads the length of the next packet from the device
+into phy->next_read_size and uses it as the i2c_master_recv() byte count
+into a fixed on-stack buffer:
 
-Expanded read/write APIs to take new mms parameter to avoid
-bit manipulation before calling regular read/write APIs
+	u8 tmp[FDP_NCI_I2C_MAX_PAYLOAD];		/* 261 bytes */
+	...
+	len = phy->next_read_size;
+	r = i2c_master_recv(client, tmp, len);
 
-Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+When a "length packet" arrives (tmp[0] == 0 && tmp[1] == 0), the next
+length is taken verbatim from two device-supplied bytes:
+
+	phy->next_read_size = (tmp[2] << 8) + tmp[3] + 3;
+
+next_read_size is a u16, so this can be driven as high as 65535 - far
+larger than the 261-byte tmp[] buffer - and it is never bounded before
+the next iteration's i2c_master_recv(). A malfunctioning, malicious or
+counterfeit FDP NFC controller (or an attacker tampering with the I2C
+bus) that sends such a length packet makes i2c_master_recv() write up to
+about 64 KB into the 261-byte on-stack buffer: a stack out-of-bounds
+write that clobbers the stack canary, saved registers and the return
+address.
+
+Reject a next_read_size larger than the receive buffer the same way a
+corrupted packet is already handled - drop it and force resynchronization
+- so a device can never drive an over-length read.
+
+Fixes: a06347c04c13 ("NFC: Add Intel Fields Peak NFC solution driver")
+Cc: stable@vger.kernel.org
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+---
+I reproduced the out-of-bounds write with an in-kernel test that drives
+the fdp_nci_i2c_read() buffer geometry verbatim under KASAN
+(CONFIG_KASAN_STACK=y), modelling i2c_master_recv() delivering
+next_read_size device bytes into the 261-byte tmp[] buffer:
+
+  next_read_size = 281, no bound:
+    BUG: KASAN: stack-out-of-bounds in i2c_master_recv...
+    Write of size 281 ... [48, 309) 'tmp'   (the 261-byte buffer)
+  with the device length bounded to <= FDP_NCI_I2C_MAX_PAYLOAD (what this
+    patch enforces): no KASAN report.
+  a well-formed packet (length <= 261) is unaffected, no KASAN report.
+
+The full device range - next_read_size = 65535 (tmp[2] = 0xff,
+tmp[3] = 0xfc; the u16 field truncates the + 3), a 65535-byte write =
+65274 bytes past the buffer, smashing the stack canary and the return
+address - reproduces the same way under userspace AddressSanitizer on
+both -m32 and -m64.
+---
+ drivers/nfc/fdp/i2c.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/drivers/nfc/fdp/i2c.c b/drivers/nfc/fdp/i2c.c
+index c1896a1d978c..0392bb49bb4b 100644
+--- a/drivers/nfc/fdp/i2c.c
++++ b/drivers/nfc/fdp/i2c.c
+@@ -166,6 +166,20 @@ static int fdp_nci_i2c_read(struct fdp_i2c_phy *phy, struct sk_buff **skb)
+ 		/* Packet that contains a length */
+ 		if (tmp[0] == 0 && tmp[1] == 0) {
+ 			phy->next_read_size = (tmp[2] << 8) + tmp[3] + 3;
++
++			/*
++			 * next_read_size is taken from the device and is used
++			 * as the i2c_master_recv() count on the next iteration.
++			 * A value larger than the receive buffer would overflow
++			 * tmp[]; treat it like a corrupted packet and force
++			 * resynchronization.
++			 */
++			if (phy->next_read_size > FDP_NCI_I2C_MAX_PAYLOAD) {
++				dev_dbg(&client->dev, "%s: corrupted packet\n",
++					__func__);
++				phy->next_read_size = FDP_NCI_I2C_MIN_PAYLOAD;
++				goto flush;
++			}
+ 		} else {
+ 			phy->next_read_size = FDP_NCI_I2C_MIN_PAYLOAD;
+ 
 
 ---
-changes in v5
-  - Fixed "no blank line" issues in four places
-changes in v4
-  - Added information for new APIs in OA TC6 framework
-changes in v3
-  - Added more information for documentation
-changes in v2
-  - Removed the changes to the existing API
-  - Updated information about newly added APIs
-changes in v1
-  - Added changes to an existing API
-  - Added documentation to new hardware timestamp related APIs
----
- Documentation/networking/oa-tc6-framework.rst | 80 +++++++++++++++++++++++++++
- 1 file changed, 80 insertions(+)
+base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
+change-id: 20260615-b4-disp-f42dce2d-055035ea37ba
 
-diff --git a/Documentation/networking/oa-tc6-framework.rst b/Documentation/networking/oa-tc6-framework.rst
-index fe2aabde923a..325d299d1a7d 100644
---- a/Documentation/networking/oa-tc6-framework.rst
-+++ b/Documentation/networking/oa-tc6-framework.rst
-@@ -153,6 +153,10 @@ OPEN Alliance TC6 Framework
- - Forwards the received Ethernet frame from 10Base-T1x MAC-PHY to n/w
-   subsystem.
- 
-+- If supported by the hardware and enabled, updates hardware timestamp
-+  in skb, when indicated by one of the three timestamp capture registers
-+  through TSC fields of the header.
-+
- Data Transaction
- ~~~~~~~~~~~~~~~~
- 
-@@ -495,3 +499,79 @@ the MAC-PHY.
- Zero align receive frame feature can be enabled to align all receive ethernet
- frames data to start at the beginning of any receive data chunk payload with a
- start word offset (SWO) of zero.
-+
-+.. c:function:: int oa_tc6_ptp_register(struct oa_tc6 *tc6, \
-+                                        struct ptp_clock_info *info);
-+
-+Registers the PTP hardware clock related functions with the kernel.
-+This API simply registers. Initialization of the fields in the
-+ptp_clock_info structure are left to the vendor as programming hardware
-+timer is expected to be vendor dependent. The fields max_adj, owner,
-+and all the functions for the clock operations, like adjfine, gettimex64,
-+settime64, adjtime are expected to be initialized in the structure before
-+calling the registering the hardware clock.
-+
-+.. c:function:: void oa_tc6_ptp_unregister(struct oa_tc6 *tc6);
-+
-+Unregisters the PTP hardware clock related callbacks.
-+
-+.. c:function:: int oa_tc6_ioctl(struct oa_tc6 *tc6, struct ifreq *rq, \
-+                                 int cmd);
-+
-+ioctl interface to handle hardware timestamp and PHY related commands.
-+
-+.. c:function:: int oa_tc6_get_ts_info(struct oa_tc6 *tc6, \
-+                                       struct kernel_ethtool_ts_info *info);
-+
-+Provides timestamp related settings that are supported to ethtool.
-+
-+.. c:function:: void oa_tc6_hwtstamp_get(struct oa_tc6 *tc6, \
-+                                         struct kernel_hwtstamp_config *cfg);
-+
-+Returns hardware timestamp configuration. Part of net_device_ops callbacks.
-+
-+.. c:function:: void oa_tc6_get_ts_stats(struct oa_tc6 *tc6, \
-+                                         struct ethtool_ts_stats *ts_stats);
-+
-+Provides hardware timestamp related traffic statistics for ethtool.
-+
-+.. c:function:: int oa_tc6_hwtstamp_set(struct oa_tc6 *tc6, \
-+                                         struct kernel_hwtstamp_config *cfg);
-+
-+Helper to set hardware timestamp configuration. Part of net_device_ops
-+callbacks.
-+
-+.. c:function:: void oa_tc6_set_vend1_mms(struct oa_tc6 *tc6, int mms);
-+
-+Helper to map MDIO_MMD_VEND1 command to vendor specific Memory Map Select
-+(MMS) value. This function offers flexibility for vendors that may have
-+used any MMS value between 10 and 15 as allowed by the specification.
-+MDIO_MMD_VEND2 is already mapped to MMS4 in the OA TC6 frame work code.
-+
-+.. c:function:: int oa_tc6_write_registers_mms(struct oa_tc6 *tc6, \
-+                                               u16 address, u16 mms, \
-+                                               u32 value[], u8 length);
-+
-+Writing multiple consecutive registers starting from @address for the
-+given @mms memory map selector in the MAC-PHY. Maximum of 128 consecutive
-+registers can be written starting at @address.
-+
-+.. c:function:: int oa_tc6_write_register_mms(struct oa_tc6 *tc6, \
-+                                              u16 address, u16 mms, \
-+                                              u32 value);
-+
-+Write a single register addressed by @address and @mms in the MAC-PHY.
-+
-+.. c:function:: int oa_tc6_read_registers_mms(struct oa_tc6 *tc6, \
-+                                              u16 address, u16 mms, \
-+                                              u32 value[], u8 length);
-+
-+Reading multiple consecutive registers starting from @address for the
-+given @mms memory map selector value, in the MAC-PHY. Maximum of 128
-+consecutive registers can be read starting at @address.
-+
-+.. c:function:: int oa_tc6_read_register_mms(struct oa_tc6 *tc6, \
-+                                             u16 address, u16 mms, \
-+                                             u32 *value);
-+
-+Read a single register addressed by @address and @mms in the MAC-PHY.
-
+Best regards,
 -- 
-2.43.0
+Bryam Vargas <hexlabsecurity@proton.me>
 
