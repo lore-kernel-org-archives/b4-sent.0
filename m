@@ -1,55 +1,64 @@
-From: Bernd Schubert <bernd@bsbernd.com>
-Date: Mon, 15 Jun 2026 14:07:19 +0200
-Subject: [PATCH 2/2] fuse: read fch->ring under fch->lock in
- fuse_uring_create()
+From: Keguang Zhang <keguang.zhang@gmail.com>
+Date: Mon, 15 Jun 2026 20:24:17 +0800
+Subject: [PATCH] net: stmmac: loongson1: Use dev_err_probe()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260615-fix-7-2-next-v1-2-0a4c3908f13c@bsbernd.com>
-References: <20260615-fix-7-2-next-v1-0-0a4c3908f13c@bsbernd.com>
-In-Reply-To: <20260615-fix-7-2-next-v1-0-0a4c3908f13c@bsbernd.com>
-To: Joanne Koong <joannelkoong@gmail.com>, 
- Miklos Szeredi <miklos@szeredi.hu>
-Cc: fuse-devel@lists.linux.dev, Bernd Schubert <bernd@bsbernd.com>
-X-Mailer: b4 0.16-dev-d5d98
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1021; i=bernd@bsbernd.com;
- h=from:subject:message-id; bh=3hEUA5awiqvo0JJwcXM8kQp2TxGP6Af0S0ppwcEAk9s=;
- b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLL0X/1QM/Gsv1Mky7fteu8RK3MOjSKJXRnz7yl+0GVTj
- Xl0IvBERykLgxgHg6yYIkuXxB7bKf/4ZNW+rr8OM4eVCWQIAxenAEzE14aRYU+T+qV40aXe6a9i
- w2VMV+76YbN6cm1kjefeC2UKmpIJfAz/y5/+v/aKtYxz/aqoXeoTZGuuHdz57drtFYdcAla/iNn
- 2hxMA
-X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
- fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
-X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
+Message-Id: <20260615-dwmac-loongson1-v1-1-cbcf5bc01d9b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAPDuL2oC/x3MQQqAIBBA0avIrBPUSKirRIvS0QZKQ6EC8e5Jy
+ 7f4v0DGRJhhYgUS3pQphgbZMTD7Gjxyss2ghNJCC8Xtc66GHzEGn2OQfEC5jdaZ3mgFrboSOnr
+ /47zU+gHKAVm4YQAAAA==
+To: Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Maxime Coquelin <mcoquelin.stm32@gmail.com>, 
+ Alexandre Torgue <alexandre.torgue@foss.st.com>
+Cc: linux-mips@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-stm32@st-md-mailman.stormreply.com, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Keguang Zhang <keguang.zhang@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781526276; l=1168;
+ i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
+ bh=2fl2OBxWH3wOcozENxrt6hZZsu8wzA6vdfleIZixEow=;
+ b=/xcmeOq0CIVKL1BbVMNLoT/ceXxJcS0hTcnCvEZ6XK0jr4a/anBT54fyJswBJHk++djVHtRXn
+ tJKVWnD0mutDflarcg2J1w0kDRCds4G4jYe4E9akQGFn9N6xspemEK7
+X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
+ pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
+X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In the race branch of fuse_uring_create() - another thread already created
-the ring - fch->lock was dropped before fch->ring was read into res and
-returned.  That read is safe, since the existence check guarding the branch
-runs under fch->lock and is therefore already ordered against the
-smp_store_release() publish, but doing it after unlock makes it look like
-an unsynchronized lockless load and invites an unnecessary barrier.
+Use dev_err_probe() for the missing match data case to simplify
+error handling.
 
-Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
+Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
- fs/fuse/dev_uring.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/net/ethernet/stmicro/stmmac/dwmac-loongson1.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/fs/fuse/dev_uring.c b/fs/fuse/dev_uring.c
-index 230177cc06c6..344e8b5ffb8c 100644
---- a/fs/fuse/dev_uring.c
-+++ b/fs/fuse/dev_uring.c
-@@ -260,8 +260,8 @@ static struct fuse_ring *fuse_uring_create(struct fuse_chan *fch)
- 	}
- 	if (fch->ring) {
- 		/* race, another thread created the ring in the meantime */
--		spin_unlock(&fch->lock);
- 		res = fch->ring;
-+		spin_unlock(&fch->lock);
- 		goto out_err;
- 	}
+diff --git a/drivers/net/ethernet/stmicro/stmmac/dwmac-loongson1.c b/drivers/net/ethernet/stmicro/stmmac/dwmac-loongson1.c
+index de9aba756aac..ec34adb63f61 100644
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-loongson1.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-loongson1.c
+@@ -176,10 +176,8 @@ static int ls1x_dwmac_probe(struct platform_device *pdev)
+ 				     "Unable to find syscon\n");
  
+ 	data = of_device_get_match_data(&pdev->dev);
+-	if (!data) {
+-		dev_err(&pdev->dev, "No of match data provided\n");
+-		return -EINVAL;
+-	}
++	if (!data)
++		return dev_err_probe(&pdev->dev, -EINVAL, "No of match data provided\n");
+ 
+ 	dwmac = devm_kzalloc(&pdev->dev, sizeof(*dwmac), GFP_KERNEL);
+ 	if (!dwmac)
 
+---
+base-commit: ec039126b7fac4e3af35ebccaa7c6f9b6875ba81
+change-id: 20260602-dwmac-loongson1-5e1b9dfc3c62
+
+Best regards,
 -- 
-2.53.0
+Keguang Zhang <keguang.zhang@gmail.com>
 
