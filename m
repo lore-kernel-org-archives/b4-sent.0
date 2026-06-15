@@ -1,88 +1,107 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Mon, 15 Jun 2026 13:20:52 -0500
-Subject: [PATCH v3 2/2] Input: apple_z2 - bound the device-reported finger
- count
+Date: Mon, 15 Jun 2026 15:43:17 -0500
+Subject: [PATCH v2] iio: accel: bmc150: clamp the device-reported FIFO
+ frame count
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260615-b4-disp-05943ee1-v3-2-bbfe1b651613@proton.me>
-References: <20260615-b4-disp-05943ee1-v3-0-bbfe1b651613@proton.me>
-In-Reply-To: <20260615-b4-disp-05943ee1-v3-0-bbfe1b651613@proton.me>
-To: Sasha Finkelstein <k@chaosmail.tech>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Neal Gompa <neal@gompa.dev>, asahi@lists.linux.dev, 
- Sven Peter <sven@kernel.org>, linux-input@vger.kernel.org, 
- Janne Grunau <j@jannau.net>
+Message-Id: <20260615-b4-disp-ef4f7a59-v2-1-af5e980bcdd7@proton.me>
+X-B4-Tracking: v=1; b=H4sIAORjMGoC/x3MQQqAIBBA0avErBswS8uuEi2mHGs2FgoRRHdPW
+ r7F/w9kTsIZxuqBxJdkOWKBritYd4obo/hi0EpbZRuDS4de8okcutCTcdgqGpyzREY7KNmZOMj
+ 9L6f5fT8b2nTZYgAAAA==
+To: Jonathan Cameron <jic23@kernel.org>
+Cc: Andy Shevchenko <andy@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, linux-kernel@vger.kernel.org, 
+ linux-iio@vger.kernel.org, =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781547650; l=2830;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781556196; l=3276;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=DVQu2uvhJW5sxa7z9aTL83zmiULcE9bwvHJa+3o4ZK8=;
- b=AcyRZ+eyXLTDZ7XtLCTaXD0RmLR9HF3B9i/TUyNlGUymo09wMpiy7P0RRMNzX3EZcgYG0tVbT
- HmIzYzNQp4QCQOm83x1PjR/Jg+hSpBXUwYryjezAOHrgMqUWmME5NNd
+ bh=E/bT4EkVn+3iqP2XSaNpCV/pBBTqGy2zQ21wB6ceRL4=;
+ b=PXWkrkqYThMHD3rxqBUcbkAjG9XFvr/XtEHGnLGpaM6Rl8UniD1G4+hYuGQvmXh5B1lWL8K7z
+ 9qyuqeCpzzNCP7N6DkgCr/ntZiTPcLbb9fV3aTwTdbmmD3I//M3J+vG
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-apple_z2_parse_touches() takes the finger count from the touch
-controller's report and loops over that many fixed-size finger records
-without checking the count against the length of the report:
+__bmc150_accel_fifo_flush() copies the number of samples the device
+reports in its hardware FIFO into an on-stack buffer
 
-	nfingers = msg[APPLE_Z2_NUM_FINGERS_OFFSET];
-	fingers = (struct apple_z2_finger *)(msg + APPLE_Z2_FINGERS_OFFSET);
-	for (i = 0; i < nfingers; i++)
-		/* read fingers[i] ... */
+	u16 buffer[BMC150_ACCEL_FIFO_LENGTH * 3];
 
-msg points into the fixed 4000-byte rx_buf and nfingers is a single
-device-supplied byte, so it can be as large as 255.  A malicious,
-malfunctioning or counterfeit controller (or an interposer on the SPI
-bus) can report a large finger count in a short packet, making the loop
-read up to 255 * sizeof(struct apple_z2_finger) bytes starting 24 bytes
-into msg -- past the end of the receive buffer.  This is a
-controller-driven heap out-of-bounds read, and the finger fields that
-are read (position, pressure, touch and tool dimensions) are forwarded
-to userspace as input events, leaking adjacent kernel memory.
+which is sized for at most BMC150_ACCEL_FIFO_LENGTH (32) samples. The
+frame count is read from the FIFO_STATUS register and only masked to its
+7 valid bits:
 
-Drop any packet that claims more fingers than it can hold, warning once
-per rate-limit interval, rather than reporting a truncated set of
-fingers from an inconsistent report.  A short zero-finger ("all lifted")
-report is still passed through so the lifted state reaches userspace.
-The 4000-byte receive buffer holds at most 132 finger records, so this
-only ever drops counts that could not have been parsed in bounds.
+	count = val & 0x7F;
 
-Reported-by: sashiko-bot@kernel.org
-Closes: https://lore.kernel.org/all/20260613215358.329921F000E9@smtp.kernel.org/
-Fixes: 471a92f8a21a ("Input: apple_z2 - add a driver for Apple Z2 touchscreens")
+so it can be 0..127. The only other limit applied to it is the optional
+caller-supplied sample budget:
+
+	if (samples && count > samples)
+		count = samples;
+
+which does not constrain count on the flush-all path (samples == 0), and
+leaves it well above 32 whenever samples is larger. count samples are
+then transferred into buffer[]:
+
+	bmc150_accel_fifo_transfer(data, (u8 *)buffer, count);
+
+bmc150_accel_fifo_transfer() reads count * 6 bytes through regmap, so a
+malfunctioning, malicious or counterfeit accelerometer (or an attacker
+tampering with the I2C/SPI bus) that reports up to 127 frames writes up
+to 762 bytes into the 192-byte buffer: a stack out-of-bounds write of up
+to 570 bytes that clobbers the stack canary, saved registers and the
+return address.
+
+Clamp count to BMC150_ACCEL_FIFO_LENGTH, the number of samples buffer[]
+is sized for, before the transfer, mirroring the watermark clamp already
+done in bmc150_accel_set_watermark(). A well-formed flush reports at most
+BMC150_ACCEL_FIFO_LENGTH frames, so legitimate devices are unaffected.
+
+Fixes: 3bbec9773389 ("iio: bmc150_accel: add support for hardware fifo")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/input/touchscreen/apple_z2.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+v2: use min() instead of min_t(u8, ...) per Jonathan Cameron's review [1].
+    count is u8 and BMC150_ACCEL_FIFO_LENGTH is 32, so min() does the
+    comparison as int and the clamped result (<= 32) fits back in count;
+    builds clean under make W=1.
 
-diff --git a/drivers/input/touchscreen/apple_z2.c b/drivers/input/touchscreen/apple_z2.c
-index ff9ff97be185..4e2a6967436e 100644
---- a/drivers/input/touchscreen/apple_z2.c
-+++ b/drivers/input/touchscreen/apple_z2.c
-@@ -93,6 +93,17 @@ static void apple_z2_parse_touches(struct apple_z2 *z2,
- 		return;
- 	nfingers = msg[APPLE_Z2_NUM_FINGERS_OFFSET];
- 	fingers = (struct apple_z2_finger *)(msg + APPLE_Z2_FINGERS_OFFSET);
-+	/*
-+	 * A malicious or malfunctioning controller can report more fingers
-+	 * than the packet actually carries; drop the packet rather than read
-+	 * finger records past the end of the receive buffer.
-+	 */
-+	if (nfingers && msg_len < APPLE_Z2_FINGERS_OFFSET + nfingers * sizeof(*fingers)) {
-+		dev_warn_ratelimited(&z2->spidev->dev,
-+				     "discarding packet: %d fingers exceed packet length\n",
-+				     nfingers);
-+		return;
-+	}
- 	for (i = 0; i < nfingers; i++) {
- 		slot = input_mt_get_slot_by_key(z2->input_dev, fingers[i].finger);
- 		if (slot < 0) {
+[1] https://lore.kernel.org/all/20260614141146.697dde04@jic23-huawei/
+v1: https://lore.kernel.org/all/20260613-b4-disp-24d6b15f-v1-1-f5c3fe7294fc@proton.me/
 
+Reachable on every FIFO flush (watermark IRQ or the sysfs buffer-disable
+an in-kernel KASAN litmus (CONFIG_KASAN_STACK=y) and a userspace ASan model
+on x86_64 and i386: without the clamp, a device reporting 127 frames drives
+bmc150_accel_fifo_transfer() past the 192-byte on-stack buffer (stack
+out-of-bounds write); with the clamp it is bounded to 32. Reproducer and
+full logs available on request.
+
+path: bmc150_accel_fifo_flush -> __bmc150_accel_fifo_flush). Verified with
+---
+ drivers/iio/accel/bmc150-accel-core.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/iio/accel/bmc150-accel-core.c b/drivers/iio/accel/bmc150-accel-core.c
+index 2398eb7e12cd..24152be18cb4 100644
+--- a/drivers/iio/accel/bmc150-accel-core.c
++++ b/drivers/iio/accel/bmc150-accel-core.c
+@@ -991,6 +991,8 @@ static int __bmc150_accel_fifo_flush(struct iio_dev *indio_dev,
+ 	if (samples && count > samples)
+ 		count = samples;
+ 
++	count = min(count, BMC150_ACCEL_FIFO_LENGTH);
++
+ 	ret = bmc150_accel_fifo_transfer(data, (u8 *)buffer, count);
+ 	if (ret)
+ 		return ret;
+
+---
+base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
+change-id: 20260615-b4-disp-ef4f7a59-30a8996aa529
+
+Best regards,
 -- 
-2.43.0
+Bryam Vargas <hexlabsecurity@proton.me>
 
