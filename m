@@ -1,106 +1,89 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Mon, 15 Jun 2026 04:04:07 -0500
-Subject: [PATCH] power: supply: cros_usbpd-charger: bound the EC-reported
- port count
+From: Bernd Schubert <bernd@bsbernd.com>
+Date: Mon, 15 Jun 2026 12:25:56 +0200
+Subject: [PATCH v5] fuse: clear ent->fuse_req in commit_fetch error path
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260615-b4-disp-e0930b21-v1-1-c9ffbac7c9bb@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAbAL2oC/x3MQQqAIBBA0avIrBtQx4S6SrTQnGo2JQoRRHdPW
- r7F/w9ULsIVRvVA4UuqnEeD6RQsezg2RknNYLX12pseo8MkNSPrgXS0Bim5NXiTeiKCluXCq9z
- /cprf9wPHlSpYYgAAAA==
-To: Benson Leung <bleung@chromium.org>, Sebastian Reichel <sre@kernel.org>
-Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Guenter Roeck <groeck@chromium.org>, chrome-platform@lists.linux.dev
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781514246; l=3500;
- i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=yPt7u+U8eCmHsmxpMUGj6fRYLczl25g094dvindrHeU=;
- b=7ytic+wtqut+SKPmmLRIyueeBWkUWnu2RDPlY8dKa2D5gez8KoMEziHBuK+q6Vv8Y4217lWaY
- mCUkEHmkKpAA16/+cZUb/N5nSWUpqPneb9cSvIE7wiAgWFrUylJrMNy
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
+Message-Id: <20260615-fuse-io-uring-race-fixes-v5-1-8a360f055f0b@bsbernd.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/43PwQ6CMAwG4FchOzvTjYHMk+9hPJTRyQ6C2YRoC
+ O9u8aLGhHj82/xf00kkioGS2GeTiDSGFPqOQ7HJhGuxO5MMDWehQZdQqEr6IfGsl0MM3VlGdCR
+ 9uFOShd2VYDQ0Gklw/RrpteD28cS5DenWx8fr0qiW6R/oqCTIvHSWaqywVtWhTjXFrtm6/iIWd
+ tSflF2hNFOEBeRl48k4+qXyN8XYCpUz5ZXT2oJBr+CXMp/U2oNmodAogMoioPqm5nl+AgG2Rty
+ jAQAA
+X-Change-ID: 20260518-fuse-io-uring-race-fixes-59760420d2ae
+To: Bernd Schubert <bernd@bsbernd.com>, 
+ Joanne Koong <joannelkoong@gmail.com>, Miklos Szeredi <miklos@szeredi.hu>
+Cc: fuse-devel@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ Zhenghang Xiao <kipreyyy@gmail.com>, 
+ Shuvam Pandey <shuvampandey1@gmail.com>, Berkant Koc <me@berkoc.com>
+X-Mailer: b4 0.16-dev-d5d98
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2103; i=bernd@bsbernd.com;
+ h=from:subject:message-id; bh=NDmmBuvBA5uUNdQI4TRQ677gpt32rjgzb2l1ZiLAF0Y=;
+ b=owGbwMvMwCFm9Dnz3fRepz+Mp9WSGLL0L5sYXNcJa3yaectTd4Vo8tyoc+aL3dvuTJV/k526Y
+ LaLTumMjlIWBjEOBlkxRZYuiT22U/7xyap9XX8dZg4rE8gQBi5OAZhI7n+GPzyLn3WLr5+tdu/6
+ puf80yWcZLjfn7wX11q86eJmf2XzqjWMDNMOv/vaGr/kqTij6plnBafqvOc9kDhy+oHUhZgOCaF
+ F6pwA
+X-Developer-Key: i=bernd@bsbernd.com; a=openpgp;
+ fpr=8A18BC3D94FE0E1D26F5AFD732F369EE978D42FC
+X-Endpoint-Received: by B4 Relay for bernd@bsbernd.com/default with auth_id=772
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-cros_usbpd_charger_probe() reads two port counts from the EC and uses
-one of them, num_charger_ports, as the loop bound when populating a
-fixed-size array:
+From: Zhenghang Xiao <kipreyyy@gmail.com>
 
-	struct port_data *ports[EC_USB_PD_MAX_PORTS];	/* 8 entries */
-	...
-	for (i = 0; i < charger->num_charger_ports; i++)
-		charger->ports[charger->num_registered_psy++] = port;
+fuse_uring_commit_fetch() error path called fuse_request_end(req) without
+clearing ent->fuse_req when fuse_ring_ent_set_commit() fails. The
+still-pending fuse_uring_send_in_task() task-work later dereferences the
+dangling pointer through fuse_uring_prepare_send(), causing a
+use-after-free.
 
-Both num_usbpd_ports (from EC_CMD_USB_PD_PORTS) and num_charger_ports
-(from EC_CMD_CHARGE_PORT_COUNT) are u8 values reported by the EC. The
-only validation is a sanity check that compares the two EC-reported
-values against each other:
+End the request with fuse_uring_req_end(), which handles all conditions
+already.
 
-	if (num_charger_ports < num_usbpd_ports ||
-	    num_charger_ports > num_usbpd_ports + 1)
-		return -EPROTO;
+Annotation/edition by Bernd: The UAF should be fixed by other means already
+and actually has to be avoided that way.
+Just checking for ent->fuse_req == NULL in fuse_uring_send_in_task()
+would be prone to race conditions, because if malicious userspace
+would commit requests that have passed the NULL check, but are
+in doing args copy, it would still trigger a use-after-free.
+Setting ent->fuse_req = NULL in fuse_uring_commit_fetch() still
+makes sense, though.
 
-It never checks either count against EC_USB_PD_MAX_PORTS, the size of
-the ports[] array. A malfunctioning, malicious or compromised EC that
-reports num_usbpd_ports == num_charger_ports == N for any N > 8 (for
-example both 255) passes this check, and the loop then writes N pointers
-into the 8-entry ports[] array embedded in the devm_kzalloc()'d
-charger_data, overflowing it by up to 255 - 8 = 247 entries (~1976
-bytes): a slab out-of-bounds write.
-
-Reject a port count larger than the ports[] array can hold.
-
-Fixes: f68b883e8fad ("power: supply: add cros-ec USBPD charger driver.")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Reported-by: Shuvam Pandey <shuvampandey1@gmail.com>
+Reported-by: Berkant Koc <me@berkoc.com>
+Signed-off-by: Zhenghang Xiao <kipreyyy@gmail.com>
+Signed-off-by: Bernd Schubert <bernd@bsbernd.com>
 ---
-I reproduced the out-of-bounds write with an in-kernel test that drives
-the cros_usbpd_charger_probe() geometry verbatim under KASAN - a
-devm_kzalloc()'d charger_data with the 8-entry ports[] array, the
-EC-value cross-check, and the population loop - with the device-supplied
-port counts:
+This is to fix race conditions reported by Berkant and Zhenghang.
 
-  num_charger_ports = num_usbpd_ports = 12, no bound:
-    BUG: KASAN: slab-out-of-bounds in ...probe
-    Write of size 8 ... cache kmalloc-128 ... 0 bytes to the right of the
-    allocated 128-byte region   (ports[8..11] past the 8-entry array)
-  with this patch (count > EC_USB_PD_MAX_PORTS rejected): -EPROTO, no
-    KASAN report.
-  a well-formed count (<= EC_USB_PD_MAX_PORTS) is unaffected, no report.
-
-The full device range - both counts reported as 255, writing 247
-pointers (~1976 bytes) past the array - reproduces the same way under
-userspace AddressSanitizer on both -m32 and -m64.
+Changes in v5:
+- Rebased against Miklos' for-next branch - all except one patch already
+  picked up
+- Use fuse_uring_req_end() instead of hand coding what it does
 ---
- drivers/power/supply/cros_usbpd-charger.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/fuse/dev_uring.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-diff --git a/drivers/power/supply/cros_usbpd-charger.c b/drivers/power/supply/cros_usbpd-charger.c
-index 7d3e676a951c..d639957f9775 100644
---- a/drivers/power/supply/cros_usbpd-charger.c
-+++ b/drivers/power/supply/cros_usbpd-charger.c
-@@ -589,10 +589,12 @@ static int cros_usbpd_charger_probe(struct platform_device *pd)
+diff --git a/fs/fuse/dev_uring.c b/fs/fuse/dev_uring.c
+index ba5edf5d01b3..77c8cec43d9c 100644
+--- a/fs/fuse/dev_uring.c
++++ b/fs/fuse/dev_uring.c
+@@ -1003,9 +1003,7 @@ static int fuse_uring_commit_fetch(struct io_uring_cmd *cmd, int issue_flags,
+ 		pr_info_ratelimited("qid=%d commit_id %llu state %d",
+ 				    queue->qid, commit_id, ent->state);
+ 		spin_unlock(&queue->lock);
+-		req->out.h.error = err;
+-		clear_bit(FR_SENT, &req->flags);
+-		fuse_request_end(req);
++		fuse_uring_req_end(ent, req, err);
+ 		return err;
+ 	}
  
- 	/*
- 	 * Sanity checks on the number of ports:
--	 *  there should be at most 1 dedicated port
-+	 *  there should be at most 1 dedicated port, and the count is
-+	 *  reported by the EC, so it must not exceed the ports[] array.
- 	 */
- 	if (charger->num_charger_ports < charger->num_usbpd_ports ||
--	    charger->num_charger_ports > (charger->num_usbpd_ports + 1)) {
-+	    charger->num_charger_ports > (charger->num_usbpd_ports + 1) ||
-+	    charger->num_charger_ports > EC_USB_PD_MAX_PORTS) {
- 		dev_err(dev, "Unexpected number of charge port count\n");
- 		ret = -EPROTO;
- 		goto fail_nowarn;
 
 ---
-base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260615-b4-disp-e0930b21-3d4fa61d5333
+base-commit: bb43b4c7ea2a8265141aa93240f3f0ca71d85c0e
+change-id: 20260518-fuse-io-uring-race-fixes-59760420d2ae
 
 Best regards,
--- 
-Bryam Vargas <hexlabsecurity@proton.me>
+--  
+Bernd Schubert <bernd@bsbernd.com>
 
