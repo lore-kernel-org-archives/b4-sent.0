@@ -1,115 +1,130 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Mon, 15 Jun 2026 16:09:48 -0500
-Subject: [PATCH v2] iio: imu: inv_icm45600: clamp the device-reported FIFO
- sample count
+Date: Mon, 15 Jun 2026 18:40:48 -0500
+Subject: [PATCH] media: cx231xx: reject geometry changes while the VBI
+ queue is busy
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260615-b4-disp-feb19207-v2-1-2d36f1e5fc54@proton.me>
-X-B4-Tracking: v=1; b=H4sIABtqMGoC/x3MTQqAIBBA4avIrBsw86e6SrTIGms2JQoRSHdPW
- n6L9wpkSkwZRlEg0c2Zr7NCNQLWYzl3Qt6qQUllpW0Neo0b54iBfDso6TAY3RvnXUdWQ81iosD
- Pv5zm9/0AoAycjmIAAAA=
-To: Jonathan Cameron <jic23@kernel.org>, 
- Remi Buisson <remi.buisson@tdk.com>
-Cc: linux-iio@vger.kernel.org, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>, linux-kernel@vger.kernel.org, 
- David Lechner <dlechner@baylibre.com>
+Message-Id: <20260615-b4-disp-2d1d9abc-v1-1-64d91be4c2c8@proton.me>
+X-B4-Tracking: v=1; b=H4sIAICNMGoC/x3MQQqAIBBA0avErBtQKcOuEi3UmWo2FgoRSHdPW
+ r7F/xUKZ+ECc1ch8y1FztSg+w7i4dPOKNQMRhmrrB4xDEhSLjSkyfkQcXIh2G30NDgHLbsyb/L
+ 8y2V93w+3RRjbYgAAAA==
+To: Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Hans Verkuil <hverkuil@kernel.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781557787; l=4287;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781566848; l=5155;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=5j3TOXUliweVsbrZqo+njvf17WNAXJT8JPkwkj3g8e4=;
- b=lX8/nFY1cjM+5Msb0S98OITTcCf6aeyC2135ltUe4avwq0gWTHobLUBN24kuRXrwZkfCQdxFt
- Rs8q9a/DLKtAlGcQTQmZ3yahlUUXe3pCbgtC9g7UBIGtBNYk/EZzCY/
+ bh=BiygEoe8YJssSGqpdUOkvK4ARdwu4WWt7h57wNi/cIQ=;
+ b=l8VtmqaYfWm/tb5Z48q/lYym8sE31BFs/dVwkyWk+1ncq0UDPd5w2/oBtXzdGJv+z1Viwkbu8
+ wGJmrrVQHJTBeR0MrIpOl7rvSARUXJ0mvxRXjRjiC0yz618EOiIoWYX
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-inv_icm45600_buffer_fifo_read() takes the number of samples to fetch from
-the device's FIFO_COUNT register and uses it, unclamped, as the length of a
-regmap_noinc_read() into the fixed 8 KiB st->fifo.data buffer:
+vidioc_s_fmt_vid_cap() and vidioc_s_std() change the device-wide
+dev->width / dev->norm but only refuse the change when the *video* queue
+(dev->vidq) is busy. The VBI queue (dev->vbiq) shares that same geometry:
+cx231xx_init_vbi_isoc() latches dma_q->lines_per_field from dev->norm,
+the VBI videobuf2 plane is sized from dev->width / dev->norm in
+vbi_queue_setup() and vbi_buf_prepare(), and cx231xx_do_vbi_copy() then
+recomputes the destination offset from the *live* dev->width and the
+latched lines_per_field on every URB completion:
 
-	fifo_nb = le16_to_cpup(raw_fifo_count);
-	...
-	if (max > 0 && fifo_nb > max)
-		fifo_nb = max;
-	st->fifo.count = fifo_nb * packet_size;
-	regmap_noinc_read(st->map, INV_ICM45600_REG_FIFO_DATA,
-			  st->fifo.data, st->fifo.count);
+	offset = lines_completed * (dev->width << 1) + ...;
+	if (dma_q->current_field == 2)
+		offset += dev->width * 2 * dma_q->lines_per_field;
+	memcpy(plane + offset, p_buffer, lencopy);
 
-The only bound on fifo_nb is "max", but the interrupt handler calls
-inv_icm45600_buffer_fifo_read(st, 0), so on that path the clamp is
-skipped. A malfunctioning or malicious device (a counterfeit or
-compromised IMU, or a bus interposer) can then report up to 65535 in
-FIFO_COUNT, making fifo_nb * packet_size (16 bytes per packet) as large
-as ~1 MiB and overflowing the 8 KiB st->fifo.data heap buffer with
-device-controlled data.
+Because the VBI node shares video_ioctl_ops with the video node, an
+application can size a small VBI plane (REQBUFS/QBUF with a small width,
+or with the NTSC standard), then enlarge dev->width (or switch dev->norm
+to PAL) through the video node while the VBI stream is running -- the
+change is allowed because only dev->vidq is checked -- and let the device
+deliver a field-2 VBI payload. cx231xx_do_vbi_copy() now computes the
+offset with the larger geometry and memcpy()s past the end of the smaller
+plane that was already allocated, a heap out-of-bounds write whose offset
+is attacker-chosen and whose contents come from the device. The
+per-field guard in cx231xx_copy_vbi_line() does not help: it bounds the
+copy against the latched lines_per_field, not the plane's real capacity,
+and vb2 does not re-run buf_prepare() for an already prepared buffer.
 
-Clamp fifo_nb to the buffer capacity (INV_ICM45600_FIFO_SIZE_MAX /
-packet_size), mirroring the existing watermark cap in
-inv_icm45600_wm_truncate() and the sibling inv_icm42600 driver, which
-bounds its FIFO count to the buffer size. The clamp is a no-op for
-well-behaved hardware, whose FIFO never exceeds the buffer size.
+Refuse the format/standard change when the VBI queue is busy as well, so
+the geometry cannot change underneath an allocated VBI buffer.
 
-This hardens the read against a malformed device-reported count; it is not
-reachable with conforming hardware, so it is not marked for stable. The
-unbounded count has been present since buffer support was added in commit
-06674a72cf7a ("iio: imu: inv_icm45600: add buffer support in iio devices").
-
+Fixes: 7c617138b825 ("media: cx231xx: convert to the vb2 framework")
+Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-v2 (review [1] Jonathan Cameron):
-- use min() instead of min_t(size_t, ...) (fifo_nb is size_t and
-  INV_ICM45600_FIFO_SIZE_MAX / packet_size is unsigned long, so min()
-  needs no cast here; builds clean under make W=1).
-- drop Fixes: and Cc: stable -- this is hardening against a malformed
-  device-reported count, not a fix reachable with conforming hardware, per
-  Jonathan ("Not a fix - rather this is nice to have hardening"). The
-  introducing commit is now noted in the commit message instead.
+Reproducer (one cx231xx device; both /dev/videoN and /dev/vbiN are bound
+to the same struct cx231xx):
 
-[1] https://lore.kernel.org/all/20260614144557.196a5c4c@jic23-huawei/
-v1: https://lore.kernel.org/all/20260613-b4-disp-58b984f3-v1-1-352b2f925f58@proton.me/
+  1. ioctl(video_fd, VIDIOC_S_FMT, &fmt);   /* fmt.fmt.pix.width = 48  */
+  2. ioctl(vbi_fd,   VIDIOC_REQBUFS, &rb);   /* allocs the VBI plane at
+                                                width=48 -> ~2.3 KB     */
+  3. ioctl(vbi_fd,   VIDIOC_QBUF, &buf);     /* buf->prepared = 1       */
+  4. ioctl(video_fd, VIDIOC_S_FMT, &fmt);    /* fmt.fmt.pix.width = 720;
+                                                vidq idle -> accepted   */
+  5. ioctl(vbi_fd,   VIDIOC_STREAMON, ...);  /* lines_per_field latched */
+  6. device delivers a SAV_VBI_FIELD2 line -> cx231xx_do_vbi_copy()
+     writes at offset 720*2*12 = 17280 into the ~2.3 KB plane.
+  (Equivalent norm trigger: S_STD NTSC -> VBI REQBUFS -> S_STD PAL on the
+   video fd -> VBI STREAMON, lines_per_field latched at 18.)
 
-Reproduced with an in-kernel KASAN litmus mirroring the exact allocation
-and the FIFO_COUNT -> regmap_noinc_read() length computation, plus a
-userspace AddressSanitizer model for the full magnitude:
+Verification (faithful in-kernel reproduction of the cx231xx_do_vbi_copy
+arithmetic against a separately allocated plane; x86_64, KASAN, booted
+kasan.fault=report kasan_multi_shot):
 
-  Without this patch (device FIFO_COUNT = 0x208 = 520 packets -> 8320 bytes):
-    BUG: KASAN: slab-out-of-bounds ... Write of size 8320
-    ... the buggy address belongs to the cache kmalloc-8k of size 8192
-    ... located 0 bytes inside of allocated 8192-byte region
-  With this patch (count clamped to 8192 bytes): clean, no KASAN report.
-  ASan model at the full magnitude (FIFO_COUNT = 0xFFFF -> 1048560 bytes):
-    AddressSanitizer: heap-buffer-overflow WRITE of size 1048560,
-    0 bytes after the 8192-byte region (reproduces on 64- and 32-bit).
+  A (unpatched, diverged geometry): plane sized for width=716, copy uses
+     the live width=720 at field-2 line 11:
+       BUG: KASAN: slab-out-of-bounds in cx_vbi_init
+       Write of size 1440 at addr ffff888115478160
+       __asan_memcpy / shadow 00 .. fe fe   (192 B into the redzone)
+     A norm variant (plane sized NTSC lines_per_field=12, copy latched
+     PAL lines_per_field=18) reproduces the same slab-out-of-bounds write.
+  B (this patch's bound applied -- clamp the copy against the plane size):
+     no KASAN report, clean.
+  C (control, consistent geometry): no KASAN report, clean.
+  A userspace AddressSanitizer model of the same arithmetic reports a
+  heap-buffer-overflow WRITE of up to ~16 KB (width=48 -> width=720) under
+  both -m32 and -m64; B and C clean.
 
-The sibling inv_icm42600 driver bounds its FIFO count to the buffer size on
-the same interrupt path (max == 0 -> max_count = sizeof(st->fifo.data));
-this restores the equivalent guard for inv_icm45600. Reproducer and full
-logs available on request.
+(cx231xx_s_video_encoding()/cx231xx_initialize_codec() in cx231xx-417.c)
+without a queue-busy check; maintainers may want to audit that sibling for
+the same shared-geometry hazard. It was not exercised here.
+
+Note: dev->norm is also written by the cx231xx-417 MPEG encoder path
 ---
- drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c | 3 +++
- 1 file changed, 3 insertions(+)
+ drivers/media/usb/cx231xx/cx231xx-video.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
-index 2b9ea317385c..5cde42f70c2e 100644
---- a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
-+++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
-@@ -422,6 +422,9 @@ int inv_icm45600_buffer_fifo_read(struct inv_icm45600_state *st,
- 	if (max > 0 && fifo_nb > max)
- 		fifo_nb = max;
+diff --git a/drivers/media/usb/cx231xx/cx231xx-video.c b/drivers/media/usb/cx231xx/cx231xx-video.c
+index 2cd4e333bc4b..70aa99fead27 100644
+--- a/drivers/media/usb/cx231xx/cx231xx-video.c
++++ b/drivers/media/usb/cx231xx/cx231xx-video.c
+@@ -898,7 +898,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+ 	if (rc)
+ 		return rc;
  
-+	/* Limit to the internal buffer capacity; the count is device-provided. */
-+	fifo_nb = min(fifo_nb, INV_ICM45600_FIFO_SIZE_MAX / packet_size);
-+
- 	/* Try to read all FIFO data in internal buffer. */
- 	st->fifo.count = fifo_nb * packet_size;
- 	ret = regmap_noinc_read(st->map, INV_ICM45600_REG_FIFO_DATA,
+-	if (vb2_is_busy(&dev->vidq)) {
++	if (vb2_is_busy(&dev->vidq) || vb2_is_busy(&dev->vbiq)) {
+ 		dev_err(dev->dev, "%s: queue busy\n", __func__);
+ 		return -EBUSY;
+ 	}
+@@ -933,7 +933,7 @@ static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id norm)
+ 	if (dev->norm == norm)
+ 		return 0;
+ 
+-	if (vb2_is_busy(&dev->vidq))
++	if (vb2_is_busy(&dev->vidq) || vb2_is_busy(&dev->vbiq))
+ 		return -EBUSY;
+ 
+ 	dev->norm = norm;
 
 ---
 base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260615-b4-disp-feb19207-f54857b73e64
+change-id: 20260615-b4-disp-2d1d9abc-79bb6f5ad499
 
 Best regards,
 -- 
