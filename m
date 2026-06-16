@@ -1,130 +1,102 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Mon, 15 Jun 2026 18:40:48 -0500
-Subject: [PATCH] media: cx231xx: reject geometry changes while the VBI
- queue is busy
+Date: Mon, 15 Jun 2026 23:46:34 -0500
+Subject: [PATCH] platform/chrome: sensorhub: bound the EC-reported sensor
+ number
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260615-b4-disp-2d1d9abc-v1-1-64d91be4c2c8@proton.me>
-X-B4-Tracking: v=1; b=H4sIAICNMGoC/x3MQQqAIBBA0avErBtQKcOuEi3UmWo2FgoRSHdPW
- r7F/xUKZ+ECc1ch8y1FztSg+w7i4dPOKNQMRhmrrB4xDEhSLjSkyfkQcXIh2G30NDgHLbsyb/L
- 8y2V93w+3RRjbYgAAAA==
-To: Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Hans Verkuil <hverkuil@kernel.org>
+Message-Id: <20260615-b4-disp-42d17651-v1-1-fe599bb972f4@proton.me>
+X-B4-Tracking: v=1; b=H4sIACnVMGoC/x3MQQqAIBBA0avErBtQsxG6SrSwnGo2JgoRSHdPW
+ r7F/xUKZ+ECU1ch8y1Frtig+w6208eDUUIzGGVIkR5xtRikJLQmaEejxkA87OQcKW+hZSnzLs+
+ /nJf3/QDc3r64YgAAAA==
+To: Tzung-Bi Shih <tzungbi@kernel.org>, Benson Leung <bleung@chromium.org>
+Cc: Gwendal Grignou <gwendal@chromium.org>, chrome-platform@lists.linux.dev, 
+ Guenter Roeck <groeck@chromium.org>, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781566848; l=5155;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781585193; l=3746;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=BiygEoe8YJssSGqpdUOkvK4ARdwu4WWt7h57wNi/cIQ=;
- b=l8VtmqaYfWm/tb5Z48q/lYym8sE31BFs/dVwkyWk+1ncq0UDPd5w2/oBtXzdGJv+z1Viwkbu8
- wGJmrrVQHJTBeR0MrIpOl7rvSARUXJ0mvxRXjRjiC0yz618EOiIoWYX
+ bh=8SrA15YJrZtNHL8+1PqoW54xiLZumanmBmpsTVz+v0s=;
+ b=CdLfdDXQNhI8VmZ3p6cKWXt2n7C6j36ikhmenIjuZ4z9oxgt2hHywakPWYjElJgQRi9Whp2MB
+ I50M2v841jjC+iYn33MXpyhwovWC2GvknVGafV+eC8xoLCq09RUS7Vs
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-vidioc_s_fmt_vid_cap() and vidioc_s_std() change the device-wide
-dev->width / dev->norm but only refuse the change when the *video* queue
-(dev->vidq) is busy. The VBI queue (dev->vbiq) shares that same geometry:
-cx231xx_init_vbi_isoc() latches dma_q->lines_per_field from dev->norm,
-the VBI videobuf2 plane is sized from dev->width / dev->norm in
-vbi_queue_setup() and vbi_buf_prepare(), and cx231xx_do_vbi_copy() then
-recomputes the destination offset from the *live* dev->width and the
-latched lines_per_field on every URB completion:
+cros_ec_sensor_ring_process_event() takes the sensor number from each
+EC FIFO event (in->sensor_num, an 8-bit value) and uses it unchecked to
+index sensorhub->batch_state[], which is allocated with only
+sensorhub->sensor_num entries (the EC-reported sensor count).
+cros_ec_sensorhub_ring_handler() validates the FIFO event count and the
+ring bound, but not the per-event sensor number, so a value of
+sensor_num or larger results in an out-of-bounds read and write of the
+batch_state array - directly here and, via
+cros_ec_sensor_ring_check_for_past_timestamp(), as an out-of-bounds read
+that is fed back into the event timestamp.
 
-	offset = lines_completed * (dev->width << 1) + ...;
-	if (dma_q->current_field == 2)
-		offset += dev->width * 2 * dma_q->lines_per_field;
-	memcpy(plane + offset, p_buffer, lencopy);
+The push path cros_sensorhub_send_sample() already rejects a sensor
+number that is not smaller than sensor_num; apply the same check in the
+ring processing path and drop the malformed event.
 
-Because the VBI node shares video_ioctl_ops with the video node, an
-application can size a small VBI plane (REQBUFS/QBUF with a small width,
-or with the NTSC standard), then enlarge dev->width (or switch dev->norm
-to PAL) through the video node while the VBI stream is running -- the
-change is allowed because only dev->vidq is checked -- and let the device
-deliver a field-2 VBI payload. cx231xx_do_vbi_copy() now computes the
-offset with the larger geometry and memcpy()s past the end of the smaller
-plane that was already allocated, a heap out-of-bounds write whose offset
-is attacker-chosen and whose contents come from the device. The
-per-field guard in cx231xx_copy_vbi_line() does not help: it bounds the
-copy against the latched lines_per_field, not the plane's real capacity,
-and vb2 does not re-run buf_prepare() for an already prepared buffer.
-
-Refuse the format/standard change when the VBI queue is busy as well, so
-the geometry cannot change underneath an allocated VBI buffer.
-
-Fixes: 7c617138b825 ("media: cx231xx: convert to the vb2 framework")
+Fixes: 93fe48a58590 ("platform/chrome: cros_ec_sensorhub: Add median filter")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Reproducer (one cx231xx device; both /dev/videoN and /dev/vbiN are bound
-to the same struct cx231xx):
+I reproduced the out-of-bounds access with an in-kernel test that drives
+the batch_state[] indexing verbatim under KASAN (CONFIG_KASAN=y), plus a
+userspace AddressSanitizer model of the same geometry on both 32- and
+64-bit. batch_state is devm_kcalloc(sensor_num, 40 bytes); the EC FIFO
+sensor number is an 8-bit field, so it can index up to 255 - roughly
+9.8 KB past the end of a typical (handful-of-sensors) allocation.
 
-  1. ioctl(video_fd, VIDIOC_S_FMT, &fmt);   /* fmt.fmt.pix.width = 48  */
-  2. ioctl(vbi_fd,   VIDIOC_REQBUFS, &rb);   /* allocs the VBI plane at
-                                                width=48 -> ~2.3 KB     */
-  3. ioctl(vbi_fd,   VIDIOC_QBUF, &buf);     /* buf->prepared = 1       */
-  4. ioctl(video_fd, VIDIOC_S_FMT, &fmt);    /* fmt.fmt.pix.width = 720;
-                                                vidq idle -> accepted   */
-  5. ioctl(vbi_fd,   VIDIOC_STREAMON, ...);  /* lines_per_field latched */
-  6. device delivers a SAV_VBI_FIELD2 line -> cx231xx_do_vbi_copy()
-     writes at offset 720*2*12 = 17280 into the ~2.3 KB plane.
-  (Equivalent norm trigger: S_STD NTSC -> VBI REQBUFS -> S_STD PAL on the
-   video fd -> VBI STREAMON, lines_per_field latched at 18.)
+  - In-kernel (7.1.0-rc5 + KASAN): an event with sensor_num just past the
+    allocation tripped a slab-out-of-bounds Write in the ODR-flag path
+    (batch_state[n].last_len = 0); the patched arm and an in-bounds
+    control arm completed cleanly with no KASAN report.
+  - ASan model (-m32 and -m64): a sensor number of 200/255 produced a
+    heap-buffer-overflow WRITE 8000/10200 bytes past the alloc on both
+    ABIs; the patched arm and the in-bounds arm were clean.
 
-Verification (faithful in-kernel reproduction of the cx231xx_do_vbi_copy
-arithmetic against a separately allocated plane; x86_64, KASAN, booted
-kasan.fault=report kasan_multi_shot):
+The fix is the same bound cros_sensorhub_send_sample() already applies,
+moved to the per-event chokepoint so it also covers the timestamp-spread
+read path. A malicious, malfunctioning or counterfeit EC (or an attacker
+interposing on the AP<->EC bus) is the source; this is a hardening of the
+kernel's trust in the EC FIFO, in the spirit of the existing check.
 
-  A (unpatched, diverged geometry): plane sized for width=716, copy uses
-     the live width=720 at field-2 line 11:
-       BUG: KASAN: slab-out-of-bounds in cx_vbi_init
-       Write of size 1440 at addr ffff888115478160
-       __asan_memcpy / shadow 00 .. fe fe   (192 B into the redzone)
-     A norm variant (plane sized NTSC lines_per_field=12, copy latched
-     PAL lines_per_field=18) reproduces the same slab-out-of-bounds write.
-  B (this patch's bound applied -- clamp the copy against the plane size):
-     no KASAN report, clean.
-  C (control, consistent geometry): no KASAN report, clean.
-  A userspace AddressSanitizer model of the same arithmetic reports a
-  heap-buffer-overflow WRITE of up to ~16 KB (width=48 -> width=720) under
-  both -m32 and -m64; B and C clean.
-
-(cx231xx_s_video_encoding()/cx231xx_initialize_codec() in cx231xx-417.c)
-without a queue-busy check; maintainers may want to audit that sibling for
-the same shared-geometry hazard. It was not exercised here.
-
-Note: dev->norm is also written by the cx231xx-417 MPEG encoder path
+Reproducer (kernel module + ASan model) available on request.
 ---
- drivers/media/usb/cx231xx/cx231xx-video.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ drivers/platform/chrome/cros_ec_sensorhub_ring.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
 
-diff --git a/drivers/media/usb/cx231xx/cx231xx-video.c b/drivers/media/usb/cx231xx/cx231xx-video.c
-index 2cd4e333bc4b..70aa99fead27 100644
---- a/drivers/media/usb/cx231xx/cx231xx-video.c
-+++ b/drivers/media/usb/cx231xx/cx231xx-video.c
-@@ -898,7 +898,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
- 	if (rc)
- 		return rc;
+diff --git a/drivers/platform/chrome/cros_ec_sensorhub_ring.c b/drivers/platform/chrome/cros_ec_sensorhub_ring.c
+index a10579144c34..a06609bca57b 100644
+--- a/drivers/platform/chrome/cros_ec_sensorhub_ring.c
++++ b/drivers/platform/chrome/cros_ec_sensorhub_ring.c
+@@ -436,6 +436,20 @@ cros_ec_sensor_ring_process_event(struct cros_ec_sensorhub *sensorhub,
+ 	const s64 now = cros_ec_get_time_ns();
+ 	int axis, async_flags;
  
--	if (vb2_is_busy(&dev->vidq)) {
-+	if (vb2_is_busy(&dev->vidq) || vb2_is_busy(&dev->vbiq)) {
- 		dev_err(dev->dev, "%s: queue busy\n", __func__);
- 		return -EBUSY;
- 	}
-@@ -933,7 +933,7 @@ static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id norm)
- 	if (dev->norm == norm)
- 		return 0;
- 
--	if (vb2_is_busy(&dev->vidq))
-+	if (vb2_is_busy(&dev->vidq) || vb2_is_busy(&dev->vbiq))
- 		return -EBUSY;
- 
- 	dev->norm = norm;
++	/*
++	 * The sensor number is reported by the EC and is used unchecked below
++	 * to index sensorhub->batch_state[], which is only sensor_num entries
++	 * long. Reject an out-of-range value, as cros_sensorhub_send_sample()
++	 * already does, so a malformed FIFO event cannot drive an out-of-bounds
++	 * access.
++	 */
++	if (in->sensor_num >= sensorhub->sensor_num) {
++		dev_warn_ratelimited(sensorhub->dev,
++				     "Invalid sensor number %u from EC\n",
++				     in->sensor_num);
++		return false;
++	}
++
+ 	/* Do not populate the filter based on asynchronous events. */
+ 	async_flags = in->flags &
+ 		(MOTIONSENSE_SENSOR_FLAG_ODR | MOTIONSENSE_SENSOR_FLAG_FLUSH);
 
 ---
 base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260615-b4-disp-2d1d9abc-79bb6f5ad499
+change-id: 20260615-b4-disp-42d17651-d6e3f67760a4
 
 Best regards,
 -- 
