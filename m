@@ -1,10 +1,11 @@
 From: Keguang Zhang <keguang.zhang@gmail.com>
-Date: Tue, 16 Jun 2026 19:13:17 +0800
-Subject: [PATCH 1/2] pwm: loongson: Fix low pulse buffer register handling
+Date: Tue, 16 Jun 2026 19:13:18 +0800
+Subject: [PATCH 2/2] pwm: loongson: Reload PWM configuration through
+ counter reset
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260616-pwm-loongson-fix-v1-1-491dbf260a7f@gmail.com>
+Message-Id: <20260616-pwm-loongson-fix-v1-2-491dbf260a7f@gmail.com>
 References: <20260616-pwm-loongson-fix-v1-0-491dbf260a7f@gmail.com>
 In-Reply-To: <20260616-pwm-loongson-fix-v1-0-491dbf260a7f@gmail.com>
 To: Binbin Zhou <zhoubinbin@loongson.cn>, 
@@ -12,109 +13,49 @@ To: Binbin Zhou <zhoubinbin@loongson.cn>,
 Cc: linux-pwm@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Keguang Zhang <keguang.zhang@gmail.com>
 X-Mailer: b4 0.14.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781608406; l=3888;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781608406; l=1462;
  i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
- bh=DNMp7Yft9qmQudEtetNcd8RiwL5OJSFdiB2+KDs/znE=;
- b=b0vsrenpdusZYMR2eyHeWpFQEswnVwkLurESOF81tgOwBsDkeB2eHPZ8YNScWtm76r8nUR1U1
- a+HtFXXXbsjCX+LN249Zs9Xe8Vpcy2fsQkFhp1sFLh25hmahL3YlKzV
+ bh=gA7rBvBB2Sub27SnbTAe9bo34GLjvfL8/AMyT7b0/So=;
+ b=CxJv9TjcbMOT5ECEV6qjJLXf0uHvkWiUq+iREd26eQiuA6gTrL5gNGkGVXLdCv6Clchv5tNqf
+ aL6EFdsx5OeC4MEpMLTaVqr7AC+DZGeo6c+Y3N103VdVVn1Uj0rkTWC
 X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
  pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
 X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Loongson PWM register at offset 0x4 is documented as the Low
-Pulse Buffer Register, which stores the low pulse width rather than
-the duty cycle.
+By default, the Loongson PWM controller latches the LOW and PERIOD
+registers only at the start of each PWM period, causing configuration
+updates to be delayed until the next period.
 
-However, this register was incorrectly defined and treated as a
-duty-cycle register. As a result, the duty cycle and low pulse cycle
-are swapped in the generated PWM waveform.
-
-Program the low pulse (period - duty) into the register and
-adjust pwm_loongson_get_state() accordingly when reconstructing the
-duty cycle.
-
-Also return -ERANGE when the requested period exceeds the hardware
-32-bit limit instead of silently truncating the value.
+Reset the PWM counter when disabling the PWM and release it when enabling
+the PWM to force the controller to re-latch the updated LOW and PERIOD
+values, allowing configuration changes to take effect immediately.
 
 Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
- drivers/pwm/pwm-loongson.c | 29 ++++++++++++++---------------
- 1 file changed, 14 insertions(+), 15 deletions(-)
+ drivers/pwm/pwm-loongson.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/drivers/pwm/pwm-loongson.c b/drivers/pwm/pwm-loongson.c
-index 31a57edecfd0..dc77f82fd888 100644
+index dc77f82fd888..eb89ced530e1 100644
 --- a/drivers/pwm/pwm-loongson.c
 +++ b/drivers/pwm/pwm-loongson.c
-@@ -22,6 +22,7 @@
-  */
- 
- #include <linux/acpi.h>
-+#include <linux/bitfield.h>
- #include <linux/clk.h>
- #include <linux/device.h>
- #include <linux/init.h>
-@@ -33,10 +34,12 @@
- #include <linux/units.h>
- 
- /* Loongson PWM registers */
--#define LOONGSON_PWM_REG_DUTY		0x4 /* Low Pulse Buffer Register */
-+#define LOONGSON_PWM_REG_LOW		0x4 /* Low Pulse Buffer Register */
- #define LOONGSON_PWM_REG_PERIOD		0x8 /* Pulse Period Buffer Register */
- #define LOONGSON_PWM_REG_CTRL		0xc /* Control Register */
- 
-+#define LOONGSON_PWM_MAX_PERIOD		GENMASK(31, 0)
-+
- /* Control register bits */
- #define LOONGSON_PWM_CTRL_REG_EN	BIT(0)  /* Counter Enable Bit */
- #define LOONGSON_PWM_CTRL_REG_OE	BIT(3)  /* Pulse Output Enable Control Bit, Valid Low */
-@@ -118,20 +121,16 @@ static int pwm_loongson_enable(struct pwm_chip *chip, struct pwm_device *pwm)
- static int pwm_loongson_config(struct pwm_chip *chip, struct pwm_device *pwm,
- 			       u64 duty_ns, u64 period_ns)
- {
--	u64 duty, period;
-+	u64 low, period;
+@@ -102,6 +102,7 @@ static void pwm_loongson_disable(struct pwm_chip *chip, struct pwm_device *pwm)
  	struct pwm_loongson_ddata *ddata = to_pwm_loongson_ddata(chip);
  
--	/* duty = duty_ns * ddata->clk_rate / NSEC_PER_SEC */
--	duty = mul_u64_u64_div_u64(duty_ns, ddata->clk_rate, NSEC_PER_SEC);
--	if (duty > U32_MAX)
--		duty = U32_MAX;
--
--	/* period = period_ns * ddata->clk_rate / NSEC_PER_SEC */
- 	period = mul_u64_u64_div_u64(period_ns, ddata->clk_rate, NSEC_PER_SEC);
--	if (period > U32_MAX)
--		period = U32_MAX;
-+	if ((!FIELD_FIT(LOONGSON_PWM_MAX_PERIOD, period)))
-+		return -ERANGE;
-+
-+	low = mul_u64_u64_div_u64(period_ns - duty_ns, ddata->clk_rate, NSEC_PER_SEC);
- 
--	pwm_loongson_writel(ddata, duty, LOONGSON_PWM_REG_DUTY);
-+	pwm_loongson_writel(ddata, low, LOONGSON_PWM_REG_LOW);
- 	pwm_loongson_writel(ddata, period, LOONGSON_PWM_REG_PERIOD);
- 
- 	return 0;
-@@ -166,15 +165,15 @@ static int pwm_loongson_apply(struct pwm_chip *chip, struct pwm_device *pwm,
- static int pwm_loongson_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
- 				  struct pwm_state *state)
- {
--	u32 duty, period, ctrl;
-+	u32 low, period, ctrl;
+ 	val = pwm_loongson_readl(ddata, LOONGSON_PWM_REG_CTRL);
++	val |= LOONGSON_PWM_CTRL_REG_RST;
+ 	val &= ~LOONGSON_PWM_CTRL_REG_EN;
+ 	pwm_loongson_writel(ddata, val, LOONGSON_PWM_REG_CTRL);
+ }
+@@ -112,6 +113,7 @@ static int pwm_loongson_enable(struct pwm_chip *chip, struct pwm_device *pwm)
  	struct pwm_loongson_ddata *ddata = to_pwm_loongson_ddata(chip);
  
--	duty = pwm_loongson_readl(ddata, LOONGSON_PWM_REG_DUTY);
-+	low = pwm_loongson_readl(ddata, LOONGSON_PWM_REG_LOW);
- 	period = pwm_loongson_readl(ddata, LOONGSON_PWM_REG_PERIOD);
- 	ctrl = pwm_loongson_readl(ddata, LOONGSON_PWM_REG_CTRL);
+ 	val = pwm_loongson_readl(ddata, LOONGSON_PWM_REG_CTRL);
++	val &= ~LOONGSON_PWM_CTRL_REG_RST;
+ 	val |= LOONGSON_PWM_CTRL_REG_EN;
+ 	pwm_loongson_writel(ddata, val, LOONGSON_PWM_REG_CTRL);
  
--	/* duty & period have a max of 2^32, so we can't overflow */
--	state->duty_cycle = DIV64_U64_ROUND_UP((u64)duty * NSEC_PER_SEC, ddata->clk_rate);
-+	/* low & period have a max of 2^32, so we can't overflow */
-+	state->duty_cycle = DIV64_U64_ROUND_UP((u64)(period - low) * NSEC_PER_SEC, ddata->clk_rate);
- 	state->period = DIV64_U64_ROUND_UP((u64)period * NSEC_PER_SEC, ddata->clk_rate);
- 	state->polarity = (ctrl & LOONGSON_PWM_CTRL_REG_INVERT) ? PWM_POLARITY_INVERSED :
- 			  PWM_POLARITY_NORMAL;
 
 -- 
 2.43.0
