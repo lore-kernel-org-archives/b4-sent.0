@@ -1,107 +1,87 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Tue, 16 Jun 2026 01:06:12 -0500
-Subject: [PATCH] greybus: audio: bound the topology section sizes against
- the fetched size
+From: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Date: Tue, 16 Jun 2026 09:07:25 +0200
+Subject: [PATCH] PCI: dwc: meson: Fix reset GPIO initial state
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260616-b4-disp-4352e8b0-v1-1-3e09f62e0ad5@proton.me>
-X-B4-Tracking: v=1; b=H4sIANPnMGoC/x3MTQqAIBBA4avErBtQ0yG7SrToZ6rZmChEIN09a
- fkt3iuQOQlnGJoCiW/JcoUK3TawnnM4GGWrBqMMKdKEi8VNckTbOcP9otA67omc944YahYT7/L
- 8y3F63w/cNqTYYgAAAA==
-To: Mark Greer <mgreer@animalcreek.com>, 
- Vaibhav Agarwal <vaibhav.sr@gmail.com>
-Cc: Johan Hovold <johan@kernel.org>, linux-kernel@vger.kernel.org, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- linux-staging@lists.linux.dev, greybus-dev@lists.linaro.org, 
- Alex Elder <elder@kernel.org>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781589971; l=3388;
- i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=7Nd691qGBfOJSIBEQHMHLFIBuWUkCigjnPpH2+uLF24=;
- b=J3dq6yVkfTUOaBX3BnpxsFzk0FIOTk1QZZ/si4FwAg2Dme5nV6K71bOhhu3NQ+r+xEyr+5JtO
- b+Bzx6mJM9kADaYBHURg5Xd7qlL3cYRRSbop7Uvvo73TuzLG9WCkOlT
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
+Message-Id: <20260616-fix-meson-pcie-reset-gpio-v1-1-fca404b4c8be@aliel.fr>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MwQqDMBAFf0X27IIJdEn7K+JB49PuoUnIliKI/
+ 97gcWBmTjJUhdGrO6nip6Y5NXB9R/E9px2sa2Pyg5dBnPCmB39gOXGJCq4wfHkvmtkvT7gQREJ
+ 8UOtLRZPv9zhd1x/wr4sXawAAAA==
+X-Change-ID: 20260616-fix-meson-pcie-reset-gpio-2b9e188668c5
+To: Yue Wang <yue.wang@Amlogic.com>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Remi Pommarel <repk@triplefau.lt>
+Cc: linux-pci@vger.kernel.org, linux-amlogic@lists.infradead.org, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Ronald Claveau <linux-kernel-dev@aliel.fr>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1981;
+ i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
+ bh=7kvkuPDfnNo3RE26T6/4WDZzxv1opTuPQg33oMuoPoI=;
+ b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ5bBt8iN7xYkGjz9k3/Q4LBC+svHf2ZG82SwRvv8+qxrP
+ uHg7J0CHaUsDGJcDLJiiiz9cy1PvLt89MzXPeopMHNYmUCGMHBxCsBEzp5kZFgsZmWhufqRu+TS
+ f+fmXmrY9OFF+xKJmwd6J02ZtCHQyMmA4b+f1oLDa9vKjvUVXWPQFejIeei0+jJ3dve9Ob5VVYG
+ qFVwA
+X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
+ fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
+X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-gb_audio_gb_get_topology() fetches a topology blob of a module-supplied
-size, and gbaudio_tplg_parse_data() then walks it by adding the
-module-supplied size_dais, size_controls and size_widgets fields to
-form the control, widget and route section offsets. Those le32 sizes
-are never checked against the fetched blob, so a module reporting a
-small topology size but large section sizes makes the offsets point
-past the allocation, and parsing reads out of bounds.
+Commit 4d3186a525b3 ("PCI: amlogic: Fix reset assertion via gpio
+descriptor") inverted the reset assertion logic to use proper gpio
+descriptor semantics, and moved the polarity configuration to the
+device tree as GPIO_ACTIVE_LOW. However, the initial GPIO state
+"GPIOD_OUT_LOW" was not updated accordingly.
 
-Reject a topology whose section sizes do not fit within the fetched
-size before it is parsed.
+Change GPIOD_OUT_LOW to GPIOD_OUT_HIGH to get the right behaviour.
 
-Fixes: 184992e305f1 ("greybus: audio: Add Greybus Audio Device Class Protocol helper routines")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+With GPIOD_OUT_LOW:
+
+    ahci 0000:01:00.0: enabling device (0000 -> 0002)
+    ahci 0000:01:00.0: SSS flag set, parallel bus scan disabled
+    ahci 0000:01:00.0: Controller reset failed (0xffffffff)
+    ahci 0000:01:00.0: probe with driver ahci failed with error -5
+
+With this fix:
+
+    ahci 0000:01:00.0: enabling device (0000 -> 0002)
+    ahci 0000:01:00.0: AHCI vers 0001.0300, 32 command slots, 6 Gbps,
+                       SATA mode
+    ahci 0000:01:00.0: 1/1 ports implemented (port mask 0x1)
+    ahci 0000:01:00.0: flags: 64bit ncq led clo only pio ccc
+
+Fixes: 4d3186a525b3 ("PCI: amlogic: Fix reset assertion via gpio descriptor")
+Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
 ---
-I reproduced the out-of-bounds read both in-kernel under KASAN and with
-a userspace AddressSanitizer model of the gbaudio_tplg_process_header()
-offset walk. The topology blob is kzalloc(size) where size is
-module-supplied (a u16), and process_header() forms control_offset =
-&data + size_dais, widget_offset = control_offset + size_controls, etc.;
-the consumers then read structs at those offsets.
+ drivers/pci/controller/dwc/pci-meson.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-  - In-kernel (7.1.0-rc5 + KASAN): a 64-byte blob (header 24, so 40 bytes
-    available) with size_dais = 44 makes control_offset point 4 bytes
-    past the allocation, and reading the first control byte there trips:
-
-      BUG: KASAN: slab-out-of-bounds in ...parse_topology...
-      Read of size 1 at addr ...
-      ... which belongs to the cache kmalloc-64 of size 64
-      The buggy address is located 4 bytes to the right of
-       allocated 64-byte region
-
-    The patched arm (sections rejected, -EINVAL) and an in-bounds control
-    arm (size_dais = 8) read cleanly with no KASAN report.
-  - ASan model (-m32 and -m64): size_dais = 4096 makes control_offset
-    point ~4 KB past the 64-byte blob - heap-buffer-overflow READ located
-    4056 bytes after the region, both ABIs; patched and in-bounds clean.
-
-The source is a greybus audio module trust boundary (an attacker-supplied
-or compromised module reporting a malformed topology); the access is a
-read, and a large size_dais sends the offset far enough to fault. The
-reproducer (kernel module + ASan model) is available on request.
----
- drivers/staging/greybus/audio_gb.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
-
-diff --git a/drivers/staging/greybus/audio_gb.c b/drivers/staging/greybus/audio_gb.c
-index 9d8994fdb41a..144591f1a512 100644
---- a/drivers/staging/greybus/audio_gb.c
-+++ b/drivers/staging/greybus/audio_gb.c
-@@ -37,6 +37,19 @@ int gb_audio_gb_get_topology(struct gb_connection *connection,
- 		return ret;
+diff --git a/drivers/pci/controller/dwc/pci-meson.c b/drivers/pci/controller/dwc/pci-meson.c
+index 0694084f612b7..15ed59b8764fb 100644
+--- a/drivers/pci/controller/dwc/pci-meson.c
++++ b/drivers/pci/controller/dwc/pci-meson.c
+@@ -400,7 +400,7 @@ static int meson_pcie_probe(struct platform_device *pdev)
+ 		return PTR_ERR(mp->phy);
  	}
  
-+	/*
-+	 * The size_* fields are supplied by the module and are used by
-+	 * gbaudio_tplg_parse_data() to compute offsets into the blob; make
-+	 * sure the sections fit within the fetched topology, so walking it
-+	 * cannot read out of bounds.
-+	 */
-+	if ((u64)le32_to_cpu(topo->size_dais) + le32_to_cpu(topo->size_controls) +
-+	    le32_to_cpu(topo->size_widgets) + le32_to_cpu(topo->size_routes) >
-+	    size - sizeof(*topo)) {
-+		kfree(topo);
-+		return -EINVAL;
-+	}
-+
- 	*topology = topo;
- 
- 	return 0;
+-	mp->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
++	mp->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
+ 	if (IS_ERR(mp->reset_gpio)) {
+ 		dev_err(dev, "get reset gpio failed\n");
+ 		return PTR_ERR(mp->reset_gpio);
 
 ---
-base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260616-b4-disp-4352e8b0-45e86659956e
+base-commit: abe651837cb394f76d738a7a747322fca3bf17ba
+change-id: 20260616-fix-meson-pcie-reset-gpio-2b9e188668c5
 
 Best regards,
 -- 
-Bryam Vargas <hexlabsecurity@proton.me>
+Ronald Claveau <linux-kernel-dev@aliel.fr>
 
