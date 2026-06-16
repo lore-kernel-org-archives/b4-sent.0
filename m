@@ -1,135 +1,123 @@
-From: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
-Date: Tue, 16 Jun 2026 18:03:39 +0200
-Subject: [PATCH v9 3/3] riscv: clocksource: Add p8700-gcru driver
+From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Date: Tue, 16 Jun 2026 21:45:19 +0530
+Subject: [PATCH] PCI: qcom: Skip PERST# GPIOs provided by downstream PCIe
+ devices
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260616-riscv-time-mmio-v9-3-03af7bc8f2d8@htecgroup.com>
-References: <20260616-riscv-time-mmio-v9-0-03af7bc8f2d8@htecgroup.com>
-In-Reply-To: <20260616-riscv-time-mmio-v9-0-03af7bc8f2d8@htecgroup.com>
-To: Daniel Lezcano <daniel.lezcano@linaro.org>, 
- Thomas Gleixner <tglx@linutronix.de>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Paul Walmsley <paul.walmsley@sifive.com>, 
- Palmer Dabbelt <palmer@dabbelt.com>, Albert Ou <aou@eecs.berkeley.edu>, 
- Alexandre Ghiti <alex@ghiti.fr>, Paul Walmsley <pjw@kernel.org>, 
- John Stultz <jstultz@google.com>, Stephen Boyd <sboyd@kernel.org>, 
- Vivian Wang <wangruikang@iscas.ac.cn>
-Cc: linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-riscv@lists.infradead.org, 
- Djordje Todorovic <djordje.todorovic@htecgroup.com>, 
- Aleksa Paunovic <aleksa.paunovic@htecgroup.com>, 
- Chao-ying Fu <cfu@mips.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781625819; l=3298;
- i=aleksa.paunovic@htecgroup.com; s=20250806; h=from:subject:message-id;
- bh=3gylppdlQket8tUc4qx/+ik8cQwg9RhMZJmHFwMxyPQ=;
- b=JyCsFdiHFV3/q9WIm3YPS+zSuWcxmwYz8t77rpDBcMTZgG0NpVwHkBIYQkcbylZT39ppzBU0d
- cFqlf3WYa38BvaD6VaaUR57VrEEBsbXDozDyTeKbJGURy2xOyfBkXkn
-X-Developer-Key: i=aleksa.paunovic@htecgroup.com; a=ed25519;
- pk=Dn4KMnDdgyhlXJNspQQrlHJ04i7/irG29p2H27Avd+8=
-X-Endpoint-Received: by B4 Relay for aleksa.paunovic@htecgroup.com/20250806 with auth_id=476
+Message-Id: <20260616-pci-qcom-perst-fix-v1-1-27600d6ae357@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAJZ2MWoC/yXMQQrCMBCF4auUWTuQFJugVxEXcTrqCLYxE6UQc
+ vemdvk9eH8B5SSscO4KJP6Jyjw12EMH9AzTg1HGZuhN74yzDiMJfmh+Y+SkGe+yoDFH60MYfDg
+ 5aMeYuM3/6OW6W7+3F1PeSlDrCuwFEj12AAAA
+X-Change-ID: 20260616-pci-qcom-perst-fix-00417aa57a96
+To: Manivannan Sadhasivam <mani@kernel.org>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Bjorn Helgaas <bhelgaas@google.com>
+Cc: linux-arm-msm@vger.kernel.org, linux-pci@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+X-Mailer: b4 0.15.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3083;
+ i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
+ bh=SAG1WtlnXkQauMnV0DcExAZh86wK4HSUyapFJVHHEa4=;
+ b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqMXad1EQZDA1Q+azZIoD14TsRxfPwzlzqAWMsJ
+ QDCPpo1y7SJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCajF2nQAKCRBVnxHm/pHO
+ 9QKTB/41ovfWXcOGtCXxtK/RPBXxzZmvHF6TmIDcmgrzyztBsljFajLXdEIeX3zu1g0UDKKO1Ny
+ OzV0XFUkUxz6NQi00U5EdUkFJRS4oFThbdxWjyz8vM+z95pKaoDru1lwQ2ZGJCutfTq+e834Aj3
+ h1MeUBAeL/g/p5xknPldWjUI4SM3UXJgNe6NZEm5+UR0AJw7uGeMyKmqVwhfF0Efg0MSruYjkCU
+ gUo6sudOQ5POYaTJ5kW9pM80FDjgcsdfl/vNk0ajYSsYxsBuuiVK3BQpEdN+TO+8nm6rL3j7q2I
+ 0DBQOGgUBglrv+zoC9CiJsT5VG3xJgl8qoyOHEdD3eUs8YlE
+X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
+ fpr=C668AEC3C3188E4C611465E7488550E901166008
+X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a clocksource driver for the P8700 GCRU.
+Currently, the pcie-qcom driver recursively parses the PERST# GPIO from all
+child nodes defined in DT and acquires them. But this creates issues with
+PERST# GPIO provided by one of the child devices like the PCIe switch port.
+In this case, the RC driver cannot acquire the PERST# GPIO since it will be
+provided by the child PCIe device which was not yet enumerated during RC
+driver probe.
 
-Initialization uses helper functions
-provided by clocksource/mmio.c and timer-of.c.
+Fix this by checking if the GPIO provider is a child of the RC's DT node
+(i.e., sits behind this PCIe controller). If so, skip it, as PERST#
+should be controlled by the respective PCIe client driver implementation.
+GPIOs provided by external GPIO controllers (e.g., TLMM in Qcom SoCs)
+continue to be handled normally.
 
-Since the GCRU does not support any kind of interrupts,
-the default RISC-V clockevent implementation should suffice.
-
-Signed-off-by: Aleksa Paunovic <aleksa.paunovic@htecgroup.com>
+Fixes: 2fd60a2edb83 ("PCI: qcom: Parse PERST# from all PCIe bridge nodes")
+Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 ---
- drivers/clocksource/Kconfig       |  9 ++++++++
- drivers/clocksource/Makefile      |  1 +
- drivers/clocksource/timer-p8700.c | 47 +++++++++++++++++++++++++++++++++++++++
- 3 files changed, 57 insertions(+)
+ drivers/pci/controller/dwc/pcie-qcom.c | 36 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 36 insertions(+)
 
-diff --git a/drivers/clocksource/Kconfig b/drivers/clocksource/Kconfig
-index ffcd23668763fe7707a4e917bf240caadbb09a8c..a775a301f3f08ca97699e46aaf3ccfaf99734e6b 100644
---- a/drivers/clocksource/Kconfig
-+++ b/drivers/clocksource/Kconfig
-@@ -672,6 +672,15 @@ config CLINT_TIMER
- 	  This option enables the CLINT timer for RISC-V systems.  The CLINT
- 	  driver is usually used for NoMMU RISC-V systems.
+diff --git a/drivers/pci/controller/dwc/pcie-qcom.c b/drivers/pci/controller/dwc/pcie-qcom.c
+index af6bf5cce65b..f90ff68cdaf2 100644
+--- a/drivers/pci/controller/dwc/pcie-qcom.c
++++ b/drivers/pci/controller/dwc/pcie-qcom.c
+@@ -1693,6 +1693,22 @@ static const struct pci_ecam_ops pci_qcom_ecam_ops = {
+ 	}
+ };
  
-+config P8700_TIMER
-+	bool "MIPS P8700 timer driver"
-+	depends on GENERIC_SCHED_CLOCK && RISCV && RISCV_SBI && 64BIT
-+	select CLKSRC_MMIO
-+	select TIMER_PROBE
-+	select TIMER_OF
-+	help
-+	  Enables support for MIPS P8700 timer driver.
-+
- config CSKY_MP_TIMER
- 	bool "SMP Timer for the C-SKY platform" if COMPILE_TEST
- 	depends on CSKY
-diff --git a/drivers/clocksource/Makefile b/drivers/clocksource/Makefile
-index ec4452ee958f1a814c708aeba6412bea61d24892..fae9a58d6c8663a7c857b9ab7fdae05782b3551c 100644
---- a/drivers/clocksource/Makefile
-+++ b/drivers/clocksource/Makefile
-@@ -95,3 +95,4 @@ obj-$(CONFIG_CLKSRC_LOONGSON1_PWM)	+= timer-loongson1-pwm.o
- obj-$(CONFIG_EP93XX_TIMER)		+= timer-ep93xx.o
- obj-$(CONFIG_RALINK_TIMER)		+= timer-ralink.o
- obj-$(CONFIG_NXP_STM_TIMER)		+= timer-nxp-stm.o
-+obj-$(CONFIG_P8700_TIMER)		+= timer-p8700.o
-diff --git a/drivers/clocksource/timer-p8700.c b/drivers/clocksource/timer-p8700.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..dd20b4e72fcdd77a6b33775f286d0945c2a2b659
---- /dev/null
-+++ b/drivers/clocksource/timer-p8700.c
-@@ -0,0 +1,47 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (C) 2025 MIPS.
-+ */
-+
-+#include <linux/sched_clock.h>
-+#include <linux/delay.h>
-+#include <linux/of_address.h>
-+#include <linux/init.h>
-+#include <linux/interrupt.h>
-+#include <linux/clocksource.h>
-+
-+#include "timer-of.h"
-+
-+static struct timer_of gcru_of = { .flags = TIMER_OF_BASE };
-+static u64 __iomem *p8700_time_val __ro_after_init;
-+
-+static u64 notrace p8700_timer_sched_read(void)
++static bool qcom_pcie_is_child_node(struct device *dev,
++				    struct device_node *node)
 +{
-+	return (u64)readq_relaxed(p8700_time_val);
-+}
++	struct device_node *parent;
 +
-+static int __init p8700_timer_init(struct device_node *node)
-+{
-+	int error = 0;
-+
-+	error = timer_of_init(node, &gcru_of);
-+	if (error)
-+		return error;
-+
-+	p8700_time_val = timer_of_base(&gcru_of);
-+	/* Now init the mmio timer with the address we got from DT */
-+	error = clocksource_mmio_init(p8700_time_val, "mips,p8700-gcru",
-+				      riscv_timebase, 450, 64,
-+				      clocksource_mmio_readq_up);
-+	if (error) {
-+		timer_of_cleanup(&gcru_of);
-+		return error;
++	for (parent = of_get_parent(node); parent;
++	     parent = of_get_next_parent(parent)) {
++		if (parent == dev->of_node) {
++			of_node_put(parent);
++			return true;
++		}
 +	}
 +
-+	/* Sched clock */
-+	sched_clock_register(p8700_timer_sched_read, 64, riscv_timebase);
-+
-+	return error;
++	return false;
 +}
 +
-+TIMER_OF_DECLARE(p8700_timer, "mips,p8700-gcru", p8700_timer_init);
+ /* Parse PERST# from all nodes in depth first manner starting from @np */
+ static int qcom_pcie_parse_perst(struct qcom_pcie *pcie,
+ 				 struct qcom_pcie_port *port,
+@@ -1700,12 +1716,32 @@ static int qcom_pcie_parse_perst(struct qcom_pcie *pcie,
+ {
+ 	struct device *dev = pcie->pci->dev;
+ 	struct qcom_pcie_perst *perst;
++	struct device_node *gpio_np;
+ 	struct gpio_desc *reset;
+ 	int ret;
+ 
+ 	if (!of_find_property(np, "reset-gpios", NULL))
+ 		goto parse_child_node;
+ 
++	/*
++	 * Skip GPIOs provided by a PCIe device which is a child of the Root
++	 * Complex (e.g., a PCIe switch with GPIO controller capability). Such
++	 * controllers won't be available at RC probe time and their PERST#
++	 * should be controlled by the respective PCI client driver
++	 * implementation.
++	 */
++	gpio_np = of_parse_phandle(np, "reset-gpios", 0);
++	if (!gpio_np) {
++		dev_err(dev, "Failed to parse GPIO provider\n");
++		return -EINVAL;
++	}
++
++	if (qcom_pcie_is_child_node(dev, gpio_np)) {
++		of_node_put(gpio_np);
++		goto parse_child_node;
++	}
++	of_node_put(gpio_np);
++
+ 	reset = devm_fwnode_gpiod_get(dev, of_fwnode_handle(np), "reset",
+ 				      GPIOD_OUT_HIGH, "PERST#");
+ 	if (IS_ERR(reset)) {
 
--- 
-2.43.0
+---
+base-commit: 5200f5f493f79f14bbdc349e402a40dfb32f23c8
+change-id: 20260616-pci-qcom-perst-fix-00417aa57a96
+
+Best regards,
+--  
+Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
 
