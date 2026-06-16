@@ -1,300 +1,51 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 16 Jun 2026 09:21:18 +0100
-Subject: [PATCH v3 12/12] iio: dac: ad5686: add gain control support
+From: Keguang Zhang <keguang.zhang@gmail.com>
+Subject: [PATCH 0/2] pwm: loongson: Fix PWM configuration handling
+Date: Tue, 16 Jun 2026 19:13:16 +0800
+Message-Id: <20260616-pwm-loongson-fix-v1-0-491dbf260a7f@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260616-ad5686-new-features-v3-12-f829fb7e9262@analog.com>
-References: <20260616-ad5686-new-features-v3-0-f829fb7e9262@analog.com>
-In-Reply-To: <20260616-ad5686-new-features-v3-0-f829fb7e9262@analog.com>
-To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
- linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org
-Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
- Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781598070; l=9118;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=CH/87HjeJOyDzyYqIaDUuWsXuTpId8ZgQlFamkbg9wA=;
- b=PVBU6RVXoKKeUm8kvP4uhUmCyLB1q7Ee6LQzZOE3OqzN/WMh4QOWIzDZcEvw/e2WCjsG8byZ1
- IhgMkdtO/SZDFja83VWwAmDQRbmDbmuuw5ITP54oxxfxim6Tqub3Mm1
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+X-B4-Tracking: v=1; b=H4sIAMwvMWoC/x2MWwqAIBAAryL73UJq2eMq0UfUVgulolCBdPekz
+ xmYSRApMEXoRYJAF0d2NoMsBMz7ZDdCXjKDKpUpjVTo7xMP5+wWncWVH5Stboyuakmdhpz5QFn
+ /y2F83w+ABRyVYgAAAA==
+To: Binbin Zhou <zhoubinbin@loongson.cn>, 
+ =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>
+Cc: linux-pwm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Keguang Zhang <keguang.zhang@gmail.com>
+X-Mailer: b4 0.14.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781608406; l=874;
+ i=keguang.zhang@gmail.com; s=20231129; h=from:subject:message-id;
+ bh=wuQLvZe5ZnxbCDNi2S87UD72UC7CkBtYW73zX/3xjkE=;
+ b=P6nXzVQ3Rr4Vmsu2R58w0DdbZMAGG2y6jgHUrxA1leF0wRppAiH4ABDw8SXWfn36qrjn4QkPm
+ M3+zOvHdtJCCK1/PCWgf6b0sLJZDuxrEEZ0BfE/3sGu6QSBE9MnkfJr
+X-Developer-Key: i=keguang.zhang@gmail.com; a=ed25519;
+ pk=FMKGj/JgKll/MgClpNZ3frIIogsh5e5r8CeW2mr+WLs=
+X-Endpoint-Received: by B4 Relay for keguang.zhang@gmail.com/20231129 with auth_id=102
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Most of the supported devices rely on a GAIN pin to control a 2x
-multiplier applied to the output voltage. Other devices, e.g. the
-single-channel ones, provides a gain control through a bit field in
-the control register. Some designs might have the GAIN pin hardwired
-to VDD/VLOGIC or GND, which would have no "gain-gpios" device property,
-being able to set "adi,range-double" if it is hardwired to VDD. The
-vref_mv field is moved down in the struct ad5686_state, so that the
-overall size increase is reduced.
+This series fixes two issues in the Loongson PWM driver:
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+- Fix the handling of the Low Pulse Buffer Register, which was
+  incorrectly treated as a duty-cycle register.
+
+- Ensure that PWM configuration updates take effect immediately by
+  resetting the PWM counter to reload the updated settings.
+
+The fixes were verified on LS1B, LS1C, and LS2K0300 boards.
+
+Signed-off-by: Keguang Zhang <keguang.zhang@gmail.com>
 ---
- drivers/iio/dac/ad5686.c | 122 +++++++++++++++++++++++++++++++++++++++++++++--
- drivers/iio/dac/ad5686.h |  12 ++++-
- 2 files changed, 127 insertions(+), 7 deletions(-)
+Keguang Zhang (2):
+      pwm: loongson: Fix low pulse buffer register handling
+      pwm: loongson: Reload PWM configuration through counter reset
 
-diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
-index 6ae788f665b4..c186213a46f6 100644
---- a/drivers/iio/dac/ad5686.c
-+++ b/drivers/iio/dac/ad5686.c
-@@ -15,10 +15,13 @@
- #include <linux/export.h>
- #include <linux/gpio/consumer.h>
- #include <linux/kstrtox.h>
-+#include <linux/math64.h>
- #include <linux/module.h>
-+#include <linux/property.h>
- #include <linux/regulator/consumer.h>
- #include <linux/reset.h>
- #include <linux/sysfs.h>
-+#include <linux/units.h>
- #include <linux/wordpart.h>
- 
- #include <linux/iio/buffer.h>
-@@ -41,7 +44,8 @@ static int ad5310_control_sync(struct ad5686_state *st)
- 
- 	return ad5686_write(st, AD5686_CMD_CONTROL_REG, 0,
- 			    FIELD_PREP(AD5310_PD_MSK, pd_val & AD5686_PD_MSK) |
--			    FIELD_PREP(AD5310_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
-+			    FIELD_PREP(AD5310_REF_BIT_MSK, st->use_internal_vref ? 0 : 1) |
-+			    FIELD_PREP(AD5310_GAIN_BIT_MSK, st->double_scale ? 1 : 0));
- }
- 
- static int ad5683_control_sync(struct ad5686_state *st)
-@@ -50,7 +54,8 @@ static int ad5683_control_sync(struct ad5686_state *st)
- 
- 	return ad5686_write(st, AD5686_CMD_CONTROL_REG, 0,
- 			    FIELD_PREP(AD5683_PD_MSK, pd_val & AD5686_PD_MSK) |
--			    FIELD_PREP(AD5683_REF_BIT_MSK, st->use_internal_vref ? 0 : 1));
-+			    FIELD_PREP(AD5683_REF_BIT_MSK, st->use_internal_vref ? 0 : 1) |
-+			    FIELD_PREP(AD5683_GAIN_BIT_MSK, st->double_scale ? 1 : 0));
- }
- 
- static inline unsigned int ad5686_pd_mask_shift(const struct iio_chan_spec *chan)
-@@ -193,9 +198,14 @@ static int ad5686_read_raw(struct iio_dev *indio_dev,
- 			GENMASK(chan->scan_type.realbits - 1, 0);
- 		return IIO_VAL_INT;
- 	case IIO_CHAN_INFO_SCALE:
--		*val = st->vref_mv;
--		*val2 = chan->scan_type.realbits;
--		return IIO_VAL_FRACTIONAL_LOG2;
-+		if (st->double_scale) {
-+			*val = st->scale_avail[2];
-+			*val2 = st->scale_avail[3];
-+		} else {
-+			*val = st->scale_avail[0];
-+			*val2 = st->scale_avail[1];
-+		}
-+		return IIO_VAL_INT_PLUS_NANO;
- 	}
- 	return -EINVAL;
- }
-@@ -207,6 +217,8 @@ static int ad5686_write_raw(struct iio_dev *indio_dev,
- 			    long mask)
- {
- 	struct ad5686_state *st = iio_priv(indio_dev);
-+	bool double_scale;
-+	int ret;
- 
- 	guard(mutex)(&st->lock);
- 
-@@ -217,6 +229,84 @@ static int ad5686_write_raw(struct iio_dev *indio_dev,
- 
- 		return ad5686_write(st, AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
- 				    chan->address, val << chan->scan_type.shift);
-+	case IIO_CHAN_INFO_SCALE:
-+		if (val == st->scale_avail[0] && val2 == st->scale_avail[1])
-+			double_scale = false;
-+		else if (val == st->scale_avail[2] && val2 == st->scale_avail[3])
-+			double_scale = true;
-+		else
-+			return -EINVAL;
-+
-+		if (st->double_scale == double_scale)
-+			return 0; /* no change */
-+
-+		st->double_scale = double_scale;
-+		switch (st->chip_info->regmap_type) {
-+		case AD5310_REGMAP:
-+			ret = ad5310_control_sync(st);
-+			break;
-+		case AD5683_REGMAP:
-+			ret = ad5683_control_sync(st);
-+			break;
-+		case AD5686_REGMAP:
-+			if (!st->gain_gpio) {
-+				ret = -EINVAL;
-+				break;
-+			}
-+
-+			ret = gpiod_set_value_cansleep(st->gain_gpio,
-+						       st->double_scale ? 1 : 0);
-+			break;
-+		default:
-+			ret = -EINVAL;
-+		}
-+		if (ret)
-+			st->double_scale = !double_scale; /* revert on failure */
-+		return ret;
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
-+static int ad5686_write_raw_get_fmt(struct iio_dev *indio_dev,
-+				    struct iio_chan_spec const *chan,
-+				    long mask)
-+{
-+	switch (mask) {
-+	case IIO_CHAN_INFO_RAW:
-+		return IIO_VAL_INT;
-+	case IIO_CHAN_INFO_SCALE:
-+		return IIO_VAL_INT_PLUS_NANO;
-+	default:
-+		return -EINVAL;
-+	}
-+}
-+
-+static int ad5686_read_avail(struct iio_dev *indio_dev,
-+			     struct iio_chan_spec const *chan,
-+			     const int **vals, int *type, int *length,
-+			     long mask)
-+{
-+	struct ad5686_state *st = iio_priv(indio_dev);
-+
-+	switch (mask) {
-+	case IIO_CHAN_INFO_SCALE:
-+		*type = IIO_VAL_INT_PLUS_NANO;
-+
-+		if (st->chip_info->regmap_type == AD5686_REGMAP && !st->gain_gpio) {
-+			/*
-+			 * GAIN pin is board-strapped, so only the current
-+			 * scale is available.
-+			 */
-+			*vals = st->double_scale ? &st->scale_avail[2] :
-+						   &st->scale_avail[0];
-+			*length = 2;
-+			return IIO_AVAIL_LIST;
-+		}
-+
-+		*vals = st->scale_avail;
-+		*length = ARRAY_SIZE(st->scale_avail);
-+		return IIO_AVAIL_LIST;
- 	default:
- 		return -EINVAL;
- 	}
-@@ -225,6 +315,8 @@ static int ad5686_write_raw(struct iio_dev *indio_dev,
- static const struct iio_info ad5686_info = {
- 	.read_raw = ad5686_read_raw,
- 	.write_raw = ad5686_write_raw,
-+	.write_raw_get_fmt = ad5686_write_raw_get_fmt,
-+	.read_avail = ad5686_read_avail,
- };
- 
- static const struct iio_chan_spec_ext_info ad5686_ext_info[] = {
-@@ -246,6 +338,7 @@ static const struct iio_chan_spec_ext_info ad5686_ext_info[] = {
- 		.channel = chan,				\
- 		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),	\
- 		.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE),\
-+		.info_mask_shared_by_type_available = BIT(IIO_CHAN_INFO_SCALE),\
- 		.address = addr,				\
- 		.scan_index = chan,				\
- 		.scan_type = {					\
-@@ -472,6 +565,15 @@ const struct ad5686_chip_info ad5679r_chip_info = {
- };
- EXPORT_SYMBOL_NS_GPL(ad5679r_chip_info, "IIO_AD5686");
- 
-+static void ad5686_init_scale_avail(struct ad5686_state *st)
-+{
-+	int realbits = st->chip_info->channels[0].scan_type.realbits;
-+	s64 tmp = 2ULL * st->vref_mv * NANO >> realbits;
-+
-+	st->scale_avail[2] = div_s64_rem(tmp, NANO, &st->scale_avail[3]);
-+	st->scale_avail[0] = div_s64_rem(tmp >> 1, NANO, &st->scale_avail[1]);
-+}
-+
- static irqreturn_t ad5686_trigger_handler(int irq, void *p)
- {
- 	struct iio_poll_func *pf = p;
-@@ -579,6 +681,14 @@ int ad5686_probe(struct device *dev,
- 		return dev_err_probe(dev, PTR_ERR(st->ldac_gpio),
- 				     "Failed to get LDAC GPIO\n");
- 
-+	st->gain_gpio = devm_gpiod_get_optional(dev, "gain", GPIOD_OUT_LOW);
-+	if (IS_ERR(st->gain_gpio))
-+		return dev_err_probe(dev, PTR_ERR(st->gain_gpio),
-+				     "Failed to get GAIN GPIO\n");
-+
-+	st->double_scale = device_property_read_bool(dev, "adi,range-double");
-+	ad5686_init_scale_avail(st);
-+
- 	reset_control_assert(rstc);
- 	fsleep(1); /* reset pulse: comfortably bigger than the spec */
- 	reset_control_deassert(rstc);
-@@ -621,6 +731,8 @@ int ad5686_probe(struct device *dev,
- 				   st->use_internal_vref ? 0 : AD5686_REF_BIT_MSK);
- 		if (ret)
- 			return ret;
-+
-+		gpiod_set_value_cansleep(st->gain_gpio, st->double_scale ? 1 : 0);
- 		break;
- 	default:
- 		return -EINVAL;
-diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
-index 6f47493906d4..b74a641d8fa4 100644
---- a/drivers/iio/dac/ad5686.h
-+++ b/drivers/iio/dac/ad5686.h
-@@ -39,9 +39,11 @@
- #define AD5686_CMD_CONTROL_REG			0x4
- #define AD5686_CMD_READBACK_ENABLE_V2		0x5
- 
-+#define AD5310_GAIN_BIT_MSK			BIT(7)
- #define AD5310_REF_BIT_MSK			BIT(8)
- #define AD5310_PD_MSK				GENMASK(10, 9)
- 
-+#define AD5683_GAIN_BIT_MSK			BIT(11)
- #define AD5683_REF_BIT_MSK			BIT(12)
- #define AD5683_PD_MSK				GENMASK(14, 13)
- 
-@@ -124,9 +126,12 @@ extern const struct ad5686_chip_info ad5679r_chip_info;
-  * @chip_info:		chip model specific constants, available modes etc
-  * @ops:		bus specific operations
-  * @ldac_gpio:		LDAC pin GPIO descriptor
-- * @vref_mv:		actual reference voltage used
-+ * @gain_gpio:		GAIN pin GPIO descriptor
-  * @pwr_down_mask:	power down mask
-  * @pwr_down_mode:	current power down mode
-+ * @scale_avail:	pre-calculated available scale values
-+ * @vref_mv:		actual reference voltage used
-+ * @double_scale:	flag to indicate the gain multiplier is applied
-  * @use_internal_vref:	set to true if the internal reference voltage is used
-  * @lock:		lock to protect access to state fields, which includes
-  *			the data buffer during regmap ops
-@@ -138,9 +143,12 @@ struct ad5686_state {
- 	const struct ad5686_chip_info	*chip_info;
- 	const struct ad5686_bus_ops	*ops;
- 	struct gpio_desc		*ldac_gpio;
--	unsigned short			vref_mv;
-+	struct gpio_desc		*gain_gpio;
- 	unsigned int			pwr_down_mask;
- 	unsigned int			pwr_down_mode;
-+	int				scale_avail[4];
-+	unsigned short			vref_mv;
-+	bool				double_scale;
- 	bool				use_internal_vref;
- 	struct mutex			lock;
- 	void				*bus_data;
+ drivers/pwm/pwm-loongson.c | 31 ++++++++++++++++---------------
+ 1 file changed, 16 insertions(+), 15 deletions(-)
+---
+base-commit: 8d6dbbbe3ba62de0a63e962ee004afb848c8e3ac
+change-id: 20260612-pwm-loongson-fix-183763451e93
 
+Best regards,
 -- 
-2.43.0
+Keguang Zhang <keguang.zhang@gmail.com>
 
