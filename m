@@ -1,87 +1,98 @@
-From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Tue, 16 Jun 2026 09:07:25 +0200
-Subject: [PATCH] PCI: dwc: meson: Fix reset GPIO initial state
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH v3 00/12] New features for the AD5686 IIO driver
+Date: Tue, 16 Jun 2026 09:21:06 +0100
+Message-Id: <20260616-ad5686-new-features-v3-0-f829fb7e9262@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260616-fix-meson-pcie-reset-gpio-v1-1-fca404b4c8be@aliel.fr>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MwQqDMBAFf0X27IIJdEn7K+JB49PuoUnIliKI/
- 97gcWBmTjJUhdGrO6nip6Y5NXB9R/E9px2sa2Pyg5dBnPCmB39gOXGJCq4wfHkvmtkvT7gQREJ
- 8UOtLRZPv9zhd1x/wr4sXawAAAA==
-X-Change-ID: 20260616-fix-meson-pcie-reset-gpio-2b9e188668c5
-To: Yue Wang <yue.wang@Amlogic.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
- Bjorn Helgaas <bhelgaas@google.com>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Remi Pommarel <repk@triplefau.lt>
-Cc: linux-pci@vger.kernel.org, linux-amlogic@lists.infradead.org, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Ronald Claveau <linux-kernel-dev@aliel.fr>
+X-B4-Tracking: v=1; b=H4sIAHIHMWoC/33NTQ6CMBCG4auQWVvTHyjgynsYF6UdoIm2psWqI
+ dzdwkoT4/L9knlmhojBYoRDMUPAZKP1LofYFaBH5QYk1uQGTrmkknKiTCUbSRw+SI9qugeMBBm
+ TmpadMV0L+fIWsLfPTT2dc482Tj68tieJret/LzFCiWwZUtY0wvD6qJy6+GGv/RVWMPFPpP2N8
+ IzUtCu56CtdS/OFLMvyBhZ/ni/8AAAA
+X-Change-ID: 20260602-ad5686-new-features-e116c04bddb9
+To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
+ linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org
+Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
+ Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Maxwell Doose <m32285159@gmail.com>, 
+ Joshua Crofts <joshua.crofts1@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1981;
- i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=7kvkuPDfnNo3RE26T6/4WDZzxv1opTuPQg33oMuoPoI=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ5bBt8iN7xYkGjz9k3/Q4LBC+svHf2ZG82SwRvv8+qxrP
- uHg7J0CHaUsDGJcDLJiiiz9cy1PvLt89MzXPeopMHNYmUCGMHBxCsBEzp5kZFgsZmWhufqRu+TS
- f+fmXmrY9OFF+xKJmwd6J02ZtCHQyMmA4b+f1oLDa9vKjvUVXWPQFejIeei0+jJ3dve9Ob5VVYG
- qFVwA
-X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
- fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
-X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781598070; l=2775;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=0K2xAOUEUd6OJytadlo69+09JQ9vsecAOvXvGOp5mkM=;
+ b=oA8k08wG4lB9+JIFlq4UGC0rbvnpmMGTO163L/J0H8IClDcBdVWJRTIsJXVPYQwx/rof4hcpM
+ YbZ1hFsYuhYC5G0N0TRjO9NzjEGtQ4+IkTmVkgXA3z6u9NUi4JVgMTW
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 4d3186a525b3 ("PCI: amlogic: Fix reset assertion via gpio
-descriptor") inverted the reset assertion logic to use proper gpio
-descriptor semantics, and moved the polarity configuration to the
-device tree as GPIO_ACTIVE_LOW. However, the initial GPIO state
-"GPIOD_OUT_LOW" was not updated accordingly.
+This is the second series of three on updating the AD5686 driver.
 
-Change GPIOD_OUT_LOW to GPIOD_OUT_HIGH to get the right behaviour.
+Initially, a big patch series was sent:
+https://lore.kernel.org/r/20260422-ad5313r-iio-support-v1-0-ed7dca001d1b@analog.com
 
-With GPIOD_OUT_LOW:
+Then, the first patch series added fixes and cleanups:
+https://lore.kernel.org/linux-iio/20260524-ad5686-fixes-v7-0-b6bf395d08bd@analog.com/
 
-    ahci 0000:01:00.0: enabling device (0000 -> 0002)
-    ahci 0000:01:00.0: SSS flag set, parallel bus scan disabled
-    ahci 0000:01:00.0: Controller reset failed (0xffffffff)
-    ahci 0000:01:00.0: probe with driver ahci failed with error -5
+This one is introducing new features:
+- Consume optional reset and correct power supplies;
+- LDAC GPIO handling (active-low, held low when unused);
+- SPI bus sync() implementation for batching multiple transfers;
+- Triggered buffer support, leveraging LDAC and sync() to flush
+  all channel writes atomically;
+- Gain control support through the scale property.
 
-With this fix:
-
-    ahci 0000:01:00.0: enabling device (0000 -> 0002)
-    ahci 0000:01:00.0: AHCI vers 0001.0300, 32 command slots, 6 Gbps,
-                       SATA mode
-    ahci 0000:01:00.0: 1/1 ports implemented (port mask 0x1)
-    ahci 0000:01:00.0: flags: 64bit ncq led clo only pio ccc
-
-Fixes: 4d3186a525b3 ("PCI: amlogic: Fix reset assertion via gpio descriptor")
-Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/pci/controller/dwc/pci-meson.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v3:
+- Add range-double property.
+- Acquire reset control after power-up delay.
+- Include cleanup.h and use guard(mutex)() in read_raw().
+- Link to v2: https://lore.kernel.org/r/20260609-ad5686-new-features-v2-0-70b423f5c76d@analog.com
 
-diff --git a/drivers/pci/controller/dwc/pci-meson.c b/drivers/pci/controller/dwc/pci-meson.c
-index 0694084f612b7..15ed59b8764fb 100644
---- a/drivers/pci/controller/dwc/pci-meson.c
-+++ b/drivers/pci/controller/dwc/pci-meson.c
-@@ -400,7 +400,7 @@ static int meson_pcie_probe(struct platform_device *pdev)
- 		return PTR_ERR(mp->phy);
- 	}
- 
--	mp->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
-+	mp->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
- 	if (IS_ERR(mp->reset_gpio)) {
- 		dev_err(dev, "get reset gpio failed\n");
- 		return PTR_ERR(mp->reset_gpio);
+Changes in v2:
+- Get reset control deasserted.
+- Update entire spi_transfer struct rather than individual fields.
+- Replace udelay() for fsleep() in probe().
+- Minor changes addressing further feedback.
+- Link to v1: https://lore.kernel.org/r/20260602-ad5686-new-features-v1-0-691e01883d27@analog.com
 
 ---
-base-commit: abe651837cb394f76d738a7a747322fca3bf17ba
-change-id: 20260616-fix-meson-pcie-reset-gpio-2b9e188668c5
+Rodrigo Alencar (12):
+      dt-bindings: iio: dac: ad5696: add reset/ldac/gain support
+      dt-bindings: iio: dac: ad5696: rework on power supplies
+      dt-bindings: iio: dac: ad5686: add reset/ldac/gain support
+      dt-bindings: iio: dac: ad5686: rework on power supplies
+      iio: dac: ad5686: add support for missing power supplies
+      iio: dac: ad5686: consume optional reset signal
+      iio: dac: ad5686: add ldac gpio
+      iio: dac: ad5686: introduce sync operation
+      iio: dac: ad5686: implement new sync() op for the spi bus
+      iio: dac: ad5686: add triggered buffer support
+      iio: dac: ad5686: read_raw/write_raw: use guard(mutex)()
+      iio: dac: ad5686: add gain control support
+
+ .../devicetree/bindings/iio/dac/adi,ad5686.yaml    |  72 +++++-
+ .../devicetree/bindings/iio/dac/adi,ad5696.yaml    |  75 ++++++-
+ drivers/iio/dac/Kconfig                            |   2 +
+ drivers/iio/dac/ad5686-spi.c                       | 121 +++++++---
+ drivers/iio/dac/ad5686.c                           | 249 +++++++++++++++++++--
+ drivers/iio/dac/ad5686.h                           |  33 ++-
+ drivers/iio/dac/ad5696-i2c.c                       |   2 +-
+ 7 files changed, 492 insertions(+), 62 deletions(-)
+---
+base-commit: ae696dfa47c30016cd429b9db5e70b259b8f509e
+change-id: 20260602-ad5686-new-features-e116c04bddb9
 
 Best regards,
 -- 
-Ronald Claveau <linux-kernel-dev@aliel.fr>
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
