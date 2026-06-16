@@ -1,96 +1,221 @@
 From: =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
-Subject: [PATCH RFC 0/3] dmaengine: Support address bus widths of 32 bytes
+Date: Tue, 16 Jun 2026 16:40:52 +0100
+Subject: [PATCH RFC 1/3] dmaengine: Support address bus widths of 32 bytes
  and above
-Date: Tue, 16 Jun 2026 16:40:51 +0100
-Message-Id: <20260616-dmaengine-support-wider-dma-masks-v1-0-da23a8dcb756@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWNywrCMBAAf6Xs2YUm2Ba9Cn6AV/GwJmtdpWnI9
- iGU/rupHmcOMwsoJ2GFY7FA4klU+pDB7ApwTwoto/jMYEtbl7Wp0HfEoZXAqGOMfRpwFs9p89i
- RvhUrImfs/tCwbSB3YuKHfH6PK1zOJ7j9pY73F7thq8O6fgGmfC+IigAAAA==
-X-Change-ID: 20260615-dmaengine-support-wider-dma-masks-5aac12497e27
+Message-Id: <20260616-dmaengine-support-wider-dma-masks-v1-1-da23a8dcb756@analog.com>
+References: <20260616-dmaengine-support-wider-dma-masks-v1-0-da23a8dcb756@analog.com>
+In-Reply-To: <20260616-dmaengine-support-wider-dma-masks-v1-0-da23a8dcb756@analog.com>
 To: dmaengine@vger.kernel.org, linux-iio@vger.kernel.org
 Cc: Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>, 
  Lars-Peter Clausen <lars@metafoo.de>, Jonathan Cameron <jic23@kernel.org>, 
  David Lechner <dlechner@baylibre.com>, Andy Shevchenko <andy@kernel.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781624455; l=3227;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781624455; l=6136;
  i=nuno.sa@analog.com; s=20231116; h=from:subject:message-id;
- bh=+QIasRBIyKP+WO6TXZ4SAPt7bwYYwVLv6m09mqd7suk=;
- b=tmf6UE3hfFI9WDOrUkRnTII+gZl3A+Vv7vcWdbRAns06aGK8bkU1u75Fgv3aTUwKERpKBz1vT
- 6OwhDyHlp6tAkBYJavrwXTdFMq+JocGbj3yAVY8J96Qm/9RwqSIdw9p
+ bh=seK2wQ1gP5/CY+c6SdU0DSHpgs7+1OD32PnCpLFnNMU=;
+ b=VaSoQ22ie0zIfavrrNdBnJAYVMaoPhET+P1sK1CJcaHwofsEfWskGzpE1WIYXko/2LjABb4Bg
+ 9RDlOcrGB3sC+T4i94u/b9UbtFuta4UtWqxEHLuYX8weyX0HFdrgZQA
 X-Developer-Key: i=nuno.sa@analog.com; a=ed25519;
  pk=3NQwYA013OUYZsmDFBf8rmyyr5iQlxV/9H4/Df83o1E=
 X-Endpoint-Received: by B4 Relay for nuno.sa@analog.com/20231116 with auth_id=100
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The DMA engine slave capabilities advertise the supported source and
-destination bus widths in src_addr_widths / dst_addr_widths. These are
-plain u32 bitmasks where a set bit's position equals the corresponding
-enum dma_slave_buswidth value, e.g. DMA_SLAVE_BUSWIDTH_4_BYTES sets
-bit 4.
+The src_addr_widths and dst_addr_widths capability masks encode each
+supported width as a bit whose position equals the corresponding
+enum dma_slave_buswidth value (e.g. DMA_SLAVE_BUSWIDTH_4_BYTES sets
+bit 4). As these masks are plain u32, widths of 32 bytes and above
+(DMA_SLAVE_BUSWIDTH_32/64/128_BYTES map to bits 32, 64 and 128) cannot
+be represented at all.
 
-The consequence is that widths of 32 bytes and above cannot be
-represented at all: DMA_SLAVE_BUSWIDTH_32/64/128_BYTES would need bits
-32, 64 and 128, which simply do not fit in a u32. Hardware with wider
-data paths is becoming common, so we need a representation that can
-express these widths while still using enum dma_slave_buswidth.
+Introduce bitmap-based masks that span the full enum range. To allow
+controllers and consumers to be converted incrementally, the legacy
+u32 fields are kept alongside the new bitmaps: producers populate the
+bitmap (mirroring the low 32 bits back into the legacy field) and
+dma_get_slave_caps() folds a legacy-only producer's u32 into the
+returned bitmap.
 
-This series switches the masks to bitmaps that span the full enum
-range. Because there are many producers (DMA controllers) and a number
-of consumers spread across the tree, converting everything in one go is
-not realistic. To allow an incremental migration, the legacy u32 fields
-are kept alongside the new bitmaps:
+Add dma_set_{src,dst}_addr_mask() for producers and
+dma_slave_caps_get_{src,dst}_width_min() for consumers so that, once
+every user is converted, the legacy u32 fields can be dropped and the
+bitmaps renamed without further churn.
 
-- producers set the bitmap via the new dma_set_{src,dst}_addr_mask()
-helpers, which also mirror the low 32 bits back into the legacy u32;
-- legacy producers that still assign the u32 directly keep working, and
-dma_get_slave_caps() folds such a u32 into the bitmap it returns, so
-new consumers always see a complete bitmap;
-- consumers can read either the legacy u32 or the new bitmap during the
-transition.
-
-The axi-dmac controller and the IIO dmaengine buffer are converted as
-examples of a producer and a consumer. And this actually fixes a very
-open coded path to undefined behavior in the axi-dmac driver and
-possibly others.
-
-The end goal is to convert every producer and consumer, then drop the
-legacy u32 src/dst_addr_widths fields and rename the *_mask members.
-I cannot commit to a timeline for that conversion (it touches a lot of
-drivers across several subsystems), but I do intend to see it through.
-
-Sending as RFC mainly to agree on the approach!
-
-I'm also not sure if the dma_slave_caps_get_{src,dst}_width_min() accessors
-are worth having? Their purpose is purely to keep consumers from touching
-the representation directly, so that the eventual u32 removal + mask
-rename is a no-op for consumers. The alternative is to let consumers use
-the bitmap directly (find_first_bit()/test_bit()/etc.) and just delete the
-u32 members at the end. I mean, now we do have a bitmask so the _mask
-suffix can of makes sense.
-
-This issue was discussed before here:
-
-https://lore.kernel.org/dmaengine/abkoXXbaxaiqbBuX@vaman/
-
+Signed-off-by: Nuno Sá <nuno.sa@analog.com>
 ---
-Nuno Sá (3):
-      dmaengine: Support address bus widths of 32 bytes and above
-      dmaengine: dma-axi-dmac: Switch to bitmap-based address width masks
-      iio: buffer-dmaengine: Use dma_slave_caps width accessors
+ drivers/dma/dmaengine.c   |  18 +++++++++
+ include/linux/dmaengine.h | 100 ++++++++++++++++++++++++++++++++++++++++++++--
+ 2 files changed, 114 insertions(+), 4 deletions(-)
 
- drivers/dma/dma-axi-dmac.c                         |  12 ++-
- drivers/dma/dmaengine.c                            |  18 ++++
- drivers/iio/buffer/industrialio-buffer-dmaengine.c |  15 ++--
- include/linux/dmaengine.h                          | 100 ++++++++++++++++++++-
- 4 files changed, 129 insertions(+), 16 deletions(-)
----
-base-commit: 7524fe142b5a772f8421aeee2132cf7e21a00103
-change-id: 20260615-dmaengine-support-wider-dma-masks-5aac12497e27
---
+diff --git a/drivers/dma/dmaengine.c b/drivers/dma/dmaengine.c
+index 9049171df857..a21bc9c140aa 100644
+--- a/drivers/dma/dmaengine.c
++++ b/drivers/dma/dmaengine.c
+@@ -593,7 +593,25 @@ int dma_get_slave_caps(struct dma_chan *chan, struct dma_slave_caps *caps)
+ 		return -ENXIO;
+ 
+ 	caps->src_addr_widths = device->src_addr_widths;
++	if (bitmap_empty(device->src_addr_widths_mask, DMA_SLAVE_BUSWIDTH_MAX)) {
++		bitmap_zero(caps->src_addr_widths_mask, DMA_SLAVE_BUSWIDTH_MAX);
++		bitmap_from_arr32(caps->src_addr_widths_mask,
++				  &device->src_addr_widths, 32);
++	} else {
++		bitmap_copy(caps->src_addr_widths_mask,
++			    device->src_addr_widths_mask, DMA_SLAVE_BUSWIDTH_MAX);
++	}
++
+ 	caps->dst_addr_widths = device->dst_addr_widths;
++	if (bitmap_empty(device->dst_addr_widths_mask, DMA_SLAVE_BUSWIDTH_MAX)) {
++		bitmap_zero(caps->dst_addr_widths_mask, DMA_SLAVE_BUSWIDTH_MAX);
++		bitmap_from_arr32(caps->dst_addr_widths_mask,
++				  &device->dst_addr_widths, 32);
++	} else {
++		bitmap_copy(caps->dst_addr_widths_mask,
++			    device->dst_addr_widths_mask, DMA_SLAVE_BUSWIDTH_MAX);
++	}
++
+ 	caps->directions = device->directions;
+ 	caps->min_burst = device->min_burst;
+ 	caps->max_burst = device->max_burst;
+diff --git a/include/linux/dmaengine.h b/include/linux/dmaengine.h
+index b3d251c9734e..e249158aa4a5 100644
+--- a/include/linux/dmaengine.h
++++ b/include/linux/dmaengine.h
+@@ -5,6 +5,7 @@
+ #ifndef LINUX_DMAENGINE_H
+ #define LINUX_DMAENGINE_H
+ 
++#include <linux/bitops.h>
+ #include <linux/device.h>
+ #include <linux/err.h>
+ #include <linux/uio.h>
+@@ -391,6 +392,7 @@ enum dma_slave_buswidth {
+ 	DMA_SLAVE_BUSWIDTH_32_BYTES = 32,
+ 	DMA_SLAVE_BUSWIDTH_64_BYTES = 64,
+ 	DMA_SLAVE_BUSWIDTH_128_BYTES = 128,
++	DMA_SLAVE_BUSWIDTH_MAX
+ };
+ 
+ /**
+@@ -509,8 +511,14 @@ enum dma_residue_granularity {
+  * resubmitted multiple times
+  */
+ struct dma_slave_caps {
+-	u32 src_addr_widths;
+-	u32 dst_addr_widths;
++	struct {
++		DECLARE_BITMAP(src_addr_widths_mask, DMA_SLAVE_BUSWIDTH_MAX);
++		u32 src_addr_widths;
++	};
++	struct {
++		DECLARE_BITMAP(dst_addr_widths_mask, DMA_SLAVE_BUSWIDTH_MAX);
++		u32 dst_addr_widths;
++	};
+ 	u32 directions;
+ 	u32 min_burst;
+ 	u32 max_burst;
+@@ -887,8 +895,14 @@ struct dma_device {
+ 	struct module *owner;
+ 	struct ida chan_ida;
+ 
+-	u32 src_addr_widths;
+-	u32 dst_addr_widths;
++	struct {
++		DECLARE_BITMAP(src_addr_widths_mask, DMA_SLAVE_BUSWIDTH_MAX);
++		u32 src_addr_widths;
++	};
++	struct {
++		DECLARE_BITMAP(dst_addr_widths_mask, DMA_SLAVE_BUSWIDTH_MAX);
++		u32 dst_addr_widths;
++	};
+ 	u32 directions;
+ 	u32 min_burst;
+ 	u32 max_burst;
+@@ -1678,4 +1692,82 @@ static inline struct device *dmaengine_get_dma_device(struct dma_chan *chan)
+ 	return chan->device->dev;
+ }
+ 
++static inline enum dma_slave_buswidth
++__dma_slave_caps_get_width_min(const unsigned long *bitmask)
++{
++	enum dma_slave_buswidth width = find_first_bit(bitmask,
++						       DMA_SLAVE_BUSWIDTH_MAX);
++
++	if (width == DMA_SLAVE_BUSWIDTH_MAX)
++		return DMA_SLAVE_BUSWIDTH_UNDEFINED;
++
++	return width;
++}
++
++static inline enum dma_slave_buswidth
++dma_slave_caps_get_src_width_min(const struct dma_slave_caps *caps)
++{
++	return __dma_slave_caps_get_width_min(caps->src_addr_widths_mask);
++}
++
++static inline enum dma_slave_buswidth
++dma_slave_caps_get_dst_width_min(const struct dma_slave_caps *caps)
++{
++	return __dma_slave_caps_get_width_min(caps->dst_addr_widths_mask);
++}
++
++static inline int __dma_set_addr_mask(unsigned long *bitmask,
++				      enum dma_slave_buswidth *widths,
++				      unsigned int n_widths)
++{
++	for (unsigned int i = 0; i < n_widths; i++) {
++		switch (widths[i]) {
++		case DMA_SLAVE_BUSWIDTH_1_BYTE:
++		case DMA_SLAVE_BUSWIDTH_2_BYTES:
++		case DMA_SLAVE_BUSWIDTH_3_BYTES:
++		case DMA_SLAVE_BUSWIDTH_4_BYTES:
++		case DMA_SLAVE_BUSWIDTH_8_BYTES:
++		case DMA_SLAVE_BUSWIDTH_16_BYTES:
++		case DMA_SLAVE_BUSWIDTH_32_BYTES:
++		case DMA_SLAVE_BUSWIDTH_64_BYTES:
++		case DMA_SLAVE_BUSWIDTH_128_BYTES:
++			break;
++		default:
++			return -EINVAL;
++		}
++
++		__set_bit(widths[i], bitmask);
++	}
++
++	return 0;
++}
++
++static inline int dma_set_src_addr_mask(struct dma_device *device,
++					enum dma_slave_buswidth *widths,
++					unsigned int n_widths)
++{
++	int ret;
++
++	ret = __dma_set_addr_mask(device->src_addr_widths_mask, widths, n_widths);
++	if (ret)
++		return ret;
++
++	device->src_addr_widths = bitmap_read(device->src_addr_widths_mask, 0, 32);
++	return 0;
++}
++
++static inline int dma_set_dst_addr_mask(struct dma_device *device,
++					enum dma_slave_buswidth *widths,
++					unsigned int n_widths)
++{
++	int ret;
++
++	ret = __dma_set_addr_mask(device->dst_addr_widths_mask, widths, n_widths);
++	if (ret)
++		return ret;
++
++	device->dst_addr_widths = bitmap_read(device->dst_addr_widths_mask, 0, 32);
++	return 0;
++}
++
+ #endif /* DMAENGINE_H */
 
-Thanks!
-- Nuno Sá
+-- 
+2.54.0
 
