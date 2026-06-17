@@ -1,15 +1,13 @@
 From: Jia Wang <wangjia@ultrarisc.com>
-Subject: [PATCH v2 0/2] clk: ultrarisc: add DP1000 clock support
-Date: Wed, 17 Jun 2026 14:02:53 +0800
-Message-Id: <20260617-ultrarisc-clock-v2-0-9cb16083e15e@ultrarisc.com>
+Date: Wed, 17 Jun 2026 14:02:54 +0800
+Subject: [PATCH v2 1/2] dt-bindings: clock: ultrarisc: Add DP1000 Clock
+ Controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAI04MmoC/2WNyw6CMBBFf4XM2pq2CAZX/Idh0Q6DjCI1bSEaw
- r/LI3Hj8iTnnjtBIM8U4JJM4GnkwK5fQB8SwNb0NxJcLwxa6lxmWouhi954Diiwc/gQRtmzMVn
- R5NLCsnp5avi9Fa/VzmGwd8K4Zlaj5RCd/2yXo1q9vZ4r9VcflZBC10VK1p4QVVr+jCO6J1TzP
- H8Bsb5SasQAAAA=
-X-Change-ID: 20260522-ultrarisc-clock-a1b7aa59f60b
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260617-ultrarisc-clock-v2-1-9cb16083e15e@ultrarisc.com>
+References: <20260617-ultrarisc-clock-v2-0-9cb16083e15e@ultrarisc.com>
+In-Reply-To: <20260617-ultrarisc-clock-v2-0-9cb16083e15e@ultrarisc.com>
 To: Michael Turquette <mturquette@baylibre.com>, 
  Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney@redhat.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -17,62 +15,143 @@ To: Michael Turquette <mturquette@baylibre.com>,
 Cc: linux-clk@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Jia Wang <wangjia@ultrarisc.com>
 X-Mailer: b4 0.15-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781676184; l=2055;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781676184; l=4050;
  i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
- bh=k4Je7gBSERMamWU1GgAynav5HbHuPvN2n+14RP4eS0Q=;
- b=Cl9KmxJ0tjSzJfWFSwgvTlUUAVUGUOPRZW1be1d0yHbmpQowZXpn96mH71aUGlWKNy+z+y/v4
- /LcqAmri7TkARU9x/ug37CGFKhiy19LOCqBnjRpOeoc5eijMZdtBXJS
+ bh=vVCLkK2EihbPxfkDInO5gRQRPWbAHIKvf05ItUCUMGU=;
+ b=GLdqaRtSRpDri4G+iOCT6xah1Amebc/fHMR4IJWHLPuz9fF7RasVCjTLM8ejHOFw6sP34EJQI
+ qCcnlKl5XxOAETSc++glti1Cgm8AgFEJ6d2OFyK5mXSSfCOmn8eGSXe
 X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
  pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
 X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds the devicetree binding and the clock driver for the
-UltraRISC DP1000 SoC.
-
-The clock tree is driven by a SYSPLL and provides fixed-factor clocks for
-the subsystem and PCIe, divider-based root clocks for GMAC and the UART,
-I2C, and SPI blocks, and per-instance gate clocks for UART0-3, I2C0-3,
-and SPI0-1.
-
-Testing:
-- dt_binding_check and dtbs_check on ultrarisc,dp1000-clk
-- Kernel build for RISC-V and boot-tested on DP1000
-- Modules build test for CLK_ULTRARISC_DP1000
+Add doc for the clock controller on the UltraRISC DP1000 RISC-V SoC.
 
 Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
 ---
-Changes in v2:
-- Drop the redundant clock-names property from the clock binding.
-- Move DP1000_CLK_NUM from the dt-bindings header into the driver.
-- Clarify the divider load-bit handling in the common clock core.
-- Validate that all advertised clock IDs are populated before registering
-  the onecell clock provider.
-- Rework divider composite clock registration so the driver builds
-  correctly as a module.
-- Link to v1: https://patch.msgid.link/20260611-ultrarisc-clock-v1-0-2d93ebb4cc13@ultrarisc.com
+ .../bindings/clock/ultrarisc,dp1000-clk.yaml       | 60 ++++++++++++++++++++++
+ MAINTAINERS                                        |  7 +++
+ include/dt-bindings/clock/ultrarisc,dp1000-clk.h   | 27 ++++++++++
+ 3 files changed, 94 insertions(+)
 
----
-Jia Wang (2):
-      dt-bindings: clock: ultrarisc: Add DP1000 Clock Controller
-      clk: ultrarisc: add DP1000 clock driver
+diff --git a/Documentation/devicetree/bindings/clock/ultrarisc,dp1000-clk.yaml b/Documentation/devicetree/bindings/clock/ultrarisc,dp1000-clk.yaml
+new file mode 100644
+index 000000000000..ede565ec440c
+--- /dev/null
++++ b/Documentation/devicetree/bindings/clock/ultrarisc,dp1000-clk.yaml
+@@ -0,0 +1,60 @@
++# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/clock/ultrarisc,dp1000-clk.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
++
++title: UltraRISC DP1000 Clock Controller
++
++maintainers:
++  - Jia Wang <wangjia@ultrarisc.com>
++
++description: |
++  The UltraRISC DP1000 clock controller is driven from a single external
++  oscillator input. It provides a system PLL with fractional multiplier
++  and post-divider stages, several fixed-ratio derived clocks for
++  the on-chip subsystem, Clock Configuration Register (CCR) divider
++  outputs for GMAC and the UART, I2C, and SPI root clocks, and
++  per-instance gate clocks for UART0-3, I2C0-3, and SPI0-1.
++
++  All available clocks are defined as preprocessor macros in
++  include/dt-bindings/clock/ultrarisc,dp1000-clk.h
++
++properties:
++  compatible:
++    const: ultrarisc,dp1000-clk
++
++  reg:
++    maxItems: 1
++
++  clocks:
++    maxItems: 1
++    description:
++      External oscillator input clock used as the parent of the PLLs.
++
++  "#clock-cells":
++    const: 1
++
++required:
++  - compatible
++  - reg
++  - clocks
++  - "#clock-cells"
++
++additionalProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/clock/ultrarisc,dp1000-clk.h>
++
++    soc {
++      #address-cells = <2>;
++      #size-cells = <2>;
++
++      clock-controller@11080000 {
++        compatible = "ultrarisc,dp1000-clk";
++        reg = <0x0 0x11080000 0x0 0x1000>;
++        clocks = <&osc>;
++        #clock-cells = <1>;
++      };
++    };
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 3d6db8cb608f..b7e43313c65f 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -27439,6 +27439,13 @@ S:	Maintained
+ F:	drivers/usb/common/ulpi.c
+ F:	include/linux/ulpi/
+ 
++ULTRARISC DP1000 CLOCK DRIVER
++M:	Jia Wang <wangjia@ultrarisc.com>
++L:	linux-clk@vger.kernel.org
++S:	Maintained
++F:	Documentation/devicetree/bindings/clock/ultrarisc,dp1000-clk.yaml
++F:	include/dt-bindings/clock/ultrarisc,dp1000-clk.h
++
+ ULTRATRONIK BOARD SUPPORT
+ M:	Goran Rađenović <goran.radni@gmail.com>
+ M:	Börge Strümpfel <boerge.struempfel@gmail.com>
+diff --git a/include/dt-bindings/clock/ultrarisc,dp1000-clk.h b/include/dt-bindings/clock/ultrarisc,dp1000-clk.h
+new file mode 100644
+index 000000000000..751125f99965
+--- /dev/null
++++ b/include/dt-bindings/clock/ultrarisc,dp1000-clk.h
+@@ -0,0 +1,27 @@
++/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
++#ifndef _DT_BINDINGS_CLOCK_ULTRARISC_DP1000_CLK_H
++#define _DT_BINDINGS_CLOCK_ULTRARISC_DP1000_CLK_H
++
++#define DP1000_CLK_SYSPLL		0
++#define DP1000_CLK_SYSPLL_DIV2		1
++#define DP1000_CLK_SUBSYS		2
++#define DP1000_CLK_GMAC			3
++#define DP1000_CLK_UART_ROOT		4
++#define DP1000_CLK_I2C_ROOT		5
++#define DP1000_CLK_SPI_ROOT		6
++#define DP1000_CLK_PCIE_DBI		7
++#define DP1000_CLK_PCIEX4_CORE		8
++#define DP1000_CLK_PCIEX16_CORE		9
++#define DP1000_CLK_PCIE_AUX		10
++#define DP1000_CLK_UART0		11
++#define DP1000_CLK_UART1		12
++#define DP1000_CLK_UART2		13
++#define DP1000_CLK_UART3		14
++#define DP1000_CLK_I2C0			15
++#define DP1000_CLK_I2C1			16
++#define DP1000_CLK_I2C2			17
++#define DP1000_CLK_I2C3			18
++#define DP1000_CLK_SPI0			19
++#define DP1000_CLK_SPI1			20
++
++#endif /* _DT_BINDINGS_CLOCK_ULTRARISC_DP1000_CLK_H */
 
- .../bindings/clock/ultrarisc,dp1000-clk.yaml       |  60 +++
- MAINTAINERS                                        |   8 +
- drivers/clk/Kconfig                                |   1 +
- drivers/clk/Makefile                               |   1 +
- drivers/clk/ultrarisc/Kconfig                      |  18 +
- drivers/clk/ultrarisc/Makefile                     |   4 +
- drivers/clk/ultrarisc/clk-dp1000.c                 | 153 +++++++
- drivers/clk/ultrarisc/clk-ultrarisc.c              | 459 +++++++++++++++++++++
- drivers/clk/ultrarisc/clk-ultrarisc.h              |  73 ++++
- include/dt-bindings/clock/ultrarisc,dp1000-clk.h   |  27 ++
- 10 files changed, 804 insertions(+)
----
-base-commit: b1cbabe84ca1381a004fb91ee1791a1a53bce44e
-change-id: 20260522-ultrarisc-clock-a1b7aa59f60b
-
-Best regards,
---  
-Jia Wang <wangjia@ultrarisc.com>
+-- 
+2.34.1
 
