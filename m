@@ -1,10 +1,11 @@
 From: Zakariya Hadrami <zkh1@proton.me>
-Date: Wed, 17 Jun 2026 11:20:11 +0900
-Subject: [PATCH 2/5] ARM: dts: mediatek: mt8127: Add watchdog support
+Date: Wed, 17 Jun 2026 11:20:12 +0900
+Subject: [PATCH 3/5] ARM: dts: mediatek: Add basic support for Amazon ford
+ board
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260617-mt8127-amazon-ford-basic-v1-2-d02ad15ac359@proton.me>
+Message-Id: <20260617-mt8127-amazon-ford-basic-v1-3-d02ad15ac359@proton.me>
 References: <20260617-mt8127-amazon-ford-basic-v1-0-d02ad15ac359@proton.me>
 In-Reply-To: <20260617-mt8127-amazon-ford-basic-v1-0-d02ad15ac359@proton.me>
 To: Matthias Brugger <matthias.bgg@gmail.com>, 
@@ -17,41 +18,89 @@ Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
  linux-mediatek@lists.infradead.org, devicetree@vger.kernel.org, 
  linux-watchdog@vger.kernel.org, Zakariya Hadrami <zkh1@proton.me>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781662870; l=804;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781662870; l=1963;
  i=zkh1@proton.me; s=20260616; h=from:subject:message-id;
- bh=VQZ++2hpaaS615uXsB1OWz8s3q+mSXl0RmexhIj1JJQ=;
- b=7rwtqv+oizSQabmlSevY4WbpbTst2BLlCJJWBG7WrtKPbQ9bPsyIEEu0s9c0rVp7leuzziRIV
- FJTxOfalaNFAcWNqU5OL4O0RSo9iNIB876MyCAJuNZP25Zu3ku+mVMg
+ bh=ER3ARswagh7xs80gDU1m6FCsuRFGAreidBmq7cULkdo=;
+ b=+QdkQGlmeYDRoihE7kbdnK5j5pskDYSpNmqPESbCOZFyNKw/dd4fiNwgD29rBrUV0pJQfSKsL
+ 3H8qExH4PQ7AjhPY1ZILHmrbn8Dwrgkg7aChlJX9XA93WtOxqOWx+MH
 X-Developer-Key: i=zkh1@proton.me; a=ed25519;
  pk=9DiJwhINAERP95fbFofXSP77GEnvfO/rMIRRRFDhaoc=
 X-Endpoint-Received: by B4 Relay for zkh1@proton.me/20260616 with auth_id=824
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add watchdog node and disable it by default as it was not present
-initially.
+This tablet uses a MediaTek MT8127 system-on-chip with 1GB of RAM.
+It can currently boot into initramfs with a working UART and
+Simple Framebuffer using already initialized panel by the bootloader.
 
 Signed-off-by: Zakariya Hadrami <zkh1@proton.me>
 ---
- arch/arm/boot/dts/mediatek/mt8127.dtsi | 7 +++++++
- 1 file changed, 7 insertions(+)
+ arch/arm/boot/dts/mediatek/Makefile               |  1 +
+ arch/arm/boot/dts/mediatek/mt8127-amazon-ford.dts | 46 +++++++++++++++++++++++
+ 2 files changed, 47 insertions(+)
 
-diff --git a/arch/arm/boot/dts/mediatek/mt8127.dtsi b/arch/arm/boot/dts/mediatek/mt8127.dtsi
-index bd61ec7e70c0..1855dda42710 100644
---- a/arch/arm/boot/dts/mediatek/mt8127.dtsi
-+++ b/arch/arm/boot/dts/mediatek/mt8127.dtsi
-@@ -159,5 +159,12 @@ uart3: serial@11005000 {
- 			clocks = <&uart_clk>;
- 			status = "disabled";
- 		};
+diff --git a/arch/arm/boot/dts/mediatek/Makefile b/arch/arm/boot/dts/mediatek/Makefile
+index 37c4cded0eae..a610bc75c7d9 100644
+--- a/arch/arm/boot/dts/mediatek/Makefile
++++ b/arch/arm/boot/dts/mediatek/Makefile
+@@ -14,5 +14,6 @@ dtb-$(CONFIG_ARCH_MEDIATEK) += \
+ 	mt7623n-rfb-emmc.dtb \
+ 	mt7623n-bananapi-bpi-r2.dtb \
+ 	mt7629-rfb.dtb \
++	mt8127-amazon-ford.dtb \
+ 	mt8127-moose.dtb \
+ 	mt8135-evbp1.dtb
+diff --git a/arch/arm/boot/dts/mediatek/mt8127-amazon-ford.dts b/arch/arm/boot/dts/mediatek/mt8127-amazon-ford.dts
+new file mode 100644
+index 000000000000..21bdab0e43f8
+--- /dev/null
++++ b/arch/arm/boot/dts/mediatek/mt8127-amazon-ford.dts
+@@ -0,0 +1,46 @@
++// SPDX-License-Identifier: GPL-2.0
 +
-+		watchdog: watchdog@10007000 {
-+			compatible = "mediatek,mt8127-wdt","mediatek,mt6589-wdt";
-+			reg = <0 0x10007000 0 0x100>;
-+			interrupts = <GIC_SPI 88 IRQ_TYPE_LEVEL_LOW>;
-+			status = "disabled";
++/dts-v1/;
++#include "mt8127.dtsi"
++
++/ {
++	model = "MediaTek MT8127 Amazon Ford";
++	compatible = "amazon,ford", "mediatek,mt8127";
++
++	aliases {
++		serial0 = &uart0;
++	};
++
++	chosen {
++		stdout-path = "serial0:921600n8";
++
++		framebuffer0: framebuffer@b7a00000 {
++			compatible = "simple-framebuffer";
++			memory-region = <&framebuffer_reserved>;
++			width = <1024>;
++			height = <600>;
++			stride = <(1024 * 2)>;
++			format = "r5g6b5";
 +		};
- 	};
- };
++	};
++
++	memory@80000000 {
++		device_type = "memory";
++		reg = <0 0x80000000 0 0x40000000>;
++	};
++
++	reserved-memory {
++		framebuffer_reserved: framebuffer@b7a00000 {
++			reg = <0 0xb7a00000 0 0x1000000>;
++			no-map;
++		};
++	};
++};
++
++&uart0 {
++	status = "okay";
++};
++
++&watchdog {
++	status = "okay";
++};
 
 -- 
 2.54.0
