@@ -1,53 +1,131 @@
-From: Zakariya Hadrami <zkh1@proton.me>
-Date: Wed, 17 Jun 2026 11:20:14 +0900
-Subject: [PATCH 5/5] dt-bindings: watchdog: mediatek: Add MT8127
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Tue, 16 Jun 2026 23:33:35 -0500
+Subject: [PATCH v2] nfc: fdp: bound the device-reported read length and fix
+ an skb leak
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260617-mt8127-amazon-ford-basic-v1-5-d02ad15ac359@proton.me>
-References: <20260617-mt8127-amazon-ford-basic-v1-0-d02ad15ac359@proton.me>
-In-Reply-To: <20260617-mt8127-amazon-ford-basic-v1-0-d02ad15ac359@proton.me>
-To: Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Sean Wang <sean.wang@mediatek.com>, 
- Wim Van Sebroeck <wim@linux-watchdog.org>, 
- Guenter Roeck <linux@roeck-us.net>
-Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-watchdog@vger.kernel.org, Zakariya Hadrami <zkh1@proton.me>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781662870; l=885;
- i=zkh1@proton.me; s=20260616; h=from:subject:message-id;
- bh=EYpC4LZ5dsncfmZVo1Qa3+LOjpZlxDCulVGvphKLKMQ=;
- b=a/R2TapQVdN1Ryp32CARs1QbBbPlH+I0Wa0q7pOdQP5E4LNloIpf6D7WIqIg15p4aptuMMK16
- IRnMJYOAxcABQiTxiWVbnGl4mqyviY2Thqw6BjpmAtWwzy+IvTLLFTt
-X-Developer-Key: i=zkh1@proton.me; a=ed25519;
- pk=9DiJwhINAERP95fbFofXSP77GEnvfO/rMIRRRFDhaoc=
-X-Endpoint-Received: by B4 Relay for zkh1@proton.me/20260616 with auth_id=824
+Message-Id: <20260616-b4-disp-b1f8ab4c-v2-1-2d1fe5955325@proton.me>
+X-B4-Tracking: v=1; b=H4sIAJ4jMmoC/x3MQQqAIBBA0avErBtQM6muEi0cnWo2FgoRRHdPW
+ r7F/w8UzsIFpuaBzJcUOVKFaRsIu08bo8RqMMo45bRDshilnEh6HTzZgKScj7YLI3EPNTszr3L
+ /y3l53w8naI0vYgAAAA==
+To: David Heidelberg <david@ixit.cz>
+Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
+ Samuel Ortiz <sameo@linux.intel.com>, Robert Dolca <robert.dolca@intel.com>, 
+ oe-linux-nfc@lists.linux.dev, Simon Horman <horms@kernel.org>, 
+ Kang Chen <void0red@gmail.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781670814; l=4528;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=MJuqCnhzytqlSp6Nzkc5/KxX8KYvdaafo6GYDnOie4I=;
+ b=Oe/hrs7OrsMVxdRMKHDOLnQHeX/SimIa5jMdsjZi28UPFGe35RBn4uRK4q6KWGlh++RfuRAaN
+ 5cRDormZrrKAu8jxRtIHS6LRURzAh3qJuYdjTpolzrt4NBn76Qm+E/+
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add entry for MT8127 SoC's watchdog which is compatible with MT6589's
-one.
+fdp_nci_i2c_read() takes the next packet length from two device-supplied
+bytes and never validates it. The value is a u16 used as the
+i2c_master_recv() count into a 261-byte on-stack buffer: a malicious,
+counterfeit or malfunctioning controller (or an i2c bus interposer) can
+drive it far past the buffer for a stack out-of-bounds write that
+clobbers the canary and return address, or below the minimum frame size
+(directly, or by truncating the computed sum) so the header/LRC strip
+and the next length read run past a short receive. Reject a length
+outside [FDP_NCI_I2C_MIN_PAYLOAD, FDP_NCI_I2C_MAX_PAYLOAD], as a
+corrupted packet already is, and force resynchronization.
 
-Signed-off-by: Zakariya Hadrami <zkh1@proton.me>
+The same loop allocates one data skb per iteration and assumes a length
+packet followed by a data packet; a device that sends two data packets
+in one call leaks the first skb when the second allocation overwrites
+it. Free a previously allocated skb before allocating the next.
+
+Fixes: a06347c04c13 ("NFC: Add Intel Fields Peak NFC solution driver")
+Cc: stable@vger.kernel.org
+Suggested-by: Simon Horman <horms@kernel.org>
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml | 1 +
- 1 file changed, 1 insertion(+)
+v2:
+ - Also reject next_read_size < FDP_NCI_I2C_MIN_PAYLOAD, not just
+   > FDP_NCI_I2C_MAX_PAYLOAD (Simon Horman). The small value is reachable
+   both directly (tmp[2] == 0 && tmp[3] < 2) and through the u16
+   truncation of the computed sum (e.g. 0xff,0xff -> 65538 -> 2); a single
+   range check on the stored value covers both, and also keeps the next
+   length-field read from running on stale buffer bytes.
+ - Fold in a fix for an skb leak in the same function (two data packets
+   in one call overwrite and leak the first skb).
+ v1: https://lore.kernel.org/all/20260615-b4-disp-f42dce2d-v1-1-186ff3dcbf37@proton.me
 
-diff --git a/Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml b/Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml
-index 953629cb9558..e6e4546da0aa 100644
---- a/Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml
-+++ b/Documentation/devicetree/bindings/watchdog/mediatek,mtk-wdt.yaml
-@@ -40,6 +40,7 @@ properties:
-               - mediatek,mt7622-wdt
-               - mediatek,mt7623-wdt
-               - mediatek,mt7629-wdt
-+              - mediatek,mt8127-wdt
-               - mediatek,mt8173-wdt
-               - mediatek,mt8188-wdt
-               - mediatek,mt8189-wdt
+Reproduced in-kernel on x86-64 (Linux 7.1.0-rc5, CONFIG_KASAN_STACK=y)
+with a faithful port of the read loop, and at full device magnitude with
+a userspace AddressSanitizer model:
 
+  Stack OOB write
+    A  no bound, next_read_size 281 -> 20 B past tmp[261]:
+         BUG: KASAN: stack-out-of-bounds in i2c_master_recv...
+         Write of size 281 ... This frame has 1 object: [48, 309) 'tmp'
+    B  bounded to <= FDP_NCI_I2C_MAX_PAYLOAD:   no KASAN report
+    C  well-formed (len 5):                     no KASAN report
+    ASan model, full u16 next_read_size = 65535 -> 65274-byte
+    stack-buffer-overflow WRITE on both -m32 and -m64; bounded build clean.
+
+skb leak (slabinfo active-object delta over 20000 reads, two data
+  packets each, measured after a slab shrink)
+    without the fix:  skbuff_head_cache +20047, skbuff_small_head +20057
+                      (one orphaned skb per call, unreclaimable)
+    with the fix:     ~0
+---
+ drivers/nfc/fdp/i2c.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/drivers/nfc/fdp/i2c.c b/drivers/nfc/fdp/i2c.c
+index c1896a1d978c..f292e7f37456 100644
+--- a/drivers/nfc/fdp/i2c.c
++++ b/drivers/nfc/fdp/i2c.c
+@@ -166,9 +166,36 @@ static int fdp_nci_i2c_read(struct fdp_i2c_phy *phy, struct sk_buff **skb)
+ 		/* Packet that contains a length */
+ 		if (tmp[0] == 0 && tmp[1] == 0) {
+ 			phy->next_read_size = (tmp[2] << 8) + tmp[3] + 3;
++
++			/*
++			 * next_read_size is taken from the device and is used
++			 * as the i2c_master_recv() count for the next packet
++			 * and as the data skb size. A value above the receive
++			 * buffer overflows tmp[]; one below the minimum frame
++			 * size runs the header/LRC strip and the length-field
++			 * read past a short receive. Either way the packet is
++			 * corrupt: drop it and force resynchronization.
++			 */
++			if (phy->next_read_size < FDP_NCI_I2C_MIN_PAYLOAD ||
++			    phy->next_read_size > FDP_NCI_I2C_MAX_PAYLOAD) {
++				dev_dbg(&client->dev, "%s: corrupted packet\n",
++					__func__);
++				phy->next_read_size = FDP_NCI_I2C_MIN_PAYLOAD;
++				goto flush;
++			}
+ 		} else {
+ 			phy->next_read_size = FDP_NCI_I2C_MIN_PAYLOAD;
+ 
++			/*
++			 * Only one data packet is delivered per call; if the
++			 * device sends another, do not overwrite and leak the
++			 * skb allocated for the previous one.
++			 */
++			if (*skb) {
++				kfree_skb(*skb);
++				*skb = NULL;
++			}
++
+ 			*skb = alloc_skb(len, GFP_KERNEL);
+ 			if (*skb == NULL) {
+ 				r = -ENOMEM;
+
+---
+base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
+change-id: 20260616-b4-disp-b1f8ab4c-b06ad43c9be5
+
+Best regards,
 -- 
-2.54.0
+Bryam Vargas <hexlabsecurity@proton.me>
 
