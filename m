@@ -1,125 +1,66 @@
-From: Ricardo Pardini <ricardo@pardini.net>
-Date: Wed, 17 Jun 2026 14:58:30 +0200
-Subject: [PATCH v4 3/3] arm64: dts: rockchip: describe PCIe RTL8125
- Ethernet on Radxa ROCK 5 family
+From: Zakariya Hadrami <zkh1@proton.me>
+Subject: [PATCH v2 0/5] ARM: Basic support for Amazon ford tablet (MT8127)
+Date: Wed, 17 Jun 2026 22:36:58 +0900
+Message-Id: <20260617-mt8127-amazon-ford-basic-v2-0-6859e29e72a8@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260617-rk3588-dts-rtl-eth-describe-dt-alias-v4-3-2bd38922d129@pardini.net>
-References: <20260617-rk3588-dts-rtl-eth-describe-dt-alias-v4-0-2bd38922d129@pardini.net>
-In-Reply-To: <20260617-rk3588-dts-rtl-eth-describe-dt-alias-v4-0-2bd38922d129@pardini.net>
-To: Heiner Kallweit <hkallweit1@gmail.com>, nic_swsd@realtek.com, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNQQ7CIBBFr9LM2jGAAawr72G6QJjaWRQaaBq16
+ d3FJi5dvpf891colJkKXJoVMi1cOMUK6tCAH1x8EHKoDEooI4w0OM5nqSy60b1TxD7lgHdX2KP
+ Uog1WaNVbgjqfMvX83NO3rvLAZU75tT8t8mt/Ufs/ukgUGIRyQWrnT7q9TjnNKR5Hgm7btg/Eh
+ YJ6wAAAAA==
+X-Change-ID: 20260616-mt8127-amazon-ford-basic-1509d7052f7e
+To: Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
-Cc: Sebastian Reichel <sebastian.reichel@collabora.com>, 
- netdev@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, Ricardo Pardini <ricardo@pardini.net>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2538; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=MognxmUJ6xqKPxqxbx7vV1ir4AaICF3oo7pMGUUP9SY=;
- b=owEBiQF2/pANAwAIATteP+Oex+3pAcsmYgBqMpn5nzZFgZCVPzJQ5hejWuqpriuYPqCKN4E+U
- 5NPdJDcxIyJAU8EAAEIADkWIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCajKZ+RsUgAAAAAAEAA5t
- YW51MiwyLjUrMS4xMiwwLDMACgkQO14/457H7enDYQgAhTEPZa3xyAoVucFR5lfweGyEi+18ig9
- hNb6ty67yz4A3kVZVJCXGioEFpOu+Ax+hJm9ELV/6LyvrlwG1w0pNQOf4rcGdrMLjwqy9E8C39T
- ghQRgAXm6LXw65+9MgOI145DYXEQJJpKQHou7q6z0IAJ9tkruKPBT9emgh/BEZLfbj6fV1MtKk/
- +CdRbKuQtC1Pj/mhR1bpIBhF0dKvZ/7hkzw53fc+Fqr/Yij7vwX4QXY9a04EhtBNovJV0eKMeGn
- LDDq4bteRpWmn0N+xtwtxU77fJtGs80K7qJ3xGyInpOvgpZLx/R9KECSZaZ3PIwLwg0CxiFaSLR
- Ol3DM6fti8Q==
-X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
- fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
-X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
+ Conor Dooley <conor+dt@kernel.org>, Sean Wang <sean.wang@mediatek.com>, 
+ Wim Van Sebroeck <wim@linux-watchdog.org>, 
+ Guenter Roeck <linux@roeck-us.net>
+Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, devicetree@vger.kernel.org, 
+ linux-watchdog@vger.kernel.org, Zakariya Hadrami <zkh1@proton.me>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781703437; l=1406;
+ i=zkh1@proton.me; s=20260616; h=from:subject:message-id;
+ bh=kNEUKK5Kiz7cVomN/f+dhLQomGTCo4fTF2+XBbA8V+4=;
+ b=psGdIht1ihbxy880dbwYEJnCWYHl0rwzxJ6NAnyQNRw76nzvrM2yEjmVriqe/kb64VOjWvl1A
+ 6bRcxuMeSLjAxA2mYLOU+mInYve5rpe8z4bDIM991pf7VXlCq2ErD9e
+X-Developer-Key: i=zkh1@proton.me; a=ed25519;
+ pk=9DiJwhINAERP95fbFofXSP77GEnvfO/rMIRRRFDhaoc=
+X-Endpoint-Received: by B4 Relay for zkh1@proton.me/20260616 with auth_id=824
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Radxa ROCK 5B / 5B+ / 5T all carry on-board Realtek RTL8125 NICs.
+This series of patches adds basic support for MT8127 SoC based Amazon ford
+tablet and fixes a small indentation error in the dtsi file.
 
-Describe the fixed function nodes and attach ethernet0/ethernet1
-aliases, so that U-Boot's fdt_fixup_ethernet() can inject mac-address
-properties from its ethaddr/eth1addr env, for stable MACs across
-boots that both U-Boot and the kernel agree on.
-
-The RTL8125 on pcie2x1l2 is shared by all three variants. The ROCK 5T
-additionally describes pcie2x1l1 with its second RTL8125.
-
-Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
+Signed-off-by: Zakariya Hadrami <zkh1@proton.me>
 ---
- .../arm64/boot/dts/rockchip/rk3588-rock-5b-5bp-5t.dtsi | 15 +++++++++++++++
- arch/arm64/boot/dts/rockchip/rk3588-rock-5t.dts        | 18 ++++++++++++++++++
- 2 files changed, 33 insertions(+)
+Changes in v2:
+- Move amazon ford compatible string to existing enum.
+- Fix watchdog node not sorted in unit address ascending order (sashiko report).
+- Move bindings documentation patches before patches implementing the bindings.
+- Link to v1: https://lore.kernel.org/r/20260617-mt8127-amazon-ford-basic-v1-0-d02ad15ac359@proton.me
 
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-rock-5b-5bp-5t.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-rock-5b-5bp-5t.dtsi
-index bf4a1d2e55ca3..b53dfe6848cce 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-rock-5b-5bp-5t.dtsi
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-rock-5b-5bp-5t.dtsi
-@@ -10,6 +10,7 @@
- 
- / {
- 	aliases {
-+		ethernet0 = &rtl_eth0;
- 		mmc0 = &sdhci;
- 		mmc1 = &sdmmc;
- 		mmc2 = &sdio;
-@@ -482,6 +483,20 @@ &pcie2x1l2 {
- 	reset-gpios = <&gpio3 RK_PB0 GPIO_ACTIVE_HIGH>;
- 	vpcie3v3-supply = <&vcc3v3_pcie2x1l2>;
- 	status = "okay";
-+
-+	pcie@0,0 {
-+		reg = <0x400000 0 0 0 0>;
-+		#address-cells = <3>;
-+		#size-cells = <2>;
-+		ranges;
-+		device_type = "pci";
-+		bus-range = <0x41 0x4f>;
-+
-+		rtl_eth0: ethernet@0,0 {
-+			compatible = "pci10ec,8125";
-+			reg = <0x410000 0 0 0 0>;
-+		};
-+	};
- };
- 
- &pcie30phy {
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588-rock-5t.dts b/arch/arm64/boot/dts/rockchip/rk3588-rock-5t.dts
-index 425036146b6d9..b1a3e4b2165f9 100644
---- a/arch/arm64/boot/dts/rockchip/rk3588-rock-5t.dts
-+++ b/arch/arm64/boot/dts/rockchip/rk3588-rock-5t.dts
-@@ -8,6 +8,10 @@ / {
- 	model = "Radxa ROCK 5T";
- 	compatible = "radxa,rock-5t", "rockchip,rk3588";
- 
-+	aliases {
-+		ethernet1 = &rtl_eth1;
-+	};
-+
- 	analog-sound {
- 		compatible = "audio-graph-card";
- 		label = "rk3588-es8316";
-@@ -76,6 +80,20 @@ &pcie2x1l1 {
- 	reset-gpios = <&gpio4 RK_PA2 GPIO_ACTIVE_HIGH>;
- 	vpcie3v3-supply = <&vcc3v3_pcie2x1l1>;
- 	status = "okay";
-+
-+	pcie@0,0 {
-+		reg = <0x300000 0 0 0 0>;
-+		#address-cells = <3>;
-+		#size-cells = <2>;
-+		ranges;
-+		device_type = "pci";
-+		bus-range = <0x31 0x3f>;
-+
-+		rtl_eth1: ethernet@0,0 {
-+			compatible = "pci10ec,8125";
-+			reg = <0x310000 0 0 0 0>;
-+		};
-+	};
- };
- 
- &pcie30phy {
+---
+Zakariya Hadrami (5):
+      dt-bindings: watchdog: mediatek: Add MT8127
+      dt-bindings: arm: mediatek: Add MT8127 Amazon ford
+      ARM: dts: mediatek: mt8127: Fix indentation error
+      ARM: dts: mediatek: mt8127: Add watchdog support
+      ARM: dts: mediatek: Add basic support for Amazon ford board
 
+ .../devicetree/bindings/arm/mediatek.yaml          |  1 +
+ .../bindings/watchdog/mediatek,mtk-wdt.yaml        |  1 +
+ arch/arm/boot/dts/mediatek/Makefile                |  1 +
+ arch/arm/boot/dts/mediatek/mt8127-amazon-ford.dts  | 46 ++++++++++++++++++++++
+ arch/arm/boot/dts/mediatek/mt8127.dtsi             |  9 ++++-
+ 5 files changed, 57 insertions(+), 1 deletion(-)
+---
+base-commit: 8cd9520d35a6c38db6567e97dd93b1f11f185dc6
+change-id: 20260616-mt8127-amazon-ford-basic-1509d7052f7e
+
+Best regards,
 -- 
-2.54.0
+Zakariya Hadrami <zkh1@proton.me>
 
