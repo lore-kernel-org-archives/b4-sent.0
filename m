@@ -1,15 +1,13 @@
 From: Roman Vivchar <rva333@protonmail.com>
-Subject: [PATCH v2 0/4] nvmem: add support for the MediaTek mt6323 PMIC
-Date: Wed, 17 Jun 2026 12:48:43 +0300
-Message-Id: <20260617-mt6323-nvmem-v2-0-4f30e36aa0f4@protonmail.com>
+Date: Wed, 17 Jun 2026 12:48:44 +0300
+Subject: [PATCH v2 1/4] dt-bindings: mfd: mediatek: mt6397: add mt6323 PMIC
+ EFUSE
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNwQ7CIBAFf6XZsxig0qSe/A/TA8XFrhFoAImm6
- b9L69njJPPmLZAwEiY4NwtELJQo+Ary0ICZtL8jo1tlkFx2vBOCudy1smW+OHSMG3XS3Eqrewt
- 1Mke09N5z1+HH6TU+0OStsRkTpRziZ/8rYvP+pItgnI0KxdgbVMLKyxxDDt5peh5NcDCs6/oFG
- mxoQL8AAAA=
-X-Change-ID: 20260611-mt6323-nvmem-0c54a0f2fa9f
+Message-Id: <20260617-mt6323-nvmem-v2-1-4f30e36aa0f4@protonmail.com>
+References: <20260617-mt6323-nvmem-v2-0-4f30e36aa0f4@protonmail.com>
+In-Reply-To: <20260617-mt6323-nvmem-v2-0-4f30e36aa0f4@protonmail.com>
 To: Sen Chu <sen.chu@mediatek.com>, Sean Wang <sean.wang@mediatek.com>, 
  Macpaul Lin <macpaul.lin@mediatek.com>, Lee Jones <lee@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -24,62 +22,68 @@ Cc: Andy Shevchenko <andy@kernel.org>, linux-pm@vger.kernel.org,
  Ben Grisdale <bengris32@protonmail.ch>, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781689724; l=2005;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781689724; l=1581;
  i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=91y/4NW3pjUnh65ElxLcQOaaQpGxFz1SMdgxGt9yKDU=;
- b=bRKJeEGUlopiiIajXXmD4ejEcqu+vA8YYV6VigV74sP/9hlGeO6cF0gdKfsZeq6KKWyyB6o6d
- VToFsl3t5RcA9XXXxintfKjYde55tjh/K6OAFyE4PY2kOt3kQJM7aRc
+ bh=Y+qEH2u8RG69hEOj/2KlmQR+9sv6DjCcWKs/dnalb3U=;
+ b=ovxSxVODW40H2iPH+WfzrBUbjzVxRv3qqbqJzqsMFcxS6Ib0+q1bJsCXPjI6nBJBU4GbThIso
+ rJyeQWkbEY9Ag5DMC7jnoNC4q4V16jxMlTzQs0cGI2jO4Mt/u6lJG07
 X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
  pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
 X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds support for the EFUSE found on the MediaTek mt6323 PMIC.
+The MediaTek mt6323 PMIC includes an EFUSE used for storing calibration
+data.
 
-The previous version of the series for all AUXADC, EFUSE and thermal
-drivers was split after Krzysztof's comment [1].
-    
-Tested on the MediaTek mt6572 and mt8163 SoCs (Ben), both paired with a
-mt6323.
+Add the devicetree binding documentation for the MediaTek mt6323 EFUSE.
 
-[1]: https://lore.kernel.org/linux-mediatek/20260504-mt6323-v1-0-799b58b355ff@protonmail.com/T/#med30fad67a090be35f549231336b2dec295233f6
-
-Tested-by: Ben Grisdale <bengris32@protonmail.ch> # Amazon Echo Dot (2nd Generation)
+Reviewed-by: Rob Herring (Arm) <robh@kernel.org>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Roman Vivchar <rva333@protonmail.com>
-
 ---
-Changes in v2:
-- EFUSE driver: Sort variables in the mt6323_efuse_read (Andy)
-- Link to v1: https://patch.msgid.link/20260611-mt6323-nvmem-v1-0-b5e1b9ce51f2@protonmail.com
+ .../devicetree/bindings/mfd/mediatek,mt6397.yaml    | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
-Changes after split:
-- EFUSE driver:
-    - Remove 'linux/errno.h' header (Andy)
-    - Remove explicit cast to u16 in the 'mt6323_efuse_read' (Andy)
-    - Reword comment in the 'mt6323_efuse_read'
-    - Capitalize MediaTek in the module description
-- Link to a previous series: https://patch.msgid.link/20260512-mt6323-v2-0-3efcba579e88@protonmail.com
+diff --git a/Documentation/devicetree/bindings/mfd/mediatek,mt6397.yaml b/Documentation/devicetree/bindings/mfd/mediatek,mt6397.yaml
+index 05c121b0cb3d..beaa67bf0df2 100644
+--- a/Documentation/devicetree/bindings/mfd/mediatek,mt6397.yaml
++++ b/Documentation/devicetree/bindings/mfd/mediatek,mt6397.yaml
+@@ -145,6 +145,23 @@ properties:
+     required:
+       - compatible
+ 
++  efuse:
++    type: object
++    unevaluatedProperties: false
++    description:
++      The efuse is responsible for storing calibration data, such as thermal
++      sensor calibration.
++
++    properties:
++      compatible:
++        const: mediatek,mt6323-efuse
++
++      nvmem-layout:
++        $ref: /schemas/nvmem/layouts/nvmem-layout.yaml#
++
++    required:
++      - compatible
++
+   leds:
+     type: object
+     additionalProperties: false
+@@ -243,6 +260,10 @@ examples:
+         interrupt-controller;
+         #interrupt-cells = <2>;
+ 
++        efuse {
++          compatible = "mediatek,mt6323-efuse";
++        };
++
+         leds {
+             compatible = "mediatek,mt6323-led";
+             #address-cells = <1>;
 
----
-Roman Vivchar (4):
-      dt-bindings: mfd: mediatek: mt6397: add mt6323 PMIC EFUSE
-      nvmem: add mt6323 PMIC EFUSE driver
-      mfd: mt6397-core: add mt6323 EFUSE support
-      ARM: dts: mediatek: mt6323: add EFUSE support
-
- .../devicetree/bindings/mfd/mediatek,mt6397.yaml   | 21 ++++++
- MAINTAINERS                                        |  5 ++
- arch/arm/boot/dts/mediatek/mt6323.dtsi             |  4 +
- drivers/mfd/mt6397-core.c                          |  3 +
- drivers/nvmem/Kconfig                              | 11 +++
- drivers/nvmem/Makefile                             |  2 +
- drivers/nvmem/mt6323-efuse.c                       | 85 ++++++++++++++++++++++
- 7 files changed, 131 insertions(+)
----
-base-commit: 028ef9c96e96197026887c0f092424679298aae8
-change-id: 20260611-mt6323-nvmem-0c54a0f2fa9f
-
-Best regards,
---  
-Roman Vivchar <rva333@protonmail.com>
+-- 
+2.54.0
 
