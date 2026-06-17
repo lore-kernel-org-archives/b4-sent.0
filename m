@@ -1,63 +1,85 @@
-From: Raz Ben Yehuda <raz.benyehuda@mobileye.com>
-Date: Wed, 17 Jun 2026 12:26:17 +0300
-Subject: [PATCH v5 5/5] ufs: wmb is not implemented in x86.
+From: Roman Vivchar <rva333@protonmail.com>
+Subject: [PATCH v2 0/4] nvmem: add support for the MediaTek mt6323 PMIC
+Date: Wed, 17 Jun 2026 12:48:43 +0300
+Message-Id: <20260617-mt6323-nvmem-v2-0-4f30e36aa0f4@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260617-ufs_tool2-v5-5-1cf099f71111@mobileye.com>
-References: <20260617-ufs_tool2-v5-0-1cf099f71111@mobileye.com>
-In-Reply-To: <20260617-ufs_tool2-v5-0-1cf099f71111@mobileye.com>
-To: u-boot@lists.denx.de
-Cc: Neil Armstrong <neil.armstrong@linaro.org>, 
- Bhupesh Sharma <bhupesh.linux@gmail.com>, 
- Neha Malcom Francis <n-francis@ti.com>, 
- Tawfik Bayouk <tawfik.bayouk@mobileye.com>, 
- Vladimir Kondratiev <vladimir.Kondratiev@mobileye.com>, 
- Raz Ben Yehuda <raz.benyehuda@mobileye.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNwQ7CIBAFf6XZsxig0qSe/A/TA8XFrhFoAImm6
+ b9L69njJPPmLZAwEiY4NwtELJQo+Ary0ICZtL8jo1tlkFx2vBOCudy1smW+OHSMG3XS3Eqrewt
+ 1Mke09N5z1+HH6TU+0OStsRkTpRziZ/8rYvP+pItgnI0KxdgbVMLKyxxDDt5peh5NcDCs6/oFG
+ mxoQL8AAAA=
+X-Change-ID: 20260611-mt6323-nvmem-0c54a0f2fa9f
+To: Sen Chu <sen.chu@mediatek.com>, Sean Wang <sean.wang@mediatek.com>, 
+ Macpaul Lin <macpaul.lin@mediatek.com>, Lee Jones <lee@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Srinivas Kandagatla <srini@kernel.org>, 
+ Roman Vivchar <rva333@protonmail.com>
+Cc: Andy Shevchenko <andy@kernel.org>, linux-pm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
+ Ben Grisdale <bengris32@protonmail.ch>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=792;
- i=raz.benyehuda@mobileye.com; h=from:subject:message-id;
- bh=nydWn0gbQOIFrfZq/h+hyYVuDb3OiJ5/WINnvK7yB10=;
- b=owEBbQKS/ZANAwAKAZ+a6ZSW6I45AcsmYgBqMmhFTjU3xeXkx5bGDyGSkG1yrF0Ne4feL0hQx
- 29PWv4jbvKJAjMEAAEKAB0WIQSC7lz5E3UmOrJvRDqfmumUluiOOQUCajJoRQAKCRCfmumUluiO
- OULPEAChE1dNCMnJXxsX2yKpeGZ8RlDs/drD90ChrsOi6eP2tM/KiqoFF89OkcEbCyAO6UbrzMd
- vlSndOP6aOBcyDEZhi3/5cD9QtHHHkmrZrrlUj0/NQuYRdRJeDdbWU4cQ1UopCZcYDFR63xYpVI
- +HSD5mzBKLsZILC0fqZwU644BLFfJUc42fag1Cnj0g4HFWKZZGNvVjDT+28oQMIvVm1PmWRgg/J
- 2uQbYT+Bt/xxrKzlG+J91qQnG4Si10jHepao5m68pIDO5aFGFdaT26slWS6b0KPXREOfxgh/aJt
- JcSlc9LswEPrt8CpMNpq6QqgNyiMHV+pPLG6QZusWVgsAfmLJe0N0XiPCPJUOjvc7HSaZqr+pcK
- kTi2JfqfipA4eUevsyge1+oVfbFDWq9MDSGKD3UKnrrVEbMG5diebgtf45g1HlyH/mWIy1bRAGz
- e97Z0sFJBxnyulcxAfNIXYAA6AVhlh6gkHPb1Y7mgun9fz2W4irDr5704/091tP6gWSEQTuJWSs
- TB64GDLHXPYra40M0lhIcMGIU8EtHHw4rJymgUKbL5jeWBMG8A+gLxZIUZHp4Gcdr7ia4qVaAbc
- gaMMR/LvEW9ME4vT4qqRG5zU7xU5HlrkaHgoJ+WxjHPMiiJw+32Arnh7L8xuEoSDFzo0TWyIkK9
- Nlxu4uC5inWWJqg==
-X-Developer-Key: i=raz.benyehuda@mobileye.com; a=openpgp;
- fpr=82EE5CF91375263AB26F443A9F9AE99496E88E39
-X-Endpoint-Received: by B4 Relay for raz.benyehuda@mobileye.com/default with auth_id=808
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781689724; l=2005;
+ i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
+ bh=91y/4NW3pjUnh65ElxLcQOaaQpGxFz1SMdgxGt9yKDU=;
+ b=bRKJeEGUlopiiIajXXmD4ejEcqu+vA8YYV6VigV74sP/9hlGeO6cF0gdKfsZeq6KKWyyB6o6d
+ VToFsl3t5RcA9XXXxintfKjYde55tjh/K6OAFyE4PY2kOt3kQJM7aRc
+X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
+ pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
+X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-sfence: All stores (writes) issued before the fence become
-globally visible before any store issued after the fence
-memory: Compiler barrier
+This series adds support for the EFUSE found on the MediaTek mt6323 PMIC.
 
-Signed-off-by: Raz Ben Yehuda <raz.benyehuda@mobileye.com>
+The previous version of the series for all AUXADC, EFUSE and thermal
+drivers was split after Krzysztof's comment [1].
+    
+Tested on the MediaTek mt6572 and mt8163 SoCs (Ben), both paired with a
+mt6323.
+
+[1]: https://lore.kernel.org/linux-mediatek/20260504-mt6323-v1-0-799b58b355ff@protonmail.com/T/#med30fad67a090be35f549231336b2dec295233f6
+
+Tested-by: Ben Grisdale <bengris32@protonmail.ch> # Amazon Echo Dot (2nd Generation)
+Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+
 ---
- arch/x86/include/asm/io.h | 2 ++
- 1 file changed, 2 insertions(+)
+Changes in v2:
+- EFUSE driver: Sort variables in the mt6323_efuse_read (Andy)
+- Link to v1: https://patch.msgid.link/20260611-mt6323-nvmem-v1-0-b5e1b9ce51f2@protonmail.com
 
-diff --git a/arch/x86/include/asm/io.h b/arch/x86/include/asm/io.h
-index 1390193f09c..9293588c9d7 100644
---- a/arch/x86/include/asm/io.h
-+++ b/arch/x86/include/asm/io.h
-@@ -241,6 +241,8 @@ static inline void sync(void)
-  */
- #define dmb()		__asm__ __volatile__ ("" : : : "memory")
- #define mb()		__asm__ __volatile__ ("mfence" : : : "memory")
-+#define wmb()		__asm__ __volatile__ ("sfence" ::: "memory") /* store mem barrier */
-+
- #define __iormb()	dmb()
- #define __iowmb()	dmb()
- 
+Changes after split:
+- EFUSE driver:
+    - Remove 'linux/errno.h' header (Andy)
+    - Remove explicit cast to u16 in the 'mt6323_efuse_read' (Andy)
+    - Reword comment in the 'mt6323_efuse_read'
+    - Capitalize MediaTek in the module description
+- Link to a previous series: https://patch.msgid.link/20260512-mt6323-v2-0-3efcba579e88@protonmail.com
 
--- 
-2.43.0
+---
+Roman Vivchar (4):
+      dt-bindings: mfd: mediatek: mt6397: add mt6323 PMIC EFUSE
+      nvmem: add mt6323 PMIC EFUSE driver
+      mfd: mt6397-core: add mt6323 EFUSE support
+      ARM: dts: mediatek: mt6323: add EFUSE support
+
+ .../devicetree/bindings/mfd/mediatek,mt6397.yaml   | 21 ++++++
+ MAINTAINERS                                        |  5 ++
+ arch/arm/boot/dts/mediatek/mt6323.dtsi             |  4 +
+ drivers/mfd/mt6397-core.c                          |  3 +
+ drivers/nvmem/Kconfig                              | 11 +++
+ drivers/nvmem/Makefile                             |  2 +
+ drivers/nvmem/mt6323-efuse.c                       | 85 ++++++++++++++++++++++
+ 7 files changed, 131 insertions(+)
+---
+base-commit: 028ef9c96e96197026887c0f092424679298aae8
+change-id: 20260611-mt6323-nvmem-0c54a0f2fa9f
+
+Best regards,
+--  
+Roman Vivchar <rva333@protonmail.com>
 
