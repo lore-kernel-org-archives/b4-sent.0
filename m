@@ -1,131 +1,62 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Tue, 16 Jun 2026 23:33:35 -0500
-Subject: [PATCH v2] nfc: fdp: bound the device-reported read length and fix
- an skb leak
+From: Haritha S K <haritha.k@oss.qualcomm.com>
+Date: Wed, 17 Jun 2026 10:04:24 +0530
+Subject: [PATCH] dt-bindings: thermal: qcom-tsens: Document the maili
+ Temperature Sensor
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260616-b4-disp-b1f8ab4c-v2-1-2d1fe5955325@proton.me>
-X-B4-Tracking: v=1; b=H4sIAJ4jMmoC/x3MQQqAIBBA0avErBtQM6muEi0cnWo2FgoRRHdPW
- r7F/w8UzsIFpuaBzJcUOVKFaRsIu08bo8RqMMo45bRDshilnEh6HTzZgKScj7YLI3EPNTszr3L
- /y3l53w8naI0vYgAAAA==
-To: David Heidelberg <david@ixit.cz>
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
- Samuel Ortiz <sameo@linux.intel.com>, Robert Dolca <robert.dolca@intel.com>, 
- oe-linux-nfc@lists.linux.dev, Simon Horman <horms@kernel.org>, 
- Kang Chen <void0red@gmail.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781670814; l=4528;
- i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=MJuqCnhzytqlSp6Nzkc5/KxX8KYvdaafo6GYDnOie4I=;
- b=Oe/hrs7OrsMVxdRMKHDOLnQHeX/SimIa5jMdsjZi28UPFGe35RBn4uRK4q6KWGlh++RfuRAaN
- 5cRDormZrrKAu8jxRtIHS6LRURzAh3qJuYdjTpolzrt4NBn76Qm+E/+
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
+Message-Id: <20260617-b4-maili-upstream-3-v1-1-1b8cb7e425d8@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAM8jMmoC/yXMTQqEMAxA4atI1hOwOhQ7V5FZpE7UyPhDoyKId
+ 7fq8lu8t4NyEFb4JDsEXkVlHCLMK4GqpaFhlF80ZGlmU2ss+jf2JH/BZdI5MPWYozeuIKLCWVd
+ DLKfAtWz3tfw+1sV3XM3XCo7jBEFi7Md3AAAA
+X-Change-ID: 20260616-b4-maili-upstream-3-b198aaa8969f
+To: Amit Kucheria <amitk@kernel.org>, 
+ Thara Gopinath <thara.gopinath@gmail.com>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-pm@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ manaf.pallikunhi@oss.qualcomm.com, gaurav.kohli@oss.qualcomm.com, 
+ Haritha S K <haritha.k@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781670871; l=998;
+ i=haritha.k@oss.qualcomm.com; s=20260422; h=from:subject:message-id;
+ bh=QERCdXGosQegGLSoxEuG9NnIUKptP7q6k2ZKHvSRHas=;
+ b=WAotvr0uQcjTXhUxvjBHdPDShW9EAAwzrDzxorB7YjD+4SbubRzRH12mhY67qkUAsKJrpgBOH
+ yveHkcYVqh7BLc2W1oKlUfxaVrBbi/gxPisO0eOnLjmdAx71izFrH6F
+X-Developer-Key: i=haritha.k@oss.qualcomm.com; a=ed25519;
+ pk=ivp2P9RgsC6IkOe8JaqweeahT9pd0BVtL2d1YD8ICSg=
+X-Endpoint-Received: by B4 Relay for haritha.k@oss.qualcomm.com/20260422 with auth_id=745
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-fdp_nci_i2c_read() takes the next packet length from two device-supplied
-bytes and never validates it. The value is a u16 used as the
-i2c_master_recv() count into a 261-byte on-stack buffer: a malicious,
-counterfeit or malfunctioning controller (or an i2c bus interposer) can
-drive it far past the buffer for a stack out-of-bounds write that
-clobbers the canary and return address, or below the minimum frame size
-(directly, or by truncating the computed sum) so the header/LRC strip
-and the next length read run past a short receive. Reject a length
-outside [FDP_NCI_I2C_MIN_PAYLOAD, FDP_NCI_I2C_MAX_PAYLOAD], as a
-corrupted packet already is, and force resynchronization.
+Document the Temperature Sensor (TSENS) on the Qualcomm maili SoC.
 
-The same loop allocates one data skb per iteration and assumes a length
-packet followed by a data packet; a device that sends two data packets
-in one call leaks the first skb when the second allocation overwrites
-it. Free a previously allocated skb before allocating the next.
-
-Fixes: a06347c04c13 ("NFC: Add Intel Fields Peak NFC solution driver")
-Cc: stable@vger.kernel.org
-Suggested-by: Simon Horman <horms@kernel.org>
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Signed-off-by: Haritha S K <haritha.k@oss.qualcomm.com>
 ---
-v2:
- - Also reject next_read_size < FDP_NCI_I2C_MIN_PAYLOAD, not just
-   > FDP_NCI_I2C_MAX_PAYLOAD (Simon Horman). The small value is reachable
-   both directly (tmp[2] == 0 && tmp[3] < 2) and through the u16
-   truncation of the computed sum (e.g. 0xff,0xff -> 65538 -> 2); a single
-   range check on the stored value covers both, and also keeps the next
-   length-field read from running on stale buffer bytes.
- - Fold in a fix for an skb leak in the same function (two data packets
-   in one call overwrite and leak the first skb).
- v1: https://lore.kernel.org/all/20260615-b4-disp-f42dce2d-v1-1-186ff3dcbf37@proton.me
+ Documentation/devicetree/bindings/thermal/qcom-tsens.yaml | 1 +
+ 1 file changed, 1 insertion(+)
 
-Reproduced in-kernel on x86-64 (Linux 7.1.0-rc5, CONFIG_KASAN_STACK=y)
-with a faithful port of the read loop, and at full device magnitude with
-a userspace AddressSanitizer model:
-
-  Stack OOB write
-    A  no bound, next_read_size 281 -> 20 B past tmp[261]:
-         BUG: KASAN: stack-out-of-bounds in i2c_master_recv...
-         Write of size 281 ... This frame has 1 object: [48, 309) 'tmp'
-    B  bounded to <= FDP_NCI_I2C_MAX_PAYLOAD:   no KASAN report
-    C  well-formed (len 5):                     no KASAN report
-    ASan model, full u16 next_read_size = 65535 -> 65274-byte
-    stack-buffer-overflow WRITE on both -m32 and -m64; bounded build clean.
-
-skb leak (slabinfo active-object delta over 20000 reads, two data
-  packets each, measured after a slab shrink)
-    without the fix:  skbuff_head_cache +20047, skbuff_small_head +20057
-                      (one orphaned skb per call, unreclaimable)
-    with the fix:     ~0
----
- drivers/nfc/fdp/i2c.c | 27 +++++++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
-
-diff --git a/drivers/nfc/fdp/i2c.c b/drivers/nfc/fdp/i2c.c
-index c1896a1d978c..f292e7f37456 100644
---- a/drivers/nfc/fdp/i2c.c
-+++ b/drivers/nfc/fdp/i2c.c
-@@ -166,9 +166,36 @@ static int fdp_nci_i2c_read(struct fdp_i2c_phy *phy, struct sk_buff **skb)
- 		/* Packet that contains a length */
- 		if (tmp[0] == 0 && tmp[1] == 0) {
- 			phy->next_read_size = (tmp[2] << 8) + tmp[3] + 3;
-+
-+			/*
-+			 * next_read_size is taken from the device and is used
-+			 * as the i2c_master_recv() count for the next packet
-+			 * and as the data skb size. A value above the receive
-+			 * buffer overflows tmp[]; one below the minimum frame
-+			 * size runs the header/LRC strip and the length-field
-+			 * read past a short receive. Either way the packet is
-+			 * corrupt: drop it and force resynchronization.
-+			 */
-+			if (phy->next_read_size < FDP_NCI_I2C_MIN_PAYLOAD ||
-+			    phy->next_read_size > FDP_NCI_I2C_MAX_PAYLOAD) {
-+				dev_dbg(&client->dev, "%s: corrupted packet\n",
-+					__func__);
-+				phy->next_read_size = FDP_NCI_I2C_MIN_PAYLOAD;
-+				goto flush;
-+			}
- 		} else {
- 			phy->next_read_size = FDP_NCI_I2C_MIN_PAYLOAD;
- 
-+			/*
-+			 * Only one data packet is delivered per call; if the
-+			 * device sends another, do not overwrite and leak the
-+			 * skb allocated for the previous one.
-+			 */
-+			if (*skb) {
-+				kfree_skb(*skb);
-+				*skb = NULL;
-+			}
-+
- 			*skb = alloc_skb(len, GFP_KERNEL);
- 			if (*skb == NULL) {
- 				r = -ENOMEM;
+diff --git a/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml b/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
+index f0efaa8349ee..5a8f7673e730 100644
+--- a/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
++++ b/Documentation/devicetree/bindings/thermal/qcom-tsens.yaml
+@@ -58,6 +58,7 @@ properties:
+               - qcom,glymur-tsens
+               - qcom,hawi-tsens
+               - qcom,kaanapali-tsens
++              - qcom,maili-tsens
+               - qcom,milos-tsens
+               - qcom,nord-tsens
+               - qcom,msm8953-tsens
 
 ---
-base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260616-b4-disp-b1f8ab4c-b06ad43c9be5
+base-commit: a76326dca329a7a738ba367529868dfbafb4a403
+change-id: 20260616-b4-maili-upstream-3-b198aaa8969f
 
 Best regards,
--- 
-Bryam Vargas <hexlabsecurity@proton.me>
+--  
+Haritha S K <haritha.k@oss.qualcomm.com>
 
