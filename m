@@ -1,161 +1,96 @@
-From: Antonin Malzieu Ridolfi <dev@nanonej.com>
-Date: Wed, 17 Jun 2026 01:48:16 +0200
-Subject: [PATCH 5/5] gpu: nova-core: falcon: Move PFSP register
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Tue, 16 Jun 2026 20:56:15 -0500
+Subject: [PATCH v3] iio: accel: fxls8962af: clamp the device-reported FIFO
+ sample count
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260617-nova-core-regs-split-v1-5-4c7dc4450ea7@nanonej.com>
-References: <20260617-nova-core-regs-split-v1-0-4c7dc4450ea7@nanonej.com>
-In-Reply-To: <20260617-nova-core-regs-split-v1-0-4c7dc4450ea7@nanonej.com>
-To: Danilo Krummrich <dakr@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, Alice Ryhl <aliceryhl@google.com>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Antonin Malzieu Ridolfi <dev@nanonej.com>
-Cc: linux-kernel@vger.kernel.org, nova-gpu@lists.linux.dev, 
- dri-devel@lists.freedesktop.org, daniel.almeida@collabora.com
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4371; i=dev@nanonej.com;
- h=from:subject:message-id; bh=e+RPTcJ/xqY9sHKEN1ysB3kpbYR3hnWcV9YH6i5vuxU=;
- b=owEBbQKS/ZANAwAKAWaH8SMKFRX9AcsmYgBqMeDJ4E5hAWmWx4y3VvMopq0DVgL/2pcl9FH29
- pnFkkAGyDKJAjMEAAEKAB0WIQSDtk+wfJEhL1KFIn1mh/EjChUV/QUCajHgyQAKCRBmh/EjChUV
- /WflD/9MiIELe1VPjb4tX9A/cmkMlc8bmGDZTnTFXaPhCqJ2oZHQrg0e8fl2/etB4aSdDfuNaHq
- lRMAVOHR0qPlGnonBJjMpEUbsszD0dG9ljDztVPxK3l37+P9qTFqwEfQecv9fYZqAqmvk2aCBFA
- VQPysLVNZY5g06eDg5WYXAVAvpFzUxfCaO3Be6kX8DtNIrvzy+pWXWwpHwlqIXbH67Fs9b0w1QH
- bW07HRiuSDSSd2JtyuNuIDHvIk9MbsAlBjIw6QluvcsFfZ/WfN8bfbSKLxolTLT0Yi/sg+9ULwI
- l/TEih/M0pSM2mlW6qwVfjtP5k+smb4SVlMGwi7dqg/XIoqwnKbGSRptuZamvX9cPRw4GqoYRjl
- kp+XRqdSyp4+S4GQj6sKmtNOktPfru4QsDh6Zt9adxuNT7naC17AsuJ1NlVl2QCWjfPhN5rHKMq
- ztVZNgQcXE+jZK6u2pnizlzPib1TIYPQIDZpfzUC+GaazC74EnJr4Dmr6ZA10NwJ9yyLETaaHuA
- PBLcIPE69xA5S2eE1ve6+M5vv0rg2CXhgzWFbCP8YnWBZ+nBMfzYLjSVeIkqi287oODs3fgPqyW
- MXE/n24lBcU6T/zab3VyK7s50U5fYLzw4bsbdd3F5opurpYRmPbZu7v+Bj1wKFSlF7Sgu8NjBuz
- Vi9E4730HtMp3HA==
-X-Developer-Key: i=dev@nanonej.com; a=openpgp;
- fpr=83B64FB07C91212F5285227D6687F1230A1515FD
-X-Endpoint-Received: by B4 Relay for dev@nanonej.com/default with auth_id=825
+Message-Id: <20260616-b4-disp-2e8d94cf-v3-1-c4e092eef3a2@proton.me>
+X-B4-Tracking: v=1; b=H4sIAL7+MWoC/x3MQQqAIBBA0avErBswLa2uEi3KGWs2FgoRRHdPW
+ r7F/w9kTsIZxuqBxJdkOWKBqSvw+xI3RqFi0EpbZRuLa4sk+UTNPQ2tDxhccEoTOWM7KNmZOMj
+ 9L6f5fT/3yoFuYgAAAA==
+To: Jonathan Cameron <jic23@kernel.org>
+Cc: linux-kernel@vger.kernel.org, David Lechner <dlechner@baylibre.com>, 
+ linux-iio@vger.kernel.org, Sean Nyekjaer <sean@geanix.com>, 
+ Andy Shevchenko <andy@kernel.org>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781661374; l=3254;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=EYfWdZDOsGfm+jKR7ChwMWskcYwWWhSAnxO/QMWeWw8=;
+ b=K9AHdy7tvI85JfpIVDolk41qGKVXg8rHTKKMFmLUVNIqCo+1DKiEV3Hi7gCLahXu/Z7gLgkOp
+ Zm1NYspPsY3CnZY+H/s0serk7QH8AKerPap17lARqBjVPjM2ZDmqNfx
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move PFSP register definition into falcon module and update registers
-visibility.
+fxls8962af_fifo_flush() transfers the sample count the device reports in
+BUF_STATUS into an on-stack buffer sized for FXLS8962AF_FIFO_LENGTH (32)
+samples, but the count is a 6-bit field (0..63) that is only checked for
+zero. A device, or an attacker on the I2C/SPI bus, reporting 33..63
+overflows the buffer by up to 186 bytes: a stack out-of-bounds write.
 
-Signed-off-by: Antonin Malzieu Ridolfi <dev@nanonej.com>
+Clamp the count to FXLS8962AF_FIFO_LENGTH before the transfer, mirroring
+the clamp already applied in fxls8962af_set_watermark(). Conforming
+hardware reports at most that many samples and is unaffected.
+
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/gpu/nova-core/falcon/fsp.rs  | 14 +++++++-------
- drivers/gpu/nova-core/falcon/regs.rs | 21 +++++++++++++++++++++
- drivers/gpu/nova-core/regs.rs        | 21 ---------------------
- 3 files changed, 28 insertions(+), 28 deletions(-)
+v3 (Andy [2]): shrink the commit message; the register/byte detail, the
+not-for-stable rationale and the introducing commit moved below the cut.
+v2 (Jonathan [1], Andy [2]): clamp with min() instead of min_t(u8, ...);
+drop Fixes: and Cc: stable -- this hardens against a malformed
+device-reported count, not reachable with conforming hardware ("not a fix
+and not back port material", Jonathan).
 
-diff --git a/drivers/gpu/nova-core/falcon/fsp.rs b/drivers/gpu/nova-core/falcon/fsp.rs
-index 52cdb84ef0e8..547843e6483c 100644
---- a/drivers/gpu/nova-core/falcon/fsp.rs
-+++ b/drivers/gpu/nova-core/falcon/fsp.rs
-@@ -26,10 +26,10 @@
-         Falcon,
-         FalconEngine,
-         PFalcon2Base,
--        PFalconBase, //
-+        PFalconBase,
-+        regs, //
-     },
--    num,
--    regs, //
-+    num, //
- };
+[1] https://lore.kernel.org/all/20260614144337.3b3dab1a@jic23-huawei/
+[2] https://lore.kernel.org/all/ai_RF9BG17SZ7Tiz@ashevche-desk.local/
+v1: https://lore.kernel.org/all/20260613-b4-disp-22362900-v1-1-c5e49f6af027@proton.me/
+v2: https://lore.kernel.org/all/20260615-b4-disp-1a8c7886-v2-1-072a8d1721e9@proton.me/
+
+count = reg & FXLS8962AF_BUF_STATUS_BUF_CNT is GENMASK(5, 0), so 0..63;
+fxls8962af_fifo_transfer() then reads count * 3 * sizeof(u16) bytes, so a
+count of 33..63 writes up to 378 bytes into the 192-byte buffer (up to 186
+past its end), clobbering the stack canary, saved registers and the return
+address. The unbounded count has been present since commit 79e3a5bdd9ef
+("iio: accel: fxls8962af: add hw buffered sampling"); not marked for stable
+as it needs a malicious or defective device, or bus tampering.
+
+This is a different bug from CVE-2025-38485, the use-after-free in the same
+function fixed by commit 1fe16dc1a2f5 ("iio: accel: fxls8962af: Fix use
+after free in fxls8962af_fifo_flush"): that commit added a synchronize_irq()
+and did not bound the FIFO count, so this overflow is still present at
+mainline HEAD.
+
+Verified with an in-kernel KASAN litmus (CONFIG_KASAN_STACK=y) and a
+userspace ASan model on x86_64 and i386: without the clamp a device
+reporting count=63 drives the transfer 186 bytes past the buffer
+(stack-out-of-bounds write, both ABIs); with the clamp it is bounded to 32.
+Reproducer and full logs available on request.
+---
+ drivers/iio/accel/fxls8962af-core.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/iio/accel/fxls8962af-core.c b/drivers/iio/accel/fxls8962af-core.c
+index 8763e91c63d2..1ecffbf41f64 100644
+--- a/drivers/iio/accel/fxls8962af-core.c
++++ b/drivers/iio/accel/fxls8962af-core.c
+@@ -970,6 +970,8 @@ static int fxls8962af_fifo_flush(struct iio_dev *indio_dev)
+ 	if (!count)
+ 		return 0;
  
- /// FSP message timeout in milliseconds.
-@@ -61,7 +61,7 @@ fn write_emem(&mut self, bar: Bar0<'_>, data: &[u8]) -> Result {
-         // Begin a write burst at offset `0`, auto-incrementing on each write.
-         bar.write(
-             WithBase::of::<Fsp>(),
--            regs::NV_PFALCON_FALCON_EMEMC::zeroed().with_aincw(true),
-+            crate::regs::NV_PFALCON_FALCON_EMEMC::zeroed().with_aincw(true),
-         );
- 
-         for chunk in data.chunks_exact(4) {
-@@ -70,7 +70,7 @@ fn write_emem(&mut self, bar: Bar0<'_>, data: &[u8]) -> Result {
-             // Write the next 32-bit `value`; hardware advances the offset.
-             bar.write(
-                 WithBase::of::<Fsp>(),
--                regs::NV_PFALCON_FALCON_EMEMD::zeroed().with_data(value),
-+                crate::regs::NV_PFALCON_FALCON_EMEMD::zeroed().with_data(value),
-             );
-         }
- 
-@@ -89,12 +89,12 @@ fn read_emem(&mut self, bar: Bar0<'_>, data: &mut [u8]) -> Result {
-         // Begin a read burst at offset `0`, auto-incrementing on each read.
-         bar.write(
-             WithBase::of::<Fsp>(),
--            regs::NV_PFALCON_FALCON_EMEMC::zeroed().with_aincr(true),
-+            crate::regs::NV_PFALCON_FALCON_EMEMC::zeroed().with_aincr(true),
-         );
- 
-         for chunk in data.chunks_exact_mut(4) {
-             // Read the next 32-bit word; hardware advances the offset.
--            let value = bar.read(regs::NV_PFALCON_FALCON_EMEMD::of::<Fsp>()).data();
-+            let value = bar.read(crate::regs::NV_PFALCON_FALCON_EMEMD::of::<Fsp>()).data();
-             chunk.copy_from_slice(&value.to_le_bytes());
-         }
- 
-diff --git a/drivers/gpu/nova-core/falcon/regs.rs b/drivers/gpu/nova-core/falcon/regs.rs
-index 4d4e69b235fc..81530abfb54c 100644
---- a/drivers/gpu/nova-core/falcon/regs.rs
-+++ b/drivers/gpu/nova-core/falcon/regs.rs
-@@ -53,3 +53,24 @@
-         0:0     valid => bool;
-     }
- }
++	count = min(count, FXLS8962AF_FIFO_LENGTH);
 +
-+// FSP (Foundation Security Processor) queue registers for Hopper/Blackwell Chain of Trust.
-+// These registers manage falcon EMEM communication queues.
-+
-+register! {
-+    pub(super) NV_PFSP_QUEUE_HEAD(u32)[8] @ 0x008f2c00 {
-+        31:0    address => u32;
-+    }
-+
-+    pub(super) NV_PFSP_QUEUE_TAIL(u32)[8] @ 0x008f2c04 {
-+        31:0    address => u32;
-+    }
-+
-+    pub(super) NV_PFSP_MSGQ_HEAD(u32)[8] @ 0x008f2c80 {
-+        31:0    val => u32;
-+    }
-+
-+    pub(super) NV_PFSP_MSGQ_TAIL(u32)[8] @ 0x008f2c84 {
-+        31:0    val => u32;
-+    }
-+}
-diff --git a/drivers/gpu/nova-core/regs.rs b/drivers/gpu/nova-core/regs.rs
-index b21a5adc723a..9069aeff1ee4 100644
---- a/drivers/gpu/nova-core/regs.rs
-+++ b/drivers/gpu/nova-core/regs.rs
-@@ -491,27 +491,6 @@ pub(crate) fn mem_scrubbing_done(self) -> bool {
-     }
- }
- 
--// FSP (Foundation Security Processor) queue registers for Hopper/Blackwell Chain of Trust.
--// These registers manage falcon EMEM communication queues.
--
--register! {
--    pub(crate) NV_PFSP_QUEUE_HEAD(u32)[8] @ 0x008f2c00 {
--        31:0    address => u32;
--    }
--
--    pub(crate) NV_PFSP_QUEUE_TAIL(u32)[8] @ 0x008f2c04 {
--        31:0    address => u32;
--    }
--
--    pub(crate) NV_PFSP_MSGQ_HEAD(u32)[8] @ 0x008f2c80 {
--        31:0    val => u32;
--    }
--
--    pub(crate) NV_PFSP_MSGQ_TAIL(u32)[8] @ 0x008f2c84 {
--        31:0    val => u32;
--    }
--}
--
- // The modules below provide registers that are not identical on all supported chips. They should
- // only be used in HAL modules.
+ 	data->old_timestamp = data->timestamp;
+ 	data->timestamp = iio_get_time_ns(indio_dev);
  
 
+---
+base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
+change-id: 20260616-b4-disp-2e8d94cf-f7f702dd7365
+
+Best regards,
 -- 
-2.54.0
+Bryam Vargas <hexlabsecurity@proton.me>
 
