@@ -1,10 +1,11 @@
 From: Ricardo Pardini <ricardo@pardini.net>
-Date: Wed, 17 Jun 2026 14:58:28 +0200
-Subject: [PATCH v4 1/3] dt-bindings: net: add Realtek RTL8125 PCIe Ethernet
+Date: Wed, 17 Jun 2026 14:58:29 +0200
+Subject: [PATCH v4 2/3] arm64: dts: rockchip: describe PCIe RTL8125
+ Ethernet on NanoPC-T6
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260617-rk3588-dts-rtl-eth-describe-dt-alias-v4-1-2bd38922d129@pardini.net>
+Message-Id: <20260617-rk3588-dts-rtl-eth-describe-dt-alias-v4-2-2bd38922d129@pardini.net>
 References: <20260617-rk3588-dts-rtl-eth-describe-dt-alias-v4-0-2bd38922d129@pardini.net>
 In-Reply-To: <20260617-rk3588-dts-rtl-eth-describe-dt-alias-v4-0-2bd38922d129@pardini.net>
 To: Heiner Kallweit <hkallweit1@gmail.com>, nic_swsd@realtek.com, 
@@ -18,99 +19,90 @@ Cc: Sebastian Reichel <sebastian.reichel@collabora.com>,
  linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-rockchip@lists.infradead.org, Ricardo Pardini <ricardo@pardini.net>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2427; i=ricardo@pardini.net;
- h=from:subject:message-id; bh=H/nj8b3jgAzNWmVGGkZNntiD7Pr7SSJBU8YukvNeE5Y=;
- b=owGbwMvMwMFoHWf/eN7xty8ZT6slMWQZzfypb7GI17p1rhTr/VK3bKk7fwpjlPsbC5eXLd7++
- /Hlc46nOhn9WRgYORgsxRRZ1kgo83xb/+rUHY+OyTCDWJlApkiLNDAAAQsDX25iXqmRjpGeqbah
- nqGRjoGOMQMXpwBM9QND9v+ZPEwSkeJ9Z/hF9IyW+sjEV+RFGiy5LR9R+SXPsOFC8yaO2wHPC3i
- mb+yvcWv+1DVjUl/Ii4pFOxt4LgdYVvSdFln36eH0ANvjJqFzPtTWvQ+zMp50ObHZoJu9Y0W5yt
- 7+P+2OIXP45mSs++Zkuf//47BfPKfiEw793CxmvCMw9x3b25v5fS4zuhazh4hXvwg4VBnhUc5kU
- xoiefu938Mtn6/156Um6FlF3+wtO890K/P+Mf/Ym6lRwZcSBMsE4+9sdYpbxC3j/qHG1jyoopT9
- yvbz/IYaV4ziLd4ekr2tfeeJ1f0TR+d8k34WaFit/IZT6piZ0ZwFJ7Pe3T1iLh5eE3HZw39y+JI
- m9jnRAA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1934; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=NO/6wZ+sLcKe/QLBAJT3lasFlNbRmNJFqsdQ9xTA3gg=;
+ b=owEBiQF2/pANAwAIATteP+Oex+3pAcsmYgBqMpn5+l2uM0Oe02l892Ed5Wt6vHMpu245f0spl
+ bAjoyTJnmiJAU8EAAEIADkWIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCajKZ+RsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQO14/457H7elyoAf/dyCjkuHSadpA9YEs6+JhUH6k/AbW/Uo
+ n2/5XarQAeNs8PC7/6m3NZmQkGxfFweOcnwPdpYBJ/+4r59mNUieAJHLQGzMwxcWSUs4qUh5ptR
+ oFEAr/VpsoFyqHTjM220vhaK8Zx9cv+lLldK3y6mzai54IeEz9zQIhlXL6jLKpyLCP4dhDV2k/1
+ RYcJ0H8+/66NyEw7807/6kv2tpcfrwfvYTZ3omb57DvTJxvRK4vgRzPzmyTdti2iSzacOtTXNBs
+ qk4qD/Y7IwVUijsWgYs9LLgZt5R4XShdIrNGxBnnQyjI7gKxz5rzjNce4MWWSL+alPbZjS2YxOj
+ zcIbtU4q3rg==
 X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
  fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
 X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a binding for fixed/soldered Realtek RTL8125 PCIe Ethernet
-controller.
+The FriendlyElec NanoPC-T6 carries two on-board Realtek RTL8125 NICs
+behind pcie2x1l0 and pcie2x1l2.
 
-The "pciVVVV,DDDD" compatibles are the Open Firmware PCI Bus Binding
-spelling, auto-derived from PCI-SIG vendor/device IDs, but they still
-need a binding when used in a board DT - analogous to "usbVVVV,PPPP"
-compatibles documented in their own bindings (e.g. microchip,lan95xx)
-so board DTs attaching properties (fixed MAC, nvmem cell, ...) to
-these PCI function nodes can be validated.
+Describe the fixed function nodes and attach ethernet0/ethernet1
+aliases, so that U-Boot's fdt_fixup_ethernet() can inject mac-address
+properties from its ethaddr/eth1addr env. The on-NIC EEPROMs on this
+board are not pre-programmed with a unique MAC, so this gives a
+stable MAC across boots that both U-Boot and the kernel agree on.
 
-Suggested-by: Sebastian Reichel <sebastian.reichel@collabora.com>
 Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
 ---
- .../devicetree/bindings/net/realtek,rtl8125.yaml   | 43 ++++++++++++++++++++++
- MAINTAINERS                                        |  1 +
- 2 files changed, 44 insertions(+)
+ arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi | 30 ++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/net/realtek,rtl8125.yaml b/Documentation/devicetree/bindings/net/realtek,rtl8125.yaml
-new file mode 100644
-index 0000000000000..eee13fbc1e6a6
---- /dev/null
-+++ b/Documentation/devicetree/bindings/net/realtek,rtl8125.yaml
-@@ -0,0 +1,43 @@
-+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-+%YAML 1.2
-+---
-+$id: http://devicetree.org/schemas/net/realtek,rtl8125.yaml#
-+$schema: http://devicetree.org/meta-schemas/core.yaml#
-+
-+title: Realtek RTL8125 2.5 Gigabit PCIe Ethernet Controller
-+
-+maintainers:
-+  - Heiner Kallweit <hkallweit1@gmail.com>
-+
-+description:
-+  The Realtek RTL8125 is a 2.5GBASE-T Ethernet controller with a PCIe host
-+  interface.
-+
-+allOf:
-+  - $ref: ethernet-controller.yaml#
-+
-+properties:
-+  compatible:
-+    const: pci10ec,8125
-+
-+  reg:
-+    maxItems: 1
-+
-+required:
-+  - compatible
-+  - reg
-+
-+unevaluatedProperties: false
-+
-+examples:
-+  - |
-+    pcie {
-+        #address-cells = <3>;
-+        #size-cells = <2>;
-+
-+        ethernet@0,0 {
-+            compatible = "pci10ec,8125";
-+            reg = <0x10000 0 0 0 0>;
-+            local-mac-address = [00 00 00 00 00 00];
-+        };
-+    };
-diff --git a/MAINTAINERS b/MAINTAINERS
-index c8d4b913f26c1..e5fbd82946aec 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -134,6 +134,7 @@ M:	Heiner Kallweit <hkallweit1@gmail.com>
- M:	nic_swsd@realtek.com
- L:	netdev@vger.kernel.org
- S:	Maintained
-+F:	Documentation/devicetree/bindings/net/realtek,rtl8125.yaml
- F:	drivers/net/ethernet/realtek/r8169*
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi b/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
+index 84b6b53f016ab..0c11033f9d8e4 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588-nanopc-t6.dtsi
+@@ -20,6 +20,8 @@ / {
+ 	compatible = "friendlyarm,nanopc-t6", "rockchip,rk3588";
  
- 8250/16?50 (AND CLONE UARTS) SERIAL DRIVER
+ 	aliases {
++		ethernet0 = &rtl_eth0;
++		ethernet1 = &rtl_eth1;
+ 		mmc0 = &sdhci;
+ 		mmc1 = &sdmmc;
+ 	};
+@@ -635,6 +637,20 @@ &pcie2x1l0 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pcie2_0_rst>;
+ 	status = "okay";
++
++	pcie@0,0 {
++		reg = <0x200000 0 0 0 0>;
++		#address-cells = <3>;
++		#size-cells = <2>;
++		ranges;
++		device_type = "pci";
++		bus-range = <0x21 0x2f>;
++
++		rtl_eth0: ethernet@0,0 {
++			compatible = "pci10ec,8125";
++			reg = <0x210000 0 0 0 0>;
++		};
++	};
+ };
+ 
+ &pcie2x1l1 {
+@@ -651,6 +667,20 @@ &pcie2x1l2 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pcie2_2_rst>;
+ 	status = "okay";
++
++	pcie@0,0 {
++		reg = <0x400000 0 0 0 0>;
++		#address-cells = <3>;
++		#size-cells = <2>;
++		ranges;
++		device_type = "pci";
++		bus-range = <0x41 0x4f>;
++
++		rtl_eth1: ethernet@0,0 {
++			compatible = "pci10ec,8125";
++			reg = <0x410000 0 0 0 0>;
++		};
++	};
+ };
+ 
+ &pcie30phy {
 
 -- 
 2.54.0
