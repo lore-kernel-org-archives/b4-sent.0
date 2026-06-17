@@ -1,822 +1,195 @@
-From: Jia Wang <wangjia@ultrarisc.com>
-Date: Wed, 17 Jun 2026 14:02:55 +0800
-Subject: [PATCH v2 2/2] clk: ultrarisc: add DP1000 clock driver
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v9 0/9] media: camss: Add support for C-PHY configuration
+ on Qualcomm platforms
+Date: Wed, 17 Jun 2026 10:32:18 +0200
+Message-Id: <20260617-qcom-cphy-v9-0-83da8a8e4e44@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260617-ultrarisc-clock-v2-2-9cb16083e15e@ultrarisc.com>
-References: <20260617-ultrarisc-clock-v2-0-9cb16083e15e@ultrarisc.com>
-In-Reply-To: <20260617-ultrarisc-clock-v2-0-9cb16083e15e@ultrarisc.com>
-To: Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney@redhat.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-clk@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Jia Wang <wangjia@ultrarisc.com>
-X-Mailer: b4 0.15-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781676184; l=23040;
- i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
- bh=G8F0YPVcg4D5f+yuczHMwoJ+cCrt2Nj/GcU+crtUjwE=;
- b=bFsqmmClvHHWLzPdoXUAMDT/G0eVhDvxeGubqIIuImGwko5pGV7NdWO9Ol7QxQ75A1K+9uWye
- tt22SB0z6FtCwA0cLQk7B/HgYZ2qZkNqEOCDHDfzo/IWXblbBkynqkc
-X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
- pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
-X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
+X-B4-Tracking: v=1; b=H4sIAJNbMmoC/23Oz07DMAwG8FeZcibIzj+nnHgPxKFJXJoD22ina
+ mPqu5NVQk0Qx8/y77PvYuYp8yxeDncx8ZLnfDqW0D0dRBz74wfLnEoWCpRFhE5+xdOnjOfxJkP
+ wMaQeozNGlP3zxEO+bl1v7yWPeb6cpttWveBj+l/LghIkOjsQUxeA8TVf8+U5fotHx6J2p8DUT
+ hXngrY8+ACE3Dr96xwgUu10cT4yuR7cQCm0zuxOA9bOFMdWa3RJxehs6+zurG6c3f5kGJwKJv1
+ 1bnflYu3cdg8SQ7CWet86qp2tHRVnlIuauAPwQ+t85RBq54uLyWhP5C1St7t1XX8Ac9dE1SgCA
+ AA=
+X-Change-ID: 20251109-qcom-cphy-bb8cbda1c644
+To: Robert Foss <rfoss@kernel.org>, Todor Tomov <todor.too@gmail.com>, 
+ Bryan O'Donoghue <bryan.odonoghue@linaro.org>, 
+ Bryan O'Donoghue <bod@kernel.org>, 
+ Vladimir Zapolskiy <vladimir.zapolskiy@linaro.org>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Luca Weiss <luca.weiss@fairphone.com>, Petr Hodina <phodina@protonmail.com>, 
+ "Dr. Git" <drgitx@gmail.com>, Cory Keitz <ckeitz@amazon.com>, 
+ Loic Poulain <loic.poulain@oss.qualcomm.com>, 
+ Hans Verkuil <hverkuil@kernel.org>, 
+ Nihal Kumar Gupta <nihal.gupta@oss.qualcomm.com>
+Cc: Frank Li <Frank.Li@nxp.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Kieran Bingham <kbingham@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, linux-media@vger.kernel.org, 
+ linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6720; i=david@ixit.cz;
+ h=from:subject:message-id; bh=d3QTvN0CIHldzQbl92pL2Wvok95MNfOxuRLLO2sVeSY=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqMluVAOx8P/7bJQ6a3Z18pMP6xUxn9GQxrdvbZ
+ rivclx1bb+JAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCajJblQAKCRBgAj/E00kg
+ ctPiD/oDypKjTgf4T47sjyLD3oO4PRwsu/O3ZtrEqpL7jbN30bu72mouScsO9tUb9yNoepKtoFF
+ PK+wCa+NFRyTZCIX/MPY8khqkAz2keySqFKQUWaOoyJsl0tdmdctSnzq3PyGPz0SZiL0I+hNa7F
+ 1bIgP4MYYHOkQ+Sjtvuydi7kR1zcpTQ0/WERoGsZw8zWgciBGLl5TeWCJd+4w+bpa7D8beHMjLM
+ AJXOrHxRt6iLfm0oIj5u31aafYI0cKOz2S1dW7Ka65t91j6i+Vw7+u55TN6tAeY48N42p8ASOKM
+ gA1csBdRmyMjU4CaBbfM1lpREFsGRmKjZ/hikqKppLDTCjid+JZBAC+9MI53d4zWsPsuNfoW3H0
+ tVfk03V2yTEI2UuTGGpLwnfcfDwiiACnR+CpM38XF2hEUT2aGQ1nKWqd7UfPek/fwEit3z/lRGd
+ bbZoM69+LAAUcWGhwO4oBwZo7bi2f8cEUDkcT26lpbyU2qKHS0XCLEV7i0k1KCyT1c5A1x6IY0d
+ pOAG0d/46zTGuHF7WzpaXJczVG5trtV1o00ATir9eBxO6F7CqNfLl+DG+5iJzMzM4ieJ32vIf6Q
+ CAFAwEogRmBvGFa17NjaDygEcqrvd6n8KV+SuXuYY8kEHJMkQ2FxrqTpdBwvkhFdm8ZtC/Gbp9p
+ ji5eCoq+hxuwiZg==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a clock driver for the UltraRISC DP1000 SoC.
+Note: WIP tag added, as not everything from the previous review round has
+been addressed.
 
-The clock tree is driven by a SYSPLL and provides fixed-factor clocks for
-the subsystem and PCIe, divider-based root clocks for GMAC and the UART,
-I2C, and SPI blocks, and per-instance gate clocks for UART0-3, I2C0-3,
-and SPI0-1.
+# Short summary
 
-Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
+This patch series extends the Qualcomm CAMSS (Camera Subsystem),
+including CSID and CSIPHY components, to support C-PHY mode configuration.
+
+# Background and motivation
+
+Modern smartphone cameras increasingly rely on MIPI C-PHY rather than 
+D-PHY, thanks to its higher data throughput and signal efficiency.
+As a result, many OEMs adopt C-PHY interfaces for main (rear) cameras on
+Qualcomm-based devices.
+
+Until now, mainline Linux lacked C-PHY configuration support for Qualcomm
+chipsets, preventing bring-up of primary camera sensors on several
+Snapdragon platforms. This series closes that gap.
+
+ - Introduces C-PHY configuration support for the CAMSS driver stack,
+   covering both CSID and CSIPHY blocks.
+ - Successfully enables C-PHY operation on the Snapdragon 845 platform.
+ - Tested on OnePlus 6 and 6T phones running mainline Linux,
+   using the Sony IMX519 main camera sensor.
+ - The new configuration allows other chipsets versionsto enable C-PHY by
+   simply adding corresponding sensor driver support and csiphy
+   initialization data, following the example set for sdm845.
+
+With this patch series, mainline Linux gains working C-PHY support for
+Snapdragon 845, paving the way for improved main camera functionality
+across many Qualcomm-based devices. The groundwork also simplifies
+future enablement efforts for additional SoCs and sensors.
+
+Until merged, the series will be also available at:
+  https://codeberg.org/sdm845/linux/commits/branch/b4/qcom-cphy
+
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- MAINTAINERS                           |   1 +
- drivers/clk/Kconfig                   |   1 +
- drivers/clk/Makefile                  |   1 +
- drivers/clk/ultrarisc/Kconfig         |  18 ++
- drivers/clk/ultrarisc/Makefile        |   4 +
- drivers/clk/ultrarisc/clk-dp1000.c    | 153 ++++++++++++
- drivers/clk/ultrarisc/clk-ultrarisc.c | 459 ++++++++++++++++++++++++++++++++++
- drivers/clk/ultrarisc/clk-ultrarisc.h |  73 ++++++
- 8 files changed, 710 insertions(+)
+Changes in v9:
+- Dropped Cc and Fixes tag for "csiphy-3ph: Fix lane mask calculation"
+  and reordered the commit.
+  (Vladimir)
+- Link to v8: https://lore.kernel.org/r/20260610-qcom-cphy-v8-0-cd4387785179@ixit.cz
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index b7e43313c65f..aa5021f30cb5 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -27444,6 +27444,7 @@ M:	Jia Wang <wangjia@ultrarisc.com>
- L:	linux-clk@vger.kernel.org
- S:	Maintained
- F:	Documentation/devicetree/bindings/clock/ultrarisc,dp1000-clk.yaml
-+F:	drivers/clk/ultrarisc/*
- F:	include/dt-bindings/clock/ultrarisc,dp1000-clk.h
- 
- ULTRATRONIK BOARD SUPPORT
-diff --git a/drivers/clk/Kconfig b/drivers/clk/Kconfig
-index b2efbe9f6acb..75e336858420 100644
---- a/drivers/clk/Kconfig
-+++ b/drivers/clk/Kconfig
-@@ -535,6 +535,7 @@ source "drivers/clk/tenstorrent/Kconfig"
- source "drivers/clk/thead/Kconfig"
- source "drivers/clk/stm32/Kconfig"
- source "drivers/clk/ti/Kconfig"
-+source "drivers/clk/ultrarisc/Kconfig"
- source "drivers/clk/uniphier/Kconfig"
- source "drivers/clk/visconti/Kconfig"
- source "drivers/clk/x86/Kconfig"
-diff --git a/drivers/clk/Makefile b/drivers/clk/Makefile
-index a3e2862ebd7e..891272e8e1da 100644
---- a/drivers/clk/Makefile
-+++ b/drivers/clk/Makefile
-@@ -158,6 +158,7 @@ obj-$(CONFIG_ARCH_TEGRA)		+= tegra/
- obj-y					+= tenstorrent/
- obj-$(CONFIG_ARCH_THEAD)		+= thead/
- obj-y					+= ti/
-+obj-y					+= ultrarisc/
- obj-$(CONFIG_CLK_UNIPHIER)		+= uniphier/
- obj-$(CONFIG_ARCH_U8500)		+= ux500/
- obj-y					+= versatile/
-diff --git a/drivers/clk/ultrarisc/Kconfig b/drivers/clk/ultrarisc/Kconfig
-new file mode 100644
-index 000000000000..2eecc6ac3119
---- /dev/null
-+++ b/drivers/clk/ultrarisc/Kconfig
-@@ -0,0 +1,18 @@
-+# SPDX-License-Identifier: GPL-2.0-only
-+
-+config CLK_ULTRARISC
-+	tristate
-+	depends on OF
-+	depends on ARCH_ULTRARISC || COMPILE_TEST
-+
-+config CLK_ULTRARISC_DP1000
-+	tristate "UltraRISC DP1000 clock controller"
-+	select CLK_ULTRARISC
-+	depends on OF && HAS_IOMEM
-+	depends on ARCH_ULTRARISC || COMPILE_TEST
-+	default ARCH_ULTRARISC
-+	help
-+	  This driver provides the clock controller for the UltraRISC
-+	  DP1000 SoC. It exposes the PLL output, derived fixed-factor
-+	  clocks, programmable divider clocks, and peripheral gate
-+	  clocks to Linux consumers.
-diff --git a/drivers/clk/ultrarisc/Makefile b/drivers/clk/ultrarisc/Makefile
-new file mode 100644
-index 000000000000..b013708c9444
---- /dev/null
-+++ b/drivers/clk/ultrarisc/Makefile
-@@ -0,0 +1,4 @@
-+# SPDX-License-Identifier: GPL-2.0-only
-+
-+obj-$(CONFIG_CLK_ULTRARISC) += clk-ultrarisc.o
-+obj-$(CONFIG_CLK_ULTRARISC_DP1000) += clk-dp1000.o
-diff --git a/drivers/clk/ultrarisc/clk-dp1000.c b/drivers/clk/ultrarisc/clk-dp1000.c
-new file mode 100644
-index 000000000000..33a16df8f189
---- /dev/null
-+++ b/drivers/clk/ultrarisc/clk-dp1000.c
-@@ -0,0 +1,153 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (C) 2026 UltraRISC Technology (Shanghai) Co., Ltd.
-+ */
-+
-+#include <linux/module.h>
-+
-+#include <dt-bindings/clock/ultrarisc,dp1000-clk.h>
-+
-+#include "clk-ultrarisc.h"
-+
-+#define DP1000_PLL_CFG1_OFFSET		0x400
-+#define DP1000_PLL_CFG2_OFFSET		0x404
-+
-+#define DP1000_CCR_UART_OFFSET		0x220
-+#define DP1000_CCR_I2C_OFFSET		0x224
-+#define DP1000_CCR_GMAC_OFFSET		0x228
-+#define DP1000_CCR_SPI_OFFSET		0x22c
-+#define DP1000_PERI_CLKENA_OFFSET	0x270
-+
-+#define DP1000_CCR_LOAD			BIT(16)
-+
-+#define DP1000_PERI_MAX_RATE		62500000UL
-+#define DP1000_CLK_NUM			21
-+
-+static const struct ultrarisc_pll_layout dp1000_pll_layout = {
-+	.cfg1_offset = DP1000_PLL_CFG1_OFFSET,
-+	.cfg2_offset = DP1000_PLL_CFG2_OFFSET,
-+	.frac_mask = GENMASK(23, 0),
-+	.m_mask = GENMASK(23, 16),
-+	.n_mask = GENMASK(11, 6),
-+	.oddiv1_mask = GENMASK(4, 3),
-+	.oddiv2_mask = GENMASK(1, 0),
-+};
-+
-+static const struct ultrarisc_pll_desc dp1000_plls[] = {
-+	{
-+		.id = DP1000_CLK_SYSPLL,
-+		.name = "syspll_clk",
-+	},
-+};
-+
-+#define DP1000_FIXED_FACTOR(_id, _name, _parent, _mult, _div)	\
-+	{							\
-+		.id = (_id),					\
-+		.name = (_name),				\
-+		.parent_id = (_parent),				\
-+		.mult = (_mult),				\
-+		.div = (_div),					\
-+	}
-+
-+#define DP1000_DIV(_id, _name, _offset, _parent, _max_rate)	\
-+	{							\
-+		.id = (_id),					\
-+		.name = (_name),				\
-+		.offset = (_offset),				\
-+		.parent_id = (_parent),				\
-+		.max_rate = (_max_rate),			\
-+		.load_mask = DP1000_CCR_LOAD,			\
-+		.div_shift = 8,					\
-+		.div_width = 4,					\
-+		.gate_bit = 0,					\
-+		.divider_flags = CLK_DIVIDER_ONE_BASED,		\
-+		.gate_flags = 0,				\
-+	}
-+
-+#define DP1000_GATE(_id, _name, _parent, _bit)		\
-+	{							\
-+		.id = (_id),					\
-+		.name = (_name),				\
-+		.offset = DP1000_PERI_CLKENA_OFFSET,		\
-+		.parent_id = (_parent),				\
-+		.gate_bit = (_bit),				\
-+		.gate_flags = 0,				\
-+	}
-+
-+static const struct ultrarisc_fixed_factor_desc dp1000_fixed_factor_clks[] = {
-+	DP1000_FIXED_FACTOR(DP1000_CLK_SYSPLL_DIV2, "syspll_div2_clk",
-+			    DP1000_CLK_SYSPLL, 1, 2),
-+	DP1000_FIXED_FACTOR(DP1000_CLK_SUBSYS, "subsys_clk",
-+			    DP1000_CLK_SYSPLL_DIV2, 1, 2),
-+	DP1000_FIXED_FACTOR(DP1000_CLK_PCIE_DBI, "pcie_dbi_clk",
-+			    DP1000_CLK_SYSPLL, 1, 10),
-+	DP1000_FIXED_FACTOR(DP1000_CLK_PCIEX4_CORE, "pciex4_core_clk",
-+			    DP1000_CLK_SYSPLL, 1, 2),
-+	DP1000_FIXED_FACTOR(DP1000_CLK_PCIEX16_CORE, "pciex16_core_clk",
-+			    DP1000_CLK_SYSPLL, 1, 1),
-+	DP1000_FIXED_FACTOR(DP1000_CLK_PCIE_AUX, "pcie_aux_clk",
-+			    DP1000_CLK_SYSPLL, 1, 40),
-+};
-+
-+static const struct ultrarisc_divider_desc dp1000_divider_clks[] = {
-+	DP1000_DIV(DP1000_CLK_GMAC, "gmac_clk", DP1000_CCR_GMAC_OFFSET,
-+		   DP1000_CLK_SYSPLL_DIV2, 0),
-+	DP1000_DIV(DP1000_CLK_UART_ROOT, "uart_root_clk",
-+		   DP1000_CCR_UART_OFFSET, DP1000_CLK_SUBSYS,
-+		   DP1000_PERI_MAX_RATE),
-+	DP1000_DIV(DP1000_CLK_I2C_ROOT, "i2c_root_clk",
-+		   DP1000_CCR_I2C_OFFSET, DP1000_CLK_SUBSYS,
-+		   DP1000_PERI_MAX_RATE),
-+	DP1000_DIV(DP1000_CLK_SPI_ROOT, "spi_root_clk",
-+		   DP1000_CCR_SPI_OFFSET, DP1000_CLK_SUBSYS,
-+		   DP1000_PERI_MAX_RATE),
-+};
-+
-+static const struct ultrarisc_gate_desc dp1000_gate_clks[] = {
-+	DP1000_GATE(DP1000_CLK_UART0, "uart0_clk", DP1000_CLK_UART_ROOT, 0),
-+	DP1000_GATE(DP1000_CLK_UART1, "uart1_clk", DP1000_CLK_UART_ROOT, 1),
-+	DP1000_GATE(DP1000_CLK_UART2, "uart2_clk", DP1000_CLK_UART_ROOT, 2),
-+	DP1000_GATE(DP1000_CLK_UART3, "uart3_clk", DP1000_CLK_UART_ROOT, 3),
-+	DP1000_GATE(DP1000_CLK_I2C0, "i2c0_clk", DP1000_CLK_I2C_ROOT, 4),
-+	DP1000_GATE(DP1000_CLK_I2C1, "i2c1_clk", DP1000_CLK_I2C_ROOT, 5),
-+	DP1000_GATE(DP1000_CLK_I2C2, "i2c2_clk", DP1000_CLK_I2C_ROOT, 6),
-+	DP1000_GATE(DP1000_CLK_I2C3, "i2c3_clk", DP1000_CLK_I2C_ROOT, 7),
-+	DP1000_GATE(DP1000_CLK_SPI0, "spi0_clk", DP1000_CLK_SPI_ROOT, 8),
-+	DP1000_GATE(DP1000_CLK_SPI1, "spi1_clk", DP1000_CLK_SPI_ROOT, 9),
-+};
-+
-+static const struct ultrarisc_clk_soc_data dp1000_clk_soc_data = {
-+	.num_clks = DP1000_CLK_NUM,
-+	.pll_layout = &dp1000_pll_layout,
-+	.plls = dp1000_plls,
-+	.num_plls = ARRAY_SIZE(dp1000_plls),
-+	.fixed_factors = dp1000_fixed_factor_clks,
-+	.num_fixed_factors = ARRAY_SIZE(dp1000_fixed_factor_clks),
-+	.dividers = dp1000_divider_clks,
-+	.num_dividers = ARRAY_SIZE(dp1000_divider_clks),
-+	.gates = dp1000_gate_clks,
-+	.num_gates = ARRAY_SIZE(dp1000_gate_clks),
-+};
-+
-+static int dp1000_clk_probe(struct platform_device *pdev)
-+{
-+	return ultrarisc_clk_probe(pdev, &dp1000_clk_soc_data);
-+}
-+
-+static const struct of_device_id dp1000_clk_of_match[] = {
-+	{ .compatible = "ultrarisc,dp1000-clk" },
-+	{ }
-+};
-+MODULE_DEVICE_TABLE(of, dp1000_clk_of_match);
-+
-+static struct platform_driver dp1000_clk_driver = {
-+	.probe = dp1000_clk_probe,
-+	.driver = {
-+		.name = "ultrarisc-dp1000-clk",
-+		.of_match_table = dp1000_clk_of_match,
-+	},
-+};
-+module_platform_driver(dp1000_clk_driver);
-+
-+MODULE_DESCRIPTION("UltraRISC DP1000 clock controller");
-+MODULE_LICENSE("GPL");
-diff --git a/drivers/clk/ultrarisc/clk-ultrarisc.c b/drivers/clk/ultrarisc/clk-ultrarisc.c
-new file mode 100644
-index 000000000000..4ef222348dd7
---- /dev/null
-+++ b/drivers/clk/ultrarisc/clk-ultrarisc.c
-@@ -0,0 +1,459 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (C) 2026 UltraRISC Technology (Shanghai) Co., Ltd.
-+ */
-+
-+#include <linux/bitfield.h>
-+#include <linux/clk-provider.h>
-+#include <linux/io.h>
-+#include <linux/math64.h>
-+#include <linux/module.h>
-+#include <linux/of_clk.h>
-+#include <linux/platform_device.h>
-+#include <linux/slab.h>
-+
-+#include "clk-ultrarisc.h"
-+
-+struct ultrarisc_pll_clk {
-+	struct clk_hw hw;
-+	void __iomem *base;
-+	const struct ultrarisc_pll_layout *layout;
-+};
-+
-+struct ultrarisc_divider_clk {
-+	struct clk_divider divider;
-+	struct clk_gate gate;
-+	u32 load_mask;
-+};
-+
-+#define to_ultrarisc_pll_clk(_hw) \
-+	container_of(_hw, struct ultrarisc_pll_clk, hw)
-+
-+static inline struct ultrarisc_divider_clk *
-+to_ultrarisc_divider_clk(struct clk_hw *hw)
-+{
-+	struct clk_divider *divider = to_clk_divider(hw);
-+
-+	return container_of(divider, struct ultrarisc_divider_clk, divider);
-+}
-+
-+static unsigned long ultrarisc_pll_recalc_rate(struct clk_hw *hw,
-+					       unsigned long parent_rate)
-+{
-+	struct ultrarisc_pll_clk *pll = to_ultrarisc_pll_clk(hw);
-+	const struct ultrarisc_pll_layout *layout = pll->layout;
-+	u32 oddiv1_div, oddiv2_div;
-+	u64 mult, rate, den;
-+	u32 frac, m, n;
-+	u32 cfg1, cfg2;
-+
-+	cfg1 = readl_relaxed(pll->base + layout->cfg1_offset);
-+	cfg2 = readl_relaxed(pll->base + layout->cfg2_offset);
-+
-+	frac = field_get(layout->frac_mask, cfg1);
-+	m = field_get(layout->m_mask, cfg2);
-+	n = field_get(layout->n_mask, cfg2);
-+	oddiv1_div = 1U << field_get(layout->oddiv1_mask, cfg2);
-+	oddiv2_div = 1U << field_get(layout->oddiv2_mask, cfg2);
-+
-+	if (!n)
-+		return 0;
-+
-+	/*
-+	 * The output frequency is calculated as:
-+	 * fvco = parent * (m + frac / 2^24) / n
-+	 * fout = fvco / (2^oddiv1_raw * 2^oddiv2_raw)
-+	 *
-+	 * The output divider values are derived from the raw register field
-+	 * values as:
-+	 * oddivX_div = 1 << oddivX_raw
-+	 */
-+	mult = ((u64)m << 24) + frac;
-+	rate = (u64)parent_rate * mult;
-+	den = ((u64)n << 24) * oddiv1_div * oddiv2_div;
-+
-+	return div64_u64(rate + (den >> 1), den);
-+}
-+
-+static const struct clk_ops ultrarisc_pll_ro_ops = {
-+	.recalc_rate = ultrarisc_pll_recalc_rate,
-+};
-+
-+static unsigned long
-+ultrarisc_divider_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
-+{
-+	struct clk_divider *divider = to_clk_divider(hw);
-+	u32 val;
-+
-+	val = readl_relaxed(divider->reg) >> divider->shift;
-+	val &= clk_div_mask(divider->width);
-+
-+	return divider_recalc_rate(hw, parent_rate, val, divider->table,
-+				   divider->flags, divider->width);
-+}
-+
-+static int ultrarisc_divider_determine_rate(struct clk_hw *hw,
-+					    struct clk_rate_request *req)
-+{
-+	struct clk_divider *divider = to_clk_divider(hw);
-+
-+	return divider_determine_rate(hw, req, divider->table, divider->width,
-+				      divider->flags);
-+}
-+
-+static int ultrarisc_divider_set_rate(struct clk_hw *hw, unsigned long rate,
-+				      unsigned long parent_rate)
-+{
-+	struct ultrarisc_divider_clk *divider_clk = to_ultrarisc_divider_clk(hw);
-+	struct clk_divider *divider = &divider_clk->divider;
-+	int value;
-+	u32 val;
-+
-+	value = divider_get_val(rate, parent_rate, divider->table,
-+				divider->width, divider->flags);
-+	if (value < 0)
-+		return value;
-+
-+	scoped_guard(spinlock_irqsave, divider->lock) {
-+		val = readl_relaxed(divider->reg);
-+		val &= ~(clk_div_mask(divider->width) << divider->shift);
-+		val |= value << divider->shift;
-+		writel_relaxed(val, divider->reg);
-+
-+		if (divider_clk->load_mask) {
-+			/*
-+			 * Program the new divider field, then write 1 to the
-+			 * load bit to trigger the update. The load bit is
-+			 * write-triggered and reads back as 0 on this hardware.
-+			 */
-+			writel_relaxed(val | divider_clk->load_mask,
-+				       divider->reg);
-+		}
-+	}
-+
-+	return 0;
-+}
-+
-+static const struct clk_ops ultrarisc_divider_ops = {
-+	.recalc_rate = ultrarisc_divider_recalc_rate,
-+	.determine_rate = ultrarisc_divider_determine_rate,
-+	.set_rate = ultrarisc_divider_set_rate,
-+};
-+
-+static void ultrarisc_clk_unregister_composite(void *data)
-+{
-+	clk_hw_unregister_composite(data);
-+}
-+
-+static struct clk_hw *
-+ultrarisc_clk_hw_register_composite(struct device *dev, const char *name,
-+				    const char * const *parent_names,
-+				    int num_parents, struct clk_hw *mux_hw,
-+				    const struct clk_ops *mux_ops,
-+				    struct clk_hw *rate_hw,
-+				    const struct clk_ops *rate_ops,
-+				    struct clk_hw *gate_hw,
-+				    const struct clk_ops *gate_ops,
-+				    unsigned long flags)
-+{
-+	struct clk_hw *hw;
-+	int ret;
-+
-+	hw = clk_hw_register_composite(dev, name, parent_names, num_parents,
-+				       mux_hw, mux_ops, rate_hw, rate_ops,
-+				       gate_hw, gate_ops, flags);
-+	if (IS_ERR(hw))
-+		return hw;
-+
-+	ret = devm_add_action_or_reset(dev, ultrarisc_clk_unregister_composite,
-+				       hw);
-+	if (ret)
-+		return ERR_PTR(ret);
-+
-+	return hw;
-+}
-+
-+static struct clk_hw *ultrarisc_clk_register_pll(struct device *dev,
-+						 const struct ultrarisc_pll_desc *desc,
-+						 const struct ultrarisc_pll_layout *layout,
-+						 void __iomem *base)
-+{
-+	struct clk_parent_data pdata = { .index = 0 };
-+	struct ultrarisc_pll_clk *pll;
-+	struct clk_init_data init = {
-+		.name = desc->name,
-+		.ops = &ultrarisc_pll_ro_ops,
-+		.parent_data = &pdata,
-+		.num_parents = 1,
-+		.flags = CLK_GET_RATE_NOCACHE,
-+	};
-+	int ret;
-+
-+	pll = devm_kzalloc(dev, sizeof(*pll), GFP_KERNEL);
-+	if (!pll)
-+		return ERR_PTR(-ENOMEM);
-+
-+	pll->base = base;
-+	pll->layout = layout;
-+	pll->hw.init = &init;
-+
-+	ret = devm_clk_hw_register(dev, &pll->hw);
-+	if (ret)
-+		return ERR_PTR(ret);
-+
-+	return &pll->hw;
-+}
-+
-+static struct clk_hw *
-+ultrarisc_clk_register_divider(struct device *dev,
-+			       const struct ultrarisc_divider_desc *desc,
-+			       struct clk_hw *parent_hw, void __iomem *base,
-+			       spinlock_t *lock)
-+{
-+	const char * const parent_names[] = { clk_hw_get_name(parent_hw) };
-+	void __iomem *reg = base + desc->offset;
-+	struct ultrarisc_divider_clk *divider;
-+	const struct clk_ops *gate_ops = NULL;
-+	struct clk_hw *gate_hw = NULL;
-+
-+	if (!desc->div_width)
-+		return ERR_PTR(-EINVAL);
-+
-+	if (!lock)
-+		return ERR_PTR(-EINVAL);
-+
-+	divider = devm_kzalloc(dev, sizeof(*divider), GFP_KERNEL);
-+	if (!divider)
-+		return ERR_PTR(-ENOMEM);
-+
-+	divider->divider.reg = reg;
-+	divider->divider.shift = desc->div_shift;
-+	divider->divider.width = desc->div_width;
-+	divider->divider.flags = desc->divider_flags;
-+	divider->divider.lock = lock;
-+	divider->load_mask = desc->load_mask;
-+
-+	if (desc->gate_bit != ULTRARISC_CLK_NO_GATE) {
-+		divider->gate.reg = reg;
-+		divider->gate.bit_idx = desc->gate_bit;
-+		divider->gate.flags = desc->gate_flags;
-+		divider->gate.lock = lock;
-+		gate_hw = &divider->gate.hw;
-+		gate_ops = &clk_gate_ops;
-+	}
-+
-+	return ultrarisc_clk_hw_register_composite(dev, desc->name,
-+						   parent_names, 1,
-+						   NULL, NULL,
-+						   &divider->divider.hw,
-+						   &ultrarisc_divider_ops,
-+						   gate_hw, gate_ops,
-+						   CLK_GET_RATE_NOCACHE);
-+}
-+
-+static int ultrarisc_clk_register_fixed_factors(struct device *dev,
-+						struct clk_hw_onecell_data *clk_data,
-+						const struct ultrarisc_clk_soc_data *soc_data)
-+{
-+	u32 i;
-+
-+	for (i = 0; i < soc_data->num_fixed_factors; i++) {
-+		const struct ultrarisc_fixed_factor_desc *desc;
-+		struct clk_hw *parent_hw;
-+		struct clk_hw *hw;
-+
-+		desc = &soc_data->fixed_factors[i];
-+		if (desc->id >= clk_data->num ||
-+		    desc->parent_id >= clk_data->num)
-+			return -EINVAL;
-+
-+		parent_hw = clk_data->hws[desc->parent_id];
-+		if (!parent_hw)
-+			return -EINVAL;
-+
-+		hw = devm_clk_hw_register_fixed_factor_parent_hw(dev, desc->name,
-+								 parent_hw,
-+								 CLK_GET_RATE_NOCACHE,
-+								 desc->mult,
-+								 desc->div);
-+		if (IS_ERR(hw))
-+			return PTR_ERR(hw);
-+
-+		clk_data->hws[desc->id] = hw;
-+	}
-+
-+	return 0;
-+}
-+
-+static int ultrarisc_clk_register_plls(struct platform_device *pdev,
-+				       struct clk_hw_onecell_data *clk_data,
-+				       const struct ultrarisc_clk_soc_data *soc_data,
-+				       void __iomem *base)
-+{
-+	struct device *dev = &pdev->dev;
-+	u32 i;
-+
-+	for (i = 0; i < soc_data->num_plls; i++) {
-+		const struct ultrarisc_pll_desc *desc = &soc_data->plls[i];
-+		struct clk_hw *hw;
-+
-+		if (desc->id >= clk_data->num)
-+			return -EINVAL;
-+
-+		hw = ultrarisc_clk_register_pll(dev, desc, soc_data->pll_layout,
-+						base);
-+		if (IS_ERR(hw))
-+			return PTR_ERR(hw);
-+
-+		clk_data->hws[desc->id] = hw;
-+	}
-+
-+	return 0;
-+}
-+
-+static int ultrarisc_clk_register_dividers(struct platform_device *pdev,
-+					   struct clk_hw_onecell_data *clk_data,
-+					   const struct ultrarisc_clk_soc_data *soc_data,
-+					   void __iomem *base,
-+					   spinlock_t *lock)
-+{
-+	struct device *dev = &pdev->dev;
-+	u32 i;
-+
-+	for (i = 0; i < soc_data->num_dividers; i++) {
-+		const struct ultrarisc_divider_desc *desc;
-+		struct clk_hw *parent_hw;
-+		struct clk_hw *hw;
-+
-+		desc = &soc_data->dividers[i];
-+		if (desc->id >= clk_data->num ||
-+		    desc->parent_id >= clk_data->num)
-+			return -EINVAL;
-+
-+		parent_hw = clk_data->hws[desc->parent_id];
-+		if (!parent_hw)
-+			return -EINVAL;
-+
-+		hw = ultrarisc_clk_register_divider(dev, desc, parent_hw, base,
-+						    lock);
-+		if (IS_ERR(hw))
-+			return PTR_ERR(hw);
-+
-+		if (desc->max_rate) {
-+			unsigned long rate;
-+
-+			clk_hw_set_rate_range(hw, 0, desc->max_rate);
-+
-+			rate = clk_hw_get_rate(hw);
-+			if (rate > desc->max_rate)
-+				dev_warn(dev, "%s rate %lu exceeds max %lu\n",
-+					 desc->name, rate, desc->max_rate);
-+		}
-+
-+		clk_data->hws[desc->id] = hw;
-+	}
-+
-+	return 0;
-+}
-+
-+static int ultrarisc_clk_register_gates(struct platform_device *pdev,
-+					struct clk_hw_onecell_data *clk_data,
-+					const struct ultrarisc_clk_soc_data *soc_data,
-+					void __iomem *base,
-+					spinlock_t *lock)
-+{
-+	struct device *dev = &pdev->dev;
-+	u32 i;
-+
-+	for (i = 0; i < soc_data->num_gates; i++) {
-+		const struct ultrarisc_gate_desc *desc;
-+		struct clk_hw *parent_hw;
-+		struct clk_hw *hw;
-+
-+		desc = &soc_data->gates[i];
-+		if (desc->id >= clk_data->num ||
-+		    desc->parent_id >= clk_data->num)
-+			return -EINVAL;
-+
-+		parent_hw = clk_data->hws[desc->parent_id];
-+		if (!parent_hw)
-+			return -EINVAL;
-+
-+		hw = devm_clk_hw_register_gate_parent_hw(dev, desc->name,
-+							 parent_hw,
-+							 CLK_GET_RATE_NOCACHE,
-+							 base + desc->offset,
-+							 desc->gate_bit,
-+							 desc->gate_flags,
-+							 lock);
-+		if (IS_ERR(hw))
-+			return PTR_ERR(hw);
-+
-+		clk_data->hws[desc->id] = hw;
-+	}
-+
-+	return 0;
-+}
-+
-+int ultrarisc_clk_probe(struct platform_device *pdev,
-+			const struct ultrarisc_clk_soc_data *soc_data)
-+{
-+	struct clk_hw_onecell_data *clk_data;
-+	struct device *dev = &pdev->dev;
-+	void __iomem *base;
-+	spinlock_t *lock;
-+	int ret;
-+
-+	if (!soc_data)
-+		return -EINVAL;
-+
-+	lock = devm_kzalloc(dev, sizeof(*lock), GFP_KERNEL);
-+	if (!lock)
-+		return -ENOMEM;
-+
-+	spin_lock_init(lock);
-+
-+	clk_data = devm_kzalloc(dev, struct_size(clk_data, hws,
-+						 soc_data->num_clks),
-+				GFP_KERNEL);
-+	if (!clk_data)
-+		return -ENOMEM;
-+
-+	clk_data->num = soc_data->num_clks;
-+
-+	base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(base))
-+		return PTR_ERR(base);
-+
-+	ret = ultrarisc_clk_register_plls(pdev, clk_data, soc_data, base);
-+	if (ret)
-+		return ret;
-+
-+	ret = ultrarisc_clk_register_fixed_factors(dev, clk_data, soc_data);
-+	if (ret)
-+		return ret;
-+
-+	ret = ultrarisc_clk_register_dividers(pdev, clk_data, soc_data, base,
-+					      lock);
-+	if (ret)
-+		return ret;
-+
-+	ret = ultrarisc_clk_register_gates(pdev, clk_data, soc_data, base,
-+					   lock);
-+	if (ret)
-+		return ret;
-+
-+	for (int i = 0; i < clk_data->num; i++) {
-+		if (!clk_data->hws[i]) {
-+			dev_err(dev, "missing clock ID %u\n", i);
-+			return -EINVAL;
-+		}
-+	}
-+
-+	return devm_of_clk_add_hw_provider(dev, of_clk_hw_onecell_get,
-+					   clk_data);
-+}
-+EXPORT_SYMBOL_GPL(ultrarisc_clk_probe);
-+
-+MODULE_DESCRIPTION("UltraRISC clock core driver");
-+MODULE_LICENSE("GPL");
-diff --git a/drivers/clk/ultrarisc/clk-ultrarisc.h b/drivers/clk/ultrarisc/clk-ultrarisc.h
-new file mode 100644
-index 000000000000..1281196bb414
---- /dev/null
-+++ b/drivers/clk/ultrarisc/clk-ultrarisc.h
-@@ -0,0 +1,73 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
-+#ifndef __ULTRARISC_CLK_ULTRARISC_H
-+#define __ULTRARISC_CLK_ULTRARISC_H
-+
-+#include <linux/clk-provider.h>
-+#include <linux/platform_device.h>
-+#include <linux/types.h>
-+
-+#define ULTRARISC_CLK_NO_GATE		(-1)
-+
-+struct ultrarisc_pll_layout {
-+	u32 cfg1_offset;
-+	u32 cfg2_offset;
-+	u32 frac_mask;
-+	u32 m_mask;
-+	u32 n_mask;
-+	u32 oddiv1_mask;
-+	u32 oddiv2_mask;
-+};
-+
-+struct ultrarisc_pll_desc {
-+	u32 id;
-+	const char *name;
-+};
-+
-+struct ultrarisc_fixed_factor_desc {
-+	u32 id;
-+	const char *name;
-+	u32 parent_id;
-+	u32 mult;
-+	u32 div;
-+};
-+
-+struct ultrarisc_divider_desc {
-+	u32 id;
-+	const char *name;
-+	u32 offset;
-+	u32 parent_id;
-+	unsigned long max_rate;
-+	u32 load_mask;
-+	u8 div_shift;
-+	u8 div_width;
-+	s8 gate_bit;
-+	u16 divider_flags;
-+	u8 gate_flags;
-+};
-+
-+struct ultrarisc_gate_desc {
-+	u32 id;
-+	const char *name;
-+	u32 offset;
-+	u32 parent_id;
-+	u8 gate_bit;
-+	u8 gate_flags;
-+};
-+
-+struct ultrarisc_clk_soc_data {
-+	const struct ultrarisc_pll_layout *pll_layout;
-+	const struct ultrarisc_pll_desc *plls;
-+	u32 num_plls;
-+	const struct ultrarisc_fixed_factor_desc *fixed_factors;
-+	u32 num_fixed_factors;
-+	const struct ultrarisc_divider_desc *dividers;
-+	u32 num_dividers;
-+	const struct ultrarisc_gate_desc *gates;
-+	u32 num_gates;
-+	u32 num_clks;
-+};
-+
-+int ultrarisc_clk_probe(struct platform_device *pdev,
-+			const struct ultrarisc_clk_soc_data *soc_data);
-+
-+#endif /* __ULTRARISC_CLK_ULTRARISC_H */
+Changes in v8:
+- Refactor the for cycle in csiphy_is_gen2 same way as
+  csiphy_get_lane_mask(). (Frank)
+- Dropped T-b/R-b/A-b from
+  "media: qcom: camss: Account for C-PHY when calculating link frequency"
+  as I did refactored the commit to not rely on `csiphy_id`. (Wenmeng)
+- csiphy_get_lane_mask calculation fix. (Wenmeng)
+- csiphy_lanes_enable now uses csiphy_get_lane_mask. (Wenmeng)
+- Link to v7: https://lore.kernel.org/r/20260605-qcom-cphy-v7-0-426c37e9008f@ixit.cz
 
+Changes in v7:
+- Move logic out of switch. (Frank)
+- Change csid cphy knob to phy_sel using enum. (Bryan, Frank)
+- Link to v6: https://lore.kernel.org/r/20260603-qcom-cphy-v6-0-e50de0b557a8@ixit.cz
+
+Changes in v6:
+- lanes_enable now uses WARN_ONCE instead of return values. (Sakari)
+- Dropped Kodiak patch until it gets better documented.
+- Document the 3ph C-PHY sdm845 registers a bit.
+- Link to v5: https://lore.kernel.org/r/20260531-qcom-cphy-v5-0-6be0f62b4d65@ixit.cz
+
+Changes in v5:
+- Split first patch enabling C-PHY part into last patch. (Bryan)
+- Fix the camss_get_link_freq crash. (Cory)
+- Dropped patch whitelisting C-PHY, instead use nullptr check. (Bryan)
+- Dropped A-b/R-b from
+ "media: qcom: camss: Initialize lanes after lane configuration is available"
+ and changed Petr to Co-developed by and owned the patch.
+- Link to v4: https://lore.kernel.org/r/20260301-qcom-cphy-v4-0-e53316d2cc65@ixit.cz
+
+Changes in v4:
+- Documented cphy parametr to camss_get_link_freq.
+- Use BIT() macro for lane_mask. (Bryan)
+- Correct lane_mask calculation. (Kieran + me)
+- Removed comment for the D/C-PHY sequences init. (Bryan)
+- Pass &csid->phy for calculate freq. (Bryan)
+- Added missing cphy description to camss_get_link_freq. (kernel test robot)
+- Gen2 v1.1 MIPI CSI-2 CPHY init hex to lowercase.
+- Added back missed commit with improved electrical for sdm845 3ph.
+- NOT addressed yet:
+  - Proliferating special cases in switch statements on a per-SoC basis is verboten. 
+  - is it possible to set clock_lane to say 0xff in DT ? 
+- Link to v3: https://lore.kernel.org/r/20260117-qcom-cphy-v3-0-8ce76a06f7db@ixit.cz
+
+Changes in v3:
+- Make lanes_enable return sucess or error, since I couldn't move the
+  configuration to the _init.
+- Dropped R-b tags on
+  "media: qcom: camss: Initialize lanes after lane configuration is available"
+  as I changed formatting.
+- Link to v2: https://lore.kernel.org/r/20251204-qcom-cphy-v2-0-6b35ef8b071e@ixit.cz
+
+Changes in v2:
+- This is still WIP patch series, thus I wanted to publish already
+  changed parts to get feedback regarding to the direction of patchset.
+- When switch to using odd bits, zeroed val which was left unitialized in v1.
+- Accidentally missed archs added back in the commit moving lane regs to
+  new location.
+- Remove commit with reverting check for only D-PHY is supported and
+  adjusted the check to also account for C-PHY.
+- Documented link frequency calculation with defines. (Casey)
+- Changed the cphy boolean to phy_cfg enum in the camss/camss-csiphy.
+  (Brian)
+- Added patch for csiphy-3ph enablement for sm7280 from Luca as I'm
+  meanwhile trying to bring up the C-PHY sensor on FairPhone 5.
+- Merged these two commits together
+    csiphy-3ph: Enable sdm845 C-PHY sequence
+    csiphy-3ph: Add Gen2 v1.1 MIPI CSI-2 CPHY init
+  merged R-b.
+- Link to v1: https://lore.kernel.org/r/20251109-qcom-cphy-v1-0-165f7e79b0e1@ixit.cz
+
+---
+David Heidelberg (9):
+      media: qcom: camss: csiphy-3ph: Fix lane mask calculation
+      media: qcom: camss: csiphy: Introduce PHY configuration
+      media: qcom: camss: csiphy-3ph: Use odd bits for configuring C-PHY lanes
+      media: qcom: camss: Prepare CSID for C-PHY support
+      media: qcom: camss: Initialize lanes after lane configuration is available
+      media: qcom: camss: csiphy-3ph: Add Gen2 v1.1 MIPI CSI-2 C-PHY init
+      media: qcom: camss: csiphy-3ph: Update Gen2 v1.1 MIPI CSI-2 C-PHY init
+      media: qcom: camss: Account for C-PHY when calculating link frequency
+      media: qcom: camss: Enable C-PHY where available
+
+ .../media/platform/qcom/camss/camss-csid-gen2.c    |   1 +
+ drivers/media/platform/qcom/camss/camss-csid.c     |  11 +-
+ drivers/media/platform/qcom/camss/camss-csid.h     |   6 +
+ .../platform/qcom/camss/camss-csiphy-3ph-1-0.c     | 229 ++++++++++++++++-----
+ drivers/media/platform/qcom/camss/camss-csiphy.c   |   6 +-
+ drivers/media/platform/qcom/camss/camss-csiphy.h   |   2 +
+ drivers/media/platform/qcom/camss/camss.c          |  33 ++-
+ drivers/media/platform/qcom/camss/camss.h          |   2 +-
+ 8 files changed, 229 insertions(+), 61 deletions(-)
+---
+base-commit: abe651837cb394f76d738a7a747322fca3bf17ba
+change-id: 20251109-qcom-cphy-bb8cbda1c644
+
+Best regards,
 -- 
-2.34.1
+David Heidelberg <david@ixit.cz>
 
