@@ -1,114 +1,110 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Tue, 16 Jun 2026 23:59:45 -0500
-Subject: [PATCH v2] power: supply: cros_usbpd-charger: bound the
- EC-reported port count
+Date: Wed, 17 Jun 2026 00:42:27 -0500
+Subject: [PATCH v2] platform/chrome: sensorhub: bound the EC-reported
+ sensor number
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260616-b4-disp-5e197080-v2-1-8aa5bffce945@proton.me>
-X-B4-Tracking: v=1; b=H4sIAMApMmoC/x3MTQqAIBBA4avIrBtQacy6SrToZ6rZlChEIN49a
- fkt3suQOAonGFSGyI8kua8K2yhYz/k6GGWrBqut0844XFrcJAUkNn2nvcaW9tnTYpnIQM1C5F3
- efzlOpXy8PTAlYgAAAA==
-To: Tzung-Bi Shih <tzungbi@kernel.org>, Benson Leung <bleung@chromium.org>, 
- Sebastian Reichel <sre@kernel.org>
-Cc: chrome-platform@lists.linux.dev, linux-pm@vger.kernel.org, 
- Guenter Roeck <groeck@chromium.org>, linux-kernel@vger.kernel.org
+Message-Id: <20260617-b4-disp-4e176cdc-v2-1-160f9ffa463e@proton.me>
+X-B4-Tracking: v=1; b=H4sIAMIzMmoC/x3MTQqAIBBA4avErBvwD8OuEi1Mp5pNiUIE4t2Tl
+ t/ivQqFMlOBeaiQ6eHC99WhxgHC6a+DkGM3KKGssHLCzWDkktCQnGyIAZ3UmoLZyCkPPUuZdn7
+ /5bK29gGzF8q0YgAAAA==
+To: Benson Leung <bleung@chromium.org>, Tzung-Bi Shih <tzungbi@kernel.org>
+Cc: chrome-platform@lists.linux.dev, linux-kernel@vger.kernel.org, 
+ Guenter Roeck <groeck@chromium.org>, Gwendal Grignou <gwendal@chromium.org>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781672384; l=3873;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781674946; l=4373;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=vPz9/pW6U5P0Sxc9eiv+I7NjKeYRGkRNB5Df/kBDu5I=;
- b=NFsa2KOzhEQDsjkdSRtr8D8fNJ9soVqK/oPxzxazG+t/t2oN4lmyUrYz7UGO+lA65sqpMHbht
- 572k5ZGKGfiAAVlwiKrUuOrDA8v1L4TKHUJuDDDJI6Ag3IuQrYYxCZI
+ bh=+D/PnruFsIeMzAqKfIW8Z1wCZ7XJX8si17RTg+XTyfE=;
+ b=FOIOYxrBhzBEcf6CNQrhn1ohxz4y0fQUvz08G2DOPZLYTLxzdw9keG1oTtHFysVAPkX0yJ1Ob
+ MIoskgSuBWeCG3k79OZPdOBqA3SsbLPKFN34dddN4AZHQRt8X2ewUoy
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-cros_usbpd_charger_probe() reads two port counts from the EC and uses
-one of them, num_charger_ports, as the loop bound when populating a
-fixed-size array:
+Each EC FIFO event carries a sensor number (in->sensor_num, an 8-bit
+value). cros_ec_sensorhub_ring_handler() validates the FIFO event count,
+the per-read count and the ring bound, but not the per-event sensor
+number. cros_ec_sensor_ring_process_event() then uses it unchecked to
+index sensorhub->batch_state[], which is allocated with only
+sensorhub->sensor_num entries, so a sensor number of sensor_num or larger
+is an out-of-bounds read and write of batch_state[] - in the ODR and
+FLUSH paths and, via cros_ec_sensor_ring_check_for_past_timestamp(), as
+an out-of-bounds read that is fed back into the event timestamp.
 
-	struct port_data *ports[EC_USB_PD_MAX_PORTS];	/* 8 entries */
-	...
-	for (i = 0; i < charger->num_charger_ports; i++)
-		charger->ports[charger->num_registered_psy++] = port;
+Validate the sensor number in the ring handler, where each event is read
+from the EC, and drop a malformed event before it is used. This is the
+bound cros_sensorhub_send_sample() already applies on the push path,
+hoisted to the point where the EC data enters the kernel so it also
+covers the batch_state[] indexing in cros_ec_sensor_ring_process_event()
+and sensor_mask |= BIT(in->sensor_num) in the handler.
 
-Both num_usbpd_ports (from EC_CMD_USB_PD_PORTS) and num_charger_ports
-(from EC_CMD_CHARGE_PORT_COUNT) are u8 values reported by the EC. The
-only validation is a sanity check that compares the two EC-reported
-values against each other:
-
-	if (num_charger_ports < num_usbpd_ports ||
-	    num_charger_ports > num_usbpd_ports + 1)
-		return -EPROTO;
-
-It never checks either count against EC_USB_PD_MAX_PORTS, the size of
-the ports[] array. A malfunctioning, malicious or compromised EC that
-reports num_usbpd_ports == num_charger_ports == N for any N > 8 (for
-example both 255) passes this check, and the loop then writes N pointers
-into the 8-entry ports[] array embedded in the devm_kzalloc()'d
-charger_data, overflowing it by up to 255 - 8 = 247 entries (~1976
-bytes): a slab out-of-bounds write.
-
-Reject a port count larger than the ports[] array can hold.
-
-Fixes: f68b883e8fad ("power: supply: add cros-ec USBPD charger driver.")
+Fixes: 93fe48a58590 ("platform/chrome: cros_ec_sensorhub: Add median filter")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
-Reviewed-by: Tzung-Bi Shih <tzungbi@kernel.org>
 ---
-v2:
- - Reword the added comment per Tzung-Bi Shih: drop the redundant "the
-   count is reported by the EC" and name the bound, EC_USB_PD_MAX_PORTS.
-   No functional change.
- - Add Reviewed-by: Tzung-Bi Shih.
- v1: https://lore.kernel.org/all/20260615-b4-disp-e0930b21-v1-1-c9ffbac7c9bb@proton.me
+v2 (per Tzung-Bi Shih's review):
+- Move the check from cros_ec_sensor_ring_process_event() into the FIFO
+  read loop of cros_ec_sensorhub_ring_handler(), so the sensor number is
+  validated where each event is read from the EC. This is the source
+  Tzung-Bi pointed to and it covers every later use of the sensor number.
+- Shorten the comment.
+- Left the existing cros_sensorhub_send_sample() bound in place. With the
+  handler check it can no longer fire, so it is now redundant; I can drop
+  it as a separate cleanup patch if preferred.
+- Kept Fixes: 93fe48a58590. batch_state[] and every unchecked
+  batch_state[in->sensor_num]/[sensor_id] access (and sensor_mask |=
+  BIT(in->sensor_num)) were introduced by the median-filter commit; at
+  145d59baff59 ("Add FIFO support") there is no batch_state[] and the only
+  ring-path use of the sensor number, cros_sensorhub_send_sample() ->
+  push_data[], was already bounded. Both commits are in v5.7-rc1, so the
+  stable backport range is unchanged either way; happy to switch to
+  145d59baff59 if you prefer.
 
-I reproduced the out-of-bounds write with an in-kernel test that drives
-the cros_usbpd_charger_probe() geometry verbatim under KASAN - a
-devm_kzalloc()'d charger_data with the 8-entry ports[] array, the
-EC-value cross-check, and the population loop - with the device-supplied
-port counts:
+I reproduced the out-of-bounds access with an in-kernel test that drives
+the batch_state[] indexing verbatim under KASAN (CONFIG_KASAN=y), plus a
+userspace AddressSanitizer model of the same geometry on both 32- and
+64-bit. batch_state is devm_kcalloc(sensor_num, 40 bytes); the EC FIFO
+sensor number is an 8-bit field, so it can index up to 255 - roughly
+9.8 KB past the end of a typical (handful-of-sensors) allocation.
 
-  num_charger_ports = num_usbpd_ports = 12, no bound:
-    BUG: KASAN: slab-out-of-bounds in ...probe
-    Write of size 8 ... cache kmalloc-128 ... 0 bytes to the right of the
-    allocated 128-byte region   (ports[8..11] past the 8-entry array)
-  with this patch (count > EC_USB_PD_MAX_PORTS rejected): -EPROTO, no
-    KASAN report.
-  a well-formed count (<= EC_USB_PD_MAX_PORTS) is unaffected, no report.
+  - In-kernel (7.1.0-rc5 + KASAN): an event with sensor_num just past the
+    allocation tripped a slab-out-of-bounds Write in the ODR-flag path
+    (batch_state[n].last_len = 0); the patched arm and an in-bounds
+    control arm completed cleanly with no KASAN report.
+  - ASan model (-m32 and -m64): a sensor number of 200/255 produced a
+    heap-buffer-overflow WRITE 8000/10200 bytes past the alloc on both
+    ABIs; the patched arm and the in-bounds arm were clean.
 
-The full device range - both counts reported as 255, writing 247
-pointers (~1976 bytes) past the array - reproduces the same way under
-userspace AddressSanitizer on both -m32 and -m64.
+Reproducer (kernel module + ASan model) available on request.
 ---
- drivers/power/supply/cros_usbpd-charger.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ drivers/platform/chrome/cros_ec_sensorhub_ring.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/drivers/power/supply/cros_usbpd-charger.c b/drivers/power/supply/cros_usbpd-charger.c
-index 7d3e676a951c..45a87f5baac6 100644
---- a/drivers/power/supply/cros_usbpd-charger.c
-+++ b/drivers/power/supply/cros_usbpd-charger.c
-@@ -589,10 +589,13 @@ static int cros_usbpd_charger_probe(struct platform_device *pd)
+diff --git a/drivers/platform/chrome/cros_ec_sensorhub_ring.c b/drivers/platform/chrome/cros_ec_sensorhub_ring.c
+index a10579144c34..64e9615ed6f4 100644
+--- a/drivers/platform/chrome/cros_ec_sensorhub_ring.c
++++ b/drivers/platform/chrome/cros_ec_sensorhub_ring.c
+@@ -890,6 +890,14 @@ static void cros_ec_sensorhub_ring_handler(struct cros_ec_sensorhub *sensorhub)
  
- 	/*
- 	 * Sanity checks on the number of ports:
--	 *  there should be at most 1 dedicated port
-+	 *  there should be at most 1 dedicated port, and the count must
-+	 *  not exceed the maximum number of supported ports
-+	 *  (EC_USB_PD_MAX_PORTS).
- 	 */
- 	if (charger->num_charger_ports < charger->num_usbpd_ports ||
--	    charger->num_charger_ports > (charger->num_usbpd_ports + 1)) {
-+	    charger->num_charger_ports > (charger->num_usbpd_ports + 1) ||
-+	    charger->num_charger_ports > EC_USB_PD_MAX_PORTS) {
- 		dev_err(dev, "Unexpected number of charge port count\n");
- 		ret = -EPROTO;
- 		goto fail_nowarn;
+ 		for (in = sensorhub->resp->fifo_read.data, j = 0;
+ 		     j < number_data; j++, in++) {
++			/* Skip event if sensor_num from EC is out of bounds. */
++			if (in->sensor_num >= sensorhub->sensor_num) {
++				dev_warn_ratelimited(sensorhub->dev,
++						     "Invalid sensor number %u from EC\n",
++						     in->sensor_num);
++				continue;
++			}
++
+ 			if (cros_ec_sensor_ring_process_event(
+ 						sensorhub, fifo_info,
+ 						fifo_timestamp,
 
 ---
 base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260616-b4-disp-5e197080-45fa85b2e551
+change-id: 20260617-b4-disp-4e176cdc-9133ec4be92a
 
 Best regards,
 -- 
