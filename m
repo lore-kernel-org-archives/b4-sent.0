@@ -1,82 +1,84 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Thu, 18 Jun 2026 00:46:28 -0500
-Subject: [PATCH v3] platform/chrome: sensorhub: bound the EC-reported
- sensor number
+From: HAN Ruidong <rdhan@smu.edu.sg>
+Date: Thu, 18 Jun 2026 14:30:17 +0800
+Subject: [PATCH] fbcon: Avoid OOB font access if console rotation fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260618-b4-disp-adb3f790-v3-1-3a164ed63cbd@proton.me>
-X-B4-Tracking: v=1; b=H4sIADOGM2oC/x3MTQqAIBBA4avErBsw+7OuEi1Mx5qNhQMRSHdPW
- n6L9zIIJSaBucqQ6GbhMxa0dQXusHEnZF8MWulBDY3BrUPPcqH1WxvGSaENjTaOpp56ByW7EgV
- +/uWyvu8HKJG7X2IAAAA=
-To: Benson Leung <bleung@chromium.org>, Tzung-Bi Shih <tzungbi@kernel.org>
-Cc: chrome-platform@lists.linux.dev, Guenter Roeck <groeck@chromium.org>, 
- Gwendal Grignou <gwendal@chromium.org>, linux-kernel@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781761587; l=2341;
- i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=kRkQQ2XtenLBQgIAfyc88UeRnsxPWIzaMvsDGjnhD3I=;
- b=oJcZC6eYCe5So+WpqJwGJnz45a8YJVhOj88O65r6GJWx07CRPjNdU8btfNh7r1C08KxpZZgR5
- BP9AaT4x/K0BLmGp5nObPRp632D3j1B0+u4AOUyFklVDXWQbbrH8AFG
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
+Message-Id: <20260618-prep-base-v5-15-209-v1-1-cfcf596dca7a@smu.edu.sg>
+X-B4-Tracking: v=1; b=H4sIAHiQM2oC/yXMQQqDMBCF4avIrB1IUhONVyldaBx1urCSaUNBv
+ LtRlx+8928gFJkE2mKDSImFP0uGLgsIc7dMhDxkg1HGKacbXCOt2HdCmCxqi0Z5tN4NVR184x4
+ 15GfejPy/qs/Xbfn1bwrfMwX7fgDVFM0GdwAAAA==
+X-Change-ID: 20260618-prep-base-v5-15-209-596d47c98637
+To: Andrew Morton <akpm@osdl.org>, Antonino Daplas <adaplas@pol.net>, 
+ stable@vger.kernel.org
+Cc: dri-devel@lists.freedesktop.org, linux-fbdev@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Thomas Zimmermann <tzimmermann@suse.de>, 
+ Helge Deller <deller@gmx.de>, HAN Ruidong <rdhan@smu.edu.sg>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1989; i=rdhan@smu.edu.sg;
+ h=from:subject:message-id; bh=pCtdGjG+ab6vAzMlyNVdJgcjHkRUp/+84n9btP5SAHM=;
+ b=owGbwMvMwCG27fhf/yDP2WsYT6slMWQZT6g7of1/Y8mMJOa/t+R4pJPbfD78X7/VX4Gj9HhHv
+ eMCDcvtHaUsDGIcDLJiiiw5Nbps8Wedr5ze/qsHZg4rE8gQBi5OAZhIZyLD/2Q31iC5+8qZF8+7
+ WsVdqoh9pN8wW2Buv6dIsdUKmfaHHxgZTjWy+4b8/nKk7d0Fk6Z1YeImp9z3HLTb5RTucunk5wg
+ mFgA=
+X-Developer-Key: i=rdhan@smu.edu.sg; a=openpgp;
+ fpr=6C7C2D065FCD43D4CBB7FA8CB6C7FD4F52499BAC
+X-Endpoint-Received: by B4 Relay for rdhan@smu.edu.sg/default with auth_id=829
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Each EC FIFO event carries an 8-bit sensor number (in->sensor_num).
-cros_ec_sensorhub_ring_handler() validates the FIFO event count, the
-per-read count and the ring bound, but not the sensor number, which
-cros_ec_sensor_ring_process_event() then uses unchecked to index
-sensorhub->batch_state[] - allocated with only sensorhub->sensor_num
-entries. A sensor number of sensor_num or larger is an out-of-bounds
-read and write of batch_state[].
+[ Upstream commit e4ef723d8975a2694cc90733a6b888a5e2841842 ]
 
-Validate the sensor number in the ring handler, where each event is read
-from the EC, and drop a malformed event before it is used.
+Clear the font buffer if the reallocation during console rotation fails
+in fbcon_rotate_font(). The putcs implementations for the rotated buffer
+will return early in this case. See [1] for an example.
 
-Fixes: 145d59baff59 ("platform/chrome: cros_ec_sensorhub: Add FIFO support")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
-Reviewed-by: Tzung-Bi Shih <tzungbi@kernel.org>
+Currently, fbcon_rotate_font() keeps the old buffer, which is too small
+for the rotated font. Printing to the rotated console with a high-enough
+character code will overflow the font buffer.
+
+v2:
+- fix typos in commit message
+
+Signed-off-by: Thomas Zimmermann <tzimmermann@suse.de>
+Fixes: 6cc50e1c5b57 ("[PATCH] fbcon: Console Rotation - Add support to rotate font bitmap")
+Cc: stable@vger.kernel.org # v2.6.15+
+Link: https://elixir.bootlin.com/linux/v6.19/source/drivers/video/fbdev/core/fbcon_ccw.c#L144 # [1]
+Signed-off-by: Helge Deller <deller@gmx.de>
+[ renamed `par` to `ops` to match the v5.15 local pointer name ]
+Signed-off-by: HAN Ruidong <rdhan@smu.edu.sg>
 ---
-v3 (per Tzung-Bi Shih's review):
-- Fixes: -> 145d59baff59 ("Add FIFO support") as requested.
-- Added Tzung-Bi's Reviewed-by.
-- Trimmed the commit message.
-No code change from v2 (single bound in the FIFO read loop).
+ drivers/video/fbdev/core/fbcon_rotate.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-The out-of-bounds write was reproduced under KASAN with an in-kernel test
-driving the batch_state[] indexing, plus a 32/64-bit AddressSanitizer
-model of the same geometry; reproducer available on request.
----
- drivers/platform/chrome/cros_ec_sensorhub_ring.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
-
-diff --git a/drivers/platform/chrome/cros_ec_sensorhub_ring.c b/drivers/platform/chrome/cros_ec_sensorhub_ring.c
-index a10579144c34..64e9615ed6f4 100644
---- a/drivers/platform/chrome/cros_ec_sensorhub_ring.c
-+++ b/drivers/platform/chrome/cros_ec_sensorhub_ring.c
-@@ -890,6 +890,14 @@ static void cros_ec_sensorhub_ring_handler(struct cros_ec_sensorhub *sensorhub)
+diff --git a/drivers/video/fbdev/core/fbcon_rotate.c b/drivers/video/fbdev/core/fbcon_rotate.c
+index ec3c883400f7..4a06e71ae443 100644
+--- a/drivers/video/fbdev/core/fbcon_rotate.c
++++ b/drivers/video/fbdev/core/fbcon_rotate.c
+@@ -46,6 +46,10 @@ static int fbcon_rotate_font(struct fb_info *info, struct vc_data *vc)
+ 		info->fbops->fb_sync(info);
  
- 		for (in = sensorhub->resp->fifo_read.data, j = 0;
- 		     j < number_data; j++, in++) {
-+			/* Skip event if sensor_num from EC is out of bounds. */
-+			if (in->sensor_num >= sensorhub->sensor_num) {
-+				dev_warn_ratelimited(sensorhub->dev,
-+						     "Invalid sensor number %u from EC\n",
-+						     in->sensor_num);
-+				continue;
-+			}
+ 	if (ops->fd_size < d_cellsize * len) {
++		kfree(ops->fontbuffer);
++		ops->fontbuffer = NULL;
++		ops->fd_size = 0;
 +
- 			if (cros_ec_sensor_ring_process_event(
- 						sensorhub, fifo_info,
- 						fifo_timestamp,
+ 		dst = kmalloc_array(len, d_cellsize, GFP_KERNEL);
+ 
+ 		if (dst == NULL) {
+@@ -54,7 +58,6 @@ static int fbcon_rotate_font(struct fb_info *info, struct vc_data *vc)
+ 		}
+ 
+ 		ops->fd_size = d_cellsize * len;
+-		kfree(ops->fontbuffer);
+ 		ops->fontbuffer = dst;
+ 	}
+ 
 
 ---
-base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
-change-id: 20260618-b4-disp-adb3f790-af128ce95e5c
+base-commit: dc027a595035729e290c0adffae363a653acde7c
+change-id: 20260618-prep-base-v5-15-209-596d47c98637
 
 Best regards,
--- 
-Bryam Vargas <hexlabsecurity@proton.me>
+--  
+HAN Ruidong <rdhan@smu.edu.sg>
 
