@@ -1,84 +1,80 @@
-From: HAN Ruidong <rdhan@smu.edu.sg>
-Date: Thu, 18 Jun 2026 14:30:17 +0800
-Subject: [PATCH] fbcon: Avoid OOB font access if console rotation fails
+From: Jian Hu <jian.hu@amlogic.com>
+Subject: [PATCH v4 0/2] clk: amlogic: Add A9 AO clock controller
+Date: Thu, 18 Jun 2026 17:49:10 +0800
+Message-Id: <20260618-a9_aoclk-v4-0-569d0425e50c@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260618-prep-base-v5-15-209-v1-1-cfcf596dca7a@smu.edu.sg>
-X-B4-Tracking: v=1; b=H4sIAHiQM2oC/yXMQQqDMBCF4avIrB1IUhONVyldaBx1urCSaUNBv
- LtRlx+8928gFJkE2mKDSImFP0uGLgsIc7dMhDxkg1HGKacbXCOt2HdCmCxqi0Z5tN4NVR184x4
- 15GfejPy/qs/Xbfn1bwrfMwX7fgDVFM0GdwAAAA==
-X-Change-ID: 20260618-prep-base-v5-15-209-596d47c98637
-To: Andrew Morton <akpm@osdl.org>, Antonino Daplas <adaplas@pol.net>, 
- stable@vger.kernel.org
-Cc: dri-devel@lists.freedesktop.org, linux-fbdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Thomas Zimmermann <tzimmermann@suse.de>, 
- Helge Deller <deller@gmx.de>, HAN Ruidong <rdhan@smu.edu.sg>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1989; i=rdhan@smu.edu.sg;
- h=from:subject:message-id; bh=pCtdGjG+ab6vAzMlyNVdJgcjHkRUp/+84n9btP5SAHM=;
- b=owGbwMvMwCG27fhf/yDP2WsYT6slMWQZT6g7of1/Y8mMJOa/t+R4pJPbfD78X7/VX4Gj9HhHv
- eMCDcvtHaUsDGIcDLJiiiw5Nbps8Wedr5ze/qsHZg4rE8gQBi5OAZhIZyLD/2Q31iC5+8qZF8+7
- WsVdqoh9pN8wW2Buv6dIsdUKmfaHHxgZTjWy+4b8/nKk7d0Fk6Z1YeImp9z3HLTb5RTucunk5wg
- mFgA=
-X-Developer-Key: i=rdhan@smu.edu.sg; a=openpgp;
- fpr=6C7C2D065FCD43D4CBB7FA8CB6C7FD4F52499BAC
-X-Endpoint-Received: by B4 Relay for rdhan@smu.edu.sg/default with auth_id=829
+X-B4-Tracking: v=1; b=H4sIABa/M2oC/22Myw6CMBQFf4V0bU0fUMSV/2GMacsFbgRqWtNoS
+ P/dwgoTl3NyZhYSwCMEci4W4iFiQDdnKA8FsYOee6DYZiaCCcUUk1Q3d+3s+KDGdJXkRrdWSZL
+ vTw8dvrfU9ZZ5wPBy/rOVo1jXP5EoKKNdWYNWXAHUp4ueRtejPVo3kTUT5U7lbKfKrJq6akSrr
+ OQgftWU0hc/244P3QAAAA==
+X-Change-ID: 20260603-a9_aoclk-bbf531badc63
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jerome Brunet <jbrunet@baylibre.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, Jian Hu <jian.hu@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781776153; l=1755;
+ i=jian.hu@amlogic.com; s=20260415; h=from:subject:message-id;
+ bh=NuY8O2IqRQE61M1abMdjWGK6rCEZPWKvjWWEW9TDJ2o=;
+ b=Bfb8JABqNzm9/UBrYWasHh19P9TmDIDa+q7JuflrTMmikeS4rtp77FgEmXhDeGm4AkNL2Ff5H
+ suqKcTN6TjDDr4uZUZXlvhi+dsBaBA4UrsGhEP7FuKxDdFh2ArEn+WE
+X-Developer-Key: i=jian.hu@amlogic.com; a=ed25519;
+ pk=zHUE+rNtH9z+Sb8au1/elWknjFQmy5QDVkBoxleuOIA=
+X-Endpoint-Received: by B4 Relay for jian.hu@amlogic.com/20260415 with auth_id=735
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-[ Upstream commit e4ef723d8975a2694cc90733a6b888a5e2841842 ]
+This series adds Amlogic A9 AO clock support, including dt-binding and AO clock driver.
 
-Clear the font buffer if the reallocation during console rotation fails
-in fbcon_rotate_font(). The putcs implementations for the rotated buffer
-will return early in this case. See [1] for an example.
-
-Currently, fbcon_rotate_font() keeps the old buffer, which is too small
-for the rotated font. Printing to the rotated console with a high-enough
-character code will overflow the font buffer.
-
-v2:
-- fix typos in commit message
-
-Signed-off-by: Thomas Zimmermann <tzimmermann@suse.de>
-Fixes: 6cc50e1c5b57 ("[PATCH] fbcon: Console Rotation - Add support to rotate font bitmap")
-Cc: stable@vger.kernel.org # v2.6.15+
-Link: https://elixir.bootlin.com/linux/v6.19/source/drivers/video/fbdev/core/fbcon_ccw.c#L144 # [1]
-Signed-off-by: Helge Deller <deller@gmx.de>
-[ renamed `par` to `ops` to match the v5.15 local pointer name ]
-Signed-off-by: HAN Ruidong <rdhan@smu.edu.sg>
+Signed-off-by: Jian Hu <jian.hu@amlogic.com>
 ---
- drivers/video/fbdev/core/fbcon_rotate.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+Changes in v4:
+- Drop CLK_IS_CRITICAL for ao_xtal_in clock.
+- Drop CLK_HW_INIT* and revert to explicit clock declarations.
+- Link to v3: https://lore.kernel.org/r/20260610-a9_aoclk-v3-0-b7592d6c31e2@amlogic.com
 
-diff --git a/drivers/video/fbdev/core/fbcon_rotate.c b/drivers/video/fbdev/core/fbcon_rotate.c
-index ec3c883400f7..4a06e71ae443 100644
---- a/drivers/video/fbdev/core/fbcon_rotate.c
-+++ b/drivers/video/fbdev/core/fbcon_rotate.c
-@@ -46,6 +46,10 @@ static int fbcon_rotate_font(struct fb_info *info, struct vc_data *vc)
- 		info->fbops->fb_sync(info);
- 
- 	if (ops->fd_size < d_cellsize * len) {
-+		kfree(ops->fontbuffer);
-+		ops->fontbuffer = NULL;
-+		ops->fd_size = 0;
-+
- 		dst = kmalloc_array(len, d_cellsize, GFP_KERNEL);
- 
- 		if (dst == NULL) {
-@@ -54,7 +58,6 @@ static int fbcon_rotate_font(struct fb_info *info, struct vc_data *vc)
- 		}
- 
- 		ops->fd_size = d_cellsize * len;
--		kfree(ops->fontbuffer);
- 		ops->fontbuffer = dst;
- 	}
- 
+Changes in v3:
+- Move COMPILE_TEST after 'depends on ARM64' reported by sashiko-bot.
+- Rename i2c3 to i3c reported by sashiko-bot.
+- Reword the comment describing ao_xtal_in's flags.
+- Use struct clk_init_data to describe ao_xtal_in's hw.init.
+- Link to v2: https://lore.kernel.org/r/20260603-a9_aoclk-v2-0-f47ea616ee78@amlogic.com
+
+Changes in v2:
+- Split the A9 clock driver and send the AO clock separately.
+- Rename aobus to soc.
+- Use CLK_HW_INIT_FW_NAME to describe clk_init_data.
+- Use CLK_HW_INIT_PARENTS_DATA to describe clk_init_data.
+- Use a9_ao prefix for MESON_COMP_SEL.
+- Correct duandiv name.
+- Fix pwm b reg.
+- Link to v1: https://lore.kernel.org/all/20260511-b4-a9_clk-v1-0-41cb4071b7c9@amlogic.com/
 
 ---
-base-commit: dc027a595035729e290c0adffae363a653acde7c
-change-id: 20260618-prep-base-v5-15-209-596d47c98637
+Jian Hu (2):
+      dt-bindings: clock: Add Amlogic A9 AO clock controller
+      clk: amlogic: Add A9 AO clock controller driver
+
+ .../bindings/clock/amlogic,a9-aoclkc.yaml          |  76 ++++
+ drivers/clk/meson/Kconfig                          |  13 +
+ drivers/clk/meson/Makefile                         |   1 +
+ drivers/clk/meson/a9-aoclk.c                       | 488 +++++++++++++++++++++
+ include/dt-bindings/clock/amlogic,a9-aoclkc.h      |  76 ++++
+ 5 files changed, 654 insertions(+)
+---
+base-commit: ca89c88bcf69daca829044c638a8163d5ce47af0
+change-id: 20260603-a9_aoclk-bbf531badc63
 
 Best regards,
---  
-HAN Ruidong <rdhan@smu.edu.sg>
+-- 
+Jian Hu <jian.hu@amlogic.com>
 
