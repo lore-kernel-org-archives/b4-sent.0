@@ -1,107 +1,82 @@
-From: Zakariya Hadrami <zkh1@proton.me>
-Date: Wed, 17 Jun 2026 22:37:03 +0900
-Subject: [PATCH v2 5/5] ARM: dts: mediatek: Add basic support for Amazon
- ford board
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Thu, 18 Jun 2026 00:46:28 -0500
+Subject: [PATCH v3] platform/chrome: sensorhub: bound the EC-reported
+ sensor number
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260617-mt8127-amazon-ford-basic-v2-5-6859e29e72a8@proton.me>
-References: <20260617-mt8127-amazon-ford-basic-v2-0-6859e29e72a8@proton.me>
-In-Reply-To: <20260617-mt8127-amazon-ford-basic-v2-0-6859e29e72a8@proton.me>
-To: Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Sean Wang <sean.wang@mediatek.com>, 
- Wim Van Sebroeck <wim@linux-watchdog.org>, 
- Guenter Roeck <linux@roeck-us.net>
-Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-watchdog@vger.kernel.org, Zakariya Hadrami <zkh1@proton.me>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781703437; l=1963;
- i=zkh1@proton.me; s=20260616; h=from:subject:message-id;
- bh=ER3ARswagh7xs80gDU1m6FCsuRFGAreidBmq7cULkdo=;
- b=knrHaSV8cyIhI6j/4ugY3/Y9fieSarHylXmpVc6ygFKsdiQ4KwXfanhfpgRV+kpn/hdia5xyq
- bDT9Q0r/3dMCGrvC55esWdqeKnD0voKHhtsnqGuX5IGgc9T8EevY/vS
-X-Developer-Key: i=zkh1@proton.me; a=ed25519;
- pk=9DiJwhINAERP95fbFofXSP77GEnvfO/rMIRRRFDhaoc=
-X-Endpoint-Received: by B4 Relay for zkh1@proton.me/20260616 with auth_id=824
+Message-Id: <20260618-b4-disp-adb3f790-v3-1-3a164ed63cbd@proton.me>
+X-B4-Tracking: v=1; b=H4sIADOGM2oC/x3MTQqAIBBA4avErBsw+7OuEi1Mx5qNhQMRSHdPW
+ n6L9zIIJSaBucqQ6GbhMxa0dQXusHEnZF8MWulBDY3BrUPPcqH1WxvGSaENjTaOpp56ByW7EgV
+ +/uWyvu8HKJG7X2IAAAA=
+To: Benson Leung <bleung@chromium.org>, Tzung-Bi Shih <tzungbi@kernel.org>
+Cc: chrome-platform@lists.linux.dev, Guenter Roeck <groeck@chromium.org>, 
+ Gwendal Grignou <gwendal@chromium.org>, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781761587; l=2341;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=kRkQQ2XtenLBQgIAfyc88UeRnsxPWIzaMvsDGjnhD3I=;
+ b=oJcZC6eYCe5So+WpqJwGJnz45a8YJVhOj88O65r6GJWx07CRPjNdU8btfNh7r1C08KxpZZgR5
+ BP9AaT4x/K0BLmGp5nObPRp632D3j1B0+u4AOUyFklVDXWQbbrH8AFG
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This tablet uses a MediaTek MT8127 system-on-chip with 1GB of RAM.
-It can currently boot into initramfs with a working UART and
-Simple Framebuffer using already initialized panel by the bootloader.
+Each EC FIFO event carries an 8-bit sensor number (in->sensor_num).
+cros_ec_sensorhub_ring_handler() validates the FIFO event count, the
+per-read count and the ring bound, but not the sensor number, which
+cros_ec_sensor_ring_process_event() then uses unchecked to index
+sensorhub->batch_state[] - allocated with only sensorhub->sensor_num
+entries. A sensor number of sensor_num or larger is an out-of-bounds
+read and write of batch_state[].
 
-Signed-off-by: Zakariya Hadrami <zkh1@proton.me>
+Validate the sensor number in the ring handler, where each event is read
+from the EC, and drop a malformed event before it is used.
+
+Fixes: 145d59baff59 ("platform/chrome: cros_ec_sensorhub: Add FIFO support")
+Cc: stable@vger.kernel.org
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Reviewed-by: Tzung-Bi Shih <tzungbi@kernel.org>
 ---
- arch/arm/boot/dts/mediatek/Makefile               |  1 +
- arch/arm/boot/dts/mediatek/mt8127-amazon-ford.dts | 46 +++++++++++++++++++++++
- 2 files changed, 47 insertions(+)
+v3 (per Tzung-Bi Shih's review):
+- Fixes: -> 145d59baff59 ("Add FIFO support") as requested.
+- Added Tzung-Bi's Reviewed-by.
+- Trimmed the commit message.
+No code change from v2 (single bound in the FIFO read loop).
 
-diff --git a/arch/arm/boot/dts/mediatek/Makefile b/arch/arm/boot/dts/mediatek/Makefile
-index 37c4cded0eae..a610bc75c7d9 100644
---- a/arch/arm/boot/dts/mediatek/Makefile
-+++ b/arch/arm/boot/dts/mediatek/Makefile
-@@ -14,5 +14,6 @@ dtb-$(CONFIG_ARCH_MEDIATEK) += \
- 	mt7623n-rfb-emmc.dtb \
- 	mt7623n-bananapi-bpi-r2.dtb \
- 	mt7629-rfb.dtb \
-+	mt8127-amazon-ford.dtb \
- 	mt8127-moose.dtb \
- 	mt8135-evbp1.dtb
-diff --git a/arch/arm/boot/dts/mediatek/mt8127-amazon-ford.dts b/arch/arm/boot/dts/mediatek/mt8127-amazon-ford.dts
-new file mode 100644
-index 000000000000..21bdab0e43f8
---- /dev/null
-+++ b/arch/arm/boot/dts/mediatek/mt8127-amazon-ford.dts
-@@ -0,0 +1,46 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+/dts-v1/;
-+#include "mt8127.dtsi"
-+
-+/ {
-+	model = "MediaTek MT8127 Amazon Ford";
-+	compatible = "amazon,ford", "mediatek,mt8127";
-+
-+	aliases {
-+		serial0 = &uart0;
-+	};
-+
-+	chosen {
-+		stdout-path = "serial0:921600n8";
-+
-+		framebuffer0: framebuffer@b7a00000 {
-+			compatible = "simple-framebuffer";
-+			memory-region = <&framebuffer_reserved>;
-+			width = <1024>;
-+			height = <600>;
-+			stride = <(1024 * 2)>;
-+			format = "r5g6b5";
-+		};
-+	};
-+
-+	memory@80000000 {
-+		device_type = "memory";
-+		reg = <0 0x80000000 0 0x40000000>;
-+	};
-+
-+	reserved-memory {
-+		framebuffer_reserved: framebuffer@b7a00000 {
-+			reg = <0 0xb7a00000 0 0x1000000>;
-+			no-map;
-+		};
-+	};
-+};
-+
-+&uart0 {
-+	status = "okay";
-+};
-+
-+&watchdog {
-+	status = "okay";
-+};
+The out-of-bounds write was reproduced under KASAN with an in-kernel test
+driving the batch_state[] indexing, plus a 32/64-bit AddressSanitizer
+model of the same geometry; reproducer available on request.
+---
+ drivers/platform/chrome/cros_ec_sensorhub_ring.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
+diff --git a/drivers/platform/chrome/cros_ec_sensorhub_ring.c b/drivers/platform/chrome/cros_ec_sensorhub_ring.c
+index a10579144c34..64e9615ed6f4 100644
+--- a/drivers/platform/chrome/cros_ec_sensorhub_ring.c
++++ b/drivers/platform/chrome/cros_ec_sensorhub_ring.c
+@@ -890,6 +890,14 @@ static void cros_ec_sensorhub_ring_handler(struct cros_ec_sensorhub *sensorhub)
+ 
+ 		for (in = sensorhub->resp->fifo_read.data, j = 0;
+ 		     j < number_data; j++, in++) {
++			/* Skip event if sensor_num from EC is out of bounds. */
++			if (in->sensor_num >= sensorhub->sensor_num) {
++				dev_warn_ratelimited(sensorhub->dev,
++						     "Invalid sensor number %u from EC\n",
++						     in->sensor_num);
++				continue;
++			}
++
+ 			if (cros_ec_sensor_ring_process_event(
+ 						sensorhub, fifo_info,
+ 						fifo_timestamp,
+
+---
+base-commit: 8e65320d91cdc3b241d4b94855c88459b91abf66
+change-id: 20260618-b4-disp-adb3f790-af128ce95e5c
+
+Best regards,
 -- 
-2.54.0
+Bryam Vargas <hexlabsecurity@proton.me>
 
