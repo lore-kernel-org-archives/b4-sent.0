@@ -1,11 +1,10 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Thu, 18 Jun 2026 14:27:18 +0100
-Subject: [PATCH v6 02/16] iio: ABI: scale and offset for frequency/phase
- channels
+Date: Thu, 18 Jun 2026 14:27:19 +0100
+Subject: [PATCH v6 03/16] iio: ABI: add parent entry for iio channels
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260618-ad9910-iio-driver-v6-2-79125ffbe430@analog.com>
+Message-Id: <20260618-ad9910-iio-driver-v6-3-79125ffbe430@analog.com>
 References: <20260618-ad9910-iio-driver-v6-0-79125ffbe430@analog.com>
 In-Reply-To: <20260618-ad9910-iio-driver-v6-0-79125ffbe430@analog.com>
 To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
@@ -21,49 +20,52 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781789267; l=1866;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781789267; l=1735;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=7KsgsauGbGCdI/Pov6cgZztEKHr6MMfWt7SGfdBNJms=;
- b=whdHJtJBftAIxFQ8gWH50o8+yAADmc7bWh+vBm9c1aBV0j3uPIl4OtawNUubxp6Wjo3Qibkcf
- 02X0ytQZh3JCsz2D8xR+fevSMjBiAC28Cr/4NdDLAWy5C0I3n+UbqbI
+ bh=+RM1tUZK/kOT/XAZMDgMR43UKpX3Xy/DAmubh8Zz8rs=;
+ b=ZF8nnL7+G7D7B6Hs3wKXdPml/nxAoqggXsKMMAzLEeRnTMvV80gv0gEP8CDlYGBW4edPP4v02
+ mdmleV4Gdx4BKYGNNDEy67KHi+9RfaXUU7L8xTg2NyiKMSTu7enQoyE
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Consider scale and offset attributes for frequency and phase channels.
+Add documentation for a read-only sysfs attribute that allows to expose
+parent-child relationships between IIO channels.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- Documentation/ABI/testing/sysfs-bus-iio | 8 ++++++++
- 1 file changed, 8 insertions(+)
+ Documentation/ABI/testing/sysfs-bus-iio | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
 diff --git a/Documentation/ABI/testing/sysfs-bus-iio b/Documentation/ABI/testing/sysfs-bus-iio
-index f52db6abcf31..d9c4e3b53f29 100644
+index d9c4e3b53f29..e0f11b39511f 100644
 --- a/Documentation/ABI/testing/sysfs-bus-iio
 +++ b/Documentation/ABI/testing/sysfs-bus-iio
-@@ -441,6 +441,10 @@ What:		/sys/bus/iio/devices/iio:deviceX/in_voltageY_i_offset
- What:		/sys/bus/iio/devices/iio:deviceX/in_voltageY_q_offset
- What:		/sys/bus/iio/devices/iio:deviceX/in_currentY_offset
- What:		/sys/bus/iio/devices/iio:deviceX/in_current_offset
-+What:		/sys/bus/iio/devices/iio:deviceX/out_phaseY_offset
-+What:		/sys/bus/iio/devices/iio:deviceX/out_phase_offset
-+What:		/sys/bus/iio/devices/iio:deviceX/out_frequencyY_offset
-+What:		/sys/bus/iio/devices/iio:deviceX/out_frequency_offset
- What:		/sys/bus/iio/devices/iio:deviceX/in_tempY_offset
- What:		/sys/bus/iio/devices/iio:deviceX/in_temp_offset
- What:		/sys/bus/iio/devices/iio:deviceX/in_pressureY_offset
-@@ -474,6 +478,10 @@ What:		/sys/bus/iio/devices/iio:deviceX/in_voltage_scale
- What:		/sys/bus/iio/devices/iio:deviceX/in_voltage-voltage_scale
- What:		/sys/bus/iio/devices/iio:deviceX/out_voltageY_scale
- What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_scale
-+What:		/sys/bus/iio/devices/iio:deviceX/out_phaseY_scale
-+What:		/sys/bus/iio/devices/iio:deviceX/out_phase_scale
-+What:		/sys/bus/iio/devices/iio:deviceX/out_frequencyY_scale
-+What:		/sys/bus/iio/devices/iio:deviceX/out_frequency_scale
- What:		/sys/bus/iio/devices/iio:deviceX/in_currentY_scale
- What:		/sys/bus/iio/devices/iio:deviceX/in_currentY_supply_scale
- What:		/sys/bus/iio/devices/iio:deviceX/in_current_scale
+@@ -2154,6 +2154,23 @@ Description:
+ 		specific attributes. This is useful for userspace to be able to
+ 		better identify an individual channel.
+ 
++What:		/sys/bus/iio/devices/iio:deviceX/in_voltageY_parent
++What:		/sys/bus/iio/devices/iio:deviceX/out_voltageY_parent
++What:		/sys/bus/iio/devices/iio:deviceX/in_altvoltageY_parent
++What:		/sys/bus/iio/devices/iio:deviceX/out_altvoltageY_parent
++What:		/sys/bus/iio/devices/iio:deviceX/in_currentY_parent
++What:		/sys/bus/iio/devices/iio:deviceX/out_currentY_parent
++What:		/sys/bus/iio/devices/iio:deviceX/in_altcurrentY_parent
++What:		/sys/bus/iio/devices/iio:deviceX/out_altcurrentY_parent
++KernelVersion:	7.2
++Contact:	linux-iio@vger.kernel.org
++Description:
++		Read-only attribute containing the sysfs name prefix of the parent
++		channel for hierarchical channel relationships (e.g. "out_altvoltage0").
++		The prefix uniquely identifies the parent channel and can be used by
++		userspace to organize channels in tree-like structures that reflects
++		the physical or logical relationships between them.
++
+ What:		/sys/bus/iio/devices/iio:deviceX/in_phaseY_raw
+ KernelVersion:	4.18
+ Contact:	linux-iio@vger.kernel.org
 
 -- 
 2.43.0
