@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 18 Jun 2026 17:32:13 -0700
-Subject: [PATCH v8 36/46] KVM: selftests: Test that truncation does not
- change shared/private status
+Date: Thu, 18 Jun 2026 17:32:14 -0700
+Subject: [PATCH v8 37/46] KVM: selftests: Test that shared/private status
+ is consistent across processes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260618-gmem-inplace-conversion-v8-36-9d2959357853@google.com>
+Message-Id: <20260618-gmem-inplace-conversion-v8-37-9d2959357853@google.com>
 References: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 In-Reply-To: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -39,59 +39,167 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=1982;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=4931;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=HMIFzbIFC35IUHp+KURT8sUQy854Vqh4EBVRk/UpE8U=;
- b=0Scu2kbW0+O6h0vB1oGGoErRGaOirsqFNMOhSzBWOvhX+9s1Xeg0wzDZy04U061P/8imz4JRU
- FNzLvN7FPZvC/qUN5xAfm39r/FD7id5kWbZHgFmtacfnB5HiZwb2gUP
+ bh=QFGusShJmmZT9C364dWtwaxifYzefTMauT7Y2OJejBw=;
+ b=/UTfA/taWQbgDxeNW73fbVoFb6WiUw4zOYRQkXrqRDA/4nbmLmfFXsf6OPMtJ0KxVYS9QVcFa
+ b6J6hH9WV9ZBzPvjqKyejWNQ6snhl7ULMHAl0xf24U/n15KydeCKNv5
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a test to verify that deallocating a page in a guest memfd region via
-fallocate() with FALLOC_FL_PUNCH_HOLE does not alter the shared or private
-status of the corresponding memory range.
+From: Sean Christopherson <seanjc@google.com>
 
-When a page backing a guest memfd mapping is deallocated, e.g., by punching
-a hole or truncating the file, and then subsequently faulted back in, the
-new page must inherit the correct shared/private status tracked by
-guest_memfd.
+Add a test to verify that a guest_memfd's shared/private status is
+consistent across processes, and that any shared pages previously mapped in
+any process are unmapped from all processes.
 
-Signed-off-by: Ackerley Tng <ackerleytng@google.com>
-Co-developed-by: Sean Christopherson <seanjc@google.com>
+The test forks a child process after creating the shared guest_memfd
+region so that the second process exists alongside the main process for the
+entire test.
+
+The processes then take turns to access memory to check that the
+shared/private status is consistent across processes.
+
 Signed-off-by: Sean Christopherson <seanjc@google.com>
+Co-developed-by: Ackerley Tng <ackerleytng@google.com>
+Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- .../selftests/kvm/x86/guest_memfd_conversions_test.c       | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ .../kvm/x86/guest_memfd_conversions_test.c         | 118 +++++++++++++++++++++
+ 1 file changed, 118 insertions(+)
 
 diff --git a/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c b/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-index 0b024fb7227f0..f03af2c46426f 100644
+index f03af2c46426f..99b0023609670 100644
 --- a/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
 +++ b/tools/testing/selftests/kvm/x86/guest_memfd_conversions_test.c
-@@ -10,6 +10,7 @@
- #include <linux/sizes.h>
+@@ -2,6 +2,8 @@
+ /*
+  * Copyright (c) 2024, Google LLC.
+  */
++#include <pthread.h>
++#include <time.h>
+ #include <sys/mman.h>
+ #include <unistd.h>
  
- #include "kvm_util.h"
-+#include "kvm_syscalls.h"
- #include "kselftest_harness.h"
- #include "test_util.h"
- #include "ucall_common.h"
-@@ -309,6 +310,19 @@ GMEM_CONVERSION_MULTIPAGE_TEST_INIT_SHARED(unallocated_folios, 8)
- 		test_convert_to_shared(t, i, 'B', 'C', 'D');
+@@ -323,6 +325,122 @@ GMEM_CONVERSION_TEST_INIT_SHARED(truncate)
+ 	test_private(t, 0, 0, 'A');
  }
  
-+/* Truncation should not affect shared/private status. */
-+GMEM_CONVERSION_TEST_INIT_SHARED(truncate)
++/* Test that shared/private memory protections work and are seen from any process. */
++GMEM_CONVERSION_TEST_INIT_SHARED(forked_accesses)
 +{
-+	host_do_rmw(t->mem, 0, 0, 'A');
-+	kvm_fallocate(t->gmem_fd, FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE, 0, page_size);
-+	host_do_rmw(t->mem, 0, 0, 'A');
++	enum test_state {
++		STATE_INIT,
++		STATE_CHECK_SHARED,
++		STATE_DONE_CHECKING_SHARED,
++		STATE_CHECK_PRIVATE,
++		STATE_DONE_CHECKING_PRIVATE,
++	};
 +
-+	test_convert_to_private(t, 0, 'A', 'B');
++	struct sync_state {
++		pthread_mutex_t mutex;
++		pthread_cond_t cond;
++		enum test_state step;
++	} *sync;
 +
-+	kvm_fallocate(t->gmem_fd, FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE, 0, page_size);
-+	test_private(t, 0, 0, 'A');
++	pthread_mutexattr_t mattr;
++	pthread_condattr_t cattr;
++	pid_t child_pid, parent_pid;
++	int status;
++
++	sync = kvm_mmap(sizeof(*sync), PROT_READ | PROT_WRITE,
++			MAP_SHARED | MAP_ANONYMOUS, -1);
++
++	pthread_mutexattr_init(&mattr);
++	pthread_mutexattr_setpshared(&mattr, PTHREAD_PROCESS_SHARED);
++	pthread_mutex_init(&sync->mutex, &mattr);
++	pthread_mutexattr_destroy(&mattr);
++
++	pthread_condattr_init(&cattr);
++	pthread_condattr_setpshared(&cattr, PTHREAD_PROCESS_SHARED);
++	pthread_cond_init(&sync->cond, &cattr);
++	pthread_condattr_destroy(&cattr);
++
++	sync->step = STATE_INIT;
++
++#define TEST_STATE_AWAIT(__state)						\
++	do {									\
++		pthread_mutex_lock(&sync->mutex);				\
++		while (sync->step != (__state)) {				\
++			struct timespec ts, stop;				\
++			int ret;						\
++										\
++			clock_gettime(CLOCK_REALTIME, &ts);			\
++			stop = timespec_add_ns(ts, 100 * 1000000UL);		\
++										\
++			ret = pthread_cond_timedwait(&sync->cond, &sync->mutex, &stop); \
++			if (ret == ETIMEDOUT) {					\
++				bool alive = (child_pid == 0) ?			\
++					     (getppid() == parent_pid) :		\
++					     (waitpid(child_pid, NULL, WNOHANG) == 0); \
++				TEST_ASSERT(alive, "Other process exited prematurely"); \
++			} else {						\
++				TEST_ASSERT(!ret, "pthread_cond_timedwait failed"); \
++			}							\
++		}								\
++		pthread_mutex_unlock(&sync->mutex);				\
++	} while (0)
++
++#define TEST_STATE_SET(__state)							\
++	do {									\
++		pthread_mutex_lock(&sync->mutex);				\
++		sync->step = (__state);						\
++		pthread_cond_broadcast(&sync->cond);				\
++		pthread_mutex_unlock(&sync->mutex);				\
++	} while (0)
++
++	parent_pid = getpid();
++	child_pid = fork();
++	TEST_ASSERT(child_pid != -1, "fork failed");
++
++	if (child_pid == 0) {
++		const char inconsequential = 0xdd;
++
++		TEST_STATE_AWAIT(STATE_CHECK_SHARED);
++
++		/*
++		 * This maps the pages into the child process as well, and tests
++		 * that the conversion process will unmap the guest_memfd memory
++		 * from all processes.
++		 */
++		host_do_rmw(t->mem, 0, 0xB, 0xC);
++
++		TEST_STATE_SET(STATE_DONE_CHECKING_SHARED);
++		TEST_STATE_AWAIT(STATE_CHECK_PRIVATE);
++
++		TEST_EXPECT_SIGBUS(READ_ONCE(t->mem[0]));
++		TEST_EXPECT_SIGBUS(WRITE_ONCE(t->mem[0], inconsequential));
++
++		TEST_STATE_SET(STATE_DONE_CHECKING_PRIVATE);
++		exit(0);
++	}
++
++	test_shared(t, 0, 0, 0xA, 0xB);
++
++	TEST_STATE_SET(STATE_CHECK_SHARED);
++	TEST_STATE_AWAIT(STATE_DONE_CHECKING_SHARED);
++
++	test_convert_to_private(t, 0, 0xC, 0xD);
++
++	TEST_STATE_SET(STATE_CHECK_PRIVATE);
++	TEST_STATE_AWAIT(STATE_DONE_CHECKING_PRIVATE);
++
++	TEST_ASSERT_EQ(waitpid(child_pid, &status, 0), child_pid);
++	TEST_ASSERT(WIFEXITED(status) && WEXITSTATUS(status) == 0,
++		    "Child exited with unexpected status");
++
++	pthread_mutex_destroy(&sync->mutex);
++	pthread_cond_destroy(&sync->cond);
++	kvm_munmap(sync, sizeof(*sync));
++
++#undef TEST_STATE_SET
++#undef TEST_STATE_AWAIT
 +}
 +
  int main(int argc, char *argv[])
