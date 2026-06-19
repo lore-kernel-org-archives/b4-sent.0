@@ -1,11 +1,10 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 18 Jun 2026 17:31:57 -0700
-Subject: [PATCH v8 20/46] KVM: guest_memfd: Determine invalidation filter
- from memory attributes
+Date: Thu, 18 Jun 2026 17:31:58 -0700
+Subject: [PATCH v8 21/46] KVM: guest_memfd: Zero page while getting pfn
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260618-gmem-inplace-conversion-v8-20-9d2959357853@google.com>
+Message-Id: <20260618-gmem-inplace-conversion-v8-21-9d2959357853@google.com>
 References: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 In-Reply-To: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -39,103 +38,71 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=3547;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=1991;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=JFkMjbYYCjSDV01aUNFW6wbludDPAnrpthRKdegpfv0=;
- b=OO4uXerpwNkGX3lnED+sA8fbddORaRefcBZq+K5H30vPr37IqGGBiflXfk8zkfYYDva7oT3VB
- V1K1UrXO5s7D20uK+h5EDSnG88asfABca4vnzhbP39lxOPh6nQaUoHn
+ bh=RJyzbxXf667S2so5DDvNBxGMe2tadiiUFOb3n2zIf6s=;
+ b=VphIUj4gXv8nnyXvQcJzxM4YxIKGwcCP+UP/454op+orRTjcT6LPKud8fILbuVA+Yyg3ClDxP
+ AF8+SzvWFqNBdZYhak6zSoIs6SNfg1Wcn4652084e0mielkprSJrrEw
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Before conversion, the range filter doesn't really matter:
+Move the folio initialization logic from kvm_gmem_get_pfn() into
+__kvm_gmem_get_pfn() to also zero pages if the page is to be used in
+kvm_gmem_populate().
 
-+ For non-CoCo VMs that use guest_memfd, they have no mirrored tdp, so
-  KVM_DIRECT_ROOTS would have been invalidated anyway.
-+ CoCo VMs could not use INIT_SHARED, and there's no conversion support, so
-  always using KVM_FILTER_PRIVATE would have worked.
+With in-place conversion, the existing data in a guest_memfd page can be
+populated into guest memory through platform-specific ioctls.
 
-Now with conversion support, update kvm_gmem_get_invalidate_filter to
-inspect the memory attributes maple tree for a given range.
+Without first zeroing the page obtained using __kvm_gmem_get_pfn(), it
+might contain uninitialized host memory, which would leak to the guest if
+the populate completes.
 
-Instead of determining the invalidation filter based on static inode
-flags, iterate through the attributes maple tree for the specific range
-being invalidated. This allows KVM to identify if the range contains
-private pages, shared pages, or both, and set the filter bits
-accordingly.
+guest_memfd pages are zeroed at most once in the page's entire lifetime
+with guest_memfd, and that is tracked using the uptodate flag.
 
-Update kvm_gmem_invalidate_begin and kvm_gmem_release to pass the range
-parameters to the filter helper to ensure invalidation accurately
-targets the memory types present in the affected range.
+Zeroing the page in __kvm_gmem_get_pfn() is chosen over zeroing in
+kvm_gmem_get_folio() since other flows, such as a future write() syscall,
+can get a page, write to the page and then set page uptodate without
+zeroing.
 
-Reviewed-by: Fuad Tabba <tabba@google.com>
+This aligns with the concept of zeroing before first use - the other place
+where zeroing happens is in kvm_gmem_fault_user_mapping().
+
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- virt/kvm/guest_memfd.c | 27 ++++++++++++++++++++-------
- 1 file changed, 20 insertions(+), 7 deletions(-)
+ virt/kvm/guest_memfd.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index d72ecbfcc3144..90bc1a26512b6 100644
+index 90bc1a26512b6..86c9f5b0863cb 100644
 --- a/virt/kvm/guest_memfd.c
 +++ b/virt/kvm/guest_memfd.c
-@@ -193,12 +193,24 @@ static struct folio *kvm_gmem_get_folio(struct inode *inode, pgoff_t index)
- 	return folio;
- }
+@@ -1137,6 +1137,11 @@ static struct folio *__kvm_gmem_get_pfn(struct file *file,
+ 		return ERR_PTR(-EHWPOISON);
+ 	}
  
--static enum kvm_gfn_range_filter kvm_gmem_get_invalidate_filter(struct inode *inode)
-+static enum kvm_gfn_range_filter kvm_gmem_get_invalidate_filter(
-+		struct inode *inode, pgoff_t start, pgoff_t end)
- {
--	if (GMEM_I(inode)->flags & GUEST_MEMFD_FLAG_INIT_SHARED)
--		return KVM_FILTER_SHARED;
-+	struct gmem_inode *gi = GMEM_I(inode);
-+	enum kvm_gfn_range_filter filter = 0;
-+	void *entry;
-+
-+	lockdep_assert(mt_lock_is_held(&gi->attributes));
-+
-+	mt_for_each(&gi->attributes, entry, start, end - 1) {
-+		filter |= (xa_to_value(entry) & KVM_MEMORY_ATTRIBUTE_PRIVATE) ?
-+			  KVM_FILTER_PRIVATE : KVM_FILTER_SHARED;
-+
-+		if (filter == (KVM_FILTER_PRIVATE | KVM_FILTER_SHARED))
-+			break;
++	if (!folio_test_uptodate(folio)) {
++		clear_highpage(folio_page(folio, 0));
++		folio_mark_uptodate(folio);
 +	}
++
+ 	*pfn = folio_file_pfn(folio, index);
+ 	if (max_order)
+ 		*max_order = 0;
+@@ -1166,11 +1171,6 @@ int kvm_gmem_get_pfn(struct kvm *kvm, struct kvm_memory_slot *slot,
+ 		goto out;
+ 	}
  
--	return KVM_FILTER_PRIVATE;
-+	return filter;
- }
+-	if (!folio_test_uptodate(folio)) {
+-		clear_highpage(folio_page(folio, 0));
+-		folio_mark_uptodate(folio);
+-	}
+-
+ 	if (kvm_gmem_is_private_mem(inode, index))
+ 		r = kvm_gmem_prepare_folio(kvm, slot, gfn, folio);
  
- static void __kvm_gmem_invalidate_start(struct gmem_file *f, pgoff_t start,
-@@ -244,7 +256,7 @@ static void kvm_gmem_invalidate_start(struct inode *inode, pgoff_t start,
- 	enum kvm_gfn_range_filter attr_filter;
- 	struct gmem_file *f;
- 
--	attr_filter = kvm_gmem_get_invalidate_filter(inode);
-+	attr_filter = kvm_gmem_get_invalidate_filter(inode, start, end);
- 
- 	kvm_gmem_for_each_file(f, inode)
- 		__kvm_gmem_invalidate_start(f, start, end, attr_filter);
-@@ -368,6 +380,7 @@ static int kvm_gmem_release(struct inode *inode, struct file *file)
- {
- 	pgoff_t end = i_size_read(inode) >> PAGE_SHIFT;
- 	struct gmem_file *f = file->private_data;
-+	enum kvm_gfn_range_filter filter;
- 	struct kvm_memory_slot *slot;
- 	struct kvm *kvm = f->kvm;
- 	unsigned long index;
-@@ -397,8 +410,8 @@ static int kvm_gmem_release(struct inode *inode, struct file *file)
- 	 * Zap all SPTEs pointed at by this file.  Do not free the backing
- 	 * memory, as its lifetime is associated with the inode, not the file.
- 	 */
--	__kvm_gmem_invalidate_start(f, 0, end,
--				    kvm_gmem_get_invalidate_filter(inode));
-+	filter = kvm_gmem_get_invalidate_filter(inode, 0, end);
-+	__kvm_gmem_invalidate_start(f, 0, end, filter);
- 	__kvm_gmem_invalidate_end(f, 0, end);
- 
- 	list_del(&f->entry);
 
 -- 
 2.55.0.rc0.738.g0c8ab3ebcc-goog
