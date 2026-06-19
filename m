@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 18 Jun 2026 17:32:00 -0700
-Subject: [PATCH v8 23/46] KVM: TDX: Make source page optional for
- KVM_TDX_INIT_MEM_REGION
+Date: Thu, 18 Jun 2026 17:32:01 -0700
+Subject: [PATCH v8 24/46] KVM: guest_memfd: Make in-place conversion the
+ default
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260618-gmem-inplace-conversion-v8-23-9d2959357853@google.com>
+Message-Id: <20260618-gmem-inplace-conversion-v8-24-9d2959357853@google.com>
 References: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 In-Reply-To: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -39,74 +39,95 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=2428;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=3290;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=6rJv+YHW4nePLyJloC3HGpZyQ/li1FsOfmT6QCoGH2w=;
- b=dPwihyJ9f1Zrfqr5UrPyia+NCoVbxh+ZhEJEUZk/ws1dG42djTf0stcCVHk9S6mztwSEzUDyl
- WZJ5rKkdCk9Ahgl7uhYq6eajZfudNOd+vQnZIRHPB8jlpnUrLA4YpdR
+ bh=PRIZz/MUEDcYpJgxuI5DJhHZ5hfaG9jP2sr46JVINBY=;
+ b=RxWU2Nn3vTjbe31iLWemaFC4u3fW67LS6mTsCASZGW43syFeZcJruijQ/SaPumweB4lztWXkR
+ KKo4Y/vgPRQCh4wCRuGDPhwjndAdVzR8opSq/5IR4MMrz5c5YObQXT4
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Update tdx_gmem_post_populate() to handle cases where a source page is
-not explicitly provided. Instead of returning -EOPNOTSUPP when src_page
-is NULL, default to using the page associated with the destination PFN.
+Make in-place conversion the default if the arch has private mem.
 
-This change allows for in-place memory conversion where the data is
-already present in the target PFN, ensuring the TDX module has a valid
-source page reference for the TDH.MEM.PAGE.ADD operation.
+The default can be overridden at compile type by enabling
+CONFIG_KVM_VM_MEMORY_ATTRIBUTES, or at KVM load time through a module
+parameter.
 
-Signed-off-by: Ackerley Tng <ackerleytng@google.com>
+In-place conversion also implies tracking a guest's private/shared state in
+guest_memfd. To avoid inconsistencies in the way memory attributes are
+tracked between the per-VM or by guest_memfd, make the module_param
+read-only (0444).
+
+Document that using per-VM attributes for tracking private/shared state of
+guest memory is deprecated in favor of tracking in guest_memfd.
+
+Warn if the admin sets gmem_in_place_conversion as false when
+CONFIG_KVM_VM_MEMORY_ATTRIBUTES is not enabled. Add warning in the code
+path where guest memory is populated for a CoCo VM, since that's the
+earliest point in a CoCo VM's lifecycle where memory attributes are
+queried. Unlike other query sites, this site is exclusively used by CoCo
+VMs.
+
 Signed-off-by: Sean Christopherson <seanjc@google.com>
 ---
- Documentation/virt/kvm/x86/intel-tdx.rst |  4 ++++
- arch/x86/kvm/vmx/tdx.c                   | 11 ++++++++---
- 2 files changed, 12 insertions(+), 3 deletions(-)
+ arch/x86/kvm/Kconfig   | 7 ++++++-
+ virt/kvm/guest_memfd.c | 5 +++++
+ virt/kvm/kvm_main.c    | 3 ++-
+ 3 files changed, 13 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/virt/kvm/x86/intel-tdx.rst b/Documentation/virt/kvm/x86/intel-tdx.rst
-index 6a222e9d09541..74357fe87f9ec 100644
---- a/Documentation/virt/kvm/x86/intel-tdx.rst
-+++ b/Documentation/virt/kvm/x86/intel-tdx.rst
-@@ -158,6 +158,10 @@ KVM_TDX_INIT_MEM_REGION
- Initialize @nr_pages TDX guest private memory starting from @gpa with userspace
- provided data from @source_addr. @source_addr must be PAGE_SIZE-aligned.
- 
-+If guest_memfd in-place conversion is enabled, pass NULL for @source_addr to
-+initialize the memory region using memory contents already populated in
-+guest_memfd memory.
+diff --git a/arch/x86/kvm/Kconfig b/arch/x86/kvm/Kconfig
+index c28393dc664eb..a3c189d765150 100644
+--- a/arch/x86/kvm/Kconfig
++++ b/arch/x86/kvm/Kconfig
+@@ -85,7 +85,12 @@ config KVM_VM_MEMORY_ATTRIBUTES
+ 	bool "Enable per-VM PRIVATE vs. SHARED attributes (for CoCo VMs)"
+ 	help
+ 	  Enable support for tracking PRIVATE vs. SHARED memory using per-VM
+-	  memory attributes.
++	  memory attributes.  Using per-VM attributes are deprecated in favor
++	  of tracking PRIVATE state in guest_memfd.  Select this if you need
++	  to run CoCo VMs using a VMM that doesn't support guest_memfd memory
++	  attributes.
 +
- Note, before calling this sub command, memory attribute of the range
- [gpa, gpa + nr_pages] needs to be private.  Userspace can use
- KVM_SET_MEMORY_ATTRIBUTES to set the attribute.
-diff --git a/arch/x86/kvm/vmx/tdx.c b/arch/x86/kvm/vmx/tdx.c
-index ffe9d0db58c59..56d10333c61a7 100644
---- a/arch/x86/kvm/vmx/tdx.c
-+++ b/arch/x86/kvm/vmx/tdx.c
-@@ -3198,8 +3198,12 @@ static int tdx_gmem_post_populate(struct kvm *kvm, gfn_t gfn, kvm_pfn_t pfn,
- 	if (KVM_BUG_ON(kvm_tdx->page_add_src, kvm))
- 		return -EIO;
++	  If unsure, say N.
  
--	if (!src_page)
--		return -EOPNOTSUPP;
-+	if (!src_page) {
-+		if (!gmem_in_place_conversion)
-+			return -EOPNOTSUPP;
-+
-+		src_page = pfn_to_page(pfn);
-+	}
+ config KVM_SW_PROTECTED_VM
+ 	bool "Enable support for KVM software-protected VMs"
+diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
+index 86c9f5b0863cb..5cb73543c03c8 100644
+--- a/virt/kvm/guest_memfd.c
++++ b/virt/kvm/guest_memfd.c
+@@ -1193,10 +1193,15 @@ static bool kvm_gmem_range_is_private(struct file *file, pgoff_t index,
+ {
+ 	struct maple_tree *mt = &GMEM_I(file_inode(file))->attributes;
  
- 	kvm_tdx->page_add_src = src_page;
- 	ret = kvm_tdp_mmu_map_private_pfn(arg->vcpu, gfn, pfn);
-@@ -3278,7 +3282,8 @@ static int tdx_vcpu_init_mem_region(struct kvm_vcpu *vcpu, struct kvm_tdx_cmd *c
- 			break;
- 		}
++#ifdef CONFIG_KVM_VM_MEMORY_ATTRIBUTES
+ 	if (!gmem_in_place_conversion)
+ 		return kvm_range_has_vm_memory_attributes(kvm, gfn, gfn + nr_pages,
+ 							  KVM_MEMORY_ATTRIBUTE_PRIVATE,
+ 							  KVM_MEMORY_ATTRIBUTE_PRIVATE);
++#else
++	if (WARN_ON_ONCE(!gmem_in_place_conversion))
++		return false;
++#endif
  
--		region.source_addr += PAGE_SIZE;
-+		if (region.source_addr)
-+			region.source_addr += PAGE_SIZE;
- 		region.gpa += PAGE_SIZE;
- 		region.nr_pages--;
+ 	return kvm_gmem_range_has_attributes(mt, index, nr_pages,
+ 					     KVM_MEMORY_ATTRIBUTE_PRIVATE);
+diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
+index dd1d18a1d2f68..46e92b5dc3804 100644
+--- a/virt/kvm/kvm_main.c
++++ b/virt/kvm/kvm_main.c
+@@ -102,7 +102,8 @@ static bool __ro_after_init allow_unsafe_mappings;
+ module_param(allow_unsafe_mappings, bool, 0444);
+ 
+ #ifdef kvm_arch_has_private_mem
+-bool __ro_after_init gmem_in_place_conversion = false;
++bool __ro_after_init gmem_in_place_conversion = !IS_ENABLED(CONFIG_KVM_VM_MEMORY_ATTRIBUTES);
++module_param(gmem_in_place_conversion, bool, 0444);
+ EXPORT_SYMBOL_FOR_KVM_INTERNAL(gmem_in_place_conversion);
+ #endif
  
 
 -- 
