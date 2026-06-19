@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 18 Jun 2026 17:31:54 -0700
-Subject: [PATCH v8 17/46] KVM: guest_memfd: Advertise
- KVM_SET_MEMORY_ATTRIBUTES2 ioctl
+Date: Thu, 18 Jun 2026 17:31:55 -0700
+Subject: [PATCH v8 18/46] KVM: guest_memfd: Handle lru_add fbatch refcounts
+ during conversion safety check
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260618-gmem-inplace-conversion-v8-17-9d2959357853@google.com>
+Message-Id: <20260618-gmem-inplace-conversion-v8-18-9d2959357853@google.com>
 References: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 In-Reply-To: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -39,211 +39,105 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=7105;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=3092;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=YacQyfoh5LAvr8NDk1VotTSGTo3cFf0sr+4p58N5sUo=;
- b=aX82GKUmPJFL0Tgl0CUgVBp6Ne+8odMwEYUTsv5wWY6KzNyNnJsXUUXSFgbuDLuIsAG8njsSA
- JFLrRc3+LfMDDa7LdPDTvfYbWl6uE05nrQ6vjBPjLICSzT18R5a5XCV
+ bh=/O+oiH2JXm7A6g3+sauBBielmQgPvvVOEru8T+k3ktE=;
+ b=lPbIyUOgWSuySRYSO0/c0omWv+bzADKlEWA9gmzmv96f4S30la/SRUoDkGlcCtD9VQdWpWUNh
+ CS4q5+4AXTEAevp5x4mMAFNIn59TOdGkn3wVrNpYfvD9sy2/BHoKY/x
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce KVM_CAP_GUEST_MEMFD_MEMORY_ATTRIBUTES to advertise the
-availability of the KVM_SET_MEMORY_ATTRIBUTES2 ioctl.
+When checking if a guest_memfd folio is safe for conversion, its refcount
+is examined. A folio may be present in a per-CPU lru_add fbatch, which
+temporarily increases its refcount. This can lead to a false positive,
+incorrectly indicating that the folio is in use and preventing the
+conversion, even if it is otherwise safe. The conversion process might not
+be on the same CPU that holds the folio in its fbatch, making a simple
+per-CPU check insufficient.
 
-KVM_SET_MEMORY_ATTRIBUTES2 is a guest_memfd-scoped version of the existing
-KVM_SET_MEMORY_ATTRIBUTES VM ioctl. It allows userspace to manage memory
-attributes, such as KVM_MEMORY_ATTRIBUTE_PRIVATE, directly on a guest_memfd
-file descriptor.
+To address this, drain all CPUs' lru_add fbatches if an unexpectedly high
+refcount is encountered during the safety check. This is performed at most
+once per conversion request. Draining only if the folio in question may be
+lru cached.
 
-This new version uses struct kvm_memory_attributes2, which adds an
-error_offset field to the output. This allows KVM to return the specific
-offset that triggered an error, which is especially useful for handling
-EAGAIN results caused by transient page reference counts during attribute
-conversions.
+guest_memfd folios are unevictable, so they can only reside in the lru_add
+fbatch. If the folio's refcount is still unsafe after draining, then the
+conversion is truly deemed unsafe.
 
-Update the KVM API documentation to define the new ioctl and its behavior,
-and add the necessary UAPI definitions and capability checks.
-
-Suggested-by: Sean Christopherson <seanjc@google.com>
-Suggested-by: Michael Roth <michael.roth@amd.com>
+Reviewed-by: Fuad Tabba <tabba@google.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- Documentation/virt/kvm/api.rst | 78 +++++++++++++++++++++++++++++++++++++++++-
- include/uapi/linux/kvm.h       |  2 ++
- virt/kvm/kvm_main.c            | 23 +++++++++----
- 3 files changed, 95 insertions(+), 8 deletions(-)
+ mm/swap.c              |  2 ++
+ virt/kvm/guest_memfd.c | 18 ++++++++++++++----
+ 2 files changed, 16 insertions(+), 4 deletions(-)
 
-diff --git a/Documentation/virt/kvm/api.rst b/Documentation/virt/kvm/api.rst
-index a833d90845b95..73878f34f6d2e 100644
---- a/Documentation/virt/kvm/api.rst
-+++ b/Documentation/virt/kvm/api.rst
-@@ -117,7 +117,7 @@ description:
-       x86 includes both i386 and x86_64.
+diff --git a/mm/swap.c b/mm/swap.c
+index 5cc44f0de9877..3134d9d3d7c30 100644
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -37,6 +37,7 @@
+ #include <linux/page_idle.h>
+ #include <linux/local_lock.h>
+ #include <linux/buffer_head.h>
++#include <linux/kvm_types.h>
  
-   Type:
--      system, vm, or vcpu.
-+      system, vm, vcpu or guest_memfd.
+ #include "internal.h"
  
-   Parameters:
-       what parameters are accepted by the ioctl.
-@@ -6373,6 +6373,8 @@ S390:
- Returns -EINVAL if the VM has the KVM_VM_S390_UCONTROL flag set.
- Returns -EINVAL if called on a protected VM.
- 
-+.. _KVM_SET_MEMORY_ATTRIBUTES:
-+
- 4.141 KVM_SET_MEMORY_ATTRIBUTES
- -------------------------------
- 
-@@ -6566,6 +6568,80 @@ KVM_S390_KEYOP_SSKE
-   Sets the storage key for the guest address ``guest_addr`` to the key
-   specified in ``key``, returning the previous value in ``key``.
- 
-+4.145 KVM_SET_MEMORY_ATTRIBUTES2
-+---------------------------------
-+
-+:Capability: KVM_CAP_GUEST_MEMFD_MEMORY_ATTRIBUTES
-+:Architectures: all
-+:Type: guest_memfd ioctl
-+:Parameters: struct kvm_memory_attributes2 (in/out)
-+:Returns: 0 on success, <0 on error
-+
-+Errors:
-+
-+  ========== ===============================================================
-+  EINVAL     The specified `offset` or `size` were invalid (e.g. not
-+             page aligned, causes an overflow, or size is zero).
-+  EFAULT     The parameter address was invalid.
-+  EAGAIN     Some page within requested range had unexpected refcounts. The
-+             offset of the page will be returned in `error_offset`.
-+  ENOMEM     Ran out of memory trying to track private/shared state
-+  ========== ===============================================================
-+
-+KVM_SET_MEMORY_ATTRIBUTES2 is an extension to
-+KVM_SET_MEMORY_ATTRIBUTES that supports returning (writing) values to
-+userspace.  The original (pre-extension) fields are shared with
-+KVM_SET_MEMORY_ATTRIBUTES identically.
-+
-+Attribute values are shared with KVM_SET_MEMORY_ATTRIBUTES.
-+
-+::
-+
-+  struct kvm_memory_attributes2 {
-+	/* in */
-+	union {
-+		__u64 address;
-+		__u64 offset;
-+	};
-+	__u64 size;
-+	__u64 attributes;
-+	__u64 flags;
-+	/* out */
-+	__u64 error_offset;
-+	__u64 reserved[11];
-+  };
-+
-+  #define KVM_MEMORY_ATTRIBUTE_PRIVATE           (1ULL << 3)
-+
-+Set attributes for a range of offsets within a guest_memfd to
-+KVM_MEMORY_ATTRIBUTE_PRIVATE to limit the specified guest_memfd backed
-+memory range for guest_use. Even if KVM_CAP_GUEST_MEMFD_MMAP is
-+supported, after a successful call to set
-+KVM_MEMORY_ATTRIBUTE_PRIVATE, the requested range will not be mappable
-+into host userspace and will only be mappable by the guest.
-+
-+To allow the range to be mappable into host userspace again, call
-+KVM_SET_MEMORY_ATTRIBUTES2 on the guest_memfd again with
-+KVM_MEMORY_ATTRIBUTE_PRIVATE unset.
-+
-+KVM does not directly manipulate the memory contents of pages during
-+attribute updates. However, the process of setting these attributes,
-+which includes operations such as unmapping pages from the host or
-+stage-2 page tables, may result in side effects on memory contents
-+that vary across different trusted firmware implementations.
-+
-+If this ioctl returns -EAGAIN, the offset of the page with unexpected
-+refcounts will be returned in `error_offset`. This can occur if there
-+are transient refcounts on the pages, taken by other parts of the
-+kernel.
-+
-+Userspace is expected to figure out how to remove all known refcounts
-+on the shared pages, such as refcounts taken by get_user_pages(), and
-+try the ioctl again. A possible source of these long term refcounts is
-+if the guest_memfd memory was pinned in IOMMU page tables.
-+
-+See also: :ref: `KVM_SET_MEMORY_ATTRIBUTES`.
-+
- .. _kvm_run:
- 
- 5. The kvm_run structure
-diff --git a/include/uapi/linux/kvm.h b/include/uapi/linux/kvm.h
-index 876c0429f9d4e..129d6f6303251 100644
---- a/include/uapi/linux/kvm.h
-+++ b/include/uapi/linux/kvm.h
-@@ -997,6 +997,7 @@ struct kvm_enable_cap {
- #define KVM_CAP_S390_KEYOP 247
- #define KVM_CAP_S390_VSIE_ESAMODE 248
- #define KVM_CAP_S390_HPAGE_2G 249
-+#define KVM_CAP_GUEST_MEMFD_MEMORY_ATTRIBUTES 250
- 
- struct kvm_irq_routing_irqchip {
- 	__u32 irqchip;
-@@ -1649,6 +1650,7 @@ struct kvm_memory_attributes {
- 	__u64 flags;
- };
- 
-+/* Available with KVM_CAP_GUEST_MEMFD_MEMORY_ATTRIBUTES */
- #define KVM_SET_MEMORY_ATTRIBUTES2              _IOWR(KVMIO,  0xd2, struct kvm_memory_attributes2)
- 
- struct kvm_memory_attributes2 {
-diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
-index a08b518cdb175..044486f128c37 100644
---- a/virt/kvm/kvm_main.c
-+++ b/virt/kvm/kvm_main.c
-@@ -2434,18 +2434,22 @@ static int kvm_vm_ioctl_clear_dirty_log(struct kvm *kvm,
+@@ -904,6 +905,7 @@ void lru_add_drain_all(void)
+ 	lru_add_drain();
  }
- #endif /* CONFIG_KVM_GENERIC_DIRTYLOG_READ_PROTECT */
+ #endif /* CONFIG_SMP */
++EXPORT_SYMBOL_FOR_KVM(lru_add_drain_all);
  
-+#ifdef kvm_arch_has_private_mem
-+static u64 kvm_supports_private_mem(struct kvm *kvm)
-+{
-+	return !kvm || kvm_arch_has_private_mem(kvm);
-+}
-+#else
-+#define kvm_supports_private_mem(kvm) false
-+#endif
+ atomic_t lru_disable_count = ATOMIC_INIT(0);
+ 
+diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
+index cec8fa26ece17..d163559da0235 100644
+--- a/virt/kvm/guest_memfd.c
++++ b/virt/kvm/guest_memfd.c
+@@ -8,6 +8,7 @@
+ #include <linux/mempolicy.h>
+ #include <linux/pseudo_fs.h>
+ #include <linux/pagemap.h>
++#include <linux/swap.h>
+ 
+ #include "kvm_mm.h"
+ 
+@@ -597,6 +598,7 @@ static bool kvm_gmem_is_safe_for_conversion(struct inode *inode, pgoff_t start,
+ 	const int filemap_get_folios_refcount = 1;
+ 	pgoff_t last = start + nr_pages - 1;
+ 	struct folio_batch fbatch;
++	bool lru_drained = false;
+ 	bool safe = true;
+ 	pgoff_t next;
+ 	int i;
+@@ -606,12 +608,20 @@ static bool kvm_gmem_is_safe_for_conversion(struct inode *inode, pgoff_t start,
+ 	next = start;
+ 	while (safe && filemap_get_folios(mapping, &next, last, &fbatch)) {
+ 
+-		for (i = 0; i < folio_batch_count(&fbatch); ++i) {
++		for (i = 0; i < folio_batch_count(&fbatch);) {
+ 			struct folio *folio = fbatch.folios[i];
+ 
+-			if (folio_ref_count(folio) !=
+-			    folio_nr_pages(folio) + filemap_get_folios_refcount) {
+-				safe = false;
++			safe = (folio_ref_count(folio) ==
++				folio_nr_pages(folio) +
++				filemap_get_folios_refcount);
 +
- #ifdef CONFIG_KVM_VM_MEMORY_ATTRIBUTES
- static u64 kvm_supported_vm_mem_attributes(struct kvm *kvm)
- {
--#ifdef kvm_arch_has_private_mem
--	if (gmem_in_place_conversion)
-+	if (gmem_in_place_conversion || !kvm_supports_private_mem(kvm))
- 		return 0;
- 
--	if (!kvm || kvm_arch_has_private_mem(kvm))
--		return KVM_MEMORY_ATTRIBUTE_PRIVATE;
--#endif
--
--	return 0;
-+	return KVM_MEMORY_ATTRIBUTE_PRIVATE;
- }
- 
- /*
-@@ -4969,6 +4973,11 @@ static int kvm_vm_ioctl_check_extension_generic(struct kvm *kvm, long arg)
- 		return 1;
- 	case KVM_CAP_GUEST_MEMFD_FLAGS:
- 		return kvm_gmem_get_supported_flags(kvm);
-+	case KVM_CAP_GUEST_MEMFD_MEMORY_ATTRIBUTES:
-+		if (!gmem_in_place_conversion || !kvm_supports_private_mem(kvm))
-+			return 0;
-+
-+		return KVM_MEMORY_ATTRIBUTE_PRIVATE;
- #endif
- 	default:
- 		break;
++			if (safe) {
++				++i;
++			} else if (folio_may_be_lru_cached(folio) &&
++				   !lru_drained) {
++				lru_add_drain_all();
++				lru_drained = true;
++			} else {
+ 				*err_index = max(start, folio->index);
+ 				break;
+ 			}
 
 -- 
 2.55.0.rc0.738.g0c8ab3ebcc-goog
