@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 18 Jun 2026 17:31:40 -0700
-Subject: [PATCH v8 03/46] KVM: Move KVM_VM_MEMORY_ATTRIBUTES config
- definition to x86
+Date: Thu, 18 Jun 2026 17:31:41 -0700
+Subject: [PATCH v8 04/46] KVM: Decouple kvm_has_arch_private_mem from
+ CONFIG_KVM_VM_MEMORY_ATTRIBUTES
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260618-gmem-inplace-conversion-v8-3-9d2959357853@google.com>
+Message-Id: <20260618-gmem-inplace-conversion-v8-4-9d2959357853@google.com>
 References: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 In-Reply-To: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -39,11 +39,11 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=1805;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=1692;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=uR+MEtIUTQll7OuVTSkz0gUaYaNmKrp/B9G+SURdKjQ=;
- b=Zyafotc3pM3F8Xww7Ysd3hx9sfWihc1USTcZBOWp6mbJPeMaaKXDQ8cdCLA3334Ml/hA1yllh
- wOlBQaQUs9AAWsJg7JXkRMpiIhtHKFInzhQiPZd5D2zDZ+x1FQbxWDt
+ bh=tPtTsemV3L/BlyDiwtBhiyBvhPxEc3sDZeI948QYhU0=;
+ b=ZOXkVSHaCuMVMkipqLWNhWP1iE87BlVmktp2ZHK+axSNIceX1lSRF0iJBTpQp8efKYl4ZRk9a
+ Ur1GXUZIcQeC6GUzzCDt/JZ3Fmdip/T5fngRW20wYeUkB8SH2S68e3B
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
@@ -51,56 +51,50 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Sean Christopherson <seanjc@google.com>
 
-Bury KVM_VM_MEMORY_ATTRIBUTES in x86 to discourage other architectures
-from adding support for per-VM memory attributes, because tracking private
-vs. shared memory on a per-VM basis is now deprecated in favor of tracking
-on a per-guest_memfd basis, and while RWX memory attributes are on the
-horizon, they too are expected to be x86-only.
+When memory attributes become trackable in guest_memfd, the concept of
+having private memory is no longer dependent on
+CONFIG_KVM_VM_MEMORY_ATTRIBUTES.
 
-This will also allow modifying KVM_VM_MEMORY_ATTRIBUTES to be
-user-selectable (in x86) without creating weirdness in KVM's Kconfigs.
-Now that guest_memfd supports in-place conversions, it's entirely possible
-to run x86 CoCo VMs without support for KVM_VM_MEMORY_ATTRIBUTES.
-
-Leave the code itself in common KVM so that it's trivial to undo this
-change if new per-VM attributes do come along.
+With this, on x86, kvm_arch_has_private_mem() is defined if some CoCo
+platform support (or the testing CONFIG_KVM_SW_PROTECTED_VM) is compiled
+in.
 
 Signed-off-by: Sean Christopherson <seanjc@google.com>
-Reviewed-by: Fuad Tabba <tabba@google.com>
+Co-developed-by: Ackerley Tng <ackerleytng@google.com>
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- arch/x86/kvm/Kconfig | 3 +++
- virt/kvm/Kconfig     | 3 ---
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ arch/x86/include/asm/kvm_host.h | 4 +++-
+ include/linux/kvm_host.h        | 2 +-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/arch/x86/kvm/Kconfig b/arch/x86/kvm/Kconfig
-index 26f6afd51bbdc..24f96396cfa1c 100644
---- a/arch/x86/kvm/Kconfig
-+++ b/arch/x86/kvm/Kconfig
-@@ -80,6 +80,9 @@ config KVM_WERROR
+diff --git a/arch/x86/include/asm/kvm_host.h b/arch/x86/include/asm/kvm_host.h
+index 8e8eb8a5e8a6b..1bde67cf6eb0e 100644
+--- a/arch/x86/include/asm/kvm_host.h
++++ b/arch/x86/include/asm/kvm_host.h
+@@ -2394,7 +2394,9 @@ void kvm_configure_mmu(bool enable_tdp, int tdp_forced_root_level,
+ 		       int tdp_max_root_level, int tdp_huge_page_level);
  
- 	  If in doubt, say "N".
  
-+config KVM_VM_MEMORY_ATTRIBUTES
-+	bool
-+
- config KVM_SW_PROTECTED_VM
- 	bool "Enable support for KVM software-protected VMs"
- 	depends on EXPERT
-diff --git a/virt/kvm/Kconfig b/virt/kvm/Kconfig
-index 5119cb37145fc..297e4399fbd49 100644
---- a/virt/kvm/Kconfig
-+++ b/virt/kvm/Kconfig
-@@ -100,9 +100,6 @@ config KVM_ELIDE_TLB_FLUSH_IF_YOUNG
- config KVM_MMU_LOCKLESS_AGING
-        bool
+-#ifdef CONFIG_KVM_VM_MEMORY_ATTRIBUTES
++#if defined(CONFIG_KVM_SW_PROTECTED_VM) ||	\
++	defined(CONFIG_KVM_INTEL_TDX) ||	\
++	defined(CONFIG_KVM_AMD_SEV)
+ #define kvm_arch_has_private_mem(kvm) ((kvm)->arch.has_private_mem)
+ #endif
  
--config KVM_VM_MEMORY_ATTRIBUTES
--       bool
--
- config KVM_GUEST_MEMFD
-        select XARRAY_MULTI
-        bool
+diff --git a/include/linux/kvm_host.h b/include/linux/kvm_host.h
+index 201d0f2143976..d370e834d619e 100644
+--- a/include/linux/kvm_host.h
++++ b/include/linux/kvm_host.h
+@@ -722,7 +722,7 @@ static inline int kvm_arch_vcpu_memslots_id(struct kvm_vcpu *vcpu)
+ }
+ #endif
+ 
+-#ifndef CONFIG_KVM_VM_MEMORY_ATTRIBUTES
++#ifndef kvm_arch_has_private_mem
+ static inline bool kvm_arch_has_private_mem(struct kvm *kvm)
+ {
+ 	return false;
 
 -- 
 2.55.0.rc0.738.g0c8ab3ebcc-goog
