@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 18 Jun 2026 17:32:01 -0700
-Subject: [PATCH v8 24/46] KVM: guest_memfd: Make in-place conversion the
- default
+Date: Thu, 18 Jun 2026 17:32:02 -0700
+Subject: [PATCH v8 25/46] KVM: guest_memfd: Enable INIT_SHARED on
+ guest_memfd for x86 Coco VMs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260618-gmem-inplace-conversion-v8-24-9d2959357853@google.com>
+Message-Id: <20260618-gmem-inplace-conversion-v8-25-9d2959357853@google.com>
 References: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 In-Reply-To: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -39,96 +39,57 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=3290;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=1553;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=PRIZz/MUEDcYpJgxuI5DJhHZ5hfaG9jP2sr46JVINBY=;
- b=RxWU2Nn3vTjbe31iLWemaFC4u3fW67LS6mTsCASZGW43syFeZcJruijQ/SaPumweB4lztWXkR
- KKo4Y/vgPRQCh4wCRuGDPhwjndAdVzR8opSq/5IR4MMrz5c5YObQXT4
+ bh=jzuj9zrl4qNuPFG8VNS4kO3hGida658cbqNcxlJaaaI=;
+ b=pZ4fcSOhZu72mBX5CyHFKeu02FSiqennFh2LxM3kmpKV0MfpFcGGE0hZqpIFXdLwsMB3qy+P5
+ IMDWN8ve9rUBaMz64S0aMs25PfZyWw3I5wDY3CCgG+CuQGOPU5+pPjE
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Make in-place conversion the default if the arch has private mem.
+From: Sean Christopherson <seanjc@google.com>
 
-The default can be overridden at compile type by enabling
-CONFIG_KVM_VM_MEMORY_ATTRIBUTES, or at KVM load time through a module
-parameter.
-
-In-place conversion also implies tracking a guest's private/shared state in
-guest_memfd. To avoid inconsistencies in the way memory attributes are
-tracked between the per-VM or by guest_memfd, make the module_param
-read-only (0444).
-
-Document that using per-VM attributes for tracking private/shared state of
-guest memory is deprecated in favor of tracking in guest_memfd.
-
-Warn if the admin sets gmem_in_place_conversion as false when
-CONFIG_KVM_VM_MEMORY_ATTRIBUTES is not enabled. Add warning in the code
-path where guest memory is populated for a CoCo VM, since that's the
-earliest point in a CoCo VM's lifecycle where memory attributes are
-queried. Unlike other query sites, this site is exclusively used by CoCo
-VMs.
+Now that guest_memfd supports tracking private vs. shared within gmem
+itself, allow userspace to specify INIT_SHARED on a guest_memfd instance
+for x86 Confidential Computing (CoCo) VMs, so long as in-place conversion
+is enabled, i.e. when it's actually possible for a guest_memfd instance to
+contain shared memory.
 
 Signed-off-by: Sean Christopherson <seanjc@google.com>
+Reviewed-by: Fuad Tabba <tabba@google.com>
+Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- arch/x86/kvm/Kconfig   | 7 ++++++-
- virt/kvm/guest_memfd.c | 5 +++++
- virt/kvm/kvm_main.c    | 3 ++-
- 3 files changed, 13 insertions(+), 2 deletions(-)
+ arch/x86/kvm/x86.c | 13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/arch/x86/kvm/Kconfig b/arch/x86/kvm/Kconfig
-index c28393dc664eb..a3c189d765150 100644
---- a/arch/x86/kvm/Kconfig
-+++ b/arch/x86/kvm/Kconfig
-@@ -85,7 +85,12 @@ config KVM_VM_MEMORY_ATTRIBUTES
- 	bool "Enable per-VM PRIVATE vs. SHARED attributes (for CoCo VMs)"
- 	help
- 	  Enable support for tracking PRIVATE vs. SHARED memory using per-VM
--	  memory attributes.
-+	  memory attributes.  Using per-VM attributes are deprecated in favor
-+	  of tracking PRIVATE state in guest_memfd.  Select this if you need
-+	  to run CoCo VMs using a VMM that doesn't support guest_memfd memory
-+	  attributes.
-+
-+	  If unsure, say N.
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+index 2fde594e86d72..57a543dadb851 100644
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -14116,14 +14116,15 @@ bool kvm_arch_no_poll(struct kvm_vcpu *vcpu)
+ }
  
- config KVM_SW_PROTECTED_VM
- 	bool "Enable support for KVM software-protected VMs"
-diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index 86c9f5b0863cb..5cb73543c03c8 100644
---- a/virt/kvm/guest_memfd.c
-+++ b/virt/kvm/guest_memfd.c
-@@ -1193,10 +1193,15 @@ static bool kvm_gmem_range_is_private(struct file *file, pgoff_t index,
+ #ifdef CONFIG_KVM_GUEST_MEMFD
+-/*
+- * KVM doesn't yet support initializing guest_memfd memory as shared for VMs
+- * with private memory (the private vs. shared tracking needs to be moved into
+- * guest_memfd).
+- */
+ bool kvm_arch_supports_gmem_init_shared(struct kvm *kvm)
  {
- 	struct maple_tree *mt = &GMEM_I(file_inode(file))->attributes;
+-	return !kvm_arch_has_private_mem(kvm);
++	/*
++	 * INIT_SHARED is supported if in-place conversion is enabled, or if
++	 * the VM doesn't support private memory.  If the VM has private memory
++	 * and in-place conversion is disabled, then guest_memfd can _only_ be
++	 * used for private memory.
++	 */
++	return gmem_in_place_conversion || !kvm_arch_has_private_mem(kvm);
+ }
  
-+#ifdef CONFIG_KVM_VM_MEMORY_ATTRIBUTES
- 	if (!gmem_in_place_conversion)
- 		return kvm_range_has_vm_memory_attributes(kvm, gfn, gfn + nr_pages,
- 							  KVM_MEMORY_ATTRIBUTE_PRIVATE,
- 							  KVM_MEMORY_ATTRIBUTE_PRIVATE);
-+#else
-+	if (WARN_ON_ONCE(!gmem_in_place_conversion))
-+		return false;
-+#endif
- 
- 	return kvm_gmem_range_has_attributes(mt, index, nr_pages,
- 					     KVM_MEMORY_ATTRIBUTE_PRIVATE);
-diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
-index dd1d18a1d2f68..46e92b5dc3804 100644
---- a/virt/kvm/kvm_main.c
-+++ b/virt/kvm/kvm_main.c
-@@ -102,7 +102,8 @@ static bool __ro_after_init allow_unsafe_mappings;
- module_param(allow_unsafe_mappings, bool, 0444);
- 
- #ifdef kvm_arch_has_private_mem
--bool __ro_after_init gmem_in_place_conversion = false;
-+bool __ro_after_init gmem_in_place_conversion = !IS_ENABLED(CONFIG_KVM_VM_MEMORY_ATTRIBUTES);
-+module_param(gmem_in_place_conversion, bool, 0444);
- EXPORT_SYMBOL_FOR_KVM_INTERNAL(gmem_in_place_conversion);
- #endif
- 
+ #ifdef CONFIG_HAVE_KVM_ARCH_GMEM_PREPARE
 
 -- 
 2.55.0.rc0.738.g0c8ab3ebcc-goog
