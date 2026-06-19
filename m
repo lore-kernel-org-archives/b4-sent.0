@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 18 Jun 2026 17:31:47 -0700
-Subject: [PATCH v8 10/46] KVM: guest_memfd: Wire up core private/shared
- attribute interfaces
+Date: Thu, 18 Jun 2026 17:31:48 -0700
+Subject: [PATCH v8 11/46] KVM: Consolidate private memory and guest_memfd
+ ifdeffery in kvm_host.h
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260618-gmem-inplace-conversion-v8-10-9d2959357853@google.com>
+Message-Id: <20260618-gmem-inplace-conversion-v8-11-9d2959357853@google.com>
 References: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 In-Reply-To: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -39,11 +39,11 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=4770;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=2246;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=fOfywxdTO/Whh+2RzVAHLLfy1oRrTLQnZ+x+DH1XTyQ=;
- b=aaYGk9KsmcaKJOqUgBq9hpVZyNGJXy22b6TtABP59Y1iKXqmq3CHRYIz1a8ITgKIMdzMR+tZ6
- 4SbI1OwN+YYCBGfJ6ejj9djCaIeXmuq2/AJHq3RfZgvSqrBwIfRZqXd
+ bh=s5muBk4J2pYtq3TG8sGbu83VhdOzartFjXOVxIUT4J8=;
+ b=pDEXXqLxVt6PYEExhSMxog1SfopkGVUT8KzY2GzGAZTBVHM6jTpMDtzJqZZt2GbnQTjej564I
+ No/3pACnkqdBgAIJ9vdFJYvp0jrehi/Rr8V6zaUIPlFN6fK486xv4Tw
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
@@ -51,135 +51,79 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Sean Christopherson <seanjc@google.com>
 
-With in-place conversion, guest_memfd is able to track the private/shared
-status of memory. Use a global flag to toggle between tracking
-private/shared status per-vm or within guest_memfd.
+Move the kvm_arch_has_private_mem() stub and a few guest_memfd function
+definitions/declarations "down" in kvm_host.h to utilize existing #ifdefs,
+and so that related code is clustered together.
 
-When queried for supported vm memory attributes, return 0 if attributes are
-tracked in guest_memfd.
+No functional change intended.
 
-When querying for memory attributes over a range, look up memory attributes
-based on the flag's state at query time.
-
-For per-GFN memory attribute queries, choosing an implementation (VM or
-guest_memfd lookup) at KVM load time.
-
-The flag is always false for now and will be made toggle-able after all
-in-place conversion features are added in subsequent patches.
-
-If/since the flag is false, if CONFIG_KVM_VM_MEMORY_ATTRIBUTES is also not
-selected, the per-GFN memory attribute query defaults to returning
-0 (false/not private).
-
-Co-developed-by: Ackerley Tng <ackerleytng@google.com>
-Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 Signed-off-by: Sean Christopherson <seanjc@google.com>
 ---
- include/linux/kvm_host.h |  4 ++++
- virt/kvm/guest_memfd.c   | 22 +++++++++++++++++++---
- virt/kvm/kvm_main.c      | 12 +++++++++++-
- 3 files changed, 34 insertions(+), 4 deletions(-)
+ include/linux/kvm_host.h | 37 ++++++++++++++++---------------------
+ 1 file changed, 16 insertions(+), 21 deletions(-)
 
 diff --git a/include/linux/kvm_host.h b/include/linux/kvm_host.h
-index 27687fb9d5201..acb552745b428 100644
+index acb552745b428..9c1cf1a6559e3 100644
 --- a/include/linux/kvm_host.h
 +++ b/include/linux/kvm_host.h
-@@ -2560,6 +2560,8 @@ static inline bool kvm_mem_range_is_private(struct kvm *kvm, gfn_t start,
- #endif  /* CONFIG_KVM_VM_MEMORY_ATTRIBUTES */
- 
- #ifdef kvm_arch_has_private_mem
-+extern bool gmem_in_place_conversion;
-+
- typedef bool (kvm_mem_is_private_t)(struct kvm *kvm, gfn_t gfn);
- DECLARE_STATIC_CALL(__kvm_mem_is_private, kvm_mem_is_private_t);
- 
-@@ -2568,6 +2570,8 @@ static inline bool kvm_mem_is_private(struct kvm *kvm, gfn_t gfn)
- 	return static_call(__kvm_mem_is_private)(kvm, gfn);
+@@ -722,27 +722,6 @@ static inline int kvm_arch_vcpu_memslots_id(struct kvm_vcpu *vcpu)
  }
+ #endif
+ 
+-#ifndef kvm_arch_has_private_mem
+-static inline bool kvm_arch_has_private_mem(struct kvm *kvm)
+-{
+-	return false;
+-}
+-#endif
+-
+-#ifdef CONFIG_KVM_GUEST_MEMFD
+-bool kvm_arch_supports_gmem_init_shared(struct kvm *kvm);
+-
+-static inline u64 kvm_gmem_get_supported_flags(struct kvm *kvm)
+-{
+-	u64 flags = GUEST_MEMFD_FLAG_MMAP;
+-
+-	if (!kvm || kvm_arch_supports_gmem_init_shared(kvm))
+-		flags |= GUEST_MEMFD_FLAG_INIT_SHARED;
+-
+-	return flags;
+-}
+-#endif
+-
+ #ifndef kvm_arch_has_readonly_mem
+ static inline bool kvm_arch_has_readonly_mem(struct kvm *kvm)
+ {
+@@ -2572,6 +2551,11 @@ static inline bool kvm_mem_is_private(struct kvm *kvm, gfn_t gfn)
  #else
-+#define gmem_in_place_conversion false
+ #define gmem_in_place_conversion false
+ 
++static inline bool kvm_arch_has_private_mem(struct kvm *kvm)
++{
++	return false;
++}
 +
  static inline bool kvm_mem_is_private(struct kvm *kvm, gfn_t gfn)
  {
  	return false;
-diff --git a/virt/kvm/guest_memfd.c b/virt/kvm/guest_memfd.c
-index bca912db5be6e..e0e544ef47d69 100644
---- a/virt/kvm/guest_memfd.c
-+++ b/virt/kvm/guest_memfd.c
-@@ -926,6 +926,24 @@ int kvm_gmem_get_pfn(struct kvm *kvm, struct kvm_memory_slot *slot,
- EXPORT_SYMBOL_FOR_KVM_INTERNAL(kvm_gmem_get_pfn);
+@@ -2580,6 +2564,17 @@ static inline bool kvm_mem_is_private(struct kvm *kvm, gfn_t gfn)
  
- #ifdef CONFIG_HAVE_KVM_ARCH_GMEM_POPULATE
-+static bool kvm_gmem_range_is_private(struct file *file, pgoff_t index,
-+				      size_t nr_pages, struct kvm *kvm, gfn_t gfn)
+ #ifdef CONFIG_KVM_GUEST_MEMFD
+ bool kvm_gmem_is_private(struct kvm *kvm, gfn_t gfn);
++bool kvm_arch_supports_gmem_init_shared(struct kvm *kvm);
++
++static inline u64 kvm_gmem_get_supported_flags(struct kvm *kvm)
 +{
-+	struct maple_tree *mt = &GMEM_I(file_inode(file))->attributes;
-+	pgoff_t end = index + nr_pages - 1;
-+	void *entry;
++	u64 flags = GUEST_MEMFD_FLAG_MMAP;
 +
-+	if (!gmem_in_place_conversion)
-+		return kvm_range_has_vm_memory_attributes(kvm, gfn, gfn + nr_pages,
-+							  KVM_MEMORY_ATTRIBUTE_PRIVATE,
-+							  KVM_MEMORY_ATTRIBUTE_PRIVATE);
++	if (!kvm || kvm_arch_supports_gmem_init_shared(kvm))
++		flags |= GUEST_MEMFD_FLAG_INIT_SHARED;
 +
-+	mt_for_each(mt, entry, index, end) {
-+		if (xa_to_value(entry) != KVM_MEMORY_ATTRIBUTE_PRIVATE)
-+			return false;
-+	}
-+	return true;
++	return flags;
 +}
  
- static long __kvm_gmem_populate(struct kvm *kvm, struct kvm_memory_slot *slot,
- 				struct file *file, gfn_t gfn, struct page *src_page,
-@@ -946,9 +964,7 @@ static long __kvm_gmem_populate(struct kvm *kvm, struct kvm_memory_slot *slot,
- 
- 	folio_unlock(folio);
- 
--	if (!kvm_range_has_vm_memory_attributes(kvm, gfn, gfn + 1,
--						KVM_MEMORY_ATTRIBUTE_PRIVATE,
--						KVM_MEMORY_ATTRIBUTE_PRIVATE)) {
-+	if (!kvm_gmem_range_is_private(file, index, 1, kvm, gfn)) {
- 		ret = -EINVAL;
- 		goto out_put_folio;
- 	}
-diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
-index 8b238e461b854..01761f6e25d25 100644
---- a/virt/kvm/kvm_main.c
-+++ b/virt/kvm/kvm_main.c
-@@ -101,6 +101,10 @@ EXPORT_SYMBOL_FOR_KVM_INTERNAL(halt_poll_ns_shrink);
- static bool __ro_after_init allow_unsafe_mappings;
- module_param(allow_unsafe_mappings, bool, 0444);
- 
-+#ifdef kvm_arch_has_private_mem
-+bool __ro_after_init gmem_in_place_conversion = false;
-+#endif
-+
- /*
-  * Ordering of locks:
-  *
-@@ -2422,6 +2426,9 @@ static int kvm_vm_ioctl_clear_dirty_log(struct kvm *kvm,
- static u64 kvm_supported_vm_mem_attributes(struct kvm *kvm)
- {
- #ifdef kvm_arch_has_private_mem
-+	if (gmem_in_place_conversion)
-+		return 0;
-+
- 	if (!kvm || kvm_arch_has_private_mem(kvm))
- 		return KVM_MEMORY_ATTRIBUTE_PRIVATE;
- #endif
-@@ -2633,8 +2640,11 @@ EXPORT_STATIC_CALL_GPL(__kvm_mem_is_private);
- 
- static void kvm_init_memory_attributes(void)
- {
-+	if (gmem_in_place_conversion)
-+		static_call_update(__kvm_mem_is_private, kvm_gmem_is_private);
- #ifdef CONFIG_KVM_VM_MEMORY_ATTRIBUTES
--	static_call_update(__kvm_mem_is_private, kvm_vm_mem_is_private);
-+	else
-+		static_call_update(__kvm_mem_is_private, kvm_vm_mem_is_private);
- #endif
- }
- #else
+ int kvm_gmem_get_pfn(struct kvm *kvm, struct kvm_memory_slot *slot,
+ 		     gfn_t gfn, kvm_pfn_t *pfn, struct page **page,
 
 -- 
 2.55.0.rc0.738.g0c8ab3ebcc-goog
