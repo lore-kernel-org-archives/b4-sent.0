@@ -1,113 +1,76 @@
-From: Chuwei Yu <max_yu2022@163.com>
-Date: Fri, 19 Jun 2026 18:24:23 +0800
-Subject: [PATCH] jffs2:fix a oops arises from a conflict between inocache
- evict and gc
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Subject: [PATCH 0/3] dm-pcache: validate on-disk fields before use
+Date: Fri, 19 Jun 2026 06:44:54 -0500
+Message-Id: <20260619-b4-disp-997773a1-v1-0-14df8aedb323@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260619-jffs2-kernel-oops-fix-v1-1-660268541b1b@163.com>
-X-B4-Tracking: v=1; b=H4sIANYYNWoC/yXMUQ6CMBCE4auQfXaTtiGAXsX4IGUKi6YlXTQmh
- LtT9fGbZP6NFFmgdKk2yniLSooF9lSRn+5xBMtQTM64xjT2zHMI6viBHPHklBblIB82tW3ROd/
- bGlS+S0aZf93r7W999TP8+o3Rvh/toF+MeQAAAA==
-X-Change-ID: 20260619-jffs2-kernel-oops-fix-0417e82cb14e
-To: David Woodhouse <dwmw2@infradead.org>, 
- Richard Weinberger <richard@nod.at>
-Cc: linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Chuwei Yu <yuchuwei@tp-link.com.hk>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781864689; l=3390;
- i=max_yu2022@163.com; s=20260617; h=from:subject:message-id;
- bh=ZFODi3N8e2XsMXVkMEc3e9vOzCxZarLxWNIbK21n2p8=;
- b=lqHbxrg3yKDWuRVblgZkKJ+Fdx0hXnqicmPDwWk2Wt/qxHnF8bDn/Com76v3/JLao98HcdGWk
- uTQrNIiLoxfB8roOAA0BvYHfmlBxwU5DpVfC0il70OdyOnHJq/TmccQ
-X-Developer-Key: i=max_yu2022@163.com; a=ed25519;
- pk=o5nctjiEWWNk2YWC+lqznx73YyfF0W9rjQS+9VwtGqg=
-X-Endpoint-Received: by B4 Relay for max_yu2022@163.com/20260617 with auth_id=832
+X-B4-Tracking: v=1; b=H4sIALYrNWoC/x3MQQqAIBBA0avErBvQDMWuEi2mnGo2FgoRiHdPW
+ r7F/wUyJ+EMU1cg8SNZrtig+w62k+LBKKEZBjVYZbXHdcQg+UbvnXOGNFpPgbQKhgxDy+7Eu7z
+ /cl5q/QAFVmH0YgAAAA==
+To: Dongsheng Yang <dongsheng.yang@linux.dev>, Zheng Gu <cengku@gmail.com>
+Cc: linux-kernel@vger.kernel.org, Mikulas Patocka <mpatocka@redhat.com>, 
+ dm-devel@lists.linux.dev
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781869494; l=2680;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=AuAvjSYW6ETSoS2LpoKglEo3RierbpsTzWflE2fvQ5s=;
+ b=Wy+rmqffze5Fioo3hwyx8CmXsMYrS9U0prLQqoerFad1jcUVDtbWRpD4a2g35fntG5KYYjxbH
+ T8kmColW9+VBcLGJeYqp5GgtEgfzzvGur0UcjqTzp1i+TgX23E5+BFt
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Chuwei Yu <yuchuwei@tp-link.com.hk>
+dm-pcache reads its layout from the cache device and mostly trusts it. The
+table load needs CAP_SYS_ADMIN, but the on-media metadata is only self-checked
+with a CRC32C over a fixed, public seed, so anyone who can format or swap the
+cache device forges the fields and recomputes the CRC. Several of them become
+segment ids, array indices, loop counts and intra-segment extents with no bound
+against the device geometry, which turns crafted metadata into kernel
+out-of-bounds accesses, both at table load and during normal cache I/O.
 
-[CAUSES]
-1 In the garbage collect thread function jffs2_garbage_collect_pass,
-it checks the state of all inocaches each loop. If the state is
-INO_STATE_GC/INO_STATE_CHECKING/INO_STATE_CLEARING, it will call BUG()
-which will cause a kernel oops.
+Each patch adds the bound where the field is decoded:
 
-2 If a application executes "echo N > /proc/sys/vm/drop_caches"(N=2/3),
-or,  the size of free memory is very low so the kernel wants to clear
-the cached memory, both cases will result in Function jffs2_evict_inode
- being called.
-Function jffs2_evict_inode calls Function jffs2_do_clear_inode which
-sets the state of one inocache to INO_STATE_CLEARING first and does
-something and then sets the state of the inocache to
-INO_STATE_CHECKEDABSENT.
+  1/3  segment ids that index cache->segments[] -- bound against cache->n_segs
+       (cache_pos_decode, cache_key_decode, and the last-kset paths in replay,
+       writeback and gc).
+  2/3  cache_info->n_segs and the segment-chain ids -- bound against the cache
+       device segment count.
+  3/3  the kset key_num, read by cache_kset_crc() and the replay loop before the
+       CRC is even compared, and a key whose offset+length runs past its segment
+       -- the latter is an OOB read that otherwise reaches user space on a cache
+       read hit.
 
-3 If jffs2_do_clear_inode yields the CPU(Function jffs2_kill_fragtree
- calls cond_resched) after setting the state of one inocache to
-INO_STATE_CLEARING, and gc thread happens to get scheduled for execution
-at that moment, it will discover the state of one inocache is invalid
-and call BUG() to cause a kernel oops.
+I found these by walking the cache-device decode paths. Each class reproduces in a
+faithful in-kernel model under KASAN: the bug arm faults (slab out-of-bounds -- a
+read for the seg_id, geometry and key_num/extent cases, a write for the n_segs
+loop), the arm with the added bound is clean, and valid metadata is clean. The key
+offset/length case also reproduces under KMSAN, where the over-read returns
+uninitialized kernel memory. Reproducer available on request. Each check rejects
+bad metadata with -EIO and leaves valid metadata alone.
 
-4 The root cause is that the locks within Function jffs2_evict_inode and
-Function jffs2_garbage_collect_pass are not mutually exclusive.
-
-[SOLUTION]
-1 Function jffs2_garbage_collect_pass locks c->alloc_sem first by
-executing "mutex_lock_interruptible(&c->alloc_sem)" and then lock
-c->inocache_lock by executing "spin_lock(&c->inocache_lock)".
-
-2 Function jffs2_do_clear_inode which is called by Function
-jffs2_evict_inode executes "mutex_lock(&f->sem)" to lock f->sem first,
-then calls Function jffs2_set_inocache_state. In Function
-jffs2_set_inocache_state, it locks c->inocache_lock by executing
-"spin_lock(&c->inocache_lock)", sets the state of one inocache to
-INO_STATE_CLEARING and release the lock c->inocache_lock.
-At this moment, because the lock f->sem can not prevent Function
-jffs2_garbage_collect_pass from checking the state of all inocaches,
-if Function jffs2_garbage_collect_pass gets the CPU to run, the
-problem happens.
-
-3 So, we need lock c->alloc_sem before the code line
-"jffs2_do_clear_inode(c, f);" in Function jffs2_evict_inode and
-unlock c->alloc_sem after the code line "jffs2_do_clear_inode(c, f);"
-to make sure that only after jffs2_do_clear_inode is completed can the
-jffs2_garbage_collect_pass function checks the state of all inocaches.
-
-[EFFECTIVE]
-jffs2 filesystem
-
-[TEST]
-1 Compiling with default config works normally.
-2 Compiling with allyesconfig works normally.
-3 Compiling with allnoconfig works normally.
-4 Compiling with O=builddir works normally.
-5 Repeat to run drop_caches for 5000 times and jffs2 works normally.
-
-Signed-off-by: Chuwei Yu <yuchuwei@tp-link.com.hk>
----
- fs/jffs2/fs.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/fs/jffs2/fs.c b/fs/jffs2/fs.c
-index 6ada8369a762..9cf1c480a159 100644
---- a/fs/jffs2/fs.c
-+++ b/fs/jffs2/fs.c
-@@ -247,7 +247,9 @@ void jffs2_evict_inode (struct inode *inode)
- 		  __func__, inode->i_ino, inode->i_mode);
- 	truncate_inode_pages_final(&inode->i_data);
- 	clear_inode(inode);
-+	mutex_lock(&c->alloc_sem);
- 	jffs2_do_clear_inode(c, f);
-+	mutex_unlock(&c->alloc_sem);
- }
- 
- struct inode *jffs2_iget(struct super_block *sb, unsigned long ino)
+checkpatch --strict is clean apart from "Alignment should match open
+parenthesis" on the multi-line pcache_dev_err() calls, which match the style
+already in the driver.
 
 ---
-base-commit: 9ecfb2f7287a967b418ba69f10d45ead0d360593
-change-id: 20260619-jffs2-kernel-oops-fix-0417e82cb14e
+Bryam Vargas (3):
+      dm-pcache: validate seg_id fields from persistent memory
+      dm-pcache: validate geometry fields from on-disk cache_info
+      dm-pcache: validate kset key_num and intra-segment bounds
+
+ drivers/md/dm-pcache/cache.c           | 17 +++++++++++++++++
+ drivers/md/dm-pcache/cache.h           | 35 ++++++++++++++++++++++++++++++++++
+ drivers/md/dm-pcache/cache_gc.c        | 24 +++++++++++++++++------
+ drivers/md/dm-pcache/cache_key.c       | 21 +++++++++++++++++++-
+ drivers/md/dm-pcache/cache_writeback.c | 22 ++++++++++++++-------
+ 5 files changed, 105 insertions(+), 14 deletions(-)
+---
+base-commit: 4549871118cf616eecdd2d939f78e3b9e1dddc48
+change-id: 20260619-b4-disp-997773a1-69ada10d3a3e
 
 Best regards,
---  
-Chuwei Yu <max_yu2022@163.com>
+-- 
+bryamzxz <hexlabsecurity@proton.me>
 
