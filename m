@@ -1,83 +1,89 @@
 From: Sam Day <me@samcday.com>
-Date: Fri, 19 Jun 2026 09:55:01 +1000
-Subject: [PATCH v2 2/2] board: qualcomm: phone: enable
- CMD_FASTBOOT_ABORT_KEYED
+Date: Fri, 19 Jun 2026 10:28:49 +1000
+Subject: [PATCH] usbip: vudc: fix NULL deref in vep_dequeue()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260619-fastboot-abort-keyed-v2-2-684e53949a42@samcday.com>
-References: <20260619-fastboot-abort-keyed-v2-0-684e53949a42@samcday.com>
-In-Reply-To: <20260619-fastboot-abort-keyed-v2-0-684e53949a42@samcday.com>
-To: u-boot@lists.denx.de, Sumit Garg <sumit.garg@kernel.org>, 
- u-boot-qcom@groups.io
-Cc: Tom Rini <trini@konsulko.com>, 
- Mattijs Korpershoek <mkorpershoek@kernel.org>, 
- Quentin Schulz <quentin.schulz@cherry.de>, 
- Jerome Forissier <jerome.forissier@arm.com>, 
- "Kory Maincent (TI.com)" <kory.maincent@bootlin.com>, 
- Mikhail Kshevetskiy <mikhail.kshevetskiy@iopsys.eu>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- Heinrich Schuchardt <xypron.glpk@gmx.de>, Heiko Schocher <hs@nabladev.com>, 
- Andrew Goodbody <andrew.goodbody@linaro.org>, 
- Peter Robinson <pbrobinson@gmail.com>, 
- Casey Connolly <casey.connolly@linaro.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Marek Vasut <marek.vasut+renesas@mailbox.org>, 
- Simon Glass <sjg@chromium.org>, 
- Ariel D'Alessandro <ariel.dalessandro@collabora.com>, 
+Message-Id: <20260619-usbip-vudc-deque-fix-v1-1-9021463b1903@samcday.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MywqAIBAAfyX23IIPEOpXokO1W+3FTFEC6d+Tj
+ jMwUyFxFE4wdhUiF0ly+Qa672A7F38wCjUGo4xTTg+Y0yoBS6YNie/MuMuDZLUjtmR37aClIXL
+ T/3aa3/cDPmYkymYAAAA=
+X-Change-ID: 20260619-usbip-vudc-deque-fix-d316de3d3f16
+To: Valentina Manea <valentina.manea.m@gmail.com>, 
+ Shuah Khan <shuah@kernel.org>, Hongren Zheng <i@zenithal.me>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Krzysztof Opasiak <k.opasiak@samsung.com>, 
+ Igor Kotrasinski <i.kotrasinsk@samsung.com>, Karol Kosik <karo9@interia.eu>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Sam Day <me@samcday.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781826900; l=1823;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781828934; l=1715;
  i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=RyuhoFjju072KyxlYSR1qbt7Q+S9ptSO6/JVEkqu0Nc=;
- b=9m/kzOSfLsBsv4Kjwz1v4JtO5PpFhPVzD7ELedgmfQo0zvYe4NA+2jz4+aMWR3FKDyhh9g1iY
- QCdudDP7LFGCD6r9fbO2KfFwdu9muSudxd2aDm4hB63Y8l3rbtmMJOL
+ bh=JVJhd3pJhD1WvH0uTHxGI5DtrMLVc93YCbkxWy2vbjU=;
+ b=mCvH0QQzyVr4xaU1WgxDh4XXu3UvflWoTXd75tyXz6TTb4J5HwEzGc1+dNKLWe//gJhRa2cag
+ 9xZhwOm4ohiBZkvFeuZBqf8O0nIE2mEjFFls/Xt6x+f0Y9fMt8Wggj4
 X-Developer-Key: i=me@samcday.com; a=ed25519;
  pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
 X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Thus users are able to exit from fastboot by pressing a key.
+vep_alloc_request() wasn't initializing vrequest->udc, so cancellations
+on the FunctionFS AIO path were arriving in vep_dequeue without a valid
+UDC reference.
 
-It's also possible to bail out by running `fastboot continue` from the
-host, but it's nice to be consistent with UMS. Also convenient to be
-able to bailout during testing if USB isn't working properly.
+AFAICT this bug has existed for ~10 years. Seems that nobody has really
+stressed the FunctionFS AIO path on usbip's vudc.
 
-Reviewed-by: Simon Glass <sjg@chromium.org>
-Tested-by: Mattijs Korpershoek <mkorpershoek@kernel.org>
-Reviewed-by: Casey Connolly <casey.connolly@linaro.org>
+I tested this fix in a QEMU aarch64 guest driving FunctionFS endpoints
+via AIO. Before the fix, running `usbip attach` from the host would
+cause the guest to oops with the following backtrace:
+
+Call trace:
+ vep_dequeue+0x1c/0xe4 (P)
+ usb_ep_dequeue+0x14/0x20
+ ffs_aio_cancel+0x24/0x34
+ __arm64_sys_io_cancel+0xb0/0x124
+ do_el0_svc+0x68/0x100
+ el0_svc+0x18/0x5c
+ el0t_64_sync_handler+0x98/0xdc
+ el0t_64_sync+0x154/0x158
+
+Assisted-by: opencode:openai/gpt-5.5
+Fixes: b6a0ca111867 ("usbip: vudc: Add UDC specific ops")
 Signed-off-by: Sam Day <me@samcday.com>
 ---
- board/qualcomm/qcom-phone.config | 1 +
- board/qualcomm/qcom-phone.env    | 2 +-
- 2 files changed, 2 insertions(+), 1 deletion(-)
+ drivers/usb/usbip/vudc_dev.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/board/qualcomm/qcom-phone.config b/board/qualcomm/qcom-phone.config
-index d24094eefdd..1387aa1dfa2 100644
---- a/board/qualcomm/qcom-phone.config
-+++ b/board/qualcomm/qcom-phone.config
-@@ -13,6 +13,7 @@ CONFIG_FASTBOOT_BUF_ADDR=0x1A000000
- CONFIG_USB_FUNCTION_FASTBOOT=y
- CONFIG_USB_FUNCTION_ACM=y
- CONFIG_CMD_UMS_ABORT_KEYED=y
-+CONFIG_CMD_FASTBOOT_ABORT_KEYED=y
+diff --git a/drivers/usb/usbip/vudc_dev.c b/drivers/usb/usbip/vudc_dev.c
+index c5f079c5a1ea..2f1f141909b2 100644
+--- a/drivers/usb/usbip/vudc_dev.c
++++ b/drivers/usb/usbip/vudc_dev.c
+@@ -279,15 +279,18 @@ static int vep_disable(struct usb_ep *_ep)
+ static struct usb_request *vep_alloc_request(struct usb_ep *_ep,
+ 		gfp_t mem_flags)
+ {
++	struct vep *ep;
+ 	struct vrequest *req;
  
- # Record all console output and let it be dumped via fastboot
- CONFIG_CONSOLE_RECORD=y
-diff --git a/board/qualcomm/qcom-phone.env b/board/qualcomm/qcom-phone.env
-index d1c586bd3fb..6ab5e2c8de3 100644
---- a/board/qualcomm/qcom-phone.env
-+++ b/board/qualcomm/qcom-phone.env
-@@ -32,7 +32,7 @@ menucmd=setenv bootcmd run menucmd; bootmenu -1
- bootmenu_0=Boot=bootefi bootmgr; pause
- bootmenu_1=Enable serial console gadget=run serial_gadget
- bootmenu_2=Enable USB mass storage=echo "Press any key to exit UMS mode"; ums 0 scsi 0
--bootmenu_3=Enable fastboot mode=run fastboot
-+bootmenu_3=Enable fastboot mode=echo "Press any key to exit fastboot mode"; run fastboot
- # Disabling bootretry means we'll just drop the shell
- bootmenu_4=Drop to shell=setenv bootretry -1
- bootmenu_5=Reset device=reset
+ 	if (!_ep)
+ 		return NULL;
++	ep = to_vep(_ep);
+ 
+ 	req = kzalloc_obj(*req, mem_flags);
+ 	if (!req)
+ 		return NULL;
+ 
++	req->udc = ep_to_vudc(ep);
+ 	INIT_LIST_HEAD(&req->req_entry);
+ 
+ 	return &req->req;
 
+---
+base-commit: 5cd1731cc883a9914d91e3b93d4597317b5b5339
+change-id: 20260619-usbip-vudc-deque-fix-d316de3d3f16
+
+Best regards,
 -- 
-2.54.0
+Sam Day <me@samcday.com>
 
