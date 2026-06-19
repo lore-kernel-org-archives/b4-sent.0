@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Thu, 18 Jun 2026 17:32:19 -0700
-Subject: [PATCH v8 42/46] KVM: selftests: Provide common function to set
- memory attributes
+Date: Thu, 18 Jun 2026 17:32:20 -0700
+Subject: [PATCH v8 43/46] KVM: selftests: Check fd/flags provided to mmap()
+ when setting up memslot
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260618-gmem-inplace-conversion-v8-42-9d2959357853@google.com>
+Message-Id: <20260618-gmem-inplace-conversion-v8-43-9d2959357853@google.com>
 References: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 In-Reply-To: <20260618-gmem-inplace-conversion-v8-0-9d2959357853@google.com>
 To: aik@amd.com, andrew.jones@linux.dev, binbin.wu@linux.intel.com, 
@@ -39,11 +39,11 @@ Cc: kvm@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-kselftest@vger.kernel.org, linux-mm@kvack.org, 
  linux-coco@lists.linux.dev, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=2769;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781829104; l=1300;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=tiVNAEU1I7TfvtHyuf+7WL+w7fPIZRZXHt2nl9FHIO0=;
- b=YB1PtYY8FjnKeEVp75aeYj8b21mZ2F9NvGoH6fo1UZR4SkYTRD4lJmExGEyLzFBdpKcL4RiCt
- df311fbyn4zDKj3VyN8CaknxJBCuXqd12tAZSO0ouixgtK0j1lQkc/j
+ bh=FfvOOziuKY7J+zAwvdCM21a/oE41ilanjqOldELME0Y=;
+ b=bGm6mj4nU3DmKRVpn7tZlCQEkarM+48B/RQBAyw/VTpU0D3j33YT8OwpwMm+dDQJ0LUtFNveM
+ KST7dvTTwduBD/4p9kp1IKhL8gRzKBkk40HX2bYJ916lTYy+dF1md+x
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
@@ -51,86 +51,35 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Sean Christopherson <seanjc@google.com>
 
-Introduce vm_mem_set_memory_attributes(), which handles setting of memory
-attributes for a range of guest physical addresses, regardless of whether
-the attributes should be set via guest_memfd or via the memory attributes
-at the VM level.
+Check that a valid fd provided to mmap() must be accompanied by MAP_SHARED.
 
-Refactor existing vm_mem_set_{shared,private} functions to use the new
-function. Opportunistically update the size parameter to use size_t instead
-of u64.
+With an invalid fd (usually used for anonymous mappings), there are no
+constraints on mmap() flags.
+
+Add this check to make sure that when a guest_memfd is used as region->fd,
+the flag provided to mmap() will include MAP_SHARED.
 
 Signed-off-by: Sean Christopherson <seanjc@google.com>
-Co-developed-by: Ackerley Tng <ackerleytng@google.com>
+[Rephrase assertion message.]
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- tools/testing/selftests/kvm/include/kvm_util.h | 46 +++++++++++++++++++-------
- 1 file changed, 34 insertions(+), 12 deletions(-)
+ tools/testing/selftests/kvm/lib/kvm_util.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/tools/testing/selftests/kvm/include/kvm_util.h b/tools/testing/selftests/kvm/include/kvm_util.h
-index 3a6b1fa7f26ef..db1442da21bb1 100644
---- a/tools/testing/selftests/kvm/include/kvm_util.h
-+++ b/tools/testing/selftests/kvm/include/kvm_util.h
-@@ -454,18 +454,6 @@ static inline void vm_set_memory_attributes(struct kvm_vm *vm, gpa_t gpa,
- 	vm_ioctl(vm, KVM_SET_MEMORY_ATTRIBUTES, &attr);
- }
+diff --git a/tools/testing/selftests/kvm/lib/kvm_util.c b/tools/testing/selftests/kvm/lib/kvm_util.c
+index 0b2256ea65ff9..6b304e8a0e0d5 100644
+--- a/tools/testing/selftests/kvm/lib/kvm_util.c
++++ b/tools/testing/selftests/kvm/lib/kvm_util.c
+@@ -1110,6 +1110,9 @@ void vm_mem_add(struct kvm_vm *vm, enum vm_mem_backing_src_type src_type,
+ 					     src_type == VM_MEM_SRC_SHARED_HUGETLB);
+ 	}
  
--static inline void vm_mem_set_private(struct kvm_vm *vm, gpa_t gpa,
--				      u64 size)
--{
--	vm_set_memory_attributes(vm, gpa, size, KVM_MEMORY_ATTRIBUTE_PRIVATE);
--}
--
--static inline void vm_mem_set_shared(struct kvm_vm *vm, gpa_t gpa,
--				     u64 size)
--{
--	vm_set_memory_attributes(vm, gpa, size, 0);
--}
--
- static inline int __gmem_set_memory_attributes(int fd, u64 offset,
- 					       size_t size, u64 attributes,
- 					       u64 *error_offset)
-@@ -532,6 +520,40 @@ static inline void gmem_set_shared(int fd, u64 offset, size_t size)
- 	gmem_set_memory_attributes(fd, offset, size, 0);
- }
- 
-+static inline void vm_mem_set_memory_attributes(struct kvm_vm *vm, gpa_t gpa,
-+						size_t size, u64 attrs)
-+{
-+	if (kvm_has_gmem_attributes) {
-+		gpa_t end = gpa + size;
-+		off_t fd_offset;
-+		gpa_t addr;
-+		size_t len;
-+		int fd;
++	TEST_ASSERT(region->fd == -1 || backing_src_is_shared(src_type),
++		    "A valid fd provided to mmap() must be accompanied by MAP_SHARED.");
 +
-+		for (addr = gpa; addr < end; addr += len) {
-+			fd = kvm_gpa_to_guest_memfd(vm, addr, &fd_offset, &len);
-+			len = min(end - addr, len);
-+
-+			gmem_set_memory_attributes(fd, fd_offset, len, attrs);
-+		}
-+	} else {
-+		vm_set_memory_attributes(vm, gpa, size, attrs);
-+	}
-+}
-+
-+static inline void vm_mem_set_private(struct kvm_vm *vm, gpa_t gpa,
-+				      size_t size)
-+{
-+	vm_mem_set_memory_attributes(vm, gpa, size,
-+				     KVM_MEMORY_ATTRIBUTE_PRIVATE);
-+}
-+
-+static inline void vm_mem_set_shared(struct kvm_vm *vm, gpa_t gpa,
-+				     size_t size)
-+{
-+	vm_mem_set_memory_attributes(vm, gpa, size, 0);
-+}
-+
- void vm_guest_mem_fallocate(struct kvm_vm *vm, gpa_t gpa, u64 size,
- 			    bool punch_hole);
- 
+ 	region->mmap_start = __kvm_mmap(region->mmap_size, PROT_READ | PROT_WRITE,
+ 					vm_mem_backing_src_alias(src_type)->flag,
+ 					region->fd, mmap_offset);
 
 -- 
 2.55.0.rc0.738.g0c8ab3ebcc-goog
