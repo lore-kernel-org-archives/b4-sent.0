@@ -1,113 +1,91 @@
-From: Tjerk Kusters <tkusters@aweta.nl>
-Date: Fri, 19 Jun 2026 09:14:44 +0200
-Subject: [PATCH net v2] igb: only strip Rx timestamp header on the first
- buffer of a frame
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Fri, 19 Jun 2026 04:38:20 -0500
+Subject: [PATCH] orangefs: keep the readdir entry size 64-bit in
+ fill_from_part()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260619-igb-rx-ts-fix-v2-1-d3b8d605ca62@aweta.nl>
-X-B4-Tracking: v=1; b=H4sIAGPsNGoC/yWMywrCMBQFf6WctRfSlMbHr4gLmx7rdRElN0qh9
- N8bdTkDMwuMWWk4NQsyP2r6TBX8rkG8X9NE0bEyvPPBhfYoOg2SZykmN50ljnvXH3qyawNq88q
- s+vc7I7Hg8pf2Hh6M5XvCum7/AMrddgAAAA==
-X-Change-ID: 20260619-igb-rx-ts-fix-cd70585ee316
-To: Tony Nguyen <anthony.l.nguyen@intel.com>, 
- Przemek Kitszel <przemyslaw.kitszel@intel.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Richard Cochran <richardcochran@gmail.com>, 
- Jesper Dangaard Brouer <hawk@kernel.org>, 
- Kurt Kanzenbach <kurt@linutronix.de>
-Cc: intel-wired-lan@lists.osuosl.org, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Tjerk Kusters <tkusters@aweta.nl>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781853286; l=3623;
- i=tkusters@aweta.nl; s=20260619; h=from:subject:message-id;
- bh=pmAEYror60wCpEvmPM789DYVzXqwCNs6uz+fXRtY1nI=;
- b=EPtIwt2TBPCz6NMGbTjzfttUjar17h7wguSFerhCZOC/fKnwEY4M0GEmdJgTBJ2nSlJGQA1Kv
- yQfBwVYve/FA9DdCxq6hAH0LbuHDS8c62xJWNKPgNjGRpcC8A/HQMaU
-X-Developer-Key: i=tkusters@aweta.nl; a=ed25519;
- pk=JYRpYQ3+LrphEabgnxcbiOUpwvNP8WDDMcLzz+cwKsk=
-X-Endpoint-Received: by B4 Relay for tkusters@aweta.nl/20260619 with auth_id=831
+Message-Id: <20260619-b4-disp-50d2bd59-v1-1-ce332969b4a2@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAsONWoC/x3MMQqAMAxA0atIZgNprEq9ijhYGzWLSgsiFO9uc
+ XzD/xmSRJUEQ5Uhyq1Jz6PA1BUs+3xsghqKgYk76oxDbzFourClwD60DsmtwtyT9Y2Bkl1RVn3
+ +5Ti97wcDJit8YgAAAA==
+To: Mike Marshall <hubcap@omnibond.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ devel@lists.orangefs.org, Martin Brandenburg <martin@omnibond.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781861899; l=2502;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=RJ8UcS4zpbSFRnrWNSWSdbFKTQ2rtT8iK4yUjj8cqng=;
+ b=Vdm6WMjY5JkW7U1XmXeabtMn+i+ZG/DE8OgOh6bSSj+l2snqflHnXtFDsDObEVebkLyoOG92g
+ n6C2/ZaUyTzBi5xnEKayytXhj+zr3GYPBd+327c36A5l2woGi+KRL8U
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When Rx hardware timestamping is enabled (e.g. ptp4l, which configures
-HWTSTAMP_FILTER_ALL), the NIC prepends a 16-byte timestamp header to the
-first Rx buffer of every received frame. igb_clean_rx_irq() strips this
-header inside its per-buffer loop:
+fill_from_part() computes the size of a directory entry in size_t but
+stores it in a __u32. An entry length near U32_MAX wraps it to a small
+value, bypasses the bounds check, and is then used to index the entry,
+reading far past the directory part -- an out-of-bounds read that oopses
+the kernel.
 
-	if (igb_test_staterr(rx_desc, E1000_RXDADV_STAT_TSIP)) {
-		ts_hdr_len = igb_ptp_rx_pktstamp(rx_ring->q_vector,
-						 pktbuf, &timestamp);
-		pkt_offset += ts_hdr_len;
-		size -= ts_hdr_len;
-	}
+Compute the size as a u64 so it cannot truncate; the bounds check then
+rejects the entry. The trailer is supplied by the userspace client.
 
-For a frame that spans more than one Rx buffer (e.g. a jumbo frame), this
-block runs once per buffer. The timestamp header only exists at the start
-of the first buffer, but igb_ptp_rx_pktstamp() is called for every buffer.
-
-On a continuation buffer the data is packet payload, not a timestamp
-header. igb_ptp_rx_pktstamp() already has two guards against acting on a
-non-header buffer: it returns 0 if PTP is disabled, and returns 0 if the
-reserved dwords (the first 8 bytes) are non-zero. Neither is sufficient
-here: PTP is enabled, and a continuation buffer whose payload happens to
-begin with 8 zero bytes passes the reserved-dword check. In that case the
-payload is mistaken for a valid timestamp header and igb_ptp_rx_pktstamp()
-returns IGB_TS_HDR_LEN, so the caller strips 16 bytes of real data from
-that buffer. A frame spanning N buffers whose continuation buffers start
-with zero bytes therefore loses 16 * (N - 1) bytes from its tail.
-
-This is easily triggered by a GigE Vision camera streaming dark frames
-(mostly 0x00 pixel data) over jumbo UDP with PTP active on the receiver:
-the all-zero frames arrive truncated while frames with non-zero content
-are fine. There is no error indication.
-
-No content-based check can reliably tell a continuation buffer that begins
-with zero bytes from a real timestamp header, because both are all zero.
-Fix it structurally instead: only attempt the strip on the first buffer of
-a frame, which is the only buffer that can contain a timestamp header. In
-igb_clean_rx_irq() skb is NULL until the first buffer has been processed,
-so guarding the strip with !skb restricts it to the first buffer
-regardless of payload content.
-
-Fixes: 5379260852b0 ("igb: Fix XDP with PTP enabled")
+Fixes: 480e3e532e31 ("orangefs: support very large directories")
 Cc: stable@vger.kernel.org
-Reviewed-by: Kurt Kanzenbach <kurt@linutronix.de>
-Signed-off-by: Tjerk Kusters <tkusters@aweta.nl>
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Changes in v2:
- - resend via b4 (v1 was sent with a mail client)
- - use full author name "Tjerk Kusters" (Jacob Keller)
- - add Reviewed-by from Kurt Kanzenbach
- - no functional change
+Reproduced with an in-kernel module that runs the fill_from_part() loop over
+a crafted trailer; the only difference between arms is the size width:
 
-Link to v1: https://lore.kernel.org/all/PAWPR05MB1069106D52F4E17F1EDB99C67B9182@PAWPR05MB10691.eurprd05.prod.outlook.com/
+  A (__u32, len 0xfffffffb): page-fault oops at fill_from_part+0x126
+    (KASAN shadow load for s[*len], ~4 GiB out).
+  B (u64, this patch): the bounds check rejects the entry, no OOB.
+  C (small len): unchanged, entry emitted.
+
+Same result under userspace ASan. Tested on a KASAN build at v7.1-rc7.
+
+checkpatch keeps "sizeof *len" to match the rest of the function.
+
+Severity depends on the trust boundary on the userspace client: a remote or
+compromised server driving the length is a remote DoS; a trusted client
+makes it a local robustness fix. No write, no info leak.
 ---
- drivers/net/ethernet/intel/igb/igb_main.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/orangefs/dir.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/net/ethernet/intel/igb/igb_main.c b/drivers/net/ethernet/intel/igb/igb_main.c
-index ce91dda00ec0..abb55cd589a9 100644
---- a/drivers/net/ethernet/intel/igb/igb_main.c
-+++ b/drivers/net/ethernet/intel/igb/igb_main.c
-@@ -9061,7 +9061,8 @@ static int igb_clean_rx_irq(struct igb_q_vector *q_vector, const int budget)
- 		pktbuf = page_address(rx_buffer->page) + rx_buffer->page_offset;
- 
- 		/* pull rx packet timestamp if available and valid */
--		if (igb_test_staterr(rx_desc, E1000_RXDADV_STAT_TSIP)) {
-+		if (!skb &&
-+		    igb_test_staterr(rx_desc, E1000_RXDADV_STAT_TSIP)) {
- 			int ts_hdr_len;
- 
- 			ts_hdr_len = igb_ptp_rx_pktstamp(rx_ring->q_vector,
+diff --git a/fs/orangefs/dir.c b/fs/orangefs/dir.c
+index 6e2ebc8b9867..115b2c2f5269 100644
+--- a/fs/orangefs/dir.c
++++ b/fs/orangefs/dir.c
+@@ -191,7 +191,8 @@ static int fill_from_part(struct orangefs_dir_part *part,
+ {
+ 	const int offset = sizeof(struct orangefs_readdir_response_s);
+ 	struct orangefs_khandle *khandle;
+-	__u32 *len, padlen;
++	__u32 *len;
++	u64 padlen;
+ 	loff_t i;
+ 	char *s;
+ 	i = ctx->pos & ~PART_MASK;
+@@ -215,8 +216,8 @@ static int fill_from_part(struct orangefs_dir_part *part,
+ 		 * len is the size of the string itself.  padlen is the
+ 		 * total size of the encoded string.
+ 		 */
+-		padlen = (sizeof *len + *len + 1) +
+-		    (8 - (sizeof *len + *len + 1)%8)%8;
++		padlen = (u64)sizeof *len + *len + 1;
++		padlen += (8 - padlen % 8) % 8;
+ 		if (part->len < i + padlen + sizeof *khandle)
+ 			goto next;
+ 		s = (void *)part + offset + i + sizeof *len;
 
 ---
-base-commit: 2d3090a8aeb596a26935db0955d46c9a5db5c6ce
-change-id: 20260619-igb-rx-ts-fix-cd70585ee316
+base-commit: 4549871118cf616eecdd2d939f78e3b9e1dddc48
+change-id: 20260619-b4-disp-50d2bd59-09fe22704b31
 
 Best regards,
---  
-Tjerk Kusters <tkusters@aweta.nl>
+-- 
+bryamzxz <hexlabsecurity@proton.me>
 
