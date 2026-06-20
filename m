@@ -1,78 +1,81 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Fri, 19 Jun 2026 21:36:30 -0500
-Subject: [PATCH 2/2] ata: libata-scsi: Bound the VPD B9h ranges to the
- response buffer
+Date: Fri, 19 Jun 2026 21:54:02 -0500
+Subject: [PATCH] ata: libata-core: Add NOLPM quirk for PNY CS900 1TB SSD
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260619-b4-disp-6200c44e-v1-2-4624a4707d9e@proton.me>
-References: <20260619-b4-disp-6200c44e-v1-0-4624a4707d9e@proton.me>
-In-Reply-To: <20260619-b4-disp-6200c44e-v1-0-4624a4707d9e@proton.me>
+Message-Id: <20260619-b4-disp-494070d2-v1-1-0c6d7be96237@proton.me>
+X-B4-Tracking: v=1; b=H4sIAMkANmoC/x3MTQqAIBBA4avErBvwD8OuEi1Sp5qNhUIE4t2Tl
+ t/ivQqFMlOBeaiQ6eHCV+qQ4wDh3NJByLEblFBWWOnQG4xcbjTOiElEhUFarbXTfnI79OzOtPP
+ 7L5e1tQ9WBapHYgAAAA==
 To: Damien Le Moal <dlemoal@kernel.org>, Niklas Cassel <cassel@kernel.org>
-Cc: linux-ide@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-ide@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781922988; l=2123;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781924041; l=2401;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=etuEVYLjhJ1FT+81wFk8q9Lg1k6MxM4NwywWjYbfzbc=;
- b=5qN0S5L3QVPbKFwwEJSUL8skJpsnwJX8mO+Eg7n3G9ubCEDKtTMKNd8lEwhwe33gjJhKcfonW
- DLfIDhYdb8yBTgZs6d/DHw4KFUy8A2YvXVrmjbgLYuTs/GQd7mzBHxO
+ bh=o1g9RWfDLgEq+zCaJ+RXbfq0Fdywflc/XcToyx0FVEA=;
+ b=O/QEYP1k1iBnVvN85QIAIDEqJ5yBp1INLpi6jrpT7DLnpTBIjw3nE50uGZ+h5DeS0L1lhp/UI
+ SpOmufUipDqATVbLVk4ViPZwh6loAAOHbYPaCRZIys0dUyciaF7rZYh
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ata_scsiop_inq_b9() writes one 32-byte range descriptor per
-cpr_log->nr_cpr into the fixed 2048-byte ata_scsi_rbuf with no bound.
-The count originates from the device (concurrent positioning ranges log
-0x47, up to 255), so an INQUIRY VPD page B9h to a drive whose log
-advertises more than 62 ranges overflows the static buffer by up to 6168
-bytes: a global out-of-bounds write into adjacent kernel data.
+The PNY CS900 1TB SSD (Phison PS3111-S11, DRAM-less) drops off the bus
+after entering Device-Initiated Slumber during idle. With the default
+med_power_with_dipm policy the link goes down (SStatus 1 SControl 300)
+and does not recover, forcing the filesystem read-only. Forcing
+max_performance keeps the link stable across prolonged idle.
 
-Emit only as many descriptors as the response buffer can hold and size
-the page length to match. The companion core fix bounds the stored count
-against the device log, but a large self-consistent log still yields
-nr_cpr up to 255, so the emitter needs its own bound.
+Add a NOLPM quirk so link power management is disabled for this drive
+specifically, leaving it intact for other devices on the host.
 
-Fixes: fe22e1c2f705 ("libata: support concurrent positioning ranges log")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/ata/libata-scsi.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+Tested on an Intel Alder Lake AHCI host. With the default
+med_power_with_dipm the link drops after prolonged idle (SStatus 1
+SControl 300); writes then fail and the filesystem is remounted
+read-only, e.g.:
 
-diff --git a/drivers/ata/libata-scsi.c b/drivers/ata/libata-scsi.c
-index d43207c6e467..d43306c5d375 100644
---- a/drivers/ata/libata-scsi.c
-+++ b/drivers/ata/libata-scsi.c
-@@ -2355,18 +2355,24 @@ static unsigned int ata_scsiop_inq_b9(struct ata_device *dev,
- {
- 	struct ata_cpr_log *cpr_log = dev->cpr_log;
- 	u8 *desc = &rbuf[64];
--	int i;
-+	int i, nr_cpr;
+  sd 0:0:0:0: [sda] tag#22 CDB: Write(10) 2a 00 74 38 55 68 00 00 28 00
+  EXT4-fs warning (device sda1): ext4_end_bio:368: I/O error 10 writing
+    to inode 52429136 (starting block 243731117)
+  ata1: EH complete
+  ata1.00: detaching (SCSI 0:0:0:0)
+  Buffer I/O error on device sda1, logical block 243730861
+  sd 0:0:0:0: [sda] Synchronize Cache(10) failed: Result:
+    hostbyte=DID_BAD_TARGET driverbyte=DRIVER_OK
+
+Forcing max_performance (which this quirk applies per-device) keeps the
+link stable across overnight idle. Drive: model "PNY CS900 1TB SSD", firmware
+CS900702. The Phison PS3111-S11 controller is shared across the CS900
+line, so other capacities/firmwares may need the same; scoped here to
+the unit tested.
+---
+ drivers/ata/libata-core.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/ata/libata-core.c b/drivers/ata/libata-core.c
+index 3d0027ec33c2..e1d05d4c13ba 100644
+--- a/drivers/ata/libata-core.c
++++ b/drivers/ata/libata-core.c
+@@ -4280,6 +4280,9 @@ static const struct ata_dev_quirks_entry __ata_dev_quirks[] = {
+ 	/* Apacer models with LPM issues */
+ 	{ "Apacer AS340*",		NULL,	ATA_QUIRK_NOLPM },
  
- 	if (!cpr_log) {
- 		ata_scsi_set_invalid_field(dev, cmd, 2, 0xff);
- 		return 0;
- 	}
- 
-+	/*
-+	 * The page is built in the fixed-size ata_scsi_rbuf, so the number of
-+	 * range descriptors returned is bounded by that buffer's size.
-+	 */
-+	nr_cpr = min_t(int, cpr_log->nr_cpr, (ATA_SCSI_RBUF_SIZE - 64) / 32);
++	/* PNY CS900 (Phison PS3111-S11, DRAM-less) drops the link on DIPM */
++	{ "PNY CS900 1TB SSD",		NULL,	ATA_QUIRK_NOLPM },
 +
- 	/* SCSI Concurrent Positioning Ranges VPD page: SBC-5 rev 1 or later */
- 	rbuf[1] = 0xb9;
--	put_unaligned_be16(64 + (int)cpr_log->nr_cpr * 32 - 4, &rbuf[2]);
-+	put_unaligned_be16(64 + nr_cpr * 32 - 4, &rbuf[2]);
- 
--	for (i = 0; i < cpr_log->nr_cpr; i++, desc += 32) {
-+	for (i = 0; i < nr_cpr; i++, desc += 32) {
- 		desc[0] = cpr_log->cpr[i].num;
- 		desc[1] = cpr_log->cpr[i].num_storage_elements;
- 		put_unaligned_be64(cpr_log->cpr[i].start_lba, &desc[8]);
+ 	/* Silicon Motion models with LPM issues */
+ 	{ "MD619HXCLDE3TC",		"TCVAID", ATA_QUIRK_NOLPM },
+ 	{ "MD619GXCLDE3TC",		"TCV35D", ATA_QUIRK_NOLPM },
 
+---
+base-commit: 4549871118cf616eecdd2d939f78e3b9e1dddc48
+change-id: 20260619-b4-disp-494070d2-c1633393b79f
+
+Best regards,
 -- 
-2.43.0
+bryamzxz <hexlabsecurity@proton.me>
 
