@@ -1,102 +1,83 @@
-From: Sam Day <me@samcday.com>
-Date: Sat, 20 Jun 2026 10:18:09 +1000
-Subject: [PATCH v2] usbip: vudc: fix NULL deref in vep_dequeue()
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Subject: [PATCH 0/2] ata: bound the concurrent positioning ranges count
+ from the device
+Date: Fri, 19 Jun 2026 21:36:28 -0500
+Message-Id: <20260619-b4-disp-6200c44e-v1-0-4624a4707d9e@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260620-usbip-vudc-deque-fix-v2-1-d1913ab4611b@samcday.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4WNSw7CMAwFr4K8xihOUKSy4h6oizZ2qRf9kNCIq
- urdCb0AyxnpzdsgSVRJcDttECVr0mksYM8nCH0zPgWVC4M11htPFS6p1RnzwgFZXotgpx9kR57
- FsevIQ5nOUYo+so+6cK/pPcX1eMn0s3+CmZCwMpau3rVUGXdPzRC4WS9hGqDe9/0LIPfhR7oAA
- AA=
-X-Change-ID: 20260619-usbip-vudc-deque-fix-d316de3d3f16
-To: Valentina Manea <valentina.manea.m@gmail.com>, 
- Shuah Khan <shuah@kernel.org>, Hongren Zheng <i@zenithal.me>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Krzysztof Opasiak <k.opasiak@samsung.com>, 
- Igor Kotrasinski <i.kotrasinsk@samsung.com>, Karol Kosik <karo9@interia.eu>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sam Day <me@samcday.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781914691; l=2322;
- i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=GLmEAnmmolN7RmslJaZq0kmBP1DApWjkYarBGRustN0=;
- b=nWekajJaf3aB8Rh5eTaCmPpk14fgklWvp1yex74rN/oRns08oB5YnUvZ1ZmkCvmJRwMK/rURj
- bLtZGhBz9Z9ButjaPadysHxfbi1yS2k5pPpZZOS/tG4oOuI+jdgnJY+
-X-Developer-Key: i=me@samcday.com; a=ed25519;
- pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
-X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
+X-B4-Tracking: v=1; b=H4sIAKz8NWoC/x3MQQqAIBBA0avIrBvQQSy7SrQwnWo2JQoRRHdPW
+ r7F/w9ULsIVRvVA4UuqnEeD6RTEPRwbo6RmIE1OO+NxsZikZnSkdbSWMbmwROoHT2yhZbnwKve
+ /nOb3/QBC4v2aYgAAAA==
+To: Damien Le Moal <dlemoal@kernel.org>, Niklas Cassel <cassel@kernel.org>
+Cc: linux-ide@vger.kernel.org, linux-kernel@vger.kernel.org
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781922988; l=2755;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=sl+x0zbv7W4APzUsTzopmwRWUhyw4YHCdBIiabkqoQ4=;
+ b=HgLMQDLpCbpEDXXJOuNP5DT0+IsyEoECbM7+duD9INuzwkmtnaKmHx0AEFQJB17+KJgCVZUV1
+ J6CfokVDrQCDb1x9Nyl1DO4ltd6x0MJZSSlw3kfUZJOaOhBHaUxqYNW
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-vep_alloc_request() wasn't initializing vrequest->udc, so cancellations
-on the FunctionFS AIO path were arriving in vep_dequeue without a valid
-UDC reference.
+The concurrent positioning ranges log (0x47) reports its number of range
+descriptors in the first byte, up to 255. Two paths walk that count at a
+fixed 32-byte stride into a buffer whose size does not depend on it, with no
+bound:
 
-Since vrequest->udc is never actually properly used anywhere, we opt to
-remove it, and update vep_dequeue to obtain a reference to the udc with
-ep_to_vudc(), consistent with the other vep_ ops.
+  1/2  ata_dev_config_cpr() reads nr_cpr=buf[0] descriptors out of a buffer
+       sized from the (independent) GPL-directory log length. A small log
+       with buf[0]=255 reads up to 7704 bytes past the slab; those bytes then
+       reach the initiator via VPD B9h. Regression of c745dfc541e7.
 
-AFAICT this bug has existed for ~10 years. Seems that nobody has really
-stressed the FunctionFS AIO path on usbip's vudc.
+  2/2  ata_scsiop_inq_b9() writes cpr_log->nr_cpr descriptors into the fixed
+       2048-byte ata_scsi_rbuf. More than 62 ranges overflows it by up to
+       6168 bytes.
 
-I tested this fix in a QEMU aarch64 guest driving FunctionFS endpoints
-via AIO. Before the fix, running `usbip attach` from the host would
-cause the guest to oops with the following backtrace:
+Both counts come from the device, so the trigger is a malicious or faulty
+drive (or an emulated one); 2/2 is then reachable by any INQUIRY VPD B9h,
+including unprivileged SG_IO. drivers/scsi/sd.c:sd_read_cpr() derives the
+count from the validated page length instead; these two paths don't.
 
-Call trace:
- vep_dequeue+0x1c/0xe4 (P)
- usb_ep_dequeue+0x14/0x20
- ffs_aio_cancel+0x24/0x34
- __arm64_sys_io_cancel+0xb0/0x124
- do_el0_svc+0x68/0x100
- el0_svc+0x18/0x5c
- el0t_64_sync_handler+0x98/0xdc
- el0t_64_sync+0x154/0x158
+They need separate bounds. With a large but self-consistent log
+(buf_len=8704, buf[0]=255) the 1/2 clamp leaves nr_cpr=255: the read stays in
+bounds but the 2/2 emit into the 2048-byte buffer still overflows. An
+alternative for 2/2 is to grow ata_scsi_rbuf to the full page size
+(64 + 256*32); I bounded the emitted count instead, since that buffer is
+shared by every INQUIRY actor. Happy to switch if you'd rather size it.
 
-Assisted-by: opencode:openai/gpt-5.5
-Fixes: b6a0ca111867 ("usbip: vudc: Add UDC specific ops")
-Signed-off-by: Sam Day <me@samcday.com>
----
-Changes in v2:
-- Reworked to remove vrequest->udc entirely and a call to ep_to_vudc()
-  from vep_deqe
-- Link to v1: https://lore.kernel.org/r/20260619-usbip-vudc-deque-fix-v1-1-9021463b1903@samcday.com
----
- drivers/usb/usbip/vudc.h     | 1 -
- drivers/usb/usbip/vudc_dev.c | 2 +-
- 2 files changed, 1 insertion(+), 2 deletions(-)
+A-B summary -- count vs buffer, both paths, unpatched vs patched, identical
+on -m64 and -m32:
 
-diff --git a/drivers/usb/usbip/vudc.h b/drivers/usb/usbip/vudc.h
-index faf61c9c6a98..5ef0e7d9b23a 100644
---- a/drivers/usb/usbip/vudc.h
-+++ b/drivers/usb/usbip/vudc.h
-@@ -38,7 +38,6 @@ struct vep {
- 
- struct vrequest {
- 	struct usb_request req;
--	struct vudc *udc;
- 	struct list_head req_entry; /* Request queue */
- };
- 
-diff --git a/drivers/usb/usbip/vudc_dev.c b/drivers/usb/usbip/vudc_dev.c
-index c5f079c5a1ea..f0a1a44c18e3 100644
---- a/drivers/usb/usbip/vudc_dev.c
-+++ b/drivers/usb/usbip/vudc_dev.c
-@@ -344,7 +344,7 @@ static int vep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
- 
- 	ep = to_vep(_ep);
- 	req = to_vrequest(_req);
--	udc = req->udc;
-+	udc = ep_to_vudc(ep);
- 
- 	if (!udc->driver)
- 		return -ESHUTDOWN;
+  path   nr_cpr  buf_len  unpatched        patched
+  read   14      512      safe (boundary)  safe
+  read   15      512      OOB read         safe
+  read   255     512      OOB read         safe
+  read   255     8704     safe             safe
+  write  62      -        safe (boundary)  safe
+  write  63      -        OOB write        safe
+  write  255     8704     OOB write        safe   <- the cross-path case above
+
+Early-return guards (major version < 11, absent log, zero count, NULL
+cpr_log) and the unreachable buf_len < 64 underflow edge were checked too;
+the 1/2 clamp is written to stay safe there. Reproducer modules (out-of-tree
+KASAN sink-mirror + a userspace ASan twin, -m64/-m32) available on request.
 
 ---
-base-commit: 5cd1731cc883a9914d91e3b93d4597317b5b5339
-change-id: 20260619-usbip-vudc-deque-fix-d316de3d3f16
+Bryam Vargas (2):
+      ata: libata-core: Clamp the concurrent positioning ranges count
+      ata: libata-scsi: Bound the VPD B9h ranges to the response buffer
+
+ drivers/ata/libata-core.c | 11 +++++++++++
+ drivers/ata/libata-scsi.c | 12 +++++++++---
+ 2 files changed, 20 insertions(+), 3 deletions(-)
+---
+base-commit: 4549871118cf616eecdd2d939f78e3b9e1dddc48
+change-id: 20260619-b4-disp-6200c44e-d6abc27892e4
 
 Best regards,
 -- 
-Sam Day <me@samcday.com>
+bryamzxz <hexlabsecurity@proton.me>
 
