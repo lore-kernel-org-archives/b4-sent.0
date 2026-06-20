@@ -1,66 +1,137 @@
-From: Jiucheng Xu <jiucheng.xu@amlogic.com>
-Date: Sat, 20 Jun 2026 17:34:05 +0800
-Subject: [PATCH] f2fs: fix FG GC failure when file in victim is pinned
+From: Stephen <stevester.codes@gmail.com>
+Date: Sat, 20 Jun 2026 10:06:19 -0600
+Subject: [PATCH RFC 1/3] drm/amd/display: quirk malformed CH7218 PCON
+ topology
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260620-origin-dev-v1-1-3b2e639e794c@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAIxeNmoC/x3MQQqAIBBA0avIrBMmA9GuEi1inGw2GgoRiHdPW
- r7F/w0qF+EKq2pQ+JEqOQ3MkwK6jhRZSxgGg8aiNahzkShJB3609xSIyC0OEUZwFz7l/Wfb3vs
- HUFYodlwAAAA=
-X-Change-ID: 20260620-origin-dev-99cdccc83800
-To: Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>
-Cc: linux-f2fs-devel@lists.sourceforge.net, linux-kernel@vger.kernel.org, 
- jianxin.pan@amlogic.com, tuan.zhang@amlogic.com, 
- Jiucheng Xu <jiucheng.xu@amlogic.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781948046; l=1408;
- i=jiucheng.xu@amlogic.com; s=20250821; h=from:subject:message-id;
- bh=jxb8I4TnUJtPHsroLRoqXeQLJJ3g0yqJyXK0cin68SY=;
- b=0wXhatgMPTS5dc7I5i5bJ3pyFgVnevNTYeVkGK3tp06SbPEDSe6NQW8z+aZ1tlnOGmFYTQVkv
- ytHajwEBNytA88mid32RHSnx7pgiAshH3jae3kBJuL2MmyJGWKufa64
-X-Developer-Key: i=jiucheng.xu@amlogic.com; a=ed25519;
- pk=Q18IjkdWCCuncSplyu+dYqIrm+n42glvoLFJTQqpb2o=
-X-Endpoint-Received: by B4 Relay for jiucheng.xu@amlogic.com/20250821 with auth_id=498
+Message-Id: <20260620-ch7218-rfc-v1-b4-v1-1-3412debf44b6@gmail.com>
+To: amd-gfx@lists.freedesktop.org
+Cc: Stephen <stevester.codes@gmail.com>, dri-devel@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, Harry Wentland <harry.wentland@amd.com>, 
+ Leo Li <sunpeng.li@amd.com>, Rodrigo Siqueira <siqueira@igalia.com>, 
+ Alex Deucher <alexander.deucher@amd.com>, 
+ =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
+ =?utf-8?q?Tomasz_Paku=C5=82a?= <tomasz.pakula.oficjalny@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781971578; l=4344;
+ i=stevester.codes@gmail.com; s=ch7218-rfc; h=from:subject:message-id;
+ bh=jeGNZJ9+o/AHn9lk6MUcdhMGJQEt2lPQ9MdS1Ws/0rk=;
+ b=ashBtRxYlhnhRo1J1cKCvKoDCNUKcm/GSSLJzVdHb0bTs2DEyf8TDex8vsyJXd5N4KMWxP1OL
+ IMbTk2tOT6JCeix/HJpj0hJLXBKtOSpBd8QJr+OkHiR3Cf1Qn1yfzvD
+X-Developer-Key: i=stevester.codes@gmail.com; a=ed25519;
+ pk=3Y74rGwtdwPNG9fzfw+7DSf/KWLeW8BsYVkyhPcx5pY=
+X-Endpoint-Received: by B4 Relay for stevester.codes@gmail.com/ch7218-rfc with auth_id=834
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When continuous write operations occur in the system, BG GC fails to
-work. This leads to large dirty_segments and small free_segments. If
-fallocate() is performed on a pinned file with the allocated space
-exceeding the free_segment, FG_GC reclamation fails.
+Some Chrontel CH7218 DP-to-HDMI 2.1 adapters expose a branch
+device ID of 0x2b02f0 and branch name CH7218, but report no
+downstream port at DPCD 0x005 and report the detailed downstream
+port at 0x080 as DP.
 
-The reason is that the file corresponding to the block in the victim is
-pinned, causing gc_data_segment() to fail. Since the condition sec_freed
-< gc_control->nr_free_secs isn't satisfied, GC stops, resulting in the
-failure of f2fs_fallocate() allocation.
+This leaves AMDGPU treating the link as non-HDMI and bypasses the
+PCON capability path.
 
-Setting gc_control->nr_free_secs = 1 make FG GC continue searching
-for new victim.
+When this malformed runtime state is detected, classify the link as a
+DP-HDMI converter and restore the documented converter ceilings needed
+by the existing PCON path: 12 bpc, 48 Gbps FRL, and YCbCr passthrough
+capability. This does not program the PCON or synthesize source-control
+FRL state.
 
-Signed-off-by: Jiucheng Xu <jiucheng.xu@amlogic.com>
+Signed-off-by: Stephen <stevester.codes@gmail.com>
 ---
- fs/f2fs/file.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ .../display/dc/link/protocols/link_dp_capability.c | 47 ++++++++++++++++++++--
+ .../drm/amd/display/include/ddc_service_types.h    |  1 +
+ 2 files changed, 45 insertions(+), 3 deletions(-)
 
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 8acdd94272a0ced448e0ba21635d702cfec10682..3e49a73bbf3a184a314e97bff9509a66c27eac00 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -1883,7 +1883,7 @@ static int f2fs_expand_inode_data(struct inode *inode, loff_t offset,
- 			.init_gc_type = FG_GC,
- 			.should_migrate_blocks = false,
- 			.err_gc_skipped = true,
--			.nr_free_secs = 0 };
-+			.nr_free_secs = 1 };
- 	pgoff_t pg_start, pg_end;
- 	loff_t new_size;
- 	loff_t off_end;
+diff --git a/drivers/gpu/drm/amd/display/dc/link/protocols/link_dp_capability.c b/drivers/gpu/drm/amd/display/dc/link/protocols/link_dp_capability.c
+index 47abb4066709..c2b48abfe7e6 100644
+--- a/drivers/gpu/drm/amd/display/dc/link/protocols/link_dp_capability.c
++++ b/drivers/gpu/drm/amd/display/dc/link/protocols/link_dp_capability.c
+@@ -1158,6 +1158,31 @@ static void read_and_intersect_post_frl_lt_status(
+ 	}
+ }
+ 
++static bool is_ch7218_pcon(const struct dc_link *link)
++{
++	return link->dpcd_caps.branch_dev_id == DP_BRANCH_DEVICE_ID_2B02F0 &&
++		!memcmp(link->dpcd_caps.branch_dev_name, "CH7218",
++			sizeof(link->dpcd_caps.branch_dev_name));
++}
++
++static void apply_ch7218_pcon_caps_quirk(struct dc_link *link)
++{
++	if (!link->dc->caps.dp_hdmi21_pcon_support)
++		return;
++
++	/*
++	 * Some CH7218 firmware reports no downstream port, or reports the
++	 * detailed downstream port as DP, while the device identity and EDID
++	 * describe a DP-to-HDMI 2.1 PCON. Restore only the documented converter
++	 * capability ceilings here; do not touch the PCON link state.
++	 */
++	link->dpcd_caps.dongle_caps.dp_hdmi_max_bpc = 12;
++	link->dpcd_caps.dongle_caps.dp_hdmi_frl_max_link_bw_in_kbps = 48000000;
++	link->dpcd_caps.dongle_caps.is_dp_hdmi_ycbcr422_pass_through = true;
++	link->dpcd_caps.dongle_caps.is_dp_hdmi_ycbcr420_pass_through = true;
++	link->dpcd_caps.dongle_caps.extendedCapValid = true;
++}
++
+ static void get_active_converter_info(
+ 	uint8_t data, struct dc_link *link)
+ {
+@@ -1166,10 +1191,19 @@ static void get_active_converter_info(
+ 
+ 	/* decode converter info*/
+ 	if (!ds_port.fields.PORT_PRESENT) {
+-		link->dpcd_caps.dongle_type = DISPLAY_DONGLE_NONE;
++		if (is_ch7218_pcon(link)) {
++			link->dpcd_caps.is_branch_dev = true;
++			link->dpcd_caps.dongle_type =
++				DISPLAY_DONGLE_DP_HDMI_CONVERTER;
++			link->dpcd_caps.dongle_caps.dongle_type =
++				link->dpcd_caps.dongle_type;
++			apply_ch7218_pcon_caps_quirk(link);
++		} else {
++			link->dpcd_caps.dongle_type = DISPLAY_DONGLE_NONE;
++			link->dpcd_caps.is_branch_dev = false;
++		}
+ 		set_dongle_type(link->ddc,
+ 				link->dpcd_caps.dongle_type);
+-		link->dpcd_caps.is_branch_dev = false;
+ 		return;
+ 	}
+ 
+@@ -1200,7 +1234,14 @@ static void get_active_converter_info(
+ 			switch (port_caps->bits.DWN_STRM_PORTX_TYPE) {
+ 			/*Handle DP case as DONGLE_NONE*/
+ 			case DOWN_STREAM_DETAILED_DP:
+-				link->dpcd_caps.dongle_type = DISPLAY_DONGLE_NONE;
++				link->dpcd_caps.dongle_type = is_ch7218_pcon(link) ?
++					DISPLAY_DONGLE_DP_HDMI_CONVERTER :
++					DISPLAY_DONGLE_NONE;
++				link->dpcd_caps.dongle_caps.dongle_type =
++					link->dpcd_caps.dongle_type;
++				if (link->dpcd_caps.dongle_type ==
++						DISPLAY_DONGLE_DP_HDMI_CONVERTER)
++					apply_ch7218_pcon_caps_quirk(link);
+ 				break;
+ 			case DOWN_STREAM_DETAILED_VGA:
+ 				link->dpcd_caps.dongle_type =
+diff --git a/drivers/gpu/drm/amd/display/include/ddc_service_types.h b/drivers/gpu/drm/amd/display/include/ddc_service_types.h
+index 53210e3aa0e0..4164f8a5ae56 100644
+--- a/drivers/gpu/drm/amd/display/include/ddc_service_types.h
++++ b/drivers/gpu/drm/amd/display/include/ddc_service_types.h
+@@ -37,6 +37,7 @@
+ #define DP_BRANCH_DEVICE_ID_001CF8 0x001CF8
+ #define DP_BRANCH_DEVICE_ID_0060AD 0x0060AD
+ #define DP_BRANCH_DEVICE_ID_001FF2 0x001FF2
++#define DP_BRANCH_DEVICE_ID_2B02F0 0x2B02F0
+ #define DP_BRANCH_HW_REV_10 0x10
+ #define DP_BRANCH_HW_REV_20 0x20
+ 
 
----
-base-commit: b51f606aa323d553d786ed681a213f134dc688d6
-change-id: 20260620-origin-dev-99cdccc83800
-
-Best regards,
 -- 
-Jiucheng Xu <jiucheng.xu@amlogic.com>
+2.54.0
 
