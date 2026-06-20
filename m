@@ -1,66 +1,77 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Fri, 19 Jun 2026 21:36:29 -0500
-Subject: [PATCH 1/2] ata: libata-core: Clamp the concurrent positioning
- ranges count
+Date: Fri, 19 Jun 2026 21:36:30 -0500
+Subject: [PATCH 2/2] ata: libata-scsi: Bound the VPD B9h ranges to the
+ response buffer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260619-b4-disp-6200c44e-v1-1-4624a4707d9e@proton.me>
+Message-Id: <20260619-b4-disp-6200c44e-v1-2-4624a4707d9e@proton.me>
 References: <20260619-b4-disp-6200c44e-v1-0-4624a4707d9e@proton.me>
 In-Reply-To: <20260619-b4-disp-6200c44e-v1-0-4624a4707d9e@proton.me>
 To: Damien Le Moal <dlemoal@kernel.org>, Niklas Cassel <cassel@kernel.org>
 Cc: linux-ide@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781922988; l=1600;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781922988; l=2123;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=8PNoOz3QbWUZ2Z1u7nRPinneyr22XG/IsUnvRsy1/Zo=;
- b=xTKR/NgL29fdsQcXNnou7yNH31sszPGgziqf/bsJFN0stPsP4wI2ma0JvRGzp/krJfGNO2V66
- QSxtOKuQMWKDQJ7XwobHaZP3EpZMCHTZDNNR8+jHrWTzFG9hcjdR1WG
+ bh=etuEVYLjhJ1FT+81wFk8q9Lg1k6MxM4NwywWjYbfzbc=;
+ b=5qN0S5L3QVPbKFwwEJSUL8skJpsnwJX8mO+Eg7n3G9ubCEDKtTMKNd8lEwhwe33gjJhKcfonW
+ DLfIDhYdb8yBTgZs6d/DHw4KFUy8A2YvXVrmjbgLYuTs/GQd7mzBHxO
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ata_dev_config_cpr() sizes the log buffer from the length reported in
-the GPL directory but takes the number of range descriptors from buf[0],
-which the device reports independently. A device advertising a small log
-but a large count makes the descriptor loop read past the buffer: a
-one-sector log with buf[0] = 255 reaches up to 7704 bytes beyond the
-512-byte allocation, a slab out-of-bounds read whose contents are then
-handed to the initiator through INQUIRY VPD page B9h.
+ata_scsiop_inq_b9() writes one 32-byte range descriptor per
+cpr_log->nr_cpr into the fixed 2048-byte ata_scsi_rbuf with no bound.
+The count originates from the device (concurrent positioning ranges log
+0x47, up to 255), so an INQUIRY VPD page B9h to a drive whose log
+advertises more than 62 ranges overflows the static buffer by up to 6168
+bytes: a global out-of-bounds write into adjacent kernel data.
 
-Clamp the descriptor count to what the allocated buffer holds, as
-sd_read_cpr() already does on the SCSI side.
+Emit only as many descriptors as the response buffer can hold and size
+the page length to match. The companion core fix bounds the stored count
+against the device log, but a large self-consistent log still yields
+nr_cpr up to 255, so the emitter needs its own bound.
 
-Fixes: c745dfc541e7 ("libata: fix reading concurrent positioning ranges log")
+Fixes: fe22e1c2f705 ("libata: support concurrent positioning ranges log")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/ata/libata-core.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ drivers/ata/libata-scsi.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/ata/libata-core.c b/drivers/ata/libata-core.c
-index 3d0027ec33c2..e8d708f0810e 100644
---- a/drivers/ata/libata-core.c
-+++ b/drivers/ata/libata-core.c
-@@ -2832,6 +2832,17 @@ static void ata_dev_config_cpr(struct ata_device *dev)
- 	if (!nr_cpr)
- 		goto out;
+diff --git a/drivers/ata/libata-scsi.c b/drivers/ata/libata-scsi.c
+index d43207c6e467..d43306c5d375 100644
+--- a/drivers/ata/libata-scsi.c
++++ b/drivers/ata/libata-scsi.c
+@@ -2355,18 +2355,24 @@ static unsigned int ata_scsiop_inq_b9(struct ata_device *dev,
+ {
+ 	struct ata_cpr_log *cpr_log = dev->cpr_log;
+ 	u8 *desc = &rbuf[64];
+-	int i;
++	int i, nr_cpr;
+ 
+ 	if (!cpr_log) {
+ 		ata_scsi_set_invalid_field(dev, cmd, 2, 0xff);
+ 		return 0;
+ 	}
  
 +	/*
-+	 * The log size is reported in the GPL directory independently of the
-+	 * number of range descriptors in buf[0]. Clamp the count to what the
-+	 * allocated buffer holds so the loop below cannot read past it.
++	 * The page is built in the fixed-size ata_scsi_rbuf, so the number of
++	 * range descriptors returned is bounded by that buffer's size.
 +	 */
-+	if (buf_len < 64 + (size_t)nr_cpr * 32) {
-+		nr_cpr = buf_len > 64 ? (buf_len - 64) / 32 : 0;
-+		if (!nr_cpr)
-+			goto out;
-+	}
++	nr_cpr = min_t(int, cpr_log->nr_cpr, (ATA_SCSI_RBUF_SIZE - 64) / 32);
 +
- 	cpr_log = kzalloc_flex(*cpr_log, cpr, nr_cpr);
- 	if (!cpr_log)
- 		goto out;
+ 	/* SCSI Concurrent Positioning Ranges VPD page: SBC-5 rev 1 or later */
+ 	rbuf[1] = 0xb9;
+-	put_unaligned_be16(64 + (int)cpr_log->nr_cpr * 32 - 4, &rbuf[2]);
++	put_unaligned_be16(64 + nr_cpr * 32 - 4, &rbuf[2]);
+ 
+-	for (i = 0; i < cpr_log->nr_cpr; i++, desc += 32) {
++	for (i = 0; i < nr_cpr; i++, desc += 32) {
+ 		desc[0] = cpr_log->cpr[i].num;
+ 		desc[1] = cpr_log->cpr[i].num_storage_elements;
+ 		put_unaligned_be64(cpr_log->cpr[i].start_lba, &desc[8]);
 
 -- 
 2.43.0
