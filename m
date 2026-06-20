@@ -1,81 +1,66 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Fri, 19 Jun 2026 21:54:02 -0500
-Subject: [PATCH] ata: libata-core: Add NOLPM quirk for PNY CS900 1TB SSD
+From: Jiucheng Xu <jiucheng.xu@amlogic.com>
+Date: Sat, 20 Jun 2026 17:34:05 +0800
+Subject: [PATCH] f2fs: fix FG GC failure when file in victim is pinned
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260619-b4-disp-494070d2-v1-1-0c6d7be96237@proton.me>
-X-B4-Tracking: v=1; b=H4sIAMkANmoC/x3MTQqAIBBA4avErBvwD8OuEi1Sp5qNhUIE4t2Tl
- t/ivQqFMlOBeaiQ6eHCV+qQ4wDh3NJByLEblFBWWOnQG4xcbjTOiElEhUFarbXTfnI79OzOtPP
- 7L5e1tQ9WBapHYgAAAA==
-To: Damien Le Moal <dlemoal@kernel.org>, Niklas Cassel <cassel@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-ide@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1781924041; l=2401;
- i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=o1g9RWfDLgEq+zCaJ+RXbfq0Fdywflc/XcToyx0FVEA=;
- b=O/QEYP1k1iBnVvN85QIAIDEqJ5yBp1INLpi6jrpT7DLnpTBIjw3nE50uGZ+h5DeS0L1lhp/UI
- SpOmufUipDqATVbLVk4ViPZwh6loAAOHbYPaCRZIys0dUyciaF7rZYh
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
+Message-Id: <20260620-origin-dev-v1-1-3b2e639e794c@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAIxeNmoC/x3MQQqAIBBA0avIrBMmA9GuEi1inGw2GgoRiHdPW
+ r7F/w0qF+EKq2pQ+JEqOQ3MkwK6jhRZSxgGg8aiNahzkShJB3609xSIyC0OEUZwFz7l/Wfb3vs
+ HUFYodlwAAAA=
+X-Change-ID: 20260620-origin-dev-99cdccc83800
+To: Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>
+Cc: linux-f2fs-devel@lists.sourceforge.net, linux-kernel@vger.kernel.org, 
+ jianxin.pan@amlogic.com, tuan.zhang@amlogic.com, 
+ Jiucheng Xu <jiucheng.xu@amlogic.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1781948046; l=1408;
+ i=jiucheng.xu@amlogic.com; s=20250821; h=from:subject:message-id;
+ bh=jxb8I4TnUJtPHsroLRoqXeQLJJ3g0yqJyXK0cin68SY=;
+ b=0wXhatgMPTS5dc7I5i5bJ3pyFgVnevNTYeVkGK3tp06SbPEDSe6NQW8z+aZ1tlnOGmFYTQVkv
+ ytHajwEBNytA88mid32RHSnx7pgiAshH3jae3kBJuL2MmyJGWKufa64
+X-Developer-Key: i=jiucheng.xu@amlogic.com; a=ed25519;
+ pk=Q18IjkdWCCuncSplyu+dYqIrm+n42glvoLFJTQqpb2o=
+X-Endpoint-Received: by B4 Relay for jiucheng.xu@amlogic.com/20250821 with auth_id=498
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PNY CS900 1TB SSD (Phison PS3111-S11, DRAM-less) drops off the bus
-after entering Device-Initiated Slumber during idle. With the default
-med_power_with_dipm policy the link goes down (SStatus 1 SControl 300)
-and does not recover, forcing the filesystem read-only. Forcing
-max_performance keeps the link stable across prolonged idle.
+When continuous write operations occur in the system, BG GC fails to
+work. This leads to large dirty_segments and small free_segments. If
+fallocate() is performed on a pinned file with the allocated space
+exceeding the free_segment, FG_GC reclamation fails.
 
-Add a NOLPM quirk so link power management is disabled for this drive
-specifically, leaving it intact for other devices on the host.
+The reason is that the file corresponding to the block in the victim is
+pinned, causing gc_data_segment() to fail. Since the condition sec_freed
+< gc_control->nr_free_secs isn't satisfied, GC stops, resulting in the
+failure of f2fs_fallocate() allocation.
 
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Setting gc_control->nr_free_secs = 1 make FG GC continue searching
+for new victim.
+
+Signed-off-by: Jiucheng Xu <jiucheng.xu@amlogic.com>
 ---
-Tested on an Intel Alder Lake AHCI host. With the default
-med_power_with_dipm the link drops after prolonged idle (SStatus 1
-SControl 300); writes then fail and the filesystem is remounted
-read-only, e.g.:
+ fs/f2fs/file.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-  sd 0:0:0:0: [sda] tag#22 CDB: Write(10) 2a 00 74 38 55 68 00 00 28 00
-  EXT4-fs warning (device sda1): ext4_end_bio:368: I/O error 10 writing
-    to inode 52429136 (starting block 243731117)
-  ata1: EH complete
-  ata1.00: detaching (SCSI 0:0:0:0)
-  Buffer I/O error on device sda1, logical block 243730861
-  sd 0:0:0:0: [sda] Synchronize Cache(10) failed: Result:
-    hostbyte=DID_BAD_TARGET driverbyte=DRIVER_OK
-
-Forcing max_performance (which this quirk applies per-device) keeps the
-link stable across overnight idle. Drive: model "PNY CS900 1TB SSD", firmware
-CS900702. The Phison PS3111-S11 controller is shared across the CS900
-line, so other capacities/firmwares may need the same; scoped here to
-the unit tested.
----
- drivers/ata/libata-core.c | 3 +++
- 1 file changed, 3 insertions(+)
-
-diff --git a/drivers/ata/libata-core.c b/drivers/ata/libata-core.c
-index 3d0027ec33c2..e1d05d4c13ba 100644
---- a/drivers/ata/libata-core.c
-+++ b/drivers/ata/libata-core.c
-@@ -4280,6 +4280,9 @@ static const struct ata_dev_quirks_entry __ata_dev_quirks[] = {
- 	/* Apacer models with LPM issues */
- 	{ "Apacer AS340*",		NULL,	ATA_QUIRK_NOLPM },
- 
-+	/* PNY CS900 (Phison PS3111-S11, DRAM-less) drops the link on DIPM */
-+	{ "PNY CS900 1TB SSD",		NULL,	ATA_QUIRK_NOLPM },
-+
- 	/* Silicon Motion models with LPM issues */
- 	{ "MD619HXCLDE3TC",		"TCVAID", ATA_QUIRK_NOLPM },
- 	{ "MD619GXCLDE3TC",		"TCV35D", ATA_QUIRK_NOLPM },
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 8acdd94272a0ced448e0ba21635d702cfec10682..3e49a73bbf3a184a314e97bff9509a66c27eac00 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -1883,7 +1883,7 @@ static int f2fs_expand_inode_data(struct inode *inode, loff_t offset,
+ 			.init_gc_type = FG_GC,
+ 			.should_migrate_blocks = false,
+ 			.err_gc_skipped = true,
+-			.nr_free_secs = 0 };
++			.nr_free_secs = 1 };
+ 	pgoff_t pg_start, pg_end;
+ 	loff_t new_size;
+ 	loff_t off_end;
 
 ---
-base-commit: 4549871118cf616eecdd2d939f78e3b9e1dddc48
-change-id: 20260619-b4-disp-494070d2-c1633393b79f
+base-commit: b51f606aa323d553d786ed681a213f134dc688d6
+change-id: 20260620-origin-dev-99cdccc83800
 
 Best regards,
 -- 
-bryamzxz <hexlabsecurity@proton.me>
+Jiucheng Xu <jiucheng.xu@amlogic.com>
 
