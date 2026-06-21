@@ -1,69 +1,63 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sat, 20 Jun 2026 21:44:21 -0500
-Subject: [PATCH] crypto: virtio - bound the device-reported akcipher result
+Date: Sat, 20 Jun 2026 21:45:18 -0500
+Subject: [PATCH] wifi: mac80211_hwsim: clamp virtio RX length before
+ skb_put
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260620-b4-disp-27caeeac-v1-1-956e8f9c4f01@proton.me>
-X-B4-Tracking: v=1; b=H4sIAARQN2oC/x3MPQqAMAxA4atIZgM1aKteRRz6k2oWlRZEKN7d4
- vgN7xXInIQzzE2BxLdkOY+Krm3A7/bYGCVUAynSSpNC12OQfCEZb5mtx8GNTptJUwwBanYljvL
- 8y2V93w+3juuhYgAAAA==
-To: Herbert Xu <herbert@gondor.apana.org.au>, 
- Jason Wang <jasowang@redhat.com>, "Michael S. Tsirkin" <mst@redhat.com>, 
- Gonglei <arei.gonglei@huawei.com>
-Cc: virtualization@lists.linux.dev, Xuan Zhuo <xuanzhuo@linux.alibaba.com>, 
- linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, 
- =?utf-8?q?Eugenio_P=C3=A9rez?= <eperezma@redhat.com>, 
- "David S. Miller" <davem@davemloft.net>
+Message-Id: <20260620-b4-disp-474bee37-v1-1-1a4d37f3e2d4@proton.me>
+X-B4-Tracking: v=1; b=H4sIAD1QN2oC/x2MMQqAMAwAvyKZDdRYWvQr4mDbqFlUWhCh+HeDt
+ 91wV6FwFi4wNhUy31LkPFS6toG4L8fGKEkdyJAzjgwGi0nKhdbbwNx7DBwHhVyKBJpdmVd5/uU
+ 0v+8H6+K7ZGIAAAA=
+To: Johannes Berg <johannes@sipsolutions.net>
+Cc: linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782009860; l=1847;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782009917; l=1634;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=K5bqL5COT6HbKY+VbfoFkNOHOfOlTVi0faKIoOEwSgo=;
- b=BDix6qItkKUTJhCborvwgWf3bRJovdNnpvoxyhH7JiTwBa1C8J+VIIlIv5YFTHks9mN5rLhSz
- Ph+K3Bc3rkkDNBygB4QMIKrummLos5aw43vCFA+9v3iHmDDaUHHOj1Z
+ bh=HtfyUWDREuoINdT8NTkjOwRIxvQAbmpdni8YZu5OyaE=;
+ b=l9uiKusTE+/qmCSun1xP8GV+9egR3wX99KQL2QurOzdFlurwTTL7BHRsCR0HgIJNaymx3dy3b
+ rPxe23SiYBeAxa/cz5yjc6DjofDDvUX/FvjSBv39cJlZf4JRLl+ak5Q
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-length
+hwsim_virtio_rx_work() passes the virtqueue used-ring length reported by
+the device straight to skb_put() on a fixed-size receive skb. A backend
+reporting a length larger than the skb tailroom drives skb_put() past the
+buffer end and hits skb_over_panic() -- a host-triggerable guest panic
+(denial of service).
 
-virtio_crypto_dataq_akcipher_callback() sets the result length from the
-device-reported response length without bounding it to the destination
-buffer, which was allocated for the original request length.
-sg_copy_from_buffer() then reads that many bytes from the destination
-buffer; a backend reporting a larger length over-reads adjacent kernel
-heap into the caller's scatterlist (an out-of-bounds read).
+Clamp the length to the skb's available room before skb_put(). A
+conforming device never reports more than the posted buffer size, so valid
+frames are unaffected; a truncated over-report then fails the
+length/header checks in hwsim_virtio_handle_cmd() and is dropped, so
+truncating rather than dropping here cannot be turned into a parsing
+problem.
 
-Clamp the reported length to the originally requested destination length.
-A conforming device reports no more than that, so valid results are
-unaffected.
-
-Fixes: a36bd0ad9fbf ("virtio-crypto: adjust dst_len at ops callback")
+Fixes: 5d44fe7c9808 ("mac80211_hwsim: add frame transmission support over virtio")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/crypto/virtio/virtio_crypto_akcipher_algs.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ drivers/net/wireless/virtual/mac80211_hwsim_main.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/crypto/virtio/virtio_crypto_akcipher_algs.c b/drivers/crypto/virtio/virtio_crypto_akcipher_algs.c
-index d8d452cac391..64ea141f018c 100644
---- a/drivers/crypto/virtio/virtio_crypto_akcipher_algs.c
-+++ b/drivers/crypto/virtio/virtio_crypto_akcipher_algs.c
-@@ -88,7 +88,8 @@ static void virtio_crypto_dataq_akcipher_callback(struct virtio_crypto_request *
- 	}
+diff --git a/drivers/net/wireless/virtual/mac80211_hwsim_main.c b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+index 0dd8a6c85953..5c1718277599 100644
+--- a/drivers/net/wireless/virtual/mac80211_hwsim_main.c
++++ b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+@@ -7289,6 +7289,7 @@ static void hwsim_virtio_rx_work(struct work_struct *work)
  
- 	/* actual length may be less than dst buffer */
--	akcipher_req->dst_len = len - sizeof(vc_req->status);
-+	akcipher_req->dst_len = min_t(unsigned int, len - sizeof(vc_req->status),
-+				      akcipher_req->dst_len);
- 	sg_copy_from_buffer(akcipher_req->dst, sg_nents(akcipher_req->dst),
- 			    vc_akcipher_req->dst_buf, akcipher_req->dst_len);
- 	virtio_crypto_akcipher_finalize_req(vc_akcipher_req, akcipher_req, error);
+ 	skb->data = skb->head;
+ 	skb_reset_tail_pointer(skb);
++	len = min(len, skb_end_offset(skb));
+ 	skb_put(skb, len);
+ 	hwsim_virtio_handle_cmd(skb);
+ 
 
 ---
 base-commit: 1a3746ccbb0a97bed3c06ccde6b880013b1dddc1
-change-id: 20260620-b4-disp-27caeeac-5b8b67962fdd
+change-id: 20260620-b4-disp-474bee37-bec999926dc2
 
 Best regards,
 -- 
