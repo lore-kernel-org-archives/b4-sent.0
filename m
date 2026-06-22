@@ -1,104 +1,137 @@
-From: Alvin Sun <alvin.sun@linux.dev>
-Date: Mon, 22 Jun 2026 10:45:00 +0800
-Subject: [PATCH v3 6/6] rust: configfs: use `LocalModule` for `THIS_MODULE`
+From: Charlie Jenkins <thecharlesjenkins@gmail.com>
+Subject: [PATCH v2 00/16] riscv: Generate riscv instruction functions
+Date: Sun, 21 Jun 2026 21:01:18 -0700
+Message-Id: <20260621-riscv_insn_table-v2-0-7f0810ee2274@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260622-fix-fops-owner-v3-6-49d45cb37032@linux.dev>
-References: <20260622-fix-fops-owner-v3-0-49d45cb37032@linux.dev>
-In-Reply-To: <20260622-fix-fops-owner-v3-0-49d45cb37032@linux.dev>
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, Luis Chamberlain <mcgrof@kernel.org>, 
- Petr Pavlu <petr.pavlu@suse.com>, Daniel Gomez <da.gomez@kernel.org>, 
- Sami Tolvanen <samitolvanen@google.com>, Aaron Tomlin <atomlin@atomlin.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Arnd Bergmann <arnd@arndb.de>, Brendan Higgins <brendan.higgins@linux.dev>, 
- David Gow <david@davidgow.net>, Rae Moar <raemoar63@gmail.com>, 
- Breno Leitao <leitao@debian.org>, Jens Axboe <axboe@kernel.dk>
-Cc: rust-for-linux@vger.kernel.org, linux-modules@vger.kernel.org, 
- driver-core@lists.linux.dev, dri-devel@lists.freedesktop.org, 
- nova-gpu@lists.linux.dev, linux-kselftest@vger.kernel.org, 
- kunit-dev@googlegroups.com, linux-block@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Alvin Sun <alvin.sun@linux.dev>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782096299; l=2487;
- i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=aexpDAuFU6mvFkRE4PMFgeTzsZDIZpwH5Q0CvXo0fTs=;
- b=1mv5R7oe2FcSalIxzlKq12ldjlbNMDdqc+3bcdjQ6b25dCBZqGK89H/M1CjNynmGV6elrhMzd
- Nc/ahs/0mGxAIJgEcYsgn9TO2Tt/xWkfUDirPkbU1Io6YA8H61wCKZv
-X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
- pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
-X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2WNQQqDMBREryJ/3ZTERNN21XsUkWi++kGTkkhoE
+ e/e1C4Ls3kD82aDiIEwwq3YIGCiSN5lKE8F9JNxIzKymaHkZc2FUCxQ7FNLLrp2Nd2MTF7Utcq
+ xg5WQZ8+AA70O5aPJPFFcfXgfD0l8259Mcf0vS4JxVqlOaVkbgVrfx8XQfO79As2+7x81PW/7s
+ AAAAA==
+X-Change-ID: 20260114-riscv_insn_table-38495495dfd3
+To: Paul Walmsley <pjw@kernel.org>, Palmer Dabbelt <palmer@dabbelt.com>, 
+ Nam Cao <namcao@linutronix.de>, Alexandre Ghiti <alex@ghiti.fr>, 
+ Anup Patel <anup@brainfault.org>, Atish Patra <atish.patra@linux.dev>, 
+ Conor Dooley <conor@kernel.org>, Paolo Bonzini <pbonzini@redhat.com>, 
+ Andrew Morton <akpm@linux-foundation.org>, Shuah Khan <shuah@kernel.org>, 
+ =?utf-8?q?Radim_Kr=C4=8Dm=C3=A1=C5=99?= <radim.krcmar@oss.qualcomm.com>
+Cc: linux-riscv@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ kvm@vger.kernel.org, kvm-riscv@lists.infradead.org, 
+ linux-kselftest@vger.kernel.org, 
+ Charlie Jenkins <thecharlesjenkins@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782100900; l=5328;
+ i=thecharlesjenkins@gmail.com; s=20260605; h=from:subject:message-id;
+ bh=2Ue0OQWnzEfJvkx9yKoYjaChcgTBWEXuzcW+rzKXsR8=;
+ b=ne5wljDoG4zphFx5l9ULUKiRBpeUuwuxY2AbZ2BeN3QgGMMOIAhW6sy1FiM117AEx+Bc6kL8v
+ lqEFZx/bszkD8yBFpdr3oY3ukUz9KPteAWALGmMar+HG5pTqTeSTnDX
+X-Developer-Key: i=thecharlesjenkins@gmail.com; a=ed25519;
+ pk=ajnnRQ98PIdwKp4HeMkq9U32okYbnh6Zb4G3o5XXvkg=
+X-Endpoint-Received: by B4 Relay for thecharlesjenkins@gmail.com/20260605 with auth_id=810
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace the `THIS_MODULE` static reference in the `configfs_attrs!`
-macro with `this_module::<LocalModule>()`, and update
-rnull to import `LocalModule` instead of `THIS_MODULE`, consistent
-with the move of `THIS_MODULE` into the `ModuleMetadata` trait.
+There is a lot of code that is manually manipulating riscv instructions.
+Constructing these headers for new instructions is time consuming and
+error prone.
 
-Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
+The first patch in this series introduces the instruction definition
+table along with a script that runs at compile time to create all of the
+associated instruction manipulation functions. The remaining patches
+migrate all of the manual instruction code to use these generated
+functions.
+
+The instruction definition table is generated from the
+riscv-unified-db[1], an open source RVI project for instruction
+specifications. I got this table generation merged into
+riscv-unified-db, that PR can be accessed on github [2].
+
+A lot of the validation for these changes is from running all possible
+32-bit or 16-bit integers through these functions to see that any given
+instruction will produce to expected result. I give more detail on the
+test cases in the notes of the first couple of patches.
+
+For the KVM patches, I also introduce two test cases to ensure that the
+instruction manipulation is working as expected.
+
+[1] https://github.com/riscv/riscv-unified-db
+[2] https://github.com/riscv/riscv-unified-db/pull/1780
+
+Signed-off-by: Charlie Jenkins <thecharlesjenkins@gmail.com>
 ---
- drivers/block/rnull/configfs.rs | 6 ++----
- rust/kernel/configfs.rs         | 8 +++++---
- 2 files changed, 7 insertions(+), 7 deletions(-)
+Changes in v2:
+- rebased on v7.1
+- I dropped the patch fixing the mmio bug in kvm because in the
+  meantime that bug has been fixed in a different patch
+- Calls to panic() for instructions not support on current hardware have
+  been changed into BUG_ON()
+- Fixed incorrect handling of branches in simulate_*()
+- Added CONFIG_RISCV_KPROBES_SIMULATE_KUNIT for more detailed
+  simulate_*() testing
+- Updated insn.tbl based on new merged in changes to riscv-unified-db
+- Link to v1: https://lore.kernel.org/r/20260407-riscv_insn_table-v1-0-54b4736a1e77@gmail.com
 
-diff --git a/drivers/block/rnull/configfs.rs b/drivers/block/rnull/configfs.rs
-index c10a55fc58948..b2547ad1e5ddd 100644
---- a/drivers/block/rnull/configfs.rs
-+++ b/drivers/block/rnull/configfs.rs
-@@ -1,9 +1,7 @@
- // SPDX-License-Identifier: GPL-2.0
- 
--use super::{
--    NullBlkDevice,
--    THIS_MODULE, //
--};
-+use super::NullBlkDevice;
-+use crate::LocalModule;
- use kernel::{
-     block::mq::gen_disk::{
-         GenDisk,
-diff --git a/rust/kernel/configfs.rs b/rust/kernel/configfs.rs
-index 2339c6467325d..8bd32627386e0 100644
---- a/rust/kernel/configfs.rs
-+++ b/rust/kernel/configfs.rs
-@@ -875,7 +875,7 @@ fn as_ptr(&self) -> *const bindings::config_item_type {
- ///                 configfs::Subsystem<Configuration>,
- ///                 Configuration
- ///                 >::new_with_child_ctor::<N,Child>(
--///             &THIS_MODULE,
-+///             ::kernel::this_module::<LocalModule>(),
- ///             &CONFIGURATION_ATTRS
- ///         );
- ///
-@@ -1021,7 +1021,8 @@ macro_rules! configfs_attrs {
- 
-                     static [< $data:upper _TPE >] : $crate::configfs::ItemType<$container, $data>  =
-                         $crate::configfs::ItemType::<$container, $data>::new::<N>(
--                            &THIS_MODULE, &[<$ data:upper _ATTRS >]
-+                            $crate::this_module::<LocalModule>(),
-+                            &[<$ data:upper _ATTRS >]
-                         );
-                 )?
- 
-@@ -1030,7 +1031,8 @@ macro_rules! configfs_attrs {
-                         $crate::configfs::ItemType<$container, $data>  =
-                             $crate::configfs::ItemType::<$container, $data>::
-                             new_with_child_ctor::<N, $child>(
--                                &THIS_MODULE, &[<$ data:upper _ATTRS >]
-+                                $crate::this_module::<LocalModule>(),
-+                                &[<$ data:upper _ATTRS >]
-                             );
-                 )?
- 
+---
+Charlie Jenkins (16):
+      riscv: Introduce instruction table generation
+      riscv: alternatives: Use generated instruction headers for patching code
+      riscv: kgdb: Use generated instruction headers
+      riscv: Add kprobes instruction simulation KUnit
+      riscv: kprobes: Use generated instruction headers
+      riscv: cfi: Use generated instruction headers
+      riscv: Use generated instruction headers for misaligned loads/stores
+      riscv: kvm: Use generated instruction headers for csr code
+      KVM: device: Add test device
+      KVM: riscv: selftests: Add mmio test
+      riscv: kvm: Use generated instruction headers for mmio emulation
+      riscv: kvm: Add emulated test csr
+      KVM: riscv: selftests: Add csr emulation test
+      riscv: kvm: Use generated instruction headers for csr emulation
+      riscv: kexec: Use generated instruction headers for kexec relocations
+      riscv: Remove unused instruction headers
 
--- 
-2.43.0
+ arch/riscv/Kconfig.debug                           |    1 +
+ arch/riscv/Makefile                                |    3 +
+ arch/riscv/include/asm/Kbuild                      |    1 +
+ arch/riscv/include/asm/insn.h                      |  563 +-------
+ arch/riscv/include/asm/kvm_host.h                  |   10 +
+ arch/riscv/include/asm/kvm_vcpu_insn.h             |    5 +-
+ arch/riscv/include/asm/kvm_vcpu_test_csr.h         |   15 +
+ arch/riscv/kernel/alternative.c                    |   23 +-
+ arch/riscv/kernel/cfi.c                            |    6 +-
+ arch/riscv/kernel/kgdb.c                           |  102 +-
+ arch/riscv/kernel/machine_kexec_file.c             |   55 +-
+ arch/riscv/kernel/probes/decode-insn.c             |    7 +-
+ arch/riscv/kernel/probes/simulate-insn.c           |  253 ++--
+ arch/riscv/kernel/probes/simulate-insn.h           |    7 +-
+ arch/riscv/kernel/tests/Kconfig.debug              |   13 +
+ arch/riscv/kernel/tests/kprobes/Makefile           |    2 +
+ .../kernel/tests/kprobes/test-kprobes-simulate.c   |  250 ++++
+ arch/riscv/kernel/tests/kprobes/test-kprobes.h     |    6 +
+ arch/riscv/kernel/traps_misaligned.c               |  183 ++-
+ arch/riscv/kvm/Kconfig.debug                       |   16 +
+ arch/riscv/kvm/Makefile                            |    1 +
+ arch/riscv/kvm/vcpu_insn.c                         |  232 ++--
+ arch/riscv/kvm/vcpu_test_csr.c                     |   21 +
+ arch/riscv/tools/Makefile                          |   22 +
+ arch/riscv/tools/insn.tbl                          | 1392 ++++++++++++++++++++
+ arch/riscv/tools/insn_tbl.sh                       |  256 ++++
+ include/uapi/linux/kvm.h                           |    2 +
+ lib/Kconfig.debug                                  |    6 +
+ tools/testing/selftests/kvm/Makefile.kvm           |    2 +
+ tools/testing/selftests/kvm/riscv/csr_test.c       |  126 ++
+ tools/testing/selftests/kvm/riscv/mmio_test.c      |  184 +++
+ virt/kvm/Kconfig.debug                             |   16 +
+ virt/kvm/Makefile.kvm                              |    1 +
+ virt/kvm/kvm_main.c                                |    8 +
+ virt/kvm/mmio_test.c                               |   95 ++
+ virt/kvm/mmio_test.h                               |   18 +
+ 36 files changed, 2897 insertions(+), 1006 deletions(-)
+---
+base-commit: 8cd9520d35a6c38db6567e97dd93b1f11f185dc6
+change-id: 20260114-riscv_insn_table-38495495dfd3
+
+Best regards,
+--  
+Charlie Jenkins <thecharlesjenkins@gmail.com>
 
