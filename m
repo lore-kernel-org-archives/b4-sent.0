@@ -1,102 +1,112 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Mon, 22 Jun 2026 13:38:12 -0500
-Subject: [PATCH v2] ata: libata-core: Reject an invalid concurrent
- positioning ranges count
+Date: Mon, 22 Jun 2026 15:57:38 -0500
+Subject: [PATCH] apparmor: mediate the implicit connect of TCP fast open
+ sendmsg
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260622-b4-disp-5734c6f2-v2-1-53083c2df3c6@proton.me>
-X-B4-Tracking: v=1; b=H4sIABOBOWoC/x3MMQqAMAxA0atIZgM1alu8ijhoTTSLSgsiSO9uc
- XzD/y8kjsoJhuqFyLcmPY8CqisI+3xsjLoWAxmyxhLh0uGq6cLetV2wQujFh9Y48Ys0ULIrsuj
- zL8cp5w8SWH5TYgAAAA==
-To: Damien Le Moal <dlemoal@kernel.org>, Niklas Cassel <cassel@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-ide@vger.kernel.org
+Message-Id: <20260622-b4-disp-aba401c6-v1-1-9d74343c7ced@proton.me>
+X-B4-Tracking: v=1; b=H4sIAMGhOWoC/x3MPQqAMAxA4atIZgM11Fq9ijj0J9UsKi2IIN7d4
+ vgN7z1QOAsXmJoHMl9S5NgruraBsLl9ZZRYDaTIKEOEXmOUcqLzTqsuGEyKrKZgaRx6qNmZOcn
+ 9L+flfT/zOldgYgAAAA==
+To: Ryan Lee <ryan.lee@canonical.com>, 
+ John Johansen <john.johansen@canonical.com>
+Cc: Mickael Salaun <mic@digikod.net>, 
+ Stephen Smalley <stephen.smalley.work@gmail.com>, 
+ James Morris <jmorris@namei.org>, Matthieu Buffet <matthieu@buffet.re>, 
+ linux-security-module@vger.kernel.org, 
+ Mikhail Ivanov <ivanov.mikhail1@huawei-partners.com>, 
+ "Serge E. Hallyn" <serge@hallyn.com>, linux-kernel@vger.kernel.org, 
+ Paul Moore <paul@paul-moore.com>, apparmor@lists.ubuntu.com
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782153491; l=3597;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782161857; l=3633;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=s7iWl1A1AVZplle7BVcwv17DnZEN0SJ+S8DOR5LSvyE=;
- b=Z1+ABP+JLnIwd4pXZznefy3o/ZLLvQYGxWqSz0a3j1XWTTHIYdCGOGkYz63EgbznvSov33Mgv
- DdSo5rd3YTYDVtnmb1M9Hpc50NJP1rn9CTwNHr8Qez3HtGTZ7VkfosU
+ bh=e2t5bp4l0ZsG/vhIPuFXcseb3OvyeXAly/te6D921wY=;
+ b=c2u7zxjk1psh1+GEDQpUgJx2ZUR+fEinuqAMbCLImRETnNGXUO1+VZ2sxlUo+UWeog5PgYsY0
+ 40TH6DrS5hzA01zjyU5PD0xy3IFNR/aO1+2Ampv+zvCzfZOAQugY6p0
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ata_dev_config_cpr() takes the number of range descriptors from buf[0]
-of the concurrent positioning ranges log (up to 255), which the device
-reports independently of the log size in the GPL directory. The count is
-then walked at a fixed 32-byte stride in two places with no bound: the
-log read here, and the INQUIRY VPD page B9h emitter, which writes one
-descriptor per range into the fixed 2048-byte ata_scsi_rbuf. A device
-reporting a count larger than its own log overflows the read buffer (up
-to 7704 bytes past a 512-byte slab), and a count above 62 overflows the
-response buffer on the emit side.
+sendmsg()/sendto() with MSG_FASTOPEN is a combination of connect(2) and
+write(2): it opens the connection in the SYN. apparmor_socket_sendmsg()
+only checks AA_MAY_SEND, so a profile that grants send but denies connect
+lets a confined task open an outbound TCP/MPTCP connection that connect(2)
+would have refused, bypassing connect mediation.
 
-Bound the count once, on probe, against both the log the device returned
-and the 62-descriptor capacity of the VPD B9h buffer; warn and ignore the
-log when it does not fit. Capping the stored count keeps the emitter in
-bounds with no separate change there.
+Mediate the implicit connect when MSG_FASTOPEN is set and a destination
+is supplied. Add it to apparmor_socket_sendmsg() (not the shared
+aa_sock_msg_perm() helper, which recvmsg also uses) and call aa_sk_perm()
+directly, mirroring the selinux and tomoyo fixes. sk_is_tcp() does not
+cover MPTCP fast open, so the SOCK_STREAM/IPPROTO_MPTCP arm is explicit.
 
-Suggested-by: Damien Le Moal <dlemoal@kernel.org>
-Fixes: fe22e1c2f705 ("libata: support concurrent positioning ranges log")
-Fixes: c745dfc541e7 ("libata: fix reading concurrent positioning ranges log")
+Fixes: cf60af03ca4e ("net-tcp: Fast Open client - sendmsg(MSG_FASTOPEN)")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-v2: Per Damien Le Moal's review, reject an inconsistent count instead of
-    clamping it, and fold the emitter bound into this single probe-time
-    check: a count above 62 (the VPD B9h 2048-byte buffer capacity) or one
-    that does not fit the device's own log is rejected with a warning. That
-    makes the separate emitter patch unnecessary, so v1 2/2 is dropped.
-    v1 1/2: https://lore.kernel.org/all/20260619-b4-disp-6200c44e-v1-1-4624a4707d9e@proton.me/
-    v1 2/2: https://lore.kernel.org/all/20260619-b4-disp-6200c44e-v1-2-4624a4707d9e@proton.me/
+This is the patch and reproducer requested in [1]. A userspace regression test
+(tests/regression/apparmor/net_inet_tcp_fastopen) follows separately to the
+apparmor tree, as suggested.
 
-A/B with a userspace AddressSanitizer mirror of both sinks (-m64 and -m32;
-the unbounded value is device log content, not bus state, so no hardware is
-needed):
+Reproducer (behavioral; the bypassed value is policy, not bus state, so no special
+hardware). Under a profile that grants inet/inet6 stream send but denies connect, on
+the current Debian security kernel 6.12.94 (apparmor active):
 
-  count  buf_len  with this patch
-  2      128      accepted (conforming drive)
-  62     2048     accepted (62 actuators, the documented maximum)
-  63     8704     rejected (exceeds the 62-descriptor VPD B9h buffer)
-  255    8704     rejected (self-consistent log, but the emit would overflow)
-  62     512      rejected (count does not fit the device's own log)
-  255    512      rejected
+  [TCP ] connect(2)=EACCES   sendto(MSG_FASTOPEN)=OK   -> connect bypassed (listener accepted)
+  [TCP6] connect(2)=EACCES   sendto(MSG_FASTOPEN)=OK   -> connect bypassed
 
-Without the patch the 512-byte rows fault on the log read and the >62 rows
-fault on the VPD B9h emit; with it every count the emitter can still receive
-fits the 2048-byte buffer. Reproducer available on request.
+The kernel audit shows the connect(2) denial and no connect record for the fastopen
+sendto:
+
+  apparmor="DENIED" operation="connect" profile="egress_restricted" comm="lsm_tfo_ab"
+    family="inet" sock_type="stream" protocol=6 requested_mask="connect" denied_mask="connect"
+
+With this patch the fastopen sendto hits that same connect denial. Full reproducer
+available on request.
+
+Same-class fixes: selinux [2], tomoyo [3]; the original cross-LSM report (landlock,
+the first instance) is [4].
+
+[1] https://lore.kernel.org/r/20260619011138.264578-1-hexlabsecurity@proton.me
+[2] https://lore.kernel.org/r/20260618175513.112443-2-stephen.smalley.work@gmail.com
+[3] https://lore.kernel.org/r/20260619002207.61104-1-matthieu@buffet.re
+[4] https://lore.kernel.org/r/20260616201615.275032-1-hexlabsecurity@proton.me
 ---
- drivers/ata/libata-core.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ security/apparmor/lsm.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/ata/libata-core.c b/drivers/ata/libata-core.c
-index 3d0027ec33c2..017a16be158b 100644
---- a/drivers/ata/libata-core.c
-+++ b/drivers/ata/libata-core.c
-@@ -2832,6 +2832,18 @@ static void ata_dev_config_cpr(struct ata_device *dev)
- 	if (!nr_cpr)
- 		goto out;
- 
-+	/*
-+	 * The count is reported independently of the log size and is also
-+	 * emitted into the fixed 2048-byte VPD B9h buffer, which holds at most
-+	 * (2048 - 64) / 32 = 62 descriptors. Reject a count that exceeds that
-+	 * or does not fit the log the device returned.
-+	 */
-+	if (nr_cpr > 62 || buf_len < 64 + (size_t)nr_cpr * 32) {
-+		ata_dev_warn(dev,
-+			     "Invalid number of concurrent positioning ranges\n");
-+		goto out;
-+	}
+diff --git a/security/apparmor/lsm.c b/security/apparmor/lsm.c
+index 3491e9f60194..e01efdf50efa 100644
+--- a/security/apparmor/lsm.c
++++ b/security/apparmor/lsm.c
+@@ -1422,7 +1422,21 @@ static int aa_sock_msg_perm(const char *op, u32 request, struct socket *sock,
+ static int apparmor_socket_sendmsg(struct socket *sock,
+ 				   struct msghdr *msg, int size)
+ {
+-	return aa_sock_msg_perm(OP_SENDMSG, AA_MAY_SEND, sock, msg, size);
++	int error = aa_sock_msg_perm(OP_SENDMSG, AA_MAY_SEND, sock, msg, size);
 +
- 	cpr_log = kzalloc_flex(*cpr_log, cpr, nr_cpr);
- 	if (!cpr_log)
- 		goto out;
++	if (error)
++		return error;
++
++	/* TCP fast open carries connect() semantics in sendmsg(); mediate
++	 * the implicit connect so it cannot bypass the connect permission.
++	 */
++	if ((msg->msg_flags & MSG_FASTOPEN) && msg->msg_name &&
++	    (sk_is_tcp(sock->sk) ||
++	     (sk_is_inet(sock->sk) && sock->sk->sk_type == SOCK_STREAM &&
++	      sock->sk->sk_protocol == IPPROTO_MPTCP)))
++		error = aa_sk_perm(OP_CONNECT, AA_MAY_CONNECT, sock->sk);
++
++	return error;
+ }
+ 
+ static int apparmor_socket_recvmsg(struct socket *sock,
 
 ---
 base-commit: 4549871118cf616eecdd2d939f78e3b9e1dddc48
-change-id: 20260622-b4-disp-5734c6f2-8f8c307f8bf1
+change-id: 20260622-b4-disp-aba401c6-f02842c82975
 
 Best regards,
 -- 
