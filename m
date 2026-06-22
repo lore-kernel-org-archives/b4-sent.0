@@ -1,14 +1,13 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Subject: [PATCH 0/2] Fix to possible skb leak due to race condtion in tx
- path
-Date: Sun, 21 Jun 2026 21:32:56 -0700
-Message-Id: <20260621-fix-race-condition-and-crash-v1-0-87e290d9357f@onsemi.com>
+Date: Sun, 21 Jun 2026 21:32:57 -0700
+Subject: [PATCH 1/2] Protect skb pointer used by two different kernel
+ instances
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPi6OGoC/x3MMQrDMAxA0asEzRXYJjYkVykdhKwmWuwgl1IIu
- XtExw+Pf8IQUxmwTieYfHVobx7xMQHv1DZBrd6QQiqhpIhv/aERC3JvVT/OkVpFNho7LnMNOVM
- pmWfwxWHi/r9/vq7rBtBsbxRuAAAA
+Message-Id: <20260621-fix-race-condition-and-crash-v1-1-87e290d9357f@onsemi.com>
+References: <20260621-fix-race-condition-and-crash-v1-0-87e290d9357f@onsemi.com>
+In-Reply-To: <20260621-fix-race-condition-and-crash-v1-0-87e290d9357f@onsemi.com>
 To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
  Andrew Lunn <andrew+netdev@lunn.ch>, 
  Piergiorgio Beruto <pier.beruto@onsemi.com>, 
@@ -19,67 +18,76 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Parthiban Veerasooran <Parthiban.Veerasooran@microchip.com>, 
  Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782102789; l=2224;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782102789; l=1980;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=SlilqLnNR3Q4g+urDMRHsH9UzQw3hURV/MRbu5xRLR8=;
- b=q8rYtD4fr9w/nMSFulKO+HEpL6q6YTqMovs76yAYIPhrwzjWahoc4RH7IsycUYGjiK79q/2iU
- GkIp0lV6PY+A0HDI902sQX2KM3349U69IumWjyUhCp9GE1YF/POyrMT
+ bh=ffD4nh3kEl/gKHXlkWi/1r0F80sp5L3vlle7Lres/CA=;
+ b=xudxxi4oayFzIzb2vU0KYH0tVcxEFu1V4B1dhzxJXtmnndbO81L0tItEn0nbn+k3yQEVqP5Bd
+ MjAD2KVDdVKB90+IIq/Hm6t9EQYO/5/KYGaP2riPKQpVjBq7T7rzebb
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now the traffic is handled in threaded IRQ, and the
-disable_traffic flag is checked before handling the
-data, new race condition is exposed, in which
-buffer may leak, if threaded IRQ interrupts the
-trasmit path midway.
+Threaded IRQ uses waiting_tx_skb. Transmit path also uses
+this pointer without any mutual exclusion protection. As a
+result, it might leak skb buffer, particularly threaded IRQ
+runs in the middle of tranmsmit path, near skb_linearize.
 
-With this change, disable_traffic and waiting_tx_skb
-pointer are protected by spin lock/unlock pair.
-
-This is highlighted in Sashiko review
-https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260611-level-trigger-v5-0-4533a9e85ce2%40onsemi.com
-
-Also on buffer overrun condition, probably due to loss of
-SPI data chunks, receive path doesn't see the expected
-data chunk with end_valid bit set. As a result, driver
-keeps adding data chunks to the skb before running out
-of space and kernel panic is seen.
-
-With this change, before adding data to the skb, if there
-is no space, skb is freed and driver starts looking for
-new frame by looking for a data chunk with start_valid
-bit set.
-
-[  705.405490] skbuff: skb_over_panic: text:ffffffd2eb72a264 len:1600 put:64 head:ffffff804e5cdc40 data:ffffff804e5cdc80 tail:0x680 end:0x640 dev:eth1
-[  705.405569] ------------[ cut here ]------------
-[  705.405575] kernel BUG at net/core/skbuff.c:214!
-[  705.405589] Internal error: Oops - BUG: 00000000f2000800 [#1]  SMP
-
-[ 6703.427690] Call trace:
-[  705.925157]  skb_panic+0x58/0x68 (P)
-[  705.928726]  skb_put+0x74/0x80
-[  705.931772]  oa_tc6_update_rx_skb+0x44/0x98 [oa_tc6_mod]
-[  705.937084]  oa_tc6_macphy_threaded_irq+0x3f4/0x900 [oa_tc6_mod]
-[  705.943084]  irq_thread_fn+0x34/0xb8
-[  705.946654]  irq_thread+0x1a0/0x300
-[  705.950134]  kthread+0x138/0x150
-[  705.953356]  ret_from_fork+0x10/0x20
-
+Fixes: b542d13fab0f ("net: ethernet: oa_tc6: Interrupt is active low, level triggered.")
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 ---
-Selvamani Rajagopal (2):
-      Protect skb pointer used by two different kernel instances
-      net: ethernet: oa_tc6: Improvement in buffer overflow handling
+ drivers/net/ethernet/oa_tc6.c | 22 ++++++++++++++--------
+ 1 file changed, 14 insertions(+), 8 deletions(-)
 
- drivers/net/ethernet/oa_tc6.c | 75 +++++++++++++++++++++++++++----------------
- 1 file changed, 48 insertions(+), 27 deletions(-)
----
-base-commit: d07d80b6a129a44538cda1549b7acf95154fb197
-change-id: 20260621-fix-race-condition-and-crash-94d055a665c4
+diff --git a/drivers/net/ethernet/oa_tc6.c b/drivers/net/ethernet/oa_tc6.c
+index 0727d53345a3..3fd4851ee66d 100644
+--- a/drivers/net/ethernet/oa_tc6.c
++++ b/drivers/net/ethernet/oa_tc6.c
+@@ -672,10 +672,16 @@ static void oa_tc6_cleanup_ongoing_tx_skb(struct oa_tc6 *tc6)
+ 
+ static void oa_tc6_cleanup_waiting_tx_skb(struct oa_tc6 *tc6)
+ {
+-	if (tc6->waiting_tx_skb) {
++	struct sk_buff *skb;
++
++	spin_lock_bh(&tc6->tx_skb_lock);
++	skb = tc6->waiting_tx_skb;
++	tc6->waiting_tx_skb = NULL;
++	spin_unlock_bh(&tc6->tx_skb_lock);
++
++	if (skb) {
+ 		tc6->netdev->stats.tx_dropped++;
+-		kfree_skb(tc6->waiting_tx_skb);
+-		tc6->waiting_tx_skb = NULL;
++		kfree_skb(skb);
+ 	}
+ }
+ 
+@@ -1250,11 +1256,6 @@ EXPORT_SYMBOL_GPL(oa_tc6_zero_align_receive_frame_enable);
+  */
+ netdev_tx_t oa_tc6_start_xmit(struct oa_tc6 *tc6, struct sk_buff *skb)
+ {
+-	if (tc6->disable_traffic || tc6->waiting_tx_skb) {
+-		netif_stop_queue(tc6->netdev);
+-		return NETDEV_TX_BUSY;
+-	}
+-
+ 	if (skb_linearize(skb)) {
+ 		dev_kfree_skb_any(skb);
+ 		tc6->netdev->stats.tx_dropped++;
+@@ -1262,6 +1263,11 @@ netdev_tx_t oa_tc6_start_xmit(struct oa_tc6 *tc6, struct sk_buff *skb)
+ 	}
+ 
+ 	spin_lock_bh(&tc6->tx_skb_lock);
++	if (tc6->disable_traffic || tc6->waiting_tx_skb) {
++		netif_stop_queue(tc6->netdev);
++		spin_unlock_bh(&tc6->tx_skb_lock);
++		return NETDEV_TX_BUSY;
++	}
+ 	tc6->waiting_tx_skb = skb;
+ 	spin_unlock_bh(&tc6->tx_skb_lock);
+ 
 
-Best regards,
 -- 
-Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+2.43.0
 
