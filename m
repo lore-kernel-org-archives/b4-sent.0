@@ -1,166 +1,104 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Tue, 23 Jun 2026 12:10:38 +0200
-Subject: [PATCH] iio: imu: inv_icm42600: add buffer hwfifo watermark
- attributes
+From: Rodrigo Alencar <rodrigo.alencar@analog.com>
+Subject: [PATCH v4 00/12] New features for the AD5686 IIO driver
+Date: Tue, 23 Jun 2026 11:55:40 +0100
+Message-Id: <20260623-ad5686-new-features-v4-0-28962a57db0f@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260623-inv-icm42600-add-buffer-hwfifo_attributes-v1-1-d190800e60de@tdk.com>
-X-B4-Tracking: v=1; b=H4sIAJ1bOmoC/yXNywrCMBBA0V8ps3YgibELf0VE8pixI5hKHq1Q+
- u9GXZ7NvRsUykIFzsMGmRYpMqcOfRggTC7dCSV2g1FmVKMxKGlBCU/bqdDFiL4xU8ZpZeH55mr
- N4lulgi5QVFaf6Gg19N4rE8v797pc/y7NPyjU7wD2/QNZgwqnjQAAAA==
-X-Change-ID: 20260622-inv-icm42600-add-buffer-hwfifo_attributes-aced0415e341
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782209453; l=5580;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=3W55m2nmoYnxRic7yshG+e4rsycIQ6BXoUPJLEO8CD0=;
- b=0NaXGUyToZQt7PPzCF9lQ+ipDGFF4DUXNYLqB6UTcVt8B/qh5wRX4YL+WBIN0A+N918dLzgl1
- T8hNkQtQmbuBAb7O0jIDTvsUsRZqKk+uO2A/+HSSAmDReqCFq9YBGOE
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+X-B4-Tracking: v=1; b=H4sIACxmOmoC/33NQQ6CMBCF4auYrq1pBxioK+9hXBQ6hSYKpkXUE
+ O5uYYWRuPxfMt+MLJB3FNhxNzJPgwuua2Ok+x2rGt3WxJ2JzUAAChTAtcmwQN7Sk1vS/cNT4CQ
+ lViItjSkVi5d3T9a9FvV8id240Hf+vTwZ5Lz+9wbJBUclSciiSAzkJ93qa1cfqu7GZnCANaK2E
+ YhILsoUEptVOZofJFkhEreRJCK2AGXLnBQgfCHTNH0A/iZ5rkEBAAA=
+X-Change-ID: 20260602-ad5686-new-features-e116c04bddb9
+To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
+ linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org
+Cc: Michael Hennerich <Michael.Hennerich@analog.com>, 
+ Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
+ Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
+ Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
+ Rodrigo Alencar <rodrigo.alencar@analog.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Maxwell Doose <m32285159@gmail.com>, 
+ Joshua Crofts <joshua.crofts1@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782212158; l=3041;
+ i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
+ bh=Abo4zaqoPw3exA03f9GXNFpjnn07dOFg9YinHql3BwI=;
+ b=qqeUphS2jfCs+geTWyOZmFWx9ILbMm4KYyI4zOVtBliPG7Np1phSqmvyRVLtnSFBa1j9lOvUz
+ 7FPPML+9pwfBZYw/SI6rHN5oRPq6S6sBJkqO0JyXCP+ygtrmH+lgd8x
+X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
+ pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
+X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add hwfifo_watermark/min/max/enabled buffer attributes.
-Hardware FIFO is always enabled and used.
+This is the second series of three on updating the AD5686 driver.
 
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Initially, a big patch series was sent:
+https://lore.kernel.org/r/20260422-ad5313r-iio-support-v1-0-ed7dca001d1b@analog.com
+
+Then, the first patch series added fixes and cleanups:
+https://lore.kernel.org/linux-iio/20260524-ad5686-fixes-v7-0-b6bf395d08bd@analog.com/
+
+This one is introducing new features:
+- Consume optional reset and correct power supplies;
+- LDAC GPIO handling (active-low, held low when unused);
+- SPI bus sync() implementation for batching multiple transfers;
+- Triggered buffer support, leveraging LDAC and sync() to flush
+  all channel writes atomically;
+- Gain control support through the scale property.
+
+Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/imu/inv_icm42600/inv_icm42600.h        |  2 ++
- drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c  |  5 +--
- drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c | 37 ++++++++++++++++++++++
- drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h |  1 +
- drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c   |  5 +--
- 5 files changed, 46 insertions(+), 4 deletions(-)
+Changes in v4:
+- Replace anyof+const for enum in dt-bindings. 
+- Address some sashiko's comments.
+- Use guard(mutex)() in trigger handler and other misc changes.
+- Link to v3: https://lore.kernel.org/r/20260616-ad5686-new-features-v3-0-f829fb7e9262@analog.com
 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600.h b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-index c8b48a5c5ed0..7c9b63584a05 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600.h
-@@ -354,6 +354,8 @@ struct inv_icm42600_sensor_state {
- 		cpu_to_le16((_wm) & GENMASK(11, 0))
- /* FIFO is 2048 bytes, let 12 samples for reading latency */
- #define INV_ICM42600_FIFO_WATERMARK_MAX			(2048 - 12 * 16)
-+/* INV_ICM42600_FIFO_WATERMARK_MAX / 8 = 232 */
-+#define INV_ICM42600_FIFO_WATERMARK_MAX_SAMPLES		232
- 
- #define INV_ICM42600_REG_INT_CONFIG1			0x0064
- #define INV_ICM42600_INT_CONFIG1_TPULSE_DURATION	BIT(6)
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-index 532d5fdffaf8..1ab73953bef6 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c
-@@ -1186,8 +1186,9 @@ struct iio_dev *inv_icm42600_accel_init(struct inv_icm42600_state *st)
- 	indio_dev->num_channels = ARRAY_SIZE(inv_icm42600_accel_channels);
- 	indio_dev->available_scan_masks = inv_icm42600_accel_scan_masks;
- 
--	ret = devm_iio_kfifo_buffer_setup(dev, indio_dev,
--					  &inv_icm42600_buffer_ops);
-+	ret = devm_iio_kfifo_buffer_setup_ext(dev, indio_dev,
-+					      &inv_icm42600_buffer_ops,
-+					      inv_icm42600_buffer_attrs);
- 	if (ret)
- 		return ERR_PTR(ret);
- 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-index 68a395758031..0399cce94545 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-@@ -10,10 +10,12 @@
- #include <linux/pm_runtime.h>
- #include <linux/regmap.h>
- #include <linux/delay.h>
-+#include <linux/stringify.h>
- 
- #include <linux/iio/buffer.h>
- #include <linux/iio/common/inv_sensors_timestamp.h>
- #include <linux/iio/iio.h>
-+#include <linux/iio/sysfs.h>
- 
- #include "inv_icm42600.h"
- #include "inv_icm42600_buffer.h"
-@@ -437,6 +439,41 @@ const struct iio_buffer_setup_ops inv_icm42600_buffer_ops = {
- 	.postdisable = inv_icm42600_buffer_postdisable,
- };
- 
-+static ssize_t inv_icm42600_buffer_get_watermark(struct device *dev,
-+						 struct device_attribute *attr,
-+						 char *buf)
-+{
-+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
-+	struct inv_icm42600_state *st = iio_device_get_drvdata(indio_dev);
-+	unsigned int wm;
-+
-+	guard(mutex)(&st->lock);
-+
-+	if (indio_dev == st->indio_accel)
-+		wm = st->fifo.watermark.eff_accel;
-+	else if (indio_dev == st->indio_gyro)
-+		wm = st->fifo.watermark.eff_gyro;
-+	else
-+		return -EINVAL;
-+
-+	return sysfs_emit(buf, "%u\n", wm);
-+}
-+
-+IIO_STATIC_CONST_DEVICE_ATTR(hwfifo_watermark_min, "1");
-+IIO_STATIC_CONST_DEVICE_ATTR(hwfifo_watermark_max,
-+			     __stringify(INV_ICM42600_FIFO_WATERMARK_MAX_SAMPLES));
-+static IIO_DEVICE_ATTR(hwfifo_watermark, 0444, inv_icm42600_buffer_get_watermark,
-+		       NULL, 0);
-+IIO_STATIC_CONST_DEVICE_ATTR(hwfifo_enabled, "1");
-+
-+const struct iio_dev_attr *inv_icm42600_buffer_attrs[] = {
-+	&iio_dev_attr_hwfifo_watermark_min,
-+	&iio_dev_attr_hwfifo_watermark_max,
-+	&iio_dev_attr_hwfifo_watermark,
-+	&iio_dev_attr_hwfifo_enabled,
-+	NULL,
-+};
-+
- int inv_icm42600_buffer_fifo_read(struct inv_icm42600_state *st,
- 				  unsigned int max)
- {
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h
-index ffca4da1e249..522e158accc9 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h
-@@ -79,6 +79,7 @@ ssize_t inv_icm42600_fifo_decode_packet(const void *packet, const void **accel,
- 					const void **timestamp, unsigned int *odr);
- 
- extern const struct iio_buffer_setup_ops inv_icm42600_buffer_ops;
-+extern const struct iio_dev_attr *inv_icm42600_buffer_attrs[];
- 
- int inv_icm42600_buffer_init(struct inv_icm42600_state *st);
- 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c
-index 11339ddf1da3..7d4f6701f124 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c
-@@ -772,8 +772,9 @@ struct iio_dev *inv_icm42600_gyro_init(struct inv_icm42600_state *st)
- 	indio_dev->available_scan_masks = inv_icm42600_gyro_scan_masks;
- 	indio_dev->setup_ops = &inv_icm42600_buffer_ops;
- 
--	ret = devm_iio_kfifo_buffer_setup(dev, indio_dev,
--					  &inv_icm42600_buffer_ops);
-+	ret = devm_iio_kfifo_buffer_setup_ext(dev, indio_dev,
-+					      &inv_icm42600_buffer_ops,
-+					      inv_icm42600_buffer_attrs);
- 	if (ret)
- 		return ERR_PTR(ret);
- 
+Changes in v3:
+- Add range-double property.
+- Acquire reset control after power-up delay.
+- Include cleanup.h and use guard(mutex)() in read_raw().
+- Link to v2: https://lore.kernel.org/r/20260609-ad5686-new-features-v2-0-70b423f5c76d@analog.com
+
+Changes in v2:
+- Get reset control deasserted.
+- Update entire spi_transfer struct rather than individual fields.
+- Replace udelay() for fsleep() in probe().
+- Minor changes addressing further feedback.
+- Link to v1: https://lore.kernel.org/r/20260602-ad5686-new-features-v1-0-691e01883d27@analog.com
 
 ---
-base-commit: cc746297b23e89bd5df9f91f3a0ca209e8991763
-change-id: 20260622-inv-icm42600-add-buffer-hwfifo_attributes-aced0415e341
+Rodrigo Alencar (12):
+      dt-bindings: iio: dac: ad5696: add reset/ldac/gain support
+      dt-bindings: iio: dac: ad5696: rework on power supplies
+      dt-bindings: iio: dac: ad5686: add reset/ldac/gain support
+      dt-bindings: iio: dac: ad5686: rework on power supplies
+      iio: dac: ad5686: add support for missing power supplies
+      iio: dac: ad5686: consume optional reset signal
+      iio: dac: ad5686: add ldac gpio
+      iio: dac: ad5686: introduce sync operation
+      iio: dac: ad5686: implement new sync() op for the spi bus
+      iio: dac: ad5686: read_raw/write_raw: use guard(mutex)()
+      iio: dac: ad5686: add triggered buffer support
+      iio: dac: ad5686: add gain control support
+
+ .../devicetree/bindings/iio/dac/adi,ad5686.yaml    |  72 +++++-
+ .../devicetree/bindings/iio/dac/adi,ad5696.yaml    |  73 +++++-
+ drivers/iio/dac/Kconfig                            |   2 +
+ drivers/iio/dac/ad5686-spi.c                       | 125 +++++++---
+ drivers/iio/dac/ad5686.c                           | 251 +++++++++++++++++++--
+ drivers/iio/dac/ad5686.h                           |  34 ++-
+ drivers/iio/dac/ad5696-i2c.c                       |   2 +-
+ 7 files changed, 498 insertions(+), 61 deletions(-)
+---
+base-commit: a50909aa46dec46de3c73235fc15a7d6f763d996
+change-id: 20260602-ad5686-new-features-e116c04bddb9
 
 Best regards,
---  
-Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+-- 
+Rodrigo Alencar <rodrigo.alencar@analog.com>
 
