@@ -1,11 +1,10 @@
 From: Esteban Urrutia <esteuwu@proton.me>
-Date: Mon, 22 Jun 2026 20:54:28 -0400
-Subject: [PATCH 7/8] phy: qcom: qmp-combo: Correct pre-emphasis table for
- QMP v4 DP PHYs
+Date: Mon, 22 Jun 2026 20:54:29 -0400
+Subject: [PATCH 8/8] arm64: defconfig: Add SM8450 camcc
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260622-sm8450-qol-v1-7-37e2ee8df9da@proton.me>
+Message-Id: <20260622-sm8450-qol-v1-8-37e2ee8df9da@proton.me>
 References: <20260622-sm8450-qol-v1-0-37e2ee8df9da@proton.me>
 In-Reply-To: <20260622-sm8450-qol-v1-0-37e2ee8df9da@proton.me>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -22,36 +21,35 @@ Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org,
  iommu@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  linux-phy@lists.infradead.org, Esteban Urrutia <esteuwu@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782176157; l=777;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782176157; l=617;
  i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
- bh=R63hycbHvUFDnC1cHIBb7h07gA5W8fdx5mdFsG6A0Hc=;
- b=r3MLZtUkiD8mgYlKgmkuEcwMO18d1TmeuiMJv06QB6X1rg0/nZYY0pWJieUde234c4KbTtH4L
- 7lpnsa42qcdDqLdn+u6bN6p+Vjlwb7oIe4/LSJRwg0drtzZimgV9mbC
+ bh=tJTk/lG/kNTnUjOLpx+gWVzUbilr34jSWya5odqqhqs=;
+ b=qSquq9luNtdbeWsRumnnqskxOKb6XsFmPQk/wqQyMxMqshJHpQq5fAYeBMGjGEGP/BW3Zq/30
+ KQKqkVP7EE1BbZmsUl2lhoH3RDA25jfGC+mzxoned9J0JrGpVs7snP3
 X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
  pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
 X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Comparing sm8350 and sm8450 tables, this seems to be typo.
+Add SM8450 camcc as a module since it's enabled in SM8450 dtsi.
 
 Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
- drivers/phy/qualcomm/phy-qcom-qmp-combo.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ arch/arm64/configs/defconfig | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/phy/qualcomm/phy-qcom-qmp-combo.c b/drivers/phy/qualcomm/phy-qcom-qmp-combo.c
-index 9bd666ac2c49..5b278fd54a16 100644
---- a/drivers/phy/qualcomm/phy-qcom-qmp-combo.c
-+++ b/drivers/phy/qualcomm/phy-qcom-qmp-combo.c
-@@ -2108,7 +2108,7 @@ static const u8 qmp_dp_v4_pre_emphasis_hbr3_hbr2[4][4] = {
- static const u8 qmp_dp_v4_pre_emphasis_hbr_rbr[4][4] = {
- 	{ 0x00, 0x0d, 0x14, 0x1a },
- 	{ 0x00, 0x0e, 0x15, 0xff },
--	{ 0x00, 0x0d, 0xff, 0xff },
-+	{ 0x00, 0x0e, 0xff, 0xff },
- 	{ 0x03, 0xff, 0xff, 0xff }
- };
- 
+diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
+index f2e6ae93e533..8c50c16ee0b8 100644
+--- a/arch/arm64/configs/defconfig
++++ b/arch/arm64/configs/defconfig
+@@ -1541,6 +1541,7 @@ CONFIG_SDX_GCC_75=y
+ CONFIG_SM_CAMCC_6350=m
+ CONFIG_SM_CAMCC_MILOS=m
+ CONFIG_SM_CAMCC_8250=m
++CONFIG_SM_CAMCC_8450=m
+ CONFIG_SM_CAMCC_8550=m
+ CONFIG_SM_CAMCC_8650=m
+ CONFIG_SM_CAMCC_8750=m
 
 -- 
 2.54.0
