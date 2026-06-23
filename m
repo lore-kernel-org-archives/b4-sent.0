@@ -1,10 +1,10 @@
 From: Esteban Urrutia <esteuwu@proton.me>
-Date: Mon, 22 Jun 2026 20:54:24 -0400
-Subject: [PATCH 3/8] arm64: dts: qcom: sm8450: Modify GPU operating points
+Date: Mon, 22 Jun 2026 20:54:25 -0400
+Subject: [PATCH 4/8] arm64: dts: qcom: sm8450: Add missing PCM_OUT port
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260622-sm8450-qol-v1-3-37e2ee8df9da@proton.me>
+Message-Id: <20260622-sm8450-qol-v1-4-37e2ee8df9da@proton.me>
 References: <20260622-sm8450-qol-v1-0-37e2ee8df9da@proton.me>
 In-Reply-To: <20260622-sm8450-qol-v1-0-37e2ee8df9da@proton.me>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -21,51 +21,60 @@ Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org,
  iommu@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  linux-phy@lists.infradead.org, Esteban Urrutia <esteuwu@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782176157; l=1067;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782176157; l=2081;
  i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
- bh=UC8G+Beo5Ny4qD1bWQkjh6S3TFmJKL1P3wTRFImBETw=;
- b=V0HqhO1u+vHE2WkQyZ8w53tz9nq5vyJwjoEMcNSnSh9lQeJePF45vUwQO1oEV5l9C03S56ym5
- yuN/x2btOijA7GTkYxTOpmiR7wyBg3PEFIHlzEQG2lD3ssBubBG0T7a
+ bh=OrJOz9UX4k6KmMtNljEzpauAqT9chi789O6PWbCCR9A=;
+ b=8ZrQA/bfSoXVwph2etq7CCG/xh90OvmKglxlcOKnQ6xMzR5oOwV8/Zv7t2tqO7ibSosAfie/H
+ mDD4TCZCCX5BDvldcFOyPud4ZsuuTi2J5BmEn4KNL1vGLDynVxzZTaK
 X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
  pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
 X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-These frecuencies don't exist in downstream device trees.
-Both 220MHz and 285MHz belong to SM8475, and I'm not sure where 317MHz
-came from.
+An error in dmesg shows there is a mismatch between controller and DT
+dout-ports.
+Add PCM_OUT port to fix this.
 
 Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
- arch/arm64/boot/dts/qcom/sm8450.dtsi | 15 ---------------
- 1 file changed, 15 deletions(-)
+ arch/arm64/boot/dts/qcom/sm8450.dtsi | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/qcom/sm8450.dtsi b/arch/arm64/boot/dts/qcom/sm8450.dtsi
-index e34e3c05bf74..5e331a25e22a 100644
+index 5e331a25e22a..8fc58a02e5c5 100644
 --- a/arch/arm64/boot/dts/qcom/sm8450.dtsi
 +++ b/arch/arm64/boot/dts/qcom/sm8450.dtsi
-@@ -2495,21 +2495,6 @@ opp-350000000 {
- 					opp-hz = /bits/ 64 <350000000>;
- 					opp-level = <RPMH_REGULATOR_LEVEL_LOW_SVS>;
- 				};
--
--				opp-317000000 {
--					opp-hz = /bits/ 64 <317000000>;
--					opp-level = <RPMH_REGULATOR_LEVEL_LOW_SVS>;
--				};
--
--				opp-285000000 {
--					opp-hz = /bits/ 64 <285000000>;
--					opp-level = <RPMH_REGULATOR_LEVEL_LOW_SVS_D1>;
--				};
--
--				opp-220000000 {
--					opp-hz = /bits/ 64 <220000000>;
--					opp-level = <RPMH_REGULATOR_LEVEL_LOW_SVS_D1>;
--				};
- 			};
- 		};
+@@ -2914,20 +2914,20 @@ swr1: soundwire@3210000 {
+ 			clock-names = "iface";
+ 			label = "RX";
+ 			qcom,din-ports = <0>;
+-			qcom,dout-ports = <5>;
++			qcom,dout-ports = <6>;
  
+ 			pinctrl-0 = <&rx_swr_active>;
+ 			pinctrl-names = "default";
+ 
+-			qcom,ports-sinterval-low =	/bits/ 8 <0x03 0x1f 0x1f 0x07 0x00>;
+-			qcom,ports-offset1 =		/bits/ 8 <0x00 0x00 0x0b 0x01 0x00>;
+-			qcom,ports-offset2 =		/bits/ 8 <0x00 0x00 0x0b 0x00 0x00>;
+-			qcom,ports-hstart =		/bits/ 8 <0xff 0x03 0xff 0xff 0xff>;
+-			qcom,ports-hstop =		/bits/ 8 <0xff 0x06 0xff 0xff 0xff>;
+-			qcom,ports-word-length =	/bits/ 8 <0x01 0x07 0x04 0xff 0xff>;
+-			qcom,ports-block-pack-mode =	/bits/ 8 <0xff 0x00 0x01 0xff 0xff>;
+-			qcom,ports-block-group-count =	/bits/ 8 <0xff 0xff 0xff 0xff 0x00>;
+-			qcom,ports-lane-control =	/bits/ 8 <0x01 0x00 0x00 0x00 0x00>;
++			qcom,ports-sinterval =		/bits/ 16 <0x03 0x3f 0x1f 0x07 0x00 0x18f>;
++			qcom,ports-offset1 =		/bits/ 8 <0x00 0x00 0x0b 0x01 0x00 0x00>;
++			qcom,ports-offset2 =		/bits/ 8 <0x00 0x00 0x0b 0x00 0x00 0x00>;
++			qcom,ports-hstart =		/bits/ 8 <0xff 0x03 0xff 0xff 0xff 0x08>;
++			qcom,ports-hstop =		/bits/ 8 <0xff 0x06 0xff 0xff 0xff 0x08>;
++			qcom,ports-word-length =	/bits/ 8 <0x01 0x07 0x04 0xff 0xff 0x0f>;
++			qcom,ports-block-pack-mode =	/bits/ 8 <0xff 0x00 0x01 0xff 0xff 0x00>;
++			qcom,ports-block-group-count =	/bits/ 8 <0xff 0xff 0xff 0xff 0x00 0x00>;
++			qcom,ports-lane-control =	/bits/ 8 <0x01 0x00 0x00 0x00 0x00 0x00>;
+ 
+ 			#address-cells = <2>;
+ 			#size-cells = <0>;
 
 -- 
 2.54.0
