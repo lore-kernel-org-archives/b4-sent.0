@@ -1,188 +1,171 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Tue, 23 Jun 2026 18:44:22 +0200
-Subject: [PATCH] iio: imu: inv_icm42600: fix timestamping by limiting FIFO
- reading
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Tue, 23 Jun 2026 13:30:11 -0500
+Subject: [PATCH v2] cramfs: bound the XIP direct-mapping reads to the image
+ size
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260623-inv-icm42600-fix-watermark-fifo-reading-v1-1-f3f5694a818a@tdk.com>
-X-B4-Tracking: v=1; b=H4sIAOW3OmoC/yXN0QrCMAyF4VcZuTZQa63iq8guYpfOKOsknVMYe
- 3ejXn5w+M8ClVW4wqlZQHmWKmMxbDcNpCuVnlE6M3jno4t+h1JmlDQEo8Msb3zRxDqQ3k15RGX
- qpPQYfUiU3dEd9gGs9lC29e/p3P5dn5cbp+mbh3X9ACkT4EqLAAAA
-X-Change-ID: 20260623-inv-icm42600-fix-watermark-fifo-reading-624caf080754
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>, 
- linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jonathan Cameron <jic23@kernel.org>, stable@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782233076; l=6594;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=3ssvSfe95gYTtmZ+Ylkig8dkoYCsEu/3jrM6HnnCLEs=;
- b=C3WPzPI1kzun7KRJUGlHPK1Y/sND95/Y9cpUsm1S8n5dtocdhTWgKyMihRQwP6sH4Tyq+rHxX
- 4/BB2mc+8IqBO/1ydz5o/bIfyeh/F7MRpjd4Nnu9KA+xW/CK+hkX1i2
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+Message-Id: <20260623-b4-disp-9da6aca1-v2-1-d681e7b7b76f@proton.me>
+X-B4-Tracking: v=1; b=H4sIALLQOmoC/x3MTQqAIBBA4avIrBswC/u5SrQwHWs2JgoRiHdPW
+ n6L9wpkSkwZVlEg0cOZ79CgOgH2MuEkZNcMSiottRrwGNFxjrg4o401PVq/9LMfpsNbCS2LiTy
+ //3Lba/0ApjwfM2IAAAA=
+To: Nicolas Pitre <nico@fluxnic.net>, 
+ Christian Brauner <brauner@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ Al Viro <viro@zeniv.linux.org.uk>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782239410; l=6010;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=HZ4EqI8da2F69EBTgflMPcXggBhDyhlQuUpDNeOpteg=;
+ b=n5IaVc6zSFmaSJiwSxBMaGona3KqtSveailGSW8V6bVHpQehRUP0tAjMXUEri/Vorx5pSrZCW
+ l5pHHCdWr2kDfX7ElJtMCd7OAWUBRhWTCJUvxGh1TZalNqzf/0z8h+3
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Timestamps are made by measuring the chip clock using the watermark
-interrupts. If we read more than watermark samples as done today, we
-are reducing the period between interrupts and distort the period
-measurement. Fix that by reading only watermark samples in the
-interrupt case.
+The physically-mapped (XIP) fast path dereferences the linear filesystem
+image directly using offsets taken from the untrusted on-disk inode.
+Unlike the normal read path (cramfs_direct_read()), neither
+cramfs_get_block_range() nor cramfs_last_page_is_shared() bounds those
+offsets against the image size before reading the block pointers and the
+mapped data.  A crafted image with the CRAMFS_FLAG_EXT_BLOCK_POINTERS
+feature and an out-of-range inode offset thus dereferences memory outside
+the mapped image, and mmap()ing a regular file on it faults in the kernel.
 
-Better watermark computation using gcd and store watermark value for
-FIFO reading.
+Factor the bound cramfs_direct_read() already applies into a
+cramfs_range_in_image() helper and use it for every linear-image
+dereference in the XIP path, falling back to the bounded paging path on any
+out-of-range access.
 
-Fixes: 7f85e42a6c54 ("iio: imu: inv_icm42600: add buffer support in iio devices")
+Fixes: eddcd97659e3 ("cramfs: add mmap support")
 Cc: stable@vger.kernel.org
-Signed-off-by: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
----
- drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c | 68 +++++++++-------------
- drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h |  1 +
- 2 files changed, 29 insertions(+), 40 deletions(-)
+v2: Per Christian Brauner's review, factor the four open-coded image-bounds
+    checks into a shared cramfs_range_in_image() static inline (the same bound
+    cramfs_direct_read() already applied), and use it on every XIP dereference
+    plus in cramfs_direct_read() itself. No functional change from v1.
+    v1: https://lore.kernel.org/all/20260607064146.302647-1-hexlabsecurity@proton.me/
 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-index 68a395758031..0972294da227 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-@@ -5,6 +5,7 @@
+The helper is the same predicate the v1 open-coded checks computed, verified
+equivalent (no functional change):
+
+  - Userspace AddressSanitizer, -m64 and -m32: the helper form is bit-identical
+    to the v1 inline reject form on every boundary class (interior, exact-fit,
+    one-over, off==size, off>size, len>size, huge-offset, and the 32-bit 4 GiB
+    cross where sbi->size is a 32-bit unsigned long), and the unguarded deref
+    faults exactly on the out-of-range rows while the guarded deref stays clean.
+  - In-kernel KASAN: with the guard those rows are KASAN-clean; the unguarded
+    one-past-the-end read is a KASAN slab-out-of-bounds ("0 bytes to the right
+    of the allocated region").
+
+Reproducer available on request.
+---
+ fs/cramfs/inode.c | 47 ++++++++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 44 insertions(+), 3 deletions(-)
+
+diff --git a/fs/cramfs/inode.c b/fs/cramfs/inode.c
+index 4edbfccd0bbe..223d2eeca275 100644
+--- a/fs/cramfs/inode.c
++++ b/fs/cramfs/inode.c
+@@ -257,6 +257,20 @@ static void *cramfs_blkdev_read(struct super_block *sb, unsigned int offset,
+ 	return read_buffers[buffer] + offset;
+ }
  
- #include <linux/kernel.h>
- #include <linux/device.h>
-+#include <linux/gcd.h>
- #include <linux/minmax.h>
- #include <linux/mutex.h>
- #include <linux/pm_runtime.h>
-@@ -182,25 +183,18 @@ static unsigned int inv_icm42600_wm_truncate(unsigned int watermark,
-  *
-  * FIFO watermark threshold is computed based on the required watermark values
-  * set for gyro and accel sensors. Since watermark is all about acceptable data
-- * latency, use the smallest setting between the 2. It means choosing the
-- * smallest latency but this is not as simple as choosing the smallest watermark
-- * value. Latency depends on watermark and ODR. It requires several steps:
-- * 1) compute gyro and accel latencies and choose the smallest value.
-- * 2) adapt the choosen latency so that it is a multiple of both gyro and accel
-- *    ones. Otherwise it is possible that you don't meet a requirement. (for
-- *    example with gyro @100Hz wm 4 and accel @100Hz with wm 6, choosing the
-- *    value of 4 will not meet accel latency requirement because 6 is not a
-- *    multiple of 4. You need to use the value 2.)
-- * 3) Since all periods are multiple of each others, watermark is computed by
-- *    dividing this computed latency by the smallest period, which corresponds
-- *    to the FIFO frequency. Beware that this is only true because we are not
-- *    using 500Hz frequency which is not a multiple of the others.
-+ * latency, we need to use the biggest latency that is able to cope with accel
-+ * gyro latencies. Using the shortest period and computing the gcd of the 2
-+ * latencies will give the working result.
-+ *
-+ * Beware this is only working because we are not using the 500Hz frequency,
-+ * resulting in FIFO having a fixed period.
-  */
- int inv_icm42600_buffer_update_watermark(struct inv_icm42600_state *st)
- {
- 	size_t packet_size, wm_size;
--	unsigned int wm_gyro, wm_accel, watermark;
--	u32 period_gyro, period_accel;
-+	unsigned int wm_gyro, wm_accel;
-+	u32 period_gyro, period_accel, period;
- 	u32 latency_gyro, latency_accel, latency;
- 	bool restore;
- 	__le16 raw_wm;
-@@ -222,32 +216,26 @@ int inv_icm42600_buffer_update_watermark(struct inv_icm42600_state *st)
- 		return 0;
- 
- 	if (latency_gyro == 0) {
--		watermark = wm_accel;
--		st->fifo.watermark.eff_accel = wm_accel;
-+		period = period_accel;
-+		latency = latency_accel;
- 	} else if (latency_accel == 0) {
--		watermark = wm_gyro;
--		st->fifo.watermark.eff_gyro = wm_gyro;
-+		period = period_gyro;
-+		latency = latency_gyro;
- 	} else {
--		/* compute the smallest latency that is a multiple of both */
--		if (latency_gyro <= latency_accel)
--			latency = latency_gyro - (latency_accel % latency_gyro);
--		else
--			latency = latency_accel - (latency_gyro % latency_accel);
--		/* all this works because periods are multiple of each others */
--		watermark = latency / min(period_gyro, period_accel);
--		if (watermark < 1)
--			watermark = 1;
--		/* update effective watermark */
--		st->fifo.watermark.eff_gyro = latency / period_gyro;
--		if (st->fifo.watermark.eff_gyro < 1)
--			st->fifo.watermark.eff_gyro = 1;
--		st->fifo.watermark.eff_accel = latency / period_accel;
--		if (st->fifo.watermark.eff_accel < 1)
--			st->fifo.watermark.eff_accel = 1;
-+		/* use the shortest period and the gcd of the latencies */
-+		period = min(period_gyro, period_accel);
-+		latency = gcd(latency_gyro, latency_accel);
- 	}
- 
-+	/* update effective watemarks */
-+	st->fifo.watermark.value = max(latency / period, 1);
-+	if (wm_gyro)
-+		st->fifo.watermark.eff_gyro = max(latency / period_gyro, 1);
-+	if (wm_accel)
-+		st->fifo.watermark.eff_accel = max(latency / period_accel, 1);
++/*
++ * Return true if the byte range [offset, offset + len) lies within the
++ * mapped linear image.  Offsets and lengths used on the direct-mapping
++ * paths come from the (untrusted) on-disk inode, so every direct
++ * dereference of the image must pass this bound first.  The arguments are
++ * u64 so the page-count arithmetic in the callers cannot overflow, and the
++ * len check guards the size - len subtraction against underflow.
++ */
++static inline bool cramfs_range_in_image(struct cramfs_sb_info *sbi,
++					 u64 offset, u64 len)
++{
++	return len <= sbi->size && offset <= sbi->size - len;
++}
 +
- 	/* compute watermark value in bytes */
--	wm_size = watermark * packet_size;
-+	wm_size = st->fifo.watermark.value * packet_size;
+ /*
+  * Return a pointer to the linearly addressed cramfs image in memory.
+  */
+@@ -267,7 +281,7 @@ static void *cramfs_direct_read(struct super_block *sb, unsigned int offset,
  
- 	/* changing FIFO watermark requires to turn off watermark interrupt */
- 	ret = regmap_update_bits_check(st->map, INV_ICM42600_REG_INT_SOURCE0,
-@@ -454,11 +442,10 @@ int inv_icm42600_buffer_fifo_read(struct inv_icm42600_state *st,
- 	st->fifo.nb.accel = 0;
- 	st->fifo.nb.total = 0;
- 
--	/* compute maximum FIFO read size */
-+	/* compute maximum FIFO read size (watermark for max = 0 interrupt case) */
- 	if (max == 0)
--		max_count = sizeof(st->fifo.data);
--	else
--		max_count = max * inv_icm42600_get_packet_size(st->fifo.en);
-+		max = st->fifo.watermark.value;
-+	max_count = max * inv_icm42600_get_packet_size(st->fifo.en);
- 
- 	/* read FIFO count value */
- 	raw_fifo_count = (__be16 *)st->buffer;
-@@ -574,6 +561,7 @@ int inv_icm42600_buffer_init(struct inv_icm42600_state *st)
- 
- 	st->fifo.watermark.eff_gyro = 1;
- 	st->fifo.watermark.eff_accel = 1;
-+	st->fifo.watermark.value = 1;
+ 	if (!len)
+ 		return NULL;
+-	if (len > sbi->size || offset > sbi->size - len)
++	if (!cramfs_range_in_image(sbi, offset, len))
+ 		return page_address(ZERO_PAGE(0));
+ 	return sbi->linear_virt_addr + offset;
+ }
+@@ -298,13 +312,22 @@ static u32 cramfs_get_block_range(struct inode *inode, u32 pgoff, u32 *pages)
+ {
+ 	struct cramfs_sb_info *sbi = CRAMFS_SB(inode->i_sb);
+ 	int i;
+-	u32 *blockptrs, first_block_addr;
++	u32 *blockptrs, first_block_addr, data_addr;
  
  	/*
- 	 * Default FIFO configuration (bits 7 to 5)
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h
-index ffca4da1e249..88b8b9f780af 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h
-@@ -34,6 +34,7 @@ struct inv_icm42600_fifo {
- 		unsigned int accel;
- 		unsigned int eff_gyro;
- 		unsigned int eff_accel;
-+		unsigned int value;
- 	} watermark;
- 	size_t count;
- 	struct {
+ 	 * We can dereference memory directly here as this code may be
+ 	 * reached only when there is a direct filesystem image mapping
+ 	 * available in memory.
++	 *
++	 * The block pointer array lives at OFFSET(inode) inside the image,
++	 * and both OFFSET() and the block pointers come from the (untrusted)
++	 * on-disk inode, so bound every access to the image before
++	 * dereferencing it.
+ 	 */
++	if (!cramfs_range_in_image(sbi, OFFSET(inode),
++				   ((u64)pgoff + *pages) * 4))
++		return 0;
++
+ 	blockptrs = (u32 *)(sbi->linear_virt_addr + OFFSET(inode) + pgoff * 4);
+ 	first_block_addr = blockptrs[0] & ~CRAMFS_BLK_FLAGS;
+ 	i = 0;
+@@ -324,7 +347,13 @@ static u32 cramfs_get_block_range(struct inode *inode, u32 pgoff, u32 *pages)
+ 	} while (++i < *pages);
+ 
+ 	*pages = i;
+-	return first_block_addr << CRAMFS_BLK_DIRECT_PTR_SHIFT;
++
++	/* The mapped data range must also lie within the image. */
++	data_addr = first_block_addr << CRAMFS_BLK_DIRECT_PTR_SHIFT;
++	if (!cramfs_range_in_image(sbi, data_addr, (u64)*pages * PAGE_SIZE))
++		return 0;
++
++	return data_addr;
+ }
+ 
+ #ifdef CONFIG_MMU
+@@ -345,9 +374,21 @@ static bool cramfs_last_page_is_shared(struct inode *inode)
+ 	if (!partial)
+ 		return false;
+ 	last_page = inode->i_size >> PAGE_SHIFT;
++
++	/*
++	 * The block pointer and the tail data are read directly from the
++	 * image at offsets derived from the untrusted on-disk inode; bound
++	 * both accesses.  Treat the last page as shared on any overflow so
++	 * the caller falls back to the bounded paging path.
++	 */
++	if (!cramfs_range_in_image(sbi, OFFSET(inode),
++				   ((u64)last_page + 1) * 4))
++		return true;
+ 	blockptrs = (u32 *)(sbi->linear_virt_addr + OFFSET(inode));
+ 	blockaddr = blockptrs[last_page] & ~CRAMFS_BLK_FLAGS;
+ 	blockaddr <<= CRAMFS_BLK_DIRECT_PTR_SHIFT;
++	if (!cramfs_range_in_image(sbi, blockaddr, PAGE_SIZE))
++		return true;
+ 	tail_data = sbi->linear_virt_addr + blockaddr + partial;
+ 	return memchr_inv(tail_data, 0, PAGE_SIZE - partial) ? true : false;
+ }
 
 ---
-base-commit: cc746297b23e89bd5df9f91f3a0ca209e8991763
-change-id: 20260623-inv-icm42600-fix-watermark-fifo-reading-624caf080754
+base-commit: 502d801f0ab03e4f32f9a33d203154ce84887921
+change-id: 20260623-b4-disp-9da6aca1-cf918f37bfc0
 
 Best regards,
---  
-Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+-- 
+Bryam Vargas <hexlabsecurity@proton.me>
 
