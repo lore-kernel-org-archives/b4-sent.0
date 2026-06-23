@@ -1,10 +1,11 @@
 From: Esteban Urrutia <esteuwu@proton.me>
-Date: Mon, 22 Jun 2026 20:54:22 -0400
-Subject: [PATCH 1/8] clk: qcom: dispcc-sm8450: Fix mdss clocks
+Date: Mon, 22 Jun 2026 20:54:23 -0400
+Subject: [PATCH 2/8] arm64: dts: qcom: sm8450: Remove unneeded reserved
+ memory nodes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260622-sm8450-qol-v1-1-37e2ee8df9da@proton.me>
+Message-Id: <20260622-sm8450-qol-v1-2-37e2ee8df9da@proton.me>
 References: <20260622-sm8450-qol-v1-0-37e2ee8df9da@proton.me>
 In-Reply-To: <20260622-sm8450-qol-v1-0-37e2ee8df9da@proton.me>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -21,103 +22,58 @@ Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org,
  iommu@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  linux-phy@lists.infradead.org, Esteban Urrutia <esteuwu@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782176157; l=4544;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782176157; l=1165;
  i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
- bh=Nkcn4urkSzO8xVsWhGDA3qPh5MIpKzECwfoMwJPmbeM=;
- b=2VndCX5WEP4sJ4zXlSVdNf635h5yO9ULJwd3imAAL8DT4Qlqv9EG9o460Gip0qDb6BehVETmC
- FjFevWKU9cfAwmUzfu0xC5f54vhpTPpbqMj+09WbWfzlJO1fcCFheS3
+ bh=dNSyXBWa/SgBuC5DS1nmxn6H5I1XRJm1ND+MaumtrOk=;
+ b=avtwaAbKkhC1ZKRPC4unCsIH6vaYQdfvyHdr7AZ1P76eX9EYXvS4vVtnRyygd5YnU/IQK2R6A
+ 18IC4f1DJpjDjXdv/zjRB0X20ihVKePGF9OoA8C5yFC8rkKs2ZmtGa2
 X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
  pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
 X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Both of these changes allow the framebuffer to show upon boot and let
-the mdss driver take over afterwards.
-Before, none of these actions were possible. Only mdss takeover was
-possible, but screen had to be turned off first.
-
-OLE configuration may have been a misinterpretation... that's not
-something that's done on the downstream driver.
-
-Changing disp_cc_mdss_mdp_clk_src from clk_rcg2_shared_ops to
-clk_rcg2_shared_no_init_park_ops fixes this warning as well:
-
-[    0.075780] ------------[ cut here ]------------
-[    0.075791] disp_cc_mdss_mdp_clk_src: rcg didn't update its configuration.
-[    0.075812] WARNING: drivers/clk/qcom/clk-rcg2.c:136 at update_config+0xd4/0xe4, CPU#3: swapper/0/1
-[    0.075840] Modules linked in:
-[    0.075856] CPU: 3 UID: 0 PID: 1 Comm: swapper/0 Tainted: G S                  7.1.0-rc2+ #320 PREEMPT
-[    0.075870] Tainted: [S]=CPU_OUT_OF_SPEC
-[    0.075877] Hardware name: Motorola ThinkPhone by motorola (DT)
-[    0.075887] pstate: 61400005 (nZCv daif +PAN -UAO -TCO +DIT -SSBS BTYPE=--)
-[    0.075897] pc : update_config+0xd4/0xe4
-[    0.075906] lr : update_config+0xd4/0xe4
-[    0.075914] sp : ffff80008005b9f0
-[    0.075921] x29: ffff80008005ba00 x28: 0000000000000004 x27: ffff000782892200
-[    0.075937] x26: ffff0007823a46c0 x25: 0000000000000004 x24: ffffffffffffffff
-[    0.075953] x23: ffff0007823a0240 x22: ffffdbc0a0940220 x21: ffffdbc0a0940220
-[    0.075967] x20: ffffdbc0a0dcb388 x19: 0000000000000000 x18: 0000000000000048
-[    0.075981] x17: 0000000000000014 x16: 0000000000010008 x15: fffffffffffea870
-[    0.075996] x14: ffffdbc0a0c5d580 x13: ffffdbc0a0c5d600 x12: 00000000000001ee
-[    0.076010] x11: fffffffffffea870 x10: fffffffffffea828 x9 : ffffdbc0a0c5d600
-[    0.076024] x8 : 3fffffffffffefff x7 : ffffdbc0a0cb5600 x6 : 00000000000001ef
-[    0.076038] x5 : 3ffffffffffff1ee x4 : 00000000000001ee x3 : 0000000000000000
-[    0.076052] x2 : 0000000000000000 x1 : 0000000000000000 x0 : ffff00078066adc0
-[    0.076067] Call trace:
-[    0.076074]  update_config+0xd4/0xe4 (P)
-[    0.076085]  clk_rcg2_shared_disable+0x50/0x80
-[    0.076096]  clk_rcg2_shared_init+0x10/0x20
-[    0.076107]  __clk_register+0x1b4/0x9ec
-[    0.076118]  devm_clk_hw_register+0x5c/0xd4
-[    0.076128]  devm_clk_register_regmap+0x44/0x84
-[    0.076139]  qcom_cc_really_probe+0x304/0x514
-[    0.076149]  disp_cc_sm8450_probe+0x104/0x200
-[    0.076160]  platform_probe+0x5c/0xa4
-[    0.076172]  really_probe+0xbc/0x2ac
-[    0.076182]  __driver_probe_device+0x80/0x154
-[    0.076193]  driver_probe_device+0x3c/0x184
-[    0.076203]  __driver_attach+0x90/0x18c
-[    0.076213]  bus_for_each_dev+0x7c/0xdc
-[    0.076224]  driver_attach+0x24/0x30
-[    0.076233]  bus_add_driver+0xe4/0x20c
-[    0.076243]  driver_register+0x68/0x130
-[    0.076251]  __platform_driver_register+0x20/0x2c
-[    0.076260]  disp_cc_sm8450_driver_init+0x1c/0x28
-[    0.076273]  do_one_initcall+0x60/0x1d4
-[    0.076287]  kernel_init_freeable+0x24c/0x2d4
-[    0.076299]  kernel_init+0x24/0x140
-[    0.076311]  ret_from_fork+0x10/0x20
-[    0.076323] ---[ end trace 0000000000000000 ]---
+These nodes are not present on downstream device trees and only take
+memory away from the AP.
+No crashes occur without these nodes, so remove them.
 
 Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
- drivers/clk/qcom/dispcc-sm8450.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ arch/arm64/boot/dts/qcom/sm8450.dtsi | 15 ---------------
+ 1 file changed, 15 deletions(-)
 
-diff --git a/drivers/clk/qcom/dispcc-sm8450.c b/drivers/clk/qcom/dispcc-sm8450.c
-index 2e91332dd92a..b99d3eb5e195 100644
---- a/drivers/clk/qcom/dispcc-sm8450.c
-+++ b/drivers/clk/qcom/dispcc-sm8450.c
-@@ -614,7 +614,7 @@ static struct clk_rcg2 disp_cc_mdss_mdp_clk_src = {
- 		.parent_data = disp_cc_parent_data_5,
- 		.num_parents = ARRAY_SIZE(disp_cc_parent_data_5),
- 		.flags = CLK_SET_RATE_PARENT,
--		.ops = &clk_rcg2_shared_ops,
-+		.ops = &clk_rcg2_shared_no_init_park_ops,
- 	},
- };
+diff --git a/arch/arm64/boot/dts/qcom/sm8450.dtsi b/arch/arm64/boot/dts/qcom/sm8450.dtsi
+index 56cb6e959e4e..e34e3c05bf74 100644
+--- a/arch/arm64/boot/dts/qcom/sm8450.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8450.dtsi
+@@ -752,11 +752,6 @@ oem_vm_mem: memory@bb000000 {
+ 			no-map;
+ 		};
  
-@@ -1824,8 +1824,8 @@ static int disp_cc_sm8450_probe(struct platform_device *pdev)
- 		disp_cc_pll1.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_LUCID_OLE];
- 		disp_cc_pll1.clkr.hw.init = &sm8475_disp_cc_pll1_init;
+-		mte_mem: memory@c0000000 {
+-			reg = <0x0 0xc0000000 0x0 0x20000000>;
+-			no-map;
+-		};
+-
+ 		qheebsp_reserved_mem: memory@e0000000 {
+ 			reg = <0x0 0xe0000000 0x0 0x600000>;
+ 			no-map;
+@@ -806,16 +801,6 @@ qtee_mem: memory@e9b00000 {
+ 			reg = <0x0 0xe9b00000 0x0 0x500000>;
+ 			no-map;
+ 		};
+-
+-		trusted_apps_mem: memory@ea000000 {
+-			reg = <0x0 0xea000000 0x0 0x3900000>;
+-			no-map;
+-		};
+-
+-		trusted_apps_ext_mem: memory@ed900000 {
+-			reg = <0x0 0xed900000 0x0 0x3b00000>;
+-			no-map;
+-		};
+ 	};
  
--		clk_lucid_ole_pll_configure(&disp_cc_pll0, regmap, &sm8475_disp_cc_pll0_config);
--		clk_lucid_ole_pll_configure(&disp_cc_pll1, regmap, &sm8475_disp_cc_pll1_config);
-+		clk_lucid_evo_pll_configure(&disp_cc_pll0, regmap, &sm8475_disp_cc_pll0_config);
-+		clk_lucid_evo_pll_configure(&disp_cc_pll1, regmap, &sm8475_disp_cc_pll1_config);
- 	} else {
- 		clk_lucid_evo_pll_configure(&disp_cc_pll0, regmap, &disp_cc_pll0_config);
- 		clk_lucid_evo_pll_configure(&disp_cc_pll1, regmap, &disp_cc_pll1_config);
+ 	smp2p-adsp {
 
 -- 
 2.54.0
