@@ -1,595 +1,85 @@
-From: Esteban Urrutia <esteuwu@proton.me>
-Date: Mon, 22 Jun 2026 21:44:19 -0400
-Subject: [PATCH 3/3] net: ipa: Add IPA v5.1 data
+From: Jian Hu <jian.hu@amlogic.com>
+Subject: [PATCH v5 0/2] clk: amlogic: Add A9 AO clock controller
+Date: Tue, 23 Jun 2026 10:55:32 +0800
+Message-Id: <20260623-a9_aoclk-v5-0-c7cb1ff9ebf1@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260622-sm8450-ipa-v1-3-532f0299f96e@proton.me>
-References: <20260622-sm8450-ipa-v1-0-532f0299f96e@proton.me>
-In-Reply-To: <20260622-sm8450-ipa-v1-0-532f0299f96e@proton.me>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAKT1OWoC/23MSw6CMBSF4a2Qjq3pG3DkPowxfVygEagB02gIe
+ 7cwqtHhubnfv6AZJg8zOhULmiD62YcxDXkokO302AL2Lm3ECFNEEY51fdPB9ndsTCM5NdpZxVF
+ 6f0zQ+NeeulzT7vz8DNN7L0e2Xf9EIsMEN6IEragCKKuzHvrQenu0YUBbJvKMUpJRnqgpZc2cs
+ pwC+6Uip1VGRaJS1Y4IJkES+03Xdf0A4g99gxgBAAA=
+X-Change-ID: 20260603-a9_aoclk-bbf531badc63
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jerome Brunet <jbrunet@baylibre.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Alex Elder <elder@kernel.org>
-Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
- Esteban Urrutia <esteuwu@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782179059; l=14925;
- i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
- bh=v6K46HlhdIU4i2Dn8Ai622b7nj00uVugNirCPctoJHI=;
- b=2/O8lsVT4VXuTaZBQvcfRZjMvLG4DGx4PWEFk4fFKFDulVH1gP1sI00PGZnLiao7pPH1vDJ9s
- iPZDQV/oGiTC3IuZjI7c0O1sccOmOzEuFN5l6o4oFH8tXrmuSj0oPkm
-X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
- pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
-X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
+ Conor Dooley <conor+dt@kernel.org>, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, Jian Hu <jian.hu@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782183350; l=1916;
+ i=jian.hu@amlogic.com; s=20260415; h=from:subject:message-id;
+ bh=hTKmrhhlidg806logJAbmCAaNns/K6kFJIOELIiijRg=;
+ b=jJjPS3zddbBehGs303rgybAFS1kns9gRA3zFjqikT3LQs3XwlfXMxlleEnKZhtltGN3udEO1x
+ ZvvCnYqKb+KC2U8DgTRXShEt3aIH59ZwT5ONiYh64Z78msRD1vfa8+y
+X-Developer-Key: i=jian.hu@amlogic.com; a=ed25519;
+ pk=zHUE+rNtH9z+Sb8au1/elWknjFQmy5QDVkBoxleuOIA=
+X-Endpoint-Received: by B4 Relay for jian.hu@amlogic.com/20260415 with auth_id=735
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the required ipa_data-v5.1.c file for IPA v5.1 along with changes
-that declare IPA v5.1 support.
-This version of IPA is used in both SM8450 and SM8475 SoCs.
+This series adds Amlogic A9 AO clock support, including dt-binding and AO clock driver.
 
-Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
+Signed-off-by: Jian Hu <jian.hu@amlogic.com>
 ---
- drivers/net/ipa/Makefile             |   2 +-
- drivers/net/ipa/data/ipa_data-v5.1.c | 477 +++++++++++++++++++++++++++++++++++
- drivers/net/ipa/gsi_reg.c            |   1 +
- drivers/net/ipa/ipa_data.h           |   1 +
- drivers/net/ipa/ipa_main.c           |   4 +
- drivers/net/ipa/ipa_reg.c            |   1 +
- 6 files changed, 485 insertions(+), 1 deletion(-)
+Changes in v5:
+- Include <linux/module.h>.
+- Correct duandiv name.
+- Link to v4: https://lore.kernel.org/r/20260618-a9_aoclk-v4-0-569d0425e50c@amlogic.com
 
-diff --git a/drivers/net/ipa/Makefile b/drivers/net/ipa/Makefile
-index e148ec3c1a10..d4995c2e8ca0 100644
---- a/drivers/net/ipa/Makefile
-+++ b/drivers/net/ipa/Makefile
-@@ -7,7 +7,7 @@ IPA_REG_VERSIONS	:=	3.1 3.5.1 4.2 4.5 4.7 4.9 4.11 5.0 5.5
- # Some IPA versions can reuse another set of GSI register definitions.
- GSI_REG_VERSIONS	:=	3.1 3.5.1 4.0 4.5 4.9 4.11 5.0
- 
--IPA_DATA_VERSIONS	:=	3.1 3.5.1 4.2 4.5 4.7 4.9 4.11 5.0 5.2 5.5
-+IPA_DATA_VERSIONS	:=	3.1 3.5.1 4.2 4.5 4.7 4.9 4.11 5.0 5.1 5.2 5.5
- 
- obj-$(CONFIG_QCOM_IPA)	+=	ipa.o
- 
-diff --git a/drivers/net/ipa/data/ipa_data-v5.1.c b/drivers/net/ipa/data/ipa_data-v5.1.c
-new file mode 100644
-index 000000000000..85b21efa1224
---- /dev/null
-+++ b/drivers/net/ipa/data/ipa_data-v5.1.c
-@@ -0,0 +1,477 @@
-+// SPDX-License-Identifier: GPL-2.0
-+
-+/* Copyright (C) 2023-2024 Linaro Ltd. */
-+/* Copyright (C) 2026 Esteban Urrutia <esteuwu@proton.me> */
-+
-+#include <linux/array_size.h>
-+#include <linux/log2.h>
-+
-+#include "../ipa_data.h"
-+#include "../ipa_endpoint.h"
-+#include "../ipa_mem.h"
-+#include "../ipa_version.h"
-+
-+/** enum ipa_resource_type - IPA resource types for an SoC having IPA v5.1 */
-+enum ipa_resource_type {
-+	/* Source resource types; first must have value 0 */
-+	IPA_RESOURCE_TYPE_SRC_PKT_CONTEXTS		= 0,
-+	IPA_RESOURCE_TYPE_SRC_DESCRIPTOR_LISTS,
-+	IPA_RESOURCE_TYPE_SRC_DESCRIPTOR_BUFF,
-+	IPA_RESOURCE_TYPE_SRC_HPS_DMARS,
-+	IPA_RESOURCE_TYPE_SRC_ACK_ENTRIES,
-+
-+	/* Destination resource types; first must have value 0 */
-+	IPA_RESOURCE_TYPE_DST_DATA_SECTORS		= 0,
-+	IPA_RESOURCE_TYPE_DST_DPS_DMARS,
-+	IPA_RESOURCE_TYPE_DST_ULSO_SEGMENTS,
-+};
-+
-+/* Resource groups used for an SoC having IPA v5.1 */
-+enum ipa_rsrc_group_id {
-+	/* Source resource group identifiers */
-+	IPA_RSRC_GROUP_SRC_UL				= 0,
-+	IPA_RSRC_GROUP_SRC_DL,
-+	IPA_RSRC_GROUP_SRC_UNUSED_2,
-+	IPA_RSRC_GROUP_SRC_UNUSED_3,
-+	IPA_RSRC_GROUP_SRC_URLLC,
-+	IPA_RSRC_GROUP_SRC_U_RX_QC,
-+	IPA_RSRC_GROUP_SRC_COUNT,	/* Last in set; not a source group */
-+
-+	/* Destination resource group identifiers */
-+	IPA_RSRC_GROUP_DST_UL				= 0,
-+	IPA_RSRC_GROUP_DST_DL,
-+	IPA_RSRC_GROUP_DST_UNUSED_2,
-+	IPA_RSRC_GROUP_DST_UNUSED_3,
-+	IPA_RSRC_GROUP_DST_UNUSED_4,
-+	IPA_RSRC_GROUP_DST_UC,
-+	IPA_RSRC_GROUP_DST_DRB_IP,
-+	IPA_RSRC_GROUP_DST_COUNT,	/* Last; not a destination group */
-+};
-+
-+/* QSB configuration data for an SoC having IPA v5.1 */
-+static const struct ipa_qsb_data ipa_qsb_data[] = {
-+	[IPA_QSB_MASTER_DDR] = {
-+		.max_writes		= 0,
-+		.max_reads		= 0,	/* no limit (hardware max) */
-+		.max_reads_beats	= 0,
-+	},
-+	[IPA_QSB_MASTER_PCIE] = {
-+		.max_writes		= 0,
-+		.max_reads		= 0,	/* no limit (hardware max) */
-+		.max_reads_beats	= 0,
-+	},
-+};
-+
-+/* Endpoint configuration data for an SoC having IPA v5.1 */
-+static const struct ipa_gsi_endpoint_data ipa_gsi_endpoint_data[] = {
-+	[IPA_ENDPOINT_AP_COMMAND_TX] = {
-+		.ee_id		= GSI_EE_AP,
-+		.channel_id	= 12,
-+		.endpoint_id	= 14,
-+		.toward_ipa	= true,
-+		.channel = {
-+			.tre_count	= 256,
-+			.event_count	= 256,
-+			.tlv_count	= 20,
-+		},
-+		.endpoint = {
-+			.config = {
-+				.resource_group	= IPA_RSRC_GROUP_SRC_UL,
-+				.dma_mode	= true,
-+				.dma_endpoint	= IPA_ENDPOINT_AP_LAN_RX,
-+				.tx = {
-+					.seq_type = IPA_SEQ_DMA,
-+				},
-+			},
-+		},
-+	},
-+	[IPA_ENDPOINT_AP_LAN_RX] = {
-+		.ee_id		= GSI_EE_AP,
-+		.channel_id	= 13,
-+		.endpoint_id	= 16,
-+		.toward_ipa	= false,
-+		.channel = {
-+			.tre_count	= 256,
-+			.event_count	= 256,
-+			.tlv_count	= 9,
-+		},
-+		.endpoint = {
-+			.config = {
-+				.resource_group	= IPA_RSRC_GROUP_DST_UL,
-+				.aggregation	= true,
-+				.status_enable	= true,
-+				.rx = {
-+					.buffer_size	= 8192,
-+					.pad_align	= ilog2(sizeof(u32)),
-+					.aggr_time_limit = 500,
-+				},
-+			},
-+		},
-+	},
-+	[IPA_ENDPOINT_AP_MODEM_TX] = {
-+		.ee_id		= GSI_EE_AP,
-+		.channel_id	= 11,
-+		.endpoint_id	= 2,
-+		.toward_ipa	= true,
-+		.channel = {
-+			.tre_count	= 512,
-+			.event_count	= 512,
-+			.tlv_count	= 25,
-+		},
-+		.endpoint = {
-+			.filter_support	= true,
-+			.config = {
-+				.resource_group	= IPA_RSRC_GROUP_SRC_UL,
-+				.checksum       = true,
-+				.qmap		= true,
-+				.status_enable	= true,
-+				.tx = {
-+					.seq_type = IPA_SEQ_2_PASS_SKIP_LAST_UC,
-+					.status_endpoint =
-+						IPA_ENDPOINT_MODEM_AP_RX,
-+				},
-+			},
-+		},
-+	},
-+	[IPA_ENDPOINT_AP_MODEM_RX] = {
-+		.ee_id		= GSI_EE_AP,
-+		.channel_id	= 1,
-+		.endpoint_id	= 23,
-+		.toward_ipa	= false,
-+		.channel = {
-+			.tre_count	= 256,
-+			.event_count	= 256,
-+			.tlv_count	= 9,
-+		},
-+		.endpoint = {
-+			.config = {
-+				.resource_group	= IPA_RSRC_GROUP_DST_UL,
-+				.checksum       = true,
-+				.qmap		= true,
-+				.aggregation	= true,
-+				.rx = {
-+					.buffer_size	= 8192,
-+					.aggr_time_limit = 500,
-+					.aggr_close_eof	= true,
-+				},
-+			},
-+		},
-+	},
-+	[IPA_ENDPOINT_MODEM_AP_TX] = {
-+		.ee_id		= GSI_EE_MODEM,
-+		.channel_id	= 0,
-+		.endpoint_id	= 12,
-+		.toward_ipa	= true,
-+		.endpoint = {
-+			.filter_support	= true,
-+		},
-+	},
-+	[IPA_ENDPOINT_MODEM_AP_RX] = {
-+		.ee_id		= GSI_EE_MODEM,
-+		.channel_id	= 7,
-+		.endpoint_id	= 21,
-+		.toward_ipa	= false,
-+	},
-+	[IPA_ENDPOINT_MODEM_DL_NLO_TX] = {
-+		.ee_id		= GSI_EE_MODEM,
-+		.channel_id	= 2,
-+		.endpoint_id	= 15,
-+		.toward_ipa	= true,
-+		.endpoint = {
-+			.filter_support	= true,
-+		},
-+	},
-+};
-+
-+/* Source resource configuration data for an SoC having IPA v5.1 */
-+static const struct ipa_resource ipa_resource_src[] = {
-+	[IPA_RESOURCE_TYPE_SRC_PKT_CONTEXTS] = {
-+		.limits[IPA_RSRC_GROUP_SRC_UL] = {
-+			.min = 7,	.max = 12,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_URLLC] = {
-+			.min = 1,	.max = 63,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_U_RX_QC] = {
-+			.min = 0,	.max = 63,
-+		},
-+	},
-+	[IPA_RESOURCE_TYPE_SRC_DESCRIPTOR_LISTS] = {
-+		.limits[IPA_RSRC_GROUP_SRC_UL] = {
-+			.min = 21,	.max = 21,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_URLLC] = {
-+			.min = 10,	.max = 10,
-+		},
-+	},
-+	[IPA_RESOURCE_TYPE_SRC_DESCRIPTOR_BUFF] = {
-+		.limits[IPA_RSRC_GROUP_SRC_UL] = {
-+			.min = 33,	.max = 33,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_URLLC] = {
-+			.min = 20,	.max = 20,
-+		},
-+	},
-+	[IPA_RESOURCE_TYPE_SRC_HPS_DMARS] = {
-+		.limits[IPA_RSRC_GROUP_SRC_UL] = {
-+			.min = 0,	.max = 63,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_URLLC] = {
-+			.min = 1,	.max = 63,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_U_RX_QC] = {
-+			.min = 0,	.max = 63,
-+		},
-+	},
-+	[IPA_RESOURCE_TYPE_SRC_ACK_ENTRIES] = {
-+		.limits[IPA_RSRC_GROUP_SRC_UL] = {
-+			.min = 38,	.max = 38,
-+		},
-+		.limits[IPA_RSRC_GROUP_SRC_URLLC] = {
-+			.min = 16,	.max = 16,
-+		},
-+	},
-+};
-+
-+/* Destination resource configuration data for an SoC having IPA v5.1 */
-+static const struct ipa_resource ipa_resource_dst[] = {
-+	[IPA_RESOURCE_TYPE_DST_DATA_SECTORS] = {
-+		.limits[IPA_RSRC_GROUP_DST_UL] = {
-+			.min = 6,	.max = 6,
-+		},
-+		.limits[IPA_RSRC_GROUP_DST_DL] = {
-+			.min = 5,	.max = 5,
-+		},
-+		.limits[IPA_RSRC_GROUP_DST_DRB_IP] = {
-+			.min = 39,	.max = 39,
-+		},
-+	},
-+	[IPA_RESOURCE_TYPE_DST_DPS_DMARS] = {
-+		.limits[IPA_RSRC_GROUP_DST_UL] = {
-+			.min = 0,	.max = 3,
-+		},
-+		.limits[IPA_RSRC_GROUP_DST_DL] = {
-+			.min = 0,	.max = 3,
-+		},
-+	},
-+	[IPA_RESOURCE_TYPE_DST_ULSO_SEGMENTS] = {
-+		.limits[IPA_RSRC_GROUP_DST_UL] = {
-+			.min = 0,	.max = 63,
-+		},
-+		.limits[IPA_RSRC_GROUP_DST_DL] = {
-+			.min = 0,	.max = 63,
-+		},
-+	},
-+};
-+
-+/* Resource configuration data for an SoC having IPA v5.1 */
-+static const struct ipa_resource_data ipa_resource_data = {
-+	.rsrc_group_dst_count	= IPA_RSRC_GROUP_DST_COUNT,
-+	.rsrc_group_src_count	= IPA_RSRC_GROUP_SRC_COUNT,
-+	.resource_src_count	= ARRAY_SIZE(ipa_resource_src),
-+	.resource_src		= ipa_resource_src,
-+	.resource_dst_count	= ARRAY_SIZE(ipa_resource_dst),
-+	.resource_dst		= ipa_resource_dst,
-+};
-+
-+/* IPA-resident memory region data for an SoC having IPA v5.1 */
-+static const struct ipa_mem ipa_mem_local_data[] = {
-+	{
-+		.id		= IPA_MEM_UC_EVENT_RING,
-+		.offset		= 0x0000,
-+		.size		= 0x1000,
-+		.canary_count	= 0,
-+	},
-+	{
-+		.id		= IPA_MEM_UC_SHARED,
-+		.offset		= 0x1000,
-+		.size		= 0x0080,
-+		.canary_count	= 0,
-+	},
-+	{
-+		.id		= IPA_MEM_UC_INFO,
-+		.offset		= 0x1080,
-+		.size		= 0x0200,
-+		.canary_count	= 0,
-+	},
-+	{
-+		.id		= IPA_MEM_V4_FILTER_HASHED,
-+		.offset		= 0x1288,
-+		.size		= 0x0078,
-+		.canary_count	= 2,
-+	},
-+	{
-+		.id		= IPA_MEM_V4_FILTER,
-+		.offset		= 0x1308,
-+		.size		= 0x0078,
-+		.canary_count	= 2,
-+	},
-+	{
-+		.id		= IPA_MEM_V6_FILTER_HASHED,
-+		.offset		= 0x1388,
-+		.size		= 0x0078,
-+		.canary_count	= 2,
-+	},
-+	{
-+		.id		= IPA_MEM_V6_FILTER,
-+		.offset		= 0x1408,
-+		.size		= 0x0078,
-+		.canary_count	= 2,
-+	},
-+	{
-+		.id		= IPA_MEM_V4_ROUTE_HASHED,
-+		.offset		= 0x1488,
-+		.size		= 0x0098,
-+		.canary_count	= 2,
-+	},
-+	{
-+		.id		= IPA_MEM_V4_ROUTE,
-+		.offset		= 0x1528,
-+		.size		= 0x0098,
-+		.canary_count	= 2,
-+	},
-+	{
-+		.id		= IPA_MEM_V6_ROUTE_HASHED,
-+		.offset		= 0x15c8,
-+		.size		= 0x0098,
-+		.canary_count	= 2,
-+	},
-+	{
-+		.id		= IPA_MEM_V6_ROUTE,
-+		.offset		= 0x1668,
-+		.size		= 0x0098,
-+		.canary_count	= 2,
-+	},
-+	{
-+		.id		= IPA_MEM_MODEM_HEADER,
-+		.offset		= 0x1708,
-+		.size		= 0x0240,
-+		.canary_count	= 2,
-+	},
-+	{
-+		.id		= IPA_MEM_AP_HEADER,
-+		.offset		= 0x1948,
-+		.size		= 0x01e0,
-+		.canary_count	= 0,
-+	},
-+	{
-+		.id		= IPA_MEM_MODEM_PROC_CTX,
-+		.offset		= 0x1b40,
-+		.size		= 0x0b20,
-+		.canary_count	= 2,
-+	},
-+	{
-+		.id		= IPA_MEM_AP_PROC_CTX,
-+		.offset		= 0x2660,
-+		.size		= 0x0200,
-+		.canary_count	= 0,
-+	},
-+	{
-+		.id		= IPA_MEM_STATS_QUOTA_MODEM,
-+		.offset		= 0x2868,
-+		.size		= 0x0060,
-+		.canary_count	= 2,
-+	},
-+	{
-+		.id		= IPA_MEM_STATS_QUOTA_AP,
-+		.offset		= 0x28c8,
-+		.size		= 0x0048,
-+		.canary_count	= 0,
-+	},
-+	{
-+		.id		= IPA_MEM_STATS_TETHERING,
-+		.offset		= 0x2910,
-+		.size		= 0x03c0,
-+		.canary_count	= 0,
-+	},
-+	{
-+		.id		= IPA_MEM_AP_V4_FILTER,
-+		.offset		= 0x29b8,
-+		.size		= 0x0188,
-+		.canary_count	= 2,
-+	},
-+	{
-+		.id		= IPA_MEM_AP_V6_FILTER,
-+		.offset		= 0x2b40,
-+		.size		= 0x0228,
-+		.canary_count	= 0,
-+	},
-+	{
-+		.id		= IPA_MEM_STATS_FILTER_ROUTE,
-+		.offset		= 0x2cd0,
-+		.size		= 0x0ba0,
-+		.canary_count	= 2,
-+	},
-+	{
-+		.id		= IPA_MEM_STATS_DROP,
-+		.offset		= 0x3870,
-+		.size		= 0x0020,
-+		.canary_count	= 0,
-+	},
-+	{
-+		.id		= IPA_MEM_MODEM,
-+		.offset		= 0x3898,
-+		.size		= 0x0d48,
-+		.canary_count	= 2,
-+	},
-+	{
-+		.id		= IPA_MEM_NAT_TABLE,
-+		.offset		= 0x45e0,
-+		.size		= 0x0900,
-+		.canary_count	= 0,
-+	},
-+	{
-+		.id		= IPA_MEM_PDN_CONFIG,
-+		.offset		= 0x4ee8,
-+		.size		= 0x0100,
-+		.canary_count	= 2,
-+	},
-+};
-+
-+/* Memory configuration data for an SoC having IPA v5.1 */
-+static const struct ipa_mem_data ipa_mem_data = {
-+	.local_count	= ARRAY_SIZE(ipa_mem_local_data),
-+	.local		= ipa_mem_local_data,
-+	.imem_addr	= 0x146a8000,
-+	.imem_size	= 0x00002000,
-+	/*
-+	 * While this value is 0xb000 on SM8450 and 0x9000 on SM8475,
-+	 * it has been left set to 0x9000 for compatibility with SM8475
-+	 */
-+	.smem_size	= 0x00009000,
-+};
-+
-+/* Interconnect rates are in 1000 byte/second units */
-+static const struct ipa_interconnect_data ipa_interconnect_data[] = {
-+	{
-+		.name			= "memory",
-+		.peak_bandwidth		= 1900000,	/* 1.9 GBps */
-+		.average_bandwidth	= 590000,	/* 590 MBps */
-+	},
-+	/* Average rate is unused for the next interconnect */
-+	{
-+		.name			= "config",
-+		.peak_bandwidth		= 76800,	/* 76.8 MBps */
-+		.average_bandwidth	= 0,		/* unused */
-+	},
-+};
-+
-+/* Clock and interconnect configuration data for an SoC having IPA v5.1 */
-+static const struct ipa_power_data ipa_power_data = {
-+	.core_clock_rate	= 120 * 1000 * 1000,	/* Hz */
-+	.interconnect_count	= ARRAY_SIZE(ipa_interconnect_data),
-+	.interconnect_data	= ipa_interconnect_data,
-+};
-+
-+/* Configuration data for an SoC having IPA v5.1. */
-+const struct ipa_data ipa_data_v5_1 = {
-+	.version		= IPA_VERSION_5_1,
-+	.qsb_count		= ARRAY_SIZE(ipa_qsb_data),
-+	.qsb_data		= ipa_qsb_data,
-+	.modem_route_count	= 11,
-+	.endpoint_count		= ARRAY_SIZE(ipa_gsi_endpoint_data),
-+	.endpoint_data		= ipa_gsi_endpoint_data,
-+	.resource_data		= &ipa_resource_data,
-+	.mem_data		= &ipa_mem_data,
-+	.power_data		= &ipa_power_data,
-+};
-diff --git a/drivers/net/ipa/gsi_reg.c b/drivers/net/ipa/gsi_reg.c
-index e13cf835a013..a57072ba4bef 100644
---- a/drivers/net/ipa/gsi_reg.c
-+++ b/drivers/net/ipa/gsi_reg.c
-@@ -110,6 +110,7 @@ static const struct regs *gsi_regs(struct gsi *gsi)
- 		return &gsi_regs_v4_11;
- 
- 	case IPA_VERSION_5_0:
-+	case IPA_VERSION_5_1:
- 	case IPA_VERSION_5_2:
- 	case IPA_VERSION_5_5:
- 		return &gsi_regs_v5_0;
-diff --git a/drivers/net/ipa/ipa_data.h b/drivers/net/ipa/ipa_data.h
-index 3eb9dc2ce339..fe6f7d5bfe88 100644
---- a/drivers/net/ipa/ipa_data.h
-+++ b/drivers/net/ipa/ipa_data.h
-@@ -253,6 +253,7 @@ extern const struct ipa_data ipa_data_v4_7;
- extern const struct ipa_data ipa_data_v4_9;
- extern const struct ipa_data ipa_data_v4_11;
- extern const struct ipa_data ipa_data_v5_0;
-+extern const struct ipa_data ipa_data_v5_1;
- extern const struct ipa_data ipa_data_v5_2;
- extern const struct ipa_data ipa_data_v5_5;
- 
-diff --git a/drivers/net/ipa/ipa_main.c b/drivers/net/ipa/ipa_main.c
-index 788dd99af2a4..6c449032ae45 100644
---- a/drivers/net/ipa/ipa_main.c
-+++ b/drivers/net/ipa/ipa_main.c
-@@ -669,6 +669,10 @@ static const struct of_device_id ipa_match[] = {
- 		.compatible	= "qcom,sdx65-ipa",
- 		.data		= &ipa_data_v5_0,
- 	},
-+	{
-+		.compatible	= "qcom,sm8450-ipa",
-+		.data		= &ipa_data_v5_1,
-+	},
- 	{
- 		.compatible	= "qcom,milos-ipa",
- 		.data		= &ipa_data_v5_2,
-diff --git a/drivers/net/ipa/ipa_reg.c b/drivers/net/ipa/ipa_reg.c
-index 30bd69f4c147..5f22ca6295b1 100644
---- a/drivers/net/ipa/ipa_reg.c
-+++ b/drivers/net/ipa/ipa_reg.c
-@@ -125,6 +125,7 @@ static const struct regs *ipa_regs(enum ipa_version version)
- 	case IPA_VERSION_4_11:
- 		return &ipa_regs_v4_11;
- 	case IPA_VERSION_5_0:
-+	case IPA_VERSION_5_1:
- 	case IPA_VERSION_5_2:
- 		return &ipa_regs_v5_0;
- 	case IPA_VERSION_5_5:
+Changes in v4:
+- Drop CLK_IS_CRITICAL for ao_xtal_in clock.
+- Drop CLK_HW_INIT* and revert to explicit clock declarations.
+- Link to v3: https://lore.kernel.org/r/20260610-a9_aoclk-v3-0-b7592d6c31e2@amlogic.com
 
+Changes in v3:
+- Move COMPILE_TEST after 'depends on ARM64' reported by sashiko-bot.
+- Rename i2c3 to i3c reported by sashiko-bot.
+- Reword the comment describing ao_xtal_in's flags.
+- Use struct clk_init_data to describe ao_xtal_in's hw.init.
+- Link to v2: https://lore.kernel.org/r/20260603-a9_aoclk-v2-0-f47ea616ee78@amlogic.com
+
+Changes in v2:
+- Split the A9 clock driver and send the AO clock separately.
+- Rename aobus to soc.
+- Use CLK_HW_INIT_FW_NAME to describe clk_init_data.
+- Use CLK_HW_INIT_PARENTS_DATA to describe clk_init_data.
+- Use a9_ao prefix for MESON_COMP_SEL.
+- Correct duandiv name.
+- Fix pwm b reg.
+- Link to v1: https://lore.kernel.org/all/20260511-b4-a9_clk-v1-0-41cb4071b7c9@amlogic.com/
+
+---
+Jian Hu (2):
+      dt-bindings: clock: Add Amlogic A9 AO clock controller
+      clk: amlogic: Add A9 AO clock controller driver
+
+ .../bindings/clock/amlogic,a9-aoclkc.yaml          |  76 ++++
+ drivers/clk/meson/Kconfig                          |  13 +
+ drivers/clk/meson/Makefile                         |   1 +
+ drivers/clk/meson/a9-aoclk.c                       | 489 +++++++++++++++++++++
+ include/dt-bindings/clock/amlogic,a9-aoclkc.h      |  76 ++++
+ 5 files changed, 655 insertions(+)
+---
+base-commit: ca89c88bcf69daca829044c638a8163d5ce47af0
+change-id: 20260603-a9_aoclk-bbf531badc63
+
+Best regards,
 -- 
-2.54.0
+Jian Hu <jian.hu@amlogic.com>
 
