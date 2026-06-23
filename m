@@ -1,14 +1,12 @@
 From: Esteban Urrutia <esteuwu@proton.me>
-Subject: [PATCH 0/3] SM8450 IPA support
-Date: Mon, 22 Jun 2026 21:44:16 -0400
-Message-Id: <20260622-sm8450-ipa-v1-0-532f0299f96e@proton.me>
+Date: Mon, 22 Jun 2026 21:44:17 -0400
+Subject: [PATCH 1/3] arm64: dts: qcom: sm8450: Add IPA support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ5AMBBA4avIrDWpRktcRSyKKSPxkw4ikd5ds
- fwW793A6AkZquQGjycxrUtElibQjXYZUFAfDUoqI41Sgucy11LQZoXubZk5U2BrNMRg8+jo+mZ
- 185uPdsJufw8QwgNmge/VbgAAAA==
-X-Change-ID: 20260622-sm8450-ipa-5da81f67eb65
+Message-Id: <20260622-sm8450-ipa-v1-1-532f0299f96e@proton.me>
+References: <20260622-sm8450-ipa-v1-0-532f0299f96e@proton.me>
+In-Reply-To: <20260622-sm8450-ipa-v1-0-532f0299f96e@proton.me>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -20,47 +18,105 @@ Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
  Esteban Urrutia <esteuwu@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782179059; l=1359;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782179059; l=2576;
  i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
- bh=WqY7LEhsoR33ic8KDIs1qJmmlmw/mQOzPyENBlR+Sc4=;
- b=eLqzm+hzX0hr4/X3p2jgMNy1H3N9C/SRQMjI+Qr9zldSQarf9TCUBMJcw/XQD6XdDHHv/vSUp
- s+RNH1ZyqCfBWCFWxZ1CMISh+u5unjDwZTrzddJ5GLOGDw9E64csddt
+ bh=REPoX2GD1ofl2IYq/QGL3Tdyi2FLXycfusk5NUq3JGA=;
+ b=QoxedY3RmE6Ji5eZvOO4tDSdZlVmZEjjpbnrD0VwbIKAeDooafDiOUzrCg+47OP1nv71YOg6y
+ +IktDTKMBbSCEsWTcPMjIXPKhN5U8MV8oGgdCHb1O13JsFKZ/97TEmV
 X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
  pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
 X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds support for the IPA subsystem found in the SM8450 SoC.
-While IPA v5.0 is very similar to IPA v5.1 (heck, it even managed to
-properly get the modem up and running), it wasn't perfect, since the
-modem would sometimes hang when rebooting or powering the AP off.
-After a thorough investigation, I managed to create the proper data file
-required for IPA v5.1.
-
-Regards,
-Esteban
+Add support for IPA in DT while expanding the IMEM region just enough to
+accommodate the modem tables used by IPA.
+As reference, SM8450 uses IPA v5.1.
 
 Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
-Esteban Urrutia (3):
-      arm64: dts: qcom: sm8450: Add IPA support
-      dt-bindings: net: qcom,ipa: Add SM8450 compatible string
-      net: ipa: Add IPA v5.1 data
+ arch/arm64/boot/dts/qcom/sm8450.dtsi | 55 ++++++++++++++++++++++++++++++++----
+ 1 file changed, 50 insertions(+), 5 deletions(-)
 
- .../devicetree/bindings/net/qcom,ipa.yaml          |   1 +
- arch/arm64/boot/dts/qcom/sm8450.dtsi               |  55 ++-
- drivers/net/ipa/Makefile                           |   2 +-
- drivers/net/ipa/data/ipa_data-v5.1.c               | 477 +++++++++++++++++++++
- drivers/net/ipa/gsi_reg.c                          |   1 +
- drivers/net/ipa/ipa_data.h                         |   1 +
- drivers/net/ipa/ipa_main.c                         |   4 +
- drivers/net/ipa/ipa_reg.c                          |   1 +
- 8 files changed, 536 insertions(+), 6 deletions(-)
----
-base-commit: 948efecf22e49aa4bf55bb73ec79a0ddcfd38571
-change-id: 20260622-sm8450-ipa-5da81f67eb65
+diff --git a/arch/arm64/boot/dts/qcom/sm8450.dtsi b/arch/arm64/boot/dts/qcom/sm8450.dtsi
+index 56cb6e959e4e..c904720008fa 100644
+--- a/arch/arm64/boot/dts/qcom/sm8450.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8450.dtsi
+@@ -2639,6 +2639,47 @@ adreno_smmu: iommu@3da0000 {
+ 			dma-coherent;
+ 		};
+ 
++		ipa: ipa@3f40000 {
++			compatible = "qcom,sm8450-ipa";
++
++			iommus = <&apps_smmu 0x5c0 0x0>,
++				 <&apps_smmu 0x5c2 0x0>;
++			reg = <0 0x3f40000 0 0x10000>,
++			      <0 0x3f50000 0 0x5000>,
++			      <0 0x3e04000 0 0xfc000>;
++			reg-names = "ipa-reg",
++				    "ipa-shared",
++				    "gsi";
++
++			interrupts-extended = <&intc GIC_SPI 654 IRQ_TYPE_EDGE_RISING>,
++					      <&intc GIC_SPI 432 IRQ_TYPE_LEVEL_HIGH>,
++					      <&ipa_smp2p_in 0 IRQ_TYPE_EDGE_RISING>,
++					      <&ipa_smp2p_in 1 IRQ_TYPE_EDGE_RISING>;
++			interrupt-names = "ipa",
++					  "gsi",
++					  "ipa-clock-query",
++					  "ipa-setup-ready";
++
++			clocks = <&rpmhcc RPMH_IPA_CLK>;
++			clock-names = "core";
++
++			interconnects = <&aggre2_noc MASTER_IPA 0 &mc_virt SLAVE_EBI1 0>,
++					<&gem_noc MASTER_APPSS_PROC 0 &config_noc SLAVE_IPA_CFG 0>;
++			interconnect-names = "memory",
++					     "config";
++
++			qcom,qmp = <&aoss_qmp>;
++
++			qcom,smem-states = <&ipa_smp2p_out 0>,
++					   <&ipa_smp2p_out 1>;
++			qcom,smem-state-names = "ipa-clock-enabled-valid",
++						"ipa-clock-enabled";
++
++			sram = <&ipa_modem_tables>;
++
++			status = "disabled";
++		};
++
+ 		usb_1_hsphy: phy@88e3000 {
+ 			compatible = "qcom,sm8450-usb-hs-phy",
+ 				     "qcom,usb-snps-hs-7nm-phy";
+@@ -4970,17 +5011,21 @@ cti@13900000 {
+ 			clock-names = "apb_pclk";
+ 		};
+ 
+-		sram@146aa000 {
++		sram@146a8000 {
+ 			compatible = "qcom,sm8450-imem", "syscon", "simple-mfd";
+-			reg = <0 0x146aa000 0 0x1000>;
+-			ranges = <0 0 0x146aa000 0x1000>;
++			reg = <0 0x146a8000 0 0x3000>;
++			ranges = <0 0 0x146a8000 0x3000>;
+ 
+ 			#address-cells = <1>;
+ 			#size-cells = <1>;
+ 
+-			pil-reloc@94c {
++			ipa_modem_tables: modem-tables@0 {
++				reg = <0 0x2000>;
++			};
++
++			pil-reloc@294c {
+ 				compatible = "qcom,pil-reloc-info";
+-				reg = <0x94c 0xc8>;
++				reg = <0x294c 0xc8>;
+ 			};
+ 		};
+ 
 
-Best regards,
---  
-Esteban Urrutia <esteuwu@proton.me>
+-- 
+2.54.0
 
