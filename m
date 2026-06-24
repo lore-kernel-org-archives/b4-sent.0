@@ -1,11 +1,11 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Wed, 24 Jun 2026 01:03:45 -0500
-Subject: [PATCH v3 1/2] libnvdimm/labels: Prevent integer overflow in
- __nd_label_validate()
+Date: Wed, 24 Jun 2026 01:03:46 -0500
+Subject: [PATCH v3 2/2] libnvdimm/labels: Bound the on-media label size
+ before the shift
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260624-b4-disp-d8279485-v3-1-cdb6cab28b41@proton.me>
+Message-Id: <20260624-b4-disp-d8279485-v3-2-cdb6cab28b41@proton.me>
 References: <20260624-b4-disp-d8279485-v3-0-cdb6cab28b41@proton.me>
 In-Reply-To: <20260624-b4-disp-d8279485-v3-0-cdb6cab28b41@proton.me>
 To: Dave Jiang <dave.jiang@intel.com>, Dan Williams <djbw@kernel.org>, 
@@ -13,56 +13,60 @@ To: Dave Jiang <dave.jiang@intel.com>, Dan Williams <djbw@kernel.org>,
 Cc: Alison Schofield <alison.schofield@intel.com>, nvdimm@lists.linux.dev, 
  David Laight <david.laight.linux@gmail.com>, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782281024; l=1957;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782281024; l=1823;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=iBEqX8HPWjAgcZWGDGjBLr0kG9lZNDGGFL2JmOhPZfY=;
- b=+Upio+vIexII5OXdL3yy4kHq5Xu9Cae/FTXba91+xIIt9Cs9U0Jym4A80Dvys6gWCxLm25aAo
- jl7bUm18jufAmb2Me4rgjbzkEDK5c8BV9hxG9350qjnd1XoyZfQ4Fwf
+ bh=MCs2th/N4QIgCQZkHTxmp+qdeY/SC2RCINMmfLHg+qc=;
+ b=F2z/lOJ7ISu1i4FzLpyEsruEoUCsY4nMfCTetttK5QlV4cktepaI+SOGuIMlvD/VopX4oaNjS
+ /OP8hbkQj+qBc9B7S4YYjPa94wg+4etk/579Y2y5GlXT63WY6Z0TD7H
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The on-media namespace index field nslot is a u32 read from the DIMM
-label storage area.  __nd_label_validate() bounds it against the config
-area size, but sizeof_namespace_label() returns unsigned, so the product
-nslot * label_size is evaluated in 32-bit and wraps modulo 2^32 before
-the comparison.  A crafted nslot passes the bound and is then used as the
-loop trip count in nd_label_data_init(), whose memset() walks off the end
-of the config_size buffer: an out-of-bounds write.
+For a v1.2+ index, __nd_label_validate() computes the label size as
+1 << (7 + nsindex[i]->labelsize), where labelsize is a u8 read from
+the label storage medium.  A value of 25 or more makes the shift count
+reach or exceed the width of int -- undefined behavior -- and 24 already
+shifts into the sign bit.  Only 0 (128-byte) and 1 (256-byte) are valid.
 
-The field is not trusted -- it comes from the medium, or from userspace
-via ND_CMD_SET_CONFIG_DATA.  Evaluate the product in 64-bit so the bound
-check is exact; conforming labels are unaffected.
-
-The check was safe when introduced by commit 4a826c83db4e ("libnvdimm:
-namespace indices: read and validate"): it multiplied by sizeof(struct
-nd_namespace_label), a size_t, so on a 64-bit build the product did not
-wrap.  Commit 564e871aa66f ("libnvdimm, label: add v1.2 nvdimm label
-definitions") narrowed it to 32 bits when the label size became a runtime
-value read via sizeof_namespace_label().
+Reject a labelsize above 1 before the shift.  The result was rejected by
+the following size comparison anyway, so this only removes the undefined
+shift on a crafted or corrupted medium; conforming labels are unaffected.
 
 Fixes: 564e871aa66f ("libnvdimm, label: add v1.2 nvdimm label definitions")
-Cc: stable@vger.kernel.org
-Reviewed-by: Alison Schofield <alison.schofield@intel.com>
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/nvdimm/label.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/nvdimm/label.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/nvdimm/label.c b/drivers/nvdimm/label.c
-index 4218e3ac4a2a..ec12ce72cfe2 100644
+index ec12ce72cfe2..dea2eee86d13 100644
 --- a/drivers/nvdimm/label.c
 +++ b/drivers/nvdimm/label.c
-@@ -202,7 +202,7 @@ static int __nd_label_validate(struct nvdimm_drvdata *ndd)
- 		}
+@@ -145,10 +145,21 @@ static int __nd_label_validate(struct nvdimm_drvdata *ndd)
+ 		/* label sizes larger than 128 arrived with v1.2 */
+ 		version = __le16_to_cpu(nsindex[i]->major) * 100
+ 			+ __le16_to_cpu(nsindex[i]->minor);
+-		if (version >= 102)
++		if (version >= 102) {
++			/*
++			 * labelsize feeds the shift below; only 0 (128-byte)
++			 * and 1 (256-byte) are valid -- a larger value would
++			 * overflow or exceed the width of int.
++			 */
++			if (nsindex[i]->labelsize > 1) {
++				dev_dbg(dev, "nsindex%d labelsize: %d invalid\n",
++					i, nsindex[i]->labelsize);
++				continue;
++			}
+ 			labelsize = 1 << (7 + nsindex[i]->labelsize);
+-		else
++		} else {
+ 			labelsize = 128;
++		}
  
- 		nslot = __le32_to_cpu(nsindex[i]->nslot);
--		if (nslot * sizeof_namespace_label(ndd)
-+		if ((u64)nslot * sizeof_namespace_label(ndd)
- 				+ 2 * sizeof_namespace_index(ndd)
- 				> ndd->nsarea.config_size) {
- 			dev_dbg(dev, "nsindex%d nslot: %u invalid, config_size: %#x\n",
+ 		if (labelsize != sizeof_namespace_label(ndd)) {
+ 			dev_dbg(dev, "nsindex%d labelsize %d invalid\n",
 
 -- 
 2.43.0
