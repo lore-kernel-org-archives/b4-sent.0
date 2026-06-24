@@ -1,68 +1,99 @@
-From: Jack Wu <jackbb_wu@compal.com>
-Date: Wed, 24 Jun 2026 18:04:13 +0800
-Subject: [PATCH v3 7/7] net: wwan: t9xx: Add maintainers entry
+From: Ricardo Pardini <ricardo@pardini.net>
+Date: Wed, 24 Jun 2026 13:41:50 +0200
+Subject: [PATCH] arm64: dts: mediatek: mt8395-radxa-nio-12l: Enable I2C3 on
+ 40-pin header
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260624-t9xx_driver_v1-v3-7-73ff03f60c48@compal.com>
-References: <20260624-t9xx_driver_v1-v3-0-73ff03f60c48@compal.com>
-In-Reply-To: <20260624-t9xx_driver_v1-v3-0-73ff03f60c48@compal.com>
-To: Loic Poulain <loic.poulain@oss.qualcomm.com>, 
- Sergey Ryazanov <ryazanov.s.a@gmail.com>, 
- Johannes Berg <johannes@sipsolutions.net>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Jack Wu <jackbb_wu@compal.com>, Wen-Zhi Huang <wen-zhi.huang@mediatek.com>, 
- Shi-Wei Yeh <shi-wei.yeh@mediatek.com>, 
- Minano Tseng <Minano.tseng@mediatek.com>, 
+Message-Id: <20260624-nio-12l-add-i2c-40-pin-v1-1-f6c11ed2184c@pardini.net>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrDuQjFHUq5QuNBl1SomSVBHEu
+ xt1+Rb/7xA5CEdosh0CrxJl8gn6lYEdWz8wiksGUlSqkgx6mVDTD1vnUMiiUTiLR12zMhX1rso
+ LSPEcuJftHr8/j+PSfdn+rxscxwkHLTmbegAAAA==
+X-Change-ID: 20260624-nio-12l-add-i2c-40-pin-19e0482fd835
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
  Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
- Shuah Khan <skhan@linuxfoundation.org>
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
- linux-doc@vger.kernel.org
+ Ricardo Pardini <ricardo@pardini.net>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782295455; l=817;
- i=jackbb_wu@compal.com; s=20260526; h=from:subject:message-id;
- bh=r28B5Pv3emoSo+1n1DcJ9EobPmHHNOtOYu07ftmyDY8=;
- b=/tZOgGPZzEx4tKYfFAbEzjLrB7Sue+BbAfRGyvCb9yAneg7nS84kOWl60dYGQXpstbW6gaa3A
- SfVgkEoLgVSAVFs5+SxiGuS12SOyiKto0mSbetvxBkajeaAnUZGP/Dx
-X-Developer-Key: i=jackbb_wu@compal.com; a=ed25519;
- pk=VH1prTWixNl8OEUPPSfII3p46MzJpQN8J3+ecE1tZXg=
-X-Endpoint-Received: by B4 Relay for jackbb_wu@compal.com/20260526 with auth_id=793
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1939; i=ricardo@pardini.net;
+ h=from:subject:message-id; bh=bk5ea6cLdsnJpmBdpwgO3E/mbMZWo2izXGkJpWcYnGg=;
+ b=owEBiQF2/pANAwAIATteP+Oex+3pAcsmYgBqO8KM5gmzPvJ/rOmLT+qPMGepPIDKiCk8X5DBu
+ 5jAJoBZRaSJAU8EAAEIADkWIQSsGCMM9q/qytxIiJM7Xj/jnsft6QUCajvCjBsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwwLDMACgkQO14/457H7eliKwf/RkZ83zDF2MFSMVYiVJmHI8+ZuRR4XYD
+ nmdBGdJ1vpt7+H9f1xXNJr8MafhwauM1waRUw2x8cK2BgbUbNVvz7O+03KxR1dwP5xzYTP8N9Pa
+ eG3rxMC81LILXsxmleoMnJ8TSbsvlxLJYTiZ/ZMmjncU0Sm4Dzx8Km8puNAYXGr/tDsgf0JPH/q
+ 0mOXv5YVPVwWJzWeH+JVtUgY4lnxUh0m61v6SXzQAfCnipWskgWmCnjNiskyTOtuMew3eJNzlX9
+ Y1lA74GukTKRTFwLK+GI9SaNl3XFoKDvT1/l8i/YsztE6DWpmGaHDAg0EYvdurkCtLdGJQ4Jihm
+ mm1jmx1rbYg==
+X-Developer-Key: i=ricardo@pardini.net; a=openpgp;
+ fpr=AC18230CF6AFEACADC4888933B5E3FE39EC7EDE9
+X-Endpoint-Received: by B4 Relay for ricardo@pardini.net/default with auth_id=588
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add MAINTAINERS entry for the MediaTek T9XX 5G WWAN modem device
-driver.
+I2C3 (SDA3/SCL3 on GPIO14/GPIO15) is routed to the 40-pin GPIO header,
+exposed on the blue-colored pins 27 (SCL3) and 28 (SDA3). Enable the
+controller, add the corresponding pin configuration in the pinctrl node
+so users can use external I2C devices.
 
-Signed-off-by: Jack Wu <jackbb_wu@compal.com>
+Signed-off-by: Ricardo Pardini <ricardo@pardini.net>
 ---
- MAINTAINERS | 9 +++++++++
- 1 file changed, 9 insertions(+)
+The Radxa NIO 12L exposes I2C3 (SDA3/SCL3, GPIO14/GPIO15) on its 40-pin
+GPIO header, on the blue-coloured pins 27 (SCL3) and 28 (SDA3).
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 461a3eed6129..8155d26bff03 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -16494,6 +16494,15 @@ L:	netdev@vger.kernel.org
- S:	Supported
- F:	drivers/net/wwan/t7xx/
+Enable the I2C3 controller, add the matching pinctrl configuration and run
+the bus at 400 kHz, matching the other I2C buses already enabled on this
+board.
+
+Tested using a SD1306 I2C OLED display.
+---
+ arch/arm64/boot/dts/mediatek/mt8395-radxa-nio-12l.dts | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/mediatek/mt8395-radxa-nio-12l.dts b/arch/arm64/boot/dts/mediatek/mt8395-radxa-nio-12l.dts
+index bf91305e8e4a5..03a2f2e746475 100644
+--- a/arch/arm64/boot/dts/mediatek/mt8395-radxa-nio-12l.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8395-radxa-nio-12l.dts
+@@ -371,6 +371,14 @@ it5205_sbu_mux: endpoint {
+ 	};
+ };
  
-+MEDIATEK T9XX 5G WWAN MODEM DRIVER
-+M:	Jack Wu <jackbb_wu@compal.com>
-+R:	Wen-Zhi Huang <wen-zhi.huang@mediatek.com>
-+R:	Shi-Wei Yeh <shi-wei.yeh@mediatek.com>
-+R:	Minano Tseng <Minano.tseng@mediatek.com>
-+L:	netdev@vger.kernel.org
-+S:	Supported
-+F:	drivers/net/wwan/t9xx/
++/* Exposed on 40-pin header (blue-colored pins 27:SCL3 28:SDA3) */
++&i2c3 {
++	clock-frequency = <400000>;
++	pinctrl-0 = <&i2c3_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
 +
- MEDIATEK USB3 DRD IP DRIVER
- M:	Chunfeng Yun <chunfeng.yun@mediatek.com>
- L:	linux-usb@vger.kernel.org
+ &i2c4 {
+ 	clock-frequency = <400000>;
+ 	pinctrl-0 = <&i2c4_pins>;
+@@ -789,6 +797,16 @@ pins-bus {
+ 		};
+ 	};
+ 
++	i2c3_pins: i2c3-pins {
++		pins-bus {
++			pinmux = <PINMUX_GPIO14__FUNC_SDA3>,
++				 <PINMUX_GPIO15__FUNC_SCL3>;
++			bias-pull-up = <1000>;
++			drive-strength = <6>;
++			drive-strength-microamp = <1000>;
++		};
++	};
++
+ 	i2c4_pins: i2c4-pins {
+ 		pins-bus {
+ 			pinmux = <PINMUX_GPIO16__FUNC_SDA4>,
 
--- 
-2.34.1
+---
+base-commit: 8cd9520d35a6c38db6567e97dd93b1f11f185dc6
+change-id: 20260624-nio-12l-add-i2c-40-pin-19e0482fd835
+
+Best regards,
+--  
+Ricardo Pardini <ricardo@pardini.net>
 
