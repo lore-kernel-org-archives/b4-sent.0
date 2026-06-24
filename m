@@ -1,84 +1,74 @@
-From: Roman Vivchar <rva333@protonmail.com>
-Date: Wed, 24 Jun 2026 00:40:13 +0300
-Subject: [PATCH] i2c: mediatek: fix WRRD for SoCs without auto_restart
- option
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Subject: [PATCH v2 0/2] libnvdimm/labels: fix the nslot product overflow
+ and cap the slot count
+Date: Tue, 23 Jun 2026 23:19:01 -0500
+Message-Id: <20260623-b4-disp-1f2c537a-v2-0-59af73f1f090@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260624-6572-6595-i2c-v1-1-9155cebaae20@protonmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDMyNjXTNTcyMgYWmqm2mUrGuWmmyZbJJqlgiESkA9BUWpaZkVYPOiYyH
- 84tKkrNTkEpAhSrW1AIYrn0FxAAAA
-X-Change-ID: 20260623-6572-6595-i2c-6ec9c4e6a6a6
-To: Qii Wang <qii.wang@mediatek.com>, Andi Shyti <andi.shyti@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: linux-i2c@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
- Roman Vivchar <rva333@protonmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782250813; l=1767;
- i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=TG2emG/PCj4Coy27v6ImKi08qxfg+rKakjADtWBifso=;
- b=MuDkLvPkgVRxiqfkdn6qowJfHL5BjKXog1KYCzBl6lSkA60ha518SEnL4W5DoJjBD4Idz6x8Z
- SUQMLDg76jfBE+L8FJc9UxV+vq91u4HSMSUjKXmtKe7KS9p2cwApUpi
-X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
- pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
-X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
+X-B4-Tracking: v=1; b=H4sIALVaO2oC/x3MPQqAMAxA4atIZgM1av25ijjEmmqWKi2IIN7d4
+ vgN7z2QJKokGIsHolya9AgZVBbgdg6boK7ZQIassVTj0uCq6cTKk2vrjrE1jnsaeBC2kLMzitf
+ 7X07z+359isKbYgAAAA==
+To: Ira Weiny <iweiny@kernel.org>, Vishal Verma <vishal.l.verma@intel.com>, 
+ Dan Williams <djbw@kernel.org>, Dave Jiang <dave.jiang@intel.com>
+Cc: David Laight <david.laight.linux@gmail.com>, 
+ Alison Schofield <alison.schofield@intel.com>, nvdimm@lists.linux.dev, 
+ linux-kernel@vger.kernel.org
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782274741; l=2193;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=XANCZNyCbG+Ly+jntP8fH38JNMbRF1f10/kOrgQxa0Y=;
+ b=F32OGyjLZ5F7QLCAS0OR0iHEqX9zcJY6j6RY95ARQHiK8tW+o8y9AjzXAfaE64PF0PgoZL4O6
+ 8x7xeMRIqGmDEDY6kU9hqClsiY3MhREQEexFtuKdAoPAbsDkZkvklZe
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-MediaTek mt65xx family SoCs have no auto restart, however, they still
-support the WRRD mode in the hardware. Because auto_restart is set to 0,
-the WRRD mode will be never enabled, leading to read errors.
+The on-media namespace index nslot is a u32 read from the DIMM label area,
+or written from userspace via ND_CMD_SET_CONFIG_DATA.  __nd_label_validate()
+bounds nslot against config_size, but the product nslot * label_size is
+evaluated in 32 bits and wraps, so a crafted nslot passes the check and then
+drives an out-of-bounds memset in nd_label_data_init().
 
-Fix this by removing auto_restart check from the WRRD enable path.
+Patch 1 evaluates the product in 64 bits so the bound is exact; it is the
+targeted fix, tagged for stable.  Patch 2 caps nslot, so a bogus
+firmware-reported config_size cannot admit a large slot count -- and the large
+allocation it implies -- even after the product is computed correctly.
 
-Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+The sibling multiply in sizeof_namespace_index() derives nslot from config_size
+via nvdimm_num_label_slots(), not the on-media field, so it cannot overflow and
+is left unchanged.
+
+Verified on -m64 and -m32: the 64-bit bound agrees with an exact divide-based
+check on the boundary and on randomized inputs, and the cap rejects every
+wrapping one.  The same crafted nslot is an out-of-bounds write on -m32 but not
+on -m64 before the fix.  An out-of-tree module mirroring nd_label_data_init()
+reproduces the KASAN slab-out-of-bounds write unpatched and is clean with
+either patch; harness available on request.
+
+A negative ndctl test (test/label-compat.sh, oversize nslot) covering both
+patches will follow separately, per Alison's suggestion.
+
+v1 (single patch):
+https://lore.kernel.org/all/20260620-b4-disp-7f43b155-v1-1-0cfd8017f7a0@proton.me/
+v2: split the exact fix and the cap into two patches per review; the
+    Reviewed-by and Suggested-by are recorded on the respective patches.
+
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-This is a preparation for the mt6572/6595 upstreaming.
+Bryam Vargas (2):
+      libnvdimm/labels: Prevent integer overflow in __nd_label_validate()
+      libnvdimm/labels: reject an implausibly large on-media slot count
 
-mt65xx family SoCs don't have auto restart, but vendor kernels keep using
-WRRD mode. Lack of the WRRD mode makes i2c reads impossible from both
-userspace and kernel drivers.
-
-Without patch (mt6595, da9210 buck at 0x68):
-~ # i2cget -y 1 0x68 0x00
-Error: Read failed
-~ # i2cget -y 1 0x68 0x01
-Error: Read failed
-
-With patch:
-~ # i2cget -y 1 0x68 0x00
-0x80
-~ # i2cget -y 1 0x68 0x01
-0x00
-
-Same behavior observed on mt6572 devices.
-
-This change doesn't affect SoCs with auto restart option.
+ drivers/nvdimm/label.c | 6 +++++-
+ drivers/nvdimm/label.h | 7 +++++++
+ 2 files changed, 12 insertions(+), 1 deletion(-)
 ---
- drivers/i2c/busses/i2c-mt65xx.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/i2c/busses/i2c-mt65xx.c b/drivers/i2c/busses/i2c-mt65xx.c
-index 126040ca05f1..307925fb78e3 100644
---- a/drivers/i2c/busses/i2c-mt65xx.c
-+++ b/drivers/i2c/busses/i2c-mt65xx.c
-@@ -1258,7 +1258,7 @@ static int mtk_i2c_transfer(struct i2c_adapter *adap,
- 	i2c->auto_restart = i2c->dev_comp->auto_restart;
- 
- 	/* checking if we can skip restart and optimize using WRRD mode */
--	if (i2c->auto_restart && num == 2) {
-+	if (num == 2) {
- 		if (!(msgs[0].flags & I2C_M_RD) && (msgs[1].flags & I2C_M_RD) &&
- 		    msgs[0].addr == msgs[1].addr) {
- 			i2c->auto_restart = 0;
-
----
-base-commit: 8cd9520d35a6c38db6567e97dd93b1f11f185dc6
-change-id: 20260623-6572-6595-i2c-6ec9c4e6a6a6
+base-commit: 502d801f0ab03e4f32f9a33d203154ce84887921
+change-id: 20260623-b4-disp-1f2c537a-50ca829a9ea6
 
 Best regards,
---  
-Roman Vivchar <rva333@protonmail.com>
+-- 
+Bryam Vargas <hexlabsecurity@proton.me>
 
