@@ -1,10 +1,11 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Wed, 24 Jun 2026 20:57:27 +0800
-Subject: [PATCH v5 4/9] rust: macros: auto-insert OwnerModule in #[vtable]
+Date: Wed, 24 Jun 2026 20:57:28 +0800
+Subject: [PATCH v5 5/9] rust: drm: set fops.owner from driver module
+ pointer
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260624-fix-fops-owner-v5-4-aa1cba242f05@linux.dev>
+Message-Id: <20260624-fix-fops-owner-v5-5-aa1cba242f05@linux.dev>
 References: <20260624-fix-fops-owner-v5-0-aa1cba242f05@linux.dev>
 In-Reply-To: <20260624-fix-fops-owner-v5-0-aa1cba242f05@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -37,125 +38,60 @@ Cc: rust-for-linux@vger.kernel.org, linux-modules@vger.kernel.org,
  linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
  linux-pci@vger.kernel.org, Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782305851; l=4532;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782305851; l=1880;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=C1FMa0qVq/S97m9Viz8hjYFdAfdHoRPHBepu6SriAjU=;
- b=9JbBVO62bRF1oZq4pLp3gXZXlduyLuXZnVVNLfIsbS3PJ0IOfJfxmhONrS2sg7HdI4fNh2yHJ
- lZIP9h7jPtFCEFEw2vSnRUxDocgc28PPsE025Efx9rci0QptAo/fREc
+ bh=sgeQh8hfj62yf3W3nkxgKPB2/hyIfqKa6oMNsVoasoA=;
+ b=hsXpr1Jj/NSl5h/r5vHfq5sdCqzc1GM68odODBCEu8c4T6g7a4D1mawsRqAsfgnw15rCUIfoW
+ WGaIptGVjhzBj02JzTSNs5xQ5z+jBpbCl4sX6htDWZxtkWv8FlYpu3W
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Auto-add `type OwnerModule: ::kernel::ModuleMetadata;` as a required
-associated type on the trait side if not already defined, and
-auto-insert `type OwnerModule = crate::LocalModule;` on the impl side
-if not explicitly provided, eliminating the need to manually declare
-and implement `OwnerModule` in every vtable trait and impl.
+Change `create_fops()` to accept an owner module pointer instead of
+hardcoding `null_mut()`, ensuring the kernel correctly tracks the
+module owning the DRM device's file operations.
 
 Assisted-by: opencode:glm-5.2
 Reviewed-by: Andreas Hindborg <a.hindborg@kernel.org>
-Suggested-by: Gary Guo <gary@garyguo.net>
-Link: https://lore.kernel.org/all/DIMMWHUOLPSH.13JFRHDKDQJGO@garyguo.net
 Reviewed-by: Gary Guo <gary@garyguo.net>
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- rust/macros/lib.rs    |  6 ++++++
- rust/macros/vtable.rs | 41 ++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 42 insertions(+), 5 deletions(-)
+ rust/kernel/drm/device.rs  | 3 ++-
+ rust/kernel/drm/gem/mod.rs | 4 ++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/rust/macros/lib.rs b/rust/macros/lib.rs
-index 2cfd59e0f9e7c..bc7ded353c5ca 100644
---- a/rust/macros/lib.rs
-+++ b/rust/macros/lib.rs
-@@ -176,6 +176,12 @@ pub fn module(input: TokenStream) -> TokenStream {
- ///
- /// This macro should not be used when all functions are required.
- ///
-+/// Additionally, this macro automatically handles the `OwnerModule`
-+/// associated type: on the trait side, `type OwnerModule: ModuleMetadata;`
-+/// is added as a required associated type if not already defined; on the
-+/// impl side, `type OwnerModule = LocalModule;` is automatically inserted
-+/// if not explicitly defined.
-+///
- /// # Examples
- ///
- /// ```
-diff --git a/rust/macros/vtable.rs b/rust/macros/vtable.rs
-index c6510b0c4ea1d..be9a5ed8abe5e 100644
---- a/rust/macros/vtable.rs
-+++ b/rust/macros/vtable.rs
-@@ -30,6 +30,22 @@ fn handle_trait(mut item: ItemTrait) -> Result<ItemTrait> {
-          const USE_VTABLE_ATTR: ();
-     });
+diff --git a/rust/kernel/drm/device.rs b/rust/kernel/drm/device.rs
+index 403fc35353c74..d92cacb665366 100644
+--- a/rust/kernel/drm/device.rs
++++ b/rust/kernel/drm/device.rs
+@@ -111,7 +111,8 @@ impl<T: drm::Driver> Device<T> {
+         fops: &Self::GEM_FOPS,
+     };
  
-+    // Add `type OwnerModule: ModuleMetadata` as a required associated type if
-+    // the trait does not already define it.
-+    if !item
-+        .items
-+        .iter()
-+        .any(|i| matches!(i, TraitItem::Type(t) if t.ident == "OwnerModule"))
-+    {
-+        gen_items.push(parse_quote! {
-+            /// The module implementing this vtable trait.
-+            ///
-+            /// Automatically set to `crate::LocalModule` by the `#[vtable]`
-+            /// impl macro.
-+            type OwnerModule: ::kernel::ModuleMetadata;
-+        });
-+    }
-+
-     for item in &item.items {
-         if let TraitItem::Fn(fn_item) = item {
-             let name = &fn_item.sig.ident;
-@@ -57,12 +73,18 @@ fn handle_trait(mut item: ItemTrait) -> Result<ItemTrait> {
+-    const GEM_FOPS: bindings::file_operations = drm::gem::create_fops();
++    const GEM_FOPS: bindings::file_operations =
++        drm::gem::create_fops(crate::module::this_module::<T::OwnerModule>().as_ptr());
  
- fn handle_impl(mut item: ItemImpl) -> Result<ItemImpl> {
-     let mut gen_items = Vec::new();
--    let mut defined_consts = HashSet::new();
-+    let mut defined_items = HashSet::new();
+     /// Create a new `drm::Device` for a `drm::Driver`.
+     pub fn new(dev: &device::Device, data: impl PinInit<T::Data, Error>) -> Result<ARef<Self>> {
+diff --git a/rust/kernel/drm/gem/mod.rs b/rust/kernel/drm/gem/mod.rs
+index 01b5bd47a3332..9a203efc59116 100644
+--- a/rust/kernel/drm/gem/mod.rs
++++ b/rust/kernel/drm/gem/mod.rs
+@@ -357,10 +357,10 @@ impl<T: DriverObject> AllocImpl for Object<T> {
+     };
+ }
  
--    // Iterate over all user-defined constants to gather any possible explicit overrides.
-+    // Iterate over all user-defined items to gather any possible explicit overrides.
-     for item in &item.items {
--        if let ImplItem::Const(const_item) = item {
--            defined_consts.insert(const_item.ident.clone());
-+        match item {
-+            ImplItem::Const(const_item) => {
-+                defined_items.insert(const_item.ident.clone());
-+            }
-+            ImplItem::Type(type_item) => {
-+                defined_items.insert(type_item.ident.clone());
-+            }
-+            _ => {}
-         }
-     }
+-pub(super) const fn create_fops() -> bindings::file_operations {
++pub(super) const fn create_fops(owner: *mut bindings::module) -> bindings::file_operations {
+     let mut fops: bindings::file_operations = pin_init::zeroed();
  
-@@ -70,6 +92,15 @@ fn handle_impl(mut item: ItemImpl) -> Result<ItemImpl> {
-         const USE_VTABLE_ATTR: () = ();
-     });
- 
-+    // Auto-insert `type OwnerModule = crate::LocalModule` if not explicitly defined.
-+    // `crate::LocalModule` resolves to the real module type (via `module!`) or a
-+    // dummy fallback in non-module contexts (e.g., doctests).
-+    if !defined_items.contains(&parse_quote!(OwnerModule)) {
-+        gen_items.push(parse_quote! {
-+            type OwnerModule = crate::LocalModule;
-+        });
-+    }
-+
-     for item in &item.items {
-         if let ImplItem::Fn(fn_item) = item {
-             let name = &fn_item.sig.ident;
-@@ -78,7 +109,7 @@ fn handle_impl(mut item: ItemImpl) -> Result<ItemImpl> {
-                 name.span(),
-             );
-             // Skip if it's declared already -- this allows user override.
--            if defined_consts.contains(&gen_const_name) {
-+            if defined_items.contains(&gen_const_name) {
-                 continue;
-             }
-             let cfg_attrs = crate::helpers::gather_cfg_attrs(&fn_item.attrs);
+-    fops.owner = core::ptr::null_mut();
++    fops.owner = owner;
+     fops.open = Some(bindings::drm_open);
+     fops.release = Some(bindings::drm_release);
+     fops.unlocked_ioctl = Some(bindings::drm_ioctl);
 
 -- 
 2.43.0
