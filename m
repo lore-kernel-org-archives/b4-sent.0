@@ -1,74 +1,70 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Subject: [PATCH v2 0/2] libnvdimm/labels: fix the nslot product overflow
- and cap the slot count
-Date: Tue, 23 Jun 2026 23:19:01 -0500
-Message-Id: <20260623-b4-disp-1f2c537a-v2-0-59af73f1f090@proton.me>
+Date: Tue, 23 Jun 2026 23:19:02 -0500
+Subject: [PATCH v2 1/2] libnvdimm/labels: Prevent integer overflow in
+ __nd_label_validate()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIALVaO2oC/x3MPQqAMAxA4atIZgM1av25ijjEmmqWKi2IIN7d4
- vgN7z2QJKokGIsHolya9AgZVBbgdg6boK7ZQIassVTj0uCq6cTKk2vrjrE1jnsaeBC2kLMzitf
- 7X07z+359isKbYgAAAA==
+Message-Id: <20260623-b4-disp-1f2c537a-v2-1-59af73f1f090@proton.me>
+References: <20260623-b4-disp-1f2c537a-v2-0-59af73f1f090@proton.me>
+In-Reply-To: <20260623-b4-disp-1f2c537a-v2-0-59af73f1f090@proton.me>
 To: Ira Weiny <iweiny@kernel.org>, Vishal Verma <vishal.l.verma@intel.com>, 
  Dan Williams <djbw@kernel.org>, Dave Jiang <dave.jiang@intel.com>
 Cc: David Laight <david.laight.linux@gmail.com>, 
  Alison Schofield <alison.schofield@intel.com>, nvdimm@lists.linux.dev, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782274741; l=2193;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782274741; l=1939;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=XANCZNyCbG+Ly+jntP8fH38JNMbRF1f10/kOrgQxa0Y=;
- b=F32OGyjLZ5F7QLCAS0OR0iHEqX9zcJY6j6RY95ARQHiK8tW+o8y9AjzXAfaE64PF0PgoZL4O6
- 8x7xeMRIqGmDEDY6kU9hqClsiY3MhREQEexFtuKdAoPAbsDkZkvklZe
+ bh=q0i06gR6biCNC+Je6Bjwu/WLkEUdu04uI3r3m216Cng=;
+ b=C/kxooCTdWphtHwNI9K7/yru0NxiZdlww6pyZnaogrNihvEOhr7SUdrhJA1dqGhg0bnZ3KOKt
+ Pg/NmSnM/EhB97Ou3aMJhacigf3RV3rGVOySbFzIOD8F8HvOCA+U2bd
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The on-media namespace index nslot is a u32 read from the DIMM label area,
-or written from userspace via ND_CMD_SET_CONFIG_DATA.  __nd_label_validate()
-bounds nslot against config_size, but the product nslot * label_size is
-evaluated in 32 bits and wraps, so a crafted nslot passes the check and then
-drives an out-of-bounds memset in nd_label_data_init().
+The on-media namespace index field nslot is a u32 read from the DIMM
+label storage area.  __nd_label_validate() bounds it against the config
+area size, but sizeof_namespace_label() returns unsigned, so the product
+nslot * label_size is evaluated in 32-bit and wraps modulo 2^32 before
+the comparison.  A crafted nslot passes the bound and is then used as the
+loop trip count in nd_label_data_init(), whose memset() walks off the end
+of the config_size buffer: an out-of-bounds write.
 
-Patch 1 evaluates the product in 64 bits so the bound is exact; it is the
-targeted fix, tagged for stable.  Patch 2 caps nslot, so a bogus
-firmware-reported config_size cannot admit a large slot count -- and the large
-allocation it implies -- even after the product is computed correctly.
+The field is not trusted -- it comes from the medium, or from userspace
+via ND_CMD_SET_CONFIG_DATA.  Evaluate the product in 64-bit so the bound
+check is exact; conforming labels are unaffected.
 
-The sibling multiply in sizeof_namespace_index() derives nslot from config_size
-via nvdimm_num_label_slots(), not the on-media field, so it cannot overflow and
-is left unchanged.
+The check was safe when introduced by commit 4a826c83db4e ("libnvdimm:
+namespace indices: read and validate") -- it multiplied by sizeof(struct
+nd_namespace_label), a size_t, so the product was 64-bit.  Commit
+564e871aa66f ("libnvdimm, label: add v1.2 nvdimm label definitions")
+narrowed it to 32 bits when the label size became a runtime value read
+via sizeof_namespace_label().
 
-Verified on -m64 and -m32: the 64-bit bound agrees with an exact divide-based
-check on the boundary and on randomized inputs, and the cap rejects every
-wrapping one.  The same crafted nslot is an out-of-bounds write on -m32 but not
-on -m64 before the fix.  An out-of-tree module mirroring nd_label_data_init()
-reproduces the KASAN slab-out-of-bounds write unpatched and is clean with
-either patch; harness available on request.
-
-A negative ndctl test (test/label-compat.sh, oversize nslot) covering both
-patches will follow separately, per Alison's suggestion.
-
-v1 (single patch):
-https://lore.kernel.org/all/20260620-b4-disp-7f43b155-v1-1-0cfd8017f7a0@proton.me/
-v2: split the exact fix and the cap into two patches per review; the
-    Reviewed-by and Suggested-by are recorded on the respective patches.
-
+Fixes: 564e871aa66f ("libnvdimm, label: add v1.2 nvdimm label definitions")
+Cc: stable@vger.kernel.org
+Reviewed-by: Alison Schofield <alison.schofield@intel.com>
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Bryam Vargas (2):
-      libnvdimm/labels: Prevent integer overflow in __nd_label_validate()
-      libnvdimm/labels: reject an implausibly large on-media slot count
+ drivers/nvdimm/label.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- drivers/nvdimm/label.c | 6 +++++-
- drivers/nvdimm/label.h | 7 +++++++
- 2 files changed, 12 insertions(+), 1 deletion(-)
----
-base-commit: 502d801f0ab03e4f32f9a33d203154ce84887921
-change-id: 20260623-b4-disp-1f2c537a-50ca829a9ea6
+diff --git a/drivers/nvdimm/label.c b/drivers/nvdimm/label.c
+index 4218e3ac4a2a..ec12ce72cfe2 100644
+--- a/drivers/nvdimm/label.c
++++ b/drivers/nvdimm/label.c
+@@ -202,7 +202,7 @@ static int __nd_label_validate(struct nvdimm_drvdata *ndd)
+ 		}
+ 
+ 		nslot = __le32_to_cpu(nsindex[i]->nslot);
+-		if (nslot * sizeof_namespace_label(ndd)
++		if ((u64)nslot * sizeof_namespace_label(ndd)
+ 				+ 2 * sizeof_namespace_index(ndd)
+ 				> ndd->nsarea.config_size) {
+ 			dev_dbg(dev, "nsindex%d nslot: %u invalid, config_size: %#x\n",
 
-Best regards,
 -- 
-Bryam Vargas <hexlabsecurity@proton.me>
+2.43.0
 
