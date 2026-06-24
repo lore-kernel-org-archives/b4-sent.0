@@ -1,11 +1,11 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Tue, 23 Jun 2026 23:19:02 -0500
-Subject: [PATCH v2 1/2] libnvdimm/labels: Prevent integer overflow in
- __nd_label_validate()
+Date: Tue, 23 Jun 2026 23:19:03 -0500
+Subject: [PATCH v2 2/2] libnvdimm/labels: reject an implausibly large
+ on-media slot count
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260623-b4-disp-1f2c537a-v2-1-59af73f1f090@proton.me>
+Message-Id: <20260623-b4-disp-1f2c537a-v2-2-59af73f1f090@proton.me>
 References: <20260623-b4-disp-1f2c537a-v2-0-59af73f1f090@proton.me>
 In-Reply-To: <20260623-b4-disp-1f2c537a-v2-0-59af73f1f090@proton.me>
 To: Ira Weiny <iweiny@kernel.org>, Vishal Verma <vishal.l.verma@intel.com>, 
@@ -14,56 +14,68 @@ Cc: David Laight <david.laight.linux@gmail.com>,
  Alison Schofield <alison.schofield@intel.com>, nvdimm@lists.linux.dev, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782274741; l=1939;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782274741; l=2142;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=q0i06gR6biCNC+Je6Bjwu/WLkEUdu04uI3r3m216Cng=;
- b=C/kxooCTdWphtHwNI9K7/yru0NxiZdlww6pyZnaogrNihvEOhr7SUdrhJA1dqGhg0bnZ3KOKt
- Pg/NmSnM/EhB97Ou3aMJhacigf3RV3rGVOySbFzIOD8F8HvOCA+U2bd
+ bh=2tqdVOXGrP3V/0SevNfIQBF49FyQ7PW7p3H8Z9FOK7I=;
+ b=8RLtTIfJu3Nxr/7NWZq68j+42eciXwKhk35vyYWjXy/+TOsAxYm1bvIkH4byfD6MDoi+a4CbR
+ aAfNWPktGcLDk3wH4Xfwo77kVPkp2S7b/JkUoTTY186EfEdV2ln50zk
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The on-media namespace index field nslot is a u32 read from the DIMM
-label storage area.  __nd_label_validate() bounds it against the config
-area size, but sizeof_namespace_label() returns unsigned, so the product
-nslot * label_size is evaluated in 32-bit and wraps modulo 2^32 before
-the comparison.  A crafted nslot passes the bound and is then used as the
-loop trip count in nd_label_data_init(), whose memset() walks off the end
-of the config_size buffer: an out-of-bounds write.
+Even with the bound evaluated in 64-bit, nslot is constrained only by
+config_size, which nvdimm_init_nsarea() takes verbatim from the dimm's
+ND_CMD_GET_CONFIG_SIZE response with no upper sanity check.  A firmware
+or emulated device reporting a large config_size would let a
+correspondingly large on-media nslot pass validation and drive a large
+allocation and memset loop in nd_label_data_init().
 
-The field is not trusted -- it comes from the medium, or from userspace
-via ND_CMD_SET_CONFIG_DATA.  Evaluate the product in 64-bit so the bound
-check is exact; conforming labels are unaffected.
+Reject an nslot above NSINDEX_NSLOT_MAX (64K).  The largest legitimate
+count is config_size / label_size -- about 1K on a real ~128K label area
+-- so this cannot affect a conforming device, and it bounds the slot loop
+independently of the firmware-reported config_size.
 
-The check was safe when introduced by commit 4a826c83db4e ("libnvdimm:
-namespace indices: read and validate") -- it multiplied by sizeof(struct
-nd_namespace_label), a size_t, so the product was 64-bit.  Commit
-564e871aa66f ("libnvdimm, label: add v1.2 nvdimm label definitions")
-narrowed it to 32 bits when the label size became a runtime value read
-via sizeof_namespace_label().
-
-Fixes: 564e871aa66f ("libnvdimm, label: add v1.2 nvdimm label definitions")
-Cc: stable@vger.kernel.org
-Reviewed-by: Alison Schofield <alison.schofield@intel.com>
+Suggested-by: David Laight <david.laight.linux@gmail.com>
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/nvdimm/label.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/nvdimm/label.c | 4 ++++
+ drivers/nvdimm/label.h | 7 +++++++
+ 2 files changed, 11 insertions(+)
 
 diff --git a/drivers/nvdimm/label.c b/drivers/nvdimm/label.c
-index 4218e3ac4a2a..ec12ce72cfe2 100644
+index ec12ce72cfe2..ce1e43d67bab 100644
 --- a/drivers/nvdimm/label.c
 +++ b/drivers/nvdimm/label.c
-@@ -202,7 +202,7 @@ static int __nd_label_validate(struct nvdimm_drvdata *ndd)
+@@ -202,6 +202,10 @@ static int __nd_label_validate(struct nvdimm_drvdata *ndd)
  		}
  
  		nslot = __le32_to_cpu(nsindex[i]->nslot);
--		if (nslot * sizeof_namespace_label(ndd)
-+		if ((u64)nslot * sizeof_namespace_label(ndd)
++		if (nslot > NSINDEX_NSLOT_MAX) {
++			dev_dbg(dev, "nsindex%d nslot: %u implausibly large\n", i, nslot);
++			continue;
++		}
+ 		if ((u64)nslot * sizeof_namespace_label(ndd)
  				+ 2 * sizeof_namespace_index(ndd)
  				> ndd->nsarea.config_size) {
- 			dev_dbg(dev, "nsindex%d nslot: %u invalid, config_size: %#x\n",
+diff --git a/drivers/nvdimm/label.h b/drivers/nvdimm/label.h
+index 0650fb4b9821..74d7c1cc7476 100644
+--- a/drivers/nvdimm/label.h
++++ b/drivers/nvdimm/label.h
+@@ -28,6 +28,13 @@ enum {
+ 	ND_LABEL_MIN_SIZE = 256 * 4, /* see sizeof_namespace_index() */
+ 	ND_LABEL_ID_SIZE = 50,
+ 	ND_NSINDEX_INIT = 0x1,
++	/*
++	 * A sane ceiling on the on-media slot count.  The largest legitimate
++	 * value is config_size / label_size -- about 1K on a real ~128K label
++	 * area.  A count this large cannot describe a real device; it would
++	 * only drive a large allocation in nd_label_data_init(), so reject it.
++	 */
++	NSINDEX_NSLOT_MAX = 64 * 1024,
+ };
+ 
+ /**
 
 -- 
 2.43.0
