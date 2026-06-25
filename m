@@ -1,58 +1,57 @@
-From: Torben Hohn <torben.hohn@bruker.com>
-Date: Thu, 25 Jun 2026 17:59:35 +0200
-Subject: [PATCH] systemd-systemctl: Add support for UpheldBy fields in
- [Install] section
+From: Dmitry Safonov <0x7f454c46@gmail.com>
+Subject: [PATCH net v3 0/3] tcp: TCP-AO connect() fixes
+Date: Thu, 25 Jun 2026 17:54:28 +0100
+Message-Id: <20260625-tcp-md5-connect-v3-0-30827ed58b6d@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260625-systemctl-upheldby-v1-1-b66839cab56b@bruker.com>
-X-B4-Tracking: v=1; b=H4sIAGZQPWoC/x3MTQ5AMBBA4avIrDWpkZa4iljQDibxlw5CxN01l
- t/ivQeEApNAlTwQ6GThdYnI0gTc2C4DKfbRgBqttmiU3LLT7PZJHdtIk+9uVeYGrdWFMx4hhlu
- gnq9/Wjfv+wEYVohFZAAAAA==
-X-Change-ID: 20260625-systemctl-upheldby-83526607c5d2
-To: openembedded-core@lists.openembedded.org
-Cc: Torben Hohn <torben.hohn@bruker.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782403180; l=1384;
- i=torben.hohn@bruker.com; s=20260625; h=from:subject:message-id;
- bh=R/nG2OjNBzK8ShZkAJStRPF6gEyt5fnMN84RqMWP2Ds=;
- b=8pxrFeDS5KefhApTleR0xJEZossjha9uGBY/5QfzMJoTSOQ/kWCAFMTxeJBnx5LOZsZqbflVR
- d36MEVaL4XNCPjHy8LoREDISJFBoyMSa4jpNzISNkZYLMIgDi75HEE3
-X-Developer-Key: i=torben.hohn@bruker.com; a=ed25519;
- pk=xwQUIFyS0KMR/PWxOIZJmY0wxZLSQusEDFjPRjZWdhE=
-X-Endpoint-Received: by B4 Relay for torben.hohn@bruker.com/20260625 with auth_id=842
+X-B4-Tracking: v=1; b=H4sIAERdPWoC/yWMQQ6CMBBFr0Jm7UQsUKNXMS7a6SBjwkDaakwId
+ 7fV5Xt5/2+QOAonuDYbRH5LkkULdIcGaHL6YJRQGExrbGvNgJlWnMOAtKgyZQxkOnsJ57E/9VB
+ Wa+RRPr/HGyhnuP9levln6etXzbxLjD46pamqEh5nJwr7/gWAJJKUkwAAAA==
+X-Change-ID: 20260625-tcp-md5-connect-dc2369d7f414
+To: Eric Dumazet <edumazet@google.com>, 
+ Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
+ "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>
+Cc: Michael Bommarito <michael.bommarito@gmail.com>, 
+ Qihang <q.h.hack.winter@gmail.com>, security@kernel.org, 
+ Dmitry Safonov <0x7f454c46@gmail.com>, 
+ Dmitry Safonov <0x7f454c46@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782406484; l=792;
+ i=0x7f454c46@gmail.com; s=20260625; h=from:subject:message-id;
+ bh=Owdh+o4cV8ucbhnwkAI/9g2pFQnXI+8vcFXDNpr8txY=;
+ b=zxE6ThMYgvVkEXXke4U2Is/m9AfunRQu72acsFfMV4zedZ/d2UZxRucp3y61CzZZ4/Gfy46uO
+ LJbqIMrrRQHCyTpN9WepvyFE/pr2cuMqMwq8t1Qpy05EZkTzucG3EV4
+X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
+ pk=clHVGbfKfZMeCUp+xCL/096jI68XK5EZLytgy6lSyrc=
+X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20260625 with auth_id=841
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-UpheldBy generates *.upholds links in the same way WantedBy generates
-*.wants links, when systemctl enable is executed. This feature is needed
-to have a service restart, when a dependency restarts, and
-the service is stopped via BindsTo= for example.
+Resending v3 as v2 seems to have been lost.
 
-Call self._process_deps() with appropriate parameters to support UpheldBy.
+I've addeded credits to Qihang on patch 2; and a third patch/fix
+for static key decrement.
 
-Signed-off-by: Torben Hohn <torben.hohn@bruker.com>
+Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
- meta/recipes-core/systemd/systemd-systemctl/systemctl | 1 +
- 1 file changed, 1 insertion(+)
+Dmitry Safonov (1):
+      tcp: Decrement tcp_md5_needed static branch
 
-diff --git a/meta/recipes-core/systemd/systemd-systemctl/systemctl b/meta/recipes-core/systemd/systemd-systemctl/systemctl
-index 2229bc7b6d26c757414715341ff79d8a76034c8d..0171d2fca639ed452af9295c6a3cfd3c7102f67c 100755
---- a/meta/recipes-core/systemd/systemd-systemctl/systemctl
-+++ b/meta/recipes-core/systemd/systemd-systemctl/systemctl
-@@ -244,6 +244,7 @@ class SystemdUnit():
- 
-         self._process_deps(config, service, path, 'WantedBy', 'wants', instance)
-         self._process_deps(config, service, path, 'RequiredBy', 'requires', instance)
-+        self._process_deps(config, service, path, 'UpheldBy', 'upholds', instance)
- 
-         try:
-             for also in config.get('Install', 'Also'):
+Michael Bommarito (2):
+      tcp: restore RCU grace period in tcp_ao_destroy_sock
+      tcp: defer md5sig_info kfree past RCU grace period in tcp_connect
 
+ include/net/tcp_ao.h  | 1 +
+ net/ipv4/tcp_ao.c     | 5 +++--
+ net/ipv4/tcp_ipv4.c   | 4 ++--
+ net/ipv4/tcp_output.c | 8 ++++++--
+ 4 files changed, 12 insertions(+), 6 deletions(-)
 ---
-base-commit: 78626a6f1861361bbd78a411cb27b093e34b466b
-change-id: 20260625-systemctl-upheldby-83526607c5d2
+base-commit: 02f144fbb4c86c360495d33debe307cb46a57f95
+change-id: 20260625-tcp-md5-connect-dc2369d7f414
 
 Best regards,
--- 
-Torben Hohn <torben.hohn@bruker.com>
+--  
+Dmitry Safonov <0x7f454c46@gmail.com>
 
