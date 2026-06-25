@@ -1,57 +1,69 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Subject: [PATCH 0/2] wifi: mt76: bound the device-reported EEPROM address
-Date: Thu, 25 Jun 2026 07:10:25 -0500
-Message-Id: <20260625-b4-disp-16f99062-v1-0-aee52ecf61b9@proton.me>
+Date: Thu, 25 Jun 2026 07:10:26 -0500
+Subject: [PATCH 1/2] wifi: mt76: mt7915: bound the device EEPROM address
+ before the EFUSE copy
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIALEaPWoC/x2MQQqAMAzAviI9W9iGVuZXxIOzVXuZsoEIsr87P
- CaQvJAlqWQYmxeS3Jr1jBVs28B6LHEXVK4Mzjgy5HoMHbLmCy1t3leDhpkseQ5+CFCzK8mmz7+
- c5lI+pfRdiGIAAAA=
+Message-Id: <20260625-b4-disp-16f99062-v1-1-aee52ecf61b9@proton.me>
+References: <20260625-b4-disp-16f99062-v1-0-aee52ecf61b9@proton.me>
+In-Reply-To: <20260625-b4-disp-16f99062-v1-0-aee52ecf61b9@proton.me>
 To: Lorenzo Bianconi <lorenzo@kernel.org>, 
  Ryder Lee <ryder.lee@mediatek.com>, Felix Fietkau <nbd@nbd.name>
 Cc: Sean Wang <sean.wang@mediatek.com>, linux-mediatek@lists.infradead.org, 
  Shayne Chen <shayne.chen@mediatek.com>, linux-wireless@vger.kernel.org, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782389425; l=1450;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782389425; l=1655;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=aEqGl/t2oeE3z5GCNLJYJ3vk5L2f28hG2tdsN4d5BLI=;
- b=WbuVeuUOSSAzABLV05jlMQnSZpj/raKBFDPyhwD8be073heZMHbwiVoYI6fAQpTaqNsazavWJ
- 23UyCJqyU2hAq4LnYOQK+5yYicaiaORXEMLHfn0uQiomcyovRq4UWmY
+ bh=aZWlM27FhqoCfxmJEBrSyxbvPm89MZy5+yTxeP7W7hk=;
+ b=0XZxwtAAOcq9Lmc4I1vnT7NeXbySG07w+iH8wO2HoPrfrbVh26jz+Gl81dv8m+OnjffMpuH4W
+ ipASWDIUA4eCst0lPXtaJ/mvw4EWP7L+kYUMqbw4MnzXPpEd0Dq/j3V
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Both mt76 get_eeprom handlers copy a device-reported EFUSE block into
-dev->mt76.eeprom.data at an offset taken from the MCU response (res->addr /
-event->addr, a device-controlled __le32). They clamp the copy length but
-never the destination offset, so an adapter that reports an out-of-range
-address drives an out-of-bounds write past eeprom.data -- 16 bytes on mt7915,
-up to 1024 on mt7996. Both patches reject such an address before deriving the
-pointer; a device that echoes the requested in-bounds offset is unaffected.
+mt7915_mcu_get_eeprom() copies a fixed EFUSE block into the driver's
+dev->mt76.eeprom.data buffer at the offset reported by the MCU response
+(res->addr, a device-controlled __le32) without checking it against the
+buffer size. A malicious or malfunctioning device can report an arbitrary
+address and drive a 16-byte out-of-bounds write past eeprom.data.
 
-It is adapter-side only -- there is no unprivileged user path -- so this
-hardens against a malicious or compromised device, not a remote attacker.
+Reject a response whose address would place the copy outside eeprom.data
+before deriving the destination pointer. Devices that echo the requested
+in-bounds offset are unaffected.
 
-An out-of-tree KASAN module that reproduces each handler's destination
-arithmetic faults the unpatched path (slab-out-of-bounds write past
-eeprom.data) and runs clean both with the bound and on an in-range control.
-
+Fixes: e57b7901469f ("mt76: add mac80211 driver for MT7915 PCIe-based chipsets")
+Cc: stable@vger.kernel.org
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Bryam Vargas (2):
-      wifi: mt76: mt7915: bound the device EEPROM address before the EFUSE copy
-      wifi: mt76: mt7996: bound the device EEPROM address before the EFUSE copy
-
  drivers/net/wireless/mediatek/mt76/mt7915/mcu.c | 11 +++++++++--
- drivers/net/wireless/mediatek/mt76/mt7996/mcu.c |  9 ++++++++-
- 2 files changed, 17 insertions(+), 3 deletions(-)
----
-base-commit: 502d801f0ab03e4f32f9a33d203154ce84887921
-change-id: 20260625-b4-disp-16f99062-0dd6169db97b
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-Best regards,
+diff --git a/drivers/net/wireless/mediatek/mt76/mt7915/mcu.c b/drivers/net/wireless/mediatek/mt76/mt7915/mcu.c
+index 4a381d351e61..f39eae3c4c1c 100644
+--- a/drivers/net/wireless/mediatek/mt76/mt7915/mcu.c
++++ b/drivers/net/wireless/mediatek/mt76/mt7915/mcu.c
+@@ -2909,8 +2909,15 @@ int mt7915_mcu_get_eeprom(struct mt7915_dev *dev, u32 offset, u8 *read_buf)
+ 		return ret;
+ 
+ 	res = (struct mt7915_mcu_eeprom_info *)skb->data;
+-	if (!buf)
+-		buf = dev->mt76.eeprom.data + le32_to_cpu(res->addr);
++	if (!buf) {
++		u32 addr = le32_to_cpu(res->addr);
++
++		if (addr > dev->mt76.eeprom.size - MT7915_EEPROM_BLOCK_SIZE) {
++			dev_kfree_skb(skb);
++			return -EINVAL;
++		}
++		buf = dev->mt76.eeprom.data + addr;
++	}
+ 	memcpy(buf, res->data, MT7915_EEPROM_BLOCK_SIZE);
+ 
+ 	dev_kfree_skb(skb);
+
 -- 
-Bryam Vargas <hexlabsecurity@proton.me>
+2.43.0
 
