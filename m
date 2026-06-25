@@ -1,63 +1,119 @@
-From: Dmitry Safonov <0x7f454c46@gmail.com>
-Date: Thu, 25 Jun 2026 19:21:41 +0100
-Subject: [PATCH net v3 3/3] tcp: Decrement tcp_md5_needed static branch
+From: Joel Granados <joel.granados@kernel.org>
+Subject: [PATCH v3 00/10] sysctl: Consolidate do_proc_* functions into one
+ function
+Date: Thu, 25 Jun 2026 22:38:12 +0200
+Message-Id: <20260625-jag-dovec_consolidate-v3-0-176ee192bcaf@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260625-tcp-md5-connect-v3-3-1fd313d6c1e0@gmail.com>
-References: <20260625-tcp-md5-connect-v3-0-1fd313d6c1e0@gmail.com>
-In-Reply-To: <20260625-tcp-md5-connect-v3-0-1fd313d6c1e0@gmail.com>
-To: David Ahern <dsahern@kernel.org>, Eric Dumazet <edumazet@google.com>, 
- Neal Cardwell <ncardwell@google.com>, Kuniyuki Iwashima <kuniyu@google.com>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, 
- Salam Noureddine <noureddine@arista.com>
-Cc: Michael Bommarito <michael.bommarito@gmail.com>, 
- Qihang <q.h.hack.winter@gmail.com>, netdev@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Dmitry Safonov <0x7f454c46@gmail.com>, 
- stable@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782411722; l=1079;
- i=0x7f454c46@gmail.com; s=20260625; h=from:subject:message-id;
- bh=3nejDl07SxPQHPLWOUILyQffd40iVMwRdwvbto6+Q+g=;
- b=1z/VwT3MAPmFWz84HE6RimvnKtCVahxfjaRzbgTMqNxF5IGu7IsK/61L8Hc2WaP41sdb9eXS3
- WjExpgfhfjkAhtHHXccinyLQdcJpeswDO1XIjDX07Uss+c3E7Lb+yX0
-X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
- pk=clHVGbfKfZMeCUp+xCL/096jI68XK5EZLytgy6lSyrc=
-X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20260625 with auth_id=841
+X-B4-Tracking: v=1; b=H4sIALSRPWoC/3XNTQ6DIBCG4asY1qVhwD+66j2apkEdlNZAA4a0M
+ d69aOKiC5fvl8wzMwnoDQZyyWbiMZpgnE0hThlpB2V7pKZLTTjjBXCo6VP1tHMR20frbHCj6dS
+ EtFAVyzVXQsuGpNu3R20+m3u7px5MmJz/bm8irOsuygMxAmUUchCN5G3JcnZ9obc4np3vyUpGv
+ jMlAwZHDE+M1hJqXRWiUfKPWZblB8+6ZOUCAQAA
+X-Change-ID: 20251218-jag-dovec_consolidate-5a704f2a3f9b
+To: Kees Cook <kees@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
+ Joel Granados <joel.granados@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3374;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=FnrFcG+FUV3lzMmzW9w4B7dYwsGzVeVRkNtJnNzvRrk=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGo9kdf9+jFJgTAdzkbCTlg0ldT5yt1qswsTa
+ L1F+mNosjwtpIkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqPZHXAAoJELqXzVK3
+ lkFP/rML/3d/HspT7g/TuNVLEkb5VmQoIoE46VwC5rge6Dte+j2Onuj8gHUwwx8KtrobBT2lZEI
+ RKdJ2h8cPRWwF0A0KJBSp9+x5PR5t4bQ0ELeE7omMhhTkaNp7Bs3wGxEwkUv9RQpTU1WABFh8fM
+ 8F9ujsY9/5N7Pvk7d6tDJPKZ1qn+M9HpR0K88X84dOj7BmciolEBt/4/0pF2IK8XZvWh7YRjdDX
+ 48QCKE+utrFr+hKj4TS2GMvsGDdHRfhpoFpz3NDL7/aXYGcLZTjMj3r6qlhCphOYEr+x7E9bKUL
+ tRh5K8Jfu2WIuy5R0bGp62cJTPUCMkfQIllfbgW2C48SSKlUvqq1vm1xIRFtpe/aKlcWcQXS2Jt
+ IXNZsXUVXdaLKfsHS2N5k2pjj4amCYVKsQIYieQrCiNtDIcE5h6ZRtWchcIAuev5g0M9FKJJqcE
+ XU+Urjj1S8/w/EBzLisU9MfvmgI4jUrzDUWZc6vuQJoYYbDcdT/qYSOewh7rMz9Fp1gPpy0wER5
+ vo=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In case of early freeing an unwanted TCP-MD5 key on TCP-AO connect(),
-md5sig_info is freed right away (and set to NULL). Later, at
-the moment of socket destruction, the static branch counter
-is not getting decremented.
+What
+====
+Generate do_proc_{int,uint,ulong} with the new proc_vec_conv function.
+Removed small differences between each implementation and put it all
+under one roof. This function is meant for internal (to sysctl.c) static
+functions; it should not be used from the outside.
 
-Add a missing decrement for TCP-MD5 static branch.
+Groups and document the proc handler and converter functions in
+include/linux/sysctl.h. Document how to create custom converters
+with examples for every converter type.
 
-Reported-by: Qihang <q.h.hack.winter@gmail.com>
-Fixes: 0aadc73995d0 ("net/tcp: Prevent TCP-MD5 with TCP-AO being set")
-Cc: stable@vger.kernel.org
-Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
+This series sits on top of v7.1, you can see the working branch here [1].
+
+Why
+===
+Working with one instead of three slightly different implementations of
+the same thing makes more sense to me for three reasons: 1. I don't have
+to think about the different types separately (less context switches),
+2. One place to begin debugging proc_handler issues and 3. A fix for
+one type, fixes all types.
+
+Why the intermediate macro
+==========================
+This series introduces a macro, only to remove it in the last commit.
+I left it like this on purpose because I think the transition to one
+function is made more clear with the intermediate step.
+
+A word on checkpatch
+====================
+* It does not like that ENOSYS is returned for the no-op functions. I'm
+  just following the pattern that was initially there. Does -EINVAL
+  makes more sense?
+* It has a false positive on a spacing around a pointer.
+
+Testing
+=======
+Ran sysctl selftest/kunit on x86_64 and 0-day.
+
+Changes in v3:
+- Replaced the initial macro implementation with a function.
+- Rebased on top of v7.1
+- Link to v2: https://lore.kernel.org/r/20260101-jag-dovec_consolidate-v2-0-ff918f753ba9@kernel.org
+
+Changes in v2:
+- Handle neg more carefully in the macro:
+  1. Initialize neg to false. So it does not inadvertently return
+     a negative value to user space from an unsigned variable
+  2. Return -EINVAL when the user passes a negative value to an unsigned
+     type.
+- Link to v1: https://lore.kernel.org/r/20251219-jag-dovec_consolidate-v1-0-1413b92c6040@kernel.org
+
+Comments are greatly appreciated
+
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/joel.granados/linux.git/log/?h=jag/dovec_consolidate
+
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- net/ipv4/tcp_output.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+---
+Joel Granados (10):
+      sysctl: Move default converter assignment out of do_proc_dointvec
+      sysctl: Replace do_proc_dointvec with a type-generic macro
+      sysctl: Generate do_proc_doulongvec_minmax with do_proc_dotypevec macro
+      sysctl: Add negp parameter to douintvec converter functions
+      sysctl: Generate do_proc_douintvec with a type-generic macro
+      sysctl: Rename do_proc_dotypevec macro to do_proc_typevec
+      sysctl: Group proc_handler declarations and document
+      sysctl: Rename proc_doulongvec_minmax_conv to proc_doulongvec_conv
+      sysctl: Update API function documentation
+      sysctl: Replace do_proc_typevec macro with do_proc_vec function
 
-diff --git a/net/ipv4/tcp_output.c b/net/ipv4/tcp_output.c
-index bc03809ca3af..d7c1444b5e30 100644
---- a/net/ipv4/tcp_output.c
-+++ b/net/ipv4/tcp_output.c
-@@ -4334,8 +4334,8 @@ int tcp_connect(struct sock *sk)
- 			tcp_clear_md5_list(sk);
- 			md5sig = rcu_replace_pointer(tp->md5sig_info, NULL,
- 						     lockdep_sock_is_held(sk));
--			if (md5sig)
--				kfree_rcu(md5sig, rcu);
-+			kfree_rcu(md5sig, rcu);
-+			static_branch_slow_dec_deferred(&tcp_md5_needed);
- 		}
- 	}
- #endif
+ fs/pipe.c              |   2 +-
+ include/linux/sysctl.h | 123 +++++++++----
+ kernel/sysctl.c        | 475 ++++++++++++++++++++++++++-----------------------
+ kernel/time/jiffies.c  |  28 ++-
+ 4 files changed, 364 insertions(+), 264 deletions(-)
+---
+base-commit: 8cd9520d35a6c38db6567e97dd93b1f11f185dc6
+change-id: 20251218-jag-dovec_consolidate-5a704f2a3f9b
 
+Best regards,
 -- 
-2.51.2
+Joel Granados <joel.granados@kernel.org>
 
