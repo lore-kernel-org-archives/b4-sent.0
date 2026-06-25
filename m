@@ -1,10 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Thu, 25 Jun 2026 18:10:07 +0400
-Subject: [PATCH 3/6] Bluetooth: btqca: Add IPQ5018 support
+Date: Thu, 25 Jun 2026 18:10:08 +0400
+Subject: [PATCH 4/6] dt-bindings: net: bluetooth: Document Qualcomm IPQ5018
+ Bluetooth controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260625-ipq5018-bluetooth-v1-3-d999be0e04f7@outlook.com>
+Message-Id: <20260625-ipq5018-bluetooth-v1-4-d999be0e04f7@outlook.com>
 References: <20260625-ipq5018-bluetooth-v1-0-d999be0e04f7@outlook.com>
 In-Reply-To: <20260625-ipq5018-bluetooth-v1-0-d999be0e04f7@outlook.com>
 To: Jens Axboe <axboe@kernel.dk>, Ulf Hansson <ulfh@kernel.org>, 
@@ -32,119 +33,92 @@ Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
  netdev@vger.kernel.org, linux-remoteproc@vger.kernel.org, 
  George Moussalem <george.moussalem@outlook.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782396628; l=3109;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782396628; l=2368;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=YfdZYTMB/SghkLi82xybv2Ru5WS6Sv6NKlsHcB3g49A=;
- b=Ut0ZStC7p267bavS0Dx+6BAKei2zMsIxNkSqi2oQsxKi69k1+hjGTj9dyQ5GRQOsTm5z/z/2R
- L5EedHT2+GUDUD27g2ip3OorJMJe045LjCmLbV6tVHinkKTcGm3YPOi
+ bh=Ge5kAHyoic4N7ZcyGHKZSb2jC9oyGy8Ofdq47a+3kMI=;
+ b=vmBZHTWeLei4T09Ni4tV72gzifaI0DvVFIH+OYzDg89oqZPFcaL9w5m4xf0L2Kzn9R8pDnrOu
+ 2gG3foTLHbHAYjmf3HCsHmhVqrjJHCGreBrr3VF4w1SC/0VBFC/BSOD
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the IPQ5018 SoC type and support for loading its firmware.
-
-The firmware tested has been taken from GPL sources of various router
-boards. Firmware files needed are:
-- qca/bt_fw_patch.mbn
-- qca/mpnv10.bin
+Document the Qualcomm IPQ5018 Bluetooth controller.
 
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/bluetooth/btqca.c | 16 ++++++++++++++++
- drivers/bluetooth/btqca.h |  3 +++
- 2 files changed, 19 insertions(+)
+ .../bindings/net/bluetooth/qcom,ipq5018-bt.yaml    | 63 ++++++++++++++++++++++
+ 1 file changed, 63 insertions(+)
 
-diff --git a/drivers/bluetooth/btqca.c b/drivers/bluetooth/btqca.c
-index 04ebe290bc78..e136e91976cf 100644
---- a/drivers/bluetooth/btqca.c
-+++ b/drivers/bluetooth/btqca.c
-@@ -380,6 +380,9 @@ static int qca_tlv_check_data(struct hci_dev *hdev,
- 		break;
- 
- 	case TLV_TYPE_NVM:
-+		if (soc_type == QCA_IPQ5018)
-+			break;
+diff --git a/Documentation/devicetree/bindings/net/bluetooth/qcom,ipq5018-bt.yaml b/Documentation/devicetree/bindings/net/bluetooth/qcom,ipq5018-bt.yaml
+new file mode 100644
+index 000000000000..afd33f851858
+--- /dev/null
++++ b/Documentation/devicetree/bindings/net/bluetooth/qcom,ipq5018-bt.yaml
+@@ -0,0 +1,63 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/net/bluetooth/qcom,ipq5018-bt.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
- 		if (fw_size < sizeof(struct tlv_type_hdr))
- 			return -EINVAL;
- 
-@@ -794,6 +797,9 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
- 	else
- 		rom_ver = ((soc_ver & 0x00000f00) >> 0x04) | (soc_ver & 0x0000000f);
- 
-+	if (soc_type == QCA_IPQ5018)
-+		goto download_nvm;
++title: Qualcomm IPQ5018 Bluetooth
 +
- 	if (soc_type == QCA_WCN6750)
- 		qca_send_patch_config_cmd(hdev);
- 
-@@ -881,6 +887,7 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
- 	if (soc_type == QCA_QCA2066 || soc_type == QCA_WCN7850)
- 		qca_read_fw_board_id(hdev, &boardid);
- 
-+download_nvm:
- 	/* Download NVM configuration */
- 	config.type = TLV_TYPE_NVM;
- 	if (firmware_name) {
-@@ -939,6 +946,10 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
- 			qca_get_nvm_name_by_board(config.fwname, sizeof(config.fwname),
- 				 "hmtnv", soc_type, ver, rom_ver, boardid);
- 			break;
-+		case QCA_IPQ5018:
-+			snprintf(config.fwname, sizeof(config.fwname),
-+				 "qca/mpnv%02x.bin", rom_ver);
-+			break;
- 		default:
- 			snprintf(config.fwname, sizeof(config.fwname),
- 				 "qca/nvm_%08x.bin", soc_ver);
-@@ -958,6 +969,9 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
- 		return err;
- 	}
- 
-+	if (soc_type == QCA_IPQ5018)
-+		msleep(NVM_READY_DELAY_MS);
++maintainers:
++  - George Moussalem <george.moussalem@outlook.com>
 +
- 	switch (soc_type) {
- 	case QCA_QCA2066:
- 	case QCA_QCA6390:
-@@ -965,6 +979,7 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
- 	case QCA_WCN6750:
- 	case QCA_WCN6855:
- 	case QCA_WCN7850:
-+	case QCA_IPQ5018:
- 		err = qca_disable_soc_logging(hdev);
- 		if (err < 0)
- 			return err;
-@@ -1001,6 +1016,7 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
- 	case QCA_WCN6750:
- 	case QCA_WCN6855:
- 	case QCA_WCN7850:
-+	case QCA_IPQ5018:
- 		/* get fw build info */
- 		err = qca_read_fw_build_info(hdev);
- 		if (err < 0)
-diff --git a/drivers/bluetooth/btqca.h b/drivers/bluetooth/btqca.h
-index 8f3c1b1c77b3..343cd62d1137 100644
---- a/drivers/bluetooth/btqca.h
-+++ b/drivers/bluetooth/btqca.h
-@@ -54,6 +54,8 @@
- #define QCA_HSP_GF_SOC_ID		0x1200
- #define QCA_HSP_GF_SOC_MASK		0x0000ff00
- 
-+#define NVM_READY_DELAY_MS		1500
++properties:
++  compatible:
++    enum:
++      - qcom,ipq5018-bt
 +
- enum qca_baudrate {
- 	QCA_BAUDRATE_115200	= 0,
- 	QCA_BAUDRATE_57600,
-@@ -158,6 +160,7 @@ enum qca_btsoc_type {
- 	QCA_WCN6750,
- 	QCA_WCN6855,
- 	QCA_WCN7850,
-+	QCA_IPQ5018,
- };
- 
- #if IS_ENABLED(CONFIG_BT_QCA)
++  interrupts:
++    items:
++      - description:
++          Interrupt line from the M0 Bluetooth Subsystem to the host processor
++          to notify it of events such as re
++
++  qcom,ipc:
++    $ref: /schemas/types.yaml#/definitions/phandle-array
++    items:
++      - items:
++          - description: phandle to a syscon node representing the APCS registers
++          - description: u32 representing offset to the register within the syscon
++          - description: u32 representing the ipc bit within the register
++    description: |
++      These entries specify the outgoing IPC bit used for signaling the remote
++      M0 BTSS core of a host event or for sending an ACK if the remote processor
++      expects it.
++
++  qcom,rproc:
++    $ref: /schemas/types.yaml#/definitions/phandle
++    description:
++      Phandle to the remote processor node representing the M0 BTSS core.
++
++required:
++  - compatible
++  - interrupts
++  - qcom,ipc
++  - qcom,rproc
++
++allOf:
++  - $ref: bluetooth-controller.yaml#
++  - $ref: qcom,bluetooth-common.yaml
++
++unevaluatedProperties: false
++
++examples:
++  - |
++    #include <dt-bindings/interrupt-controller/arm-gic.h>
++
++    bluetooth: bluetooth {
++      compatible = "qcom,ipq5018-bt";
++
++      qcom,ipc = <&apcs_glb 8 23>;
++      interrupts = <GIC_SPI 162 IRQ_TYPE_EDGE_RISING>;
++
++      qcom,rproc = <&m0_btss>;
++    };
 
 -- 
 2.53.0
