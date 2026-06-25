@@ -1,11 +1,11 @@
 From: Dmitry Safonov <0x7f454c46@gmail.com>
-Date: Thu, 25 Jun 2026 19:21:39 +0100
-Subject: [PATCH net v3 1/3] tcp: restore RCU grace period in
- tcp_ao_destroy_sock
+Date: Thu, 25 Jun 2026 19:21:40 +0100
+Subject: [PATCH net v3 2/3] tcp: defer md5sig_info kfree past RCU grace
+ period in tcp_connect
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260625-tcp-md5-connect-v3-1-1fd313d6c1e0@gmail.com>
+Message-Id: <20260625-tcp-md5-connect-v3-2-1fd313d6c1e0@gmail.com>
 References: <20260625-tcp-md5-connect-v3-0-1fd313d6c1e0@gmail.com>
 In-Reply-To: <20260625-tcp-md5-connect-v3-0-1fd313d6c1e0@gmail.com>
 To: David Ahern <dsahern@kernel.org>, Eric Dumazet <edumazet@google.com>, 
@@ -18,11 +18,11 @@ Cc: Michael Bommarito <michael.bommarito@gmail.com>,
  linux-kernel@vger.kernel.org, Dmitry Safonov <0x7f454c46@gmail.com>, 
  stable@vger.kernel.org, Dmitry Safonov <0x7f454c46@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782411722; l=4436;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782411722; l=4975;
  i=0x7f454c46@gmail.com; s=20260625; h=from:subject:message-id;
- bh=sLArGvD8cE9+AkMAklFhspH5dQ63MkpkTpm6oww2ASI=;
- b=HGUe0v63pg4sWJRr+mSEeBzTzrG1rQomXgD6k6elk4VDvZ0VzoYAG4DrxEiseSEhzv4lAJgE4
- njhzKlPde0uBvbYaPbHuuwOyEWND93qXJcZaNk5V44pAK8wgo79+iuG
+ bh=rwR9oxxgK8rnbEgI9ngZgk8acfHkfL6iVNB5+wJyuyY=;
+ b=onZnxH/ETX6Yb5pxGub2sJoTx8MbenBso3/bP/RHVJMsnKEwPETubBovBFQIE3ZOWHOIjSjYB
+ eO4+N4OsoXHAzLVqWPRG2LFcpdTtVN20qqdgBFn+ZOlofI7dcAJiiZF
 X-Developer-Key: i=0x7f454c46@gmail.com; a=ed25519;
  pk=clHVGbfKfZMeCUp+xCL/096jI68XK5EZLytgy6lSyrc=
 X-Endpoint-Received: by B4 Relay for 0x7f454c46@gmail.com/20260625 with auth_id=841
@@ -30,111 +30,122 @@ List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
 From: Michael Bommarito <michael.bommarito@gmail.com>
 
-Commit 51e547e8c89c ("tcp: Free TCP-AO/TCP-MD5 info/keys without RCU")
-removed the call_rcu() callback from tcp_ao_destroy_sock(), arguing that
-"the destruction of info/keys is delayed until the socket destructor"
-and therefore "no one can discover it anymore".
+The md5+ao reconciliation in tcp_connect() (net/ipv4/tcp_output.c)
+has two symmetric branches:
 
-That argument does not hold for the call site in tcp_connect()
-(net/ipv4/tcp_output.c:4327-4332). At that point the socket is in
-TCP_SYN_SENT, has already been inserted into the inet ehash by
-inet_hash_connect() in tcp_v4_connect(), and is therefore very much
-discoverable: any softirq running tcp_v4_rcv() on another CPU can take
-the socket out of the ehash, walk into tcp_inbound_hash(), and load
-tp->ao_info via implicit RCU before bh_lock_sock_nested() is taken on
-the destroying CPU.
+	if (needs_md5) {
+		tcp_ao_destroy_sock(sk, false);
+	} else if (needs_ao) {
+		tcp_clear_md5_list(sk);
+		kfree(rcu_replace_pointer(tp->md5sig_info, NULL, ...));
+	}
 
-The reader path then enters __tcp_ao_do_lookup() (net/ipv4/tcp_ao.c:208)
-which re-loads tp->ao_info via rcu_dereference_check(); the re-load can
-still observe the (about-to-be-freed) pointer because there is no
-synchronize_rcu() between rcu_assign_pointer(tp->ao_info, NULL) and
-tcp_ao_info_free() in tcp_ao_destroy_sock(). The captured pointer is
-then walked at line 223:
+Both branches free a per-socket auth-info object while the socket is
+in TCP_SYN_SENT and is already on the inet ehash (inserted by
+inet_hash_connect() in tcp_v4_connect()). Both branches are reachable
+by softirq RX-path readers that load the corresponding info pointer
+via implicit RCU before bh_lock_sock_nested() is taken.
 
-	hlist_for_each_entry_rcu(key, &ao->head, node, ...)
+The needs_md5 branch is fixed in the prior patch by re-introducing
+the call_rcu() free in tcp_ao_destroy_sock(): the equivalent per-key
+loop runs inside tcp_ao_info_free_rcu(), the RCU callback, so by the
+time it frees each tcp_ao_key all softirq readers that captured the
+container have already completed rcu_read_unlock().
 
-The writer's synchronous kfree() is free to complete between the line
-218 re-fetch and the line 223 hlist iteration. The slab is reused
-(or simply LIST_POISON1-stamped if not yet reused) and the iteration
-walks attacker-controlled or poison memory in softirq context.
+The needs_ao branch is not symmetric in the same way. The container
+free can be deferred via kfree_rcu(md5sig, rcu) -- struct
+tcp_md5sig_info already has the required rcu member
+(include/net/tcp.h:1999-2002), and the rest of the tree already does
+this in the tcp_md5sig_info_add() rollback paths
+(net/ipv4/tcp_ipv4.c:1410, 1436). But the per-key teardown is done
+by tcp_clear_md5_list() in process context BEFORE the container's
+RCU grace period: it walks &md5sig->head and frees each
+tcp_md5sig_key with bare hlist_del + kfree. A concurrent softirq
+reader in __tcp_md5_do_lookup() / __tcp_md5_do_lookup_exact()
+(tcp_ipv4.c:1253, 1298) walks the same list via
+hlist_for_each_entry_rcu() and races with that bare kfree on the
+keys themselves -- a per-key slab use-after-free of the same class
+as the TCP-AO bug, on the same race window.
 
-Reproducer (no debug shim, stock x86_64 v7.1-rc2 SMP+KASAN, QEMU+KVM):
-an unprivileged uid=1000 process inside CLONE_NEWUSER|CLONE_NEWNET
-installs TCP_MD5SIG + TCP_AO_ADD_KEY on a TCP socket, sprays forged
-TCP-AO segments toward its eventual 4-tuple via raw sockets, then
-calls connect(). The md5-wins reconciliation in tcp_connect() fires
-tcp_ao_destroy_sock(); the softirq backlog reader on the loopback
-NAPI path crashes on the freed ao->head.first walk:
+Fix this in two halves:
 
-  Oops: general protection fault, probably for non-canonical
-    address 0xfbd59c000000002f
-  KASAN: maybe wild-memory-access in range
-    [0xdead000000000178-0xdead00000000017f]
-  CPU: 0 UID: 1000 PID: 100 Comm: repro_userns
-  RIP: 0010:__tcp_ao_do_lookup+0x107/0x1c0
-  Call Trace: <IRQ>
-    __tcp_ao_do_lookup+0x107/0x1c0
-    tcp_ao_inbound_lookup.constprop.0+0x12a/0x200
-    tcp_inbound_ao_hash+0x5ea/0x1520
-    tcp_inbound_hash+0x7ce/0x1240
-    tcp_v4_rcv+0x1e7a/0x3e10
-    ...
+  1. Convert the bare kfree() in tcp_connect() to kfree_rcu() so the
+     md5sig_info container joins the rest of the md5sig lifecycle.
+     The local-variable lift is mechanical and required because
+     kfree_rcu() is a macro that expects an lvalue.
 
-Restore the RCU grace period: re-add struct rcu_head to tcp_ao_info
-and replace the synchronous tcp_ao_info_free() with a call_rcu()
-callback. Readers that captured tp->ao_info before rcu_assign_pointer
-NULLed it now see the object remain valid until rcu_read_unlock().
-With the patch applied the reproducer runs cleanly for 2000 iterations
-on the same kernel build.
+  2. Make tcp_clear_md5_list() RCU-safe by replacing hlist_del +
+     kfree(key) with hlist_del_rcu + kfree_rcu(key, rcu). struct
+     tcp_md5sig_key already carries the rcu member
+     (include/net/tcp.h:1995) and tcp_md5_do_del()
+     (net/ipv4/tcp_ipv4.c:1456) already uses kfree_rcu, so this
+     restores the lifecycle invariant the rest of the file follows
+     rather than introducing a one-off.
+
+The other caller of tcp_clear_md5_list() is tcp_md5_destruct_sock()
+(net/ipv4/tcp.c:412), which runs from the sock destructor when the
+socket is already unhashed and unreachable; the extra grace period
+there is unnecessary but harmless. Making the helper unconditionally
+RCU-safe is the cleaner contract.
+
+The needs_ao branch is not reachable by the userns reproducer used
+to demonstrate the AO-side splat (the repro installs both keys but
+ends up in the needs_md5 branch because the connect peer matches
+the MD5 key, not the AO key); however the symmetric race exists
+and a maintainer touching this code should not have to think about
+which branch escapes RCU and which one does not.
 
 Fixes: 51e547e8c89c ("tcp: Free TCP-AO/TCP-MD5 info/keys without RCU")
 Cc: stable@vger.kernel.org # v6.18+
-Reviewed-by: Dmitry Safonov <dima@arista.com>
+Suggested-by: Eric Dumazet <edumazet@google.com>
 Signed-off-by: Michael Bommarito <michael.bommarito@gmail.com>
 Assisted-by: Claude:claude-opus-4-7
+Reviewed-by: Dmitry Safonov <dima@arista.com>
 Reviewed-by: Eric Dumazet <edumazet@google.com>
+[also credits to Qihang, who found that this races with tcp-diag]
+Reported-by: Qihang <q.h.hack.winter@gmail.com>
 Signed-off-by: Dmitry Safonov <0x7f454c46@gmail.com>
 ---
- include/net/tcp_ao.h | 1 +
- net/ipv4/tcp_ao.c    | 5 +++--
- 2 files changed, 4 insertions(+), 2 deletions(-)
+ net/ipv4/tcp_ipv4.c   | 4 ++--
+ net/ipv4/tcp_output.c | 8 ++++++--
+ 2 files changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/tcp_ao.h b/include/net/tcp_ao.h
-index 29fd7b735afa..9a2333e62e99 100644
---- a/include/net/tcp_ao.h
-+++ b/include/net/tcp_ao.h
-@@ -145,6 +145,7 @@ struct tcp_ao_info {
- 	u32			snd_sne;
- 	u32			rcv_sne;
- 	refcount_t		refcnt;		/* Protects twsk destruction */
-+	struct rcu_head		rcu;
- };
+diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
+index ec09f97cc9e6..209ef7522508 100644
+--- a/net/ipv4/tcp_ipv4.c
++++ b/net/ipv4/tcp_ipv4.c
+@@ -1467,9 +1467,9 @@ void tcp_clear_md5_list(struct sock *sk)
+ 	md5sig = rcu_dereference_protected(tp->md5sig_info, 1);
  
- #ifdef CONFIG_TCP_MD5SIG
-diff --git a/net/ipv4/tcp_ao.c b/net/ipv4/tcp_ao.c
-index a56bb79e15e0..e4ec60a33496 100644
---- a/net/ipv4/tcp_ao.c
-+++ b/net/ipv4/tcp_ao.c
-@@ -371,8 +371,9 @@ static void tcp_ao_key_free_rcu(struct rcu_head *head)
- 	kfree_sensitive(key);
+ 	hlist_for_each_entry_safe(key, n, &md5sig->head, node) {
+-		hlist_del(&key->node);
++		hlist_del_rcu(&key->node);
+ 		atomic_sub(sizeof(*key), &sk->sk_omem_alloc);
+-		kfree(key);
++		kfree_rcu(key, rcu);
+ 	}
  }
  
--static void tcp_ao_info_free(struct tcp_ao_info *ao)
-+static void tcp_ao_info_free_rcu(struct rcu_head *head)
- {
-+	struct tcp_ao_info *ao = container_of(head, struct tcp_ao_info, rcu);
- 	struct tcp_ao_key *key;
- 	struct hlist_node *n;
- 
-@@ -411,7 +412,7 @@ void tcp_ao_destroy_sock(struct sock *sk, bool twsk)
- 
- 	if (!twsk)
- 		tcp_ao_sk_omem_free(sk, ao);
--	tcp_ao_info_free(ao);
-+	call_rcu(&ao->rcu, tcp_ao_info_free_rcu);
- }
- 
- void tcp_ao_time_wait(struct tcp_timewait_sock *tcptw, struct tcp_sock *tp)
+diff --git a/net/ipv4/tcp_output.c b/net/ipv4/tcp_output.c
+index 00ec4b5900f2..bc03809ca3af 100644
+--- a/net/ipv4/tcp_output.c
++++ b/net/ipv4/tcp_output.c
+@@ -4329,9 +4329,13 @@ int tcp_connect(struct sock *sk)
+ 		if (needs_md5) {
+ 			tcp_ao_destroy_sock(sk, false);
+ 		} else if (needs_ao) {
++			struct tcp_md5sig_info *md5sig;
++
+ 			tcp_clear_md5_list(sk);
+-			kfree(rcu_replace_pointer(tp->md5sig_info, NULL,
+-						  lockdep_sock_is_held(sk)));
++			md5sig = rcu_replace_pointer(tp->md5sig_info, NULL,
++						     lockdep_sock_is_held(sk));
++			if (md5sig)
++				kfree_rcu(md5sig, rcu);
+ 		}
+ 	}
+ #endif
 
 -- 
 2.51.2
