@@ -1,73 +1,83 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Thu, 25 Jun 2026 07:10:27 -0500
-Subject: [PATCH 2/2] wifi: mt76: mt7996: bound the device EEPROM address
- before the EFUSE copy
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Subject: [PATCH v4 0/2] iio: imu: inv_icm42600: add hwfifo watermark
+ attributes
+Date: Thu, 25 Jun 2026 14:24:51 +0200
+Message-Id: <20260625-inv-icm42600-add-buffer-hwfifo_attributes-v4-0-8b4c8bfa96d7@tdk.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260625-b4-disp-16f99062-v1-2-aee52ecf61b9@proton.me>
-References: <20260625-b4-disp-16f99062-v1-0-aee52ecf61b9@proton.me>
-In-Reply-To: <20260625-b4-disp-16f99062-v1-0-aee52ecf61b9@proton.me>
-To: Lorenzo Bianconi <lorenzo@kernel.org>, 
- Ryder Lee <ryder.lee@mediatek.com>, Felix Fietkau <nbd@nbd.name>
-Cc: Sean Wang <sean.wang@mediatek.com>, linux-mediatek@lists.infradead.org, 
- Shayne Chen <shayne.chen@mediatek.com>, linux-wireless@vger.kernel.org, 
- linux-kernel@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782389425; l=1841;
- i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=5P3fKrvZnuhhzy5SyS2bn1gs3Kjjy/aad3X2rpiBcW8=;
- b=TzCsJWAssrI7MlgIxRUv7fUA8WIpBL8zgXK9SEJ+kpD7XCKVFah0X2W0VMmAPNTcyBz8sGKgd
- EwFEZjQZrSUA/ZEhUDno/MD/fCtQkyxLt0J5Z8GlzaSOiITTVCGO6/4
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIABMePWoC/52OwU7EIBRFf2XC2mceFLB15X8YYyg87NNMa4CiZ
+ tJ/l44x6nJcnuTmnHsSmRJTFreHk0hUOfMyN9BXB+EnNz8RcGgsFCqLVinguQL7o26I4EKAcY2
+ REkxvkePy6EpJPK6FMjhPAbU01Gkpmu81UeT3c+v+4YvzOj6TL3tgX0ycy5I+zmeq3Hff3e6Cb
+ pUgIcgBe0SyGOiuhJdrvxzFXq3qt1df4lXNK5W9McoMZPv+r7f7t7cDBBMGp721Khr88W7b9gn
+ b6OgnogEAAA==
+X-Change-ID: 20260622-inv-icm42600-add-buffer-hwfifo_attributes-aced0415e341
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>, 
+ Andy Shevchenko <andriy.shevchenko@intel.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782390310; l=2106;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=6rma1kTZbSPPl/oep7CF0HWuRcH1fnVvL/CiMdexe64=;
+ b=PSZoOvlVZvLa5HUvoc4JN/BJQ4uf8xxzAcFA5yb0drcyRdSGq9TAiF0k28zHPLuzPWrxAbF/c
+ XRTyhT4U9w9BTcWnnIwpLu2D3Dg5H0y+oTCWNHkdfmPx65/nilloC12
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-mt7996_mcu_get_eeprom() derives the destination of the EFUSE/EXT block
-copy from the address reported by the MCU response (event->addr, a
-device-controlled __le32) and clamps only the copy length, never the
-destination offset into dev->mt76.eeprom.data. A malicious or
-malfunctioning device can report an arbitrary address and drive an
-out-of-bounds write of up to MT7996_EXT_EEPROM_BLOCK_SIZE bytes past
-eeprom.data.
+Add hwfifo_watermark_* buffer attributes.
 
-Reject a response whose address would place the copy outside eeprom.data
-before deriving the destination pointer. Devices that echo the requested
-in-bounds offset are unaffected.
+There is a preliminary patch for reordering includes first.
 
-Fixes: 98686cd21624 ("wifi: mt76: mt7996: add driver for MediaTek Wi-Fi 7 (802.11be) devices")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
- drivers/net/wireless/mediatek/mt76/mt7996/mcu.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+Changes in v4:
+- Rework headers fix to just reorder includes but for all driver
+  sources.
+- Link to v3: https://patch.msgid.link/20260624-inv-icm42600-add-buffer-hwfifo_attributes-v3-0-5d9a4c662f50@tdk.com
 
-diff --git a/drivers/net/wireless/mediatek/mt76/mt7996/mcu.c b/drivers/net/wireless/mediatek/mt76/mt7996/mcu.c
-index f119f023bcd5..01c9adbca68b 100644
---- a/drivers/net/wireless/mediatek/mt76/mt7996/mcu.c
-+++ b/drivers/net/wireless/mediatek/mt76/mt7996/mcu.c
-@@ -4345,11 +4345,18 @@ int mt7996_mcu_get_eeprom(struct mt7996_dev *dev, u32 offset, u8 *buf, u32 buf_l
- 	event = (struct mt7996_mcu_eeprom_access_event *)skb->data;
- 	if (event->valid) {
- 		u32 ret_len = le32_to_cpu(event->eeprom.ext_eeprom.data_len);
-+		u32 block = mode == EEPROM_MODE_EXT ? MT7996_EXT_EEPROM_BLOCK_SIZE :
-+						      MT7996_EEPROM_BLOCK_SIZE;
- 
- 		addr = le32_to_cpu(event->addr);
- 
--		if (!buf)
-+		if (!buf) {
-+			if (addr > dev->mt76.eeprom.size - block) {
-+				dev_kfree_skb(skb);
-+				return -EINVAL;
-+			}
- 			buf = (u8 *)dev->mt76.eeprom.data + addr;
-+		}
- 
- 		switch (mode) {
- 		case EEPROM_MODE_EFUSE:
+Changes in v3:
+- Add a preparatory patch for reordering includes.
+- Use IIO_DEVICE_ATTR_RO.
+- Link to v2: https://patch.msgid.link/20260624-inv-icm42600-add-buffer-hwfifo_attributes-v2-1-12675259e688@tdk.com
 
--- 
-2.43.0
+Changes in v2:
+- Delete trailing comma after NULL terminator
+- Link to v1: https://patch.msgid.link/20260623-inv-icm42600-add-buffer-hwfifo_attributes-v1-1-d190800e60de@tdk.com
+
+To: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+To: Jonathan Cameron <jic23@kernel.org>
+To: David Lechner <dlechner@baylibre.com>
+To: Nuno Sá <nuno.sa@analog.com>
+To: Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+Jean-Baptiste Maneyrol (2):
+      iio: imu: inv_icm42600: reorder all driver headers
+      iio: imu: inv_icm42600: add buffer hwfifo watermark attributes
+
+ drivers/iio/imu/inv_icm42600/inv_icm42600.h        | 10 +++--
+ drivers/iio/imu/inv_icm42600/inv_icm42600_accel.c  | 18 +++++----
+ drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c | 43 ++++++++++++++++++++--
+ drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h |  3 +-
+ drivers/iio/imu/inv_icm42600/inv_icm42600_core.c   | 12 +++---
+ drivers/iio/imu/inv_icm42600/inv_icm42600_gyro.c   | 16 ++++----
+ drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c    |  8 ++--
+ drivers/iio/imu/inv_icm42600/inv_icm42600_spi.c    |  8 ++--
+ drivers/iio/imu/inv_icm42600/inv_icm42600_temp.c   |  3 +-
+ 9 files changed, 84 insertions(+), 37 deletions(-)
+---
+base-commit: cc746297b23e89bd5df9f91f3a0ca209e8991763
+change-id: 20260622-inv-icm42600-add-buffer-hwfifo_attributes-aced0415e341
+
+Best regards,
+--  
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
