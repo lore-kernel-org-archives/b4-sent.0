@@ -1,53 +1,88 @@
-From: Ben Zong-You Xie <ben717@andestech.com>
-Date: Thu, 25 Jun 2026 18:36:01 +0800
-Subject: [PATCH v6 3/3] MAINTAINERS: add an entry for Andes PWM driver
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Thu, 25 Jun 2026 06:54:09 -0500
+Subject: [PATCH] thunderbolt: bound the DROM dual link port number before
+ indexing sw->ports
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260625-andes-pwm-v6-3-3aef11711017@andestech.com>
-References: <20260625-andes-pwm-v6-0-3aef11711017@andestech.com>
-In-Reply-To: <20260625-andes-pwm-v6-0-3aef11711017@andestech.com>
-To: =?utf-8?q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-pwm@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Ben Zong-You Xie <ben717@andestech.com>
-X-Mailer: b4 0.15-dev-47773
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782383760; l=754;
- i=ben717@andestech.com; s=20260120; h=from:subject:message-id;
- bh=yOiq6thqiSeGFGixy89XEZx9mM4JZgZkT7AgxcDK7ko=;
- b=3zYmry0MbDfZ6qEOXl09L9iveMPJuWXQdFkAsLJqEBaLVnC/WxE0FjOMNW2tHIGCW48tzduCu
- jW/JYPmXp5BCJRtCuy3qzrIjeTSODMUpfYS1829cqEChoOIeWRaQOWv
-X-Developer-Key: i=ben717@andestech.com; a=ed25519;
- pk=nb8L7zQKGJpYk0yvrYKjViOZ34A36g1ZIsCmCsP518s=
-X-Endpoint-Received: by B4 Relay for ben717@andestech.com/20260120 with auth_id=610
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260625-b4-disp-9f8d8a2d-v1-1-d767f256c54b@proton.me>
+X-B4-Tracking: v=1; b=H4sIAOAWPWoC/x3MPQqAMAxA4auUzAZq8f8q4hCbqFm0tCBC8e4Wx
+ 294L0OSqJJgMhmi3Jr0OgvqyoA/6NwFlYvBWdfZzrW4NsiaAo7bwAM5RiKx4olrKz2ULETZ9Pm
+ X8/K+H0oXMz9iAAAA
+To: Yehezkel Bernat <YehezkelShB@gmail.com>, 
+ Mika Westerberg <westeri@kernel.org>, 
+ Andreas Noever <andreas.noever@gmail.com>
+Cc: linux-usb@vger.kernel.org, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ linux-kernel@vger.kernel.org
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782388448; l=2331;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=oQprZsRa+Yn+IzGYZzrPZZv+52PjopLTeMKqCJsO2eE=;
+ b=tb5cV0h3El2T+Z3H2HXyL03+rN77WdtqE5usadTPRyXY3vNNre07S38p0ApOTnboonPA588hp
+ i1+LJTTiowJB1YSfBYcZHI5XZe6s9USsUMMf4HWVWE19eUS2bC1n6/o
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add an entry for the Andes PWM driver to the MAINTAINERS file.
+tb_drom_parse_entry_port() validates the device-supplied header->index
+against sw->config.max_port_number before indexing sw->ports[], but the
+sibling field entry->dual_link_port_nr -- a 6-bit value also read from
+the DROM -- indexes the same array with no such check. A malicious or
+malformed Thunderbolt device can set dual_link_port_nr beyond the
+allocated sw->ports[] (max_port_number + 1 entries), producing an
+out-of-bounds tb_port pointer that is stored and later dereferenced.
 
-Signed-off-by: Ben Zong-You Xie <ben717@andestech.com>
+Reject a port entry whose dual_link_port_nr exceeds max_port_number,
+the same bound already applied to header->index.
+
+Fixes: cd22e73bdf5e ("thunderbolt: Read port configuration from eeprom.")
+Cc: stable@vger.kernel.org
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- MAINTAINERS | 6 ++++++
- 1 file changed, 6 insertions(+)
+Reachable only from the device side -- a malicious or malformed DROM, read at
+enumeration -- so this hardens against an untrusted Thunderbolt device, not a
+remote attacker.
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 2fb1c75afd16..2461683a5bbb 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1874,6 +1874,12 @@ S:	Supported
- F:	Documentation/devicetree/bindings/spi/andestech,ae350-spi.yaml
- F:	drivers/spi/spi-atcspi200.c
- 
-+ANDES PWM DRIVER
-+M:	Ben Zong-You Xie <ben717@andestech.com>
-+S:	Supported
-+F:	Documentation/devicetree/bindings/pwm/andestech,ae350-pwm.yaml
-+F:	drivers/pwm/pwm-andes.c
-+
- ANDROID DRIVERS
- M:	Greg Kroah-Hartman <gregkh@linuxfoundation.org>
- M:	Arve Hjønnevåg <arve@android.com>
+I have no Thunderbolt hardware, so this is by source inspection plus an
+out-of-tree KASAN module mirroring the &sw->ports[dual_link_port_nr] indexing:
+with dual_link_port_nr = 63 on an 8-port switch the unpatched arithmetic
+reports a slab-out-of-bounds read 1864 bytes past the kmalloc'd ports[]
+object, while the bound and an in-range control run clean. Reproducer on
+request.
+---
+ drivers/thunderbolt/eeprom.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
+diff --git a/drivers/thunderbolt/eeprom.c b/drivers/thunderbolt/eeprom.c
+index 5681c17f82ec..2a13fa6888ba 100644
+--- a/drivers/thunderbolt/eeprom.c
++++ b/drivers/thunderbolt/eeprom.c
+@@ -394,9 +394,16 @@ static int tb_drom_parse_entry_port(struct tb_switch *sw,
+ 			return -EIO;
+ 		}
+ 		port->link_nr = entry->link_nr;
+-		if (entry->has_dual_link_port)
++		if (entry->has_dual_link_port) {
++			if (entry->dual_link_port_nr > sw->config.max_port_number) {
++				tb_sw_warn(sw,
++					"port entry has invalid dual link port number %u\n",
++					entry->dual_link_port_nr);
++				return -EIO;
++			}
+ 			port->dual_link_port =
+ 				&port->sw->ports[entry->dual_link_port_nr];
++		}
+ 	}
+ 	return 0;
+ }
+
+---
+base-commit: 502d801f0ab03e4f32f9a33d203154ce84887921
+change-id: 20260625-b4-disp-9f8d8a2d-aae0ecad10e7
+
+Best regards,
 -- 
-2.34.1
+Bryam Vargas <hexlabsecurity@proton.me>
 
