@@ -1,116 +1,103 @@
-From: Sam Day <me@samcday.com>
-Date: Fri, 26 Jun 2026 14:29:10 +1000
-Subject: [PATCH v3] usbip: vudc: fix NULL deref in vep_dequeue()
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v9 0/3] Add Amlogic general DMA
+Date: Fri, 26 Jun 2026 05:39:32 +0000
+Message-Id: <20260626-amlogic-dma-v9-0-558d672c4a95@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260626-usbip-vudc-deque-fix-v3-1-98c2dc4d6a48@samcday.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/4XNPQ7CMAyG4augzBjFSRUpTNwDMSSxSzP0h4ZGV
- FXvTtoJBsT4fpIfLyLxGDmJ82ERI+eYYt+V0MeDCI3r7gyRSgsllZEGLUzJxwHyRAGIHxNDHV9
- AGg2xJl2jEeV0GLnMO3u9lW5ievbjvH/JuK1/wIyAYKXCymiPVupLcm0gN59C34qNzOqDUfIHo
- wpDaFE7XxlE/82s6/oG0hAlegEBAAA=
-X-Change-ID: 20260619-usbip-vudc-deque-fix-d316de3d3f16
-To: Valentina Manea <valentina.manea.m@gmail.com>, 
- Shuah Khan <shuah@kernel.org>, Hongren Zheng <i@zenithal.me>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Krzysztof Opasiak <k.opasiak@samsung.com>, 
- Igor Kotrasinski <i.kotrasinsk@samsung.com>, Karol Kosik <karo9@interia.eu>
-Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Sam Day <me@samcday.com>
+X-B4-Tracking: v=1; b=H4sIAJQQPmoC/23QTU7EMAwF4KuMsqaoduykYcU9EIs0cWci0SlqU
+ QUa9e6kI0b9Y/kSfc+Wb2qQPsmgXk431cuYhtRdc3BPJxUu/nqWIsWcFZbIgMCFbz+6cwpFbH1
+ hHVkbOUQ0pLL47KVJ3/e2t/ecL2n46vqfe/kI8+ujx2x6RijKQrBywlac8fb17/c5dK2am0Z8a
+ FMC2q3GrImRo0YbLcWj1ovGcjdbZ82mqV3DTiLiUdNK72dT1g2ykAESV/+zOS9al7TVnLX3xDo
+ CNZH0UZu1dlttsjZak4uo60j1UduVxt1sO29e1Q5EwGGAo64WzQhbXWVdmRAwiCOg3dWmafoFE
+ uGPSloCAAA=
+X-Change-ID: 20251215-amlogic-dma-79477d5cd264
+To: Vinod Koul <vkoul@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
+ "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
+ Frank Li <Frank.Li@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, dmaengine@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-hardening@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Frank Li <Frank.Li@nxp.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782448150; l=2890;
- i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=neQMtpDUn+Tb292nmorqxLCrhXmpUlbU1uEoKayin80=;
- b=fXe7ZVNiA+ONYXErqzrCbCpW0UvfMFf7jgr+0YobJolLDZ1wwwkSb+Dxwaxgvfh3vGXHpmCYn
- 7MdryQmAM1aAdZm+1cAdEm0bXdEfJ4o9TCOQeWf92uWhxOC4mzxzyO0
-X-Developer-Key: i=me@samcday.com; a=ed25519;
- pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
-X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782452375; l=2825;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=g+qv6yDnSKfM5Y35nL+/IDMuJ04Lv9xK2LZVXVlDSpQ=;
+ b=mDnEzc5cmYQ9D1pqlFBAkvAS8wOrutsoF7kY2et9MK1iAJabMWCZVNZIbjhzSpi3V8fp5/MLV
+ jKtI/Okrw1uAvN0i5dlShGgHVXY9ex4goTEgkU2w1tnPkjaRGLq1/2K
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-vep_alloc_request() wasn't initializing vrequest->udc, so cancellations
-on the FunctionFS AIO path were arriving in vep_dequeue without a valid
-UDC reference.
+Add DMA driver and bindigns for the Amlogic SoCs.
 
-Since vrequest->udc is never actually properly used anywhere, we opt to
-remove it, and update vep_dequeue to obtain a reference to the udc with
-ep_to_vudc(), consistent with the other vep_ ops.
-
-AFAICT this bug has existed for ~10 years. Seems that nobody has really
-stressed the FunctionFS AIO path on usbip's vudc.
-
-I tested this fix in a QEMU aarch64 guest driving FunctionFS endpoints
-via AIO. Before the fix, running `usbip attach` from the host would
-cause the guest to oops with the following backtrace:
-
-Call trace:
- vep_dequeue+0x1c/0xe4 (P)
- usb_ep_dequeue+0x14/0x20
- ffs_aio_cancel+0x24/0x34
- __arm64_sys_io_cancel+0xb0/0x124
- do_el0_svc+0x68/0x100
- el0_svc+0x18/0x5c
- el0t_64_sync_handler+0x98/0xdc
- el0t_64_sync+0x154/0x158
-
-Assisted-by: opencode:openai/gpt-5.5
-Fixes: b6a0ca111867 ("usbip: vudc: Add UDC specific ops")
-Reviewed-by: Igor Kotrasinski <i.kotrasinsk@samsung.com>
-Signed-off-by: Sam Day <me@samcday.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
+Changes in v9:
+- Use each transmission request sg_link mem instead of the loop mem get.
+- Fix some hidden issues which reviewed by ai robot.
+- Link to v8: https://lore.kernel.org/r/20260521-amlogic-dma-v8-0-86cc2ce94142@amlogic.com
+
+Changes in v8:
+- Use kzalloc instead of kmalloc.
+- Initialize the temporary variable and fix a spelling mistake.
+- Link to v7: https://lore.kernel.org/r/20260324-amlogic-dma-v7-0-f8b91ee192c1@amlogic.com
+
+Changes in v7:
+- Take use vchan to support mltiple txns.
+- Link to v6: https://lore.kernel.org/r/20260309-amlogic-dma-v6-0-63349d23bd4b@amlogic.com
+
+Changes in v6:
+- Some minor modifications according to Frank's suggestion.
+- Link to v5: https://lore.kernel.org/r/20260304-amlogic-dma-v5-0-aa453d14fd43@amlogic.com
+
+Changes in v5:
+- Rename head file and rename macro definition.
+- Rename the subject in [2/3] from "dma" to "dmaengine".
+- Link to v4: https://lore.kernel.org/r/20260227-amlogic-dma-v4-0-f25e4614e9b7@amlogic.com
+
+Changes in v4:
+- Support split transfer when data len > MAX_LEN.
+- When a module fails or exits, perform de-initialization.
+- Some other minor modifications.
+- Link to v3: https://lore.kernel.org/r/20260206-amlogic-dma-v3-0-56fb9f59ed22@amlogic.com
+
 Changes in v3:
-- vep_dequeue(): remove `struct vrequest` usage from vep_dequeue entirely
-- Link to v2: https://lore.kernel.org/r/20260620-usbip-vudc-deque-fix-v2-1-d1913ab4611b@samcday.com
+- Adjust the format of binding according to Frank's suggestion.
+- Some code format modified according to Frank's suggestion.
+- Support one prep_sg and one submit, drop multi prep_sg and one submit.
+- Keep pre state when resume from pause status.
+- Link to v2: https://lore.kernel.org/r/20260127-amlogic-dma-v2-0-4525d327d74d@amlogic.com
 
 Changes in v2:
-- vep_dequeue(): Reworked to remove vrequest->udc entirely, preferring a
-  call to ep_to_vudc() instead
-- Link to v1: https://lore.kernel.org/r/20260619-usbip-vudc-deque-fix-v1-1-9021463b1903@samcday.com
----
- drivers/usb/usbip/vudc.h     | 1 -
- drivers/usb/usbip/vudc_dev.c | 4 +---
- 2 files changed, 1 insertion(+), 4 deletions(-)
-
-diff --git a/drivers/usb/usbip/vudc.h b/drivers/usb/usbip/vudc.h
-index faf61c9c6a989..5ef0e7d9b23ad 100644
---- a/drivers/usb/usbip/vudc.h
-+++ b/drivers/usb/usbip/vudc.h
-@@ -38,7 +38,6 @@ struct vep {
- 
- struct vrequest {
- 	struct usb_request req;
--	struct vudc *udc;
- 	struct list_head req_entry; /* Request queue */
- };
- 
-diff --git a/drivers/usb/usbip/vudc_dev.c b/drivers/usb/usbip/vudc_dev.c
-index c5f079c5a1ea5..5ef88117965d1 100644
---- a/drivers/usb/usbip/vudc_dev.c
-+++ b/drivers/usb/usbip/vudc_dev.c
-@@ -333,7 +333,6 @@ static int vep_queue(struct usb_ep *_ep, struct usb_request *_req,
- static int vep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
- {
- 	struct vep *ep;
--	struct vrequest *req;
- 	struct vudc *udc;
- 	struct vrequest *lst;
- 	unsigned long flags;
-@@ -343,8 +342,7 @@ static int vep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
- 		return ret;
- 
- 	ep = to_vep(_ep);
--	req = to_vrequest(_req);
--	udc = req->udc;
-+	udc = ep_to_vudc(ep);
- 
- 	if (!udc->driver)
- 		return -ESHUTDOWN;
+- Introduce what the DMA is used for in the A9 SoC.
+- Some minor modifications were made according to Krzysztof's suggestions.
+- Some modifications were made according to Neil's suggestions.
+- Fix a build error.
+- Link to v1: https://lore.kernel.org/r/20251216-amlogic-dma-v1-0-e289e57e96a7@amlogic.com
 
 ---
-base-commit: 30ffa8de54e5cc80d93fd211ca134d1764a7011f
-change-id: 20260619-usbip-vudc-deque-fix-d316de3d3f16
+Xianwei Zhao (3):
+      dt-bindings: dma: Add Amlogic A9 SoC DMA
+      dmaengine: amlogic: Add general DMA driver for A9
+      MAINTAINERS: Add an entry for Amlogic DMA driver
+
+ .../devicetree/bindings/dma/amlogic,a9-dma.yaml    |  65 ++
+ MAINTAINERS                                        |   7 +
+ drivers/dma/Kconfig                                |  10 +
+ drivers/dma/Makefile                               |   1 +
+ drivers/dma/amlogic-dma.c                          | 708 +++++++++++++++++++++
+ include/dt-bindings/dma/amlogic,a9-dma.h           |   8 +
+ 6 files changed, 799 insertions(+)
+---
+base-commit: 4e01d2f7809240ed63a44889386635921c0627b1
+change-id: 20251215-amlogic-dma-79477d5cd264
 
 Best regards,
 -- 
-Sam Day <me@samcday.com>
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
