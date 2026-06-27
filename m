@@ -1,117 +1,160 @@
-From: Sam Day <me@samcday.com>
-Date: Sat, 27 Jun 2026 22:18:45 +1000
-Subject: [PATCH RFC] drm/msm/mdss: keep mdp1-mem interconnect alive during
- suspend on SDM845
+From: David Heidelberg <david@ixit.cz>
+Date: Sat, 27 Jun 2026 16:56:32 +0200
+Subject: [PATCH] Input: rmi4 - Move sensor initialization into own function
+ for F12
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260627-rfc-sdm845-interconnect-collapse-workaround-v1-1-608a38de3715@samcday.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3NPQ7CMAxA4atUnrHUlhIqVqQegBUxBMcBi+JUT
- vmRqt6diPFb3lsgswlnOFQLGL8lS9KCZlMB3b3eGCUUQ1u3rnbtHi0S5vDsux2KzmyUVJlmpDS
- OfsqMn2QPb+mlAa++odh3jvw2QilOxlG+/9sZTsMRLuv6A65c+oGCAAAA
-X-Change-ID: 20260627-rfc-sdm845-interconnect-collapse-workaround-ba1cf846ca3f
-To: Rob Clark <robin.clark@oss.qualcomm.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Abhinav Kumar <abhinav.kumar@linux.dev>, 
- Jessica Zhang <jesszhan0024@gmail.com>, Sean Paul <sean@poorly.run>, 
- Marijn Suijten <marijn.suijten@somainline.org>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
-Cc: linux-arm-msm@vger.kernel.org, dri-devel@lists.freedesktop.org, 
- freedreno@lists.freedesktop.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, Sam Day <me@samcday.com>
+Message-Id: <20260627-synaptics-rmi4-fnsplit-v1-1-14a96f4ac4df@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAJ/kP2oC/x3MTQqEMAxA4atI1gZqlfpzFXHR6UQNaC1NkRHx7
+ pZZfov3bhCKTAJDcUOkk4UPn1GVBbjV+oWQv9mglTbK6Bbl8jYkdoJx5wZnL2HjhLXpO2u0+rS
+ 1gxyHSDP//uNxep4XyvzviGgAAAA=
+X-Change-ID: 20260627-synaptics-rmi4-fnsplit-3698a620b73c
+To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
+Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782562727; l=3411;
- i=me@samcday.com; s=20240502; h=from:subject:message-id;
- bh=BMiudGPsxROy8BnSvYjoc4O7qJ+BrrRqh/a8bYRWcC0=;
- b=PsiWZuMwX4x8LrKzl/Bcpfpzq6k3TOSP+hKPP+Lr33iH54+T1jbS5Lx9oIUOWAal8GqgdqqRe
- 4sGzPTD4htnBmYL4x356+P81ZtZfsL07HxZUmvi3bp68XLqVc1LCe6q
-X-Developer-Key: i=me@samcday.com; a=ed25519;
- pk=bzyS0akxWMqr9+AXzgBRIp28KKpEOs+GjYMc2yf+aeU=
-X-Endpoint-Received: by B4 Relay for me@samcday.com/20240502 with auth_id=595
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3732; i=david@ixit.cz;
+ h=from:subject:message-id; bh=QDJN7B9WH2UFwNDJgEJB7okxE7kCxvUO/EcFvb1axfQ=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqP+ShNex8lRrkCpn1FHVpp3Zxd9XCCV74OEnWl
+ RK8/9LF3QmJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCaj/koQAKCRBgAj/E00kg
+ clksD/kBI6CFHNZirEBK3tKhbjb0t9IgG37H1Pgid85G9GUPiCdBoypvbJYeZhnl+hpiojlkSdv
+ TSeqAmpqwgCMU1MzclJMIIwDEcE090StT0jsFQGb96gcMo0UAGknAR22k8/CCoqmaLFi0ZiV2CP
+ MW60OEDRs/t9uFpEz67ZB2POWx4Nj06glrtIMroAwJl2yj4Jl03e1uYK3uprRmz2H1YkdkBgYDa
+ TqwTaxTDRiR7wH1lxrmbDts2f4K0Dnp8/mhN/UDueKkN90pf8ZPsinU1RCUgsneZw34JjHwlU8R
+ E8NYu8mmQVyWlLS0sIs1kgylUbdwgYpUfuyIYKichnzZZiOd+cmj8S2+n2GDCmXEvGoZ9Zrk7ys
+ 8q2zMNi39KnoqxL4c6VyqPuvy375SrxWd42/5XFp0d5gW371bJx1kKiwFoYpw10VxtuI5yYFIPz
+ 1bKeTQH4kuWLViMdMDbi1Pgn1hZqa5PJ5i7yiXDpGuTXihXRfSMwI2X6ZNPPjCIWIm460w9Anmc
+ DwsD+XUGmzqb1ptsyXHxr7K7lvD/F50h1eUWe0oz5ruydyu6hbK7p0SqUEC/GvB9J/8V2ckvb8Q
+ 8BzFljjh7bibY7s33VjySDXiltJ3MGNeHb9xKBWnjqVIXuaHoywLKqNMmNapuYDXoNwR7NlYZow
+ ZlMLIHLs5bK4MJg==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If the peak vote for mdp1-mem is allowed to drop to zero, it seems to
-cause the fabric to collapse that path entirely, which causes the device
-to bus stall and fatally reset.
+Makes rmi_f12_probe function a bit cleaner and more structured.
 
-This issue was identified specifically on sdm845-oneplus-fajita, so this
-workaround is applied narrowly to SDM845's MDSS.
-
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-This RFC patch is a spiritual successor to the "Addressing stability
-issues on SDM845 with the -next tree" series sent by David and Petr 6
-months ago.
+ drivers/input/rmi4/rmi_f12.c | 58 ++++++++++++++++++++++++++------------------
+ 1 file changed, 35 insertions(+), 23 deletions(-)
 
-As Dmitry pointed out, the patch introduces leakages to the runtime PM
-refcounting. In practice, this means that MDSS never actually gets
-suspended, which is why the patch appeared to "fix" the issue.
-
-The deeper root cause is that, when msm_mdss_disable() runs and unvotes
-the mdp1-mem interconnect bandwidth, that seems to collapse the fabric
-entirely and causes the bus stall -> hang -> reboot behaviour.
-
-I've confirmed that a tiny non-zero peak bandwidth vote keeps the fabric
-alive and avoids the issue.
-
-Of course, this is still a fairly egregious hack, but it *does* allow
-blanking to suspend and resume DSI + DPU + MDSS properly without the bus
-stall.
-
-Here's what I've validated with instrumentation:
-
- * DSI host disable, IRQ disable, PLL state save, host power-off, link
-   clock disable, regulator disable, SFPB disable, and PHY disable all
-   complete successfully before the fatal reset occurrs.
- * DPU runtime suspend also completes. The bandwidth accounting was
-   checked and confirmed to reach runtime suspend with 0 refs, with no
-   pending frame state.
- * The device survives through MDSS clock disabling and mdp0-mem
-   zero voting, it's really just the mdp1-mem zero vote that is isolated
-   as the cause of the stall + reset.
-
-So, I'm not really sure where to go from here. I'm sure that this
-workaround is not suitable for inclusion upstream as it still seems to
-be papering over an underlying issue... But it's unclear to me if this is
-some kind of hardware quirk on SDM845, a problem with the SDM845 DT
-wiring, a driver issue, or something else entirely.
-
-I'd appreciate any advice on how to further diagnose this issue and what
-direction to take from here.
-
-Kind regards,
--Sam
-
-Link: https://lore.kernel.org/phone-devel/20251213-stability-discussion-v1-0-b25df8453526@ixit.cz/
-Signed-off-by: Sam Day <me@samcday.com>
----
- drivers/gpu/drm/msm/msm_mdss.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
-
-diff --git a/drivers/gpu/drm/msm/msm_mdss.c b/drivers/gpu/drm/msm/msm_mdss.c
-index 9087c4b290db..c635380b2ac3 100644
---- a/drivers/gpu/drm/msm/msm_mdss.c
-+++ b/drivers/gpu/drm/msm/msm_mdss.c
-@@ -284,8 +284,12 @@ static int msm_mdss_disable(struct msm_mdss *msm_mdss)
+diff --git a/drivers/input/rmi4/rmi_f12.c b/drivers/input/rmi4/rmi_f12.c
+index 88c28089de993..333477bf0663e 100644
+--- a/drivers/input/rmi4/rmi_f12.c
++++ b/drivers/input/rmi4/rmi_f12.c
+@@ -364,29 +364,60 @@ static int rmi_f12_config(struct rmi_function *fn)
+ 	ret = rmi_f12_write_control_regs(fn);
+ 	if (ret)
+ 		dev_warn(&fn->dev,
+ 			 "Failed to write F12 control registers: %d\n", ret);
  
- 	clk_bulk_disable_unprepare(msm_mdss->num_clocks, msm_mdss->clocks);
+ 	return 0;
+ }
  
--	for (i = 0; i < msm_mdss->num_mdp_paths; i++)
--		icc_set_bw(msm_mdss->mdp_path[i], 0, 0);
-+	for (i = 0; i < msm_mdss->num_mdp_paths; i++) {
-+		if (of_device_is_compatible(msm_mdss->dev->of_node, "qcom,sdm845-mdss") && i == 1)
-+			icc_set_bw(msm_mdss->mdp_path[i], 0, 1);
-+		else
-+			icc_set_bw(msm_mdss->mdp_path[i], 0, 0);
++static int rmi_f12_sensor_init(struct rmi_function *fn, struct f12_data *f12)
++{
++	struct rmi_2d_sensor *sensor = &f12->sensor;
++	size_t pkt_size;
++
++	sensor->fn = fn;
++	f12->data_addr = fn->fd.data_base_addr;
++	pkt_size = rmi_register_desc_calc_size(&f12->data_reg_desc);
++	if (pkt_size > SZ_1M) {
++		dev_err(&fn->dev, "Invalid data packet size: %zu\n", pkt_size);
++		return -EINVAL;
 +	}
++	sensor->pkt_size = pkt_size;
++
++	sensor->axis_align = f12->sensor_pdata.axis_align;
++
++	sensor->x_mm = f12->sensor_pdata.x_mm;
++	sensor->y_mm = f12->sensor_pdata.y_mm;
++	sensor->dribble = f12->sensor_pdata.dribble;
++
++	if (sensor->sensor_type == rmi_sensor_default)
++		sensor->sensor_type = f12->sensor_pdata.sensor_type;
++
++	rmi_dbg(RMI_DEBUG_FN, &fn->dev, "%s: data packet size: %u\n", __func__,
++		sensor->pkt_size);
++	sensor->data_pkt = devm_kmalloc(&fn->dev, sensor->pkt_size, GFP_KERNEL);
++	if (!sensor->data_pkt)
++		return -ENOMEM;
++
++	return 0;
++}
++
+ static int rmi_f12_probe(struct rmi_function *fn)
+ {
+ 	struct f12_data *f12;
+ 	int ret;
+ 	struct rmi_device *rmi_dev = fn->rmi_dev;
+ 	char buf;
+ 	u16 query_addr = fn->fd.query_base_addr;
+ 	const struct rmi_register_desc_item *item;
+ 	struct rmi_2d_sensor *sensor;
+ 	struct rmi_device_platform_data *pdata = rmi_get_platform_data(rmi_dev);
+ 	struct rmi_driver_data *drvdata = dev_get_drvdata(&rmi_dev->dev);
+ 	size_t data_offset = 0;
+-	size_t pkt_size;
+ 	int irq_mask_size;
+ 	int i;
  
- 	if (msm_mdss->reg_bus_path)
- 		icc_set_bw(msm_mdss->reg_bus_path, 0, 0);
+ 	rmi_dbg(RMI_DEBUG_FN, &fn->dev, "%s\n", __func__);
+ 
+ 	irq_mask_size = BITS_TO_LONGS(drvdata->irq_count);
+ 
+ 	ret = rmi_read(fn->rmi_dev, query_addr, &buf);
+@@ -421,39 +452,20 @@ static int rmi_f12_probe(struct rmi_function *fn)
+ 		f12->sensor_pdata = pdata->sensor_pdata;
+ 	}
+ 
+ 	ret = rmi_f12_read_register_descs(fn, f12, query_addr);
+ 	if (ret)
+ 		return ret;
+ 
+ 	sensor = &f12->sensor;
+-	sensor->fn = fn;
+-	f12->data_addr = fn->fd.data_base_addr;
+-	pkt_size = rmi_register_desc_calc_size(&f12->data_reg_desc);
+-	if (pkt_size > SZ_1M) {
+-		dev_err(&fn->dev, "Invalid data packet size: %zu\n", pkt_size);
+-		return -EINVAL;
+-	}
+-	sensor->pkt_size = pkt_size;
+-
+-	sensor->axis_align = f12->sensor_pdata.axis_align;
+ 
+-	sensor->x_mm = f12->sensor_pdata.x_mm;
+-	sensor->y_mm = f12->sensor_pdata.y_mm;
+-	sensor->dribble = f12->sensor_pdata.dribble;
+-
+-	if (sensor->sensor_type == rmi_sensor_default)
+-		sensor->sensor_type = f12->sensor_pdata.sensor_type;
+-
+-	rmi_dbg(RMI_DEBUG_FN, &fn->dev, "%s: data packet size: %u\n", __func__,
+-		sensor->pkt_size);
+-	sensor->data_pkt = devm_kmalloc(&fn->dev, sensor->pkt_size, GFP_KERNEL);
+-	if (!sensor->data_pkt)
+-		return -ENOMEM;
++	ret = rmi_f12_sensor_init(fn, f12);
++	if (ret)
++		return ret;
+ 
+ 	dev_set_drvdata(&fn->dev, f12);
+ 
+ 	ret = rmi_f12_read_sensor_tuning(f12);
+ 	if (ret)
+ 		return ret;
+ 
+ 	/*
 
 ---
-base-commit: 5a66900afbd6b2a063eebad35294038a654de2b0
-change-id: 20260627-rfc-sdm845-interconnect-collapse-workaround-ba1cf846ca3f
+base-commit: 3d5670d672ae08b8c534b7beed6f57c8b44e7b43
+change-id: 20260627-synaptics-rmi4-fnsplit-3698a620b73c
 
 Best regards,
 -- 
-Sam Day <me@samcday.com>
+David Heidelberg <david@ixit.cz>
 
