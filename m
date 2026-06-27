@@ -1,14 +1,13 @@
 From: David Heidelberg <david@ixit.cz>
-Subject: [PATCH v2 0/2] Recognize Snapdragon SDM850
-Date: Sat, 27 Jun 2026 19:50:14 +0200
-Message-Id: <20260627-sda850-v2-0-44bf46ade42e@ixit.cz>
+Date: Sat, 27 Jun 2026 19:50:15 +0200
+Subject: [PATCH v2 1/2] dt-bindings: arm: qcom,ids: Add SoC ID for
+ Snapdragon SDM 850
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFYNQGoC/2XMQQ6CMBCF4auQWTumLbRpXHkPwgI7o8wGTEsal
- PTuFrYu/5eXb4fEUTjBrdkhcpYky1zDXBoI0zi/GIVqg1HGKWdaTDR6q9A9bNDcdc6ZAPX8jvy
- U7YT6ofYkaV3i53SzPtY/ImvUSESeq+Et+btssl7DF4ZSyg+ZKh5kmgAAAA==
-X-Change-ID: 20260623-sda850-6b5c1e44662c
+Message-Id: <20260627-sda850-v2-1-44bf46ade42e@ixit.cz>
+References: <20260627-sda850-v2-0-44bf46ade42e@ixit.cz>
+In-Reply-To: <20260627-sda850-v2-0-44bf46ade42e@ixit.cz>
 To: Bjorn Andersson <andersson@kernel.org>, 
  Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -16,47 +15,55 @@ To: Bjorn Andersson <andersson@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=766; i=david@ixit.cz;
- h=from:subject:message-id; bh=I3bvbarQGG1JG360vnVYjew40hnVIm2x4NllJX1eEF8=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqQA1YK8glQipsbPDu59baTNOyWXpD07/knJtmu
- 1MsIYw1FFqJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCakANWAAKCRBgAj/E00kg
- cghdEAC3bJd1iiMqAS4n+igQBHlJZI6soKc3516kYlKVnjZjAS6lTiFzcRyjs5Q2tlv71lyybdw
- 8a6eh4b8oKwocHHvgkJtpQKIU3UatIi7qUNwqrVXDJQ0XxQHvHa8AvlscO3qseB/b8XRmY5JuMf
- CkHzbkfdXpEP3dB1b6xlxHbhiHWmMQ+tE7gMxUXVgiuXdi3wjWMJD2T7Hy8AsNk0mjUI9oxe2zZ
- rCPQACacNgu9ufz1KkbyKjHCUfq3EZKuAM2happ7qGBKLjsbyywZIzRqkBoKFlfVngfHhHV7SLH
- xkeliIp1PURR4huylAXI5kcLzA+VTy4WOjbjlKuIlFuTArT2tkj8lA2nFJvjOPBV6XchzC5pmJf
- dV7xn8Q3ntyqWO6LUXlZPTTC3L2DAiRuimMLZeqZfLJS5thZYAlJYketE3EJ8wqQHLssm3BQRtW
- mWUyGF4IHIHUOCIo7kLrTuajEjrXYwhpD98BYy25fClteKTKoT3y17RcgKaCfjcDa/jE3WBCSz4
- seKvgG7vB0asSR72ttZfQRDnA26WHlMDafMOYktOcvofpNaqVFLj6HiEARSo7aw6/v8+KNfwIDP
- nBPYZUPidt0rkqnbgCQQoh2iN3efM+sg/xGmekgCvqSrpE/dpZAKropGCdlZkrRxXfryfUCN7h0
- PQDKiKARvKHRVnQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=959; i=david@ixit.cz;
+ h=from:subject:message-id; bh=Bm10A2IWOMTZFdIbMpHs4iv+z7ELDsn9bEjGsrnPnhg=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqQA1ZEz5uBgL6oDUKQ7CKCqw/mHk4X73KlID2T
+ 11ntBZO48qJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCakANWQAKCRBgAj/E00kg
+ cskcD/9BkgBphaSEH16x9zs+K/eXAf+cGtnNMb0LtrQdHt8j2Q+1ilCvKnRRyBNSKA2WRpm6PNL
+ UXLzwIMiSLnlOsISfXT2knEdXk35Ot+SKCN4oQpy8VK0lJtdQ4r8FfKNFW19efDv7eqdJqONkDJ
+ U2IQF33e9W1NDOmRoLzfMp8VVOCbQkEx9yswpgiu9T32IfuUD5ZviWpj/ARBrioQ7F4VM5RT3Uc
+ LUZPnlvRWUzPoJURtb02vKIXF6U30jjrNPGNDGFOM614Wa1AAoqQXCWfbu7HYHPHB8oaq3lc90r
+ kDqdLFmGQLp2rQU3dcet4oOF88pvd3WIvhv0iSpPxelXZ7rczsduV/k3XhKx1o75l7gBsvW20h5
+ u7edyTSU34CSu1IHv6gu5sKNo96g/uoj/3mADsX7Lm2OOD2B6rEJHIW8fJuWD+gU+4A8sa2yZqO
+ K8Enb4QfcGf2DnmgYXQ6bu/kWzSfrIJgCxsFfcGt8b4mHYPjIYaqoTbEJyUadBfIGSiMiJZewft
+ Pr+OpZ9Uh1xtuQ3JVYCpfjXAQxAav0VjqUIuYg7F3QSFC+bzE0GaQD53hJyZFjQe6i0HWjW6sPb
+ MN3i1L+G+AnT6yUdAsmiPNiNJ24+B02UGWjYmb2pXz3RFiAH54qILs8QMxsnZVKlCNKUHWTQi76
+ TpYR4GzQZK+sJkg==
 X-Developer-Key: i=david@ixit.cz; a=openpgp;
  fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
 X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Useful for sdm850 devices in tree and also will be used by Comma AI comma three
+Add SoC ID for Qualcomm Snapdragon SDM850.
 
 Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Changes in v2:
-- It's not SDA850, but classic SDM850. (Konrad)
-- Add consumer of the define (socinfo). (Krzysztof)
-- Link to v1: https://lore.kernel.org/r/20260623-sda850-v1-1-ddd8e62c85d8@ixit.cz
-
----
-David Heidelberg (2):
-      dt-bindings: arm: qcom,ids: Add SoC ID for Snapdragon SDM 850
-      soc: qcom: socinfo: Add SoC ID for SDM850
-
- drivers/soc/qcom/socinfo.c         | 1 +
  include/dt-bindings/arm/qcom,ids.h | 1 +
- 2 files changed, 2 insertions(+)
----
-base-commit: 948efecf22e49aa4bf55bb73ec79a0ddcfd38571
-change-id: 20260623-sda850-6b5c1e44662c
+ 1 file changed, 1 insertion(+)
 
-Best regards,
+diff --git a/include/dt-bindings/arm/qcom,ids.h b/include/dt-bindings/arm/qcom,ids.h
+index 1af73c0ad41cd..2cf433f61d5e7 100644
+--- a/include/dt-bindings/arm/qcom,ids.h
++++ b/include/dt-bindings/arm/qcom,ids.h
+@@ -179,16 +179,17 @@
+ #define QCOM_ID_SDM450			338
+ #define QCOM_ID_SM8150			339
+ #define QCOM_ID_SDA845			341
+ #define QCOM_ID_IPQ8072			342
+ #define QCOM_ID_IPQ8076			343
+ #define QCOM_ID_IPQ8078			344
+ #define QCOM_ID_SDM636			345
+ #define QCOM_ID_SDA636			346
++#define QCOM_ID_SDM850			348
+ #define QCOM_ID_SDM632			349
+ #define QCOM_ID_SDA632			350
+ #define QCOM_ID_SDA450			351
+ #define QCOM_ID_SDM439			353
+ #define QCOM_ID_SDM429			354
+ #define QCOM_ID_SM8250			356
+ #define QCOM_ID_SA8155			362
+ #define QCOM_ID_SDA439			363
+
 -- 
-David Heidelberg <david@ixit.cz>
+2.53.0
 
