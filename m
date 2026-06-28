@@ -1,15 +1,13 @@
 From: SeungJong Ha <engineer.jjhama@gmail.com>
-Subject: [PATCH RFC 0/4] rust: dma: bridge zerocopy-derived types into the
- transmute byte-safety bound
-Date: Sun, 28 Jun 2026 17:10:13 +0000
-Message-Id: <20260628-dma-zerocopy-bridge-v1-0-9a2895ebe30d@gmail.com>
+Date: Sun, 28 Jun 2026 17:10:14 +0000
+Subject: [PATCH RFC 1/4] rust: transmute: add
+ `impl_transmute_via_zerocopy!` macro
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAHVVQWoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDMyML3ZTcRN2q1KL85PyCSt2koswUoJKUZMNkS7MkM0OD5DQloM6CotS
- 0zAqwqdFKQW7OSrEQweLSpKzU5BKQeUq1tQCn5ynvfAAAAA==
-X-Change-ID: 20260628-dma-zerocopy-bridge-dc1c96b610cf
+Message-Id: <20260628-dma-zerocopy-bridge-v1-1-9a2895ebe30d@gmail.com>
+References: <20260628-dma-zerocopy-bridge-v1-0-9a2895ebe30d@gmail.com>
+In-Reply-To: <20260628-dma-zerocopy-bridge-v1-0-9a2895ebe30d@gmail.com>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
  Gary Guo <gary@garyguo.net>, 
  =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
@@ -25,59 +23,79 @@ Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org,
  nova-gpu@lists.linux.dev, dri-devel@lists.freedesktop.org, 
  SeungJong Ha <engineer.jjhama@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782666615; l=2202;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782666615; l=2891;
  i=engineer.jjhama@gmail.com; s=20260103; h=from:subject:message-id;
- bh=PwlNzx3K3F56o2BD0ftoa1LBSTs0jszR297NCpWnCn8=;
- b=q7/VLPO9r7B4lnh9Bj4NW2kqXARN2Q6xgsnTBNKtxvVcYdLqm34c8NDzA9nV/lZBN23maujdg
- xt7Eb5HhZbqB8cxIrCIRuanFyZSLI/OySSfbWlBPbWgOB3L4sD+opGK
+ bh=LXChnJ7p62He8Ts8ziph6RXUwlMDpuOOjkatwstqfkA=;
+ b=vxK1wBU87NEi9SKYdoUiW1+9mEw4aAM22XMOB+XGyA6TxcOU8QnSCIocKOmOe/Bc4sHwli3ei
+ fBxxCN1DzOMDTIlHtoXx4qsoKoPS+ykCgIf0TBY7LoieR6EbbrS0DgS
 X-Developer-Key: i=engineer.jjhama@gmail.com; a=ed25519;
  pk=G5nmjm+RTiWBpyCvc5xjR1b3li/2zipLSMyz+T4fj5E=
 X-Endpoint-Received: by B4 Relay for engineer.jjhama@gmail.com/20260103 with auth_id=590
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-DMA-coherent allocations (CoherentAllocation/Coherent/dma::Pool) bound
-their element type on kernel::transmute::{AsBytes, FromBytes}. This RFC
-lets a type satisfy that bound by deriving zerocopy's byte-safety traits
-instead of a hand-written unsafe impl.
+The DMA-coherent allocation APIs (`CoherentAllocation`, `Coherent`,
+`dma::Pool`) bound their element type on
+`transmute::{AsBytes, FromBytes}`, which a `zerocopy`-deriving type cannot
+satisfy. A blanket bridge impl is rejected by coherence, as it overlaps
+every existing concrete `transmute` impl.
 
-The bound cannot be switched to zerocopy wholesale (some DMA structs are
-unions that IntoBytes cannot derive), and a blanket bridge impl is
-rejected by coherence. So the series bridges the two per type:
-
-  1. add the bridge macro impl_transmute_via_zerocopy!, which emits the
-     transmute impls only for a zerocopy-derived type.
-  2. re-export zerocopy::Immutable from the prelude.
-  3-4. worked example: convert nova-core's GspMem and msgq POD types.
-
-This series was prepared with the Claude Code AI assistant (model
-claude-opus-4-8): it drafted the macro, the nova-core conversion and the
-changelogs, which the submitter reviewed and takes responsibility for. It
-was verified by building nova-core on rust-next and a negative test
-confirming IntoBytes rejects mis-sized padding. See
-Documentation/process/coding-assistants.rst.
+Add a per-type bridge macro that emits the `transmute` impls for a
+`zerocopy`-derived type. A compile-time assertion fails the build unless
+the type is `zerocopy::{FromBytes, IntoBytes, Immutable}`, which subsumes
+the `transmute::{FromBytes, AsBytes}` contracts, so the emitted unsafe
+impls are machine-checked. This lets DMA structures adopt `zerocopy`
+incrementally without flipping the DMA bound.
 
 Assisted-by: Claude-Code:claude-opus-4-8
 Signed-off-by: SeungJong Ha <engineer.jjhama@gmail.com>
 ---
-SeungJong Ha (4):
-      rust: transmute: add `impl_transmute_via_zerocopy!` macro
-      rust: prelude: re-export `zerocopy::Immutable`
-      gpu: nova-core: gsp: derive zerocopy traits for the msgq POD types
-      gpu: nova-core: gsp: convert GspMem to zerocopy via the transmute bridge
+ rust/kernel/transmute.rs | 35 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 35 insertions(+)
 
- drivers/gpu/nova-core/gsp.rs                      | 13 ++-------
- drivers/gpu/nova-core/gsp/cmdq.rs                 | 15 +++++-----
- drivers/gpu/nova-core/gsp/fw.rs                   |  8 +++---
- drivers/gpu/nova-core/gsp/fw/r570_144.rs          |  2 ++
- drivers/gpu/nova-core/gsp/fw/r570_144/bindings.rs |  4 +--
- rust/kernel/prelude.rs                            |  2 ++
- rust/kernel/transmute.rs                          | 35 +++++++++++++++++++++++
- 7 files changed, 54 insertions(+), 25 deletions(-)
----
-base-commit: 780d569e6c4b422290f5cba319eb904b355d64be
-change-id: 20260628-dma-zerocopy-bridge-dc1c96b610cf
+diff --git a/rust/kernel/transmute.rs b/rust/kernel/transmute.rs
+index 654b5ede2fe2..d9881f84dc62 100644
+--- a/rust/kernel/transmute.rs
++++ b/rust/kernel/transmute.rs
+@@ -227,3 +227,38 @@ macro_rules! impl_asbytes {
+     {<T: AsBytes>} [T],
+     {<T: AsBytes, const N: usize>} [T; N],
+ }
++
++/// Implements the kernel's `FromBytes` and `AsBytes` byte-safety traits for a type
++/// that already derives the equivalent `zerocopy` traits.
++///
++/// This lets a `zerocopy`-derived type satisfy the bounds required by the
++/// DMA-coherent allocation APIs (`CoherentAllocation`, `Coherent`, `dma::Pool`)
++/// without a hand-audited `unsafe`: the macro fails to compile unless `$t`
++/// implements `zerocopy::FromBytes`, `zerocopy::IntoBytes` and `zerocopy::Immutable`,
++/// which together subsume the safety contracts of [`FromBytes`] and [`AsBytes`].
++#[macro_export]
++macro_rules! impl_transmute_via_zerocopy {
++    ($t:ty) => {
++        const _: () = {
++            // Compile-time proof: fails to build unless `$t` carries the `zerocopy`
++            // byte-safety proofs.
++            fn assert_zerocopy<
++                T: ::zerocopy::FromBytes + ::zerocopy::IntoBytes + ::zerocopy::Immutable,
++            >() {
++            }
++            fn check() {
++                assert_zerocopy::<$t>();
++            }
++        };
++
++        // SAFETY: `$t: zerocopy::FromBytes` guarantees that all bit patterns are valid
++        // and `zerocopy::Immutable` that it has no interior mutability, which is exactly
++        // the contract of `FromBytes`.
++        unsafe impl $crate::transmute::FromBytes for $t {}
++
++        // SAFETY: `$t: zerocopy::IntoBytes` guarantees that it has no uninitialized
++        // (padding) bytes and `zerocopy::Immutable` that it has no interior mutability,
++        // which is exactly the contract of `AsBytes`.
++        unsafe impl $crate::transmute::AsBytes for $t {}
++    };
++}
 
-Best regards,
---  
-SeungJong Ha <engineer.jjhama@gmail.com>
+-- 
+2.54.0
 
