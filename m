@@ -1,118 +1,145 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Mon, 29 Jun 2026 21:51:55 +0200
-Subject: [PATCH v2] iio: imu: inv_icm42600: fix timestamping by limiting
- FIFO reading
+From: Miao Wang <shankerwangmiao@gmail.com>
+Date: Tue, 30 Jun 2026 05:05:28 +0800
+Subject: [PATCH RFC] gpio: loongson-64bit: Add back the support for
+ gsi_idx_map
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260629-inv-icm42600-fix-watermark-fifo-reading-v2-1-967e375db7b3@tdk.com>
-X-B4-Tracking: v=1; b=H4sIANrMQmoC/5WOQQ7CIBQFr9Kw9hugFKsr72G6QArt1xQMIGqa3
- l1aT+ByksmbN5NoAppITtVMgskY0bsCfFcRPSo3GMC+MOGUSyp5DegyoJ5EQQoW3/BSyYRJhXs
- h6yEY1aMbQHKhlaUtPTSClLVHMMXeSpfux/F5vRmd1vnVGDEmHz7blcxW7/9qZsDA1raRR6Fa1
- qpz6u977SfSLcvyBbqWBZHuAAAA
-X-Change-ID: 20260623-inv-icm42600-fix-watermark-fifo-reading-624caf080754
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>, 
- linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jonathan Cameron <jic23@kernel.org>, stable@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782762742; l=3459;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=nQhkZPtLs3PxMsL5AOyaO81u0Ro6Jo38fVYTn+BsJME=;
- b=yNVbPmWmarrbpNgNuwBQ178hkXzXHqoQp/X8hWQ65VmW5iY76m8EurFHMdJuhiYWYIGd3L5jT
- SWPomtYGum/BbS0QinLJhieEwMKSikWg4wbFY+i32wgeOde28Se91zn
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260630-loongson-gpio-v1-1-576908831fa0@gmail.com>
+X-B4-Tracking: v=1; b=H4sIABfeQmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDM2MD3Zz8/Lz04vw83fSCzHxdA0uDpCRDU8sUg1QTJaCegqLUtMwKsHn
+ RSkFuzkqxtbUAIIfJuGQAAAA=
+X-Change-ID: 20260630-loongson-gpio-090bb159d0e4
+To: Yinbo Zhu <zhuyinbo@loongson.cn>, Linus Walleij <linusw@kernel.org>, 
+ Bartosz Golaszewski <brgl@kernel.org>, 
+ Hongchen Zhang <zhanghongchen@loongson.cn>, 
+ Liu Peibao <liupeibao@loongson.cn>, Juxin Gao <gaojuxin@loongson.cn>
+Cc: Huacai Chen <chenhuacai@kernel.org>, Jianmin Lv <lvjianmin@loongson.cn>, 
+ WANG Xuerui <kernel@xen0n.name>, Jiaxun Yang <jiaxun.yang@flygoat.com>, 
+ linux-gpio@vger.kernel.org, Miao Wang <shankerwangmiao@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3795;
+ i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
+ bh=BhI6w+XNK6JQEt3uJcG82aV3eTG42V7G0R8z4wU74xU=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqQt4eD0ePio5j4B0x4KdoRtgFJPVvP5IqAGZeQ
+ ExQB/17HZmJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCakLeHgAKCRCwMePKe/7Z
+ blfUD/wM97+pH5K7X/5ezOgWWCFgnljEl2Nbt2LFczm+QruBFDgV2SWzKisaa6KOeN/sxeZVCWr
+ 8/Lg4PyhSJkZYwD46GOElPiHha5orzcAks/lUxiup6oh/aVJuvsgn5v0lWq7Mj/nE0YaDONfTA7
+ 5TziKjvHn/CidqtydDL5apjkKMAqFnqPEqXt89D/TLSB1HREQizEEgQD9JB+1T3r8p8/b79RWW4
+ 4UYv1JLToHLPa3HsuBw07Ba5zXQxnDf4Sk2GJGlhATRac5fjXjQ2lWIc+Ud7cotPSJtvdQyeutH
+ 1+CIhm2yfjtV21q8YJXN4Bge26BYc9+OCC5Eu2yOSn7GEp99BfIwINpKvdXWGnQCMaTNxLZOVxR
+ OSEscqVNmiVjP3suVIQEJWeKvx9zHZFFdaGI4QPicNTQyWQs2TJ1kqK2A1Q2eqzdPx+MmgpmVYC
+ PMmTTNxYoMoZ8g8F254UvluHOaoIVIvqiF10WWfrN24OBRTnHTkRAoai4p8hF/ScWrMCqgLx9TM
+ fTB2ki8fidfTAG1JwzaiHW4zlVaEB3LttVdbBiZBrZ+f3hGqkq9u5mhenfXJFd5NCjEVykOnaLk
+ dVxewNqkK4rxF+I5AVSKIFUJ8iPfdntrqdNtbTPEBcQDDFoPxx2YNha2euUYOe2UL1Jn3PzwrEl
+ 4ojrTw5zCAngxzw==
+X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
+ fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
+X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Timestamps are made by measuring the chip clock using the watermark
-interrupts. If we read more than watermark samples as done today, we
-are reducing the period between interrupts and distort the time
-measurement. Fix that by reading only watermark samples in the
-interrupt case.
+This patch adds back the support for gsi_idx_map, which is used in the
+ACPI DSDT table to describe the mapping between the GPIO line number to
+the index of the interrupt number in the declared interrupt resources.
 
-Fixes: 7f85e42a6c54 ("iio: imu: inv_icm42600: add buffer support in iio devices")
-Cc: stable@vger.kernel.org
-Signed-off-by: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>
----
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
----
-Changes in v2:
-- Delete watermark computation rework, keep only FIFO read fix.
-- Link to v1: https://patch.msgid.link/20260623-inv-icm42600-fix-watermark-fifo-reading-v1-1-f3f5694a818a@tdk.com
+This property was removed in Loongson CPU Universal Specification for
+Interface Between PC/Server System Firmware and Kernel v4.1 in November,
+2023, but still in use in firmwares released this year. A sample of
+an affected DSDT entry from a 3C6000 board I'm currently using is:
 
-To: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-To: Jonathan Cameron <jic23@kernel.org>
-To: David Lechner <dlechner@baylibre.com>
-To: Nuno Sá <nuno.sa@analog.com>
-To: Andy Shevchenko <andy@kernel.org>
-Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>
-Cc: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>
-Cc: linux-iio@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
----
- drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c | 9 +++++----
- drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h | 1 +
- 2 files changed, 6 insertions(+), 4 deletions(-)
+Device (GPO1) {
+  Name (_HID, "LOON000F")
+  Name (_CRS, ResourceTemplate () {
+    QWordMemory ( // Omitted, not related
+    )
+    Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, ) {
+      0x00000010, 0x00000011, 0x00000012, 0x00000013,
+      0x00000014, 0x00000015, 0x00000016, 0x00000017,
+    }
+  Name (_DSD, Package (0x02) {
+    ToUUID ("daffd814-6eba-4d8c-8a91-bc9bbf4aa301")
+    Package (0x03) {
+      Package (0x02) { "gpio_base", 0x50 } // Ignored by the driver
+      Package (0x02) { "ngpios", 0x20 }
+      Package (0x02) { "gsi_idx_map", Package (0x20) {
+        0, 1, 2, 3, 4, 5, 6, 7,
+        0, 1, 2, 3, 4, 5, 6, 7,
+        0, 1, 2, 3, 4, 5, 6, 7,
+        0, 1, 2, 3, 4, 5, 6, 7,
+      }}
+    }
+  }
+}
 
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-index 68a395758031..5c3840acf085 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
-@@ -248,6 +248,7 @@ int inv_icm42600_buffer_update_watermark(struct inv_icm42600_state *st)
+As can be seen in the DSDT entry, the mapping is essential for obtaining
+the IRQ number from a GPIO line number. Otherwise, when IRQ is requested
+for the line numbers largers than 7, it will fail with -ENXIO.
+
+The code in this patch is mostly picked from the version 5 of Yinbo's
+original patch.
+
+Fixes: 7944d3b7fe86 ("gpio: loongson: add gpio driver support")
+Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+---
+ drivers/gpio/gpio-loongson-64bit.c | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
+
+diff --git a/drivers/gpio/gpio-loongson-64bit.c b/drivers/gpio/gpio-loongson-64bit.c
+index 0fdf15faa344d2db0a1cf52dc52c3f58aabef49c..bff7d70e7470ea930ba29504533f11fa92e17620 100644
+--- a/drivers/gpio/gpio-loongson-64bit.c
++++ b/drivers/gpio/gpio-loongson-64bit.c
+@@ -46,6 +46,8 @@ struct loongson_gpio_chip {
+ 	spinlock_t		lock;
+ 	void __iomem		*reg_base;
+ 	const struct loongson_gpio_chip_data *chip_data;
++	u16			*gsi_idx_map;
++	int			mapsize;
+ };
  
- 	/* compute watermark value in bytes */
- 	wm_size = watermark * packet_size;
-+	st->fifo.watermark.value = watermark;
+ static inline struct loongson_gpio_chip *to_loongson_gpio_chip(struct gpio_chip *chip)
+@@ -145,6 +147,12 @@ static int loongson_gpio_to_irq(struct gpio_chip *chip, unsigned int offset)
+ 		writeb(1, lgpio->reg_base + lgpio->chip_data->inten_offset + offset);
+ 	}
  
- 	/* changing FIFO watermark requires to turn off watermark interrupt */
- 	ret = regmap_update_bits_check(st->map, INV_ICM42600_REG_INT_SOURCE0,
-@@ -454,11 +455,10 @@ int inv_icm42600_buffer_fifo_read(struct inv_icm42600_state *st,
- 	st->fifo.nb.accel = 0;
- 	st->fifo.nb.total = 0;
++	if (lgpio->gsi_idx_map != NULL) {
++		if (offset >= lgpio->mapsize)
++			return -EINVAL;
++		offset = lgpio->gsi_idx_map[offset];
++	}
++
+ 	return platform_get_irq(pdev, offset);
+ }
  
--	/* compute maximum FIFO read size */
-+	/* compute maximum FIFO read size (watermark for max = 0 interrupt case) */
- 	if (max == 0)
--		max_count = sizeof(st->fifo.data);
--	else
--		max_count = max * inv_icm42600_get_packet_size(st->fifo.en);
-+		max = st->fifo.watermark.value;
-+	max_count = max * inv_icm42600_get_packet_size(st->fifo.en);
+@@ -326,6 +334,23 @@ static int loongson_gpio_init(struct platform_device *pdev, struct loongson_gpio
+ 		lgpio->chip.gc.to_irq = loongson_gpio_to_irq;
+ 	}
  
- 	/* read FIFO count value */
- 	raw_fifo_count = (__be16 *)st->buffer;
-@@ -574,6 +574,7 @@ int inv_icm42600_buffer_init(struct inv_icm42600_state *st)
++	lgpio->mapsize = device_property_read_u16_array(&pdev->dev, "gsi_idx_map", NULL, 0);
++	if (lgpio->mapsize > 0) {
++		lgpio->gsi_idx_map = devm_kcalloc(&pdev->dev, lgpio->mapsize,
++						  sizeof(*lgpio->gsi_idx_map), GFP_KERNEL);
++		if (!lgpio->gsi_idx_map)
++			return -ENOMEM;
++
++		ret = device_property_read_u16_array(&pdev->dev, "gsi_idx_map",
++						     lgpio->gsi_idx_map, lgpio->mapsize);
++		if (ret != 0)
++			return dev_err_probe(&pdev->dev, ret, "failed to read gsi_idx_map\n");
++		dev_warn(&pdev->dev, "gsi_idx_map property is deprecated, consider upgrading your firmware\n");
++	} else {
++		lgpio->gsi_idx_map = NULL;
++		lgpio->mapsize = 0;
++	}
++
+ 	return devm_gpiochip_add_data(&pdev->dev, &lgpio->chip.gc, lgpio);
+ }
  
- 	st->fifo.watermark.eff_gyro = 1;
- 	st->fifo.watermark.eff_accel = 1;
-+	st->fifo.watermark.value = 1;
- 
- 	/*
- 	 * Default FIFO configuration (bits 7 to 5)
-diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h
-index ffca4da1e249..88b8b9f780af 100644
---- a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h
-+++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h
-@@ -34,6 +34,7 @@ struct inv_icm42600_fifo {
- 		unsigned int accel;
- 		unsigned int eff_gyro;
- 		unsigned int eff_accel;
-+		unsigned int value;
- 	} watermark;
- 	size_t count;
- 	struct {
 
 ---
-base-commit: cc746297b23e89bd5df9f91f3a0ca209e8991763
-change-id: 20260623-inv-icm42600-fix-watermark-fifo-reading-624caf080754
+base-commit: 4edcdefd4083ae04b1a5656f4be6cd83ae919ef4
+change-id: 20260630-loongson-gpio-090bb159d0e4
 
 Best regards,
---  
-Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+-- 
+Miao Wang <shankerwangmiao@gmail.com>
 
