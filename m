@@ -1,10 +1,11 @@
 From: Yu-Che Hsieh <yc_hsieh@aspeedtech.com>
-Date: Mon, 29 Jun 2026 14:48:59 +0800
-Subject: [PATCH 2/4] ipmi: bt-bmc: Track open state per device
+Date: Mon, 29 Jun 2026 14:49:00 +0800
+Subject: [PATCH 3/4] dt-bindings: ipmi: Add optional LPC properties to
+ ASPEED BT devices
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260629-aspeed-bt-bmc-multichannel-v1-2-fc23ee337f7a@aspeedtech.com>
+Message-Id: <20260629-aspeed-bt-bmc-multichannel-v1-3-fc23ee337f7a@aspeedtech.com>
 References: <20260629-aspeed-bt-bmc-multichannel-v1-0-fc23ee337f7a@aspeedtech.com>
 In-Reply-To: <20260629-aspeed-bt-bmc-multichannel-v1-0-fc23ee337f7a@aspeedtech.com>
 To: Corey Minyard <corey@minyard.net>, Rob Herring <robh@kernel.org>, 
@@ -15,84 +16,78 @@ Cc: openipmi-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
  devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-aspeed@lists.ozlabs.org, Yu-Che Hsieh <yc_hsieh@aspeedtech.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782715772; l=1964;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782715772; l=2189;
  i=yc_hsieh@aspeedtech.com; s=20260629; h=from:subject:message-id;
- bh=kkcdpH7g4gFHRExA7T4VUvsyg0bKpkuItRJGEI3xPJA=;
- b=yHQTY1jCvmxKBbcWqHMlIZQ8QIbmxk/w14R13q3bhtuzMgZpj11PsEVwfZCzFGlKhBzXd+Lfs
- TSHkqXBCUHbCjiz3yJ7vSAa2XwHJor+R157niWVbLj+PCVz3VziveqT
+ bh=z+ycFWmOaDIg3MLyJDHKU8ALQWWy3TelygSh1S01hYI=;
+ b=2Z9HfF4G2QEiNPdhd3fE4XoWv99voNdrQ8WCW9S6YS9YMCZkCHI4FWveW74mN6CgGvTdjwiDC
+ DSvofFpp5H7Dr21dT5wgMlRNWm301BGtmyyzOF1GLUFzkHN5ot/asz7
 X-Developer-Key: i=yc_hsieh@aspeedtech.com; a=ed25519;
  pk=kLxUeF7g6teciq79it9N3tYNgp3yCspZ+AHlYSnZ0gs=
 X-Endpoint-Received: by B4 Relay for yc_hsieh@aspeedtech.com/20260629 with auth_id=844
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The driver uses a global open count to allow only one userspace client
+Allocating IO and IRQ resources to LPC devices is in-theory an operation
 
-to open the BT device at a time. This works for a single device, but
+for the host, however ASPEED systems describe these resources through
 
-also prevents independent BT device instances from being opened
+BMC-internal configuration, as already supported by the ASPEED KCS BMC
 
-concurrently.
+binding.
 
-Move the open count into struct bt_bmc so each device instance tracks
+Add aspeed,lpc-io-reg and aspeed,lpc-interrupts to the ASPEED BT BMC
 
-its own open state. This preserves the single-open behavior per device
+binding so firmware can describe the host LPC IO address and SerIRQ
 
-while allowing multiple BT devices to operate independently.
+configuration using the same properties as KCS devices.
 
 Signed-off-by: Yu-Che Hsieh <yc_hsieh@aspeedtech.com>
 ---
- drivers/char/ipmi/bt-bmc.c | 11 ++++++-----
- 1 file changed, 6 insertions(+), 5 deletions(-)
+ .../bindings/ipmi/aspeed,ast2400-ibt-bmc.yaml       | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
-diff --git a/drivers/char/ipmi/bt-bmc.c b/drivers/char/ipmi/bt-bmc.c
-index f3c67272502f..486ecc0b6815 100644
---- a/drivers/char/ipmi/bt-bmc.c
-+++ b/drivers/char/ipmi/bt-bmc.c
-@@ -64,10 +64,9 @@ struct bt_bmc {
- 	wait_queue_head_t	queue;
- 	struct timer_list	poll_timer;
- 	struct mutex		mutex;
-+	atomic_t		open_count;
- };
+diff --git a/Documentation/devicetree/bindings/ipmi/aspeed,ast2400-ibt-bmc.yaml b/Documentation/devicetree/bindings/ipmi/aspeed,ast2400-ibt-bmc.yaml
+index c4f7cdbbe16b..1803c6bbae93 100644
+--- a/Documentation/devicetree/bindings/ipmi/aspeed,ast2400-ibt-bmc.yaml
++++ b/Documentation/devicetree/bindings/ipmi/aspeed,ast2400-ibt-bmc.yaml
+@@ -25,6 +25,24 @@ properties:
+   interrupts:
+     maxItems: 1
  
--static atomic_t open_count = ATOMIC_INIT(0);
--
- static u8 bt_inb(struct bt_bmc *bt_bmc, int reg)
- {
- 	return readb(bt_bmc->base + reg);
-@@ -152,12 +151,12 @@ static int bt_bmc_open(struct inode *inode, struct file *file)
- {
- 	struct bt_bmc *bt_bmc = file_bt_bmc(file);
- 
--	if (atomic_inc_return(&open_count) == 1) {
-+	if (atomic_inc_return(&bt_bmc->open_count) == 1) {
- 		clr_b_busy(bt_bmc);
- 		return 0;
- 	}
- 
--	atomic_dec(&open_count);
-+	atomic_dec(&bt_bmc->open_count);
- 	return -EBUSY;
- }
- 
-@@ -313,7 +312,7 @@ static int bt_bmc_release(struct inode *inode, struct file *file)
- {
- 	struct bt_bmc *bt_bmc = file_bt_bmc(file);
- 
--	atomic_dec(&open_count);
-+	atomic_dec(&bt_bmc->open_count);
- 	set_b_busy(bt_bmc);
- 	return 0;
- }
-@@ -425,6 +424,8 @@ static int bt_bmc_probe(struct platform_device *pdev)
- 	if (IS_ERR(bt_bmc->base))
- 		return PTR_ERR(bt_bmc->base);
- 
-+	atomic_set(&bt_bmc->open_count, 0);
++  aspeed,lpc-io-reg:
++    $ref: /schemas/types.yaml#/definitions/uint32-array
++    maxItems: 1
++    description: |
++      The host CPU LPC IO address for the BT device.
 +
- 	mutex_init(&bt_bmc->mutex);
- 	init_waitqueue_head(&bt_bmc->queue);
++  aspeed,lpc-interrupts:
++    $ref: /schemas/types.yaml#/definitions/uint32-array
++    minItems: 2
++    maxItems: 2
++    description: |
++      A 2-cell property expressing the LPC SerIRQ number and the interrupt
++      level/sense encoding (specified in the standard fashion).
++
++      Note that the generated interrupt is issued from the BMC to the host, and
++      thus the target interrupt controller is not captured by the BMC's
++      devicetree.
++
+ required:
+   - compatible
+   - reg
+@@ -35,10 +53,13 @@ additionalProperties: false
+ examples:
+   - |
+     #include <dt-bindings/clock/aspeed-clock.h>
++    #include <dt-bindings/interrupt-controller/irq.h>
  
+     bt@1e789140 {
+         compatible = "aspeed,ast2400-ibt-bmc";
+         reg = <0x1e789140 0x18>;
+         interrupts = <8>;
+         clocks = <&syscon ASPEED_CLK_GATE_LCLK>;
++        aspeed,lpc-io-reg = <0xe4>;
++        aspeed,lpc-interrupts = <10 IRQ_TYPE_LEVEL_LOW>;
+     };
 
 -- 
 2.34.1
