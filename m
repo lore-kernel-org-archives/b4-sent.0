@@ -1,74 +1,56 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Mon, 29 Jun 2026 17:01:49 +0400
-Subject: [PATCH v2 6/6] MAINTAINERS: Add entry for Qualcomm IPQ5018
- Bluetooth driver
+From: Shubham Nayak <shubhamnayak392reborn@gmail.com>
+Date: Mon, 29 Jun 2026 19:04:55 +0530
+Subject: [PATCH] ALSA: hda/realtek: Add quirk for HP Victus 16-e0xxx (88EE)
+ to enable mute LED
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260629-ipq5018-bluetooth-v2-6-02770f03b6bb@outlook.com>
-References: <20260629-ipq5018-bluetooth-v2-0-02770f03b6bb@outlook.com>
-In-Reply-To: <20260629-ipq5018-bluetooth-v2-0-02770f03b6bb@outlook.com>
-To: Jens Axboe <axboe@kernel.dk>, Ulf Hansson <ulfh@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Johannes Berg <johannes@sipsolutions.net>, 
- Jeff Johnson <jjohnson@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>, 
- Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- Balakrishna Godavarthi <quic_bgodavar@quicinc.com>, 
- Rocky Liao <quic_rjliao@quicinc.com>, 
- Saravana Kannan <saravanak@kernel.org>, Andrew Lunn <andrew@lunn.ch>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Simon Horman <horms@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Mathieu Poirier <mathieu.poirier@linaro.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-mmc@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-wireless@vger.kernel.org, ath10k@lists.infradead.org, 
- linux-arm-msm@vger.kernel.org, linux-bluetooth@vger.kernel.org, 
- netdev@vger.kernel.org, linux-remoteproc@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>
+Message-Id: <20260629-hp-victus-16-mute-led-v1-1-ab0f4a8a533b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MQQqEMAxG4atI1ga0YESvIi4k/dXAjEqrRRDvP
+ mWW3+K9hyKCIVJfPBSQLNq+ZdRlQbpO2wI2n02uclKJ63g9OJmeV+Ra+Hud4A88Q7t2lkbFKyi
+ 3R8Bs9/87jO/7A2iTRhdnAAAA
+X-Change-ID: 20260629-hp-victus-16-mute-led-ec97f65c6dce
+To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Shubham Nayak <shubhamnayak392reborn@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782738117; l=906;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=DrQrzkPl3cbWFmYstKvKokgP5FFWzafGXK+cjmpTmUA=;
- b=WHjMybUgY1YmSj4Ea/kchfwjt9e395GAYngQB0uqV2f8fpoxFPAByR3nOPcenEnDMEMZ8Y3yx
- mlGy6okm/1TCDAfx2bhlJTXU7gZa4Ap8w7tJAuCmQsqRCYAJytae/qt
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782740100; l=1490;
+ i=shubhamnayak392reborn@gmail.com; s=20260629; h=from:subject:message-id;
+ bh=Qqf8k6jfE2KXdV3i+h3bvmF6ziZnAh3BjiKApx91t8k=;
+ b=3h6uuSCkcS9U8ax/2mywgKHAV5otQGMtnuYXT+3jJrY0OuzGHp7+rK+3GuLMryRieVk2h5Vya
+ 9opf0c5OLFOCGtOfJmNrFT7B1xAo+eA+/a7zp/L0eRCLJMhdMKMfaMm
+X-Developer-Key: i=shubhamnayak392reborn@gmail.com; a=ed25519;
+ pk=pfvgsrur4oBhDMjTahMVCzHlwIm99bphVOKDDAwksd8=
+X-Endpoint-Received: by B4 Relay for shubhamnayak392reborn@gmail.com/20260629 with auth_id=845
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add maintainers entry for Qualcomm IPQ5018 Bluetooth driver.
+The mute LED on the HP Victus 16-e0xxx (board ID 88EE, ALC245 codec)
+does not function by default. Add the ALC245_FIXUP_HP_MUTE_LED_COEFBIT
+quirk to enable it. Tested on my HP Victus 16-e0xxx with kernel 7.1.2.
 
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Signed-off-by: Shubham Nayak <shubhamnayak392reborn@gmail.com>
 ---
- MAINTAINERS | 7 +++++++
- 1 file changed, 7 insertions(+)
+ sound/hda/codecs/realtek/alc269.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 0b9d7c8276ac..60f7251d1a16 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -22289,6 +22289,13 @@ S:	Maintained
- F:	Documentation/devicetree/bindings/regulator/vqmmc-ipq4019-regulator.yaml
- F:	drivers/regulator/vqmmc-ipq4019-regulator.c
- 
-+QUALCOMM IPQ5018 BLUETOOTH DRIVER
-+M:	George Moussalem <george.moussalem@outlook.com>
-+L:	linux-bluetooth@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/net/bluetooth/qcom,ipq5018-bt.yaml
-+F:	drivers/bluetooth/btqcomipc.c
-+
- QUALCOMM IRIS VIDEO ACCELERATOR DRIVER
- M:	Vikash Garodia <vikash.garodia@oss.qualcomm.com>
- M:	Dikshita Agarwal <dikshita.agarwal@oss.qualcomm.com>
+diff --git a/sound/hda/codecs/realtek/alc269.c b/sound/hda/codecs/realtek/alc269.c
+index 21ab891fcb47..9ce143598b66 100644
+--- a/sound/hda/codecs/realtek/alc269.c
++++ b/sound/hda/codecs/realtek/alc269.c
+@@ -7087,6 +7087,7 @@ static const struct hda_quirk alc269_fixup_tbl[] = {
+ 	SND_PCI_QUIRK(0x103c, 0x88d1, "HP Pavilion 15-eh1xxx (mainboard 88D1)", ALC245_FIXUP_HP_MUTE_LED_V1_COEFBIT),
+ 	SND_PCI_QUIRK(0x103c, 0x88dd, "HP Pavilion 15z-ec200", ALC285_FIXUP_HP_MUTE_LED),
+ 	SND_PCI_QUIRK(0x103c, 0x88eb, "HP Victus 16-e0xxx", ALC245_FIXUP_HP_MUTE_LED_V2_COEFBIT),
++	SND_PCI_QUIRK(0x103c, 0x88ee, "HP Victus 16-e0xxx (MB 88EE)", ALC245_FIXUP_HP_MUTE_LED_COEFBIT),
+ 	SND_PCI_QUIRK(0x103c, 0x8902, "HP OMEN 16", ALC285_FIXUP_HP_MUTE_LED),
+ 	SND_PCI_QUIRK(0x103c, 0x890e, "HP 255 G8 Notebook PC", ALC236_FIXUP_HP_MUTE_LED_COEFBIT2),
+ 	SND_PCI_QUIRK(0x103c, 0x8919, "HP Pavilion Aero Laptop 13-be0xxx", ALC287_FIXUP_HP_GPIO_LED),
 
+---
+base-commit: bcb8896e30a3cd684af57a16df0111f4ab4baf59
+change-id: 20260629-hp-victus-16-mute-led-ec97f65c6dce
+
+Best regards,
 -- 
-2.53.0
+Shubham Nayak <shubhamnayak392reborn@gmail.com>
 
