@@ -1,164 +1,118 @@
-From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Mon, 29 Jun 2026 10:23:45 -0700
-Subject: [PATCH net-next v6 15/15] Documentation: networking: Add timestamp
- related APIs to OA TC6 framework
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Date: Mon, 29 Jun 2026 21:51:55 +0200
+Subject: [PATCH v2] iio: imu: inv_icm42600: fix timestamping by limiting
+ FIFO reading
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260629-s2500-mac-phy-support-v6-15-18ce79500371@onsemi.com>
-References: <20260629-s2500-mac-phy-support-v6-0-18ce79500371@onsemi.com>
-In-Reply-To: <20260629-s2500-mac-phy-support-v6-0-18ce79500371@onsemi.com>
-To: Andrew Lunn <andrew@lunn.ch>, 
- Piergiorgio Beruto <pier.beruto@onsemi.com>, 
- Heiner Kallweit <hkallweit1@gmail.com>, 
- Russell King <linux@armlinux.org.uk>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
- Selva Rajagopal <selvamani.rajagopal@onsemi.com>, 
- Richard Cochran <richardcochran@gmail.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Simon Horman <horms@kernel.org>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-doc@vger.kernel.org, 
- Jerry Ray <jerry.ray@microchip.com>, 
- Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782753817; l=5404;
- i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=JW25hgT0kCWM94H070UZ8n9koUMRIcHtnQFDviGNI3M=;
- b=GefbTPQisljgUOfuJsMZBmx2eLEpt4ysoL3/sRSpFmrTL57fWSfRMa8DbKNr/fusMZaErRsHq
- mjv9qsvxBGrCJ92zQ4enYdZZNN1x06CT1KjhZBlkUZRmS2KY57Sj4J1
-X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
- pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
-X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260629-inv-icm42600-fix-watermark-fifo-reading-v2-1-967e375db7b3@tdk.com>
+X-B4-Tracking: v=1; b=H4sIANrMQmoC/5WOQQ7CIBQFr9Kw9hugFKsr72G6QArt1xQMIGqa3
+ l1aT+ByksmbN5NoAppITtVMgskY0bsCfFcRPSo3GMC+MOGUSyp5DegyoJ5EQQoW3/BSyYRJhXs
+ h6yEY1aMbQHKhlaUtPTSClLVHMMXeSpfux/F5vRmd1vnVGDEmHz7blcxW7/9qZsDA1raRR6Fa1
+ qpz6u977SfSLcvyBbqWBZHuAAAA
+X-Change-ID: 20260623-inv-icm42600-fix-watermark-fifo-reading-624caf080754
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>, 
+ linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jonathan Cameron <jic23@kernel.org>, stable@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782762742; l=3459;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=nQhkZPtLs3PxMsL5AOyaO81u0Ro6Jo38fVYTn+BsJME=;
+ b=yNVbPmWmarrbpNgNuwBQ178hkXzXHqoQp/X8hWQ65VmW5iY76m8EurFHMdJuhiYWYIGd3L5jT
+ SWPomtYGum/BbS0QinLJhieEwMKSikWg4wbFY+i32wgeOde28Se91zn
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Added new APIs to support hardware timestamp feature as defined in
-OPEN Alliance 10BASE-T1x MAC-PHY serial interface specification.
+Timestamps are made by measuring the chip clock using the watermark
+interrupts. If we read more than watermark samples as done today, we
+are reducing the period between interrupts and distort the time
+measurement. Fix that by reading only watermark samples in the
+interrupt case.
 
-Expanded read/write APIs to take new mms parameter to avoid
-bit manipulation before calling regular read/write APIs
+Fixes: 7f85e42a6c54 ("iio: imu: inv_icm42600: add buffer support in iio devices")
+Cc: stable@vger.kernel.org
+Signed-off-by: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>
+---
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+---
+Changes in v2:
+- Delete watermark computation rework, keep only FIFO read fix.
+- Link to v1: https://patch.msgid.link/20260623-inv-icm42600-fix-watermark-fifo-reading-v1-1-f3f5694a818a@tdk.com
 
-Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+To: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+To: Jonathan Cameron <jic23@kernel.org>
+To: David Lechner <dlechner@baylibre.com>
+To: Nuno Sá <nuno.sa@analog.com>
+To: Andy Shevchenko <andy@kernel.org>
+Cc: Jonathan Cameron <Jonathan.Cameron@huawei.com>
+Cc: Jean-Baptiste Maneyrol <jmaneyrol@invensense.com>
+Cc: linux-iio@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+---
+ drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c | 9 +++++----
+ drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h | 1 +
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
+index 68a395758031..5c3840acf085 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.c
+@@ -248,6 +248,7 @@ int inv_icm42600_buffer_update_watermark(struct inv_icm42600_state *st)
+ 
+ 	/* compute watermark value in bytes */
+ 	wm_size = watermark * packet_size;
++	st->fifo.watermark.value = watermark;
+ 
+ 	/* changing FIFO watermark requires to turn off watermark interrupt */
+ 	ret = regmap_update_bits_check(st->map, INV_ICM42600_REG_INT_SOURCE0,
+@@ -454,11 +455,10 @@ int inv_icm42600_buffer_fifo_read(struct inv_icm42600_state *st,
+ 	st->fifo.nb.accel = 0;
+ 	st->fifo.nb.total = 0;
+ 
+-	/* compute maximum FIFO read size */
++	/* compute maximum FIFO read size (watermark for max = 0 interrupt case) */
+ 	if (max == 0)
+-		max_count = sizeof(st->fifo.data);
+-	else
+-		max_count = max * inv_icm42600_get_packet_size(st->fifo.en);
++		max = st->fifo.watermark.value;
++	max_count = max * inv_icm42600_get_packet_size(st->fifo.en);
+ 
+ 	/* read FIFO count value */
+ 	raw_fifo_count = (__be16 *)st->buffer;
+@@ -574,6 +574,7 @@ int inv_icm42600_buffer_init(struct inv_icm42600_state *st)
+ 
+ 	st->fifo.watermark.eff_gyro = 1;
+ 	st->fifo.watermark.eff_accel = 1;
++	st->fifo.watermark.value = 1;
+ 
+ 	/*
+ 	 * Default FIFO configuration (bits 7 to 5)
+diff --git a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h
+index ffca4da1e249..88b8b9f780af 100644
+--- a/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h
++++ b/drivers/iio/imu/inv_icm42600/inv_icm42600_buffer.h
+@@ -34,6 +34,7 @@ struct inv_icm42600_fifo {
+ 		unsigned int accel;
+ 		unsigned int eff_gyro;
+ 		unsigned int eff_accel;
++		unsigned int value;
+ 	} watermark;
+ 	size_t count;
+ 	struct {
 
 ---
-changes in v6
-  - No change
-changes in v5
-  - Fixed "no blank line" issues in four places
-changes in v4
-  - Added information for new APIs in OA TC6 framework
-changes in v3
-  - Added more information for documentation
-changes in v2
-  - Removed the changes to the existing API
-  - Updated information about newly added APIs
-changes in v1
-  - Added changes to an existing API
-  - Added documentation to new hardware timestamp related APIs
----
- Documentation/networking/oa-tc6-framework.rst | 80 +++++++++++++++++++++++++++
- 1 file changed, 80 insertions(+)
+base-commit: cc746297b23e89bd5df9f91f3a0ca209e8991763
+change-id: 20260623-inv-icm42600-fix-watermark-fifo-reading-624caf080754
 
-diff --git a/Documentation/networking/oa-tc6-framework.rst b/Documentation/networking/oa-tc6-framework.rst
-index fe2aabde923a..325d299d1a7d 100644
---- a/Documentation/networking/oa-tc6-framework.rst
-+++ b/Documentation/networking/oa-tc6-framework.rst
-@@ -153,6 +153,10 @@ OPEN Alliance TC6 Framework
- - Forwards the received Ethernet frame from 10Base-T1x MAC-PHY to n/w
-   subsystem.
- 
-+- If supported by the hardware and enabled, updates hardware timestamp
-+  in skb, when indicated by one of the three timestamp capture registers
-+  through TSC fields of the header.
-+
- Data Transaction
- ~~~~~~~~~~~~~~~~
- 
-@@ -495,3 +499,79 @@ the MAC-PHY.
- Zero align receive frame feature can be enabled to align all receive ethernet
- frames data to start at the beginning of any receive data chunk payload with a
- start word offset (SWO) of zero.
-+
-+.. c:function:: int oa_tc6_ptp_register(struct oa_tc6 *tc6, \
-+                                        struct ptp_clock_info *info);
-+
-+Registers the PTP hardware clock related functions with the kernel.
-+This API simply registers. Initialization of the fields in the
-+ptp_clock_info structure are left to the vendor as programming hardware
-+timer is expected to be vendor dependent. The fields max_adj, owner,
-+and all the functions for the clock operations, like adjfine, gettimex64,
-+settime64, adjtime are expected to be initialized in the structure before
-+calling the registering the hardware clock.
-+
-+.. c:function:: void oa_tc6_ptp_unregister(struct oa_tc6 *tc6);
-+
-+Unregisters the PTP hardware clock related callbacks.
-+
-+.. c:function:: int oa_tc6_ioctl(struct oa_tc6 *tc6, struct ifreq *rq, \
-+                                 int cmd);
-+
-+ioctl interface to handle hardware timestamp and PHY related commands.
-+
-+.. c:function:: int oa_tc6_get_ts_info(struct oa_tc6 *tc6, \
-+                                       struct kernel_ethtool_ts_info *info);
-+
-+Provides timestamp related settings that are supported to ethtool.
-+
-+.. c:function:: void oa_tc6_hwtstamp_get(struct oa_tc6 *tc6, \
-+                                         struct kernel_hwtstamp_config *cfg);
-+
-+Returns hardware timestamp configuration. Part of net_device_ops callbacks.
-+
-+.. c:function:: void oa_tc6_get_ts_stats(struct oa_tc6 *tc6, \
-+                                         struct ethtool_ts_stats *ts_stats);
-+
-+Provides hardware timestamp related traffic statistics for ethtool.
-+
-+.. c:function:: int oa_tc6_hwtstamp_set(struct oa_tc6 *tc6, \
-+                                         struct kernel_hwtstamp_config *cfg);
-+
-+Helper to set hardware timestamp configuration. Part of net_device_ops
-+callbacks.
-+
-+.. c:function:: void oa_tc6_set_vend1_mms(struct oa_tc6 *tc6, int mms);
-+
-+Helper to map MDIO_MMD_VEND1 command to vendor specific Memory Map Select
-+(MMS) value. This function offers flexibility for vendors that may have
-+used any MMS value between 10 and 15 as allowed by the specification.
-+MDIO_MMD_VEND2 is already mapped to MMS4 in the OA TC6 frame work code.
-+
-+.. c:function:: int oa_tc6_write_registers_mms(struct oa_tc6 *tc6, \
-+                                               u16 address, u16 mms, \
-+                                               u32 value[], u8 length);
-+
-+Writing multiple consecutive registers starting from @address for the
-+given @mms memory map selector in the MAC-PHY. Maximum of 128 consecutive
-+registers can be written starting at @address.
-+
-+.. c:function:: int oa_tc6_write_register_mms(struct oa_tc6 *tc6, \
-+                                              u16 address, u16 mms, \
-+                                              u32 value);
-+
-+Write a single register addressed by @address and @mms in the MAC-PHY.
-+
-+.. c:function:: int oa_tc6_read_registers_mms(struct oa_tc6 *tc6, \
-+                                              u16 address, u16 mms, \
-+                                              u32 value[], u8 length);
-+
-+Reading multiple consecutive registers starting from @address for the
-+given @mms memory map selector value, in the MAC-PHY. Maximum of 128
-+consecutive registers can be read starting at @address.
-+
-+.. c:function:: int oa_tc6_read_register_mms(struct oa_tc6 *tc6, \
-+                                             u16 address, u16 mms, \
-+                                             u32 *value);
-+
-+Read a single register addressed by @address and @mms in the MAC-PHY.
-
--- 
-2.43.0
+Best regards,
+--  
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
