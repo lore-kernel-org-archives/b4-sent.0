@@ -1,171 +1,213 @@
-From: Jia Wang <wangjia@ultrarisc.com>
-Date: Mon, 29 Jun 2026 13:59:51 +0800
-Subject: [PATCH 2/2] PCI: ultrarisc: get and enable DP1000 PCIe clocks
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Date: Mon, 29 Jun 2026 06:41:51 +0000
+Subject: [PATCH] arm64: dts: amlogic: add some device nodes for A9
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260629-ultrarisc-pci-clk-v1-2-5ea3308fdab3@ultrarisc.com>
-References: <20260629-ultrarisc-pci-clk-v1-0-5ea3308fdab3@ultrarisc.com>
-In-Reply-To: <20260629-ultrarisc-pci-clk-v1-0-5ea3308fdab3@ultrarisc.com>
-To: Xincheng Zhang <zhangxincheng@ultrarisc.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
- Bjorn Helgaas <bhelgaas@google.com>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+Message-Id: <20260629-a9-node-v1-1-42ff6a0c16ab@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAK4TQmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDMyNL3URL3bz8lFRd41SztOTUpETzZEsDJaDqgqLUtMwKsEnRsbW1AAQ
+ 6oYpZAAAA
+X-Change-ID: 20260629-a9-node-3e6fceba7c90
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>
-Cc: linux-pci@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Jia Wang <wangjia@ultrarisc.com>
-X-Mailer: b4 0.15-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782712801; l=3985;
- i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
- bh=LtJ66+myRw3X2vCGc+65Ap5gE7bLwVO+Sf4xHFQmlfE=;
- b=MwLsvGel0miFh1m/CsqhcqyhlWjcj9ABZiQcYV9GLudA9sNZHyysEEht7zGI/ohO+kuOKDOYC
- 9l0jGwIGC0JDC7FbhPyTKnPAGmywPtX+w/tVIsl+VfYlUlcI+w+JvET
-X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
- pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
-X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
+Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782715311; l=5289;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=qsqMagQntUJk2+7nKd+Qfbf+tdW0g4n8khbu2y9iCho=;
+ b=38v+7CfaRd6EV/UMT6fu9MuQbrcIgyUeFJuxl0LYqrsoLtV/DjAjF56OEhN2PtvvEdaM63/yi
+ 3MKG7QMdJmpCYpV+E+ESfxUHLwaUcsBc5eB1zbSfnP3aa6ESTdb85vf
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the required core, dbi, and aux clocks for the DP1000 PCIe
-controller and enable them before initializing the DesignWare host.
+Add pinctrl and irqchip-gpio device nodes for A9 SoC.
 
-Also manage the clocks across system suspend and resume.
-
-Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- drivers/pci/controller/dwc/pcie-ultrarisc.c | 74 ++++++++++++++++++++++++++---
- 1 file changed, 67 insertions(+), 7 deletions(-)
+Add pinctrl and irqchip-gpio device node for A9.
+---
+ arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi | 140 ++++++++++++++++++++++++++++
+ 1 file changed, 140 insertions(+)
 
-diff --git a/drivers/pci/controller/dwc/pcie-ultrarisc.c b/drivers/pci/controller/dwc/pcie-ultrarisc.c
-index 6ee661ceff67..74010a86244e 100644
---- a/drivers/pci/controller/dwc/pcie-ultrarisc.c
-+++ b/drivers/pci/controller/dwc/pcie-ultrarisc.c
-@@ -5,6 +5,7 @@
-  * Copyright (C) 2026 UltraRISC Technology (Shanghai) Co., Ltd.
-  */
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
+index 660c8556a864..cdc57b685cc3 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
+@@ -6,6 +6,7 @@
+ #include <dt-bindings/interrupt-controller/irq.h>
+ #include <dt-bindings/interrupt-controller/arm-gic.h>
+ #include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pinctrl/amlogic,pinctrl.h>
  
-+#include <linux/clk.h>
- #include <linux/kernel.h>
- #include <linux/module.h>
- #include <linux/of_device.h>
-@@ -23,6 +24,11 @@
+ / {
+ 	interrupt-parent = <&gic>;
+@@ -97,6 +98,95 @@ soc {
+ 		#size-cells = <2>;
+ 		ranges;
  
- #define ULTRARISC_PCIE_COMP_TIMEOUT_65_210MS	0x6
- 
-+struct ultrarisc_pcie {
-+	struct dw_pcie pci;
-+	struct clk_bulk_data clks[3];
-+};
++		apb: bus@fe000000 {
++			compatible = "simple-bus";
++			reg = <0x0 0xfe000000 0x0 0x480000>;
++			#address-cells = <2>;
++			#size-cells = <2>;
++			ranges = <0x0 0x0 0x0 0xfe000000 0x0 0x480000>;
 +
- static struct pci_ops ultrarisc_pci_ops = {
- 	.map_bus = dw_pcie_own_conf_map_bus,
- 	.read = pci_generic_config_read32,
-@@ -98,17 +104,46 @@ static const struct dw_pcie_ops dw_pcie_ops = {
- 	.start_link = ultrarisc_pcie_start_link,
++			periphs_pinctrl: pinctrl@4000 {
++				compatible = "amlogic,pinctrl-a9";
++				#address-cells = <2>;
++				#size-cells = <2>;
++				ranges = <0x0 0x0 0x0 0x4000 0x0 0x340>;
++
++				gpioz: gpio@c0 {
++					reg = <0 0xc0 0 0x20>, <0 0x18 0 0x8>;
++					reg-names = "gpio", "mux";
++					gpio-controller;
++					#gpio-cells = <2>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_Z<<8) 16>;
++				};
++
++				gpiox: gpio@100 {
++					reg = <0 0x100 0 0x24>, <0 0xc 0 0x8>;
++					reg-names = "gpio", "mux";
++					gpio-controller;
++					#gpio-cells = <2>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_X<<8) 18>;
++				};
++
++				gpioh: gpio@140 {
++					reg = <0 0x140 0 0x20>, <0 0x2c 0 0x4>;
++					reg-names = "gpio", "mux";
++					gpio-controller;
++					#gpio-cells = <2>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_H<<8) 8>;
++				};
++
++				gpiom: gpio@1a0 {
++					reg = <0 0x1a0 0 0x20>, <0 0x20 0 0x4>;
++					reg-names = "gpio", "mux";
++					gpio-controller;
++					#gpio-cells = <2>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_M<<8) 8>;
++				};
++
++				gpiob: gpio@240 {
++					reg = <0 0x240 0 0x20>, <0 0x0 0 0x8>;
++					reg-names = "gpio", "mux";
++					gpio-controller;
++					#gpio-cells = <2>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_B<<8) 14>;
++				};
++
++				gpioa: gpio@280 {
++					reg = <0 0x280 0 0x24>, <0 0x40 0 0xc>;
++					reg-names = "gpio", "mux";
++					gpio-controller;
++					#gpio-cells = <2>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_A<<8) 20>;
++				};
++
++				gpioy: gpio@2c0 {
++					reg = <0 0x2c0 0 0x20>, <0 0x30 0 0x8>;
++					reg-names = "gpio", "mux";
++					gpio-controller;
++					#gpio-cells = <2>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_Y<<8) 10>;
++				};
++
++				gpiocc: gpio@300 {
++					reg = <0 0x300 0 0x20>, <0 0x14 0 0x4>;
++					reg-names = "gpio", "mux";
++					gpio-controller;
++					#gpio-cells = <2>;
++					gpio-ranges = <&periphs_pinctrl 0 (AMLOGIC_GPIO_CC<<8) 2>;
++				};
++			};
++
++			gpio_intc: interrupt-controller@4080 {
++				compatible = "amlogic,a9-gpio-intc",
++					     "amlogic,meson-gpio-intc";
++				reg = <0x0 0x4080 0x0 0x20>;
++				interrupt-controller;
++				#interrupt-cells = <2>;
++				amlogic,channel-interrupts =
++					<10 11 12 13 14 15 16 17 18 19 20 21>;
++			};
++		};
++
+ 		gic: interrupt-controller@ff800000 {
+ 			compatible = "arm,gic-v3";
+ 			#interrupt-cells = <3>;
+@@ -123,6 +213,56 @@ uart_b: serial@1e000 {
+ 				clock-names = "xtal", "pclk", "baud";
+ 				status = "disabled";
+ 			};
++
++			aobus_pinctrl: pinctrl@4000 {
++				compatible = "amlogic,pinctrl-a9";
++				#address-cells = <2>;
++				#size-cells = <2>;
++				ranges = <0x0 0x0 0x0 0x4000 0x0 0x0e0>;
++
++				gpioao: gpio@1c {
++					reg = <0 0x1c 0 0x20>, <0 0x0 0 0x8>;
++					reg-names = "gpio", "mux";
++					gpio-controller;
++					#gpio-cells = <2>;
++					gpio-ranges = <&aobus_pinctrl 0 (AMLOGIC_GPIO_AO<<8) 13>;
++				};
++
++				gpioc: gpio@3c {
++					reg = <0 0x3c 0 0x20>, <0 0x10 0 0x4>;
++					reg-names = "gpio", "mux";
++					gpio-controller;
++					#gpio-cells = <2>;
++					gpio-ranges = <&aobus_pinctrl 0 (AMLOGIC_GPIO_C<<8) 7>;
++				};
++
++				gpiod: gpio@5c {
++					reg = <0 0x5c 0 0x24>, <0 0x8 0 0x8>;
++					reg-names = "gpio", "mux";
++					gpio-controller;
++					#gpio-cells = <2>;
++					gpio-ranges = <&aobus_pinctrl 0 (AMLOGIC_GPIO_D<<8) 18>;
++				};
++
++				test_n: gpio@c0 {
++					reg = <0 0xc0 0 0x20>;
++					reg-names = "gpio";
++					gpio-controller;
++					#gpio-cells = <2>;
++					gpio-ranges = <&aobus_pinctrl 0 (AMLOGIC_GPIO_TEST_N<<8) 1>;
++				};
++			};
++
++			gpio_ao_intc: interrupt-controller@4080 {
++				compatible = "amlogic,a9-gpio-ao-intc",
++					     "amlogic,meson-gpio-intc";
++				reg = <0x0 0x4080 0x0 0x34>;
++				interrupt-controller;
++				#interrupt-cells = <2>;
++				amlogic,channel-interrupts =
++					<384 385 386 387 388 389 390 391 392 393
++					394 395 396 397 398 399 400 401 402 403>;
++			};
+ 		};
+ 	};
  };
- 
-+static void ultrarisc_pcie_disable_clks(void *data)
-+{
-+	struct ultrarisc_pcie *ultra = data;
-+
-+	clk_bulk_disable_unprepare(ARRAY_SIZE(ultra->clks), ultra->clks);
-+}
-+
-+static int ultrarisc_pcie_init_clks(struct ultrarisc_pcie *ultra)
-+{
-+	struct device *dev = ultra->pci.dev;
-+	int ret;
-+
-+	ultra->clks[0].id = "core";
-+	ultra->clks[1].id = "dbi";
-+	ultra->clks[2].id = "aux";
-+
-+	ret = devm_clk_bulk_get(dev, ARRAY_SIZE(ultra->clks), ultra->clks);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "Failed to get clocks\n");
-+
-+	ret = clk_bulk_prepare_enable(ARRAY_SIZE(ultra->clks), ultra->clks);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "Failed to enable clocks\n");
-+
-+	return devm_add_action_or_reset(dev, ultrarisc_pcie_disable_clks, ultra);
-+}
-+
- static int ultrarisc_pcie_probe(struct platform_device *pdev)
- {
-+	struct ultrarisc_pcie *ultra;
- 	struct device *dev = &pdev->dev;
- 	struct dw_pcie_rp *pp;
- 	struct dw_pcie *pci;
- 	int ret;
- 
--	pci = devm_kzalloc(dev, sizeof(*pci), GFP_KERNEL);
--	if (!pci)
-+	ultra = devm_kzalloc(dev, sizeof(*ultra), GFP_KERNEL);
-+	if (!ultra)
- 		return -ENOMEM;
- 
-+	pci = &ultra->pci;
- 	pci->dev = dev;
- 	pci->ops = &dw_pcie_ops;
- 
-@@ -117,7 +152,11 @@ static int ultrarisc_pcie_probe(struct platform_device *pdev)
- 
- 	pp = &pci->pp;
- 
--	platform_set_drvdata(pdev, pci);
-+	platform_set_drvdata(pdev, ultra);
-+
-+	ret = ultrarisc_pcie_init_clks(ultra);
-+	if (ret)
-+		return ret;
- 
- 	pp->num_vectors = MAX_MSI_IRQS;
- 	/* No L2/L3 Ready indication is available on this platform */
-@@ -135,16 +174,37 @@ static int ultrarisc_pcie_probe(struct platform_device *pdev)
- 
- static int ultrarisc_pcie_suspend_noirq(struct device *dev)
- {
--	struct dw_pcie *pci = dev_get_drvdata(dev);
-+	struct ultrarisc_pcie *ultra = dev_get_drvdata(dev);
-+	struct dw_pcie *pci = &ultra->pci;
-+	int ret;
-+
-+	ret = dw_pcie_suspend_noirq(pci);
-+	if (ret)
-+		return ret;
- 
--	return dw_pcie_suspend_noirq(pci);
-+	if (pci->suspended)
-+		clk_bulk_disable_unprepare(ARRAY_SIZE(ultra->clks), ultra->clks);
-+
-+	return 0;
- }
- 
- static int ultrarisc_pcie_resume_noirq(struct device *dev)
- {
--	struct dw_pcie *pci = dev_get_drvdata(dev);
-+	struct ultrarisc_pcie *ultra = dev_get_drvdata(dev);
-+	struct dw_pcie *pci = &ultra->pci;
-+	int ret;
-+
-+	if (pci->suspended) {
-+		ret = clk_bulk_prepare_enable(ARRAY_SIZE(ultra->clks), ultra->clks);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	ret = dw_pcie_resume_noirq(pci);
-+	if (ret && pci->suspended)
-+		clk_bulk_disable_unprepare(ARRAY_SIZE(ultra->clks), ultra->clks);
- 
--	return dw_pcie_resume_noirq(pci);
-+	return ret;
- }
- 
- static const struct dev_pm_ops ultrarisc_pcie_pm_ops = {
 
+---
+base-commit: 3d5670d672ae08b8c534b7beed6f57c8b44e7b43
+change-id: 20260629-a9-node-3e6fceba7c90
+
+Best regards,
 -- 
-2.34.1
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
