@@ -1,322 +1,97 @@
-From: Michael Reeves <michael.reeves077@gmail.com>
-Date: Tue, 30 Jun 2026 22:54:38 +1000
-Subject: [PATCH 10/10] arm64: dts: apple: Enable DockChannel HID on M2 and
- M3 laptops
+From: Enrico Pozzobon <enrico.pozzobon@dissecto.com>
+Date: Tue, 30 Jun 2026 16:15:44 +0200
+Subject: [PATCH net] net: usb: lan78xx: disable VLAN filter in promiscuous
+ mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260630-apple-mtp-keyboard-final-v1-10-506d936a1707@gmail.com>
-References: <20260630-apple-mtp-keyboard-final-v1-0-506d936a1707@gmail.com>
-In-Reply-To: <20260630-apple-mtp-keyboard-final-v1-0-506d936a1707@gmail.com>
-To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
- Neal Gompa <neal@gompa.dev>, Jassi Brar <jassisinghbrar@gmail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Hector Martin <marcan@marcan.st>, 
- "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
- Robin Murphy <robin.murphy@arm.com>, 
- Dmitry Torokhov <dmitry.torokhov@gmail.com>, Jiri Kosina <jikos@kernel.org>, 
- Benjamin Tissoires <bentiss@kernel.org>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- iommu@lists.linux.dev, linux-input@vger.kernel.org, 
- Michael Reeves <michael.reeves077@gmail.com>
+Message-Id: <20260630-lan78xx-vlan-promisc-v1-1-fbf0f903bd8f@dissecto.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWM0QqCQBBFf0XucwO2hi79SvQwbWNN1Co7Jgviv
+ 7fp2z0XzllgklQM52pBkllNh1jgeKgQnhwfQnovDFe7tm5dQ2+Onc+Z5jJoTMNHLZBvuPd88tx
+ JQFHHJL3mLXtBlAnX/bTv7SVh+gexrj+c/TptfQAAAA==
+X-Change-ID: 20260623-lan78xx-vlan-promisc-83af8a48a7ec
+To: Thangaraj Samynathan <Thangaraj.S@microchip.com>, 
+ Rengarajan Sundararajan <Rengarajan.S@microchip.com>, 
+ UNGLinuxDriver@microchip.com, Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Woojung.Huh@microchip.com
+Cc: netdev@vger.kernel.org, linux-usb@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, 
+ Enrico Pozzobon <enrico.pozzobon@dissecto.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782824083; l=6180;
- i=michael.reeves077@gmail.com; s=20260105; h=from:subject:message-id;
- bh=tv27VX+CaTGZeapPRJMnGAMPH4P1r9z5DHhM9G5AeOE=;
- b=zWEgyKLqb7DYVLvaL+tRccLtoK0/mCGzg4iLmXtFH8zbgRDoMOuTzjnwtAwiOBUUdzqKDaSVd
- u96i5HuJzPLA0KJi2OEMocQlcZP1UlTnM2yym4ZyJhgOtzNjVxCUy77
-X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
- pk=QIrgWBGCm3LG0YYc6MLCDkwuVXLTGGooVBdWX/KhSiU=
-X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/20260105 with auth_id=591
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2447;
+ i=enrico.pozzobon@dissecto.com; h=from:subject:message-id;
+ bh=bIwnc5BgyWpD7lh2kO182FaahM9KA6UXn2GOq+qIiR8=;
+ b=owEBbQGS/pANAwAKAfB2RbS6BRipAcsmYgBqQ8+8/wyMoAeNBOxZzpXYbCvn4s+ZCLPV7ghbn
+ QoIGddxQK2JATMEAAEKAB0WIQT58xDVmo5qdqM1wSrwdkW0ugUYqQUCakPPvAAKCRDwdkW0ugUY
+ qaB5B/9VlU0xwm3cQBq+9uWbxzEf4Cy5w/pSIg2UVvuF/MhtMb5Id1mYlanE2NLJrd2JSbHXKQq
+ +GUVHp58Sql963S78jqwDF1Dj/wHaegT8w9oxwISxo9mgAls2s8cmPfrW6H9MBApqmlAp2T5xNI
+ 1jJ7f1Q32lZ4S/oCe3Qg+PeConUyo8kdqPqE+B0JLAe6+yKaBnRdOY36OYAdRSUmkNNQ/01YTob
+ IvCRKblNVekOgnVojYVb8oKChJfz36XE0ct3/dA1fdmkpkVtWPIkpXc23akLfH60/nL/a1637py
+ 5rqmRLXr2hgYH8wbE4DiOZGZ4UieU1/gNrWrY1wiLZYvyeAG
+X-Developer-Key: i=enrico.pozzobon@dissecto.com; a=openpgp;
+ fpr=53D697CA0B11F68C9552A59DA3D0B3A0924EA5BB
+X-Endpoint-Received: by B4 Relay for enrico.pozzobon@dissecto.com/default with auth_id=836
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the MTP mailbox, DART, DockChannel mailbox, and HID transport on
-the M2 and M3 laptop device trees using this internal input path.
+The hardware VLAN filter (RFE_CTL_VLAN_FILTER_) drops VLAN-tagged frames
+whose VID has not been registered via lan78xx_vlan_rx_add_vid(). It is
+left enabled in promiscuous mode, so packet capture (e.g. tcpdump or
+Wireshark) does not see tagged frames for unregistered VIDs.
 
-Add a keyboard alias and keyboard child node for each machine so the
-transport can expose the internal keyboard.
+Clear the filter while the interface is promiscuous and restore it from
+NETIF_F_HW_VLAN_CTAG_FILTER otherwise. Enforce the same condition in
+lan78xx_set_features() so netdev_update_features() cannot re-enable the
+filter while promiscuous.
 
-Co-developed-by: Hector Martin <marcan@marcan.st>
-Signed-off-by: Hector Martin <marcan@marcan.st>
-Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
+Fixes: 55d7de9de6c3 ("Microchip's LAN7800 family USB 2/3 to 10/100/1000 Ethernet device driver")
+Signed-off-by: Enrico Pozzobon <enrico.pozzobon@dissecto.com>
 ---
- arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi | 25 +++++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j413.dts       | 20 ++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j415.dts       | 20 ++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8112-j493.dts       | 22 +++++++++++++++++++++-
- arch/arm64/boot/dts/apple/t8122-j504.dts       | 22 ++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8122-j613.dts       | 23 +++++++++++++++++++++++
- arch/arm64/boot/dts/apple/t8122-j615.dts       | 23 +++++++++++++++++++++++
- 7 files changed, 154 insertions(+), 1 deletion(-)
+Currently, on microchip lan7801, enabling promiscuous mode does not
+result in VLAN tagged packets being captured. This patch fixes this,
+forcing the RFE_CTL_VLAN_FILTER_ flag to be off when promiscuous mode is
+enabled.
+---
+ drivers/net/usb/lan78xx.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi b/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi
-index 0e806d8ddf81..46ed5ea86242 100644
---- a/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi
-+++ b/arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi
-@@ -16,6 +16,12 @@
+diff --git a/drivers/net/usb/lan78xx.c b/drivers/net/usb/lan78xx.c
+index c4cebacabcb5..a1a53ef85cb9 100644
+--- a/drivers/net/usb/lan78xx.c
++++ b/drivers/net/usb/lan78xx.c
+@@ -1525,7 +1525,14 @@ static void lan78xx_set_multicast(struct net_device *netdev)
+ 	if (dev->net->flags & IFF_PROMISC) {
+ 		netif_dbg(dev, drv, dev->net, "promiscuous mode enabled");
+ 		pdata->rfe_ctl |= RFE_CTL_MCAST_EN_ | RFE_CTL_UCAST_EN_;
++		/* bypass VLAN filter so all tagged frames are captured */
++		pdata->rfe_ctl &= ~RFE_CTL_VLAN_FILTER_;
+ 	} else {
++		if (dev->net->features & NETIF_F_HW_VLAN_CTAG_FILTER)
++			pdata->rfe_ctl |= RFE_CTL_VLAN_FILTER_;
++		else
++			pdata->rfe_ctl &= ~RFE_CTL_VLAN_FILTER_;
++
+ 		if (dev->net->flags & IFF_ALLMULTI) {
+ 			netif_dbg(dev, drv, dev->net,
+ 				  "receive all multicast enabled");
+@@ -3074,7 +3081,9 @@ static int lan78xx_set_features(struct net_device *netdev,
+ 	else
+ 		pdata->rfe_ctl &= ~RFE_CTL_VLAN_STRIP_;
  
- #include "t600x-j314-j316.dtsi"
- 
-+/ {
-+	aliases {
-+		keyboard = &keyboard;
-+	};
-+};
-+
- &framebuffer0 {
- 	power-domains = <&ps_disp0_cpu0>, <&ps_dptx_phy_ps>;
- };
-@@ -43,3 +49,22 @@ &wifi0 {
- &bluetooth0 {
- 	compatible = "pci14e4,5f72";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112-j413.dts b/arch/arm64/boot/dts/apple/t8112-j413.dts
-index 1a08a41f369b..1256e7cd9876 100644
---- a/arch/arm64/boot/dts/apple/t8112-j413.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j413.dts
-@@ -20,6 +20,7 @@ / {
- 
- 	aliases {
- 		bluetooth0 = &bluetooth0;
-+		keyboard = &keyboard;
- 		wifi0 = &wifi0;
- 	};
- 
-@@ -91,3 +92,22 @@ &i2c4 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112-j415.dts b/arch/arm64/boot/dts/apple/t8112-j415.dts
-index e37c56d9fb4d..1db3500e991f 100644
---- a/arch/arm64/boot/dts/apple/t8112-j415.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j415.dts
-@@ -20,6 +20,7 @@ / {
- 
- 	aliases {
- 		bluetooth0 = &bluetooth0;
-+		keyboard = &keyboard;
- 		wifi0 = &wifi0;
- 	};
- 
-@@ -91,3 +92,22 @@ &i2c4 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8112-j493.dts b/arch/arm64/boot/dts/apple/t8112-j493.dts
-index ec116da3e4dd..5deb2dd9802a 100644
---- a/arch/arm64/boot/dts/apple/t8112-j493.dts
-+++ b/arch/arm64/boot/dts/apple/t8112-j493.dts
-@@ -1,6 +1,6 @@
- // SPDX-License-Identifier: GPL-2.0+ OR MIT
- /*
-- * Apple MacBook Pro (13-inch, M1, 2022)
-+ * Apple MacBook Pro (13-inch, M2, 2022)
-  *
-  * target-type: J493
-  *
-@@ -24,6 +24,7 @@ / {
- 	 */
- 	aliases {
- 		bluetooth0 = &bluetooth0;
-+		keyboard = &keyboard;
- 		touchbar0 = &touchbar0;
- 		wifi0 = &wifi0;
- 	};
-@@ -146,3 +147,22 @@ touchbar0: touchbar@0 {
- 		touchscreen-inverted-y;
- 	};
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8122-j504.dts b/arch/arm64/boot/dts/apple/t8122-j504.dts
-index 464491b55b01..0d93ac72fff9 100644
---- a/arch/arm64/boot/dts/apple/t8122-j504.dts
-+++ b/arch/arm64/boot/dts/apple/t8122-j504.dts
-@@ -18,6 +18,10 @@ / {
- 	compatible = "apple,j504", "apple,t8122", "apple,arm-platform";
- 	model = "Apple MacBook Pro (14-inch, M3, 2023)";
- 
-+	aliases {
-+		keyboard = &keyboard;
-+	};
-+
- 	led-controller {
- 		compatible = "pwm-leds";
- 		led-0 {
-@@ -35,3 +39,21 @@ &fpwm1 {
- 	status = "okay";
- };
- 
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8122-j613.dts b/arch/arm64/boot/dts/apple/t8122-j613.dts
-index 51894ea705e7..e77b1ad869eb 100644
---- a/arch/arm64/boot/dts/apple/t8122-j613.dts
-+++ b/arch/arm64/boot/dts/apple/t8122-j613.dts
-@@ -17,6 +17,10 @@ / {
- 	compatible = "apple,j613", "apple,t8122", "apple,arm-platform";
- 	model = "Apple MacBook Air (13-inch, M3, 2024)";
- 
-+	aliases {
-+		keyboard = &keyboard;
-+	};
-+
- 	led-controller {
- 		compatible = "pwm-leds";
- 		led-0 {
-@@ -33,3 +37,22 @@ led-0 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+	};
-+};
-diff --git a/arch/arm64/boot/dts/apple/t8122-j615.dts b/arch/arm64/boot/dts/apple/t8122-j615.dts
-index 2a1970c1bc90..5da0021d40f8 100644
---- a/arch/arm64/boot/dts/apple/t8122-j615.dts
-+++ b/arch/arm64/boot/dts/apple/t8122-j615.dts
-@@ -17,6 +17,10 @@ / {
- 	compatible = "apple,j615", "apple,t8122", "apple,arm-platform";
- 	model = "Apple MacBook Air (15-inch, M3, 2024)";
- 
-+	aliases {
-+		keyboard = &keyboard;
-+	};
-+
- 	led-controller {
- 		compatible = "pwm-leds";
- 		led-0 {
-@@ -33,3 +37,22 @@ led-0 {
- &fpwm1 {
- 	status = "okay";
- };
-+
-+&mtp_mbox {
-+	status = "okay";
-+};
-+
-+&mtp_dart {
-+	status = "okay";
-+};
-+
-+&mtp_dockchannel {
-+	status = "okay";
-+};
-+
-+&mtp_hid {
-+	status = "okay";
-+
-+	keyboard: keyboard {
-+	};
-+};
+-	if (features & NETIF_F_HW_VLAN_CTAG_FILTER)
++	/* keep VLAN filter off while promiscuous */
++	if ((features & NETIF_F_HW_VLAN_CTAG_FILTER) &&
++	    !(netdev->flags & IFF_PROMISC))
+ 		pdata->rfe_ctl |= RFE_CTL_VLAN_FILTER_;
+ 	else
+ 		pdata->rfe_ctl &= ~RFE_CTL_VLAN_FILTER_;
 
--- 
-2.51.2
+---
+base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
+change-id: 20260623-lan78xx-vlan-promisc-83af8a48a7ec
+
+Best regards,
+--  
+Enrico Pozzobon <enrico.pozzobon@dissecto.com>
 
