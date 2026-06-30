@@ -1,73 +1,121 @@
-From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Tue, 30 Jun 2026 15:56:04 +0800
-Subject: [PATCH] target/loongarch: Enable TARGET_PAGE_BITS_VARY for
- loongarch64 user-only
+From: Michael Reeves <michael.reeves077@gmail.com>
+Subject: [PATCH 00/10] Add support for Apple Silicon DockChannel internal
+ keyboards
+Date: Tue, 30 Jun 2026 22:54:28 +1000
+Message-Id: <20260630-apple-mtp-keyboard-final-v1-0-506d936a1707@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260630-loong64-vary-page-sz-v1-1-1d1a894674be@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAJN2Q2oC/x2MWwqAIBAArxL73YJpSXSV6MNys4XQUIgeePekz
- 4GZeSFRZEowVC9EOjlx8AWauoJlM94Rsi0MUkgttBK4h+CdbvE08cbDFCE9KDtlyYqZ+r6Fkh6
- RVr7+7Tjl/AF/a21FZgAAAA==
-X-Change-ID: 20260630-loong64-vary-page-sz-253ded0be884
-To: qemu-devel@nongnu.org
-Cc: Song Gao <gaosong@loongson.cn>, b4-sent@feeds.kernel.org, 
- Miao Wang <shankerwangmiao@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1044;
- i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
- bh=P2yWSCAzG7Ep94c0IDqmt6Vf+hrglM5091uNh3I1QpQ=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqQ3aXlgurCQL3nbFGIngXREWSBvfHmQxB0Q+Pf
- gtjb0rJ9wOJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCakN2lwAKCRCwMePKe/7Z
- bkqfD/sHaIJAqHxhYzIrezK4G6ydiZlKdhf60zKPyUF1YM7PyeyFHvuA9cFWCn/eWtetTHzCIJy
- 8TEFYK5NB8gEQ2tUsxiqgJb4S9DvuPjXvKGArIH/nPOvoKUkkDdQtQE99K7MjUqFtKbiokZ4hxw
- PN+FJWW6pqLC29iKuDKgACX/exz4CVqOEgLmnOuiM88sbHYo/wRyxQlEzpAtPlEDKvKRLnJIdz/
- 0hNwfFCzek4yG3k/SacA2xCPq/e2J8sLfKemQJoJ1YRXMe7BUjGEH5kBg2D1q8QONiOQC0WFb3F
- u92aFFAPEhtQtnXql4vYTEwvIhNuMDJnL7Zbovzu+vW42TNjASs1zJ3R2LlkvEzInIJTUn7XqlV
- YrOOUC6B36w4BdvO7VIyrBNkmmOAFycjag59ZRxD1C+fVGjuo9ZpWOT8c4y6oSfgtLw3r8xMVDM
- +TYmZYvkxPkJtS4D7nRNINbez+IsyJb2LKKbpQpBS69bBov9wsVS8uXg63TsyJq53UEQi/vNcZ0
- uelK3IZGUm58Q3C7HJWRJpKKhgsYrFCoSgxliCm8f9nXvfbDaZRp4e2DqZtXK+FvNbjj4P0KgPM
- oNcixh95BUkPY2k1mqJbk5+dBs8DKGjhua+EyIXyKFuthdnxZ4i3v2gzYqYJhHdw5ASJB/TyEWb
- ySK0JD3XlnqJlVw==
-X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
- fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
-X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
+X-B4-Tracking: v=1; b=H4sIAIS8Q2oC/x3MQQqEMAxA0atI1ga0OAW9iriINZkJai2tiCLe3
+ TLLt/j/hsRROUFX3BD50KSbz6jLAtyP/JdRp2wwlbGVNS1SCAvjugec+Ro3ihOKelqwrd34ISv
+ SiIOch8ii53/dD8/zAmGZkaZqAAAA
+X-Change-ID: 20260629-apple-mtp-keyboard-final-91cb5a6ff4fc
+To: Sven Peter <sven@kernel.org>, Janne Grunau <j@jannau.net>, 
+ Neal Gompa <neal@gompa.dev>, Jassi Brar <jassisinghbrar@gmail.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Hector Martin <marcan@marcan.st>, 
+ "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
+ Robin Murphy <robin.murphy@arm.com>, 
+ Dmitry Torokhov <dmitry.torokhov@gmail.com>, Jiri Kosina <jikos@kernel.org>, 
+ Benjamin Tissoires <bentiss@kernel.org>
+Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ iommu@lists.linux.dev, linux-input@vger.kernel.org, 
+ Michael Reeves <michael.reeves077@gmail.com>, 
+ Sasha Finkelstein <k@chaosmail.tech>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782824083; l=4257;
+ i=michael.reeves077@gmail.com; s=20260105; h=from:subject:message-id;
+ bh=eaYasJGTo79RPD26c3SmYtaVMbARHDwN7ZlMRtFRy80=;
+ b=ebb+Ox7p7yerFmB6WM6BevtFuS599DpSgn+0BYEpLRvDsyJzPxX79VG1SimhfsFSzFufv39RH
+ 1MfaeC0Z5VqBHIkyXTsZMKjyTFM2B/TdyGIBue7F8/vJ4hhkvFAE/xe
+X-Developer-Key: i=michael.reeves077@gmail.com; a=ed25519;
+ pk=QIrgWBGCm3LG0YYc6MLCDkwuVXLTGGooVBdWX/KhSiU=
+X-Endpoint-Received: by B4 Relay for michael.reeves077@gmail.com/20260105 with auth_id=591
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hard coding PAGE_SIZE to 4K will prevent user-only emulation from
-working on hosts with 16K page size.
+This series introduces support for the internal keyboards on Apple
+Silicon M2 and M3 MacBook models.
 
-Fixes: 1d832c19db1e ("target/loongarch: Support 4K page size")
-Fixes: qemu-project/qemu#3651
+On these platforms, built-in input devices are managed by a dedicated
+coprocessor running an RTKit-based operating system. Communication
+between this coprocessor and the main processor is carried out over a
+low-latency hardware byte FIFO interface called DockChannel.
 
-Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+To support this input path, the series introduces a few new components:
+- An apple-dockchannel mailbox driver to handle the low-level
+  byte-stream FIFO.
+- A DockChannel HID transport driver (apple-hid) that boots the
+  coprocessor using the RTKit framework and encapsulates the HID
+  protocol over the mailbox.
+- Minor additions to the apple-rtkit and hid-apple drivers to support
+  the TraceKit endpoint and integrate the keyboards into the existing
+  input-quirks framework.
+- Devicetree bindings and DTS updates to describe the nodes on M2 and
+  M3 laptops.
+
+The transport driver is based on an original out-of-tree implementation
+by Hector Martin, but it has been significantly rewritten for upstream
+inclusion to use the standard Linux mailbox framework and align better
+with upstream HID design patterns and reduce reliance on hacks.
+
+While the coprocessor manages both the keyboard and the trackpad, this
+series only enables keyboard support. The keyboard can be initialised
+without loading external firmware, whereas the trackpad requires
+firmware. Trackpad support will be submitted in a subsequent series
+once these base transport layers are established.
+
+Tested on: MacBook Air M3 (J613).
+
+Signed-off-by: Michael Reeves <michael.reeves077@gmail.com>
 ---
- target/loongarch/cpu-param.h | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+Michael Reeves (9):
+      dt-bindings: mailbox: Add Apple t8122 ASC mailbox
+      dt-bindings: mailbox: apple: Add DockChannel mailbox
+      dt-bindings: iommu: apple,dart: Add t8122 compatible
+      dt-bindings: input: apple: Add DockChannel HID transport
+      mailbox: apple: Add DockChannel FIFO controller
+      HID: apple: Add support for DockChannel HID keyboards
+      HID: apple: Add DockChannel HID transport driver
+      arm64: dts: apple: Add MTP DockChannel HID nodes
+      arm64: dts: apple: Enable DockChannel HID on M2 and M3 laptops
 
-diff --git a/target/loongarch/cpu-param.h b/target/loongarch/cpu-param.h
-index 3bcf77b3755abdc302699c22c7aa99e2e8c3bbf3..6abe72ff5cab46e246fde4fa76bce05ba7c1cd20 100644
---- a/target/loongarch/cpu-param.h
-+++ b/target/loongarch/cpu-param.h
-@@ -10,6 +10,11 @@
- 
- #define TARGET_VIRT_ADDR_SPACE_BITS 48
- 
--#define TARGET_PAGE_BITS 12
-+#ifdef CONFIG_USER_ONLY
-+/* Allow user-only to vary page size from 4k */
-+# define TARGET_PAGE_BITS_VARY
-+#else
-+# define TARGET_PAGE_BITS 12
-+#endif
- 
- #endif
+Sasha Finkelstein (1):
+      soc: apple: rtkit: Add tracekit endpoint
 
+ .../bindings/input/apple,dockchannel-hid.yaml      |   91 ++
+ .../devicetree/bindings/iommu/apple,dart.yaml      |    4 +-
+ .../bindings/mailbox/apple,dockchannel.yaml        |   75 ++
+ .../devicetree/bindings/mailbox/apple,mailbox.yaml |    1 +
+ MAINTAINERS                                        |    5 +
+ arch/arm64/boot/dts/apple/t602x-die0.dtsi          |   46 +
+ arch/arm64/boot/dts/apple/t602x-j414-j416.dtsi     |   25 +
+ arch/arm64/boot/dts/apple/t8112-j413.dts           |   20 +
+ arch/arm64/boot/dts/apple/t8112-j415.dts           |   20 +
+ arch/arm64/boot/dts/apple/t8112-j493.dts           |   22 +-
+ arch/arm64/boot/dts/apple/t8112.dtsi               |   46 +
+ arch/arm64/boot/dts/apple/t8122-j504.dts           |   22 +
+ arch/arm64/boot/dts/apple/t8122-j613.dts           |   23 +
+ arch/arm64/boot/dts/apple/t8122-j615.dts           |   23 +
+ arch/arm64/boot/dts/apple/t8122.dtsi               |   47 +
+ drivers/hid/Kconfig                                |    2 +
+ drivers/hid/Makefile                               |    2 +
+ drivers/hid/dockchannel/Kconfig                    |   15 +
+ drivers/hid/dockchannel/Makefile                   |    3 +
+ drivers/hid/dockchannel/apple-hid.c                | 1130 ++++++++++++++++++++
+ drivers/hid/hid-apple.c                            |  139 ++-
+ drivers/mailbox/Kconfig                            |   12 +
+ drivers/mailbox/Makefile                           |    2 +
+ drivers/mailbox/apple-dockchannel.c                |  380 +++++++
+ drivers/soc/apple/rtkit.c                          |    2 +
+ include/linux/hid.h                                |    1 +
+ include/linux/mailbox/apple-dockchannel.h          |   29 +
+ 27 files changed, 2139 insertions(+), 48 deletions(-)
 ---
-base-commit: 30e8a06b64aa58a3990ba39cb5d09531e7d265e0
-change-id: 20260630-loong64-vary-page-sz-253ded0be884
+base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
+change-id: 20260629-apple-mtp-keyboard-final-91cb5a6ff4fc
 
 Best regards,
--- 
-Miao Wang <shankerwangmiao@gmail.com>
+--  
+Michael Reeves <michael.reeves077@gmail.com>
 
