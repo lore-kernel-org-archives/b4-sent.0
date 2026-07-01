@@ -1,11 +1,11 @@
 From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Wed, 01 Jul 2026 00:34:18 +0000
-Subject: [PATCH v4 1/2] power: supply: Add helpers to get and put arrays of
- power supply handles
+Date: Wed, 01 Jul 2026 00:34:19 +0000
+Subject: [PATCH v4 2/2] usb: typec: tcpm: Add support for Battery Status
+ response message
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260701-batt-status-v4-1-a31d97b1ae57@google.com>
+Message-Id: <20260701-batt-status-v4-2-a31d97b1ae57@google.com>
 References: <20260701-batt-status-v4-0-a31d97b1ae57@google.com>
 In-Reply-To: <20260701-batt-status-v4-0-a31d97b1ae57@google.com>
 To: Sebastian Reichel <sre@kernel.org>, 
@@ -23,222 +23,296 @@ Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org,
  Peter Griffin <peter.griffin@linaro.org>, RD Babiera <rdbabiera@google.com>, 
  Kyle Tso <kyletso@google.com>, Amit Sunil Dhamne <amitsd@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782866074; l=6221;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782866074; l=9494;
  i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=gvdYw83SlBQnEVfW0ZcpDG4WOMw9avUKEx52LOGumVc=;
- b=H32nRc+fa+3ucffN0tuPR0ZsFUV7cTi3WBdtCNh9Mp3KrR/s58OiTkRIUWhYuJa3veQCU6K2/
- aDCyp/1jsJQCR3xNq9VKS9cXClcrX5tclQjG4mj81u0Tn7FEi/NnJcE
+ bh=d1NfTj8UswSEtak3ZClTJoRISHYAGPQ9HC5PINs5qhU=;
+ b=m7oXzbzD/ZH6reZapHdMkkRdrKT7inH8x6morkfBnr+e+hF4GiKqI6K/vTbxFqgVXlHIw+ocu
+ pChxnL2bBWkBnmUHbTZ4GXsR8CkXJ3jTLaGOBk/S38njPF62jxByTrQ
 X-Developer-Key: i=amitsd@google.com; a=ed25519;
  pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
 X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add power_supply_get_system_batteries() to allow drivers to obtain
-a list of registered battery type power supply references in the
-system. Also add power_supply_put_system_batteries() to perform
-cleanup after the former function is called.
+Add support for responding to a Get_Battery_Status request with a
+Battery_Status message. The port partner shall request the status of a
+port's battery by providing an index in the Get_Battery_Status AMS. In
+case of failure to identify the battery, the port shall reply with an
+appropriate message indicating so.
+
+Support for Battery_Status message is required for sinks that contain
+battery as specified in USB PD Rev3.1 v1.8
+("Applicability of Data Messages" section).
 
 Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
+Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
 ---
- drivers/power/supply/power_supply_core.c | 153 +++++++++++++++++++++++++++++++
- include/linux/power_supply.h             |  15 +++
- 2 files changed, 168 insertions(+)
+ drivers/usb/typec/tcpm/tcpm.c | 135 +++++++++++++++++++++++++++++++++++++++++-
+ include/linux/usb/pd.h        |  29 +++++++++
+ 2 files changed, 161 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/power/supply/power_supply_core.c b/drivers/power/supply/power_supply_core.c
-index 2532e221b2e1..70f35f64cc72 100644
---- a/drivers/power/supply/power_supply_core.c
-+++ b/drivers/power/supply/power_supply_core.c
-@@ -477,6 +477,159 @@ struct power_supply *power_supply_get_by_name(const char *name)
- }
- EXPORT_SYMBOL_GPL(power_supply_get_by_name);
+diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
+index 7ef746a90a17..19daa17917a7 100644
+--- a/drivers/usb/typec/tcpm/tcpm.c
++++ b/drivers/usb/typec/tcpm/tcpm.c
+@@ -232,7 +232,8 @@ enum pd_msg_request {
+ 	PD_MSG_DATA_SINK_CAP,
+ 	PD_MSG_DATA_SOURCE_CAP,
+ 	PD_MSG_DATA_REV,
+-	PD_MSG_EXT_SINK_CAP_EXT
++	PD_MSG_EXT_SINK_CAP_EXT,
++	PD_MSG_DATA_BATT_STATUS
+ };
  
-+static bool power_supply_is_system_battery(struct power_supply *psy)
+ enum adev_actions {
+@@ -389,6 +390,14 @@ struct pd_timings {
+ /* Convert microwatt to watt */
+ #define UW_TO_W(pow)					((pow) / 1000000)
+ 
++/*
++ * As per USB PD Spec Rev 3.18 (Sec. 6.5.13.11), the number of fixed batteries
++ * that a port can be queried is restricted to 4.
++ */
++#define MAX_NUM_FIXED_BATT				4
++
++#define BATTERY_PROPERTY_UNKNOWN			0xffff
++
+ /*
+  * struct pd_identifier - Contains info about PD identifiers
+  * @vid: Vendor ID (assigned by USB-IF)
+@@ -683,6 +692,9 @@ struct tcpm_port {
+ 
+ 	struct pd_identifier pd_ident;
+ 	struct sink_caps_ext_data sink_caps_ext;
++	struct power_supply **fixed_batt;
++	u32 fixed_batt_cnt;
++	u32 batt_request_id;
+ #ifdef CONFIG_DEBUG_FS
+ 	struct dentry *dentry;
+ 	struct mutex logbuffer_lock;	/* log buffer access lock */
+@@ -1470,6 +1482,20 @@ static int tcpm_pd_send_sink_caps(struct tcpm_port *port)
+ 	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
+ }
+ 
++static void tcpm_get_fixed_batt(struct tcpm_port *port)
 +{
++	int ret;
++
++	if (!port->self_powered || port->fixed_batt_cnt > 0)
++		return;
++
++	ret = power_supply_get_system_batteries(port->dev, &port->fixed_batt);
++	if (ret < 0)
++		tcpm_log(port, "Failed to get battery array, ret=%d", ret);
++	else
++		port->fixed_batt_cnt = ret;
++}
++
+ static int tcpm_pd_send_sink_cap_ext(struct tcpm_port *port)
+ {
+ 	u16 operating_snk_watt = port->operating_snk_mw / 1000;
+@@ -1482,6 +1508,8 @@ static int tcpm_pd_send_sink_cap_ext(struct tcpm_port *port)
+ 	if (!port->self_powered)
+ 		data->spr_op_pdp = operating_snk_watt;
+ 
++	tcpm_get_fixed_batt(port);
++
+ 	/*
+ 	 * SPR Sink Minimum PDP indicates the minimum power required to operate
+ 	 * a sink device in its lowest level of functionality without requiring
+@@ -1507,6 +1535,7 @@ static int tcpm_pd_send_sink_cap_ext(struct tcpm_port *port)
+ 	skedb.load_step = data->load_step;
+ 	skedb.load_char = cpu_to_le16(data->load_char);
+ 	skedb.compliance = data->compliance;
++	skedb.batt_info = min(port->fixed_batt_cnt, MAX_NUM_FIXED_BATT);
+ 	skedb.modes = data->modes;
+ 	skedb.spr_min_pdp = data->spr_min_pdp;
+ 	skedb.spr_op_pdp = data->spr_op_pdp;
+@@ -1525,6 +1554,88 @@ static int tcpm_pd_send_sink_cap_ext(struct tcpm_port *port)
+ 					   port->message_id,
+ 					   data_obj_cnt,
+ 					   1 /* Denotes if ext header */));
++
++	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
++}
++
++static int tcpm_pd_send_batt_status(struct tcpm_port *port)
++{
++	u16 present_charge = BATTERY_PROPERTY_UNKNOWN;
++	bool batt_present = false, invalid_ref = true;
++	u32 batt_id = port->batt_request_id;
 +	union power_supply_propval val;
++	struct power_supply *batt;
++	u8 charging_status = 0;
++	struct pd_message msg;
++	int ret, charge_now;
++	u64 energy_now;
++	u32 bsdo;
 +
-+	if (psy->desc->type != POWER_SUPPLY_TYPE_BATTERY)
-+		return false;
++	tcpm_get_fixed_batt(port);
++	memset(&msg, 0, sizeof(msg));
 +
-+	if (!power_supply_get_property_direct(psy, POWER_SUPPLY_PROP_SCOPE,
-+					      &val))
-+		if (val.intval == POWER_SUPPLY_SCOPE_DEVICE)
-+			return false;
++	if (batt_id >= port->fixed_batt_cnt || batt_id >= MAX_NUM_FIXED_BATT)
++		goto send_status;
 +
-+	return true;
-+}
-+
-+static int __power_supply_get_num_system_batteries(struct power_supply *epsy,
-+						   void *data)
-+{
-+	int *count = data;
-+
-+	if (power_supply_is_system_battery(epsy))
-+		(*count)++;
-+
-+	return 0;
-+}
-+
-+static int power_supply_get_num_system_batteries(struct device *dev)
-+{
-+	int ret, count = 0;
-+
-+	ret = power_supply_for_each_psy(&count,
-+					__power_supply_get_num_system_batteries);
-+
-+	dev_dbg(dev, "%s: count: %d ret %d\n", __func__, count, ret);
-+
++	invalid_ref = false;
++	batt = port->fixed_batt[batt_id];
++	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_PRESENT, &val);
 +	if (ret)
-+		return ret;
++		tcpm_log(port,
++			 "Failed to fetch power_supply_prop_present ret %d",
++			 ret);
++	else
++		batt_present = val.intval > 0;
 +
-+	return count;
-+}
++	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_CHARGE_NOW,
++					&val);
++	if (!ret) {
++		charge_now = val.intval;
 +
-+struct psy_get_supplies_data {
-+	int cnt;
-+	int size;
-+	struct power_supply **psys;
-+};
++		ret = power_supply_get_property(batt,
++						POWER_SUPPLY_PROP_VOLTAGE_AVG,
++						&val);
++		if (!ret) {
++			energy_now = ((u64)charge_now * val.intval) / 1000000;
 +
-+static int
-+__power_supply_populate_system_batteries_array(struct power_supply *epsy,
-+					       void *_data)
-+{
-+	struct psy_get_supplies_data *data = _data;
-+
-+	if (power_supply_is_system_battery(epsy)) {
-+		if (data->size <= data->cnt)
-+			return -EOVERFLOW;
-+
-+		get_device(&epsy->dev);
-+		data->psys[data->cnt] = epsy;
-+		atomic_inc(&epsy->use_cnt);
-+		data->cnt++;
++			/*
++			 * Battery Present Charge is reported in
++			 * increments of 0.1WH.
++			 */
++			present_charge = (u16)UW_TO_W(energy_now * 10);
++		}
 +	}
 +
-+	return 0;
-+}
-+
-+static int
-+power_supply_populate_system_batteries_array(struct device *dev, int size,
-+					     struct power_supply **batteries)
-+{
-+	int ret;
-+
-+	struct psy_get_supplies_data data = {
-+		.cnt = 0,
-+		.size = size,
-+		.psys = batteries,
-+	};
-+
-+	ret = power_supply_for_each_psy(&data,
-+					__power_supply_populate_system_batteries_array);
-+
-+	dev_dbg(dev, "%s Found %d batteries with array size %d ret %d\n",
-+		__func__, data.cnt, data.size, ret);
-+
-+	if (ret < 0 || !data.cnt) {
-+		power_supply_put_system_batteries(batteries, data.cnt);
-+		return ret;
++	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_STATUS, &val);
++	if (!ret) {
++		switch (val.intval) {
++		case POWER_SUPPLY_STATUS_CHARGING:
++			charging_status = BSDO_BATTERY_INFO_CHARGING;
++			break;
++		case POWER_SUPPLY_STATUS_DISCHARGING:
++			charging_status = BSDO_BATTERY_INFO_DISCHARGING;
++			break;
++		case POWER_SUPPLY_STATUS_NOT_CHARGING:
++		case POWER_SUPPLY_STATUS_FULL:
++			charging_status = BSDO_BATTERY_INFO_IDLE;
++			break;
++		default:
++			charging_status = BSDO_BATTERY_INFO_RSVD;
++			break;
++		}
 +	}
 +
-+	return data.cnt;
-+}
++send_status:
++
++	bsdo = BSDO(present_charge, charging_status, batt_present, invalid_ref);
++	msg.payload[0] = cpu_to_le32(bsdo);
++	msg.header = PD_HEADER_LE(PD_DATA_BATT_STATUS,
++				  port->pwr_role,
++				  port->data_role,
++				  port->negotiated_rev,
++				  port->message_id,
++				  1);
++
+ 	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
+ }
+ 
+@@ -3886,6 +3997,7 @@ static void tcpm_pd_ext_msg_request(struct tcpm_port *port,
+ {
+ 	enum pd_ext_msg_type type = pd_header_type_le(msg->header);
+ 	unsigned int data_size = pd_ext_header_data_size_le(msg->ext_msg.header);
++	const struct pd_chunked_ext_message_data *ext_msg = &msg->ext_msg;
+ 
+ 	/* stopping VDM state machine if interrupted by other Messages */
+ 	if (tcpm_vdm_ams(port)) {
+@@ -3894,7 +4006,7 @@ static void tcpm_pd_ext_msg_request(struct tcpm_port *port,
+ 		mod_vdm_delayed_work(port, 0);
+ 	}
+ 
+-	if (!(le16_to_cpu(msg->ext_msg.header) & PD_EXT_HDR_CHUNKED)) {
++	if (!(le16_to_cpu(ext_msg->header) & PD_EXT_HDR_CHUNKED)) {
+ 		tcpm_pd_handle_msg(port, PD_MSG_CTRL_NOT_SUPP, NONE_AMS);
+ 		tcpm_log(port, "Unchunked extended messages unsupported");
+ 		return;
+@@ -3919,9 +4031,17 @@ static void tcpm_pd_ext_msg_request(struct tcpm_port *port,
+ 					     NONE_AMS, 0);
+ 		}
+ 		break;
++	case PD_EXT_GET_BATT_STATUS:
++		if (data_size >= 1) {
++			port->batt_request_id = ext_msg->data[0];
++			tcpm_pd_handle_msg(port, PD_MSG_DATA_BATT_STATUS,
++					   GETTING_BATTERY_STATUS);
++		} else {
++			tcpm_set_state(port, SOFT_RESET_SEND, 0);
++		}
++		break;
+ 	case PD_EXT_SOURCE_CAP_EXT:
+ 	case PD_EXT_GET_BATT_CAP:
+-	case PD_EXT_GET_BATT_STATUS:
+ 	case PD_EXT_BATT_CAP:
+ 	case PD_EXT_GET_MANUFACTURER_INFO:
+ 	case PD_EXT_MANUFACTURER_INFO:
+@@ -4132,6 +4252,14 @@ static bool tcpm_send_queued_message(struct tcpm_port *port)
+ 					 ret);
+ 			tcpm_ams_finish(port);
+ 			break;
++		case PD_MSG_DATA_BATT_STATUS:
++			ret = tcpm_pd_send_batt_status(port);
++			if (ret)
++				tcpm_log(port,
++					 "Failed to send battery status ret=%d",
++					 ret);
++			tcpm_ams_finish(port);
++			break;
+ 		default:
+ 			break;
+ 		}
+@@ -8633,6 +8761,7 @@ void tcpm_unregister_port(struct tcpm_port *port)
+ 	hrtimer_cancel(&port->vdm_state_machine_timer);
+ 	hrtimer_cancel(&port->state_machine_timer);
+ 
++	power_supply_put_system_batteries(port->fixed_batt, port->fixed_batt_cnt);
+ 	tcpm_reset_port(port);
+ 
+ 	tcpm_port_unregister_pd(port);
+diff --git a/include/linux/usb/pd.h b/include/linux/usb/pd.h
+index 337a5485af7c..afb9c2c65588 100644
+--- a/include/linux/usb/pd.h
++++ b/include/linux/usb/pd.h
+@@ -724,4 +724,33 @@ void usb_power_delivery_unlink_device(struct usb_power_delivery *pd, struct devi
+ 
+ #endif /* CONFIG_TYPEC */
+ 
++/* Battery Status Data Object */
++#define BSDO_PRESENT_CAPACITY				GENMASK(31, 16)
++#define BSDO_CHG_STATUS					GENMASK(11, 10)
++#define BSDO_BATTERY_PRESENT				BIT(9)
++#define BSDO_INVALID_BATTERY_REFERENCE			BIT(8)
++
++/*
++ * Battery Charge Status: Battery Charging Status Values as defined in
++ * "USB PD Spec Rev3.1 Ver1.8", "Table 6-46 Battery Status Data Object (BSDO)".
++ */
++#define BSDO_BATTERY_INFO_CHARGING			0x0
++#define BSDO_BATTERY_INFO_DISCHARGING			0x1
++#define BSDO_BATTERY_INFO_IDLE				0x2
++#define BSDO_BATTERY_INFO_RSVD				0x3
 +
 +/**
-+ * power_supply_get_system_batteries() - Fetches references to battery type
-+ *                                       power supplies in the system.
-+ * @dev: Pointer to device requesting the power supply refs.
-+ * @psys: Pointer to an array of power supply refs.
-+ *
-+ * Helper function to get handles to battery type power supplies in the system.
-+ * If acquiring a ref to a power supply fails, then the search for battery type
-+ * power supplies will abort and the acquired power supply references will be
-+ * released.
-+ *
-+ * Return: Indicates the number of battery type power supplies returned on
-+ * success or a negative error code on failure.
-+ *
-+ * Call power_supply_put_system_batteries() after use to cleanup resources.
++ * BSDO() - Pack data into Battery Status Data Object format.
++ * @batt_charge: Battery's present state of charge in 0.1WH increment.
++ * @chg_status: Battery charge status.
++ * @batt_present: Indicates that battery is present/attached when set else absent when unset.
++ * @invalid_ref: Indicates that an invalid battery reference was made in the Get_Battery_Status
++ *		 request.
 + */
-+int __must_check power_supply_get_system_batteries(struct device *dev,
-+						   struct power_supply ***psys)
-+{
-+	int ret;
++#define BSDO(batt_charge, chg_status, batt_present, invalid_ref)	\
++	((FIELD_PREP(BSDO_PRESENT_CAPACITY, batt_charge)) |		\
++	 (FIELD_PREP(BSDO_CHG_STATUS, chg_status)) |			\
++	 ((batt_present) ? BSDO_BATTERY_PRESENT : 0) |			\
++	 ((invalid_ref) ? BSDO_INVALID_BATTERY_REFERENCE : 0))
 +
-+	if (!psys)
-+		return -EINVAL;
-+
-+	ret = power_supply_get_num_system_batteries(dev);
-+	if (ret <= 0) {
-+		*psys = NULL;
-+		return ret;
-+	}
-+
-+	*psys = kzalloc_objs(**psys, ret);
-+	if (!*psys)
-+		return -ENOMEM;
-+
-+	ret = power_supply_populate_system_batteries_array(dev, ret, *psys);
-+	if (ret <= 0)
-+		*psys = NULL;
-+
-+	return ret;
-+}
-+EXPORT_SYMBOL_GPL(power_supply_get_system_batteries);
-+
-+/**
-+ * power_supply_put_system_batteries() - Cleanup resources allocated by
-+ *                                       power_supply_get_system_batteries()
-+ * @psys: Array of power supply references to release and free.
-+ * @count: Number of elements in the array.
-+ */
-+void power_supply_put_system_batteries(struct power_supply **psys, int count)
-+{
-+	int i;
-+
-+	for (i = 0; i < count; i++) {
-+		if (psys[i])
-+			power_supply_put(psys[i]);
-+	}
-+
-+	kfree(psys);
-+}
-+EXPORT_SYMBOL_GPL(power_supply_put_system_batteries);
-+
- /**
-  * power_supply_put() - Drop reference obtained with power_supply_get_by_name
-  * @psy: Reference to put
-diff --git a/include/linux/power_supply.h b/include/linux/power_supply.h
-index 7a5e4c3242a0..9167a33d074b 100644
---- a/include/linux/power_supply.h
-+++ b/include/linux/power_supply.h
-@@ -806,11 +806,26 @@ extern int power_supply_reg_notifier(struct notifier_block *nb);
- extern void power_supply_unreg_notifier(struct notifier_block *nb);
- #if IS_ENABLED(CONFIG_POWER_SUPPLY)
- extern struct power_supply *power_supply_get_by_name(const char *name);
-+extern int __must_check power_supply_get_system_batteries(struct device *dev,
-+							  struct power_supply ***psys);
-+extern void power_supply_put_system_batteries(struct power_supply **psys, int count);
- extern void power_supply_put(struct power_supply *psy);
- #else
- static inline void power_supply_put(struct power_supply *psy) {}
- static inline struct power_supply *power_supply_get_by_name(const char *name)
- { return NULL; }
-+static inline int __must_check power_supply_get_system_batteries(struct device *dev,
-+								 struct power_supply ***psys)
-+{
-+	if (psys)
-+		*psys = NULL;
-+	return 0;
-+}
-+
-+static inline void power_supply_put_system_batteries(struct power_supply **psys,
-+						     int count)
-+{
-+}
- #endif
- extern struct power_supply *power_supply_get_by_reference(struct fwnode_handle *fwnode,
- 							  const char *property);
+ #endif /* __LINUX_USB_PD_H */
 
 -- 
 2.55.0.rc0.799.gd6f94ed593-goog
