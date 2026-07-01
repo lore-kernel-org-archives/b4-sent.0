@@ -1,133 +1,140 @@
-From: Enrico Pozzobon <enrico.pozzobon@dissecto.com>
-Date: Wed, 01 Jul 2026 16:47:23 +0200
-Subject: [PATCH net v3] net: usb: lan78xx: disable VLAN filter in
- promiscuous mode
+From: Cristian Cozzolino <cristian_ci@protonmail.com>
+Subject: [PATCH v6 0/4] Enable new features for flipkart-rimob
+Date: Wed, 01 Jul 2026 23:55:53 +0200
+Message-Id: <20260701-rimob-new-features-v6-0-be7d5d1e007f@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260701-lan78xx-vlan-promisc-v3-1-232266d32743@dissecto.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNyw7CIBBFf6VhLYaHoejK/zAugA4WY0sDldQ0/
- XcpXZgY3c2d3HvOjCIEBxGdqhkFSC463+fAdxUyrepvgF2TM2KECSIYxw/V13KacMoHHoLvXDR
- YcmWlOkhVg0F5OgSwbirYC+phRNftGZ/6DmZcgWutdXH04VXkiZby5uHktydRTLHVltgj4bqR9
- ty4GDPR743viiWxD6cm9A+HrRzgmkoiRM3kF2dZljcwRYVzGgEAAA==
-X-Change-ID: 20260623-lan78xx-vlan-promisc-83af8a48a7ec
-To: Thangaraj Samynathan <Thangaraj.S@microchip.com>, 
- Rengarajan Sundararajan <Rengarajan.S@microchip.com>, 
- UNGLinuxDriver@microchip.com, Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Woojung.Huh@microchip.com
-Cc: netdev@vger.kernel.org, linux-usb@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- Enrico Pozzobon <enrico.pozzobon@dissecto.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3497;
- i=enrico.pozzobon@dissecto.com; h=from:subject:message-id;
- bh=T6eb/DFqmbo3Thzxo2uZwZZS2rw6/n4NBOq19Ptob6M=;
- b=owEBbQGS/pANAwAKAfB2RbS6BRipAcsmYgBqRSiDWot391JCMA+RzCsVgv41t1o4jYkto4Fu0
- if2vEGAbSyJATMEAAEKAB0WIQT58xDVmo5qdqM1wSrwdkW0ugUYqQUCakUogwAKCRDwdkW0ugUY
- qUgXB/9YDmHTo+TjghaT/gOUctwAoag3jyvjGuh/WCCjs47KZGsqNnjIdxX2goE20s3hWtcvVxf
- MkT1SSzUfDZ9eoxXI0RODlRHsxvYUMZbriwlDLVoGBRHnku8MvnCkcQR/I5mVDhh1TMbr0ejlao
- oHuIfk1aDqNDNLaqHP9tspqZYWRcSNIlkRg+OGxdJvW+1QY+KwhW/yI/mOT++ysBEFLGpEN7Om3
- f/JYgxXjvWAqCWRLmDM2j7YyjW72M8eHNBFfoFVoSNpGsvGqc1Zyr+Xheva+3xXUjE3YU6rOgRE
- 3XJrLVZCTnLxDhCfj54ROBtOjKWMKmC7LsYbnkbzvhNCI3/i
-X-Developer-Key: i=enrico.pozzobon@dissecto.com; a=openpgp;
- fpr=53D697CA0B11F68C9552A59DA3D0B3A0924EA5BB
-X-Endpoint-Received: by B4 Relay for enrico.pozzobon@dissecto.com/default with auth_id=836
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23OzWrDMAzA8VcpPs9Dlr/invYeYwfHkVfDEhc7y
+ zZK3n1uYRCYj3+BftKNVSqJKjufbqzQlmrKSwvzdGLh4pd34mlqzRDQgATJS5rzyBf64pH8+lm
+ ocpDWKTVKbxBYW7wWiun7gb6+tb6kuuby87ixifv0jxt63CY4cO8xSAnaYoCXa8lrXmafPp5Dn
+ tnd3PDgiL6DzQlijIMTVilHXUceHBRdRzZnUuNANBg7ke066ujYrqOaA4amGF1QGlzX0QdH9v/
+ RzdExRIUeXRD4z9n3/RczdNSv2QEAAA==
+X-Change-ID: 20260303-rimob-new-features-037944b3a620
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jessica Zhang <jesszhan0024@gmail.com>, David Airlie <airlied@gmail.com>, 
+ Simona Vetter <simona@ffwll.ch>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
+ ~postmarketos/upstreaming@lists.sr.ht, phone-devel@vger.kernel.org, 
+ Cristian Cozzolino <cristian_ci@protonmail.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782942968; l=4333;
+ i=cristian_ci@protonmail.com; s=20250620; h=from:subject:message-id;
+ bh=zoGOulQF1M2h8Q01GsubA1RgVWr6kNLn78527WuVvX4=;
+ b=U//qRAjidfOu+8iCd75GDvniNljYnibrSMFyl6RvvelelrWzvAq7r9W9O0irwJ3ebV06ez4zS
+ 4icm3O99nKUAq6Ob9ApVdPOYTvUyjT2xGdMmLPk2hA2GUisl8cfXTwN
+X-Developer-Key: i=cristian_ci@protonmail.com; a=ed25519;
+ pk=xH5IvIPUNHV1Q8R0/pq2CfuVFR/wTiAyuyi6IwedjZY=
+X-Endpoint-Received: by B4 Relay for cristian_ci@protonmail.com/20250620 with auth_id=438
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The hardware VLAN filter (RFE_CTL_VLAN_FILTER_) drops VLAN-tagged frames
-whose VID has not been registered via lan78xx_vlan_rx_add_vid(). It is
-left enabled in promiscuous mode, so packet capture (e.g. tcpdump or
-Wireshark) does not see tagged frames for unregistered VIDs.
+This series enables a set of miscellaneous features for Billion Capture+ 
+(a handset using the MSM8953 SoC released in 2017):
+- Panel and GPU
+- Touchscreen
+- WiFi + Bluetooth
+- Hall sensor 
 
-Clear the filter while the interface is promiscuous and restore it from
-NETIF_F_HW_VLAN_CTAG_FILTER otherwise. Enforce the same condition in
-lan78xx_set_features() so netdev_update_features() cannot re-enable the
-filter while promiscuous.
+To: Neil Armstrong <neil.armstrong@linaro.org>
+To: Jessica Zhang <jesszhan0024@gmail.com>
+To: David Airlie <airlied@gmail.com>
+To: Simona Vetter <simona@ffwll.ch>
+To: Maarten Lankhorst <maarten.lankhorst@linux.intel.com>
+To: Maxime Ripard <mripard@kernel.org>
+To: Thomas Zimmermann <tzimmermann@suse.de>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Bjorn Andersson <andersson@kernel.org>
+To: Konrad Dybcio <konradybcio@kernel.org>
+Cc: dri-devel@lists.freedesktop.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-arm-msm@vger.kernel.org
+Cc: ~postmarketos/upstreaming@lists.sr.ht
+Cc: phone-devel@vger.kernel.org 
 
-Fixes: 55d7de9de6c3 ("Microchip's LAN7800 family USB 2/3 to 10/100/1000 Ethernet device driver")
-Signed-off-by: Enrico Pozzobon <enrico.pozzobon@dissecto.com>
+Signed-off-by: Cristian Cozzolino <cristian_ci@protonmail.com>
 ---
-Currently, on microchip lan7801, enabling promiscuous mode does not
-result in VLAN tagged packets being captured. This patch fixes this,
-forcing the RFE_CTL_VLAN_FILTER_ flag to be off when promiscuous mode is
-enabled.
----
+Changes in v6:
+- Drop applied patches;
+- Pick up tag;
+- Link to v5: https://lore.kernel.org/r/20260331-rimob-new-features-v5-0-5fcf42a29c12@protonmail.com
+
+Changes in v5:
+- Based on dts-coding-style.html ("Nodes without unit addresses shall be
+  ordered alpha-numerically by the node name. For a few node types, they 
+  can be ordered by the main property, e.g. pin configuration states
+  ordered by value of “pins” property."), sort pinctrl states by GPIO 
+  index (Konrad);
+- Pick up tags;
+- Link to v4: https://lore.kernel.org/r/20260327-rimob-new-features-v4-0-06edff9c4509@protonmail.com
+
+Changes in v4:
+- (patch 1/6): added a new compatible (since it's not possible to
+  identify panel vendor/id), matching user of this device and leaving
+  novatek,nt35532 as fallback (Dmitry);
+- (patch 2/6):
+  - according to bindings changes, make panel driver handling multiple
+    panels paired with NT35532 and use specific compatible/data;
+  - due to changes applied to panel code, remove tag received previously
+    by Dmitry.
+- (patch 3/6): 
+  - use a specific panel compatible, according to bindings changes;
+  - remove 'output-high' property from panel pinctrl, since panel is not
+    reset.
+- Link to v3: https://lore.kernel.org/r/20260321-rimob-new-features-v3-0-d4b8ee867de7@protonmail.com
+
 Changes in v3:
-- EDITME: describe what is new in this series revision.
-- EDITME: use bulletpoints and terse descriptions.
-- Link to v2: https://patch.msgid.link/20260701-lan78xx-vlan-promisc-v2-1-fe3b18066728@dissecto.com
+- (patch 1/6): removed avdd, avee and vci supplies from 'required' properties;
+- (patch 2/6):
+  - removed "select VIDEOMODE_HELPERS" from nt35532 Kconfig entry, since 
+    its functions are not used (but this option is enabled and its code 
+    compiled anyway) by nt35532 panel driver;
+  - pick up tags (Dmitry).
+- (patch 3/6): replaced a506_zap.mdt with a506_zap.mbn firmware name
+  in gpu_zap_shader (Dmitry); 
+- (patch 5/6): pick up tags (Konrad);
+- (patch 6/6): pick up tags (Konrad);
+- Link to v2: https://lore.kernel.org/r/20260318-rimob-new-features-v2-0-c1bf8917449e@protonmail.com
 
 Changes in v2:
-- moved VLAN filter logic into lan78xx_update_vlan_filter()
-- Link to v1: https://patch.msgid.link/20260630-lan78xx-vlan-promisc-v1-1-fbf0f903bd8f@dissecto.com
-
-To: Thangaraj Samynathan <Thangaraj.S@microchip.com>
-To: Rengarajan Sundararajan <Rengarajan.S@microchip.com>
-To: UNGLinuxDriver@microchip.com
-To: Andrew Lunn <andrew+netdev@lunn.ch>
-To: "David S. Miller" <davem@davemloft.net>
-To: Eric Dumazet <edumazet@google.com>
-To: Jakub Kicinski <kuba@kernel.org>
-To: Paolo Abeni <pabeni@redhat.com>
-To: Woojung.Huh@microchip.com
-Cc: netdev@vger.kernel.org
-Cc: linux-usb@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
----
- drivers/net/usb/lan78xx.c | 18 ++++++++++++++----
- 1 file changed, 14 insertions(+), 4 deletions(-)
-
-diff --git a/drivers/net/usb/lan78xx.c b/drivers/net/usb/lan78xx.c
-index c4cebacabcb5..cb782d81d84f 100644
---- a/drivers/net/usb/lan78xx.c
-+++ b/drivers/net/usb/lan78xx.c
-@@ -1499,6 +1499,17 @@ static void lan78xx_deferred_multicast_write(struct work_struct *param)
- 	return;
- }
- 
-+static void lan78xx_update_vlan_filter(struct lan78xx_priv *pdata,
-+				       struct net_device *netdev,
-+				       netdev_features_t features)
-+{
-+	if ((features & NETIF_F_HW_VLAN_CTAG_FILTER) &&
-+	    !(netdev->flags & IFF_PROMISC))
-+		pdata->rfe_ctl |= RFE_CTL_VLAN_FILTER_;
-+	else
-+		pdata->rfe_ctl &= ~RFE_CTL_VLAN_FILTER_;
-+}
-+
- static void lan78xx_set_multicast(struct net_device *netdev)
- {
- 	struct lan78xx_net *dev = netdev_priv(netdev);
-@@ -1533,6 +1544,8 @@ static void lan78xx_set_multicast(struct net_device *netdev)
- 		}
- 	}
- 
-+	lan78xx_update_vlan_filter(pdata, dev->net, dev->net->features);
-+
- 	if (netdev_mc_count(dev->net)) {
- 		struct netdev_hw_addr *ha;
- 		int i;
-@@ -3074,10 +3087,7 @@ static int lan78xx_set_features(struct net_device *netdev,
- 	else
- 		pdata->rfe_ctl &= ~RFE_CTL_VLAN_STRIP_;
- 
--	if (features & NETIF_F_HW_VLAN_CTAG_FILTER)
--		pdata->rfe_ctl |= RFE_CTL_VLAN_FILTER_;
--	else
--		pdata->rfe_ctl &= ~RFE_CTL_VLAN_FILTER_;
-+	lan78xx_update_vlan_filter(pdata, netdev, features);
- 
- 	spin_unlock_irqrestore(&pdata->rfe_ctl_lock, flags);
- 
+- (patch 1/6): define power supplies in the bindings as per datasheet  
+  and update example;
+- (patch 2/6): add blank lines where required between mipi dsi write
+  sequences in nt35532_on() function and make use of names for mipi dcs
+  commands, instead of hex numbers, to improve readibility (Dmitry); 
+- (patch 3/6): move pinctrl lines ibto panel node and get rid of
+  sleep/reset state, since panel just uses one pinctrl state for
+  default/sleep (Dmitry). Also, update power supplies according to
+  bindings; 
+- (patch 4/6): pick up tags (Konrad,Dmitry);
+- (patch 6/6): squash hall sensor node into gpio-keys (Dmitry);
+- Link to v1: https://lore.kernel.org/r/20260308-rimob-new-features-v1-0-aa2c330572c0@protonmail.com
 
 ---
-base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
-change-id: 20260623-lan78xx-vlan-promisc-83af8a48a7ec
+Cristian Cozzolino (4):
+      arm64: dts: qcom: msm8953-flipkart-rimob: Enable display and GPU
+      arm64: dts: qcom: msm8953-flipkart-rimob: Enable WiFi/Bluetooth
+      arm64: dts: qcom: msm8953-flipkart-rimob: Enable touchscreen
+      arm64: dts: qcom: msm8953-flipkart-rimob: Enable Hall sensor
+
+ .../arm64/boot/dts/qcom/msm8953-flipkart-rimob.dts | 138 ++++++++++++++++++++-
+ 1 file changed, 137 insertions(+), 1 deletion(-)
+---
+base-commit: be5c93fa674f0fc3c8f359c2143abce6bbb422e6
+change-id: 20260303-rimob-new-features-037944b3a620
 
 Best regards,
---  
-Enrico Pozzobon <enrico.pozzobon@dissecto.com>
+-- 
+Cristian Cozzolino <cristian_ci@protonmail.com>
 
