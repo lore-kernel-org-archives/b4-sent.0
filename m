@@ -1,319 +1,108 @@
-From: Amit Sunil Dhamne <amitsd@google.com>
-Date: Wed, 01 Jul 2026 00:34:19 +0000
-Subject: [PATCH v4 2/2] usb: typec: tcpm: Add support for Battery Status
- response message
+From: Jian Hu <jian.hu@amlogic.com>
+Subject: [PATCH v6 0/2] clk: amlogic: Add A9 peripherals clock controller
+Date: Wed, 01 Jul 2026 16:30:01 +0800
+Message-Id: <20260701-a9_peripherals-v6-0-9630f39879e5@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260701-batt-status-v4-2-a31d97b1ae57@google.com>
-References: <20260701-batt-status-v4-0-a31d97b1ae57@google.com>
-In-Reply-To: <20260701-batt-status-v4-0-a31d97b1ae57@google.com>
-To: Sebastian Reichel <sre@kernel.org>, 
- Badhri Jagan Sridharan <badhri@google.com>, 
- Heikki Krogerus <heikki.krogerus@linux.intel.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Hans de Goede <hansg@kernel.org>, Krzysztof Kozlowski <krzk@kernel.org>, 
- Marek Szyprowski <m.szyprowski@samsung.com>, 
- Sebastian Krzyszkowiak <sebastian.krzyszkowiak@puri.sm>, 
- Purism Kernel Team <kernel@puri.sm>
-Cc: linux-pm@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-usb@vger.kernel.org, 
- =?utf-8?q?Andr=C3=A9_Draszik?= <andre.draszik@linaro.org>, 
- Tudor Ambarus <tudor.ambarus@linaro.org>, 
- Peter Griffin <peter.griffin@linaro.org>, RD Babiera <rdbabiera@google.com>, 
- Kyle Tso <kyletso@google.com>, Amit Sunil Dhamne <amitsd@google.com>
+X-B4-Tracking: v=1; b=H4sIAArQRGoC/3XPTQrCMBAF4KuUrI1M/prWlfcQkTSd2oDakkhRp
+ Hd32lUluHwD7+PNhyWMARM7FB8WcQopDA8K5a5gvnePK/LQUmYSZAklKO7qy0iVscfobolrKTT
+ a2oJpPaPSGLELrxU8nSn3IT2H+F79SS7Xv9QkOXBE0VQenMDSH939NlyD3/vhzhZsUhtAQAYoA
+ lqwzlZQmc6KHNBboMoATUCHQkKLmt6yOWA2gMoXGAIar0HUVoEy+heY5/kLkFdWxXEBAAA=
+X-Change-ID: 20260603-a9_peripherals-4214e79705dc
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Jerome Brunet <jbrunet@baylibre.com>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Kevin Hilman <khilman@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
+ Brian Masney <bmasney@redhat.com>
+Cc: linux-amlogic@lists.infradead.org, linux-clk@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, Jian Hu <jian.hu@amlogic.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782866074; l=9494;
- i=amitsd@google.com; s=20241031; h=from:subject:message-id;
- bh=d1NfTj8UswSEtak3ZClTJoRISHYAGPQ9HC5PINs5qhU=;
- b=m7oXzbzD/ZH6reZapHdMkkRdrKT7inH8x6morkfBnr+e+hF4GiKqI6K/vTbxFqgVXlHIw+ocu
- pChxnL2bBWkBnmUHbTZ4GXsR8CkXJ3jTLaGOBk/S38njPF62jxByTrQ
-X-Developer-Key: i=amitsd@google.com; a=ed25519;
- pk=wD+XZSST4dmnNZf62/lqJpLm7fiyT8iv462zmQ3H6bI=
-X-Endpoint-Received: by B4 Relay for amitsd@google.com/20241031 with auth_id=262
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782894659; l=2893;
+ i=jian.hu@amlogic.com; s=20260415; h=from:subject:message-id;
+ bh=EN7+luIk8ttxgrcIn29NeS7w5DT1mqmUEpqgU8cOU4w=;
+ b=Xw9K4k9bePFl7wxYw4cyAoSwBxvdJXE98gki1lSauw51LcjhFKhZWqVL/NqbLD0zCnuv8t4gU
+ /2+dtstXbAUAPadINiWCjQvsbYrlV3ZYbvw9AQhr0OftCJBiJrSuBtU
+X-Developer-Key: i=jian.hu@amlogic.com; a=ed25519;
+ pk=zHUE+rNtH9z+Sb8au1/elWknjFQmy5QDVkBoxleuOIA=
+X-Endpoint-Received: by B4 Relay for jian.hu@amlogic.com/20260415 with auth_id=735
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for responding to a Get_Battery_Status request with a
-Battery_Status message. The port partner shall request the status of a
-port's battery by providing an index in the Get_Battery_Status AMS. In
-case of failure to identify the battery, the port shall reply with an
-appropriate message indicating so.
+This series adds Amlogic A9 peripherals clock support,
+including dt-binding and peripherals clock driver.
 
-Support for Battery_Status message is required for sinks that contain
-battery as specified in USB PD Rev3.1 v1.8
-("Applicability of Data Messages" section).
+Note that this driver depends on the A9 PLL driver, which is not yet
+upstream. The Meson PLL framework is currently undergoing refactoring,
+and the A9 PLL driver will be submitted as a follow-up series after
+that work has been completed.
 
-Signed-off-by: Amit Sunil Dhamne <amitsd@google.com>
-Reviewed-by: Badhri Jagan Sridharan <badhri@google.com>
+Signed-off-by: Jian Hu <jian.hu@amlogic.com>
 ---
- drivers/usb/typec/tcpm/tcpm.c | 135 +++++++++++++++++++++++++++++++++++++++++-
- include/linux/usb/pd.h        |  29 +++++++++
- 2 files changed, 161 insertions(+), 3 deletions(-)
+Changes in v6:
+- Rebase onto the latest clk-meson-next.
+- Update Kconfig and Makefile context to apply cleanly.
+- No functional changes.
+- Link to v5: https://lore.kernel.org/r/20260630-a9_peripherals-v5-0-bc4019730354@amlogic.com
 
-diff --git a/drivers/usb/typec/tcpm/tcpm.c b/drivers/usb/typec/tcpm/tcpm.c
-index 7ef746a90a17..19daa17917a7 100644
---- a/drivers/usb/typec/tcpm/tcpm.c
-+++ b/drivers/usb/typec/tcpm/tcpm.c
-@@ -232,7 +232,8 @@ enum pd_msg_request {
- 	PD_MSG_DATA_SINK_CAP,
- 	PD_MSG_DATA_SOURCE_CAP,
- 	PD_MSG_DATA_REV,
--	PD_MSG_EXT_SINK_CAP_EXT
-+	PD_MSG_EXT_SINK_CAP_EXT,
-+	PD_MSG_DATA_BATT_STATUS
- };
- 
- enum adev_actions {
-@@ -389,6 +390,14 @@ struct pd_timings {
- /* Convert microwatt to watt */
- #define UW_TO_W(pow)					((pow) / 1000000)
- 
-+/*
-+ * As per USB PD Spec Rev 3.18 (Sec. 6.5.13.11), the number of fixed batteries
-+ * that a port can be queried is restricted to 4.
-+ */
-+#define MAX_NUM_FIXED_BATT				4
-+
-+#define BATTERY_PROPERTY_UNKNOWN			0xffff
-+
- /*
-  * struct pd_identifier - Contains info about PD identifiers
-  * @vid: Vendor ID (assigned by USB-IF)
-@@ -683,6 +692,9 @@ struct tcpm_port {
- 
- 	struct pd_identifier pd_ident;
- 	struct sink_caps_ext_data sink_caps_ext;
-+	struct power_supply **fixed_batt;
-+	u32 fixed_batt_cnt;
-+	u32 batt_request_id;
- #ifdef CONFIG_DEBUG_FS
- 	struct dentry *dentry;
- 	struct mutex logbuffer_lock;	/* log buffer access lock */
-@@ -1470,6 +1482,20 @@ static int tcpm_pd_send_sink_caps(struct tcpm_port *port)
- 	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
- }
- 
-+static void tcpm_get_fixed_batt(struct tcpm_port *port)
-+{
-+	int ret;
-+
-+	if (!port->self_powered || port->fixed_batt_cnt > 0)
-+		return;
-+
-+	ret = power_supply_get_system_batteries(port->dev, &port->fixed_batt);
-+	if (ret < 0)
-+		tcpm_log(port, "Failed to get battery array, ret=%d", ret);
-+	else
-+		port->fixed_batt_cnt = ret;
-+}
-+
- static int tcpm_pd_send_sink_cap_ext(struct tcpm_port *port)
- {
- 	u16 operating_snk_watt = port->operating_snk_mw / 1000;
-@@ -1482,6 +1508,8 @@ static int tcpm_pd_send_sink_cap_ext(struct tcpm_port *port)
- 	if (!port->self_powered)
- 		data->spr_op_pdp = operating_snk_watt;
- 
-+	tcpm_get_fixed_batt(port);
-+
- 	/*
- 	 * SPR Sink Minimum PDP indicates the minimum power required to operate
- 	 * a sink device in its lowest level of functionality without requiring
-@@ -1507,6 +1535,7 @@ static int tcpm_pd_send_sink_cap_ext(struct tcpm_port *port)
- 	skedb.load_step = data->load_step;
- 	skedb.load_char = cpu_to_le16(data->load_char);
- 	skedb.compliance = data->compliance;
-+	skedb.batt_info = min(port->fixed_batt_cnt, MAX_NUM_FIXED_BATT);
- 	skedb.modes = data->modes;
- 	skedb.spr_min_pdp = data->spr_min_pdp;
- 	skedb.spr_op_pdp = data->spr_op_pdp;
-@@ -1525,6 +1554,88 @@ static int tcpm_pd_send_sink_cap_ext(struct tcpm_port *port)
- 					   port->message_id,
- 					   data_obj_cnt,
- 					   1 /* Denotes if ext header */));
-+
-+	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
-+}
-+
-+static int tcpm_pd_send_batt_status(struct tcpm_port *port)
-+{
-+	u16 present_charge = BATTERY_PROPERTY_UNKNOWN;
-+	bool batt_present = false, invalid_ref = true;
-+	u32 batt_id = port->batt_request_id;
-+	union power_supply_propval val;
-+	struct power_supply *batt;
-+	u8 charging_status = 0;
-+	struct pd_message msg;
-+	int ret, charge_now;
-+	u64 energy_now;
-+	u32 bsdo;
-+
-+	tcpm_get_fixed_batt(port);
-+	memset(&msg, 0, sizeof(msg));
-+
-+	if (batt_id >= port->fixed_batt_cnt || batt_id >= MAX_NUM_FIXED_BATT)
-+		goto send_status;
-+
-+	invalid_ref = false;
-+	batt = port->fixed_batt[batt_id];
-+	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_PRESENT, &val);
-+	if (ret)
-+		tcpm_log(port,
-+			 "Failed to fetch power_supply_prop_present ret %d",
-+			 ret);
-+	else
-+		batt_present = val.intval > 0;
-+
-+	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_CHARGE_NOW,
-+					&val);
-+	if (!ret) {
-+		charge_now = val.intval;
-+
-+		ret = power_supply_get_property(batt,
-+						POWER_SUPPLY_PROP_VOLTAGE_AVG,
-+						&val);
-+		if (!ret) {
-+			energy_now = ((u64)charge_now * val.intval) / 1000000;
-+
-+			/*
-+			 * Battery Present Charge is reported in
-+			 * increments of 0.1WH.
-+			 */
-+			present_charge = (u16)UW_TO_W(energy_now * 10);
-+		}
-+	}
-+
-+	ret = power_supply_get_property(batt, POWER_SUPPLY_PROP_STATUS, &val);
-+	if (!ret) {
-+		switch (val.intval) {
-+		case POWER_SUPPLY_STATUS_CHARGING:
-+			charging_status = BSDO_BATTERY_INFO_CHARGING;
-+			break;
-+		case POWER_SUPPLY_STATUS_DISCHARGING:
-+			charging_status = BSDO_BATTERY_INFO_DISCHARGING;
-+			break;
-+		case POWER_SUPPLY_STATUS_NOT_CHARGING:
-+		case POWER_SUPPLY_STATUS_FULL:
-+			charging_status = BSDO_BATTERY_INFO_IDLE;
-+			break;
-+		default:
-+			charging_status = BSDO_BATTERY_INFO_RSVD;
-+			break;
-+		}
-+	}
-+
-+send_status:
-+
-+	bsdo = BSDO(present_charge, charging_status, batt_present, invalid_ref);
-+	msg.payload[0] = cpu_to_le32(bsdo);
-+	msg.header = PD_HEADER_LE(PD_DATA_BATT_STATUS,
-+				  port->pwr_role,
-+				  port->data_role,
-+				  port->negotiated_rev,
-+				  port->message_id,
-+				  1);
-+
- 	return tcpm_pd_transmit(port, TCPC_TX_SOP, &msg);
- }
- 
-@@ -3886,6 +3997,7 @@ static void tcpm_pd_ext_msg_request(struct tcpm_port *port,
- {
- 	enum pd_ext_msg_type type = pd_header_type_le(msg->header);
- 	unsigned int data_size = pd_ext_header_data_size_le(msg->ext_msg.header);
-+	const struct pd_chunked_ext_message_data *ext_msg = &msg->ext_msg;
- 
- 	/* stopping VDM state machine if interrupted by other Messages */
- 	if (tcpm_vdm_ams(port)) {
-@@ -3894,7 +4006,7 @@ static void tcpm_pd_ext_msg_request(struct tcpm_port *port,
- 		mod_vdm_delayed_work(port, 0);
- 	}
- 
--	if (!(le16_to_cpu(msg->ext_msg.header) & PD_EXT_HDR_CHUNKED)) {
-+	if (!(le16_to_cpu(ext_msg->header) & PD_EXT_HDR_CHUNKED)) {
- 		tcpm_pd_handle_msg(port, PD_MSG_CTRL_NOT_SUPP, NONE_AMS);
- 		tcpm_log(port, "Unchunked extended messages unsupported");
- 		return;
-@@ -3919,9 +4031,17 @@ static void tcpm_pd_ext_msg_request(struct tcpm_port *port,
- 					     NONE_AMS, 0);
- 		}
- 		break;
-+	case PD_EXT_GET_BATT_STATUS:
-+		if (data_size >= 1) {
-+			port->batt_request_id = ext_msg->data[0];
-+			tcpm_pd_handle_msg(port, PD_MSG_DATA_BATT_STATUS,
-+					   GETTING_BATTERY_STATUS);
-+		} else {
-+			tcpm_set_state(port, SOFT_RESET_SEND, 0);
-+		}
-+		break;
- 	case PD_EXT_SOURCE_CAP_EXT:
- 	case PD_EXT_GET_BATT_CAP:
--	case PD_EXT_GET_BATT_STATUS:
- 	case PD_EXT_BATT_CAP:
- 	case PD_EXT_GET_MANUFACTURER_INFO:
- 	case PD_EXT_MANUFACTURER_INFO:
-@@ -4132,6 +4252,14 @@ static bool tcpm_send_queued_message(struct tcpm_port *port)
- 					 ret);
- 			tcpm_ams_finish(port);
- 			break;
-+		case PD_MSG_DATA_BATT_STATUS:
-+			ret = tcpm_pd_send_batt_status(port);
-+			if (ret)
-+				tcpm_log(port,
-+					 "Failed to send battery status ret=%d",
-+					 ret);
-+			tcpm_ams_finish(port);
-+			break;
- 		default:
- 			break;
- 		}
-@@ -8633,6 +8761,7 @@ void tcpm_unregister_port(struct tcpm_port *port)
- 	hrtimer_cancel(&port->vdm_state_machine_timer);
- 	hrtimer_cancel(&port->state_machine_timer);
- 
-+	power_supply_put_system_batteries(port->fixed_batt, port->fixed_batt_cnt);
- 	tcpm_reset_port(port);
- 
- 	tcpm_port_unregister_pd(port);
-diff --git a/include/linux/usb/pd.h b/include/linux/usb/pd.h
-index 337a5485af7c..afb9c2c65588 100644
---- a/include/linux/usb/pd.h
-+++ b/include/linux/usb/pd.h
-@@ -724,4 +724,33 @@ void usb_power_delivery_unlink_device(struct usb_power_delivery *pd, struct devi
- 
- #endif /* CONFIG_TYPEC */
- 
-+/* Battery Status Data Object */
-+#define BSDO_PRESENT_CAPACITY				GENMASK(31, 16)
-+#define BSDO_CHG_STATUS					GENMASK(11, 10)
-+#define BSDO_BATTERY_PRESENT				BIT(9)
-+#define BSDO_INVALID_BATTERY_REFERENCE			BIT(8)
-+
-+/*
-+ * Battery Charge Status: Battery Charging Status Values as defined in
-+ * "USB PD Spec Rev3.1 Ver1.8", "Table 6-46 Battery Status Data Object (BSDO)".
-+ */
-+#define BSDO_BATTERY_INFO_CHARGING			0x0
-+#define BSDO_BATTERY_INFO_DISCHARGING			0x1
-+#define BSDO_BATTERY_INFO_IDLE				0x2
-+#define BSDO_BATTERY_INFO_RSVD				0x3
-+
-+/**
-+ * BSDO() - Pack data into Battery Status Data Object format.
-+ * @batt_charge: Battery's present state of charge in 0.1WH increment.
-+ * @chg_status: Battery charge status.
-+ * @batt_present: Indicates that battery is present/attached when set else absent when unset.
-+ * @invalid_ref: Indicates that an invalid battery reference was made in the Get_Battery_Status
-+ *		 request.
-+ */
-+#define BSDO(batt_charge, chg_status, batt_present, invalid_ref)	\
-+	((FIELD_PREP(BSDO_PRESENT_CAPACITY, batt_charge)) |		\
-+	 (FIELD_PREP(BSDO_CHG_STATUS, chg_status)) |			\
-+	 ((batt_present) ? BSDO_BATTERY_PRESENT : 0) |			\
-+	 ((invalid_ref) ? BSDO_INVALID_BATTERY_REFERENCE : 0))
-+
- #endif /* __LINUX_USB_PD_H */
+Changes in v5:
+- Include <linux/module.h>.
+- Add missing '0' suffixes to some clocks.
+- Fix typo: "encorder1" -> "encoder1".
+- Fix the parent clock for a9_hdmitx1_pixel.
+- Link to v4: https://lore.kernel.org/r/20260618-a9_peripherals-v4-0-fe120de44e77@amlogic.com
 
+Changes in v4:
+- Expose channel 3 for gen_clk.
+- Add missing '0' suffixes to somes.
+- Use helper macro for vclk clocks definitions.
+- Drop forward declaration.
+- Drop CLK_HW_INIT* and revert to explicit clock declarations.
+- Fix can clock channel number comment.
+- Rename enc clocks to encoder0/encoder1.
+- Link to v3: https://lore.kernel.org/r/20260610-a9_peripherals-v3-0-d07a78085f71@amlogic.com
+
+Changes in v3:
+- Add "depend on A9 pll" instructions in the cover-letter.
+- Move COMPILE_TEST after 'depends on ARM64' reported by sashiko-bot.
+- Fix usb_48m_pre_sel's parent reported by sashiko-bot.
+- Fix gen_div width reported by sashiko-bot.
+- Fix hdmitx1_pixel's parent reported by sashiko-bot.
+- Link to v2: https://lore.kernel.org/r/20260603-a9_peripherals-v2-0-ee1b8c0a1e6c@amlogic.com
+
+Changes in v2:
+- Split the A9 clock driver and send the peripherals clock separately.
+- Add COMPILE_TEST in Kconfig.
+- Drop the 'optional'.
+- Rename apb4 to soc.
+- Sort the header file.
+- Rename hifi to hifi0.
+- Use CLK_HW_INIT_PARENTS_DATA to describe clk_init_data.
+- Use CLK_HW_INIT_HW to describe clk_init_data.
+- Use CLK_HW_INIT_PARENTS_HW to describe clk_init_data.
+- Link to v1: https://lore.kernel.org/all/20260511-b4-a9_clk-v1-0-41cb4071b7c9@amlogic.com/
+
+---
+Jian Hu (2):
+      dt-bindings: clock: Add Amlogic A9 peripherals clock controller
+      clk: amlogic: Add A9 peripherals clock controller driver
+
+ .../clock/amlogic,a9-peripherals-clkc.yaml         |  164 ++
+ drivers/clk/meson/Kconfig                          |   15 +
+ drivers/clk/meson/Makefile                         |    1 +
+ drivers/clk/meson/a9-peripherals.c                 | 2089 ++++++++++++++++++++
+ .../clock/amlogic,a9-peripherals-clkc.h            |  351 ++++
+ 5 files changed, 2620 insertions(+)
+---
+base-commit: a1b4c3a63a7e56b98b2eccc3a82b9f31d51c2e35
+change-id: 20260603-a9_peripherals-4214e79705dc
+
+Best regards,
 -- 
-2.55.0.rc0.799.gd6f94ed593-goog
+Jian Hu <jian.hu@amlogic.com>
 
