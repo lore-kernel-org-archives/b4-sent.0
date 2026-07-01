@@ -1,15 +1,15 @@
 From: Enrico Pozzobon <enrico.pozzobon@dissecto.com>
-Date: Wed, 01 Jul 2026 15:09:17 +0200
-Subject: [PATCH net v2] net: usb: lan78xx: disable VLAN filter in
+Date: Wed, 01 Jul 2026 16:47:23 +0200
+Subject: [PATCH net v3] net: usb: lan78xx: disable VLAN filter in
  promiscuous mode
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260701-lan78xx-vlan-promisc-v2-1-fe3b18066728@dissecto.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NQQ6CMBBFr0JmbU1pDVRX3sOwKGUqNdKSDjYYw
- t0tsHU3f/L/ewsQRocEt2KBiMmRCz4HcSrA9No/kbkuZxBcVLwSkr21r9U8s5QPNsYwODJMSW2
- Vvihdo4E8HSNaN+/YB3icoDme9GlfaKYNuNV6R1OI312eyr18eCT/70klK5ltLbdXLttO2Xvni
- DIxnE0YoFnX9Qc2Xx2z0gAAAA==
+Message-Id: <20260701-lan78xx-vlan-promisc-v3-1-232266d32743@dissecto.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNyw7CIBBFf6VhLYaHoejK/zAugA4WY0sDldQ0/
+ XcpXZgY3c2d3HvOjCIEBxGdqhkFSC463+fAdxUyrepvgF2TM2KECSIYxw/V13KacMoHHoLvXDR
+ YcmWlOkhVg0F5OgSwbirYC+phRNftGZ/6DmZcgWutdXH04VXkiZby5uHktydRTLHVltgj4bqR9
+ ty4GDPR743viiWxD6cm9A+HrRzgmkoiRM3kF2dZljcwRYVzGgEAAA==
 X-Change-ID: 20260623-lan78xx-vlan-promisc-83af8a48a7ec
 To: Thangaraj Samynathan <Thangaraj.S@microchip.com>, 
  Rengarajan Sundararajan <Rengarajan.S@microchip.com>, 
@@ -21,16 +21,16 @@ Cc: netdev@vger.kernel.org, linux-usb@vger.kernel.org,
  linux-kernel@vger.kernel.org, 
  Enrico Pozzobon <enrico.pozzobon@dissecto.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3269;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3497;
  i=enrico.pozzobon@dissecto.com; h=from:subject:message-id;
- bh=rGcMhaGh8vx4flQNrrguekcQBVNvDJ+Fjwh146Hf4xE=;
- b=owGbwMvMwMX4ocx1yy5WiZWMp9WSGLJcBes6Ff5trmPR/SewrJa5WaaFryTmc/KtZ24fUv6xq
- q3cVLWlk9GYhYGRi0FWTJHl52eBq7P6ssoWmx7UghnEygQyhYGLUwAmIt7MwXBkZ9s+3pLnph2X
- Z+c6tt6+Ei1ixXH62os0vdozEZXPP8w4IBG+8kjqVqXWMFmrF69NtNLYbKanbN+8pUD5TMzxo8r
- HK45n3zgT3n3pwpaUh16STy5b2DqwqBzgF37dZlL2bs1S8R15tQZuoaYWGnl+E1tfTOqO6dd0L4
- z8V6Epm8Tx8kemwskz7MkPZu/frSBrKrBQ+pxTie8dls4ffso5zRd1Sgvil7xosVCYK3RaVHVfy
- 1m9G4Jz5q1nvWvVxirzwTI96+P2lAdFa3ViJMIlGwqq++rWdVnkHnc+q8Cv9kvBYL96rd3GTym/
- /5+O8d1skCNcIG3I9F505vwLEVnuj091+s7pO6R5sE4YAA==
+ bh=T6eb/DFqmbo3Thzxo2uZwZZS2rw6/n4NBOq19Ptob6M=;
+ b=owEBbQGS/pANAwAKAfB2RbS6BRipAcsmYgBqRSiDWot391JCMA+RzCsVgv41t1o4jYkto4Fu0
+ if2vEGAbSyJATMEAAEKAB0WIQT58xDVmo5qdqM1wSrwdkW0ugUYqQUCakUogwAKCRDwdkW0ugUY
+ qUgXB/9YDmHTo+TjghaT/gOUctwAoag3jyvjGuh/WCCjs47KZGsqNnjIdxX2goE20s3hWtcvVxf
+ MkT1SSzUfDZ9eoxXI0RODlRHsxvYUMZbriwlDLVoGBRHnku8MvnCkcQR/I5mVDhh1TMbr0ejlao
+ oHuIfk1aDqNDNLaqHP9tspqZYWRcSNIlkRg+OGxdJvW+1QY+KwhW/yI/mOT++ysBEFLGpEN7Om3
+ f/JYgxXjvWAqCWRLmDM2j7YyjW72M8eHNBFfoFVoSNpGsvGqc1Zyr+Xheva+3xXUjE3YU6rOgRE
+ 3XJrLVZCTnLxDhCfj54ROBtOjKWMKmC7LsYbnkbzvhNCI3/i
 X-Developer-Key: i=enrico.pozzobon@dissecto.com; a=openpgp;
  fpr=53D697CA0B11F68C9552A59DA3D0B3A0924EA5BB
 X-Endpoint-Received: by B4 Relay for enrico.pozzobon@dissecto.com/default with auth_id=836
@@ -54,6 +54,11 @@ result in VLAN tagged packets being captured. This patch fixes this,
 forcing the RFE_CTL_VLAN_FILTER_ flag to be off when promiscuous mode is
 enabled.
 ---
+Changes in v3:
+- EDITME: describe what is new in this series revision.
+- EDITME: use bulletpoints and terse descriptions.
+- Link to v2: https://patch.msgid.link/20260701-lan78xx-vlan-promisc-v2-1-fe3b18066728@dissecto.com
+
 Changes in v2:
 - moved VLAN filter logic into lan78xx_update_vlan_filter()
 - Link to v1: https://patch.msgid.link/20260630-lan78xx-vlan-promisc-v1-1-fbf0f903bd8f@dissecto.com
