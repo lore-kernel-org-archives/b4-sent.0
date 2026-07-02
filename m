@@ -1,86 +1,229 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Thu, 02 Jul 2026 03:45:14 -0500
-Subject: [PATCH] nvmet-auth: zero the AUTH_RECEIVE response buffer
+From: Jia Wang <wangjia@ultrarisc.com>
+Date: Thu, 02 Jul 2026 17:22:12 +0800
+Subject: [PATCH v2] gpio: dwapb: Defer clock gating until noirq
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260702-b4-disp-127414cf-v1-1-e5395cc0f9ae@proton.me>
-X-B4-Tracking: v=1; b=H4sIABklRmoC/x3MQQqAIBBA0avIrBvQwRK6SrQwHWs2JQoRSHdPW
- r7F/w0qF+EKs2pQ+JYq19lhBgXh8OfOKLEbSNOknSbcLEapGQ05a2xImAxHm7wbw0TQs1w4yfM
- vl/V9P1/+7O1iAAAA
-To: Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
- Chaitanya Kulkarni <kch@nvidia.com>, Hannes Reinecke <hare@suse.de>
-Cc: linux-kernel@vger.kernel.org, Keith Busch <kbusch@kernel.org>, 
- linux-nvme@lists.infradead.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1782981913; l=2253;
- i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=gU5/fAZL43wPsT3d3TYzN8Tsh+FEfVV3hZS/y7sZgpQ=;
- b=uw6EkKIKIlzqvaFwO5ewHmz5r35ITG6phVPelJvCLGHpSNPv84yy8qs20an4v+tPvTMVH39Va
- rft5ALE4Va/BTb4Ru8ZX+/UVwsGw/JucLaw6OBst4JPdSoz6TKIXIl1
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
+Message-Id: <20260702-gpio-dwapb-wakeup-v2-1-203f2f33429f@ultrarisc.com>
+X-B4-Tracking: v=1; b=H4sIAMMtRmoC/32Nyw6CMBBFf8XM2jF9IIor/8OwKGWA8UGbloeG8
+ O8C7l2e5NxzJ4gUmCJcdhMEGjiyaxdQ+x3YxrQ1IZcLgxIqFanKsPbssByNL3A0D+o96sSI47l
+ KrVYJLDsfqOL31rzlP459cSfbraHVaDh2Lny200Gu3r/+IFGi1llSCaXlqTTX/tkFEzjag3Uvy
+ Od5/gIgL20KyAAAAA==
+X-Change-ID: 20260629-gpio-dwapb-wakeup-34a058f6c324
+To: Hoan Tran <hoan@os.amperecomputing.com>, 
+ Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
+Cc: Hoan Tran <hotran@apm.com>, linux-gpio@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Jia Wang <wangjia@ultrarisc.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782984139; l=6676;
+ i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
+ bh=dMMlFbMBw/FgK1r8G+xumrGpTK12lk2fghvVWpUDRmc=;
+ b=OoPDnO4Y0AGJSlLsEmOAAm7r3MLgVr+q1AdTFlKr1ShCqzDluLIBnQ3+L/u9MSfnILoYU0hpb
+ 6rM9vZmIA6YAPeB1gy8m+tdXoOgrtGuUAf4T/yRc5glXjiJ99E4FtDB
+X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
+ pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
+X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-nvmet_execute_auth_receive() allocates the response buffer with kmalloc()
-sized by the host-supplied AUTH_RECEIVE allocation length, but the
-DH-HMAC-CHAP builders write only a fixed-size message into it. The full
-allocation length is then copied to the wire by nvmet_copy_to_sgl(), so a
-remote initiator receives the bytes past the built message -- up to nearly
-a page of uninitialized slab -- during the pre-authentication handshake.
+GPIO consumers such as gpio-keys can enable IRQ wake and adjust the wake
+trigger type from their suspend callbacks. If the DWAPB controller suspends
+first, masking interrupts and disabling its clocks in the normal suspend
+phase prevents that late wake configuration from reliably reaching the
+hardware. Systems with real DWAPB bus clocks then fail to wake from s2idle
+through GPIO keys.
 
-Allocate the buffer with kzalloc() so the unwritten tail is zeroed before
-it is sent; conforming responses are unaffected.
+Save the register context in the normal suspend callback, but defer IRQ
+masking and clock gating until suspend_noirq. At that point all consumers
+have finished configuring wake IRQs, so keep the clocks enabled when wake
+lines are armed and only gate them when no wake source is active.
+Resume_noirq reenables clocks, if they were gated, before the normal resume
+path restores registers.
 
-Fixes: db1312dd9548 ("nvmet: implement basic In-Band Authentication")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Propagate wake requests to the parent irqchip while keeping the local wake
+mask in sync with failures.
+
+Fixes: 6437c7ba69c3 ("gpio: dwapb: Add wakeup source support")
+Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
 ---
-Found by inspection and reproduced with KMSAN. The handler runs during the
-DH-HMAC-CHAP exchange before authentication completes; that reachability is
-by inspection. The leak itself was reproduced with a litmus of the
-alloc/fill/copy path -- kmalloc(al), an 8-byte builder write, then copy the
-full al to a userspace sink (the copy_to_sgl-to-wire analog). KASAN is silent
-because the read is in-bounds of the allocation, so KMSAN is the witness.
+This one-patch series fixes system wakeup for DesignWare APB GPIO
+controllers that have real APB/debounce clocks.
 
-Before, al=4096:
+The driver currently masks interrupts and disables its clocks from the
+normal suspend callback. That is too early for GPIO consumers such as
+gpio-keys, which may still enable IRQ wake or adjust the wake trigger type
+from their own suspend callbacks. Once the DWAPB clocks are disabled, those
+late wake updates cannot reliably reach the controller, and GPIO-key wake
+from s2idle can fail.
 
-  BUG: KMSAN: kernel-infoleak in _copy_to_user+0x44/0x90
-   _copy_to_user
-   full_proxy_read
-   vfs_read
-  Uninit was created at:
-   __kmalloc_noprof
-  Bytes 8-4095 of 4096 are uninitialized
+Move the final interrupt masking and clock gating to suspend_noirq, after
+consumers have completed their wake configuration. If at least one wake
+line is armed, leave the clocks running and mark the device as part of the
+wakeup path. Otherwise, gate the clocks in noirq and re-enable them from
+resume_noirq before restoring the saved register state.
 
-After: no report.
+The patch also propagates aggregate wake enable/disable state to the
+parent irqchip so a wake-capable parent interrupt is armed only while the
+DWAPB controller has at least one local wake source.
 
-Builds with CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y already zero the tail; kzalloc
-closes it for the rest.
+Based on v7.2-rc1.
 ---
- drivers/nvme/target/fabrics-cmd-auth.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v2:
+- Fix !CONFIG_IRQ_DOMAIN_HIERARCHY builds by guarding parent wake handling.
+- Link to v1: https://patch.msgid.link/20260629-gpio-dwapb-wakeup-v1-1-3394f02317da@ultrarisc.com
 
-diff --git a/drivers/nvme/target/fabrics-cmd-auth.c b/drivers/nvme/target/fabrics-cmd-auth.c
-index 45820a12750d..2b617d3b8bba 100644
---- a/drivers/nvme/target/fabrics-cmd-auth.c
-+++ b/drivers/nvme/target/fabrics-cmd-auth.c
-@@ -557,7 +557,7 @@ void nvmet_execute_auth_receive(struct nvmet_req *req)
- 		return;
+To: Hoan Tran <hoan@os.amperecomputing.com>
+To: Linus Walleij <linusw@kernel.org>
+To: Bartosz Golaszewski <brgl@kernel.org>
+Cc: Hoan Tran <hotran@apm.com>
+Cc: linux-gpio@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+---
+ drivers/gpio/gpio-dwapb.c | 79 ++++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 67 insertions(+), 12 deletions(-)
+
+diff --git a/drivers/gpio/gpio-dwapb.c b/drivers/gpio/gpio-dwapb.c
+index c1f3d83a67c1..f06f1915e6cc 100644
+--- a/drivers/gpio/gpio-dwapb.c
++++ b/drivers/gpio/gpio-dwapb.c
+@@ -118,6 +118,7 @@ struct dwapb_gpio {
+ 	unsigned int		flags;
+ 	struct reset_control	*rst;
+ 	struct clk_bulk_data	clks[DWAPB_NR_CLOCKS];
++	bool			clocks_on_for_wake;
+ 	struct dwapb_gpio_port	ports[] __counted_by(nr_ports);
+ };
+ 
+@@ -365,11 +366,24 @@ static int dwapb_irq_set_wake(struct irq_data *d, unsigned int enable)
+ 	struct dwapb_gpio *gpio = to_dwapb_gpio(gc);
+ 	struct dwapb_context *ctx = gpio->ports[0].ctx;
+ 	irq_hw_number_t bit = irqd_to_hwirq(d);
++	u32 wake_en = ctx->wake_en;
+ 
+ 	if (enable)
+-		ctx->wake_en |= BIT(bit);
++		wake_en |= BIT(bit);
+ 	else
+-		ctx->wake_en &= ~BIT(bit);
++		wake_en &= ~BIT(bit);
++
++#ifdef CONFIG_IRQ_DOMAIN_HIERARCHY
++	if (d->parent_data && !!ctx->wake_en != !!wake_en) {
++		int err;
++
++		err = irq_chip_set_wake_parent(d, enable);
++		if (err)
++			return err;
++	}
++#endif
++
++	ctx->wake_en = wake_en;
+ 
+ 	return 0;
+ }
+@@ -750,6 +764,8 @@ static int dwapb_gpio_suspend(struct device *dev)
+ 	int i;
+ 
+ 	scoped_guard(gpio_generic_lock_irqsave, gen_gc) {
++		gpio->clocks_on_for_wake = false;
++
+ 		for (i = 0; i < gpio->nr_ports; i++) {
+ 			unsigned int offset;
+ 			unsigned int idx = gpio->ports[i].idx;
+@@ -771,11 +787,38 @@ static int dwapb_gpio_suspend(struct device *dev)
+ 				ctx->int_pol = dwapb_read(gpio, GPIO_INT_POLARITY);
+ 				ctx->int_type = dwapb_read(gpio, GPIO_INTTYPE_LEVEL);
+ 				ctx->int_deb = dwapb_read(gpio, GPIO_PORTA_DEBOUNCE);
++			}
++		}
++	}
++
++	return 0;
++}
++
++static int dwapb_gpio_suspend_noirq(struct device *dev)
++{
++	struct dwapb_gpio *gpio = dev_get_drvdata(dev);
++	struct gpio_generic_chip *gen_gc = &gpio->ports[0].chip;
++	bool wake_enabled = false;
++	int i;
++
++	scoped_guard(gpio_generic_lock_irqsave, gen_gc) {
++		for (i = 0; i < gpio->nr_ports; i++) {
++			unsigned int idx = gpio->ports[i].idx;
++			struct dwapb_context *ctx = gpio->ports[i].ctx;
+ 
+-				/* Mask out interrupts */
++			if (idx == 0) {
++				wake_enabled = ctx->wake_en;
+ 				dwapb_write(gpio, GPIO_INTMASK, ~ctx->wake_en);
++				break;
+ 			}
+ 		}
++
++		gpio->clocks_on_for_wake = wake_enabled;
++	}
++
++	if (wake_enabled) {
++		device_set_wakeup_path(dev);
++		return 0;
  	}
  
--	d = kmalloc(al, GFP_KERNEL);
-+	d = kzalloc(al, GFP_KERNEL);
- 	if (!d) {
- 		status = NVME_SC_INTERNAL;
- 		goto done;
+ 	clk_bulk_disable_unprepare(DWAPB_NR_CLOCKS, gpio->clks);
+@@ -783,18 +826,27 @@ static int dwapb_gpio_suspend(struct device *dev)
+ 	return 0;
+ }
+ 
+-static int dwapb_gpio_resume(struct device *dev)
++static int dwapb_gpio_resume_noirq(struct device *dev)
+ {
+ 	struct dwapb_gpio *gpio = dev_get_drvdata(dev);
+-	struct gpio_chip *gc = &gpio->ports[0].chip.gc;
+-	struct gpio_generic_chip *gen_gc = to_gpio_generic_chip(gc);
+-	int i, err;
++	int err;
++
++	if (gpio->clocks_on_for_wake)
++		return 0;
+ 
+ 	err = clk_bulk_prepare_enable(DWAPB_NR_CLOCKS, gpio->clks);
+-	if (err) {
++	if (err)
+ 		dev_err(gpio->dev, "Cannot reenable APB/Debounce clocks\n");
+-		return err;
+-	}
++
++	return err;
++}
++
++static int dwapb_gpio_resume(struct device *dev)
++{
++	struct dwapb_gpio *gpio = dev_get_drvdata(dev);
++	struct gpio_chip *gc = &gpio->ports[0].chip.gc;
++	struct gpio_generic_chip *gen_gc = to_gpio_generic_chip(gc);
++	int i;
+ 
+ 	guard(gpio_generic_lock_irqsave)(gen_gc);
+ 
+@@ -828,8 +880,11 @@ static int dwapb_gpio_resume(struct device *dev)
+ 	return 0;
+ }
+ 
+-static DEFINE_SIMPLE_DEV_PM_OPS(dwapb_gpio_pm_ops,
+-				dwapb_gpio_suspend, dwapb_gpio_resume);
++static const struct dev_pm_ops dwapb_gpio_pm_ops = {
++	SYSTEM_SLEEP_PM_OPS(dwapb_gpio_suspend, dwapb_gpio_resume)
++	NOIRQ_SYSTEM_SLEEP_PM_OPS(dwapb_gpio_suspend_noirq,
++				  dwapb_gpio_resume_noirq)
++};
+ 
+ static struct platform_driver dwapb_gpio_driver = {
+ 	.driver		= {
 
 ---
 base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
-change-id: 20260702-b4-disp-127414cf-f1ed4fa75c62
+change-id: 20260629-gpio-dwapb-wakeup-34a058f6c324
 
 Best regards,
--- 
-Bryam Vargas <hexlabsecurity@proton.me>
+--  
+Jia Wang <wangjia@ultrarisc.com>
 
