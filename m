@@ -1,11 +1,11 @@
 From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Date: Thu, 02 Jul 2026 21:48:02 +0530
-Subject: [PATCH v2 5/6] iio: position: hid-sensor-custom-intel-hinge: use
+Date: Thu, 02 Jul 2026 21:48:03 +0530
+Subject: [PATCH v2 6/6] iio: temperature: hid-sensor-temperature: use
  common device for devres
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260702-15-jun-hid-iio-alignment-v2-5-b87f01f5efbc@gmail.com>
+Message-Id: <20260702-15-jun-hid-iio-alignment-v2-6-b87f01f5efbc@gmail.com>
 References: <20260702-15-jun-hid-iio-alignment-v2-0-b87f01f5efbc@gmail.com>
 In-Reply-To: <20260702-15-jun-hid-iio-alignment-v2-0-b87f01f5efbc@gmail.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -16,11 +16,11 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  linux-input@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783009082; l=1534;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783009082; l=1531;
  i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
- bh=UVaeg5VQR9vVfKtl4zUrShl4tLPPpTExSxQIrmcvo/0=;
- b=XacZ0TI+yEupbRsc6dfYKJteuYmk5TTUoc0HpoC9Btht8aTWYGuyCeRev2sgQTMRAFIG0UdKm
- kTVHRRVQYjGBHXa1vk3K7QbEJHgWiFHItPQtrgvG/LmKU1qH8Zhhbnt
+ bh=4701Zl6ga9a1z4yj3Yz9gyyh1nnaOn4C8ewcual1JXA=;
+ b=jt3v7QdjWsfgAfapZwFm0C9YNA79+MuK2w12LOFbEHrlpVz05FnImDeiSt5LBiqmdG+XpONgq
+ fVMLvt/ITxrAXnZwacib1+ey+TtLlS9hway7fYeVnhNzUgud03Pqout
 X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
  pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
 X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
@@ -42,22 +42,24 @@ resources are released deterministically and consistently.
 
 Signed-off-by: Sanjay Chitroda <sanjayembeddedse@gmail.com>
 ---
- drivers/iio/position/hid-sensor-custom-intel-hinge.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/iio/temperature/hid-sensor-temperature.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/iio/position/hid-sensor-custom-intel-hinge.c b/drivers/iio/position/hid-sensor-custom-intel-hinge.c
-index 1f4a40716c3f..eb6c59f81c3f 100644
---- a/drivers/iio/position/hid-sensor-custom-intel-hinge.c
-+++ b/drivers/iio/position/hid-sensor-custom-intel-hinge.c
-@@ -293,7 +293,7 @@ static int hid_hinge_probe(struct platform_device *pdev)
- 	}
+diff --git a/drivers/iio/temperature/hid-sensor-temperature.c b/drivers/iio/temperature/hid-sensor-temperature.c
+index 18da85e6c60e..6dfb606a53af 100644
+--- a/drivers/iio/temperature/hid-sensor-temperature.c
++++ b/drivers/iio/temperature/hid-sensor-temperature.c
+@@ -213,8 +213,8 @@ static int hid_temperature_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		return ret;
  
- 	indio_dev->num_channels = ARRAY_SIZE(hinge_channels);
--	indio_dev->channels = devm_kmemdup(&indio_dev->dev, hinge_channels,
-+	indio_dev->channels = devm_kmemdup(&pdev->dev, hinge_channels,
- 					   sizeof(hinge_channels), GFP_KERNEL);
- 	if (!indio_dev->channels)
+-	temp_chans = devm_kmemdup(&indio_dev->dev, temperature_channels,
+-				sizeof(temperature_channels), GFP_KERNEL);
++	temp_chans = devm_kmemdup(&pdev->dev, temperature_channels,
++				  sizeof(temperature_channels), GFP_KERNEL);
+ 	if (!temp_chans)
  		return -ENOMEM;
+ 
 
 -- 
 2.34.1
