@@ -1,73 +1,65 @@
-From: Ronald Claveau <linux-kernel-dev@aliel.fr>
-Date: Thu, 02 Jul 2026 11:56:01 +0200
-Subject: [PATCH v8 8/8] arm64: dts: amlogic: t7: khadas-vim4: Add i2c MCU
- fan node
+From: Christian Taedcke <christian.taedcke@weidmueller.com>
+Date: Thu, 02 Jul 2026 15:43:29 +0200
+Subject: [PATCH] dmaengine: nbpfaxi: Fix setting channel irqs in probe()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260702-add-mcu-fan-khadas-vim4-v8-8-244feee91a36@aliel.fr>
-References: <20260702-add-mcu-fan-khadas-vim4-v8-0-244feee91a36@aliel.fr>
-In-Reply-To: <20260702-add-mcu-fan-khadas-vim4-v8-0-244feee91a36@aliel.fr>
-To: Neil Armstrong <neil.armstrong@linaro.org>, Lee Jones <lee@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Andi Shyti <andi.shyti@kernel.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Beniamino Galvani <b.galvani@gmail.com>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@kernel.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Liam Girdwood <lgirdwood@gmail.com>, 
- Mark Brown <broonie@kernel.org>
-Cc: linux-amlogic@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-i2c@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-pm@vger.kernel.org, 
- Ronald Claveau <linux-kernel-dev@aliel.fr>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1026;
- i=linux-kernel-dev@aliel.fr; h=from:subject:message-id;
- bh=ReP9jX1LqZ1xk8srjfORg2VmRh0QSxflyWImCLygV1k=;
- b=owGbwMvMwCWm1SvKXP3cUInxtFoSQ5abGcNDyZbnwiwCnG4O77X3HruqGOL8UXlt8GMxy8MBB
- zl9Jn3qKGVhEONikBVTZOmfa3ni3eWjZ77uUU+BmcPKBDKEgYtTACaiLcfwP+av4IwZqs2uh69+
- qPYpbCifcHrdTO/XOw03zg7heP0udR3D/xw1/3f6H3IFF2Vftz7dZrBJ9bXKKs6vE5renXUQZwu
- v5AMA
-X-Developer-Key: i=linux-kernel-dev@aliel.fr; a=openpgp;
- fpr=DFD863F61375BF917F0012173953305EF1D0EC3E
-X-Endpoint-Received: by B4 Relay for linux-kernel-dev@aliel.fr/default with auth_id=744
+Message-Id: <20260702-upstreaming-nbpfaxi-v1-v1-1-fd8ea8830cea@weidmueller.com>
+X-B4-Tracking: v=1; b=H4sIAAFrRmoC/yXMQQqDMBBA0avIrB2IsbHiVcRF1ImdgjFkVATx7
+ qZ2+Rb/nyAUmQSa7IRIOwsvPqHIMxg+1k+EPCaDVrpSb6VxC7JGsjP7CX0fnD0Y9wJVWb2oNMa
+ 62kCKQyTHxzNuu79l6780rL8bXNcN7C8/RnoAAAA=
+X-Change-ID: 20260702-upstreaming-nbpfaxi-v1-0364e355af85
+To: Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>, 
+ Dan Carpenter <error27@gmail.com>, christian.taedcke-oss@weidmueller.com
+Cc: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, 
+ Christian Taedcke <christian.taedcke@weidmueller.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1782999813; l=1388;
+ i=christian.taedcke@weidmueller.com; s=20260702; h=from:subject:message-id;
+ bh=Y9B/MscRS+aViEQu67zlX3/v5KCJOOqQmYwRkuMIXkk=;
+ b=TSvP0rZyf+DIpaVyWev2dPFYoKXBBM9HKVYYLQQ/m26InhmavFJeRlorKWP9ariFOgOeoXKdP
+ jaI36yxRwSsCRZb3bRB0yOyasZQhjQv9fUkHfP2dM+/Fe18iLRjoSVZ
+X-Developer-Key: i=christian.taedcke@weidmueller.com; a=ed25519;
+ pk=fVCoBhFV3uMogA2nxIOU/rynNY+O2TDJgWvWjR06TrQ=
+X-Endpoint-Received: by B4 Relay for christian.taedcke@weidmueller.com/20260702 with auth_id=847
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable and configure i2c MCU node to get fan working on Khadas VIM4.
+When one irq is used for errors and each channel gets a dedicated irq,
+the total number of irqs is num_channels + 1. If the error irq is not
+the last entry in irqbuf[] but an earlier one, the loop assigning
+per-channel irqs terminates one iteration too early and the last
+channel is left without an irq.
 
-Reviewed-by: Neil Armstrong <neil.armstrong@linaro.org>
-Signed-off-by: Ronald Claveau <linux-kernel-dev@aliel.fr>
+Iterate over all collected irqs instead of num_channels so the
+error-irq skip does not shorten the effective channel count.
+
+Fixes: 188c6ba1dd92 ("dmaengine: nbpfaxi: Fix memory corruption in probe()")
+Cc: stable@vger.kernel.org
+Signed-off-by: Christian Taedcke <christian.taedcke@weidmueller.com>
 ---
- .../boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts      | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+ drivers/dma/nbpfaxi.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
-index 69d6118ba57e7..5d7f5390f3a66 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-t7-a311d2-khadas-vim4.dts
-@@ -157,6 +157,19 @@ wifi32k: wifi32k {
- 	};
- };
+diff --git a/drivers/dma/nbpfaxi.c b/drivers/dma/nbpfaxi.c
+index 05d7321629cc..74ff7bd979e2 100644
+--- a/drivers/dma/nbpfaxi.c
++++ b/drivers/dma/nbpfaxi.c
+@@ -1374,7 +1374,7 @@ static int nbpf_probe(struct platform_device *pdev)
+ 		if (irqs == num_channels + 1) {
+ 			struct nbpf_channel *chan;
  
-+&i2c_m_ao_a {
-+	status = "okay";
-+	pinctrl-0 = <&i2c0_ao_d_pins>;
-+	pinctrl-names = "default";
-+
-+	khadas_mcu: system-controller@18 {
-+		compatible = "khadas,vim4-mcu";
-+		reg = <0x18>;
-+		fan-supply = <&vcc5v>;
-+		#cooling-cells = <2>;
-+	};
-+};
-+
- &pwm_ab {
- 	status = "okay";
- 	pinctrl-0 = <&pwm_a_pins>;
+-			for (i = 0, chan = nbpf->chan; i < num_channels;
++			for (i = 0, chan = nbpf->chan; i < irqs;
+ 			     i++, chan++) {
+ 				/* Skip the error IRQ */
+ 				if (irqbuf[i] == eirq)
 
--- 
-2.49.0
+---
+base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
+change-id: 20260702-upstreaming-nbpfaxi-v1-0364e355af85
+
+Best regards,
+--  
+Christian Taedcke <christian.taedcke@weidmueller.com>
 
