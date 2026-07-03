@@ -1,262 +1,112 @@
-From: Joachim Eastwood <joachim.eastwood@gmail.com>
-Date: Fri, 03 Jul 2026 00:07:27 +0200
-Subject: [PATCH 12/12] arm64: dts: rockchip: add support for NanoPi M6
- board
+From: Chen Linxuan <me@black-desk.cn>
+Subject: [PATCH v6 0/2] includeIf: add "worktree" condition for matching
+ working tree path
+Date: Fri, 03 Jul 2026 11:13:16 +0800
+Message-Id: <20260703-includeif-worktree-v6-0-a13893ad9a7f@black-desk.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260703-nanopi-m6-v1-12-8344a1559519@gmail.com>
-References: <20260703-nanopi-m6-v1-0-8344a1559519@gmail.com>
-In-Reply-To: <20260703-nanopi-m6-v1-0-8344a1559519@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-rockchip@lists.infradead.org, 
- Joachim Eastwood <joachim.eastwood@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783030102; l=6027;
- i=joachim.eastwood@gmail.com; s=20260701; h=from:subject:message-id;
- bh=2mNPxmqfxuyRvqPxlE8+aLpY5uISihuqVZcpivsPJ9U=;
- b=SbRqbjNr+VW+ArL959dTIOs887PG74tl9K1aTfcS5Q9J4Byp54YcZHWjt334x5dzKtMJz4E7S
- H0JWVX//wdhBHIuXIb9eutU4tzwt/sEdXhB4J6MMugxiwZ6jKfbO8lE
-X-Developer-Key: i=joachim.eastwood@gmail.com; a=ed25519;
- pk=ZN/8xWtdYaSd5oEfloYSZ1a+/ri0n0VZqjlEeHlbXFU=
-X-Endpoint-Received: by B4 Relay for joachim.eastwood@gmail.com/20260701 with auth_id=846
+X-B4-Tracking: v=1; b=H4sIAMwoR2oC/33QwU7DMAwG4FeZcibIcZq04cR7IA5N4rCoU4uSU
+ UBT3x13FyoRcfxt+bPlm6hUMlXxdLqJQmuueZk52IeTCOdxfiOZI2eBgBY6UDLP4fIRKSf5uZT
+ pWohkCt52zkBMfhQ8+F4o5a87+vLK+ZzrdSnf9x2r2qv/cquSIB3Y6K1LGHr37C9jmGSkOj2GW
+ ezkikcGmwwyoy1p7fzghti3GH1kdJPRzChwgUw/oAfdYrpfxqg20zGTBrKoMCp+VIsxBwZNkzH
+ 7NZSI+xHQ/GG2bfsBK1CJWdQBAAA=
+X-Change-ID: 20260401-includeif-worktree-fcb64950dfba
+To: git@vger.kernel.org
+Cc: Kristoffer Haugsbakk <kristofferhaugsbakk@fastmail.com>, 
+ Junio C Hamano <gitster@pobox.com>, Patrick Steinhardt <ps@pks.im>, 
+ Chen Linxuan <me@black-desk.cn>, Phillip Wood <phillip.wood@dunelm.org.uk>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3324; i=me@black-desk.cn;
+ h=from:subject:message-id; bh=srt1rc2zixmmVAlprY6nwCXBccVgmX6AJVS0VWVd9i0=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqRyjVB+5fVsJcBdtNixvdfXIBoMdgSVP1H+FDH
+ O4zU0v3x4aJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCakco1QAKCRB2HuYUOZmu
+ i5WYD/wJUJB+1ymfyiXBDJpqDJT7DKWN0P2ZiYZuIvxjUtwZj6DwbQ7yHT5MAnuEH5hiT3YMtM0
+ rMiQLAjSGzaYCDZrHENWmoEenTEnprS6FX4ei9vQnjL/QDtqv8Baki4Io8ix2J6TVnPNFKjmhwj
+ a5TMXCKx4z5n03b4E+VAIFVf7Vi3l7GkLgIdmxEnEQOYwhEWM5e3NlwmUeWFszvik8kdoK9Dojv
+ dMyrzcQ7j3f1226+4KPmu8+LXbw8zjS4sL3K0AZDFDZyD1U1j8I5nz4FT5ZlfYgWMNlt3FBhe/+
+ rL+tWiKesrt5Ny/iDyCZWefXCaGcb0i0cuZKPAJG2f3d0dMMQuuXWWwXt/hXc4UE0Sgh/nBOdX7
+ d3FiI+0Rg8+xCLFRIAB9jzoEvUndEHUhBcj1kScy8Ais4vN4QDreQPdgIw5GWZUp9U1/Jg/1Unh
+ EDj6wjNCi0BGx3BoafyhE0ewhE5XJC7EESvwTsHvq8oMhxZ1YnX7Rr/K1mXxtkzoXkOV26v5y7n
+ B06VA4K8gnlXZIzL+I8RDBWeB4Pn3+Q3GCblZakCbpoz/oClIPd7CV/rMhtQf+y0NH0Kxt9Y0mF
+ Zmci1Y6NjGT0JN03GwsQ8VFVzGt/jv8TEMarbCyKmiShEkzVZaLuSxGS1yeWMVOBtogmev4LX59
+ 4JzBXCDSD3E1h7g==
+X-Developer-Key: i=me@black-desk.cn; a=openpgp;
+ fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
+X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The NanoPi M6 board shares most of the features of the R6 boards.
+The `includeIf` mechanism already supports matching on the `.git`
+directory path (`gitdir`) and the currently checked out branch
+(`onbranch`).  But in multi-worktree setups the `.git` directory of a
+linked worktree points into the main repository's `.git/worktrees/`
+area, which makes `gitdir` patterns cumbersome when one wants to
+include config based on the working tree's checkout path instead.
 
-Main differences:
-* M.2 M-key slot with PCIe (Also present on R6C)
-* M.2 E-key slot with PCIe and USB (from hub)
-* 1 additional USB 2.0 port from an on-board USB hub
-* RT5616 audio CODEC
+Introduce two new condition keywords:
 
-Signed-off-by: Joachim Eastwood <joachim.eastwood@gmail.com>
+  - `worktree:<pattern>` matches the realpath of the current worktree's
+    working directory against a glob pattern.
+  - `worktree/i:<pattern>` is the case-insensitive variant.
+
+Supported pattern features: glob wildcards, `**/` and `/**`, `~`
+expansion, `./` relative paths, and trailing-`/` prefix matching.
+The condition never matches in a bare repository.
+
+Signed-off-by: Chen Linxuan <me@black-desk.cn>
 ---
- arch/arm64/boot/dts/rockchip/Makefile              |   1 +
- arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dts | 200 +++++++++++++++++++++
- 2 files changed, 201 insertions(+)
+Changes in v6:
+- Rebase onto current `master` at Git 2.55.
+- Add an in-code comment explaining why the non-repository worktree
+  tests use the loose `**.path` pattern (suggested by Junio C Hamano).
+- Link to v5: https://lore.kernel.org/r/20260525-includeif-worktree-v5-0-1efe525d025a@black-desk.cn
 
-diff --git a/arch/arm64/boot/dts/rockchip/Makefile b/arch/arm64/boot/dts/rockchip/Makefile
-index 761d82b4f4f2..2867830eddf8 100644
---- a/arch/arm64/boot/dts/rockchip/Makefile
-+++ b/arch/arm64/boot/dts/rockchip/Makefile
-@@ -218,6 +218,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-evb1-v10.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-gameforce-ace.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-indiedroid-nova.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-khadas-edge2.dtb
-+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-nanopi-m6.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-nanopi-r6s.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-nanopi-r6c.dtb
- dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3588s-odroid-m2.dtb
-diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dts b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dts
-new file mode 100644
-index 000000000000..64448bf55cf7
---- /dev/null
-+++ b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dts
-@@ -0,0 +1,200 @@
-+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
-+
-+/dts-v1/;
-+
-+#include "rk3588s-nanopi.dtsi"
-+
-+/ {
-+	model = "FriendlyElec NanoPi M6";
-+	compatible = "friendlyarm,nanopi-m6", "rockchip,rk3588s";
-+
-+	sound {
-+		compatible = "simple-audio-card";
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&hp_det>;
-+
-+		simple-audio-card,name = "realtek,rt5616-codec";
-+		simple-audio-card,format = "i2s";
-+		simple-audio-card,mclk-fs = <256>;
-+
-+		simple-audio-card,hp-det-gpios = <&gpio1 RK_PC4 GPIO_ACTIVE_LOW>;
-+
-+		simple-audio-card,widgets =
-+			"Headphone", "Headphones",
-+			"Microphone", "Microphone Jack";
-+		simple-audio-card,routing =
-+			"Headphones", "HPOL",
-+			"Headphones", "HPOR",
-+			"MIC1", "Microphone Jack",
-+			"Microphone Jack", "micbias1";
-+
-+		simple-audio-card,cpu {
-+			sound-dai = <&i2s0_8ch>;
-+		};
-+
-+		simple-audio-card,codec {
-+			sound-dai = <&rt5616>;
-+		};
-+	};
-+
-+	adc-keys-1 {
-+		compatible = "adc-keys";
-+		io-channels = <&saradc 1>;
-+		io-channel-names = "buttons";
-+		keyup-threshold-microvolt = <1800000>;
-+		poll-interval = <100>;
-+
-+		button-maskrom {
-+			label = "Recovery";
-+			linux,code = <KEY_VENDOR>;
-+			press-threshold-microvolt = <1800>;
-+		};
-+	};
-+
-+	leds {
-+		compatible = "gpio-leds";
-+
-+		sys_led: led-0 {
-+			label = "sys_led";
-+			gpios = <&gpio1 RK_PA4 GPIO_ACTIVE_HIGH>;
-+			linux,default-trigger = "heartbeat";
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&sys_led_pin>;
-+		};
-+
-+		user_led: led-1 {
-+			label = "user_led";
-+			gpios = <&gpio1 RK_PA6 GPIO_ACTIVE_HIGH>;
-+			pinctrl-names = "default";
-+			pinctrl-0 = <&user_led_pin>;
-+		};
-+	};
-+
-+	vcc_3v3_pcie: regulator-vcc-3v3-pcie {
-+		compatible = "regulator-fixed";
-+		enable-active-high;
-+		gpios = <&gpio3 RK_PC6 GPIO_ACTIVE_HIGH>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&pcie2_2_pwren>;
-+		regulator-name = "vcc_3v3_pcie";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		vin-supply = <&vcc5v0_sys>;
-+	};
-+
-+	vcc5v0_usb_otg0: regulator-vcc5v0-usb-otg0 {
-+		compatible = "regulator-fixed";
-+		enable-active-high;
-+		gpios = <&gpio3 RK_PD4 GPIO_ACTIVE_HIGH>;
-+		pinctrl-names = "default";
-+		pinctrl-0 = <&typec5v_pwren>;
-+		regulator-name = "vcc5v0_usb_otg0";
-+		regulator-min-microvolt = <5000000>;
-+		regulator-max-microvolt = <5000000>;
-+		vin-supply = <&vcc5v0_sys>;
-+	};
-+
-+	vdd_mpcie_3v3: regulator-vdd-mpcie-3v3 {
-+		compatible = "regulator-fixed";
-+		/* Controlled by EXT_EN on RK806 */
-+		regulator-name = "vdd_mpcie_3v3";
-+		regulator-min-microvolt = <3300000>;
-+		regulator-max-microvolt = <3300000>;
-+		vin-supply = <&vcc5v0_sys>;
-+	};
-+};
-+
-+&i2c7 {
-+	clock-frequency = <200000>;
-+	status = "okay";
-+
-+	rt5616: codec@1b {
-+		compatible = "realtek,rt5616";
-+		reg = <0x1b>;
-+		clocks = <&cru I2S0_8CH_MCLKOUT>;
-+		clock-names = "mclk";
-+		#sound-dai-cells = <0>;
-+		assigned-clocks = <&cru I2S0_8CH_MCLKOUT>;
-+		assigned-clock-rates = <12288000>;
-+
-+		port {
-+			rt5616_p0_0: endpoint {
-+				remote-endpoint = <&i2s0_8ch_p0_0>;
-+			};
-+		};
-+	};
-+};
-+
-+&i2s0_8ch {
-+	pinctrl-names = "default";
-+	pinctrl-0 = <&i2s0_lrck
-+		     &i2s0_mclk
-+		     &i2s0_sclk
-+		     &i2s0_sdi0
-+		     &i2s0_sdo0>;
-+	status = "okay";
-+
-+	i2s0_8ch_p0: port {
-+		i2s0_8ch_p0_0: endpoint {
-+			dai-format = "i2s";
-+			mclk-fs = <256>;
-+			remote-endpoint = <&rt5616_p0_0>;
-+		};
-+	};
-+};
-+
-+&pcie2x1l1 { /* M.2 E-key 2230 */
-+	vpcie3v3-supply = <&vdd_mpcie_3v3>;
-+};
-+
-+&pcie2x1l2 { /* M.2 M-key 2280 */
-+	pinctrl-0 = <&pcie2_2_rst>, <&pcie20x1m0_clkreqn>, <&pcie20x1m0_waken>;
-+	vpcie3v3-supply = <&vcc_3v3_pcie>;
-+};
-+
-+&pinctrl {
-+	gpio-leds {
-+		sys_led_pin: sys-led-pin {
-+			rockchip,pins = <1 RK_PA4 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+
-+		user_led_pin: user-led-pin {
-+			rockchip,pins = <1 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+
-+	headphone {
-+		hp_det: hp-det {
-+			rockchip,pins = <1 RK_PC4 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+
-+	pcie {
-+		pcie2_2_pwren: pcie2-2-pwren {
-+			rockchip,pins = <3 RK_PC6 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+
-+	usb {
-+		typec5v_pwren: typec5v-pwren {
-+			rockchip,pins = <3 RK_PD4 RK_FUNC_GPIO &pcfg_pull_none>;
-+		};
-+	};
-+};
-+
-+&u2phy3 {
-+	status = "okay";
-+};
-+
-+&u2phy3_host {
-+	phy-supply = <&vcc5v0_host_20>;
-+	status = "okay";
-+};
-+
-+&usb_host1_ehci {
-+	status = "okay";
-+};
-+
-+&usb_host1_ohci {
-+	status = "okay";
-+};
+Changes in v5:
+- Fix Windows CI failure: use `**` glob pattern instead of `/` in the
+  "worktree without repository" tests, since `/` as a path pattern is
+  Unix-specific and does not match Windows paths.
+  Github CI pass: https://github.com/black-desk/git/actions/runs/26380466288
+- Add a test verifying case-sensitive matching by default, with the
+  `!CASE_INSENSITIVE_FS` prerequisite (suggested by Patrick Steinhardt).
+- Link to v4: https://lore.kernel.org/r/20260513-includeif-worktree-v4-0-f8e6212d1fba@black-desk.cn
 
+Changes in v4:
+- Deduplicate the worktree pattern documentation by referencing the
+  gitdir syntax instead of repeating the full pattern description
+  (suggested by Patrick Steinhardt).
+- Add documentation comparing includeIf "worktree:" with
+  extensions.worktreeConfig, including a concrete use case example
+  (suggested by Phillip Wood, Junio C Hamano).
+- Add a test verifying that the worktree condition does not match
+  during early config reading (suggested by Patrick Steinhardt).
+- Add tests for the non-repository (nongit) scenario (suggested by
+  Patrick Steinhardt).
+- Add a test for the case-insensitive "worktree/i" variant
+- Link to v3: https://lore.kernel.org/r/20260403-includeif-worktree-v3-0-109ce5782b03@black-desk.cn
+
+Changes in v3:
+- Apply Junio's suggestion.
+- Link to v2: https://lore.kernel.org/r/20260402-includeif-worktree-v2-0-36e339b898d7@black-desk.cn
+
+Changes in v2:
+
+- Add missing signed-off-by lines.
+- Link to v1: https://lore.kernel.org/r/20260401-includeif-worktree-v1-0-906db69f2c79@black-desk.cn
+
+---
+Chen Linxuan (2):
+      config: refactor include_by_gitdir() into include_by_path()
+      config: add "worktree" and "worktree/i" includeIf conditions
+
+ Documentation/config.adoc |  48 +++++++++++++++++
+ config.c                  |  25 +++++----
+ t/t1305-config-include.sh | 128 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 190 insertions(+), 11 deletions(-)
+---
+base-commit: e9019fcafe0040228b8631c30f97ae1adb61bcdc
+change-id: 20260401-includeif-worktree-fcb64950dfba
+
+Best regards,
 -- 
-2.55.0
+Chen Linxuan <me@black-desk.cn>
 
