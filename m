@@ -1,93 +1,114 @@
-From: Christian Taedcke <christian.taedcke@weidmueller.com>
-Date: Fri, 03 Jul 2026 09:56:12 +0200
-Subject: [PATCH v3] dmaengine: nbpfaxi: Fix setting channel irqs in probe()
+From: Jahnavi MN <jahnavimn@google.com>
+Subject: [PATCH 0/7] rust_binder : Implement dynamic debug logging mask
+Date: Fri, 03 Jul 2026 15:29:21 +0000
+Message-Id: <20260703-rust_binder_debug_mask-v1-0-9bdf12b5325c@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260703-upstreaming-nbpfaxi-v1-v3-1-24f7f9aa102f@weidmueller.com>
-X-B4-Tracking: v=1; b=H4sIABtrR2oC/42NzQ7CIBAGX8VwFgPUUuLJ9zAeKCztmv4F2lrT9
- N2FevSgyV4m+XZmJQE8QiCXw0o8zBiw7yJkxwMxte4qoGgjE8GEZAUTdBrC6EG32FW0KwenF6Q
- zpyyTZ8jyXDuVk/g8eHC47OLb/cNhKh9gxmRLixrD2PvXXp552v2MxOPUWQVaqYwZ0NcnoG0na
- BrwJ9O3JKVm8Z9MRBlIK0teKC0K9S3btu0NT+qR4iEBAAA=
-X-Change-ID: 20260702-upstreaming-nbpfaxi-v1-0364e355af85
-To: Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>, 
- Dan Carpenter <error27@gmail.com>, christian.taedcke-oss@weidmueller.com
-Cc: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, 
- Christian Taedcke <christian.taedcke@weidmueller.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783065388; l=2324;
- i=christian.taedcke@weidmueller.com; s=20260702; h=from:subject:message-id;
- bh=AyxnLI/6ejAzATGLnoVUg8vFQg+Ck0fOd3H2NJ7M7M8=;
- b=hllzCXN0NijWy0Y1HV7Qfpucv5LSEaUdngpJMKNEDHtwPxaYQoFbfjggxY2WJDRoddmGxiwNK
- WXZO34LAmLsBLEGCGICTZR4ym3hh4s7bCYmM4CZL0Y5aZExoH7I7tMR
-X-Developer-Key: i=christian.taedcke@weidmueller.com; a=ed25519;
- pk=fVCoBhFV3uMogA2nxIOU/rynNY+O2TDJgWvWjR06TrQ=
-X-Endpoint-Received: by B4 Relay for christian.taedcke@weidmueller.com/20260702 with auth_id=847
+X-B4-Tracking: v=1; b=H4sIAFHVR2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDcwMj3aLS4pL4pMy8lNSi+JTUpNL0+NzE4mxdM2Mzc2NzA0NTMyMTJaD
+ mgqLUtMwKsMHRsbW1AJF2f9hoAAAA
+X-Change-ID: 20260702-rust_binder_debug_mask-636737015624
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ =?utf-8?q?Arve_Hj=C3=B8nnev=C3=A5g?= <arve@android.com>, 
+ Todd Kjos <tkjos@android.com>, Christian Brauner <brauner@kernel.org>, 
+ Carlos Llamas <cmllamas@google.com>, Alice Ryhl <aliceryhl@google.com>, 
+ Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Trevor Gross <tmgross@umich.edu>, Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
+Cc: linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
+ Jahnavi MN <jahnavimn@google.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783092563; l=4101;
+ i=jahnavimn@google.com; s=20260702; h=from:subject:message-id;
+ bh=209Nac/iJ9paij4wD2LYPworVIG6Ys3P+mfxV+DyI3U=;
+ b=MORHRCvDgYndUEdGZgXgwmaLFx7DWtaLBbhbEpXc09UDEQCTNg1U3MLVlzCs9O6OrPKN5pvGy
+ Nf/juQn40K2CuQlBR5ncjlTRvbSdCIv0F7PfcrfJkkeVYcezeneLF7U
+X-Developer-Key: i=jahnavimn@google.com; a=ed25519;
+ pk=9aLfw3FepTOJwTS7jRXm7pDH87eBeZMXBPrqwU0//RE=
+X-Endpoint-Received: by B4 Relay for jahnavimn@google.com/20260702 with auth_id=849
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When one irq is used for errors and each channel gets a dedicated irq,
-the total number of irqs is num_channels + 1. If the error irq is not
-the last entry in irqbuf[] but an earlier one, the loop assigning
-per-channel irqs terminates one iteration too early and the last
-channel is left without an irq.
+Why we implemented this feature : 
 
-Iterate over all collected irqs instead of num_channels so the
-error-irq skip does not shorten the effective channel count.
+While working with and testing the Rust implementation of the Binder 
+driver (rust_binder), we realized that diagnosing transaction failures 
+and protocol errors was extremely difficult. When a user-space application 
+sends malformed data or makes a lifecycle mistake, the driver rejects it 
+with a generic error code (like `-EINVAL`). Without internal logs, the 
+driver acts as a "black box," forcing developers to guess which check 
+failed.
 
-Fixes: 188c6ba1dd92 ("dmaengine: nbpfaxi: Fix memory corruption in probe()")
-Cc: stable@vger.kernel.org
-Signed-off-by: Christian Taedcke <christian.taedcke@weidmueller.com>
+In the legacy C Binder driver, this issue is solved using a dynamic 
+`debug_mask` module parameter that toggles verbose logs for specific 
+subsystems. This series brings the same critical capability to the Rust 
+Binder driver to provide developers with clear, real-time feedback.
+
+How this helps and simplifies debugging : 
+Instead of rebuilds, reboots, or guessing:
+- Developers can enable logs instantly on a running device by writing to 
+  `/sys/module/rust_binder/parameters/debug_mask`.
+- It prints the exact reason for failures (such as alignment errors, 
+  mismatched call stacks, or invalid handle references) directly into 
+  `dmesg`, reducing debugging time from hours to seconds.
+- It protects system logs by keeping logging off by default and only 
+  enabling it when developers are actively troubleshooting.
+
+Code development approach : 
+We built this system in a structured, progressive approach:
+1. Infrastructure Bridging (C/Rust FFI) :
+   Because the Rust `module!` macro cannot yet declare parameters, we 
+   declared `debug_mask` in a C companion file and linked to it in Rust via 
+   FFI. We used volatile memory reads to ensure changes to the mask are 
+   detected instantly at runtime.
+   
+2. Verification Setup :
+   We created a `binder_debug!` macro and instrumented process `open`, 
+   `flush`, and `release` calls under the `BINDER_DEBUG_OPEN_CLOSE` mask. 
+   These low-frequency events allowed us to verify the setup without log 
+   flooding.
+   
+3. Targeted Instrumentation :
+   We then systematically added detailed logs across 3 major categories:
+   - User Error : Captures API misuse like misaligned FD arrays, 
+     negative reference count transitions, and invalid death/freeze 
+     notifications.
+   - Failed Transaction : Dumps a complete diagnostics log on 
+     transaction errors (IDs, PIDs, sizes, OOM states, and line numbers).
+   - Dead Transaction : Logs in-flight cancellations, aborted 
+     replies, and notification cleanups when processes exit prematurely.
+
+Signed-off-by: Jahnavi MN <jahnavimn@google.com>
 ---
-Changes in v3:
-- Guard against out-of-bound writes to chan in case of an invalid eirq.
-- Link to v2: https://patch.msgid.link/20260702-upstreaming-nbpfaxi-v1-v2-1-e6d6b178a278@weidmueller.com
+Jahnavi MN (7):
+      rust_binder: Add dynamic debug logging mask
+      rust_binder: Implement the BINDER_DEBUG_USER_ERROR logging mask for freezer-related operation
+      rust_binder: Implement the BINDER_DEBUG_USER_ERROR logging mask for reference counting and death notification operations
+      rust_binder: Implement the BINDER_DEBUG_USER_ERROR logging mask for transaction parsing and protocol validation failures
+      rust_binder: Implement the BINDER_DEBUG_FAILED_TRANSACTION logging mask for transaction parsing and routing failures
+      rust_binder: Implement BINDER_DEBUG_FAILED_TRANSACTION logging for death notification allocation failures
+      rust_binder: Implement the BINDER_DEBUG_DEAD_TRANSACTION logging mask to trace in-flight cancellations during teardown
 
-Changes in v2:
-- Advance chan only when assigning a real irq to fix out-of-bounds
-  memory access.
-- Remove now redundant ARRAY_SIZE(irqbuf) check.
-- Link to v1: https://patch.msgid.link/20260702-upstreaming-nbpfaxi-v1-v1-1-fd8ea8830cea@weidmueller.com
-
-To: christian.taedcke-oss@weidmueller.com
-To: Vinod Koul <vkoul@kernel.org>
-To: Frank Li <Frank.Li@kernel.org>
-To: Dan Carpenter <error27@gmail.com>
-Cc: dmaengine@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
----
- drivers/dma/nbpfaxi.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/drivers/dma/nbpfaxi.c b/drivers/dma/nbpfaxi.c
-index 05d7321629cc..b1f06f0bd0d5 100644
---- a/drivers/dma/nbpfaxi.c
-+++ b/drivers/dma/nbpfaxi.c
-@@ -1374,14 +1374,14 @@ static int nbpf_probe(struct platform_device *pdev)
- 		if (irqs == num_channels + 1) {
- 			struct nbpf_channel *chan;
- 
--			for (i = 0, chan = nbpf->chan; i < num_channels;
--			     i++, chan++) {
-+			for (i = 0, chan = nbpf->chan; i < irqs; i++) {
- 				/* Skip the error IRQ */
- 				if (irqbuf[i] == eirq)
--					i++;
--				if (i >= ARRAY_SIZE(irqbuf))
-+					continue;
-+				if (chan >= nbpf->chan + num_channels)
- 					return -EINVAL;
- 				chan->irq = irqbuf[i];
-+				chan++;
- 			}
- 		} else {
- 			/* 2 IRQs and more than one channel */
-
+ drivers/android/binder/debug.rs            |  49 ++++++++++
+ drivers/android/binder/freeze.rs           |  57 ++++++++---
+ drivers/android/binder/node.rs             |  24 ++++-
+ drivers/android/binder/process.rs          |  71 +++++++++++---
+ drivers/android/binder/rust_binder_main.rs |  11 ++-
+ drivers/android/binder/rust_binderfs.c     |   3 +
+ drivers/android/binder/thread.rs           | 147 +++++++++++++++++++++++++----
+ drivers/android/binder/transaction.rs      |  16 +++-
+ 8 files changed, 328 insertions(+), 50 deletions(-)
 ---
 base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
-change-id: 20260702-upstreaming-nbpfaxi-v1-0364e355af85
+change-id: 20260702-rust_binder_debug_mask-636737015624
 
 Best regards,
---  
-Christian Taedcke <christian.taedcke@weidmueller.com>
+-- 
+Jahnavi MN <jahnavimn@google.com>
 
