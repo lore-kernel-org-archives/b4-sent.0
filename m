@@ -1,60 +1,93 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Fri, 03 Jul 2026 09:01:54 +0400
-Subject: [PATCH v3 6/6] MAINTAINERS: Add entry for Qualcomm IPQ5018
- Bluetooth driver
+From: Christian Taedcke <christian.taedcke@weidmueller.com>
+Date: Fri, 03 Jul 2026 09:56:12 +0200
+Subject: [PATCH v3] dmaengine: nbpfaxi: Fix setting channel irqs in probe()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260703-ipq5018-bluetooth-v3-6-62da72818ab3@outlook.com>
-References: <20260703-ipq5018-bluetooth-v3-0-62da72818ab3@outlook.com>
-In-Reply-To: <20260703-ipq5018-bluetooth-v3-0-62da72818ab3@outlook.com>
-To: Bartosz Golaszewski <brgl@kernel.org>, 
- Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-arm-msm@vger.kernel.org, linux-bluetooth@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783054918; l=906;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=DrQrzkPl3cbWFmYstKvKokgP5FFWzafGXK+cjmpTmUA=;
- b=ioAiaXnnKiW2EdQlaX93wunLseUd11wwtwXMlMFgX/XonexwZJVXsXcn5fstW0DceUzq42i5j
- XKpsPfx6gaEB3sPMN1fEaLpazLInUTSOBHiBC1CTX8c1o9GtuOxpvfg
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+Message-Id: <20260703-upstreaming-nbpfaxi-v1-v3-1-24f7f9aa102f@weidmueller.com>
+X-B4-Tracking: v=1; b=H4sIABtrR2oC/42NzQ7CIBAGX8VwFgPUUuLJ9zAeKCztmv4F2lrT9
+ N2FevSgyV4m+XZmJQE8QiCXw0o8zBiw7yJkxwMxte4qoGgjE8GEZAUTdBrC6EG32FW0KwenF6Q
+ zpyyTZ8jyXDuVk/g8eHC47OLb/cNhKh9gxmRLixrD2PvXXp552v2MxOPUWQVaqYwZ0NcnoG0na
+ BrwJ9O3JKVm8Z9MRBlIK0teKC0K9S3btu0NT+qR4iEBAAA=
+X-Change-ID: 20260702-upstreaming-nbpfaxi-v1-0364e355af85
+To: Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>, 
+ Dan Carpenter <error27@gmail.com>, christian.taedcke-oss@weidmueller.com
+Cc: dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, 
+ Christian Taedcke <christian.taedcke@weidmueller.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783065388; l=2324;
+ i=christian.taedcke@weidmueller.com; s=20260702; h=from:subject:message-id;
+ bh=AyxnLI/6ejAzATGLnoVUg8vFQg+Ck0fOd3H2NJ7M7M8=;
+ b=hllzCXN0NijWy0Y1HV7Qfpucv5LSEaUdngpJMKNEDHtwPxaYQoFbfjggxY2WJDRoddmGxiwNK
+ WXZO34LAmLsBLEGCGICTZR4ym3hh4s7bCYmM4CZL0Y5aZExoH7I7tMR
+X-Developer-Key: i=christian.taedcke@weidmueller.com; a=ed25519;
+ pk=fVCoBhFV3uMogA2nxIOU/rynNY+O2TDJgWvWjR06TrQ=
+X-Endpoint-Received: by B4 Relay for christian.taedcke@weidmueller.com/20260702 with auth_id=847
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add maintainers entry for Qualcomm IPQ5018 Bluetooth driver.
+When one irq is used for errors and each channel gets a dedicated irq,
+the total number of irqs is num_channels + 1. If the error irq is not
+the last entry in irqbuf[] but an earlier one, the loop assigning
+per-channel irqs terminates one iteration too early and the last
+channel is left without an irq.
 
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+Iterate over all collected irqs instead of num_channels so the
+error-irq skip does not shorten the effective channel count.
+
+Fixes: 188c6ba1dd92 ("dmaengine: nbpfaxi: Fix memory corruption in probe()")
+Cc: stable@vger.kernel.org
+Signed-off-by: Christian Taedcke <christian.taedcke@weidmueller.com>
 ---
- MAINTAINERS | 7 +++++++
- 1 file changed, 7 insertions(+)
+Changes in v3:
+- Guard against out-of-bound writes to chan in case of an invalid eirq.
+- Link to v2: https://patch.msgid.link/20260702-upstreaming-nbpfaxi-v1-v2-1-e6d6b178a278@weidmueller.com
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 0b9d7c8276ac..60f7251d1a16 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -22289,6 +22289,13 @@ S:	Maintained
- F:	Documentation/devicetree/bindings/regulator/vqmmc-ipq4019-regulator.yaml
- F:	drivers/regulator/vqmmc-ipq4019-regulator.c
+Changes in v2:
+- Advance chan only when assigning a real irq to fix out-of-bounds
+  memory access.
+- Remove now redundant ARRAY_SIZE(irqbuf) check.
+- Link to v1: https://patch.msgid.link/20260702-upstreaming-nbpfaxi-v1-v1-1-fd8ea8830cea@weidmueller.com
+
+To: christian.taedcke-oss@weidmueller.com
+To: Vinod Koul <vkoul@kernel.org>
+To: Frank Li <Frank.Li@kernel.org>
+To: Dan Carpenter <error27@gmail.com>
+Cc: dmaengine@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+---
+ drivers/dma/nbpfaxi.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/dma/nbpfaxi.c b/drivers/dma/nbpfaxi.c
+index 05d7321629cc..b1f06f0bd0d5 100644
+--- a/drivers/dma/nbpfaxi.c
++++ b/drivers/dma/nbpfaxi.c
+@@ -1374,14 +1374,14 @@ static int nbpf_probe(struct platform_device *pdev)
+ 		if (irqs == num_channels + 1) {
+ 			struct nbpf_channel *chan;
  
-+QUALCOMM IPQ5018 BLUETOOTH DRIVER
-+M:	George Moussalem <george.moussalem@outlook.com>
-+L:	linux-bluetooth@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/net/bluetooth/qcom,ipq5018-bt.yaml
-+F:	drivers/bluetooth/btqcomipc.c
-+
- QUALCOMM IRIS VIDEO ACCELERATOR DRIVER
- M:	Vikash Garodia <vikash.garodia@oss.qualcomm.com>
- M:	Dikshita Agarwal <dikshita.agarwal@oss.qualcomm.com>
+-			for (i = 0, chan = nbpf->chan; i < num_channels;
+-			     i++, chan++) {
++			for (i = 0, chan = nbpf->chan; i < irqs; i++) {
+ 				/* Skip the error IRQ */
+ 				if (irqbuf[i] == eirq)
+-					i++;
+-				if (i >= ARRAY_SIZE(irqbuf))
++					continue;
++				if (chan >= nbpf->chan + num_channels)
+ 					return -EINVAL;
+ 				chan->irq = irqbuf[i];
++				chan++;
+ 			}
+ 		} else {
+ 			/* 2 IRQs and more than one channel */
 
--- 
-2.53.0
+---
+base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
+change-id: 20260702-upstreaming-nbpfaxi-v1-0364e355af85
+
+Best regards,
+--  
+Christian Taedcke <christian.taedcke@weidmueller.com>
 
