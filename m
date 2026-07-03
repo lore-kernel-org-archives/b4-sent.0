@@ -1,11 +1,11 @@
 From: Jahnavi MN <jahnavimn@google.com>
-Date: Fri, 03 Jul 2026 15:29:24 +0000
-Subject: [PATCH 3/7] rust_binder: Implement the BINDER_DEBUG_USER_ERROR
- logging mask for reference counting and death notification operations
+Date: Fri, 03 Jul 2026 15:29:25 +0000
+Subject: [PATCH 4/7] rust_binder: Implement the BINDER_DEBUG_USER_ERROR
+ logging mask for transaction parsing and protocol validation failures
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260703-rust_binder_debug_mask-v1-3-9bdf12b5325c@google.com>
+Message-Id: <20260703-rust_binder_debug_mask-v1-4-9bdf12b5325c@google.com>
 References: <20260703-rust_binder_debug_mask-v1-0-9bdf12b5325c@google.com>
 In-Reply-To: <20260703-rust_binder_debug_mask-v1-0-9bdf12b5325c@google.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -24,169 +24,214 @@ To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
 Cc: linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
  Jahnavi MN <jahnavimn@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783092563; l=6269;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783092563; l=9574;
  i=jahnavimn@google.com; s=20260702; h=from:subject:message-id;
- bh=wYISGUiZ62G1sUQWRaNcvf79MLZFjEl4Cs5iopGT7K8=;
- b=JPXSZ3Y4gbZxwTwC4+JLWq4QE45Eq1a4pyD0ZHgE/Wx9ST1J8H4mlJs+Ish07v1UT+TEu/ngX
- GO+s3g34mMMBmEEHXwzGa2/9iCAxh4KafmR54N53vU+nRxPUiauER9J
+ bh=rtNHxB4vjfIuxKSvuYNWGRnSLX4qWj6HY18AAyIfobM=;
+ b=LbOnZm9gjDvJxeTauRY6od7Hhaooky+UsM7Xa+hFdPc9TA/CrUz4FVMwonfKFlb1PYSQNH1pB
+ DMpQcypkM8NCUuZtb3HnMLKJPCINP/3AgUVVuH6MdTfRW8GkkFtpJoC
 X-Developer-Key: i=jahnavimn@google.com; a=ed25519;
  pk=9aLfw3FepTOJwTS7jRXm7pDH87eBeZMXBPrqwU0//RE=
 X-Endpoint-Received: by B4 Relay for jahnavimn@google.com/20260702 with auth_id=849
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This adds dynamic debug logs for:
-- Decrementing handle reference counts that are already zero.
-- Mismatched reference states (calling inc_ref_done with no active
-  inc_refs, or using a weak reference as a strong reference).
-- Requesting or clearing death notifications on invalid references,
-  already active notifications, or with mismatched cookies.
+This adds dynamic debug logs in `thread.rs` for:
+- File descriptor array (FDA) parent offset and parent buffer address
+  alignment misalignments.
+- Memory copy, write, and translation failures during transaction
+  serialization (including out-of-bounds pointer fixups).
+- Incoming transactions or replies that do not match the expected
+  thread calling stack (such as out-of-order replies).
 
 Signed-off-by: Jahnavi MN <jahnavimn@google.com>
 ---
- drivers/android/binder/node.rs    | 16 +++++++++---
- drivers/android/binder/process.rs | 53 +++++++++++++++++++++++++++++++--------
- 2 files changed, 55 insertions(+), 14 deletions(-)
+ drivers/android/binder/thread.rs | 88 +++++++++++++++++++++++++++++++++-------
+ 1 file changed, 73 insertions(+), 15 deletions(-)
 
-diff --git a/drivers/android/binder/node.rs b/drivers/android/binder/node.rs
-index 69f757ff7461..d71f55739772 100644
---- a/drivers/android/binder/node.rs
-+++ b/drivers/android/binder/node.rs
-@@ -343,7 +343,10 @@ pub(crate) fn inc_ref_done_locked(
-     ) -> Option<DLArc<Node>> {
-         let inner = self.inner.access_mut(owner_inner);
-         if inner.active_inc_refs == 0 {
--            pr_err!("inc_ref_done called when no active inc_refs");
-+            binder_debug!(
-+                crate::debug::BINDER_DEBUG_USER_ERROR,
-+                "inc_ref_done called when no active inc_refs"
-+            );
-             return None;
-         }
+diff --git a/drivers/android/binder/thread.rs b/drivers/android/binder/thread.rs
+index c908dde5796a..ecf05cebcb3e 100644
+--- a/drivers/android/binder/thread.rs
++++ b/drivers/android/binder/thread.rs
+@@ -721,11 +721,12 @@ fn translate_object(
+                 let alloc_offset = match sg_state.unused_buffer_space.claim_next(obj_length) {
+                     Ok(alloc_offset) => alloc_offset,
+                     Err(err) => {
+-                        pr_warn!(
+-                            "Failed to claim space for a BINDER_TYPE_PTR. (offset: {}, limit: {}, size: {})",
++                        binder_debug!(
++                            crate::debug::BINDER_DEBUG_USER_ERROR,
++                            "failed to claim space for a BINDER_TYPE_PTR (offset: {}, limit: {}, size: {})",
+                             sg_state.unused_buffer_space.offset,
+                             sg_state.unused_buffer_space.limit,
+-                            obj_length,
++                            obj_length
+                         );
+                         return Err(err.into());
+                     }
+@@ -804,6 +805,10 @@ fn translate_object(
+                 let fds_len = num_fds.checked_mul(size_of::<u32>()).ok_or(EINVAL)?;
  
-@@ -818,6 +821,10 @@ pub(crate) fn get_count(&self) -> (usize, usize) {
+                 if !is_aligned(parent_offset, size_of::<u32>()) {
++                    binder_debug!(
++                        crate::debug::BINDER_DEBUG_USER_ERROR,
++                        "FDA parent offset not aligned correctly"
++                    );
+                     return Err(EINVAL.into());
+                 }
  
-     pub(crate) fn clone(&self, strong: bool) -> Result<NodeRef> {
-         if strong && self.strong_count == 0 {
-+            binder_debug!(
-+                crate::debug::BINDER_DEBUG_USER_ERROR,
-+                "tried to use weak ref as strong ref"
-+            );
-             return Err(EINVAL);
-         }
-         Ok(self
-@@ -858,9 +865,10 @@ pub(crate) fn update(&mut self, inc: bool, strong: bool) -> bool {
-             *count += 1;
-         } else {
-             if *count == 0 {
--                pr_warn!(
--                    "pid {} performed invalid decrement on ref\n",
--                    kernel::current!().pid()
+@@ -822,6 +827,10 @@ fn translate_object(
+                 };
+ 
+                 if !is_aligned(parent_entry.sender_uaddr, size_of::<u32>()) {
++                    binder_debug!(
++                        crate::debug::BINDER_DEBUG_USER_ERROR,
++                        "FDA parent buffer not aligned correctly"
++                    );
+                     return Err(EINVAL.into());
+                 }
+ 
+@@ -905,8 +914,9 @@ fn apply_sg(&self, alloc: &mut Allocation, sg_state: &mut ScatterGatherState) ->
+ 
+                 let target_offset_end = fixup_offset.checked_add(fixup_len).ok_or(EINVAL)?;
+                 if fixup_offset < end_of_previous_fixup || offset_end < target_offset_end {
+-                    pr_warn!(
+-                        "Fixups oob {} {} {} {}",
++                    binder_debug!(
++                        crate::debug::BINDER_DEBUG_USER_ERROR,
++                        "fixups oob {} {} {} {}",
+                         fixup_offset,
+                         end_of_previous_fixup,
+                         offset_end,
+@@ -918,18 +928,31 @@ fn apply_sg(&self, alloc: &mut Allocation, sg_state: &mut ScatterGatherState) ->
+                 let copy_off = end_of_previous_fixup;
+                 let copy_len = fixup_offset - end_of_previous_fixup;
+                 if let Err(err) = alloc.copy_into(&mut reader, copy_off, copy_len) {
+-                    pr_warn!("Failed copying into alloc: {:?}", err);
++                    binder_debug!(
++                        crate::debug::BINDER_DEBUG_USER_ERROR,
++                        "failed copying into alloc: {:?}",
++                        err
++                    );
+                     return Err(err.into());
+                 }
+                 if let PointerFixupEntry::Fixup { pointer_value, .. } = fixup {
+                     let res = alloc.write::<u64>(fixup_offset, pointer_value);
+                     if let Err(err) = res {
+-                        pr_warn!("Failed copying ptr into alloc: {:?}", err);
++                        binder_debug!(
++                            crate::debug::BINDER_DEBUG_USER_ERROR,
++                            "failed copying ptr into alloc: {:?}",
++                            err
++                        );
+                         return Err(err.into());
+                     }
+                 }
+                 if let Err(err) = reader.skip(fixup_len) {
+-                    pr_warn!("Failed skipping {} from reader: {:?}", fixup_len, err);
++                    binder_debug!(
++                        crate::debug::BINDER_DEBUG_USER_ERROR,
++                        "failed skipping {} from reader: {:?}",
++                        fixup_len,
++                        err
++                    );
+                     return Err(err.into());
+                 }
+                 end_of_previous_fixup = target_offset_end;
+@@ -937,7 +960,11 @@ fn apply_sg(&self, alloc: &mut Allocation, sg_state: &mut ScatterGatherState) ->
+             let copy_off = end_of_previous_fixup;
+             let copy_len = offset_end - end_of_previous_fixup;
+             if let Err(err) = alloc.copy_into(&mut reader, copy_off, copy_len) {
+-                pr_warn!("Failed copying remainder into alloc: {:?}", err);
 +                binder_debug!(
 +                    crate::debug::BINDER_DEBUG_USER_ERROR,
-+                    "performed invalid decrement on ref (strong: {})",
-+                    strong
-                 );
-                 return false;
++                    "failed copying remainder into alloc: {:?}",
++                    err
++                );
+                 return Err(err.into());
              }
-diff --git a/drivers/android/binder/process.rs b/drivers/android/binder/process.rs
-index c13a04a3afcb..db929cc35585 100644
---- a/drivers/android/binder/process.rs
-+++ b/drivers/android/binder/process.rs
-@@ -898,10 +898,23 @@ pub(crate) fn insert_or_update_handle(
+         }
+@@ -1041,7 +1068,10 @@ pub(crate) fn copy_transaction_data(
+                 let offset: usize = offset.try_into().map_err(|_| EINVAL)?;
+ 
+                 if offset < end_of_previous_object || !is_aligned(offset, size_of::<u32>()) {
+-                    pr_warn!("Got transaction with invalid offset.");
++                    binder_debug!(
++                        crate::debug::BINDER_DEBUG_USER_ERROR,
++                        "got transaction with invalid offset"
++                    );
+                     return Err(EINVAL.into());
+                 }
+ 
+@@ -1066,7 +1096,11 @@ pub(crate) fn copy_transaction_data(
+                 ) {
+                     Ok(()) => end_of_previous_object = offset + object.size(),
+                     Err(err) => {
+-                        pr_warn!("Error while translating object.");
++                        binder_debug!(
++                            crate::debug::BINDER_DEBUG_USER_ERROR,
++                            "error while translating object: {:?}",
++                            err
++                        );
+                         return Err(err);
+                     }
+                 }
+@@ -1087,14 +1121,22 @@ pub(crate) fn copy_transaction_data(
+ 
+         if let Some(sg_state) = sg_state.as_mut() {
+             if let Err(err) = self.apply_sg(&mut alloc, sg_state) {
+-                pr_warn!("Failure in apply_sg: {:?}", err);
++                binder_debug!(
++                    crate::debug::BINDER_DEBUG_USER_ERROR,
++                    "failure in apply_sg: {:?}",
++                    err
++                );
+                 return Err(err);
+             }
+         }
+ 
+         if let Some((off_out, secctx)) = secctx.as_mut() {
+             if let Err(err) = alloc.write(secctx_off, secctx.as_bytes()) {
+-                pr_warn!("Failed to write security context: {:?}", err);
++                binder_debug!(
++                    crate::debug::BINDER_DEBUG_USER_ERROR,
++                    "failed to write security context: {:?}",
++                    err
++                );
+                 return Err(err.into());
+             }
+             **off_out = secctx_off;
+@@ -1283,7 +1325,10 @@ fn transaction_inner(self: &Arc<Self>, info: &mut TransactionInfo) -> BinderResu
+         {
+             let mut inner = self.inner.lock();
+             if !transaction.is_stacked_on(&inner.current_transaction) {
+-                pr_warn!("Transaction stack changed during transaction!");
++                binder_debug!(
++                    crate::debug::BINDER_DEBUG_USER_ERROR,
++                    "got new transaction with bad transaction stack"
++                );
+                 return Err(EINVAL.into());
+             }
+             inner.current_transaction = Some(transaction.clone_arc());
+@@ -1306,8 +1351,21 @@ fn transaction_inner(self: &Arc<Self>, info: &mut TransactionInfo) -> BinderResu
      }
  
-     pub(crate) fn get_transaction_node(&self, handle: u32) -> BinderResult<NodeRef> {
--        if handle == 0 {
--            Ok(self.ctx.get_manager_node(true)?)
-+        // When handle is zero, try to get the context manager.
-+        let res = if handle == 0 {
-+            self.ctx.get_manager_node(true)
-         } else {
--            Ok(self.get_node_from_handle(handle, true)?)
-+            self.get_node_from_handle(handle, true).map_err(Into::into)
-+        };
-+
-+        match res {
-+            Ok(node_ref) => Ok(node_ref),
+     fn reply_inner(self: &Arc<Self>, info: &mut TransactionInfo) -> BinderResult {
+-        let orig = self.inner.lock().pop_transaction_to_reply(self)?;
++        let orig = match self.inner.lock().pop_transaction_to_reply(self) {
++            Ok(orig) => orig,
 +            Err(err) => {
 +                binder_debug!(
 +                    crate::debug::BINDER_DEBUG_USER_ERROR,
-+                    "got transaction to invalid handle {}",
-+                    handle
++                    "got reply transaction with no transaction stack"
 +                );
-+                Err(err)
++                return Err(err.into());
 +            }
-         }
-     }
- 
-@@ -969,10 +982,13 @@ pub(crate) fn update_ref(
-                     }
-                 }
-             }
--        } else {
-             // All refs are cleared in process exit, so this warning is expected in that case.
-             if !self.inner.lock().is_dead {
--                pr_warn!("{}: no such ref {handle}\n", self.pid_in_current_ns());
-+                binder_debug!(
-+                    crate::debug::BINDER_DEBUG_USER_ERROR,
-+                    "no such ref {}",
-+                    handle
-+                );
-             }
-         }
-         Ok(())
-@@ -1225,13 +1241,20 @@ pub(crate) fn request_death(
-         })?;
-         let mut refs = self.node_refs.lock();
-         let Some(info) = refs.by_handle.get_mut(&handle) else {
--            pr_warn!("BC_REQUEST_DEATH_NOTIFICATION invalid ref {handle}\n");
++        };
+         if !orig.from.is_current_transaction(&orig) {
 +            binder_debug!(
 +                crate::debug::BINDER_DEBUG_USER_ERROR,
-+                "BC_REQUEST_DEATH_NOTIFICATION invalid ref {}",
-+                handle
++                "got reply transaction with bad transaction stack"
 +            );
-             return Ok(());
-         };
- 
-         // Nothing to do if there is already a death notification request for this handle.
-         if info.death().is_some() {
--            pr_warn!("BC_REQUEST_DEATH_NOTIFICATION death notification already set\n");
-+            binder_debug!(
-+                crate::debug::BINDER_DEBUG_USER_ERROR,
-+                "BC_REQUEST_DEATH_NOTIFICATION death notification already set"
-+            );
-             return Ok(());
-         }
- 
-@@ -1268,17 +1291,27 @@ pub(crate) fn clear_death(&self, reader: &mut UserSliceReader, thread: &Thread)
- 
-         let mut refs = self.node_refs.lock();
-         let Some(info) = refs.by_handle.get_mut(&handle) else {
--            pr_warn!("BC_CLEAR_DEATH_NOTIFICATION invalid ref {handle}\n");
-+            binder_debug!(
-+                crate::debug::BINDER_DEBUG_USER_ERROR,
-+                "BC_CLEAR_DEATH_NOTIFICATION invalid ref {}",
-+                handle
-+            );
-             return Ok(());
-         };
- 
-         let Some(death) = info.death().take() else {
--            pr_warn!("BC_CLEAR_DEATH_NOTIFICATION death notification not active\n");
-+            binder_debug!(
-+                crate::debug::BINDER_DEBUG_USER_ERROR,
-+                "BC_CLEAR_DEATH_NOTIFICATION death notification not active"
-+            );
-             return Ok(());
-         };
-         if death.cookie != cookie {
-             *info.death() = Some(death);
--            pr_warn!("BC_CLEAR_DEATH_NOTIFICATION death notification cookie mismatch\n");
-+            binder_debug!(
-+                crate::debug::BINDER_DEBUG_USER_ERROR,
-+                "BC_CLEAR_DEATH_NOTIFICATION death notification cookie mismatch"
-+            );
-             return Ok(());
+             return Err(EINVAL.into());
          }
  
 
