@@ -1,112 +1,108 @@
 From: Chen Linxuan <me@black-desk.cn>
-Subject: [PATCH v6 0/2] includeIf: add "worktree" condition for matching
- working tree path
-Date: Fri, 03 Jul 2026 11:13:16 +0800
-Message-Id: <20260703-includeif-worktree-v6-0-a13893ad9a7f@black-desk.cn>
+Date: Fri, 03 Jul 2026 11:13:17 +0800
+Subject: [PATCH v6 1/2] config: refactor include_by_gitdir() into
+ include_by_path()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAMwoR2oC/33QwU7DMAwG4FeZcibIcZq04cR7IA5N4rCoU4uSU
- UBT3x13FyoRcfxt+bPlm6hUMlXxdLqJQmuueZk52IeTCOdxfiOZI2eBgBY6UDLP4fIRKSf5uZT
- pWohkCt52zkBMfhQ8+F4o5a87+vLK+ZzrdSnf9x2r2qv/cquSIB3Y6K1LGHr37C9jmGSkOj2GW
- ezkikcGmwwyoy1p7fzghti3GH1kdJPRzChwgUw/oAfdYrpfxqg20zGTBrKoMCp+VIsxBwZNkzH
- 7NZSI+xHQ/GG2bfsBK1CJWdQBAAA=
-X-Change-ID: 20260401-includeif-worktree-fcb64950dfba
+Message-Id: <20260703-includeif-worktree-v6-1-a13893ad9a7f@black-desk.cn>
+References: <20260703-includeif-worktree-v6-0-a13893ad9a7f@black-desk.cn>
+In-Reply-To: <20260703-includeif-worktree-v6-0-a13893ad9a7f@black-desk.cn>
 To: git@vger.kernel.org
 Cc: Kristoffer Haugsbakk <kristofferhaugsbakk@fastmail.com>, 
  Junio C Hamano <gitster@pobox.com>, Patrick Steinhardt <ps@pks.im>, 
  Chen Linxuan <me@black-desk.cn>, Phillip Wood <phillip.wood@dunelm.org.uk>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3324; i=me@black-desk.cn;
- h=from:subject:message-id; bh=srt1rc2zixmmVAlprY6nwCXBccVgmX6AJVS0VWVd9i0=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqRyjVB+5fVsJcBdtNixvdfXIBoMdgSVP1H+FDH
- O4zU0v3x4aJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCakco1QAKCRB2HuYUOZmu
- i5WYD/wJUJB+1ymfyiXBDJpqDJT7DKWN0P2ZiYZuIvxjUtwZj6DwbQ7yHT5MAnuEH5hiT3YMtM0
- rMiQLAjSGzaYCDZrHENWmoEenTEnprS6FX4ei9vQnjL/QDtqv8Baki4Io8ix2J6TVnPNFKjmhwj
- a5TMXCKx4z5n03b4E+VAIFVf7Vi3l7GkLgIdmxEnEQOYwhEWM5e3NlwmUeWFszvik8kdoK9Dojv
- dMyrzcQ7j3f1226+4KPmu8+LXbw8zjS4sL3K0AZDFDZyD1U1j8I5nz4FT5ZlfYgWMNlt3FBhe/+
- rL+tWiKesrt5Ny/iDyCZWefXCaGcb0i0cuZKPAJG2f3d0dMMQuuXWWwXt/hXc4UE0Sgh/nBOdX7
- d3FiI+0Rg8+xCLFRIAB9jzoEvUndEHUhBcj1kScy8Ais4vN4QDreQPdgIw5GWZUp9U1/Jg/1Unh
- EDj6wjNCi0BGx3BoafyhE0ewhE5XJC7EESvwTsHvq8oMhxZ1YnX7Rr/K1mXxtkzoXkOV26v5y7n
- B06VA4K8gnlXZIzL+I8RDBWeB4Pn3+Q3GCblZakCbpoz/oClIPd7CV/rMhtQf+y0NH0Kxt9Y0mF
- Zmci1Y6NjGT0JN03GwsQ8VFVzGt/jv8TEMarbCyKmiShEkzVZaLuSxGS1yeWMVOBtogmev4LX59
- 4JzBXCDSD3E1h7g==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2786; i=me@black-desk.cn;
+ h=from:subject:message-id; bh=ipYZMmHK39gpQV5AmNeMYl72bc8vJdBHiXJBfipzzao=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqRyjnh5Kf+4exl7tr9NFJGvypMnlzcTQRU0jbh
+ Pjw37HRsk2JAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCakco5wAKCRB2HuYUOZmu
+ i7HyD/9y0/WYtdt2R6y8IBjpvlg5KOCggwKQ23ojmyGv1noW+aJi+TrHzFpn11wqPs+4tXaXVMa
+ EvCn/fCfEB2cj0MJhAnuJ91UyKJ8koHh9tkYZCNmGJDcelVR5ax1Nf0M1PwwozzSJsCn5/rlDqe
+ Czem+OGtlBl5K4sZtMwmkPs2853qgnutidYtl1Fq1WwzYGegsKb1A6FYJXyLh1m3hdCTqN1vlGL
+ rkSAgGXkAUmReBrldn8G4uDy3IkD1xIUc/nqYMmjEBZxQazPCj6DtP29zu3TMqmb6JGQtyJ9gpA
+ PIQaCcYYFRCvMNFOD1HtbXREw+mTNBarH91DWRtxjNwmWT/91LfJCuvJMosEpnaE6/LJjaYtorj
+ ZdBYpAHOl0+mVE0PwkE1nMVBKX3nDliMF4DdTWC9fxJlu819j260A4XrvXPpsg+U/7Ic7aRYAxn
+ 6xqnyCtrejhNyhaH9MMYhOZA6y3IDiAWfVmM0WeLcoKHmcY7fZwiQS4gbJYpHREPz4TYUVbveZz
+ 7Kw8dbTt2cQnptgKKo67fcnmqmtTr8r5NV8+LDahZ9FqKKpcBLVM3DK1w9dsIFQCR2Gyge1/RYM
+ UeAJ9AgGdz3zM+A88cwA35mxRtQu+n93VagjLiJ8LHu20eg2a/7Dvj0Yqa67vkXmCsnSxPJdkjB
+ LsX8hT7RHtMozbw==
 X-Developer-Key: i=me@black-desk.cn; a=openpgp;
  fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
 X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The `includeIf` mechanism already supports matching on the `.git`
-directory path (`gitdir`) and the currently checked out branch
-(`onbranch`).  But in multi-worktree setups the `.git` directory of a
-linked worktree points into the main repository's `.git/worktrees/`
-area, which makes `gitdir` patterns cumbersome when one wants to
-include config based on the working tree's checkout path instead.
+The include_by_gitdir() function matches the realpath of a given
+path against a glob pattern, but its interface is tightly coupled to
+the gitdir condition: it takes a struct config_options *opts and
+extracts opts->git_dir internally.
 
-Introduce two new condition keywords:
-
-  - `worktree:<pattern>` matches the realpath of the current worktree's
-    working directory against a glob pattern.
-  - `worktree/i:<pattern>` is the case-insensitive variant.
-
-Supported pattern features: glob wildcards, `**/` and `/**`, `~`
-expansion, `./` relative paths, and trailing-`/` prefix matching.
-The condition never matches in a bare repository.
+Refactor it into a more generic include_by_path() helper that takes
+a const char *path parameter directly, and update the gitdir and
+gitdir/i callers to pass opts->git_dir explicitly.  No behavior
+change, just preparing for the addition of a new worktree condition
+that will reuse the same path-matching logic with a different path.
 
 Signed-off-by: Chen Linxuan <me@black-desk.cn>
 ---
-Changes in v6:
-- Rebase onto current `master` at Git 2.55.
-- Add an in-code comment explaining why the non-repository worktree
-  tests use the loose `**.path` pattern (suggested by Junio C Hamano).
-- Link to v5: https://lore.kernel.org/r/20260525-includeif-worktree-v5-0-1efe525d025a@black-desk.cn
+ config.c | 19 ++++++++-----------
+ 1 file changed, 8 insertions(+), 11 deletions(-)
 
-Changes in v5:
-- Fix Windows CI failure: use `**` glob pattern instead of `/` in the
-  "worktree without repository" tests, since `/` as a path pattern is
-  Unix-specific and does not match Windows paths.
-  Github CI pass: https://github.com/black-desk/git/actions/runs/26380466288
-- Add a test verifying case-sensitive matching by default, with the
-  `!CASE_INSENSITIVE_FS` prerequisite (suggested by Patrick Steinhardt).
-- Link to v4: https://lore.kernel.org/r/20260513-includeif-worktree-v4-0-f8e6212d1fba@black-desk.cn
+diff --git a/config.c b/config.c
+index 6a0de86e3ae9..00eeeea370c9 100644
+--- a/config.c
++++ b/config.c
+@@ -235,23 +235,20 @@ static int prepare_include_condition_pattern(const struct key_value_info *kvi,
+ 	return 0;
+ }
+ 
+-static int include_by_gitdir(const struct key_value_info *kvi,
+-			     const struct config_options *opts,
+-			     const char *cond, size_t cond_len, int icase)
++static int include_by_path(const struct key_value_info *kvi,
++			   const char *path,
++			   const char *cond, size_t cond_len, int icase)
+ {
+ 	struct strbuf text = STRBUF_INIT;
+ 	struct strbuf pattern = STRBUF_INIT;
+ 	size_t prefix;
+ 	int ret = 0;
+-	const char *git_dir;
+ 	int already_tried_absolute = 0;
+ 
+-	if (opts->git_dir)
+-		git_dir = opts->git_dir;
+-	else
++	if (!path)
+ 		goto done;
+ 
+-	strbuf_realpath(&text, git_dir, 1);
++	strbuf_realpath(&text, path, 1);
+ 	strbuf_add(&pattern, cond, cond_len);
+ 	ret = prepare_include_condition_pattern(kvi, &pattern, &prefix);
+ 	if (ret < 0)
+@@ -284,7 +281,7 @@ static int include_by_gitdir(const struct key_value_info *kvi,
+ 		 * which'll do the right thing
+ 		 */
+ 		strbuf_reset(&text);
+-		strbuf_add_absolute_path(&text, git_dir);
++		strbuf_add_absolute_path(&text, path);
+ 		already_tried_absolute = 1;
+ 		goto again;
+ 	}
+@@ -400,9 +397,9 @@ static int include_condition_is_true(const struct key_value_info *kvi,
+ 	const struct config_options *opts = inc->opts;
+ 
+ 	if (skip_prefix_mem(cond, cond_len, "gitdir:", &cond, &cond_len))
+-		return include_by_gitdir(kvi, opts, cond, cond_len, 0);
++		return include_by_path(kvi, opts->git_dir, cond, cond_len, 0);
+ 	else if (skip_prefix_mem(cond, cond_len, "gitdir/i:", &cond, &cond_len))
+-		return include_by_gitdir(kvi, opts, cond, cond_len, 1);
++		return include_by_path(kvi, opts->git_dir, cond, cond_len, 1);
+ 	else if (skip_prefix_mem(cond, cond_len, "onbranch:", &cond, &cond_len))
+ 		return include_by_branch(inc, cond, cond_len);
+ 	else if (skip_prefix_mem(cond, cond_len, "hasconfig:remote.*.url:", &cond,
 
-Changes in v4:
-- Deduplicate the worktree pattern documentation by referencing the
-  gitdir syntax instead of repeating the full pattern description
-  (suggested by Patrick Steinhardt).
-- Add documentation comparing includeIf "worktree:" with
-  extensions.worktreeConfig, including a concrete use case example
-  (suggested by Phillip Wood, Junio C Hamano).
-- Add a test verifying that the worktree condition does not match
-  during early config reading (suggested by Patrick Steinhardt).
-- Add tests for the non-repository (nongit) scenario (suggested by
-  Patrick Steinhardt).
-- Add a test for the case-insensitive "worktree/i" variant
-- Link to v3: https://lore.kernel.org/r/20260403-includeif-worktree-v3-0-109ce5782b03@black-desk.cn
-
-Changes in v3:
-- Apply Junio's suggestion.
-- Link to v2: https://lore.kernel.org/r/20260402-includeif-worktree-v2-0-36e339b898d7@black-desk.cn
-
-Changes in v2:
-
-- Add missing signed-off-by lines.
-- Link to v1: https://lore.kernel.org/r/20260401-includeif-worktree-v1-0-906db69f2c79@black-desk.cn
-
----
-Chen Linxuan (2):
-      config: refactor include_by_gitdir() into include_by_path()
-      config: add "worktree" and "worktree/i" includeIf conditions
-
- Documentation/config.adoc |  48 +++++++++++++++++
- config.c                  |  25 +++++----
- t/t1305-config-include.sh | 128 ++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 190 insertions(+), 11 deletions(-)
----
-base-commit: e9019fcafe0040228b8631c30f97ae1adb61bcdc
-change-id: 20260401-includeif-worktree-fcb64950dfba
-
-Best regards,
 -- 
-Chen Linxuan <me@black-desk.cn>
+2.53.0
 
