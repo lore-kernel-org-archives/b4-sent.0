@@ -1,80 +1,63 @@
-From: Roman Vivchar <rva333@protonmail.com>
-Date: Sat, 04 Jul 2026 22:21:43 +0300
-Subject: [PATCH 2/2] ARM: dts: mediatek: mt6572: add cache data
+From: Miao Wang <shankerwangmiao@gmail.com>
+Date: Sun, 05 Jul 2026 03:50:49 +0800
+Subject: [PATCH] qemu-options: Enable the -enable-kvm option for loongarch
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260704-6572-phase1-v1-2-61c2fe6be19c@protonmail.com>
-References: <20260704-6572-phase1-v1-0-61c2fe6be19c@protonmail.com>
-In-Reply-To: <20260704-6572-phase1-v1-0-61c2fe6be19c@protonmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
- Roman Vivchar <rva333@protonmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783192904; l=1386;
- i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=SDakxdcc7QkbCtbafL/keArn3jI3hsMDqsWxhluf3lA=;
- b=D6OZSx1nW4RarZ2Josaqo2/lJX3OtNQVawPvXYZ6zqjyvMR9rd8EDHavRzVnU8ZJGSlS5jPk8
- qV0iizoUJQRDBHuwp3dg0lIrPrwJg3+6W0GS5SHerkv6m32DIAxNnSI
-X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
- pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
-X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
+Message-Id: <20260705-add-loong64-kvm-v1-1-aa8b85ecfa32@gmail.com>
+X-B4-Tracking: v=1; b=H4sIABhkSWoC/x3MQQqAIBBA0avErBswKYOuEi2qGW2oNBQkiO6et
+ HyL/x9IHIUTDNUDkbMkCb6gqStYt9k7RqFi0Eob1asOZyI8QvDOtLjnE0n3Da+GFC8WSnVFtnL
+ /x3F63w+8SodGYQAAAA==
+X-Change-ID: 20260705-add-loong64-kvm-d271ec6d0ebf
+To: qemu-devel@nongnu.org
+Cc: Paolo Bonzini <pbonzini@redhat.com>, Song Gao <gaosong@loongson.cn>, 
+ Jiaxun Yang <jiaxun.yang@flygoat.com>, b4-sent@feeds.kernel.org, 
+ Miao Wang <shankerwangmiao@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=908;
+ i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
+ bh=PNPCtIMkRVK0W0qxTiHLb/6sHgdzlIg+LHyIGQMkZOg=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqSWQdZbln0nBPF/MUEWhAJnBVvj68yui68kwBK
+ GJvZ7XYAlaJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCaklkHQAKCRCwMePKe/7Z
+ bqDuEACEUUv91y0X4mn0YdQZQHfur01hnPvgiEzLB0f1/7J80m/76pFXdFe3hH3dUZSL/Wwcu/A
+ 45ktFdGifpq4YIXYhuuQzLI7ZAQ9htk8X3LyMIlx/8VCppdCsbAPr0yGqvmdaStJtxNDPjxApQ4
+ ATNAGFmmIiwI4a8BCmyvQX6ZIyqynVtVXOiPSnk7sH8Db/5SqmUlEnxdftVvUJ/icaDj+FUJH7c
+ a2wV+qxrCNBbFRxzgGhJBQIREYJvU7H5STL+YziUiSf0k4Deqku7srUoV53C+lbEBfb0t5BJlkr
+ xLsxMKjcunwB270wtrC/tDQonP94oSgdj9oltQmUnVydfYw0NNQY36Rpj3VJviTpCY7CrKPRT4g
+ ak6LsIERABRsaucVSeWT0ExaEuN+ewwmQccitbMgKccXl7k87yIlp3nORFAAh3i85Fr/PzSspj3
+ nmxeW4OVaVTX3r/c0COQk34h+AkRUXVaEHN3uALb0z2Ca/LZPY6OqXrxPcrLIubQOIVs+yvbhgb
+ 1KhDRutCkkTo0LbJzK+QzNqyjO+XIsO+FOt4QxdQwsfcJXvjtKwjIjuFXO/UoJHWzdZyGh0vcXB
+ JFjWwbgmwZCpDIstUM1paIRYXKOxlpQOhlc5vkf9t9lJM8eTNzQ/F9yWvuCCQmH3UN5DmAEyt0g
+ xyHQI1CMfJCzN3w==
+X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
+ fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
+X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-MediaTek mt6572 includes 32 KB I-cache and D-cache, and 256 KB L2 cache.
-
-Add information about cache size, cache line size and cache sets to the
-devicetree.
-
-Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
- arch/arm/boot/dts/mediatek/mt6572.dtsi | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+ qemu-options.hx | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/arch/arm/boot/dts/mediatek/mt6572.dtsi b/arch/arm/boot/dts/mediatek/mt6572.dtsi
-index fa0e5df766c2..5716505dc9e4 100644
---- a/arch/arm/boot/dts/mediatek/mt6572.dtsi
-+++ b/arch/arm/boot/dts/mediatek/mt6572.dtsi
-@@ -20,11 +20,34 @@ cpu@0 {
- 			device_type = "cpu";
- 			compatible = "arm,cortex-a7";
- 			reg = <0x0>;
-+			i-cache-size = <32768>;
-+			i-cache-line-size = <64>;
-+			i-cache-sets = <256>;
-+			d-cache-size = <32768>;
-+			d-cache-line-size = <64>;
-+			d-cache-sets = <128>;
-+			next-level-cache = <&l2>;
- 		};
- 		cpu@1 {
- 			device_type = "cpu";
- 			compatible = "arm,cortex-a7";
- 			reg = <0x1>;
-+			i-cache-size = <32768>;
-+			i-cache-line-size = <64>;
-+			i-cache-sets = <256>;
-+			d-cache-size = <32768>;
-+			d-cache-line-size = <64>;
-+			d-cache-sets = <128>;
-+			next-level-cache = <&l2>;
-+		};
-+
-+		l2: l2-cache {
-+			compatible = "cache";
-+			cache-level = <2>;
-+			cache-size = <262144>;
-+			cache-line-size = <64>;
-+			cache-sets = <512>;
-+			cache-unified;
- 		};
- 	};
- 
+diff --git a/qemu-options.hx b/qemu-options.hx
+index e44b47de68137120da9979fb081d0c108f13179c..c7dbbd01e73367380fcf653fa8d0d18795dde9a7 100644
+--- a/qemu-options.hx
++++ b/qemu-options.hx
+@@ -5164,7 +5164,7 @@ ERST
+ DEF("enable-kvm", 0, QEMU_OPTION_enable_kvm, \
+     "-enable-kvm     enable KVM full virtualization support\n",
+     QEMU_ARCH_ARM | QEMU_ARCH_I386 | QEMU_ARCH_MIPS | QEMU_ARCH_PPC |
+-    QEMU_ARCH_RISCV | QEMU_ARCH_S390X)
++    QEMU_ARCH_RISCV | QEMU_ARCH_S390X | QEMU_ARCH_LOONGARCH)
+ SRST
+ ``-enable-kvm``
+     Enable KVM full virtualization support. This option is only
 
+---
+base-commit: 30e8a06b64aa58a3990ba39cb5d09531e7d265e0
+change-id: 20260705-add-loong64-kvm-d271ec6d0ebf
+
+Best regards,
 -- 
-2.54.0
+Miao Wang <shankerwangmiao@gmail.com>
 
