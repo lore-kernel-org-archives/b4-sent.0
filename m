@@ -1,236 +1,121 @@
-From: Eugene Mavick <m@mavick.dev>
-Date: Sun, 05 Jul 2026 09:20:54 +0800
-Subject: [PATCH 4/4] kunit: add test for ref_trace_final_put
+From: Joseph Breihan <linux@josephbreihan.com>
+Date: Sun, 05 Jul 2026 01:10:43 -0400
+Subject: [PATCH] media: au0828: add support for Monoprice 106456 USB
+ ATSC/QAM tuner
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260705-refcount-final-put-trace-v1-4-0ae936edb750@mavick.dev>
-References: <20260705-refcount-final-put-trace-v1-0-0ae936edb750@mavick.dev>
-In-Reply-To: <20260705-refcount-final-put-trace-v1-0-0ae936edb750@mavick.dev>
-To: Will Deacon <will@kernel.org>, Peter Zijlstra <peterz@infradead.org>, 
- Boqun Feng <boqun@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
- Gary Guo <gary@garyguo.net>, Steven Rostedt <rostedt@goodmis.org>, 
- Masami Hiramatsu <mhiramat@kernel.org>, 
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
- Andrew Morton <akpm@linux-foundation.org>, Dennis Zhou <dennis@kernel.org>, 
- Tejun Heo <tj@kernel.org>, Christoph Lameter <cl@gentwo.org>
-Cc: linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
- linux-mm@kvack.org, Eugene Mavick <m@mavick.dev>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5737; i=m@mavick.dev;
- h=from:subject:message-id; bh=uO0yuH0cgFlwuh+60ouE/XunglpmQTZB7vngb53hITQ=;
- b=owGbwMvMwCU2V/5U3e1aE3/G02pJDFmeGyvPXt0ov/zIZLkvsSpSZaK2yn6W7NL+j3uebOXjS
- NB8e5a1o5SFQYyLQVZMkaUmK8E9Y+WsROOjk3pg5rAygQxh4OIUgIlc4mT4n/ev8e3l7Q7mn3n4
- TtkWtG79vqO8W5zX7lC0RpbL7/elFowM9zpqgzZZJD5Sln3/3OSYQe5KM7++F/d3hz/g2+P51Da
- MFwA=
-X-Developer-Key: i=m@mavick.dev; a=openpgp;
- fpr=7C6A604768A99A6133C5928C9D1FCA7EDB7D344F
-X-Endpoint-Received: by B4 Relay for m@mavick.dev/default with auth_id=850
+Message-Id: <20260705-au0828-monoprice-v1-1-4b7bbfc2c7fe@josephbreihan.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ7CIBBA0auQWZeEYpHaqxgXOB10mggEbNOk4
+ e6iLt/i/wMKZaYCkzgg08aFY2joOwH4dOFBkudm0EqflVVGulWNepSvGGLKjCRnMm7A0wXt4KF
+ lKZPn/be83v4u630hfH8/UOsHTHICeXQAAAA=
+X-Change-ID: 20260705-au0828-monoprice-de5a4c39c74f
+To: Mauro Carvalho Chehab <mchehab@kernel.org>
+Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Joseph Breihan <linux@josephbreihan.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783228260; l=3949;
+ i=linux@josephbreihan.com; s=20260705; h=from:subject:message-id;
+ bh=qzsjNKPfiuPaYgKyTwT9vKQKC+FWy25TYC/pfFwf62M=;
+ b=tkJMuRdeJ0JBMz0r30KXKdMAMPRU4ZKAxSz0UXkjv8/AO6lBX8FGag+r7Q5gzeJfrqkBzRaEc
+ WATF4fFYvYYBhzkyna+vQ3hLmFjIAqePTlcW/JnikLDvDDuw1jaEiTn
+X-Developer-Key: i=linux@josephbreihan.com; a=ed25519;
+ pk=EHopwlApUikmTLRFGCwX5XX8xai+qKAP4wXj4X4xXKM=
+X-Endpoint-Received: by B4 Relay for linux@josephbreihan.com/20260705 with auth_id=851
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a KUnit test suite for the ref_trace_final_put tracepoint.
+The Monoprice 106456 (board rev TV22AD-A, also sold as the AnyTV
+AUTV002) is a USB ATSC/QAM tuner that enumerates as 05e1:0400 and
+reports itself as a "Syntek Semiconductor USB 2.0 Video Capture
+Controller". The hardware is an Auvitek AU0828A bridge with an AU8522
+demodulator and an NXP TDA18271HDC2 tuner at I2C address 0x60 -- the
+same demod/tuner combination as the existing Hauppauge Woodbury board.
 
-The test registers a probe function and triggers both refcount_t and
-percpu_ref final put paths, verifying that the tracepoint fires
-correctly and that the recorded fields match expected values.
+Adds board profile and the USB ID so the device binds. The digital
+frontend is electrically identical to the Woodbury, so share that
+board's au8522/tda18271 configuration and attach path rather than
+duplicating it. Tested with over-the-air 8VSB ATSC: it locks and
+streams a live 720p transport stream.
 
-Signed-off-by: Eugene Mavick <m@mavick.dev>
+Some 05e1:0400 units reportedly ship a Microtune MT2131 tuner with an
+AU8502 demodulator instead. This patch does not handle that variant,
+but it can't regress it either: 05e1:0400 matches no driver today, and
+on the MT2131 units tda18271_attach() just fails, so no frontend is
+registered.
+
+Signed-off-by: Joseph Breihan <linux@josephbreihan.com>
 ---
- MAINTAINERS                 |   1 +
- lib/Kconfig                 |  10 ++++
- lib/tests/Makefile          |   1 +
- lib/tests/ref_trace_kunit.c | 138 ++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 150 insertions(+)
+ drivers/media/usb/au0828/au0828-cards.c | 14 ++++++++++++++
+ drivers/media/usb/au0828/au0828-cards.h |  1 +
+ drivers/media/usb/au0828/au0828-dvb.c   |  1 +
+ 3 files changed, 16 insertions(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 8dab37726b9d..7c387ed746ee 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -4213,6 +4213,7 @@ F:	include/*/atomic*.h
- F:	include/linux/ref_trace.h
- F:	include/linux/refcount.h
- F:	lib/ref_trace.h
-+F:	lib/tests/ref_trace_kunit.c
- F:	scripts/atomic/
- F:	rust/kernel/sync/atomic.rs
- F:	rust/kernel/sync/atomic/
-diff --git a/lib/Kconfig b/lib/Kconfig
-index 00a9509636c1..c29b2ccb3c31 100644
---- a/lib/Kconfig
-+++ b/lib/Kconfig
-@@ -52,6 +52,16 @@ config PACKING_KUNIT_TEST
- 
- 	  When in doubt, say N.
- 
-+config REF_TRACE_KUNIT_TEST
-+	bool "ref_trace kunit test" if !KUNIT_ALL_TESTS
-+	depends on KUNIT && FTRACE
-+	default KUNIT_ALL_TESTS
-+	help
-+	  This option enables the KUnit test suite for the ref_trace_final_put
-+	  tracepoint.
-+
-+	  If unsure, say N
-+
- config BITREVERSE
- 	tristate
- 
-diff --git a/lib/tests/Makefile b/lib/tests/Makefile
-index 7e9c2fa52e35..828a030ad8c7 100644
---- a/lib/tests/Makefile
-+++ b/lib/tests/Makefile
-@@ -57,5 +57,6 @@ obj-$(CONFIG_USERCOPY_KUNIT_TEST) += usercopy_kunit.o
- obj-$(CONFIG_UTIL_MACROS_KUNIT) += util_macros_kunit.o
- obj-$(CONFIG_RATELIMIT_KUNIT_TEST) += test_ratelimit.o
- obj-$(CONFIG_UUID_KUNIT_TEST) += uuid_kunit.o
-+obj-$(CONFIG_REF_TRACE_KUNIT_TEST) += ref_trace_kunit.o
- 
- obj-$(CONFIG_TEST_RUNTIME_MODULE)		+= module/
-diff --git a/lib/tests/ref_trace_kunit.c b/lib/tests/ref_trace_kunit.c
-new file mode 100644
-index 000000000000..2ece6c840fe0
---- /dev/null
-+++ b/lib/tests/ref_trace_kunit.c
-@@ -0,0 +1,138 @@
-+// SPDX-License-Identifier: GPL-2.0
-+#include <linux/kernel.h>
-+#include <kunit/test.h>
-+#include <linux/wait_bit.h>
-+#include <linux/instruction_pointer.h>
-+#include <linux/kallsyms.h>
-+#include <linux/percpu-refcount.h>
-+#include <linux/refcount.h>
-+#include <trace/events/ref_trace.h>
-+
-+struct data {
-+	unsigned long caller;
-+	const char *fn;
-+	const void *obj;
-+	int *flag;
-+	struct kunit *test;
-+};
-+
-+struct data refc_chk;
-+struct data pcpu_chk;
-+
-+//called when tracepoint fires
-+static void probe(
-+	  void *ignore,
-+	  unsigned long caller,
-+	  const char *fn,
-+	  const void *obj)
-+{
-+	struct data *chk_val;
-+
-+	char func_name[KSYM_SYMBOL_LEN];
-+
-+	sprint_symbol_no_offset(func_name, caller);
-+
-+	if (!strcmp(func_name, "test_refcount")) {
-+		chk_val = &refc_chk;
-+		KUNIT_EXPECT_FALSE(chk_val->test, memcmp(obj, chk_val->obj, sizeof(refcount_t)));
-+	} else if (!strcmp(func_name, "test_percpu")) {
-+		chk_val = &pcpu_chk;
-+		KUNIT_EXPECT_FALSE(chk_val->test, memcmp(
-+			obj, chk_val->obj, sizeof(struct percpu_ref)));
-+	} else {
-+		//non test function origin trace events
-+		return;
-+	}
-+
-+	struct kunit *test = chk_val->test;
-+	int *flag = chk_val->flag;
-+
-+	//ensure past flag writes are done before reading
-+	KUNIT_EXPECT_EQ(test, 1, smp_load_acquire(flag));
-+	KUNIT_EXPECT_EQ(test, caller, chk_val->caller);
-+
-+	smp_store_release(flag, 0); //signal probe completion
-+}
-+
-+
-+
-+static void test_refcount(struct kunit *test)
-+{
-+	refcount_t refc;
-+	int flag_addr = 0;
-+
-+	refc_chk.caller = (unsigned long)&test_refcount;
-+	refc_chk.fn = "__refcount_sub_and_test";
-+	refc_chk.obj = &refc;
-+	refc_chk.flag = &flag_addr;
-+	refc_chk.test = test;
-+
-+	int *flag = refc_chk.flag;
-+
-+	KUNIT_EXPECT_FALSE(test, register_trace_ref_trace_final_put(probe, NULL));
-+
-+	refcount_set(&refc, 2);
-+
-+	KUNIT_EXPECT_FALSE(test, refcount_dec_and_test(&refc));
-+
-+	smp_store_release(flag, 1); //signal final put can happen
-+
-+	KUNIT_EXPECT_TRUE(test, refcount_dec_and_test(&refc));
-+
-+	wait_var_event(flag, smp_load_acquire(flag)); //wait for probe completion
-+	unregister_trace_ref_trace_final_put(probe, NULL);
-+}
-+
-+static void dummy_release(struct percpu_ref *ref) {}
-+
-+static void test_percpu(struct kunit *test)
-+{
-+	struct percpu_ref pcpu_ref;
-+
-+	int flag_addr = 1;
-+
-+	pcpu_chk.caller = (unsigned long)&test_percpu;
-+	pcpu_chk.fn = "percpu_ref_put_many";
-+	pcpu_chk.obj = &pcpu_ref;
-+	pcpu_chk.flag = &flag_addr;
-+	pcpu_chk.test = test;
-+
-+	int *flag = pcpu_chk.flag;
-+
-+	KUNIT_EXPECT_FALSE(test, register_trace_ref_trace_final_put(probe, NULL));
-+
-+	KUNIT_EXPECT_FALSE(test, percpu_ref_init(&pcpu_ref, dummy_release, 0, GFP_KERNEL));
-+
-+	percpu_ref_get(&pcpu_ref);
-+	percpu_ref_get(&pcpu_ref);
-+
-+	percpu_ref_put(&pcpu_ref);
-+	percpu_ref_put(&pcpu_ref);
-+
-+	percpu_ref_switch_to_atomic_sync(&pcpu_ref);
-+
-+	smp_store_release(flag, 1); //signal final put can happen
-+
-+	percpu_ref_put(&pcpu_ref);
-+
-+	wait_var_event(flag, smp_load_acquire(flag)); //wait for probe completion
-+	unregister_trace_ref_trace_final_put(probe, NULL);
-+	percpu_ref_exit(&pcpu_ref);
-+}
-+
-+static struct kunit_case __refdata ref_trace_test_cases[] = {
-+	KUNIT_CASE(test_refcount),
-+	KUNIT_CASE(test_percpu),
-+	{}
-+};
-+
-+static struct kunit_suite ref_trace_test_suite = {
-+	.name = "ref-trace",
-+	.test_cases = ref_trace_test_cases,
-+};
-+
-+kunit_test_suites(&ref_trace_test_suite);
-+
-+MODULE_AUTHOR("Eugene Mavick <m@mavick.dev>");
-+MODULE_DESCRIPTION("KUnit test for ref_trace");
-+MODULE_LICENSE("GPL");
+diff --git a/drivers/media/usb/au0828/au0828-cards.c b/drivers/media/usb/au0828/au0828-cards.c
+index 9929ce5dcdc..8ab100db01a 100644
+--- a/drivers/media/usb/au0828/au0828-cards.c
++++ b/drivers/media/usb/au0828/au0828-cards.c
+@@ -124,6 +124,17 @@ struct au0828_board au0828_boards[] = {
+ 			},
+ 		},
+ 	},
++	[AU0828_BOARD_MONOPRICE_106456] = {
++		/*
++		 * Monoprice 106456 USB ATSC/QAM tuner (board rev TV22AD-A),
++		 * a.k.a. AnyTV AUTV002, USB ID 05e1:0400. Same AU8522 demod +
++		 * NXP TDA18271HDC2 tuner @ 0x60 as the Hauppauge Woodbury.
++		 */
++		.name	= "Monoprice 106456 USB ATSC/QAM (TV22AD-A)",
++		.tuner_type = TUNER_NXP_TDA18271,
++		.tuner_addr = 0x60,
++		.i2c_clk_divider = AU0828_I2C_CLK_250KHZ,
++	},
+ 	[AU0828_BOARD_HAUPPAUGE_HVR1265] = {
+ 		.name	= "Hauppauge HVR1265",
+ 		.tuner_type = TUNER_XC5000,
+@@ -294,6 +305,7 @@ void au0828_gpio_setup(struct au0828_dev *dev)
+ 	case AU0828_BOARD_HAUPPAUGE_WOODBURY:
+ 	case AU0828_BOARD_HAUPPAUGE_HVR1265:
+ 	case AU0828_BOARD_HAUPPAUGE_IMPACTVCBE:
++	case AU0828_BOARD_MONOPRICE_106456:
+ 		/* GPIO's
+ 		 * 4 - CS5340
+ 		 * 5 - AU8522 Demodulator
+@@ -378,6 +390,8 @@ struct usb_device_id au0828_usb_id_table[] = {
+ 		.driver_info = AU0828_BOARD_HAUPPAUGE_HVR950Q_MXL },
+ 	{ USB_DEVICE(0x05e1, 0x0480),
+ 		.driver_info = AU0828_BOARD_HAUPPAUGE_WOODBURY },
++	{ USB_DEVICE(0x05e1, 0x0400),
++		.driver_info = AU0828_BOARD_MONOPRICE_106456 },
+ 	{ USB_DEVICE(0x2040, 0x8200),
+ 		.driver_info = AU0828_BOARD_HAUPPAUGE_WOODBURY },
+ 	{ USB_DEVICE(0x2040, 0x7260),
+diff --git a/drivers/media/usb/au0828/au0828-cards.h b/drivers/media/usb/au0828/au0828-cards.h
+index a438aeb334a..a4a283731f7 100644
+--- a/drivers/media/usb/au0828/au0828-cards.h
++++ b/drivers/media/usb/au0828/au0828-cards.h
+@@ -13,3 +13,4 @@
+ #define AU0828_BOARD_HAUPPAUGE_WOODBURY	5
+ #define AU0828_BOARD_HAUPPAUGE_IMPACTVCBE	6
+ #define AU0828_BOARD_HAUPPAUGE_HVR1265		7
++#define AU0828_BOARD_MONOPRICE_106456		8
+diff --git a/drivers/media/usb/au0828/au0828-dvb.c b/drivers/media/usb/au0828/au0828-dvb.c
+index 31123e6f9fc..9c95b7ceaec 100644
+--- a/drivers/media/usb/au0828/au0828-dvb.c
++++ b/drivers/media/usb/au0828/au0828-dvb.c
+@@ -600,6 +600,7 @@ int au0828_dvb_register(struct au0828_dev *dev)
+ 				   &mxl5007t_hvr950q_config);
+ 		break;
+ 	case AU0828_BOARD_HAUPPAUGE_WOODBURY:
++	case AU0828_BOARD_MONOPRICE_106456:
+ 		dvb->frontend = dvb_attach(au8522_attach,
+ 				&hauppauge_woodbury_config,
+ 				&dev->i2c_adap);
 
--- 
-2.51.2
+---
+base-commit: 8dac27bfa2f994ecb11f01a63641527d17d48fc1
+change-id: 20260705-au0828-monoprice-de5a4c39c74f
+
+Best regards,
+--  
+Joseph Breihan <linux@josephbreihan.com>
 
