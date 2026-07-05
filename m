@@ -1,11 +1,11 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sun, 05 Jul 2026 02:54:05 -0500
-Subject: [PATCH net v4 1/3] net/smc: bound the wire-controlled producer
- cursor to the RMB
+Date: Sun, 05 Jul 2026 02:54:06 -0500
+Subject: [PATCH net v4 2/3] net/smc: bound the receive length to the RMB in
+ smc_rx_recvmsg()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260705-b4-disp-28a1bbca-v4-1-be089b98acc6@proton.me>
+Message-Id: <20260705-b4-disp-28a1bbca-v4-2-be089b98acc6@proton.me>
 References: <20260705-b4-disp-28a1bbca-v4-0-be089b98acc6@proton.me>
 In-Reply-To: <20260705-b4-disp-28a1bbca-v4-0-be089b98acc6@proton.me>
 To: Dust Li <dust.li@linux.alibaba.com>, 
@@ -20,97 +20,64 @@ Cc: Stefan Raspl <raspl@linux.ibm.com>, Wen Gu <guwen@linux.alibaba.com>,
  Tony Lu <tonylu@linux.alibaba.com>, Ursula Braun <ubraun@linux.ibm.com>, 
  linux-s390@vger.kernel.org, linux-rdma@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783238044; l=3661;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783238044; l=2445;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=dK/lA0d+Xw6g4N5W2Xg6NTDQYO7ediB5H1cZmNqV8pQ=;
- b=s1TEuFC9c3O8kmST6wxjYYkUaXsu9w/WlMvh7M1rhX+qNvjFC5ZrdMCHc4BwanxJqwMQ7D/T3
- NX7otoDTXYaCJ6qkRD1UwA+yKoQJHkgzd6cE+sWw5kP5jX8igf0Hxp9
+ bh=I0K6pB19Txw2xkjG1QzwzyDeX8rOXh7QApCt4GO9qIc=;
+ b=/I0Zd31bYSOXxpR0waqZvHv4r013dQLQJXOXfqYo0YJhIZvn5GziX/nXs6nYGTJsb/F5lHiMP
+ TVdAwebAdJHC6UL/D2LPnRi2QKME2z4EByX4fsntrARFHTsgcSv72ts
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-smcr_cdc_msg_to_host() and smcd_cdc_msg_to_host() import a peer's
-producer cursor from the wire into conn->local_rx_ctrl.prod without
-bounding it against the receive buffer. The urgent-data path in
-smc_cdc_msg_recv_action() then uses that count as a raw index into the
-RMB, so a peer that advertises a producer cursor past rmb_desc->len
-reads out of bounds of the RMB allocation in the receive tasklet and
-can disclose adjacent kernel memory.
+conn->bytes_to_rcv is accumulated in the receive tasklet from the
+peer's wire-controlled producer cursor via smc_curs_diff(), whose
+differing-wrap branch can exceed rmb_desc->len; a forged cursor drives
+bytes_to_rcv past the RMB, and over many CDC messages overflows the
+signed counter negative. smc_rx_recvmsg() reads it as the readable
+length and does a wrap-around copy whose second chunk is not re-bounded
+to rmb_desc->len, reading past the RMB into adjacent kernel memory and
+disclosing it to the peer. The nearby readable >= rmb_desc->len test
+only feeds SMC_STAT_RMB_RX_FULL on a separate earlier read; it does not
+bound the copy.
 
-Bound the producer cursor count to rmb_desc->len at the wire-to-host
-conversion, for both SMC-R and SMC-D. Bound only the producer cursor:
-the consumer cursor indexes the peer's RMB and is bounded by
-peer_rmbe_size, so clamping it to our rmb_desc->len would under-credit
-peer_rmbe_space and stall transmit to a peer with a larger RMB.
-Conforming peers are unaffected.
+Bound the readable length to rmb_desc->len at the consumer, treating a
+negative (sign-overflowed) value as out of range too, so the copy can
+never exceed the ring. This enforces the documented
+0 <= bytes_to_rcv <= rmb_desc->len invariant where it is race-free
+against the producer update in the tasklet; conforming peers are
+unaffected.
 
-Fixes: de8474eb9d50 ("net/smc: urgent data support")
+Fixes: 952310ccf2d8 ("smc: receive data from RMBE")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- net/smc/smc_cdc.h | 27 ++++++++++++++++++++++++---
- 1 file changed, 24 insertions(+), 3 deletions(-)
+ net/smc/smc_rx.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-diff --git a/net/smc/smc_cdc.h b/net/smc/smc_cdc.h
-index 696cc11f2303..ca76ef630356 100644
---- a/net/smc/smc_cdc.h
-+++ b/net/smc/smc_cdc.h
-@@ -221,7 +221,8 @@ static inline void smc_host_msg_to_cdc(struct smc_cdc_msg *peer,
- 
- static inline void smc_cdc_cursor_to_host(union smc_host_cursor *local,
- 					  union smc_cdc_cursor *peer,
--					  struct smc_connection *conn)
-+					  struct smc_connection *conn,
-+					  int max_count)
- {
- 	union smc_host_cursor temp, old;
- 	union smc_cdc_cursor net;
-@@ -235,6 +236,15 @@ static inline void smc_cdc_cursor_to_host(union smc_host_cursor *local,
- 	if ((old.wrap == temp.wrap) &&
- 	    (old.count > temp.count))
- 		return;
-+	/* The peer producer cursor is wire-controlled and is later used as a
-+	 * raw index into our RMB by the urgent path; bound its count to the
-+	 * RMB.  max_count == 0 leaves the consumer cursor unbounded here: it
-+	 * indexes the peer's RMB (bounded by peer_rmbe_size, not our
-+	 * rmb_desc->len), so clamping it to rmb_desc->len would under-credit
-+	 * peer_rmbe_space and stall transmit to peers with a larger RMB.
-+	 */
-+	if (max_count && temp.count > max_count)
-+		temp.count = max_count;
- 	smc_curs_copy(local, &temp, conn);
- }
- 
-@@ -246,8 +256,13 @@ static inline void smcr_cdc_msg_to_host(struct smc_host_cdc_msg *local,
- 	local->len = peer->len;
- 	local->seqno = ntohs(peer->seqno);
- 	local->token = ntohl(peer->token);
--	smc_cdc_cursor_to_host(&local->prod, &peer->prod, conn);
--	smc_cdc_cursor_to_host(&local->cons, &peer->cons, conn);
-+	/* bound the wire-controlled producer cursor to our RMB (used as a raw
-+	 * index by the urgent path); leave the consumer cursor unbounded -- it
-+	 * indexes the peer's RMB and is bounded by peer_rmbe_size.
-+	 */
-+	smc_cdc_cursor_to_host(&local->prod, &peer->prod, conn,
-+			       conn->rmb_desc->len);
-+	smc_cdc_cursor_to_host(&local->cons, &peer->cons, conn, 0);
- 	local->prod_flags = peer->prod_flags;
- 	local->conn_state_flags = peer->conn_state_flags;
- }
-@@ -260,6 +275,12 @@ static inline void smcd_cdc_msg_to_host(struct smc_host_cdc_msg *local,
- 
- 	temp.wrap = peer->prod.wrap;
- 	temp.count = peer->prod.count;
-+	/* the peer producer cursor is wire-controlled and is used as a raw
-+	 * index into our RMB by the urgent path; bound it to the RMB.  The
-+	 * consumer cursor below indexes the peer's RMB and is left unbounded.
-+	 */
-+	if (temp.count > conn->rmb_desc->len)
-+		temp.count = conn->rmb_desc->len;
- 	smc_curs_copy(&local->prod, &temp, conn);
- 
- 	temp.wrap = peer->cons.wrap;
+diff --git a/net/smc/smc_rx.c b/net/smc/smc_rx.c
+index c1d9b923938d..f461cf10b085 100644
+--- a/net/smc/smc_rx.c
++++ b/net/smc/smc_rx.c
+@@ -442,6 +442,18 @@ int smc_rx_recvmsg(struct smc_sock *smc, struct msghdr *msg,
+ 		/* initialize variables for 1st iteration of subsequent loop */
+ 		/* could be just 1 byte, even after waiting on data above */
+ 		readable = smc_rx_data_available(conn, peeked_bytes);
++		/* bytes_to_rcv is accumulated from the peer's wire-controlled
++		 * producer cursor; a forged cursor can drive it past the RMB,
++		 * or overflow the signed accumulator to a negative value across
++		 * many CDC messages (which a plain "> len" check would miss
++		 * before the size_t cast below turns it huge).  Bound it to the
++		 * RMB in either case so the wrap-around copy cannot run past
++		 * rmb_desc->len.  This enforces the documented
++		 * 0 <= bytes_to_rcv <= rmb_desc->len invariant at the consumer,
++		 * race-free against the producer update in the receive tasklet.
++		 */
++		if (readable < 0 || readable > conn->rmb_desc->len)
++			readable = conn->rmb_desc->len;
+ 		splbytes = atomic_read(&conn->splice_pending);
+ 		if (!readable || (msg && splbytes)) {
+ 			if (splbytes)
 
 -- 
 2.43.0
