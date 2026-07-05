@@ -1,16 +1,12 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Subject: [PATCH v6 0/6] New features for the AD5686 IIO driver
-Date: Sun, 05 Jul 2026 12:38:55 +0100
-Message-Id: <20260705-ad5686-new-features-v6-0-269594c7aae5@analog.com>
+Date: Sun, 05 Jul 2026 12:38:56 +0100
+Subject: [PATCH v6 1/6] iio: dac: ad5686: refactor command/data macros
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAE9CSmoC/33NTW7DIBCG4atErEsFgxmgq94j6oKfIUFq7QpSp
- 1Xku5dk5cpWl+8nzTM31qgWauzlcGOV5tLKNPbApwOLZz+eiJfUm4EAFCiA+6TRIh/pyjP5y1e
- lxklKjGIIKQXH+uVnpVy+H+rxrfe5tMtUfx5PZnlf//dmyQVHJ0lIa1UC8+pH/z6dnuP0we7gD
- GvE7SPQESPCACrraDBtELVCJO4jqiPZgsvBkAOEDTKsEFD7yNARsA7Ba5OCyBtErxG7j+iOaGO
- i9ylkE8UfZFmWX75rPbfLAQAA
-X-Change-ID: 20260602-ad5686-new-features-e116c04bddb9
+Message-Id: <20260705-ad5686-new-features-v6-1-269594c7aae5@analog.com>
+References: <20260705-ad5686-new-features-v6-0-269594c7aae5@analog.com>
+In-Reply-To: <20260705-ad5686-new-features-v6-0-269594c7aae5@analog.com>
 To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
  linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, linux-hardening@vger.kernel.org
@@ -20,86 +16,156 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
  Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>, 
- Maxwell Doose <m32285159@gmail.com>, 
- Joshua Crofts <joshua.crofts1@gmail.com>
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783251560; l=2903;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783251560; l=4663;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=cRmTCTA5csWbCv0b+iGmBX/uosZKYsS/BSqEGF8I34o=;
- b=/p0HUcH8oDFF/pcQkr+mAD3c6F6UBjyPOFH5O3ZVQv188MZnhA0JlQhi3E/hI6sMt16IbjJ1O
- oE7ewGn8EBADeIt3iVPS21bcdkCaMEb5WOB65bIsp81+fanfShjH5EJ
+ bh=Pwyu0rw5uPjvDrSRUQEZTTxAb8eLnctJHJjfb2rrhcg=;
+ b=RZgycBLsVH3HOunBnqAw/m0/XfQsEug+9tr4knbYhEozt4MWzwGib4enl/BVIFjOxtc7A+qq+
+ Ty2ff2JSJprBp0YaCg9Fap9wEqocGIh0ruO3EbmBjoMZVa4PxshZxvp
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This is the second series of three on updating the AD5686 driver.
-
-Initially, a big patch series was sent:
-https://lore.kernel.org/r/20260422-ad5313r-iio-support-v1-0-ed7dca001d1b@analog.com
-
-Then, the first patch series added fixes and cleanups:
-https://lore.kernel.org/linux-iio/20260524-ad5686-fixes-v7-0-b6bf395d08bd@analog.com/
-
-This one is introducing new features:
-- Consume optional reset and correct power supplies;
-- LDAC GPIO handling (active-low, held low when unused);
-- SPI bus sync() implementation for batching multiple transfers;
-- Triggered buffer support, leveraging LDAC and sync() to flush
-  all channel writes atomically;
-- Gain control support through the scale property.
+Replace usage of bit shifting macros for FIELD_PREP(), which would not
+ignore bit masking when preparing SPI/I2C commands.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
-Changes in v6:
-- Refactor command/data macros in favor of FIELD_PREP()
-- Link to v5: https://lore.kernel.org/r/20260628-ad5686-new-features-v5-0-577caadbf7c0@analog.com
+ drivers/iio/dac/ad5686-spi.c | 21 +++++++++++----------
+ drivers/iio/dac/ad5686.h     | 13 ++++++-------
+ drivers/iio/dac/ad5696-i2c.c | 11 ++++++-----
+ 3 files changed, 23 insertions(+), 22 deletions(-)
 
-Changes in v5:
-- Create auxiliary handler for the triggered buffer.
-- Do not allow modification of double_scale in case gain_gpio is not set.
-- Link to v4: https://lore.kernel.org/r/20260623-ad5686-new-features-v4-0-28962a57db0f@analog.com
+diff --git a/drivers/iio/dac/ad5686-spi.c b/drivers/iio/dac/ad5686-spi.c
+index 6b6ef1d7071f..d3b64b4361d5 100644
+--- a/drivers/iio/dac/ad5686-spi.c
++++ b/drivers/iio/dac/ad5686-spi.c
+@@ -9,6 +9,7 @@
+  */
+ 
+ #include <linux/array_size.h>
++#include <linux/bitfield.h>
+ #include <linux/errno.h>
+ #include <linux/mod_devicetable.h>
+ #include <linux/module.h>
+@@ -26,21 +27,21 @@ static int ad5686_spi_write(struct ad5686_state *st,
+ 
+ 	switch (st->chip_info->regmap_type) {
+ 	case AD5310_REGMAP:
+-		st->data[0].d16 = cpu_to_be16(AD5310_CMD(cmd) |
+-					      val);
++		st->data[0].d16 = cpu_to_be16(FIELD_PREP(AD5310_CMD_MSK, cmd) |
++					      FIELD_PREP(AD5310_DATA_MSK, val));
+ 		buf = &st->data[0].d8[0];
+ 		tx_len = 2;
+ 		break;
+ 	case AD5683_REGMAP:
+-		st->data[0].d32 = cpu_to_be32(AD5686_CMD(cmd) |
+-					      AD5683_DATA(val));
++		st->data[0].d32 = cpu_to_be32(FIELD_PREP(AD5686_CMD_MSK, cmd) |
++					      FIELD_PREP(AD5683_DATA_MSK, val));
+ 		buf = &st->data[0].d8[1];
+ 		tx_len = 3;
+ 		break;
+ 	case AD5686_REGMAP:
+-		st->data[0].d32 = cpu_to_be32(AD5686_CMD(cmd) |
+-					      AD5686_ADDR(addr) |
+-					      val);
++		st->data[0].d32 = cpu_to_be32(FIELD_PREP(AD5686_CMD_MSK, cmd) |
++					      FIELD_PREP(AD5686_ADDR_MSK, addr) |
++					      FIELD_PREP(AD5686_DATA_MSK, val));
+ 		buf = &st->data[0].d8[1];
+ 		tx_len = 3;
+ 		break;
+@@ -81,9 +82,9 @@ static int ad5686_spi_read(struct ad5686_state *st, u8 addr)
+ 		return -EINVAL;
+ 	}
+ 
+-	st->data[0].d32 = cpu_to_be32(AD5686_CMD(cmd) |
+-				      AD5686_ADDR(addr));
+-	st->data[1].d32 = cpu_to_be32(AD5686_CMD(AD5686_CMD_NOOP));
++	st->data[0].d32 = cpu_to_be32(FIELD_PREP(AD5686_CMD_MSK, cmd) |
++				      FIELD_PREP(AD5686_ADDR_MSK, addr));
++	st->data[1].d32 = cpu_to_be32(FIELD_PREP(AD5686_CMD_MSK, AD5686_CMD_NOOP));
+ 
+ 	ret = spi_sync_transfer(spi, t, ARRAY_SIZE(t));
+ 	if (ret < 0)
+diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
+index c424720f8f72..0d1bbf110926 100644
+--- a/drivers/iio/dac/ad5686.h
++++ b/drivers/iio/dac/ad5686.h
+@@ -14,13 +14,6 @@
+ 
+ #include <linux/iio/iio.h>
+ 
+-#define AD5310_CMD(x)				((x) << 12)
+-
+-#define AD5683_DATA(x)				((x) << 4)
+-
+-#define AD5686_ADDR(x)				((x) << 16)
+-#define AD5686_CMD(x)				((x) << 20)
+-
+ #define AD5686_ADDR_DAC(chan)			(0x1 << (chan))
+ #define AD5686_ADDR_ALL_DAC			0xF
+ 
+@@ -38,12 +31,18 @@
+ #define AD5686_CMD_CONTROL_REG			0x4
+ #define AD5686_CMD_READBACK_ENABLE_V2		0x5
+ 
++#define AD5310_CMD_MSK				GENMASK(15, 12)
++#define AD5310_DATA_MSK				GENMASK(11, 0)
+ #define AD5310_REF_BIT_MSK			BIT(8)
+ #define AD5310_PD_MSK				GENMASK(10, 9)
+ 
++#define AD5683_DATA_MSK				GENMASK(19, 4)
+ #define AD5683_REF_BIT_MSK			BIT(12)
+ #define AD5683_PD_MSK				GENMASK(14, 13)
+ 
++#define AD5686_CMD_MSK				GENMASK(23, 20)
++#define AD5686_ADDR_MSK				GENMASK(19, 16)
++#define AD5686_DATA_MSK				GENMASK(15, 0)
+ #define AD5686_REF_BIT_MSK			BIT(0)
+ #define AD5686_PD_MSK				GENMASK(1, 0)
+ 
+diff --git a/drivers/iio/dac/ad5696-i2c.c b/drivers/iio/dac/ad5696-i2c.c
+index 279309329b64..bd8666a02b47 100644
+--- a/drivers/iio/dac/ad5696-i2c.c
++++ b/drivers/iio/dac/ad5696-i2c.c
+@@ -7,6 +7,7 @@
+  * Copyright 2018 Analog Devices Inc.
+  */
+ 
++#include <linux/bitfield.h>
+ #include <linux/errno.h>
+ #include <linux/i2c.h>
+ #include <linux/mod_devicetable.h>
+@@ -35,9 +36,8 @@ static int ad5686_i2c_read(struct ad5686_state *st, u8 addr)
+ 	};
+ 	int ret;
+ 
+-	st->data[0].d32 = cpu_to_be32(AD5686_CMD(AD5686_CMD_NOOP) |
+-				      AD5686_ADDR(addr) |
+-				      0x00);
++	st->data[0].d32 = cpu_to_be32(FIELD_PREP(AD5686_CMD_MSK, AD5686_CMD_NOOP) |
++				      FIELD_PREP(AD5686_ADDR_MSK, addr));
+ 
+ 	ret = i2c_transfer(i2c->adapter, msg, 2);
+ 	if (ret < 0)
+@@ -52,8 +52,9 @@ static int ad5686_i2c_write(struct ad5686_state *st,
+ 	struct i2c_client *i2c = to_i2c_client(st->dev);
+ 	int ret;
+ 
+-	st->data[0].d32 = cpu_to_be32(AD5686_CMD(cmd) | AD5686_ADDR(addr)
+-				      | val);
++	st->data[0].d32 = cpu_to_be32(FIELD_PREP(AD5686_CMD_MSK, cmd) |
++				      FIELD_PREP(AD5686_ADDR_MSK, addr) |
++				      FIELD_PREP(AD5686_DATA_MSK, val));
+ 
+ 	ret = i2c_master_send(i2c, &st->data[0].d8[1], 3);
+ 	if (ret < 0)
 
-Changes in v4:
-- Replace anyof+const for enum in dt-bindings. 
-- Address some sashiko's comments.
-- Use guard(mutex)() in trigger handler and other misc changes.
-- Link to v3: https://lore.kernel.org/r/20260616-ad5686-new-features-v3-0-f829fb7e9262@analog.com
-
-Changes in v3:
-- Add range-double property.
-- Acquire reset control after power-up delay.
-- Include cleanup.h and use guard(mutex)() in read_raw().
-- Link to v2: https://lore.kernel.org/r/20260609-ad5686-new-features-v2-0-70b423f5c76d@analog.com
-
-Changes in v2:
-- Get reset control deasserted.
-- Update entire spi_transfer struct rather than individual fields.
-- Replace udelay() for fsleep() in probe().
-- Minor changes addressing further feedback.
-- Link to v1: https://lore.kernel.org/r/20260602-ad5686-new-features-v1-0-691e01883d27@analog.com
-
----
-Rodrigo Alencar (6):
-      iio: dac: ad5686: refactor command/data macros
-      iio: dac: ad5686: introduce sync operation
-      iio: dac: ad5686: implement new sync() op for the spi bus
-      iio: dac: ad5686: read_raw/write_raw: use guard(mutex)()
-      iio: dac: ad5686: add triggered buffer support
-      iio: dac: ad5686: add gain control support
-
- drivers/iio/dac/Kconfig      |   2 +
- drivers/iio/dac/ad5686-spi.c | 136 +++++++++++++++++++++-------
- drivers/iio/dac/ad5686.c     | 209 +++++++++++++++++++++++++++++++++++++++----
- drivers/iio/dac/ad5686.h     |  43 ++++++---
- drivers/iio/dac/ad5696-i2c.c |  13 +--
- 5 files changed, 334 insertions(+), 69 deletions(-)
----
-base-commit: 4c0ecdbdc0d87570f74e656e21d56bae1ab6a8f1
-change-id: 20260602-ad5686-new-features-e116c04bddb9
-
-Best regards,
 -- 
-Rodrigo Alencar <rodrigo.alencar@analog.com>
+2.43.0
 
