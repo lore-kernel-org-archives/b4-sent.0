@@ -1,121 +1,98 @@
-From: Joseph Breihan <linux@josephbreihan.com>
-Date: Sun, 05 Jul 2026 01:10:43 -0400
-Subject: [PATCH] media: au0828: add support for Monoprice 106456 USB
- ATSC/QAM tuner
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Subject: [PATCH net v4 0/3] net/smc: bound wire-controlled CDC cursors
+ against the local buffers
+Date: Sun, 05 Jul 2026 02:54:04 -0500
+Message-Id: <20260705-b4-disp-28a1bbca-v4-0-be089b98acc6@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260705-au0828-monoprice-v1-1-4b7bbfc2c7fe@josephbreihan.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ7CIBBA0auQWZeEYpHaqxgXOB10mggEbNOk4
- e6iLt/i/wMKZaYCkzgg08aFY2joOwH4dOFBkudm0EqflVVGulWNepSvGGLKjCRnMm7A0wXt4KF
- lKZPn/be83v4u630hfH8/UOsHTHICeXQAAAA=
-X-Change-ID: 20260705-au0828-monoprice-de5a4c39c74f
-To: Mauro Carvalho Chehab <mchehab@kernel.org>
-Cc: linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Joseph Breihan <linux@josephbreihan.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783228260; l=3949;
- i=linux@josephbreihan.com; s=20260705; h=from:subject:message-id;
- bh=qzsjNKPfiuPaYgKyTwT9vKQKC+FWy25TYC/pfFwf62M=;
- b=tkJMuRdeJ0JBMz0r30KXKdMAMPRU4ZKAxSz0UXkjv8/AO6lBX8FGag+r7Q5gzeJfrqkBzRaEc
- WATF4fFYvYYBhzkyna+vQ3hLmFjIAqePTlcW/JnikLDvDDuw1jaEiTn
-X-Developer-Key: i=linux@josephbreihan.com; a=ed25519;
- pk=EHopwlApUikmTLRFGCwX5XX8xai+qKAP4wXj4X4xXKM=
-X-Endpoint-Received: by B4 Relay for linux@josephbreihan.com/20260705 with auth_id=851
+X-B4-Tracking: v=1; b=H4sIAJwNSmoC/x3MOQqAMBBA0avI1A7EGNeriEWWUaeJkogIIXc3W
+ L7i/wSRAlOEuUoQ6OHIpy9QdQX20H4nZFcMUsheDKJDo9BxvFCOujHGarR22rpWO1JqhJJdgTZ
+ +/+UCnm5Yc/4AfamGPmcAAAA=
+To: Dust Li <dust.li@linux.alibaba.com>, 
+ "David S. Miller" <davem@davemloft.net>, 
+ Sidraya Jayagond <sidraya@linux.ibm.com>, 
+ Eric Dumazet <edumazet@google.com>, "D. Wythe" <alibuda@linux.alibaba.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Simon Horman <horms@kernel.org>, 
+ Wenjia Zhang <wenjia@linux.ibm.com>, Paolo Abeni <pabeni@redhat.com>
+Cc: Stefan Raspl <raspl@linux.ibm.com>, Wen Gu <guwen@linux.alibaba.com>, 
+ linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
+ Mahanta Jambigi <mjambigi@linux.ibm.com>, 
+ Tony Lu <tonylu@linux.alibaba.com>, Ursula Braun <ubraun@linux.ibm.com>, 
+ linux-s390@vger.kernel.org, linux-rdma@vger.kernel.org
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783238044; l=3668;
+ i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
+ bh=dyysRfmK3tbb8Vzxzn802wbSb/HCPq3aBDjjKEzA7GA=;
+ b=HDewF+Yu/0F2KKKd8NDY4C5jcdeSR0e8yWyf9dOQ6MjpTgWesHZkUaySdrllEV+bbLdT8Mpik
+ uFHCMyE++RMCDx5xWNFefKAeCI0nt71WL4UcNCZWfmAkXThb9VqLVRc
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Monoprice 106456 (board rev TV22AD-A, also sold as the AnyTV
-AUTV002) is a USB ATSC/QAM tuner that enumerates as 05e1:0400 and
-reports itself as a "Syntek Semiconductor USB 2.0 Video Capture
-Controller". The hardware is an Auvitek AU0828A bridge with an AU8522
-demodulator and an NXP TDA18271HDC2 tuner at I2C address 0x60 -- the
-same demod/tuner combination as the existing Hauppauge Woodbury board.
+A peer's CDC producer/consumer cursors are copied from the wire and used,
+without an upper bound against the local buffers, as (a) a raw index into the
+RMB on the urgent path, (b) the receive length in smc_rx_recvmsg(), and (c) the
+send length in smc_tx_sendmsg() on the SMC-D DMB-merge path. A malicious or
+buggy peer can forge a cursor so each runs past the relevant buffer: an
+out-of-bounds read of adjacent kernel memory (disclosed to the peer) on the
+receive/urgent side, and, on the send side, an out-of-bounds write whose
+length the peer controls and whose overflowing bytes are the local sender's
+own outbound data.
 
-Adds board profile and the USB ID so the device binds. The digital
-frontend is electrically identical to the Woodbury, so share that
-board's au8522/tda18271 configuration and attach path rather than
-duplicating it. Tested with over-the-air 8VSB ATSC: it locks and
-streams a live 720p transport stream.
+This series bounds each length where it is consumed. The clamp is synchronous
+and race-free against the tasklet that advances the cursor, so it is the minimal
+fix for stable. A separate net-next series adds the wire-boundary validation and
+connection abort that Dust Li suggested; those do not replace these clamps.
 
-Some 05e1:0400 units reportedly ship a Microtune MT2131 tuner with an
-AU8502 demodulator instead. This patch does not handle that variant,
-but it can't regress it either: 05e1:0400 matches no driver today, and
-on the MT2131 units tda18271_attach() just fails, so no frontend is
-registered.
+The clamp is not subsumed by validating cursors at the input boundary. A peer
+that only increments prod.wrap with count == 0 hits the differing-wrap branch of
+smc_curs_diff(), which returns (len - 0) + 0 == len every CDC, so bytes_to_rcv
+(and sndbuf_space on the send side) accumulates past the buffer while every
+per-cursor bound sees count == 0 and accepts the message. The overflow lives in
+the accumulator, not the cursor; only the consumer-side clamp bounds it. And
+because a queued abort runs asynchronously (queue_work -> smc_conn_kill) while
+smc_rx_recvmsg() reads the accumulator under lock_sock, only the synchronous
+clamp closes that window. So the clamp goes to stable; the abort is net-next.
 
-Signed-off-by: Joseph Breihan <linux@josephbreihan.com>
+The nearby readable >= rmb_desc->len / len > sndbuf_desc->len tests only feed
+statistics counters (SMC_STAT_RMB_RX_FULL / SMC_STAT_RMB_TX_SIZE_SMALL) on an
+earlier, separate read; they do not bound the copy.
+
+A/B (in-kernel KASAN replaying the sink arithmetic over a real rmb_desc->len /
+sndbuf_desc->len slab; kasan.fault=report kasan_multi_shot, 2026-07-05):
+  - urgent index (1/3):  count = len+1        -> slab-out-of-bounds Read;  clamped -> clean
+  - recv length  (2/3):  bytes_to_rcv = 5*len via wrap++/count=0 -> OOB Read; clamped -> clean
+  - send length  (3/3):  sndbuf_space inflated -> slab-out-of-bounds Write; clamped -> clean
+  - signed overflow:     readable = -1 -> v1 ">len" misses -> OOB; "<0 || >len" -> clean
+  - concurrent TOCTOU race: a producer-side clamp is racy (OOB in a racing consumer
+    kthread on another CPU); the consumer-side clamp is race-free (0 hits / 5,000,000 reads).
+  - every in-bounds / honest-peer arm: clean.
+
+Changes since v3:
+  - split into this stable-bound clamp series and a separate net-next
+    validate/abort series, per Dust Li's review;
+  - tightened the commit messages; noted that the nearby SMC_STAT_* tests are not
+    bounds; no functional change to the three clamps.
+  v3: https://lore.kernel.org/all/20260614-b4-disp-edd64be9-v3-0-551fa514257e@proton.me/
+
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/media/usb/au0828/au0828-cards.c | 14 ++++++++++++++
- drivers/media/usb/au0828/au0828-cards.h |  1 +
- drivers/media/usb/au0828/au0828-dvb.c   |  1 +
- 3 files changed, 16 insertions(+)
+Bryam Vargas (3):
+      net/smc: bound the wire-controlled producer cursor to the RMB
+      net/smc: bound the receive length to the RMB in smc_rx_recvmsg()
+      net/smc: bound the send length to the send buffer in smc_tx_sendmsg()
 
-diff --git a/drivers/media/usb/au0828/au0828-cards.c b/drivers/media/usb/au0828/au0828-cards.c
-index 9929ce5dcdc..8ab100db01a 100644
---- a/drivers/media/usb/au0828/au0828-cards.c
-+++ b/drivers/media/usb/au0828/au0828-cards.c
-@@ -124,6 +124,17 @@ struct au0828_board au0828_boards[] = {
- 			},
- 		},
- 	},
-+	[AU0828_BOARD_MONOPRICE_106456] = {
-+		/*
-+		 * Monoprice 106456 USB ATSC/QAM tuner (board rev TV22AD-A),
-+		 * a.k.a. AnyTV AUTV002, USB ID 05e1:0400. Same AU8522 demod +
-+		 * NXP TDA18271HDC2 tuner @ 0x60 as the Hauppauge Woodbury.
-+		 */
-+		.name	= "Monoprice 106456 USB ATSC/QAM (TV22AD-A)",
-+		.tuner_type = TUNER_NXP_TDA18271,
-+		.tuner_addr = 0x60,
-+		.i2c_clk_divider = AU0828_I2C_CLK_250KHZ,
-+	},
- 	[AU0828_BOARD_HAUPPAUGE_HVR1265] = {
- 		.name	= "Hauppauge HVR1265",
- 		.tuner_type = TUNER_XC5000,
-@@ -294,6 +305,7 @@ void au0828_gpio_setup(struct au0828_dev *dev)
- 	case AU0828_BOARD_HAUPPAUGE_WOODBURY:
- 	case AU0828_BOARD_HAUPPAUGE_HVR1265:
- 	case AU0828_BOARD_HAUPPAUGE_IMPACTVCBE:
-+	case AU0828_BOARD_MONOPRICE_106456:
- 		/* GPIO's
- 		 * 4 - CS5340
- 		 * 5 - AU8522 Demodulator
-@@ -378,6 +390,8 @@ struct usb_device_id au0828_usb_id_table[] = {
- 		.driver_info = AU0828_BOARD_HAUPPAUGE_HVR950Q_MXL },
- 	{ USB_DEVICE(0x05e1, 0x0480),
- 		.driver_info = AU0828_BOARD_HAUPPAUGE_WOODBURY },
-+	{ USB_DEVICE(0x05e1, 0x0400),
-+		.driver_info = AU0828_BOARD_MONOPRICE_106456 },
- 	{ USB_DEVICE(0x2040, 0x8200),
- 		.driver_info = AU0828_BOARD_HAUPPAUGE_WOODBURY },
- 	{ USB_DEVICE(0x2040, 0x7260),
-diff --git a/drivers/media/usb/au0828/au0828-cards.h b/drivers/media/usb/au0828/au0828-cards.h
-index a438aeb334a..a4a283731f7 100644
---- a/drivers/media/usb/au0828/au0828-cards.h
-+++ b/drivers/media/usb/au0828/au0828-cards.h
-@@ -13,3 +13,4 @@
- #define AU0828_BOARD_HAUPPAUGE_WOODBURY	5
- #define AU0828_BOARD_HAUPPAUGE_IMPACTVCBE	6
- #define AU0828_BOARD_HAUPPAUGE_HVR1265		7
-+#define AU0828_BOARD_MONOPRICE_106456		8
-diff --git a/drivers/media/usb/au0828/au0828-dvb.c b/drivers/media/usb/au0828/au0828-dvb.c
-index 31123e6f9fc..9c95b7ceaec 100644
---- a/drivers/media/usb/au0828/au0828-dvb.c
-+++ b/drivers/media/usb/au0828/au0828-dvb.c
-@@ -600,6 +600,7 @@ int au0828_dvb_register(struct au0828_dev *dev)
- 				   &mxl5007t_hvr950q_config);
- 		break;
- 	case AU0828_BOARD_HAUPPAUGE_WOODBURY:
-+	case AU0828_BOARD_MONOPRICE_106456:
- 		dvb->frontend = dvb_attach(au8522_attach,
- 				&hauppauge_woodbury_config,
- 				&dev->i2c_adap);
-
+ net/smc/smc_cdc.h | 27 ++++++++++++++++++++++++---
+ net/smc/smc_rx.c  | 12 ++++++++++++
+ net/smc/smc_tx.c  | 13 +++++++++++++
+ 3 files changed, 49 insertions(+), 3 deletions(-)
 ---
-base-commit: 8dac27bfa2f994ecb11f01a63641527d17d48fc1
-change-id: 20260705-au0828-monoprice-de5a4c39c74f
+base-commit: d6456743424721a837e1509b912f362caaeecd97
+change-id: 20260705-b4-disp-28a1bbca-cc9f53ade448
 
 Best regards,
---  
-Joseph Breihan <linux@josephbreihan.com>
+-- 
+Bryam Vargas <hexlabsecurity@proton.me>
 
