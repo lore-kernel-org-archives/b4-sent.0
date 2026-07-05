@@ -1,143 +1,85 @@
-From: Liz Fong-Jones <lizf@honeycomb.io>
-Date: Sun, 05 Jul 2026 10:11:43 -0700
-Subject: [PATCH] PCI: Fix BAR resize for devices on a root bus
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH RFC 0/6] Speakers for Pixel 3 / 3 XL
+Date: Sun, 05 Jul 2026 22:06:50 +0200
+Message-Id: <20260705-pixel3-audio-v1-0-3b66f33859f1@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260705-pci-rebar-root-bus-v1-1-55df70cbdd88@honeycomb.io>
-X-B4-Tracking: v=1; b=H4sIAE6QSmoC/yXMQQqEMAxA0atI1gbaOih4FXFha6pxYSXRYUC8u
- 3VcvsX/JygJk0JbnCD0ZeW0ZtiygDAP60TIYzY442rTmA9ugVHID4KS0o7+UIyVdVUka2JoIIe
- bUOTff9r1r/XwC4X9OcF13R/1e3F2AAAA
-X-Change-ID: 20260704-pci-rebar-root-bus-f3123fe10fc7
-To: Bjorn Helgaas <bhelgaas@google.com>
-Cc: =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
- regressions@lists.linux.dev, amd-gfx@lists.freedesktop.org, 
- Jon Nettleton <jon@solid-run.com>, Jon Nettleton <jon.nettleton@gmail.com>, 
- stable@vger.kernel.org, Liz Fong-Jones <lizf@honeycomb.io>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4287; i=lizf@honeycomb.io;
- s=gpg; h=from:subject:message-id;
- bh=WjhPR946S5kQ2MM+7TqB/nQbZuHdNxuSaUo3YEdJ1dU=;
- b=owEBbQGS/pANAwAKAaXO1OOXra/CAcsmYgBqSpBT2VQkT7xS0DBT4bFs/PNduIzCpXSUdbhlx
- +BUdSUWfm+JATMEAAEKAB0WIQSfW1LPQ0gyJmoTHwelztTjl62vwgUCakqQUwAKCRClztTjl62v
- wuU9B/43wnUMX1r7OFzOUOLhs7jAFwO76sMfFglIIx4+jiZsAeECwbTO6vJ/B7uxJqWNBjoDBU5
- +qBnydr+Zy8aNRAgrClef7W2QitCPB9JyGuOSMQn6nlhA/9LSJvt2shilGGo28Ekw8JbeRehZE3
- YfEAbYPDNj6y66wpKdNAANSXa+Saj4YnmX5piKeTE2qv+qJwpMy7HZ69ov+iOg2lzmwHkjhTj9l
- TRcjq86rbWran3ghttXJsjZ77jyY2Iw22zBQfFrlX6QV/4purUnKtLqcQ0Wih9PW7OZ5veO0vYG
- QM53tH07CgWLmOwRFMHiVToYw4a/ZvH3h0+/9gm3H3ssJXYV
-X-Developer-Key: i=lizf@honeycomb.io; a=openpgp;
- fpr=1F7714D7EC3441D2CECC24606A3F8B00FBDDD2A4
-X-Endpoint-Received: by B4 Relay for lizf@honeycomb.io/gpg with auth_id=854
+X-B4-Tracking: v=1; b=H4sIAFq5SmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDM0Nj3YLMitQcY93E0pTMfN2klKS0JBPLVAsDY3MloJaCotQ0oDzIuGi
+ lIDdnpViIYFFqYSnQ6BKITGxtLQBUxJrleAAAAA==
+X-Change-ID: 20260613-pixel3-audio-bdbfb49e8037
+To: Srinivas Kandagatla <srini@kernel.org>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
+ David Rhodes <david.rhodes@cirrus.com>, 
+ Richard Fitzgerald <rf@opensource.cirrus.com>, 
+ Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ David Rhodes <drhodes@opensource.cirrus.com>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, patches@opensource.cirrus.com, 
+ devicetree@vger.kernel.org, phone-devel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1608; i=david@ixit.cz;
+ h=from:subject:message-id; bh=S7zp59IV+EIooHSDmPyNRcnYaYzO7GZlM/V3CjNAfoQ=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqSrmMg/DrCOau8GMC+VQV0U2DfFXLz7KVPQk1/
+ doa+FRM7piJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCakq5jAAKCRBgAj/E00kg
+ ciGHEACP1Dg0KxLbYm20Ol6Bqx7HYPq3Evdjm9H4EdsvrD7/HUH1DHmlc8C2+g7xWtAFOJSwYv8
+ CV0YayVLm9aOz0FW/dPE3gFX4m38tP1xCCcZj+c7dXfNbrtikqblCHCpppLBPIuyoEhuYFHZDBS
+ HwmEnJdgGesuSlf65TYZzlTZ574ud8Kp3G7DNd9bnEyr3Ef4uCFN+OShWQgeK5+c4Us1sdYLfZA
+ Ng+S5HF9JbFb1+9c3Uhs8WIrII6QCbcqQeeWTUWCFiYixLlCE8F87iS9EIgztD6UWAmb+WgJSYO
+ Mk4xrIZht0+CXOIsBLqZItoUVQRzTVaSn1XONRVcXsw47CW4t/rRyEPqPoEHEHpOesFEszQ77m2
+ 4GCfkolQytcOa7RVHo6w2Gdm5W7/DmcQcyOH9CWuzfFI7Ns4hGjQuWHVJKtQy3S/4nMQ3nIOkic
+ IqfPOa1CKSMPnra7g3xzuHUpTI4/ocbYBc7ko/L/VBjeeXCkfJanUFI3W+qI3gqlARlBLEBh1IC
+ VV5EK0a4xFjL3qkjNjk98zNBztrPVCf2uSSlLKjy5lT7Lpl7knjdhWmklEZrOf8fYV/L7fDn4/p
+ vBnUaUz0/tEDxIuUi2tR3q0zSq17citte4RNkXq0o6PjzppOMF2vp803Y4OvWo7kw4BnvF64/v9
+ BRU1zBzG0wNAOfw==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-pci_do_resource_release_and_resize() releases the device BARs that
-share a bridge window with the BAR being resized, but when the device
-sits directly on a root bus (pdev->bus->self == NULL) it then skips
-resource assignment entirely and returns success, leaving the BARs it
-just released unassigned (IORESOURCE_UNSET).
+This series address:
 
-Skipping pbus_reassign_bridge_resources() is correct in that case --
-there is no bridge window to adjust -- but the device BARs still have
-to be reassigned. Before the BAR release was consolidated into the PCI
-core, this case worked for amdgpu because the driver released the BARs
-itself and then called pci_assign_unassigned_bus_resources()
-unconditionally after the resize, which assigns unassigned device BARs
-also on a root bus. Commit db92e3fef53e ("drm/amdgpu: Remove driver
-side BAR release before resize") removed that call, so nothing assigns
-the released BARs anymore.
+0. demistify the hex to BIT() macro and add left/right rx spk
+1. most likely wrongly set DSP_B in sdm845.c
+   my guess this is because TDM was never used in the mainline with
+   sdm845
+2. applying correct mask to left/right speaker for the TDM in sdm845.c,
+   so both speakers can work simultaneusly
+3. setting sysclk at startups, which some codecs need (such as cs35l36)
+4. setting proper tdm slot in the cs35l36 driver
+5. device-tree wiring for Pixel 3 / 3 XL
 
-This breaks amdgpu completely on the SolidRun HoneyComb LX2 (NXP
-LX2160A, arm64, ACPI), where the GPU endpoint is enumerated directly
-on the root bus of its segment (there is no root port device, so
-pdev->bus->self is NULL):
+Consider my knowledge here limited, thus sending RFC. Some parts we're
+heavily assisted by LLM - I believe I understand what I'm doing, but
+my knowledge within audio realm is limited.
 
-  amdgpu 0004:01:00.0: BAR 0 [mem 0xa400000000-0xa40fffffff 64bit pref]: releasing
-  amdgpu 0004:01:00.0: BAR 2 [mem 0xa410000000-0xa4101fffff 64bit pref]: releasing
-  amdgpu 0004:01:00.0: sw_init of IP block <gmc_v8_0> failed -19
-  amdgpu 0004:01:00.0: amdgpu_device_ip_init failed
-  amdgpu 0004:01:00.0: Fatal error during GPU init
+David
 
-No error is logged because the resize path reports success; amdgpu
-then finds BAR0 IORESOURCE_UNSET and bails out with -ENODEV.
-
-Assign the released BARs directly from the root bus windows when there
-is no upstream bridge. On failure, roll back through the existing
-restore path exactly as in the bridged case.
-
-The root bus path also had a locking bug that any fix here necessarily
-touches: the old "goto out" jumped to up_read(&pci_bus_sem) without a
-matching down_read() (as does the "goto restore" taken when
-pci_dev_res_add_to_list() fails in the release loop). Take pci_bus_sem
-before the BAR release loop so every path through the function holds
-it exactly once.
-
-Fixes: 337b1b566db0 ("PCI: Fix restoring BARs on BAR resize rollback path")
-Cc: stable@vger.kernel.org # v6.19+
-Signed-off-by: Liz Fong-Jones <lizf@honeycomb.io>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-#regzbot introduced: 337b1b566db0
+David Heidelberg (6):
+      ASoC: qcom: sdm845: Demystify TDM masks a bit
+      ASoC: qcom: sdm845: use DSP_A format for TDM codec DAIs
+      ASoC: qcom: sdm845: Use per-speaker RX masks for TDM slot assignment
+      ASoC: qcom: sdm845: Set codec dai and component sysclk during startup
+      ASoC: cs35l36: Implement set_tdm_slot to program RX slot register
+      arm64: dts: qcom: sdm845-google: Add basic audio support
 
-Observed at runtime on Ubuntu's linux-hwe-7.0 (7.0.0-14, broken) vs
-linux-hwe-6.17 (working), but nothing here is distro-specific: Ubuntu
-carries this code unmodified, and the affected function is identical
-to current mainline. By source inspection the regression window is
-v6.18 (old code paths) to v6.19 (consolidation). Workaround for
-affected users: amdgpu.rebar=0.
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 133 ++++++++++++++++++++-
+ sound/soc/codecs/cs35l36.c                         |  16 +++
+ sound/soc/qcom/sdm845.c                            |  46 +++++--
+ 3 files changed, 183 insertions(+), 12 deletions(-)
 ---
- drivers/pci/setup-bus.c | 25 +++++++++++++++++++------
- 1 file changed, 19 insertions(+), 6 deletions(-)
-
-diff --git a/drivers/pci/setup-bus.c b/drivers/pci/setup-bus.c
-index c0a949f2c995..9db1951f6e5c 100644
---- a/drivers/pci/setup-bus.c
-+++ b/drivers/pci/setup-bus.c
-@@ -2397,6 +2397,8 @@ int pci_do_resource_release_and_resize(struct pci_dev *pdev, int resno, int size
- 	if (ret)
- 		return ret;
- 
-+	down_read(&pci_bus_sem);
-+
- 	pci_dev_for_each_resource(pdev, r, i) {
- 		if (i >= PCI_BRIDGE_RESOURCES)
- 			break;
-@@ -2415,13 +2417,24 @@ int pci_do_resource_release_and_resize(struct pci_dev *pdev, int resno, int size
- 
- 	pci_resize_resource_set_size(pdev, resno, size);
- 
--	if (!bus->self)
--		goto out;
-+	if (bus->self) {
-+		ret = pbus_reassign_bridge_resources(bus, res, &saved);
-+		if (ret)
-+			goto restore;
-+	} else {
-+		/*
-+		 * A device on a root bus has no bridge windows to adjust.
-+		 * Assign the BARs released above directly from the root bus
-+		 * windows.
-+		 */
-+		list_for_each_entry(dev_res, &saved, list) {
-+			i = pci_resource_num(pdev, dev_res->res);
- 
--	down_read(&pci_bus_sem);
--	ret = pbus_reassign_bridge_resources(bus, res, &saved);
--	if (ret)
--		goto restore;
-+			ret = pci_assign_resource(pdev, i);
-+			if (ret)
-+				goto restore;
-+		}
-+	}
- 
- out:
- 	up_read(&pci_bus_sem);
-
----
-base-commit: 7404ce51637231382873d0b55edabc2f3b841a9d
-change-id: 20260704-pci-rebar-root-bus-f3123fe10fc7
+base-commit: 2b763db0c2763d6bf73d7d3e69665222d1f377cf
+change-id: 20260613-pixel3-audio-bdbfb49e8037
 
 Best regards,
---  
-Liz Fong-Jones <lizf@honeycomb.io>
+-- 
+David Heidelberg <david@ixit.cz>
 
