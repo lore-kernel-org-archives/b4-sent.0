@@ -1,11 +1,11 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sun, 05 Jul 2026 02:54:06 -0500
-Subject: [PATCH net v4 2/3] net/smc: bound the receive length to the RMB in
- smc_rx_recvmsg()
+Date: Sun, 05 Jul 2026 02:54:07 -0500
+Subject: [PATCH net v4 3/3] net/smc: bound the send length to the send
+ buffer in smc_tx_sendmsg()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260705-b4-disp-28a1bbca-v4-2-be089b98acc6@proton.me>
+Message-Id: <20260705-b4-disp-28a1bbca-v4-3-be089b98acc6@proton.me>
 References: <20260705-b4-disp-28a1bbca-v4-0-be089b98acc6@proton.me>
 In-Reply-To: <20260705-b4-disp-28a1bbca-v4-0-be089b98acc6@proton.me>
 To: Dust Li <dust.li@linux.alibaba.com>, 
@@ -20,64 +20,65 @@ Cc: Stefan Raspl <raspl@linux.ibm.com>, Wen Gu <guwen@linux.alibaba.com>,
  Tony Lu <tonylu@linux.alibaba.com>, Ursula Braun <ubraun@linux.ibm.com>, 
  linux-s390@vger.kernel.org, linux-rdma@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783238044; l=2445;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783238044; l=2608;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=I0K6pB19Txw2xkjG1QzwzyDeX8rOXh7QApCt4GO9qIc=;
- b=/I0Zd31bYSOXxpR0waqZvHv4r013dQLQJXOXfqYo0YJhIZvn5GziX/nXs6nYGTJsb/F5lHiMP
- TVdAwebAdJHC6UL/D2LPnRi2QKME2z4EByX4fsntrARFHTsgcSv72ts
+ bh=gofZShwJohwDaGHsZ6HI9Oy7+YnKIapqK8UzB5SRSUM=;
+ b=wYZ0lUVj4rs4m7pA47NnwlkJnZ1zBq1lfAkulVbUwivC1vGL8Fh62x0DUJ7cwtp/3kIC2x1kq
+ eDtoT02N+ojBWl41IBJ9sTeOAJE1QpzpRi9ybnX5gCCymefhYfI+CxM
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-conn->bytes_to_rcv is accumulated in the receive tasklet from the
-peer's wire-controlled producer cursor via smc_curs_diff(), whose
-differing-wrap branch can exceed rmb_desc->len; a forged cursor drives
-bytes_to_rcv past the RMB, and over many CDC messages overflows the
-signed counter negative. smc_rx_recvmsg() reads it as the readable
-length and does a wrap-around copy whose second chunk is not re-bounded
-to rmb_desc->len, reading past the RMB into adjacent kernel memory and
-disclosing it to the peer. The nearby readable >= rmb_desc->len test
-only feeds SMC_STAT_RMB_RX_FULL on a separate earlier read; it does not
-bound the copy.
+On the SMC-D DMB-merge (nocopy) path, smc_cdc_msg_recv_action()
+advances conn->sndbuf_space from the peer's wire-controlled consumer
+cursor via smc_curs_diff(), which can return more than sndbuf_desc->len;
+a forged cursor drives sndbuf_space past the send buffer, and over many
+CDC messages overflows the signed counter negative. smc_tx_sendmsg()
+reads it as the write space and does a wrap-around copy whose second
+chunk is not re-bounded to sndbuf_desc->len, spilling the local
+sender's outbound data past the send buffer at a peer-controlled
+length: a heap out-of-bounds write. The nearby len > sndbuf_desc->len
+test only feeds SMC_STAT_RMB_TX_SIZE_SMALL on the user length; it does
+not bound the copy.
 
-Bound the readable length to rmb_desc->len at the consumer, treating a
+Bound the write space to sndbuf_desc->len at the consumer, treating a
 negative (sign-overflowed) value as out of range too, so the copy can
 never exceed the ring. This enforces the documented
-0 <= bytes_to_rcv <= rmb_desc->len invariant where it is race-free
-against the producer update in the tasklet; conforming peers are
-unaffected.
+0 <= sndbuf_space <= sndbuf_desc->len invariant where it is race-free
+against the CDC tasklet; conforming peers are unaffected.
 
-Fixes: 952310ccf2d8 ("smc: receive data from RMBE")
+Fixes: cc0ab806fc52 ("net/smc: adapt cursor update when sndbuf and peer DMB are merged")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- net/smc/smc_rx.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ net/smc/smc_tx.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-diff --git a/net/smc/smc_rx.c b/net/smc/smc_rx.c
-index c1d9b923938d..f461cf10b085 100644
---- a/net/smc/smc_rx.c
-+++ b/net/smc/smc_rx.c
-@@ -442,6 +442,18 @@ int smc_rx_recvmsg(struct smc_sock *smc, struct msghdr *msg,
+diff --git a/net/smc/smc_tx.c b/net/smc/smc_tx.c
+index 3144b4b1fe29..5916f02060fb 100644
+--- a/net/smc/smc_tx.c
++++ b/net/smc/smc_tx.c
+@@ -233,6 +233,19 @@ int smc_tx_sendmsg(struct smc_sock *smc, struct msghdr *msg, size_t len)
  		/* initialize variables for 1st iteration of subsequent loop */
- 		/* could be just 1 byte, even after waiting on data above */
- 		readable = smc_rx_data_available(conn, peeked_bytes);
-+		/* bytes_to_rcv is accumulated from the peer's wire-controlled
-+		 * producer cursor; a forged cursor can drive it past the RMB,
-+		 * or overflow the signed accumulator to a negative value across
-+		 * many CDC messages (which a plain "> len" check would miss
-+		 * before the size_t cast below turns it huge).  Bound it to the
-+		 * RMB in either case so the wrap-around copy cannot run past
-+		 * rmb_desc->len.  This enforces the documented
-+		 * 0 <= bytes_to_rcv <= rmb_desc->len invariant at the consumer,
-+		 * race-free against the producer update in the receive tasklet.
+ 		/* could be just 1 byte, even after smc_tx_wait above */
+ 		writespace = atomic_read(&conn->sndbuf_space);
++		/* sndbuf_space is advanced from the peer's wire-controlled
++		 * consumer cursor on the SMC-D DMB-merge path; a forged cursor
++		 * can inflate it past the send buffer, or overflow the signed
++		 * accumulator to a negative value across many CDC messages
++		 * (which a plain "> len" check would miss before the size_t
++		 * cast below turns it huge).  Bound it to the send buffer in
++		 * either case so the wrap-around write cannot run past
++		 * sndbuf_desc->len.  This enforces the documented
++		 * 0 <= sndbuf_space <= sndbuf_desc->len invariant at the
++		 * producer, race-free against the CDC tasklet.
 +		 */
-+		if (readable < 0 || readable > conn->rmb_desc->len)
-+			readable = conn->rmb_desc->len;
- 		splbytes = atomic_read(&conn->splice_pending);
- 		if (!readable || (msg && splbytes)) {
- 			if (splbytes)
++		if (writespace < 0 || writespace > conn->sndbuf_desc->len)
++			writespace = conn->sndbuf_desc->len;
+ 		/* not more than what user space asked for */
+ 		copylen = min_t(size_t, send_remaining, writespace);
+ 		/* determine start of sndbuf */
 
 -- 
 2.43.0
