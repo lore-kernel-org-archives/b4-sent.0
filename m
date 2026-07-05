@@ -1,11 +1,10 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Sun, 05 Jul 2026 12:38:59 +0100
-Subject: [PATCH v6 4/6] iio: dac: ad5686: read_raw/write_raw: use
- guard(mutex)()
+Date: Sun, 05 Jul 2026 12:39:00 +0100
+Subject: [PATCH v6 5/6] iio: dac: ad5686: add triggered buffer support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260705-ad5686-new-features-v6-4-269594c7aae5@analog.com>
+Message-Id: <20260705-ad5686-new-features-v6-5-269594c7aae5@analog.com>
 References: <20260705-ad5686-new-features-v6-0-269594c7aae5@analog.com>
 In-Reply-To: <20260705-ad5686-new-features-v6-0-269594c7aae5@analog.com>
 To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
@@ -17,88 +16,140 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
  Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>, 
- Maxwell Doose <m32285159@gmail.com>, 
- Joshua Crofts <joshua.crofts1@gmail.com>
+ Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783251560; l=2132;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783251560; l=3808;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=KXdOCM8K80hSnPdNpvlDlxzShY7L4kR4B4GuvME7upg=;
- b=lLU/CJZYJH0kEUs8Tb6OUvDxDPRfbLVJZXGObuZtG6Av78GNSrB9UGDJYGEFH3sFXMFvH5I+c
- WZBCEpsXgz7Bd/KBAyd1qdfaVLnAy4A8x441xEv3emEPDu0yDNA2u8V
+ bh=7h0ot0Di+OMnXdklBmnkUMdQJGQd0ItY+Cizp7NOkVk=;
+ b=ZdAMnJYWqKU9DlzbY8vaNtV9njuPiCnREi4wNnS5FJumZHMyNsOd1+NfVpELp05KGtL6nT7g/
+ 2lSBr03eDnkBktSpbbtnXqn6peQ8gWlx+VpSoYEoRT65rDqAScAHqXv
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use guarded mutex lock to facilitate code review when adding new
-attributes. This will allow for early returns, avoiding error-prone
-locking and unlocking in error paths. This also adds missing include
-linux/cleanup.h. Gain-control support will allow the scale attribute
-to be configurable.
+Implement trigger handler by leveraging the LDAC gpio to update all DAC
+channels at once when it is available. Also, the multiple channel writes
+can be flushed at once with the sync() operation.
 
-Reviewed-by: Maxwell Doose <m32285159@gmail.com>
-Reviewed-by: Joshua Crofts <joshua.crofts1@gmail.com>
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/dac/ad5686.c | 19 ++++++++-----------
- 1 file changed, 8 insertions(+), 11 deletions(-)
+ drivers/iio/dac/Kconfig  |  2 ++
+ drivers/iio/dac/ad5686.c | 66 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 68 insertions(+)
 
+diff --git a/drivers/iio/dac/Kconfig b/drivers/iio/dac/Kconfig
+index 17529509da9d..d6d560c09e25 100644
+--- a/drivers/iio/dac/Kconfig
++++ b/drivers/iio/dac/Kconfig
+@@ -243,6 +243,8 @@ config LTC2688
+ 
+ config AD5686
+ 	tristate
++	select IIO_BUFFER
++	select IIO_TRIGGERED_BUFFER
+ 
+ config AD5686_SPI
+ 	tristate "Analog Devices AD5686 and similar multi-channel DACs (SPI)"
 diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
-index 75dd7921c67b..db175e77b0b7 100644
+index db175e77b0b7..3120e6983d9e 100644
 --- a/drivers/iio/dac/ad5686.c
 +++ b/drivers/iio/dac/ad5686.c
-@@ -8,6 +8,7 @@
- #include <linux/array_size.h>
- #include <linux/bitfield.h>
- #include <linux/bitops.h>
-+#include <linux/cleanup.h>
- #include <linux/delay.h>
- #include <linux/dev_printk.h>
- #include <linux/errno.h>
-@@ -177,11 +178,11 @@ static int ad5686_read_raw(struct iio_dev *indio_dev,
- 	struct ad5686_state *st = iio_priv(indio_dev);
- 	int ret;
+@@ -21,7 +21,11 @@
+ #include <linux/sysfs.h>
+ #include <linux/wordpart.h>
  
++#include <linux/iio/buffer.h>
+ #include <linux/iio/iio.h>
++#include <linux/iio/trigger.h>
++#include <linux/iio/trigger_consumer.h>
++#include <linux/iio/triggered_buffer.h>
+ 
+ #include "ad5686.h"
+ 
+@@ -243,6 +247,7 @@ static const struct iio_chan_spec_ext_info ad5686_ext_info[] = {
+ 		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW),	\
+ 		.info_mask_shared_by_type = BIT(IIO_CHAN_INFO_SCALE),\
+ 		.address = addr,				\
++		.scan_index = chan,				\
+ 		.scan_type = {					\
+ 			.sign = 'u',				\
+ 			.realbits = (bits),			\
+@@ -467,6 +472,60 @@ const struct ad5686_chip_info ad5679r_chip_info = {
+ };
+ EXPORT_SYMBOL_NS_GPL(ad5679r_chip_info, "IIO_AD5686");
+ 
++static void do_ad5686_trigger_handler(struct iio_dev *indio_dev)
++{
++	struct iio_buffer *buffer = indio_dev->buffer;
++	struct ad5686_state *st = iio_priv(indio_dev);
++	u16 val[AD5686_MAX_CHANNELS] = { };
++	unsigned int scan_count, ch, i;
++	bool async_update;
++	u8 cmd;
++
++	if (iio_pop_from_buffer(buffer, val))
++		return;
++
 +	guard(mutex)(&st->lock);
 +
- 	switch (m) {
- 	case IIO_CHAN_INFO_RAW:
--		mutex_lock(&st->lock);
- 		ret = ad5686_read(st, chan->address);
--		mutex_unlock(&st->lock);
- 		if (ret < 0)
- 			return ret;
- 		*val = (ret >> chan->scan_type.shift) &
-@@ -202,23 +203,19 @@ static int ad5686_write_raw(struct iio_dev *indio_dev,
- 			    long mask)
- {
- 	struct ad5686_state *st = iio_priv(indio_dev);
--	int ret;
++	scan_count = bitmap_weight(indio_dev->active_scan_mask,
++				   iio_get_masklength(indio_dev));
++	async_update = st->ldac_gpio && scan_count > 1;
++	if (async_update) {
++		/* use LDAC to update all channels simultaneously */
++		cmd = AD5686_CMD_WRITE_INPUT_N;
++		gpiod_set_value_cansleep(st->ldac_gpio, 0);
++	} else {
++		cmd = AD5686_CMD_WRITE_INPUT_N_UPDATE_N;
++	}
 +
-+	guard(mutex)(&st->lock);
- 
- 	switch (mask) {
- 	case IIO_CHAN_INFO_RAW:
- 		if (val >= (1 << chan->scan_type.realbits) || val < 0)
- 			return -EINVAL;
- 
--		mutex_lock(&st->lock);
--		ret = ad5686_write(st, AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
--				   chan->address, val << chan->scan_type.shift);
--		mutex_unlock(&st->lock);
--		break;
-+		return ad5686_write(st, AD5686_CMD_WRITE_INPUT_N_UPDATE_N,
-+				    chan->address, val << chan->scan_type.shift);
- 	default:
--		ret = -EINVAL;
-+		return -EINVAL;
++	i = 0;
++	iio_for_each_active_channel(indio_dev, ch) {
++		if (st->ops->write(st, cmd, indio_dev->channels[ch].address, val[i++]))
++			break;
++	}
++
++	/*
++	 * If sync() is available, it is called here regardless of write
++	 * failure to allow bus implementation to reset. In that case, partial
++	 * writes are unlikely as the write operations would just queue up
++	 * the transfers.
++	 */
++	if (st->ops->sync)
++		st->ops->sync(st);
++
++	if (async_update)
++		gpiod_set_value_cansleep(st->ldac_gpio, 1);
++}
++
++static irqreturn_t ad5686_trigger_handler(int irq, void *p)
++{
++	struct iio_poll_func *pf = p;
++	struct iio_dev *indio_dev = pf->indio_dev;
++
++	do_ad5686_trigger_handler(indio_dev);
++	iio_trigger_notify_done(indio_dev->trig);
++	return IRQ_HANDLED;
++}
++
+ int ad5686_probe(struct device *dev,
+ 		 const struct ad5686_chip_info *chip_info,
+ 		 const char *name, const struct ad5686_bus_ops *ops,
+@@ -569,6 +628,13 @@ int ad5686_probe(struct device *dev,
+ 		return -EINVAL;
  	}
--
--	return ret;
- }
  
- static const struct iio_info ad5686_info = {
++	ret = devm_iio_triggered_buffer_setup_ext(dev, indio_dev, NULL,
++						  &ad5686_trigger_handler,
++						  IIO_BUFFER_DIRECTION_OUT,
++						  NULL, NULL);
++	if (ret)
++		return ret;
++
+ 	return devm_iio_device_register(dev, indio_dev);
+ }
+ EXPORT_SYMBOL_NS_GPL(ad5686_probe, "IIO_AD5686");
 
 -- 
 2.43.0
