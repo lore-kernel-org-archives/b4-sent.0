@@ -1,85 +1,57 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sun, 05 Jul 2026 02:54:07 -0500
-Subject: [PATCH net v4 3/3] net/smc: bound the send length to the send
- buffer in smc_tx_sendmsg()
+From: Daniel Schaefer <dhs@frame.work>
+Date: Sun, 05 Jul 2026 16:07:13 +0800
+Subject: [PATCH] ALSA: hda/realtek: add quirk for Framework F111:0010
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260705-b4-disp-28a1bbca-v4-3-be089b98acc6@proton.me>
-References: <20260705-b4-disp-28a1bbca-v4-0-be089b98acc6@proton.me>
-In-Reply-To: <20260705-b4-disp-28a1bbca-v4-0-be089b98acc6@proton.me>
-To: Dust Li <dust.li@linux.alibaba.com>, 
- "David S. Miller" <davem@davemloft.net>, 
- Sidraya Jayagond <sidraya@linux.ibm.com>, 
- Eric Dumazet <edumazet@google.com>, "D. Wythe" <alibuda@linux.alibaba.com>, 
- Jakub Kicinski <kuba@kernel.org>, Simon Horman <horms@kernel.org>, 
- Wenjia Zhang <wenjia@linux.ibm.com>, Paolo Abeni <pabeni@redhat.com>
-Cc: Stefan Raspl <raspl@linux.ibm.com>, Wen Gu <guwen@linux.alibaba.com>, 
- linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
- Mahanta Jambigi <mjambigi@linux.ibm.com>, 
- Tony Lu <tonylu@linux.alibaba.com>, Ursula Braun <ubraun@linux.ibm.com>, 
- linux-s390@vger.kernel.org, linux-rdma@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783238044; l=2608;
- i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=gofZShwJohwDaGHsZ6HI9Oy7+YnKIapqK8UzB5SRSUM=;
- b=wYZ0lUVj4rs4m7pA47NnwlkJnZ1zBq1lfAkulVbUwivC1vGL8Fh62x0DUJ7cwtp/3kIC2x1kq
- eDtoT02N+ojBWl41IBJ9sTeOAJE1QpzpRi9ybnX5gCCymefhYfI+CxM
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
+Message-Id: <20260705-framework-audio-ssid-0x0010-v1-1-fffc8996ac18@frame.work>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MSwqDQAwA0KtI1g3EtH7oVUoXUyejodQpCVVBv
+ HsHl2/zdnAxFYd7tYPJoq55LqgvFQxTmEdBjcXAxC111GCy8JE12xvDL2pGd41IG1FNOLyuPdO
+ Ne04JyvA1Sbqd++N5HH8I67UKbQAAAA==
+X-Change-ID: 20260705-framework-audio-ssid-0x0010-cb38204282ff
+To: Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>
+Cc: linux-sound@vger.kernel.org, linux@frame.work, 
+ Daniel Schaefer <dhs@frame.work>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783238865; l=1317;
+ i=dhs@frame.work; s=20260705; h=from:subject:message-id;
+ bh=ZuKVyyBkhHa8+nRdHOgKdv02u2mQ8xtQLyrlEclnmFU=;
+ b=N8uQZiYI539De94mhlvUExkl3biccVUH0yqr88v/hsZDHYesqbpn8NR+Z0gYmSKefmnLu/SQC
+ ArWOkQ/6nihB5u5y+b2jRwBGafdxiHySGt8rIUIZhqN9KzJhu35MRMA
+X-Developer-Key: i=dhs@frame.work; a=ed25519;
+ pk=O1zF7VDnmz6EZNc7sEiawR+KK650uRg1XteQ8jHwScw=
+X-Endpoint-Received: by B4 Relay for dhs@frame.work/20260705 with auth_id=852
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On the SMC-D DMB-merge (nocopy) path, smc_cdc_msg_recv_action()
-advances conn->sndbuf_space from the peer's wire-controlled consumer
-cursor via smc_curs_diff(), which can return more than sndbuf_desc->len;
-a forged cursor drives sndbuf_space past the send buffer, and over many
-CDC messages overflows the signed counter negative. smc_tx_sendmsg()
-reads it as the write space and does a wrap-around copy whose second
-chunk is not re-bounded to sndbuf_desc->len, spilling the local
-sender's outbound data past the send buffer at a peer-controlled
-length: a heap out-of-bounds write. The nearby len > sndbuf_desc->len
-test only feeds SMC_STAT_RMB_TX_SIZE_SMALL on the user length; it does
-not bound the copy.
+Similar to commit 67c738152207 ("ALSA: hda/realtek: fix mic boost on
+Framework PTL") and previous quirks for Framework systems with
+Realtek codecs.
 
-Bound the write space to sndbuf_desc->len at the consumer, treating a
-negative (sign-overflowed) value as out of range too, so the copy can
-never exceed the ring. This enforces the documented
-0 <= sndbuf_space <= sndbuf_desc->len invariant where it is race-free
-against the CDC tasklet; conforming peers are unaffected.
+0010 is another platform with an ALC285 which needs the same quirk.
 
-Fixes: cc0ab806fc52 ("net/smc: adapt cursor update when sndbuf and peer DMB are merged")
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Signed-off-by: Daniel Schaefer <dhs@frame.work>
 ---
- net/smc/smc_tx.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+ sound/hda/codecs/realtek/alc269.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/net/smc/smc_tx.c b/net/smc/smc_tx.c
-index 3144b4b1fe29..5916f02060fb 100644
---- a/net/smc/smc_tx.c
-+++ b/net/smc/smc_tx.c
-@@ -233,6 +233,19 @@ int smc_tx_sendmsg(struct smc_sock *smc, struct msghdr *msg, size_t len)
- 		/* initialize variables for 1st iteration of subsequent loop */
- 		/* could be just 1 byte, even after smc_tx_wait above */
- 		writespace = atomic_read(&conn->sndbuf_space);
-+		/* sndbuf_space is advanced from the peer's wire-controlled
-+		 * consumer cursor on the SMC-D DMB-merge path; a forged cursor
-+		 * can inflate it past the send buffer, or overflow the signed
-+		 * accumulator to a negative value across many CDC messages
-+		 * (which a plain "> len" check would miss before the size_t
-+		 * cast below turns it huge).  Bound it to the send buffer in
-+		 * either case so the wrap-around write cannot run past
-+		 * sndbuf_desc->len.  This enforces the documented
-+		 * 0 <= sndbuf_space <= sndbuf_desc->len invariant at the
-+		 * producer, race-free against the CDC tasklet.
-+		 */
-+		if (writespace < 0 || writespace > conn->sndbuf_desc->len)
-+			writespace = conn->sndbuf_desc->len;
- 		/* not more than what user space asked for */
- 		copylen = min_t(size_t, send_remaining, writespace);
- 		/* determine start of sndbuf */
+diff --git a/sound/hda/codecs/realtek/alc269.c b/sound/hda/codecs/realtek/alc269.c
+index 21ab891fcb47..54c2470c3846 100644
+--- a/sound/hda/codecs/realtek/alc269.c
++++ b/sound/hda/codecs/realtek/alc269.c
+@@ -7942,6 +7942,7 @@ static const struct hda_quirk alc269_fixup_tbl[] = {
+ 	SND_PCI_QUIRK(0xf111, 0x000c, "Framework Laptop", ALC295_FIXUP_FRAMEWORK_LAPTOP_MIC_NO_PRESENCE),
+ 	SND_PCI_QUIRK(0xf111, 0x000f, "Framework Laptop 13 Pro PTL", ALC295_FIXUP_FRAMEWORK_LAPTOP_LIMIT_INT_MIC_BOOST),
+ 	SND_PCI_QUIRK(0xf111, 0x010f, "Framework Laptop 13 PTL", ALC295_FIXUP_FRAMEWORK_LAPTOP_LIMIT_INT_MIC_BOOST),
++	SND_PCI_QUIRK(0xf111, 0x0010, "Framework Laptop", ALC295_FIXUP_FRAMEWORK_LAPTOP_LIMIT_INT_MIC_BOOST),
+ 
+ #if 0
+ 	/* Below is a quirk table taken from the old code.
 
+---
+base-commit: c0933934d5d96fc641e8d0025f9099e554a7b47a
+change-id: 20260705-framework-audio-ssid-0x0010-cb38204282ff
+
+Best regards,
 -- 
-2.43.0
+Daniel Schaefer <dhs@frame.work>
 
