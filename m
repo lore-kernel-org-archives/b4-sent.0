@@ -1,15 +1,13 @@
 From: Christian Taedcke <christian.taedcke@weidmueller.com>
-Subject: [PATCH net 0/2] net: macb: fix TXUBR interrupt storm on link
- flapping
-Date: Mon, 06 Jul 2026 16:02:13 +0200
-Message-Id: <20260706-upstreaming-macb-irq-storm-v1-0-ab3115b5a13a@weidmueller.com>
+Date: Mon, 06 Jul 2026 16:02:14 +0200
+Subject: [PATCH net 1/2] net: macb: reprogram TBQP after shuffling the TX
+ ring on link-up
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAGW1S2oC/yXMywrCMBBG4Vcps3YgTcHbq4iLpP2tIyStM6kIp
- e9u1OU5i28lgwqMzs1KipeYTLlGu2uov4c8gmWoTd75vTu4jpfZiiIkySOn0EcWfbKVSRMjDv7
- kYotj56kCs+Im7x9+oYxC1/+0JT7Qly9L2/YBE/amu4MAAAA=
-X-Change-ID: 20260703-upstreaming-macb-irq-storm-ebd290b1e832
+Message-Id: <20260706-upstreaming-macb-irq-storm-v1-1-ab3115b5a13a@weidmueller.com>
+References: <20260706-upstreaming-macb-irq-storm-v1-0-ab3115b5a13a@weidmueller.com>
+In-Reply-To: <20260706-upstreaming-macb-irq-storm-v1-0-ab3115b5a13a@weidmueller.com>
 To: christian.taedcke-oss@weidmueller.com, 
  =?utf-8?q?Th=C3=A9o_Lebrun?= <theo.lebrun@bootlin.com>, 
  Conor Dooley <conor.dooley@microchip.com>, 
@@ -25,61 +23,78 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Christian Taedcke <christian.taedcke@weidmueller.com>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783346550; l=2123;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783346550; l=2872;
  i=christian.taedcke@weidmueller.com; s=20260702; h=from:subject:message-id;
- bh=LGjH+VaxkyRsmQ/os7WX5aNwBGmhH6HBNhqikwdceMM=;
- b=33b8wgskQBt3ZzGbeRbzLxtKAax+bkWySLpAMG4R44eStuzkCjtdwcSi2Xwcf8nNYvGetIncg
- 4bsnHablbDDC8NMTCRGmWQO8UcGU8BkoraAFd4qw9AiKf8T3H1Q7YuZ
+ bh=H15tV2WNXlEeiA35QduT20PmtQLsXi8wSQpnaTH6KQM=;
+ b=eQ8abbcaQIhIYzqDk1BVu0/b83QpqD0j2q+jiInsufeXTYDW8TEKd1RH0P/Z47bctMT9ExMBR
+ cbEM6cfeVQWDe/eoMsQ1Wmjj6GYgIEMTvVArsiqF+sJdsh+NYrqBNfj
 X-Developer-Key: i=christian.taedcke@weidmueller.com; a=ed25519;
  pk=fVCoBhFV3uMogA2nxIOU/rynNY+O2TDJgWvWjR06TrQ=
 X-Endpoint-Received: by B4 Relay for christian.taedcke@weidmueller.com/20260702 with auth_id=847
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-We observed a hard interrupt storm in the Cadence GEM (macb) driver on
-a Xilinx ZynqMP based platform running a PREEMPT_RT kernel (6.6.142).
+gem_shuffle_tx_one_ring() rotates the software TX ring so that the
+tail sits at index 0 and resets queue->tx_tail to 0, but it never
+reprograms the hardware transmit buffer queue pointer (TBQP). Other
+paths that reset tx_tail to the ring base (macb_init_buffers() and
+macb_tx_error_task()) also reprogram TBQP to queue->tx_ring_dma; this
+path does not, leaving TBQP pointing at a stale descriptor.
 
-After several Ethernet link up/down transitions, the CPU that the MAC
-IRQ is pinned to is pegged at 100% in the threaded MAC interrupt
-handler and the kernel reports "sched: RT throttling activated",
-killing the network interface. The MAC ISR keeps refiring with the
-level-triggered TXUBR (TX used bit read) set, because the transmitter
-is left pointing at a descriptor whose used bit is set. See the
-individual commit messages for the full analysis.
+gem_shuffle_tx_rings() runs on every link-up from
+macb_mac_link_up(). After a few link up/down flaps that leave
+un-completed descriptors in the ring, the stale TBQP keeps pointing at
+a descriptor whose used bit is set. When TX is re-enabled on link-up,
+the GEM reads that used descriptor and raises TXUBR. macb_interrupt()
+schedules the TX NAPI, macb_tx_poll() makes no progress (work_done ==
+0) and macb_tx_restart() re-issues TSTART, which makes the controller
+read the same used descriptor again and re-assert TXUBR. As the MAC
+interrupt is level-triggered, it never deasserts and one CPU is pegged
+at 100% in the threaded handler, eventually triggering "sched: RT
+throttling activated" and a dead network interface.
 
-Patch 1 fixes the root cause: gem_shuffle_tx_one_ring() resets tx_tail to
-the ring base on link-up but never reprograms the hardware TBQP pointer.
+Fix it by reprogramming TBQP to the ring base on every path of
+gem_shuffle_tx_one_ring() that resets tx_tail to 0, mirroring
+macb_tx_error_task(). The early return for an already-aligned tail is
+left untouched as TBQP is already consistent there. This is safe
+because the shuffle runs from macb_mac_link_up() while TE is still
+disabled, so the transmitter is halted.
 
-Patch 2 fixes a second, independent bug: macb_interrupt() masks only
-TCOMP (not TXUBR) when scheduling the TX NAPI, and macb_tx_poll()
-re-enables only TCOMP. Because TXUBR is level-triggered, a persistent
-used-descriptor condition keeps it asserted and re-fires immediately,
-storming the MAC interrupt.
-
-Both patches are required: on the affected platform the interrupt storm
-still reproduces with patch 1 applied alone, so patch 2 is needed as
-well to stop it.
-
-The relevant code is essentially identical in mainline, so the bug is not
-RT-specific. PREEMPT_RT merely turns the storm into a fatal failure via
-RT throttling.
-
-Tested on ZynqMP with PREEMPT_RT by repeatedly flapping the Ethernet
-link. The interrupt storm and RT throttling no longer occur.
-
+Fixes: 881a0263d502 ("net: macb: Shuffle the tx ring before enabling tx")
+Cc: stable@vger.kernel.org
 Assisted-by: Claude:claude-opus-4-8
 Signed-off-by: Christian Taedcke <christian.taedcke@weidmueller.com>
 ---
-Christian Taedcke (2):
-      net: macb: reprogram TBQP after shuffling the TX ring on link-up
-      net: macb: mask TXUBR during TX NAPI poll to prevent IRQ storms
+ drivers/net/ethernet/cadence/macb_main.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
- drivers/net/ethernet/cadence/macb_main.c | 14 +++++++++++---
- 1 file changed, 11 insertions(+), 3 deletions(-)
----
-base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
-change-id: 20260703-upstreaming-macb-irq-storm-ebd290b1e832
+diff --git a/drivers/net/ethernet/cadence/macb_main.c b/drivers/net/ethernet/cadence/macb_main.c
+index fd282a1700fb..b11cb8f068b7 100644
+--- a/drivers/net/ethernet/cadence/macb_main.c
++++ b/drivers/net/ethernet/cadence/macb_main.c
+@@ -820,7 +820,7 @@ static void gem_shuffle_tx_one_ring(struct macb_queue *queue)
+ 	if (!count) {
+ 		queue->tx_head = 0;
+ 		queue->tx_tail = 0;
+-		goto unlock;
++		goto reset_hw_ptr;
+ 	}
+ 
+ 	shift = tail % ring_size;
+@@ -869,6 +869,13 @@ static void gem_shuffle_tx_one_ring(struct macb_queue *queue)
+ 	/* Make descriptor updates visible to hardware */
+ 	wmb();
+ 
++reset_hw_ptr:
++	/* tx_tail was reset to the ring base, so TBQP must be reprogrammed
++	 * to match; otherwise it keeps pointing at a stale descriptor. Safe
++	 * to write directly here as TX is still disabled (called from
++	 * macb_mac_link_up() before TE is set).
++	 */
++	queue_writel(queue, TBQP, lower_32_bits(queue->tx_ring_dma));
+ unlock:
+ 	spin_unlock_irqrestore(&queue->tx_ptr_lock, flags);
+ }
 
-Best regards,
---  
-Christian Taedcke <christian.taedcke@weidmueller.com>
+-- 
+2.54.0
 
