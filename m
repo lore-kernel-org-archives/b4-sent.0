@@ -1,11 +1,11 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Tue, 07 Jul 2026 04:02:02 +0800
-Subject: [PATCH v2 2/6] target/loongarch: Fix offset calculation in vector
- registers
+Date: Tue, 07 Jul 2026 04:02:03 +0800
+Subject: [PATCH v2 3/6] target/loongarch: gen_vreplve: Fix offset
+ calculation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260707-loong64-be-v2-2-8634f93c1dc9@gmail.com>
+Message-Id: <20260707-loong64-be-v2-3-8634f93c1dc9@gmail.com>
 References: <20260707-loong64-be-v2-0-8634f93c1dc9@gmail.com>
 In-Reply-To: <20260707-loong64-be-v2-0-8634f93c1dc9@gmail.com>
 To: qemu-devel@nongnu.org
@@ -14,56 +14,51 @@ Cc: Song Gao <gaosong@loongson.cn>, Jiaxun Yang <jiaxun.yang@flygoat.com>,
  =?utf-8?q?Philippe_Mathieu-Daud=C3=A9?= <philmd@oss.qualcomm.com>, 
  Miao Wang <shankerwangmiao@gmail.com>, b4-sent@feeds.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1231;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1277;
  i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
- bh=V/jhXbT74YZEsNz79vjrDNku8mR/iHXLwWV1UlDe90E=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqTAnYggITlpKUwRmFxh1aB05ohhyyRzmGoL2M+
- CqtCJX5A46JAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCakwJ2AAKCRCwMePKe/7Z
- bnmOEACnU5DLPMfDA5MFQ1iD4PapxQTzeGM5AH8+uDNVR6FyI2WMEp4xETs9/ks7vZF0xAZROdv
- tK6T8i04iGtK6skVP0YBw0aEEIWQ3aLb9EcCtDNB9vTHHF6oOs5OAEAd4Vv3noMSdUGwEOGHUzX
- dvW/isJeMnpOQjbKp+VKFiVecH5P88GnNawO1eNlnbuwcfRzbzckkTQ5LsjamjFgeqimhYRCD4F
- i7BaycWHd6PkJdoPEWWo6sTc631d8Ma/2saWcIp/A7GiGE+2D36am/fRyccW0dpAwAz8/7hLZlT
- qnJCnIbUFG9LJv1TnJ8dmOy/mtmOV424heF++hPA2tA/yShEt+gVLNKlP7su+16pYueRny/HtM9
- aW9/OVQyPGE9lZuXOPwRTgW1BnN9qe7xYIIsnTzOTzWHDpoz4uX2hiymRKQFFWQ6a0UwKp4ruSJ
- C05DNJ8znDMk3g2Rm38XSa7zMIJ7ygGptG3gzjNRaQyvQcauHxg3xxtIiu/9VpesUPL8ALP+Zvl
- Cdl/uIsp21eqhkLh3GBULw8sT7UIcrBMAjXtDOf/W220FK942HvOcFHprE0vylo0QXFnt66+VGF
- /bkpNBXXBw8G03IZNDVON67tEbgCoVFjZO1hvrjHeX6NjhxrvOu6FybiAVTjiTrz6J+0/IJk+K3
- jhv6e61ii03LbiA==
+ bh=bC5SqslKnEPRqmw7UZDsgSavAaNwn/tX4lGdinMQfiM=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqTAnYscDls0eB4JiNHScwXQeJOVLTKEidTGKjm
+ kyqxRx7m8yJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCakwJ2AAKCRCwMePKe/7Z
+ bm13EAC6I8w3R4d7yFSrRVdd73QdLS8M7IjTtulokzm/xZ70nQfgtSoEzD39FnorbxmsUJ9I74K
+ z5dMh3rLAcl74+adtdmkFCrEZImPalS81glsSzuWJmM5Tap1+/HTwTfAXaLdWGfCi6pKwrtGJWO
+ 8ZQ+qXzq3zUxZbLXJ0OFy/bgDuMJZYei0ynpInEfb5EhpLwFzX9mchG44feSeDSWV4O6vg6qt/J
+ LlB/VXir8hQzmWhQdTstlTzNhZz1ZXIw76BHiXwqEDh3D7DMmdna44WREcV4495FKicDU1nPuA/
+ LWNJtAohCU93iymw9jSEM+90KK6wHw/MiT7VbEoaoBohgzNo1D3iXDj8UK9C3Z0Qr/0abS56XHz
+ Dek4tD6kjB3CattiDdHN3bThh0oKbhr5Dnll3MI+y4aq12L+a8sH9OoB+bD1pIc9tGpiSd8MFWM
+ BlTG3heaL3oOzrkEql0YmD5nd3/5u5MeILgs/08zGHzcet6XnGS7nru2GvxITWJzD3SBJQlhPOI
+ V/u4PQyM0S9EaALEZhBON0kXzZByTDDL8tg9dgPw2yEQItOideIyG6iDLAunMq4a7ECiEicqh0L
+ xfJOasqS+BDqrc99fLqAtVTAxbYP6VYaUwIidsNwT2UTkQDs+6jaU50FYSzTzhEYHLBTW2tkrnO
+ jb0pcIledTa2sSw==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When vector registers are extended to 256 bits long, the expected layout
-of the registers is storing two 128-bit integers in host endianness, as
-indicated in vec.h. So when the registers are visited in the unit of
-64-bit, the index should also be reversed.
+When generating tcg instructions for vreplve, the calculation of the
+offset in the vector registers from given channel in the general
+register should be done using tcg op codes. The algorithm should be
+similar as vec_reg_offset().
 
-Fixes: f5ce2c8f2c0a ("target/loongarch: Implement xvinsgr2vr xvpickve2gr")
+Fixes: df97f3380760 ("target/loongarch: Implement xvreplve xvinsve0 xvpickve")
+Fixes: 008a3b1662b6 ("target/loongarch: Add LASX data support")
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
- target/loongarch/tcg/translate.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ target/loongarch/tcg/insn_trans/trans_vec.c.inc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/target/loongarch/tcg/translate.c b/target/loongarch/tcg/translate.c
-index 124dce626954a85e5754de847ccba1796aebd8a6..ac4daadfdb5298a0850bdd0b1fce32407f1eeecc 100644
---- a/target/loongarch/tcg/translate.c
-+++ b/target/loongarch/tcg/translate.c
-@@ -41,11 +41,11 @@ static inline int vec_full_offset(int regno)
- 
- static inline int vec_reg_offset(int regno, int index, MemOp mop)
- {
--    const uint8_t size = 1 << mop;
-+    const unsigned int size = memop_size(mop);
-     int offs = index * size;
- 
--    if (HOST_BIG_ENDIAN && size < 8 ) {
--        offs ^= (8 - size);
-+    if (HOST_BIG_ENDIAN && size < 16) {
-+        offs ^= (16 - size);
+diff --git a/target/loongarch/tcg/insn_trans/trans_vec.c.inc b/target/loongarch/tcg/insn_trans/trans_vec.c.inc
+index 195b89f78834b208f0ba83930b844e792dc488b6..df0e809d544678490ca3ccfddab3fd4d74f7189a 100644
+--- a/target/loongarch/tcg/insn_trans/trans_vec.c.inc
++++ b/target/loongarch/tcg/insn_trans/trans_vec.c.inc
+@@ -5036,7 +5036,7 @@ static bool gen_vreplve_vl(DisasContext *ctx, arg_vvr *a,
+     tcg_gen_andi_i64(t0, gpr_src(ctx, a->rk, EXT_NONE), (LSX_LEN / bit) - 1);
+     tcg_gen_shli_i64(t0, t0, vece);
+     if (HOST_BIG_ENDIAN) {
+-        tcg_gen_xori_i64(t0, t0, vece << ((LSX_LEN / bit) - 1));
++        tcg_gen_xori_i64(t0, t0, 16 - (bit / 8));
      }
  
-     return offs + vec_full_offset(regno);
+     tcg_gen_trunc_i64_ptr(t1, t0);
 
 -- 
 2.49.0
