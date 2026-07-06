@@ -1,62 +1,104 @@
-From: George Moussalem <george.moussalem@outlook.com>
-Date: Mon, 06 Jul 2026 21:26:22 +0400
-Subject: [PATCH v4 6/6] MAINTAINERS: Add entry for Qualcomm IPQ5018
- Bluetooth driver
+From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
+Subject: [PATCH v3 0/2] HID: iio: warning clean up and prefer kernel coding
+ style
+Date: Tue, 07 Jul 2026 00:29:42 +0530
+Message-Id: <20260707-15-jun-hid-iio-alignment-v3-0-8791574ad0fe@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260706-ipq5018-bluetooth-v4-6-350262a30959@outlook.com>
-References: <20260706-ipq5018-bluetooth-v4-0-350262a30959@outlook.com>
-In-Reply-To: <20260706-ipq5018-bluetooth-v4-0-350262a30959@outlook.com>
-To: Bartosz Golaszewski <brgl@kernel.org>, 
- Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, 
- Philipp Zabel <p.zabel@pengutronix.de>
-Cc: linux-arm-msm@vger.kernel.org, linux-bluetooth@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- George Moussalem <george.moussalem@outlook.com>, 
- Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783358843; l=976;
- i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=fusdp9JpTX7vO3BYR/LY+GGHauTOjlTp30gMmTqFQZk=;
- b=5v0IEiybgFFGnLpsFG0Ksr4J6prLoXu88B1GDtJUIjZ68VyjzMFi0lfeXr/kqcXuXMAxwyNvm
- 7wQ9V0Cps0kArmKByuYBuxchb5zNs9/1t81GzLSgakyxBk15bWLs2a7
-X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
- pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
-X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAB/7S2oC/3WNQQ6CMBREr0K69ptahKor72FYtOUXPoHWtEA0h
+ LtbYG0ym5fMzFtYxEAY2SNbWMCZInmXID9lzLTKNQhUJ2aCi5KXlwJSuslBSzUQeVA9NW5AN8K
+ 11FpJIe8ac5bm74CWPvv1qzo4TrpDM25/W6OlOPrw3d2z2HqHRnLxXzML4KBv0vKLLdBq82wGR
+ f3Z+IFV67r+AO3GJ2jSAAAA
+X-Change-ID: 20260615-15-jun-hid-iio-alignment-46bba7279be3
+To: Jiri Kosina <jikos@kernel.org>, Jonathan Cameron <jic23@kernel.org>, 
+ Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: linux-input@vger.kernel.org, linux-iio@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>, 
+ Maxwell Doose <m32285159@gmail.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783364398; l=3058;
+ i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
+ bh=ettpJxnb6azjELpGMnVt8XxE9lKyWlE5LuIQyE/jaDM=;
+ b=HHBJPGszaPcPmceyqV0+SHMXDbnNHpQzCJ3mycV++zp+2uZSt/98u0ivvDRpBNOTRZdRnMzsK
+ mtH+cA49LLBBlm/H6SQyy7KKg7rZOSYR5jiZ1rKUz71FnQpg0DDPSGD
+X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
+ pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
+X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add maintainers entry for Qualcomm IPQ5018 Bluetooth driver.
+Hi all,
 
-Acked-by: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
-Signed-off-by: George Moussalem <george.moussalem@outlook.com>
+This series updates HID sensor IIO drivers to address checkpatch
+warnings, improves readability and compliance with kernel coding style.
+
+The changes are:
+  - replacing explicit NULL comparisons with implicit pointer checks;
+  - adjusting indentation and alignment;
+  - reformatting multi-line function declarations for improved
+    readability and consistency.
+
+While updating alignment and line wrapping, function parameters are
+grouped more logically and common callback signatures are formatted
+consistently across HID sensor IIO drivers.
+
+Testing:
+  - Compiled with W=1 for each patch in the series
+
 ---
- MAINTAINERS | 7 +++++++
- 1 file changed, 7 insertions(+)
+Changes in v3:
+- Rebase series on top of iio/testing where parital v2 series is added.
+- Rectify commit message and resolve inconsistency highlighted by
+  Jonathan.
+- Link to v2: https://patch.msgid.link/20260702-15-jun-hid-iio-alignment-v2-0-b87f01f5efbc@gmail.com
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 0b9d7c8276ac..60f7251d1a16 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -22289,6 +22289,13 @@ S:	Maintained
- F:	Documentation/devicetree/bindings/regulator/vqmmc-ipq4019-regulator.yaml
- F:	drivers/regulator/vqmmc-ipq4019-regulator.c
- 
-+QUALCOMM IPQ5018 BLUETOOTH DRIVER
-+M:	George Moussalem <george.moussalem@outlook.com>
-+L:	linux-bluetooth@vger.kernel.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/net/bluetooth/qcom,ipq5018-bt.yaml
-+F:	drivers/bluetooth/btqcomipc.c
-+
- QUALCOMM IRIS VIDEO ACCELERATOR DRIVER
- M:	Vikash Garodia <vikash.garodia@oss.qualcomm.com>
- M:	Dikshita Agarwal <dikshita.agarwal@oss.qualcomm.com>
+Changes in v2:
+- Following input from Joshua and Maxwell squash all related changes
+  in single change as this is code churn.
+- Following input from Andy (re-)split function argument/parameter
+  logically.
+- Added review tag of Maxwell to implicit NULL check change while
+  drop for parenthesis alignemnt to have a fresh review.
+- Link to v1: https://lore.kernel.org/20260616-15-jun-hid-iio-alignment-v1-0-0cd544286575@gmail.com
 
--- 
-2.53.0
+To: Jiri Kosina <jikos@kernel.org>
+To: Jonathan Cameron <jic23@kernel.org>
+To: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
+To: David Lechner <dlechner@baylibre.com>
+To: Nuno Sá <nuno.sa@analog.com>
+To: Andy Shevchenko <andy@kernel.org>
+Cc: linux-input@vger.kernel.org
+Cc: linux-iio@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+Sanjay Chitroda (2):
+      iio: hid-sensors: align function parenthesis for readability
+      iio: hid-sensors: Use implicit NULL pointer checks
+
+ drivers/iio/accel/hid-sensor-accel-3d.c            | 48 ++++++-------
+ .../iio/common/hid-sensors/hid-sensor-attributes.c | 80 +++++++++++-----------
+ .../iio/common/hid-sensors/hid-sensor-trigger.c    |  4 +-
+ .../iio/common/hid-sensors/hid-sensor-trigger.h    |  2 +-
+ drivers/iio/gyro/hid-sensor-gyro-3d.c              | 35 ++++------
+ drivers/iio/humidity/hid-sensor-humidity.c         | 33 ++++-----
+ drivers/iio/light/hid-sensor-als.c                 | 32 ++++-----
+ drivers/iio/light/hid-sensor-prox.c                | 29 ++++----
+ drivers/iio/magnetometer/hid-sensor-magn-3d.c      | 53 +++++++-------
+ drivers/iio/orientation/hid-sensor-incl-3d.c       | 33 ++++-----
+ drivers/iio/orientation/hid-sensor-rotation.c      | 26 +++----
+ .../iio/position/hid-sensor-custom-intel-hinge.c   | 13 ++--
+ drivers/iio/pressure/hid-sensor-press.c            | 35 ++++------
+ drivers/iio/temperature/hid-sensor-temperature.c   | 30 ++++----
+ 14 files changed, 208 insertions(+), 245 deletions(-)
+---
+base-commit: 4c0ecdbdc0d87570f74e656e21d56bae1ab6a8f1
+change-id: 20260615-15-jun-hid-iio-alignment-46bba7279be3
+
+Best regards,
+--  
+Sanjay Chitroda <sanjayembeddedse@gmail.com>
 
