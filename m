@@ -1,65 +1,52 @@
-From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Sun, 05 Jul 2026 15:59:51 -0700
-Subject: [PATCH net v3 3/3] net: ethernet: oa_tc6: Carrier off when
- disable_traffic is set
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH 0/2] ir: support IR for Amlogic A9 SoC
+Date: Mon, 06 Jul 2026 02:43:26 +0000
+Message-Id: <20260706-a9-ir-v1-0-4f082ca8aaf1@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260705-fix-race-condition-and-crash-v3-3-3e51841e4d08@onsemi.com>
-References: <20260705-fix-race-condition-and-crash-v3-0-3e51841e4d08@onsemi.com>
-In-Reply-To: <20260705-fix-race-condition-and-crash-v3-0-3e51841e4d08@onsemi.com>
-To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- Piergiorgio Beruto <pier.beruto@onsemi.com>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Andrew Lunn <andrew@lunn.ch>, 
- Parthiban Veerasooran <Parthiban.Veerasooran@microchip.com>, 
- Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783292390; l=1223;
- i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=fNI1NVyKoYyZnDQNpci4/tI7Q3qwlBNxuPkcCrOJOJM=;
- b=/5hBii1gvF3WT6RANyqjnO7pr3NqB5dvqbpkjNbaaNlUEnJn76BILkd8kC3Y3ZSRk85V8Tm3D
- 9F2DYTaCkvXB3EonDB2pYnEQkIMMPr027qcezlO7koit1D4sImWGOku
-X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
- pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
-X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
+X-B4-Tracking: v=1; b=H4sIAE4WS2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDcwMz3URL3cwiXWNTk7QkI0vzVHNDMyWg2oKi1LTMCrA50bG1tQDQVlp
+ rVwAAAA==
+X-Change-ID: 20260706-a9-ir-354fb297e716
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783305808; l=746;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=LtQLw07yy0in1Im8yRhxFupk2NhIl4F9cJLeOuofyZ0=;
+ b=/Jv1oOddNTK/zrH56+nUIuuDihi15maEHeBdgt4LMwTr1GpYa5kLysCF5rmAtJxSt1qxXaLr0
+ jxJDyt1+VwgBDYY8iAbRPrrR+FfB14jRVm5q+9ZGsrc2XPmaOwzJ9ck
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Previously, TX queue interface was stopped when
-disable_traffic flag was set. It is more appropriate to
-disable the queue as there is no recovery, once
-disable_traffic is set. Carrier is also marked off
+Document the Amlogic A9 IR controller compatible string and
+add the IR controller node for the Amlogic A9 SoC.
 
-Fixes: b542d13fab0f ("net: ethernet: oa_tc6: Interrupt is active low, level triggered.")
-Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-
-changes in v3
-  - New patch. Carrier marked off once disable_traffic is set
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- drivers/net/ethernet/oa_tc6.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+Xianwei Zhao (2):
+      dt-bindings: media: meson6-ir: Add Amlogic A9 IR compatible
+      arm64: dts: amlogic: a9: Add IR controller support
 
-diff --git a/drivers/net/ethernet/oa_tc6.c b/drivers/net/ethernet/oa_tc6.c
-index a6b8762f6052..1f8564779025 100644
---- a/drivers/net/ethernet/oa_tc6.c
-+++ b/drivers/net/ethernet/oa_tc6.c
-@@ -730,6 +730,12 @@ static void oa_tc6_disable_traffic(struct oa_tc6 *tc6)
- 	skb = oa_tc6_detach_waiting_tx_skb(tc6);
- 	spin_unlock_bh(&tc6->tx_skb_lock);
- 
-+	/* disable_traffic, when set, is a point of no
-+	 * return to working state. Better to mark
-+	 * the carrier off.
-+	 */
-+	netif_carrier_off(tc6->netdev);
-+	netif_tx_disable(tc6->netdev);
- 	oa_tc6_drop_tx_skb(tc6, skb);
- 	oa_tc6_free_ongoing_skbs(tc6);
- 	oa_tc6_write_register(tc6, OA_TC6_REG_INT_MASK0, regval);
+ .../devicetree/bindings/media/amlogic,meson6-ir.yaml       |  4 ++++
+ arch/arm64/boot/dts/amlogic/amlogic-a9-a311y3-by401.dts    |  6 ++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi                | 14 ++++++++++++++
+ 3 files changed, 24 insertions(+)
+---
+base-commit: 4336e970ec6890fbd424128c352564a9c1dd514a
+change-id: 20260706-a9-ir-354fb297e716
 
+Best regards,
 -- 
-2.43.0
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
