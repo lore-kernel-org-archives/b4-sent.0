@@ -1,62 +1,85 @@
-From: Jia Wang <wangjia@ultrarisc.com>
-Date: Mon, 06 Jul 2026 17:58:51 +0800
-Subject: [PATCH v2 3/3] PCI: ultrarisc: allow DP1000 driver to build as
- module
+From: Christian Taedcke <christian.taedcke@weidmueller.com>
+Subject: [PATCH net 0/2] net: macb: fix TXUBR interrupt storm on link
+ flapping
+Date: Mon, 06 Jul 2026 16:02:13 +0200
+Message-Id: <20260706-upstreaming-macb-irq-storm-v1-0-ab3115b5a13a@weidmueller.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260706-ultrarisc-pci-clk-v2-3-2f3fb6fba66b@ultrarisc.com>
-References: <20260706-ultrarisc-pci-clk-v2-0-2f3fb6fba66b@ultrarisc.com>
-In-Reply-To: <20260706-ultrarisc-pci-clk-v2-0-2f3fb6fba66b@ultrarisc.com>
-To: Xincheng Zhang <zhangxincheng@ultrarisc.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
- Bjorn Helgaas <bhelgaas@google.com>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-pci@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Jia Wang <wangjia@ultrarisc.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAGW1S2oC/yXMywrCMBBG4Vcps3YgTcHbq4iLpP2tIyStM6kIp
+ e9u1OU5i28lgwqMzs1KipeYTLlGu2uov4c8gmWoTd75vTu4jpfZiiIkySOn0EcWfbKVSRMjDv7
+ kYotj56kCs+Im7x9+oYxC1/+0JT7Qly9L2/YBE/amu4MAAAA=
+X-Change-ID: 20260703-upstreaming-macb-irq-storm-ebd290b1e832
+To: christian.taedcke-oss@weidmueller.com, 
+ =?utf-8?q?Th=C3=A9o_Lebrun?= <theo.lebrun@bootlin.com>, 
+ Conor Dooley <conor.dooley@microchip.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Kevin Hao <haokexin@gmail.com>, Simon Horman <horms@kernel.org>, 
+ Sebastian Andrzej Siewior <bigeasy@linutronix.de>, 
+ Clark Williams <clrkwllms@kernel.org>, Steven Rostedt <rostedt@goodmis.org>, 
+ Robert Hancock <robert.hancock@calian.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-rt-devel@lists.linux.dev, 
+ Christian Taedcke <christian.taedcke@weidmueller.com>, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783331975; l=1255;
- i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
- bh=Tis/JJyXExoBJp3CwIeeec8uXLx/jp/sC+yiinpaepI=;
- b=aL9+qmOJDB07rLN9IJHnnPHgX/+ZZ7+1+m+87dLW8NcDO1rB/bi2esZnu8AUHTNyNrf46xSuf
- Rfjb3B8Q3bRClC1f2IoZ3u3212T5Utgx7E6V+FgyyIl6bikCE5nNHI/
-X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
- pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
-X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783346550; l=2123;
+ i=christian.taedcke@weidmueller.com; s=20260702; h=from:subject:message-id;
+ bh=LGjH+VaxkyRsmQ/os7WX5aNwBGmhH6HBNhqikwdceMM=;
+ b=33b8wgskQBt3ZzGbeRbzLxtKAax+bkWySLpAMG4R44eStuzkCjtdwcSi2Xwcf8nNYvGetIncg
+ 4bsnHablbDDC8NMTCRGmWQO8UcGU8BkoraAFd4qw9AiKf8T3H1Q7YuZ
+X-Developer-Key: i=christian.taedcke@weidmueller.com; a=ed25519;
+ pk=fVCoBhFV3uMogA2nxIOU/rynNY+O2TDJgWvWjR06TrQ=
+X-Endpoint-Received: by B4 Relay for christian.taedcke@weidmueller.com/20260702 with auth_id=847
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-CONFIG_PCIE_ULTRARISC is a tristate option, so the driver can be selected
-as a module when COMPILE_TEST or platform configuration allows it.  Using
-builtin_platform_driver() leaves the module build without the module
-init/exit plumbing and causes modpost failures for the generated .ko.
+We observed a hard interrupt storm in the Cadence GEM (macb) driver on
+a Xilinx ZynqMP based platform running a PREEMPT_RT kernel (6.6.142).
 
-Use module_platform_driver() so the driver works for both module and
-built-in builds while keeping the existing tristate Kconfig entry.
+After several Ethernet link up/down transitions, the CPU that the MAC
+IRQ is pinned to is pegged at 100% in the threaded MAC interrupt
+handler and the kernel reports "sched: RT throttling activated",
+killing the network interface. The MAC ISR keeps refiring with the
+level-triggered TXUBR (TX used bit read) set, because the transmitter
+is left pointing at a descriptor whose used bit is set. See the
+individual commit messages for the full analysis.
 
-Fixes: 5fc35740c3b3 ("PCI: ultrarisc: Add UltraRISC DP1000 PCIe Root Complex driver")
-Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
+Patch 1 fixes the root cause: gem_shuffle_tx_one_ring() resets tx_tail to
+the ring base on link-up but never reprograms the hardware TBQP pointer.
+
+Patch 2 fixes a second, independent bug: macb_interrupt() masks only
+TCOMP (not TXUBR) when scheduling the TX NAPI, and macb_tx_poll()
+re-enables only TCOMP. Because TXUBR is level-triggered, a persistent
+used-descriptor condition keeps it asserted and re-fires immediately,
+storming the MAC interrupt.
+
+Both patches are required: on the affected platform the interrupt storm
+still reproduces with patch 1 applied alone, so patch 2 is needed as
+well to stop it.
+
+The relevant code is essentially identical in mainline, so the bug is not
+RT-specific. PREEMPT_RT merely turns the storm into a fatal failure via
+RT throttling.
+
+Tested on ZynqMP with PREEMPT_RT by repeatedly flapping the Ethernet
+link. The interrupt storm and RT throttling no longer occur.
+
+Assisted-by: Claude:claude-opus-4-8
+Signed-off-by: Christian Taedcke <christian.taedcke@weidmueller.com>
 ---
- drivers/pci/controller/dwc/pcie-ultrarisc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Christian Taedcke (2):
+      net: macb: reprogram TBQP after shuffling the TX ring on link-up
+      net: macb: mask TXUBR during TX NAPI poll to prevent IRQ storms
 
-diff --git a/drivers/pci/controller/dwc/pcie-ultrarisc.c b/drivers/pci/controller/dwc/pcie-ultrarisc.c
-index 6ed244770d53..5d226e529b77 100644
---- a/drivers/pci/controller/dwc/pcie-ultrarisc.c
-+++ b/drivers/pci/controller/dwc/pcie-ultrarisc.c
-@@ -225,7 +225,7 @@ static struct platform_driver ultrarisc_pcie_driver = {
- 	},
- 	.probe = ultrarisc_pcie_probe,
- };
--builtin_platform_driver(ultrarisc_pcie_driver);
-+module_platform_driver(ultrarisc_pcie_driver);
- 
- MODULE_DESCRIPTION("UltraRISC DP1000 DWC PCIe host controller");
- MODULE_LICENSE("GPL");
+ drivers/net/ethernet/cadence/macb_main.c | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
+---
+base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
+change-id: 20260703-upstreaming-macb-irq-storm-ebd290b1e832
 
--- 
-2.34.1
+Best regards,
+--  
+Christian Taedcke <christian.taedcke@weidmueller.com>
 
