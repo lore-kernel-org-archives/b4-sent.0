@@ -1,14 +1,13 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Subject: [PATCH 0/2] ir: support IR for Amlogic A9 SoC
-Date: Mon, 06 Jul 2026 02:43:26 +0000
-Message-Id: <20260706-a9-ir-v1-0-4f082ca8aaf1@amlogic.com>
+Date: Mon, 06 Jul 2026 02:43:27 +0000
+Subject: [PATCH 1/2] dt-bindings: media: meson6-ir: Add Amlogic A9 IR
+ compatible
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAE4WS2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDcwMz3URL3cwiXWNTk7QkI0vzVHNDMyWg2oKi1LTMCrA50bG1tQDQVlp
- rVwAAAA==
-X-Change-ID: 20260706-a9-ir-354fb297e716
+Message-Id: <20260706-a9-ir-v1-1-4f082ca8aaf1@amlogic.com>
+References: <20260706-a9-ir-v1-0-4f082ca8aaf1@amlogic.com>
+In-Reply-To: <20260706-a9-ir-v1-0-4f082ca8aaf1@amlogic.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
  Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
@@ -19,34 +18,42 @@ Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783305808; l=746;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783305808; l=1001;
  i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=LtQLw07yy0in1Im8yRhxFupk2NhIl4F9cJLeOuofyZ0=;
- b=/Jv1oOddNTK/zrH56+nUIuuDihi15maEHeBdgt4LMwTr1GpYa5kLysCF5rmAtJxSt1qxXaLr0
- jxJDyt1+VwgBDYY8iAbRPrrR+FfB14jRVm5q+9ZGsrc2XPmaOwzJ9ck
+ bh=zbm1gpme/ld1wK4sUZ5JpKgpU+xuYVReKQPeHKlYNSc=;
+ b=HW66s1CZtmd6uNLpNkxRqmusfq/dDOVZlGpW/vZYF/lQfw1W9ziZFq4h6okqg13y93in2GZA3
+ DStB+h1BUCKA2+Us+plj3yL28IDY8ygsKhsljLbuxRcyv2XfNe4+4V3
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the Amlogic A9 IR controller compatible string and
-add the IR controller node for the Amlogic A9 SoC.
+Document the Amlogic A9 IR controller compatible string. The A9 IR
+controller shares the same implementation as the Meson S4 IR block,
+so add "amlogic,a9-ir" with "amlogic,meson-s4-ir" as the fallback
+compatible.
 
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-Xianwei Zhao (2):
-      dt-bindings: media: meson6-ir: Add Amlogic A9 IR compatible
-      arm64: dts: amlogic: a9: Add IR controller support
+ Documentation/devicetree/bindings/media/amlogic,meson6-ir.yaml | 4 ++++
+ 1 file changed, 4 insertions(+)
 
- .../devicetree/bindings/media/amlogic,meson6-ir.yaml       |  4 ++++
- arch/arm64/boot/dts/amlogic/amlogic-a9-a311y3-by401.dts    |  6 ++++++
- arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi                | 14 ++++++++++++++
- 3 files changed, 24 insertions(+)
----
-base-commit: 4336e970ec6890fbd424128c352564a9c1dd514a
-change-id: 20260706-a9-ir-354fb297e716
+diff --git a/Documentation/devicetree/bindings/media/amlogic,meson6-ir.yaml b/Documentation/devicetree/bindings/media/amlogic,meson6-ir.yaml
+index 0f95fe8dd9ac..db9387e43eff 100644
+--- a/Documentation/devicetree/bindings/media/amlogic,meson6-ir.yaml
++++ b/Documentation/devicetree/bindings/media/amlogic,meson6-ir.yaml
+@@ -23,6 +23,10 @@ properties:
+       - items:
+           - const: amlogic,meson-gx-ir
+           - const: amlogic,meson-gxbb-ir
++      - items:
++          - enum:
++              - amlogic,a9-ir
++          - const: amlogic,meson-s4-ir
+ 
+   reg:
+     maxItems: 1
 
-Best regards,
 -- 
-Xianwei Zhao <xianwei.zhao@amlogic.com>
+2.52.0
 
