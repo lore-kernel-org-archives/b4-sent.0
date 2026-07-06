@@ -1,123 +1,90 @@
-From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Date: Tue, 07 Jul 2026 00:29:44 +0530
-Subject: [PATCH v3 2/2] iio: hid-sensors: Use implicit NULL pointer checks
+From: Miao Wang <shankerwangmiao@gmail.com>
+Subject: [PATCH v2 0/6] target/loongarch: Fixes for endianness problems in
+ vector instruction emulation
+Date: Tue, 07 Jul 2026 04:02:00 +0800
+Message-Id: <20260707-loong64-be-v2-0-8634f93c1dc9@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260707-15-jun-hid-iio-alignment-v3-2-8791574ad0fe@gmail.com>
-References: <20260707-15-jun-hid-iio-alignment-v3-0-8791574ad0fe@gmail.com>
-In-Reply-To: <20260707-15-jun-hid-iio-alignment-v3-0-8791574ad0fe@gmail.com>
-To: Jiri Kosina <jikos@kernel.org>, Jonathan Cameron <jic23@kernel.org>, 
- Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-iio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>, 
- Maxwell Doose <m32285159@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783364398; l=3664;
- i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
- bh=3RAm/9fCDgZ6JcS6QdkUTQ3GjGLFQPfNTNuM9gSAv0g=;
- b=JOAOk6ZrE83ZQ2UWEXvSbWcZUqf6u7r4ZVp1uwCeqGnAy5UWgXu6lSxPC8Hd0FFoG4TFAaHel
- tKb9tKB2mh1CgOYeXpeoneaGPnoOGz2xrniBFf20xETQoSYVr9aM4eS
-X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
- pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
-X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
+X-B4-Tracking: v=1; b=H4sIALkJTGoC/23MQQ7CIBCF4as0s3YMEAHrynuYLpBO20na0oAhm
+ oa7i127/F/yvh0SRaYEt2aHSJkTh7WGOjXgJ7eOhNzXBiWUEVZInENYR3PBJ6Hrh6uT2lg9SKi
+ HLdLA7wN7dLUnTq8QP4ed5W/9y2SJAltve6NJCNPa+7g4ns8+LNCVUr5AqYrkpAAAAA==
+X-Change-ID: 20260701-loong64-be-adf8a15675f1
+To: qemu-devel@nongnu.org
+Cc: Song Gao <gaosong@loongson.cn>, Jiaxun Yang <jiaxun.yang@flygoat.com>, 
+ Richard Henderson <richard.henderson@linaro.org>, 
+ =?utf-8?q?Philippe_Mathieu-Daud=C3=A9?= <philmd@oss.qualcomm.com>, 
+ Miao Wang <shankerwangmiao@gmail.com>, b4-sent@feeds.kernel.org
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2330;
+ i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
+ bh=EwaW3pLq+EWjGl8zIVn1ure7hbbIgZjUsSKbTMpSl9w=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqTAnOa/5OZrGymVeNI7kxHd8DfHOKVnvA8o9t/
+ hxfVydtGj2JAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCakwJzgAKCRCwMePKe/7Z
+ btlgD/0VfCXdMOds3aYqYTAjqrRwMfTh6eeh/DeUK2neQHDN6W8+iMvpz2c5VqkGlqRu9MGo9ME
+ 2H8mefJ5CdOVMhzhMVWxfOE7UajBqpgzqOWfRgm5gLughE+RrzAEja0BLcU/56B7Z4OiRUczKEF
+ ez0RyxmvbLav25lFlGd/CFYwpYh+mLvNBtrMI+N9Pu5sIes7GiIEJrEQrDD63WM7bYF0QAvhQPn
+ nVaz2d1ASkLlQAtmJg7ZkOQZ7LvQmn+8fVRO+HwDPmcTt7NEnC9GkMBNXKNj8l9x18L0YBCmsaJ
+ gQWuWr8cTJm8PfolGsk1txNVIxEOj9+d3CJSD7/AKonJmiv6CXdhpBEm9+gmn21zgM7yJuI28V6
+ LUHyo5cFm9Wu1N78ewggUGHbW/FW90AGrJMWlGAljg9jrm6QEJAsZvQVlyuvBod+UTCLNukPs5/
+ T7MxHuBp2UdNaM6zAOJDgQr0ubpatX12euTV/sk+L289eaaGpMA9YVf0GHkkbdVI871gSfZlwud
+ tqXjKRsxHK+hqEBsL2dEKDf2qVveGchaCWwKpEF9AfI1U7Q549RSm91Fl/Q6QKquijow8tbi4jT
+ VkWjLRJrMmmFTEghSTR1nL+GOx90NWxKEQhI3+GfQif9yJuVSrhgOSGzpTYTtOiKt5pYrUhANBs
+ JYWQNNmvMl4JY3Q==
+X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
+ fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
+X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Replace explicit NULL pointer comparisons with implicit checks across
-HID sensor IIO drivers to fix kernel coding style.
+The current implementation of vector instruction emulation in loongarch
+target works illy on big endianness hosts. It can be reproduced using
+the test cases from gcc [1]. One can cross-compile the target
+loongarch64-linux-user for s390x and use qemu-s390x to run the compiled
+qemu to test loongarch64 emulation on big endian hosts.
 
-CHECK: Comparison to NULL could be written ...
+Possible reproduce steps are:
 
-No functional change.
+1. Install s390x cross toolchains and qemu-s390x
+2. Compile qemu using ./configure --target-list=loongarch64-linux-user --cross-prefix=s390x-linux-gnu-
+3. Install loongarch64 cross toolchains to compile the test cases. To
+   get an accurate result, the test cases should be compiled using -O0.
+   To make the error output of the test cases readable and meaningful,
+   printf() should be replaced with a version without any vectorization
+   optimizations, since the endianness problems will prevent printf()
+   with lsx optimizations from working correctly
+4. Use qemu-s390x ./qemu-loongarch64 /path/to/test_case.exe to test the
+   cases on big endianness hosts.
 
-Signed-off-by: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Reviewed-by: Maxwell Doose <m32285159@gmail.com>
+With this patch series, all the tests in [1] can pass.
+
+[1]: under gcc/testsuite/gcc.target/loongarch/vector in the gcc source
+
+Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
- drivers/iio/accel/hid-sensor-accel-3d.c             | 2 +-
- drivers/iio/common/hid-sensors/hid-sensor-trigger.c | 2 +-
- drivers/iio/magnetometer/hid-sensor-magn-3d.c       | 4 ++--
- drivers/iio/orientation/hid-sensor-incl-3d.c        | 2 +-
- drivers/iio/orientation/hid-sensor-rotation.c       | 2 +-
- 5 files changed, 6 insertions(+), 6 deletions(-)
+Changes in v2:
+- Use QEMU_ALIGNED(128) on the whole VReg struct according to Philippe's
+  suggestion.
+- Update Fixes: tag in the first patch.
+- Link to v1: https://lore.kernel.org/qemu-devel/20260701-loong64-be-v1-0-9c7d65e00697@gmail.com
 
-diff --git a/drivers/iio/accel/hid-sensor-accel-3d.c b/drivers/iio/accel/hid-sensor-accel-3d.c
-index 3986a0bdaf44..ccf27491d880 100644
---- a/drivers/iio/accel/hid-sensor-accel-3d.c
-+++ b/drivers/iio/accel/hid-sensor-accel-3d.c
-@@ -325,7 +325,7 @@ static int hid_accel_3d_probe(struct platform_device *pdev)
- 
- 	indio_dev = devm_iio_device_alloc(&pdev->dev,
- 					  sizeof(struct accel_3d_state));
--	if (indio_dev == NULL)
-+	if (!indio_dev)
- 		return -ENOMEM;
- 
- 	platform_set_drvdata(pdev, indio_dev);
-diff --git a/drivers/iio/common/hid-sensors/hid-sensor-trigger.c b/drivers/iio/common/hid-sensors/hid-sensor-trigger.c
-index fffaebe8c7f0..60808e2430ca 100644
---- a/drivers/iio/common/hid-sensors/hid-sensor-trigger.c
-+++ b/drivers/iio/common/hid-sensors/hid-sensor-trigger.c
-@@ -266,7 +266,7 @@ int hid_sensor_setup_trigger(struct iio_dev *indio_dev, const char *name,
- 
- 	trig = iio_trigger_alloc(indio_dev->dev.parent,
- 				 "%s-dev%d", name, iio_device_id(indio_dev));
--	if (trig == NULL) {
-+	if (!trig) {
- 		dev_err(&indio_dev->dev, "Trigger Allocate Failed\n");
- 		return -ENOMEM;
- 	}
-diff --git a/drivers/iio/magnetometer/hid-sensor-magn-3d.c b/drivers/iio/magnetometer/hid-sensor-magn-3d.c
-index 6c95ce84067d..bbe52d4e924b 100644
---- a/drivers/iio/magnetometer/hid-sensor-magn-3d.c
-+++ b/drivers/iio/magnetometer/hid-sensor-magn-3d.c
-@@ -322,7 +322,7 @@ static int magn_3d_capture_sample(struct hid_sensor_hub_device *hsdev,
- 
- 	iio_val = magn_state->magn_val_addr[offset];
- 
--	if (iio_val != NULL)
-+	if (iio_val)
- 		*iio_val = *((u32 *)raw_data);
- 	else
- 		ret = -EINVAL;
-@@ -461,7 +461,7 @@ static int hid_magn_3d_probe(struct platform_device *pdev)
- 
- 	indio_dev = devm_iio_device_alloc(&pdev->dev,
- 					  sizeof(struct magn_3d_state));
--	if (indio_dev == NULL)
-+	if (!indio_dev)
- 		return -ENOMEM;
- 
- 	platform_set_drvdata(pdev, indio_dev);
-diff --git a/drivers/iio/orientation/hid-sensor-incl-3d.c b/drivers/iio/orientation/hid-sensor-incl-3d.c
-index 05c75e7246af..5cf0e6363811 100644
---- a/drivers/iio/orientation/hid-sensor-incl-3d.c
-+++ b/drivers/iio/orientation/hid-sensor-incl-3d.c
-@@ -302,7 +302,7 @@ static int hid_incl_3d_probe(struct platform_device *pdev)
- 
- 	indio_dev = devm_iio_device_alloc(&pdev->dev,
- 					  sizeof(struct incl_3d_state));
--	if (indio_dev == NULL)
-+	if (!indio_dev)
- 		return -ENOMEM;
- 
- 	platform_set_drvdata(pdev, indio_dev);
-diff --git a/drivers/iio/orientation/hid-sensor-rotation.c b/drivers/iio/orientation/hid-sensor-rotation.c
-index bd918feb3617..412fb467a694 100644
---- a/drivers/iio/orientation/hid-sensor-rotation.c
-+++ b/drivers/iio/orientation/hid-sensor-rotation.c
-@@ -274,7 +274,7 @@ static int hid_dev_rot_probe(struct platform_device *pdev)
- 
- 	indio_dev = devm_iio_device_alloc(&pdev->dev,
- 					  sizeof(struct dev_rot_state));
--	if (indio_dev == NULL)
-+	if (!indio_dev)
- 		return -ENOMEM;
- 
- 	platform_set_drvdata(pdev, indio_dev);
+---
+Miao Wang (6):
+      target/loongarch: make VReg aligned to 16 bytes
+      target/loongarch: Fix offset calculation in vector registers
+      target/loongarch: gen_vreplve: Fix offset calculation
+      target/loongarch: gen_xvreplve0: Fix elem0 offset calculation
+      target/loongarch: do_vldrepl_vl: Fix endianness when reading from guest memory
+      target/loongarch: vstelm: Fix reading from vector registers
 
+ target/loongarch/cpu.h                          |  2 +-
+ target/loongarch/tcg/insn_trans/trans_vec.c.inc | 39 +++++++++++++------------
+ target/loongarch/tcg/translate.c                |  6 ++--
+ 3 files changed, 25 insertions(+), 22 deletions(-)
+---
+base-commit: 30e8a06b64aa58a3990ba39cb5d09531e7d265e0
+change-id: 20260701-loong64-be-adf8a15675f1
+
+Best regards,
 -- 
-2.34.1
+Miao Wang <shankerwangmiao@gmail.com>
 
