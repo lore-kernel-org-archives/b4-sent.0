@@ -1,88 +1,89 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sun, 05 Jul 2026 22:24:36 -0500
-Subject: [PATCH net] net/iucv: take a reference on the socket found in
- afiucv_hs_rcv()
+Date: Sun, 05 Jul 2026 23:35:37 -0500
+Subject: [PATCH] scsi: ses: skip an enclosure status page shorter than its
+ header
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260705-b4-disp-fc79c0dc-v1-1-d2cdcb57afa9@proton.me>
-X-B4-Tracking: v=1; b=H4sIAPMfS2oC/x2MQQqAIBAAvxJ7bmETU+or0aF0q72YaEQQ/j3pO
- AwzL2ROwhnG5oXEt2Q5Q4WubcAdS9gZxVcGRcqQpR5XjV5yxM3ZwZF3SN1gbLVKWwU1i4k3ef7
- lBIEvmEv5ACdZ+3BnAAAA
-To: Paolo Abeni <pabeni@redhat.com>, Jakub Kicinski <kuba@kernel.org>, 
- Eric Dumazet <edumazet@google.com>, "David S. Miller" <davem@davemloft.net>, 
- Thorsten Winkler <twinkler@linux.ibm.com>, 
- Alexandra Winter <wintera@linux.ibm.com>
-Cc: Nagamani PV <nagamani@linux.ibm.com>, Simon Horman <horms@kernel.org>, 
- netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-s390@vger.kernel.org
+Message-Id: <20260705-b4-disp-e1aca452-v1-1-1dab8448608c@proton.me>
+X-B4-Tracking: v=1; b=H4sIAJgwS2oC/x3MQQqAIBBA0avIrBswMbWuEi20xpqNhUIE0t2Tl
+ m/xf4VCmanAJCpkurnwmRr6TsB6+LQT8tYMSiojrRwwaNy4XEi9X70eFDofyYTRSmc0tOzKFPn
+ 5l/Pyvh8Gzw4UYgAAAA==
+To: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ "Martin K. Petersen" <martin.petersen@oracle.com>
+Cc: linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783308275; l=2220;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783312536; l=2791;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=Cm/xe4O+TSWFJ/AEyzNeIJNe6xtikMnB2Bp/3kQXcy8=;
- b=cSkRDDBTHSAhSaz7Obcwozgj1qGGIduMb5BUznx+g+g91Yx+di+G1GLBvekSxC8S3yqinvfIh
- R3LnALR+STgBQEuDArfqcCgWfpMzF815NlfzcTeMRGxG7cOrqqdfbNN
+ bh=MxE58RITmygpQSbsJycrFmCxluTgG75tsEkUGNlJGRI=;
+ b=PH3FbW1BjN8Y+/lYFDYJ31CMtZXWgqnwWJcVGXu26VbN6CqeN/ZyyjoKUypCdGNTIHQsBQ+Uf
+ aF9TRHbNd1jBQtdVh1+SDQYaYDrpZDpl8g/rK63if8MfstfJYEZ1ukL
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-afiucv_hs_rcv() looks up the destination socket under iucv_sk_list.lock,
-drops the lock, and then passes the socket to the afiucv_hs_callback_*()
-handlers without holding a reference. AF_IUCV sockets are not
-RCU-protected and are freed synchronously by iucv_sock_kill() ->
-sock_put(), so a concurrent close can free the socket in the window
-between read_unlock() and the handler, which then dereferences freed
-memory (for example sk->sk_data_ready() in afiucv_hs_callback_syn()).
+ses_intf_add() trusts the length an enclosure reports for its diagnostic
+page 2. ses_set_page2_descriptor() clears everything past the eight-byte
+status-page header; when the enclosure reports a shorter page,
+page2_len - 8 underflows to a huge size_t and the clear runs off the
+undersized allocation -- a heap out-of-bounds write, reached through a
+sysfs component-control write, that panics the host.
 
-Take a reference with sock_hold() while the socket is still on the list
-and release it with sock_put() once the handler has run.
+Skip a page 2 too short for its header, as a page 2 whose RECEIVE
+DIAGNOSTIC fails is already skipped: the enclosure still registers from
+page 1, and ses_page2_supported() then reports no page 2, so the clear
+is never reached. Conforming enclosures are unaffected.
 
-Fixes: 3881ac441f64 ("af_iucv: add HiperSockets transport")
+Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-afiucv_netdev_event() has the same iucv_sk_list use-after-free and is
-being fixed separately by Nagamani PV:
-  https://lore.kernel.org/all/20260508170534.2208812-1-nagamani@linux.ibm.com/
-This patch covers the receive path, afiucv_hs_rcv(), which that fix does
-not touch.
+Reproduced on v7.2-rc1 under KASAN (CONFIG_KASAN_INLINE=y,
+kasan.fault=panic). ses_set_page2_descriptor() is static and reached only
+through the sysfs component-control path, so the clear is exercised
+directly by an in-kernel litmus (page2 = kzalloc(4), then
+memset(page2 + 8, 0, page2_len - 8) with page2_len = 4):
 
-Verified with an LKMM/herd7 litmus (the missing sock_hold() is the only
-delta between a flagged data race and none) and with an in-kernel KASAN
-model that reproduces the afiucv_hs_rcv() lookup-without-hold path (the
-freed socket's sk_data_ready pointer is read after the callback runs);
-adding the reference clears it. af_iucv is s390-only, so this is the
-model rather than the driver. Reproducer available on request.
+  A (no guard): BUG: KASAN: out-of-bounds write of size
+    18446744073709551612 at a 4-byte kmalloc-8 region; kernel panic.
+  B (this patch): the short page 2 is skipped; page2 stays NULL,
+    ses_page2_supported() is false, the clear is never reached. Clean.
+  Control (page2_len = 64): the clear stays in-bounds. Clean.
+  m32/m64: ASan negative-size-param (size = -4), 4 bytes past the region.
+
+The guard bails before ses_dev->page2 is set, so no accessor reaches
+ses_set_page2_descriptor(); every accessor is gated by
+ses_page2_supported() (page2 != NULL).
+
+This fixes only the header underflow. It does not bound the descriptor
+walk against the page-1 element count -- the separate concern of commit
+801ab13d50cf ("scsi: ses: Fix possible desc_ptr out-of-bounds accesses")
+and its siblings. No Fixes: tag: the flaw dates to the 2008 ses ULD,
+unreachable in a grafted tree, and that series set the Cc: stable@-without-
+
+Fixes: precedent for this class.
 ---
- net/iucv/af_iucv.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ drivers/scsi/ses.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/net/iucv/af_iucv.c b/net/iucv/af_iucv.c
-index fed240b453bd..b85fb9767dec 100644
---- a/net/iucv/af_iucv.c
-+++ b/net/iucv/af_iucv.c
-@@ -2089,6 +2089,8 @@ static int afiucv_hs_rcv(struct sk_buff *skb, struct net_device *dev,
- 			}
- 		}
- 	}
-+	if (sk)
-+		sock_hold(sk);
- 	read_unlock(&iucv_sk_list.lock);
- 	if (!iucv)
- 		sk = NULL;
-@@ -2138,6 +2140,8 @@ static int afiucv_hs_rcv(struct sk_buff *skb, struct net_device *dev,
- 		kfree_skb(skb);
- 	}
+diff --git a/drivers/scsi/ses.c b/drivers/scsi/ses.c
+index 4c348645b04e..f77054695e12 100644
+--- a/drivers/scsi/ses.c
++++ b/drivers/scsi/ses.c
+@@ -766,6 +766,9 @@ static int ses_intf_add(struct device *cdev)
+ 		goto page2_not_supported;
  
-+	if (sk)
-+		sock_put(sk);
- 	return err;
- }
- 
+ 	len = (hdr_buf[2] << 8) + hdr_buf[3] + 4;
++	/* a status page too short for its 8-byte header carries no page 2 */
++	if (len < 8)
++		goto page2_not_supported;
+ 	buf = kzalloc(len, GFP_KERNEL);
+ 	if (!buf)
+ 		goto err_free;
 
 ---
 base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
-change-id: 20260705-b4-disp-fc79c0dc-019670262472
+change-id: 20260705-b4-disp-e1aca452-8afe6b970864
 
 Best regards,
 -- 
