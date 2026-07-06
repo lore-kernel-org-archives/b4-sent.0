@@ -1,103 +1,216 @@
-From: Christian Taedcke <christian.taedcke@weidmueller.com>
-Date: Mon, 06 Jul 2026 16:02:15 +0200
-Subject: [PATCH net 2/2] net: macb: mask TXUBR during TX NAPI poll to
- prevent IRQ storms
+From: George Moussalem <george.moussalem@outlook.com>
+Subject: [PATCH v4 0/6] Add support for IPQ5018 Bluetooth
+Date: Mon, 06 Jul 2026 21:26:16 +0400
+Message-Id: <20260706-ipq5018-bluetooth-v4-0-350262a30959@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260706-upstreaming-macb-irq-storm-v1-2-ab3115b5a13a@weidmueller.com>
-References: <20260706-upstreaming-macb-irq-storm-v1-0-ab3115b5a13a@weidmueller.com>
-In-Reply-To: <20260706-upstreaming-macb-irq-storm-v1-0-ab3115b5a13a@weidmueller.com>
-To: christian.taedcke-oss@weidmueller.com, 
- =?utf-8?q?Th=C3=A9o_Lebrun?= <theo.lebrun@bootlin.com>, 
- Conor Dooley <conor.dooley@microchip.com>, 
- Andrew Lunn <andrew+netdev@lunn.ch>, 
- "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
- Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
- Kevin Hao <haokexin@gmail.com>, Simon Horman <horms@kernel.org>, 
- Sebastian Andrzej Siewior <bigeasy@linutronix.de>, 
- Clark Williams <clrkwllms@kernel.org>, Steven Rostedt <rostedt@goodmis.org>, 
- Robert Hancock <robert.hancock@calian.com>
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-rt-devel@lists.linux.dev, 
- Christian Taedcke <christian.taedcke@weidmueller.com>, 
- stable@vger.kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783346550; l=3260;
- i=christian.taedcke@weidmueller.com; s=20260702; h=from:subject:message-id;
- bh=qBAhD1fzYGVIv2HSHAY5AonQugiJMQCwmywRThD7Rc4=;
- b=lcab6wkUlVeW0bvlaxZSpaBZqBvr6Zx9OuvIStOIGAmSoiW9ZJf6A8IlFCP42Kzx4ozF9l8b3
- OSRsiux4tV7AmDByrJMRhxrRmeXmwTNs9x4S9R9JnCKcYZc351QLXnW
-X-Developer-Key: i=christian.taedcke@weidmueller.com; a=ed25519;
- pk=fVCoBhFV3uMogA2nxIOU/rynNY+O2TDJgWvWjR06TrQ=
-X-Endpoint-Received: by B4 Relay for christian.taedcke@weidmueller.com/20260702 with auth_id=847
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33P0WrDIBQG4FcJXs9iNNFYxuh7jF2oOa7SJDbRy
+ EbJu8/Yi22s7EY4B873+99QgMVBQMfqhhZILjg/5aF5qpA5q+kdsOvzjCihnHDaYnedW1J3WA8
+ rRO/jGRNuLedG9qJlKN9dF7Duo5ivb/d5gXnNdLwv0QghqEIfq+ciC8Ky6M0Fq4CnNMKIU4cJl
+ p0CRrU1jVQnH8JhXtVg/Dge8vOyp2kVAO8bF/O3+1ppRhtrtEB79tmF6JfPUi/VJfyfJqnOkb2
+ UUgMB0lhx8mscvL/sacVL9KchHxk0G4QKQSxhmmv912Dfxt77gcGywWmvBO3qLjf6bWzb9gV9X
+ 2cYuAEAAA==
+X-Change-ID: 20260625-ipq5018-bluetooth-06ff66c9d753
+To: Bartosz Golaszewski <brgl@kernel.org>, 
+ Marcel Holtmann <marcel@holtmann.org>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-arm-msm@vger.kernel.org, linux-bluetooth@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783358843; l=9475;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=UTMLPp5SFDhnMFgt7IPfsSKRMk1sJaVz0zv6qCKD7u4=;
+ b=M9gFbLvv7oGEdkqbYAbE9y4vkMvs/LNQ715orHa+zSBKKc5/FyMyjCvg4xM0nkzFc1rKWbJ4B
+ nlpvISR1oJ4AtQq4X/VpAeglUXy0+2xZ6FStoXeRBRu3bfBT4VYjn0V
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-macb_interrupt() defers TX completion handling to NAPI, but when it
-schedules the poll it only masks TCOMP, even though TXUBR is enabled
-alongside it (both are part of MACB_TX_INT_FLAGS). macb_tx_poll() is
-asymmetric in the same way and only re-enables TCOMP. TXUBR is thus
-left unmasked while responsibility for handling it has been deferred
-to NAPI.
+Hello,
 
-Unlike an edge event, TXUBR is a persistent condition: the controller
-keeps it asserted for as long as the transmitter reads a buffer
-descriptor whose used bit is set. Leaving a level-triggered source
-enabled while NAPI owns its processing means the interrupt refires
-immediately after the handler returns, before the poll has had a
-chance to clear the underlying condition. This turns into a hard
-interrupt storm that pegs a CPU in the (threaded) MAC IRQ handler and,
-on PREEMPT_RT, triggers RT throttling ("sched: RT throttling
-activated"), taking the network interface down.
+This patch series introduces Bluetooth support for IPQ5018.
 
-Several situations can keep the used-bit read asserted across a poll -
-for example unreaped completed descriptors still sitting at tx_tail,
-or a transmit restart racing with macb_start_xmit(). The specific
-trigger does not matter: as long as the source stays unmasked, any
-persistent assertion is enough to storm, so the interrupt handling
-itself must be made self-limiting.
+Bluetooth firmware is loaded by the host into a dedicated reserved
+memory carveout and authenticated by TrustZone. A Secure Channel Manager
+(SCM) call safely brings the peripheral core out of reset.
 
-Mask TXUBR together with TCOMP in the IDR write when scheduling the TX
-NAPI, and re-enable both from the napi_complete path in
-macb_tx_poll(), making the TX interrupt mask/unmask symmetric and
-consistent with how the driver already treats every other
-NAPI-serviced source. The pending TXUBR is still recorded in
-queue->txubr_pending before masking and acted on by macb_tx_restart(),
-so no event is lost. A persistent TXUBR now degrades to NAPI-paced
-polling instead of a CPU-pegging hard interrupt storm.
+A shared memory ring buffer topology handles runtime data frame
+transport between the host APSS and the Bluetooth controller.
+An outgoing APCS IPC bit and an incoming GIC interrupt handle
+host/guest signaling.
 
-Fixes: 138badbc21a0 ("net: macb: use NAPI for TX completion path")
-Cc: stable@vger.kernel.org
-Assisted-by: Claude:claude-opus-4-8
-Signed-off-by: Christian Taedcke <christian.taedcke@weidmueller.com>
+This series has been tested and verified on various IPQ5018 router
+boards utilizing firmware extracted from GPL distributions, using both
+mdt and mbn file formats.
+
+[   14.781511] Bluetooth: hci0: QCA Product ID   :0x00000016
+[   14.781583] Bluetooth: hci0: QCA SOC Version  :0x20180100
+[   14.785926] Bluetooth: hci0: QCA ROM Version  :0x00000100
+[   14.791546] Bluetooth: hci0: QCA Patch Version:0x00003ded
+[   14.796698] Bluetooth: hci0: QCA controller version 0x01000100
+[   14.802217] Bluetooth: hci0: QCA Downloading qca/mpnv10.bin
+[   16.393850] Bluetooth: hci0: QCA FW Build: BTFW.MAPLE.1.0.0-00102-MPL_ROM_PATCHZ-1
+
+Best regards,
+George Moussalem
+
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/net/ethernet/cadence/macb_main.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Changes in v4:
+- Ordered switch statements in btqca.c. NOTE: left enum qca_bt_soc_type
+  unordered in the header file as the btqca driver has conditionally
+  checks whether bt_soc_type is above a certain value:
+  'if (soc_type >= QCA_WCN3991)' is found in 5 places
+- Fixed TX path serialization by protecting btqcomipc_send and
+  btss_send ring access with desc->lock, preventing concurrent updates
+  of ring indices and free counters from TX and worker contexts.
+- Fixed and simplified firmware ring traversal to decode little-endian
+  next and translate firmware offsets via TO_APPS_ADDR in all ring
+  walks, avoiding invalid pointer dereferences.
+- Added short-message RX length validation (msg_len must not exceed
+  IPC_MSG_PLD_SZ when not long message), preventing out-of-bounds read
+  from inline shared-memory payloads.
+- Fixed RX allocation failure behavior to advance ring index and
+  continue, preventing permanent RX ring stall on transient kmalloc
+  failures.
+- Replace macro for calculting large buffer size that performed unsafe
+  arithmetic by an inline function that safely calculates the size by
+  reading values using endian functions le**_to_cpu().
+- Declared aux_ptr as a zero-initialized struct as opposed to using
+  memset and changed struct definition by updating its member to use
+  u32 as opposed to __le32 as these values aren't set by firmware and
+  need not be validated on endianness.
+- Fixed long-message slot leak when short TX ring is full by
+  snapshotting and rolling back long-buffer accounting on
+  allocation-success/short-ring-fail path.
+- Updated firmware load logic to remove call to qcom_mdt_pas_init for
+  which the export was recently removed and replaced it by calls to
+  read the metadata and the validation of it using SCM.
+  NOTE: Sashiko correctly pointed out that the firmware ELF/mdt headers
+  weren't validated in the driver. However, this is done by the call to
+  qcom_mdt_read_metadata which returns -EINVAL if the mdt header isn't
+  valid.
+- Hardened firmware segment bounds checks against integer overflow by
+  using subtraction form (filesz <= mem_size - vaddr).
+- Replaced unsafe firmware split name rewrite with validated stem
+  handling and kasprintf formatting, removing underflow/overflow risk.
+- Converted workqueue allocation to devm_alloc_ordered_workqueue to fix
+  workqueue leak in IRQ registration failure path.
+- Added cleanup path in btqcomipc_open to shut down controller on
+  startup timeout, avoiding leaving peripheral powered after failed open
+- Reordered probe sequence to allocate/attach hdev before IRQ
+  registration, eliminating early-spurious-IRQ dereference window for
+  desc->hdev.
+- Reordered remove path to unregister/free hdev before driver deinit,
+  preventing send path from racing against queue/work teardown.
+- Corrected HCI command packet length parsing to use 8-bit plen directly
+  instead of using le16_to_cpu.
+- Fixed endianness and address translation in TX ACK processing path.
+  Converted firmware-owned ring metadata before use in btss_process_ack:
+  rbuf base offset, msg header, long-message pointer, and message length
+  are now read via le32_to_cpu or le16_to_cpu prior to reclaim logic.
+- Added explicit producer ordering barrier in TX ring publish path.
+  Inserted dma_wmb between payload or header writes and widx update so
+  firmware cannot observe producer index advancement before data becomes
+  visible.
+- Removed info message printing FW build info as that was recently
+  introduced in the kernel in commit bdea21b3be43
+- Added dependency on OF and ARCH_QCOM symbols to Kconfig. In addition,
+  also select QCOM_MDT_LOADER and QCOM_SCM.
+- Removed syscon compatible from mailbox node, avoiding dt_binding_check
+  failures and update the syscon acquisition logic in driver probe
+  accordingly.
+- Link to v3: https://lore.kernel.org/r/20260703-ipq5018-bluetooth-v3-0-62da72818ab3@outlook.com
 
-diff --git a/drivers/net/ethernet/cadence/macb_main.c b/drivers/net/ethernet/cadence/macb_main.c
-index b11cb8f068b7..f75cf2ffdf6f 100644
---- a/drivers/net/ethernet/cadence/macb_main.c
-+++ b/drivers/net/ethernet/cadence/macb_main.c
-@@ -1971,7 +1971,7 @@ static int macb_tx_poll(struct napi_struct *napi, int budget)
- 		    (unsigned int)(queue - bp->queues), work_done, budget);
- 
- 	if (work_done < budget && napi_complete_done(napi, work_done)) {
--		queue_writel(queue, IER, MACB_BIT(TCOMP));
-+		queue_writel(queue, IER, MACB_BIT(TCOMP) | MACB_BIT(TXUBR));
- 
- 		/* Packet completions only seem to propagate to raise
- 		 * interrupts when interrupts are enabled at the time, so if
-@@ -2161,7 +2161,8 @@ static irqreturn_t macb_interrupt(int irq, void *dev_id)
- 
- 		if (status & (MACB_BIT(TCOMP) |
- 			      MACB_BIT(TXUBR))) {
--			queue_writel(queue, IDR, MACB_BIT(TCOMP));
-+			queue_writel(queue, IDR, MACB_BIT(TCOMP) |
-+						 MACB_BIT(TXUBR));
- 			macb_queue_isr_clear(bp, queue, MACB_BIT(TCOMP) |
- 							MACB_BIT(TXUBR));
- 			if (status & MACB_BIT(TXUBR)) {
+Changes in v3:
+- Consolidated the SCM and helper call into one function which now
+  checks availability of the SCM call inline.
+- Changed argument to boolean type to set ECO power mode on or off as
+  opposed to passing a raw power mode value.
+- Removed unneeded parentheses in if statement
+- Declared aux_ptr as a zero-initialized struct as opposed to using
+  memset
+- Changed for loop to a while loop for better readability
+- Reordered function definition of btqcomipc_update_stats to avoid the
+  need for a forward declaration.
+- Removed unneeded header files from btqcomipc.c (bits.h, device.h,
+  init.h, kernel.h, of_irq.h, types.h)
+- Link to v2: https://lore.kernel.org/r/20260629-ipq5018-bluetooth-v2-0-02770f03b6bb@outlook.com
 
+Changes in v2:
+- removed unused struct member btss_reset from m0_btss struct.
+- used devm_reset_control_get_exclusive_deasserted to acquire and
+  deassert btss_reset in one call. No need to explicitly assert upon
+  unbind since devres will handle it.
+- As per Bjorn's comments, collapsed the rproc and BT driver into one
+  which now handles firmware loading and transport.
+- As per further review comments and above change, squashed the two
+  devicetree bindings into one to represent the Bluetooth controller
+- Added new SCM call to drive Bluetooth power modes. Based on testing on
+  more router boards, this is required during start/stop sequences to
+  avoid the controller hanging. This is only supported on relatively
+  newer QSEE versions, so the SCM call is checked for availability
+  before use.
+- Refactored resource lifecycle management in the driver so that IRQ and
+  work queue are managed at the driver level (probe/remove) while FW
+  loading and powering on/off the controller is handled upon hdev
+  open/close.
+- Consolidated TX send functions for custom IPC and HCI frames into one
+  and solved a potential NULL pointer dereference issue under TX
+  pressure.
+- Replace code to load and initialize firmware metadate by existing
+  qcom_mdt_pas_init function. 
+- Solved an off byone calculation error in the RX parser.
+- Added entry to MAINTAINERS file
+- Link to v1: https://lore.kernel.org/r/20260625-ipq5018-bluetooth-v1-0-d999be0e04f7@outlook.com
+
+---
+George Moussalem (6):
+      dt-bindings: net: bluetooth: Document Qualcomm IPQ5018 Bluetooth controller
+      Bluetooth: btqca: Add IPQ5018 support
+      firmware: qcom: scm: Add support for setting Bluetooth power modes
+      Bluetooth: Introduce Qualcomm IPQ5018 IPC based HCI driver
+      arm64: dts: qcom: ipq5018: add nodes required for Bluetooth support
+      MAINTAINERS: Add entry for Qualcomm IPQ5018 Bluetooth driver
+
+ .../bindings/net/bluetooth/qcom,ipq5018-bt.yaml    |   86 ++
+ MAINTAINERS                                        |    7 +
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi              |   22 +
+ drivers/bluetooth/Kconfig                          |   14 +
+ drivers/bluetooth/Makefile                         |    1 +
+ drivers/bluetooth/btqca.c                          |   16 +
+ drivers/bluetooth/btqca.h                          |    3 +
+ drivers/bluetooth/btqcomipc.c                      | 1148 ++++++++++++++++++++
+ drivers/firmware/qcom/qcom_scm.c                   |   44 +
+ drivers/firmware/qcom/qcom_scm.h                   |    1 +
+ include/linux/firmware/qcom/qcom_scm.h             |    1 +
+ 11 files changed, 1343 insertions(+)
+---
+base-commit: 4d1ab324fcb7d20df5a071edb0304461846fdc12
+change-id: 20260625-ipq5018-bluetooth-06ff66c9d753
+prerequisite-message-id: <20260703-block-as-nvmem-v8-0-98ae32bfc49a@oss.qualcomm.com>
+prerequisite-patch-id: 467ba5e0fde0e9a1e9d0a6faf3d22ba2126c62a7
+prerequisite-patch-id: 9168930e40551e842c8171d5433a6f39ad4b78a4
+prerequisite-patch-id: 64fecfbd1e085d7d2ab0ae23295ca34ec8e14c5e
+prerequisite-patch-id: 7bf282ed9312b2ffdbe420429bbe355622620272
+prerequisite-patch-id: 29a7d652948d13f91bdd4fc5fb8e6dbcd6e5fcc5
+prerequisite-patch-id: c03136820a7749fd9630080e6d4459a298b3b630
+prerequisite-patch-id: 43975fc425bf2f5dd5c1de66aaa78c4b4bde568c
+prerequisite-patch-id: 75caa99e3bbcdf41b6462b9f5f703bea1d4a65fa
+prerequisite-patch-id: b9b2a2f80a4827b457166b20f54644e57d90b824
+
+Best regards,
 -- 
-2.54.0
+George Moussalem <george.moussalem@outlook.com>
 
