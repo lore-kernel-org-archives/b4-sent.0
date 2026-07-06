@@ -1,10 +1,11 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Tue, 07 Jul 2026 04:02:01 +0800
-Subject: [PATCH v2 1/6] target/loongarch: make VReg aligned to 16 bytes
+Date: Tue, 07 Jul 2026 04:02:02 +0800
+Subject: [PATCH v2 2/6] target/loongarch: Fix offset calculation in vector
+ registers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260707-loong64-be-v2-1-8634f93c1dc9@gmail.com>
+Message-Id: <20260707-loong64-be-v2-2-8634f93c1dc9@gmail.com>
 References: <20260707-loong64-be-v2-0-8634f93c1dc9@gmail.com>
 In-Reply-To: <20260707-loong64-be-v2-0-8634f93c1dc9@gmail.com>
 To: qemu-devel@nongnu.org
@@ -13,53 +14,56 @@ Cc: Song Gao <gaosong@loongson.cn>, Jiaxun Yang <jiaxun.yang@flygoat.com>,
  =?utf-8?q?Philippe_Mathieu-Daud=C3=A9?= <philmd@oss.qualcomm.com>, 
  Miao Wang <shankerwangmiao@gmail.com>, b4-sent@feeds.kernel.org
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1091;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1231;
  i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
- bh=AFdjbsegFHP4zmAfzZSPK1zArtZDW6YGlRIIeT2QlgY=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqTAnY6E5saa448LT9jtA+RJc6CB4bOwmFMfB25
- Ime763L0FCJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCakwJ2AAKCRCwMePKe/7Z
- bsIED/0QTJidMnd1Q9kvhQF4E9k4rzyLL8gogp4fW/ULp4awxGpbOdpEdiaPBSJw+czbg3GTOhO
- K4yxhqmV3ADm5CFEtDNOkqsKTrlNWX9Bo9W2JSpsSyCKXoDD71X6Gg04qljSlAODvZMEqA0C2Dt
- 5BJguxb82RiJ7O31P5vyBydTi6Mbm87bquB8pnvyBNK2wEYMFix8kFn+7TqNy5hy7ssOV9ISRNI
- k/FLtbL4+up000tMXcNv29fvIn6WpXVUNxuGRicDRTkEH+eIJc02j65kWjtmUmbCGx0dlaW7LG6
- Hmbg3wdbssJh6XtHYHE5ZYsS8/nWHeFXevmoYD82fHKkC7wShd2v32t7SIG6wUCm2oNyUDGBTA5
- HufnLwO6NLGwXd+nWZo6YyyAY0ahn0n4v16KjMpTj/joO58T7bIcTM/w2PJW75ZUIjkMErV+AnI
- z9tuVVJvYvbHxYl+CTQKAhaQAzHgaET4yL7YyW8MYuTtg3n8BlStYy1k9hkqvmQfyFjaDzZgQuj
- YIBumRlLGqqx+nvqMDaSjS/PNA5Sbf1MqjTDzh3j0emHX9r2slOIuCmiscjcx81ZixEcZxaHf+N
- UkpCfY3agZxc+WVBOZ46FwDFs+IhjQZs4bW/uQIwy0d7S8b7c5RwoOYX/09AFcDBX4Jjs1Zzarw
- QibMjpIyAoB1bxA==
+ bh=V/jhXbT74YZEsNz79vjrDNku8mR/iHXLwWV1UlDe90E=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqTAnYggITlpKUwRmFxh1aB05ohhyyRzmGoL2M+
+ CqtCJX5A46JAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCakwJ2AAKCRCwMePKe/7Z
+ bnmOEACnU5DLPMfDA5MFQ1iD4PapxQTzeGM5AH8+uDNVR6FyI2WMEp4xETs9/ks7vZF0xAZROdv
+ tK6T8i04iGtK6skVP0YBw0aEEIWQ3aLb9EcCtDNB9vTHHF6oOs5OAEAd4Vv3noMSdUGwEOGHUzX
+ dvW/isJeMnpOQjbKp+VKFiVecH5P88GnNawO1eNlnbuwcfRzbzckkTQ5LsjamjFgeqimhYRCD4F
+ i7BaycWHd6PkJdoPEWWo6sTc631d8Ma/2saWcIp/A7GiGE+2D36am/fRyccW0dpAwAz8/7hLZlT
+ qnJCnIbUFG9LJv1TnJ8dmOy/mtmOV424heF++hPA2tA/yShEt+gVLNKlP7su+16pYueRny/HtM9
+ aW9/OVQyPGE9lZuXOPwRTgW1BnN9qe7xYIIsnTzOTzWHDpoz4uX2hiymRKQFFWQ6a0UwKp4ruSJ
+ C05DNJ8znDMk3g2Rm38XSa7zMIJ7ygGptG3gzjNRaQyvQcauHxg3xxtIiu/9VpesUPL8ALP+Zvl
+ Cdl/uIsp21eqhkLh3GBULw8sT7UIcrBMAjXtDOf/W220FK942HvOcFHprE0vylo0QXFnt66+VGF
+ /bkpNBXXBw8G03IZNDVON67tEbgCoVFjZO1hvrjHeX6NjhxrvOu6FybiAVTjiTrz6J+0/IJk+K3
+ jhv6e61ii03LbiA==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When tcg_gen_gvec_* functions are used to operate on 128-bit
-vector registers, the registers are required to be aligned
-to 16 bytes. On some platforms, such as s390x, __int128 is
-not aligned to 16 bytes, which will break the requirement
-and make tcg_gen_gvec_* functions operate on only 64 bits.
-Explicitly use aligned 128-bit integer to fix this.
+When vector registers are extended to 256 bits long, the expected layout
+of the registers is storing two 128-bit integers in host endianness, as
+indicated in vec.h. So when the registers are visited in the unit of
+64-bit, the index should also be reversed.
 
-Fixes: 2d5f950c054b ("target/loongarch: Implement vaddw/vsubw")
-Fixes: 16f5396cec23 ("target/loongarch: Add LSX data type VReg")
+Fixes: f5ce2c8f2c0a ("target/loongarch: Implement xvinsgr2vr xvpickve2gr")
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
- target/loongarch/cpu.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ target/loongarch/tcg/translate.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/target/loongarch/cpu.h b/target/loongarch/cpu.h
-index ad30c73167ecf6d8dc6faa8c6a18c212fe4fce55..166d831f29c5d239e1c8129fa3448d6242fc562b 100644
---- a/target/loongarch/cpu.h
-+++ b/target/loongarch/cpu.h
-@@ -276,7 +276,7 @@ typedef union VReg {
-     uint32_t UW[LASX_LEN / 32];
-     uint64_t UD[LASX_LEN / 64];
-     Int128   Q[LASX_LEN / 128];
--} VReg;
-+} QEMU_ALIGNED(16) VReg;
+diff --git a/target/loongarch/tcg/translate.c b/target/loongarch/tcg/translate.c
+index 124dce626954a85e5754de847ccba1796aebd8a6..ac4daadfdb5298a0850bdd0b1fce32407f1eeecc 100644
+--- a/target/loongarch/tcg/translate.c
++++ b/target/loongarch/tcg/translate.c
+@@ -41,11 +41,11 @@ static inline int vec_full_offset(int regno)
  
- typedef union fpr_t fpr_t;
- union fpr_t {
+ static inline int vec_reg_offset(int regno, int index, MemOp mop)
+ {
+-    const uint8_t size = 1 << mop;
++    const unsigned int size = memop_size(mop);
+     int offs = index * size;
+ 
+-    if (HOST_BIG_ENDIAN && size < 8 ) {
+-        offs ^= (8 - size);
++    if (HOST_BIG_ENDIAN && size < 16) {
++        offs ^= (16 - size);
+     }
+ 
+     return offs + vec_full_offset(regno);
 
 -- 
 2.49.0
