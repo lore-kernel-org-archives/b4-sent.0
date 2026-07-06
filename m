@@ -1,91 +1,134 @@
-From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sun, 05 Jul 2026 23:35:37 -0500
-Subject: [PATCH] scsi: ses: skip an enclosure status page shorter than its
- header
+From: Jian Hu <jian.hu@amlogic.com>
+Date: Mon, 06 Jul 2026 13:36:03 +0800
+Subject: [PATCH] soc: amlogic: clk-measure: Mark the clock measure table as
+ __initconst
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260705-b4-disp-e1aca452-v1-1-1dab8448608c@proton.me>
-X-B4-Tracking: v=1; b=H4sIAJgwS2oC/x3MQQqAIBBA0avIrBswMbWuEi20xpqNhUIE0t2Tl
- m/xf4VCmanAJCpkurnwmRr6TsB6+LQT8tYMSiojrRwwaNy4XEi9X70eFDofyYTRSmc0tOzKFPn
- 5l/Pyvh8Gzw4UYgAAAA==
-To: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
- "Martin K. Petersen" <martin.petersen@oracle.com>
-Cc: linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783312536; l=2791;
- i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=MxE58RITmygpQSbsJycrFmCxluTgG75tsEkUGNlJGRI=;
- b=PH3FbW1BjN8Y+/lYFDYJ31CMtZXWgqnwWJcVGXu26VbN6CqeN/ZyyjoKUypCdGNTIHQsBQ+Uf
- aF9TRHbNd1jBQtdVh1+SDQYaYDrpZDpl8g/rK63if8MfstfJYEZ1ukL
-X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
- pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
-X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
+Message-Id: <20260706-clkmsr_optimization-v1-1-70f5aae6e60b@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAMI+S2oC/x2MQQqAIBAAvxJ7Ttg6ZPSViFDbaiktVCIK/550H
+ JiZFwJ5pgBd8YKniwMfLkNVFmBW5RYSPGWGGusGJTbC7JsNfjzOyJYfFbMvdEuVmSTqmQhyeXq
+ a+f6v/ZDSB4ltrM1lAAAA
+X-Change-ID: 20260706-clkmsr_optimization-b8e1cd70bfee
+To: Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Jian Hu <jian.hu@amlogic.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783316169; l=3839;
+ i=jian.hu@amlogic.com; s=20260415; h=from:subject:message-id;
+ bh=n3+FWab2iM1pkmUi4HdCeGFTpcygj++bqfpdmrSHV1Q=;
+ b=7PcHvkINB/VwMB1qf+9rKl1NuPq4ZemkkoFmBNTRfTGPIwr6Mi06cbHn4Drh0+fUK8c7OMovV
+ Z+DCrLY0u8MBB3j34bpdU4H4xXZG+wFelO0nW9w7TTnQfhJ2e9rQeNT
+X-Developer-Key: i=jian.hu@amlogic.com; a=ed25519;
+ pk=zHUE+rNtH9z+Sb8au1/elWknjFQmy5QDVkBoxleuOIA=
+X-Endpoint-Received: by B4 Relay for jian.hu@amlogic.com/20260415 with auth_id=735
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ses_intf_add() trusts the length an enclosure reports for its diagnostic
-page 2. ses_set_page2_descriptor() clears everything past the eight-byte
-status-page header; when the enclosure reports a shorter page,
-page2_len - 8 underflows to a huge size_t and the clear runs off the
-undersized allocation -- a heap out-of-bounds write, reached through a
-sysfs component-control write, that panics the host.
+The clock measure table is only used during initialization, and the
+table data is copied to the msr_table field of struct meson_msr_data.
 
-Skip a page 2 too short for its header, as a page 2 whose RECEIVE
-DIAGNOSTIC fails is already skipped: the enclosure still registers from
-page 1, and ses_page2_supported() then reports no page 2, so the clear
-is never reached. Conforming enclosures are unaffected.
+Mark it as __initconst so it can be freed after kernel initialization.
+Taking T7 as an example, this frees approximately 5 KB of memory,
+saving some runtime memory.
 
-Cc: stable@vger.kernel.org
-Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
+Signed-off-by: Jian Hu <jian.hu@amlogic.com>
 ---
-Reproduced on v7.2-rc1 under KASAN (CONFIG_KASAN_INLINE=y,
-kasan.fault=panic). ses_set_page2_descriptor() is static and reached only
-through the sysfs component-control path, so the clear is exercised
-directly by an in-kernel litmus (page2 = kzalloc(4), then
-memset(page2 + 8, 0, page2_len - 8) with page2_len = 4):
+ drivers/soc/amlogic/meson-clk-measure.c | 18 +++++++++---------
+ 1 file changed, 9 insertions(+), 9 deletions(-)
 
-  A (no guard): BUG: KASAN: out-of-bounds write of size
-    18446744073709551612 at a 4-byte kmalloc-8 region; kernel panic.
-  B (this patch): the short page 2 is skipped; page2 stays NULL,
-    ses_page2_supported() is false, the clear is never reached. Clean.
-  Control (page2_len = 64): the clear stays in-bounds. Clean.
-  m32/m64: ASan negative-size-param (size = -4), 4 bytes past the region.
-
-The guard bails before ses_dev->page2 is set, so no accessor reaches
-ses_set_page2_descriptor(); every accessor is gated by
-ses_page2_supported() (page2 != NULL).
-
-This fixes only the header underflow. It does not bound the descriptor
-walk against the page-1 element count -- the separate concern of commit
-801ab13d50cf ("scsi: ses: Fix possible desc_ptr out-of-bounds accesses")
-and its siblings. No Fixes: tag: the flaw dates to the 2008 ses ULD,
-unreachable in a grafted tree, and that series set the Cc: stable@-without-
-
-Fixes: precedent for this class.
----
- drivers/scsi/ses.c | 3 +++
- 1 file changed, 3 insertions(+)
-
-diff --git a/drivers/scsi/ses.c b/drivers/scsi/ses.c
-index 4c348645b04e..f77054695e12 100644
---- a/drivers/scsi/ses.c
-+++ b/drivers/scsi/ses.c
-@@ -766,6 +766,9 @@ static int ses_intf_add(struct device *cdev)
- 		goto page2_not_supported;
+diff --git a/drivers/soc/amlogic/meson-clk-measure.c b/drivers/soc/amlogic/meson-clk-measure.c
+index 8c4f3cc8c8ab..e1cf67fad83c 100644
+--- a/drivers/soc/amlogic/meson-clk-measure.c
++++ b/drivers/soc/amlogic/meson-clk-measure.c
+@@ -55,7 +55,7 @@ struct meson_msr {
+ #define CLK_MSR_ID(__id, __name) \
+ 	[__id] = {.id = __id, .name = __name,}
  
- 	len = (hdr_buf[2] << 8) + hdr_buf[3] + 4;
-+	/* a status page too short for its 8-byte header carries no page 2 */
-+	if (len < 8)
-+		goto page2_not_supported;
- 	buf = kzalloc(len, GFP_KERNEL);
- 	if (!buf)
- 		goto err_free;
+-static const struct meson_msr_id clk_msr_m8[] = {
++static const struct meson_msr_id clk_msr_m8[] __initconst = {
+ 	CLK_MSR_ID(0, "ring_osc_out_ee0"),
+ 	CLK_MSR_ID(1, "ring_osc_out_ee1"),
+ 	CLK_MSR_ID(2, "ring_osc_out_ee2"),
+@@ -104,7 +104,7 @@ static const struct meson_msr_id clk_msr_m8[] = {
+ 	CLK_MSR_ID(63, "mipi_csi_cfg"),
+ };
+ 
+-static const struct meson_msr_id clk_msr_gx[] = {
++static const struct meson_msr_id clk_msr_gx[] __initconst = {
+ 	CLK_MSR_ID(0, "ring_osc_out_ee_0"),
+ 	CLK_MSR_ID(1, "ring_osc_out_ee_1"),
+ 	CLK_MSR_ID(2, "ring_osc_out_ee_2"),
+@@ -174,7 +174,7 @@ static const struct meson_msr_id clk_msr_gx[] = {
+ 	CLK_MSR_ID(82, "ge2d"),
+ };
+ 
+-static const struct meson_msr_id clk_msr_axg[] = {
++static const struct meson_msr_id clk_msr_axg[] __initconst = {
+ 	CLK_MSR_ID(0, "ring_osc_out_ee_0"),
+ 	CLK_MSR_ID(1, "ring_osc_out_ee_1"),
+ 	CLK_MSR_ID(2, "ring_osc_out_ee_2"),
+@@ -248,7 +248,7 @@ static const struct meson_msr_id clk_msr_axg[] = {
+ 	CLK_MSR_ID(109, "audio_locker_in"),
+ };
+ 
+-static const struct meson_msr_id clk_msr_g12a[] = {
++static const struct meson_msr_id clk_msr_g12a[] __initconst = {
+ 	CLK_MSR_ID(0, "ring_osc_out_ee_0"),
+ 	CLK_MSR_ID(1, "ring_osc_out_ee_1"),
+ 	CLK_MSR_ID(2, "ring_osc_out_ee_2"),
+@@ -364,7 +364,7 @@ static const struct meson_msr_id clk_msr_g12a[] = {
+ 	CLK_MSR_ID(122, "audio_pdm_dclk"),
+ };
+ 
+-static const struct meson_msr_id clk_msr_sm1[] = {
++static const struct meson_msr_id clk_msr_sm1[] __initconst = {
+ 	CLK_MSR_ID(0, "ring_osc_out_ee_0"),
+ 	CLK_MSR_ID(1, "ring_osc_out_ee_1"),
+ 	CLK_MSR_ID(2, "ring_osc_out_ee_2"),
+@@ -494,7 +494,7 @@ static const struct meson_msr_id clk_msr_sm1[] = {
+ 	CLK_MSR_ID(127, "csi2_data"),
+ };
+ 
+-static const struct meson_msr_id clk_msr_c3[] = {
++static const struct meson_msr_id clk_msr_c3[] __initconst = {
+ 	CLK_MSR_ID(0,	"sys_clk"),
+ 	CLK_MSR_ID(1,	"axi_clk"),
+ 	CLK_MSR_ID(2,	"rtc_clk"),
+@@ -634,7 +634,7 @@ static const struct meson_msr_id clk_msr_c3[] = {
+ 
+ };
+ 
+-static const struct meson_msr_id clk_msr_s4[] = {
++static const struct meson_msr_id clk_msr_s4[] __initconst = {
+ 	CLK_MSR_ID(0, "sys_clk"),
+ 	CLK_MSR_ID(1, "axi_clk"),
+ 	CLK_MSR_ID(2, "rtc_clk"),
+@@ -787,7 +787,7 @@ static const struct meson_msr_id clk_msr_s4[] = {
+ 
+ };
+ 
+-static const struct meson_msr_id clk_msr_a1[] = {
++static const struct meson_msr_id clk_msr_a1[] __initconst = {
+ 	CLK_MSR_ID(0, "tdmout_b_sclk"),
+ 	CLK_MSR_ID(1, "tdmout_a_sclk"),
+ 	CLK_MSR_ID(2, "tdmin_lb_sclk"),
+@@ -843,7 +843,7 @@ static const struct meson_msr_id clk_msr_a1[] = {
+ 	CLK_MSR_ID(61, "osc_ring_ramb"),
+ };
+ 
+-static const struct meson_msr_id clk_msr_t7[] = {
++static const struct meson_msr_id clk_msr_t7[] __initconst = {
+ 	CLK_MSR_ID(0, "sys"),
+ 	CLK_MSR_ID(1, "axi"),
+ 	CLK_MSR_ID(2, "rtc"),
 
 ---
-base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
-change-id: 20260705-b4-disp-e1aca452-8afe6b970864
+base-commit: 4336e970ec6890fbd424128c352564a9c1dd514a
+change-id: 20260706-clkmsr_optimization-b8e1cd70bfee
 
 Best regards,
 -- 
-Bryam Vargas <hexlabsecurity@proton.me>
+Jian Hu <jian.hu@amlogic.com>
 
