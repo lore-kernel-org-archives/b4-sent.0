@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 07 Jul 2026 15:04:27 +0100
-Subject: [PATCH v7 06/17] iio: core: create local __iio_chan_prefix_emit()
- for reuse
+Date: Tue, 07 Jul 2026 15:04:28 +0100
+Subject: [PATCH v7 07/17] iio: test: add kunit tests for channel prefix
+ naming generation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260707-ad9910-iio-driver-v7-6-a4ec30f63700@analog.com>
+Message-Id: <20260707-ad9910-iio-driver-v7-7-a4ec30f63700@analog.com>
 References: <20260707-ad9910-iio-driver-v7-0-a4ec30f63700@analog.com>
 In-Reply-To: <20260707-ad9910-iio-driver-v7-0-a4ec30f63700@analog.com>
 To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
@@ -21,247 +21,357 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783433065; l=7139;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783433065; l=10364;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=ppVdQS1QwgYmd1EMv2G1vRl1X5QpXzXsyy/OvE7pdZY=;
- b=OZ0iTpxvwXkJU86K6/0lk3U8XRS70kBtxVgnQJrAUo2hydioef5U13B44qCoojySQZSet+QI1
- Von43KQrFyfCG+MPwviCYDmLRUreGIf60IfUDVteLDeFbubl8iFe9Es
+ bh=3Noz7TEpTDrgZoPBHyZvQEWeqwFwHS8nbNk2dFiqCW0=;
+ b=Yx9Wn1RlWgABqSegNERni0ajOW4oIxS+MtalMH4nSVDgkj7pmlbHEOu5rKQ4+C84p17r4UWvK
+ x64iVPJ+7lCBUx1ORUuoeoRiyyaUwX0WBfLz2ruMTasMDxPpnR+XiHv
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Move logic to create a channel prefix for naming attribute files into a
-separate __iio_chan_prefix_emit() function for reuse. The dev pointer is
-passed to __iio_device_attr_init() so that WARN() replaced by dev_err().
-The new helper is going to be used to expose channel relationships as
-sysfs attributes.
+Add a KUnit test suite covering __iio_chan_prefix_emit(), the helper
+that builds IIO sysfs attribute name prefixes from an iio_chan_spec.
+The suite groups cases by the enum iio_shared_by mode it exercises:
+
+  - IIO_SHARED_BY_ALL: produces an empty prefix.
+  - IIO_SHARED_BY_DIR: emits direction only ("in" / "out").
+  - IIO_SHARED_BY_TYPE: emits "<dir>_<type>" and the differential
+    "<dir>_<type>-<type>" variant.
+  - IIO_SEPARATE: covers the full matrix of indexed, differential,
+    modified, output and extend_name combinations, plus the two
+    documented error paths (differential without indexed, differential
+    with modifier).
+
+A final case exercises the seq_buf overflow path by passing an
+undersized buffer and expects -EOVERFLOW.
+
+Because __iio_chan_prefix_emit() is static, the test translation unit
+is pulled into industrialio-core.c.
+
+Also, an entry is created under MAINTAINERS dedicated to tests for IIO
+core helpers.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/industrialio-core.c | 169 ++++++++++++++++------------------------
- 1 file changed, 68 insertions(+), 101 deletions(-)
+ MAINTAINERS                                |   8 +
+ drivers/iio/industrialio-core.c            |   4 +
+ drivers/iio/test/Kconfig                   |  14 ++
+ drivers/iio/test/iio-test-channel-prefix.c | 246 +++++++++++++++++++++++++++++
+ 4 files changed, 272 insertions(+)
 
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 2b1ec46c5919..57ffc0dcfdb6 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -12634,6 +12634,14 @@ F:	include/dt-bindings/iio/
+ F:	include/linux/iio/
+ F:	tools/iio/
+ 
++IIO CORE KUNIT TESTS
++M:	Lars-Peter Clausen <lars@metafoo.de>
++M:	Rodrigo Alencar <rodrigo.alencar@analog.com>
++L:	linux-iio@vger.kernel.org
++S:	Maintained
++F:	drivers/iio/test/iio-test-channel-prefix.c
++F:	drivers/iio/test/iio-test-format.c
++
+ IIO UNIT CONVERTER
+ M:	Peter Rosin <peda@lysator.liu.se>
+ L:	linux-iio@vger.kernel.org
 diff --git a/drivers/iio/industrialio-core.c b/drivers/iio/industrialio-core.c
-index 98fc00343dc5..ecc69adf61de 100644
+index ecc69adf61de..78a3c27d17a1 100644
 --- a/drivers/iio/industrialio-core.c
 +++ b/drivers/iio/industrialio-core.c
-@@ -25,6 +25,7 @@
- #include <linux/poll.h>
- #include <linux/property.h>
- #include <linux/sched.h>
-+#include <linux/seq_buf.h>
- #include <linux/slab.h>
- #include <linux/wait.h>
+@@ -2232,6 +2232,10 @@ EXPORT_SYMBOL_GPL(iio_device_get_current_mode);
+ subsys_initcall(iio_init);
+ module_exit(iio_exit);
  
-@@ -199,6 +200,58 @@ static const char * const iio_chan_info_postfix[] = {
- 	[IIO_CHAN_INFO_CONVDELAY] = "convdelay",
- 	[IIO_CHAN_INFO_POWERFACTOR] = "powerfactor",
- };
++#if IS_ENABLED(CONFIG_IIO_CHANNEL_PREFIX_KUNIT_TEST)
++#include "test/iio-test-channel-prefix.c"
++#endif
 +
-+static ssize_t __iio_chan_prefix_emit(struct device *dev,
-+				      const struct iio_chan_spec *chan,
-+				      enum iio_shared_by shared_by,
-+				      char *buf, size_t len)
+ MODULE_AUTHOR("Jonathan Cameron <jic23@kernel.org>");
+ MODULE_DESCRIPTION("Industrial I/O core");
+ MODULE_LICENSE("GPL");
+diff --git a/drivers/iio/test/Kconfig b/drivers/iio/test/Kconfig
+index 4fc17dd0dcd7..c355b0abd580 100644
+--- a/drivers/iio/test/Kconfig
++++ b/drivers/iio/test/Kconfig
+@@ -4,6 +4,20 @@
+ #
+ 
+ # Keep in alphabetical order
++config IIO_CHANNEL_PREFIX_KUNIT_TEST
++	bool "Test IIO channel prefix" if !KUNIT_ALL_TESTS
++	depends on KUNIT && IIO
++	default KUNIT_ALL_TESTS
++	help
++	  Build unit tests for __iio_chan_prefix_emit(), the helper that
++	  builds IIO sysfs attribute name prefixes from an iio_chan_spec.
++	  The tests are compiled into the IIO core module.
++
++	  For more information on KUnit and unit tests in general, please refer
++	  to the KUnit documentation in Documentation/dev-tools/kunit/.
++
++	  If unsure, say N.
++
+ config IIO_GTS_KUNIT_TEST
+ 	tristate "Test IIO gain-time-scale helpers" if !KUNIT_ALL_TESTS
+ 	depends on KUNIT
+diff --git a/drivers/iio/test/iio-test-channel-prefix.c b/drivers/iio/test/iio-test-channel-prefix.c
+new file mode 100644
+index 000000000000..e6f2739331f2
+--- /dev/null
++++ b/drivers/iio/test/iio-test-channel-prefix.c
+@@ -0,0 +1,246 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Unit tests for IIO channel prefix generation.
++ */
++
++#include <kunit/test.h>
++
++#include <linux/iio/iio.h>
++#include <linux/limits.h>
++#include <linux/string.h>
++
++#define PREFIX_BUF_SIZE		(NAME_MAX + 1)
++
++#define EXPECT_PREFIX(_test, _buf, _ret, _expected) do {			\
++		struct kunit *__test = (_test);					\
++		const char *__expected = (_expected);				\
++										\
++		KUNIT_EXPECT_EQ(__test, (_ret), (ssize_t)strlen(__expected));	\
++		KUNIT_EXPECT_STREQ(__test, (_buf), __expected);			\
++	} while (0)
++
++static char *iio_test_prefix_alloc(struct kunit *test)
 +{
-+	const char *type = iio_chan_type_name_spec[chan->type];
-+	const char *dir = iio_direction[chan->output];
-+	struct seq_buf s;
++	char *buf = kunit_kzalloc(test, PREFIX_BUF_SIZE, GFP_KERNEL);
 +
-+	seq_buf_init(&s, buf, len);
-+
-+	switch (shared_by) {
-+	case IIO_SHARED_BY_ALL:
-+		break;
-+	case IIO_SHARED_BY_DIR:
-+		seq_buf_printf(&s, "%s", dir);
-+		break;
-+	case IIO_SHARED_BY_TYPE:
-+		seq_buf_printf(&s, "%s_%s", dir, type);
-+		if (chan->differential)
-+			seq_buf_printf(&s, "-%s", type);
-+		break;
-+	case IIO_SEPARATE:
-+		if (chan->indexed) {
-+			seq_buf_printf(&s, "%s_%s%d", dir, type, chan->channel);
-+			if (chan->differential)
-+				seq_buf_printf(&s, "-%s%d", type, chan->channel2);
-+		} else {
-+			if (chan->differential) {
-+				dev_err(dev, "Differential channels must be indexed\n");
-+				return -EINVAL;
-+			}
-+			seq_buf_printf(&s, "%s_%s", dir, type);
-+		}
-+
-+		if (chan->modified) {
-+			if (chan->differential) {
-+				dev_err(dev, "Differential channels can not have modifier\n");
-+				return -EINVAL;
-+			}
-+			seq_buf_printf(&s, "_%s", iio_modifier_names[chan->channel2]);
-+		}
-+
-+		if (chan->extend_name)
-+			seq_buf_printf(&s, "_%s", chan->extend_name);
-+		break;
-+	}
-+
-+	return seq_buf_has_overflowed(&s) ? -EOVERFLOW : s.len;
++	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, buf);
++	return buf;
 +}
 +
- /**
-  * iio_device_id() - query the unique ID for the device
-  * @indio_dev:		Device structure whose ID is being queried
-@@ -1088,7 +1141,8 @@ static ssize_t iio_write_channel_info(struct device *dev,
- }
- 
- static
--int __iio_device_attr_init(struct device_attribute *dev_attr,
-+int __iio_device_attr_init(struct device *dev,
-+			   struct device_attribute *dev_attr,
- 			   const char *postfix,
- 			   struct iio_chan_spec const *chan,
- 			   ssize_t (*readfunc)(struct device *dev,
-@@ -1100,106 +1154,22 @@ int __iio_device_attr_init(struct device_attribute *dev_attr,
- 						size_t len),
- 			   enum iio_shared_by shared_by)
- {
--	int ret = 0;
--	char *name = NULL;
--	char *full_postfix;
-+	char prefix[NAME_MAX + 1];
++static void iio_test_prefix_shared_by_all(struct kunit *test)
++{
++	const struct iio_chan_spec chan = {
++		.type = IIO_VOLTAGE,
++	};
++	char *buf = iio_test_prefix_alloc(test);
 +	ssize_t ret;
- 
- 	sysfs_attr_init(&dev_attr->attr);
- 
--	/* Build up postfix of <extend_name>_<modifier>_postfix */
--	if (chan->modified && (shared_by == IIO_SEPARATE)) {
--		if (chan->extend_name)
--			full_postfix = kasprintf(GFP_KERNEL, "%s_%s_%s",
--						 iio_modifier_names[chan->channel2],
--						 chan->extend_name,
--						 postfix);
--		else
--			full_postfix = kasprintf(GFP_KERNEL, "%s_%s",
--						 iio_modifier_names[chan->channel2],
--						 postfix);
--	} else {
--		if (chan->extend_name == NULL || shared_by != IIO_SEPARATE)
--			full_postfix = kstrdup(postfix, GFP_KERNEL);
--		else
--			full_postfix = kasprintf(GFP_KERNEL,
--						 "%s_%s",
--						 chan->extend_name,
--						 postfix);
--	}
--	if (full_postfix == NULL)
-+	ret = __iio_chan_prefix_emit(dev, chan, shared_by, prefix, sizeof(prefix));
-+	if (ret < 0)
-+		return ret;
 +
-+	if (ret)
-+		dev_attr->attr.name = kasprintf(GFP_KERNEL, "%s_%s", prefix, postfix);
-+	else
-+		dev_attr->attr.name = kstrdup(postfix, GFP_KERNEL);
-+	if (!dev_attr->attr.name)
- 		return -ENOMEM;
- 
--	if (chan->differential) { /* Differential can not have modifier */
--		switch (shared_by) {
--		case IIO_SHARED_BY_ALL:
--			name = kasprintf(GFP_KERNEL, "%s", full_postfix);
--			break;
--		case IIO_SHARED_BY_DIR:
--			name = kasprintf(GFP_KERNEL, "%s_%s",
--						iio_direction[chan->output],
--						full_postfix);
--			break;
--		case IIO_SHARED_BY_TYPE:
--			name = kasprintf(GFP_KERNEL, "%s_%s-%s_%s",
--					    iio_direction[chan->output],
--					    iio_chan_type_name_spec[chan->type],
--					    iio_chan_type_name_spec[chan->type],
--					    full_postfix);
--			break;
--		case IIO_SEPARATE:
--			if (!chan->indexed) {
--				WARN(1, "Differential channels must be indexed\n");
--				ret = -EINVAL;
--				goto error_free_full_postfix;
--			}
--			name = kasprintf(GFP_KERNEL,
--					    "%s_%s%d-%s%d_%s",
--					    iio_direction[chan->output],
--					    iio_chan_type_name_spec[chan->type],
--					    chan->channel,
--					    iio_chan_type_name_spec[chan->type],
--					    chan->channel2,
--					    full_postfix);
--			break;
--		}
--	} else { /* Single ended */
--		switch (shared_by) {
--		case IIO_SHARED_BY_ALL:
--			name = kasprintf(GFP_KERNEL, "%s", full_postfix);
--			break;
--		case IIO_SHARED_BY_DIR:
--			name = kasprintf(GFP_KERNEL, "%s_%s",
--						iio_direction[chan->output],
--						full_postfix);
--			break;
--		case IIO_SHARED_BY_TYPE:
--			name = kasprintf(GFP_KERNEL, "%s_%s_%s",
--					    iio_direction[chan->output],
--					    iio_chan_type_name_spec[chan->type],
--					    full_postfix);
--			break;
--
--		case IIO_SEPARATE:
--			if (chan->indexed)
--				name = kasprintf(GFP_KERNEL, "%s_%s%d_%s",
--						    iio_direction[chan->output],
--						    iio_chan_type_name_spec[chan->type],
--						    chan->channel,
--						    full_postfix);
--			else
--				name = kasprintf(GFP_KERNEL, "%s_%s_%s",
--						    iio_direction[chan->output],
--						    iio_chan_type_name_spec[chan->type],
--						    full_postfix);
--			break;
--		}
--	}
--	if (name == NULL) {
--		ret = -ENOMEM;
--		goto error_free_full_postfix;
--	}
--	dev_attr->attr.name = name;
--
- 	if (readfunc) {
- 		dev_attr->attr.mode |= 0444;
- 		dev_attr->show = readfunc;
-@@ -1210,10 +1180,7 @@ int __iio_device_attr_init(struct device_attribute *dev_attr,
- 		dev_attr->store = writefunc;
- 	}
- 
--error_free_full_postfix:
--	kfree(full_postfix);
--
--	return ret;
-+	return 0;
- }
- 
- static void __iio_device_attr_deinit(struct device_attribute *dev_attr)
-@@ -1242,7 +1209,7 @@ int __iio_add_chan_devattr(const char *postfix,
- 	iio_attr = kzalloc_obj(*iio_attr);
- 	if (iio_attr == NULL)
- 		return -ENOMEM;
--	ret = __iio_device_attr_init(&iio_attr->dev_attr,
-+	ret = __iio_device_attr_init(dev, &iio_attr->dev_attr,
- 				     postfix, chan,
- 				     readfunc, writefunc, shared_by);
- 	if (ret)
++	ret = __iio_chan_prefix_emit(NULL, &chan, IIO_SHARED_BY_ALL,
++				     buf, PREFIX_BUF_SIZE);
++	EXPECT_PREFIX(test, buf, ret, "");
++}
++
++static void iio_test_prefix_shared_by_dir(struct kunit *test)
++{
++	const struct iio_chan_spec chan_in = {
++		.type = IIO_VOLTAGE,
++		.output = 0,
++	};
++	const struct iio_chan_spec chan_out = {
++		.type = IIO_VOLTAGE,
++		.output = 1,
++	};
++	char *buf = iio_test_prefix_alloc(test);
++	ssize_t ret;
++
++	ret = __iio_chan_prefix_emit(NULL, &chan_in, IIO_SHARED_BY_DIR,
++				     buf, PREFIX_BUF_SIZE);
++	EXPECT_PREFIX(test, buf, ret, "in");
++
++	memset(buf, 0, PREFIX_BUF_SIZE);
++	ret = __iio_chan_prefix_emit(NULL, &chan_out, IIO_SHARED_BY_DIR,
++				     buf, PREFIX_BUF_SIZE);
++	EXPECT_PREFIX(test, buf, ret, "out");
++}
++
++static void iio_test_prefix_shared_by_type(struct kunit *test)
++{
++	const struct iio_chan_spec chan = {
++		.type = IIO_VOLTAGE,
++	};
++	const struct iio_chan_spec chan_diff = {
++		.type = IIO_VOLTAGE,
++		.differential = 1,
++	};
++	char *buf = iio_test_prefix_alloc(test);
++	ssize_t ret;
++
++	ret = __iio_chan_prefix_emit(NULL, &chan, IIO_SHARED_BY_TYPE,
++				     buf, PREFIX_BUF_SIZE);
++	EXPECT_PREFIX(test, buf, ret, "in_voltage");
++
++	memset(buf, 0, PREFIX_BUF_SIZE);
++	ret = __iio_chan_prefix_emit(NULL, &chan_diff, IIO_SHARED_BY_TYPE,
++				     buf, PREFIX_BUF_SIZE);
++	EXPECT_PREFIX(test, buf, ret, "in_voltage-voltage");
++}
++
++static void iio_test_prefix_separate_simple(struct kunit *test)
++{
++	const struct iio_chan_spec chan = {
++		.type = IIO_TEMP,
++	};
++	char *buf = iio_test_prefix_alloc(test);
++	ssize_t ret;
++
++	ret = __iio_chan_prefix_emit(NULL, &chan, IIO_SEPARATE,
++				     buf, PREFIX_BUF_SIZE);
++	EXPECT_PREFIX(test, buf, ret, "in_temp");
++}
++
++static void iio_test_prefix_separate_indexed(struct kunit *test)
++{
++	const struct iio_chan_spec chan = {
++		.type = IIO_VOLTAGE,
++		.indexed = 1,
++		.channel = 3,
++	};
++	char *buf = iio_test_prefix_alloc(test);
++	ssize_t ret;
++
++	ret = __iio_chan_prefix_emit(NULL, &chan, IIO_SEPARATE,
++				     buf, PREFIX_BUF_SIZE);
++	EXPECT_PREFIX(test, buf, ret, "in_voltage3");
++}
++
++static void iio_test_prefix_separate_indexed_diff(struct kunit *test)
++{
++	const struct iio_chan_spec chan = {
++		.type = IIO_VOLTAGE,
++		.indexed = 1,
++		.differential = 1,
++		.channel = 0,
++		.channel2 = 1,
++	};
++	char *buf = iio_test_prefix_alloc(test);
++	ssize_t ret;
++
++	ret = __iio_chan_prefix_emit(NULL, &chan, IIO_SEPARATE,
++				     buf, PREFIX_BUF_SIZE);
++	EXPECT_PREFIX(test, buf, ret, "in_voltage0-voltage1");
++}
++
++static void iio_test_prefix_separate_modified(struct kunit *test)
++{
++	const struct iio_chan_spec chan = {
++		.type = IIO_ACCEL,
++		.modified = 1,
++		.channel2 = IIO_MOD_X,
++	};
++	char *buf = iio_test_prefix_alloc(test);
++	ssize_t ret;
++
++	ret = __iio_chan_prefix_emit(NULL, &chan, IIO_SEPARATE,
++				     buf, PREFIX_BUF_SIZE);
++	EXPECT_PREFIX(test, buf, ret, "in_accel_x");
++}
++
++static void iio_test_prefix_separate_extend_name(struct kunit *test)
++{
++	const struct iio_chan_spec chan = {
++		.type = IIO_VOLTAGE,
++		.indexed = 1,
++		.channel = 2,
++		.extend_name = "supply",
++	};
++	char *buf = iio_test_prefix_alloc(test);
++	ssize_t ret;
++
++	ret = __iio_chan_prefix_emit(NULL, &chan, IIO_SEPARATE,
++				     buf, PREFIX_BUF_SIZE);
++	EXPECT_PREFIX(test, buf, ret, "in_voltage2_supply");
++}
++
++static void iio_test_prefix_output_separate(struct kunit *test)
++{
++	const struct iio_chan_spec chan = {
++		.type = IIO_VOLTAGE,
++		.output = 1,
++		.indexed = 1,
++		.channel = 0,
++	};
++	char *buf = iio_test_prefix_alloc(test);
++	ssize_t ret;
++
++	ret = __iio_chan_prefix_emit(NULL, &chan, IIO_SEPARATE,
++				     buf, PREFIX_BUF_SIZE);
++	EXPECT_PREFIX(test, buf, ret, "out_voltage0");
++}
++
++static void iio_test_prefix_diff_unindexed_fails(struct kunit *test)
++{
++	const struct iio_chan_spec chan = {
++		.type = IIO_VOLTAGE,
++		.differential = 1,
++	};
++	char *buf = iio_test_prefix_alloc(test);
++	ssize_t ret;
++
++	ret = __iio_chan_prefix_emit(NULL, &chan, IIO_SEPARATE,
++				     buf, PREFIX_BUF_SIZE);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++}
++
++static void iio_test_prefix_diff_modified_fails(struct kunit *test)
++{
++	const struct iio_chan_spec chan = {
++		.type = IIO_VOLTAGE,
++		.indexed = 1,
++		.differential = 1,
++		.modified = 1,
++		.channel = 0,
++		.channel2 = 1,
++	};
++	char *buf = iio_test_prefix_alloc(test);
++	ssize_t ret;
++
++	ret = __iio_chan_prefix_emit(NULL, &chan, IIO_SEPARATE,
++				     buf, PREFIX_BUF_SIZE);
++	KUNIT_EXPECT_EQ(test, ret, -EINVAL);
++}
++
++static void iio_test_prefix_overflow(struct kunit *test)
++{
++	const struct iio_chan_spec chan = {
++		.type = IIO_VOLTAGE,
++	};
++	char small[4];
++	ssize_t ret;
++
++	ret = __iio_chan_prefix_emit(NULL, &chan, IIO_SHARED_BY_TYPE,
++				     small, sizeof(small));
++	KUNIT_EXPECT_EQ(test, ret, -EOVERFLOW);
++}
++
++static struct kunit_case iio_chan_prefix_test_cases[] = {
++	KUNIT_CASE(iio_test_prefix_shared_by_all),
++	KUNIT_CASE(iio_test_prefix_shared_by_dir),
++	KUNIT_CASE(iio_test_prefix_shared_by_type),
++	KUNIT_CASE(iio_test_prefix_separate_simple),
++	KUNIT_CASE(iio_test_prefix_separate_indexed),
++	KUNIT_CASE(iio_test_prefix_separate_indexed_diff),
++	KUNIT_CASE(iio_test_prefix_separate_modified),
++	KUNIT_CASE(iio_test_prefix_separate_extend_name),
++	KUNIT_CASE(iio_test_prefix_output_separate),
++	KUNIT_CASE(iio_test_prefix_diff_unindexed_fails),
++	KUNIT_CASE(iio_test_prefix_diff_modified_fails),
++	KUNIT_CASE(iio_test_prefix_overflow),
++	{ }
++};
++
++static struct kunit_suite iio_channel_prefix_test_suite = {
++	.name = "iio-channel-prefix",
++	.test_cases = iio_chan_prefix_test_cases,
++};
++
++kunit_test_suite(iio_channel_prefix_test_suite);
 
 -- 
 2.43.0
