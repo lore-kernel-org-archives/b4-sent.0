@@ -1,173 +1,170 @@
 From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Tue, 07 Jul 2026 12:16:11 +0200
-Subject: [PATCH v3 4/7] can: bcm: fix CAN frame rx/tx statistics
+Date: Tue, 07 Jul 2026 12:16:12 +0200
+Subject: [PATCH v3 5/7] can: bcm: add missing rcu list annotations and
+ operations
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260707-bcm_fixes-v3-4-84600ca6d889@hartkopp.net>
+Message-Id: <20260707-bcm_fixes-v3-5-84600ca6d889@hartkopp.net>
 References: <20260707-bcm_fixes-v3-0-84600ca6d889@hartkopp.net>
 In-Reply-To: <20260707-bcm_fixes-v3-0-84600ca6d889@hartkopp.net>
 To: linux-can@vger.kernel.org
 Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
- Marc Kleine-Budde <mkl@pengutronix.de>
+ Marc Kleine-Budde <mkl@pengutronix.de>, sashiko-reviews@lists.linux.dev
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783419375; l=4794;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783419375; l=5015;
  i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=DwwyOVdWYXKvCAUtoswVwMbeXrY1C550fTZb26fhpvw=;
- b=WzLwUR6dTWz61sr6gCpAEDmxEvtn2xI1E2+2/oabdh/VutSjcXTvrgAAMQhxg6pYiSK8k2UEb
- Tbfh1hQJpYADd+U1ltVLz2eZZ4tftrNDHmNPbtWIc+CkmZ4XJYH/R9c
+ bh=A3+Y4P45Mq7cMAZyvDU1a3v5Z/Xbi9yQ15jBf66uJpo=;
+ b=YG+EGVPmpJux6JjElz3s7D8D1TihjBwKgqUexOzqpM502tDYftLBEh6OAWUgLuPNymsnbRDKW
+ kcxoJDvEbh8CYe6IGPN83gNbQyCvn+nbXIdpJok9pN+6iMLQOr0gt38
 X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
  pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
 X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-KCSAN detected a data race within the bcm_rx_handler() when two CAN frames
-have been simultaneously received and processed in a single rx op by two
-different CPUs.
+sashiko-bot remarked the missing use of list_add_rcu() in
+bcm_[rx|tx]_setup() to have a proper initialized bcm_op structure
+when bcm_proc_show() traverses the bcm_op's under rcu_read_lock().
 
-Use atomic operations with (signed) long data types to access the
-statistics in the hot path to fix the KCSAN complaint.
+To cover all initial settings of the bcm_op's the list_add_rcu() calls
+are moved to the end of the setup code.
 
-Additionally simplify the update and check of statistics overflow by
-using the atomic operations in a separate bcm_update_stats() function.
+While at it, also fix the mirroring removal side: bcm_release() called
+bcm_remove_op() - which frees the op via call_rcu() - on ops that were
+still linked in bo->tx_ops/bo->rx_ops, without list_del_rcu() first.
+Unlink each op with list_del_rcu() before handing it to bcm_remove_op(),
+matching the existing pattern in bcm_delete_tx_op()/bcm_delete_rx_op().
 
-Fixes: ffd980f976e7 ("[CAN]: Add broadcast manager (bcm) protocol")
+Reported-by: sashiko-reviews@lists.linux.dev
+Closes: https://lore.kernel.org/linux-can/20260610094654.A1FFE1F00893@smtp.kernel.org/
+Fixes: dac5e6249159 ("can: bcm: add missing rcu read protection for procfs content")
 Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
 ---
- net/can/bcm.c | 38 ++++++++++++++++++++++++--------------
- 1 file changed, 24 insertions(+), 14 deletions(-)
+ net/can/bcm.c | 25 ++++++++++++++++---------
+ 1 file changed, 16 insertions(+), 9 deletions(-)
 
 diff --git a/net/can/bcm.c b/net/can/bcm.c
-index fd548c6eaa91..0378e31ea10e 100644
+index 0378e31ea10e..f21d48d99aab 100644
 --- a/net/can/bcm.c
 +++ b/net/can/bcm.c
-@@ -110,11 +110,11 @@ struct bcm_op {
- 	struct rcu_head rcu;
- 	struct work_struct work;
- 	int ifindex;
- 	canid_t can_id;
- 	u32 flags;
--	unsigned long frames_abs, frames_filtered;
-+	atomic_long_t frames_abs, frames_filtered;
- 	struct bcm_timeval ival1, ival2;
- 	struct hrtimer timer, thrtimer;
- 	ktime_t rx_stamp, kt_ival1, kt_ival2, kt_lastmsg;
- 	int rx_ifindex;
- 	int cfsiz;
-@@ -227,14 +227,17 @@ static int bcm_proc_show(struct seq_file *m, void *v)
- 
- 	rcu_read_lock();
- 
- 	list_for_each_entry_rcu(op, &bo->rx_ops, list) {
- 
--		unsigned long reduction;
-+		long reduction, frames_filtered, frames_abs;
-+
-+		frames_filtered = atomic_long_read(&op->frames_filtered);
-+		frames_abs = atomic_long_read(&op->frames_abs);
- 
- 		/* print only active entries & prevent division by zero */
--		if (!op->frames_abs)
-+		if (!frames_abs)
- 			continue;
- 
- 		seq_printf(m, "rx_op: %03X %-5s ", op->can_id,
- 			   bcm_proc_getifname(net, ifname, op->ifindex));
- 
-@@ -252,13 +255,13 @@ static int bcm_proc_show(struct seq_file *m, void *v)
- 		if (op->kt_ival2)
- 			seq_printf(m, "thr=%lld ",
- 				   (long long)ktime_to_us(op->kt_ival2));
- 
- 		seq_printf(m, "# recv %ld (%ld) => reduction: ",
--			   op->frames_filtered, op->frames_abs);
-+			   frames_filtered, frames_abs);
- 
--		reduction = 100 - (op->frames_filtered * 100) / op->frames_abs;
-+		reduction = 100 - (frames_filtered * 100) / frames_abs;
+@@ -263,11 +263,11 @@ static int bcm_proc_show(struct seq_file *m, void *v)
  
  		seq_printf(m, "%s%ld%%\n",
  			   (reduction == 100) ? "near " : "", reduction);
  	}
  
-@@ -278,20 +281,30 @@ static int bcm_proc_show(struct seq_file *m, void *v)
+-	list_for_each_entry(op, &bo->tx_ops, list) {
++	list_for_each_entry_rcu(op, &bo->tx_ops, list) {
  
- 		if (op->kt_ival2)
- 			seq_printf(m, "t2=%lld ",
- 				   (long long)ktime_to_us(op->kt_ival2));
+ 		seq_printf(m, "tx_op: %03X %s ", op->can_id,
+ 			   bcm_proc_getifname(net, ifname, op->ifindex));
  
--		seq_printf(m, "# sent %ld\n", op->frames_abs);
-+		seq_printf(m, "# sent %ld\n",
-+			   atomic_long_read(&op->frames_abs));
+ 		if (op->flags & CAN_FD_FRAME)
+@@ -993,10 +993,11 @@ static int bcm_tx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
+ 			int ifindex, struct sock *sk)
+ {
+ 	struct bcm_sock *bo = bcm_sk(sk);
+ 	struct bcm_op *op;
+ 	struct canfd_frame *cf;
++	bool add_op_to_list = false;
+ 	unsigned int i;
+ 	int err;
+ 
+ 	/* we need a real device to send frames */
+ 	if (!ifindex)
+@@ -1134,12 +1135,11 @@ static int bcm_tx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
+ 
+ 		/* currently unused in tx_ops */
+ 		hrtimer_setup(&op->thrtimer, hrtimer_dummy_timeout, CLOCK_MONOTONIC,
+ 			      HRTIMER_MODE_REL_SOFT);
+ 
+-		/* add this bcm_op to the list of the tx_ops */
+-		list_add(&op->list, &bo->tx_ops);
++		add_op_to_list = true;
+ 
+ 	} /* if ((op = bcm_find_op(&bo->tx_ops, msg_head->can_id, ifindex))) */
+ 
+ 	if (op->flags & SETTIMER) {
+ 		/* set timer values */
+@@ -1157,10 +1157,14 @@ static int bcm_tx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
+ 		hrtimer_cancel(&op->timer);
+ 		/* spec: send CAN frame when starting timer */
+ 		op->flags |= TX_ANNOUNCE;
  	}
- 	seq_putc(m, '\n');
  
- 	rcu_read_unlock();
++	/* add this bcm_op to the list of the tx_ops? */
++	if (add_op_to_list)
++		list_add_rcu(&op->list, &bo->tx_ops);
++
+ 	if (op->flags & TX_ANNOUNCE)
+ 		bcm_can_tx(op, NULL);
  
- 	return 0;
+ 	if (op->flags & STARTTIMER)
+ 		bcm_tx_start_timer(op);
+@@ -1341,13 +1345,10 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
+ 		hrtimer_setup(&op->timer, bcm_rx_timeout_handler, CLOCK_MONOTONIC,
+ 			      HRTIMER_MODE_REL_SOFT);
+ 		hrtimer_setup(&op->thrtimer, bcm_rx_thr_handler, CLOCK_MONOTONIC,
+ 			      HRTIMER_MODE_REL_SOFT);
+ 
+-		/* add this bcm_op to the list of the rx_ops */
+-		list_add(&op->list, &bo->rx_ops);
+-
+ 		/* call can_rx_register() */
+ 		do_rx_register = 1;
+ 
+ 	} /* if ((op = bcm_find_op(&bo->rx_ops, msg_head->can_id, ifindex))) */
+ 
+@@ -1415,14 +1416,16 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
+ 			err = can_rx_register(sock_net(sk), NULL, op->can_id,
+ 					      REGMASK(op->can_id),
+ 					      bcm_rx_handler, op, "bcm", sk);
+ 		if (err) {
+ 			/* this bcm rx op is broken -> remove it */
+-			list_del_rcu(&op->list);
+ 			bcm_remove_op(op);
+ 			return err;
+ 		}
++
++		/* add this bcm_op to the list of the rx_ops */
++		list_add_rcu(&op->list, &bo->rx_ops);
+ 	}
+ 
+ 	return msg_head->nframes * op->cfsiz + MHSIZ;
  }
+ 
+@@ -1752,12 +1755,14 @@ static int bcm_release(struct socket *sock)
+ 	/* remove procfs entry */
+ 	if (net->can.bcmproc_dir && bo->bcm_proc_read)
+ 		remove_proc_entry(bo->procname, net->can.bcmproc_dir);
  #endif /* CONFIG_PROC_FS */
  
-+static void bcm_update_stats(struct bcm_op *op)
-+{
-+	/* prevent statistics overflow */
-+	if (atomic_long_inc_return(&op->frames_abs) > LONG_MAX / 100) {
-+		atomic_long_set(&op->frames_filtered, 0);
-+		atomic_long_set(&op->frames_abs, 0);
+-	list_for_each_entry_safe(op, next, &bo->tx_ops, list)
++	list_for_each_entry_safe(op, next, &bo->tx_ops, list) {
++		list_del_rcu(&op->list);
+ 		bcm_remove_op(op);
 +	}
-+}
-+
- /*
-  * bcm_can_tx - send the (next) CAN frame to the appropriate CAN interface
-  *              of the given bcm tx op
-  */
- static void bcm_can_tx(struct bcm_op *op, struct canfd_frame *cf)
-@@ -342,11 +355,11 @@ static void bcm_can_tx(struct bcm_op *op, struct canfd_frame *cf)
  
- 	/* update currframe and count under lock protection */
- 	spin_lock_bh(&op->bcm_tx_lock);
+ 	list_for_each_entry_safe(op, next, &bo->rx_ops, list) {
+ 		/*
+ 		 * Don't care if we're bound or not (due to netdev problems)
+ 		 * can_rx_unregister() is always a save thing to do here.
+@@ -1784,12 +1789,14 @@ static int bcm_release(struct socket *sock)
  
- 	if (!err)
--		op->frames_abs++;
-+		bcm_update_stats(op);
+ 	}
  
- 	op->currframe++;
+ 	synchronize_rcu();
  
- 	/* reached last frame? */
- 	if (op->currframe >= op->nframes)
-@@ -495,16 +508,13 @@ static enum hrtimer_restart bcm_tx_timeout_handler(struct hrtimer *hrtimer)
-  */
- static void bcm_rx_changed(struct bcm_op *op, struct canfd_frame *data)
- {
- 	struct bcm_msg_head head;
+-	list_for_each_entry_safe(op, next, &bo->rx_ops, list)
++	list_for_each_entry_safe(op, next, &bo->rx_ops, list) {
++		list_del_rcu(&op->list);
+ 		bcm_remove_op(op);
++	}
  
--	/* update statistics */
--	op->frames_filtered++;
--
--	/* prevent statistics overflow */
--	if (op->frames_filtered > ULONG_MAX/100)
--		op->frames_filtered = op->frames_abs = 0;
-+	/* update statistics (frames_filtered <= frames_abs) */
-+	if (atomic_long_read(&op->frames_abs))
-+		atomic_long_inc(&op->frames_filtered);
- 
- 	/* this element is not throttled anymore */
- 	data->flags &= ~RX_THR;
- 
- 	memset(&head, 0, sizeof(head));
-@@ -743,11 +753,11 @@ static void bcm_rx_handler(struct sk_buff *skb, void *data)
- 	/* save rx timestamp */
- 	op->rx_stamp = skb->tstamp;
- 	/* save originator for recvfrom() */
- 	op->rx_ifindex = skb->dev->ifindex;
- 	/* update statistics */
--	op->frames_abs++;
-+	bcm_update_stats(op);
- 
- 	/* snapshot the flag under lock: op->flags/op->frames may be updated
- 	 * concurrently by bcm_rx_setup(). Do not call bcm_can_tx() while
- 	 * holding bcm_rx_update_lock: CAN loopback on echo-capable
- 	 * interfaces (e.g. vcan) can deliver the transmitted skb back into
+ 	/* remove device reference */
+ 	if (bo->bound) {
+ 		WRITE_ONCE(bo->bound, 0);
+ 		bo->ifindex = 0;
 
 -- 
 2.53.0
