@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 07 Jul 2026 15:04:26 +0100
-Subject: [PATCH v7 05/17] iio: core: support 64-bit register through
- debugfs
+Date: Tue, 07 Jul 2026 15:04:27 +0100
+Subject: [PATCH v7 06/17] iio: core: create local __iio_chan_prefix_emit()
+ for reuse
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260707-ad9910-iio-driver-v7-5-a4ec30f63700@analog.com>
+Message-Id: <20260707-ad9910-iio-driver-v7-6-a4ec30f63700@analog.com>
 References: <20260707-ad9910-iio-driver-v7-0-a4ec30f63700@analog.com>
 In-Reply-To: <20260707-ad9910-iio-driver-v7-0-a4ec30f63700@analog.com>
 To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
@@ -21,151 +21,247 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783433065; l=5286;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783433065; l=7139;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=rhtJXuF4mkm1WH5HBYUmnTDdQ7mLzj7pscCY6q7WDzI=;
- b=YKD2fD52ikC2xD02F3OCaBynrhQPsTigzThcUw62C4jYIPHti5EqAIQciYYX/us8gandw8cS5
- kWLi/Sx5W3/BV1CMPXzLWwpmVkgRHuwqsegLullwvpRXimktwEeXFdJ
+ bh=ppVdQS1QwgYmd1EMv2G1vRl1X5QpXzXsyy/OvE7pdZY=;
+ b=OZ0iTpxvwXkJU86K6/0lk3U8XRS70kBtxVgnQJrAUo2hydioef5U13B44qCoojySQZSet+QI1
+ Von43KQrFyfCG+MPwviCYDmLRUreGIf60IfUDVteLDeFbubl8iFe9Es
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add debugfs_reg64_access function pointer field into iio_info and modify
-file operation callbacks to favor 64-bit variant when it is available.
+Move logic to create a channel prefix for naming attribute files into a
+separate __iio_chan_prefix_emit() function for reuse. The dev pointer is
+passed to __iio_device_attr_init() so that WARN() replaced by dev_err().
+The new helper is going to be used to expose channel relationships as
+sysfs attributes.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/industrialio-core.c | 33 ++++++++++++++++++++++++---------
- include/linux/iio/iio-opaque.h  |  2 +-
- include/linux/iio/iio.h         |  7 +++++++
- 3 files changed, 32 insertions(+), 10 deletions(-)
+ drivers/iio/industrialio-core.c | 169 ++++++++++++++++------------------------
+ 1 file changed, 68 insertions(+), 101 deletions(-)
 
 diff --git a/drivers/iio/industrialio-core.c b/drivers/iio/industrialio-core.c
-index a45277bc5d99..98fc00343dc5 100644
+index 98fc00343dc5..ecc69adf61de 100644
 --- a/drivers/iio/industrialio-core.c
 +++ b/drivers/iio/industrialio-core.c
-@@ -388,6 +388,7 @@ static ssize_t iio_debugfs_read_reg(struct file *file, char __user *userbuf,
- 	struct iio_dev *indio_dev = file->private_data;
- 	struct iio_dev_opaque *iio_dev_opaque = to_iio_dev_opaque(indio_dev);
- 	unsigned int val = 0;
-+	u64 val64 = 0;
- 	int ret;
+@@ -25,6 +25,7 @@
+ #include <linux/poll.h>
+ #include <linux/property.h>
+ #include <linux/sched.h>
++#include <linux/seq_buf.h>
+ #include <linux/slab.h>
+ #include <linux/wait.h>
  
- 	if (*ppos > 0)
-@@ -395,9 +396,17 @@ static ssize_t iio_debugfs_read_reg(struct file *file, char __user *userbuf,
- 					       iio_dev_opaque->read_buf,
- 					       iio_dev_opaque->read_buf_len);
- 
--	ret = indio_dev->info->debugfs_reg_access(indio_dev,
--						  iio_dev_opaque->cached_reg_addr,
--						  0, &val);
-+	if (indio_dev->info->debugfs_reg64_access) {
-+		ret = indio_dev->info->debugfs_reg64_access(indio_dev,
-+							    iio_dev_opaque->cached_reg_addr,
-+							    0, &val64);
-+	} else {
-+		ret = indio_dev->info->debugfs_reg_access(indio_dev,
-+							  iio_dev_opaque->cached_reg_addr,
-+							  0, &val);
-+		val64 = val;
+@@ -199,6 +200,58 @@ static const char * const iio_chan_info_postfix[] = {
+ 	[IIO_CHAN_INFO_CONVDELAY] = "convdelay",
+ 	[IIO_CHAN_INFO_POWERFACTOR] = "powerfactor",
+ };
++
++static ssize_t __iio_chan_prefix_emit(struct device *dev,
++				      const struct iio_chan_spec *chan,
++				      enum iio_shared_by shared_by,
++				      char *buf, size_t len)
++{
++	const char *type = iio_chan_type_name_spec[chan->type];
++	const char *dir = iio_direction[chan->output];
++	struct seq_buf s;
++
++	seq_buf_init(&s, buf, len);
++
++	switch (shared_by) {
++	case IIO_SHARED_BY_ALL:
++		break;
++	case IIO_SHARED_BY_DIR:
++		seq_buf_printf(&s, "%s", dir);
++		break;
++	case IIO_SHARED_BY_TYPE:
++		seq_buf_printf(&s, "%s_%s", dir, type);
++		if (chan->differential)
++			seq_buf_printf(&s, "-%s", type);
++		break;
++	case IIO_SEPARATE:
++		if (chan->indexed) {
++			seq_buf_printf(&s, "%s_%s%d", dir, type, chan->channel);
++			if (chan->differential)
++				seq_buf_printf(&s, "-%s%d", type, chan->channel2);
++		} else {
++			if (chan->differential) {
++				dev_err(dev, "Differential channels must be indexed\n");
++				return -EINVAL;
++			}
++			seq_buf_printf(&s, "%s_%s", dir, type);
++		}
++
++		if (chan->modified) {
++			if (chan->differential) {
++				dev_err(dev, "Differential channels can not have modifier\n");
++				return -EINVAL;
++			}
++			seq_buf_printf(&s, "_%s", iio_modifier_names[chan->channel2]);
++		}
++
++		if (chan->extend_name)
++			seq_buf_printf(&s, "_%s", chan->extend_name);
++		break;
 +	}
 +
- 	if (ret) {
- 		dev_err(indio_dev->dev.parent, "%s: read failed\n", __func__);
- 		return ret;
-@@ -405,7 +414,7 @@ static ssize_t iio_debugfs_read_reg(struct file *file, char __user *userbuf,
++	return seq_buf_has_overflowed(&s) ? -EOVERFLOW : s.len;
++}
++
+ /**
+  * iio_device_id() - query the unique ID for the device
+  * @indio_dev:		Device structure whose ID is being queried
+@@ -1088,7 +1141,8 @@ static ssize_t iio_write_channel_info(struct device *dev,
+ }
  
- 	iio_dev_opaque->read_buf_len = snprintf(iio_dev_opaque->read_buf,
- 						sizeof(iio_dev_opaque->read_buf),
--						"0x%X\n", val);
-+						"0x%llX\n", val64);
- 
- 	return simple_read_from_buffer(userbuf, count, ppos,
- 				       iio_dev_opaque->read_buf,
-@@ -417,8 +426,9 @@ static ssize_t iio_debugfs_write_reg(struct file *file,
+ static
+-int __iio_device_attr_init(struct device_attribute *dev_attr,
++int __iio_device_attr_init(struct device *dev,
++			   struct device_attribute *dev_attr,
+ 			   const char *postfix,
+ 			   struct iio_chan_spec const *chan,
+ 			   ssize_t (*readfunc)(struct device *dev,
+@@ -1100,106 +1154,22 @@ int __iio_device_attr_init(struct device_attribute *dev_attr,
+ 						size_t len),
+ 			   enum iio_shared_by shared_by)
  {
- 	struct iio_dev *indio_dev = file->private_data;
- 	struct iio_dev_opaque *iio_dev_opaque = to_iio_dev_opaque(indio_dev);
--	unsigned int reg, val;
-+	unsigned int reg;
- 	char buf[80];
-+	u64 val64;
- 	int ret;
+-	int ret = 0;
+-	char *name = NULL;
+-	char *full_postfix;
++	char prefix[NAME_MAX + 1];
++	ssize_t ret;
  
- 	if (*ppos != 0 || count >= sizeof(buf))
-@@ -431,7 +441,7 @@ static ssize_t iio_debugfs_write_reg(struct file *file,
+ 	sysfs_attr_init(&dev_attr->attr);
  
- 	buf[ret] = '\0';
+-	/* Build up postfix of <extend_name>_<modifier>_postfix */
+-	if (chan->modified && (shared_by == IIO_SEPARATE)) {
+-		if (chan->extend_name)
+-			full_postfix = kasprintf(GFP_KERNEL, "%s_%s_%s",
+-						 iio_modifier_names[chan->channel2],
+-						 chan->extend_name,
+-						 postfix);
+-		else
+-			full_postfix = kasprintf(GFP_KERNEL, "%s_%s",
+-						 iio_modifier_names[chan->channel2],
+-						 postfix);
+-	} else {
+-		if (chan->extend_name == NULL || shared_by != IIO_SEPARATE)
+-			full_postfix = kstrdup(postfix, GFP_KERNEL);
+-		else
+-			full_postfix = kasprintf(GFP_KERNEL,
+-						 "%s_%s",
+-						 chan->extend_name,
+-						 postfix);
+-	}
+-	if (full_postfix == NULL)
++	ret = __iio_chan_prefix_emit(dev, chan, shared_by, prefix, sizeof(prefix));
++	if (ret < 0)
++		return ret;
++
++	if (ret)
++		dev_attr->attr.name = kasprintf(GFP_KERNEL, "%s_%s", prefix, postfix);
++	else
++		dev_attr->attr.name = kstrdup(postfix, GFP_KERNEL);
++	if (!dev_attr->attr.name)
+ 		return -ENOMEM;
  
--	ret = sscanf(buf, "%i %i", &reg, &val);
-+	ret = sscanf(buf, "%i %lli", &reg, &val64);
+-	if (chan->differential) { /* Differential can not have modifier */
+-		switch (shared_by) {
+-		case IIO_SHARED_BY_ALL:
+-			name = kasprintf(GFP_KERNEL, "%s", full_postfix);
+-			break;
+-		case IIO_SHARED_BY_DIR:
+-			name = kasprintf(GFP_KERNEL, "%s_%s",
+-						iio_direction[chan->output],
+-						full_postfix);
+-			break;
+-		case IIO_SHARED_BY_TYPE:
+-			name = kasprintf(GFP_KERNEL, "%s_%s-%s_%s",
+-					    iio_direction[chan->output],
+-					    iio_chan_type_name_spec[chan->type],
+-					    iio_chan_type_name_spec[chan->type],
+-					    full_postfix);
+-			break;
+-		case IIO_SEPARATE:
+-			if (!chan->indexed) {
+-				WARN(1, "Differential channels must be indexed\n");
+-				ret = -EINVAL;
+-				goto error_free_full_postfix;
+-			}
+-			name = kasprintf(GFP_KERNEL,
+-					    "%s_%s%d-%s%d_%s",
+-					    iio_direction[chan->output],
+-					    iio_chan_type_name_spec[chan->type],
+-					    chan->channel,
+-					    iio_chan_type_name_spec[chan->type],
+-					    chan->channel2,
+-					    full_postfix);
+-			break;
+-		}
+-	} else { /* Single ended */
+-		switch (shared_by) {
+-		case IIO_SHARED_BY_ALL:
+-			name = kasprintf(GFP_KERNEL, "%s", full_postfix);
+-			break;
+-		case IIO_SHARED_BY_DIR:
+-			name = kasprintf(GFP_KERNEL, "%s_%s",
+-						iio_direction[chan->output],
+-						full_postfix);
+-			break;
+-		case IIO_SHARED_BY_TYPE:
+-			name = kasprintf(GFP_KERNEL, "%s_%s_%s",
+-					    iio_direction[chan->output],
+-					    iio_chan_type_name_spec[chan->type],
+-					    full_postfix);
+-			break;
+-
+-		case IIO_SEPARATE:
+-			if (chan->indexed)
+-				name = kasprintf(GFP_KERNEL, "%s_%s%d_%s",
+-						    iio_direction[chan->output],
+-						    iio_chan_type_name_spec[chan->type],
+-						    chan->channel,
+-						    full_postfix);
+-			else
+-				name = kasprintf(GFP_KERNEL, "%s_%s_%s",
+-						    iio_direction[chan->output],
+-						    iio_chan_type_name_spec[chan->type],
+-						    full_postfix);
+-			break;
+-		}
+-	}
+-	if (name == NULL) {
+-		ret = -ENOMEM;
+-		goto error_free_full_postfix;
+-	}
+-	dev_attr->attr.name = name;
+-
+ 	if (readfunc) {
+ 		dev_attr->attr.mode |= 0444;
+ 		dev_attr->show = readfunc;
+@@ -1210,10 +1180,7 @@ int __iio_device_attr_init(struct device_attribute *dev_attr,
+ 		dev_attr->store = writefunc;
+ 	}
  
- 	switch (ret) {
- 	case 1:
-@@ -439,8 +449,12 @@ static ssize_t iio_debugfs_write_reg(struct file *file,
- 		break;
- 	case 2:
- 		iio_dev_opaque->cached_reg_addr = reg;
--		ret = indio_dev->info->debugfs_reg_access(indio_dev, reg,
--							  val, NULL);
-+		if (indio_dev->info->debugfs_reg64_access)
-+			ret = indio_dev->info->debugfs_reg64_access(indio_dev, reg,
-+								    val64, NULL);
-+		else
-+			ret = indio_dev->info->debugfs_reg_access(indio_dev, reg,
-+								  val64, NULL);
- 		if (ret) {
- 			dev_err(indio_dev->dev.parent, "%s: write failed\n",
- 				__func__);
-@@ -471,7 +485,8 @@ static void iio_device_register_debugfs(struct iio_dev *indio_dev)
- {
- 	struct iio_dev_opaque *iio_dev_opaque;
+-error_free_full_postfix:
+-	kfree(full_postfix);
+-
+-	return ret;
++	return 0;
+ }
  
--	if (indio_dev->info->debugfs_reg_access == NULL)
-+	if (!indio_dev->info->debugfs_reg_access &&
-+	    !indio_dev->info->debugfs_reg64_access)
- 		return;
- 
- 	if (!iio_debugfs_dentry)
-diff --git a/include/linux/iio/iio-opaque.h b/include/linux/iio/iio-opaque.h
-index b87841a355f8..98330385e08d 100644
---- a/include/linux/iio/iio-opaque.h
-+++ b/include/linux/iio/iio-opaque.h
-@@ -73,7 +73,7 @@ struct iio_dev_opaque {
- #if defined(CONFIG_DEBUG_FS)
- 	struct dentry			*debugfs_dentry;
- 	unsigned int			cached_reg_addr;
--	char				read_buf[20];
-+	char				read_buf[24];
- 	unsigned int			read_buf_len;
- #endif
- };
-diff --git a/include/linux/iio/iio.h b/include/linux/iio/iio.h
-index 711c00f67371..cd17703274a6 100644
---- a/include/linux/iio/iio.h
-+++ b/include/linux/iio/iio.h
-@@ -484,6 +484,10 @@ struct iio_trigger; /* forward declaration */
-  * @update_scan_mode:	function to configure device and scan buffer when
-  *			channels have changed
-  * @debugfs_reg_access:	function to read or write register value of device
-+ * @debugfs_reg64_access: function to read or write 64-bit register value of
-+ *			device. debugfs_reg_access() and debugfs_reg64_access()
-+ *			are mutually exclusive, but the 64-bit variant has
-+ *			precedence in case both are implemented.
-  * @fwnode_xlate:	fwnode based function pointer to obtain channel specifier index.
-  * @hwfifo_set_watermark: function pointer to set the current hardware
-  *			fifo watermark level; see hwfifo_* entries in
-@@ -572,6 +576,9 @@ struct iio_info {
- 	int (*debugfs_reg_access)(struct iio_dev *indio_dev,
- 				  unsigned int reg, unsigned int writeval,
- 				  unsigned int *readval);
-+	int (*debugfs_reg64_access)(struct iio_dev *indio_dev,
-+				    unsigned int reg, u64 writeval,
-+				    u64 *readval);
- 	int (*fwnode_xlate)(struct iio_dev *indio_dev,
- 			    const struct fwnode_reference_args *iiospec);
- 	int (*hwfifo_set_watermark)(struct iio_dev *indio_dev, unsigned int val);
+ static void __iio_device_attr_deinit(struct device_attribute *dev_attr)
+@@ -1242,7 +1209,7 @@ int __iio_add_chan_devattr(const char *postfix,
+ 	iio_attr = kzalloc_obj(*iio_attr);
+ 	if (iio_attr == NULL)
+ 		return -ENOMEM;
+-	ret = __iio_device_attr_init(&iio_attr->dev_attr,
++	ret = __iio_device_attr_init(dev, &iio_attr->dev_attr,
+ 				     postfix, chan,
+ 				     readfunc, writefunc, shared_by);
+ 	if (ret)
 
 -- 
 2.43.0
