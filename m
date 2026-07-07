@@ -1,11 +1,11 @@
 From: Ciprian Regus <ciprian.regus@analog.com>
-Date: Wed, 08 Jul 2026 01:33:37 +0300
-Subject: [PATCH net-next v5 09/13] net: ethernet: oa_tc6: Add new register
- address defines
+Date: Wed, 08 Jul 2026 01:33:38 +0300
+Subject: [PATCH net-next v5 10/13] net: phy: add generic helpers for direct
+ C45 MMD access
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260708-adin1140-driver-v5-9-4aca7b51a58b@analog.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260708-adin1140-driver-v5-10-4aca7b51a58b@analog.com>
 References: <20260708-adin1140-driver-v5-0-4aca7b51a58b@analog.com>
 In-Reply-To: <20260708-adin1140-driver-v5-0-4aca7b51a58b@analog.com>
 To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
@@ -22,58 +22,91 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-doc@vger.kernel.org, devicetree@vger.kernel.org, 
  Ciprian Regus <ciprian.regus@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783463678; l=1428;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783463678; l=2740;
  i=ciprian.regus@analog.com; s=20260330; h=from:subject:message-id;
- bh=EB3VnhWgqf4dLA3gFeg1s1OOxPLFVIe16UjLMTG7z2A=;
- b=lyhBNQWt+DGs4orIM8oJH+38D29vo11L9sC0zvpN6/ka6YGu/VqxrsWbFyuuoa0iTMIKRiMQd
- KnW+4p3kwSDCDE34s0bjDouhsESWUiYQv6g7HoMOIXgVvvYFwd84ZnQ
+ bh=EHzSGgaRZqyD058Nt1gOhvpafqZGPgMplM/rsPkXGh4=;
+ b=w180mchxhudHbUfkSe7XmEaKPIbC3HPrS3a0/UiIURqMRisbzOxsUNkOpjBfumyEdXpnHVVUG
+ 0nrPRot5hR0CFMGFvzAZ9K4VNjnaUqGa+tflkKe7Cw9UY45PhbmUh5l
 X-Developer-Key: i=ciprian.regus@analog.com; a=ed25519;
  pk=8WoNhI0kQcQUl8YqJO5ZevROYk9HP8lOIeIgIYgjfbc=
 X-Endpoint-Received: by B4 Relay for ciprian.regus@analog.com/20260330 with auth_id=703
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add macro defines for the CONFIG2 register and the MMS1 memory map.
+Some PHYs support direct C45 register access but not C22 indirect MMD
+access (registers 0xD and 0xE). When discovered via C22, phylib routes
+MMD access through the indirect path, which won't work on these
+devices.
 
+Add genphy_read_mmd_c45() and genphy_write_mmd_c45() as read_mmd/
+write_mmd callbacks that bypass the C22 indirect path and use the bus
+C45 accessors directly.
+
+Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Ciprian Regus <ciprian.regus@analog.com>
 ---
 v5 changelog:
  - no change
 v4 changelog:
- - rename OA_TC6_VEND_MMS1 to OA_TC6_MAC_MMS1.
- - group the MMS1 entry with the other MMS values and update the comment
-   describing that set of macros.
+ - no change
 v3 changelog:
+ - no change
+v2 changelog:
  - New patch
 ---
- include/linux/oa_tc6.h | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ drivers/net/phy/phy_device.c | 25 +++++++++++++++++++++++++
+ include/linux/phy.h          |  3 +++
+ 2 files changed, 28 insertions(+)
 
-diff --git a/include/linux/oa_tc6.h b/include/linux/oa_tc6.h
-index 701e8930d80d..27f652d4920b 100644
---- a/include/linux/oa_tc6.h
-+++ b/include/linux/oa_tc6.h
-@@ -25,6 +25,9 @@
- #define OA_TC6_CONFIG0_ZARFE_ENABLE		BIT(12)
- #define OA_TC6_CONFIG0_PROTE			BIT(5)
+diff --git a/drivers/net/phy/phy_device.c b/drivers/net/phy/phy_device.c
+index 0615228459ef..94b2e85e00a3 100644
+--- a/drivers/net/phy/phy_device.c
++++ b/drivers/net/phy/phy_device.c
+@@ -2770,6 +2770,31 @@ int genphy_read_abilities(struct phy_device *phydev)
+ }
+ EXPORT_SYMBOL(genphy_read_abilities);
  
-+/* Configuration Register #2 */
-+#define OA_TC6_REG_CONFIG2			0x0006
++/* Some PHYs support direct C45 register access but not C22 indirect
++ * MMD access (registers 13 and 14). When discovered via C22, phylib
++ * routes MMD access through the indirect path, which won't work on
++ * these devices. These helpers bypass indirect access and use the bus
++ * C45 accessors directly.
++ */
++int genphy_read_mmd_c45(struct phy_device *phydev, int devnum, u16 regnum)
++{
++	struct mii_bus *bus = phydev->mdio.bus;
++	int addr = phydev->mdio.addr;
 +
- /* Status Register #0 */
- #define OA_TC6_REG_STATUS0			0x0008
- #define OA_TC6_STATUS0_RESETC			BIT(6)	/* Reset Complete */
-@@ -51,9 +54,10 @@
- #define OA_TC6_PHY_STD_REG_ADDR_BASE		0xFF00
- #define OA_TC6_PHY_STD_REG_ADDR_MASK		0x1F
- 
--/* PHY – Clause 45 registers memory map selector (MMS) as per table 6 in the
-+/* Memory map selector (MMS) values as per table 6 in the
-  * OPEN Alliance specification.
-  */
-+#define OA_TC6_MAC_MMS1				1
- #define OA_TC6_PHY_C45_PCS_MMS2			2	/* MMD 3 */
- #define OA_TC6_PHY_C45_PMA_PMD_MMS3		3	/* MMD 1 */
- #define OA_TC6_PHY_C45_VS_PLCA_MMS4		4	/* MMD 31 */
++	return __mdiobus_c45_read(bus, addr, devnum, regnum);
++}
++EXPORT_SYMBOL(genphy_read_mmd_c45);
++
++int genphy_write_mmd_c45(struct phy_device *phydev, int devnum, u16 regnum,
++			 u16 val)
++{
++	struct mii_bus *bus = phydev->mdio.bus;
++	int addr = phydev->mdio.addr;
++
++	return __mdiobus_c45_write(bus, addr, devnum, regnum, val);
++}
++EXPORT_SYMBOL(genphy_write_mmd_c45);
++
+ /* This is used for the phy device which doesn't support the MMD extended
+  * register access, but it does have side effect when we are trying to access
+  * the MMD register via indirect method.
+diff --git a/include/linux/phy.h b/include/linux/phy.h
+index 199a7aaa341b..432d44188dbc 100644
+--- a/include/linux/phy.h
++++ b/include/linux/phy.h
+@@ -2297,6 +2297,9 @@ static inline int genphy_no_config_intr(struct phy_device *phydev)
+ {
+ 	return 0;
+ }
++int genphy_read_mmd_c45(struct phy_device *phydev, int devnum, u16 regnum);
++int genphy_write_mmd_c45(struct phy_device *phydev, int devnum, u16 regnum,
++			 u16 val);
+ int genphy_read_mmd_unsupported(struct phy_device *phdev, int devad,
+ 				u16 regnum);
+ int genphy_write_mmd_unsupported(struct phy_device *phdev, int devnum,
 
 -- 
 2.43.0
