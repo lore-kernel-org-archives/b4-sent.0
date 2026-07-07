@@ -1,223 +1,196 @@
-From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Tue, 07 Jul 2026 09:27:16 +0200
-Subject: [PATCH v2 6/6] can: bcm: extend bcm_tx_lock usage for data and
- timer updates
+From: Joel Granados <joel.granados@kernel.org>
+Date: Tue, 07 Jul 2026 10:42:50 +0200
+Subject: [PATCH RFC net-next v2] net: enforce net sysctl registration
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260707-bcm_fixes-v2-6-96620c534b75@hartkopp.net>
-References: <20260707-bcm_fixes-v2-0-96620c534b75@hartkopp.net>
-In-Reply-To: <20260707-bcm_fixes-v2-0-96620c534b75@hartkopp.net>
-To: linux-can@vger.kernel.org
-Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
- Marc Kleine-Budde <mkl@pengutronix.de>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783409247; l=6201;
- i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=PZc6t73WtXCbVIX4LEg8HGRkgaiNhi+bLpz7FppAD6c=;
- b=H6dRMWY5KYqOQ7hb0Ao5wVqeDbDlww6TD+5ig+2mPliz2GOjrnXzpD/hMQiVKHBx6oExQvElf
- y1ItXzxN1ZqDh/Wr0JjDMmZh8LBYneaCaNon6EDpp9qwWmQHWfNtA56
-X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
- pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
-X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
+Message-Id: <20260707-jag-net_const_qualify-v2-1-5a5c52031ead@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAm8TGoC/4WNQQ6CMBREr0L+2prSIFBXJiYewK0hpJZf/Epab
+ SuBEO5uwwVcTmbemwUCesIAx2wBjyMFcjYFsctAP5TtkVGXMgguSl4KyZ6qZxZjq50Nsf181UB
+ mZqZALquD7JSuILFvj4amzXuD6+WcJSRhU4QmtQ8K0fl5Ox3zbfPHP+YsZ4iyvtdGF5zr0wu9x
+ WHvfA/Nuq4/9BFwyckAAAA=
+X-Change-ID: 20260629-jag-net_const_qualify-f4e09759dac7
+To: "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Joel Granados <joel.granados@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6002;
+ i=joel.granados@kernel.org; h=from:subject:message-id;
+ bh=yT00ZIO+MgWMcC/Ag5o/ZQ4d4ps9Yb7HjH5BLQShRcA=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGpMvBu9Hzr9cKocdRfyS1nVh8iKyqW4O/DEo
+ EAeu+cjqbnsS4kBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqTLwbAAoJELqXzVK3
+ lkFP+mwL/R0LZDg/kgjoLSxh8NxSXVYxKn4zKR2+anryGC/H5K1hbhlw2hJc1gxtTcUiX+4+o+t
+ RkSUNWGtM0rd8zuhs7ErK4kHKaBBWkZOG/MHU2TGNEfk/Qo1b06hJYWQxsJ3NOMaFZRNSJ5wnLj
+ EK5O+fzcSDDAZsSIyDYHawUDC36ma6JZ/GuAOIj9IHTFESoV/FyogLD8dpMReDqjPg9SbL6aWae
+ fHytn6XGdZ8FgMkpFf2qak8xECBhsRCucVv7tRACc3vJpLIJJs6nCrpDxhDaY5KNbCfd3UpQcd5
+ cxYVVD4QlIRQ6e8wOnGgVsGV1vHTGwd41RnXPymDTD2Z/ldQszSKfxYf8U6U7XJt3V9GR2gJxc9
+ ujj0aVblSt6n+lhLBewGP3UbzKbyqWG4IR9Wtt+PVc6sKNfvigsBG63+kvmgrKOd+A3+ILuntvt
+ RBa06oDlPoULhEoSUH7E30zCGJ3tIok5v7Rq2tbuia+Il1uWL+jxAFBIUcgDYM36vmcUZXnZVp5
+ yk=
+X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
+ fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
+X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Stage new CAN frame content for an existing tx op into a kmalloc()'d
-buffer and validate it there, mirroring the approach already used in
-bcm_rx_setup(). Only copy the validated data into op->frames while
-holding op->bcm_tx_lock, so bcm_can_tx() and bcm_tx_timeout_handler()
-can no longer observe a partially updated or unvalidated frame.
+Replace the warning and file permission change with an error when an
+"unsafe" net sysctl registration is detected.
 
-Also move the kt_ival1/kt_ival2/ival1/ival2 updates in bcm_tx_setup()
-under op->bcm_tx_lock, and read kt_ival1/kt_ival2/count under the same
-lock in bcm_tx_set_expiry() and bcm_tx_timeout_handler(), closing the
-torn 64-bit ktime_t read on 32-bit platforms.
+One of the barriers preventing the const qualification of the ctl_tables
+in the net directory is the permission (->mode) change in
+ensure_safe_net_sysctl. This prep commit removes that barrier allowing
+the const qualification of net ctl_tables.
 
-Fixes: c2aba69d0c36 ("can: bcm: add locking for bcm_op runtime updates")
-Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- net/can/bcm.c | 75 +++++++++++++++++++++++++++++++++++++++++------------------
- 1 file changed, 52 insertions(+), 23 deletions(-)
+What?
+=====
+Replace warning and file permission change with an error (reject
+registration) when an "unsafe" net sysctl registration is detected.
 
-diff --git a/net/can/bcm.c b/net/can/bcm.c
-index 3609178a1367..fdde25b5aa1d 100644
---- a/net/can/bcm.c
-+++ b/net/can/bcm.c
-@@ -450,16 +450,22 @@ static void bcm_send_to_user(struct bcm_op *op, struct bcm_msg_head *head,
- 
- static bool bcm_tx_set_expiry(struct bcm_op *op, struct hrtimer *hrt)
- {
- 	ktime_t ival;
- 
-+	spin_lock_bh(&op->bcm_tx_lock);
-+
- 	if (op->kt_ival1 && op->count)
- 		ival = op->kt_ival1;
--	else if (op->kt_ival2)
-+	else if (op->kt_ival2) {
- 		ival = op->kt_ival2;
--	else
-+	} else {
-+		spin_unlock_bh(&op->bcm_tx_lock);
- 		return false;
-+	}
-+
-+	spin_unlock_bh(&op->bcm_tx_lock);
- 
- 	hrtimer_set_expires(hrt, ktime_add(ktime_get(), ival));
- 	return true;
+Why?
+====
+The main motivation for this is to continue with the const qualification
+of the ctl_table arrays [1]. The permission change inside
+ensure_safe_net_sysctl disallows cons qualifiaction as it basically
+modifies the entries before running the sysctl registration.
+
+      ent->mode &= ~0222;
+
+Analysis
+========
+* I believe that there is currently now way that the permission change
+  gets executed [2]
+* I found one case where the warning message was posted to lore
+  (vsock_sysctl_register) [3], but it made its to mainline as part of
+  the second case in [2].
+* We should error anyway because writing to the global sysctl value
+  through a child netns is indicative of a bug [4].
+
+RFC
+===
+I'm sending it out as an RFC as I would like to discuss the change to
+ensure_safe_net_sysctl in isolation, but my idea is to send out a series
+that actually const qualifies the clt_tables in the net directory. I
+would be very thankful if you point me to anything that I have missed in
+my analysis that shows that this cannot/shouldn't be done.
+
+Changes in v2:
+- Rebased on top of net-next
+- Updated subject to "RFC net-next"
+- Link to v1: https://lore.kernel.org/r/20260629-jag-net_const_qualify-v1-1-ee98b8fc400c@kernel.org
+
+Best
+
+[1]
+  https://git.kernel.org/pub/scm/linux/kernel/git/sysctl/sysctl.git/commit/?h=constfy-sysctl-6.14-rc1&id=1751f872cc97f992ed5c4c72c55588db1f0021e1
+
+[2]
+  I have identified 4 contexts relevant to the ensure_safe_net_sysctl call
+  inside the network sysctl registration.
+
+  1. When the (struct net) == &init_net (like in iw_cm_init): In this case
+     ensure_safe_net_sysctl is not executed and permission modification
+     never happens.
+
+  2. When the ctl_table data (->data) gets "manually" assigned to
+     something other init_net (like in vsock_sysctl_register): In this
+     case ensure_safe_net_sysctl *is* executed but the data that is passed
+     is neither a module address (!is_module_address) nor a kernel core
+     address (!is_kernel_core_data); so the permission modification never
+     happens.
+
+  3. When the permissions are explicitly changed on a kmemdup'ed ctl_table
+     array (like in sysctl_core_net_init): in this case
+     ensure_safe_net_sysctl *is* executed but the permission modification
+     never happens as the mode is not writable.
+
+  4. When ctl have custom proc_handlers (like in nf_lwtunnel_net_init): In
+     this case ->data is NULL so it is not a module address
+     (!is_module_address) nor a kernel core address
+     (!is_kernel_core_data), so permission modification never happens.
+
+  It seems like there is no way of executing the permission change in
+  ensure_safe_net_sysctl. Please correct me if this is inacurate and help
+  me find the case that I missed.
+
+[3]
+  https://lore.kernel.org/all/20260302194926.90378-1-graf@amazon.com/
+
+[4]
+  The ensure_safe_net_sysctl function was introduced in Commit:
+  31c4d2f160eb7b17cbead24dc6efed06505a3fee ("net: Ensure net namespace
+  isolation of sysctls") which states that it is trying to prevent a
+  leak (indicative of a bug).
+---
+
+---
+ net/sysctl_net.c | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/net/sysctl_net.c b/net/sysctl_net.c
+index 19e8048241bacb18de853d3b904d0f97fd2fe78a..c1630a266f8436d8962ceb87dc629964b2d71260 100644
+--- a/net/sysctl_net.c
++++ b/net/sysctl_net.c
+@@ -114,16 +114,16 @@ __init int net_sysctl_init(void)
+ 	goto out;
  }
  
-@@ -472,12 +478,21 @@ static void bcm_tx_start_timer(struct bcm_op *op)
- /* bcm_tx_timeout_handler - performs cyclic CAN frame transmissions */
- static enum hrtimer_restart bcm_tx_timeout_handler(struct hrtimer *hrtimer)
+-/* Verify that sysctls for non-init netns are safe by either:
++/* Return error when sysctls for non-init netns are unsafe by verifying:
+  * 1) being read-only, or
+  * 2) having a data pointer which points outside of the global kernel/module
+  *    data segment, and rather into the heap where a per-net object was
+  *    allocated.
+  */
+-static void ensure_safe_net_sysctl(struct net *net, const char *path,
+-				   struct ctl_table *table, size_t table_size)
++static int ensure_safe_net_sysctl(struct net *net, const char *path,
++				  const struct ctl_table *table, size_t table_size)
  {
- 	struct bcm_op *op = container_of(hrtimer, struct bcm_op, timer);
- 	struct bcm_msg_head msg_head;
-+	bool tx_ival1, tx_ival2;
+-	struct ctl_table *ent;
++	const struct ctl_table *ent;
  
--	if (op->kt_ival1 && (op->count > 0)) {
-+	/* snapshot kt_ival1/kt_ival2/count under lock to avoid torn
-+	 * ktime_t reads racing with concurrent bcm_tx_setup() updates
-+	 */
-+	spin_lock_bh(&op->bcm_tx_lock);
-+	tx_ival1 = op->kt_ival1 && (op->count > 0);
-+	tx_ival2 = !!op->kt_ival2;
-+	spin_unlock_bh(&op->bcm_tx_lock);
-+
-+	if (tx_ival1) {
- 		bcm_can_tx(op, NULL);
- 		if (!op->count && (op->flags & TX_COUNTEVT)) {
+ 	pr_debug("Registering net sysctl (net %p): %s\n", net, path);
+ 	ent = table;
+@@ -149,15 +149,14 @@ static void ensure_safe_net_sysctl(struct net *net, const char *path,
+ 		else
+ 			continue;
  
- 			/* create notification to user */
- 			memset(&msg_head, 0, sizeof(msg_head));
-@@ -490,11 +505,11 @@ static enum hrtimer_restart bcm_tx_timeout_handler(struct hrtimer *hrtimer)
- 			msg_head.nframes = 0;
+-		/* If it is writable and points to kernel/module global
+-		 * data, then it's probably a netns leak.
+-		 */
++		/* Warn on netns leak. */
+ 		WARN(1, "sysctl %s/%s: data points to %s global data: %ps\n",
+-		     path, ent->procname, where, ent->data);
++			path, ent->procname, where, ent->data);
  
- 			bcm_send_to_user(op, &msg_head, NULL, 0);
- 		}
- 
--	} else if (op->kt_ival2) {
-+	} else if (tx_ival2) {
- 		bcm_can_tx(op, NULL);
+-		/* Make it "safe" by dropping writable perms */
+-		ent->mode &= ~0222;
++		return -EACCES;
  	}
- 
- 	return bcm_tx_set_expiry(op, &op->timer) ?
- 		HRTIMER_RESTART : HRTIMER_NORESTART;
-@@ -1009,64 +1024,76 @@ static int bcm_tx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 		return -EINVAL;
- 
- 	/* check the given can_id */
- 	op = bcm_find_op(&bo->tx_ops, msg_head, ifindex);
- 	if (op) {
-+		void *new_frames;
 +
- 		/* update existing BCM operation */
++	return 0;
+ }
  
- 		/*
- 		 * Do we need more space for the CAN frames than currently
- 		 * allocated? -> This is a _really_ unusual use-case and
- 		 * therefore (complexity / locking) it is not supported.
- 		 */
- 		if (msg_head->nframes > op->nframes)
- 			return -E2BIG;
+ struct ctl_table_header *register_net_sysctl_sz(struct net *net,
+@@ -166,7 +165,8 @@ struct ctl_table_header *register_net_sysctl_sz(struct net *net,
+ 						size_t table_size)
+ {
+ 	if (!net_eq(net, &init_net))
+-		ensure_safe_net_sysctl(net, path, table, table_size);
++		if (ensure_safe_net_sysctl(net, path, table, table_size))
++			return NULL;
  
--		/* update CAN frames content */
-+		/* get new CAN frames content into a staging buffer before
-+		 * locking: validate and normalize the frames there so that
-+		 * bcm_can_tx() / bcm_tx_timeout_handler() never observe a
-+		 * partially updated or unvalidated frame in op->frames
-+		 */
-+		new_frames = kmalloc(msg_head->nframes * op->cfsiz, GFP_KERNEL);
-+		if (!new_frames)
-+			return -ENOMEM;
-+
- 		for (i = 0; i < msg_head->nframes; i++) {
- 
--			cf = op->frames + op->cfsiz * i;
-+			cf = new_frames + op->cfsiz * i;
- 			err = memcpy_from_msg((u8 *)cf, msg, op->cfsiz);
- 
- 			if (op->flags & CAN_FD_FRAME) {
- 				if (cf->len > 64)
- 					err = -EINVAL;
- 			} else {
- 				if (cf->len > 8)
- 					err = -EINVAL;
- 			}
- 
--			if (err < 0)
-+			if (err < 0) {
-+				kfree(new_frames);
- 				return err;
-+			}
- 
- 			if (msg_head->flags & TX_CP_CAN_ID) {
- 				/* copy can_id into frame */
- 				cf->can_id = msg_head->can_id;
- 			}
- 		}
-+
-+		spin_lock_bh(&op->bcm_tx_lock);
-+
-+		/* update CAN frames content */
-+		memcpy(op->frames, new_frames, msg_head->nframes * op->cfsiz);
-+
- 		op->flags = msg_head->flags;
- 
--		/* only lock for unlikely count/nframes/currframe changes */
- 		if (op->nframes != msg_head->nframes ||
--		    op->flags & TX_RESET_MULTI_IDX ||
--		    op->flags & SETTIMER) {
--
--			spin_lock_bh(&op->bcm_tx_lock);
-+		    op->flags & TX_RESET_MULTI_IDX) {
-+			/* potentially update changed nframes */
-+			op->nframes = msg_head->nframes;
-+			/* restart multiple frame transmission */
-+			op->currframe = 0;
-+		}
- 
--			if (op->nframes != msg_head->nframes ||
--			    op->flags & TX_RESET_MULTI_IDX) {
--				/* potentially update changed nframes */
--				op->nframes = msg_head->nframes;
--				/* restart multiple frame transmission */
--				op->currframe = 0;
--			}
-+		if (op->flags & SETTIMER)
-+			op->count = msg_head->count;
- 
--			if (op->flags & SETTIMER)
--				op->count = msg_head->count;
-+		spin_unlock_bh(&op->bcm_tx_lock);
- 
--			spin_unlock_bh(&op->bcm_tx_lock);
--		}
-+		kfree(new_frames);
- 
- 	} else {
- 		/* insert new BCM operation for the given can_id */
- 
- 		op = kzalloc(OPSIZ, GFP_KERNEL);
-@@ -1138,14 +1165,16 @@ static int bcm_tx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 
- 	} /* if ((op = bcm_find_op(&bo->tx_ops, msg_head->can_id, ifindex))) */
- 
- 	if (op->flags & SETTIMER) {
- 		/* set timer values */
-+		spin_lock_bh(&op->bcm_tx_lock);
- 		op->ival1 = msg_head->ival1;
- 		op->ival2 = msg_head->ival2;
- 		op->kt_ival1 = bcm_timeval_to_ktime(msg_head->ival1);
- 		op->kt_ival2 = bcm_timeval_to_ktime(msg_head->ival2);
-+		spin_unlock_bh(&op->bcm_tx_lock);
- 
- 		/* disable an active timer due to zero values? */
- 		if (!op->kt_ival1 && !op->kt_ival2)
- 			hrtimer_cancel(&op->timer);
- 	}
+ 	return __register_sysctl_table(&net->sysctls, path, table, table_size);
+ }
 
+---
+base-commit: 474cff6868129755cf889edf40d7f491729fc588
+change-id: 20260629-jag-net_const_qualify-f4e09759dac7
+
+Best regards,
 -- 
-2.53.0
+Joel Granados <joel.granados@kernel.org>
 
