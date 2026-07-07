@@ -1,155 +1,147 @@
-From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Tue, 07 Jul 2026 16:32:19 +0200
-Subject: [PATCH v4 7/7] can: bcm: validate frame length in bcm_rx_setup()
- for RTR replies
+From: Mattia Meleleo <mattia.meleleo@coralogix.com>
+Date: Tue, 07 Jul 2026 18:15:53 +0200
+Subject: [PATCH bpf] bpf, sockmap: Account for receive queue in FIONREAD
+ without a verdict program
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260707-bcm_fixes-v4-7-aa87b8b9d33f@hartkopp.net>
-References: <20260707-bcm_fixes-v4-0-aa87b8b9d33f@hartkopp.net>
-In-Reply-To: <20260707-bcm_fixes-v4-0-aa87b8b9d33f@hartkopp.net>
-To: linux-can@vger.kernel.org
-Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
- Marc Kleine-Budde <mkl@pengutronix.de>
+Message-Id: <20260707-fionread-no-verdict-v1-1-ce94a72357ec@coralogix.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQrCMBBFr1L+2oFYpDFeRVykyYyOi7RMahFK7
+ 27U5fv89zZUNuWKS7fBeNWqU2lwPHRIj1juTJobo3f94LzzJO1gHDOViVa2rGmheJLzEHxMQQK
+ aORuLvn/VK8ZZcPuP9TU+OS3fHvb9A1FPRcB8AAAA
+X-Change-ID: 20260707-fionread-no-verdict-a4f8697ac9f9
+To: John Fastabend <john.fastabend@gmail.com>, 
+ Jakub Sitnicki <jakub@cloudflare.com>, 
+ Jiayuan Chen <jiayuan.chen@linux.dev>
+Cc: netdev@vger.kernel.org, bpf@vger.kernel.org, 
+ Mattia Meleleo <mattia.meleleo@coralogix.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783434738; l=3930;
- i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=xPTp0yGnz1Dm/JKuYSDO8Kj6sxKixaA1paTr5OBGZBo=;
- b=N568jNtkcD3PCl7FQ3DDCLhGsNBFzlqQ5cq9YElcsur1FibIEDgG7RpKaDVXbOVrhLbh2yXEP
- Na/3U3Jouv4ASGY0zyO9eRh6PDRNfNjrW/r/zf4gWGm0w1anHTPXvpS
-X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
- pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
-X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783440961; l=4235;
+ i=mattia.meleleo@coralogix.com; s=20260707; h=from:subject:message-id;
+ bh=aFZBdyJoJSWVLETQmNXpLi70lCPgP+Z+qtlX8undb2c=;
+ b=7VzhVRcI4/wPM/f39bOT4hg4dp0xF2Z8AKpWg83TJEmeLzjJFJza9F4yZ6pZbB3P+255nqEOT
+ GZkJLvRwBfPACWBpY6Y2OPq6iQK3ApXuROFw7E7Tyl6Sm9rg2mwEGfD
+X-Developer-Key: i=mattia.meleleo@coralogix.com; a=ed25519;
+ pk=cs1zLoe3YDm4bJ7bfbPaZH0lHnd871JyJLiSh2eEzLs=
+X-Endpoint-Received: by B4 Relay for mattia.meleleo@coralogix.com/20260707 with auth_id=857
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-bcm_tx_setup() validates cf->len against the CAN/CAN FD DLC limits
-before installing frames for TX_SETUP, but bcm_rx_setup() never did
-the same for the RTR-reply frame configured via RX_SETUP with
-RX_RTR_FRAME.
+tcp_bpf_ioctl() answers SIOCINQ from psock->msg_tot_len, which only
+counts bytes in ingress_msg. Without a stream/skb verdict program
+nothing is diverted there: data stays in sk_receive_queue, so FIONREAD
+returns 0 even though read() returns data.
 
-Fixes: ffd980f976e7 ("[CAN]: Add broadcast manager (bcm) protocol")
-Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+Add tcp_inq() to the reported value when the psock has no verdict
+program. The two queues are disjoint, so bytes redirected into
+ingress_msg from other sockets stay correctly accounted through
+msg_tot_len.
+
+Add a selftest covering FIONREAD without a verdict program.
+
+Fixes: 929e30f93125 ("bpf, sockmap: Fix FIONREAD for sockmap")
+Signed-off-by: Mattia Meleleo <mattia.meleleo@coralogix.com>
 ---
- net/can/bcm.c | 59 +++++++++++++++++++++++++++++++++++++++++------------------
- 1 file changed, 41 insertions(+), 18 deletions(-)
+ net/ipv4/tcp_bpf.c                                 | 16 ++++++++-
+ .../selftests/bpf/prog_tests/sockmap_basic.c       | 39 ++++++++++++++++++++++
+ 2 files changed, 54 insertions(+), 1 deletion(-)
 
-diff --git a/net/can/bcm.c b/net/can/bcm.c
-index f04216723e0f..d4d2c89dc400 100644
---- a/net/can/bcm.c
-+++ b/net/can/bcm.c
-@@ -1216,26 +1216,41 @@ static int bcm_tx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 		kfree(op->frames);
- 	kfree(op);
- 	return err;
- }
+diff --git a/net/ipv4/tcp_bpf.c b/net/ipv4/tcp_bpf.c
+index cc0bd73f3..a001b1fff 100644
+--- a/net/ipv4/tcp_bpf.c
++++ b/net/ipv4/tcp_bpf.c
+@@ -334,6 +334,7 @@ static int tcp_bpf_recvmsg_parser(struct sock *sk,
  
--static void bcm_rx_setup_rtr_check(struct bcm_msg_head *msg_head,
--				   struct bcm_op *op, void *new_frames)
-+static int bcm_rx_setup_rtr_check(struct bcm_msg_head *msg_head,
-+				  struct bcm_op *op, void *new_frames)
+ static int tcp_bpf_ioctl(struct sock *sk, int cmd, int *karg)
  {
-+	struct canfd_frame *frame0 = new_frames;
-+
-+	if (!(msg_head->flags & RX_RTR_FRAME))
-+		return 0;
-+
-+	/* this frame is sent out as-is by bcm_can_tx() whenever a matching
-+	 * remote request is received, so validate its length the same way
-+	 * bcm_tx_setup() validates TX_SETUP frames before installing it
-+	 */
-+	if (msg_head->flags & CAN_FD_FRAME) {
-+		if (frame0->len > 64)
-+			return -EINVAL;
-+	} else {
-+		if (frame0->len > 8)
-+			return -EINVAL;
++	struct sk_psock *psock;
+ 	bool slow;
+ 
+ 	if (cmd != SIOCINQ)
+@@ -344,7 +345,20 @@ static int tcp_bpf_ioctl(struct sock *sk, int cmd, int *karg)
+ 		return -EINVAL;
+ 
+ 	slow = lock_sock_fast(sk);
+-	*karg = sk_psock_msg_inq(sk);
++	psock = sk_psock_get(sk);
++	if (unlikely(!psock)) {
++		unlock_sock_fast(sk, slow);
++		return tcp_ioctl(sk, cmd, karg);
 +	}
-+
- 	/* funny feature in RX(!)_SETUP only for RTR-mode:
- 	 * copy can_id into frame BUT without RTR-flag to
- 	 * prevent a full-load-loopback-test ... ;-]
- 	 * normalize this on the staged buffer, before it is
- 	 * ever installed into op->frames.
- 	 */
--	if (msg_head->flags & RX_RTR_FRAME) {
--		struct canfd_frame *frame0 = new_frames;
-+	if ((msg_head->flags & TX_CP_CAN_ID) ||
-+	    frame0->can_id == op->can_id)
-+		frame0->can_id = op->can_id & ~CAN_RTR_FLAG;
++	*karg = sk_psock_get_msg_len_nolock(psock);
++	/* Without a verdict program, ingress data is never diverted to
++	 * ingress_msg: it stays in sk_receive_queue and is read through
++	 * the fallback to tcp_recvmsg(), so account for it like
++	 * tcp_ioctl() does.
++	 */
++	if (!psock->progs.stream_verdict && !psock->progs.skb_verdict)
++		*karg += tcp_inq(sk);
++	sk_psock_put(sk, psock);
+ 	unlock_sock_fast(sk, slow);
  
--		if ((msg_head->flags & TX_CP_CAN_ID) ||
--		    frame0->can_id == op->can_id)
--			frame0->can_id = op->can_id & ~CAN_RTR_FLAG;
--	}
-+	return 0;
+ 	return 0;
+diff --git a/tools/testing/selftests/bpf/prog_tests/sockmap_basic.c b/tools/testing/selftests/bpf/prog_tests/sockmap_basic.c
+index cb3229711..f0f368201 100644
+--- a/tools/testing/selftests/bpf/prog_tests/sockmap_basic.c
++++ b/tools/testing/selftests/bpf/prog_tests/sockmap_basic.c
+@@ -1373,6 +1373,43 @@ static void test_sockmap_multi_channels(int sotype)
+ 	test_sockmap_pass_prog__destroy(skel);
  }
  
- /*
-  * bcm_rx_setup - create or update a bcm rx op (for bcm_sendmsg)
-  */
-@@ -1294,11 +1309,15 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 			if (err < 0) {
- 				kfree(new_frames);
- 				return err;
- 			}
- 
--			bcm_rx_setup_rtr_check(msg_head, op, new_frames);
-+			err = bcm_rx_setup_rtr_check(msg_head, op, new_frames);
-+			if (err < 0) {
-+				kfree(new_frames);
-+				return err;
-+			}
- 		}
- 
- 		spin_lock_bh(&op->bcm_rx_update_lock);
- 		op->nframes = msg_head->nframes;
- 		op->flags = msg_head->flags;
-@@ -1359,20 +1378,16 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 		}
- 
- 		if (msg_head->nframes) {
- 			err = memcpy_from_msg(op->frames, msg,
- 					      msg_head->nframes * op->cfsiz);
--			if (err < 0) {
--				if (op->frames != &op->sframe)
--					kfree(op->frames);
--				if (op->last_frames != &op->last_sframe)
--					kfree(op->last_frames);
--				kfree(op);
--				return err;
--			}
-+			if (err < 0)
-+				goto free_op;
- 
--			bcm_rx_setup_rtr_check(msg_head, op, op->frames);
-+			err = bcm_rx_setup_rtr_check(msg_head, op, op->frames);
-+			if (err < 0)
-+				goto free_op;
- 		}
- 
- 		/* bcm_can_tx / bcm_tx_timeout_handler needs this */
- 		op->sk = sk;
- 		sock_hold(sk);
-@@ -1465,10 +1480,18 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 		/* add this bcm_op to the list of the rx_ops */
- 		list_add_rcu(&op->list, &bo->rx_ops);
- 	}
- 
- 	return msg_head->nframes * op->cfsiz + MHSIZ;
++/* A socket in a sockmap without a verdict program keeps its ingress data
++ * in sk_receive_queue: FIONREAD must account for it.
++ */
++static void test_sockmap_no_verdict_fionread(void)
++{
++	int err, map, zero = 0, sent, avail;
++	int c0 = -1, c1 = -1, p0 = -1, p1 = -1;
++	struct test_sockmap_pass_prog *skel;
++	char buf[256] = "0123456789";
 +
-+free_op:
-+	if (op->frames != &op->sframe)
-+		kfree(op->frames);
-+	if (op->last_frames != &op->last_sframe)
-+		kfree(op->last_frames);
-+	kfree(op);
-+	return err;
- }
- 
- /*
-  * bcm_tx_send - send a single CAN frame to the CAN interface (for bcm_sendmsg)
-  */
++	skel = test_sockmap_pass_prog__open_and_load();
++	if (!ASSERT_OK_PTR(skel, "open_and_load"))
++		return;
++	map = bpf_map__fd(skel->maps.sock_map_rx);
++
++	err = create_socket_pairs(AF_INET, SOCK_STREAM, &c0, &c1, &p0, &p1);
++	if (!ASSERT_OK(err, "create_socket_pairs()"))
++		goto out;
++
++	err = bpf_map_update_elem(map, &zero, &c1, BPF_NOEXIST);
++	if (!ASSERT_OK(err, "bpf_map_update_elem(c1)"))
++		goto out_close;
++
++	sent = xsend(p1, &buf, sizeof(buf), 0);
++	ASSERT_EQ(sent, sizeof(buf), "xsend(p1)");
++	avail = wait_for_fionread(c1, sizeof(buf), IO_TIMEOUT_SEC);
++	ASSERT_EQ(avail, sizeof(buf), "ioctl(FIONREAD)");
++
++out_close:
++	close(c0);
++	close(p0);
++	close(c1);
++	close(p1);
++out:
++	test_sockmap_pass_prog__destroy(skel);
++}
++
+ void test_sockmap_basic(void)
+ {
+ 	if (test__start_subtest("sockmap create_update_free"))
+@@ -1415,6 +1452,8 @@ void test_sockmap_basic(void)
+ 		test_sockmap_skb_verdict_shutdown();
+ 	if (test__start_subtest("sockmap skb_verdict fionread"))
+ 		test_sockmap_skb_verdict_fionread(true);
++	if (test__start_subtest("sockmap no_verdict fionread"))
++		test_sockmap_no_verdict_fionread();
+ 	if (test__start_subtest("sockmap skb_verdict fionread on drop"))
+ 		test_sockmap_skb_verdict_fionread(false);
+ 	if (test__start_subtest("sockmap skb_verdict change tail"))
 
--- 
-2.53.0
+---
+base-commit: d2c9a99135da931377240942d44f3dea104cedb8
+change-id: 20260707-fionread-no-verdict-a4f8697ac9f9
+
+Best regards,
+--  
+Mattia Meleleo <mattia.meleleo@coralogix.com>
 
