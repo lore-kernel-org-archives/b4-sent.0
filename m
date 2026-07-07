@@ -1,291 +1,183 @@
-From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Wed, 08 Jul 2026 05:16:31 +0800
-Subject: [PATCH RFC v2 7/7] mfd: ls2kbmc: Capture the reset event of BMC
- through GPIO
+From: Ciprian Regus <ciprian.regus@analog.com>
+Subject: [PATCH net-next v5 00/13] net: Add ADIN1140 support
+Date: Wed, 08 Jul 2026 01:33:28 +0300
+Message-Id: <20260708-adin1140-driver-v5-0-4aca7b51a58b@analog.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260708-ls2kbmc-mod-v2-7-2afdd1741766@gmail.com>
-References: <20260708-ls2kbmc-mod-v2-0-2afdd1741766@gmail.com>
-In-Reply-To: <20260708-ls2kbmc-mod-v2-0-2afdd1741766@gmail.com>
-To: Binbin Zhou <zhoubinbin@loongson.cn>, 
- Chong Qiao <qiaochong@loongson.cn>, Lee Jones <lee@kernel.org>, 
- Huacai Chen <chenhuacai@kernel.org>, Corey Minyard <corey@minyard.net>, 
- Linus Walleij <linusw@kernel.org>, Bartosz Golaszewski <brgl@kernel.org>
-Cc: Xi Ruoyao <xry111@xry111.site>, WANG Xuerui <kernel@xen0n.name>, 
- Yinbo Zhu <zhuyinbo@loongson.cn>, Jiaxun Yang <jiaxun.yang@flygoat.com>, 
- mfd@lists.linux.dev, linux-kernel@vger.kernel.org, 
- linux-gpio@vger.kernel.org, openipmi-developer@lists.sourceforge.net, 
- Miao Wang <shankerwangmiao@gmail.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8673;
- i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
- bh=2IJJRz2d8DgY3uiccKWKVOZwC9ehklvxyPgs1XhNrv0=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqTWy2lqzUrkjnKfUuCEqFKy2EVYSDPhViKkzHO
- NnUIqVofE2JAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCak1stgAKCRCwMePKe/7Z
- bjZMD/9WeBCrfl6Ka9VOGa0Y57xfy/Ut7343qJB//6Dh9fFtHBMqe9UbfGPUiTAVmOT7YuPeSoK
- FfybhY6GKSeiH5IHVMXqt+1B4boIe4TVmd0mVPINTH4N+guzlnVyLGO3g4tHmGPNZ52pm/Cq+VL
- g+BcR2UGXjqiYBGaxXeyXahECD5a4HUnHyorps9jH3u3Bn6rXSmoVEYoMpZCqDbBKGyf/OMVE7I
- 1LoSxQV3icOkHENbRqRjTf8YQOirJfuPtJl0r8vXyitYzgU1jU3XUsD0TD8brmKJQ1K69i96PvV
- YXxlwM8H9T8TKvUn6ukNGIenepwxgq6VWX9AFUVYM57ED4gPeEdLzghaRuwWSKHeRe87AalN9nA
- UnMJdaKBxxa1ayrc5VuMcZ5Y4oel72l0csJY3K/9Gsbg7W8pM3yGx+9c5F1iCbbcFBylxgZ+Ck4
- uDMwx7abcVRo6zeTXeAUnYmvkBbC0FpP6xR8crsWNquZCON80hS0p84ekfW0F7NnxE0uSAu2TnG
- U+Kt0wsERrJ8qGDiIiGicevEQjujEmlO1nB9UTVmVdG5vpUZ8aceUwMZAthgrXHNTLr24VkKLVe
- bxHsOH9BkIWJH0zHe/o2VeHcyaKzd17jbFcu4Vvok9ck1KVcT30nHimKmyCOxjC5kxMGSUYk4D8
- xUhI80UJfIUiD1Q==
-X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
- fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
-X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
+X-B4-Tracking: v=1; b=H4sIALh+TWoC/2XQwY4CIQwG4FcxnJdNoSC4p30P4wFpVZJdxjATo
+ jHz7hIuari1+dOvaR9i5pJ4Fj+bhyhc05ym3Br7tRHxEvKZZaLWCw16C0bvZKCUlTIgqaTKRe4
+ wMBC6LSov2tS18CndurgXmReZ+baIQ0suaV6mcu+rqup5Vy3goFYlW01gMBJ5f4LfkMPfdP6O0
+ 3/Hqn4DtBsB3QB0bKMnwxBGAF9Au2wEsAGW+EhHVA6jGQDzDoyPqaYB4Cyy9swAn8C6rk/4PjQ
+ 8fAEAAA==
+To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
+ Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, Andrew Lunn <andrew@lunn.ch>, 
+ Heiner Kallweit <hkallweit1@gmail.com>, 
+ Russell King <linux@armlinux.org.uk>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-doc@vger.kernel.org, devicetree@vger.kernel.org, 
+ Ciprian Regus <ciprian.regus@analog.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783463678; l=7828;
+ i=ciprian.regus@analog.com; s=20260330; h=from:subject:message-id;
+ bh=GKek7BKxQB7/xxzN++vZHwPvtziG5YW58YNpawvGyBs=;
+ b=Z/jUDDxu4FoUgkngr88l/D/Q7DfRrjnKeHq5WdVUuZvzZJIcjxISuATxdQnZ/F80zbyfxVhfS
+ vcOKFfqQW7TB/0x0WXA2tWx9hnajZoZ8joeMj6+K7jh8eoGIdPH5mrc
+X-Developer-Key: i=ciprian.regus@analog.com; a=ed25519;
+ pk=8WoNhI0kQcQUl8YqJO5ZevROYk9HP8lOIeIgIYgjfbc=
+X-Endpoint-Received: by B4 Relay for ciprian.regus@analog.com/20260330 with auth_id=703
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The reset event of BMC is captured through GPIO. However, this driver
-bypasses the GPIO framework and directly accesses the GPIO controller
-through the fixed address. When the same GPIO controller is also
-exposed through ACPI and probed by the corresponding GPIO driver,
-there would be a conflict between the two drivers.
+This series introduces support for the ADIN1140 (also called AD3306)
+10BASE-T1S single port MACPHY. The device integrates the MAC and PHY in
+the same package. The communication with the host CPU is done through an
+SPI interface, using the Open Alliance TC6 protocol for control and data
+transactions. As a result, the oa_tc6 framework is used to implement
+the communication with the device (register accesses and Ethernet frame
+RX/TX).
 
-This patch will try to find the GPIO through declared GPIO pin in the
-_CRS resources of the ACPI node. If no such delaration is found, the
-driver will fall back to search for the correct GPIO controller and pin
-according to the fixed address and pin number. A possible DSDT
-declaration for the GPIO pin might be as follows:
+The MAC and PHY are connected internally using an MII and MDIO bus.
 
-    Device (BMC0) {
-        Name (_ADR, ...) // Match the PCI address of the BMC device
-        // \_SB.GPO1 is the ACPI path of the GPIO controller
-        Name (_CRS, ResourceTemplate () {
-            GpioInt (Edge, ActiveLow, Exclusive, PullNone, 0,
-                     "\\_SB.GPO1", 0) {
-                14 // 14 is the GPIO pin number
-            }
-    }
+The PHY is a half duplex 10Mbps device, which implements both the PLCA
+RS (IEEE 802.3 clause 148) and CSMA/CD methods of accessing the Ethernet
+medium. The 10BASE-T1S standard allows multiple PHY devices to be
+connected (in parallel) on the same single twisted pair network segment,
+so PLCA can be configured in order to provide a fair access scheme to
+all the nodes and reduce the jitter introduced by the unordered CSMA/CD
+transmits. The PHY's internal register map can be accessed using the
+direct MDIO mode of the OA TC6. The control, status, phy id 1 & 2 C22
+registers are mapped to the 0xFF00 - 0xFF03 range. As for C45
+addressable devices, the PHY has PCS, PMA and PLCA blocks.
 
-Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
+The oa_tc6 framework patches are changes that would make the library
+usable by the subsequent ADIN1140 MAC driver.
+
+The protected mode patch is required because the ADIN1140 only allows
+protected mode OA TC6 control transactions, which the oa_tc6 framework
+doesn't currently implement.
+
+The OA_TC6_BROKEN_PHY quirk patch is required in order to allow the MAC
+driver to have a custom implementation for the mii_bus access methods as a
+workaround for hardware issues:
+
+1. The OA TC6 standard defines the direct and indirect access modes for
+   MDIO transactions. The ADIN1140 incorrectly advertises indirect mode
+   only (supported capabilities register - 0x2, bit 9), while actually
+   implementing just the direct mode. We cannot rely on the CAP register
+   to choose an access method (which oa_tc6 does by default, even though
+   it only implements the direct mode), so the driver has to use its
+   own.
+2. The ADIN1140 cannot access the C22 register space of the internal
+   PHY, while the PHY is busy receiving frames. If that happens, the
+   CONFIG0 and CONFIG2 registers of the MAC will get corrupted and the
+   data transfer will stop. Those two registers configure settings for
+   the transfer protocol between the MAC and host, so the value for some
+   of their subfields shouldn't be changed while the netdev is up.
+   Since we know the PHY is internal, the MAC driver can implement a
+   custom mii_bus, which can intercept C22 accesses. Most of the
+   registers mapped in the 0x0 - 0x3 range (the only ones the PHY offers)
+   are read only, and their value can be read from somewhere else (e.g
+   the PHYID 1 & 2 have the same value as 0x1 in the MAC memory map).
+   C45 accesses do not cause this issue, so we can properly implement
+   them.
+
+Even though they have different driver, the MAC one cannot function
+without the PHY driver, since the PHY is not compatible with the generic
+c22 driver. As such CONFIG_ADIN1140 selects CONFIG_ADIN1140_PHY.
+
+Signed-off-by: Ciprian Regus <ciprian.regus@analog.com>
 ---
- drivers/mfd/ls2k-bmc-core.c | 162 +++++++++++++++++++++++++++++++-------------
- 1 file changed, 115 insertions(+), 47 deletions(-)
+Changes in v5:
+- Used ndo_set_rx_mode_async instead of ndo_set_rx_mode for configuring
+  the MAC filter table in the adin1140 driver.
+- Updated the MAC filter logic to allow setting individual
+  unicast/multicast entries when IFF_ALLMULTI is enabled.
+- Configured the MAC hardware to clear statistics registers on read and
+  accumulated the values in the software stats counter.
+- Removed some MAC statistics counters from the custom ethtool strings,
+  since they were already included in the standard set.
+- Link to v4: https://lore.kernel.org/r/20260609-adin1140-driver-v4-0-0753e28ee004@analog.com
 
-diff --git a/drivers/mfd/ls2k-bmc-core.c b/drivers/mfd/ls2k-bmc-core.c
-index f87224105b3720cca97dcef089dad63fe57bc8c2..7187b2dfddc3acfb9fdf3cb3b4675299928dd03a 100644
---- a/drivers/mfd/ls2k-bmc-core.c
-+++ b/drivers/mfd/ls2k-bmc-core.c
-@@ -26,6 +26,9 @@
- #include <linux/stop_machine.h>
- #include <linux/vt_kern.h>
- #include <linux/console.h>
-+#include <linux/gpio/consumer.h>
-+#include <linux/gpio/driver.h>
-+#include <linux/gpio.h>
- 
- /* LS2K BMC resources */
- #define LS2K_DISPLAY_RES_START		(SZ_16M + SZ_2M)
-@@ -81,18 +84,6 @@
- 
- #define PCI_REG_STRIDE			0x4
- 
--#define LS2K_BMC_RESET_GPIO		14
--#define LOONGSON_GPIO_REG_BASE		0x1FE00500
--#define LOONGSON_GPIO_REG_SIZE		0x18
--#define LOONGSON_GPIO_OEN		0x0
--#define LOONGSON_GPIO_FUNC		0x4
--#define LOONGSON_GPIO_INTPOL		0x10
--#define LOONGSON_GPIO_INTEN		0x14
--
--#define LOONGSON_IO_INT_BASE		16
--#define LS2K_BMC_RESET_GPIO_INT_VEC	(LS2K_BMC_RESET_GPIO % 8)
--#define LS2K_BMC_RESET_GPIO_GSI		(LOONGSON_IO_INT_BASE + LS2K_BMC_RESET_GPIO_INT_VEC)
--
- enum {
- 	LS2K_BMC_DISPLAY,
- 	LS2K_BMC_IPMI0,
-@@ -186,6 +177,7 @@ struct ls2k_bmc_ddata {
- 	struct work_struct bmc_reset_work;
- 	struct ls2k_bmc_pci_data bmc_pci_data;
- 	struct ls2k_bmc_bridge_pci_data bridge_pci_data;
-+	struct gpio_desc *reset_gpio;
- };
- 
- static bool ls2k_bmc_bar0_addr_is_set(struct pci_dev *pdev)
-@@ -334,6 +326,22 @@ static irqreturn_t ls2k_bmc_interrupt(int irq, void *arg)
- 	return IRQ_HANDLED;
- }
- 
-+static irqreturn_t ls2k_bmc_gpio_interrupt(int irq, void *arg)
-+{
-+	struct ls2k_bmc_ddata *ddata = arg;
-+
-+	int val = gpiod_get_raw_value(ddata->reset_gpio);
-+
-+	/*
-+	 * The GPIO is active low, so when the value is 0,
-+	 * it indicates a reset event.
-+	 */
-+	if (val == 0)
-+		return ls2k_bmc_interrupt(irq, arg);
-+
-+	return IRQ_NONE;
-+}
-+
- /*
-  * Saves the BMC parent device (LS7A) and its own PCI configuration space registers
-  * that need to be restored after BMC reset.
-@@ -375,6 +383,79 @@ static void ls2k_bmc_save_pci_data(struct pci_dev *pdev, struct ls2k_bmc_ddata *
- 	pci_read_config_dword(pdev, PCI_INTERRUPT_LINE, &ddata->bmc_pci_data.interrupt_line);
- }
- 
-+static int ls2k_bmc_gpiochip_find(struct gpio_chip *gc, const void *data)
-+{
-+	struct acpi_device *adev;
-+	struct list_head resource_list;
-+	struct resource_entry *rentry;
-+	struct fwnode_handle *fwnode = gc->fwnode ?: gc->parent ? gc->parent->fwnode : NULL;
-+	phys_addr_t start_addr = (phys_addr_t) data;
-+	int ret, found = 0;
-+
-+	if (!is_acpi_node(fwnode))
-+		goto out;
-+
-+	adev = to_acpi_device_node(fwnode);
-+	if (!adev)
-+		goto out;
-+
-+	INIT_LIST_HEAD(&resource_list);
-+
-+	ret = acpi_dev_get_memory_resources(adev, &resource_list);
-+	if (ret < 0)
-+		goto out;
-+	rentry = list_first_entry_or_null(&resource_list, struct resource_entry, node);
-+	if (!rentry)
-+		goto free_resource_list;
-+	if (rentry->res->start == start_addr)
-+		found = 1;
-+
-+free_resource_list:
-+	acpi_dev_free_resource_list(&resource_list);
-+out:
-+	return found;
-+}
-+
-+static struct gpio_desc *ls2k_bmc_find_gpio(struct ls2k_bmc_ddata *ddata)
-+{
-+	/*
-+	 * In conventional way, the GPIO should be obtained through ACPI or
-+	 * device tree. However, when the information is not available,
-+	 * we should find the GPIO according to the convention of the server
-+	 * boards with LS2K BMC, the gpio signal relelecting the reset event
-+	 * of the BMC should be connected to pin 14 of the GPIO input of
-+	 * the first CPU node. The address of that GPIO controller is fixed.
-+	 */
-+	static const phys_addr_t LOONGSON_GPIO_REG_BASE = 0x1FE00500;
-+	static const unsigned int LS2K_BMC_RESET_GPIO = 14;
-+	struct gpio_desc *desc;
-+	unsigned int legacy_gpio;
-+	int ret;
-+	struct gpio_device *gdev __free(gpio_device_put) = NULL;
-+
-+	dev_dbg(ddata->dev, "Searching for GPIO chip at address %pa\n", &LOONGSON_GPIO_REG_BASE);
-+
-+	gdev = gpio_device_find((void *)LOONGSON_GPIO_REG_BASE, ls2k_bmc_gpiochip_find);
-+
-+	if (!gdev) {
-+		dev_dbg(ddata->dev, "cannot find GPIO chip at address %pa, deferring\n",
-+			&LOONGSON_GPIO_REG_BASE);
-+		return ERR_PTR(-EPROBE_DEFER);
-+	}
-+
-+	desc = gpio_device_get_desc(gdev, LS2K_BMC_RESET_GPIO);
-+	if (IS_ERR(desc))
-+		return desc;
-+
-+	// XXX: might be better to use gpiod_request()
-+	legacy_gpio = desc_to_gpio(desc);
-+	ret = devm_gpio_request_one(ddata->dev, legacy_gpio, GPIOF_IN, dev_name(ddata->dev));
-+	if (ret < 0)
-+		return ERR_PTR(ret);
-+
-+	return gpio_to_desc(legacy_gpio);
-+}
-+
- static void ls2k_bmc_cancel_wq(void *data)
- {
- 	struct ls2k_bmc_ddata *ddata = data;
-@@ -384,8 +465,7 @@ static void ls2k_bmc_cancel_wq(void *data)
- static int ls2k_bmc_init(struct ls2k_bmc_ddata *ddata)
- {
- 	struct pci_dev *pdev = to_pci_dev(ddata->dev);
--	void __iomem *gpio_base;
--	int gpio_irq, ret, val;
-+	int gpio_irq, ret;
- 
- 	ls2k_bmc_save_pci_data(pdev, ddata);
- 
-@@ -400,44 +480,32 @@ static int ls2k_bmc_init(struct ls2k_bmc_ddata *ddata)
- 		return ret;
- 	}
- 
--	gpio_base = ioremap(LOONGSON_GPIO_REG_BASE, LOONGSON_GPIO_REG_SIZE);
--	if (!gpio_base)
--		return -ENOMEM;
--
--	/* Disable GPIO output */
--	val = readl(gpio_base + LOONGSON_GPIO_OEN);
--	writel(val | BIT(LS2K_BMC_RESET_GPIO), gpio_base + LOONGSON_GPIO_OEN);
--
--	/* Enable GPIO functionality */
--	val = readl(gpio_base + LOONGSON_GPIO_FUNC);
--	writel(val & ~BIT(LS2K_BMC_RESET_GPIO), gpio_base + LOONGSON_GPIO_FUNC);
--
--	/* Set GPIO interrupts to low-level active */
--	val = readl(gpio_base + LOONGSON_GPIO_INTPOL);
--	writel(val & ~BIT(LS2K_BMC_RESET_GPIO), gpio_base + LOONGSON_GPIO_INTPOL);
--
--	/* Enable GPIO interrupts */
--	val = readl(gpio_base + LOONGSON_GPIO_INTEN);
--	writel(val | BIT(LS2K_BMC_RESET_GPIO), gpio_base + LOONGSON_GPIO_INTEN);
-+	ddata->reset_gpio = devm_gpiod_get_index_optional(&pdev->dev, NULL, 0, GPIOD_IN);
-+	if (IS_ERR(ddata->reset_gpio)) {
-+		ret = PTR_ERR(ddata->reset_gpio);
-+		ddata->reset_gpio = NULL;
-+		return dev_err_probe(ddata->dev, ret, "Failed to get reset GPIO\n");
-+	}
-+	if (ddata->reset_gpio == NULL) {
-+		ddata->reset_gpio = ls2k_bmc_find_gpio(ddata);
-+		if (IS_ERR(ddata->reset_gpio)) {
-+			ret = PTR_ERR(ddata->reset_gpio);
-+			ddata->reset_gpio = NULL;
-+			return dev_err_probe(ddata->dev, ret, "Failed to find reset GPIO\n");
-+		}
-+	}
- 
--	iounmap(gpio_base);
-+	gpio_irq = gpiod_to_irq(ddata->reset_gpio);
- 
--	/*
--	 * Since gpio_chip->to_irq is not implemented in the Loongson-3 GPIO driver,
--	 * acpi_register_gsi() is used to obtain the GPIO IRQ. The GPIO interrupt is a
--	 * watchdog interrupt that is triggered when the BMC resets.
--	 */
--	gpio_irq = acpi_register_gsi(NULL, LS2K_BMC_RESET_GPIO_GSI, ACPI_EDGE_SENSITIVE,
--				     ACPI_ACTIVE_LOW);
- 	if (gpio_irq < 0)
--		return gpio_irq;
-+		return dev_err_probe(ddata->dev, gpio_irq, "Failed to get GPIO IRQ\n");
- 
--	ret = devm_request_irq(ddata->dev, gpio_irq, ls2k_bmc_interrupt,
--			       IRQF_SHARED | IRQF_TRIGGER_FALLING, "ls2kbmc gpio", ddata);
--	if (ret)
--		dev_err(ddata->dev, "Failed to request LS2KBMC GPIO IRQ %d.\n", gpio_irq);
-+	ret = devm_request_irq(&pdev->dev, gpio_irq, ls2k_bmc_gpio_interrupt,
-+			       IRQF_SHARED | IRQF_TRIGGER_FALLING, "ls2kbmc reset", ddata);
-+
-+	if (ret != 0)
-+		return dev_err_probe(ddata->dev, ret, "Failed to request GPIO IRQ %d.\n", gpio_irq);
- 
--	acpi_unregister_gsi(LS2K_BMC_RESET_GPIO_GSI);
- 	return ret;
- }
- 
+Changes in v4:
+- Renamed the dt bindings file after the adi,ad3306 compatible.
+- Renamed a few register address macros to match the OA TC6 standard and
+  the ADIN1140 reference manual.
+- Link to v3: https://lore.kernel.org/r/20260604-adin1140-driver-v3-0-5debdb3173c4@analog.com
 
+Changes in v3:
+- Added adi,ad3306 as a fallback compatible in the DT schema.
+- Keep the current spi_device and net_device parameters for
+  oa_tc6_init() and add a new struct parameter for passing the quirk
+  flags, insted of changing the function to take a single config
+  parameter.
+- Add the oa_tc6_write_register_mms() and oa_tc6_read_register_mms()
+  functions instead of defining a new macro for MMS and register address
+  formatting.
+- Split the OA TC6 register address macro exports patch into two
+  different commits (export + rename).
+- Use the devres API for mii_bus and net_device management in the
+  ADIN1140 driver.
+- Fix a bug related to the destination MAC filter mask in the ADIN1140
+  driver.
+- Link to v2: https://lore.kernel.org/r/20260527-adin1140-driver-v2-0-37e5c8d4e0a0@analog.com
+
+Changes in v2:
+- Add the OA_TC6_BROKEN_PHY quirk flag to the oa_tc6 framework in order
+  to allow ethernet drivers to manage their own mii_bus struct and PHY.
+- Move the OA TC6 standard register definitions in the oa_tc6.h header
+  so other drivers can use them. Do the same for the C45 access
+  functions
+- Add the genphy_read_mmd_c45 and genphy_write_mmd_c45 functions to
+  genphy, which allow drivers that have been discovered over C22 to make
+  direct C45 operations, without using the 0xD and 0xE register. The
+  change was implemented based on the suggestion in this thread:
+  https://lore.kernel.org/all/CY8PR02MB9249CDA8F2C560FDD0F662D883382@CY8PR02MB9249.namprd02.prod.outlook.com/
+- Link to v1: https://lore.kernel.org/r/20260503-adin1140-driver-v1-0-dd043cdd88f0@analog.com
+
+---
+Ciprian Regus (13):
+      dt-bindings: net: Add ADIN1140
+      net: ethernet: oa_tc6: Handle the OA TC6 SPI protected mode
+      net: ethernet: oa_tc6: add OA_TC6_BROKEN_PHY quirk flag
+      net: ethernet: oa_tc6: Export the C45 access functions
+      net: ethernet: oa_tc6: Export standard defined registers
+      net: ethernet: oa_tc6: Add the OA_TC6_ prefix to standard registers
+      net: ethernet: oa_tc6: Add read_mms/write_mms register access functions
+      net: ethernet: oa_tc6: Use the read_mms/write_mms functions for C45
+      net: ethernet: oa_tc6: Add new register address defines
+      net: phy: add generic helpers for direct C45 MMD access
+      net: phy: microchip-t1s: use generic C45 MMD access helpers
+      net: phy: Add support for the ADIN1140 PHY
+      net: ethernet: adi: Add a driver for the ADIN1140 MACPHY
+
+ .../devicetree/bindings/net/adi,ad3306.yaml        |  71 ++
+ Documentation/networking/oa-tc6-framework.rst      |   3 +-
+ MAINTAINERS                                        |  15 +
+ drivers/net/ethernet/adi/Kconfig                   |  12 +
+ drivers/net/ethernet/adi/Makefile                  |   1 +
+ drivers/net/ethernet/adi/adin1140.c                | 791 +++++++++++++++++++++
+ drivers/net/ethernet/microchip/lan865x/lan865x.c   |   2 +-
+ drivers/net/ethernet/oa_tc6.c                      | 263 ++++---
+ drivers/net/phy/Kconfig                            |   6 +
+ drivers/net/phy/Makefile                           |   1 +
+ drivers/net/phy/adin1140-phy.c                     |  72 ++
+ drivers/net/phy/microchip_t1s.c                    |  32 +-
+ drivers/net/phy/phy_device.c                       |  25 +
+ include/linux/oa_tc6.h                             |  73 +-
+ include/linux/phy.h                                |   3 +
+ 15 files changed, 1240 insertions(+), 130 deletions(-)
+---
+base-commit: 538d89fd914610852a6fb20b823ba70566153d46
+change-id: 20260429-adin1140-driver-93ae0d376318
+
+Best regards,
 -- 
-2.49.0
+Ciprian Regus <ciprian.regus@analog.com>
 
