@@ -1,11 +1,11 @@
 From: Ciprian Regus <ciprian.regus@analog.com>
-Date: Wed, 08 Jul 2026 01:33:30 +0300
-Subject: [PATCH net-next v5 02/13] net: ethernet: oa_tc6: Handle the OA TC6
- SPI protected mode
+Date: Wed, 08 Jul 2026 01:33:31 +0300
+Subject: [PATCH net-next v5 03/13] net: ethernet: oa_tc6: add
+ OA_TC6_BROKEN_PHY quirk flag
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260708-adin1140-driver-v5-2-4aca7b51a58b@analog.com>
+Message-Id: <20260708-adin1140-driver-v5-3-4aca7b51a58b@analog.com>
 References: <20260708-adin1140-driver-v5-0-4aca7b51a58b@analog.com>
 In-Reply-To: <20260708-adin1140-driver-v5-0-4aca7b51a58b@analog.com>
 To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
@@ -22,272 +22,152 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-doc@vger.kernel.org, devicetree@vger.kernel.org, 
  Ciprian Regus <ciprian.regus@analog.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783463678; l=8803;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783463678; l=5163;
  i=ciprian.regus@analog.com; s=20260330; h=from:subject:message-id;
- bh=SM0rmSB5zit7aaPvFAKTNfnnH6p7eTfSSvlehEnKdhc=;
- b=ZoG2gRlmpu8OU3R0Hqm67ZbN7WXJXnVElw2uZs7iPRe66q3P3pjF+UPekuEFnopeasjeAOzhb
- BF4eCYv177tB+BygLaRrj+ehPkiQ42K8Jzu6Q1qalUovjPfDXtNwVyv
+ bh=QpAiZBACFI2kW4Gp87tAl5cBMGywT0kMsfk7UIJvwmQ=;
+ b=xx821xG6z4+MFaTdZgjm3yd1mRaW3y4TAPk9hGk3Hc+j88se/u2JW7a2j36Tp3JYVwZEjS/ZE
+ valz3zDebY2DwSpTXMx9SvJ1gEygiZG2iuAICN0my7Jkpvx5C/QROR7
 X-Developer-Key: i=ciprian.regus@analog.com; a=ed25519;
  pk=8WoNhI0kQcQUl8YqJO5ZevROYk9HP8lOIeIgIYgjfbc=
 X-Endpoint-Received: by B4 Relay for ciprian.regus@analog.com/20260330 with auth_id=703
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Implement the OA TC6 standard defined protected mode for control (register
-access) transactions. In addition to the current register access formats
-the oa_tc6 driver handles, 1's complement values of the data field
-are included (by both the host and the MACPHY) in the SPI transfer frames.
-This feature acts as an integrity check.
+Some MAC-PHY devices need custom MDIO bus access functions to work
+around hardware issues. Add the OA_TC6_BROKEN_PHY quirk flag so drivers
+can opt in to skip oa_tc6's internal PHY init and manage the PHY
+themselves. When the flag is set, oa_tc6 skips MDIO bus registration,
+PHY discovery and PHY connection, leaving these to the driver.
 
-Control write transactions look like this:
-
-          |<- 32 bits ->|<--- data_size --->|<- 32 bits ->|
-    MOSI: | ctrl header | reg write data    | ignored     |
-    MISO: | (discard)   | echoed ctrl hdr   | echoed data |
-
-    data_size (LEN = number of registers to read in a sequence):
-      Unprotected: 32 x (LEN + 1) bits
-      Protected:   2 x 32 x (LEN + 1) bits
-
-Control read transaction:
-
-          |<- 32 bits ->|<--- 32 bits --> |<- data_size ->|
-    MOSI: | ctrl header | ignored ...                     |
-    MISO: | (discard)   | echoed ctrl hdr | reg read data |
-
-    data_size (LEN = number of registers to read in a sequence):
-      Unprotected: 32 x (LEN + 1) bits
-      Protected:   2 x 32 x (LEN + 1) bits
-
-Register data format ("reg write data" and "reg read data"):
-
-    Unprotected:
-      | W1 (normal) | W2 (normal) | ... | Wx (normal) |
-
-    Protected:
-    | W1 (normal) | W1 (complement) | ... | Wx (normal) | Wx (complement)|
-
-The protected mode state can be read from the bit 5 of CONFIG0 (0x4)
-register, and this setting is usually only configured during the
-MACPHY's reset (depending on the device it can be done by setting the
-state of a pin). We can read the protected mode configuration before any
-other register access and since the SPI transfer is initially sized for an
-unprotected read, the MACPHY's complement words are never clocked out
-and no checking is required. The data transactions (Ethernet frames)
-remain unchanged.
+Drivers that do not set the flag retain the existing behavior. Update
+lan865x and the framework documentation accordingly.
 
 Signed-off-by: Ciprian Regus <ciprian.regus@analog.com>
 
 ---
-v5 changelog:
+v5:
  - no change
 v4 changelog:
  - no change
 v3 changelog:
- - no change
+ - add the oa_tc6_quirks struct to the oa_tc6_init() parameters (along
+   the spi_device and net_device), instead of adding everything in a
+   single struct.
 v2 changelog:
- - Updated OA_TC6_CTRL_SPI_BUF_SIZE to always alloc the control
-   transaction buffer size required by the protected mode, instead of
-   calling krealloc if the PROTE bit is set.
- - Formatting to fit the 80 character column limit.
+ - Added the quirk flag field in the oa_tc6_config struct and a first
+   value entry (OA_TC6_BROKEN_PHY) instead of the mii_bus struct.
 ---
- drivers/net/ethernet/oa_tc6.c | 93 +++++++++++++++++++++++++++++++++++--------
- 1 file changed, 76 insertions(+), 17 deletions(-)
+ Documentation/networking/oa-tc6-framework.rst    |  3 ++-
+ drivers/net/ethernet/microchip/lan865x/lan865x.c |  2 +-
+ drivers/net/ethernet/oa_tc6.c                    | 14 +++++++++++++-
+ include/linux/oa_tc6.h                           | 11 ++++++++++-
+ 4 files changed, 26 insertions(+), 4 deletions(-)
 
+diff --git a/Documentation/networking/oa-tc6-framework.rst b/Documentation/networking/oa-tc6-framework.rst
+index fe2aabde923a..013824078cea 100644
+--- a/Documentation/networking/oa-tc6-framework.rst
++++ b/Documentation/networking/oa-tc6-framework.rst
+@@ -454,7 +454,8 @@ Device drivers API
+ The include/linux/oa_tc6.h defines the following functions:
+ 
+ .. c:function:: struct oa_tc6 *oa_tc6_init(struct spi_device *spi, \
+-                                           struct net_device *netdev)
++                                           struct net_device *netdev, \
++                                           struct oa_tc6_quirks *quirks)
+ 
+ Initialize OA TC6 lib.
+ 
+diff --git a/drivers/net/ethernet/microchip/lan865x/lan865x.c b/drivers/net/ethernet/microchip/lan865x/lan865x.c
+index 0277d9737369..26a2761332a5 100644
+--- a/drivers/net/ethernet/microchip/lan865x/lan865x.c
++++ b/drivers/net/ethernet/microchip/lan865x/lan865x.c
+@@ -346,7 +346,7 @@ static int lan865x_probe(struct spi_device *spi)
+ 	spi_set_drvdata(spi, priv);
+ 	INIT_WORK(&priv->multicast_work, lan865x_multicast_work_handler);
+ 
+-	priv->tc6 = oa_tc6_init(spi, netdev);
++	priv->tc6 = oa_tc6_init(spi, netdev, NULL);
+ 	if (!priv->tc6) {
+ 		ret = -ENODEV;
+ 		goto free_netdev;
 diff --git a/drivers/net/ethernet/oa_tc6.c b/drivers/net/ethernet/oa_tc6.c
-index 0727d53345a3..8b9655883496 100644
+index 8b9655883496..fa1359224535 100644
 --- a/drivers/net/ethernet/oa_tc6.c
 +++ b/drivers/net/ethernet/oa_tc6.c
-@@ -25,6 +25,7 @@
- #define OA_TC6_REG_CONFIG0			0x0004
- #define CONFIG0_SYNC				BIT(15)
- #define CONFIG0_ZARFE_ENABLE			BIT(12)
-+#define CONFIG0_PROTE				BIT(5)
- 
- /* Status Register #0 */
- #define OA_TC6_REG_STATUS0			0x0008
-@@ -90,14 +91,17 @@
- #define OA_TC6_PHY_C45_AUTO_NEG_MMS5		5	/* MMD 7 */
- #define OA_TC6_PHY_C45_POWER_UNIT_MMS6		6	/* MMD 13 */
- 
-+#define OA_TC6_CTRL_PROT_REPLY_SIZE		4
- #define OA_TC6_CTRL_HEADER_SIZE			4
- #define OA_TC6_CTRL_REG_VALUE_SIZE		4
- #define OA_TC6_CTRL_IGNORED_SIZE		4
- #define OA_TC6_CTRL_MAX_REGISTERS		128
--#define OA_TC6_CTRL_SPI_BUF_SIZE		(OA_TC6_CTRL_HEADER_SIZE +\
--						(OA_TC6_CTRL_MAX_REGISTERS *\
--						OA_TC6_CTRL_REG_VALUE_SIZE) +\
--						OA_TC6_CTRL_IGNORED_SIZE)
-+#define OA_TC6_CTRL_SPI_BUF_SIZE	(OA_TC6_CTRL_HEADER_SIZE +\
-+					(OA_TC6_CTRL_MAX_REGISTERS *\
-+					(OA_TC6_CTRL_REG_VALUE_SIZE +\
-+					OA_TC6_CTRL_PROT_REPLY_SIZE)) +\
-+					OA_TC6_CTRL_IGNORED_SIZE)
-+
- #define OA_TC6_CHUNK_PAYLOAD_SIZE		64
- #define OA_TC6_DATA_HEADER_SIZE			4
- #define OA_TC6_CHUNK_SIZE			(OA_TC6_DATA_HEADER_SIZE +\
-@@ -130,6 +134,7 @@ struct oa_tc6 {
- 	bool rx_buf_overflow;
+@@ -135,6 +135,7 @@ struct oa_tc6 {
  	bool int_flag;
  	bool disable_traffic;
-+	bool prot_ctrl;
+ 	bool prot_ctrl;
++	enum oa_tc6_quirk_flag quirk_flags;
  };
  
  enum oa_tc6_header_type {
-@@ -213,25 +218,36 @@ static void oa_tc6_update_ctrl_write_data(struct oa_tc6 *tc6, u32 value[],
+@@ -581,6 +582,9 @@ static int oa_tc6_phy_init(struct oa_tc6 *tc6)
  {
- 	__be32 *tx_buf = tc6->spi_ctrl_tx_buf + OA_TC6_CTRL_HEADER_SIZE;
- 
--	for (int i = 0; i < length; i++)
-+	for (int i = 0; i < length; i++) {
- 		*tx_buf++ = cpu_to_be32(value[i]);
-+		if (tc6->prot_ctrl)
-+			*tx_buf++ = cpu_to_be32(~value[i]);
-+	}
- }
- 
--static u16 oa_tc6_calculate_ctrl_buf_size(u8 length)
-+static u16 oa_tc6_calculate_ctrl_buf_size(u8 length, bool ctrl_prot)
- {
-+	u32 reply_size = OA_TC6_CTRL_REG_VALUE_SIZE;
-+
-+	if (ctrl_prot)
-+		reply_size += OA_TC6_CTRL_PROT_REPLY_SIZE;
-+
- 	/* Control command consists 4 bytes header + 4 bytes register value for
--	 * each register + 4 bytes ignored value.
-+	 * each register (+ 4 bytes for the register value complement in case
-+	 * protected mode is used) + 4 bytes ignored value.
- 	 */
--	return OA_TC6_CTRL_HEADER_SIZE + OA_TC6_CTRL_REG_VALUE_SIZE * length +
-+	return OA_TC6_CTRL_HEADER_SIZE + reply_size * length +
- 	       OA_TC6_CTRL_IGNORED_SIZE;
- }
- 
- static void oa_tc6_prepare_ctrl_spi_buf(struct oa_tc6 *tc6, u32 address,
- 					u32 value[], u8 length,
--					enum oa_tc6_register_op reg_op)
-+					enum oa_tc6_register_op reg_op,
-+					u16 buf_size)
- {
- 	__be32 *tx_buf = tc6->spi_ctrl_tx_buf;
- 
-+	memset(tx_buf, 0, buf_size);
- 	*tx_buf = oa_tc6_prepare_ctrl_header(address, length, reg_op);
- 
- 	if (reg_op == OA_TC6_CTRL_REG_WRITE)
-@@ -254,10 +270,12 @@ static int oa_tc6_check_ctrl_write_reply(struct oa_tc6 *tc6, u8 size)
- 	return 0;
- }
- 
--static int oa_tc6_check_ctrl_read_reply(struct oa_tc6 *tc6, u8 size)
-+static int oa_tc6_check_ctrl_read_reply(struct oa_tc6 *tc6, u8 length)
- {
--	u32 *rx_buf = tc6->spi_ctrl_rx_buf + OA_TC6_CTRL_IGNORED_SIZE;
--	u32 *tx_buf = tc6->spi_ctrl_tx_buf;
-+	__be32 *rx_buf = tc6->spi_ctrl_rx_buf + OA_TC6_CTRL_IGNORED_SIZE;
-+	__be32 *tx_buf = tc6->spi_ctrl_tx_buf;
-+	u32 complement;
-+	u32 reply;
- 
- 	/* The echoed control read header must match with the one that was
- 	 * transmitted.
-@@ -265,6 +283,20 @@ static int oa_tc6_check_ctrl_read_reply(struct oa_tc6 *tc6, u8 size)
- 	if (*tx_buf != *rx_buf)
- 		return -EPROTO;
- 
-+	if (tc6->prot_ctrl) {
-+		/* Skip past the echoed header to the value/complement pairs */
-+		rx_buf += 1;
-+		for (int i = 0; i < length; i++) {
-+			reply = be32_to_cpu(rx_buf[0]);
-+			complement = be32_to_cpu(rx_buf[1]);
-+
-+			if (complement != ~reply)
-+				return -EPROTO;
-+
-+			rx_buf += 2;
-+		}
-+	}
-+
- 	return 0;
- }
- 
-@@ -274,8 +306,13 @@ static void oa_tc6_copy_ctrl_read_data(struct oa_tc6 *tc6, u32 value[],
- 	__be32 *rx_buf = tc6->spi_ctrl_rx_buf + OA_TC6_CTRL_IGNORED_SIZE +
- 			 OA_TC6_CTRL_HEADER_SIZE;
- 
--	for (int i = 0; i < length; i++)
-+	for (int i = 0; i < length; i++) {
- 		value[i] = be32_to_cpu(*rx_buf++);
-+
-+		/* skip complement word */
-+		if (tc6->prot_ctrl)
-+			rx_buf++;
-+	}
- }
- 
- static int oa_tc6_perform_ctrl(struct oa_tc6 *tc6, u32 address, u32 value[],
-@@ -284,10 +321,10 @@ static int oa_tc6_perform_ctrl(struct oa_tc6 *tc6, u32 address, u32 value[],
- 	u16 size;
  	int ret;
  
--	/* Prepare control command and copy to SPI control buffer */
--	oa_tc6_prepare_ctrl_spi_buf(tc6, address, value, length, reg_op);
-+	size = oa_tc6_calculate_ctrl_buf_size(length, tc6->prot_ctrl);
++	if (tc6->quirk_flags & OA_TC6_BROKEN_PHY)
++		return 0;
++
+ 	ret = oa_tc6_check_phy_reg_direct_access_capability(tc6);
+ 	if (ret) {
+ 		netdev_err(tc6->netdev,
+@@ -617,6 +621,9 @@ static int oa_tc6_phy_init(struct oa_tc6 *tc6)
  
--	size = oa_tc6_calculate_ctrl_buf_size(length);
-+	/* Prepare control command and copy to SPI control buffer */
-+	oa_tc6_prepare_ctrl_spi_buf(tc6, address, value, length, reg_op, size);
- 
- 	/* Perform SPI transfer */
- 	ret = oa_tc6_spi_transfer(tc6, OA_TC6_CTRL_HEADER, size);
-@@ -302,7 +339,7 @@ static int oa_tc6_perform_ctrl(struct oa_tc6 *tc6, u32 address, u32 value[],
- 		return oa_tc6_check_ctrl_write_reply(tc6, size);
- 
- 	/* Check echoed/received control read command reply for errors */
--	ret = oa_tc6_check_ctrl_read_reply(tc6, size);
-+	ret = oa_tc6_check_ctrl_read_reply(tc6, length);
- 	if (ret)
- 		return ret;
- 
-@@ -1272,6 +1309,20 @@ netdev_tx_t oa_tc6_start_xmit(struct oa_tc6 *tc6, struct sk_buff *skb)
+ static void oa_tc6_phy_exit(struct oa_tc6 *tc6)
+ {
++	if (tc6->quirk_flags & OA_TC6_BROKEN_PHY)
++		return;
++
+ 	phy_disconnect(tc6->phydev);
+ 	oa_tc6_mdiobus_unregister(tc6);
  }
- EXPORT_SYMBOL_GPL(oa_tc6_start_xmit);
- 
-+static int oa_tc6_check_ctrl_protection(struct oa_tc6 *tc6)
-+{
-+	u32 regval;
-+	int ret;
-+
-+	ret = oa_tc6_read_register(tc6, OA_TC6_REG_CONFIG0, &regval);
-+	if (ret)
-+		return ret;
-+
-+	tc6->prot_ctrl = FIELD_GET(CONFIG0_PROTE, regval);
-+
-+	return 0;
-+}
-+
- /**
+@@ -1327,11 +1334,13 @@ static int oa_tc6_check_ctrl_protection(struct oa_tc6 *tc6)
   * oa_tc6_init - allocates and initializes oa_tc6 structure.
   * @spi: device with which data will be exchanged.
-@@ -1324,6 +1375,14 @@ struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev)
- 	if (!tc6->spi_data_rx_buf)
- 		return NULL;
+  * @netdev: network device interface structure.
++ * @quirks: device specific modifiers for the OA TC6 protocol.
+  *
+  * Return: pointer reference to the oa_tc6 structure if the MAC-PHY
+  * initialization is successful otherwise NULL.
+  */
+-struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev)
++struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev,
++			   struct oa_tc6_quirks *quirks)
+ {
+ 	struct oa_tc6 *tc6;
+ 	int ret;
+@@ -1346,6 +1355,9 @@ struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev)
+ 	mutex_init(&tc6->spi_ctrl_lock);
+ 	spin_lock_init(&tc6->tx_skb_lock);
  
-+	/* Check the PROTE bit status so that we can reset the device */
-+	ret = oa_tc6_check_ctrl_protection(tc6);
-+	if (ret) {
-+		dev_err(&tc6->spi->dev,
-+			"Failed to check the protection mode: %d\n", ret);
-+		return NULL;
-+	}
++	if (quirks)
++		tc6->quirk_flags = quirks->quirk_flags;
 +
- 	ret = oa_tc6_sw_reset_macphy(tc6);
- 	if (ret) {
- 		dev_err(&tc6->spi->dev,
+ 	/* Set the SPI controller to pump at realtime priority */
+ 	tc6->spi->rt = true;
+ 	if (spi_setup(tc6->spi) < 0)
+diff --git a/include/linux/oa_tc6.h b/include/linux/oa_tc6.h
+index 15f58e3c56c7..62e3d89f80ed 100644
+--- a/include/linux/oa_tc6.h
++++ b/include/linux/oa_tc6.h
+@@ -12,7 +12,16 @@
+ 
+ struct oa_tc6;
+ 
+-struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev);
++enum oa_tc6_quirk_flag {
++	OA_TC6_BROKEN_PHY = BIT(0),
++};
++
++struct oa_tc6_quirks {
++	enum oa_tc6_quirk_flag quirk_flags;
++};
++
++struct oa_tc6 *oa_tc6_init(struct spi_device *spi, struct net_device *netdev,
++			   struct oa_tc6_quirks *quirks);
+ void oa_tc6_exit(struct oa_tc6 *tc6);
+ int oa_tc6_write_register(struct oa_tc6 *tc6, u32 address, u32 value);
+ int oa_tc6_write_registers(struct oa_tc6 *tc6, u32 address, u32 value[],
 
 -- 
 2.43.0
