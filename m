@@ -1,93 +1,63 @@
-From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Wed, 08 Jul 2026 17:21:20 +0200
-Subject: [PATCH v7 10/10] can: bcm: fix data race on rx_stamp/rx_ifindex in
- bcm_rx_handler()
+From: Mattia Meleleo <mattia.meleleo@coralogix.com>
+Subject: [PATCH bpf v3 0/2] bpf, sockmap: Fix FIONREAD for sockets without
+ a verdict program
+Date: Wed, 08 Jul 2026 18:54:59 +0200
+Message-Id: <20260708-fionread-no-verdict-v3-0-b4ee31b3af53@coralogix.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260708-bcm_fixes-v7-10-c78896b342e4@hartkopp.net>
-References: <20260708-bcm_fixes-v7-0-c78896b342e4@hartkopp.net>
-In-Reply-To: <20260708-bcm_fixes-v7-0-c78896b342e4@hartkopp.net>
-To: linux-can@vger.kernel.org
-Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
- Marc Kleine-Budde <mkl@pengutronix.de>, sashiko-bot@kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0K6dgwUpNSV9zAuynQKNUpJiw2Gc
+ HcBN8YYl3/y5r2JBfKWAjsmE/MUbbCuW0a+Sxi2qmsIrF424ykvU5EKMAvgSWnoHETy2uIAqjB
+ VKYVCaSRbPntPxo6b9czq3rDL+xge9ZVwWH0r1towOP/c2jHb4L+ZmEEGSLJQgucHQXhC59XNN
+ Xbco7tvlcg/PdVvD4cUuNSay7zkGYpvzzzPLyVrRqkZAQAA
+X-Change-ID: 20260707-fionread-no-verdict-a4f8697ac9f9
+To: bpf@vger.kernel.org
+Cc: netdev@vger.kernel.org, John Fastabend <john.fastabend@gmail.com>, 
+ Jakub Sitnicki <jakub@cloudflare.com>, 
+ Jiayuan Chen <jiayuan.chen@linux.dev>, 
+ Kumar Kartikeya Dwivedi <memxor@gmail.com>, 
+ Emil Tsalapatis <emil@etsalapatis.com>, 
+ Mattia Meleleo <mattia.meleleo@coralogix.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783524080; l=2476;
- i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=sgVH96QIfOXVRa0hhaKMBTVl/5GH1ShINKeQ7Z6cI1o=;
- b=5JpWaAM+QXFXmNB6/Q1/BaLPzOyDPJkqFxl5gx2GTH2CA6yQzLJ7oV47n2OZI/Fft1CXNl8zy
- /HXhuxCuPyFBbzAv7mC/3tPBdKkTodzp51YW9YVb2GNVEL1fMv7wEyU
-X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
- pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
-X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783529717; l=1347;
+ i=mattia.meleleo@coralogix.com; s=20260707; h=from:subject:message-id;
+ bh=E597jrkyamse8scXKS+eJA6HFU7y85qrwCtLMoF2A+E=;
+ b=0iyEGHE6MMl1uTga9/nSgQVDD2IvFs7va7vLyFLAhTkzB1duqMtZhZW6OGN5Axe7MNJiR1OnJ
+ zsBC2BRmcNSDURwUIft6fxR3Jo0AhDyQ40dZ4TIJLHIXbVtfLgppgAF
+X-Developer-Key: i=mattia.meleleo@coralogix.com; a=ed25519;
+ pk=cs1zLoe3YDm4bJ7bfbPaZH0lHnd871JyJLiSh2eEzLs=
+X-Endpoint-Received: by B4 Relay for mattia.meleleo@coralogix.com/20260707 with auth_id=857
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For an rx op subscribed on all interfaces (ifindex == 0), the same op
-is registered once in the shared per-netns wildcard filter list, so
-bcm_rx_handler() can run concurrently on different CPUs for frames
-arriving on different net devices.
+Sockets added to a sockmap/sockhash with no stream/skb verdict program
+attached answer FIONREAD with 0 even when unread data is pending in
+sk_receive_queue. Fix tcp_bpf_ioctl() to account for the receive queue
+in that case, and add a selftest.
 
-op->rx_stamp and op->rx_ifindex were written before bcm_rx_update_lock was
-taken, allowing concurrent writers to race each other - including a torn
-store of the 64-bit rx_stamp on 32-bit platforms.
+Changes in v3:
+- Remove unused sk_psock_msg_inq()
+- Link to v2: https://patch.msgid.link/20260708-fionread-no-verdict-v2-0-29dd293621c7@coralogix.com
 
-Beyond a torn store bcm_send_to_user() must report the timestamp/ifindex
-of the very same frame whose content it is delivering. So the assignment
-is placed in the same unbroken bcm_rx_update_lock section as the content
-comparison.
+Changes in v2:
+- Split the fix and the selftest into separate patches
+- Use READ_ONCE() to read the verdict program pointers
+- Link to v1: https://patch.msgid.link/20260707-fionread-no-verdict-v1-1-ce94a72357ec@coralogix.com
 
-As a side effect, the RTR-request frame feature (which never reach
-bcm_send_to_user()) no longer updates rx_stamp/rx_ifindex, since only
-the notification path needs them.
-
-Fixes: ffd980f976e7 ("[CAN]: Add broadcast manager (bcm) protocol")
-Reported-by: sashiko-bot@kernel.org
-Link: https://lore.kernel.org/linux-can/20260707145135.5BC831F00A3A@smtp.kernel.org/
-Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+Signed-off-by: Mattia Meleleo <mattia.meleleo@coralogix.com>
 ---
- net/can/bcm.c | 13 ++++++++-----
- 1 file changed, 8 insertions(+), 5 deletions(-)
+Mattia Meleleo (2):
+      bpf, sockmap: Account for receive queue in FIONREAD without a verdict program
+      selftests/bpf: Test FIONREAD on a sockmap socket without a verdict program
 
-diff --git a/net/can/bcm.c b/net/can/bcm.c
-index 9d0193170808..5591a0aed152 100644
---- a/net/can/bcm.c
-+++ b/net/can/bcm.c
-@@ -768,15 +768,10 @@ static void bcm_rx_handler(struct sk_buff *skb, void *data)
- 	}
- 
- 	/* disable timeout */
- 	hrtimer_cancel(&op->timer);
- 
--	/* save rx timestamp */
--	op->rx_stamp = skb->tstamp;
--	/* save originator for recvfrom() */
--	op->rx_ifindex = skb->dev->ifindex;
--
- 	/* snapshot RTR content under lock: op->flags/op->frames may be
- 	 * updated concurrently by bcm_rx_setup().
- 	 */
- 	spin_lock_bh(&op->bcm_rx_update_lock);
- 
-@@ -803,10 +798,18 @@ static void bcm_rx_handler(struct sk_buff *skb, void *data)
- 			traffic_flags |= RX_OWN;
- 	}
- 
- 	spin_lock_bh(&op->bcm_rx_update_lock);
- 
-+	/* save rx timestamp and originator for recvfrom() under lock.
-+	 * For an op subscribed on all interfaces (ifindex == 0)
-+	 * bcm_rx_handler() can run concurrently on different CPUs so
-+	 * the CAN content and the meta data must be bundled correctly.
-+	 */
-+	op->rx_stamp = skb->tstamp;
-+	op->rx_ifindex = skb->dev->ifindex;
-+
- 	if (op->flags & RX_FILTER_ID) {
- 		/* the easiest case */
- 		bcm_rx_update_and_send(op, op->last_frames, rxframe,
- 				       traffic_flags);
- 		goto rx_starttimer;
+ include/linux/skmsg.h                              | 14 --------
+ net/ipv4/tcp_bpf.c                                 | 17 +++++++++-
+ .../selftests/bpf/prog_tests/sockmap_basic.c       | 39 ++++++++++++++++++++++
+ 3 files changed, 55 insertions(+), 15 deletions(-)
+---
+base-commit: d2c9a99135da931377240942d44f3dea104cedb8
+change-id: 20260707-fionread-no-verdict-a4f8697ac9f9
 
--- 
-2.53.0
+Best regards,
+--  
+Mattia Meleleo <mattia.meleleo@coralogix.com>
 
