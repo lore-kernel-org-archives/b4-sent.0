@@ -1,11 +1,11 @@
 From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
-Date: Wed, 08 Jul 2026 10:12:32 -0700
-Subject: [PATCH net-next v7 02/15] Documentation: networking: Add timestamp
- related APIs to OA TC6 framework
+Date: Wed, 08 Jul 2026 10:12:33 -0700
+Subject: [PATCH net-next v7 03/15] net: phy: Helper to read and write
+ through C45 without lock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260708-s2500-mac-phy-support-v7-2-478c877aa1a9@onsemi.com>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260708-s2500-mac-phy-support-v7-3-478c877aa1a9@onsemi.com>
 References: <20260708-s2500-mac-phy-support-v7-0-478c877aa1a9@onsemi.com>
 In-Reply-To: <20260708-s2500-mac-phy-support-v7-0-478c877aa1a9@onsemi.com>
 To: Andrew Lunn <andrew@lunn.ch>, 
@@ -26,22 +26,21 @@ Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
  Jerry Ray <jerry.ray@microchip.com>, 
  Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783530757; l=5434;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783530757; l=3783;
  i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
- bh=H5GeLlyjiawpJaJt1aTxsPM7HAFhY+Lxpr01l0nosNM=;
- b=RE9KKP7qLhTvHgdplYk2gh/E4Dq9crNz7jF6iQCJEg2KLtK4Sj3jZqakFn6lHBx266n+9XXYG
- ltjvV1Mc6n3BKdF6lA2rvrU3sRS1oNOkAY9UUSJ5IGgyZBirex4LNHr
+ bh=LI5pKSoF0QdeqOjosWOREP4o7fCPJjwFfpoSB0CTU+A=;
+ b=iZSU8W854GORsDfChsC+CYZ+11t9A1hL2VvMu7mHRji9n7cSS8IcJtl4mydfzJhNwyi+xBoPz
+ MeY2wkjjAT/BVPxms94qK93J1mp9bDOwIUDcncYlcM35BH6bj/z7/76
 X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
  pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
 X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Added new APIs to support hardware timestamp feature as defined in
-OPEN Alliance 10BASE-T1x MAC-PHY serial interface specification.
+Generic helper function to initiate read and write through C45 bus
+protocol without mdio bus lock. This will help PHYs to avoid indirect C22
+API calls for C45 bus protocol which may not be supported by the PHY.
 
-Expanded read/write APIs to take new mms parameter to avoid
-bit manipulation before calling regular read/write APIs
-
+Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
 ---
@@ -50,116 +49,98 @@ changes in v7
 changes in v6
   - No change
 changes in v5
-  - Fixed "no blank line" issues in four places
+  - no change
 changes in v4
-  - Added information for new APIs in OA TC6 framework
+  - lockdep_assert_held added to ensure correct calling convention
 changes in v3
-  - Added more information for documentation
-changes in v2
-  - Removed the changes to the existing API
-  - Updated information about newly added APIs
-changes in v1
-  - Added changes to an existing API
-  - Added documentation to new hardware timestamp related APIs
+  - Added the genphy APIs to initiate Clause 45 register read/write
+  - first patch
 ---
- Documentation/networking/oa-tc6-framework.rst | 80 +++++++++++++++++++++++++++
- 1 file changed, 80 insertions(+)
+ drivers/net/phy/phy_device.c | 55 ++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/phy.h          |  4 ++++
+ 2 files changed, 59 insertions(+)
 
-diff --git a/Documentation/networking/oa-tc6-framework.rst b/Documentation/networking/oa-tc6-framework.rst
-index fe2aabde923a..325d299d1a7d 100644
---- a/Documentation/networking/oa-tc6-framework.rst
-+++ b/Documentation/networking/oa-tc6-framework.rst
-@@ -153,6 +153,10 @@ OPEN Alliance TC6 Framework
- - Forwards the received Ethernet frame from 10Base-T1x MAC-PHY to n/w
-   subsystem.
+diff --git a/drivers/net/phy/phy_device.c b/drivers/net/phy/phy_device.c
+index 0615228459ef..b82b99d08132 100644
+--- a/drivers/net/phy/phy_device.c
++++ b/drivers/net/phy/phy_device.c
+@@ -2787,6 +2787,61 @@ int genphy_write_mmd_unsupported(struct phy_device *phdev, int devnum,
+ }
+ EXPORT_SYMBOL(genphy_write_mmd_unsupported);
  
-+- If supported by the hardware and enabled, updates hardware timestamp
-+  in skb, when indicated by one of the three timestamp capture registers
-+  through TSC fields of the header.
++/**
++ * genphy_phy_read_mmd - Helper for reading a register without lock
++ * from the given MMD and PHY.
++ * @phydev: The phy_device struct
++ * @devnum: The MMD to read from
++ * @regnum: The register on the MMD to read
++ *
++ * Description: PHYs can have both C22 and C45 registers space. Once PHY
++ * is discovered via C22 bus protocol, it uses C22 indirect access to
++ * access C45 registers. Some PHYs, like 10Base-T1S PHYs defined by OPEN
++ * Alliance 10BASE‑T1x, support only direct access.
++ *
++ * If PHY indicates C45 support through DTS entry, it avoid C22 APIs
++ * entirely and therefore generic MDIO registers are inaccessible.
++ *
++ * MDIO bus isn't locked here because when called through read_mmd
++ * callback of phy_driver, caller is expected to lock the bus as
++ * implemented in phy_read_mmd.
++ *
++ * Returns: Register value if successful, negative error code on failure.
++ */
++int genphy_phy_read_mmd(struct phy_device *phydev, int devnum,
++			u16 regnum)
++{
++	struct mii_bus *bus = phydev->mdio.bus;
++	int addr = phydev->mdio.addr;
 +
- Data Transaction
- ~~~~~~~~~~~~~~~~
++	lockdep_assert_held(&bus->mdio_lock);
++	return __mdiobus_c45_read(bus, addr, devnum, regnum);
++}
++EXPORT_SYMBOL(genphy_phy_read_mmd);
++
++/**
++ * genphy_phy_write_mmd - Helper for writing a register without lock
++ * to the given MMD and PHY.
++ * @phydev: The phy_device struct
++ * @devnum: The MMD to write to
++ * @regnum: The register on the MMD to write
++ * @val:    Value to write
++ *
++ * Description: Similar to genphy_phy_read_mmd
++ *
++ * Returns: 0 if successful, negative error code on failure.
++ */
++int genphy_phy_write_mmd(struct phy_device *phydev, int devnum,
++			 u16 regnum, u16 val)
++{
++	struct mii_bus *bus = phydev->mdio.bus;
++	int addr = phydev->mdio.addr;
++
++	lockdep_assert_held(&bus->mdio_lock);
++	return __mdiobus_c45_write(bus, addr, devnum, regnum, val);
++}
++EXPORT_SYMBOL(genphy_phy_write_mmd);
++
+ int genphy_suspend(struct phy_device *phydev)
+ {
+ 	return phy_set_bits(phydev, MII_BMCR, BMCR_PDOWN);
+diff --git a/include/linux/phy.h b/include/linux/phy.h
+index 199a7aaa341b..8266dd4a8dbe 100644
+--- a/include/linux/phy.h
++++ b/include/linux/phy.h
+@@ -2301,6 +2301,10 @@ int genphy_read_mmd_unsupported(struct phy_device *phdev, int devad,
+ 				u16 regnum);
+ int genphy_write_mmd_unsupported(struct phy_device *phdev, int devnum,
+ 				 u16 regnum, u16 val);
++int genphy_phy_write_mmd(struct phy_device *phydev, int devnum,
++			 u16 regnum, u16 val);
++int genphy_phy_read_mmd(struct phy_device *phydev, int devnum,
++			u16 regnum);
  
-@@ -495,3 +499,79 @@ the MAC-PHY.
- Zero align receive frame feature can be enabled to align all receive ethernet
- frames data to start at the beginning of any receive data chunk payload with a
- start word offset (SWO) of zero.
-+
-+.. c:function:: int oa_tc6_ptp_register(struct oa_tc6 *tc6, \
-+                                        struct ptp_clock_info *info);
-+
-+Registers the PTP hardware clock related functions with the kernel.
-+This API simply registers. Initialization of the fields in the
-+ptp_clock_info structure are left to the vendor as programming hardware
-+timer is expected to be vendor dependent. The fields max_adj, owner,
-+and all the functions for the clock operations, like adjfine, gettimex64,
-+settime64, adjtime are expected to be initialized in the structure before
-+calling the registering the hardware clock.
-+
-+.. c:function:: void oa_tc6_ptp_unregister(struct oa_tc6 *tc6);
-+
-+Unregisters the PTP hardware clock related callbacks.
-+
-+.. c:function:: int oa_tc6_ioctl(struct oa_tc6 *tc6, struct ifreq *rq, \
-+                                 int cmd);
-+
-+ioctl interface to handle hardware timestamp and PHY related commands.
-+
-+.. c:function:: int oa_tc6_get_ts_info(struct oa_tc6 *tc6, \
-+                                       struct kernel_ethtool_ts_info *info);
-+
-+Provides timestamp related settings that are supported to ethtool.
-+
-+.. c:function:: void oa_tc6_hwtstamp_get(struct oa_tc6 *tc6, \
-+                                         struct kernel_hwtstamp_config *cfg);
-+
-+Returns hardware timestamp configuration. Part of net_device_ops callbacks.
-+
-+.. c:function:: void oa_tc6_get_ts_stats(struct oa_tc6 *tc6, \
-+                                         struct ethtool_ts_stats *ts_stats);
-+
-+Provides hardware timestamp related traffic statistics for ethtool.
-+
-+.. c:function:: int oa_tc6_hwtstamp_set(struct oa_tc6 *tc6, \
-+                                         struct kernel_hwtstamp_config *cfg);
-+
-+Helper to set hardware timestamp configuration. Part of net_device_ops
-+callbacks.
-+
-+.. c:function:: void oa_tc6_set_vend1_mms(struct oa_tc6 *tc6, int mms);
-+
-+Helper to map MDIO_MMD_VEND1 command to vendor specific Memory Map Select
-+(MMS) value. This function offers flexibility for vendors that may have
-+used any MMS value between 10 and 15 as allowed by the specification.
-+MDIO_MMD_VEND2 is already mapped to MMS4 in the OA TC6 frame work code.
-+
-+.. c:function:: int oa_tc6_write_registers_mms(struct oa_tc6 *tc6, \
-+                                               u16 address, u16 mms, \
-+                                               u32 value[], u8 length);
-+
-+Writing multiple consecutive registers starting from @address for the
-+given @mms memory map selector in the MAC-PHY. Maximum of 128 consecutive
-+registers can be written starting at @address.
-+
-+.. c:function:: int oa_tc6_write_register_mms(struct oa_tc6 *tc6, \
-+                                              u16 address, u16 mms, \
-+                                              u32 value);
-+
-+Write a single register addressed by @address and @mms in the MAC-PHY.
-+
-+.. c:function:: int oa_tc6_read_registers_mms(struct oa_tc6 *tc6, \
-+                                              u16 address, u16 mms, \
-+                                              u32 value[], u8 length);
-+
-+Reading multiple consecutive registers starting from @address for the
-+given @mms memory map selector value, in the MAC-PHY. Maximum of 128
-+consecutive registers can be read starting at @address.
-+
-+.. c:function:: int oa_tc6_read_register_mms(struct oa_tc6 *tc6, \
-+                                             u16 address, u16 mms, \
-+                                             u32 *value);
-+
-+Read a single register addressed by @address and @mms in the MAC-PHY.
+ /* Clause 37 */
+ int genphy_c37_config_aneg(struct phy_device *phydev);
 
 -- 
 2.43.0
