@@ -1,116 +1,114 @@
-From: Manivannan Sadhasivam <mani@kernel.org>
-Date: Wed, 08 Jul 2026 16:30:22 +0200
-Subject: [PATCH v3 8/8] wifi: ath10k: Use pci_{enable/disable}_link_state()
- APIs to enable/disable ASPM states
+From: Oliver Hartkopp <socketcan@hartkopp.net>
+Subject: [PATCH v7 00/10] can: bcm: collected fixes - final2 :-D
+Date: Wed, 08 Jul 2026 17:21:10 +0200
+Message-Id: <20260708-bcm_fixes-v7-0-c78896b342e4@hartkopp.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260708-pci-aspm-fix-v3-8-6bd72451746e@kernel.org>
-References: <20260708-pci-aspm-fix-v3-0-6bd72451746e@kernel.org>
-In-Reply-To: <20260708-pci-aspm-fix-v3-0-6bd72451746e@kernel.org>
-To: Bjorn Helgaas <bhelgaas@google.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Rob Herring <robh@kernel.org>, Nirmal Patel <nirmal.patel@linux.intel.com>, 
- Jonathan Derrick <jonathan.derrick@linux.dev>, 
- Jeff Johnson <jjohnson@kernel.org>
-Cc: linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-msm@vger.kernel.org, linux-wireless@vger.kernel.org, 
- ath12k@lists.infradead.org, ath11k@lists.infradead.org, 
- ath10k@lists.infradead.org, 
- Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
- Qiang Yu <qiang.yu@oss.qualcomm.com>, mani@kernel.org, 
- =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+X-B4-Tracking: v=1; b=H4sIAOZqTmoC/3XPzU7FIBAF4Fe5YS1mCpQfV76HMWagYNHYNlAbz
+ U3fXbgubAxdTjjfYeZKsk/RZ/JwuZLkt5jjPJVB3V2IG3F69TQOZSYMmATZMWrdx0uIXz5TLYI
+ ViIajY6Tkl+RvDyX+9Pw750/75t1aC2pijHmd0/fts62ruVbv1lGgDllAUN4rCI8jpvV9Xpb7y
+ a+kVm/sDytQR8wKNlIycD0XVvUNzE8xL1gLCeBQDlqbBhanWBSMqJXV1gyct9buT3Ffb+ZOiaA
+ HHYJqYHnE+ohlXRtUB8is40b/w/u+/wBjlS1y6AEAAA==
+X-Change-ID: 20260612-bcm_fixes-84fb4aa93ac2
+To: linux-can@vger.kernel.org
+Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
+ Marc Kleine-Budde <mkl@pengutronix.de>, Lee Jones <lee@kernel.org>, 
+ Feng Xue <feng.xue@outlook.com>, Ginger <ginger.jzllee@gmail.com>, 
+ syzbot+75e5e4ae00c3b4bb544e@syzkaller.appspotmail.com, 
+ sashiko-reviews@lists.linux.dev, sashiko-bot@kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2824; i=mani@kernel.org;
- h=from:subject:message-id; bh=1V3SgamKnKbZCTaqKi1kk2ScK2GisZBgIvhrbdDfnK8=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqTl76e2nfaUZvQNRIS2JAPpu0u23/DFhDhZ81P
- q/TDV/Dm+eJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCak5e+gAKCRBVnxHm/pHO
- 9Tw7CAClHNhscV05//m5Z7wi7IlDfyYBab+jNO+wyaShe6hkjqEqWMyHT6/VoLxuobAHNoUOunm
- TTTFtKSglloBBVmGdDeo2vQusyiSbq2D3jecIfM2HWf01oPR/lDhMPM9iu6NP/dTnjPifoFqGfv
- XdHF3Vicrqbavf6w5sZsEAJ74QbBA9UUc3ncielCX8s36O+Ij0cvdEJRpRCTKLxR6WSarpbBz7F
- JbVIyPPBhRVHZswbvVTi48SJxq1IBYZAsIQIbxR6TyWtKgj5KKpdvTYVZq62bqgLmXbnHt1MRNd
- T9Nf2E44HV5nLkqcXnF+3mtJL2czXg7lcRLMpw+sZrEe41go
-X-Developer-Key: i=mani@kernel.org; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for mani@kernel.org/default with auth_id=787
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783524080; l=3630;
+ i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
+ bh=xBlsK+Gq4xGdO6vSIy9sacTOfWlqsB5YnQ8c4tU7C4Y=;
+ b=q6sEftrpPlI6fpKURIhfZkdE+KHA0Is5AUG+6iYh/9UWhBMgN5mwq3LTCKQdTrpy4BGZv8JWn
+ 6Icoe3NpUSkDAgqiSZeZbUp6/45VZScSry8LQ8Mg8ZGClOmKuIGE+oT
+X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
+ pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
+X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Hi Marc,
 
-It is not recommended to enable/disable the ASPM states on the back of the
-PCI core directly using the LNKCTL register. It will break the PCI core's
-knowledge about the device ASPM states. So use the APIs exposed by the PCI
-core to enable/disable ASPM states.
+as there were different patches flying arround to fix CAN_BCM issues and
+AI assisted stuff pop's up again and again, I've created this collection
+to be applied.
 
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+The patch series fixes ALL issues reported by ALL kind of AI bots involved
+and the fixes were assisted by claude code and later rephrased and shortened
+by myself.
+
+Inserted a new patch 9 that addresses a late sashiko-bot report fixing some
+stale rx/tx ops behaviour after device removal.
+
+So the potential new AI reports on this patch set report problems that are
+solved later in the series. This can not be resolved.
+
+Best regards,
+Oliver
+
+Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
 ---
- drivers/net/wireless/ath/ath10k/Kconfig |  2 +-
- drivers/net/wireless/ath/ath10k/pci.c   | 11 ++++-------
- drivers/net/wireless/ath/ath10k/pci.h   |  5 ++---
- 3 files changed, 7 insertions(+), 11 deletions(-)
+Changes in v7:
+- patch 9: new: fix stale rx/tx ops after device removal reported by
+  sashiko-bot: https://lore.kernel.org/linux-can/20260708094536.DDF821F00A3A@smtp.kernel.org/
+- patch 10: formerly patch 9 as new patch 8 & 9 belong together 
+- Link to v6: https://patch.msgid.link/20260708-bcm_fixes-v6-0-80710a2bc398@hartkopp.net
 
-diff --git a/drivers/net/wireless/ath/ath10k/Kconfig b/drivers/net/wireless/ath/ath10k/Kconfig
-index efb9f022d8c6..eac3ec5a4e78 100644
---- a/drivers/net/wireless/ath/ath10k/Kconfig
-+++ b/drivers/net/wireless/ath/ath10k/Kconfig
-@@ -17,7 +17,7 @@ config ATH10K_CE
- 
- config ATH10K_PCI
- 	tristate "Atheros ath10k PCI support"
--	depends on ATH10K && PCI
-+	depends on ATH10K && PCI && PCIEASPM
- 	help
- 	  This module adds support for PCIE bus
- 
-diff --git a/drivers/net/wireless/ath/ath10k/pci.c b/drivers/net/wireless/ath/ath10k/pci.c
-index 335bc7c488e4..2e27a70065cc 100644
---- a/drivers/net/wireless/ath/ath10k/pci.c
-+++ b/drivers/net/wireless/ath/ath10k/pci.c
-@@ -1965,9 +1965,7 @@ static int ath10k_pci_hif_start(struct ath10k *ar)
- 	ath10k_pci_irq_enable(ar);
- 	ath10k_pci_rx_post(ar);
- 
--	pcie_capability_clear_and_set_word(ar_pci->pdev, PCI_EXP_LNKCTL,
--					   PCI_EXP_LNKCTL_ASPMC,
--					   ar_pci->link_ctl & PCI_EXP_LNKCTL_ASPMC);
-+	pci_force_enable_link_state(ar_pci->pdev, ar_pci->aspm_states);
- 
- 	return 0;
- }
-@@ -2822,10 +2820,9 @@ static int ath10k_pci_hif_power_up(struct ath10k *ar,
- 
- 	ath10k_dbg(ar, ATH10K_DBG_BOOT, "boot hif power up\n");
- 
--	pcie_capability_read_word(ar_pci->pdev, PCI_EXP_LNKCTL,
--				  &ar_pci->link_ctl);
--	pcie_capability_clear_word(ar_pci->pdev, PCI_EXP_LNKCTL,
--				   PCI_EXP_LNKCTL_ASPMC);
-+	ar_pci->aspm_states = pcie_aspm_enabled(ar_pci->pdev);
-+
-+	pci_disable_link_state(ar_pci->pdev, PCIE_LINK_STATE_ASPM_ALL);
- 
- 	/*
- 	 * Bring the target up cleanly.
-diff --git a/drivers/net/wireless/ath/ath10k/pci.h b/drivers/net/wireless/ath/ath10k/pci.h
-index d114778edb41..122e365b7cdd 100644
---- a/drivers/net/wireless/ath/ath10k/pci.h
-+++ b/drivers/net/wireless/ath/ath10k/pci.h
-@@ -128,10 +128,9 @@ struct ath10k_pci {
- 	struct timer_list rx_post_retry;
- 
- 	/* Due to HW quirks it is recommended to disable ASPM during device
--	 * bootup. To do that the original PCI-E Link Control is stored before
--	 * device bootup is executed and re-programmed later.
-+	 * bootup. To do that the ASPM states are saved and re-programmed later.
- 	 */
--	u16 link_ctl;
-+	u32 aspm_states;
- 
- 	/* Protects ps_awake and ps_wake_refcount */
- 	spinlock_t ps_lock;
+Changes in v6:
+- patch 1: added Tested-by: tags
+- patch 3: changed commit message and comment regarding a wrong claim
+  about synchronous delivery from dev_queue_xmit() as remarked by
+  https://netdev-ai.bots.linux.dev/ai-review.html?id=6105ebab-87ef-43db-a085-7c190b9f119f
+- patch 4: rebased patch 3 comment
+- patch 9: new: fix data race on rx_stamp/rx_ifindex in bcm_rx_handler()
+  reported by sashiko-bot: https://lore.kernel.org/linux-can/20260707145135.5BC831F00A3A@smtp.kernel.org/
+- Link to v5: https://patch.msgid.link/20260707-bcm_fixes-v5-0-c3c74f8d8ff7@hartkopp.net
 
--- 
-2.43.0
+Changes in v5:
+- patch 6: changed comment for bcm_op::bcm_tx_lock (mkl)
+- patch 8: new: add missing device refcount for CAN filter removal
+- Link to v4: https://patch.msgid.link/20260707-bcm_fixes-v4-0-aa87b8b9d33f@hartkopp.net
+
+Changes in v4:
+- incorporated more sashiko-bot concerns from v3
+- patch 3: omit hrtimer_forward with zero interval
+- patch 4: put bcm_update_stats() under bcm_rx_update_lock
+- Link to v3: https://patch.msgid.link/20260707-bcm_fixes-v3-0-84600ca6d889@hartkopp.net
+
+Changes in v3:
+- incorporated more sashiko-bot concerns from v2
+- patch 3: make snapshot of currframe
+- patch 6: add error patch for memcpy_from_msg()
+- patch 7: new RTR-reply validation in bcm_rx_setup() from bcm_tx_setup() 
+- Link to v2: https://patch.msgid.link/20260707-bcm_fixes-v2-0-96620c534b75@hartkopp.net
+
+Changes in v2:
+- incorporated all sashiko-bot concerns from v1
+- Link to v1: https://patch.msgid.link/20260612-bcm_fixes-v1-0-ca2fa07ee70f@hartkopp.net
+
+---
+Lee Jones (1):
+      can: bcm: defer rx_op deallocation to workqueue to fix thrtimer UAF
+
+Oliver Hartkopp (9):
+      can: bcm: fix lockless bound/ifindex race and silent RX_SETUP failure
+      can: bcm: add locking when updating filter and timer values
+      can: bcm: fix CAN frame rx/tx statistics
+      can: bcm: add missing rcu list annotations and operations
+      can: bcm: extend bcm_tx_lock usage for data and timer updates
+      can: bcm: validate frame length in bcm_rx_setup() for RTR replies
+      can: bcm: add missing device refcount for CAN filter removal
+      can: bcm: fix stale rx/tx ops after device removal
+      can: bcm: fix data race on rx_stamp/rx_ifindex in bcm_rx_handler()
+
+ net/can/bcm.c | 525 +++++++++++++++++++++++++++++++++++++++++++---------------
+ 1 file changed, 390 insertions(+), 135 deletions(-)
+---
+base-commit: 0e35b9b6ec0ffcc5e23cbdec09f5c622ad532b53
+change-id: 20260612-bcm_fixes-84fb4aa93ac2
+
+Best regards,
+--  
+Oliver Hartkopp <socketcan@hartkopp.net>
 
