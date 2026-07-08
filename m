@@ -1,170 +1,104 @@
-From: Sven Peter <sven@kernel.org>
-Date: Wed, 08 Jul 2026 09:15:42 +0200
-Subject: [PATCH RFC 6/6] arm64: dts: apple: t8103: Add PSCI and CPU idle
- states
+From: Oliver Hartkopp <socketcan@hartkopp.net>
+Subject: [PATCH v6 0/9] can: bcm: collected fixes - final
+Date: Wed, 08 Jul 2026 11:22:26 +0200
+Message-Id: <20260708-bcm_fixes-v6-0-80710a2bc398@hartkopp.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260708-efi-psci-v1-6-9efb3abf0e4c@kernel.org>
-References: <20260708-efi-psci-v1-0-9efb3abf0e4c@kernel.org>
-In-Reply-To: <20260708-efi-psci-v1-0-9efb3abf0e4c@kernel.org>
-To: Mark Rutland <mark.rutland@arm.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Ard Biesheuvel <ardb@kernel.org>, 
- Ilias Apalodimas <ilias.apalodimas@linaro.org>, 
- Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>, 
- Sudeep Holla <sudeep.holla@kernel.org>, Janne Grunau <j@jannau.net>, 
- Neal Gompa <neal@gompa.dev>
-Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-efi@vger.kernel.org, 
- asahi@lists.linux.dev, Sven Peter <sven@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4506; i=sven@kernel.org;
- h=from:subject:message-id; bh=T2hjJ4VW2vv/BzLonzPN9qyF2cwvwXce9kLJVx7y2NI=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ5bvT91/7B+f1b4PCA9wehDms1b2+923e2YwzGTVqba8E
- tnh8467o5SFQYyLQVZMkWX7fnvTJw/fCC7ddOk9zBxWJpAhDFycAjCRS+UM/zSFc+T7pFeZbvEw
- ZXvzfb5XeJaBj7ex5MnovTJzT70MLmNkaI8yWerEprTO85ndrj4Nxdql25j5Ahw4f65xPjfJxqC
- JFwA=
-X-Developer-Key: i=sven@kernel.org; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
+X-B4-Tracking: v=1; b=H4sIANIWTmoC/3XPwU7EIBQF0F+ZsBbzChSoK//DTMyDPiyaaRuoz
+ ZhJ/10YFxrTLm+45wI3lilFyuzpdGOJ1pjjNJagH07MDzi+EY99yUyA0KAbwZ2/vIZ4pcytCk4
+ hdhK9YKU/J7oflPrL+SfnT/dOfqkDtTHEvEzp637Z2tTe3u7acOAeRUAwRAbC84Bp+Zjm+XGkh
+ dXpVfxiA+YvFgV3WgvwrVTOtDtYHmJZsFUawKPure12sDrEqmBEa5x1XS/l3rPbQ9zWP0tvVLC
+ 9DcH8w9u2fQNiuTKqqwEAAA==
+X-Change-ID: 20260612-bcm_fixes-84fb4aa93ac2
+To: linux-can@vger.kernel.org
+Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
+ Marc Kleine-Budde <mkl@pengutronix.de>, Lee Jones <lee@kernel.org>, 
+ Feng Xue <feng.xue@outlook.com>, Ginger <ginger.jzllee@gmail.com>, 
+ syzbot+75e5e4ae00c3b4bb544e@syzkaller.appspotmail.com, 
+ sashiko-reviews@lists.linux.dev, sashiko-bot@kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783502567; l=3105;
+ i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
+ bh=TmXFOBkgQXuh/lphxNg9YKyBFII+72JGehB0s3XF5Xw=;
+ b=23CWX4DHykvgw75qMc60s1sFJPDihriJOeNuVUJfXAW/QWVq2HOd4tOhuUaiKRkNDD0HIWcSY
+ xpJv04CR1g8CN3RYWDWNUG46f2kH58uS7varN/Pfj1EoH4KmYlJWG5X
+X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
+ pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
+X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Switch the base M1 from spin-table to PSCI and also add two basic idle
-states that we support for now.
+Hi Marc,
 
-Signed-off-by: Sven Peter <sven@kernel.org>
+as there were different patches flying arround to fix CAN_BCM issues and
+AI assisted stuff pop's up again and again, I've created this collection
+to be applied.
+
+The patch series fixes ALL issues reported by ALL kind of AI bots involved
+and the fixes were assisted by claude code and later rephrased and shortened
+by myself.
+
+So the potential new AI reports on this patch set report problems that are
+solved later in the series. This can not be resolved.
+
+Best regards,
+Oliver
+
+Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
 ---
- arch/arm64/boot/dts/apple/t8103.dtsi | 51 ++++++++++++++++++++++++++++++------
- 1 file changed, 43 insertions(+), 8 deletions(-)
+Changes in v6:
+- patch 1: added Tested-by: tags
+- patch 3: changed commit message and comment regarding a wrong claim
+  about synchronous delivery from dev_queue_xmit() as remarked by
+  https://netdev-ai.bots.linux.dev/ai-review.html?id=6105ebab-87ef-43db-a085-7c190b9f119f
+- patch 4: rebased patch 3 comment
+- patch 9: new: fix data race on rx_stamp/rx_ifindex in bcm_rx_handler()
+  reported by sashiko-bot: https://lore.kernel.org/linux-can/20260707145135.5BC831F00A3A@smtp.kernel.org/
+- Link to v5: https://patch.msgid.link/20260707-bcm_fixes-v5-0-c3c74f8d8ff7@hartkopp.net
 
-diff --git a/arch/arm64/boot/dts/apple/t8103.dtsi b/arch/arm64/boot/dts/apple/t8103.dtsi
-index da774096b667..3dbcaa698a90 100644
---- a/arch/arm64/boot/dts/apple/t8103.dtsi
-+++ b/arch/arm64/boot/dts/apple/t8103.dtsi
-@@ -24,6 +24,11 @@ aliases {
- 		gpu = &gpu;
- 	};
- 
-+	psci {
-+		compatible = "arm,psci-1.0";
-+		method = "efi";
-+	};
-+
- 	cpus {
- 		#address-cells = <2>;
- 		#size-cells = <0>;
-@@ -64,7 +69,8 @@ cpu_e0: cpu@0 {
- 			compatible = "apple,icestorm";
- 			device_type = "cpu";
- 			reg = <0x0 0x0>;
--			enable-method = "spin-table";
-+			enable-method = "psci";
-+			cpu-idle-states = <&cpu_retention_wfi &cpu_deep_wfi>;
- 			cpu-release-addr = <0 0>; /* To be filled by loader */
- 			operating-points-v2 = <&ecluster_opp>;
- 			capacity-dmips-mhz = <714>;
-@@ -78,7 +84,8 @@ cpu_e1: cpu@1 {
- 			compatible = "apple,icestorm";
- 			device_type = "cpu";
- 			reg = <0x0 0x1>;
--			enable-method = "spin-table";
-+			enable-method = "psci";
-+			cpu-idle-states = <&cpu_retention_wfi &cpu_deep_wfi>;
- 			cpu-release-addr = <0 0>; /* To be filled by loader */
- 			operating-points-v2 = <&ecluster_opp>;
- 			capacity-dmips-mhz = <714>;
-@@ -92,7 +99,8 @@ cpu_e2: cpu@2 {
- 			compatible = "apple,icestorm";
- 			device_type = "cpu";
- 			reg = <0x0 0x2>;
--			enable-method = "spin-table";
-+			enable-method = "psci";
-+			cpu-idle-states = <&cpu_retention_wfi &cpu_deep_wfi>;
- 			cpu-release-addr = <0 0>; /* To be filled by loader */
- 			operating-points-v2 = <&ecluster_opp>;
- 			capacity-dmips-mhz = <714>;
-@@ -106,7 +114,8 @@ cpu_e3: cpu@3 {
- 			compatible = "apple,icestorm";
- 			device_type = "cpu";
- 			reg = <0x0 0x3>;
--			enable-method = "spin-table";
-+			enable-method = "psci";
-+			cpu-idle-states = <&cpu_retention_wfi &cpu_deep_wfi>;
- 			cpu-release-addr = <0 0>; /* To be filled by loader */
- 			operating-points-v2 = <&ecluster_opp>;
- 			capacity-dmips-mhz = <714>;
-@@ -120,7 +129,8 @@ cpu_p0: cpu@10100 {
- 			compatible = "apple,firestorm";
- 			device_type = "cpu";
- 			reg = <0x0 0x10100>;
--			enable-method = "spin-table";
-+			enable-method = "psci";
-+			cpu-idle-states = <&cpu_retention_wfi &cpu_deep_wfi>;
- 			cpu-release-addr = <0 0>; /* To be filled by loader */
- 			operating-points-v2 = <&pcluster_opp>;
- 			capacity-dmips-mhz = <1024>;
-@@ -134,7 +144,8 @@ cpu_p1: cpu@10101 {
- 			compatible = "apple,firestorm";
- 			device_type = "cpu";
- 			reg = <0x0 0x10101>;
--			enable-method = "spin-table";
-+			enable-method = "psci";
-+			cpu-idle-states = <&cpu_retention_wfi &cpu_deep_wfi>;
- 			cpu-release-addr = <0 0>; /* To be filled by loader */
- 			operating-points-v2 = <&pcluster_opp>;
- 			capacity-dmips-mhz = <1024>;
-@@ -148,7 +159,8 @@ cpu_p2: cpu@10102 {
- 			compatible = "apple,firestorm";
- 			device_type = "cpu";
- 			reg = <0x0 0x10102>;
--			enable-method = "spin-table";
-+			enable-method = "psci";
-+			cpu-idle-states = <&cpu_retention_wfi &cpu_deep_wfi>;
- 			cpu-release-addr = <0 0>; /* To be filled by loader */
- 			operating-points-v2 = <&pcluster_opp>;
- 			capacity-dmips-mhz = <1024>;
-@@ -162,7 +174,8 @@ cpu_p3: cpu@10103 {
- 			compatible = "apple,firestorm";
- 			device_type = "cpu";
- 			reg = <0x0 0x10103>;
--			enable-method = "spin-table";
-+			enable-method = "psci";
-+			cpu-idle-states = <&cpu_retention_wfi &cpu_deep_wfi>;
- 			cpu-release-addr = <0 0>; /* To be filled by loader */
- 			operating-points-v2 = <&pcluster_opp>;
- 			capacity-dmips-mhz = <1024>;
-@@ -185,6 +198,28 @@ l2_cache_1: l2-cache-1 {
- 			cache-unified;
- 			cache-size = <0xc00000>;
- 		};
-+
-+		idle-states {
-+			entry-method = "psci";
-+
-+			cpu_retention_wfi: cpu-retention-wfi {
-+				compatible = "arm,idle-state";
-+				idle-state-name = "wfi";
-+				arm,psci-suspend-param = <0x00000000>;
-+				entry-latency-us = <1>;
-+				exit-latency-us = <1>;
-+				min-residency-us = <1>;
-+			};
-+
-+			cpu_deep_wfi: cpu-deep-wfi {
-+				compatible = "arm,idle-state";
-+				idle-state-name = "deep-wfi";
-+				arm,psci-suspend-param = <0x00000001>;
-+				entry-latency-us = <5>;
-+				exit-latency-us = <5>;
-+				min-residency-us = <10000>;
-+			};
-+		};
- 	};
- 
- 	ecluster_opp: opp-table-0 {
+Changes in v5:
+- patch 6: changed comment for bcm_op::bcm_tx_lock (mkl)
+- patch 8: new: add missing device refcount for CAN filter removal
+- Link to v4: https://patch.msgid.link/20260707-bcm_fixes-v4-0-aa87b8b9d33f@hartkopp.net
 
--- 
-2.55.0
+Changes in v4:
+- incorporated more sashiko-bot concerns from v3
+- patch 3: omit hrtimer_forward with zero interval
+- patch 4: put bcm_update_stats() under bcm_rx_update_lock
+- Link to v3: https://patch.msgid.link/20260707-bcm_fixes-v3-0-84600ca6d889@hartkopp.net
+
+Changes in v3:
+- incorporated more sashiko-bot concerns from v2
+- patch 3: make snapshot of currframe
+- patch 6: add error patch for memcpy_from_msg()
+- patch 7: new RTR-reply validation in bcm_rx_setup() from bcm_tx_setup() 
+- Link to v2: https://patch.msgid.link/20260707-bcm_fixes-v2-0-96620c534b75@hartkopp.net
+
+Changes in v2:
+- incorporated all sashiko-bot concerns from v1
+- Link to v1: https://patch.msgid.link/20260612-bcm_fixes-v1-0-ca2fa07ee70f@hartkopp.net
+
+---
+Lee Jones (1):
+      can: bcm: defer rx_op deallocation to workqueue to fix thrtimer UAF
+
+Oliver Hartkopp (8):
+      can: bcm: fix lockless bound/ifindex race and silent RX_SETUP failure
+      can: bcm: add locking when updating filter and timer values
+      can: bcm: fix CAN frame rx/tx statistics
+      can: bcm: add missing rcu list annotations and operations
+      can: bcm: extend bcm_tx_lock usage for data and timer updates
+      can: bcm: validate frame length in bcm_rx_setup() for RTR replies
+      can: bcm: add missing device refcount for CAN filter removal
+      can: bcm: fix data race on rx_stamp/rx_ifindex in bcm_rx_handler()
+
+ net/can/bcm.c | 484 ++++++++++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 355 insertions(+), 129 deletions(-)
+---
+base-commit: 0e35b9b6ec0ffcc5e23cbdec09f5c622ad532b53
+change-id: 20260612-bcm_fixes-84fb4aa93ac2
+
+Best regards,
+--  
+Oliver Hartkopp <socketcan@hartkopp.net>
 
