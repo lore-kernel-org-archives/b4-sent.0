@@ -1,11 +1,10 @@
 From: Sven Peter <sven@kernel.org>
-Date: Wed, 08 Jul 2026 09:15:38 +0200
-Subject: [PATCH RFC 2/6] arm64/efi: Add and parse custom PSCI EFI
- configuration table
+Date: Wed, 08 Jul 2026 09:15:39 +0200
+Subject: [PATCH RFC 3/6] efi: Add EFI_MEMORY_ISA_{MASK,VALID}
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260708-efi-psci-v1-2-9efb3abf0e4c@kernel.org>
+Message-Id: <20260708-efi-psci-v1-3-9efb3abf0e4c@kernel.org>
 References: <20260708-efi-psci-v1-0-9efb3abf0e4c@kernel.org>
 In-Reply-To: <20260708-efi-psci-v1-0-9efb3abf0e4c@kernel.org>
 To: Mark Rutland <mark.rutland@arm.com>, 
@@ -20,218 +19,43 @@ Cc: linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org,
  linux-kernel@vger.kernel.org, linux-efi@vger.kernel.org, 
  asahi@lists.linux.dev, Sven Peter <sven@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7959; i=sven@kernel.org;
- h=from:subject:message-id; bh=nOsULZjZbVA2mBgEIT5SVodSejvaPfgFr2B4sY5qQhk=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ5bvT81ftSelW0tlt+9u/prB9fhjnU7c6592857xrLrre
- aH6mzhbRykLgxgXg6yYIsv2/famTx6+EVy66dJ7mDmsTCBDGLg4BWAiXNcZGY78DCqeec827IFI
- 7cEDs+TTvJk/+faVJYTF/N0ast66+TfDP+PtS4Kj53aul5lep3Zot9D0hLsmwXN2n9/E2y96VdW
- okg8A
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1258; i=sven@kernel.org;
+ h=from:subject:message-id; bh=DVNTXLHX1vUyS9zVAhAFUGx9k5ZtrHeeZURle9eN7LM=;
+ b=owGbwMvMwCXmIlirolUq95LxtFoSQ5bvTy0vk+B109JP9a57cmSRU0FFcPODuGU3op9wlAkc+
+ nx7XpBbRykLgxgXg6yYIsv2/famTx6+EVy66dJ7mDmsTCBDGLg4BWAif68x/GbZ4Jnx49vsfcE3
+ NN9sZJhYGCWrrJd+kHFfid3xT0137qowMmxtkvNz41gZJ5MVUrrBNO7Mvf2MfosFnrH/6tz5QmC
+ NLxsA
 X-Developer-Key: i=sven@kernel.org; a=openpgp;
  fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
 X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On Apple Silicon, the kernel runs in the highest privilege level (EL2)
-leaving no higher level to trap into for PSCI firmware calls. Instead,
-we keep the firmware in the same level and expose it as an EFI runtime
-service. Add a new custom EFI configuraiton table and extract the
-pointer to the PSCI handler from it such that it can later be used by
-the PSCI code.
+As defined in UEFI 2.10, Section 7.2.3 [1], if EFI_MEMORY_ISA_VALID is
+set the memory region is to be mapped using ISA-specific cacheability
+attributes found in EFI_MEMORY_ISA_MASK. On AArch64, these bits are e.g.
+defined as the attributes stored in MAIR [2].
 
-The handler is invoked as a plain call under the EFI virtual mapping rather
-than through the EFI runtime services dispatch path, so the usual runtime
-call environment is not set up around it. This relies on two guarantees
-from the firmware: the handler must not use FP/SIMD or any other
-lazily-saved CPU state, so the caller can skip saving and restoring it,
-and it must be reentrant and independent of the other EFI runtime
-services, so it can be invoked from the cpuidle and secondary CPU
-bring-up paths which cannot take the sleeping efi_runtime_lock.
+[1] https://uefi.org/specs/UEFI/2.10/07_Services_Boot_Services.html#efi-boot-services-getmemorymap
+[2] https://uefi.org/specs/UEFI/2.10/02_Overview.html#memory-types
 
 Signed-off-by: Sven Peter <sven@kernel.org>
 ---
- arch/arm64/include/asm/efi.h | 56 ++++++++++++++++++++++++++++++++++++++++++
- arch/arm64/kernel/efi.c      | 58 ++++++++++++++++++++++++++++++++++++++++++++
- arch/arm64/kernel/setup.c    |  2 +-
- include/linux/efi.h          |  1 +
- 4 files changed, 116 insertions(+), 1 deletion(-)
+ include/linux/efi.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/arch/arm64/include/asm/efi.h b/arch/arm64/include/asm/efi.h
-index e8a9783235cb..bc7cf4dd00ae 100644
---- a/arch/arm64/include/asm/efi.h
-+++ b/arch/arm64/include/asm/efi.h
-@@ -14,10 +14,12 @@
- 
- #ifdef CONFIG_EFI
- extern void efi_init(void);
-+extern void arm64_efi_init(void);
- 
- bool efi_runtime_fixup_exception(struct pt_regs *regs, const char *msg);
- #else
- #define efi_init()
-+#define arm64_efi_init()
- 
- static inline
- bool efi_runtime_fixup_exception(struct pt_regs *regs, const char *msg)
-@@ -151,4 +153,58 @@ efi_status_t efi_handle_corrupted_x18(efi_status_t s, const char *f);
- 
- void efi_icache_sync(unsigned long start, unsigned long end);
- 
-+/*
-+ * PSCI handler exposed by the firmware through
-+ * LINUX_EFI_ARM_PSCI_HANDLER_TABLE_GUID.
-+ *
-+ * Unlike the regular EFI runtime services, this handler is invoked as a plain
-+ * call under the EFI virtual mapping and not through the runtime services
-+ * dispatch path. The OS therefore does not set up the usual runtime call
-+ * environment around it, which imposes two requirements on the firmware:
-+ *
-+ *  - The handler must not corrupt FP/SIMD/SVE or any other lazily-saved CPU
-+ *    state.
-+ *
-+ *  - The handler must be reentrant and independent of the other EFI runtime
-+ *    services. It is only guaranteed to run with interrupts disabled on the
-+ *    core it is called.
-+ */
-+typedef unsigned long efi_psci_handler_t(unsigned long function_id,
-+					 unsigned long arg0,
-+					 unsigned long arg1,
-+					 unsigned long arg2);
-+
-+#define EFI_PSCI_MAX_FN 0x20
-+
-+/**
-+ * struct efi_psci_table - firmware-provided PSCI conduit table
-+ * @version:      PSCI version implemented by the firmware, in the format
-+ *                returned by PSCI_VERSION (major in bits 16-30, minor in
-+ *                bits 0-15).
-+ * @num_features: Number of valid entries in @features. Function numbers at
-+ *                or above this value are treated as not supported. Guaranteed
-+ *                to be at least 0x20.
-+ * @psci_handler: Firmware entry point invoked for PSCI calls that are not
-+ *                served from the cached fields above. Called via
-+ *                arm64_efi_psci_call() with the EFI runtime mapping active.
-+ * @features:     PSCI_FEATURES results indexed by PSCI function number (the
-+ *                low byte of the function ID, which is identical for the
-+ *                SMC32 and SMC64 variants).
-+ *
-+ * Populated at boot from the firmware's PSCI handler configuration table
-+ * (LINUX_EFI_ARM_PSCI_HANDLER_TABLE_GUID). @version, @num_features and
-+ * @features cache the answers to the PSCI calls that must be serviced before
-+ * EFI runtime services can be invoked. All other calls are forwarded to
-+ * @psci_handler using arm64_efi_psci_call().
-+ */
-+extern struct efi_psci_table {
-+	u32 version;
-+	u32 num_features;
-+	efi_psci_handler_t *psci_handler;
-+	s32 features[EFI_PSCI_MAX_FN];
-+} efi_psci;
-+
-+unsigned long arm64_efi_psci_call(unsigned long function_id, unsigned long arg0,
-+				  unsigned long arg1, unsigned long arg2);
-+
- #endif /* _ASM_EFI_H */
-diff --git a/arch/arm64/kernel/efi.c b/arch/arm64/kernel/efi.c
-index 30cd7f804398..e40885567f9e 100644
---- a/arch/arm64/kernel/efi.c
-+++ b/arch/arm64/kernel/efi.c
-@@ -18,6 +18,7 @@
- #include <asm/stacktrace.h>
- #include <asm/vmap_stack.h>
- 
-+
- static bool region_is_misaligned(const efi_memory_desc_t *md)
- {
- 	if (PAGE_SIZE == EFI_PAGE_SIZE)
-@@ -242,6 +243,63 @@ bool efi_runtime_fixup_exception(struct pt_regs *regs, const char *msg)
- /* EFI requires 8 KiB of stack space for runtime services */
- static_assert(THREAD_SIZE >= SZ_8K);
- 
-+struct efi_psci_table efi_psci __ro_after_init;
-+static unsigned long efi_psci_handler_table __initdata = EFI_INVALID_TABLE_ADDR;
-+const efi_config_table_type_t efi_arch_tables[] __initconst = {
-+	{LINUX_EFI_ARM_PSCI_HANDLER_TABLE_GUID, &efi_psci_handler_table},
-+	{}
-+};
-+
-+static void __init arm64_efi_init_psci(void)
-+{
-+	struct efi_psci_table *psci;
-+
-+	if (efi_psci_handler_table == EFI_INVALID_TABLE_ADDR)
-+		return;
-+
-+	psci = early_memremap_ro(efi_psci_handler_table, sizeof(*psci));
-+	if (psci == NULL) {
-+		pr_warn("Unable to map PSCI table.\n");
-+		return;
-+	}
-+
-+	memcpy(&efi_psci, psci, sizeof(*psci));
-+	early_memunmap(psci, sizeof(*psci));
-+}
-+
-+void __init arm64_efi_init(void)
-+{
-+	efi_init();
-+	arm64_efi_init_psci();
-+}
-+
-+unsigned long arm64_efi_psci_call(unsigned long function_id, unsigned long arg0,
-+				  unsigned long arg1, unsigned long arg2)
-+{
-+	unsigned long ret, flags;
-+
-+	/*
-+	 * Note that unlike for regular EFI runtime calls we don't have to save
-+	 * FP/SIMD state here because the handler ABI forbids using those.
-+	 * Likewise, we do not take any lock here because the handler has to be
-+	 * re-entrant. We couldn't take the sleeping efi_runtime_lock here
-+	 * anyway because we may be called from atomic context for cpuidle
-+	 * and CPU bring-up.
-+	 */
-+	local_irq_save(flags);
-+	efi_virtmap_load();
-+	uaccess_ttbr0_enable();
-+	post_ttbr_update_workaround();
-+
-+	ret = efi_psci.psci_handler(function_id, arg0, arg1, arg2);
-+
-+	uaccess_ttbr0_disable();
-+	efi_virtmap_unload();
-+	local_irq_restore(flags);
-+
-+	return ret;
-+}
-+
- static int __init arm64_efi_rt_init(void)
- {
- 	void *p;
-diff --git a/arch/arm64/kernel/setup.c b/arch/arm64/kernel/setup.c
-index 23c05dc7a8f2..01735fcacf2a 100644
---- a/arch/arm64/kernel/setup.c
-+++ b/arch/arm64/kernel/setup.c
-@@ -320,7 +320,7 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
- 	cpu_uninstall_idmap();
- 
- 	xen_early_init();
--	efi_init();
-+	arm64_efi_init();
- 
- 	if (!efi_enabled(EFI_BOOT)) {
- 		if ((u64)_text % MIN_KIMG_ALIGN)
 diff --git a/include/linux/efi.h b/include/linux/efi.h
-index ccbc35479684..f3db3a18b540 100644
+index f3db3a18b540..882148114068 100644
 --- a/include/linux/efi.h
 +++ b/include/linux/efi.h
-@@ -422,6 +422,7 @@ void efi_native_runtime_setup(void);
- #define LINUX_EFI_COCO_SECRET_AREA_GUID		EFI_GUID(0xadf956ad, 0xe98c, 0x484c,  0xae, 0x11, 0xb5, 0x1c, 0x7d, 0x33, 0x64, 0x47)
- #define LINUX_EFI_BOOT_MEMMAP_GUID		EFI_GUID(0x800f683f, 0xd08b, 0x423a,  0xa2, 0x93, 0x96, 0x5c, 0x3c, 0x6f, 0xe2, 0xb4)
- #define LINUX_EFI_UNACCEPTED_MEM_TABLE_GUID	EFI_GUID(0xd5d1de3c, 0x105c, 0x44f9,  0x9e, 0xa9, 0xbc, 0xef, 0x98, 0x12, 0x00, 0x31)
-+#define LINUX_EFI_ARM_PSCI_HANDLER_TABLE_GUID	EFI_GUID(0xf9b47651, 0x4674, 0x4ed9,  0x94, 0x3b, 0x5c, 0xea, 0xd2, 0x10, 0x9a, 0x8b)
+@@ -128,6 +128,8 @@ typedef	struct {
+ #define EFI_MEMORY_SP			BIT_ULL(18)	/* soft reserved */
+ #define EFI_MEMORY_CPU_CRYPTO		BIT_ULL(19)	/* supports encryption */
+ #define EFI_MEMORY_HOT_PLUGGABLE	BIT_ULL(20)	/* supports unplugging at runtime */
++#define EFI_MEMORY_ISA_MASK		GENMASK_ULL(59, 44)	/* ISA-specific attributes */
++#define EFI_MEMORY_ISA_VALID		BIT_ULL(62)	/* EFI_MEMORY_ISA_MASK bits are valid */
+ #define EFI_MEMORY_RUNTIME		BIT_ULL(63)	/* range requires runtime mapping */
  
- #define RISCV_EFI_BOOT_PROTOCOL_GUID		EFI_GUID(0xccd15fec, 0x6f73, 0x4eec,  0x83, 0x95, 0x3e, 0x69, 0xe4, 0xb9, 0x40, 0xbf)
- 
+ #define EFI_MEMORY_DESCRIPTOR_VERSION	1
 
 -- 
 2.55.0
