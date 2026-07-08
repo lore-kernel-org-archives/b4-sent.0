@@ -1,220 +1,230 @@
 From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Wed, 08 Jul 2026 11:22:27 +0200
-Subject: [PATCH v6 1/9] can: bcm: defer rx_op deallocation to workqueue to
- fix thrtimer UAF
+Date: Wed, 08 Jul 2026 11:22:28 +0200
+Subject: [PATCH v6 2/9] can: bcm: fix lockless bound/ifindex race and
+ silent RX_SETUP failure
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260708-bcm_fixes-v6-1-80710a2bc398@hartkopp.net>
+Message-Id: <20260708-bcm_fixes-v6-2-80710a2bc398@hartkopp.net>
 References: <20260708-bcm_fixes-v6-0-80710a2bc398@hartkopp.net>
 In-Reply-To: <20260708-bcm_fixes-v6-0-80710a2bc398@hartkopp.net>
 To: linux-can@vger.kernel.org
 Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
- Marc Kleine-Budde <mkl@pengutronix.de>, Lee Jones <lee@kernel.org>, 
- Feng Xue <feng.xue@outlook.com>
+ Marc Kleine-Budde <mkl@pengutronix.de>, Ginger <ginger.jzllee@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783502567; l=6459;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783502567; l=6264;
  i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=HLu6KLqysIbTcTJRJ9fWwVQaVrLBGRp/BcX5+2NtnEw=;
- b=mCj56MdFXwihxh+A2uEOuh7N+PEbJhbRVFmxohiFnqdN5piCjzqeSBtCWc7NPkbKE76MkOtkN
- WRlPzhFBGCICeW13wde+iKDXdw5WkY8KyscxKCZJXHGx+sbr0YmA6k/
+ bh=+xnLOux3truzcT7oFJFYpPMF/LHoGp/rehTSc8S5r5A=;
+ b=niWlHwOKC83i3WZw/sjquFdsOD5y2QHbI14opXrVB2uGG5ZXt0fyQZkqzuZ7GRdP1fPtoPaGz
+ d+szAnUJpzBD7y+wlZqHySjLtwNHFztZb3mlVCR8sx7wFVabzqNzDKR
 X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
  pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
 X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Lee Jones <lee@kernel.org>
+bcm_sendmsg() reads bo->ifindex and checks bo->bound before taking
+lock_sock(), while bcm_notify(), bcm_connect() and bcm_release() all
+mutate both fields under that same lock. Because the lockless reads
+and the locked writes are unordered with respect to each other, a
+racing bcm_notify() (device unregister) or bcm_connect() (concurrent
+bind on another thread sharing the socket) can make bcm_sendmsg()
+observe an inconsistent combination, e.g. a stale bound=1 together
+with the now-cleared ifindex=0, silently turning a socket bound to a
+specific CAN interface into one that also matches "any" interface.
 
-Commit f1b4e32aca08 ("can: bcm: use call_rcu() instead of costly
-synchronize_rcu()") replaced synchronize_rcu() in bcm_delete_rx_op()
-with call_rcu() and introduced the RX_NO_AUTOTIMER flag.
+Keep the lockless bo->bound check purely as a fast-path reject, and
+move the ifindex read (and a bo->bound re-check) into the locked
+section, where every writer already serializes. This removes the
+possibility of observing the two fields torn against each other,
+rather than trying to fix it with more READ_ONCE()/WRITE_ONCE() pairs
+on two independently updated fields. Annotate the now-purely-lockless
+bo->bound accesses consistently across all its write sites.
 
-However, this flag check was omitted for thrtimer in the packet rx
-fast-path. During BCM RX operation teardown, a concurrent RCU reader
-(bcm_rx_handler) can race and re-arm thrtimer via
-bcm_rx_update_and_send() after call_rcu() has been scheduled.  Once
-the RCU grace period elapses, bcm_op is freed.  The subsequently
-firing thrtimer then dereferences the deallocated op, causing a UAF.
+Also fix bcm_rx_setup() silently returning success when the target
+device disappears concurrently instead of reporting -ENODEV, so a
+broken RX op is no longer left registered as if it had succeeded.
 
-Adding flag checks to the rx fast-path (bcm_rx_update_and_send) does not
-fully close the TOCTOU race and introduces latency for every CAN frame.
-Conversely, calling hrtimer_cancel() directly inside the RCU callback
-(softirq context) is fatal as hrtimer_cancel() can sleep, triggering
-a "scheduling while atomic" panic.
-
-Resolve this by deferring the timer cancellation and memory free to a
-dedicated unbound workqueue (bcm_wq).  The RCU callback now queues a
-work item to bcm_wq, which safely cancels both timers and deallocates
-memory in sleepable process context.  A dedicated workqueue is used to
-prevent system-wide WQ saturation and is cleanly flushed/destroyed
-on module unload to avoid rmmod page faults.
-
-Since the deferred work can now outlive the calling context by an
-unbounded amount, also take a reference on op->sk when it is assigned
-and drop it only once the deferred work has cancelled both timers, so a
-socket can no longer be freed out from under a still-armed timer whose
-callback (bcm_send_to_user()) dereferences op->sk.
-
-Fixes: f1b4e32aca08 ("can: bcm: use call_rcu() instead of costly synchronize_rcu()")
-Tested-by: Feng Xue <feng.xue@outlook.com>
-Tested-by: Oliver Hartkopp <socketcan@hartkopp.net>
-Signed-off-by: Lee Jones <lee@kernel.org>
+Reported-by: Ginger <ginger.jzllee@gmail.com>
+Closes: https://lore.kernel.org/linux-can/CAGp+u1aBK8QVjsvAxM2Ldzep4rEbsP9x_pV3At4g=h1kVEtyhA@mail.gmail.com/
 Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
 ---
- net/can/bcm.c | 37 ++++++++++++++++++++++++++++++++++---
- 1 file changed, 34 insertions(+), 3 deletions(-)
+ net/can/bcm.c | 65 ++++++++++++++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 51 insertions(+), 14 deletions(-)
 
 diff --git a/net/can/bcm.c b/net/can/bcm.c
-index a4bef2c48a55..bdf53241bd7b 100644
+index bdf53241bd7b..b612135b017d 100644
 --- a/net/can/bcm.c
 +++ b/net/can/bcm.c
-@@ -56,10 +56,11 @@
- #include <linux/can.h>
- #include <linux/can/core.h>
- #include <linux/can/skb.h>
- #include <linux/can/bcm.h>
- #include <linux/slab.h>
-+#include <linux/workqueue.h>
- #include <linux/spinlock.h>
- #include <net/can.h>
- #include <net/sock.h>
- #include <net/net_namespace.h>
+@@ -1321,10 +1321,15 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
+ 						      bcm_rx_handler, op,
+ 						      "bcm", sk);
  
-@@ -90,10 +91,12 @@ MODULE_LICENSE("Dual BSD/GPL");
- MODULE_AUTHOR("Oliver Hartkopp <oliver.hartkopp@volkswagen.de>");
- MODULE_ALIAS("can-proto-2");
+ 				op->rx_reg_dev = dev;
+ 				dev_put(dev);
++			} else {
++				/* the requested device is gone - do not
++				 * silently succeed without registering
++				 */
++				err = -ENODEV;
+ 			}
  
- #define BCM_MIN_NAMELEN CAN_REQUIRED_SIZE(struct sockaddr_can, can_ifindex)
- 
-+static struct workqueue_struct *bcm_wq;
-+
- /*
-  * easy access to the first 64 bit of can(fd)_frame payload. cp->data is
-  * 64 bit aligned so the offset has to be multiples of 8 which is ensured
-  * by the only callers in bcm_rx_cmp_to_index() bcm_rx_handler().
+ 		} else
+ 			err = can_rx_register(sock_net(sk), NULL, op->can_id,
+ 					      REGMASK(op->can_id),
+@@ -1394,16 +1399,17 @@ static int bcm_tx_send(struct msghdr *msg, int ifindex, struct sock *sk,
   */
-@@ -103,10 +106,11 @@ static inline u64 get_u64(const struct canfd_frame *cp, int offset)
- }
+ static int bcm_sendmsg(struct socket *sock, struct msghdr *msg, size_t size)
+ {
+ 	struct sock *sk = sock->sk;
+ 	struct bcm_sock *bo = bcm_sk(sk);
+-	int ifindex = bo->ifindex; /* default ifindex for this bcm_op */
++	int ifindex;
+ 	struct bcm_msg_head msg_head;
+ 	int cfsiz;
+ 	int ret; /* read bytes or error codes as return value */
  
- struct bcm_op {
- 	struct list_head list;
- 	struct rcu_head rcu;
-+	struct work_struct work;
- 	int ifindex;
- 	canid_t can_id;
- 	u32 flags;
- 	unsigned long frames_abs, frames_filtered;
- 	struct bcm_timeval ival1, ival2;
-@@ -791,23 +795,40 @@ static struct bcm_op *bcm_find_op(struct list_head *ops,
+-	if (!bo->bound)
++	/* Lockless fast-path check for bound socket */
++	if (!READ_ONCE(bo->bound))
+ 		return -ENOTCONN;
+ 
+ 	/* check for valid message length from userspace */
+ 	if (size < MHSIZ)
+ 		return -EINVAL;
+@@ -1415,43 +1421,65 @@ static int bcm_sendmsg(struct socket *sock, struct msghdr *msg, size_t size)
+ 
+ 	cfsiz = CFSIZ(msg_head.flags);
+ 	if ((size - MHSIZ) % cfsiz)
+ 		return -EINVAL;
+ 
++	lock_sock(sk);
++
++	/* Re-validate under the socket lock: a concurrent bcm_notify()
++	 * may have unbound this socket (device removal) after the
++	 * lockless fast-path check above. bo->ifindex is only ever
++	 * mutated under lock_sock(), so reading it here - instead of
++	 * before taking the lock - guarantees it can't be observed
++	 * torn against bo->bound.
++	 */
++	if (!bo->bound) {
++		ret = -ENOTCONN;
++		goto out_release;
++	}
++
++	/* default ifindex for this bcm_op */
++	ifindex = bo->ifindex;
++
+ 	/* check for alternative ifindex for this bcm_op */
+ 
+ 	if (!ifindex && msg->msg_name) {
+ 		/* no bound device as default => check msg_name */
+ 		DECLARE_SOCKADDR(struct sockaddr_can *, addr, msg->msg_name);
+ 
+-		if (msg->msg_namelen < BCM_MIN_NAMELEN)
+-			return -EINVAL;
++		if (msg->msg_namelen < BCM_MIN_NAMELEN) {
++			ret = -EINVAL;
++			goto out_release;
++		}
+ 
+-		if (addr->can_family != AF_CAN)
+-			return -EINVAL;
++		if (addr->can_family != AF_CAN) {
++			ret = -EINVAL;
++			goto out_release;
++		}
+ 
+ 		/* ifindex from sendto() */
+ 		ifindex = addr->can_ifindex;
+ 
+ 		if (ifindex) {
+ 			struct net_device *dev;
+ 
+ 			dev = dev_get_by_index(sock_net(sk), ifindex);
+-			if (!dev)
+-				return -ENODEV;
++			if (!dev) {
++				ret = -ENODEV;
++				goto out_release;
++			}
+ 
+ 			if (dev->type != ARPHRD_CAN) {
+ 				dev_put(dev);
+-				return -ENODEV;
++				ret = -ENODEV;
++				goto out_release;
+ 			}
+ 
+ 			dev_put(dev);
+ 		}
  	}
  
- 	return NULL;
+-	lock_sock(sk);
+-
+ 	switch (msg_head.opcode) {
+ 
+ 	case TX_SETUP:
+ 		ret = bcm_tx_setup(&msg_head, msg, ifindex, sk);
+ 		break;
+@@ -1497,10 +1525,11 @@ static int bcm_sendmsg(struct socket *sock, struct msghdr *msg, size_t size)
+ 	default:
+ 		ret = -EINVAL;
+ 		break;
+ 	}
+ 
++out_release:
+ 	release_sock(sk);
+ 
+ 	return ret;
  }
  
--static void bcm_free_op_rcu(struct rcu_head *rcu_head)
-+static void bcm_free_op_work(struct work_struct *work)
- {
--	struct bcm_op *op = container_of(rcu_head, struct bcm_op, rcu);
-+	struct bcm_op *op = container_of(work, struct bcm_op, work);
-+
-+	hrtimer_cancel(&op->timer);
-+	hrtimer_cancel(&op->thrtimer);
- 
- 	if ((op->frames) && (op->frames != &op->sframe))
- 		kfree(op->frames);
- 
- 	if ((op->last_frames) && (op->last_frames != &op->last_sframe))
- 		kfree(op->last_frames);
- 
-+	/* the last possible access to op->timer/op->thrtimer has now
-+	 * happened above via hrtimer_cancel() - op->sk is no longer
-+	 * needed by any pending timer callback, so drop our reference
-+	 */
-+	sock_put(op->sk);
-+
- 	kfree(op);
- }
- 
-+static void bcm_free_op_rcu(struct rcu_head *rcu_head)
-+{
-+	struct bcm_op *op = container_of(rcu_head, struct bcm_op, rcu);
-+
-+	INIT_WORK(&op->work, bcm_free_op_work);
-+	queue_work(bcm_wq, &op->work);
-+}
-+
- static void bcm_remove_op(struct bcm_op *op)
- {
- 	hrtimer_cancel(&op->timer);
- 	hrtimer_cancel(&op->thrtimer);
- 
-@@ -1058,10 +1079,11 @@ static int bcm_tx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 		/* tx_ops never compare with previous received messages */
- 		op->last_frames = NULL;
- 
- 		/* bcm_can_tx / bcm_tx_timeout_handler needs this */
- 		op->sk = sk;
-+		sock_hold(sk);
- 		op->ifindex = ifindex;
- 
- 		/* initialize uninitialized (kzalloc) structure */
- 		hrtimer_setup(&op->timer, bcm_tx_timeout_handler, CLOCK_MONOTONIC,
- 			      HRTIMER_MODE_REL_SOFT);
-@@ -1219,10 +1241,11 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
+@@ -1533,11 +1562,16 @@ static void bcm_notify(struct bcm_sock *bo, unsigned long msg,
+ 			if (sock_net(sk)->can.bcmproc_dir && bo->bcm_proc_read) {
+ 				remove_proc_entry(bo->procname, sock_net(sk)->can.bcmproc_dir);
+ 				bo->bcm_proc_read = NULL;
  			}
+ #endif
+-			bo->bound   = 0;
++			/* Paired with the lockless fast-path check in
++			 * bcm_sendmsg(); bo->ifindex itself is only ever
++			 * accessed under lock_sock() so it needs no
++			 * annotation.
++			 */
++			WRITE_ONCE(bo->bound, 0);
+ 			bo->ifindex = 0;
+ 			notify_enodev = 1;
  		}
  
- 		/* bcm_can_tx / bcm_tx_timeout_handler needs this */
- 		op->sk = sk;
-+		sock_hold(sk);
- 		op->ifindex = ifindex;
+ 		release_sock(sk);
+@@ -1674,11 +1708,11 @@ static int bcm_release(struct socket *sock)
+ 	list_for_each_entry_safe(op, next, &bo->rx_ops, list)
+ 		bcm_remove_op(op);
  
- 		/* ifindex for timeout events w/o previous frame reception */
- 		op->rx_ifindex = ifindex;
+ 	/* remove device reference */
+ 	if (bo->bound) {
+-		bo->bound   = 0;
++		WRITE_ONCE(bo->bound, 0);
+ 		bo->ifindex = 0;
+ 	}
  
-@@ -1837,15 +1860,19 @@ static struct notifier_block canbcm_notifier = {
+ 	sock_orphan(sk);
+ 	sock->sk = NULL;
+@@ -1744,11 +1778,14 @@ static int bcm_connect(struct socket *sock, struct sockaddr_unsized *uaddr, int
+ 			goto fail;
+ 		}
+ 	}
+ #endif /* CONFIG_PROC_FS */
  
- static int __init bcm_module_init(void)
- {
- 	int err;
+-	bo->bound = 1;
++	/* bo->ifindex above is fully assigned before this point; pairs
++	 * with the lockless fast-path check in bcm_sendmsg()
++	 */
++	WRITE_ONCE(bo->bound, 1);
  
-+	bcm_wq = alloc_workqueue("can-bcm-wq", WQ_UNBOUND, 0);
-+	if (!bcm_wq)
-+		return -ENOMEM;
-+
- 	pr_info("can: broadcast manager protocol\n");
+ fail:
+ 	release_sock(sk);
  
- 	err = register_pernet_subsys(&canbcm_pernet_ops);
- 	if (err)
--		return err;
-+		goto register_pernet_failed;
- 
- 	err = register_netdevice_notifier(&canbcm_notifier);
- 	if (err)
- 		goto register_notifier_failed;
- 
-@@ -1859,17 +1886,21 @@ static int __init bcm_module_init(void)
- 
- register_proto_failed:
- 	unregister_netdevice_notifier(&canbcm_notifier);
- register_notifier_failed:
- 	unregister_pernet_subsys(&canbcm_pernet_ops);
-+register_pernet_failed:
-+	destroy_workqueue(bcm_wq);
- 	return err;
- }
- 
- static void __exit bcm_module_exit(void)
- {
- 	can_proto_unregister(&bcm_can_proto);
- 	unregister_netdevice_notifier(&canbcm_notifier);
- 	unregister_pernet_subsys(&canbcm_pernet_ops);
-+	rcu_barrier();
-+	destroy_workqueue(bcm_wq);
- }
- 
- module_init(bcm_module_init);
- module_exit(bcm_module_exit);
+ 	return ret;
 
 -- 
 2.53.0
