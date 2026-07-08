@@ -1,154 +1,161 @@
 From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Wed, 08 Jul 2026 19:27:04 +0200
-Subject: [PATCH v8 07/10] can: bcm: validate frame length in bcm_rx_setup()
- for RTR replies
+Date: Wed, 08 Jul 2026 19:27:05 +0200
+Subject: [PATCH v8 08/10] can: bcm: add missing device refcount for CAN
+ filter removal
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260708-bcm_fixes-v8-7-8c2f5f3bc212@hartkopp.net>
+Message-Id: <20260708-bcm_fixes-v8-8-8c2f5f3bc212@hartkopp.net>
 References: <20260708-bcm_fixes-v8-0-8c2f5f3bc212@hartkopp.net>
 In-Reply-To: <20260708-bcm_fixes-v8-0-8c2f5f3bc212@hartkopp.net>
 To: linux-can@vger.kernel.org
 Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
- Marc Kleine-Budde <mkl@pengutronix.de>
+ Marc Kleine-Budde <mkl@pengutronix.de>, sashiko-bot@kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783531623; l=3930;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783531623; l=4807;
  i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=AQBMqpguyZPoLMliniKo3/68UYwttMvTSEn5kxEMHQI=;
- b=giHtfEhXcplU7Own+GZWlPy3qGYJ9atdNDF3QzUWFoRsMiibK5C0eUYKmnUQwzz/9TVfdOmOj
- pyiBk19CGwYDZRyeMHZsDA6freG+6HS5zTrU8Ajo/Ps2K/QsXgCokds
+ bh=e+4060p0TLpVYJANRm8fMWWwjGdEnSDV8K40Qsp0eoQ=;
+ b=LXzX31ZIL46xdeEU8nd1btIx2aDc5NVhIz2FxA27s3dONB45xaImM+gpgwQYejaVr7Ptgg0ZA
+ WkX7di+ohDAAwwGCwAlJrPf1quxZ5fGmmgNCEKiWEpOHQxMgQTgS+Dh
 X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
  pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
 X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-bcm_tx_setup() validates cf->len against the CAN/CAN FD DLC limits
-before installing frames for TX_SETUP, but bcm_rx_setup() never did
-the same for the RTR-reply frame configured via RX_SETUP with
-RX_RTR_FRAME.
+sashiko-bot remarked a problem with a concurrent device unregistration
+in isotp.c which also is present in the bcm.c code. A former fix for raw.c
+commit c275a176e4b6 ("can: raw: add missing refcount for memory leak fix")
+introduced a netdevice_tracker which solves the issue for bcm.c too.
 
+bcm_release(), bcm_delete_rx_op() and bcm_notifier() relied on
+dev_get_by_index(ifindex) to re-find the device for an rx_op before
+unregistering its filter. If a concurrent NETDEV_UNREGISTER has already
+unlisted the device from the ifindex table, that lookup fails and
+can_rx_unregister() is silently skipped, leaving a stale CAN filter
+pointing at the soon-to-be-freed bcm_op/socket.
+
+Hold a netdev_hold()/netdev_put() tracked reference on op->rx_reg_dev
+from the moment the rx filter is registered in bcm_rx_setup() until it
+is unregistered in bcm_rx_unreg(), and use that reference directly in
+bcm_release() and bcm_delete_rx_op() instead of re-looking the device
+up by ifindex.
+
+Reported-by: sashiko-bot@kernel.org
+Link: https://sashiko.dev/#/patchset/20260707094716.63578-1-socketcan@hartkopp.net
 Fixes: ffd980f976e7 ("[CAN]: Add broadcast manager (bcm) protocol")
 Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
 ---
- net/can/bcm.c | 59 +++++++++++++++++++++++++++++++++++++++++------------------
- 1 file changed, 41 insertions(+), 18 deletions(-)
+ net/can/bcm.c | 47 +++++++++++++++++++++++++++--------------------
+ 1 file changed, 27 insertions(+), 20 deletions(-)
 
 diff --git a/net/can/bcm.c b/net/can/bcm.c
-index fefa77045253..300f1f88c4d2 100644
+index 300f1f88c4d2..4bdca72f9327 100644
 --- a/net/can/bcm.c
 +++ b/net/can/bcm.c
-@@ -1213,26 +1213,41 @@ static int bcm_tx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 		kfree(op->frames);
- 	kfree(op);
- 	return err;
+@@ -126,10 +126,11 @@ struct bcm_op {
+ 	void *last_frames;
+ 	struct canfd_frame sframe;
+ 	struct canfd_frame last_sframe;
+ 	struct sock *sk;
+ 	struct net_device *rx_reg_dev;
++	netdevice_tracker rx_reg_dev_tracker;
+ 	spinlock_t bcm_tx_lock; /* protect tx data and timer updates */
+ 	spinlock_t bcm_rx_update_lock; /* protect filter/timer data updates */
+ };
+ 
+ struct bcm_sock {
+@@ -904,10 +905,11 @@ static void bcm_rx_unreg(struct net_device *dev, struct bcm_op *op)
+ 		can_rx_unregister(dev_net(dev), dev, op->can_id,
+ 				  REGMASK(op->can_id), bcm_rx_handler, op);
+ 
+ 		/* mark as removed subscription */
+ 		op->rx_reg_dev = NULL;
++		netdev_put(dev, &op->rx_reg_dev_tracker);
+ 	} else
+ 		printk(KERN_ERR "can-bcm: bcm_rx_unreg: registered device "
+ 		       "mismatch %p %p\n", op->rx_reg_dev, dev);
  }
  
--static void bcm_rx_setup_rtr_check(struct bcm_msg_head *msg_head,
--				   struct bcm_op *op, void *new_frames)
-+static int bcm_rx_setup_rtr_check(struct bcm_msg_head *msg_head,
-+				  struct bcm_op *op, void *new_frames)
- {
-+	struct canfd_frame *frame0 = new_frames;
-+
-+	if (!(msg_head->flags & RX_RTR_FRAME))
-+		return 0;
-+
-+	/* this frame is sent out as-is by bcm_can_tx() whenever a matching
-+	 * remote request is received, so validate its length the same way
-+	 * bcm_tx_setup() validates TX_SETUP frames before installing it
-+	 */
-+	if (msg_head->flags & CAN_FD_FRAME) {
-+		if (frame0->len > 64)
-+			return -EINVAL;
-+	} else {
-+		if (frame0->len > 8)
-+			return -EINVAL;
-+	}
-+
- 	/* funny feature in RX(!)_SETUP only for RTR-mode:
- 	 * copy can_id into frame BUT without RTR-flag to
- 	 * prevent a full-load-loopback-test ... ;-]
- 	 * normalize this on the staged buffer, before it is
- 	 * ever installed into op->frames.
- 	 */
--	if (msg_head->flags & RX_RTR_FRAME) {
--		struct canfd_frame *frame0 = new_frames;
-+	if ((msg_head->flags & TX_CP_CAN_ID) ||
-+	    frame0->can_id == op->can_id)
-+		frame0->can_id = op->can_id & ~CAN_RTR_FLAG;
+@@ -934,21 +936,18 @@ static int bcm_delete_rx_op(struct list_head *ops, struct bcm_msg_head *mh,
+ 			if (op->ifindex) {
+ 				/*
+ 				 * Only remove subscriptions that had not
+ 				 * been removed due to NETDEV_UNREGISTER
+ 				 * in bcm_notifier()
++				 *
++				 * op->rx_reg_dev is a tracked reference taken
++				 * when the subscription was registered, so it
++				 * stays valid here even if a concurrent
++				 * NETDEV_UNREGISTER already unlisted the dev.
+ 				 */
+-				if (op->rx_reg_dev) {
+-					struct net_device *dev;
+-
+-					dev = dev_get_by_index(sock_net(op->sk),
+-							       op->ifindex);
+-					if (dev) {
+-						bcm_rx_unreg(dev, op);
+-						dev_put(dev);
+-					}
+-				}
++				if (op->rx_reg_dev)
++					bcm_rx_unreg(op->rx_reg_dev, op);
+ 			} else
+ 				can_rx_unregister(sock_net(op->sk), NULL,
+ 						  op->can_id,
+ 						  REGMASK(op->can_id),
+ 						  bcm_rx_handler, op);
+@@ -1453,11 +1452,21 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
+ 						      op->can_id,
+ 						      REGMASK(op->can_id),
+ 						      bcm_rx_handler, op,
+ 						      "bcm", sk);
  
--		if ((msg_head->flags & TX_CP_CAN_ID) ||
--		    frame0->can_id == op->can_id)
--			frame0->can_id = op->can_id & ~CAN_RTR_FLAG;
--	}
-+	return 0;
- }
- 
- /*
-  * bcm_rx_setup - create or update a bcm rx op (for bcm_sendmsg)
-  */
-@@ -1291,11 +1306,15 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 			if (err < 0) {
- 				kfree(new_frames);
- 				return err;
- 			}
- 
--			bcm_rx_setup_rtr_check(msg_head, op, new_frames);
-+			err = bcm_rx_setup_rtr_check(msg_head, op, new_frames);
-+			if (err < 0) {
-+				kfree(new_frames);
-+				return err;
-+			}
- 		}
- 
- 		spin_lock_bh(&op->bcm_rx_update_lock);
- 		op->nframes = msg_head->nframes;
- 		op->flags = msg_head->flags;
-@@ -1356,20 +1375,16 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 		}
- 
- 		if (msg_head->nframes) {
- 			err = memcpy_from_msg(op->frames, msg,
- 					      msg_head->nframes * op->cfsiz);
--			if (err < 0) {
--				if (op->frames != &op->sframe)
--					kfree(op->frames);
--				if (op->last_frames != &op->last_sframe)
--					kfree(op->last_frames);
--				kfree(op);
--				return err;
+-				op->rx_reg_dev = dev;
++				/* keep a tracked reference so that a later
++				 * unregister can safely reach the device even
++				 * if a concurrent NETDEV_UNREGISTER has
++				 * already unlisted it by ifindex
++				 */
++				if (!err) {
++					op->rx_reg_dev = dev;
++					netdev_hold(dev,
++						    &op->rx_reg_dev_tracker,
++						    GFP_KERNEL);
++				}
+ 				dev_put(dev);
+ 			} else {
+ 				/* the requested device is gone - do not
+ 				 * silently succeed without registering
+ 				 */
+@@ -1830,20 +1839,18 @@ static int bcm_release(struct socket *sock)
+ 		if (op->ifindex) {
+ 			/*
+ 			 * Only remove subscriptions that had not
+ 			 * been removed due to NETDEV_UNREGISTER
+ 			 * in bcm_notifier()
++			 *
++			 * op->rx_reg_dev is a tracked reference taken
++			 * when the subscription was registered, so it
++			 * stays valid here even if a concurrent
++			 * NETDEV_UNREGISTER already unlisted the device.
+ 			 */
+-			if (op->rx_reg_dev) {
+-				struct net_device *dev;
+-
+-				dev = dev_get_by_index(net, op->ifindex);
+-				if (dev) {
+-					bcm_rx_unreg(dev, op);
+-					dev_put(dev);
+-				}
 -			}
-+			if (err < 0)
-+				goto free_op;
++			if (op->rx_reg_dev)
++				bcm_rx_unreg(op->rx_reg_dev, op);
+ 		} else
+ 			can_rx_unregister(net, NULL, op->can_id,
+ 					  REGMASK(op->can_id),
+ 					  bcm_rx_handler, op);
  
--			bcm_rx_setup_rtr_check(msg_head, op, op->frames);
-+			err = bcm_rx_setup_rtr_check(msg_head, op, op->frames);
-+			if (err < 0)
-+				goto free_op;
- 		}
- 
- 		/* bcm_can_tx / bcm_tx_timeout_handler needs this */
- 		op->sk = sk;
- 		sock_hold(sk);
-@@ -1462,10 +1477,18 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 		/* add this bcm_op to the list of the rx_ops */
- 		list_add_rcu(&op->list, &bo->rx_ops);
- 	}
- 
- 	return msg_head->nframes * op->cfsiz + MHSIZ;
-+
-+free_op:
-+	if (op->frames != &op->sframe)
-+		kfree(op->frames);
-+	if (op->last_frames != &op->last_sframe)
-+		kfree(op->last_frames);
-+	kfree(op);
-+	return err;
- }
- 
- /*
-  * bcm_tx_send - send a single CAN frame to the CAN interface (for bcm_sendmsg)
-  */
 
 -- 
 2.53.0
