@@ -1,161 +1,92 @@
 From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Wed, 08 Jul 2026 11:22:34 +0200
-Subject: [PATCH v6 8/9] can: bcm: add missing device refcount for CAN
- filter removal
+Date: Wed, 08 Jul 2026 11:22:35 +0200
+Subject: [PATCH v6 9/9] can: bcm: fix data race on rx_stamp/rx_ifindex in
+ bcm_rx_handler()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260708-bcm_fixes-v6-8-80710a2bc398@hartkopp.net>
+Message-Id: <20260708-bcm_fixes-v6-9-80710a2bc398@hartkopp.net>
 References: <20260708-bcm_fixes-v6-0-80710a2bc398@hartkopp.net>
 In-Reply-To: <20260708-bcm_fixes-v6-0-80710a2bc398@hartkopp.net>
 To: linux-can@vger.kernel.org
 Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
  Marc Kleine-Budde <mkl@pengutronix.de>, sashiko-bot@kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783502567; l=4807;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783502567; l=2476;
  i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=e+4060p0TLpVYJANRm8fMWWwjGdEnSDV8K40Qsp0eoQ=;
- b=v0Nq4/Dr4arnjHnil8Kh71ebsUhv5sgO5F5Einp93pmnOnMOLeauin5SaCGRJwdb/ftKn+2Y6
- 0XPdMZ14s8tDNszbcWzALi6eC9sCbPcUaaKtJADymDAnxxFTrOxPvyA
+ bh=BEyNFIPGIBlcGlv4OIED7FkivSagR+SKOQMvsqcaYUE=;
+ b=EJmjmF25sxXJxU7aNWINpDx2vC3yinYotRRmw4VOPilL28r7m8oBKjzCXJuY5s229HWVl+pgn
+ fa8aMrbNyCaC6DWHcdaIPuYPM3qI+1PNTYI3aQIs8IZuOfqmz7eRCif
 X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
  pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
 X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-sashiko-bot remarked a problem with a concurrent device unregistration
-in isotp.c which also is present in the bcm.c code. A former fix for raw.c
-commit c275a176e4b6 ("can: raw: add missing refcount for memory leak fix")
-introduced a netdevice_tracker which solves the issue for bcm.c too.
+For an rx op subscribed on all interfaces (ifindex == 0), the same op
+is registered once in the shared per-netns wildcard filter list, so
+bcm_rx_handler() can run concurrently on different CPUs for frames
+arriving on different net devices.
 
-bcm_release(), bcm_delete_rx_op() and bcm_notifier() relied on
-dev_get_by_index(ifindex) to re-find the device for an rx_op before
-unregistering its filter. If a concurrent NETDEV_UNREGISTER has already
-unlisted the device from the ifindex table, that lookup fails and
-can_rx_unregister() is silently skipped, leaving a stale CAN filter
-pointing at the soon-to-be-freed bcm_op/socket.
+op->rx_stamp and op->rx_ifindex were written before bcm_rx_update_lock was
+taken, allowing concurrent writers to race each other - including a torn
+store of the 64-bit rx_stamp on 32-bit platforms.
 
-Hold a netdev_hold()/netdev_put() tracked reference on op->rx_reg_dev
-from the moment the rx filter is registered in bcm_rx_setup() until it
-is unregistered in bcm_rx_unreg(), and use that reference directly in
-bcm_release() and bcm_delete_rx_op() instead of re-looking the device
-up by ifindex.
+Beyond a torn store bcm_send_to_user() must report the timestamp/ifindex
+of the very same frame whose content it is delivering. So the assignment
+is placed in the same unbroken bcm_rx_update_lock section as the content
+comparison.
 
-Reported-by: sashiko-bot@kernel.org
-Link: https://sashiko.dev/#/patchset/20260707094716.63578-1-socketcan@hartkopp.net
+As a side effect, the RTR-request frame feature (which never reach
+bcm_send_to_user()) no longer updates rx_stamp/rx_ifindex, since only
+the notification path needs them.
+
 Fixes: ffd980f976e7 ("[CAN]: Add broadcast manager (bcm) protocol")
+Reported-by: sashiko-bot@kernel.org
+Link: https://lore.kernel.org/linux-can/20260707145135.5BC831F00A3A@smtp.kernel.org/
 Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
 ---
- net/can/bcm.c | 47 +++++++++++++++++++++++++++--------------------
- 1 file changed, 27 insertions(+), 20 deletions(-)
+ net/can/bcm.c | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
 
 diff --git a/net/can/bcm.c b/net/can/bcm.c
-index 300f1f88c4d2..4bdca72f9327 100644
+index 4bdca72f9327..73e3a5fc4342 100644
 --- a/net/can/bcm.c
 +++ b/net/can/bcm.c
-@@ -126,10 +126,11 @@ struct bcm_op {
- 	void *last_frames;
- 	struct canfd_frame sframe;
- 	struct canfd_frame last_sframe;
- 	struct sock *sk;
- 	struct net_device *rx_reg_dev;
-+	netdevice_tracker rx_reg_dev_tracker;
- 	spinlock_t bcm_tx_lock; /* protect tx data and timer updates */
- 	spinlock_t bcm_rx_update_lock; /* protect filter/timer data updates */
- };
+@@ -768,15 +768,10 @@ static void bcm_rx_handler(struct sk_buff *skb, void *data)
+ 	}
  
- struct bcm_sock {
-@@ -904,10 +905,11 @@ static void bcm_rx_unreg(struct net_device *dev, struct bcm_op *op)
- 		can_rx_unregister(dev_net(dev), dev, op->can_id,
- 				  REGMASK(op->can_id), bcm_rx_handler, op);
+ 	/* disable timeout */
+ 	hrtimer_cancel(&op->timer);
  
- 		/* mark as removed subscription */
- 		op->rx_reg_dev = NULL;
-+		netdev_put(dev, &op->rx_reg_dev_tracker);
- 	} else
- 		printk(KERN_ERR "can-bcm: bcm_rx_unreg: registered device "
- 		       "mismatch %p %p\n", op->rx_reg_dev, dev);
- }
- 
-@@ -934,21 +936,18 @@ static int bcm_delete_rx_op(struct list_head *ops, struct bcm_msg_head *mh,
- 			if (op->ifindex) {
- 				/*
- 				 * Only remove subscriptions that had not
- 				 * been removed due to NETDEV_UNREGISTER
- 				 * in bcm_notifier()
-+				 *
-+				 * op->rx_reg_dev is a tracked reference taken
-+				 * when the subscription was registered, so it
-+				 * stays valid here even if a concurrent
-+				 * NETDEV_UNREGISTER already unlisted the dev.
- 				 */
--				if (op->rx_reg_dev) {
--					struct net_device *dev;
+-	/* save rx timestamp */
+-	op->rx_stamp = skb->tstamp;
+-	/* save originator for recvfrom() */
+-	op->rx_ifindex = skb->dev->ifindex;
 -
--					dev = dev_get_by_index(sock_net(op->sk),
--							       op->ifindex);
--					if (dev) {
--						bcm_rx_unreg(dev, op);
--						dev_put(dev);
--					}
--				}
-+				if (op->rx_reg_dev)
-+					bcm_rx_unreg(op->rx_reg_dev, op);
- 			} else
- 				can_rx_unregister(sock_net(op->sk), NULL,
- 						  op->can_id,
- 						  REGMASK(op->can_id),
- 						  bcm_rx_handler, op);
-@@ -1453,11 +1452,21 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 						      op->can_id,
- 						      REGMASK(op->can_id),
- 						      bcm_rx_handler, op,
- 						      "bcm", sk);
+ 	/* snapshot RTR content under lock: op->flags/op->frames may be
+ 	 * updated concurrently by bcm_rx_setup().
+ 	 */
+ 	spin_lock_bh(&op->bcm_rx_update_lock);
  
--				op->rx_reg_dev = dev;
-+				/* keep a tracked reference so that a later
-+				 * unregister can safely reach the device even
-+				 * if a concurrent NETDEV_UNREGISTER has
-+				 * already unlisted it by ifindex
-+				 */
-+				if (!err) {
-+					op->rx_reg_dev = dev;
-+					netdev_hold(dev,
-+						    &op->rx_reg_dev_tracker,
-+						    GFP_KERNEL);
-+				}
- 				dev_put(dev);
- 			} else {
- 				/* the requested device is gone - do not
- 				 * silently succeed without registering
- 				 */
-@@ -1830,20 +1839,18 @@ static int bcm_release(struct socket *sock)
- 		if (op->ifindex) {
- 			/*
- 			 * Only remove subscriptions that had not
- 			 * been removed due to NETDEV_UNREGISTER
- 			 * in bcm_notifier()
-+			 *
-+			 * op->rx_reg_dev is a tracked reference taken
-+			 * when the subscription was registered, so it
-+			 * stays valid here even if a concurrent
-+			 * NETDEV_UNREGISTER already unlisted the device.
- 			 */
--			if (op->rx_reg_dev) {
--				struct net_device *dev;
--
--				dev = dev_get_by_index(net, op->ifindex);
--				if (dev) {
--					bcm_rx_unreg(dev, op);
--					dev_put(dev);
--				}
--			}
-+			if (op->rx_reg_dev)
-+				bcm_rx_unreg(op->rx_reg_dev, op);
- 		} else
- 			can_rx_unregister(net, NULL, op->can_id,
- 					  REGMASK(op->can_id),
- 					  bcm_rx_handler, op);
+@@ -803,10 +798,18 @@ static void bcm_rx_handler(struct sk_buff *skb, void *data)
+ 			traffic_flags |= RX_OWN;
+ 	}
  
+ 	spin_lock_bh(&op->bcm_rx_update_lock);
+ 
++	/* save rx timestamp and originator for recvfrom() under lock.
++	 * For an op subscribed on all interfaces (ifindex == 0)
++	 * bcm_rx_handler() can run concurrently on different CPUs so
++	 * the CAN content and the meta data must be bundled correctly.
++	 */
++	op->rx_stamp = skb->tstamp;
++	op->rx_ifindex = skb->dev->ifindex;
++
+ 	if (op->flags & RX_FILTER_ID) {
+ 		/* the easiest case */
+ 		bcm_rx_update_and_send(op, op->last_frames, rxframe,
+ 				       traffic_flags);
+ 		goto rx_starttimer;
 
 -- 
 2.53.0
