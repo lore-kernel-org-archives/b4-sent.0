@@ -1,16 +1,13 @@
 From: Mattia Meleleo <mattia.meleleo@coralogix.com>
-Subject: [PATCH bpf v3 0/2] bpf, sockmap: Fix FIONREAD for sockets without
- a verdict program
-Date: Wed, 08 Jul 2026 18:54:59 +0200
-Message-Id: <20260708-fionread-no-verdict-v3-0-b4ee31b3af53@coralogix.com>
+Date: Wed, 08 Jul 2026 18:55:00 +0200
+Subject: [PATCH bpf v3 1/2] bpf, sockmap: Account for receive queue in
+ FIONREAD without a verdict program
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32NQQ6CMBBFr0K6dgwUpNSV9zAuynQKNUpJiw2Gc
- HcBN8YYl3/y5r2JBfKWAjsmE/MUbbCuW0a+Sxi2qmsIrF424ykvU5EKMAvgSWnoHETy2uIAqjB
- VKYVCaSRbPntPxo6b9czq3rDL+xge9ZVwWH0r1towOP/c2jHb4L+ZmEEGSLJQgucHQXhC59XNN
- Xbco7tvlcg/PdVvD4cUuNSay7zkGYpvzzzPLyVrRqkZAQAA
-X-Change-ID: 20260707-fionread-no-verdict-a4f8697ac9f9
+Message-Id: <20260708-fionread-no-verdict-v3-1-b4ee31b3af53@coralogix.com>
+References: <20260708-fionread-no-verdict-v3-0-b4ee31b3af53@coralogix.com>
+In-Reply-To: <20260708-fionread-no-verdict-v3-0-b4ee31b3af53@coralogix.com>
 To: bpf@vger.kernel.org
 Cc: netdev@vger.kernel.org, John Fastabend <john.fastabend@gmail.com>, 
  Jakub Sitnicki <jakub@cloudflare.com>, 
@@ -19,45 +16,98 @@ Cc: netdev@vger.kernel.org, John Fastabend <john.fastabend@gmail.com>,
  Emil Tsalapatis <emil@etsalapatis.com>, 
  Mattia Meleleo <mattia.meleleo@coralogix.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783529717; l=1347;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783529717; l=2719;
  i=mattia.meleleo@coralogix.com; s=20260707; h=from:subject:message-id;
- bh=E597jrkyamse8scXKS+eJA6HFU7y85qrwCtLMoF2A+E=;
- b=0iyEGHE6MMl1uTga9/nSgQVDD2IvFs7va7vLyFLAhTkzB1duqMtZhZW6OGN5Axe7MNJiR1OnJ
- zsBC2BRmcNSDURwUIft6fxR3Jo0AhDyQ40dZ4TIJLHIXbVtfLgppgAF
+ bh=D4N+tSAjoH5dTFG44WBAT8vqPF24z62Ilx+djNcKEFU=;
+ b=kdQxIpc9JOu5p2KR8zM9Pg2YJWob7Jy1sjFSFyqmquvJCv+4EPgmvQPkP2n6yV9RP9v06wYUe
+ 2K66uyApw0mDoBFkuawFBayq6fDJIOfMZdFTKvgftik9hhcu8Ltb0AY
 X-Developer-Key: i=mattia.meleleo@coralogix.com; a=ed25519;
  pk=cs1zLoe3YDm4bJ7bfbPaZH0lHnd871JyJLiSh2eEzLs=
 X-Endpoint-Received: by B4 Relay for mattia.meleleo@coralogix.com/20260707 with auth_id=857
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Sockets added to a sockmap/sockhash with no stream/skb verdict program
-attached answer FIONREAD with 0 even when unread data is pending in
-sk_receive_queue. Fix tcp_bpf_ioctl() to account for the receive queue
-in that case, and add a selftest.
+tcp_bpf_ioctl() answers SIOCINQ from psock->msg_tot_len, which only
+counts bytes in ingress_msg. Without a stream/skb verdict program
+nothing is diverted there: data stays in sk_receive_queue, so FIONREAD
+returns 0 even though read() returns data.
 
-Changes in v3:
-- Remove unused sk_psock_msg_inq()
-- Link to v2: https://patch.msgid.link/20260708-fionread-no-verdict-v2-0-29dd293621c7@coralogix.com
+Add tcp_inq() to the reported value when the psock has no verdict
+program. The two queues are disjoint, so bytes redirected into
+ingress_msg from other sockets stay correctly accounted through
+msg_tot_len.
 
-Changes in v2:
-- Split the fix and the selftest into separate patches
-- Use READ_ONCE() to read the verdict program pointers
-- Link to v1: https://patch.msgid.link/20260707-fionread-no-verdict-v1-1-ce94a72357ec@coralogix.com
+Remove unused sk_psock_msg_inq().
 
+Fixes: 929e30f93125 ("bpf, sockmap: Fix FIONREAD for sockmap")
+Reviewed-by: Jiayuan Chen <jiayuan.chen@linux.dev>
+Reviewed-by: Emil Tsalapatis <emil@etsalapatis.com>
 Signed-off-by: Mattia Meleleo <mattia.meleleo@coralogix.com>
 ---
-Mattia Meleleo (2):
-      bpf, sockmap: Account for receive queue in FIONREAD without a verdict program
-      selftests/bpf: Test FIONREAD on a sockmap socket without a verdict program
+ include/linux/skmsg.h | 14 --------------
+ net/ipv4/tcp_bpf.c    | 17 ++++++++++++++++-
+ 2 files changed, 16 insertions(+), 15 deletions(-)
 
- include/linux/skmsg.h                              | 14 --------
- net/ipv4/tcp_bpf.c                                 | 17 +++++++++-
- .../selftests/bpf/prog_tests/sockmap_basic.c       | 39 ++++++++++++++++++++++
- 3 files changed, 55 insertions(+), 15 deletions(-)
----
-base-commit: d2c9a99135da931377240942d44f3dea104cedb8
-change-id: 20260707-fionread-no-verdict-a4f8697ac9f9
+diff --git a/include/linux/skmsg.h b/include/linux/skmsg.h
+index a8553401b..d5e35f247 100644
+--- a/include/linux/skmsg.h
++++ b/include/linux/skmsg.h
+@@ -551,20 +551,6 @@ static inline void psock_progs_drop(struct sk_psock_progs *progs)
+ 	psock_set_prog(&progs->skb_verdict, NULL);
+ }
+ 
+-/* for tcp only, sk is locked */
+-static inline ssize_t sk_psock_msg_inq(struct sock *sk)
+-{
+-	struct sk_psock *psock;
+-	ssize_t inq = 0;
+-
+-	psock = sk_psock_get(sk);
+-	if (likely(psock)) {
+-		inq = sk_psock_get_msg_len_nolock(psock);
+-		sk_psock_put(sk, psock);
+-	}
+-	return inq;
+-}
+-
+ /* for udp only, sk is not locked */
+ static inline ssize_t sk_msg_first_len(struct sock *sk)
+ {
+diff --git a/net/ipv4/tcp_bpf.c b/net/ipv4/tcp_bpf.c
+index cc0bd73f3..8e905b50d 100644
+--- a/net/ipv4/tcp_bpf.c
++++ b/net/ipv4/tcp_bpf.c
+@@ -334,6 +334,7 @@ static int tcp_bpf_recvmsg_parser(struct sock *sk,
+ 
+ static int tcp_bpf_ioctl(struct sock *sk, int cmd, int *karg)
+ {
++	struct sk_psock *psock;
+ 	bool slow;
+ 
+ 	if (cmd != SIOCINQ)
+@@ -344,7 +345,21 @@ static int tcp_bpf_ioctl(struct sock *sk, int cmd, int *karg)
+ 		return -EINVAL;
+ 
+ 	slow = lock_sock_fast(sk);
+-	*karg = sk_psock_msg_inq(sk);
++	psock = sk_psock_get(sk);
++	if (unlikely(!psock)) {
++		unlock_sock_fast(sk, slow);
++		return tcp_ioctl(sk, cmd, karg);
++	}
++	*karg = sk_psock_get_msg_len_nolock(psock);
++	/* Without a verdict program, ingress data is never diverted to
++	 * ingress_msg: it stays in sk_receive_queue and is read through
++	 * the fallback to tcp_recvmsg(), so account for it like
++	 * tcp_ioctl() does.
++	 */
++	if (!READ_ONCE(psock->progs.stream_verdict) &&
++	    !READ_ONCE(psock->progs.skb_verdict))
++		*karg += tcp_inq(sk);
++	sk_psock_put(sk, psock);
+ 	unlock_sock_fast(sk, slow);
+ 
+ 	return 0;
 
-Best regards,
---  
-Mattia Meleleo <mattia.meleleo@coralogix.com>
+-- 
+Git-155)
 
