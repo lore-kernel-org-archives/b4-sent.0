@@ -1,10 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Thu, 09 Jul 2026 13:18:28 +0400
-Subject: [PATCH v5 2/6] Bluetooth: btqca: Add IPQ5018 support
+Date: Thu, 09 Jul 2026 13:18:29 +0400
+Subject: [PATCH v5 3/6] firmware: qcom: scm: Add support for setting
+ Bluetooth power modes
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260709-ipq5018-bluetooth-v5-2-e476c41f03b8@outlook.com>
+Message-Id: <20260709-ipq5018-bluetooth-v5-3-e476c41f03b8@outlook.com>
 References: <20260709-ipq5018-bluetooth-v5-0-e476c41f03b8@outlook.com>
 In-Reply-To: <20260709-ipq5018-bluetooth-v5-0-e476c41f03b8@outlook.com>
 To: Bartosz Golaszewski <brgl@kernel.org>, 
@@ -17,116 +18,115 @@ To: Bartosz Golaszewski <brgl@kernel.org>,
 Cc: linux-arm-msm@vger.kernel.org, linux-bluetooth@vger.kernel.org, 
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  George Moussalem <george.moussalem@outlook.com>, 
- Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
+ Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783588713; l=2878;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783588713; l=3620;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=qc8c/Yy1ZkHuPR/drWQrBMtWnyaqgtWj4Gk+5ass+zE=;
- b=/v5zO0whsAkNyt9TgUc+SglI5cJliQW02KXgAkz9Is3OfxuZZKD+cGI7ZBFDBIWMRCr4Jv5JJ
- uVx9J4umom/BlB+JkUOolaeRA4rwB8C+L0cQOGHZEkJiMJ0T3+WCSIL
+ bh=u0gOwnns2dy73DhacPBFtWDJn2o2hoZyiU32Aiq9TKY=;
+ b=QSmixR6PelWGtteCHARWekHulHjLopZMK/Y9DdAws/h8+kj+B0qJvFI+JAuh+vd95v4s2Nigk
+ 8NPNEXqFqv1A+qJymHg6+KwQCYw1wyxgncP8HpaImsph50QjyHYhtcF
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the IPQ5018 SoC type and support for loading its firmware.
+The Bluetooth subsystem (BTSS) on the IPQ5018 SoC supports setting power
+modes which are required to be configured through a Secure Channel
+Manager (SCM) call to TrustZone. However, not all Trusted Execution
+Environment (QSEE) images support this call, so first check if the call
+is available.
 
-The firmware tested has been taken from GPL sources of various router
-boards. Firmware files needed are:
-- qca/bt_fw_patch.mbn
-- qca/mpnv10.bin
-
-Acked-by: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
+Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
+Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- drivers/bluetooth/btqca.c | 16 ++++++++++++++++
- drivers/bluetooth/btqca.h |  3 +++
- 2 files changed, 19 insertions(+)
+ drivers/firmware/qcom/qcom_scm.c       | 44 ++++++++++++++++++++++++++++++++++
+ drivers/firmware/qcom/qcom_scm.h       |  1 +
+ include/linux/firmware/qcom/qcom_scm.h |  1 +
+ 3 files changed, 46 insertions(+)
 
-diff --git a/drivers/bluetooth/btqca.c b/drivers/bluetooth/btqca.c
-index 08600b0fc041..eed30a4480e0 100644
---- a/drivers/bluetooth/btqca.c
-+++ b/drivers/bluetooth/btqca.c
-@@ -361,6 +361,9 @@ static int qca_tlv_check_data(struct hci_dev *hdev,
- 		break;
+diff --git a/drivers/firmware/qcom/qcom_scm.c b/drivers/firmware/qcom/qcom_scm.c
+index 9b06a69d3a6d..d51e3f4339d8 100644
+--- a/drivers/firmware/qcom/qcom_scm.c
++++ b/drivers/firmware/qcom/qcom_scm.c
+@@ -1094,6 +1094,50 @@ bool qcom_scm_pas_supported(u32 pas_id)
+ }
+ EXPORT_SYMBOL_GPL(qcom_scm_pas_supported);
  
- 	case TLV_TYPE_NVM:
-+		if (soc_type == QCA_IPQ5018)
-+			break;
++/**
++ * qcom_scm_pas_set_bluetooth_power_mode() - Configure power mode for the
++ *					     Bluetooth subsystem (BTSS)
++ * @pas_id:	peripheral authentication service id
++ * @eco_mode:	true for ECO mode, false for normal operation
++ *
++ * Return: 0 on success, negative errno on failure.
++ * Returns -EOPNOTSUPP if the firmware configuration call is unavailable.
++ */
++int qcom_scm_pas_set_bluetooth_power_mode(u32 pas_id, bool eco_mode)
++{
++	struct qcom_scm_desc desc = {
++		.svc = QCOM_SCM_SVC_PIL,
++		.cmd = QCOM_SCM_PIL_PAS_BT_PWR_MODE,
++		.arginfo = QCOM_SCM_ARGS(2),
++		.args[0] = pas_id,
++		.args[1] = eco_mode ? 0x4 : 0x0,
++		.owner = ARM_SMCCC_OWNER_SIP,
++	};
++	struct qcom_scm_res res;
++	int ret;
 +
- 		if (fw_size < sizeof(struct tlv_type_hdr))
- 			return -EINVAL;
- 
-@@ -778,6 +781,9 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
- 	else
- 		rom_ver = ((soc_ver & 0x00000f00) >> 0x04) | (soc_ver & 0x0000000f);
- 
-+	if (soc_type == QCA_IPQ5018)
-+		goto download_nvm;
++	if (!__qcom_scm_is_call_available(__scm->dev, QCOM_SCM_SVC_PIL,
++					  QCOM_SCM_PIL_PAS_BT_PWR_MODE))
++		return -EOPNOTSUPP;
 +
- 	if (soc_type == QCA_WCN6750)
- 		qca_send_patch_config_cmd(hdev);
- 
-@@ -865,6 +871,7 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
- 	if (soc_type == QCA_QCA2066 || soc_type == QCA_WCN7850)
- 		qca_read_fw_board_id(hdev, &boardid);
- 
-+download_nvm:
- 	/* Download NVM configuration */
- 	config.type = TLV_TYPE_NVM;
- 	if (firmware_name) {
-@@ -878,6 +885,10 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
- 		}
- 	} else {
- 		switch (soc_type) {
-+		case QCA_IPQ5018:
-+			snprintf(config.fwname, sizeof(config.fwname),
-+				 "qca/mpnv%02x.bin", rom_ver);
-+			break;
- 		case QCA_QCA2066:
- 			qca_get_nvm_name_by_board(config.fwname,
- 						  sizeof(config.fwname),
-@@ -942,7 +953,11 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
- 		return err;
- 	}
- 
-+	if (soc_type == QCA_IPQ5018)
-+		msleep(NVM_READY_DELAY_MS);
++	ret = qcom_scm_clk_enable();
++	if (ret)
++		return ret;
 +
- 	switch (soc_type) {
-+	case QCA_IPQ5018:
- 	case QCA_QCA2066:
- 	case QCA_QCA6390:
- 	case QCA_WCN3991:
-@@ -982,6 +997,7 @@ int qca_uart_setup(struct hci_dev *hdev, uint8_t baudrate,
- 	bt_dev_dbg(hdev, "QCA HCI_RESET succeed");
- 
- 	switch (soc_type) {
-+	case QCA_IPQ5018:
- 	case QCA_WCN3991:
- 	case QCA_WCN6750:
- 	case QCA_WCN6855:
-diff --git a/drivers/bluetooth/btqca.h b/drivers/bluetooth/btqca.h
-index 8f3c1b1c77b3..343cd62d1137 100644
---- a/drivers/bluetooth/btqca.h
-+++ b/drivers/bluetooth/btqca.h
-@@ -54,6 +54,8 @@
- #define QCA_HSP_GF_SOC_ID		0x1200
- #define QCA_HSP_GF_SOC_MASK		0x0000ff00
- 
-+#define NVM_READY_DELAY_MS		1500
++	ret = qcom_scm_bw_enable();
++	if (ret)
++		goto disable_clk;
 +
- enum qca_baudrate {
- 	QCA_BAUDRATE_115200	= 0,
- 	QCA_BAUDRATE_57600,
-@@ -158,6 +160,7 @@ enum qca_btsoc_type {
- 	QCA_WCN6750,
- 	QCA_WCN6855,
- 	QCA_WCN7850,
-+	QCA_IPQ5018,
- };
++	ret = qcom_scm_call(__scm->dev, &desc, &res);
++	qcom_scm_bw_disable();
++
++disable_clk:
++	qcom_scm_clk_disable();
++
++	return ret ? : res.result[0];
++}
++EXPORT_SYMBOL_GPL(qcom_scm_pas_set_bluetooth_power_mode);
++
+ static int __qcom_scm_pas_mss_reset(struct device *dev, bool reset)
+ {
+ 	struct qcom_scm_desc desc = {
+diff --git a/drivers/firmware/qcom/qcom_scm.h b/drivers/firmware/qcom/qcom_scm.h
+index caab80a73e17..5579df5a2aca 100644
+--- a/drivers/firmware/qcom/qcom_scm.h
++++ b/drivers/firmware/qcom/qcom_scm.h
+@@ -105,6 +105,7 @@ int qcom_scm_shm_bridge_enable(struct device *scm_dev);
+ #define QCOM_SCM_PIL_PAS_SHUTDOWN	0x06
+ #define QCOM_SCM_PIL_PAS_IS_SUPPORTED	0x07
+ #define QCOM_SCM_PIL_PAS_MSS_RESET	0x0a
++#define QCOM_SCM_PIL_PAS_BT_PWR_MODE	0x21
+ #define QCOM_SCM_PIL_PAS_GET_RSCTABLE	0x21
  
- #if IS_ENABLED(CONFIG_BT_QCA)
+ #define QCOM_SCM_SVC_IO			0x05
+diff --git a/include/linux/firmware/qcom/qcom_scm.h b/include/linux/firmware/qcom/qcom_scm.h
+index 5747bd191bf1..aca937ac8ddd 100644
+--- a/include/linux/firmware/qcom/qcom_scm.h
++++ b/include/linux/firmware/qcom/qcom_scm.h
+@@ -93,6 +93,7 @@ struct resource_table *qcom_scm_pas_get_rsc_table(struct qcom_scm_pas_context *c
+ 						  size_t *output_rt_size);
+ 
+ int qcom_scm_pas_prepare_and_auth_reset(struct qcom_scm_pas_context *ctx);
++int qcom_scm_pas_set_bluetooth_power_mode(u32 pas_id, bool eco_mode);
+ 
+ int qcom_scm_io_readl(phys_addr_t addr, unsigned int *val);
+ int qcom_scm_io_writel(phys_addr_t addr, unsigned int val);
 
 -- 
 2.53.0
