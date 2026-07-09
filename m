@@ -1,135 +1,127 @@
-From: Jiucheng Xu <jiucheng.xu@amlogic.com>
-Date: Thu, 09 Jul 2026 17:35:40 +0800
-Subject: [PATCH] f2fs: fix UAF issue in f2fs_merge_page_bio()
+From: Oliver Hartkopp <socketcan@hartkopp.net>
+Subject: [PATCH v10 00/10] can: bcm: collected fixes - final5 :-(
+Date: Thu, 09 Jul 2026 12:24:14 +0200
+Message-Id: <20260709-bcm_fixes-v10-0-57fff38e34ce@hartkopp.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260709-origin-5-15-y-v1-1-5ac64636d2e8@amlogic.com>
-X-B4-Tracking: v=1; b=H4sIAGtrT2oC/x3MQQqAIBBA0avIrBtQQcOuEi2sJpuNhkIU4t2Tl
- m/xf4VCmanAJCpkurlwih1qELCdPgZC3rtBS23lKB2mzIEjGlQGXySy3mqrV+UIenNlOvj5f/P
- S2gcg4q7wXwAAAA==
-X-Change-ID: 20260709-origin-5-15-y-ee6a6262b19e
-To: stable@vger.kernel.org
-Cc: jianxin.pan@amlogic.com, tuan.zhang@amlogic.com, 
- JY <JY.Ho@mediatek.com>, Chao Yu <chao@kernel.org>, 
- Jaegeuk Kim <jaegeuk@kernel.org>, Jiucheng Xu <jiucheng.xu@amlogic.com>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783589773; l=3685;
- i=jiucheng.xu@amlogic.com; s=20250821; h=from:subject:message-id;
- bh=Y80knOMzKeNW/PZLEEe8ghYSmyQKS+tfEks+gc7lvw8=;
- b=c7O5W41FDmUw/QsZgV+syBCuS9tdz4/xL5rMVkbfm+heESkcgywsZPNhGp58lOj7lCv5gzCMR
- /hn8hXpHR+DBia54Uj3zgDViEhtdGkFSpSW8vjsY/t3edrF+RBx2HER
-X-Developer-Key: i=jiucheng.xu@amlogic.com; a=ed25519;
- pk=Q18IjkdWCCuncSplyu+dYqIrm+n42glvoLFJTQqpb2o=
-X-Endpoint-Received: by B4 Relay for jiucheng.xu@amlogic.com/20250821 with auth_id=498
+X-B4-Tracking: v=1; b=H4sIAM92T2oC/3XPzU7DMAwH8FeZcqYoddLY4cR7IIQS12EF0U1tq
+ UDT3p1kHKhQenTy//njomaZBpnVw+GiJlmHeTiNuWj13UHxMYyv0gx9flCgwWnXQhP54yUNXzI
+ 3ZFO0IXgTGFTOnye5feT40/NvPX/GN+GlNCiJ4zAvp+n7Nm1tS67Wd20b3XCAFDSKoE6PxzAt7
+ 6fz+X6URZXWK/xh1LjFkLF3DjR3xkbsKtjsYpMxWac1B9cT+Qq2u9hmHAJhpOh7Y2prd7u4Kzc
+ bRpuop5Swgt0W0xa7srbGVgeIbDxVMO5iLJMxH+uisSC2gmkXU5nMkLpkIkMLFey32G+xz9iJx
+ IjEnOJ/fL1efwATXHKOoAIAAA==
+X-Change-ID: 20260612-bcm_fixes-84fb4aa93ac2
+To: linux-can@vger.kernel.org
+Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
+ Marc Kleine-Budde <mkl@pengutronix.de>, Lee Jones <lee@kernel.org>, 
+ Feng Xue <feng.xue@outlook.com>, Ginger <ginger.jzllee@gmail.com>, 
+ syzbot+75e5e4ae00c3b4bb544e@syzkaller.appspotmail.com, 
+ sashiko-reviews@lists.linux.dev, sashiko-bot@kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783592663; l=4257;
+ i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
+ bh=BcIyK4fgTRcc2JDalgcaXUssfciwBZA9sToUaNVC9oA=;
+ b=/KLMY7Bp71oI4ikpQNTNgyNenloNhjFYOIlH+CDoEcXevngN7wsG5tCL3Gk6aFeneE+l0iBvb
+ bnkDsi2iWhBAw/1mv0CiemyjTO3aPR/KjTQ8WemCA1TRnDprItFGvSZ
+X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
+ pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
+X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-commit edf7e9040fc52c922db947f9c6c36f07377c52ea upstream.
+Hi Marc,
 
-As JY reported in bugzilla [1],
+as there were different patches flying arround to fix CAN_BCM issues and
+AI assisted stuff pop's up again and again, I've created this collection
+to be applied.
 
-Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000
-pc : [0xffffffe51d249484] f2fs_is_cp_guaranteed+0x70/0x98
-lr : [0xffffffe51d24adbc] f2fs_merge_page_bio+0x520/0x6d4
-CPU: 3 UID: 0 PID: 6790 Comm: kworker/u16:3 Tainted: P    B   W  OE      6.12.30-android16-5-maybe-dirty-4k #1 5f7701c9cbf727d1eebe77c89bbbeb3371e895e5
-Tainted: [P]=PROPRIETARY_MODULE, [B]=BAD_PAGE, [W]=WARN, [O]=OOT_MODULE, [E]=UNSIGNED_MODULE
-Workqueue: writeback wb_workfn (flush-254:49)
-Call trace:
- f2fs_is_cp_guaranteed+0x70/0x98
- f2fs_inplace_write_data+0x174/0x2f4
- f2fs_do_write_data_page+0x214/0x81c
- f2fs_write_single_data_page+0x28c/0x764
- f2fs_write_data_pages+0x78c/0xce4
- do_writepages+0xe8/0x2fc
- __writeback_single_inode+0x4c/0x4b4
- writeback_sb_inodes+0x314/0x540
- __writeback_inodes_wb+0xa4/0xf4
- wb_writeback+0x160/0x448
- wb_workfn+0x2f0/0x5dc
- process_scheduled_works+0x1c8/0x458
- worker_thread+0x334/0x3f0
- kthread+0x118/0x1ac
- ret_from_fork+0x10/0x20
+Fixed the new issue in patch 4
 
-[1] https://bugzilla.kernel.org/show_bug.cgi?id=220575
+[Medium] Lock dropping in bcm_rx_handler() allows frames_filtered to
+temporarily exceed frames_abs, breaking the invariant and causing negative
+reduction percentage calculations.
+  
+Best regards,
+Oliver
 
-The panic was caused by UAF issue w/ below race condition:
-
-kworker
-- writepages
- - f2fs_write_cache_pages
-  - f2fs_write_single_data_page
-   - f2fs_do_write_data_page
-    - f2fs_inplace_write_data
-     - f2fs_merge_page_bio
-      - add_inu_page
-      : cache page #1 into bio & cache bio in
-        io->bio_list
-  - f2fs_write_single_data_page
-   - f2fs_do_write_data_page
-    - f2fs_inplace_write_data
-     - f2fs_merge_page_bio
-      - add_inu_page
-      : cache page #2 into bio which is linked
-        in io->bio_list
-						write
-						- f2fs_write_begin
-						: write page #1
-						 - f2fs_folio_wait_writeback
-						  - f2fs_submit_merged_ipu_write
-						   - f2fs_submit_write_bio
-						   : submit bio which inclues page #1 and #2
-
-						software IRQ
-						- f2fs_write_end_io
-						 - fscrypt_free_bounce_page
-						 : freed bounced page which belongs to page #2
-      - inc_page_count( , WB_DATA_TYPE(data_folio), false)
-      : data_folio points to fio->encrypted_page
-        the bounced page can be freed before
-        accessing it in f2fs_is_cp_guarantee()
-
-It can reproduce w/ below testcase:
-Run below script in shell #1:
-for ((i=1;i>0;i++)) do xfs_io -f /mnt/f2fs/enc/file \
--c "pwrite 0 32k" -c "fdatasync"
-
-Run below script in shell #2:
-for ((i=1;i>0;i++)) do xfs_io -f /mnt/f2fs/enc/file \
--c "pwrite 0 32k" -c "fdatasync"
-
-So, in f2fs_merge_page_bio(), let's avoid using fio->encrypted_page after
-commit page into internal ipu cache.
-
-Fixes: 0b20fcec8651 ("f2fs: cache global IPU bio")
-Reported-by: JY <JY.Ho@mediatek.com>
-Signed-off-by: Chao Yu <chao@kernel.org>
-Signed-off-by: Jaegeuk Kim <jaegeuk@kernel.org>
-[Mark: backport to v5.15.y]
-Signed-off-by: Jiucheng Xu <jiucheng.xu@amlogic.com>
+Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
 ---
- fs/f2fs/data.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v10:
+- patch 4: fixed new issue reported by sashiko-bot
+  https://lore.kernel.org/linux-can/20260709083119.015901F00A3D@smtp.kernel.org/
+- Link to v9: https://patch.msgid.link/20260709-bcm_fixes-v9-0-6eebb78ccfb2@hartkopp.net
 
-diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
-index 9d1d0c9d924c0cf3831b383f272309c093bcd354..b35886e9b9948ca9889798fac1388e2abdeb003d 100644
---- a/fs/f2fs/data.c
-+++ b/fs/f2fs/data.c
-@@ -897,7 +897,7 @@ int f2fs_merge_page_bio(struct f2fs_io_info *fio)
- 	if (fio->io_wbc)
- 		wbc_account_cgroup_owner(fio->io_wbc, fio->page, PAGE_SIZE);
- 
--	inc_page_count(fio->sbi, WB_DATA_TYPE(page));
-+	inc_page_count(fio->sbi, WB_DATA_TYPE(fio->page));
- 
- 	*fio->last_block = fio->new_blkaddr;
- 	*fio->bio = bio;
+Changes in v9:
+- patch 4: fixed two issues reported by sashiko-bot and mkl
+  https://lore.kernel.org/linux-can/20260708173935.10D021F000E9@smtp.kernel.org/
+  https://lore.kernel.org/linux-can/20260708-beige-tarsier-of-mastery-b73d0d-mkl@pengutronix.de/
+- Link to v8: https://patch.msgid.link/20260708-bcm_fixes-v8-0-8c2f5f3bc212@hartkopp.net
+
+Changes in v8:
+- patch 9: fixed two issues reported by sashiko-bot:
+  https://lore.kernel.org/linux-can/20260708154039.347ED1F000E9@smtp.kernel.org/
+- Link to v7: https://patch.msgid.link/20260708-bcm_fixes-v7-0-c78896b342e4@hartkopp.net
+
+Changes in v7:
+- patch 9: new: fix stale rx/tx ops after device removal reported by
+  sashiko-bot: https://lore.kernel.org/linux-can/20260708094536.DDF821F00A3A@smtp.kernel.org/
+- patch 10: formerly patch 9 as new patch 8 & 9 belong together 
+- Link to v6: https://patch.msgid.link/20260708-bcm_fixes-v6-0-80710a2bc398@hartkopp.net
+
+Changes in v6:
+- patch 1: added Tested-by: tags
+- patch 3: changed commit message and comment regarding a wrong claim
+  about synchronous delivery from dev_queue_xmit() as remarked by
+  https://netdev-ai.bots.linux.dev/ai-review.html?id=6105ebab-87ef-43db-a085-7c190b9f119f
+- patch 4: rebased patch 3 comment
+- patch 9: new: fix data race on rx_stamp/rx_ifindex in bcm_rx_handler()
+  reported by sashiko-bot: https://lore.kernel.org/linux-can/20260707145135.5BC831F00A3A@smtp.kernel.org/
+- Link to v5: https://patch.msgid.link/20260707-bcm_fixes-v5-0-c3c74f8d8ff7@hartkopp.net
+
+Changes in v5:
+- patch 6: changed comment for bcm_op::bcm_tx_lock (mkl)
+- patch 8: new: add missing device refcount for CAN filter removal
+- Link to v4: https://patch.msgid.link/20260707-bcm_fixes-v4-0-aa87b8b9d33f@hartkopp.net
+
+Changes in v4:
+- incorporated more sashiko-bot concerns from v3
+- patch 3: omit hrtimer_forward with zero interval
+- patch 4: put bcm_update_stats() under bcm_rx_update_lock
+- Link to v3: https://patch.msgid.link/20260707-bcm_fixes-v3-0-84600ca6d889@hartkopp.net
+
+Changes in v3:
+- incorporated more sashiko-bot concerns from v2
+- patch 3: make snapshot of currframe
+- patch 6: add error patch for memcpy_from_msg()
+- patch 7: new RTR-reply validation in bcm_rx_setup() from bcm_tx_setup() 
+- Link to v2: https://patch.msgid.link/20260707-bcm_fixes-v2-0-96620c534b75@hartkopp.net
+
+Changes in v2:
+- incorporated all sashiko-bot concerns from v1
+- Link to v1: https://patch.msgid.link/20260612-bcm_fixes-v1-0-ca2fa07ee70f@hartkopp.net
 
 ---
-base-commit: c86c4726e7f044ab73b493c6f00527aafef640cd
-change-id: 20260709-origin-5-15-y-ee6a6262b19e
+Lee Jones (1):
+      can: bcm: defer rx_op deallocation to workqueue to fix thrtimer UAF
+
+Oliver Hartkopp (9):
+      can: bcm: fix lockless bound/ifindex race and silent RX_SETUP failure
+      can: bcm: add locking when updating filter and timer values
+      can: bcm: fix CAN frame rx/tx statistics
+      can: bcm: add missing rcu list annotations and operations
+      can: bcm: extend bcm_tx_lock usage for data and timer updates
+      can: bcm: validate frame length in bcm_rx_setup() for RTR replies
+      can: bcm: add missing device refcount for CAN filter removal
+      can: bcm: fix stale rx/tx ops after device removal
+      can: bcm: fix data race on rx_stamp/rx_ifindex in bcm_rx_handler()
+
+ net/can/bcm.c | 537 +++++++++++++++++++++++++++++++++++++++++++---------------
+ 1 file changed, 401 insertions(+), 136 deletions(-)
+---
+base-commit: 0e35b9b6ec0ffcc5e23cbdec09f5c622ad532b53
+change-id: 20260612-bcm_fixes-84fb4aa93ac2
 
 Best regards,
--- 
-Jiucheng Xu <jiucheng.xu@amlogic.com>
+--  
+Oliver Hartkopp <socketcan@hartkopp.net>
 
