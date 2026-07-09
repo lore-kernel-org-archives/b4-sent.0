@@ -1,15 +1,13 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Subject: [PATCH RFC v3 0/7] mfd: ls2kbmc: multiple fixes for this driver
-Date: Fri, 10 Jul 2026 01:24:16 +0800
-Message-Id: <20260710-ls2kbmc-mod-v3-0-ef718636e78e@gmail.com>
+Date: Fri, 10 Jul 2026 01:24:17 +0800
+Subject: [PATCH RFC v3 1/7] mfd: ls2kbmc: Make a copy when parsing mode
+ string
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAEDZT2oC/32NywrCMBREf0Xu2khy06bWlSD4AW7FRZpHG2waS
- aQopf9uyEo3LmeGc2aBZKIzCQ6bBaKZXXJhyoFvN6AGOfWGOJ0zIEVBBQoyJrx3XhEfNKmRtqz
- llLYdQiYe0Vj3KrYrXM4nuOVycOkZ4rs8zKxMRdbQ/Y9sZoQSxauqs7U2VvJj76Ubdyr44pnxD
- 4uZRWm1Zk3FGiG+2XVdPzlMtBnnAAAA
-X-Change-ID: 20260626-ls2kbmc-mod-5209193009b2
+Message-Id: <20260710-ls2kbmc-mod-v3-1-ef718636e78e@gmail.com>
+References: <20260710-ls2kbmc-mod-v3-0-ef718636e78e@gmail.com>
+In-Reply-To: <20260710-ls2kbmc-mod-v3-0-ef718636e78e@gmail.com>
 To: Binbin Zhou <zhoubinbin@loongson.cn>, 
  Chong Qiao <qiaochong@loongson.cn>, Lee Jones <lee@kernel.org>, 
  Huacai Chen <chenhuacai@kernel.org>, Corey Minyard <corey@minyard.net>, 
@@ -20,96 +18,101 @@ Cc: Xi Ruoyao <xry111@xry111.site>, WANG Xuerui <kernel@xen0n.name>,
  linux-gpio@vger.kernel.org, openipmi-developer@lists.sourceforge.net, 
  Miao Wang <shankerwangmiao@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3331;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2561;
  i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
- bh=sukWlxC8McdyMqbXOPPFAxKItWB1p7RLYeJjYFSvLwg=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqT9lKe2UhEAclLxvizAebe3Mw+jE5JzpCIBFl1
- do84oJt6RmJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCak/ZSgAKCRCwMePKe/7Z
- boFoD/4zNd1tNOwcPbcH8RsMUhxL3Z/D3tQHNXN8Vh/sMxjtT8QVk1W9incgMg0CxrFUW9q09XQ
- lzHakKOaZQ0vKGFcfiU3zKYl1WBTNkSTvKiyrpIa0bFUYAx5T2QcngzDxvLUR0pbMCw0SIdcPEp
- dy4ws/UYwgiFLca3LsybyE8wOcEDPARul3qPQrwWZEGapgw+FQbsU2o6tXN9lb9+9egv+6KMjxO
- 2RnOp7av1CLIyONHVBEs7cxxw5DzO/suYSZ5Uu0adPiIRsNA7t5pH9A4EvniLC7+VMzMMdS8bcX
- 96wSMZOdZIInmBop0j4sV8SVW27Q0vfpULsBiB5NTVG2ROiG8AjdV9aIcS5kiVJVD3OynUpigTe
- dixWQU8RaCwd43mqkjvqILJpMTkp8UwJoaERKiWcPcmt4OeNj8Om1yb/7Sr+AC4Bvomz8rvMhzh
- XLuTmtCmmLPzxxITNU4hDKaBCWbgmUd06rQovgmqq5PrgeeA8vaGd//4c2kUhyj2WZtHEHSQt2s
- 0UZaCIwTduI0cWKXH+wJ5m0vCqVMaPQFR9taDkLW9lqkFehFOytNLqSCKTIvo9yevBpy7UBJSkz
- /5/AxUOebWjB2ab8LGq3LabHltqwwa/mRVHbHeXBLUonpdd/G86EBFWBk5isoi1rciOOf6EdfOB
- aIHX8caxYgUcSbA==
+ bh=6DIyNM6vk8kNUgYv2UMACNnAgWrwjVEMmwrMrjQaG1w=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqT9laQoS/W1TgxTSN1SCglMJJtjwj2YT8MECtB
+ oRP5hv9IeOJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCak/ZWgAKCRCwMePKe/7Z
+ blCUD/9pNvN8gSSS6a3VjlnLiQ8jP85Fe7Hb/JJFzVyUFgn96iGrh6fbAidCx4W7POD8znirXWd
+ iyTd56KCOwMlZ3v113ZCLokJI3lAX/ANUIdFwLEXyvs/9XVyxASiMwt5kBorDzel5QzH2X3wsPT
+ JkQstDtAN+A1LBywfj5FIv1PFWv1BbykR+xxd/p+kK25XiT9jyHnsv+F33x98JuJBO6nM8HLHrl
+ rVIaDWPlDsAZNhPZbqeW/fiC7wjh2PdYFmWaS5RXqyrio+CPBuqPf/XSxAvcPEyXn2Af3LH4JaK
+ VKlCjo2AZbcba+/TuuyQdysm5UlKhgoIT6OoFJirJFsodH/6iUjAlqObX4scH7Y1thsKuNrOFph
+ zLQ4zSbPdnDyvI7t9cXKpzOa+cuC0w82fYHtoSfRoBzeKgkHZcKSwSSjn6KUFOv7Z4rc5rOAWkK
+ Blruq/sWI5oLoJz5sTW1M1D2aJB4E7MfUCG36Tyw7xaOFJeU5/tFrp2FG17FVOdVTQ9VPz6XhI2
+ F31khTacQxdP54yl4Dqg9BvMXs7a1dCKQ2dbw7D2qbkzWRJv8oozuLByjvyx5rh9ozafRSXbuHa
+ 1hnvmpwD3zCAxswr+FAENbawu32dtU8+Pxn4jIBYtXeOHss+BI5wzrwpqlngGn6k8Cd99MW8Diz
+ oeLohfmqbib5YmA==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Previously, the driver has been introduced to support the Loongson 2K
-BMC running on the Loongson Servers, which is essential to prevent
-the system from hanging when the BMC is being reset and the default
-efi-framebuffer is being used. However, there are some drawbacks in the
-driver.
+When parsing the mode string from BMC, the string is manipulated
+in-place with strsep(), preventing from parsing it again. Make a copy of
+the original string and manipulate the copy instead to fix this.
 
-Firstly, the driver tries to read and write to the connected PCI-E host
-controller registers, assuming that the BMC is connected to LS7A PCI-E
-host controller. This assumption should be true for real products, but
-to prevent from accidentally reading and writing to the wrong PCI-E host
-controller, this driver should be modified to check this before
-accessing the registers.
-
-Secondly, the driver uses non-exported functions to tell the vt
-subsystem to redraw the screen, preventing the driver from being
-compiling as a module. This can be fixed by using the exported
-functions instead.
-
-Thirdly, the driver directly accesses the GPIO controller registers
-using hard-coded addresses, which might conflict with the loaded GPIO
-controller driver for the same GPIO controller. This is fixed in this
-series by using the GPIO subsystem APIs instead. However, legacy GPIO
-APIs have to be used in this fixed to correctly request a GPIO
-descriptor from the GPIO subsystem, which might be further discussed
-to find a better solution.
-
-Finally, there is a minor issue in the driver where it changes the
-mode string describing the screen resolution during probing, which
-prevents the device from being probed again if -EPROBE_DEFER is
-returned by the probe function.
-
-I have tested the changes in this series on a single-socket Loongson
-3C6000 server with a Loongson 2K BMC, and the driver works as expected
-when the corresponding GPIO driver is additionally loaded.
-
+Fixes: 0d64f6d1ffe9 ("mfd: ls2kbmc: Introduce Loongson-2K BMC core driver")
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
-Changes in v3:
-- Check the return value of devm_add_action_or_reset when registering
-  the cleanup hook of the work queue
-- Use swnode to create the link between the device to the GPIO chip,
-  and prevent borrowing the legacy GPIO APIs
-- Link to v2: https://lore.kernel.org/r/20260708-ls2kbmc-mod-v2-0-2afdd1741766@gmail.com
+ drivers/mfd/ls2k-bmc-core.c | 30 +++++++++++++++++++++++++-----
+ 1 file changed, 25 insertions(+), 5 deletions(-)
 
-Changes in v2:
-- Several fixes suggested by the Sashiko AI review bot
-- Add a cleanup function for the wq on removal of the device
-- Relax the reverse dependency from CONFIG_IPMI_LS2K to
-  CONFIG_MFD_LS2K_BMC_CORE to allow the driver to be built as a module
-- Link to v1: https://lore.kernel.org/r/20260708-ls2kbmc-mod-v1-0-c344bf5defa3@gmail.com
+diff --git a/drivers/mfd/ls2k-bmc-core.c b/drivers/mfd/ls2k-bmc-core.c
+index 408056bfb2fe757a5bde43775a483a48352e706d..27f6e096404d67459038a0607378057ec7ef69ab 100644
+--- a/drivers/mfd/ls2k-bmc-core.c
++++ b/drivers/mfd/ls2k-bmc-core.c
+@@ -427,34 +427,54 @@ static int ls2k_bmc_init(struct ls2k_bmc_ddata *ddata)
+  */
+ static int ls2k_bmc_parse_mode(struct pci_dev *pdev, struct simplefb_platform_data *pd)
+ {
+-	char *mode;
++	/* Assume 64 bytes is enough for the resolution string */
++	char mode_buf[64], mode_buf_orig[64];
++	char *mode = mode_buf;
++	const void __iomem *mode_base;
+ 	int depth, ret;
+ 
+ 	/* The last 16M of PCI BAR0 is used to store the resolution string. */
+-	mode = devm_ioremap(&pdev->dev, pci_resource_start(pdev, 0) + SZ_16M, SZ_16M);
+-	if (!mode)
++	mode_base = ioremap(pci_resource_start(pdev, 0) + SZ_16M,
++			    sizeof(mode_buf));
++	if (!mode_base)
+ 		return -ENOMEM;
++	memcpy_fromio(mode_buf, mode_base, sizeof(mode_buf) - 1);
++	mode_buf[sizeof(mode_buf) - 1] = '\0';
++	iounmap((void __iomem *)mode_base);
++	memcpy(mode_buf_orig, mode_buf, sizeof(mode_buf_orig));
+ 
+ 	/* The resolution field starts with the flag "video=". */
+ 	if (!strncmp(mode, "video=", 6))
+ 		mode = mode + 6;
++	else
++		goto invalid_mode;
+ 
+-	ret = kstrtoint(strsep(&mode, "x"), 10, &pd->width);
++	ret = kstrtouint(strsep(&mode, "x"), 10, &pd->width);
+ 	if (ret)
+ 		return ret;
++	if (mode == NULL)
++		goto invalid_mode;
+ 
+-	ret = kstrtoint(strsep(&mode, "-"), 10, &pd->height);
++	ret = kstrtouint(strsep(&mode, "-"), 10, &pd->height);
+ 	if (ret)
+ 		return ret;
++	if (mode == NULL)
++		goto invalid_mode;
+ 
+ 	ret = kstrtoint(strsep(&mode, "@"), 10, &depth);
+ 	if (ret)
+ 		return ret;
++	if (mode == NULL)
++		goto invalid_mode;
+ 
+ 	pd->stride = pd->width * depth / 8;
+ 	pd->format = depth == 32 ? "a8r8g8b8" : "r5g6b5";
+ 
+ 	return 0;
++
++invalid_mode:
++	dev_err(&pdev->dev, "Invalid resolution string: %s\n", mode_buf_orig);
++	return -EINVAL;
+ }
+ 
+ static int ls2k_bmc_probe(struct pci_dev *dev, const struct pci_device_id *id)
 
----
-Miao Wang (7):
-      mfd: ls2kbmc: Make a copy when parsing mode string
-      mfd: ls2kbmc: Sanity check for the connected pci port
-      mfd: ls2kbmc: Redraw using exported functions
-      mfd: ls2kbmc: Cancel the work queue on removal
-      ipmi: ls2k: Relax the dependency to its mfd driver
-      mfd: ls2kbmc: Able to be compiled as a module
-      mfd: ls2kbmc: Capture the reset event of BMC through GPIO
-
- drivers/char/ipmi/Kconfig   |   2 +-
- drivers/mfd/Kconfig         |   2 +-
- drivers/mfd/ls2k-bmc-core.c | 235 ++++++++++++++++++++++++++++++++++----------
- 3 files changed, 184 insertions(+), 55 deletions(-)
----
-base-commit: 0e35b9b6ec0ffcc5e23cbdec09f5c622ad532b53
-change-id: 20260626-ls2kbmc-mod-5209193009b2
-
-Best regards,
 -- 
-Miao Wang <shankerwangmiao@gmail.com>
+2.49.0
 
