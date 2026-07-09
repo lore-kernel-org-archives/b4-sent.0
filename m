@@ -1,94 +1,58 @@
-From: Esteban Urrutia <esteuwu@proton.me>
-Date: Wed, 08 Jul 2026 23:27:19 -0400
-Subject: [PATCH RFC] remoteproc: qcom: q6v5: Only print handover error once
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v2 0/2] ir: support IR for Amlogic A9 SoC
+Date: Thu, 09 Jul 2026 03:30:50 +0000
+Message-Id: <20260709-a9-ir-v2-0-42c21d7a6ffc@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260708-q6v5-handover-v1-1-be0e6cba0b13@proton.me>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDcwML3UKzMlNdoExKfllqka5ZWkqyWVKKSbKRmakSUE9BUWpaZgXYvGi
- lIDdnpViIYHFpUlZqcgnIJKXaWgCo/mfAdgAAAA==
-X-Change-ID: 20260708-q6v5-handover-6fdc6bd4c265
-To: Bjorn Andersson <andersson@kernel.org>, 
- Mathieu Poirier <mathieu.poirier@linaro.org>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>, 
- Stephan Gerhold <stephan.gerhold@linaro.org>
-Cc: linux-arm-msm@vger.kernel.org, linux-remoteproc@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Esteban Urrutia <esteuwu@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783567638; l=3032;
- i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
- bh=WRlfOb7BJH4o0RSa6fkA/yjtgThVqiPMGxbi8obWNd8=;
- b=JVR7n/XYUHkKIyj/tQfYG1a6mCkyNlzGhoLwffr/0okHdWF1GdMkjmjJ5soa6tdsKHxUl/+p3
- SU5Xed8HCi0ApqYqxWzSG7XSGsfKB4cvRAuY6T2bEIildFd4qYKfObC
-X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
- pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
-X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
+X-B4-Tracking: v=1; b=H4sIAOsVT2oC/13MQQ7CIBCF4as0s3YMYIXWlfcwXSAO7SS2NGCIp
+ uHuYpcu/5eXb4NEkSnBpdkgUubEYamhDg24yS4jIT9qgxJKCyM02h454unc+rvqDRmpoX7XSJ7
+ fu3Mbak+cXiF+djbL3/ovZIkCWy865WxnrZdXOz/DyO7owgxDKeUL4w6ssZwAAAA=
+X-Change-ID: 20260706-a9-ir-354fb297e716
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, 
+ Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
+ Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783567853; l=950;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=DE7C/zNl5gEB4hBwdkFVQx0tCjdrOH14tJ548l6Whgs=;
+ b=HLP9Sp5lnUznfoFvgIElGMxBs7e0paxwl3xkQp+ZKBqWNjbybe2egF5mwLYtHyuZANSu7nv47
+ MFN+vto0MWRCzuHuNqUrzP5ln3Bb88vslsNThxYKfbrzg6mSYrbcyeL
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On some devices, firmware for the remote processors can signal a handover
-more than once.
-In the worst case, the kernel buffer will be spammed with this error
-message, leading to the kernel buffer consisting of just this:
+Document the Amlogic A9 IR controller compatible string and
+add the IR controller node for the Amlogic A9 SoC.
 
-[  106.305033] qcom_q6v5_pas 2400000.remoteproc: Handover signaled, but it already happened
-[  106.506070] qcom_q6v5_pas 2400000.remoteproc: Handover signaled, but it already happened
-[  106.707103] qcom_q6v5_pas 2400000.remoteproc: Handover signaled, but it already happened
-[  106.908612] qcom_q6v5_pas 2400000.remoteproc: Handover signaled, but it already happened
-[  107.108158] qcom_q6v5_pas 2400000.remoteproc: Handover signaled, but it already happened
-[  107.309944] qcom_q6v5_pas 2400000.remoteproc: Handover signaled, but it already happened
-[  107.510795] qcom_q6v5_pas 2400000.remoteproc: Handover signaled, but it already happened
-[  107.712183] qcom_q6v5_pas 2400000.remoteproc: Handover signaled, but it already happened
-[  107.912834] qcom_q6v5_pas 2400000.remoteproc: Handover signaled, but it already happened
-[  108.114217] qcom_q6v5_pas 2400000.remoteproc: Handover signaled, but it already happened
-
-Instead of printing an error every time a processor signals a handover more
-than once, only print an error once.
-This way, the error is still present, but it won't fill up the kernel
-buffer.
-
-Fixes: 54898664e1eb ("remoteproc: qcom: q6v5: Avoid handling handover twice")
-Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
-I've been using the mainline kernel for a while now on motorola-bronco,
-which is an SM8475 based device.
-This device's firmware for the remoteprocs, specially for the SLPI,
-seems to signal handovers way too frequently.
-As of now, the Q6V5 driver will print an error each time a remoteproc
-signals a handover twice, which leads to the kernel buffer filling up
-pretty quickly.
-I would like to suggest replacing the call to dev_err() with
-dev_err_once() and would like feedback as to whether this is the proper
-way of handling firmwares with this behavior.
-This way, the error would still be printed, but only once, and this
-issue would become much less of an annoyance for devices with buggy
-firmware like this.
-
-Regards,
-Esteban
----
- drivers/remoteproc/qcom_q6v5.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/drivers/remoteproc/qcom_q6v5.c b/drivers/remoteproc/qcom_q6v5.c
-index 58d5b85e58cd..81e894cc8634 100644
---- a/drivers/remoteproc/qcom_q6v5.c
-+++ b/drivers/remoteproc/qcom_q6v5.c
-@@ -165,7 +165,7 @@ static irqreturn_t q6v5_handover_interrupt(int irq, void *data)
- 	struct qcom_q6v5 *q6v5 = data;
- 
- 	if (q6v5->handover_issued) {
--		dev_err(q6v5->dev, "Handover signaled, but it already happened\n");
-+		dev_err_once(q6v5->dev, "Handover signaled, but it already happened\n");
- 		return IRQ_HANDLED;
- 	}
- 
+Changes in v2:
+- Rename the IR input pinctrl group and its phandle from remote_pins to remote_input_ao_pins.
+- Link to v1: https://lore.kernel.org/r/20260706-a9-ir-v1-0-4f082ca8aaf1@amlogic.com
 
 ---
-base-commit: 3d5670d672ae08b8c534b7beed6f57c8b44e7b43
-change-id: 20260708-q6v5-handover-6fdc6bd4c265
+Xianwei Zhao (2):
+      dt-bindings: media: meson6-ir: Add Amlogic A9 IR compatible
+      arm64: dts: amlogic: a9: Add IR controller support
+
+ .../devicetree/bindings/media/amlogic,meson6-ir.yaml       |  4 ++++
+ arch/arm64/boot/dts/amlogic/amlogic-a9-a311y3-by401.dts    |  6 ++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi                | 14 ++++++++++++++
+ 3 files changed, 24 insertions(+)
+---
+base-commit: 4336e970ec6890fbd424128c352564a9c1dd514a
+change-id: 20260706-a9-ir-354fb297e716
 
 Best regards,
---  
-Esteban Urrutia <esteuwu@proton.me>
+-- 
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
