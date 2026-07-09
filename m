@@ -1,11 +1,10 @@
 From: Miao Wang <shankerwangmiao@gmail.com>
-Date: Fri, 10 Jul 2026 01:24:21 +0800
-Subject: [PATCH RFC v3 5/7] ipmi: ls2k: Relax the dependency to its mfd
- driver
+Date: Fri, 10 Jul 2026 01:24:22 +0800
+Subject: [PATCH RFC v3 6/7] mfd: ls2kbmc: Able to be compiled as a module
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260710-ls2kbmc-mod-v3-5-ef718636e78e@gmail.com>
+Message-Id: <20260710-ls2kbmc-mod-v3-6-ef718636e78e@gmail.com>
 References: <20260710-ls2kbmc-mod-v3-0-ef718636e78e@gmail.com>
 In-Reply-To: <20260710-ls2kbmc-mod-v3-0-ef718636e78e@gmail.com>
 To: Binbin Zhou <zhoubinbin@loongson.cn>, 
@@ -18,55 +17,46 @@ Cc: Xi Ruoyao <xry111@xry111.site>, WANG Xuerui <kernel@xen0n.name>,
  linux-gpio@vger.kernel.org, openipmi-developer@lists.sourceforge.net, 
  Miao Wang <shankerwangmiao@gmail.com>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1266;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=726;
  i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
- bh=DqOdU6W3FkZ9wJNJOs/NgLGl94jX8Hgep53VmIhV2nQ=;
- b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqT9laVpLfK6V/x0Vbe6h8iLQEGWKb5mPZ/H2oM
- 2hM1IPKnzeJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCak/ZWgAKCRCwMePKe/7Z
- bjX6D/92DGwclTpn8JEIqWvvqivT/xsqa59lGjX8RgaQtQgAieCsMOp+NDj1uaGbrtKeEG7XJv4
- u7AVCPaNIaBRUHu8XwmgLKQbJ5qVaoU96lS2XgQJPY/wlZfjkZDJwoWGz4e7lUtcwK454PlvIXp
- VW2D+TApygU86FNUU4ov6hhuSsz1tr/BSw4hX5PGRNFcBzZUP7eCFeYlyUuwIKQvVpYqKcx8ACc
- QIvfpJdh2lzDjtDeT38UlK4cBlUGU6hKAYDeoyWCQrkNZOUhFIS6CVPCD2stTCGAmKMi2lwT5Wa
- CpyU6cBm3SMR0CpMXvkdWPMwLqwup9CPVRHKizQJcO5yxT0vLZaaGGVl9QxnItxZvAIQmkGbRZd
- InvGttxmzRAx+Nx9XIdVQ79gKAcucKnXqVrXagEZ0P/ZsLpOt4wDhAg+ogSN/aA+keh1dGWdFOX
- HqTFhQILIiMvYCcMQoFKpOnWBbsjbHf0yQ8HGE2FCFuL6kAU5XSSQa1wQo/N+qJ4aIvSoRl99iX
- QAP2ULVzMuhzIiDJcoKpUJ5h2JomZ/H696tXwZjGwf0s/HEFJZrM01DbsVl7Mbv89vGbW4oKesy
- Sy5p9OeFKfEnHTRxbQLB9dk0b5uk3Tg5httLDmhN9EAqHOvoHqZ1DSyaakCNiIJqK5N5xEe+TF8
- kI9rrTkwPVTBv3A==
+ bh=4cYoUAWfr6lC2eTeoh29c5JZOLqOi/IiHDJf/iiky6g=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqT9la4CJbrSXeiOdx6rKWijSotf1UR0bj6PC4l
+ uz6ToNr+TSJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCak/ZWgAKCRCwMePKe/7Z
+ bmhwD/47GGXrGDaz5O7vrcrXTU+qDXUIultuqzdjvPV4LcSfNxHp21AC1XneWDecbOOyHoVvsdy
+ a1cVf7Rmkh2Rq5h8wXCby7bDYGb2R9cY2/Ao9jaO0zBHhWX6dGxYw3mc50vGeg7IGowBlZ4OtL9
+ iU+aLjfy6NpJP8AqWefP+/8H2iQuWOKgnPne2DfcuQcVG4ToavmRDGM0CseukvIwWIsgFCoIMWV
+ l0xEpBLtqe+J1qgqNLHEmJVRdolvh6MMDcO9vXY+mJGbZ0+xy7D0X+GNPNX5W0KgwUW38ALawBC
+ bi0gcZb2eAwbCTQldWdQkrQdGZjRoGLgUPUOd83TkBgj/xK2SgTg98h5GPw9h5+9goA7A+Fg7Fc
+ 9SmdTLaZYSDOE5WZKaS3QSWqxvT9znYRJplS4jBkTMt6BKD3CuBuVORlkg+z4zEEalDqKiIE/+Y
+ gxY4K6xAQ4q9PjhgsAf6nzjBsK27/nHAk5ASI3b515lvi08E13J8Xi4iGW6WRETBMaSAFviZ0L6
+ 4wt32DLNKJY7W83oNovZOmC6Yxl4djFpssD7adyS/t8YGntYCYmdV5i9bv9oSoR+ebvqhTjFoLt
+ FrW2atkd41bUfd1ki75n8z1Jeu+f328UwnZISNvOcPEDHhimb4Lu5DFGhgA7WDAa3QuJNVzhWl1
+ NCdZrAe4tRJ04ww==
 X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
  fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
 X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-There is no strong dependency between the IPMI driver and its mfd
-driver. Although the IPMI driver will not work without the mfd driver,
-it is not a hard dependency. The IPMI driver can actually be compiled
-without the mfd driver, and it will just fail to probe. When the mfd
-driver is loaded, the IPMI driver will probe successfully. Therefore,
-the dependency of the IPMI driver on its mfd driver should be relaxed
-to "imply" from "select". This will allow the mfd driver to be compiled
-as a module and the IPMI driver to be compiled as a part of the ipmi_si
-module.
+Make ls2kmc able to be compiled as a module
 
-Fixes: d46651d4e3c0 ("ipmi: Add Loongson-2K BMC support")
 Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
- drivers/char/ipmi/Kconfig | 2 +-
+ drivers/mfd/Kconfig | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/char/ipmi/Kconfig b/drivers/char/ipmi/Kconfig
-index 669f7600019747bcd2b37563477cf336f19a0407..f456e3e89416932f0d21bb742153a503aeb24267 100644
---- a/drivers/char/ipmi/Kconfig
-+++ b/drivers/char/ipmi/Kconfig
-@@ -87,7 +87,7 @@ config IPMI_IPMB
- config IPMI_LS2K
- 	bool 'Loongson-2K IPMI interface'
- 	depends on LOONGARCH
--	select MFD_LS2K_BMC_CORE
-+	imply MFD_LS2K_BMC_CORE
- 	help
- 	  Provides a driver for Loongson-2K IPMI interfaces.
+diff --git a/drivers/mfd/Kconfig b/drivers/mfd/Kconfig
+index 763ce6a34782bdd5d2b1a4d840c75b040092d83e..a7a9f97af248c88489dc1203a1ba05f2ce4827df 100644
+--- a/drivers/mfd/Kconfig
++++ b/drivers/mfd/Kconfig
+@@ -2494,7 +2494,7 @@ config MFD_LOONGSON_SE
+ 	  which will forward them to the corresponding engine.
  
+ config MFD_LS2K_BMC_CORE
+-	bool "Loongson-2K Board Management Controller Support"
++	tristate "Loongson-2K Board Management Controller Support"
+ 	depends on PCI && ACPI_GENERIC_GSI
+ 	select MFD_CORE
+ 	help
 
 -- 
 2.49.0
