@@ -1,164 +1,197 @@
-From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Thu, 09 Jul 2026 19:56:25 +0200
-Subject: [PATCH v11 11/11] can: bcm: track a single source interface for
- ANYDEV timeout/throttle ops
+From: Miao Wang <shankerwangmiao@gmail.com>
+Date: Fri, 10 Jul 2026 02:35:31 +0800
+Subject: [PATCH v2] pvscsi: translate data endianness
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260709-bcm_fixes-v11-11-067ba11bec5c@hartkopp.net>
-References: <20260709-bcm_fixes-v11-0-067ba11bec5c@hartkopp.net>
-In-Reply-To: <20260709-bcm_fixes-v11-0-067ba11bec5c@hartkopp.net>
-To: linux-can@vger.kernel.org
-Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
- Marc Kleine-Budde <mkl@pengutronix.de>, sashiko-bot@kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783619780; l=5495;
- i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=hvMcQga4v0uhabPGvGavaioU3QcrPTFoKSV9rjfiR9w=;
- b=eoUCvP7F2Id8WJ3z7MofCyOzOlakaR36qmjYQOfD1a7qyQcrKSSX2lGYEjMzoI5kXVytE0Gg6
- imOhguMm/1ODEr5KbdTL0vSBXCJlXTut5NrjUZjjvOUiKI1wO27lcW1
-X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
- pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
-X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
+Message-Id: <20260710-pvscsi-endianness-v2-1-c512e6c8849b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAPLpT2oC/32NTQrDIBBGrxJmXYva/K96j5JFomMy0GhwirSE3
+ L02B+jyPfjetwNjJGToix0iJmIKPoO+FGCW0c8oyGYGLXUta1mJLbFhEugtjd4jszDS3trOtro
+ pEfJui+jofTYfQ+aF+BXi57xI6mf/1ZISSkxycmWjJ+mq7j6vIz2vJqwwHMfxBTiCJZWyAAAA
+X-Change-ID: 20260605-pvscsi-endianness-c0d389d8274e
+To: qemu-devel@nongnu.org
+Cc: Paolo Bonzini <pbonzini@redhat.com>, Fam Zheng <fam@euphon.net>, 
+ Dmitry Fleytman <dmitry.fleytman@gmail.com>, 
+ =?utf-8?q?Philippe_Mathieu-Daud=C3=A9?= <philmd@oss.qualcomm.com>, 
+ Peter Maydell <peter.maydell@linaro.org>, Michael Tokarev <mjt@tls.msk.ru>, 
+ b4-sent@feeds.kernel.org, Miao Wang <shankerwangmiao@gmail.com>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6283;
+ i=shankerwangmiao@gmail.com; s=20250715; h=from:subject:message-id;
+ bh=DL30zIks6In3NDYGK7v7j3XM1TzYPDzc1gG49FgIrI0=;
+ b=owEBbQKS/ZANAwAKAbAx48p7/tluAcsmYgBqT+n1k6mjcpdPM0IlrnBEXRN0hCrQBshzNRlLr
+ hQkpXRmH6GJAjMEAAEKAB0WIQREqPWPgPJBxluezBOwMePKe/7ZbgUCak/p9QAKCRCwMePKe/7Z
+ bhe7EACLlb33eiVmqoqiv5GydEbatzEGmZI+A7y96ed6o48TWJ7Hywzk5NO/j3A7VbXGHHifr34
+ GT3278iK76R3P5NRgr8W18HdZXYUobb24WPImIr3R06ibphM+x/VF2nGLIFewuI7WvylbQmFqyd
+ vBvyMGJ9raLqfpBPjkLw4TiSRL6874A9yLenksBaPHXlXtqVY3sp/zGEP7qj1Es2k55zy77GaZv
+ Nuy+hNOmV344pgsdZlAePYbLsvGqmSH6KLBHGlDoE/4/O5kyjjsj9yGL5V5McHWAW7P9jVAsZp2
+ u11N7/13AxNCX2r3teuwYSIwbfW5NEBbSp63k0u2hT3PopWK8xo04vK5A1/K2DaqoXSVNo4nBIh
+ eTQ8XDP35rYj5bU2pnmK3w4YU0ctg8ZdQ2DCd/qBwhMYIdj+jdRYKRdvKdZeVn7Ywp66yYrdFTB
+ cz6hsWFYtAHNmFcXByTpPtmic8alfnLPozR0XmkbTefjcrM9lPcX9RSZ1HhiIolMMVwbZgc3aL+
+ Y5ilZq6DGNsBmVkA+MmCFoXzWQLht3w22oKYqoRW+xmAAgpGCqQixD9yX1/GDKF9tCI0x2Y8Oh1
+ CvkIevoRbd+hpdAqOI0AwYCoKOyYOGcjDzxkdfB/WRVOffr2vJ/Dz5IJ6XVWpKNaDSuPjR9IMIH
+ zzcPTixpn89IFQw==
+X-Developer-Key: i=shankerwangmiao@gmail.com; a=openpgp;
+ fpr=6FAEFF06B7D212A774C60BFDFA0D166D6632EF4A
+X-Endpoint-Received: by B4 Relay for shankerwangmiao@gmail.com/20250715 with auth_id=462
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-An ANYDEV rx op (ifindex == 0) with an active RX timeout and/or
-throttle timer has no defined semantics when matching frames arrive
-from several interfaces: bcm_rx_handler() can run concurrently for
-the same op on different CPUs, racing hrtimer_cancel()/
-bcm_rx_starttimer() against bcm_rx_timeout_handler() and causing
-spurious RX_TIMEOUT notifications and last_frames corruption. The
-same concurrency lets throttled multiplex frames from different
-interfaces clobber the single rx_ifindex/rx_stamp fields shared by
-the op.
+This patch improves the implementation of the pvscsi device by
+translating the endianness of the data sent or received from the guest.
+This ensures pvscsi can work on big-endian hosts with little-endian
+guests.
 
-Add op->if_detected to track the first interface that delivers a
-matching frame while a timeout/throttle timer is configured, and
-reject frames from any other interface for that op. The claim is
-decided in bcm_rx_handler() before hrtimer_cancel() touches
-op->timer, so a rejected frame can never disturb the claimed
-interface's watchdog. RTR-mode ops are excluded via RX_RTR_FRAME,
-independent of kt_ival1/kt_ival2, since those may briefly hold a
-stale value from an earlier non-RTR configuration.
+This patch assumes, although not having found any specifications, that
+the pvscsi device is little-endian, since pvscsi seems to be used only
+on x86 platforms, which are little-endian.
 
-The claim is released in bcm_notify() on NETDEV_UNREGISTER and in
-bcm_rx_setup() when SETTIMER reconfigures the timer values.
-
-Fixes: ffd980f976e7 ("[CAN]: Add broadcast manager (bcm) protocol")
-Reported-by: sashiko-bot@kernel.org
-Link: https://lore.kernel.org/linux-can/20260709105031.1A39C1F000E9@smtp.kernel.org/
-Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+Signed-off-by: Miao Wang <shankerwangmiao@gmail.com>
 ---
- net/can/bcm.c | 44 +++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 39 insertions(+), 5 deletions(-)
+Changes in v2:
+- Assume pvscsi is little-endian instead of native-endian, and thus
+  replace tswap*() with le*_to_cpu() and cpu_to_le*() to convert the
+  endianness of pvscsi data structures to/from CPU endianness.
+- Link to v1: https://lore.kernel.org/qemu-devel/20260605-pvscsi-endianness-v1-1-b0bf472b0f59@gmail.com
+---
+ hw/scsi/vmw_pvscsi.c | 57 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 56 insertions(+), 1 deletion(-)
 
-diff --git a/net/can/bcm.c b/net/can/bcm.c
-index 10a883b50fc6..8cc0d2267582 100644
---- a/net/can/bcm.c
-+++ b/net/can/bcm.c
-@@ -115,10 +115,11 @@ struct bcm_op {
- 	atomic_long_t frames_abs, frames_filtered;
- 	struct bcm_timeval ival1, ival2;
- 	struct hrtimer timer, thrtimer;
- 	ktime_t rx_stamp, kt_ival1, kt_ival2, kt_lastmsg;
- 	int rx_ifindex;
-+	int if_detected; /* first received ifindex in ANYDEV rx_op mode */
- 	int cfsiz;
- 	u32 count;
- 	u32 nframes;
- 	u32 currframe;
- 	/* void pointers to arrays of struct can[fd]_frame */
-@@ -774,10 +775,32 @@ static void bcm_rx_handler(struct sk_buff *skb, void *data)
- 	} else {
- 		if (!can_is_can_skb(skb))
- 			return;
- 	}
+diff --git a/hw/scsi/vmw_pvscsi.c b/hw/scsi/vmw_pvscsi.c
+index 11ae6b9b7474b9bc87621137eb7911361b5fd721..e6befe9be2c49d1dc04e6e6384f9d24f7a6a4273 100644
+--- a/hw/scsi/vmw_pvscsi.c
++++ b/hw/scsi/vmw_pvscsi.c
+@@ -392,9 +392,18 @@ static void
+ pvscsi_cmp_ring_put(PVSCSIState *s, struct PVSCSIRingCmpDesc *cmp_desc)
+ {
+     hwaddr cmp_descr_pa;
++    struct PVSCSIRingCmpDesc cmp_desc_conv;
  
-+	/* An ANYDEV op with an active RX timeout and/or throttle timer
-+	 * tracks a single source interface: claim the first interface that
-+	 * delivers a matching frame and reject frames from any other one,
-+	 * before hrtimer_cancel() below can touch op->timer - this avoids
-+	 * racing bcm_rx_timeout_handler() across concurrent interfaces.
-+	 * RX_RTR_FRAME ops are excluded, as kt_ival1/kt_ival2 may briefly
-+	 * hold a stale value from an earlier non-RTR configuration.
-+	 */
-+	if (!op->ifindex && !(op->flags & RX_RTR_FRAME) &&
-+	    (op->kt_ival1 || op->kt_ival2)) {
-+		bool foreign;
+     cmp_descr_pa = pvscsi_ring_pop_cmp_descr(&s->rings);
+     trace_pvscsi_cmp_ring_put(cmp_descr_pa);
++    cmp_desc_conv = (struct PVSCSIRingCmpDesc) {
++        .context = cpu_to_le64(cmp_desc->context),
++        .dataLen = cpu_to_le64(cmp_desc->dataLen),
++        .senseLen = cpu_to_le32(cmp_desc->senseLen),
++        .hostStatus = cpu_to_le16(cmp_desc->hostStatus),
++        .scsiStatus = cpu_to_le16(cmp_desc->scsiStatus),
++    };
++    cmp_desc = &cmp_desc_conv;
+     cpu_physical_memory_write(cmp_descr_pa, cmp_desc, sizeof(*cmp_desc));
+ }
+ 
+@@ -402,9 +411,18 @@ static void
+ pvscsi_msg_ring_put(PVSCSIState *s, struct PVSCSIRingMsgDesc *msg_desc)
+ {
+     hwaddr msg_descr_pa;
++    struct PVSCSIRingMsgDesc msg_desc_conv;
++    int i;
+ 
+     msg_descr_pa = pvscsi_ring_pop_msg_descr(&s->rings);
+     trace_pvscsi_msg_ring_put(msg_descr_pa);
++    msg_desc_conv = (struct PVSCSIRingMsgDesc) {
++        .type = cpu_to_le32(msg_desc->type),
++    };
++    for (i = 0; i < ARRAY_SIZE(msg_desc->args); i++) {
++        msg_desc_conv.args[i] = cpu_to_le32(msg_desc->args[i]);
++    }
++    msg_desc = &msg_desc_conv;
+     cpu_physical_memory_write(msg_descr_pa, msg_desc, sizeof(*msg_desc));
+ }
+ 
+@@ -481,6 +499,9 @@ pvscsi_get_next_sg_elem(PVSCSISGState *sg)
+     struct PVSCSISGElement elem;
+ 
+     cpu_physical_memory_read(sg->elemAddr, &elem, sizeof(elem));
++    elem.addr = le64_to_cpu(elem.addr);
++    elem.length = le32_to_cpu(elem.length);
++    elem.flags = le32_to_cpu(elem.flags);
+     if ((elem.flags & ~PVSCSI_KNOWN_FLAGS) != 0) {
+         /*
+             * There is PVSCSI_SGE_FLAG_CHAIN_ELEMENT flag described in
+@@ -759,6 +780,12 @@ pvscsi_process_io(PVSCSIState *s)
+ 
+         trace_pvscsi_process_io(next_descr_pa);
+         cpu_physical_memory_read(next_descr_pa, &descr, sizeof(descr));
++        descr.context = le64_to_cpu(descr.context);
++        descr.dataAddr = le64_to_cpu(descr.dataAddr);
++        descr.dataLen = le64_to_cpu(descr.dataLen);
++        descr.senseAddr = le64_to_cpu(descr.senseAddr);
++        descr.senseLen = le32_to_cpu(descr.senseLen);
++        descr.flags = le32_to_cpu(descr.flags);
+         pvscsi_process_request_descriptor(s, &descr);
+     }
+ 
+@@ -808,6 +835,17 @@ pvscsi_on_cmd_setup_rings(PVSCSIState *s)
+ {
+     PVSCSICmdDescSetupRings *rc =
+         (PVSCSICmdDescSetupRings *) s->curr_cmd_data;
++    PVSCSICmdDescSetupRings translated;
++    int i;
 +
-+		spin_lock_bh(&op->bcm_rx_update_lock);
-+		if (!op->if_detected)
-+			op->if_detected = skb->dev->ifindex;
-+		foreign = op->if_detected != skb->dev->ifindex;
-+		spin_unlock_bh(&op->bcm_rx_update_lock);
++    translated.reqRingNumPages = le32_to_cpu(rc->reqRingNumPages);
++    translated.cmpRingNumPages = le32_to_cpu(rc->cmpRingNumPages);
++    translated.ringsStatePPN = le64_to_cpu(rc->ringsStatePPN);
++    for (i = 0; i < PVSCSI_SETUP_RINGS_MAX_NUM_PAGES; i++) {
++        translated.reqRingPPNs[i] = le64_to_cpu(rc->reqRingPPNs[i]);
++        translated.cmpRingPPNs[i] = le64_to_cpu(rc->cmpRingPPNs[i]);
++    }
++    rc = &translated;
+ 
+     trace_pvscsi_on_cmd_arrived("PVSCSI_CMD_SETUP_RINGS");
+ 
+@@ -831,6 +869,11 @@ pvscsi_on_cmd_abort(PVSCSIState *s)
+     PVSCSICmdDescAbortCmd *cmd = (PVSCSICmdDescAbortCmd *) s->curr_cmd_data;
+     PVSCSIRequest *r, *next;
+ 
++    PVSCSICmdDescAbortCmd translated = *cmd;
++    translated.context = le32_to_cpu(cmd->context);
++    translated.target = le32_to_cpu(cmd->target);
++    cmd = &translated;
 +
-+		if (foreign)
-+			return;
-+	}
+     trace_pvscsi_on_cmd_abort(cmd->context, cmd->target);
+ 
+     QTAILQ_FOREACH_SAFE(r, &s->pending_queue, next, next) {
+@@ -862,6 +905,10 @@ pvscsi_on_cmd_reset_device(PVSCSIState *s)
+         (struct PVSCSICmdDescResetDevice *) s->curr_cmd_data;
+     SCSIDevice *sdev;
+ 
++    PVSCSICmdDescResetDevice translated = *cmd;
++    translated.target = le32_to_cpu(cmd->target);
++    cmd = &translated;
 +
- 	/* disable timeout */
- 	hrtimer_cancel(&op->timer);
+     sdev = pvscsi_device_find(s, 0, cmd->target, cmd->lun, &target_lun);
  
- 	/* op->flags/op->frames may be updated concurrently by bcm_rx_setup() */
- 	spin_lock_bh(&op->bcm_rx_update_lock);
-@@ -808,14 +831,13 @@ static void bcm_rx_handler(struct sk_buff *skb, void *data)
- 		traffic_flags |= RX_LOCAL;
- 		if (skb->sk == op->sk)
- 			traffic_flags |= RX_OWN;
- 	}
- 
--	/* save rx timestamp and originator for recvfrom() under lock.
--	 * For an op subscribed on all interfaces (ifindex == 0)
--	 * bcm_rx_handler() can run concurrently on different CPUs so
--	 * the CAN content and the meta data must be bundled correctly.
-+	/* save rx timestamp and originator for recvfrom() under lock: an
-+	 * ANYDEV op without an active timer can still run concurrently on
-+	 * different CPUs, so content and meta data must be bundled here.
- 	 */
- 	op->rx_stamp = skb->tstamp;
- 	op->rx_ifindex = skb->dev->ifindex;
- 
- 	if (op->flags & RX_FILTER_ID) {
-@@ -1439,10 +1461,11 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 			op->ival1 = msg_head->ival1;
- 			op->ival2 = msg_head->ival2;
- 			op->kt_ival1 = bcm_timeval_to_ktime(msg_head->ival1);
- 			op->kt_ival2 = bcm_timeval_to_ktime(msg_head->ival2);
- 			op->kt_lastmsg = 0;
-+			op->if_detected = 0; /* reclaim ifindex in ANYDEV mode */
- 			spin_unlock_bh(&op->bcm_rx_update_lock);
- 
- 			/* disable an active timer due to zero value? */
- 			if (!op->kt_ival1)
- 				hrtimer_cancel(&op->timer);
-@@ -1737,14 +1760,25 @@ static void bcm_notify(struct bcm_sock *bo, unsigned long msg,
- 
- 	case NETDEV_UNREGISTER:
- 		lock_sock(sk);
- 
- 		/* rx_ops: remove device specific receive entries */
--		list_for_each_entry(op, &bo->rx_ops, list)
-+		list_for_each_entry(op, &bo->rx_ops, list) {
- 			if (op->rx_reg_dev == dev)
- 				bcm_rx_unreg(dev, op);
- 
-+			/* release an ANYDEV op's claim (see bcm_rx_handler())
-+			 * on this now confirmed-gone interface.
-+			 */
-+			if (!op->ifindex) {
-+				spin_lock_bh(&op->bcm_rx_update_lock);
-+				if (op->if_detected == dev->ifindex)
-+					op->if_detected = 0;
-+				spin_unlock_bh(&op->bcm_rx_update_lock);
-+			}
-+		}
+     trace_pvscsi_on_cmd_reset_dev(cmd->target, (int) target_lun, sdev);
+@@ -892,6 +939,14 @@ pvscsi_on_cmd_setup_msg_ring(PVSCSIState *s)
+ {
+     PVSCSICmdDescSetupMsgRing *rc =
+         (PVSCSICmdDescSetupMsgRing *) s->curr_cmd_data;
++    PVSCSICmdDescSetupMsgRing translated = *rc;
++    int i;
 +
- 		/* tx_ops: stop device specific cyclic transmissions on the
- 		 * vanishing ifindex. Cancelling the timer is enough to stop
- 		 * cyclic bcm_can_tx() calls as there is no re-arming.
- 		 */
- 		list_for_each_entry(op, &bo->tx_ops, list)
++    translated.numPages = le32_to_cpu(rc->numPages);
++    for (i = 0; i < PVSCSI_SETUP_MSG_RING_MAX_NUM_PAGES; i++) {
++        translated.ringPPNs[i] = le64_to_cpu(rc->ringPPNs[i]);
++    }
++    rc = &translated;
+ 
+     trace_pvscsi_on_cmd_arrived("PVSCSI_CMD_SETUP_MSG_RING");
+ 
+@@ -994,7 +1049,7 @@ pvscsi_on_command_data(PVSCSIState *s, uint32_t value)
+     size_t bytes_arrived = s->curr_cmd_data_cntr * sizeof(uint32_t);
+ 
+     assert(bytes_arrived < sizeof(s->curr_cmd_data));
+-    s->curr_cmd_data[s->curr_cmd_data_cntr++] = value;
++    s->curr_cmd_data[s->curr_cmd_data_cntr++] = cpu_to_le32(value);
+ 
+     pvscsi_do_command_processing(s);
+ }
 
+---
+base-commit: 29c042c6e9d4a09d4a0ac3fa54aeb7ee08ce0bdc
+change-id: 20260605-pvscsi-endianness-c0d389d8274e
+
+Best regards,
 -- 
-2.53.0
+Miao Wang <shankerwangmiao@gmail.com>
 
