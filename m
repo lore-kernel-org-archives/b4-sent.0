@@ -1,91 +1,63 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Thu, 09 Jul 2026 03:30:52 +0000
-Subject: [PATCH v2 2/2] arm64: dts: amlogic: a9: Add IR controller support
+From: HaoNing Cheng <Haoning.CHENG@cn.bosch.com>
+Subject: [PATCH 0/2] thermal: imx: Add calibration offset support
+Date: Thu, 09 Jul 2026 13:43:26 +0800
+Message-Id: <20260709-b4-symana21-11221-imx-thermal-support-upstream-6-18-v1-0-00f88f42930b@cn.bosch.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260709-a9-ir-v2-2-42c21d7a6ffc@amlogic.com>
-References: <20260709-a9-ir-v2-0-42c21d7a6ffc@amlogic.com>
-In-Reply-To: <20260709-a9-ir-v2-0-42c21d7a6ffc@amlogic.com>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783567853; l=2027;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=33MzL3Cv7uhjfti4gs/DqpQ4WXJtnpUBkHN5kst4OOM=;
- b=8SnUZjwxz3vAI+j4FX/PVcpN9cL+yAwjXwLL0gpEZn0ZorSBb+bG2CooNlUssjFmYrLhfscJx
- AEqPwtaNpmrAD2TsJBGMMgTWEItCxlcP6aIuRyMiUIGo1OVCVERRVWe
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+X-B4-Tracking: v=1; b=H4sIAP40T2oC/yXNQQ7CIBCF4as0s3YSIIRSr2JcQDtajLSEAVPT9
+ O6ibl7ybd6/A1MOxHDudsj0ChzWpUGeOhhnt9wJw9QMSigjejGg18jv6BanJEqp2oa4YZkpR/d
+ ErimtuWBNXDK5iAalRSesHqyeyPcG2nPKdAvbr3q5/s3VP2gs3xQcxweapxislwAAAA==
+X-Change-ID: 20260709-b4-symana21-11221-imx-thermal-support-upstream-6-18-a084984deb76
+To: "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Haoning CHENG <Haoning.CHENG@cn.bosch.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783575916; l=1237;
+ i=Haoning.CHENG@cn.bosch.com; s=20260709; h=from:subject:message-id;
+ bh=WbMChnrVJ5hLjteSDIcwpCRJ7d6FUBqAjyKBvueOBbk=;
+ b=WqH42b8JtaKetUkHD06W8GNAZAw0KozZWsslG7Ipqvnb+EYgHYP8NqvJfBOBEGbSM6bSooo1o
+ nWVtP19QWlOAX+w3nngyrP1CIkHZCbSldQtk5eiLEPKYL8xtICKNCmS
+X-Developer-Key: i=Haoning.CHENG@cn.bosch.com; a=ed25519;
+ pk=glQGwad/fosRS5gZUJYbLDPPLGe7rFTrTV2VxY/ySdc=
+X-Endpoint-Received: by B4 Relay for Haoning.CHENG@cn.bosch.com/20260709 with auth_id=860
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the IR controller node for the Amlogic A9 SoC and describe the
-corresponding remote input pin configuration.
+Some i.MX boards need a small per-design correction to align the
+reported CPU temperature with board-level measurements. This series
+adds an optional DT property to specify such a calibration offset
+and implements the corresponding support in the imx_thermal driver.
 
-Enable the IR controller on the Amlogic A9 A311Y3 BY401 board with the
-proper pinctrl setting.
+Patch 1 documents the new fsl,temp-calibration-offset-millicelsius
+property in the i.MX thermal DT binding.
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Patch 2 reads this property in the imx_thermal driver and applies
+the offset to the i.MX6/6SX/7D calibration formulas. When the
+property is absent, the default offset remains 0, preserving the
+current behaviour.
+
+Signed-off-by: Haoning CHENG <Haoning.CHENG@cn.bosch.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a9-a311y3-by401.dts |  6 ++++++
- arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi             | 14 ++++++++++++++
- 2 files changed, 20 insertions(+)
+HaoNing Cheng (2):
+      dt-bindings: thermal: imx: Document calibration offset property
+      thermal/drivers/imx: Add calibration offset support
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a9-a311y3-by401.dts b/arch/arm64/boot/dts/amlogic/amlogic-a9-a311y3-by401.dts
-index a6b380ca47a5..389c9de3dc3c 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a9-a311y3-by401.dts
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a9-a311y3-by401.dts
-@@ -38,3 +38,9 @@ secmon_reserved: secmon@5000000 {
- &uart_b {
- 	status = "okay";
- };
-+
-+&ir {
-+	status = "okay";
-+	pinctrl-0 = <&remote_input_ao_pins>;
-+	pinctrl-names = "default";
-+};
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
-index b0e0fadeed82..aa89b31bfe30 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
-@@ -241,6 +241,13 @@ test_n: gpio@c0 {
- 					#gpio-cells = <2>;
- 					gpio-ranges = <&aobus_pinctrl 0 (AMLOGIC_GPIO_TEST_N<<8) 1>;
- 				};
-+
-+				func-ir-in {
-+						remote_input_ao_pins: group-remote-input-ao-pins {
-+						pinmux = <AML_PINMUX(AMLOGIC_GPIO_D, 5, 1)>;
-+						bias-disable;
-+					};
-+				};
- 			};
- 
- 			gpio_ao_intc: interrupt-controller@4080 {
-@@ -254,6 +261,13 @@ gpio_ao_intc: interrupt-controller@4080 {
- 					394 395 396 397 398 399 400 401 402 403>;
- 			};
- 
-+			ir: ir@14080 {
-+				compatible = "amlogic,a9-ir", "amlogic,meson-s4-ir";
-+				reg = <0x0 0x14080 0x0 0x30>;
-+				interrupts = <GIC_SPI 413 IRQ_TYPE_EDGE_RISING>;
-+				status = "disabled";
-+			};
-+
- 			uart_b: serial@1e000 {
- 				compatible = "amlogic,a9-uart",
- 					     "amlogic,meson-s4-uart";
+ Documentation/devicetree/bindings/thermal/imx-thermal.yaml |  8 ++++++++
+ drivers/thermal/imx_thermal.c                              | 11 ++++++++---
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+---
+base-commit: c50a940dcde35c647e097e89a9150003abd48329
+change-id: 20260709-b4-symana21-11221-imx-thermal-support-upstream-6-18-a084984deb76
 
--- 
-2.52.0
+Best regards,
+--  
+Haoning CHENG <Haoning.CHENG@cn.bosch.com>
 
