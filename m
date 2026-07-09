@@ -1,114 +1,253 @@
-From: Ackerley Tng <ackerleytng@google.com>
-Date: Wed, 08 Jul 2026 15:12:53 -0700
-Subject: [PATCH v2 5/5] mm: hugetlb: Move memcg charge earlier to prevent
- reservation leak
+From: Chen Linxuan <me@black-desk.cn>
+Subject: [PATCH v7 0/3] includeIf: add "worktree" condition for matching
+ working tree path
+Date: Thu, 09 Jul 2026 10:41:40 +0800
+Message-Id: <20260709-includeif-worktree-v7-0-e87e705e8df6@black-desk.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260708-hugetlb-alloc-failure-fixes-v2-5-c7f27cbb462b@google.com>
-References: <20260708-hugetlb-alloc-failure-fixes-v2-0-c7f27cbb462b@google.com>
-In-Reply-To: <20260708-hugetlb-alloc-failure-fixes-v2-0-c7f27cbb462b@google.com>
-To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
- David Hildenbrand <david@kernel.org>, Joshua Hahn <joshua.hahnjy@gmail.com>, 
- Shakeel Butt <shakeel.butt@linux.dev>, Nhat Pham <nphamcs@gmail.com>, 
- Andrew Morton <akpm@linux-foundation.org>, Peter Xu <peterx@redhat.com>, 
- Wupeng Ma <mawupeng1@huawei.com>, fvdl@google.com, rientjes@google.com, 
- jthoughton@google.com
-Cc: vannapurve@google.com, erdemaktas@google.com, linux-mm@kvack.org, 
- linux-kernel@vger.kernel.org, Ackerley Tng <ackerleytng@google.com>, 
- stable@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAGQKT2oC/33QS27DIBAG4KtErEsFg3l11XtEXfAYGuTIriB1W
+ kW+e3E2sSra5T9ovpnhRiqWjJW8HG6k4JJrnqcW9NOBhJOb3pHm2DIBBooNjNM8hfNnxJzodS7
+ jpSDSFLwarGQxeUda40fBlL/u6PGt5VOul7l832csfKv+yy2cMmqZil7ZBEHbV392YaQR6/gcJ
+ rKRC+wZ6DLQGKFQCOuNNVH3GLFnRJcRjeHMBpTagGeixwwPRvI+MzQmGVTAIfL2UT1G7hiQXUZ
+ u22DC9h4ZyC6jHoz+4yjVGMeFscJF63T6zazr+gMGHj47GwIAAA==
+X-Change-ID: 20260401-includeif-worktree-fcb64950dfba
+To: git@vger.kernel.org
+Cc: Kristoffer Haugsbakk <kristofferhaugsbakk@fastmail.com>, 
+ Junio C Hamano <gitster@pobox.com>, Patrick Steinhardt <ps@pks.im>, 
+ Chen Linxuan <me@black-desk.cn>, Phillip Wood <phillip.wood@dunelm.org.uk>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783548773; l=2730;
- i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=aDc4LeCjf9Msx78DCPQ6R0pVUvWtCQbT0+pt5lURw5A=;
- b=C/Vy+QfzINHzFrWHsVd2Hc4hHJO95u4DUt+Y/R5xhEOPitzw3jg3OzKoQPYxnnBqtqUyIy91U
- VA+6kJWQ3QyDecXnoBFpg9D6y68TwiYF811Q3SspObCEMxjI1Nd5bFn
-X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
- pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
-X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
+X-Developer-Signature: v=1; a=openpgp-sha256; l=10372; i=me@black-desk.cn;
+ h=from:subject:message-id; bh=5sgSRrDu2RkXFUHQbQi4PwXOsIzpLwG2336F9k/scSU=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqTwprnsFAp8sNfVZ4shK+bVV5PWkULjFknc6qX
+ ZB8fwZjqyWJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCak8KawAKCRB2HuYUOZmu
+ iyfID/4/dka5ucg25zlYi1a0TuXFgzPGPi53H1QO0eofR7nVf2neOzIvgS+xEz4MC4hH86nn7rI
+ 6cWX3OwB6VWq6TJkqVPatAt4swBEupbAeFiCoJU+f+WZvbRIYDlzT+BR4zd+Uf58/RG42lr1jAL
+ rLXvuC+GWOG4pT8MCyHMmwcmQ+oks9+5Go65H8095yj8k9xFL8+zXy6nJaD89C5msa8sfVQptY6
+ TJn6txdKtmV7wujsq6PgHf4vwigky8Y1dzhG5j/tV6pxL96BYPncwI1NQJ9NNYlMUf0hw3x0X6e
+ zRkpZU7ZI18JmiL5vQNcH08W4NSQYAd9SfnBRhNgUlvL4btD/PYyqHPCq1d2BVIMjYhpe4hfmH/
+ Qqx4AsZDWhA6ykSYwy2DaoOco2rggH95oqLQW4LLoDEU2TGHzcfekFitVvLaQ/8Hfn/US44ewMZ
+ sJDgJNANiZqV7DXMbNPA9cf4A6x6MW8AA2rQdfRbLO54rQixUxIDePAUNdusclWkV/hlsKkpxCf
+ aovr9dqry0XvuLGoLst0zCk5VNhE6EOUjtUDjKF/0UiY7VIZH6SpJ7okEmJiiERXQd4nl0jLak6
+ 8Hi4u2KWxvWfK6ah5cx2DiiTBufQz0tPAnfoHqARLEttTiLcEwR4kC4aGIxZhL/kyqEtPWxa4h6
+ IEoizvFNL4/2mAA==
+X-Developer-Key: i=me@black-desk.cn; a=openpgp;
+ fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
+X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When mem_cgroup_charge_hugetlb() fails, alloc_hugetlb_folio() clears the
-charges and frees the folio. The reservation committed via
-vma_commit_reservation() was not undone, leaving the reservation map in an
-inconsistent state, causing resv_huge_pages to leak when the process
-exited.
+The `includeIf` mechanism already supports matching on the `.git`
+directory path (`gitdir`) and the currently checked out branch
+(`onbranch`).  But in multi-worktree setups the `.git` directory of a
+linked worktree points into the main repository's `.git/worktrees/`
+area, which makes `gitdir` patterns cumbersome when one wants to
+include config based on the working tree's checkout path instead.
 
-Fix this by moving the mem_cgroup_charge_hugetlb() call earlier in
-alloc_hugetlb_folio(), before vma_commit_reservation() is called.
+Introduce two new condition keywords:
 
-If the charge fails now, the reservation is not yet committed. Jump to
-out_subpool_put, which will then call vma_end_reservation() to abort the
-reservation and keep the reservation map and resv_huge_pages counter
-consistent.
+  - `worktree:<pattern>` matches the working directory of the current
+    worktree against a glob pattern.
+  - `worktree/i:<pattern>` is the case-insensitive variant.
 
-Fixes: 991135774c0e0 ("memcg/hugetlb: introduce mem_cgroup_charge_hugetlb")
-Cc: stable@vger.kernel.org
-Signed-off-by: Ackerley Tng <ackerleytng@google.com>
+Supported pattern features: glob wildcards, `**/` and `/**`, `~`
+expansion, `./` relative paths, and trailing-`/` prefix matching.
+The condition never matches in a bare repository.
+
+Signed-off-by: Chen Linxuan <me@black-desk.cn>
 ---
- mm/hugetlb.c | 34 ++++++++++++++++++++--------------
- 1 file changed, 20 insertions(+), 14 deletions(-)
+Changes in v7:
+- Preserve the symlinked spelling of the worktree path and match
+  includeIf "worktree:" against it, so the condition now matches both
+  the symlinked and the real path, consistent with "gitdir:"
+  (Patrick Steinhardt, v6 review).
+- Split the work into a preparatory commit that stores a non-realpath
+  worktree path and a follow-up that wires it into includeIf.
+- Extend symlink test coverage to subdirectories and linked worktrees.
+- Link to v6: https://lore.kernel.org/r/20260703-includeif-worktree-v6-0-a13893ad9a7f@black-desk.cn
 
-diff --git a/mm/hugetlb.c b/mm/hugetlb.c
-index 3e1d99f03c70e..e000af6f28585 100644
---- a/mm/hugetlb.c
-+++ b/mm/hugetlb.c
-@@ -2954,6 +2954,25 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 
- 	spin_unlock_irq(&hugetlb_lock);
- 
-+	ret = mem_cgroup_charge_hugetlb(folio, gfp);
-+	/*
-+	 * Unconditionally increment NR_HUGETLB here. If it turns out that
-+	 * mem_cgroup_charge_hugetlb failed, then immediately free the page and
-+	 * decrement NR_HUGETLB.
-+	 */
-+	lruvec_stat_mod_folio(folio, NR_HUGETLB, pages_per_huge_page(h));
-+
-+	if (ret == -ENOMEM) {
-+		folio_put(folio);
-+		/*
-+		 * Charges to hugetlb_cgroup for usage and
-+		 * reservations were already committed, so folio_put()
-+		 * would have uncharged those. Go straight to undoing
-+		 * subpool charges.
-+		 */
-+		goto out_subpool_put;
-+	}
-+
- 	hugetlb_set_folio_subpool(folio, spool);
- 
- 	if (map_chg != MAP_CHG_ENFORCED) {
-@@ -2981,19 +3000,6 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 		}
- 	}
- 
--	ret = mem_cgroup_charge_hugetlb(folio, gfp);
--	/*
--	 * Unconditionally increment NR_HUGETLB here. If it turns out that
--	 * mem_cgroup_charge_hugetlb failed, then immediately free the page and
--	 * decrement NR_HUGETLB.
--	 */
--	lruvec_stat_mod_folio(folio, NR_HUGETLB, pages_per_huge_page(h));
--
--	if (ret == -ENOMEM) {
--		folio_put(folio);
--		goto err;
--	}
--
- 	return folio;
- 
- out_uncharge_cgroup:
-@@ -3014,7 +3020,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- out_end_reservation:
- 	if (map_chg != MAP_CHG_ENFORCED)
- 		vma_end_reservation(h, vma, addr);
--err:
-+
- 	/*
- 	 * Return -ENOSPC when this function fails to allocate or
- 	 * charge a huge page. If a standard (PAGE_SIZE) page
+Changes in v6:
+- Rebase onto current `master` at Git 2.55.
+- Add an in-code comment explaining why the non-repository worktree
+  tests use the loose `**.path` pattern (suggested by Junio C Hamano).
+- Link to v5: https://lore.kernel.org/r/20260525-includeif-worktree-v5-0-1efe525d025a@black-desk.cn
 
--- 
-2.55.0.795.g602f6c329a-goog
+Changes in v5:
+- Fix Windows CI failure: use `**` glob pattern instead of `/` in the
+  "worktree without repository" tests, since `/` as a path pattern is
+  Unix-specific and does not match Windows paths.
+  Github CI pass: https://github.com/black-desk/git/actions/runs/26380466288
+- Add a test verifying case-sensitive matching by default, with the
+  `!CASE_INSENSITIVE_FS` prerequisite (suggested by Patrick Steinhardt).
+- Link to v4: https://lore.kernel.org/r/20260513-includeif-worktree-v4-0-f8e6212d1fba@black-desk.cn
+
+Changes in v4:
+- Deduplicate the worktree pattern documentation by referencing the
+  gitdir syntax instead of repeating the full pattern description
+  (suggested by Patrick Steinhardt).
+- Add documentation comparing includeIf "worktree:" with
+  extensions.worktreeConfig, including a concrete use case example
+  (suggested by Phillip Wood, Junio C Hamano).
+- Add a test verifying that the worktree condition does not match
+  during early config reading (suggested by Patrick Steinhardt).
+- Add tests for the non-repository (nongit) scenario (suggested by
+  Patrick Steinhardt).
+- Add a test for the case-insensitive "worktree/i" variant
+- Link to v3: https://lore.kernel.org/r/20260403-includeif-worktree-v3-0-109ce5782b03@black-desk.cn
+
+Changes in v3:
+- Apply Junio's suggestion.
+- Link to v2: https://lore.kernel.org/r/20260402-includeif-worktree-v2-0-36e339b898d7@black-desk.cn
+
+Changes in v2:
+
+- Add missing signed-off-by lines.
+- Link to v1: https://lore.kernel.org/r/20260401-includeif-worktree-v1-0-906db69f2c79@black-desk.cn
+
+---
+Chen Linxuan (3):
+      config: refactor include_by_gitdir() into include_by_path()
+      repository: keep a symlink-preserving copy of the worktree path
+      config: add "worktree" and "worktree/i" includeIf conditions
+
+ Documentation/config.adoc |  48 +++++++++++++
+ config.c                  |  25 ++++---
+ repository.c              |  26 +++++++
+ repository.h              |  10 +++
+ setup.c                   |  86 ++++++++++++++++++++++-
+ t/t1305-config-include.sh | 171 ++++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 354 insertions(+), 12 deletions(-)
+
+Range-diff versus v6:
+
+1:  faa10baf8deb = 1:  47ee82d6a5bd config: refactor include_by_gitdir() into include_by_path()
+-:  ------------ > 2:  367d61f9b55f repository: keep a symlink-preserving copy of the worktree path
+2:  ee81d7aeee56 ! 3:  67d9c31d3817 config: add "worktree" and "worktree/i" includeIf conditions
+    @@ Commit message
+     
+         Introduce two new condition keywords:
+     
+    -      - worktree:<pattern> matches the realpath of the current worktree's
+    -        working directory (i.e. repo_get_work_tree()) against a glob
+    -        pattern.  This is the path returned by git rev-parse
+    -        --show-toplevel.
+    +      - worktree:<pattern> matches the working directory of the current
+    +        worktree (the path returned by git rev-parse --show-toplevel)
+    +        against a glob pattern.
+     
+           - worktree/i:<pattern> is the case-insensitive variant.
+     
+    -    The implementation reuses the include_by_path() helper introduced in
+    -    the previous commit, passing the worktree path in place of the
+    -    gitdir.  The condition never matches in bare repositories (where
+    -    there is no worktree) or during early config reading (where no
+    -    repository is available).
+    +    The implementation reuses the include_by_path() helper, passing
+    +    repo_get_work_tree_original() (added in the previous commit; it keeps
+    +    the symlink-preserving spelling of the worktree path) in place of the
+    +    gitdir.  As with gitdir, include_by_path() then matches both the
+    +    realpath and the original spelling, so a pattern may use either.  The
+    +    condition never matches in bare repositories (where there is no
+    +    worktree) or during early config reading (where no repository is
+    +    available).
+     
+         Add documentation describing the new conditions, including a comparison
+         with extensions.worktreeConfig.  Add tests covering bare repositories,
+    -    multiple worktrees, symlinked worktree paths, case-sensitive and
+    -    case-insensitive matching, early config reading, and non-repository
+    -    scenarios.
+    +    multiple worktrees, symlinked and subdir-of-symlinked worktree paths,
+    +    case-sensitive and case-insensitive matching, early config reading,
+    +    and non-repository scenarios.
+     
+         Signed-off-by: Chen Linxuan <me@black-desk.cn>
+     
+    @@ config.c: static int include_condition_is_true(const struct key_value_info *kvi,
+      	else if (skip_prefix_mem(cond, cond_len, "gitdir/i:", &cond, &cond_len))
+      		return include_by_path(kvi, opts->git_dir, cond, cond_len, 1);
+     +	else if (skip_prefix_mem(cond, cond_len, "worktree:", &cond, &cond_len))
+    -+		return include_by_path(kvi, inc->repo ? repo_get_work_tree(inc->repo) : NULL,
+    ++		return include_by_path(kvi, inc->repo ? repo_get_work_tree_original(inc->repo) : NULL,
+     +				       cond, cond_len, 0);
+     +	else if (skip_prefix_mem(cond, cond_len, "worktree/i:", &cond, &cond_len))
+    -+		return include_by_path(kvi, inc->repo ? repo_get_work_tree(inc->repo) : NULL,
+    ++		return include_by_path(kvi, inc->repo ? repo_get_work_tree_original(inc->repo) : NULL,
+     +				       cond, cond_len, 1);
+      	else if (skip_prefix_mem(cond, cond_len, "onbranch:", &cond, &cond_len))
+      		return include_by_branch(inc, cond, cond_len);
+    @@ t/t1305-config-include.sh: test_expect_success 'onbranch without repository but
+     +	test_must_fail git -C wt-prefix/linked config test.linkedvar
+     +'
+     +
+    -+test_expect_success SYMLINKS 'conditional include, worktree resolves symlinks' '
+    -+	mkdir real-wt &&
+    -+	ln -s real-wt link-wt &&
+    -+	git init link-wt/repo &&
+    ++test_expect_success SYMLINKS 'conditional include, worktree matching symlink' '
+    ++	mkdir sym-real &&
+    ++	ln -s sym-real sym-link &&
+    ++	git init sym-link/repo &&
+     +	(
+    -+		cd link-wt/repo &&
+    -+		# repo->worktree resolves symlinks, so use real path in pattern
+    -+		echo "[includeIf \"worktree:**/real-wt/repo\"]path=bar-link" >>.git/config &&
+    -+		echo "[test]wtlink=2" >.git/bar-link &&
+    -+		echo 2 >expect &&
+    -+		git config test.wtlink >actual &&
+    -+		test_cmp expect actual
+    ++		cd sym-link/repo &&
+    ++		link_path="$(pwd)" &&
+    ++		real_path="$(test-tool path-utils real_path "$link_path")" &&
+    ++		cat >>.git/config <<-EOF &&
+    ++		[includeIf "gitdir:$link_path/.git"]
+    ++			path = gitdir-link
+    ++		[includeIf "gitdir:$real_path/.git"]
+    ++			path = gitdir-real
+    ++		[includeIf "worktree:$link_path"]
+    ++			path = worktree-link
+    ++		[includeIf "worktree:$real_path"]
+    ++			path = worktree-real
+    ++		EOF
+    ++		echo "[test]gitdirlink=1" >.git/gitdir-link &&
+    ++		echo "[test]gitdirreal=1" >.git/gitdir-real &&
+    ++		echo "[test]worktreelink=1" >.git/worktree-link &&
+    ++		echo "[test]worktreereal=1" >.git/worktree-real &&
+    ++		git config get test.gitdirlink &&
+    ++		git config get test.gitdirreal &&
+    ++		git config get test.worktreelink &&
+    ++		git config get test.worktreereal &&
+    ++		# from a subdirectory, the logical worktree path is recovered by
+    ++		# stripping the below-root suffix, so both spellings still match
+    ++		mkdir d &&
+    ++		cd d &&
+    ++		git config get test.worktreelink &&
+    ++		git config get test.worktreereal
+    ++	)
+    ++'
+    ++
+    ++test_expect_success SYMLINKS 'conditional include, worktree matching symlink of a linked worktree' '
+    ++	git init wt-main &&
+    ++	( cd wt-main && test_commit initial ) &&
+    ++	git -C wt-main worktree add --detach ../wt-real &&
+    ++	ln -s wt-real wt-link &&
+    ++	wt_main="$(cd wt-main && pwd)" &&
+    ++	(
+    ++		cd wt-link &&
+    ++		link_path="$(pwd)" &&
+    ++		real_path="$(test-tool path-utils real_path "$link_path")" &&
+    ++		cat >>"$wt_main/.git/config" <<-EOF &&
+    ++		[includeIf "worktree:$link_path"]
+    ++			path = wt-link
+    ++		[includeIf "worktree:$real_path"]
+    ++			path = wt-real
+    ++		EOF
+    ++		echo "[test]wtlink=1" >"$wt_main/.git/wt-link" &&
+    ++		echo "[test]wtreal=1" >"$wt_main/.git/wt-real" &&
+    ++		test "$(git config get test.wtlink)" = "1" &&
+    ++		test "$(git config get test.wtreal)" = "1"
+     +	)
+     +'
+     +
+
+---
+base-commit: f85a7e662054a7b0d9070e432508831afa214b47
 
