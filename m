@@ -1,11 +1,10 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Thu, 09 Jul 2026 03:30:51 +0000
-Subject: [PATCH v2 1/2] dt-bindings: media: meson6-ir: Add Amlogic A9 IR
- compatible
+Date: Thu, 09 Jul 2026 03:30:52 +0000
+Subject: [PATCH v2 2/2] arm64: dts: amlogic: a9: Add IR controller support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260709-a9-ir-v2-1-42c21d7a6ffc@amlogic.com>
+Message-Id: <20260709-a9-ir-v2-2-42c21d7a6ffc@amlogic.com>
 References: <20260709-a9-ir-v2-0-42c21d7a6ffc@amlogic.com>
 In-Reply-To: <20260709-a9-ir-v2-0-42c21d7a6ffc@amlogic.com>
 To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
@@ -16,46 +15,76 @@ To: Mauro Carvalho Chehab <mchehab@kernel.org>,
  Martin Blumenstingl <martin.blumenstingl@googlemail.com>
 Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+ linux-kernel@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783567853; l=1145;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783567853; l=2027;
  i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=rmPAoSNSZx5LMEoeF/b4E+Q1f6fRs3+ubaclp6Z1pc8=;
- b=RFXDKk/9e5V0rL7YIoH1aU5mVnHctr+HpC13MtW6h6g2GKfJVmXzRqsXK8xhNIlM3fjV/i6GP
- FGq4facPZpuD82VxqBgua2YqJrDoeDW0d229XZ8SywdSlPokapRvkQ2
+ bh=33MzL3Cv7uhjfti4gs/DqpQ4WXJtnpUBkHN5kst4OOM=;
+ b=8SnUZjwxz3vAI+j4FX/PVcpN9cL+yAwjXwLL0gpEZn0ZorSBb+bG2CooNlUssjFmYrLhfscJx
+ AEqPwtaNpmrAD2TsJBGMMgTWEItCxlcP6aIuRyMiUIGo1OVCVERRVWe
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the Amlogic A9 IR controller compatible string. The A9 IR
-controller shares the same implementation as the Meson S4 IR block,
-so add "amlogic,a9-ir" with "amlogic,meson-s4-ir" as the fallback
-compatible.
+Add the IR controller node for the Amlogic A9 SoC and describe the
+corresponding remote input pin configuration.
 
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
-Reviewed-by: Martin Blumenstingl <martin.blumenstingl@googlemail.com>
+Enable the IR controller on the Amlogic A9 A311Y3 BY401 board with the
+proper pinctrl setting.
+
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- Documentation/devicetree/bindings/media/amlogic,meson6-ir.yaml | 4 ++++
- 1 file changed, 4 insertions(+)
+ arch/arm64/boot/dts/amlogic/amlogic-a9-a311y3-by401.dts |  6 ++++++
+ arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi             | 14 ++++++++++++++
+ 2 files changed, 20 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/media/amlogic,meson6-ir.yaml b/Documentation/devicetree/bindings/media/amlogic,meson6-ir.yaml
-index 0f95fe8dd9ac..db9387e43eff 100644
---- a/Documentation/devicetree/bindings/media/amlogic,meson6-ir.yaml
-+++ b/Documentation/devicetree/bindings/media/amlogic,meson6-ir.yaml
-@@ -23,6 +23,10 @@ properties:
-       - items:
-           - const: amlogic,meson-gx-ir
-           - const: amlogic,meson-gxbb-ir
-+      - items:
-+          - enum:
-+              - amlogic,a9-ir
-+          - const: amlogic,meson-s4-ir
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a9-a311y3-by401.dts b/arch/arm64/boot/dts/amlogic/amlogic-a9-a311y3-by401.dts
+index a6b380ca47a5..389c9de3dc3c 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-a9-a311y3-by401.dts
++++ b/arch/arm64/boot/dts/amlogic/amlogic-a9-a311y3-by401.dts
+@@ -38,3 +38,9 @@ secmon_reserved: secmon@5000000 {
+ &uart_b {
+ 	status = "okay";
+ };
++
++&ir {
++	status = "okay";
++	pinctrl-0 = <&remote_input_ao_pins>;
++	pinctrl-names = "default";
++};
+diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
+index b0e0fadeed82..aa89b31bfe30 100644
+--- a/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
++++ b/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
+@@ -241,6 +241,13 @@ test_n: gpio@c0 {
+ 					#gpio-cells = <2>;
+ 					gpio-ranges = <&aobus_pinctrl 0 (AMLOGIC_GPIO_TEST_N<<8) 1>;
+ 				};
++
++				func-ir-in {
++						remote_input_ao_pins: group-remote-input-ao-pins {
++						pinmux = <AML_PINMUX(AMLOGIC_GPIO_D, 5, 1)>;
++						bias-disable;
++					};
++				};
+ 			};
  
-   reg:
-     maxItems: 1
+ 			gpio_ao_intc: interrupt-controller@4080 {
+@@ -254,6 +261,13 @@ gpio_ao_intc: interrupt-controller@4080 {
+ 					394 395 396 397 398 399 400 401 402 403>;
+ 			};
+ 
++			ir: ir@14080 {
++				compatible = "amlogic,a9-ir", "amlogic,meson-s4-ir";
++				reg = <0x0 0x14080 0x0 0x30>;
++				interrupts = <GIC_SPI 413 IRQ_TYPE_EDGE_RISING>;
++				status = "disabled";
++			};
++
+ 			uart_b: serial@1e000 {
+ 				compatible = "amlogic,a9-uart",
+ 					     "amlogic,meson-s4-uart";
 
 -- 
 2.52.0
