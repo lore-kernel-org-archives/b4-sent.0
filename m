@@ -1,11 +1,11 @@
 From: Chen Linxuan <me@black-desk.cn>
-Date: Thu, 09 Jul 2026 10:41:41 +0800
-Subject: [PATCH v7 1/3] config: refactor include_by_gitdir() into
- include_by_path()
+Date: Thu, 09 Jul 2026 10:41:42 +0800
+Subject: [PATCH v7 2/3] repository: keep a symlink-preserving copy of the
+ worktree path
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260709-includeif-worktree-v7-1-e87e705e8df6@black-desk.cn>
+Message-Id: <20260709-includeif-worktree-v7-2-e87e705e8df6@black-desk.cn>
 References: <20260709-includeif-worktree-v7-0-e87e705e8df6@black-desk.cn>
 In-Reply-To: <20260709-includeif-worktree-v7-0-e87e705e8df6@black-desk.cn>
 To: git@vger.kernel.org
@@ -13,95 +13,239 @@ Cc: Kristoffer Haugsbakk <kristofferhaugsbakk@fastmail.com>,
  Junio C Hamano <gitster@pobox.com>, Patrick Steinhardt <ps@pks.im>, 
  Chen Linxuan <me@black-desk.cn>, Phillip Wood <phillip.wood@dunelm.org.uk>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2786; i=me@black-desk.cn;
- h=from:subject:message-id; bh=ipYZMmHK39gpQV5AmNeMYl72bc8vJdBHiXJBfipzzao=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqTwp/bEnS8+0AyGh0V0sU1hFKGw1rnpk01jIbB
- rv4PUU2uBmJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCak8KfwAKCRB2HuYUOZmu
- i9pVD/4o9f9HDZCvbFTFDWaaVkRRC60SWZjo3+p0oRT616oIvkh3HLvJHBmWR5iVA+tynHSgcdP
- RgKj3MQe8CJgr/H18iduMuAMKyHROJOniqAAzxd4queHe4+T8nuAOZVw3iRXFsaBa2JmyGrqMTT
- hDaxzgN6HdEuz990qNulp7Dk1u51F59KB/NNaZLOZ95/GTE5RVfnkteUQQN2omOGCIc9nDqbQun
- XQ1lb/umozAy+xT9E2fvYwqjCZjugSUUG2Qea/Mx34WPXc8ZoSem/D6Ujf1lJszmL8JfDDcsuS2
- 63/LAsCR92/mSbsLrQiIA7znhXNHrGzNi8t4NejSAd3usiAidqxigH2LvJP4oSp8aVz5adi7n7x
- bwRsrigzGbGzzBbv0lBOL87qF6Oc2MXKdUf5rnfRBREwoHQzGgMVgLmCrgMNLnlYaooUkJrBqQO
- dwGYahRi5UYT/GAQ/3/QcpYFXtvHLZrpULbpsFgYzNp+HBa6lz6E+pk0LnTWWHUqHbul2SjyNPM
- gcgddav6F42kOiuSdmskwYxTHQoVbQXv0p9sLmnKJgi4XlapQ9rkhb4H+aGZngTiEKn9b0v2MSx
- VZPSE7I+/wxBrEjcvBa2W1Z3VS4aVpekdm8+2YQc4NmBHEpNkpsT6joaebRewxZndWXGloC/viy
- k9yc1MCjvl9y3TQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8240; i=me@black-desk.cn;
+ h=from:subject:message-id; bh=qqXSuQzEDoaR4X8BjyqKWi6IDgpDCw2oTif2AlZlyNM=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqTwqAIawcSReqwnqKoJpbGV38fiA+xPy9oTnix
+ rFuDYLKdRWJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCak8KgAAKCRB2HuYUOZmu
+ i1V0D/0YGAbq2exHxc8Um15GqKeD/tOn/YG6hH6SU0vqMKms8lhHOCHuXVL5SGfKaC0S/ozksej
+ Lzh3RyGeg4aA2IzUrIPRItxL4G98W6b9aS4fHKqvIsPm8wUYup11ZB85xTsiMqH5YUHLCvQsYXA
+ 7Lwf7st3C1QN7UYLxRKQ6NwTs0J5cUEjetOCMpDpxttUA4ag9vrygJbr2IrKISkEvOI3eqWt2XS
+ Ct2MWxmo1fvkWZNI1nfpd/KqLnM/nhWyNyWVoQ3no39KPwf//+SboLxp2C795VuKih+QiIxDcjO
+ zki3VT6XB6qQq/oKH39hjU5KxaavCAACLZgL1Qb4Xj1564dqEJWL7mwbVvtLetpau2Y8/yXfmDq
+ wtcAYEbkmw5vpDG+TcVCdJsRg0tosXfeZ4RHZ0pdYu0udbonVO8q+e+YsSMt3QHklt/JhPODr2D
+ /0kEHDw1M+/3uYxUFveOK8NqF13U/z6PW/X4ShacnDN43YTDWbSLsSgg8NRHIE9rruHpA4DJYnU
+ qB2wTfPhzI1bPHydnG/MJVA337rBdIkjPcL+5qeKUh/6QidN+3ZSybAP3tPbWD72uumy6K/+l/K
+ OEcHTO0ZwI67m+T/1KXs6Ub4XTl2Jz0yJyJsSPhu3AAG9a2p0JwV775VExys9OZvuqHGfGVz0py
+ RaRZ/kV1KoQ3m1w==
 X-Developer-Key: i=me@black-desk.cn; a=openpgp;
  fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
 X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The include_by_gitdir() function matches the realpath of a given
-path against a glob pattern, but its interface is tightly coupled to
-the gitdir condition: it takes a struct config_options *opts and
-extracts opts->git_dir internally.
+repo_set_worktree() stores only the realpath-resolved working directory in
+repo->worktree, which discards any symlinks the user followed to get
+there.  A follow-up commit needs to match that path the way "gitdir:"
+does, i.e. against both the real and the symlinked spelling, which
+requires the original spelling to still be available.
 
-Refactor it into a more generic include_by_path() helper that takes
-a const char *path parameter directly, and update the gitdir and
-gitdir/i callers to pass opts->git_dir explicitly.  No behavior
-change, just preparing for the addition of a new worktree condition
-that will reuse the same path-matching logic with a different path.
+Add repo->worktree_original, plus a repo_get_work_tree_original()
+accessor, to hold that symlink-preserving spelling.  repo_set_worktree()
+derives it from the given path; for the discovered-repository case, where
+the setup code has already chdir()d to the worktree root by the time
+set_git_work_tree(repo, ".") runs, logical_path_from_cwd() recovers it
+from $PWD instead.
+
+repo->worktree is unchanged; repo_get_work_tree_original() has no callers
+yet and is wired up in the next commit.
 
 Signed-off-by: Chen Linxuan <me@black-desk.cn>
 ---
- config.c | 19 ++++++++-----------
- 1 file changed, 8 insertions(+), 11 deletions(-)
+ repository.c | 26 ++++++++++++++++++
+ repository.h | 10 +++++++
+ setup.c      | 86 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 121 insertions(+), 1 deletion(-)
 
-diff --git a/config.c b/config.c
-index 6a0de86e3ae9..00eeeea370c9 100644
---- a/config.c
-+++ b/config.c
-@@ -235,23 +235,20 @@ static int prepare_include_condition_pattern(const struct key_value_info *kvi,
- 	return 0;
+diff --git a/repository.c b/repository.c
+index 73d80bcffdf5..a29d55a6fcd3 100644
+--- a/repository.c
++++ b/repository.c
+@@ -149,6 +149,11 @@ const char *repo_get_work_tree(struct repository *repo)
+ 	return repo->worktree;
  }
  
--static int include_by_gitdir(const struct key_value_info *kvi,
--			     const struct config_options *opts,
--			     const char *cond, size_t cond_len, int icase)
-+static int include_by_path(const struct key_value_info *kvi,
-+			   const char *path,
-+			   const char *cond, size_t cond_len, int icase)
++const char *repo_get_work_tree_original(struct repository *repo)
++{
++	return repo->worktree_original;
++}
++
+ static void repo_set_commondir(struct repository *repo,
+ 			       const char *commondir)
  {
- 	struct strbuf text = STRBUF_INIT;
- 	struct strbuf pattern = STRBUF_INIT;
- 	size_t prefix;
- 	int ret = 0;
--	const char *git_dir;
- 	int already_tried_absolute = 0;
+@@ -252,8 +257,28 @@ static int repo_init_gitdir(struct repository *repo, const char *gitdir)
  
--	if (opts->git_dir)
--		git_dir = opts->git_dir;
--	else
-+	if (!path)
- 		goto done;
+ void repo_set_worktree(struct repository *repo, const char *path)
+ {
++	struct strbuf worktree = STRBUF_INIT;
++
++	/*
++	 * Resolve the canonical path first. This preserves the historical
++	 * behaviour for unusable worktree paths (e.g. a bogus GIT_WORK_TREE):
++	 * strbuf_realpath() dies on error before we touch the copy below.
++	 */
+ 	repo->worktree = real_pathdup(path, 1);
  
--	strbuf_realpath(&text, git_dir, 1);
-+	strbuf_realpath(&text, path, 1);
- 	strbuf_add(&pattern, cond, cond_len);
- 	ret = prepare_include_condition_pattern(kvi, &pattern, &prefix);
- 	if (ret < 0)
-@@ -284,7 +281,7 @@ static int include_by_gitdir(const struct key_value_info *kvi,
- 		 * which'll do the right thing
- 		 */
- 		strbuf_reset(&text);
--		strbuf_add_absolute_path(&text, git_dir);
-+		strbuf_add_absolute_path(&text, path);
- 		already_tried_absolute = 1;
- 		goto again;
++	/*
++	 * Keep a symlink-preserving copy: absolute and normalized, but not
++	 * realpath-resolved. Normalization can only fail for inputs that
++	 * realpath tolerates (the rest already died above); fall back to the
++	 * physical path so callers never see a NULL.
++	 */
++	strbuf_add_absolute_path(&worktree, path);
++	if (strbuf_normalize_path(&worktree) < 0)
++		repo->worktree_original = xstrdup(repo->worktree);
++	else
++		repo->worktree_original = strbuf_detach(&worktree, NULL);
++	strbuf_release(&worktree);
++
+ 	trace2_def_repo(repo);
+ }
+ 
+@@ -379,6 +404,7 @@ void repo_clear(struct repository *repo)
+ 	FREE_AND_NULL(repo->graft_file);
+ 	FREE_AND_NULL(repo->index_file);
+ 	FREE_AND_NULL(repo->worktree);
++	FREE_AND_NULL(repo->worktree_original);
+ 	FREE_AND_NULL(repo->submodule_prefix);
+ 	FREE_AND_NULL(repo->ref_storage_payload);
+ 
+diff --git a/repository.h b/repository.h
+index 7d649e32e7fa..f08fbfde4a07 100644
+--- a/repository.h
++++ b/repository.h
+@@ -114,6 +114,15 @@ struct repository {
+ 	 * A NULL value indicates that there is no working directory.
+ 	 */
+ 	char *worktree;
++	/*
++	 * Symlink-preserving spelling of the working directory: absolute and
++	 * normalized, but NOT realpath-resolved (keeps any symlinks the user
++	 * followed to get here). Used by includeIf "worktree:" so it can match
++	 * both the real and the symlinked spelling, the way "gitdir:" does.
++	 * Falls back to the same value as "worktree" when no logical path is
++	 * available.
++	 */
++	char *worktree_original;
+ 	bool worktree_initialized;
+ 	bool worktree_config_is_bogus;
+ 
+@@ -221,6 +230,7 @@ const char *repo_get_object_directory(struct repository *repo);
+ const char *repo_get_index_file(struct repository *repo);
+ const char *repo_get_graft_file(struct repository *repo);
+ const char *repo_get_work_tree(struct repository *repo);
++const char *repo_get_work_tree_original(struct repository *repo);
+ 
+ /*
+  * Define a custom repository layout. Any field can be NULL, which
+diff --git a/setup.c b/setup.c
+index 0de56a074f7c..fbbeb95f99db 100644
+--- a/setup.c
++++ b/setup.c
+@@ -1213,12 +1213,94 @@ static const char *setup_explicit_git_dir(struct repository *repo,
+ 	return NULL;
+ }
+ 
++/*
++ * Do "a" and "b" refer to the same filesystem entry? Both must report a
++ * nonzero (dev,ino): some filesystems return (0,0) for unrelated paths,
++ * which would otherwise look identical.
++ */
++static int same_entry(const char *a, const char *b)
++{
++	struct stat sa, sb;
++
++	if (stat(a, &sa) || stat(b, &sb))
++		return 0;
++	return (sa.st_dev || sa.st_ino) &&
++	       sa.st_dev == sb.st_dev && sa.st_ino == sb.st_ino;
++}
++
++/*
++ * Recover the symlink-preserving spelling of the worktree root.
++ *
++ * strbuf_add_absolute_path() already consults $PWD to keep symlinks when
++ * resolving a relative path, so set_git_work_tree()'s other callers get a
++ * symlink-preserving worktree path for free.  This function exists for the
++ * discovered-repository case: setup_git_directory_gently() chdir()s to the
++ * worktree root *before* set_git_work_tree(repo, ".") runs, so by the time
++ * "." is resolved $PWD still names the caller's original directory and no
++ * longer agrees with the physical cwd, and strbuf_add_absolute_path()
++ * falls back to the realpath.  We close that gap by deriving the logical
++ * root here, from $PWD, while we still have the original physical cwd and
++ * the root offset in hand.
++ *
++ * "cwd" is the physical current directory (getcwd), and "root_len" is the
++ * length of the worktree root within it; cwd->buf[root_len..] is therefore
++ * the part of the path below the root (empty when git ran at the root).
++ *
++ * $PWD, maintained by the shell, may spell that same directory through
++ * symlinks.  If we can confirm $PWD really names cwd's directory (same
++ * device/inode) and that the below-root suffix matches, we swap the
++ * physical root prefix for $PWD's prefix and keep the user's symlinks.
++ * Only symlinks in the root prefix itself are preserved: the below-root
++ * suffix is matched byte-for-byte, so a symlink below the root is not.
++ *
++ * Returns the allocated logical path, or NULL when $PWD is missing, already
++ * physical, or untrustworthy.
++ */
++static char *logical_path_from_cwd(struct strbuf *cwd, int root_len)
++{
++	const char *pwd = getenv("PWD");
++	size_t suffix_len, pwd_len;
++	struct strbuf path = STRBUF_INIT;
++
++	if (!pwd || !is_absolute_path(pwd) || !strcmp(pwd, cwd->buf))
++		return NULL;
++	/*
++	 * $PWD is a plain environment variable: it can be set to anything,
++	 * or left stale after a chdir.  Only borrow its symlink-preserving
++	 * spelling once we prove it still points at the same directory as
++	 * the physical cwd; otherwise give up and return NULL.
++	 */
++	if (!same_entry(cwd->buf, pwd))
++		return NULL;
++
++	/*
++	 * Drop the below-root suffix from $PWD.  It must match the physical
++	 * suffix exactly; the only spelling difference we accept is in the
++	 * root prefix -- i.e. the symlinks we want to preserve.
++	 */
++	suffix_len = cwd->len - root_len;
++	pwd_len = strlen(pwd);
++	if (suffix_len) {
++		const char *suffix = cwd->buf + root_len;
++
++		if (suffix_len > pwd_len ||
++		    fspathcmp(pwd + pwd_len - suffix_len, suffix))
++			return NULL;
++		pwd_len -= suffix_len;
++	}
++
++	strbuf_add(&path, pwd, pwd_len);
++	return strbuf_detach(&path, NULL);
++}
++
+ static const char *setup_discovered_git_dir(struct repository *repo,
+ 					    const char *gitdir,
+ 					    struct strbuf *cwd, int offset,
+ 					    struct repository_format *repo_fmt,
+ 					    int *nongit_ok)
+ {
++	char *worktree = NULL;
++
+ 	if (check_repository_format_gently(gitdir, repo_fmt, nongit_ok))
+ 		return NULL;
+ 
+@@ -1245,7 +1327,9 @@ static const char *setup_discovered_git_dir(struct repository *repo,
  	}
-@@ -400,9 +397,9 @@ static int include_condition_is_true(const struct key_value_info *kvi,
- 	const struct config_options *opts = inc->opts;
  
- 	if (skip_prefix_mem(cond, cond_len, "gitdir:", &cond, &cond_len))
--		return include_by_gitdir(kvi, opts, cond, cond_len, 0);
-+		return include_by_path(kvi, opts->git_dir, cond, cond_len, 0);
- 	else if (skip_prefix_mem(cond, cond_len, "gitdir/i:", &cond, &cond_len))
--		return include_by_gitdir(kvi, opts, cond, cond_len, 1);
-+		return include_by_path(kvi, opts->git_dir, cond, cond_len, 1);
- 	else if (skip_prefix_mem(cond, cond_len, "onbranch:", &cond, &cond_len))
- 		return include_by_branch(inc, cond, cond_len);
- 	else if (skip_prefix_mem(cond, cond_len, "hasconfig:remote.*.url:", &cond,
+ 	/* #0, #1, #5, #8, #9, #12, #13 */
+-	set_git_work_tree(repo, ".");
++	worktree = logical_path_from_cwd(cwd, offset);
++	set_git_work_tree(repo, worktree ? worktree : ".");
++	free(worktree);
+ 	if (strcmp(gitdir, DEFAULT_GIT_DIR_ENVIRONMENT))
+ 		set_git_dir(repo, gitdir, 0);
+ 	if (offset >= cwd->len)
 
 -- 
 2.53.0
