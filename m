@@ -1,92 +1,172 @@
 From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Thu, 09 Jul 2026 22:22:57 +0200
-Subject: [PATCH v12 10/11] can: bcm: fix data race on rx_stamp/rx_ifindex
- in bcm_rx_handler()
+Date: Thu, 09 Jul 2026 22:22:58 +0200
+Subject: [PATCH v12 11/11] can: bcm: track a single source interface for
+ ANYDEV timeout/throttle ops
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260709-bcm_fixes-v12-10-61c06291bf1c@hartkopp.net>
+Message-Id: <20260709-bcm_fixes-v12-11-61c06291bf1c@hartkopp.net>
 References: <20260709-bcm_fixes-v12-0-61c06291bf1c@hartkopp.net>
 In-Reply-To: <20260709-bcm_fixes-v12-0-61c06291bf1c@hartkopp.net>
 To: linux-can@vger.kernel.org
 Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
  Marc Kleine-Budde <mkl@pengutronix.de>, sashiko-bot@kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783628570; l=2506;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783628570; l=5840;
  i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=w5zqfxihgc/yy09d86zBn5oM6DwZxtzW1xBRcXs3jsM=;
- b=9KBpqnJyrvJ0QHWbbotPBWBsIVdGolNT+7+mnk4j0BcRzHsCmcGlySAjtJjdeoDSOmVgqpqAJ
- c5elS/TXIHHAozbqgYbDhR4q/pgUKJgjf/1nujZ6lawkGbp9JYVh5Pc
+ bh=ewsnQZqfzFuO8OI5KgQlXZVV8h7zDlS0a93IqWFyGbk=;
+ b=++9hO5Tg0nEZJS15jkmsxkyGoLixdR5Jj9DYnp68mhkn6PU3/7ld2t9yTZjyt+sNg+W4ToSma
+ sG3Te1IDQdCA06P3P1FjaT178HcwSlF0IhR0446P17e5ufrybQ7pT4U
 X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
  pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
 X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For an rx op subscribed on all interfaces (ifindex == 0), the same op
-is registered once in the shared per-netns wildcard filter list, so
-bcm_rx_handler() can run concurrently on different CPUs for frames
-arriving on different net devices.
+An ANYDEV rx op (ifindex == 0) with an active RX timeout and/or
+throttle timer has no defined semantics when matching frames arrive
+from several interfaces: bcm_rx_handler() can run concurrently for
+the same op on different CPUs, racing hrtimer_cancel()/
+bcm_rx_starttimer() against bcm_rx_timeout_handler() and causing
+spurious RX_TIMEOUT notifications and last_frames corruption. The
+same concurrency lets throttled multiplex frames from different
+interfaces clobber the single rx_ifindex/rx_stamp fields shared by
+the op.
 
-op->rx_stamp and op->rx_ifindex were written before bcm_rx_update_lock was
-taken, allowing concurrent writers to race each other - including a torn
-store of the 64-bit rx_stamp on 32-bit platforms.
+Add op->if_detected to track the first interface that delivers a
+matching frame while a timeout/throttle timer is configured, and
+reject frames from any other interface for that op. The claim is
+decided in bcm_rx_handler() before hrtimer_cancel() touches
+op->timer, so a rejected frame can never disturb the claimed
+interface's watchdog. RTR-mode ops are excluded via RX_RTR_FRAME,
+independent of kt_ival1/kt_ival2, since those may briefly hold a
+stale value from an earlier non-RTR configuration.
 
-Beyond a torn store bcm_send_to_user() must report the timestamp/ifindex
-of the very same frame whose content it is delivering. So the assignment
-is placed in the same unbroken bcm_rx_update_lock section as the content
-comparison.
+The claim is released in bcm_notify() on NETDEV_UNREGISTER and in
+bcm_rx_setup() when SETTIMER reconfigures the timer values.
 
-As a side effect, the RTR-request frame feature (which never reach
-bcm_send_to_user()) no longer updates rx_stamp/rx_ifindex, since only
-the notification path needs them.
+A (re-)claim is only possible on CAN devices in NETREG_REGISTERED
+dev->reg_state to cover the release in bcm_notify() where reg_state
+becomes NETREG_UNREGISTERING until synchronize_net().
 
 Fixes: ffd980f976e7 ("[CAN]: Add broadcast manager (bcm) protocol")
 Reported-by: sashiko-bot@kernel.org
-Link: https://lore.kernel.org/linux-can/20260707145135.5BC831F00A3A@smtp.kernel.org/
+Link: https://lore.kernel.org/linux-can/20260709105031.1A39C1F000E9@smtp.kernel.org/
 Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
 ---
- net/can/bcm.c | 13 ++++++++-----
- 1 file changed, 8 insertions(+), 5 deletions(-)
+ net/can/bcm.c | 49 ++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 44 insertions(+), 5 deletions(-)
 
 diff --git a/net/can/bcm.c b/net/can/bcm.c
-index fbf1cbb7c99f..10a883b50fc6 100644
+index 10a883b50fc6..bbc72e05ad11 100644
 --- a/net/can/bcm.c
 +++ b/net/can/bcm.c
-@@ -777,15 +777,10 @@ static void bcm_rx_handler(struct sk_buff *skb, void *data)
+@@ -115,10 +115,11 @@ struct bcm_op {
+ 	atomic_long_t frames_abs, frames_filtered;
+ 	struct bcm_timeval ival1, ival2;
+ 	struct hrtimer timer, thrtimer;
+ 	ktime_t rx_stamp, kt_ival1, kt_ival2, kt_lastmsg;
+ 	int rx_ifindex;
++	int if_detected; /* first received ifindex in ANYDEV rx_op mode */
+ 	int cfsiz;
+ 	u32 count;
+ 	u32 nframes;
+ 	u32 currframe;
+ 	/* void pointers to arrays of struct can[fd]_frame */
+@@ -774,10 +775,37 @@ static void bcm_rx_handler(struct sk_buff *skb, void *data)
+ 	} else {
+ 		if (!can_is_can_skb(skb))
+ 			return;
  	}
  
++	/* An ANYDEV op with an active RX timeout and/or throttle timer
++	 * tracks a single source interface: claim the first interface that
++	 * delivers a matching frame and reject frames from any other one,
++	 * before hrtimer_cancel() below can touch op->timer - this avoids
++	 * racing bcm_rx_timeout_handler() across concurrent interfaces.
++	 * RX_RTR_FRAME ops are excluded, as kt_ival1/kt_ival2 may briefly
++	 * hold a stale value from an earlier non-RTR configuration.
++	 */
++	if (!op->ifindex) {
++		spin_lock_bh(&op->bcm_rx_update_lock);
++
++		if (!(op->flags & RX_RTR_FRAME) &&
++		    (op->kt_ival1 || op->kt_ival2)) {
++			/* don't claim to vanishing interface */
++			if (!op->if_detected &&
++			    READ_ONCE(skb->dev->reg_state) == NETREG_REGISTERED)
++				op->if_detected = skb->dev->ifindex;
++
++			if (op->if_detected != skb->dev->ifindex) {
++				spin_unlock_bh(&op->bcm_rx_update_lock);
++				return;
++			}
++		}
++
++		spin_unlock_bh(&op->bcm_rx_update_lock);
++	}
++
  	/* disable timeout */
  	hrtimer_cancel(&op->timer);
  
--	/* save rx timestamp */
--	op->rx_stamp = skb->tstamp;
--	/* save originator for recvfrom() */
--	op->rx_ifindex = skb->dev->ifindex;
--
  	/* op->flags/op->frames may be updated concurrently by bcm_rx_setup() */
  	spin_lock_bh(&op->bcm_rx_update_lock);
- 
- 	rtr_frame = op->flags & RX_RTR_FRAME;
- 	if (rtr_frame) {
-@@ -813,10 +808,18 @@ static void bcm_rx_handler(struct sk_buff *skb, void *data)
+@@ -808,14 +836,13 @@ static void bcm_rx_handler(struct sk_buff *skb, void *data)
  		traffic_flags |= RX_LOCAL;
  		if (skb->sk == op->sk)
  			traffic_flags |= RX_OWN;
  	}
  
-+	/* save rx timestamp and originator for recvfrom() under lock.
-+	 * For an op subscribed on all interfaces (ifindex == 0)
-+	 * bcm_rx_handler() can run concurrently on different CPUs so
-+	 * the CAN content and the meta data must be bundled correctly.
-+	 */
-+	op->rx_stamp = skb->tstamp;
-+	op->rx_ifindex = skb->dev->ifindex;
-+
+-	/* save rx timestamp and originator for recvfrom() under lock.
+-	 * For an op subscribed on all interfaces (ifindex == 0)
+-	 * bcm_rx_handler() can run concurrently on different CPUs so
+-	 * the CAN content and the meta data must be bundled correctly.
++	/* save rx timestamp and originator for recvfrom() under lock: an
++	 * ANYDEV op without an active timer can still run concurrently on
++	 * different CPUs, so content and meta data must be bundled here.
+ 	 */
+ 	op->rx_stamp = skb->tstamp;
+ 	op->rx_ifindex = skb->dev->ifindex;
+ 
  	if (op->flags & RX_FILTER_ID) {
- 		/* the easiest case */
- 		bcm_rx_update_and_send(op, op->last_frames, rxframe,
- 				       traffic_flags);
- 		goto rx_starttimer;
+@@ -1439,10 +1466,11 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
+ 			op->ival1 = msg_head->ival1;
+ 			op->ival2 = msg_head->ival2;
+ 			op->kt_ival1 = bcm_timeval_to_ktime(msg_head->ival1);
+ 			op->kt_ival2 = bcm_timeval_to_ktime(msg_head->ival2);
+ 			op->kt_lastmsg = 0;
++			op->if_detected = 0; /* reclaim ifindex in ANYDEV mode */
+ 			spin_unlock_bh(&op->bcm_rx_update_lock);
+ 
+ 			/* disable an active timer due to zero value? */
+ 			if (!op->kt_ival1)
+ 				hrtimer_cancel(&op->timer);
+@@ -1737,14 +1765,25 @@ static void bcm_notify(struct bcm_sock *bo, unsigned long msg,
+ 
+ 	case NETDEV_UNREGISTER:
+ 		lock_sock(sk);
+ 
+ 		/* rx_ops: remove device specific receive entries */
+-		list_for_each_entry(op, &bo->rx_ops, list)
++		list_for_each_entry(op, &bo->rx_ops, list) {
+ 			if (op->rx_reg_dev == dev)
+ 				bcm_rx_unreg(dev, op);
+ 
++			/* release an ANYDEV op's claim (see bcm_rx_handler())
++			 * on this now confirmed-gone interface.
++			 */
++			if (!op->ifindex) {
++				spin_lock_bh(&op->bcm_rx_update_lock);
++				if (op->if_detected == dev->ifindex)
++					op->if_detected = 0;
++				spin_unlock_bh(&op->bcm_rx_update_lock);
++			}
++		}
++
+ 		/* tx_ops: stop device specific cyclic transmissions on the
+ 		 * vanishing ifindex. Cancelling the timer is enough to stop
+ 		 * cyclic bcm_can_tx() calls as there is no re-arming.
+ 		 */
+ 		list_for_each_entry(op, &bo->tx_ops, list)
 
 -- 
 2.53.0
