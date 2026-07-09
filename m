@@ -1,11 +1,11 @@
 From: George Moussalem <george.moussalem@outlook.com>
-Date: Thu, 09 Jul 2026 13:18:31 +0400
-Subject: [PATCH v5 5/6] arm64: dts: qcom: ipq5018: add node required for
- Bluetooth support
+Date: Thu, 09 Jul 2026 13:18:32 +0400
+Subject: [PATCH v5 6/6] MAINTAINERS: Add IPQ5018 driver to Qualcomm
+ Bluetooth driver entry
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260709-ipq5018-bluetooth-v5-5-e476c41f03b8@outlook.com>
+Message-Id: <20260709-ipq5018-bluetooth-v5-6-e476c41f03b8@outlook.com>
 References: <20260709-ipq5018-bluetooth-v5-0-e476c41f03b8@outlook.com>
 In-Reply-To: <20260709-ipq5018-bluetooth-v5-0-e476c41f03b8@outlook.com>
 To: Bartosz Golaszewski <brgl@kernel.org>, 
@@ -20,51 +20,37 @@ Cc: linux-arm-msm@vger.kernel.org, linux-bluetooth@vger.kernel.org,
  George Moussalem <george.moussalem@outlook.com>, 
  Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783588713; l=1135;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783588713; l=702;
  i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
- bh=ymJvkEJnDShOUP8UxN5TyZg3+NjK0WZUomZnujMqESc=;
- b=RYY8skanotxliOrV7roe0ikM4OLojv53aWcRD6phI/hhClq9Vonk38JCmUCOBpbH0Uwfhe3LT
- liF6nLYmr4xDMXkyIZ5aIbG3FJfkIJLm+qzVdNR8dXc4y4CmyeQtz1X
+ bh=2A14I/9djkbP7Q/3gMV0xrYoXvOWpPLiNZFRJ5IU8Qc=;
+ b=E5AlHnX2v2ikivvWxaDyWRXrdlt6w6bqiiGkCWHWmGorm+1BvaoideNHaGiMCcdgSiOtl8BWq
+ 0/u/tBoJAIgC7Np7whNWHhHMrfMbsfGyVnRtN7mdb4vXTtINRJ8rf4Z
 X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
  pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
 X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add node to enable Bluetooth support on the IPQ5018 platform.
+Add the Qualcomm IPQ5018 Bluetooth driver to the existing entry for
+Qualcomm Bluetooth drivers.
 
-Reviewed-by: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
+Acked-by: Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>
 Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- arch/arm64/boot/dts/qcom/ipq5018.dtsi | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ MAINTAINERS | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-index 6f8004a22a1f..8c252fa3ff5b 100644
---- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-+++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
-@@ -453,6 +453,22 @@ tcsr: syscon@1937000 {
- 			reg = <0x01937000 0x21000>;
- 		};
+diff --git a/MAINTAINERS b/MAINTAINERS
+index eb8cdcc76324..33dd0c70c277 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -21876,6 +21876,7 @@ L:	linux-arm-msm@vger.kernel.org
+ S:	Maintained
+ F:	Documentation/devicetree/bindings/net/bluetooth/qcom,*
+ F:	drivers/bluetooth/btqca.[ch]
++F:	drivers/bluetooth/btqcomipc.c
+ F:	drivers/bluetooth/btqcomsmd.c
+ F:	drivers/bluetooth/hci_qca.c
  
-+		bluetooth: bluetooth@7000000 {
-+			compatible = "qcom,ipq5018-bt";
-+			reg = <0x07000000 0x58000>;
-+
-+			firmware-name = "qca/bt_fw_patch.mbn";
-+
-+			clocks = <&gcc GCC_BTSS_LPO_CLK>;
-+			clock-names = "lpo";
-+			resets = <&gcc GCC_BTSS_BCR>;
-+
-+			qcom,ipc = <&apcs_glb 8 23>;
-+			interrupts = <GIC_SPI 162 IRQ_TYPE_EDGE_RISING>;
-+
-+			status = "disabled";
-+		};
-+
- 		sdhc_1: mmc@7804000 {
- 			compatible = "qcom,ipq5018-sdhci", "qcom,sdhci-msm-v5";
- 			reg = <0x7804000 0x1000>;
 
 -- 
 2.53.0
