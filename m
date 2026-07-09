@@ -1,334 +1,253 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Thu, 09 Jul 2026 08:26:50 +0000
-Subject: [PATCH 3/3] arm64: dts: amlogic: a9: Add reset controller support
+From: George Moussalem <george.moussalem@outlook.com>
+Subject: [PATCH v5 0/6] Add support for IPQ5018 Bluetooth
+Date: Thu, 09 Jul 2026 13:18:26 +0400
+Message-Id: <20260709-ipq5018-bluetooth-v5-0-e476c41f03b8@outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260709-a9-reset-v1-3-fd7cf039b853@amlogic.com>
-References: <20260709-a9-reset-v1-0-fd7cf039b853@amlogic.com>
-In-Reply-To: <20260709-a9-reset-v1-0-fd7cf039b853@amlogic.com>
-To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/33PzWqEMBQF4FeRrJshP5oYKWXeo3SRxGsNo2Y0M
+ bQMvnujs2hLh24C50K+w7mhAIuDgJrihhZILjg/5VA9Fcj2enoH7NqcESNMEMEq7K5zRWiNzbB
+ C9D72mIiuE8KqVlYc5X/XBTr3cZivb/e8wLxmOt6PaIQQ9EE3xfMhS8Kz6O0F64CnNMKIU40JV
+ rUGzkxnS6XPPoTTvOrB+nE85edlbzM6AN4vLjaF1bIqqdSGSoX27t6F6JfPY16iR/k/SxLNla1
+ SygABUnby7Nc4eH/Z2w4vsZ+GemSwbBAmJekIN8KYvwb/NvbdDwyeDcFaLVlNa234b2Pbti8WY
+ fE3uAEAAA==
+X-Change-ID: 20260625-ipq5018-bluetooth-06ff66c9d753
+To: Bartosz Golaszewski <brgl@kernel.org>, 
+ Marcel Holtmann <marcel@holtmann.org>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, 
+ Philipp Zabel <p.zabel@pengutronix.de>
+Cc: linux-arm-msm@vger.kernel.org, linux-bluetooth@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ George Moussalem <george.moussalem@outlook.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Bartosz Golaszewski <bartosz.golaszewski@oss.qualcomm.com>, 
+ Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783585609; l=9268;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=oODyjrjEWR0VVNYxuXsuxzIRBRji+50KsZ/k5IisG0Q=;
- b=CehsLOVEvre4Q6qOZtCLa7rTarT8SIYiHPOqG4BKqjpchcaxqt8b5s6/CiC+74cJ1Z/+yaWYj
- lrXCKy4dt+1AhV7vQm5Uvwi9NBlhMjdYhY0z37UnGdGtiT9EC+8yC3/
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783588713; l=11753;
+ i=george.moussalem@outlook.com; s=20250321; h=from:subject:message-id;
+ bh=fvHZc4p0DL5VlLp9DIbDgG95XFGGwwbnBILIOWNU0N8=;
+ b=HS4HOGaF9DbkrXdazaGDTAdduJFCzhlxKH4PAz+ono4ay10+fKEC3uE30i1OnnFXrc912Shqg
+ mKpuEzzNyucDfy+mY9k+XKxuptc/FQiCUcDFXTzJbXcQUMO3AWr8rkz
+X-Developer-Key: i=george.moussalem@outlook.com; a=ed25519;
+ pk=/PuRTSI9iYiHwcc6Nrde8qF4ZDhJBlUgpHdhsIjnqIk=
+X-Endpoint-Received: by B4 Relay for george.moussalem@outlook.com/20250321 with auth_id=364
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add reset controller descriptions for the Amlogic A9 SoC and include the
-corresponding reset IDs header.
+Hello,
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+This patch series introduces Bluetooth support for IPQ5018.
+
+Bluetooth firmware is loaded by the host into a dedicated reserved
+memory carveout and authenticated by TrustZone. A Secure Channel Manager
+(SCM) call safely brings the peripheral core out of reset.
+
+A shared memory ring buffer topology handles runtime data frame
+transport between the host APSS and the Bluetooth controller.
+An outgoing APCS IPC bit and an incoming GIC interrupt handle
+host/guest signaling.
+
+This series has been tested and verified on various IPQ5018 router
+boards utilizing firmware extracted from GPL distributions, using both
+mdt and mbn file formats.
+
+[   14.781511] Bluetooth: hci0: QCA Product ID   :0x00000016
+[   14.781583] Bluetooth: hci0: QCA SOC Version  :0x20180100
+[   14.785926] Bluetooth: hci0: QCA ROM Version  :0x00000100
+[   14.791546] Bluetooth: hci0: QCA Patch Version:0x00003ded
+[   14.796698] Bluetooth: hci0: QCA controller version 0x01000100
+[   14.802217] Bluetooth: hci0: QCA Downloading qca/mpnv10.bin
+[   16.393850] Bluetooth: hci0: QCA FW build version: BTFW.MAPLE.1.0.0-00102-MPL_ROM_PATCHZ-1
+
+Best regards,
+George Moussalem
+
+Signed-off-by: George Moussalem <george.moussalem@outlook.com>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a9-reset.h | 247 +++++++++++++++++++++++++
- arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi    |  14 ++
- 2 files changed, 261 insertions(+)
+Changes in v5:
+- Updated the bindings file to change from using a memory-region
+  property to using a reg property for the shared memory area and made
+  reg a required property.
+- Added Bartosz G. to the maintainers list in the bindings file.
+- Updated the driver to acquire the memory region as platform resource
+  using devm_platform_get_and_ioremap_resource()
+- Replaced macros with unsafe arithmetic with inline functions that
+  safely calculate the size by reading values using endian functions
+  le**_to_cpu().
+- Update btss_lbuf_size to guard against division by zero and against
+  the offset extending beyond the total size of the context info struct.
+- Updated btqcomipc_send to enqueue packets before releasing the
+  spinlock to avoid stranding packets in the queue indefinitely.
+- Added an explicit DMA read barrier in the RX loop before reading and
+  processing each ring entry to guarantee memory ordering.
+- Added strict arithmetic validation for long-message metadata handling
+  before computing wrap segments and hardened the non-contiguous path to
+  prevent underflow.
+- Hardened split-segment firmware loading error handling. If
+  request_firmware() for a segment fails, the code now exits that path
+  immediately instead of falling through to memcpy_toio() and added
+  explicit split-file size validation before copy.
+- Updated HCI dev close path state teardown to avoid stale transport
+  stale after PAS shutdown. btqcomipc_close() now explicitly sets
+  running state to false under lock after shutdown.
+- Made IRQ registration safe against spurious interrupts by keeping the
+  line disabled after request (flags includes now IRQF_NO_AUTOEN).
+  IRQ is now enabled only in btqcomipc_open() right before firmware boot
+  and disabled again on open-failure and close paths.
+- Reordered remove-path teardown to eliminate worker vs HCI lifetime
+  race. It now unregisters HCI first to stop new traffic, then calls
+  btqcomipc_deinit() to stop async processing, and only then frees hdev.
+- Removed reserved memory area from the dtsi, moved bluetooth node under
+  the soc node, and added unit address and reg property.
+- Link to v4: https://lore.kernel.org/r/20260706-ipq5018-bluetooth-v4-0-350262a30959@outlook.com
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a9-reset.h b/arch/arm64/boot/dts/amlogic/amlogic-a9-reset.h
-new file mode 100644
-index 000000000000..55fcaa54cd56
---- /dev/null
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a9-reset.h
-@@ -0,0 +1,247 @@
-+/* SPDX-License-Identifier: (GPL-2.0+ OR MIT) */
-+/*
-+ * Copyright (c) 2026 Amlogic, Inc. All rights reserved.
-+ * Author: Zelong Dong <zelong.dong@amlogic.com>
-+ *
-+ */
-+
-+#ifndef _DT_BINDINGS_AMLOGIC_MESON_A9_RESET_H
-+#define _DT_BINDINGS_AMLOGIC_MESON_A9_RESET_H
-+
-+/* AO RESET0 */
-+#define AO_RESET_APB				0
-+#define AO_RESET_RTC				1
-+#define AO_RESET_BRG_NIC_RTC			2
-+#define AO_RESET_AO2EE				3
-+#define AO_RESET_BRG_NIC_EE			4
-+#define AO_RESET_WATCHDOG			5
-+#define AO_RESET_I3C				6
-+#define AO_RESET_PWR				7
-+#define AO_RESET_PWM_A				8
-+#define AO_RESET_PWM_B				9
-+#define AO_RESET_PWM_C				10
-+#define AO_RESET_PWM_D				11
-+#define AO_RESET_PWM_E				12
-+#define AO_RESET_PWM_F				13
-+#define AO_RESET_PWM_G				14
-+#define AO_RESET_I2C_M_A			15
-+#define AO_RESET_I2C_M_B			16
-+#define AO_RESET_I2C_M_C			17
-+#define AO_RESET_I2C_M_D			18
-+#define AO_RESET_IR				19
-+#define AO_RESET_UART_B				20
-+#define AO_RESET_UART_C				21
-+#define AO_RESET_UART_D				22
-+#define AO_RESET_SPISG				23
-+#define AO_RESET_SED				24
-+#define AO_RESET_CEC				25
-+#define AO_RESET_AOCPU				26
-+#define AO_RESET_AOCPU_POR			27
-+#define AO_RESET_AOCPU_CORE			28
-+#define AO_RESET_SRAM				29
-+#define AO_RESET_CAPU				30
-+#define AO_RESET_UART_E				31
-+
-+/* RESET0 */
-+#define RESET_ETH_1G				0
-+#define RESET_ISP				1
-+#define RESET_U3DRD_USB3PHY_APB			2
-+#define RESET_U3DRD_USB3PHY			3
-+#define RESET_U3DRD_USB2PHY			4
-+#define RESET_U3DRD				5
-+#define RESET_U3DRD_COMB			6
-+#define RESET_U3DRD_USB2PHY_APB			7
-+#define RESET_DP_PHY_APB			8
-+#define RESET_DP_PHY				9
-+#define RESET_DPTX_1P4				10
-+#define RESET_DPTX_1P4_APB			11
-+#define RESET_EDPTX_1P4				12
-+#define RESET_USB2DRD_PHY_APB			13
-+#define RESET_U2DRD_COMB			14
-+#define RESET_U2DRD				15
-+#define RESET_HDMI20_AES			16
-+#define RESET_HDMITX_CBUS_APB			17
-+#define RESET_BRG_VCBUS_DEC			18
-+#define RESET_VCBUS				19
-+#define RESET_VID_PLL_DIV			20
-+#define RESET_VDI6				21
-+#define RESET_HDMITXPHY				22
-+#define RESET_VID_LOCK				23
-+#define RESET_VENC_2				24
-+#define RESET_VDAC				25
-+#define RESET_VENC_1				26
-+#define RESET_VENC_0				27
-+#define RESET_RDMA				28
-+#define RESET_HDMITX				29
-+#define RESET_VIU				30
-+#define RESET_VENC				31
-+
-+/* RESET1 */
-+#define RESET_AUDIO				32
-+#define RESET_MALI_CBUS_APB			33
-+#define RESET_MALI				34
-+#define RESET_PCIE_B_PHY			35
-+#define RESET_PCIE_B_POR			36
-+#define RESET_DOS_CBUS_APB			37
-+#define RESET_DOS				38
-+#define RESET_MALI_SYS				39
-+#define RESET_CC				40
-+#define RESET_DSP_A_DEBUG			41
-+#define RESET_PCIE_A_PHY_APB			42
-+#define RESET_PCIE_A_PIPE			43
-+#define RESET_PCIE_A_POR			44
-+#define RESET_PCIE_A_PHY			45
-+#define RESET_PCIE_A_MAC_APB			46
-+#define RESET_AMFC_APB				47
-+#define RESET_ETH				48
-+/*						49 */
-+#define RESET_MALI_MBIST			50
-+#define RESET_ETH_1G_AXI			51
-+#define RESET_VICP				52
-+#define RESET_DEWARP				53
-+#define RESET_GE2D				54
-+#define RESET_VGE				55
-+#define RESET_PCIE_A_0				56
-+#define RESET_PCIE_A_1				57
-+#define RESET_PCIE_A_2				58
-+#define RESET_PCIE_A_3				59
-+#define RESET_PCIE_A_4				60
-+#define RESET_PCIE_A_5				61
-+#define RESET_PCIE_A_6				62
-+#define RESET_PCIE_A_7				63
-+
-+/* RESET2 */
-+#define RESET_AM2AXI				64
-+#define RESET_DSP_A				65
-+#define RESET_MIPI_DSI_PHY			66
-+#define RESET_TS_PLL				67
-+#define RESET_TS_A55				68
-+#define RESET_ETH_AXI				69
-+#define RESET_TS_CORE				70
-+#define RESET_MIPI_DSI1_PHY			71
-+#define RESET_SMART_CARD			72
-+#define RESET_SPISG				73
-+#define RESET_TS_DOS				74
-+#define RESET_U2DRD_USB2PHY			75
-+#define RESET_PIO				76
-+#define RESET_U2H_COMB				77
-+#define RESET_U2H				78
-+#define RESET_USB2H_PHY_APB			79
-+#define RESET_MSR_CLK				80
-+/*						81 */
-+#define RESET_AUX_DIG				82
-+/*						83 */
-+#define RESET_U2H_USB2PHY			84
-+#define RESET_U3HSG_PCIE_PIPE			85
-+#define RESET_AMFC				86
-+#define RESET_U3HSG_PCIE_PHY_APB		87
-+#define RESET_U3HSG_PCIE_PHY			88
-+#define RESET_PP_DMA				89
-+#define RESET_I3C				90
-+#define RESET_WATCHDOG				91
-+#define RESET_PP_WRAPPER			92
-+#define RESET_MIPI_DSI_HOST			93
-+#define RESET_DSI_PLL_DIV			94
-+#define RESET_MIPI_DSI_B_HOST			95
-+
-+/* RESET3 */
-+/*						96 */
-+#define RESET_HDMIRX_WRAP_APB			97
-+#define RESET_HDMIRX				98
-+#define RESET_PCIE_B_0				99
-+#define RESET_PCIE_B_1				100
-+#define RESET_PCIE_B_2				101
-+#define RESET_PCIE_B_3				102
-+#define RESET_PCIE_B_4				103
-+#define RESET_PCIE_B_5				104
-+#define RESET_PCIE_B_6				105
-+#define RESET_PCIE_B_7				106
-+#define RESET_PCIE_B_PIPE			107
-+#define RESET_PCIE_B_MAC_APB			108
-+#define RESET_NNA_TO_VGA_PIPE			109
-+#define RESET_CVE				110
-+#define RESET_GLOBAL_TIMER			111
-+#define RESET_COMBO_DPHY_PCLK			112
-+#define RESET_COMBO_DPHY			113
-+/*						114 - 118 */
-+#define RESET_U3PHY30_APB			119
-+#define RESET_U3PHY30				120
-+#define RESET_HSG				121
-+#define RESET_U3HSG_HSG				122
-+#define RESET_U3DRDB				123
-+#define RESET_U3DRDB_APB			124
-+#define RESET_U3PHY20_APB			125
-+#define RESET_U3PHY20				126
-+#define RESET_A55_ACE				127
-+
-+/* RESET4 */
-+#define RESET_CAN_0				128
-+#define RESET_CAN_1				129
-+#define RESET_TAHOE_CORE			130
-+#define RESET_TAHOE				131
-+#define RESET_TAHOE_APB				132
-+#define RESET_TAHOE_SYS				133
-+/*						134 - 135 */
-+#define RESET_PWM_I				136
-+#define RESET_PWM_J				137
-+#define RESET_UART_A				138
-+/*						139 - 143 */
-+#define RESET_MALI_AVBCD			144
-+#define RESET_MALI_AVBCD_APB			145
-+#define RESET_MALI_MCR_TOP			146
-+#define RESET_I2C_M_E				147
-+#define RESET_I2C_M_F				148
-+#define RESET_I2C_M_G				149
-+#define RESET_I2C_M_H				150
-+#define RESET_I2C_M_I				151
-+#define RESET_SD_EMMC_A				152
-+#define RESET_SD_EMMC_B				153
-+#define RESET_SD_EMMC_C				154
-+#define RESET_UART_F				155
-+#define RESET_PWM_N				156
-+#define RESET_PWM_M				157
-+#define RESET_PWM_L				158
-+#define RESET_PWM_K				159
-+
-+/* RESET5 */
-+#define RESET_BRG_ISP_PIPE			160
-+#define RESET_BRG_HEVCF_DMC_PIPE		161
-+#define RESET_BRG_HEVCB_PIPE			162
-+#define RESET_BRG_EMMC_PIPE			163
-+#define RESET_BRG_VGE_PIPE			164
-+#define RESET_BRG_DMC_VPU1_PIPE			165
-+#define RESET_BRG_DMC_VPU0_PIPE			166
-+#define RESET_BRG_NNA_PIPE			167
-+#define RESET_BRG_NNA_SRAM_PIPE			168
-+#define RESET_BRG_U2DRDA_PIPE			169
-+#define RESET_BRG_U3DRDA_PIPE			170
-+/*						171 - 173 */
-+#define RESET_BRG_NIC_AOSYS			174
-+#define RESET_BRG_NIC_AMFC			175
-+#define RESET_BRG_NIC_GIC			176
-+#define RESET_BRG_SRAM_NIC_NNA			177
-+#define RESET_BRG_SRAM_NIC_MAIN			178
-+#define RESET_BRG_SRAM_NIC_ALL			179
-+#define RESET_BRG_NIC_SOC_BRG			180
-+#define RESET_BRG_NIC_GPV			181
-+#define RESET_BRG_NIC_AO			182
-+#define RESET_BRG_NIC_EMMC			183
-+#define RESET_BRG_NIC_DSP_A			184
-+#define RESET_BRG_NIC_SDIO_B			185
-+#define RESET_BRG_NIC_SDIO_A			186
-+#define RESET_BRG_NIC_VAP_B			187
-+#define RESET_BRG_NIC_DSU			188
-+#define RESET_BRG_NIC_CLK81			189
-+#define RESET_BRG_NIC_MAIN			190
-+#define RESET_BRG_NIC_ALL			191
-+
-+/* RESET6 */
-+/*						192 - 216 */
-+#define RESET_BRG_PP_CLK			217
-+#define RESET_BRG_PP_NIC_CLK81			218
-+/*						219 - 220 */
-+#define RESET_BRG_PERIPH_APB_SYNC		221
-+#define RESET_BRG_VPU_APB_SYNC			222
-+#define RESET_BRG_DSP_A_PIPE			223
-+
-+#endif
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
-index b0e0fadeed82..546820b4598b 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
-@@ -7,6 +7,7 @@
- #include <dt-bindings/interrupt-controller/arm-gic.h>
- #include <dt-bindings/gpio/gpio.h>
- #include <dt-bindings/pinctrl/amlogic,pinctrl.h>
-+#include "amlogic-a9-reset.h"
- 
- / {
- 	interrupt-parent = <&gic>;
-@@ -105,6 +106,13 @@ apb: bus@fe000000 {
- 			#size-cells = <2>;
- 			ranges = <0x0 0x0 0x0 0xfe000000 0x0 0x480000>;
- 
-+			reset: reset-controller@2000 {
-+				compatible = "amlogic,a9-reset",
-+					     "amlogic,t7-reset";
-+				reg = <0x0 0x2000 0x0 0x98>;
-+				#reset-cells = <1>;
-+			};
-+
- 			periphs_pinctrl: pinctrl@4000 {
- 				compatible = "amlogic,pinctrl-a9";
- 				#address-cells = <2>;
-@@ -204,6 +212,12 @@ aobus: bus@ffa00000 {
- 			#size-cells = <2>;
- 			ranges = <0x0 0x0 0x0 0xffa00000 0x0 0x100000>;
- 
-+			ao_reset: ao-reset-controller@2000 {
-+				compatible = "amlogic,a9-ao-reset";
-+				reg = <0x0 0x2000 0x0 0xc>;
-+				#reset-cells = <1>;
-+			};
-+
- 			aobus_pinctrl: pinctrl@4000 {
- 				compatible = "amlogic,pinctrl-a9";
- 				#address-cells = <2>;
+Changes in v4:
+- Ordered switch statements in btqca.c. NOTE: left enum qca_bt_soc_type
+  unordered in the header file as the btqca driver has conditionally
+  checks whether bt_soc_type is above a certain value:
+  'if (soc_type >= QCA_WCN3991)' is found in 5 places
+- Fixed TX path serialization by protecting btqcomipc_send and
+  btss_send ring access with desc->lock, preventing concurrent updates
+  of ring indices and free counters from TX and worker contexts.
+- Fixed and simplified firmware ring traversal to decode little-endian
+  next and translate firmware offsets via TO_APPS_ADDR in all ring
+  walks, avoiding invalid pointer dereferences.
+- Added short-message RX length validation (msg_len must not exceed
+  IPC_MSG_PLD_SZ when not long message), preventing out-of-bounds read
+  from inline shared-memory payloads.
+- Fixed RX allocation failure behavior to advance ring index and
+  continue, preventing permanent RX ring stall on transient kmalloc
+  failures.
+- Replace macro for calculting large buffer size that performed unsafe
+  arithmetic by an inline function that safely calculates the size by
+  reading values using endian functions le**_to_cpu().
+- Declared aux_ptr as a zero-initialized struct as opposed to using
+  memset and changed struct definition by updating its member to use
+  u32 as opposed to __le32 as these values aren't set by firmware and
+  need not be validated on endianness.
+- Fixed long-message slot leak when short TX ring is full by
+  snapshotting and rolling back long-buffer accounting on
+  allocation-success/short-ring-fail path.
+- Updated firmware load logic to remove call to qcom_mdt_pas_init for
+  which the export was recently removed and replaced it by calls to
+  read the metadata and the validation of it using SCM.
+  NOTE: Sashiko correctly pointed out that the firmware ELF/mdt headers
+  weren't validated in the driver. However, this is done by the call to
+  qcom_mdt_read_metadata which returns -EINVAL if the mdt header isn't
+  valid.
+- Hardened firmware segment bounds checks against integer overflow by
+  using subtraction form (filesz <= mem_size - vaddr).
+- Replaced unsafe firmware split name rewrite with validated stem
+  handling and kasprintf formatting, removing underflow/overflow risk.
+- Converted workqueue allocation to devm_alloc_ordered_workqueue to fix
+  workqueue leak in IRQ registration failure path.
+- Added cleanup path in btqcomipc_open to shut down controller on
+  startup timeout, avoiding leaving peripheral powered after failed open
+- Reordered probe sequence to allocate/attach hdev before IRQ
+  registration, eliminating early-spurious-IRQ dereference window for
+  desc->hdev.
+- Reordered remove path to unregister/free hdev before driver deinit,
+  preventing send path from racing against queue/work teardown.
+- Corrected HCI command packet length parsing to use 8-bit plen directly
+  instead of using le16_to_cpu.
+- Fixed endianness and address translation in TX ACK processing path.
+  Converted firmware-owned ring metadata before use in btss_process_ack:
+  rbuf base offset, msg header, long-message pointer, and message length
+  are now read via le32_to_cpu or le16_to_cpu prior to reclaim logic.
+- Added explicit producer ordering barrier in TX ring publish path.
+  Inserted dma_wmb between payload or header writes and widx update so
+  firmware cannot observe producer index advancement before data becomes
+  visible.
+- Removed info message printing FW build info as that was recently
+  introduced in the kernel in commit bdea21b3be43
+- Added dependency on OF and ARCH_QCOM symbols to Kconfig. In addition,
+  also select QCOM_MDT_LOADER and QCOM_SCM.
+- Removed syscon compatible from mailbox node, avoiding dt_binding_check
+  failures and update the syscon acquisition logic in driver probe
+  accordingly.
+- Link to v3: https://lore.kernel.org/r/20260703-ipq5018-bluetooth-v3-0-62da72818ab3@outlook.com
 
+Changes in v3:
+- Consolidated the SCM and helper call into one function which now
+  checks availability of the SCM call inline.
+- Changed argument to boolean type to set ECO power mode on or off as
+  opposed to passing a raw power mode value.
+- Removed unneeded parentheses in if statement
+- Declared aux_ptr as a zero-initialized struct as opposed to using
+  memset
+- Changed for loop to a while loop for better readability
+- Reordered function definition of btqcomipc_update_stats to avoid the
+  need for a forward declaration.
+- Removed unneeded header files from btqcomipc.c (bits.h, device.h,
+  init.h, kernel.h, of_irq.h, types.h)
+- Link to v2: https://lore.kernel.org/r/20260629-ipq5018-bluetooth-v2-0-02770f03b6bb@outlook.com
+
+Changes in v2:
+- removed unused struct member btss_reset from m0_btss struct.
+- used devm_reset_control_get_exclusive_deasserted to acquire and
+  deassert btss_reset in one call. No need to explicitly assert upon
+  unbind since devres will handle it.
+- As per Bjorn's comments, collapsed the rproc and BT driver into one
+  which now handles firmware loading and transport.
+- As per further review comments and above change, squashed the two
+  devicetree bindings into one to represent the Bluetooth controller
+- Added new SCM call to drive Bluetooth power modes. Based on testing on
+  more router boards, this is required during start/stop sequences to
+  avoid the controller hanging. This is only supported on relatively
+  newer QSEE versions, so the SCM call is checked for availability
+  before use.
+- Refactored resource lifecycle management in the driver so that IRQ and
+  work queue are managed at the driver level (probe/remove) while FW
+  loading and powering on/off the controller is handled upon hdev
+  open/close.
+- Consolidated TX send functions for custom IPC and HCI frames into one
+  and solved a potential NULL pointer dereference issue under TX
+  pressure.
+- Replace code to load and initialize firmware metadate by existing
+  qcom_mdt_pas_init function.
+- Solved an off byone calculation error in the RX parser.
+- Added entry to MAINTAINERS file
+- Link to v1: https://lore.kernel.org/r/20260625-ipq5018-bluetooth-v1-0-d999be0e04f7@outlook.com
+
+---
+George Moussalem (6):
+      dt-bindings: net: bluetooth: Document Qualcomm IPQ5018 Bluetooth controller
+      Bluetooth: btqca: Add IPQ5018 support
+      firmware: qcom: scm: Add support for setting Bluetooth power modes
+      Bluetooth: Introduce Qualcomm IPQ5018 IPC based HCI driver
+      arm64: dts: qcom: ipq5018: add node required for Bluetooth support
+      MAINTAINERS: Add IPQ5018 driver to Qualcomm Bluetooth driver entry
+
+ .../bindings/net/bluetooth/qcom,ipq5018-bt.yaml    |   87 ++
+ MAINTAINERS                                        |    1 +
+ arch/arm64/boot/dts/qcom/ipq5018.dtsi              |   16 +
+ drivers/bluetooth/Kconfig                          |   14 +
+ drivers/bluetooth/Makefile                         |    1 +
+ drivers/bluetooth/btqca.c                          |   16 +
+ drivers/bluetooth/btqca.h                          |    3 +
+ drivers/bluetooth/btqcomipc.c                      | 1230 ++++++++++++++++++++
+ drivers/firmware/qcom/qcom_scm.c                   |   44 +
+ drivers/firmware/qcom/qcom_scm.h                   |    1 +
+ include/linux/firmware/qcom/qcom_scm.h             |    1 +
+ 11 files changed, 1414 insertions(+)
+---
+base-commit: ca75417ab1793f23b3ddc91869f0809b593d6954
+change-id: 20260625-ipq5018-bluetooth-06ff66c9d753
+prerequisite-message-id: <20260703-block-as-nvmem-v8-0-98ae32bfc49a@oss.qualcomm.com>
+prerequisite-patch-id: 467ba5e0fde0e9a1e9d0a6faf3d22ba2126c62a7
+prerequisite-patch-id: 9168930e40551e842c8171d5433a6f39ad4b78a4
+prerequisite-patch-id: 64fecfbd1e085d7d2ab0ae23295ca34ec8e14c5e
+prerequisite-patch-id: 7bf282ed9312b2ffdbe420429bbe355622620272
+prerequisite-patch-id: 29a7d652948d13f91bdd4fc5fb8e6dbcd6e5fcc5
+prerequisite-patch-id: c03136820a7749fd9630080e6d4459a298b3b630
+prerequisite-patch-id: 43975fc425bf2f5dd5c1de66aaa78c4b4bde568c
+prerequisite-patch-id: 75caa99e3bbcdf41b6462b9f5f703bea1d4a65fa
+prerequisite-patch-id: b9b2a2f80a4827b457166b20f54644e57d90b824
+
+Best regards,
 -- 
-2.52.0
+George Moussalem <george.moussalem@outlook.com>
 
