@@ -1,15 +1,12 @@
 From: Roman Vivchar <rva333@protonmail.com>
-Subject: [PATCH v2 0/2] ARM: dts: mediatek: mt6572 DT cleanup + cache info
-Date: Thu, 09 Jul 2026 17:30:26 +0300
-Message-Id: <20260709-6572-phase1-v2-0-1fd4a69542ab@protonmail.com>
+Date: Thu, 09 Jul 2026 17:30:27 +0300
+Subject: [PATCH v2 1/2] ARM: dts: mediatek: mt6572: rename fixed clocks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NwQ6DIBAFf8XsuTRAFNOe+h/Gg+BSt6lCgJI2x
- n8v2muPk8ybt0LEQBjhWq0QMFMktxSQpwrMNCx3ZDQWBsml4i2vmWpayfw0RBSMi3psGqFtayW
- UhQ9o6X3Uuv7H8aUfaNKe2I2JYnLhc9xlsXv/y7nEmRJGWlQaxcXcfHDJLfNAz7NxM/Tbtn0Bg
- HKFEr0AAAA=
-X-Change-ID: 20260704-6572-phase1-014d551bf7f2
+Message-Id: <20260709-6572-phase1-v2-1-1fd4a69542ab@protonmail.com>
+References: <20260709-6572-phase1-v2-0-1fd4a69542ab@protonmail.com>
+In-Reply-To: <20260709-6572-phase1-v2-0-1fd4a69542ab@protonmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
  Matthias Brugger <matthias.bgg@gmail.com>, 
@@ -18,47 +15,88 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
  Roman Vivchar <rva333@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783607435; l=1253;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783607435; l=2336;
  i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=3EkOIMI6jj6hJQY/9ED/95LEd8x3WAPGI9Ft97GDTk4=;
- b=LKMabow2Jen0vPcytxu5qSnJxh2GRgF0zsahhxMcquYC1MlSe7Z3JzA7ZLx1jLTcgtg1ESyS8
- 3SXZe/GGgQvAPHY2x3S+OY3kqTskhpZl8XTDi67mtn0Lg9wh7OZv4qD
+ bh=SimJbn1seivrKmmRN96xb6J0kutHD3BQPIniNyDo7go=;
+ b=VNI59q6VB4Q6KgEj6fN0jBXh2LcuBZP4Qhr0xeTN/qHjNCT/57zhZwCFs1cMbQWusZ2WWzEZ7
+ Ymkjm9tkdETCUN41G+AD0y/m2EvZwp3Dgau03S0wre1mnCRnG/9K8PK
 X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
  pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
 X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series replaces legacy clock naming like uart_clk, system_clk and
-rtc_clk with clk-*FREQ* equivalents. It also adds L1 and L2 cache info
-to properly describe hardware.
+Old-style naming like uart_clk, system_clk and rtc_clk doesn't actually
+reflect hardware on the mt6572 SoC.
 
-Note that patch 1 doesn't break DT ABI. The changed clock node names
-and labels are consumed only by phandles, and there are no drivers
-relying on the legacy names.
+For example, uart_clk is used as parent for various parts of the SoC
+like AXI bus, MMC controller, SPI, etc. While it usually shouldn't be
+used as active parent, uart_clk is a wrong name. The same logic applies
+to the rtc_clk, that is also used as input for MultiMedia subsystem
+clock.
 
-As a brief heads-up, this series is a small part of an ongoing effort
-to upstream mt6572 support. In my kernel tree, I have brought up clocks,
-pinctrl, eMMC/microSD, cpufreq, thermal, DRM, GPU and more. I plan to
-send those series in the near future.
+Therefore, rename all uart_clk, system_clk and rtc_clk to clk26m, clk13m
+and clk32k to properly describe the hardware.
 
 Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
-Changes in v2:
-- Fix I-cache line size and sets (oops...).
-- Link to v1: https://patch.msgid.link/20260704-6572-phase1-v1-0-61c2fe6be19c@protonmail.com
+ arch/arm/boot/dts/mediatek/mt6572.dtsi | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
----
-Roman Vivchar (2):
-      ARM: dts: mediatek: mt6572: rename fixed clocks
-      ARM: dts: mediatek: mt6572: add cache data
+diff --git a/arch/arm/boot/dts/mediatek/mt6572.dtsi b/arch/arm/boot/dts/mediatek/mt6572.dtsi
+index ac70f266d698..fa0e5df766c2 100644
+--- a/arch/arm/boot/dts/mediatek/mt6572.dtsi
++++ b/arch/arm/boot/dts/mediatek/mt6572.dtsi
+@@ -28,19 +28,19 @@ cpu@1 {
+ 		};
+ 	};
+ 
+-	uart_clk: dummy26m {
++	clk26m: clk26m {
+ 		compatible = "fixed-clock";
+ 		clock-frequency = <26000000>;
+ 		#clock-cells = <0>;
+ 	};
+ 
+-	system_clk: dummy13m {
++	clk13m: clk13m {
+ 		compatible = "fixed-clock";
+ 		clock-frequency = <13000000>;
+ 		#clock-cells = <0>;
+ 	};
+ 
+-	rtc_clk: dummy32k {
++	clk32k: clk32k {
+ 		compatible = "fixed-clock";
+ 		clock-frequency = <32000>;
+ 		#clock-cells = <0>;
+@@ -64,7 +64,7 @@ timer: timer@10008000 {
+ 			compatible = "mediatek,mt6572-timer", "mediatek,mt6577-timer";
+ 			reg = <0x10008000 0x80>;
+ 			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_LOW>;
+-			clocks = <&system_clk>, <&rtc_clk>;
++			clocks = <&clk13m>, <&clk32k>;
+ 			clock-names = "system-clk", "rtc-clk";
+ 		};
+ 
+@@ -91,7 +91,7 @@ uart0: serial@11005000 {
+ 			compatible = "mediatek,mt6572-uart", "mediatek,mt6577-uart";
+ 			reg = <0x11005000 0x400>;
+ 			interrupts = <GIC_SPI 31 IRQ_TYPE_LEVEL_LOW>;
+-			clocks = <&uart_clk>;
++			clocks = <&clk26m>;
+ 			clock-names = "baud";
+ 			status = "disabled";
+ 		};
+@@ -100,7 +100,7 @@ uart1: serial@11006000 {
+ 			compatible = "mediatek,mt6572-uart", "mediatek,mt6577-uart";
+ 			reg = <0x11006000 0x400>;
+ 			interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_LOW>;
+-			clocks = <&uart_clk>;
++			clocks = <&clk26m>;
+ 			clock-names = "baud";
+ 			status = "disabled";
+ 		};
 
- arch/arm/boot/dts/mediatek/mt6572.dtsi | 35 ++++++++++++++++++++++++++++------
- 1 file changed, 29 insertions(+), 6 deletions(-)
----
-base-commit: 8cd9520d35a6c38db6567e97dd93b1f11f185dc6
-change-id: 20260704-6572-phase1-014d551bf7f2
-
-Best regards,
---  
-Roman Vivchar <rva333@protonmail.com>
+-- 
+2.54.0
 
