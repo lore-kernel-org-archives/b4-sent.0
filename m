@@ -1,80 +1,71 @@
-From: Roman Vivchar <rva333@protonmail.com>
-Date: Thu, 09 Jul 2026 17:30:28 +0300
-Subject: [PATCH v2 2/2] ARM: dts: mediatek: mt6572: add cache data
+From: Federico Amedeo Izzo <federico@izzo.pro>
+Date: Thu, 09 Jul 2026 19:00:10 +0200
+Subject: [PATCH] slimbus: qcom-ngd-ctrl: fix ngd register base address
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260709-6572-phase1-v2-2-1fd4a69542ab@protonmail.com>
-References: <20260709-6572-phase1-v2-0-1fd4a69542ab@protonmail.com>
-In-Reply-To: <20260709-6572-phase1-v2-0-1fd4a69542ab@protonmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
- Roman Vivchar <rva333@protonmail.com>
+Message-Id: <20260709-qcom-ngd-register-base-fix-v1-1-5f7ab48f9209@izzo.pro>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBA0auQWTtJiyjgVYyLtox1TCwyg4SEc
+ HcqLN9f/AWUhEnhViwgNLFynzLsqYDwcikScpcNpSmvpjYtDqH/YIodCkXWkQS9U8Inz+gubW3
+ PzjaVbyAPvkI57/P747D+/JvC+D/Cum5SVOQHfgAAAA==
+X-Change-ID: 20260709-qcom-ngd-register-base-fix-a59713a184b8
+To: Srinivas Kandagatla <srini@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-sound@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ ~postmarketos/upstreaming@lists.sr.ht, 
+ Federico Amedeo Izzo <federico@izzo.pro>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783607435; l=1386;
- i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=yG+0dUgYSF3RJV8lkKqGeDWHiS5d4OCEqF8neCRE0Ic=;
- b=uJvq72ISmk7+HZwoFzlOX0oC9zEZkyJaY/VNERaq99Lj8xDakWjSGVO13sDJNpVhD6hPwJtD1
- I9dPTHZkiABAY0rBnXD3L9pdc0xFRox8VcmnpFqg3tTYug7J79J64Sl
-X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
- pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
-X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783616414; l=1498;
+ i=federico@izzo.pro; s=20251017; h=from:subject:message-id;
+ bh=YJ5NoHF16uL+S0+ruF7CdiW1W1Lj7X20ZzLrfsWs2uc=;
+ b=6GKaN8cIpOR7P8+3A1ZUNjECNDVngPPRIiPIxLZutcAZeSce1HTeKWXEVgcnXYLH/hxn4qBbg
+ QcvpdMOTAjfA5cvKg83OeN5nGnFp480VGzyArEMjuTzRhtT5iQzGZbf
+X-Developer-Key: i=federico@izzo.pro; a=ed25519;
+ pk=XfmNfpH48k8jLbId5NKrp0yoKoFb/uLjr97qIxBImBw=
+X-Endpoint-Received: by B4 Relay for federico@izzo.pro/20251017 with auth_id=544
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-MediaTek mt6572 includes 32 KB I-cache and D-cache, and 256 KB L2 cache.
+The slimbus controller register base was calculated using the
+controller ID and the register size, producing wrong results for ID > 1.
 
-Add information about cache size, cache line size and cache sets to the
-devicetree.
+The expression reduces to ngd->base = ctrl->base for controller with ID = 1;
+but for ID > 1 the other factors produce a wrong base address.
+This bug caused a crash while trying to bring-up the secondary
+slimbus controller (ID = 3) on oneplus-enchilada with sdm845.
 
-Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+In practice, the correct base address for each slimbus controller can be
+obtained from the device-tree, so there is no need for further
+calculations.
+
+This was validated by reading the version register from the WCN3990 slim
+interface on oneplus-enchilada.
+
 ---
- arch/arm/boot/dts/mediatek/mt6572.dtsi | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+Signed-off-by: Federico Amedeo Izzo <federico@izzo.pro>
+---
+ drivers/slimbus/qcom-ngd-ctrl.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/arch/arm/boot/dts/mediatek/mt6572.dtsi b/arch/arm/boot/dts/mediatek/mt6572.dtsi
-index fa0e5df766c2..4d5d3b46bc18 100644
---- a/arch/arm/boot/dts/mediatek/mt6572.dtsi
-+++ b/arch/arm/boot/dts/mediatek/mt6572.dtsi
-@@ -20,11 +20,34 @@ cpu@0 {
- 			device_type = "cpu";
- 			compatible = "arm,cortex-a7";
- 			reg = <0x0>;
-+			i-cache-size = <32768>;
-+			i-cache-line-size = <32>;
-+			i-cache-sets = <512>;
-+			d-cache-size = <32768>;
-+			d-cache-line-size = <64>;
-+			d-cache-sets = <128>;
-+			next-level-cache = <&l2>;
- 		};
- 		cpu@1 {
- 			device_type = "cpu";
- 			compatible = "arm,cortex-a7";
- 			reg = <0x1>;
-+			i-cache-size = <32768>;
-+			i-cache-line-size = <32>;
-+			i-cache-sets = <512>;
-+			d-cache-size = <32768>;
-+			d-cache-line-size = <64>;
-+			d-cache-sets = <128>;
-+			next-level-cache = <&l2>;
-+		};
-+
-+		l2: l2-cache {
-+			compatible = "cache";
-+			cache-level = <2>;
-+			cache-size = <262144>;
-+			cache-line-size = <64>;
-+			cache-sets = <512>;
-+			cache-unified;
- 		};
- 	};
+diff --git a/drivers/slimbus/qcom-ngd-ctrl.c b/drivers/slimbus/qcom-ngd-ctrl.c
+index 80877e951849..91932f8d021b 100644
+--- a/drivers/slimbus/qcom-ngd-ctrl.c
++++ b/drivers/slimbus/qcom-ngd-ctrl.c
+@@ -1547,8 +1547,7 @@ static int of_qcom_slim_ngd_register(struct device *parent,
+ 			kfree(ngd);
+ 			return ret;
+ 		}
+-		ngd->base = ctrl->base + ngd->id * data->offset +
+-					(ngd->id - 1) * data->size;
++		ngd->base = ctrl->base + data->offset;
  
+ 		return 0;
+ 	}
 
--- 
-2.54.0
+---
+base-commit: b9810cd75b9fb56a3425d391cba3f608502bd474
+change-id: 20260709-qcom-ngd-register-base-fix-a59713a184b8
+
+Best regards,
+--  
+Federico Amedeo Izzo <federico@izzo.pro>
 
