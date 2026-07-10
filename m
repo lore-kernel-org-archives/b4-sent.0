@@ -1,85 +1,116 @@
-From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Fri, 10 Jul 2026 18:47:45 +0200
-Subject: [PATCH v5 4/4] can: isotp: fix lock-free state transition in tx
- timer handler
+From: Dave Marquardt <davemarq@linux.ibm.com>
+Subject: [PATCH v4 0/8] ibmvfc: make ibmvfc support FPIN messages
+Date: Fri, 10 Jul 2026 14:16:40 -0500
+Message-Id: <20260710-ibmvfc-fpin-support-v4-0-ef031ac19520@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260710-isotp-fixes-v5-4-15174d82d6f1@hartkopp.net>
-References: <20260710-isotp-fixes-v5-0-15174d82d6f1@hartkopp.net>
-In-Reply-To: <20260710-isotp-fixes-v5-0-15174d82d6f1@hartkopp.net>
-To: linux-can@vger.kernel.org
-Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
- Marc Kleine-Budde <mkl@pengutronix.de>, sashiko-bot@kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XNSwqDMBgE4KtI1o3EmPjoqvcoXZiY1L/UB4kGi
+ 3j3JpYiFLscmPlmQVYZUBadowUZ5cBC3/nAThGSTdXdFYbaZ0QJzQgjOQbROi2xHqDDdhqG3ox
+ YlILnXNa0rhLkl4NRGuZNvd4+2U7ioeQYqNBowI69eW23Lgm970Nx+OASTDCngmSSZUyR9PKEb
+ ppj341l36Lw4ujuZP8c6p2aJZozokXF5ZGT7k5O6LGTBqfkouQsl7oofp11Xd8PMhnyXAEAAA=
+ =
+X-Change-ID: 20260407-ibmvfc-fpin-support-b9b575cd2da1
+To: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
+ "Martin K. Petersen" <martin.petersen@oracle.com>, 
+ Madhavan Srinivasan <maddy@linux.ibm.com>, 
+ Michael Ellerman <mpe@ellerman.id.au>, Nicholas Piggin <npiggin@gmail.com>, 
+ "Christophe Leroy (CS GROUP)" <chleroy@kernel.org>, 
+ Tyrel Datwyler <tyreld@linux.ibm.com>
+Cc: linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org, 
+ linuxppc-dev@lists.ozlabs.org, Brian King <brking@linux.ibm.com>, 
+ Greg Joyce <gjoyce@linux.ibm.com>, Kyle Mahlkuch <kmahlkuc@linux.ibm.com>, 
+ Dave Marquardt <davemarq@linux.ibm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783702070; l=2302;
- i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=+W/UstpuXO4qYvPTEsT8MwwHKxsCbxJm2/DKnaFQnmo=;
- b=7YrOWQHP859FFbhGobj/lHa1w6L7TPt75xfba/rzEQOINQgIgdsJXGkVTqBjJ2IomDervbZ+v
- dkdh+PE6VKACnX8tTgJASKCnJwjcN9fULdByGgcdeujMnTXFNChyyCZ
-X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
- pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
-X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783711016; l=3671;
+ i=davemarq@linux.ibm.com; s=20260216; h=from:subject:message-id;
+ bh=sPh7BdSUxlwYiaPKY8X7BX64qk9W/BKsBqHoRGXPThw=;
+ b=2pObWVgFpSMKaJcublk90c9spmETkIU0ECfwRyFpMIE+ZkEELB8RcPOMbG7JzfT3+133jt9zK
+ BLQsjSe6QVwD9+cUD+jn6m1YPHsgjVAY45ALI/uAFsVxcjPGR5NMQ7V
+X-Developer-Key: i=davemarq@linux.ibm.com; a=ed25519;
+ pk=vy0/nfobrje6EqZxuyw6a3ZstytG8WK2vf5Y3xtGrEg=
+X-Endpoint-Received: by B4 Relay for davemarq@linux.ibm.com/20260216 with auth_id=689
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 051737439eae ("can: isotp: fix race between isotp_sendsmg() and
-isotp_release()") introduced a lock-free state machine check
-to prevent race conditions between the TX timer and concurrent state
-updates. However, the original patch missed replacing the initial
-state checks and left the late assignment of ISOTP_IDLE as a blind,
-non-atomic write.
+This patch series adds FPIN (fabric performance impact notification)
+support to the ibmvfc (IBM Virtual Fibre Channel) driver. This comes
+in three flavors:
 
-Fix this by properly sampling the initial state into 'old_state' and using
-cmpxchg() to atomically move the state to ISOTP_IDLE. If the state changed
-concurrently (e.g., due to an incoming echo or a new sendmsg), the timeout
-is stale and we bail out safely without corrupting the state machine.
+- basic, to recognize existing FPIN messages from the virtual I/O
+  server (VIOS) (patch 1)
+- full, supporting additional FPIN information and using its own
+  asynchronous sub-queue and interrupt (patches 4-7)
+- extended, supporting FC-LS-5 (patch 8)
 
-Fixes: 43a08c3bdac4cb ("can: isotp: isotp_sendmsg(): fix TX buffer concurrent access in isotp_sendmsg()")
-Reported-by: sashiko-bot@kernel.org
-Link: https://lore.kernel.org/linux-can/20260710142146.BDAE61F000E9@smtp.kernel.org/
-Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+Full and extended FPIN support requires a new asynchronous sub-queue
+with its own interrupt. The asynchronous sub-queue support requires
+ibmvfc to also support
+
+- a new VFC_NOOP command, which the driver recognizes and
+  ignores (patch 2)
+- fabric login, to login separately to the fabric through messages
+  exchanged with VIOS rather than doing fabric login through the
+  existing NPIV login (patch 3)
+
+All three modes convert an incoming FPIN message from VIOS to an FC
+extended link service message, in some cases using default values for
+information not provided by the VIOS FPIN message but expected in the
+FC ELS message. This FC ELS message is passed to fc_host_rcv_fpin for
+updating statistics and sending the information upstream by netlink
+multicast, where it may be read by listeners including the DM
+multipath daemon "multipathd."
+
+Signed-off-by: Dave Marquardt <davemarq@linux.ibm.com>
 ---
- net/can/isotp.c | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
+Changes in v4:
+- Refactored channel registration
+- Check whether async work queue is allocated before using or freeing
+- Fixed work queue allocation/destruction
+- Skip basic KUnit test when there are no ibmvfc devices available
+- Fix target not found condition in ibmvfc_process_async_work
+- Link to v3: https://patch.msgid.link/20260702-ibmvfc-fpin-support-v3-0-d95b9547cf88@linux.ibm.com
 
-diff --git a/net/can/isotp.c b/net/can/isotp.c
-index c0edbd35516c..e49a58e188e6 100644
---- a/net/can/isotp.c
-+++ b/net/can/isotp.c
-@@ -920,24 +920,29 @@ static void isotp_rcv_echo(struct sk_buff *skb, void *data)
- static enum hrtimer_restart isotp_tx_timer_handler(struct hrtimer *hrtimer)
- {
- 	struct isotp_sock *so = container_of(hrtimer, struct isotp_sock,
- 					     txtimer);
- 	struct sock *sk = &so->sk;
-+	u32 old_state = so->tx.state;
- 
- 	/* don't handle timeouts in IDLE or SHUTDOWN state */
--	if (so->tx.state == ISOTP_IDLE || so->tx.state == ISOTP_SHUTDOWN)
-+	if (old_state == ISOTP_IDLE || old_state == ISOTP_SHUTDOWN)
-+		return HRTIMER_NORESTART;
-+
-+	/* Only claim timeout if state is unchanged to avoid overwriting
-+	 * concurrent state updates from isotp_sendmsg/isotp_rcv_echo.
-+	 */
-+	if (cmpxchg(&so->tx.state, old_state, ISOTP_IDLE) != old_state)
- 		return HRTIMER_NORESTART;
- 
- 	/* we did not get any flow control or echo frame in time */
- 
- 	/* report 'communication error on send' */
- 	sk->sk_err = ECOMM;
- 	if (!sock_flag(sk, SOCK_DEAD))
- 		sk_error_report(sk);
- 
--	/* reset tx state */
--	so->tx.state = ISOTP_IDLE;
- 	wake_up_interruptible(&so->wait);
- 
- 	return HRTIMER_NORESTART;
- }
- 
+Changes in v3:
+- Fixed latent bug, exposed by VFC_NOOP, related to dataless CRQs and events
+- Fixed FPIN TLV descriptor length calculations
+- Use safe list walker to walk targets in ibmvfc_process_async_work
+- Added write memory barriers after clearing CRQ valid field
+- Use per-vhost work queue for FPIN work
+- Link to v2: https://patch.msgid.link/20260608-ibmvfc-fpin-support-v2-0-d41f540fba5c@linux.ibm.com
 
--- 
-2.53.0
+Highlights of changes in v2:
+- Refactored mostly common FPIN conversion routines and async event
+  processing into single routines with wrappers for differences.
+- Moved FPIN processing to a work queue to avoid conflicts with
+  fc_host_fpin_rcv and memory allocation
+- Set descriptor sizes correctly
+- Use target WWPN for basic FPIN descriptor
+- Split patch 4 into 3 patches, for definition, allocation, and use of
+  the asynchronous sub-queue for events
+- Link to v1: https://patch.msgid.link/20260408-ibmvfc-fpin-support-v1-0-52b06c464e03@linux.ibm.com
+
+---
+Dave Marquardt (8):
+      ibmvfc: add basic FPIN support
+      ibmvfc: Add NOOP command support
+      ibmvfc: make ibmvfc login to fabric
+      ibmvfc: define asynchronous sub-queue
+      ibmvfc: allocate asynchronous sub-queue
+      ibmvfc: extend async event handlers to handle async sub queue events
+      ibmvfc: register and use asynchronous sub-queue for events
+      ibmvfc: handle extended FPIN events
+
+ drivers/scsi/Kconfig                 |  10 +
+ drivers/scsi/ibmvscsi/Makefile       |   1 +
+ drivers/scsi/ibmvscsi/ibmvfc.c       | 736 ++++++++++++++++++++++++++++++++---
+ drivers/scsi/ibmvscsi/ibmvfc.h       | 115 +++++-
+ drivers/scsi/ibmvscsi/ibmvfc_kunit.c | 240 ++++++++++++
+ 5 files changed, 1031 insertions(+), 71 deletions(-)
+---
+base-commit: 57a6ed0b41677ccc5e28cc0976e495c1dfa33747
+change-id: 20260407-ibmvfc-fpin-support-b9b575cd2da1
+
+Best regards,
+--  
+Dave Marquardt <davemarq@linux.ibm.com>
 
