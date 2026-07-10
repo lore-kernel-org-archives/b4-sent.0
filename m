@@ -1,299 +1,70 @@
 From: Chen Linxuan <me@black-desk.cn>
-Date: Fri, 10 Jul 2026 14:43:30 +0800
-Subject: [PATCH v8 2/2] config: add "worktree" and "worktree/i" includeIf
- conditions
+Date: Fri, 10 Jul 2026 15:22:13 +0800
+Subject: [PATCH] b4: include change-id in cover template
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260710-includeif-worktree-v8-2-04686d8a616c@black-desk.cn>
-References: <20260710-includeif-worktree-v8-0-04686d8a616c@black-desk.cn>
-In-Reply-To: <20260710-includeif-worktree-v8-0-04686d8a616c@black-desk.cn>
+Message-Id: <20260710-add-change-id-to-b4-template-v1-1-1bd37a25064e@black-desk.cn>
+X-B4-Tracking: v=1; b=H4sIAKSdUGoC/z3MTQqDMBBA4avIrDswRmmwVyldRDPRKfWHJIog3
+ t2o0OXHg7dBYC8c4JVt4HmRIOOQkD8yaDoztIxik0GRepLOCY21+C8YR6xLjNxPPxMZXeWsoqr
+ QpDSkxeTZyXrt35/bYa6/3MTzCft+ALVVBJ+AAAAA
+X-Change-ID: 20260710-add-change-id-to-b4-template-f9fd20937027
 To: git@vger.kernel.org
-Cc: Kristoffer Haugsbakk <kristofferhaugsbakk@fastmail.com>, 
- Junio C Hamano <gitster@pobox.com>, Patrick Steinhardt <ps@pks.im>, 
- Chen Linxuan <me@black-desk.cn>, Phillip Wood <phillip.wood@dunelm.org.uk>
+Cc: Patrick Steinhardt <ps@pks.im>, Junio C Hamano <gitster@pobox.com>, 
+ Chen Linxuan <me@black-desk.cn>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=10900; i=me@black-desk.cn;
- h=from:subject:message-id; bh=Y8YtgF5VGkFr91xEoohKTwzHwz0tY2urEdv18CCWoTg=;
- b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqUJSkNc6Hhz/ScjWxvCrMBHu/BapKw6qmYMdA8
- wzKHuhKmy2JAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCalCUpAAKCRB2HuYUOZmu
- i/FDD/4x7qpVbRmEdbMqUn4hBAdFHcsP2lqC0J2yNqXV/jb9D9FbScOKyAR63BEk5Oz9fVZMcFH
- 55mcc7mPFxrsW/BZHu5ncmPu/4phKk6oaCfbzQ80d+cW7ZO0ufGwPzd4G7gedQvdOWchwcURjyw
- Sgt1Wdcdf9Kj1SYGJuv+Q0JMc3RLKJHLeGyzQRSEs9/Qssp9J3Ls1N6mahr4mZBE6LELsNFXfpV
- B9fRWOUnngyEiYx2JyZ8/Fr+JimYN/hfPhKHsx30Khm82dot+Wug35CfEZRAHtMpnPGMdLv1mJa
- EJ7Ar5kpoZiAPGqFU/Ew4ZCU4pQ/eNCQ6XaUzCbdnbCrYZ+Usg0P1CIol2TwmO9y+QXVU2xTPwN
- 46ie48/9KlHmFZztYafsUN7eX2tNMBJuqkJCwXVUVSl/rppTctZdNQFTUXeYrESwE9tHYJzQqhm
- HER04s2bGTLvsTjl/txTzJdI+w2dUelxv2sutuSySrLxN3vONWVTCK1vU7kickDL/NFxdI11IWM
- i+C6Fi+wMRS/AwHhD+JGXcTqypOE9RbImK1tG3rpY0/v3LnPweTxz/FkOobuz0IsQ1tqtIQE/Mz
- wXQAgN61KTFpIxcBQWgl7t7moVKFR2ZgCRA4OQQvzcQ3aFsNLnjOe+caVbZVBQjKBHnvF4OTNiN
- 1JD7aPWvWGJF7Mg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1265; i=me@black-desk.cn;
+ h=from:subject:message-id; bh=HuviA3htWPIWMaE9A8vkJhpFqEe5gi8rdGO5ZW4cI1o=;
+ b=owEBbQKS/ZANAwAKAXYe5hQ5ma6LAcsmYgBqUJ2lUMR26aObJXj05ciU5Hw4Y8fKpE7espKtp
+ srPryG7qvaJAjMEAAEKAB0WIQTO1VElAk6xdvy0ZVp2HuYUOZmuiwUCalCdpQAKCRB2HuYUOZmu
+ iz6gD/sHBmhNlHOvipXHFAXMpfmx71IcfCGZ2TzE9XTQQrX0sGy53+4zbijpRbwUxLyw/fKLi+e
+ TuKBPHkXWuvqXhwgM3ycMjGrckAavYuWq5d51gb6mpy/GhJYyOX8V3IjJFkj5Yt50Q1yOpd5SZY
+ 38/hkt9P/maNAWcNv/VT7Sfut3/XPkx+Cw9LeAyJOP6PyrLSPWR9Pg4Ktm8l0Ql+D0P4+rUijFu
+ irIu00S0wIDQ5R+HD6GRFh74ZCn1JcfNED7VLdHybJMNZNdxzei93P0regAzndJvYKQjvE412+y
+ V/PR0K5vfz+D8iI4Xrgei8MLlAjrfoO+qsWvqb/CQGukfGR6pU9mpgVH+YeCX3RRSOLmC7Nm2iQ
+ 0Dqvx1z5qjzABkzcODwHWzTWh8OskM2DNNgSt/w3P/GOPc45Rh4Dnh0Xa/SLF516awpxMKV6Nm3
+ 0Jkmi/CvDMFdHrkOVJhE9OMlOsthxSJS+geMYCKkbznSHsAX0BjssJRqeRIZB5A/bhJIh1ckGNv
+ IPmAA7Pi4LOqP6MiGeMZ2JGRlL8pOGDKFRpScbIipBoJ5X5R4kKn/KbEtoB3wjdVzqSXrWGqQOp
+ ZSNtzV6MwgR99pqVJ3XVayeXaNlh6hgIfKBXxR2i5YbBjoBIauhTbXazQT+ui5dvxhlFvW4xPiT
+ pGHaZANG6kSnz6A==
 X-Developer-Key: i=me@black-desk.cn; a=openpgp;
  fpr=D818ACDD385CAE92D4BAC01A6269794D24791D21
 X-Endpoint-Received: by B4 Relay for me@black-desk.cn/default with auth_id=573
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The includeIf mechanism already supports matching on the .git
-directory path (gitdir) and the currently checked out branch
-(onbranch).  But in multi-worktree setups the .git directory of a
-linked worktree points into the main repository's .git/worktrees/
-area, which makes gitdir patterns cumbersome when one wants to
-include config based on the working tree's checkout path instead.
+With b4 0.15.2, I hit a local failure after sending a series with the
+in-tree cover template.  The generated sent/<change-id>-vN tag contained
+base-commit, but did not contain change-id, and later b4 commands failed
+when trying to read it:
 
-Introduce two new condition keywords:
+  CRITICAL: Tag sent/... does not contain change-id info
 
-  - worktree:<pattern> matches the realpath of the current worktree's
-    working directory (i.e. repo_get_work_tree()) against a glob
-    pattern.  This is the path returned by git rev-parse
-    --show-toplevel.
+Looking at b4's source, the sent tag message is derived from the rendered
+cover letter.  The same code later parses that tag and expects both
+base-commit and change-id to be present.  The default b4 cover template
+has both trailers, but our in-tree template only has base-commit.
 
-  - worktree/i:<pattern> is the case-insensitive variant.
-
-The implementation reuses the include_by_path() helper introduced in
-the previous commit, passing the worktree path in place of the
-gitdir.  The condition never matches in bare repositories (where
-there is no worktree) or during early config reading (where no
-repository is available).
-
-Add documentation describing the new conditions, including a comparison
-with extensions.worktreeConfig and a note that worktree matching currently
-uses the realpath-resolved worktree location.  Add tests covering bare
-repositories, multiple worktrees, realpath-resolved symlinked worktree
-paths, case-sensitive and case-insensitive matching, early config reading,
-and non-repository scenarios.
+Add the missing change-id trailer next to base-commit so sent tags
+produced from the project template remain readable by b4's reroll and
+comparison logic.
 
 Signed-off-by: Chen Linxuan <me@black-desk.cn>
 ---
- Documentation/config.adoc |  53 +++++++++++++++++++
- config.c                  |   6 +++
- t/t1305-config-include.sh | 128 ++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 187 insertions(+)
+ .b4-cover-template | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/Documentation/config.adoc b/Documentation/config.adoc
-index 15b1a4d59347..1ef72de62f2b 100644
---- a/Documentation/config.adoc
-+++ b/Documentation/config.adoc
-@@ -146,6 +146,51 @@ refer to linkgit:gitignore[5] for details. For convenience:
- 	This is the same as `gitdir` except that matching is done
- 	case-insensitively (e.g. on case-insensitive file systems)
- 
-+`worktree`::
-+	The data that follows the keyword `worktree` and a colon is used as a
-+	glob pattern. If the working directory of the current worktree matches
-+	the pattern, the include condition is met.
-++
-+The worktree location is the path where files are checked out (as returned
-+by `git rev-parse --show-toplevel`). This is different from `gitdir`, which
-+matches the `.git` directory path. In a linked worktree, the worktree path
-+is the directory where that worktree's files are located, not the main
-+repository's `.git` directory.
-++
-+The pattern uses the same glob syntax as `gitdir` (including `~/`, `./`,
-+`**/`, and trailing-`/` prefix matching). This condition will never match
-+in a bare repository (which has no worktree).
-++
-+Unlike `gitdir`, the `worktree` condition currently matches only the
-+realpath-resolved worktree location. If the working tree was entered via a
-+symbolic link, a pattern that uses the symbolic-link spelling may not match;
-+use the real path instead.
-++
-+This is useful when you want to apply configuration based on where the
-+working tree is located on the filesystem. For example, a contributor who
-+works on the same project both personally and as an employee can use
-+different `user.name` and `user.email` values depending on which directory
-+the worktree is checked out under:
-++
-+----
-+[includeIf "worktree:/home/user/work/"]
-+    path = ~/.config/git/work.inc
-+[includeIf "worktree:/home/user/personal/"]
-+    path = ~/.config/git/personal.inc
-+----
-++
-+While `extensions.worktreeConfig` (see linkgit:git-worktree[1]) also supports
-+per-worktree configuration, it stores the config inside each repository's
-+`.git/config.worktree` file and requires running `git config --worktree`
-+inside each worktree individually. In contrast, `includeIf "worktree:..."`
-+can be set once in a global or system-level configuration file (e.g.
-+`~/.config/git/config`) and applies to all repositories at once based on
-+their worktree location.
-+
-+`worktree/i`::
-+	This is the same as `worktree` except that matching is done
-+	case-insensitively (e.g. on case-insensitive file systems)
-+
- `onbranch`::
- 	The data that follows the keyword `onbranch` and a colon is taken to be a
- 	pattern with standard globbing wildcards and two additional
-@@ -244,6 +289,14 @@ Example
- [includeIf "gitdir:~/to/group/"]
- 	path = /path/to/foo.inc
- 
-+; include if the worktree is at /path/to/project-build
-+[includeIf "worktree:/path/to/project-build"]
-+	path = build-config.inc
-+
-+; include for all worktrees inside /path/to/group
-+[includeIf "worktree:/path/to/group/"]
-+	path = group-config.inc
-+
- ; relative paths are always relative to the including
- ; file (if the condition is true); their location is not
- ; affected by the condition
-diff --git a/config.c b/config.c
-index 00eeeea370c9..9d6d7872d76c 100644
---- a/config.c
-+++ b/config.c
-@@ -400,6 +400,12 @@ static int include_condition_is_true(const struct key_value_info *kvi,
- 		return include_by_path(kvi, opts->git_dir, cond, cond_len, 0);
- 	else if (skip_prefix_mem(cond, cond_len, "gitdir/i:", &cond, &cond_len))
- 		return include_by_path(kvi, opts->git_dir, cond, cond_len, 1);
-+	else if (skip_prefix_mem(cond, cond_len, "worktree:", &cond, &cond_len))
-+		return include_by_path(kvi, inc->repo ? repo_get_work_tree(inc->repo) : NULL,
-+				       cond, cond_len, 0);
-+	else if (skip_prefix_mem(cond, cond_len, "worktree/i:", &cond, &cond_len))
-+		return include_by_path(kvi, inc->repo ? repo_get_work_tree(inc->repo) : NULL,
-+				       cond, cond_len, 1);
- 	else if (skip_prefix_mem(cond, cond_len, "onbranch:", &cond, &cond_len))
- 		return include_by_branch(inc, cond, cond_len);
- 	else if (skip_prefix_mem(cond, cond_len, "hasconfig:remote.*.url:", &cond,
-diff --git a/t/t1305-config-include.sh b/t/t1305-config-include.sh
-index f3892578e4ff..4e840dfdb35b 100755
---- a/t/t1305-config-include.sh
-+++ b/t/t1305-config-include.sh
-@@ -396,4 +396,132 @@ test_expect_success 'onbranch without repository but explicit nonexistent Git di
- 	test_must_fail nongit git --git-dir=nonexistent config get foo.bar
- '
- 
-+# worktree: conditional include tests
-+
-+test_expect_success 'conditional include, worktree bare repo' '
-+	git init --bare wt-bare &&
-+	(
-+		cd wt-bare &&
-+		echo "[includeIf \"worktree:/\"]path=bar-bare" >>config &&
-+		echo "[test]wtbare=1" >bar-bare &&
-+		test_must_fail git config test.wtbare
-+	)
-+'
-+
-+test_expect_success 'conditional include, worktree multiple worktrees' '
-+	git init wt-multi &&
-+	(
-+		cd wt-multi &&
-+		test_commit initial &&
-+		git worktree add -b linked-branch ../wt-linked HEAD &&
-+		git worktree add -b prefix-branch ../wt-prefix/linked HEAD
-+	) &&
-+	wt_main="$(cd wt-multi && pwd)" &&
-+	wt_linked="$(cd wt-linked && pwd)" &&
-+	wt_prefix_parent="$(cd wt-prefix && pwd)" &&
-+	cat >>wt-multi/.git/config <<-EOF &&
-+	[includeIf "worktree:$wt_main"]
-+		path = main-config
-+	[includeIf "worktree:$wt_linked"]
-+		path = linked-config
-+	[includeIf "worktree:$wt_prefix_parent/"]
-+		path = prefix-config
-+	EOF
-+	echo "[test]mainvar=main" >wt-multi/.git/main-config &&
-+	echo "[test]linkedvar=linked" >wt-multi/.git/linked-config &&
-+	echo "[test]prefixvar=prefix" >wt-multi/.git/prefix-config &&
-+	echo main >expect &&
-+	git -C wt-multi config test.mainvar >actual &&
-+	test_cmp expect actual &&
-+	test_must_fail git -C wt-multi config test.linkedvar &&
-+	test_must_fail git -C wt-multi config test.prefixvar &&
-+	echo linked >expect &&
-+	git -C wt-linked config test.linkedvar >actual &&
-+	test_cmp expect actual &&
-+	test_must_fail git -C wt-linked config test.mainvar &&
-+	test_must_fail git -C wt-linked config test.prefixvar &&
-+	echo prefix >expect &&
-+	git -C wt-prefix/linked config test.prefixvar >actual &&
-+	test_cmp expect actual &&
-+	test_must_fail git -C wt-prefix/linked config test.mainvar &&
-+	test_must_fail git -C wt-prefix/linked config test.linkedvar
-+'
-+
-+test_expect_success SYMLINKS 'conditional include, worktree resolves symlinks' '
-+	mkdir real-wt &&
-+	ln -s real-wt link-wt &&
-+	git init link-wt/repo &&
-+	(
-+		cd link-wt/repo &&
-+		# repo->worktree resolves symlinks, so use real path in pattern
-+		echo "[includeIf \"worktree:**/real-wt/repo\"]path=bar-link" >>.git/config &&
-+		echo "[test]wtlink=2" >.git/bar-link &&
-+		echo 2 >expect &&
-+		git config test.wtlink >actual &&
-+		test_cmp expect actual
-+	)
-+'
-+
-+test_expect_success !CASE_INSENSITIVE_FS 'conditional include, worktree, case sensitive' '
-+	git init wt-case &&
-+	(
-+		cd wt-case &&
-+		test_commit initial &&
-+		wt_path="$(pwd)" &&
-+		wt_upper=$(echo "$wt_path" | tr a-z A-Z) &&
-+		echo "[includeIf \"worktree:$wt_upper\"]path=case-inc" >>.git/config &&
-+		echo "[test]wtcase=1" >.git/case-inc &&
-+		test_must_fail git config test.wtcase
-+	)
-+'
-+
-+test_expect_success 'conditional include, worktree, icase' '
-+	git init wt-icase &&
-+	(
-+		cd wt-icase &&
-+		test_commit initial &&
-+		wt_path="$(pwd)" &&
-+		wt_upper=$(echo "$wt_path" | tr a-z A-Z) &&
-+		echo "[includeIf \"worktree/i:$wt_upper\"]path=icase-inc" >>.git/config &&
-+		echo "[test]wticase=1" >.git/icase-inc &&
-+		echo 1 >expect &&
-+		git config test.wticase >actual &&
-+		test_cmp expect actual
-+	)
-+'
-+
-+# The "worktree" condition cannot match during early config reading
-+# because the repository object is not yet fully initialized and
-+# repo_get_work_tree() returns NULL.
-+test_expect_success 'conditional include, worktree does not match in early config' '
-+	git init wt-early &&
-+	(
-+		cd wt-early &&
-+		test_commit initial &&
-+		wt_path="$(pwd)" &&
-+		echo "[includeIf \"worktree:$wt_path\"]path=early-inc" >>.git/config &&
-+		echo "[test]wtearly=1" >.git/early-inc &&
-+		test-tool config read_early_config test.wtearly >actual &&
-+		test_must_be_empty actual
-+	)
-+'
-+
-+# Use a loose pattern so the "present in non-worktree cases" check works
-+# for Unix-style absolute paths and Windows paths like D:/a/git/...
-+test_expect_success 'conditional include, worktree without repository' '
-+	test_when_finished "rm -f .gitconfig config.inc" &&
-+	git config set -f .gitconfig "includeIf.worktree:**.path" config.inc &&
-+	git config set -f config.inc foo.bar baz &&
-+	git config get foo.bar &&
-+	test_must_fail nongit git config get foo.bar
-+'
-+
-+test_expect_success 'conditional include, worktree without repository but explicit nonexistent Git directory' '
-+	test_when_finished "rm -f .gitconfig config.inc" &&
-+	git config set -f .gitconfig "includeIf.worktree:**.path" config.inc &&
-+	git config set -f config.inc foo.bar baz &&
-+	git config get foo.bar &&
-+	test_must_fail nongit git --git-dir=nonexistent config get foo.bar
-+'
-+
- test_done
+diff --git a/.b4-cover-template b/.b4-cover-template
+index ab864933b5c8..8168d8a10b3a 100644
+--- a/.b4-cover-template
++++ b/.b4-cover-template
+@@ -8,4 +8,5 @@ ${diffstat}
+ ${range_diff}
+ ---
+ base-commit: ${base_commit}
++change-id: ${change_id}
+ ${prerequisites}
 
--- 
-2.53.0
+---
+base-commit: f60db8d575adb79761d363e026fb49bddf330c73
+change-id: 20260710-add-change-id-to-b4-template-f9fd20937027
 
