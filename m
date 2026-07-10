@@ -1,289 +1,111 @@
-From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Fri, 10 Jul 2026 15:55:24 +0200
-Subject: [PATCH v4 2/2] can: isotp: fix use-after-free race with concurrent
- NETDEV_UNREGISTER
+From: Jahnavi MN <jahnavimn@google.com>
+Subject: [PATCH v2 0/7] rust_binder : Implement dynamic debug logging mask
+Date: Fri, 10 Jul 2026 14:32:51 +0000
+Message-Id: <20260710-rust_binder_debug_mask-v2-0-2846410e3ae6@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260710-isotp-fixes-v4-2-2a4af437f61b@hartkopp.net>
-References: <20260710-isotp-fixes-v4-0-2a4af437f61b@hartkopp.net>
-In-Reply-To: <20260710-isotp-fixes-v4-0-2a4af437f61b@hartkopp.net>
-To: linux-can@vger.kernel.org
-Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
- Marc Kleine-Budde <mkl@pengutronix.de>, sashiko-bot@kernel.org
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783691723; l=8204;
- i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=5LtoUZHf4UuMy+tKs6dfm9V1uT5BWBks88hxu/fgJMY=;
- b=kgemjdxJLacXWTpCMIHytpe+wrdFJ5sTFD5ezEG/e0WkFi8OoTRGFApxjYCjv3kiJwN0nIt5Y
- cblSIbbUvgVCNGCO24Or/krENjnVaj8Z9ce/clzD79uqMKaK81NZ/lL
-X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
- pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
-X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
+X-B4-Tracking: v=1; b=H4sIAJMCUWoC/3WNwQ6CMBAFf4Xs2Zp2KyV68j8MIZQupVFa0wLRE
+ P7dSuLR40zy5q2QKDpKcClWiLS45ILPgIcCuqH1lpgzmQE5Kl5xZHFOU6OdNxQbQ3q2zdimO1N
+ SVbLiolR4gjx+Rurdaw/f6syDS1OI7/1nEV/7S8p/yUUwzs7a9AJ1KbHsrjYE+6BjF0aot237A
+ Pv13G+9AAAA
+X-Change-ID: 20260702-rust_binder_debug_mask-636737015624
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ =?utf-8?q?Arve_Hj=C3=B8nnev=C3=A5g?= <arve@android.com>, 
+ Todd Kjos <tkjos@android.com>, Christian Brauner <brauner@kernel.org>, 
+ Carlos Llamas <cmllamas@google.com>, Alice Ryhl <aliceryhl@google.com>, 
+ Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Trevor Gross <tmgross@umich.edu>, Danilo Krummrich <dakr@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
+Cc: linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
+ Jahnavi MN <jahnavimn@google.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783693978; l=3639;
+ i=jahnavimn@google.com; s=20260702; h=from:subject:message-id;
+ bh=FYPaH+l+XTQ5sU7Qv4cn8DYzP7Jz4mGDL005ddMunCU=;
+ b=iymmeidSegkN0WgX29oEAgF/EVrw8oCYVHfMf2H9kNpNWthk3+z1WhirYD4PsnJQKm8RGUJP+
+ /ogUSKq11B9DL1cL2i0cWBblc+I/xLYpfmwgMpexNnfFIzfIEM0zhkr
+X-Developer-Key: i=jahnavimn@google.com; a=ed25519;
+ pk=9aLfw3FepTOJwTS7jRXm7pDH87eBeZMXBPrqwU0//RE=
+X-Endpoint-Received: by B4 Relay for jahnavimn@google.com/20260702 with auth_id=849
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-isotp_release() looked up the bound network device via dev_get_by_index()
-using the stored ifindex. During device unregistration the device is
-unlisted from the ifindex hash before the NETDEV_UNREGISTER notifier
-chain runs, so a concurrent isotp_release() could find no device, skip
-can_rx_unregister() entirely, and still proceed to free the socket.
-Since isotp_release() had already removed itself from the isotp
-notifier list at that point, isotp_notify() would never get a chance to
-clean up either, leaving a stale CAN filter that keeps pointing at the
-freed socket.
+When a user-space application sends malformed data or makes a
+lifecycle mistake, the driver rejects it with a generic error code
+(like -EINVAL). Without internal logs, the driver acts as a
+"black box," forcing developers to guess which check failed.
 
-Fix this the same way raw.c already does: hold a tracked reference to
-the bound net_device in the socket (so->dev/so->dev_tracker) from
-bind() onward instead of re-resolving it from the ifindex, and
-serialize bind()/release() with rtnl_lock() so that so->dev is always
-consistent with what the NETDEV_UNREGISTER notifier sees. so->dev
-stays valid regardless of ifindex-hash unlisting, and is only ever
-cleared by whichever of isotp_release()/isotp_notify() gets there
-first, so the filter is always removed exactly once.
+In the legacy C Binder driver, this issue is solved using a dynamic
+debug_mask module parameter that toggles verbose logs for specific
+subsystems. This series brings the same critical capability to the
+Rust Binder driver to provide developers with clear, real-time
+feedback.
 
-isotp_bind() now rejects a (re)bind with -EAGAIN while so->tx.state
-isn't ISOTP_IDLE yet, so a timer left running by a prior
-NETDEV_UNREGISTER can't act on a newly bound so->ifindex. Both checks
-share the same lock_sock() section, so there is no window in which a
-concurrent isotp_notify() clearing so->bound could be missed.
+Instead of rebuilds, reboots, or guessing:
+- Developers can enable logs instantly on a running device by writing to 
+  `/sys/module/rust_binder/parameters/debug_mask`.
+- It prints the exact reason for failures (such as alignment errors, 
+  mismatched call stacks, or invalid handle references) directly into 
+  `dmesg`, reducing debugging time from hours to seconds.
+- It protects system logs by keeping logging off by default and only 
+  enabling it when developers are actively troubleshooting.
 
-Fixes: e057dd3fc20f ("can: add ISO 15765-2:2016 transport protocol")
-Reported-by: sashiko-bot@kernel.org
-Link: https://lore.kernel.org/linux-can/20260707101420.47F261F000E9@smtp.kernel.org/
-Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+Based on top of:
+https://lore.kernel.org/rust-for-linux/20260707-upgrade-poll-v6-0-4b8fae7bf1d9@google.com/
+
+Signed-off-by: Jahnavi MN <jahnavimn@google.com>
 ---
- net/can/isotp.c | 87 ++++++++++++++++++++++++++++++++++++++-------------------
- 1 file changed, 59 insertions(+), 28 deletions(-)
+Changes in v2:
+- Defined the debug mask categories using bitflags (impl_flags) to
+  resolve potential Undefined Behavior and match Rust idioms.
+- Added a tgid helper to rust/kernel/task.rs to expose the task
+  group ID and optimize default "PID:TID" prefixing.
+- Implemented the BINDER_DEBUG_DEATH_NOTIFICATION mask to log OOM
+  failures, lifecycle updates, and async delivery to user-space.
+- Added pid fields to ThreadError, DeliverCode, and FreezeMessage
+  to ensure cancellation logs show the correct process PID instead
+  of background kworker PIDs.
+- Removed duplicate PID printing across workqueue, transaction
+  failure, and stack unwinding logs.
+- Refactored log formatting (e.g. formatted BinderError with {:?},
+  used "strong"/"weak" strings, and improved message wording).
+- Fixed logic bugs (restored missing update_ref block, moved manager
+  lookup warnings).
+- Cleaned up spurious newlines, corrected indentations, and adjusted
+  all commit titles to be shorter and more meaningful.
+- Link to v1: https://lore.kernel.org/r/20260703-rust_binder_debug_mask-v1-0-9bdf12b5325c@google.com
 
-diff --git a/net/can/isotp.c b/net/can/isotp.c
-index d30937345bcd..e7597ca3e140 100644
---- a/net/can/isotp.c
-+++ b/net/can/isotp.c
-@@ -150,10 +150,12 @@ struct tpcon {
- 
- struct isotp_sock {
- 	struct sock sk;
- 	int bound;
- 	int ifindex;
-+	struct net_device *dev;
-+	netdevice_tracker dev_tracker;
- 	canid_t txid;
- 	canid_t rxid;
- 	ktime_t tx_gap;
- 	ktime_t lastrxcf_tstamp;
- 	struct hrtimer rxtimer, txtimer, txfrtimer;
-@@ -976,10 +978,18 @@ static int isotp_sendmsg(struct socket *sock, struct msghdr *msg, size_t size)
- 		err = wait_event_interruptible(so->wait, so->tx.state == ISOTP_IDLE);
- 		if (err)
- 			goto err_event_drop;
- 	}
- 
-+	/* so->bound is only checked once above - a wakeup may have
-+	 * unbound/rebound the socket meanwhile, so re-validate it
-+	 */
-+	if (!so->bound) {
-+		err = -EADDRNOTAVAIL;
-+		goto err_out_drop;
-+	}
-+
- 	/* PDU size > default => try max_pdu_size */
- 	if (size > so->tx.buflen && so->tx.buflen < max_pdu_size) {
- 		u8 *newbuf = kmalloc(max_pdu_size, GFP_KERNEL);
- 
- 		if (newbuf) {
-@@ -1217,32 +1227,34 @@ static int isotp_release(struct socket *sock)
- 		spin_lock(&isotp_notifier_lock);
- 	}
- 	list_del(&so->notifier);
- 	spin_unlock(&isotp_notifier_lock);
- 
-+	rtnl_lock();
- 	lock_sock(sk);
- 
--	/* remove current filters & unregister */
--	if (so->bound) {
--		if (so->ifindex) {
--			struct net_device *dev;
--
--			dev = dev_get_by_index(net, so->ifindex);
--			if (dev) {
--				if (isotp_register_rxid(so))
--					can_rx_unregister(net, dev, so->rxid,
--							  SINGLE_MASK(so->rxid),
--							  isotp_rcv, sk);
--
--				can_rx_unregister(net, dev, so->txid,
--						  SINGLE_MASK(so->txid),
--						  isotp_rcv_echo, sk);
--				dev_put(dev);
--			}
--		}
-+	/* remove current filters & unregister
-+	 * tracked reference so->dev is taken at bind() time with rtnl_lock
-+	 */
-+	if (so->bound && so->dev) {
-+		if (isotp_register_rxid(so))
-+			can_rx_unregister(net, so->dev, so->rxid,
-+					  SINGLE_MASK(so->rxid),
-+					  isotp_rcv, sk);
-+
-+		can_rx_unregister(net, so->dev, so->txid,
-+				  SINGLE_MASK(so->txid),
-+				  isotp_rcv_echo, sk);
-+		netdev_put(so->dev, &so->dev_tracker);
- 	}
- 
-+	so->ifindex = 0;
-+	so->bound = 0;
-+	so->dev = NULL;
-+
-+	rtnl_unlock();
-+
- 	/* Always wait for a grace period before touching the timers below.
- 	 * A concurrent NETDEV_UNREGISTER may have already unregistered our
- 	 * filters and cleared so->bound in isotp_notify() without waiting
- 	 * for in-flight isotp_rcv() callers to finish, so this call must not
- 	 * be skipped just because so->bound is already 0 here.
-@@ -1251,13 +1263,10 @@ static int isotp_release(struct socket *sock)
- 
- 	hrtimer_cancel(&so->txfrtimer);
- 	hrtimer_cancel(&so->txtimer);
- 	hrtimer_cancel(&so->rxtimer);
- 
--	so->ifindex = 0;
--	so->bound = 0;
--
- 	sock_orphan(sk);
- 	sock->sk = NULL;
- 
- 	release_sock(sk);
- 	sock_prot_inuse_add(net, sk->sk_prot, -1);
-@@ -1308,17 +1317,29 @@ static int isotp_bind(struct socket *sock, struct sockaddr_unsized *uaddr, int l
- 	}
- 
- 	if (!addr->can_ifindex)
- 		return -ENODEV;
- 
-+	rtnl_lock();
- 	lock_sock(sk);
- 
- 	if (so->bound) {
- 		err = -EINVAL;
- 		goto out;
- 	}
- 
-+	/* A transmission that outlived a previous binding (unbound by
-+	 * NETDEV_UNREGISTER) may still be draining; the FC/echo watchdog
-+	 * timers bound how long this takes. Checked together with
-+	 * so->bound in the same lock_sock() section above, so there is no
-+	 * window in which a concurrent isotp_notify() could be missed.
-+	 */
-+	if (so->tx.state != ISOTP_IDLE) {
-+		err = -EAGAIN;
-+		goto out;
-+	}
-+
- 	/* ensure different CAN IDs when the rx_id is to be registered */
- 	if (isotp_register_rxid(so) && rx_id == tx_id) {
- 		err = -EADDRNOTAVAIL;
- 		goto out;
- 	}
-@@ -1327,18 +1348,16 @@ static int isotp_bind(struct socket *sock, struct sockaddr_unsized *uaddr, int l
- 	if (!dev) {
- 		err = -ENODEV;
- 		goto out;
- 	}
- 	if (dev->type != ARPHRD_CAN) {
--		dev_put(dev);
- 		err = -ENODEV;
--		goto out;
-+		goto out_put_dev;
- 	}
- 	if (READ_ONCE(dev->mtu) < so->ll.mtu) {
--		dev_put(dev);
- 		err = -EINVAL;
--		goto out;
-+		goto out_put_dev;
- 	}
- 	if (!(dev->flags & IFF_UP))
- 		notify_enetdown = 1;
- 
- 	ifindex = dev->ifindex;
-@@ -1352,20 +1371,29 @@ static int isotp_bind(struct socket *sock, struct sockaddr_unsized *uaddr, int l
- 
- 	/* register for echo skb's */
- 	can_rx_register(net, dev, tx_id, SINGLE_MASK(tx_id),
- 			isotp_rcv_echo, sk, "isotpe", sk);
- 
--	dev_put(dev);
--
- 	/* switch to new settings */
- 	so->ifindex = ifindex;
- 	so->rxid = rx_id;
- 	so->txid = tx_id;
- 	so->bound = 1;
- 
-+	/* bind() ok -> hold a reference for so->dev so that isotp_release()
-+	 * can safely reach the device later, even if a concurrent
-+	 * NETDEV_UNREGISTER has already unlisted it by ifindex.
-+	 */
-+	so->dev = dev;
-+	netdev_hold(so->dev, &so->dev_tracker, GFP_KERNEL);
-+
-+out_put_dev:
-+	/* remove potential reference from dev_get_by_index() */
-+	dev_put(dev);
- out:
- 	release_sock(sk);
-+	rtnl_unlock();
- 
- 	if (notify_enetdown) {
- 		sk->sk_err = ENETDOWN;
- 		if (!sock_flag(sk, SOCK_DEAD))
- 			sk_error_report(sk);
-@@ -1564,11 +1592,11 @@ static void isotp_notify(struct isotp_sock *so, unsigned long msg,
- 	struct sock *sk = &so->sk;
- 
- 	if (!net_eq(dev_net(dev), sock_net(sk)))
- 		return;
- 
--	if (so->ifindex != dev->ifindex)
-+	if (so->dev != dev)
- 		return;
- 
- 	switch (msg) {
- 	case NETDEV_UNREGISTER:
- 		lock_sock(sk);
-@@ -1580,14 +1608,16 @@ static void isotp_notify(struct isotp_sock *so, unsigned long msg,
- 						  isotp_rcv, sk);
- 
- 			can_rx_unregister(dev_net(dev), dev, so->txid,
- 					  SINGLE_MASK(so->txid),
- 					  isotp_rcv_echo, sk);
-+			netdev_put(so->dev, &so->dev_tracker);
- 		}
- 
- 		so->ifindex = 0;
- 		so->bound  = 0;
-+		so->dev = NULL;
- 		release_sock(sk);
- 
- 		sk->sk_err = ENODEV;
- 		if (!sock_flag(sk, SOCK_DEAD))
- 			sk_error_report(sk);
-@@ -1643,10 +1673,11 @@ static int isotp_init(struct sock *sk)
- {
- 	struct isotp_sock *so = isotp_sk(sk);
- 
- 	so->ifindex = 0;
- 	so->bound = 0;
-+	so->dev = NULL;
- 
- 	so->opt.flags = CAN_ISOTP_DEFAULT_FLAGS;
- 	so->opt.ext_address = CAN_ISOTP_DEFAULT_EXT_ADDRESS;
- 	so->opt.rx_ext_address = CAN_ISOTP_DEFAULT_EXT_ADDRESS;
- 	so->opt.rxpad_content = CAN_ISOTP_DEFAULT_PAD_CONTENT;
+---
+Jahnavi MN (7):
+      rust_binder: Add dynamic debug logging mask
+      rust_binder: Implement BINDER_DEBUG_USER_ERROR for freezer-related operation
+      rust_binder: Implement BINDER_DEBUG_USER_ERROR for refcounting and death notifications
+      rust_binder: Implement BINDER_DEBUG_USER_ERROR for transaction parsing failures
+      rust_binder: Implement BINDER_DEBUG_FAILED_TRANSACTION
+      rust_binder: Implement BINDER_DEBUG_DEATH_NOTIFICATION
+      rust_binder: Implement BINDER_DEBUG_DEAD_TRANSACTION
 
+ drivers/android/binder/debug.rs            |  80 ++++++++++++++++
+ drivers/android/binder/freeze.rs           |  70 ++++++++++----
+ drivers/android/binder/node.rs             |  30 +++++-
+ drivers/android/binder/process.rs          |  62 ++++++++++--
+ drivers/android/binder/rust_binder_main.rs |  16 +++-
+ drivers/android/binder/rust_binderfs.c     |   3 +
+ drivers/android/binder/thread.rs           | 149 ++++++++++++++++++++++-------
+ drivers/android/binder/transaction.rs      |  15 +++
+ rust/kernel/task.rs                        |   7 ++
+ 9 files changed, 363 insertions(+), 69 deletions(-)
+---
+base-commit: bf694eb01b1313f5510645ca34be4ed034ae08de
+change-id: 20260702-rust_binder_debug_mask-636737015624
+
+Best regards,
 -- 
-2.53.0
+Jahnavi MN <jahnavimn@google.com>
 
