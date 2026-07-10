@@ -1,106 +1,93 @@
-From: HaoNing Cheng <Haoning.CHENG@cn.bosch.com>
-Date: Fri, 10 Jul 2026 11:03:37 +0800
-Subject: [PATCH v4 2/2] thermal/drivers/imx: Add calibration offset support
+From: Miles Krause <mileskrause5200@gmail.com>
+Date: Fri, 10 Jul 2026 01:17:18 -0400
+Subject: [PATCH] Bluetooth: btmtk: use bool for first_block
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260710-b4-symana21-11221-imx-thermal-support-upstream-6-18-v4-2-1fef97d1c750@cn.bosch.com>
-References: <20260710-b4-symana21-11221-imx-thermal-support-upstream-6-18-v4-0-1fef97d1c750@cn.bosch.com>
-In-Reply-To: <20260710-b4-symana21-11221-imx-thermal-support-upstream-6-18-v4-0-1fef97d1c750@cn.bosch.com>
-To: "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>
-Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
- imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Haoning CHENG <Haoning.CHENG@cn.bosch.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260710-btmtk-first-block-bool-v1-1-e6ac61d918e4@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAF2AUGoC/yXMwQrCMAyA4VcZORtIi6zqq4iHpcs0bq7SVBHG3
+ n1Vj9/h/xcwySoGp2aBLG81TXOF2zUQb918FdS+Gjz5loIj5PIoIw6arSBPKY7IKU3IPe0DHwM
+ dvIMaP7MM+vmNz5e/7cV3ieV7g3XdALQwKO56AAAA
+X-Change-ID: 20260710-btmtk-first-block-bool-bd047b970821
+To: Marcel Holtmann <marcel@holtmann.org>, 
+ Johan Hedberg <johan.hedberg@gmail.com>, 
+ Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
+ Matthias Brugger <matthias.bgg@gmail.com>
+Cc: linux-bluetooth@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Miles Krause <mileskrause5200@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783652619; l=2625;
- i=Haoning.CHENG@cn.bosch.com; s=20260709; h=from:subject:message-id;
- bh=MRMJXW3PasN1+vP3XrwOg3tSDMAKHZqZCG42ukJ5xEc=;
- b=t0rvPqYwHNNOuxzizKCabuptAVW2KUNbtlwhNM03dGoVD2UPZwtO61HhTY5qdN5L1TnA0eg7I
- Svmq6726CnTBKnAjo0d8NkljNLEdE9lrZSVBj2jd5uKDeINgxa0GDBo
-X-Developer-Key: i=Haoning.CHENG@cn.bosch.com; a=ed25519;
- pk=glQGwad/fosRS5gZUJYbLDPPLGe7rFTrTV2VxY/ySdc=
-X-Endpoint-Received: by B4 Relay for Haoning.CHENG@cn.bosch.com/20260709 with auth_id=860
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783660640; l=2026;
+ i=mileskrause5200@gmail.com; s=20260710; h=from:subject:message-id;
+ bh=w0GMxlpAuvW9E5EoNTZ+r/cb96pIyUjH4Ud4DEGtoUM=;
+ b=vYIwok7n0yB2vPf94Ve+SG+QU4JJSO3a1IJ7WltBPX0AqnfPkHP0R5xxqJ7W21A084yFGQG1v
+ wCfGgNfnDrCAaLZ4XoWKi0oVnpEF//C8dsVM/JVzQoGMZxHUK1t+lW9
+X-Developer-Key: i=mileskrause5200@gmail.com; a=ed25519;
+ pk=QNhNjcQarqig3ColJBIEr3DYfWM1PHpP7z+6thxWXaU=
+X-Endpoint-Received: by B4 Relay for mileskrause5200@gmail.com/20260710 with auth_id=861
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some boards need a small per-design correction to align the reported CPU
-temperature with board-level measurements.
+first_block is reset for each firmware section and is never used outside
+the section loop. Declare it as a bool inside the loop to limit its scope
+and make its two-state purpose explicit.
 
-Read the optional fsl,temp-calibration-offset-millicelsius property from
-DT and apply it to the i.MX6/6SX/7D calibration formulas. When the
-property is not present, the default offset remains 0, preserving the
-current behaviour.
+No functional change.
 
-Signed-off-by: HaoNing Cheng <Haoning.CHENG@cn.bosch.com>
+Signed-off-by: Miles Krause <mileskrause5200@gmail.com>
 ---
- drivers/thermal/imx_thermal.c | 18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
+Compile-tested on x86_64 with:
 
-diff --git a/drivers/thermal/imx_thermal.c b/drivers/thermal/imx_thermal.c
-index 38c993d1bcb3..8062d34ffed8 100644
---- a/drivers/thermal/imx_thermal.c
-+++ b/drivers/thermal/imx_thermal.c
-@@ -207,6 +207,7 @@ struct imx_thermal_data {
- 	struct regmap *tempmon;
- 	u32 c1, c2; /* See formula in imx_init_calib() */
- 	int temp_max;
-+	s32 calibration_offset;
- 	int alarm_temp;
- 	int last_temp;
- 	bool irq_enabled;
-@@ -240,10 +241,13 @@ static void imx_set_alarm_temp(struct imx_thermal_data *data,
- 
- 	data->alarm_temp = alarm_temp;
- 
--	if (data->socdata->version == TEMPMON_IMX7D)
--		alarm_value = alarm_temp / 1000 + data->c1 - 25;
--	else
-+	if (data->socdata->version == TEMPMON_IMX7D) {
-+		alarm_value = DIV_ROUND_UP(alarm_temp - data->calibration_offset,
-+					   1000) + data->c1 - 25;
-+		alarm_value = clamp(alarm_value, 0, 0x1ff);
-+	} else {
- 		alarm_value = (data->c2 - alarm_temp) / data->c1;
-+	}
- 
- 	regmap_write(map, soc_data->high_alarm_ctrl + REG_CLR,
- 		     soc_data->high_alarm_mask);
-@@ -274,7 +278,7 @@ static int imx_get_temp(struct thermal_zone_device *tz, int *temp)
- 
- 	/* See imx_init_calib() for formula derivation */
- 	if (data->socdata->version == TEMPMON_IMX7D)
--		*temp = (n_meas - data->c1 + 25) * 1000;
-+		*temp = (n_meas - data->c1 + 25) * 1000 + data->calibration_offset;
- 	else
- 		*temp = data->c2 - n_meas * data->c1;
- 
-@@ -413,7 +417,7 @@ static int imx_init_calib(struct platform_device *pdev, u32 ocotp_ana1)
- 	temp64 *= 1000; /* to get result in °mC */
- 	do_div(temp64, 15423 * n1 - 4148468);
- 	data->c1 = temp64;
--	data->c2 = n1 * data->c1 + 28581;
-+	data->c2 = n1 * data->c1 + 28581 + data->calibration_offset;
- 
- 	return 0;
- }
-@@ -629,6 +633,10 @@ static int imx_thermal_probe(struct platform_device *pdev)
- 
- 	platform_set_drvdata(pdev, data);
- 
-+	of_property_read_s32(dev->of_node,
-+			     "fsl,temp-calibration-offset-millicelsius",
-+			     &data->calibration_offset);
-+
- 	if (of_property_present(dev->of_node, "nvmem-cells")) {
- 		ret = imx_init_from_nvmem_cells(pdev);
- 		if (ret)
+  make O=out allmodconfig
+  make O=out W=1 drivers/bluetooth/btmtk.o
 
--- 
-2.43.0
+Sparse-tested with:
+
+  make O=out-sparse allmodconfig
+  make O=out-sparse C=1 CHECK=sparse drivers/bluetooth/btmtk.o
+---
+ drivers/bluetooth/btmtk.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/bluetooth/btmtk.c b/drivers/bluetooth/btmtk.c
+index 809762d64fc6..b809eb82fc73 100644
+--- a/drivers/bluetooth/btmtk.c
++++ b/drivers/bluetooth/btmtk.c
+@@ -63,7 +63,7 @@ int btmtk_setup_firmware_79xx(struct hci_dev *hdev, const char *fwname,
+ 	const u8 *fw_ptr;
+ 	const u8 *fw_bin_ptr;
+ 	int err, dlen, i, status;
+-	u8 flag, first_block, retry;
++	u8 flag, retry;
+ 	u32 section_num, dl_size, section_offset;
+ 	u8 cmd[64];
+ 
+@@ -79,7 +79,7 @@ int btmtk_setup_firmware_79xx(struct hci_dev *hdev, const char *fwname,
+ 	section_num = le32_to_cpu(globaldesc->section_num);
+ 
+ 	for (i = 0; i < section_num; i++) {
+-		first_block = 1;
++		bool first_block = true;
+ 		fw_ptr = fw_bin_ptr;
+ 		sectionmap = (struct btmtk_section_map *)(fw_ptr + MTK_FW_ROM_PATCH_HEADER_SIZE +
+ 			      MTK_FW_ROM_PATCH_GD_SIZE + MTK_FW_ROM_PATCH_SEC_MAP_SIZE * i);
+@@ -132,9 +132,9 @@ int btmtk_setup_firmware_79xx(struct hci_dev *hdev, const char *fwname,
+ 
+ 			while (dl_size > 0) {
+ 				dlen = min_t(int, 250, dl_size);
+-				if (first_block == 1) {
++				if (first_block) {
+ 					flag = 1;
+-					first_block = 0;
++					first_block = false;
+ 				} else if (dl_size - dlen <= 0) {
+ 					flag = 3;
+ 				} else {
+
+---
+base-commit: 64b5c4c8e79c131fe8f135bab5e5dfaa245c5776
+change-id: 20260710-btmtk-first-block-bool-bd047b970821
+
+Best regards,
+--  
+Miles Krause <mileskrause5200@gmail.com>
 
