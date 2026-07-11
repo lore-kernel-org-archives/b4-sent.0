@@ -1,96 +1,57 @@
 From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Sat, 11 Jul 2026 14:07:15 +0200
-Subject: [PATCH v7 4/5] can: isotp: fix lock-free state transition in tx
- timer handler
+Date: Sat, 11 Jul 2026 14:07:16 +0200
+Subject: [PATCH v7 5/5] can: isotp: fix state machine corruption on signal
+ interruption
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260711-isotp-fixes-v7-4-f03af24d8397@hartkopp.net>
+Message-Id: <20260711-isotp-fixes-v7-5-f03af24d8397@hartkopp.net>
 References: <20260711-isotp-fixes-v7-0-f03af24d8397@hartkopp.net>
 In-Reply-To: <20260711-isotp-fixes-v7-0-f03af24d8397@hartkopp.net>
 To: linux-can@vger.kernel.org
 Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
- Marc Kleine-Budde <mkl@pengutronix.de>, sashiko-bot@kernel.org
+ Marc Kleine-Budde <mkl@pengutronix.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783771634; l=2796;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783771634; l=1184;
  i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=xz7GuYuo8P+J3FDWgky5q/m8YvwXVjcontDxzs7dXqM=;
- b=TAI6vdthk/5GhjcFxrfq31Gb6e0DCEWONoQUHwlBi1CHOeUYlasZgZOq5ZGBIwg6W9/QQPsFw
- QsgXHCMeWylBQaG3/u6LbVEzZVFZDzV18oCHkWMuVDQ7RG2hRPsjOKG
+ bh=DD+TppSdrai1Iw0roPDDTFR1Usz3uK/bpVoyGPmzuq8=;
+ b=jc7b3ezFetZsSxV17tdBKsIcC/KNxSgI3PMjVotmCc3AnrKh3pCWOgmD0EJEl5GxTlr5g31uu
+ 0PSPr8LD4qWC49zxlCIddVeU1cGiLkiveiCe4gyzRWJ9OH9arF+VOo7
 X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
  pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
 X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Commit 051737439eae ("can: isotp: fix race between isotp_sendsmg() and
-isotp_release()") introduced a lock-free state machine check
-to prevent race conditions between the TX timer and concurrent state
-updates. However, the original patch missed replacing the initial
-state checks and left the late assignment of ISOTP_IDLE as a blind,
-non-atomic write.
+If a thread blocked in isotp_sendmsg() waiting for a previous transfer
+to finish is interrupted by a signal, jumping to the cleanup labels
+incorrectly cancels active timers and forces 'so->tx.state' back to
+ISOTP_IDLE. Since this thread never owned the active transmission, it
+abruptly aborts another thread's legitimate transfer, so return the
+interruption error directly.
 
-Fix this by properly sampling the initial state into 'old_state' and using
-cmpxchg() to atomically move the state to ISOTP_IDLE. If the state changed
-concurrently (e.g., due to an incoming echo or a new sendmsg), the timeout
-is stale and we bail out safely without corrupting the state machine.
-
-Fixes: 43a08c3bdac4cb ("can: isotp: isotp_sendmsg(): fix TX buffer concurrent access in isotp_sendmsg()")
-Reported-by: sashiko-bot@kernel.org
-Link: https://lore.kernel.org/linux-can/20260710142146.BDAE61F000E9@smtp.kernel.org/
+Fixes: e057dd3fc20f ("can: add ISO 15765-2:2016 transport protocol")
 Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
 ---
- net/can/isotp.c | 27 ++++++++++++++++++++-------
- 1 file changed, 20 insertions(+), 7 deletions(-)
+ net/can/isotp.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/net/can/isotp.c b/net/can/isotp.c
-index f05703ddd2ea..fdb2109d7c27 100644
+index fdb2109d7c27..c9cd78df3a6e 100644
 --- a/net/can/isotp.c
 +++ b/net/can/isotp.c
-@@ -940,24 +940,37 @@ static void isotp_rcv_echo(struct sk_buff *skb, void *data)
- static enum hrtimer_restart isotp_tx_timer_handler(struct hrtimer *hrtimer)
- {
- 	struct isotp_sock *so = container_of(hrtimer, struct isotp_sock,
- 					     txtimer);
- 	struct sock *sk = &so->sk;
-+	u32 gen = READ_ONCE(so->tx_gen);
-+	u32 old_state = READ_ONCE(so->tx.state);
+@@ -1017,11 +1017,11 @@ static int isotp_sendmsg(struct socket *sock, struct msghdr *msg, size_t size)
+ 			return -EADDRNOTAVAIL;
  
- 	/* don't handle timeouts in IDLE or SHUTDOWN state */
--	if (so->tx.state == ISOTP_IDLE || so->tx.state == ISOTP_SHUTDOWN)
-+	if (old_state == ISOTP_IDLE || old_state == ISOTP_SHUTDOWN)
-+		return HRTIMER_NORESTART;
-+
-+	/* Only claim timeout if state is unchanged to avoid overwriting
-+	 * concurrent state updates from isotp_sendmsg/isotp_rcv_echo.
-+	 */
-+	if (cmpxchg(&so->tx.state, old_state, ISOTP_IDLE) != old_state)
- 		return HRTIMER_NORESTART;
+ 		/* wait for complete transmission of current pdu */
+ 		err = wait_event_interruptible(so->wait, so->tx.state == ISOTP_IDLE);
+ 		if (err)
+-			goto err_event_drop;
++			return err;
+ 	}
  
- 	/* we did not get any flow control or echo frame in time */
- 
--	/* report 'communication error on send' */
--	sk->sk_err = ECOMM;
--	if (!sock_flag(sk, SOCK_DEAD))
--		sk_error_report(sk);
-+	/* Once the cmpxchg() above released ISOTP_IDLE, a concurrent
-+	 * sendmsg() may already have claimed it for a new transfer
-+	 * (tx_gen changed); don't taint that new transfer with an error
-+	 * that belongs to the one that just timed out.
-+	 */
-+	if (READ_ONCE(so->tx_gen) == gen) {
-+		/* report 'communication error on send' */
-+		sk->sk_err = ECOMM;
-+		if (!sock_flag(sk, SOCK_DEAD))
-+			sk_error_report(sk);
-+	}
- 
--	/* reset tx state */
--	so->tx.state = ISOTP_IDLE;
- 	wake_up_interruptible(&so->wait);
- 
- 	return HRTIMER_NORESTART;
- }
- 
+ 	/* new transfer: bump generation and drop any echo tag left behind
+ 	 * by a previously aborted transfer
+ 	 */
 
 -- 
 2.53.0
