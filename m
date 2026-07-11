@@ -1,81 +1,86 @@
-From: Nikolai Burov <nikolai.burov@jolla.com>
-Date: Sat, 11 Jul 2026 13:34:46 +0300
-Subject: [PATCH] phy: mediatek: xsphy: clear U2 DTM0 force bits during init
+From: Oliver Hartkopp <socketcan@hartkopp.net>
+Subject: [PATCH v7 0/5] net: can: isotp-fixes
+Date: Sat, 11 Jul 2026 14:07:11 +0200
+Message-Id: <20260711-isotp-fixes-v7-0-f03af24d8397@hartkopp.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260711-mt6858-xsphy-poweron-v1-1-dee2fb71c7d5@jolla.com>
-X-B4-Tracking: v=1; b=H4sIAEYcUmoC/yXMQQ6CMBBA0auQWTtJaRTRqxgX7TjIkNA2HVQM4
- e5WWL7F/wsoZ2GFa7VA5reoxFBQHyqg3oUnozyKwRrbmHNtcJya9tTirKn/YoofzjEgkeu8Mxd
- /JAslTZk7mbft7b5bX35gmv4vWNcfgYXly3gAAAA=
-X-Change-ID: 20260710-mt6858-xsphy-poweron-ccafba09b4c2
-To: Chunfeng Yun <chunfeng.yun@mediatek.com>, Vinod Koul <vkoul@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Cc: linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, linux-phy@lists.infradead.org, 
- linux-kernel@vger.kernel.org, 
- Nikolai Burov <nikolai.burov+review@abscue.de>, 
- Nikolai Burov <nikolai.burov@jolla.com>
+X-B4-Tracking: v=1; b=H4sIAO8xUmoC/33NTWrDMBAF4KsEraui0a+dVe8RupA8o1ot2MZyT
+ Urw3SunuyK0fMz73jxYpjVRZtfLg620p5zmqQT3cmHD6KcP4glLZlJIKxwInvK8LTymO2VOHp3
+ uBFoXIitiWel5KOD2/pfzd/ikYTsnzsaY8javP893O5y9+vIOXHBnPCAAOoz92+jX7WtelteJN
+ naO77LBZeFhMI6kNb0OssJVg6vCRYfBdiQdilDhusF14dJrH7Vy0UKNmwY3hYMBp7GTaCNUuG1
+ wW7gHNUijetEr/MeP4/gFvgg5ifYBAAA=
+X-Change-ID: 20260710-isotp-fixes-ead7480d67bf
+To: linux-can@vger.kernel.org
+Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
+ Marc Kleine-Budde <mkl@pengutronix.de>, 
+ Nico Yip <zdi-disclosures@trendmicro.com>, sashiko-bot@kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783766141; l=1733;
- i=nikolai.burov@jolla.com; s=20260707; h=from:subject:message-id;
- bh=JAVmiLYc4qL5R032CUvK9+ze4/IqmRRFbWXmWnyY5tU=;
- b=T0DPUN3D5Y3CUdetCWkVyJ8WU48VXB/UEznv/4kjGDWgJZk/mqULDgRof1/ZH+idGNPgKT1a6
- pFaBDtZ/Hb3D6lHiIqqboDwvOCv8CCaBmwx/OkrHgkfRfuPuhtGdoaN
-X-Developer-Key: i=nikolai.burov@jolla.com; a=ed25519;
- pk=yzpa+PD+ovHUFMIOBA9o2QqGwI110jM6hdGHLc7jtoQ=
-X-Endpoint-Received: by B4 Relay for nikolai.burov@jolla.com/20260707 with auth_id=859
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783771634; l=2690;
+ i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
+ bh=cifrS8XB2M5Sb7Mga4Ht3Xqhy5uFkAiqFJeObjOwE/8=;
+ b=UT4NjMaFQBDQ49o54nSwMvUrf98o2pyFhcyyYMwXrpMmIXyEgUSG9nNU1K2oxExKtYFj0/m4V
+ dz+gDyMNSrJCxRrhH/YiOdHAu/fc5ppd9DwcAuwUBeT8FNrnybr8dnI
+X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
+ pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
+X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On mobile SoCs, the USB PHY is completely powered off during bootup.
-As a result, various bits in the DTM0 register are set that prevent
-the USB 2.0 PHY from functioning. Clear them as part of the
-initialization sequence.
+As sashiko-bot was not able to check the second patch this bundle is
+re-posted with b4 preparation.
 
-Signed-off-by: Nikolai Burov <nikolai.burov@jolla.com>
+Fixed the remarks reported by sashiko-bot of V6 patchset.
+
+Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
 ---
- drivers/phy/mediatek/phy-mtk-xsphy.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+Changes in v7:
+- patch 3: add helper so->tx_gen to monitor new ISOTP_SENDING attempts
+- patch 4: prevent missasignment of sk_err report with new so->tx_gen
+- Link to v6: https://patch.msgid.link/20260710-isotp-fixes-v6-0-a13c2539093d@hartkopp.net
 
-diff --git a/drivers/phy/mediatek/phy-mtk-xsphy.c b/drivers/phy/mediatek/phy-mtk-xsphy.c
-index cc1d66954212..b29220bc5592 100644
---- a/drivers/phy/mediatek/phy-mtk-xsphy.c
-+++ b/drivers/phy/mediatek/phy-mtk-xsphy.c
-@@ -62,6 +62,14 @@
- #define P2A6_RG_BC11_SW_EN	BIT(23)
- #define P2A6_RG_OTG_VBUSCMP_EN	BIT(20)
- 
-+#define XSP_U2PHYDTM0		((SSUSB_SIFSLV_U2PHY_COM) + 0x068)
-+#define P2D_FORCE_DATAIN	BIT(23)
-+#define P2D_FORCE_DM_PULLDOWN	BIT(21)
-+#define P2D_FORCE_DP_PULLDOWN	BIT(20)
-+#define P2D_FORCE_XCVRSEL	BIT(19)
-+#define P2D_FORCE_SUSPENDM	BIT(18)
-+#define P2D_FORCE_TERMSEL	BIT(17)
-+
- #define XSP_U2PHYDTM1		((SSUSB_SIFSLV_U2PHY_COM) + 0x06C)
- #define P2D_FORCE_IDDIG		BIT(9)
- #define P2D_RG_VBUSVALID	BIT(5)
-@@ -181,6 +189,11 @@ static void u2_phy_instance_init(struct mtk_xsphy *xsphy,
- {
- 	void __iomem *pbase = inst->port_base;
- 
-+	mtk_phy_clear_bits(pbase + XSP_U2PHYDTM0,
-+			   P2D_FORCE_DATAIN | P2D_FORCE_DM_PULLDOWN |
-+			   P2D_FORCE_DP_PULLDOWN | P2D_FORCE_XCVRSEL |
-+			   P2D_FORCE_SUSPENDM | P2D_FORCE_TERMSEL);
-+
- 	/* DP/DM BC1.1 path Disable */
- 	mtk_phy_clear_bits(pbase + XSP_USBPHYACR6, P2A6_RG_BC11_SW_EN);
- 
+Changes in v6:
+- patch 2: check for rx state and tx state to be IDLE in isotp_bind() (sashiko-bot)
+- patch 3: double check rx/tx states after all hrtimer_cancel() calls (sashiko-bot)
+           move ISOTP_IDLE in err_event_drop for the same reason
+- patch 4: use READ_ONCE() to prevent compiler load tearing as remarked by sashiko-bot
+- Link to v5: https://patch.msgid.link/20260710-isotp-fixes-v5-0-15174d82d6f1@hartkopp.net
+
+Changes in v5:
+- patch 3: new: state change re-check after hrtimer_cancel()
+- patch 4: new: handle state transistion with cmpxchg()
+- Link to v4: https://patch.msgid.link/20260710-isotp-fixes-v4-0-2a4af437f61b@hartkopp.net
+
+Changes in v4:
+- patch 2: use a simpler method to reject a re-binding that can be implemented
+  inside the lock: No waitqueue waiting just exit.
+- Link to v3: https://patch.msgid.link/20260710-isotp-fixes-v3-0-08db68e27d0b@hartkopp.net
+
+Changes in v3:
+- patch 2: go back to initial idea without hard resetting the state machine and
+  timers but let these come to a graceful end. Even a new bind() at netdev
+  shutdown now leads to this graceful statemachine shutdown via the wait queue.
+- Link to v2: https://patch.msgid.link/20260710-isotp-fixes-v2-0-bc57e26594b2@hartkopp.net
+
+Changes in v2:
+- patch 2: shutdown state machine to fix sashiko-bot complains
+  Link: https://lore.kernel.org/linux-can/20260710094807.A50DD1F000E9@smtp.kernel.org/
+- Link to v1: https://patch.msgid.link/20260710-isotp-fixes-v1-0-75a1d11d7df9@hartkopp.net
 
 ---
-base-commit: bee763d5f341b99cf472afeb508d4988f62a6ca1
-change-id: 20260710-mt6858-xsphy-poweron-ccafba09b4c2
+Oliver Hartkopp (5):
+      can: isotp: use unconditional synchronize_rcu() in isotp_release()
+      can: isotp: fix use-after-free race with concurrent NETDEV_UNREGISTER
+      can: isotp: fix race between RX/TX timers and frame reception
+      can: isotp: fix lock-free state transition in tx timer handler
+      can: isotp: fix state machine corruption on signal interruption
+
+ net/can/isotp.c | 176 +++++++++++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 135 insertions(+), 41 deletions(-)
+---
+base-commit: a635d6748234582ea287c5ffeae28b9b23f91c7e
+change-id: 20260710-isotp-fixes-ead7480d67bf
 
 Best regards,
 --  
-Nikolai Burov <nikolai.burov@jolla.com>
+Oliver Hartkopp <socketcan@hartkopp.net>
 
