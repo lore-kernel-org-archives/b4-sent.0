@@ -1,92 +1,112 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sat, 11 Jul 2026 02:45:05 -0500
-Subject: [PATCH net] net/smc: guard the CDC receive path against an unset
- RMB
+Date: Sat, 11 Jul 2026 04:09:23 -0500
+Subject: [PATCH v2] scsi: ses: validate the page 1 geometry before walking
+ it
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260711-b4-disp-c36a9798-v1-1-340b0c6053fb@proton.me>
-X-B4-Tracking: v=1; b=H4sIAID0UWoC/x3MQQqAIBBA0avErBtQK82uEi0yx5qNhUYE0d2Tl
- m/x/wOZElOGoXog0cWZ91gg6wqWbY4rIftiUEJpYaRE16LnfODS6Nka26N0Tee8tsEbBSU7EgW
- +/+UIkU6Y3vcDmVyAM2cAAAA=
-To: Paolo Abeni <pabeni@redhat.com>, Wen Gu <guwen@linux.alibaba.com>, 
- Eric Dumazet <edumazet@google.com>, "D. Wythe" <alibuda@linux.alibaba.com>, 
- Sidraya Jayagond <sidraya@linux.ibm.com>, 
- "David S. Miller" <davem@davemloft.net>, Tony Lu <tonylu@linux.alibaba.com>, 
- Dust Li <dust.li@linux.alibaba.com>, 
- Mahanta Jambigi <mjambigi@linux.ibm.com>, 
- Wenjia Zhang <wenjia@linux.ibm.com>, Jakub Kicinski <kuba@kernel.org>
-Cc: netdev@vger.kernel.org, Simon Horman <horms@kernel.org>, 
- linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-s390@vger.kernel.org
+Message-Id: <20260711-b4-disp-414d08d4-v2-1-784a01e8e2dd@proton.me>
+X-B4-Tracking: v=1; b=H4sIAEIIUmoC/x3MMQqAMAxA0atIZgNJrVa8ijioTTWLSgsiSO9uc
+ XzD/y8kiSoJhuqFKLcmPY8CU1ew7vOxCaovBkOmI8eMi0Wv6ULL1lPvLToibhy3oWkNlOyKEvT
+ 5l+OU8wezmJNyYgAAAA==
+To: "Martin K. Petersen" <martin.petersen@oracle.com>, 
+ "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>
+Cc: linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783755904; l=2576;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783760962; l=4018;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=yh7714RV6Cc4s3RDFou/eCDussZT7vcBjhLsr4ZeUcM=;
- b=Vuf9mDuj3w2B5nPA+qf5Tbf1h0yrJMdX2RH27z3Uj+NAYdJbs56Ch06TWSEojM/H7bCWfWEJ5
- bO8b2caGqWECB+3WZ4YOTFo63lNPdGDfV3K1ucad2XC0bayn9Jxj1hb
+ bh=aGkqMij/fwiXWZbOxSwO7lO1Cb5QwO5aWgWs0GueIsg=;
+ b=680iIPzuHZui8S3CwahOi6/WyhLQIEqbo7lI3t5qnYpeP3uXyWUDldfzivVzh39qoXtFpmJLd
+ XNWCDkvqTDYB/XOCeac59jJNqxkHDtJdb8+lfDAGyTlfVppydNL3+Mu
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The SMC CDC receive handlers look up a connection by its wire token and
-then dereference conn->rmb_desc -- smcd_cdc_rx_tsklet() reads
-rmb_desc->cpu_addr and smc_cdc_msg_recv_action() reads rmb_desc->len --
-but a connection is published to the link group's token tree in
-smc_conn_create(), before smc_buf_create() allocates its RMB.  A peer
-that sends a CDC message carrying the connection's token in that setup
-window reaches the handlers with conn->rmb_desc still NULL and crashes
-the host with a NULL pointer dereference.
+ses_intf_add() stores the enclosure's page 1 type-descriptor pointer and
+count (page1_types, page1_num_types); the page 2 walks,
+ses_enclosure_data_process() and the logical-id read in ses_show_id() all
+trust them.  Three device-supplied values go unbounded: the enclosure-
+descriptor skip loop reads a descriptor's length bytes while only checking
+its first byte is in range; the stored count is a device sum unrelated to
+what page 1 carries; and it is truncated into a short before being range-
+checked.  A short or inflated page 1 thus drives an out-of-bounds read of
+adjacent slab, some of which ses_show_id() returns to user space.
 
-Bail out of both receive handlers when the RMB is not yet allocated, as
-they already do for a killed or out-of-sync connection.
+Bound the skip loop to a whole descriptor and validate the geometry once
+where it is parsed: reject a page too short for its logical id, a type
+array that ran past the buffer, or a count larger than the array holds --
+checking it before it is stored also keeps it inside the short.  Conforming
+enclosures are unaffected.
 
-Closes: https://sashiko.dev/#/patchset/20260705-b4-disp-28a1bbca-v4-1-be089b98acc6@proton.me?part=1
+Fixes: 9927c68864e9 ("[SCSI] ses: add new Enclosure ULD")
+Closes: https://sashiko.dev/#/patchset/20260711-b4-disp-26cc3226-v1-1-e04c11c88996@proton.me?part=1
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Reachability is by source inspection: smc_conn_create() registers the
-connection before smc_buf_create() allocates conn->rmb_desc, and the
-receive handlers guard only !conn/out_of_sync/killed.  Verified with an
-in-kernel KASAN model reproducing the deref with rmb_desc == NULL (fault
-at the ->len / ->cpu_addr offsets) and clean with the guard.  af_smc runs
-over an RDMA fabric or an ISM device, so this is the model rather than a
-live trigger; reproducer available on request.
+Changes since v1 [1], addressing the Sashiko review of that posting:
+ - Bound the enclosure-descriptor skip loop itself (type_ptr + 4 <= buf +
+   len).  v1 validated only after that loop ran, so a page 1 a few bytes
+   short of a descriptor was still read out of bounds inside the loop
+   before the check.
+ - Validate the int type count before it is stored, not the short it
+   truncates to.  A device count of 65280 wraps a signed short to -256,
+   which slipped past the v1 range check; the int is bounded to
+   (buf+len-type_ptr)/4, below the short's range, so it cannot wrap once
+   stored.
 
-No Fixes: tag: the CDC receive path predates the history available here;
-the introducing commits are the original CDC support and its SMC-D
-addition -- please add whichever tag you prefer.
+Verified with an in-kernel KASAN model (7.2.0-rc1, kasan.fault=report) that
+replays the skip loop over a real kzalloc'd page 1:
+ - old guard, 10-byte page 1 -> BUG: KASAN: slab-out-of-bounds read, 1 byte,
+   0 bytes to the right of the region; the tightened guard stops before it.
+ - count 65280 -> the pre-store int check rejects it, the post-store short
+   check (v1) did not.
+ - a conforming page 1 walks unchanged.
+Reproducer available on request.
+
+[1] https://lore.kernel.org/all/20260711-b4-disp-26cc3226-v1-1-e04c11c88996@proton.me
 ---
- net/smc/smc_cdc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ drivers/scsi/ses.c | 19 ++++++++++++++++++-
+ 1 file changed, 18 insertions(+), 1 deletion(-)
 
-diff --git a/net/smc/smc_cdc.c b/net/smc/smc_cdc.c
-index 32d6d03df321..d60f68facbc3 100644
---- a/net/smc/smc_cdc.c
-+++ b/net/smc/smc_cdc.c
-@@ -446,7 +446,7 @@ static void smcd_cdc_rx_tsklet(struct tasklet_struct *t)
- 	struct smcd_cdc_msg cdc;
- 	struct smc_sock *smc;
- 
--	if (!conn || conn->killed)
-+	if (!conn || conn->killed || !conn->rmb_desc)
- 		return;
- 
- 	data_cdc = (struct smcd_cdc_msg *)conn->rmb_desc->cpu_addr;
-@@ -483,7 +483,7 @@ static void smc_cdc_rx_handler(struct ib_wc *wc, void *buf)
- 	lgr = smc_get_lgr(link);
- 	read_lock_bh(&lgr->conns_lock);
- 	conn = smc_lgr_find_conn(ntohl(cdc->token), lgr);
--	if (!conn || conn->out_of_sync) {
-+	if (!conn || conn->out_of_sync || !conn->rmb_desc) {
- 		read_unlock_bh(&lgr->conns_lock);
- 		return;
+diff --git a/drivers/scsi/ses.c b/drivers/scsi/ses.c
+index 4c348645b04e..907bb489252a 100644
+--- a/drivers/scsi/ses.c
++++ b/drivers/scsi/ses.c
+@@ -742,11 +742,28 @@ static int ses_intf_add(struct device *cdev)
+ 	/* begin at the enclosure descriptor */
+ 	type_ptr = buf + 8;
+ 	/* skip all the enclosure descriptors */
+-	for (i = 0; i < num_enclosures && type_ptr < buf + len; i++) {
++	for (i = 0; i < num_enclosures && type_ptr + 4 <= buf + len; i++) {
+ 		types += type_ptr[2];
+ 		type_ptr += type_ptr[3] + 4;
  	}
+ 
++	/*
++	 * Validate the device-reported page 1 geometry before the accessors
++	 * walk it.  page1_types and page1_num_types come straight from the
++	 * enclosure; the page 2 descriptor walks (ses_get_page2_descriptor(),
++	 * ses_set_page2_descriptor()), ses_enclosure_data_process() and the
++	 * logical-id read in ses_show_id() all trust them.  Reject a page 1
++	 * shorter than its logical id, one whose descriptors ran past the end,
++	 * or one declaring more type descriptors than it carries.  Bounding the
++	 * count before it is stored also keeps it within its short.
++	 */
++	if (len < 8 + 4 + (int)sizeof(u64) ||
++	    type_ptr > buf + len ||
++	    types > (buf + len - type_ptr) / 4) {
++		err = -EINVAL;
++		goto err_free;
++	}
++
+ 	ses_dev->page1_types = type_ptr;
+ 	ses_dev->page1_num_types = types;
+ 
 
 ---
 base-commit: dd3210c47e8d3ac6b4e9141fc68acc03b38c0ba3
-change-id: 20260711-b4-disp-c36a9798-1b35bd69fd72
+change-id: 20260711-b4-disp-414d08d4-70013715f352
 
 Best regards,
 -- 
