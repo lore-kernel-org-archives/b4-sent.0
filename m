@@ -1,88 +1,92 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Sat, 11 Jul 2026 02:44:27 -0500
-Subject: [PATCH] scsi: ses: validate the page 1 geometry before walking it
+Date: Sat, 11 Jul 2026 02:45:05 -0500
+Subject: [PATCH net] net/smc: guard the CDC receive path against an unset
+ RMB
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260711-b4-disp-26cc3226-v1-1-e04c11c88996@proton.me>
-X-B4-Tracking: v=1; b=H4sIAFr0UWoC/x3MMQqAMAxA0atIZgNNlIheRRy0jZpFpQURine3O
- L7h/wxJo2mCocoQ9bZk51FAdQV+n49N0UIxsGNxHREuLQZLF7J43zALck+zUivCQaFkV9TVnn8
- 5Tu/7AfODb35iAAAA
-To: "James E.J. Bottomley" <James.Bottomley@HansenPartnership.com>, 
- "Martin K. Petersen" <martin.petersen@oracle.com>
-Cc: linux-scsi@vger.kernel.org, linux-kernel@vger.kernel.org
+Message-Id: <20260711-b4-disp-c36a9798-v1-1-340b0c6053fb@proton.me>
+X-B4-Tracking: v=1; b=H4sIAID0UWoC/x3MQQqAIBBA0avErBtQK82uEi0yx5qNhUYE0d2Tl
+ m/x/wOZElOGoXog0cWZ91gg6wqWbY4rIftiUEJpYaRE16LnfODS6Nka26N0Tee8tsEbBSU7EgW
+ +/+UIkU6Y3vcDmVyAM2cAAAA=
+To: Paolo Abeni <pabeni@redhat.com>, Wen Gu <guwen@linux.alibaba.com>, 
+ Eric Dumazet <edumazet@google.com>, "D. Wythe" <alibuda@linux.alibaba.com>, 
+ Sidraya Jayagond <sidraya@linux.ibm.com>, 
+ "David S. Miller" <davem@davemloft.net>, Tony Lu <tonylu@linux.alibaba.com>, 
+ Dust Li <dust.li@linux.alibaba.com>, 
+ Mahanta Jambigi <mjambigi@linux.ibm.com>, 
+ Wenjia Zhang <wenjia@linux.ibm.com>, Jakub Kicinski <kuba@kernel.org>
+Cc: netdev@vger.kernel.org, Simon Horman <horms@kernel.org>, 
+ linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-s390@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783755866; l=2966;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783755904; l=2576;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=yJwlxB420glQfMDCa0LhYH0dnfguuLnK0jmLkeHB6U0=;
- b=dRjIpDzdZHy5uPXSKKwGbrZNr5NMATAnPwye72vaKPP/9MH90riPPjTNOJuaMQE0nX+ejtwGa
- h1oP/sDebH1C+toh0aBcLIr93rx2yPdFTHxk0M3mbqaIWlWX8obm+q1
+ bh=yh7714RV6Cc4s3RDFou/eCDussZT7vcBjhLsr4ZeUcM=;
+ b=Vuf9mDuj3w2B5nPA+qf5Tbf1h0yrJMdX2RH27z3Uj+NAYdJbs56Ch06TWSEojM/H7bCWfWEJ5
+ bO8b2caGqWECB+3WZ4YOTFo63lNPdGDfV3K1ucad2XC0bayn9Jxj1hb
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ses_intf_add() stores the enclosure's page 1 type-descriptor pointer and
-count (page1_types, page1_num_types) without bounding them against the
-page 1 buffer.  The page 2 descriptor walks, ses_enclosure_data_process()
-and the logical-id read in ses_show_id() all iterate or index with those
-device-supplied values.  An enclosure that reports a short page 1 with an
-inflated type count, or one too short for its logical id, makes those
-reads run past the page 1 allocation -- an out-of-bounds read of adjacent
-slab, some of which ses_show_id() hands back to user space.
+The SMC CDC receive handlers look up a connection by its wire token and
+then dereference conn->rmb_desc -- smcd_cdc_rx_tsklet() reads
+rmb_desc->cpu_addr and smc_cdc_msg_recv_action() reads rmb_desc->len --
+but a connection is published to the link group's token tree in
+smc_conn_create(), before smc_buf_create() allocates its RMB.  A peer
+that sends a CDC message carrying the connection's token in that setup
+window reaches the handlers with conn->rmb_desc still NULL and crashes
+the host with a NULL pointer dereference.
 
-Validate the page 1 geometry where it is parsed and reject a page too
-short for its logical id or declaring more type descriptors than it
-carries.  Conforming enclosures are unaffected.
+Bail out of both receive handlers when the RMB is not yet allocated, as
+they already do for a killed or out-of-sync connection.
 
-Fixes: 9927c68864e9 ("[SCSI] ses: add new Enclosure ULD")
-Closes: https://sashiko.dev/#/patchset/20260706-b4-disp-29a05ca3-v1-1-49591f469f60@proton.me?part=1
+Closes: https://sashiko.dev/#/patchset/20260705-b4-disp-28a1bbca-v4-1-be089b98acc6@proton.me?part=1
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Verified with an in-kernel KASAN model (7.2.0-rc1) that replays each
-accessor over a real kmalloc'd page 1:
-  - ses_show_id() read (page1+12, 8 bytes) over a 12-byte page 1
-    -> BUG: KASAN: slab-out-of-bounds READ; a validated page 1 is clean.
-  - a type_ptr walk with an inflated page1_num_types over a short page 1
-    -> BUG: KASAN: slab-out-of-bounds READ; the geometry check stops it.
-  - a conforming page 1 -> clean.
-Reproducer available on request.
----
- drivers/scsi/ses.c | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+Reachability is by source inspection: smc_conn_create() registers the
+connection before smc_buf_create() allocates conn->rmb_desc, and the
+receive handlers guard only !conn/out_of_sync/killed.  Verified with an
+in-kernel KASAN model reproducing the deref with rmb_desc == NULL (fault
+at the ->len / ->cpu_addr offsets) and clean with the guard.  af_smc runs
+over an RDMA fabric or an ISM device, so this is the model rather than a
+live trigger; reproducer available on request.
 
-diff --git a/drivers/scsi/ses.c b/drivers/scsi/ses.c
-index 4c348645b04e..bbd8ff13cb2a 100644
---- a/drivers/scsi/ses.c
-+++ b/drivers/scsi/ses.c
-@@ -750,6 +750,22 @@ static int ses_intf_add(struct device *cdev)
- 	ses_dev->page1_types = type_ptr;
- 	ses_dev->page1_num_types = types;
+No Fixes: tag: the CDC receive path predates the history available here;
+the introducing commits are the original CDC support and its SMC-D
+addition -- please add whichever tag you prefer.
+---
+ net/smc/smc_cdc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/smc/smc_cdc.c b/net/smc/smc_cdc.c
+index 32d6d03df321..d60f68facbc3 100644
+--- a/net/smc/smc_cdc.c
++++ b/net/smc/smc_cdc.c
+@@ -446,7 +446,7 @@ static void smcd_cdc_rx_tsklet(struct tasklet_struct *t)
+ 	struct smcd_cdc_msg cdc;
+ 	struct smc_sock *smc;
  
-+	/*
-+	 * Validate the device-reported page 1 geometry once, here, before the
-+	 * accessors walk it.  page1_types and page1_num_types come straight from
-+	 * the enclosure, and the page 2 descriptor walks (ses_get_page2_descriptor(),
-+	 * ses_set_page2_descriptor()), ses_enclosure_data_process() and the
-+	 * logical-id read in ses_show_id() all trust them.  A page 1 shorter than
-+	 * its logical-id field, or one that declares more type descriptors than it
-+	 * carries, would make those reads run past the page 1 buffer.
-+	 */
-+	if (len < 8 + 4 + (int)sizeof(u64) ||
-+	    ses_dev->page1_types > buf + len ||
-+	    ses_dev->page1_num_types > (buf + len - ses_dev->page1_types) / 4) {
-+		err = -EINVAL;
-+		goto err_free;
-+	}
-+
- 	for (i = 0; i < types && type_ptr < buf + len; i++, type_ptr += 4) {
- 		if (type_ptr[0] == ENCLOSURE_COMPONENT_DEVICE ||
- 		    type_ptr[0] == ENCLOSURE_COMPONENT_ARRAY_DEVICE)
+-	if (!conn || conn->killed)
++	if (!conn || conn->killed || !conn->rmb_desc)
+ 		return;
+ 
+ 	data_cdc = (struct smcd_cdc_msg *)conn->rmb_desc->cpu_addr;
+@@ -483,7 +483,7 @@ static void smc_cdc_rx_handler(struct ib_wc *wc, void *buf)
+ 	lgr = smc_get_lgr(link);
+ 	read_lock_bh(&lgr->conns_lock);
+ 	conn = smc_lgr_find_conn(ntohl(cdc->token), lgr);
+-	if (!conn || conn->out_of_sync) {
++	if (!conn || conn->out_of_sync || !conn->rmb_desc) {
+ 		read_unlock_bh(&lgr->conns_lock);
+ 		return;
+ 	}
 
 ---
 base-commit: dd3210c47e8d3ac6b4e9141fc68acc03b38c0ba3
-change-id: 20260711-b4-disp-26cc3226-291ae14662de
+change-id: 20260711-b4-disp-c36a9798-1b35bd69fd72
 
 Best regards,
 -- 
