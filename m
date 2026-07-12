@@ -1,26 +1,27 @@
 From: Demi Marie Obenour <demiobenour@gmail.com>
-Date: Sun, 12 Jul 2026 17:03:47 -0400
-Subject: [PATCH] drivers/crypto: Mark QCE as BROKEN
+Date: Sun, 12 Jul 2026 17:31:31 -0400
+Subject: [PATCH v2] drivers/crypto: Mark QCE as BROKEN
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260712-qce-broken-v1-1-85e2bff17871@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDc0Mj3cLkVN2kovzs1DxdMwNjUwsz42RDk0QDJaCGgqLUtMwKsGHRsbW
- 1AGU/NSRcAAAA
+Message-Id: <20260712-qce-broken-v2-1-b2dfff47f7f5@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23MQQ6CMBCF4auQWTumU4QSV97DsIA6wESh2JpGQ
+ 3p3K2uX/0vet0FgLxzgXGzgOUoQt+TQhwLs1C0jo9xyg1a6VoY0Pi1j792dF6xVWTV1aenUKci
+ H1fMg7x27trknCS/nP7sd6bf+ZSIhYVOx7oeBTGPoMs6dPI7WzdCmlL4k4213pAAAAA==
 X-Change-ID: 20260712-qce-broken-6035863c14a0
 To: Russell King <linux@armlinux.org.uk>, 
  Herbert Xu <herbert@gondor.apana.org.au>, 
  "David S. Miller" <davem@davemloft.net>
 Cc: Eric Biggers <ebiggers@kernel.org>, 
  linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-crypto@vger.kernel.org, Demi Marie Obenour <demiobenour@gmail.com>
+ linux-crypto@vger.kernel.org, stable@vger.kernel.org, 
+ Demi Marie Obenour <demiobenour@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783890232; l=3381;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783891900; l=3669;
  i=demiobenour@gmail.com; s=20250731; h=from:subject:message-id;
- bh=k+Q6SSK3eTUVW0/qFAAgRAvug1Z5DMEW0/J5hlhyk2I=;
- b=StJ2payYfWR0FwYTFzR6HC8De01jA9tRWE3JUXyX06tFBdgjgm0QitaWN+s7htiFHYIYQb1/z
- 6XE+JD/Ey9xB7/cy/lUdZ5n50XDF9SgpToK/5bKdImteoHvPnq/Eyay
+ bh=0ILgQWt/4xfgFagXe7i7e2xC/Wm1GX2PHFzASrAHbAA=;
+ b=Mp3fpdk7vu3JdbLmRrd/1oUzmDupyD0xlbfW4UJTanT9//APwjIrzaT4q5OB6aOQ/DTs7ipCB
+ xN5u5LuXYA0An27pmX5VnKkcXYlZ9bmm/IcvSHMr6fR12NlkFMra50M
 X-Developer-Key: i=demiobenour@gmail.com; a=ed25519;
  pk=4iGY+ynEKxIfs+fIUK9EzsvZ44yGE0GvXLeLTPKKPhI=
 X-Endpoint-Received: by B4 Relay for demiobenour@gmail.com/20250731 with auth_id=473
@@ -49,7 +50,13 @@ enabled.
 [4]: https://lore.kernel.org/r/20260629-qcom-qce-cmd-descr-v20-0-56f67da84c05@oss.qualcomm.com/
 [5]: https://lore.kernel.org/r/20260524204537.GB110177@quark/
 
+Fixes: ec8f5d8f6f76 ("crypto: qce - Qualcomm crypto engine driver")
 Signed-off-by: Demi Marie Obenour <demiobenour@gmail.com>
+---
+Changes in v2:
+- Add Fixes: ec8f5d8f6f76 ("crypto: qce - Qualcomm crypto engine driver")
+- Add Cc: stable@vger.kernel.org
+- Link to v1: https://lore.kernel.org/r/20260712-qce-broken-v1-1-85e2bff17871@gmail.com
 ---
  arch/arm/configs/multi_v7_defconfig | 1 -
  arch/arm64/configs/defconfig        | 1 -
