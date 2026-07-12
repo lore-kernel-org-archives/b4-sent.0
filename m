@@ -1,11 +1,11 @@
 From: Esteban Urrutia <esteuwu@proton.me>
-Date: Sat, 11 Jul 2026 23:12:27 -0400
-Subject: [PATCH v2 1/2] arm64: dts: qcom: sm8450: Remove unneeded reserved
- memory nodes
+Date: Sat, 11 Jul 2026 23:12:28 -0400
+Subject: [PATCH v2 2/2] arm64: dts: qcom: sm8450: Add mode-switch property
+ to qmpphy
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260711-sm8450-qol-dts-v2-1-5eb2e86468c5@proton.me>
+Message-Id: <20260711-sm8450-qol-dts-v2-2-5eb2e86468c5@proton.me>
 References: <20260711-sm8450-qol-dts-v2-0-5eb2e86468c5@proton.me>
 In-Reply-To: <20260711-sm8450-qol-dts-v2-0-5eb2e86468c5@proton.me>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -14,62 +14,38 @@ To: Bjorn Andersson <andersson@kernel.org>,
  Conor Dooley <conor+dt@kernel.org>
 Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- Esteban Urrutia <esteuwu@proton.me>, 
- Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
+ Esteban Urrutia <esteuwu@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783825961; l=1232;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783825961; l=627;
  i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
- bh=f6mm6bP5cP/VdfADQcuVdSA9XTjnVcdOZJRex2sxwV0=;
- b=TcIlcP7ncJW4UTVFJGgshY/59oDIvuuhLqZRG+qXZfwBKb2XPfoB6I8mkK7K5ngv4SZaLpm9D
- b7akfWYyzlaCxCAXlFd4dEkcJSVpvlmnzy2ApXKKooXSHkiPc+h1dlq
+ bh=/uZn04C0kV47S2j5bmHfyQGfe1zYRTmHGF4aZTBxrpI=;
+ b=0y+nRtRBoDAdvBLUykNBy/aaD/2cK4MgWbAcUDXX1FBWEBEkayA70cmwmjrhkqyVEE5QTrFoZ
+ M85G6G3cnffCQprIRLZYg6/s3Xyay/K6IVkNlb3R4vMC3c/7sGLBWam
 X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
  pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
 X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-These nodes are not present on downstream device trees and only take memory
-away from the AP.
-No crashes occur without these nodes, so remove them.
+USB QMP PHY is a possible handler of altmode switching, so add this
+property.
 
-Reviewed-by: Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
- arch/arm64/boot/dts/qcom/sm8450.dtsi | 15 ---------------
- 1 file changed, 15 deletions(-)
+ arch/arm64/boot/dts/qcom/sm8450.dtsi | 1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/arch/arm64/boot/dts/qcom/sm8450.dtsi b/arch/arm64/boot/dts/qcom/sm8450.dtsi
-index 7ddd0f5f539c..cf7c8f831fb0 100644
+index cf7c8f831fb0..e51babc1cf7a 100644
 --- a/arch/arm64/boot/dts/qcom/sm8450.dtsi
 +++ b/arch/arm64/boot/dts/qcom/sm8450.dtsi
-@@ -752,11 +752,6 @@ oem_vm_mem: memory@bb000000 {
- 			no-map;
- 		};
+@@ -2654,6 +2654,7 @@ usb_1_qmpphy: phy@88e8000 {
+ 			#clock-cells = <1>;
+ 			#phy-cells = <1>;
  
--		mte_mem: memory@c0000000 {
--			reg = <0x0 0xc0000000 0x0 0x20000000>;
--			no-map;
--		};
--
- 		qheebsp_reserved_mem: memory@e0000000 {
- 			reg = <0x0 0xe0000000 0x0 0x600000>;
- 			no-map;
-@@ -806,16 +801,6 @@ qtee_mem: memory@e9b00000 {
- 			reg = <0x0 0xe9b00000 0x0 0x500000>;
- 			no-map;
- 		};
--
--		trusted_apps_mem: memory@ea000000 {
--			reg = <0x0 0xea000000 0x0 0x3900000>;
--			no-map;
--		};
--
--		trusted_apps_ext_mem: memory@ed900000 {
--			reg = <0x0 0xed900000 0x0 0x3b00000>;
--			no-map;
--		};
- 	};
++			mode-switch;
+ 			orientation-switch;
  
- 	smp2p-adsp {
+ 			status = "disabled";
 
 -- 
 2.55.0
