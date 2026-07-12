@@ -1,72 +1,58 @@
-From: Miles Krause <mileskrause5200@gmail.com>
-Date: Sat, 11 Jul 2026 22:56:14 -0400
-Subject: [PATCH] memory: jz4780-nemc: Use dev_err_probe() for clock error
+From: Esteban Urrutia <esteuwu@proton.me>
+Subject: [PATCH v2 0/3] SM8450 QoL changes (dispcc)
+Date: Sat, 11 Jul 2026 23:10:34 -0400
+Message-Id: <20260711-sm8450-qol-dispcc-v2-0-fc1a07ac5601@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260711-jz4780-nemc-dev-err-probe-v1-1-afb6f6a82752@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAE0CU2oC/yXMQQ6CMBBG4auQWTtJS0TQqxgXTPurQ2IhUyRGw
- t2tuvwW762UYYpMp2olw6JZx1TgdxWFe59uYI3FVLv64FrveXjv285xwiNwxMIw48lGAccYmuY
- onUjvqfST4aqv3/t8+Ts/ZUCYv0Patg9fu3LBfQAAAA==
-X-Change-ID: 20260711-jz4780-nemc-dev-err-probe-ddc559b8bba1
-To: Paul Cercueil <paul@crapouillou.net>, 
- Krzysztof Kozlowski <krzk@kernel.org>
-Cc: linux-mips@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Miles Krause <mileskrause5200@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/02Nyw6CMBBFf4V07Zh2lJcr/8OwgHaQMUKxg0RD+
+ Hd5bFye5NxzJyUUmERdokkFGlnYdwvgIVK2Kbs7AbuFFWpMdGoMSJudYw0v/wTH0lsLOq8wj43
+ DuNJq2fWBav5szVuxs7yrB9lhDa1GwzL48N1OR7N6ez9B/O+PBjScUkKizNW5K6998IPvji2pY
+ p7nH87iVXK9AAAA
+X-Change-ID: 20260711-sm8450-qol-dispcc-09b2951d25b0
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Michael Turquette <mturquette@baylibre.com>, 
+ Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney@redhat.com>, 
+ Dmitry Baryshkov <lumag@kernel.org>, Danila Tikhonov <danila@jiaxyga.com>
+Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
+ Esteban Urrutia <esteuwu@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783824975; l=1329;
- i=mileskrause5200@gmail.com; s=20260710; h=from:subject:message-id;
- bh=AGXKyAp8ExZItIFAOU025OlxKNPfZ4JXCxmTSMbLIcw=;
- b=SDDaywFXq9ZUBuE9d/dzRpi6j2R3tWaDdqA5QU+YnuLmwC3kKXNmSMh86RV1486tDk+AV38ra
- UYpwCdm8frkDyAv7nMmDfrl/I5oeINAZDoBm41DRXcT/Nrv7fHubaU2
-X-Developer-Key: i=mileskrause5200@gmail.com; a=ed25519;
- pk=QNhNjcQarqig3ColJBIEr3DYfWM1PHpP7z+6thxWXaU=
-X-Endpoint-Received: by B4 Relay for mileskrause5200@gmail.com/20260710 with auth_id=861
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783825891; l=962;
+ i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
+ bh=B6McnTUfRV8hsWOIMcBrUnK11VgMMgYLcjKB6pn/gVM=;
+ b=mDyWgsrxFJ2IVs5jLDFOaznan9Cc4Opdlt4irS6y6ULgoIlnlb/9h3nMD/U1E3GTo9rmWh2It
+ mpJ/uhHii6ZA6IFHOxX+ymr43JM1ACSigm8v9NJ/DFX9xcHfb8z8+U8
+X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
+ pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
+X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Use dev_err_probe() to simplify clock acquisition error handling and
-avoid logging probe deferral as an error.
+These patches are mainly focused on getting a flickerless boot process
+on SM8475 based devices.
 
-No functional change.
-
-Signed-off-by: Miles Krause <mileskrause5200@gmail.com>
+Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
-Built with:
-
-make O=out W=1 drivers/memory/jz4780-nemc.o
-
-To: Paul Cercueil <paul@crapouillou.net>
-To: Krzysztof Kozlowski <krzk@kernel.org>
-Cc: linux-mips@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
----
- drivers/memory/jz4780-nemc.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
-
-diff --git a/drivers/memory/jz4780-nemc.c b/drivers/memory/jz4780-nemc.c
-index 1a8161514d03..1bf17057cbf5 100644
---- a/drivers/memory/jz4780-nemc.c
-+++ b/drivers/memory/jz4780-nemc.c
-@@ -313,10 +313,9 @@ static int jz4780_nemc_probe(struct platform_device *pdev)
- 	writel(0, nemc->base + NEMC_NFCSR);
- 
- 	nemc->clk = devm_clk_get(dev, NULL);
--	if (IS_ERR(nemc->clk)) {
--		dev_err(dev, "failed to get clock\n");
--		return PTR_ERR(nemc->clk);
--	}
-+	if (IS_ERR(nemc->clk))
-+		return dev_err_probe(dev, PTR_ERR(nemc->clk),
-+				     "failed to get clock\n");
- 
- 	ret = clk_prepare_enable(nemc->clk);
- 	if (ret) {
+Changes in v2:
+- Split series in subseries (dispcc, dts, qmp, smmu)
+- Migrate to qcom_cc_driver_data (Konrad)
+- Split mdss patch into 3 patches
+- Use Fixes tag where applicable (Krzysztof)
+- Link to v1: https://patch.msgid.link/20260622-sm8450-qol-v1-0-37e2ee8df9da@proton.me
 
 ---
-base-commit: 8111c7f3723f414b7f655a3880775cbbd0e9de8e
-change-id: 20260711-jz4780-nemc-dev-err-probe-ddc559b8bba1
+Esteban Urrutia (3):
+      clk: qcom: dispcc-sm8450: Fix disp_cc_mdss_mdp_clk_src ops
+      clk: qcom: dispcc-sm8450: Migrate to qcom_cc_driver_data
+      clk: qcom: dispcc-sm8450: Keep pll types as is for SM8475
+
+ drivers/clk/qcom/dispcc-sm8450.c | 32 ++++++++++++++++++++++----------
+ 1 file changed, 22 insertions(+), 10 deletions(-)
+---
+base-commit: bee763d5f341b99cf472afeb508d4988f62a6ca1
+change-id: 20260711-sm8450-qol-dispcc-09b2951d25b0
 
 Best regards,
 --  
-Miles Krause <mileskrause5200@gmail.com>
+Esteban Urrutia <esteuwu@proton.me>
 
