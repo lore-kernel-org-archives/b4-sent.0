@@ -1,62 +1,58 @@
 From: Esteban Urrutia <esteuwu@proton.me>
-Date: Sat, 11 Jul 2026 23:10:37 -0400
-Subject: [PATCH v2 3/3] clk: qcom: dispcc-sm8450: Keep pll types as is for
- SM8475
+Subject: [PATCH v2 0/2] SM8450 QoL changes (dts)
+Date: Sat, 11 Jul 2026 23:12:26 -0400
+Message-Id: <20260711-sm8450-qol-dts-v2-0-5eb2e86468c5@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260711-sm8450-qol-dispcc-v2-3-fc1a07ac5601@proton.me>
-References: <20260711-sm8450-qol-dispcc-v2-0-fc1a07ac5601@proton.me>
-In-Reply-To: <20260711-sm8450-qol-dispcc-v2-0-fc1a07ac5601@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/02Nyw6CMBBFf4XM2jFtESis/A/DAuggNUKxU4mG8
+ O/y2Lg8ybnnzsDkLTEU0QyeJsvWDSuoUwRNVw13QmtWBiVUKjIpkXt9SQS+3BNNYNR5nFRpnSd
+ aZLCORk+t/ezBW3kwv+sHNWGrbEZnOTj/3R8nuXlHPFXqPz5JFBhnpIi0aXNTXUfvghvOPUG5L
+ MsPOvRxHboAAAA=
+X-Change-ID: 20260711-sm8450-qol-dts-8935a6b95807
 To: Bjorn Andersson <andersson@kernel.org>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney@redhat.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, Danila Tikhonov <danila@jiaxyga.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, devicetree@vger.kernel.org, 
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- Esteban Urrutia <esteuwu@proton.me>
+ Esteban Urrutia <esteuwu@proton.me>, 
+ Dmitry Baryshkov <dmitry.baryshkov@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783825891; l=1363;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783825961; l=861;
  i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
- bh=t+lNjNa2t6HZO8sfj5j22+PtdnnFFxNblbhbO/qadd0=;
- b=Bj9RlBDSAQxg8KVWCWBDlK+W6DILMgAvBoBCOjSG+SkJQ/cXRWofqsgfJAT3JPEDb+hlrE1ui
- eAx32OOZCQZAnrSdhZglC3MU5gEL+tXYESGra/ckMRRMsugNEG8+xWV
+ bh=NH/8HgVWQ4D5/65p5rKmhBa0mt3P4wWICYWvIbf6n9A=;
+ b=Fs+4F+B99IB18w/SxUmpLUkDUw6GNdE7FGLU93COwPWF5+MIDi1oBj63322RPohbuDddO626J
+ RW2imcYr+KfDc4a7qXa3oV9jLR7/WOYV2tyl77ecVv9wQt7mANPnM47
 X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
  pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
 X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-While using an OLE PLL type is correct according to downstream code, this
-results in the display flickering at boot for SM8475 because downstream
-uses EVO type configurations for both clocks, while, for some reason,
-upstream uses EVO type configurations for SM8450 and OLE type
-configurations for SM8475.
-So far, no regressions have been observed and the display no longer
-flickers.
+These patches focus on correcting some details on the DTS for the SM8450
+SoC.
 
-Fixes: 7c0e8764dc33 ("clk: qcom: dispcc-sm8450: Add SM8475 support")
 Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
- drivers/clk/qcom/dispcc-sm8450.c | 2 --
- 1 file changed, 2 deletions(-)
+Changes in v2:
+- Split series in subseries (dispcc, dts, qmp, smmu)
+- Add mode-switch patch
+- Drop applied patches
+- Drop GPU operating points patch (existing map seems to be OK)
+- Link to v1: https://patch.msgid.link/20260622-sm8450-qol-v1-0-37e2ee8df9da@proton.me
 
-diff --git a/drivers/clk/qcom/dispcc-sm8450.c b/drivers/clk/qcom/dispcc-sm8450.c
-index 07f22b5b5ee5..2c0edc23eeb1 100644
---- a/drivers/clk/qcom/dispcc-sm8450.c
-+++ b/drivers/clk/qcom/dispcc-sm8450.c
-@@ -1833,11 +1833,9 @@ static int disp_cc_sm8450_probe(struct platform_device *pdev)
- 
- 	if (of_device_is_compatible(pdev->dev.of_node, "qcom,sm8475-dispcc")) {
- 		/* Update DISPCC PLL0 */
--		disp_cc_pll0.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_LUCID_OLE];
- 		disp_cc_pll0.clkr.hw.init = &sm8475_disp_cc_pll0_init;
- 
- 		/* Update DISPCC PLL1 */
--		disp_cc_pll1.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_LUCID_OLE];
- 		disp_cc_pll1.clkr.hw.init = &sm8475_disp_cc_pll1_init;
- 
- 		disp_cc_pll0.config = &sm8475_disp_cc_pll0_config;
+---
+Esteban Urrutia (2):
+      arm64: dts: qcom: sm8450: Remove unneeded reserved memory nodes
+      arm64: dts: qcom: sm8450: Add mode-switch property to qmpphy
 
--- 
-2.55.0
+ arch/arm64/boot/dts/qcom/sm8450.dtsi | 16 +---------------
+ 1 file changed, 1 insertion(+), 15 deletions(-)
+---
+base-commit: 96615101b3caf73612f80a217abb9a0da0effbc7
+change-id: 20260711-sm8450-qol-dts-8935a6b95807
+
+Best regards,
+--  
+Esteban Urrutia <esteuwu@proton.me>
 
