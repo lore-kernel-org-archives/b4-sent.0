@@ -1,81 +1,114 @@
-From: Junye Ji <jijunye1@outlook.com>
-Date: Sun, 12 Jul 2026 13:21:34 -0700
-Subject: [PATCH] ksmbd: fix channel_key buffer overflow in multichannel
- binding
+From: Demi Marie Obenour <demiobenour@gmail.com>
+Date: Sun, 12 Jul 2026 17:03:47 -0400
+Subject: [PATCH] drivers/crypto: Mark QCE as BROKEN
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260712-ksmbd-channel-key-size-v1-1-84818ee5cdc6@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MwQqDMBAFf0X27EISQaG/Ih5i8mwX2yhZEFvx3
- 409DsPMQYosUHpUB2VsorKkArauKLx8eoIlFiZnXGs663jWzxj5dglvnvFllR+48T7YEW1noqc
- SrxmT7P9xP5znBfS6lIloAAAA
-X-Change-ID: 20260712-ksmbd-channel-key-size-3aac1be670da
-To: Namjae Jeon <linkinjeon@kernel.org>, Steve French <smfrench@gmail.com>
-Cc: Sergey Senozhatsky <senozhatsky@chromium.org>, 
- Tom Talpey <tom@talpey.com>, linux-cifs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Junye Ji <jijunye1@outlook.com>
+Message-Id: <20260712-qce-broken-v1-1-85e2bff17871@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDc0Mj3cLkVN2kovzs1DxdMwNjUwsz42RDk0QDJaCGgqLUtMwKsGHRsbW
+ 1AGU/NSRcAAAA
+X-Change-ID: 20260712-qce-broken-6035863c14a0
+To: Russell King <linux@armlinux.org.uk>, 
+ Herbert Xu <herbert@gondor.apana.org.au>, 
+ "David S. Miller" <davem@davemloft.net>
+Cc: Eric Biggers <ebiggers@kernel.org>, 
+ linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ linux-crypto@vger.kernel.org, Demi Marie Obenour <demiobenour@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783887697; l=2135;
- i=jijunye1@outlook.com; s=junyeji-20260712; h=from:subject:message-id;
- bh=EOdOm1GfTA2/I0Ll/QriqK8l0t3oPN69zpkBPVqhF8I=;
- b=wtFz03WG85r4FIne2u8SIsrrW43TFhTL9y+0rfOeujS/+Ygn6w1NGzglIuKdP0S/QDydL2ZnA
- e1BmL2L3ou1C82isleatKwsC98nn7sfNgC+SbaNkE1SE8R4ZSFiLeZ2
-X-Developer-Key: i=jijunye1@outlook.com; a=ed25519;
- pk=aKIN8hT1V9oSVC83K2q1NNzawUnDaybDxbYJltmwvGE=
-X-Endpoint-Received: by B4 Relay for jijunye1@outlook.com/junyeji-20260712 with auth_id=865
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783890232; l=3381;
+ i=demiobenour@gmail.com; s=20250731; h=from:subject:message-id;
+ bh=k+Q6SSK3eTUVW0/qFAAgRAvug1Z5DMEW0/J5hlhyk2I=;
+ b=StJ2payYfWR0FwYTFzR6HC8De01jA9tRWE3JUXyX06tFBdgjgm0QitaWN+s7htiFHYIYQb1/z
+ 6XE+JD/Ey9xB7/cy/lUdZ5n50XDF9SgpToK/5bKdImteoHvPnq/Eyay
+X-Developer-Key: i=demiobenour@gmail.com; a=ed25519;
+ pk=4iGY+ynEKxIfs+fIUK9EzsvZ44yGE0GvXLeLTPKKPhI=
+X-Endpoint-Received: by B4 Relay for demiobenour@gmail.com/20250731 with auth_id=473
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-ksmbd_decode_ntlmssp_auth_blob() and ksmbd_krb5_authenticate() can write
-keys up to CIFS_KEY_SIZE. During SMB3 multichannel binding, their
-destination is the 16-byte channel_key stack buffer, so longer keys
-overwrite the stack.
+This driver is harmful:
 
-Size the temporary buffers for the accepted maximum.
-register_session_channel() still stores a 16-byte channel key.
+- It is much slower than the CPU [1] [2].
+- It Has a history of bugs [2] [3].
+- It does not have exclusive access to the hardware [4], causing races
+  with the secure world.
+- It register its implementations with too low a cra_priority for them
+  to be actually used [5].
 
-I reproduced the stack write with 17- and 40-byte NTLM keys and a
-32-byte Kerberos subkey. On the fixed KASAN kernel, 16-, 17-, and 40-byte
-NTLM keys and 16- and 32-byte Kerberos subkeys completed 10 bindings each
-without a report. The existing length check still rejected a 41-byte
-NTLM key.
+Therefore, disable it to ensure that nobody builds it into kernels they
+intend to ship.
 
-Fixes: 4b706360ffb7 ("ksmbd: fix multichannel binding and enforce channel limit")
-Assisted-by: Codex-Security:unspecified
-Signed-off-by: Junye Ji <jijunye1@outlook.com>
+In the future, the driver will be used for processing restricted media
+content.  However, the kernel does not currently support this.  Since
+the driver will have future uses, allow building it if COMPILE_TEST is
+enabled.
+
+[1]: https://lore.kernel.org/r/20250704070322.20692-1-ebiggers@kernel.org/
+[2]: https://lore.kernel.org/r/20250615031807.GA81869@sol/
+[3]: https://lore.kernel.org/r/20260706-qce-fix-self-tests-v5-0-86f461ff1829@oss.qualcomm.com/
+[4]: https://lore.kernel.org/r/20260629-qcom-qce-cmd-descr-v20-0-56f67da84c05@oss.qualcomm.com/
+[5]: https://lore.kernel.org/r/20260524204537.GB110177@quark/
+
+Signed-off-by: Demi Marie Obenour <demiobenour@gmail.com>
 ---
-I can send the reproducers and full KASAN logs privately if needed.
----
- fs/smb/server/smb2pdu.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ arch/arm/configs/multi_v7_defconfig | 1 -
+ arch/arm64/configs/defconfig        | 1 -
+ drivers/crypto/Kconfig              | 6 +++++-
+ 3 files changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/fs/smb/server/smb2pdu.c b/fs/smb/server/smb2pdu.c
-index b73167785e87..d8a7db655043 100644
---- a/fs/smb/server/smb2pdu.c
-+++ b/fs/smb/server/smb2pdu.c
-@@ -1689,7 +1689,7 @@ static int ntlm_authenticate(struct ksmbd_work *work,
- 	struct ksmbd_conn *conn = work->conn;
- 	struct ksmbd_session *sess = work->sess;
- 	struct ksmbd_user *user;
--	char channel_key[SMB2_NTLMV2_SESSKEY_SIZE] = {};
-+	char channel_key[CIFS_KEY_SIZE] = {};
- 	char *auth_key = conn->binding ? channel_key : sess->sess_key;
- 	u64 prev_id;
- 	bool binding = conn->binding;
-@@ -1826,7 +1826,7 @@ static int krb5_authenticate(struct ksmbd_work *work,
- 	struct ksmbd_conn *conn = work->conn;
- 	struct ksmbd_session *sess = work->sess;
- 	char *in_blob, *out_blob;
--	char channel_key[SMB2_NTLMV2_SESSKEY_SIZE] = {};
-+	char channel_key[CIFS_KEY_SIZE] = {};
- 	char *auth_key = conn->binding ? channel_key : sess->sess_key;
- 	u64 prev_sess_id;
- 	bool binding = conn->binding;
+diff --git a/arch/arm/configs/multi_v7_defconfig b/arch/arm/configs/multi_v7_defconfig
+index 01e016752c4d425e59a1a499abb8df8845aa9833..13d85a0e8580000235b4dbf6d0911b4e09af199d 100644
+--- a/arch/arm/configs/multi_v7_defconfig
++++ b/arch/arm/configs/multi_v7_defconfig
+@@ -1321,7 +1321,6 @@ CONFIG_CRYPTO_DEV_ATMEL_AES=m
+ CONFIG_CRYPTO_DEV_ATMEL_TDES=m
+ CONFIG_CRYPTO_DEV_ATMEL_SHA=m
+ CONFIG_CRYPTO_DEV_MARVELL_CESA=m
+-CONFIG_CRYPTO_DEV_QCE=m
+ CONFIG_CRYPTO_DEV_ROCKCHIP=m
+ CONFIG_CRYPTO_DEV_STM32_HASH=m
+ CONFIG_CRYPTO_DEV_STM32_CRYP=m
+diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
+index 76ce07a08d5ac45bc4a4890c3f1aa7391de346fd..c624cdd122d144ad7e052f965c20c9bdcb3bd2e1 100644
+--- a/arch/arm64/configs/defconfig
++++ b/arch/arm64/configs/defconfig
+@@ -1940,7 +1940,6 @@ CONFIG_CRYPTO_AES_ARM64_CE_CCM=y
+ CONFIG_CRYPTO_DEV_SUN8I_CE=m
+ CONFIG_CRYPTO_DEV_FSL_CAAM=m
+ CONFIG_CRYPTO_DEV_FSL_DPAA2_CAAM=m
+-CONFIG_CRYPTO_DEV_QCE=m
+ CONFIG_CRYPTO_DEV_TEGRA=m
+ CONFIG_CRYPTO_DEV_ZYNQMP_AES=m
+ CONFIG_CRYPTO_DEV_ZYNQMP_SHA3=m
+diff --git a/drivers/crypto/Kconfig b/drivers/crypto/Kconfig
+index 03a8f7a1f75e878846dcf34da1265828949fbd9c..0189dfdcbbe11098ead0ea194293422a31d8fe65 100644
+--- a/drivers/crypto/Kconfig
++++ b/drivers/crypto/Kconfig
+@@ -528,13 +528,17 @@ source "drivers/crypto/intel/Kconfig"
+ 
+ config CRYPTO_DEV_QCE
+ 	tristate "Qualcomm crypto engine accelerator"
+-	depends on ARCH_QCOM || COMPILE_TEST
++	depends on (BROKEN && ARCH_QCOM) || COMPILE_TEST
+ 	depends on HAS_IOMEM
+ 	help
+ 	  This driver supports Qualcomm crypto engine accelerator
+ 	  hardware. To compile this driver as a module, choose M here. The
+ 	  module will be called qcrypto.
+ 
++	  This driver does not have exclusive access to the
++	  hardware, causing races with the secure world.  It
++	  is also slower than the CPU.
++
+ config CRYPTO_DEV_QCE_SKCIPHER
+ 	bool
+ 	depends on CRYPTO_DEV_QCE
 
 ---
-base-commit: 44696aa3a489d2baf58efa61b37833f100072bee
-change-id: 20260712-ksmbd-channel-key-size-3aac1be670da
+base-commit: e264401ce4776a288524e5b87593d4d864147115
+change-id: 20260712-qce-broken-6035863c14a0
 
 Best regards,
 -- 
-Junye Ji <jijunye1@outlook.com>
+Demi Marie Obenour <demiobenour@gmail.com>
 
