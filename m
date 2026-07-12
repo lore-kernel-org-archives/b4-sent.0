@@ -1,121 +1,165 @@
-From: Demi Marie Obenour <demiobenour@gmail.com>
-Date: Sun, 12 Jul 2026 17:31:31 -0400
-Subject: [PATCH v2] drivers/crypto: Mark QCE as BROKEN
+From: Liz Fong-Jones <lizf@honeycomb.io>
+Date: Sun, 12 Jul 2026 14:49:43 -0700
+Subject: [PATCH v2] PCI: Fix BAR resize for devices on a root bus
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260712-qce-broken-v2-1-b2dfff47f7f5@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/23MQQ6CMBCF4auQWTumU4QSV97DsIA6wESh2JpGQ
- 3p3K2uX/0vet0FgLxzgXGzgOUoQt+TQhwLs1C0jo9xyg1a6VoY0Pi1j792dF6xVWTV1aenUKci
- H1fMg7x27trknCS/nP7sd6bf+ZSIhYVOx7oeBTGPoMs6dPI7WzdCmlL4k4213pAAAAA==
-X-Change-ID: 20260712-qce-broken-6035863c14a0
-To: Russell King <linux@armlinux.org.uk>, 
- Herbert Xu <herbert@gondor.apana.org.au>, 
- "David S. Miller" <davem@davemloft.net>
-Cc: Eric Biggers <ebiggers@kernel.org>, 
- linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-crypto@vger.kernel.org, stable@vger.kernel.org, 
- Demi Marie Obenour <demiobenour@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783891900; l=3669;
- i=demiobenour@gmail.com; s=20250731; h=from:subject:message-id;
- bh=0ILgQWt/4xfgFagXe7i7e2xC/Wm1GX2PHFzASrAHbAA=;
- b=Mp3fpdk7vu3JdbLmRrd/1oUzmDupyD0xlbfW4UJTanT9//APwjIrzaT4q5OB6aOQ/DTs7ipCB
- xN5u5LuXYA0An27pmX5VnKkcXYlZ9bmm/IcvSHMr6fR12NlkFMra50M
-X-Developer-Key: i=demiobenour@gmail.com; a=ed25519;
- pk=4iGY+ynEKxIfs+fIUK9EzsvZ44yGE0GvXLeLTPKKPhI=
-X-Endpoint-Received: by B4 Relay for demiobenour@gmail.com/20250731 with auth_id=473
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260712-pci-rebar-root-bus-v2-1-a1b9107a82dc@honeycomb.io>
+X-B4-Tracking: v=1; b=H4sIAPcLVGoC/22NQQ6CMBBFr0K6dkxbRIwr72FY0HYqYyJDpkAkh
+ LsLGHcuX/L/e7NKKIRJXbNZCY6UiNsV7CFTvqnbBwKFlZXV9qxLfYLOEwi6WkCYe3BDgpgbm0c
+ 0OvpSrcdOMNJ7l96rL6fBPdH3m2lbNJR6lmmvjmbb/QLFv8BowEBRhFhq70K4XG4Ntzh5frkjs
+ aqWZfkAikjFPckAAAA=
+X-Change-ID: 20260704-pci-rebar-root-bus-f3123fe10fc7
+To: Bjorn Helgaas <bhelgaas@google.com>
+Cc: =?utf-8?q?Ilpo_J=C3=A4rvinen?= <ilpo.jarvinen@linux.intel.com>, 
+ linux-pci@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ regressions@lists.linux.dev, amd-gfx@lists.freedesktop.org, 
+ Jon Nettleton <jon@solid-run.com>, Jon Nettleton <jon.nettleton@gmail.com>, 
+ stable@vger.kernel.org, Liz Fong-Jones <lizf@honeycomb.io>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5205; i=lizf@honeycomb.io;
+ s=gpg; h=from:subject:message-id;
+ bh=vBrFJX+DbiBY8ecJBWODKdSvo4Ut8q4cPC9VjlwNcjc=;
+ b=owEBbQGS/pANAwAKAaXO1OOXra/CAcsmYgBqVAwB7q+gSFs3pjbJ2WCjri1eHLPsZId7kMQ1J
+ p1bjXQXYTaJATMEAAEKAB0WIQSfW1LPQ0gyJmoTHwelztTjl62vwgUCalQMAQAKCRClztTjl62v
+ wskVCACGL5RiL2Qa8kFTuvYchIfyxr/n5SDdn9pybXUvVdvn0iRsV96Pvpz/XrLRYFi+Nh5VmgA
+ acSW3KZLMCZV7LKMz4FWo9H5rDFvBNTER0XSsWDIf6XJoaPkGLvKrgNSZhmUL8X4L02qovZzsXf
+ x687vJ7gI5tjXEaTx3FC4ynpeUOTqgNcREE+5SIU5CpdNETIcgulHRHbtDz26T53AntzCBNr3co
+ KNg+vfs2qIkLbNuQk9sReNI4A055VddZE+b6ozKWQWM72iYXgweVG91Xz8No7Bxojx5L17z0Nl9
+ 42h6lV7TFjRRGp1/BissKIF+YYRYoxa2UpBgDVgNA+NX7sIo
+X-Developer-Key: i=lizf@honeycomb.io; a=openpgp;
+ fpr=1F7714D7EC3441D2CECC24606A3F8B00FBDDD2A4
+X-Endpoint-Received: by B4 Relay for lizf@honeycomb.io/gpg with auth_id=854
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This driver is harmful:
+pci_do_resource_release_and_resize() releases the device BARs that
+share a bridge window with the BAR being resized, but when the device
+sits directly on a root bus (pdev->bus->self == NULL) it then skips
+resource assignment entirely and returns success, leaving the BARs it
+just released unassigned (IORESOURCE_UNSET).
 
-- It is much slower than the CPU [1] [2].
-- It Has a history of bugs [2] [3].
-- It does not have exclusive access to the hardware [4], causing races
-  with the secure world.
-- It register its implementations with too low a cra_priority for them
-  to be actually used [5].
+Skipping pbus_reassign_bridge_resources() is correct in that case --
+there is no bridge window to adjust -- but the device BARs still have
+to be reassigned. Before the BAR release was consolidated into the PCI
+core, this case worked for amdgpu because the driver released the BARs
+itself and then called pci_assign_unassigned_bus_resources()
+unconditionally after the resize, which assigns unassigned device BARs
+also on a root bus. Commit db92e3fef53e ("drm/amdgpu: Remove driver
+side BAR release before resize") removed that call, so nothing assigns
+the released BARs anymore.
 
-Therefore, disable it to ensure that nobody builds it into kernels they
-intend to ship.
+This breaks amdgpu completely on the SolidRun HoneyComb LX2 (NXP
+LX2160A, arm64, ACPI), where the GPU endpoint is enumerated directly
+on the root bus of its segment (there is no root port device, so
+pdev->bus->self is NULL):
 
-In the future, the driver will be used for processing restricted media
-content.  However, the kernel does not currently support this.  Since
-the driver will have future uses, allow building it if COMPILE_TEST is
-enabled.
+  amdgpu 0004:01:00.0: BAR 0 [mem 0xa400000000-0xa40fffffff 64bit pref]: releasing
+  amdgpu 0004:01:00.0: BAR 2 [mem 0xa410000000-0xa4101fffff 64bit pref]: releasing
+  amdgpu 0004:01:00.0: sw_init of IP block <gmc_v8_0> failed -19
+  amdgpu 0004:01:00.0: amdgpu_device_ip_init failed
+  amdgpu 0004:01:00.0: Fatal error during GPU init
 
-[1]: https://lore.kernel.org/r/20250704070322.20692-1-ebiggers@kernel.org/
-[2]: https://lore.kernel.org/r/20250615031807.GA81869@sol/
-[3]: https://lore.kernel.org/r/20260706-qce-fix-self-tests-v5-0-86f461ff1829@oss.qualcomm.com/
-[4]: https://lore.kernel.org/r/20260629-qcom-qce-cmd-descr-v20-0-56f67da84c05@oss.qualcomm.com/
-[5]: https://lore.kernel.org/r/20260524204537.GB110177@quark/
+No error is logged because the resize path reports success; amdgpu
+then finds BAR0 IORESOURCE_UNSET and bails out with -ENODEV.
 
-Fixes: ec8f5d8f6f76 ("crypto: qce - Qualcomm crypto engine driver")
-Signed-off-by: Demi Marie Obenour <demiobenour@gmail.com>
+Assign the released BARs directly from the root bus windows when there
+is no upstream bridge. On failure, roll back through the existing
+restore path exactly as in the bridged case.
+
+The root bus path also had a locking bug that any fix here necessarily
+touches: the old "goto out" jumped to up_read(&pci_bus_sem) without a
+matching down_read() (as does the "goto restore" taken when
+pci_dev_res_add_to_list() fails in the release loop). Take pci_bus_sem
+before the BAR release loop so every path through the function holds
+it exactly once.
+
+Fixes: 337b1b566db0 ("PCI: Fix restoring BARs on BAR resize rollback path")
+Cc: stable@vger.kernel.org
+Link: https://bugs.launchpad.net/ubuntu/+source/linux-hwe-7.0/+bug/2159596
+Assisted-by: Claude:claude-fable-5 checkpatch
+Assisted-by: Claude:claude-sonnet-5
+Signed-off-by: Liz Fong-Jones <lizf@honeycomb.io>
+---
+#regzbot introduced: 337b1b566db0
+
+Observed at runtime on Ubuntu's linux-hwe-7.0 (7.0.0-14, broken) vs
+linux-hwe-6.17 (working), but nothing here is distro-specific: Ubuntu
+carries this code unmodified, and the affected function is identical
+to current mainline. By source inspection the regression window is
+v6.18 (old code paths) to v6.19 (consolidation). Workaround for
+affected users: amdgpu.rebar=0.
 ---
 Changes in v2:
-- Add Fixes: ec8f5d8f6f76 ("crypto: qce - Qualcomm crypto engine driver")
-- Add Cc: stable@vger.kernel.org
-- Link to v1: https://lore.kernel.org/r/20260712-qce-broken-v1-1-85e2bff17871@gmail.com
----
- arch/arm/configs/multi_v7_defconfig | 1 -
- arch/arm64/configs/defconfig        | 1 -
- drivers/crypto/Kconfig              | 6 +++++-
- 3 files changed, 5 insertions(+), 3 deletions(-)
+- Add Assisted-by tags (missing from v1; required per
+  Documentation/process/coding-assistants.rst)
+- Add Link: to the corresponding Ubuntu bug report
+- Drop the "# v6.19+" annotation on Cc: stable; unnecessary noise
+  given the Fixes: tag already lets the stable team derive applicable
+  versions (per stable-kernel-rules.rst)
+- Link to v1: https://patch.msgid.link/20260705-pci-rebar-root-bus-v1-1-55df70cbdd88@honeycomb.io
 
-diff --git a/arch/arm/configs/multi_v7_defconfig b/arch/arm/configs/multi_v7_defconfig
-index 01e016752c4d425e59a1a499abb8df8845aa9833..13d85a0e8580000235b4dbf6d0911b4e09af199d 100644
---- a/arch/arm/configs/multi_v7_defconfig
-+++ b/arch/arm/configs/multi_v7_defconfig
-@@ -1321,7 +1321,6 @@ CONFIG_CRYPTO_DEV_ATMEL_AES=m
- CONFIG_CRYPTO_DEV_ATMEL_TDES=m
- CONFIG_CRYPTO_DEV_ATMEL_SHA=m
- CONFIG_CRYPTO_DEV_MARVELL_CESA=m
--CONFIG_CRYPTO_DEV_QCE=m
- CONFIG_CRYPTO_DEV_ROCKCHIP=m
- CONFIG_CRYPTO_DEV_STM32_HASH=m
- CONFIG_CRYPTO_DEV_STM32_CRYP=m
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index 76ce07a08d5ac45bc4a4890c3f1aa7391de346fd..c624cdd122d144ad7e052f965c20c9bdcb3bd2e1 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -1940,7 +1940,6 @@ CONFIG_CRYPTO_AES_ARM64_CE_CCM=y
- CONFIG_CRYPTO_DEV_SUN8I_CE=m
- CONFIG_CRYPTO_DEV_FSL_CAAM=m
- CONFIG_CRYPTO_DEV_FSL_DPAA2_CAAM=m
--CONFIG_CRYPTO_DEV_QCE=m
- CONFIG_CRYPTO_DEV_TEGRA=m
- CONFIG_CRYPTO_DEV_ZYNQMP_AES=m
- CONFIG_CRYPTO_DEV_ZYNQMP_SHA3=m
-diff --git a/drivers/crypto/Kconfig b/drivers/crypto/Kconfig
-index 03a8f7a1f75e878846dcf34da1265828949fbd9c..0189dfdcbbe11098ead0ea194293422a31d8fe65 100644
---- a/drivers/crypto/Kconfig
-+++ b/drivers/crypto/Kconfig
-@@ -528,13 +528,17 @@ source "drivers/crypto/intel/Kconfig"
+To: Bjorn Helgaas <bhelgaas@google.com>
+Cc: Ilpo Järvinen <ilpo.jarvinen@linux.intel.com>
+Cc: linux-pci@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: regressions@lists.linux.dev
+Cc: amd-gfx@lists.freedesktop.org
+Cc: Jon Nettleton <jon@solid-run.com>
+Cc: Jon Nettleton <jon.nettleton@gmail.com>
+---
+ drivers/pci/setup-bus.c | 25 +++++++++++++++++++------
+ 1 file changed, 19 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/pci/setup-bus.c b/drivers/pci/setup-bus.c
+index c0a949f2c995..9db1951f6e5c 100644
+--- a/drivers/pci/setup-bus.c
++++ b/drivers/pci/setup-bus.c
+@@ -2397,6 +2397,8 @@ int pci_do_resource_release_and_resize(struct pci_dev *pdev, int resno, int size
+ 	if (ret)
+ 		return ret;
  
- config CRYPTO_DEV_QCE
- 	tristate "Qualcomm crypto engine accelerator"
--	depends on ARCH_QCOM || COMPILE_TEST
-+	depends on (BROKEN && ARCH_QCOM) || COMPILE_TEST
- 	depends on HAS_IOMEM
- 	help
- 	  This driver supports Qualcomm crypto engine accelerator
- 	  hardware. To compile this driver as a module, choose M here. The
- 	  module will be called qcrypto.
- 
-+	  This driver does not have exclusive access to the
-+	  hardware, causing races with the secure world.  It
-+	  is also slower than the CPU.
++	down_read(&pci_bus_sem);
 +
- config CRYPTO_DEV_QCE_SKCIPHER
- 	bool
- 	depends on CRYPTO_DEV_QCE
+ 	pci_dev_for_each_resource(pdev, r, i) {
+ 		if (i >= PCI_BRIDGE_RESOURCES)
+ 			break;
+@@ -2415,13 +2417,24 @@ int pci_do_resource_release_and_resize(struct pci_dev *pdev, int resno, int size
+ 
+ 	pci_resize_resource_set_size(pdev, resno, size);
+ 
+-	if (!bus->self)
+-		goto out;
++	if (bus->self) {
++		ret = pbus_reassign_bridge_resources(bus, res, &saved);
++		if (ret)
++			goto restore;
++	} else {
++		/*
++		 * A device on a root bus has no bridge windows to adjust.
++		 * Assign the BARs released above directly from the root bus
++		 * windows.
++		 */
++		list_for_each_entry(dev_res, &saved, list) {
++			i = pci_resource_num(pdev, dev_res->res);
+ 
+-	down_read(&pci_bus_sem);
+-	ret = pbus_reassign_bridge_resources(bus, res, &saved);
+-	if (ret)
+-		goto restore;
++			ret = pci_assign_resource(pdev, i);
++			if (ret)
++				goto restore;
++		}
++	}
+ 
+ out:
+ 	up_read(&pci_bus_sem);
 
 ---
-base-commit: e264401ce4776a288524e5b87593d4d864147115
-change-id: 20260712-qce-broken-6035863c14a0
+base-commit: 7404ce51637231382873d0b55edabc2f3b841a9d
+change-id: 20260704-pci-rebar-root-bus-f3123fe10fc7
 
 Best regards,
--- 
-Demi Marie Obenour <demiobenour@gmail.com>
+--  
+Liz Fong-Jones <lizf@honeycomb.io>
 
