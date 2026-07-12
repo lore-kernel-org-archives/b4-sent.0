@@ -1,58 +1,72 @@
-From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Sat, 11 Jul 2026 14:07:16 +0200
-Subject: [PATCH v7 5/5] can: isotp: fix state machine corruption on signal
- interruption
+From: Miles Krause <mileskrause5200@gmail.com>
+Date: Sat, 11 Jul 2026 22:47:12 -0400
+Subject: [PATCH] selftests/futex: Give circular-list nodes static storage
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260711-isotp-fixes-v7-5-f03af24d8397@hartkopp.net>
-References: <20260711-isotp-fixes-v7-0-f03af24d8397@hartkopp.net>
-In-Reply-To: <20260711-isotp-fixes-v7-0-f03af24d8397@hartkopp.net>
-To: linux-can@vger.kernel.org
-Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
- Marc Kleine-Budde <mkl@pengutronix.de>
+Message-Id: <20260711-futex-robust-list-static-nodes-v1-1-723754d75cf5@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAC8AU2oC/yWN0QrCMAxFf2Xk2UA71Km/Invo2kwj0kqTymDs3
+ 436cuHA5ZwVhCqTwKVbodKbhUs28LsO4j3kGyEnY+hdf3SD9zg3pQVrmZooPtlGNChHzCWR4OD
+ 2p2S/c3AHMMmr0szLL3Ad/yxtelDUrxW27QM1Z93EggAAAA==
+X-Change-ID: 20260711-futex-robust-list-static-nodes-7048d7119a05
+To: Thomas Gleixner <tglx@kernel.org>, Ingo Molnar <mingo@redhat.com>, 
+ Peter Zijlstra <peterz@infradead.org>, Darren Hart <dvhart@infradead.org>, 
+ Davidlohr Bueso <dave@stgolabs.net>, 
+ =?utf-8?q?Andr=C3=A9_Almeida?= <andrealmeid@igalia.com>, 
+ Shuah Khan <shuah@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
+ Miles Krause <mileskrause5200@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783771634; l=1184;
- i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=DD+TppSdrai1Iw0roPDDTFR1Usz3uK/bpVoyGPmzuq8=;
- b=jc7b3ezFetZsSxV17tdBKsIcC/KNxSgI3PMjVotmCc3AnrKh3pCWOgmD0EJEl5GxTlr5g31uu
- 0PSPr8LD4qWC49zxlCIddVeU1cGiLkiveiCe4gyzRWJ9OH9arF+VOo7
-X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
- pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
-X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783824432; l=1518;
+ i=mileskrause5200@gmail.com; s=20260710; h=from:subject:message-id;
+ bh=08Ia/Sl+qT3Kah/g1jX/YTW/yGaP4wipGXelK9b9UyI=;
+ b=W2Kn/c7e1+v/z2sVd7S9lCOi60U7HWm6XdWHZtL6PB5obvihJuqE99467wAdqOTAfQXNdBVZO
+ 95s36WHxA6+DOnaERgo5LedR5rnvi5krTmsk1Fwv9ZLSAxDK94RMoN4
+X-Developer-Key: i=mileskrause5200@gmail.com; a=ed25519;
+ pk=QNhNjcQarqig3ColJBIEr3DYfWM1PHpP7z+6thxWXaU=
+X-Endpoint-Received: by B4 Relay for mileskrause5200@gmail.com/20260710 with auth_id=861
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-If a thread blocked in isotp_sendmsg() waiting for a previous transfer
-to finish is interrupted by a signal, jumping to the cleanup labels
-incorrectly cancels active timers and forces 'so->tx.state' back to
-ISOTP_IDLE. Since this thread never owned the active transmission, it
-abruptly aborts another thread's legitimate transfer, so return the
-interruption error directly.
+The registered robust-list head has static storage but points at three
+automatic lock nodes. GCC warns about storing the address of a local
+variable in the static head when building the selftest with -Wall.
 
-Fixes: e057dd3fc20f ("can: add ISO 15765-2:2016 transport protocol")
-Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+Give the nodes static storage as well. This keeps every object in the
+circular list alive through child exit without changing the list topology.
+
+Signed-off-by: Miles Krause <mileskrause5200@gmail.com>
 ---
- net/can/isotp.c | 2 +-
+Built with:
+
+  make -C tools/testing/selftests/futex/functional clean
+  make -C tools/testing/selftests/futex/functional robust_list
+
+Tested with:
+
+  tools/testing/selftests/futex/functional/robust_list -t test_circular_list
+---
+ tools/testing/selftests/futex/functional/robust_list.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/can/isotp.c b/net/can/isotp.c
-index fdb2109d7c27..c9cd78df3a6e 100644
---- a/net/can/isotp.c
-+++ b/net/can/isotp.c
-@@ -1017,11 +1017,11 @@ static int isotp_sendmsg(struct socket *sock, struct msghdr *msg, size_t size)
- 			return -EADDRNOTAVAIL;
+diff --git a/tools/testing/selftests/futex/functional/robust_list.c b/tools/testing/selftests/futex/functional/robust_list.c
+index b3fab60181d5..2300253a7e35 100644
+--- a/tools/testing/selftests/futex/functional/robust_list.c
++++ b/tools/testing/selftests/futex/functional/robust_list.c
+@@ -523,7 +523,7 @@ TEST(test_robust_list_multiple_elements)
+ static int child_circular_list(void *arg)
+ {
+ 	static struct robust_list_head head;
+-	struct lock_struct a, b, c;
++	static struct lock_struct a, b, c;
+ 	int ret;
  
- 		/* wait for complete transmission of current pdu */
- 		err = wait_event_interruptible(so->wait, so->tx.state == ISOTP_IDLE);
- 		if (err)
--			goto err_event_drop;
-+			return err;
- 	}
- 
- 	/* new transfer: bump generation and drop any echo tag left behind
- 	 * by a previously aborted transfer
- 	 */
+ 	ret = set_list(&head);
 
--- 
-2.53.0
+---
+base-commit: 051f5d223dfc1806e216f60e4b29c1bf35f5c2d3
+change-id: 20260711-futex-robust-list-static-nodes-7048d7119a05
+
+Best regards,
+--  
+Miles Krause <mileskrause5200@gmail.com>
 
