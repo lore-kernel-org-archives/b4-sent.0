@@ -1,64 +1,96 @@
-From: Younes Akhouayri <git@younes.io>
-Date: Sun, 12 Jul 2026 15:39:46 +0200
-Subject: [PATCH] rust: drm: Fix typo in FEAT_RENDER documentation
+From: Oliver Hartkopp <socketcan@hartkopp.net>
+Subject: [PATCH v9 0/4] net: can: isotp-fixes
+Date: Sun, 12 Jul 2026 15:44:04 +0200
+Message-Id: <20260712-isotp-fixes-v9-0-137840d7f0f4@hartkopp.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260712-docs-drm-feat-render-rustdoc-typo-v1-1-c9df1cbbce4b@younes.io>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWN2wrCMBBEf6XsswttqQb8FfEhl6mNYFp2U6mU/
- ruJPi1nZji7k0IilK7NToJ31DinAt2pIT/Z9ADHUJj6tr+0pus5zF45yItH2MyCFCAsq+ZScP4
- sM8OYwdnhPJZLxbMIxrj9ftzuf9bVPeFzFdeFswp2YpOfalRtnLBlOo4vWD1XTaEAAAA=
-X-Change-ID: 20260712-docs-drm-feat-render-rustdoc-typo-e774ba45f774
-To: Danilo Krummrich <dakr@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Trevor Gross <tmgross@umich.edu>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
-Cc: dri-devel@lists.freedesktop.org, rust-for-linux@vger.kernel.org, 
- linux-kernel@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIACSaU2oC/33QTWrEMAwF4KsMXtfFlv/iWfUepQs7lhu3MAlxG
+ lqG3L3KdDNTTJYP6XsCXVnFuWBl59OVzbiWWsYLBf90Yv0QLu/IS6LMQIAVTgpe6rhMPJdvrBx
+ DcroTybqYGYlpxtuAwOvbX65f8QP7Za/YN4ZSl3H+uZ1b5b7Xbl4lF9yZIJOUyaXsX4YwL5/jN
+ D1fcGF7+QoHHIjH3jgEa7yO0ODqgCviokvRdgguidjg+oBr4hB0yFq5bGWLmwNuiEsjnU4dJJt
+ lg9sDbokHqXowyguvUoO7ey4fuSOehQoZ6L7yrsG7ew6PvCPeKw8ggkat/39+27ZfSGedWnQCA
+ AA=
+X-Change-ID: 20260710-isotp-fixes-ead7480d67bf
+To: linux-can@vger.kernel.org
+Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
+ Marc Kleine-Budde <mkl@pengutronix.de>, 
+ Nico Yip <zdi-disclosures@trendmicro.com>, sashiko-bot@kernel.org
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783863604; l=1163;
- i=git@younes.io; s=20260712; h=from:subject:message-id;
- bh=nFTIjsRD4bAT2kAKAWEo3ns3uC/V61sCbGPMbgYLnGE=;
- b=mJDT9j37Cs4ako4ZtN9x7e2ECNdlWeueLgwKLlhevca2zuiuJ861CYUDa37FTGv3U8yA3AtLM
- +tGJLO4D6O/AQOqrADyKe9FAKoYweLjol7FDYAkRMMUR1nfF0iAS3vy
-X-Developer-Key: i=git@younes.io; a=ed25519;
- pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
-X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783863845; l=3097;
+ i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
+ bh=FSrfVZrwwzE15HNSz1SU20TdCyh17KljLIlTF9UHTbE=;
+ b=NO8cVjPYDJjJe5Qz+w19UqMbK9acC3YKyA0cbydraN5d/zpfKIBJS1mTfMTX8QU7Z2N8ommAN
+ eAa46JuYYMfAPrhF07Q5GZ7TopsPNgUpIIw0vLGT49L+Y+e5gmxb0y4
+X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
+ pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
+X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Correct the spelling of "privilege" in the DRIVER_RENDER Rustdoc.
+As sashiko-bot was not able to check the second patch this bundle is
+re-posted with b4 preparation.
 
-Signed-off-by: Younes Akhouayri <git@younes.io>
+Fixed the remarks reported by sashiko-bot of V8 patchset.
+
+Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
 ---
- rust/kernel/drm/driver.rs | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v9:
+- patch 3: fix two reported issues and explain why issue 3&4 (-ECOMM sk_err
+  handling) will not be changed
+- Link to v8: https://patch.msgid.link/20260712-isotp-fixes-v8-0-c39220a4e442@hartkopp.net
 
-diff --git a/rust/kernel/drm/driver.rs b/rust/kernel/drm/driver.rs
-index 25f7e233884d..1dff81442b61 100644
---- a/rust/kernel/drm/driver.rs
-+++ b/rust/kernel/drm/driver.rs
-@@ -125,7 +125,7 @@ pub trait Driver {
-     /// Sets the `DRIVER_RENDER` feature for this driver.
-     ///
-     /// When enabled, the driver exposes `/dev/dri/renderDXX` render nodes to
--    /// userspace. The render node is an alternate low-priviledge way to access
-+    /// userspace. The render node is an alternate low-privilege way to access
-     /// the driver, which is enforced on a per-ioctl level. Userspace processes
-     /// that open the render node can only invoke ioctls explicitly listed as
-     /// usable from the render node (i.e. marked DRM_RENDER_ALLOW), whereas
+Changes in v8:
+- patch 3: properly terminate the former transmission before starting
+- patch 4: formerly patch 5 as the former patch 4 is squashed into patch 3
+- Link to v7: https://patch.msgid.link/20260711-isotp-fixes-v7-0-f03af24d8397@hartkopp.net
+
+Changes in v7:
+- patch 3: add helper so->tx_gen to monitor new ISOTP_SENDING attempts
+- patch 4: prevent missasignment of sk_err report with new so->tx_gen
+- Link to v6: https://patch.msgid.link/20260710-isotp-fixes-v6-0-a13c2539093d@hartkopp.net
+
+Changes in v6:
+- patch 2: check for rx state and tx state to be IDLE in isotp_bind() (sashiko-bot)
+- patch 3: double check rx/tx states after all hrtimer_cancel() calls (sashiko-bot)
+           move ISOTP_IDLE in err_event_drop for the same reason
+- patch 4: use READ_ONCE() to prevent compiler load tearing as remarked by sashiko-bot
+- Link to v5: https://patch.msgid.link/20260710-isotp-fixes-v5-0-15174d82d6f1@hartkopp.net
+
+Changes in v5:
+- patch 3: new: state change re-check after hrtimer_cancel()
+- patch 4: new: handle state transistion with cmpxchg()
+- Link to v4: https://patch.msgid.link/20260710-isotp-fixes-v4-0-2a4af437f61b@hartkopp.net
+
+Changes in v4:
+- patch 2: use a simpler method to reject a re-binding that can be implemented
+  inside the lock: No waitqueue waiting just exit.
+- Link to v3: https://patch.msgid.link/20260710-isotp-fixes-v3-0-08db68e27d0b@hartkopp.net
+
+Changes in v3:
+- patch 2: go back to initial idea without hard resetting the state machine and
+  timers but let these come to a graceful end. Even a new bind() at netdev
+  shutdown now leads to this graceful statemachine shutdown via the wait queue.
+- Link to v2: https://patch.msgid.link/20260710-isotp-fixes-v2-0-bc57e26594b2@hartkopp.net
+
+Changes in v2:
+- patch 2: shutdown state machine to fix sashiko-bot complains
+  Link: https://lore.kernel.org/linux-can/20260710094807.A50DD1F000E9@smtp.kernel.org/
+- Link to v1: https://patch.msgid.link/20260710-isotp-fixes-v1-0-75a1d11d7df9@hartkopp.net
 
 ---
-base-commit: 8cdeaa50eae8dad34885515f62559ee83e7e8dda
-change-id: 20260712-docs-drm-feat-render-rustdoc-typo-e774ba45f774
+Oliver Hartkopp (4):
+      can: isotp: use unconditional synchronize_rcu() in isotp_release()
+      can: isotp: fix use-after-free race with concurrent NETDEV_UNREGISTER
+      can: isotp: fix race between RX/TX timers and frame reception
+      can: isotp: fix state machine corruption on signal interruption
+
+ net/can/isotp.c | 286 +++++++++++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 220 insertions(+), 66 deletions(-)
+---
+base-commit: dd3210c47e8d3ac6b4e9141fc68acc03b38c0ba3
+change-id: 20260710-isotp-fixes-ead7480d67bf
 
 Best regards,
 --  
-Younes Akhouayri <git@younes.io>
+Oliver Hartkopp <socketcan@hartkopp.net>
 
