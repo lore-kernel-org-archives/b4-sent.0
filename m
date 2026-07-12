@@ -1,338 +1,223 @@
-From: Daan De Meyer <daan@amutable.com>
-Date: Sun, 12 Jul 2026 16:37:22 +0200
-Subject: [PATCH] btrfs: test checksum handling for clone, dedupe and swap
- on NOCOW files
+From: Markus Probst <markus.probst@posteo.de>
+Subject: [PATCH v22 0/3] rust: leds: add led classdev abstractions
+Date: Sun, 12 Jul 2026 19:26:42 +0200
+Message-Id: <20260712-rust_leds-v22-0-055b0459a079@posteo.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260712-push-kwzqkrlxwvnv-v1-1-e2466aff1bfd@amutable.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ6CMBBFr0JmbROoAolXMS6mZbAVrTgDhUi4u
- 60u389/bwMh9iRwLjZgil78KySoDgVYh+FGyneJQZe6KdtKq3EWp4bl8x74sS4xRHVErBukk+l
- aC8kbmXq//pqX659lNneyUw7lh0EhZRiDdXl6okzEsO9fT8JUfI4AAAA=
-X-Change-ID: 20260712-push-kwzqkrlxwvnv-3aa56ae4bd7c
-To: Zorro Lang <zlang@kernel.org>, Anand Jain <asj@kernel.org>, 
- Filipe Manana <fdmanana@suse.com>
-Cc: fstests@vger.kernel.org, linux-btrfs@vger.kernel.org, 
- Daan De Meyer <daan@amutable.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XT22reMAwA4Ff5yfVSLMXyoVd9jzKGD/IaWJs2S
+ cNG6btX+UtJXLMbg40/2Zalt27heeSlu728dTNv4zJOTzJB/HHp0kN4+s39mGWhQ4UEALqfX5f
+ 11x/OSx88+WITFlt8J/ufZy7j32uw+58yfxiXdZr/XWNvbl/9ikKnKJvrVZ990FAGIhrc3fO0r
+ DzdZO72KJs/S3+WXqQzCSgH8MoM3yWoL2oUKHOmoMSyCkBGO6eLbywcVobKglhylCG5yKhSY/F
+ sbWVRbMmRwGmw0VJjh8MOWD0XBrEIgbxPFDFDY/VhNdbnarG66AiWKROYxtLZ1ueSWG/Z24iWY
+ 2zvbA5LCiprdlvkJSVzTrnNsz3ZQVXWik3KeJf0YBxjY93Z1udeq0pZUBgDgVWN9YeVTFd2rys
+ MYuWPOXBTV3iqK1PnCve6KtoPIcqVoi6Nhf9buP6RKuDJ+lzn+f2zwWZ+eZUmXT+7rIth4T5Nj
+ 4/jenvZ7I3UaULZ/P4By77dX9kDAAA=
+X-Change-ID: 20251114-rust_leds-a959f7c2f7f9
+To: Lee Jones <lee@kernel.org>, Pavel Machek <pavel@kernel.org>, 
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Dave Ertman <david.m.ertman@intel.com>, Leon Romanovsky <leon@kernel.org>, 
+ Miguel Ojeda <ojeda@kernel.org>, Alex Gaynor <alex.gaynor@gmail.com>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Danilo Krummrich <dakr@kernel.org>, "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Ira Weiny <iweiny@kernel.org>, Boqun Feng <boqun@kernel.org>
+Cc: rust-for-linux@vger.kernel.org, linux-leds@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-pci@vger.kernel.org, 
+ Markus Probst <markus.probst@posteo.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783867046; l=10412;
- i=daan@amutable.com; s=20260712; h=from:subject:message-id;
- bh=FR63JniEZ2028iGYTflhLnIFarsSaqEaFzU2/w/MTqc=;
- b=M7KjmG2Z7zNcfX+s1xsWCzQH9SQyTI+IrXPYOYjoHtk8EshwvfTAK2xv+yR7hSa6De06WGy8X
- xKIs3jBhm6VDaceXNUqX/WGCsy0euz5qF59OdppNw00qYiMSnIbz6Mm
-X-Developer-Key: i=daan@amutable.com; a=ed25519;
- pk=I1l+WwrtmzRgofA5SQ1wTuJi18fjh91w+f5uRkFeZEA=
-X-Endpoint-Received: by B4 Relay for daan@amutable.com/20260712 with auth_id=868
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5754;
+ i=markus.probst@posteo.de; h=from:subject:message-id;
+ bh=H6a2W0Q838mvGLsWs1R0GK9HOt4+L45t/evmt7nYJHc=;
+ b=owEBiQJ2/ZANAwAIATR2H/jnrUPSAcsmYgBqU85U2Yew5IVXo1E6CN1DmFV/ynLbj3mlINvCq
+ vzeF94TfjiJAk8EAAEIADkWIQSCdBjE9KxY53IwxHM0dh/4561D0gUCalPOVBsUgAAAAAAEAA5t
+ YW51MiwyLjUrMS4xMiwyLDIACgkQNHYf+OetQ9JHNg//doLF2R7rK/qNJtR6JQ2jIBV973yvMmE
+ G7a1mX1Vnzokm4QjQ+BvS+TI3e50VaZJcMGqBaymGhh/OpnVFBlJnvIpaNBdLS5EH+kj0nRtqQ+
+ y1AiiSv3pOF34ib3Bi1LNEvk2gxJ3I+IZTxCFRhhQ9uyilhjlN/qnvDbSkn7lFOpUcWbArn9TGa
+ N/Fljx13rn+aARFAFlxJTmMLK/q7QBG7x+wtGUm38fb0Gea7BfguM3/8x8+HI2dUB7LF1ppl8kd
+ e2GR6F5rpN/tj3oOrrmRIC2r1Ge/a5wjC58KOrdt7Y+O3DBD4IhJOWpSmG0Hyla98ByV6MT2N8B
+ XJhqWFD4W8IJZ6kCIKa5cuy0ZNYeK2ayYwle1PaPy5atbuZGBUF54OJgNsCr/wvL0n6W8JNUvPA
+ H5hEwRDoDkFpYEgg3IAiPn/1EKef9FgZQA+QSJh4f3aqh+B6tPRGUSCcB/PpeSPGyChq8UpEybs
+ ucNu/+EcQtZIFGIBKi1FYY05DMq3ctpmJKG9dPBSGzkBWpC1NFfjdhoVu7zszt2NK+QkWWhnR5Q
+ ZR00dqffVMxixeszFftqR/a1fkGnC8ESscIVwgZ9HL9gCM/teYuaisxUZPcCQY8LOqWl42KglZX
+ BCktK+UpDdXesgWNLv1BegUHPST264dQEWlGq785yGkzKafflqeM=
+X-Developer-Key: i=markus.probst@posteo.de; a=openpgp;
+ fpr=827418C4F4AC58E77230C47334761FF8E7AD43D2
+X-Endpoint-Received: by B4 Relay for markus.probst@posteo.de/default with auth_id=680
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add two tests covering how checksummed and NOCOW extents interact.
+This patch series has previously been contained in
+https://lore.kernel.org/rust-for-linux/20251008181027.662616-1-markus.probst@posteo.de/T/#t
+which added a rust written led driver for a microcontroller via i2c.
 
-btrfs/348 verifies that checksummed extents can be cloned and
-deduplicated into NOCOW files, and that the reverse direction stays
-rejected because NOCOW extents do not have checksums.
+As the reading and writing to the i2c client via the register!
+macro has not been implemented yet [1], the patch series will only
+contain the additional abstractions required.
 
-btrfs/349 verifies that a NOCOW swap file containing a checksummed
-extent is rejected even after the checksummed source is deleted and the
-extent is no longer shared.
+This series depends on [1].
 
-Signed-off-by: Daan De Meyer <daan@amutable.com>
+[1] https://lore.kernel.org/rust-for-linux/20260525202921.124698-1-dakr@kernel.org/
+
+The following changes were made:
+* add basic led classdev abstractions to register and unregister leds
+
+* add basic led classdev abstractions to register and unregister
+  multicolor leds
+
+Changes since v21:
+* use 'init for lifetime that is only alive during initialization
+* remove unnecessary CStrExt import
+
+Changes since v20:
+* resolve Sashiko regressions:
+  * fix typo
+  * fix fwnode refcount decremented too early
+
+Changes since v19:
+* rebase on v7.2-rc1:
+  * Add `max_intensity` to `MultiColorSubLed`
+* use safer `KBox::pin_slice` instead of `KVec`
+  (len might not equal capacity)
+* explicitly call `FwNode::dec_ref` instead of dropping a reconstructed
+  `ARef<FwNode>`.
+* remove direct access to `intensity` and `brightness` fields,
+  which may get mutated concurrently by the C side
+* fix safety comments pointing to functions from previous revisions
+
+Changes since v18:
+* add inlines
+* fix invalid documentation
+* improve led color duplicate checking
+
+Changes since v17:
+* use lifetimes instead of Devres
+
+Changes since v16:
+* use for loops for duplicate checking
+
+Changes since v15:
+* fix issues reported by Sashiko bot:
+  * fix returning error not possible on `brightness_get` callback
+
+Changes since v14:
+* fix issues reported by Sashiko bot:
+  * add missing inlines
+  * add missing Sync trait bound
+  * fix vertical import layout for public export of private types
+  * fix potential memory leak, if a multicolor led device with over
+    `u32::MAX` subleds is registered
+* remove default_trigger option
+* fix missing CAST doc
+
+Changes since v13:
+* rebased onto v7.1-rc1
+
+Changes since v12:
+* add `led::DeviceBuilder::name()` and `DeviceBuilderState'
+* add `led::Color::as_c_str`
+
+Changes since v11:
+* use `led::DeviceBuilder` instead of `led::InitData`
+* use static_assert instead of const { assert!(...) }
+* restructured patches to avoid moving `led::Device` from
+  rust/kernel/led.rs to rust/kernel/led/normal.rs in the 2. patch
+
+Changes since v10:
+* allow in-place initialization of `LedOps`
+* run rustfmt for code inside `try_pin_init!`
+
+Changes since v9:
+* add missing periods in documentation
+* duplicate `led::Device` and `led::Adapter` instead of using a complex
+  trait
+* fix imports not using prelude
+* adapt to CStr change
+* documented `led::Color::Multi` and `led::Color::Rgb`
+
+Changes since v8:
+* accept `Option<ARef<Fwnode>>` in `led::InitData::fwnode()`
+* make functions in `MultiColorSubLed` const
+* drop the "rust: Add trait to convert a device reference to a bus
+  device reference" patch, as it has been picked into driver-core
+
+Changes since v7:
+* adjusted import style
+* added classdev parameter to callback functions in `LedOps`
+* implement `led::Color`
+* extend `led::InitData` with
+  - initial_brightness
+  - default_trigger
+  - default_color
+* split generic and normal led classdev abstractions up (see patch 3/4)
+* add multicolor led class device abstractions (see patch 4/4)
+* added MAINTAINERS entry
+
+Changes since v6:
+* fixed typos
+* improved documentation
+
+Changes since v5:
+* rename `IntoBusDevice` trait into `AsBusDevice`
+* fix documentation about `LedOps::BLOCKING`
+* removed dependency on i2c bindings
+* added `AsBusDevice` implementation for `platform::Device`
+* removed `device::Device` fallback implementation
+* document that `AsBusDevice` must not be used by drivers and is
+  intended for bus and class device abstractions only.
+
+Changes since v4:
+* add abstraction to convert a device reference to a bus device
+  reference
+* require the bus device as parent device and provide it in class device
+  callbacks
+* remove Pin<Vec<_>> abstraction (as not relevant for the led
+  abstractions)
+* fixed formatting in `led::Device::new`
+* fixed `LedOps::BLOCKING` did the inverse effect
+
+Changes since v3:
+* fixed kunit tests failing because of example in documentation
+
+Changes since v2:
+* return `Devres` on `led::Device` creation
+* replace KBox<T> with T in struct definition
+* increment and decrement reference-count of fwnode
+* make a device parent mandatory for led classdev creation
+* rename `led::Handler` to `led::LedOps`
+* add optional `brightness_get` function to `led::LedOps`
+* use `#[vtable]` instead of `const BLINK: bool`
+* use `Opaque::cast_from` instead of casting a pointer
+* improve documentation
+* improve support for older rust versions
+* use `&Device<Bound>` for parent
+
+Changes since v1:
+* fixed typos noticed by Onur Özkan
+
+Signed-off-by: Markus Probst <markus.probst@posteo.de>
 ---
-These tests cover the kernel series available at:
-https://lore.kernel.org/linux-btrfs/20260712-reflink-into-nodatasum-v1-0-9f27ef836073@amutable.com/
+Markus Probst (3):
+      rust: leds: add basic led classdev abstractions
+      rust: leds: add Mode trait
+      rust: leds: add multicolor classdev abstractions
+
+ MAINTAINERS                     |   8 +
+ rust/bindings/bindings_helper.h |   1 +
+ rust/kernel/led.rs              | 338 +++++++++++++++++++++++++++++
+ rust/kernel/led/multicolor.rs   | 460 ++++++++++++++++++++++++++++++++++++++++
+ rust/kernel/led/normal.rs       | 238 +++++++++++++++++++++
+ rust/kernel/lib.rs              |   1 +
+ 6 files changed, 1046 insertions(+)
 ---
- tests/btrfs/348     | 180 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/btrfs/348.out |   2 +
- tests/btrfs/349     |  73 +++++++++++++++++++++
- tests/btrfs/349.out |   2 +
- 4 files changed, 257 insertions(+)
-
-diff --git a/tests/btrfs/348 b/tests/btrfs/348
-new file mode 100755
-index 00000000..4faf994e
---- /dev/null
-+++ b/tests/btrfs/348
-@@ -0,0 +1,180 @@
-+#! /bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+# Copyright (c) 2026 Daan De Meyer. All Rights Reserved.
-+#
-+# FS QA Test 348
-+#
-+# Verify that checksummed extents can be cloned and deduplicated into NOCOW
-+# files.  The reverse direction must remain rejected because NOCOW extents do
-+# not have checksums.
-+#
-+. ./common/preamble
-+_begin_fstest auto quick clone dedupe scrub
-+
-+. ./common/reflink
-+
-+_require_scratch_reflink
-+_require_scratch_dedupe
-+_require_chattr C
-+_require_btrfs_no_nodatacow
-+_require_btrfs_no_nodatasum
-+_require_btrfs_command inspect-internal dump-tree
-+
-+_fixed_by_kernel_commit 28ce1d263f4d \
-+	"btrfs: allow reflinking from checksummed files into nodatasum files"
-+
-+filesize=128K
-+
-+write_pattern()
-+{
-+	local file=$1
-+	local pattern=$2
-+
-+	$XFS_IO_PROG -f -c "pwrite -q -S $pattern 0 $filesize" \
-+		-c fsync "$file" || _fail "failed to write $file"
-+}
-+
-+make_nocow_file()
-+{
-+	local file=$1
-+
-+	touch "$file"
-+	$CHATTR_PROG +C "$file" || _fail "failed to set NOCOW on $file"
-+}
-+
-+get_extent_bytenr()
-+{
-+	local file=$1
-+	local offset=${2:-0}
-+
-+	extent_bytenr=$(_btrfs_get_file_extent_item_bytenr "$file" "$offset")
-+	[ -n "$extent_bytenr" ] || _fail "failed to find an extent for $file"
-+}
-+
-+check_contents()
-+{
-+	local file=$1
-+	local expected=$2
-+
-+	cmp -s "$file" "$expected" || _fail "unexpected contents in $file"
-+}
-+
-+# Generate reference files outside the scratch filesystem.
-+write_pattern "$tmp.pattern_a" 0x61
-+write_pattern "$tmp.pattern_b" 0x62
-+write_pattern "$tmp.pattern_c" 0x63
-+
-+_scratch_mkfs >> $seqres.full 2>&1 || _fail "mkfs failed"
-+_scratch_mount
-+
-+# Clone a checksummed extent into a NOCOW file.
-+source=$SCRATCH_MNT/clone_source
-+dest=$SCRATCH_MNT/clone_dest
-+write_pattern "$source" 0x61
-+make_nocow_file "$dest"
-+_reflink_range "$source" 0 "$dest" 0 "$filesize" > /dev/null 2>&1
-+
-+# Remount so that the data checks below cannot be satisfied from page cache.
-+_scratch_cycle_mount
-+get_extent_bytenr "$source"
-+source_bytenr=$extent_bytenr
-+get_extent_bytenr "$dest"
-+dest_bytenr=$extent_bytenr
-+[ "$source_bytenr" = "$dest_bytenr" ] || \
-+	_fail "clone did not share the source extent"
-+check_contents "$source" "$tmp.pattern_a"
-+check_contents "$dest" "$tmp.pattern_a"
-+
-+# The first write to the NOCOW destination must COW because the shared extent
-+# has checksums.  This keeps the source data and its checksums intact.
-+write_pattern "$dest" 0x62
-+get_extent_bytenr "$dest"
-+first_write_bytenr=$extent_bytenr
-+[ "$first_write_bytenr" != "$source_bytenr" ] || \
-+	_fail "first NOCOW destination write did not COW"
-+_scratch_cycle_mount
-+check_contents "$source" "$tmp.pattern_a"
-+check_contents "$dest" "$tmp.pattern_b"
-+
-+# Once the destination has a private extent without checksums, NOCOW writes
-+# should resume modifying that extent in place.
-+write_pattern "$dest" 0x63
-+get_extent_bytenr "$dest"
-+second_write_bytenr=$extent_bytenr
-+[ "$second_write_bytenr" = "$first_write_bytenr" ] || \
-+	_fail "subsequent NOCOW destination write was not in place"
-+check_contents "$dest" "$tmp.pattern_c"
-+
-+# The checksums must also force the first write to COW after the checksummed
-+# source is deleted and the destination is the extent's only remaining owner.
-+source=$SCRATCH_MNT/unshared_source
-+dest=$SCRATCH_MNT/unshared_dest
-+write_pattern "$source" 0x61
-+make_nocow_file "$dest"
-+_reflink_range "$source" 0 "$dest" 0 "$filesize" > /dev/null 2>&1
-+get_extent_bytenr "$source"
-+source_bytenr=$extent_bytenr
-+get_extent_bytenr "$dest"
-+shared_bytenr=$extent_bytenr
-+[ "$source_bytenr" = "$shared_bytenr" ] || \
-+	_fail "clone did not share the source extent"
-+rm "$source"
-+_scratch_cycle_mount
-+write_pattern "$dest" 0x62
-+get_extent_bytenr "$dest"
-+unshared_write_bytenr=$extent_bytenr
-+[ "$unshared_write_bytenr" != "$shared_bytenr" ] || \
-+	_fail "write to unshared checksummed extent did not COW"
-+check_contents "$dest" "$tmp.pattern_b"
-+
-+# Dedupe uses the same remap preparation path and must allow the same
-+# checksummed source to NOCOW destination direction.
-+source=$SCRATCH_MNT/dedupe_source
-+dest=$SCRATCH_MNT/dedupe_dest
-+write_pattern "$source" 0x61
-+make_nocow_file "$dest"
-+$XFS_IO_PROG -f -c "pwrite -q -S 0x61 0 384K" -c fsync "$dest" || \
-+	_fail "failed to write $dest"
-+_dedupe_range "$source" 0 "$dest" "$filesize" "$filesize" \
-+	> /dev/null 2>&1
-+_scratch_cycle_mount
-+get_extent_bytenr "$source"
-+source_bytenr=$extent_bytenr
-+get_extent_bytenr "$dest" "$((128 * 1024))"
-+dest_bytenr=$extent_bytenr
-+[ "$source_bytenr" = "$dest_bytenr" ] || \
-+	_fail "dedupe did not share the source extent"
-+_compare_range "$source" 0 "$dest" "$((128 * 1024))" "$((128 * 1024))" || \
-+	_fail "deduped range contents differ from the source"
-+
-+# Scrub must handle the NOCOW destination's mixture of checksummed and
-+# non-checksummed extents without reporting an error.
-+$BTRFS_UTIL_PROG scrub start -B "$SCRATCH_MNT" >> $seqres.full 2>&1 || \
-+	_fail "scrub found errors"
-+
-+# Cloning or deduplicating a NOCOW source into a checksummed destination must
-+# not share the source extent, since it has no checksums for destination reads.
-+source=$SCRATCH_MNT/reverse_source
-+clone_dest=$SCRATCH_MNT/reverse_clone_dest
-+dedupe_dest=$SCRATCH_MNT/reverse_dedupe_dest
-+make_nocow_file "$source"
-+write_pattern "$source" 0x61
-+touch "$clone_dest"
-+_reflink_range "$source" 0 "$clone_dest" 0 "$filesize" > /dev/null 2>&1
-+get_extent_bytenr "$source"
-+source_bytenr=$extent_bytenr
-+clone_bytenr=$(_btrfs_get_file_extent_item_bytenr "$clone_dest" 0)
-+if [ -n "$clone_bytenr" ] && [ "$clone_bytenr" = "$source_bytenr" ]; then
-+	_fail "NOCOW to checksummed clone succeeded"
-+fi
-+write_pattern "$dedupe_dest" 0x61
-+_dedupe_range "$source" 0 "$dedupe_dest" 0 "$filesize" > /dev/null 2>&1
-+get_extent_bytenr "$dedupe_dest"
-+dedupe_bytenr=$extent_bytenr
-+if [ "$dedupe_bytenr" = "$source_bytenr" ]; then
-+	_fail "NOCOW to checksummed dedupe succeeded"
-+fi
-+
-+echo "Silence is golden"
-+
-+_exit 0
-diff --git a/tests/btrfs/348.out b/tests/btrfs/348.out
-new file mode 100644
-index 00000000..ec5e4701
---- /dev/null
-+++ b/tests/btrfs/348.out
-@@ -0,0 +1,2 @@
-+QA output created by 348
-+Silence is golden
-diff --git a/tests/btrfs/349 b/tests/btrfs/349
-new file mode 100755
-index 00000000..66e0935a
---- /dev/null
-+++ b/tests/btrfs/349
-@@ -0,0 +1,73 @@
-+#! /bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+# Copyright (c) 2026 Daan De Meyer. All Rights Reserved.
-+#
-+# FS QA Test 349
-+#
-+# Verify that a NOCOW swap file containing a checksummed extent is rejected
-+# even after the checksummed source is deleted and the extent is no longer
-+# shared.
-+#
-+. ./common/preamble
-+_begin_fstest auto quick clone swap
-+
-+_cleanup()
-+{
-+	cd /
-+	test -n "$swap_file" && swapoff "$swap_file" > /dev/null 2>&1
-+	rm -f $tmp.*
-+}
-+
-+. ./common/reflink
-+
-+_require_scratch_swapfile
-+_require_scratch_reflink
-+_require_chattr C
-+_require_btrfs_no_nodatacow
-+_require_btrfs_no_nodatasum
-+_require_btrfs_command inspect-internal dump-tree
-+
-+_fixed_by_kernel_commit 8e4ef5e540bb \
-+	"btrfs: reject swapfile activation if any extent has checksums"
-+_fixed_by_kernel_commit 28ce1d263f4d \
-+	"btrfs: allow reflinking from checksummed files into nodatasum files"
-+
-+_scratch_mkfs >> $seqres.full 2>&1 || _fail "mkfs failed"
-+_scratch_mount
-+
-+swap_file=$SCRATCH_MNT/swapfile
-+source=$SCRATCH_MNT/checksummed_source
-+swap_size=$((16 * 1024 * 1024))
-+extent_size=$((128 * 1024))
-+dest_offset=$((1024 * 1024))
-+
-+# First verify that this filesystem and configuration can activate a regular
-+# NOCOW swap file.
-+_format_swapfile "$swap_file" "$swap_size" >> $seqres.full
-+_swapon_file "$swap_file" >> $seqres.full 2>&1 || \
-+	_fail "failed to activate plain NOCOW swap file"
-+swapoff "$swap_file" >> $seqres.full 2>&1 || \
-+	_fail "failed to deactivate plain NOCOW swap file"
-+
-+# Replace a range away from the swap header with a checksummed extent.  Delete
-+# the source and commit the deletion so that sharedness cannot be the reason
-+# for rejecting swap activation.
-+$XFS_IO_PROG -f -c "pwrite -q -S 0x61 0 $extent_size" -c fsync "$source" || \
-+	_fail "failed to write checksummed source"
-+_reflink_range "$source" 0 "$swap_file" "$dest_offset" "$extent_size" \
-+	> /dev/null 2>&1
-+source_bytenr=$(_btrfs_get_file_extent_item_bytenr "$source" 0)
-+swap_bytenr=$(_btrfs_get_file_extent_item_bytenr "$swap_file" "$dest_offset")
-+[ -n "$source_bytenr" ] && [ "$source_bytenr" = "$swap_bytenr" ] || \
-+	_fail "checksummed extent was not cloned into the swap file"
-+rm "$source"
-+_scratch_cycle_mount
-+
-+if _swapon_file "$swap_file" >> $seqres.full 2>&1; then
-+	swapoff "$swap_file" > /dev/null 2>&1
-+	_fail "activated swap file containing a checksummed extent"
-+fi
-+
-+echo "Silence is golden"
-+
-+_exit 0
-diff --git a/tests/btrfs/349.out b/tests/btrfs/349.out
-new file mode 100644
-index 00000000..aac66ede
---- /dev/null
-+++ b/tests/btrfs/349.out
-@@ -0,0 +1,2 @@
-+QA output created by 349
-+Silence is golden
-
----
-base-commit: cac9fe2b8dc3e6dbc0c2383b9e3b4d3c1b9e7dd0
-change-id: 20260712-push-kwzqkrlxwvnv-3aa56ae4bd7c
-
-Best regards,
---  
-Daan De Meyer <daan@amutable.com>
+base-commit: 4c45e14df2f4e77982ad70d6d8e3fe750edd4c37
+change-id: 20251114-rust_leds-a959f7c2f7f9
 
