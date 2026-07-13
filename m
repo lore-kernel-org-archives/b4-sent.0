@@ -1,71 +1,74 @@
-From: Daan De Meyer <daan@amutable.com>
-Date: Mon, 13 Jul 2026 09:50:42 +0200
-Subject: [PATCH] btrfs: fix GET_SUBVOL_INFO after compat refactor
+From: Xiubo Li <xiubo.li@clyso.com>
+Subject: [PATCH 0/5] ceph: reduce mdsc->mutex contention in the cephfs
+ kclient
+Date: Mon, 13 Jul 2026 17:46:06 +0800
+Message-Id: <20260713-ceph-mdsc-mutex-optimization-v1-0-9ae5ac135c34@clyso.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260713-btrfs-get-subvol-info-fix-v1-1-a58cc55b3696@amutable.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ6CMBBFr0Jm7SSFCopXMS7aOoUabclMJSaEu
- 9vq8r389zcQ4kACl2YDpjVISLFAe2jAzSZOhOFeGDrVDerUarSZveBEGeVt1/TEEH1CHz5Ioz4
- rPXZD3x+h9AtT0b/v6+3PJXmQy/WwLqwRQssmurmql5FMDPv+BTjRLYWWAAAA
-X-Change-ID: 20260713-btrfs-get-subvol-info-fix-e93803926554
-To: Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.com>
-Cc: Qu Wenruo <wqu@suse.com>, linux-btrfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Daan De Meyer <daan@amutable.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ6CMAyA4VchPdsE0DDjqxgPa6lSk8GyDkMkv
+ LsTjt/h/1cwSSoGt2qFJB81ncaC5lQBD358CWpfDG3ddrVrzsgSBwy9MYY5y4JTzBr063MJ0Ym
+ 7eOqI+EpQFjHJU5d9f38ctpnewvn/hG37AazjqtKAAAAA
+X-Change-ID: 20260713-ceph-mdsc-mutex-optimization-7e74ab6bbc8b
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783929044; l=1552;
- i=daan@amutable.com; s=20260712; h=from:subject:message-id;
- bh=vVP53OuHGDy40sn2DMIfpWSsyPYGBiXasZnLFp5kRLU=;
- b=J1JUl3xjGtwRu5ju27HPgoCd1IqtuwlM60B54A/8pkbbE2YCre0ueg8zBojWxW8JajFX8UqiT
- YZXzfh8RG94AAn3Rj3MrSssZcQicQY9hffI0/1JT0Usju83t8353woC
-X-Developer-Key: i=daan@amutable.com; a=ed25519;
- pk=I1l+WwrtmzRgofA5SQ1wTuJi18fjh91w+f5uRkFeZEA=
-X-Endpoint-Received: by B4 Relay for daan@amutable.com/20260712 with auth_id=868
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783936018; l=1882;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=KZ+fkidvi42nkXB/n0WY+0pBKs4rc6ZQHLQ2OS9bDmc=;
+ b=tOSLa1c3pDIWGTzSE0WJDO+iw4bGsyaTGnd29rW2QWrNFVBo0Au4onNhidaPX4Bkik39YWolC
+ luajOeZQMMNAqI+ZJpUYtdXWZ1E550nP7FX5pS9vGJZz7repKWmOlev
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-btrfs_search_slot() returns a positive value when the search key does
-not exactly match an item. This is expected here, since offset 0 is used
-to find the first ROOT_BACKREF for the subvolume and the actual key has
-the parent root ID as its offset.
+This series reduces mdsc->mutex hold times from hundreds of
+microseconds to tens of microseconds on the hot request-submit and
+reply-handling paths.
 
-Before the compat ioctl refactoring, the native handler still copied the
-filled structure to userspace when the search returned 1. After the
-lookup was moved to a shared helper, both native and compat callers
-treat the positive return value as a failure and skip copy_to_user(),
-leaving BTRFS_IOC_GET_SUBVOL_INFO unusable for non-top-level
-subvolumes.
+The approach is incremental:
+  1. Convert oldest_tid to atomic64_t so that __prepare_send_request()
+     and __send_request() no longer need the mutex.
+  2. Replace the request_tree rbtree with an xarray for O(1) lookups
+     and internally-locked iteration.
+  3. Add a dedicated wait_list_lock spinlock so wait-list operations
+     no longer depend on the global mutex.
+  4. Move mdsc->mutex acquisition inside __do_request(), then release
+     it during the send phase (message construction and path walking),
+     leaving only the brief setup/teardown under the lock.
+  5. Narrow the mutex scope in replay_unsafe_requests() similarly.
 
-Reset ret after successfully validating and reading the ROOT_BACKREF so
-the helper reports success and both callers copy the result to
-userspace.
+Tested with concurrent readdir + stat on a 5000-file directory
+(32 threads).  bpftrace measurements show:
 
-Fixes: 538e5bdbc899 ("btrfs: add 32-bit compat ioctl for BTRFS_IOC_GET_SUBVOL_INFO")
-Signed-off-by: Daan De Meyer <daan@amutable.com>
+                 before         after
+  __do_request   354-2327 us    10-68 us    (34x)
+  handle_reply   51-416 us     10-32 us    (13x)
+  submit_request 89-211 us     10-41 us    (5x)
+
+No functional changes intended.
+
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
-Fix BTRFS_IOC_GET_SUBVOL_INFO for non-top-level subvolumes after the
-recent 32-bit compat ioctl refactor.
----
- fs/btrfs/ioctl.c | 1 +
- 1 file changed, 1 insertion(+)
+Xiubo Li (5):
+      ceph: convert oldest_tid to atomic64_t
+      ceph: replace the request_tree rbtree with an xarray keyed by r_tid.
+      ceph: add wait_list_lock for wait-list serialization
+      ceph: move mdsc->mutex into __do_request()
+      ceph: narrow mdsc->mutex scope in replay_unsafe_requests
 
-diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
-index 9d47d16394fc..ab6c17716026 100644
---- a/fs/btrfs/ioctl.c
-+++ b/fs/btrfs/ioctl.c
-@@ -2042,6 +2042,7 @@ static int _btrfs_ioctl_get_subvol_info(struct inode *inode,
- 			ret = -ENOENT;
- 			goto out;
- 		}
-+		ret = 0;
- 	}
- 
- out:
-
+ fs/ceph/debugfs.c    |   6 +-
+ fs/ceph/mds_client.c | 207 +++++++++++++++++++++++++++------------------------
+ fs/ceph/mds_client.h |   8 +-
+ 3 files changed, 117 insertions(+), 104 deletions(-)
 ---
-base-commit: cab9e339cfbc1a4e075e53e281dfb00391e1a6bb
-change-id: 20260713-btrfs-get-subvol-info-fix-e93803926554
+base-commit: 7e1f9e2cd2d0e780c394a4402c40e125109fec72
+change-id: 20260713-ceph-mdsc-mutex-optimization-7e74ab6bbc8b
 
 Best regards,
 --  
-Daan De Meyer <daan@amutable.com>
+Xiubo Li <xiubo.li@clyso.com>
 
