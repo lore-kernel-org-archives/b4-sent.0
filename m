@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 14 Jul 2026 01:25:46 +0800
-Subject: [PATCH RFC 08/13] mm/swap: change back to use each swap device's
- percpu cluster
+Date: Tue, 14 Jul 2026 01:25:47 +0800
+Subject: [PATCH RFC 09/13] mm/swap: add priority queue for swap device
+ allocation
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260714-swap-pcp-priq-v1-8-de9b164ed419@tencent.com>
+Message-Id: <20260714-swap-pcp-priq-v1-9-de9b164ed419@tencent.com>
 References: <20260714-swap-pcp-priq-v1-0-de9b164ed419@tencent.com>
 In-Reply-To: <20260714-swap-pcp-priq-v1-0-de9b164ed419@tencent.com>
 To: linux-mm@kvack.org
@@ -13,434 +13,682 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Chris Li <chrisl@kernel.org>, Nhat Pham <nphamcs@gmail.com>, 
  Baoquan He <baoquan.he@linux.dev>, Barry Song <baohua@kernel.org>, 
  Youngjun Park <youngjun.park@lge.com>, 
- Kemeng Shi <shikemeng@huaweicloud.com>, Kairui Song <kasong@tencent.com>, 
- Baoquan He <baoquan.he@linux.dev>
+ Kemeng Shi <shikemeng@huaweicloud.com>, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783963612; l=14705;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783963612; l=22359;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=BUmWfAPWY09foj/vlnOFDopoDyBAWhFozE81v29suzM=;
- b=rJ1L0xbAejlWMyJoHalFLIP/Kv16TAwkfpvaKsbOlF3oSfK1tekLjknjzLUgw4RUee53+L/ZQ
- 8jhSptV7X7jB3ZaP7/W+Vz6wfqFKi4cNFZkfZrjIICQMxGH4GhMRm2c
+ bh=8tS3UITEBOW10HWmX2xTNUIk0tFMGKzXLCIVKJeQmlw=;
+ b=asjL7hIUg10OcSXI2eBjFUqN4Hj13zEqZjrAQamKtY/UIj8mbASUi+TojxI+I7DnE5Kt7b89b
+ HefxciF5gYgAf3ZCBXFWPtE4LLFEkSq2bJ2GmwJixZFlPxjequ4EdbR
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Youngjun Park <youngjun.park@lge.com>
+The swap allocator uses a plist (swap_avail_head) ordered by
+priority to pick the next device.  To spread IO across devices at
+the same priority it rotates the current device to the tail via
+plist_requeue(), which requires holding swap_avail_lock.  It then
+drops the lock for the allocation attempt and reacquires to check
+whether the next device is still on the list.  This per-allocation
+lock cycling and the single global rotation point mean all CPUs
+contend for the same list head.
 
-This reverts commit 1b7e90020eb7 ("mm, swap: use percpu cluster as
-allocation fast path").
+Add a custom priority queue that groups devices into rings, ordered
+by priority to form a static array as the queue.  Devices in the
+same priority ring also form a static array.
 
-The global percpu cluster causes several issues:
+To eliminate CPU contention on a global lock, swapon_rwsem is reused
+to protect the queue.  The queue stays read-only, only swapon and
+swapoff can adjust the length of the queue or rings in it.  The
+writer lock is costly but swapon and swapoff are rare so this is
+acceptable.
 
-1) It prevents efficient swap allocation for users that do not want
-   the default swap device policy.  Because the cluster cache sits
-   above device selection, all allocation users must stick with the
-   default allocation policy.  This fundamentally conflicts with
-   incoming ideas like swap tiering.
+Since the queue is read-only, rotation is done from the reader side.
+Each CPU maintains its own iterator using a counter that counts down
+to advance to the next device in the same ring, so allocation is
+round-robin while retaining locality for clustering.  After a failed
+attempt the iterator also advances so the caller does not retry the
+same full or fragmented device.
 
-2) It can cause priority inversion.  Consider two memcgs: memcg1 can
-   access devices A and B, where A has higher priority; memcg2 can
-   only access B.  Memcg2 can write the global percpu cluster with
-   device B, then memcg1 takes B in the fast path even though
-   higher-priority device A is not exhausted.
+If a whole ring is attempted and allocation could not be made, the
+iterator falls through to the next ring.  This almost never happens
+because we always want to allocate from the device with the highest
+priority, unless that device is full.
 
-3) The fast-path / slow-path design bundled with the global per-CPU
-   cache is problematic: only the fast path uses the global cache,
-   and the slow path is forced to rotate the allocation list.  This
-   complicates consumers like discard.
+To speed up iteration when there are multiple full devices, a device
+pointer stored in the ring can be marked as unavailable so the
+iterator skips past it.  Fully used devices can mark their pointer
+as unavailable without taking the rwsem lock.  The marking is done using
+a spin lock to sync with potential writer because percpu rwsem is too
+heavy for writers, and full device transitions are more frequent and
+performance-sensitive compared to swapon and swapoff.
 
-Revert to per-device percpu clusters first.  A later patch will
-introduce new infrastructure for a high-performance global
-allocation path.
+With this patch, swap allocation should be faster and cleaner.  The
+percpu rwsem has very low overhead for the allocator, and it can now
+hold swapon_rwsem for the entire allocation loop, no longer needing to
+keep dropping and reacquiring a lock to rotate list entries.
 
-Suggested-by: Kairui Song <kasong@tencent.com>
-Co-developed-by: Baoquan He <bhe@redhat.com>
-Signed-off-by: Baoquan He <bhe@redhat.com>
-Signed-off-by: Youngjun Park <youngjun.park@lge.com>
+The old swap_avail_head plist is still maintained in parallel for
+now, updated alongside the queue in del_from_avail_list() and
+add_to_avail_list().  It will be removed once the remaining consumer
+is converted in a follow-up patch.
+
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/swap.h |  13 +++-
- mm/swapfile.c        | 184 +++++++++++++++++----------------------------------
- 2 files changed, 72 insertions(+), 125 deletions(-)
+ mm/swapfile.c | 455 ++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 398 insertions(+), 57 deletions(-)
 
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index d0c4e0ab5806..6733a8979aa2 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -246,10 +246,17 @@ enum {
- #endif
- 
- /*
-- * We keep using same cluster for rotational device so IO will be sequential.
-- * The purpose is to optimize SWAP throughput on these device.
-+ * We assign a cluster to each CPU, so each CPU can allocate swap entry from
-+ * its own cluster and swapout sequentially. The purpose is to optimize swapout
-+ * throughput.
-  */
-+struct percpu_cluster {
-+	local_lock_t lock; /* Protect the percpu_cluster above */
-+	unsigned int next[SWAP_NR_ORDERS]; /* Likely next allocation offset */
-+};
-+
- struct swap_sequential_cluster {
-+	spinlock_t lock; /* Serialize usage of global cluster */
- 	unsigned int next[SWAP_NR_ORDERS]; /* Likely next allocation offset */
- };
- 
-@@ -272,8 +279,8 @@ struct swap_info_struct {
- 					/* list of cluster that are fragmented or contented */
- 	unsigned int pages;		/* total of usable pages of swap */
- 	atomic_long_t inuse_pages;	/* number of those currently in use */
-+	struct percpu_cluster	__percpu *percpu_cluster; /* per cpu's swap location */
- 	struct swap_sequential_cluster *global_cluster; /* Use one global cluster for rotating device */
--	spinlock_t global_cluster_lock;	/* Serialize usage of global cluster */
- 	struct rb_root swap_extent_root;/* root of the swap extent rbtree */
- 	struct block_device *bdev;	/* swap device or bdev of swap file */
- 	struct file *swap_file;		/* seldom referenced */
 diff --git a/mm/swapfile.c b/mm/swapfile.c
-index df9855401a2e..b2adf36a0884 100644
+index b2adf36a0884..f6dd85968928 100644
 --- a/mm/swapfile.c
 +++ b/mm/swapfile.c
-@@ -146,18 +146,6 @@ static atomic_t proc_poll_event = ATOMIC_INIT(0);
+@@ -55,6 +55,7 @@ static bool folio_swapcache_freeable(struct folio *folio);
+ static void move_cluster(struct swap_info_struct *si,
+ 			 struct swap_cluster_info *ci, struct list_head *list,
+ 			 enum swap_cluster_flags new_flags);
++static bool get_swap_device_info(struct swap_info_struct *si);
  
- atomic_t nr_rotate_swap = ATOMIC_INIT(0);
- 
--struct percpu_swap_cluster {
--	struct swap_info_struct *si[SWAP_NR_ORDERS];
--	unsigned long offset[SWAP_NR_ORDERS];
--	local_lock_t lock;
--};
--
--static DEFINE_PER_CPU(struct percpu_swap_cluster, percpu_swap_cluster) = {
--	.si = { NULL },
--	.offset = { SWAP_ENTRY_INVALID },
--	.lock = INIT_LOCAL_LOCK(),
--};
--
- /* May return NULL on invalid type, caller must check for NULL return */
- static struct swap_info_struct *swap_type_to_info(int type)
- {
-@@ -562,9 +550,10 @@ swap_cluster_populate(struct swap_info_struct *si,
- 	 * Only cluster isolation from the allocator does table allocation.
- 	 * Swap allocator uses percpu clusters and holds the local lock.
- 	 */
--	lockdep_assert_held(&this_cpu_ptr(&percpu_swap_cluster)->lock);
--	if (!(si->flags & SWP_SOLIDSTATE))
--		lockdep_assert_held(&si->global_cluster_lock);
-+	if (si->flags & SWP_SOLIDSTATE)
-+		lockdep_assert_held(this_cpu_ptr(&si->percpu_cluster->lock));
-+	else
-+		lockdep_assert_held(&si->global_cluster->lock);
- 	lockdep_assert_held(&ci->lock);
- 
- 	if (!swap_cluster_alloc_table(ci, __GFP_HIGH | __GFP_NOMEMALLOC |
-@@ -577,9 +566,10 @@ swap_cluster_populate(struct swap_info_struct *si,
- 	 * the potential recursive allocation is limited.
- 	 */
- 	spin_unlock(&ci->lock);
--	if (!(si->flags & SWP_SOLIDSTATE))
--		spin_unlock(&si->global_cluster_lock);
--	local_unlock(&percpu_swap_cluster.lock);
-+	if (si->flags & SWP_SOLIDSTATE)
-+		local_unlock(&si->percpu_cluster->lock);
-+	else
-+		spin_unlock(&si->global_cluster->lock);
- 
- 	ret = swap_cluster_alloc_table(ci, __GFP_HIGH | __GFP_NOMEMALLOC |
- 					   GFP_KERNEL);
-@@ -592,9 +582,10 @@ swap_cluster_populate(struct swap_info_struct *si,
- 	 * could happen with ignoring the percpu cluster is fragmentation,
- 	 * which is acceptable since this fallback and race is rare.
- 	 */
--	local_lock(&percpu_swap_cluster.lock);
--	if (!(si->flags & SWP_SOLIDSTATE))
--		spin_lock(&si->global_cluster_lock);
-+	if (si->flags & SWP_SOLIDSTATE)
-+		local_lock(&si->percpu_cluster->lock);
-+	else
-+		spin_lock(&si->global_cluster->lock);
- 	spin_lock(&ci->lock);
- 
- 	if (ret) {
-@@ -700,7 +691,7 @@ static bool swap_do_scheduled_discard(struct swap_info_struct *si)
- 		ci = list_first_entry(&si->discard_clusters, struct swap_cluster_info, list);
- 		/*
- 		 * Delete the cluster from list to prepare for discard, but keep
--		 * the CLUSTER_FLAG_DISCARD flag, percpu_swap_cluster could be
-+		 * the CLUSTER_FLAG_DISCARD flag, there could be percpu_cluster
- 		 * pointing to it, or ran into by relocate_cluster.
- 		 */
- 		list_del(&ci->list);
-@@ -1032,12 +1023,10 @@ static unsigned int alloc_swap_scan_cluster(struct swap_info_struct *si,
- out:
- 	relocate_cluster(si, ci);
- 	swap_cluster_unlock(ci);
--	if (si->flags & SWP_SOLIDSTATE) {
--		this_cpu_write(percpu_swap_cluster.offset[order], next);
--		this_cpu_write(percpu_swap_cluster.si[order], si);
--	} else {
-+	if (si->flags & SWP_SOLIDSTATE)
-+		this_cpu_write(si->percpu_cluster->next[order], next);
-+	else
- 		si->global_cluster->next[order] = next;
--	}
- 	return found;
+ /*
+  * Serializes swapon/swapoff (writers) and protects the swap_info
+@@ -160,18 +161,350 @@ static struct swap_info_struct *swap_entry_to_info(swp_entry_t entry)
+ 	return swap_type_to_info(swp_type(entry));
  }
  
-@@ -1132,13 +1121,17 @@ static unsigned long cluster_alloc_swap_entry(struct swap_info_struct *si,
- 	if (order && !(si->flags & SWP_BLKDEV))
- 		return 0;
- 
--	if (!(si->flags & SWP_SOLIDSTATE)) {
-+	if (si->flags & SWP_SOLIDSTATE) {
-+		/* Fast path using per CPU cluster */
-+		local_lock(&si->percpu_cluster->lock);
-+		offset = __this_cpu_read(si->percpu_cluster->next[order]);
-+	} else {
- 		/* Serialize HDD SWAP allocation for each device. */
--		spin_lock(&si->global_cluster_lock);
-+		spin_lock(&si->global_cluster->lock);
- 		offset = si->global_cluster->next[order];
--		if (offset == SWAP_ENTRY_INVALID)
--			goto new_cluster;
++/*
++ * All available swap_info_structs are grouped by priority rings, the rings
++ * are ordered in a queue by priority (lower prio value = higher priority).
++ * The allocator iterates and rotates devices within each priority ring.
++ * When all devices in a ring are iterated, it goes to the next lower
++ * priority ring.
++ */
++struct swap_prio_ring {
++	int prio;
++	unsigned int size;
++	struct swap_info_struct *dev[] __counted_by(size);
++};
++
++/*
++ * The ring is protected by swapon_rwsem so updating it is costly. To make
++ * the allocator and other users skip full devices faster, the lowest bit of
++ * a device pointer is used to mark it disabled (temporarily unavailable).
++ * This relies on struct swap_info_struct being sufficiently
++ * aligned (guaranteed by kmalloc).
++ */
++#define SWAP_DEVICE_MASKED_SHIFT	0
++#define SWAP_DEVICE_MASKED_BIT		BIT(SWAP_DEVICE_MASKED_SHIFT)
++
++/*
++ * Serializes queue content mutations and keeps SWAP_USAGE_OFFLIST_BIT
++ * consistent with the masked state of each device pointer.
++ */
++static DEFINE_SPINLOCK(swap_queue_update_lock);
++
++/*
++ * Swap queue is protected by both swap_queue_update_lock and swapon_rwsem.
++ * Only swapon/swapoff will take the write lock, and modify the queue length
++ * or any ring's length. swap_queue_update_lock protects the content so
++ * devices can be masked easily without taking the writelock, which is heavy.
++ */
++static struct swap_prio_ring **swap_queue;
++static unsigned int swap_queue_len;
++
++/*
++ * Each CPU has its read iterator, so the queue itself will remain read
++ * only and the CPU side reader rotates by iterating the devices
++ * periodically using the counter.
++ */
++#define SWAP_ROUND_ROBIN_QUOTA SWAPFILE_CLUSTER
++struct swap_ring_iterator {
++	int offset;
++	long rr_counter;
++};
++
++struct swap_queue_reader {
++	local_lock_t lock;
++	struct swap_ring_iterator ri[];
++};
++
++static __percpu struct swap_queue_reader *swap_queue_readers;
++
++static inline bool swap_device_masked(struct swap_info_struct *si)
++{
++	return (unsigned long)si & SWAP_DEVICE_MASKED_BIT;
++}
++
++static inline struct swap_info_struct *swap_device_unmask_ptr(struct swap_info_struct *si)
++{
++	return (struct swap_info_struct *)((unsigned long)si & ~SWAP_DEVICE_MASKED_BIT);
++}
++
++static struct swap_queue_reader __percpu *swap_queue_prealloc_readers(int nr_rings, gfp_t gfp)
++{
++	struct swap_queue_reader __percpu *readers;
++
++	if (!nr_rings)
++		return NULL;
++
++	readers = __alloc_percpu_gfp(struct_size(readers, ri, nr_rings),
++				     __alignof__(*readers), gfp);
++	return readers;
++}
++
++static void swap_queue_install_readers(struct swap_queue_reader __percpu *readers)
++{
++	int ring_idx, cpu;
++	struct swap_prio_ring *ring;
++
++	free_percpu(swap_queue_readers);
++	swap_queue_readers = readers;
++	if (!readers)
++		return;
++
++	/* Distribute each CPU's swap IO fairly across devices. */
++	for_each_possible_cpu(cpu) {
++		local_lock_init(&per_cpu_ptr(readers, cpu)->lock);
++
++		for (ring_idx = 0; ring_idx < swap_queue_len; ring_idx++) {
++			ring = swap_queue[ring_idx];
++			per_cpu_ptr(readers, cpu)->ri[ring_idx].offset =
++				    cpu % ring->size;
++		}
 +	}
++}
++
++static struct swap_info_struct *swap_queue_get_device(long nr_alloc, int nr_iter)
++{
++	bool rotate = false;
++	struct swap_info_struct *si;
++	struct swap_ring_iterator *ri;
++	struct swap_prio_ring *ring;
++	unsigned int queue_idx;
++
++	if (!swap_queue_len)
++		return ERR_PTR(-ENOENT);
++
++	queue_idx = 0;
++	while (nr_iter >= swap_queue[queue_idx]->size) {
++		nr_iter -= swap_queue[queue_idx]->size;
++		if (++queue_idx >= swap_queue_len)
++			return ERR_PTR(-ENOENT);
++	}
++
++	ring = swap_queue[queue_idx];
++	local_lock(&swap_queue_readers->lock);
++	ri = this_cpu_ptr(&swap_queue_readers->ri[queue_idx]);
++	/* Rotate while iterating the ring, just not on the first try */
++	if (nr_iter)
++		rotate = true;
++	else if (ri->rr_counter < nr_alloc)
++		rotate = true;
++	else if (ri->offset >= ring->size)
++		rotate = true;
++	if (rotate) {
++		ri->offset++;
++		ri->offset %= ring->size;
++		ri->rr_counter = SWAP_ROUND_ROBIN_QUOTA;
++	}
++	ri->rr_counter -= nr_alloc;
++	si = READ_ONCE(ring->dev[ri->offset]);
++	local_unlock(&swap_queue_readers->lock);
++
++	if (swap_device_masked(si))
++		return ERR_PTR(-EBUSY);
++
++	si = swap_device_unmask_ptr(si);
++	return si;
++}
++
++static bool swap_queue_find(struct swap_info_struct *si,
++			    unsigned int *ring_idx, unsigned int *dev_idx)
++{
++	unsigned int i, j;
++	struct swap_prio_ring *ring;
++
++	lockdep_assert(lockdep_is_held(&swapon_rwsem) ||
++		       lockdep_is_held(&swap_queue_update_lock));
++
++	for (i = 0; i < swap_queue_len; i++) {
++		ring = swap_queue[i];
++		if (ring->prio != si->prio)
++			continue;
++		for (j = 0; j < ring->size; j++) {
++			if (swap_device_unmask_ptr(READ_ONCE(ring->dev[j])) != si)
++				continue;
++			*ring_idx = i;
++			*dev_idx = j;
++			return true;
++		}
++	}
++	return false;
++}
++
++static void swap_queue_mask(struct swap_info_struct *si)
++{
++	unsigned int ring_idx, dev_idx;
++
++	lockdep_assert_held(&swap_queue_update_lock);
++	if (swap_queue_find(si, &ring_idx, &dev_idx))
++		__set_bit(SWAP_DEVICE_MASKED_SHIFT,
++			  (unsigned long *)&swap_queue[ring_idx]->dev[dev_idx]);
++}
++
++static void swap_queue_unmask(struct swap_info_struct *si)
++{
++	unsigned int ring_idx, dev_idx;
++
++	lockdep_assert_held(&swap_queue_update_lock);
++	if (swap_queue_find(si, &ring_idx, &dev_idx))
++		__clear_bit(SWAP_DEVICE_MASKED_SHIFT,
++			    (unsigned long *)&swap_queue[ring_idx]->dev[dev_idx]);
++}
++
++static int swap_queue_add(struct swap_info_struct *si)
++{
++	struct swap_prio_ring **new_queue = NULL, **old_queue = NULL;
++	struct swap_queue_reader __percpu *new_readers = NULL;
++	struct swap_prio_ring *ring, *new_ring = NULL, *old_ring = NULL;
++	int prio = si->prio;
++	int i, pos, err = -ENOMEM;
++	gfp_t gfp;
++
++	/* Swap not usable here because this is swap, just reclaim cache. */
++	gfp = GFP_NOIO | __GFP_HIGH;
++	lockdep_assert_held_write(&swapon_rwsem);
++
++	for (pos = 0; pos < swap_queue_len; pos++) {
++		if (swap_queue[pos]->prio == prio)
++			goto add_to_ring;
++		if (swap_queue[pos]->prio < prio)
++			break;
++	}
++
++	/* No ring at this priority: insert a new one at pos. */
++	new_readers = swap_queue_prealloc_readers(swap_queue_len + 1, gfp);
++	if (!new_readers)
++		goto failed;
++	new_queue = kmalloc_array(swap_queue_len + 1, sizeof(*swap_queue), gfp);
++	if (!new_queue)
++		goto failed;
++	new_ring = kmalloc(struct_size(new_ring, dev, 1), gfp);
++	if (!new_ring)
++		goto failed;
++	if (!get_swap_device_info(si))
++		goto failed;
++
++	new_ring->prio = prio;
++	new_ring->size = 1;
++	new_ring->dev[0] = si;
++	for (i = 0; i < pos; i++)
++		new_queue[i] = swap_queue[i];
++	new_queue[pos] = new_ring;
++	for (i = pos; i < swap_queue_len; i++)
++		new_queue[i + 1] = swap_queue[i];
++
++	spin_lock(&swap_queue_update_lock);
++	old_queue = swap_queue;
++	swap_queue = new_queue;
++	swap_queue_len++;
++	spin_unlock(&swap_queue_update_lock);
++	kfree(old_queue);
++
++	swap_queue_install_readers(new_readers);
++	return 0;
++
++add_to_ring:
++	ring = swap_queue[pos];
++	new_ring = kmalloc(struct_size(ring, dev, ring->size + 1), gfp);
++	if (!new_ring)
++		goto failed;
++	if (!get_swap_device_info(si))
++		goto failed;
++	spin_lock(&swap_queue_update_lock);
++	memcpy(new_ring, ring, struct_size(ring, dev, ring->size));
++	new_ring->size++;
++	new_ring->dev[new_ring->size - 1] = si;
++	old_ring = swap_queue[pos];
++	swap_queue[pos] = new_ring;
++	spin_unlock(&swap_queue_update_lock);
++	kfree(old_ring);
++	return 0;
++
++failed:
++	free_percpu(new_readers);
++	kfree(new_queue);
++	kfree(new_ring);
++	return err;
++}
++
++static void swap_queue_del(struct swap_info_struct *si)
++{
++	gfp_t gfp;
++	unsigned int ring_idx, dev_idx;
++	struct swap_queue_reader __percpu *new_readers = NULL;
++	struct swap_prio_ring *ring, *new_ring = NULL, *old_ring = NULL;
++	struct swap_prio_ring **new_queue = NULL, **old_queue = NULL;
++
++	lockdep_assert_held_write(&swapon_rwsem);
++	if (!swap_queue_find(si, &ring_idx, &dev_idx)) {
++		WARN_ON(1);
++		return;
++	}
++
++	/*
++	 * To shrink memory usage, pre-allocate new smaller data before
++	 * locking. Failure is fine, swapoff will release them anyway.
++	 */
++	gfp = GFP_NOIO | __GFP_HIGH;
++	ring = swap_queue[ring_idx];
++	if (ring->size > 1)
++		new_ring = kmalloc(struct_size(ring, dev, ring->size - 1), gfp);
++	if (ring->size == 1 && swap_queue_len > 1) {
++		new_readers = swap_queue_prealloc_readers(
++					swap_queue_len - 1, gfp);
++		new_queue = kmalloc(sizeof(*swap_queue) *
++				    (swap_queue_len - 1), gfp);
++	}
++
++	spin_lock(&swap_queue_update_lock);
++	if (ring->size > 1) {
++		/* Shift trailing devices left to fill the gap. */
++		while (++dev_idx < ring->size)
++			ring->dev[dev_idx - 1] =
++				ring->dev[dev_idx];
++		ring->size--;
++		if (new_ring) {
++			memcpy(new_ring, ring,
++			       struct_size(ring, dev, ring->size));
++			old_ring = ring;
++			swap_queue[ring_idx] = new_ring;
++		}
++	} else {
++		/* Last device in this ring: remove the ring. */
++		old_ring = ring;
++		swap_queue_len--;
++		while (++ring_idx <= swap_queue_len)
++			swap_queue[ring_idx - 1] =
++				swap_queue[ring_idx];
++		if (new_queue) {
++			memcpy(new_queue, swap_queue,
++			       sizeof(*swap_queue) * swap_queue_len);
++			old_queue = swap_queue;
++			swap_queue = new_queue;
++		} else if (!swap_queue_len) {
++			old_queue = swap_queue;
++			swap_queue = NULL;
++		}
++		if (new_readers || !swap_queue_len)
++			swap_queue_install_readers(new_readers);
++	}
++	spin_unlock(&swap_queue_update_lock);
++
++	kfree(old_ring);
++	kfree(old_queue);
++	put_swap_device(si);
++}
++
+ /*
+  * Use the second highest bit of inuse_pages counter as the indicator
+- * if one swap device is on the available plist, so the atomic can
++ * if one swap device is unavailable for allocation, so the atomic can
+  * still be updated arithmetically while having special data embedded.
+  *
+  * inuse_pages counter is the only thing indicating if a device should
+- * be on avail_lists or not (except swapon / swapoff). By embedding the
+- * off-list bit in the atomic counter, updates no longer need any lock
+- * to check the list status.
++ * be in the available queue or not (except swapon / swapoff). By
++ * embedding the off-list bit in the atomic counter, updates no longer
++ * need any lock to check the list status.
+  *
+- * This bit will be set if the device is not on the plist and not
+- * usable, will be cleared if the device is on the plist.
++ * This bit will be set if the device is not in the available queue
++ * and not usable, will be cleared if the device is in the queue.
+  */
+ #define SWAP_USAGE_OFFLIST_BIT (1UL << (BITS_PER_TYPE(atomic_t) - 2))
+ #define SWAP_USAGE_COUNTER_MASK (~SWAP_USAGE_OFFLIST_BIT)
+@@ -1215,6 +1548,7 @@ static void del_from_avail_list(struct swap_info_struct *si, bool swapoff)
+ 	unsigned long pages;
  
-+	if (offset != SWAP_ENTRY_INVALID) {
- 		ci = swap_cluster_lock(si, offset);
- 		/* Cluster could have been used by another order */
- 		if (cluster_is_usable(ci, order)) {
-@@ -1152,7 +1145,6 @@ static unsigned long cluster_alloc_swap_entry(struct swap_info_struct *si,
- 			goto done;
- 	}
+ 	spin_lock(&swap_avail_lock);
++	spin_lock(&swap_queue_update_lock);
  
--new_cluster:
  	/*
- 	 * If the device need discard, prefer new cluster over nonfull
- 	 * to spread out the writes.
-@@ -1209,8 +1201,10 @@ static unsigned long cluster_alloc_swap_entry(struct swap_info_struct *si,
- 			goto done;
+ 	 * Force remove it only for swapoff. Else, take it off-list only if
+@@ -1232,9 +1566,10 @@ static void del_from_avail_list(struct swap_info_struct *si, bool swapoff)
+ 		atomic_long_or(SWAP_USAGE_OFFLIST_BIT, &si->inuse_pages);
  	}
- done:
--	if (!(si->flags & SWP_SOLIDSTATE))
--		spin_unlock(&si->global_cluster_lock);
-+	if (si->flags & SWP_SOLIDSTATE)
-+		local_unlock(&si->percpu_cluster->lock);
-+	else
-+		spin_unlock(&si->global_cluster->lock);
  
- 	return found;
++	swap_queue_mask(si);
+ 	plist_del(&si->avail_list, &swap_avail_head);
+-
+ skip:
++	spin_unlock(&swap_queue_update_lock);
+ 	spin_unlock(&swap_avail_lock);
  }
-@@ -1365,41 +1359,8 @@ static bool get_swap_device_info(struct swap_info_struct *si)
+ 
+@@ -1245,12 +1580,12 @@ static void add_to_avail_list(struct swap_info_struct *si)
+ 	unsigned long pages;
+ 
+ 	spin_lock(&swap_avail_lock);
++	spin_lock(&swap_queue_update_lock);
+ 
+ 	/*
+-	 * Add the device to the avail list if SWP_WRITEOK is set and
+-	 * SWAP_USAGE_OFFLIST_BIT is still set. Swapoff clears
+-	 * SWP_WRITEOK first, so the device won't be re-added after
+-	 * swapoff starts unless swap_device_enable resurrects it.
++	 * Mark the device as avail if SWP_WRITEOK is set. Swapoff clears
++	 * SWP_WRITEOK first, so check that first so the device won't be
++	 * re-added after swapoff started.
+ 	 */
+ 	if (!(si->flags & SWP_WRITEOK))
+ 		goto skip;
+@@ -1261,9 +1596,10 @@ static void add_to_avail_list(struct swap_info_struct *si)
+ 	val = atomic_long_fetch_and_relaxed(~SWAP_USAGE_OFFLIST_BIT, &si->inuse_pages);
+ 
+ 	/*
+-	 * When device is full and device is on the plist, only one updater will
+-	 * see (inuse_pages == si->pages) and will call del_from_avail_list. If
+-	 * that updater happen to be here, just skip adding.
++	 * When device is full and marked as available, one reader will see
++	 * (inuse_pages == si->pages) and should mark it as unavailable and
++	 * set SWAP_USAGE_OFFLIST_BIT. If that updater happens to be here, just
++	 * skip the rest.
+ 	 */
+ 	pages = si->pages;
+ 	if (val == pages) {
+@@ -1273,10 +1609,10 @@ static void add_to_avail_list(struct swap_info_struct *si)
+ 			goto skip;
+ 	}
+ 
++	swap_queue_unmask(si);
+ 	plist_add(&si->avail_list, &swap_avail_head);
+-
+ skip:
+-	spin_unlock(&swap_avail_lock);
++	spin_unlock(&swap_queue_update_lock);
+ }
+ 
+ /*
+@@ -1292,7 +1628,7 @@ static void swap_device_inuse_add(struct swap_info_struct *si,
+ 
+ 	/*
+ 	 * If device is full, and SWAP_USAGE_OFFLIST_BIT is not set,
+-	 * remove it from the plist.
++	 * mark it unavailable.
+ 	 */
+ 	inuse_pages = atomic_long_add_return_relaxed(nr_entries, &si->inuse_pages);
+ 	if (unlikely(inuse_pages == si->pages)) {
+@@ -1336,7 +1672,7 @@ static void swap_device_inuse_sub(struct swap_info_struct *si, unsigned long off
+ 
+ 	/*
+ 	 * If device is not full, and SWAP_USAGE_OFFLIST_BIT is set,
+-	 * add it back to the plist.
++	 * add it back to the available queue.
+ 	 */
+ 	inuse_pages = atomic_long_sub_return_relaxed(nr_entries, &si->inuse_pages);
+ 	if (unlikely(inuse_pages & SWAP_USAGE_OFFLIST_BIT))
+@@ -1359,41 +1695,40 @@ static bool get_swap_device_info(struct swap_info_struct *si)
  	return true;
  }
  
--/*
-- * Fast path try to get swap entries with specified order from current
-- * CPU's swap entry pool (a cluster).
-- */
--static bool swap_alloc_fast(struct folio *folio)
--{
--	unsigned int order = folio_order(folio);
--	struct swap_cluster_info *ci;
--	struct swap_info_struct *si;
--	unsigned int offset;
--
--	/*
--	 * Once allocated, swap_info_struct will never be completely freed,
--	 * so checking it's liveness by get_swap_device_info is enough.
--	 */
--	si = this_cpu_read(percpu_swap_cluster.si[order]);
--	offset = this_cpu_read(percpu_swap_cluster.offset[order]);
--	if (!si || !offset || !get_swap_device_info(si))
--		return false;
--
--	ci = swap_cluster_lock(si, offset);
--	if (cluster_is_usable(ci, order)) {
--		if (cluster_is_empty(ci))
--			offset = cluster_offset(si, ci);
--		alloc_swap_scan_cluster(si, ci, folio, offset);
--	} else {
--		swap_cluster_unlock(ci);
--	}
--
--	put_swap_device(si);
--	return folio_test_swapcache(folio);
--}
--
- /* Rotate the device and switch to a new cluster */
--static void swap_alloc_slow(struct folio *folio)
-+static void swap_alloc_entry(struct folio *folio)
+-/* Rotate the device and switch to a new cluster */
+-static void swap_alloc_entry(struct folio *folio)
++static int swap_alloc_entry(struct folio *folio)
  {
- 	struct swap_info_struct *si, *next;
+-	struct swap_info_struct *si, *next;
++	long nr_pages = folio_nr_pages(folio);
++	struct swap_info_struct *si;
++	int nr_iter, ret;
  
-@@ -1769,10 +1730,7 @@ int folio_alloc_swap(struct folio *folio)
+-	spin_lock(&swap_avail_lock);
+-start_over:
+-	plist_for_each_entry_safe(si, next, &swap_avail_head, avail_list) {
+-		/* Rotate the device and switch to a new cluster */
+-		plist_requeue(&si->avail_list, &swap_avail_head);
+-		spin_unlock(&swap_avail_lock);
+-		if (get_swap_device_info(si)) {
+-			cluster_alloc_swap_entry(si, folio);
+-			put_swap_device(si);
+-			if (folio_test_swapcache(folio))
+-				return;
+-			if (folio_test_large(folio))
+-				return;
++	percpu_down_read(&swapon_rwsem);
++	for (nr_iter = 0;; nr_iter++) {
++		si = swap_queue_get_device(nr_pages, nr_iter);
++		if (IS_ERR(si)) {
++			ret = PTR_ERR(si);
++			if (ret == -EBUSY)
++				continue;
++			break;
++		}
++		cluster_alloc_swap_entry(si, folio);
++
++		if (folio_test_swapcache(folio)) {
++			ret = 0;
++			break;
+ 		}
+ 
+-		spin_lock(&swap_avail_lock);
+ 		/*
+-		 * if we got here, it's likely that si was almost full before,
+-		 * multiple callers probably all tried to get a page from the
+-		 * same si and it filled up before we could get one; or, the si
+-		 * filled up between us dropping swap_avail_lock.
+-		 * Since we dropped the swap_avail_lock, the swap_avail_list
+-		 * may have been modified; so if next is still in the
+-		 * swap_avail_head list then try it, otherwise start over if we
+-		 * have not gotten any slots.
++		 * For large allocation, return error directly to inform the
++		 * caller to split it instead of fallback to other devices.
+ 		 */
+-		if (plist_node_empty(&next->avail_list))
+-			goto start_over;
++		if (folio_test_large(folio)) {
++			ret = -E2BIG;
++			break;
++		}
+ 	}
+-	spin_unlock(&swap_avail_lock);
++
++	percpu_up_read(&swapon_rwsem);
++	return ret;
+ }
+ 
+ /*
+@@ -1707,6 +2042,7 @@ int folio_alloc_swap(struct folio *folio)
+ {
+ 	unsigned int order = folio_order(folio);
+ 	unsigned int size = 1 << order;
++	int ret;
+ 
+ 	VM_BUG_ON_FOLIO(!folio_test_locked(folio), folio);
+ 	VM_BUG_ON_FOLIO(!folio_test_uptodate(folio), folio);
+@@ -1730,7 +2066,7 @@ int folio_alloc_swap(struct folio *folio)
  	}
  
  again:
--	local_lock(&percpu_swap_cluster.lock);
--	if (!swap_alloc_fast(folio))
--		swap_alloc_slow(folio);
--	local_unlock(&percpu_swap_cluster.lock);
-+	swap_alloc_entry(folio);
+-	swap_alloc_entry(folio);
++	ret = swap_alloc_entry(folio);
  
  	if (!order && unlikely(!folio_test_swapcache(folio))) {
  		if (swap_sync_discard())
-@@ -2161,31 +2119,14 @@ void swap_put_entries_direct(swp_entry_t entry, int nr)
-  */
- swp_entry_t swap_alloc_hibernation_slot(int type)
- {
--	struct swap_info_struct *pcp_si, *si = swap_type_to_info(type);
--	unsigned long pcp_offset, offset = SWAP_ENTRY_INVALID;
--	struct swap_cluster_info *ci;
-+	struct swap_info_struct *si = swap_type_to_info(type);
-+	unsigned long offset = SWAP_ENTRY_INVALID;
- 	swp_entry_t entry = {0};
+@@ -1742,7 +2078,7 @@ int folio_alloc_swap(struct folio *folio)
+ 		swap_cache_del_folio(folio);
  
- 	if (!si)
- 		goto fail;
+ 	if (unlikely(!folio_test_swapcache(folio)))
+-		return -ENOMEM;
++		return ret ? ret : -ENOMEM;
  
--	/*
--	 * Try the local cluster first if it matches the device. If
--	 * not, try grab a new cluster and override local cluster.
--	 */
--	local_lock(&percpu_swap_cluster.lock);
--	pcp_si = this_cpu_read(percpu_swap_cluster.si[0]);
--	pcp_offset = this_cpu_read(percpu_swap_cluster.offset[0]);
--	if (pcp_si == si && pcp_offset) {
--		ci = swap_cluster_lock(si, pcp_offset);
--		if (cluster_is_usable(ci, 0))
--			offset = alloc_swap_scan_cluster(si, ci, NULL, pcp_offset);
--		else
--			swap_cluster_unlock(ci);
--	}
--	if (!offset)
--		offset = cluster_alloc_swap_entry(si, NULL);
--	local_unlock(&percpu_swap_cluster.lock);
-+	offset = cluster_alloc_swap_entry(si, NULL);
- 	if (offset)
- 		entry = swp_entry(si->type, offset);
- 
-@@ -3052,27 +2993,6 @@ static void free_swap_cluster_info(struct swap_cluster_info *cluster_info,
- 	kvfree(cluster_info);
+ 	return 0;
  }
- 
--/*
-- * Called after swap device's reference count is dead, so
-- * neither scan nor allocation will use it.
-- */
--static void flush_percpu_swap_cluster(struct swap_info_struct *si)
--{
--	int cpu, i;
--	struct swap_info_struct **pcp_si;
--
--	for_each_possible_cpu(cpu) {
--		pcp_si = per_cpu_ptr(percpu_swap_cluster.si, cpu);
--		/*
--		 * Invalidate the percpu swap cluster cache, si->users
--		 * is dead, so no new user will point to it, just flush
--		 * any existing user.
--		 */
--		for (i = 0; i < SWAP_NR_ORDERS; i++)
--			cmpxchg(&pcp_si[i], si, NULL);
--	}
--}
--
- SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
+@@ -2913,10 +3249,9 @@ static int setup_swap_extents(struct swap_info_struct *sis,
+ static void swap_device_enable(struct swap_info_struct *si)
  {
- 	struct swap_info_struct *p = NULL;
-@@ -3136,7 +3056,6 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
- 
- 	flush_work(&p->discard_work);
- 	flush_work(&p->reclaim_work);
--	flush_percpu_swap_cluster(p);
- 
- 	destroy_swap_extents(p, p->swap_file);
- 
-@@ -3157,6 +3076,8 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
- 	percpu_up_write(&swapon_rwsem);
- 	arch_swap_invalidate_area(p->type);
- 	zswap_swapoff(p->type);
-+	free_percpu(p->percpu_cluster);
-+	p->percpu_cluster = NULL;
- 	kfree(p->global_cluster);
- 	p->global_cluster = NULL;
- 	free_swap_cluster_info(cluster_info, maxpages);
-@@ -3505,7 +3426,7 @@ static int setup_swap_clusters_info(struct swap_info_struct *si,
- {
- 	unsigned long nr_clusters = DIV_ROUND_UP(maxpages, SWAPFILE_CLUSTER);
- 	struct swap_cluster_info *cluster_info;
--	int err = -ENOMEM;
-+	int cpu, err = -ENOMEM;
- 	unsigned long i;
- 
- 	cluster_info = kvzalloc_objs(*cluster_info, nr_clusters);
-@@ -3515,13 +3436,26 @@ static int setup_swap_clusters_info(struct swap_info_struct *si,
- 	for (i = 0; i < nr_clusters; i++)
- 		spin_lock_init(&cluster_info[i].lock);
- 
--	if (!(si->flags & SWP_SOLIDSTATE)) {
-+	if (si->flags & SWP_SOLIDSTATE) {
-+		si->percpu_cluster = alloc_percpu(struct percpu_cluster);
-+		if (!si->percpu_cluster)
-+			goto err;
-+
-+		for_each_possible_cpu(cpu) {
-+			struct percpu_cluster *cluster;
-+
-+			cluster = per_cpu_ptr(si->percpu_cluster, cpu);
-+			for (i = 0; i < SWAP_NR_ORDERS; i++)
-+				cluster->next[i] = SWAP_ENTRY_INVALID;
-+			local_lock_init(&cluster->lock);
-+		}
-+	} else {
- 		si->global_cluster = kmalloc_obj(*si->global_cluster);
- 		if (!si->global_cluster)
- 			goto err;
- 		for (i = 0; i < SWAP_NR_ORDERS; i++)
- 			si->global_cluster->next[i] = SWAP_ENTRY_INVALID;
--		spin_lock_init(&si->global_cluster_lock);
-+		spin_lock_init(&si->global_cluster->lock);
+ 	percpu_down_write(&swapon_rwsem);
+-	spin_lock(&swap_avail_lock);
++	spin_lock(&swap_queue_update_lock);
+ 	si->flags |= SWP_WRITEOK;
+-	spin_unlock(&swap_avail_lock);
+-
++	spin_unlock(&swap_queue_update_lock);
+ 	atomic_long_add(si->pages, &nr_swap_pages);
+ 	total_swap_pages += si->pages;
+ 	plist_add(&si->list, &swap_active_head);
+@@ -2948,16 +3283,14 @@ static int swap_device_disable(struct swap_info_struct *si)
  	}
+ 	vm_unacct_memory(si->pages);
+ 
+-	spin_lock(&swap_avail_lock);
++	spin_lock(&swap_queue_update_lock);
+ 	si->flags &= ~SWP_WRITEOK;
+-	spin_unlock(&swap_avail_lock);
+-
++	spin_unlock(&swap_queue_update_lock);
+ 	plist_del(&si->list, &swap_active_head);
+ 	total_swap_pages -= si->pages;
+ 	atomic_long_sub(si->pages, &nr_swap_pages);
+-	percpu_up_write(&swapon_rwsem);
+-
+ 	del_from_avail_list(si, true);
++	percpu_up_write(&swapon_rwsem);
  
  	/*
-@@ -3683,11 +3617,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 
- 	maxpages = si->max;
- 
--	/* Set up the swap cluster info */
--	error = setup_swap_clusters_info(si, swap_header, maxpages);
--	if (error)
--		goto bad_swap_unlock_inode;
--
- 	if (si->bdev && bdev_stable_writes(si->bdev))
- 		si->flags |= SWP_STABLE_WRITES;
- 
-@@ -3701,6 +3630,15 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 		inced_nr_rotate_swap = true;
+ 	 * Swap allocator doesn't touch si lock, so looping through all
+@@ -3042,6 +3375,9 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
+ 		return err;
  	}
  
-+	/*
-+	 * Set up the swap cluster info. This must run after SWP_SOLIDSTATE
-+	 * is determined above, as it decides whether to allocate the per-CPU
-+	 * cluster (solid state) or the global cluster (rotational).
-+	 */
-+	error = setup_swap_clusters_info(si, swap_header, maxpages);
-+	if (error)
-+		goto bad_swap_unlock_inode;
++	percpu_down_write(&swapon_rwsem);
++	swap_queue_del(p);
 +
- 	if ((swap_flags & SWAP_FLAG_DISCARD) &&
- 	    si->bdev && bdev_max_discard_sectors(si->bdev)) {
- 		/*
-@@ -3782,6 +3720,8 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- bad_swap_unlock_inode:
- 	inode_unlock(inode);
- bad_swap:
-+	free_percpu(si->percpu_cluster);
-+	si->percpu_cluster = NULL;
- 	kfree(si->global_cluster);
- 	si->global_cluster = NULL;
- 	inode = NULL;
+ 	/*
+ 	 * Wait for swap operations protected by get/put_swap_device()
+ 	 * to complete.  Because of synchronize_rcu() here, all swap
+@@ -3062,7 +3398,6 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
+ 	if (!(p->flags & SWP_SOLIDSTATE))
+ 		atomic_dec(&nr_rotate_swap);
+ 
+-	percpu_down_write(&swapon_rwsem);
+ 	spin_lock(&p->lock);
+ 	drain_mmlist();
+ 
+@@ -3700,6 +4035,12 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
+ 
+ 	/* Sets SWP_WRITEOK, resurrect the percpu ref, expose the swap device */
+ 	percpu_ref_resurrect(&si->users);
++	percpu_down_write(&swapon_rwsem);
++	error = swap_queue_add(si);
++	percpu_up_write(&swapon_rwsem);
++	if (error)
++		goto free_swap_zswap;
++
+ 	swap_device_enable(si);
+ 
+ 	pr_info("Adding %uk swap on %s.  Priority:%d extents:%d across:%lluk %s%s%s%s\n",
 
 -- 
 2.55.0
