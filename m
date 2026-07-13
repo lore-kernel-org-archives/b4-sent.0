@@ -1,79 +1,89 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Mon, 13 Jul 2026 17:46:11 +0800
-Subject: [PATCH 5/5] ceph: narrow mdsc->mutex scope in
- replay_unsafe_requests
+From: Roman Vivchar <rva333@protonmail.com>
+Subject: [PATCH v3 0/3] nvmem: add support for the MediaTek mt6323 PMIC
+Date: Mon, 13 Jul 2026 13:11:34 +0300
+Message-Id: <20260713-mt6323-nvmem-v3-0-205c39267a24@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260713-ceph-mdsc-mutex-optimization-v1-5-9ae5ac135c34@clyso.com>
-References: <20260713-ceph-mdsc-mutex-optimization-v1-0-9ae5ac135c34@clyso.com>
-In-Reply-To: <20260713-ceph-mdsc-mutex-optimization-v1-0-9ae5ac135c34@clyso.com>
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>
-Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xiubo Li <xiubo.li@clyso.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XOTQ7CIBAF4Ks0rMXw02LqynsYFxQHixFoAImm6
+ d2FujEaly95872ZUYRgIKJ9M6MA2UTjXQl80yA1SncBbM4lI0aYIIJSbJPgjGOXLVhMVNdKopm
+ WvUblZAqgzWPljqd3jvfhCipVozZGE5MPz3Uv09r7Q2eKCR46oEOvoKOaHabgk3dWmttWeYuqn
+ 9mnsPsSWBFazQlwIcuX7Y+wLMsLAjaZiQEBAAA=
+X-Change-ID: 20260611-mt6323-nvmem-0c54a0f2fa9f
+To: Sen Chu <sen.chu@mediatek.com>, Sean Wang <sean.wang@mediatek.com>, 
+ Macpaul Lin <macpaul.lin@mediatek.com>, Lee Jones <lee@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Srinivas Kandagatla <srini@kernel.org>, 
+ Roman Vivchar <rva333@protonmail.com>
+Cc: Andy Shevchenko <andy@kernel.org>, linux-pm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
+ Ben Grisdale <bengris32@protonmail.ch>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783936018; l=1786;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=Sl0B6kcMz6zymOkZ4jEEs/Wx0+iGbBxBQZu85Is5ZhM=;
- b=eB7ysIYOWFeALC2JWW2za+3YIQIvxnyN7J24eSXDLed8j+2xYBOGtjjT0pUbRqjT14oqmBoZn
- IVZwxMEuHRUApPT1pqHUVclVKxwNbNJPg9rqcA+QT1Z/mILKfNh5CJq
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783937511; l=2150;
+ i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
+ bh=IH90joJ4tnRLkJPNr03igPwq+iiAzvjOkx7FuVR2LQo=;
+ b=e72h5C0iNaVmwv4Y/8ukUwlKHV0J3jGG7YwkrI9fJAY3hbFhInt4LTTzIWRwBD+eA4nrrKCyJ
+ v4b+mBvQsnSDumEwaC9CVp4OBK+J2/pJ3PklK3CCHhJJnfOQ8aMtO3S
+X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
+ pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
+X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-__send_request() is lockless so holding mdsc->mutex across the
-replay loop only serializes the list iteration itself.  Collect
-the unsafe list entries under the mutex, then replay them without
-it.  The old-request tree walk uses xa_for_each() which is
-internally locked.
+This series adds support for the EFUSE found on the MediaTek mt6323 PMIC.
 
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+The previous version of the series for all AUXADC, EFUSE and thermal
+drivers was split after Krzysztof's comment [1].
+    
+Tested on the MediaTek mt6572 and mt8163 SoCs (Ben), both paired with a
+mt6323.
+
+[1]: https://lore.kernel.org/linux-mediatek/20260504-mt6323-v1-0-799b58b355ff@protonmail.com/T/#med30fad67a090be35f549231336b2dec295233f6
+
+Tested-by: Ben Grisdale <bengris32@protonmail.ch> # Amazon Echo Dot (2nd Generation)
+Signed-off-by: Roman Vivchar <rva333@protonmail.com>
+
 ---
- fs/ceph/mds_client.c | 16 ++++++++++++++--
- 1 file changed, 14 insertions(+), 2 deletions(-)
+Changes in v3:
+- Rebase onto next-20260708
+- EFUSE driver: Replace 'mod_devicetable.h' with explicit 'device-id/of.h'
+- Drop MFD patch since it's applied
+- Link to v2: https://patch.msgid.link/20260617-mt6323-nvmem-v2-0-4f30e36aa0f4@protonmail.com
 
-diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
-index ef54d19ace2a..6c5a8c651d3e 100644
---- a/fs/ceph/mds_client.c
-+++ b/fs/ceph/mds_client.c
-@@ -4673,12 +4673,25 @@ static void replay_unsafe_requests(struct ceph_mds_client *mdsc,
- {
- 	struct ceph_mds_request *req, *nreq;
- 	unsigned long idx;
-+	LIST_HEAD(replay_list);
- 
- 	doutc(mdsc->fsc->client, "mds%d\n", session->s_mds);
- 
-+	/* collect unsafe requests under the mutex */
- 	mutex_lock(&mdsc->mutex);
--	list_for_each_entry_safe(req, nreq, &session->s_unsafe, r_unsafe_item)
-+	list_for_each_entry_safe(req, nreq, &session->s_unsafe,
-+				 r_unsafe_item) {
-+		ceph_mdsc_get_request(req);
-+		list_move(&req->r_unsafe_item, &replay_list);
-+	}
-+	mutex_unlock(&mdsc->mutex);
-+
-+	/* replay unsafe requests — __send_request is lockless */
-+	list_for_each_entry_safe(req, nreq, &replay_list, r_unsafe_item) {
- 		__send_request(session, req, true);
-+		list_del_init(&req->r_unsafe_item);
-+		ceph_mdsc_put_request(req);
-+	}
- 
- 	/*
- 	 * also re-send old requests when MDS enters reconnect stage. So that MDS
-@@ -4699,7 +4712,6 @@ static void replay_unsafe_requests(struct ceph_mds_client *mdsc,
- 
- 		__send_request(session, req, true);
- 	}
--	mutex_unlock(&mdsc->mutex);
- }
- 
- static int send_reconnect_partial(struct ceph_reconnect_state *recon_state)
+Changes in v2:
+- EFUSE driver: Sort variables in the mt6323_efuse_read (Andy)
+- Link to v1: https://patch.msgid.link/20260611-mt6323-nvmem-v1-0-b5e1b9ce51f2@protonmail.com
 
--- 
-2.53.0
+Changes after split:
+- EFUSE driver:
+    - Remove 'linux/errno.h' header (Andy)
+    - Remove explicit cast to u16 in the 'mt6323_efuse_read' (Andy)
+    - Reword comment in the 'mt6323_efuse_read'
+    - Capitalize MediaTek in the module description
+- Link to a previous series: https://patch.msgid.link/20260512-mt6323-v2-0-3efcba579e88@protonmail.com
+
+---
+Roman Vivchar (3):
+      dt-bindings: mfd: mediatek: mt6397: add mt6323 PMIC EFUSE
+      nvmem: add mt6323 PMIC EFUSE driver
+      ARM: dts: mediatek: mt6323: add EFUSE support
+
+ .../devicetree/bindings/mfd/mediatek,mt6397.yaml   | 21 ++++++
+ MAINTAINERS                                        |  5 ++
+ arch/arm/boot/dts/mediatek/mt6323.dtsi             |  4 +
+ drivers/nvmem/Kconfig                              | 11 +++
+ drivers/nvmem/Makefile                             |  2 +
+ drivers/nvmem/mt6323-efuse.c                       | 85 ++++++++++++++++++++++
+ 6 files changed, 128 insertions(+)
+---
+base-commit: b9810cd75b9fb56a3425d391cba3f608502bd474
+change-id: 20260611-mt6323-nvmem-0c54a0f2fa9f
+
+Best regards,
+--  
+Roman Vivchar <rva333@protonmail.com>
 
