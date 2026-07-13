@@ -1,104 +1,114 @@
-From: Miles Krause <mileskrause5200@gmail.com>
-Date: Sun, 12 Jul 2026 21:07:11 -0400
-Subject: [PATCH] auxdisplay: panel: Remove unused callback binding code
+From: HaoNing Cheng <Haoning.CHENG@cn.bosch.com>
+Subject: [PATCH v5 0/2] thermal: imx: Add calibration offset support
+Date: Mon, 13 Jul 2026 13:51:32 +0800
+Message-Id: <20260713-b4-symana21-11221-imx-thermal-support-upstream-6-18-v5-0-69405c306c6b@cn.bosch.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260712-panel-remove-dead-callback-v1-1-1091ce75b8d5@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAD46VGoC/yXMQQ6CMBAF0KuQWTsJbQATr2JcTNuPjtZCWiUmh
- LtbdPk2b6WCrCh0albKWLTolCrMoSF/k3QFa6gm29qhPRrLsyREznhOCzhAAnuJ0Yl/cDc4a3u
- DboSjGswZo35++fnyd3m7O/xrH2nbvs/cG1R+AAAA
-X-Change-ID: 20260712-panel-remove-dead-callback-46b2251e4feb
-To: Willy Tarreau <willy@haproxy.com>, 
- Ksenija Stanojevic <ksenija.stanojevic@gmail.com>, 
- Andy Shevchenko <andy@kernel.org>, 
- Geert Uytterhoeven <geert@linux-m68k.org>
-Cc: linux-kernel@vger.kernel.org, Miles Krause <mileskrause5200@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAOR8VGoC/63OQW7DIBAF0KtErDsRYGwgq96j6gLwUFMVY4FtJ
+ Yp89+JkU1VZtdmM9KWvef9KCuaAhZwOV5JxDSWksYb25UDcYMYPhNDXTDjlHZVUgxVQLtGMhjN
+ gjNcb4hnmAXM0X1CWaUp5hmUqc0YToQOmwFAltBI9WtmR+nnK6MP5pr6933NZ7Ce6eaf2xhDKn
+ PLlNmtle+9/C1YGFCj1SnnBdUPtqxuPNhU3HF2KZB+x8icw/M54yYVukYsHTPODYfRvTFOZ3mr
+ vuBbSte0DRjyBEZVhHr2WPXOypb+Ybdu+AXn8fc1AAgAA
+X-Change-ID: 20260709-b4-symana21-11221-imx-thermal-support-upstream-6-18-a084984deb76
+To: "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Haoning CHENG <Haoning.CHENG@cn.bosch.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783904830; l=2301;
- i=mileskrause5200@gmail.com; s=20260710; h=from:subject:message-id;
- bh=1uSWTROps+iQmdfCIRsMqqO+F3wcn3YcqYKwgjFvpQk=;
- b=8iHVN1Ks24K+sQAWiijIGZp9d1fwcePl1Is+19IeoxYL2isnr82SUKl8TnY+oQ+MGjD8GrXR4
- rE7iFu/6ZzcBeIkgjpKYXvuiT5L5QjACQfeSWRwAJhkYNIEFgPdrRl+
-X-Developer-Key: i=mileskrause5200@gmail.com; a=ed25519;
- pk=QNhNjcQarqig3ColJBIEr3DYfWM1PHpP7z+6thxWXaU=
-X-Endpoint-Received: by B4 Relay for mileskrause5200@gmail.com/20260710 with auth_id=861
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783921893; l=3635;
+ i=Haoning.CHENG@cn.bosch.com; s=20260709; h=from:subject:message-id;
+ bh=x1ouoMDXjU9zrlMtqhB/DizDSIZDHZUmljV37kwXVU8=;
+ b=zEORCPgnvUZJmstpHx4Sb+lJ9RE/h7bvLodmGCXmDhdPF+ad7u9dHdDFAFm1lF/kszuI5Zvur
+ CaSaM+zJvKKAYOHN/P8zs0eK16+acc9x2JWXiVhRQH4oZ7RDebXmdzB
+X-Developer-Key: i=Haoning.CHENG@cn.bosch.com; a=ed25519;
+ pk=glQGwad/fosRS5gZUJYbLDPPLGe7rFTrTV2VxY/ySdc=
+X-Endpoint-Received: by B4 Relay for Haoning.CHENG@cn.bosch.com/20260709 with auth_id=860
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-panel_bind_callback() has been compiled out with #if 0 since it was
-introduced and has no callers. Remove the dead function to reduce
-maintenance burden.
+Some i.MX boards need a small per-design correction to align the
+reported CPU temperature with board-level measurements. This series
+adds an optional DT property to specify such a calibration offset
+and implements the corresponding support in the imx_thermal driver.
 
-No functional change.
+Patch 1 documents the new fsl,temp-calibration-offset-millicelsius
+property in the i.MX thermal DT binding.
 
-Signed-off-by: Miles Krause <mileskrause5200@gmail.com>
+Patch 2 reads this property in the imx_thermal driver and applies
+the offset to the i.MX6/6SX/7D calibration formulas. When the
+property is absent, the default offset remains 0, preserving the
+current behaviour.
+
+Signed-off-by: Haoning CHENG <Haoning.CHENG@cn.bosch.com>
 ---
-Compile-tested on x86_64 with:
+Changes in v5:
+- Move calibration offset application out of c2 initialization, instead
+  apply it in imx_get_temp(), imx_set_alarm_temp() and imx_set_panic_temp()
+  for consistent style across i.MX6 and i.MX7D
+- Subtract calibration offset from alarm_temp before the if-else block in
+  imx_set_alarm_temp(), simplifying both SoC branches (Frank's suggestion)
+- Link to v4: https://patch.msgid.link/20260710-b4-symana21-11221-imx-thermal-support-upstream-6-18-v4-0-1fef97d1c750@cn.bosch.com
 
-  make O=out allmodconfig
-  make O=out W=1 drivers/auxdisplay/panel.o
+Changes in v4:
+- dt-bindings: drop maxItems to allow minimum/maximum constraints for
+  temp-calibration-offset-millicelsius
+- Link to v3: https://patch.msgid.link/20260710-b4-symana21-11221-imx-thermal-support-upstream-6-18-v3-0-db9fc2947c55@cn.bosch.com
 
-Sparse-tested with:
+Changes in v3:
+- dt-bindings: add minimum/maximum (-28580/+28580) for
+  temp-calibration-offset-millicelsius, as suggested by Conor Dooley
+- Link to v2: https://patch.msgid.link/20260709-b4-symana21-11221-imx-thermal-support-upstream-6-18-v2-0-00ff72495e24@cn.bosch.com
 
-  make O=out C=2 CHECK=sparse drivers/auxdisplay/panel.o
----
- drivers/auxdisplay/panel.c | 37 -------------------------------------
- 1 file changed, 37 deletions(-)
+Changes in v2:
+- dt-bindings: Removed explicit `$ref: /schemas/types.yaml#/definitions/int32`
+  for fsl,temp-calibration-offset-millicelsius; the `-millicelsius` suffix
+  already resolves to int32-array via property-units.yaml (Rob).
+- dt-bindings: Fixed example indentation.
+- driver: Replaced C integer division (/) with DIV_ROUND_CLOSEST() in
+  imx_set_alarm_temp() to prevent off-by-one alarm threshold mismatch that
+  could cause IRQ storms on i.MX7D.
+- driver: Added clamp() bounds check for alarm_value [0, 0x1ff] to avoid
+  corrupting adjacent register fields (PANIC_ALARM).
+- Link to v1: https://patch.msgid.link/20260709-b4-symana21-11221-imx-thermal-support-upstream-6-18-v1-0-00f88f42930b@cn.bosch.com
 
-diff --git a/drivers/auxdisplay/panel.c b/drivers/auxdisplay/panel.c
-index d8854cf15268..a7dfc53157bc 100644
---- a/drivers/auxdisplay/panel.c
-+++ b/drivers/auxdisplay/panel.c
-@@ -1450,43 +1450,6 @@ static struct logical_input *panel_bind_key(const char *name, const char *press,
- 	return key;
- }
- 
--#if 0
--/* tries to bind a callback function to the signal name <name>. The function
-- * <press_fct> will be called with the <press_data> arg when the signal is
-- * activated, and so on for <release_fct>/<release_data>
-- * Returns the pointer to the new signal if ok, NULL if the signal could not
-- * be bound.
-- */
--static struct logical_input *panel_bind_callback(char *name,
--						 void (*press_fct)(int),
--						 int press_data,
--						 void (*release_fct)(int),
--						 int release_data)
--{
--	struct logical_input *callback;
--
--	callback = kmalloc(sizeof(*callback), GFP_KERNEL);
--	if (!callback)
--		return NULL;
--
--	memset(callback, 0, sizeof(struct logical_input));
--	if (!input_name2mask(name, &callback->mask, &callback->value,
--			     &scan_mask_i, &scan_mask_o))
--		return NULL;
--
--	callback->type = INPUT_TYPE_STD;
--	callback->state = INPUT_ST_LOW;
--	callback->rise_time = 1;
--	callback->fall_time = 1;
--	callback->u.std.press_fct = press_fct;
--	callback->u.std.press_data = press_data;
--	callback->u.std.release_fct = release_fct;
--	callback->u.std.release_data = release_data;
--	list_add(&callback->list, &logical_inputs);
--	return callback;
--}
--#endif
--
- static void keypad_init(void)
- {
- 	int keynum;
+To: "Rafael J. Wysocki" <rafael@kernel.org>
+To: Daniel Lezcano <daniel.lezcano@linaro.org>
+To: Zhang Rui <rui.zhang@intel.com>
+To: Lukasz Luba <lukasz.luba@arm.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Shawn Guo <shawnguo@kernel.org>
+To: Sascha Hauer <s.hauer@pengutronix.de>
+To: Pengutronix Kernel Team <kernel@pengutronix.de>
+To: Fabio Estevam <festevam@gmail.com>
+Cc: linux-pm@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: imx@lists.linux.dev
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-kernel@vger.kernel.org
 
 ---
-base-commit: 30a41cf47aecb4dafb81183b5e046e93498773ff
-change-id: 20260712-panel-remove-dead-callback-46b2251e4feb
+HaoNing Cheng (2):
+      dt-bindings: thermal: imx: Document calibration offset property
+      thermal/drivers/imx: Add calibration offset support
+
+ .../devicetree/bindings/thermal/imx-thermal.yaml         |  9 +++++++++
+ drivers/thermal/imx_thermal.c                            | 16 +++++++++++++---
+ 2 files changed, 22 insertions(+), 3 deletions(-)
+---
+base-commit: c50a940dcde35c647e097e89a9150003abd48329
+change-id: 20260709-b4-symana21-11221-imx-thermal-support-upstream-6-18-a084984deb76
 
 Best regards,
 --  
-Miles Krause <mileskrause5200@gmail.com>
+Haoning CHENG <Haoning.CHENG@cn.bosch.com>
 
