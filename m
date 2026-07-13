@@ -1,10 +1,10 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 14 Jul 2026 01:25:50 +0800
-Subject: [PATCH RFC 12/13] mm/swap: drop swap active plist
+Date: Tue, 14 Jul 2026 01:25:51 +0800
+Subject: [PATCH RFC 13/13] lib/plist.c: remove requeue function
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260714-swap-pcp-priq-v1-12-de9b164ed419@tencent.com>
+Message-Id: <20260714-swap-pcp-priq-v1-13-de9b164ed419@tencent.com>
 References: <20260714-swap-pcp-priq-v1-0-de9b164ed419@tencent.com>
 In-Reply-To: <20260714-swap-pcp-priq-v1-0-de9b164ed419@tencent.com>
 To: linux-mm@kvack.org
@@ -14,136 +14,127 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Youngjun Park <youngjun.park@lge.com>, 
  Kemeng Shi <shikemeng@huaweicloud.com>, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783963612; l=4414;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783963612; l=3268;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=G45gA89umSL+kNs6bHyiaF1kIcN9pJ1ls62NQeOiYC4=;
- b=u/9trm152FgryD98mxUIQo6uu+x7EW9bzV/9nIVIRIh+hgrKj7kmLlR7Hv9I6jJ7gNWDavUCJ
- duRagp71EcEAIb40QpjiSyJQ5sj8Hf12sDBBp+XT3wQO0N93DXKzAqv
+ bh=NQdvrWdzsSXKqo+q0HqE4Pla3VWVnV+ggTUFkX8wpiM=;
+ b=Q6n5nBBbacEZZaL44/dX2mVEo+/4JgkdSEvicdYtCsgzhi3cAz+ZlaWpQtluSBlt4/xYyJppn
+ kYO1kKTDiQ1DVKThhAovUCKTD+EMCA5mtDvuvk8OKV05/Bre0E5ub07
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The swap_active_head plist tracked all writable swap devices, ordered
-by priority.  Now that every consumer that needed priority ordering
-has moved to the priority queue, the remaining users only need to
-find any writable device.
-
-Remove swap_active_head, the associated plist_node from
-swap_info_struct, and migrate the remaining plist operations.
+Now the last user of plist requeue is gone, this function can be
+removed.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/swap.h |  1 -
- mm/swapfile.c        | 26 +++++---------------------
- 2 files changed, 5 insertions(+), 22 deletions(-)
+ include/linux/plist.h |  2 --
+ lib/plist.c           | 64 ---------------------------------------------------
+ 2 files changed, 66 deletions(-)
 
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index 189c9898641b..04767540972b 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -267,7 +267,6 @@ struct swap_info_struct {
- 	struct percpu_ref users;	/* indicate and keep swap device valid. */
- 	unsigned long	flags;		/* SWP_USED etc: see above */
- 	signed short	prio;		/* swap priority of this type */
--	struct plist_node list;		/* entry in swap_active_head */
- 	signed char	type;		/* strange name for an index */
- 	unsigned int	max;		/* size of this swap device */
- 	struct swap_cluster_info *cluster_info; /* cluster info. Only for SSD */
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index 74a50c39da60..f93863309a5a 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -41,7 +41,6 @@
- #include <linux/completion.h>
- #include <linux/suspend.h>
- #include <linux/zswap.h>
--#include <linux/plist.h>
+diff --git a/include/linux/plist.h b/include/linux/plist.h
+index 16cf4355b5c1..73d359c1a053 100644
+--- a/include/linux/plist.h
++++ b/include/linux/plist.h
+@@ -132,8 +132,6 @@ static inline void plist_node_init(struct plist_node *node, int prio)
+ extern void plist_add(struct plist_node *node, struct plist_head *head);
+ extern void plist_del(struct plist_node *node, struct plist_head *head);
  
- #include <asm/tlbflush.h>
- #include <linux/leafops.h>
-@@ -90,12 +89,6 @@ bool swap_migration_ad_supported;
- static const char Bad_file[] = "Bad swap file entry ";
- static const char Bad_offset[] = "Bad swap offset entry ";
- 
--/*
-- * all active swap_info_structs
-- * protected with swapon_rwsem, and ordered by priority.
-- */
--static PLIST_HEAD(swap_active_head);
+-extern void plist_requeue(struct plist_node *node, struct plist_head *head);
 -
- static inline struct swap_info_struct *__swap_iter(int *i, unsigned long flag)
- {
- 	lockdep_assert_held(&swapon_rwsem);
-@@ -3212,7 +3205,6 @@ static void swap_device_enable(struct swap_info_struct *si)
- 	spin_unlock(&swap_queue_update_lock);
- 	atomic_long_add(si->pages, &nr_swap_pages);
- 	total_swap_pages += si->pages;
--	plist_add(&si->list, &swap_active_head);
- 	percpu_up_write(&swapon_rwsem);
- 
- 	add_to_avail_list(si);
-@@ -3244,7 +3236,6 @@ static int swap_device_disable(struct swap_info_struct *si)
- 	spin_lock(&swap_queue_update_lock);
- 	si->flags &= ~SWP_WRITEOK;
- 	spin_unlock(&swap_queue_update_lock);
--	plist_del(&si->list, &swap_active_head);
- 	total_swap_pages -= si->pages;
- 	atomic_long_sub(si->pages, &nr_swap_pages);
- 	del_from_avail_list(si, true);
-@@ -3306,9 +3297,8 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
- 
- 	mapping = victim->f_mapping;
- 	percpu_down_read(&swapon_rwsem);
--	plist_for_each_entry(p, &swap_active_head, list) {
--		if (p->flags & SWP_WRITEOK &&
--		    p->swap_file->f_mapping == mapping) {
-+	for_each_avail_swap(p) {
-+		if (p->swap_file->f_mapping == mapping) {
- 			found = 1;
- 			break;
- 		}
-@@ -3579,7 +3569,6 @@ static struct swap_info_struct *alloc_swap_info(void)
- 		 */
- 	}
- 	p->swap_extent_root = RB_ROOT;
--	plist_node_init(&p->list, 0);
- 	p->flags = SWP_USED;
- 	percpu_up_write(&swapon_rwsem);
- 	if (defer) {
-@@ -3981,12 +3970,7 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 	if (swap_flags & SWAP_FLAG_PREFER)
- 		prio = swap_flags & SWAP_FLAG_PRIO_MASK;
- 
--	/*
--	 * The plist prio is negated because plist ordering is
--	 * low-to-high, while swap ordering is high-to-low
--	 */
- 	si->prio = prio;
--	si->list.prio = -si->prio;
- 	si->swap_file = swap_file;
- 
- 	/* Sets SWP_WRITEOK, resurrect the percpu ref, expose the swap device */
-@@ -4096,7 +4080,7 @@ int swap_dup_entry_direct(swp_entry_t entry)
- #if defined(CONFIG_MEMCG) && defined(CONFIG_BLK_CGROUP)
- static bool __has_usable_swap(void)
- {
--	return !plist_head_empty(&swap_active_head);
-+	return READ_ONCE(total_swap_pages) > 0;
+ /**
+  * plist_for_each - iterate over the plist
+  * @pos:	the type * to use as a loop counter
+diff --git a/lib/plist.c b/lib/plist.c
+index a5bef38add43..b05ae7ffea87 100644
+--- a/lib/plist.c
++++ b/lib/plist.c
+@@ -142,58 +142,6 @@ void plist_del(struct plist_node *node, struct plist_head *head)
+ 	plist_check_head(head);
  }
  
- void __folio_throttle_swaprate(struct folio *folio, gfp_t gfp)
-@@ -4120,8 +4104,8 @@ void __folio_throttle_swaprate(struct folio *folio, gfp_t gfp)
- 		return;
+-/**
+- * plist_requeue - Requeue @node at end of same-prio entries.
+- *
+- * This is essentially an optimized plist_del() followed by
+- * plist_add().  It moves an entry already in the plist to
+- * after any other same-priority entries.
+- *
+- * @node:	&struct plist_node pointer - entry to be moved
+- * @head:	&struct plist_head pointer - list head
+- */
+-void plist_requeue(struct plist_node *node, struct plist_head *head)
+-{
+-	struct plist_node *iter;
+-	struct list_head *node_next = &head->node_list;
+-
+-	plist_check_head(head);
+-	BUG_ON(plist_head_empty(head));
+-	BUG_ON(plist_node_empty(node));
+-
+-	if (node == plist_last(head))
+-		return;
+-
+-	iter = plist_next(node);
+-
+-	if (node->prio != iter->prio)
+-		return;
+-
+-	plist_del(node, head);
+-
+-	/*
+-	 * After plist_del(), iter is the replacement of the node.  If the node
+-	 * was on prio_list, take shortcut to find node_next instead of looping.
+-	 */
+-	if (!list_empty(&iter->prio_list)) {
+-		iter = list_entry(iter->prio_list.next, struct plist_node,
+-				  prio_list);
+-		node_next = &iter->node_list;
+-		goto queue;
+-	}
+-
+-	plist_for_each_continue(iter, head) {
+-		if (node->prio != iter->prio) {
+-			node_next = &iter->node_list;
+-			break;
+-		}
+-	}
+-queue:
+-	list_add_tail(&node->node_list, node_next);
+-
+-	plist_check_head(head);
+-}
+-
+ #ifdef CONFIG_DEBUG_PLIST
+ #include <linux/sched.h>
+ #include <linux/sched/clock.h>
+@@ -231,14 +179,6 @@ static void __init plist_test_check(int nr_expect)
+ 	BUG_ON(prio_pos->prio_list.next != &first->prio_list);
+ }
  
- 	percpu_down_read(&swapon_rwsem);
--	plist_for_each_entry(si, &swap_active_head, list) {
--		if ((si->flags & SWP_WRITEOK) && si->bdev) {
-+	for_each_avail_swap(si) {
-+		if (si->bdev) {
- 			blkcg_schedule_throttle(si->bdev->bd_disk, true);
- 			break;
+-static void __init plist_test_requeue(struct plist_node *node)
+-{
+-	plist_requeue(node, &test_head);
+-
+-	if (node != plist_last(&test_head))
+-		BUG_ON(node->prio == plist_next(node)->prio);
+-}
+-
+ static int  __init plist_test(void)
+ {
+ 	int nr_expect = 0, i, loop;
+@@ -262,10 +202,6 @@ static int  __init plist_test(void)
+ 			nr_expect--;
  		}
+ 		plist_test_check(nr_expect);
+-		if (!plist_node_empty(test_node + i)) {
+-			plist_test_requeue(test_node + i);
+-			plist_test_check(nr_expect);
+-		}
+ 	}
+ 
+ 	for (i = 0; i < ARRAY_SIZE(test_node); i++) {
 
 -- 
 2.55.0
