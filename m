@@ -1,80 +1,71 @@
-From: Alvin Sun <alvin.sun@linux.dev>
-Date: Mon, 13 Jul 2026 14:45:31 +0800
-Subject: [PATCH v8 10/10] rust: module: update MAINTAINERS to cover
- module.rs
+From: Daan De Meyer <daan@amutable.com>
+Date: Mon, 13 Jul 2026 09:50:42 +0200
+Subject: [PATCH] btrfs: fix GET_SUBVOL_INFO after compat refactor
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260713-fix-fops-owner-v8-10-2495cfa82d47@linux.dev>
-References: <20260713-fix-fops-owner-v8-0-2495cfa82d47@linux.dev>
-In-Reply-To: <20260713-fix-fops-owner-v8-0-2495cfa82d47@linux.dev>
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, Luis Chamberlain <mcgrof@kernel.org>, 
- Petr Pavlu <petr.pavlu@suse.com>, Daniel Gomez <da.gomez@kernel.org>, 
- Sami Tolvanen <samitolvanen@google.com>, Aaron Tomlin <atomlin@atomlin.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- "Rafael J. Wysocki" <rafael@kernel.org>, David Airlie <airlied@gmail.com>, 
- Simona Vetter <simona@ffwll.ch>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Arnd Bergmann <arnd@arndb.de>, Brendan Higgins <brendan.higgins@linux.dev>, 
- David Gow <david@davidgow.net>, Rae Moar <raemoar63@gmail.com>, 
- Breno Leitao <leitao@debian.org>, Jens Axboe <axboe@kernel.dk>, 
- Dave Ertman <david.m.ertman@intel.com>, Leon Romanovsky <leon@kernel.org>, 
- Igor Korotin <igor.korotin@linux.dev>, 
- FUJITA Tomonori <fujita.tomonori@gmail.com>, 
- Bjorn Helgaas <bhelgaas@google.com>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- =?utf-8?q?Arve_Hj=C3=B8nnev=C3=A5g?= <arve@android.com>, 
- Todd Kjos <tkjos@android.com>, Christian Brauner <brauner@kernel.org>, 
- Carlos Llamas <cmllamas@google.com>
-Cc: rust-for-linux@vger.kernel.org, linux-modules@vger.kernel.org, 
- driver-core@lists.linux.dev, dri-devel@lists.freedesktop.org, 
- nova-gpu@lists.linux.dev, linux-kselftest@vger.kernel.org, 
- kunit-dev@googlegroups.com, linux-block@vger.kernel.org, 
- linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
- linux-pci@vger.kernel.org, Alvin Sun <alvin.sun@linux.dev>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783925315; l=906;
- i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=QmTLOgo7aXA9zuZDrP9v2Yja8XJBBoTtumcmBNGhRbE=;
- b=S9aChhiKKu65DEXGmqAdOf61niEqmE03VUZFyaC/krJ78x9IDgK+ouwFQEUrljjCCtrw6f6v4
- CFgVQqjN4XbDllbnVsX9hu9npp0s0DPYaKJ6eUcdZjUC3DlskQQCdiC
-X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
- pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
-X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
+Message-Id: <20260713-btrfs-get-subvol-info-fix-v1-1-a58cc55b3696@amutable.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ6CMBBFr0Jm7SSFCopXMS7aOoUabclMJSaEu
+ 9vq8r389zcQ4kACl2YDpjVISLFAe2jAzSZOhOFeGDrVDerUarSZveBEGeVt1/TEEH1CHz5Ioz4
+ rPXZD3x+h9AtT0b/v6+3PJXmQy/WwLqwRQssmurmql5FMDPv+BTjRLYWWAAAA
+X-Change-ID: 20260713-btrfs-get-subvol-info-fix-e93803926554
+To: Chris Mason <clm@fb.com>, David Sterba <dsterba@suse.com>
+Cc: Qu Wenruo <wqu@suse.com>, linux-btrfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Daan De Meyer <daan@amutable.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783929044; l=1552;
+ i=daan@amutable.com; s=20260712; h=from:subject:message-id;
+ bh=vVP53OuHGDy40sn2DMIfpWSsyPYGBiXasZnLFp5kRLU=;
+ b=J1JUl3xjGtwRu5ju27HPgoCd1IqtuwlM60B54A/8pkbbE2YCre0ueg8zBojWxW8JajFX8UqiT
+ YZXzfh8RG94AAn3Rj3MrSssZcQicQY9hffI0/1JT0Usju83t8353woC
+X-Developer-Key: i=daan@amutable.com; a=ed25519;
+ pk=I1l+WwrtmzRgofA5SQ1wTuJi18fjh91w+f5uRkFeZEA=
+X-Endpoint-Received: by B4 Relay for daan@amutable.com/20260712 with auth_id=868
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Module types now live in `rust/kernel/module.rs` alongside
-`rust/kernel/module_param.rs`. Update the MODULE SUPPORT file pattern
-from `rust/kernel/module_param.rs` to `rust/kernel/module*.rs` so both
-files are covered.
+btrfs_search_slot() returns a positive value when the search key does
+not exactly match an item. This is expected here, since offset 0 is used
+to find the first ROOT_BACKREF for the subvolume and the actual key has
+the parent root ID as its offset.
 
-Cc: Petr Pavlu <petr.pavlu@suse.com>
-Assisted-by: opencode:glm-5.2
-Link: https://lore.kernel.org/rust-for-linux/8ea21b29-9baf-4926-a16f-7d21c5a1a1b8@suse.com
-Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
+Before the compat ioctl refactoring, the native handler still copied the
+filled structure to userspace when the search returned 1. After the
+lookup was moved to a shared helper, both native and compat callers
+treat the positive return value as a failure and skip copy_to_user(),
+leaving BTRFS_IOC_GET_SUBVOL_INFO unusable for non-top-level
+subvolumes.
+
+Reset ret after successfully validating and reading the ROOT_BACKREF so
+the helper reports success and both callers copy the result to
+userspace.
+
+Fixes: 538e5bdbc899 ("btrfs: add 32-bit compat ioctl for BTRFS_IOC_GET_SUBVOL_INFO")
+Signed-off-by: Daan De Meyer <daan@amutable.com>
 ---
- MAINTAINERS | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Fix BTRFS_IOC_GET_SUBVOL_INFO for non-top-level subvolumes after the
+recent 32-bit compat ioctl refactor.
+---
+ fs/btrfs/ioctl.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index e035a3be797c4..74733de3e41ee 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -17984,7 +17984,7 @@ F:	include/linux/module*.h
- F:	kernel/module/
- F:	lib/test_kmod.c
- F:	lib/tests/module/
--F:	rust/kernel/module_param.rs
-+F:	rust/kernel/module*.rs
- F:	rust/macros/module.rs
- F:	scripts/module*
- F:	tools/testing/selftests/kmod/
+diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
+index 9d47d16394fc..ab6c17716026 100644
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -2042,6 +2042,7 @@ static int _btrfs_ioctl_get_subvol_info(struct inode *inode,
+ 			ret = -ENOENT;
+ 			goto out;
+ 		}
++		ret = 0;
+ 	}
+ 
+ out:
 
--- 
-2.43.0
+---
+base-commit: cab9e339cfbc1a4e075e53e281dfb00391e1a6bb
+change-id: 20260713-btrfs-get-subvol-info-fix-e93803926554
+
+Best regards,
+--  
+Daan De Meyer <daan@amutable.com>
 
