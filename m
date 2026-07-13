@@ -1,11 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 14 Jul 2026 01:25:44 +0800
-Subject: [PATCH RFC 06/13] mm/swap: remove swapon mutex and update proc
- reader
+Date: Tue, 14 Jul 2026 01:25:45 +0800
+Subject: [PATCH RFC 07/13] mm/swap: consolidate swap inuse accounting
+ helpers
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260714-swap-pcp-priq-v1-6-de9b164ed419@tencent.com>
+Message-Id: <20260714-swap-pcp-priq-v1-7-de9b164ed419@tencent.com>
 References: <20260714-swap-pcp-priq-v1-0-de9b164ed419@tencent.com>
 In-Reply-To: <20260714-swap-pcp-priq-v1-0-de9b164ed419@tencent.com>
 To: linux-mm@kvack.org
@@ -15,118 +15,153 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Youngjun Park <youngjun.park@lge.com>, 
  Kemeng Shi <shikemeng@huaweicloud.com>, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783963612; l=3465;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783963612; l=4815;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=j1za3Qxt32KGithzma37GogOBsyq+U5KkuqTTp+siv0=;
- b=wBkRluP9NMxSP0zuqKH8cLiWSuMS6fkcqfGHdt2jZ/pxZPZ6RGda/q03nFgRLUVaj+2Z9sKKn
- QtVt3wfBTDqDBlDPBmqPdBWzZy0yFqPYxzgd2KLccMc/PEZpPkWAGkI
+ bh=d4HZUEwBV+hR00Jn7TMM7WH5lEZpnnAHEskQhntWz50=;
+ b=Xgg1N8VIGPOVqFWmXlu8FGYB244KXlcsSsKDCRT4hPv9QwaQC5+4gvFSSHymiO2do27GrNivF
+ B8+6XJcy+jBAbzYC9aYU4aQAJpIFSv5rz3CzSCwUJCnSpUd3z+iyGw2
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now that swapon_rwsem protects all swapon/swapoff-sensitive data,
-the old swapon_mutex is redundant.  Remove it and convert the
-/proc/swaps seq_file reader to use the rwsem instead.  Also convert
-the swap_start iterator to use for_each_swap() for consistency.
+Inline the swap_usage_add/sub helpers into their only callers and
+rename the callers to better reflect what they actually do: track
+per-device inuse page counts.
 
-Also adapt swap_next, it needs an explicit SWP_USED check. swap_file is
-not reliably protected by swapon_rwsem, so checking SWP_USED is more
-accurate and stable for filtering in-use devices.
+No functional change.
 
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- mm/swapfile.c | 19 +++++--------------
- 1 file changed, 5 insertions(+), 14 deletions(-)
+ mm/swapfile.c | 64 +++++++++++++++++++++++++----------------------------------
+ 1 file changed, 27 insertions(+), 37 deletions(-)
 
 diff --git a/mm/swapfile.c b/mm/swapfile.c
-index d75fad161ba5..8b073569d1d9 100644
+index 8b073569d1d9..df9855401a2e 100644
 --- a/mm/swapfile.c
 +++ b/mm/swapfile.c
-@@ -140,9 +140,6 @@ static inline struct swap_info_struct *__swap_iter(int *i, unsigned long flag)
+@@ -49,8 +49,8 @@
+ #include "internal.h"
+ #include "swap.h"
  
- static struct kmem_cache *swap_table_cachep;
+-static void swap_range_alloc(struct swap_info_struct *si,
+-			     unsigned int nr_entries);
++static void swap_device_inuse_add(struct swap_info_struct *si,
++				  unsigned int nr_entries);
+ static bool folio_swapcache_freeable(struct folio *folio);
+ static void move_cluster(struct swap_info_struct *si,
+ 			 struct swap_cluster_info *ci, struct list_head *list,
+@@ -984,7 +984,7 @@ static bool __swap_cluster_alloc_entries(struct swap_info_struct *si,
+ 	if (cluster_is_empty(ci))
+ 		ci->order = order;
+ 	ci->count += nr_pages;
+-	swap_range_alloc(si, nr_pages);
++	swap_device_inuse_add(si, nr_pages);
  
--/* Protects si->swap_file for /proc/swaps usage */
--static DEFINE_MUTEX(swapon_mutex);
+ 	return true;
+ }
+@@ -1286,53 +1286,36 @@ static void add_to_avail_list(struct swap_info_struct *si)
+ }
+ 
+ /*
+- * swap_usage_add / swap_usage_sub of each slot are serialized by ci->lock
+- * within each cluster, so the total contribution to the global counter should
+- * always be positive and cannot exceed the total number of usable slots.
++ * swap_device_inuse_add / swap_device_inuse_sub are called within cluster
++ * update critical sections and serialized by ci->lock within each cluster,
++ * so the total contribution to the global counter should always be positive
++ * and cannot exceed the total number of usable slots.
+  */
+-static bool swap_usage_add(struct swap_info_struct *si, unsigned int nr_entries)
++static void swap_device_inuse_add(struct swap_info_struct *si,
++				  unsigned int nr_entries)
+ {
+-	long val = atomic_long_add_return_relaxed(nr_entries, &si->inuse_pages);
++	long inuse_pages;
+ 
+ 	/*
+ 	 * If device is full, and SWAP_USAGE_OFFLIST_BIT is not set,
+ 	 * remove it from the plist.
+ 	 */
+-	if (unlikely(val == si->pages)) {
+-		del_from_avail_list(si, false);
+-		return true;
+-	}
 -
- static DECLARE_WAIT_QUEUE_HEAD(proc_poll_wait);
- /* Activity counter to indicate that a swapon or swapoff has occurred */
- static atomic_t proc_poll_event = ATOMIC_INIT(0);
-@@ -3156,7 +3153,6 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
- 	if (!(p->flags & SWP_SOLIDSTATE))
- 		atomic_dec(&nr_rotate_swap);
- 
--	mutex_lock(&swapon_mutex);
- 	percpu_down_write(&swapon_rwsem);
- 	spin_lock(&p->lock);
- 	drain_mmlist();
-@@ -3171,7 +3167,6 @@ SYSCALL_DEFINE1(swapoff, const char __user *, specialfile)
- 	percpu_up_write(&swapon_rwsem);
- 	arch_swap_invalidate_area(p->type);
- 	zswap_swapoff(p->type);
--	mutex_unlock(&swapon_mutex);
- 	kfree(p->global_cluster);
- 	p->global_cluster = NULL;
- 	free_swap_cluster_info(cluster_info, maxpages);
-@@ -3217,20 +3212,18 @@ static __poll_t swaps_poll(struct file *file, poll_table *wait)
- 	return EPOLLIN | EPOLLRDNORM;
+-	return false;
+-}
+-
+-static void swap_usage_sub(struct swap_info_struct *si, unsigned int nr_entries)
+-{
+-	long val = atomic_long_sub_return_relaxed(nr_entries, &si->inuse_pages);
+-
+-	/*
+-	 * If device is not full, and SWAP_USAGE_OFFLIST_BIT is set,
+-	 * add it to the plist.
+-	 */
+-	if (unlikely(val & SWAP_USAGE_OFFLIST_BIT))
+-		add_to_avail_list(si);
+-}
+-
+-static void swap_range_alloc(struct swap_info_struct *si,
+-			     unsigned int nr_entries)
+-{
+-	if (swap_usage_add(si, nr_entries)) {
++	inuse_pages = atomic_long_add_return_relaxed(nr_entries, &si->inuse_pages);
++	if (unlikely(inuse_pages == si->pages)) {
+ 		if (vm_swap_full())
+ 			schedule_work(&si->reclaim_work);
++		del_from_avail_list(si, false);
+ 	}
++
+ 	atomic_long_sub(nr_entries, &nr_swap_pages);
  }
  
--/* iterator */
- static void *swap_start(struct seq_file *swap, loff_t *pos)
+-static void swap_range_free(struct swap_info_struct *si, unsigned long offset,
+-			    unsigned int nr_entries)
++static void swap_device_inuse_sub(struct swap_info_struct *si, unsigned long offset,
++				  unsigned int nr_entries)
  {
- 	struct swap_info_struct *si;
--	int type;
- 	loff_t l = *pos;
+ 	unsigned long end = offset + nr_entries - 1;
+ 	void (*swap_slot_free_notify)(struct block_device *, unsigned long);
++	long inuse_pages;
+ 	unsigned int i;
  
--	mutex_lock(&swapon_mutex);
-+	percpu_down_read(&swapon_rwsem);
- 
- 	if (!l)
- 		return SEQ_START_TOKEN;
- 
--	for (type = 0; (si = swap_type_to_info(type)); type++) {
--		if (!(si->swap_file))
-+	for_each_swap(si) {
-+		if (!si->swap_file)
- 			continue;
- 		if (!--l)
- 			return si;
-@@ -3251,7 +3244,7 @@ static void *swap_next(struct seq_file *swap, void *v, loff_t *pos)
- 
- 	++(*pos);
- 	for (; (si = swap_type_to_info(type)); type++) {
--		if (!(si->swap_file))
-+		if (!(si->flags & SWP_USED) || !(si->swap_file))
- 			continue;
- 		return si;
- 	}
-@@ -3261,7 +3254,7 @@ static void *swap_next(struct seq_file *swap, void *v, loff_t *pos)
- 
- static void swap_stop(struct seq_file *swap, void *v)
- {
--	mutex_unlock(&swapon_mutex);
-+	percpu_up_read(&swapon_rwsem);
+ 	for (i = 0; i < nr_entries; i++)
+@@ -1356,7 +1339,14 @@ static void swap_range_free(struct swap_info_struct *si, unsigned long offset,
+ 	 */
+ 	smp_wmb();
+ 	atomic_long_add(nr_entries, &nr_swap_pages);
+-	swap_usage_sub(si, nr_entries);
++
++	/*
++	 * If device is not full, and SWAP_USAGE_OFFLIST_BIT is set,
++	 * add it back to the plist.
++	 */
++	inuse_pages = atomic_long_sub_return_relaxed(nr_entries, &si->inuse_pages);
++	if (unlikely(inuse_pages & SWAP_USAGE_OFFLIST_BIT))
++		add_to_avail_list(si);
  }
  
- static int swap_show(struct seq_file *swap, void *v)
-@@ -3764,7 +3757,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 		goto free_swap_zswap;
- 	}
+ static bool get_swap_device_info(struct swap_info_struct *si)
+@@ -1969,7 +1959,7 @@ void __swap_cluster_free_entries(struct swap_info_struct *si,
+ 	if (batch_id)
+ 		mem_cgroup_uncharge_swap(batch_id, ci_off - batch_off);
  
--	mutex_lock(&swapon_mutex);
- 	prio = DEF_SWAP_PRIO;
- 	if (swap_flags & SWAP_FLAG_PREFER)
- 		prio = swap_flags & SWAP_FLAG_PRIO_MASK;
-@@ -3790,7 +3782,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 		(si->flags & SWP_AREA_DISCARD) ? "s" : "",
- 		(si->flags & SWP_PAGE_DISCARD) ? "c" : "");
+-	swap_range_free(si, ci_head + ci_start, nr_pages);
++	swap_device_inuse_sub(si, ci_head + ci_start, nr_pages);
+ 	swap_cluster_assert_empty(ci, ci_start, nr_pages, false);
  
--	mutex_unlock(&swapon_mutex);
- 	atomic_inc(&proc_poll_event);
- 	wake_up_interruptible(&proc_poll_wait);
- 
+ 	if (!ci->count)
+@@ -2821,7 +2811,7 @@ static int try_to_unuse(unsigned int type)
+ success:
+ 	/*
+ 	 * Make sure that further cleanups after try_to_unuse() returns happen
+-	 * after swap_range_free() reduces si->inuse_pages to 0.
++	 * after swap_device_inuse_sub() reduces si->inuse_pages to 0.
+ 	 */
+ 	smp_mb();
+ 	return 0;
 
 -- 
 2.55.0
