@@ -1,141 +1,71 @@
-From: Kairui Song <kasong@tencent.com>
-Date: Tue, 14 Jul 2026 01:25:51 +0800
-Subject: [PATCH RFC 13/13] lib/plist.c: remove requeue function
+From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+Subject: [PATCH 0/2] ASoC: Add LPASS VA CSR HeartBeat pulse clock support
+Date: Tue, 14 Jul 2026 01:35:31 +0530
+Message-Id: <20260714-master-v1-0-1ebe5993225e@oss.qualcomm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260714-swap-pcp-priq-v1-13-de9b164ed419@tencent.com>
-References: <20260714-swap-pcp-priq-v1-0-de9b164ed419@tencent.com>
-In-Reply-To: <20260714-swap-pcp-priq-v1-0-de9b164ed419@tencent.com>
-To: linux-mm@kvack.org
-Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>, 
- Chris Li <chrisl@kernel.org>, Nhat Pham <nphamcs@gmail.com>, 
- Baoquan He <baoquan.he@linux.dev>, Barry Song <baohua@kernel.org>, 
- Youngjun Park <youngjun.park@lge.com>, 
- Kemeng Shi <shikemeng@huaweicloud.com>, Kairui Song <kasong@tencent.com>
+X-B4-Tracking: v=1; b=H4sIAAtFVWoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDc0MT3dzE4pLUIt3kRAvzJNM0Q8vEVAMloOKCotS0zAqwQdGxEH5xaVJ
+ WanIJSLdSbS0A+EPH3GoAAAA=
+X-Change-ID: 20260714-master-ca87b5f19ae0
+To: Srinivas Kandagatla <srini@kernel.org>, 
+ Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jaroslav Kysela <perex@perex.cz>, 
+ Takashi Iwai <tiwai@suse.com>
+Cc: Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>, 
+ linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ prasad.kumpatla@oss.qualcomm.com, 
+ Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783963612; l=3268;
- i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=NQdvrWdzsSXKqo+q0HqE4Pla3VWVnV+ggTUFkX8wpiM=;
- b=Q6n5nBBbacEZZaL44/dX2mVEo+/4JgkdSEvicdYtCsgzhi3cAz+ZlaWpQtluSBlt4/xYyJppn
- kYO1kKTDiQ1DVKThhAovUCKTD+EMCA5mtDvuvk8OKV05/Bre0E5ub07
-X-Developer-Key: i=kasong@tencent.com; a=ed25519;
- pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
-X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783973132; l=1707;
+ i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
+ h=from:subject:message-id; bh=fVYR9QJBEwKy0AHnOeETfy4OqM5XjQ3p+9fHZbjJe2c=;
+ b=9JTqpKCkIA9r1TRRXYOCDAnpAg+56prw6wYSJ1wEy6qGQbUgggaAGrMc2rM+JwgJypzeQKNnU
+ 6i+2roaa0/DC/fk/yeqIhvSTLLgjpbNEWi77ar+WnevuZ6+Ke2YeZsV
+X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
+ pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
+X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now the last user of plist requeue is gone, this function can be
-removed.
+The LPASS VA CSR block contains rate generator hardware that produces
+a HeartBeat Pulse (also known as RateGen Pulse). This pulse
+synchronizes the start of the DMAs and Codec Interfaces for the audio
+usecases and can serve as a periodic wakeup source for the DSP.
 
-Signed-off-by: Kairui Song <kasong@tencent.com>
+This series adds the DT binding and driver support to model this
+rate generator as a clock provider, and extends the VA macro binding
+with a new hawi variant that consumes the heartbeatpulse clock
+alongside its existing mclk, macro, and dcodec clocks.
+
+Patch 1 adds the YAML binding for the new qcom,hawi-lpass-va-csr
+clock provider node and extends qcom,lpass-va-macro to describe the
+new qcom,hawi-lpass-va-macro compatible with its four-clock
+constraint.
+
+Patch 2 adds the lpass-va-csr driver that registers the
+lpass_heartbeat_pulse clock and enables/disables the rate generator
+via regmap when the clock consumer requests it.
+
+Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 ---
- include/linux/plist.h |  2 --
- lib/plist.c           | 64 ---------------------------------------------------
- 2 files changed, 66 deletions(-)
+Sarath Ganapathiraju (2):
+      ASoC: dt-bindings: qcom,lpass-va-csr: Add HeartBeat pulse clock
+      ASoC: Add LPASS VA CSR heartbeat pulse clock
 
-diff --git a/include/linux/plist.h b/include/linux/plist.h
-index 16cf4355b5c1..73d359c1a053 100644
---- a/include/linux/plist.h
-+++ b/include/linux/plist.h
-@@ -132,8 +132,6 @@ static inline void plist_node_init(struct plist_node *node, int prio)
- extern void plist_add(struct plist_node *node, struct plist_head *head);
- extern void plist_del(struct plist_node *node, struct plist_head *head);
- 
--extern void plist_requeue(struct plist_node *node, struct plist_head *head);
--
- /**
-  * plist_for_each - iterate over the plist
-  * @pos:	the type * to use as a loop counter
-diff --git a/lib/plist.c b/lib/plist.c
-index a5bef38add43..b05ae7ffea87 100644
---- a/lib/plist.c
-+++ b/lib/plist.c
-@@ -142,58 +142,6 @@ void plist_del(struct plist_node *node, struct plist_head *head)
- 	plist_check_head(head);
- }
- 
--/**
-- * plist_requeue - Requeue @node at end of same-prio entries.
-- *
-- * This is essentially an optimized plist_del() followed by
-- * plist_add().  It moves an entry already in the plist to
-- * after any other same-priority entries.
-- *
-- * @node:	&struct plist_node pointer - entry to be moved
-- * @head:	&struct plist_head pointer - list head
-- */
--void plist_requeue(struct plist_node *node, struct plist_head *head)
--{
--	struct plist_node *iter;
--	struct list_head *node_next = &head->node_list;
--
--	plist_check_head(head);
--	BUG_ON(plist_head_empty(head));
--	BUG_ON(plist_node_empty(node));
--
--	if (node == plist_last(head))
--		return;
--
--	iter = plist_next(node);
--
--	if (node->prio != iter->prio)
--		return;
--
--	plist_del(node, head);
--
--	/*
--	 * After plist_del(), iter is the replacement of the node.  If the node
--	 * was on prio_list, take shortcut to find node_next instead of looping.
--	 */
--	if (!list_empty(&iter->prio_list)) {
--		iter = list_entry(iter->prio_list.next, struct plist_node,
--				  prio_list);
--		node_next = &iter->node_list;
--		goto queue;
--	}
--
--	plist_for_each_continue(iter, head) {
--		if (node->prio != iter->prio) {
--			node_next = &iter->node_list;
--			break;
--		}
--	}
--queue:
--	list_add_tail(&node->node_list, node_next);
--
--	plist_check_head(head);
--}
--
- #ifdef CONFIG_DEBUG_PLIST
- #include <linux/sched.h>
- #include <linux/sched/clock.h>
-@@ -231,14 +179,6 @@ static void __init plist_test_check(int nr_expect)
- 	BUG_ON(prio_pos->prio_list.next != &first->prio_list);
- }
- 
--static void __init plist_test_requeue(struct plist_node *node)
--{
--	plist_requeue(node, &test_head);
--
--	if (node != plist_last(&test_head))
--		BUG_ON(node->prio == plist_next(node)->prio);
--}
--
- static int  __init plist_test(void)
- {
- 	int nr_expect = 0, i, loop;
-@@ -262,10 +202,6 @@ static int  __init plist_test(void)
- 			nr_expect--;
- 		}
- 		plist_test_check(nr_expect);
--		if (!plist_node_empty(test_node + i)) {
--			plist_test_requeue(test_node + i);
--			plist_test_check(nr_expect);
--		}
- 	}
- 
- 	for (i = 0; i < ARRAY_SIZE(test_node); i++) {
+ .../bindings/sound/qcom,lpass-va-csr.yaml          |  47 +++++++
+ .../bindings/sound/qcom,lpass-va-macro.yaml        |  18 +++
+ sound/soc/codecs/Kconfig                           |  13 ++
+ sound/soc/codecs/Makefile                          |   2 +
+ sound/soc/codecs/lpass-va-csr.c                    | 143 +++++++++++++++++++++
+ 5 files changed, 223 insertions(+)
+---
+base-commit: bee763d5f341b99cf472afeb508d4988f62a6ca1
+change-id: 20260714-master-ca87b5f19ae0
 
--- 
-2.55.0
+Best regards,
+--  
+Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 
