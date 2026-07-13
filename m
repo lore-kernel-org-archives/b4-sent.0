@@ -1,11 +1,11 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Date: Mon, 13 Jul 2026 14:45:27 +0800
-Subject: [PATCH v8 06/10] rust: miscdevice: set fops.owner from driver
- module pointer
+Date: Mon, 13 Jul 2026 14:45:28 +0800
+Subject: [PATCH v8 07/10] rust: configfs: use `LocalModule` for
+ `THIS_MODULE`
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260713-fix-fops-owner-v8-6-2495cfa82d47@linux.dev>
+Message-Id: <20260713-fix-fops-owner-v8-7-2495cfa82d47@linux.dev>
 References: <20260713-fix-fops-owner-v8-0-2495cfa82d47@linux.dev>
 In-Reply-To: <20260713-fix-fops-owner-v8-0-2495cfa82d47@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
@@ -38,55 +38,84 @@ Cc: rust-for-linux@vger.kernel.org, linux-modules@vger.kernel.org,
  linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
  linux-pci@vger.kernel.org, Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783925315; l=1152;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783925315; l=2784;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=Db4jVbnkOdnxpPP/DxxrroJ15a5rGmjRI3btLuaJQas=;
- b=iVaCdmNAPFGlDsUNfSCgVkw8kSu7CTexrMLKzcsGzX5gaQSOwbz2wnjHXC7Vv3tWmZbSe7tkt
- MdggjgUKt8rAX2LehhrOgVokCxTH4ps8lg3zRFNtOABC8n/33cJsxgu
+ bh=uKMCf9D/JKTMs7JHu+JGuw1l/MDmYGvfbfSnKCku75E=;
+ b=5yxwCnpWzbxSeK1SF8cTkaX+tyZ2QIbiLyb2o0aTlxw4y4+Dc+dS5MZj0TVfqml78fze6RHZx
+ 1JkkADmRYtmDNSoMIamfBuBTbiLcUOa4B62b8NBRHnYAXB20Evd5UH2
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Set the miscdevice fops owner field from the driver module pointer
-via the `this_module::<T::OwnerModule>()` helper, instead of
-defaulting to null.
+Replace the `THIS_MODULE` static reference in the `configfs_attrs!`
+macro with `this_module::<LocalModule>()`, and update
+rnull to import `LocalModule` instead of `THIS_MODULE`, consistent
+with the move of `THIS_MODULE` into the `ModuleMetadata` trait.
 
 Assisted-by: opencode:glm-5.2
 Reviewed-by: Andreas Hindborg <a.hindborg@kernel.org>
-Reviewed-by: Gary Guo <gary@garyguo.net>
 Acked-by: Danilo Krummrich <dakr@kernel.org>
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
- rust/kernel/miscdevice.rs | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ drivers/block/rnull/configfs.rs | 5 +----
+ rust/kernel/configfs.rs         | 9 ++++++---
+ 2 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/rust/kernel/miscdevice.rs b/rust/kernel/miscdevice.rs
-index 83ce50def5ac9..2a4329f98614e 100644
---- a/rust/kernel/miscdevice.rs
-+++ b/rust/kernel/miscdevice.rs
-@@ -24,12 +24,13 @@
-         IovIterSource, //
-     },
-     mm::virt::VmaNew,
-+    module::this_module,
-     prelude::*,
-     seq_file::SeqFile,
-     types::{
-         ForeignOwnable,
-         Opaque, //
--    },
-+    }, //
- };
- use core::marker::PhantomData;
+diff --git a/drivers/block/rnull/configfs.rs b/drivers/block/rnull/configfs.rs
+index c10a55fc58948..9b28be2150933 100644
+--- a/drivers/block/rnull/configfs.rs
++++ b/drivers/block/rnull/configfs.rs
+@@ -1,9 +1,6 @@
+ // SPDX-License-Identifier: GPL-2.0
  
-@@ -430,6 +431,7 @@ impl<T: MiscDevice> MiscdeviceVTable<T> {
-         } else {
-             None
-         },
-+        owner: this_module::<T::OwnerModule>().as_ptr(),
-         ..pin_init::zeroed()
-     };
+-use super::{
+-    NullBlkDevice,
+-    THIS_MODULE, //
+-};
++use super::NullBlkDevice;
+ use kernel::{
+     block::mq::gen_disk::{
+         GenDisk,
+diff --git a/rust/kernel/configfs.rs b/rust/kernel/configfs.rs
+index 2339c6467325d..cd082b83e9e74 100644
+--- a/rust/kernel/configfs.rs
++++ b/rust/kernel/configfs.rs
+@@ -875,13 +875,14 @@ fn as_ptr(&self) -> *const bindings::config_item_type {
+ ///                 configfs::Subsystem<Configuration>,
+ ///                 Configuration
+ ///                 >::new_with_child_ctor::<N,Child>(
+-///             &THIS_MODULE,
++///             ::kernel::module::this_module::<crate::LocalModule>(),
+ ///             &CONFIGURATION_ATTRS
+ ///         );
+ ///
+ ///     &CONFIGURATION_TPE
+ /// }
+ /// ```
++#[allow(clippy::crate_in_macro_def)]
+ #[macro_export]
+ macro_rules! configfs_attrs {
+     (
+@@ -1021,7 +1022,8 @@ macro_rules! configfs_attrs {
+ 
+                     static [< $data:upper _TPE >] : $crate::configfs::ItemType<$container, $data>  =
+                         $crate::configfs::ItemType::<$container, $data>::new::<N>(
+-                            &THIS_MODULE, &[<$ data:upper _ATTRS >]
++                            $crate::module::this_module::<crate::LocalModule>(),
++                            &[<$ data:upper _ATTRS >]
+                         );
+                 )?
+ 
+@@ -1030,7 +1032,8 @@ macro_rules! configfs_attrs {
+                         $crate::configfs::ItemType<$container, $data>  =
+                             $crate::configfs::ItemType::<$container, $data>::
+                             new_with_child_ctor::<N, $child>(
+-                                &THIS_MODULE, &[<$ data:upper _ATTRS >]
++                                $crate::module::this_module::<crate::LocalModule>(),
++                                &[<$ data:upper _ATTRS >]
+                             );
+                 )?
  
 
 -- 
