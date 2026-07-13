@@ -1,74 +1,135 @@
 From: Xiubo Li <xiubo.li@clyso.com>
-Subject: [PATCH 0/5] ceph: reduce mdsc->mutex contention in the cephfs
- kclient
-Date: Mon, 13 Jul 2026 17:46:06 +0800
-Message-Id: <20260713-ceph-mdsc-mutex-optimization-v1-0-9ae5ac135c34@clyso.com>
+Date: Mon, 13 Jul 2026 17:46:07 +0800
+Subject: [PATCH 1/5] ceph: convert oldest_tid to atomic64_t
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQ6CMAyA4VchPdsE0DDjqxgPa6lSk8GyDkMkv
- LsTjt/h/1cwSSoGt2qFJB81ncaC5lQBD358CWpfDG3ddrVrzsgSBwy9MYY5y4JTzBr063MJ0Ym
- 7eOqI+EpQFjHJU5d9f38ctpnewvn/hG37AazjqtKAAAAA
-X-Change-ID: 20260713-ceph-mdsc-mutex-optimization-7e74ab6bbc8b
+Message-Id: <20260713-ceph-mdsc-mutex-optimization-v1-1-9ae5ac135c34@clyso.com>
+References: <20260713-ceph-mdsc-mutex-optimization-v1-0-9ae5ac135c34@clyso.com>
+In-Reply-To: <20260713-ceph-mdsc-mutex-optimization-v1-0-9ae5ac135c34@clyso.com>
 To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
  Viacheslav Dubeyko <slava@dubeyko.com>
 Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783936018; l=1882;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783936018; l=4251;
  i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=KZ+fkidvi42nkXB/n0WY+0pBKs4rc6ZQHLQ2OS9bDmc=;
- b=tOSLa1c3pDIWGTzSE0WJDO+iw4bGsyaTGnd29rW2QWrNFVBo0Au4onNhidaPX4Bkik39YWolC
- luajOeZQMMNAqI+ZJpUYtdXWZ1E550nP7FX5pS9vGJZz7repKWmOlev
+ bh=Ln313jfnyI9iEkGY4T3NBIW+U7Vyr9d7sWpnTOxEXz8=;
+ b=w6QCuGrFzG0BRds+mcufPiJRiYJhpuLjtvuXJWBV46ojnHI33Q2D5nXDGvhXFW3tJToswXE+2
+ LmxifXAJPC4AitJzrl7xVoGrruSkOA69bo+5IfpLSGlLQFij6kxGFHY
 X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
  pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
 X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series reduces mdsc->mutex hold times from hundreds of
-microseconds to tens of microseconds on the hot request-submit and
-reply-handling paths.
+The oldest_client_tid sent in the MDS request header is advisory:
+a stale value is harmless -- at worst the MDS may resend a reply
+we already have, or skip one we still need (which will just be
+retried).  With the plain u64 read, however, the compiler is free
+to split or cache the load, which is undefined behaviour when the
+write side runs under mdsc->mutex on a different CPU.
 
-The approach is incremental:
-  1. Convert oldest_tid to atomic64_t so that __prepare_send_request()
-     and __send_request() no longer need the mutex.
-  2. Replace the request_tree rbtree with an xarray for O(1) lookups
-     and internally-locked iteration.
-  3. Add a dedicated wait_list_lock spinlock so wait-list operations
-     no longer depend on the global mutex.
-  4. Move mdsc->mutex acquisition inside __do_request(), then release
-     it during the send phase (message construction and path walking),
-     leaving only the brief setup/teardown under the lock.
-  5. Narrow the mutex scope in replay_unsafe_requests() similarly.
+Convert mdsc->oldest_tid from u64 to atomic64_t so that reads
+are guaranteed to be single-copy atomic on all architectures.
+This removes the one remaining reason __prepare_send_request()
+and __send_request() needed to be called under mdsc->mutex, so
+drop those comments as well.
 
-Tested with concurrent readdir + stat on a 5000-file directory
-(32 threads).  bpftrace measurements show:
-
-                 before         after
-  __do_request   354-2327 us    10-68 us    (34x)
-  handle_reply   51-416 us     10-32 us    (13x)
-  submit_request 89-211 us     10-41 us    (5x)
-
-No functional changes intended.
+All write sites (__register_request, __unregister_request) still
+run under mdsc->mutex, so use atomic64_set() for clarity.
 
 Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
-Xiubo Li (5):
-      ceph: convert oldest_tid to atomic64_t
-      ceph: replace the request_tree rbtree with an xarray keyed by r_tid.
-      ceph: add wait_list_lock for wait-list serialization
-      ceph: move mdsc->mutex into __do_request()
-      ceph: narrow mdsc->mutex scope in replay_unsafe_requests
+ fs/ceph/mds_client.c | 21 ++++++++-------------
+ fs/ceph/mds_client.h |  2 +-
+ 2 files changed, 9 insertions(+), 14 deletions(-)
 
- fs/ceph/debugfs.c    |   6 +-
- fs/ceph/mds_client.c | 207 +++++++++++++++++++++++++++------------------------
- fs/ceph/mds_client.h |   8 +-
- 3 files changed, 117 insertions(+), 104 deletions(-)
----
-base-commit: 7e1f9e2cd2d0e780c394a4402c40e125109fec72
-change-id: 20260713-ceph-mdsc-mutex-optimization-7e74ab6bbc8b
+diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
+index 9f84ef2ac6e4..98d0a5baff70 100644
+--- a/fs/ceph/mds_client.c
++++ b/fs/ceph/mds_client.c
+@@ -1235,8 +1235,9 @@ static void __register_request(struct ceph_mds_client *mdsc,
+ 	if (!req->r_mnt_idmap)
+ 		req->r_mnt_idmap = &nop_mnt_idmap;
+ 
+-	if (mdsc->oldest_tid == 0 && req->r_op != CEPH_MDS_OP_SETFILELOCK)
+-		mdsc->oldest_tid = req->r_tid;
++	if (atomic64_read(&mdsc->oldest_tid) == 0 &&
++	    req->r_op != CEPH_MDS_OP_SETFILELOCK)
++		atomic64_set(&mdsc->oldest_tid, req->r_tid);
+ 
+ 	if (dir) {
+ 		struct ceph_inode_info *ci = ceph_inode(dir);
+@@ -1257,14 +1258,14 @@ static void __unregister_request(struct ceph_mds_client *mdsc,
+ 	/* Never leave an unregistered request on an unsafe list! */
+ 	list_del_init(&req->r_unsafe_item);
+ 
+-	if (req->r_tid == mdsc->oldest_tid) {
++	if (req->r_tid == atomic64_read(&mdsc->oldest_tid)) {
+ 		struct rb_node *p = rb_next(&req->r_node);
+-		mdsc->oldest_tid = 0;
++		atomic64_set(&mdsc->oldest_tid, 0);
+ 		while (p) {
+ 			struct ceph_mds_request *next_req =
+ 				rb_entry(p, struct ceph_mds_request, r_node);
+ 			if (next_req->r_op != CEPH_MDS_OP_SETFILELOCK) {
+-				mdsc->oldest_tid = next_req->r_tid;
++				atomic64_set(&mdsc->oldest_tid, next_req->r_tid);
+ 				break;
+ 			}
+ 			p = rb_next(p);
+@@ -1693,7 +1694,7 @@ create_session_full_msg(struct ceph_mds_client *mdsc, int op, u64 seq)
+ 	ceph_encode_32(&p, 0);
+ 
+ 	/* version == 7, oldest_client_tid */
+-	ceph_encode_64(&p, mdsc->oldest_tid);
++	ceph_encode_64(&p, atomic64_read(&mdsc->oldest_tid));
+ 
+ 	msg->front.iov_len = p - msg->front.iov_base;
+ 	msg->hdr.front_len = cpu_to_le32(msg->front.iov_len);
+@@ -2759,7 +2760,7 @@ static struct ceph_mds_request *__get_oldest_req(struct ceph_mds_client *mdsc)
+ 
+ static inline  u64 __get_oldest_tid(struct ceph_mds_client *mdsc)
+ {
+-	return mdsc->oldest_tid;
++	return atomic64_read(&mdsc->oldest_tid);
+ }
+ 
+ #if IS_ENABLED(CONFIG_FS_ENCRYPTION)
+@@ -3438,9 +3439,6 @@ static void complete_request(struct ceph_mds_client *mdsc,
+ 	complete_all(&req->r_completion);
+ }
+ 
+-/*
+- * called under mdsc->mutex
+- */
+ static int __prepare_send_request(struct ceph_mds_session *session,
+ 				  struct ceph_mds_request *req,
+ 				  bool drop_cap_releases)
+@@ -3555,9 +3553,6 @@ static int __prepare_send_request(struct ceph_mds_session *session,
+ 	return 0;
+ }
+ 
+-/*
+- * called under mdsc->mutex
+- */
+ static int __send_request(struct ceph_mds_session *session,
+ 			  struct ceph_mds_request *req,
+ 			  bool drop_cap_releases)
+diff --git a/fs/ceph/mds_client.h b/fs/ceph/mds_client.h
+index 731d6ad04956..3b614b5df18c 100644
+--- a/fs/ceph/mds_client.h
++++ b/fs/ceph/mds_client.h
+@@ -532,7 +532,7 @@ struct ceph_mds_client {
+ 	spinlock_t              snap_empty_lock;  /* protect snap_empty */
+ 
+ 	u64                    last_tid;      /* most recent mds request */
+-	u64                    oldest_tid;    /* oldest incomplete mds request,
++	atomic64_t             oldest_tid;    /* oldest incomplete mds request,
+ 						 excluding setfilelock requests */
+ 	struct rb_root         request_tree;  /* pending mds requests */
+ 	struct delayed_work    delayed_work;  /* delayed work */
 
-Best regards,
---  
-Xiubo Li <xiubo.li@clyso.com>
+-- 
+2.53.0
 
