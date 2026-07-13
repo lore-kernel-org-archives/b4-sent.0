@@ -1,10 +1,11 @@
 From: Kairui Song <kasong@tencent.com>
-Date: Tue, 14 Jul 2026 01:25:48 +0800
-Subject: [PATCH RFC 10/13] mm/swap: remove available list
+Date: Tue, 14 Jul 2026 01:25:49 +0800
+Subject: [PATCH RFC 11/13] mm/swap: perform sync discard on single device
+ more proactively
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260714-swap-pcp-priq-v1-10-de9b164ed419@tencent.com>
+Message-Id: <20260714-swap-pcp-priq-v1-11-de9b164ed419@tencent.com>
 References: <20260714-swap-pcp-priq-v1-0-de9b164ed419@tencent.com>
 In-Reply-To: <20260714-swap-pcp-priq-v1-0-de9b164ed419@tencent.com>
 To: linux-mm@kvack.org
@@ -14,139 +15,188 @@ Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
  Youngjun Park <youngjun.park@lge.com>, 
  Kemeng Shi <shikemeng@huaweicloud.com>, Kairui Song <kasong@tencent.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783963612; l=4228;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783963612; l=5605;
  i=kasong@tencent.com; s=kasong-sign-tencent; h=from:subject:message-id;
- bh=56bxVOA8Kh8NG90pe0lrBG+qdvyKutM/P/TW2AoLLAg=;
- b=AB+E/zHQ9XaayHuwu1wLH65kfRaAKI0gjPf/1wBZpP4AycdYJe/1cG5AuMpFV+B3fK04NNpMc
- RIcqDcMfR3+CO/ZovoZXzpo7n87PKqoKoD6nEjhKAqBJhXBHvr5Dwvp
+ bh=nhsTnwGNr5mf8R77bamTTsWF0IFsUzZ/c3ikG+tnQoI=;
+ b=O1S81EtMQVty3RnxX+OFve6HrrAWeJdN1IMW1ByIaQf6Zz+TtBVwOtMwyT0JlzbaXElvd8Y2I
+ VSIabMtf9i8Dxzgy7IhHWGiaIlO1q7fT91QAevkyoEcZf0doxKAvfNC
 X-Developer-Key: i=kasong@tencent.com; a=ed25519;
  pk=kCdoBuwrYph+KrkJnrr7Sm1pwwhGDdZKcKrqiK8Y1mI=
 X-Endpoint-Received: by B4 Relay for kasong@tencent.com/kasong-sign-tencent with auth_id=562
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Pure cleanup, no functional change.
+Previous commit 9fb749cd15078 ("mm, swap: do not perform synchronous
+discard during allocation") added a workaround-style global sync discard
+when all devices are drained to prevent OOM. It wasn't an optimal
+solution and in the discussion [1], it's preferred to discard more
+proactively, and in the scope of a single device instead of globally.
+That wasn't achievable due to the limitations of the previous swap
+allocation design, or would have ended up too complex.
 
-After the priority queue replaced the allocator's device selection,
-swap_avail_head and swap_avail_lock are useless now.  Remove them.
+Now with the new workflow and swap cluster cache moved inside the device
+scope, we can easily achieve that. So drop the old workaround and
+implement a more proactive and simpler solution. Doing discard when the
+free list is drained will prevent fragmentation better and avoid a
+global discard scan.
 
-__folio_throttle_swaprate() now iterates swap_active_head under
-swapon_rwsem instead, the SWP_WRITEOK filtering makes it equivalent to
-before.
-
+Link: https://lore.kernel.org/all/CAMgjq7CsYhEjvtN85XGkrONYAJxve7gG593TFeOGV-oax++kWA@mail.gmail.com/ [1]
 Signed-off-by: Kairui Song <kasong@tencent.com>
 ---
- include/linux/swap.h |  1 -
- mm/swapfile.c        | 30 ++++--------------------------
- 2 files changed, 4 insertions(+), 27 deletions(-)
+ mm/swapfile.c | 88 ++++++++++++++++++++++-------------------------------------
+ 1 file changed, 33 insertions(+), 55 deletions(-)
 
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index 6733a8979aa2..189c9898641b 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -293,7 +293,6 @@ struct swap_info_struct {
- 	struct work_struct discard_work; /* discard worker */
- 	struct work_struct reclaim_work; /* reclaim worker */
- 	struct list_head discard_clusters; /* discard clusters list */
--	struct plist_node avail_list;   /* entry in swap_avail_head */
- };
- 
- static inline swp_entry_t page_swap_entry(struct page *page)
 diff --git a/mm/swapfile.c b/mm/swapfile.c
-index f6dd85968928..01240c4c9db3 100644
+index 01240c4c9db3..74a50c39da60 100644
 --- a/mm/swapfile.c
 +++ b/mm/swapfile.c
-@@ -96,21 +96,6 @@ static const char Bad_offset[] = "Bad swap offset entry ";
-  */
- static PLIST_HEAD(swap_active_head);
+@@ -498,6 +498,26 @@ static long swap_usage_in_pages(struct swap_info_struct *si)
+ 	return atomic_long_read(&si->inuse_pages) & SWAP_USAGE_COUNTER_MASK;
+ }
+ 
++/*
++ * Serialize the allocation on single CPU or globally to avoid
++ * fragmentation and make the workflow easier to follow.
++ */
++static void swap_alloc_lock_device(struct swap_info_struct *si)
++{
++	if (si->flags & SWP_SOLIDSTATE)
++		local_lock(&si->percpu_cluster->lock);
++	else
++		spin_lock(&si->global_cluster->lock);
++}
++
++static void swap_alloc_unlock_device(struct swap_info_struct *si)
++{
++	if (si->flags & SWP_SOLIDSTATE)
++		local_unlock(&si->percpu_cluster->lock);
++	else
++		spin_unlock(&si->global_cluster->lock);
++}
++
+ /* Reclaim the swap entry anyway if possible */
+ #define TTRS_ANYWAY		0x1
+ /*
+@@ -884,10 +904,7 @@ swap_cluster_populate(struct swap_info_struct *si,
+ 	 * the potential recursive allocation is limited.
+ 	 */
+ 	spin_unlock(&ci->lock);
+-	if (si->flags & SWP_SOLIDSTATE)
+-		local_unlock(&si->percpu_cluster->lock);
+-	else
+-		spin_unlock(&si->global_cluster->lock);
++	swap_alloc_unlock_device(si);
+ 
+ 	ret = swap_cluster_alloc_table(ci, __GFP_HIGH | __GFP_NOMEMALLOC |
+ 					   GFP_KERNEL);
+@@ -900,10 +917,7 @@ swap_cluster_populate(struct swap_info_struct *si,
+ 	 * could happen with ignoring the percpu cluster is fragmentation,
+ 	 * which is acceptable since this fallback and race is rare.
+ 	 */
+-	if (si->flags & SWP_SOLIDSTATE)
+-		local_lock(&si->percpu_cluster->lock);
+-	else
+-		spin_lock(&si->global_cluster->lock);
++	swap_alloc_lock_device(si);
+ 	spin_lock(&ci->lock);
+ 
+ 	if (ret) {
+@@ -1439,15 +1453,12 @@ static unsigned long cluster_alloc_swap_entry(struct swap_info_struct *si,
+ 	if (order && !(si->flags & SWP_BLKDEV))
+ 		return 0;
+ 
+-	if (si->flags & SWP_SOLIDSTATE) {
+-		/* Fast path using per CPU cluster */
+-		local_lock(&si->percpu_cluster->lock);
++restart:
++	swap_alloc_lock_device(si);
++	if (si->flags & SWP_SOLIDSTATE)
+ 		offset = __this_cpu_read(si->percpu_cluster->next[order]);
+-	} else {
+-		/* Serialize HDD SWAP allocation for each device. */
+-		spin_lock(&si->global_cluster->lock);
++	else
+ 		offset = si->global_cluster->next[order];
+-	}
+ 
+ 	if (offset != SWAP_ENTRY_INVALID) {
+ 		ci = swap_cluster_lock(si, offset);
+@@ -1471,6 +1482,12 @@ static unsigned long cluster_alloc_swap_entry(struct swap_info_struct *si,
+ 		found = alloc_swap_scan_list(si, &si->free_clusters, folio, false);
+ 		if (found)
+ 			goto done;
++
++		if (!list_empty(&si->discard_clusters)) {
++			swap_alloc_unlock_device(si);
++			swap_do_scheduled_discard(si);
++			goto restart;
++		}
+ 	}
+ 
+ 	if (order < PMD_ORDER) {
+@@ -1519,10 +1536,7 @@ static unsigned long cluster_alloc_swap_entry(struct swap_info_struct *si,
+ 			goto done;
+ 	}
+ done:
+-	if (si->flags & SWP_SOLIDSTATE)
+-		local_unlock(&si->percpu_cluster->lock);
+-	else
+-		spin_unlock(&si->global_cluster->lock);
++	swap_alloc_unlock_device(si);
+ 
+ 	return found;
+ }
+@@ -1711,36 +1725,6 @@ static int swap_alloc_entry(struct folio *folio)
+ 	return ret;
+ }
  
 -/*
-- * all available (active, not full) swap_info_structs
-- * protected with swap_avail_lock, ordered by priority.
-- * This is used by folio_alloc_swap() instead of swap_active_head
-- * because swap_active_head includes all swap_info_structs,
-- * but folio_alloc_swap() doesn't need to look at full ones.
-- * This uses its own lock instead of swapon_rwsem because when a
-- * swap_info_struct changes between not-full/full, it needs to
-- * add/remove itself to/from this list, but the swap_info_struct->lock
-- * is held and the locking order requires swapon_rwsem to be taken
-- * before any swap_info_struct->lock.
+- * Discard pending clusters in a synchronized way when under high pressure.
+- * Return: true if any cluster is discarded.
 - */
--static PLIST_HEAD(swap_avail_head);
--static DEFINE_SPINLOCK(swap_avail_lock);
+-static bool swap_sync_discard(void)
+-{
+-	bool ret = false;
+-	struct swap_info_struct *si, *next;
 -
- static inline struct swap_info_struct *__swap_iter(int *i, unsigned long flag)
- {
- 	lockdep_assert_held(&swapon_rwsem);
-@@ -1547,7 +1532,6 @@ static void del_from_avail_list(struct swap_info_struct *si, bool swapoff)
- {
- 	unsigned long pages;
- 
--	spin_lock(&swap_avail_lock);
- 	spin_lock(&swap_queue_update_lock);
- 
- 	/*
-@@ -1567,10 +1551,8 @@ static void del_from_avail_list(struct swap_info_struct *si, bool swapoff)
- 	}
- 
- 	swap_queue_mask(si);
--	plist_del(&si->avail_list, &swap_avail_head);
- skip:
- 	spin_unlock(&swap_queue_update_lock);
--	spin_unlock(&swap_avail_lock);
- }
- 
- /* SWAP_USAGE_OFFLIST_BIT can only be cleared by this helper. */
-@@ -1579,7 +1561,6 @@ static void add_to_avail_list(struct swap_info_struct *si)
- 	long val;
- 	unsigned long pages;
- 
--	spin_lock(&swap_avail_lock);
- 	spin_lock(&swap_queue_update_lock);
- 
- 	/*
-@@ -1610,7 +1591,6 @@ static void add_to_avail_list(struct swap_info_struct *si)
- 	}
- 
- 	swap_queue_unmask(si);
--	plist_add(&si->avail_list, &swap_avail_head);
- skip:
- 	spin_unlock(&swap_queue_update_lock);
- }
-@@ -3622,7 +3602,6 @@ static struct swap_info_struct *alloc_swap_info(void)
- 	}
- 	p->swap_extent_root = RB_ROOT;
- 	plist_node_init(&p->list, 0);
--	plist_node_init(&p->avail_list, 0);
- 	p->flags = SWP_USED;
- 	percpu_up_write(&swapon_rwsem);
- 	if (defer) {
-@@ -4030,7 +4009,6 @@ SYSCALL_DEFINE2(swapon, const char __user *, specialfile, int, swap_flags)
- 	 */
- 	si->prio = prio;
- 	si->list.prio = -si->prio;
--	si->avail_list.prio = -si->prio;
- 	si->swap_file = swap_file;
- 
- 	/* Sets SWP_WRITEOK, resurrect the percpu ref, expose the swap device */
-@@ -4163,14 +4141,14 @@ void __folio_throttle_swaprate(struct folio *folio, gfp_t gfp)
- 	if (current->throttle_disk)
- 		return;
- 
--	spin_lock(&swap_avail_lock);
--	plist_for_each_entry(si, &swap_avail_head, avail_list) {
--		if (si->bdev) {
-+	percpu_down_read(&swapon_rwsem);
-+	plist_for_each_entry(si, &swap_active_head, list) {
-+		if ((si->flags & SWP_WRITEOK) && si->bdev) {
- 			blkcg_schedule_throttle(si->bdev->bd_disk, true);
- 			break;
+-	percpu_down_read(&swapon_rwsem);
+-start_over:
+-	plist_for_each_entry_safe(si, next, &swap_active_head, list) {
+-		percpu_up_read(&swapon_rwsem);
+-		if (get_swap_device_info(si)) {
+-			if (si->flags & SWP_PAGE_DISCARD)
+-				ret = swap_do_scheduled_discard(si);
+-			put_swap_device(si);
+-		}
+-		if (ret)
+-			return true;
+-
+-		percpu_down_read(&swapon_rwsem);
+-		if (plist_node_empty(&next->list))
+-			goto start_over;
+-	}
+-	percpu_up_read(&swapon_rwsem);
+-
+-	return false;
+-}
+-
+ static int swap_extend_table_alloc(struct swap_info_struct *si,
+ 				   struct swap_cluster_info *ci,
+ 				   unsigned int ci_off, gfp_t gfp)
+@@ -2045,14 +2029,8 @@ int folio_alloc_swap(struct folio *folio)
  		}
  	}
--	spin_unlock(&swap_avail_lock);
-+	percpu_up_read(&swapon_rwsem);
- }
- #endif
  
+-again:
+ 	ret = swap_alloc_entry(folio);
+ 
+-	if (!order && unlikely(!folio_test_swapcache(folio))) {
+-		if (swap_sync_discard())
+-			goto again;
+-	}
+-
+ 	/* Need to call this even if allocation failed, for MEMCG_SWAP_FAIL. */
+ 	if (unlikely(mem_cgroup_try_charge_swap(folio)))
+ 		swap_cache_del_folio(folio);
 
 -- 
 2.55.0
