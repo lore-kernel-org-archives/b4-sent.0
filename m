@@ -1,65 +1,105 @@
-From: Vincent Jardin <vjardin@free.fr>
-Date: Mon, 13 Jul 2026 23:07:54 +0200
-Subject: [PATCH] hwmon: (tmp401) register with thermal subsystem
+From: Jia Wang <wangjia@ultrarisc.com>
+Subject: [PATCH v3 0/3] PCI: ultrarisc: Add DP1000 PCIe clock support
+Date: Tue, 14 Jul 2026 09:11:01 +0800
+Message-Id: <20260714-ultrarisc-pci-clk-v3-0-e72723fc0ef1@ultrarisc.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260713-for-upstream-hwmon-tmp401-register-tz-v1-1-47315d8617bc@free.fr>
-X-B4-Tracking: v=1; b=H4sIAKlTVWoC/x2NywqDQAwAf0VybiCrpWJ/pfSgNWoO+yBZtVT89
- 257HBhmDjBWYYN7dYDyJiYxFHCXCl5LH2ZGGQtDTfWNWtfgFBXXZFm597jsPgbMPl3JofIsllk
- xf3D8uTR0AzcEpZWUJ3n/P4/neX4BN85exXcAAAA=
-To: Guenter Roeck <linux@roeck-us.net>
-Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Vincent Jardin <vjardin@free.fr>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783976874; l=1435;
- i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=KjziWIi0OltnNwCWGxqiR9hdiO69mfw90Ja+vvlTw18=;
- b=PDafruWlxKd+Zk51eUp/TVu8YihLTuQ1OXVy5lEYlD4EGX56l8xI9Rc7l+XmakcCc4uzGaSOD
- 6QfYJZ+60K1BsFQzdVXe3DW1b6luC+aK8F+ix0TKYXJNGLduKOoiTnI
-X-Developer-Key: i=vjardin@free.fr; a=ed25519;
- pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
-X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAKWMVWoC/23Nyw6CMBQE0F8hXVvThxZx5X8YF225lesDSAuNh
+ vDvFjSaGJaTzJwZSACPEMg+G4iHiAGbOgW5yoitdH0GimXKRDChmOI57W+d1x6Dpa1Fam9Xqi0
+ v2CbXjoMmadd6cPiYzePpnUNvLmC7CZoaFYau8c/5NPKp9/FFseBHThndgpaS7VypjTx8O2vb3
+ Mn0EcVPyZlaUkRShJPOKGe0UuZfGcfxBRQjU7UOAQAA
+X-Change-ID: 20260617-ultrarisc-pci-clk-ac19047af1ea
+To: Xincheng Zhang <zhangxincheng@ultrarisc.com>, 
+ Lorenzo Pieralisi <lpieralisi@kernel.org>, 
+ =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
+ Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Bjorn Helgaas <bhelgaas@google.com>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-pci@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Jia Wang <wangjia@ultrarisc.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783991481; l=2995;
+ i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
+ bh=2okLRAGbVQqKklUYGWmJ7tyA+p3vyLm+/B5mkepvT5Y=;
+ b=PMqfwG3L/HPPIM7FZXN8QLT8vF5qGlTEcsmO7O2+RjQAIHyJ7ZeLJpxQgTkzrkK7U3NqTCTXH
+ nDKJzlPRWvxDi0rmUvbOf5DLuRDJjhg5buBapFyxEWWuIVl333CFIcQ
+X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
+ pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
+X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-tmp401 is missing HWMON_C_REGISTER_TZ. So a devicetree thermal
-zone referencing a such sensor ('thermal-sensors = <&tmp411 N>')
-fails to register it. Then its cooling-maps is not set, which means
-that the fans are not managed.
+Add clock handling for the UltraRISC DP1000 DesignWare PCIe host
+controller.
 
-Same as lm90 or jc42, set HWMON_C_REGISTER_TZ.
-Boards without the property into the DT keep the same behavior.
+The DP1000 PCIe controller depends on three input clocks: core, dbi, and
+aux. The driver accesses DBI registers during host initialization, so the
+clocks must be enabled before the controller registers are touched.
 
-Signed-off-by: Vincent Jardin <vjardin@free.fr>
+This series documents the required clocks in the device tree binding,
+enables the core, dbi, and aux clocks before DesignWare host
+initialization, and keeps them managed across probe failure, detach, and
+system suspend/resume. It also switches the driver to
+module_platform_driver() so the existing tristate Kconfig option builds
+correctly as a module.
+
+Testing:
+- Build and module build tested with ARCH=riscv.
+- Boot tested on UltraRISC DP1000.
+- Validated the PCIe binding with dt_binding_check and dtbs_check.
+
+Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
 ---
-It was checked on a LX2160A board that uses a TMP411 for the chassis ambient
-input of a fan thermal zone.
-Without this patch the zone silently never registers.
-With this patch, the zone registers and the cooling-map drives the EMC2305
-fans.
----
- drivers/hwmon/tmp401.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v3:
+- Track whether the PCIe clocks are enabled and make clock enable/disable
+  helpers idempotent.
+- Skip dw_pcie_suspend_noirq() when the controller is already suspended to
+  avoid register access with clocks disabled after a failed resume.
+- Disable clocks again if dw_pcie_resume_noirq() fails after clocks were
+  re-enabled.
+- Add a remove callback to deinitialize the DesignWare host when the module
+  build support is added.
+- Link to v2: https://patch.msgid.link/20260706-ultrarisc-pci-clk-v2-0-2f3fb6fba66b@ultrarisc.com
 
-diff --git a/drivers/hwmon/tmp401.c b/drivers/hwmon/tmp401.c
-index ca0ff525ea29..83aafe4bd3e7 100644
---- a/drivers/hwmon/tmp401.c
-+++ b/drivers/hwmon/tmp401.c
-@@ -695,7 +695,7 @@ static int tmp401_probe(struct i2c_client *client)
- 	info->type = hwmon_chip;
- 	info->config = data->chip_channel_config;
- 
--	data->chip_channel_config[0] = HWMON_C_UPDATE_INTERVAL;
-+	data->chip_channel_config[0] = HWMON_C_REGISTER_TZ | HWMON_C_UPDATE_INTERVAL;
- 
- 	info = &data->temp_info;
- 	info->type = hwmon_temp;
+Changes in v2:
+- Add Fixes and Acked-by tags to the binding patch.
+- Add a Fixes tag to the driver clock handling patch.
+- Fix the suspend/resume clock handling so clocks are disabled only after a
+  successful suspend and kept enabled on resume failure.
+- Add a module build fix by switching to module_platform_driver().
+- Link to v1: https://patch.msgid.link/20260629-ultrarisc-pci-clk-v1-0-5ea3308fdab3@ultrarisc.com
+
+To: Xincheng Zhang <zhangxincheng@ultrarisc.com>
+To: Jia Wang <wangjia@ultrarisc.com>
+To: Lorenzo Pieralisi <lpieralisi@kernel.org>
+To: Krzysztof Wilczyński <kwilczynski@kernel.org>
+To: Manivannan Sadhasivam <mani@kernel.org>
+To: Rob Herring <robh@kernel.org>
+To: Bjorn Helgaas <bhelgaas@google.com>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+Cc: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Cc: linux-pci@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
 ---
-base-commit: ca078d004cf58137bcf8cb24a8b271397431ba58
-change-id: 20260713-for-upstream-hwmon-tmp401-register-tz-d07130b9be30
+Jia Wang (3):
+      dt-bindings: pci: ultrarisc: add required DP1000 PCIe clocks
+      PCI: ultrarisc: get and enable DP1000 PCIe clocks
+      PCI: ultrarisc: allow DP1000 driver to build as module
+
+ .../bindings/pci/ultrarisc,dp1000-pcie.yaml        |  16 +++
+ drivers/pci/controller/dwc/pcie-ultrarisc.c        | 112 +++++++++++++++++++--
+ 2 files changed, 120 insertions(+), 8 deletions(-)
+---
+base-commit: a13c140cc289c0b7b3770bce5b3ad42ab35074aa
+change-id: 20260617-ultrarisc-pci-clk-ac19047af1ea
 
 Best regards,
--- 
-Vincent Jardin <vjardin@free.fr>
+--  
+Jia Wang <wangjia@ultrarisc.com>
 
