@@ -1,11 +1,10 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Tue, 14 Jul 2026 02:33:37 +0000
-Subject: [PATCH v2 1/3] dt-bindings: reset: amlogic: Add A9 reset
- compatibles
+Date: Tue, 14 Jul 2026 02:33:38 +0000
+Subject: [PATCH v2 2/3] reset: amlogic: Add A9 AO reset controller support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260714-a9-reset-v2-1-8df09b2f437c@amlogic.com>
+Message-Id: <20260714-a9-reset-v2-2-8df09b2f437c@amlogic.com>
 References: <20260714-a9-reset-v2-0-8df09b2f437c@amlogic.com>
 In-Reply-To: <20260714-a9-reset-v2-0-8df09b2f437c@amlogic.com>
 To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>, 
@@ -16,52 +15,53 @@ To: Philipp Zabel <p.zabel@pengutronix.de>, Rob Herring <robh@kernel.org>,
  Martin Blumenstingl <martin.blumenstingl@googlemail.com>
 Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>, 
- Conor Dooley <conor.dooley@microchip.com>
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783996426; l=1488;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783996426; l=1414;
  i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=5WFk+q6Lu4hN8rJdO/6ZEotdvqyA2ABmhWD4G7n6Cis=;
- b=JGlItjGvPd98jmmQ1S2UVsuvwvMqeccsiTmNtrPOrq773X/fpTtjNvIR4/KPVPH4HfyR2v2jm
- pY8F0iFQDOoDOGjFa/n8obfxdU2RySZyFrUcHf01w4tAgFtUWZjPx8Z
+ bh=patSBH/uW6tkb/H97P+dDOJPShFdk5yhMtjXp5whRlQ=;
+ b=NzNlMu/pu5V818kQROdNXv7hNpXwIZw76LRmleTeG468QP215WMLszurs+aWDFjqgc4t7Ef0M
+ vv9DVuRDPXFAarjD2qF+FRwqFZoG7ShwDMjPQZA90HpOA440gSfPNBr
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the reset controller compatibles used by the Amlogic A9 SoC.
-Add support for the A9 AO reset controller and add the A9 reset
-compatible with the T7 reset controller as fallback.
+Add the reset configuration and compatible entry for the Amlogic A9 AO
+reset controller.
 
-Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- Documentation/devicetree/bindings/reset/amlogic,meson-reset.yaml | 5 +++++
- 1 file changed, 5 insertions(+)
+ drivers/reset/amlogic/reset-meson.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/reset/amlogic,meson-reset.yaml b/Documentation/devicetree/bindings/reset/amlogic,meson-reset.yaml
-index 150e95c0d9be..e585f71879f2 100644
---- a/Documentation/devicetree/bindings/reset/amlogic,meson-reset.yaml
-+++ b/Documentation/devicetree/bindings/reset/amlogic,meson-reset.yaml
-@@ -19,6 +19,7 @@ properties:
-           - amlogic,meson-axg-reset # Reset Controller on AXG and compatible SoCs
-           - amlogic,meson-a1-reset # Reset Controller on A1 and compatible SoCs
-           - amlogic,meson-s4-reset # Reset Controller on S4 and compatible SoCs
-+          - amlogic,a9-ao-reset
-           - amlogic,c3-reset # Reset Controller on C3 and compatible SoCs
-           - amlogic,t7-reset
-       - items:
-@@ -26,6 +27,10 @@ properties:
-               - amlogic,a4-reset
-               - amlogic,a5-reset
-           - const: amlogic,meson-s4-reset
-+      - items:
-+          - enum:
-+              - amlogic,a9-reset
-+          - const: amlogic,t7-reset
+diff --git a/drivers/reset/amlogic/reset-meson.c b/drivers/reset/amlogic/reset-meson.c
+index c303e8590dd6..5e8afbceaf23 100644
+--- a/drivers/reset/amlogic/reset-meson.c
++++ b/drivers/reset/amlogic/reset-meson.c
+@@ -49,6 +49,14 @@ static const struct meson_reset_param t7_param = {
+ 	.level_low_reset = true,
+ };
  
-   reg:
-     maxItems: 1
++static const struct meson_reset_param a9_ao_param = {
++	.reset_ops	= &meson_reset_ops,
++	.reset_num      = 32,
++	.reset_offset	= 0x0,
++	.level_offset   = 0x4,
++	.level_low_reset = true,
++};
++
+ static const struct of_device_id meson_reset_dt_ids[] = {
+ 	 { .compatible = "amlogic,meson8b-reset",    .data = &meson8b_param},
+ 	 { .compatible = "amlogic,meson-gxbb-reset", .data = &meson8b_param},
+@@ -57,6 +65,7 @@ static const struct of_device_id meson_reset_dt_ids[] = {
+ 	 { .compatible = "amlogic,meson-s4-reset",   .data = &meson_s4_param},
+ 	 { .compatible = "amlogic,c3-reset",   .data = &meson_s4_param},
+ 	 { .compatible = "amlogic,t7-reset",   .data = &t7_param},
++	 { .compatible = "amlogic,a9-ao-reset",      .data = &a9_ao_param},
+ 	 { /* sentinel */ },
+ };
+ MODULE_DEVICE_TABLE(of, meson_reset_dt_ids);
 
 -- 
 2.52.0
