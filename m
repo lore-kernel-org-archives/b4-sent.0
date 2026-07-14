@@ -1,84 +1,57 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Tue, 14 Jul 2026 14:20:37 +0800
-Subject: [PATCH] ceph: fix use-after-dereference of NULL ci in
- __ceph_remove_cap()
+From: Esteban Urrutia <esteuwu@proton.me>
+Subject: [PATCH 0/6] Initial PCIe0 and QMP USB PHYs support for SM8475
+Date: Tue, 14 Jul 2026 02:36:38 -0400
+Message-Id: <20260714-sm8475-bup-v1-0-b2871be2b4ec@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260714-ceph-fix-remove-cap-v1-1-27b5bc6ee2f6@clyso.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMUQqDMBCE4avIPrugQZrSq5Q+rOtYt1ANiYog3
- t3YPn4w8++UEA2JHsVOEaslm8aMuixIBxnfYOuyyVXuVvm6YUUYuLeNI77TClYJrL3v7uLFNU4
- oP0NEXvyqz9ffaWk/0PlK0XGcpd+6AHcAAAA=
-X-Change-ID: 20260714-ceph-fix-remove-cap-cf7d8a7a242a
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>
-Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xiubo Li <xiubo.li@clyso.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ5AMBBA4avIrDWpRrVxFbHQGozETzqIRNxds
+ fwW713AGAgZyuSCgAcxLXNElibgh2buUVAbDUqqQposFzzZ3Gjh9lVob2WrO+mUayAGa8COzm9
+ W1b95dyP67T3AfT9v8AbObgAAAA==
+X-Change-ID: 20260714-sm8475-bup-5c80d5f0b2ba
+To: Vinod Koul <vkoul@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, Esteban Urrutia <esteuwu@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784010045; l=1741;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=ooSqkK6IVYP8K/OVskBxW937t4pyDtOQPUpfeEISEHY=;
- b=4//FPhq6KgagTG7f41be8cBiCVClaxaFVnSh67AOzk1hzSy6SbXQvnVf2R60XFFiAHUbODHSR
- gtMFoGu8RKWBfFyD7Ojs+kZstipgGwStwiWiMciXlZWJ7Tpgy1a/kAr
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784011013; l=1233;
+ i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
+ bh=loOVyJQdNo2C/7b6M2ZU7HXekbM+vRvrsTr0PcS5i0A=;
+ b=2itTSQOEtB51eyLG5Ly2sH889FWi31qrOSgVL8uSfy7U8P+fKSBTFKWN5YEkKPK7gJs2Df/H2
+ dOWy4a03DFPAiwLJ2r6Y0JDnVtWIDgpSzBNshzM3bkrsB1POy+5cDDL
+X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
+ pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
+X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The NULL check for "ci" in __ceph_remove_cap() was dead code because
-ci was dereferenced via &ci->netfs.inode before the check, and
-cap->session was dereferenced via session->s_mdsc->fsc->client even
-earlier.  On a double-remove, both cap->ci and cap->session are set
-to NULL by the first call, so the second call would crash before
-ever reaching the guard.
+This series adds support for both the PCIe0 and the QMP USB PHYs which
+can be found on the SM8475 SoC.
+The initialization sequences vary noticeably when compared to the ones
+used in the SM8450 SoC, hence the need to add support for these PHYs.
 
-Move ci, session, cl, and inode initializations after the NULL check
-so that the early-return actually works.
-
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
- fs/ceph/caps.c | 17 ++++++++++-------
- 1 file changed, 10 insertions(+), 7 deletions(-)
+Esteban Urrutia (6):
+      dt-bindings: phy: qcom,sc8280xp-qmp-pcie-phy: Add SM8475 QMP PHY
+      phy: qcom: qmp-pcie: Add pcs_lane1 offset to V5 offsets
+      phy: qcom: qmp-pcie: Add support for SM8475 Gen3x1 PCIe0 port
+      dt-bindings: phy: qcom,sc8280xp-qmp-usb43dp-phy: Add SM8475 QMP PHY
+      phy: qcom: qmp-combo: Add serdes and RBR/HBR/HBR2/HBR3 tables for v1 DP PLLs
+      phy: qcom: qmp-combo: Add SM8475 support
 
-diff --git a/fs/ceph/caps.c b/fs/ceph/caps.c
-index f8d898ad091e..8568edf494b5 100644
---- a/fs/ceph/caps.c
-+++ b/fs/ceph/caps.c
-@@ -1154,18 +1154,21 @@ int ceph_is_any_caps(struct inode *inode)
-  */
- void __ceph_remove_cap(struct ceph_cap *cap, bool queue_release)
- {
--	struct ceph_mds_session *session = cap->session;
--	struct ceph_client *cl = session->s_mdsc->fsc->client;
--	struct ceph_inode_info *ci = cap->ci;
--	struct inode *inode = &ci->netfs.inode;
-+	struct ceph_mds_session *session;
-+	struct ceph_client *cl;
-+	struct ceph_inode_info *ci;
-+	struct inode *inode;
- 	struct ceph_mds_client *mdsc;
- 	int removed = 0;
- 
- 	/* 'ci' being NULL means the remove have already occurred */
--	if (!ci) {
--		doutc(cl, "inode is NULL\n");
-+	ci = cap->ci;
-+	if (!ci)
- 		return;
--	}
-+
-+	session = cap->session;
-+	cl = session->s_mdsc->fsc->client;
-+	inode = &ci->netfs.inode;
- 
- 	lockdep_assert_held(&ci->i_ceph_lock);
- 
-
+ .../bindings/phy/qcom,sc8280xp-qmp-pcie-phy.yaml   |   2 +
+ .../phy/qcom,sc8280xp-qmp-usb43dp-phy.yaml         |   1 +
+ drivers/phy/qualcomm/phy-qcom-qmp-combo.c          | 259 +++++++++++++++++----
+ drivers/phy/qualcomm/phy-qcom-qmp-pcie.c           | 109 +++++++++
+ 4 files changed, 326 insertions(+), 45 deletions(-)
 ---
-base-commit: fc67edb66b3c9924c4e0bb366a92b32ea13c526a
-change-id: 20260714-ceph-fix-remove-cap-cf7d8a7a242a
+base-commit: 49362394dad7df66c274c867a271394c10ca2bb8
+change-id: 20260714-sm8475-bup-5c80d5f0b2ba
 
 Best regards,
 --  
-Xiubo Li <xiubo.li@clyso.com>
+Esteban Urrutia <esteuwu@proton.me>
 
