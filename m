@@ -1,868 +1,146 @@
-From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Tue, 14 Jul 2026 12:02:57 +0100
-Subject: [PATCH v8 17/17] docs: iio: add documentation for ad9910 driver
+From: Oliver Hartkopp <socketcan@hartkopp.net>
+Subject: [PATCH v14 00/11] can: bcm: collected fixes
+Date: Tue, 14 Jul 2026 13:30:21 +0200
+Message-Id: <20260714-bcm_fixes-v14-0-867a4be60a61@hartkopp.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260714-ad9910-iio-driver-v8-17-36939c3c07d2@analog.com>
-References: <20260714-ad9910-iio-driver-v8-0-36939c3c07d2@analog.com>
-In-Reply-To: <20260714-ad9910-iio-driver-v8-0-36939c3c07d2@analog.com>
-To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org, 
- linux-hardening@vger.kernel.org
-Cc: Lars-Peter Clausen <lars@metafoo.de>, 
- Michael Hennerich <Michael.Hennerich@analog.com>, 
- Jonathan Cameron <jic23@kernel.org>, David Lechner <dlechner@baylibre.com>, 
- Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Philipp Zabel <p.zabel@pengutronix.de>, 
- Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
- Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784026971; l=26543;
- i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=Z1UcgxwvHdxY9gW2kSgsReU2ouE5NybcL1VfK8R8Pd0=;
- b=RCCCCJUJ932YVtINSXtwfcI4ITSOmsPYeCNJ+VDHcwb2Otfrru7SMqC6B6UFOLAfGqRUKX8zg
- UX+5go9T5rcDfSlu5kMsm5NgqDcxqwP6BB5k/dw+kYFI+bQcNncT0mx
-X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
- pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
-X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAM0dVmoC/3XSzU7DMAwA4FdBPVNkJ6mTcOI9EEKJ67CC2Ka2T
+ KBp704yDhSUHJ3484/kc7fIPMnS3d+cu1lO0zId9jlAc3vT8S7sX6SfxvzQKVAEhKqP/P6cpk9
+ ZemdSNCF4HVh1Of84y/Ujpz8+/cTLR3wVXkuBkrGblvUwf127nbDk1eqesIeeg0oBrIiF9LAL8
+ /p2OB7v9rJ2pfRJ/WILdotVxp5IAQ/aRDtUsG5inbEzBMCBRud8BZsmNhmH4Gx00Y9a18Yemng
+ oO2u2JrnRpWQrmLbYbTGVscEiBBVZe1fBtolt6WzzshS1UWIq2DWxK51ZpSHpyApVBfst9lvsM
+ yaRGK1jTrGGEZoaIfPBppS0E21YahzbvFwZkI0BMQoPXOOqzcudETKQ8hgTVvn20ND84eXS0kh
+ kmRC8D//45XL5BioIaaKcAwAA
+X-Change-ID: 20260612-bcm_fixes-84fb4aa93ac2
+To: linux-can@vger.kernel.org
+Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
+ Marc Kleine-Budde <mkl@pengutronix.de>, Lee Jones <lee@kernel.org>, 
+ Feng Xue <feng.xue@outlook.com>, Ginger <ginger.jzllee@gmail.com>, 
+ syzbot+75e5e4ae00c3b4bb544e@syzkaller.appspotmail.com, 
+ sashiko-reviews@lists.linux.dev, sashiko-bot@kernel.org
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784028623; l=5202;
+ i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
+ bh=WeZw4ZV/vNJLk2Xk1BsZayWB7+u4PFHP/A4pQ0wljis=;
+ b=nXHorN2mJe2YRkMazagM0nccqhQBJE8tpI39xwSBbMaf/4BdQBl6oR5lu90l9K6hQsyv5Fzb8
+ nZvs1VvCnruAAqMwkEmrz8zGS21aunWo83GNyCB/JnNsWJDek+6V6/W
+X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
+ pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
+X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add documentation for the AD9910 DDS IIO driver, which describes channels,
-DDS modes, attributes and ABI usage examples.
+Hi Marc,
 
-Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
+as there were different patches flying arround to fix CAN_BCM issues and
+AI assisted stuff pop's up again and again, I've created this collection
+to be applied.
+
+Fixed issues reported by sashiko-bot for patch 6:
+[High] Torn reads of ival1, ival2, and count lead to corrupted TX_EXPIRED API notifications.
+  
+Best regards,
+Oliver
+
+Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
 ---
- Documentation/iio/ad9910.rst | 792 +++++++++++++++++++++++++++++++++++++++++++
- Documentation/iio/index.rst  |   1 +
- MAINTAINERS                  |   1 +
- 3 files changed, 794 insertions(+)
+Changes in v14:
+- patch 6: add another lock in bcm_tx_timeout_handler() to snapshot data
+- Link to v13: https://patch.msgid.link/20260714-bcm_fixes-v13-0-fd667c61099a@hartkopp.net
 
-diff --git a/Documentation/iio/ad9910.rst b/Documentation/iio/ad9910.rst
-new file mode 100644
-index 000000000000..aab569f561db
---- /dev/null
-+++ b/Documentation/iio/ad9910.rst
-@@ -0,0 +1,792 @@
-+.. SPDX-License-Identifier: GPL-2.0-only
-+
-+=============
-+AD9910 driver
-+=============
-+
-+Direct Digital Synthesizer (DDS) driver for the Analog Devices Inc. AD9910.
-+The module name is ``ad9910``.
-+
-+* `AD9910 <https://www.analog.com/en/products/ad9910.html>`_
-+
-+The AD9910 is a 1 GSPS DDS with a 14-bit DAC, controlled over SPI. The driver
-+exposes the device through a hierarchy of typed IIO output channels. The root
-+``phy`` channel controls the system clock and full-scale output current.
-+Sub-channels provide independent control over single tone profiles, parallel
-+port modulation, digital ramp generation (DRG), RAM playback and output shift
-+keying (OSK).
-+
-+
-+Channel hierarchy
-+=================
-+
-+The driver exposes the following IIO output channels, each identified by a
-+unique channel number and a human-readable label. The ``phy`` channel is the
-+root of the hierarchy. Changing its ``sampling_frequency`` reconfigures the
-+system clock (SYSCLK) which affects all other channels.
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Channel
-+     - Label
-+     - Parent
-+     - Description
-+
-+   * - ``out_altcurrent100``
-+     - ``phy``
-+     -
-+     - Physical output: system clock and full-scale output current (:math:`I_{FS}`).
-+       See `Physical channel`_.
-+
-+   * - ``out_altcurrent110`` ... ``out_altcurrent117``
-+     - ``profile0`` ... ``profile7``
-+     - ``phy``
-+     - Single tone control: frequency, phase, amplitude, enable.
-+       See `Single Tone mode`_.
-+
-+   * - ``out_altcurrent120``
-+     - ``parallel_amplitude``
-+     - ``phy``
-+     - Parallel port amplitude channel.
-+       See `Parallel Port mode`_.
-+
-+   * - ``out_phase120``
-+     - ``parallel_phase``
-+     - ``phy``
-+     - Parallel port phase channel.
-+
-+   * - ``out_frequency120``
-+     - ``parallel_frequency``
-+     - ``phy``
-+     - Parallel port frequency channel: ``scale`` sets the FM gain
-+       (power-of-2 multiplier), ``offset`` sets the base FTW.
-+
-+   * - ``out_altcurrent121``
-+     - ``parallel_polar_amplitude``
-+     - ``phy``
-+     - Parallel polar amplitude channel: ``scale`` is the amplitude
-+       resolution, ``offset`` is the amplitude bias (lower 6 bits of ASF).
-+
-+   * - ``out_phase121``
-+     - ``parallel_polar_phase``
-+     - ``phy``
-+     - Parallel polar phase channel: ``scale`` is the phase resolution,
-+       ``offset`` is the phase bias (lower 8 bits of POW).
-+
-+   * - ``out_frequency130``
-+     - ``drg_frequency``
-+     - ``phy``
-+     - DRG frequency channel: ``en`` selects and enables the DRG with
-+       frequency as the ramp target.
-+       See `Digital ramp generator (DRG)`_.
-+
-+   * - ``out_frequency131``
-+     - ``drg_rising_frequency``
-+     - ``drg_frequency``
-+     - DRG frequency rising-ramp parameters: limit code, dwell enable,
-+       ramp clock, rate of change.
-+
-+   * - ``out_frequency132``
-+     - ``drg_falling_frequency``
-+     - ``drg_frequency``
-+     - DRG frequency falling-ramp parameters: limit code, dwell enable,
-+       ramp clock, rate of change.
-+
-+   * - ``out_phase130``
-+     - ``drg_phase``
-+     - ``phy``
-+     - DRG phase channel: ``en`` selects and enables the DRG with phase
-+       as the ramp target.
-+       See `Digital ramp generator (DRG)`_.
-+
-+   * - ``out_phase131``
-+     - ``drg_rising_phase``
-+     - ``drg_phase``
-+     - DRG phase rising-ramp parameters: limit code, dwell enable, ramp clock,
-+       rate of change.
-+
-+   * - ``out_phase132``
-+     - ``drg_falling_phase``
-+     - ``drg_phase``
-+     - DRG phase falling-ramp parameters: limit code, dwell enable, ramp clock,
-+       rate of change.
-+
-+   * - ``out_altcurrent130``
-+     - ``drg_amplitude``
-+     - ``phy``
-+     - DRG amplitude channel: ``en`` selects and enables the DRG with
-+       amplitude as the ramp target.
-+       See `Digital ramp generator (DRG)`_.
-+
-+   * - ``out_altcurrent131``
-+     - ``drg_rising_amplitude``
-+     - ``drg_amplitude``
-+     - DRG amplitude rising-ramp parameters: limit code, dwell enable,
-+       ramp clock, rate of change.
-+
-+   * - ``out_altcurrent132``
-+     - ``drg_falling_amplitude``
-+     - ``drg_amplitude``
-+     - DRG amplitude falling-ramp parameters: limit code, dwell enable,
-+       ramp clock, rate of change.
-+
-+   * - ``out_altcurrent140``
-+     - ``ram``
-+     - ``phy``
-+     - RAM playback: enable, frequency, phase and sampling frequency for
-+       the active profile. See `RAM mode`_.
-+
-+   * - ``out_altcurrent150``
-+     - ``osk``
-+     - ``phy``
-+     - Output shift keying (OSK): enable, amplitude code, ramp rate,
-+       rate of change. See `Output Shift Keying (OSK)`_.
-+
-+DDS modes
-+=========
-+
-+The AD9910 supports multiple modes of operation that can be configured
-+independently or in combination. Each DDS core parameter (frequency, phase
-+and amplitude) can come from different sources, but only one is active at a
-+time. This activation depends on a priority list, which is based on the enable
-+and destination configurations for such modes. The following tables are
-+extracted from the AD9910 datasheet and summarize the control parameters for
-+each mode and their priority when multiple sources are enabled simultaneously:
-+
-+.. flat-table:: DDS Frequency Control
-+   :header-rows: 1
-+
-+   * - Priority
-+     - Data Source
-+     - Conditions
-+
-+   * - Highest Priority
-+     - RAM
-+     - RAM enabled and data destination is frequency
-+
-+   * -
-+     - DRG
-+     - DRG enabled and data destination is frequency
-+
-+   * -
-+     - Parallel data and Frequency Tuning Word, FTW (frequency_offset)
-+     - Parallel data port enabled and data destination is frequency
-+
-+   * -
-+     - FTW register (frequency)
-+     - RAM enabled and data destination is not frequency
-+
-+   * - Lowest Priority
-+     - FTW (frequency) in single tone channel for the active profile
-+     - All other cases
-+
-+.. flat-table:: DDS Phase Control
-+   :header-rows: 1
-+
-+   * - Priority
-+     - Data Source
-+     - Conditions
-+
-+   * - Highest Priority
-+     - RAM
-+     - RAM enabled and data destination is phase or polar
-+
-+   * -
-+     - DRG
-+     - DRG enabled and data destination is phase
-+
-+   * -
-+     - Parallel data port
-+     - Parallel data port enabled and data destination is phase
-+
-+   * -
-+     - Parallel data port and Phase Offset Word, POW register LSBs (phase_offset)
-+     - Parallel data port enabled and data destination is polar
-+
-+   * -
-+     - POW register (phase)
-+     - RAM enabled and destination is not phase nor polar
-+
-+   * - Lowest Priority
-+     - POW (phase) in single tone channel for the active profile
-+     - All other cases
-+
-+.. flat-table:: DDS Amplitude Control
-+   :header-rows: 1
-+
-+   * - Priority
-+     - Data Source
-+     - Conditions
-+
-+   * - Highest Priority
-+     - Amplitude Scale Factor, ASF register and OSK generator
-+     - OSK enabled
-+
-+   * -
-+     - RAM
-+     - RAM enabled and data destination is amplitude or polar
-+
-+   * -
-+     - DRG
-+     - DRG enabled and data destination is amplitude
-+
-+   * -
-+     - Parallel data port
-+     - Parallel data port enabled and data destination is amplitude
-+
-+   * -
-+     - Parallel data port and ASF register LSBs (scale_offset)
-+     - Parallel data port enabled and data destination is polar
-+
-+   * - Lowest Priority
-+     - ASF (scale) in single tone channel for the active profile
-+     - (Amplitude scale is already enabled by default)
-+
-+While debugging or testing, the debug attributes ``frequency_source``,
-+``phase_source`` and ``amplitude_source`` can be used to read the label of
-+the channel that is actively controlling the correspondent DDS parameter,
-+which reflects the priority list described above.
-+
-+Single Tone mode
-+----------------
-+
-+Single tone is the baseline operating mode. The ``profileY`` channels
-+provide enable, frequency, phase and amplitude control:
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``en``
-+     - boolean (0 or 1)
-+     - Enable/disable profile Y. Only one profile can be active at a
-+       time. When enabling a profile it disables the current active profile.
-+       Disabling an active profile brings the device to a powered down state.
-+
-+   * - ``frequency``
-+     - Hz
-+     - Output frequency. Range :math:`[0, f_{SYSCLK} / 2)`. Stored in the
-+       profile's frequency tuning word (FTW).
-+
-+   * - ``phase``
-+     - rad
-+     - Phase offset. Range :math:`[0, 2\pi)`. Stored in the profile's phase
-+       offset word (POW).
-+
-+   * - ``raw``
-+     - integer
-+     - Amplitude scale factor code. Range :math:`[0, 16383]`. Stored in the
-+       profile's amplitude scale factor (ASF) register. The physical output
-+       amplitude is ``raw * scale`` where ``scale`` is read from the ``phy``
-+       channel.
-+
-+Profile switching is allowed while RAM mode is enabled. In that case single
-+tone parameters are stored in a shadow register and are not written to
-+hardware until RAM mode is disabled.
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Configure a 100 MHz tone in profile 2 and set it as the active profile:
-+
-+.. code-block:: bash
-+
-+  echo 100000000 > /sys/bus/iio/devices/iio\:device0/out_altcurrent112_frequency
-+  echo 0 > /sys/bus/iio/devices/iio\:device0/out_altcurrent112_phase
-+  echo 16383 > /sys/bus/iio/devices/iio\:device0/out_altcurrent112_raw
-+
-+  # Activate profile 2
-+  echo 1 > /sys/bus/iio/devices/iio\:device0/out_altcurrent112_en
-+
-+Read back the current single tone frequency:
-+
-+.. code-block:: bash
-+
-+  cat /sys/bus/iio/devices/iio\:device0/out_altcurrent112_frequency
-+
-+Parallel Port mode
-+------------------
-+
-+The parallel port allows real-time modulation of DDS parameters through a
-+16-bit external data bus. The driver exposes separate typed channels for each
-+modulation target.
-+
-+Non-polar modulation
-+^^^^^^^^^^^^^^^^^^^^
-+
-+In non-polar mode each DDS parameter is controlled by an independent 16-bit bus
-+input. The parallel port channels expose the resolution and base offset of their
-+respective bus inputs:
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Channel
-+     - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``out_phase120``
-+     - ``scale``
-+     - rad
-+     - Phase resolution per parallel bus LSB. Fixed at :math:`\pi / 2^{15}`
-+       rad/LSB (full 16-bit POW resolution).
-+
-+   * - ``out_frequency120``
-+     - ``scale``
-+     - Hz
-+     - Outputs the frequency scale evaluated as
-+       :math:`f_{SYSCLK} \cdot FM / 2^{32}`. Assuming that :math:`f_{SYSCLK}` is
-+       fixed, it is used to configure the modulation gain :math:`FM`, which is a
-+       power-of-2 multiplier in range :math:`[1, 32768]`. Writing to this
-+       attribute rounds up to the nearest :math:`FM` power of 2.
-+
-+   * - ``out_frequency120``
-+     - ``offset``
-+     - Hz
-+     - Outputs the frequency offset in raw units evaluated as :math:`FTW / FM`.
-+       Assuming that :math:`FM` is fixed, it is used to configure the FTW
-+       register, which is a 32-bit unsigned integer.
-+
-+Polar modulation
-+^^^^^^^^^^^^^^^^
-+
-+In polar mode a single 16-bit bus word carries both amplitude (high byte)
-+and phase (low byte). The ``parallel_polar_amplitude`` and
-+``parallel_polar_phase`` channels configure the bias applied to the low-order
-+bits of the ASF and POW registers respectively:
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Channel
-+     - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``out_altcurrent121``
-+     - ``scale``
-+     - mA/LSB
-+     - Full-scale amplitude resolution (read-only, fixed at :math:`I_{FS} / 2^{8}`).
-+
-+   * - ``out_altcurrent121``
-+     - ``offset``
-+     - fractional (raw units)
-+     - Amplitude bias. Lower 6 bits of ASF register. Range :math:`[0, 1)`.
-+
-+   * - ``out_phase121``
-+     - ``scale``
-+     - rad/LSB
-+     - Phase resolution (read-only, fixed at :math:`\pi / 2^{7}`).
-+
-+   * - ``out_phase121``
-+     - ``offset``
-+     - fractional (raw units)
-+     - Phase bias. Lower 8 bits of POW register. Range :math:`[0, 1)`.
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Set parallel port frequency modulation with a modulation gain of 16 and a 50 MHz
-+offset:
-+
-+.. code-block:: bash
-+
-+  # f_SYSCLK = 1 GHz, FM = 16
-+  # frequency scale = f_SYSCLK * FM / 2^32 = 3.725290298
-+  echo 3.725290298 > /sys/bus/iio/devices/iio\:device0/out_frequency120_scale
-+  # frequency offset = 50 MHz / scale = 50e6 / 13421772.8
-+  echo 13421772.8 > /sys/bus/iio/devices/iio\:device0/out_frequency120_offset
-+
-+One should choose a frequency scale that allows all the desired frequencies
-+to be represented in the 16-bit bus range, i.e.,
-+:math:`scale = (f_{max} - f_{min}) / 2^{16}`.
-+
-+
-+Digital ramp generator (DRG)
-+----------------------------
-+
-+The DRG produces linear frequency, phase or amplitude sweeps using dedicated
-+hardware. The active ramp target (destination) is selected by enabling the
-+corresponding typed channel at channel number 130:
-+
-+- ``out_frequency130`` (label ``drg_frequency``) — ramp targets frequency
-+- ``out_phase130`` (label ``drg_phase``) — ramp targets phase
-+- ``out_altcurrent130`` (label ``drg_amplitude``) — ramp targets amplitude
-+
-+Writing ``en=1`` to one of these channels enables the DRG and switches its
-+destination. Writing ``en=0`` disables the DRG if the channel is the current
-+active destination; writing to an already-inactive destination is a no-op.
-+
-+Each destination channel also exposes a read-only ``scale`` attribute
-+reporting the physical quantity per ramp register LSB, which allows converting
-+raw limit codes to physical values.
-+
-+The six ramp channels:
-+
-+- ``out_frequency131`` (label ``drg_rising_frequency``)
-+- ``out_frequency132`` (label ``drg_falling_frequency``)
-+- ``out_phase131`` (label ``drg_rising_phase``)
-+- ``out_phase132`` (label ``drg_falling_phase``)
-+- ``out_altcurrent131`` (label ``drg_rising_amplitude``)
-+- ``out_altcurrent132`` (label ``drg_falling_amplitude``)
-+
-+configure ascending and descending ramp parameters.
-+
-+Destination channel attributes
-+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``en``
-+     - boolean
-+     - Enable the DRG with this channel as the active destination. Only one
-+       destination can be active at a time.
-+
-+   * - ``scale``
-+     - Hz/LSB, rad/LSB or mA/LSB
-+     - Read-only. Physical quantity per raw units. Multiply a ramp
-+       rising/falling channel ``raw`` value by this scale to get the physical
-+       ramp target.
-+
-+Ramp channel attributes
-+^^^^^^^^^^^^^^^^^^^^^^^
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``dwell_en``
-+     - boolean
-+     - Enable dwell at the ramp limit. When disabled, the ramp
-+       auto-transitions at this limit without waiting for the DRCTL pin.
-+       Disabling both creates a bidirectional continuous ramp (triangular
-+       pattern). Other combinations create single-shot ramps at the DRCTL
-+       pin transition.
-+
-+   * - ``raw``
-+     - integer (64-bit)
-+     - Ramp limit expressed as a raw DRG register code in
-+       :math:`[0, 2^{32}-1]`. The physical value is ``raw * scale`` where
-+       ``scale`` is read from the active destination channel.
-+
-+   * - ``sampling_frequency``
-+     - Hz
-+     - Ramp clock rate. Controlled by an integer divider; the written value
-+       is adjusted to the nearest supported rate.
-+
-+   * - ``raw_roc``
-+     - /s
-+     - Rate of change. Number of register codes advanced per second, computed
-+       from the hardware step size and the current ramp clock. Writing
-+       requires ``sampling_frequency`` to be configured first.
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Configure a frequency sweep from 40 MHz to 60 MHz with a rate of change of
-+25 GHz/s:
-+
-+.. code-block:: bash
-+
-+  # Disable dwell on both limits for a bidirectional continuous ramp
-+  echo 0 > /sys/bus/iio/devices/iio\:device0/out_frequency131_dwell_en
-+  echo 0 > /sys/bus/iio/devices/iio\:device0/out_frequency132_dwell_en
-+
-+  # Set ramp rate at 250 MHz
-+  echo 250000000 > /sys/bus/iio/devices/iio\:device0/out_frequency131_sampling_frequency
-+  echo 250000000 > /sys/bus/iio/devices/iio\:device0/out_frequency132_sampling_frequency
-+
-+  # read the frequency scale to convert physical values to raw units
-+  cat /sys/bus/iio/devices/iio\:device0/out_frequency130_scale
-+  0.232830643650
-+
-+  # 40 MHz / 0.232830643650 = 171798692
-+  echo 171798692 > /sys/bus/iio/devices/iio\:device0/out_frequency131_raw
-+  # 60 MHz / 0.232830643650 = 257698038
-+  echo 257698038 > /sys/bus/iio/devices/iio\:device0/out_frequency132_raw
-+
-+  # 25 GHz/s / 0.232830643650 = 107374182402
-+  echo 107374182402 > /sys/bus/iio/devices/iio\:device0/out_frequency131_raw_roc
-+  echo 107374182402 > /sys/bus/iio/devices/iio\:device0/out_frequency132_raw_roc
-+
-+  # Enable the DRG with frequency as the destination
-+  echo 1 > /sys/bus/iio/devices/iio\:device0/out_frequency130_en
-+
-+RAM mode
-+--------
-+
-+The AD9910 contains a 1024 x 32-bit RAM that can be loaded with waveform data
-+and played back to modulate frequency, phase, amplitude, or polar (phase +
-+amplitude) parameters.
-+
-+RAM control channel attributes
-+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``en``
-+     - boolean
-+     - Enable/disable RAM playback. Toggling swaps profile registers between
-+       single tone and RAM configurations across all 8 profiles.
-+
-+   * - ``frequency``
-+     - Hz
-+     - Frequency tuning word used as the single tone frequency when
-+       RAM destination is not ``frequency``. Range: :math:`[0, f_{SYSCLK} / 2)`.
-+
-+   * - ``phase``
-+     - rad
-+     - Phase offset word used as the single tone phase when RAM destination
-+       is not ``phase``. Range: :math:`[0, 2\pi)`.
-+
-+   * - ``sampling_frequency``
-+     - Hz
-+     - RAM playback step rate of the active profile, which controls how fast
-+       the address counter advances. Controlled by an integer divider; the
-+       written value is adjusted to the nearest supported rate.
-+
-+Loading RAM data
-+^^^^^^^^^^^^^^^^
-+
-+RAM data is loaded through the firmware upload framework. The driver registers
-+a firmware upload sysfs entry named ``iio_deviceX:ram``. The firmware data
-+follows a binary format (version 1) with an 80-byte header followed by data
-+words. All fields are big-endian.
-+
-+.. flat-table:: RAM firmware header (80 bytes)
-+   :header-rows: 1
-+
-+   * - Offset
-+     - Size
-+     - Field
-+     - Description
-+
-+   * - 0
-+     - 4
-+     - ``magic``
-+     - Magic number: ``0x00AD9910``
-+
-+   * - 4
-+     - 2
-+     - ``version``
-+     - Format version: ``0x0001``
-+
-+   * - 6
-+     - 2
-+     - ``wcount``
-+     - Number of 32-bit RAM data words (0--1024)
-+
-+   * - 8
-+     - 4
-+     - ``crc``
-+     - CRC32 checksum over ``cfr1``, ``profiles`` and ``words``
-+
-+   * - 12
-+     - 4
-+     - ``cfr1``
-+     - CFR1 register value. Only RAM-relevant bits are used:
-+       bits [30:29] set data destination (00: frequency, 01: phase,
-+       10: amplitude, 11: polar); bits [20:17] set internal profile
-+       control (see datasheet Table 14)
-+
-+   * - 16
-+     - 64
-+     - ``profiles[0..7]``
-+     - 8 sets of 8-byte RAM profile configurations (see below)
-+
-+   * - 80
-+     - 4 x wcount
-+     - ``words[]``
-+     - RAM data words in reverse order
-+
-+Each 8-byte profile entry contains:
-+
-+.. flat-table:: RAM profile entry (8 bytes)
-+   :header-rows: 1
-+
-+   * - Bits
-+     - Field
-+     - Description
-+
-+   * - [55:40]
-+     - Address step rate
-+     - Controls playback speed for this profile
-+
-+   * - [39:30]
-+     - End address
-+     - Last RAM address for this profile
-+
-+   * - [23:14]
-+     - Start address
-+     - First RAM address for this profile
-+
-+   * - [5]
-+     - No-dwell high
-+     - No-dwell at high limit (ramp-up mode)
-+
-+   * - [3]
-+     - Zero-crossing
-+     - Zero-crossing enable (direct-switch mode)
-+
-+   * - [2:0]
-+     - Operating mode
-+     - 000: direct switch, 001: ramp-up, 010: bidirectional,
-+       011: bidirectional continuous, 100: ramp-up continuous
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Configure RAM mode with firmware data and enable it:
-+
-+.. code-block:: bash
-+
-+  # Load RAM data via firmware upload
-+  echo 1 > /sys/class/firmware/iio\:device0\:ram/loading
-+  cat ad9910-ram.bin > /sys/class/firmware/iio\:device0\:ram/data
-+  echo 0 > /sys/class/firmware/iio\:device0\:ram/loading
-+
-+  # Enable RAM mode
-+  echo 1 > /sys/bus/iio/devices/iio\:device0/out_altcurrent140_en
-+
-+Output Shift Keying (OSK)
-+-------------------------
-+
-+OSK controls the output amplitude envelope, allowing the output to be ramped
-+on/off rather than switched abruptly.
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``en``
-+     - boolean (0 or 1)
-+     - Enable/disable OSK.
-+
-+   * - ``raw``
-+     - integer
-+     - Target amplitude code. 14-bit ASF field. Range: :math:`[0, 16383]`.
-+       The physical output amplitude is ``raw * scale`` where ``scale`` is read
-+       from the ``phy`` channel.
-+
-+   * - ``raw_roc``
-+     - /s
-+     - Amplitude ramp rate. Writing a non-zero value enables automatic OSK
-+       and selects the closest hardware step size. Writing ``0`` disables
-+       automatic ramping (manual control via ``raw``). Writing the maximum
-+       available value enables pin-controlled immediate transition.
-+
-+   * - ``raw_roc_available``
-+     - /s
-+     - Lists the available ``raw_roc`` values based on the current
-+       ``sampling_frequency``. The first value is always ``0`` (disabled) and
-+       the last value corresponds to pin-controlled immediate mode.
-+
-+   * - ``sampling_frequency``
-+     - Hz
-+     - OSK ramp clock. Controlled by an integer divider; the written value
-+       is adjusted to the nearest supported rate.
-+
-+Usage examples
-+^^^^^^^^^^^^^^
-+
-+Enable OSK with automatic ramping:
-+
-+.. code-block:: bash
-+
-+  # Set ramp rate 1MHz
-+  echo 1000000 > /sys/bus/iio/devices/iio\:device0/out_altcurrent150_sampling_frequency
-+
-+  # Check available rate of change values
-+  cat /sys/bus/iio/devices/iio\:device0/out_altcurrent150_raw_roc_available
-+  0 1000000 2000000 4000000 8000000 16383000000
-+
-+  # Enable automatic OSK with a rate of change of 8000000 raw units/s
-+  echo 8000000 > /sys/bus/iio/devices/iio\:device0/out_altcurrent150_raw_roc
-+
-+  # Enable OSK
-+  echo 1 > /sys/bus/iio/devices/iio\:device0/out_altcurrent150_en
-+
-+Enable pin-controlled immediate OSK:
-+
-+.. code-block:: bash
-+
-+  # Enable OSK in manual mode (no ramp)
-+  echo 0 > /sys/bus/iio/devices/iio\:device0/out_altcurrent150_raw_roc
-+  echo 1 > /sys/bus/iio/devices/iio\:device0/out_altcurrent150_en
-+
-+  # Set target amplitude to full scale
-+  echo 16383 > /sys/bus/iio/devices/iio\:device0/out_altcurrent150_raw
-+
-+Physical channel
-+================
-+
-+The ``phy`` channel provides device-level control:
-+
-+.. flat-table::
-+   :header-rows: 1
-+
-+   * - Attribute
-+     - Unit
-+     - Description
-+
-+   * - ``sampling_frequency``
-+     - Hz
-+     - System clock (SYSCLK) frequency. When the internal PLL is enabled
-+       (via the ``adi,pll-enable`` devicetree property), configures the PLL
-+       multiplier (Range: :math:`[420, 1000]` MHz). Without PLL, the reference
-+       clock can only be divided by 2.
-+
-+   * - ``scale``
-+     - mA/LSB
-+     - Full-scale DAC output current per amplitude code LSB, which is evaluated
-+       as :math:`I_{FS} / 2^{14}`. Shared across all ``altcurrent`` channels.
-+       Setting this attribute reconfigures the auxiliary DAC full-scale code and
-+       updates the effective amplitude resolution for single tone profiles,
-+       DRG amplitude ramps and OSK.
-+
-+   * - ``powerdown``
-+     - boolean (0 or 1)
-+     - Software power-down. Writing 1 powers down the digital core, DAC,
-+       reference clock input and auxiliary DAC simultaneously.
-+
-+Usage examples
-+--------------
-+
-+Set the system clock to 1 GHz:
-+
-+.. code-block:: bash
-+
-+  echo 1000000000 > /sys/bus/iio/devices/iio\:device0/out_altcurrent100_sampling_frequency
-+
-+Read current system clock frequency:
-+
-+.. code-block:: bash
-+
-+  cat /sys/bus/iio/devices/iio\:device0/out_altcurrent100_sampling_frequency
-+
-+Power down the device:
-+
-+.. code-block:: bash
-+
-+  echo 1 > /sys/bus/iio/devices/iio\:device0/out_altcurrent100_powerdown
-diff --git a/Documentation/iio/index.rst b/Documentation/iio/index.rst
-index b02b879b053a..4c30ef033685 100644
---- a/Documentation/iio/index.rst
-+++ b/Documentation/iio/index.rst
-@@ -30,6 +30,7 @@ Industrial I/O Kernel Drivers
-    ad7606
-    ad7625
-    ad7944
-+   ad9910
-    ade9000
-    adf41513
-    adis16475
-diff --git a/MAINTAINERS b/MAINTAINERS
-index b923e5b25ddc..bc1fc30b9650 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1686,6 +1686,7 @@ W:	https://ez.analog.com/linux-software-drivers
- F:	Documentation/ABI/testing/debugfs-iio-ad9910
- F:	Documentation/ABI/testing/sysfs-bus-iio-frequency-ad9910
- F:	Documentation/devicetree/bindings/iio/frequency/adi,ad9910.yaml
-+F:	Documentation/iio/ad9910.rst
- F:	drivers/iio/frequency/ad9910.c
- 
- ANALOG DEVICES INC MAX22007 DRIVER
+Changes in v13:
+- patch 9: cancel timers on re-registration failure and comment why.
+- Link to v12: https://patch.msgid.link/20260709-bcm_fixes-v12-0-61c06291bf1c@hartkopp.net
 
--- 
-2.43.0
+Changes in v12:
+- patch 11: fixed sashiko-bot issues
+  https://lore.kernel.org/linux-can/20260709184351.723F71F000E9@smtp.kernel.org/
+- Link to v11: https://patch.msgid.link/20260709-bcm_fixes-v11-0-067ba11bec5c@hartkopp.net
+
+Changes in v11:
+- patch 11: new: track a single source interface for ANYDEV timeout/throttle ops
+  reported by sashiko-bot
+  https://lore.kernel.org/linux-can/20260709105031.1A39C1F000E9@smtp.kernel.org/
+- patch 2: added Fixes: tag (mkl)
+- Link to v10: https://patch.msgid.link/20260709-bcm_fixes-v10-0-57fff38e34ce@hartkopp.net
+
+Changes in v10:
+- patch 4: fixed new issue reported by sashiko-bot
+  https://lore.kernel.org/linux-can/20260709083119.015901F00A3D@smtp.kernel.org/
+- Link to v9: https://patch.msgid.link/20260709-bcm_fixes-v9-0-6eebb78ccfb2@hartkopp.net
+
+Changes in v9:
+- patch 4: fixed two issues reported by sashiko-bot and mkl
+  https://lore.kernel.org/linux-can/20260708173935.10D021F000E9@smtp.kernel.org/
+  https://lore.kernel.org/linux-can/20260708-beige-tarsier-of-mastery-b73d0d-mkl@pengutronix.de/
+- Link to v8: https://patch.msgid.link/20260708-bcm_fixes-v8-0-8c2f5f3bc212@hartkopp.net
+
+Changes in v8:
+- patch 9: fixed two issues reported by sashiko-bot:
+  https://lore.kernel.org/linux-can/20260708154039.347ED1F000E9@smtp.kernel.org/
+- Link to v7: https://patch.msgid.link/20260708-bcm_fixes-v7-0-c78896b342e4@hartkopp.net
+
+Changes in v7:
+- patch 9: new: fix stale rx/tx ops after device removal reported by
+  sashiko-bot: https://lore.kernel.org/linux-can/20260708094536.DDF821F00A3A@smtp.kernel.org/
+- patch 10: formerly patch 9 as new patch 8 & 9 belong together 
+- Link to v6: https://patch.msgid.link/20260708-bcm_fixes-v6-0-80710a2bc398@hartkopp.net
+
+Changes in v6:
+- patch 1: added Tested-by: tags
+- patch 3: changed commit message and comment regarding a wrong claim
+  about synchronous delivery from dev_queue_xmit() as remarked by
+  https://netdev-ai.bots.linux.dev/ai-review.html?id=6105ebab-87ef-43db-a085-7c190b9f119f
+- patch 4: rebased patch 3 comment
+- patch 9: new: fix data race on rx_stamp/rx_ifindex in bcm_rx_handler()
+  reported by sashiko-bot: https://lore.kernel.org/linux-can/20260707145135.5BC831F00A3A@smtp.kernel.org/
+- Link to v5: https://patch.msgid.link/20260707-bcm_fixes-v5-0-c3c74f8d8ff7@hartkopp.net
+
+Changes in v5:
+- patch 6: changed comment for bcm_op::bcm_tx_lock (mkl)
+- patch 8: new: add missing device refcount for CAN filter removal
+- Link to v4: https://patch.msgid.link/20260707-bcm_fixes-v4-0-aa87b8b9d33f@hartkopp.net
+
+Changes in v4:
+- incorporated more sashiko-bot concerns from v3
+- patch 3: omit hrtimer_forward with zero interval
+- patch 4: put bcm_update_stats() under bcm_rx_update_lock
+- Link to v3: https://patch.msgid.link/20260707-bcm_fixes-v3-0-84600ca6d889@hartkopp.net
+
+Changes in v3:
+- incorporated more sashiko-bot concerns from v2
+- patch 3: make snapshot of currframe
+- patch 6: add error patch for memcpy_from_msg()
+- patch 7: new RTR-reply validation in bcm_rx_setup() from bcm_tx_setup() 
+- Link to v2: https://patch.msgid.link/20260707-bcm_fixes-v2-0-96620c534b75@hartkopp.net
+
+Changes in v2:
+- incorporated all sashiko-bot concerns from v1
+- Link to v1: https://patch.msgid.link/20260612-bcm_fixes-v1-0-ca2fa07ee70f@hartkopp.net
+
+---
+Lee Jones (1):
+      can: bcm: defer rx_op deallocation to workqueue to fix thrtimer UAF
+
+Oliver Hartkopp (10):
+      can: bcm: fix lockless bound/ifindex race and silent RX_SETUP failure
+      can: bcm: add locking when updating filter and timer values
+      can: bcm: fix CAN frame rx/tx statistics
+      can: bcm: add missing rcu list annotations and operations
+      can: bcm: extend bcm_tx_lock usage for data and timer updates
+      can: bcm: validate frame length in bcm_rx_setup() for RTR replies
+      can: bcm: add missing device refcount for CAN filter removal
+      can: bcm: fix stale rx/tx ops after device removal
+      can: bcm: fix data race on rx_stamp/rx_ifindex in bcm_rx_handler()
+      can: bcm: track a single source interface for ANYDEV timeout/throttle ops
+
+ net/can/bcm.c | 606 ++++++++++++++++++++++++++++++++++++++++++++--------------
+ 1 file changed, 464 insertions(+), 142 deletions(-)
+---
+base-commit: a13c140cc289c0b7b3770bce5b3ad42ab35074aa
+change-id: 20260612-bcm_fixes-84fb4aa93ac2
+
+Best regards,
+--  
+Oliver Hartkopp <socketcan@hartkopp.net>
 
