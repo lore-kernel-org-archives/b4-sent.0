@@ -1,63 +1,84 @@
-From: Esteban Urrutia <esteuwu@proton.me>
-Date: Mon, 13 Jul 2026 23:28:19 -0400
-Subject: [PATCH v3 3/3] clk: qcom: alpha-pll: Check Lucid Ole PLL status
- before configuring
+From: Xiubo Li <xiubo.li@clyso.com>
+Date: Tue, 14 Jul 2026 14:20:37 +0800
+Subject: [PATCH] ceph: fix use-after-dereference of NULL ci in
+ __ceph_remove_cap()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260713-sm8450-qol-dispcc-v3-3-56fd05822270@proton.me>
-References: <20260713-sm8450-qol-dispcc-v3-0-56fd05822270@proton.me>
-In-Reply-To: <20260713-sm8450-qol-dispcc-v3-0-56fd05822270@proton.me>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Michael Turquette <mturquette@baylibre.com>, 
- Stephen Boyd <sboyd@kernel.org>, Brian Masney <bmasney@redhat.com>, 
- Dmitry Baryshkov <lumag@kernel.org>, 
- Jagadeesh Kona <quic_jkona@quicinc.com>
-Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
- linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- Esteban Urrutia <esteuwu@proton.me>
+Message-Id: <20260714-ceph-fix-remove-cap-v1-1-27b5bc6ee2f6@clyso.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMUQqDMBCE4avIPrugQZrSq5Q+rOtYt1ANiYog3
+ t3YPn4w8++UEA2JHsVOEaslm8aMuixIBxnfYOuyyVXuVvm6YUUYuLeNI77TClYJrL3v7uLFNU4
+ oP0NEXvyqz9ffaWk/0PlK0XGcpd+6AHcAAAA=
+X-Change-ID: 20260714-ceph-fix-remove-cap-cf7d8a7a242a
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783999716; l=1223;
- i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
- bh=GhaCSfwi+m8HFFTiT0PN4OP31ZAcFq2cbK1k4hgXMNo=;
- b=1PrS4k9a3/d4gCxJxTpsPJ2dM9iDEe0p3/63VdlkKQKp5Dzm13w416iuD2rPKLOdP+eTtx8T1
- VDP1KW19Bv4B1rW2BNv7g9EAmuueSsKUuRvsQtCATcNhuxWuHX0DrlR
-X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
- pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
-X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784010045; l=1741;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=ooSqkK6IVYP8K/OVskBxW937t4pyDtOQPUpfeEISEHY=;
+ b=4//FPhq6KgagTG7f41be8cBiCVClaxaFVnSh67AOzk1hzSy6SbXQvnVf2R60XFFiAHUbODHSR
+ gtMFoGu8RKWBfFyD7Ojs+kZstipgGwStwiWiMciXlZWJ7Tpgy1a/kAr
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On some platforms such as SM8475, not doing this may result in graphical
-glitches when the mdss driver takes over.
-This fixes the aforementioned issue.
+The NULL check for "ci" in __ceph_remove_cap() was dead code because
+ci was dereferenced via &ci->netfs.inode before the check, and
+cap->session was dereferenced via session->s_mdsc->fsc->client even
+earlier.  On a double-remove, both cap->ci and cap->session are set
+to NULL by the first call, so the second call would crash before
+ever reaching the guard.
 
-Fixes: 3132a9a11e57 ("clk: qcom: clk-alpha-pll: Add support for lucid ole pll configure")
-Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
+Move ci, session, cl, and inode initializations after the NULL check
+so that the early-return actually works.
+
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- drivers/clk/qcom/clk-alpha-pll.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ fs/ceph/caps.c | 17 ++++++++++-------
+ 1 file changed, 10 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/clk/qcom/clk-alpha-pll.c b/drivers/clk/qcom/clk-alpha-pll.c
-index f8313f9d0e30..60173b076cc5 100644
---- a/drivers/clk/qcom/clk-alpha-pll.c
-+++ b/drivers/clk/qcom/clk-alpha-pll.c
-@@ -2373,6 +2373,15 @@ void clk_lucid_ole_pll_configure(struct clk_alpha_pll *pll, struct regmap *regma
+diff --git a/fs/ceph/caps.c b/fs/ceph/caps.c
+index f8d898ad091e..8568edf494b5 100644
+--- a/fs/ceph/caps.c
++++ b/fs/ceph/caps.c
+@@ -1154,18 +1154,21 @@ int ceph_is_any_caps(struct inode *inode)
+  */
+ void __ceph_remove_cap(struct ceph_cap *cap, bool queue_release)
  {
- 	u32 lval = config->l;
+-	struct ceph_mds_session *session = cap->session;
+-	struct ceph_client *cl = session->s_mdsc->fsc->client;
+-	struct ceph_inode_info *ci = cap->ci;
+-	struct inode *inode = &ci->netfs.inode;
++	struct ceph_mds_session *session;
++	struct ceph_client *cl;
++	struct ceph_inode_info *ci;
++	struct inode *inode;
+ 	struct ceph_mds_client *mdsc;
+ 	int removed = 0;
  
-+	/*
-+	 * If the bootloader left the PLL enabled it's likely that there are
-+	 * RCGs that will lock up if we disable the PLL below.
-+	 */
-+	if (trion_pll_is_enabled(pll, regmap)) {
-+		pr_debug("Lucid Ole PLL is already enabled, skipping configuration\n");
-+		return;
-+	}
+ 	/* 'ci' being NULL means the remove have already occurred */
+-	if (!ci) {
+-		doutc(cl, "inode is NULL\n");
++	ci = cap->ci;
++	if (!ci)
+ 		return;
+-	}
 +
- 	lval |= TRION_PLL_CAL_VAL << LUCID_EVO_PLL_CAL_L_VAL_SHIFT;
- 	lval |= TRION_PLL_CAL_VAL << LUCID_OLE_PLL_RINGOSC_CAL_L_VAL_SHIFT;
- 	clk_alpha_pll_write_config(regmap, PLL_L_VAL(pll), lval);
++	session = cap->session;
++	cl = session->s_mdsc->fsc->client;
++	inode = &ci->netfs.inode;
+ 
+ 	lockdep_assert_held(&ci->i_ceph_lock);
+ 
 
--- 
-2.55.0
+---
+base-commit: fc67edb66b3c9924c4e0bb366a92b32ea13c526a
+change-id: 20260714-ceph-fix-remove-cap-cf7d8a7a242a
+
+Best regards,
+--  
+Xiubo Li <xiubo.li@clyso.com>
 
