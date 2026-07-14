@@ -1,15 +1,13 @@
 From: Jia Wang <wangjia@ultrarisc.com>
-Subject: [PATCH v3 0/3] PCI: ultrarisc: Add DP1000 PCIe clock support
-Date: Tue, 14 Jul 2026 09:11:01 +0800
-Message-Id: <20260714-ultrarisc-pci-clk-v3-0-e72723fc0ef1@ultrarisc.com>
+Date: Tue, 14 Jul 2026 09:11:02 +0800
+Subject: [PATCH v3 1/3] dt-bindings: pci: ultrarisc: add required DP1000
+ PCIe clocks
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAKWMVWoC/23Nyw6CMBQE0F8hXVvThxZx5X8YF225lesDSAuNh
- vDvFjSaGJaTzJwZSACPEMg+G4iHiAGbOgW5yoitdH0GimXKRDChmOI57W+d1x6Dpa1Fam9Xqi0
- v2CbXjoMmadd6cPiYzePpnUNvLmC7CZoaFYau8c/5NPKp9/FFseBHThndgpaS7VypjTx8O2vb3
- Mn0EcVPyZlaUkRShJPOKGe0UuZfGcfxBRQjU7UOAQAA
-X-Change-ID: 20260617-ultrarisc-pci-clk-ac19047af1ea
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260714-ultrarisc-pci-clk-v3-1-e72723fc0ef1@ultrarisc.com>
+References: <20260714-ultrarisc-pci-clk-v3-0-e72723fc0ef1@ultrarisc.com>
+In-Reply-To: <20260714-ultrarisc-pci-clk-v3-0-e72723fc0ef1@ultrarisc.com>
 To: Xincheng Zhang <zhangxincheng@ultrarisc.com>, 
  Lorenzo Pieralisi <lpieralisi@kernel.org>, 
  =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
@@ -22,84 +20,69 @@ Cc: linux-pci@vger.kernel.org, devicetree@vger.kernel.org,
  Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
  Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783991481; l=2995;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783991481; l=1883;
  i=wangjia@ultrarisc.com; s=20260515; h=from:subject:message-id;
- bh=2okLRAGbVQqKklUYGWmJ7tyA+p3vyLm+/B5mkepvT5Y=;
- b=PMqfwG3L/HPPIM7FZXN8QLT8vF5qGlTEcsmO7O2+RjQAIHyJ7ZeLJpxQgTkzrkK7U3NqTCTXH
- nDKJzlPRWvxDi0rmUvbOf5DLuRDJjhg5buBapFyxEWWuIVl333CFIcQ
+ bh=MadaMzsEQt3m33Yn04ygfcyKkX6JurLuStxQ8qHRs6U=;
+ b=XxdL7yZX//LcNbb9nViGu1d8at7DF0oB5I7hH7dWtIgnglHcf3tPIstyNgZHZwq6BcXHZLFfY
+ 6okUD7/8jK4D+4MEj0tbZjWhtA/36FFQ9xLBwd2Oiv42WrsY6dqqMix
 X-Developer-Key: i=wangjia@ultrarisc.com; a=ed25519;
  pk=wGVm18siRScehKOkOz0WKxgxDy7IezHEszhnN4/TUCY=
 X-Endpoint-Received: by B4 Relay for wangjia@ultrarisc.com/20260515 with auth_id=779
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add clock handling for the UltraRISC DP1000 DesignWare PCIe host
-controller.
+Require the DP1000 PCIe controller nodes to provide clocks and
+clock-names, using the standard DesignWare clock names "core",
+"dbi", and "aux".
 
-The DP1000 PCIe controller depends on three input clocks: core, dbi, and
-aux. The driver accesses DBI registers during host initialization, so the
-clocks must be enabled before the controller registers are touched.
-
-This series documents the required clocks in the device tree binding,
-enables the core, dbi, and aux clocks before DesignWare host
-initialization, and keeps them managed across probe failure, detach, and
-system suspend/resume. It also switches the driver to
-module_platform_driver() so the existing tristate Kconfig option builds
-correctly as a module.
-
-Testing:
-- Build and module build tested with ARCH=riscv.
-- Boot tested on UltraRISC DP1000.
-- Validated the PCIe binding with dt_binding_check and dtbs_check.
-
+Fixes: d9ff07f45955 ("dt-bindings: PCI: Add UltraRISC DP1000 PCIe controller")
 Signed-off-by: Jia Wang <wangjia@ultrarisc.com>
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 ---
-Changes in v3:
-- Track whether the PCIe clocks are enabled and make clock enable/disable
-  helpers idempotent.
-- Skip dw_pcie_suspend_noirq() when the controller is already suspended to
-  avoid register access with clocks disabled after a failed resume.
-- Disable clocks again if dw_pcie_resume_noirq() fails after clocks were
-  re-enabled.
-- Add a remove callback to deinitialize the DesignWare host when the module
-  build support is added.
-- Link to v2: https://patch.msgid.link/20260706-ultrarisc-pci-clk-v2-0-2f3fb6fba66b@ultrarisc.com
+ .../devicetree/bindings/pci/ultrarisc,dp1000-pcie.yaml   | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
-Changes in v2:
-- Add Fixes and Acked-by tags to the binding patch.
-- Add a Fixes tag to the driver clock handling patch.
-- Fix the suspend/resume clock handling so clocks are disabled only after a
-  successful suspend and kept enabled on resume failure.
-- Add a module build fix by switching to module_platform_driver().
-- Link to v1: https://patch.msgid.link/20260629-ultrarisc-pci-clk-v1-0-5ea3308fdab3@ultrarisc.com
+diff --git a/Documentation/devicetree/bindings/pci/ultrarisc,dp1000-pcie.yaml b/Documentation/devicetree/bindings/pci/ultrarisc,dp1000-pcie.yaml
+index 512b935bf5d1..d9d1488e915a 100644
+--- a/Documentation/devicetree/bindings/pci/ultrarisc,dp1000-pcie.yaml
++++ b/Documentation/devicetree/bindings/pci/ultrarisc,dp1000-pcie.yaml
+@@ -43,6 +43,18 @@ properties:
+       - description: Legacy INTC interrupt
+       - description: Legacy INTD interrupt
+ 
++  clocks:
++    items:
++      - description: PCIe core clock
++      - description: Data Bus Interface (DBI) clock
++      - description: Auxiliary clock
++
++  clock-names:
++    items:
++      - const: core
++      - const: dbi
++      - const: aux
++
+   interrupt-names:
+     items:
+       - const: msi
+@@ -55,6 +67,8 @@ required:
+   - compatible
+   - reg
+   - reg-names
++  - clocks
++  - clock-names
+   - interrupts
+   - interrupt-names
+ 
+@@ -71,6 +85,8 @@ examples:
+         reg = <0x0 0x21000000 0x0 0x01000000>,
+               <0x0 0x4fff0000 0x0 0x00010000>;
+         reg-names = "dbi", "config";
++        clocks = <&clkc 9>, <&clkc 7>, <&clkc 10>;
++        clock-names = "core", "dbi", "aux";
+         ranges = <0x81000000 0x0 0x4fbf0000 0x0 0x4fbf0000 0x0 0x00400000>,
+                  <0x82000000 0x0 0x40000000 0x0 0x40000000 0x0 0x0fbf0000>,
+                  <0xc3000000 0x40 0x00000000 0x40 0x00000000 0xd 0x00000000>;
 
-To: Xincheng Zhang <zhangxincheng@ultrarisc.com>
-To: Jia Wang <wangjia@ultrarisc.com>
-To: Lorenzo Pieralisi <lpieralisi@kernel.org>
-To: Krzysztof Wilczyński <kwilczynski@kernel.org>
-To: Manivannan Sadhasivam <mani@kernel.org>
-To: Rob Herring <robh@kernel.org>
-To: Bjorn Helgaas <bhelgaas@google.com>
-To: Krzysztof Kozlowski <krzk+dt@kernel.org>
-To: Conor Dooley <conor+dt@kernel.org>
-Cc: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
-Cc: linux-pci@vger.kernel.org
-Cc: devicetree@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-
----
-Jia Wang (3):
-      dt-bindings: pci: ultrarisc: add required DP1000 PCIe clocks
-      PCI: ultrarisc: get and enable DP1000 PCIe clocks
-      PCI: ultrarisc: allow DP1000 driver to build as module
-
- .../bindings/pci/ultrarisc,dp1000-pcie.yaml        |  16 +++
- drivers/pci/controller/dwc/pcie-ultrarisc.c        | 112 +++++++++++++++++++--
- 2 files changed, 120 insertions(+), 8 deletions(-)
----
-base-commit: a13c140cc289c0b7b3770bce5b3ad42ab35074aa
-change-id: 20260617-ultrarisc-pci-clk-ac19047af1ea
-
-Best regards,
---  
-Jia Wang <wangjia@ultrarisc.com>
+-- 
+2.34.1
 
