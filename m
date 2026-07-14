@@ -1,173 +1,61 @@
-From: Oliver Hartkopp <socketcan@hartkopp.net>
-Date: Tue, 14 Jul 2026 13:30:32 +0200
-Subject: [PATCH v14 11/11] can: bcm: track a single source interface for
- ANYDEV timeout/throttle ops
+From: Roman Vivchar <rva333@protonmail.com>
+Subject: [PATCH 0/3] soc: mediatek: pwrap: mt6572 support + log level fixes
+Date: Tue, 14 Jul 2026 15:42:02 +0300
+Message-Id: <20260714-6572-pwrap-v1-0-d8e5a39cf7ef@protonmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260714-bcm_fixes-v14-11-867a4be60a61@hartkopp.net>
-References: <20260714-bcm_fixes-v14-0-867a4be60a61@hartkopp.net>
-In-Reply-To: <20260714-bcm_fixes-v14-0-867a4be60a61@hartkopp.net>
-To: linux-can@vger.kernel.org
-Cc: Oliver Hartkopp <socketcan@hartkopp.net>, 
- Marc Kleine-Budde <mkl@pengutronix.de>, sashiko-bot@kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQ5AMBBA4avIrDXRKRWuIhbUYCxoWn+JuLti+
+ S3eu8CTY/JQRhc42tnzMgfIOAIzNvNAgrtgwAR1kksUOstR2MM1VqSmkJlWpu9QQQiso57Pb1b
+ Vv/3WTmTW9wD3/QC2rBQtbgAAAA==
+X-Change-ID: 20260712-6572-pwrap-4c91563cfd23
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Flora Fu <flora.fu@mediatek.com>, Alexandre Mergnat <amergnat@baylibre.com>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
+ Roman Vivchar <rva333@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784028623; l=5840;
- i=socketcan@hartkopp.net; s=20260128; h=from:subject:message-id;
- bh=qLjO/47o1glHS35f9a9q8P60P4go8NZfynci/ddDZ/w=;
- b=TdRNdfXGRuZJsv9raSTdd7+5zBde1xFCzg/KlgY7++LQn8k54qa0a3oSk53WZIOVGCiV/we7G
- idR38zLNSMOBr2JFMWfR1sLKo7VPCTq8y0A6RVreYmR9hJ0yr+06HSw
-X-Developer-Key: i=socketcan@hartkopp.net; a=ed25519;
- pk=/gU/7/wBqak3kTsTeFbCCqUi9dnh+1i6ITEkfPj/BvU=
-X-Endpoint-Received: by B4 Relay for socketcan@hartkopp.net/20260128 with auth_id=620
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784033096; l=1009;
+ i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
+ bh=Nn/jrapi0kptlJ39pA0zVXo92X49jLlO8HGLvAXNkrM=;
+ b=blv4Al/GQ3QV1Qr4XT5gNVLbbMpXXuOLHXeoPuWo0bBGSh4WjPO4Up+DtLqb5j+MR6nC5M7Um
+ KXoGJK1ssy6DA4yHMT0E9aGC1lrF5UkrcpnHhtUXlNwrT8jVXHQ/N43
+X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
+ pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
+X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-An ANYDEV rx op (ifindex == 0) with an active RX timeout and/or
-throttle timer has no defined semantics when matching frames arrive
-from several interfaces: bcm_rx_handler() can run concurrently for
-the same op on different CPUs, racing hrtimer_cancel()/
-bcm_rx_starttimer() against bcm_rx_timeout_handler() and causing
-spurious RX_TIMEOUT notifications and last_frames corruption. The
-same concurrency lets throttled multiplex frames from different
-interfaces clobber the single rx_ifindex/rx_stamp fields shared by
-the op.
+This patch series adds support for the mt6572 pwrap.
 
-Add op->if_detected to track the first interface that delivers a
-matching frame while a timeout/throttle timer is configured, and
-reject frames from any other interface for that op. The claim is
-decided in bcm_rx_handler() before hrtimer_cancel() touches
-op->timer, so a rejected frame can never disturb the claimed
-interface's watchdog. RTR-mode ops are excluded via RX_RTR_FRAME,
-independent of kt_ival1/kt_ival2, since those may briefly hold a
-stale value from an earlier non-RTR configuration.
+All known mt6572 devices use mt6323 PMIC, which is already supported
+by the upstream drivers. mt6572 also shares SoC-specific init with
+mt2701.
 
-The claim is released in bcm_notify() on NETDEV_UNREGISTER and in
-bcm_rx_setup() when SETTIMER reconfigures the timer values.
+Patch 1 adds dt-bindings compatible.
+Patch 2 fixes improper log levels in the driver, improving UX when
+debugging.
+Patch 3 adds mt6572 support.
 
-A (re-)claim is only possible on CAN devices in NETREG_REGISTERED
-dev->reg_state to cover the release in bcm_notify() where reg_state
-becomes NETREG_UNREGISTERING until synchronize_net().
+Tested on various mt6572 devices without any failures.
 
-Fixes: ffd980f976e7 ("[CAN]: Add broadcast manager (bcm) protocol")
-Reported-by: sashiko-bot@kernel.org
-Link: https://lore.kernel.org/linux-can/20260709105031.1A39C1F000E9@smtp.kernel.org/
-Signed-off-by: Oliver Hartkopp <socketcan@hartkopp.net>
+Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- net/can/bcm.c | 49 ++++++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 44 insertions(+), 5 deletions(-)
+Roman Vivchar (3):
+      dt-bindings: soc: mediatek: pwrap: add mt6572
+      soc: mediatek: pwrap: use correct log level
+      soc: mediatek: pwrap: add mt6572 support
 
-diff --git a/net/can/bcm.c b/net/can/bcm.c
-index 9c6fe559c4e6..c5be208c2f7c 100644
---- a/net/can/bcm.c
-+++ b/net/can/bcm.c
-@@ -115,10 +115,11 @@ struct bcm_op {
- 	atomic_long_t frames_abs, frames_filtered;
- 	struct bcm_timeval ival1, ival2;
- 	struct hrtimer timer, thrtimer;
- 	ktime_t rx_stamp, kt_ival1, kt_ival2, kt_lastmsg;
- 	int rx_ifindex;
-+	int if_detected; /* first received ifindex in ANYDEV rx_op mode */
- 	int cfsiz;
- 	u32 count;
- 	u32 nframes;
- 	u32 currframe;
- 	/* void pointers to arrays of struct can[fd]_frame */
-@@ -787,10 +788,37 @@ static void bcm_rx_handler(struct sk_buff *skb, void *data)
- 	} else {
- 		if (!can_is_can_skb(skb))
- 			return;
- 	}
- 
-+	/* An ANYDEV op with an active RX timeout and/or throttle timer
-+	 * tracks a single source interface: claim the first interface that
-+	 * delivers a matching frame and reject frames from any other one,
-+	 * before hrtimer_cancel() below can touch op->timer - this avoids
-+	 * racing bcm_rx_timeout_handler() across concurrent interfaces.
-+	 * RX_RTR_FRAME ops are excluded, as kt_ival1/kt_ival2 may briefly
-+	 * hold a stale value from an earlier non-RTR configuration.
-+	 */
-+	if (!op->ifindex) {
-+		spin_lock_bh(&op->bcm_rx_update_lock);
-+
-+		if (!(op->flags & RX_RTR_FRAME) &&
-+		    (op->kt_ival1 || op->kt_ival2)) {
-+			/* don't claim to vanishing interface */
-+			if (!op->if_detected &&
-+			    READ_ONCE(skb->dev->reg_state) == NETREG_REGISTERED)
-+				op->if_detected = skb->dev->ifindex;
-+
-+			if (op->if_detected != skb->dev->ifindex) {
-+				spin_unlock_bh(&op->bcm_rx_update_lock);
-+				return;
-+			}
-+		}
-+
-+		spin_unlock_bh(&op->bcm_rx_update_lock);
-+	}
-+
- 	/* disable timeout */
- 	hrtimer_cancel(&op->timer);
- 
- 	/* op->flags/op->frames may be updated concurrently by bcm_rx_setup() */
- 	spin_lock_bh(&op->bcm_rx_update_lock);
-@@ -821,14 +849,13 @@ static void bcm_rx_handler(struct sk_buff *skb, void *data)
- 		traffic_flags |= RX_LOCAL;
- 		if (skb->sk == op->sk)
- 			traffic_flags |= RX_OWN;
- 	}
- 
--	/* save rx timestamp and originator for recvfrom() under lock.
--	 * For an op subscribed on all interfaces (ifindex == 0)
--	 * bcm_rx_handler() can run concurrently on different CPUs so
--	 * the CAN content and the meta data must be bundled correctly.
-+	/* save rx timestamp and originator for recvfrom() under lock: an
-+	 * ANYDEV op without an active timer can still run concurrently on
-+	 * different CPUs, so content and meta data must be bundled here.
- 	 */
- 	op->rx_stamp = skb->tstamp;
- 	op->rx_ifindex = skb->dev->ifindex;
- 
- 	if (op->flags & RX_FILTER_ID) {
-@@ -1452,10 +1479,11 @@ static int bcm_rx_setup(struct bcm_msg_head *msg_head, struct msghdr *msg,
- 			op->ival1 = msg_head->ival1;
- 			op->ival2 = msg_head->ival2;
- 			op->kt_ival1 = bcm_timeval_to_ktime(msg_head->ival1);
- 			op->kt_ival2 = bcm_timeval_to_ktime(msg_head->ival2);
- 			op->kt_lastmsg = 0;
-+			op->if_detected = 0; /* reclaim ifindex in ANYDEV mode */
- 			spin_unlock_bh(&op->bcm_rx_update_lock);
- 
- 			/* disable an active timer due to zero value? */
- 			if (!op->kt_ival1)
- 				hrtimer_cancel(&op->timer);
-@@ -1755,14 +1783,25 @@ static void bcm_notify(struct bcm_sock *bo, unsigned long msg,
- 
- 	case NETDEV_UNREGISTER:
- 		lock_sock(sk);
- 
- 		/* rx_ops: remove device specific receive entries */
--		list_for_each_entry(op, &bo->rx_ops, list)
-+		list_for_each_entry(op, &bo->rx_ops, list) {
- 			if (op->rx_reg_dev == dev)
- 				bcm_rx_unreg(dev, op);
- 
-+			/* release an ANYDEV op's claim (see bcm_rx_handler())
-+			 * on this now confirmed-gone interface.
-+			 */
-+			if (!op->ifindex) {
-+				spin_lock_bh(&op->bcm_rx_update_lock);
-+				if (op->if_detected == dev->ifindex)
-+					op->if_detected = 0;
-+				spin_unlock_bh(&op->bcm_rx_update_lock);
-+			}
-+		}
-+
- 		/* tx_ops: stop device specific cyclic transmissions on the
- 		 * vanishing ifindex. Cancelling the timer is enough to stop
- 		 * cyclic bcm_can_tx() calls as there is no re-arming.
- 		 */
- 		list_for_each_entry(op, &bo->tx_ops, list)
+ .../bindings/soc/mediatek/mediatek,pwrap.yaml      |   1 +
+ drivers/soc/mediatek/mtk-pmic-wrap.c               | 156 +++++++++++++++++----
+ 2 files changed, 129 insertions(+), 28 deletions(-)
+---
+base-commit: 8cd9520d35a6c38db6567e97dd93b1f11f185dc6
+change-id: 20260712-6572-pwrap-4c91563cfd23
 
--- 
-2.53.0
+Best regards,
+--  
+Roman Vivchar <rva333@protonmail.com>
 
