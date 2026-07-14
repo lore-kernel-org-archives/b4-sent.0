@@ -1,11 +1,11 @@
 From: Xiubo Li <xiubo.li@clyso.com>
-Date: Tue, 14 Jul 2026 16:13:43 +0800
-Subject: [PATCH 1/2] ceph: fix UAF in __kick_flushing_caps() on cf entry
- freed during unlock
+Date: Tue, 14 Jul 2026 16:13:44 +0800
+Subject: [PATCH 2/2] ceph: fix UAF in check_new_map() on session freed
+ during unlock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260714-ceph-uaf-fixes-v1-1-5c7603c181d5@clyso.com>
+Message-Id: <20260714-ceph-uaf-fixes-v1-2-5c7603c181d5@clyso.com>
 References: <20260714-ceph-uaf-fixes-v1-0-5c7603c181d5@clyso.com>
 In-Reply-To: <20260714-ceph-uaf-fixes-v1-0-5c7603c181d5@clyso.com>
 To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
@@ -13,96 +13,104 @@ To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>,
 Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784016823; l=2921;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784016823; l=3431;
  i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=tlJhoiuAEKQm//eDIvba9hTyNJLYASywp02PhL5yfYc=;
- b=a3toyJf6mIBd3CkBovwuabNbbtDjqEROsqRM3iqQhrEUj/ZEDRKPQC+YF+9dBTrTsrl/qPLLL
- FUj/df/BwHKBUhI7wFEhj5kX9FWUCWi/aSs7VdgMUQUlGe2j9ymX2DR
+ bh=cLLPkWPffOP0JKb2qq7WN/4nmxNsUD+aO9DEMGGbqyU=;
+ b=6iKVb7evR7ipKUrozYO44Q82JuquDMPDii+mOpmEHE5J4hLJJzY23/Hzvwe7u1+jkFgw3pok2
+ 2xP1ROUEgyYCnq0Fnqoen69c5QV8NdGdWe9i3T67ADjSX8ZWmGDtdZ/
 X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
  pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
 X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-list_for_each_entry() iterates ci->i_cap_flush_list but drops
-i_ceph_lock to send cap messages.  During the unlock window,
-handle_cap_flush_ack() can acquire i_ceph_lock, detach cf entries
-with tid <= flush_tid from the list, release i_ceph_lock, and free
-them via ceph_free_cap_flush() outside any lock.  When the original
-thread reacquires i_ceph_lock and the for-loop macro advances via
-cf = list_next_entry(cf, i_list), it dereferences cf->i_list.next
-on freed memory.
+check_new_map() iterates mdsc->sessions[] and for each active session
+drops mdsc->mutex to perform per-session operations.  The forced-close
+path (rank removed from map) correctly takes a reference on s via
+ceph_get_mds_session() before releasing mdsc->mutex, but three other
+paths do not:
 
-The race timeline:
+  Path A (address changed):  mutex_unlock → mutex_lock(&s->s_mutex)
+  Path B (reconnect):        mutex_unlock → send_mds_reconnect(mdsc, s)
+  Path C (active transition): mutex_unlock → mutex_lock(&s->s_mutex)
 
-  __kick_flushing_caps()              handle_cap_flush_ack()
-  -----------------------             -----------------------
-  holds i_ceph_lock        <---
-  iterates to cf (tid=10)
-  prepares FLUSH message
-  drops i_ceph_lock        <---
-  __send_cap() ── FLUSH(tid=10)
-	                              MDS sends FLUSH_ACK(tid=10)
-                           --->       acquires i_ceph_lock
-                                      cf->tid(10) <= flush_tid(10),
-                                      detaches cf from i_cap_flush_list
-                                      drops i_ceph_lock
-                                      ceph_free_cap_flush(cf) <- frees it!
-  acquires i_ceph_lock     <---
-  for-loop advances:
-    cf = list_next_entry(cf, i_list)
-      -- UAF on freed cf->i_list.next
+Without the extra reference, another thread can acquire mdsc->mutex
+during the unlock window, call __unregister_session() which drops the
+last reference on s, and free it.  The original thread then accesses
+freed memory via s->s_mutex.
 
-The cf was just sent by __kick_flushing_caps itself via __send_cap().
-The MDS may respond with FLUSH_ACK quickly enough that
-handle_cap_flush_ack() frees cf before __kick_flushing_caps can
-finish the iteration.
+Fix by adding ceph_get_mds_session(s) before each mutex_unlock and
+ceph_put_mds_session(s) after the corresponding mutex_lock, matching
+the pattern already used in the forced-close path.
 
-Fix by converting to a manual while loop: save the next pointer
-under i_ceph_lock before dropping it, then use the saved pointer
-after reacquiring, so the potentially-freed cf is never accessed again.
+Race timeline (Path A):
+
+  Thread A (check_new_map)             Thread B (another map update
+    holds mdsc->mutex                      or session teardown)
+  --------------------------           --------------------------
+  s = mdsc->sessions[i]
+  (refcount == 1, held only by
+   sessions[] array)
+
+  mutex_unlock(&mdsc->mutex)
+                               --->    acquires mdsc->mutex
+                                       __unregister_session(mdsc, s)
+                                         sessions[i] = NULL
+                                         ceph_put_mds_session(s)
+                                           refcount: 1 -> 0
+                                           kfree(s)  <--- freed!
+
+  mutex_lock(&s->s_mutex)
+  UAF on freed s->s_mutex
 
 Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- fs/ceph/caps.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ fs/ceph/mds_client.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/fs/ceph/caps.c b/fs/ceph/caps.c
-index f8d898ad091e..358ee4f14524 100644
---- a/fs/ceph/caps.c
-+++ b/fs/ceph/caps.c
-@@ -2626,9 +2626,14 @@ static void __kick_flushing_caps(struct ceph_mds_client *mdsc,
+diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
+index 18be36c2e9e8..00a401f9f73b 100644
+--- a/fs/ceph/mds_client.c
++++ b/fs/ceph/mds_client.c
+@@ -5827,9 +5827,11 @@ static void check_new_map(struct ceph_mds_client *mdsc,
+ 			   ceph_mdsmap_get_addr(newmap, i),
+ 			   sizeof(struct ceph_entity_addr))) {
+ 			/* just close it */
++			ceph_get_mds_session(s);
+ 			mutex_unlock(&mdsc->mutex);
+ 			mutex_lock(&s->s_mutex);
+ 			mutex_lock(&mdsc->mutex);
++			ceph_put_mds_session(s);
+ 			ceph_con_close(&s->s_con);
+ 			mutex_unlock(&s->s_mutex);
+ 			s->s_state = CEPH_MDS_SESSION_RESTARTING;
+@@ -5844,6 +5846,7 @@ static void check_new_map(struct ceph_mds_client *mdsc,
+ 		    newstate >= CEPH_MDS_STATE_RECONNECT) {
+ 			int rc;
+ 
++			ceph_get_mds_session(s);
+ 			mutex_unlock(&mdsc->mutex);
+ 			clear_bit(i, targets);
+ 			rc = send_mds_reconnect(mdsc, s);
+@@ -5852,6 +5855,7 @@ static void check_new_map(struct ceph_mds_client *mdsc,
+ 					       "mds%d reconnect failed: %d\n",
+ 					       i, rc);
+ 			mutex_lock(&mdsc->mutex);
++			ceph_put_mds_session(s);
  		}
- 	}
  
--	list_for_each_entry(cf, &ci->i_cap_flush_list, i_list) {
--		if (cf->tid < first_tid)
-+	cf = list_first_entry(&ci->i_cap_flush_list, struct ceph_cap_flush, i_list);
-+	while (&cf->i_list != &ci->i_cap_flush_list) {
-+		struct ceph_cap_flush *next;
-+
-+		if (cf->tid < first_tid) {
-+			cf = list_next_entry(cf, i_list);
- 			continue;
-+		}
- 
- 		cap = ci->i_auth_cap;
- 		if (!(cap && cap->session == session)) {
-@@ -2638,6 +2643,7 @@ static void __kick_flushing_caps(struct ceph_mds_client *mdsc,
- 		}
- 
- 		first_tid = cf->tid + 1;
-+		next = list_next_entry(cf, i_list);
- 
- 		if (!cf->is_capsnap) {
- 			struct cap_msg_args arg;
-@@ -2678,6 +2684,7 @@ static void __kick_flushing_caps(struct ceph_mds_client *mdsc,
- 		}
- 
- 		spin_lock(&ci->i_ceph_lock);
-+		cf = next;
- 	}
- }
- 
+ 		/*
+@@ -5864,9 +5868,11 @@ static void check_new_map(struct ceph_mds_client *mdsc,
+ 				pr_info_client(cl, "mds%d recovery completed\n",
+ 					       s->s_mds);
+ 			kick_requests(mdsc, i);
++			ceph_get_mds_session(s);
+ 			mutex_unlock(&mdsc->mutex);
+ 			mutex_lock(&s->s_mutex);
+ 			mutex_lock(&mdsc->mutex);
++			ceph_put_mds_session(s);
+ 			ceph_kick_flushing_caps(mdsc, s);
+ 			mutex_unlock(&s->s_mutex);
+ 			wake_up_session_caps(s, RECONNECT);
 
 -- 
 2.53.0
