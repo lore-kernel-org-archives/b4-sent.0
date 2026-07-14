@@ -1,11 +1,11 @@
 From: Esteban Urrutia <esteuwu@proton.me>
-Date: Mon, 13 Jul 2026 23:28:18 -0400
-Subject: [PATCH v3 2/3] clk: qcom: dispcc-sm8450: Migrate to
- qcom_cc_driver_data
+Date: Mon, 13 Jul 2026 23:28:19 -0400
+Subject: [PATCH v3 3/3] clk: qcom: alpha-pll: Check Lucid Ole PLL status
+ before configuring
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260713-sm8450-qol-dispcc-v3-2-56fd05822270@proton.me>
+Message-Id: <20260713-sm8450-qol-dispcc-v3-3-56fd05822270@proton.me>
 References: <20260713-sm8450-qol-dispcc-v3-0-56fd05822270@proton.me>
 In-Reply-To: <20260713-sm8450-qol-dispcc-v3-0-56fd05822270@proton.me>
 To: Bjorn Andersson <andersson@kernel.org>, 
@@ -15,94 +15,48 @@ To: Bjorn Andersson <andersson@kernel.org>,
  Jagadeesh Kona <quic_jkona@quicinc.com>
 Cc: linux-arm-msm@vger.kernel.org, linux-clk@vger.kernel.org, 
  linux-kernel@vger.kernel.org, phone-devel@vger.kernel.org, 
- Esteban Urrutia <esteuwu@proton.me>, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+ Esteban Urrutia <esteuwu@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1783999716; l=2981;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1783999716; l=1223;
  i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
- bh=Jbnp8p29U7ihTi5nzGMIrBxFlgzT7kH3/JhcN7BtyIQ=;
- b=fP44rtzAgx+pYQdrFCgjsq+g5In/H5GO93GUDY8+TCs1kWxhPt+TMwL+PeYzvO77jEhEIK7Oj
- R4ZGbcf7QKNDewMBceIhAYdqOkN+s4BSBYxICimdeSXj+da/4Pgc53q
+ bh=GhaCSfwi+m8HFFTiT0PN4OP31ZAcFq2cbK1k4hgXMNo=;
+ b=1PrS4k9a3/d4gCxJxTpsPJ2dM9iDEe0p3/63VdlkKQKp5Dzm13w416iuD2rPKLOdP+eTtx8T1
+ VDP1KW19Bv4B1rW2BNv7g9EAmuueSsKUuRvsQtCATcNhuxWuHX0DrlR
 X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
  pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
 X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Migrate to qcom_cc_driver_data, which is used by other clock controller
-drivers.
+On some platforms such as SM8475, not doing this may result in graphical
+glitches when the mdss driver takes over.
+This fixes the aforementioned issue.
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
+Fixes: 3132a9a11e57 ("clk: qcom: clk-alpha-pll: Add support for lucid ole pll configure")
 Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
- drivers/clk/qcom/dispcc-sm8450.c | 38 ++++++++++++++++++++++++++++----------
- 1 file changed, 28 insertions(+), 10 deletions(-)
+ drivers/clk/qcom/clk-alpha-pll.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/drivers/clk/qcom/dispcc-sm8450.c b/drivers/clk/qcom/dispcc-sm8450.c
-index c7e04bd315d5..facbf040ab9a 100644
---- a/drivers/clk/qcom/dispcc-sm8450.c
-+++ b/drivers/clk/qcom/dispcc-sm8450.c
-@@ -1778,6 +1778,29 @@ static const struct regmap_config disp_cc_sm8450_regmap_config = {
- 	.fast_io = true,
- };
+diff --git a/drivers/clk/qcom/clk-alpha-pll.c b/drivers/clk/qcom/clk-alpha-pll.c
+index f8313f9d0e30..60173b076cc5 100644
+--- a/drivers/clk/qcom/clk-alpha-pll.c
++++ b/drivers/clk/qcom/clk-alpha-pll.c
+@@ -2373,6 +2373,15 @@ void clk_lucid_ole_pll_configure(struct clk_alpha_pll *pll, struct regmap *regma
+ {
+ 	u32 lval = config->l;
  
-+static struct clk_alpha_pll *disp_cc_sm8450_plls[] = {
-+	&disp_cc_pll0,
-+	&disp_cc_pll1,
-+};
++	/*
++	 * If the bootloader left the PLL enabled it's likely that there are
++	 * RCGs that will lock up if we disable the PLL below.
++	 */
++	if (trion_pll_is_enabled(pll, regmap)) {
++		pr_debug("Lucid Ole PLL is already enabled, skipping configuration\n");
++		return;
++	}
 +
-+static const u32 disp_cc_sm8450_critical_cbcrs[] = {
-+	0xe05c, /* DISP_CC_XO_CLK */
-+};
-+
-+static void disp_cc_sm8450_clk_regs_configure(struct device *dev, struct regmap *regmap)
-+{
-+	/* Enable clock gating for MDP clocks */
-+	regmap_set_bits(regmap, DISP_CC_MISC_CMD, BIT(4));
-+}
-+
-+static const struct qcom_cc_driver_data disp_cc_sm8450_driver_data = {
-+	.alpha_plls = disp_cc_sm8450_plls,
-+	.num_alpha_plls = ARRAY_SIZE(disp_cc_sm8450_plls),
-+	.clk_cbcrs = disp_cc_sm8450_critical_cbcrs,
-+	.num_clk_cbcrs = ARRAY_SIZE(disp_cc_sm8450_critical_cbcrs),
-+	.clk_regs_configure = disp_cc_sm8450_clk_regs_configure,
-+};
-+
- static const struct qcom_cc_desc disp_cc_sm8450_desc = {
- 	.config = &disp_cc_sm8450_regmap_config,
- 	.clks = disp_cc_sm8450_clocks,
-@@ -1786,6 +1809,7 @@ static const struct qcom_cc_desc disp_cc_sm8450_desc = {
- 	.num_resets = ARRAY_SIZE(disp_cc_sm8450_resets),
- 	.gdscs = disp_cc_sm8450_gdscs,
- 	.num_gdscs = ARRAY_SIZE(disp_cc_sm8450_gdscs),
-+	.driver_data = &disp_cc_sm8450_driver_data,
- };
- 
- static const struct of_device_id disp_cc_sm8450_match_table[] = {
-@@ -1823,19 +1847,13 @@ static int disp_cc_sm8450_probe(struct platform_device *pdev)
- 		disp_cc_pll1.regs = clk_alpha_pll_regs[CLK_ALPHA_PLL_TYPE_LUCID_OLE];
- 		disp_cc_pll1.clkr.hw.init = &sm8475_disp_cc_pll1_init;
- 
--		clk_lucid_ole_pll_configure(&disp_cc_pll0, regmap, &sm8475_disp_cc_pll0_config);
--		clk_lucid_ole_pll_configure(&disp_cc_pll1, regmap, &sm8475_disp_cc_pll1_config);
-+		disp_cc_pll0.config = &sm8475_disp_cc_pll0_config;
-+		disp_cc_pll1.config = &sm8475_disp_cc_pll1_config;
- 	} else {
--		clk_lucid_evo_pll_configure(&disp_cc_pll0, regmap, &disp_cc_pll0_config);
--		clk_lucid_evo_pll_configure(&disp_cc_pll1, regmap, &disp_cc_pll1_config);
-+		disp_cc_pll0.config = &disp_cc_pll0_config;
-+		disp_cc_pll1.config = &disp_cc_pll1_config;
- 	}
- 
--	/* Enable clock gating for MDP clocks */
--	regmap_update_bits(regmap, DISP_CC_MISC_CMD, 0x10, 0x10);
--
--	/* Keep some clocks always-on */
--	qcom_branch_set_clk_en(regmap, 0xe05c); /* DISP_CC_XO_CLK */
--
- 	ret = qcom_cc_really_probe(&pdev->dev, &disp_cc_sm8450_desc, regmap);
- 	if (ret)
- 		goto err_put_rpm;
+ 	lval |= TRION_PLL_CAL_VAL << LUCID_EVO_PLL_CAL_L_VAL_SHIFT;
+ 	lval |= TRION_PLL_CAL_VAL << LUCID_OLE_PLL_RINGOSC_CAL_L_VAL_SHIFT;
+ 	clk_alpha_pll_write_config(regmap, PLL_L_VAL(pll), lval);
 
 -- 
 2.55.0
