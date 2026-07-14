@@ -1,58 +1,55 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Tue, 14 Jul 2026 08:08:24 +0000
-Subject: [PATCH v11 3/3] MAINTAINERS: Add an entry for Amlogic DMA driver
+From: Xiubo Li <xiubo.li@clyso.com>
+Subject: [PATCH 0/2] ceph: fix UAF bugs in cap flushing and MDS session
+ handling
+Date: Tue, 14 Jul 2026 16:13:42 +0800
+Message-Id: <20260714-ceph-uaf-fixes-v1-0-5c7603c181d5@clyso.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260714-amlogic-dma-v11-3-de79c2394282@amlogic.com>
-References: <20260714-amlogic-dma-v11-0-de79c2394282@amlogic.com>
-In-Reply-To: <20260714-amlogic-dma-v11-0-de79c2394282@amlogic.com>
-To: Vinod Koul <vkoul@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Kees Cook <kees@kernel.org>, 
- "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
- Frank Li <Frank.Li@kernel.org>
-Cc: linux-amlogic@lists.infradead.org, dmaengine@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-hardening@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784016504; l=791;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=9xq7fFe8x3ZtUEb/et7K+dc4J+CzRRN9hABeSR7Mhcs=;
- b=GQGbDVtN0DJ3QCFuGL8tehM4hRIkFg3vDtt3FA82rPj/nWqzFSNgaqc0Sf5bexu8ulxhVlVmx
- MgmXhIUAcaiAVSiySyfyU0na9KSRSnmZiHh1QdZLxhrj4ZqphETw9DW
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMywqDMBCF4VeRWXcgCV6oryJdmHii48JKpoogv
+ nvTuvw4/OckRRIotcVJCbuovJcM+ygoTP0ygmXIJmdcbRpbcsA68dZHjnJA2WOIMNF5Wz0pR2v
+ Cf8hN97qtm58RPr8Xuq4vuHfyfXIAAAA=
+X-Change-ID: 20260714-ceph-uaf-fixes-bedfe0f2b159
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xiubo Li <xiubo.li@clyso.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784016823; l=995;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=PNV5jE9fdgiPSWMSUeFErNMwYv2w094cTzcaHlc1R/U=;
+ b=xJSmvVNxGoP7MXON55glnzjJGHw5spBRmzKlRy9bQ2ADZpiSP13RKVc6nwX2xXEcthyr2I/Cc
+ 3Myo6/w0bEqC0pQAdCCTt9jgztdxqsR395j3HomMmuG8jGW9DEr5KjL
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Amlogic DMA controller entry to MAINTAINERS to clarify
-the maintainers.
+These two patches fix use-after-free bugs:
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Patch 1 fixes __kick_flushing_caps(), which drops i_ceph_lock during
+list_for_each_entry() iteration.  A concurrent handle_cap_flush_ack()
+can free the current cf entry, making the loop's next-pointer advance
+read freed memory.
+
+Patch 2 fixes check_new_map(), where three code paths drop mdsc->mutex
+and access the session pointer without taking a reference, opening a
+window for another thread to unregister and free the session.
+
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- MAINTAINERS | 7 +++++++
- 1 file changed, 7 insertions(+)
+Xiubo Li (2):
+      ceph: fix UAF in __kick_flushing_caps() on cf entry freed during unlock
+      ceph: fix UAF in check_new_map() on session freed during unlock
 
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 3e7b2d9e9c24..b4ef8d3f52cb 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1307,6 +1307,13 @@ F:	Documentation/devicetree/bindings/perf/amlogic,g12-ddr-pmu.yaml
- F:	drivers/perf/amlogic/
- F:	include/soc/amlogic/
- 
-+AMLOGIC DMA DRIVER
-+M:	Xianwei Zhao <xianwei.zhao@amlogic.com>
-+L:	linux-amlogic@lists.infradead.org
-+S:	Maintained
-+F:	Documentation/devicetree/bindings/dma/amlogic,a9-dma.yaml
-+F:	drivers/dma/amlogic-dma.c
-+
- AMLOGIC ISP DRIVER
- M:	Keke Li <keke.li@amlogic.com>
- L:	linux-media@vger.kernel.org
+ fs/ceph/caps.c       | 11 +++++++++--
+ fs/ceph/mds_client.c |  6 ++++++
+ 2 files changed, 15 insertions(+), 2 deletions(-)
+---
+base-commit: fc67edb66b3c9924c4e0bb366a92b32ea13c526a
+change-id: 20260714-ceph-uaf-fixes-bedfe0f2b159
 
--- 
-2.52.0
+Best regards,
+--  
+Xiubo Li <xiubo.li@clyso.com>
 
