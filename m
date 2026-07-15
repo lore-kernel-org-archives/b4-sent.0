@@ -1,75 +1,58 @@
-From: Haidar Lee <haidar.lee@adlinktech.com>
-Date: Wed, 15 Jul 2026 14:04:41 +0800
-Subject: [PATCH 2/2] ASoC: tas2562: fix broken entries in the volume lookup
- table
+From: Esteban Urrutia <esteuwu@proton.me>
+Subject: [PATCH v2 0/3] Initial PCIe0 PHY support for SM8475
+Date: Wed, 15 Jul 2026 02:37:45 -0400
+Message-Id: <20260715-sm8475-bup-pcie-v2-0-48bd91a19abf@proton.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260715-tas2562-dvc-fix-v1-2-072b13901b20@adlinktech.com>
-References: <20260715-tas2562-dvc-fix-v1-0-072b13901b20@adlinktech.com>
-In-Reply-To: <20260715-tas2562-dvc-fix-v1-0-072b13901b20@adlinktech.com>
-To: Shenghao Ding <shenghao-ding@ti.com>, Kevin Lu <kevin-lu@ti.com>, 
- Baojun Xu <baojun.xu@ti.com>, Sen Wang <sen@ti.com>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Jaroslav Kysela <perex@perex.cz>, Takashi Iwai <tiwai@suse.com>, 
- Dan Murphy <dmurphy@ti.com>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Haidar Lee <haidar.lee@adlinktech.com>, stable@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NQQ6CMBBFr0Jm7RhaaousvIdhYesoYwJtWiAaw
+ t2luHX5kvffXyBRZErQFAtEmjmxHzaQhwJcdxuehHzfGGQpdWmEwtTXypzQTgGDY8KKKnPWpIV
+ TBNsqRHrwey9e2x+nyb7IjTmTjY7T6ONnv5xF9v7WZ4ElWlkbYUlaRe4Soh/9cOwJ2nVdv1tUO
+ PK7AAAA
+X-Change-ID: 20260714-sm8475-bup-pcie-3e3796e61c4e
+To: Vinod Koul <vkoul@kernel.org>, 
+ Neil Armstrong <neil.armstrong@linaro.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, Esteban Urrutia <esteuwu@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784095481; l=2082;
- i=haidar.lee@adlinktech.com; s=20260715; h=from:subject:message-id;
- bh=/UoYM9/AkmbMBBJjFQcKRx8doPtiLNXUryHarALR2+U=;
- b=G9R4a9/biCE5j2qrRqzkcOOvZyDxPTIRNr79T2t0ducKc9Tt4HqtswlAC3QpdvBmk2z43C/nu
- eJYxLW4aKKpBcsCiUIBGOFhOytQrPsgYAilMEImq3LJMl9tY0+rLA2/
-X-Developer-Key: i=haidar.lee@adlinktech.com; a=ed25519;
- pk=p37KzVgRl0a8om8VCM7iEwQvNuZz2fxL4lBCBp5qrno=
-X-Endpoint-Received: by B4 Relay for haidar.lee@adlinktech.com/20260715 with auth_id=872
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784097545; l=1058;
+ i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
+ bh=DXCPklQlaMdsbJnYQs6c8poFEg6YyAXU0DXLOMPqOgY=;
+ b=0goYS6cTjDxMQMw2HZnPcWJ/7uXDiMnvjqOFKfhc6a3+SijbKl60TY0IUojz1BqgY26QZBANY
+ IHaycNsKF9PCKsLJrOhXPvH4oT38mzOv2/4uNxg10W06GxTsfuQ1N7N
+X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
+ pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
+X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The float_vol_db_lookup table is supposed to hold
-round(10^(dB/20) * 2^30) for every 2 dB step from -110 dB to 0 dB,
-which is 56 entries, but it only has 55: the -90 dB entry duplicates
-the -92 dB value (0x0000695b) and the -20 dB entry (0x06666666) is
-missing altogether. As a result every step between -90 dB and -22 dB
-is off by 2 dB, and the control's maximum raw value of 110 indexes one
-element past the end of the array.
+This series adds support for the PCIe0 PHY found in the SM8475 SoC.
+The initialization sequence varies noticeably when compared to the one used
+in the SM8450 SoC, hence the need to add support for this PHY.
 
-Replace the duplicated -90 dB entry with the correct value 0x000084a3
-and add the missing -20 dB entry, bringing the table to the full 56
-entries so index 55 (raw value 110, 0 dB) is in range again.
-
-Fixes: bf726b1c86f2 ("ASoC: tas2562: Add support for digital volume control")
-Cc: stable@vger.kernel.org
-Signed-off-by: Haidar Lee <haidar.lee@adlinktech.com>
+Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
- sound/soc/codecs/tas2562.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+Changes in v2:
+- Split series in subseries (pcie, usbss)
+  - Sorry, it should have been like this from the start!
+- Link to v1: https://patch.msgid.link/20260714-sm8475-bup-v1-0-b2871be2b4ec@proton.me
 
-diff --git a/sound/soc/codecs/tas2562.c b/sound/soc/codecs/tas2562.c
-index ec32ef0afd7e..cdd695c3807e 100644
---- a/sound/soc/codecs/tas2562.c
-+++ b/sound/soc/codecs/tas2562.c
-@@ -32,15 +32,16 @@
- static const unsigned int float_vol_db_lookup[] = {
- 0x00000d43, 0x000010b2, 0x00001505, 0x00001a67, 0x00002151,
- 0x000029f1, 0x000034cd, 0x00004279, 0x000053af, 0x0000695b,
--0x0000695b, 0x0000a6fa, 0x0000d236, 0x000108a4, 0x00014d2a,
-+0x000084a3, 0x0000a6fa, 0x0000d236, 0x000108a4, 0x00014d2a,
- 0x0001a36e, 0x00021008, 0x000298c0, 0x000344df, 0x00041d8f,
- 0x00052e5a, 0x000685c8, 0x00083621, 0x000a566d, 0x000d03a7,
- 0x0010624d, 0x0014a050, 0x0019f786, 0x0020b0bc, 0x0029279d,
- 0x0033cf8d, 0x004139d3, 0x00521d50, 0x00676044, 0x0082248a,
- 0x00a3d70a, 0x00ce4328, 0x0103ab3d, 0x0146e75d, 0x019b8c27,
- 0x02061b89, 0x028c423f, 0x03352529, 0x0409c2b0, 0x05156d68,
--0x080e9f96, 0x0a24b062, 0x0cc509ab, 0x10137987, 0x143d1362,
--0x197a967f, 0x2013739e, 0x28619ae9, 0x32d64617, 0x40000000
-+0x06666666, 0x080e9f96, 0x0a24b062, 0x0cc509ab, 0x10137987,
-+0x143d1362, 0x197a967f, 0x2013739e, 0x28619ae9, 0x32d64617,
-+0x40000000
- };
- 
- struct tas2562_data {
+---
+Esteban Urrutia (3):
+      dt-bindings: phy: qcom,sc8280xp-qmp-pcie-phy: Add SM8475 QMP PHY
+      phy: qcom: qmp-pcie: Add pcs_lane1 offset to V5 offsets
+      phy: qcom: qmp-pcie: Add support for SM8475 Gen3x1 PCIe0 port
 
--- 
-2.34.1
+ .../bindings/phy/qcom,sc8280xp-qmp-pcie-phy.yaml   |   2 +
+ drivers/phy/qualcomm/phy-qcom-qmp-pcie.c           | 109 +++++++++++++++++++++
+ 2 files changed, 111 insertions(+)
+---
+base-commit: cc2b5f627e8ccbae1188ef2d8be3e451d7f933a5
+change-id: 20260714-sm8475-bup-pcie-3e3796e61c4e
+
+Best regards,
+--  
+Esteban Urrutia <esteuwu@proton.me>
 
