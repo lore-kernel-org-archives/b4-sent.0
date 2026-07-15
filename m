@@ -1,106 +1,135 @@
 From: Xiubo Li <xiubo.li@clyso.com>
-Subject: [PATCH v2 0/5] ceph: reduce mdsc->mutex contention in the cephfs
- kclient
-Date: Wed, 15 Jul 2026 11:58:40 +0800
-Message-Id: <20260715-ceph-mdsc-mutex-optimization-v2-0-90e81b726724@clyso.com>
+Date: Wed, 15 Jul 2026 11:58:41 +0800
+Subject: [PATCH v2 1/5] ceph: convert oldest_tid to atomic64_t
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NTQ6CMBBGr2K6dgzlV115D8OiHUYZYylpCwEJd
- 7fgBVy+5H3vW4Qnx+TF9bAIRyN7tl2E9HgQ2KruScBNZJEmaZlUMgOkvgXTeAQzBJrA9oENf1S
- IQ6ioypUutcazFjHRO3rwtOfv9Y/9oF+EYWtuRss+WDfv/6PcvD+vRgkJXBQVCmVWYJbf8D17e
- 0JrRL2u6xdlbKp12gAAAA==
-X-Change-ID: 20260713-ceph-mdsc-mutex-optimization-7e74ab6bbc8b
+Message-Id: <20260715-ceph-mdsc-mutex-optimization-v2-1-90e81b726724@clyso.com>
+References: <20260715-ceph-mdsc-mutex-optimization-v2-0-90e81b726724@clyso.com>
+In-Reply-To: <20260715-ceph-mdsc-mutex-optimization-v2-0-90e81b726724@clyso.com>
 To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
  Viacheslav Dubeyko <slava@dubeyko.com>
 Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784087938; l=3516;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784087938; l=4251;
  i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=Hc9bUFcsUJX8/T86MZ5M9JViEBLi0BZRTLXRNXkgsiY=;
- b=cjKbi7U5KF2avkkJlzNdrHUsTz0/GHS5pgHRSN475L3CPLDSitgiAPv58HlBy6L3o1/W71VPy
- DQ8zYuptr/jDVuakO/Prk/x0ByHRxQrw7tFiQSyWT25CMBO86SZU7+D
+ bh=Ln313jfnyI9iEkGY4T3NBIW+U7Vyr9d7sWpnTOxEXz8=;
+ b=l3ywj6I+ak12opOA5SQTGoS7YjH4j/e47k19/70QSNRmLOlPy/zc9zNIqEOPPvNsLLcv107f0
+ uHPkV89Pzg3ACE0HsNDBOgFKgMV5J5JOUXS72t82+hQVISqL/Gsf4Ki
 X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
  pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
 X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series reduces mdsc->mutex hold times from hundreds of
-microseconds to tens of microseconds on the hot request-submit and
-reply-handling paths.
+The oldest_client_tid sent in the MDS request header is advisory:
+a stale value is harmless -- at worst the MDS may resend a reply
+we already have, or skip one we still need (which will just be
+retried).  With the plain u64 read, however, the compiler is free
+to split or cache the load, which is undefined behaviour when the
+write side runs under mdsc->mutex on a different CPU.
 
-The approach is incremental:
-  1. Convert oldest_tid to atomic64_t so that __prepare_send_request()
-     and __send_request() no longer need the mutex.
-  2. Replace the request_tree rbtree with an xarray for O(1) lookups
-     and internally-locked iteration.
-  3. Add a dedicated wait_list_lock spinlock so wait-list operations
-     no longer depend on the global mutex.
-  4. Move mdsc->mutex acquisition inside __do_request(), then release
-     it during the send phase (message construction and path walking),
-     leaving only the brief setup/teardown under the lock.
-  5. Narrow the mutex scope in replay_unsafe_requests() similarly.
+Convert mdsc->oldest_tid from u64 to atomic64_t so that reads
+are guaranteed to be single-copy atomic on all architectures.
+This removes the one remaining reason __prepare_send_request()
+and __send_request() needed to be called under mdsc->mutex, so
+drop those comments as well.
 
-Tested with concurrent readdir + stat on a 5000-file directory
-(32 threads).  bpftrace measurements show:
-
-                 before         after
-  __do_request   354-2327 us    10-68 us    (34x)
-  handle_reply   51-416 us     10-32 us    (13x)
-  submit_request 89-211 us     10-41 us    (5x)
-
-Benchmark results from test_i_caps (aggregate cache test):
-
-  | Test                | Before   | After    | Improvement |
-  |---------------------|----------|----------|-------------|
-  | stat storm ST       | 692k/s   | 1,420k/s | +105% (2.1x)|
-  | stat storm MT       | 722k/s   | 1,373k/s | +90%  (1.9x)|
-  | open/close          | 403k/s   | 524k/s   | +30%        |
-  | stat hot (cache)    | 353k/s   | 540k/s   | +53%        |
-  | readdir             | 877/s    | 832/s    | ~0%         |
-  | Total time          | 195s     | 121s     | -38%  (1.6x)|
-
-The 2x stat throughput gain comes from __do_request() no longer
-holding mdsc->mutex during the __send_request() phase, so dentry
-path walking and message encoding in create_request_message()
-run outside the lock.
-
-No functional changes intended.
+All write sites (__register_request, __unregister_request) still
+run under mdsc->mutex, so use atomic64_set() for clarity.
 
 Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
-Changes in v2:
-- Add xa_store() error handling and bail out on failure in the submit path
-- Guard xarray conversion with BITS_PER_LONG==64, fall back to rbtree on 32-bit
-- Fix missing mutex_unlock on early-return path in __do_request()
-- Move mutex_unlock before __wake_requests() and kick_requests() calls to
-  avoid recursive lock acquisition
-- Pin requests with ceph_mdsc_get_request() across lockless __send_request()
-  in replay_unsafe_requests() to prevent use-after-free
-- Keep mdsc->mutex held on 32-bit for rb_first()/rb_next() iteration in
-  replay_unsafe_requests()
-- Drop stale "called under mdsc->mutex" comment on __wake_requests()
-- Add benchmark results from test_i_caps (2.1x stat throughput improvement)
-- Link to v1: https://patch.msgid.link/20260713-ceph-mdsc-mutex-optimization-v1-0-9ae5ac135c34@clyso.com
+ fs/ceph/mds_client.c | 21 ++++++++-------------
+ fs/ceph/mds_client.h |  2 +-
+ 2 files changed, 9 insertions(+), 14 deletions(-)
 
----
-Xiubo Li (5):
-      ceph: convert oldest_tid to atomic64_t
-      ceph: replace the request_tree rbtree with an xarray keyed by r_tid.
-      ceph: add wait_list_lock for wait-list serialization
-      ceph: move mdsc->mutex into __do_request()
-      ceph: narrow mdsc->mutex scope in replay_unsafe_requests
+diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
+index 9f84ef2ac6e4..98d0a5baff70 100644
+--- a/fs/ceph/mds_client.c
++++ b/fs/ceph/mds_client.c
+@@ -1235,8 +1235,9 @@ static void __register_request(struct ceph_mds_client *mdsc,
+ 	if (!req->r_mnt_idmap)
+ 		req->r_mnt_idmap = &nop_mnt_idmap;
+ 
+-	if (mdsc->oldest_tid == 0 && req->r_op != CEPH_MDS_OP_SETFILELOCK)
+-		mdsc->oldest_tid = req->r_tid;
++	if (atomic64_read(&mdsc->oldest_tid) == 0 &&
++	    req->r_op != CEPH_MDS_OP_SETFILELOCK)
++		atomic64_set(&mdsc->oldest_tid, req->r_tid);
+ 
+ 	if (dir) {
+ 		struct ceph_inode_info *ci = ceph_inode(dir);
+@@ -1257,14 +1258,14 @@ static void __unregister_request(struct ceph_mds_client *mdsc,
+ 	/* Never leave an unregistered request on an unsafe list! */
+ 	list_del_init(&req->r_unsafe_item);
+ 
+-	if (req->r_tid == mdsc->oldest_tid) {
++	if (req->r_tid == atomic64_read(&mdsc->oldest_tid)) {
+ 		struct rb_node *p = rb_next(&req->r_node);
+-		mdsc->oldest_tid = 0;
++		atomic64_set(&mdsc->oldest_tid, 0);
+ 		while (p) {
+ 			struct ceph_mds_request *next_req =
+ 				rb_entry(p, struct ceph_mds_request, r_node);
+ 			if (next_req->r_op != CEPH_MDS_OP_SETFILELOCK) {
+-				mdsc->oldest_tid = next_req->r_tid;
++				atomic64_set(&mdsc->oldest_tid, next_req->r_tid);
+ 				break;
+ 			}
+ 			p = rb_next(p);
+@@ -1693,7 +1694,7 @@ create_session_full_msg(struct ceph_mds_client *mdsc, int op, u64 seq)
+ 	ceph_encode_32(&p, 0);
+ 
+ 	/* version == 7, oldest_client_tid */
+-	ceph_encode_64(&p, mdsc->oldest_tid);
++	ceph_encode_64(&p, atomic64_read(&mdsc->oldest_tid));
+ 
+ 	msg->front.iov_len = p - msg->front.iov_base;
+ 	msg->hdr.front_len = cpu_to_le32(msg->front.iov_len);
+@@ -2759,7 +2760,7 @@ static struct ceph_mds_request *__get_oldest_req(struct ceph_mds_client *mdsc)
+ 
+ static inline  u64 __get_oldest_tid(struct ceph_mds_client *mdsc)
+ {
+-	return mdsc->oldest_tid;
++	return atomic64_read(&mdsc->oldest_tid);
+ }
+ 
+ #if IS_ENABLED(CONFIG_FS_ENCRYPTION)
+@@ -3438,9 +3439,6 @@ static void complete_request(struct ceph_mds_client *mdsc,
+ 	complete_all(&req->r_completion);
+ }
+ 
+-/*
+- * called under mdsc->mutex
+- */
+ static int __prepare_send_request(struct ceph_mds_session *session,
+ 				  struct ceph_mds_request *req,
+ 				  bool drop_cap_releases)
+@@ -3555,9 +3553,6 @@ static int __prepare_send_request(struct ceph_mds_session *session,
+ 	return 0;
+ }
+ 
+-/*
+- * called under mdsc->mutex
+- */
+ static int __send_request(struct ceph_mds_session *session,
+ 			  struct ceph_mds_request *req,
+ 			  bool drop_cap_releases)
+diff --git a/fs/ceph/mds_client.h b/fs/ceph/mds_client.h
+index 731d6ad04956..3b614b5df18c 100644
+--- a/fs/ceph/mds_client.h
++++ b/fs/ceph/mds_client.h
+@@ -532,7 +532,7 @@ struct ceph_mds_client {
+ 	spinlock_t              snap_empty_lock;  /* protect snap_empty */
+ 
+ 	u64                    last_tid;      /* most recent mds request */
+-	u64                    oldest_tid;    /* oldest incomplete mds request,
++	atomic64_t             oldest_tid;    /* oldest incomplete mds request,
+ 						 excluding setfilelock requests */
+ 	struct rb_root         request_tree;  /* pending mds requests */
+ 	struct delayed_work    delayed_work;  /* delayed work */
 
- fs/ceph/debugfs.c    |   9 ++
- fs/ceph/mds_client.c | 292 +++++++++++++++++++++++++++++++++++++++++++--------
- fs/ceph/mds_client.h |  15 ++-
- 3 files changed, 268 insertions(+), 48 deletions(-)
----
-base-commit: 7e1f9e2cd2d0e780c394a4402c40e125109fec72
-change-id: 20260713-ceph-mdsc-mutex-optimization-7e74ab6bbc8b
-
-Best regards,
---  
-Xiubo Li <xiubo.li@clyso.com>
+-- 
+2.53.0
 
