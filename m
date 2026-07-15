@@ -1,10 +1,10 @@
 From: Roman Vivchar <rva333@protonmail.com>
-Date: Wed, 15 Jul 2026 15:26:38 +0300
-Subject: [PATCH v2 1/3] dt-bindings: soc: mediatek: pwrap: add mt6572
+Date: Wed, 15 Jul 2026 15:26:39 +0300
+Subject: [PATCH v2 2/3] soc: mediatek: pwrap: use correct log level
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260715-6572-pwrap-v2-1-bea1d801c81b@protonmail.com>
+Message-Id: <20260715-6572-pwrap-v2-2-bea1d801c81b@protonmail.com>
 References: <20260715-6572-pwrap-v2-0-bea1d801c81b@protonmail.com>
 In-Reply-To: <20260715-6572-pwrap-v2-0-bea1d801c81b@protonmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -16,36 +16,117 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-arm-kernel@lists.infradead.org, linux-mediatek@lists.infradead.org, 
  Roman Vivchar <rva333@protonmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784118429; l=921;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784118429; l=3556;
  i=rva333@protonmail.com; s=20260510; h=from:subject:message-id;
- bh=BAi8UFC2xpwSSj8K8iWAUOKHGK6fMGisfalQqsjZVDM=;
- b=WZdjeLkVUX6/WzHVac1moHYvdUlfq8YtMBTKrlphWNkwB/sQKTS1sIKN6tHhAPcVYKBS39muA
- vqk0wnpsY1aCy9osGHkYge5/3c8C9PHm9ZDOVY/Pkr1RsT9nAlyVy+3
+ bh=UdQUgW/G6p2IpzSIEwNhInH074hFbLPSHyDOpyct7NU=;
+ b=3PKmCgYuJeYKDpULkW3pduxfpJ17XnjHjTmHi1ZlIIW5JOClS4b7MjXGbv5otf6OjNqIBtG0p
+ JkKcrPGiRNhCrFv6lm29Qq77VFIHcIEv3XtUXlM27BM8CmWeqSh5keN
 X-Developer-Key: i=rva333@protonmail.com; a=ed25519;
  pk=zww/nWjBGoQ4POXCG0BV6fx2iuXK6jx77rsKPA5YK5Y=
 X-Endpoint-Received: by B4 Relay for rva333@protonmail.com/20260510 with auth_id=777
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a compatible string for the mt6572 SoC.
+Error paths should be dev_err, not dev_dbg. Replace all dev_dbg in error
+branches to have the correct log level. Also simplify dev_err and return
+with dev_err_probe.
 
 Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
 Signed-off-by: Roman Vivchar <rva333@protonmail.com>
 ---
- Documentation/devicetree/bindings/soc/mediatek/mediatek,pwrap.yaml | 1 +
- 1 file changed, 1 insertion(+)
+ drivers/soc/mediatek/mtk-pmic-wrap.c | 45 ++++++++++++++----------------------
+ 1 file changed, 17 insertions(+), 28 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/soc/mediatek/mediatek,pwrap.yaml b/Documentation/devicetree/bindings/soc/mediatek/mediatek,pwrap.yaml
-index e7c4a3984c60..a3cf11153fba 100644
---- a/Documentation/devicetree/bindings/soc/mediatek/mediatek,pwrap.yaml
-+++ b/Documentation/devicetree/bindings/soc/mediatek/mediatek,pwrap.yaml
-@@ -31,6 +31,7 @@ properties:
-       - items:
-           - enum:
-               - mediatek,mt2701-pwrap
-+              - mediatek,mt6572-pwrap
-               - mediatek,mt6765-pwrap
-               - mediatek,mt6779-pwrap
-               - mediatek,mt6795-pwrap
+diff --git a/drivers/soc/mediatek/mtk-pmic-wrap.c b/drivers/soc/mediatek/mtk-pmic-wrap.c
+index 0bcd85826375..a4b10b0a97cb 100644
+--- a/drivers/soc/mediatek/mtk-pmic-wrap.c
++++ b/drivers/soc/mediatek/mtk-pmic-wrap.c
+@@ -2475,10 +2475,9 @@ static int pwrap_probe(struct platform_device *pdev)
+ 	if (np->child)
+ 		of_slave_id = of_match_node(of_slave_match_tbl, np->child);
+ 
+-	if (!of_slave_id) {
+-		dev_dbg(&pdev->dev, "slave pmic should be defined in dts\n");
+-		return -EINVAL;
+-	}
++	if (!of_slave_id)
++		return dev_err_probe(&pdev->dev, -EINVAL,
++				     "slave pmic should be defined in dts\n");
+ 
+ 	wrp = devm_kzalloc(&pdev->dev, sizeof(*wrp), GFP_KERNEL);
+ 	if (!wrp)
+@@ -2496,11 +2495,9 @@ static int pwrap_probe(struct platform_device *pdev)
+ 
+ 	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_RESET)) {
+ 		wrp->rstc = devm_reset_control_get(wrp->dev, "pwrap");
+-		if (IS_ERR(wrp->rstc)) {
+-			ret = PTR_ERR(wrp->rstc);
+-			dev_dbg(wrp->dev, "cannot get pwrap reset: %d\n", ret);
+-			return ret;
+-		}
++		if (IS_ERR(wrp->rstc))
++			return dev_err_probe(wrp->dev, PTR_ERR(wrp->rstc),
++					     "cannot get pwrap reset\n");
+ 	}
+ 
+ 	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_BRIDGE)) {
+@@ -2510,12 +2507,9 @@ static int pwrap_probe(struct platform_device *pdev)
+ 
+ 		wrp->rstc_bridge = devm_reset_control_get(wrp->dev,
+ 							  "pwrap-bridge");
+-		if (IS_ERR(wrp->rstc_bridge)) {
+-			ret = PTR_ERR(wrp->rstc_bridge);
+-			dev_dbg(wrp->dev,
+-				"cannot get pwrap-bridge reset: %d\n", ret);
+-			return ret;
+-		}
++		if (IS_ERR(wrp->rstc_bridge))
++			return dev_err_probe(wrp->dev, PTR_ERR(wrp->rstc_bridge),
++					     "cannot get pwrap-bridge reset\n");
+ 	}
+ 
+ 	ret = devm_clk_bulk_get_all_enabled(wrp->dev, &clk);
+@@ -2535,10 +2529,8 @@ static int pwrap_probe(struct platform_device *pdev)
+ 	 */
+ 	if (!pwrap_readl(wrp, PWRAP_INIT_DONE2)) {
+ 		ret = pwrap_init(wrp);
+-		if (ret) {
+-			dev_dbg(wrp->dev, "init failed with %d\n", ret);
+-			return ret;
+-		}
++		if (ret)
++			return dev_err_probe(wrp->dev, ret, "init failed\n");
+ 	}
+ 
+ 	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB))
+@@ -2548,10 +2540,9 @@ static int pwrap_probe(struct platform_device *pdev)
+ 	else
+ 		mask_done = PWRAP_STATE_INIT_DONE0;
+ 
+-	if (!(pwrap_readl(wrp, PWRAP_WACS2_RDATA) & mask_done)) {
+-		dev_dbg(wrp->dev, "initialization isn't finished\n");
+-		return -ENODEV;
+-	}
++	if (!(pwrap_readl(wrp, PWRAP_WACS2_RDATA) & mask_done))
++		return dev_err_probe(wrp->dev, -ENODEV,
++				     "initialization isn't finished\n");
+ 
+ 	/* Initialize watchdog, may not be done by the bootloader */
+ 	if (!HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB))
+@@ -2593,11 +2584,9 @@ static int pwrap_probe(struct platform_device *pdev)
+ 		return PTR_ERR(wrp->regmap);
+ 
+ 	ret = of_platform_populate(np, NULL, NULL, wrp->dev);
+-	if (ret) {
+-		dev_dbg(wrp->dev, "failed to create child devices at %pOF\n",
+-				np);
+-		return ret;
+-	}
++	if (ret)
++		return dev_err_probe(wrp->dev, ret,
++				     "failed to create child devices at %pOF\n", np);
+ 
+ 	return 0;
+ }
 
 -- 
 2.54.0
