@@ -1,70 +1,106 @@
-From: Guo Hao <guohaoprc@163.com>
-Date: Wed, 15 Jul 2026 11:32:26 +0800
-Subject: [PATCH] board: ti: am62x: Fix build without TI_I2C_BOARD_DETECT
+From: Xiubo Li <xiubo.li@clyso.com>
+Subject: [PATCH v2 0/5] ceph: reduce mdsc->mutex contention in the cephfs
+ kclient
+Date: Wed, 15 Jul 2026 11:58:40 +0800
+Message-Id: <20260715-ceph-mdsc-mutex-optimization-v2-0-90e81b726724@clyso.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260715-am62x-no-board-detect-v1-1-2969faec1001@163.com>
-X-B4-Tracking: v=1; b=H4sIAEn/VmoC/yXMQQqDMBCF4avIrDuQhJqAVyldJM5op2BSEi2Ce
- HejLj9479+gcBYu0DUbZP5LkRQr9KOB/uPjyChUDUYZq5xu0U/WrBgThuQzIfHM/Yw2GA7PwRE
- pC/X7yzzIenVf79tlCd86PWOw7wdLA5TIeQAAAA==
-X-Change-ID: 20260715-am62x-no-board-detect-6b2eb4f7dd06
-To: "Guillaume La Roque (TI.com)" <glaroque@baylibre.com>, 
- Mattijs Korpershoek <mkorpershoek@kernel.org>, u-boot@lists.denx.de
-Cc: Bryan Brattlof <bb@ti.com>, Tom Rini <trini@konsulko.com>, 
- Yao Zi <me@ziyao.cc>, Patrice Chotard <patrice.chotard@foss.st.com>, 
- Vishal Mahaveer <vishalm@ti.com>, Peng Fan <peng.fan@nxp.com>, 
- Guo Hao <guohaoprc@163.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/42NTQ6CMBBGr2K6dgzlV115D8OiHUYZYylpCwEJd
+ 7fgBVy+5H3vW4Qnx+TF9bAIRyN7tl2E9HgQ2KruScBNZJEmaZlUMgOkvgXTeAQzBJrA9oENf1S
+ IQ6ioypUutcazFjHRO3rwtOfv9Y/9oF+EYWtuRss+WDfv/6PcvD+vRgkJXBQVCmVWYJbf8D17e
+ 0JrRL2u6xdlbKp12gAAAA==
+X-Change-ID: 20260713-ceph-mdsc-mutex-optimization-7e74ab6bbc8b
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xiubo Li <xiubo.li@clyso.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784086442; l=1266;
- i=guohaoprc@163.com; s=20260715; h=from:subject:message-id;
- bh=G3Mhs8J9V0d8ZQoA8QQUSCj8yZ5UWak1KQPX0gCC1AU=;
- b=nrcf05D4qL4qyJzyCjsuwoWV4+aSgvTjGIeBeabyBWiLkVOc136XhKDX+I1CpLVew2J4o8BG3
- daZsRZYN/FNDhr4Vc5GRGVlKUf+KLvoEV3jNsDklQscul8VVCqGfQPe
-X-Developer-Key: i=guohaoprc@163.com; a=ed25519;
- pk=LuAU/SLdnwHV0emUu69VagQyjh4bAVGO89ZPeHKJCrA=
-X-Endpoint-Received: by B4 Relay for guohaoprc@163.com/20260715 with auth_id=873
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784087938; l=3516;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=Hc9bUFcsUJX8/T86MZ5M9JViEBLi0BZRTLXRNXkgsiY=;
+ b=cjKbi7U5KF2avkkJlzNdrHUsTz0/GHS5pgHRSN475L3CPLDSitgiAPv58HlBy6L3o1/W71VPy
+ DQ8zYuptr/jDVuakO/Prk/x0ByHRxQrw7tFiQSyWT25CMBO86SZU7+D
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-setup_board_eeprom_env() and setup_serial_am6() are only available when
-TI_I2C_BOARD_DETECT is enabled.
+This series reduces mdsc->mutex hold times from hundreds of
+microseconds to tens of microseconds on the hot request-submit and
+reply-handling paths.
 
-IS_ENABLED() does not remove the guarded statements during preprocessing,
-so disabling TI_I2C_BOARD_DETECT results in an implicit function
-declaration error. Use a preprocessor condition to match the condition
-used for the function definition.
+The approach is incremental:
+  1. Convert oldest_tid to atomic64_t so that __prepare_send_request()
+     and __send_request() no longer need the mutex.
+  2. Replace the request_tree rbtree with an xarray for O(1) lookups
+     and internally-locked iteration.
+  3. Add a dedicated wait_list_lock spinlock so wait-list operations
+     no longer depend on the global mutex.
+  4. Move mdsc->mutex acquisition inside __do_request(), then release
+     it during the send phase (message construction and path walking),
+     leaving only the brief setup/teardown under the lock.
+  5. Narrow the mutex scope in replay_unsafe_requests() similarly.
 
-Fixes: ff1b83c095c2 ("board: am62x: Add support for reading eeprom data")
-Signed-off-by: Guo Hao <guohaoprc@163.com>
+Tested with concurrent readdir + stat on a 5000-file directory
+(32 threads).  bpftrace measurements show:
+
+                 before         after
+  __do_request   354-2327 us    10-68 us    (34x)
+  handle_reply   51-416 us     10-32 us    (13x)
+  submit_request 89-211 us     10-41 us    (5x)
+
+Benchmark results from test_i_caps (aggregate cache test):
+
+  | Test                | Before   | After    | Improvement |
+  |---------------------|----------|----------|-------------|
+  | stat storm ST       | 692k/s   | 1,420k/s | +105% (2.1x)|
+  | stat storm MT       | 722k/s   | 1,373k/s | +90%  (1.9x)|
+  | open/close          | 403k/s   | 524k/s   | +30%        |
+  | stat hot (cache)    | 353k/s   | 540k/s   | +53%        |
+  | readdir             | 877/s    | 832/s    | ~0%         |
+  | Total time          | 195s     | 121s     | -38%  (1.6x)|
+
+The 2x stat throughput gain comes from __do_request() no longer
+holding mdsc->mutex during the __send_request() phase, so dentry
+path walking and message encoding in create_request_message()
+run outside the lock.
+
+No functional changes intended.
+
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- board/ti/am62x/evm.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/board/ti/am62x/evm.c b/board/ti/am62x/evm.c
-index 49e58ad6d6c..f54abb56384 100644
---- a/board/ti/am62x/evm.c
-+++ b/board/ti/am62x/evm.c
-@@ -125,10 +125,10 @@ invalid_eeprom:
- #if CONFIG_IS_ENABLED(BOARD_LATE_INIT)
- int board_late_init(void)
- {
--	if (IS_ENABLED(CONFIG_TI_I2C_BOARD_DETECT)) {
--		setup_board_eeprom_env();
--		setup_serial_am6();
--	}
-+#if CONFIG_IS_ENABLED(TI_I2C_BOARD_DETECT)
-+	setup_board_eeprom_env();
-+	setup_serial_am6();
-+#endif
- 
- 	ti_set_fdt_env(NULL, NULL);
- 	return 0;
+Changes in v2:
+- Add xa_store() error handling and bail out on failure in the submit path
+- Guard xarray conversion with BITS_PER_LONG==64, fall back to rbtree on 32-bit
+- Fix missing mutex_unlock on early-return path in __do_request()
+- Move mutex_unlock before __wake_requests() and kick_requests() calls to
+  avoid recursive lock acquisition
+- Pin requests with ceph_mdsc_get_request() across lockless __send_request()
+  in replay_unsafe_requests() to prevent use-after-free
+- Keep mdsc->mutex held on 32-bit for rb_first()/rb_next() iteration in
+  replay_unsafe_requests()
+- Drop stale "called under mdsc->mutex" comment on __wake_requests()
+- Add benchmark results from test_i_caps (2.1x stat throughput improvement)
+- Link to v1: https://patch.msgid.link/20260713-ceph-mdsc-mutex-optimization-v1-0-9ae5ac135c34@clyso.com
 
 ---
-base-commit: 501d76ca801343cce6dafb17740a8b679ed17072
-change-id: 20260715-am62x-no-board-detect-6b2eb4f7dd06
+Xiubo Li (5):
+      ceph: convert oldest_tid to atomic64_t
+      ceph: replace the request_tree rbtree with an xarray keyed by r_tid.
+      ceph: add wait_list_lock for wait-list serialization
+      ceph: move mdsc->mutex into __do_request()
+      ceph: narrow mdsc->mutex scope in replay_unsafe_requests
+
+ fs/ceph/debugfs.c    |   9 ++
+ fs/ceph/mds_client.c | 292 +++++++++++++++++++++++++++++++++++++++++++--------
+ fs/ceph/mds_client.h |  15 ++-
+ 3 files changed, 268 insertions(+), 48 deletions(-)
+---
+base-commit: 7e1f9e2cd2d0e780c394a4402c40e125109fec72
+change-id: 20260713-ceph-mdsc-mutex-optimization-7e74ab6bbc8b
 
 Best regards,
 --  
-Guo Hao <guohaoprc@163.com>
+Xiubo Li <xiubo.li@clyso.com>
 
