@@ -1,15 +1,13 @@
 From: Esteban Urrutia <esteuwu@proton.me>
-Subject: [PATCH v2 0/3] Initial PCIe0 PHY support for SM8475
-Date: Wed, 15 Jul 2026 02:37:45 -0400
-Message-Id: <20260715-sm8475-bup-pcie-v2-0-48bd91a19abf@proton.me>
+Date: Wed, 15 Jul 2026 02:37:46 -0400
+Subject: [PATCH v2 1/3] dt-bindings: phy: qcom,sc8280xp-qmp-pcie-phy: Add
+ SM8475 QMP PHY
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NQQ6CMBBFr0Jm7RhaaousvIdhYesoYwJtWiAaw
- t2luHX5kvffXyBRZErQFAtEmjmxHzaQhwJcdxuehHzfGGQpdWmEwtTXypzQTgGDY8KKKnPWpIV
- TBNsqRHrwey9e2x+nyb7IjTmTjY7T6ONnv5xF9v7WZ4ElWlkbYUlaRe4Soh/9cOwJ2nVdv1tUO
- PK7AAAA
-X-Change-ID: 20260714-sm8475-bup-pcie-3e3796e61c4e
+Message-Id: <20260715-sm8475-bup-pcie-v2-1-48bd91a19abf@proton.me>
+References: <20260715-sm8475-bup-pcie-v2-0-48bd91a19abf@proton.me>
+In-Reply-To: <20260715-sm8475-bup-pcie-v2-0-48bd91a19abf@proton.me>
 To: Vinod Koul <vkoul@kernel.org>, 
  Neil Armstrong <neil.armstrong@linaro.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -18,41 +16,46 @@ Cc: linux-arm-msm@vger.kernel.org, linux-phy@lists.infradead.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  phone-devel@vger.kernel.org, Esteban Urrutia <esteuwu@proton.me>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784097545; l=1058;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784097545; l=1376;
  i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
- bh=DXCPklQlaMdsbJnYQs6c8poFEg6YyAXU0DXLOMPqOgY=;
- b=0goYS6cTjDxMQMw2HZnPcWJ/7uXDiMnvjqOFKfhc6a3+SijbKl60TY0IUojz1BqgY26QZBANY
- IHaycNsKF9PCKsLJrOhXPvH4oT38mzOv2/4uNxg10W06GxTsfuQ1N7N
+ bh=bLFIXxi0mjZfBPT4pjXHMUjEF5YF+fmxsIeBl21k8TQ=;
+ b=4S6iTuTNBIWEcmltrDDzXdRp+F20EuVr2wpwnU32oM/Ftv7u8FHqHd2YAQmX6UmIZQx81MSQF
+ jTTJEIqnC48BGyWMkAONFDoQEbMSRYoiC/Y1VgRCYRhmyLeZH7nHQy5
 X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
  pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
 X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds support for the PCIe0 PHY found in the SM8475 SoC.
-The initialization sequence varies noticeably when compared to the one used
-in the SM8450 SoC, hence the need to add support for this PHY.
+SM8450 init sequence for this PHY varies significantly and can't be reused
+in SM8475.
+Add bindings for the PHY found in this SoC.
 
 Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
 ---
-Changes in v2:
-- Split series in subseries (pcie, usbss)
-  - Sorry, it should have been like this from the start!
-- Link to v1: https://patch.msgid.link/20260714-sm8475-bup-v1-0-b2871be2b4ec@proton.me
+ Documentation/devicetree/bindings/phy/qcom,sc8280xp-qmp-pcie-phy.yaml | 2 ++
+ 1 file changed, 2 insertions(+)
 
----
-Esteban Urrutia (3):
-      dt-bindings: phy: qcom,sc8280xp-qmp-pcie-phy: Add SM8475 QMP PHY
-      phy: qcom: qmp-pcie: Add pcs_lane1 offset to V5 offsets
-      phy: qcom: qmp-pcie: Add support for SM8475 Gen3x1 PCIe0 port
+diff --git a/Documentation/devicetree/bindings/phy/qcom,sc8280xp-qmp-pcie-phy.yaml b/Documentation/devicetree/bindings/phy/qcom,sc8280xp-qmp-pcie-phy.yaml
+index 108cf9dc86ea..8850d5ebac03 100644
+--- a/Documentation/devicetree/bindings/phy/qcom,sc8280xp-qmp-pcie-phy.yaml
++++ b/Documentation/devicetree/bindings/phy/qcom,sc8280xp-qmp-pcie-phy.yaml
+@@ -43,6 +43,7 @@ properties:
+       - qcom,sm8350-qmp-gen3x2-pcie-phy
+       - qcom,sm8450-qmp-gen3x1-pcie-phy
+       - qcom,sm8450-qmp-gen4x2-pcie-phy
++      - qcom,sm8475-qmp-gen3x1-pcie-phy
+       - qcom,sm8550-qmp-gen3x2-pcie-phy
+       - qcom,sm8550-qmp-gen4x2-pcie-phy
+       - qcom,sm8650-qmp-gen3x2-pcie-phy
+@@ -175,6 +176,7 @@ allOf:
+               - qcom,sm8350-qmp-gen3x2-pcie-phy
+               - qcom,sm8450-qmp-gen3x1-pcie-phy
+               - qcom,sm8450-qmp-gen3x2-pcie-phy
++              - qcom,sm8475-qmp-gen3x1-pcie-phy
+               - qcom,sm8550-qmp-gen3x2-pcie-phy
+               - qcom,sm8550-qmp-gen4x2-pcie-phy
+               - qcom,sm8650-qmp-gen3x2-pcie-phy
 
- .../bindings/phy/qcom,sc8280xp-qmp-pcie-phy.yaml   |   2 +
- drivers/phy/qualcomm/phy-qcom-qmp-pcie.c           | 109 +++++++++++++++++++++
- 2 files changed, 111 insertions(+)
----
-base-commit: cc2b5f627e8ccbae1188ef2d8be3e451d7f933a5
-change-id: 20260714-sm8475-bup-pcie-3e3796e61c4e
-
-Best regards,
---  
-Esteban Urrutia <esteuwu@proton.me>
+-- 
+2.55.0
 
