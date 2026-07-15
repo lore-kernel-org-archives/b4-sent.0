@@ -1,11 +1,11 @@
 From: Nikolai Burov <nikolai.burov@jolla.com>
-Date: Wed, 15 Jul 2026 16:54:05 +0300
-Subject: [PATCH v2 1/3] dt-bindings: power: Add MediaTek MT6858 power
- domain controller
+Date: Wed, 15 Jul 2026 16:54:06 +0300
+Subject: [PATCH v2 2/3] pmdomain: mediatek: Add support for secure modem
+ power domain control
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260715-mt6858-pmdomain-v2-1-6293e87fc093@jolla.com>
+Message-Id: <20260715-mt6858-pmdomain-v2-2-6293e87fc093@jolla.com>
 References: <20260715-mt6858-pmdomain-v2-0-6293e87fc093@jolla.com>
 In-Reply-To: <20260715-mt6858-pmdomain-v2-0-6293e87fc093@jolla.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -19,108 +19,154 @@ Cc: Matthias Brugger <mbrugger@suse.com>, devicetree@vger.kernel.org,
  Nikolai Burov <nikolai.burov@jolla.com>, 
  Nikolai Burov <nikolai.burov+review@abscue.de>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784123646; l=3838;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784123646; l=5199;
  i=nikolai.burov@jolla.com; s=20260707; h=from:subject:message-id;
- bh=wyTDtPwagfipv98JCBqQB356TgxsTT3pxKgmlZsP7cU=;
- b=r22tiqpwyDHLAplPVvax8X+Lcya77yyrKXCW71dkieN5RL99On7hmytf6hKIhUncbsZs/kNq5
- RnUKhxSlbqyB0Kp6S4WZ/i5ilKfz32RBP03L4thDQcz5btY4PsbVjUu
+ bh=gBoq3HH59F/zPOlCRpIWWkC6yZBPSELdx7eNFsd2Po8=;
+ b=z/GkX2dizJxO+o5AY/WpWWi4WOs7WS8zkm9bz9iemZh8zrpRVxTDkvUzjyFbMZUIwCaIQKa16
+ /DEfLv8LsweDqsK1QhMZjlT0HZ4LPN/PbbkcdlGQLeaRmbOuox45CsS
 X-Developer-Key: i=nikolai.burov@jolla.com; a=ed25519;
  pk=yzpa+PD+ovHUFMIOBA9o2QqGwI110jM6hdGHLc7jtoQ=
 X-Endpoint-Received: by B4 Relay for nikolai.burov@jolla.com/20260707 with auth_id=859
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add a new compatible and document bindings for the power domain
-controller of the MT6858 SoC.
+On recent MediaTek SoCs such as MT6858, the kernel is required to use
+a secure monitor call (SMC) to enable or disable the modem power domain.
+The power domain control register can be read, but firmware prevents it
+from being modified directly. Some other parts of the power sequence,
+such as setting the ext_buck_iso register, still need to be performed on
+the kernel side.
 
-Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+In preparation for modem support, add a flag to enable this new power
+sequence for SoCs that need it. Power domains using this flag are not
+expected to configure any bus protection registers, since these are
+handled internally by the SMC call.
+
 Signed-off-by: Nikolai Burov <nikolai.burov@jolla.com>
 ---
- .../bindings/power/mediatek,power-controller.yaml  | 21 +++++++++++++++++++-
- include/dt-bindings/power/mediatek,mt6858-power.h  | 23 ++++++++++++++++++++++
- 2 files changed, 43 insertions(+), 1 deletion(-)
+ drivers/pmdomain/mediatek/mtk-pm-domains.c | 47 +++++++++++++++++++++++++++---
+ drivers/pmdomain/mediatek/mtk-pm-domains.h |  1 +
+ include/linux/soc/mediatek/mtk_sip_svc.h   |  3 ++
+ 3 files changed, 47 insertions(+), 4 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/power/mediatek,power-controller.yaml b/Documentation/devicetree/bindings/power/mediatek,power-controller.yaml
-index 070c6e5666dc..d03e4a925163 100644
---- a/Documentation/devicetree/bindings/power/mediatek,power-controller.yaml
-+++ b/Documentation/devicetree/bindings/power/mediatek,power-controller.yaml
-@@ -25,6 +25,7 @@ properties:
-     enum:
-       - mediatek,mt6735-power-controller
-       - mediatek,mt6795-power-controller
-+      - mediatek,mt6858-power-controller
-       - mediatek,mt6893-power-controller
-       - mediatek,mt8167-power-controller
-       - mediatek,mt8173-power-controller
-@@ -56,7 +57,7 @@ properties:
-       faults while enabling or disabling a power domain.
-       For example, this may hold phandles to INFRACFG and SMI.
-     minItems: 1
--    maxItems: 3
-+    maxItems: 6
+diff --git a/drivers/pmdomain/mediatek/mtk-pm-domains.c b/drivers/pmdomain/mediatek/mtk-pm-domains.c
+index 8309a4b46afb..ada9ea8b45b7 100644
+--- a/drivers/pmdomain/mediatek/mtk-pm-domains.c
++++ b/drivers/pmdomain/mediatek/mtk-pm-domains.c
+@@ -57,6 +57,10 @@
  
- patternProperties:
-   "^power-domain@[0-9a-f]+$":
-@@ -103,6 +104,7 @@ $defs:
-         description: |
-           Power domain index. Valid values are defined in:
-               "include/dt-bindings/power/mt6795-power.h" - for MT8167 type power domain.
-+              "include/dt-bindings/power/mediatek,mt6858-power.h" - for MT6858 type power domain.
-               "include/dt-bindings/power/mediatek,mt6893-power.h" - for MT6893 type power domain.
-               "include/dt-bindings/power/mt8167-power.h" - for MT8167 type power domain.
-               "include/dt-bindings/power/mt8173-power.h" - for MT8173 type power domain.
-@@ -156,6 +158,23 @@ required:
-   - compatible
+ #define MTK_SIP_KERNEL_HWCCF_CONTROL	MTK_SIP_SMC_CMD(0x540)
  
- allOf:
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            enum:
-+              - mediatek,mt6858-power-controller
-+    then:
-+      properties:
-+        access-controllers:
-+          items:
-+            - description: handle to INFRACFG register block
-+            - description: handle to IMG_SUB0 register block
-+            - description: handle to CAM_SUB1 register block
-+            - description: handle to CAM_SUB0 register block
-+            - description: handle to IPE_SUB0 register block
-+            - description: handle to VLPCFG register block
++/* Secure MTCMOS commands for modem subsystem */
++#define MTK_MD_MTCMOS_ENABLE		18
++#define MTK_MD_MTCMOS_DISABLE		19
 +
-   - if:
-       properties:
-         compatible:
-diff --git a/include/dt-bindings/power/mediatek,mt6858-power.h b/include/dt-bindings/power/mediatek,mt6858-power.h
-new file mode 100644
-index 000000000000..6ed9e82d4ad3
---- /dev/null
-+++ b/include/dt-bindings/power/mediatek,mt6858-power.h
-@@ -0,0 +1,23 @@
-+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause) */
+ struct scpsys_domain {
+ 	struct generic_pm_domain genpd;
+ 	const struct scpsys_domain_data *data;
+@@ -668,6 +672,34 @@ static int scpsys_modem_pwrseq_off(struct scpsys_domain *pd)
+ 	return 0;
+ }
+ 
++static bool scpsys_modem_sec_poll(unsigned long cmd)
++{
++	struct arm_smccc_res res;
 +
-+#ifndef _DT_BINDINGS_POWER_MT6858_POWER_H
-+#define _DT_BINDINGS_POWER_MT6858_POWER_H
++	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, cmd, 1, 0, 0, 0, 0, 0, &res);
 +
-+#define MT6858_POWER_DOMAIN_MD				0
-+#define MT6858_POWER_DOMAIN_CONN			1
-+#define MT6858_POWER_DOMAIN_AUDIO			2
-+#define MT6858_POWER_DOMAIN_MM_INFRA			3
-+#define MT6858_POWER_DOMAIN_ISP_IMG1			4
-+#define MT6858_POWER_DOMAIN_ISP_IMG2			5
-+#define MT6858_POWER_DOMAIN_ISP_IPE			6
-+#define MT6858_POWER_DOMAIN_VDE0			7
-+#define MT6858_POWER_DOMAIN_VEN0			8
-+#define MT6858_POWER_DOMAIN_CAM_MAIN			9
-+#define MT6858_POWER_DOMAIN_CAM_SUBA			10
-+#define MT6858_POWER_DOMAIN_CAM_SUBB			11
-+#define MT6858_POWER_DOMAIN_DIS0			12
-+#define MT6858_POWER_DOMAIN_MM_PROC_DORMANT		13
-+#define MT6858_POWER_DOMAIN_CSI_RX			14
-+#define MT6858_POWER_DOMAIN_SSUSB			15
++	return res.a0 == 0;
++}
 +
-+#endif /* _DT_BINDINGS_POWER_MT6858_POWER_H */
++static int scpsys_modem_sec_power_on(bool on)
++{
++	struct arm_smccc_res res;
++	unsigned long cmd = on ? MTK_MD_MTCMOS_ENABLE : MTK_MD_MTCMOS_DISABLE;
++	bool tmp;
++	int ret;
++
++	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, cmd, 0, 0, 0, 0, 0, 0, &res);
++	if (res.a0 == 0)
++		return 0;
++
++	ret = readx_poll_timeout(scpsys_modem_sec_poll, cmd, tmp, tmp,
++				 MTK_POLL_DELAY_US, MTK_POLL_TIMEOUT);
++	if (ret < 0)
++		return ret;
++
++	return 0;
++}
++
+ static int scpsys_power_on(struct generic_pm_domain *genpd)
+ {
+ 	struct scpsys_domain *pd = container_of(genpd, struct scpsys_domain, genpd);
+@@ -686,7 +718,9 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
+ 		regmap_clear_bits(scpsys->base, pd->data->ext_buck_iso_offs,
+ 				  pd->data->ext_buck_iso_mask);
+ 
+-	if (MTK_SCPD_CAPS(pd, MTK_SCPD_MODEM_PWRSEQ))
++	if (MTK_SCPD_CAPS(pd, MTK_SCPD_MODEM_SECURE_PWRSEQ))
++		ret = scpsys_modem_sec_power_on(true);
++	else if (MTK_SCPD_CAPS(pd, MTK_SCPD_MODEM_PWRSEQ))
+ 		ret = scpsys_modem_pwrseq_on(pd);
+ 	else if (MTK_SCPD_CAPS(pd, MTK_SCPD_SIMPLE_PWRSEQ))
+ 		ret = scpsys_simple_pwrseq_on(pd);
+@@ -717,7 +751,8 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
+ 			goto err_pwr_ack;
+ 	}
+ 
+-	if (!MTK_SCPD_CAPS(pd, MTK_SCPD_SIMPLE_PWRSEQ)) {
++	if (!MTK_SCPD_CAPS(pd, MTK_SCPD_SIMPLE_PWRSEQ) &&
++	    !MTK_SCPD_CAPS(pd, MTK_SCPD_MODEM_SECURE_PWRSEQ)) {
+ 		ret = scpsys_sram_enable(pd);
+ 		if (ret < 0)
+ 			goto err_disable_subsys_clks;
+@@ -761,7 +796,11 @@ static int scpsys_power_off_internal(struct scpsys_domain *pd)
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	if (!MTK_SCPD_CAPS(pd, MTK_SCPD_SIMPLE_PWRSEQ)) {
++	if (MTK_SCPD_CAPS(pd, MTK_SCPD_MODEM_SECURE_PWRSEQ)) {
++		ret = scpsys_modem_sec_power_on(false);
++		if (ret)
++			return ret;
++	} else if (!MTK_SCPD_CAPS(pd, MTK_SCPD_SIMPLE_PWRSEQ)) {
+ 		ret = scpsys_sram_disable(pd);
+ 		if (ret < 0)
+ 			return ret;
+@@ -781,7 +820,7 @@ static int scpsys_power_off_internal(struct scpsys_domain *pd)
+ 		ret = scpsys_modem_pwrseq_off(pd);
+ 	else if (MTK_SCPD_CAPS(pd, MTK_SCPD_SIMPLE_PWRSEQ))
+ 		ret = scpsys_simple_pwrseq_off(pd);
+-	else
++	else if (!MTK_SCPD_CAPS(pd, MTK_SCPD_MODEM_SECURE_PWRSEQ))
+ 		ret = scpsys_ctl_pwrseq_off(pd);
+ 
+ 	if (ret < 0) {
+diff --git a/drivers/pmdomain/mediatek/mtk-pm-domains.h b/drivers/pmdomain/mediatek/mtk-pm-domains.h
+index 092403de66fa..8690690335ad 100644
+--- a/drivers/pmdomain/mediatek/mtk-pm-domains.h
++++ b/drivers/pmdomain/mediatek/mtk-pm-domains.h
+@@ -18,6 +18,7 @@
+ #define MTK_SCPD_SKIP_RESET_B		BIT(11)
+ #define MTK_SCPD_INFRA_PWR_CTL		BIT(12)
+ #define MTK_SCPD_SIMPLE_PWRSEQ		BIT(13)
++#define MTK_SCPD_MODEM_SECURE_PWRSEQ	BIT(14)
+ #define MTK_SCPD_CAPS(_scpd, _x)	((_scpd)->data ?		\
+ 					 (_scpd)->data->caps & (_x) :	\
+ 					 (_scpd)->hwv_data->caps & (_x))
+diff --git a/include/linux/soc/mediatek/mtk_sip_svc.h b/include/linux/soc/mediatek/mtk_sip_svc.h
+index abe24a73ee19..6c95a29b79fa 100644
+--- a/include/linux/soc/mediatek/mtk_sip_svc.h
++++ b/include/linux/soc/mediatek/mtk_sip_svc.h
+@@ -22,6 +22,9 @@
+ 	ARM_SMCCC_CALL_VAL(ARM_SMCCC_FAST_CALL, MTK_SIP_SMC_CONVENTION, \
+ 			   ARM_SMCCC_OWNER_SIP, fn_id)
+ 
++/* Modem related SMC call */
++#define MTK_SIP_KERNEL_CCCI_CONTROL	MTK_SIP_SMC_CMD(0x505)
++
+ /* DVFSRC SMC calls */
+ #define MTK_SIP_DVFSRC_VCOREFS_CONTROL	MTK_SIP_SMC_CMD(0x506)
+ 
 
 -- 
 2.54.0
