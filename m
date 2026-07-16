@@ -1,11 +1,10 @@
 From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
-Date: Fri, 17 Jul 2026 01:21:16 +0530
-Subject: [PATCH v2 2/3] ASoC: dt-bindings: qcom,lpass-va-macro: Add hawi
- heartbeatpulse clock
+Date: Fri, 17 Jul 2026 01:21:17 +0530
+Subject: [PATCH v2 3/3] ASoC: Add LPASS VA CSR heartbeat pulse clock
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260717-master-v2-2-ae200627ad62@oss.qualcomm.com>
+Message-Id: <20260717-master-v2-3-ae200627ad62@oss.qualcomm.com>
 References: <20260717-master-v2-0-ae200627ad62@oss.qualcomm.com>
 In-Reply-To: <20260717-master-v2-0-ae200627ad62@oss.qualcomm.com>
 To: Srinivas Kandagatla <srini@kernel.org>, 
@@ -20,62 +19,229 @@ Cc: Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>,
  Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
  Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784231493; l=1568;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784231493; l=6974;
  i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
- h=from:subject:message-id; bh=wmQ8OjdIV+ggh2217ROVouCyWwoJQ4NDy6vn2YVHcG0=;
- b=yySkd+ybybOOPR+Mp3EHCeg9BsMlxA9Lg/+eMnDvleD0k2A+Ak8sH8VWTcrKuk48lLIU1enCw
- lEJ1RMVlw7eAKE6m79Q6W0dH7yhvTqQLyugQGM6q05LDZg8MSL0gjZJ
+ h=from:subject:message-id; bh=DnVdQ9J5AHrIxPxYmGG+p8yZwISdgbHZpP4wxV2R65s=;
+ b=O8dR1PjzSazMAT0yzdBZMtGqWPmkFN23wULOAFjlW9iwNWpy5YcfxbE7CANzKT24B/EQrY5MY
+ BtKR3m4QSlBDMy9WgrK9Xg11SVUPp7uboRSikm5ylKbnTokt6i4KVVc
 X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
  pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
 X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Extend the qcom,lpass-va-macro to add the qcom,hawi-lpass-va-macro
-compatible, which consumes an additional heartbeatpulse clock
-alongside its existing mclk, macro, and dcodec clocks, for a total
-four-clock constraint.
+The HeartBeat Pulse (also known as RateGen Pulse) synchronizes the
+start of the DMAs and Codec Interfaces for the audio usecases
+and can serve as a periodic wakeup source for the DSP.
+
+Add the LPASS VA CSR driver that models the rate generator as a clock
+provider so it is enabled and disabled automatically alongside the
+other clocks during runtime PM resume and suspend.
 
 Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
 ---
- .../devicetree/bindings/sound/qcom,lpass-va-macro.yaml | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
+ sound/soc/codecs/Kconfig        |  13 ++++
+ sound/soc/codecs/Makefile       |   2 +
+ sound/soc/codecs/lpass-va-csr.c | 143 ++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 158 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/sound/qcom,lpass-va-macro.yaml b/Documentation/devicetree/bindings/sound/qcom,lpass-va-macro.yaml
-index aea31fbdad..ae4df89678 100644
---- a/Documentation/devicetree/bindings/sound/qcom,lpass-va-macro.yaml
-+++ b/Documentation/devicetree/bindings/sound/qcom,lpass-va-macro.yaml
-@@ -19,6 +19,7 @@ properties:
-           - qcom,sm8450-lpass-va-macro
-           - qcom,sm8550-lpass-va-macro
-           - qcom,sc8280xp-lpass-va-macro
-+          - qcom,hawi-lpass-va-macro
-       - items:
-           - enum:
-               - qcom,eliza-lpass-va-macro
-@@ -168,6 +169,23 @@ allOf:
-             - const: macro
-             - const: dcodec
+diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
+index 76e90144ea..5dbfa77d0e 100644
+--- a/sound/soc/codecs/Kconfig
++++ b/sound/soc/codecs/Kconfig
+@@ -2902,11 +2902,24 @@ config SND_SOC_LPASS_WSA_MACRO
+ 	select SND_SOC_LPASS_MACRO_COMMON
+ 	tristate "Qualcomm WSA Macro in LPASS(Low Power Audio SubSystem)"
  
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            const: qcom,hawi-lpass-va-macro
-+    then:
-+      properties:
-+        clocks:
-+          minItems: 4
-+          maxItems: 4
-+        clock-names:
-+          items:
-+            - const: mclk
-+            - const: macro
-+            - const: dcodec
-+            - const: heartbeatpulse
++config SND_SOC_LPASS_VA_CSR
++	depends on COMMON_CLK
++	select REGMAP_MMIO
++	tristate "Qualcomm LPASS VA CSR heartbeat pulse clock provider"
++	help
++	  Qualcomm LPASS VA CSR block contains the rate generator hardware
++	  that produces the HeartBeat Pulse (also known as RateGen Pulse).
++	  This driver models the rate generator as a clock provider so
++	  that consumers can enable or disable it via the common clock
++	  framework, and it can be used to synchronize the start of DMAs
++	  and Codec Interfaces or as a periodic wakeup source for the DSP.
 +
- unevaluatedProperties: false
+ config SND_SOC_LPASS_VA_MACRO
+ 	depends on COMMON_CLK
+ 	depends on PM_CLK
+ 	select REGMAP_MMIO
+ 	select SND_SOC_LPASS_MACRO_COMMON
++	select SND_SOC_LPASS_VA_CSR
+ 	tristate "Qualcomm VA Macro in LPASS(Low Power Audio SubSystem)"
  
- examples:
+ config SND_SOC_LPASS_RX_MACRO
+diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
+index aa0396e5b5..3e86c1bbf9 100644
+--- a/sound/soc/codecs/Makefile
++++ b/sound/soc/codecs/Makefile
+@@ -163,6 +163,7 @@ snd-soc-lpass-rx-macro-y := lpass-rx-macro.o
+ snd-soc-lpass-tx-macro-y := lpass-tx-macro.o
+ snd-soc-lpass-wsa-macro-y := lpass-wsa-macro.o
+ snd-soc-lpass-va-macro-y := lpass-va-macro.o
++snd-soc-lpass-va-csr-y := lpass-va-csr.o
+ snd-soc-madera-y := madera.o
+ snd-soc-max9759-y := max9759.o
+ snd-soc-max9768-y := max9768.o
+@@ -886,6 +887,7 @@ obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o
+ obj-$(CONFIG_SND_SOC_LPASS_MACRO_COMMON)	+= snd-soc-lpass-macro-common.o
+ obj-$(CONFIG_SND_SOC_LPASS_WSA_MACRO)	+= snd-soc-lpass-wsa-macro.o
+ obj-$(CONFIG_SND_SOC_LPASS_VA_MACRO)	+= snd-soc-lpass-va-macro.o
++obj-$(CONFIG_SND_SOC_LPASS_VA_CSR)	+= snd-soc-lpass-va-csr.o
+ obj-$(CONFIG_SND_SOC_LPASS_RX_MACRO)	+= snd-soc-lpass-rx-macro.o
+ obj-$(CONFIG_SND_SOC_LPASS_TX_MACRO)	+= snd-soc-lpass-tx-macro.o
+ 
+diff --git a/sound/soc/codecs/lpass-va-csr.c b/sound/soc/codecs/lpass-va-csr.c
+new file mode 100644
+index 0000000000..1d0805789e
+--- /dev/null
++++ b/sound/soc/codecs/lpass-va-csr.c
+@@ -0,0 +1,143 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
++ */
++
++#include <linux/clk-provider.h>
++#include <linux/device.h>
++#include <linux/module.h>
++#include <linux/of_clk.h>
++#include <linux/platform_device.h>
++#include <linux/regmap.h>
++
++#define LPASS_RATE_GEN_CTRL		0xd000
++#define LPASS_RATE_GEN_COUNTER_0	0xd004
++#define LPASS_RATE_GEN_DELAY		0xd010
++
++#define LPASS_RATE_GEN_MAX_REG		LPASS_RATE_GEN_DELAY
++
++#define LPASS_RG_CTRL_EN		BIT(0)
++
++struct lpass_va_csr_data {
++	u32 counter_0;
++	u32 delay;
++};
++
++static const struct lpass_va_csr_data hawi_csr_data = {
++	.counter_0 = 0x960,
++	.delay = 0x16,
++};
++
++static const struct regmap_config lpass_rate_gen_regmap_config = {
++	.name = "lpass_rate_gen",
++	.reg_bits = 32,
++	.val_bits = 32,
++	.reg_stride = 4,
++	.max_register = LPASS_RATE_GEN_MAX_REG,
++	.cache_type = REGCACHE_MAPLE,
++};
++
++struct lpass_va_csr {
++	struct regmap *regmap;
++	const struct lpass_va_csr_data *data;
++	struct clk_hw hb_hw;
++};
++
++#define to_lpass_va_csr(_hw) container_of(_hw, struct lpass_va_csr, hb_hw)
++
++static int heartbeat_pulse_prepare(struct clk_hw *hw)
++{
++	struct lpass_va_csr *csr = to_lpass_va_csr(hw);
++	int ret;
++
++	ret = regmap_write(csr->regmap, LPASS_RATE_GEN_COUNTER_0, csr->data->counter_0);
++	if (ret)
++		return ret;
++
++	ret = regmap_write(csr->regmap, LPASS_RATE_GEN_DELAY, csr->data->delay);
++	if (ret)
++		return ret;
++
++	return regmap_set_bits(csr->regmap, LPASS_RATE_GEN_CTRL, LPASS_RG_CTRL_EN);
++}
++
++static void heartbeat_pulse_unprepare(struct clk_hw *hw)
++{
++	struct lpass_va_csr *csr = to_lpass_va_csr(hw);
++
++	regmap_clear_bits(csr->regmap, LPASS_RATE_GEN_CTRL, LPASS_RG_CTRL_EN);
++}
++
++static int heartbeat_pulse_is_prepared(struct clk_hw *hw)
++{
++	struct lpass_va_csr *csr = to_lpass_va_csr(hw);
++
++	return regmap_test_bits(csr->regmap, LPASS_RATE_GEN_CTRL, LPASS_RG_CTRL_EN);
++}
++
++static const struct clk_ops heartbeat_pulse_ops = {
++	.prepare = heartbeat_pulse_prepare,
++	.unprepare = heartbeat_pulse_unprepare,
++	.is_prepared = heartbeat_pulse_is_prepared,
++};
++
++static int lpass_va_csr_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct lpass_va_csr *csr;
++	struct clk_init_data init = {
++		.name = "lpass_heartbeat_pulse",
++		.ops = &heartbeat_pulse_ops,
++	};
++	void __iomem *base;
++	int ret;
++
++	csr = devm_kzalloc(dev, sizeof(*csr), GFP_KERNEL);
++	if (!csr)
++		return -ENOMEM;
++
++	csr->data = of_device_get_match_data(dev);
++	if (!csr->data)
++		return dev_err_probe(dev, -EINVAL, "no variant data for compatible\n");
++
++	base = devm_platform_ioremap_resource(pdev, 0);
++	if (IS_ERR(base))
++		return PTR_ERR(base);
++
++	csr->regmap = devm_regmap_init_mmio(dev, base,
++					    &lpass_rate_gen_regmap_config);
++	if (IS_ERR(csr->regmap))
++		return dev_err_probe(dev, PTR_ERR(csr->regmap),
++				     "failed to init regmap\n");
++
++	csr->hb_hw.init = &init;
++
++	ret = devm_clk_hw_register(dev, &csr->hb_hw);
++	if (ret)
++		return dev_err_probe(dev, ret, "failed to register heartbeat clock\n");
++
++	ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get, &csr->hb_hw);
++	if (ret)
++		return dev_err_probe(dev, ret, "failed to add clock provider\n");
++
++	return 0;
++}
++
++static const struct of_device_id lpass_va_csr_dt_match[] = {
++	{ .compatible = "qcom,hawi-lpass-va-csr", .data = &hawi_csr_data },
++	{}
++};
++MODULE_DEVICE_TABLE(of, lpass_va_csr_dt_match);
++
++static struct platform_driver lpass_va_csr_driver = {
++	.driver = {
++		.name = "qcom-lpass-va-csr",
++		.of_match_table = lpass_va_csr_dt_match,
++	},
++	.probe = lpass_va_csr_probe,
++};
++
++module_platform_driver(lpass_va_csr_driver);
++
++MODULE_DESCRIPTION("Qualcomm LPASS VA CSR heartbeat pulse clock provider");
++MODULE_LICENSE("GPL");
 
 -- 
 2.34.1
