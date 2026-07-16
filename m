@@ -1,15 +1,12 @@
 From: Jahnavi MN <jahnavimn@google.com>
-Subject: [PATCH v4 0/7] rust_binder : Implement dynamic debug logging mask
-Date: Thu, 16 Jul 2026 08:37:42 +0000
-Message-Id: <20260716-rust_binder_debug_mask-v4-0-3d7436c2d2f2@google.com>
+Date: Thu, 16 Jul 2026 08:37:43 +0000
+Subject: [PATCH v4 1/7] rust_binder: Add dynamic debug logging mask
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAFaYWGoC/3XO0QqCMBQG4FeRXbfYznRmV71HhDh31FG62FQK8
- d2bQmCE5+4/8H/nTMSjM+jJOZqIw9F4Y7sQ4kNEyqboaqRGh0yAgWQpA+oG3+fKdBpdrlENdd4
- W/k6lkKlIGU8kxCSUnw4r81rh6y3kxvjeuvd6Z+TL9kuKPXLklNFM6YqDSgQk5aW2tn7gsbQtW
- cwRNg5nuw4EB06xjDlDUaD8c8TW2f9HBIdpzLgKU8nsx5nn+QNpHKosTQEAAA==
-X-Change-ID: 20260702-rust_binder_debug_mask-636737015624
+Message-Id: <20260716-rust_binder_debug_mask-v4-1-3d7436c2d2f2@google.com>
+References: <20260716-rust_binder_debug_mask-v4-0-3d7436c2d2f2@google.com>
+In-Reply-To: <20260716-rust_binder_debug_mask-v4-0-3d7436c2d2f2@google.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  =?utf-8?q?Arve_Hj=C3=B8nnev=C3=A5g?= <arve@android.com>, 
  Todd Kjos <tkjos@android.com>, Christian Brauner <brauner@kernel.org>, 
@@ -26,99 +23,204 @@ To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
 Cc: linux-kernel@vger.kernel.org, rust-for-linux@vger.kernel.org, 
  Jahnavi MN <jahnavimn@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784191078; l=4362;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784191078; l=7221;
  i=jahnavimn@google.com; s=20260702; h=from:subject:message-id;
- bh=2cTyGQxiPcEGtvUHu/kbM4yuhwyD6Mvy8x2J7m0KD/U=;
- b=NbxyrcHPGPChOFK7d81dY6wwA/tC6AFbq09ExXq99XVdjszTLOzI4NwpcMNxH6U1M7ENlKn3l
- 0inSC6/ae25DA/CtFFVJP2DnQ1OfFudk4dxskywqTqKj/YbQEvUzgQZ
+ bh=fNLXc//OvN2pQlLuxzKG8kuvx445LewB4RHamhDF4X4=;
+ b=HcGTHC0GmEHRibHoUcbipqs50rjpjI032Aq6za1JpQUs3pHRudozkXrMm7c4fxa0/sTmRU8aR
+ 8ZNM3C7ICUZCxzIQbLH6d6tWg46WsAj4WQxLWchK9lsAI/zjztwIX9f
 X-Developer-Key: i=jahnavimn@google.com; a=ed25519;
  pk=9aLfw3FepTOJwTS7jRXm7pDH87eBeZMXBPrqwU0//RE=
 X-Endpoint-Received: by B4 Relay for jahnavimn@google.com/20260702 with auth_id=849
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a user-space application sends malformed data or makes a
-lifecycle mistake, the driver rejects it with a generic error code
-(like -EINVAL). Without internal logs, the driver acts as a
-"black box," forcing developers to guess which check failed.
+Implement a dynamic debug logging mask (`debug_mask`) for the
+`rust_binder` module to allow dynamic runtime configuration of log
+levels. This enables parity with the legacy C driver's debug mask.
 
-In the legacy C Binder driver, this issue is solved using a dynamic
-debug_mask module parameter that toggles verbose logs for specific
-subsystems. This series brings the same critical capability to the
-Rust Binder driver to provide developers with clear, real-time
-feedback.
+Since the Rust `module!` macro in the current kernel build does not
+yet support declaring module parameters directly in Rust, we define
+the `debug_mask` variable in Rust as an `Atomic<u32>` exported via
+FFI using `#[no_mangle]`, and link to it as `extern` in a C companion
+file to expose it to the kernel runtime.
 
-Instead of rebuilds, reboots, or guessing:
-- Developers can enable logs instantly on a running device by writing to 
-  `/sys/module/rust_binder/parameters/debug_mask`.
-- It prints the exact reason for failures (such as alignment errors, 
-  mismatched call stacks, or invalid handle references) directly into 
-  `dmesg`, reducing debugging time from hours to seconds.
-- It protects system logs by keeping logging off by default and only 
-  enabling it when developers are actively troubleshooting.
+To verify the setup, instrument process lifecycle events (open, flush,
+and release) in `process.rs` under the new `BINDER_DEBUG_OPEN_CLOSE`
+logging mask. These entry-point events are chosen for initial validation
+because they represent the start of the Binder lifecycle and occur
+at low frequency, allowing simple runtime verification of the dynamic
+toggle without log noise.
 
-Based on top of:
-https://git.kernel.org/pub/scm/linux/kernel/git/gregkh/char-misc.git
-
+Reviewed-by: Carlos Llamas <cmllamas@google.com>
+Reviewed-by: Alice Ryhl <aliceryhl@google.com>
 Signed-off-by: Jahnavi MN <jahnavimn@google.com>
 ---
-Changes in v4:
-- Rebase the entire series on top of the latest char-misc-testing tree.
-- Link to v3: https://lore.kernel.org/r/20260713-rust_binder_debug_mask-v3-0-0de91bbbbf69@google.com
+ drivers/android/binder/debug.rs            | 76 ++++++++++++++++++++++++++++++
+ drivers/android/binder/process.rs          |  7 ++-
+ drivers/android/binder/rust_binder_main.rs |  2 +
+ drivers/android/binder/rust_binderfs.c     |  3 ++
+ rust/kernel/task.rs                        |  7 +++
+ 5 files changed, 94 insertions(+), 1 deletion(-)
 
-Changes in v3:
-- Rebase the entire series on top of the latest char-misc-testing tree.
-- Define `rust_binder_debug_mask` in Rust as an `Atomic<u32>` and export it to
-  C as `extern u32` to avoid raw volatile reads and FFI UB.
-- Use `kernel::bits::bit_u32` instead of raw bit shifts.
-- Simplify `binder_debug!` macro rules and remove the redundant `raw` helper.
-- Wrap the raw mask in `DebugMasks` to use type-safe `.contains(mask)`.
-- Link to v2: https://lore.kernel.org/r/20260710-rust_binder_debug_mask-v2-0-2846410e3ae6@google.com
+diff --git a/drivers/android/binder/debug.rs b/drivers/android/binder/debug.rs
+new file mode 100644
+index 000000000000..824b10c004c3
+--- /dev/null
++++ b/drivers/android/binder/debug.rs
+@@ -0,0 +1,76 @@
++// SPDX-License-Identifier: GPL-2.0
++// Copyright (C) 2026 Google LLC.
++
++//! Binder debugging helpers.
++
++#![allow(dead_code)]
++
++use kernel::bits::bit_u32;
++use kernel::sync::atomic::Atomic;
++
++kernel::impl_flags!(
++    /// Represents multiple debug mask flags.
++    #[derive(Debug, Clone, Default, Copy, PartialEq, Eq)]
++    pub struct DebugMasks(u32);
++
++    /// Represents a single debug mask category.
++    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
++    pub enum DebugMask {
++        UserError = bit_u32(0),
++        FailedTransaction = bit_u32(1),
++        DeadTransaction = bit_u32(2),
++        OpenClose = bit_u32(3),
++        DeadBinder = bit_u32(4),
++        DeathNotification = bit_u32(5),
++        ReadWrite = bit_u32(6),
++        UserRefs = bit_u32(7),
++        Threads = bit_u32(8),
++        Transaction = bit_u32(9),
++        TransactionComplete = bit_u32(10),
++        FreeBuffer = bit_u32(11),
++        InternalRefs = bit_u32(12),
++        PriorityCap = bit_u32(13),
++        Spinlocks = bit_u32(14),
++    }
++);
++
++#[no_mangle]
++pub(crate) static rust_binder_debug_mask: Atomic<u32> = Atomic::new(
++    (DebugMask::UserError as u32)
++        | (DebugMask::FailedTransaction as u32)
++        | (DebugMask::DeadTransaction as u32),
++);
++
++/// Checks if the given debug logging category is enabled in the mask.
++pub(crate) fn debug_mask_enabled(mask: DebugMask) -> bool {
++    let current_mask = rust_binder_debug_mask.load(kernel::sync::atomic::Relaxed);
++    DebugMasks(current_mask).contains(mask)
++}
++
++/// Prints a debug log if the specified mask category is enabled.
++#[macro_export]
++macro_rules! binder_debug {
++    // Rule to explicitly specify a PID (used in kworkers).
++    (pid=$pid:expr, $mask:ident, $($arg:tt)*) => {
++        if $crate::debug::debug_mask_enabled($crate::debug::DebugMask::$mask) {
++            kernel::pr_info!(
++                "{}: {}\n",
++                $pid,
++                kernel::prelude::fmt!($($arg)*)
++            );
++        }
++    };
++
++    // Default rule (automatically prepends "PID:TID" of the current calling thread).
++    ($mask:ident, $($arg:tt)*) => {
++        if $crate::debug::debug_mask_enabled($crate::debug::DebugMask::$mask) {
++            let thread = kernel::current!();
++            kernel::pr_info!(
++                "{}:{} {}\n",
++                thread.tgid(),
++                thread.pid(),
++                kernel::prelude::fmt!($($arg)*)
++            );
++        }
++    };
++}
+diff --git a/drivers/android/binder/process.rs b/drivers/android/binder/process.rs
+index 0555c4bd503e..5240686324cf 100644
+--- a/drivers/android/binder/process.rs
++++ b/drivers/android/binder/process.rs
+@@ -1341,6 +1341,7 @@ pub(crate) fn lock_with_nodes(&self) -> WithNodes<'_> {
+     }
+ 
+     fn deferred_flush(&self) {
++        binder_debug!(pid = self.task.pid(), OpenClose, "flushing process");
+         let inner = self.inner.lock();
+         for thread in inner.threads.values() {
+             thread.exit_looper();
+@@ -1348,6 +1349,8 @@ fn deferred_flush(&self) {
+     }
+ 
+     fn deferred_release(self: Arc<Self>) {
++        binder_debug!(pid = self.task.pid(), OpenClose, "releasing process");
++
+         let is_manager = {
+             let mut inner = self.inner.lock();
+             inner.is_dead = true;
+@@ -1641,7 +1644,9 @@ fn ioctl_write_read(
+ /// The file operations supported by `Process`.
+ impl Process {
+     pub(crate) fn open(ctx: ArcBorrow<'_, Context>, file: &File) -> Result<Arc<Process>> {
+-        Self::new(ctx.into(), ARef::from(file.cred()))
++        let proc = Self::new(ctx.into(), ARef::from(file.cred()))?;
++        binder_debug!(OpenClose, "opened process");
++        Ok(proc)
+     }
+ 
+     pub(crate) fn release(this: Arc<Process>, _file: &File) {
+diff --git a/drivers/android/binder/rust_binder_main.rs b/drivers/android/binder/rust_binder_main.rs
+index 432390aab25b..29829cb210a4 100644
+--- a/drivers/android/binder/rust_binder_main.rs
++++ b/drivers/android/binder/rust_binder_main.rs
+@@ -31,6 +31,8 @@
+ mod context;
+ mod deferred_close;
+ mod defs;
++#[macro_use]
++mod debug;
+ mod error;
+ mod node;
+ mod page_range;
+diff --git a/drivers/android/binder/rust_binderfs.c b/drivers/android/binder/rust_binderfs.c
+index ade1c4d92499..300cc65562d1 100644
+--- a/drivers/android/binder/rust_binderfs.c
++++ b/drivers/android/binder/rust_binderfs.c
+@@ -51,6 +51,9 @@ DEFINE_SHOW_ATTRIBUTE(rust_binder_proc);
+ char *rust_binder_devices_param = CONFIG_ANDROID_BINDER_DEVICES;
+ module_param_named(rust_devices, rust_binder_devices_param, charp, 0444);
+ 
++extern u32 rust_binder_debug_mask;
++module_param_named(debug_mask, rust_binder_debug_mask, uint, 0644);
++
+ static dev_t binderfs_dev;
+ static DEFINE_MUTEX(binderfs_minors_mutex);
+ static DEFINE_IDA(binderfs_minors);
+diff --git a/rust/kernel/task.rs b/rust/kernel/task.rs
+index 38273f4eedb5..1b290c61714d 100644
+--- a/rust/kernel/task.rs
++++ b/rust/kernel/task.rs
+@@ -210,6 +210,13 @@ pub fn pid(&self) -> Pid {
+         unsafe { *ptr::addr_of!((*self.as_ptr()).pid) }
+     }
+ 
++    /// Returns the TGID (Thread Group ID / Process ID) of the given task.
++    pub fn tgid(&self) -> Pid {
++        // SAFETY: The tgid of a task never changes after initialization, so reading this field is
++        // not a data race.
++        unsafe { *ptr::addr_of!((*self.as_ptr()).tgid) }
++    }
++
+     /// Returns the UID of the given task.
+     #[inline]
+     pub fn uid(&self) -> Kuid {
 
-Changes in v2:
-- Defined the debug mask categories using bitflags (impl_flags) to
-  resolve potential Undefined Behavior and match Rust idioms.
-- Added a tgid helper to rust/kernel/task.rs to expose the task
-  group ID and optimize default "PID:TID" prefixing.
-- Implemented the BINDER_DEBUG_DEATH_NOTIFICATION mask to log OOM
-  failures, lifecycle updates, and async delivery to user-space.
-- Added pid fields to ThreadError, DeliverCode, and FreezeMessage
-  to ensure cancellation logs show the correct process PID instead
-  of background kworker PIDs.
-- Removed duplicate PID printing across workqueue, transaction
-  failure, and stack unwinding logs.
-- Refactored log formatting (e.g. formatted BinderError with {:?},
-  used "strong"/"weak" strings, and improved message wording).
-- Fixed logic bugs (restored missing update_ref block, moved manager
-  lookup warnings).
-- Cleaned up spurious newlines, corrected indentations, and adjusted
-  all commit titles to be shorter and more meaningful.
-- Link to v1: https://lore.kernel.org/r/20260703-rust_binder_debug_mask-v1-0-9bdf12b5325c@google.com
-
----
-Jahnavi MN (7):
-      rust_binder: Add dynamic debug logging mask
-      rust_binder: Implement BINDER_DEBUG_USER_ERROR for freezer-related operation
-      rust_binder: Implement BINDER_DEBUG_USER_ERROR for refcounting and death notifications
-      rust_binder: Implement BINDER_DEBUG_USER_ERROR for transaction parsing failures
-      rust_binder: Implement BINDER_DEBUG_FAILED_TRANSACTION
-      rust_binder: Implement BINDER_DEBUG_DEATH_NOTIFICATION
-      rust_binder: Implement BINDER_DEBUG_DEAD_TRANSACTION
-
- drivers/android/binder/debug.rs            |  76 +++++++++++++++++++
- drivers/android/binder/freeze.rs           |  64 +++++++++++-----
- drivers/android/binder/node.rs             |  24 ++++--
- drivers/android/binder/process.rs          |  56 ++++++++++++--
- drivers/android/binder/rust_binder_main.rs |  16 +++-
- drivers/android/binder/rust_binderfs.c     |   3 +
- drivers/android/binder/thread.rs           | 117 ++++++++++++++++++++---------
- drivers/android/binder/transaction.rs      |  15 ++++
- rust/kernel/task.rs                        |   7 ++
- 9 files changed, 309 insertions(+), 69 deletions(-)
----
-base-commit: 775553d19b163446c38c5ff24dd0a01065376932
-change-id: 20260702-rust_binder_debug_mask-636737015624
-
-Best regards,
 -- 
-Jahnavi MN <jahnavimn@google.com>
+2.55.0.229.g6434b31f56-goog
 
