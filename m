@@ -1,11 +1,10 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Thu, 16 Jul 2026 13:14:17 +0100
-Subject: [PATCH v8 1/8] iio: dac: ad5696: properly check i2c_transfer()
- return value
+Date: Thu, 16 Jul 2026 13:14:18 +0100
+Subject: [PATCH v8 2/8] iio: dac: ad5686: missing NULL check on match data
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260716-ad5686-new-features-v8-1-ebb0051af5e5@analog.com>
+Message-Id: <20260716-ad5686-new-features-v8-2-ebb0051af5e5@analog.com>
 References: <20260716-ad5686-new-features-v8-0-ebb0051af5e5@analog.com>
 In-Reply-To: <20260716-ad5686-new-features-v8-0-ebb0051af5e5@analog.com>
 To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
@@ -19,54 +18,42 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>, sashiko-bot@kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784204073; l=1345;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784204073; l=947;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=zz4hraoKydFSu7wueaAjuCXnID835nhFEfDyJb8Sb44=;
- b=mf+Fpuq1Pv6bh1V4wapfF+uIPBfBRB/SMEqk/ViOdzmyvHgNeyNmCD2fiaWwoAlfrx6USFd7g
- HoJFYbL1gpTATpXifl8lMehrE76sKNBUqtK69XouehkFwatfS/HrgJH
+ bh=B6fpsbUowwq2wwnC44rBjvb0k/SqZw7YPYPD6UUOXs0=;
+ b=5ahXKuzPoIFDO9l54rv9iIqAN0epUdRXTrmvtahiMVJ/CWOWJGdeK6lTWQJLFrIjGrx8lBITM
+ ZYZkTXl+tXQDNfaQOHm6YjFaJMXZhr+aFpjrBvyoGxGH1919grMWu+x
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Verify that the expected number of i2c messages were transferred when
-ad5686_i2c_read() is called. This issue exists since the support for I2C
-devices was first introduced.
+Verify that chip_info pointer is not NULL. If a user binds the driver
+using driver_override via sysfs with a device name not present in the
+id_table or of_match_table, match data will be NULL.
 
-Fixes: 4177381b4401 ("iio:dac:ad5686: Add AD5671R/75R/94/94R/95R/96/96R support")
+Fixes: 0eb1728461a1 ("iio: dac: ad5686: drop enum id")
 Reported-by: sashiko-bot@kernel.org
-Closes: https://lore.kernel.org/all/20260705114746.1485F1F000E9@smtp.kernel.org/
-Reviewed-by: David Lechner <dlechner@baylibre.com>
+Closes: https://lore.kernel.org/all/20260710113149.53EC51F000E9@smtp.kernel.org/
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/dac/ad5696-i2c.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ drivers/iio/dac/ad5686.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/drivers/iio/dac/ad5696-i2c.c b/drivers/iio/dac/ad5696-i2c.c
-index 279309329b64..551b200bfe14 100644
---- a/drivers/iio/dac/ad5696-i2c.c
-+++ b/drivers/iio/dac/ad5696-i2c.c
-@@ -7,6 +7,7 @@
-  * Copyright 2018 Analog Devices Inc.
-  */
+diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
+index 713fe71ad1e7..d34250647aa4 100644
+--- a/drivers/iio/dac/ad5686.c
++++ b/drivers/iio/dac/ad5686.c
+@@ -479,6 +479,9 @@ int ad5686_probe(struct device *dev,
+ 	struct iio_dev *indio_dev;
+ 	int ret, i;
  
-+#include <linux/array_size.h>
- #include <linux/errno.h>
- #include <linux/i2c.h>
- #include <linux/mod_devicetable.h>
-@@ -39,9 +40,11 @@ static int ad5686_i2c_read(struct ad5686_state *st, u8 addr)
- 				      AD5686_ADDR(addr) |
- 				      0x00);
- 
--	ret = i2c_transfer(i2c->adapter, msg, 2);
-+	ret = i2c_transfer(i2c->adapter, msg, ARRAY_SIZE(msg));
- 	if (ret < 0)
- 		return ret;
-+	if (ret != ARRAY_SIZE(msg))
-+		return -EIO;
- 
- 	return be16_to_cpu(st->data[0].d16);
- }
++	if (!chip_info)
++		return -ENODEV;
++
+ 	indio_dev = devm_iio_device_alloc(dev, sizeof(*st));
+ 	if (indio_dev == NULL)
+ 		return  -ENOMEM;
 
 -- 
 2.43.0
