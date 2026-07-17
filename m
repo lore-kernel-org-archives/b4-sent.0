@@ -1,155 +1,105 @@
-From: Haoning CHENG <Haoning.CHENG@cn.bosch.com>
-Date: Fri, 17 Jul 2026 14:35:37 +0800
-Subject: [PATCH v9 3/3] thermal/drivers/imx: Add temperature offset support
+From: Joachim Eastwood <joachim.eastwood@gmail.com>
+Subject: [PATCH v4 00/12] arm64: dts: rockchip: Add NanoPi M6 board
+Date: Fri, 17 Jul 2026 09:22:58 +0200
+Message-Id: <20260717-nanopi-m6-v4-0-b31391a72e41@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260717-b4-symana21-11221-imx-thermal-support-upstream-6-18-v9-3-75f4af8974f4@cn.bosch.com>
-References: <20260717-b4-symana21-11221-imx-thermal-support-upstream-6-18-v9-0-75f4af8974f4@cn.bosch.com>
-In-Reply-To: <20260717-b4-symana21-11221-imx-thermal-support-upstream-6-18-v9-0-75f4af8974f4@cn.bosch.com>
-To: "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>
-Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
- imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Haoning CHENG <Haoning.CHENG@cn.bosch.com>, 
- Frank Li <Frank.Li@nxp.com>
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/12OTQ6CMBhEr0K6tqb96I+48h7GRS0t1EghFBsN4
+ e4WjEl1Ocm8NzOjYEZnAjoWMxpNdMH1PgW2K5BulW8MdnXKCAgIIgnFXvl+cLgT2FpjrAQOtpY
+ o9YfRWPfcXOfLJ4fH9Wb0tArWRuvC1I+vbSzStff1lpk3UkzwoWRMUc4rTqtT0yl33+u+Q6s3Q
+ kbS/FGERDIAIbkSnBH4J8uc/NksEwkguZDWal7rnFyW5Q3dRs15KAEAAA==
+X-Change-ID: 20260701-nanopi-m6-ffeef7252fd7
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
+Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-rockchip@lists.infradead.org, diederik@cknow-tech.com, 
+ jonas@kwiboo.se, Joachim Eastwood <joachim.eastwood@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784270138; l=4532;
- i=Haoning.CHENG@cn.bosch.com; s=20260709; h=from:subject:message-id;
- bh=zUo85bPxIO8Rx2XjCQkmetPidch+NJgoFn1tU6EFSfE=;
- b=xvHPkg79ydE596ItU2Sz0uCY+KXWwrC0oSdUbgI3T6NGWZ7yuoAkIglbioefIvfK3mJEmKPlB
- +RQZvZuUplnAZ4wgeAkF0TqL8HHVXqWtBCiP4KQ2J2ZLkNeundmvvbf
-X-Developer-Key: i=Haoning.CHENG@cn.bosch.com; a=ed25519;
- pk=glQGwad/fosRS5gZUJYbLDPPLGe7rFTrTV2VxY/ySdc=
-X-Endpoint-Received: by B4 Relay for Haoning.CHENG@cn.bosch.com/20260709 with auth_id=860
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784272993; l=3739;
+ i=joachim.eastwood@gmail.com; s=20260701; h=from:subject:message-id;
+ bh=3ik7W+9gyjFowQmjWQBDnQy5nB/T7fMjgiHMuGJ62Uc=;
+ b=arIj3aXgdhBAtfnisj7C5NsRHpUb9vJRIkGVz7e12XAA9mVuIztKdZ6CcO9OMm7ll/kTEhzce
+ EVwZPVP1fpjBYITdCPkX4hU6SgtRTVzoQFJRdPWKxe6LGe2a664pslq
+X-Developer-Key: i=joachim.eastwood@gmail.com; a=ed25519;
+ pk=ZN/8xWtdYaSd5oEfloYSZ1a+/ri0n0VZqjlEeHlbXFU=
+X-Endpoint-Received: by B4 Relay for joachim.eastwood@gmail.com/20260701 with auth_id=846
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some boards need a small per-design offset to make the TEMPMON reading
-better correspond to the SoC package-surface temperature. This is not a
-sensor calibration that improves the die temperature accuracy; it is a
-board-specific conversion from the internal sensor reading to a
-package-surface temperature estimate required by certain applications.
+This patch series add support for the NanoPi M6. This board is very
+similar to the NanoPi R6C and R6S boards which are already supported.
 
-Read the optional fsl,temp-calibration-offset-millicelsius property from
-DT and apply it uniformly to the i.MX6/6SX/7D formulas.
+Main differences:
+* M.2 M-key slot with PCIe (Also present on R6C)
+* M.2 E-key slot with PCIe and USB (from hub)
+* 1 additional USB 2.0 port from an on-board USB hub
+* RT5616 audio CODEC
 
-The offset is applied symmetrically at two points to keep the trip point
-semantics consistent:
+Patch 1 documents the NanoPi M6 board compatibility string
+Patch 2 to 10 are fixes and additions to the nanopi-r6 base DT
+Patch 11 extracts the common NanoPi 6 series bits from nanopi-r6 into
+nanopi.dtsi
+The final patch adds support for NanoPi M6. Support for M6 has been
+split into two files; one dtsi and one dts file. This makes it easier
+to add support to the new M6V2 board at a later stage.
 
-1. In imx_set_alarm_temp() and imx_set_panic_temp(): the temperature
-   threshold is *subtracted* by the offset before being converted to a
-   hardware register value. This shifts the hardware IRQ trigger to the
-   die temperature that corresponds to the intended package-surface
-   threshold.
+All changes have been verified using the schematics for M6, R6C and R6S.
+Only M6 have been boot and runtime tested. Testers for R6x are welcome.
 
-2. In imx_get_temp(): after computing the die temperature from the
-   hardware register, the offset is *added* to produce a value that
-   better correlates with the package-surface temperature. The thermal
-   framework always sees this package-surface estimate.
+Note that Sashiko may complain that u2phy0_otg is a dangling phandle in
+patch 11. This will never happen in practice so it's safe to ignore.
 
-For example, if DT sets offset = +3000 m°C and the passive trip is 95°C:
-
-  imx_set_alarm_temp(95000):
-    alarm_temp = 95000 - 3000 = 92000
-    → hardware register programmed for 92°C die temperature
-
-  Hardware IRQ fires at 92°C die temperature
-
-  imx_get_temp():
-    reads hardware, computes 92°C die temperature
-    *temp = 92000 + 3000 = 95000
-    → thermal framework sees 95°C → correct trip
-
-When the property is not present, the offset defaults to 0, preserving
-the current behavior.
-
-Reviewed-by: Frank Li <Frank.Li@nxp.com>
-Reviewed-by: Lukasz Luba <lukasz.luba@arm.com>
-Signed-off-by: Haoning Cheng <Haoning.CHENG@cn.bosch.com>
+Signed-off-by: Joachim Eastwood <joachim.eastwood@gmail.com>
 ---
- drivers/thermal/imx_thermal.c | 27 +++++++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+Changes in v4:
+- Remove boot-on reintroduction on vdd_npu_s0 in nanopi.dtsi during
+  refactor screw-up. Thanks to Sashiko for catching that.
+- Fix minor typo in "add gmac1 add phy-supply" commit message
+- Use schematic net names on PCIe reset lines. As suggested by Diederik.
+- Link to v3: https://patch.msgid.link/20260713-nanopi-m6-v3-0-227567ffc5dc@gmail.com
 
-diff --git a/drivers/thermal/imx_thermal.c b/drivers/thermal/imx_thermal.c
-index 7f7d1116b9d6..d471acc16bce 100644
---- a/drivers/thermal/imx_thermal.c
-+++ b/drivers/thermal/imx_thermal.c
-@@ -85,6 +85,10 @@ enum imx_thermal_trip {
- #define TEMPMON_IMX6SX			2
- #define TEMPMON_IMX7D			3
- 
-+/* Calibration offset limits (±20 °C in millicelsius) */
-+#define IMX_TEMP_CALIB_OFFSET_MIN	(-20000)
-+#define IMX_TEMP_CALIB_OFFSET_MAX	20000
-+
- struct thermal_soc_data {
- 	u32 version;
- 
-@@ -207,6 +211,7 @@ struct imx_thermal_data {
- 	struct regmap *tempmon;
- 	u32 c1, c2; /* See formula in imx_init_calib() */
- 	int temp_max;
-+	s32 calibration_offset;
- 	int alarm_temp;
- 	int last_temp;
- 	bool irq_enabled;
-@@ -223,6 +228,7 @@ static void imx_set_panic_temp(struct imx_thermal_data *data,
- 	struct regmap *map = data->tempmon;
- 	int critical_value;
- 
-+	panic_temp -= data->calibration_offset;
- 	critical_value = (data->c2 - panic_temp) / data->c1;
- 
- 	regmap_write(map, soc_data->panic_alarm_ctrl + REG_CLR,
-@@ -239,6 +245,7 @@ static void imx_set_alarm_temp(struct imx_thermal_data *data,
- 	int alarm_value;
- 
- 	data->alarm_temp = alarm_temp;
-+	alarm_temp -= data->calibration_offset;
- 
- 	if (data->socdata->version == TEMPMON_IMX7D) {
- 		if (alarm_temp >= 0)
-@@ -283,6 +290,7 @@ static int imx_get_temp(struct thermal_zone_device *tz, int *temp)
- 		*temp = (n_meas - data->c1 + 25) * 1000;
- 	else
- 		*temp = data->c2 - n_meas * data->c1;
-+	*temp += data->calibration_offset;
- 
- 	/* Update alarm value to next higher trip point for TEMPMON_IMX6Q */
- 	if (data->socdata->version == TEMPMON_IMX6Q) {
-@@ -635,6 +643,25 @@ static int imx_thermal_probe(struct platform_device *pdev)
- 
- 	platform_set_drvdata(pdev, data);
- 
-+	if (of_property_present(dev->of_node,
-+				"fsl,temp-calibration-offset-millicelsius")) {
-+		ret = of_property_read_s32(dev->of_node,
-+					   "fsl,temp-calibration-offset-millicelsius",
-+					   &data->calibration_offset);
-+		if (ret)
-+			return dev_err_probe(dev, ret,
-+					     "failed to read calibration offset\n");
-+
-+		if (data->calibration_offset < IMX_TEMP_CALIB_OFFSET_MIN ||
-+		    data->calibration_offset > IMX_TEMP_CALIB_OFFSET_MAX)
-+			return dev_err_probe(dev, -EINVAL,
-+					     "calibration offset %d millicelsius out of range\n",
-+					     data->calibration_offset);
-+
-+		dev_dbg(dev, "calibration offset: %d millicelsius\n",
-+			data->calibration_offset);
-+	}
-+
- 	if (of_property_present(dev->of_node, "nvmem-cells")) {
- 		ret = imx_init_from_nvmem_cells(pdev);
- 		if (ret)
+Changes in v3:
+- Reorder patches so the DT fixes/additions are applied to
+  nanopi-r6.dtsi as suggested by Jonas Karlman
+- Add comment to gmac to rgmii-rxid phy-mode to explain usage
+- Addition of pinctrl to sd and pcie are now marked as fixes
+- Remove both always-on and boot-on from NPU regulator
+- Link to v2: https://patch.msgid.link/20260711-nanopi-m6-v2-0-422675a65402@gmail.com
 
--- 
-2.43.0
+Changes in v2:
+- Organize DT such that adding support to NanoPi M6V2 later is easier
+- Use correct clk id for I2C mclk out as suggested by Diederik.
+- Add a couple of acks from Krzysztof Kozlowski.
+- Link to v1: https://patch.msgid.link/20260703-nanopi-m6-v1-0-8344a1559519@gmail.com
+
+---
+Joachim Eastwood (12):
+      dt-bindings: arm: rockchip: add FriendlyElec NanoPi M6
+      arm64: dts: rockchip: rk3588s-nanopi-r6: fix missing sdmmc cd pinctrl
+      arm64: dts: rockchip: rk3588s-nanopi-r6: fix missing pcie rst pinctrl
+      arm64: dts: rockchip: rk3588s-nanopi-r6: remove pull up on rtc int pin
+      arm64: dts: rockchip: rk3588s-nanopi-r6: pcie2x1l2: add clkreq
+      arm64: dts: rockchip: rk3588s-nanopi-r6: remove always-on and boot-on from vdd_npu_s0 reg
+      arm64: dts: rockchip: rk3588s-nanopi-r6: remove useless vcc_3v3_pcie20
+      arm64: dts: rockchip: rk3588s-nanopi-r6: add gmac1 add phy-supply
+      arm64: dts: rockchip: rk3588s-nanopi-r6: remove bogus vcc5v0_usb regulator
+      arm64: dts: rockchip: rk3588s-nanopi-r6: add comment to gmac phy-mode
+      arm64: dts: rockchip: rk3588s-nanopi-r6: refactor to support M6 boards
+      arm64: dts: rockchip: add support for NanoPi M6 board
+
+ .../devicetree/bindings/arm/rockchip.yaml          |   3 +-
+ arch/arm64/boot/dts/rockchip/Makefile              |   1 +
+ .../arm64/boot/dts/rockchip/rk3588s-nanopi-m6.dtsi | 142 ++++
+ .../boot/dts/rockchip/rk3588s-nanopi-m6v1.dts      |  67 ++
+ .../arm64/boot/dts/rockchip/rk3588s-nanopi-r6.dtsi | 792 +-------------------
+ arch/arm64/boot/dts/rockchip/rk3588s-nanopi.dtsi   | 797 +++++++++++++++++++++
+ 6 files changed, 1010 insertions(+), 792 deletions(-)
+---
+base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
+change-id: 20260701-nanopi-m6-ffeef7252fd7
+
+Best regards,
+--  
+Joachim Eastwood <joachim.eastwood@gmail.com>
 
