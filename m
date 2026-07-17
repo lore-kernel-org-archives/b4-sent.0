@@ -1,201 +1,110 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Fri, 17 Jul 2026 07:49:35 +0000
-Subject: [PATCH 3/3] spi: amlogic: spisg: Add support for A9 controller
- features
+From: Xiubo Li <xiubo.li@clyso.com>
+Date: Fri, 17 Jul 2026 17:33:42 +0800
+Subject: [PATCH] ceph: revalidate ki_pos for O_APPEND writes after cap
+ acquisition
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260717-a9-spisg-v1-3-2eeea77be19f@amlogic.com>
-References: <20260717-a9-spisg-v1-0-2eeea77be19f@amlogic.com>
-In-Reply-To: <20260717-a9-spisg-v1-0-2eeea77be19f@amlogic.com>
-To: Sunny Luo <sunny.luo@amlogic.com>, Mark Brown <broonie@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-amlogic@lists.infradead.org, linux-spi@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784274574; l=5993;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=hSBlHqyRKAFzXRe5Mipf9iWE55K2Qe+NrDF5i5K4r+4=;
- b=oJ1QsKwU7s3BAluM3mGKO9WRC4zRwLYDoY+4s6U5EPkqNgmGIe7vUcOeypBUE1oHw6hxR2dVa
- XfpSOOFoTCRA8vjc421OToQlLakawI22icz4mguovajuGe6u7QescAl
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260717-ceph-append-fix-v1-1-c51907ac8e36@clyso.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQqDMBCE4VeRPbuQRDDaVykeYpzW9ZCGpJaC+
+ O5GPX4D82+UkQSZHtVGCT/J8gkFuq7Izy68wTIVk1GmVVZb9ogzuxgRJn7Jn/vOKDSjdrbzVF4
+ xocxX8Tnczuu4wH/PDO37ARDDs0pzAAAA
+X-Change-ID: 20260717-ceph-append-fix-9820e3b1a78c
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: Jeff Layton <jlayton@kernel.org>, ceph-devel@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Xiubo Li <xiubo.li@clyso.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784280859; l=3198;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=Yw5DgupygwidMrShTyytzkydWyOnKoHEMS/lC2aH5aE=;
+ b=QHcnFItQZPyLEMzc/JfulHuqvJbIDzojQQJGXuOnbbSf9tU6eejTHZbJygY5c/8TlAf1Mmm8/
+ Vc632Pprc1LDVnpaVVOBsgVSn0pThk6KIctb0V0J1D61qS6NWu+K/OQ
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Amlogic A9 SPISG controller extends the A4 controller with additional
-configuration options, including:
+For O_APPEND writes, ki_pos is set to the current EOF via
+generic_write_checks() after fetching i_size from the MDS.  However,
+ceph_get_caps() may need to wait for Fwx exclusive caps if the write
+extends the file (endoff > i_max_size).  While waiting for Fwx, the
+previous Fwx holder (another client) may have already extended the
+file.  When the MDS grants us Fwx, the cap grant message updates the
+local i_size, but ki_pos remains at the old EOF, causing the append
+write to land at a stale offset and overwrite data from the other
+client.
 
-- Extended CS setup timing
-- Hardware-controlled CS hold timing
-- MOSI idle output configuration
-- Configurable word gap
+Fix by re-reading i_size_read(inode) after ceph_get_caps() returns.
+At this point we hold Fwx exclusive caps, no other client can modify
+the file, and i_size reflects the true EOF from the MDS cap grant.
+No extra MDS round-trip is needed.  Only adjust ki_pos when the EOF
+has actually changed.
 
-Add SoC-specific capability data and configure these features when they
-are supported by the underlying hardware while keeping compatibility with
-existing A4 controllers.
-
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Link: https://tracker.ceph.com/issues/7333
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- drivers/spi/spi-amlogic-spisg.c | 65 ++++++++++++++++++++++++++++++++++++++---
- 1 file changed, 61 insertions(+), 4 deletions(-)
+For O_APPEND writes, ki_pos is set to EOF via generic_write_checks()
+after fetching i_size from the MDS via ceph_do_getattr().  However,
+ceph_get_caps() may wait for Fwx exclusive caps (because endoff >
+i_max_size).  During that wait, the previous Fwx holder may have
+already extended the file.  When the MDS grants us Fwx, the local
+i_size is updated via the cap grant message, but ki_pos is still
+the old EOF, resulting in the append write overwriting data.
 
-diff --git a/drivers/spi/spi-amlogic-spisg.c b/drivers/spi/spi-amlogic-spisg.c
-index 0f026d3e43e0..845eb81d483a 100644
---- a/drivers/spi/spi-amlogic-spisg.c
-+++ b/drivers/spi/spi-amlogic-spisg.c
-@@ -37,6 +37,12 @@
- #define CFG_HW_POS			BIT(6)
- /* start on vsync falling */
- #define CFG_HW_NEG			BIT(7)
-+#define CFG_WORD_GAP			GENMASK(9, 8)
-+#define CFG_MO_IDLE_OUTPUT		GENMASK(11, 10)
-+/* cs hold time in pclk */
-+#define CFG_CS_HOLD			GENMASK(26, 12)
-+/* high 4 bits of cs setup time in sclk */
-+#define CFG_CS_SETUP_EXTEND		GENMASK(30, 27)
+Fix by revalidating ki_pos against i_size_read(inode) after
+ceph_get_caps() returns.  We now hold Fwx — no other client can
+change the file, so i_size is stable and correct.
+
+Fixes: 8e4473bb50a1 ("ceph: do not execute direct write in parallel if O_APPEND is specified")
+Link: https://tracker.ceph.com/issues/7333
+---
+ fs/ceph/file.c | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index 9d89d7fc1095..b35c9aee48dd 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -2491,6 +2491,32 @@ static ssize_t ceph_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	if (err < 0)
+ 		goto out;
  
- #define SPISG_REG_CFG_START		0x08
- #define CFG_BLOCK_NUM			GENMASK(19, 0)
-@@ -143,6 +149,13 @@ struct spisg_descriptor_extra {
- 	int				rx_ccsg_len;
- };
- 
-+struct aml_spisg_data {
-+	bool				mo_idle_output_ctrl;
-+	bool				word_gap_ctrl;
-+	bool				cs_hold_ctrl;
-+	bool				cs_setup_extend_ctrl;
-+};
++	/*
++	 * For O_APPEND writes we may have waited for Fwx exclusive caps
++	 * while the previous Fwx holder (another client) extended the
++	 * file.  i_size has been updated via the cap grant message from
++	 * the MDS, but ki_pos is still the old EOF.  Re-read i_size here
++	 * (no extra MDS round-trip needed) and adjust ki_pos to the true
++	 * EOF.  Since we hold Fwx, no other client can change the file.
++	 */
++	if (iocb->ki_flags & IOCB_APPEND) {
++		loff_t cur_eof = i_size_read(inode);
 +
- struct spisg_device {
- 	struct spi_controller		*controller;
- 	struct platform_device		*pdev;
-@@ -152,6 +165,7 @@ struct spisg_device {
- 	struct clk			*sclk;
- 	struct clk_div_table		*tbl;
- 	struct completion		completion;
-+	const struct aml_spisg_data	*data;
- 	u32				status;
- 	u32				speed_hz;
- 	u32				effective_speed_hz;
-@@ -483,6 +497,7 @@ static int aml_spisg_transfer_one_message(struct spi_controller *ctlr,
- {
- 	struct spisg_device *spisg = spi_controller_get_devdata(ctlr);
- 	struct device *dev = &spisg->pdev->dev;
-+	const struct aml_spisg_data *data = spisg->data;
- 	unsigned long long ms = 0;
- 	struct spi_transfer *xfer;
- 	struct spisg_descriptor *descs, *desc;
-@@ -491,6 +506,7 @@ static int aml_spisg_transfer_one_message(struct spi_controller *ctlr,
- 	int desc_num = 1, descs_len;
- 	bool last_xfer_keep_ss = false;
- 	u32 cs_hold_in_sclk = 0;
-+	u32 val;
- 	int ret = -EIO;
- 
- 	if (!aml_spisg_sem_down_read(spisg)) {
-@@ -525,9 +541,17 @@ static int aml_spisg_transfer_one_message(struct spi_controller *ctlr,
- 		}
- 
- 		/* calculate cs-setup delay with the first xfer speed */
--		if (list_is_first(&xfer->transfer_list, &msg->transfers))
--			desc->cfg_bus |= FIELD_PREP(CFG_CS_SETUP,
--				spi_delay_to_sclk(xfer->effective_speed_hz, &msg->spi->cs_setup));
-+		if (list_is_first(&xfer->transfer_list, &msg->transfers)) {
-+			val = spi_delay_to_sclk(xfer->effective_speed_hz, &msg->spi->cs_setup);
-+			if (data && data->cs_setup_extend_ctrl) {
-+				val = min_t(u32, 0xFF, val);
-+				desc->cfg_bus |= FIELD_PREP(CFG_CS_SETUP, val & 0xF);
-+				FIELD_MODIFY(CFG_CS_SETUP_EXTEND, &spisg->cfg_spi, val >> 4);
-+			} else {
-+				val = min_t(u32, 0xF, val);
-+				desc->cfg_bus |= FIELD_PREP(CFG_CS_SETUP, val);
++		if (cur_eof != pos) {
++			doutc(cl,
++			      "%p %llx.%llx O_APPEND: pos adjusted %lld -> %lld\n",
++			      inode, ceph_vinop(inode), pos, cur_eof);
++			iocb->ki_pos = cur_eof;
++			pos = cur_eof;
++			if (pos >= limit) {
++				err = -EFBIG;
++				goto out_caps;
 +			}
++			iov_iter_truncate(from, limit - pos);
++			count = iov_iter_count(from);
 +		}
- 
- 		/* calculate cs-hold delay with the last xfer speed */
- 		if (list_is_last(&xfer->transfer_list, &msg->transfers)) {
-@@ -542,7 +566,12 @@ static int aml_spisg_transfer_one_message(struct spi_controller *ctlr,
- 				       xfer->effective_speed_hz);
- 	}
- 
--	if (cs_hold_in_sclk) {
-+	if (data && data->cs_hold_ctrl) {
-+		cs_hold_in_sclk = cs_hold_in_sclk ? : 1;
-+		val = cs_hold_in_sclk * (FIELD_GET(CFG_CLK_DIV, spisg->cfg_bus) + 1);
-+		FIELD_MODIFY(CFG_CS_HOLD, &spisg->cfg_spi, val);
-+		desc--;
-+	} else if (cs_hold_in_sclk) {
- 		/* additional null-descriptor to achieve the cs-hold delay */
- 		aml_spisg_setup_null_desc(spisg, desc, cs_hold_in_sclk);
- 		desc--;
-@@ -722,6 +751,7 @@ static int aml_spisg_probe(struct platform_device *pdev)
- 	struct spisg_device *spisg;
- 	struct device *dev = &pdev->dev;
- 	void __iomem *base;
-+	u32 val = 0;
- 	int ret, irq;
- 
- 	const struct regmap_config aml_regmap_config = {
-@@ -740,6 +770,7 @@ static int aml_spisg_probe(struct platform_device *pdev)
- 
- 	spisg = spi_controller_get_devdata(ctlr);
- 	spisg->controller = ctlr;
-+	spisg->data = (struct aml_spisg_data *)of_device_get_match_data(dev);
- 
- 	spisg->pdev = pdev;
- 	platform_set_drvdata(pdev, spisg);
-@@ -770,6 +801,21 @@ static int aml_spisg_probe(struct platform_device *pdev)
- 
- 	spisg->cfg_spi = FIELD_PREP(CFG_SFLASH_WP, 1) |
- 			 FIELD_PREP(CFG_SFLASH_HD, 1);
-+
-+	if (spisg->data && spisg->data->mo_idle_output_ctrl) {
-+		if (!of_property_read_u32(dev->of_node, "amlogic,mo-idle-output", &val))
-+			spisg->cfg_spi |=  FIELD_PREP(CFG_MO_IDLE_OUTPUT, val);
-+		else
-+			spisg->cfg_spi |=  FIELD_PREP(CFG_MO_IDLE_OUTPUT, 0);
 +	}
 +
-+	if (spisg->data && spisg->data->word_gap_ctrl) {
-+		if (!of_property_read_u32(dev->of_node, "amlogic,word-gap", &val))
-+			spisg->cfg_spi |=  FIELD_PREP(CFG_WORD_GAP, val);
-+		else
-+			spisg->cfg_spi |=  FIELD_PREP(CFG_WORD_GAP, 1);
-+	}
-+
- 	if (spi_controller_is_target(ctlr)) {
- 		spisg->cfg_spi |= FIELD_PREP(CFG_SLAVE_EN, 1);
- 		spisg->cfg_bus = FIELD_PREP(CFG_TX_TUNING, 0xf);
-@@ -856,6 +902,13 @@ static int spisg_resume_runtime(struct device *dev)
- 	return 0;
- }
- 
-+static const struct aml_spisg_data a9_spisg_data = {
-+	.mo_idle_output_ctrl = true,
-+	.word_gap_ctrl = true,
-+	.cs_hold_ctrl = true,
-+	.cs_setup_extend_ctrl = true,
-+};
-+
- static const struct dev_pm_ops amlogic_spisg_pm_ops = {
- 	.runtime_suspend	= spisg_suspend_runtime,
- 	.runtime_resume		= spisg_resume_runtime,
-@@ -865,6 +918,10 @@ static const struct of_device_id amlogic_spisg_of_match[] = {
- 	{
- 		.compatible = "amlogic,a4-spisg",
- 	},
-+	{
-+		.compatible = "amlogic,a9-spisg",
-+		.data = &a9_spisg_data,
-+	},
- 
- 	{ /* sentinel */ }
- };
+ 	err = file_update_time(file);
+ 	if (err)
+ 		goto out_caps;
 
--- 
-2.52.0
+---
+base-commit: df47791ab9f12cd9144aca477ddae195f68072a5
+change-id: 20260717-ceph-append-fix-9820e3b1a78c
+
+Best regards,
+--  
+Xiubo Li <xiubo.li@clyso.com>
 
