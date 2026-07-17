@@ -1,53 +1,46 @@
 From: Aaron Kling <webgeek1234@gmail.com>
-Date: Fri, 17 Jul 2026 16:40:52 -0500
-Subject: [PATCH] Bluetooth: btbcm: Add entry for BCM4356A3 UART bluetooth
+Subject: [PATCH 0/2] soc/tegra: fuse: Support Tegra210B01 Speedos
+Date: Fri, 17 Jul 2026 18:19:39 -0500
+Message-Id: <20260717-t210b01-speedo-v1-0-f04a8bd4d997@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260717-bcm4356a3-bt-v1-1-ffa2d5233360@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDc0Nz3aTkXBNjU7NEY92kEt3kFHOL5GSDNBOjVAsloJaCotS0zAqwcdG
- xtbUAdlmMQ14AAAA=
-X-Change-ID: 20260717-bcm4356a3-bt-cd78cc0f42e8
-To: Marcel Holtmann <marcel@holtmann.org>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>
-Cc: linux-bluetooth@vger.kernel.org, linux-kernel@vger.kernel.org, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x3MTQqAIBBA4avErBNGjYyuEi38mWo2GhoRhHdPW
+ n6L914olJkKzN0LmW4unGKD7Dvwh407CQ7NoFCNaOQgLiXRoRTlJApJoNkmH7TT1mpo0Zlp4+c
+ fLmutH5NZuWZgAAAA
+X-Change-ID: 20260714-t210b01-speedo-07f8cd3b3aa3
+To: Thierry Reding <thierry.reding@kernel.org>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Aaron Kling <webgeek1234@gmail.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784324467; l=1010;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784330387; l=761;
  i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=bQ6WFjUIqP2rPELTYAWoRuAn5MAUJ18Jq8ZRipAGP0w=;
- b=EaKI+21I/MInPDJoJM2xSBNHH120R+oL6EOtq3kiw4DSt5n2L23U6dINaPR/HLzooQOSUMauH
- pPKh+txgygWBGOyK/KeNrHsLKC3Oq9UIRL/zjbDeCuIslWXR/Z32DUK
+ bh=FbqPy5P9Xc3Z4JsoqF4B+01S7cCgssaMQOs05ToYWP0=;
+ b=nFmANYjb4rlcXhedBQuEbeQRxCa1g7KKrvLXdy5WGIVPuNnFIfcj7zHQIPOQqwnOJAH6vbTND
+ GK4pRj28ClUCJVb+2h1xY9ixtzBTQJQrfRqVtUznHW1wUCnWif6Rg61
 X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
  pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
 X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This patch adds the device ID for the bluetooth chip used in the
-Nvidia specific Broadcom BCM4356 PCI-E WiFi / UART BT chip.
+This series adds support for the b01 fuse revision, then adds speedo
+support for known Tegra210B01 sku's.
 
 Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/bluetooth/btbcm.c | 1 +
- 1 file changed, 1 insertion(+)
+Aaron Kling (2):
+      soc/tegra: fuse: Support revision B01
+      soc/tegra: fuse: speedo-tegra210: Support revision B01
 
-diff --git a/drivers/bluetooth/btbcm.c b/drivers/bluetooth/btbcm.c
-index 463d59890befe..14acea7325478 100644
---- a/drivers/bluetooth/btbcm.c
-+++ b/drivers/bluetooth/btbcm.c
-@@ -506,6 +506,7 @@ static const struct bcm_subver_table bcm_uart_subver_table[] = {
- 	{ 0x6606, "BCM4345C5"	},	/* 003.006.006 */
- 	{ 0x230f, "BCM4356A2"	},	/* 001.003.015 */
- 	{ 0x2310, "BCM4343A2"	},	/* 001.003.016 */
-+	{ 0x2409, "BCM4356A3"	},	/* 001.004.009 */
- 	{ 0x220e, "BCM20702A1"  },	/* 001.002.014 */
- 	{ 0x420d, "BCM4349B1"	},	/* 002.002.013 */
- 	{ 0x420e, "BCM4349B1"	},	/* 002.002.014 */
-
+ drivers/soc/tegra/fuse/fuse-tegra.c      |  1 +
+ drivers/soc/tegra/fuse/speedo-tegra210.c | 22 ++++++++++++++--
+ drivers/soc/tegra/fuse/tegra-apbmisc.c   | 45 ++++++++++++++++++--------------
+ include/soc/tegra/fuse.h                 |  1 +
+ 4 files changed, 47 insertions(+), 22 deletions(-)
 ---
-base-commit: 49362394dad7df66c274c867a271394c10ca2bb8
-change-id: 20260717-bcm4356a3-bt-cd78cc0f42e8
+base-commit: 1a1757b76427f6201bfe0bf1bea9f7574f332a93
+change-id: 20260714-t210b01-speedo-07f8cd3b3aa3
 
 Best regards,
 -- 
