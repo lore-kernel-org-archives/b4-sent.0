@@ -1,11 +1,11 @@
 From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Fri, 17 Jul 2026 07:49:33 +0000
-Subject: [PATCH 1/3] spi: dt-bindings: amlogic: spisg: Document A9-specific
- properties
+Date: Fri, 17 Jul 2026 07:49:34 +0000
+Subject: [PATCH 2/3] spi: amlogic: spisg: Fix the incorrect keep_ss of the
+ last descriptor
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260717-a9-spisg-v1-1-2eeea77be19f@amlogic.com>
+Message-Id: <20260717-a9-spisg-v1-2-2eeea77be19f@amlogic.com>
 References: <20260717-a9-spisg-v1-0-2eeea77be19f@amlogic.com>
 In-Reply-To: <20260717-a9-spisg-v1-0-2eeea77be19f@amlogic.com>
 To: Sunny Luo <sunny.luo@amlogic.com>, Mark Brown <broonie@kernel.org>, 
@@ -15,85 +15,83 @@ Cc: linux-amlogic@lists.infradead.org, linux-spi@vger.kernel.org,
  devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Xianwei Zhao <xianwei.zhao@amlogic.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784274574; l=2098;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784274574; l=2503;
  i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=S01FdKqQU8iANSc5yRkrElydRThefyYyd4gl5octfjc=;
- b=RG0aRoS+AIlkg4WEA5oEP0heq1kmYDL6XWlS3kIBwjMtntWgPInjtakXqV/ijUzySpVddZLBU
- g1Na4VBY1l6CqcEd8EvWb2p+bXp+8rqZwcb9IglYC6vBAwyXTkrYxvV
+ bh=jkQLA6xWlywdjSsQl2U+CAG0++S5LTk9ZPS6pBUGm6g=;
+ b=PXxinu3SBPGoS2bj1k8oC2+9+s3J4vn0sOqvhp9OTs57NDUHxQWy83zsh+akV2RBOTmo/uy+x
+ CdWXAERlkepCnMQ0BwMBb395YGijg+4eVICF+4dUXmcDsSyCXta20jx
 X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
  pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
 X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Document the Amlogic A9 SPISG controller and its additional
-Device Tree properties.
+From: Sunny Luo <sunny.luo@amlogic.com>
 
-Add the "amlogic,a9-spisg" compatible string and define the
-A9-specific "amlogic,mo-idle-output" and "amlogic,word-gap"
-properties, which configure the MOSI idle output level and
-the inter-word gap, respectively.
+The driver currently unconditionally clears CFG_KEEP_SS on the last
+descriptor, causing the last transfer's cs_change setting to be ignored.
 
+Record the cs_change value of the last SPI transfer and use it to
+program CFG_KEEP_SS on the final descriptor. When a null descriptor is
+inserted to implement the cs-hold delay, keep CFG_KEEP_SS set on the
+preceding transfer descriptor and apply the recorded value to the final
+descriptor instead.
+
+This ensures the controller handles chip select correctly for the last
+transfer regardless of whether a cs-hold delay is required.
+
+Fixes: cef9991e04ae ("spi: Add Amlogic SPISG driver")
+Signed-off-by: Sunny Luo <sunny.luo@amlogic.com>
 Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- .../devicetree/bindings/spi/amlogic,a4-spisg.yaml  | 36 +++++++++++++++++++---
- 1 file changed, 32 insertions(+), 4 deletions(-)
+ drivers/spi/spi-amlogic-spisg.c | 15 +++++++++++----
+ 1 file changed, 11 insertions(+), 4 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/spi/amlogic,a4-spisg.yaml b/Documentation/devicetree/bindings/spi/amlogic,a4-spisg.yaml
-index 9bfb8089f7ea..7efdc748d566 100644
---- a/Documentation/devicetree/bindings/spi/amlogic,a4-spisg.yaml
-+++ b/Documentation/devicetree/bindings/spi/amlogic,a4-spisg.yaml
-@@ -11,12 +11,11 @@ maintainers:
-   - Xianwei Zhao <xianwei.zhao@amlogic.com>
-   - Sunny Luo <sunny.luo@amlogic.com>
+diff --git a/drivers/spi/spi-amlogic-spisg.c b/drivers/spi/spi-amlogic-spisg.c
+index afc8af04638d..0f026d3e43e0 100644
+--- a/drivers/spi/spi-amlogic-spisg.c
++++ b/drivers/spi/spi-amlogic-spisg.c
+@@ -489,6 +489,7 @@ static int aml_spisg_transfer_one_message(struct spi_controller *ctlr,
+ 	struct spisg_descriptor_extra *exdescs, *exdesc;
+ 	dma_addr_t descs_paddr;
+ 	int desc_num = 1, descs_len;
++	bool last_xfer_keep_ss = false;
+ 	u32 cs_hold_in_sclk = 0;
+ 	int ret = -EIO;
  
--allOf:
--  - $ref: spi-controller.yaml#
--
- properties:
-   compatible:
--    const: amlogic,a4-spisg
-+    enum:
-+      - amlogic,a4-spisg
-+      - amlogic,a9-spisg
+@@ -529,9 +530,11 @@ static int aml_spisg_transfer_one_message(struct spi_controller *ctlr,
+ 				spi_delay_to_sclk(xfer->effective_speed_hz, &msg->spi->cs_setup));
  
-   reg:
-     maxItems: 1
-@@ -42,6 +41,35 @@ required:
-   - clocks
-   - clock-names
+ 		/* calculate cs-hold delay with the last xfer speed */
+-		if (list_is_last(&xfer->transfer_list, &msg->transfers))
++		if (list_is_last(&xfer->transfer_list, &msg->transfers)) {
+ 			cs_hold_in_sclk =
+ 				spi_delay_to_sclk(xfer->effective_speed_hz, &msg->spi->cs_hold);
++			last_xfer_keep_ss = xfer->cs_change;
++		}
  
-+allOf:
-+  - $ref: spi-controller.yaml#
-+  - if:
-+      properties:
-+        compatible:
-+          contains:
-+            enum:
-+              - amlogic,a9-spisg
-+    then:
-+      properties:
-+        amlogic,mo-idle-output:
-+          description: |
-+            Controls the MOSI output level when the controller is idle.
-+
-+            0 - Drive MOSI low
-+            1 - Drive MOSI high
-+            2 - Follow the last transmitted bit
-+          $ref: /schemas/types.yaml#/definitions/uint32
-+          enum: [0, 1, 2]
-+          default: 0
-+
-+        amlogic,word-gap:
-+          description: |
-+            Number of idle clock cycles inserted between consecutive SPI
-+            words.
-+          $ref: /schemas/types.yaml#/definitions/uint32
-+          enum: [0, 1, 2, 3]
-+          default: 1
-+
- unevaluatedProperties: false
+ 		desc++;
+ 		exdesc++;
+@@ -539,13 +542,17 @@ static int aml_spisg_transfer_one_message(struct spi_controller *ctlr,
+ 				       xfer->effective_speed_hz);
+ 	}
  
- examples:
+-	if (cs_hold_in_sclk)
++	if (cs_hold_in_sclk) {
+ 		/* additional null-descriptor to achieve the cs-hold delay */
+ 		aml_spisg_setup_null_desc(spisg, desc, cs_hold_in_sclk);
+-	else
+ 		desc--;
++		desc->cfg_bus |= FIELD_PREP(CFG_KEEP_SS, 1);
++		desc++;
++	} else {
++		desc--;
++	}
+ 
+-	desc->cfg_bus |= FIELD_PREP(CFG_KEEP_SS, 0);
++	FIELD_MODIFY(CFG_KEEP_SS, &desc->cfg_bus, last_xfer_keep_ss);
+ 	desc->cfg_start |= FIELD_PREP(CFG_EOC, 1);
+ 
+ 	/* some tolerances */
 
 -- 
 2.52.0
