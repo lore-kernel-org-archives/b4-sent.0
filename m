@@ -1,82 +1,88 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Fri, 17 Jul 2026 06:27:01 -0500
-Subject: [PATCH v2 08/11] dm-pcache: clamp the tail kset read to the
- segment data region
+Date: Fri, 17 Jul 2026 06:27:02 -0500
+Subject: [PATCH v2 09/11] dm-pcache: validate on-media seg_num against the
+ cache device size
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260717-b4-disp-4c0a0039-v2-8-19227d6e313c@proton.me>
+Message-Id: <20260717-b4-disp-4c0a0039-v2-9-19227d6e313c@proton.me>
 References: <20260717-b4-disp-4c0a0039-v2-0-19227d6e313c@proton.me>
 In-Reply-To: <20260717-b4-disp-4c0a0039-v2-0-19227d6e313c@proton.me>
 To: Zheng Gu <cengku@gmail.com>, Dongsheng Yang <dongsheng.yang@linux.dev>
 Cc: dm-devel@lists.linux.dev, Mikulas Patocka <mpatocka@redhat.com>, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784287613; l=2745;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784287613; l=2643;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=E5WY/heNRdOuUSIYPvzHn8WEjCPo/EDvLcmW1MLvc+Y=;
- b=p2edeCDryLm/44W8WP1BxLnQnCv9Uio2larwFqIGpC5JBK1XhzAG/W2Z9dyv14Cx4yq/r+LIz
- gbEzP4R+KccDbf6Ej2690rQ98s9NcmcV5rObP42Kfp7P/AB8VWka+cg
+ bh=GthnvJEXiCUPMv2Rfmb/8dJm5Xyaa9i+Wnb6pzB7iBk=;
+ b=HVS2YD+agpjZ6SfKOPiAwIPHvjqy//dbl2WTXDLjTpn8J4iYH8AxlVB48mgszmjljCmH1BYmj
+ scXSqd9+hSrA5vYD7BZnK11/pd9xneoZhnmvPdhPViJBvDZ9ryhEm1l
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The tail-kset read in cache_replay(), the writeback worker and the GC
-worker bounds its length by PCACHE_SEG_SIZE - seg_off, the raw segment
-size rather than the data region. A tail near the segment end reads past
-the segment data into the following control area.
+seg_num is read from the crc32c-only superblock, so whoever supplies the
+cache device on a table load (CAP_SYS_ADMIN) controls it. It sizes
+cache->segments[] and is the value every later on-media segment id is
+bounded against, yet it is never checked against the device. Because
+cache_dev->mapping is the direct map of the pmem, CACHE_DEV_SEGMENT() for
+a segment id past the device resolves to ordinary kernel memory beyond
+the mapping; a new-cache init reaching such an id has cache_seg_init() ->
+cache_dev_zero_range() memset() 12 KiB over that memory -- an
+out-of-bounds write into the kernel heap at table load. A zero seg_num
+makes the segment allocations ZERO_SIZE_PTR.
 
-Clamp the read to cache_seg_remain(), the data region.
+Reject a seg_num that is zero, larger than the device can hold, or larger
+than PCACHE_CACHE_SEGS_MAX before it is used.
 
 Fixes: 1d57628ff95b ("dm-pcache: add persistent cache target in device-mapper")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/md/dm-pcache/cache_gc.c        | 2 +-
- drivers/md/dm-pcache/cache_key.c       | 2 +-
- drivers/md/dm-pcache/cache_writeback.c | 2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+ drivers/md/dm-pcache/cache_dev.c | 22 +++++++++++++++++++++-
+ 1 file changed, 21 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/md/dm-pcache/cache_gc.c b/drivers/md/dm-pcache/cache_gc.c
-index c483c7a3afaf..d551848912b4 100644
---- a/drivers/md/dm-pcache/cache_gc.c
-+++ b/drivers/md/dm-pcache/cache_gc.c
-@@ -37,7 +37,7 @@ static bool need_gc(struct pcache_cache *cache, struct pcache_cache_pos *dirty_t
+diff --git a/drivers/md/dm-pcache/cache_dev.c b/drivers/md/dm-pcache/cache_dev.c
+index ece689e6ce59..f0259353ee39 100644
+--- a/drivers/md/dm-pcache/cache_dev.c
++++ b/drivers/md/dm-pcache/cache_dev.c
+@@ -242,6 +242,8 @@ int cache_dev_start(struct dm_pcache *pcache)
+ 	struct pcache_cache_dev *cache_dev = &pcache->cache_dev;
+ 	struct pcache_sb sb;
+ 	bool format = false;
++	u32 seg_num;
++	u64 max_segs;
+ 	int ret;
  
- 	kset_onmedia = (struct pcache_cache_kset_onmedia *)cache->gc_kset_onmedia_buf;
+ 	mutex_init(&cache_dev->seg_lock);
+@@ -269,7 +271,25 @@ int cache_dev_start(struct dm_pcache *pcache)
+ 		goto dax_release;
  
--	to_copy = min(PCACHE_KSET_ONMEDIA_SIZE_MAX, PCACHE_SEG_SIZE - key_tail->seg_off);
-+	to_copy = min(PCACHE_KSET_ONMEDIA_SIZE_MAX, cache_seg_remain(key_tail));
- 	ret = copy_mc_to_kernel(kset_onmedia, key_addr, to_copy);
- 	if (ret) {
- 		pcache_dev_err(pcache, "error to read kset: %d", ret);
-diff --git a/drivers/md/dm-pcache/cache_key.c b/drivers/md/dm-pcache/cache_key.c
-index 86cc9565ffc7..f3ce319037be 100644
---- a/drivers/md/dm-pcache/cache_key.c
-+++ b/drivers/md/dm-pcache/cache_key.c
-@@ -794,7 +794,7 @@ int cache_replay(struct pcache_cache *cache)
- 	__set_bit(pos->cache_seg->cache_seg_id, cache->seg_map);
+ 	cache_dev->sb_flags = le32_to_cpu(sb.flags);
+-	ret = cache_dev_init(cache_dev, le32_to_cpu(sb.seg_num));
++
++	/*
++	 * seg_num is read from the crc32c-only superblock, so whoever supplies
++	 * the cache device controls it. It is the ceiling every later on-media
++	 * segment id is validated against, so bound it against what the device
++	 * physically holds before it is trusted, or a forged seg_num lets a
++	 * segment id address past the DAX mapping.
++	 */
++	seg_num = le32_to_cpu(sb.seg_num);
++	max_segs = (bdev_nr_bytes(cache_dev->dm_dev->bdev) - PCACHE_SEGMENTS_OFF) /
++		   PCACHE_SEG_SIZE;
++	if (seg_num == 0 || seg_num > max_segs || seg_num > PCACHE_CACHE_SEGS_MAX) {
++		pcache_dev_err(pcache, "invalid seg_num %u from cache device (device holds %llu, max %u)\n",
++			       seg_num, max_segs, (u32)PCACHE_CACHE_SEGS_MAX);
++		ret = -EIO;
++		goto dax_release;
++	}
++
++	ret = cache_dev_init(cache_dev, seg_num);
+ 	if (ret)
+ 		goto dax_release;
  
- 	while (true) {
--		to_copy = min(PCACHE_KSET_ONMEDIA_SIZE_MAX, PCACHE_SEG_SIZE - pos->seg_off);
-+		to_copy = min(PCACHE_KSET_ONMEDIA_SIZE_MAX, cache_seg_remain(pos));
- 		ret = copy_mc_to_kernel(kset_onmedia, cache_pos_addr(pos), to_copy);
- 		if (ret) {
- 			ret = -EIO;
-diff --git a/drivers/md/dm-pcache/cache_writeback.c b/drivers/md/dm-pcache/cache_writeback.c
-index 7a85a9aed18e..c8a4c8110a58 100644
---- a/drivers/md/dm-pcache/cache_writeback.c
-+++ b/drivers/md/dm-pcache/cache_writeback.c
-@@ -48,7 +48,7 @@ static inline bool is_cache_clean(struct pcache_cache *cache, struct pcache_cach
- 	addr = cache_pos_addr(dirty_tail);
- 	kset_onmedia = (struct pcache_cache_kset_onmedia *)cache->wb_kset_onmedia_buf;
- 
--	to_copy = min(PCACHE_KSET_ONMEDIA_SIZE_MAX, PCACHE_SEG_SIZE - dirty_tail->seg_off);
-+	to_copy = min(PCACHE_KSET_ONMEDIA_SIZE_MAX, cache_seg_remain(dirty_tail));
- 	ret = copy_mc_to_kernel(kset_onmedia, addr, to_copy);
- 	if (ret) {
- 		pcache_dev_err(pcache, "error to read kset: %d", ret);
 
 -- 
 2.43.0
