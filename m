@@ -1,142 +1,67 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Fri, 17 Jul 2026 14:39:41 +0200
-Subject: [PATCH 2/2] iio: invensense: improve period measurement by using a
- longer delay
+From: Younes Akhouayri <git@younes.io>
+Date: Fri, 17 Jul 2026 15:26:46 +0200
+Subject: [PATCH] rust: irq: fix C header path in module docs
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260717-iio-common-inv-sensors-timestamp-rework-v1-2-d1afee2805cd@tdk.com>
-References: <20260717-iio-common-inv-sensors-timestamp-rework-v1-0-d1afee2805cd@tdk.com>
-In-Reply-To: <20260717-iio-common-inv-sensors-timestamp-rework-v1-0-d1afee2805cd@tdk.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Message-Id: <20260717-docs-irq-rustdoc-header-v1-1-36749192aa04@younes.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMyw6CQAyF4VchXdvIJUL0VQyLmeEIdTFoC4aE8
+ O7O6PJrev6dDCowuhU7KT5iMseE6lRQmFwcwTIkU13WbdlVHQ9zMBZ9s662JPAEN0C5QttcLx7
+ ONaC0fikesv3K9/5vW/0TYcm5/OGdgb26GKZ8mlVGieec5YhtoeP4AqUwLIueAAAA
+X-Change-ID: 20260717-docs-irq-rustdoc-header-1e6395beaa3e
+To: Danilo Krummrich <dakr@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
+ Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Trevor Gross <tmgross@umich.edu>, Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
+Cc: driver-core@lists.linux.dev, rust-for-linux@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Younes Akhouayri <git@younes.io>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784291993; l=4521;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=QaB1sqyTIlaV5WHBIAd4mGNxiNij+cw0Vv5qDbn6Sr4=;
- b=aiCdjaLn9gJqnWHa6UH0pXxfZt/qHxBg0e73Luv8nALJmZXVHxaZxUYOMVB9Jwj49buy98D9y
- IvO6fFf82+iAo4P5SpQXeLHspXm8Wpv0fPtHbFagN2uzhY3C6PP0mo+
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784294825; l=1205;
+ i=git@younes.io; s=20260712; h=from:subject:message-id;
+ bh=DUAXmsk7k/KxOykvnIl3o8UFwBQcn84FmsrWr/BYmZ0=;
+ b=b9J58TftG4SmQphTzp8LyXtKcYP/wMDXvQqNnmZYoOiUgUXgzg+IzKDUTQWc0aYp0SqhhJtmE
+ hNSDOEWUYCpAa8ay1LKpF2A4P61Fnw7ZkcfSBpRvcnEDC8OT/q033ow
+X-Developer-Key: i=git@younes.io; a=ed25519;
+ pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
+X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Period measurement can be difficult when using high sampling
-frequency where the jitter criteria is hard to meet because of the
-system jitter.
+The IRQ module documentation displays `include/linux/device.h`, while
+the link points to `include/linux/interrupt.h`. The module wraps the IRQ
+registration interfaces declared in `include/linux/interrupt.h`, so fix
+the displayed header path.
 
-This new version is using the delta time between 2 distant interrupts
-to measure an interval of at least 20ms. 20ms is a good compromise
-between the mitigation of system jitter and the delay to update
-period. This way we decorrelate the period measurement from the
-interrupt timestamps syncing using only the 2 last interrupts.
-
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Fixes: 1f54d5e5cd2a ("rust: irq: add irq module")
+Link: https://github.com/Rust-for-Linux/linux/issues/1246
+Signed-off-by: Younes Akhouayri <git@younes.io>
 ---
- .../iio/common/inv_sensors/inv_sensors_timestamp.c | 31 +++++++++++++++++-----
- include/linux/iio/common/inv_sensors_timestamp.h   |  6 +++++
- 2 files changed, 31 insertions(+), 6 deletions(-)
+ rust/kernel/irq.rs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c b/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
-index 2c89e0edc87d..63c1d8a2e19a 100644
---- a/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
-+++ b/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
-@@ -16,6 +16,9 @@
- #define INV_SENSORS_TIMESTAMP_MAX(_val, _jitter)		\
- 	(((_val) * (1000 + (_jitter))) / 1000)
+diff --git a/rust/kernel/irq.rs b/rust/kernel/irq.rs
+index 20abd4056655..09ef1e7f853c 100644
+--- a/rust/kernel/irq.rs
++++ b/rust/kernel/irq.rs
+@@ -8,7 +8,7 @@
+ //! The current abstractions handle IRQ requests and handlers, i.e.: it allows
+ //! drivers to register a handler for a given IRQ line.
+ //!
+-//! C header: [`include/linux/device.h`](srctree/include/linux/interrupt.h)
++//! C header: [`include/linux/interrupt.h`](srctree/include/linux/interrupt.h)
  
-+/* minimum timestamp delta between 2 interrupts for measuring period (20ms) */
-+#define INV_SENSORS_MIN_IT_DELTA	(20 * NSEC_PER_MSEC)
-+
- /* Add a new value inside an accumulator and update the estimate value */
- static void inv_update_acc(struct inv_sensors_timestamp_acc *acc, uint32_t val)
- {
-@@ -121,10 +124,13 @@ static uint32_t inv_align_timestamp_it(struct inv_sensors_timestamp *ts,
- void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
- 				     size_t sample_nb, int64_t timestamp)
- {
-+	const int64_t delta_threshold =
-+			INV_SENSORS_TIMESTAMP_MIN(INV_SENSORS_MIN_IT_DELTA,
-+						  ts->chip.jitter);
- 	struct inv_sensors_timestamp_interval *it;
- 	int64_t delta, interval;
- 	uint32_t period;
--	bool valid = false;
-+	bool valid;
- 
- 	if (sample_nb == 0)
- 		return;
-@@ -136,16 +142,29 @@ void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
- 		ts->timestamp = timestamp - interval;
- 	}
- 
-+	/* update delta timestamps and estimated period */
-+	it = &ts->delta;
-+	ts->delta_counter += sample_nb;
-+	delta = timestamp - it->up;
-+	if (delta >= delta_threshold) {
-+		it->lo = it->up;
-+		it->up = timestamp;
-+		if (it->lo != 0) {
-+			/* compute period: delta time divided by number of samples */
-+			delta = it->up - it->lo;
-+			period = div_s64(delta, sample_nb);
-+			inv_update_chip_period(ts, period);
-+		}
-+		ts->delta_counter = 0;
-+	}
-+
- 	/* update interrupt timestamp and compute chip and sensor periods */
- 	it = &ts->it;
- 	it->lo = it->up;
- 	it->up = timestamp;
- 	delta = it->up - it->lo;
--	if (it->lo != 0) {
--		/* compute period: delta time divided by number of samples */
--		period = div_s64(delta, sample_nb);
--		valid = inv_update_chip_period(ts, period);
--	}
-+	period = div_s64(delta, sample_nb);
-+	valid = inv_validate_period(ts, period);
- 
- 	/* if interrupt interval is valid, sync with interrupt timestamp */
- 	ts->period = valid ? inv_align_timestamp_it(ts, sample_nb) :
-diff --git a/include/linux/iio/common/inv_sensors_timestamp.h b/include/linux/iio/common/inv_sensors_timestamp.h
-index 8d506f1e9df2..bc04831f54c4 100644
---- a/include/linux/iio/common/inv_sensors_timestamp.h
-+++ b/include/linux/iio/common/inv_sensors_timestamp.h
-@@ -46,6 +46,8 @@ struct inv_sensors_timestamp_acc {
-  * @min_period:		minimal acceptable clock period
-  * @max_period:		maximal acceptable clock period
-  * @it:			interrupts interval timestamps
-+ * @delta:		interval timestamps between several interrupts
-+ * @delta_counter:	number of data samples in the delta interval
-  * @timestamp:		store last timestamp for computing next data timestamp
-  * @mult:		current internal period multiplier
-  * @new_mult:		new set internal period multiplier (not yet effective)
-@@ -57,6 +59,8 @@ struct inv_sensors_timestamp {
- 	uint32_t min_period;
- 	uint32_t max_period;
- 	struct inv_sensors_timestamp_interval it;
-+	struct inv_sensors_timestamp_interval delta;
-+	uint32_t delta_counter;
- 	int64_t timestamp;
- 	uint32_t mult;
- 	uint32_t new_mult;
-@@ -88,6 +92,8 @@ static inline void inv_sensors_timestamp_reset(struct inv_sensors_timestamp *ts)
- 	const struct inv_sensors_timestamp_interval interval_init = {0LL, 0LL};
- 
- 	ts->it = interval_init;
-+	ts->delta = interval_init;
-+	ts->delta_counter = 0;
- 	ts->timestamp = 0;
- }
- 
+ /// Flags to be used when registering IRQ handlers.
+ mod flags;
 
--- 
-2.54.0
+---
+base-commit: 7059bdf4f04a3e14f4fafb3ac35fdca913e3e21a
+change-id: 20260717-docs-irq-rustdoc-header-1e6395beaa3e
+
+Best regards,
+--  
+Younes Akhouayri <git@younes.io>
 
