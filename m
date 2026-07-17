@@ -1,11 +1,11 @@
 From: Pawel Laszczak <pawell@cadence.com>
-Date: Fri, 17 Jul 2026 12:44:14 +0200
-Subject: [PATCH 1/3] usb: xhci: Add support for eUSB2v2 1024-byte bulk
- packet size
+Date: Fri, 17 Jul 2026 12:44:15 +0200
+Subject: [PATCH 2/3] usb: gadget: composite: Support eUSB2v2 bulk MPS
+ update request
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260717-eusb2v2-packet-size-v1-1-67c611bd0c5b@cadence.com>
+Message-Id: <20260717-eusb2v2-packet-size-v1-2-67c611bd0c5b@cadence.com>
 References: <20260717-eusb2v2-packet-size-v1-0-67c611bd0c5b@cadence.com>
 In-Reply-To: <20260717-eusb2v2-packet-size-v1-0-67c611bd0c5b@cadence.com>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
@@ -13,199 +13,160 @@ To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
 Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Pawel Laszczak <pawell@cadence.com>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784285103; l=6736;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784285103; l=4930;
  i=pawell@cadence.com; h=from:subject:message-id;
- bh=LTCb4q5/7G6iDHpjLaDdbnS+2jBj5GhRLQszRhvaYEM=;
- b=iAH3Jy139QeSVFElmQBIxMpji2Sddf36QJL6n89+FneRj355jg3TzP9sIpFR2f/MtOObKYH0E
- Qzg+8D9qt0kCFq+8C6I0WuC+xDwHvxofgh5TIt+xwA87PMoGpdYJTXW
+ bh=BinsopW6J/BJzPhINKchDQl5qlxVOPT1dCsHQoufo9s=;
+ b=oRplN9glS7CnNkMYW7suoV3GQopKgyXSB/iq9eO1ojSik5QaZ9d/OiPelyBkpH4lVH2LTyj/S
+ qvtbOUejU3/C599lzN7feIVEe5jgGZkEy1ietqklrbsV5AhcSjUH1Du
 X-Developer-Key: i=pawell@cadence.com; a=ed25519;
  pk=EUPBvLO9CDg7j6defeDl2iqi+z5Ivqu4Z46aiqe7dYc=
 X-Endpoint-Received: by B4 Relay for pawell@cadence.com/default with auth_id=707
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The eUSB2 v2 specification (bcdUSB 0x0230) introduces support for
-1024-byte maximum packet sizes for Bulk endpoints in High-Speed mode.
-However, an eUSB2v2 peripheral will revert its internal maximum packet
-size back to 512 bytes after events like a bus reset, disconnect, or
-deconfiguration.
+Add support for eUSB2v2 1024-byte Bulk MPS negotiation to the Gadget
+Composite framework.
 
-To support 1024-byte bulk transfers on capable hosts, add a new
-is_eusb2v2 flag to the usb_bus structure, populated via the HCCPARAMS2
-E2V2C capability bit in the xHCI driver.
-
-When an eUSB2v2 host configures an eUSB2v2 device, issue a specific
-SET_FEATURE (USB_DEVICE_BULK_MAX_PACKET_UPDATE) request during device
-configuration to switch the peripheral to 1024-byte packet mode, and
-allow the xHCI endpoint initialization to accept up to 1024 bytes for
-HS bulk endpoints.
+If 'gadget->is_eusb2v2' is set, force bcdUSB to 0x0230 and bMaxPacketSize0
+to 64 bytes. Handle the USB_DEVICE_BULK_MAX_PACKET_UPDATE feature request
+by introducing eusb2_update_mps_bulk(), which dynamically updates the
+wMaxPacketSize of all HS Bulk endpoint descriptors to 1024 bytes before
+the device is configured.
 
 Signed-off-by: Pawel Laszczak <pawell@cadence.com>
 ---
- drivers/usb/core/config.c   |  4 ++-
- drivers/usb/core/message.c  | 65 ++++++++++++++++++++++++++++++++++++++++++++-
- drivers/usb/host/xhci-mem.c | 18 ++++++++++---
- drivers/usb/host/xhci.c     |  3 +++
- include/linux/usb.h         |  4 +++
- 5 files changed, 89 insertions(+), 5 deletions(-)
+ drivers/usb/gadget/composite.c | 67 ++++++++++++++++++++++++++++++++++++++----
+ include/linux/usb/gadget.h     |  2 ++
+ 2 files changed, 63 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/usb/core/config.c b/drivers/usb/core/config.c
-index 45e20c6d76c0..0c7ab3f44cd9 100644
---- a/drivers/usb/core/config.c
-+++ b/drivers/usb/core/config.c
-@@ -491,7 +491,9 @@ static int usb_parse_endpoint(struct device *ddev, int cfgno,
- 	 * be able to handle that particular bug, so let's warn...
- 	 */
- 	if (udev->speed == USB_SPEED_HIGH && usb_endpoint_xfer_bulk(d)) {
--		if (maxp != 512)
-+		struct usb_hcd *hcd =  bus_to_hcd(udev->bus);
-+
-+		if (maxp != 512 && (bcdUSB != 0x230 || !hcd->self.is_eusb2v2))
- 			dev_notice(ddev, "config %d interface %d altsetting %d "
- 				"bulk endpoint 0x%X has invalid maxpacket %d\n",
- 				cfgno, inum, asnum, d->bEndpointAddress,
-diff --git a/drivers/usb/core/message.c b/drivers/usb/core/message.c
-index 75e2bfd744a9..3b4f7aedd381 100644
---- a/drivers/usb/core/message.c
-+++ b/drivers/usb/core/message.c
-@@ -2007,6 +2007,65 @@ int usb_set_wireless_status(struct usb_interface *iface,
+diff --git a/drivers/usb/gadget/composite.c b/drivers/usb/gadget/composite.c
+index dc3664374596..e009f8c4281c 100644
+--- a/drivers/usb/gadget/composite.c
++++ b/drivers/usb/gadget/composite.c
+@@ -924,6 +924,48 @@ static void device_qual(struct usb_composite_dev *cdev)
  }
- EXPORT_SYMBOL_GPL(usb_set_wireless_status);
  
-+/*
-+ * eusb_update_max_packet - set or restore max packet size
-+ * @udev: target device
-+ * @cp: if NULL restore MPS to 512 else set 1024
-+ *
-+ * This request is specific to eUSB2v2.
-+ * An eUSB2v2 peripheral will revert the maximum packet size to 512
-+ * for bulk endpoints after bus reset, disconnect and deconfiguration.
-+ * This function allows updating the max packet size for BULK endpoints
-+ * to 1024 after above events.
-+ */
-+static void eusb_update_max_packet(struct usb_device *udev, struct usb_host_config *cp)
+ /*-------------------------------------------------------------------------*/
++static void eusb2_update_ep_mps(struct usb_descriptor_header *header, __le16 mps)
 +{
-+	struct usb_host_config *config = cp ? cp : udev->actconfig;
-+	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
-+	struct usb_interface_cache *intfc;
-+	struct usb_host_interface *alt;
-+	struct usb_host_endpoint *ep;
-+	u16 mps = 512;
-+	int i, j, a;
-+	int ret;
++	struct usb_endpoint_descriptor *epd;
 +
-+	if (le16_to_cpu(udev->descriptor.bcdUSB) != 0x0230 ||
-+	    !hcd->self.is_eusb2v2)
++	if (header->bDescriptorType != USB_DT_ENDPOINT)
 +		return;
 +
-+	if (cp) {
-+		ret = usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
-+				      USB_REQ_SET_FEATURE, USB_RECIP_DEVICE,
-+				      USB_DEVICE_BULK_MAX_PACKET_UPDATE, 0, NULL, 0,
-+				      USB_CTRL_SET_TIMEOUT);
-+		if (ret < 0) {
-+			dev_warn(&udev->dev, "eUSB2v2 1KB update failed: %d\n", ret);
-+			return;
-+		}
-+
-+		mps = 1024;
-+	} else if (!udev->actconfig)
-+		return;
-+
-+	for (i = 0; i < config->desc.bNumInterfaces; i++) {
-+		intfc = config->intf_cache[i];
-+
-+		if (!intfc)
-+			continue;
-+
-+		for (a = 0; a < intfc->num_altsetting; a++) {
-+			alt = &intfc->altsetting[a];
-+
-+			for (j = 0; j < alt->desc.bNumEndpoints; j++) {
-+				ep = &alt->endpoint[j];
-+
-+				if (usb_endpoint_xfer_bulk(&ep->desc))
-+					ep->desc.wMaxPacketSize = cpu_to_le16(mps);
-+			}
-+		}
-+	}
++	epd = (void *)header;
++	if (usb_endpoint_xfer_bulk(epd))
++		epd->wMaxPacketSize = mps;
 +}
 +
- /*
-  * usb_set_configuration - Makes a particular device setting be current
-  * @dev: the device whose configuration is being updated
-@@ -2120,8 +2179,12 @@ int usb_set_configuration(struct usb_device *dev, int configuration)
- 	/* if it's already configured, clear out old state first.
- 	 * getting rid of old interfaces means unbinding their drivers.
- 	 */
--	if (dev->state != USB_STATE_ADDRESS)
-+	if (dev->state != USB_STATE_ADDRESS) {
-+		eusb_update_max_packet(dev, NULL);
- 		usb_disable_device(dev, 1);	/* Skip ep0 */
++static int eusb2_update_mps_bulk(struct usb_composite_dev *cdev, bool set)
++{
++	__le16 mps = cpu_to_le16(set ? 1024 : 512);
++	struct usb_gadget *gadget = cdev->gadget;
++	struct usb_configuration *config;
++	struct usb_function *f;
++
++	if (!gadget->is_eusb2v2)
++		return -EINVAL;
++
++	if (set && gadget->state >= USB_STATE_CONFIGURED)
++		return -EINVAL;
++
++	list_for_each_entry(config, &cdev->configs, list) {
++		if (!config->highspeed)
++			continue;
++
++		list_for_each_entry(f, &config->functions, list) {
++			struct usb_descriptor_header **desc = f->hs_descriptors;
++
++			if (!desc)
++				continue;
++
++			for (; *desc; desc++)
++				eusb2_update_ep_mps(*desc, mps);
++		}
 +	}
 +
-+	eusb_update_max_packet(dev, cp);
++	return 0;
++}
  
- 	/* Get rid of pending async Set-Config requests for this device */
- 	cancel_async_set_config(dev);
-diff --git a/drivers/usb/host/xhci-mem.c b/drivers/usb/host/xhci-mem.c
-index 997fe90f54e5..a4d3e03f9e14 100644
---- a/drivers/usb/host/xhci-mem.c
-+++ b/drivers/usb/host/xhci-mem.c
-@@ -1479,10 +1479,22 @@ int xhci_endpoint_init(struct xhci_hcd *xhci,
- 	/* Allow 3 retries for everything but isoc, set CErr = 3 */
- 	if (!usb_endpoint_xfer_isoc(&ep->desc))
- 		err_count = 3;
--	/* HS bulk max packet should be 512, FS bulk supports 8, 16, 32 or 64 */
-+
-+	/*
-+	 * HS bulk max packet should be 512 (or 1024 for eUSB2v2),
-+	 * FS bulk supports 8, 16, 32 or 64.
-+	 */
- 	if (usb_endpoint_xfer_bulk(&ep->desc)) {
--		if (udev->speed == USB_SPEED_HIGH)
--			max_packet = 512;
-+		if (udev->speed == USB_SPEED_HIGH) {
-+			if (le16_to_cpu(udev->descriptor.bcdUSB) == 0x0230 &&
-+			    xhci->hcc_params2 & HCC2_E2V2C) {
-+				max_packet = rounddown_pow_of_two(max_packet);
-+				max_packet = clamp_val(max_packet, 512, 1024);
-+			} else {
-+				max_packet = 512;
-+			}
+ static void reset_config(struct usb_composite_dev *cdev)
+ {
+@@ -971,8 +1013,10 @@ static int set_config(struct usb_composite_dev *cdev,
+ 		if (result < 0)
+ 			goto done;
+ 	} else { /* Zero configuration value - need to reset the config */
+-		if (cdev->config)
++		if (cdev->config) {
+ 			reset_config(cdev);
++			eusb2_update_mps_bulk(cdev, false);
 +		}
+ 		result = 0;
+ 	}
+ 
+@@ -1807,7 +1851,11 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 				count_configs(cdev, USB_DT_DEVICE);
+ 			cdev->desc.bMaxPacketSize0 =
+ 				cdev->gadget->ep0->maxpacket;
+-			if (gadget_is_superspeed(gadget)) {
 +
- 		if (udev->speed == USB_SPEED_FULL) {
- 			max_packet = rounddown_pow_of_two(max_packet);
- 			max_packet = clamp_val(max_packet, 8, 64);
-diff --git a/drivers/usb/host/xhci.c b/drivers/usb/host/xhci.c
-index a54f5b57f205..254638dc1e18 100644
---- a/drivers/usb/host/xhci.c
-+++ b/drivers/usb/host/xhci.c
-@@ -5548,6 +5548,9 @@ int xhci_gen_setup(struct usb_hcd *hcd, xhci_get_quirks_t get_quirks)
- 	else
- 		xhci_hcd_init_usb2_data(xhci, hcd);
- 
-+	if (xhci->hcc_params2 & HCC2_E2V2C)
-+		hcd->self.is_eusb2v2 = 1;
++			if (gadget->is_eusb2v2) {
++				cdev->desc.bcdUSB = cpu_to_le16(0x0230);
++				cdev->desc.bMaxPacketSize0 = 64;
++			} else if (gadget_is_superspeed(gadget)) {
+ 				if (gadget->speed >= USB_SPEED_SUPER) {
+ 					cdev->desc.bcdUSB = cpu_to_le16(0x0320);
+ 					cdev->desc.bMaxPacketSize0 = 9;
+@@ -2005,12 +2053,18 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 	 */
+ 	case USB_REQ_CLEAR_FEATURE:
+ 	case USB_REQ_SET_FEATURE:
+-		if (!gadget_is_superspeed(gadget))
+-			goto unknown;
+-		if (ctrl->bRequestType != (USB_DIR_OUT | USB_RECIP_INTERFACE))
+-			goto unknown;
+ 		switch (w_value) {
++		case USB_DEVICE_BULK_MAX_PACKET_UPDATE:
++			if (ctrl->bRequestType != (USB_DIR_OUT | USB_RECIP_DEVICE))
++				goto unknown;
 +
- 	xhci_info(xhci, "hcc params 0x%08x hci version 0x%x quirks 0x%016llx\n",
- 		  xhci->hcc_params, xhci->hci_version, xhci->quirks);
++			value = eusb2_update_mps_bulk(cdev, true);
++			break;
+ 		case USB_INTRF_FUNC_SUSPEND:
++			if (!gadget_is_superspeed(gadget))
++				goto unknown;
++			if (ctrl->bRequestType != (USB_DIR_OUT | USB_RECIP_INTERFACE))
++				goto unknown;
+ 			if (!cdev->config || intf >= MAX_CONFIG_INTERFACES)
+ 				break;
+ 			f = cdev->config->interface[intf];
+@@ -2303,6 +2357,7 @@ static void __composite_disconnect(struct usb_gadget *gadget)
  
-diff --git a/include/linux/usb.h b/include/linux/usb.h
-index 25a203ac7a7e..790c2295aec6 100644
---- a/include/linux/usb.h
-+++ b/include/linux/usb.h
-@@ -464,6 +464,10 @@ struct usb_bus {
- 					 * the ep queue on a short transfer
- 					 * with the URB_SHORT_NOT_OK flag set.
- 					 */
-+	unsigned is_eusb2v2:1;		/*
-+					 * true when HC controller supports
-+					 * eusb2v2
-+					 */
- 	unsigned no_sg_constraint:1;	/* no sg constraint */
- 	unsigned sg_tablesize;		/* 0 or largest number of sg list entries */
- 
+ void composite_disconnect(struct usb_gadget *gadget)
+ {
++	eusb2_update_mps_bulk(get_gadget_data(gadget), false);
+ 	usb_gadget_vbus_draw(gadget, 0);
+ 	__composite_disconnect(gadget);
+ }
+diff --git a/include/linux/usb/gadget.h b/include/linux/usb/gadget.h
+index 8285b19a25e0..3c554fe95f87 100644
+--- a/include/linux/usb/gadget.h
++++ b/include/linux/usb/gadget.h
+@@ -420,6 +420,7 @@ struct usb_gadget_ops {
+  * @wakeup_armed: True if gadget is armed by the host for remote wakeup.
+  * @irq: the interrupt number for device controller.
+  * @id_number: a unique ID number for ensuring that gadget names are distinct
++ * @is_eusb2v2: True if controller is Embedded usb2.
+  *
+  * Gadgets have a mostly-portable "gadget driver" implementing device
+  * functions, handling all usb configurations and interfaces.  Gadget
+@@ -483,6 +484,7 @@ struct usb_gadget {
+ 	unsigned			lpm_capable:1;
+ 	unsigned			wakeup_capable:1;
+ 	unsigned			wakeup_armed:1;
++	unsigned			is_eusb2v2:1;
+ 	int				irq;
+ 	int				id_number;
+ };
 
 -- 
 2.43.0
