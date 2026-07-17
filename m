@@ -1,65 +1,56 @@
-From: Younes Akhouayri <git@younes.io>
-Date: Fri, 17 Jul 2026 13:44:06 +0200
-Subject: [PATCH] rust: print: fix broken `_printk` Rustdoc link
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Subject: [PATCH 0/2] iio: common: improve InvenSense sample timestamping
+Date: Fri, 17 Jul 2026 14:39:39 +0200
+Message-Id: <20260717-iio-common-inv-sensors-timestamp-rework-v1-0-d1afee2805cd@tdk.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260717-docs-printk-rustdoc-link-v1-1-892074948f75@younes.io>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CQAyF4auQrm0EVDBexbiYGSpUTCHtYEgId
- 3dGl1/T929gpEwGt2IDpQ8bT5JQHQoIg5OekLtkqMu6KduqxW4KhrOyxBF1sZiMb5YRXdOcL76
- +tifvIM1npSevv/T98bct/kUh5l7+8M4IvToJQz5Nyj3LMUdRaI2w719iLLKonwAAAA==
-X-Change-ID: 20260717-docs-printk-rustdoc-link-a6645b2873ba
-To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
- Gary Guo <gary@garyguo.net>, 
- =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
- Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
- Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
- Danilo Krummrich <dakr@kernel.org>, 
- Daniel Almeida <daniel.almeida@collabora.com>, 
- Tamir Duberstein <tamird@kernel.org>, 
- Alexandre Courbot <acourbot@nvidia.com>, 
- =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
-Cc: rust-for-linux@vger.kernel.org, linux-kernel@vger.kernel.org
+X-B4-Tracking: v=1; b=H4sIAIsiWmoC/yXNTQrCQAxA4auUrA3MFH/Aq4iLOGY0ykxKMq1C6
+ d2tuvw2783gbMIOx24G40lctK6Imw7SneqNUa6roQ/9PhziDkUUk5aiFaVO6FxdzbFJYW9UBjR
+ +qT2RUo4UiELIW1hrg3GW9+90Ov/t4+XBqX3zsCwfFvNuyIsAAAA=
+X-Change-ID: 20260715-iio-common-inv-sensors-timestamp-rework-acf1a0aa00f4
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784288662; l=1057;
- i=git@younes.io; s=20260712; h=from:subject:message-id;
- bh=zVBY86ITmj7s9gCecJMwnv88MyaOS9NDh+38YeC1HUQ=;
- b=Y69z8bNr2eF2LQ5NVbtZul9RUSg0T7ydyAYco/TMOtrICmgT07DGC4Gfd4eAJ+TdSx2vR7PTD
- 5qeHIf+BhNsDTJz0eqZ5hBobnwy9kPcBuve4Y117NGKyWqVhUV9saRQ
-X-Developer-Key: i=git@younes.io; a=ed25519;
- pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
-X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784291993; l=1194;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=eJ/ZhnSqtVnhlW2YrlsssveGtVix22fBl3oGwtL5XoU=;
+ b=VB8/qYpScMTlTMLfFT1t48xXhay/BKoM2YSuoDG2Fwh6e4RZ339UXz1CctLpfA10eOYRxOxTk
+ JY9AGd1XFh4CDsthxokfTeDw+V8H4EjkD4ABSH5HIrjnIGKbQGqvf1h
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The Rustdoc link for `_printk` points to `include/linux/_printk.h`,
-which does not exist. Point it to `include/linux/printk.h`, where
-`_printk` is declared.
+This series improves the InvenSense timestamping mechanism for 2 cases:
+when using watermark and for high frequency sampling.
 
-Fixes: 247b365dc8dc ("rust: add `kernel` crate")
-Signed-off-by: Younes Akhouayri <git@younes.io>
+Data arriving by batch because of FIFO watermark will now be all aligned
+correctly with the interrupt timestamp and the chip period measurement
+will use a minimal period of 20ms to ensure that system latency is
+not preventing measurement when using high frequency sampling.
+
+This was tested using inv_icm42600 driver when using maximum FIFO
+watermark and when using 1kHz sampling frequency.
+
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
- rust/kernel/print.rs | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Jean-Baptiste Maneyrol (2):
+      iio: invensense: better timestamp alignment when using watermark
+      iio: invensense: improve period measurement by using a longer delay
 
-diff --git a/rust/kernel/print.rs b/rust/kernel/print.rs
-index 6fd84389a858..0d62beeedca5 100644
---- a/rust/kernel/print.rs
-+++ b/rust/kernel/print.rs
-@@ -99,7 +99,7 @@ pub mod format_strings {
- /// The format string must be one of the ones in [`format_strings`], and
- /// the module name must be null-terminated.
- ///
--/// [`_printk`]: srctree/include/linux/_printk.h
-+/// [`_printk`]: srctree/include/linux/printk.h
- #[doc(hidden)]
- #[cfg_attr(not(CONFIG_PRINTK), allow(unused_variables))]
- pub unsafe fn call_printk(
-
+ .../iio/common/inv_sensors/inv_sensors_timestamp.c | 86 +++++++++++-----------
+ include/linux/iio/common/inv_sensors_timestamp.h   |  6 ++
+ 2 files changed, 51 insertions(+), 41 deletions(-)
 ---
-base-commit: 7059bdf4f04a3e14f4fafb3ac35fdca913e3e21a
-change-id: 20260717-docs-printk-rustdoc-link-a6645b2873ba
+base-commit: aa58ecc73466d0cb8c418de98e2225490bf600e3
+change-id: 20260715-iio-common-inv-sensors-timestamp-rework-acf1a0aa00f4
 
 Best regards,
 --  
-Younes Akhouayri <git@younes.io>
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
