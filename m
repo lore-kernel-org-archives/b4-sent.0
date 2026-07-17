@@ -1,79 +1,153 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Date: Fri, 17 Jul 2026 06:26:55 -0500
-Subject: [PATCH v2 02/11] dm-pcache: validate geometry fields from on-disk
- cache_info
+Date: Fri, 17 Jul 2026 06:26:56 -0500
+Subject: [PATCH v2 03/11] dm-pcache: validate kset key_num and
+ intra-segment bounds
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260717-b4-disp-4c0a0039-v2-2-19227d6e313c@proton.me>
+Message-Id: <20260717-b4-disp-4c0a0039-v2-3-19227d6e313c@proton.me>
 References: <20260717-b4-disp-4c0a0039-v2-0-19227d6e313c@proton.me>
 In-Reply-To: <20260717-b4-disp-4c0a0039-v2-0-19227d6e313c@proton.me>
 To: Zheng Gu <cengku@gmail.com>, Dongsheng Yang <dongsheng.yang@linux.dev>
 Cc: dm-devel@lists.linux.dev, Mikulas Patocka <mpatocka@redhat.com>, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784287613; l=2084;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784287613; l=5615;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=GCHE1PL/rUxoLoC9YQBxjQe4fFzhqS5ltYxbiHXbkRg=;
- b=SqdujfX6WK0cZuhU3P+/HjIYYk/pnJEoHQNxbOtE7SY5MSzZq5lkwa00RVFxttWRR0BIiJKG5
- GBcD3GTe0eBDE1LYvPEK1QE5ycjrq75kJvibXYGPDRVQWoalvewntKq
+ bh=vmHcXjyHD4CeDO70qCWNVMIG5lczK7IUtU3PlSvOgfs=;
+ b=6vpkyJtIgh2eYee7sOcg2BFaSEU49E6MKyEVe3qIh7Ux2SQsKo9XJEed+RS0vZfHsvMgAJHk7
+ RUK8wYbe4KXCMZh2nK1NgmFJ6PzB7CyI3lGyjiatG4Gs/sMACwvU/0s
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-cache_segs_init() iterates cache_info->n_segs times indexing
-cache->segments[], which is sized to the cache device geometry, and
-get_seg_id() takes each segment id from the on-media cache_info and the
-per-segment next_seg link. Both come from cache device metadata that is
-only CRC-protected with a fixed public seed, so whoever supplies the
-cache device on a table load (CAP_SYS_ADMIN) controls them: an oversized
-n_segs or an out-of-range id drives an out-of-bounds access of
-cache->segments[] and a wild CACHE_DEV_SEGMENT() pointer into the device
-mapping -- an out-of-bounds read and write from on-disk data.
+Two more fields decoded from the cache device go unbounded. The kset
+key_num drives cache_kset_crc() and the replay loop in cache_replay(),
+the writeback worker and the GC worker, but only the magic and a
+fixed-seed CRC are checked first, so a non-last kset whose key_num exceeds
+the PCACHE_KSET_KEYS_MAX buffer reads past its end before the CRC compare.
+A key's intra-segment offset and length in cache_key_decode() are taken
+verbatim, so a key running past its segment is replayed into the cache
+tree and the data CRC check and every later read hit then copy adjacent
+persistent memory into the caller's bio -- an out-of-bounds read that
+leaks to user space. Both fields are controlled by whoever supplies the
+cache device (CAP_SYS_ADMIN); the CRC seed is public.
 
-Reject an n_segs that exceeds the device segment count and a segment id
-that is out of range before either is used. Valid metadata is unaffected.
+Add kset_onmedia_valid() to bound key_num before any kset read, and
+reject a key whose offset plus length, computed in 64 bits, exceeds the
+segment data_size. Valid metadata is unaffected.
 
 Fixes: 1d57628ff95b ("dm-pcache: add persistent cache target in device-mapper")
 Cc: stable@vger.kernel.org
 Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/md/dm-pcache/cache.c | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ drivers/md/dm-pcache/cache.h           | 21 +++++++++++++++++++++
+ drivers/md/dm-pcache/cache_gc.c        |  8 ++++----
+ drivers/md/dm-pcache/cache_key.c       | 10 +++++++++-
+ drivers/md/dm-pcache/cache_writeback.c |  8 ++++----
+ 4 files changed, 38 insertions(+), 9 deletions(-)
 
-diff --git a/drivers/md/dm-pcache/cache.c b/drivers/md/dm-pcache/cache.c
-index e9d2b87174d7..e4784578b9af 100644
---- a/drivers/md/dm-pcache/cache.c
-+++ b/drivers/md/dm-pcache/cache.c
-@@ -251,6 +251,13 @@ static int get_seg_id(struct pcache_cache *cache,
- 		} else {
- 			*seg_id = cache->cache_info.seg_id;
- 		}
-+
-+		if (*seg_id >= cache_dev->seg_num) {
-+			pcache_dev_err(pcache, "invalid segment id %u from cache device (seg_num %u)\n",
-+				       *seg_id, cache_dev->seg_num);
-+			ret = -EIO;
-+			goto err;
-+		}
- 	}
- 	return 0;
- err:
-@@ -266,6 +273,13 @@ static int cache_segs_init(struct pcache_cache *cache)
- 	int ret;
- 	u32 i;
+diff --git a/drivers/md/dm-pcache/cache.h b/drivers/md/dm-pcache/cache.h
+index 919736379b76..d9e3e09f18e3 100644
+--- a/drivers/md/dm-pcache/cache.h
++++ b/drivers/md/dm-pcache/cache.h
+@@ -506,6 +506,27 @@ static inline u32 cache_key_data_crc(struct pcache_cache_key *key)
+ 	return crc32c(PCACHE_CRC_SEED, data, key->len);
+ }
  
-+	if (cache_info->n_segs > cache->cache_dev->seg_num) {
-+		pcache_dev_err(CACHE_TO_PCACHE(cache),
-+			       "cache_info n_segs %u exceeds cache device segments %u\n",
-+			       cache_info->n_segs, cache->cache_dev->seg_num);
++/**
++ * kset_onmedia_valid - Validate a kset header read from the cache device.
++ * @kset_onmedia: Pointer to the kset copied from on-media metadata.
++ *
++ * The magic and CRC are attacker-computable (fixed public seed). A non-last
++ * kset stores key_num keys inline, and cache_kset_crc() and the replay loop
++ * read struct_size(.., data, key_num) bytes from a buffer sized for
++ * PCACHE_KSET_KEYS_MAX keys, so key_num must be bounded before any such use.
++ */
++static inline bool kset_onmedia_valid(struct pcache_cache_kset_onmedia *kset_onmedia)
++{
++	if (kset_onmedia->magic != PCACHE_KSET_MAGIC)
++		return false;
++
++	if (!(kset_onmedia->flags & PCACHE_KSET_FLAGS_LAST) &&
++	    kset_onmedia->key_num > PCACHE_KSET_KEYS_MAX)
++		return false;
++
++	return true;
++}
++
+ static inline u32 cache_kset_crc(struct pcache_cache_kset_onmedia *kset_onmedia)
+ {
+ 	u32 crc_size;
+diff --git a/drivers/md/dm-pcache/cache_gc.c b/drivers/md/dm-pcache/cache_gc.c
+index 02fa0ce03134..1ed513745023 100644
+--- a/drivers/md/dm-pcache/cache_gc.c
++++ b/drivers/md/dm-pcache/cache_gc.c
+@@ -44,11 +44,11 @@ static bool need_gc(struct pcache_cache *cache, struct pcache_cache_pos *dirty_t
+ 		return false;
+ 	}
+ 
+-	/* Check if kset_onmedia is corrupted */
+-	if (kset_onmedia->magic != PCACHE_KSET_MAGIC) {
+-		pcache_dev_debug(pcache, "gc error: magic is not as expected. key_tail: %u:%u magic: %llx, expected: %llx\n",
++	/* Reject a corrupted or out-of-bounds kset before reading its keys */
++	if (!kset_onmedia_valid(kset_onmedia)) {
++		pcache_dev_debug(pcache, "gc error: invalid kset. key_tail: %u:%u magic: %llx, key_num: %u\n",
+ 					key_tail->cache_seg->cache_seg_id, key_tail->seg_off,
+-					kset_onmedia->magic, PCACHE_KSET_MAGIC);
++					kset_onmedia->magic, kset_onmedia->key_num);
+ 		return false;
+ 	}
+ 
+diff --git a/drivers/md/dm-pcache/cache_key.c b/drivers/md/dm-pcache/cache_key.c
+index 8eec5238c5da..f4459b2e1b3b 100644
+--- a/drivers/md/dm-pcache/cache_key.c
++++ b/drivers/md/dm-pcache/cache_key.c
+@@ -103,6 +103,14 @@ int cache_key_decode(struct pcache_cache *cache,
+ 	key->cache_pos.cache_seg = &cache->segments[key_onmedia->cache_seg_id];
+ 	key->cache_pos.seg_off = key_onmedia->cache_seg_off;
+ 
++	if ((u64)key->cache_pos.seg_off + key->len >
++			key->cache_pos.cache_seg->segment.data_size) {
++		pcache_dev_err(pcache, "key seg_off %u + len %u exceeds segment data size %u\n",
++				key->cache_pos.seg_off, key->len,
++				key->cache_pos.cache_seg->segment.data_size);
 +		return -EIO;
 +	}
 +
- 	for (i = 0; i < cache_info->n_segs; i++) {
- 		ret = get_seg_id(cache, prev_cache_seg, new_cache, &seg_id);
- 		if (ret)
+ 	key->seg_gen = key_onmedia->seg_gen;
+ 	key->flags = key_onmedia->flags;
+ 
+@@ -784,7 +792,7 @@ int cache_replay(struct pcache_cache *cache)
+ 			goto out;
+ 		}
+ 
+-		if (kset_onmedia->magic != PCACHE_KSET_MAGIC ||
++		if (!kset_onmedia_valid(kset_onmedia) ||
+ 				kset_onmedia->crc != cache_kset_crc(kset_onmedia)) {
+ 			break;
+ 		}
+diff --git a/drivers/md/dm-pcache/cache_writeback.c b/drivers/md/dm-pcache/cache_writeback.c
+index 7751468d5118..34c34b448e04 100644
+--- a/drivers/md/dm-pcache/cache_writeback.c
++++ b/drivers/md/dm-pcache/cache_writeback.c
+@@ -55,11 +55,11 @@ static inline bool is_cache_clean(struct pcache_cache *cache, struct pcache_cach
+ 		return true;
+ 	}
+ 
+-	/* Check if the magic number matches the expected value */
+-	if (kset_onmedia->magic != PCACHE_KSET_MAGIC) {
+-		pcache_dev_debug(pcache, "dirty_tail: %u:%u magic: %llx, not expected: %llx\n",
++	/* Reject a corrupted or out-of-bounds kset before reading its keys */
++	if (!kset_onmedia_valid(kset_onmedia)) {
++		pcache_dev_debug(pcache, "dirty_tail: %u:%u invalid kset magic: %llx, key_num: %u\n",
+ 				dirty_tail->cache_seg->cache_seg_id, dirty_tail->seg_off,
+-				kset_onmedia->magic, PCACHE_KSET_MAGIC);
++				kset_onmedia->magic, kset_onmedia->key_num);
+ 		return true;
+ 	}
+ 
 
 -- 
 2.43.0
