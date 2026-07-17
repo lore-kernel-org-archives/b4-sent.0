@@ -1,50 +1,78 @@
 From: Joachim Eastwood <joachim.eastwood@gmail.com>
-Date: Fri, 17 Jul 2026 09:23:04 +0200
-Subject: [PATCH v4 06/12] arm64: dts: rockchip: rk3588s-nanopi-r6: remove
- always-on and boot-on from vdd_npu_s0 reg
+Date: Fri, 17 Jul 2026 09:23:05 +0200
+Subject: [PATCH v4 07/12] arm64: dts: rockchip: rk3588s-nanopi-r6: remove
+ useless vcc_3v3_pcie20
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260717-nanopi-m6-v4-6-b31391a72e41@gmail.com>
+Message-Id: <20260717-nanopi-m6-v4-7-b31391a72e41@gmail.com>
 References: <20260717-nanopi-m6-v4-0-b31391a72e41@gmail.com>
 In-Reply-To: <20260717-nanopi-m6-v4-0-b31391a72e41@gmail.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, Heiko Stuebner <heiko@sntech.de>
 Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
  linux-rockchip@lists.infradead.org, diederik@cknow-tech.com, 
- jonas@kwiboo.se, Joachim Eastwood <joachim.eastwood@gmail.com>
+ jonas@kwiboo.se, Joachim Eastwood <joachim.eastwood@gmail.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784272993; l=843;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784272993; l=1725;
  i=joachim.eastwood@gmail.com; s=20260701; h=from:subject:message-id;
- bh=p+uCogUDoVo0apoPrgGgP0RnBwb66wwn848JS3ACySM=;
- b=hF7stw5Cl0MOykn0AZj8/vK5shluXyM6gfjjhvayX4soPfoaQGvUJKqz29lW8yzD4d6zeIfx3
- jSvPmH5ns6fDm9hiMOlFwL2VVEmHaHgcROGo5jlapyDj/GFQi0UX34X
+ bh=EfLs2ZxoByu/f+Z3fMnXZ7XWXMt5chC8hLRJwZe05Cs=;
+ b=FGfR5Yj9WqI/vD3sRKD3w4TFcryXdmSUeTVxqhSYzh2ESBja27MFIkg6RWTqv2DWRTvJZjcut
+ n2bucUwomxdClIDCSLcYWRMCKUipwqMaeNmLVhD6CjRZxNK3G23jgOV
 X-Developer-Key: i=joachim.eastwood@gmail.com; a=ed25519;
  pk=ZN/8xWtdYaSd5oEfloYSZ1a+/ri0n0VZqjlEeHlbXFU=
 X-Endpoint-Received: by B4 Relay for joachim.eastwood@gmail.com/20260701 with auth_id=846
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Since the NPU is hooked up in DT, the always-on and boot-on properties
-on the regulator isn't needed anymore.
+There is no separate regulator for boards with RTL8125BG MACs.
+The power is only separated from VCC_3V3_S3 with a ferrite bead.
 
+Acked-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
 Signed-off-by: Joachim Eastwood <joachim.eastwood@gmail.com>
 ---
- arch/arm64/boot/dts/rockchip/rk3588s-nanopi-r6.dtsi | 2 --
- 1 file changed, 2 deletions(-)
+ arch/arm64/boot/dts/rockchip/rk3588s-nanopi-r6.dtsi | 14 ++------------
+ 1 file changed, 2 insertions(+), 12 deletions(-)
 
 diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-r6.dtsi b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-r6.dtsi
-index b115852ca13b..c12c05247d80 100644
+index c12c05247d80..30e09352bbe9 100644
 --- a/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-r6.dtsi
 +++ b/arch/arm64/boot/dts/rockchip/rk3588s-nanopi-r6.dtsi
-@@ -314,8 +314,6 @@ vdd_npu_s0: regulator@42 {
- 		regulator-min-microvolt = <550000>;
- 		regulator-max-microvolt = <950000>;
- 		regulator-ramp-delay = <2300>;
--		regulator-boot-on;
--		regulator-always-on;
- 		vin-supply = <&vcc5v0_sys>;
+@@ -131,16 +131,6 @@ vcc_3v3_sd_s0: regulator-vcc-3v3-sd-s0 {
+ 		vin-supply = <&vcc_3v3_s3>;
+ 	};
  
- 		regulator-state-mem {
+-	vcc_3v3_pcie20: regulator-vcc3v3-pcie20 {
+-		compatible = "regulator-fixed";
+-		regulator-name = "vcc_3v3_pcie20";
+-		regulator-always-on;
+-		regulator-boot-on;
+-		regulator-min-microvolt = <3300000>;
+-		regulator-max-microvolt = <3300000>;
+-		vin-supply = <&vcc_3v3_s3>;
+-	};
+-
+ 	vcc5v0_usb: regulator-vcc5v0-usb {
+ 		compatible = "regulator-fixed";
+ 		regulator-name = "vcc5v0_usb";
+@@ -361,7 +351,7 @@ &pcie2x1l1 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&pcie20x1_1_perstn_m2>;
+ 	reset-gpios = <&gpio1 RK_PA7 GPIO_ACTIVE_HIGH>;
+-	vpcie3v3-supply = <&vcc_3v3_pcie20>;
++	vpcie3v3-supply = <&vcc_3v3_s3>;
+ 	status = "okay";
+ };
+ 
+@@ -370,7 +360,7 @@ &pcie2x1l2 {
+ 	pinctrl-0 = <&pcie20x1_2_perstn_m0>, <&pcie20x1m0_clkreqn>;
+ 	supports-clkreq;
+ 	reset-gpios = <&gpio3 RK_PD1 GPIO_ACTIVE_HIGH>;
+-	vpcie3v3-supply = <&vcc_3v3_pcie20>;
++	vpcie3v3-supply = <&vcc_3v3_s3>;
+ 	status = "okay";
+ };
+ 
 
 -- 
 2.55.0
