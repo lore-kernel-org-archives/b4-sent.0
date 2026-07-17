@@ -1,110 +1,95 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Fri, 17 Jul 2026 17:33:42 +0800
-Subject: [PATCH] ceph: revalidate ki_pos for O_APPEND writes after cap
- acquisition
+From: Pawel Laszczak <pawell@cadence.com>
+Subject: [PATCH 0/3] usb: Add support for eUSB2v2 1024-byte Bulk
+ MaxPacketSize
+Date: Fri, 17 Jul 2026 12:44:13 +0200
+Message-Id: <20260717-eusb2v2-packet-size-v1-0-67c611bd0c5b@cadence.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260717-ceph-append-fix-v1-1-c51907ac8e36@clyso.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMwQqDMBCE4VeRPbuQRDDaVykeYpzW9ZCGpJaC+
- O5GPX4D82+UkQSZHtVGCT/J8gkFuq7Izy68wTIVk1GmVVZb9ogzuxgRJn7Jn/vOKDSjdrbzVF4
- xocxX8Tnczuu4wH/PDO37ARDDs0pzAAAA
-X-Change-ID: 20260717-ceph-append-fix-9820e3b1a78c
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>
-Cc: Jeff Layton <jlayton@kernel.org>, ceph-devel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Xiubo Li <xiubo.li@clyso.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784280859; l=3198;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=Yw5DgupygwidMrShTyytzkydWyOnKoHEMS/lC2aH5aE=;
- b=QHcnFItQZPyLEMzc/JfulHuqvJbIDzojQQJGXuOnbbSf9tU6eejTHZbJygY5c/8TlAf1Mmm8/
- Vc632Pprc1LDVnpaVVOBsgVSn0pThk6KIctb0V0J1D61qS6NWu+K/OQ
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAH0HWmoC/yXMQQrCMBBG4auUWTsQQzKoVxEXTfzVUagl0xax9
+ O6mdvkt3pvJUBRGp2amgklN313FftdQfrTdHazXavLOixN3ZIyW/OS5b/MLA5t+wSEnkUOIMUi
+ kWvYFN/38r+fLZhvTE3lYV7QsPwXVaO13AAAA
+X-Change-ID: 20260609-eusb2v2-packet-size-4cb668455465
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Mathias Nyman <mathias.nyman@intel.com>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Pawel Laszczak <pawell@cadence.com>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784285103; l=3316;
+ i=pawell@cadence.com; h=from:subject:message-id;
+ bh=jlGRCyOVWPqpkZ0E8atWDoSwsOLVumKM1U4k22v6y58=;
+ b=7rcyvpbhamKiRTFKuhr5kraG1B06AHnGBNeC6VigOpCk4FyaI9Uzybo1aI3MDWaf7LG8wcIor
+ EuJdytKIQGpAEILJUjIjnswtqbBLZZPcPytOUovKsXgAtqDU1G7WPlr
+X-Developer-Key: i=pawell@cadence.com; a=ed25519;
+ pk=EUPBvLO9CDg7j6defeDl2iqi+z5Ivqu4Z46aiqe7dYc=
+X-Endpoint-Received: by B4 Relay for pawell@cadence.com/default with auth_id=707
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For O_APPEND writes, ki_pos is set to the current EOF via
-generic_write_checks() after fetching i_size from the MDS.  However,
-ceph_get_caps() may need to wait for Fwx exclusive caps if the write
-extends the file (endoff > i_max_size).  While waiting for Fwx, the
-previous Fwx holder (another client) may have already extended the
-file.  When the MDS grants us Fwx, the cap grant message updates the
-local i_size, but ki_pos remains at the old EOF, causing the append
-write to land at a stale offset and overwrite data from the other
-client.
+The Embedded USB2 (eUSB2) v2 specification (bcdUSB 0x0230) introduces a
+mechanism that allows High-Speed Bulk endpoints to support a maximum packet
+size (MPS) of 1024 bytes, expanding it from the traditional 512-byte limit
+defined in the standard USB 2.0 specification. This capability is highly
+beneficial for Mass Storage Class (MSC) devices, significantly improving
+overall throughput.
 
-Fix by re-reading i_size_read(inode) after ceph_get_caps() returns.
-At this point we hold Fwx exclusive caps, no other client can modify
-the file, and i_size reflects the true EOF from the MDS cap grant.
-No extra MDS round-trip is needed.  Only adjust ki_pos when the EOF
-has actually changed.
+Per the eUSB2v2 specification, a peripheral device will revert its internal
+Bulk MPS back to 512 bytes after major bus events, including a bus reset,
+disconnect, or deconfiguration. To establish and maintain the 1024-byte mode,
+the host controller must explicitly issue a device-recipient SET_FEATURE
+request called USB_DEVICE_BULK_MAX_PACKET_UPDATE. This must occur after the
+device enters the ADDRESSED state, but strictly *before* it transitions to the
+CONFIGURED state.
 
-Link: https://tracker.ceph.com/issues/7333
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+This patch series implements the required infrastructure on both the host and
+gadget sides, and enables it for the Cadence (cdnsp) controller.
+
+Structure of the series:
+- Patch 1: Introduces host-side core support in usb_set_configuration() to
+  detect eUSB2v2 devices and issue the SET_FEATURE update request prior to
+  activating the device configuration. It also updates xHCI endpoint
+  initialization routines to allow 1024-byte packets for High-Speed Bulk
+  endpoints when the host capability bit HCC2_E2V2C is present.
+  
+- Patch 2: Extends the USB Gadget Composite framework to advertise bcdUSB
+  0x0230 when eUSB2v2 is supported, intercept the incoming feature request,
+  and dynamically update the wMaxPacketSize fields across all High-Speed
+  Bulk descriptors before configuration is completed.
+  
+- Patch 3: Implements peripheral-specific handling in the Cadence (cdnsp)
+  driver, reading HCCPARAMS2 to discover the hardware capability and adapting
+  cdnsp_endpoint_init() boundaries to allow for the larger packet size.
+
+Testing:
+The flow has been validated using the Cadence eUSB2v2 Host and Device
+controllers, ensuring seamless transition to 1024-byte mode during early
+enumeration stages and successful verification under USB-IF Compliance
+Verification (CV) tooling.
+
+Signed-off-by: Pawel Laszczak <pawell@cadence.com>
 ---
-For O_APPEND writes, ki_pos is set to EOF via generic_write_checks()
-after fetching i_size from the MDS via ceph_do_getattr().  However,
-ceph_get_caps() may wait for Fwx exclusive caps (because endoff >
-i_max_size).  During that wait, the previous Fwx holder may have
-already extended the file.  When the MDS grants us Fwx, the local
-i_size is updated via the cap grant message, but ki_pos is still
-the old EOF, resulting in the append write overwriting data.
+Pawel Laszczak (3):
+      usb: xhci: Add support for eUSB2v2 1024-byte bulk packet size
+      usb: gadget: composite: Support eUSB2v2 bulk MPS update request
+      usb: cdns3: cdnsp: Enable eUSB2v2 1KB bulk packet capability
 
-Fix by revalidating ki_pos against i_size_read(inode) after
-ceph_get_caps() returns.  We now hold Fwx — no other client can
-change the file, so i_size is stable and correct.
-
-Fixes: 8e4473bb50a1 ("ceph: do not execute direct write in parallel if O_APPEND is specified")
-Link: https://tracker.ceph.com/issues/7333
+ drivers/usb/cdns3/cdnsp-ep0.c    |  2 ++
+ drivers/usb/cdns3/cdnsp-gadget.c |  4 +++
+ drivers/usb/cdns3/cdnsp-gadget.h |  8 +++++
+ drivers/usb/cdns3/cdnsp-mem.c    | 11 +++++--
+ drivers/usb/common/debug.c       |  2 ++
+ drivers/usb/core/config.c        |  4 ++-
+ drivers/usb/core/message.c       | 65 +++++++++++++++++++++++++++++++++++++-
+ drivers/usb/gadget/composite.c   | 67 ++++++++++++++++++++++++++++++++++++----
+ drivers/usb/host/xhci-mem.c      | 18 +++++++++--
+ drivers/usb/host/xhci.c          |  3 ++
+ include/linux/usb.h              |  4 +++
+ include/linux/usb/gadget.h       |  2 ++
+ 12 files changed, 177 insertions(+), 13 deletions(-)
 ---
- fs/ceph/file.c | 26 ++++++++++++++++++++++++++
- 1 file changed, 26 insertions(+)
-
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index 9d89d7fc1095..b35c9aee48dd 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -2491,6 +2491,32 @@ static ssize_t ceph_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	if (err < 0)
- 		goto out;
- 
-+	/*
-+	 * For O_APPEND writes we may have waited for Fwx exclusive caps
-+	 * while the previous Fwx holder (another client) extended the
-+	 * file.  i_size has been updated via the cap grant message from
-+	 * the MDS, but ki_pos is still the old EOF.  Re-read i_size here
-+	 * (no extra MDS round-trip needed) and adjust ki_pos to the true
-+	 * EOF.  Since we hold Fwx, no other client can change the file.
-+	 */
-+	if (iocb->ki_flags & IOCB_APPEND) {
-+		loff_t cur_eof = i_size_read(inode);
-+
-+		if (cur_eof != pos) {
-+			doutc(cl,
-+			      "%p %llx.%llx O_APPEND: pos adjusted %lld -> %lld\n",
-+			      inode, ceph_vinop(inode), pos, cur_eof);
-+			iocb->ki_pos = cur_eof;
-+			pos = cur_eof;
-+			if (pos >= limit) {
-+				err = -EFBIG;
-+				goto out_caps;
-+			}
-+			iov_iter_truncate(from, limit - pos);
-+			count = iov_iter_count(from);
-+		}
-+	}
-+
- 	err = file_update_time(file);
- 	if (err)
- 		goto out_caps;
-
----
-base-commit: df47791ab9f12cd9144aca477ddae195f68072a5
-change-id: 20260717-ceph-append-fix-9820e3b1a78c
+base-commit: 1d52b92ce8748624f84eca7eaea3ac31ed7b09a5
+change-id: 20260609-eusb2v2-packet-size-4cb668455465
 
 Best regards,
 --  
-Xiubo Li <xiubo.li@clyso.com>
+Pawel Laszczak <pawell@cadence.com>
 
