@@ -1,248 +1,155 @@
-From: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
-Date: Fri, 17 Jul 2026 01:21:17 +0530
-Subject: [PATCH v2 3/3] ASoC: Add LPASS VA CSR heartbeat pulse clock
+From: Haoning CHENG <Haoning.CHENG@cn.bosch.com>
+Subject: [PATCH v9 0/3] thermal: imx: Add temperature offset support
+Date: Fri, 17 Jul 2026 14:35:34 +0800
+Message-Id: <20260717-b4-symana21-11221-imx-thermal-support-upstream-6-18-v9-0-75f4af8974f4@cn.bosch.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260717-master-v2-3-ae200627ad62@oss.qualcomm.com>
-References: <20260717-master-v2-0-ae200627ad62@oss.qualcomm.com>
-In-Reply-To: <20260717-master-v2-0-ae200627ad62@oss.qualcomm.com>
-To: Srinivas Kandagatla <srini@kernel.org>, 
- Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Jaroslav Kysela <perex@perex.cz>, 
- Takashi Iwai <tiwai@suse.com>
-Cc: Srinivas Kandagatla <srinivas.kandagatla@oss.qualcomm.com>, 
- linux-sound@vger.kernel.org, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- prasad.kumpatla@oss.qualcomm.com, 
- Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIADbNWWoC/63Sy27DIBAF0F+pWJdowDy76n9UXQAeaqr6IXCsR
+ FH+vTjZRJVXqTdIVxpxRnAvpGBOWMjby4VkXFJJ41CDfX0hoXPDF9LU1kw4cAUaLPWClnPvBsc
+ ZZYzXM/UnOneYe/dDy3GaxjzT41TmjK6nijJDHRhhjWjRa0XqzVPGmE439ePznsvRf2OYV2qd6
+ FKZx3y+rbWwde5/GyyMAgWIxkTBbQP+PQwHP5bQHcLYk3WJhe/A8DsTNRdWIhcbTPPAMHiOaSr
+ TehsDt0IHKTcYsQMjKsMiRqtbFrSEDUY+Ms1zjKyMsgJkaEAFtfU3agdGVcYY12gTHQa39Wh6B
+ 0avFbBe1a4r65FtMOaREc8xZq2AFK1RFpAp/MNcr9dfkqm0MdwDAAA=
+X-Change-ID: 20260709-b4-symana21-11221-imx-thermal-support-upstream-6-18-a084984deb76
+To: "Rafael J. Wysocki" <rafael@kernel.org>, 
+ Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
+ Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
+ Sascha Hauer <s.hauer@pengutronix.de>, 
+ Pengutronix Kernel Team <kernel@pengutronix.de>, 
+ Fabio Estevam <festevam@gmail.com>
+Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
+ imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
+ linux-kernel@vger.kernel.org, Haoning CHENG <Haoning.CHENG@cn.bosch.com>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>, 
+ Frank Li <Frank.Li@nxp.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784231493; l=6974;
- i=sarath.ganapathiraju@oss.qualcomm.com; s=default;
- h=from:subject:message-id; bh=DnVdQ9J5AHrIxPxYmGG+p8yZwISdgbHZpP4wxV2R65s=;
- b=O8dR1PjzSazMAT0yzdBZMtGqWPmkFN23wULOAFjlW9iwNWpy5YcfxbE7CANzKT24B/EQrY5MY
- BtKR3m4QSlBDMy9WgrK9Xg11SVUPp7uboRSikm5ylKbnTokt6i4KVVc
-X-Developer-Key: i=sarath.ganapathiraju@oss.qualcomm.com; a=ed25519;
- pk=4p2FWGXM+F2sir13Lu5stw5aKX5trUymK/ttESvgxQg=
-X-Endpoint-Received: by B4 Relay for sarath.ganapathiraju@oss.qualcomm.com/default with auth_id=870
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784270138; l=6002;
+ i=Haoning.CHENG@cn.bosch.com; s=20260709; h=from:subject:message-id;
+ bh=RRcs+ox/+l+BNogr/PA/wCNLqq/mugFwKw0T+RxD2PI=;
+ b=sId27MHdWmFGaRgCwMPUSwr1UiTWv85UPhMJiuQkKZL7NE1iASb0gCGloLTSanU3/2pQ9bEgJ
+ ENdSwe1YA3UCwpP8qvzAyTyocZsrlfmnEzqGmBNdLYrw6xIRtW3ibXq
+X-Developer-Key: i=Haoning.CHENG@cn.bosch.com; a=ed25519;
+ pk=glQGwad/fosRS5gZUJYbLDPPLGe7rFTrTV2VxY/ySdc=
+X-Endpoint-Received: by B4 Relay for Haoning.CHENG@cn.bosch.com/20260709 with auth_id=860
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The HeartBeat Pulse (also known as RateGen Pulse) synchronizes the
-start of the DMAs and Codec Interfaces for the audio usecases
-and can serve as a periodic wakeup source for the DSP.
+Some i.MX boards need the reported temperature to represent the SoC
+package-surface temperature rather than the internal die temperature.
+This series adds an optional DT property to specify a board-specific
+conversion offset and implements the corresponding support in the
+imx_thermal driver.
 
-Add the LPASS VA CSR driver that models the rate generator as a clock
-provider so it is enabled and disabled automatically alongside the
-other clocks during runtime PM resume and suspend.
+Patch 1 documents the new fsl,temp-calibration-offset-millicelsius
+property in the i.MX thermal DT binding. The offset is board-specific,
+determined through thermal characterization, and limited to ±20 °C.
 
-Signed-off-by: Sarath Ganapathiraju <sarath.ganapathiraju@oss.qualcomm.com>
+Patch 2 fixes the i.MX7D alarm temperature conversion to use
+ceiling division (DIV_ROUND_UP() for non-negative, plain /
+for negative) and clamp() to stay within the 9-bit register range.
+
+Patch 3 reads this property in the imx_thermal driver and applies
+the offset symmetrically: it is added when reporting temperature to
+the thermal framework (to produce a package-surface estimate) and
+subtracted when programming hardware alarm thresholds (to keep trip
+point semantics consistent). Out-of-range values are rejected with
+-EINVAL at probe time. When the property is absent, the default
+offset is 0.
+
+Signed-off-by: Haoning CHENG <Haoning.CHENG@cn.bosch.com>
 ---
- sound/soc/codecs/Kconfig        |  13 ++++
- sound/soc/codecs/Makefile       |   2 +
- sound/soc/codecs/lpass-va-csr.c | 143 ++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 158 insertions(+)
+Changes in v9:
+- Rephrase the series to clarify that the offset converts the internal
+  TEMPMON reading to a package-surface temperature estimate, rather than
+  calibrating the sensor for better die temperature accuracy (Frieder)
+- dt-bindings: update the property description to explicitly state it is
+  a board-specific conversion offset, not a sensor calibration
+- driver commit message: distinguish die temperature from package-surface
+  temperature in the symmetric offset mechanism explanation
+- Pick up Reviewed-by tags from Frank Li (patches 2,3) and Lukasz Luba
+  (patches 1,2,3)
+- Link to v8: https://patch.msgid.link/20260714-b4-symana21-11221-imx-thermal-support-upstream-6-18-v8-0-d54d8690e16e@cn.bosch.com
 
-diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
-index 76e90144ea..5dbfa77d0e 100644
---- a/sound/soc/codecs/Kconfig
-+++ b/sound/soc/codecs/Kconfig
-@@ -2902,11 +2902,24 @@ config SND_SOC_LPASS_WSA_MACRO
- 	select SND_SOC_LPASS_MACRO_COMMON
- 	tristate "Qualcomm WSA Macro in LPASS(Low Power Audio SubSystem)"
- 
-+config SND_SOC_LPASS_VA_CSR
-+	depends on COMMON_CLK
-+	select REGMAP_MMIO
-+	tristate "Qualcomm LPASS VA CSR heartbeat pulse clock provider"
-+	help
-+	  Qualcomm LPASS VA CSR block contains the rate generator hardware
-+	  that produces the HeartBeat Pulse (also known as RateGen Pulse).
-+	  This driver models the rate generator as a clock provider so
-+	  that consumers can enable or disable it via the common clock
-+	  framework, and it can be used to synchronize the start of DMAs
-+	  and Codec Interfaces or as a periodic wakeup source for the DSP.
-+
- config SND_SOC_LPASS_VA_MACRO
- 	depends on COMMON_CLK
- 	depends on PM_CLK
- 	select REGMAP_MMIO
- 	select SND_SOC_LPASS_MACRO_COMMON
-+	select SND_SOC_LPASS_VA_CSR
- 	tristate "Qualcomm VA Macro in LPASS(Low Power Audio SubSystem)"
- 
- config SND_SOC_LPASS_RX_MACRO
-diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
-index aa0396e5b5..3e86c1bbf9 100644
---- a/sound/soc/codecs/Makefile
-+++ b/sound/soc/codecs/Makefile
-@@ -163,6 +163,7 @@ snd-soc-lpass-rx-macro-y := lpass-rx-macro.o
- snd-soc-lpass-tx-macro-y := lpass-tx-macro.o
- snd-soc-lpass-wsa-macro-y := lpass-wsa-macro.o
- snd-soc-lpass-va-macro-y := lpass-va-macro.o
-+snd-soc-lpass-va-csr-y := lpass-va-csr.o
- snd-soc-madera-y := madera.o
- snd-soc-max9759-y := max9759.o
- snd-soc-max9768-y := max9768.o
-@@ -886,6 +887,7 @@ obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o
- obj-$(CONFIG_SND_SOC_LPASS_MACRO_COMMON)	+= snd-soc-lpass-macro-common.o
- obj-$(CONFIG_SND_SOC_LPASS_WSA_MACRO)	+= snd-soc-lpass-wsa-macro.o
- obj-$(CONFIG_SND_SOC_LPASS_VA_MACRO)	+= snd-soc-lpass-va-macro.o
-+obj-$(CONFIG_SND_SOC_LPASS_VA_CSR)	+= snd-soc-lpass-va-csr.o
- obj-$(CONFIG_SND_SOC_LPASS_RX_MACRO)	+= snd-soc-lpass-rx-macro.o
- obj-$(CONFIG_SND_SOC_LPASS_TX_MACRO)	+= snd-soc-lpass-tx-macro.o
- 
-diff --git a/sound/soc/codecs/lpass-va-csr.c b/sound/soc/codecs/lpass-va-csr.c
-new file mode 100644
-index 0000000000..1d0805789e
---- /dev/null
-+++ b/sound/soc/codecs/lpass-va-csr.c
-@@ -0,0 +1,143 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
-+ */
-+
-+#include <linux/clk-provider.h>
-+#include <linux/device.h>
-+#include <linux/module.h>
-+#include <linux/of_clk.h>
-+#include <linux/platform_device.h>
-+#include <linux/regmap.h>
-+
-+#define LPASS_RATE_GEN_CTRL		0xd000
-+#define LPASS_RATE_GEN_COUNTER_0	0xd004
-+#define LPASS_RATE_GEN_DELAY		0xd010
-+
-+#define LPASS_RATE_GEN_MAX_REG		LPASS_RATE_GEN_DELAY
-+
-+#define LPASS_RG_CTRL_EN		BIT(0)
-+
-+struct lpass_va_csr_data {
-+	u32 counter_0;
-+	u32 delay;
-+};
-+
-+static const struct lpass_va_csr_data hawi_csr_data = {
-+	.counter_0 = 0x960,
-+	.delay = 0x16,
-+};
-+
-+static const struct regmap_config lpass_rate_gen_regmap_config = {
-+	.name = "lpass_rate_gen",
-+	.reg_bits = 32,
-+	.val_bits = 32,
-+	.reg_stride = 4,
-+	.max_register = LPASS_RATE_GEN_MAX_REG,
-+	.cache_type = REGCACHE_MAPLE,
-+};
-+
-+struct lpass_va_csr {
-+	struct regmap *regmap;
-+	const struct lpass_va_csr_data *data;
-+	struct clk_hw hb_hw;
-+};
-+
-+#define to_lpass_va_csr(_hw) container_of(_hw, struct lpass_va_csr, hb_hw)
-+
-+static int heartbeat_pulse_prepare(struct clk_hw *hw)
-+{
-+	struct lpass_va_csr *csr = to_lpass_va_csr(hw);
-+	int ret;
-+
-+	ret = regmap_write(csr->regmap, LPASS_RATE_GEN_COUNTER_0, csr->data->counter_0);
-+	if (ret)
-+		return ret;
-+
-+	ret = regmap_write(csr->regmap, LPASS_RATE_GEN_DELAY, csr->data->delay);
-+	if (ret)
-+		return ret;
-+
-+	return regmap_set_bits(csr->regmap, LPASS_RATE_GEN_CTRL, LPASS_RG_CTRL_EN);
-+}
-+
-+static void heartbeat_pulse_unprepare(struct clk_hw *hw)
-+{
-+	struct lpass_va_csr *csr = to_lpass_va_csr(hw);
-+
-+	regmap_clear_bits(csr->regmap, LPASS_RATE_GEN_CTRL, LPASS_RG_CTRL_EN);
-+}
-+
-+static int heartbeat_pulse_is_prepared(struct clk_hw *hw)
-+{
-+	struct lpass_va_csr *csr = to_lpass_va_csr(hw);
-+
-+	return regmap_test_bits(csr->regmap, LPASS_RATE_GEN_CTRL, LPASS_RG_CTRL_EN);
-+}
-+
-+static const struct clk_ops heartbeat_pulse_ops = {
-+	.prepare = heartbeat_pulse_prepare,
-+	.unprepare = heartbeat_pulse_unprepare,
-+	.is_prepared = heartbeat_pulse_is_prepared,
-+};
-+
-+static int lpass_va_csr_probe(struct platform_device *pdev)
-+{
-+	struct device *dev = &pdev->dev;
-+	struct lpass_va_csr *csr;
-+	struct clk_init_data init = {
-+		.name = "lpass_heartbeat_pulse",
-+		.ops = &heartbeat_pulse_ops,
-+	};
-+	void __iomem *base;
-+	int ret;
-+
-+	csr = devm_kzalloc(dev, sizeof(*csr), GFP_KERNEL);
-+	if (!csr)
-+		return -ENOMEM;
-+
-+	csr->data = of_device_get_match_data(dev);
-+	if (!csr->data)
-+		return dev_err_probe(dev, -EINVAL, "no variant data for compatible\n");
-+
-+	base = devm_platform_ioremap_resource(pdev, 0);
-+	if (IS_ERR(base))
-+		return PTR_ERR(base);
-+
-+	csr->regmap = devm_regmap_init_mmio(dev, base,
-+					    &lpass_rate_gen_regmap_config);
-+	if (IS_ERR(csr->regmap))
-+		return dev_err_probe(dev, PTR_ERR(csr->regmap),
-+				     "failed to init regmap\n");
-+
-+	csr->hb_hw.init = &init;
-+
-+	ret = devm_clk_hw_register(dev, &csr->hb_hw);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "failed to register heartbeat clock\n");
-+
-+	ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get, &csr->hb_hw);
-+	if (ret)
-+		return dev_err_probe(dev, ret, "failed to add clock provider\n");
-+
-+	return 0;
-+}
-+
-+static const struct of_device_id lpass_va_csr_dt_match[] = {
-+	{ .compatible = "qcom,hawi-lpass-va-csr", .data = &hawi_csr_data },
-+	{}
-+};
-+MODULE_DEVICE_TABLE(of, lpass_va_csr_dt_match);
-+
-+static struct platform_driver lpass_va_csr_driver = {
-+	.driver = {
-+		.name = "qcom-lpass-va-csr",
-+		.of_match_table = lpass_va_csr_dt_match,
-+	},
-+	.probe = lpass_va_csr_probe,
-+};
-+
-+module_platform_driver(lpass_va_csr_driver);
-+
-+MODULE_DESCRIPTION("Qualcomm LPASS VA CSR heartbeat pulse clock provider");
-+MODULE_LICENSE("GPL");
+Changes in v8:
+- binding: s/behaviour/behavior/ (Lukasz)
+- New prep patch: use ceiling division (DIV_ROUND_UP() for non-negative, plain /
+  for negative) and clamp() for i.MX7D, extracted into a separate patch (Frank)
+- driver commit message: add offset mechanism explanation with a +3000 m°C calculation example (Lukasz)
+- probe: reject out-of-range offset with -EINVAL instead of silently clamping (Lukasz)
+- prep patch: handle negative alarm_temp with plain division (C rounds toward zero)
+- Link to v7: https://patch.msgid.link/20260713-b4-symana21-11221-imx-thermal-support-upstream-6-18-v7-0-09b6b7669be1@cn.bosch.com
 
--- 
-2.34.1
+Changes in v7:
+- Align the author name with the Signed-off-by trailer.
+- Link to v6: https://patch.msgid.link/20260713-b4-symana21-11221-imx-thermal-support-upstream-6-18-v6-0-88a378faeca5@cn.bosch.com
+
+Changes in v6:
+- Align the author name with the Signed-off-by trailer.
+- Link to v5: https://patch.msgid.link/20260713-b4-symana21-11221-imx-thermal-support-upstream-6-18-v5-0-69405c306c6b@cn.bosch.com
+
+Changes in v5:
+- Move calibration offset application out of c2 initialization, instead
+  apply it in imx_get_temp(), imx_set_alarm_temp() and imx_set_panic_temp()
+  for consistent style across i.MX6 and i.MX7D
+- Subtract calibration offset from alarm_temp before the if-else block in
+  imx_set_alarm_temp(), simplifying both SoC branches (Frank's suggestion)
+- Link to v4: https://patch.msgid.link/20260710-b4-symana21-11221-imx-thermal-support-upstream-6-18-v4-0-1fef97d1c750@cn.bosch.com
+
+Changes in v4:
+- dt-bindings: drop maxItems to allow minimum/maximum constraints for
+  temp-calibration-offset-millicelsius
+- Link to v3: https://patch.msgid.link/20260710-b4-symana21-11221-imx-thermal-support-upstream-6-18-v3-0-db9fc2947c55@cn.bosch.com
+
+Changes in v3:
+- dt-bindings: add minimum/maximum (-28580/+28580) for
+  temp-calibration-offset-millicelsius, as suggested by Conor Dooley
+- Link to v2: https://patch.msgid.link/20260709-b4-symana21-11221-imx-thermal-support-upstream-6-18-v2-0-00ff72495e24@cn.bosch.com
+
+Changes in v2:
+- dt-bindings: Removed explicit `$ref: /schemas/types.yaml#/definitions/int32`
+  for fsl,temp-calibration-offset-millicelsius; the `-millicelsius` suffix
+  already resolves to int32-array via property-units.yaml (Rob).
+- dt-bindings: Fixed example indentation.
+- driver: Replaced C integer division (/) with DIV_ROUND_CLOSEST() in
+  imx_set_alarm_temp() to prevent off-by-one alarm threshold mismatch that
+  could cause IRQ storms on i.MX7D.
+- driver: Added clamp() bounds check for alarm_value [0, 0x1ff] to avoid
+  corrupting adjacent register fields (PANIC_ALARM).
+- Link to v1: https://patch.msgid.link/20260709-b4-symana21-11221-imx-thermal-support-upstream-6-18-v1-0-00f88f42930b@cn.bosch.com
+
+To: "Rafael J. Wysocki" <rafael@kernel.org>
+To: Daniel Lezcano <daniel.lezcano@linaro.org>
+To: Zhang Rui <rui.zhang@intel.com>
+To: Lukasz Luba <lukasz.luba@arm.com>
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Shawn Guo <shawnguo@kernel.org>
+To: Sascha Hauer <s.hauer@pengutronix.de>
+To: Pengutronix Kernel Team <kernel@pengutronix.de>
+To: Fabio Estevam <festevam@gmail.com>
+Cc: linux-pm@vger.kernel.org
+Cc: devicetree@vger.kernel.org
+Cc: imx@lists.linux.dev
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-kernel@vger.kernel.org
+
+---
+Haoning CHENG (3):
+      dt-bindings: thermal: imx: Document temperature offset property
+      thermal/drivers/imx: Fix rounding and clamp for i.MX7D alarm
+      thermal/drivers/imx: Add temperature offset support
+
+ .../devicetree/bindings/thermal/imx-thermal.yaml   | 15 +++++++++
+ drivers/thermal/imx_thermal.c                      | 39 ++++++++++++++++++++--
+ 2 files changed, 51 insertions(+), 3 deletions(-)
+---
+base-commit: c50a940dcde35c647e097e89a9150003abd48329
+change-id: 20260709-b4-symana21-11221-imx-thermal-support-upstream-6-18-a084984deb76
+
+Best regards,
+--  
+Haoning Cheng <Haoning.CHENG@cn.bosch.com>
 
