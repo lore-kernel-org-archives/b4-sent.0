@@ -1,138 +1,253 @@
 From: Bryam Vargas <hexlabsecurity@proton.me>
-Subject: [PATCH v2 00/11] dm-pcache: validate on-media metadata against a
- forged cache image
-Date: Fri, 17 Jul 2026 06:26:53 -0500
-Message-Id: <20260717-b4-disp-4c0a0039-v2-0-19227d6e313c@proton.me>
+Date: Fri, 17 Jul 2026 06:26:54 -0500
+Subject: [PATCH v2 01/11] dm-pcache: validate seg_id fields from persistent
+ memory
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAH0RWmoC/x3MQQqAIBBA0avIrBuYLJO6SrQwnWo2JQoRhHdPW
- r7F/y9kTsIZJvVC4luyXGeFbhT4w507o4Rq0KQHsq3FtccgOWLvyRF1I5L32hgix9xCzWLiTZ5
- /OS+lfPItsc5iAAAA
+Message-Id: <20260717-b4-disp-4c0a0039-v2-1-19227d6e313c@proton.me>
+References: <20260717-b4-disp-4c0a0039-v2-0-19227d6e313c@proton.me>
+In-Reply-To: <20260717-b4-disp-4c0a0039-v2-0-19227d6e313c@proton.me>
 To: Zheng Gu <cengku@gmail.com>, Dongsheng Yang <dongsheng.yang@linux.dev>
 Cc: dm-devel@lists.linux.dev, Mikulas Patocka <mpatocka@redhat.com>, 
  linux-kernel@vger.kernel.org
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784287613; l=6065;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784287613; l=8861;
  i=hexlabsecurity@proton.me; s=proton; h=from:subject:message-id;
- bh=wn/LXRXxnqB9USYST8Je18QAoMrDlS2b4MfrfYj0tWE=;
- b=9GzzESSoJqHbVh5e2VyMWUEmbdmlC8i6AWO4GDtC27IiTLpcomf+tmcwWu+ZQF2gnXORC7yh/
- detjg8ZQ0k7DIbL76n/QR8CBIyAEmx7EJoAqaQHhuW1DWcoNm3/MLBu
+ bh=gx6bjz1FQtrra3y13vv1tAq57E8F+9xcRi54L7st570=;
+ b=xcJBDQKwxqbOv3YTrqYbPmDlFPud3KskH9RwLLCZegjeoXxoYVMQBFawEGpSOKIkVJZMOFaV5
+ woKUt6NHYN9ATzhl4W69W8eCvk8QaJys+NjQv9PaTSnO3y0r5C/aAKo
 X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
  pk=dmppBMZNLLoPzxHi9l8tZDzEZUunPbgsYqIZYXeUrL0=
 X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/proton with auth_id=814
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-dm-pcache reads its geometry, segment ids, kset headers, key records and
-the persisted tail positions from the cache device. Each of those fields
-is protected only by a crc32c with a fixed public seed, so whoever
-supplies the cache device on a table load (CAP_SYS_ADMIN) controls them
-all. Several are used as an array index, a copy length, a backing offset
-or a loop bound with no validation, so a forged image turns a table load
-into an out-of-bounds access, a BUG_ON or an unterminated loop.
+cache_pos_decode(), cache_key_decode() and the last-kset branches of
+cache_replay(), the writeback worker and the GC worker take a cache
+segment id from the cache device metadata and index cache->segments[]
+with it without checking it against cache->n_segs. That metadata is only
+CRC-protected with a fixed public seed, so whoever supplies the cache
+device on a table load (CAP_SYS_ADMIN) controls the id; an out-of-range
+value forms a wild pcache_cache_segment pointer that is dereferenced and
+written through -- an out-of-bounds read and write driven by on-disk data.
 
-This series validates each field before use and fails the table load with
--EIO instead.
+Add cache_seg_id_valid() and reject an out-of-range id at each decode
+site, failing the operation with -EIO instead of indexing past the array.
+Bound the id against the initialized-segment count (cache_info.n_segs)
+rather than the physical device total. A forged cache_info.n_segs below
+seg_num otherwise leaves segments[cache_info.n_segs..seg_num) as zeroed
+structs whose data pointer is NULL, so a forged id in that window would
+still be dereferenced. A later patch guarantees cache_info.n_segs <=
+seg_num, and a driver-created cache sets the two equal, so valid images
+are unaffected.
 
-   1  validate seg_id fields
-   2  validate geometry fields from on-disk cache_info
-   3  validate kset key_num and intra-segment bounds
-   4  bound the persisted tail-position offset
-   5  reject a kset that overruns its segment
-   6  detect a cycle in the last-kset chain during replay
-   7  bound the logical key offset from persistent memory
-   8  clamp the tail kset read to the segment data region
-   9  validate on-media seg_num against the cache device size
-  10  validate the persisted dirty_tail chain at load
-  11  only hand out initialized cache segments
-
-Patch 9 closes the most serious case. seg_num is the geometry root every
-other on-media segment id is bounded against, but it is itself never
-checked against the device. Because cache_dev->mapping is the direct map
-of the pmem, a forged seg_num larger than the device makes a new-cache
-init memset() 12 KiB past the mapping, over ordinary kernel memory --
-KASAN, at table load:
-
-  BUG: KASAN: slab-use-after-free in cache_dev_zero_range+0x1d/0x80 [dm_pcache]
-  Write of size 12288 ... by task dmsetup
-   cache_dev_zero_range <- cache_seg_init <- pcache_cache_start
-   <- dm_pcache_ctr <- dm_table_add_target <- table_load
-
-Patch 10 closes a writeback-side livelock. The persisted dirty_tail is
-decoded independently of the key_tail chain that cache_replay() walks and
-bounds, and the writeback worker follows it on its own; a forged dirty_tail
-whose last-kset chain does not terminate makes cache_writeback_fn() re-arm
-with no delay forever. Patch 10 validates that chain at load with the same
-hop cap cache_replay() uses and rejects the image with -EIO.
-
-Patch 11 is defensive. get_cache_segment() scans the physical segment count
-rather than the initialized cache_info->n_segs, so a forged n_segs smaller
-than the device could hand cache_kset_close() a zeroed segment whose data
-pointer is NULL. Bounding the allocator to initialized segments removes that
-possibility; it does not reject a conforming image.
-
-Tested on a KASAN build, one forged image per field. For patches 1-10 the
-unpatched vector faults, corrupts, over-reads or loops at the table load
-(patch 10: a forged dirty_tail cycle re-arms the writeback worker until the
-hop cap fires), the patched build rejects the image with -EIO, and a valid
-image still loads.
-
-This is a large series and it touches most of the on-media parse path, so I'd
-rather it be reviewed as a set than piecemeal; I'll hold the next respin until
-there is feedback on the whole thing.
-
-One caveat on the testing above: each patch was exercised at its boundary -- a
-crafted image with the field forged just past its limit, on a KASAN build. That
-is the crafted-image case these patches are about, not a normal-workload run.
-Exercising ordinary cache operation over time would take more than I put in
-here; a conforming image loads and the other vectors behave as before, but I
-have not stress-tested normal use.
-
-Two notes for review. Zheng Gu reviewed v1; v2 reshaped those patches -- patch
-1 now bounds against cache_info->n_segs, not the device count, and the series
-grew from three to eleven -- so I did not carry the v1 Reviewed-by tags and
-would ask for a fresh look. There is also an in-flight cleanup series on this
-driver (jianyungao89, "dm-pcache: minor cleanups") touching cache_seg_remain()
-and cache_data_alloc(); it does not overlap these fixes, but you may want to
-sequence the two.
-
-v2:
- - Grew from 3 patches to 11. Mikulas Patocka's review of v1 showed the
-   writeback worker re-armed on a rejected kset forever instead of
-   stopping; auditing the same forged-image threat model surfaced the
-   remaining fields, including the unbounded seg_num geometry root (patch 9,
-   the out-of-bounds write above), the persisted dirty_tail chain the
-   writeback worker follows independently of replay (patch 10) and the
-   uninitialized-segment allocation reaching cache_kset_close() (patch 11).
-
-v1: https://lore.kernel.org/all/20260619-b4-disp-997773a1-v1-0-14df8aedb323@proton.me/
+Fixes: 1d57628ff95b ("dm-pcache: add persistent cache target in device-mapper")
+Cc: stable@vger.kernel.org
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
-Bryam Vargas (11):
-      dm-pcache: validate seg_id fields from persistent memory
-      dm-pcache: validate geometry fields from on-disk cache_info
-      dm-pcache: validate kset key_num and intra-segment bounds
-      dm-pcache: bound the persisted tail-position offset
-      dm-pcache: reject a kset that overruns its segment
-      dm-pcache: detect a cycle in the last-kset chain during replay
-      dm-pcache: bound the logical key offset from persistent memory
-      dm-pcache: clamp the tail kset read to the segment data region
-      dm-pcache: validate on-media seg_num against the cache device size
-      dm-pcache: validate the persisted dirty_tail chain at load
-      dm-pcache: only hand out initialized cache segments
+ drivers/md/dm-pcache/cache.c           |  4 ++++
+ drivers/md/dm-pcache/cache.h           | 15 +++++++++++++++
+ drivers/md/dm-pcache/cache_gc.c        | 16 ++++++++++++++--
+ drivers/md/dm-pcache/cache_key.c       | 11 +++++++++++
+ drivers/md/dm-pcache/cache_writeback.c | 23 +++++++++++++++++++----
+ 5 files changed, 63 insertions(+), 6 deletions(-)
 
- drivers/md/dm-pcache/cache.c           |  29 +++++++++
- drivers/md/dm-pcache/cache.h           |  38 +++++++++++
- drivers/md/dm-pcache/cache_dev.c       |  22 ++++++-
- drivers/md/dm-pcache/cache_gc.c        |  31 +++++++--
- drivers/md/dm-pcache/cache_key.c       | 113 ++++++++++++++++++++++++++++++++-
- drivers/md/dm-pcache/cache_segment.c   |  12 +++-
- drivers/md/dm-pcache/cache_writeback.c |  38 ++++++++---
- 7 files changed, 261 insertions(+), 22 deletions(-)
----
-base-commit: a13c140cc289c0b7b3770bce5b3ad42ab35074aa
-change-id: 20260717-b4-disp-4c0a0039-0cc25500aee1
+diff --git a/drivers/md/dm-pcache/cache.c b/drivers/md/dm-pcache/cache.c
+index bb1ada31e483..e9d2b87174d7 100644
+--- a/drivers/md/dm-pcache/cache.c
++++ b/drivers/md/dm-pcache/cache.c
+@@ -118,6 +118,9 @@ int cache_pos_decode(struct pcache_cache *cache,
+ 	if (!latest_addr)
+ 		return -EIO;
+ 
++	if (!cache_seg_id_valid(cache, latest.cache_seg_id))
++		return -EIO;
++
+ 	pos->cache_seg = &cache->segments[latest.cache_seg_id];
+ 	pos->seg_off = latest.seg_off;
+ 	*seq = latest.header.seq;
+@@ -155,6 +158,7 @@ static int cache_init(struct dm_pcache *pcache)
+ 	cache->cache_dev = &pcache->cache_dev;
+ 	cache->n_segs = cache_dev->seg_num;
+ 	atomic_set(&cache->gc_errors, 0);
++	atomic_set(&cache->writeback_errors, 0);
+ 	spin_lock_init(&cache->seg_map_lock);
+ 	spin_lock_init(&cache->key_head_lock);
+ 
+diff --git a/drivers/md/dm-pcache/cache.h b/drivers/md/dm-pcache/cache.h
+index 27613b56be54..919736379b76 100644
+--- a/drivers/md/dm-pcache/cache.h
++++ b/drivers/md/dm-pcache/cache.h
+@@ -180,6 +180,7 @@ struct pcache_cache {
+ 		u32 advance;
+ 		int ret;
+ 	} writeback_ctx;
++	atomic_t		writeback_errors;
+ 
+ 	char gc_kset_onmedia_buf[PCACHE_KSET_ONMEDIA_SIZE_MAX];
+ 	struct delayed_work	gc_work;
+@@ -420,6 +421,20 @@ static inline bool cache_seg_is_ctrl_seg(u32 cache_seg_id)
+ 	return (cache_seg_id == 0);
+ }
+ 
++/**
++ * cache_seg_id_valid - Validate a cache segment id read from the cache device.
++ * @cache: Pointer to the pcache_cache structure.
++ * @cache_seg_id: Segment id decoded from on-media metadata.
++ *
++ * On-media segment ids are only protected by a CRC, which an attacker who can
++ * format the cache device computes over their chosen value. Reject any id that
++ * would index cache->segments[] out of bounds before it is dereferenced.
++ */
++static inline bool cache_seg_id_valid(struct pcache_cache *cache, u32 cache_seg_id)
++{
++	return cache_seg_id < cache->cache_info.n_segs;
++}
++
+ /**
+  * cache_key_cutfront - Cuts a specified length from the front of a cache key.
+  * @key: Pointer to pcache_cache_key structure.
+diff --git a/drivers/md/dm-pcache/cache_gc.c b/drivers/md/dm-pcache/cache_gc.c
+index 94f8b276a021..02fa0ce03134 100644
+--- a/drivers/md/dm-pcache/cache_gc.c
++++ b/drivers/md/dm-pcache/cache_gc.c
+@@ -74,11 +74,17 @@ static bool need_gc(struct pcache_cache *cache, struct pcache_cache_pos *dirty_t
+  * @cache: Pointer to the pcache_cache structure.
+  * @kset_onmedia: Pointer to the kset_onmedia structure for the last kset.
+  */
+-static void last_kset_gc(struct pcache_cache *cache, struct pcache_cache_kset_onmedia *kset_onmedia)
++static int last_kset_gc(struct pcache_cache *cache, struct pcache_cache_kset_onmedia *kset_onmedia)
+ {
+ 	struct dm_pcache *pcache = CACHE_TO_PCACHE(cache);
+ 	struct pcache_cache_segment *cur_seg, *next_seg;
+ 
++	if (!cache_seg_id_valid(cache, kset_onmedia->next_cache_seg_id)) {
++		pcache_dev_err(pcache, "invalid next_cache_seg_id %u in gc (n_segs %u)\n",
++				kset_onmedia->next_cache_seg_id, cache->n_segs);
++		return -EIO;
++	}
++
+ 	cur_seg = cache->key_tail.cache_seg;
+ 
+ 	next_seg = &cache->segments[kset_onmedia->next_cache_seg_id];
+@@ -94,6 +100,8 @@ static void last_kset_gc(struct pcache_cache *cache, struct pcache_cache_kset_on
+ 	spin_lock(&cache->seg_map_lock);
+ 	__clear_bit(cur_seg->cache_seg_id, cache->seg_map);
+ 	spin_unlock(&cache->seg_map_lock);
++
++	return 0;
+ }
+ 
+ void pcache_cache_gc_fn(struct work_struct *work)
+@@ -130,7 +138,11 @@ void pcache_cache_gc_fn(struct work_struct *work)
+ 			if (dirty_tail.cache_seg == key_tail.cache_seg)
+ 				break;
+ 
+-			last_kset_gc(cache, kset_onmedia);
++			ret = last_kset_gc(cache, kset_onmedia);
++			if (ret) {
++				atomic_inc(&cache->gc_errors);
++				return;
++			}
+ 			continue;
+ 		}
+ 
+diff --git a/drivers/md/dm-pcache/cache_key.c b/drivers/md/dm-pcache/cache_key.c
+index e068e878231b..8eec5238c5da 100644
+--- a/drivers/md/dm-pcache/cache_key.c
++++ b/drivers/md/dm-pcache/cache_key.c
+@@ -94,6 +94,12 @@ int cache_key_decode(struct pcache_cache *cache,
+ 	key->off = key_onmedia->off;
+ 	key->len = key_onmedia->len;
+ 
++	if (!cache_seg_id_valid(cache, key_onmedia->cache_seg_id)) {
++		pcache_dev_err(pcache, "invalid cache_seg_id %u in cache key (n_segs %u)\n",
++				key_onmedia->cache_seg_id, cache->n_segs);
++		return -EIO;
++	}
++
+ 	key->cache_pos.cache_seg = &cache->segments[key_onmedia->cache_seg_id];
+ 	key->cache_pos.seg_off = key_onmedia->cache_seg_off;
+ 
+@@ -789,6 +795,11 @@ int cache_replay(struct pcache_cache *cache)
+ 
+ 			pcache_dev_debug(pcache, "last kset replay, next: %u\n", kset_onmedia->next_cache_seg_id);
+ 
++			if (!cache_seg_id_valid(cache, kset_onmedia->next_cache_seg_id)) {
++				ret = -EIO;
++				goto out;
++			}
++
+ 			next_seg = &cache->segments[kset_onmedia->next_cache_seg_id];
+ 
+ 			pos->cache_seg = next_seg;
+diff --git a/drivers/md/dm-pcache/cache_writeback.c b/drivers/md/dm-pcache/cache_writeback.c
+index 87a82b3fe836..7751468d5118 100644
+--- a/drivers/md/dm-pcache/cache_writeback.c
++++ b/drivers/md/dm-pcache/cache_writeback.c
+@@ -196,12 +196,18 @@ static int cache_kset_insert_tree(struct pcache_cache *cache, struct pcache_cach
+ 	return ret;
+ }
+ 
+-static void last_kset_writeback(struct pcache_cache *cache,
++static int last_kset_writeback(struct pcache_cache *cache,
+ 		struct pcache_cache_kset_onmedia *last_kset_onmedia)
+ {
+ 	struct dm_pcache *pcache = CACHE_TO_PCACHE(cache);
+ 	struct pcache_cache_segment *next_seg;
+ 
++	if (!cache_seg_id_valid(cache, last_kset_onmedia->next_cache_seg_id)) {
++		pcache_dev_err(pcache, "invalid next_cache_seg_id %u in writeback (n_segs %u)\n",
++				last_kset_onmedia->next_cache_seg_id, cache->n_segs);
++		return -EIO;
++	}
++
+ 	pcache_dev_debug(pcache, "last kset, next: %u\n", last_kset_onmedia->next_cache_seg_id);
+ 
+ 	next_seg = &cache->segments[last_kset_onmedia->next_cache_seg_id];
+@@ -211,6 +217,8 @@ static void last_kset_writeback(struct pcache_cache *cache,
+ 	cache->dirty_tail.seg_off = 0;
+ 	cache_encode_dirty_tail(cache);
+ 	mutex_unlock(&cache->dirty_tail_lock);
++
++	return 0;
+ }
+ 
+ void cache_writeback_fn(struct work_struct *work)
+@@ -229,6 +237,9 @@ void cache_writeback_fn(struct work_struct *work)
+ 	if (pcache_is_stopping(pcache))
+ 		goto unlock;
+ 
++	if (atomic_read(&cache->writeback_errors))
++		goto unlock;
++
+ 	kset_onmedia = (struct pcache_cache_kset_onmedia *)cache->wb_kset_onmedia_buf;
+ 
+ 	mutex_lock(&cache->dirty_tail_lock);
+@@ -241,15 +252,19 @@ void cache_writeback_fn(struct work_struct *work)
+ 	}
+ 
+ 	if (kset_onmedia->flags & PCACHE_KSET_FLAGS_LAST) {
+-		last_kset_writeback(cache, kset_onmedia);
++		ret = last_kset_writeback(cache, kset_onmedia);
++		if (ret) {
++			atomic_inc(&cache->writeback_errors);
++			goto unlock;
++		}
+ 		delay = 0;
+ 		goto queue_work;
+ 	}
+ 
+ 	ret = cache_kset_insert_tree(cache, kset_onmedia);
+ 	if (ret) {
+-		delay = PCACHE_CACHE_WRITEBACK_INTERVAL;
+-		goto queue_work;
++		atomic_inc(&cache->writeback_errors);
++		goto unlock;
+ 	}
+ 
+ 	cache_wb_tree_writeback(cache, get_kset_onmedia_size(kset_onmedia));
 
-Best regards,
 -- 
-Bryam Vargas <hexlabsecurity@proton.me>
+2.43.0
 
