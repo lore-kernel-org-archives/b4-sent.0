@@ -1,232 +1,122 @@
-From: Aaron Kling <webgeek1234@gmail.com>
-Date: Fri, 17 Jul 2026 19:17:03 -0500
-Subject: [PATCH 2/2] soc/tegra: pmc: Add Tegra210B01 support
+From: Xiubo Li <xiubo.li@clyso.com>
+Date: Sat, 18 Jul 2026 10:29:48 +0800
+Subject: [PATCH v2] ceph: revalidate ki_pos for O_APPEND writes after cap
+ acquisition
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260717-t210b01-pmc-v1-2-bf776be8b3a7@gmail.com>
-References: <20260717-t210b01-pmc-v1-0-bf776be8b3a7@gmail.com>
-In-Reply-To: <20260717-t210b01-pmc-v1-0-bf776be8b3a7@gmail.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Thierry Reding <thierry.reding@kernel.org>, 
- Jonathan Hunter <jonathanh@nvidia.com>
-Cc: Thierry Reding <thierry.reding@gmail.com>, devicetree@vger.kernel.org, 
- linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Aaron Kling <webgeek1234@gmail.com>, Azkali Manad <a.ffcc7@gmail.com>, 
- Thomas Makin <halorocker89@gmail.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784333826; l=9501;
- i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
- bh=OCQonk6jGTpoZZXZxgWdn6dt1IMUFa28q+B6W0rxEWc=;
- b=zrJSCM70nwdjvdIxOUl62PP0w5YCTLKd/jXQo7oNePjcq69OmsfLPQxoZTsrVWY0+FaXRFp9o
- ljccunzp8wXASUpezwWtoLxIsyjUOCkzbdolB4zFHqXchiAD/f5z2X+
-X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
- pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
-X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
+Message-Id: <20260718-ceph-append-fix-v2-1-88dcc4f8371f@clyso.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNwQ6CMBBEf4Xs2TVtiRQ8+R+GQ1lWqVHatEgkp
+ P9uwbPHN5l5s0LkYDnCuVgh8GyjdWMGdSiABjPeGW2fGZRQldBSI7Ef0HjPY483+8GmVoLLThp
+ dE+SVD5zj3Xhtfxzf3YNp2jRbY7BxcmHZL2e59f7bZ4kS6SQboQ3VXFYXei7RHcm9oE0pfQG1O
+ etKwAAAAA==
+X-Change-ID: 20260717-ceph-append-fix-9820e3b1a78c
+To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+ Viacheslav Dubeyko <slava@dubeyko.com>
+Cc: Jeff Layton <jlayton@kernel.org>, ceph-devel@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Xiubo Li <xiubo.li@clyso.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784341791; l=3519;
+ i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
+ bh=4gyxWWukSVVylN8aTt8ukM2xS92PDXN0uFkXnfmDBdc=;
+ b=S7It9ZgfjWgUD8UvMSnDfwa4xlMFLYd7HECVSLi1hgUzfq4B9wX3OdD0y8veivISz/SI1xRA9
+ RBYWU5tgEnMB14cIJNwe0EHe6RCzX1KOt2nD8QvqaOSjC3bXVehUHMP
+X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
+ pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
+X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Azkali Manad <a.ffcc7@gmail.com>
+For O_APPEND writes, ki_pos is set to the current EOF via
+generic_write_checks() after fetching i_size from the MDS.  However,
+ceph_get_caps() may need to wait for Fwx exclusive caps if the write
+extends the file (endoff > i_max_size).  While waiting for Fwx, the
+previous Fwx holder (another client) may have already extended the
+file.  When the MDS grants us Fwx, the cap grant message updates the
+local i_size, but ki_pos remains at the old EOF, causing the append
+write to land at a stale offset and overwrite data from the other
+client.
 
-The PMC in Tegra210B01 is very similar to the one in the original
-Tegra210, but has a few powergate and pad differences. Add support for
-this soc.
+Fix by re-reading i_size_read(inode) after ceph_get_caps() returns.
+At this point we hold Fwx exclusive caps, no other client can modify
+the file, and i_size reflects the true EOF from the MDS cap grant.
+No extra MDS round-trip is needed.  Only adjust ki_pos when the EOF
+has actually changed.
 
-Signed-off-by: Azkali Manad <a.ffcc7@gmail.com>
-Co-developed-by: Thomas Makin <halorocker89@gmail.com>
-Signed-off-by: Thomas Makin <halorocker89@gmail.com>
-Co-developed-by: Aaron Kling <webgeek1234@gmail.com>
-Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
+After adjusting ki_pos forward, the write range [pos, pos+count) may
+now exceed the i_max_size that was validated by ceph_get_caps() for
+the old range.  Re-check against i_max_size and truncate the write
+if necessary to stay within the MDS-granted limit.
+
+Fixes: 8e4473bb50a1 ("ceph: do not execute direct write in parallel if O_APPEND is specified")
+Link: https://tracker.ceph.com/issues/7333
+Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
 ---
- drivers/soc/tegra/pmc.c | 160 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 160 insertions(+)
+Changes in v2:
+- Re-check write range against i_max_size after adjusting ki_pos forward, and truncate if it exceeds the MDS-granted limit.(Viacheslav Dubeyko)
+- Link to v1: https://patch.msgid.link/20260717-ceph-append-fix-v1-1-c51907ac8e36@clyso.com
+---
+ fs/ceph/file.c | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
 
-diff --git a/drivers/soc/tegra/pmc.c b/drivers/soc/tegra/pmc.c
-index f419a5395545f..4d77aa66d690c 100644
---- a/drivers/soc/tegra/pmc.c
-+++ b/drivers/soc/tegra/pmc.c
-@@ -3744,6 +3744,32 @@ static const char * const tegra210_powergates[] = {
- 	[TEGRA_POWERGATE_VE2] = "ve2",
- };
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index 9d89d7fc1095..a2b4d261e23c 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -2491,6 +2491,48 @@ static ssize_t ceph_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 	if (err < 0)
+ 		goto out;
  
-+static const char * const tegra210b01_powergates[] = {
-+	[TEGRA_POWERGATE_CPU] = "crail",
-+	[TEGRA_POWERGATE_3D] = "3d",
-+	[TEGRA_POWERGATE_PCIE] = "pcie",
-+	[TEGRA_POWERGATE_MPE] = "mpe",
-+	[TEGRA_POWERGATE_SATA] = "sata",
-+	[TEGRA_POWERGATE_CPU1] = "cpu1",
-+	[TEGRA_POWERGATE_CPU2] = "cpu2",
-+	[TEGRA_POWERGATE_CPU3] = "cpu3",
-+	[TEGRA_POWERGATE_CPU0] = "cpu0",
-+	[TEGRA_POWERGATE_C0NC] = "c0nc",
-+	[TEGRA_POWERGATE_SOR] = "sor",
-+	[TEGRA_POWERGATE_DIS] = "dis",
-+	[TEGRA_POWERGATE_DISB] = "disb",
-+	[TEGRA_POWERGATE_XUSBA] = "xusba",
-+	[TEGRA_POWERGATE_XUSBB] = "xusbb",
-+	[TEGRA_POWERGATE_XUSBC] = "xusbc",
-+	[TEGRA_POWERGATE_VIC] = "vic",
-+	[TEGRA_POWERGATE_IRAM] = "iram",
-+	[TEGRA_POWERGATE_NVDEC] = "nvdec",
-+	[TEGRA_POWERGATE_NVJPG] = "nvjpg",
-+	[TEGRA_POWERGATE_AUD] = "aud",
-+	[TEGRA_POWERGATE_DFD] = "dfd",
-+};
++	/*
++	 * For O_APPEND writes we may have waited for Fwx exclusive caps
++	 * while the previous Fwx holder (another client) extended the
++	 * file.  i_size has been updated via the cap grant message from
++	 * the MDS, but ki_pos is still the old EOF.  Re-read i_size here
++	 * (no extra MDS round-trip needed) and adjust ki_pos to the true
++	 * EOF.  Since we hold Fwx, no other client can change the file.
++	 */
++	if (iocb->ki_flags & IOCB_APPEND) {
++		loff_t cur_eof = i_size_read(inode);
 +
++		if (cur_eof != pos) {
++			doutc(cl,
++			      "%p %llx.%llx O_APPEND: pos adjusted %lld -> %lld\n",
++			      inode, ceph_vinop(inode), pos, cur_eof);
++			iocb->ki_pos = cur_eof;
++			pos = cur_eof;
++			if (pos >= limit) {
++				err = -EFBIG;
++				goto out_caps;
++			}
++			iov_iter_truncate(from, limit - pos);
++			count = iov_iter_count(from);
 +
- static const u8 tegra210_cpu_powergates[] = {
- 	TEGRA_POWERGATE_CPU0,
- 	TEGRA_POWERGATE_CPU1,
-@@ -3897,6 +3923,139 @@ static const struct tegra_pmc_soc tegra210_pmc_soc = {
- 	.has_single_mmio_aperture = true,
- };
- 
-+static const struct tegra_io_pad_soc tegra210b01_io_pads[] = {
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_AUDIO, 17, 0x1b8, 0x1bc, "audio"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_AUDIO_HV, 29, 0x1c0, 0x1c4, "audio-hv"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_CAM, 4, 0x1c0, 0x1c4, "cam"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_CSIA, 0, 0x1b8, 0x1bc, "csia"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_CSIB, 1, 0x1b8, 0x1bc, "csib"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_CSIC, 10, 0x1c0, 0x1c4, "csic"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_CSID, 11, 0x1c0, 0x1c4, "csid"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_CSIE, 12, 0x1c0, 0x1c4, "csie"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_CSIF, 13, 0x1c0, 0x1c4, "csif"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DBG, 25, 0x1b8, 0x1bc, "dbg"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DEBUG_NONAO, 26, 0x1b8, 0x1bc, "debug-nonao"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DMIC, 18, 0x1c0, 0x1c4, "dmic"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DP, 19, 0x1c0, 0x1c4, "dp"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DSI, 2, 0x1b8, 0x1bc, "dsi"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DSIB, 7, 0x1c0, 0x1c4, "dsib"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DSIC, 8, 0x1c0, 0x1c4, "dsic"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_DSID, 9, 0x1c0, 0x1c4, "dsid"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_EMMC, 3, 0x1c0, 0x1c4, "emmc"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_EMMC2, 5, 0x1c0, 0x1c4, "emmc2"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_GPIO, 27, 0x1b8, 0x1bc, "gpio"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_HDMI, 28, 0x1b8, 0x1bc, "hdmi"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_HSIC, 19, 0x1b8, 0x1bc, "hsic"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_LVDS, 25, 0x1c0, 0x1c4, "lvds"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_MIPI_BIAS, 3, 0x1b8, 0x1bc, "mipi-bias"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_PEX_BIAS, 4, 0x1b8, 0x1bc, "pex-bias"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_PEX_CLK1, 5, 0x1b8, 0x1bc, "pex-clk1"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_PEX_CLK2, 6, 0x1b8, 0x1bc, "pex-clk2"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_PEX_CNTRL, UINT_MAX, UINT_MAX, UINT_MAX, "pex-cntrl"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_SDMMC1, 1, 0x1c0, 0x1c4, "sdmmc1"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_SDMMC3, 2, 0x1c0, 0x1c4, "sdmmc3"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_SPI, 14, 0x1c0, 0x1c4, "spi"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_SPI_HV, 15, 0x1c0, 0x1c4, "spi-hv"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_UART, 14, 0x1b8, 0x1bc, "uart"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_USB0, 9, 0x1b8, 0x1bc, "usb0"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_USB1, 10, 0x1b8, 0x1bc, "usb1"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_USB2, 11, 0x1b8, 0x1bc, "usb2"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_USB3, 18, 0x1b8, 0x1bc, "usb3"),
-+	TEGRA_IO_PAD(TEGRA_IO_PAD_USB_BIAS, 12, 0x1b8, 0x1bc, "usb-bias"),
-+};
++			/*
++			 * ceph_get_caps() validated the old endoff
++			 * against i_max_size; adjusting ki_pos forward
++			 * may have shifted the write range beyond the
++			 * granted max_size.  Re-check and truncate if
++			 * necessary.
++			 */
++			if (pos + count > (loff_t)ci->i_max_size) {
++				if (pos >= (loff_t)ci->i_max_size) {
++					err = -EFBIG;
++					goto out_caps;
++				}
++				iov_iter_truncate(from, ci->i_max_size - pos);
++				count = iov_iter_count(from);
++			}
++		}
++	}
 +
-+static const struct tegra_io_pad_vctrl tegra210b01_io_pad_vctrls[] = {
-+	TEGRA_IO_PAD_VCTRL(TEGRA_IO_PAD_AUDIO, PMC_PWR_DET_VALUE, 5),
-+	TEGRA_IO_PAD_VCTRL(TEGRA_IO_PAD_AUDIO_HV, PMC_PWR_DET_VALUE, 18),
-+	TEGRA_IO_PAD_VCTRL(TEGRA_IO_PAD_CAM, PMC_PWR_DET_VALUE, 10),
-+	TEGRA_IO_PAD_VCTRL(TEGRA_IO_PAD_DBG, PMC_PWR_DET_VALUE, 19),
-+	TEGRA_IO_PAD_VCTRL(TEGRA_IO_PAD_DMIC, PMC_PWR_DET_VALUE, 20),
-+	TEGRA_IO_PAD_VCTRL(TEGRA_IO_PAD_GPIO, PMC_PWR_DET_VALUE, 21),
-+	TEGRA_IO_PAD_VCTRL(TEGRA_IO_PAD_PEX_CNTRL, PMC_PWR_DET_VALUE, 11),
-+	TEGRA_IO_PAD_VCTRL(TEGRA_IO_PAD_SDMMC1, PMC_PWR_DET_VALUE, 12),
-+	TEGRA_IO_PAD_VCTRL(TEGRA_IO_PAD_SDMMC3, PMC_PWR_DET_VALUE, 13),
-+	TEGRA_IO_PAD_VCTRL(TEGRA_IO_PAD_SPI, PMC_PWR_DET_VALUE, 22),
-+	TEGRA_IO_PAD_VCTRL(TEGRA_IO_PAD_SPI_HV, PMC_PWR_DET_VALUE, 23),
-+	TEGRA_IO_PAD_VCTRL(TEGRA_IO_PAD_UART, PMC_PWR_DET_VALUE, 2),
-+};
-+
-+static const struct pinctrl_pin_desc tegra210b01_pin_descs[] = {
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_AUDIO, "audio"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_AUDIO_HV, "audio-hv"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_CAM, "cam"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_CSIA, "csia"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_CSIB, "csib"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_CSIC, "csic"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_CSID, "csid"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_CSIE, "csie"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_CSIF, "csif"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DBG, "dbg"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DEBUG_NONAO, "debug-nonao"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DMIC, "dmic"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DP, "dp"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DSI, "dsi"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DSIB, "dsib"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DSIC, "dsic"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_DSID, "dsid"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_EMMC, "emmc"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_EMMC2, "emmc2"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_GPIO, "gpio"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_HDMI, "hdmi"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_HSIC, "hsic"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_LVDS, "lvds"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_MIPI_BIAS, "mipi-bias"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_PEX_BIAS, "pex-bias"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_PEX_CLK1, "pex-clk1"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_PEX_CLK2, "pex-clk2"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_PEX_CNTRL, "pex-cntrl"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_SDMMC1, "sdmmc1"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_SDMMC3, "sdmmc3"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_SPI, "spi"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_SPI_HV, "spi-hv"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_UART, "uart"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_USB0, "usb0"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_USB1, "usb1"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_USB2, "usb2"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_USB3, "usb3"),
-+	TEGRA_IO_PIN_DESC(TEGRA_IO_PAD_USB_BIAS, "usb-bias"),
-+};
-+
-+static const struct tegra_pmc_soc tegra210b01_pmc_soc = {
-+	.supports_core_domain = false,
-+	.num_powergates = ARRAY_SIZE(tegra210b01_powergates),
-+	.powergates = tegra210b01_powergates,
-+	.num_cpu_powergates = ARRAY_SIZE(tegra210_cpu_powergates),
-+	.cpu_powergates = tegra210_cpu_powergates,
-+	.has_tsense_reset = true,
-+	.has_gpu_clamps = true,
-+	.needs_mbist_war = false,
-+	.has_io_pad_wren = false,
-+	.maybe_tz_only = true,
-+	.num_io_pads = ARRAY_SIZE(tegra210b01_io_pads),
-+	.io_pads = tegra210b01_io_pads,
-+	.num_io_pad_vctrls = ARRAY_SIZE(tegra210b01_io_pad_vctrls),
-+	.io_pad_vctrls = tegra210b01_io_pad_vctrls,
-+	.num_pin_descs = ARRAY_SIZE(tegra210b01_pin_descs),
-+	.pin_descs = tegra210b01_pin_descs,
-+	.regs = &tegra20_pmc_regs,
-+	.init = tegra20_pmc_init,
-+	.setup_irq_polarity = tegra20_pmc_setup_irq_polarity,
-+	.powergate_set = tegra114_powergate_set,
-+	.irq_set_wake = tegra210_pmc_irq_set_wake,
-+	.irq_set_type = tegra210_pmc_irq_set_type,
-+	.reset_sources = tegra210_reset_sources,
-+	.num_reset_sources = ARRAY_SIZE(tegra210_reset_sources),
-+	.reset_levels = NULL,
-+	.num_reset_levels = 0,
-+	.num_wake_events = ARRAY_SIZE(tegra210_wake_events),
-+	.wake_events = tegra210_wake_events,
-+	.pmc_clks_data = tegra_pmc_clks_data,
-+	.num_pmc_clks = ARRAY_SIZE(tegra_pmc_clks_data),
-+	.has_blink_output = true,
-+	.has_usb_sleepwalk = true,
-+	.has_single_mmio_aperture = true,
-+};
-+
- static const struct tegra_io_pad_soc tegra186_io_pads[] = {
- 	TEGRA_IO_PAD(TEGRA_IO_PAD_CSIA, 0, 0x74, 0x78, "csia"),
- 	TEGRA_IO_PAD(TEGRA_IO_PAD_CSIB, 1, 0x74, 0x78, "csib"),
-@@ -4824,6 +4983,7 @@ static const struct of_device_id tegra_pmc_match[] = {
- 	{ .compatible = "nvidia,tegra194-pmc", .data = &tegra194_pmc_soc },
- 	{ .compatible = "nvidia,tegra186-pmc", .data = &tegra186_pmc_soc },
- 	{ .compatible = "nvidia,tegra210-pmc", .data = &tegra210_pmc_soc },
-+	{ .compatible = "nvidia,tegra210b01-pmc", .data = &tegra210b01_pmc_soc },
- 	{ .compatible = "nvidia,tegra132-pmc", .data = &tegra124_pmc_soc },
- 	{ .compatible = "nvidia,tegra124-pmc", .data = &tegra124_pmc_soc },
- 	{ .compatible = "nvidia,tegra114-pmc", .data = &tegra114_pmc_soc },
+ 	err = file_update_time(file);
+ 	if (err)
+ 		goto out_caps;
 
--- 
-2.54.0
+---
+base-commit: df47791ab9f12cd9144aca477ddae195f68072a5
+change-id: 20260717-ceph-append-fix-9820e3b1a78c
+
+Best regards,
+--  
+Xiubo Li <xiubo.li@clyso.com>
 
