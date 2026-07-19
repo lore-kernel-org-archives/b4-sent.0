@@ -1,10 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Sun, 19 Jul 2026 10:51:59 +0100
-Subject: [PATCH 3/4] iio: dac: ad5686: extend device support with new parts
+Date: Sun, 19 Jul 2026 10:52:00 +0100
+Subject: [PATCH 4/4] iio: dac: ad5686: update device list and file header
+ comments
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260719-ad5686-extend-dev-support-v1-3-841ec75cf5d8@analog.com>
+Message-Id: <20260719-ad5686-extend-dev-support-v1-4-841ec75cf5d8@analog.com>
 References: <20260719-ad5686-extend-dev-support-v1-0-841ec75cf5d8@analog.com>
 In-Reply-To: <20260719-ad5686-extend-dev-support-v1-0-841ec75cf5d8@analog.com>
 To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
@@ -17,249 +18,128 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Conor Dooley <conor+dt@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784454721; l=10989;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784454721; l=4144;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=pwyIWIwpbueR4AW5F3cEAEBFNsVvf6IGY71bPbLlF4g=;
- b=AjeIocc/+0xj5fsFGGEJ3FskdB5kdwwYZJCi/KKkus1xND75sEWp0/de/kikfSIEk8dULRYN+
- N4ef89IkYDMAsbQh8DrhPjVY9kyhyueOpCDSct8k+NM9nWaGKI50xAf
+ bh=g87LSQvSH5zO99f8r0mYhWdXFrEI0PIUf10Rds43rLE=;
+ b=3kkX5U/Dmb4CYXRm3XMM/lysS2S6upGe2fOml1gdgoaPuEPnI9rOYVatEmXbFniPNsZR/nlbD
+ TROlJfiNL6vCKJVrN+vMGP0sDKCxRh/g+SRttCu7epfqFstzxaMTFVs
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for AD5313R, AD5317R, AD5674, AD5679, AD5687, AD5687R, AD5689,
-AD5689R to the AD5686 SPI driver. Also adding support for AD5316R, AD5675,
-AD5697R to the AD5696 I2C driver. AD5673R and AD5677R were missing from
-the of_match table. This includes the creation of seven chip info struct
-instances and reuse of existing ones.
+Update device list entries in Kconfig and remove device description from
+file headers. One can rely on the ID table(s) to check for supported
+devices. Adjust comment header accordingly and update Copyright notice in
+comment file headers with the current year.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/dac/ad5686-spi.c | 16 +++++++++++++
- drivers/iio/dac/ad5686.c     | 55 ++++++++++++++++++++++++++++++++++++++++++++
- drivers/iio/dac/ad5686.h     |  7 ++++++
- drivers/iio/dac/ad5696-i2c.c |  8 +++++++
- 4 files changed, 86 insertions(+)
+ drivers/iio/dac/Kconfig      | 31 ++++++++++++++++++++++++-------
+ drivers/iio/dac/ad5686-spi.c |  7 ++-----
+ drivers/iio/dac/ad5686.c     |  4 ++--
+ drivers/iio/dac/ad5696-i2c.c |  6 ++----
+ 4 files changed, 30 insertions(+), 18 deletions(-)
 
+diff --git a/drivers/iio/dac/Kconfig b/drivers/iio/dac/Kconfig
+index d6d560c09e25..ba2065241af3 100644
+--- a/drivers/iio/dac/Kconfig
++++ b/drivers/iio/dac/Kconfig
+@@ -251,9 +251,18 @@ config AD5686_SPI
+ 	depends on SPI
+ 	select AD5686
+ 	help
+-	  Say yes here to build support for Analog Devices AD5672R, AD5674R,
+-	  AD5676, AD5676R, AD5679R, AD5684, AD5684R, AD5684R, AD5685R, AD5686,
+-	  AD5686R Voltage Output Digital to Analog Converter.
++	  Say yes here to build support for Analog Devices Voltage Output
++	  Digital to Analog Converters:
++	  - Single-channel:
++	    AD5310R, AD5681R, AD5682R, AD5683R, AD5683R
++	  - Dual-channel:
++	    AD5313R, AD5687, AD5687R, AD5689, AD5689R
++	  - Quad-channel:
++	    AD5317R, AD5684, AD5684R, AD5685R, AD5686, AD5686R
++	  - 8-channel:
++	    AD5672R, AD5676, AD5676R
++	  - 16-channel:
++	    AD5674, AD5674R, AD5679, AD5679R
+ 
+ 	  To compile this driver as a module, choose M here: the
+ 	  module will be called ad5686.
+@@ -263,10 +272,18 @@ config AD5696_I2C
+ 	depends on I2C
+ 	select AD5686
+ 	help
+-	  Say yes here to build support for Analog Devices AD5311R, AD5337,
+-	  AD5338R, AD5671R, AD5673R, AD5675R, AD5677R, AD5691R, AD5692R, AD5693,
+-	  AD5693R, AD5694, AD5694R, AD5695R, AD5696, and AD5696R Digital to
+-	  Analog converters.
++	  Say yes here to build support for Analog Devices Voltage Output
++	  Digital to Analog Converters:
++	  - Single-channel:
++	    AD5311R, AD5691R, AD5692R, AD5693, AD5693R
++	  - Dual-channel:
++	    AD5338R, AD5697R
++	  - Quad-channel:
++	    AD5316R, AD5694, AD5694R, AD5695R, AD5696, AD5696R
++	  - 8-channel:
++	    AD5671R, AD5675, AD5675R
++	  - 16-channel:
++	    AD5673R, AD5677R
+ 
+ 	  To compile this driver as a module, choose M here: the module will be
+ 	  called ad5696.
 diff --git a/drivers/iio/dac/ad5686-spi.c b/drivers/iio/dac/ad5686-spi.c
-index 227ddb269669..003541edb742 100644
+index 003541edb742..b4531b49cb22 100644
 --- a/drivers/iio/dac/ad5686-spi.c
 +++ b/drivers/iio/dac/ad5686-spi.c
-@@ -178,10 +178,14 @@ static int ad5686_spi_probe(struct spi_device *spi)
+@@ -1,11 +1,8 @@
+ // SPDX-License-Identifier: GPL-2.0
+ /*
+- * AD5672R, AD5674R, AD5676, AD5676R, AD5679R,
+- * AD5681R, AD5682R, AD5683, AD5683R, AD5684,
+- * AD5684R, AD5685R, AD5686, AD5686R
+- * Digital to analog converters driver
++ * SPI driver for AD5686 and similar Digital to Analog Converters
+  *
+- * Copyright 2018 Analog Devices Inc.
++ * Copyright 2018-2026 Analog Devices Inc.
+  */
  
- static const struct spi_device_id ad5686_spi_id[] = {
- 	{ .name = "ad5310r", .driver_data = (kernel_ulong_t)&ad5310r_chip_info },
-+	{ .name = "ad5313r", .driver_data = (kernel_ulong_t)&ad5338r_chip_info },
-+	{ .name = "ad5317r", .driver_data = (kernel_ulong_t)&ad5317r_chip_info },
- 	{ .name = "ad5672r", .driver_data = (kernel_ulong_t)&ad5672r_chip_info },
-+	{ .name = "ad5674",  .driver_data = (kernel_ulong_t)&ad5674_chip_info },
- 	{ .name = "ad5674r", .driver_data = (kernel_ulong_t)&ad5674r_chip_info },
- 	{ .name = "ad5676",  .driver_data = (kernel_ulong_t)&ad5676_chip_info },
- 	{ .name = "ad5676r", .driver_data = (kernel_ulong_t)&ad5676r_chip_info },
-+	{ .name = "ad5679",  .driver_data = (kernel_ulong_t)&ad5679_chip_info },
- 	{ .name = "ad5679r", .driver_data = (kernel_ulong_t)&ad5679r_chip_info },
- 	{ .name = "ad5681r", .driver_data = (kernel_ulong_t)&ad5681r_chip_info },
- 	{ .name = "ad5682r", .driver_data = (kernel_ulong_t)&ad5682r_chip_info },
-@@ -193,16 +197,24 @@ static const struct spi_device_id ad5686_spi_id[] = {
- 	{ .name = "ad5685r", .driver_data = (kernel_ulong_t)&ad5685r_chip_info },
- 	{ .name = "ad5686",  .driver_data = (kernel_ulong_t)&ad5686_chip_info },
- 	{ .name = "ad5686r", .driver_data = (kernel_ulong_t)&ad5686r_chip_info },
-+	{ .name = "ad5687",  .driver_data = (kernel_ulong_t)&ad5687_chip_info },
-+	{ .name = "ad5687r", .driver_data = (kernel_ulong_t)&ad5687r_chip_info },
-+	{ .name = "ad5689",  .driver_data = (kernel_ulong_t)&ad5689_chip_info },
-+	{ .name = "ad5689r", .driver_data = (kernel_ulong_t)&ad5689r_chip_info },
- 	{ }
- };
- MODULE_DEVICE_TABLE(spi, ad5686_spi_id);
- 
- static const struct of_device_id ad5686_of_match[] = {
- 	{ .compatible = "adi,ad5310r", .data = &ad5310r_chip_info },
-+	{ .compatible = "adi,ad5313r", .data = &ad5338r_chip_info },
-+	{ .compatible = "adi,ad5317r", .data = &ad5317r_chip_info },
- 	{ .compatible = "adi,ad5672r", .data = &ad5672r_chip_info },
-+	{ .compatible = "adi,ad5674",  .data = &ad5674_chip_info },
- 	{ .compatible = "adi,ad5674r", .data = &ad5674r_chip_info },
- 	{ .compatible = "adi,ad5676",  .data = &ad5676_chip_info },
- 	{ .compatible = "adi,ad5676r", .data = &ad5676r_chip_info },
-+	{ .compatible = "adi,ad5679",  .data = &ad5679_chip_info },
- 	{ .compatible = "adi,ad5679r", .data = &ad5679r_chip_info },
- 	{ .compatible = "adi,ad5681r", .data = &ad5681r_chip_info },
- 	{ .compatible = "adi,ad5682r", .data = &ad5682r_chip_info },
-@@ -213,6 +225,10 @@ static const struct of_device_id ad5686_of_match[] = {
- 	{ .compatible = "adi,ad5685r", .data = &ad5685r_chip_info },
- 	{ .compatible = "adi,ad5686",  .data = &ad5686_chip_info },
- 	{ .compatible = "adi,ad5686r", .data = &ad5686r_chip_info },
-+	{ .compatible = "adi,ad5687",  .data = &ad5687_chip_info },
-+	{ .compatible = "adi,ad5687r", .data = &ad5687r_chip_info },
-+	{ .compatible = "adi,ad5689",  .data = &ad5689_chip_info },
-+	{ .compatible = "adi,ad5689r", .data = &ad5689r_chip_info },
- 	{ }
- };
- MODULE_DEVICE_TABLE(of, ad5686_of_match);
+ #include <linux/array_size.h>
 diff --git a/drivers/iio/dac/ad5686.c b/drivers/iio/dac/ad5686.c
-index 873dfb5b9107..090707d76d6e 100644
+index 090707d76d6e..fc0bccfb0a03 100644
 --- a/drivers/iio/dac/ad5686.c
 +++ b/drivers/iio/dac/ad5686.c
-@@ -409,8 +409,11 @@ DECLARE_AD5683_CHANNELS(ad5683r_channels, 16, 0);
- /* dual-channel */
- DECLARE_AD5338_CHANNELS(ad5337r_channels, 8, 8);
- DECLARE_AD5338_CHANNELS(ad5338r_channels, 10, 6);
-+DECLARE_AD5338_CHANNELS(ad5687r_channels, 12, 4);
-+DECLARE_AD5338_CHANNELS(ad5689r_channels, 16, 0);
+@@ -1,8 +1,8 @@
+ // SPDX-License-Identifier: GPL-2.0
+ /*
+- * AD5686R, AD5685R, AD5684R Digital to analog converters  driver
++ * Core driver for AD5686 and similar Digital to Analog Converters
+  *
+- * Copyright 2011 Analog Devices Inc.
++ * Copyright 2011-2026 Analog Devices Inc.
+  */
  
- /* quad-channel */
-+DECLARE_AD5686_CHANNELS(ad5317r_channels, 10, 6);
- DECLARE_AD5686_CHANNELS(ad5684r_channels, 12, 4);
- DECLARE_AD5686_CHANNELS(ad5685r_channels, 14, 2);
- DECLARE_AD5686_CHANNELS(ad5686r_channels, 16, 0);
-@@ -486,6 +489,44 @@ const struct ad5686_chip_info ad5338r_chip_info = {
- };
- EXPORT_SYMBOL_NS_GPL(ad5338r_chip_info, "IIO_AD5686");
- 
-+const struct ad5686_chip_info ad5687_chip_info = {
-+	.channels = ad5687r_channels,
-+	.num_channels = 2,
-+	.regmap_type = AD5686_REGMAP,
-+};
-+EXPORT_SYMBOL_NS_GPL(ad5687_chip_info, "IIO_AD5686");
-+
-+const struct ad5686_chip_info ad5687r_chip_info = {
-+	.channels = ad5687r_channels,
-+	.int_vref_mv = 2500,
-+	.num_channels = 2,
-+	.regmap_type = AD5686_REGMAP,
-+};
-+EXPORT_SYMBOL_NS_GPL(ad5687r_chip_info, "IIO_AD5686");
-+
-+const struct ad5686_chip_info ad5689_chip_info = {
-+	.channels = ad5689r_channels,
-+	.num_channels = 2,
-+	.regmap_type = AD5686_REGMAP,
-+};
-+EXPORT_SYMBOL_NS_GPL(ad5689_chip_info, "IIO_AD5686");
-+
-+const struct ad5686_chip_info ad5689r_chip_info = {
-+	.channels = ad5689r_channels,
-+	.int_vref_mv = 2500,
-+	.num_channels = 2,
-+	.regmap_type = AD5686_REGMAP,
-+};
-+EXPORT_SYMBOL_NS_GPL(ad5689r_chip_info, "IIO_AD5686");
-+
-+const struct ad5686_chip_info ad5317r_chip_info = {
-+	.channels = ad5317r_channels,
-+	.int_vref_mv = 2500,
-+	.num_channels = 4,
-+	.regmap_type = AD5686_REGMAP,
-+};
-+EXPORT_SYMBOL_NS_GPL(ad5317r_chip_info, "IIO_AD5686");
-+
- const struct ad5686_chip_info ad5684_chip_info = {
- 	.channels = ad5684r_channels,
- 	.num_channels = 4,
-@@ -547,6 +588,13 @@ const struct ad5686_chip_info ad5676r_chip_info = {
- };
- EXPORT_SYMBOL_NS_GPL(ad5676r_chip_info, "IIO_AD5686");
- 
-+const struct ad5686_chip_info ad5674_chip_info = {
-+	.channels = ad5674r_channels,
-+	.num_channels = 16,
-+	.regmap_type = AD5686_REGMAP,
-+};
-+EXPORT_SYMBOL_NS_GPL(ad5674_chip_info, "IIO_AD5686");
-+
- const struct ad5686_chip_info ad5674r_chip_info = {
- 	.channels = ad5674r_channels,
- 	.int_vref_mv = 2500,
-@@ -555,6 +603,13 @@ const struct ad5686_chip_info ad5674r_chip_info = {
- };
- EXPORT_SYMBOL_NS_GPL(ad5674r_chip_info, "IIO_AD5686");
- 
-+const struct ad5686_chip_info ad5679_chip_info = {
-+	.channels = ad5679r_channels,
-+	.num_channels = 16,
-+	.regmap_type = AD5686_REGMAP,
-+};
-+EXPORT_SYMBOL_NS_GPL(ad5679_chip_info, "IIO_AD5686");
-+
- const struct ad5686_chip_info ad5679r_chip_info = {
- 	.channels = ad5679r_channels,
- 	.int_vref_mv = 2500,
-diff --git a/drivers/iio/dac/ad5686.h b/drivers/iio/dac/ad5686.h
-index c1222ef83a4f..482bc70515f7 100644
---- a/drivers/iio/dac/ad5686.h
-+++ b/drivers/iio/dac/ad5686.h
-@@ -106,8 +106,13 @@ extern const struct ad5686_chip_info ad5683r_chip_info;
- /* dual-channel instances */
- extern const struct ad5686_chip_info ad5337r_chip_info;
- extern const struct ad5686_chip_info ad5338r_chip_info;
-+extern const struct ad5686_chip_info ad5687_chip_info;
-+extern const struct ad5686_chip_info ad5687r_chip_info;
-+extern const struct ad5686_chip_info ad5689_chip_info;
-+extern const struct ad5686_chip_info ad5689r_chip_info;
- 
- /* quad-channel instances */
-+extern const struct ad5686_chip_info ad5317r_chip_info;
- extern const struct ad5686_chip_info ad5684_chip_info;
- extern const struct ad5686_chip_info ad5684r_chip_info;
- extern const struct ad5686_chip_info ad5685r_chip_info;
-@@ -120,7 +125,9 @@ extern const struct ad5686_chip_info ad5676_chip_info;
- extern const struct ad5686_chip_info ad5676r_chip_info;
- 
- /* 16-channel instances */
-+extern const struct ad5686_chip_info ad5674_chip_info;
- extern const struct ad5686_chip_info ad5674r_chip_info;
-+extern const struct ad5686_chip_info ad5679_chip_info;
- extern const struct ad5686_chip_info ad5679r_chip_info;
- 
- /**
+ #include <linux/array_size.h>
 diff --git a/drivers/iio/dac/ad5696-i2c.c b/drivers/iio/dac/ad5696-i2c.c
-index 31439567f00f..7254bb976388 100644
+index 7254bb976388..19605274e787 100644
 --- a/drivers/iio/dac/ad5696-i2c.c
 +++ b/drivers/iio/dac/ad5696-i2c.c
-@@ -80,10 +80,12 @@ static int ad5686_i2c_probe(struct i2c_client *i2c)
+@@ -1,10 +1,8 @@
+ // SPDX-License-Identifier: GPL-2.0
+ /*
+- * AD5338R, AD5671R, AD5673R, AD5675R, AD5677R, AD5691R, AD5692R, AD5693,
+- * AD5693R, AD5694, AD5694R, AD5695R, AD5696, AD5696R
+- * Digital to analog converters driver
++ * I2C driver for AD5696 and similar Digital to Analog Converters
+  *
+- * Copyright 2018 Analog Devices Inc.
++ * Copyright 2018-2026 Analog Devices Inc.
+  */
  
- static const struct i2c_device_id ad5686_i2c_id[] = {
- 	{ .name = "ad5311r", .driver_data = (kernel_ulong_t)&ad5311r_chip_info },
-+	{ .name = "ad5316r", .driver_data = (kernel_ulong_t)&ad5317r_chip_info },
- 	{ .name = "ad5337r", .driver_data = (kernel_ulong_t)&ad5337r_chip_info },
- 	{ .name = "ad5338r", .driver_data = (kernel_ulong_t)&ad5338r_chip_info },
- 	{ .name = "ad5671r", .driver_data = (kernel_ulong_t)&ad5672r_chip_info },
- 	{ .name = "ad5673r", .driver_data = (kernel_ulong_t)&ad5674r_chip_info },
-+	{ .name = "ad5675",  .driver_data = (kernel_ulong_t)&ad5676_chip_info },
- 	{ .name = "ad5675r", .driver_data = (kernel_ulong_t)&ad5676r_chip_info },
- 	{ .name = "ad5677r", .driver_data = (kernel_ulong_t)&ad5679r_chip_info },
- 	{ .name = "ad5691r", .driver_data = (kernel_ulong_t)&ad5681r_chip_info },
-@@ -95,16 +97,21 @@ static const struct i2c_device_id ad5686_i2c_id[] = {
- 	{ .name = "ad5695r", .driver_data = (kernel_ulong_t)&ad5685r_chip_info },
- 	{ .name = "ad5696",  .driver_data = (kernel_ulong_t)&ad5686_chip_info },
- 	{ .name = "ad5696r", .driver_data = (kernel_ulong_t)&ad5686r_chip_info },
-+	{ .name = "ad5697r", .driver_data = (kernel_ulong_t)&ad5687r_chip_info },
- 	{ }
- };
- MODULE_DEVICE_TABLE(i2c, ad5686_i2c_id);
- 
- static const struct of_device_id ad5686_of_match[] = {
- 	{ .compatible = "adi,ad5311r", .data = &ad5311r_chip_info },
-+	{ .compatible = "adi,ad5316r", .data = &ad5317r_chip_info },
- 	{ .compatible = "adi,ad5337r", .data = &ad5337r_chip_info },
- 	{ .compatible = "adi,ad5338r", .data = &ad5338r_chip_info },
- 	{ .compatible = "adi,ad5671r", .data = &ad5672r_chip_info },
-+	{ .compatible = "adi,ad5673r", .data = &ad5674r_chip_info },
-+	{ .compatible = "adi,ad5675",  .data = &ad5676_chip_info },
- 	{ .compatible = "adi,ad5675r", .data = &ad5676r_chip_info },
-+	{ .compatible = "adi,ad5677r", .data = &ad5679r_chip_info },
- 	{ .compatible = "adi,ad5691r", .data = &ad5681r_chip_info },
- 	{ .compatible = "adi,ad5692r", .data = &ad5682r_chip_info },
- 	{ .compatible = "adi,ad5693",  .data = &ad5683_chip_info },
-@@ -114,6 +121,7 @@ static const struct of_device_id ad5686_of_match[] = {
- 	{ .compatible = "adi,ad5695r", .data = &ad5685r_chip_info },
- 	{ .compatible = "adi,ad5696",  .data = &ad5686_chip_info },
- 	{ .compatible = "adi,ad5696r", .data = &ad5686r_chip_info },
-+	{ .compatible = "adi,ad5697r", .data = &ad5687r_chip_info },
- 	{ }
- };
- MODULE_DEVICE_TABLE(of, ad5686_of_match);
+ #include <linux/bitfield.h>
 
 -- 
 2.43.0
