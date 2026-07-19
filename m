@@ -1,133 +1,89 @@
-From: Zhiwen Zhou <zhiwen_zhou@seu.edu.cn>
-Date: Sun, 19 Jul 2026 06:38:47 +0800
-Subject: [PATCH] wifi: mt76: mt7996: validate UNI PS sync events
+From: Josef Ippisch <josef.ippisch.dev@mailbox.org>
+Subject: [PATCH 0/2] rust: debugfs: migrate BinaryWriter requirements to
+ zerocopy
+Date: Sun, 19 Jul 2026 10:28:47 +0200
+Message-Id: <20260719-migrate-binarywriter-to-zerocopy-intobytes-v1-0-27ed30512e75@mailbox.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260719-fix-mt7996-ps-sync-tlv-validation-v1-1-bdd933c8ef63@seu.edu.cn>
-X-B4-Tracking: v=1; b=H4sIAHYAXGoC/yWNwQ6CMBBEf4Xs2Y0UI6T+iuGwLSusgUK6lWgI/
- 27R45vMm9lAOQor3IoNIq+iMocM5lSAHyj0jNJlhqqs6rIxFh/yxik11ta4KOoneEzjiiuN0lH
- KNl6oLq2rzNUbhryzRM7S7+Pe/llf7sk+HcNHw5EyukjBD0c0R+klnCfSxBH2/QsxDa+fpQAAA
- A==
-X-Change-ID: 20260719-fix-mt7996-ps-sync-tlv-validation-3a609b215c1e
-To: nbd@nbd.name
-Cc: shayne.chen@mediatek.com, sean.wang@mediatek.com, 
- ryder.lee@mediatek.com, lorenzo@kernel.org, linux-wireless@vger.kernel.org, 
- Zhiwen Zhou <zhiwen_zhou@seu.edu.cn>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNSw7CMAwA0atUXmOpKahQroK6SIJTjERSOeYTq
+ t6dAMu3mVkgkzBlODYLCD04c4oVZtOAv9g4EfK5Grq269u9GfDGk1gldBytlKewkqAmfJMkn+a
+ CHDW5opTR0CHsKAxb27dQg7NQ4Ndvdhr/znd3Ja/fA6zrByIjqcWOAAAA
+X-Change-ID: 20260719-migrate-binarywriter-to-zerocopy-intobytes-1e8f4ef93a60
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Andreas Hindborg <a.hindborg@kernel.org>, 
+ Alice Ryhl <aliceryhl@google.com>, Trevor Gross <tmgross@umich.edu>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>
+Cc: driver-core@lists.linux.dev, rust-for-linux@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Joshua Liebow-Feeser <joshlf@google.com>, 
+ Miguel Ojeda <ojeda@kernel.org>, 
+ Josef Ippisch <josef.ippisch.dev@mailbox.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784414327; l=3108;
- i=zhiwen_zhou@seu.edu.cn; s=20260719; h=from:subject:message-id;
- bh=B+gXo4Kvc3MH12YtMgUtG/m54rI7NMXqZaUxOXppjtU=;
- b=d+BkoZvxmOP0EFDu8a/aGYO7Y5yimlAcmTsVwfPclCRN9LvLYbUoxVIKCMpglTCCRDaCoaaE3
- jEB62PM6JeOAD4UvY4QDdE92cxqlx/Nd/CXf+AGurB+MB4grw6+0/fo
-X-Developer-Key: i=zhiwen_zhou@seu.edu.cn; a=ed25519;
- pk=bzQfqm5EAGagF+NGVHoDGrj4i+yti9b1zdTaUky68Qk=
-X-Endpoint-Received: by B4 Relay for zhiwen_zhou@seu.edu.cn/20260719 with auth_id=882
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784449742; l=2110;
+ i=josef.ippisch.dev@mailbox.org; s=20260719; h=from:subject:message-id;
+ bh=+Y+dMqSu30++/HeilifSoYXXCl2DeneoUS6AA6C233s=;
+ b=4LzJukWpHx3BW3yuSqUZo97oUWqt3RybmSx+UHgmW9fomCT64PQcc9bLa7inTXeC0hIHwZBuH
+ TtdHCTFY0OPCoYiP/lFsAq2slW10wNg35UZi7EBHboiqDL8J/jSYWFx
+X-Developer-Key: i=josef.ippisch.dev@mailbox.org; a=ed25519;
+ pk=M4DnWHhz9yT9BkhXKzsmw6wTVrK2U1WBK0QiEjHoo1U=
+X-Endpoint-Received: by B4 Relay for josef.ippisch.dev@mailbox.org/20260719 with auth_id=884
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The firmware may send a PS sync event with a zero-length TLV or
-trailing padding. The parser only checks whether the TLV length
-exceeds the remaining data. A zero-length TLV therefore leaves both
-the skb and remaining length unchanged and loops forever in the
-threaded NAPI poller.
+Migrates the `BinaryWriter` default implementation requirements from
+`kernel::transmute::IntoBytes` to `zerocopy::Immutable` +
+`zerocopy::IntoBytes`.
 
-On affected MT7996 devices, this pins napi/phy0-0 in
-mt7996_mcu_rx_event(), starves the RCU grace-period kthread and
-eventually makes all radios unresponsive.
+This is part of a bigger migration from rust/kernel/transmute.rs to the
+zerocopy crate, see also [1] and [2]
 
-Validate the event header and every TLV before accessing it. Also
-validate the variable-length multi-client array against the TLV
-length. Drop malformed events with a rate-limited warning instead of
-stalling the CPU.
+[1] https://github.com/Rust-for-Linux/linux/issues/975
+[2] https://github.com/Rust-for-Linux/linux/issues/1241
 
-Fixes: b0af99f238f7 ("wifi: mt76: mt7996: handle UNI PS sync events")
-Signed-off-by: Zhiwen Zhou <zhiwen_zhou@seu.edu.cn>
+The crate zerocopy was introduced with
+
+c37398010a05 rust: zerocopy: import crate
+
+This introduced among other things the `IntoBytes` trait that, when
+derived, does better checks on the actual requirements of the types than
+the existing `kernel::transmute::AsBytes`.
+
+This is my first kernel patch so please let me know if I do anything wrong
+process wise or regarding some other aspect!
+
+There are some other points that I came across when investigating this
+
+- rust/kernel/debugfs/traits.rs still depends on
+  `kernel::transmute::AsBytes` for `BinaryReaderMut`.  Should I directly
+  migrate this also in this patch series? This would require migrating also
+  to `zerocopy::FromBytes` as the implemention for T depends on both
+  `AsBytes + FromBytes` currently.
+- I noticed that we could probably get rid of the `BinaryWriter`
+  implementation for `Vec` altogether if we implemented `Immutable` and
+  `IntoBytes` for `Vec`.  These are already implemented for [T] after
+  all. What do you think?
+
+Suggested-by: Joshua Liebow-Feeser <joshlf@google.com>
+Suggested-by: Miguel Ojeda <ojeda@kernel.org>
+Link: https://github.com/Rust-for-Linux/linux/issues/975
+Signed-off-by: Josef Ippisch <josef.ippisch.dev@mailbox.org>
 ---
- mt7996/mcu.c | 36 ++++++++++++++++++++++++++++++------
- 1 file changed, 30 insertions(+), 6 deletions(-)
+Josef Ippisch (2):
+      rust: debugfs: migrate BinaryWriter requirements to zerocopy
+      rust: debugfs: remove unsafe block from BinaryWriter impl for Vec
 
-diff --git a/mt7996/mcu.c b/mt7996/mcu.c
-index 1bd32c0..ee85b20 100644
---- a/mt7996/mcu.c
-+++ b/mt7996/mcu.c
-@@ -843,24 +843,33 @@ mt7996_mcu_rx_ps_sync(struct mt7996_dev *dev, struct sk_buff *skb)
- {
- 	struct mt7996_mcu_ps_sync_event *event = (void *)skb->data;
- 	struct tlv *tlv;
-+	u16 tag = 0, tag_len = 0;
- 	int len;
- 
-+	if (skb->len < sizeof(*event)) {
-+		dev_warn_ratelimited(dev->mt76.dev,
-+				     "short PS sync event: %u bytes\n",
-+				     skb->len);
-+		return;
-+	}
-+
- 	skb_pull(skb, sizeof(*event));
- 
- 	len = skb->len;
--	while (len > sizeof(*tlv)) {
--		u16 tag, tag_len;
--
-+	while (len >= sizeof(*tlv)) {
- 		tlv = (struct tlv *)skb->data;
- 		tag = le16_to_cpu(tlv->tag);
- 		tag_len = le16_to_cpu(tlv->len);
--		if (tag_len > len)
--			break;
-+		if (tag_len < sizeof(*tlv) || tag_len > len)
-+			goto invalid;
- 
- 		switch (tag) {
- 		case UNI_PS_CLIENT_INFO: {
- 			struct mt7996_mcu_ps_client_info *info = (void *)tlv;
- 
-+			if (tag_len < sizeof(*info))
-+				goto invalid;
-+
- 			mt7996_mcu_ps_transition(dev,
- 						 le16_to_cpu(info->wlan_idx),
- 						 info->ps_bit);
-@@ -868,9 +877,17 @@ mt7996_mcu_rx_ps_sync(struct mt7996_dev *dev, struct sk_buff *skb)
- 		}
- 		case UNI_PS_MULTI_CLIENT_INFO: {
- 			struct mt7996_mcu_ps_multi_client_info *info = (void *)tlv;
--			u16 cnt = le16_to_cpu(info->sta_cnt);
-+			u16 cnt;
- 			int i;
- 
-+			if (tag_len < sizeof(*info))
-+				goto invalid;
-+
-+			cnt = le16_to_cpu(info->sta_cnt);
-+			if (cnt > (tag_len - sizeof(*info)) /
-+				  sizeof(info->sta_ps_info[0]))
-+				goto invalid;
-+
- 			for (i = 0; i < cnt; i++) {
- 				u16 entry = le16_to_cpu(info->sta_ps_info[i]);
- 
-@@ -895,6 +912,13 @@ mt7996_mcu_rx_ps_sync(struct mt7996_dev *dev, struct sk_buff *skb)
- 		skb_pull(skb, tag_len);
- 		len -= tag_len;
- 	}
-+
-+	return;
-+
-+invalid:
-+	dev_warn_ratelimited(dev->mt76.dev,
-+			     "invalid PS sync TLV: tag=%u len=%u remaining=%d\n",
-+			     tag, tag_len, len);
- }
- 
- static void
-
+ rust/kernel/debugfs/traits.rs | 20 +++++++++-----------
+ 1 file changed, 9 insertions(+), 11 deletions(-)
 ---
-base-commit: 59676919ea408b0b13a9d23f2e2e1a1ab407fba1
-change-id: 20260719-fix-mt7996-ps-sync-tlv-validation-3a609b215c1e
+base-commit: 7059bdf4f04a3e14f4fafb3ac35fdca913e3e21a
+change-id: 20260719-migrate-binarywriter-to-zerocopy-intobytes-1e8f4ef93a60
 
 Best regards,
 --  
-Zhiwen Zhou <zhiwen_zhou@seu.edu.cn>
+Josef Ippisch <josef.ippisch.dev@mailbox.org>
 
