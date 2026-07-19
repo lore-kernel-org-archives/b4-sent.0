@@ -1,15 +1,13 @@
 From: Josef Ippisch <josef.ippisch.dev@mailbox.org>
-Subject: [PATCH 0/2] rust: debugfs: migrate BinaryWriter requirements to
+Date: Sun, 19 Jul 2026 10:28:48 +0200
+Subject: [PATCH 1/2] rust: debugfs: migrate BinaryWriter requirements to
  zerocopy
-Date: Sun, 19 Jul 2026 10:28:47 +0200
-Message-Id: <20260719-migrate-binarywriter-to-zerocopy-intobytes-v1-0-27ed30512e75@mailbox.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXNSw7CMAwA0atUXmOpKahQroK6SIJTjERSOeYTq
- t6dAMu3mVkgkzBlODYLCD04c4oVZtOAv9g4EfK5Grq269u9GfDGk1gldBytlKewkqAmfJMkn+a
- CHDW5opTR0CHsKAxb27dQg7NQ4Ndvdhr/znd3Ja/fA6zrByIjqcWOAAAA
-X-Change-ID: 20260719-migrate-binarywriter-to-zerocopy-intobytes-1e8f4ef93a60
+Message-Id: <20260719-migrate-binarywriter-to-zerocopy-intobytes-v1-1-27ed30512e75@mailbox.org>
+References: <20260719-migrate-binarywriter-to-zerocopy-intobytes-v1-0-27ed30512e75@mailbox.org>
+In-Reply-To: <20260719-migrate-binarywriter-to-zerocopy-intobytes-v1-0-27ed30512e75@mailbox.org>
 To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
  "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>, 
  Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
@@ -25,65 +23,79 @@ Cc: driver-core@lists.linux.dev, rust-for-linux@vger.kernel.org,
  Miguel Ojeda <ojeda@kernel.org>, 
  Josef Ippisch <josef.ippisch.dev@mailbox.org>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784449742; l=2110;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784449742; l=2196;
  i=josef.ippisch.dev@mailbox.org; s=20260719; h=from:subject:message-id;
- bh=+Y+dMqSu30++/HeilifSoYXXCl2DeneoUS6AA6C233s=;
- b=4LzJukWpHx3BW3yuSqUZo97oUWqt3RybmSx+UHgmW9fomCT64PQcc9bLa7inTXeC0hIHwZBuH
- TtdHCTFY0OPCoYiP/lFsAq2slW10wNg35UZi7EBHboiqDL8J/jSYWFx
+ bh=3xs3RLvMTt7NafjwAYtmrBE3g0qMtkMK7/mKI3G75YU=;
+ b=ZC1irnZUYtEuNu0m6ktHGg6njRoFjxiH09nAzVc5EeKGl8TGi8WCqqcPrFMHI5B99nVQlDkmB
+ 726x5TuFNjMBIvurU7yF+HcT489WTSPLBz4lotGexz7EQVaDSyN6nEh
 X-Developer-Key: i=josef.ippisch.dev@mailbox.org; a=ed25519;
  pk=M4DnWHhz9yT9BkhXKzsmw6wTVrK2U1WBK0QiEjHoo1U=
 X-Endpoint-Received: by B4 Relay for josef.ippisch.dev@mailbox.org/20260719 with auth_id=884
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Migrates the `BinaryWriter` default implementation requirements from
-`kernel::transmute::IntoBytes` to `zerocopy::Immutable` +
+Migrate `BinaryWriter`'s default implementation's requirements on T from
+`kernel::transmute::AsBytes` to `zerocopy::Immutable` +
 `zerocopy::IntoBytes`.
 
-This is part of a bigger migration from rust/kernel/transmute.rs to the
-zerocopy crate, see also [1] and [2]
-
-[1] https://github.com/Rust-for-Linux/linux/issues/975
-[2] https://github.com/Rust-for-Linux/linux/issues/1241
-
-The crate zerocopy was introduced with
-
-c37398010a05 rust: zerocopy: import crate
-
-This introduced among other things the `IntoBytes` trait that, when
-derived, does better checks on the actual requirements of the types than
-the existing `kernel::transmute::AsBytes`.
-
-This is my first kernel patch so please let me know if I do anything wrong
-process wise or regarding some other aspect!
-
-There are some other points that I came across when investigating this
-
-- rust/kernel/debugfs/traits.rs still depends on
-  `kernel::transmute::AsBytes` for `BinaryReaderMut`.  Should I directly
-  migrate this also in this patch series? This would require migrating also
-  to `zerocopy::FromBytes` as the implemention for T depends on both
-  `AsBytes + FromBytes` currently.
-- I noticed that we could probably get rid of the `BinaryWriter`
-  implementation for `Vec` altogether if we implemented `Immutable` and
-  `IntoBytes` for `Vec`.  These are already implemented for [T] after
-  all. What do you think?
+The additional `zerocopy::Immutable` requirement does not further
+restrict the types in practice but is rather a more explicit requirement
+(that the type does not have interior mutability) and is required by
+zerocopy for the `as_bytes()` function.
 
 Suggested-by: Joshua Liebow-Feeser <joshlf@google.com>
 Suggested-by: Miguel Ojeda <ojeda@kernel.org>
 Link: https://github.com/Rust-for-Linux/linux/issues/975
 Signed-off-by: Josef Ippisch <josef.ippisch.dev@mailbox.org>
 ---
-Josef Ippisch (2):
-      rust: debugfs: migrate BinaryWriter requirements to zerocopy
-      rust: debugfs: remove unsafe block from BinaryWriter impl for Vec
+ rust/kernel/debugfs/traits.rs | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
- rust/kernel/debugfs/traits.rs | 20 +++++++++-----------
- 1 file changed, 9 insertions(+), 11 deletions(-)
----
-base-commit: 7059bdf4f04a3e14f4fafb3ac35fdca913e3e21a
-change-id: 20260719-migrate-binarywriter-to-zerocopy-intobytes-1e8f4ef93a60
+diff --git a/rust/kernel/debugfs/traits.rs b/rust/kernel/debugfs/traits.rs
+index 8c39524b6a99..ce030ff45a4c 100644
+--- a/rust/kernel/debugfs/traits.rs
++++ b/rust/kernel/debugfs/traits.rs
+@@ -36,6 +36,11 @@
+     str::FromStr,
+ };
+ 
++use zerocopy::{
++    Immutable,
++    IntoBytes, //
++};
++
+ /// A trait for types that can be written into a string.
+ ///
+ /// This works very similarly to `Debug`, and is automatically implemented if `Debug` is
+@@ -76,8 +81,8 @@ fn write_to_slice(
+     ) -> Result<usize>;
+ }
+ 
+-// Base implementation for any `T: AsBytes`.
+-impl<T: AsBytes> BinaryWriter for T {
++// Base implementation for any `T: Immutable + IntoBytes`.
++impl<T: Immutable + IntoBytes> BinaryWriter for T {
+     fn write_to_slice(
+         &self,
+         writer: &mut UserSliceWriter,
+@@ -147,7 +152,7 @@ fn write_to_slice(
+ // Delegate for `Vec<T, A>`.
+ impl<T, A> BinaryWriter for Vec<T, A>
+ where
+-    T: AsBytes,
++    T: Immutable + IntoBytes,
+     A: Allocator,
+ {
+     fn write_to_slice(
+@@ -157,7 +162,7 @@ fn write_to_slice(
+     ) -> Result<usize> {
+         let slice = self.as_slice();
+ 
+-        // SAFETY: `T: AsBytes` allows us to treat `&[T]` as `&[u8]`.
++        // SAFETY: `T: Immutable + IntoBytes` allows us to treat `&[T]` as `&[u8]`.
+         let buffer = unsafe {
+             core::slice::from_raw_parts(slice.as_ptr().cast(), core::mem::size_of_val(slice))
+         };
 
-Best regards,
---  
-Josef Ippisch <josef.ippisch.dev@mailbox.org>
+-- 
+2.53.0
 
