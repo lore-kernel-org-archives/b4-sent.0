@@ -1,79 +1,82 @@
-From: Sven Peter <sven@kernel.org>
-Date: Sun, 19 Jul 2026 15:00:32 +0200
-Subject: [PATCH] mfd: macsmc: Fix key count endianness annotation
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v4 0/2] Add initial dual front camera and rear flash
+ support for Pixel 3 / 3 XL
+Date: Sun, 19 Jul 2026 19:01:58 +0200
+Message-Id: <20260719-pixel3-camera-v4-0-48cab1236852@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260719-b4-macsmc-be32-fix-v1-1-c7b1936307fa@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBCF4avIrB0wUaL2KuIik47tCNqSURHEu
- 5vW5ffg/QcoR2GFR3ZA5E1UPnOCyTMIbz+/GOWZDLawrqhNi1Th5INOAYlLi4Ps6MqaGyLjWus
- hHb+R0/yPdv1tXWnksPxKcJ4XwjqYl3YAAAA=
-X-Change-ID: 20260719-b4-macsmc-be32-fix-637e8bb1692a
-To: Janne Grunau <j@jannau.net>, Neal Gompa <neal@gompa.dev>, 
- Lee Jones <lee@kernel.org>
-Cc: asahi@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, kernel test robot <lkp@intel.com>, 
- Sven Peter <sven@kernel.org>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1756; i=sven@kernel.org;
- h=from:subject:message-id; bh=IpCdIvtqrUwzVFJ1/y1oYQ0klko2f12CuHINIX6XHp0=;
- b=owGbwMvMwCXmIlirolUq95LxtFoSQ1bMqYp2pYikT13FLYG8HiX/uY447mATeXFkerccB8NL5
- zcbVzzvKGVhEONikBVTZNm+3970ycM3gks3XXoPM4eVCWQIAxenAEzkZSgjw68OU/fSLdsbN6bc
- 1tWeMfFvoIe3y+LLupXNc0KeBC/KPczwm11+6qTM9Zd3FcutOsh6dt9GpTnTlqpbT/p7J8vgx8z
- J4rwA
-X-Developer-Key: i=sven@kernel.org; a=openpgp;
- fpr=A1E3E34A2B3C820DBC4955E5993B08092F131F93
-X-Endpoint-Received: by B4 Relay for sven@kernel.org/default with auth_id=407
+X-B4-Tracking: v=1; b=H4sIAAYDXWoC/32Qyw6CMBBFf4V0bU2nL6gr/8O4aHHQJgpYkKCEf
+ 7eIicrC5b2Zc5I7A2kweGzIJhlIwM43vipjkKuE5CdbHpH6Q8yEM66ZAEVr3+NZ0NxeMFhqjcm
+ MK1RmEElk6oBFPJh8u33MJ9+0Vbi/9B1M7WySAAtTB5RRnqpUM61AOb31vW/X+YNMno7/ZXlkJ
+ bgsM9Y5kPkvK75ZvmRFZJFrxwyzGoB92HEeFPB6i39p36vG8Qn1t1lRNQEAAA==
+X-Change-ID: 20260315-pixel3-camera-a9989bf589ee
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Petr Hodina <petr.hodina@protonmail.com>, 
+ Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1599; i=david@ixit.cz;
+ h=from:subject:message-id; bh=+PU8QIp9/XHxdwHWDpQ2VacOUpMn8BWI7gFOK9TucU0=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqXQMJcjISfHB30a4tMAg/ktbxc5I2wooci7E6n
+ VtbbjhsKLKJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCal0DCQAKCRBgAj/E00kg
+ cq3BD/9nbfs6yrdCMkNrAdgaelzPH8pacDPYrh22xRSQYQg/omRFYdvjFu/fSYxUVndwlbR4+Ja
+ uNO38elSL5gvQy4XnmER0VSIHqYeSFOgAN0+jZYbA/nsMODbc9gJd5allwK2Ip4dFfQ7NzezPcs
+ +yUdduPhvvppUqeALJ9IKab1GB4io9iBXtK/YPZDoMlWBriV4BI90oQ5R2jN65YRS3AldkxM4si
+ TXA78NtBy/QFzHa9yzbPjYB3mPagP5MUTSVsBPOKBlkY5UQYODZWAmmNOe7h2xL8FgX9pNSISlI
+ LcXoQPypHGB/AJeKqa7ydyhLbIJWo7f3w8kvpRDPNU0f/SkyYeV1qpwsppT7IdSrI4QQDGu+zxE
+ Rm/ARL/iXMnHOYdbFDBwmA1OX1BnBsNCmQYV8cipsBd+VnKkAq49t8bdZxjVD6ldIzjhCzwLbYe
+ qDeKJK4lkfPeD0B+F7hd2UOZhEYOUUBaNJxZGVfsIJjsLEb61ZYw3g5S3BFweZSUKFmOZ2igFkQ
+ hinRnWdiHvs356bBswlYf8/wuEgXg0ilHmVd9qWkoeJHTv7r88wG9dpX5GftjSvdBeGxDpr09Il
+ Xp0qcNBU6Oc4nkyUKD8Snn2ZmEHHY3FxBlS4oE5O8Epw88ikJ9YsAr0Ma7pFKzhAfER+dgFwKSJ
+ dPrcMR7x43gmDJA==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-SMC firmware returns the value of the #KEY key in big-endian unlike most
-other keys. Reading it through apple_smc_read_u32() into a plain u32
-and then converting with be32_to_cpu() makes sparse complain:
+Describe the dual front-facing IMX355 sensors (standard and wide)
+and enable the PMI8998 flash LED with hardware-accurate limits.
 
-  drivers/mfd/macsmc.c:462:26: sparse: cast to restricted __be32
+This brings up the basic camera topology and flash support in DT.
 
-Read the raw value into a __be32 using apple_smc_read() instead.
-
-Fixes: e038d985c982 ("mfd: Add Apple Silicon System Management Controller")
-Reported-by: kernel test robot <lkp@intel.com>
-Closes: https://lore.kernel.org/oe-kbuild-all/202607181046.OANjIoqR-lkp@intel.com/
-Signed-off-by: Sven Peter <sven@kernel.org>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- drivers/mfd/macsmc.c | 8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+Changes in v4:
+- Use 24 MHz ext clock for the cameras, as the downstream does, since
+  the upstream driver can now support it.
+- Added additional LED, as the phone contains two separately controlled
+  white LEDs flash (upper and bottom, in one module).
+- Increase flash-max-microamp, as I took wrong "flash" from the
+  downstream sources and dropped Dmitry R-b.
+- Address formatting issues. (Konrad)
+- Link to v3: https://lore.kernel.org/r/20260412-pixel3-camera-v3-0-e26b090a6110@ixit.cz
 
-diff --git a/drivers/mfd/macsmc.c b/drivers/mfd/macsmc.c
-index 358feec2d088..514cba7dc897 100644
---- a/drivers/mfd/macsmc.c
-+++ b/drivers/mfd/macsmc.c
-@@ -410,7 +410,7 @@ static int apple_smc_probe(struct platform_device *pdev)
- {
- 	struct device *dev = &pdev->dev;
- 	struct apple_smc *smc;
--	u32 count;
-+	__be32 count;
- 	int ret;
- 
- 	smc = devm_kzalloc(dev, sizeof(*smc), GFP_KERNEL);
-@@ -461,8 +461,10 @@ static int apple_smc_probe(struct platform_device *pdev)
- 	dev_set_drvdata(&pdev->dev, smc);
- 	BLOCKING_INIT_NOTIFIER_HEAD(&smc->event_handlers);
- 
--	ret = apple_smc_read_u32(smc, SMC_KEY(#KEY), &count);
--	if (ret)
-+	ret = apple_smc_read(smc, SMC_KEY(#KEY), &count, sizeof(count));
-+	if (ret >= 0 && ret != sizeof(count))
-+		ret = -EINVAL;
-+	if (ret < 0)
- 		return dev_err_probe(smc->dev, ret, "Failed to get key count");
- 	smc->key_count = be32_to_cpu(count);
- 
+Changes in v3:
+- Dropped cam_vio label. (Dmitry)
+- Move the MCLK2 pinctrl from cameras to common camss. (Dmitry)
+- Link to v2: https://lore.kernel.org/r/20260411-pixel3-camera-v2-0-41b889abb14c@ixit.cz
+
+Changes in v2:
+- leds.h include escaped the initial submission. Fixed.
+- Link to v1: https://lore.kernel.org/r/20260411-pixel3-camera-v1-0-2757606515b6@ixit.cz
 
 ---
-base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
-change-id: 20260719-b4-macsmc-be32-fix-637e8bb1692a
+David Heidelberg (2):
+      arm64: dts: qcom: sdm845-google: Add dual front IMX355 cameras
+      arm64: dts: qcom: sdm845-google: Enable PMI8998 camera flash LEDs
+
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 207 ++++++++++++++++++++-
+ 1 file changed, 206 insertions(+), 1 deletion(-)
+---
+base-commit: 0718283ab28bc3907e10b61a6b4be6fefa1cbb2f
+change-id: 20260315-pixel3-camera-a9989bf589ee
 
 Best regards,
---  
-Sven Peter <sven@kernel.org>
+-- 
+David Heidelberg <david@ixit.cz>
 
