@@ -1,150 +1,275 @@
-From: Phil Rosenthal <phil@phil.gs>
-Date: Sun, 19 Jul 2026 16:18:56 -0400
-Subject: [PATCH] KVM: x86/mmu: Skip rmap aging when the rmap lock was
- elided
+From: David Heidelberg <david@ixit.cz>
+Date: Sun, 19 Jul 2026 23:45:05 +0200
+Subject: [PATCH RFC v2] wifi: ath10k: make in-order rx amsdu buffers
+ persistent
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260719-rmap-age-elided-submit-v1-1-cb32f2390765@phil.gs>
-X-B4-Tracking: v=1; b=H4sIAC8xXWoC/x2MSQqAMAwAvyI5G7DiVr8iHloTNeBGqyIU/27xO
- AMzATw7YQ9tEsDxLV72LYJKExhms02MQpEhz/Iqq5VGt5oDTfS8CDGhv+wqJ+qGLBWlstoaiPH
- heJTnH3f9+36uZLuVaAAAAA==
-X-Change-ID: 20260719-rmap-age-elided-submit-98dbd451b9ba
-To: Sean Christopherson <seanjc@google.com>, 
- Paolo Bonzini <pbonzini@redhat.com>
-Cc: James Houghton <jthoughton@google.com>, kvm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, stable@vger.kernel.org, 
- Phil Rosenthal <phil@phil.gs>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784492338; l=5986;
- i=phil@phil.gs; s=20260718; h=from:subject:message-id;
- bh=AB9wnwC4hzODsYdAQ8GBVdzTy/ojWza4YJOqutVPhTM=;
- b=lc8sIjUmRodDeHa6Ck/I43b/DlbZqJTFma4cV2NWzloVrBMU6oSwGYrrI2H/hzg6XrhZFv6kj
- FB7sad4p8kBBVknq69pmmBmoM/adaC9QNOtTvLL+hbyIIMoBDLr8QHY
-X-Developer-Key: i=phil@phil.gs; a=ed25519;
- pk=08BMg1YPtTS5NnKn5I1Mq1ra3MdAg49Awe6OjrC59fs=
-X-Endpoint-Received: by B4 Relay for phil@phil.gs/20260718 with auth_id=881
+Message-Id: <20260719-ath10k-a-msdu-v2-1-f479bb9d1217@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIAGBFXWoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyjHQUlJIzE
+ vPSU3UzU4B8JSMDIzMDc0NL3cSSDEODbN1E3dzilFLdZBNLY2OT1CQDS8MUJaCegqLUtMwKsHn
+ RSkFuzkqxtbUASGkunmQAAAA=
+X-Change-ID: 20260719-ath10k-a-msdu-c49334eb091d
+To: Jeff Johnson <jjohnson@kernel.org>, 
+ Johannes Berg <johannes.berg@intel.com>, 
+ Kalle Valo <kvalo@qca.qualcomm.com>, 
+ Michal Kazior <michal.kazior@tieto.com>
+Cc: linux-wireless@vger.kernel.org, ath10k@lists.infradead.org, 
+ linux-arm-msm@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, Richard Acayan <mailingradian@gmail.com>, 
+ David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8018; i=david@ixit.cz;
+ h=from:subject:message-id; bh=eJO73j6StWvYoT6k/tDaKaIZy8rPtLgZblz2V5IMI5w=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqXUVqGCRYP+kPct4/I2100bua9kIokiDzlCmsh
+ Is1Hny2IVSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCal1FagAKCRBgAj/E00kg
+ clEpD/9nZOZRFFop8rj3IcW7WAwZGdTRjwGyv2KtHSpDFMsr0PrHD0lyP0m2iU3FMDMyO1JL/hO
+ 5zmtvaE/dSMLMJ32Hu1Enf2cP6wIMYiEieADJGj9qDArxxDv0sUhTPz1h4n4mpVQThW8sLBPVok
+ GnnDtAAp5x+Bxx6kP3h+RU+rQyxdzoMYz0nas7W3hcS05ch6e04MJuLlfEvHDy3WzDoM1DQT8W7
+ qX7lEDuNx7fo74LWvh8vMJJae8eC0ig2cuCq9aXR4hjYZXtXOvdZRqBNvVANkZEJXLDSng0WV4M
+ KkfQmagU51s9YjR9iZq+YN88bbsM9A3oehzOFmRcVynspSM3At0TJvNN5O7OPtec1eibU/4L6BX
+ Kv+oJ//9lAprcfOpSJwRyOajeW+K8dN27tCOcjmW2qCrQmX3zXu23EmomF0gxL8Tjn01M6KdVoU
+ n0VI57tB7DwOPcmit9CtdxWFCJ1aujywefrCEPQRbPqWIh9tigQeD/Opc7So0oxw63ADxptLfR3
+ 0A3zwheiUCO0F+T08MF4jP6sKzVOxgSRUUwhFJMue1c06szlQO2e95sOd6xUri1fBUqql2yt/iL
+ rssawXoe9hnrnQi8Sf5LXfhAxW4TYN5MLRluNE8D5x9By0e9Dbd0wJhXbhzuD7ospFdMqUFxd0x
+ dzHns4MoZKJZlHQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-__kvm_rmap_lock() deliberately elides the rmap lock when it observes an
-empty rmap.  In that case kvm_rmap_lock_readonly() also re-enables
-preemption and returns zero, so the caller holds neither the rmap lock
-nor a preemption reference.  The elision documents the invariant it
-relies on:
+From: Richard Acayan <mailingradian@gmail.com>
 
-	 * Elide the lock if the rmap is empty, as lockless walkers (read-only
-	 * mode) don't need to (and can't) walk an empty rmap, nor can they add
-	 * entries to the rmap.  I.e. the only paths that process empty rmaps
-	 * do so while holding mmu_lock for write, and are mutually exclusive.
+The WCN3990 might split MSDUs among multiple "in-order" indications. The
+driver needs information from previous indications to handle MPDUs that
+are not started by the same indications that complete them. Move the
+list that tracks unprocessed MSDUs to the driver state so the driver can
+handle MPDUs that are split in this way and be less confused.
 
-kvm_rmap_age_gfn_range() ignores the returned value and unconditionally
-enters for_each_rmap_spte_lockless().  The iterator starts with
-rmap_get_first(), which re-reads rmap_head->val rather than using the
-value returned by the lock.  If a writer populates the rmap between the
-lock's read and the iterator's re-read, the aging path walks the newly
-installed rmap without holding its lock.
-
-For a KVM_RMAP_MANY rmap this leaves the walker following a
-pte_list_desc chain that it never locked.  A writer holding mmu_lock for
-write may free that chain (e.g. kvm_zap_all_rmap_sptes() on the recycle
-path, or any rmap zap) via kmem_cache_free() while the walk is in
-progress, giving a slab use-after-free.  Nothing serialises the two: the
-aging path runs without mmu_lock when CONFIG_KVM_MMU_LOCKLESS_AGING=y,
-and the rmap lock that would otherwise exclude the writer was elided.
-Because the empty path re-enables preemption, the interval between the
-two reads can span an arbitrary scheduling delay.
-
-Skip the walk when locking returned zero, as required by the
-lock-elision invariant.  kvm_rmap_unlock_readonly() already treats zero
-as requiring no unlock, so the early continue does not leak a lock or a
-preemption reference.  Missing an SPTE installed after the empty
-observation is harmless because aging is best-effort.
-
-Fixes: af3b6a9eba48 ("KVM: x86/mmu: Walk rmaps (shadow MMU) without holding mmu_lock when aging gfns")
-Cc: stable@vger.kernel.org
-Signed-off-by: Phil Rosenthal <phil@phil.gs>
+Fixes: c545070e404b ("ath10k: implement rx reorder support")
+Signed-off-by: Richard Acayan <mailingradian@gmail.com>
+Co-developed-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-This bug was identified and confirmed with AI assistance; per
-Documentation/process/security-bugs.rst it is therefore reported in the
-open rather than via the security list.
+This one we have in-tree forever.
 
-The static analysis and runtime evidence are described separately.
-
-Static: the invariant quoted above is stated by __kvm_rmap_lock(), and
-kvm_rmap_age_gfn_range() is the one caller that violates it by walking
-after an elided (zero) lock.  This holds regardless of any runtime
-result.
-
-Runtime: I confirmed the use-after-free is reachable on a KASAN build
-(CONFIG_KASAN_GENERIC=y, CONFIG_KVM_MMU_LOCKLESS_AGING=y, kvm.tdp_mmu=0,
-kvm_intel.ept=0 so shared pages build multi-SPTE pte_list_desc rmaps).
-This is not a natural reproducer: it is a test-only race amplifier.  A
-test hook widens two windows (a delay after the zero-lock observation,
-and a delay after the iterator has cached iter->desc) and schedules the
-real lockless aging function onto recently recycled gfns.  The alloc and
-free are unmodified production paths; only the scheduling of the aging
-walk and the two delays are injected.  The test-only instrumentation is
-available privately on request.  KASAN then reports a
-slab-use-after-free, read in the rmap_get_next() step of
-for_each_rmap_spte_lockless() (the symbol is
-kvm_rmap_age_gfn_range.isra.0 in the instrumented build):
-
-  BUG: KASAN: slab-use-after-free in kvm_rmap_age_gfn_range.isra.0+0x7e4/0xa60 [kvm]
-  Read of size 8 at addr ffff88814690c6d8 by task kworker/12:2/81966
-  Workqueue: events age_race_workfn [kvm]     <- test hook: lockless aging, no mmu_lock
-   kvm_rmap_age_gfn_range.isra.0+0x7e4/0xa60 [kvm]
-   age_race_workfn+0x14b/0x1a0 [kvm]
-   process_one_work+0x6c8/0x1020
-  Allocated by task 94096:
-   kmem_cache_alloc_noprof+0x179/0x460
-   __kvm_mmu_topup_memory_cache+0x136/0x540 [kvm]
-   paging64_page_fault+0x2b6/0x1e70 [kvm]      <- one vCPU faults, allocs the desc
-  Freed by task 94095:
-   kmem_cache_free+0x11d/0x4a0
-   kvm_zap_all_rmap_sptes+0xe9/0x1a0 [kvm]
-   __rmap_add+0x2c4/0x5e0 [kvm]
-   mmu_set_spte+0x6d6/0x1060 [kvm]
-   paging64_page_fault+0x1385/0x1e70 [kvm]     <- another vCPU, under mmu_lock,
-                                                  recycles and frees the desc
-  The buggy address belongs to the object at ffff88814690c6c0
-   which belongs to the cache pte_list_desc of size 128
-
-The three tasks are distinct (read 81966 / alloc 94096 / free 94095),
-confirming genuine concurrency rather than a self-inflicted free.  With
-the fix applied under the same injection load, the zero -> populated
-window is still observed but the walk is skipped and no KASAN report is
-produced.
-
-Alternative fix: this patch fixes the only current caller that ignores
-an empty return.  A class-wide alternative would pass the value returned
-by kvm_rmap_lock_readonly() into the iterator instead of having
-rmap_get_first() re-read the rmap, so no lockless walker could
-reintroduce the bug.  I chose the smaller change for ease of
-backporting, and can send the larger one if preferred.
+Changes in v2:
+- checkpatch & style. (Jeff)
+- Improve comments.
+- Link to v1: https://lore.kernel.org/linux-wireless/20260210021249.12132-2-mailingradian@gmail.com/
 ---
- arch/x86/kvm/mmu/mmu.c | 3 +++
- 1 file changed, 3 insertions(+)
+ drivers/net/wireless/ath/ath10k/htt.h    |  4 +++
+ drivers/net/wireless/ath/ath10k/htt_rx.c | 50 +++++++++++++++++++++++++-------
+ 2 files changed, 43 insertions(+), 11 deletions(-)
 
-diff --git a/arch/x86/kvm/mmu/mmu.c b/arch/x86/kvm/mmu/mmu.c
-index 234d0a95abf534193e8285e61dfb7e0c56ba19ad..e57c4580f58564bbf984364b3563f6b00aee21a9 100644
---- a/arch/x86/kvm/mmu/mmu.c
-+++ b/arch/x86/kvm/mmu/mmu.c
-@@ -1723,6 +1723,9 @@ static bool kvm_rmap_age_gfn_range(struct kvm *kvm,
- 			rmap_head = gfn_to_rmap(gfn, level, range->slot);
- 			rmap_val = kvm_rmap_lock_readonly(rmap_head);
+diff --git a/drivers/net/wireless/ath/ath10k/htt.h b/drivers/net/wireless/ath/ath10k/htt.h
+index 25c6b2e2f81c8..07c3dc088f07b 100644
+--- a/drivers/net/wireless/ath/ath10k/htt.h
++++ b/drivers/net/wireless/ath/ath10k/htt.h
+@@ -1924,16 +1924,20 @@ struct ath10k_htt {
  
-+			if (!rmap_val)
-+				continue;
+ 	bool tx_mem_allocated;
+ 	const struct ath10k_htt_tx_ops *tx_ops;
+ 	const struct ath10k_htt_rx_ops *rx_ops;
+ 	bool disable_tx_comp;
+ 	bool bundle_tx;
+ 	struct sk_buff_head tx_req_head;
+ 	struct sk_buff_head tx_complete_head;
 +
- 			for_each_rmap_spte_lockless(rmap_head, &iter, sptep, spte) {
- 				if (!is_accessed_spte(spte))
- 					continue;
++	u8 rx_in_ord_split_tid;
++	u16 rx_in_ord_split_peer_id;
++	struct sk_buff_head rx_in_ord_split;
+ };
+ 
+ struct ath10k_htt_tx_ops {
+ 	int (*htt_send_rx_ring_cfg)(struct ath10k_htt *htt);
+ 	int (*htt_send_frag_desc_bank_cfg)(struct ath10k_htt *htt);
+ 	int (*htt_alloc_frag_desc)(struct ath10k_htt *htt);
+ 	void (*htt_free_frag_desc)(struct ath10k_htt *htt);
+ 	int (*htt_tx)(struct ath10k_htt *htt, enum ath10k_hw_txrx_mode txmode,
+diff --git a/drivers/net/wireless/ath/ath10k/htt_rx.c b/drivers/net/wireless/ath/ath10k/htt_rx.c
+index ab2d373b4750d..732bd3a2f9992 100644
+--- a/drivers/net/wireless/ath/ath10k/htt_rx.c
++++ b/drivers/net/wireless/ath/ath10k/htt_rx.c
+@@ -291,16 +291,18 @@ void ath10k_htt_rx_free(struct ath10k_htt *htt)
+ 		return;
+ 
+ 	timer_delete_sync(&htt->rx_ring.refill_retry_timer);
+ 
+ 	skb_queue_purge(&htt->rx_msdus_q);
+ 	skb_queue_purge(&htt->rx_in_ord_compl_q);
+ 	skb_queue_purge(&htt->tx_fetch_ind_q);
+ 
++	skb_queue_purge(&htt->rx_in_ord_split);
++
+ 	spin_lock_bh(&htt->rx_ring.lock);
+ 	ath10k_htt_rx_ring_free(htt);
+ 	spin_unlock_bh(&htt->rx_ring.lock);
+ 
+ 	dma_free_coherent(htt->ar->dev,
+ 			  ath10k_htt_get_rx_ring_size(htt),
+ 			  ath10k_htt_get_vaddr_ring(htt),
+ 			  htt->rx_ring.base_paddr);
+@@ -841,16 +843,18 @@ int ath10k_htt_rx_alloc(struct ath10k_htt *htt)
+ 	htt->rx_ring.sw_rd_idx.msdu_payld = 0;
+ 	hash_init(htt->rx_ring.skb_table);
+ 
+ 	skb_queue_head_init(&htt->rx_msdus_q);
+ 	skb_queue_head_init(&htt->rx_in_ord_compl_q);
+ 	skb_queue_head_init(&htt->tx_fetch_ind_q);
+ 	atomic_set(&htt->num_mpdus_ready, 0);
+ 
++	skb_queue_head_init(&htt->rx_in_ord_split);
++
+ 	ath10k_dbg(ar, ATH10K_DBG_BOOT, "htt rx ring size %d fill_level %d\n",
+ 		   htt->rx_ring.size, htt->rx_ring.fill_level);
+ 	return 0;
+ 
+ err_dma_idx:
+ 	dma_free_coherent(htt->ar->dev,
+ 			  ath10k_htt_get_rx_ring_size(htt),
+ 			  vaddr_ring,
+@@ -3156,16 +3160,20 @@ static int ath10k_htt_rx_extract_amsdu(struct ath10k_hw_params *hw,
+ 	struct rx_msdu_end_common *rxd_msdu_end_common;
+ 
+ 	if (skb_queue_empty(list))
+ 		return -ENOBUFS;
+ 
+ 	if (WARN_ON(!skb_queue_empty(amsdu)))
+ 		return -EINVAL;
+ 
++	msdu = skb_peek(list);
++	rxd = HTT_RX_BUF_TO_RX_DESC(hw,
++				    (void *)msdu->data - hw->rx_desc_ops->rx_desc_size);
++
+ 	while ((msdu = __skb_dequeue(list))) {
+ 		__skb_queue_tail(amsdu, msdu);
+ 
+ 		rxd = HTT_RX_BUF_TO_RX_DESC(hw,
+ 					    (void *)msdu->data -
+ 					    hw->rx_desc_ops->rx_desc_size);
+ 
+ 		rxd_msdu_end_common = ath10k_htt_rx_desc_get_msdu_end(hw, rxd);
+@@ -3257,17 +3265,16 @@ static void ath10k_htt_rx_h_rx_offload(struct ath10k *ar,
+ 	}
+ }
+ 
+ static int ath10k_htt_rx_in_ord_ind(struct ath10k *ar, struct sk_buff *skb)
+ {
+ 	struct ath10k_htt *htt = &ar->htt;
+ 	struct htt_resp *resp = (void *)skb->data;
+ 	struct ieee80211_rx_status *status = &htt->rx_status;
+-	struct sk_buff_head list;
+ 	struct sk_buff_head amsdu;
+ 	u16 peer_id;
+ 	u16 msdu_count;
+ 	u8 vdev_id;
+ 	u8 tid;
+ 	bool offload;
+ 	bool frag;
+ 	int ret;
+@@ -3292,64 +3299,85 @@ static int ath10k_htt_rx_in_ord_ind(struct ath10k *ar, struct sk_buff *skb)
+ 		   "htt rx in ord vdev %i peer %i tid %i offload %i frag %i msdu count %i\n",
+ 		   vdev_id, peer_id, tid, offload, frag, msdu_count);
+ 
+ 	if (skb->len < msdu_count * sizeof(*resp->rx_in_ord_ind.msdu_descs32)) {
+ 		ath10k_warn(ar, "dropping invalid in order rx indication\n");
+ 		return -EINVAL;
+ 	}
+ 
+-	/* The event can deliver more than 1 A-MSDU. Each A-MSDU is later
+-	 * extracted and processed.
++	if (!skb_queue_empty(&htt->rx_in_ord_split)) {
++		/*
++		 * It might still be possible to handle this case if there is
++		 * only one peer that splits at each given moment. We are
++		 * bailing out because we should have a test case for this
++		 * before trying to fix it.
++		 */
++		if (tid != htt->rx_in_ord_split_tid ||
++		    peer_id != htt->rx_in_ord_split_peer_id ||
++		    offload) {
++			ath10k_warn(ar, "split amsdu did not resume immediately\n");
++			htt->rx_confused = true;
++			ath10k_core_start_recovery(ar);
++			return -EIO;
++		}
++	}
++
++	/*
++	 * The event can deliver more than 1 A-MSDU or continue a previous one.
++	 * Each A-MSDU is later extracted and processed.
+ 	 */
+-	__skb_queue_head_init(&list);
+ 	if (ar->hw_params.target_64bit)
+ 		ret = ath10k_htt_rx_pop_paddr64_list(htt, &resp->rx_in_ord_ind,
+-						     &list);
++						     &htt->rx_in_ord_split);
+ 	else
+ 		ret = ath10k_htt_rx_pop_paddr32_list(htt, &resp->rx_in_ord_ind,
+-						     &list);
++						     &htt->rx_in_ord_split);
+ 
+ 	if (ret < 0) {
+ 		ath10k_warn(ar, "failed to pop paddr list: %d\n", ret);
+ 		htt->rx_confused = true;
+ 		ath10k_core_start_recovery(ar);
+ 		return -EIO;
+ 	}
+ 
+ 	/* Offloaded frames are very different and need to be handled
+ 	 * separately.
+ 	 */
+ 	if (offload)
+-		ath10k_htt_rx_h_rx_offload(ar, &list);
++		ath10k_htt_rx_h_rx_offload(ar, &htt->rx_in_ord_split);
+ 
+-	while (!skb_queue_empty(&list)) {
++	while (!skb_queue_empty(&htt->rx_in_ord_split)) {
+ 		__skb_queue_head_init(&amsdu);
+-		ret = ath10k_htt_rx_extract_amsdu(&ar->hw_params, &list, &amsdu);
++		ret = ath10k_htt_rx_extract_amsdu(&ar->hw_params,
++						  &htt->rx_in_ord_split, &amsdu);
+ 		switch (ret) {
+ 		case 0:
+ 			/* Note: The in-order indication may report interleaved
+ 			 * frames from different PPDUs meaning reported rx rate
+ 			 * to mac80211 isn't accurate/reliable. It's still
+ 			 * better to report something than nothing though. This
+ 			 * should still give an idea about rx rate to the user.
+ 			 */
+ 			ath10k_htt_rx_h_ppdu(ar, &amsdu, status, vdev_id);
+ 			ath10k_htt_rx_h_filter(ar, &amsdu, status, NULL);
+ 			ath10k_htt_rx_h_mpdu(ar, &amsdu, status, false, NULL,
+ 					     NULL, peer_id, frag);
+ 			ath10k_htt_rx_h_enqueue(ar, &amsdu, status);
+ 			break;
+ 		case -EAGAIN:
+-			fallthrough;
++			htt->rx_in_ord_split_tid = tid;
++			htt->rx_in_ord_split_peer_id = peer_id;
++
++			return -EIO;
+ 		default:
+ 			/* Should not happen. */
+ 			ath10k_warn(ar, "failed to extract amsdu: %d\n", ret);
+ 			htt->rx_confused = true;
+-			__skb_queue_purge(&list);
++			__skb_queue_purge(&htt->rx_in_ord_split);
+ 			ath10k_core_start_recovery(ar);
+ 			return -EIO;
+ 		}
+ 	}
+ 	return ret;
+ }
+ 
+ static void ath10k_htt_rx_tx_fetch_resp_id_confirm(struct ath10k *ar,
 
 ---
-base-commit: 25f744ffa0c8e799e06250ce2e618367b166b0d4
-change-id: 20260719-rmap-age-elided-submit-98dbd451b9ba
+base-commit: 0718283ab28bc3907e10b61a6b4be6fefa1cbb2f
+change-id: 20260719-ath10k-a-msdu-c49334eb091d
 
 Best regards,
 -- 
-Phil Rosenthal <phil@phil.gs>
+David Heidelberg <david@ixit.cz>
 
