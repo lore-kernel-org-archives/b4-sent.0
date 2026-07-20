@@ -1,11 +1,11 @@
 From: Mateusz Litwin <mateusz.litwin@nokia.com>
-Date: Mon, 20 Jul 2026 17:12:38 +0200
-Subject: [PATCH RFC 1/3] mtd: spi-nor: allow multiple erase sizes on
- uniform flash
+Date: Mon, 20 Jul 2026 17:12:39 +0200
+Subject: [PATCH RFC 2/3] mtd: spi-nor: add dedicated multi-size uniform
+ erase path
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260720-spi_nor_multisize_erase-v1-1-38d719bfe77b@nokia.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260720-spi_nor_multisize_erase-v1-2-38d719bfe77b@nokia.com>
 References: <20260720-spi_nor_multisize_erase-v1-0-38d719bfe77b@nokia.com>
 In-Reply-To: <20260720-spi_nor_multisize_erase-v1-0-38d719bfe77b@nokia.com>
 To: Pratyush Yadav <pratyush@kernel.org>, Michael Walle <mwalle@kernel.org>, 
@@ -15,204 +15,321 @@ To: Pratyush Yadav <pratyush@kernel.org>, Michael Walle <mwalle@kernel.org>,
 Cc: linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Mateusz Litwin <mateusz.litwin@nokia.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784560422; l=8038;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784560422; l=10478;
  i=mateusz.litwin@nokia.com; s=20251217; h=from:subject:message-id;
- bh=0dMbUh0MFcxU9fENYEnsMbteWVGEkbGRMmTcYB3mrzE=;
- b=AAeWi5EgBol80Toz675Takkpkffc16C3UKCYCaK8A8idh15AKWtYElqIFjc42LOvZ4Pp9GpN4
- +Jg4J3ohRhjAinzyDY42cTMsr+hqzsHIhxyeuvuxLu95IbcfALM7XXt
+ bh=3dVnZER5+S/Zzb3IHLlukQyLRWdKKcKIEqJEBQYJD5Y=;
+ b=77IgsA9QMuajC3iBRPFvm+vxGOeGnjJCI7RzQ45v8l0ZJnZcBcLZzbzm55grYfQXK3Uyyh6gp
+ zoi/a4EoTKcCBDwD/xHHXbpNICdSUQtwiQBaO+J+pvf9ow5CVbxfYpH
 X-Developer-Key: i=mateusz.litwin@nokia.com; a=ed25519;
  pk=9NV76cwWrtwYUektOrK/ht9GTzmhtkqSvghr3Td4hM4=
 X-Endpoint-Received: by B4 Relay for mateusz.litwin@nokia.com/20251217 with auth_id=579
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce MTD_SPI_NOR_MULTI_ERASE_SIZE, which allows an SPI NOR MTD device
-to use multiple erase sizes on uniform flashes.  When enabled, the driver
-keeps all supported erase types in the uniform region mask instead of
-collapsing to a single size, and routes multi-size uniform erases through
-spi_nor_erase_multi_sectors().
+Implement a dedicated uniform erase path for flashes with multiple erase
+sizes, instead of reusing the non-uniform erase path introduced in patch 1.
 
-This is useful where write access is needed on a minor-aligned partition
-(for example u-boot-env, RouterBoot soft_config, or a boot header
-partition) while still benefiting from larger erase commands on bulk
-regions, instead of forcing CONFIG_MTD_SPI_NOR_USE_4K_SECTORS for the
-entire device.
+The non-uniform path allocates an erase command list and walks the region
+tree on every request.  For uniform flashes that work is unnecessary.
+The dedicated flow iterates the range directly and selects the erase type
+per step, which lowers CPU and memory overhead.
 
-Also convert all erase-type opcodes to their 4-byte-address variants on
-uniform flashes, so multi-size erases work correctly on devices above
-16 MiB.
+Refactor the single-sector erase sequence into spi_nor_erase_one(),
+shared with spi_nor_erase_multi_sectors().  Validate multi-size uniform
+requests through spi_nor_is_uniform_erasable() before locking the device:
+address and length must be aligned to the smallest supported uniform erase
+size.  This allows erase requests smaller than mtd->erasesize (e.g. a
+32 KiB boot header region) while still using larger erase commands for
+aligned bulk portions.
 
-When patch 2 is applied on top, the multi_sectors routing introduced here
-is replaced by a dedicated spi_nor_erase_uniform() path.
+When CONFIG_MTD_SPI_NOR_MULTI_ERASE_SIZE is disabled, the legacy
+single-size uniform behavior is unchanged: only the length is checked
+against mtd->erasesize and address alignment is not validated.
 
 Signed-off-by: Mateusz Litwin <mateusz.litwin@nokia.com>
 ---
- drivers/mtd/spi-nor/Kconfig | 25 +++++++++++++++++++
- drivers/mtd/spi-nor/core.c  | 60 ++++++++++++++++++++++++++++++++-------------
- 2 files changed, 68 insertions(+), 17 deletions(-)
+ drivers/mtd/spi-nor/core.c | 208 ++++++++++++++++++++++++++++++---------------
+ 1 file changed, 141 insertions(+), 67 deletions(-)
 
-diff --git a/drivers/mtd/spi-nor/Kconfig b/drivers/mtd/spi-nor/Kconfig
-index fd05a24d64a9..b2f97117a057 100644
---- a/drivers/mtd/spi-nor/Kconfig
-+++ b/drivers/mtd/spi-nor/Kconfig
-@@ -19,10 +19,35 @@ config MTD_SPI_NOR_USE_4K_SECTORS
- 	  Changing a small part of the flash's contents is usually faster with
- 	  small sectors. On the other hand erasing should be faster when using
- 	  64 KiB block instead of 16 × 4 KiB sectors.
-+	  If MTD_SPI_NOR_MULTI_ERASE_SIZE is also enabled, the flash erasesize
-+	  is reported as 4096 B, but large erase requests may still use larger
-+	  erase sizes internally to improve performance.
- 
- 	  Please note that some tools/drivers/filesystems may not work with
- 	  4096 B erase size (e.g. UBIFS requires 15 KiB as a minimum).
- 
-+config MTD_SPI_NOR_MULTI_ERASE_SIZE
-+	bool "Use multiple erase sizes on uniform flashes"
-+	default n
-+	help
-+	  Uniform SPI NOR flashes (whose erase map spans the whole device) may
-+	  still advertise several erase sizes, e.g. 4 KiB, 32 KiB and 64 KiB.
-+	  By default the driver collapses such a flash to a single erase size
-+	  and uses that one size for every erase request.
-+
-+	  Say Y here to let those flashes use multiple erase sizes for a single
-+	  erase request, exactly like non-uniform flashes already do: larger
-+	  blocks are used for the aligned bulk of the range, while smaller
-+	  blocks are used for the unaligned head and tail. This improves erase
-+	  performance when a smaller erasesize is exposed to userspace.
-+
-+	  This option interacts with MTD_SPI_NOR_USE_4K_SECTORS: when both are
-+	  enabled, the 4096 B erase size is exposed through mtd->erasesize, but
-+	  the driver still uses multiple erase sizes internally to improve
-+	  performance.
-+
-+	  If unsure, say N.
-+
- choice
- 	prompt "Software write protection at boot"
- 	default MTD_SPI_NOR_SWP_DISABLE_ON_VOLATILE
 diff --git a/drivers/mtd/spi-nor/core.c b/drivers/mtd/spi-nor/core.c
-index b25d1a870a22..80c5a7940fae 100644
+index 80c5a7940fae..4e13919d238a 100644
 --- a/drivers/mtd/spi-nor/core.c
 +++ b/drivers/mtd/spi-nor/core.c
-@@ -7,6 +7,7 @@
+@@ -7,7 +7,6 @@
   * Copyright (C) 2014, Freescale Semiconductor, Inc.
   */
  
-+#include <linux/bitops.h>
+-#include <linux/bitops.h>
  #include <linux/cleanup.h>
  #include <linux/delay.h>
  #include <linux/device.h>
-@@ -1225,22 +1226,34 @@ static bool spi_nor_has_uniform_erase(const struct spi_nor *nor)
+@@ -1226,11 +1225,6 @@ static bool spi_nor_has_uniform_erase(const struct spi_nor *nor)
  	return !!nor->params->erase_map.uniform_region.erase_mask;
  }
  
-+static bool spi_nor_has_multiple_uniform_erase_sizes(const struct spi_nor *nor)
-+{
-+	return hweight8(nor->params->erase_map.uniform_region.erase_mask) > 1;
-+}
-+
+-static bool spi_nor_has_multiple_uniform_erase_sizes(const struct spi_nor *nor)
+-{
+-	return hweight8(nor->params->erase_map.uniform_region.erase_mask) > 1;
+-}
+-
  static void spi_nor_set_4byte_opcodes(struct spi_nor *nor)
  {
-+	struct spi_nor_erase_map *map = &nor->params->erase_map;
-+	struct spi_nor_erase_type *erase;
-+	int i;
+ 	struct spi_nor_erase_map *map = &nor->params->erase_map;
+@@ -1243,13 +1237,9 @@ static void spi_nor_set_4byte_opcodes(struct spi_nor *nor)
+ 
+ 	/*
+ 	 * Convert the opcode of every erase type, including for uniform
+-	 * flashes. For a uniform flash driven with a single erase type
+-	 * the converted erase_type opcode matches the nor->erase_opcode
+-	 * converted just above (spi_nor_select_erase() copied it from the same
+-	 * erase type), so >16 MiB uniform flashes keep erasing correctly.
+-	 * The erase map is always initialized, so we can safely convert all
+-	 * erase types, to keep the erase map in a consistent state to flash
+-	 * mode.
++	 * flashes. The erase map is always initialized, so we can safely
++	 * convert all erase types, even if they are not used, to keep the
++	 * erase map in a consistent state with address mode.
+ 	 */
+ 	for (i = 0; i < SNOR_ERASE_TYPE_MAX; i++) {
+ 		erase = &map->erase_type[i];
+@@ -1550,6 +1540,35 @@ int spi_nor_erase_sector(struct spi_nor *nor, u32 addr)
+ 						nor->bouncebuf, nor->addr_nbytes);
+ }
+ 
++/**
++ * spi_nor_erase_one() - erase a single sector at the given address
++ * @nor:	pointer to a 'struct spi_nor'
++ * @addr:	offset in the serial flash memory
++ *
++ * Return: 0 on success, -errno otherwise.
++ */
++static int spi_nor_erase_one(struct spi_nor *nor, u32 addr)
++{
++	int ret;
 +
- 	nor->read_opcode = spi_nor_convert_3to4_read(nor->read_opcode);
- 	nor->program_opcode = spi_nor_convert_3to4_program(nor->program_opcode);
- 	nor->erase_opcode = spi_nor_convert_3to4_erase(nor->erase_opcode);
- 
--	if (!spi_nor_has_uniform_erase(nor)) {
--		struct spi_nor_erase_map *map = &nor->params->erase_map;
--		struct spi_nor_erase_type *erase;
--		int i;
--
--		for (i = 0; i < SNOR_ERASE_TYPE_MAX; i++) {
--			erase = &map->erase_type[i];
--			erase->opcode =
--				spi_nor_convert_3to4_erase(erase->opcode);
--		}
-+	/*
-+	 * Convert the opcode of every erase type, including for uniform
-+	 * flashes. For a uniform flash driven with a single erase type
-+	 * the converted erase_type opcode matches the nor->erase_opcode
-+	 * converted just above (spi_nor_select_erase() copied it from the same
-+	 * erase type), so >16 MiB uniform flashes keep erasing correctly.
-+	 * The erase map is always initialized, so we can safely convert all
-+	 * erase types, to keep the erase map in a consistent state to flash
-+	 * mode.
-+	 */
-+	for (i = 0; i < SNOR_ERASE_TYPE_MAX; i++) {
-+		erase = &map->erase_type[i];
-+		erase->opcode = spi_nor_convert_3to4_erase(erase->opcode);
- 	}
- }
- 
-@@ -1710,7 +1723,7 @@ static int spi_nor_init_erase_cmd_list(struct spi_nor *nor,
- }
- 
++	ret = spi_nor_lock_device(nor);
++	if (ret)
++		return ret;
++
++	ret = spi_nor_write_enable(nor);
++	if (ret) {
++		spi_nor_unlock_device(nor);
++		return ret;
++	}
++
++	ret = spi_nor_erase_sector(nor, addr);
++	spi_nor_unlock_device(nor);
++	if (ret)
++		return ret;
++
++	return spi_nor_wait_till_ready(nor);
++}
++
  /**
-- * spi_nor_erase_multi_sectors() - perform a non-uniform erase
-+ * spi_nor_erase_multi_sectors() - perform a multi-size erase
-  * @nor:	pointer to a 'struct spi_nor'
-  * @addr:	offset in the serial flash memory
-  * @len:	number of bytes to erase
-@@ -1830,7 +1843,8 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
+  * spi_nor_div_by_erase_size() - calculate remainder and update new dividend
+  * @erase:	pointer to a structure that describes a SPI NOR erase type
+@@ -1566,6 +1585,47 @@ static u64 spi_nor_div_by_erase_size(const struct spi_nor_erase_type *erase,
+ 	return dividend >> erase->size_shift;
+ }
+ 
++/**
++ * spi_nor_is_uniform_erasable() - check if a uniform erase request is valid
++ * @nor:	pointer to a 'struct spi_nor'
++ * @instr:	pointer to 'struct erase_info'
++ *
++ * When multiple erase sizes are enabled on a uniform flash, verify that the
++ * requested address and length are aligned to the smallest supported erase
++ * size in the uniform region.
++ *
++ * Return: true if the range can be erased, false otherwise.
++ */
++static bool spi_nor_is_uniform_erasable(const struct spi_nor *nor,
++					struct erase_info *instr)
++{
++	const struct spi_nor_erase_map *map = &nor->params->erase_map;
++	u8 erase_mask = map->uniform_region.erase_mask;
++	const struct spi_nor_erase_type *erase = NULL;
++	int i;
++	u32 rem;
++
++	for (i = 0; i < SNOR_ERASE_TYPE_MAX; i++) {
++		if (erase_mask & BIT(i) && map->erase_type[i].size) {
++			erase = &map->erase_type[i];
++			break;
++		}
++	}
++
++	if (unlikely(!erase))
++		return false;
++
++	spi_nor_div_by_erase_size(erase, instr->addr, &rem);
++	if (rem)
++		return false;
++
++	div_u64_rem(instr->len, erase->size, &rem);
++	if (rem)
++		return false;
++
++	return true;
++}
++
+ /**
+  * spi_nor_find_best_erase_type() - find the best erase type for the given
+  *				    offset in the serial flash memory and the
+@@ -1617,6 +1677,49 @@ spi_nor_find_best_erase_type(const struct spi_nor_erase_map *map,
+ 	return NULL;
+ }
+ 
++/**
++ * spi_nor_erase_uniform() - erase a range on a uniform flash
++ * @nor:	pointer to a 'struct spi_nor'
++ * @addr:	offset in the serial flash memory
++ * @len:	number of bytes to erase
++ *
++ * Return: 0 on success, -errno otherwise.
++ */
++static int spi_nor_erase_uniform(struct spi_nor *nor, u64 addr, u32 len)
++{
++	const struct spi_nor_erase_map *map = &nor->params->erase_map;
++	const struct spi_nor_erase_region *region = &map->uniform_region;
++	const struct spi_nor_erase_type *erase;
++	int ret;
++	/*
++	 * When CONFIG_MTD_SPI_NOR_MULTI_ERASE_SIZE is disabled, erase_size is
++	 * mtd->erasesize and nor->erase_opcode was set once at init by
++	 * spi_nor_select_erase().
++	 */
++	u32 erase_size = nor->mtd.erasesize;
++
++	while (len) {
++		if (IS_ENABLED(CONFIG_MTD_SPI_NOR_MULTI_ERASE_SIZE)) {
++			erase = spi_nor_find_best_erase_type(map, region, addr,
++							     len);
++			if (unlikely(!erase))
++				return -EINVAL;
++
++			nor->erase_opcode = erase->opcode;
++			erase_size = erase->size;
++		}
++
++		ret = spi_nor_erase_one(nor, addr);
++		if (ret)
++			return ret;
++
++		addr += erase_size;
++		len -= erase_size;
++	}
++
++	return 0;
++}
++
+ /**
+  * spi_nor_init_erase_cmd() - initialize an erase command
+  * @region:	pointer to a structure that describes a SPI NOR erase region
+@@ -1749,22 +1852,7 @@ static int spi_nor_erase_multi_sectors(struct spi_nor *nor, u64 addr, u32 len)
+ 			dev_vdbg(nor->dev, "erase_cmd->size = 0x%08x, erase_cmd->opcode = 0x%02x, erase_cmd->count = %u\n",
+ 				 cmd->size, cmd->opcode, cmd->count);
+ 
+-			ret = spi_nor_lock_device(nor);
+-			if (ret)
+-				goto destroy_erase_cmd_list;
+-
+-			ret = spi_nor_write_enable(nor);
+-			if (ret) {
+-				spi_nor_unlock_device(nor);
+-				goto destroy_erase_cmd_list;
+-			}
+-
+-			ret = spi_nor_erase_sector(nor, addr);
+-			spi_nor_unlock_device(nor);
+-			if (ret)
+-				goto destroy_erase_cmd_list;
+-
+-			ret = spi_nor_wait_till_ready(nor);
++			ret = spi_nor_erase_one(nor, addr);
+ 			if (ret)
+ 				goto destroy_erase_cmd_list;
+ 
+@@ -1843,11 +1931,20 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
  	dev_dbg(nor->dev, "at 0x%llx, len %lld\n", (long long)instr->addr,
  			(long long)instr->len);
  
--	if (spi_nor_has_uniform_erase(nor)) {
-+	if (spi_nor_has_uniform_erase(nor) &&
-+	    !spi_nor_has_multiple_uniform_erase_sizes(nor)) {
- 		div_u64_rem(instr->len, mtd->erasesize, &rem);
- 		if (rem)
- 			return -EINVAL;
-@@ -1864,7 +1878,8 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
+-	if (spi_nor_has_uniform_erase(nor) &&
+-	    !spi_nor_has_multiple_uniform_erase_sizes(nor)) {
+-		div_u64_rem(instr->len, mtd->erasesize, &rem);
+-		if (rem)
+-			return -EINVAL;
++	if (spi_nor_has_uniform_erase(nor)) {
++		if (IS_ENABLED(CONFIG_MTD_SPI_NOR_MULTI_ERASE_SIZE)) {
++			if (!spi_nor_is_uniform_erasable(nor, instr))
++				return -EINVAL;
++		} else {
++			/*
++			 * Legacy uniform validation: only the length must be
++			 * a multiple of mtd->erasesize. Address alignment is
++			 * not checked here for backward compatibility.
++			 */
++			div_u64_rem(instr->len, mtd->erasesize, &rem);
++			if (rem)
++				return -EINVAL;
++		}
+ 	}
+ 
+ 	addr = instr->addr;
+@@ -1877,34 +1974,12 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
+ 	 * to use "small sector erase", but that's not always optimal.
  	 */
  
- 	/* "sector"-at-a-time erase */
--	} else if (spi_nor_has_uniform_erase(nor)) {
-+	} else if (spi_nor_has_uniform_erase(nor) &&
-+		   !spi_nor_has_multiple_uniform_erase_sizes(nor)) {
- 		while (len) {
- 			ret = spi_nor_lock_device(nor);
- 			if (ret)
-@@ -2652,8 +2667,9 @@ static int spi_nor_select_pp(struct spi_nor *nor,
-  * spi_nor_select_uniform_erase() - select optimum uniform erase type
-  * @map:		the erase map of the SPI NOR
-  *
-- * Once the optimum uniform sector erase command is found, disable all the
-- * other.
-+ * Select the optimum uniform sector erase type. When
-+ * CONFIG_MTD_SPI_NOR_MULTI_ERASE_SIZE is disabled, disable all other erase
-+ * types in the uniform region erase mask.
-  *
-  * Return: pointer to erase type on success, NULL otherwise.
-  */
-@@ -2700,8 +2716,12 @@ spi_nor_select_uniform_erase(struct spi_nor_erase_map *map)
- 	if (!erase)
- 		return NULL;
+-	/* "sector"-at-a-time erase */
+-	} else if (spi_nor_has_uniform_erase(nor) &&
+-		   !spi_nor_has_multiple_uniform_erase_sizes(nor)) {
+-		while (len) {
+-			ret = spi_nor_lock_device(nor);
+-			if (ret)
+-				goto erase_err;
+-
+-			ret = spi_nor_write_enable(nor);
+-			if (ret) {
+-				spi_nor_unlock_device(nor);
+-				goto erase_err;
+-			}
+-
+-			ret = spi_nor_erase_sector(nor, addr);
+-			spi_nor_unlock_device(nor);
+-			if (ret)
+-				goto erase_err;
+-
+-			ret = spi_nor_wait_till_ready(nor);
+-			if (ret)
+-				goto erase_err;
+-
+-			addr += mtd->erasesize;
+-			len -= mtd->erasesize;
+-		}
++	} else if (spi_nor_has_uniform_erase(nor)) {
++		ret = spi_nor_erase_uniform(nor, addr, len);
++		if (ret)
++			goto erase_err;
  
--	/* Disable all other Sector Erase commands. */
--	map->uniform_region.erase_mask = BIT(erase - map->erase_type);
-+	/*
-+	 * Disable all other Sector Erase commands only when
-+	 * CONFIG_MTD_SPI_NOR_MULTI_ERASE_SIZE is disabled.
-+	 */
-+	if (!IS_ENABLED(CONFIG_MTD_SPI_NOR_MULTI_ERASE_SIZE))
-+		map->uniform_region.erase_mask = BIT(erase - map->erase_type);
- 	return erase;
- }
- 
-@@ -2719,6 +2739,12 @@ static int spi_nor_select_erase(struct spi_nor *nor)
+-	/* erase multiple sectors */
++	/* erase multiple sectors on non-uniform flashes */
+ 	} else {
+ 		ret = spi_nor_erase_multi_sectors(nor, addr, len);
+ 		if (ret)
+@@ -2739,12 +2814,11 @@ static int spi_nor_select_erase(struct spi_nor *nor)
  	 * So to be backward compatible, the new implementation also tries to
  	 * manage the SPI flash memory as uniform with a single erase sector
  	 * size, when possible.
-+	 * Exception is when CONFIG_MTD_SPI_NOR_MULTI_ERASE_SIZE is enabled.
-+	 * We use multiple erase sizes for the SPI flash memory, but we still
-+	 * need to select one of the supported erase sizes to set
-+	 * mtd->erasesize. The selected erase size will be exposed as the
-+	 * uniform erase size but all other erase sizes are still available
-+	 * for use.
+-	 * Exception is when CONFIG_MTD_SPI_NOR_MULTI_ERASE_SIZE is enabled.
+-	 * We use multiple erase sizes for the SPI flash memory, but we still
+-	 * need to select one of the supported erase sizes to set
+-	 * mtd->erasesize. The selected erase size will be exposed as the
+-	 * uniform erase size but all other erase sizes are still available
+-	 * for use.
++	 *
++	 * When CONFIG_MTD_SPI_NOR_MULTI_ERASE_SIZE is enabled, multiple erase
++	 * sizes are used internally, but mtd->erasesize still reflects the
++	 * selected uniform erase size exposed to userspace. The other erase
++	 * sizes remain available in the uniform region erase mask.
  	 */
  	if (spi_nor_has_uniform_erase(nor)) {
  		erase = spi_nor_select_uniform_erase(map);
