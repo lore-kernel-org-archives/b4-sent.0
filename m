@@ -1,75 +1,102 @@
-From: =?utf-8?q?=E9=83=91=E9=B8=BF=E6=BA=90?= <spark_psc@outlook.com>
-Date: Tue, 21 Jul 2026 03:31:58 +0800
-Subject: [PATCH] ASoC: amd: yc: Add MSI Crosshair A16 HX D7WFKG to quirk
- table
+From: Nikolai Burov <nikolai.burov@jolla.com>
+Subject: [PATCH v3 0/3] pmdomain: mediatek: Add MT6858 support
+Date: Mon, 20 Jul 2026 23:46:45 +0300
+Message-Id: <20260720-mt6858-pmdomain-v3-0-8966d8de93c8@jolla.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260721-master-v1-1-6f56d5a54d96@outlook.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBCF4avIrA1NIrXWq4iL0Ux1Fo1lRkQI3
- t1olx+8/yVQEiaFtkggtLHyEjNcWcA4Y5zIcMgGb31tX96ZL+pKYt7UVE8XbKgdQh7/hD6830d
- dnz2gkhkE4zhf+SI8cXz8YziOEwUDumB4AAAA
-X-Change-ID: 20260721-master-9e8351d0d61a
-To: Vijendar Mukunda <Vijendar.Mukunda@amd.com>, 
- Mark Brown <broonie@kernel.org>
-Cc: Venkata Prasad Potturu <venkataprasad.potturu@amd.com>, 
- Liam Girdwood <lgirdwood@gmail.com>, Jaroslav Kysela <perex@perex.cz>, 
- Takashi Iwai <tiwai@suse.com>, linux-sound@vger.kernel.org, 
- linux-kernel@vger.kernel.org, 
- =?utf-8?q?=E9=83=91=E9=B8=BF=E6=BA=90?= <spark_psc@outlook.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784575921; l=1505;
- i=spark_psc@outlook.com; h=from:subject:message-id;
- bh=sPieR3UZfAQY/O5EmOaFntl04LzU4hXdSmuT+Pa9MUk=;
- b=tcrtQFzYLHt0rPWGpDtA+KzxseW/Lj0w5h1Gllgj12fDIlwnBoI5+A0dcq3wLcgoRi8fl9ltj
- uFXucVuRReGBJSNzfYY1reyukjPc/mC2Gc/sfvkMNIoiQKktRzx63wX
-X-Developer-Key: i=spark_psc@outlook.com; a=ed25519;
- pk=2Jj+f2FmVYca2wcyeqtE4uty2ySW1dJ5k3c4Zde3V4Q=
-X-Endpoint-Received: by B4 Relay for spark_psc@outlook.com/default with auth_id=886
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIADWJXmoC/2WN0QqDIABFfyV8nkMtTfe0/xh7SLNlzAxtshH9+
+ 7QxCHo8cM+5CwjaGx3ApViA19EE48YE5akAqm/Gh4amTQwIIgzVmEA7M045nGzrbGNGKLGsKFO
+ CsZqCZE1ed+a9FW/3H4eXHLSacyYvehNm5z/bZcR5969Xh3rEEMGqQ0JKyQnR6Dq457M5K2dBr
+ key9+nRJ8lnRJSa151Cotz767p+AVdnEVgAAQAA
+X-Change-ID: 20260712-mt6858-pmdomain-b1b456c96675
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Matthias Brugger <matthias.bgg@gmail.com>, 
+ AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
+ Ulf Hansson <ulfh@kernel.org>
+Cc: Matthias Brugger <mbrugger@suse.com>, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
+ linux-mediatek@lists.infradead.org, linux-pm@vger.kernel.org, 
+ Nikolai Burov <nikolai.burov@jolla.com>, 
+ Nikolai Burov <nikolai.burov+review@abscue.de>, 
+ Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784580408; l=2706;
+ i=nikolai.burov@jolla.com; s=20260707; h=from:subject:message-id;
+ bh=v+gyiP3F5En4Mzp5K0FZ5ZTCbmOS6wGQ+d/V1cnkflY=;
+ b=us8g3ckdvk3t87RuXqPirheNWUBIN2a3SyiS4ZM13IU1iIzPELzMCVooL0FeU/86E2JqlpDvj
+ 3bcHU8tKQD6BYYg61dC1QFG66x/70B3cMmmoYQbdaosUKVBbfJxCmA+
+X-Developer-Key: i=nikolai.burov@jolla.com; a=ed25519;
+ pk=yzpa+PD+ovHUFMIOBA9o2QqGwI110jM6hdGHLc7jtoQ=
+X-Endpoint-Received: by B4 Relay for nikolai.burov@jolla.com/20260707 with auth_id=859
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The MSI Crosshair A16 HX D7WFKG has an internal digital microphone
-connected through AMD ACP6x, but the system does not expose the
-AcpDmicConnected ACPI property. As a result, acp_yc_mach does not bind
-and no DMIC capture device is created.
+Add power domain driver support for the MediaTek Dimensity 7100 (MT6858)
+SoC. On this SoC, there are some new subsystem-specific bus protection
+blocks, which are listed here in ascending address order:
 
-Add a DMI quirk for this model. This was tested on a system with board
-MS-15PL, BIOS E15PLAMS.10B, and AMD ACP6x rev 0x62. After applying the
-quirk, the internal microphone appears as an acp6x DMIC capture device
-and records correctly.
+- IMG_SUB0 at 0x1502f000
+- CAM_SUB1 at 0x1a00c000
+- CAM_SUB0 at 0x1a00d000
+- IPE_SUB0 at 0x1b00e000
 
-Signed-off-by: 郑鸿源 <spark_psc@outlook.com>
+The VLPCFG bus configuration registers at 0x1c00c000 are also new.
+
+Additionally, implement the SMC-based power sequence required for
+enabling the modem power domain on this SoC.
+
+Signed-off-by: Nikolai Burov <nikolai.burov@jolla.com>
 ---
-This patch adds a DMI quirk for the MSI Crosshair A16 HX D7WFKG.
-The commit message contains the full rationale and test details.
----
- sound/soc/amd/yc/acp6x-mach.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+Changes in v3:
+- Fix error path to also skip sram_pdn for MODEM_SECURE_PWRSEQ
+  (discovered in Sashiko report)
+- Link to v2: https://patch.msgid.link/20260715-mt6858-pmdomain-v2-0-6293e87fc093@jolla.com
 
-diff --git a/sound/soc/amd/yc/acp6x-mach.c b/sound/soc/amd/yc/acp6x-mach.c
-index d6df7de..3a8a5da 100644
---- a/sound/soc/amd/yc/acp6x-mach.c
-+++ b/sound/soc/amd/yc/acp6x-mach.c
-@@ -521,6 +521,13 @@ static const struct dmi_system_id yc_acp_quirk_table[] = {
- 			DMI_MATCH(DMI_PRODUCT_NAME, "Vector A16 HX A8WHG"),
- 		}
- 	},
-+	{
-+		.driver_data = &acp6x_card,
-+		.matches = {
-+			DMI_MATCH(DMI_BOARD_VENDOR, "Micro-Star International Co., Ltd."),
-+			DMI_MATCH(DMI_PRODUCT_NAME, "Crosshair A16 HX D7WFKG"),
-+		}
-+	},
- 	{
- 		.driver_data = &acp6x_card,
- 		.matches = {
+Changes in v2:
+- Rebase
+- MTK_SCPD_MODEM_SECURE -> MTK_SCPD_MODEM_SECURE_PWRSEQ
+- Convert SMC command enum to defines
+- Based on the new SIMPLE_PWRSEQ changes, skip the sram_pdn stage for
+  MODEM_SECURE_PWRSEQ too since it wasn't intended to have an effect
+- Clarify that the SMC call also handles bus protection
+- Simply if/else code based on the assumption *_PWRSEQ are mutually
+  exclusive
+- Add comment explaining that PWR_STA_2ND is skipped for modem
+  (mentioned in Sashiko report)
+- Link to v1: https://patch.msgid.link/20260714-mt6858-pmdomain-v1-0-4f09bbb822e0@jolla.com
+
+To: Rob Herring <robh@kernel.org>
+To: Krzysztof Kozlowski <krzk+dt@kernel.org>
+To: Conor Dooley <conor+dt@kernel.org>
+To: Matthias Brugger <matthias.bgg@gmail.com>
+To: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+To: Ulf Hansson <ulfh@kernel.org>
+Cc: Matthias Brugger <mbrugger@suse.com>
+Cc: devicetree@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Cc: linux-arm-kernel@lists.infradead.org
+Cc: linux-mediatek@lists.infradead.org
+Cc: linux-pm@vger.kernel.org
 
 ---
-base-commit: 1590cf0329716306e948a8fc29f1d3ee87d3989f
-change-id: 20260721-master-9e8351d0d61a
+Nikolai Burov (3):
+      dt-bindings: power: Add MediaTek MT6858 power domain controller
+      pmdomain: mediatek: Add support for secure modem power domain control
+      pmdomain: mediatek: Add support for MT6858 SoC
+
+ .../bindings/power/mediatek,power-controller.yaml  |  21 +-
+ drivers/pmdomain/mediatek/mt6858-pm-domains.h      | 466 +++++++++++++++++++++
+ drivers/pmdomain/mediatek/mtk-pm-domains.c         |  55 ++-
+ drivers/pmdomain/mediatek/mtk-pm-domains.h         |   6 +
+ include/dt-bindings/power/mediatek,mt6858-power.h  |  23 +
+ include/linux/soc/mediatek/mtk_sip_svc.h           |   3 +
+ 6 files changed, 568 insertions(+), 6 deletions(-)
+---
+base-commit: 3fe08b9796f36ef437ab9328e7dd1e5ff2d66603
+change-id: 20260712-mt6858-pmdomain-b1b456c96675
 
 Best regards,
--- 
-郑鸿源 <spark_psc@outlook.com>
+--  
+Nikolai Burov <nikolai.burov@jolla.com>
 
