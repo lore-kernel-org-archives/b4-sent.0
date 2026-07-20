@@ -1,14 +1,13 @@
 From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Subject: [PATCH 00/10] HID: iio: use local struct device
-Date: Mon, 20 Jul 2026 15:10:12 +0530
-Message-Id: <20260720-hid-iio-local-struct-device-v1-0-74496fee6327@gmail.com>
+Date: Mon, 20 Jul 2026 15:10:13 +0530
+Subject: [PATCH 01/10] iio: humidity: hid-sensor-humidity: use local struct
+ device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAPzsXWoC/yXMQQqDMBBA0avIrDsQIzWlV5Eu4mSsU8RIJoog3
- t20Xb7F/wcoJ2GFZ3VA4k1U4lxQ3yqg0c9vRgnFYI1tjbMGRwkoEnGK5CfUnFbKGEpJjHVo/GC
- da+8PD+WwJB5k/92719+69h+m/F3CeV53QnWnfwAAAA==
-X-Change-ID: 20260720-hid-iio-local-struct-device-1d3af277658a
+Message-Id: <20260720-hid-iio-local-struct-device-v1-1-74496fee6327@gmail.com>
+References: <20260720-hid-iio-local-struct-device-v1-0-74496fee6327@gmail.com>
+In-Reply-To: <20260720-hid-iio-local-struct-device-v1-0-74496fee6327@gmail.com>
 To: Jiri Kosina <jikos@kernel.org>, Jonathan Cameron <jic23@kernel.org>, 
  Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>, 
  David Lechner <dlechner@baylibre.com>, 
@@ -17,55 +16,52 @@ To: Jiri Kosina <jikos@kernel.org>, Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-input@vger.kernel.org, linux-iio@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784540423; l=1897;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784540423; l=1433;
  i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
- bh=4kUvBf5if1nv9lCc3XUy9wkiVtwtLor6LCOjrtnhe6A=;
- b=uI65hJeL5pfBPSyjC0Ga+0XuXNfEHKdMLNm+96nFUUs6pvYwp6QxFycRINUWrLYkJOTvY4yqC
- RkuOxHpLJJ6B/0ZWYzxDDki3gTYIopSCzH1kK6ow0JRv5+V1Z31FYuH
+ bh=LsnrdNMs3dMUtTK3CAAIvAss81SC1EE8A5C3AYP1tnY=;
+ b=A8l/C4PtdauXUHADBaRxAw3cHyKxhem+dupRUirYRB+89tMZOq09jwan1Lkb8dBEps0LngH+b
+ ruzXFQxQ3A/C0CjUBYA4pdZzLK4bgtU8NOA61dFIQutOF83b2oMUMGD
 X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
  pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
 X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Hi all,
-
 Introduce a local struct device pointer derived from &pdev->dev.
 This avoids repeated &pdev->dev usage and improves readability.
 
-Prepratory series to convert all HID IIO driver to devm.
-
-Testing:
-  - Compiled with W=1 for each patch in series
-
+Signed-off-by: Sanjay Chitroda <sanjayembeddedse@gmail.com>
 ---
-Sanjay Chitroda (10):
-      iio: humidity: hid-sensor-humidity: use local struct device
-      iio: gyro: hid-sensor-gyro-3d: use local struct device
-      iio: accel: hid-sensor-accel-3d: use local struct device
-      iio: light: hid-sensor-als: use local struct device
-      iio: light: hid-sensor-prox: use local struct device
-      iio: magnetometer: hid-sensor-magn-3d: use local struct device
-      iio: orientation: hid-sensor-incl-3d: use local struct device
-      iio: orientation: hid-sensor-rotation: use local struct device
-      iio: position: hid-sensor-custom-intel-hinge: use local struct device
-      iio: pressure: hid-sensor-press: use local struct device
+ drivers/iio/humidity/hid-sensor-humidity.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
- drivers/iio/accel/hid-sensor-accel-3d.c            | 22 +++++------
- drivers/iio/gyro/hid-sensor-gyro-3d.c              | 19 +++++-----
- drivers/iio/humidity/hid-sensor-humidity.c         |  7 ++--
- drivers/iio/light/hid-sensor-als.c                 | 15 ++++----
- drivers/iio/light/hid-sensor-prox.c                | 15 ++++----
- drivers/iio/magnetometer/hid-sensor-magn-3d.c      | 43 ++++++++++------------
- drivers/iio/orientation/hid-sensor-incl-3d.c       | 20 +++++-----
- drivers/iio/orientation/hid-sensor-rotation.c      | 24 ++++++------
- .../iio/position/hid-sensor-custom-intel-hinge.c   | 17 +++++----
- drivers/iio/pressure/hid-sensor-press.c            | 19 +++++-----
- 10 files changed, 100 insertions(+), 101 deletions(-)
----
-base-commit: 36c12dbda81c284d72f3c64689461647497b643b
-change-id: 20260720-hid-iio-local-struct-device-1d3af277658a
+diff --git a/drivers/iio/humidity/hid-sensor-humidity.c b/drivers/iio/humidity/hid-sensor-humidity.c
+index 7cec81ff5685..1b254d3aeee9 100644
+--- a/drivers/iio/humidity/hid-sensor-humidity.c
++++ b/drivers/iio/humidity/hid-sensor-humidity.c
+@@ -196,10 +196,11 @@ static int hid_humidity_probe(struct platform_device *pdev)
+ 	struct iio_dev *indio_dev;
+ 	struct hid_humidity_state *humid_st;
+ 	struct iio_chan_spec *humid_chans;
+-	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
++	struct device *dev = &pdev->dev;
++	struct hid_sensor_hub_device *hsdev = dev_get_platdata(dev);
+ 	int ret;
+ 
+-	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*humid_st));
++	indio_dev = devm_iio_device_alloc(dev, sizeof(*humid_st));
+ 	if (!indio_dev)
+ 		return -ENOMEM;
+ 
+@@ -215,7 +216,7 @@ static int hid_humidity_probe(struct platform_device *pdev)
+ 	if (ret)
+ 		return ret;
+ 
+-	humid_chans = devm_kmemdup(&pdev->dev, humidity_channels,
++	humid_chans = devm_kmemdup(dev, humidity_channels,
+ 				   sizeof(humidity_channels), GFP_KERNEL);
+ 	if (!humid_chans)
+ 		return -ENOMEM;
 
-Best regards,
---  
-Sanjay Chitroda <sanjayembeddedse@gmail.com>
+-- 
+2.34.1
 
