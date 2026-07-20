@@ -1,11 +1,11 @@
 From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Mon, 20 Jul 2026 12:38:33 +0200
-Subject: [PATCH v2 2/3] iio: inv_sensors: better timestamp alignment when
- using watermark
+Date: Mon, 20 Jul 2026 12:38:34 +0200
+Subject: [PATCH v2 3/3] iio: inv_sensors: improve period measurement by
+ using a longer delay
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260720-iio-common-inv-sensors-timestamp-rework-v2-2-aec31446809c@tdk.com>
+Message-Id: <20260720-iio-common-inv-sensors-timestamp-rework-v2-3-aec31446809c@tdk.com>
 References: <20260720-iio-common-inv-sensors-timestamp-rework-v2-0-aec31446809c@tdk.com>
 In-Reply-To: <20260720-iio-common-inv-sensors-timestamp-rework-v2-0-aec31446809c@tdk.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
@@ -15,121 +15,120 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784543936; l=4065;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784543936; l=4309;
  i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=5Y3d1x9lJj9xiAU5X4QM0jQxvh5zbPbgxHv2JS+TVXc=;
- b=HUoSLqp/O1HoKzpVGswc35/6WB9q8Ym55ZYuzOu48jcf6aM2SUx1QlPsedljAV5USwMcVlU5E
- pbMZgv3+h5SDYEBtTxGVLxr/+UU1kNorwUJNkJc06kcsC8YPumCFTEJ
+ bh=XgtZLh2KI5FSAM9NrJBryiRhF0RxEixZYqvMUesVYz4=;
+ b=yqal+NPcGcWDQLPsp6oAzWkTPN6HOImaAvl+0jLlAWKsGG9+Vk4itLV34VeazKABngTi1znw3
+ eBzbLcB94UiCK22mTb2pt1pac7S01QaI8gF+uG0h9mYGak2eEQETXr9
 X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
  pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
 X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Current interrupt timestamp alignment only changes the final timestamp.
-When the watermark is in use, we have a batch of samples for each
-interrupt. The current code doesn't manage to align the timestamp
-because the jitter is too high.
+Period measurement can be difficult when using high sampling
+frequency where the jitter criteria is hard to meet because of the
+system jitter.
 
-Instead modify the estimated inter interrupt period and use that to
-adjust the timestamp alignment over the batch in a linear fashion.
+This new version is using the delta time between 2 distant interrupts
+to measure an interval of at least 20ms. 20ms is a good compromise
+between the mitigation of system jitter and the delay to update
+period. This way we decorrelate the period measurement from the
+interrupt timestamps syncing using only the 2 last interrupts.
 
 Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
- .../iio/common/inv_sensors/inv_sensors_timestamp.c | 51 ++++++++--------------
- 1 file changed, 19 insertions(+), 32 deletions(-)
+ .../iio/common/inv_sensors/inv_sensors_timestamp.c | 26 +++++++++++++++++++---
+ include/linux/iio/common/inv_sensors_timestamp.h   |  6 +++++
+ 2 files changed, 29 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c b/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
-index ecfd54ffe7e9..2aaaa8df6d03 100644
+index 2aaaa8df6d03..88a82d1370c5 100644
 --- a/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
 +++ b/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
-@@ -10,9 +10,7 @@
- 
- #include <linux/iio/common/inv_sensors_timestamp.h>
- 
--/* compute jitter, min and max following jitter in per mille */
--#define INV_SENSORS_TIMESTAMP_JITTER(_val, _jitter)		\
--	(div_s64((_val) * (_jitter), 1000))
-+/* compute min and max following jitter in per mille */
- #define INV_SENSORS_TIMESTAMP_MIN(_val, _jitter)		\
- 	(((_val) * (1000 - (_jitter))) / 1000)
+@@ -16,6 +16,9 @@
  #define INV_SENSORS_TIMESTAMP_MAX(_val, _jitter)		\
-@@ -102,34 +100,22 @@ static bool inv_update_chip_period(struct inv_sensors_timestamp *ts,
- 	/* update chip internal period estimation */
- 	new_chip_period = period / ts->mult;
- 	inv_update_acc(&ts->chip_period, new_chip_period);
--	ts->period = ts->mult * ts->chip_period.val;
+ 	(((_val) * (1000 + (_jitter))) / 1000)
  
- 	return true;
- }
- 
--static void inv_align_timestamp_it(struct inv_sensors_timestamp *ts)
-+static u32 inv_align_timestamp_it(struct inv_sensors_timestamp *ts,
-+				  unsigned int sample_nb)
- {
- 	const s64 period_min = (s64)ts->min_period * ts->mult;
- 	const s64 period_max = (s64)ts->max_period * ts->mult;
--	s64 add_max, sub_max;
--	s64 delta, jitter;
--	s64 adjust;
--
--	/* delta time between last sample and last interrupt */
--	delta = ts->it.lo - ts->timestamp;
--
--	/* adjust timestamp while respecting jitter */
--	add_max = period_max - (s64)ts->period;
--	sub_max = period_min - (s64)ts->period;
--	jitter = INV_SENSORS_TIMESTAMP_JITTER((s64)ts->period, ts->chip.jitter);
--	if (delta > jitter)
--		adjust = add_max;
--	else if (delta < -jitter)
--		adjust = sub_max;
--	else
--		adjust = 0;
-+	s64 new_period;
++/* minimum timestamp delta between 2 interrupts for measuring period (20ms) */
++#define INV_SENSORS_MIN_IT_DELTA	(20 * NSEC_PER_MSEC)
 +
-+	/* compute new period aligning last timestamp with interrupt timestamp */
-+	new_period = div_s64(ts->it.up - ts->timestamp, sample_nb);
+ /* Add a new value inside an accumulator and update the estimate value */
+ static void inv_update_acc(struct inv_sensors_timestamp_acc *acc, u32 val)
+ {
+@@ -122,7 +125,7 @@ void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
+ 				     size_t sample_nb, s64 timestamp)
+ {
+ 	struct inv_sensors_timestamp_interval *it;
+-	s64 delta, interval;
++	s64 delta, delta_threshold, interval;
+ 	u32 period;
+ 	bool valid = false;
  
--	ts->timestamp += adjust;
-+	/* ensure that period never overflows the jitter */
-+	return clamp(new_period, period_min, period_max);
- }
+@@ -136,15 +139,32 @@ void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
+ 		ts->timestamp = timestamp - interval;
+ 	}
  
- void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
-@@ -143,6 +129,13 @@ void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
- 	if (sample_nb == 0)
- 		return;
- 
-+	/* no previous data, compute theoretical value from interrupt */
-+	if (ts->timestamp == 0) {
-+		/* elapsed time: sensor period * sensor samples number */
-+		interval = (s64)ts->period * (s64)sample_nb;
-+		ts->timestamp = timestamp - interval;
++	/* update delta timestamps and estimated period */
++	it = &ts->delta;
++	ts->delta_counter += sample_nb;
++	delta = timestamp - it->up;
++	delta_threshold = INV_SENSORS_TIMESTAMP_MIN(INV_SENSORS_MIN_IT_DELTA, ts->chip.jitter);
++	if (delta >= delta_threshold) {
++		it->lo = it->up;
++		it->up = timestamp;
++		if (it->lo != 0) {
++			/* compute period: delta time divided by number of samples */
++			delta = it->up - it->lo;
++			period = div_s64(delta, ts->delta_counter);
++			inv_update_chip_period(ts, period);
++		}
++		ts->delta_counter = 0;
 +	}
 +
  	/* update interrupt timestamp and compute chip and sensor periods */
  	it = &ts->it;
  	it->lo = it->up;
-@@ -154,17 +147,11 @@ void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
- 		valid = inv_update_chip_period(ts, period);
+ 	it->up = timestamp;
+ 	delta = it->up - it->lo;
+ 	if (it->lo != 0) {
+-		/* compute period: delta time divided by number of samples */
++		/* compute period and check validity */
+ 		period = div_s64(delta, sample_nb);
+-		valid = inv_update_chip_period(ts, period);
++		valid = inv_validate_period(ts, period);
  	}
  
--	/* no previous data, compute theoretical value from interrupt */
--	if (ts->timestamp == 0) {
--		/* elapsed time: sensor period * sensor samples number */
--		interval = (s64)ts->period * (s64)sample_nb;
--		ts->timestamp = it->up - interval;
--		return;
--	}
--
  	/* if interrupt interval is valid, sync with interrupt timestamp */
- 	if (valid)
--		inv_align_timestamp_it(ts);
-+		ts->period = inv_align_timestamp_it(ts, sample_nb);
-+	else
-+		ts->period = ts->mult * ts->chip_period.val;
+diff --git a/include/linux/iio/common/inv_sensors_timestamp.h b/include/linux/iio/common/inv_sensors_timestamp.h
+index e4e720e6f4b7..4f08204ede3b 100644
+--- a/include/linux/iio/common/inv_sensors_timestamp.h
++++ b/include/linux/iio/common/inv_sensors_timestamp.h
+@@ -46,6 +46,8 @@ struct inv_sensors_timestamp_acc {
+  * @min_period:		minimal acceptable clock period
+  * @max_period:		maximal acceptable clock period
+  * @it:			interrupts interval timestamps
++ * @delta:		interval timestamps between several interrupts
++ * @delta_counter:	number of data samples in the delta interval
+  * @timestamp:		store last timestamp for computing next data timestamp
+  * @mult:		current internal period multiplier
+  * @new_mult:		new set internal period multiplier (not yet effective)
+@@ -57,6 +59,8 @@ struct inv_sensors_timestamp {
+ 	u32 min_period;
+ 	u32 max_period;
+ 	struct inv_sensors_timestamp_interval it;
++	struct inv_sensors_timestamp_interval delta;
++	u32 delta_counter;
+ 	s64 timestamp;
+ 	u32 mult;
+ 	u32 new_mult;
+@@ -88,6 +92,8 @@ static inline void inv_sensors_timestamp_reset(struct inv_sensors_timestamp *ts)
+ 	const struct inv_sensors_timestamp_interval interval_init = {0LL, 0LL};
+ 
+ 	ts->it = interval_init;
++	ts->delta = interval_init;
++	ts->delta_counter = 0;
+ 	ts->timestamp = 0;
  }
- EXPORT_SYMBOL_NS_GPL(inv_sensors_timestamp_interrupt, "IIO_INV_SENSORS_TIMESTAMP");
  
 
 -- 
