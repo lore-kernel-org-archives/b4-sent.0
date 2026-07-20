@@ -1,136 +1,99 @@
-From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Date: Mon, 20 Jul 2026 12:38:34 +0200
-Subject: [PATCH v2 3/3] iio: inv_sensors: improve period measurement by
- using a longer delay
+From: David Heidelberg <david@ixit.cz>
+Subject: [PATCH v6 0/2] Add initial dual front camera and rear flash
+ support for Pixel 3 / 3 XL
+Date: Mon, 20 Jul 2026 12:53:06 +0200
+Message-Id: <20260720-pixel3-camera-v6-0-afe419bef476@ixit.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260720-iio-common-inv-sensors-timestamp-rework-v2-3-aec31446809c@tdk.com>
-References: <20260720-iio-common-inv-sensors-timestamp-rework-v2-0-aec31446809c@tdk.com>
-In-Reply-To: <20260720-iio-common-inv-sensors-timestamp-rework-v2-0-aec31446809c@tdk.com>
-To: Jonathan Cameron <jic23@kernel.org>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784543936; l=4309;
- i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=XgtZLh2KI5FSAM9NrJBryiRhF0RxEixZYqvMUesVYz4=;
- b=yqal+NPcGcWDQLPsp6oAzWkTPN6HOImaAvl+0jLlAWKsGG9+Vk4itLV34VeazKABngTi1znw3
- eBzbLcB94UiCK22mTb2pt1pac7S01QaI8gF+uG0h9mYGak2eEQETXr9
-X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
- pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
-X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
+X-B4-Tracking: v=1; b=H4sIABL+XWoC/33RTW7CMBAF4Ksgr2vk8V88rHqPqgvbTMASBeqkE
+ S3K3TuBSiVZsHyWv2dr5io6qoU6sVldRaWhdOV05OBfViLv43FHsmw5C620VwacPJcLHYzM8YN
+ qlBExYGpdQCLB5lyp5QtT39s7533p+lP9vtUPMJ3emyzAomkAqaRuXOOVd+CSfy2X0q/zj5h6B
+ v3UarYWUggYUwKb59Y8Wr20hi1pnxSq6AHU3Np/2wAurZ3eDTkm0MYHp+fWPbWOLaJD00LaBnr
+ 483gfZKXPL95H/zfNcfwFZu7wHK0BAAA=
+X-Change-ID: 20260315-pixel3-camera-a9989bf589ee
+To: Bjorn Andersson <andersson@kernel.org>, 
+ Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
+ Petr Hodina <petr.hodina@protonmail.com>, 
+ Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2265; i=david@ixit.cz;
+ h=from:subject:message-id; bh=VasTktyFUPD4AQ67HvndhYwaYe8DvrCH9EdAcPC1AgA=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqXf4UDUWDOdgWx6PNlM3XUJZOPS7xYKnbdBWYX
+ LZ96zbDACyJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCal3+FAAKCRBgAj/E00kg
+ clDPD/44MWNF3PQ2J4iZeUDzIb378/RMLNTBtDkRvGCge8wMJJ+DnO2UlHS+zQJk8iCAQpcD4IG
+ hVPAfYFl5hhO6PyKwxxK+r7tZ2fct5c2Zwbns2Jc59OfQU2SDoCCOCu1x8EfkM/6Q64amsneBNr
+ oaff+oP/SbEIl7+R32Z8kLDqhX289+yRuD1zkUXG32OcjDqzCbo7TYhELp3s8rgftBsjS+SMQxa
+ UCkDV8C5axKXm0NhJaCeZA6BqtumYjeDRHGRspUruDk0mGztaOGxG22RR/1+7dgaWIV4GkwK44F
+ ZViTJCLf1nQJBP2N1k/QyQ0gO5zX2ZAGdA2kB9dZTvP8loutdfMfw8k4Up9SAUYslAiI7XmEDlx
+ y3fHvUxnoW7HFW+go71iGuWmP872GDieeDQJw1HU8WwZskjTcMy014iQpZjHRgPRc1C+7Yc+EDH
+ h1kG05jgcJqmFRsYYmb+XRzvOvLkV8R6Ge5aOB+jYtVsFfa22V/L0h7z4dSrqq4bMkvwISk8xMK
+ 064RAbk9/VomKNENsM1yoYeshz+3a4oTiaozgl4gi+ioC20SqasFtKDPRpbr/PApt0ZdylHz8/2
+ Tm2a+qxpeD61ie7T6fIVA5b12+g4Aru9OeIIk4+QNbIKFV5D+7QfKAbN7uVu3tHj4CDagNjRKUj
+ TLb4TNLwCqGA8SQ==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Period measurement can be difficult when using high sampling
-frequency where the jitter criteria is hard to meet because of the
-system jitter.
+Describe the dual front-facing IMX355 sensors (standard and wide)
+and enable the PMI8998 flash LED with hardware-accurate limits.
 
-This new version is using the delta time between 2 distant interrupts
-to measure an interval of at least 20ms. 20ms is a good compromise
-between the mitigation of system jitter and the delay to update
-period. This way we decorrelate the period measurement from the
-interrupt timestamps syncing using only the 2 last interrupts.
+This brings up the basic camera topology and flash support in DT.
 
-Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
- .../iio/common/inv_sensors/inv_sensors_timestamp.c | 26 +++++++++++++++++++---
- include/linux/iio/common/inv_sensors_timestamp.h   |  6 +++++
- 2 files changed, 29 insertions(+), 3 deletions(-)
+Changes in v6:
+- Remove forgotten bias-pull-down property from cci0_sleep node.
+  (dtbs_check)
+- ..-regulator -> regulator-.. (Konrad)
+- Rename camera -pin to -state and remove _pin from the labes. (Konrad,
+  dtbs_check)
+- Link to v5: https://lore.kernel.org/r/20260719-pixel3-camera-v5-0-99593f1bd8ec@ixit.cz
 
-diff --git a/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c b/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
-index 2aaaa8df6d03..88a82d1370c5 100644
---- a/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
-+++ b/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
-@@ -16,6 +16,9 @@
- #define INV_SENSORS_TIMESTAMP_MAX(_val, _jitter)		\
- 	(((_val) * (1000 + (_jitter))) / 1000)
- 
-+/* minimum timestamp delta between 2 interrupts for measuring period (20ms) */
-+#define INV_SENSORS_MIN_IT_DELTA	(20 * NSEC_PER_MSEC)
-+
- /* Add a new value inside an accumulator and update the estimate value */
- static void inv_update_acc(struct inv_sensors_timestamp_acc *acc, u32 val)
- {
-@@ -122,7 +125,7 @@ void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
- 				     size_t sample_nb, s64 timestamp)
- {
- 	struct inv_sensors_timestamp_interval *it;
--	s64 delta, interval;
-+	s64 delta, delta_threshold, interval;
- 	u32 period;
- 	bool valid = false;
- 
-@@ -136,15 +139,32 @@ void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
- 		ts->timestamp = timestamp - interval;
- 	}
- 
-+	/* update delta timestamps and estimated period */
-+	it = &ts->delta;
-+	ts->delta_counter += sample_nb;
-+	delta = timestamp - it->up;
-+	delta_threshold = INV_SENSORS_TIMESTAMP_MIN(INV_SENSORS_MIN_IT_DELTA, ts->chip.jitter);
-+	if (delta >= delta_threshold) {
-+		it->lo = it->up;
-+		it->up = timestamp;
-+		if (it->lo != 0) {
-+			/* compute period: delta time divided by number of samples */
-+			delta = it->up - it->lo;
-+			period = div_s64(delta, ts->delta_counter);
-+			inv_update_chip_period(ts, period);
-+		}
-+		ts->delta_counter = 0;
-+	}
-+
- 	/* update interrupt timestamp and compute chip and sensor periods */
- 	it = &ts->it;
- 	it->lo = it->up;
- 	it->up = timestamp;
- 	delta = it->up - it->lo;
- 	if (it->lo != 0) {
--		/* compute period: delta time divided by number of samples */
-+		/* compute period and check validity */
- 		period = div_s64(delta, sample_nb);
--		valid = inv_update_chip_period(ts, period);
-+		valid = inv_validate_period(ts, period);
- 	}
- 
- 	/* if interrupt interval is valid, sync with interrupt timestamp */
-diff --git a/include/linux/iio/common/inv_sensors_timestamp.h b/include/linux/iio/common/inv_sensors_timestamp.h
-index e4e720e6f4b7..4f08204ede3b 100644
---- a/include/linux/iio/common/inv_sensors_timestamp.h
-+++ b/include/linux/iio/common/inv_sensors_timestamp.h
-@@ -46,6 +46,8 @@ struct inv_sensors_timestamp_acc {
-  * @min_period:		minimal acceptable clock period
-  * @max_period:		maximal acceptable clock period
-  * @it:			interrupts interval timestamps
-+ * @delta:		interval timestamps between several interrupts
-+ * @delta_counter:	number of data samples in the delta interval
-  * @timestamp:		store last timestamp for computing next data timestamp
-  * @mult:		current internal period multiplier
-  * @new_mult:		new set internal period multiplier (not yet effective)
-@@ -57,6 +59,8 @@ struct inv_sensors_timestamp {
- 	u32 min_period;
- 	u32 max_period;
- 	struct inv_sensors_timestamp_interval it;
-+	struct inv_sensors_timestamp_interval delta;
-+	u32 delta_counter;
- 	s64 timestamp;
- 	u32 mult;
- 	u32 new_mult;
-@@ -88,6 +92,8 @@ static inline void inv_sensors_timestamp_reset(struct inv_sensors_timestamp *ts)
- 	const struct inv_sensors_timestamp_interval interval_init = {0LL, 0LL};
- 
- 	ts->it = interval_init;
-+	ts->delta = interval_init;
-+	ts->delta_counter = 0;
- 	ts->timestamp = 0;
- }
- 
+Changes in v5:
+- Added function-enumarator to flash LEDs. (Sashiko)
+- Dropped l22a regulator needed only for NFOV actuator. (Sashiko)
+- Dropped vdda-csi[0-2]-supply, as it was unused. (Sashiko).
+- Added previously omited cam_mclk2_sleep sleep state.
+- Link to v4: https://lore.kernel.org/r/20260719-pixel3-camera-v4-0-48cab1236852@ixit.cz
 
+Changes in v4:
+- Use 24 MHz ext clock for the cameras, as the downstream does, since
+  the upstream driver can now support it.
+- Added additional LED, as the phone contains two separately controlled
+  white LEDs flash (upper and bottom, in one module).
+- Increase flash-max-microamp, as I took wrong "flash" from the
+  downstream sources and dropped Dmitry R-b.
+- Address formatting issues. (Konrad)
+- Link to v3: https://lore.kernel.org/r/20260412-pixel3-camera-v3-0-e26b090a6110@ixit.cz
+
+Changes in v3:
+- Dropped cam_vio label. (Dmitry)
+- Move the MCLK2 pinctrl from cameras to common camss. (Dmitry)
+- Link to v2: https://lore.kernel.org/r/20260411-pixel3-camera-v2-0-41b889abb14c@ixit.cz
+
+Changes in v2:
+- leds.h include escaped the initial submission. Fixed.
+- Link to v1: https://lore.kernel.org/r/20260411-pixel3-camera-v1-0-2757606515b6@ixit.cz
+
+---
+David Heidelberg (2):
+      arm64: dts: qcom: sdm845-google: Add dual front IMX355 cameras
+      arm64: dts: qcom: sdm845-google: Enable PMI8998 camera flash LEDs
+
+ arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 198 ++++++++++++++++++++-
+ 1 file changed, 197 insertions(+), 1 deletion(-)
+---
+base-commit: 0718283ab28bc3907e10b61a6b4be6fefa1cbb2f
+change-id: 20260315-pixel3-camera-a9989bf589ee
+
+Best regards,
 -- 
-2.54.0
+David Heidelberg <david@ixit.cz>
 
