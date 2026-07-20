@@ -1,102 +1,82 @@
-From: Philipp Oster <philippdev5396@outlook.de>
-Date: Mon, 20 Jul 2026 11:41:51 +0200
-Subject: [PATCH] ALSA: hda/tas2781: clear cali_data.total_sz when
- calibration read fails
+From: David Heidelberg <david@ixit.cz>
+Date: Mon, 20 Jul 2026 12:13:12 +0200
+Subject: [PATCH RFC] MAINTAINERS: Add Matrix channel to the NFC subsystem
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260720-tas2781-calfix-v1-1-3a5fa6ad90bc@outlook.de>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MQQqAIBAAvxJ7TlATjb4SHUzXWggLjQjEvycdZ
- 2CmQMZEmGHqCiR8KNMZG4i+A7fbuCEj3xgkl5obydltszSjYM4egV42WOG1FhiUWqFFV8Km/+G
- 81PoBHxcj6WAAAAA=
-X-Change-ID: 20260720-tas2781-calfix-3a1d661ef44b
-To: Shenghao Ding <shenghao-ding@ti.com>, Kevin Lu <kevin-lu@ti.com>, 
- Baojun Xu <baojun.xu@ti.com>, Jaroslav Kysela <perex@perex.cz>, 
- Takashi Iwai <tiwai@suse.com>
-Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Gergo Koteles <soyer@irl.hu>, Philipp Oster <philippdev5396@outlook.de>
+Message-Id: <20260720-nfc-matrix-v1-1-11cc79035472@ixit.cz>
+X-B4-Tracking: v=1; b=H4sIALf0XWoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDcyMD3by0ZN3cxJKizArdlGQTiySDtGST5BQLJaCGgqLUtMwKsGHRSkF
+ uzkqxtbUAQV2oMmEAAAA=
+X-Change-ID: 20260720-nfc-matrix-dc48b0fc4cd8
+To: Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
+ oe-linux-nfc@lists.linux.dev, phone-devel@vger.kernel.org, 
+ David Heidelberg <david@ixit.cz>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784540510; l=2997;
- i=philippdev5396@outlook.de; s=20260720; h=from:subject:message-id;
- bh=3ASFuBghZlzq4VeXWB7VHquriNyFyHqybRG8T5MRS3s=;
- b=GG8FGNBRFA3VHwPkrtKPNzvRM1WwLT8GN/sWIf/FRCXQ8L4PIYdspcglEoscAZ+5RuhpVqzfC
- w68i4MXscGLDTwGtzHp5CUVEpt59yvmXnepaAkc8gWvjMJCd3B1O3kY
-X-Developer-Key: i=philippdev5396@outlook.de; a=ed25519;
- pk=eT8kbz1b1YS9DKzFAuB7xKR6XscHmecvQiv3Mddjjhs=
-X-Endpoint-Received: by B4 Relay for philippdev5396@outlook.de/20260720 with auth_id=885
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1231; i=david@ixit.cz;
+ h=from:subject:message-id; bh=xv8y60McnQApKTGnwmwadUYgtutoYQCkFABtlPt2vGs=;
+ b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqXfTAVwJi1QN2QN9lmm/bnANdhy9LEPAvKab2I
+ lNdffYtPdeJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCal30wAAKCRBgAj/E00kg
+ ct37D/wJBjYoIpklUWWwW9AotU0UPjjIGei3ABhEHZRrDSB7bONMO3m5avW2DU3QIurnNB4tfPV
+ n7buVoHkfq3o4DNtUQhknImbzZDjD0S+00EVi9lvGUX2a+rWkooRLTr6xlyCJLTK0SMpQF3F8sx
+ IWlLTftKqb3yWdttbDHvkS16hisP+VEIoNoG2Yq/dl67SGbJRk4QLYIa0acdfN/tpenUhvjoT2x
+ 9YCsAHp685bNVxAYiUNr+aclQaLqV7JvI4sCrF5A79zw/v2ynchEqgzyu+dojTsSauAESaxC/Rp
+ 3um+FD3FuQVJ8w3Lm9VUq8IoVbgGmAYWewuuuAMrbg9DzT74RHxVmMc/6FKOSRcWILh6/bCEcMD
+ toI2ZOgfwYsSFJxavgcVLy/N/+Ddn9dJxCfkV2ZcZpIWtC9H2sL8ot4R6VgcoowhsArMJ9toEpI
+ svtMrF/DFQhDi1+3EZrP0FCmYu00XAk0bjGr61o31SD/ptVQAhjnFMytvZznjzjWE8euhVsdeSG
+ YEPdSMUc8EbWEkASWonHc+x8NFyuq6rnxjaMfZKOvd76ngk9p+rmbOd053E8/XwrJYzT7OLpPdq
+ teqLcKwewXyxLpHWsvn8M2masVmOGcQ3ZgePHBxOlaSncAWB/FNxXg+5znY7evzVmRk/K37KH04
+ iPiA6cb5bEAngvA==
+X-Developer-Key: i=david@ixit.cz; a=openpgp;
+ fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
+X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-tas2563_save_calibration() assigns cali_data.total_sz before it reads the
-per-device calibration data from EFI, but its error paths return without
-clearing it again. cali_data.cali_reg_array is left all zero, because the
-function returns before the register addresses are assigned.
+We use the Matrix channel already, let's share the information.
 
-On the first playback tasdev_load_calibrated_data() does
-
-	if (!data || !cali_data->total_sz)
-		return;
-
-which passes, since total_sz is still non-zero. It then issues five
-4-byte bulk writes to p->r0_reg, p->r0_low_reg, p->invr0_reg, p->pow_reg
-and p->tlimit_reg, all of which are 0. Register 0 decodes to book 0 /
-page 0 / register 0x00, so the auto-incrementing block write zeroes
-registers 0x00 to 0x03. Register 0x03 is PB_CFG1, which holds AMP_LEVEL,
-so the amplifier gain is set to its minimum and the speaker stays silent.
-
-This is reproducible on a Lenovo Yoga 7 14ARB7 (two TAS2563 on I2C,
-ACPI INT8866) whose factory calibration was never written to UEFI, so the
-EFI read fails with EFI_NOT_FOUND. The two woofers driven by the
-amplifiers are silent while the tweeters driven directly by the ALC287
-play. Reading the amplifier registers over i2c shows PWR_CTL = 0x00
-(active) and the TDM slots correctly programmed by the RCA profile, but
-PB_CFG1 = 0x00. With this change PB_CFG1 keeps its power-on default of
-0x20 and both woofers play.
-
-tas2781_save_calibration() in tas2781_hda.c already clears total_sz on
-failure; do the same for the TAS2563 variant.
-
-Signed-off-by: Philipp Oster <philippdev5396@outlook.de>
+Signed-off-by: David Heidelberg <david@ixit.cz>
 ---
-Single patch - see the commit message for the full analysis and the
-register-level evidence from the affected machine.
----
- sound/hda/codecs/side-codecs/tas2781_hda_i2c.c | 3 +++
- 1 file changed, 3 insertions(+)
+This is the first Matrix channel added, so I'm sending it aside of my
+tree to estabilish the format of the channel.
 
-diff --git a/sound/hda/codecs/side-codecs/tas2781_hda_i2c.c b/sound/hda/codecs/side-codecs/tas2781_hda_i2c.c
-index 67240ce18..b1c89cc35 100644
---- a/sound/hda/codecs/side-codecs/tas2781_hda_i2c.c
-+++ b/sound/hda/codecs/side-codecs/tas2781_hda_i2c.c
-@@ -355,6 +355,7 @@ static int tas2563_save_calibration(struct tas2781_hda *h)
- 			if (ret < 0 || ret >= sizeof(var8) - 1) {
- 				dev_err(p->dev, "%s: Read %s failed\n",
- 					__func__, var8);
-+				cd->total_sz = 0;
- 				return -EINVAL;
- 			}
- 			/*
-@@ -372,6 +373,7 @@ static int tas2563_save_calibration(struct tas2781_hda *h)
- 				dev_warn(p->dev,
- 					"Dev %d: Caldat[%d] read failed %ld\n",
- 					i, j, status);
-+				cd->total_sz = 0;
- 				return -EINVAL;
- 			}
- 			bedata = cpu_to_be32(*(uint32_t *)&data[offset]);
-@@ -383,6 +385,7 @@ static int tas2563_save_calibration(struct tas2781_hda *h)
- 	if (cd->total_sz != offset) {
- 		dev_err(p->dev, "%s: tot_size(%lu) and offset(%u) mismatch\n",
- 			__func__, cd->total_sz, offset);
-+		cd->total_sz = 0;
- 		return -EINVAL;
- 	}
+We could have something like
+
+matrix://#linux-nfc:ixit.cz or full URL as we use now.
+
+I would like to hear what you think! :)
+---
+ MAINTAINERS | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 52e2c22d533a2..6828127e66078 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -19149,16 +19149,17 @@ L:	netdev@vger.kernel.org
+ S:	Supported
+ F:	Documentation/networking/net_failover.rst
+ F:	drivers/net/net_failover.c
+ F:	include/net/net_failover.h
+ 
+ NFC SUBSYSTEM
+ M:	David Heidelberg <david@ixit.cz>
+ L:	oe-linux-nfc@lists.linux.dev
++C:	https://matrix.to/#/#linux-nfc:ixit.cz
+ S:	Maintained
+ T:	git https://codeberg.org/linux-nfc/linux.git
+ F:	Documentation/devicetree/bindings/net/nfc/
+ F:	drivers/nfc/
+ F:	include/net/nfc/
+ F:	include/uapi/linux/nfc.h
+ F:	net/nfc/
  
 
 ---
-base-commit: 199c9959d3a9b53f346c221757fc7ac507fbac50
-change-id: 20260720-tas2781-calfix-3a1d661ef44b
+base-commit: 0718283ab28bc3907e10b61a6b4be6fefa1cbb2f
+change-id: 20260720-nfc-matrix-dc48b0fc4cd8
 
 Best regards,
 -- 
-Philipp Oster <philippdev5396@outlook.de>
+David Heidelberg <david@ixit.cz>
 
