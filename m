@@ -1,82 +1,75 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 20 Jul 2026 12:13:12 +0200
-Subject: [PATCH RFC] MAINTAINERS: Add Matrix channel to the NFC subsystem
+From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+Subject: [PATCH v2 0/3] iio: common: improve InvenSense sample timestamping
+Date: Mon, 20 Jul 2026 12:38:31 +0200
+Message-Id: <20260720-iio-common-inv-sensors-timestamp-rework-v2-0-aec31446809c@tdk.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260720-nfc-matrix-v1-1-11cc79035472@ixit.cz>
-X-B4-Tracking: v=1; b=H4sIALf0XWoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDcyMD3by0ZN3cxJKizArdlGQTiySDtGST5BQLJaCGgqLUtMwKsGHRSkF
- uzkqxtbUAQV2oMmEAAAA=
-X-Change-ID: 20260720-nfc-matrix-dc48b0fc4cd8
-To: Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
- oe-linux-nfc@lists.linux.dev, phone-devel@vger.kernel.org, 
- David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1231; i=david@ixit.cz;
- h=from:subject:message-id; bh=xv8y60McnQApKTGnwmwadUYgtutoYQCkFABtlPt2vGs=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqXfTAVwJi1QN2QN9lmm/bnANdhy9LEPAvKab2I
- lNdffYtPdeJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCal30wAAKCRBgAj/E00kg
- ct37D/wJBjYoIpklUWWwW9AotU0UPjjIGei3ABhEHZRrDSB7bONMO3m5avW2DU3QIurnNB4tfPV
- n7buVoHkfq3o4DNtUQhknImbzZDjD0S+00EVi9lvGUX2a+rWkooRLTr6xlyCJLTK0SMpQF3F8sx
- IWlLTftKqb3yWdttbDHvkS16hisP+VEIoNoG2Yq/dl67SGbJRk4QLYIa0acdfN/tpenUhvjoT2x
- 9YCsAHp685bNVxAYiUNr+aclQaLqV7JvI4sCrF5A79zw/v2ynchEqgzyu+dojTsSauAESaxC/Rp
- 3um+FD3FuQVJ8w3Lm9VUq8IoVbgGmAYWewuuuAMrbg9DzT74RHxVmMc/6FKOSRcWILh6/bCEcMD
- toI2ZOgfwYsSFJxavgcVLy/N/+Ddn9dJxCfkV2ZcZpIWtC9H2sL8ot4R6VgcoowhsArMJ9toEpI
- svtMrF/DFQhDi1+3EZrP0FCmYu00XAk0bjGr61o31SD/ptVQAhjnFMytvZznjzjWE8euhVsdeSG
- YEPdSMUc8EbWEkASWonHc+x8NFyuq6rnxjaMfZKOvd76ngk9p+rmbOd053E8/XwrJYzT7OLpPdq
- teqLcKwewXyxLpHWsvn8M2masVmOGcQ3ZgePHBxOlaSncAWB/FNxXg+5znY7evzVmRk/K37KH04
- iPiA6cb5bEAngvA==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Content-Transfer-Encoding: 8bit
+X-B4-Tracking: v=1; b=H4sIAKf6XWoC/42OwQ7CIBBEf6Xh7BporBpP/ofpAWGxawM0LFZN0
+ 3+X1nj3+JKZeTMJxkTI4lRNIuFITDEUqDeVMJ0ONwSyhUUt6708qAaIIpjofQxAYQTGwDExZPL
+ IWfsBEj5j6kEbp7TUWkq3E2VtSOjotZou7Zf5cb2jycv8kuiIc0zv9cqoltzPevjbOiqQYJV2i
+ PVRNsaes+23pSnaeZ4/2OIZa+4AAAA=
+X-Change-ID: 20260715-iio-common-inv-sensors-timestamp-rework-acf1a0aa00f4
+To: Jonathan Cameron <jic23@kernel.org>, 
+ David Lechner <dlechner@baylibre.com>, 
+ =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
+ Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784543936; l=1928;
+ i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
+ bh=tkxgU4aAbLqEyR/VxCM3e2NBV1wEpOg7XgcWPywgfQM=;
+ b=GNHbJW3B9c7N862rAx0+sWsS4qrg2L614qtItRg8irO4tZtktI2kDK6Ipe/3o1lUvqMZ2+ozi
+ PhM6rcNbIDRBhdCQLgETP6GaRePlH3CJ6cm1vx3UxcjNtrV7ACN2H2M
+X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
+ pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
+X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-We use the Matrix channel already, let's share the information.
+This series improves the InvenSense timestamping mechanism for 2 cases:
+when using watermark and for high frequency sampling.
 
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Data arriving by batch because of FIFO watermark will now be all aligned
+correctly with the interrupt timestamp and the chip period measurement
+will use a minimal period of 20ms to ensure that system latency is
+not preventing measurement when using high frequency sampling.
+
+This was tested using inv_icm42600 driver when using maximum FIFO
+watermark and when using 1kHz sampling frequency.
+
+Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
-This is the first Matrix channel added, so I'm sending it aside of my
-tree to estabilish the format of the channel.
+Changes in v2:
+- Add a 1st patch to convert to kernel types.
+- Rework following review suggestions.
+- Following Sashiko fix delta_counter usage and handle case of
+  timestamp overflowing last interrupt by using s64 type for new_period.
+- Reword commit message for better timestamp alignement using Jonathan
+  proposition.
+- Link to v1: https://patch.msgid.link/20260717-iio-common-inv-sensors-timestamp-rework-v1-0-d1afee2805cd@tdk.com
 
-We could have something like
-
-matrix://#linux-nfc:ixit.cz or full URL as we use now.
-
-I would like to hear what you think! :)
----
- MAINTAINERS | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 52e2c22d533a2..6828127e66078 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -19149,16 +19149,17 @@ L:	netdev@vger.kernel.org
- S:	Supported
- F:	Documentation/networking/net_failover.rst
- F:	drivers/net/net_failover.c
- F:	include/net/net_failover.h
- 
- NFC SUBSYSTEM
- M:	David Heidelberg <david@ixit.cz>
- L:	oe-linux-nfc@lists.linux.dev
-+C:	https://matrix.to/#/#linux-nfc:ixit.cz
- S:	Maintained
- T:	git https://codeberg.org/linux-nfc/linux.git
- F:	Documentation/devicetree/bindings/net/nfc/
- F:	drivers/nfc/
- F:	include/net/nfc/
- F:	include/uapi/linux/nfc.h
- F:	net/nfc/
- 
+To: Jonathan Cameron <jic23@kernel.org>
+To: David Lechner <dlechner@baylibre.com>
+To: Nuno Sá <nuno.sa@analog.com>
+To: Andy Shevchenko <andy@kernel.org>
+Cc: linux-iio@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
 ---
-base-commit: 0718283ab28bc3907e10b61a6b4be6fefa1cbb2f
-change-id: 20260720-nfc-matrix-dc48b0fc4cd8
+Jean-Baptiste Maneyrol (3):
+      iio: inv_sensors: convert to kernel types
+      iio: inv_sensors: better timestamp alignment when using watermark
+      iio: inv_sensors: improve period measurement by using a longer delay
+
+ .../iio/common/inv_sensors/inv_sensors_timestamp.c | 109 +++++++++++----------
+ include/linux/iio/common/inv_sensors_timestamp.h   |  40 ++++----
+ 2 files changed, 81 insertions(+), 68 deletions(-)
+---
+base-commit: aa58ecc73466d0cb8c418de98e2225490bf600e3
+change-id: 20260715-iio-common-inv-sensors-timestamp-rework-acf1a0aa00f4
 
 Best regards,
--- 
-David Heidelberg <david@ixit.cz>
+--  
+Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 
