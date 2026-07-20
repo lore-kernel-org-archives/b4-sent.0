@@ -1,69 +1,75 @@
-From: Richard Leitner <richard.leitner@linux.dev>
-Date: Mon, 20 Jul 2026 20:31:00 +0200
-Subject: [PATCH] media: i2c: ov9282: restore flash duration calculation
+From: Younes Akhouayri <git@younes.io>
+Date: Mon, 20 Jul 2026 21:21:39 +0200
+Subject: [PATCH] rust: dma: return zero for Coherent reads past EOF
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260720-ov9282-fix-v1-1-0145062ec9f1@linux.dev>
-X-B4-Tracking: v=1; b=H4sIAGNpXmoC/yXMQQ5AMBCF4as0s9aknQjlKmJBDcYCaWkkjbsrl
- t9L3h/Bk2PyUIsIjgJ73tYEnQmwc7dOJHlIBlRYqBKV3EKFBuXIlyRLRa4HW3bGQDrsjtL8xZr
- 2tz/7hezxFuC+H7SMldVuAAAA
-X-Change-ID: 20260720-ov9282-fix-ece641dc7a88
-To: Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Dave Stevenson <dave.stevenson@raspberrypi.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Tarang Raval <tarang.raval@siliconsignals.io>, 
- Xiaolei Wang <xiaolei.wang@windriver.com>
-Cc: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>, 
- linux-media@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Richard Leitner <richard.leitner@linux.dev>
-X-Mailer: b4 0.16-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784572267; l=1494;
- i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
- bh=TF1Va7Kvd78gB/+nDw6b3xVkllExwoPZb7OdeLW7OqU=;
- b=tC0eEjcpW4RTuCluO4nHRi8JlMSZv3R8zhKpzfRiYD3RhCTPTAA+NABjr6oFhGRNtFhGs1VtH
- MqF77ZkKbBpBNTPtQppVIPuPBiYFuoXSgQ4SEgLCQM1gJwv0k7w5Qb9
-X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
- pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
-X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
+Message-Id: <20260720-fix-dma-coherent-eof-v1-1-d92685db8da6@younes.io>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMywrCMBBFf6XM2sEkgq9fkS7ymDYjmMgkFaH03
+ 03s8lzuOSsUEqYC92EFoQ8XzqmBPgzgo00zIYfGYJQ5q4tROPEXw8uiz5GEUkXKEwYV1NXfNCl
+ 9gqa+hdrvn32MO5fFPcnX3uoPZwuhE5t87FMWnjkdZSkVd3Pbfi0LylOcAAAA
+X-Change-ID: 20260720-fix-dma-coherent-eof-d0d08c91e013
+To: Danilo Krummrich <dakr@kernel.org>, 
+ Abdiel Janulgue <abdiel.janulgue@gmail.com>, 
+ Daniel Almeida <daniel.almeida@collabora.com>, 
+ Robin Murphy <robin.murphy@arm.com>, 
+ Andreas Hindborg <a.hindborg@kernel.org>, Miguel Ojeda <ojeda@kernel.org>, 
+ Boqun Feng <boqun@kernel.org>, Gary Guo <gary@garyguo.net>, 
+ =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
+ Benno Lossin <lossin@kernel.org>, Alice Ryhl <aliceryhl@google.com>, 
+ Trevor Gross <tmgross@umich.edu>, Tamir Duberstein <tamird@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, 
+ =?utf-8?q?Onur_=C3=96zkan?= <work@onurozkan.dev>, 
+ Timur Tabi <ttabi@nvidia.com>
+Cc: driver-core@lists.linux.dev, rust-for-linux@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Younes Akhouayri <git@younes.io>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784575333; l=1249;
+ i=git@younes.io; s=20260712; h=from:subject:message-id;
+ bh=ePXYrWvX1ZJHBuWoCGi8RZ5TS9lrAyqgkzIq9B/HEy0=;
+ b=NfHD8xfI5i55YLfCBe7tqm0G8oZ4a4geTGO9kWWsJ9qBfmySQKlGogGfmzkXta8XZv+0kbUQ1
+ ub/u/f6nzNoCPyTyLbgzeweY6Nz3e34MrFIC8SUBDaSWDuYPTNto0yq
+X-Developer-Key: i=git@younes.io; a=ed25519;
+ pk=1DRfzPrQ04RQHHgGK28t+vjIAPv5oISPiAdLMU6J5dE=
+X-Endpoint-Received: by B4 Relay for git@younes.io/20260712 with auth_id=866
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The migration to CCI helpers made V4L2_CID_FLASH_DURATION write the
-requested duration directly to OV9282_REG_STROBE_FRAME_SPAN, dropping
-the conversion from microseconds to the register value.
+Coherent<T>::write_to_slice() calculates a zero-byte copy when the file
+offset is beyond the allocation, but still calls
+UserSliceWriter::write_dma(). The latter rejects offsets beyond the
+allocation even when the copy length is zero, so a debugfs read past EOF
+returns -ERANGE.
 
-This made flash strobes too long and produced overly bright frames.
-Restore the missing calculation so flash duration is programmed
-correctly again.
+Return before calling write_dma() when the offset is at or beyond the
+allocation, matching simple_read_from_buffer() EOF semantics.
 
-Fixes: 273f52f3cbec ("media: i2c: ov9282: Convert to CCI register access helpers")
-Cc: Xiaolei Wang <xiaolei.wang@windriver.com>
-Cc: stable@vger.kernel.org
-Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
+Fixes: 016818513936 ("rust: dma: implement BinaryWriter for Coherent<[u8]>")
+Signed-off-by: Younes Akhouayri <git@younes.io>
 ---
- drivers/media/i2c/ov9282.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ rust/kernel/dma.rs | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/drivers/media/i2c/ov9282.c b/drivers/media/i2c/ov9282.c
-index 5b6f897a74fcd..5abe51d21f89c 100644
---- a/drivers/media/i2c/ov9282.c
-+++ b/drivers/media/i2c/ov9282.c
-@@ -648,7 +648,8 @@ static int ov9282_set_ctrl(struct v4l2_ctrl *ctrl)
- 				      ctrl->val ? OV9282_OUTPUT_ENABLE6_STROBE : 0, NULL);
- 		break;
- 	case V4L2_CID_FLASH_DURATION:
--		ret = cci_write(ov9282->regmap, OV9282_REG_STROBE_FRAME_SPAN, ctrl->val, NULL);
-+		ret = cci_write(ov9282->regmap, OV9282_REG_STROBE_FRAME_SPAN,
-+				ov9282_us_to_flash_duration(ov9282, ctrl->val), NULL);
- 		break;
- 	default:
- 		dev_err(ov9282->dev, "Invalid control %d", ctrl->id);
+diff --git a/rust/kernel/dma.rs b/rust/kernel/dma.rs
+index 200def84fb69..36b72fb9ab46 100644
+--- a/rust/kernel/dma.rs
++++ b/rust/kernel/dma.rs
+@@ -1005,6 +1005,10 @@ fn write_to_slice(
+             return Ok(0);
+         };
+ 
++        if offset_val >= self.size() {
++            return Ok(0);
++        }
++
+         let count = self.size().saturating_sub(offset_val).min(writer.len());
+ 
+         writer.write_dma(self, offset_val, count)?;
 
 ---
-base-commit: 1590cf0329716306e948a8fc29f1d3ee87d3989f
-change-id: 20260720-ov9282-fix-ece641dc7a88
+base-commit: 880c43b185ca52239e75bc546cc4f4d9154d0fed
+change-id: 20260720-fix-dma-coherent-eof-d0d08c91e013
 
 Best regards,
 --  
-Richard Leitner <richard.leitner@linux.dev>
+Younes Akhouayri <git@younes.io>
 
