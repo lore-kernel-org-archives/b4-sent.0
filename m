@@ -1,122 +1,71 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Mon, 20 Jul 2026 12:53:08 +0200
-Subject: [PATCH v6 2/2] arm64: dts: qcom: sdm845-google: Enable PMI8998
- camera flash LEDs
+From: Pawel Laszczak <pawell@cadence.com>
+Date: Mon, 20 Jul 2026 13:11:58 +0200
+Subject: [PATCH] usb: cdnsp: fix incorrect endian conversions for APB
+ timeout register
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260720-pixel3-camera-v6-2-afe419bef476@ixit.cz>
-References: <20260720-pixel3-camera-v6-0-afe419bef476@ixit.cz>
-In-Reply-To: <20260720-pixel3-camera-v6-0-afe419bef476@ixit.cz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Petr Hodina <petr.hodina@protonmail.com>, 
- Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2187; i=david@ixit.cz;
- h=from:subject:message-id; bh=+JTTruT1wyhpjPxfzBWwZfGwRsmkaQCpAUzY/f6Aiic=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqXf4Uj2pZ6Kubd5/ik8gO7F84rxctxStDvnZuu
- cddClBOCPSJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCal3+FAAKCRBgAj/E00kg
- cqWOEACOMGp12pxBKnY8ya7rfeUKSwR0bg76cNT/SiI5hbMADwsdnYhWI+w6+wh0LHxTGWcst+K
- 1JFjkdSOB0WxUp/TlkQT61l+cmiMsAK453mIij95ss3xJ8FeehZ0uEVdOt4wXLD1iQi7TortnDp
- zyz21+yh7yFEEXnquciny3gqMh9rvle90x0++JJdAnW/eICqBwDZ4nzLKmQoQI5szK9RTBFfvsn
- WbVeVVgbq16RoJOmO24Lm0PyiKw9gtgt2MpAzCsKpTAMv0K4+Yf6KsL68H+hCM7rrogrzsZehUW
- 5fZPwOKZs7XHeMiuWDnhPh0TvgLOKXO8THefd3Af3lFTcFrZvF+zJstVzVVsiujssdbGxIkad2O
- GifMI+Yf8OS7NxE+FSA/H+k52lIbVale/yAoPRN5bU72BAr96sloxzv8nNhTnXohUnv8E2Wo/tb
- 9s/CaLMO2QJsb65tz5t5h23XRMs7vDWaVVg6Gxfq12YenOikYKVg3OdDgnxtfcfs8wP/Dd8HYDP
- Sbldr7bmqXn9zcSfplNEcGSKeRmkuB7EkRCX+olEs2Ke4pXzpXYHsP9kKic6HP5eBazyV22fcf6
- vG6gj/ovewD8+/LlvnlRbllFV0dRixx9zVho6xmnCrChiUr+YwV0ItMOmITJhAQojzUm1pFRXNF
- D8ihg1dNRFZNA3g==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+Message-Id: <20260720-endian-fix-v1-v1-1-b5681fa1ea9f@cadence.com>
+X-B4-Tracking: v=1; b=H4sIAH4CXmoC/yXMwQqDMBCE4VeRPXchm2JEX6X0YOPYrodYEhVBf
+ HejHj+G+TdKiIpETbFRxKJJx5Ahj4L8rw1fsHbZZI11prKGETptA/e68iLsxT1rV5cCAeXPPyI
+ vV+/1vp3mzwA/nRHa9wNSwcW5cQAAAA==
+X-Change-ID: 20260720-endian-fix-v1-c16396951e1e
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ Peter Chen <peter.chen@kernel.org>
+Cc: linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Arnd Bergmann <arnd@arndb.de>, stable@vger.kernel.org, 
+ Pawel Laszczak <pawell@cadence.com>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784545944; l=1525;
+ i=pawell@cadence.com; h=from:subject:message-id;
+ bh=4tdqriBTc2qKtG8H7cGabgQJM1xpL7ga0H8aaUvEcOc=;
+ b=35y75WntvdfaxWt0sa3KMXBjGHpzkqUmWJNoSU0uLyGAZxWxz0d8Hx0dmpAGE2492xKqXu0OR
+ L+tYpxObi9WAs6K+dTh8OzaPNsmYMM/K/g40gDha/BlppgL+S+t0XIu
+X-Developer-Key: i=pawell@cadence.com; a=ed25519;
+ pk=EUPBvLO9CDg7j6defeDl2iqi+z5Ivqu4Z46aiqe7dYc=
+X-Endpoint-Received: by B4 Relay for pawell@cadence.com/default with auth_id=707
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the PMI8998 flash LED block and describe two white flash LEDs
-used for the rear camera.
+readl() already returns a CPU-endian value. Passing its return value to
+le32_to_cpu() is therefore redundant and causes an incorrect double byte
+swap on big-endian systems.
 
-Configure the LED in flash mode with hardware limits matching the
-original device configuration, including maximum current and timeout.
+Similarly, writel() expects a CPU-endian value, so passing the result of
+cpu_to_le32() is incorrect.
 
-In contrary to downstream, we can control both LEDs separately.
+Remove the unnecessary conversions and operate on the MMIO register value
+as a CPU-endian u32.
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Fixes: 241e2ce88e5a ("usb: cdnsp: Fix issue with resuming from L1")
+Suggested-by: Arnd Bergmann <arnd@arndb.de>
+Cc: stable@vger.kernel.org
+Signed-off-by: Pawel Laszczak <pawell@cadence.com>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 27 ++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+ drivers/usb/cdns3/cdnsp-gadget.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index 267dcd6eddaee..c8699f72cfecf 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -1,16 +1,17 @@
- // SPDX-License-Identifier: GPL-2.0-only
+diff --git a/drivers/usb/cdns3/cdnsp-gadget.c b/drivers/usb/cdns3/cdnsp-gadget.c
+index a5275c2fb43b..7a516e509198 100644
+--- a/drivers/usb/cdns3/cdnsp-gadget.c
++++ b/drivers/usb/cdns3/cdnsp-gadget.c
+@@ -163,9 +163,9 @@ static void cdnsp_set_apb_timeout_value(struct cdnsp_device *pdev)
+ 	offset = cdnsp_find_next_ext_cap(base, offset, D_XEC_PRE_REGS_CAP);
+ 	reg = base + offset + REG_CHICKEN_BITS_3_OFFSET;
  
- /dts-v1/;
+-	val  = le32_to_cpu(readl(reg));
++	val  = readl(reg);
+ 	val = CHICKEN_APB_TIMEOUT_SET(val, cdns->override_apb_timeout);
+-	writel(cpu_to_le32(val), reg);
++	writel(val, reg);
+ }
  
- #include <dt-bindings/arm/qcom,ids.h>
- #include <dt-bindings/dma/qcom-gpi.h>
- #include <dt-bindings/input/linux-event-codes.h>
- #include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/leds/common.h>
- #include <dt-bindings/media/video-interfaces.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
- 
- #include "sdm845.dtsi"
- #include "pm8998.dtsi"
- #include "pmi8998.dtsi"
- 
- /delete-node/ &mpss_region;
-@@ -590,16 +591,42 @@ &pm8998_resin {
- };
- 
- &pmi8998_charger {
- 	monitored-battery = <&battery>;
- 
- 	status = "okay";
- };
- 
-+&pmi8998_flash {
-+	status = "okay";
-+
-+	/* upper flash module part */
-+	led-0 {
-+		function = LED_FUNCTION_FLASH;
-+		color = <LED_COLOR_ID_WHITE>;
-+		led-sources = <1>;
-+		led-max-microamp = <500000>;
-+		flash-max-microamp = <1500000>;
-+		flash-max-timeout-us = <1280000>;
-+		function-enumerator = <0>;
-+	};
-+
-+	/* lower flash module part */
-+	led-1 {
-+		function = LED_FUNCTION_FLASH;
-+		color = <LED_COLOR_ID_WHITE>;
-+		led-sources = <2>;
-+		led-max-microamp = <500000>;
-+		flash-max-microamp = <1500000>;
-+		flash-max-timeout-us = <1280000>;
-+		function-enumerator = <1>;
-+	};
-+};
-+
- &qupv3_id_0 {
- 	status = "okay";
- };
- 
- &qupv3_id_1 {
- 	status = "okay";
- };
- 
+ static void cdnsp_set_chicken_bits_2(struct cdnsp_device *pdev, u32 bit)
 
--- 
-2.53.0
+---
+base-commit: abe651837cb394f76d738a7a747322fca3bf17ba
+change-id: 20260720-endian-fix-v1-c16396951e1e
+
+Best regards,
+--  
+Pawel Laszczak <pawell@cadence.com>
 
