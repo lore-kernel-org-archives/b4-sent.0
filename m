@@ -1,15 +1,12 @@
 From: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
-Subject: [PATCH v2 0/3] iio: common: improve InvenSense sample timestamping
-Date: Mon, 20 Jul 2026 12:38:31 +0200
-Message-Id: <20260720-iio-common-inv-sensors-timestamp-rework-v2-0-aec31446809c@tdk.com>
+Date: Mon, 20 Jul 2026 12:38:32 +0200
+Subject: [PATCH v2 1/3] iio: inv_sensors: convert to kernel types
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAKf6XWoC/42OwQ7CIBBEf6Xh7BporBpP/ofpAWGxawM0LFZN0
- 3+X1nj3+JKZeTMJxkTI4lRNIuFITDEUqDeVMJ0ONwSyhUUt6708qAaIIpjofQxAYQTGwDExZPL
- IWfsBEj5j6kEbp7TUWkq3E2VtSOjotZou7Zf5cb2jycv8kuiIc0zv9cqoltzPevjbOiqQYJV2i
- PVRNsaes+23pSnaeZ4/2OIZa+4AAAA=
-X-Change-ID: 20260715-iio-common-inv-sensors-timestamp-rework-acf1a0aa00f4
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260720-iio-common-inv-sensors-timestamp-rework-v2-1-aec31446809c@tdk.com>
+References: <20260720-iio-common-inv-sensors-timestamp-rework-v2-0-aec31446809c@tdk.com>
+In-Reply-To: <20260720-iio-common-inv-sensors-timestamp-rework-v2-0-aec31446809c@tdk.com>
 To: Jonathan Cameron <jic23@kernel.org>, 
  David Lechner <dlechner@baylibre.com>, 
  =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
@@ -17,59 +14,237 @@ To: Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-iio@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784543936; l=1928;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784543936; l=7732;
  i=jean-baptiste.maneyrol@tdk.com; s=20240923; h=from:subject:message-id;
- bh=tkxgU4aAbLqEyR/VxCM3e2NBV1wEpOg7XgcWPywgfQM=;
- b=GNHbJW3B9c7N862rAx0+sWsS4qrg2L614qtItRg8irO4tZtktI2kDK6Ipe/3o1lUvqMZ2+ozi
- PhM6rcNbIDRBhdCQLgETP6GaRePlH3CJ6cm1vx3UxcjNtrV7ACN2H2M
+ bh=49yZuvcafugGR1ZfjYa5lzm+gj3Ua3pQf2fJ6haRP4k=;
+ b=l/kAI2mzm47RR9ZxD9Hf26mxop0Xi0ZM9e2LSBNJTzdd1m2N73ENU3J1kjQElt1sU5EiKzLfD
+ U1R5sLLDKQTB5Hfg4lCCeGy6hvwYx+J/p0RFhhK5SYgItPs9Rhx6xVQ
 X-Developer-Key: i=jean-baptiste.maneyrol@tdk.com; a=ed25519;
  pk=bRqF1WYk0hR3qrnAithOLXSD0LvSu8DUd+quKLxCicI=
 X-Endpoint-Received: by B4 Relay for jean-baptiste.maneyrol@tdk.com/20240923 with auth_id=218
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series improves the InvenSense timestamping mechanism for 2 cases:
-when using watermark and for high frequency sampling.
-
-Data arriving by batch because of FIFO watermark will now be all aligned
-correctly with the interrupt timestamp and the chip period measurement
-will use a minimal period of 20ms to ensure that system latency is
-not preventing measurement when using high frequency sampling.
-
-This was tested using inv_icm42600 driver when using maximum FIFO
-watermark and when using 1kHz sampling frequency.
+Convert standard types (u)intXX_t to kernel type u/sXX.
 
 Signed-off-by: Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
 ---
-Changes in v2:
-- Add a 1st patch to convert to kernel types.
-- Rework following review suggestions.
-- Following Sashiko fix delta_counter usage and handle case of
-  timestamp overflowing last interrupt by using s64 type for new_period.
-- Reword commit message for better timestamp alignement using Jonathan
-  proposition.
-- Link to v1: https://patch.msgid.link/20260717-iio-common-inv-sensors-timestamp-rework-v1-0-d1afee2805cd@tdk.com
+ .../iio/common/inv_sensors/inv_sensors_timestamp.c | 48 +++++++++++-----------
+ include/linux/iio/common/inv_sensors_timestamp.h   | 34 +++++++--------
+ 2 files changed, 41 insertions(+), 41 deletions(-)
 
-To: Jonathan Cameron <jic23@kernel.org>
-To: David Lechner <dlechner@baylibre.com>
-To: Nuno Sá <nuno.sa@analog.com>
-To: Andy Shevchenko <andy@kernel.org>
-Cc: linux-iio@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
+diff --git a/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c b/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
+index e0b10366ed2b..ecfd54ffe7e9 100644
+--- a/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
++++ b/drivers/iio/common/inv_sensors/inv_sensors_timestamp.c
+@@ -19,9 +19,9 @@
+ 	(((_val) * (1000 + (_jitter))) / 1000)
+ 
+ /* Add a new value inside an accumulator and update the estimate value */
+-static void inv_update_acc(struct inv_sensors_timestamp_acc *acc, uint32_t val)
++static void inv_update_acc(struct inv_sensors_timestamp_acc *acc, u32 val)
+ {
+-	uint64_t sum = 0;
++	u64 sum = 0;
+ 	size_t i;
+ 
+ 	acc->values[acc->idx++] = val;
+@@ -58,9 +58,9 @@ void inv_sensors_timestamp_init(struct inv_sensors_timestamp *ts,
+ EXPORT_SYMBOL_NS_GPL(inv_sensors_timestamp_init, "IIO_INV_SENSORS_TIMESTAMP");
+ 
+ int inv_sensors_timestamp_update_odr(struct inv_sensors_timestamp *ts,
+-				     uint32_t period, bool fifo)
++				     u32 period, bool fifo)
+ {
+-	uint32_t mult;
++	u32 mult;
+ 
+ 	/* when FIFO is on, prevent odr change if one is already pending */
+ 	if (fifo && ts->new_mult != 0)
+@@ -78,9 +78,9 @@ int inv_sensors_timestamp_update_odr(struct inv_sensors_timestamp *ts,
+ }
+ EXPORT_SYMBOL_NS_GPL(inv_sensors_timestamp_update_odr, "IIO_INV_SENSORS_TIMESTAMP");
+ 
+-static bool inv_validate_period(struct inv_sensors_timestamp *ts, uint32_t period)
++static bool inv_validate_period(struct inv_sensors_timestamp *ts, u32 period)
+ {
+-	uint32_t period_min, period_max;
++	u32 period_min, period_max;
+ 
+ 	/* check that period is acceptable */
+ 	period_min = ts->min_period * ts->mult;
+@@ -92,9 +92,9 @@ static bool inv_validate_period(struct inv_sensors_timestamp *ts, uint32_t perio
+ }
+ 
+ static bool inv_update_chip_period(struct inv_sensors_timestamp *ts,
+-				   uint32_t period)
++				   u32 period)
+ {
+-	uint32_t new_chip_period;
++	u32 new_chip_period;
+ 
+ 	if (!inv_validate_period(ts, period))
+ 		return false;
+@@ -109,19 +109,19 @@ static bool inv_update_chip_period(struct inv_sensors_timestamp *ts,
+ 
+ static void inv_align_timestamp_it(struct inv_sensors_timestamp *ts)
+ {
+-	const int64_t period_min = (int64_t)ts->min_period * ts->mult;
+-	const int64_t period_max = (int64_t)ts->max_period * ts->mult;
+-	int64_t add_max, sub_max;
+-	int64_t delta, jitter;
+-	int64_t adjust;
++	const s64 period_min = (s64)ts->min_period * ts->mult;
++	const s64 period_max = (s64)ts->max_period * ts->mult;
++	s64 add_max, sub_max;
++	s64 delta, jitter;
++	s64 adjust;
+ 
+ 	/* delta time between last sample and last interrupt */
+ 	delta = ts->it.lo - ts->timestamp;
+ 
+ 	/* adjust timestamp while respecting jitter */
+-	add_max = period_max - (int64_t)ts->period;
+-	sub_max = period_min - (int64_t)ts->period;
+-	jitter = INV_SENSORS_TIMESTAMP_JITTER((int64_t)ts->period, ts->chip.jitter);
++	add_max = period_max - (s64)ts->period;
++	sub_max = period_min - (s64)ts->period;
++	jitter = INV_SENSORS_TIMESTAMP_JITTER((s64)ts->period, ts->chip.jitter);
+ 	if (delta > jitter)
+ 		adjust = add_max;
+ 	else if (delta < -jitter)
+@@ -133,11 +133,11 @@ static void inv_align_timestamp_it(struct inv_sensors_timestamp *ts)
+ }
+ 
+ void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
+-				     size_t sample_nb, int64_t timestamp)
++				     size_t sample_nb, s64 timestamp)
+ {
+ 	struct inv_sensors_timestamp_interval *it;
+-	int64_t delta, interval;
+-	uint32_t period;
++	s64 delta, interval;
++	u32 period;
+ 	bool valid = false;
+ 
+ 	if (sample_nb == 0)
+@@ -157,7 +157,7 @@ void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
+ 	/* no previous data, compute theoretical value from interrupt */
+ 	if (ts->timestamp == 0) {
+ 		/* elapsed time: sensor period * sensor samples number */
+-		interval = (int64_t)ts->period * (int64_t)sample_nb;
++		interval = (s64)ts->period * (s64)sample_nb;
+ 		ts->timestamp = it->up - interval;
+ 		return;
+ 	}
+@@ -169,11 +169,11 @@ void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
+ EXPORT_SYMBOL_NS_GPL(inv_sensors_timestamp_interrupt, "IIO_INV_SENSORS_TIMESTAMP");
+ 
+ void inv_sensors_timestamp_apply_odr(struct inv_sensors_timestamp *ts,
+-				     uint32_t fifo_period, size_t fifo_nb,
++				     u32 fifo_period, size_t fifo_nb,
+ 				     unsigned int fifo_no)
+ {
+-	int64_t interval;
+-	uint32_t fifo_mult;
++	s64 interval;
++	u32 fifo_mult;
+ 
+ 	if (ts->new_mult == 0)
+ 		return;
+@@ -194,7 +194,7 @@ void inv_sensors_timestamp_apply_odr(struct inv_sensors_timestamp *ts,
+ 		fifo_mult = fifo_period / ts->chip.clock_period;
+ 		fifo_period = fifo_mult * ts->chip_period.val;
+ 		/* computes time interval between interrupt and this sample */
+-		interval = (int64_t)(fifo_nb - fifo_no) * (int64_t)fifo_period;
++		interval = (s64)(fifo_nb - fifo_no) * (s64)fifo_period;
+ 		ts->timestamp = ts->it.up - interval;
+ 	}
+ }
+diff --git a/include/linux/iio/common/inv_sensors_timestamp.h b/include/linux/iio/common/inv_sensors_timestamp.h
+index 8d506f1e9df2..e4e720e6f4b7 100644
+--- a/include/linux/iio/common/inv_sensors_timestamp.h
++++ b/include/linux/iio/common/inv_sensors_timestamp.h
+@@ -13,9 +13,9 @@
+  * @init_period:	chip initial period at reset in ns
+  */
+ struct inv_sensors_timestamp_chip {
+-	uint32_t clock_period;
+-	uint32_t jitter;
+-	uint32_t init_period;
++	u32 clock_period;
++	u32 jitter;
++	u32 init_period;
+ };
+ 
+ /**
+@@ -24,8 +24,8 @@ struct inv_sensors_timestamp_chip {
+  * @up:	interval upper bound
+  */
+ struct inv_sensors_timestamp_interval {
+-	int64_t lo;
+-	int64_t up;
++	s64 lo;
++	s64 up;
+ };
+ 
+ /**
+@@ -35,9 +35,9 @@ struct inv_sensors_timestamp_interval {
+  * @values:	table of all measured values, use for computing the mean
+  */
+ struct inv_sensors_timestamp_acc {
+-	uint32_t val;
++	u32 val;
+ 	size_t idx;
+-	uint32_t values[32];
++	u32 values[32];
+ };
+ 
+ /**
+@@ -54,13 +54,13 @@ struct inv_sensors_timestamp_acc {
+  */
+ struct inv_sensors_timestamp {
+ 	struct inv_sensors_timestamp_chip chip;
+-	uint32_t min_period;
+-	uint32_t max_period;
++	u32 min_period;
++	u32 max_period;
+ 	struct inv_sensors_timestamp_interval it;
+-	int64_t timestamp;
+-	uint32_t mult;
+-	uint32_t new_mult;
+-	uint32_t period;
++	s64 timestamp;
++	u32 mult;
++	u32 new_mult;
++	u32 period;
+ 	struct inv_sensors_timestamp_acc chip_period;
+ };
+ 
+@@ -68,19 +68,19 @@ void inv_sensors_timestamp_init(struct inv_sensors_timestamp *ts,
+ 				const struct inv_sensors_timestamp_chip *chip);
+ 
+ int inv_sensors_timestamp_update_odr(struct inv_sensors_timestamp *ts,
+-				     uint32_t period, bool fifo);
++				     u32 period, bool fifo);
+ 
+ void inv_sensors_timestamp_interrupt(struct inv_sensors_timestamp *ts,
+-				     size_t sample_nb, int64_t timestamp);
++				     size_t sample_nb, s64 timestamp);
+ 
+-static inline int64_t inv_sensors_timestamp_pop(struct inv_sensors_timestamp *ts)
++static inline s64 inv_sensors_timestamp_pop(struct inv_sensors_timestamp *ts)
+ {
+ 	ts->timestamp += ts->period;
+ 	return ts->timestamp;
+ }
+ 
+ void inv_sensors_timestamp_apply_odr(struct inv_sensors_timestamp *ts,
+-				     uint32_t fifo_period, size_t fifo_nb,
++				     u32 fifo_period, size_t fifo_nb,
+ 				     unsigned int fifo_no);
+ 
+ static inline void inv_sensors_timestamp_reset(struct inv_sensors_timestamp *ts)
 
----
-Jean-Baptiste Maneyrol (3):
-      iio: inv_sensors: convert to kernel types
-      iio: inv_sensors: better timestamp alignment when using watermark
-      iio: inv_sensors: improve period measurement by using a longer delay
-
- .../iio/common/inv_sensors/inv_sensors_timestamp.c | 109 +++++++++++----------
- include/linux/iio/common/inv_sensors_timestamp.h   |  40 ++++----
- 2 files changed, 81 insertions(+), 68 deletions(-)
----
-base-commit: aa58ecc73466d0cb8c418de98e2225490bf600e3
-change-id: 20260715-iio-common-inv-sensors-timestamp-rework-acf1a0aa00f4
-
-Best regards,
---  
-Jean-Baptiste Maneyrol <jean-baptiste.maneyrol@tdk.com>
+-- 
+2.54.0
 
