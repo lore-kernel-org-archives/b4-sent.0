@@ -1,289 +1,137 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Mon, 20 Jul 2026 20:39:24 +0800
-Subject: [PATCH] ceph: parallelize object copy in ceph_do_objects_copy()
+From: Mateusz Litwin <mateusz.litwin@nokia.com>
+Subject: [PATCH RFC 0/3] mtd: spi-nor: allow multiple erase sizes on
+ uniform flashes
+Date: Mon, 20 Jul 2026 17:12:37 +0200
+Message-Id: <20260720-spi_nor_multisize_erase-v1-0-38d719bfe77b@nokia.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260720-b4-ceph-copyfrom-v1-1-9a4c229df6e2@clyso.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQqDMBBA0avIrB2IoUzFq4gLM451CpqQaGkR7
- 260y7f4f4ckUSVBU+wQ5aNJ/ZJRlQXw1C8vQR2ywRpL5mkNugeyhAnZh98Y/YxcU22cHYgqgpy
- FKKN+72Xb/Z029xZerw8cxwlGjrXYdAAAAA==
-X-Change-ID: 20260720-b4-ceph-copyfrom-c8680b2d6616
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>
-Cc: ceph-devel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Xiubo Li <xiubo.li@clyso.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784551170; l=9188;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=tBKXfCJ+NgJ+kSb6ibcSYY9ADa5eQQQSOPM+cAzJ68Y=;
- b=lLJhX844uCwzYJMues2rQhaN+mW0jEx8/TKpFwSdDCXZh6Dtm6LVBoohNC+AMIeMwEhTemzMb
- mdBHAOXmAB2D92Tdny88+GmPKW+v18diP2t9lx5QvPdNICTq+B6v/nK
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAOU6XmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDcyMD3eKCzPi8/KL43NKcEqDqqtT41KLE4lTdFDMTk+S0FJNE07QkJaD
+ ugqLUtMwKsMnRSkFuzkqxtbUA0Bza/W4AAAA=
+X-Change-ID: 20260720-spi_nor_multisize_erase-d644cfd4a5fb
+To: Pratyush Yadav <pratyush@kernel.org>, Michael Walle <mwalle@kernel.org>, 
+ Takahiro Kuwano <takahiro.kuwano@infineon.com>, 
+ Miquel Raynal <miquel.raynal@bootlin.com>, 
+ Richard Weinberger <richard@nod.at>, Vignesh Raghavendra <vigneshr@ti.com>
+Cc: linux-mtd@lists.infradead.org, linux-kernel@vger.kernel.org, 
+ Mateusz Litwin <mateusz.litwin@nokia.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784560422; l=5636;
+ i=mateusz.litwin@nokia.com; s=20251217; h=from:subject:message-id;
+ bh=6wOusxj+XRYlBiC+sGkaeefQm/+5jioo6ge9/BEVVpY=;
+ b=t/840G3ZyvXGj6ZT/PGBjHLiPZd7BPqBSGEqBfUFI9fhmGTJkruhaQskaGaYb9D2YWZmlOe4y
+ TC1tDFoP1UuAh2J8Qhp6xV3fgkfCctgwr+pe74YJkNwhhQnhKRW0i7+
+X-Developer-Key: i=mateusz.litwin@nokia.com; a=ed25519;
+ pk=9NV76cwWrtwYUektOrK/ht9GTzmhtkqSvghr3Td4hM4=
+X-Endpoint-Received: by B4 Relay for mateusz.litwin@nokia.com/20251217 with auth_id=579
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The current ceph_do_objects_copy() submits COPY_FROM2 requests serially
-(submit-wait-submit-wait), which means the total latency scales linearly
-with the number of objects being copied.
+Most SPI NOR flashes advertise several erase sizes (e.g. 4 KiB, 32 KiB and
+64 KiB) even when the erase map is uniform across the whole device.  The
+spi-nor driver currently collapses such flashes to a single erase size and
+uses only that size for every erase request.
 
-Convert to a sliding-window parallel model: submit up to
-CEPH_COPY_FROM_MAX_INFLIGHT (16) requests concurrently, then wait for
-them in FIFO order.  Because all in-flight requests make progress while
-we wait for the oldest one, the total wait time is MAX(latency_i)
-rather than SUM(latency_i).
+This is a problem on platforms that need a small exposed erasesize for
+partition alignment (for example u-boot-env, RouterBoot soft_config, or
+boot header partitions) while still wanting fast bulk erases.  Today the
+usual workaround is to enable MTD_SPI_NOR_USE_4K_SECTORS, which forces 4 KiB
+erases for the entire device and hurts erase performance on large regions.
 
-Error handling uses a 'truncate at first failure' strategy: all
-submitted requests are allowed to complete, results are scanned in
-offset order, and the copy is truncated at the first failing object.
-Objects beyond the truncation point that were successfully written by
-the OSD become orphaned beyond EOF, which is harmless — they are
-unreachable through reads and are cleaned up on file deletion.
+This series introduces MTD_SPI_NOR_MULTI_ERASE_SIZE.  When enabled, uniform
+flashes keep multiple erase sizes in the driver erase map and pick the
+largest suitable erase size for each step of an erase operation, similar to
+what non-uniform flashes already do.  Userspace still sees a single
+mtd->erasesize (4 KiB when MTD_SPI_NOR_USE_4K_SECTORS is also enabled), but
+large aligned portions of an erase request can use 32 KiB or 64 KiB erase
+commands internally.
 
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+The series also converts all erase-type opcodes to their 4-byte-address
+variants on uniform flashes, so multi-size erases work correctly on devices
+larger than 16 MiB.
+
+This is an RFC series. Feedback is especially welcome on whether to merge
+patch 1 alone, patches 1+2, or the full series including the patch 3 PoC.
+
+The series is stacked so maintainers can choose how much to take:
+
+  - Patch 1 adds the Kconfig option, keeps multiple erase types in the
+    uniform region mask, and converts all erase-type opcodes for 4-byte
+    addressing.  On its own it routes multi-size uniform erases through
+    spi_nor_erase_multi_sectors().
+  - Patch 2 replaces that routing with a dedicated uniform erase flow
+    (spi_nor_erase_uniform()), reducing CPU and memory overhead.
+  - Patch 3 is a proof-of-concept optimization on top of patch 2: it
+    caches the largest uniform erase type per request to skip redundant
+    spi_nor_find_best_erase_type() calls in bulk-aligned regions.
+
+Patch 1 follows an OpenWrt pending patch already used in production:
+
+https://github.com/openwrt/openwrt/blob/main/target/linux/generic/pending-6.12/402-mtd-spi-nor-write-support-for-minor-aligned-partitions.patch
+
+MTD_SPI_NOR_MULTI_ERASE_SIZE defaults to N, so existing configurations are
+unaffected.
+
+Tested: backported to a 6.6-based tree on Micron MT25QU02G with
+MTD_SPI_NOR_MULTI_ERASE_SIZE enabled and MTD_SPI_NOR_USE_4K_SECTORS
+disabled (mtd->erasesize reports 64 KiB).  librsu erases the flash with
+the MEMERASE ioctl on the MTD character device, issuing erase requests
+smaller than mtd->erasesize (e.g. a 32 KiB boot header region).
+mtd_erase() does not enforce erasesize alignment, so these requests reach
+the driver, where the previous uniform path rejected them; they now
+succeed through spi_nor_is_uniform_erasable() and the multi-size erase
+path.  Verified writes and erases on the 32 KiB region.
+
+A few implementation details are worth discussing:
+
+1. The previous uniform erase path only required the length to be a
+   multiple of mtd->erasesize.  With MTD_SPI_NOR_MULTI_ERASE_SIZE enabled,
+   spi_nor_is_uniform_erasable() instead checks the address and length
+   against the smallest supported uniform erase size.  Requests aligned to
+   mtd->erasesize still pass (it is a multiple of that size), while
+   callers may now issue erases smaller than mtd->erasesize, as the tested
+   librsu path does.  Misaligned requests are rejected rather than
+   relying on undefined behavior; please report any regressions.
+
+2. Patch 3 addresses per-step spi_nor_find_best_erase_type() overhead.
+   As a PoC it may be dropped, revised, or split out depending on
+   maintainer feedback.
+
+3. Patch 3 calculates the largest erase size on every request.  This could
+   be done once at init.  The same applies to the smallest erase size used
+   for request validation.  Where to store that data is open for
+   discussion if such a change is needed.
+
+4. spansion_nor_late_init() overrides nor->erase_opcode (and mtd->erasesize)
+   for flashes larger than 16 MiB.  With MTD_SPI_NOR_MULTI_ERASE_SIZE enabled,
+   spi_nor_erase_uniform() sets nor->erase_opcode before each erase, so the
+   late_init value is not used on the erase path.  If the SFDP table masks
+   unsupported erase types in 4-byte-address mode, this is not an issue;
+   otherwise late_init() or erase-type masking may need changes for
+   Cypress/Spansion parts.
+
+5. Some flashes do not support every erase type with 4-byte-address opcodes.
+   Unsupported types are masked by clearing erase_type[].size, but the
+   corresponding erase_mask bit is not cleared.  Erases work correctly, but
+   debugfs can show a set bit in the sector-map erase mask for a type that is
+   not listed under "erase commands".  Fixing that is probably best done in
+   a separate patch.
+
+Signed-off-by: Mateusz Litwin <mateusz.litwin@nokia.com>
 ---
- fs/ceph/file.c | 193 +++++++++++++++++++++++++++++++++++++++++++++------------
- 1 file changed, 152 insertions(+), 41 deletions(-)
+Mateusz Litwin (3):
+      mtd: spi-nor: allow multiple erase sizes on uniform flash
+      mtd: spi-nor: add dedicated multi-size uniform erase path
+      mtd: spi-nor: skip erase type search in uniform bulk erase
 
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index 9d89d7fc1095..32147c719c35 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -2965,6 +2965,20 @@ ceph_alloc_copyfrom_request(struct ceph_osd_client *osdc,
- 	return ERR_PTR(ret);
- }
- 
-+/*
-+ * Default maximum number of in-flight COPY_FROM2 requests.  Can be
-+ * overridden at module load time via the copyfrom_max_inflight parameter.
-+ *
-+ * Higher values improve throughput over high-latency links, but too many
-+ * concurrent requests can saturate OSD disk queues, especially in small
-+ * clusters.  Tune this to match the number of OSDs and their concurrency
-+ * capability.  For most clusters 16--64 is a reasonable range.
-+ */
-+static unsigned int copyfrom_max_inflight = 16;
-+module_param(copyfrom_max_inflight, uint, 0644);
-+MODULE_PARM_DESC(copyfrom_max_inflight,
-+		 "Maximum in-flight COPY_FROM2 requests per copy_file_range call");
-+
- static ssize_t ceph_do_objects_copy(struct ceph_inode_info *src_ci, u64 *src_off,
- 				    struct ceph_inode_info *dst_ci, u64 *dst_off,
- 				    struct ceph_fs_client *fsc,
-@@ -2973,13 +2987,19 @@ static ssize_t ceph_do_objects_copy(struct ceph_inode_info *src_ci, u64 *src_off
- 	struct ceph_object_locator src_oloc, dst_oloc;
- 	struct ceph_object_id src_oid, dst_oid;
- 	struct ceph_osd_client *osdc;
-+	struct ceph_osd_request **reqs = NULL;
- 	struct ceph_osd_request *req;
- 	ssize_t bytes = 0;
- 	u64 src_objnum, src_objoff, dst_objnum, dst_objoff;
- 	u32 src_objlen, dst_objlen;
- 	u32 object_size = src_ci->i_layout.object_size;
- 	struct ceph_client *cl = fsc->client;
--	int ret;
-+	u64 orig_src_off = *src_off;
-+	u64 orig_dst_off = *dst_off;
-+	int num_objects, head = 0, tail = 0, inflight = 0;
-+	int first_fail_obj = -1, first_fail_err = 0;
-+	int slot, ret;
-+	bool have_eopnotsupp = false;
- 
- 	src_oloc.pool = src_ci->i_layout.pool_id;
- 	src_oloc.pool_ns = ceph_try_get_string(src_ci->i_layout.pool_ns);
-@@ -2987,54 +3007,145 @@ static ssize_t ceph_do_objects_copy(struct ceph_inode_info *src_ci, u64 *src_off
- 	dst_oloc.pool_ns = ceph_try_get_string(dst_ci->i_layout.pool_ns);
- 	osdc = &fsc->client->osdc;
- 
--	while (len >= object_size) {
--		ceph_calc_file_object_mapping(&src_ci->i_layout, *src_off,
--					      object_size, &src_objnum,
--					      &src_objoff, &src_objlen);
--		ceph_calc_file_object_mapping(&dst_ci->i_layout, *dst_off,
--					      object_size, &dst_objnum,
--					      &dst_objoff, &dst_objlen);
--		ceph_oid_init(&src_oid);
--		ceph_oid_printf(&src_oid, "%llx.%08llx",
--				src_ci->i_vino.ino, src_objnum);
--		ceph_oid_init(&dst_oid);
--		ceph_oid_printf(&dst_oid, "%llx.%08llx",
--				dst_ci->i_vino.ino, dst_objnum);
--		/* Do an object remote copy */
--		req = ceph_alloc_copyfrom_request(osdc, src_ci->i_vino.snap,
--						  &src_oid, &src_oloc,
--						  &dst_oid, &dst_oloc,
--						  dst_ci->i_truncate_seq,
--						  dst_ci->i_truncate_size);
--		if (IS_ERR(req))
--			ret = PTR_ERR(req);
--		else {
-+	num_objects = len / object_size;
-+	if (!num_objects)
-+		goto out;
-+
-+	reqs = kvmalloc_array(copyfrom_max_inflight, sizeof(*reqs), GFP_KERNEL);
-+	if (!reqs) {
-+		bytes = -ENOMEM;
-+		goto out;
-+	}
-+
-+	/*
-+	 * Sliding window: submit requests up to MAX_INFLIGHT, then wait for
-+	 * the oldest in-flight request to complete before submitting more.
-+	 * The reqs[] ring buffer is indexed by (slot % MAX_INFLIGHT), so
-+	 * memory is bounded to MAX_INFLIGHT regardless of num_objects.
-+	 * First-failure and EOPNOTSUPP detection happen inline — no post-scan
-+	 * needed.
-+	 */
-+	while (head < num_objects) {
-+		/* Submit new requests while the window has room */
-+		while (tail < num_objects &&
-+		       first_fail_obj == -1 &&
-+		       inflight < copyfrom_max_inflight) {
-+			u64 object_src_off = orig_src_off +
-+					     (u64)tail * object_size;
-+			u64 object_dst_off = orig_dst_off +
-+					     (u64)tail * object_size;
-+
-+			ceph_calc_file_object_mapping(&src_ci->i_layout,
-+						      object_src_off,
-+						      object_size,
-+						      &src_objnum,
-+						      &src_objoff,
-+						      &src_objlen);
-+			ceph_calc_file_object_mapping(&dst_ci->i_layout,
-+						      object_dst_off,
-+						      object_size,
-+						      &dst_objnum,
-+						      &dst_objoff,
-+						      &dst_objlen);
-+			ceph_oid_init(&src_oid);
-+			ceph_oid_printf(&src_oid, "%llx.%08llx",
-+					src_ci->i_vino.ino, src_objnum);
-+			ceph_oid_init(&dst_oid);
-+			ceph_oid_printf(&dst_oid, "%llx.%08llx",
-+					dst_ci->i_vino.ino, dst_objnum);
-+
-+			/* Do an object remote copy */
-+			slot = tail % copyfrom_max_inflight;
-+			req = ceph_alloc_copyfrom_request(osdc,
-+						src_ci->i_vino.snap,
-+						&src_oid, &src_oloc,
-+						&dst_oid, &dst_oloc,
-+						dst_ci->i_truncate_seq,
-+						dst_ci->i_truncate_size);
-+			if (IS_ERR(req)) {
-+				/*
-+				 * Allocation failed: treat as first failure
-+				 * and stop submitting.  Drain inflight
-+				 * requests to check for EOPNOTSUPP.
-+				 */
-+				if (first_fail_obj == -1) {
-+					first_fail_obj = tail;
-+					first_fail_err = PTR_ERR(req);
-+				}
-+				reqs[slot] = NULL;
-+				tail++;
-+				continue;
-+			}
- 			ceph_osdc_start_request(osdc, req);
--			ret = ceph_osdc_wait_request(osdc, req);
-+			reqs[slot] = req;
-+			tail++;
-+			inflight++;
-+		}
-+
-+		/*
-+		 * Wait for the oldest in-flight request (FIFO order).
-+		 * This is required for correctness: we must determine the
-+		 * first failure in object-offset order to know how many
-+		 * bytes were successfully copied.  It does not hurt
-+		 * performance because all requests in the window are
-+		 * submitted concurrently -- later requests complete in
-+		 * the background while we wait, so the wall-clock time
-+		 * is dominated by the slowest request, not the sum.
-+		 */
-+		slot = head % copyfrom_max_inflight;
-+		if (reqs[slot]) {
-+			ret = ceph_osdc_wait_request(osdc, reqs[slot]);
- 			ceph_update_copyfrom_metrics(&fsc->mdsc->metric,
--						     req->r_start_latency,
--						     req->r_end_latency,
-+						     reqs[slot]->r_start_latency,
-+						     reqs[slot]->r_end_latency,
- 						     object_size, ret);
--			ceph_osdc_put_request(req);
--		}
--		if (ret) {
--			if (ret == -EOPNOTSUPP) {
--				fsc->have_copy_from2 = false;
--				pr_notice_client(cl,
--					"OSDs don't support copy-from2; disabling copy offload\n");
-+			ceph_osdc_put_request(reqs[slot]);
-+			inflight--;
-+
-+			if (ret == -EOPNOTSUPP)
-+				have_eopnotsupp = true;
-+
-+			if (ret < 0 && first_fail_obj == -1) {
-+				first_fail_obj = head;
-+				first_fail_err = ret;
- 			}
--			doutc(cl, "returned %d\n", ret);
--			if (bytes <= 0)
--				bytes = ret;
--			goto out;
-+			if (ret)
-+				doutc(cl, "object %d returned %d\n", head, ret);
- 		}
--		len -= object_size;
--		bytes += object_size;
--		*src_off += object_size;
--		*dst_off += object_size;
-+		/*
-+		 * If reqs[slot] was NULL, allocation for this object had
-+		 * failed earlier; first_fail_obj was already set in the
-+		 * submit loop -- just drain past it.
-+		 */
-+		head++;
- 	}
- 
-+	/*
-+	 * Determine bytes copied: all objects before the first failure
-+	 * succeeded.  Any objects beyond the truncation point that were
-+	 * successfully written by the OSD become unreachable orphans
-+	 * (beyond EOF) and are harmless.
-+	 */
-+	if (first_fail_obj == -1) {
-+		bytes = (ssize_t)num_objects * object_size;
-+	} else if (first_fail_obj == 0) {
-+		bytes = first_fail_err;
-+	} else {
-+		bytes = (ssize_t)first_fail_obj * object_size;
-+	}
-+
-+	if (have_eopnotsupp) {
-+		fsc->have_copy_from2 = false;
-+		pr_notice_client(cl,
-+			"OSDs don't support copy-from2; disabling copy offload\n");
-+	}
-+
-+	if (bytes > 0) {
-+		*src_off = orig_src_off + bytes;
-+		*dst_off = orig_dst_off + bytes;
-+	}
- out:
-+	kvfree(reqs);
- 	ceph_oloc_destroy(&src_oloc);
- 	ceph_oloc_destroy(&dst_oloc);
- 	return bytes;
-
+ drivers/mtd/spi-nor/Kconfig |  25 +++++
+ drivers/mtd/spi-nor/core.c  | 247 +++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 213 insertions(+), 59 deletions(-)
 ---
-base-commit: fc67edb66b3c9924c4e0bb366a92b32ea13c526a
-change-id: 20260720-b4-ceph-copyfrom-c8680b2d6616
+base-commit: df415c5e1de0f1aeefacb4e6252ff98d38c04437
+change-id: 20260720-spi_nor_multisize_erase-d644cfd4a5fb
 
 Best regards,
---  
-Xiubo Li <xiubo.li@clyso.com>
+-- 
+Mateusz Litwin <mateusz.litwin@nokia.com>
 
