@@ -1,155 +1,57 @@
-From: Haoning CHENG <Haoning.CHENG@cn.bosch.com>
-Date: Mon, 20 Jul 2026 10:19:42 +0800
-Subject: [PATCH v10 3/3] thermal/drivers/imx: Add calibration offset
- support
+From: Aaron Kling <webgeek1234@gmail.com>
+Subject: [PATCH v2 0/2] soc/tegra: pmc: Add Tegra210B01 support
+Date: Mon, 20 Jul 2026 01:31:14 -0500
+Message-Id: <20260720-t210b01-pmc-v2-0-ca5317f8507b@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260720-b4-symana21-11221-imx-thermal-support-upstream-6-18-v10-3-f8c3dcd9a57e@cn.bosch.com>
-References: <20260720-b4-symana21-11221-imx-thermal-support-upstream-6-18-v10-0-f8c3dcd9a57e@cn.bosch.com>
-In-Reply-To: <20260720-b4-symana21-11221-imx-thermal-support-upstream-6-18-v10-0-f8c3dcd9a57e@cn.bosch.com>
-To: "Rafael J. Wysocki" <rafael@kernel.org>, 
- Daniel Lezcano <daniel.lezcano@linaro.org>, Zhang Rui <rui.zhang@intel.com>, 
- Lukasz Luba <lukasz.luba@arm.com>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Shawn Guo <shawnguo@kernel.org>, 
- Sascha Hauer <s.hauer@pengutronix.de>, 
- Pengutronix Kernel Team <kernel@pengutronix.de>, 
- Fabio Estevam <festevam@gmail.com>
-Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
- imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
- linux-kernel@vger.kernel.org, Haoning CHENG <Haoning.CHENG@cn.bosch.com>, 
- Frank Li <Frank.Li@nxp.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784513984; l=4380;
- i=Haoning.CHENG@cn.bosch.com; s=20260709; h=from:subject:message-id;
- bh=UoaGU7Fe9UnC8U10dlVQYVc1ZMlQR8s4j1HdMODUp+U=;
- b=WqhnIVyGUl5djtv1+hBPmN8KEzdEqsuRvoDY/f/5vrgpPtIkUeoiVOMYDFcgzBBYW852qtYu3
- v+T70ESS/VJDdvUV9XKutox/emqC6VLOdeMV5OFackhL5ojotXwceoH
-X-Developer-Key: i=Haoning.CHENG@cn.bosch.com; a=ed25519;
- pk=glQGwad/fosRS5gZUJYbLDPPLGe7rFTrTV2VxY/ySdc=
-X-Endpoint-Received: by B4 Relay for Haoning.CHENG@cn.bosch.com/20260709 with auth_id=860
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1XMywrCMBCF4VcpszYySUpTXfke0kUSp+2AvZCUo
+ JS8u7HgwuV/4Hw7RApMEa7VDoESR17mEupUgR/tPJDgR2lQqBo0UotNSXQoxTp5Ia3uW3fBFus
+ aymMN1PPr0O5d6ZHjtoT3gSf5XX+O+XOSFChcb0zjqHXamtswWX6e/TJBl3P+AAITFjWmAAAA
+X-Change-ID: 20260713-t210b01-pmc-1a3f8b908044
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Thierry Reding <thierry.reding@kernel.org>, 
+ Jonathan Hunter <jonathanh@nvidia.com>
+Cc: Thierry Reding <thierry.reding@gmail.com>, devicetree@vger.kernel.org, 
+ linux-tegra@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Aaron Kling <webgeek1234@gmail.com>, Azkali Manad <a.ffcc7@gmail.com>, 
+ Thomas Makin <halorocker89@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784529079; l=839;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=RbA0CGgTm2dPyexj3MuGmmYeAx3UJ3Q2g4NEHT98CMI=;
+ b=lAgndM4mFFZanRZ404++Hwgv23HpqhOvVx2DjVBkSK8zl3PqTC14qdJhqzRgeaHRIAMVLAGj5
+ VERRe8azdtVBrN/rMUOUrFJEMH1qfI4IU7KbK9Zf0E0Db/4ypIopkEb
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The TEMPMON sensor reading may deviate from the theoretical SoC
-junction temperature. Hardware characterization shows a measurable
-offset between the sensor output and the calculated junction
-temperature, which exists even at the die level without board
-influence.
+This series adds support for the Tegra210B01 SoC to the Tegra PMC driver
+and documents the new compatible.
 
-Read the optional fsl,temp-calibration-offset-millicelsius property
-from DT and apply it uniformly to the i.MX6/6SX/7D formulas.
-
-The offset is applied symmetrically at two points to keep trip point
-semantics consistent:
-
-1. In imx_set_alarm_temp() and imx_set_panic_temp(): the temperature
-   threshold is *subtracted* by the offset before being converted to a
-   hardware register value. This keeps the hardware IRQ trigger aligned
-   with the physical sensor reading that corresponds to the intended
-   temperature threshold.
-
-2. In imx_get_temp(): after computing the temperature from the hardware
-   register, the offset is *added* to produce the calibrated value.
-   The thermal framework always sees the corrected temperature.
-
-For example, if DT sets offset = +3000 m°C and the passive trip is 95°C:
-
-  imx_set_alarm_temp(95000):
-    alarm_temp = 95000 - 3000 = 92000
-    → hardware register programmed for 92°C sensor reading
-
-  Hardware IRQ fires when sensor reads 92°C
-
-  imx_get_temp():
-    reads hardware, computes 92°C
-    *temp = 92000 + 3000 = 95000
-    → thermal framework sees 95°C → correct trip
-
-When the property is not present, the offset defaults to 0, preserving
-the current behavior.
-
-Reviewed-by: Frank Li <Frank.Li@nxp.com>
-Reviewed-by: Lukasz Luba <lukasz.luba@arm.com>
-Signed-off-by: Haoning Cheng <Haoning.CHENG@cn.bosch.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/thermal/imx_thermal.c | 27 +++++++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+Changes in v2:
+- Address sashiko report and drop duplicated structs
+- Link to v1: https://lore.kernel.org/r/20260717-t210b01-pmc-v1-0-bf776be8b3a7@gmail.com
 
-diff --git a/drivers/thermal/imx_thermal.c b/drivers/thermal/imx_thermal.c
-index 7f7d1116b9d6..d471acc16bce 100644
---- a/drivers/thermal/imx_thermal.c
-+++ b/drivers/thermal/imx_thermal.c
-@@ -85,6 +85,10 @@ enum imx_thermal_trip {
- #define TEMPMON_IMX6SX			2
- #define TEMPMON_IMX7D			3
- 
-+/* Calibration offset limits (±20 °C in millicelsius) */
-+#define IMX_TEMP_CALIB_OFFSET_MIN	(-20000)
-+#define IMX_TEMP_CALIB_OFFSET_MAX	20000
-+
- struct thermal_soc_data {
- 	u32 version;
- 
-@@ -207,6 +211,7 @@ struct imx_thermal_data {
- 	struct regmap *tempmon;
- 	u32 c1, c2; /* See formula in imx_init_calib() */
- 	int temp_max;
-+	s32 calibration_offset;
- 	int alarm_temp;
- 	int last_temp;
- 	bool irq_enabled;
-@@ -223,6 +228,7 @@ static void imx_set_panic_temp(struct imx_thermal_data *data,
- 	struct regmap *map = data->tempmon;
- 	int critical_value;
- 
-+	panic_temp -= data->calibration_offset;
- 	critical_value = (data->c2 - panic_temp) / data->c1;
- 
- 	regmap_write(map, soc_data->panic_alarm_ctrl + REG_CLR,
-@@ -239,6 +245,7 @@ static void imx_set_alarm_temp(struct imx_thermal_data *data,
- 	int alarm_value;
- 
- 	data->alarm_temp = alarm_temp;
-+	alarm_temp -= data->calibration_offset;
- 
- 	if (data->socdata->version == TEMPMON_IMX7D) {
- 		if (alarm_temp >= 0)
-@@ -283,6 +290,7 @@ static int imx_get_temp(struct thermal_zone_device *tz, int *temp)
- 		*temp = (n_meas - data->c1 + 25) * 1000;
- 	else
- 		*temp = data->c2 - n_meas * data->c1;
-+	*temp += data->calibration_offset;
- 
- 	/* Update alarm value to next higher trip point for TEMPMON_IMX6Q */
- 	if (data->socdata->version == TEMPMON_IMX6Q) {
-@@ -635,6 +643,25 @@ static int imx_thermal_probe(struct platform_device *pdev)
- 
- 	platform_set_drvdata(pdev, data);
- 
-+	if (of_property_present(dev->of_node,
-+				"fsl,temp-calibration-offset-millicelsius")) {
-+		ret = of_property_read_s32(dev->of_node,
-+					   "fsl,temp-calibration-offset-millicelsius",
-+					   &data->calibration_offset);
-+		if (ret)
-+			return dev_err_probe(dev, ret,
-+					     "failed to read calibration offset\n");
-+
-+		if (data->calibration_offset < IMX_TEMP_CALIB_OFFSET_MIN ||
-+		    data->calibration_offset > IMX_TEMP_CALIB_OFFSET_MAX)
-+			return dev_err_probe(dev, -EINVAL,
-+					     "calibration offset %d millicelsius out of range\n",
-+					     data->calibration_offset);
-+
-+		dev_dbg(dev, "calibration offset: %d millicelsius\n",
-+			data->calibration_offset);
-+	}
-+
- 	if (of_property_present(dev->of_node, "nvmem-cells")) {
- 		ret = imx_init_from_nvmem_cells(pdev);
- 		if (ret)
+---
+Aaron Kling (1):
+      dt-bindings: soc: tegra: pmc: Document Tegra210B01
 
+Azkali Manad (1):
+      soc/tegra: pmc: Add Tegra210B01 support
+
+ .../bindings/soc/tegra/nvidia,tegra20-pmc.yaml     |  5 +-
+ drivers/soc/tegra/pmc.c                            | 62 ++++++++++++++++++++++
+ 2 files changed, 66 insertions(+), 1 deletion(-)
+---
+base-commit: 1a1757b76427f6201bfe0bf1bea9f7574f332a93
+change-id: 20260713-t210b01-pmc-1a3f8b908044
+
+Best regards,
 -- 
-2.43.0
+Aaron Kling <webgeek1234@gmail.com>
 
