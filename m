@@ -1,11 +1,10 @@
 From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Date: Mon, 20 Jul 2026 15:10:15 +0530
-Subject: [PATCH 03/10] iio: accel: hid-sensor-accel-3d: use local struct
- device
+Date: Mon, 20 Jul 2026 15:10:16 +0530
+Subject: [PATCH 04/10] iio: light: hid-sensor-als: use local struct device
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260720-hid-iio-local-struct-device-v1-3-74496fee6327@gmail.com>
+Message-Id: <20260720-hid-iio-local-struct-device-v1-4-74496fee6327@gmail.com>
 References: <20260720-hid-iio-local-struct-device-v1-0-74496fee6327@gmail.com>
 In-Reply-To: <20260720-hid-iio-local-struct-device-v1-0-74496fee6327@gmail.com>
 To: Jiri Kosina <jikos@kernel.org>, Jonathan Cameron <jic23@kernel.org>, 
@@ -16,11 +15,11 @@ To: Jiri Kosina <jikos@kernel.org>, Jonathan Cameron <jic23@kernel.org>,
 Cc: linux-input@vger.kernel.org, linux-iio@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784540423; l=3184;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784540423; l=2688;
  i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
- bh=CHrL5pLuWoANqRnTUQhBxvjRxrsqGaR+mjcFFDbcdqU=;
- b=jvPykdZK1FZL5BRq/q/lUtRSM7gO1wAB8CWI2GuTQYgmVnGABIc0qmpbT/Zod8t+3/eDeIOxv
- TstVMjJkp46C+vNCunsNzJt0K/Y7cHTZ8MprvLUPE48EpKBd4bmLbfZ
+ bh=F+9XUfQNCvbfNIZ2ifuF+mpRN7/StD6NN5AhbF5V6Y8=;
+ b=Y+oYtiAJLpfMR6CVD19JRUm0qQnntcGFjkjixGjdZlhJsIWR58mOnAbfnVXlfLRkMEGkrfRa1
+ U+LUfTprABvBrXvlxJgt5Y1Ao20GAjzSB+4H0gC0QOmO7TlQ00NSfd9
 X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
  pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
 X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
@@ -31,72 +30,60 @@ This avoids repeated &pdev->dev usage and improves readability.
 
 Signed-off-by: Sanjay Chitroda <sanjayembeddedse@gmail.com>
 ---
- drivers/iio/accel/hid-sensor-accel-3d.c | 22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+ drivers/iio/light/hid-sensor-als.c | 15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/iio/accel/hid-sensor-accel-3d.c b/drivers/iio/accel/hid-sensor-accel-3d.c
-index eb521125f4eb..5467ecc86b58 100644
---- a/drivers/iio/accel/hid-sensor-accel-3d.c
-+++ b/drivers/iio/accel/hid-sensor-accel-3d.c
-@@ -314,7 +314,8 @@ static int accel_3d_parse_report(struct platform_device *pdev,
+diff --git a/drivers/iio/light/hid-sensor-als.c b/drivers/iio/light/hid-sensor-als.c
+index 6fb6ace26834..44088f9dff81 100644
+--- a/drivers/iio/light/hid-sensor-als.c
++++ b/drivers/iio/light/hid-sensor-als.c
+@@ -346,13 +346,14 @@ static int als_parse_report(struct platform_device *pdev,
  /* Function to initialize the processing for usage id */
- static int hid_accel_3d_probe(struct platform_device *pdev)
+ static int hid_als_probe(struct platform_device *pdev)
  {
 -	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
 +	struct device *dev = &pdev->dev;
 +	struct hid_sensor_hub_device *hsdev = dev_get_platdata(dev);
  	int ret = 0;
- 	const char *name;
+ 	static const char *name = "als";
  	struct iio_dev *indio_dev;
-@@ -322,8 +323,7 @@ static int hid_accel_3d_probe(struct platform_device *pdev)
- 	const struct iio_chan_spec *channel_spec;
- 	int channel_size;
+ 	struct als_state *als_state;
  
--	indio_dev = devm_iio_device_alloc(&pdev->dev,
--					  sizeof(struct accel_3d_state));
-+	indio_dev = devm_iio_device_alloc(dev, sizeof(struct accel_3d_state));
+-	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(struct als_state));
++	indio_dev = devm_iio_device_alloc(dev, sizeof(struct als_state));
  	if (!indio_dev)
  		return -ENOMEM;
- 
-@@ -350,21 +350,21 @@ static int hid_accel_3d_probe(struct platform_device *pdev)
- 						 accel_3d_sensitivity_addresses,
- 						 ARRAY_SIZE(accel_3d_sensitivity_addresses));
+ 	platform_set_drvdata(pdev, indio_dev);
+@@ -367,7 +368,7 @@ static int hid_als_probe(struct platform_device *pdev)
+ 					als_sensitivity_addresses,
+ 					ARRAY_SIZE(als_sensitivity_addresses));
  	if (ret) {
 -		dev_err(&pdev->dev, "failed to setup common attributes\n");
 +		dev_err(dev, "failed to setup common attributes\n");
  		return ret;
  	}
--	indio_dev->channels = devm_kmemdup(&pdev->dev, channel_spec,
--					   channel_size, GFP_KERNEL);
  
-+	indio_dev->channels = devm_kmemdup(dev, channel_spec, channel_size, GFP_KERNEL);
- 	if (!indio_dev->channels) {
--		dev_err(&pdev->dev, "failed to duplicate channels\n");
-+		dev_err(dev, "failed to duplicate channels\n");
- 		return -ENOMEM;
- 	}
-+
- 	ret = accel_3d_parse_report(pdev, hsdev,
- 				    (struct iio_chan_spec *)indio_dev->channels,
- 				    hsdev->usage, accel_state);
+@@ -375,7 +376,7 @@ static int hid_als_probe(struct platform_device *pdev)
+ 			       hsdev->usage,
+ 			       als_state);
  	if (ret) {
 -		dev_err(&pdev->dev, "failed to setup attributes\n");
 +		dev_err(dev, "failed to setup attributes\n");
  		return ret;
  	}
  
-@@ -377,7 +377,7 @@ static int hid_accel_3d_probe(struct platform_device *pdev)
+@@ -397,7 +398,7 @@ static int hid_als_probe(struct platform_device *pdev)
  	ret = hid_sensor_setup_trigger(indio_dev, name,
- 				       &accel_state->common_attributes);
+ 				       &als_state->common_attributes);
  	if (ret < 0) {
 -		dev_err(&pdev->dev, "trigger setup failed\n");
 +		dev_err(dev, "trigger setup failed\n");
  		return ret;
  	}
  
-@@ -387,13 +387,13 @@ static int hid_accel_3d_probe(struct platform_device *pdev)
- 	ret = sensor_hub_register_callback(hsdev, hsdev->usage,
- 					   &accel_state->callbacks);
+@@ -406,13 +407,13 @@ static int hid_als_probe(struct platform_device *pdev)
+ 	als_state->callbacks.pdev = pdev;
+ 	ret = sensor_hub_register_callback(hsdev, hsdev->usage, &als_state->callbacks);
  	if (ret < 0) {
 -		dev_err(&pdev->dev, "callback reg failed\n");
 +		dev_err(dev, "callback reg failed\n");
