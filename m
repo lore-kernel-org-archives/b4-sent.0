@@ -1,113 +1,102 @@
-From: Sanjay Chitroda <sanjayembeddedse@gmail.com>
-Date: Mon, 20 Jul 2026 15:10:22 +0530
-Subject: [PATCH 10/10] iio: pressure: hid-sensor-press: use local struct
- device
+From: Philipp Oster <philippdev5396@outlook.de>
+Date: Mon, 20 Jul 2026 11:41:51 +0200
+Subject: [PATCH] ALSA: hda/tas2781: clear cali_data.total_sz when
+ calibration read fails
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260720-hid-iio-local-struct-device-v1-10-74496fee6327@gmail.com>
-References: <20260720-hid-iio-local-struct-device-v1-0-74496fee6327@gmail.com>
-In-Reply-To: <20260720-hid-iio-local-struct-device-v1-0-74496fee6327@gmail.com>
-To: Jiri Kosina <jikos@kernel.org>, Jonathan Cameron <jic23@kernel.org>, 
- Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-iio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Sanjay Chitroda <sanjayembeddedse@gmail.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784540423; l=3124;
- i=sanjayembeddedse@gmail.com; s=20260702; h=from:subject:message-id;
- bh=KprakpDFPiwIPtA12YpCnWpXHOfCF0716+NW98RCOhE=;
- b=mbh6hvgT9+rdmxJAM7i6ZzhwW0uWhPEsY2qlpJRuZk5H5A2g9/mwOrgF4jjVli0KhtGFMDejv
- rnm20xClbDSCLTLM6gNtNHecByJDjUsgamb2JohWEbDuU2CfRcaUwOU
-X-Developer-Key: i=sanjayembeddedse@gmail.com; a=ed25519;
- pk=PcneEFtkmY+Ldl+KmOTpB/Q/HDsqko6Fb0/Z/5cuycI=
-X-Endpoint-Received: by B4 Relay for sanjayembeddedse@gmail.com/20260702 with auth_id=848
+Message-Id: <20260720-tas2781-calfix-v1-1-3a5fa6ad90bc@outlook.de>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2MQQqAIBAAvxJ7TlATjb4SHUzXWggLjQjEvycdZ
+ 2CmQMZEmGHqCiR8KNMZG4i+A7fbuCEj3xgkl5obydltszSjYM4egV42WOG1FhiUWqFFV8Km/+G
+ 81PoBHxcj6WAAAAA=
+X-Change-ID: 20260720-tas2781-calfix-3a1d661ef44b
+To: Shenghao Ding <shenghao-ding@ti.com>, Kevin Lu <kevin-lu@ti.com>, 
+ Baojun Xu <baojun.xu@ti.com>, Jaroslav Kysela <perex@perex.cz>, 
+ Takashi Iwai <tiwai@suse.com>
+Cc: linux-sound@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Gergo Koteles <soyer@irl.hu>, Philipp Oster <philippdev5396@outlook.de>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784540510; l=2997;
+ i=philippdev5396@outlook.de; s=20260720; h=from:subject:message-id;
+ bh=3ASFuBghZlzq4VeXWB7VHquriNyFyHqybRG8T5MRS3s=;
+ b=GG8FGNBRFA3VHwPkrtKPNzvRM1WwLT8GN/sWIf/FRCXQ8L4PIYdspcglEoscAZ+5RuhpVqzfC
+ w68i4MXscGLDTwGtzHp5CUVEpt59yvmXnepaAkc8gWvjMJCd3B1O3kY
+X-Developer-Key: i=philippdev5396@outlook.de; a=ed25519;
+ pk=eT8kbz1b1YS9DKzFAuB7xKR6XscHmecvQiv3Mddjjhs=
+X-Endpoint-Received: by B4 Relay for philippdev5396@outlook.de/20260720 with auth_id=885
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce a local struct device pointer derived from &pdev->dev.
-This avoids repeated &pdev->dev usage and improves readability.
+tas2563_save_calibration() assigns cali_data.total_sz before it reads the
+per-device calibration data from EFI, but its error paths return without
+clearing it again. cali_data.cali_reg_array is left all zero, because the
+function returns before the register addresses are assigned.
 
-Signed-off-by: Sanjay Chitroda <sanjayembeddedse@gmail.com>
+On the first playback tasdev_load_calibrated_data() does
+
+	if (!data || !cali_data->total_sz)
+		return;
+
+which passes, since total_sz is still non-zero. It then issues five
+4-byte bulk writes to p->r0_reg, p->r0_low_reg, p->invr0_reg, p->pow_reg
+and p->tlimit_reg, all of which are 0. Register 0 decodes to book 0 /
+page 0 / register 0x00, so the auto-incrementing block write zeroes
+registers 0x00 to 0x03. Register 0x03 is PB_CFG1, which holds AMP_LEVEL,
+so the amplifier gain is set to its minimum and the speaker stays silent.
+
+This is reproducible on a Lenovo Yoga 7 14ARB7 (two TAS2563 on I2C,
+ACPI INT8866) whose factory calibration was never written to UEFI, so the
+EFI read fails with EFI_NOT_FOUND. The two woofers driven by the
+amplifiers are silent while the tweeters driven directly by the ALC287
+play. Reading the amplifier registers over i2c shows PWR_CTL = 0x00
+(active) and the TDM slots correctly programmed by the RCA profile, but
+PB_CFG1 = 0x00. With this change PB_CFG1 keeps its power-on default of
+0x20 and both woofers play.
+
+tas2781_save_calibration() in tas2781_hda.c already clears total_sz on
+failure; do the same for the TAS2563 variant.
+
+Signed-off-by: Philipp Oster <philippdev5396@outlook.de>
 ---
- drivers/iio/pressure/hid-sensor-press.c | 19 ++++++++++---------
- 1 file changed, 10 insertions(+), 9 deletions(-)
+Single patch - see the commit message for the full analysis and the
+register-level evidence from the affected machine.
+---
+ sound/hda/codecs/side-codecs/tas2781_hda_i2c.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/drivers/iio/pressure/hid-sensor-press.c b/drivers/iio/pressure/hid-sensor-press.c
-index e688b0776547..fee170aa4379 100644
---- a/drivers/iio/pressure/hid-sensor-press.c
-+++ b/drivers/iio/pressure/hid-sensor-press.c
-@@ -230,13 +230,14 @@ static int press_parse_report(struct platform_device *pdev,
- /* Function to initialize the processing for usage id */
- static int hid_press_probe(struct platform_device *pdev)
- {
--	struct hid_sensor_hub_device *hsdev = dev_get_platdata(&pdev->dev);
-+	struct device *dev = &pdev->dev;
-+	struct hid_sensor_hub_device *hsdev = dev_get_platdata(dev);
- 	int ret = 0;
- 	static const char *name = "press";
- 	struct iio_dev *indio_dev;
- 	struct press_state *press_state;
- 
--	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(struct press_state));
-+	indio_dev = devm_iio_device_alloc(dev, sizeof(struct press_state));
- 	if (!indio_dev)
- 		return -ENOMEM;
- 	platform_set_drvdata(pdev, indio_dev);
-@@ -251,14 +252,14 @@ static int hid_press_probe(struct platform_device *pdev)
- 					press_sensitivity_addresses,
- 					ARRAY_SIZE(press_sensitivity_addresses));
- 	if (ret) {
--		dev_err(&pdev->dev, "failed to setup common attributes\n");
-+		dev_err(dev, "failed to setup common attributes\n");
- 		return ret;
- 	}
- 
--	indio_dev->channels = devm_kmemdup(&pdev->dev, press_channels,
-+	indio_dev->channels = devm_kmemdup(dev, press_channels,
- 					   sizeof(press_channels), GFP_KERNEL);
- 	if (!indio_dev->channels) {
--		dev_err(&pdev->dev, "failed to duplicate channels\n");
-+		dev_err(dev, "failed to duplicate channels\n");
- 		return -ENOMEM;
- 	}
- 
-@@ -266,7 +267,7 @@ static int hid_press_probe(struct platform_device *pdev)
- 				 (struct iio_chan_spec *)indio_dev->channels,
- 				 HID_USAGE_SENSOR_PRESSURE, press_state);
- 	if (ret) {
--		dev_err(&pdev->dev, "failed to setup attributes\n");
-+		dev_err(dev, "failed to setup attributes\n");
- 		return ret;
- 	}
- 
-@@ -281,7 +282,7 @@ static int hid_press_probe(struct platform_device *pdev)
- 	ret = hid_sensor_setup_trigger(indio_dev, name,
- 				       &press_state->common_attributes);
- 	if (ret) {
--		dev_err(&pdev->dev, "trigger setup failed\n");
-+		dev_err(dev, "trigger setup failed\n");
- 		return ret;
- 	}
- 
-@@ -291,13 +292,13 @@ static int hid_press_probe(struct platform_device *pdev)
- 	ret = sensor_hub_register_callback(hsdev, HID_USAGE_SENSOR_PRESSURE,
- 					   &press_state->callbacks);
- 	if (ret < 0) {
--		dev_err(&pdev->dev, "callback reg failed\n");
-+		dev_err(dev, "callback reg failed\n");
- 		goto error_remove_trigger;
- 	}
- 
- 	ret = iio_device_register(indio_dev);
- 	if (ret) {
--		dev_err(&pdev->dev, "device register failed\n");
-+		dev_err(dev, "device register failed\n");
- 		goto error_remove_callback;
+diff --git a/sound/hda/codecs/side-codecs/tas2781_hda_i2c.c b/sound/hda/codecs/side-codecs/tas2781_hda_i2c.c
+index 67240ce18..b1c89cc35 100644
+--- a/sound/hda/codecs/side-codecs/tas2781_hda_i2c.c
++++ b/sound/hda/codecs/side-codecs/tas2781_hda_i2c.c
+@@ -355,6 +355,7 @@ static int tas2563_save_calibration(struct tas2781_hda *h)
+ 			if (ret < 0 || ret >= sizeof(var8) - 1) {
+ 				dev_err(p->dev, "%s: Read %s failed\n",
+ 					__func__, var8);
++				cd->total_sz = 0;
+ 				return -EINVAL;
+ 			}
+ 			/*
+@@ -372,6 +373,7 @@ static int tas2563_save_calibration(struct tas2781_hda *h)
+ 				dev_warn(p->dev,
+ 					"Dev %d: Caldat[%d] read failed %ld\n",
+ 					i, j, status);
++				cd->total_sz = 0;
+ 				return -EINVAL;
+ 			}
+ 			bedata = cpu_to_be32(*(uint32_t *)&data[offset]);
+@@ -383,6 +385,7 @@ static int tas2563_save_calibration(struct tas2781_hda *h)
+ 	if (cd->total_sz != offset) {
+ 		dev_err(p->dev, "%s: tot_size(%lu) and offset(%u) mismatch\n",
+ 			__func__, cd->total_sz, offset);
++		cd->total_sz = 0;
+ 		return -EINVAL;
  	}
  
 
+---
+base-commit: 199c9959d3a9b53f346c221757fc7ac507fbac50
+change-id: 20260720-tas2781-calfix-3a1d661ef44b
+
+Best regards,
 -- 
-2.34.1
+Philipp Oster <philippdev5396@outlook.de>
 
