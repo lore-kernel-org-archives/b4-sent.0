@@ -1,132 +1,91 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Tue, 21 Jul 2026 13:06:53 +0800
-Subject: [PATCH v3] ceph: revalidate ki_pos for O_APPEND writes after cap
- acquisition
+From: Andy Chung <Andy.Chung@amd.com>
+Subject: [PATCH v3 0/4] hwmon: Add Kandou KB9002 PCIe retimer driver
+Date: Tue, 21 Jul 2026 14:31:31 +0800
+Message-Id: <20260721-kb9002-upstream-v3-0-70563922be8d@amd.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260721-ceph-append-fix-v3-1-403d1b5204d3@clyso.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WNQQ7CIBBFr9KwFgNUC3XlPYwLOp1ajBYCldg0v
- btQN02Myzf5781MAnqDgZyKmXiMJhg7JCh3BYFeDzekpk1MBBMVk1xSQNdT7RwOLe3Mm9ZKMCw
- brqUCkiznMZ3X4uX65fBq7ghjzuRFb8Jo/bS+jDzv/tcjp5zCkddMalBYVmd4TMHuwT5Jrkex9
- dWvL5KvVAtw6FQpebf1l2X5ANo3Bv0AAQAA
-X-Change-ID: 20260717-ceph-append-fix-9820e3b1a78c
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>
-Cc: Jeff Layton <jlayton@kernel.org>, ceph-devel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Xiubo Li <xiubo.li@clyso.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784610426; l=3946;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=qkIjobO/mwWY4xsUADl5gozVcTVXv6RN/HBnNhNTqRo=;
- b=uqA7/lI2k+N5/dVR+VextbMjcfz7khcaqA3Tw9Pzjp7+jiO376EoDTvU7m1VifUF39tkw7UU7
- 6gIQiEXv/VsCBFv49tTvbb58a1EcvO7Tv6rUuAiHrl4DxXuxfUZ7e+N
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+X-B4-Tracking: v=1; b=H4sIAEMSX2oC/2WNyw7CIBQFf6VhLQa4llJX/odxQXlYNH0EWqJp+
+ u9CjdHE5SRn5iwoGO9MQMdiQd5EF9zQJ4BdgVQr+6vBTidGjDBOKgr43tSEMDyPYfJGdphwxQU
+ 3UAkAlKzRG+seW/F8eXOYm5tRU87kRevCNPjndhlp3n3qh796pJhgYTWzpKFQanGSnd6roUO5H
+ dmvXf7bLNnMaqgJCNCy/Nrrur4A+2rD/PwAAAA=
+X-Change-ID: 20260713-kb9002-upstream-06c686e37833
+To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Andy Chung <andy.chung@amd.com>, 
+ Guenter Roeck <linux@roeck-us.net>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>
+Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Andy Chung <Andy.Chung@amd.com>
+X-Mailer: b4 0.15.1
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784615506; l=2675;
+ i=Andy.Chung@amd.com; s=20260327; h=from:subject:message-id;
+ bh=iLj5HgtenDHXi0SHFSIAeJJT74tSyCYXvam8/Z5ATYM=;
+ b=PeGkpAI3vkm7UOrD7MxNaZSGzbfEdsTgGrgcQdxx5pERdJGnbHRJWI2aPReQwuf/45hQIEgxa
+ pwpZL8ExVjIA5gNN2KmeG6JhkxAj7apwBPAaaJZOtEdj17InF04hzVV
+X-Developer-Key: i=Andy.Chung@amd.com; a=ed25519;
+ pk=X2gaHRnhU2q5hvMjkC6xmIcC03vKNvHY9CQRdsj9ecM=
+X-Endpoint-Received: by B4 Relay for Andy.Chung@amd.com/20260327 with auth_id=696
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-For O_APPEND writes, ki_pos is set to the current EOF via
-generic_write_checks() after fetching i_size from the MDS.  However,
-ceph_get_caps() may need to wait for Fwx exclusive caps if the write
-extends the file (endoff > i_max_size).  While waiting for Fwx, the
-previous Fwx holder (another client) may have already extended the
-file.  When the MDS grants us Fwx, the cap grant message updates the
-local i_size, but ki_pos remains at the old EOF, causing the append
-write to land at a stale offset and overwrite data from the other
-client.
+The Kandou KB9002 is an 8-lane PCIe 5.0 retimer with an integrated
+microcontroller that exposes an SMBus 3.0 target (with mandatory PEC)
+on its sideband interface. Its firmware aggregates per-lane die
+temperatures and publishes the maximum through a register window.
 
-Fix by re-reading i_size_read(inode) after ceph_get_caps() returns.
-At this point we hold Fwx exclusive caps, no other client can modify
-the file, and i_size reflects the true EOF from the MDS cap grant.
-No extra MDS round-trip is needed.  Only adjust ki_pos when the EOF
-has actually changed.
+This series adds a hwmon driver for it. The driver reports the
+aggregated maximum die temperature as temp1_input, and exposes the
+running firmware version and boot status under debugfs.
 
-After adjusting ki_pos forward, the write range [pos, pos+count) may
-now exceed the i_max_size that was validated by ceph_get_caps() for
-the old range.  Re-check against i_max_size and truncate the write
-if necessary to stay within the MDS-granted limit.
+The series is organised as:
 
-Fixes: 8e4473bb50a1 ("ceph: do not execute direct write in parallel if O_APPEND is specified")
-Link: https://tracker.ceph.com/issues/7333
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+  1/4  add the "kandou" vendor prefix
+  2/4  device tree binding for the retimer
+  3/4  the driver, Kconfig/Makefile and MAINTAINERS entry
+  4/4  hwmon documentation
+
+Signed-off-by: Andy Chung <Andy.Chung@amd.com>
 ---
 Changes in v3:
-- Protect ci->i_max_size access with i_ceph_lock to avoid data race with handle_cap_grant() which updates i_max_size from the messenger thread.(Viacheslav Dubeyko)
-- Link to v2: https://patch.msgid.link/20260718-ceph-append-fix-v2-1-88dcc4f8371f@clyso.com
+- Drop the private register-access mutex. The temperature read is
+  already serialised by the hwmon core lock; the debugfs files
+  (fw_ver, fw_load_status) now take hwmon_lock() to serialise
+  against it, since they are read outside the core lock.
+- Use a named initialiser for the i2c_device_id entry.
+- dt-bindings: constrain the reg address range under 'items' rather
+  than applying minimum/maximum to the array.
+- Link to v2: https://patch.msgid.link/20260715-kb9002-upstream-v2-0-2fd390383da5@amd.com
 
 Changes in v2:
-- Re-check write range against i_max_size after adjusting ki_pos forward, and truncate if it exceeds the MDS-granted limit.(Viacheslav Dubeyko)
-- Link to v1: https://patch.msgid.link/20260717-ceph-append-fix-v1-1-c51907ac8e36@clyso.com
----
- fs/ceph/file.c | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 48 insertions(+)
-
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index 3823671ab95a..c26bd4fef7d3 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -2489,6 +2489,54 @@ static ssize_t ceph_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	if (err < 0)
- 		goto out;
- 
-+	/*
-+	 * For O_APPEND writes we may have waited for Fwx exclusive caps
-+	 * while the previous Fwx holder (another client) extended the
-+	 * file.  i_size has been updated via the cap grant message from
-+	 * the MDS, but ki_pos is still the old EOF.  Re-read i_size here
-+	 * (no extra MDS round-trip needed) and adjust ki_pos to the true
-+	 * EOF.  Since we hold Fwx, no other client can change the file.
-+	 */
-+	if (iocb->ki_flags & IOCB_APPEND) {
-+		loff_t cur_eof = i_size_read(inode);
-+
-+		if (cur_eof != pos) {
-+			doutc(cl,
-+			      "%p %llx.%llx O_APPEND: pos adjusted %lld -> %lld\n",
-+			      inode, ceph_vinop(inode), pos, cur_eof);
-+			iocb->ki_pos = cur_eof;
-+			pos = cur_eof;
-+			if (pos >= limit) {
-+				err = -EFBIG;
-+				goto out_caps;
-+			}
-+			iov_iter_truncate(from, limit - pos);
-+			count = iov_iter_count(from);
-+
-+			/*
-+			 * ceph_get_caps() validated the old endoff
-+			 * against i_max_size; adjusting ki_pos forward
-+			 * may have shifted the write range beyond the
-+			 * granted max_size.  Re-check and truncate if
-+			 * necessary.
-+			 */
-+			spin_lock(&ci->i_ceph_lock);
-+			if (pos + count > (loff_t)ci->i_max_size) {
-+				loff_t max_size = ci->i_max_size;
-+
-+				spin_unlock(&ci->i_ceph_lock);
-+				if (pos >= max_size) {
-+					err = -EFBIG;
-+					goto out_caps;
-+				}
-+				iov_iter_truncate(from, max_size - pos);
-+				count = iov_iter_count(from);
-+			} else {
-+				spin_unlock(&ci->i_ceph_lock);
-+			}
-+		}
-+	}
-+
- 	err = file_update_time(file);
- 	if (err)
- 		goto out_caps;
+- Drop the unconditional I2C_FUNC_I2C requirement at probe; require raw
+  I2C only in the host-interface switch path, so the driver loads on
+  SMBus-only adapters when the chip is already strapped to SMBus.
+- kb9002_read_revid(): return immediately on a hard I2C read error
+  instead of retrying the FIFO drain, avoiding needless bus traffic when
+  the device is absent.
+- Link to v1: https://lore.kernel.org/all/20260714-kb9002-upstream-v1-0-8fd2f0b135d8@amd.com
 
 ---
-base-commit: afffcd98d2d22f2e7ebe42f71231d52d4eed8ef7
-change-id: 20260717-ceph-append-fix-9820e3b1a78c
+Andy Chung (4):
+      dt-bindings: Add vendor prefix for Kandou
+      dt-bindings: hwmon: Add Kandou KB9002
+      hwmon: (kb9002) Add driver for Kandou KB9002 retimer
+      hwmon: (kb9002) Add documentation
+
+ .../devicetree/bindings/hwmon/kandou,kb9002.yaml   |  46 ++
+ .../devicetree/bindings/vendor-prefixes.yaml       |   2 +
+ Documentation/hwmon/index.rst                      |   1 +
+ Documentation/hwmon/kb9002.rst                     |  65 +++
+ MAINTAINERS                                        |   8 +
+ drivers/hwmon/Kconfig                              |  11 +
+ drivers/hwmon/Makefile                             |   1 +
+ drivers/hwmon/kb9002.c                             | 469 +++++++++++++++++++++
+ 8 files changed, 603 insertions(+)
+---
+base-commit: ca078d004cf58137bcf8cb24a8b271397431ba58
+change-id: 20260713-kb9002-upstream-06c686e37833
 
 Best regards,
 --  
-Xiubo Li <xiubo.li@clyso.com>
+Andy Chung <Andy.Chung@amd.com>
 
