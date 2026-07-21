@@ -1,122 +1,59 @@
-From: David Heidelberg <david@ixit.cz>
-Date: Tue, 21 Jul 2026 14:33:30 +0200
-Subject: [PATCH v7 2/2] arm64: dts: qcom: sdm845-google: Enable PMI8998
- camera flash LEDs
+From: Richard Leitner <richard.leitner@linux.dev>
+Subject: [PATCH 0/2] media: v4l2-cci/ov9282: support single-read I2C
+ transactions
+Date: Tue, 21 Jul 2026 15:25:27 +0200
+Message-Id: <20260721-cci-single-v1-0-8485171e1393@linux.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260721-pixel3-camera-v7-2-82d323c6c5d2@ixit.cz>
-References: <20260721-pixel3-camera-v7-0-82d323c6c5d2@ixit.cz>
-In-Reply-To: <20260721-pixel3-camera-v7-0-82d323c6c5d2@ixit.cz>
-To: Bjorn Andersson <andersson@kernel.org>, 
- Konrad Dybcio <konradybcio@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>, 
- Petr Hodina <petr.hodina@protonmail.com>, 
- Richard Acayan <mailingradian@gmail.com>, linux-arm-msm@vger.kernel.org, 
- devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
- phone-devel@vger.kernel.org, David Heidelberg <david@ixit.cz>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2228; i=david@ixit.cz;
- h=from:subject:message-id; bh=GKWXzv/TxU8dE0wKdWqwHqCHilW6WCLiUExNVd3EEOY=;
- b=owEBbQKS/ZANAwAIAWACP8TTSSByAcsmYgBqX2cdsBDfQDws8pt12X/+MAzVNHbG5gl5b9gVF
- +67k6vKJ9iJAjMEAAEIAB0WIQTXegnP7twrvVOnBHRgAj/E00kgcgUCal9nHQAKCRBgAj/E00kg
- crAWEACiSuiELlkV8+B+zSPjf1LQTGORMpJnPldKqvwbUhQ/3doyxpUXEDqP9LvMEFuYxOiSxl9
- 5jtggpJhm3nJzFo28c/Wy8sXjLHZ+3rKNHJUVY8Hfflbx1DErW7mDYXfS17E0FUGnjFqj0DfJ24
- /7+bmtLLaxa3VBt3dGhBkns7nXBBhg0ju0vciiz/SM6/yR1sl7OzWTn34BXrxW7L92b5gfQZStw
- 7pDo4rJDlWcbGnofCeAwGfoucWARll/ttEfRkBxbJtHyXflZakmhP0I1+IXTXVzjrtPKs5ab+/L
- yU9saNsQz0lZHkWdIeY7mLBZm6SB4mA2XSPJO5gpqt9AvpgEqxcdSRp8flNb1FqVAqkNJkyqP9G
- Uv+navPDGf2znsx6VSZ6tZhBGaIeDX+ZkMMXC9wPp+xXKMUSnQzdqWMT2w9hbO2GpXjnPytKz/4
- ylqjR+xreqZZwQv7/zSj8Xusplj1Hbhq2b0pOO1qU9Mx67I1hWhqTkBnpGxuJfEMGtZrqT0uUIL
- g3k9F8qe+gWM+lzhNycFihy1pP3hJYRGbLBTiiZGMkQ4I7oca84o/ZjtdkogMNJL/pPBQo7XKlV
- FnUPdvfWOCcZrIWnH3V8GZV2h3usKpdwmeU/MuwPBAR3YzKEpLLBThqru6zajvz6zpEKtaHMZvI
- NQgaF+YqBx2GShw==
-X-Developer-Key: i=david@ixit.cz; a=openpgp;
- fpr=D77A09CFEEDC2BBD53A7047460023FC4D3492072
-X-Endpoint-Received: by B4 Relay for david@ixit.cz/default with auth_id=355
+X-B4-Tracking: v=1; b=H4sIAEdzX2oC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDc0Nz3eTkTN3izLz0nFRdI8ukpCQLS3Nz02QTJaCGgqLUtMwKsGHRsRB
+ +cWlSVmpyCcgEpdpaABmCERFuAAAA
+X-Change-ID: 20260717-cci-single-29bbb89775c4
+To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
+ Sakari Ailus <sakari.ailus@linux.intel.com>, 
+ Dave Stevenson <dave.stevenson@raspberrypi.com>
+Cc: Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Hans de Goede <hansg@kernel.org>, linux-media@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Richard Leitner <richard.leitner@linux.dev>
+X-Mailer: b4 0.16-dev
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784640354; l=1245;
+ i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
+ bh=svfrBm6qwvhos1KNM9Uxz3Q6w2/2dm0H31wva9nLA1w=;
+ b=NRtTFiCF1wZG54Y77U3YMwEQO/1B2WKUYTRI06q8AtZ7FWIaYV2jD3bp3LkM5KuZDL13T6WEi
+ oRQx9mq0My1AN0tobyFmMLiMFeW/VTApii9J4R2JfNfgKIBbetlci4L
+X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
+ pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
+X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the PMI8998 flash LED block and describe two white flash LEDs
-used for the rear camera.
+This series adds support for configuring transport-specific CCI regmap
+behavior for I2C sensors, which is then used in the OV9282 driver to
+force single-register read transactions.
 
-Configure the LED in flash mode with hardware limits matching the
-original device configuration, including maximum current and timeout.
+The motivation for this change is that some OV9282 camera modules require
+single-read I2C transactions to operate correctly. In particular, OV9282
+modules from Vision Components return invalid data on multi-byte reads,
+while switching the regmap to single-read transactions fixes the problem.
 
-In contrary to downstream, we can control both LEDs separately.
+This series does not change the default behavior of existing CCI users.
+Only ov9282 opts into single-read transactions.
 
-Reviewed-by: Konrad Dybcio <konrad.dybcio@oss.qualcomm.com>
-Signed-off-by: David Heidelberg <david@ixit.cz>
+Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
- arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi | 27 ++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+Richard Leitner (2):
+      media: v4l2-cci: Add support for custom regmap configuration
+      media: ov9282: enable single-read I2C transactions
 
-diff --git a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-index c8a28133fb38d..8d35e33ef7aaf 100644
---- a/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-+++ b/arch/arm64/boot/dts/qcom/sdm845-google-common.dtsi
-@@ -1,16 +1,17 @@
- // SPDX-License-Identifier: GPL-2.0-only
- 
- /dts-v1/;
- 
- #include <dt-bindings/arm/qcom,ids.h>
- #include <dt-bindings/dma/qcom-gpi.h>
- #include <dt-bindings/input/linux-event-codes.h>
- #include <dt-bindings/interrupt-controller/irq.h>
-+#include <dt-bindings/leds/common.h>
- #include <dt-bindings/media/video-interfaces.h>
- #include <dt-bindings/media/video-interface-devices.h>
- #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
- 
- #include "sdm845.dtsi"
- #include "pm8998.dtsi"
- #include "pmi8998.dtsi"
- 
-@@ -591,16 +592,42 @@ &pm8998_resin {
- };
- 
- &pmi8998_charger {
- 	monitored-battery = <&battery>;
- 
- 	status = "okay";
- };
- 
-+&pmi8998_flash {
-+	status = "okay";
-+
-+	/* upper part of the flash module */
-+	led-0 {
-+		function = LED_FUNCTION_FLASH;
-+		color = <LED_COLOR_ID_WHITE>;
-+		led-sources = <1>;
-+		led-max-microamp = <500000>;
-+		flash-max-microamp = <1500000>;
-+		flash-max-timeout-us = <1280000>;
-+		function-enumerator = <0>;
-+	};
-+
-+	/* lower part of the flash module */
-+	led-1 {
-+		function = LED_FUNCTION_FLASH;
-+		color = <LED_COLOR_ID_WHITE>;
-+		led-sources = <2>;
-+		led-max-microamp = <500000>;
-+		flash-max-microamp = <1500000>;
-+		flash-max-timeout-us = <1280000>;
-+		function-enumerator = <1>;
-+	};
-+};
-+
- &qupv3_id_0 {
- 	status = "okay";
- };
- 
- &qupv3_id_1 {
- 	status = "okay";
- };
- 
+ drivers/media/i2c/ov9282.c         |  7 ++++++-
+ drivers/media/v4l2-core/v4l2-cci.c | 23 +++++++++++++++++++----
+ include/media/v4l2-cci.h           | 37 ++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 61 insertions(+), 6 deletions(-)
+---
+base-commit: 1590cf0329716306e948a8fc29f1d3ee87d3989f
+change-id: 20260717-cci-single-29bbb89775c4
 
--- 
-2.53.0
+Best regards,
+--  
+Richard Leitner <richard.leitner@linux.dev>
 
