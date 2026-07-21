@@ -1,70 +1,79 @@
-From: Richard Leitner <richard.leitner@linux.dev>
-Date: Tue, 21 Jul 2026 15:25:29 +0200
-Subject: [PATCH 2/2] media: ov9282: enable single-read I2C transactions
+From: Antonin Malzieu Ridolfi <dev@nanonej.com>
+Subject: [PATCH 0/3] gpu: nova-core: Move PFB and PBUS register
+Date: Tue, 21 Jul 2026 17:41:06 +0200
+Message-Id: <20260721-nova-core-regs-split-v1-0-384fa2a42244@nanonej.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260721-cci-single-v1-2-8485171e1393@linux.dev>
-References: <20260721-cci-single-v1-0-8485171e1393@linux.dev>
-In-Reply-To: <20260721-cci-single-v1-0-8485171e1393@linux.dev>
-To: Mauro Carvalho Chehab <mchehab@kernel.org>, 
- Sakari Ailus <sakari.ailus@linux.intel.com>, 
- Dave Stevenson <dave.stevenson@raspberrypi.com>
-Cc: Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
- Hans de Goede <hansg@kernel.org>, linux-media@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Richard Leitner <richard.leitner@linux.dev>
-X-Mailer: b4 0.16-dev
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784640354; l=1545;
- i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
- bh=Au+IQ66lMemkOeUGsHPOhBih0jjxOIJGUEK2eyo1odI=;
- b=M3iizulti+IZgsJg2TCFn3/otsTH0GHXiSPPlzfCOP42UEsdbM+1MjoYXcSV1Nttx5HwFEfLS
- gIkTHd8s06RC65ZNmkfGDh/aW2gmWPquUZTMFN+B8D4iiE3keNl/ZUM
-X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
- pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
-X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMTQqDMBBA4avIrDtgEvyhVyldpMlUR0oiMyoF8
+ e6mdvkt3ttBSZgU7tUOQhsr51RgbhWE0aeBkGMx2Nq2dWcNprx5DFkIhQZFnT+8YOyc6503TUM
+ RSjoLvfl7bR/Pv3V9TRSW3wuO4wRNFyhxeAAAAA==
+X-Change-ID: 20260721-nova-core-regs-split-d73383a155ed
+To: Danilo Krummrich <dakr@kernel.org>, 
+ Alexandre Courbot <acourbot@nvidia.com>, Alice Ryhl <aliceryhl@google.com>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: nova-gpu@lists.linux.dev, dri-devel@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, daniel.almeida@collabora.com, 
+ Antonin Malzieu Ridolfi <dev@nanonej.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1687; i=dev@nanonej.com;
+ h=from:subject:message-id; bh=ZbffgWN1kX4ZHQUBKZKA6y26aw/ky0IhdmuCiZYJ8QM=;
+ b=owEBbQKS/ZANAwAKAWaH8SMKFRX9AcsmYgBqX5MlfFPdj9d0agONH2SWdbsnkVH1uxCaAHG3f
+ M7NMGRyDSqJAjMEAAEKAB0WIQSDtk+wfJEhL1KFIn1mh/EjChUV/QUCal+TJQAKCRBmh/EjChUV
+ /W4tD/9ilWfV5dVSZo2RhjUS5eMld167E+NfAUtKbS58ckvT0Nt3deTt+J/4CKyu2k0qwMfaTqK
+ cghdIy6FF1chdc7819EMkuUAXQ4bYZWUO5/4qZTjURGFedlmCnN5+EveL6Kmc/m9oRIX+NmzfqS
+ 7/CDKrJ2J9pnpl85fBXsSGyxEscTOAUUjKOZufiFjKoAUAS1X8rSJ5Dfh5NSoP0soPH6afmCzMn
+ fm3RtuFocHxvbWih3ijYwyD45v7G0656Q74KEblqKaWMaKa5wiygN4p8qVYwGN+NPOZscPJCsoV
+ RLGaO6EbRnpYpHdd1eqwsIIE7JkWAYcVPj3kb1MCzXiLN8zNk/O5tmbxymFrPQxsU+sLYAWBVzt
+ Anj1zl6ApdA992onra62vBlTyX3cYRjc7aa29UJvRCx+84VdF5Bgu66dKHpi01XosyfI43OEeL7
+ 4EIaaJ7RT5bYAJjXrA1Qlr8Me/LSeruNbUJcchprKtzYhQ0YZIxHlOOXm70sQ1c80pO7AFfAX8a
+ bs/3JshNPieWjcu+fwJUiEmrS59brKdlzHDb8T55kKgs5Dw+qRLn0+O6rN4BmpwfCEvhSfBBhOs
+ OhHpkL63K+E2Gu/8qk8ZbCOkHVT7HFmait6HfKScdgHwEwNKL2MrKXUq2ekH4sXsHDcDNyejPn4
+ sODTXl4jXEi6gTw==
+X-Developer-Key: i=dev@nanonej.com; a=openpgp;
+ fpr=83B64FB07C91212F5285227D6687F1230A1515FD
+X-Endpoint-Received: by B4 Relay for dev@nanonej.com/default with auth_id=825
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some OV9282 camera modules, such as those from Vision Components, fail
-multi-byte register reads with the default CCI I2C regmap access pattern
-and only work when single-register read transactions are used. This
-results in the driver being unable to probe due to a chip id mismatch.
+Split part of the registers definitions grouped in nova root register file to
+belonging modules whom actually use them.
+Add WPR2 range query function to fb module.
 
-As the driver has no reliable way to identify affected modules enable
-use_single_read for OV9282 unconditionally when creating the CCI regmap.
+To: Danilo Krummrich <dakr@kernel.org>
+To: Alexandre Courbot <acourbot@nvidia.com>
+To: Alice Ryhl <aliceryhl@google.com>
+To: David Airlie <airlied@gmail.com>
+To: Simona Vetter <simona@ffwll.ch>
+Cc: nova-gpu@lists.linux.dev
+Cc: dri-devel@lists.freedesktop.org
+Cc: linux-kernel@vger.kernel.org
+Cc: daniel.almeida@collabora.com
 
-Tested on an i.M8MP system with OV9282 modules from Vision Components.
-
-Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
+Suggested-by: Alexandre Courbot <acourbot@nvidia.com>
+Suggested-by: Danilo Krummrich <dakr@kernel.org>
+Signed-off-by: Antonin Malzieu Ridolfi <dev@nanonej.com>
 ---
- drivers/media/i2c/ov9282.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+Antonin Malzieu Ridolfi (3):
+      gpu: nova-core: Add function to query WPR2 range
+      gpu: nova-core: Move PFB registers definitions
+      gpu: nova-core: Move one PBUS register definition
 
-diff --git a/drivers/media/i2c/ov9282.c b/drivers/media/i2c/ov9282.c
-index 5b6f897a74fcd..8267a0a9c6f2d 100644
---- a/drivers/media/i2c/ov9282.c
-+++ b/drivers/media/i2c/ov9282.c
-@@ -1283,6 +1283,11 @@ static int ov9282_probe(struct i2c_client *client)
- 	struct ov9282 *ov9282;
- 	int ret;
- 
-+	const struct cci_regmap_config config = {
-+		.reg_addr_bits = 16,
-+		.use_single_read = true,
-+	};
-+
- 	ov9282 = devm_kzalloc(&client->dev, sizeof(*ov9282), GFP_KERNEL);
- 	if (!ov9282)
- 		return -ENOMEM;
-@@ -1301,7 +1306,7 @@ static int ov9282_probe(struct i2c_client *client)
- 		return ret;
- 	}
- 
--	ov9282->regmap = devm_cci_regmap_init_i2c(client, 16);
-+	ov9282->regmap = devm_cci_regmap_init_i2c_cfg(client, &config);
- 	if (IS_ERR(ov9282->regmap))
- 		return dev_err_probe(ov9282->dev, PTR_ERR(ov9282->regmap),
- 				     "Failed to init CCI\n");
+ drivers/gpu/nova-core/fb.rs            |  15 ++++
+ drivers/gpu/nova-core/fb/hal/ga100.rs  |   8 +-
+ drivers/gpu/nova-core/fb/hal/gb100.rs  |   6 +-
+ drivers/gpu/nova-core/fb/hal/gb202.rs  |   6 +-
+ drivers/gpu/nova-core/fb/hal/gh100.rs  |   6 +-
+ drivers/gpu/nova-core/fb/hal/tu102.rs  |   8 +-
+ drivers/gpu/nova-core/fb/regs.rs       | 132 ++++++++++++++++++++++++++++++++-
+ drivers/gpu/nova-core/gsp/hal/tu102.rs |  60 +++++++--------
+ drivers/gpu/nova-core/gsp/regs.rs      |  11 +++
+ drivers/gpu/nova-core/regs.rs          | 132 ---------------------------------
+ 10 files changed, 206 insertions(+), 178 deletions(-)
+---
+base-commit: 22e77d81d0a9ab3aee1c5538b3f2f8a66930bfa7
+change-id: 20260721-nova-core-regs-split-d73383a155ed
 
--- 
-2.53.0
+Best regards,
+--  
+Antonin Malzieu Ridolfi <dev@nanonej.com>
 
