@@ -1,555 +1,116 @@
-From: Nikolai Burov <nikolai.burov@jolla.com>
-Date: Mon, 20 Jul 2026 23:46:48 +0300
-Subject: [PATCH v3 3/3] pmdomain: mediatek: Add support for MT6858 SoC
+From: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+Subject: [PATCH net v4 0/3] Fix to possible skb leak due to race condtion
+ in tx path
+Date: Mon, 20 Jul 2026 19:20:34 -0700
+Message-Id: <20260720-fix-race-condition-and-crash-v4-0-8273e2f38a1f@onsemi.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260720-mt6858-pmdomain-v3-3-8966d8de93c8@jolla.com>
-References: <20260720-mt6858-pmdomain-v3-0-8966d8de93c8@jolla.com>
-In-Reply-To: <20260720-mt6858-pmdomain-v3-0-8966d8de93c8@jolla.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Ulf Hansson <ulfh@kernel.org>
-Cc: Matthias Brugger <mbrugger@suse.com>, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-mediatek@lists.infradead.org, linux-pm@vger.kernel.org, 
- Nikolai Burov <nikolai.burov@jolla.com>, 
- Nikolai Burov <nikolai.burov+review@abscue.de>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784580408; l=18360;
- i=nikolai.burov@jolla.com; s=20260707; h=from:subject:message-id;
- bh=cmcaHgBUveM0hhnoTQ3lTPE3BbxD87A6yhMWhEAXSmg=;
- b=sWwX6cWsxbHHeMXPMAQg7TD+aVNbF1jJobNH/CjPuKTvA+gLiRxAnTq2a+qP/4IVNJEMZh4ZF
- 1n2gEaa4WLIBaFzKALR6RjI0VOMnwjQAxIfrE1bNNMGD7XN8jjgbT/0
-X-Developer-Key: i=nikolai.burov@jolla.com; a=ed25519;
- pk=yzpa+PD+ovHUFMIOBA9o2QqGwI110jM6hdGHLc7jtoQ=
-X-Endpoint-Received: by B4 Relay for nikolai.burov@jolla.com/20260707 with auth_id=859
+X-B4-Tracking: v=1; b=H4sIAHLXXmoC/43QwQ7CIAwG4FdZOFsDDNjmyfcwHhA6x0EwsCyaZ
+ e9us4saD/P4t3++Jp1ZwRywsEM1s4xTKCFFCmpXMTfYeEUInjKTXBpupIA+PCBbh+BS9GGkOtj
+ owWVbBuiU51pbY7RTjIh7Ruqv/IlFHNmZhkMoY8rP9eQk1tV/+iSAQ9ug7Ljvat30xxQL3sLep
+ dsqT/JTMxuaJO1inHaCo+HqV6vfWsP1hlaTVqMWrRJIX2i/tGVZXupOfBNqAQAA
+To: Parthiban Veerasooran <parthiban.veerasooran@microchip.com>, 
+ Andrew Lunn <andrew+netdev@lunn.ch>, 
+ Piergiorgio Beruto <pier.beruto@onsemi.com>, 
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, 
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Andrew Lunn <andrew@lunn.ch>, 
+ Parthiban Veerasooran <Parthiban.Veerasooran@microchip.com>, 
+ Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784600442; l=3567;
+ i=Selvamani.Rajagopal@onsemi.com; s=20260531; h=from:subject:message-id;
+ bh=EVgsh6UMa3GTJAJhgZSNBxZRLmpDbQsr69w5Q+r3Lrw=;
+ b=zscnJa/K/qdSZAXt6eVsKKUYl6NvWTTdiCiUEYYBfZygZLEc8ScMQk9hwThDQ627EEaqBJeNu
+ InC6I7e977bDoddw3xWTE/s2rv7VdUNCZMW9h5uCDSid8YcoK1ZOB/q
+X-Developer-Key: i=Selvamani.Rajagopal@onsemi.com; a=ed25519;
+ pk=5QRdM0HS/LGWWcUZZ9hVfZ+qbPQGZCumcTXOiN7Fyug=
+X-Endpoint-Received: by B4 Relay for Selvamani.Rajagopal@onsemi.com/20260531 with auth_id=803
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for the power domains found in the MediaTek MT6858 SoC.
+Now the traffic is handled in threaded IRQ, and the
+disable_traffic flag is checked before handling the
+data, new race condition is exposed, in which
+buffer may leak, if threaded IRQ interrupts the
+trasmit path midway.
 
-Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
-Signed-off-by: Nikolai Burov <nikolai.burov@jolla.com>
+With this change, disable_traffic and waiting_tx_skb
+pointer are protected by spin lock/unlock pair.
+
+This is highlighted in Sashiko review
+https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20260611-level-trigger-v5-0-4533a9e85ce2%40onsemi.com
+
+Also on buffer overrun condition, probably due to loss of
+SPI data chunks, receive path doesn't see the expected
+data chunk with end_valid bit set. As a result, driver
+keeps adding data chunks to the skb before running out
+of space and kernel panic is seen.
+
+With this change, before adding data to the skb, if there
+is no space, skb is freed and driver starts looking for
+new frame by looking for a data chunk with start_valid
+bit set.
+
+[  705.405490] skbuff: skb_over_panic: text:ffffffd2eb72a264 len:1600 put:64 head:ffffff804e5cdc40 data:ffffff804e5cdc80 tail:0x680 end:0x640 dev:eth1
+[  705.405569] ------------[ cut here ]------------
+[  705.405575] kernel BUG at net/core/skbuff.c:214!
+[  705.405589] Internal error: Oops - BUG: 00000000f2000800 [#1]  SMP
+
+[ 6703.427690] Call trace:
+[  705.925157]  skb_panic+0x58/0x68 (P)
+[  705.928726]  skb_put+0x74/0x80
+[  705.931772]  oa_tc6_update_rx_skb+0x44/0x98 [oa_tc6_mod]
+[  705.937084]  oa_tc6_macphy_threaded_irq+0x3f4/0x900 [oa_tc6_mod]
+[  705.943084]  irq_thread_fn+0x34/0xb8
+[  705.946654]  irq_thread+0x1a0/0x300
+[  705.950134]  kthread+0x138/0x150
+[  705.953356]  ret_from_fork+0x10/0x20
+
+Signed-off-by: Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 ---
- drivers/pmdomain/mediatek/mt6858-pm-domains.h | 466 ++++++++++++++++++++++++++
- drivers/pmdomain/mediatek/mtk-pm-domains.c    |   5 +
- drivers/pmdomain/mediatek/mtk-pm-domains.h    |   5 +
- 3 files changed, 476 insertions(+)
+Changes in v4:
+  - As disable_traffic means device is uselss unless
+    driver re-loaded, all tx queues are turned off.
+  - Process all the received chunks on buffer overflow,
+    as long as data chunks doesn't have any error bits set
+    in their footer.
+  - Added spin lock protection in every place wait_tx_skb
+    is used.
+  - Carrier is not turned off on disable_traffic.
 
-diff --git a/drivers/pmdomain/mediatek/mt6858-pm-domains.h b/drivers/pmdomain/mediatek/mt6858-pm-domains.h
-new file mode 100644
-index 000000000000..177b2e86ab1e
---- /dev/null
-+++ b/drivers/pmdomain/mediatek/mt6858-pm-domains.h
-@@ -0,0 +1,466 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
-+/*
-+ * Copyright (c) 2025 MediaTek Inc.
-+ *                    KY Liu <ky.liu@mediatek.com>
-+ * Copyright (c) 2026 Jolla Mobile Ltd
-+ *                    Nikolai Burov <nikolai.burov@jolla.com>
-+ */
-+
-+#ifndef __SOC_MEDIATEK_MT6858_PM_DOMAINS_H
-+#define __SOC_MEDIATEK_MT6858_PM_DOMAINS_H
-+
-+#include "mtk-pm-domains.h"
-+#include <dt-bindings/power/mediatek,mt6858-power.h>
-+
-+/* TOP_AXI registers */
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_SET		0x0c14
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_CLR		0x0c18
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_RDY		0x0c1c
-+
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_DIS0		(BIT(0) | BIT(1) | BIT(18))
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_ISP_IPE	BIT(2)
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_ISP_IMG1	BIT(3)
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_VEN0		BIT(12)
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_VDE0		BIT(20)
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_CAM_MAIN	(BIT(30) | BIT(31))
-+
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_SET		0x0c24
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_CLR		0x0c28
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_RDY		0x0c2c
-+
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_ISP_IMG1	BIT(7)
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_ISP_IPE	BIT(8)
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_CAM_MAIN	(BIT(9) | BIT(10))
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_VEN0		BIT(12)
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_VDE0		BIT(13)
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_MM_INFRA	(GENMASK(3, 1) | BIT(6))
-+#define MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_MM_INFRA_2ND	(BIT(0) | BIT(5) | GENMASK(15, 7))
-+
-+#define MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_SET	0x0c44
-+#define MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_CLR	0x0c48
-+#define MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_RDY	0x0c4c
-+
-+#define MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_CONN	BIT(8)
-+#define MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_MM_INFRA	BIT(16)
-+
-+#define MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_SET	0x0c54
-+#define MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_CLR	0x0c58
-+#define MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_RDY	0x0c5c
-+
-+#define MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_MM_INFRA	BIT(11)
-+#define MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_CONN	BIT(12)
-+
-+#define MT6858_TOP_AXI_PROT_EN_EMISYS_STA_0_SET		0x0c64
-+#define MT6858_TOP_AXI_PROT_EN_EMISYS_STA_0_CLR		0x0c68
-+#define MT6858_TOP_AXI_PROT_EN_EMISYS_STA_0_RDY		0x0c6c
-+
-+#define MT6858_TOP_AXI_PROT_EN_EMISYS_STA_0_MM_INFRA	(BIT(20) | BIT(21))
-+
-+#define MT6858_TOP_AXI_PROT_EN_PERISYS_STA_0_SET	0x0c84
-+#define MT6858_TOP_AXI_PROT_EN_PERISYS_STA_0_CLR	0x0c88
-+#define MT6858_TOP_AXI_PROT_EN_PERISYS_STA_0_RDY	0x0c8c
-+
-+#define MT6858_TOP_AXI_PROT_EN_PERISYS_STA_0_AUDIO	BIT(6)
-+#define MT6858_TOP_AXI_PROT_EN_PERISYS_STA_0_SSUSB	BIT(7)
-+
-+#define MT6858_TOP_AXI_PROT_EN_MCU_STA_0_SET		0x0c94
-+#define MT6858_TOP_AXI_PROT_EN_MCU_STA_0_CLR		0x0c98
-+#define MT6858_TOP_AXI_PROT_EN_MCU_STA_0_RDY		0x0c9c
-+
-+#define MT6858_TOP_AXI_PROT_EN_MCU_STA_0_CONN		BIT(1)
-+#define MT6858_TOP_AXI_PROT_EN_MCU_STA_0_CONN_2ND	BIT(0)
-+
-+/* {IMG,IPE,CAM}_SUBx registers */
-+#define MT6858_SUBx_PROT_EN_SET				0x03c4
-+#define MT6858_SUBx_PROT_EN_CLR				0x03c8
-+#define MT6858_SUBx_PROT_EN_STA				0x03cc
-+
-+#define MT6858_IMG_SUB0_PROT_EN_SMI_ISP_IMG1		(BIT(0) | BIT(1))
-+
-+#define MT6858_IPE_SUB0_PROT_EN_SMI_ISP_IPE		(BIT(0) | BIT(1))
-+
-+#define MT6858_CAM_SUB0_PROT_EN_SMI_CAM_MAIN		BIT(0)
-+#define MT6858_CAM_SUB0_PROT_EN_SMI_CAM_SUBB		BIT(1)
-+
-+#define MT6858_CAM_SUB1_PROT_EN_SMI_CAM_MAIN		BIT(0)
-+#define MT6858_CAM_SUB1_PROT_EN_SMI_CAM_SUBA		BIT(1)
-+
-+/* VLP_AXI registers */
-+#define MT6858_VLP_AXI_PROT_EN_SET			0x0214
-+#define MT6858_VLP_AXI_PROT_EN_CLR			0x0218
-+#define MT6858_VLP_AXI_PROT_EN_STA			0x021c
-+
-+#define MT6858_VLP_AXI_PROT_EN_MM_PROC			BIT(8)
-+#define MT6858_VLP_AXI_PROT_EN_MM_PROC_2ND		(BIT(9) | BIT(10))
-+
-+/* PWR_CON registers */
-+#define MT6858_PWR_ACK					BIT(30)
-+#define MT6858_PWR_ACK_2ND				BIT(31)
-+
-+static enum scpsys_bus_prot_block scpsys_bus_prot_blocks_mt6858[] = {
-+	BUS_PROT_BLOCK_INFRA,
-+	BUS_PROT_BLOCK_IMG_SUB0,
-+	BUS_PROT_BLOCK_CAM_SUB1,
-+	BUS_PROT_BLOCK_CAM_SUB0,
-+	BUS_PROT_BLOCK_IPE_SUB0,
-+	BUS_PROT_BLOCK_VLP,
-+};
-+
-+static const struct scpsys_domain_data scpsys_domain_data_mt6858[] = {
-+	[MT6858_POWER_DOMAIN_MD] = {
-+		.name = "md",
-+		/*
-+		 * Note: the PWR_ACK_2ND bit is not used for the modem domain.
-+		 * Skip it and fall back to checking the 1st bit twice.
-+		 */
-+		.sta_mask = MT6858_PWR_ACK,
-+		.ctl_offs = 0xe00,
-+		.pwr_sta_offs = 0xe00,
-+		.pwr_sta2nd_offs = 0xe00,
-+		.ext_buck_iso_offs = 0xf20,
-+		.ext_buck_iso_mask = GENMASK(1, 0),
-+		.caps = MTK_SCPD_MODEM_SECURE_PWRSEQ | MTK_SCPD_EXT_BUCK_ISO |
-+			MTK_SCPD_KEEP_DEFAULT_OFF,
-+	},
-+	[MT6858_POWER_DOMAIN_CONN] = {
-+		.name = "conn",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xe04,
-+		.pwr_sta_offs = 0xe04,
-+		.pwr_sta2nd_offs = 0xe04,
-+		.bp_cfg = {
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MCU_STA_0_CONN,
-+					MT6858_TOP_AXI_PROT_EN_MCU_STA_0_SET,
-+					MT6858_TOP_AXI_PROT_EN_MCU_STA_0_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MCU_STA_0_RDY),
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_CONN,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_SET,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_CLR,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_RDY),
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MCU_STA_0_CONN_2ND,
-+					MT6858_TOP_AXI_PROT_EN_MCU_STA_0_SET,
-+					MT6858_TOP_AXI_PROT_EN_MCU_STA_0_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MCU_STA_0_RDY),
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_CONN,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_SET,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_CLR,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_RDY),
-+		},
-+		.caps = MTK_SCPD_KEEP_DEFAULT_OFF,
-+	},
-+	[MT6858_POWER_DOMAIN_AUDIO] = {
-+		.name = "audio",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xe18,
-+		.pwr_sta_offs = 0xe18,
-+		.pwr_sta2nd_offs = 0xe18,
-+		.sram_pdn_bits = BIT(8),
-+		.sram_pdn_ack_bits = BIT(12),
-+		.bp_cfg = {
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_PERISYS_STA_0_AUDIO,
-+					MT6858_TOP_AXI_PROT_EN_PERISYS_STA_0_SET,
-+					MT6858_TOP_AXI_PROT_EN_PERISYS_STA_0_CLR,
-+					MT6858_TOP_AXI_PROT_EN_PERISYS_STA_0_RDY),
-+		},
-+	},
-+	[MT6858_POWER_DOMAIN_ISP_IMG1] = {
-+		.name = "isp-img1",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xe28,
-+		.pwr_sta_offs = 0xe28,
-+		.pwr_sta2nd_offs = 0xe28,
-+		.sram_pdn_bits = BIT(8),
-+		.sram_pdn_ack_bits = BIT(12),
-+		.bp_cfg = {
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_ISP_IMG1,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_SET,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_RDY),
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_ISP_IMG1,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_SET,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_RDY),
-+			BUS_PROT_WR_IGN(IMG_SUB0,
-+					MT6858_IMG_SUB0_PROT_EN_SMI_ISP_IMG1,
-+					MT6858_SUBx_PROT_EN_SET,
-+					MT6858_SUBx_PROT_EN_CLR,
-+					MT6858_SUBx_PROT_EN_STA),
-+		},
-+		.caps = MTK_SCPD_KEEP_DEFAULT_OFF,
-+	},
-+	[MT6858_POWER_DOMAIN_ISP_IMG2] = {
-+		.name = "isp-img2",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xe2c,
-+		.pwr_sta_offs = 0xe2c,
-+		.pwr_sta2nd_offs = 0xe2c,
-+		.sram_pdn_bits = BIT(8),
-+		.sram_pdn_ack_bits = BIT(12),
-+		.caps = MTK_SCPD_KEEP_DEFAULT_OFF,
-+	},
-+	[MT6858_POWER_DOMAIN_ISP_IPE] = {
-+		.name = "isp-ipe",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xe30,
-+		.pwr_sta_offs = 0xe30,
-+		.pwr_sta2nd_offs = 0xe30,
-+		.sram_pdn_bits = BIT(8),
-+		.sram_pdn_ack_bits = BIT(12),
-+		.bp_cfg = {
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_ISP_IPE,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_SET,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_RDY),
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_ISP_IPE,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_SET,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_RDY),
-+			BUS_PROT_WR_IGN(IPE_SUB0,
-+					MT6858_IPE_SUB0_PROT_EN_SMI_ISP_IPE,
-+					MT6858_SUBx_PROT_EN_SET,
-+					MT6858_SUBx_PROT_EN_CLR,
-+					MT6858_SUBx_PROT_EN_STA),
-+		},
-+		.caps = MTK_SCPD_KEEP_DEFAULT_OFF,
-+	},
-+	[MT6858_POWER_DOMAIN_VDE0] = {
-+		.name = "vde0",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xe34,
-+		.pwr_sta_offs = 0xe34,
-+		.pwr_sta2nd_offs = 0xe34,
-+		.sram_pdn_bits = BIT(8),
-+		.sram_pdn_ack_bits = BIT(12),
-+		.bp_cfg = {
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_VDE0,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_SET,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_RDY),
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_VDE0,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_SET,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_RDY),
-+		},
-+	},
-+	[MT6858_POWER_DOMAIN_VEN0] = {
-+		.name = "ven0",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xe3c,
-+		.pwr_sta_offs = 0xe3c,
-+		.pwr_sta2nd_offs = 0xe3c,
-+		.sram_pdn_bits = BIT(8),
-+		.sram_pdn_ack_bits = BIT(12),
-+		.bp_cfg = {
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_VEN0,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_SET,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_RDY),
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_VEN0,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_SET,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_RDY),
-+		},
-+	},
-+	[MT6858_POWER_DOMAIN_CAM_MAIN] = {
-+		.name = "cam-main",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xe44,
-+		.pwr_sta_offs = 0xe44,
-+		.pwr_sta2nd_offs = 0xe44,
-+		.sram_pdn_bits = BIT(8),
-+		.sram_pdn_ack_bits = BIT(12),
-+		.bp_cfg = {
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_CAM_MAIN,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_SET,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_RDY),
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_CAM_MAIN,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_SET,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_RDY),
-+			BUS_PROT_WR_IGN(CAM_SUB0,
-+					MT6858_CAM_SUB0_PROT_EN_SMI_CAM_MAIN,
-+					MT6858_SUBx_PROT_EN_SET,
-+					MT6858_SUBx_PROT_EN_CLR,
-+					MT6858_SUBx_PROT_EN_STA),
-+			BUS_PROT_WR_IGN(CAM_SUB1,
-+					MT6858_CAM_SUB1_PROT_EN_SMI_CAM_MAIN,
-+					MT6858_SUBx_PROT_EN_SET,
-+					MT6858_SUBx_PROT_EN_CLR,
-+					MT6858_SUBx_PROT_EN_STA),
-+		},
-+		.caps = MTK_SCPD_KEEP_DEFAULT_OFF,
-+	},
-+	[MT6858_POWER_DOMAIN_CAM_SUBA] = {
-+		.name = "cam-suba",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xe4c,
-+		.pwr_sta_offs = 0xe4c,
-+		.pwr_sta2nd_offs = 0xe4c,
-+		.sram_pdn_bits = BIT(8),
-+		.sram_pdn_ack_bits = BIT(12),
-+		.bp_cfg = {
-+			BUS_PROT_WR_IGN(CAM_SUB1,
-+					MT6858_CAM_SUB1_PROT_EN_SMI_CAM_SUBA,
-+					MT6858_SUBx_PROT_EN_SET,
-+					MT6858_SUBx_PROT_EN_CLR,
-+					MT6858_SUBx_PROT_EN_STA),
-+		},
-+		.caps = MTK_SCPD_KEEP_DEFAULT_OFF,
-+	},
-+	[MT6858_POWER_DOMAIN_CAM_SUBB] = {
-+		.name = "cam-subb",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xe50,
-+		.pwr_sta_offs = 0xe50,
-+		.pwr_sta2nd_offs = 0xe50,
-+		.sram_pdn_bits = BIT(8),
-+		.sram_pdn_ack_bits = BIT(12),
-+		.bp_cfg = {
-+			BUS_PROT_WR_IGN(CAM_SUB0,
-+					MT6858_CAM_SUB0_PROT_EN_SMI_CAM_SUBB,
-+					MT6858_SUBx_PROT_EN_SET,
-+					MT6858_SUBx_PROT_EN_CLR,
-+					MT6858_SUBx_PROT_EN_STA),
-+		},
-+		.caps = MTK_SCPD_KEEP_DEFAULT_OFF,
-+	},
-+	[MT6858_POWER_DOMAIN_DIS0] = {
-+		.name = "dis0",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xe6c,
-+		.pwr_sta_offs = 0xe6c,
-+		.pwr_sta2nd_offs = 0xe6c,
-+		.sram_pdn_bits = BIT(8),
-+		.sram_pdn_ack_bits = BIT(12),
-+		.bp_cfg = {
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_DIS0,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_SET,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_RDY),
-+		},
-+	},
-+	[MT6858_POWER_DOMAIN_MM_INFRA] = {
-+		.name = "mm-infra",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xe74,
-+		.pwr_sta_offs = 0xe74,
-+		.pwr_sta2nd_offs = 0xe74,
-+		.sram_pdn_bits = BIT(8),
-+		.sram_pdn_ack_bits = BIT(12),
-+		.bp_cfg = {
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_MM_INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_SET,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_RDY),
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_MM_INFRA,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_SET,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_CLR,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_RDY),
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_MM_INFRA_2ND,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_SET,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_CLR,
-+					MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_RDY),
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_MM_INFRA,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_SET,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_CLR,
-+					MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_RDY),
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_EMISYS_STA_0_MM_INFRA,
-+					MT6858_TOP_AXI_PROT_EN_EMISYS_STA_0_SET,
-+					MT6858_TOP_AXI_PROT_EN_EMISYS_STA_0_CLR,
-+					MT6858_TOP_AXI_PROT_EN_EMISYS_STA_0_RDY),
-+		},
-+	},
-+	[MT6858_POWER_DOMAIN_MM_PROC_DORMANT] = {
-+		.name = "mm-proc-dormant",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xe78,
-+		.pwr_sta_offs = 0xe78,
-+		.pwr_sta2nd_offs = 0xe78,
-+		.sram_pdn_bits = BIT(9),
-+		.sram_pdn_ack_bits = BIT(13),
-+		.bp_cfg = {
-+			BUS_PROT_WR_IGN(VLP,
-+					MT6858_VLP_AXI_PROT_EN_MM_PROC,
-+					MT6858_VLP_AXI_PROT_EN_SET,
-+					MT6858_VLP_AXI_PROT_EN_CLR,
-+					MT6858_VLP_AXI_PROT_EN_STA),
-+			BUS_PROT_WR_IGN(VLP,
-+					MT6858_VLP_AXI_PROT_EN_MM_PROC_2ND,
-+					MT6858_VLP_AXI_PROT_EN_SET,
-+					MT6858_VLP_AXI_PROT_EN_CLR,
-+					MT6858_VLP_AXI_PROT_EN_STA),
-+		},
-+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_SRAM_PDN_INVERTED,
-+	},
-+	[MT6858_POWER_DOMAIN_CSI_RX] = {
-+		.name = "csi-rx",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xe98,
-+		.pwr_sta_offs = 0xe98,
-+		.pwr_sta2nd_offs = 0xe98,
-+		.caps = MTK_SCPD_KEEP_DEFAULT_OFF,
-+	},
-+	[MT6858_POWER_DOMAIN_SSUSB] = {
-+		.name = "ssusb",
-+		.sta_mask = MT6858_PWR_ACK,
-+		.sta2nd_mask = MT6858_PWR_ACK_2ND,
-+		.ctl_offs = 0xea4,
-+		.pwr_sta_offs = 0xea4,
-+		.pwr_sta2nd_offs = 0xea4,
-+		.sram_pdn_bits = BIT(8),
-+		.sram_pdn_ack_bits = BIT(12),
-+		.bp_cfg = {
-+			BUS_PROT_WR_IGN(INFRA,
-+					MT6858_TOP_AXI_PROT_EN_PERISYS_STA_0_SSUSB,
-+					MT6858_TOP_AXI_PROT_EN_PERISYS_STA_0_SET,
-+					MT6858_TOP_AXI_PROT_EN_PERISYS_STA_0_CLR,
-+					MT6858_TOP_AXI_PROT_EN_PERISYS_STA_0_RDY),
-+		},
-+	},
-+};
-+
-+static const struct scpsys_soc_data mt6858_scpsys_data = {
-+	.domains_data = scpsys_domain_data_mt6858,
-+	.num_domains = ARRAY_SIZE(scpsys_domain_data_mt6858),
-+	.bus_prot_blocks = scpsys_bus_prot_blocks_mt6858,
-+	.num_bus_prot_blocks = ARRAY_SIZE(scpsys_bus_prot_blocks_mt6858),
-+	.type = SCPSYS_MTCMOS_TYPE_DIRECT_CTL,
-+};
-+
-+#endif /* __SOC_MEDIATEK_MT6858_PM_DOMAINS_H */
-diff --git a/drivers/pmdomain/mediatek/mtk-pm-domains.c b/drivers/pmdomain/mediatek/mtk-pm-domains.c
-index 5b4d860318a4..b43f8b4a6a01 100644
---- a/drivers/pmdomain/mediatek/mtk-pm-domains.c
-+++ b/drivers/pmdomain/mediatek/mtk-pm-domains.c
-@@ -20,6 +20,7 @@
- 
- #include "mt6735-pm-domains.h"
- #include "mt6795-pm-domains.h"
-+#include "mt6858-pm-domains.h"
- #include "mt6893-pm-domains.h"
- #include "mt8167-pm-domains.h"
- #include "mt8173-pm-domains.h"
-@@ -1288,6 +1289,10 @@ static const struct of_device_id scpsys_of_match[] = {
- 		.compatible = "mediatek,mt6795-power-controller",
- 		.data = &mt6795_scpsys_data,
- 	},
-+	{
-+		.compatible = "mediatek,mt6858-power-controller",
-+		.data = &mt6858_scpsys_data,
-+	},
- 	{
- 		.compatible = "mediatek,mt6893-power-controller",
- 		.data = &mt6893_scpsys_data,
-diff --git a/drivers/pmdomain/mediatek/mtk-pm-domains.h b/drivers/pmdomain/mediatek/mtk-pm-domains.h
-index 8690690335ad..45da83e9d649 100644
---- a/drivers/pmdomain/mediatek/mtk-pm-domains.h
-+++ b/drivers/pmdomain/mediatek/mtk-pm-domains.h
-@@ -66,6 +66,11 @@ enum scpsys_bus_prot_block {
- 	BUS_PROT_BLOCK_INFRA_NAO,
- 	BUS_PROT_BLOCK_SMI,
- 	BUS_PROT_BLOCK_SPM,
-+	BUS_PROT_BLOCK_IMG_SUB0,
-+	BUS_PROT_BLOCK_CAM_SUB1,
-+	BUS_PROT_BLOCK_CAM_SUB0,
-+	BUS_PROT_BLOCK_IPE_SUB0,
-+	BUS_PROT_BLOCK_VLP,
- 	BUS_PROT_BLOCK_COUNT,
- };
- 
+- Link to v3: https://lore.kernel.org/r/20260705-fix-race-condition-and-crash-v3-0-3e51841e4d08@onsemi.com
 
+Changes in v3:
+- Cover all the instances of disable_traffic flag with
+  spin lock to serialize the access
+- Disabling the tx queue and mark the carrier off when
+  disable_traffic is set.
+- Continue processing received chunks on buffer overflow
+  error and "out of skb" error.
+- Link to v2: https://lore.kernel.org/r/20260626-fix-race-condition-and-crash-v2-0-b6c5c10e604f@onsemi.com
+
+Changes in v2:
+- Improvment to how error -EAGAIN is handled. Took care of
+  couple of use cases where start_bit and end_bit may be missing or
+  repeated due to lost data chunks.
+- Protected handling of waiting_tx_skb pointer with spin lock
+- Link to v1: https://lore.kernel.org/r/20260621-fix-race-condition-and-crash-v1-0-87e290d9357f@onsemi.com
+
+---
+Selvamani Rajagopal (3):
+      net: ethernet: oa_tc6: Protect skb pointer used by two different kernel instances
+      net: ethernet: oa_tc6: Improvements to error recovery
+      net: ethernet: oa_tc6: Disabled tx queues when disable_traffic is set
+
+ drivers/net/ethernet/oa_tc6.c | 236 +++++++++++++++++++++++++++++++-----------
+ 1 file changed, 175 insertions(+), 61 deletions(-)
+---
+base-commit: 1c975de3343cdef506f2eecc833cc1f14b0401c4
+change-id: 20260621-fix-race-condition-and-crash-94d055a665c4
+
+Best regards,
 -- 
-2.54.0
+Selvamani Rajagopal <Selvamani.Rajagopal@onsemi.com>
 
