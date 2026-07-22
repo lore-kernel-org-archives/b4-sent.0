@@ -1,69 +1,85 @@
-From: Xianwei Zhao <xianwei.zhao@amlogic.com>
-Date: Wed, 22 Jul 2026 08:39:33 +0000
-Subject: [PATCH 3/3] arm64: dts: amlogic: a9: Add power domain controller
- node
+From: Richard Leitner <richard.leitner@linux.dev>
+Subject: [PATCH RFC 0/2] regmap: support firmware-described non-sequential
+ register reads
+Date: Wed, 22 Jul 2026 10:42:45 +0200
+Message-Id: <20260722-regmap-single-read-v1-0-aaaf31591669@linux.dev>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260722-a9-pm-v1-3-1fe20a44bf2d@amlogic.com>
-References: <20260722-a9-pm-v1-0-1fe20a44bf2d@amlogic.com>
-In-Reply-To: <20260722-a9-pm-v1-0-1fe20a44bf2d@amlogic.com>
-To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+X-B4-Tracking: v=1; b=H4sIAIWCYGoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDcyMj3aLU9NzEAt3izLz0nFQgLzFFN9Eo1dLUwNwgOcXMTAmosaAoNS2
+ zAmxotFKAY4izB0g0yM1ZKRYiW1yalJWaXAIyV6m2FgB4lBpjhAAAAA==
+X-Change-ID: 20260722-regmap-single-read-a2e95070cd66
+To: Mark Brown <broonie@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Jianxin Pan <jianxin.pan@amlogic.com>, Ulf Hansson <ulfh@kernel.org>
-Cc: devicetree@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
- linux-amlogic@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-pm@vger.kernel.org, Xianwei Zhao <xianwei.zhao@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784709572; l=1059;
- i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
- bh=xo1Aubxoy/JqFSkmWDscfP/W3QukIsgCeqLnk3l3H2c=;
- b=8m2xj7Wdhudv3R9CMZS9z6M+V7M9mHlKRD7/9v7ugrfgIHOsm2Z43TnkReKOjQANfg6+hGJW7
- CJVRk7lvnCpBLpygK1jOTD3xy+wTNafcwO0b2uGVTJhA5kLx7f2QAbf
-X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
- pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
-X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
+ "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich <dakr@kernel.org>
+Cc: Laurent Pinchart <laurent.pinchart@ideasonboard.com>, 
+ Dave Stevenson <dave.stevenson@raspberrypi.com>, 
+ Alexander Stein <alexander.stein@ew.tq-group.com>, 
+ linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
+ driver-core@lists.linux.dev, Richard Leitner <richard.leitner@linux.dev>
+X-Mailer: b4 0.16-dev
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784709824; l=2228;
+ i=richard.leitner@linux.dev; s=20250225; h=from:subject:message-id;
+ bh=DA2LsH4Jd5MF1qG95I2J6cn2R2yPkQGy8WeIdsJjhic=;
+ b=guJ+3eWoZ5JTS58AI7qGHphtRB9TwV90ZwgNwiEqKHH38a9Zaa7cQElFmFMbYS8H8fAu0E76l
+ qXUs+brb7M9AGdsYKcvFsnZAVyTNYwTO9Va5+RXQoFcT0VUBMmVPMpQ
+X-Developer-Key: i=richard.leitner@linux.dev; a=ed25519;
+ pk=8hZNyyyQFqZ5ruVJsSGBSPIrmJpfDm5HwHU4QVOP1Pk=
+X-Endpoint-Received: by B4 Relay for richard.leitner@linux.dev/20250225 with auth_id=350
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add power domain controller node for Amlogic A9 SoC.
+Hi all,
 
-Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
+this series adds support for firmware/device-tree described constraints
+on sequential register reads.
+
+The motivating use case are camera modules from Vision Components.
+These modules may integrate image sensors that normally support
+incrementing multi-register reads, while the MCU (which sits basically
+"between" the I2C host and the camera sensors) breaks them. In such
+cases, single-register reads work, but sequential/bulk register reads do
+not.
+
+This limitation is therefore not a property of the sensor silicon
+itself, but of the hardware module/integration in which the device is
+used. As a result, it cannot be identified from the deivce driver and
+handling it in each affected device driver does not scale well.
+
+To address this, the series introduces a common firmware property
+(no-sequential-read) describing hardware integrations where reading
+multiple consecutive registers in a single operation is not reliable.
+regmap then consumes that property and maps it to its existing
+use_single_read configuration. This keeps the hardware constraint
+described in firmware/device-tree while applying it in the layer that
+already owns the register read transfer policy.
+
+The initial discussion that motivated this approach can be found here:
+https://lore.kernel.org/lkml/20260721151614.GN50424@killaraus.ideasonboard.com/
+
+Feedback is especially welcome on the property naming, the placement of
+the common binding schema, and if regmap is the best place to implment this.
+
+Thanks,
+Richard
+
+Link: https://lore.kernel.org/lkml/20260721151614.GN50424@killaraus.ideasonboard.com/
+Signed-off-by: Richard Leitner <richard.leitner@linux.dev>
 ---
- arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Richard Leitner (2):
+      dt-bindings: regmap: add common schema for no-sequential-read
+      regmap: implement no-sequential-read firmware property
 
-diff --git a/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi b/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
-index b0e0fadeed82..3652b2034c96 100644
---- a/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
-+++ b/arch/arm64/boot/dts/amlogic/amlogic-a9.dtsi
-@@ -7,6 +7,7 @@
- #include <dt-bindings/interrupt-controller/arm-gic.h>
- #include <dt-bindings/gpio/gpio.h>
- #include <dt-bindings/pinctrl/amlogic,pinctrl.h>
-+#include <dt-bindings/power/amlogic,a9-pwrc.h>
- 
- / {
- 	interrupt-parent = <&gic>;
-@@ -72,6 +73,15 @@ cpu7: cpu@700 {
- 		};
- 	};
- 
-+	sm: secure-monitor {
-+		compatible = "amlogic,meson-gxbb-sm";
-+
-+		pwrc: power-controller {
-+			compatible = "amlogic,a9-pwrc";
-+			#power-domain-cells = <1>;
-+		};
-+	};
-+
- 	timer {
- 		compatible = "arm,armv8-timer";
- 		interrupts = <GIC_PPI 13 IRQ_TYPE_LEVEL_LOW>,
+ .../devicetree/bindings/regmap/common.yaml         | 26 ++++++++++++++++++++++
+ drivers/base/regmap/regmap.c                       | 14 +++++++++++-
+ 2 files changed, 39 insertions(+), 1 deletion(-)
+---
+base-commit: 248951ddc14de84de3910f9b13f51491a8cd91df
+change-id: 20260722-regmap-single-read-a2e95070cd66
 
--- 
-2.52.0
+Best regards,
+--  
+Richard Leitner <richard.leitner@linux.dev>
 
