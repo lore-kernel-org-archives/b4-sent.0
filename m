@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Wed, 22 Jul 2026 16:41:18 -0700
-Subject: [PATCH v4 10/16] WIP: fs: hugetlbfs: Refactor subpool getters and
- integrate with hugetlb_subpool API
+Date: Wed, 22 Jul 2026 16:41:19 -0700
+Subject: [PATCH v4 11/16] WIP: mm: hugetlb: Make struct hugepage_subpool
+ private to hugetlb_subpool.c
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260722-hugetlb-alloc-failure-fixes-v4-10-88e8b81970dc@google.com>
+Message-Id: <20260722-hugetlb-alloc-failure-fixes-v4-11-88e8b81970dc@google.com>
 References: <20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com>
 In-Reply-To: <20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com>
 To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
@@ -26,154 +26,83 @@ Cc: vannapurve@google.com, erdemaktas@google.com, linux-mm@kvack.org,
  linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, 
  linux-doc@vger.kernel.org, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784763678; l=5109;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784763678; l=2210;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=Rr0t6FQpLc5GBEHSOpDNGxRyeiM/tB/HQxHFWvewyxI=;
- b=r8aum4myXhKIuGOvNFNRV2xnP+sRjMi82PJGF7WGGuvumuJvvLXs2oRu08WpAjRrptqeMPkev
- cpDbibmLIwAB3MMC8TVRLPb2o/yYixAdK/+t9iAz2EISXgaiFArJ1q+
+ bh=lOjGCQX3/m/ifrV7JiSqPXOvpZ1jml5gEVW64pYajUU=;
+ b=62CKcF92BwyBeZ4+JVII0ser/DgCEfN1PyHCWdGDtFmjFrAuQZH+HIAkkbwAgIhRX0bTFA9mn
+ 4K8I6LvaxRBBops7keMTrhLFMeObPf79bBddWfrNINpTiku9RWX/K7X
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Refactor the direct field accesses to spool->max_hpages, spool->min_hpages,
-and calculate subpool properties using getters inside
-mm/hugetlb_subpool.c.
+Now that all filesystem and memory management subpool functions across
+fs/hugetlbfs/inode.c and mm/ use getters, transition struct
+hugepage_subpool out of the public header include/linux/hugetlb.h and
+encapsulate it privately inside mm/hugetlb_subpool.c.
 
-This will allow the definition of struct hugepage_subpool to be
-encapsulated and private to mm/hugetlb_subpool.c
+Replace the header definition with a forward declaration.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- fs/hugetlbfs/inode.c | 28 +++++++++-------------------
- mm/hugetlb_subpool.c | 39 ++++++++++++++++++++++++++++++++++++++-
- mm/hugetlb_subpool.h |  4 ++++
- 3 files changed, 51 insertions(+), 20 deletions(-)
+ include/linux/hugetlb.h | 13 ++-----------
+ mm/hugetlb_subpool.c    | 12 ++++++++++++
+ 2 files changed, 14 insertions(+), 11 deletions(-)
 
-diff --git a/fs/hugetlbfs/inode.c b/fs/hugetlbfs/inode.c
-index 86c21f8272470..b424afdedb3ee 100644
---- a/fs/hugetlbfs/inode.c
-+++ b/fs/hugetlbfs/inode.c
-@@ -1060,7 +1060,6 @@ static int hugetlbfs_show_options(struct seq_file *m, struct dentry *root)
- 	struct hugetlbfs_sb_info *sbinfo = HUGETLBFS_SB(root->d_sb);
- 	struct hugepage_subpool *spool = sbinfo->spool;
- 	unsigned long hpage_size = huge_page_size(sbinfo->hstate);
--	unsigned hpage_shift = huge_page_shift(sbinfo->hstate);
- 	char mod;
+diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h
+index f36be371c6e88..074a45903973e 100644
+--- a/include/linux/hugetlb.h
++++ b/include/linux/hugetlb.h
+@@ -18,6 +18,7 @@
  
- 	if (!uid_eq(sbinfo->uid, GLOBAL_ROOT_UID))
-@@ -1082,12 +1081,13 @@ static int hugetlbfs_show_options(struct seq_file *m, struct dentry *root)
- 	}
- 	seq_printf(m, ",pagesize=%lu%c", hpage_size, mod);
- 	if (spool) {
--		if (spool->max_hpages != -1)
--			seq_printf(m, ",size=%llu",
--				   (unsigned long long)spool->max_hpages << hpage_shift);
--		if (spool->min_hpages != -1)
--			seq_printf(m, ",min_size=%llu",
--				   (unsigned long long)spool->min_hpages << hpage_shift);
-+		unsigned long long max_size = hugepage_subpool_max_size(spool);
-+		unsigned long long min_size = hugepage_subpool_min_size(spool);
-+
-+		if (max_size != -1ULL)
-+			seq_printf(m, ",size=%llu", max_size);
-+		if (min_size != -1ULL)
-+			seq_printf(m, ",min_size=%llu", min_size);
- 	}
- 	return 0;
- }
-@@ -1106,18 +1106,8 @@ static int hugetlbfs_statfs(struct dentry *dentry, struct kstatfs *buf)
- 		/* If no limits set, just report 0 or -1 for max/free/used
- 		 * blocks, like simple_statfs() */
- 		if (sbinfo->spool) {
--			long free_pages;
--
--			spin_lock_irq(&sbinfo->spool->lock);
--			buf->f_blocks = sbinfo->spool->max_hpages;
--			if (sbinfo->spool->max_hpages == -1) {
--				free_pages = -1;
--			} else {
--				free_pages = sbinfo->spool->max_hpages -
--					     sbinfo->spool->used_hpages;
--			}
--			buf->f_bavail = buf->f_bfree = free_pages;
--			spin_unlock_irq(&sbinfo->spool->lock);
-+			buf->f_blocks = hugepage_subpool_max_hpages(sbinfo->spool);
-+			buf->f_bavail = buf->f_bfree = hugepage_subpool_free_hpages(sbinfo->spool);
- 			buf->f_files = sbinfo->max_inodes;
- 			buf->f_ffree = sbinfo->free_inodes;
- 		}
+ struct mmu_gather;
+ struct node;
++struct hstate;
+ 
+ void free_huge_folio(struct folio *folio);
+ 
+@@ -34,17 +35,7 @@ void free_huge_folio(struct folio *folio);
+  */
+ #define __NR_USED_SUBPAGE 3
+ 
+-struct hugepage_subpool {
+-	spinlock_t lock;
+-	long count;
+-	long max_hpages;	/* Maximum huge pages or -1 if no maximum. */
+-	long used_hpages;	/* Used page count, includes both */
+-				/* allocated and reserved pages. */
+-	struct hstate *hstate;
+-	long min_hpages;	/* Minimum huge pages or -1 if no minimum. */
+-	long rsv_hpages;	/* Pages reserved against global pool to */
+-				/* satisfy minimum size. */
+-};
++struct hugepage_subpool;
+ 
+ struct resv_map {
+ 	struct kref refs;
 diff --git a/mm/hugetlb_subpool.c b/mm/hugetlb_subpool.c
-index 6184860ed7374..ac0f9057b4921 100644
+index ac0f9057b4921..39413515a2722 100644
 --- a/mm/hugetlb_subpool.c
 +++ b/mm/hugetlb_subpool.c
-@@ -12,7 +12,6 @@
- #endif
- #include <linux/spinlock.h>
+@@ -14,6 +14,18 @@
  #include <linux/bug.h>
--
  #include "hugetlb_subpool.h"
  
++struct hugepage_subpool {
++	spinlock_t lock;
++	long count;
++	long max_hpages;	/* Maximum huge pages or -1 if no maximum. */
++	long used_hpages;	/* Used page count, includes both */
++				/* allocated and reserved pages. */
++	struct hstate *hstate;
++	long min_hpages;	/* Minimum huge pages or -1 if no minimum. */
++	long rsv_hpages;	/* Pages reserved against global pool to */
++				/* satisfy minimum size. */
++};
++
  static inline bool subpool_is_free(struct hugepage_subpool *spool)
-@@ -38,6 +37,44 @@ static inline void unlock_or_release_subpool(struct hugepage_subpool *spool,
- 	}
- }
- 
-+long hugepage_subpool_free_hpages(struct hugepage_subpool *spool)
-+{
-+	long free_pages;
-+
-+	spin_lock_irq(&spool->lock);
-+	if (spool->max_hpages == -1)
-+		free_pages = -1;
-+	else
-+		free_pages = spool->max_hpages - spool->used_hpages;
-+	spin_unlock_irq(&spool->lock);
-+
-+	return free_pages;
-+}
-+
-+static unsigned int hugepage_subpool_hpage_shift(struct hugepage_subpool *spool)
-+{
-+	return huge_page_shift(spool->hstate);
-+}
-+
-+unsigned long long hugepage_subpool_max_size(struct hugepage_subpool *spool)
-+{
-+	if (spool->max_hpages == -1)
-+		return -1ULL;
-+	return (unsigned long long)spool->max_hpages << hugepage_subpool_hpage_shift(spool);
-+}
-+
-+unsigned long long hugepage_subpool_min_size(struct hugepage_subpool *spool)
-+{
-+	if (spool->min_hpages == -1)
-+		return -1ULL;
-+	return (unsigned long long)spool->min_hpages << hugepage_subpool_hpage_shift(spool);
-+}
-+
-+long hugepage_subpool_max_hpages(struct hugepage_subpool *spool)
-+{
-+	return spool->max_hpages;
-+}
-+
- struct hugepage_subpool *hugepage_new_subpool(struct hstate *h, long max_hpages,
- 						long min_hpages)
  {
-diff --git a/mm/hugetlb_subpool.h b/mm/hugetlb_subpool.h
-index be1f1cf012c9c..41d22239f2c3e 100644
---- a/mm/hugetlb_subpool.h
-+++ b/mm/hugetlb_subpool.h
-@@ -13,5 +13,9 @@ struct hugepage_subpool *hugepage_new_subpool(struct hstate *h, long max_hpages,
- void hugepage_put_subpool(struct hugepage_subpool *spool);
- long hugepage_subpool_get_pages(struct hugepage_subpool *spool, long delta);
- long hugepage_subpool_put_pages(struct hugepage_subpool *spool, long delta);
-+long hugepage_subpool_free_hpages(struct hugepage_subpool *spool);
-+long hugepage_subpool_max_hpages(struct hugepage_subpool *spool);
-+unsigned long long hugepage_subpool_max_size(struct hugepage_subpool *spool);
-+unsigned long long hugepage_subpool_min_size(struct hugepage_subpool *spool);
- 
- #endif /* _MM_HUGETLB_SUBPOOL_H */
+ 	if (spool->count)
 
 -- 
 2.55.0.229.g6434b31f56-goog
