@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Wed, 22 Jul 2026 16:41:15 -0700
-Subject: [PATCH v4 07/16] mm: hugetlb: Fix Use-After-Free in
- unlock_or_release_subpool()
+Date: Wed, 22 Jul 2026 16:41:16 -0700
+Subject: [PATCH v4 08/16] fs: hugetlbfs: Fix global reservation leak in
+ hugetlbfs_fill_super()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260722-hugetlb-alloc-failure-fixes-v4-7-88e8b81970dc@google.com>
+Message-Id: <20260722-hugetlb-alloc-failure-fixes-v4-8-88e8b81970dc@google.com>
 References: <20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com>
 In-Reply-To: <20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com>
 To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
@@ -27,58 +27,88 @@ Cc: vannapurve@google.com, erdemaktas@google.com, linux-mm@kvack.org,
  linux-doc@vger.kernel.org, Ackerley Tng <ackerleytng@google.com>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784763678; l=1786;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784763678; l=2642;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=+8BKlqcw0osweyRZX4DVMuCuKwenNXcfBjXVW5HQiFI=;
- b=1QJ1v6HnKCN4SUgfZ0zCwSM1fabe4JN3I0E4aRntYBp8Vk2QcabaSyeAnsKBGGeTC3Y76lQen
- YmRVqUCR2SyD0f88goOEuJb9brctkXRJonc3/dbLVzTo9GlGyTpg6do
+ bh=xpwOn4o/8dwkPGcKx/D+08zZJl/SEz5ntK6oD42SVfo=;
+ b=GfSo+082yV0XV2379mD54lWB1yFERnvv5vJcHzxcpA+vOTbZSFPHC1fJRtNvwaK1ItH4SHmMa
+ P9nAWPJRDfrDUTI9SSn5NKpQmgKTijYg6y0r21Dm4bc+LzKU2zgTomV
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-In unlock_or_release_subpool(), spool->lock was released before calling
-subpool_is_free(spool). Because subpool_is_free() accesses spool->count and
-spool->used_hpages locklessly, concurrent threads calling
-hugepage_subpool_put_pages() or hugepage_put_subpool() could race when
-spool->count is 0.
+In hugetlbfs_fill_super(), if hugepage_new_subpool() succeeds in
+allocating a subpool (which reserves global huge pages when
+min_hpages != -1), but a subsequent initialization step like
+d_make_root() fails, the error path directly invoked
+kfree(sbinfo->spool).
 
-If Thread 1 drops spool->lock and is preempted before subpool_is_free(),
-Thread 2 can acquire spool->lock, decrement spool->used_hpages to 0,
-evaluate subpool_is_free() as true, and free spool via kfree(). When Thread
-1 resumes, subpool_is_free() dereferences the freed spool pointer, causing
-a Use-After-Free (UAF) or double free.
+Directly freeing the subpool structure with kfree() bypasses
+hugepage_put_subpool() and its underlying unlock_or_release_subpool()
+destructor. Consequently, hugetlb_acct_memory() is never called to
+release the global page reservations allocated for min_hpages,
+permanently leaking global huge page reservations.
 
-Fix this race by evaluating subpool_is_free() while holding spool->lock
-prior to unlocking.
+Fix this leak by calling hugepage_put_subpool(sbinfo->spool) on the
+error cleanup path instead of kfree(sbinfo->spool).
 
-Fixes: 1d88433bb0085 ("mm/hugetlb: fix use after free when subpool max_hpages accounting is not enabled")
+sbinfo->spool must be checked before dereferencing the subpool in
+hugepage_put_subpool(). Add a NULL guard to hugepage_put_subpool() instead
+of checking it in the caller to align it with other subpool helpers like
+hugepage_subpool_get_pages() and hugepage_subpool_put_pages() that
+gracefully handle NULL subpools. This allows callers to safely invoke
+hugepage_put_subpool() without requiring explicit NULL checks. This is also
+aligned with how kfree() can be called on NULL.
+
+With the NULL guard in hugepage_put_subpool(), the NULL check in the only
+other caller can also be removed.
+
+Fixes: 7ca02d0ae586f ("hugetlbfs: accept subpool min_size mount option and setup accordingly")
 Cc: stable@vger.kernel.org
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- mm/hugetlb.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ fs/hugetlbfs/inode.c | 6 ++----
+ mm/hugetlb.c         | 3 +++
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
+diff --git a/fs/hugetlbfs/inode.c b/fs/hugetlbfs/inode.c
+index 26c0187340636..e5d86f31eba5b 100644
+--- a/fs/hugetlbfs/inode.c
++++ b/fs/hugetlbfs/inode.c
+@@ -1133,9 +1133,7 @@ static void hugetlbfs_put_super(struct super_block *sb)
+ 	if (sbi) {
+ 		sb->s_fs_info = NULL;
+ 
+-		if (sbi->spool)
+-			hugepage_put_subpool(sbi->spool);
+-
++		hugepage_put_subpool(sbi->spool);
+ 		kfree(sbi);
+ 	}
+ }
+@@ -1423,7 +1421,7 @@ hugetlbfs_fill_super(struct super_block *sb, struct fs_context *fc)
+ 		goto out_free;
+ 	return 0;
+ out_free:
+-	kfree(sbinfo->spool);
++	hugepage_put_subpool(sbinfo->spool);
+ 	kfree(sbinfo);
+ 	return -ENOMEM;
+ }
 diff --git a/mm/hugetlb.c b/mm/hugetlb.c
-index 8431c00d48267..b759748468734 100644
+index b759748468734..90ec015a11181 100644
 --- a/mm/hugetlb.c
 +++ b/mm/hugetlb.c
-@@ -137,12 +137,11 @@ static inline bool subpool_is_free(struct hugepage_subpool *spool)
- static inline void unlock_or_release_subpool(struct hugepage_subpool *spool,
- 						unsigned long irq_flags)
+@@ -177,6 +177,9 @@ void hugepage_put_subpool(struct hugepage_subpool *spool)
  {
-+	bool is_free = subpool_is_free(spool);
-+
- 	spin_unlock_irqrestore(&spool->lock, irq_flags);
+ 	unsigned long flags;
  
--	/* If no pages are used, and no other handles to the subpool
--	 * remain, give up any reservations based on minimum size and
--	 * free the subpool */
--	if (subpool_is_free(spool)) {
-+	if (is_free) {
- 		if (spool->min_hpages != -1)
- 			hugetlb_acct_memory(spool->hstate,
- 						-spool->min_hpages);
++	if (!spool)
++		return;
++
+ 	spin_lock_irqsave(&spool->lock, flags);
+ 	BUG_ON(!spool->count);
+ 	spool->count--;
 
 -- 
 2.55.0.229.g6434b31f56-goog
