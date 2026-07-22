@@ -1,11 +1,11 @@
 From: Haoning CHENG <Haoning.CHENG@cn.bosch.com>
-Date: Wed, 22 Jul 2026 10:11:41 +0800
-Subject: [PATCH v11 1/3] dt-bindings: thermal: imx: Document calibration
- offset property
+Date: Wed, 22 Jul 2026 10:11:42 +0800
+Subject: [PATCH v11 2/3] thermal/drivers/imx: Fix rounding and clamp for
+ i.MX7D alarm
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260722-b4-symana21-11221-imx-thermal-support-upstream-6-18-v11-1-90e4e46c0a13@cn.bosch.com>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260722-b4-symana21-11221-imx-thermal-support-upstream-6-18-v11-2-90e4e46c0a13@cn.bosch.com>
 References: <20260722-b4-symana21-11221-imx-thermal-support-upstream-6-18-v11-0-90e4e46c0a13@cn.bosch.com>
 In-Reply-To: <20260722-b4-symana21-11221-imx-thermal-support-upstream-6-18-v11-0-90e4e46c0a13@cn.bosch.com>
 To: "Rafael J. Wysocki" <rafael@kernel.org>, 
@@ -19,65 +19,60 @@ To: "Rafael J. Wysocki" <rafael@kernel.org>,
 Cc: linux-pm@vger.kernel.org, devicetree@vger.kernel.org, 
  imx@lists.linux.dev, linux-arm-kernel@lists.infradead.org, 
  linux-kernel@vger.kernel.org, Haoning CHENG <Haoning.CHENG@cn.bosch.com>, 
- Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+ Frank Li <Frank.Li@nxp.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784687940; l=2030;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784687940; l=1704;
  i=Haoning.CHENG@cn.bosch.com; s=20260709; h=from:subject:message-id;
- bh=Ue37UPF1teuZxiSxC/xhzQKQfZyk1Yq+nuequgJPOG4=;
- b=ABwbGlbH3nVJiQM3RU0KiJXtVhO5x9aUjwRw7+Wwy9UUumZfzoR8s6zJYVAQ21SP7ibyoWgQr
- YBxqBfD5SDiDKow5vBJUINNZbcQMtV7XTAus2mhOixYRfral2GmYQAg
+ bh=9D7qX15817iSb+CvnZ+YgaTi5ivABKiNn7DaNl6d+D8=;
+ b=dSw6FYxkkFm4fLIdK3ERIvfsuKpJ5CRCHad0nEFRulApxe/Ltr4d82vb9DxLAVNZPjv4gN7WY
+ pEdrAkUTcVzA+8+TdoZVcNESzLrRQIHS+THTN+DIwlqbfGg2Z1ICtLv
 X-Developer-Key: i=Haoning.CHENG@cn.bosch.com; a=ed25519;
  pk=glQGwad/fosRS5gZUJYbLDPPLGe7rFTrTV2VxY/ySdc=
 X-Endpoint-Received: by B4 Relay for Haoning.CHENG@cn.bosch.com/20260709 with auth_id=860
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The TEMPMON sensor reading may deviate from the theoretical SoC
-junction temperature. Document the optional
-fsl,temp-calibration-offset-millicelsius property, a signed offset
-in millicelsius applied to correct the sensor reading toward the
-theoretical junction temperature.
+Convert the alarm temperature from millicelsius to degrees for i.MX7D
+using ceiling division instead of integer division, ensuring rounding
+errors do not cause the alarm to trigger below the intended threshold.
+Use DIV_ROUND_UP() for non-negative values and plain integer division
+for negative values, since C rounds toward zero which is equivalent to
+ceiling when the divisor is positive.
 
-The offset is determined through thermal characterization by
-comparing the sensor output against the calculated junction
-temperature. When absent, the offset is zero.
+Add clamp() to ensure the hardware register value stays within the 9-bit
+range (0..0x1ff) of the i.MX7D alarm field, preventing silent truncation
+if an out-of-range value is written.
 
-Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@oss.qualcomm.com>
+Reviewed-by: Frank Li <Frank.Li@nxp.com>
 Reviewed-by: Lukasz Luba <lukasz.luba@arm.com>
-Signed-off-by: Haoning CHENG <Haoning.CHENG@cn.bosch.com>
+Signed-off-by: Haoning Cheng <Haoning.CHENG@cn.bosch.com>
 ---
- Documentation/devicetree/bindings/thermal/imx-thermal.yaml | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ drivers/thermal/imx_thermal.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/devicetree/bindings/thermal/imx-thermal.yaml b/Documentation/devicetree/bindings/thermal/imx-thermal.yaml
-index 949b154856c5..503a6e7a2c68 100644
---- a/Documentation/devicetree/bindings/thermal/imx-thermal.yaml
-+++ b/Documentation/devicetree/bindings/thermal/imx-thermal.yaml
-@@ -59,6 +59,17 @@ properties:
-   clocks:
-     maxItems: 1
+diff --git a/drivers/thermal/imx_thermal.c b/drivers/thermal/imx_thermal.c
+index 38c993d1bcb3..7f7d1116b9d6 100644
+--- a/drivers/thermal/imx_thermal.c
++++ b/drivers/thermal/imx_thermal.c
+@@ -240,10 +240,16 @@ static void imx_set_alarm_temp(struct imx_thermal_data *data,
  
-+  fsl,temp-calibration-offset-millicelsius:
-+    minimum: -20000
-+    maximum: 20000
-+    description:
-+      A signed offset, in millicelsius, applied to the TEMPMON
-+      sensor reading to correct it toward the theoretical SoC
-+      junction temperature. The offset is determined through
-+      thermal characterization by comparing the sensor output
-+      against the calculated junction temperature. The range is
-+      limited to ±20 °C. When absent, no offset is applied.
-+
-   "#thermal-sensor-cells":
-     const: 0
+ 	data->alarm_temp = alarm_temp;
  
-@@ -109,6 +120,7 @@ examples:
-             nvmem-cells = <&tempmon_calib>, <&tempmon_temp_grade>;
-             nvmem-cell-names = "calib", "temp_grade";
-             clocks = <&clks IMX6SX_CLK_PLL3_USB_OTG>;
-+            fsl,temp-calibration-offset-millicelsius = <(-6400)>;
-             #thermal-sensor-cells = <0>;
-         };
-     };
+-	if (data->socdata->version == TEMPMON_IMX7D)
+-		alarm_value = alarm_temp / 1000 + data->c1 - 25;
+-	else
++	if (data->socdata->version == TEMPMON_IMX7D) {
++		if (alarm_temp >= 0)
++			alarm_temp = DIV_ROUND_UP(alarm_temp, 1000);
++		else
++			alarm_temp /= 1000;
++		alarm_value = alarm_temp + data->c1 - 25;
++		alarm_value = clamp(alarm_value, 0, 0x1ff);
++	} else {
+ 		alarm_value = (data->c2 - alarm_temp) / data->c1;
++	}
+ 
+ 	regmap_write(map, soc_data->high_alarm_ctrl + REG_CLR,
+ 		     soc_data->high_alarm_mask);
 
 -- 
 2.43.0
