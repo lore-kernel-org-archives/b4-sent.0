@@ -1,77 +1,114 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Wed, 22 Jul 2026 07:54:46 +0200
-Subject: [PATCH v3 3/3] PCI: epf-mhi: Implement mhi_cntrl->flush_async() to
- flush DMA read/write
+From: Hermes Wu <Hermes.wu@ite.com.tw>
+Subject: [PATCH v4 0/2] media: i2c: add support for ITE IT6625/IT6626 HDMI
+ to MIPI CSI-2 bridge
+Date: Wed, 22 Jul 2026 15:20:10 +0800
+Message-Id: <20260722-upstream-it6625-it6626-v4-0-c03362eb55ca@ite.com.tw>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260722-mhi-ep-flush-v3-3-d855e715264e@oss.qualcomm.com>
-References: <20260722-mhi-ep-flush-v3-0-d855e715264e@oss.qualcomm.com>
-In-Reply-To: <20260722-mhi-ep-flush-v3-0-d855e715264e@oss.qualcomm.com>
-To: Manivannan Sadhasivam <mani@kernel.org>, Frank Li <Frank.Li@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Kishon Vijay Abraham I <kishon@kernel.org>, 
- Bjorn Helgaas <bhelgaas@google.com>
-Cc: linux-kernel@vger.kernel.org, mhi@lists.linux.dev, 
- linux-arm-msm@vger.kernel.org, linux-pci@vger.kernel.org, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1534;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=qLqfbvmjnz3X26mpqAuThVFaSvP9MX15HVPTE+SgzCA=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqYFsuC5PTByf4wCyyQefH6+dH7fRf88dhESowk
- g8bnZx4gV2JATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCamBbLgAKCRBVnxHm/pHO
- 9fPIB/4tKg/A7Sh52QXah2k7JDw+eLTsYikqwlLXwhDPptp7RQX/qFLQ0DgVysZpfZcZckmyA5S
- 6nk5qorgHBaBKqaxK11czAOEyCLCce/g3WU8L509g6PdgKAol0YiwIMHH9zzJ7b2f7RhDD8w/UE
- M3RxgU+XEGTL1eQ5t6BCrVQwHYFcHI3OBxVtWVCgmr/OveC5cBafP/aMBEJm/fWBLgE0X/8RX8m
- 1HyCQqzKl5hMoqMOendaQvux0lpehBvwm3EJDuXfSKtuUqQ7wmTnKyqxKXYaReRxSChlkFfV3xu
- lcOSlcIn4g9ayftzxSN8PAH5hgasKJR+jImIlazUaMicwUJk
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+X-B4-Tracking: v=1; b=H4sIACpvYGoC/3XNSw7CIBCA4as0rKXhMUDrynsYF4jUsqhtAFHT9
+ O7S6qLGdDX5J5lvRhSsdzagfTEib5MLrr/lgF2BTKtvV4vdJTdihEmiqMT3IURvdYddlJKJz5B
+ YVgr0udKCE4Hy8eBt454LfDzlbl2IvX8tfxKdt1+SkS0yUUwwKFFT1igAUR9ctKXpuzI+0Gwmt
+ nbopsOyoww0XEgwmld/Dl87bNPh2alBWUEaQpWEH2eapjffdOrPTQEAAA==
+X-Change-ID: 20260716-upstream-it6625-it6626-6874ab8a5305
+To: Hermes Wu <Hermes.Wu@ite.com.tw>, 
+ Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-media@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Hermes Wu <Hermes.wu@ite.com.tw>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784704811; l=4332;
+ i=Hermes.wu@ite.com.tw; s=20241230; h=from:subject:message-id;
+ bh=/EgEB+1tc9COcTS4TL2bIEnOqFyGfjatQ4DEGOraLuA=;
+ b=CiKl0Xd2Wsdb7r56TcG/evVEQt7HpX5HUe1oYdQ7M9I10O4xSxGu3NfNA7Vq+gxgT7U2eA/et
+ aDnFEBTklW8BAxMdjzBlldn3TIb0vYO4mJ5pHBCa+1wkqIq1yKrXw3j
+X-Developer-Key: i=Hermes.wu@ite.com.tw; a=ed25519;
+ pk=qho5Dawp2WWj9CGyjtJ6/Y10xH8odjRdS6SXDaDAerU=
+X-Endpoint-Received: by B4 Relay for Hermes.wu@ite.com.tw/20241230 with auth_id=310
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-From: Manivannan Sadhasivam <mani@kernel.org>
+This series adds support for the ITE IT6625/IT6626 HDMI to MIPI CSI-2
+bridge chips. IT6625 accepts an HDMI 2.0 input and IT6626 an HDMI 2.1
+input, converting it to a D-PHY (or C/D-PHY on IT6626) MIPI CSI-2
+output. The bridge is configured over I2C, exposes an HDMI CEC
+adapter, and supports EDID read/write, DV timings detection and
+configuration, and HPD control via the standard V4L2 subdevice pad
+and video ops.
 
-The MHI core needs to make sure that all the current DMA transactions are
-completed before removing the channels. So implement the
-mhi_cntrl->flush_async() callback by first making sure all the in-flight
-DMA operations are completed and then flushing the DMA workqueue.
+Patch 1 documents the devicetree binding for the bridge, including
+its two selectable CSI-2 output graph ports.
 
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Patch 2 adds the V4L2 subdevice driver itself.
+
+Signed-off-by: Hermes Wu <Hermes.wu@ite.com.tw>
 ---
- drivers/pci/endpoint/functions/pci-epf-mhi.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+Changes in v4:
+- Patch 2 (driver): fix further correctness issues found by automated
+  review of v3 -- a CEC RX interrupt left unacknowledged on an invalid
+  message length could storm the IRQ line, set_fmt returned -EINVAL
+  for an unrecognized format code instead of falling back to a
+  default, get_fmt's active-path reads of the format state were
+  unlocked against a concurrent set_fmt, g_edid/s_edid didn't follow
+  the VIDIOC_G/S_EDID spec for over-capacity requests, and the two
+  mipi_reg debugfs handlers were missing locking/offset handling; also
+  mark the HDMI info control volatile so it is actually refreshed. See
+  the patch's own changelog for the full list. Separately (not a
+  review finding), drop a redundant FW-start register trigger from
+  probe -- the firmware starts automatically on power-on.
+- Patch 1 (dt-bindings): drop the unused port@2 (HDMI input) graph
+  port entirely rather than the review's suggested fix of adding it to
+  required, and require bus-type on port@0/port@1 endpoints for
+  "ite,it6626" specifically, since only that variant's D-PHY default
+  can silently mismatch actual board wiring. Both found by the
+  automated review of v3, which also flagged one other dt-bindings
+  issue that was checked and is not being acted on -- see the patch's
+  own changelog for the reasoning.
+- Link to v3: https://lore.kernel.org/r/20260722-upstream-it6625-it6626-v3-0-947e50f01764@ite.com.tw
 
-diff --git a/drivers/pci/endpoint/functions/pci-epf-mhi.c b/drivers/pci/endpoint/functions/pci-epf-mhi.c
-index 7f5326925ed5..8d2d9d01cfd2 100644
---- a/drivers/pci/endpoint/functions/pci-epf-mhi.c
-+++ b/drivers/pci/endpoint/functions/pci-epf-mhi.c
-@@ -644,6 +644,15 @@ static int pci_epf_mhi_edma_write_async(struct mhi_ep_cntrl *mhi_cntrl,
- 	return ret;
- }
- 
-+static void pci_epf_mhi_edma_flush_async(struct mhi_ep_cntrl *mhi_cntrl)
-+{
-+	struct pci_epf_mhi *epf_mhi = to_epf_mhi(mhi_cntrl);
-+
-+	dmaengine_synchronize(epf_mhi->dma_chan_rx);
-+	dmaengine_synchronize(epf_mhi->dma_chan_tx);
-+	flush_workqueue(epf_mhi->dma_wq);
-+}
-+
- struct epf_dma_filter {
- 	struct device *dev;
- 	u32 dma_mask;
-@@ -812,6 +821,7 @@ static int pci_epf_mhi_link_up(struct pci_epf *epf)
- 		mhi_cntrl->write_sync = pci_epf_mhi_edma_write;
- 		mhi_cntrl->read_async = pci_epf_mhi_edma_read_async;
- 		mhi_cntrl->write_async = pci_epf_mhi_edma_write_async;
-+		mhi_cntrl->flush_async = pci_epf_mhi_edma_flush_async;
- 	}
- 
- 	/* Register the MHI EP controller */
+Changes in v3:
+- Patch 2 (driver): fix further correctness issues found by automated
+  review of v2 -- two banked-register reads still missing a lock, a
+  CEC RX length TOCTOU and a dropped CEC TX interrupt on invalid RX
+  length, it6625_s_edid() treating a successful write as a failure,
+  missing V4L2_SUBDEV_FORMAT_TRY support, an unlocked active-format
+  commit, and detected timings lumping the whole blanking interval
+  into hsync/vsync instead of reading the real porch registers. See
+  the patch's own changelog for the full list, including four other
+  v2 review findings that were checked and are not being acted on
+  (with reasoning).
+- Patch 1 (dt-bindings): unchanged.
+- Link to v2: https://lore.kernel.org/r/20260721-upstream-it6625-it6626-v2-0-7c4f3564ca38@ite.com.tw
 
+Changes in v2:
+- Patch 2 (driver): fix several correctness issues found by automated
+  review of v1 -- premature V4L2 async subdev registration/teardown
+  ordering, a missing-lock race on banked register reads, a
+  status-poll interval bug, a dropped CEC interrupt, an unacked CEC
+  transmit, set_fmt mutating active state on TRY, EDID blocks=0
+  handling, and a couple of uninitialized-stack hardening fixes. See
+  the patch's own changelog for the full list.
+- Patch 1 (dt-bindings): restrict port@0/port@1 bus-type to D-PHY (4)
+  only for "ite,it6625", since that chip doesn't support C-PHY (also
+  found by the automated review of v1).
+- Link to v1: https://lore.kernel.org/r/20260720-upstream-it6625-it6626-v1-0-475912f74459@ite.com.tw
+
+---
+Hermes Wu (2):
+      dt-bindings: media: add ITE IT6625/IT6626 HDMI bridge binding
+      media: i2c: add driver for ITE IT6625/IT6626
+
+ .../devicetree/bindings/media/i2c/ite,it6625.yaml  |  169 ++
+ MAINTAINERS                                        |    7 +
+ drivers/media/i2c/Kconfig                          |   18 +
+ drivers/media/i2c/Makefile                         |    1 +
+ drivers/media/i2c/it6625.c                         | 2155 ++++++++++++++++++++
+ 5 files changed, 2350 insertions(+)
+---
+base-commit: 8dac27bfa2f994ecb11f01a63641527d17d48fc1
+change-id: 20260716-upstream-it6625-it6626-6874ab8a5305
+
+Best regards,
 -- 
-2.43.0
+Hermes Wu <Hermes.wu@ite.com.tw>
 
