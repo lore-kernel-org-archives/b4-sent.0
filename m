@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Wed, 22 Jul 2026 16:41:12 -0700
-Subject: [PATCH v4 04/16] mm: hugetlb: Remove unused
- mem_cgroup_charge_hugetlb function
+Date: Wed, 22 Jul 2026 16:41:13 -0700
+Subject: [PATCH v4 05/16] mm: hugetlb: Fix subpool usage leak on allocation
+ failure
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260722-hugetlb-alloc-failure-fixes-v4-4-88e8b81970dc@google.com>
+Message-Id: <20260722-hugetlb-alloc-failure-fixes-v4-5-88e8b81970dc@google.com>
 References: <20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com>
 In-Reply-To: <20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com>
 To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
@@ -24,99 +24,127 @@ To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>,
  Hongxiang Lou <louhongxiang@huawei.com>, Miaohe Lin <linmiaohe@huawei.com>
 Cc: vannapurve@google.com, erdemaktas@google.com, linux-mm@kvack.org, 
  linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, 
- linux-doc@vger.kernel.org, Ackerley Tng <ackerleytng@google.com>
+ linux-doc@vger.kernel.org, Ackerley Tng <ackerleytng@google.com>, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784763678; l=2865;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784763678; l=4429;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=+gjdnJUXRCMSVp+BWhjDe3KtAs27/6SLSiAQUKfU/dw=;
- b=kqwcwPC/GCxB/BUQtS9LtL+7g51a/az0dlTIwy29hV9Q3jlMV9rROOA/Qw2WWy3T+Z0ixUMuD
- ibAIP93u5+dB/8Db6AodxtWs1Ks5khIBrdF7HEQh5/cBr57/m87R30e
+ bh=aioziCwNl1YhUSW9QJsopoiM0FNET1b5J61jDqmRBgE=;
+ b=EgFMKfYcEA2o7aDdaYSsd6UI7TTvR5GAm70ONUg9KMMDn45zAWhKmQCqMLfU8tl73gxpDjjB4
+ l7LDr/Y+kTGDj3eEZeDlBJW0M2vKZYYopIAGmS2bhziu7J6FHpt5CR0
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Now that the alloc_hugetlb_folio path has been successfully migrated to
-the new try-commit-cancel memcg charging protocol, the old
-mem_cgroup_charge_hugetlb function and its associated header and
-static inline declarations are completely unused. Remove them to clean
-up the memory controller's codebase.
+When alloc_hugetlb_folio() fails early (e.g. buddy allocation failure or
+hugetlb cgroup charging failure) and gbl_chg == 1 (meaning a reservation
+was not used, but a global page was allocated instead), the subpool page
+acquired via hugepage_subpool_get_pages() must still be returned.
 
+Currently, the error path out_subpool_put: only calls
+hugepage_subpool_put_pages() if !gbl_chg is true. If gbl_chg is 1, it
+skips it, permanently leaking the subpool's used_hpages counter.
+
+With the earlier patch to always track used_hpages in the subpool, always
+call hugepage_subpool_put_pages() if map_chg is true to consistently
+restore the page to the subpool. Condition on map_chg because map_chg also
+gates hugepage_subpool_get_pages().
+
+Opportunistically rename gbl_chg to gbl_resv_get, which is the number of
+global pages needed (because neither resv_map nor subpool reservations
+could be used).
+
+If the number of global pages needed is 0, this allocation uses a
+reservation somewhere, hence proceed to consume a reservation by
+decrementing h->resv_huge_pages. If the number of global pages needed is 1,
+reservations are neither created nor consumed.
+
+Also rename gbl_reserve to gbl_resv_put, which is the number of
+pages the subpool could not absorb into its reservations.
+
+Adjust global reservations using hugetlb_acct_memory() with the difference
+between gbl_resv_get and gbl_resv_put to take care of possible races where
+another thread might have performed get or put with the same subpool, hence
+perhaps requiring updates to global reservation counts. (If gbl_resv_get ==
+0 because a resv_map reservation was used, map_chg == 0 so the entire
+subpool returning is skipped - still correct.)
+
+Fixes: a833a693a490e ("mm: hugetlb: fix incorrect fallback for subpool")
+Cc: stable@vger.kernel.org
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- include/linux/memcontrol.h |  6 ------
- mm/memcontrol.c            | 34 ----------------------------------
- 2 files changed, 40 deletions(-)
+ mm/hugetlb.c | 23 ++++++++++-------------
+ 1 file changed, 10 insertions(+), 13 deletions(-)
 
-diff --git a/include/linux/memcontrol.h b/include/linux/memcontrol.h
-index 2c3e2c62f4176..3bdf35dc2d88f 100644
---- a/include/linux/memcontrol.h
-+++ b/include/linux/memcontrol.h
-@@ -641,7 +641,6 @@ static inline int mem_cgroup_charge(struct folio *folio, struct mm_struct *mm,
- 	return __mem_cgroup_charge(folio, mm, gfp);
- }
+diff --git a/mm/hugetlb.c b/mm/hugetlb.c
+index 5ee1bc5c00bfe..879e4640dc50d 100644
+--- a/mm/hugetlb.c
++++ b/mm/hugetlb.c
+@@ -2872,7 +2872,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
+ 	struct hugepage_subpool *spool = subpool_vma(vma);
+ 	struct hstate *h = hstate_vma(vma);
+ 	struct folio *folio;
+-	long retval, gbl_chg, gbl_reserve;
++	long retval, gbl_resv_get;
+ 	map_chg_state map_chg;
+ 	int ret, idx;
+ 	struct hugetlb_cgroup *h_cg = NULL;
+@@ -2912,15 +2912,15 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
+ 	 * Or if it can get one from the pool reservation directly.
+ 	 */
+ 	if (map_chg) {
+-		gbl_chg = hugepage_subpool_get_pages(spool, 1);
+-		if (gbl_chg < 0)
++		gbl_resv_get = hugepage_subpool_get_pages(spool, 1);
++		if (gbl_resv_get < 0)
+ 			goto out_end_reservation;
+ 	} else {
+ 		/*
+ 		 * If we have the vma reservation ready, no need for extra
+ 		 * global reservation.
+ 		 */
+-		gbl_chg = 0;
++		gbl_resv_get = 0;
+ 	}
  
--int mem_cgroup_charge_hugetlb(struct folio* folio, gfp_t gfp);
- int mem_cgroup_hugetlb_try_charge(unsigned int nr_pages, gfp_t gfp,
- 				  struct mem_cgroup **memcg_p,
- 				  struct obj_cgroup **objcg_p);
-@@ -1133,11 +1132,6 @@ static inline bool mem_cgroup_below_min(struct mem_cgroup *target,
- 
- static inline int mem_cgroup_charge(struct folio *folio,
- 		struct mm_struct *mm, gfp_t gfp)
--{
--	return 0;
--}
--
--static inline int mem_cgroup_charge_hugetlb(struct folio* folio, gfp_t gfp)
- {
-         return 0;
- }
-diff --git a/mm/memcontrol.c b/mm/memcontrol.c
-index 0beee5c0ce93b..6764ff041c196 100644
---- a/mm/memcontrol.c
-+++ b/mm/memcontrol.c
-@@ -5146,40 +5146,6 @@ int __mem_cgroup_charge(struct folio *folio, struct mm_struct *mm, gfp_t gfp)
- 	return ret;
- }
- 
--/**
-- * mem_cgroup_charge_hugetlb - charge the memcg for a hugetlb folio
-- * @folio: folio being charged
-- * @gfp: reclaim mode
-- *
-- * This function is called when allocating a huge page folio, after the page has
-- * already been obtained and charged to the appropriate hugetlb cgroup
-- * controller (if it is enabled).
-- *
-- * Returns ENOMEM if the memcg is already full.
-- * Returns 0 if either the charge was successful, or if we skip the charging.
-- */
--int mem_cgroup_charge_hugetlb(struct folio *folio, gfp_t gfp)
--{
--	struct mem_cgroup *memcg = get_mem_cgroup_from_current();
--	int ret = 0;
--
+ 	/*
+@@ -2949,7 +2949,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
+ 	 * from the global free pool (global change).  gbl_chg == 0 indicates
+ 	 * a reservation exists for the allocation.
+ 	 */
+-	folio = dequeue_hugetlb_folio_vma(h, vma, addr, gbl_chg);
++	folio = dequeue_hugetlb_folio_vma(h, vma, addr, gbl_resv_get);
+ 	if (!folio) {
+ 		spin_unlock_irq(&hugetlb_lock);
+ 		folio = alloc_buddy_hugetlb_folio_with_mpol(h, vma, addr);
+@@ -2965,7 +2965,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
+ 	 * Either dequeued or buddy-allocated folio needs to add special
+ 	 * mark to the folio when it consumes a global reservation.
+ 	 */
+-	if (!gbl_chg) {
++	if (!gbl_resv_get) {
+ 		folio_set_hugetlb_restore_reserve(folio);
+ 		h->resv_huge_pages--;
+ 	}
+@@ -3022,13 +3022,10 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
+ 		hugetlb_cgroup_uncharge_cgroup_rsvd(idx, pages_per_huge_page(h),
+ 						    h_cg_rsvd);
+ out_subpool_put:
 -	/*
--	 * Even memcg does not account for hugetlb, we still want to update
--	 * system-level stats via lruvec_stat_mod_folio. Return 0, and skip
--	 * charging the memcg.
+-	 * put page to subpool iff the quota of subpool's rsv_hpages is used
+-	 * during hugepage_subpool_get_pages.
 -	 */
--	if (mem_cgroup_disabled() || !memcg_accounts_hugetlb() ||
--		!memcg || !cgroup_subsys_on_dfl(memory_cgrp_subsys))
--		goto out;
--
--	if (charge_memcg(folio, memcg, gfp))
--		ret = -ENOMEM;
--
--out:
--	mem_cgroup_put(memcg);
--	return ret;
--}
--
- /**
-  * mem_cgroup_hugetlb_try_charge - Try to charge the memcg for a hugetlb folio
-  * @nr_pages: number of base pages to charge
+-	if (map_chg && !gbl_chg) {
+-		gbl_reserve = hugepage_subpool_put_pages(spool, 1);
+-		hugetlb_acct_memory(h, -gbl_reserve);
++	if (map_chg) {
++		long gbl_resv_put = hugepage_subpool_put_pages(spool, 1);
++
++		hugetlb_acct_memory(h, gbl_resv_get - gbl_resv_put);
+ 	}
+ 
+ 
 
 -- 
 2.55.0.229.g6434b31f56-goog
