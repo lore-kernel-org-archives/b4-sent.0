@@ -1,11 +1,10 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Wed, 22 Jul 2026 16:50:21 +0100
-Subject: [PATCH v9 12/17] iio: frequency: ad9910: add digital ramp
- generator support
+Date: Wed, 22 Jul 2026 16:50:22 +0100
+Subject: [PATCH v9 13/17] iio: frequency: ad9910: add RAM mode support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260722-ad9910-iio-driver-v9-12-459d1df5ac56@analog.com>
+Message-Id: <20260722-ad9910-iio-driver-v9-13-459d1df5ac56@analog.com>
 References: <20260722-ad9910-iio-driver-v9-0-459d1df5ac56@analog.com>
 In-Reply-To: <20260722-ad9910-iio-driver-v9-0-459d1df5ac56@analog.com>
 To: linux-iio@vger.kernel.org, devicetree@vger.kernel.org, 
@@ -21,584 +20,597 @@ Cc: Lars-Peter Clausen <lars@metafoo.de>,
  Kees Cook <kees@kernel.org>, "Gustavo A. R. Silva" <gustavoars@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784735456; l=18823;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784735456; l=19963;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=0DkNlFjtphp2n9PU/luo6bJ9oh2P2mCD1ZGZxRc7MoI=;
- b=j/XSXxFrficSZLki/XzpuzzzPh3F73IJ9OCI8EJ41aVekGwQIgu9izyX5Pv1azXW4BKjWkZm3
- 7FVO5eb8BynAQI3kv3o1XZ3p6DdeyprtHNF4qKsB58v6ZdR4V9XrH+i
+ bh=x91goLxOizXgRQfFJJYYiGzZpKAboID1nbAoprAi3lY=;
+ b=g0vOhD6is2y3TXXBxNWKYarUsUzxngibn0Pzvf1sLz03WwdwNQip1rEZQZGnuvkpF7XcxqNhS
+ XRAAdbdx4cLALCimRrw7QZHAcjREDG41WxhvyrEn9dergScA9s4xLRs
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add Digital Ramp Generator channels with destination selection (frequency,
-phase, or amplitude) based on attribute writes, dwell mode control,
-configurable upper/lower limits, step size controlled with rate of change
-config, and step rate controlled as sampling frequency.
+Add RAM control channel, which includes:
+- RAM data loading via firmware upload interface;
+- Per-profile configuration and DDS core parameter destination as firmware
+  metadata;
+- Profile switching relying on profile channels;
+- Sampling frequency control of the active profile;
+- ram-enable-aware read/write paths that redirect single tone
+  frequency/phase/amplitude access through reg_profile cache when RAM is
+  active;
+
+When RAM is enabled, the DDS profile parameters (frequency, phase,
+amplitude) for the single tone mode are sourced from a shadow register
+cache (reg_profile[]) since the profile registers are repurposed for RAM
+control.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- drivers/iio/frequency/ad9910.c | 401 ++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 399 insertions(+), 2 deletions(-)
+ drivers/iio/frequency/Kconfig  |   3 +
+ drivers/iio/frequency/ad9910.c | 341 ++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 337 insertions(+), 7 deletions(-)
 
+diff --git a/drivers/iio/frequency/Kconfig b/drivers/iio/frequency/Kconfig
+index 6033f9155b4f..994d199080eb 100644
+--- a/drivers/iio/frequency/Kconfig
++++ b/drivers/iio/frequency/Kconfig
+@@ -29,6 +29,9 @@ config AD9910
+ 	tristate "Analog Devices AD9910 Direct Digital Synthesizer"
+ 	depends on SPI
+ 	depends on GPIOLIB
++	select CRC32
++	select FW_LOADER
++	select FW_UPLOAD
+ 	help
+ 	  Say yes here to build support for Analog Devices AD9910
+ 	  1 GSPS, 14-Bit DDS with integrated DAC.
 diff --git a/drivers/iio/frequency/ad9910.c b/drivers/iio/frequency/ad9910.c
-index aaeff2e7640e..6c794e1b4b1c 100644
+index 6c794e1b4b1c..844cc0cc8f3e 100644
 --- a/drivers/iio/frequency/ad9910.c
 +++ b/drivers/iio/frequency/ad9910.c
-@@ -140,6 +140,18 @@
- #define AD9910_MC_SYNC_OUTPUT_DELAY_MSK		GENMASK(15, 11)
- #define AD9910_MC_SYNC_INPUT_DELAY_MSK		GENMASK(7, 3)
- 
-+/* Digital Ramp Limit Register */
-+#define AD9910_DRG_LIMIT_UPPER_MSK		GENMASK_ULL(63, 32)
-+#define AD9910_DRG_LIMIT_LOWER_MSK		GENMASK_ULL(31, 0)
-+
-+/* Digital Ramp Step Register */
-+#define AD9910_DRG_STEP_DEC_MSK			GENMASK_ULL(63, 32)
-+#define AD9910_DRG_STEP_INC_MSK			GENMASK_ULL(31, 0)
-+
-+/* Digital Ramp Rate Register */
-+#define AD9910_DRG_RATE_DEC_MSK			GENMASK(31, 16)
-+#define AD9910_DRG_RATE_INC_MSK			GENMASK(15, 0)
-+
- /* Profile Register Format (Single Tone Mode) */
- #define AD9910_PROFILE_ST_ASF_MSK		GENMASK_ULL(61, 48)
+@@ -8,11 +8,14 @@
+ #include <linux/array_size.h>
+ #include <linux/bitfield.h>
+ #include <linux/clk.h>
++#include <linux/crc32.h>
++#include <linux/debugfs.h>
+ #include <linux/delay.h>
+ #include <linux/device-id/of.h>
+ #include <linux/device-id/spi.h>
+ #include <linux/device/devres.h>
+ #include <linux/err.h>
++#include <linux/firmware.h>
+ #include <linux/gpio/consumer.h>
+ #include <linux/log2.h>
+ #include <linux/math64.h>
+@@ -157,6 +160,15 @@
  #define AD9910_PROFILE_ST_POW_MSK		GENMASK_ULL(47, 32)
-@@ -147,6 +159,7 @@
+ #define AD9910_PROFILE_ST_FTW_MSK		GENMASK_ULL(31, 0)
  
++/* Profile Register Format (RAM Mode) */
++#define AD9910_PROFILE_RAM_OPEN_MSK		GENMASK_ULL(61, 56)
++#define AD9910_PROFILE_RAM_STEP_RATE_MSK	GENMASK_ULL(55, 40)
++#define AD9910_PROFILE_RAM_END_ADDR_MSK		GENMASK_ULL(39, 30)
++#define AD9910_PROFILE_RAM_START_ADDR_MSK	GENMASK_ULL(23, 14)
++#define AD9910_PROFILE_RAM_NO_DWELL_HIGH_MSK	BIT_ULL(5)
++#define AD9910_PROFILE_RAM_ZERO_CROSSING_MSK	BIT_ULL(3)
++#define AD9910_PROFILE_RAM_MODE_CONTROL_MSK	GENMASK_ULL(2, 0)
++
  /* Device constants */
  #define AD9910_PI_NANORAD		3141592653UL
-+#define AD9910_PI_PICORAD		3141592653590ULL
- 
- #define AD9910_MAX_SYSCLK_HZ		(1000 * HZ_PER_MHZ)
- #define AD9910_MAX_PHASE_MICRORAD	(AD9910_PI_NANORAD / 500)
-@@ -155,6 +168,7 @@
- #define AD9910_ASF_PP_LSB_MAX		FIELD_MAX(AD9910_ASF_SCALE_FACTOR_PP_LSB_MSK)
- #define AD9910_POW_MAX			FIELD_MAX(AD9910_PROFILE_ST_POW_MSK)
- #define AD9910_POW_PP_LSB_MAX		FIELD_MAX(AD9910_POW_PP_LSB_MSK)
-+#define AD9910_STEP_RATE_MAX		FIELD_MAX(AD9910_DRG_RATE_DEC_MSK)
+ #define AD9910_PI_PICORAD		3141592653590ULL
+@@ -171,6 +183,16 @@
+ #define AD9910_STEP_RATE_MAX		FIELD_MAX(AD9910_DRG_RATE_DEC_MSK)
  #define AD9910_NUM_PROFILES		8
  
++#define AD9910_RAM_FW_MAGIC		0x00AD9910
++#define AD9910_RAM_FW_V1		0x0001
++#define AD9910_RAM_SIZE_MAX_WORDS	1024
++#define AD9910_RAM_WORD_SIZE		sizeof(u32)
++#define AD9910_RAM_SIZE_MAX_BYTES	(AD9910_RAM_SIZE_MAX_WORDS * AD9910_RAM_WORD_SIZE)
++#define AD9910_RAM_ADDR_MAX		(AD9910_RAM_SIZE_MAX_WORDS - 1)
++
++#define AD9910_RAM_ENABLED(st)		\
++	FIELD_GET(AD9910_CFR1_RAM_ENABLE_MSK, (st)->reg[AD9910_REG_CFR1].val32)
++
  /* PLL constants */
-@@ -184,6 +198,7 @@
+ #define AD9910_PLL_MIN_N		12
+ #define AD9910_PLL_MAX_N		127
+@@ -207,7 +229,7 @@
+ #define AD9910_RESET_DELAY_us		1	/* 5 sysclk cycles: < 1us */
  
- /* altcurrent ABI is in mA */
- #define AD9910_NANO_MILLIAMP_PER_MICROAMP	1000000UL
-+#define AD9910_PICO_MILLIAMP_PER_MICROAMP	1000000000UL
- 
- #define AD9910_REFDIV2_MIN_FREQ_HZ	(25 * HZ_PER_MHZ)
- #define AD9910_REFDIV2_MAX_FREQ_HZ	(1900 * HZ_PER_MHZ)
-@@ -211,6 +226,9 @@
-  * @AD9910_CHANNEL_PROFILE_7: Profile 7 output channel
-  * @AD9910_CHANNEL_PARALLEL: Parallel Data output channel
-  * @AD9910_CHANNEL_PARALLEL_POLAR: Parallel Polar Data output channel
-+ * @AD9910_CHANNEL_DRG: Digital Ramp Generator output channel
-+ * @AD9910_CHANNEL_DRG_RAMP_UP: DRG ramp up channel
-+ * @AD9910_CHANNEL_DRG_RAMP_DOWN: DRG ramp down channel
+ #define AD9910_SPI_DATA_IDX		1
+-#define AD9910_SPI_DATA_LEN_MAX		sizeof(__be64)
++#define AD9910_SPI_DATA_LEN_MAX		AD9910_RAM_SIZE_MAX_BYTES
+ #define AD9910_SPI_MESSAGE_LEN_MAX	(AD9910_SPI_DATA_IDX + AD9910_SPI_DATA_LEN_MAX)
+ #define AD9910_SPI_READ_MSK		BIT(7)
+ #define AD9910_SPI_ADDR_MSK		GENMASK(4, 0)
+@@ -229,6 +251,7 @@
+  * @AD9910_CHANNEL_DRG: Digital Ramp Generator output channel
+  * @AD9910_CHANNEL_DRG_RAMP_UP: DRG ramp up channel
+  * @AD9910_CHANNEL_DRG_RAMP_DOWN: DRG ramp down channel
++ * @AD9910_CHANNEL_RAM: RAM control output channel
   */
  enum ad9910_channel {
  	AD9910_CHANNEL_PHY = 100,
-@@ -224,6 +242,9 @@ enum ad9910_channel {
- 	AD9910_CHANNEL_PROFILE_7 = 117,
- 	AD9910_CHANNEL_PARALLEL = 120,
- 	AD9910_CHANNEL_PARALLEL_POLAR = 121,
-+	AD9910_CHANNEL_DRG = 130,
-+	AD9910_CHANNEL_DRG_RAMP_UP = 131,
-+	AD9910_CHANNEL_DRG_RAMP_DOWN = 132,
+@@ -245,8 +268,32 @@ enum ad9910_channel {
+ 	AD9910_CHANNEL_DRG = 130,
+ 	AD9910_CHANNEL_DRG_RAMP_UP = 131,
+ 	AD9910_CHANNEL_DRG_RAMP_DOWN = 132,
++	AD9910_CHANNEL_RAM = 140,
+ };
+ 
++/**
++ * struct ad9910_ram_fw - AD9910 RAM firmware format
++ * @magic:	Magic number for RAM firmware validation
++ * @version:	Firmware version number
++ * @wcount:	Number of RAM words to be written
++ * @crc:	CRC32 checksum of the RAM data for integrity verification
++ * @cfr1:	Value of CFR1 register to be configured (not all fields are
++ *		used, but this is included here for convenience)
++ * @profiles:	Array of RAM profile configurations
++ * @words:	Array of RAM words to be written. Data pattern should be set in
++ *		reverse order and wcount specifies the number of words in this
++ *		array
++ */
++struct ad9910_ram_fw {
++	__be32 magic;
++	__be16 version;
++	__be16 wcount;
++	__be32 crc;
++	__be32 cfr1;
++	__be64 profiles[AD9910_NUM_PROFILES];
++	__be32 words[] __counted_by_be(wcount);
++} __packed;
++
+ enum {
+ 	AD9910_CHAN_IDX_PHY,
+ 	AD9910_CHAN_IDX_PROFILE_0,
+@@ -271,6 +318,7 @@ enum {
+ 	AD9910_CHAN_IDX_DRG_PHASE_RAMP_DOWN,
+ 	AD9910_CHAN_IDX_DRG_AMP_RAMP_UP,
+ 	AD9910_CHAN_IDX_DRG_AMP_RAMP_DOWN,
++	AD9910_CHAN_IDX_RAM,
  };
  
  enum {
-@@ -241,10 +262,21 @@ enum {
- 	AD9910_CHAN_IDX_PARALLEL_FREQ,
- 	AD9910_CHAN_IDX_PARALLEL_POLAR_AMP,
- 	AD9910_CHAN_IDX_PARALLEL_POLAR_PHASE,
-+	AD9910_CHAN_IDX_DRG_FREQ,
-+	AD9910_CHAN_IDX_DRG_PHASE,
-+	AD9910_CHAN_IDX_DRG_AMP,
-+	AD9910_CHAN_IDX_DRG_FREQ_RAMP_UP,
-+	AD9910_CHAN_IDX_DRG_FREQ_RAMP_DOWN,
-+	AD9910_CHAN_IDX_DRG_PHASE_RAMP_UP,
-+	AD9910_CHAN_IDX_DRG_PHASE_RAMP_DOWN,
-+	AD9910_CHAN_IDX_DRG_AMP_RAMP_UP,
-+	AD9910_CHAN_IDX_DRG_AMP_RAMP_DOWN,
- };
+@@ -297,6 +345,7 @@ union ad9910_reg {
+ struct ad9910_state {
+ 	struct spi_device *spi;
+ 	struct clk *refclk;
++	struct fw_upload *ram_fwu;
  
- enum {
- 	AD9910_POWERDOWN,
-+	AD9910_DWELL_EN,
-+	AD9910_ROC,
- };
+ 	struct gpio_desc *gpio_pwdown;
+ 	struct gpio_desc *gpio_update;
+@@ -305,12 +354,22 @@ struct ad9910_state {
+ 	/* cached registers */
+ 	union ad9910_reg reg[AD9910_REG_NUM_CACHED];
  
- struct ad9910_data {
-@@ -547,6 +579,14 @@ static ssize_t ad9910_ext_info_read(struct iio_dev *indio_dev,
- 	case AD9910_POWERDOWN:
- 		val = ad9910_sw_powerdown_get(st);
- 		break;
-+	case AD9910_DWELL_EN:
-+		if (chan->channel == AD9910_CHANNEL_DRG_RAMP_UP)
-+			val = FIELD_GET(AD9910_CFR2_DRG_NO_DWELL_HIGH_MSK,
-+					st->reg[AD9910_REG_CFR2].val32) ? 0 : 1;
-+		else
-+			val = FIELD_GET(AD9910_CFR2_DRG_NO_DWELL_LOW_MSK,
-+					st->reg[AD9910_REG_CFR2].val32) ? 0 : 1;
-+		break;
- 	default:
- 		return -EINVAL;
- 	}
-@@ -575,6 +615,113 @@ static ssize_t ad9910_ext_info_write(struct iio_dev *indio_dev,
- 		if (ret)
- 			return ret;
- 		break;
-+	case AD9910_DWELL_EN:
-+		if (chan->channel == AD9910_CHANNEL_DRG_RAMP_UP) {
-+			val32 = val32 ? 0 : AD9910_CFR2_DRG_NO_DWELL_HIGH_MSK;
-+			ret = ad9910_reg32_update(st, AD9910_REG_CFR2,
-+						  AD9910_CFR2_DRG_NO_DWELL_HIGH_MSK,
-+						  val32, true);
-+			if (ret)
-+				return ret;
-+		} else {
-+			val32 = val32 ? 0 : AD9910_CFR2_DRG_NO_DWELL_LOW_MSK;
-+			ret = ad9910_reg32_update(st, AD9910_REG_CFR2,
-+						  AD9910_CFR2_DRG_NO_DWELL_LOW_MSK,
-+						  val32, true);
-+			if (ret)
-+				return ret;
-+		}
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
++	/*
++	 * alternate profile registers used to store RAM profile settings when
++	 * RAM mode is disabled and Single Tone profile settings when RAM mode
++	 * is enabled.
++	 */
++	u64 reg_profile[AD9910_NUM_PROFILES];
 +
-+	return len;
+ 	/* Lock for accessing device registers and state variables */
+ 	struct mutex lock;
+ 
+ 	struct ad9910_data data;
+ 	u8 profile;
+ 
++	bool ram_fwu_cancel;
++	char ram_fwu_name[20];
++
+ 	/*
+ 	 * RAM loading requires a reasonable amount of bytes, at the same time
+ 	 * DMA capable SPI drivers requires the transfer buffers to live in
+@@ -334,6 +393,22 @@ static inline u64 ad9910_rational_scale(u64 input, u64 scale, u64 reference)
+ 	return mul_u64_add_u64_div_u64(input, scale, reference >> 1, reference);
+ }
+ 
++static inline u64 ad9910_ram_profile_val(struct ad9910_state *st)
++{
++	if (AD9910_RAM_ENABLED(st))
++		return st->reg[AD9910_REG_PROFILE(st->profile)].val64;
++	else
++		return st->reg_profile[st->profile];
 +}
 +
-+static ssize_t ad9910_drg_roc_read(struct iio_dev *indio_dev, uintptr_t private,
-+				   const struct iio_chan_spec *chan,
-+				   char *buf)
++static inline u64 ad9910_st_profile_val(struct ad9910_state *st, u8 profile)
 +{
-+	struct ad9910_state *st = iio_priv(indio_dev);
-+	u64 roc64;
-+	u32 rate;
-+
-+	guard(mutex)(&st->lock);
-+
-+	switch (chan->channel) {
-+	case AD9910_CHANNEL_DRG_RAMP_UP:
-+		roc64 = FIELD_GET(AD9910_DRG_STEP_INC_MSK,
-+				  st->reg[AD9910_REG_DRG_STEP].val64);
-+		rate = FIELD_GET(AD9910_DRG_RATE_INC_MSK,
-+				 st->reg[AD9910_REG_DRG_RATE].val32);
-+		break;
-+	case AD9910_CHANNEL_DRG_RAMP_DOWN:
-+		roc64 = FIELD_GET(AD9910_DRG_STEP_DEC_MSK,
-+				  st->reg[AD9910_REG_DRG_STEP].val64);
-+		rate = FIELD_GET(AD9910_DRG_RATE_DEC_MSK,
-+				 st->reg[AD9910_REG_DRG_RATE].val32);
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+
-+	if (!rate)
-+		return -ERANGE;
-+
-+	roc64 *= st->data.sysclk_freq_hz;
-+	return sysfs_emit(buf, "%llu\n", div_u64(roc64, 4 * rate));
++	if (AD9910_RAM_ENABLED(st))
++		return st->reg_profile[profile];
++	else
++		return st->reg[AD9910_REG_PROFILE(profile)].val64;
 +}
 +
-+static ssize_t ad9910_drg_roc_write(struct iio_dev *indio_dev,
-+				    uintptr_t private,
-+				    const struct iio_chan_spec *chan,
-+				    const char *buf, size_t len)
-+{
-+	struct ad9910_state *st = iio_priv(indio_dev);
-+	u64 tmp64;
-+	u32 rate;
-+	int ret;
-+
-+	ret = kstrtou64(buf, 10, &tmp64);
-+	if (ret)
-+		return ret;
-+
-+	guard(mutex)(&st->lock);
-+
-+	switch (chan->channel) {
-+	case AD9910_CHANNEL_DRG_RAMP_UP:
-+		rate = FIELD_GET(AD9910_DRG_RATE_INC_MSK,
-+				 st->reg[AD9910_REG_DRG_RATE].val32);
-+		if (!rate)
-+			return -ERANGE;
-+
-+		tmp64 = ad9910_rational_scale(tmp64, 4 * rate, st->data.sysclk_freq_hz);
-+		tmp64 = min_t(u64, tmp64, U32_MAX);
-+
-+		ret = ad9910_reg64_update(st, AD9910_REG_DRG_STEP,
-+					  AD9910_DRG_STEP_INC_MSK,
-+					  FIELD_PREP(AD9910_DRG_STEP_INC_MSK, tmp64),
-+					  true);
-+		if (ret)
-+			return ret;
-+		break;
-+	case AD9910_CHANNEL_DRG_RAMP_DOWN:
-+		rate = FIELD_GET(AD9910_DRG_RATE_DEC_MSK,
-+				 st->reg[AD9910_REG_DRG_RATE].val32);
-+		if (!rate)
-+			return -ERANGE;
-+
-+		tmp64 = ad9910_rational_scale(tmp64, 4 * rate, st->data.sysclk_freq_hz);
-+		tmp64 = min_t(u64, tmp64, U32_MAX);
-+
-+		ret = ad9910_reg64_update(st, AD9910_REG_DRG_STEP,
-+					  AD9910_DRG_STEP_DEC_MSK,
-+					  FIELD_PREP(AD9910_DRG_STEP_DEC_MSK, tmp64),
-+					  true);
-+		if (ret)
-+			return ret;
-+		break;
- 	default:
- 		return -EINVAL;
- 	}
-@@ -593,6 +740,24 @@ static const struct iio_chan_spec_ext_info ad9910_phy_ext_info[] = {
- 	{ }
- };
- 
-+static const struct iio_chan_spec_ext_info ad9910_drg_ramp_ext_info[] = {
-+	{
-+		.name = "dwell_en",
-+		.read = ad9910_ext_info_read,
-+		.write = ad9910_ext_info_write,
-+		.private = AD9910_DWELL_EN,
-+		.shared = IIO_SEPARATE,
-+	},
-+	{
-+		.name = "raw_roc",
-+		.read = ad9910_drg_roc_read,
-+		.write = ad9910_drg_roc_write,
-+		.private = AD9910_ROC,
-+		.shared = IIO_SEPARATE,
-+	},
-+	{ }
-+};
-+
- #define AD9910_PROFILE_CHAN(idx) {				\
- 	.type = IIO_ALTCURRENT,					\
- 	.indexed = 1,						\
-@@ -672,6 +837,102 @@ static const struct iio_chan_spec ad9910_channels[] = {
- 				      BIT(IIO_CHAN_INFO_SCALE),
- 		.parent = &ad9910_channels[AD9910_CHAN_IDX_PHY],
+ static int ad9910_io_update(struct ad9910_state *st)
+ {
+ 	if (st->gpio_update) {
+@@ -933,6 +1008,18 @@ static const struct iio_chan_spec ad9910_channels[] = {
+ 		.ext_info = ad9910_drg_ramp_ext_info,
+ 		.parent = &ad9910_channels[AD9910_CHAN_IDX_DRG_AMP],
  	},
-+	[AD9910_CHAN_IDX_DRG_FREQ] = {
-+		.type = IIO_FREQUENCY,
-+		.indexed = 1,
-+		.output = 1,
-+		.channel = AD9910_CHANNEL_DRG,
-+		.address = AD9910_CHAN_IDX_DRG_FREQ,
-+		.info_mask_separate = BIT(IIO_CHAN_INFO_ENABLE) |
-+				      BIT(IIO_CHAN_INFO_SCALE),
-+		.parent = &ad9910_channels[AD9910_CHAN_IDX_PHY],
-+	},
-+	[AD9910_CHAN_IDX_DRG_PHASE] = {
-+		.type = IIO_PHASE,
-+		.indexed = 1,
-+		.output = 1,
-+		.channel = AD9910_CHANNEL_DRG,
-+		.address = AD9910_CHAN_IDX_DRG_PHASE,
-+		.info_mask_separate = BIT(IIO_CHAN_INFO_ENABLE) |
-+				      BIT(IIO_CHAN_INFO_SCALE),
-+		.parent = &ad9910_channels[AD9910_CHAN_IDX_PHY],
-+	},
-+	[AD9910_CHAN_IDX_DRG_AMP] = {
++	[AD9910_CHAN_IDX_RAM] = {
 +		.type = IIO_ALTCURRENT,
 +		.indexed = 1,
 +		.output = 1,
-+		.channel = AD9910_CHANNEL_DRG,
-+		.address = AD9910_CHAN_IDX_DRG_AMP,
++		.channel = AD9910_CHANNEL_RAM,
++		.address = AD9910_CHAN_IDX_RAM,
 +		.info_mask_separate = BIT(IIO_CHAN_INFO_ENABLE) |
-+				      BIT(IIO_CHAN_INFO_SCALE),
++				      BIT(IIO_CHAN_INFO_FREQUENCY) |
++				      BIT(IIO_CHAN_INFO_PHASE) |
++				      BIT(IIO_CHAN_INFO_SAMP_FREQ),
 +		.parent = &ad9910_channels[AD9910_CHAN_IDX_PHY],
-+	},
-+	[AD9910_CHAN_IDX_DRG_FREQ_RAMP_UP] = {
-+		.type = IIO_FREQUENCY,
-+		.indexed = 1,
-+		.output = 1,
-+		.channel = AD9910_CHANNEL_DRG_RAMP_UP,
-+		.address = AD9910_CHAN_IDX_DRG_FREQ_RAMP_UP,
-+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
-+				      BIT(IIO_CHAN_INFO_SAMP_FREQ),
-+		.ext_info = ad9910_drg_ramp_ext_info,
-+		.parent = &ad9910_channels[AD9910_CHAN_IDX_DRG_FREQ],
-+	},
-+	[AD9910_CHAN_IDX_DRG_FREQ_RAMP_DOWN] = {
-+		.type = IIO_FREQUENCY,
-+		.indexed = 1,
-+		.output = 1,
-+		.channel = AD9910_CHANNEL_DRG_RAMP_DOWN,
-+		.address = AD9910_CHAN_IDX_DRG_FREQ_RAMP_DOWN,
-+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
-+				      BIT(IIO_CHAN_INFO_SAMP_FREQ),
-+		.ext_info = ad9910_drg_ramp_ext_info,
-+		.parent = &ad9910_channels[AD9910_CHAN_IDX_DRG_FREQ],
-+	},
-+	[AD9910_CHAN_IDX_DRG_PHASE_RAMP_UP] = {
-+		.type = IIO_PHASE,
-+		.indexed = 1,
-+		.output = 1,
-+		.channel = AD9910_CHANNEL_DRG_RAMP_UP,
-+		.address = AD9910_CHAN_IDX_DRG_PHASE_RAMP_UP,
-+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
-+				      BIT(IIO_CHAN_INFO_SAMP_FREQ),
-+		.ext_info = ad9910_drg_ramp_ext_info,
-+		.parent = &ad9910_channels[AD9910_CHAN_IDX_DRG_PHASE],
-+	},
-+	[AD9910_CHAN_IDX_DRG_PHASE_RAMP_DOWN] = {
-+		.type = IIO_PHASE,
-+		.indexed = 1,
-+		.output = 1,
-+		.channel = AD9910_CHANNEL_DRG_RAMP_DOWN,
-+		.address = AD9910_CHAN_IDX_DRG_PHASE_RAMP_DOWN,
-+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
-+				      BIT(IIO_CHAN_INFO_SAMP_FREQ),
-+		.ext_info = ad9910_drg_ramp_ext_info,
-+		.parent = &ad9910_channels[AD9910_CHAN_IDX_DRG_PHASE],
-+	},
-+	[AD9910_CHAN_IDX_DRG_AMP_RAMP_UP] = {
-+		.type = IIO_ALTCURRENT,
-+		.indexed = 1,
-+		.output = 1,
-+		.channel = AD9910_CHANNEL_DRG_RAMP_UP,
-+		.address = AD9910_CHAN_IDX_DRG_AMP_RAMP_UP,
-+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
-+				      BIT(IIO_CHAN_INFO_SAMP_FREQ),
-+		.ext_info = ad9910_drg_ramp_ext_info,
-+		.parent = &ad9910_channels[AD9910_CHAN_IDX_DRG_AMP],
-+	},
-+	[AD9910_CHAN_IDX_DRG_AMP_RAMP_DOWN] = {
-+		.type = IIO_ALTCURRENT,
-+		.indexed = 1,
-+		.output = 1,
-+		.channel = AD9910_CHANNEL_DRG_RAMP_DOWN,
-+		.address = AD9910_CHAN_IDX_DRG_AMP_RAMP_DOWN,
-+		.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
-+				      BIT(IIO_CHAN_INFO_SAMP_FREQ),
-+		.ext_info = ad9910_drg_ramp_ext_info,
-+		.parent = &ad9910_channels[AD9910_CHAN_IDX_DRG_AMP],
 +	},
  };
  
  static int ad9910_read_raw(struct iio_dev *indio_dev,
-@@ -695,6 +956,15 @@ static int ad9910_read_raw(struct iio_dev *indio_dev,
- 				*val = (tmp32 == st->profile);
- 			}
+@@ -965,6 +1052,10 @@ static int ad9910_read_raw(struct iio_dev *indio_dev,
+ 			else
+ 				*val = 0;
  			break;
-+		case AD9910_CHANNEL_DRG:
-+			tmp32 = FIELD_GET(AD9910_CFR2_DRG_DEST_MSK,
-+					  st->reg[AD9910_REG_CFR2].val32);
-+			if (tmp32 == (chan->address - AD9910_CHAN_IDX_DRG_FREQ))
-+				*val = FIELD_GET(AD9910_CFR2_DRG_ENABLE_MSK,
-+						 st->reg[AD9910_REG_CFR2].val32);
-+			else
-+				*val = 0;
++		case AD9910_CHANNEL_RAM:
++			*val = FIELD_GET(AD9910_CFR1_RAM_ENABLE_MSK,
++					 st->reg[AD9910_REG_CFR1].val32);
 +			break;
  		default:
  			return -EINVAL;
  		}
-@@ -734,6 +1004,16 @@ static int ad9910_read_raw(struct iio_dev *indio_dev,
+@@ -974,7 +1065,10 @@ static int ad9910_read_raw(struct iio_dev *indio_dev,
+ 		case AD9910_CHANNEL_PROFILE_0 ... AD9910_CHANNEL_PROFILE_7:
+ 			tmp32 = chan->channel - AD9910_CHANNEL_PROFILE_0;
+ 			tmp64 = FIELD_GET(AD9910_PROFILE_ST_FTW_MSK,
+-					  st->reg[AD9910_REG_PROFILE(tmp32)].val64);
++					  ad9910_st_profile_val(st, tmp32));
++			break;
++		case AD9910_CHANNEL_RAM:
++			tmp64 = st->reg[AD9910_REG_FTW].val32;
+ 			break;
+ 		default:
+ 			return -EINVAL;
+@@ -988,7 +1082,10 @@ static int ad9910_read_raw(struct iio_dev *indio_dev,
+ 		case AD9910_CHANNEL_PROFILE_0 ... AD9910_CHANNEL_PROFILE_7:
+ 			tmp32 = chan->channel - AD9910_CHANNEL_PROFILE_0;
+ 			tmp64 = FIELD_GET(AD9910_PROFILE_ST_POW_MSK,
+-					  st->reg[AD9910_REG_PROFILE(tmp32)].val64);
++					  ad9910_st_profile_val(st, tmp32));
++			break;
++		case AD9910_CHANNEL_RAM:
++			tmp64 = st->reg[AD9910_REG_POW].val16;
+ 			break;
+ 		default:
+ 			return -EINVAL;
+@@ -1002,7 +1099,7 @@ static int ad9910_read_raw(struct iio_dev *indio_dev,
+ 		case AD9910_CHANNEL_PROFILE_0 ... AD9910_CHANNEL_PROFILE_7:
+ 			tmp32 = chan->channel - AD9910_CHANNEL_PROFILE_0;
  			*val = FIELD_GET(AD9910_PROFILE_ST_ASF_MSK,
- 					 st->reg[AD9910_REG_PROFILE(tmp32)].val64);
+-					 st->reg[AD9910_REG_PROFILE(tmp32)].val64);
++					 ad9910_st_profile_val(st, tmp32));
  			return IIO_VAL_INT;
-+		case AD9910_CHANNEL_DRG_RAMP_UP:
-+			tmp64 = FIELD_GET(AD9910_DRG_LIMIT_UPPER_MSK,
-+					  st->reg[AD9910_REG_DRG_LIMIT].val64);
-+			iio_val_s64_decompose(tmp64, val, val2);
-+			return IIO_VAL_INT_64;
-+		case AD9910_CHANNEL_DRG_RAMP_DOWN:
-+			tmp64 = FIELD_GET(AD9910_DRG_LIMIT_LOWER_MSK,
-+					  st->reg[AD9910_REG_DRG_LIMIT].val64);
-+			iio_val_s64_decompose(tmp64, val, val2);
-+			return IIO_VAL_INT_64;
- 		default:
- 			return -EINVAL;
- 		}
-@@ -742,9 +1022,23 @@ static int ad9910_read_raw(struct iio_dev *indio_dev,
- 		case AD9910_CHANNEL_PHY:
- 			*val = st->data.sysclk_freq_hz;
- 			return IIO_VAL_INT;
-+		case AD9910_CHANNEL_DRG_RAMP_UP:
-+			tmp32 = FIELD_GET(AD9910_DRG_RATE_INC_MSK,
-+					  st->reg[AD9910_REG_DRG_RATE].val32);
-+			break;
-+		case AD9910_CHANNEL_DRG_RAMP_DOWN:
-+			tmp32 = FIELD_GET(AD9910_DRG_RATE_DEC_MSK,
-+					  st->reg[AD9910_REG_DRG_RATE].val32);
+ 		case AD9910_CHANNEL_DRG_RAMP_UP:
+ 			tmp64 = FIELD_GET(AD9910_DRG_LIMIT_UPPER_MSK,
+@@ -1030,6 +1127,10 @@ static int ad9910_read_raw(struct iio_dev *indio_dev,
+ 			tmp32 = FIELD_GET(AD9910_DRG_RATE_DEC_MSK,
+ 					  st->reg[AD9910_REG_DRG_RATE].val32);
+ 			break;
++		case AD9910_CHANNEL_RAM:
++			tmp32 = FIELD_GET(AD9910_PROFILE_RAM_STEP_RATE_MSK,
++					  ad9910_ram_profile_val(st));
 +			break;
  		default:
  			return -EINVAL;
  		}
-+		if (!tmp32)
-+			return -ERANGE;
-+		tmp32 *= 4;
-+		*val = st->data.sysclk_freq_hz / tmp32;
-+		*val2 = div_u64((u64)(st->data.sysclk_freq_hz % tmp32) * MICRO, tmp32);
-+		return IIO_VAL_INT_PLUS_MICRO;
- 	case IIO_CHAN_INFO_SCALE:
- 		switch (chan->address) {
- 		case AD9910_CHAN_IDX_PHY:
-@@ -774,6 +1068,21 @@ static int ad9910_read_raw(struct iio_dev *indio_dev,
- 			*val = 0;
- 			*val2 = AD9910_PI_NANORAD >> 7;
- 			return IIO_VAL_INT_PLUS_NANO;
-+		case AD9910_CHAN_IDX_DRG_FREQ:
-+			tmp64 = ad9910_rational_scale(st->data.sysclk_freq_hz,
-+						      PICO, BIT_ULL(32));
-+			iio_val_s64_decompose(tmp64, val, val2);
-+			return IIO_VAL_DECIMAL64_PICO;
-+		case AD9910_CHAN_IDX_DRG_PHASE:
-+			tmp64 = DIV_U64_ROUND_CLOSEST(AD9910_PI_PICORAD, BIT(31));
-+			iio_val_s64_decompose(tmp64, val, val2);
-+			return IIO_VAL_DECIMAL64_PICO;
-+		case AD9910_CHAN_IDX_DRG_AMP:
-+			tmp64 = (u64)st->data.output_current_uA *
-+				AD9910_PICO_MILLIAMP_PER_MICROAMP;
-+			tmp64 = DIV_U64_ROUND_CLOSEST(tmp64 >> 1, BIT(31));
-+			iio_val_s64_decompose(tmp64, val, val2);
-+			return IIO_VAL_DECIMAL64_PICO;
- 		default:
- 			return -EINVAL;
- 		}
-@@ -831,6 +1140,22 @@ static int ad9910_write_raw(struct iio_dev *indio_dev,
- 				return ret;
+@@ -1119,7 +1220,7 @@ static int ad9910_write_raw(struct iio_dev *indio_dev,
+ 	struct ad9910_state *st = iio_priv(indio_dev);
+ 	u64 tmp64;
+ 	u32 tmp32;
+-	int ret;
++	int ret, i;
  
- 			return ad9910_profile_set(st, tmp32);
-+		case AD9910_CHANNEL_DRG:
-+			tmp32 = chan->address - AD9910_CHAN_IDX_DRG_FREQ;
-+			if (val) {
-+				tmp32 = AD9910_CFR2_DRG_ENABLE_MSK |
-+					FIELD_PREP(AD9910_CFR2_DRG_DEST_MSK, tmp32);
-+			} else {
-+				if (tmp32 != FIELD_GET(AD9910_CFR2_DRG_DEST_MSK,
-+						       st->reg[AD9910_REG_CFR2].val32))
-+					return 0; /* nothing to do */
-+				tmp32 = 0;
+ 	guard(mutex)(&st->lock);
+ 
+@@ -1156,6 +1257,41 @@ static int ad9910_write_raw(struct iio_dev *indio_dev,
+ 						   AD9910_CFR2_DRG_DEST_MSK |
+ 						   AD9910_CFR2_DRG_ENABLE_MSK,
+ 						   tmp32, true);
++		case AD9910_CHANNEL_RAM:
++			if (AD9910_RAM_ENABLED(st) == !!val)
++				return 0;
++
++			/* swap profile configs */
++			for (i = 0; i < AD9910_NUM_PROFILES; i++) {
++				tmp64 = st->reg[AD9910_REG_PROFILE(i)].val64;
++				ret = ad9910_reg64_write(st,
++							 AD9910_REG_PROFILE(i),
++							 st->reg_profile[i],
++							 false);
++				if (ret)
++					break;
++				st->reg_profile[i] = tmp64;
 +			}
 +
-+			return ad9910_reg32_update(st, AD9910_REG_CFR2,
-+						   AD9910_CFR2_DRG_DEST_MSK |
-+						   AD9910_CFR2_DRG_ENABLE_MSK,
++			if (ret) {
++				/*
++				 * After the write failure, profiles 0..i-1 were
++				 * already swapped in SW, but Hw registers are
++				 * still pending an IO update, so swap them back
++				 * in SW to keep the state consistent.
++				 */
++				while (i--) {
++					tmp64 = st->reg[AD9910_REG_PROFILE(i)].val64;
++					st->reg[AD9910_REG_PROFILE(i)].val64 = st->reg_profile[i];
++					st->reg_profile[i] = tmp64;
++				}
++				return ret;
++			}
++
++			tmp32 = FIELD_PREP(AD9910_CFR1_RAM_ENABLE_MSK, !!val);
++			return ad9910_reg32_update(st, AD9910_REG_CFR1,
++						   AD9910_CFR1_RAM_ENABLE_MSK,
 +						   tmp32, true);
  		default:
  			return -EINVAL;
  		}
-@@ -884,11 +1209,61 @@ static int ad9910_write_raw(struct iio_dev *indio_dev,
+@@ -1169,10 +1305,17 @@ static int ad9910_write_raw(struct iio_dev *indio_dev,
+ 		switch (chan->channel) {
+ 		case AD9910_CHANNEL_PROFILE_0 ... AD9910_CHANNEL_PROFILE_7:
+ 			tmp32 = chan->channel - AD9910_CHANNEL_PROFILE_0;
++			if (AD9910_RAM_ENABLED(st)) {
++				FIELD_MODIFY(AD9910_PROFILE_ST_FTW_MSK,
++					     &st->reg_profile[tmp32], tmp64);
++				return 0;
++			}
+ 			tmp64 = FIELD_PREP(AD9910_PROFILE_ST_FTW_MSK, tmp64);
+ 			return ad9910_reg64_update(st, AD9910_REG_PROFILE(tmp32),
+ 						   AD9910_PROFILE_ST_FTW_MSK,
+ 						   tmp64, true);
++		case AD9910_CHANNEL_RAM:
++			return ad9910_reg32_write(st, AD9910_REG_FTW, tmp64, true);
+ 		default:
+ 			return -EINVAL;
+ 		}
+@@ -1190,10 +1333,19 @@ static int ad9910_write_raw(struct iio_dev *indio_dev,
+ 		switch (chan->channel) {
+ 		case AD9910_CHANNEL_PROFILE_0 ... AD9910_CHANNEL_PROFILE_7:
+ 			tmp32 = chan->channel - AD9910_CHANNEL_PROFILE_0;
++
++			if (AD9910_RAM_ENABLED(st)) {
++				FIELD_MODIFY(AD9910_PROFILE_ST_POW_MSK,
++					     &st->reg_profile[tmp32], tmp64);
++				return 0;
++			}
++
+ 			tmp64 = FIELD_PREP(AD9910_PROFILE_ST_POW_MSK, tmp64);
+ 			return ad9910_reg64_update(st, AD9910_REG_PROFILE(tmp32),
+ 						   AD9910_PROFILE_ST_POW_MSK,
+ 						   tmp64, true);
++		case AD9910_CHANNEL_RAM:
++			return ad9910_reg16_write(st, AD9910_REG_POW, tmp64, true);
+ 		default:
+ 			return -EINVAL;
+ 		}
+@@ -1204,8 +1356,15 @@ static int ad9910_write_raw(struct iio_dev *indio_dev,
+ 				return -EINVAL;
+ 
+ 			tmp32 = chan->channel - AD9910_CHANNEL_PROFILE_0;
+-			tmp64 = FIELD_PREP(AD9910_PROFILE_ST_ASF_MSK,
+-					   min_t(u64, val, AD9910_ASF_MAX));
++			tmp64 = min_t(u64, val, AD9910_ASF_MAX);
++
++			if (AD9910_RAM_ENABLED(st)) {
++				FIELD_MODIFY(AD9910_PROFILE_ST_ASF_MSK,
++					     &st->reg_profile[tmp32], tmp64);
++				return 0;
++			}
++
++			tmp64 = FIELD_PREP(AD9910_PROFILE_ST_ASF_MSK, tmp64);
  			return ad9910_reg64_update(st, AD9910_REG_PROFILE(tmp32),
  						   AD9910_PROFILE_ST_ASF_MSK,
  						   tmp64, true);
-+		case AD9910_CHANNEL_DRG_RAMP_UP: {
-+			s64 val64 = iio_val_s64_compose(val, val2);
+@@ -1261,6 +1420,17 @@ static int ad9910_write_raw(struct iio_dev *indio_dev,
+ 			return ad9910_reg32_update(st, AD9910_REG_DRG_RATE,
+ 						   AD9910_DRG_RATE_DEC_MSK,
+ 						   tmp32, true);
++		case AD9910_CHANNEL_RAM:
++			if (!AD9910_RAM_ENABLED(st)) {
++				FIELD_MODIFY(AD9910_PROFILE_RAM_STEP_RATE_MSK,
++					     &st->reg_profile[st->profile], tmp32);
++				return 0;
++			}
 +
-+			if (val64 < 0)
-+				return -EINVAL;
-+
-+			tmp64 = min_t(u64, val64, U32_MAX);
-+			tmp64 = FIELD_PREP(AD9910_DRG_LIMIT_UPPER_MSK, tmp64);
-+			return ad9910_reg64_update(st, AD9910_REG_DRG_LIMIT,
-+						   AD9910_DRG_LIMIT_UPPER_MSK,
++			tmp64 = FIELD_PREP(AD9910_PROFILE_RAM_STEP_RATE_MSK, tmp32);
++			return ad9910_reg64_update(st, AD9910_REG_PROFILE(st->profile),
++						   AD9910_PROFILE_RAM_STEP_RATE_MSK,
 +						   tmp64, true);
-+		}
-+		case AD9910_CHANNEL_DRG_RAMP_DOWN: {
-+			s64 val64 = iio_val_s64_compose(val, val2);
-+
-+			if (val64 < 0)
-+				return -EINVAL;
-+
-+			tmp64 = min_t(u64, val64, U32_MAX);
-+			tmp64 = FIELD_PREP(AD9910_DRG_LIMIT_LOWER_MSK, tmp64);
-+			return ad9910_reg64_update(st, AD9910_REG_DRG_LIMIT,
-+						   AD9910_DRG_LIMIT_LOWER_MSK,
-+						   tmp64, true);
-+		}
  		default:
  			return -EINVAL;
  		}
- 	case IIO_CHAN_INFO_SAMP_FREQ:
--		return ad9910_set_sysclk_freq(st, val, true);
-+		if (chan->channel == AD9910_CHANNEL_PHY)
-+			return ad9910_set_sysclk_freq(st, val, true);
-+
-+		if (val < 0 || val2 < 0 || val > st->data.sysclk_freq_hz / 4)
-+			return -EINVAL;
-+
-+		tmp64 = ((u64)val * MICRO + val2) * 4;
-+		if (!tmp64)
-+			return -EINVAL;
-+
-+		tmp64 = DIV64_U64_ROUND_CLOSEST((u64)st->data.sysclk_freq_hz * MICRO, tmp64);
-+		tmp32 = clamp(tmp64, 1U, AD9910_STEP_RATE_MAX);
-+
-+		switch (chan->channel) {
-+		case AD9910_CHANNEL_DRG_RAMP_UP:
-+			tmp32 = FIELD_PREP(AD9910_DRG_RATE_INC_MSK, tmp32);
-+			return ad9910_reg32_update(st, AD9910_REG_DRG_RATE,
-+						   AD9910_DRG_RATE_INC_MSK,
-+						   tmp32, true);
-+		case AD9910_CHANNEL_DRG_RAMP_DOWN:
-+			tmp32 = FIELD_PREP(AD9910_DRG_RATE_DEC_MSK, tmp32);
-+			return ad9910_reg32_update(st, AD9910_REG_DRG_RATE,
-+						   AD9910_DRG_RATE_DEC_MSK,
-+						   tmp32, true);
-+		default:
-+			return -EINVAL;
-+		}
- 	case IIO_CHAN_INFO_SCALE:
- 		switch (chan->address) {
- 		case AD9910_CHAN_IDX_PHY:
-@@ -963,11 +1338,16 @@ static int ad9910_write_raw_get_fmt(struct iio_dev *indio_dev,
- 		switch (chan->channel) {
- 		case AD9910_CHANNEL_PROFILE_0 ... AD9910_CHANNEL_PROFILE_7:
- 			return IIO_VAL_INT;
-+		case AD9910_CHANNEL_DRG_RAMP_UP:
-+		case AD9910_CHANNEL_DRG_RAMP_DOWN:
-+			return IIO_VAL_INT_64;
- 		default:
- 			return -EINVAL;
- 		}
- 	case IIO_CHAN_INFO_SAMP_FREQ:
--		return IIO_VAL_INT;
-+		if (chan->channel == AD9910_CHANNEL_PHY)
-+			return IIO_VAL_INT;
-+		return IIO_VAL_INT_PLUS_MICRO;
- 	case IIO_CHAN_INFO_SCALE:
- 		return IIO_VAL_INT_PLUS_NANO;
- 	case IIO_CHAN_INFO_OFFSET:
-@@ -1038,6 +1418,15 @@ static const char * const ad9910_channel_str[] = {
- 	[AD9910_CHAN_IDX_PARALLEL_FREQ] = "parallel_frequency",
- 	[AD9910_CHAN_IDX_PARALLEL_POLAR_AMP] = "parallel_polar_amplitude",
- 	[AD9910_CHAN_IDX_PARALLEL_POLAR_PHASE] = "parallel_polar_phase",
-+	[AD9910_CHAN_IDX_DRG_FREQ] = "drg_frequency",
-+	[AD9910_CHAN_IDX_DRG_PHASE] = "drg_phase",
-+	[AD9910_CHAN_IDX_DRG_AMP] = "drg_amplitude",
-+	[AD9910_CHAN_IDX_DRG_FREQ_RAMP_UP] = "drg_rising_frequency",
-+	[AD9910_CHAN_IDX_DRG_FREQ_RAMP_DOWN] = "drg_falling_frequency",
-+	[AD9910_CHAN_IDX_DRG_PHASE_RAMP_UP] = "drg_rising_phase",
-+	[AD9910_CHAN_IDX_DRG_PHASE_RAMP_DOWN] = "drg_falling_phase",
-+	[AD9910_CHAN_IDX_DRG_AMP_RAMP_UP] = "drg_rising_amplitude",
-+	[AD9910_CHAN_IDX_DRG_AMP_RAMP_DOWN] = "drg_falling_amplitude",
+@@ -1427,6 +1597,7 @@ static const char * const ad9910_channel_str[] = {
+ 	[AD9910_CHAN_IDX_DRG_PHASE_RAMP_DOWN] = "drg_falling_phase",
+ 	[AD9910_CHAN_IDX_DRG_AMP_RAMP_UP] = "drg_rising_amplitude",
+ 	[AD9910_CHAN_IDX_DRG_AMP_RAMP_DOWN] = "drg_falling_amplitude",
++	[AD9910_CHAN_IDX_RAM] = "ram",
  };
  
  static int ad9910_read_label(struct iio_dev *indio_dev,
-@@ -1173,6 +1562,14 @@ static int ad9910_setup(struct device *dev, struct ad9910_state *st,
+@@ -1436,6 +1607,142 @@ static int ad9910_read_label(struct iio_dev *indio_dev,
+ 	return sysfs_emit(label, "%s\n", ad9910_channel_str[chan->address]);
+ }
+ 
++static enum fw_upload_err ad9910_ram_fwu_prepare(struct fw_upload *fw_upload,
++						 const u8 *data, u32 size)
++{
++	struct ad9910_state *st = fw_upload->dd_handle;
++	const struct ad9910_ram_fw *fw_data = (const struct ad9910_ram_fw *)data;
++	size_t wcount, bcount;
++
++	if (size < sizeof(struct ad9910_ram_fw))
++		return FW_UPLOAD_ERR_INVALID_SIZE;
++
++	if (get_unaligned_be32(&fw_data->magic) != AD9910_RAM_FW_MAGIC)
++		return FW_UPLOAD_ERR_FW_INVALID;
++
++	if (get_unaligned_be16(&fw_data->version) != AD9910_RAM_FW_V1)
++		return FW_UPLOAD_ERR_FW_INVALID;
++
++	wcount = get_unaligned_be16(&fw_data->wcount);
++	bcount = size - sizeof(struct ad9910_ram_fw);
++	if (wcount > AD9910_RAM_SIZE_MAX_WORDS ||
++	    bcount != (wcount * AD9910_RAM_WORD_SIZE))
++		return FW_UPLOAD_ERR_INVALID_SIZE;
++
++	bcount += sizeof(fw_data->cfr1) + sizeof(fw_data->profiles);
++	if (crc32(0, &fw_data->cfr1, bcount) != get_unaligned_be32(&fw_data->crc))
++		return FW_UPLOAD_ERR_FW_INVALID;
++
++	guard(mutex)(&st->lock);
++	if (st->ram_fwu_cancel) {
++		/* cleanup() is not called when prepare fails */
++		st->ram_fwu_cancel = false;
++		return FW_UPLOAD_ERR_CANCELED;
++	}
++
++	return FW_UPLOAD_ERR_NONE;
++}
++
++static enum fw_upload_err ad9910_ram_fwu_write(struct fw_upload *fw_upload,
++					       const u8 *data, u32 offset,
++					       u32 size, u32 *written)
++{
++	const struct ad9910_ram_fw *fw_data = (const struct ad9910_ram_fw *)data;
++	struct ad9910_state *st = fw_upload->dd_handle;
++	int ret, ret2, idx, wcount;
++	u64 tmp64, backup;
++
++	if (offset != 0)
++		return FW_UPLOAD_ERR_INVALID_SIZE;
++
++	guard(mutex)(&st->lock);
++
++	if (st->ram_fwu_cancel)
++		return FW_UPLOAD_ERR_CANCELED;
++
++	if (AD9910_RAM_ENABLED(st))
++		return FW_UPLOAD_ERR_HW_ERROR;
++
++	for (idx = 0; idx < AD9910_NUM_PROFILES; idx++)
++		st->reg_profile[idx] = get_unaligned_be64(&fw_data->profiles[idx]) |
++				       AD9910_PROFILE_RAM_OPEN_MSK;
++
++	ret = ad9910_reg32_update(st, AD9910_REG_CFR1,
++				  AD9910_CFR1_RAM_PLAYBACK_DEST_MSK |
++				  AD9910_CFR1_INT_PROFILE_CTL_MSK,
++				  get_unaligned_be32(&fw_data->cfr1), true);
++	if (ret)
++		return FW_UPLOAD_ERR_RW_ERROR;
++
++	wcount = get_unaligned_be16(&fw_data->wcount);
++	if (!wcount) {
++		*written = size;
++		return FW_UPLOAD_ERR_NONE; /* nothing else to write */
++	}
++
++	ret = ad9910_profile_set(st, st->profile);
++	if (ret)
++		return FW_UPLOAD_ERR_HW_ERROR;
++
++	/* backup profile register and update it with required address range */
++	backup = st->reg[AD9910_REG_PROFILE(st->profile)].val64;
++	tmp64 = AD9910_PROFILE_RAM_STEP_RATE_MSK |
++		FIELD_PREP(AD9910_PROFILE_RAM_START_ADDR_MSK, 0) |
++		FIELD_PREP(AD9910_PROFILE_RAM_END_ADDR_MSK, wcount - 1);
++	ret = ad9910_reg64_write(st, AD9910_REG_PROFILE(st->profile), tmp64, true);
++	if (ret)
++		return FW_UPLOAD_ERR_RW_ERROR;
++
++	/* copy data words into spi buffer and transfer */
++	memcpy(&st->tx_buf[1], fw_data->words, wcount * AD9910_RAM_WORD_SIZE);
++	ret = ad9910_spi_write(st, AD9910_REG_RAM,
++			       wcount * AD9910_RAM_WORD_SIZE, false);
++
++	/* restore active single tone profile regardless */
++	st->reg[AD9910_REG_PROFILE(st->profile)].val64 = backup;
++	ret2 = ad9910_reg64_write(st, AD9910_REG_PROFILE(st->profile), backup, true);
++	if (ret || ret2)
++		return FW_UPLOAD_ERR_RW_ERROR;
++
++	*written = size;
++
++	return FW_UPLOAD_ERR_NONE;
++}
++
++static enum fw_upload_err ad9910_ram_fwu_poll_complete(struct fw_upload *fw_upload)
++{
++	return FW_UPLOAD_ERR_NONE;
++}
++
++static void ad9910_ram_fwu_cancel(struct fw_upload *fw_upload)
++{
++	struct ad9910_state *st = fw_upload->dd_handle;
++
++	guard(mutex)(&st->lock);
++	st->ram_fwu_cancel = true;
++}
++
++static void ad9910_ram_fwu_cleanup(struct fw_upload *fw_upload)
++{
++	struct ad9910_state *st = fw_upload->dd_handle;
++
++	guard(mutex)(&st->lock);
++	st->ram_fwu_cancel = false;
++}
++
++static void ad9910_ram_fwu_unregister(void *data)
++{
++	firmware_upload_unregister(data);
++}
++
++static const struct fw_upload_ops ad9910_ram_fwu_ops = {
++	.prepare = ad9910_ram_fwu_prepare,
++	.write = ad9910_ram_fwu_write,
++	.poll_complete = ad9910_ram_fwu_poll_complete,
++	.cancel = ad9910_ram_fwu_cancel,
++	.cleanup = ad9910_ram_fwu_cleanup,
++};
++
+ static const struct iio_info ad9910_info = {
+ 	.read_raw = ad9910_read_raw,
+ 	.write_raw = ad9910_write_raw,
+@@ -1570,6 +1877,13 @@ static int ad9910_setup(struct device *dev, struct ad9910_state *st,
  	if (ret)
  		return ret;
  
-+	/* configure step rate with default values */
-+	ret = ad9910_reg32_write(st, AD9910_REG_DRG_RATE,
-+				 FIELD_PREP(AD9910_DRG_RATE_DEC_MSK, 1) |
-+				 FIELD_PREP(AD9910_DRG_RATE_INC_MSK, 1),
-+				 false);
-+	if (ret)
-+		return ret;
++	for (unsigned int i = 0; i < AD9910_NUM_PROFILES; i++) {
++		st->reg_profile[i] = AD9910_PROFILE_RAM_OPEN_MSK;
++		st->reg_profile[i] |= FIELD_PREP(AD9910_PROFILE_RAM_STEP_RATE_MSK, 1);
++		st->reg_profile[i] |= FIELD_PREP(AD9910_PROFILE_RAM_END_ADDR_MSK,
++						 AD9910_RAM_ADDR_MAX);
++	}
 +
  	return ad9910_io_update(st);
+ }
+ 
+@@ -1663,6 +1977,19 @@ static int ad9910_probe(struct spi_device *spi)
+ 	if (ret)
+ 		return dev_err_probe(dev, ret, "device setup failed\n");
+ 
++	snprintf(st->ram_fwu_name, sizeof(st->ram_fwu_name), "%s:ram",
++		 dev_name(&indio_dev->dev));
++	st->ram_fwu = firmware_upload_register(THIS_MODULE, dev, st->ram_fwu_name,
++					       &ad9910_ram_fwu_ops, st);
++	if (IS_ERR(st->ram_fwu))
++		return dev_err_probe(dev, PTR_ERR(st->ram_fwu),
++				     "failed to register ram upload ops\n");
++
++	ret = devm_add_action_or_reset(dev, ad9910_ram_fwu_unregister, st->ram_fwu);
++	if (ret)
++		return dev_err_probe(dev, ret,
++				     "failed to add ram upload unregister action\n");
++
+ 	return devm_iio_device_register(dev, indio_dev);
  }
  
 
