@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Wed, 22 Jul 2026 16:41:20 -0700
-Subject: [PATCH v4 12/16] WIP: tools: testing: Add unit tests for HugeTLB
- subpool functions
+Date: Wed, 22 Jul 2026 16:41:21 -0700
+Subject: [PATCH v4 13/16] WIP: Reproducer for allocation failure due to
+ cgroup v2 memory limits
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260722-hugetlb-alloc-failure-fixes-v4-12-88e8b81970dc@google.com>
+Message-Id: <20260722-hugetlb-alloc-failure-fixes-v4-13-88e8b81970dc@google.com>
 References: <20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com>
 In-Reply-To: <20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com>
 To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
@@ -26,464 +26,237 @@ Cc: vannapurve@google.com, erdemaktas@google.com, linux-mm@kvack.org,
  linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, 
  linux-doc@vger.kernel.org, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784763678; l=14658;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784763678; l=6966;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=mkZsBkGR1i2iMA6usas88vw7grWu7JqdfT5S4nhfgh0=;
- b=ktCZhZBR1fq1rX8XzhqdfUzrgnujNlZmpVtJioipANfWI+nvudolTpM42bFhOmozkCbgwr4SA
- q5+14r4sr5lBkqUY9t/n+Wemw/6PlDBMIAL97tN3cJN7zFLgjjZWrqG
+ bh=JlTcWmu4YylYJqF+iA2BMg6mM33pft18C72PLT5bBdc=;
+ b=CsPLTCLuBSVGQbXs8wDx4crR6XxCc1FrWqzQJTSbrryBKU8/Kqta9FxI5P4Zfib63Gi8X9Vyh
+ BLsF9HAKYoDCxA69jvJVKW35iNPeQTIvHSYzk03E2p3reohwsAxU8Hk
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Introduce unit tests for HugeTLB subpool functions to exercise subpool
-functions. Set testing up so that tests can be run directly from userspace.
+(This reproducer was hacked up and not meant to be merged.)
 
-Reuses the private kernel struct hugepage_subpool struct layout natively by
-embedding the implementation directly, avoiding structural definition drift
-between implementation and testing.
+cgroup_v2_allocation_failure.c triggers HugeTLB allocation failure by exploiting
+cgroup v2 memory limits. This allows testing the error paths in the kernel when
+memory control charging fails, even when physical huge pages are available.
+
+The program performs the following steps to trigger the failure:
+
+1. Enable hugetlb accounting in cgroup v2.
+     + The program checks if memory_hugetlb_accounting is enabled in the cgroup2
+       mount options. If not, it remounts /sys/fs/cgroup with this option
+       enabled. This ensures that HugeTLB allocations are charged against the
+       cgroup memory limits.
+
+2. Create a test cgroup and set limits.
+     + The program creates a new cgroup subdirectory named test_reproducer under
+       /sys/fs/cgroup.
+     + It sets the memory.max limit of this cgroup to 1MB (which is less than
+       the 2MB huge page size).
+
+3. Fork a child process and move it to the test cgroup.
+     + The program forks a child process.
+     + The child process moves itself into the test_reproducer cgroup by writing
+       its PID (using 0 for current process) to cgroup.procs in the test cgroup
+       directory.
+
+4. Attempt to allocate and touch a 2MB huge page.
+     + The child process maps a 2MB anonymous huge page using mmap with
+       MAP_PRIVATE, MAP_ANONYMOUS, and MAP_HUGETLB.
+     + The child process writes to the mapped address, triggering a page fault.
+
+5. Triggering the kernel bugs.
+     + The page fault handler calls alloc_hugetlb_folio to allocate the huge
+       page.
+     + The allocation of the physical page from buddy allocator succeeds
+       (assuming nr_hugepages is sufficient).
+     + The kernel then attempts to charge this allocation to the child process's
+       cgroup by calling mem_cgroup_charge_hugetlb.
+     + Since the child's cgroup memory limit is 1MB and the page is 2MB, the
+       charge fails and mem_cgroup_charge_hugetlb returns -ENOMEM.
+     + This triggers the error path in alloc_hugetlb_folio where the bugs (folio
+       refcount mismatch, infinite loop on ENOMEM, and reservation leaks) are
+       handled.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- tools/testing/hugetlb_subpool/.gitignore     |   1 +
- tools/testing/hugetlb_subpool/Makefile       |  18 ++
- tools/testing/hugetlb_subpool/test_subpool.c | 400 +++++++++++++++++++++++++++
- 3 files changed, 419 insertions(+)
+ cgroup_v2_allocation_failure.c | 169 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 169 insertions(+)
 
-diff --git a/tools/testing/hugetlb_subpool/.gitignore b/tools/testing/hugetlb_subpool/.gitignore
+diff --git a/cgroup_v2_allocation_failure.c b/cgroup_v2_allocation_failure.c
 new file mode 100644
-index 0000000000000..7348c2c72f1e1
+index 0000000000000..1a813678d8cd2
 --- /dev/null
-+++ b/tools/testing/hugetlb_subpool/.gitignore
-@@ -0,0 +1 @@
-+test_subpool
-diff --git a/tools/testing/hugetlb_subpool/Makefile b/tools/testing/hugetlb_subpool/Makefile
-new file mode 100644
-index 0000000000000..1bdb7e2635614
---- /dev/null
-+++ b/tools/testing/hugetlb_subpool/Makefile
-@@ -0,0 +1,18 @@
-+# SPDX-License-Identifier: GPL-2.0
-+.PHONY: all clean test
-+
-+CC = gcc
-+CFLAGS = -Wall -O2 -I../shared -I. -I../../include -I../../arch/x86/include -pthread
-+KERNEL_SUBPOOL_H = ../../../mm/hugetlb_subpool.h
-+KERNEL_SUBPOOL_C = ../../../mm/hugetlb_subpool.c
-+
-+all: test
-+
-+test_subpool: test_subpool.c $(KERNEL_SUBPOOL_C) $(KERNEL_SUBPOOL_H)
-+	$(CC) $(CFLAGS) test_subpool.c -o test_subpool
-+
-+test: test_subpool
-+	./test_subpool
-+
-+clean:
-+	rm -f test_subpool
-diff --git a/tools/testing/hugetlb_subpool/test_subpool.c b/tools/testing/hugetlb_subpool/test_subpool.c
-new file mode 100644
-index 0000000000000..78900274cc264
---- /dev/null
-+++ b/tools/testing/hugetlb_subpool/test_subpool.c
-@@ -0,0 +1,400 @@
++++ b/cgroup_v2_allocation_failure.c
+@@ -0,0 +1,169 @@
 +// SPDX-License-Identifier: GPL-2.0
-+#include <assert.h>
++#define _GNU_SOURCE
++#include <stdio.h>
 +#include <stdlib.h>
-+#include <linux/types.h>
-+#include <linux/slab.h>
-+#include <linux/bug.h>
++#include <unistd.h>
++#include <fcntl.h>
++#include <sys/mman.h>
++#include <sys/stat.h>
++#include <sys/types.h>
++#include <sys/wait.h>
++#include <string.h>
++#include <errno.h>
 +
-+/* Mocked Userspace implementation for Kernel Subpool allocation dependencies */
-+struct hstate {
-+	int dummy;
-+};
++#define CGROUP_PATH "/sys/fs/cgroup"
++#define TEST_CGROUP "test_reproducer"
++#define TEST_CGROUP_PATH CGROUP_PATH "/" TEST_CGROUP
 +
-+#undef kzalloc_obj
-+#undef kzalloc_objs
-+#define kzalloc_obj(P, ...) malloc(sizeof(P))
-+#define kzalloc_objs(P, COUNT, ...) malloc(sizeof(P) * (COUNT))
-+
-+#define kfree free
-+#define kmalloc malloc
-+
-+#define huge_page_shift(h) (21 + (0 * ((unsigned long)(h) & 0)))
-+#define huge_page_size(h) (1UL << huge_page_shift(h))
-+
-+static bool hugetlb_acct_memory_called;
-+static struct hstate *hugetlb_acct_memory_h;
-+static long hugetlb_acct_memory_delta;
-+
-+static int hugetlb_acct_memory(struct hstate *h, long delta)
++static void write_file_val(const char *path, const char *val)
 +{
-+	hugetlb_acct_memory_called = true;
-+	hugetlb_acct_memory_h = h;
-+	hugetlb_acct_memory_delta = delta;
++	int fd = open(path, O_WRONLY);
++
++	if (fd < 0) {
++		fprintf(stderr, "Failed to open %s: %s\n", path, strerror(errno));
++		exit(1);
++	}
++	if (write(fd, val, strlen(val)) < 0) {
++		fprintf(stderr, "Failed to write %s to %s: %s\n", val, path, strerror(errno));
++		close(fd);
++		exit(1);
++	}
++	close(fd);
++}
++
++static int is_hugetlb_accounting_enabled(void)
++{
++	char spec[256], file[256], type[256], opts[512];
++	char line[1024];
++	int enabled = 0;
++	FILE *fp;
++
++	fp = fopen("/proc/mounts", "r");
++	if (!fp) {
++		perror("fopen /proc/mounts");
++		return -1;
++	}
++
++	while (fgets(line, sizeof(line), fp)) {
++		if (sscanf(line, "%255s %255s %255s %511s", spec, file, type, opts) == 4) {
++			if (strcmp(file, CGROUP_PATH) == 0 && strcmp(type, "cgroup2") == 0) {
++				if (strstr(opts, "memory_hugetlb_accounting") != NULL)
++					enabled = 1;
++				break;
++			}
++		}
++	}
++	fclose(fp);
++	return enabled;
++}
++
++static int enable_hugetlb_accounting(void)
++{
++	int ret;
++
++	printf("Attempting to remount cgroup2 with memory_hugetlb_accounting...\n");
++	ret = system("mount -o remount,memory_hugetlb_accounting " CGROUP_PATH);
++	if (ret != 0) {
++		fprintf(stderr, "Failed to remount: system() returned %d\n", ret);
++		return -1;
++	}
 +	return 0;
 +}
 +
-+static void reset_hugetlb_acct_memory_mock(void)
++int main(int argc, char **argv)
 +{
-+	hugetlb_acct_memory_called = false;
-+	hugetlb_acct_memory_h = NULL;
-+	hugetlb_acct_memory_delta = 0;
-+}
-+
-+static void assert_hugetlb_acct_memory_called(struct hstate *h, long delta)
-+{
-+	assert(hugetlb_acct_memory_called);
-+	assert(hugetlb_acct_memory_h == h);
-+	assert(hugetlb_acct_memory_delta == delta);
-+
-+	reset_hugetlb_acct_memory_mock();
-+}
-+
-+static void assert_hugetlb_acct_memory_not_called(void)
-+{
-+	assert(!hugetlb_acct_memory_called);
-+}
-+
-+#include "../../../mm/hugetlb_subpool.h"
-+#include "../../../mm/hugetlb_subpool.c"
-+
-+static void test_subpool_new_put_no_min_limit(void)
-+{
-+	struct hstate h;
-+	struct hugepage_subpool *spool;
-+
-+	spool = hugepage_new_subpool(&h, 10, -1);
-+	assert(spool != NULL);
-+	assert(spool->max_hpages == 10);
-+	assert(spool->min_hpages == -1);
-+	assert(spool->rsv_hpages == -1);
-+	assert(spool->count == 1);
-+	assert_hugetlb_acct_memory_not_called();
-+
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_not_called();
-+}
-+
-+static void test_subpool_new_put_with_min_limit(void)
-+{
-+	struct hstate h;
-+	struct hugepage_subpool *spool;
-+
-+	spool = hugepage_new_subpool(&h, 20, 5);
-+	assert(spool != NULL);
-+	assert(spool->max_hpages == 20);
-+	assert(spool->min_hpages == 5);
-+	assert(spool->rsv_hpages == 5);
-+	assert(spool->count == 1);
-+	assert_hugetlb_acct_memory_called(&h, 5);
-+
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_called(&h, -5);
-+}
-+
-+static void test_subpool_get_pages_below_min(void)
-+{
-+	struct hstate h;
-+	struct hugepage_subpool *spool;
-+	long ret;
-+
-+	/* Let's initialize: min_hpages = 10, used_hpages = 9, rsv_hpages = 1 */
-+	spool = hugepage_new_subpool(&h, -1, 10);
-+	assert_hugetlb_acct_memory_called(&h, 10);
-+
-+	ret = hugepage_subpool_get_pages(spool, 9);
-+	assert(ret == 0);
-+	assert(spool->used_hpages == 9);
-+	assert(spool->rsv_hpages == 1);
-+
-+	/* Invoke Get (Consumes the remaining 1 subpool reserve!) */
-+	ret = hugepage_subpool_get_pages(spool, 1);
-+	assert(ret == 0); /* Covered by subpool reserve! */
-+	assert(spool->used_hpages == 10);
-+	assert(spool->rsv_hpages == 0);
-+
-+	/* Invoke Put (Replenishes the subpool reserve!) */
-+	ret = hugepage_subpool_put_pages(spool, 1);
-+	assert(ret == 0); /* Kept by subpool reserve! */
-+	assert(spool->used_hpages == 9);
-+	assert(spool->rsv_hpages == 1);
-+
-+	/* Cleanup: Return used_hpages to 0 so the subpool frees symmetrically! */
-+	hugepage_subpool_put_pages(spool, 9);
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_called(&h, -10);
-+}
-+
-+static void test_subpool_get_pages_crossing_min(void)
-+{
-+	struct hstate h;
-+	struct hugepage_subpool *spool;
-+	long ret;
-+
-+	/* Let's initialize: min_hpages = 10, used_hpages = 10, rsv_hpages = 0 */
-+	spool = hugepage_new_subpool(&h, -1, 10);
-+	assert_hugetlb_acct_memory_called(&h, 10);
-+
-+	hugepage_subpool_get_pages(spool, 10);
-+	assert(spool->used_hpages == 10);
-+	assert(spool->rsv_hpages == 0);
-+
-+	/* Invoke Get (Triggers a request for a Global Buddy/Surplus page!) */
-+	ret = hugepage_subpool_get_pages(spool, 1);
-+	assert(ret == 1); /* Requires global page! */
-+	assert(spool->used_hpages == 11);
-+	assert(spool->rsv_hpages == 0);
-+
-+	/* Invoke Put (Above minimum, so it releases the page to the Global Pool!) */
-+	ret = hugepage_subpool_put_pages(spool, 1);
-+	assert(ret == 1); /* Dropped to global pool! */
-+	assert(spool->used_hpages == 10);
-+	assert(spool->rsv_hpages == 0);
-+
-+	/* Cleanup */
-+	hugepage_subpool_put_pages(spool, 10);
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_called(&h, -10);
-+}
-+
-+static void test_subpool_get_pages_crossing_min_multi(void)
-+{
-+	struct hstate h;
-+	struct hugepage_subpool *spool;
-+	long ret;
-+
-+	/* Scenario 1: Crossing entirely into surplus territory by a delta > 1 */
-+	/* Let's initialize: min_hpages = 10, used_hpages = 8, rsv_hpages = 2 */
-+	spool = hugepage_new_subpool(&h, -1, 10);
-+	assert_hugetlb_acct_memory_called(&h, 10);
-+
-+	ret = hugepage_subpool_get_pages(spool, 8);
-+	assert(ret == 0);
-+	assert(spool->used_hpages == 8);
-+	assert(spool->rsv_hpages == 2);
-+
-+	/* Invoke Get with delta = 5 (Crosses min limit of 10 up to 13) */
-+	ret = hugepage_subpool_get_pages(spool, 5);
-+	assert(ret == 3); /* (8 + 5) - 10 = 3 global pages required! */
-+	assert(spool->used_hpages == 13);
-+	assert(spool->rsv_hpages == 0);
-+
-+	/* Invoke Put with delta = 5 (Drops from 13 down to 8) */
-+	ret = hugepage_subpool_put_pages(spool, 5);
-+	assert(ret == 3); /* 3 surplus pages released to the global pool! */
-+	assert(spool->used_hpages == 8);
-+	assert(spool->rsv_hpages == 2); /* 2 subpool reserves perfectly restored! */
-+
-+	/* Scenario 2: Landing exactly on the min_hpages boundary with delta > 1 */
-+	ret = hugepage_subpool_get_pages(spool, 2);
-+	assert(ret == 0); /* Perfectly covered by remaining 2 subpool reserves! */
-+	assert(spool->used_hpages == 10);
-+	assert(spool->rsv_hpages == 0);
-+
-+	ret = hugepage_subpool_put_pages(spool, 2);
-+	assert(ret == 0); /* Swallowed perfectly to replenish the 2 subpool reserves! */
-+	assert(spool->used_hpages == 8);
-+	assert(spool->rsv_hpages == 2);
-+
-+	/* Cleanup */
-+	hugepage_subpool_put_pages(spool, 8);
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_called(&h, -10);
-+}
-+
-+static void test_subpool_get_pages_max_limit(void)
-+{
-+	struct hstate h;
-+	struct hugepage_subpool *spool;
-+	long ret;
-+
-+	spool = hugepage_new_subpool(&h, 5, -1);
-+	assert_hugetlb_acct_memory_not_called();
-+
-+	ret = hugepage_subpool_get_pages(spool, 5);
-+	assert(ret == 5);
-+	assert(spool->used_hpages == 5);
-+	assert(spool->rsv_hpages == -1);
-+
-+	/* Invoke Get (Should trigger -ENOMEM due to max cap limit exceeded!) */
-+	ret = hugepage_subpool_get_pages(spool, 1);
-+	assert(ret == -ENOMEM);
-+	assert(spool->used_hpages == 5); /* Unchanged */
-+
-+	/* Cleanup */
-+	hugepage_subpool_put_pages(spool, 5);
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_not_called();
-+}
-+
-+static void test_subpool_get_pages_no_limits(void)
-+{
-+	struct hstate h;
-+	struct hugepage_subpool *spool;
-+	long ret;
-+
-+	spool = hugepage_new_subpool(&h, -1, -1);
-+	assert_hugetlb_acct_memory_not_called();
-+
-+	hugepage_subpool_get_pages(spool, 5);
-+	assert(spool->used_hpages == 5);
-+
-+	/* Invoke Get (Surplus Global Territory) */
-+	ret = hugepage_subpool_get_pages(spool, 2);
-+	assert(ret == 2);
-+	assert(spool->used_hpages == 7);
-+
-+	/* Invoke Put */
-+	ret = hugepage_subpool_put_pages(spool, 2);
-+	assert(ret == 2);
-+	assert(spool->used_hpages == 5);
-+
-+	/* Cleanup */
-+	hugepage_subpool_put_pages(spool, 5);
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_not_called();
-+}
-+
-+static void test_subpool_free_hpages(void)
-+{
-+	struct hstate h;
-+	struct hugepage_subpool *spool;
-+
-+	/* Test that free_hpages with NO min_size works perfectly */
-+	spool = hugepage_new_subpool(&h, 15, -1);
-+	hugepage_subpool_get_pages(spool, 3);
-+	assert(hugepage_subpool_free_hpages(spool) == 12);
-+	hugepage_subpool_put_pages(spool, 3);
-+	hugepage_put_subpool(spool);
-+
-+	/* Test that free_hpages with a min_size configured is COMPLETELY UNAFFECTED by it */
-+	spool = hugepage_new_subpool(&h, 15, 5);
-+	assert_hugetlb_acct_memory_called(&h, 5);
-+	hugepage_subpool_get_pages(spool, 3);
-+	assert(hugepage_subpool_free_hpages(spool) == 12); /* Should still be 15 - 3 = 12! */
-+	hugepage_subpool_put_pages(spool, 3);
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_called(&h, -5);
-+
-+	spool = hugepage_new_subpool(&h, -1, -1);
-+	hugepage_subpool_get_pages(spool, 3);
-+	assert(hugepage_subpool_free_hpages(spool) == -1);
-+	hugepage_subpool_put_pages(spool, 3);
-+	hugepage_put_subpool(spool);
-+
-+	/* Test that free_hpages with a min_size configured and NO max size returns -1 */
-+	spool = hugepage_new_subpool(&h, -1, 5);
-+	assert_hugetlb_acct_memory_called(&h, 5);
-+	hugepage_subpool_get_pages(spool, 3);
-+	assert(hugepage_subpool_free_hpages(spool) == -1);
-+	hugepage_subpool_put_pages(spool, 3);
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_called(&h, -5);
-+
-+	spool = hugepage_new_subpool(&h, 3, -1);
-+	hugepage_subpool_get_pages(spool, 3);
-+	assert(hugepage_subpool_free_hpages(spool) == 0);
-+	hugepage_subpool_put_pages(spool, 3);
-+	hugepage_put_subpool(spool);
-+}
-+
-+static void test_subpool_max_hpages(void)
-+{
-+	struct hstate h;
-+	struct hugepage_subpool *spool;
-+
-+	spool = hugepage_new_subpool(&h, 123, -1);
-+	assert(hugepage_subpool_max_hpages(spool) == 123);
-+	hugepage_put_subpool(spool);
-+
-+	/* Test that max_hpages with a min_size configured is COMPLETELY UNAFFECTED by it */
-+	spool = hugepage_new_subpool(&h, 123, 5);
-+	assert_hugetlb_acct_memory_called(&h, 5);
-+	assert(hugepage_subpool_max_hpages(spool) == 123);
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_called(&h, -5);
-+
-+	spool = hugepage_new_subpool(&h, -1, -1);
-+	assert(hugepage_subpool_max_hpages(spool) == -1);
-+	hugepage_put_subpool(spool);
-+
-+	spool = hugepage_new_subpool(&h, -1, 5);
-+	assert_hugetlb_acct_memory_called(&h, 5);
-+	assert(hugepage_subpool_max_hpages(spool) == -1);
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_called(&h, -5);
-+
-+	spool = hugepage_new_subpool(&h, 0, -1);
-+	assert(hugepage_subpool_max_hpages(spool) == 0);
-+	hugepage_put_subpool(spool);
-+}
-+
-+static void test_subpool_max_size(void)
-+{
-+	struct hstate h;
-+	struct hugepage_subpool *spool;
-+
-+	spool = hugepage_new_subpool(&h, 10, -1);
-+	assert(hugepage_subpool_max_size(spool) == (10ULL << 21));
-+	hugepage_put_subpool(spool);
-+
-+	/* Test that max_size with a min_size configured is COMPLETELY UNAFFECTED by it */
-+	spool = hugepage_new_subpool(&h, 10, 5);
-+	assert_hugetlb_acct_memory_called(&h, 5);
-+	assert(hugepage_subpool_max_size(spool) == (10ULL << 21));
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_called(&h, -5);
-+
-+	spool = hugepage_new_subpool(&h, -1, -1);
-+	assert(hugepage_subpool_max_size(spool) == -1ULL);
-+	hugepage_put_subpool(spool);
-+
-+	spool = hugepage_new_subpool(&h, 0, -1);
-+	assert(hugepage_subpool_max_size(spool) == 0ULL);
-+	hugepage_put_subpool(spool);
-+}
-+
-+static void test_subpool_min_size(void)
-+{
-+	struct hstate h;
-+	struct hugepage_subpool *spool;
-+
-+	spool = hugepage_new_subpool(&h, -1, 5);
-+	assert_hugetlb_acct_memory_called(&h, 5);
-+	assert(hugepage_subpool_min_size(spool) == (5ULL << 21));
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_called(&h, -5);
-+
-+	/* Test that min_size with a max_size configured is COMPLETELY UNAFFECTED by it */
-+	spool = hugepage_new_subpool(&h, 20, 5);
-+	assert_hugetlb_acct_memory_called(&h, 5);
-+	assert(hugepage_subpool_min_size(spool) == (5ULL << 21));
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_called(&h, -5);
-+
-+	spool = hugepage_new_subpool(&h, -1, -1);
-+	assert(hugepage_subpool_min_size(spool) == -1ULL);
-+	hugepage_put_subpool(spool);
-+
-+	spool = hugepage_new_subpool(&h, -1, 0);
-+	assert_hugetlb_acct_memory_called(&h, 0);
-+	assert(hugepage_subpool_min_size(spool) == 0ULL);
-+	hugepage_put_subpool(spool);
-+	assert_hugetlb_acct_memory_called(&h, 0);
-+}
-+
-+int main(void)
-+{
-+	test_subpool_new_put_no_min_limit();
-+	test_subpool_new_put_with_min_limit();
-+	test_subpool_get_pages_below_min();
-+	test_subpool_get_pages_crossing_min();
-+	test_subpool_get_pages_crossing_min_multi();
-+	test_subpool_get_pages_max_limit();
-+	test_subpool_get_pages_no_limits();
-+	test_subpool_free_hpages();
-+	test_subpool_max_hpages();
-+	test_subpool_max_size();
-+	test_subpool_min_size();
++	struct stat st;
++	size_t size;
++	void *addr;
++	pid_t pid;
++	int enabled;
++	int status;
++	int fd;
++
++	if (stat(CGROUP_PATH, &st) != 0 || !S_ISDIR(st.st_mode)) {
++		fprintf(stderr, "cgroup v2 not mounted at %s\n", CGROUP_PATH);
++		return 1;
++	}
++
++	enabled = is_hugetlb_accounting_enabled();
++	if (enabled < 0)
++		return 1;
++
++	if (!enabled) {
++		if (enable_hugetlb_accounting() != 0) {
++			fprintf(stderr, "Could not enable memory_hugetlb_accounting\n");
++			return 1;
++		}
++		/* Re-check */
++		enabled = is_hugetlb_accounting_enabled();
++		if (enabled <= 0) {
++			fprintf(stderr, "Failed to enable memory_hugetlb_accounting (re-check failed)\n");
++			return 1;
++		}
++		printf("Successfully enabled memory_hugetlb_accounting\n");
++	} else {
++		printf("memory_hugetlb_accounting is already enabled\n");
++	}
++
++	/* Enable memory controller in subtree */
++	fd = open(CGROUP_PATH "/cgroup.subtree_control", O_WRONLY);
++	if (fd >= 0) {
++		(void)write(fd, "+memory", 7);
++		close(fd);
++	}
++
++	if (mkdir(TEST_CGROUP_PATH, 0755) != 0) {
++		if (errno != EEXIST) {
++			perror("mkdir test_reproducer");
++			return 1;
++		}
++	}
++
++	/* Set memory limit to 1MB (less than 2MB hugepage) */
++	write_file_val(TEST_CGROUP_PATH "/memory.max", "1M");
++
++	pid = fork();
++	if (pid < 0) {
++		perror("fork");
++		return 1;
++	}
++
++	if (pid == 0) {
++		/* Child: Move to cgroup */
++		write_file_val(TEST_CGROUP_PATH "/cgroup.procs", "0");
++
++		printf("Child: Attempting to allocate and touch 2MB hugepage...\n");
++		/* Allocate 2MB hugepage */
++		size = 2 * 1024 * 1024;
++		addr = mmap(NULL, size, PROT_READ | PROT_WRITE,
++			    MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
++		if (addr == MAP_FAILED) {
++			perror("Child: mmap MAP_HUGETLB");
++			exit(1);
++		}
++
++		printf("Child: mmap succeeded at %p, touching it now...\n", addr);
++		*(char *)addr = 1;
++
++		printf("Child: Successfully touched page (bug not triggered?).\n");
++		munmap(addr, size);
++		exit(0);
++	}
++
++	/* Parent */
++	waitpid(pid, &status, 0);
++
++	printf("Parent: Child exited. Cleaning up.\n");
++	rmdir(TEST_CGROUP_PATH);
++
++	if (WIFSIGNALED(status)) {
++		printf("Parent: Child killed by signal %d (%s)\n",
++		       WTERMSIG(status), strsignal(WTERMSIG(status)));
++		if (WTERMSIG(status) == SIGBUS)
++			printf("Parent: Child got SIGBUS as expected.\n");
++	} else if (WIFEXITED(status)) {
++		printf("Parent: Child exited with status %d\n", WEXITSTATUS(status));
++	}
 +
 +	return 0;
 +}
