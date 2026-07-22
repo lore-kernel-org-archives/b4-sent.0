@@ -1,115 +1,60 @@
-From: Congcong Yao <congcong.yao@mediatek.com>
-Date: Wed, 22 Jul 2026 20:02:44 +0800
-Subject: [PATCH RESEND v3 2/2] dt-bindings: memory-controllers: mtk-smi:
- Add support for mt8189
+From: Nathan Lynch <nathan.lynch@amd.com>
+Subject: [PATCH 0/4] dmatest: shared channel fixes and fatal errors option
+Date: Wed, 22 Jul 2026 10:47:45 -0500
+Message-Id: <20260722-dmatest-fixes-and-fatal-errors-v1-0-8287709987ea@amd.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260722-8189-smi-support-v3-2-ae00e13deeac@mediatek.com>
-References: <20260722-8189-smi-support-v3-0-ae00e13deeac@mediatek.com>
-In-Reply-To: <20260722-8189-smi-support-v3-0-ae00e13deeac@mediatek.com>
-To: Yong Wu <yong.wu@mediatek.com>, Krzysztof Kozlowski <krzk@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Rob Herring <robh@kernel.org>, Conor Dooley <conor+dt@kernel.org>
-Cc: linux-mediatek@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
- Congcong Yao <congcong.yao@mediatek.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXM0QrCMAxA0V8ZeTYwW7Yxf0V8SNvMZWgnSRVh7
+ N+t+njgcjcwVmGDU7OB8ktM1lxxPDQQZ8pXRknV4FrXt4NzmO5U2ApO8mZDygknKnRDVl3V0Af
+ fdz51FMcAdfJQ/pX1cb78bc+wcCzfK+z7B05BKKyCAAAA
+X-Change-ID: 20260722-dmatest-fixes-and-fatal-errors-3b3653d5ac9b
+To: Vinod Koul <vkoul@kernel.org>, Frank Li <Frank.Li@kernel.org>
+Cc: Tycho Andersen <tycho@kernel.org>, Wei Huang <wei.huang2@amd.com>, 
+ dmaengine@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Nathan Lynch <nathan.lynch@amd.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784721998; l=3542;
- i=congcong.yao@mediatek.com; s=20260722; h=from:subject:message-id;
- bh=RfjGr9dS2BPv3kvuxEnkhOj9VPQPmNK7ihihb5BjbNg=;
- b=x7NGCgN8LrMDzFJIcNKrh88tbvs0GYx28y6/vxkixXR05ogRN+A7oci4VPiC3GFlg+a+seXF8
- +y+oAy+j07eDHhwUFa1zRyv66ykiEJeHKFwqja9ZJW0aVZnINSni1+s
-X-Developer-Key: i=congcong.yao@mediatek.com; a=ed25519;
- pk=tIrmGxKQQxnfyb48iCCd19063tppPj89U3nupGYAIxg=
-X-Endpoint-Received: by B4 Relay for congcong.yao@mediatek.com/20260722 with auth_id=889
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784735280; l=1398;
+ i=nathan.lynch@amd.com; s=20260722; h=from:subject:message-id;
+ bh=kyaaaakUpShPkZWfRPjFFPU45IrWTv47HGTaZf06lm8=;
+ b=PR5pN2DYYDdVLf9wJmMeYjggJ89HQBjh4PJxNZurDXOt2MDpTN0p91cnDRN8nBP1GH+zNoHI9
+ l/v1GDTin0UBxVtV8Jf8hzmn6ZsKVowli2JnkqvaOY57t2KpT5Vhxg8
+X-Developer-Key: i=nathan.lynch@amd.com; a=ed25519;
+ pk=pO5+BCw/TENGLvwX5NYZOZmZihcxjkxeFSMuk47erps=
+X-Endpoint-Received: by B4 Relay for nathan.lynch@amd.com/20260722 with auth_id=891
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add smi larb, common and sub-commom binding description for mt8189.
+Sending several fixes for issues in dmatest that arise when running
+multiple threads per channel. I have encountered these issues while
+testing the sdxi driver.
 
-About what smi-sub-common is, please check the below diagram,
-we add it in mediatek,smi-common.yaml file.
+Patch 1 "Don't forcibly terminate channel in polled mode" is a resend of a
+fix I sent a while back that didn't get picked up. [1]
 
-Signed-off-by: Congcong Yao <congcong.yao@mediatek.com>
-Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+Also included is a feature introducing a "fatal errors" parameter that
+provides the option of panicking the kernel after a given number of errors
+have occurred in a run.
+
+Claude Code w/Opus 4.8 was used to investigate the problems fixed by
+patches 2 and 3, and it assisted in writing the changes in patch 2-4.
+
+[1] https://lore.kernel.org/dmaengine/20250408-dmaengine-dmatest-poll-mode-fix-v1-1-754a446a5363@amd.com/
+
+Signed-off-by: Nathan Lynch <nathan.lynch@amd.com>
 ---
- .../memory-controllers/mediatek,smi-common.yaml        | 18 ++++++++++++++++++
- .../bindings/memory-controllers/mediatek,smi-larb.yaml |  3 +++
- 2 files changed, 21 insertions(+)
+Nathan Lynch (4):
+      dmaengine: dmatest: Don't forcibly terminate channel in polled mode
+      dmaengine: dmatest: Suppress bogus failures when stopping a run
+      dmaengine: dmatest: Terminate channel before freeing threads
+      dmaengine: dmatest: Optionally make test errors fatal
 
-diff --git a/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-common.yaml b/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-common.yaml
-index 0762e0ff66ef..4e1deeff92b1 100644
---- a/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-common.yaml
-+++ b/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-common.yaml
-@@ -25,6 +25,21 @@ description: |
-   SMI generation 1 to transform the smi clock into emi clock domain, but that is
-   not needed for SMI generation 2.
- 
-+  The smi-common connects with smi-larb and IOMMU. The maximum inputs number of
-+  a smi-common is 8. In SMI generation 2, the engines number may be over 8.
-+  In this case, we use a smi-sub-common to merge some larbs.
-+  The block diagram something is like:
-+
-+                          IOMMU
-+                           | |
-+                       smi-common
-+              ---------------------------
-+               |          |           ...
-+              larb0   sub-common      ...  <-max number is 8
-+                   ----------------
-+                    |     |    ...
-+                  larb1 larbX  ...  <-max number is 8
-+
- properties:
-   compatible:
-     oneOf:
-@@ -40,6 +55,8 @@ properties:
-           - mediatek,mt8186-smi-common
-           - mediatek,mt8188-smi-common-vdo
-           - mediatek,mt8188-smi-common-vpp
-+          - mediatek,mt8189-smi-common
-+          - mediatek,mt8189-smi-sub-common
-           - mediatek,mt8192-smi-common
-           - mediatek,mt8195-smi-common-vdo
-           - mediatek,mt8195-smi-common-vpp
-@@ -108,6 +125,7 @@ allOf:
-         compatible:
-           contains:
-             enum:
-+              - mediatek,mt8189-smi-sub-common
-               - mediatek,mt8195-smi-sub-common
-     then:
-       required:
-diff --git a/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-larb.yaml b/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-larb.yaml
-index 2e7fac4b5094..9a5dafd7c07e 100644
---- a/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-larb.yaml
-+++ b/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-larb.yaml
-@@ -27,6 +27,7 @@ properties:
-           - mediatek,mt8183-smi-larb
-           - mediatek,mt8186-smi-larb
-           - mediatek,mt8188-smi-larb
-+          - mediatek,mt8189-smi-larb
-           - mediatek,mt8192-smi-larb
-           - mediatek,mt8195-smi-larb
- 
-@@ -85,6 +86,7 @@ allOf:
-             - mediatek,mt8183-smi-larb
-             - mediatek,mt8186-smi-larb
-             - mediatek,mt8188-smi-larb
-+            - mediatek,mt8189-smi-larb
-             - mediatek,mt8195-smi-larb
- 
-     then:
-@@ -119,6 +121,7 @@ allOf:
-               - mediatek,mt6779-smi-larb
-               - mediatek,mt8186-smi-larb
-               - mediatek,mt8188-smi-larb
-+              - mediatek,mt8189-smi-larb
-               - mediatek,mt8192-smi-larb
-               - mediatek,mt8195-smi-larb
- 
+ drivers/dma/dmatest.c | 67 ++++++++++++++++++++++++++++++++++++++++++---------
+ 1 file changed, 56 insertions(+), 11 deletions(-)
+---
+base-commit: dc59e4fea9d83f03bad6bddf3fa2e52491777482
+change-id: 20260722-dmatest-fixes-and-fatal-errors-3b3653d5ac9b
 
--- 
-2.43.0
+Best regards,
+--  
+Nathan Lynch <nathan.lynch@amd.com>
 
