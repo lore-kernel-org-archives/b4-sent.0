@@ -1,115 +1,83 @@
-From: Congcong Yao <congcong.yao@mediatek.com>
-Date: Wed, 22 Jul 2026 17:21:58 +0800
-Subject: [PATCH RESEND 2/2] dt-bindings: memory-controllers: mtk-smi: Add
- support for mt8189
+From: Rohan Joshi <rohan1sj@cadence.com>
+Subject: [PATCH v3 0/2] CQE support for cadence eMMC host controller
+Date: Wed, 22 Jul 2026 16:18:36 +0530
+Message-Id: <20260722-cdns_sdhci_cqe-support-v3-0-4412856a4488@cadence.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260722-8189-smi-support-v1-2-b528a4fd878c@mediatek.com>
-References: <20260722-8189-smi-support-v1-0-b528a4fd878c@mediatek.com>
-In-Reply-To: <20260722-8189-smi-support-v1-0-b528a4fd878c@mediatek.com>
-To: Yong Wu <yong.wu@mediatek.com>, Krzysztof Kozlowski <krzk@kernel.org>, 
- Matthias Brugger <matthias.bgg@gmail.com>, 
- AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>, 
- Rob Herring <robh@kernel.org>, Conor Dooley <conor+dt@kernel.org>
-Cc: linux-mediatek@lists.infradead.org, linux-kernel@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, devicetree@vger.kernel.org, 
- Congcong Yao <congcong.yao@mediatek.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784712202; l=3542;
- i=congcong.yao@mediatek.com; s=20260722; h=from:subject:message-id;
- bh=RfjGr9dS2BPv3kvuxEnkhOj9VPQPmNK7ihihb5BjbNg=;
- b=QoC+KkVN5+iRz4rt2bxJ1m7Pl3A3tv/2W5yWv/URnqQVugSSJtwLKVq8sawCC2pKt8h96YxWx
- 33XTHSbhj27CBA2PODFg9psJenWw91IxALzWlHRFKuAv1RoyfM+GyDV
-X-Developer-Key: i=congcong.yao@mediatek.com; a=ed25519;
- pk=tIrmGxKQQxnfyb48iCCd19063tppPj89U3nupGYAIxg=
-X-Endpoint-Received: by B4 Relay for congcong.yao@mediatek.com/20260722 with auth_id=889
+X-B4-Tracking: v=1; b=H4sIAASgYGoC/62NsQ6CMBRFf4V0tqZUKMbJ/zCGwOurdLCFPmg0h
+ H+3wODk5nhucs+ZGWGwSOySzSxgtGS9S3A6ZAy6xj2QW52YSSGVqGTOQTuqSXdgaxiQ09T3Poy
+ 8NQUW2oBBVbF07gMa+9rEt/vOAYcp+cfv2FkafXhv8Ziv694phfrViZILXpWFSTU8t6q8QqPRA
+ R7BP9kqjfIfomVZPgjdpLgcAQAA
+To: Ulf Hansson <ulfh@kernel.org>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Masahiro Yamada <yamada.masahiro@socionext.com>, 
+ Adrian Hunter <adrian.hunter@intel.com>
+Cc: linux-mmc@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, mparab@cadence.com, pawell@cadence.com, 
+ sjakhade@cadence.com, mpillai@cadence.com, rohan1sj@cadence.com, 
+ razb@mobileye.com
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784717318; l=2000;
+ i=rohan1sj@cadence.com; s=20260406; h=from:subject:message-id;
+ bh=+E9mnDrkm85YIgkx4FFzIzmVAnYNeA+fffZMlwscomM=;
+ b=ufAs3iZyBRmr7cwS50TwNCYnlbwMi0lE/0qhV+pli+qgGSg7Oofoyfva5onS58AIQX7aQG7tK
+ 2sBpF2L+02ADiNbZh5ybVg+YIUSfs+GmDP5F4jEJ5gD7bE4/M4sdYLc
+X-Developer-Key: i=rohan1sj@cadence.com; a=ed25519;
+ pk=YuwylizMVlVj8I4+VPMZ6xrFR2wyqJAWZyj90OVZgD0=
+X-Endpoint-Received: by B4 Relay for rohan1sj@cadence.com/20260406 with auth_id=723
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add smi larb, common and sub-commom binding description for mt8189.
+Hi,
 
-About what smi-sub-common is, please check the below diagram,
-we add it in mediatek,smi-common.yaml file.
+This series adds CQE (Command Queue Engine) support for cadence
+eMMC host controller. the driver enables CQE when both the
+conditions mentioned below are met
+        1. Hardware reports the presence of CQE
+        2. DT provides a "cqhci" register space
 
-Signed-off-by: Congcong Yao <congcong.yao@mediatek.com>
-Reviewed-by: AngeloGioacchino Del Regno <angelogioacchino.delregno@collabora.com>
+The driver handles amd,pensando-elba platform separately
+since it requires an additional byte-lane control
+register space. The space is mapped via index "1".
+The cqhci-core function "cqhci_pltfm_init" maps CQE
+via a named resource "cqchi" and hence DT needs to define
+the same if the CQE needs to be enabled
+
+The patch adds three named resources to cater for the
+above mentioned requirement. It creates the two possible
+combinations for amd,pensando-elba platform,
+        [hc, bctl] or [hc, bctl, cqhci]
+and the other platforms,
+        [hc] or [hc, cqhci]
+
+Signed-off-by: Rohan Joshi <rohan1sj@cadence.com>
 ---
- .../memory-controllers/mediatek,smi-common.yaml        | 18 ++++++++++++++++++
- .../bindings/memory-controllers/mediatek,smi-larb.yaml |  3 +++
- 2 files changed, 21 insertions(+)
+Changes in v3:
+- Device Tree updates to account for multiple platforms supporting CQE
+- Link to v2: https://patch.msgid.link/20260506-cdns_sdhci_cqe-support-v2-0-754fe4de8b65@cadence.com
 
-diff --git a/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-common.yaml b/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-common.yaml
-index 0762e0ff66ef..4e1deeff92b1 100644
---- a/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-common.yaml
-+++ b/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-common.yaml
-@@ -25,6 +25,21 @@ description: |
-   SMI generation 1 to transform the smi clock into emi clock domain, but that is
-   not needed for SMI generation 2.
- 
-+  The smi-common connects with smi-larb and IOMMU. The maximum inputs number of
-+  a smi-common is 8. In SMI generation 2, the engines number may be over 8.
-+  In this case, we use a smi-sub-common to merge some larbs.
-+  The block diagram something is like:
-+
-+                          IOMMU
-+                           | |
-+                       smi-common
-+              ---------------------------
-+               |          |           ...
-+              larb0   sub-common      ...  <-max number is 8
-+                   ----------------
-+                    |     |    ...
-+                  larb1 larbX  ...  <-max number is 8
-+
- properties:
-   compatible:
-     oneOf:
-@@ -40,6 +55,8 @@ properties:
-           - mediatek,mt8186-smi-common
-           - mediatek,mt8188-smi-common-vdo
-           - mediatek,mt8188-smi-common-vpp
-+          - mediatek,mt8189-smi-common
-+          - mediatek,mt8189-smi-sub-common
-           - mediatek,mt8192-smi-common
-           - mediatek,mt8195-smi-common-vdo
-           - mediatek,mt8195-smi-common-vpp
-@@ -108,6 +125,7 @@ allOf:
-         compatible:
-           contains:
-             enum:
-+              - mediatek,mt8189-smi-sub-common
-               - mediatek,mt8195-smi-sub-common
-     then:
-       required:
-diff --git a/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-larb.yaml b/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-larb.yaml
-index 2e7fac4b5094..9a5dafd7c07e 100644
---- a/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-larb.yaml
-+++ b/Documentation/devicetree/bindings/memory-controllers/mediatek,smi-larb.yaml
-@@ -27,6 +27,7 @@ properties:
-           - mediatek,mt8183-smi-larb
-           - mediatek,mt8186-smi-larb
-           - mediatek,mt8188-smi-larb
-+          - mediatek,mt8189-smi-larb
-           - mediatek,mt8192-smi-larb
-           - mediatek,mt8195-smi-larb
- 
-@@ -85,6 +86,7 @@ allOf:
-             - mediatek,mt8183-smi-larb
-             - mediatek,mt8186-smi-larb
-             - mediatek,mt8188-smi-larb
-+            - mediatek,mt8189-smi-larb
-             - mediatek,mt8195-smi-larb
- 
-     then:
-@@ -119,6 +121,7 @@ allOf:
-               - mediatek,mt6779-smi-larb
-               - mediatek,mt8186-smi-larb
-               - mediatek,mt8188-smi-larb
-+              - mediatek,mt8189-smi-larb
-               - mediatek,mt8192-smi-larb
-               - mediatek,mt8195-smi-larb
- 
+Changes in v2:
+- Use dev_err_probe() for error messages when in probe path
+- Updated commit messages as per subsystem naming conventions
+- Select MMC_CQHCI in Kconfig for MMC_SDHCI_CADENCE
+- Drop new dt-binding example and corrected existing one
+- Link to v1: https://patch.msgid.link/20260407-cdns_sdhci_cqe-support-v1-0-13efc0810631@cadence.com
 
+---
+Rohan Joshi (2):
+      dt-bindings: mmc: cdns,sdhci: Add CQE support
+      mmc: sdhci-cadence: add CQE support
+
+ .../devicetree/bindings/mmc/cdns,sdhci.yaml        |  28 ++++-
+ drivers/mmc/host/Kconfig                           |   1 +
+ drivers/mmc/host/sdhci-cadence.c                   | 124 ++++++++++++++++++++-
+ 3 files changed, 146 insertions(+), 7 deletions(-)
+---
+base-commit: 1590cf0329716306e948a8fc29f1d3ee87d3989f
+change-id: 20260721-cdns_sdhci_cqe-support-bf4e4dfcfe67
+
+Best regards,
 -- 
-2.43.0
+Rohan Joshi <rohan1sj@cadence.com>
 
