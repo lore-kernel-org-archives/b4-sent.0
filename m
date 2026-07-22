@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Wed, 22 Jul 2026 16:41:23 -0700
-Subject: [PATCH v4 15/16] WIP: Reproducer for false restoration on shared
- HugeTLB mappings
+Date: Wed, 22 Jul 2026 16:41:24 -0700
+Subject: [PATCH v4 16/16] WIP: Reproducer for out_put_pages subpool reserve
+ leakage
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260722-hugetlb-alloc-failure-fixes-v4-15-88e8b81970dc@google.com>
+Message-Id: <20260722-hugetlb-alloc-failure-fixes-v4-16-88e8b81970dc@google.com>
 References: <20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com>
 In-Reply-To: <20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com>
 To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
@@ -26,220 +26,257 @@ Cc: vannapurve@google.com, erdemaktas@google.com, linux-mm@kvack.org,
  linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, 
  linux-doc@vger.kernel.org, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784763678; l=7594;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784763678; l=9148;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=nOc8hfbJ6YqAx29c86ZvsVDaWXvf89VuywJtSWZG1aU=;
- b=Ygf0ukiFfgWAOGov+mR9/g6iSz7wYPk1CkPXmJ7JASb36TG2/VHmKkIqNjbjhnVjLSzBvjNWm
- YF93xaa9IcrC4rhyvTWK3PH5804ubxkt3tuOoT9BAJXzFCKMO4dUDtv
+ bh=C8+RXWPxhEZ0iEc4milJz3Gk4NI1eHcFg/eirCB7vkk=;
+ b=FRykE6OsJj6rPG7Phjv7msN60z3TEeSAhyZioTGAlFZtw0k8YLFxH2S4I/+sdh6xff0dBk5Tf
+ ghANT0I23YjCosFVyKBGVj4L7p83snFB5riN4HkN1XQMb0K95tBSTR9
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-(This reproducer was hacked up and not meant to be merged.)
+Add a highly precise C reproducer and accompanying bash execution script
+to exercise, validate, and stress-test the `out_put_pages` error path
+rollback semantics in `hugetlb_reserve_pages()`.
 
-hugetlb_unreserve_pages() unconditionally returns reservations to the subpool
-(via hugepage_subpool_put_pages()). This means that regardless of whether a
-subpool reservation was actually used, the reservation is processed by the
-subpool structure.
-
-To create a false restoration, the reproducer performs these steps:
-
-1.  Mount with min_size=2M (1 page). Global resv_hugepages becomes 1.
-2.  The program maps 4MB (2 pages) shared (which also grows the file to
-    4MB). Global resv_hugepages becomes 2 (1 from the mount, 1 new global
-    reservation).
-3.  The program populates only the first page. Global resv_hugepages decrements
-    to 1 (reservation consumed by allocation).
-4.  The program exits (closing VMAs/fds). For shared mappings, reservations are
-    associated with the file inode, so they remain active. Global resv_hugepages
-    remains 1.
-5.  The script truncates the file to 2MB (truncate -s 2M).
-    +   This synchronously triggers hugetlb_unreserve_pages() to release the
-        reservation of the truncated range (the unallocated 2nd page).
-    +   It calls hugepage_subpool_put_pages(spool, 1).
-    +   On Vanilla Kernel (Buggy):
-        +   used_hpages is 0 (not tracked).
-        +   used_hpages (0) < min_hpages (1) is TRUE.
-        +   The subpool incorrectly restores the reservation (spool->rsv_hpages
-            becomes 1), even though Page 0 is still allocated and satisfies the
-            mount's minimum guarantee.
-        +   hugepage_subpool_put_pages() returns 0, skipping
-            hugetlb_acct_memory(h, -1).
-        +   Result: Global resv_hugepages remains stuck at 1 (Leak).
-    +   On Fixed Kernel:
-        +   used_hpages is tracked and is initially 2.
-        +   hugepage_subpool_put_pages(1) decrements used_hpages to 1.
-        +   used_hpages (1) < min_hpages (1) is FALSE.
-        +   The subpool does not restore the reservation.
-        +   hugepage_subpool_put_pages() returns 1.
-        +   hugetlb_acct_memory(h, -1) is called.
-        +   Result: Global resv_hugepages decrements to 0 (No leak).
-
-When the filesystem is unmounted, hugetlbfs_put_super drops the subpool
-reference. Since the filesystem is being unmounted, the reference count drops to
-0, triggering unlock_or_release_subpool.
-
-Inside unlock_or_release_subpool, the kernel checks if the subpool is free using
-subpool_is_free.
-+ On the buggy kernel, subpool_is_free checks if spool->rsv_hpages is equal to
-  spool->min_hpages. Because of the phantom reservation, spool->rsv_hpages was
-  restored to 1. Since min_hpages is 1, the check (1 == 1) returns true.
-+ Since the subpool is considered free, the kernel releases the initial
-  mount-time reservation by calling hugetlb_acct_memory to decrement
-  resv_huge_pages by spool->min_hpages (which is 1).
-+ This decrement reduces resv_huge_pages from 1 (the leaked state) to 0.
-
-As a result, the leaked reservation is cleaned up during unmount and does not
-persist afterward.
+How it works:
+1. The bash script sets the system-wide HugeTLB pool to a highly constrained
+   baseline of exactly `nr_hugepages = 1` and `nr_overcommit_hugepages = 0`.
+2. It mounts a `hugetlbfs` instance with `-o pagesize=2M,min_size=2M,size=4M`,
+   which causes the kernel to immediately consume the 1 available global page
+   as the subpool's mount-time minimum size reserve (`rsv_hugepages` becomes 1).
+3. The C reproducer then attempts a shared `mmap()` for `4M` (2 pages).
+   - `hugepage_subpool_get_pages()` requests 2 pages, sees 1 reserved, and
+     requests 1 additional global page.
+   - `hugetlb_acct_memory()` attempts to secure that global page but immediately
+     fails with `-ENOMEM` because the pool is exhausted.
+   - The kernel jumps to the `out_put_pages` error path, calling
+     `hugepage_subpool_put_pages()` to symmetrically roll back the reservation.
+4. The script verifies that the subpool successfully retains its 1reserved page
+   during the failure and returns it cleanly to the global pool upon unmount,
+   proving that no underflow, double-free, or reserve leakage occurs in the
+   `out_put_pages` boundary path.
 
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- subpool_shared_leak.c  | 43 +++++++++++++++++++++++++
- subpool_shared_leak.sh | 87 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 130 insertions(+)
+ hugetlb_reserve_pages_out_put_pages.c  |  49 +++++++++++
+ hugetlb_reserve_pages_out_put_pages.sh | 153 +++++++++++++++++++++++++++++++++
+ 2 files changed, 202 insertions(+)
 
-diff --git a/subpool_shared_leak.c b/subpool_shared_leak.c
+diff --git a/hugetlb_reserve_pages_out_put_pages.c b/hugetlb_reserve_pages_out_put_pages.c
 new file mode 100644
-index 0000000000000..80b972af1c5ce
+index 0000000000000..9e63fc8997d57
 --- /dev/null
-+++ b/subpool_shared_leak.c
-@@ -0,0 +1,43 @@
++++ b/hugetlb_reserve_pages_out_put_pages.c
+@@ -0,0 +1,49 @@
 +// SPDX-License-Identifier: GPL-2.0
++#define _GNU_SOURCE
 +#include <stdio.h>
 +#include <stdlib.h>
 +#include <unistd.h>
 +#include <sys/mman.h>
-+#include <sys/stat.h>
 +#include <fcntl.h>
-+
-+#define HPAGE_SIZE (2 * 1024 * 1024)
++#include <err.h>
++#include <errno.h>
 +
 +int main(int argc, char **argv)
 +{
 +	const char *file_path;
-+	void *addr;
++	size_t size;
 +	int fd;
++	void *addr;
 +
-+	if (argc < 2) {
-+		fprintf(stderr, "Usage: %s <file_path>\n", argv[0]);
++	if (argc < 3) {
++		fprintf(stderr, "Usage: %s <hugetlbfs_file> <size_in_bytes>\n",
++			argv[0]);
 +		return 1;
 +	}
++
 +	file_path = argv[1];
++	size = strtoull(argv[2], NULL, 0);
 +
 +	fd = open(file_path, O_CREAT | O_RDWR, 0666);
-+	if (fd < 0) {
-+		perror("open");
-+		return 1;
-+	}
++	if (fd < 0)
++		err(1, "open");
 +
-+	addr = mmap(NULL, 2 * HPAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++	printf("Attempting to mmap %zu bytes shared on %s...\n", size,
++	       file_path);
++	addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 +	if (addr == MAP_FAILED) {
-+		perror("mmap");
++		if (errno == ENOMEM) {
++			printf("mmap failed with ENOMEM as expected.\n");
++			close(fd);
++			return 0;
++		}
++		perror("mmap failed with unexpected error");
 +		close(fd);
 +		return 1;
 +	}
 +
-+	/* Allocate 1st page only. 2nd page remains unallocated (but reserved). */
-+	*(char *)addr = 1;
-+
-+	munmap(addr, 2 * HPAGE_SIZE);
++	printf("ERROR: mmap SUCCEEDED unexpectedly at %p\n", addr);
++	munmap(addr, size);
 +	close(fd);
-+
-+	return 0;
++	return 1;
 +}
-diff --git a/subpool_shared_leak.sh b/subpool_shared_leak.sh
+diff --git a/hugetlb_reserve_pages_out_put_pages.sh b/hugetlb_reserve_pages_out_put_pages.sh
 new file mode 100755
-index 0000000000000..619036145c523
+index 0000000000000..030e1915539b4
 --- /dev/null
-+++ b/subpool_shared_leak.sh
-@@ -0,0 +1,87 @@
++++ b/hugetlb_reserve_pages_out_put_pages.sh
+@@ -0,0 +1,153 @@
 +#!/bin/bash
 +# SPDX-License-Identifier: GPL-2.0
++set -e
 +
 +if [ "$EUID" -ne 0 ]; then
 +    echo "Please run as root"
 +    exit 1
 +fi
 +
-+MNT_PATH="/tmp/mnt_hugetlb_shared_leak"
++SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
++cd "$SCRIPT_DIR"
++
++# Detect default hugepage size to support both 2MB and 1GB pages robustly
++hpz=$(grep -i hugepagesize /proc/meminfo | awk '{print $2}')
++kb=$hpz
++mb=$((kb / 1024))
++hpage_size_bytes=$((kb * 1024))
++
++hpage_dir="hugepages-${kb}kB"
++SYSFS_PATH="/sys/kernel/mm/hugepages/$hpage_dir"
++
++MNT_PATH="/tmp/mnt_hugetlb_repro"
 +FILE_PATH="$MNT_PATH/test_file"
 +
-+# Save original values
-+orig_nr=$(cat /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages)
++# Save original values for safe restoration
++orig_nr=$(cat "$SYSFS_PATH/nr_hugepages")
++orig_overcommit=$(cat "$SYSFS_PATH/nr_overcommit_hugepages")
 +
 +cleanup() {
 +    echo "Cleaning up..."
 +    rm -f "$FILE_PATH"
 +    umount "$MNT_PATH" 2>/dev/null
 +    rmdir "$MNT_PATH" 2>/dev/null
-+    echo "$orig_nr" > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
++    echo "$orig_nr" > "$SYSFS_PATH/nr_hugepages"
++    echo "$orig_overcommit" > "$SYSFS_PATH/nr_overcommit_hugepages"
 +    echo "Cleanup done."
 +}
 +trap cleanup EXIT
 +
-+# 1. Set nr_hugepages to 2
-+echo 2 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
++# Verify reproducer binary exists
++if [ ! -x ./hugetlb_reserve_pages_out_put_pages ]; then
++    echo "reproducer binary './hugetlb_reserve_pages_out_put_pages' not found or not executable."
++    echo "Please compile it first: gcc -static -o hugetlb_reserve_pages_out_put_pages hugetlb_reserve_pages_out_put_pages.c"
++    exit 1
++fi
 +
-+# 2. Mount hugetlbfs with min_size=2M (1 page)
++# 1. Set global pool such that only the mount-time reservation can succeed
++echo 1 > "$SYSFS_PATH/nr_hugepages"
++echo 0 > "$SYSFS_PATH/nr_overcommit_hugepages"
++
++initial_resv=$(cat "$SYSFS_PATH/resv_hugepages")
++echo "Initial resv_hugepages (before mount): $initial_resv"
++
++# 2. Mount with min_size = 1 page, max size = 2 pages
++min_size_str="${mb}M"
++max_size_str="$((mb * 2))M"
++mmap_size_bytes=$((hpage_size_bytes * 2))
++
 +mkdir -p "$MNT_PATH"
-+if ! mount -t hugetlbfs -o min_size=2M none "$MNT_PATH"; then
++echo "Mounting hugetlbfs with pagesize=${mb}M, min_size=$min_size_str, size=$max_size_str..."
++if ! mount -t hugetlbfs -o "pagesize=${mb}M,min_size=$min_size_str,size=$max_size_str" none "$MNT_PATH"; then
 +    echo "Failed to mount hugetlbfs"
 +    exit 1
 +fi
 +
-+# Check resv_hugepages after mount (should be 1)
-+initial_resv=$(cat /sys/kernel/mm/hugepages/hugepages-2048kB/resv_hugepages)
-+echo "Initial resv_hugepages (after mount): $initial_resv"
-+if [ "$initial_resv" -ne 1 ]; then
-+    echo "ERROR: Initial resv_hugepages is not 1!"
++resv_after_mount=$(cat "$SYSFS_PATH/resv_hugepages")
++echo "resv_hugepages after mount: $resv_after_mount"
++expected_after_mount=$((initial_resv + 1))
++if [ "$resv_after_mount" != "$expected_after_mount" ]; then
++    echo "ERROR: resv_hugepages is not $expected_after_mount after mount (actual: $resv_after_mount)!"
 +    exit 1
 +fi
 +
-+# Verify reproducer binary exists
-+if [ ! -x ./subpool_shared_leak ]; then
-+    echo "reproducer binary './subpool_shared_leak' not found or not executable."
-+    echo "Please compile it first: gcc -static -o subpool_shared_leak subpool_shared_leak.c"
++# Check mount stats after mount
++expected_bsize=$hpage_size_bytes
++bsize_S=$(stat -f -c "%S" "$MNT_PATH")
++bsize_s=$(stat -f -c "%s" "$MNT_PATH")
++echo "Mount block size after mount: $bsize_S / $bsize_s (expected: $expected_bsize)"
++if [ "$bsize_S" != "$expected_bsize" ] && [ "$bsize_s" != "$expected_bsize" ]; then
++    echo "ERROR: Unexpected mount block size after mount (actual S:$bsize_S s:$bsize_s, expected: $expected_bsize)"
 +    exit 1
 +fi
 +
-+# 3. Run helper to map 4MB, allocate 2MB, and close.
-+# This creates 2 reservations, consumes 1 (by allocating Page 0).
-+# The unallocated Page 1 reservation remains active in the inode's resv_map.
-+echo "Running helper..."
-+./subpool_shared_leak "$FILE_PATH"
-+
-+resv_after_helper=$(cat /sys/kernel/mm/hugepages/hugepages-2048kB/resv_hugepages)
-+echo "resv_hugepages after helper (should be 1): $resv_after_helper"
-+# Page 0 is allocated (no longer reserved). Page 1 is reserved.
-+# So resv_hugepages should be 1.
-+if [ "$resv_after_helper" -ne 1 ]; then
-+    echo "ERROR: resv_hugepages is not 1 after helper run!"
++actual_stats_mount=$(stat -f -c "%b %f %a" "$MNT_PATH")
++expected_stats_mount="2 2 2"
++echo "Mount stats after mount (total free avail): $actual_stats_mount (expected: $expected_stats_mount)"
++if [ "$actual_stats_mount" != "$expected_stats_mount" ]; then
++    echo "ERROR: Unexpected mount stats after mount: $actual_stats_mount (expected: $expected_stats_mount)"
 +    exit 1
 +fi
 +
-+# 4. Truncate file to 2MB (releases Page 1 reservation)
-+echo "Truncating file to 2MB (releasing 1 page reservation)..."
-+truncate -s 2M "$FILE_PATH"
++# 3. Run the reproducer to trigger the out_put_pages failure path
++echo "Running reproducer (expecting mmap failure with ENOMEM)..."
++if ./hugetlb_reserve_pages_out_put_pages "$FILE_PATH" "$mmap_size_bytes"; then
++    echo "Reproducer finished successfully."
++    resv_after_mmap=$(cat "$SYSFS_PATH/resv_hugepages")
++    echo "resv_hugepages after failed mmap: $resv_after_mmap"
++    expected_after_mmap=$expected_after_mount
++    if [ "$resv_after_mmap" = "$expected_after_mmap" ]; then
++        echo "RESULT: out_put_pages EXERCISED (resv_hugepages preserved at $expected_after_mmap as expected)"
 +
-+# Check resv_hugepages after truncate.
-+# Since Page 0 is still allocated (and in page cache), and satisfies the
-+# min_size=2M guarantee, we should have 0 reservations remaining.
-+# If the bug is present, the truncate path will incorrectly restore the
-+# reservation to the subpool and skip releasing it globally, leaving
-+# resv_hugepages at 1.
-+final_resv=$(cat /sys/kernel/mm/hugepages/hugepages-2048kB/resv_hugepages)
-+echo "Final resv_hugepages (after 2MB truncate): $final_resv"
++        # Check mount stats
++        expected_bsize=$hpage_size_bytes
++        bsize_S=$(stat -f -c "%S" "$MNT_PATH")
++        bsize_s=$(stat -f -c "%s" "$MNT_PATH")
++        echo "Mount block size: $bsize_S / $bsize_s (expected: $expected_bsize)"
++        if [ "$bsize_S" != "$expected_bsize" ] && [ "$bsize_s" != "$expected_bsize" ]; then
++            echo "ERROR: Unexpected mount block size (actual S:$bsize_S s:$bsize_s, expected: $expected_bsize)"
++            exit 1
++        fi
 +
-+if [ "$final_resv" -eq 1 ]; then
-+    echo "RESULT: LEAK DETECTED (FAIL)"
++        actual_stats=$(stat -f -c "%b %f %a" "$MNT_PATH")
++        expected_stats="2 2 2"
++        echo "Mount stats (total free avail): $actual_stats (expected: $expected_stats)"
++        if [ "$actual_stats" != "$expected_stats" ]; then
++            echo "RESULT: Unexpected mount stats after failed mmap (FAIL)"
++            exit 1
++        else
++            echo "RESULT: Mount stats restored to $expected_stats as expected (PASS)"
++        fi
++    else
++        echo "RESULT: Unexpected resv_hugepages value: $resv_after_mmap (expected: $expected_after_mmap)"
++        exit 1
++    fi
++else
++    echo "FAIL: Reproducer returned non-zero (mmap didn't fail with ENOMEM)"
 +    exit 1
-+elif [ "$final_resv" -eq 0 ]; then
-+    echo "RESULT: NO LEAK (PASS)"
++fi
++
++# 4. Disable trap and do manual cleanup to check for final unmount underflow
++trap - EXIT
++
++echo "Unmounting..."
++umount "$MNT_PATH"
++rmdir "$MNT_PATH"
++
++final_resv=$(cat "$SYSFS_PATH/resv_hugepages")
++echo "Final resv_hugepages (after unmount): $final_resv"
++
++# Restore original values
++echo "Restoring original hugepage settings..."
++echo "$orig_nr" > "$SYSFS_PATH/nr_hugepages"
++echo "$orig_overcommit" > "$SYSFS_PATH/nr_overcommit_hugepages"
++
++if [ "$final_resv" = "$initial_resv" ]; then
++    echo "RESULT: State restored to $initial_resv (or cleaned up if fixed)"
++    echo "ALL DONE."
 +    exit 0
 +else
-+    echo "RESULT: UNEXPECTED STATE ($final_resv)"
-+    exit 2
++    echo "RESULT: Underflow/Leak/Incorrect state detected! (final_resv = $final_resv, expected = $initial_resv)"
++    echo "ALL DONE."
++    exit 1
 +fi
 
 -- 
