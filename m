@@ -1,11 +1,11 @@
 From: Ackerley Tng <ackerleytng@google.com>
-Date: Wed, 22 Jul 2026 16:41:13 -0700
-Subject: [PATCH v4 05/16] mm: hugetlb: Fix subpool usage leak on allocation
- failure
+Date: Wed, 22 Jul 2026 16:41:14 -0700
+Subject: [PATCH v4 06/16] mm: hugetlb: Rename local variables for clarity
+ in hugetlb_reserve_pages()
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260722-hugetlb-alloc-failure-fixes-v4-5-88e8b81970dc@google.com>
+Message-Id: <20260722-hugetlb-alloc-failure-fixes-v4-6-88e8b81970dc@google.com>
 References: <20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com>
 In-Reply-To: <20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com>
 To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
@@ -24,127 +24,127 @@ To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>,
  Hongxiang Lou <louhongxiang@huawei.com>, Miaohe Lin <linmiaohe@huawei.com>
 Cc: vannapurve@google.com, erdemaktas@google.com, linux-mm@kvack.org, 
  linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, 
- linux-doc@vger.kernel.org, Ackerley Tng <ackerleytng@google.com>, 
- stable@vger.kernel.org
+ linux-doc@vger.kernel.org, Ackerley Tng <ackerleytng@google.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784763678; l=4429;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784763678; l=4405;
  i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
- bh=aioziCwNl1YhUSW9QJsopoiM0FNET1b5J61jDqmRBgE=;
- b=EgFMKfYcEA2o7aDdaYSsd6UI7TTvR5GAm70ONUg9KMMDn45zAWhKmQCqMLfU8tl73gxpDjjB4
- l7LDr/Y+kTGDj3eEZeDlBJW0M2vKZYYopIAGmS2bhziu7J6FHpt5CR0
+ bh=YN6Ec4dryGn+lNCiGktVw2z+GkC+1qiWsI1wgmafaTw=;
+ b=2bILnGfpQYBpRme36koKemun0e04kP1hxT7XZpV0o3yJRaZSrtupWWZeQRckJ1ePGfhGs4qPM
+ 8BCX7oBBkyyAdb4/2/vTHjmS0gJZT/YU/XnuJHwl3Zt1scXLcXt/uJ9
 X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
  pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
 X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When alloc_hugetlb_folio() fails early (e.g. buddy allocation failure or
-hugetlb cgroup charging failure) and gbl_chg == 1 (meaning a reservation
-was not used, but a global page was allocated instead), the subpool page
-acquired via hugepage_subpool_get_pages() must still be returned.
+In hugetlb_reserve_pages(), the return value of
+hugepage_subpool_get_pages() was named gbl_resv, while the return value of
+hugepage_subpool_put_pages() was named gbl_reserve. These variable names
+were inconsistent with the naming conventions established in
+alloc_hugetlb_folio().
 
-Currently, the error path out_subpool_put: only calls
-hugepage_subpool_put_pages() if !gbl_chg is true. If gbl_chg is 1, it
-skips it, permanently leaking the subpool's used_hpages counter.
+Rename local variables in hugetlb_reserve_pages() to match naming in
+alloc_hugetlb_folio().
 
-With the earlier patch to always track used_hpages in the subpool, always
-call hugepage_subpool_put_pages() if map_chg is true to consistently
-restore the page to the subpool. Condition on map_chg because map_chg also
-gates hugepage_subpool_get_pages().
++ Rename gbl_resv to gbl_resv_get, which is the number of global
+  reservations required from the global pool (because neither reservation
+  maps nor pre-existing subpool reservations could cover the request).
 
-Opportunistically rename gbl_chg to gbl_resv_get, which is the number of
-global pages needed (because neither resv_map nor subpool reservations
-could be used).
+  If gbl_resv_get is 0, the reservation request is fully covered by
+  pre-existing subpool reservations, so no additional global reservations
+  are requested. If gbl_resv_get > 0, it represents the number of
+  additional global reservations required, which are charged to global
+  memory via hugetlb_acct_memory(h, gbl_resv_get).
 
-If the number of global pages needed is 0, this allocation uses a
-reservation somewhere, hence proceed to consume a reservation by
-decrementing h->resv_huge_pages. If the number of global pages needed is 1,
-reservations are neither created nor consumed.
+  Note: gbl_resv_get in hugetlb_reserve_pages() is conceptually slightly
+  different from gbl_resv_get in alloc_hugetlb_folio():
 
-Also rename gbl_reserve to gbl_resv_put, which is the number of
-pages the subpool could not absorb into its reservations.
+  + In hugetlb_reserve_pages(): additional _reservations_ required,
+                                accounted using hugetlb_acct_memory()
+  + In alloc_hugetlb_folio(): additional _pages_ required, no change to
+                              h->resv_huge_pages if gbl_resv_get > 0
 
-Adjust global reservations using hugetlb_acct_memory() with the difference
-between gbl_resv_get and gbl_resv_put to take care of possible races where
-another thread might have performed get or put with the same subpool, hence
-perhaps requiring updates to global reservation counts. (If gbl_resv_get ==
-0 because a resv_map reservation was used, map_chg == 0 so the entire
-subpool returning is skipped - still correct.)
++ Rename gbl_reserve to gbl_resv_put, which is the number of pages the
+  subpool could not absorb into its reservations during rollback (and are
+  thus returned to the global pool).
 
-Fixes: a833a693a490e ("mm: hugetlb: fix incorrect fallback for subpool")
-Cc: stable@vger.kernel.org
+In error rollback paths, hugetlb_acct_memory(h, gbl_resv_get -
+gbl_resv_put) adjusts global reservations using the difference between
+global pages requested (gbl_resv_get) and global pages returned
+(gbl_resv_put).
+
 Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- mm/hugetlb.c | 23 ++++++++++-------------
- 1 file changed, 10 insertions(+), 13 deletions(-)
+ mm/hugetlb.c | 19 ++++++++++---------
+ 1 file changed, 10 insertions(+), 9 deletions(-)
 
 diff --git a/mm/hugetlb.c b/mm/hugetlb.c
-index 5ee1bc5c00bfe..879e4640dc50d 100644
+index 879e4640dc50d..8431c00d48267 100644
 --- a/mm/hugetlb.c
 +++ b/mm/hugetlb.c
-@@ -2872,7 +2872,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 	struct hugepage_subpool *spool = subpool_vma(vma);
- 	struct hstate *h = hstate_vma(vma);
- 	struct folio *folio;
--	long retval, gbl_chg, gbl_reserve;
-+	long retval, gbl_resv_get;
- 	map_chg_state map_chg;
- 	int ret, idx;
+@@ -6562,12 +6562,13 @@ long hugetlb_reserve_pages(struct inode *inode,
+ 		struct vm_area_struct *vma,
+ 		vma_flags_t vma_flags)
+ {
+-	long chg = -1, add = -1, gbl_resv;
++	long chg = -1, add = -1;
+ 	struct hstate *h = hstate_inode(inode);
+ 	struct hugepage_subpool *spool = subpool_inode(inode);
+ 	struct resv_map *resv_map;
  	struct hugetlb_cgroup *h_cg = NULL;
-@@ -2912,15 +2912,15 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 	 * Or if it can get one from the pool reservation directly.
+-	long gbl_reserve, regions_needed = 0;
++	long gbl_resv_get, gbl_resv_put;
++	long regions_needed = 0;
+ 	int err;
+ 
+ 	/* This should never happen */
+@@ -6642,9 +6643,9 @@ long hugetlb_reserve_pages(struct inode *inode,
+ 	 * the subpool has a minimum size, there may be some global
+ 	 * reservations already in place (gbl_reserve).
  	 */
- 	if (map_chg) {
--		gbl_chg = hugepage_subpool_get_pages(spool, 1);
--		if (gbl_chg < 0)
-+		gbl_resv_get = hugepage_subpool_get_pages(spool, 1);
-+		if (gbl_resv_get < 0)
- 			goto out_end_reservation;
- 	} else {
- 		/*
- 		 * If we have the vma reservation ready, no need for extra
- 		 * global reservation.
- 		 */
--		gbl_chg = 0;
-+		gbl_resv_get = 0;
+-	gbl_resv = hugepage_subpool_get_pages(spool, chg);
+-	if (gbl_resv < 0) {
+-		err = gbl_resv;
++	gbl_resv_get = hugepage_subpool_get_pages(spool, chg);
++	if (gbl_resv_get < 0) {
++		err = gbl_resv_get;
+ 		goto out_uncharge_cgroup;
  	}
  
+@@ -6652,7 +6653,7 @@ long hugetlb_reserve_pages(struct inode *inode,
+ 	 * Check enough hugepages are available for the reservation.
+ 	 * Hand the pages back to the subpool if there are not
+ 	 */
+-	err = hugetlb_acct_memory(h, gbl_resv);
++	err = hugetlb_acct_memory(h, gbl_resv_get);
+ 	if (err < 0)
+ 		goto out_put_pages;
+ 
+@@ -6671,7 +6672,7 @@ long hugetlb_reserve_pages(struct inode *inode,
+ 		add = region_add(resv_map, from, to, regions_needed, h, h_cg);
+ 
+ 		if (unlikely(add < 0)) {
+-			hugetlb_acct_memory(h, -gbl_resv);
++			hugetlb_acct_memory(h, -gbl_resv_get);
+ 			err = add;
+ 			goto out_put_pages;
+ 		} else if (unlikely(chg > add)) {
+@@ -6713,14 +6714,14 @@ long hugetlb_reserve_pages(struct inode *inode,
+ 	 * tell us the new number of reservations that need to be
+ 	 * returned to the global pool.
+ 	 */
+-	gbl_reserve = hugepage_subpool_put_pages(spool, chg);
++	gbl_resv_put = hugepage_subpool_put_pages(spool, chg);
  	/*
-@@ -2949,7 +2949,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 	 * from the global free pool (global change).  gbl_chg == 0 indicates
- 	 * a reservation exists for the allocation.
+ 	 * There may be a difference between the number of
+ 	 * reservations to consume and the number to restore now if
+ 	 * there are multiple threads interacting with the subpool -
+ 	 * restore the difference.
  	 */
--	folio = dequeue_hugetlb_folio_vma(h, vma, addr, gbl_chg);
-+	folio = dequeue_hugetlb_folio_vma(h, vma, addr, gbl_resv_get);
- 	if (!folio) {
- 		spin_unlock_irq(&hugetlb_lock);
- 		folio = alloc_buddy_hugetlb_folio_with_mpol(h, vma, addr);
-@@ -2965,7 +2965,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 	 * Either dequeued or buddy-allocated folio needs to add special
- 	 * mark to the folio when it consumes a global reservation.
- 	 */
--	if (!gbl_chg) {
-+	if (!gbl_resv_get) {
- 		folio_set_hugetlb_restore_reserve(folio);
- 		h->resv_huge_pages--;
- 	}
-@@ -3022,13 +3022,10 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
- 		hugetlb_cgroup_uncharge_cgroup_rsvd(idx, pages_per_huge_page(h),
- 						    h_cg_rsvd);
- out_subpool_put:
--	/*
--	 * put page to subpool iff the quota of subpool's rsv_hpages is used
--	 * during hugepage_subpool_get_pages.
--	 */
--	if (map_chg && !gbl_chg) {
--		gbl_reserve = hugepage_subpool_put_pages(spool, 1);
--		hugetlb_acct_memory(h, -gbl_reserve);
-+	if (map_chg) {
-+		long gbl_resv_put = hugepage_subpool_put_pages(spool, 1);
-+
-+		hugetlb_acct_memory(h, gbl_resv_get - gbl_resv_put);
- 	}
+-	hugetlb_acct_memory(h, gbl_resv - gbl_reserve);
++	hugetlb_acct_memory(h, gbl_resv_get - gbl_resv_put);
  
- 
+ out_uncharge_cgroup:
+ 	hugetlb_cgroup_uncharge_cgroup_rsvd(hstate_index(h),
 
 -- 
 2.55.0.229.g6434b31f56-goog
