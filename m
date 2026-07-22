@@ -1,114 +1,216 @@
-From: Daniel Schaefer <dhs@frame.work>
-Date: Thu, 23 Jul 2026 01:18:58 +0800
-Subject: [PATCH] iio: hid-sensor: als: scale each channel individually
+From: Ackerley Tng <ackerleytng@google.com>
+Subject: [PATCH v4 00/16] Fix bugs on HugeTLB folio allocation failure
+ paths
+Date: Wed, 22 Jul 2026 16:41:08 -0700
+Message-Id: <20260722-hugetlb-alloc-failure-fixes-v4-0-88e8b81970dc@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260723-chromaticity-v1-1-5ef5746ace2a@frame.work>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDcyNj3eSMovzcxJLM5MySSl0Li7TUZBND8zQDg2QloJaCotS0zAqwcdG
- xtbUAJL9cU14AAAA=
-X-Change-ID: 20260723-chromaticity-88fec417f00c
-To: Jiri Kosina <jikos@kernel.org>, Jonathan Cameron <jic23@kernel.org>, 
- Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>, 
- David Lechner <dlechner@baylibre.com>, 
- =?utf-8?q?Nuno_S=C3=A1?= <nuno.sa@analog.com>, 
- Andy Shevchenko <andy@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-iio@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Daniel Schaefer <dhs@frame.work>, 
- =?utf-8?q?Sven_Vaink=C3=BCla?= <sven@xn--vainkla-r2a.ee>, linux@frame.work
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIABRVYWoC/33OwQqDMAyA4VeRntdRo7a6095j7NDWqIXOjlZlQ
+ 3z3VWHgGHj8E/iSmQT0BgO5JDPxOJlgXB8jPyVEd7JvkZo6NgEGnAnGaTe2OFhFpbVO00YaO3q
+ kjXlhoFo0QhSoJVQNicLT47aIwO0euzNhcP69HZvSdfp1xaE7pZTRQqk6k7kqM15fW+dai2ftH
+ mSFJ9hj5TEGEYufgtBK5RzUH5btMGDHWBYxUYNMeSVlhfiDLcvyAdjqG2xhAQAA
+X-Change-ID: 20260706-hugetlb-alloc-failure-fixes-c7f775eca29f
+To: Muchun Song <muchun.song@linux.dev>, Oscar Salvador <osalvador@suse.de>, 
+ David Hildenbrand <david@kernel.org>, Joshua Hahn <joshua.hahnjy@gmail.com>, 
+ Shakeel Butt <shakeel.butt@linux.dev>, Nhat Pham <nphamcs@gmail.com>, 
+ Andrew Morton <akpm@linux-foundation.org>, Peter Xu <peterx@redhat.com>, 
+ Wupeng Ma <mawupeng1@huawei.com>, fvdl@google.com, rientjes@google.com, 
+ jthoughton@google.com, Mike Kravetz <mike.kravetz@oracle.com>, 
+ Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@kernel.org>, 
+ Roman Gushchin <roman.gushchin@linux.dev>, Lorenzo Stoakes <ljs@kernel.org>, 
+ "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
+ Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
+ Michal Hocko <mhocko@suse.com>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>, Alex Shi <alexs@kernel.org>, 
+ Yanteng Si <si.yanteng@linux.dev>, Dongliang Mu <dzm91@hust.edu.cn>, 
+ Hongxiang Lou <louhongxiang@huawei.com>, Miaohe Lin <linmiaohe@huawei.com>
+Cc: vannapurve@google.com, erdemaktas@google.com, linux-mm@kvack.org, 
+ linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, 
+ linux-doc@vger.kernel.org, Ackerley Tng <ackerleytng@google.com>, 
+ stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784740756; l=2857;
- i=dhs@frame.work; s=20260705; h=from:subject:message-id;
- bh=/XNacu+WH59c4GNRh+63P9svsVbz6GJ/iheaNgZoQTM=;
- b=JgydhQAJU0UdE5wRL5rLNQx39GksdInXROQsM6J4R5XfQGDUGZ4tGJYGLK2BXzt1zwaqQX0Wi
- HPbh0QVzf2nDLi5pGoYO8TZR5AdRWmKHAIWBnoKS7zQl1xmu8SZqtT2
-X-Developer-Key: i=dhs@frame.work; a=ed25519;
- pk=O1zF7VDnmz6EZNc7sEiawR+KK650uRg1XteQ8jHwScw=
-X-Endpoint-Received: by B4 Relay for dhs@frame.work/20260705 with auth_id=852
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784763678; l=8919;
+ i=ackerleytng@google.com; s=20260225; h=from:subject:message-id;
+ bh=NeJlLVVMf++c5nZhAc/KqZ/hq04Bz1Dk6297RE4toKs=;
+ b=7dRun2bww5d+94a6EUgKYhDHc0fhMbujyDJkpXqg7z757v09Akq7Esh/Vj/YQiD6CGXdvf1h9
+ xn81To5pmSFBRP4n2Z4ZP3HY4t6A6qzSay8cWFJ6jYdnwkqejhXLXbr
+X-Developer-Key: i=ackerleytng@google.com; a=ed25519;
+ pk=sAZDYXdm6Iz8FHitpHeFlCMXwabodTm7p8/3/8xUxuU=
+X-Endpoint-Received: by B4 Relay for ackerleytng@google.com/20260225 with auth_id=649
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Some sensors have multiple channels (not just brightness but color ALS
-sensors) with different scaling factors.
+This series fixes a few bugs on HugeTLB folio allocation failure paths.
 
-Tested on Asus ProArt PX13 laptop by Sven.
+Some of these issues were pointed out by Sashiko while I was working on
+[1], and others were revealed while fixing the original issues.
 
-Signed-off-by: Daniel Schaefer <dhs@frame.work>
-Link: https://gitlab.freedesktop.org/hadess/iio-sensor-proxy/-/merge_requests/413
-Cc: Sven Vainküla <sven@xn--vainkla-r2a.ee>
-Cc: Jiri Kosina <jikos@kernel.org>
-Cc: Jonathan Cameron <jic23@kernel.org>
-Cc: Srinivas Pandruvada <srinivas.pandruvada@linux.intel.com>
-Cc: David Lechner <dlechner@baylibre.com>
-Cc: Nuno Sá <nuno.sa@analog.com>
-Cc: Andy Shevchenko <andy@kernel.org>
-Cc: linux-input@vger.kernel.org
-Cc: linux-iio@vger.kernel.org
-Cc: linux@frame.work
+1. subpool usage leak on allocation failure (Sashiko pointed this out
+   in [2])
+
+   When alloc_hugetlb_folio() fails early (e.g. buddy allocation failure or
+   hugetlb cgroup charging failure) and gbl_chg == 1, the error path skips
+   restoring the page to the subpool, leaking the subpool's used_hpages
+   counter. Fix this by calling hugepage_subpool_put_pages()
+   unconditionally if map_chg is true.
+
+2. Folio refcount mismatch on memcg charge failure leading to
+   VM_BUG_ON_FOLIO() (Sashiko pointed this out in [3])
+
+   The error path in alloc_hugetlb_folio() calls free_huge_folio() directly
+   on a folio with a refcount of 1 (set via folio_ref_unfreeze() earlier).
+   This triggers VM_BUG_ON_FOLIO(folio_ref_count(folio), folio) if
+   CONFIG_DEBUG_VM is enabled, and can corrupt allocator state otherwise.
+   Fix this by using folio_put() instead of free_huge_folio() to correctly
+   drop the refcount before freeing.
+
+3. Returning -ENOMEM on memcg charge failure causes infinite loop
+
+   alloc_hugetlb_folio() propagates -ENOMEM on charge failure, which maps
+   to VM_FAULT_OOM. Because HugeTLB physical allocations are high-order and
+   use __GFP_RETRY_MAYFAIL, the OOM killer is bypassed. Returning
+   VM_FAULT_OOM leaks to the #PF handler, which cannot make progress and
+   retries the faulting instruction indefinitely. Fix this by returning
+   -ENOSPC instead of -ENOMEM on charge failure, which maps to
+   VM_FAULT_SIGBUS, terminating the process cleanly.
+
+4. vma reservation leak on mem_cgroup_charge_hugetlb() failure
+
+   When mem_cgroup_charge_hugetlb() fails, the error path historically
+   bypassed vma_end_reservation(). Since the reservation had already been
+   committed via vma_commit_reservation(), this left the reservation map in
+   an inconsistent state, leaking resv_huge_pages when the process
+   exited. Fix this by moving mem_cgroup_charge_hugetlb() earlier in
+   alloc_hugetlb_folio(), before vma_commit_reservation() is called.
+
+Cleaned up patches, updated documentation, and fixed Sashiko's comments on
+v3:
+
+1. subpool cleanup in alloc_hugetlb_folio() was incomplete - I folded the
+   fix in.
+2. More issues (UAF, and another accounting issue) reported [5] - I added
+   two more patches.
+
+Keeping this section since I think people didn't have much time to review
+v3.
+
+1. subpool page tracking
+
+The subpool now tracks every page allocated via
+the subpool through used_hpages, regardless of whether min_hpages or
+max_hpages is requested by the user.
+
+When min_hpages is set, rsv_hpages is initialized to be equal to
+min_hpages. As reserved pages are used, the count is transferred from
+rsv_hpages to used_hpages. When reserved pages run out, as long as
+max_hpages is not requested or not yet met, used_hpages continues to be
+incremented. The following invariant holds true while used_hpages <=
+min_hpages:
+
+  used_hpages + rsv_hpages = min_hpages
+
+when used_hpages exceeds min_hpages, rsv_hpages must always be 0.
+
+With this, pages can and must always be returned to the subpool if there's
+some reservation or allocation failure after getting a page from the
+subpool. One thing I missed in v2 was in processing the returned page. In
+v2, the number of pages returned was compared to min_hpages, ignoring
+used_hpages if it exists. v3 limits the number of pages returned to
+min_hpages - used_hpages, upholding the invariant above.
+
+2. (Re-)introduction of the try-commit-cancel protocol for memcg charging.
+
+In v2, I took the shortcut where I moved mem_cgroup_charge_hugetlb() up
+above committing vma reservations, and jumped to subpool cleanup when the
+charging failed. With that, Sashiko pointed out that there are still issues
+with subpool tracking.
+
+In [4] I thought the issue was that gbl_chg == 0 (I flipped the condition
+in [4], omg) doesn't always mean a reservation was actually used, but after
+digging more, that doesn't seem to be true, since if gbl_chg == 0,
+restore_reserve is set on the folio, and free_huge_folio() would have done
+a h->resv_huge_pages++.
+
+In my opinion, calling free_huge_folio() in the middle of the cleanup does
+too much, and I think the cleaner approach would be to do all the charging
+symmetrically, so that the subpool cleanup will also be symmetric
+and (hopefully) easier to understand.
+
++ I would like reviews on all the non-WIP patches. Those are the ones that
+  I'd like merged first.
++ There are reproducers (not meant to be merged) to help prove
+  effectiveness of fixes.
++ There are WIP patches for subpool-related refactoring. Those helped me
+  check that the subpool stuff is working and is posted to show how it
+  works. I think the subpool-related refactoring and tests would be good to
+  merge, but perhaps in another patch series? The refactoring was heavily
+  AI-driven and should be considered RFC. Would like to have your feedback
+  on that refactoring too.
+
++ libhugetlbfs tests pass
++ ./tools/testing/selftests/mm/ksft_hugetlb.sh passes
++ Reproducers all pass
+
+v1: https://lore.kernel.org/r/20260707-hugetlb-alloc-failure-fixes-v1-0-5bbd3a4b836d@google.com
+v2: https://lore.kernel.org/r/20260708-hugetlb-alloc-failure-fixes-v2-0-c7f27cbb462b@google.com
+v3: https://lore.kernel.org/r/20260720-hugetlb-alloc-failure-fixes-v3-0-7d2a169aa9ee@google.com
+
+The series [1] has some changes that are dependent on these fixes, so I'll wait
+for your reviews before continuing on [1].
+
+Thank you!
+
+[1] https://lore.kernel.org/all/20260702-hugetlb-open-up-v4-0-d53cefcccf34@google.com/T/
+[2] https://sashiko.dev/#/patchset/20260518-hugetlb-open-up-v3-0-e14b302477f8%40google.com?part=5
+[3] https://sashiko.dev/#/patchset/20260702-hugetlb-open-up-v4-0-d53cefcccf34%40google.com?part=6
+[4] https://lore.kernel.org/all/CAEvNRgGN0HSJ2iLSDD2haSKOxifa-uhkO9Hwossh0+Q_d9fzOw@mail.gmail.com/
+[5] https://sashiko.dev/#/patchset/20260720-hugetlb-alloc-failure-fixes-v3-0-7d2a169aa9ee%40google.com?part=8
+
+Signed-off-by: Ackerley Tng <ackerleytng@google.com>
 ---
- drivers/iio/light/hid-sensor-als.c | 22 ++++++++++++----------
- 1 file changed, 12 insertions(+), 10 deletions(-)
+Ackerley Tng (16):
+      mm: hugetlb: Track used_hpages when getting/putting pages from subpool
+      mm: hugetlb: Return -ENOSPC on memcg charge failure
+      mm: hugetlb: Use try-commit-cancel protocol for memcg charge of folios
+      mm: hugetlb: Remove unused mem_cgroup_charge_hugetlb function
+      mm: hugetlb: Fix subpool usage leak on allocation failure
+      mm: hugetlb: Rename local variables for clarity in hugetlb_reserve_pages()
+      mm: hugetlb: Fix Use-After-Free in unlock_or_release_subpool()
+      fs: hugetlbfs: Fix global reservation leak in hugetlbfs_fill_super()
+      WIP: mm: hugetlb: Move subpool functions to hugetlb_subpool.c
+      WIP: fs: hugetlbfs: Refactor subpool getters and integrate with hugetlb_subpool API
+      WIP: mm: hugetlb: Make struct hugepage_subpool private to hugetlb_subpool.c
+      WIP: tools: testing: Add unit tests for HugeTLB subpool functions
+      WIP: Reproducer for allocation failure due to cgroup v2 memory limits
+      WIP: Reproducer for subpool usage leak
+      WIP: Reproducer for false restoration on shared HugeTLB mappings
+      WIP: Reproducer for out_put_pages subpool reserve leakage
 
-diff --git a/drivers/iio/light/hid-sensor-als.c b/drivers/iio/light/hid-sensor-als.c
-index 384572844162..232cb58e0a9f 100644
---- a/drivers/iio/light/hid-sensor-als.c
-+++ b/drivers/iio/light/hid-sensor-als.c
-@@ -33,9 +33,9 @@ struct als_state {
- 		u32 illum[CHANNEL_SCAN_INDEX_MAX];
- 		aligned_s64 timestamp;
- 	} scan;
--	int scale_pre_decml;
--	int scale_post_decml;
--	int scale_precision;
-+	int scale_pre_decml[CHANNEL_SCAN_INDEX_MAX];
-+	int scale_post_decml[CHANNEL_SCAN_INDEX_MAX];
-+	int scale_precision[CHANNEL_SCAN_INDEX_MAX];
- 	int value_offset;
- 	int num_channels;
- 	s64 timestamp;
-@@ -186,9 +186,11 @@ static int als_read_raw(struct iio_dev *indio_dev,
- 		ret_type = IIO_VAL_INT;
- 		break;
- 	case IIO_CHAN_INFO_SCALE:
--		*val = als_state->scale_pre_decml;
--		*val2 = als_state->scale_post_decml;
--		ret_type = als_state->scale_precision;
-+		if (chan->scan_index >= CHANNEL_SCAN_INDEX_MAX)
-+			return -EINVAL;
-+		*val = als_state->scale_pre_decml[chan->scan_index];
-+		*val2 = als_state->scale_post_decml[chan->scan_index];
-+		ret_type = als_state->scale_precision[chan->scan_index];
- 		break;
- 	case IIO_CHAN_INFO_OFFSET:
- 		*val = als_state->value_offset;
-@@ -338,6 +340,10 @@ static int als_parse_report(struct platform_device *pdev,
- 		als_adjust_channel_bit_mask(channels, index, st->als[i].size);
- 		++index;
- 
-+		st->scale_precision[i] = hid_sensor_format_scale(usage_id,
-+					&st->als[i], &st->scale_pre_decml[i],
-+					&st->scale_post_decml[i]);
-+
- 		dev_dbg(&pdev->dev, "als %x:%x\n", st->als[i].index,
- 			st->als[i].report_id);
- 	}
-@@ -347,10 +353,6 @@ static int als_parse_report(struct platform_device *pdev,
- 	if (index)
- 		ret = 0;
- 
--	st->scale_precision = hid_sensor_format_scale(usage_id,
--				&st->als[CHANNEL_SCAN_INDEX_INTENSITY],
--				&st->scale_pre_decml, &st->scale_post_decml);
--
- 	return ret;
- }
- 
-
+ Documentation/mm/hugetlbfs_reserv.rst              |  17 +-
+ .../translations/zh_CN/mm/hugetlbfs_reserv.rst     |  11 +-
+ cgroup_v2_allocation_failure.c                     | 169 +++++++++
+ fs/hugetlbfs/inode.c                               |  31 +-
+ hugetlb_reserve_pages_out_put_pages.c              |  49 +++
+ hugetlb_reserve_pages_out_put_pages.sh             | 153 ++++++++
+ include/linux/hugetlb.h                            |  17 +-
+ include/linux/memcontrol.h                         |  30 +-
+ mm/Makefile                                        |   2 +-
+ mm/hugetlb.c                                       | 260 +++-----------
+ mm/hugetlb_subpool.c                               | 230 ++++++++++++
+ mm/hugetlb_subpool.h                               |  21 ++
+ mm/memcontrol.c                                    | 116 +++++-
+ subpool_leak_max_size.sh                           |  72 ++++
+ subpool_shared_leak.c                              |  43 +++
+ subpool_shared_leak.sh                             |  87 +++++
+ tools/testing/hugetlb_subpool/.gitignore           |   1 +
+ tools/testing/hugetlb_subpool/Makefile             |  18 +
+ tools/testing/hugetlb_subpool/test_subpool.c       | 400 +++++++++++++++++++++
+ 19 files changed, 1445 insertions(+), 282 deletions(-)
 ---
-base-commit: 194a48576843858afcd9c00ed4f105ec2b398e6c
-change-id: 20260723-chromaticity-88fec417f00c
+base-commit: 4539944e515183668109bdf4d0c3d7d228383d88
+change-id: 20260706-hugetlb-alloc-failure-fixes-c7f775eca29f
 
 Best regards,
--- 
-Daniel Schaefer <dhs@frame.work>
+--
+Ackerley Tng <ackerleytng@google.com>
 
