@@ -1,104 +1,60 @@
-From: Xiubo Li <xiubo.li@clyso.com>
-Date: Thu, 23 Jul 2026 14:28:19 +0800
-Subject: [PATCH] ceph: do not cache negative dentries for snapped
- directories
+From: Xianwei Zhao <xianwei.zhao@amlogic.com>
+Subject: [PATCH v2 0/4] spi: add support for Amlogic A9
+Date: Thu, 23 Jul 2026 06:43:41 +0000
+Message-Id: <20260723-a9-spisg-v2-0-9fc39106b7e2@amlogic.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260723-b4-snap-negative-dentry-v1-1-c78178117929@clyso.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yXMQQ6CMBBG4auQWTsJbdBGr2JctPCD42IknUI0h
- Ltbdfkt3tvIkAVGl2ajjFVMnlrhDg3196gTWIZq8q0/tcF7Th2bxpkVUyyyggdoyW9OaQxdcOf
- ojo5qPWeM8vqdr7e/bUkP9OW7o33/AFn5CKd7AAAA
-X-Change-ID: 20260722-b4-snap-negative-dentry-bbf74719a151
-To: Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>
-Cc: Dhairya Parmar <dparmar@redhat.com>, ceph-devel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Andras Pataki <apataki@flatironinstitute.org>, 
- Xiubo Li <xiubo.li@clyso.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784788106; l=2717;
- i=xiubo.li@clyso.com; s=20260625; h=from:subject:message-id;
- bh=IQw0JIRgW0RO39xXG7APolmM9Qi7REzbCEwy1oF6S94=;
- b=m9Tub+llkZehLKdx+aCcduZk/0So1CxY8W2Hh2pvcvjNpsg7qlC6UJfBcoePtsmY9Z7qUP0vo
- d6+eWxdPGJbBkPkf7KXtYmqQx6nb0eI1aZClCJ+mCHSOlXy+oabsX18
-X-Developer-Key: i=xiubo.li@clyso.com; a=ed25519;
- pk=V3NGr0AgAopiUhaLY51ipBkLN5LlcLhjOEfLEq1RoZ8=
-X-Endpoint-Received: by B4 Relay for xiubo.li@clyso.com/20260625 with auth_id=840
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAB24YWoC/0XMQQrCMBCF4auUWRtJojXElfeQLmKcpAO2KRkJS
+ sndjQVx+T8e3wqMmZDh3K2QsRBTmlvoXQd+dHNEQffWoKU+SaN64azghTiKoKxHeZQH10to9yV
+ joNdGXYfWI/Ez5fcmF/Vdf4j5I0UJKTQiOmNuqGy4uOmRIvm9TxMMtdYPMCEY6qIAAAA=
+X-Change-ID: 20260715-a9-spisg-f19ce0403a50
+To: Sunny Luo <sunny.luo@amlogic.com>, Mark Brown <broonie@kernel.org>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>
+Cc: linux-amlogic@lists.infradead.org, linux-spi@vger.kernel.org, 
+ devicetree@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Xianwei Zhao <xianwei.zhao@amlogic.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784789030; l=1229;
+ i=xianwei.zhao@amlogic.com; s=20251216; h=from:subject:message-id;
+ bh=DGj8+OBGUddq6591+eaVQwRebOdg449UgOkQcJ5AB2g=;
+ b=sb8FB2uWLZMo8CYLxZi5hPTuZCrISN1HZmzteGPAmYDm8drwF8LzXqRtDclIL7L1HQhOUqU0y
+ iUJt2D/nfiLB8NTYUzpQ2/y+SVU9xkm6SpoQZf8TKhpg/eqCdRlI8KQ
+X-Developer-Key: i=xianwei.zhao@amlogic.com; a=ed25519;
+ pk=dWwxtWCxC6FHRurOmxEtr34SuBYU+WJowV/ZmRJ7H+k=
+X-Endpoint-Received: by B4 Relay for xianwei.zhao@amlogic.com/20251216 with auth_id=578
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-When a LOOKUP/LOOKUPSNAP in a snapped directory returns ENOENT
-without a trace, ceph_finish_lookup() creates a negative dentry
-via d_add(dentry, NULL).  For live directories this is fine — the
-dentry naturally expires.  But for snapped directories,
-ceph_d_revalidate() unconditionally trusts all cached dentries
-(valid = 1), so a negative dentry created by a transient error
-persists forever, hiding entries that genuinely exist in the
-snapshot.
+Add bindings for A9 with some features, and driver for A9 base on A4.
 
-Only cache negative dentries for live (non-snapshotted) parent
-directories.  For snapped parents, skip the negative dentry so
-that VFS retries the lookup on the next access.  Since the
-conditions that trigger a negative dentry (MDS transient error,
-local ENOENT shortcut, or MDS null dentry lease) are all rare in
-snapped directories, the performance impact of this change is
-negligible.
+Fix the incorrect keep_ss of the last descriptor.
 
-Reported-by: Andras Pataki <apataki@flatironinstitute.org>
-Closes: https://tracker.ceph.com/issues/78529
-Signed-off-by: Xiubo Li <xiubo.li@clyso.com>
+Signed-off-by: Xianwei Zhao <xianwei.zhao@amlogic.com>
 ---
- fs/ceph/dir.c   | 10 ++++++++--
- fs/ceph/inode.c |  3 ++-
- 2 files changed, 10 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ceph/dir.c b/fs/ceph/dir.c
-index b4b541a1180c..d5d8f935fb62 100644
---- a/fs/ceph/dir.c
-+++ b/fs/ceph/dir.c
-@@ -774,8 +774,13 @@ struct dentry *ceph_finish_lookup(struct ceph_mds_request *req,
- 				d_drop(dentry);
- 				err = -ENOENT;
- 			} else {
--				if (d_unhashed(dentry))
--					d_add(dentry, NULL);
-+				if (d_unhashed(dentry)) {
-+					struct inode *parent =
-+						d_inode(dentry->d_parent);
-+					if (!parent ||
-+					    ceph_snap(parent) == CEPH_NOSNAP)
-+						d_add(dentry, NULL);
-+				}
- 			}
- 		}
- 	}
-@@ -840,6 +845,7 @@ static struct dentry *ceph_lookup(struct inode *dir, struct dentry *dentry,
- 			    dentry->d_name.len) &&
- 		    !is_root_ceph_dentry(dir, dentry) &&
- 		    ceph_test_mount_opt(fsc, DCACHE) &&
-+		    ceph_snap(dir) == CEPH_NOSNAP &&
- 		    __ceph_dir_is_complete(ci) &&
- 		    __ceph_caps_issued_mask_metric(ci, CEPH_CAP_FILE_SHARED, 1)) {
- 			__ceph_touch_fmode(ci, mdsc, CEPH_FILE_MODE_RD);
-diff --git a/fs/ceph/inode.c b/fs/ceph/inode.c
-index 61d7c0b8161f..d52e2b389e0b 100644
---- a/fs/ceph/inode.c
-+++ b/fs/ceph/inode.c
-@@ -1814,7 +1814,8 @@ int ceph_fill_trace(struct super_block *sb, struct ceph_mds_request *req)
- 				ceph_dir_clear_ordered(dir);
- 				d_delete(dn);
- 			} else if (have_lease) {
--				if (d_unhashed(dn))
-+				if (d_unhashed(dn) &&
-+				    ceph_snap(dir) == CEPH_NOSNAP)
- 					d_add(dn, NULL);
- 			}
- 
+Changes in v2:
+- Move the added properties defined to top-level and then reestrict them  in bindings.
+- Fix some pre-exiting bug reported by Sashiko AI review that as a separate submission.
+- Limit the value that will be writed to CFG_CS_HOLD.
+- Link to v1: https://lore.kernel.org/r/20260717-a9-spisg-v1-0-2eeea77be19f@amlogic.com
 
 ---
-base-commit: 602bb4525c8146865b7f6e44c81d54bf97861aed
-change-id: 20260722-b4-snap-negative-dentry-bbf74719a151
+Sunny Luo (1):
+      spi: amlogic: spisg: Fix the incorrect keep_ss of the last descriptor
+
+Xianwei Zhao (3):
+      spi: dt-bindings: amlogic: spisg: Document A9-specific properties
+      spi: amlogic: spisg: Fix transfer size limit and timeout handling
+      spi: amlogic: spisg: Add support for A9 controller features
+
+ .../devicetree/bindings/spi/amlogic,a4-spisg.yaml  | 38 ++++++++-
+ drivers/spi/spi-amlogic-spisg.c                    | 90 +++++++++++++++++++---
+ 2 files changed, 113 insertions(+), 15 deletions(-)
+---
+base-commit: d0b5dd16226814e5c73ba8daf88d3d91c990a38f
+change-id: 20260715-a9-spisg-f19ce0403a50
 
 Best regards,
---  
-Xiubo Li <xiubo.li@clyso.com>
+-- 
+Xianwei Zhao <xianwei.zhao@amlogic.com>
 
