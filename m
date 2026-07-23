@@ -1,83 +1,118 @@
-From: Alexandre Hamamdjian <azkali.limited@gmail.com>
-Date: Thu, 23 Jul 2026 20:24:09 +0700
-Subject: [PATCH v2] Input: edt-ft5x06 - ignore contacts with an
- out-of-range slot id
+From: Luca Lauro <famlauro93l@gmail.com>
+Subject: [PATCH 00/19] ARM: mvebu: add Netgear RN102/RN104 support and
+ related drivers
+Date: Thu, 23 Jul 2026 15:57:38 +0200
+Message-Id: <20260723-rn102-rn104-series-v1-0-7698d25df866@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260723-b4-ft5426-v2-1-cd2bed168051@gmail.com>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/22NQQ6CMBAAv0L2bE3ZLqic/IfhQMsCawRMi0RD+
- LsFrx4nmcwsENgLByiSBTzPEmQcIuAhAddVQ8tK6siAGnN9QqMsqWbKCHNlLqY+Zykx2Qai//T
- cyHtv3cofh5e9s5u2wGZ0EqbRf/bZnG7ev+6cKq1qssQGLWvCa9tX8ji6sYdyXdcvn8NsEbQAA
- AA=
-X-Change-ID: 20260723-b4-ft5426-393d8514e4bf
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>, 
- Henrik Rydberg <rydberg@bitmath.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-input@vger.kernel.org, linux-kernel@vger.kernel.org, 
- devicetree@vger.kernel.org, Alexandre Hamamdjian <azkali.limited@gmail.com>
+X-B4-Tracking: v=1; b=H4sIANMdYmoC/yWMyw5AMBAAf0X2rMkqqceviAO6ZR1KWkTS+HfFZ
+ ZI5zATw5Jg8NEkARyd7Xm2ULE1gnHs7kWAdHSRKhaXMhbMZyo+F+FuhlapowFqjMRDDzZHh65u
+ 23e/+GBYa9/cE9/0APg1Ri3YAAAA=
+X-Change-ID: 20260723-rn102-rn104-series-d668eb09d0ff
+To: Sascha Hauer <s.hauer@pengutronix.de>, 
+ "open list:BAREBOX" <barebox@lists.infradead.org>
+Cc: Luca Lauro <famlauro93l@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784813048; l=2253;
- i=azkali.limited@gmail.com; s=20260510; h=from:subject:message-id;
- bh=6IHuIpjD8BG+tOqYEL/Wqs7fTLnyHV/DC62HqKtwf7Y=;
- b=zELHXbmUBupqxeC4/gqIng4pEA22m699PwwBoiw64dl6u5a0uRSJh+kME/8Ht0pXqKFBDIDUs
- M47Lx7jLRYjAcpbH/vp289DWcy3VTWSVsh+DZGRrNb4eQ34RbZU6gLm
-X-Developer-Key: i=azkali.limited@gmail.com; a=ed25519;
- pk=I0Z0IdCdQJqNGX+FQUnXhrHg950u3cM6Xzz3YT6JOyQ=
-X-Endpoint-Received: by B4 Relay for azkali.limited@gmail.com/20260510 with auth_id=774
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784815061; l=4603;
+ i=famlauro93l@gmail.com; s=20260723; h=from:subject:message-id;
+ bh=IglEVpr8truAqAYGrx5gD4CwPENqWf02m5FMJQ9nkLM=;
+ b=L/rI4hACLoXK4la8mDDw0rWeikJ/8nrBlfWdYD2oorx1Zn00J01vp7oZJA6IK450OJTlGZE9V
+ nhxVLXoSR88BnF6O3+K2a1wwlxybCpZfYMx2pBmJRrLLYCPWl6n7uOO
+X-Developer-Key: i=famlauro93l@gmail.com; a=ed25519;
+ pk=OAJlcD69ugQCl99Vy6w+Aeu+ZUb1IVGcz1Ijxo6Ch78=
+X-Endpoint-Received: by B4 Relay for famlauro93l@gmail.com/20260723 with auth_id=892
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The per-contact slot id is taken from the top nibble of the third
-report byte, so it can be any value from 0 to 15. The driver only
-allocates max_support_points MT slots (2 to 10 depending on the
-variant), so a report that carries an id at or above that count - be it
-a genuinely higher-numbered contact or a corrupted byte - is outside the
-range the input core was told about.
+This series adds full barebox support for the Netgear RN102 and RN104
+NAS platforms based on the Marvell Armada 370 SoC. Both devices share
+the same hardware architecture, with differences mainly in the number
+of drive bays and the associated board-level integration.
 
-input_mt_slot() silently ignores an ABS_MT_SLOT beyond num_slots and
-leaves the current slot unchanged, so the following
-input_mt_report_slot_state()/touchscreen_report_pos() pair is applied to
-whichever slot happened to be selected last, reporting the contact at the
-wrong position. Skip such entries instead.
+The series introduces:
+ - lowlevel initialization code for RN102 and RN104
+ - board support files and environment integration
+ - barebox-specific device trees for both platforms
+ - image generation support and defconfig updates
+ - fan controller framework and G76x driver
+ - fan control command and Kconfig/Makefile integration
+ - Marvell-specific EHCI host controller driver
+ - AHCI/SATA fixes improving compatibility with Armada 370
+ - USB/AHCI integration updates
 
-Signed-off-by: Alexandre Hamamdjian <azkali.limited@gmail.com>
----
-A single generic correctness fix: a report whose contact id is at or
-above max_support_points selects an MT slot the input core was never
-told about, so input_mt_slot() ignores it and the contact is reported
-against the previously-selected slot.
+The goal is to provide complete bootloader support for these NAS
+devices, enabling reliable initialization of storage, USB, fan control,
+and board-specific peripherals. The patches have been tested on
+RN102 only.
 
-The marginal-i2c-bus mitigations that accompanied this in v1 (the
-no-regmap-bulk-read property + driver fallback, and the poll-while-down
-recovery) are dropped: reviewers correctly noted the bulk-read quirk is
-a property of the i2c controller rather than the touch controller and
-does not belong in the touch node's binding, so that work is better
-placed in the i2c controller (or kept out of tree) and is not part of
-this series.
----
- drivers/input/touchscreen/edt-ft5x06.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/drivers/input/touchscreen/edt-ft5x06.c b/drivers/input/touchscreen/edt-ft5x06.c
-index d3b1177185a3..d6c3d033b83d 100644
---- a/drivers/input/touchscreen/edt-ft5x06.c
-+++ b/drivers/input/touchscreen/edt-ft5x06.c
-@@ -331,6 +331,8 @@ static irqreturn_t edt_ft5x06_ts_isr(int irq, void *dev_id)
- 			swap(x, y);
- 
- 		id = (buf[2] >> 4) & 0x0f;
-+		if (id >= tsdata->max_support_points)
-+			continue;
- 
- 		input_mt_slot(tsdata->input, id);
- 		if (input_mt_report_slot_state(tsdata->input, MT_TOOL_FINGER,
+Signed-off-by: Luca Lauro <famlauro93l@gmail.com>
 
 ---
-base-commit: e98d21c170b01ddef366f023bbfcf6b31509fa83
-change-id: 20260723-b4-ft5426-393d8514e4bf
+Luca Lauro (19):
+      ARM: mvebu: add board support for Netgear RN102
+      ARM: mvebu: add lowlevel support for Netgear RN102
+      ARM: dts: add barebox device tree for Netgear RN102
+      ARM: dts: update RN102 Linux DTS
+      ARM: mvebu: add Kconfig entry for Netgear RN102
+      ARM: mvebu: add RN102 image support
+      ARM: mvebu: enable RN102 in mvebu_defconfig
+      ARM: mvebu: rn104: placeholder bay management
+      ARM: mvebu: add lowlevel support for Netgear RN104
+      ARM: dts: update RN104 Linux DTS
+      ARM: mvebu: adapt RN104 image support
+      ARM: mvebu: rename PUTC_LL to MVEBU_PUTC_LL
+      drivers: fan: add fan framework and API
+      commands: add fan control command
+      commands: integrate fan command into Kconfig and Makefile
+      usb: ehci: add Marvell EHCI host controller driver
+      usb: ehci: minor fixes for Marvell compatibility
+      ata: ahci: fixes and updates for Marvell SATA controller
+      drivers: integrate USB/AHCI changes
+
+ arch/arm/boards/Makefile                         |    1 +
+ arch/arm/boards/netgear-rn102/Makefile           |    4 +
+ arch/arm/boards/netgear-rn102/board.c            |  243 +++++
+ arch/arm/boards/netgear-rn102/lowlevel.c         |   49 +
+ arch/arm/boards/netgear-rn104/board.c            |  193 ++++
+ arch/arm/boards/netgear-rn104/lowlevel.c         |   43 +-
+ arch/arm/configs/mvebu_defconfig                 |    1 +
+ arch/arm/dts/Makefile                            |    1 +
+ arch/arm/dts/armada-370-rn102-bb.dts             |   13 +
+ arch/arm/mach-mvebu/Kconfig                      |    4 +
+ commands/Kconfig                                 |    7 +
+ commands/Makefile                                |    2 +
+ commands/fan.c                                   |  286 ++++++
+ drivers/Kconfig                                  |    1 +
+ drivers/Makefile                                 |    1 +
+ drivers/ata/ahci.c                               |  656 ++++++------
+ drivers/ata/ahci.h                               |    1 +
+ drivers/fan/Kconfig                              |   35 +
+ drivers/fan/Makefile                             |    8 +
+ drivers/fan/fan.c                                |  180 ++++
+ drivers/fan/i2c_fan_controllers/Kconfig          |    6 +
+ drivers/fan/i2c_fan_controllers/Makefile         |    5 +
+ drivers/fan/i2c_fan_controllers/g76x.c           | 1184 ++++++++++++++++++++++
+ drivers/fan/other_fan_controllers/Kconfig        |    7 +
+ drivers/fan/other_fan_controllers/Makefile       |    3 +
+ drivers/fan/spi_fan_controllers/Kconfig          |    1 +
+ drivers/fan/spi_fan_controllers/Makefile         |    3 +
+ drivers/usb/host/Kconfig                         |    7 +
+ drivers/usb/host/Makefile                        |   13 +-
+ drivers/usb/host/ehci-hcd.c                      |   22 +-
+ drivers/usb/host/ehci-marvell.c                  |  229 +++++
+ dts/src/arm/marvell/armada-370-netgear-rn102.dts |  114 ++-
+ dts/src/arm/marvell/armada-370-netgear-rn104.dts |  173 ++--
+ images/Makefile.mvebu                            |   13 +-
+ include/fan/fan.h                                |   94 ++
+ include/fan/i2c_fan_controllers/g76x.h           |   37 +
+ include/mach/mvebu/debug_ll.h                    |    2 +-
+ rebuild-series.sh                                |   39 +
+ 38 files changed, 3257 insertions(+), 424 deletions(-)
+---
+base-commit: d6c5023bc58092b15a0cd8c01f708480efb26640
+change-id: 20260723-rn102-rn104-series-d668eb09d0ff
 
 Best regards,
 --  
-Alexandre Hamamdjian <azkali.limited@gmail.com>
+Luca Lauro <famlauro93l@gmail.com>
 
