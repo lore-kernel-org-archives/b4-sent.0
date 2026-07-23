@@ -1,78 +1,57 @@
 From: Vincent Jardin <vjardin@free.fr>
-Date: Fri, 24 Jul 2026 00:56:33 +0200
-Subject: [PATCH] bus: fsl-mc: set dma_mask for the root DPRC device
+Subject: [PATCH 0/2] dpll: zl3073x: add Microchip ZL30643 support
+Date: Fri, 24 Jul 2026 01:09:11 +0200
+Message-Id: <20260724-for-upstream-zl30643-v1-0-ea93ba4d85c8@free.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260724-for-upstream-fsl-mc-dprc-dma-mask-v1-1-6f08af883195@free.fr>
-X-B4-Tracking: v=1; b=H4sIACCcYmoC/x2NQQqDMBAAvyJ77oIJaqVfKT0scaNLjYZdLQXx7
- wYvA3OZOcBYhQ1e1QHKPzFZlyLuUUGYaBkZZSgOvvZd/fQNxlVxz7YpU8JoM6aAQ9aCRJjIvkj
- OcRNa6tvQQelk5Sj/+/H+nOcFc1VD13MAAAA=
-To: Ioana Ciornei <ioana.ciornei@nxp.com>, 
- Laurentiu Tudor <laurentiu.tudor@nxp.com>, 
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, 
- Bogdan Purcareata <bogdan.purcareata@nxp.com>, 
- Stuart Yoder <stuyoder@gmail.com>
-Cc: linuxppc-dev@lists.ozlabs.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Vincent Jardin <vjardin@free.fr>
+X-B4-Tracking: v=1; b=H4sIABefYmoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDcyMT3bT8It3SguKSotTEXN2qHGMDMxNjXYskI2MjM/MkS3OTNCWg1oK
+ i1LTMCrCx0bG1tQAMf9AAZgAAAA==
+To: Ivan Vecera <ivecera@redhat.com>, 
+ Prathosh Satish <Prathosh.Satish@microchip.com>, 
+ Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, 
+ Vadim Fedorenko <vadim.fedorenko@linux.dev>, 
+ Arkadiusz Kubalewski <arkadiusz.kubalewski@intel.com>, 
+ Jiri Pirko <jiri@resnulli.us>
+Cc: netdev@vger.kernel.org, devicetree@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Vincent Jardin <vjardin@free.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784847396; l=1926;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784848154; l=1025;
  i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=50GoUATjGzTOE04DbAm6nufTMWrQbESmgDWMsefMpuA=;
- b=G/rIzE9Z00+txF2HsSaVork5JjXa/HUmU6sdGAwS5CqDVJ6ty4/eAcaTlKHYt1XIHo88cbx2+
- Nuyh+327K58ARkUaktB2yx8+DxrMdXge7fCpWfQhMqc+N9kvE0hHKP+
+ bh=p1gRB2PzlwcRqzmDrRYk7SlcM/ROTsU5ElkcPRvh02Q=;
+ b=z5cIm8kz02Naw4qoK+Ply0iQLput0QY6Q7kNGR9pPAe7gSj9tcAuVItTh/KYOiH7Vqehfb804
+ uUVJC+KzSr0BSZCQE7e5ch65EuhKH7E9wFxuMMyhtvZYlBB5u5vPUby
 X-Developer-Key: i=vjardin@free.fr; a=ed25519;
  pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
 X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-On Layerscape platforms, when SMMU is disabled,
-fsl_mc_device_add() leads to the DPRC device with a NULL dma_mask.
+The Microchip ZL30643 (chip ID 0x0E3B) is a 3 DPLL channel member
+of the ZL3073x family.
 
-It has been tested on LX2160A, no SMMU on the MC
-domain: the root DPRC can probe cleanly and fsl_mc children
-enumerate.
+Patch 1 adds the binding.
+Patch 2 registers the chip in the driver: the chip-info table and the
+I2C, SPI and OF device-ID match tables.
 
-Fixes: a259ed1618d2 ("bus/fsl-mc: support dma configure for devices on fsl-mc bus")
-Cc: stable@vger.kernel.org
+It was tested on an LX2160A board with a ZL30733 and a ZL30643, both
+are probed and they expose their DPLL channels.
+
 Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
-fsl_mc_device_add() already seeds a default dma_mask for non-DPRC
-objects, but never for the DPRC devices themselves. When the MC I/O
-domain is not behind an SMMU, the root DPRC reaches
-fsl_mc_dma_configure() -> of_dma_configure_id() with a NULL dma_mask
-and the probe warns "DMA mask not set". This mirrors the existing
-non-DPRC seeding into the DPRC branch.
+Vincent Jardin (2):
+      dt-bindings: dpll: zl3073x: add ZL30643 compatible
+      dpll: zl3073x: add ZL30643 chip support
 
-Tested on LX2160A with no SMMU on the MC domain: the root DPRC probes
-cleanly and its fsl_mc children enumerate.
----
- drivers/bus/fsl-mc/fsl-mc-bus.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
-
-diff --git a/drivers/bus/fsl-mc/fsl-mc-bus.c b/drivers/bus/fsl-mc/fsl-mc-bus.c
-index 64d75eed0d34..585345ac0179 100644
---- a/drivers/bus/fsl-mc/fsl-mc-bus.c
-+++ b/drivers/bus/fsl-mc/fsl-mc-bus.c
-@@ -832,6 +832,14 @@ int fsl_mc_device_add(struct fsl_mc_obj_desc *obj_desc,
- 		error = get_dprc_icid(mc_io2, obj_desc->id, &mc_dev->icid);
- 		if (error < 0)
- 			goto error_cleanup_dev;
-+
-+		/*
-+		 * Seed dma_mask so platforms without an SMMU don't complain
-+		 * with "DMA mask not set" in of_dma_configure_id().
-+		 */
-+		mc_dev->dma_mask = FSL_MC_DEFAULT_DMA_MASK;
-+		mc_dev->dev.dma_mask = &mc_dev->dma_mask;
-+		mc_dev->dev.coherent_dma_mask = mc_dev->dma_mask;
- 	} else {
- 		/*
- 		 * A non-DPRC object has to be a child of a DPRC, use the
-
+ Documentation/devicetree/bindings/dpll/microchip,zl30731.yaml | 1 +
+ drivers/dpll/zl3073x/core.c                                   | 1 +
+ drivers/dpll/zl3073x/i2c.c                                    | 2 ++
+ drivers/dpll/zl3073x/spi.c                                    | 2 ++
+ 4 files changed, 6 insertions(+)
 ---
 base-commit: 248951ddc14de84de3910f9b13f51491a8cd91df
-change-id: 20260724-for-upstream-fsl-mc-dprc-dma-mask-a11e4c5a85c6
+change-id: 20260724-for-upstream-zl30643-8b23267b974f
 
 Best regards,
 -- 
