@@ -1,19 +1,12 @@
 From: Alvin Sun <alvin.sun@linux.dev>
-Subject: [PATCH v9 00/10] Fix missing fops.owner in Rust DRM/misc
- abstractions
-Date: Thu, 23 Jul 2026 10:10:23 +0800
-Message-Id: <20260723-fix-fops-owner-v9-0-c1c3af7f7bcb@linux.dev>
+Date: Thu, 23 Jul 2026 10:10:24 +0800
+Subject: [PATCH v9 01/10] rust: module: move module types into `module.rs`
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAA94YWoC/33RS07DMBAG4KtEXuPKz0ycFfdALBw/wBJJip2Go
- qp3Z5pKNEoEy7H8zT9jX0gJOYVC2upCcphTSeOAhXmqiHu3w1ugyWNNBBM109zQmM40jsdCx68
- hZBqkBeg6Aa52BNExB7yxNHx5vdc5fJ6w73Q/JJ0tgbqx79PUVjMcOM0OyDqvrX7T+lScDzM9o
- Ylj7u1Eje0gNLLjjvN2luSW8p7KNObvZYuZLzF/DTxzyqjwwZtGMm+5ev5Iw+l8wJSl1SxWXPA
- dF8ijN4aBcdqyHZcPXgux4xK5Ml5p10lgUmy5WnO54wo5Th11ZABeuy3Xa652XCO3lrvOCiUi0
- 1te/89r5FoYHaSUOH/Yclhz2HFAjtBLfL3gI9vy5sGB73dvbh+njHbRNsIrWPPr9foD1vDfi8s
- CAAA=
-X-Change-ID: 20260519-fix-fops-owner-e3a77bb27c6c
+Message-Id: <20260723-fix-fops-owner-v9-1-c1c3af7f7bcb@linux.dev>
+References: <20260723-fix-fops-owner-v9-0-c1c3af7f7bcb@linux.dev>
+In-Reply-To: <20260723-fix-fops-owner-v9-0-c1c3af7f7bcb@linux.dev>
 To: Miguel Ojeda <ojeda@kernel.org>, Boqun Feng <boqun@kernel.org>, 
  Gary Guo <gary@garyguo.net>, 
  =?utf-8?q?Bj=C3=B6rn_Roy_Baron?= <bjorn3_gh@protonmail.com>, 
@@ -44,182 +37,302 @@ Cc: rust-for-linux@vger.kernel.org, linux-modules@vger.kernel.org,
  linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
  linux-pci@vger.kernel.org, Alvin Sun <alvin.sun@linux.dev>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784772679; l=9632;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784772679; l=10377;
  i=alvin.sun@linux.dev; s=20260317; h=from:subject:message-id;
- bh=StVNHJ4HMCxFWdWrQaFFgT1la7uum7JnXbIg4vz+oKs=;
- b=cgTwmbHGl93jIu9eRqZbMnTkC49fESfnpiuIqzcSrXAa5wSZcgUgVVmk2Rskf48tWGNBHs9yC
- ehRSXx3fpv8A63mNfmfWX9n/WYHJmL9jGCjW2t/aQLPXW10KJGwgVSW
+ bh=FT3/WulpuLQqdHMgqAgW77HrCQngGC4CA6LCy+g7YBc=;
+ b=Zasg9d0wKrlEN4U3lWTJMxhmSh/fY7B/NTQvphEX+niiuiJkNcf//sYzdHrXSAz15aHI1H7bX
+ jLwZ9XF5SOkAwkVknnJhdJbefts3ButkZ/A9qN+ddR6/LrTWo3jyGUp
 X-Developer-Key: i=alvin.sun@linux.dev; a=ed25519;
  pk=CHcwQp8GSoj25V/L1ZWNSQjWp9eSIb0s9LKr0Nm3WuE=
 X-Endpoint-Received: by B4 Relay for alvin.sun@linux.dev/20260317 with auth_id=684
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-During tyr debugfs development, a kernel NULL pointer dereference was
-encountered after `rmmod tyr` while gnome-shell still held /dev/card1 open:
+Move `Module`, `InPlaceModule`, `ModuleMetadata` and `ThisModule` from
+`lib.rs` into a new `rust/kernel/module.rs`. Re-export them from `lib.rs`
+to avoid tree-wide changes.
 
-```
-  [158827.868132] Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000
-  [158827.868918] Mem abort info:
-  [158827.869177]   ESR = 0x0000000086000004
-  [158827.869519]   EC = 0x21: IABT (current EL), IL = 32 bits
-  [158827.870000]   SET = 0, FnV = 0
-  [158827.870281]   EA = 0, S1PTW = 0
-  [158827.870571]   FSC = 0x04: level 0 translation fault
-  [158827.871043] user pgtable: 4k pages, 48-bit VAs, pgdp=0000000108dec000
-  [158827.871623] [0000000000000000] pgd=0000000000000000, p4d=0000000000000000
-  [158827.872242] Internal error: Oops: 0000000086000004 [#1]  SMP
-  [158827.872246] Modules linked in: tyr sunrpc snd_soc_simple_card rk805_pwrkey snd_soc_simple_card_utils rtw88_8822bu display_connector rtw88_usb rtw88_8822b snd_soc_rockchip_i2s_tdm snd_soc_hdmi_codec
-  rtw88_core]
-  [158827.872337] CPU: 4 UID: 1000 PID: 11276 Comm: gnome-s:disk$0 Tainted: G                 N  7.1.0-rc1+ #331 PREEMPT
-  [158827.880534] Tainted: [N]=TEST
-  [158827.880535] Hardware name: FriendlyElec NanoPi R6C/NanoPi R6C, BIOS v1.1 04/09/2025
-  [158827.880538] pstate: 60400009 (nZCv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
-  [158827.880542] pc : 0x0
-  [158827.880547] lr : _RNvNtCs257m05FHVbX_3tyr2vm8pt_unmap+0x8c/0x12c [tyr]
-  [158827.880578] sp : ffff800083c236b0
-  [158827.880579] x29: ffff800083c236d0 x28: ffff00013f8a0000 x27: 0000000000000000
-  [158827.880585] x26: 000000000000007c x25: ffff000108e6ed80 x24: 0000000000401000
-  [158827.880590] x23: 0000000000000000 x22: 0000000040000000 x21: 0000000000001000
-  [158827.880595] x20: ffff00010f778138 x19: 0000000000400000 x18: 00000000ffffffff
-  [158827.880600] x17: 000000040044ffff x16: 045000f2b5503510 x15: 0720072007200720
-  [158827.880606] x14: 0720072007200720 x13: 0000000000401000 x12: 0000000000400000
-  [158827.880611] x11: ffff800083c239d0 x10: ffff000141e4fd88 x9 : 0000000000000000
-  [158827.880615] x8 : 0000000000000000 x7 : 0000000000000000 x6 : 0000000000400000
-  [158827.880620] x5 : ffff00013f8a0000 x4 : 0000000000000000 x3 : 0000000000000001
-  [158827.880625] x2 : 0000000000001000 x1 : 0000000000400000 x0 : ffff00010f778138
-  [158827.880630] Call trace:
-  [158827.880632]  0x0 (P)
-  [158827.880635]  _RNvXs6_NtCs257m05FHVbX_3tyr2vmNtB5_9GpuVmDataNtNtNtCsgmSOfgXi5CZ_6kernel3drm5gpuvm11DriverGpuVm13sm_step_unmap+0x3c/0x120 [tyr]
-  [158827.891166]  _RNvMs4_NtNtNtCsgmSOfgXi5CZ_6kernel3drm5gpuvm6sm_opsINtB7_5GpuVmNtNtCs257m05FHVbX_3tyr2vm9GpuVmDataE13sm_step_unmapB13_+0x18/0x34 [tyr]
-  [158827.891187]  op_unmap_cb+0x78/0xb0
-  [158827.891196]  __drm_gpuvm_sm_unmap+0x18c/0x1b4
-  [158827.891204]  drm_gpuvm_sm_unmap+0x38/0x4c
-  [158827.891209]  _RNvMs5_NtCs257m05FHVbX_3tyr2vmNtB5_2Vm7exec_op+0x1cc/0x254 [tyr]
-  [158827.894085]  _RNvMs5_NtCs257m05FHVbX_3tyr2vmNtB5_2Vm11unmap_range+0x124/0x188 [tyr]
-  [158827.894105]  _RINvNtCs5hGKnPbRUFW_4core3ptr13drop_in_placeNtNtCs257m05FHVbX_3tyr3gem8KernelBoEBK_+0x44/0xd8 [tyr]
-  [158827.894125]  _RINvNtCs5hGKnPbRUFW_4core3ptr13drop_in_placeINtNtNtCsgmSOfgXi5CZ_6kernel5alloc4kvec3VecNtNtCs257m05FHVbX_3tyr2fw7SectionNtNtBL_9allocator7KmallocEEB1r_+0x3c/0x100 [tyr]
-  [158827.894147]  _RINvNtCs5hGKnPbRUFW_4core3ptr13drop_in_placeINtNtNtCsgmSOfgXi5CZ_6kernel4sync3arc3ArcNtNtCs257m05FHVbX_3tyr2fw8FirmwareEEB1p_+0x94/0x190 [tyr]
-  [158827.894167]  _RNvMs4_NtNtCsgmSOfgXi5CZ_6kernel3drm6deviceINtB5_6DeviceNtNtCs257m05FHVbX_3tyr6driver12TyrDrmDriverE7releaseBW_+0x30/0x98 [tyr]
-  [158827.899550]  drm_dev_put.part.0+0x88/0xc0
-  [158827.899557]  drm_minor_release+0x18/0x28
-  [158827.899562]  drm_release+0x144/0x170
-  [158827.899567]  __fput+0xe4/0x30c
-  [158827.899573]  ____fput+0x14/0x20
-  [158827.899579]  task_work_run+0x7c/0xe8
-  [158827.899586]  do_exit+0x2a8/0xac4
-  [158827.899590]  do_group_exit+0x34/0x90
-  [158827.899594]  get_signal+0xaac/0xabc
-  [158827.899599]  arch_do_signal_or_restart+0x90/0x3e8
-  [158827.899606]  exit_to_user_mode_loop+0x140/0x1d0
-  [158827.899613]  el0_svc+0x2f4/0x2f8
-  [158827.899620]  el0t_64_sync_handler+0xa0/0xe4
-  [158827.899627]  el0t_64_sync+0x198/0x19c
-  [158827.899632] ---[ end trace 0000000000000000 ]---
-```
+Switch six bus driver registrations from `module.0` to the public
+`ThisModule::as_ptr()` accessor, since the field is no longer visible
+outside the new `module` submodule.
 
-The root cause: `fops.owner` was `NULL` in Rust DRM drivers, so the kernel
-never blocked module unloading while file descriptors were open. This leads to
-use-after-free when drm_release (or other fops) is called on freed module code.
-
-The series moves `THIS_MODULE` into the `ModuleMetadata` as a const, threads it
-through `#[vtable]` to set `fops.owner` in DRM/miscdevice, and updates configfs
-and rnull to use `this_module::<LocalModule>()`.
+No functional change.
 
 Assisted-by: opencode:glm-5.2
+Suggested-by: Gary Guo <gary@garyguo.net>
+Link: https://lore.kernel.org/all/DJFIQPLOVO4T.1K8T0VZM30LDA@garyguo.net/
+Reviewed-by: Gary Guo <gary@garyguo.net>
+Acked-by: Danilo Krummrich <dakr@kernel.org>
+Reviewed-by: Alice Ryhl <aliceryhl@google.com>
 Signed-off-by: Alvin Sun <alvin.sun@linux.dev>
 ---
-Changes in v9:
-- Rename the binder commit prefix from `rust: binder:` to `rust_binder:`
-  to match the in-tree module name.
-- Link to v8: https://lore.kernel.org/r/20260713-fix-fops-owner-v8-0-2495cfa82d47@linux.dev
+ rust/kernel/auxiliary.rs |  2 +-
+ rust/kernel/i2c.rs       |  2 +-
+ rust/kernel/lib.rs       | 75 +++++-------------------------------------------
+ rust/kernel/module.rs    | 71 +++++++++++++++++++++++++++++++++++++++++++++
+ rust/kernel/net/phy.rs   |  6 +++-
+ rust/kernel/pci.rs       |  2 +-
+ rust/kernel/platform.rs  |  2 +-
+ rust/kernel/usb.rs       |  2 +-
+ 8 files changed, 88 insertions(+), 74 deletions(-)
 
-Changes in v8:
-- Remove unused `crate::LocalModule` import in rnull configfs.
-- Link to v7: https://lore.kernel.org/r/20260627-fix-fops-owner-v7-0-33cd3990edf0@linux.dev
+diff --git a/rust/kernel/auxiliary.rs b/rust/kernel/auxiliary.rs
+index 93c0db1f66555..4a02f83240be3 100644
+--- a/rust/kernel/auxiliary.rs
++++ b/rust/kernel/auxiliary.rs
+@@ -63,7 +63,7 @@ unsafe fn register(
+ 
+         // SAFETY: `adrv` is guaranteed to be a valid `DriverType`.
+         to_result(unsafe {
+-            bindings::__auxiliary_driver_register(adrv.get(), module.0, name.as_char_ptr())
++            bindings::__auxiliary_driver_register(adrv.get(), module.as_ptr(), name.as_char_ptr())
+         })
+     }
+ 
+diff --git a/rust/kernel/i2c.rs b/rust/kernel/i2c.rs
+index 7b908f0c5a58d..24eff08f47123 100644
+--- a/rust/kernel/i2c.rs
++++ b/rust/kernel/i2c.rs
+@@ -142,7 +142,7 @@ unsafe fn register(
+         }
+ 
+         // SAFETY: `idrv` is guaranteed to be a valid `DriverType`.
+-        to_result(unsafe { bindings::i2c_register_driver(module.0, idrv.get()) })
++        to_result(unsafe { bindings::i2c_register_driver(module.as_ptr(), idrv.get()) })
+     }
+ 
+     unsafe fn unregister(idrv: &Opaque<Self::DriverType>) {
+diff --git a/rust/kernel/lib.rs b/rust/kernel/lib.rs
+index b72b2fbe046d6..040ae85056509 100644
+--- a/rust/kernel/lib.rs
++++ b/rust/kernel/lib.rs
+@@ -93,6 +93,7 @@
+ pub mod maple_tree;
+ pub mod miscdevice;
+ pub mod mm;
++pub mod module;
+ pub mod module_param;
+ #[cfg(CONFIG_NET)]
+ pub mod net;
+@@ -139,79 +140,17 @@
+ #[doc(hidden)]
+ pub use bindings;
+ pub use macros;
++pub use module::{
++    InPlaceModule,
++    Module,
++    ModuleMetadata,
++    ThisModule, //
++};
+ pub use uapi;
+ 
+ /// Prefix to appear before log messages printed from within the `kernel` crate.
+ const __LOG_PREFIX: &[u8] = b"rust_kernel\0";
+ 
+-/// The top level entrypoint to implementing a kernel module.
+-///
+-/// For any teardown or cleanup operations, your type may implement [`Drop`].
+-pub trait Module: Sized + Sync + Send {
+-    /// Called at module initialization time.
+-    ///
+-    /// Use this method to perform whatever setup or registration your module
+-    /// should do.
+-    ///
+-    /// Equivalent to the `module_init` macro in the C API.
+-    fn init(module: &'static ThisModule) -> error::Result<Self>;
+-}
+-
+-/// A module that is pinned and initialised in-place.
+-pub trait InPlaceModule: Sync + Send {
+-    /// Creates an initialiser for the module.
+-    ///
+-    /// It is called when the module is loaded.
+-    fn init(module: &'static ThisModule) -> impl pin_init::PinInit<Self, error::Error>;
+-}
+-
+-impl<T: Module> InPlaceModule for T {
+-    fn init(module: &'static ThisModule) -> impl pin_init::PinInit<Self, error::Error> {
+-        let initer = move |slot: *mut Self| {
+-            let m = <Self as Module>::init(module)?;
+-
+-            // SAFETY: `slot` is valid for write per the contract with `pin_init_from_closure`.
+-            unsafe { slot.write(m) };
+-            Ok(())
+-        };
+-
+-        // SAFETY: On success, `initer` always fully initialises an instance of `Self`.
+-        unsafe { pin_init::pin_init_from_closure(initer) }
+-    }
+-}
+-
+-/// Metadata attached to a [`Module`] or [`InPlaceModule`].
+-pub trait ModuleMetadata {
+-    /// The name of the module as specified in the `module!` macro.
+-    const NAME: &'static crate::str::CStr;
+-}
+-
+-/// Equivalent to `THIS_MODULE` in the C API.
+-///
+-/// C header: [`include/linux/init.h`](srctree/include/linux/init.h)
+-pub struct ThisModule(*mut bindings::module);
+-
+-// SAFETY: `THIS_MODULE` may be used from all threads within a module.
+-unsafe impl Sync for ThisModule {}
+-
+-impl ThisModule {
+-    /// Creates a [`ThisModule`] given the `THIS_MODULE` pointer.
+-    ///
+-    /// # Safety
+-    ///
+-    /// The pointer must be equal to the right `THIS_MODULE`.
+-    pub const unsafe fn from_ptr(ptr: *mut bindings::module) -> ThisModule {
+-        ThisModule(ptr)
+-    }
+-
+-    /// Access the raw pointer for this module.
+-    ///
+-    /// It is up to the user to use it correctly.
+-    pub const fn as_ptr(&self) -> *mut bindings::module {
+-        self.0
+-    }
+-}
+-
+ #[cfg(not(testlib))]
+ #[panic_handler]
+ fn panic(info: &core::panic::PanicInfo<'_>) -> ! {
+diff --git a/rust/kernel/module.rs b/rust/kernel/module.rs
+new file mode 100644
+index 0000000000000..be242a82e86d2
+--- /dev/null
++++ b/rust/kernel/module.rs
+@@ -0,0 +1,71 @@
++// SPDX-License-Identifier: GPL-2.0
++
++//! Module-related types and helpers.
++
++/// The entrypoint to implementing a kernel module.
++///
++/// For any teardown or cleanup operations, your type may implement [`Drop`].
++pub trait Module: Sized + Sync + Send {
++    /// Called at module initialization time.
++    ///
++    /// Use this method to perform whatever setup or registration your module
++    /// should do.
++    ///
++    /// Equivalent to the `module_init` macro in the C API.
++    fn init(module: &'static ThisModule) -> crate::error::Result<Self>;
++}
++
++/// A module that is pinned and initialised in-place.
++pub trait InPlaceModule: Sync + Send {
++    /// Creates an initialiser for the module.
++    ///
++    /// It is called when the module is loaded.
++    fn init(module: &'static ThisModule) -> impl pin_init::PinInit<Self, crate::error::Error>;
++}
++
++impl<T: Module> InPlaceModule for T {
++    fn init(module: &'static ThisModule) -> impl pin_init::PinInit<Self, crate::error::Error> {
++        let initer = move |slot: *mut Self| {
++            let m = <Self as Module>::init(module)?;
++
++            // SAFETY: `slot` is valid for write per the contract with `pin_init_from_closure`.
++            unsafe { slot.write(m) };
++            Ok(())
++        };
++
++        // SAFETY: On success, `initer` always fully initialises an instance of `Self`.
++        unsafe { pin_init::pin_init_from_closure(initer) }
++    }
++}
++
++/// Metadata attached to a [`Module`] or [`InPlaceModule`].
++pub trait ModuleMetadata {
++    /// The name of the module as specified in the `module!` macro.
++    const NAME: &'static crate::str::CStr;
++}
++
++/// Equivalent to `THIS_MODULE` in the C API.
++///
++/// C header: [`include/linux/init.h`](srctree/include/linux/init.h)
++pub struct ThisModule(*mut crate::bindings::module);
++
++// SAFETY: `THIS_MODULE` may be used from all threads within a module.
++unsafe impl Sync for ThisModule {}
++
++impl ThisModule {
++    /// Creates a [`ThisModule`] given the `THIS_MODULE` pointer.
++    ///
++    /// # Safety
++    ///
++    /// The pointer must be equal to the right `THIS_MODULE`.
++    pub const unsafe fn from_ptr(ptr: *mut crate::bindings::module) -> ThisModule {
++        ThisModule(ptr)
++    }
++
++    /// Access the raw pointer for this module.
++    ///
++    /// It is up to the user to use it correctly.
++    pub const fn as_ptr(&self) -> *mut crate::bindings::module {
++        self.0
++    }
++}
+diff --git a/rust/kernel/net/phy.rs b/rust/kernel/net/phy.rs
+index 3ca99db5cccf2..8b7036b8fe480 100644
+--- a/rust/kernel/net/phy.rs
++++ b/rust/kernel/net/phy.rs
+@@ -659,7 +659,11 @@ pub fn register(
+         // the `drivers` slice are initialized properly. `drivers` will not be moved.
+         // So it's just an FFI call.
+         to_result(unsafe {
+-            bindings::phy_drivers_register(drivers[0].0.get(), drivers.len().try_into()?, module.0)
++            bindings::phy_drivers_register(
++                drivers[0].0.get(),
++                drivers.len().try_into()?,
++                module.as_ptr(),
++            )
+         })?;
+         // INVARIANT: The `drivers` slice is successfully registered to the kernel via `phy_drivers_register`.
+         Ok(Registration { drivers })
+diff --git a/rust/kernel/pci.rs b/rust/kernel/pci.rs
+index af74ddff6114d..916ed2cb6b70b 100644
+--- a/rust/kernel/pci.rs
++++ b/rust/kernel/pci.rs
+@@ -86,7 +86,7 @@ unsafe fn register(
+ 
+         // SAFETY: `pdrv` is guaranteed to be a valid `DriverType`.
+         to_result(unsafe {
+-            bindings::__pci_register_driver(pdrv.get(), module.0, name.as_char_ptr())
++            bindings::__pci_register_driver(pdrv.get(), module.as_ptr(), name.as_char_ptr())
+         })
+     }
+ 
+diff --git a/rust/kernel/platform.rs b/rust/kernel/platform.rs
+index 8917d4ee499fb..9fdbafd53bc21 100644
+--- a/rust/kernel/platform.rs
++++ b/rust/kernel/platform.rs
+@@ -82,7 +82,7 @@ unsafe fn register(
+         }
+ 
+         // SAFETY: `pdrv` is guaranteed to be a valid `DriverType`.
+-        to_result(unsafe { bindings::__platform_driver_register(pdrv.get(), module.0) })
++        to_result(unsafe { bindings::__platform_driver_register(pdrv.get(), module.as_ptr()) })
+     }
+ 
+     unsafe fn unregister(pdrv: &Opaque<Self::DriverType>) {
+diff --git a/rust/kernel/usb.rs b/rust/kernel/usb.rs
+index 9c17a672cd275..213db32727c17 100644
+--- a/rust/kernel/usb.rs
++++ b/rust/kernel/usb.rs
+@@ -63,7 +63,7 @@ unsafe fn register(
+ 
+         // SAFETY: `udrv` is guaranteed to be a valid `DriverType`.
+         to_result(unsafe {
+-            bindings::usb_register_driver(udrv.get(), module.0, name.as_char_ptr())
++            bindings::usb_register_driver(udrv.get(), module.as_ptr(), name.as_char_ptr())
+         })
+     }
+ 
 
-Changes in v7:
-- Use `crate::LocalModule` in `configfs_attrs!` and silence `clippy::crate_in_macro_def`, per Gary's review.
-- Link to v6: https://lore.kernel.org/r/20260624-fix-fops-owner-v6-0-5295e333cb3e@linux.dev
-
-Changes in v6:
-- Update MAINTAINERS to cover the new `rust/kernel/module.rs`.
-- Link to v5: https://lore.kernel.org/r/20260624-fix-fops-owner-v5-0-aa1cba242f05@linux.dev
-
-Changes in v5:
-- Add `#[inline]` to the `this_module()` helper.
-- Fix configfs doc comment to reference `crate::LocalModule` instead of
-  bare `LocalModule`.
-- Link to v4: https://lore.kernel.org/r/20260623-fix-fops-owner-v4-0-0daf5f077d5c@linux.dev
-
-Changes in v4:
-- Move module-related types into a new `rust/kernel/module.rs`.
-- Migrate binder from the `module!`-generated `THIS_MODULE` static to
-  `this_module::<LocalModule>()`.
-- Reorganise the series so that every commit builds independently, and
-  drop the legacy `THIS_MODULE` static once all users are migrated.
-- Link to v3: https://lore.kernel.org/r/20260622-fix-fops-owner-v3-0-49d45cb37032@linux.dev
-
-Changes in v3:
-- Renamed vtable associated type `ThisModule` to `OwnerModule`
-- Added `this_module()` helper for ergonomic `THIS_MODULE` access
-- Refined vtable macro implementation: one-liner detection and single `defined_items` set
-- Reordered commits to place doctest fallback before vtable auto-insert
-- Link to v2: https://lore.kernel.org/r/20260521-fix-fops-owner-v2-0-fd99079c5a04@linux.dev
-
-Changes in v2:
-- Merged old `static THIS_MODULE` and v1's `MODULE_PTR` into a single
-  `ModuleMetadata::THIS_MODULE` const
-- `#[vtable]` macro now auto-inserts `type ThisModule`, removing all per-driver
-  manual patches from v1
-- Added configfs & rnull usage site updates and doctest `LocalModule` fallback
-- Link to v1: https://lore.kernel.org/r/20260519-fix-fops-owner-v1-0-2ded9830da14@linux.dev
-
----
-Alvin Sun (10):
-      rust: module: move module types into `module.rs`
-      rust: module: add `THIS_MODULE` const to `ModuleMetadata` trait
-      rust: doctest: add LocalModule fallback for #[vtable] ThisModule
-      rust: macros: auto-insert OwnerModule in #[vtable]
-      rust: drm: set fops.owner from driver module pointer
-      rust: miscdevice: set fops.owner from driver module pointer
-      rust: configfs: use `LocalModule` for `THIS_MODULE`
-      rust_binder: use `LocalModule` for `THIS_MODULE`
-      rust: macros: remove `THIS_MODULE` static from `module!`
-      rust: module: update MAINTAINERS to cover module.rs
-
- MAINTAINERS                                |  2 +-
- drivers/android/binder/rust_binder_main.rs |  3 +-
- drivers/block/rnull/configfs.rs            |  5 +-
- rust/kernel/auxiliary.rs                   |  2 +-
- rust/kernel/configfs.rs                    |  9 ++--
- rust/kernel/drm/device.rs                  |  3 +-
- rust/kernel/drm/gem/mod.rs                 |  4 +-
- rust/kernel/i2c.rs                         |  2 +-
- rust/kernel/lib.rs                         | 75 +++-------------------------
- rust/kernel/miscdevice.rs                  |  4 +-
- rust/kernel/module.rs                      | 80 ++++++++++++++++++++++++++++++
- rust/kernel/net/phy.rs                     |  6 ++-
- rust/kernel/pci.rs                         |  2 +-
- rust/kernel/platform.rs                    |  2 +-
- rust/kernel/usb.rs                         |  2 +-
- rust/macros/lib.rs                         |  6 +++
- rust/macros/module.rs                      | 34 ++++++-------
- rust/macros/vtable.rs                      | 41 +++++++++++++--
- scripts/rustdoc_test_gen.rs                | 16 ++++++
- 19 files changed, 189 insertions(+), 109 deletions(-)
----
-base-commit: b7e5ac83cb16f7ffd11dc23736f84276602100ed
-change-id: 20260519-fix-fops-owner-e3a77bb27c6c
-prerequisite-change-id: 20260519-miscdev-use-format-9ab7e83b1c11:v3
-prerequisite-patch-id: 405b334ff0d48ad350014f05a2321bdbaa025400
-prerequisite-patch-id: 604b631c81d5423f4ebb2e12ba2d22e9ce371bfc
-prerequisite-patch-id: cb550d94cefe01920e0d3ced2b2bcbecd76f3907
-prerequisite-patch-id: 3bc830839742591460cb86d9472c04f4686dc600
-prerequisite-patch-id: 571058244bc8c7088638d2e3225713011246c7e9
-prerequisite-patch-id: 347c5a3c6dbef9832bfce8419fc23e6e08ba477f
-prerequisite-patch-id: 3e202d988b56b88446f7535e90d3f00cf5f15701
-
-Best regards,
 -- 
-Alvin Sun <alvin.sun@linux.dev>
+2.43.0
 
