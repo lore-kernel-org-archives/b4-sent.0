@@ -1,10 +1,10 @@
 From: Vincent Jardin <vjardin@free.fr>
-Date: Thu, 23 Jul 2026 15:02:42 +0200
-Subject: [PATCH 1/3] hwmon: pmbus: event notification with alarms
+Date: Thu, 23 Jul 2026 15:02:43 +0200
+Subject: [PATCH 2/3] dt-bindings: hwmon: pmbus: add MPS MPQ8646 binding
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260723-mpq8646_v0-v1-1-14363c75916f@free.fr>
+Message-Id: <20260723-mpq8646_v0-v1-2-14363c75916f@free.fr>
 References: <20260723-mpq8646_v0-v1-0-14363c75916f@free.fr>
 In-Reply-To: <20260723-mpq8646_v0-v1-0-14363c75916f@free.fr>
 To: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
@@ -15,65 +15,84 @@ Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org,
  devicetree@vger.kernel.org, linux-doc@vger.kernel.org, 
  Vincent Jardin <vjardin@free.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784811776; l=2243;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784811776; l=1982;
  i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=J9iIMMt2Lp2Xbzm5GXCYVVI1Koec6CMd7Yg+qpVdHaU=;
- b=AUow9+iC7Nh7BRZHn3CmbAGCkl3EQvW16chU1wUY2mGkCFuCLUH4AXop4f/2M3OpYeSc065dK
- OOFIkJWJN4iCzF4ROgj6tgTdsveI3gylusIg7S7IM5fQn1JkxPGVflf
+ bh=Tvf4fzvHxa9KKqFmGBANHE66PMlQlAr4hrKgSTUyCc4=;
+ b=U08MA3fO8zvi76wSTIPiAJ8aUZLwkoPKs9FvZXg6VsyfAmQ77Q6McjT2qLrFeIenIAchmp4T/
+ Hw9h0NFEd9nCvIaKwluwz/DGo8pbMAbc6vggpSbAHthUMAmRszdwGZL
 X-Developer-Key: i=vjardin@free.fr; a=ed25519;
  pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
 X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Let's add an accessor for the hwmon class device the pmbus core
-registered for an i2c_client. Export it with PMBUS so chip
-drivers can call hwmon_notify_event() on per-sensor *_alarm
-attributes from the driver's work items.
+Add a device-tree binding for the Monolithic Power Systems
+MPQ8646 step-down converter as a PMBus devince.
 
-The needs: for boards when the chip's SMBALERT# pin is
-not available for the CPU, pmbus_irq_setup() cannot deliver
-poll(POLLPRI) wakes or udev change@... events on the inX_alarm
-files. So the drivers can install a delayed_work-based polling
-fallback (like the lm90 driver) that periodically reads STATUS_WORD
-and calls hwmon_notify_event() on 0->1 transitions.
+The schema is inspired from the mpq8785e:
+same mps,vout-fb-divider-ratio-permille property (maximum: 2047),
+and const: mps,mpq8646.
 
 Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- drivers/hwmon/pmbus/pmbus.h      | 1 +
- drivers/hwmon/pmbus/pmbus_core.c | 8 ++++++++
- 2 files changed, 9 insertions(+)
+ .../bindings/hwmon/pmbus/mps,mpq8646.yaml          | 50 ++++++++++++++++++++++
+ 1 file changed, 50 insertions(+)
 
-diff --git a/drivers/hwmon/pmbus/pmbus.h b/drivers/hwmon/pmbus/pmbus.h
-index 23e3eda58870..46ab056c0058 100644
---- a/drivers/hwmon/pmbus/pmbus.h
-+++ b/drivers/hwmon/pmbus/pmbus.h
-@@ -565,6 +565,7 @@ bool pmbus_check_word_register(struct i2c_client *client, int page, int reg);
- int pmbus_do_probe(struct i2c_client *client, struct pmbus_driver_info *info);
- const struct pmbus_driver_info *pmbus_get_driver_info(struct i2c_client
- 						      *client);
-+struct device *pmbus_get_hwmon_device(struct i2c_client *client);
- int pmbus_get_fan_rate_device(struct i2c_client *client, int page, int id,
- 			      enum pmbus_fan_mode mode);
- int pmbus_get_fan_rate_cached(struct i2c_client *client, int page, int id,
-diff --git a/drivers/hwmon/pmbus/pmbus_core.c b/drivers/hwmon/pmbus/pmbus_core.c
-index 3143b9e0316c..6ba00ad73297 100644
---- a/drivers/hwmon/pmbus/pmbus_core.c
-+++ b/drivers/hwmon/pmbus/pmbus_core.c
-@@ -695,6 +695,14 @@ const struct pmbus_driver_info *pmbus_get_driver_info(struct i2c_client *client)
- }
- EXPORT_SYMBOL_NS_GPL(pmbus_get_driver_info, "PMBUS");
- 
-+struct device *pmbus_get_hwmon_device(struct i2c_client *client)
-+{
-+	struct pmbus_data *data = i2c_get_clientdata(client);
+diff --git a/Documentation/devicetree/bindings/hwmon/pmbus/mps,mpq8646.yaml b/Documentation/devicetree/bindings/hwmon/pmbus/mps,mpq8646.yaml
+new file mode 100644
+index 000000000000..401a80325b4b
+--- /dev/null
++++ b/Documentation/devicetree/bindings/hwmon/pmbus/mps,mpq8646.yaml
+@@ -0,0 +1,50 @@
++# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
++# Copyright (c) 2026 Free Mobile - Vincent Jardin <vjardin@free.fr>
++%YAML 1.2
++---
++$id: http://devicetree.org/schemas/hwmon/pmbus/mps,mpq8646.yaml#
++$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+	return data->hwmon_dev;
-+}
-+EXPORT_SYMBOL_NS_GPL(pmbus_get_hwmon_device, "PMBUS");
++title: Monolithic Power Systems MPQ8646 PMBus Step-Down Converter (extended)
 +
- static int pmbus_get_status(struct i2c_client *client, int page, int reg)
- {
- 	struct pmbus_data *data = i2c_get_clientdata(client);
++maintainers:
++  - Vincent Jardin <vjardin@free.fr>
++
++description: |
++  PMBus driver for the MPS MPQ8646 step-down converter.
++
++properties:
++  compatible:
++    const: mps,mpq8646
++
++  reg:
++    maxItems: 1
++
++  mps,vout-fb-divider-ratio-permille:
++    description:
++      The feedback resistor divider ratio, expressed in permille
++      (Vfb / Vout * 1000). This value is written to the
++      PMBUS_VOUT_SCALE_LOOP register and is required for correct output
++      voltage presentation.
++    $ref: /schemas/types.yaml#/definitions/uint32
++    minimum: 1
++    maximum: 2047
++    default: 706
++
++required:
++  - compatible
++  - reg
++
++additionalProperties: false
++
++examples:
++  - |
++    i2c {
++      #address-cells = <1>;
++      #size-cells = <0>;
++
++      regulator@10 {
++        compatible = "mps,mpq8646";
++        reg = <0x10>;
++      };
++    };
 
 -- 
 2.43.0
