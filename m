@@ -1,74 +1,78 @@
 From: Vincent Jardin <vjardin@free.fr>
-Date: Thu, 23 Jul 2026 17:44:56 +0200
-Subject: [PATCH] hwmon: (pmbus/core) notify on the hwmon device, not the
- i2c client
+Subject: [PATCH v2 0/3] hwmon: pmbus: add MPS MPQ8646 support
+Date: Thu, 23 Jul 2026 17:46:04 +0200
+Message-Id: <20260723-mpq8646_v0-v2-0-3c4cb71f23c0@free.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260723-fix_hwmon_notify_v1-v1-1-5a24c528686d@free.fr>
-X-B4-Tracking: v=1; b=H4sIAPc2YmoC/x2MQQqAIBAAvyJ7TlCTpL4SIVFb7iENDSuivycdB
- 2bmgYSRMEHHHoiYKVHwBWTFYHKjX5HTXBiUUI0wquYLXdadW/DWh4OW22bJjUY5trrWzSShlHv
- Eov3XfnjfD7qlFTdlAAAA
-To: Guenter Roeck <linux@roeck-us.net>
+X-B4-Tracking: v=1; b=H4sIADw3YmoC/23MQQ6CMBCF4auQWVvTdkqLrLyHIQZhKl0IODWNh
+ vTuVtYu/5e8b4NIHChCW23AlEIMy1xCHyoYpn6+kwhjadBSW+k0isf6bKyx1yQFYoPDrXZmdD2
+ Uw8rkw3vHLl3pKcTXwp/dTuq3/mWSElIogxYHV5+U9WfPREfP0OWcvywyGlyiAAAA
+To: Guenter Roeck <linux@roeck-us.net>, Rob Herring <robh@kernel.org>, 
+ Krzysztof Kozlowski <krzk+dt@kernel.org>, 
+ Conor Dooley <conor+dt@kernel.org>, Jonathan Corbet <corbet@lwn.net>, 
+ Shuah Khan <skhan@linuxfoundation.org>
 Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
- stable@vger.kernel.org, Vincent Jardin <vjardin@free.fr>
+ devicetree@vger.kernel.org, linux-doc@vger.kernel.org, 
+ Vincent Jardin <vjardin@free.fr>
 X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784821501; l=1985;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784821569; l=2342;
  i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
- bh=mvBVaQ/t9TqovxzoIusrFozS/2VXRXLUOR6BEPoWm7A=;
- b=GOwMDFU2EGh4zEkApIoHvh9my2mZaaEDWVKHquKMgbTaCoC9rXGKANGnvQfBbCdPJ6sM0YrCR
- T6H4mq8FnABD1ab9+ILw0N2+RNSYyO8SORzscKRW7XbcD8AD55Oza5J
+ bh=NCuLCoLtM6Hl+suAEaD5R2WPrK6BH+Y3Pf5I07jzxL8=;
+ b=oiluK605zf0rJ4i4VZg+emDI4+CV7HrBsP1C9MaIxv4rql+NBa/oko5YEnioTz7c6Lk4I/tLG
+ 25CaxG1uss+DK8UWvwJYQ3oSKQjyP3HR5+jbSC+bU/F3drGCHqDqP7s
 X-Developer-Key: i=vjardin@free.fr; a=ed25519;
  pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
 X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-pmbus_notify() calls sysfs_notify() and kobject_uevent() on the i2c
-client's kobject, but the alarm attributes live on the hwmon class
-device registered by pmbus_do_probe(). Notifying the parent i2c device
-is a no-op for both poll(POLLPRI) waiters and udev listeners: the named
-attribute does not exist on that kobject.
+Add support for the Monolithic Power Systems MPQ8646 step-down
+converter as a PMBus device.
 
-Notify the hwmon device instead, so poll() wakes up and "change"
-uevents fire on the inX_alarm/tempX_alarm attributes when SMBALERT#
-reports a fault.
+  1/3 pmbus core: add and export pmbus_get_hwmon_device() so a chip
+      driver can call hwmon_notify_event() from an in-driver
+      alarm-poll fallback (lm90-style) on boards where the chip's
+      SMBALERT# pin is unavailable to the CPU.
+  2/3 dt-bindings: the MPQ8646 binding; schema inspired from the
+      mpq8785 (same mps,vout-fb-divider-ratio-permille property).
+  3/3 the MPQ8646 driver: PMBus telemetry plus MFR_CFG_EXT
+      gate-close retry after CLEAR_LAST_FAULT, alarm acknowledge via
+      inX_reset_history, MPS-extended STATUS_WORD decode and
+      post-mortem clear, the alarm-poll fallback for boards without
+      SMBALERT, and on_off_config / vout_margin / mfr_pmbus_lock
+      sysfs.
 
-Fixes: f469bde9afd1 ("hwmon: (pmbus/core) Notify hwmon events")
-Cc: stable@vger.kernel.org # v6.4+
 Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
-Found during the review of the MPQ8646 series (v1):
+Changes in v2:
+- driver: register debugfs only after the DT-property validation, to
+  avoid an early probe error to avoid dangling debugfs entries
+- driver: do not schedule the alarm-poll worker when SMBALERT# (irq)
+  is wired, and do not re-arm it from the worker in that case
+- driver: dput() the dentry returned by debugfs_lookup()
+- driver: hold mps_lock around the nvmem snapshot reads
+- driver: fix VID coefficients comment
+- dt-bindings: fix typo of the commit message
+- Link to v1: https://lore.kernel.org/r/20260723-mpq8646_v0-v1-0-14363c75916f@free.fr
 
-  https://lore.kernel.org/all/20260723131352.182B61F000E9@smtp.kernel.org/
-
-The sysfs_notify() half is a no-op today: the named attribute does not
-exist on the i2c client's kobject. Note the KOBJ_CHANGE uevent source
-moves from the i2c device to the hwmon class device, matching what
-hwmon_notify_event() does.
 ---
- drivers/hwmon/pmbus/pmbus_core.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+Vincent Jardin (3):
+      hwmon: pmbus: event notification with alarms
+      dt-bindings: hwmon: pmbus: add MPS MPQ8646 binding
+      hwmon: pmbus: add MPQ8646 driver
 
-diff --git a/drivers/hwmon/pmbus/pmbus_core.c b/drivers/hwmon/pmbus/pmbus_core.c
-index 3143b9e0316c..0081f16c3a95 100644
---- a/drivers/hwmon/pmbus/pmbus_core.c
-+++ b/drivers/hwmon/pmbus/pmbus_core.c
-@@ -2985,8 +2985,9 @@ static void pmbus_notify(struct pmbus_data *data, int page, int reg, int flags)
- 
- 		if (reg == sreg && page == spage && (smask & flags)) {
- 			dev_dbg(data->dev, "sysfs notify: %s", da->attr.name);
--			sysfs_notify(&data->dev->kobj, NULL, da->attr.name);
--			kobject_uevent(&data->dev->kobj, KOBJ_CHANGE);
-+			sysfs_notify(&data->hwmon_dev->kobj, NULL,
-+				     da->attr.name);
-+			kobject_uevent(&data->hwmon_dev->kobj, KOBJ_CHANGE);
- 			flags &= ~smask;
- 		}
- 
-
+ .../bindings/hwmon/pmbus/mps,mpq8646.yaml          |   50 +
+ Documentation/hwmon/mpq8646.rst                    |  314 +++++
+ MAINTAINERS                                        |    8 +
+ drivers/hwmon/pmbus/Kconfig                        |   11 +
+ drivers/hwmon/pmbus/Makefile                       |    1 +
+ drivers/hwmon/pmbus/mpq8646.c                      | 1223 ++++++++++++++++++++
+ drivers/hwmon/pmbus/pmbus.h                        |    1 +
+ drivers/hwmon/pmbus/pmbus_core.c                   |    8 +
+ 8 files changed, 1616 insertions(+)
 ---
 base-commit: 248951ddc14de84de3910f9b13f51491a8cd91df
-change-id: 20260723-fix_hwmon_notify_v1-74e1a94346c1
+change-id: 20260723-mpq8646_v0-3383cb574d7a
 
 Best regards,
 -- 
