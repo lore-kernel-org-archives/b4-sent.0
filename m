@@ -1,118 +1,350 @@
 From: Luca Lauro <famlauro93l@gmail.com>
-Subject: [PATCH 00/19] ARM: mvebu: add Netgear RN102/RN104 support and
- related drivers
-Date: Thu, 23 Jul 2026 15:57:38 +0200
-Message-Id: <20260723-rn102-rn104-series-v1-0-7698d25df866@gmail.com>
+Date: Thu, 23 Jul 2026 15:57:39 +0200
+Subject: [PATCH 01/19] ARM: mvebu: add board support for Netgear RN102
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIANMdYmoC/yWMyw5AMBAAf0X2rMkqqceviAO6ZR1KWkTS+HfFZ
- ZI5zATw5Jg8NEkARyd7Xm2ULE1gnHs7kWAdHSRKhaXMhbMZyo+F+FuhlapowFqjMRDDzZHh65u
- 23e/+GBYa9/cE9/0APg1Ri3YAAAA=
-X-Change-ID: 20260723-rn102-rn104-series-d668eb09d0ff
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260723-rn102-rn104-series-v1-1-7698d25df866@gmail.com>
+References: <20260723-rn102-rn104-series-v1-0-7698d25df866@gmail.com>
+In-Reply-To: <20260723-rn102-rn104-series-v1-0-7698d25df866@gmail.com>
 To: Sascha Hauer <s.hauer@pengutronix.de>, 
  "open list:BAREBOX" <barebox@lists.infradead.org>
 Cc: Luca Lauro <famlauro93l@gmail.com>
 X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784815061; l=4603;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784815061; l=10418;
  i=famlauro93l@gmail.com; s=20260723; h=from:subject:message-id;
- bh=IglEVpr8truAqAYGrx5gD4CwPENqWf02m5FMJQ9nkLM=;
- b=L/rI4hACLoXK4la8mDDw0rWeikJ/8nrBlfWdYD2oorx1Zn00J01vp7oZJA6IK450OJTlGZE9V
- nhxVLXoSR88BnF6O3+K2a1wwlxybCpZfYMx2pBmJRrLLYCPWl6n7uOO
+ bh=BWQBXZQdp0klKTicbyqCw6vp3ul2YoDCrDw/uvc3jOA=;
+ b=tEflh5ihrR65lwlvFag1WVmdKauUqdvNlwpu4b587/KdRyqn8nt+9RwvFeJOed4F2u0i3wX/r
+ SFLHh6rINiUDktS4JTOQbEvqnOQ9nnXLVLCrtJHWzmXHv4nmNRKK9Qi
 X-Developer-Key: i=famlauro93l@gmail.com; a=ed25519;
  pk=OAJlcD69ugQCl99Vy6w+Aeu+ZUb1IVGcz1Ijxo6Ch78=
 X-Endpoint-Received: by B4 Relay for famlauro93l@gmail.com/20260723 with auth_id=892
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-This series adds full barebox support for the Netgear RN102 and RN104
-NAS platforms based on the Marvell Armada 370 SoC. Both devices share
-the same hardware architecture, with differences mainly in the number
-of drive bays and the associated board-level integration.
-
-The series introduces:
- - lowlevel initialization code for RN102 and RN104
- - board support files and environment integration
- - barebox-specific device trees for both platforms
- - image generation support and defconfig updates
- - fan controller framework and G76x driver
- - fan control command and Kconfig/Makefile integration
- - Marvell-specific EHCI host controller driver
- - AHCI/SATA fixes improving compatibility with Armada 370
- - USB/AHCI integration updates
-
-The goal is to provide complete bootloader support for these NAS
-devices, enabling reliable initialization of storage, USB, fan control,
-and board-specific peripherals. The patches have been tested on
-RN102 only.
-
-Signed-off-by: Luca Lauro <famlauro93l@gmail.com>
-
 ---
-Luca Lauro (19):
-      ARM: mvebu: add board support for Netgear RN102
-      ARM: mvebu: add lowlevel support for Netgear RN102
-      ARM: dts: add barebox device tree for Netgear RN102
-      ARM: dts: update RN102 Linux DTS
-      ARM: mvebu: add Kconfig entry for Netgear RN102
-      ARM: mvebu: add RN102 image support
-      ARM: mvebu: enable RN102 in mvebu_defconfig
-      ARM: mvebu: rn104: placeholder bay management
-      ARM: mvebu: add lowlevel support for Netgear RN104
-      ARM: dts: update RN104 Linux DTS
-      ARM: mvebu: adapt RN104 image support
-      ARM: mvebu: rename PUTC_LL to MVEBU_PUTC_LL
-      drivers: fan: add fan framework and API
-      commands: add fan control command
-      commands: integrate fan command into Kconfig and Makefile
-      usb: ehci: add Marvell EHCI host controller driver
-      usb: ehci: minor fixes for Marvell compatibility
-      ata: ahci: fixes and updates for Marvell SATA controller
-      drivers: integrate USB/AHCI changes
+ arch/arm/boards/Makefile               |   1 +
+ arch/arm/boards/netgear-rn102/Makefile |   4 +
+ arch/arm/boards/netgear-rn102/board.c  | 243 +++++++++++++++++++++++++++++++++
+ rebuild-series.sh                      |  39 ++++++
+ 4 files changed, 287 insertions(+)
 
- arch/arm/boards/Makefile                         |    1 +
- arch/arm/boards/netgear-rn102/Makefile           |    4 +
- arch/arm/boards/netgear-rn102/board.c            |  243 +++++
- arch/arm/boards/netgear-rn102/lowlevel.c         |   49 +
- arch/arm/boards/netgear-rn104/board.c            |  193 ++++
- arch/arm/boards/netgear-rn104/lowlevel.c         |   43 +-
- arch/arm/configs/mvebu_defconfig                 |    1 +
- arch/arm/dts/Makefile                            |    1 +
- arch/arm/dts/armada-370-rn102-bb.dts             |   13 +
- arch/arm/mach-mvebu/Kconfig                      |    4 +
- commands/Kconfig                                 |    7 +
- commands/Makefile                                |    2 +
- commands/fan.c                                   |  286 ++++++
- drivers/Kconfig                                  |    1 +
- drivers/Makefile                                 |    1 +
- drivers/ata/ahci.c                               |  656 ++++++------
- drivers/ata/ahci.h                               |    1 +
- drivers/fan/Kconfig                              |   35 +
- drivers/fan/Makefile                             |    8 +
- drivers/fan/fan.c                                |  180 ++++
- drivers/fan/i2c_fan_controllers/Kconfig          |    6 +
- drivers/fan/i2c_fan_controllers/Makefile         |    5 +
- drivers/fan/i2c_fan_controllers/g76x.c           | 1184 ++++++++++++++++++++++
- drivers/fan/other_fan_controllers/Kconfig        |    7 +
- drivers/fan/other_fan_controllers/Makefile       |    3 +
- drivers/fan/spi_fan_controllers/Kconfig          |    1 +
- drivers/fan/spi_fan_controllers/Makefile         |    3 +
- drivers/usb/host/Kconfig                         |    7 +
- drivers/usb/host/Makefile                        |   13 +-
- drivers/usb/host/ehci-hcd.c                      |   22 +-
- drivers/usb/host/ehci-marvell.c                  |  229 +++++
- dts/src/arm/marvell/armada-370-netgear-rn102.dts |  114 ++-
- dts/src/arm/marvell/armada-370-netgear-rn104.dts |  173 ++--
- images/Makefile.mvebu                            |   13 +-
- include/fan/fan.h                                |   94 ++
- include/fan/i2c_fan_controllers/g76x.h           |   37 +
- include/mach/mvebu/debug_ll.h                    |    2 +-
- rebuild-series.sh                                |   39 +
- 38 files changed, 3257 insertions(+), 424 deletions(-)
----
-base-commit: d6c5023bc58092b15a0cd8c01f708480efb26640
-change-id: 20260723-rn102-rn104-series-d668eb09d0ff
+diff --git a/arch/arm/boards/Makefile b/arch/arm/boards/Makefile
+index dd2f2c324e..aca1b45a81 100644
+--- a/arch/arm/boards/Makefile
++++ b/arch/arm/boards/Makefile
+@@ -64,6 +64,7 @@ obj-$(CONFIG_MACH_MARVELL_ARMADA_XP_DB)		+= marvell-armada-xp-db/
+ obj-$(CONFIG_MACH_MX23EVK)			+= freescale-mx23-evk/
+ obj-$(CONFIG_MACH_MX28EVK)			+= freescale-mx28-evk/
+ obj-$(CONFIG_MACH_MYIRTECH_X335X)		+= myirtech-x335x/
++obj-$(CONFIG_MACH_NETGEAR_RN102)		+= netgear-rn102/
+ obj-$(CONFIG_MACH_NETGEAR_RN104)		+= netgear-rn104/
+ obj-$(CONFIG_MACH_NETGEAR_RN2120)		+= netgear-rn2120/
+ obj-$(CONFIG_MACH_NVIDIA_BEAVER)		+= nvidia-beaver/
+diff --git a/arch/arm/boards/netgear-rn102/Makefile b/arch/arm/boards/netgear-rn102/Makefile
+new file mode 100644
+index 0000000000..da63d2625f
+--- /dev/null
++++ b/arch/arm/boards/netgear-rn102/Makefile
+@@ -0,0 +1,4 @@
++# SPDX-License-Identifier: GPL-2.0-only
++
++obj-y += board.o
++lwl-y += lowlevel.o
+diff --git a/arch/arm/boards/netgear-rn102/board.c b/arch/arm/boards/netgear-rn102/board.c
+new file mode 100644
+index 0000000000..c6673e9356
+--- /dev/null
++++ b/arch/arm/boards/netgear-rn102/board.c
+@@ -0,0 +1,243 @@
++// SPDX-License-Identifier: GPL-2.0-only
++
++#include <common.h>
++#include <init.h>
++#include <gpio.h>
++#include <driver.h>
++#include <linux/device.h>
++#include <linux/mbus.h>
++#include <mach/mvebu/armada-370-xp-regs.h>
++#include <bbu.h>
++
++/*
++ *  Early GPIO0 MMIO
++ *
++ * GPIO driver arrives too late for the disks to be
++ * ready in time for AHCI driver probe.
++ * So we use GPIO0 direct access for:
++ *   - reading disk presence monitoring pins
++ *   - enable powerup for bays that detect disk presence
++ *   - display bay status with dedicated LEDs
++ */
++#define GPIO0_BASE           (ARMADA_370_XP_INT_REGS_BASE + 0x18100)
++#define GPIO_OUT             0x00
++#define GPIO_OUT_EN          0x04
++#define GPIO_BLINK_EN        0x08
++#define GPIO_IN              0x10
++#define GPIO_BLINK_CNT_SEL   0x20
++#define GPIO_BLINK_CNT_A_ON  0xc0
++#define GPIO_BLINK_CNT_A_OFF 0xc4
++
++static inline void gpio0_set_output(int pin)
++{
++    u32 v = readl(GPIO0_BASE + GPIO_OUT_EN);
++
++    v &= ~(1 << pin);
++    writel(v, GPIO0_BASE + GPIO_OUT_EN);
++}
++
++static inline void gpio0_set_input(int pin)
++{
++    u32 v = readl(GPIO0_BASE + GPIO_OUT_EN);
++
++    v |= (1 << pin);
++    writel(v, GPIO0_BASE + GPIO_OUT_EN);
++}
++
++static inline void gpio0_write(int pin, int val)
++{
++    u32 v = readl(GPIO0_BASE + GPIO_OUT);
++
++    if (val)
++        v |= (1 << pin);
++    else
++        v &= ~(1 << pin);
++
++    writel(v, GPIO0_BASE + GPIO_OUT);
++}
++
++static inline int gpio0_read(int pin)
++{
++    return !!(readl(GPIO0_BASE + GPIO_IN) & (1 << pin));
++}
++
++static void gpio0_blink(int pin, int on_ms, int off_ms)
++{
++    u32 v;
++
++    gpio0_set_output(pin);
++
++    /* set blink counter A on and off time in core clok cycles */
++    writel(10*on_ms, GPIO0_BASE + GPIO_BLINK_CNT_A_ON);
++    writel(10*off_ms, GPIO0_BASE + GPIO_BLINK_CNT_A_OFF);
++
++    /* use blink counter A for selected pin */
++    v = readl(GPIO0_BASE + GPIO_BLINK_CNT_SEL);
++    v &= ~(1 << pin);
++    writel(v, GPIO0_BASE + GPIO_BLINK_CNT_SEL);
++
++    /* enable blink for selected pin */
++    v = readl(GPIO0_BASE + GPIO_BLINK_EN);
++    v |= (1 << pin);
++    writel(v, GPIO0_BASE + GPIO_BLINK_EN);
++}
++
++static void gpio0_blink_disable(int pin)
++{
++    u32 v;
++
++    v = readl(GPIO0_BASE + GPIO_BLINK_EN);
++    v &= ~(1 << pin);
++    writel(v, GPIO0_BASE + GPIO_BLINK_EN);
++}
++
++/* HDD bays description */
++
++enum disk_state {
++    DISK_ABSENT = 0,
++    DISK_PRESENT,
++    DISK_READY,
++};
++
++struct rn102_disk_bay {
++    int gpio_detect;        /* input, active-low */
++    int gpio_power;         /* output */
++    int gpio_led;           /* output, active-low */
++    enum disk_state state;
++};
++
++#define RN102_NUM_DISK_BAYS 2
++
++static struct rn102_disk_bay rn102_bays[RN102_NUM_DISK_BAYS] = {
++    { 12, 13, 15, DISK_ABSENT }, /* Bay 1, default to disk absent */
++    { 10, 11, 14, DISK_ABSENT }, /* Bay 2, default to disk absent */
++};
++
++static void setup_bays(void) {
++    pr_info("Early disk power-on...\n");
++
++    for (int i = 0; i < RN102_NUM_DISK_BAYS; i++) {
++        int present;
++
++        gpio0_set_input(rn102_bays[i].gpio_detect);
++        present = (gpio0_read(rn102_bays[i].gpio_detect) == 0);
++
++        gpio0_set_output(rn102_bays[i].gpio_power);
++
++        if (present) {
++            pr_info("Bay %d: disk detected, powering on\n", i + 1);
++            gpio0_blink(rn102_bays[i].gpio_led, 500, 500);
++            gpio0_write(rn102_bays[i].gpio_power, 1);
++            rn102_bays[i].state = DISK_PRESENT;
++        } else {
++            pr_info("Bay %d empty\n", i + 1);
++            gpio0_write(rn102_bays[i].gpio_led, 0);
++            gpio0_write(rn102_bays[i].gpio_power, 0);
++            rn102_bays[i].state = DISK_ABSENT;
++        }
++    }
++}
++
++/*
++ * After waiting for present disks spinup,
++ * we ask explicitly for corresponding ATA devices probe.
++ */
++static void init_disks(void) {
++    pr_info("Waiting for disks spinup...\n");
++    mdelay(8000);
++
++    pr_info("Detecting ATA devices:\n");
++    for (int i = 0; i < RN102_NUM_DISK_BAYS; i++) {
++        char name[8];
++        struct device *dev;
++
++        if (rn102_bays[i].state != DISK_PRESENT) {
++            gpio0_write(rn102_bays[i].gpio_power, 0);
++            gpio0_blink_disable(rn102_bays[i].gpio_led);
++            gpio0_write(rn102_bays[i].gpio_led, 0);
++            continue;
++        }
++
++        snprintf(name, sizeof(name), "ata%d", i);
++
++        dev = get_device_by_name(name);
++        if (!dev) {
++            pr_warn("%s not found\n", name);
++            gpio0_write(rn102_bays[i].gpio_power, 0);
++            gpio0_blink(rn102_bays[i].gpio_led, 1000, 1000);
++            continue;
++        }
++
++        pr_info("Connecting %s to disk %d\n", name, i + 1);
++        device_detect(dev);
++        gpio0_blink_disable(rn102_bays[i].gpio_led);
++        gpio0_write(rn102_bays[i].gpio_led, 1);
++        rn102_bays[i].state = DISK_READY;
++    }
++}
++
++/*
++ *  USB0 → DRAM MBUS windows
++ *
++ * frontal USB 2.0 port of RN102 is connected to the SoC usb0.
++ * Here we enable MBUS windows toward all the DRAM using
++ * informations already gathered by mvebu_mbus_dram_info().
++ */
++// #define USB0_BRIDGE_BASE   (ARMADA_370_XP_USB_BASE + 0x300)
++// #define USB_WIN_CTRL(n)    (USB0_BRIDGE_BASE + 0x20 + (n) * 0x10)
++// #define USB_WIN_BASE(n)    (USB0_BRIDGE_BASE + 0x24 + (n) * 0x10)
++
++static void setup_usb0(void) {
++    // /* Window0: 512MB @ 0x00000000 */
++    // writel(0x00000000, USB_WIN_BASE(0));
++    // writel(0x1FFF0E01, USB_WIN_CTRL(0));
++
++    // /* Window1: 512MB @ 0xB0000000 (placeholder) */
++    // writel(0xB0000000, USB_WIN_BASE(1));
++    // writel(0x1FFE841, USB_WIN_CTRL(1));
++
++    writel(0x2, 0xf1051404);    /* enable force suspend */
++    u32 pwr = readl(0xf1051400);
++    pwr &= ~BIT(2);
++    writel(pwr, 0xf1051400);    /* force SUSPENDM=0 */
++}
++
++
++/* Early init: setup specific hardware without blocking initialization. */
++static int rn102_early_poweron(void)
++{
++    writel(0xC6, 0xf1020228); /* CFU configuration */
++    setup_usb0();
++    setup_bays();
++
++    return 0;
++}
++postcore_initcall(rn102_early_poweron);
++
++static int rn102_init(void)
++{
++    init_disks();
++
++    return 0;
++}
++device_initcall(rn102_init);
++
++
++/* BareBox Update handlers */
++static int rn102_register_bbu(void)
++{
++    bbu_register_std_file_update("bootloader", 0,
++                     "/dev/nand0.bootloader",
++                     filetype_kwbimage_v1);
++
++    bbu_register_std_file_update("kernel", 0,
++                     "/dev/nand0.kernel",
++                     filetype_arm_zimage);
++
++    bbu_register_std_file_update("minirootfs", 0,
++                     "/dev/nand0.minirootfs",
++                     filetype_gzip);
++
++    return 0;
++}
++late_initcall(rn102_register_bbu);
+diff --git a/rebuild-series.sh b/rebuild-series.sh
+new file mode 100755
+index 0000000000..aad99bc296
+--- /dev/null
++++ b/rebuild-series.sh
+@@ -0,0 +1,39 @@
++#!/bin/bash
++set -e
++
++# Torna al punto base
++git checkout v2026.01.0
++git branch -D rn102-rn104-series 2>/dev/null || true
++git checkout -b rn102-rn104-series
++
++# Applica ogni patch e crea commit
++apply_patch() {
++    PATCH="$1"
++    MSG="$2"
++    echo "Applying $PATCH..."
++    git apply "$PATCH"
++    git add -A
++    git commit -m "$MSG"
++}
++
++apply_patch 0001-*.patch "ARM: mvebu: add board support for Netgear RN102"
++apply_patch 0002-*.patch "ARM: mvebu: add lowlevel support for Netgear RN102"
++apply_patch 0003-*.patch "ARM: dts: add barebox device tree for Netgear RN102"
++apply_patch 0004-*.patch "ARM: dts: update RN102 Linux DTS"
++apply_patch 0005-*.patch "ARM: mvebu: add Kconfig entry for Netgear RN102"
++apply_patch 0006-*.patch "ARM: mvebu: add RN102 image support"
++apply_patch 0007-*.patch "ARM: mvebu: enable RN102 in mvebu_defconfig"
++apply_patch 0008-*.patch "ARM: mvebu: rn104: placeholder bay management"
++apply_patch 0009-*.patch "ARM: mvebu: add lowlevel support for Netgear RN104"
++apply_patch 0010-*.patch "ARM: dts: update RN104 Linux DTS"
++apply_patch 0011-*.patch "ARM: mvebu: adapt RN104 image support"
++apply_patch 0012-*.patch "ARM: mvebu: rename PUTC_LL to MVEBU_PUTC_LL"
++apply_patch 0013-*.patch "drivers: fan: add fan framework and API"
++apply_patch 0014-*.patch "commands: add fan control command"
++apply_patch 0015-*.patch "commands: integrate fan command into Kconfig and Makefile"
++apply_patch 0016-*.patch "usb: ehci: add Marvell EHCI host controller driver"
++apply_patch 0017-*.patch "usb: ehci: minor fixes for Marvell compatibility"
++apply_patch 0018-*.patch "ata: ahci: fixes and updates for Marvell SATA controller"
++apply_patch 0019-*.patch "drivers: integrate USB/AHCI changes"
++
++echo "Serie ricostruita con successo!"
 
-Best regards,
---  
-Luca Lauro <famlauro93l@gmail.com>
+-- 
+2.47.3
 
