@@ -1,65 +1,76 @@
-From: Esteban Urrutia <esteuwu@proton.me>
-Date: Thu, 23 Jul 2026 10:53:53 -0400
-Subject: [PATCH 2/2] regulator: qcom-rpmh: Add support for PM8350B
+From: Vincent Jardin <vjardin@free.fr>
+Date: Thu, 23 Jul 2026 17:44:56 +0200
+Subject: [PATCH] hwmon: (pmbus/core) notify on the hwmon device, not the
+ i2c client
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260723-pm8350b-ldo-v1-2-42b5428a0d3f@proton.me>
-References: <20260723-pm8350b-ldo-v1-0-42b5428a0d3f@proton.me>
-In-Reply-To: <20260723-pm8350b-ldo-v1-0-42b5428a0d3f@proton.me>
-To: Liam Girdwood <lgirdwood@gmail.com>, Mark Brown <broonie@kernel.org>, 
- Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, Bjorn Andersson <andersson@kernel.org>
-Cc: Krzysztof Kozlowski <krzk@kernel.org>, linux-arm-msm@vger.kernel.org, 
- linux-kernel@vger.kernel.org, devicetree@vger.kernel.org, 
- phone-devel@vger.kernel.org, Esteban Urrutia <esteuwu@proton.me>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784818498; l=1295;
- i=esteuwu@proton.me; s=20260622; h=from:subject:message-id;
- bh=WpvVHbr3AbWbUS/FGPBN8RtA2Y0Nr6DvrP+keHwhmM0=;
- b=ajbmyhj5jTzUeAPR+4eB5vPOg9F0Hk8ryp98ysevM7AolBSOvkKyxscMCBksotyWgCsF5fTd7
- eV2f7+Dp7ydAYWzcclbkX8U/PKxqSKnAyHGnCSyE3TZaJcvHOxAB+SH
-X-Developer-Key: i=esteuwu@proton.me; a=ed25519;
- pk=wToFt4mOAWkzbqb15Ye1hrhevI13vK9BcMUFiQ/me1M=
-X-Endpoint-Received: by B4 Relay for esteuwu@proton.me/20260622 with auth_id=835
+Message-Id: <20260723-fix_hwmon_notify_v1-v1-1-5a24c528686d@free.fr>
+X-B4-Tracking: v=1; b=H4sIAPc2YmoC/x2MQQqAIBAAvyJ7TlCTpL4SIVFb7iENDSuivycdB
+ 2bmgYSRMEHHHoiYKVHwBWTFYHKjX5HTXBiUUI0wquYLXdadW/DWh4OW22bJjUY5trrWzSShlHv
+ Eov3XfnjfD7qlFTdlAAAA
+To: Guenter Roeck <linux@roeck-us.net>
+Cc: linux-hwmon@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ stable@vger.kernel.org, Vincent Jardin <vjardin@free.fr>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784821501; l=1985;
+ i=vjardin@free.fr; s=20260525; h=from:subject:message-id;
+ bh=mvBVaQ/t9TqovxzoIusrFozS/2VXRXLUOR6BEPoWm7A=;
+ b=GOwMDFU2EGh4zEkApIoHvh9my2mZaaEDWVKHquKMgbTaCoC9rXGKANGnvQfBbCdPJ6sM0YrCR
+ T6H4mq8FnABD1ab9+ILw0N2+RNSYyO8SORzscKRW7XbcD8AD55Oza5J
+X-Developer-Key: i=vjardin@free.fr; a=ed25519;
+ pk=hppgLeFpGpKOi7LNwGEZ4jOYofJCoGd4Jf1ltAabiLw=
+X-Endpoint-Received: by B4 Relay for vjardin@free.fr/20260525 with auth_id=871
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The PM8350B has only one LDO, which gets its power from a dedicated input.
-Add support for it.
+pmbus_notify() calls sysfs_notify() and kobject_uevent() on the i2c
+client's kobject, but the alarm attributes live on the hwmon class
+device registered by pmbus_do_probe(). Notifying the parent i2c device
+is a no-op for both poll(POLLPRI) waiters and udev listeners: the named
+attribute does not exist on that kobject.
 
-Signed-off-by: Esteban Urrutia <esteuwu@proton.me>
+Notify the hwmon device instead, so poll() wakes up and "change"
+uevents fire on the inX_alarm/tempX_alarm attributes when SMBALERT#
+reports a fault.
+
+Fixes: f469bde9afd1 ("hwmon: (pmbus/core) Notify hwmon events")
+Cc: stable@vger.kernel.org # v6.4+
+Signed-off-by: Vincent Jardin <vjardin@free.fr>
 ---
- drivers/regulator/qcom-rpmh-regulator.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+Found during the review of the MPQ8646 series (v1):
 
-diff --git a/drivers/regulator/qcom-rpmh-regulator.c b/drivers/regulator/qcom-rpmh-regulator.c
-index 756a4201225e..73856e3df337 100644
---- a/drivers/regulator/qcom-rpmh-regulator.c
-+++ b/drivers/regulator/qcom-rpmh-regulator.c
-@@ -1269,6 +1269,11 @@ static const struct rpmh_vreg_init_data pm8350_vreg_data[] = {
- 	{}
- };
+  https://lore.kernel.org/all/20260723131352.182B61F000E9@smtp.kernel.org/
+
+The sysfs_notify() half is a no-op today: the named attribute does not
+exist on the i2c client's kobject. Note the KOBJ_CHANGE uevent source
+moves from the i2c device to the hwmon class device, matching what
+hwmon_notify_event() does.
+---
+ drivers/hwmon/pmbus/pmbus_core.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/hwmon/pmbus/pmbus_core.c b/drivers/hwmon/pmbus/pmbus_core.c
+index 3143b9e0316c..0081f16c3a95 100644
+--- a/drivers/hwmon/pmbus/pmbus_core.c
++++ b/drivers/hwmon/pmbus/pmbus_core.c
+@@ -2985,8 +2985,9 @@ static void pmbus_notify(struct pmbus_data *data, int page, int reg, int flags)
  
-+static const struct rpmh_vreg_init_data pm8350b_vreg_data[] = {
-+	RPMH_VREG("ldo1",   LDO,  1,  &pmic5_nldo,      "vdd-l1"),
-+	{}
-+};
-+
- static const struct rpmh_vreg_init_data pm8350c_vreg_data[] = {
- 	RPMH_VREG("smps1",  SMPS, 1,  &pmic5_hfsmps515, "vdd-s1"),
- 	RPMH_VREG("smps2",  SMPS, 2,  &pmic5_ftsmps510, "vdd-s2"),
-@@ -1868,6 +1873,10 @@ static const struct of_device_id __maybe_unused rpmh_regulator_match_table[] = {
- 		.compatible = "qcom,pm8350-rpmh-regulators",
- 		.data = pm8350_vreg_data,
- 	},
-+	{
-+		.compatible = "qcom,pm8350b-rpmh-regulators",
-+		.data = pm8350b_vreg_data,
-+	},
- 	{
- 		.compatible = "qcom,pm8350c-rpmh-regulators",
- 		.data = pm8350c_vreg_data,
+ 		if (reg == sreg && page == spage && (smask & flags)) {
+ 			dev_dbg(data->dev, "sysfs notify: %s", da->attr.name);
+-			sysfs_notify(&data->dev->kobj, NULL, da->attr.name);
+-			kobject_uevent(&data->dev->kobj, KOBJ_CHANGE);
++			sysfs_notify(&data->hwmon_dev->kobj, NULL,
++				     da->attr.name);
++			kobject_uevent(&data->hwmon_dev->kobj, KOBJ_CHANGE);
+ 			flags &= ~smask;
+ 		}
+ 
 
+---
+base-commit: 248951ddc14de84de3910f9b13f51491a8cd91df
+change-id: 20260723-fix_hwmon_notify_v1-74e1a94346c1
+
+Best regards,
 -- 
-2.55.0
+Vincent Jardin <vjardin@free.fr>
 
