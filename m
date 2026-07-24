@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Fri, 24 Jul 2026 13:03:14 +0100
-Subject: [PATCH v2 4/6] dt-bindings: iio: dac: ad5696: extend device
+Date: Fri, 24 Jul 2026 13:03:15 +0100
+Subject: [PATCH v2 5/6] dt-bindings: iio: dac: ad5686: extend device
  support
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260724-ad5686-extend-dev-support-v2-4-cfc2b30ce988@analog.com>
+Message-Id: <20260724-ad5686-extend-dev-support-v2-5-cfc2b30ce988@analog.com>
 References: <20260724-ad5686-extend-dev-support-v2-0-cfc2b30ce988@analog.com>
 In-Reply-To: <20260724-ad5686-extend-dev-support-v2-0-cfc2b30ce988@analog.com>
 To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
@@ -16,60 +16,85 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Andy Shevchenko <andy@kernel.org>, Rob Herring <robh@kernel.org>, 
  Krzysztof Kozlowski <krzk+dt@kernel.org>, 
  Conor Dooley <conor+dt@kernel.org>, 
- Rodrigo Alencar <rodrigo.alencar@analog.com>
+ Rodrigo Alencar <rodrigo.alencar@analog.com>, 
+ Conor Dooley <conor.dooley@microchip.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784894592; l=1287;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784894592; l=2105;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=63m1LwLWVeApaoTgcE/eNkXUbzs9WDM/QX6+A1pEnRM=;
- b=dMwYoTNaaVtwfZfGUbmtrZbjssG+7EMmIBgDhujc456oaGr7NZaVGCAXPaNqosSKndyFzqj8X
- jKNlXQ8bpPlBys41tTQzEwxzSgOVV9j6ECCYyYK66IU4unCpnipaqGP
+ bh=Ns24MscU2vZDNQferz6p0S9pqqd8IKrb5WBkwEhcXhc=;
+ b=0uz5AU+C1uivsYzd4P0UnxNx2L8ua/yYz4ztwbhVNz9DcAraP03l0WP0pcXzNlZKiE2Og2R8Y
+ GxIMxWR67BLDXLsGIyhQwnMp8Okwaa1z/AE0B0THASDP/GW1ZA3AwJs
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add support for AD5316R, AD5675 and AD5697R. These devices have different
-bit resolutions or different number of channels so no fallback compatibles
-are used.
+Add compatible entries for AD5313R, AD5317R, AD5674, AD5679, AD5687,
+AD5687R, AD5689, AD5689R. These devices have unique combination of channel
+count, bit resolution and supported command set, so that fallback
+compatibles are not used. Also, a small copy-and-paste error is fixed to
+the title field.
 
+Acked-by: Conor Dooley <conor.dooley@microchip.com>
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml | 4 ++++
- 1 file changed, 4 insertions(+)
+ Documentation/devicetree/bindings/iio/dac/adi,ad5686.yaml | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
 
-diff --git a/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml b/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml
-index 5a93edc976f0..835fa21c474e 100644
---- a/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml
-+++ b/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml
-@@ -16,10 +16,12 @@ properties:
+diff --git a/Documentation/devicetree/bindings/iio/dac/adi,ad5686.yaml b/Documentation/devicetree/bindings/iio/dac/adi,ad5686.yaml
+index 02e8c78e36d3..d1bb09054440 100644
+--- a/Documentation/devicetree/bindings/iio/dac/adi,ad5686.yaml
++++ b/Documentation/devicetree/bindings/iio/dac/adi,ad5686.yaml
+@@ -4,7 +4,7 @@
+ $id: http://devicetree.org/schemas/iio/dac/adi,ad5686.yaml#
+ $schema: http://devicetree.org/meta-schemas/core.yaml#
+ 
+-title: Analog Devices AD5360 and similar SPI DACs
++title: Analog Devices AD5686 and similar SPI DACs
+ 
+ maintainers:
+   - Michael Hennerich <michael.hennerich@analog.com>
+@@ -14,10 +14,14 @@ properties:
    compatible:
      enum:
-       - adi,ad5311r
-+      - adi,ad5316r
-       - adi,ad5337r
-       - adi,ad5338r
-       - adi,ad5671r
-       - adi,ad5673r
-+      - adi,ad5675
-       - adi,ad5675r
-       - adi,ad5677r
-       - adi,ad5691r
-@@ -31,6 +33,7 @@ properties:
-       - adi,ad5695r
-       - adi,ad5696
-       - adi,ad5696r
-+      - adi,ad5697r
+       - adi,ad5310r
++      - adi,ad5313r
++      - adi,ad5317r
+       - adi,ad5672r
++      - adi,ad5674
+       - adi,ad5674r
+       - adi,ad5676
+       - adi,ad5676r
++      - adi,ad5679
+       - adi,ad5679r
+       - adi,ad5681r
+       - adi,ad5682r
+@@ -28,6 +32,10 @@ properties:
+       - adi,ad5685r
+       - adi,ad5686
+       - adi,ad5686r
++      - adi,ad5687
++      - adi,ad5687r
++      - adi,ad5689
++      - adi,ad5689r
  
    reg:
      maxItems: 1
-@@ -86,6 +89,7 @@ allOf:
+@@ -84,10 +92,14 @@ allOf:
          compatible:
            contains:
              enum:
-+              - adi,ad5675
-               - adi,ad5693
-               - adi,ad5694
-               - adi,ad5696
++              - adi,ad5674
+               - adi,ad5676
++              - adi,ad5679
+               - adi,ad5683
+               - adi,ad5684
+               - adi,ad5686
++              - adi,ad5687
++              - adi,ad5689
+     then:
+       required:
+         - vref-supply
 
 -- 
 2.43.0
