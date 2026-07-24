@@ -1,11 +1,11 @@
 From: Rodrigo Alencar <rodrigo.alencar@analog.com>
-Date: Fri, 24 Jul 2026 13:03:11 +0100
-Subject: [PATCH v2 1/6] dt-bindings: iio: dac: ad5696: add AD5673R/AD5677R
- support
+Date: Fri, 24 Jul 2026 13:03:12 +0100
+Subject: [PATCH v2 2/6] iio: dac: ad5696: add AD5673R/AD5677R entries to
+ of_match table
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260724-ad5686-extend-dev-support-v2-1-cfc2b30ce988@analog.com>
+Message-Id: <20260724-ad5686-extend-dev-support-v2-2-cfc2b30ce988@analog.com>
 References: <20260724-ad5686-extend-dev-support-v2-0-cfc2b30ce988@analog.com>
 In-Reply-To: <20260724-ad5686-extend-dev-support-v2-0-cfc2b30ce988@analog.com>
 To: Michael Auchter <michael.auchter@ni.com>, linux@analog.com, 
@@ -18,38 +18,38 @@ Cc: Michael Hennerich <Michael.Hennerich@analog.com>,
  Conor Dooley <conor+dt@kernel.org>, 
  Rodrigo Alencar <rodrigo.alencar@analog.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784894592; l=860;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784894592; l=1114;
  i=rodrigo.alencar@analog.com; s=default; h=from:subject:message-id;
- bh=3HN8UocK8YBGgUj8JEQFaztjreh7vf2LXD3mgpedKpA=;
- b=/wcSbeRBuFVEHsoIErXWW987wFtIunrJVQLS9YMsw6nYJaBMUZdzA33LQXAdausLWJ5BFQ+T4
- e788WyUXLFYB28wc8pHGUy93vDhu+k7O9LfkO/XM63g6tjuMEr+HiXB
+ bh=5Oxnj8pPzQue9O/xIA3Xd8dZvO/9iV+KIKkDlYyJfAE=;
+ b=kBLV+Hb03n6ywm6cD88gfwkisa6vtI2zjXZ/T8bO5UQ8q3NMVbf6HT1guJm0HRgrfdXj4L954
+ D8hmwZLAvGSA/n4GA6apDKuz6CKNlRPxmUWgXxUCnWxduVCo5lSktyn
 X-Developer-Key: i=rodrigo.alencar@analog.com; a=ed25519;
  pk=ULeHbgU/OYh/PG/4anHDfLgldFItQHAhOktYRVLMFRo=
 X-Endpoint-Received: by B4 Relay for rodrigo.alencar@analog.com/default with auth_id=561
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add compatible entries for AD5673R and AD5677R. These 16-channel devices
-have different bit resolutions so no fallback compatibles are used.
+Populate of_match table with AD5673R/AD5677R entries, already supported by
+the driver and available in the id_table.
 
 Signed-off-by: Rodrigo Alencar <rodrigo.alencar@analog.com>
 ---
- Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml | 2 ++
+ drivers/iio/dac/ad5696-i2c.c | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml b/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml
-index e10f8596f9d3..5a93edc976f0 100644
---- a/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml
-+++ b/Documentation/devicetree/bindings/iio/dac/adi,ad5696.yaml
-@@ -19,7 +19,9 @@ properties:
-       - adi,ad5337r
-       - adi,ad5338r
-       - adi,ad5671r
-+      - adi,ad5673r
-       - adi,ad5675r
-+      - adi,ad5677r
-       - adi,ad5691r
-       - adi,ad5692r
-       - adi,ad5693
+diff --git a/drivers/iio/dac/ad5696-i2c.c b/drivers/iio/dac/ad5696-i2c.c
+index 31439567f00f..4ddf2e151d47 100644
+--- a/drivers/iio/dac/ad5696-i2c.c
++++ b/drivers/iio/dac/ad5696-i2c.c
+@@ -104,7 +104,9 @@ static const struct of_device_id ad5686_of_match[] = {
+ 	{ .compatible = "adi,ad5337r", .data = &ad5337r_chip_info },
+ 	{ .compatible = "adi,ad5338r", .data = &ad5338r_chip_info },
+ 	{ .compatible = "adi,ad5671r", .data = &ad5672r_chip_info },
++	{ .compatible = "adi,ad5673r", .data = &ad5674r_chip_info },
+ 	{ .compatible = "adi,ad5675r", .data = &ad5676r_chip_info },
++	{ .compatible = "adi,ad5677r", .data = &ad5679r_chip_info },
+ 	{ .compatible = "adi,ad5691r", .data = &ad5681r_chip_info },
+ 	{ .compatible = "adi,ad5692r", .data = &ad5682r_chip_info },
+ 	{ .compatible = "adi,ad5693",  .data = &ad5683_chip_info },
 
 -- 
 2.43.0
