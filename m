@@ -1,10 +1,10 @@
 From: Andy Chung <Andy.Chung@amd.com>
-Date: Fri, 24 Jul 2026 12:47:37 +0800
-Subject: [PATCH v5 1/4] dt-bindings: Add vendor prefix for Kandou
+Date: Fri, 24 Jul 2026 12:47:38 +0800
+Subject: [PATCH v5 2/4] dt-bindings: trivial-devices: Add Kandou KB9002
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260724-kb9002-upstream-v5-1-9523c3ffe83a@amd.com>
+Message-Id: <20260724-kb9002-upstream-v5-2-9523c3ffe83a@amd.com>
 References: <20260724-kb9002-upstream-v5-0-9523c3ffe83a@amd.com>
 In-Reply-To: <20260724-kb9002-upstream-v5-0-9523c3ffe83a@amd.com>
 To: Rob Herring <robh@kernel.org>, Krzysztof Kozlowski <krzk+dt@kernel.org>, 
@@ -15,36 +15,38 @@ Cc: devicetree@vger.kernel.org, linux-kernel@vger.kernel.org,
  linux-hwmon@vger.kernel.org, linux-doc@vger.kernel.org, 
  Andy Chung <Andy.Chung@amd.com>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784868474; l=775;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784868474; l=1062;
  i=Andy.Chung@amd.com; s=20260327; h=from:subject:message-id;
- bh=q6TvzAvTe0szhLuDvDe9XDITXcBW5NjI89sOlniXt5M=;
- b=11G7/VUAkr34ZtgHlsoDDFb3idgC7ua5yzhFpeKzY2Huq5neZ63cBehfoZgKXIuzATU8AIsPz
- zbaXpf/WX/lCr+qunAyyLkb6LEhuc3N7McvpNQYUTsY8vFXT0nq4qtQ
+ bh=TfOP3I9AnbSWPiG1JcCS6En65Z1EONrNQPwWXvx4lew=;
+ b=fJmuMEykS6vLWiDtBpkZW2fAtJpHVJIT71Mr3ZgGp1vp8HjL28vKRzgprw0GueLumyxRa1FAr
+ E93lYkDygZNDoglXLVobKapTQ8/ENOWHNIXb+F3XxVEKDz9M78y2ob4
 X-Developer-Key: i=Andy.Chung@amd.com; a=ed25519;
  pk=X2gaHRnhU2q5hvMjkC6xmIcC03vKNvHY9CQRdsj9ecM=
 X-Endpoint-Received: by B4 Relay for Andy.Chung@amd.com/20260327 with auth_id=696
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Kandou AI is the vendor of the KB9002 PCIe retimer.
+The Kandou KB9002 is an 8-lane PCIe 5.0 retimer exposing an SMBus target
+that reports an aggregated die temperature. It needs no device-specific
+device tree properties beyond its address, so add it to trivial-devices.
 
 Signed-off-by: Andy Chung <Andy.Chung@amd.com>
 ---
- Documentation/devicetree/bindings/vendor-prefixes.yaml | 2 ++
+ Documentation/devicetree/bindings/trivial-devices.yaml | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/vendor-prefixes.yaml b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-index 396044f368e7..224b60686703 100644
---- a/Documentation/devicetree/bindings/vendor-prefixes.yaml
-+++ b/Documentation/devicetree/bindings/vendor-prefixes.yaml
-@@ -879,6 +879,8 @@ patternProperties:
-     description: JuTouch Technology Co., Ltd.
-   "^kam,.*":
-     description: Kamstrup A/S
-+  "^kandou,.*":
-+    description: Kandou AI
-   "^karo,.*":
-     description: Ka-Ro electronics GmbH
-   "^keithkoep,.*":
+diff --git a/Documentation/devicetree/bindings/trivial-devices.yaml b/Documentation/devicetree/bindings/trivial-devices.yaml
+index 435c4baab436..d93d4caa8ab1 100644
+--- a/Documentation/devicetree/bindings/trivial-devices.yaml
++++ b/Documentation/devicetree/bindings/trivial-devices.yaml
+@@ -196,6 +196,8 @@ properties:
+           - isil,isl76682
+             # JEDEC JESD300 (SPD5118) Hub and Serial Presence Detect
+           - jedec,spd5118
++            # Kandou KB9002 PCIe 5.0 retimer
++          - kandou,kb9002
+             # Linear Technology LTC2488
+           - lineartechnology,ltc2488
+             # Regulated 12V, 860W, Digital DC/DC Power Module
 
 -- 
 2.34.1
