@@ -1,236 +1,141 @@
-From: Joel Granados <joel.granados@kernel.org>
-Date: Fri, 24 Jul 2026 13:11:08 +0200
-Subject: [PATCH RFC v2 14/14] nvme: Add NVME_IOCTL_CDQ to create/delete
- migration CDQs
+From: Bryam Vargas <hexlabsecurity@proton.me>
+Date: Fri, 24 Jul 2026 06:22:55 -0500
+Subject: [PATCH v3] nfc: fdp: bound the device-reported read length and fix
+ an skb leak
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260724-jag-cdq-lkml-v2-14-659a7449e849@kernel.org>
-References: <20260724-jag-cdq-lkml-v2-0-659a7449e849@kernel.org>
-In-Reply-To: <20260724-jag-cdq-lkml-v2-0-659a7449e849@kernel.org>
-To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
- Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>, 
- Chaitanya Kulkarni <chaitanyak@nvidia.com>, Jason Gunthorpe <jgg@ziepe.ca>
-Cc: linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
- Joel Granados <joel.granados@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6659;
- i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=d1zkJDIbXXjPHU7K9NaiA+mfZPVXne7PNdWSFhuUYSQ=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGpjSGG4UvFbI8wiFtfmB5bgwXKTltOYOGg8w
- ForyT5Mgi3g+YkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqY0hhAAoJELqXzVK3
- lkFP+/4L/1ZQCUenB+UJVFl3tXLpC7+xLkOUDCyPOmo4OeclITNiPo2Ffz2+XiKMOaWnD9dKfG/
- 3HAZprtR4WJkQvRjoCtnrHF4EOGu55YM/v39CWHfeaEM1v3BemGsYXwhyVU7TMrCBzQ8Nmk8+Nw
- 2XzHII9ExTo4uQe+NXjoYKtu21ibDjlHftMZXWmCRFw+t9t5zMWQQe+ACTihRl46DTgJSoXoLgO
- xd56VzVB7tINK7TH9+VJIGAl9GrjvvKCHrITEotkRhl6uBZO2I2c9bsYuRS+qRQ1P0em/Gj67n4
- Bg52FP+aPpSBj65FuWjRcdrQzsvBgVnp0ydtkYctM0B6nh3TRHh69hvvfQmzl6BRnHPdBdTnuti
- unVg6DD1DJT05oOOm0gLti36b2hyCl4tdw19AgCkEEwhp20polFUR5Qu23ZhyJW0/LLVEQyZeoE
- 0taGb608txEiKKFPjzgRffi9v2ZVGEtPLmrJVvTGr9VL+UcZSTwFw2TlgBqBlSidm3cghAcbSs5
- fE=
-X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
- fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
-X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
+Message-Id: <20260724-b4-disp-e8ec6012-v3-1-3a6f3a2fee47@proton.me>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ5AMBBFryKz1qRK2sZVxIJ2MBZIB5GIu2tZv
+ p//3g2MgZChzm4IeBLTukQo8wzc1C0jCvKRQUmlpVGV6CvhiTeBFp2WhYqDtd506aAhalvAga4
+ v2bQ/89HP6PbUged5ARSRbfV0AAAA
+X-Change-ID: 20260724-b4-disp-e8ec6012-b488d7a20266
+To: David Heidelberg <david@ixit.cz>
+Cc: Doruk Tan Ozturk <doruk@0sec.ai>, Simon Horman <horms@kernel.org>, 
+ linux-kernel@vger.kernel.org, netdev@vger.kernel.org, 
+ Robert Dolca <robert.dolca@intel.com>, oe-linux-nfc@lists.linux.dev, 
+ Samuel Ortiz <sameo@linux.intel.com>
+X-Mailer: b4 0.15.2
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784892174; l=5020;
+ i=hexlabsecurity@proton.me; s=default; h=from:subject:message-id;
+ bh=UN9beZ97743kheaOb4gEzoQEnO7dJ2vHjdtJmNOgSvQ=;
+ b=lPooyy+f44NYeHGMa32HB3RTRIP9/Z4d2K6NOcPWj9brqeslvRB+JwN9f58K+cObfCQRWLZgy
+ HWtZJxQu9h0DUPB4cSvH/c9wM6w3kU4PuEjj5zNb6MxmVqb/BjYgLn6
+X-Developer-Key: i=hexlabsecurity@proton.me; a=ed25519;
+ pk=xw1AhCtQdvuoQc+bOQIYy9o8G++cp4/VniI2G/tc3G8=
+X-Endpoint-Received: by B4 Relay for hexlabsecurity@proton.me/default with auth_id=893
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Controller Data Queue (CDQ) creation and deletion executed for the
-migratable controller id defined in mc_id. When an eventfd file
-descriptor is passed in tpt_fd, the AEN tail pointer trigger event is
-routed as an eventfd signal. When tpt_fd is <= 0, the routing is turned
-off.
+fdp_nci_i2c_read() takes the next packet length from two device-supplied
+bytes and never validates it. The value is a u16 used as the
+i2c_master_recv() count into a 261-byte on-stack buffer: a malicious,
+counterfeit or malfunctioning controller (or an i2c bus interposer) can
+drive it far past the buffer for a stack out-of-bounds write that
+clobbers the canary and return address, or below the minimum frame size
+(directly, or by truncating the computed sum) so the header/LRC strip
+and the next length read run past a short receive. Reject a length
+outside [FDP_NCI_I2C_MIN_PAYLOAD, FDP_NCI_I2C_MAX_PAYLOAD], as a
+corrupted packet already is, and force resynchronization.
 
-Signed-off-by: Joel Granados <joel.granados@kernel.org>
+The same loop allocates one data skb per iteration and assumes a length
+packet followed by a data packet; a device that sends two data packets
+in one call leaks the first skb when the second allocation overwrites
+it. Free a previously allocated skb before allocating the next.
+
+Fixes: a06347c04c13 ("NFC: Add Intel Fields Peak NFC solution driver")
+Cc: stable@vger.kernel.org
+Suggested-by: Simon Horman <horms@kernel.org>
+Signed-off-by: Bryam Vargas <hexlabsecurity@proton.me>
 ---
- drivers/nvme/host/cdq.c         | 23 ++++++++++++++++++---
- drivers/nvme/host/cdq.h         |  4 +++-
- drivers/nvme/host/ioctl.c       | 44 ++++++++++++++++++++++++++++++++++++++++-
- include/uapi/linux/nvme_ioctl.h | 22 +++++++++++++++++++++
- 4 files changed, 88 insertions(+), 5 deletions(-)
+v3:
+ - Rebase on current net; no code change since v2. Doruk Tan Ozturk
+   independently found the same missing bound (0sec,
+   https://lore.kernel.org/all/20260720132133.69635-1-doruk@0sec.ai) and
+   noted there that this v2 is the more complete fix -- it also rejects the
+   sub-minimum length Simon flagged and closes the skb leak. Reposting now
+   that the driver has an active maintainer.
+ v2: https://lore.kernel.org/all/20260616-b4-disp-b1f8ab4c-v2-1-2d1fe5955325@proton.me
 
-diff --git a/drivers/nvme/host/cdq.c b/drivers/nvme/host/cdq.c
-index f4aabf0a8817058a11e6c30dcea9554076861327..ac10c8d48864615f53da232a547cd5da72630ed1 100644
---- a/drivers/nvme/host/cdq.c
-+++ b/drivers/nvme/host/cdq.c
-@@ -511,6 +511,22 @@ void nvme_delete_cdq(struct cdq_nvme_queue *cdq)
- }
- EXPORT_SYMBOL_GPL(nvme_delete_cdq);
- 
-+int nvme_delete_cdq_mcid(struct nvme_ctrl *ctrl, u16 mc_id)
-+{
-+	struct cdq_nvme_queue *cdq;
-+	unsigned long i;
-+
-+	xa_for_each(&ctrl->cdqs, i, cdq) {
-+		if (cdq->mc_id == mc_id) {
-+			nvme_delete_cdq(cdq);
-+			return 0;
-+		}
-+	}
-+
-+	return -ENOENT;
-+}
-+EXPORT_SYMBOL_GPL(nvme_delete_cdq_mcid);
-+
- int nvme_handle_cdq_aen_tpevent(struct nvme_ctrl *ctrl, u32 event_param)
- {
- 	u16 cdq_id = event_param & NVME_FEAT_CDQ_ID_MASK;
-@@ -556,11 +572,12 @@ static int nvme_submit_create_cdq_cmd(struct cdq_nvme_queue *cdq)
- 	return ret;
- }
- 
--int nvme_create_cdq(struct nvme_ctrl *ctrl, const u32 entry_nr, const u16 mc_id, const int tpt_fd)
-+int nvme_create_cdq(struct nvme_ctrl *ctrl, const u32 entry_nr, const u16 mc_id,
-+		    const int tpt_fd, int *cdq_fd)
- {
- 	u64 size_nbyte = (u64)entry_nr * NVME_CDQ_MQ_ENTRY_NRBYTES;
- 	struct cdq_nvme_queue *cdq = NULL;
--	int ret, cdq_fd;
-+	int ret;
- 
- 	/* The backing size and the CDQSIZE field are both u32 (bytes). */
- 	if (size_nbyte > U32_MAX)
-@@ -598,7 +615,7 @@ int nvme_create_cdq(struct nvme_ctrl *ctrl, const u32 entry_nr, const u16 mc_id,
- 	if (ret)
- 		goto del_cmd;
- 
--	ret = nvme_create_cdqfd(cdq, &cdq_fd);
-+	ret = nvme_create_cdqfd(cdq, cdq_fd);
- 	if (ret)
- 		goto del_xarray;
- 
-diff --git a/drivers/nvme/host/cdq.h b/drivers/nvme/host/cdq.h
-index 2958c6b92b1312930414b8466690aa7c0eb57754..06a6224a6583dd2ec7463c62f9381e0edcb6718f 100644
---- a/drivers/nvme/host/cdq.h
-+++ b/drivers/nvme/host/cdq.h
-@@ -89,7 +89,9 @@ void nvme_free_cdq(struct kref *ref);
-  *    - Calls nvme_free_cdq if there are no more refs
-  */
- void nvme_delete_cdq(struct cdq_nvme_queue *cdq);
--int nvme_create_cdq(struct nvme_ctrl *ctrl, const u32 entry_nr, const u16 mc_id, int tpt_fd);
-+int nvme_delete_cdq_mcid(struct nvme_ctrl *ctrl, u16 mc_id);
-+int nvme_create_cdq(struct nvme_ctrl *ctrl, const u32 entry_nr, const u16 mc_id,
-+		    int tpt_fd, int *cdq_fd);
- 
- static inline void nvme_cdq_get(struct cdq_nvme_queue *cdq)
- {
-diff --git a/drivers/nvme/host/ioctl.c b/drivers/nvme/host/ioctl.c
-index 8844bbd395159e544218db413e066cae6c24b2f1..c289a220cb18b39bef4edbd0a8daaa4b46f8b4d9 100644
---- a/drivers/nvme/host/ioctl.c
-+++ b/drivers/nvme/host/ioctl.c
-@@ -8,6 +8,7 @@
- #include <linux/nvme_ioctl.h>
- #include <linux/io_uring/cmd.h>
- #include "nvme.h"
-+#include "cdq.h"
- 
- enum {
- 	NVME_IOCTL_VEC		= (1 << 0),
-@@ -538,9 +539,46 @@ static int nvme_uring_cmd_io(struct nvme_ctrl *ctrl, struct nvme_ns *ns,
- 	return ret;
- }
- 
-+static int nvme_user_cdq(struct nvme_ctrl *ctrl, void __user *argp)
-+{
-+	struct nvme_cdq_cmd cmd;
-+	u32 entry_nr;
-+	int ret, cdq_fd;
-+
-+	if (copy_from_user(&cmd, argp, sizeof(cmd)))
-+		return -EFAULT;
-+
-+	/* A zero size requests deletion of the CDQ created for this mc_id. */
-+	if (cmd.size_nbyte == 0)
-+		return nvme_delete_cdq_mcid(ctrl, cmd.mc_id);
-+
-+	if (cmd.size_nbyte % NVME_CDQ_MQ_ENTRY_NRBYTES)
-+		return -EINVAL;
-+
-+	entry_nr = cmd.size_nbyte / NVME_CDQ_MQ_ENTRY_NRBYTES;
-+
-+	ret = nvme_create_cdq(ctrl, entry_nr, cmd.mc_id, cmd.tpt_fd, &cdq_fd);
-+	if (ret)
-+		goto err_out;
-+
-+	cmd.cdq_fd = cdq_fd;
-+	if (copy_to_user(argp, &cmd, sizeof(cmd))) {
-+		ret = -EFAULT;
-+		goto err_out;
-+	}
-+
-+	return 0;
-+
-+err_out:
-+	nvme_delete_cdq_mcid(ctrl, cmd.mc_id);
-+	return ret;
-+
-+}
-+
- static bool is_ctrl_ioctl(unsigned int cmd)
- {
--	if (cmd == NVME_IOCTL_ADMIN_CMD || cmd == NVME_IOCTL_ADMIN64_CMD)
-+	if (cmd == NVME_IOCTL_ADMIN_CMD || cmd == NVME_IOCTL_ADMIN64_CMD ||
-+	    cmd == NVME_IOCTL_CDQ)
- 		return true;
- 	if (is_sed_ioctl(cmd))
- 		return true;
-@@ -555,6 +593,8 @@ static int nvme_ctrl_ioctl(struct nvme_ctrl *ctrl, unsigned int cmd,
- 		return nvme_user_cmd(ctrl, NULL, argp, 0, open_for_write);
- 	case NVME_IOCTL_ADMIN64_CMD:
- 		return nvme_user_cmd64(ctrl, NULL, argp, 0, open_for_write);
-+	case NVME_IOCTL_CDQ:
-+		return nvme_user_cdq(ctrl, argp);
- 	default:
- 		return sed_ioctl(ctrl->opal_dev, cmd, argp);
- 	}
-@@ -873,6 +913,8 @@ long nvme_dev_ioctl(struct file *file, unsigned int cmd,
- 			return -EACCES;
- 		nvme_queue_scan(ctrl);
- 		return 0;
-+	case NVME_IOCTL_CDQ:
-+		return nvme_user_cdq(ctrl, argp);
- 	default:
- 		return -ENOTTY;
- 	}
-diff --git a/include/uapi/linux/nvme_ioctl.h b/include/uapi/linux/nvme_ioctl.h
-index 2f76cba6716637baff53e167a6141b68420d75c3..b3fbab48a903bfb10521ca44d08e61fd2b37bbbd 100644
---- a/include/uapi/linux/nvme_ioctl.h
-+++ b/include/uapi/linux/nvme_ioctl.h
-@@ -92,6 +92,27 @@ struct nvme_uring_cmd {
- 	__u32   rsvd2;
- };
- 
-+struct nvme_cdq_cmd {
-+	/* Migratable controller id (filled by user space). */
-+	__u16	mc_id;
-+
-+	/*
-+	 * CDQ size in bytes: (number of entries) * 32. Must be a multiple of
-+	 * 32. A size of 0 requests deletion of the CDQ created for mc_id.
-+	 */
-+	__u32	size_nbyte;
-+
-+	/*
-+	 * Tail Pointer Trigger eventfd file descriptor, passed when creating
-+	 * the CDQ. A value <= 0 means there is no eventfd and AERs are not
-+	 * forwarded.
-+	 */
-+	__s32	tpt_fd;
-+
-+	/* Returned by the kernel: the CDQ file descriptor. */
-+	__s32	cdq_fd;
-+};
-+
- #define nvme_admin_cmd nvme_passthru_cmd
- 
- #define NVME_IOCTL_ID		_IO('N', 0x40)
-@@ -104,6 +125,7 @@ struct nvme_uring_cmd {
- #define NVME_IOCTL_ADMIN64_CMD	_IOWR('N', 0x47, struct nvme_passthru_cmd64)
- #define NVME_IOCTL_IO64_CMD	_IOWR('N', 0x48, struct nvme_passthru_cmd64)
- #define NVME_IOCTL_IO64_CMD_VEC	_IOWR('N', 0x49, struct nvme_passthru_cmd64)
-+#define NVME_IOCTL_CDQ		_IOWR('N', 0x50, struct nvme_cdq_cmd)
- 
- /* io_uring async commands: */
- #define NVME_URING_CMD_IO	_IOWR('N', 0x80, struct nvme_uring_cmd)
+v2:
+ - Also reject next_read_size < FDP_NCI_I2C_MIN_PAYLOAD, not just
+   > FDP_NCI_I2C_MAX_PAYLOAD (Simon Horman). The small value is reachable
+   both directly (tmp[2] == 0 && tmp[3] < 2) and through the u16
+   truncation of the computed sum (e.g. 0xff,0xff -> 65538 -> 2); a single
+   range check on the stored value covers both, and also keeps the next
+   length-field read from running on stale buffer bytes.
+ - Fold in a fix for an skb leak in the same function (two data packets
+   in one call overwrite and leak the first skb).
+ v1: https://lore.kernel.org/all/20260615-b4-disp-f42dce2d-v1-1-186ff3dcbf37@proton.me
 
--- 
-2.50.1
+Reproduced in-kernel on x86-64 (Linux 7.1.0-rc5, CONFIG_KASAN_STACK=y)
+with a faithful port of the read loop, and at full device magnitude with
+a userspace AddressSanitizer model:
+
+  Stack OOB write
+    A  no bound, next_read_size 281 -> 20 B past tmp[261]:
+         BUG: KASAN: stack-out-of-bounds in i2c_master_recv...
+         Write of size 281 ... This frame has 1 object: [48, 309) 'tmp'
+    B  bounded to <= FDP_NCI_I2C_MAX_PAYLOAD:   no KASAN report
+    C  well-formed (len 5):                     no KASAN report
+    ASan model, full u16 next_read_size = 65535 -> 65274-byte
+    stack-buffer-overflow WRITE on both -m32 and -m64; bounded build clean.
+
+skb leak (slabinfo active-object delta over 20000 reads, two data
+  packets each, measured after a slab shrink)
+    without the fix:  skbuff_head_cache +20047, skbuff_small_head +20057
+                      (one orphaned skb per call, unreclaimable)
+    with the fix:     ~0
+---
+ drivers/nfc/fdp/i2c.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/drivers/nfc/fdp/i2c.c b/drivers/nfc/fdp/i2c.c
+index c1896a1d978c..f292e7f37456 100644
+--- a/drivers/nfc/fdp/i2c.c
++++ b/drivers/nfc/fdp/i2c.c
+@@ -166,9 +166,36 @@ static int fdp_nci_i2c_read(struct fdp_i2c_phy *phy, struct sk_buff **skb)
+ 		/* Packet that contains a length */
+ 		if (tmp[0] == 0 && tmp[1] == 0) {
+ 			phy->next_read_size = (tmp[2] << 8) + tmp[3] + 3;
++
++			/*
++			 * next_read_size is taken from the device and is used
++			 * as the i2c_master_recv() count for the next packet
++			 * and as the data skb size. A value above the receive
++			 * buffer overflows tmp[]; one below the minimum frame
++			 * size runs the header/LRC strip and the length-field
++			 * read past a short receive. Either way the packet is
++			 * corrupt: drop it and force resynchronization.
++			 */
++			if (phy->next_read_size < FDP_NCI_I2C_MIN_PAYLOAD ||
++			    phy->next_read_size > FDP_NCI_I2C_MAX_PAYLOAD) {
++				dev_dbg(&client->dev, "%s: corrupted packet\n",
++					__func__);
++				phy->next_read_size = FDP_NCI_I2C_MIN_PAYLOAD;
++				goto flush;
++			}
+ 		} else {
+ 			phy->next_read_size = FDP_NCI_I2C_MIN_PAYLOAD;
+ 
++			/*
++			 * Only one data packet is delivered per call; if the
++			 * device sends another, do not overwrite and leak the
++			 * skb allocated for the previous one.
++			 */
++			if (*skb) {
++				kfree_skb(*skb);
++				*skb = NULL;
++			}
++
+ 			*skb = alloc_skb(len, GFP_KERNEL);
+ 			if (*skb == NULL) {
+ 				r = -ENOMEM;
+
+---
+base-commit: 78f75d632f74b8de0f081a128588f7c37d0d1164
+change-id: 20260724-b4-disp-e8ec6012-b488d7a20266
+
+Best regards,
+--  
+Bryam Vargas <hexlabsecurity@proton.me>
 
