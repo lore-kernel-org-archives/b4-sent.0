@@ -1,10 +1,10 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Fri, 24 Jul 2026 13:11:00 +0200
-Subject: [PATCH RFC v2 06/14] nvme: Add file descriptor to read CDQs
+Date: Fri, 24 Jul 2026 13:11:01 +0200
+Subject: [PATCH RFC v2 07/14] nvme: Add the create CDQ functionality
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260724-jag-cdq-lkml-v2-6-659a7449e849@kernel.org>
+Message-Id: <20260724-jag-cdq-lkml-v2-7-659a7449e849@kernel.org>
 References: <20260724-jag-cdq-lkml-v2-0-659a7449e849@kernel.org>
 In-Reply-To: <20260724-jag-cdq-lkml-v2-0-659a7449e849@kernel.org>
 To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
@@ -13,184 +13,184 @@ To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>,
 Cc: linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4622;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5058;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=cuXW3w1fKxELbA7o+sSCBXcLYsqfoxI6yUn985dXTOA=;
- b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGpjSFx5KyutJlzAtt7LfqGf+4dOO0DZ/yiHc
- wmz28VygnJVXokBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqY0hcAAoJELqXzVK3
- lkFPSrYL/A8YCfOy/tCi1jiOi5MVYG0dCQ4K5wVNRQmhJgD+9xWG4XlU9NXj4IEt93v0eiInGwC
- JfKM+vAlAP7A2Co2M8pDJEphJ5jxt++mHhz3//y/NsjkaDQmae3vn6jZE0qDJV/JnAjYBlMMpnO
- Mys2x3qlg/XWIn/JyhWsVgyFd5cx/NjLoXZErZBewVsNxevfi2PouqS4X6+YaPiHhWex2ZPx9xV
- B2VsoSlieq3mNlmJ1eH8KMeH/O4jPnJ6NGucFQwqG5FCrEC2gOvwj6gUSdTRy5zlou8DTGOsoI5
- vfSkFrpHo2SFiYcvsFKbWxH/s42HHWyvw8dN9Ruy4s6MAXmD7Y1hK+XNgrHld6GH+446pPKfU+s
- X8NN+xPqx0EW/J4TVMgGer8SqvPlytdIf05vPYZtzsin+5ugsgmr/hNE8sU3MyJUPUe/14Rc/G6
- g6kywQBzWURq2eyOY3kb+VnCa6kCQq9Sl5lUzDZ7Wjrh0RmE/mp7Wv3GXN+PL20YNHqK8IWhwe8
- aM=
+ bh=OBk+pHhS1EgYqmXtorRqQcAHABFfQD7THUrxKhZ6gqc=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGpjSFzcopeYI1fdpWY2cOMQOB0l6oBmK7S2p
+ yxrYkxBIAn3GYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqY0hcAAoJELqXzVK3
+ lkFPWxoL/irh/wA6FJ5rtOyyCO8vmaIeVuRLIE1U4zKdetp0Bp+CJrsHgG/5qXRihGwDCNsaOXM
+ zxADKVsK2Umms2vxXiiYndtxXxNCoOW5QasGzfzhBHKCrT5Icsez5On/7BAE2Zpa/VzlPqgBkXR
+ j5aKInfTsu/GvSFDgp3VJxftM0WjWcGAhNBv8io89/qP5FTK6T945LwmP+B6zQJ5FlFre9vkjNh
+ /j0EHALpoZ4Zyqlpi+rVw6apyzb9Oa4S2Z2Xi8++qIHI8SMKR2H1E5vQcP7mNztTP/IuhHF5hj2
+ GnqOidLiMvxKHhwOWiM6XHTYU0nZdirBHmN3Tih7TDuwDC/d/Un37LJvJ4vbPebA2h8e2jXqnkp
+ +ptz6z+nz2YBKZlpH+vAbj8ARFGHFcLJowk9zMB/uAkI6Rbzm28ehAazGmz8y0Y9FT2bVnoNmgg
+ 7R4J6IbQxXTMcMLsFWvxrSjwncx60nqeqSJKWDlv6gUDeJUu93K2Na8rf7fK8uSph0L+cXyJMP5
+ PM=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-CDQs are read using file descriptors provided by nvme_create_cdqfd. Only
-add the logic to create and release the file descriptor; return "not
-implemented" for now. The CDQ traversal logic will be added in a future
-commit.
+The CDQ create allocates the struct cdq_nvme_queue, allocates the memory
+for the CDQ entries, sends the nvme command to create the CDQ at the
+controller side, creates the file descriptor for user space and inserts
+the CDQ struct in the controller cdqs xarray.
 
-The CDQ memory is now pointed from two different places (the user space
-FD and the nvme controller struct) and should only be freed when there
-are no pointers left. Use a kref to ensure that it is in the FD's
-private_data even if the controller is goes down.
+Note that:
+* All memory that is to be shared with the controller needs to be setup
+  before calling nvme_submit_create_cdq_cmd.
+* Initializing the refcount before sending the create cmd to the
+  controller "assigns" the reference to the controller. In other words,
+  that cdq is being used by that controller.
+* The creation of the cdq file descriptor is at the end because
+  everything needs to be in place for when the user calls read. The FD
+  will be "installed" once nvme_create_cdqfd returns.
+* nvme_submit_create_cdq_cmd must come before xa_insert as the cdq is
+  inserted to the xarray with the id returned by the controller
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- drivers/nvme/host/cdq.c | 71 +++++++++++++++++++++++++++++++++++++++++++++++++
- drivers/nvme/host/cdq.h | 21 +++++++++++++++
- 2 files changed, 92 insertions(+)
+ drivers/nvme/host/cdq.c | 90 +++++++++++++++++++++++++++++++++++++++++++++++--
+ drivers/nvme/host/cdq.h |  4 ++-
+ 2 files changed, 90 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/nvme/host/cdq.c b/drivers/nvme/host/cdq.c
-index 73dd6af42055687bec62ad0350c67736c9c047c2..63c0852e0ba17a17227b9a0189be5123358a2262 100644
+index 63c0852e0ba17a17227b9a0189be5123358a2262..b1776637191db5747053bdcf4bdf97ef44a66566 100644
 --- a/drivers/nvme/host/cdq.c
 +++ b/drivers/nvme/host/cdq.c
-@@ -3,6 +3,9 @@
-  * NVMe Controller Data Queue (CDQ) support.
-  */
- 
-+#include <linux/anon_inodes.h>
-+#include <linux/file.h>
-+
- #include "nvme.h"
- #include "cdq.h"
- 
-@@ -151,6 +154,9 @@ static inline int nvme_create_cdq_backing(struct cdq_nvme_queue *cdq)
+@@ -154,9 +154,6 @@ static inline int nvme_create_cdq_backing(struct cdq_nvme_queue *cdq)
  			goto err_chunks;
  	}
  
-+	/* FIXME: put this on the create_cdq function*/
-+	kref_init(&cdq->ref);
-+
+-	/* FIXME: put this on the create_cdq function*/
+-	kref_init(&cdq->ref);
+-
  	return 0;
  
  err_chunks:
-@@ -166,6 +172,69 @@ static inline void nvme_release_cdq_backing(struct cdq_nvme_queue *cdq)
- 	nvme_free_cdqmem_chunks(cdq);
+@@ -273,6 +270,93 @@ void nvme_delete_cdq(struct cdq_nvme_queue *cdq)
  }
+ EXPORT_SYMBOL_GPL(nvme_delete_cdq);
  
-+static ssize_t nvme_cdq_fops_read(struct file *filep, char __user *buf,
-+				  size_t size_nbyte, loff_t *ppos)
++static int nvme_submit_create_cdq_cmd(struct cdq_nvme_queue *cdq)
 +{
-+	struct cdq_nvme_queue *cdq = filep->private_data;
-+	size_t nbytes = round_down(size_nbyte, NVME_CDQ_MQ_ENTRY_NRBYTES);
++	int ret;
++	union nvme_result result = {};
++	struct nvme_command c = {
++		.cdq.opcode = nvme_admin_cdq,
++		.cdq.sel = NVME_CDQ_CMD_MGMT_CREATE,
++		.cdq.mos = cpu_to_le16(NVME_CDQ_CMD_MGMT_CREATE_MOS_QT_UDMQ),
++		.cdq.dw11.cqs = cpu_to_le16(cdq->mc_id),
++		.cdq.cdqsize = cpu_to_le32(cdq->size_nbyte >> 2) // size is in dwords
++	};
 +
-+	if (*ppos)
-+		return -ESPIPE;
-+
-+	if (size_nbyte < NVME_CDQ_MQ_ENTRY_NRBYTES)
-+		return -EINVAL;
-+
-+	if (nbytes > (cdq->size_nbyte))
-+		return -EINVAL;
-+
-+	/* CDQ traversal not implemented yet. */
-+	return -EOPNOTSUPP;
-+}
-+
-+/* File reference already dropped by the close path, so don't fput() */
-+static int nvme_release_cdqfd(struct cdq_nvme_queue *cdq)
-+{
-+	nvme_cdq_put(cdq);
-+	return 0;
-+}
-+
-+static int nvme_cdq_fops_release(struct inode *inode, struct file *filep)
-+{
-+	return nvme_release_cdqfd(filep->private_data);
-+}
-+
-+static const struct file_operations cdq_fops = {
-+	.owner		= THIS_MODULE,
-+	.open		= nonseekable_open,
-+	.read		= nvme_cdq_fops_read,
-+	.release	= nvme_cdq_fops_release,
-+};
-+
-+__maybe_unused
-+static int nvme_create_cdqfd(struct cdq_nvme_queue *cdq, int *cdq_fdno)
-+{
-+	int fdno;
-+	struct file *filep;
-+
-+	filep = anon_inode_getfile("[cdq-readfd]", &cdq_fops, cdq, O_RDWR);
-+	if (IS_ERR(filep))
-+		return PTR_ERR(filep);
-+
-+	/* cdq is being pionted at by ->private_data. increase ref */
-+	nvme_cdq_get(cdq);
-+
-+	fdno = get_unused_fd_flags(O_CLOEXEC | O_RDONLY | O_DIRECT);
-+	if (fdno < 0) {
-+		fput(filep); /* nvme_cdq_put through release */
-+		return fdno;
++	if (cdq->nr_chunks < 2) {
++		c.cdq.dw11.flags = cpu_to_le16(NVME_CDQ_CMD_MGMT_CREATE_PC_CONT);
++		c.cdq.prp1 = cpu_to_le64(cdq->chunks[0].dma_addr);
++	} else {
++		c.cdq.dw11.flags = cpu_to_le16(NVME_CDQ_CMD_MGMT_CREATE_PC_DISCONT);
++		c.cdq.prp1 = cpu_to_le64(cdq->prp_lists_dma[0]);
 +	}
 +
-+	fd_install(fdno, filep);
-+	*cdq_fdno = fdno;
++	ret = __nvme_submit_sync_cmd(cdq->ctrl->admin_q, &c, &result, NULL, 0, NVME_QID_ANY, 0);
++	if (ret)
++		return ret;
++
++	cdq->id = le16_to_cpu(result.u16);
++
++	return ret;
++}
++
++int nvme_create_cdq(struct nvme_ctrl *ctrl, const u32 entry_nr, const u16 mc_id)
++{
++	u64 size_nbyte = (u64)entry_nr * NVME_CDQ_MQ_ENTRY_NRBYTES;
++	struct cdq_nvme_queue *cdq = NULL;
++	int ret, cdq_fd;
++
++	/* The backing size and the CDQSIZE field are both u32 (bytes). */
++	if (size_nbyte > U32_MAX)
++		return -EINVAL;
++
++	cdq = kzalloc_obj(*cdq);
++	if (!cdq)
++		return -ENOMEM;
++
++	cdq->mc_id = mc_id;
++	cdq->ctrl = ctrl;
++	cdq->size_nbyte = (u32)size_nbyte;
++
++	ret = nvme_create_cdq_backing(cdq);
++	if (ret) {
++		kfree(cdq);
++		return ret;
++	}
++
++	kref_init(&cdq->ref);
++
++	ret = nvme_submit_create_cdq_cmd(cdq);
++	if (ret)
++		goto del_cdqmem;
++
++	ret = xa_insert(&cdq->ctrl->cdqs, cdq->id, cdq, GFP_KERNEL);
++	if (ret)
++		goto del_cmd;
++
++	ret = nvme_create_cdqfd(cdq, &cdq_fd);
++	if (ret)
++		goto del_xarray;
 +
 +	return 0;
-+}
 +
- static int nvme_submit_delete_cdq_cmd(const struct cdq_nvme_queue *cdq)
- {
- 	struct nvme_command c = {
-@@ -193,6 +262,8 @@ static void nvme_delete_cdq_host(struct cdq_nvme_queue *cdq)
- 		return;
- 
- 	nvme_release_cdq_backing(cdq);
++del_xarray:
++	nvme_delete_cdq(cdq);
++	/*nvme_delete_cdq, has everything */
++	return ret;
 +
++del_cmd:
++	if (nvme_submit_delete_cdq_cmd(cdq))
++		WARN_ONCE(1, "Failed delete CDQ (id: %d)", cdq->id);
++
++del_cdqmem:
++	/* puts the ref acquired by kref_init */
++	nvme_release_cdq_backing(cdq);
 +	nvme_cdq_put(cdq);
- }
- 
- void nvme_delete_cdq(struct cdq_nvme_queue *cdq)
++
++	return ret;
++}
++EXPORT_SYMBOL_GPL(nvme_create_cdq);
++
+ /* Will NOT send a CDQ delete NVMe cmd. */
+ void nvme_delete_cdqs_host(struct nvme_ctrl *ctrl)
+ {
 diff --git a/drivers/nvme/host/cdq.h b/drivers/nvme/host/cdq.h
-index 5deaf3705c65250ea9fdc69e2e973987c8f084c1..8c003aa75bd3e4df9a5f8af7ff21d1957dd43923 100644
+index 8c003aa75bd3e4df9a5f8af7ff21d1957dd43923..773f93817d498784450eb0c8c9ab00a95f0657dc 100644
 --- a/drivers/nvme/host/cdq.h
 +++ b/drivers/nvme/host/cdq.h
-@@ -8,6 +8,8 @@
+@@ -11,7 +11,7 @@
+ #define NVME_CDQ_MQ_ENTRY_NRBYTES	32
  
- #include "nvme.h"
- 
-+#define NVME_CDQ_MQ_ENTRY_NRBYTES	32
-+
  /*
-  * The CDQ backing is a set of coherent DMA chunks. Chunk size expressed in
+- * The CDQ backing is a set of coherent DMA chunks. Chunk size expressed in
++ * The CDQ backing is a set of coherent DMA chunks expressed in
   * host pages to match dma_alloc_coherency granularity.
-@@ -38,8 +40,27 @@ struct cdq_nvme_queue {
- 	__le64 *prp_lists[MAX_NR_CDQ_PRPS];
- 	dma_addr_t prp_lists_dma[MAX_NR_CDQ_PRPS];
- 	unsigned int nr_prp_lists;
-+
-+	/* Manage refs for read FD and controller xarray */
-+	struct kref ref;
- };
+  */
+ #define NVME_CDQ_CHUNK_ORDER		2
+@@ -31,6 +31,7 @@ struct cdq_nvme_queue {
+ 	u16 id;
+ 	struct nvme_ctrl *ctrl;
+ 	u32 size_nbyte;
++	u16 mc_id; // migratable controller id
  
-+/* Must not touch cdq->ctrl: Ctrl may have been freed */
-+static inline void nvme_free_cdq(struct kref *ref)
-+{
-+	kfree(container_of(ref, struct cdq_nvme_queue, ref));
-+}
-+
-+static inline void nvme_cdq_get(struct cdq_nvme_queue *cdq)
-+{
-+	kref_get(&cdq->ref);
-+}
-+
-+static inline void nvme_cdq_put(struct cdq_nvme_queue *cdq)
-+{
-+	kref_put(&cdq->ref, nvme_free_cdq);
-+}
-+
+ 	/* Coherent backing store. */
+ 	struct nvme_cdq_chunk *chunks;
+@@ -62,6 +63,7 @@ static inline void nvme_cdq_put(struct cdq_nvme_queue *cdq)
+ }
+ 
  void nvme_delete_cdq(struct cdq_nvme_queue *cdq);
++int nvme_create_cdq(struct nvme_ctrl *ctrl, const u32 entry_nr, const u16 mc_id);
  void nvme_delete_cdqs_host(struct nvme_ctrl *ctrl);
  void nvme_free_cdqs(struct nvme_ctrl *ctrl);
+ 
 
 -- 
 2.50.1
