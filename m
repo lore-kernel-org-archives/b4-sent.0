@@ -1,54 +1,100 @@
-From: Zhentao Guo <zhentao.guo@amlogic.com>
-Date: Fri, 24 Jul 2026 15:04:56 +0800
-Subject: [PATCH v6 6/6] arm64: defconfig: Enable CONFIG_VIDEO_AMLOGIC_VDEC
+From: Yang Li <yang.li@amlogic.com>
+Date: Fri, 24 Jul 2026 17:57:24 +0800
+Subject: [PATCH BlueZ bluez] bap: Start BIG sync after receiving BIGInfo
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260724-b4-s4-vdec-upstream-v6-6-6072a7ee7428@amlogic.com>
-References: <20260724-b4-s4-vdec-upstream-v6-0-6072a7ee7428@amlogic.com>
-In-Reply-To: <20260724-b4-s4-vdec-upstream-v6-0-6072a7ee7428@amlogic.com>
-To: Neil Armstrong <neil.armstrong@linaro.org>, 
- Kevin Hilman <khilman@baylibre.com>, Jerome Brunet <jbrunet@baylibre.com>, 
- Martin Blumenstingl <martin.blumenstingl@googlemail.com>, 
- Mauro Carvalho Chehab <mchehab@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-amlogic@lists.infradead.org, 
- linux-kernel@vger.kernel.org, linux-media@vger.kernel.org, 
- devicetree@vger.kernel.org, Zhentao Guo <zhentao.guo@amlogic.com>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784876706; l=768;
- i=zhentao.guo@amlogic.com; s=20251024; h=from:subject:message-id;
- bh=s56xUn1T/sDmdBk4tsVqVJGNOKSjSa1IT2ROng65XrA=;
- b=lb4nQAFx6tNkB7KG9S1omoruM2Xct6Jryv0j85PT210Nmj7bpqzUs6MHgCyqLhE7vWPircOkq
- ZMHJvDUdkrkCjiSspUnaAB/d8RzsyB/zhC9rNie5uu2Ug9BYG6V/xKi
-X-Developer-Key: i=zhentao.guo@amlogic.com; a=ed25519;
- pk=5yfDKrjreXwcAoEUsdtWafy6YN500upXp/CgtnXjLVU=
-X-Endpoint-Received: by B4 Relay for zhentao.guo@amlogic.com/20251024 with auth_id=555
+Message-Id: <20260724-big_sync-v1-1-0a35013e30ba@amlogic.com>
+X-B4-Tracking: v=1; b=H4sIAAM3Y2oC/x3MWwqAIBBA0a3IfCfoYEVtJSLKJhsIC6XoQXtP+
+ jxwuQ9ECkwRavFAoIMjrz5BZwLs3HtHksdkQIWFKtHIgV0XL2+lyS0asqrSqCHlW6CJz3/VwLD
+ sdEP7vh8FbU8MYQAAAA==
+To: Linux Bluetooth <linux-bluetooth@vger.kernel.org>
+Cc: Yang Li <yang.li@amlogic.com>
+X-Mailer: b4 0.13-dev-f0463
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784887051; l=2484;
+ i=yang.li@amlogic.com; s=20240418; h=from:subject:message-id;
+ bh=f+CYjopzc8Xtsy+P4oslA+AV69P7mhWv1FepgB25D2c=;
+ b=rl8pmG4sgzce3rqk1xfn/ZblOUmrKeFhKFYSI27ypc/QPBTx/LwVM6HxS5WNVvFXgs8fFOSNF
+ m/mMUatdqMqAjWMt2dXj6ZBQ8L3ufBGL52wPqSyY7FEY4yjq7tC86M/
+X-Developer-Key: i=yang.li@amlogic.com; a=ed25519;
+ pk=86OaNWMr3XECW9HGNhkJ4HdR2eYA5SEAegQ3td2UCCs=
+X-Endpoint-Received: by B4 Relay for yang.li@amlogic.com/20240418 with auth_id=180
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Enable the Amlogic V4L2 stateless video decoder driver as a module
-in the arm64 defconfig. This driver is needed for stateless video
-decoding support on Amlogic SoCs.
+The current implementation starts BIG sync before receiving a BIGInfo
+report. According to the Bluetooth Core Specification, BIG sync should
+only be initiated after BIGInfo has been received.
 
-Signed-off-by: Zhentao Guo <zhentao.guo@amlogic.com>
+Starting BIG sync too early may cause unexpected controller behavior.
+
+Trigger BIG sync from the BIGInfo callback, following the same approach
+used by the short PA flow.
+
+Fixes: https://github.com/bluez/bluez/issues/2345
+
+Signed-off-by: Yang Li <yang.li@amlogic.com>
 ---
- arch/arm64/configs/defconfig | 1 +
- 1 file changed, 1 insertion(+)
+ profiles/audio/bap.c | 22 ++++++++++++++++++----
+ 1 file changed, 18 insertions(+), 4 deletions(-)
 
-diff --git a/arch/arm64/configs/defconfig b/arch/arm64/configs/defconfig
-index 6ec8d3a69c98..7be4e5a284ba 100644
---- a/arch/arm64/configs/defconfig
-+++ b/arch/arm64/configs/defconfig
-@@ -919,6 +919,7 @@ CONFIG_V4L_PLATFORM_DRIVERS=y
- CONFIG_SDR_PLATFORM_DRIVERS=y
- CONFIG_V4L_MEM2MEM_DRIVERS=y
- CONFIG_VIDEO_AMPHION_VPU=m
-+CONFIG_VIDEO_AMLOGIC_VDEC=m
- CONFIG_VIDEO_CADENCE_CSI2RX=m
- CONFIG_VIDEO_WAVE_VPU=m
- CONFIG_VIDEO_E5010_JPEG_ENC=m
+diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
+index dd4b3c8ff..9e2cd3658 100644
+--- a/profiles/audio/bap.c
++++ b/profiles/audio/bap.c
+@@ -3650,7 +3650,7 @@ static void setup_refresh_qos(void *data, void *user_data)
+ 	setup->qos = *bt_bap_stream_get_qos(stream);
+ }
+ 
+-static void iso_do_big_sync(GIOChannel *io, void *user_data)
++static void iso_do_big_sync(GIOChannel *io, GIOCondition cond, void *user_data)
+ {
+ 	GError *err = NULL;
+ 	struct bap_setup *setup = user_data;
+@@ -3659,7 +3659,7 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
+ 	struct bt_iso_qos qos;
+ 	struct queue *links = bt_bap_stream_io_get_links(setup->stream);
+ 
+-	DBG("PA Sync done");
++	DBG("BIG info received, do BIG sync");
+ 
+ 	g_io_channel_unref(data->listen_io);
+ 	g_io_channel_shutdown(data->listen_io, TRUE, NULL);
+@@ -3695,13 +3695,27 @@ static void iso_do_big_sync(GIOChannel *io, void *user_data)
+ 	}
+ }
+ 
++static void long_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
++{
++	struct bap_setup *setup = user_data;
++	struct bap_data *data = setup->data;
++
++	DBG("Long PA Sync done");
++
++	/* store io and add watch that will call iso_do_big_sync */
++	data->io = io;
++	g_io_channel_ref(data->io);
++	data->io_id = g_io_add_watch(io, G_IO_OUT, iso_do_big_sync,
++							setup);
++}
++
+ static void pa_and_big_sync(struct bap_setup *setup)
+ {
+ 	GError *err = NULL;
+ 	struct bap_data *bap_data = setup->data;
+-
+ 	DBG("Create PA sync with this source");
+-	bap_data->listen_io = bt_io_listen(NULL, iso_do_big_sync, setup,
++
++	bap_data->listen_io = bt_io_listen(NULL, long_pa_sync_confirm_cb, setup,
+ 			NULL, &err,
+ 			BT_IO_OPT_SOURCE_BDADDR,
+ 			btd_adapter_get_address(bap_data->adapter),
 
+---
+base-commit: 89d477bb5494eef0b24e5667be62f854da250a97
+change-id: 20260724-big_sync-45c24ec09121
+
+Best regards,
 -- 
-2.42.0
+Yang Li <yang.li@amlogic.com>
 
