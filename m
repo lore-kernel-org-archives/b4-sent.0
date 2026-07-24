@@ -1,10 +1,10 @@
 From: Joel Granados <joel.granados@kernel.org>
-Date: Fri, 24 Jul 2026 13:11:03 +0200
-Subject: [PATCH RFC v2 09/14] nvme: Coordinate CDQ backing mem and CDQ FD
+Date: Fri, 24 Jul 2026 13:11:04 +0200
+Subject: [PATCH RFC v2 10/14] nvme: Pin a ctrl ref to every CDQ
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260724-jag-cdq-lkml-v2-9-659a7449e849@kernel.org>
+Message-Id: <20260724-jag-cdq-lkml-v2-10-659a7449e849@kernel.org>
 References: <20260724-jag-cdq-lkml-v2-0-659a7449e849@kernel.org>
 In-Reply-To: <20260724-jag-cdq-lkml-v2-0-659a7449e849@kernel.org>
 To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>, 
@@ -13,110 +13,80 @@ To: Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>,
 Cc: linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, 
  Joel Granados <joel.granados@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2709;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2007;
  i=joel.granados@kernel.org; h=from:subject:message-id;
- bh=TK6sw5sLChDD2H14umlWrgyrMjWvsU5BCPObipz5PyY=;
- b=owJ4nAHsARP+kA0DAAoBupfNUreWQU8ByyZiAGpjSF6CUSvlQHseGsKAdm427Y9qEzQ/VUWdO
- AR/T7ClZ+UfjokBsgQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqY0heAAoJELqXzVK3
- lkFPx2ML+NaqLg199fgUV85XEXgknviUKpS8KqSiDa4eaaEHsvqN6v4ho19xSXVj0daHjpTZ5Jk
- p+OMxfcBkhqO1pPq/hdxQqh0t9+Eh+jxtO7XMwcArbCVTT5TU8u3eQd9+a+UBN3y1aMNiiX95V+
- ozbooV4le3S0VuMYsHleuBpO/kCqua25ogMJAH10dlYh/1SWqfs3GadVE1pIk2jKbbAOnbVwkN4
- nVZclnt5e1edlrwrFRkP25d1SPfPtaOTbQQQzM5AgDWBXLjaiZpWkjyVAJi/dcHdUIVattGsP5V
- oGcnIm4dnMJU0dXofgsiZMZrZfIEuN/r07KiS9dVNKqkxZdPXCAB6tUAKDrJ8834vIy7NV3e6kX
- 6kXhYhV5KVJ8MgYfOk65opzSCRwes4LnT342ev+J8uI5zL1XEblM06T7SdbiBYHpDKyxMheTv+o
- tNSWAjMAT8u9waUneiS6N6+jbDdpuQu3HIzYiPtxz8Zw9tbtRWfU2syBMP8hO7gikstWGUuTPrB
- A==
+ bh=DCUAfDxEseZk6ZmmVcrtbVNMa1iqDO1q+qOvgJZt55w=;
+ b=owJ4nAHtARL+kA0DAAoBupfNUreWQU8ByyZiAGpjSF69HTOAZxtOOJS4e3Kf5yJRhPvY7UVMU
+ E3e6K8IECOrbYkBswQAAQoAHRYhBK5HCVcl5jElzssnkLqXzVK3lkFPBQJqY0heAAoJELqXzVK3
+ lkFPR+oL/iwl4Zmoe0nvHf9iQioW99Y9emfyJqBLzf61u2qRPuNce3fo9FMLlJoIjugVUpeiwQ7
+ iqfw9mfKGkgl7bEpt2xT2VDwdvly9QbmFd90pevNlhv3jbAK2VH3XOuB4HVm3BhbIvkvpa5OE8o
+ IOz4tjHFTN3y8K0MErx03GXxi1ERGWPtTC72S2egNte+1mztCRcc+CnUN1UDeXweD2nuaKCgdPu
+ bzi9AomZq1JBPlXUDCx3s/BPWSDdZ/t1WvSrFUucagCeIasbSQK1RGD5N97yUxXA6qIZ5kds6aa
+ vs0KwLOzlPSFLxJAPg7M4RRWodw18ecSjBDoJcLeESwZ+RM8ONj8MUFVDQyfrwtFRDQwoyOChSM
+ W6MUNsa/E/dNDGGA9u3QFhYZ55deAt62+nyXtAowbQNt8aWLfR83fjzQblU2DBpNNOKcBtsMg/Y
+ 7JXA6WfjwaDtgE66VSlRmavOJCQ0DLkOSomyUU6iq4XrLFOiZAV+7Ej39vOxyAyexQBdwt/kUh5
+ 8g=
 X-Developer-Key: i=joel.granados@kernel.org; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for joel.granados@kernel.org/default with auth_id=239
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The user space file descriptor fails if the memory backing the
-Controller Data Queue (CDQ) is not "valid". This can happen as part of
-the controller tear-down procedure.
-
-Test the valid_mem variable when reading the from the file descriptor.
-Set on CDQ creation and unset when the CDQ is being deleted on the host
-side.
+Make sure that the migration manager controller pointed by the CDQ does
+not get freed unless all CDQs are terminated by user space.
 
 Signed-off-by: Joel Granados <joel.granados@kernel.org>
 ---
- drivers/nvme/host/cdq.c | 20 ++++++++++++++++++--
- drivers/nvme/host/cdq.h |  3 +++
- 2 files changed, 21 insertions(+), 2 deletions(-)
+ drivers/nvme/host/cdq.h | 23 +++++++++++++++--------
+ 1 file changed, 15 insertions(+), 8 deletions(-)
 
-diff --git a/drivers/nvme/host/cdq.c b/drivers/nvme/host/cdq.c
-index 0f01b58a9c3145faae83a81627fa5a93cfc03cf4..7fe08afa0d80db5f3d60993aba05624b5c59b309 100644
---- a/drivers/nvme/host/cdq.c
-+++ b/drivers/nvme/host/cdq.c
-@@ -184,6 +184,9 @@ static ssize_t nvme_cdq_fops_read(struct file *filep, char __user *buf,
- 	if (nbytes > (cdq->size_nbyte))
- 		return -EINVAL;
- 
-+	if (!READ_ONCE(cdq->valid_mem))
-+		return -EINVAL;
-+
- 	/* CDQ traversal not implemented yet. */
- 	return -EOPNOTSUPP;
- }
-@@ -207,7 +210,16 @@ static const struct file_operations cdq_fops = {
- 	.release	= nvme_cdq_fops_release,
- };
- 
--__maybe_unused
-+/* Should only handle cdq struct and ctrl kref */
-+void nvme_free_cdq(struct kref *ref)
-+{
-+	struct cdq_nvme_queue *cdq = container_of(ref, struct cdq_nvme_queue, ref);
-+
-+	/* Drop the ctrl kref held since creation */
-+	nvme_put_ctrl(cdq->ctrl);
-+	kfree(cdq);
-+}
-+
- static int nvme_create_cdqfd(struct cdq_nvme_queue *cdq, int *cdq_fdno)
- {
- 	int fdno;
-@@ -276,8 +288,9 @@ static void nvme_delete_cdq_host(struct cdq_nvme_queue *cdq)
- 	if (xa_erase(&ctrl->cdqs, cdq->id) != cdq)
- 		return;
- 
--	nvme_release_cdq_backing(cdq);
-+	WRITE_ONCE(cdq->valid_mem, false);
- 
-+	nvme_release_cdq_backing(cdq);
- 	nvme_cdq_put(cdq);
- }
- 
-@@ -342,11 +355,14 @@ int nvme_create_cdq(struct nvme_ctrl *ctrl, const u32 entry_nr, const u16 mc_id)
- 	}
- 
- 	kref_init(&cdq->ref);
-+	nvme_get_ctrl(cdq->ctrl);
- 
- 	ret = nvme_submit_create_cdq_cmd(cdq);
- 	if (ret)
- 		goto del_cdqmem;
- 
-+	WRITE_ONCE(cdq->valid_mem, true);
-+
- 	ret = xa_insert(&cdq->ctrl->cdqs, cdq->id, cdq, GFP_KERNEL);
- 	if (ret)
- 		goto del_cmd;
 diff --git a/drivers/nvme/host/cdq.h b/drivers/nvme/host/cdq.h
-index 773f93817d498784450eb0c8c9ab00a95f0657dc..aa9469af0c7ef08b9f8ebf93e468c7f892aee4b1 100644
+index aa9469af0c7ef08b9f8ebf93e468c7f892aee4b1..a8c714ab5fada4325463013c2ffb23a117cd8423 100644
 --- a/drivers/nvme/host/cdq.h
 +++ b/drivers/nvme/host/cdq.h
-@@ -42,6 +42,9 @@ struct cdq_nvme_queue {
- 	dma_addr_t prp_lists_dma[MAX_NR_CDQ_PRPS];
- 	unsigned int nr_prp_lists;
+@@ -29,7 +29,7 @@ struct nvme_cdq_chunk {
  
-+	/* True if mem for chunks and prps is valid */
-+	bool valid_mem;
-+
- 	/* Manage refs for read FD and controller xarray */
+ struct cdq_nvme_queue {
+ 	u16 id;
+-	struct nvme_ctrl *ctrl;
++	struct nvme_ctrl *ctrl; // this is kref'ed for the life of the CDQ
+ 	u32 size_nbyte;
+ 	u16 mc_id; // migratable controller id
+ 
+@@ -49,11 +49,20 @@ struct cdq_nvme_queue {
  	struct kref ref;
  };
+ 
+-/* Must not touch cdq->ctrl: Ctrl may have been freed */
+-static inline void nvme_free_cdq(struct kref *ref)
+-{
+-	kfree(container_of(ref, struct cdq_nvme_queue, ref));
+-}
++/*
++ * nvme_free_cdq:
++ *    - Is called with the cdq struct has no more krefs.
++ *    - Will free (cdq) and decrease ctrl kref.
++ */
++void nvme_free_cdq(struct kref *ref);
++/* nvme_cdq_delete:
++ *    - Sends a nvme delete cmd to the controller
++ *    - removes (cdq) from controller xarray
++ *    - frees the backing CDQ mem
++ *    - Calls nvme_free_cdq if there are no more refs
++ */
++void nvme_delete_cdq(struct cdq_nvme_queue *cdq);
++int nvme_create_cdq(struct nvme_ctrl *ctrl, const u32 entry_nr, const u16 mc_id);
+ 
+ static inline void nvme_cdq_get(struct cdq_nvme_queue *cdq)
+ {
+@@ -65,8 +74,6 @@ static inline void nvme_cdq_put(struct cdq_nvme_queue *cdq)
+ 	kref_put(&cdq->ref, nvme_free_cdq);
+ }
+ 
+-void nvme_delete_cdq(struct cdq_nvme_queue *cdq);
+-int nvme_create_cdq(struct nvme_ctrl *ctrl, const u32 entry_nr, const u16 mc_id);
+ void nvme_delete_cdqs_host(struct nvme_ctrl *ctrl);
+ void nvme_free_cdqs(struct nvme_ctrl *ctrl);
+ 
 
 -- 
 2.50.1
