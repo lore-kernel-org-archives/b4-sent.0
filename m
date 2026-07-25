@@ -1,11 +1,11 @@
 From: Cody Kang <codykang.hk@gmail.com>
-Date: Sat, 25 Jul 2026 00:51:24 -0400
-Subject: [PATCH RESEND 15/17] riscv: dts: spacemit: k3-pico-itx: enable the
- DisplayPort output
+Date: Sat, 25 Jul 2026 00:51:25 -0400
+Subject: [PATCH RESEND 16/17] riscv: dts: spacemit: k3-com260-ifx: enable
+ the DisplayPort output
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260725-k3-display-v1-15-6de34d80e86c@gmail.com>
+Message-Id: <20260725-k3-display-v1-16-6de34d80e86c@gmail.com>
 References: <20260725-k3-display-v1-0-6de34d80e86c@gmail.com>
 In-Reply-To: <20260725-k3-display-v1-0-6de34d80e86c@gmail.com>
 To: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
@@ -24,40 +24,40 @@ Cc: dri-devel@lists.freedesktop.org, linux-riscv@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-phy@lists.infradead.org, 
  linux-clk@vger.kernel.org, Cody Kang <codykang.hk@gmail.com>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784955080; l=1628;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784955080; l=1589;
  i=codykang.hk@gmail.com; s=codykang; h=from:subject:message-id;
- bh=itI/1VwTHA3V7ox5PXMT2Vrb2UKYmyIibaQ0egNmgMY=;
- b=lxKsxyQ3nsiDpUUUscV82alJ6SUbnc6qGxs7f5OilGXmyaEm1t4tajmxCZ6fWzlj3twP++IH3
- sOVsIHQ/RQ+AoQOv/aZ5YXzfJ5PmovX89KojRK+iFiaU+SLJWpbVNCv
+ bh=Ich4f6q4tajR0qNR1lNUbENzsTq+U+zWcM4jg4iHZLI=;
+ b=svT50cqkUT9tdXpDqDr8V4BCs5YfVqOAVZzNMJjzwWS+MDxblUOIeTkUanQD2/zeXYdqDIDCB
+ 879Z9RzlqsCAxiurj9ssQLux8/nRm6Sx4LLBYT5iRHCVAXS2c+o8rjy
 X-Developer-Key: i=codykang.hk@gmail.com; a=ed25519;
  pk=Osn6/cs9Su/mHHw4P19cmVc3v2FMQfiWahjsN0vEkuk=
 X-Endpoint-Received: by B4 Relay for codykang.hk@gmail.com/codykang with auth_id=895
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Pico-ITX brings the second DPU's output to an external DisplayPort
-connector. Enable that DPU and the DisplayPort controller it feeds.
+CoM260-IFX carries a single DisplayPort output, so the second DPU and
+the DisplayPort controller it feeds are enabled.
 
 Signed-off-by: Cody Kang <codykang.hk@gmail.com>
 ---
- arch/riscv/boot/dts/spacemit/k3-pico-itx.dts | 11 +++++++++++
- arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi | 11 +++++++++++
+ arch/riscv/boot/dts/spacemit/k3-com260-ifx.dts | 11 +++++++++++
+ arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi   | 11 +++++++++++
  2 files changed, 22 insertions(+)
 
-diff --git a/arch/riscv/boot/dts/spacemit/k3-pico-itx.dts b/arch/riscv/boot/dts/spacemit/k3-pico-itx.dts
-index b89c1521e664..6c31460990a7 100644
---- a/arch/riscv/boot/dts/spacemit/k3-pico-itx.dts
-+++ b/arch/riscv/boot/dts/spacemit/k3-pico-itx.dts
-@@ -6,6 +6,7 @@
- #include <dt-bindings/gpio/gpio.h>
+diff --git a/arch/riscv/boot/dts/spacemit/k3-com260-ifx.dts b/arch/riscv/boot/dts/spacemit/k3-com260-ifx.dts
+index 238bb03d0e9e..114d0e02fed9 100644
+--- a/arch/riscv/boot/dts/spacemit/k3-com260-ifx.dts
++++ b/arch/riscv/boot/dts/spacemit/k3-com260-ifx.dts
+@@ -5,6 +5,7 @@
+  */
  
- #include "k3.dtsi"
+ #include "k3-com260.dtsi"
 +#include "k3-display.dtsi"
- #include "k3-pinctrl.dtsi"
  
  / {
-@@ -221,3 +222,13 @@ hub@1 {
- &usb2_phy {
- 	status = "okay";
+ 	model = "SpacemiT K3 CoM260 IFX";
+@@ -19,3 +20,13 @@ chosen {
+ 		stdout-path = "serial0:115200n8";
+ 	};
  };
 +
 +&dpu1_crtc0 {
@@ -66,21 +66,21 @@ index b89c1521e664..6c31460990a7 100644
 +
 +&dp1 {
 +	pinctrl-names = "default";
-+	pinctrl-0 = <&dp1_1_cfg>;
++	pinctrl-0 = <&dp1_3_cfg>;
 +	status = "okay";
 +};
 diff --git a/arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi b/arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi
-index 3ee1471f3798..2f36eba20f1e 100644
+index 2f36eba20f1e..dbe8db4a8b76 100644
 --- a/arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi
 +++ b/arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi
-@@ -11,6 +11,17 @@
- #define K3_GPIO(x)	(x / 32) (x % 32)
+@@ -22,6 +22,17 @@ dp1-pins {
+ 		};
+ 	};
  
- &pinctrl {
 +	/omit-if-no-ref/
-+	dp1_1_cfg: dp1-1-cfg {
++	dp1_3_cfg: dp1-3-cfg {
 +		dp1-pins {
-+			pinmux = <K3_PADCONF(24, 6)>;	/* dp1 hpd */
++			pinmux = <K3_PADCONF(72, 4)>;	/* dp1 hpd */
 +
 +			bias-disable;
 +			drive-strength = <25>;
