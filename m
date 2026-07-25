@@ -1,239 +1,78 @@
-From: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-Date: Sat, 25 Jul 2026 10:59:18 +0200
-Subject: [PATCH 6/6] PCI/pwrctrl: tc9563: Move Integrated MAC Endpoint out
- of 'tc9563_pwrctrl_ports' enum
+From: Aaron Kling <webgeek1234@gmail.com>
+Date: Sat, 25 Jul 2026 18:28:32 -0500
+Subject: [PATCH RFC] drm/nouveau: Use write-combined maps for coherent on
+ Tegra
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260725-tc9563-fix-v1-6-ec4286e31331@oss.qualcomm.com>
-References: <20260725-tc9563-fix-v1-0-ec4286e31331@oss.qualcomm.com>
-In-Reply-To: <20260725-tc9563-fix-v1-0-ec4286e31331@oss.qualcomm.com>
-To: Bjorn Helgaas <bhelgaas@google.com>, 
- Lorenzo Pieralisi <lpieralisi@kernel.org>, 
- =?utf-8?q?Krzysztof_Wilczy=C5=84ski?= <kwilczynski@kernel.org>, 
- Manivannan Sadhasivam <mani@kernel.org>, Rob Herring <robh@kernel.org>, 
- Krzysztof Kozlowski <krzk+dt@kernel.org>, 
- Conor Dooley <conor+dt@kernel.org>, 
- Krishna Chaitanya Chundru <krishna.chundru@oss.qualcomm.com>, 
- Bartosz Golaszewski <brgl@kernel.org>, 
- Bjorn Andersson <andersson@kernel.org>
-Cc: linux-pci@vger.kernel.org, devicetree@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Alex Elder <elder@riscstar.com>, 
- Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
-X-Mailer: b4 0.15.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6643;
- i=manivannan.sadhasivam@oss.qualcomm.com; h=from:subject:message-id;
- bh=CH/BiOhOO4aBwUSd3plwuQwd+JfSFw0fL8YxX/BX6wI=;
- b=owEBbQGS/pANAwAKAVWfEeb+kc71AcsmYgBqZHr8znYrpwja1Ob6QuVajyytmN9Zus82VyKhp
- Pg+U9isLUaJATMEAAEKAB0WIQRnpUMqgUjL2KRYJ5dVnxHm/pHO9QUCamR6/AAKCRBVnxHm/pHO
- 9Z2OB/4rGUqpdh/GnlXVyqKLRFvsMfTNUF68HnFqgusyHiv4H/tuLxyLThXXJRuK52VeIE+GzqJ
- ok5xb3pH0kPe1sDXv1BSIY/mcqpXrPzYoVXtq9Q5J6vEoi2pS21MfnU4YPgkUHEW6/npSPiYbjU
- H1CeP1X0S/EFNKA07PoPAb418YGjK8Rn+5PkJLz+15R+wTs6q2pytSP5uPSeOAdD7UJ5gE1RUOI
- 93iZPPyA2SKMn5e2m3LVsvYZttxVBn20DLfFTmBEQSkAE0E/itJFjkt6cYeFL281ZHO4OnFyKY5
- DLXpcwlkMlvz+xWQEMVm1GFvd1ylhB9rwE214eJvxePPtGuv
-X-Developer-Key: i=manivannan.sadhasivam@oss.qualcomm.com; a=openpgp;
- fpr=C668AEC3C3188E4C611465E7488550E901166008
-X-Endpoint-Received: by B4 Relay for manivannan.sadhasivam@oss.qualcomm.com/default with auth_id=461
+Message-Id: <20260725-tegra-coherent-wc-v1-1-dfdcc929c21b@gmail.com>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzMDcyNT3ZLU9KJE3eT8jNSi1LwS3fJkXUNLSxPDFMNE00QzAyWgvoKi1LT
+ MCrCZ0UpBbs5KsbW1AA2ZuwFoAAAA
+X-Change-ID: 20260725-tegra-coherent-wc-19941d1a5a60
+To: Lyude Paul <lyude@redhat.com>, Danilo Krummrich <dakr@kernel.org>, 
+ Maarten Lankhorst <maarten.lankhorst@linux.intel.com>, 
+ Maxime Ripard <mripard@kernel.org>, Thomas Zimmermann <tzimmermann@suse.de>, 
+ David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>
+Cc: dri-devel@lists.freedesktop.org, nouveau@lists.freedesktop.org, 
+ linux-kernel@vger.kernel.org, Faith Ekstrand <faith.ekstrand@collabora.com>, 
+ Aaron Kling <webgeek1234@gmail.com>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1785022113; l=1746;
+ i=webgeek1234@gmail.com; s=20250217; h=from:subject:message-id;
+ bh=xGh6pnkZaocwOU8pE4vCOlQMWxF+mRIdr+h8cac+BR8=;
+ b=sZmYcD/8oqKCgPrreK+uUgwVNQC8Jhvg4Efd/oYQ2kQl27ZNYV1yAG5oJGt6ob13Hf9ei1CYJ
+ FamnB0RS4/7Bo+AHo4Uv/Koyj/a4UZPu1n3Z6O1Iyb6aXJKPXnmi/sJ
+X-Developer-Key: i=webgeek1234@gmail.com; a=ed25519;
+ pk=TQwd6q26txw7bkK7B8qtI/kcAohZc7bHHGSD7domdrU=
+X-Endpoint-Received: by B4 Relay for webgeek1234@gmail.com/20250217 with auth_id=342
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-'tc9563_pwrctrl_ports' is supposed to list only the internal ports of the
-switch. But it currently lists the integrated MAC Endpoint as well, which
-is wrong.
+From: Faith Ekstrand <faith.ekstrand@collabora.com>
 
-Hence, move it to a separate 'ep_cfg' struct and also configure/parse the
-ports and the MAC Endpoint separately.
+On Tegra devices, uncached maps traslate to device memory, causing
+unaligned accesses by userspace resulting in a SIGBUS. Instead, use
+write-combined maps to ensure proper access.
 
-Signed-off-by: Manivannan Sadhasivam <manivannan.sadhasivam@oss.qualcomm.com>
+Signed-off-by: Faith Ekstrand <faith.ekstrand@collabora.com>
+Co-developed-by: Aaron Kling <webgeek1234@gmail.com>
+Signed-off-by: Aaron Kling <webgeek1234@gmail.com>
 ---
- drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c | 96 ++++++++++++++++++++------------
- 1 file changed, 60 insertions(+), 36 deletions(-)
+This patch is marked RFC because there is not complete confidence that
+the change is correct. Without this change, nouveau can easily hit
+sigbus errors in Android UI rendering via nvk or running vulkan deqp
+tests on Tegra. Changing coherent maps to use write-combined stops the
+crashing, but it is unknown what the performance impact is, if any.
+---
+ drivers/gpu/drm/nouveau/nouveau_sgdma.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c b/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c
-index f1179737f221..9d869483b6b3 100644
---- a/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c
-+++ b/drivers/pci/pwrctrl/pci-pwrctrl-tc9563.c
-@@ -81,7 +81,6 @@ enum tc9563_pwrctrl_ports {
- 	TC9563_DSP1,
- 	TC9563_DSP2,
- 	TC9563_VDSP,
--	TC9563_ETHERNET,
- 	TC9563_MAX
- };
+diff --git a/drivers/gpu/drm/nouveau/nouveau_sgdma.c b/drivers/gpu/drm/nouveau/nouveau_sgdma.c
+index fa3b4ebf38a83..10f6ef1c541bd 100644
+--- a/drivers/gpu/drm/nouveau/nouveau_sgdma.c
++++ b/drivers/gpu/drm/nouveau/nouveau_sgdma.c
+@@ -72,9 +72,12 @@ nouveau_sgdma_create_ttm(struct ttm_buffer_object *bo, uint32_t page_flags)
+ 	struct nouveau_sgdma_be *nvbe;
+ 	enum ttm_caching caching;
  
-@@ -109,6 +108,7 @@ struct tc9563_pwrctrl {
- 	struct pci_pwrctrl pwrctrl;
- 	struct regulator_bulk_data supplies[TC9563_PWRCTL_MAX_SUPPLY];
- 	struct tc9563_pwrctrl_cfg cfg[TC9563_MAX];
-+	struct tc9563_pwrctrl_cfg ep_cfg;
- 	struct gpio_desc *reset_gpio;
- 	struct i2c_adapter *adapter;
- 	struct i2c_client *client;
-@@ -263,11 +263,11 @@ static int tc9563_pwrctrl_disable_port(struct tc9563_pwrctrl *tc9563,
- 					     ARRAY_SIZE(common_pwroff_seq));
- }
- 
--static int tc9563_pwrctrl_set_l0s_l1_entry_delay(struct tc9563_pwrctrl *tc9563,
--						 enum tc9563_pwrctrl_ports port,
--						 bool is_l1, u32 ns)
-+static int tc9563_pwrctrl_set_port_l0s_l1_entry_delay(struct tc9563_pwrctrl *tc9563,
-+						      enum tc9563_pwrctrl_ports port,
-+						      bool is_l1, u32 ns)
- {
--	u32 rd_val, units;
-+	u32 units;
- 	int ret;
- 
- 	if (ns < TC9563_L0S_L1_DELAY_UNIT_NS)
-@@ -276,25 +276,6 @@ static int tc9563_pwrctrl_set_l0s_l1_entry_delay(struct tc9563_pwrctrl *tc9563,
- 	/* convert to units of 256ns */
- 	units = ns / TC9563_L0S_L1_DELAY_UNIT_NS;
- 
--	if (port == TC9563_ETHERNET) {
--		ret = tc9563_pwrctrl_i2c_read(tc9563->client,
--					      TC9563_EMBEDDED_ETH_DELAY,
--					      &rd_val);
--		if (ret)
--			return ret;
--
--		if (is_l1)
--			rd_val = u32_replace_bits(rd_val, units,
--						  TC9563_ETH_L1_DELAY_MASK);
--		else
--			rd_val = u32_replace_bits(rd_val, units,
--						  TC9563_ETH_L0S_DELAY_MASK);
--
--		return tc9563_pwrctrl_i2c_write(tc9563->client,
--						TC9563_EMBEDDED_ETH_DELAY,
--						rd_val);
--	}
--
- 	ret = tc9563_pwrctrl_i2c_write(tc9563->client, TC9563_PORT_SELECT,
- 				       BIT(port));
- 	if (ret)
-@@ -305,6 +286,34 @@ static int tc9563_pwrctrl_set_l0s_l1_entry_delay(struct tc9563_pwrctrl *tc9563,
- 			units);
- }
- 
-+static int tc9563_pwrctrl_set_eth_l0s_l1_entry_delay(struct tc9563_pwrctrl *tc9563,
-+						     bool is_l1, u32 ns)
-+{
-+	u32 rd_val, units;
-+	int ret;
-+
-+	if (ns < TC9563_L0S_L1_DELAY_UNIT_NS)
-+		return 0;
-+
-+	/* convert to units of 256ns */
-+	units = ns / TC9563_L0S_L1_DELAY_UNIT_NS;
-+
-+	ret = tc9563_pwrctrl_i2c_read(tc9563->client, TC9563_EMBEDDED_ETH_DELAY,
-+				      &rd_val);
-+	if (ret)
-+		return ret;
-+
-+	if (is_l1)
-+		rd_val = u32_replace_bits(rd_val, units,
-+					  TC9563_ETH_L1_DELAY_MASK);
-+	else
-+		rd_val = u32_replace_bits(rd_val, units,
-+					  TC9563_ETH_L0S_DELAY_MASK);
-+
-+	return tc9563_pwrctrl_i2c_write(tc9563->client, TC9563_EMBEDDED_ETH_DELAY,
-+					rd_val);
-+}
-+
- static int tc9563_pwrctrl_set_tx_amplitude(struct tc9563_pwrctrl *tc9563,
- 					   enum tc9563_pwrctrl_ports port)
- {
-@@ -430,11 +439,9 @@ static int tc9563_pwrctrl_assert_deassert_reset(struct tc9563_pwrctrl *tc9563,
- 	return tc9563_pwrctrl_i2c_write(tc9563->client, TC9563_RESET_GPIO, val);
- }
- 
--static int tc9563_pwrctrl_parse_device_dt(struct tc9563_pwrctrl *tc9563,
--					  struct device_node *node,
--					  enum tc9563_pwrctrl_ports port)
-+static int tc9563_pwrctrl_parse_device_dt(struct device_node *node,
-+					  struct tc9563_pwrctrl_cfg *cfg)
- {
--	struct tc9563_pwrctrl_cfg *cfg = &tc9563->cfg[port];
- 	int ret;
- 
- 	/* Disable port if the status of the port is disabled. */
-@@ -505,13 +512,13 @@ static int tc9563_pwrctrl_power_on(struct pci_pwrctrl *pwrctrl)
- 			goto power_off;
- 		}
- 
--		ret = tc9563_pwrctrl_set_l0s_l1_entry_delay(tc9563, i, false, cfg->l0s_delay);
-+		ret = tc9563_pwrctrl_set_port_l0s_l1_entry_delay(tc9563, i, false, cfg->l0s_delay);
- 		if (ret) {
- 			dev_err(dev, "Setting L0s entry delay failed\n");
- 			goto power_off;
- 		}
- 
--		ret = tc9563_pwrctrl_set_l0s_l1_entry_delay(tc9563, i, true, cfg->l1_delay);
-+		ret = tc9563_pwrctrl_set_port_l0s_l1_entry_delay(tc9563, i, true, cfg->l1_delay);
- 		if (ret) {
- 			dev_err(dev, "Setting L1 entry delay failed\n");
- 			goto power_off;
-@@ -536,6 +543,21 @@ static int tc9563_pwrctrl_power_on(struct pci_pwrctrl *pwrctrl)
- 		}
- 	}
- 
-+	/* Configure the integrated Ethernet MAC endpoint */
-+	ret = tc9563_pwrctrl_set_eth_l0s_l1_entry_delay(tc9563, false,
-+							tc9563->ep_cfg.l0s_delay);
-+	if (ret) {
-+		dev_err(dev, "Setting Ethernet L0s entry delay failed\n");
-+		goto power_off;
-+	}
-+
-+	ret = tc9563_pwrctrl_set_eth_l0s_l1_entry_delay(tc9563, true,
-+							tc9563->ep_cfg.l1_delay);
-+	if (ret) {
-+		dev_err(dev, "Setting Ethernet L1 entry delay failed\n");
-+		goto power_off;
-+	}
-+
- 	ret = tc9563_pwrctrl_assert_deassert_reset(tc9563, true);
- 	if (!ret)
- 		return 0;
-@@ -593,8 +615,7 @@ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
- 
- 	pci_pwrctrl_init(&tc9563->pwrctrl, dev);
- 
--	port = TC9563_USP;
--	ret = tc9563_pwrctrl_parse_device_dt(tc9563, node, port);
-+	ret = tc9563_pwrctrl_parse_device_dt(node, &tc9563->cfg[TC9563_USP]);
- 	if (ret) {
- 		dev_err(dev, "failed to parse device tree properties: %d\n", ret);
- 		goto remove_i2c;
-@@ -605,9 +626,12 @@ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
- 	 * The first node represents DSP1, the second node represents DSP2,
- 	 * and so on.
- 	 */
-+	port = TC9563_USP;
- 	for_each_child_of_node_scoped(node, child) {
--		port++;
--		ret = tc9563_pwrctrl_parse_device_dt(tc9563, child, port);
-+		if (++port >= TC9563_MAX)
-+			break;
-+
-+		ret = tc9563_pwrctrl_parse_device_dt(child, &tc9563->cfg[port]);
- 		if (ret)
- 			break;
- 
-@@ -619,8 +643,8 @@ static int tc9563_pwrctrl_probe(struct platform_device *pdev)
- 			struct device_node *eth __free(device_node) =
- 					of_get_next_available_child(child, NULL);
- 			if (eth) {
--				ret = tc9563_pwrctrl_parse_device_dt(tc9563,
--								eth, TC9563_ETHERNET);
-+				ret = tc9563_pwrctrl_parse_device_dt(eth,
-+							&tc9563->ep_cfg);
- 				if (ret)
- 					break;
- 			}
+-	if (nvbo->force_coherent)
+-		caching = ttm_uncached;
+-	else if (drm->agp.bridge)
++	if (nvbo->force_coherent) {
++		if (drm->client.device.info.platform == NV_DEVICE_INFO_V0_SOC)
++			caching = ttm_write_combined;
++		else
++			caching = ttm_uncached;
++	} else if (drm->agp.bridge)
+ 		caching = ttm_write_combined;
+ 	else
+ 		caching = ttm_cached;
 
+---
+base-commit: 1a1757b76427f6201bfe0bf1bea9f7574f332a93
+change-id: 20260725-tegra-coherent-wc-19941d1a5a60
+
+Best regards,
 -- 
-2.43.0
+Aaron Kling <webgeek1234@gmail.com>
 
