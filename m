@@ -1,11 +1,11 @@
 From: Cody Kang <codykang.hk@gmail.com>
-Date: Sat, 25 Jul 2026 00:51:11 -0400
-Subject: [PATCH RESEND 02/17] dt-bindings: phy: add SpacemiT K3 Innosilicon
- DP PHY
+Date: Sat, 25 Jul 2026 00:51:12 -0400
+Subject: [PATCH RESEND 03/17] dt-bindings: display: spacemit: add K3
+ Innosilicon DP/eDP controller
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260725-k3-display-v1-2-6de34d80e86c@gmail.com>
+Message-Id: <20260725-k3-display-v1-3-6de34d80e86c@gmail.com>
 References: <20260725-k3-display-v1-0-6de34d80e86c@gmail.com>
 In-Reply-To: <20260725-k3-display-v1-0-6de34d80e86c@gmail.com>
 To: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
@@ -24,87 +24,170 @@ Cc: dri-devel@lists.freedesktop.org, linux-riscv@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-phy@lists.infradead.org, 
  linux-clk@vger.kernel.org, Cody Kang <codykang.hk@gmail.com>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784955080; l=2331;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784955080; l=4645;
  i=codykang.hk@gmail.com; s=codykang; h=from:subject:message-id;
- bh=xr0oQcfFPCJzaAeEJhH42CRWzbYWKnP3e2i7y0AjEKQ=;
- b=5SvNVVr58XiRYnVJORW96i5uRgcBnJtyJxdzAgLmdpTlgOoI4aHgXlZ/gGLz1ej06AA6XrI4E
- Rhnuba+0KFGD2QOWi+v4UrsLzPVvHeTHKjWsn/RZ8PasuwLQLQFcrIm
+ bh=yNWq543Aiagc6RVnpWivC9SHy2Deccat9Kz6CH7b1lM=;
+ b=hNU8SsVIGQvtnrPi65MdtSx4Mow8CYWQmkIISxP9tzg/k50OtnES2xQV1xvCEtXhwe48rC2E+
+ 0m8lXiY3aWrAkURQ1sB3+qem/H4eYcBTG3n/P1k9IFdHq7dLRkxAJOO
 X-Developer-Key: i=codykang.hk@gmail.com; a=ed25519;
  pk=Osn6/cs9Su/mHHw4P19cmVc3v2FMQfiWahjsN0vEkuk=
 X-Endpoint-Received: by B4 Relay for codykang.hk@gmail.com/codykang with auth_id=895
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-The SpacemiT K3 DisplayPort controller drives its four transmit lanes
-through an integrated Innosilicon DP PHY, one PHY per controller. Add a
-binding so the controller can reference its transmit PHY and the pixel
-clock the PHY's PLL sources.
-
-The PHY's registers are interleaved with its parent controller's inside
-one MMIO window, so it owns neither a reg nor a reset and is modelled as
-a child of the controller.
-
-It exposes its PLL-generated pixel clock through #clock-cells, so the
-APMU pixel-clock mux can select it as a parent through the clock
-framework.
+Both K3 instances are the same IP and share one compatible; which one
+behaves as eDP is decided by what its downstream port is wired to, not by
+which register window it sits in, so the binding does not distinguish them.
 
 Signed-off-by: Cody Kang <codykang.hk@gmail.com>
 ---
- .../bindings/phy/spacemit,k3-inno-dp-phy.yaml      | 48 ++++++++++++++++++++++
- 1 file changed, 48 insertions(+)
+ .../display/spacemit/spacemit,k3-inno-dp.yaml      | 140 +++++++++++++++++++++
+ 1 file changed, 140 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/phy/spacemit,k3-inno-dp-phy.yaml b/Documentation/devicetree/bindings/phy/spacemit,k3-inno-dp-phy.yaml
+diff --git a/Documentation/devicetree/bindings/display/spacemit/spacemit,k3-inno-dp.yaml b/Documentation/devicetree/bindings/display/spacemit/spacemit,k3-inno-dp.yaml
 new file mode 100644
-index 000000000000..f8f1ef372951
+index 000000000000..865ea310daaf
 --- /dev/null
-+++ b/Documentation/devicetree/bindings/phy/spacemit,k3-inno-dp-phy.yaml
-@@ -0,0 +1,48 @@
++++ b/Documentation/devicetree/bindings/display/spacemit/spacemit,k3-inno-dp.yaml
+@@ -0,0 +1,140 @@
 +# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
 +%YAML 1.2
 +---
-+$id: http://devicetree.org/schemas/phy/spacemit,k3-inno-dp-phy.yaml#
++$id: http://devicetree.org/schemas/display/spacemit/spacemit,k3-inno-dp.yaml#
 +$schema: http://devicetree.org/meta-schemas/core.yaml#
 +
-+title: SpacemiT K3 Innosilicon DisplayPort PHY
++title: SpacemiT K3 Innosilicon DisplayPort / embedded DisplayPort Controller
 +
 +maintainers:
 +  - Cody Kang <codykang.hk@gmail.com>
 +
 +description:
-+  Innosilicon four-lane DisplayPort transmit PHY integrated in the SpacemiT
-+  K3 SoC, one per DisplayPort controller. Its registers are interleaved with
-+  the controller's own inside a single register window, so it is described as
-+  a child of the controller and owns neither a reg nor a reset.
-+
-+  The PHY provides the pixel clock its PLL generates, which the APMU
-+  pixel-clock mux takes as one of its inputs.
++  Innosilicon DisplayPort transmit controller integrated in the SpacemiT K3
++  SoC. The K3 has two instances of the same block sharing one compatible;
++  each acts as embedded or external DisplayPort depending on whether its
++  output port drives a panel or a connector.
 +
 +properties:
 +  compatible:
-+    const: spacemit,k3-inno-dp-phy
++    const: spacemit,k3-inno-dp
 +
-+  "#phy-cells":
-+    const: 0
-+
-+  "#clock-cells":
-+    const: 0
-+
-+  clock-output-names:
++  reg:
 +    maxItems: 1
++
++  interrupts:
++    maxItems: 1
++    description: Link and hot-plug events.
++
++  clocks:
++    items:
++      - description: Pixel clock for the controller.
++      - description:
++          Pixel clock generated by the DP PHY PLL; the pixel clock above is
++          parented onto it in use.
++
++  clock-names:
++    items:
++      - const: pxclk
++      - const: pll
++
++  resets:
++    maxItems: 1
++    description: Controller-wide reset signal.
++
++  phys:
++    maxItems: 1
++    description: Phandle to the K3 Innosilicon DP PHY.
++
++  phy-names:
++    items:
++      - const: dp
++
++  ports:
++    $ref: /schemas/graph.yaml#/properties/ports
++
++    properties:
++      port@0:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Video input from the DPU.
++
++      port@1:
++        $ref: /schemas/graph.yaml#/properties/port
++        description: Output to the panel or to the DisplayPort connector.
++
++    required:
++      - port@0
++
++  aux-bus:
++    $ref: /schemas/display/dp-aux-bus.yaml#
++    description:
++      The DisplayPort AUX bus. Present when the output drives an embedded
++      panel, which is described as a child of this node and identifies itself
++      over AUX. Absent when the output is a connector.
++
++  phy:
++    $ref: /schemas/phy/spacemit,k3-inno-dp-phy.yaml#
++    description:
++      The DisplayPort PHY. Its registers live inside this controller's
++      register window, so it is described here as a child node.
 +
 +required:
 +  - compatible
-+  - "#phy-cells"
-+  - "#clock-cells"
++  - reg
++  - interrupts
++  - clocks
++  - clock-names
++  - resets
++  - phys
++  - phy-names
++  - ports
 +
 +additionalProperties: false
 +
 +examples:
 +  - |
-+    phy {
-+        compatible = "spacemit,k3-inno-dp-phy";
-+        #phy-cells = <0>;
-+        #clock-cells = <0>;
-+        clock-output-names = "edp0_pll_pxclk";
++    #include <dt-bindings/clock/spacemit,k3-clocks.h>
++    #include <dt-bindings/reset/spacemit,k3-resets.h>
++    #include <dt-bindings/interrupt-controller/irq.h>
++
++    soc {
++        #address-cells = <2>;
++        #size-cells = <2>;
++
++        edp@cac84000 {
++            compatible = "spacemit,k3-inno-dp";
++            reg = <0x0 0xcac84000 0x0 0x4000>;
++            interrupts = <132 IRQ_TYPE_LEVEL_HIGH>;
++            clocks = <&syscon_apmu CLK_APMU_EDP0_PXCLK>, <&edp0_phy>;
++            clock-names = "pxclk", "pll";
++            resets = <&syscon_apmu RESET_APMU_EDP0>;
++            phys = <&edp0_phy>;
++            phy-names = "dp";
++
++            edp0_phy: phy {
++                compatible = "spacemit,k3-inno-dp-phy";
++                #phy-cells = <0>;
++                #clock-cells = <0>;
++                clock-output-names = "edp0_pll_pxclk";
++            };
++
++            ports {
++                #address-cells = <1>;
++                #size-cells = <0>;
++
++                port@0 {
++                    reg = <0>;
++                    endpoint {
++                        remote-endpoint = <&dpu0_out>;
++                    };
++                };
++
++                port@1 {
++                    reg = <1>;
++                    endpoint {
++                        remote-endpoint = <&panel_in>;
++                    };
++                };
++            };
++        };
 +    };
 
 -- 
