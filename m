@@ -1,10 +1,11 @@
 From: Cody Kang <codykang.hk@gmail.com>
-Date: Sat, 25 Jul 2026 00:51:23 -0400
-Subject: [PATCH RESEND 14/17] riscv: dts: spacemit: k3: add display nodes
+Date: Sat, 25 Jul 2026 00:51:24 -0400
+Subject: [PATCH RESEND 15/17] riscv: dts: spacemit: k3-pico-itx: enable the
+ DisplayPort output
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260725-k3-display-v1-14-6de34d80e86c@gmail.com>
+Message-Id: <20260725-k3-display-v1-15-6de34d80e86c@gmail.com>
 References: <20260725-k3-display-v1-0-6de34d80e86c@gmail.com>
 In-Reply-To: <20260725-k3-display-v1-0-6de34d80e86c@gmail.com>
 To: David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
@@ -23,189 +24,73 @@ Cc: dri-devel@lists.freedesktop.org, linux-riscv@lists.infradead.org,
  linux-kernel@vger.kernel.org, linux-phy@lists.infradead.org, 
  linux-clk@vger.kernel.org, Cody Kang <codykang.hk@gmail.com>
 X-Mailer: b4 0.15.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1784955080; l=5154;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1784955080; l=1628;
  i=codykang.hk@gmail.com; s=codykang; h=from:subject:message-id;
- bh=Grthmsr7K7t1VnCPujULIM8MkKQHBQfZ26CPMfOLQdI=;
- b=xzN0JYKMSL4bNrCX8DbfHJ6cepxRnukELKks2PFQ3Bg0Qq9WrmhOaoJADUesuiDpWJFdBrRp/
- MbT4h2/IkwYDTm2n/zy/uYm05y3gZ/rHmC5a48/bOXFgmE8FI01gxLP
+ bh=itI/1VwTHA3V7ox5PXMT2Vrb2UKYmyIibaQ0egNmgMY=;
+ b=lxKsxyQ3nsiDpUUUscV82alJ6SUbnc6qGxs7f5OilGXmyaEm1t4tajmxCZ6fWzlj3twP++IH3
+ sOVsIHQ/RQ+AoQOv/aZ5YXzfJ5PmovX89KojRK+iFiaU+SLJWpbVNCv
 X-Developer-Key: i=codykang.hk@gmail.com; a=ed25519;
  pk=Osn6/cs9Su/mHHw4P19cmVc3v2FMQfiWahjsN0vEkuk=
 X-Endpoint-Received: by B4 Relay for codykang.hk@gmail.com/codykang with auth_id=895
 List-Id: B4 Relay Submissions <b4-sent.feeds.kernel.org>
 
-Add the SoC-level display nodes: the two Saturn DPUs, the two DP/eDP
-controllers with their PHY children.
-
-The PHY PLLs are fed back into the APMU as pixel-clock mux parents, so
-updated the &syscon_apmu node in the display dtsi.
+Pico-ITX brings the second DPU's output to an external DisplayPort
+connector. Enable that DPU and the DisplayPort controller it feeds.
 
 Signed-off-by: Cody Kang <codykang.hk@gmail.com>
 ---
- arch/riscv/boot/dts/spacemit/k3-display.dtsi | 156 +++++++++++++++++++++++++++
- 1 file changed, 156 insertions(+)
+ arch/riscv/boot/dts/spacemit/k3-pico-itx.dts | 11 +++++++++++
+ arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi | 11 +++++++++++
+ 2 files changed, 22 insertions(+)
 
-diff --git a/arch/riscv/boot/dts/spacemit/k3-display.dtsi b/arch/riscv/boot/dts/spacemit/k3-display.dtsi
-new file mode 100644
-index 000000000000..4892ee6acda2
---- /dev/null
-+++ b/arch/riscv/boot/dts/spacemit/k3-display.dtsi
-@@ -0,0 +1,156 @@
-+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
-+/*
-+ * SpacemiT K3 display subsystem (DPU0/eDP0 + DPU1/DP1) shared
-+ * device-tree definitions for inclusion alongside k3.dtsi.
-+ *
-+ * Copyright (C) 2026 SpacemiT Co., Ltd.
-+ */
+diff --git a/arch/riscv/boot/dts/spacemit/k3-pico-itx.dts b/arch/riscv/boot/dts/spacemit/k3-pico-itx.dts
+index b89c1521e664..6c31460990a7 100644
+--- a/arch/riscv/boot/dts/spacemit/k3-pico-itx.dts
++++ b/arch/riscv/boot/dts/spacemit/k3-pico-itx.dts
+@@ -6,6 +6,7 @@
+ #include <dt-bindings/gpio/gpio.h>
+ 
+ #include "k3.dtsi"
++#include "k3-display.dtsi"
+ #include "k3-pinctrl.dtsi"
+ 
+ / {
+@@ -221,3 +222,13 @@ hub@1 {
+ &usb2_phy {
+ 	status = "okay";
+ };
 +
-+#include <dt-bindings/clock/spacemit,k3-clocks.h>
-+#include <dt-bindings/reset/spacemit,k3-resets.h>
-+#include <dt-bindings/interrupt-controller/irq.h>
-+
-+&soc {
-+	dpu0_crtc0: dpu@c0340000 {
-+		compatible = "spacemit,k3-saturn-dpu";
-+		reg = <0x0 0xc0340000 0x0 0x54000>;
-+		interrupts = <90 IRQ_TYPE_LEVEL_HIGH>,
-+			     <89 IRQ_TYPE_LEVEL_HIGH>;
-+		interrupt-names = "online", "offline";
-+		clocks = <&syscon_apmu CLK_APMU_LCD_PXCLK>,
-+			 <&syscon_apmu CLK_APMU_LCD_MCLK>,
-+			 <&syscon_apmu CLK_APMU_DPU_ACLK>,
-+			 <&syscon_apmu CLK_APMU_DSI_ESC>,
-+			 <&syscon_apmu CLK_APMU_LCD_DSC>;
-+		clock-names = "pxclk", "mclk", "aclk", "escclk", "dscclk";
-+		resets = <&syscon_apmu RESET_APMU_LCD_MCLK>,
-+			 <&syscon_apmu RESET_APMU_LCD>,
-+			 <&syscon_apmu RESET_APMU_DSI_ESC>,
-+			 <&syscon_apmu RESET_APMU_DPU_ACLK>,
-+			 <&syscon_apmu RESET_APMU_LCD_DSCCLK>;
-+		reset-names = "mclk", "lcd", "esc",
-+			      "aclk", "dsc";
-+		status = "disabled";
-+
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			port@0 {
-+				reg = <0>;
-+				dpu0_out: endpoint {
-+					remote-endpoint = <&edp0_in>;
-+				};
-+			};
-+		};
-+	};
-+
-+	edp0: edp@cac84000 {
-+		compatible = "spacemit,k3-inno-dp";
-+		reg = <0x0 0xcac84000 0x0 0x4000>;
-+		interrupts = <132 IRQ_TYPE_LEVEL_HIGH>;
-+		clocks = <&syscon_apmu CLK_APMU_EDP0_PXCLK>, <&edp0_phy>;
-+		clock-names = "pxclk", "pll";
-+		resets = <&syscon_apmu RESET_APMU_EDP0>;
-+		phys = <&edp0_phy>;
-+		phy-names = "dp";
-+		status = "disabled";
-+
-+		edp0_phy: phy {
-+			compatible = "spacemit,k3-inno-dp-phy";
-+			#phy-cells = <0>;
-+			#clock-cells = <0>;
-+			clock-output-names = "edp0_pll_pxclk";
-+		};
-+
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			port@0 {
-+				reg = <0>;
-+				edp0_in: endpoint {
-+					remote-endpoint = <&dpu0_out>;
-+				};
-+			};
-+			/* port@1 (panel output) is added by boards fitting an eDP panel */
-+		};
-+	};
-+
-+	dpu1_crtc0: dpu@c0440000 {
-+		compatible = "spacemit,k3-saturn-dpu";
-+		reg = <0x0 0xc0440000 0x0 0x54000>;
-+		interrupts = <139 IRQ_TYPE_LEVEL_HIGH>,
-+			     <138 IRQ_TYPE_LEVEL_HIGH>;
-+		interrupt-names = "online", "offline";
-+		clocks = <&syscon_apmu CLK_APMU_DSI4LN2_LCD_PXCLK>,
-+			 <&syscon_apmu CLK_APMU_DSI4LN2_LCD_MCLK>,
-+			 <&syscon_apmu CLK_APMU_DSI4LN2_DPU_ACLK>,
-+			 <&syscon_apmu CLK_APMU_DSI4LN2_DSI_ESC>,
-+			 <&syscon_apmu CLK_APMU_DSI4LN2_LCD_DSC>;
-+		clock-names = "pxclk", "mclk", "aclk", "escclk", "dscclk";
-+		resets = <&syscon_apmu RESET_APMU_DSI4LN2_LCD_MCLK>,
-+			 <&syscon_apmu RESET_APMU_DSI4LN2_LCD_SW>,
-+			 <&syscon_apmu RESET_APMU_DSI4LN2_ESCCLK>,
-+			 <&syscon_apmu RESET_APMU_DSI4LN2_DPU_ACLK>,
-+			 <&syscon_apmu RESET_APMU_DSI4LN2_LCD_DSCCLK>;
-+		reset-names = "mclk", "lcd", "esc",
-+			      "aclk", "dsc";
-+		status = "disabled";
-+
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			port@0 {
-+				reg = <0>;
-+				dpu1_out: endpoint {
-+					remote-endpoint = <&dp1_in>;
-+				};
-+			};
-+		};
-+	};
-+
-+	dp1: dp@cac88000 {
-+		compatible = "spacemit,k3-inno-dp";
-+		reg = <0x0 0xcac88000 0x0 0x4000>;
-+		interrupts = <140 IRQ_TYPE_LEVEL_HIGH>;
-+		clocks = <&syscon_apmu CLK_APMU_EDP1_PXCLK>, <&dp1_phy>;
-+		clock-names = "pxclk", "pll";
-+		resets = <&syscon_apmu RESET_APMU_EDP1>;
-+		phys = <&dp1_phy>;
-+		phy-names = "dp";
-+		status = "disabled";
-+
-+		dp1_phy: phy {
-+			compatible = "spacemit,k3-inno-dp-phy";
-+			#phy-cells = <0>;
-+			#clock-cells = <0>;
-+			clock-output-names = "edp1_pll_pxclk";
-+		};
-+
-+		ports {
-+			#address-cells = <1>;
-+			#size-cells = <0>;
-+
-+			port@0 {
-+				reg = <0>;
-+				dp1_in: endpoint {
-+					remote-endpoint = <&dpu1_out>;
-+				};
-+			};
-+			/* no port@1: the DP TX drives the external connector directly */
-+		};
-+	};
++&dpu1_crtc0 {
++	status = "okay";
 +};
 +
-+/*
-+ * Feed the PHY PLL pixel clocks back in as the APMU mux parents. This lives
-+ * here, not in k3.dtsi: the PHYs only exist where this file is included.
-+ */
-+&syscon_apmu {
-+	clocks = <&osc_32k>, <&vctcxo_1m>, <&vctcxo_3m>, <&vctcxo_24m>,
-+		 <&edp0_phy>, <&dp1_phy>;
-+	clock-names = "osc", "vctcxo_1m", "vctcxo_3m", "vctcxo_24m",
-+		      "edp0_pll_pxclk", "edp1_pll_pxclk";
++&dp1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&dp1_1_cfg>;
++	status = "okay";
 +};
+diff --git a/arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi b/arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi
+index 3ee1471f3798..2f36eba20f1e 100644
+--- a/arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi
++++ b/arch/riscv/boot/dts/spacemit/k3-pinctrl.dtsi
+@@ -11,6 +11,17 @@
+ #define K3_GPIO(x)	(x / 32) (x % 32)
+ 
+ &pinctrl {
++	/omit-if-no-ref/
++	dp1_1_cfg: dp1-1-cfg {
++		dp1-pins {
++			pinmux = <K3_PADCONF(24, 6)>;	/* dp1 hpd */
++
++			bias-disable;
++			drive-strength = <25>;
++			power-source = <3300>;
++		};
++	};
++
+ 	gmac0_rgmii_0_cfg: gmac0-rgmii-0-cfg {
+ 		gmac0-rgmii-0-pins {
+ 			pinmux = <K3_PADCONF(0, 1)>,	/* gmac0_rxdv */
 
 -- 
 2.43.0
